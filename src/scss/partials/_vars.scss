@@ -1,0 +1,27 @@
+$lightblue: #e6ebee;
+$blue: #4ea4f6;
+$darkblue: #1da1f1;
+
+$lightgreen: #eeffde;
+$green: #4dcd5e;
+$darkgreen: #50af4f;
+
+$dotgreen: #0ac630;
+
+$lightgrey: #dadce0;
+$grey: #c4c9cc;
+$darkgrey: #707579;
+
+$light: rgba($darkgrey, 0.08);
+
+$text: #000000;
+$bg: #ffffff;
+
+$text-size: 16px;
+$time-size: 12px;
+
+@function anim($elem) {
+	@return 150ms ease-out $elem;
+}
+
+@import "ico";

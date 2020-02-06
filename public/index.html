@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Telegram Web</title>
+  <meta name="description" content="">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- <link rel="manifest" href="/site.webmanifest"> -->
+  <link rel="apple-touch-icon" href="icon.png">
+  <!-- Place favicon.ico in the root directory -->
+
+  <style>
+    /* cyrillic */
+    @font-face {
+      font-family: 'Roboto';
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+      src: local('Roboto'), local('Roboto-Regular'), url(assets/fonts/KFOmCnqEu92Fr1Mu5mxKKTU1Kvnz.woff2) format('woff2');
+      unicode-range:U + 0400-045F, U + 0490-0491, U + 04B0-04B1, U + 2116
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Roboto';
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+      src: local('Roboto'), local('Roboto-Regular'), url(assets/fonts/KFOmCnqEu92Fr1Mu7GxKKTU1Kvnz.woff2) format('woff2');
+      unicode-range:U + 0100-024F, U + 0259, U + 1E00-1EFF, U + 2020, U + 20A0-20AB, U + 20AD-20CF, U + 2113, U + 2C60-2C7F, U + A720-A7FF
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Roboto';
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+      src: local('Roboto'), local('Roboto-Regular'), url(assets/fonts/KFOmCnqEu92Fr1Mu4mxKKTU1Kg.woff2) format('woff2');
+      unicode-range:U + 0000-00FF, U + 0131, U + 0152-0153, U + 02BB-02BC, U + 02C6, U + 02DA, U + 02DC, U + 2000-206F, U + 2074, U + 20AC, U + 2122, U + 2191, U + 2193, U + 2212, U + 2215, U + FEFF, U + FFFD
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Roboto';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: local('Roboto Medium'), local('Roboto-Medium'), url(assets/fonts/KFOlCnqEu92Fr1MmEU9fABc4AMP6lbBP.woff2) format('woff2');
+      unicode-range:U + 0400-045F, U + 0490-0491, U + 04B0-04B1, U + 2116
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Roboto';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: local('Roboto Medium'), local('Roboto-Medium'), url(assets/fonts/KFOlCnqEu92Fr1MmEU9fChc4AMP6lbBP.woff2) format('woff2');
+      unicode-range:U + 0100-024F, U + 0259, U + 1E00-1EFF, U + 2020, U + 20A0-20AB, U + 20AD-20CF, U + 2113, U + 2C60-2C7F, U + A720-A7FF
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Roboto';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: local('Roboto Medium'), local('Roboto-Medium'), url(assets/fonts/KFOlCnqEu92Fr1MmEU9fBBc4AMP6lQ.woff2) format('woff2');
+      unicode-range:U + 0000-00FF, U + 0131, U + 0152-0153, U + 02BB-02BC, U + 02C6, U + 02DA, U + 02DC, U + 2000-206F, U + 2074, U + 20AC, U + 2122, U + 2191, U + 2193, U + 2212, U + 2215, U + FEFF, U + FFFD
+    }
+  </style>
+  <meta name="theme-color" content="#fafafa">
+</head>
+
+<body>
+  <!--[if IE]>
+    <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="https://browsehappy.com/">upgrade your browser</a> to improve your experience and security.</p>
+  <![endif]-->
+  
+  <div class="whole valign-wrapper page-sign" style="display: none;">
+    <div class="container center-align">
+      <div class="auth-image">
+        <svg class="sign-logo" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 69.2 69.2" style="enable-background:new 0 0 69.2 69.2;" xml:space="preserve">
+          <g id="Layer_2">
+            <circle class="st0" fill="#4EA4F6" cx="34.6" cy="34.6" r="34.6"/>
+          </g>
+          <g id="Layer_3">
+            <path class="st1" fill="#FFFFFF" d="M14.4,34.3c0,0,17.3-7.1,23.3-9.6c2.3-1,10.1-4.2,10.1-4.2s3.6-1.4,3.3,2c-0.1,1.4-0.9,6.3-1.7,11.6
+              c-1.2,7.5-2.5,15.7-2.5,15.7s-0.2,2.3-1.9,2.7c-1.7,0.4-4.5-1.4-5-1.8c-0.4-0.3-7.5-4.8-10.1-7c-0.7-0.6-1.5-1.8,0.1-3.2
+              c3.6-3.3,7.9-7.4,10.5-10c1.2-1.2,2.4-4-2.6-0.6c-7.1,4.9-14.1,9.5-14.1,9.5s-1.6,1-4.6,0.1c-3-0.9-6.5-2.1-6.5-2.1
+              S10.3,35.9,14.4,34.3z"/>
+          </g>
+        </svg>
+      </div>
+      <h4>Sign in to Telegram</h4>
+      <p class="subtitle">Please confirm your country and<br> enter your phone number.</p>
+      <div class="input-wrapper">
+        <div class="input-field input-select">
+          <input type="text" name="countryCode" id="countryCode" autocomplete="rrRandomRR" required />
+          <label for="countryCode">Country</label>
+          <span class="arrow arrow-down"></span>
+        </div>
+        <div class="input-field">
+          <input type="tel" name="phone" id="phone" autocomplete="rr55RandomRR55" required />
+          <label for="phone">Phone Number</label>
+        </div>
+        <label class="checkbox-field">
+          <input type="checkbox" id="keepSigned" checked="checked">
+          <span>Keep me signed in</span>
+        </label>
+        <button class="btn-primary" style="display: none;">NEXT</button>
+      </div>
+    </div>
+  </div>
+  <div class="whole valign-wrapper page-authCode" style="display: none;">
+    <div class="container center-align">
+      <div class="auth-image"></div>
+      <div class="phone-wrapper">
+        <h4 class="phone"></h4>
+        <span class="phone-edit tgico-edit"></span>
+      </div>
+      <p class="subtitle sent-type"></p>
+      <div class="input-wrapper">
+        <div class="input-field">
+          <input type="text" name="code" id="code" autocomplete="off" required />
+          <label for="code">Code</label>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="whole valign-wrapper page-password" style="display: none;">
+    <div class="container center-align">
+      <div class="auth-image"></div>
+      <h4 class="phone">Enter a password</h4>
+      <p class="subtitle">Your account is protected with<br>an additional password</p>
+      <div class="input-wrapper">
+        <div class="input-field">
+          <input type="password" name="password" id="password" autocomplete="off" required />
+          <label for="password">Password</label>
+          <span class="toggle-visible tgico-eye1"></span>
+        </div>
+        <button class="btn-primary">NEXT</button>
+      </div>
+    </div>
+  </div>
+  <div class="whole valign-wrapper page-signUp" style="display: none;">
+    <div class="container center-align">
+      <div class="auth-image">
+        <input type="file" id="avatar-input" style="display: none;" />
+        <canvas id="canvas-avatar"></canvas>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+          <g fill="none" fill-rule="evenodd">
+            <polygon points="0 0 24 0 24 24 0 24"/>
+            <path fill="#fff" fill-rule="nonzero" d="M19.8833789,16.0067277 L20,16 C20.5128358,16 20.9355072,16.3860402 20.9932723,16.8833789 L21,17 L21,19 L23,19 C23.5128358,19 23.9355072,19.3860402 23.9932723,19.8833789 L24,20 C24,20.5128358 23.6139598,20.9355072 23.1166211,20.9932723 L23,21 L21,21 L21,23 C21,23.5128358 20.6139598,23.9355072 20.1166211,23.9932723 L20,24 C19.4871642,24 19.0644928,23.6139598 19.0067277,23.1166211 L19,23 L19,21 L17,21 C16.4871642,21 16.0644928,20.6139598 16.0067277,20.1166211 L16,20 C16,19.4871642 16.3860402,19.0644928 16.8833789,19.0067277 L17,19 L19,19 L19,17 C19,16.4871642 19.3860402,16.0644928 19.8833789,16.0067277 L20,16 L19.8833789,16.0067277 Z M8.41421356,2 L13.5857864,2 C14.0572824,2 14.5116128,2.16648982 14.8701798,2.46691315 L15,2.58578644 L16.4142136,4 L18,4 C19.5976809,4 20.9036609,5.24891996 20.9949073,6.82372721 L21,7 L21,12 C21,12.5522847 20.5522847,13 20,13 C19.4871642,13 19.0644928,12.6139598 19.0067277,12.1166211 L19,12 L19,7 C19,6.48716416 18.6139598,6.06449284 18.1166211,6.00672773 L18,6 L16.4142136,6 C15.9427176,6 15.4883872,5.83351018 15.1298202,5.53308685 L15,5.41421356 L13.5857864,4 L8.41421356,4 L7,5.41421356 C6.66660199,5.74761157 6.22761579,5.95114561 5.76163928,5.99225938 L5.58578644,6 L4,6 C3.48716416,6 3.06449284,6.38604019 3.00672773,6.88337887 L3,7 L3,18 C3,18.5128358 3.38604019,18.9355072 3.88337887,18.9932723 L4,19 L13,19 C13.5522847,19 14,19.4477153 14,20 C14,20.5128358 13.6139598,20.9355072 13.1166211,20.9932723 L13,21 L4,21 C2.40231912,21 1.09633912,19.75108 1.00509269,18.1762728 L1,18 L1,7 C1,5.40231912 2.24891996,4.09633912 3.82372721,4.00509269 L4,4 L5.58578644,4 L7,2.58578644 C7.33339801,2.25238843 7.77238421,2.04885439 8.23836072,2.00774062 L8.41421356,2 L13.5857864,2 L8.41421356,2 Z M11,7 C13.7614237,7 16,9.23857625 16,12 C16,14.7614237 13.7614237,17 11,17 C8.23857625,17 6,14.7614237 6,12 C6,9.23857625 8.23857625,7 11,7 Z M11,9 C9.34314575,9 8,10.3431458 8,12 C8,13.6568542 9.34314575,15 11,15 C12.6568542,15 14,13.6568542 14,12 C14,10.3431458 12.6568542,9 11,9 Z"/>
+          </g>
+        </svg>
+      </div>
+      <h4 class="fullName">Your Name</h4>
+      <p class="subtitle">Enter your name and add<br>a profile picture</p>
+      <div class="input-wrapper">
+        <div class="input-field">
+          <input type="text" name="name" id="name" autocomplete="off" required />
+          <label for="name">Name</label>
+        </div>
+        <div class="input-field">
+          <input type="text" name="lastName" id="lastName" autocomplete="off" required />
+          <label for="lastName">Last Name (optional)</label>
+        </div>
+        <button class="btn-primary" id="signUp">START MESSAGING</button>
+      </div>
+    </div>
+    <div class="popup popup-avatar">
+      <div class="popup-container z-depth-1">
+        <div class="popup-header">
+          <span class="popup-close">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+              <g fill="none" fill-rule="evenodd">
+                <polygon points="0 0 24 0 24 24 0 24"/>
+                <path fill-rule="nonzero" d="M5.20970461,5.38710056 L5.29289322,5.29289322 C5.65337718,4.93240926 6.22060824,4.90467972 6.61289944,5.20970461 L6.70710678,5.29289322 L12,10.585 L17.2928932,5.29289322 C17.6834175,4.90236893 18.3165825,4.90236893 18.7071068,5.29289322 C19.0976311,5.68341751 19.0976311,6.31658249 18.7071068,6.70710678 L13.415,12 L18.7071068,17.2928932 C19.0675907,17.6533772 19.0953203,18.2206082 18.7902954,18.6128994 L18.7071068,18.7071068 C18.3466228,19.0675907 17.7793918,19.0953203 17.3871006,18.7902954 L17.2928932,18.7071068 L12,13.415 L6.70710678,18.7071068 C6.31658249,19.0976311 5.68341751,19.0976311 5.29289322,18.7071068 C4.90236893,18.3165825 4.90236893,17.6834175 5.29289322,17.2928932 L10.585,12 L5.29289322,6.70710678 C4.93240926,6.34662282 4.90467972,5.77939176 5.20970461,5.38710056 L5.29289322,5.29289322 L5.20970461,5.38710056 Z"/>
+              </g>
+            </svg>
+          </span>
+          <h6>Drag to Reposition</h6>
+        </div>
+        <div class="crop"></div>
+        <button class="btn-primary btn-circle btn-crop z-depth-1">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+            <g fill="none" fill-rule="evenodd">
+              <polygon points="0 0 24 0 24 24 0 24"/>
+              <path fill-rule="nonzero" d="M4.70710678,12.2928932 C4.31658249,11.9023689 3.68341751,11.9023689 3.29289322,12.2928932 C2.90236893,12.6834175 2.90236893,13.3165825 3.29289322,13.7071068 L8.29289322,18.7071068 C8.68341751,19.0976311 9.31658249,19.0976311 9.70710678,18.7071068 L20.7071068,7.70710678 C21.0976311,7.31658249 21.0976311,6.68341751 20.7071068,6.29289322 C20.3165825,5.90236893 19.6834175,5.90236893 19.2928932,6.29289322 L9,16.5857864 L4.70710678,12.2928932 Z"/>
+            </g>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+  <div class="whole valign-wrapper page-chats" style="display: none;">
+    <div class="overlays">
+      <div class="media-viewer">
+        <div class="media-viewer-author">
+          <div class="media-viewer-userpic user-avatar"></div>
+          <div class="media-viewer-name"></div>
+          <div class="media-viewer-date"></div>
+        </div>
+        <div class="media-viewer-buttons">
+          <div class="media-viewer-delete-button btn-icon tgico-delete rp rps"></div>
+          <div class="media-viewer-forward-button btn-icon tgico-forward rp rps"></div>
+          <div class="media-viewer-download-button btn-icon tgico-download rp rps"></div>
+          <div class="media-viewer-close-button btn-icon tgico-close rp rps"></div>
+        </div>
+        <div class="media-viewer-content">
+          <div class="media-viewer-stub"></div>
+          <div class="media-viewer-container">
+            <div class="media-viewer-switcher-left">
+              <span class="tgico-down media-viewer-prev-button"></span>
+            </div>
+            <div class="media-viewer-switcher-right">
+              <span class="tgico-down media-viewer-next-button"></span>
+            </div>
+            <div class="media-viewer-media">
+              <!-- <img src="assets/img/camomile.jpg" alt="">
+              <div class="preloader-container">
+                <svg xmlns="http://www.w3.org/2000/svg" class="preloader-circular" viewBox="25 25 50 50">
+                  <circle class="preloader-path-new" cx="50" cy="50" r="23" fill="none" stroke-miterlimit="10"/>
+                </svg>
+                <svg xmlns="http://www.w3.org/2000/svg" class="preloader-close" viewBox="0 0 20 20">
+                  <line x1="0" y1="20" x2="20" y2="0" stroke-width="1" stroke-linecap="round"></line>
+                  <line x1="0" y1="0" x2="20" y2="20" stroke-width="1" stroke-linecap="round"></line>
+                </svg>
+              </div> -->
+            </div>
+          </div>
+          <div class="media-viewer-caption"></div>
+          <!-- <div class="media-viewer-loader a-loader"></div> -->
+        </div>
+      </div>
+    </div>
+    <div class="chats-container sidebar sidebar-left">
+      <div class="sidebar-header">
+        <button class="btn-icon tgico-menu rp sidebar-tools-button"></button>
+        <div class="input-search">
+          <input type="text" placeholder="Search" id="global-search" />
+          <span class="tgico tgico-search"></span>
+        </div>
+      </div>
+      <!-- <div class="tabs-container"> -->
+      <div class="sidebar-content">
+        <div id="chats-container">
+          <ul id="dialogs-pinned"></ul>
+          <ul id="dialogs"></ul>  
+        </div>
+        <div id="search-container">
+
+        </div>
+      </div>
+    </div>
+    <div class="chat-container">
+      <!-- <div class="chat-background"></div> -->
+      <canvas id="chat-background-canvas"></canvas>
+      <div id="topbar" style="display: none;">
+        <div class="chat-info">
+          <div class="person">
+            <div class="user-avatar" id="im-avatar"></div>
+            <div class="content">
+              <div class="top">
+                <div class="user-title" id="im-title"></div>
+              </div>
+              <div class="bottom">
+                <div class="info" id="im-subtitle"></div>
+              </div>
+            </div>
+            <div class="pinned-message">
+              <div class="pinned-message-border"></div>
+              <div class="pinned-message-content">
+                <div class="pinned-message-title">Pinned Message</div>
+                <div class="pinned-message-subtitle">At the end of this stage, all apps should be able to:
+                + Update the chat list and receive new messages.
+                + Send new messages.
+                - Display and send media, files and links. (2 дня)
+                + Display a 'Shared media' section for chats that includes photos and files. (2 дня максимум)
+                + Display stickers, send emoji and stickers. (3 дня)
+                + Use the default camomile background in chats. (1 день)
+                - Search for messages in chats. (2 дня (+фикс скролла))
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="pinned-msg"></div>
+        <div class="btn-icon rp tool-mute chat-mute-button" style="display: none;"></div>
+        <div class="btn-icon rp tgico-search chat-search-button"></div>
+        <div class="btn-icon rp tgico-more chat-more-button"></div>
+      </div>
+      <div id="bubbles">
+        <div id="bubbles-inner"></div>
+      </div>
+      <!-- <div id="chat-closed"></div> -->
+      <!-- <div id="chat-closed">
+        <div class="tgico-chatsplaceholder"></div>
+        <h3>Open Chat<br>or create a new one</h3>
+        <div class="buttons">
+          <button class="btn-circle tgico-newprivate"><span>Private</span></button>
+          <button class="btn-circle tgico-newgroup"><span>Group</span></button>
+          <button class="btn-circle tgico-channel"><span>Channel</span></button>
+        </div>
+      </div> -->
+      <div id="chat-input" style="display: none;">
+      <!-- <div id="chat-input"> -->
+        <div class="emoji-dropdown">
+          <ul class="emoji-tabs menu-horizontal">
+            <li class="emoji-tabs-emoji rp">Emoji</li>
+            <li class="emoji-tabs-stickers rp">Stickers</li>
+            <li class="emoji-tabs-gifs rp">GIFs</li>
+          </ul>
+          <div class="emoji-container">
+            <div class="tabs-container">
+              <div class="emoji-padding">
+                <div id="content-emoji"></div>
+                <ul class="menu-horizontal justify-start">
+                  <li class="btn-icon tgico-recent rp"></li>
+                  <li class="active btn-icon tgico-smile rp"></li>
+                  <li class="btn-icon tgico-animals rp"></li>
+                  <li class="btn-icon tgico-eats rp"></li>
+                  <li class="btn-icon tgico-car rp"></li>
+                  <li class="btn-icon tgico-sport rp"></li>
+                  <li class="btn-icon tgico-lamp rp"></li>
+                  <li class="btn-icon tgico-info rp"></li>
+                  <li class="btn-icon tgico-flag rp"></li>
+                </ul>
+              </div>
+              <div class="stickers-padding">
+                <div id="content-stickers"></div>
+                <div class="menu-wrapper">
+                  <ul class="menu-horizontal justify-start">
+                    <li class="btn-icon tgico-recent active"></li>
+                  </ul>
+                </div>
+              </div>
+              <div class="gifs-padding"><div id="content-gifs">3</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="input-message">
+          <button class="btn-icon rp tgico-smile toggle-emoticons"></button>
+          <!-- <textarea type="text" id="input-message" placeholder="Message" contenteditable="true"></textarea> -->
+          <div class="input-message-container">
+            <div id="input-message" contenteditable="true" data-placeholder="Message"></div>
+          </div>
+          <button class="btn-icon rp tgico-attach" id="attach-file"></button>
+          <input type="file" id="input-file" style="display: none;" />
+        </div>
+        <button class="btn-circle z-depth-1 btn-icon tgico-microphone2" id="btn-send"></button>
+      </div>
+    </div>
+    <div class="profile-container sidebar sidebar-right">
+      <div class="sidebar-header">
+        <button class="btn-icon rp tgico-close sidebar-close-button"></button>
+        <div class="sidebar-title">Info</div>
+
+        <button class="btn-icon rp tgico-edit sidebar-edit-button"></button>
+
+        <div class="btn-icon tgico-more rp sidebar-menu-button">
+          <div class="sidebar-menu is-bottom-left">
+            <button class="btn-icon rp tgico-edit sidebar-menu-edit"></button>
+            <button class="sidebar-menu-block a-menu-item is-danger">Block</button>
+          </div>
+        </div>
+      </div>
+      <div class="profile-content">
+        <div class="profile-avatar user-avatar"></div>
+        <div class="profile-name"></div>
+        <div class="profile-subtitle"></div>
+
+        <div class="profile-row profile-row-bio tgico-info">
+          <p></p>
+          <p class="profile-row-label">Bio</p>
+        </div>
+        <div class="profile-row profile-row-username tgico-username">
+          <p></p>
+          <p class="profile-row-label">Username</p>
+        </div>
+        <div class="profile-row profile-row-phone tgico-phone">
+          <p></p>
+          <p class="profile-row-label">Phone</p>
+        </div>
+        <div class="profile-row profile-row-notifications">
+          <input type="checkbox" id="profile-notifications" checked="checked">
+          <span>Notifications</span>
+          <p class="profile-row-label">Enabled</p>
+        </div>
+
+        <ul class="profile-tabs menu-horizontal">
+          <li class="profile-tabs-members rp" style="display: none;">Members</li>
+          <li class="profile-tabs-media rp">Media</li>
+          <li class="profile-tabs-docs rp">Docs</li>
+          <li class="profile-tabs-links rp">Links</li>
+          <li class="profile-tabs-audio rp">Audio</li>
+        </ul>
+        <div class="content-container">
+          <div class="profile-tabs-content tabs-container">
+            <div class="content-members-container"><div id="content-members">1</div></div>
+            <div class="content-media-container"><div id="content-media"></div></div>
+            <div class="content-docs-container"><div id="content-docs"></div></div>
+            <div class="content-links-container"><div id="content-links">4</div></div>
+            <div class="content-audio-container"><div id="content-audio">5</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- <script src="bundle.js"></script> -->
+  <!-- <script src="npm.aes-js.chunk.js"></script>
+  <script src="npm.jsbn.chunk.js"></script>
+  <script src="npm.leemon.chunk.js"></script>
+  <script src="npm.lottie-web.chunk.js"></script>
+  <script src="vendors~main.chunk.js"></script>
+  <script src="main.bundle.js"></script> -->
+
+</html>
+<script type="text/javascript" src="runtime.bundle.js"></script><script type="text/javascript" src="npm.aes-js.chunk.js"></script><script type="text/javascript" src="npm.jsbn.chunk.js"></script><script type="text/javascript" src="npm.leemon.chunk.js"></script><script type="text/javascript" src="npm.lottie-web.chunk.js"></script><script type="text/javascript" src="vendors~main.chunk.js"></script><script type="text/javascript" src="main.chunk.js"></script>
