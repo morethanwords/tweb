@@ -34,7 +34,7 @@ class AppDocsManager {
     apiDoc.attributes.forEach((attribute: any) => {
       switch(attribute._) {
         case 'documentAttributeFilename':
-          apiDoc.file_name = attribute.file_name
+          apiDoc.file_name = RichTextProcessor.wrapPlainText(attribute.file_name);
           break;
 
         case 'documentAttributeAudio':

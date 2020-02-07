@@ -31,7 +31,7 @@ class AppSidebarLeft {
     this.listsContainer = scrollable(this.searchContainer);
     this.searchMessagesList = document.createElement('ul');
     
-    this.listsContainer.onscroll = this.onSidebarScroll.bind(this);
+    this.listsContainer.addEventListener('scroll', this.onSidebarScroll.bind(this));
     
     this.searchContainer.append(this.listsContainer);
     

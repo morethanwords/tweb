@@ -52,7 +52,7 @@ export class ApiFileManager {
     let promise = new Promise((resolve, reject) => {
       // WARNING deferred!
       downloadPull.push({cb: cb, deferred: {resolve, reject}, activeDelta: activeDelta});
-    });
+    }).catch(() => {});
 
     setTimeout(() => {
       this.downloadCheck(dcID);
@@ -83,7 +83,9 @@ export class ApiFileManager {
 
       data.deferred.resolve(result);
     }, (error: any) => {
-      this.log.error('downloadCheck error:', error);
+      if(error) {
+        this.log.error('downloadCheck error:', error);
+      }
 
       this.downloadActives[dcID] -= activeDelta;
       this.downloadCheck(dcID);

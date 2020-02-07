@@ -15,6 +15,7 @@ import lottieLoader from "../lottieLoader";
 import appMediaViewer from "./appMediaViewer";
 import appSidebarLeft from "./appSidebarLeft";
 import appChatsManager from "./appChatsManager";
+import appMessagesIDsManager from "./appMessagesIDsManager";
 
 console.log('appImManager included!');
 
@@ -352,8 +353,16 @@ export class AppImManager {
       let max = Math.max(...readed);
       let min = Math.min(...readed);
 
+      if(this.peerID < 0) {
+        max = appMessagesIDsManager.getMessageIDInfo(max)[0];
+        min = appMessagesIDsManager.getMessageIDInfo(min)[0];
+      }
+
       //appMessagesManager.readMessages(readed);
-      appMessagesManager.readHistory(this.peerID, max, min);
+      appMessagesManager.readHistory(this.peerID, max, min).catch((err: any) => {
+        this.log.error('readHistory err:', err);
+        appMessagesManager.readHistory(this.peerID, max, min);
+      });
     }
 
     if(this.scroll.scrollHeight - (this.scroll.scrollTop + this.scroll.offsetHeight) == 0/* <= 5 */) {
@@ -422,7 +431,7 @@ export class AppImManager {
   public setScroll(scroll: HTMLDivElement) {
     this.scroll = scroll;
     this.scrollPosition = new ScrollPosition(this.chatInner);
-    this.scroll.onscroll = this.onScroll.bind(this);
+    this.scroll.addEventListener('scroll', this.onScroll.bind(this));
   }
 
   public setPeerStatus() {
@@ -759,6 +768,41 @@ export class AppImManager {
 
       let processingWebPage = false;
       switch(message.media._) {
+        case 'messageMediaPending': {
+          let pending = message.media;
+          let preloader = pending.preloader as ProgressivePreloader;
+
+          switch(pending.type) {
+            case 'photo': {
+              if(pending.size < 1e6) {
+                let img = new Image();
+                img.src = URL.createObjectURL(pending.file);
+  
+                attachmentDiv.append(img);
+                preloader.attach(attachmentDiv, false);
+
+                break;
+              }
+            }
+
+            case 'audio':
+            case 'document': {
+              let docDiv = wrapDocument(pending);
+
+              let icoDiv = docDiv.querySelector('.document-ico');
+              preloader.attach(icoDiv, false);
+
+              messageDiv.classList.remove('message-empty');
+              messageDiv.append(docDiv);
+              processingWebPage = true;
+              break;
+            }
+              
+          }
+
+          break;
+        }
+
         case 'messageMediaPhoto': {
           let photo = message.media.photo;
           this.log('messageMediaPhoto', photo);

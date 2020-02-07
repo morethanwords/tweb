@@ -117,7 +117,7 @@ class AppSidebarRight {
 
   public setScroll(scroll: HTMLDivElement) {
     this.sidebarScroll = scroll;
-    this.sidebarScroll.onscroll = this.onSidebarScroll.bind(this);
+    this.sidebarScroll.addEventListener('scroll', this.onSidebarScroll.bind(this));
     /* this.sidebarScroll.options({
       callbacks: {
         onScroll: this.onSidebarScroll.bind(this)

@@ -7,6 +7,7 @@ import appStickersManager from "../lib/appManagers/appStickersManager";
 import appDocsManager from "../lib/appManagers/appDocsManager";
 import {AppImManager} from "../lib/appManagers/appImManager";
 import {AppMediaViewer} from '../lib/appManagers/appMediaViewer';
+import { RichTextProcessor } from "../lib/richtextprocessor";
 
 export type MTDocument = {
   _: 'document',
@@ -24,7 +25,9 @@ export type MTDocument = {
   
   type?: string,
   h?: number,
-  w?: number
+  w?: number,
+  file_name?: string,
+  file?: File
 };
 
 export type MTPhotoSize = {
@@ -100,7 +103,7 @@ export function putPreloader(elem: Element) {
 }
 
 export class ProgressivePreloader {
-  private preloader: HTMLDivElement = null;
+  public preloader: HTMLDivElement = null;
   private circle: SVGCircleElement = null;
   private progress = 0;
   constructor(elem?: Element, private cancelable = true) {
@@ -108,9 +111,11 @@ export class ProgressivePreloader {
     this.preloader.classList.add('preloader-container');
     
     this.preloader.innerHTML = `
-    <svg xmlns="http://www.w3.org/2000/svg" class="preloader-circular" viewBox="25 25 50 50">
-    <circle class="preloader-path-new" cx="50" cy="50" r="23" fill="none" stroke-miterlimit="10"/>
-    </svg>`;
+    <div class="you-spin-me-round">
+      <svg xmlns="http://www.w3.org/2000/svg" class="preloader-circular" viewBox="25 25 50 50">
+        <circle class="preloader-path-new" cx="50" cy="50" r="23" fill="none" stroke-miterlimit="10"/>
+      </svg>
+    </div>`;
     
     if(cancelable) {
       this.preloader.innerHTML += `
@@ -122,15 +127,15 @@ export class ProgressivePreloader {
       this.preloader.classList.add('preloader-swing');
     }
     
-    this.circle = this.preloader.firstElementChild.firstElementChild as SVGCircleElement;
+    this.circle = this.preloader.firstElementChild.firstElementChild.firstElementChild as SVGCircleElement;
     
     if(elem) {
       this.attach(elem);
     }
   }
   
-  public attach(elem: Element) {
-    if(this.cancelable) {
+  public attach(elem: Element, reset = true) {
+    if(this.cancelable && reset) {
       this.setProgress(0);
     }
     
@@ -168,7 +173,7 @@ export class ProgressivePreloader {
     
     let totalLength = this.circle.getTotalLength();
     console.log('setProgress', (percents / 100 * totalLength));
-    this.circle.style.strokeDasharray = '' + (percents / 100 * totalLength);
+    this.circle.style.strokeDasharray = '' + Math.max(5, percents / 100 * totalLength) + ', 200';
   }
 }
 
@@ -313,16 +318,17 @@ export function wrapDocument(doc: MTDocument, withTime = false): HTMLDivElement 
   let iconDiv = document.createElement('div');
   iconDiv.classList.add('tgico-document');
   
-  let attributeFilename: {
-    _: 'documentAttributeFilename',
-    file_name: string
-  } = doc.attributes.find((a: any) => a._ == "documentAttributeFilename");
-  
-  let extSplitted = attributeFilename ? attributeFilename.file_name.split('.') : '';
+  let extSplitted = doc.file_name ? doc.file_name.split('.') : '';
   let ext = '';
   ext = extSplitted.length > 1 && Array.isArray(extSplitted) ? extSplitted.pop().toLowerCase() : 'file';
+
+  let ext2 = ext;
+  if(doc.type == 'photo') {
+    docDiv.classList.add('photo');
+    ext2 = `<img src="${URL.createObjectURL(doc.file)}">`;
+  }
   
-  let fileName = attributeFilename ? attributeFilename.file_name : 'Unknown.file';
+  let fileName = doc.file_name || 'Unknown.file';
   let size = formatBytes(doc.size);
   
   if(withTime) {
@@ -334,7 +340,7 @@ export function wrapDocument(doc: MTDocument, withTime = false): HTMLDivElement 
   }
   
   docDiv.innerHTML = `
-  <div class="document-ico ext-${ext}">${ext}</div>
+  <div class="document-ico ext-${ext}">${ext2}</div>
   <div class="document-name">${fileName}</div>
   <div class="document-size">${size}</div>
   `;
@@ -347,18 +353,84 @@ export function scrollable(el: HTMLDivElement, x = false, y = true) {
   container.classList.add('scrollable');
   if(x) container.classList.add('scrollable-x');
   if(y) container.classList.add('scrollable-y');
+
+  let type = x ? 'width' : 'height';
+  let side = x ? 'left' : 'top';
+  let scrollType = x ? 'scrollWidth' : 'scrollHeight';
+  let scrollSide = x ? 'scrollLeft' : 'scrollTop';
   
   container.addEventListener('mouseover', () => {
-    container.classList.add('active');
+    resize();
+    /* container.classList.add('active');
     
     container.addEventListener('mouseout', () => {
       container.classList.remove('active');
-    }, {once: true});
+    }, {once: true}); */
+  });
+
+  let thumb = document.createElement('div');
+  thumb.className = 'scrollbar-thumb';
+
+  // @ts-ignore
+  thumb.style[type] = '30px';
+
+  let resize = () => {
+    // @ts-ignore
+    scrollHeight = container[scrollType];
+
+    let rect = container.getBoundingClientRect();
+
+    // @ts-ignore
+    height = rect[type];
+
+    if(!height || height == scrollHeight) {
+      thumbHeight = 0;
+
+      // @ts-ignore
+      thumb.style[type] = thumbHeight + 'px';
+      return;
+    }
+    //if(!height) return;
+
+    let divider = scrollHeight / height / 0.5;
+    thumbHeight = height / divider;
+
+    if(thumbHeight < 20) thumbHeight = 20;
+
+    // @ts-ignore
+    thumb.style[type] = thumbHeight + 'px';
+
+    // @ts-ignore
+    console.log('onresize', thumb.style[type], thumbHeight, height);
+  };
+
+  let scrollHeight = -1;
+  let height = 0;
+  let thumbHeight = 0;
+  window.addEventListener('resize', resize);
+  //container.addEventListener('DOMNodeInserted', resize);
+
+  container.addEventListener('scroll', (e) => {
+    // @ts-ignore
+    if(container[scrollType] != scrollHeight || thumbHeight == 0) {
+      resize();
+    }
+
+    // @ts-ignore
+    let value = container[scrollSide] / (scrollHeight - height) * 100;
+    let maxValue = 100 - (thumbHeight / height * 100);
+
+    console.log('onscroll', container.scrollHeight, thumbHeight, height, value, maxValue);
+
+    // @ts-ignore
+    thumb.style[side] = (value >= maxValue ? maxValue : value) + '%';
   });
   
   Array.from(el.children).forEach(c => container.append(c));
   
   el.append(container);//container.append(el);
+  container.parentElement.append(thumb);
+  resize();
   return container;
 }
 

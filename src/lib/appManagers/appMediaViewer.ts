@@ -166,14 +166,18 @@ export class AppMediaViewer {
     appDialogsManager.loadDialogPhoto(this.author.avatarEl, message.fromID);
     
     this.overlaysDiv.classList.add('active');
-    
+
+    container.classList.add('loading');
+
     if(isVideo) {
       //this.preloader.attach(container);
       //this.preloader.setProgress(75);
 
       this.log('will wrap video');
       
-      wrapVideo.call(this, media, container, message, false, this.preloader);
+      wrapVideo.call(this, media, container, message, false, this.preloader).then(() => {
+        container.classList.remove('loading');
+      });
     } else {
       let size = appPhotosManager.setAttachmentSize(media.id, container, appPhotosManager.windowW, appPhotosManager.windowH);
       
@@ -195,6 +199,8 @@ export class AppMediaViewer {
         let image = new Image();
         image.src = URL.createObjectURL(blob);
         container.append(image);
+
+        container.classList.remove('loading');
         
         container.style.width = '';
         container.style.height = '';

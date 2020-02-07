@@ -13,7 +13,7 @@ import AppStorage from '../storage';
 import AppPeersManager from "./appPeersManager";
 import ServerTimeManager from "../mtproto/serverTimeManager";
 import apiFileManager, { CancellablePromise } from "../mtproto/apiFileManager";
-import { MTDocument } from "../../components/misc";
+import { MTDocument, ProgressivePreloader } from "../../components/misc";
 import appDocsManager from "./appDocsManager";
 
 type HistoryStorage = {
@@ -438,17 +438,26 @@ export class AppMessagesManager {
       flags |= 256;
     }
 
+    let preloader = new ProgressivePreloader(null, true);
+
     var media = {
       _: 'messageMediaPending',
       type: attachType,
       file_name: fileName || apiFileName,
       size: file.size,
+      file: file,
+      preloader: preloader,
       progress: {
         percent: 1, 
         total: file.size,
         done: 0,
         cancel: () => {}
       }
+    };
+
+    preloader.preloader.onclick = () => {
+      console.log('cancelling upload', media);
+      media.progress.cancel();
     };
 
     var message: any = {
@@ -592,9 +601,10 @@ export class AppMessagesManager {
           });
   
           uploadPromise.notify = (progress: {done: number, total: number}) => {
-            // console.log('upload progress', progress)
+            console.log('upload progress', progress);
             media.progress.done = progress.done;
             media.progress.percent = Math.max(1, Math.floor(100 * progress.done / progress.total));
+            preloader.setProgress(media.progress.percent); // lol, nice
             $rootScope.$broadcast('history_update', {peerID: peerID});
           };
   
@@ -604,10 +614,13 @@ export class AppMessagesManager {
               uploadPromise.cancel();
               this.cancelPendingMessage(randomIDS);
             }
-          }
+          };
   
           // @ts-ignore
-          uploadPromise['finally'](() => deferred.resolve());
+          uploadPromise['finally'](() => {
+            deferred.resolve();
+            preloader.detach();
+          });
         });
 
         this.sendFilePromise = deferred;
@@ -626,7 +639,7 @@ export class AppMessagesManager {
   public cancelPendingMessage(randomID: string) {
     var pendingData = this.pendingByRandomID[randomID];
 
-    console.log('pending', randomID, pendingData);
+    console.log('cancelPendingMessage', randomID, pendingData);
 
     if(pendingData) {
       var peerID = pendingData[0];
@@ -656,7 +669,7 @@ export class AppMessagesManager {
   }
 
   public async getConversation(peerID: number) {
-    var foundDialog = this.getDialogByPeerID(peerID)
+    var foundDialog = this.getDialogByPeerID(peerID);
     if(foundDialog.length) {
       return foundDialog[0];
     }
@@ -675,11 +688,11 @@ export class AppMessagesManager {
 
     if(isSearch) {
       if(!limit || this.cachedResults.query !== query) {
-        this.cachedResults.query = query
+        this.cachedResults.query = query;
 
         var results: any = SearchIndexManager.search(query, this.dialogsIndex);
 
-        this.cachedResults.dialogs = []
+        this.cachedResults.dialogs = [];
         this.dialogsStorage.dialogs.forEach((dialog: any) => {
           if(results[dialog.peerID]) {
             this.cachedResults.dialogs.push(dialog);
@@ -701,11 +714,7 @@ export class AppMessagesManager {
       }
     }
 
-    if(
-      isSearch ||
-      this.allDialogsLoaded ||
-      curDialogStorage.dialogs.length >= offset + limit
-    ) {
+    if(isSearch || this.allDialogsLoaded || curDialogStorage.dialogs.length >= offset + limit) {
       return Promise.resolve({
         dialogs: curDialogStorage.dialogs.slice(offset, offset + limit)
       });
@@ -1888,7 +1897,7 @@ export class AppMessagesManager {
     this.newDialogsToHandle = {};
   }
 
-  public readHistory(peerID: number, maxID = 0, minID = 0) {
+  public readHistory(peerID: number, maxID = 0, minID = 0): Promise<boolean> {
     // console.trace('start read')
     var isChannel = AppPeersManager.isChannel(peerID);
     var historyStorage = this.historiesStorage[peerID];
@@ -1896,7 +1905,7 @@ export class AppMessagesManager {
 
     if(!foundDialog || !foundDialog.unread_count) {
       if(!historyStorage || !historyStorage.history.length) {
-        return false;
+        return Promise.resolve(false);
       }
 
       let messageID, message;
@@ -1911,12 +1920,12 @@ export class AppMessagesManager {
       }
 
       if(!foundUnread) {
-        return false;
+        return Promise.resolve(false);
       }
     }
 
     if(historyStorage.readPromise) {
-      return historyStorage.readPromise;
+      return historyStorage.readPromise as Promise<boolean>;
     }
 
     var apiPromise: any;
@@ -1958,7 +1967,11 @@ export class AppMessagesManager {
           console.warn('readPromise:', index, historyStorage.history[index != -1 ? index : 0]);
           foundDialog.read_inbox_max_id = historyStorage.history[index != -1 ? index : 0];
         }
+
+        return true;
       }
+
+      return false;
       /* if(foundDialog) {
         // console.log('done read history', peerID)
         foundDialog.unread_count = 0

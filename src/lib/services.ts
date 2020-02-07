@@ -11,6 +11,7 @@ import AppProfileManager from './appManagers/appProfileManager';
 import AppImManager from './appManagers/appImManager';
 import AppPeersManager from './appManagers/appPeersManager';
 import AppStickersManager from './appManagers/appStickersManager';
+import AppDocsManager from './appManagers/appDocsManager';
 import AppSidebarRight from './appManagers/appSidebarRight';
 import AppSidebarLeft from './appManagers/appSidebarLeft';
 //import AppSharedMediaManager from './appManagers/appSharedMediaManager';
@@ -26,6 +27,7 @@ export const appProfileManager = AppProfileManager;
 export const appImManager = AppImManager;
 export const appPeersManager = AppPeersManager;
 export const appStickersManager = AppStickersManager;
+export const appDocsManager = AppDocsManager;
 //export const appSharedMediaManager = AppSharedMediaManager;
 export const appSidebarRight = AppSidebarRight;
 export const appSidebarLeft = AppSidebarLeft;
@@ -38,6 +40,7 @@ export const appSidebarLeft = AppSidebarLeft;
   appPeersManager,
   appProfileManager,
   appPhotosManager,
+  appDocsManager,
 
   appDialogsManager,
   appImManager,

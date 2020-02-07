@@ -153,16 +153,12 @@
 		max-height: 100%;
 		flex: 1 1 auto; /* Lets middle column shrink/grow to available width */
 		overflow: hidden;
+		position: relative;
 
 		&:not(.scrolled-down) {
 			-webkit-mask-image: -webkit-linear-gradient(bottom, transparent, #000 20px);
     	mask-image: linear-gradient(0deg, transparent 0, #000 20px);
 		}
-
-		/* .os-content {
-			display: flex;
-			align-items: flex-end;
-		} */
 
 		.preloader {
 			width: 100%;
@@ -185,11 +181,6 @@
 			box-sizing: border-box;
 			min-height: 100%;
 			justify-content: flex-end;
-
-			& > * {
-				display: flex;
-				padding: 5px 0;
-			}
 		}
 
 		.service {
@@ -200,7 +191,6 @@
 			.service-msg {
 				color: #fff;
 				background-color: rgba(#000, 0.22);
-				/* font-weight: 500; */
 				padding: 0 8px;
 				line-height: 24px;
 				font-size: 15px;
@@ -210,8 +200,7 @@
 		}
 
 		.bubble {
-			/* max-width: 480px; */
-			/* max-height: 50vh; */
+			min-width: 60px;
 			max-width: 85%;
 			border-radius: 12px;
 			box-shadow: 0 1px 2px 0 rgba(16, 35, 47, 0.15);
@@ -225,19 +214,8 @@
 			&.photo, &.video {
 				width: min-content;
 
-				/* .message {
-					width: min-content;
-					max-width: min-content;
-
-					/* .time {
-						max-width: min-content;
-						overflow: hidden;
-					}
-				} */
-
 				.box.web {
 					width: min-content;
-					/* max-width: min-content; */
 					max-width: 100%;
 				}
 			}
@@ -245,6 +223,7 @@
 			&.webpage {
 				.time {
 					float: none;
+					width: 0;
 				}
 			}
 
@@ -316,18 +295,9 @@
 				box-shadow: none;
 				max-width: 300px;
 				max-height: 300px;
-				/* width: 300px; // new
-				height: 300px; // new */
-
-				/* min-height: 250px; */
-
-				/* .attachment {
-					min-width: auto;
-				} */
 
 				.message.message-empty {
 					display: none;
-					/* border-radius: 12px; */
 				}
 
 				&:hover .message.message-empty {
@@ -351,6 +321,7 @@
 
 				display: flex; // lol
 				justify-content: center;
+				position: relative;
 
 				img, video {
 					width: auto;
@@ -378,11 +349,6 @@
 				}
 			}
 
-			/* * + .attachment {
-				border-top-left-radius: 0;
-				border-top-right-radius: 0;
-			} */
-
 			.box {
 				font-size: .95rem;
 				margin: .25rem;
@@ -400,15 +366,8 @@
 					margin-bottom: 5px;
 					max-width: 100%;
 					overflow: hidden;
-					/* max-width: 320px; */
-					/* width: max-content; */
-          
-					/* .quote {
-						// box-sizing: border-box;
-          } */
           
 					.preview {
-						/* height: 100px; */
 						max-height: 100%;
 						max-width: 100%;
 						border-radius: 4px;
@@ -416,11 +375,10 @@
 						overflow: hidden;
 						user-select: none;
 						cursor: pointer;
+						position: relative;
 
 						img, video {
 							max-width: 100%;
-							/* width: auto;
-							height: auto; */
 							width: 100%;
 							height: 100%;
 						}
@@ -466,7 +424,6 @@
 
 			.message {
         font-size: 1rem;
-				/* padding: .25rem .6rem; */
 				padding: 0 .6rem .2675rem .6rem;
 				padding-top: 0;
 				overflow: hidden;
@@ -483,13 +440,13 @@
 				}
 
 				&.message-empty {
-					/* display: none; */
 					position: absolute;
 					bottom: .1rem;
 					right: .1rem;
 					border-radius: 12px;
-					background-color: rgba(0, 0, 0, .3);
-    			padding: .0rem .3rem;
+					background-color: rgba(0, 0, 0, .4);
+					padding: 0 .3rem;
+					z-index: 2;
 
 					.time {
 						color: #fff;
@@ -500,10 +457,6 @@
 					font-size: 1.2rem;
 				}
 			}
-
-			/* &:hover .message-empty {
-				display: block;
-			} */
 
 			.time {
 				font-size: .8rem;
@@ -540,7 +493,7 @@
 				}
 			}
 
-			/* &.forwarded  */.name {
+			.name {
 				cursor: pointer;
 			}
 
@@ -570,7 +523,6 @@
 				background-repeat: no-repeat repeat;
 				content: '';
 				background-size: 11px 20px;
-				/* background-position: -2px -2px; */
 			}
 		}
 
@@ -580,7 +532,9 @@
 
 		.in,
 		.out {
+			display: flex;
 			flex-direction: column;
+			padding: 5px 0;
 		}
 
 		.in {
@@ -771,6 +725,8 @@
 				width: 1%;
 				max-height: inherit;
 				flex: 1 1 auto;
+				position: relative;
+				overflow: hidden;
 			}
 
 			.btn-icon {
@@ -801,7 +757,7 @@
 			font-size: .95rem;
 			/* height: 100%; */
 			max-height: 30rem;
-			overflow-y: auto;
+			overflow-y: none;
 			resize: none;
 			border: none;
 			outline: none;

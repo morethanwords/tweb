@@ -176,9 +176,9 @@ let initEmoticonsDropdown = (pageEl: HTMLDivElement,
     let prevCategoryIndex = 1;
     let menu = contentEmojiDiv.nextElementSibling as HTMLUListElement;
     let emojiScroll = scrollable(contentEmojiDiv);
-    emojiScroll.onscroll = (e) => {
+    emojiScroll.addEventListener('scroll', (e) => {
       prevCategoryIndex = emoticonsContentOnScroll(menu, heights, prevCategoryIndex, emojiScroll);
-    };
+    });
 
     emoticonsMenuOnClick(menu, heights, emojiScroll);
   }
@@ -342,12 +342,12 @@ let initEmoticonsDropdown = (pageEl: HTMLDivElement,
 
     let prevCategoryIndex = 0;
     let stickersScroll = scrollable(contentStickersDiv);
-    stickersScroll.onscroll = (e) => {
+    stickersScroll.addEventListener('scroll', (e) => {
       lazyLoadQueue.check();
       lottieLoader.checkAnimations();
 
       prevCategoryIndex = emoticonsContentOnScroll(menu, heights, prevCategoryIndex, stickersScroll);
-    };
+    });
 
     emoticonsMenuOnClick(menu, heights, stickersScroll);
 
@@ -423,7 +423,7 @@ export default () => import('../lib/services').then(services => {
     }
   };
 
-  chatsScroll.onscroll = onScroll;
+  chatsScroll.addEventListener('scroll', onScroll);
   window.addEventListener('resize', () => {
     setTimeout(onScroll, 0);
   });

@@ -285,11 +285,19 @@ input {
     color: #fff;
     font-weight: 500;
     letter-spacing: 1px;
-    text-align: center;
     font-size: 1.1rem;
-    padding-top: 1.5rem;
+    display: flex;
+    justify-content: center;
     background-size: contain;
-    background-image: url('../assets/img/doc-in.svg');
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &:not(.photo) {
+    .document-ico {
+      padding-top: 1.5rem;
+      background-image: url('../assets/img/doc-in.svg');
+    }
   }
   
   .document-name {
@@ -304,6 +312,11 @@ input {
     font-size: 14px;
     padding-right: 32px;
     line-height: 1.3;
+  }
+
+  .preloader-container {
+    width: 42px;
+    height: 42px;
   }
 }
 
@@ -719,11 +732,17 @@ $width: 100px;
   height: 50px;
   /* cursor: pointer; */
 
-  .preloader-circular {
-    cursor: pointer;
-    background-color: rgba(0, 0, 0, .5);
-    border-radius: 50%;
+  .you-spin-me-round {
+    width: 100%;
+    height: 100%;
     animation: rotate 2s linear infinite;
+  }
+
+  .preloader-circular {
+    animation: none;
+    cursor: pointer;
+    background-color: rgba(0, 0, 0, .7);
+    border-radius: 50%;
     width: 100%;
     height: 100%;
   }
@@ -731,11 +750,10 @@ $width: 100px;
   .preloader-path-new {
     stroke-dasharray: 5, 200;
     stroke-dashoffset: 0;
-    //animation: dash 1.5s ease-in-out infinite/* , color 6s ease-in-out infinite */;
+    transition: stroke-dasharray 400ms ease-in-out;
     stroke-linecap: round;
     stroke: white;
     stroke-width: 1.5;
-    /* transition: .1s all; */
   }
 
   &.preloader-swing {
@@ -1078,32 +1096,9 @@ $width: 100px;
   }
 }
 
-
-
-div.scrollable-y::-webkit-scrollbar {
-  /* width: 4px; */
-  width: 10px;
-}
-
-/* ::-webkit-scrollbar-track {
-  
-  
-} */
-
-div.scrollable-y::-webkit-scrollbar-thumb {
-  border: 2px solid rgba(0, 0, 0, 0);
-  background-clip: padding-box;
-}
-
-::-webkit-scrollbar-thumb {
-  opacity: 0;
-  transition: .2s ease-in-out;
-}
-
-div.scrollable.active::-webkit-scrollbar-thumb {
-  border-radius: $border-radius;
-  background-color: rgba(0, 0, 0, 0.4);
-  opacity: 1;
+div.scrollable::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 ::-webkit-scrollbar-button {
@@ -1121,25 +1116,45 @@ div.scrollable.active::-webkit-scrollbar-thumb {
   overflow-y: hidden;
   overflow-x: hidden;
   max-height: 100%;
+  position: relative;
 
   &.scrollable-x {
     overflow-x: auto;
-    overflow-x: overlay;
   }
 
   &.scrollable-y {
     overflow-y: auto;
-    overflow-y: overlay;
+  }
+
+  &.scrollable-x ~ .scrollbar-thumb {
+    top: auto;
+    right: auto;
+    width: auto;
+    height: 4px;
+    bottom: 0px;
   }
 }
 
-div.scrollable-x::-webkit-scrollbar {
-  height: 4px;
+.scrollbar-thumb {
+  position: absolute;
+  top: 0;
+  right: 2px;
+  width: 4px;
+  //margin-left: 2px;
+  background-color: #000;
+  cursor: grab;
+  opacity: 0;
+  transition-property: opacity,width,right;
+  transition-duration: .2s;
+  transition-timing-function: ease-in-out;
+
+  border-radius: $border-radius;
+  z-index: 2;
 }
 
-/* div.scrollable-x::-webkit-scrollbar-thumb {
-  border: none;
-} */
+:hover > .scrollbar-thumb {
+  opacity: .4;
+}
 
 .menu-horizontal {
   width: 100%;
@@ -1204,6 +1219,7 @@ div.scrollable-x::-webkit-scrollbar {
       padding: 7.5px;
       max-width: 100%;
       overflow: hidden;
+      position: relative;
     }
   }
 }
@@ -1242,10 +1258,11 @@ div.scrollable-x::-webkit-scrollbar {
     //display: none;
     width: 0%;
     /* grid-column: 3; */
+    position: relative;
 
     transition: .2s ease-in-out;
 
-    > div {
+    > .scrollable {
       min-width: 25vw;
     }
   }
