@@ -90,6 +90,7 @@ class AppSidebarLeft {
         this.toolsBtn.classList.add('tgico-menu');
         this.toolsBtn.classList.remove('tgico-back');
         this.searchContainer.classList.remove('active');
+        this.peerID = 0;
       }
     });
 
@@ -133,7 +134,7 @@ class AppSidebarLeft {
       return Promise.resolve();
     }
     
-    let maxID = 0;//appMessagesIDsManager.getMessageIDInfo(this.minMsgID)[0] - 1;
+    let maxID = appMessagesIDsManager.getMessageIDInfo(this.minMsgID)[0];
 
     return this.searchPromise = appMessagesManager.getSearch(this.peerID, query, null, maxID, 20, this.offsetRate).then(res => {
       this.searchPromise = null;
@@ -155,8 +156,13 @@ class AppSidebarLeft {
         let originalDialog = appMessagesManager.getDialogByPeerID(message.peerID)[0];
         
         if(!originalDialog) {
-          this.log.warn('no original dialog by message:', msgID);
-          return;
+          this.log('no original dialog by message:', message);
+
+          originalDialog = {
+            peerID: message.peerID,
+            pFlags: {},
+            peer: message.to_id
+          };
         }
         
         let {dialog, dom} = appDialogsManager.addDialog(originalDialog, this.searchMessagesList, false);

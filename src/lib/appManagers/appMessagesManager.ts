@@ -1845,7 +1845,7 @@ export class AppMessagesManager {
       if(error.code == 400) {
         error.handled = true;
       }
-      
+
       return Promise.reject(error);
     });
   }

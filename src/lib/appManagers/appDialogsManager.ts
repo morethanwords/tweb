@@ -312,7 +312,11 @@ export class AppDialogsManager {
     return this.doms[peerID] as DialogDom;
   }
 
-  public addDialog(dialog: any, container?: HTMLUListElement, drawStatus = true) {
+  public addDialog(dialog: {
+    peerID: number,
+    pFlags: any,
+    peer: any
+  }, container?: HTMLUListElement, drawStatus = true) {
     let peerID: number = dialog.peerID;
 
     if((peerID in this.doms) && !container) return;

@@ -744,7 +744,7 @@ export class AppImManager {
       let status = message.pFlags.unread ? 'sent' : 'read';
       bubble.classList.add(status);
     } else {
-      this.log('not our message', message, message.pFlags.unread);
+      //this.log('not our message', message, message.pFlags.unread);
       if(message.pFlags.unread) this.unreaded.push(message.mid);
     }
 
