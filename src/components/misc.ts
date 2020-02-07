@@ -5,6 +5,8 @@ import CryptoWorker from '../lib/crypto/cryptoworker';
 import LottieLoader from '../lib/lottieLoader';
 import appStickersManager from "../lib/appManagers/appStickersManager";
 import appDocsManager from "../lib/appManagers/appDocsManager";
+import {AppImManager} from "../lib/appManagers/appImManager";
+import {AppMediaViewer} from '../lib/appManagers/appMediaViewer';
 
 export type MTDocument = {
   _: 'document',
@@ -39,50 +41,50 @@ export type MTPhotoSize = {
 
 let onRippleClick = function(this: HTMLElement, e: MouseEvent) {
   var $circle = this.firstElementChild as HTMLSpanElement;//this.querySelector('.c-ripple__circle') as HTMLSpanElement;
-
+  
   var rect = this.parentElement.getBoundingClientRect();
   var x = e.clientX - rect.left; //x position within the element.
   var y = e.clientY - rect.top;
-
+  
   /* var x = e.pageX - this.parentElement.offsetLeft;
   var y = e.pageY - this.parentElement.offsetTop - this.parentElement.scrollHeight; */
-
+  
   $circle.style.top = y + 'px';
   $circle.style.left = x + 'px';
-
+  
   this.classList.add('active');
-
+  
   //console.log('onrippleclick', e/* e.pageY, this.parentElement.offsetTop */);
 };
 
 export function ripple(elem: Element) {
   /* elem.addEventListener('click', function(e) {
     var $circle = elem.querySelector('.c-ripple__circle') as HTMLSpanElement;
-
+    
     var x = e.pageX - elem.offsetLeft;
     var y = e.pageY - elem.offsetTop;
-
+    
     $circle.style.top = y + 'px';
     $circle.style.left = x + 'px';
-
+    
     elem.classList.add('active');
   }); */
-
+  
   let r = document.createElement('div');
   r.classList.add('c-ripple');
-
+  
   let span = document.createElement('span');
   span.classList.add('c-ripple__circle');
-
+  
   r.append(span);
   elem.append(r);
-
+  
   r.addEventListener('click', onRippleClick);
-
+  
   let onEnd = () => {
     r.classList.remove('active');
   };
-
+  
   for(let type of ['animationend', 'webkitAnimationEnd', 'oanimationend', 'MSAnimationEnd']) {
     r.addEventListener(type, onEnd);
   }
@@ -213,9 +215,20 @@ export class LazyLoadQueue {
   }
 }
 
-export function wrapVideo(doc: MTDocument, container: HTMLDivElement, middleware: () => boolean, messageID: number, justLoader = true, preloader?: ProgressivePreloader) {
-  if(!container.firstElementChild || container.firstElementChild.tagName != 'IMG') {
+export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement, message: any, justLoader = true, preloader?: ProgressivePreloader) {
+  //if(!container.firstElementChild || container.firstElementChild.tagName != 'IMG') {
     let size = appPhotosManager.setAttachmentSize(doc, container);
+  //}
+
+  let peerID = this.peerID ? this.peerID : this.currentMessageID;
+
+  //container.classList.add('video');
+
+  let img = container.firstElementChild as HTMLImageElement || new Image();
+  img.setAttribute('message-id', '' + message.id);
+
+  if(!container.contains(img)) {
+    container.append(img);
   }
   
   //return Promise.resolve();
@@ -227,17 +240,18 @@ export function wrapVideo(doc: MTDocument, container: HTMLDivElement, middleware
   let loadVideo = () => {
     let promise = appDocsManager.downloadDoc(doc);
     
-    promise.notify = (details: {done: number, total: number}) => {
+    /* promise.notify = (details: {done: number, total: number}) => {
       console.log('doc download', promise, details);
       preloader.setProgress(details.done);
-    };
+    }; */
     
     return promise.then(blob => {
-      if(!middleware()) {
+      if((this.peerID ? this.peerID : this.currentMessageID) != peerID) {
+        this.log.warn('peer changed');
         return;
       }
       
-      console.log('loaded doc:', doc, blob, container.firstElementChild);
+      console.log('loaded doc:', doc, blob, container);
       
       let video = document.createElement('video');
       video.loop = true;
@@ -245,52 +259,50 @@ export function wrapVideo(doc: MTDocument, container: HTMLDivElement, middleware
       
       if(!justLoader) {
         video.controls = true;
+      } else {
+        video.volume = 0;
       }
       
-      video.setAttribute('message-id', '' + messageID);
+      video.setAttribute('message-id', '' + message.id);
       
       let source = document.createElement('source');
       //source.src = doc.url;
       source.src = URL.createObjectURL(blob);
       source.type = doc.mime_type;
+
+      if(img && container.contains(img)) {
+        container.removeChild(img);
+      }
       
       video.append(source);
       container.append(video);
-      
-      if(container.firstElementChild) {
-        container.firstElementChild.remove();
-      }
       
       preloader.detach();
     });
   };
   
   if(doc.type == 'gif') {
-    return loadVideo();
+    return this.peerID ? this.loadMediaQueuePush(loadVideo) : loadVideo();
   } else { // if video
-    return appPhotosManager.preloadPhoto(doc).then((blob) => {
-      if(!middleware()) {
+    let load = () => appPhotosManager.preloadPhoto(doc).then((blob) => {
+      if((this.peerID ? this.peerID : this.currentMessageID) != peerID) {
+        this.log.warn('peer changed');
         return;
       }
-      
-      if(container.firstElementChild) {
-        container.firstElementChild.remove();
-      }
-      
-      let image = new Image();
-      image.src = URL.createObjectURL(blob);
+
+      img.src = URL.createObjectURL(blob);
       
       /* image.style.height = doc.h + 'px';
       image.style.width = doc.w + 'px'; */
       
-      image.setAttribute('message-id', '' + messageID);
-      
-      container.append(image);
-      
       if(!justLoader) {
         return loadVideo();
+      } else {
+        preloader.detach();
       }
     });
+
+    return this.peerID ? this.loadMediaQueuePush(load) : load();
   }
 }
 
@@ -335,10 +347,10 @@ export function scrollable(el: HTMLDivElement, x = false, y = true) {
   container.classList.add('scrollable');
   if(x) container.classList.add('scrollable-x');
   if(y) container.classList.add('scrollable-y');
-
+  
   container.addEventListener('mouseover', () => {
     container.classList.add('active');
-
+    
     container.addEventListener('mouseout', () => {
       container.classList.remove('active');
     }, {once: true});
@@ -348,6 +360,37 @@ export function scrollable(el: HTMLDivElement, x = false, y = true) {
   
   el.append(container);//container.append(el);
   return container;
+}
+
+export function wrapPhoto(this: AppImManager, photo: any, message: any, container: HTMLDivElement) {
+  //container.classList.add('photo');
+
+  let peerID = this.peerID;
+
+  let size = appPhotosManager.setAttachmentSize(photo.id, container);
+  let image = container.firstElementChild as HTMLImageElement || new Image();
+  image.setAttribute('message-id', message.mid);
+
+  if(!container.contains(image)) {
+    container.append(image);
+  }
+
+  let preloader = new ProgressivePreloader(container, false);
+
+  let load = () => appPhotosManager.preloadPhoto(photo.id, size).then((blob) => {
+    if(this.peerID != peerID) {
+      this.log.warn('peer changed');
+      return;
+    }
+    
+    image.src = URL.createObjectURL(blob);
+
+    preloader.detach();
+  });
+
+  console.log('wrapPhoto', load, container, image);
+
+  return this.loadMediaQueue ? this.loadMediaQueuePush(load) : load();
 }
 
 export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: () => boolean, lazyLoadQueue?: LazyLoadQueue, group?: string, canvas?: boolean) {
@@ -399,24 +442,24 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
           animationData: JSON.parse(json),
           renderer: canvas ? 'canvas' : 'svg'
         }, group);
-
+        
         if(!canvas) {
           div.addEventListener('mouseover', (e) => {
             let animation = LottieLoader.getAnimation(div, group);
-      
+            
             if(animation) {
               //console.log('sticker hover', animation, div);
-
+              
               // @ts-ignore
               animation.loop = true;
-
+              
               // @ts-ignore
               if(animation.currentFrame == animation.totalFrames - 1) {
                 animation.goToAndPlay(0, true);
               } else {
                 animation.play();
               }
-
+              
               div.addEventListener('mouseout', () => {
                 // @ts-ignore
                 animation.loop = false;
@@ -451,11 +494,11 @@ export function horizontalMenu(tabs: HTMLUListElement, content: HTMLDivElement, 
   
   tabs.addEventListener('click', function(e) {
     let target = e.target as HTMLLIElement;
-
+    
     if(target.tagName != 'LI') {
       target = findUpTag(target, 'LI');
     }
-
+    
     console.log('tabs click:', target);
     
     if(target.classList.contains('active')) return false;

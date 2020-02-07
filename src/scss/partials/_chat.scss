@@ -237,7 +237,8 @@
 
 				.box.web {
 					width: min-content;
-					max-width: min-content;
+					/* max-width: min-content; */
+					max-width: 100%;
 				}
 			}
 
@@ -248,7 +249,8 @@
 			}
 
 			img, video {
-				object-fit: contain;
+				/* object-fit: contain; */
+				object-fit: cover;
 			}
 
 			.emoji {
@@ -361,14 +363,17 @@
 			&:not(.sticker) {
 				.attachment {
 					max-width: 380px;
+					max-height: 380px;
 				}
 			}
 
 			&.video {
 				.attachment {
+					//max-height: fit-content;
+
 					img {
 						width: 100%;
-						height: 100%;
+						/* height: 100%; */
 					}
 				}
 			}

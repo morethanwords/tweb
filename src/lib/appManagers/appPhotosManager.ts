@@ -151,13 +151,13 @@ export class AppPhotosManager {
       let image = new Image();
       image.src = URL.createObjectURL(blob);
       
-      image.style.width = '100%';
-      image.style.height = '100%';
+      // image.style.width = '100%';
+      // image.style.height = '100%';
       div.append(image);
     }
   }
   
-  public setAttachmentSize(photoID: any, div: HTMLDivElement, w = 380, h = 0) {
+  public setAttachmentSize(photoID: any, div: HTMLDivElement, w = 380, h = 0/* 380 */) {
     let photo: /* MTDocument | MTPhoto */any = null;
 
     if(typeof(photoID) === 'string') {
@@ -170,11 +170,9 @@ export class AppPhotosManager {
     let photoSize = this.choosePhotoSize(photo, w, h);
     //console.log('setAttachmentSize', photo, photo.sizes[0].bytes, div);
     
-    let thumb: any;
     let sizes = photo.sizes || photo.thumbs;
-    if(sizes && (sizes[0]._ == 'photoStrippedSize' || sizes[0]._ == 'photoCachedSize' && sizes[0].bytes)) {
-      thumb = sizes[0];
-      this.setAttachmentPreview(thumb.bytes, div);
+    if(sizes && sizes[0].bytes) {
+      this.setAttachmentPreview(sizes[0].bytes, div);
     }
 
     if(photo._ == 'document' /* && photo.type != 'video' */ && photo.type != 'gif') {

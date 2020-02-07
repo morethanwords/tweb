@@ -7,8 +7,9 @@ import { $rootScope } from "../utils";
 import appMessagesManager from "./appMessagesManager";
 import { CancellablePromise } from "../mtproto/apiFileManager";
 import { RichTextProcessor } from "../richtextprocessor";
+import { logger } from "../polyfill";
 
-class AppMediaViewer {
+export class AppMediaViewer {
   private overlaysDiv = document.querySelector('.overlays') as HTMLDivElement;
   private author = {
     avatarEl: this.overlaysDiv.querySelector('.user-avatar') as HTMLDivElement,
@@ -29,17 +30,21 @@ class AppMediaViewer {
   };
   
   private reverse = false;
-  private currentMessageID = 0;
+  public currentMessageID = 0;
   private higherMsgID: number | undefined = 0;
   private lowerMsgID: number | undefined = 0;
   private preloader: ProgressivePreloader = null;
+
+  public log: ReturnType<typeof logger>; 
   
   constructor() {
+    this.log = logger('AMV');
     this.preloader = new ProgressivePreloader();
     
     this.buttons.close.addEventListener('click', () => {
       this.overlaysDiv.classList.remove('active');
       this.content.container.innerHTML = '';
+      this.currentMessageID = 0;
     });
     
     this.buttons.prev.addEventListener('click', () => {
@@ -127,7 +132,7 @@ class AppMediaViewer {
   }
   
   public openMedia(message: any, reverse = false) {
-    console.log('openMedia doc:', message);
+    this.log('openMedia doc:', message);
     let media = message.media.photo || message.media.document || message.media.webpage.document;
     
     let isVideo = media.mime_type == 'video/mp4';
@@ -138,7 +143,7 @@ class AppMediaViewer {
     let container = this.content.container;
     
     if(container.firstElementChild) {
-      container.firstElementChild.remove();
+      container.innerHTML = '';
     }
     
     let date = new Date(media.date * 1000);
@@ -163,21 +168,12 @@ class AppMediaViewer {
     this.overlaysDiv.classList.add('active');
     
     if(isVideo) {
-      appPhotosManager.setAttachmentSize(media, container);
-      
-      this.preloader.attach(container);
+      //this.preloader.attach(container);
       //this.preloader.setProgress(75);
 
-      console.log('will wrap video');
+      this.log('will wrap video');
       
-      wrapVideo(media, container, () => {
-        if(this.currentMessageID != message.mid) {
-          console.warn('media viewer changed photo');
-          return false;
-        }
-        
-        return true;
-      }, message.mid, false, this.preloader);
+      wrapVideo.call(this, media, container, message, false, this.preloader);
     } else {
       let size = appPhotosManager.setAttachmentSize(media.id, container, appPhotosManager.windowW, appPhotosManager.windowH);
       
@@ -187,11 +183,11 @@ class AppMediaViewer {
       let cancellablePromise = appPhotosManager.preloadPhoto(media.id, size);
       cancellablePromise.then((blob) => {
         if(this.currentMessageID != message.mid) {
-          console.warn('media viewer changed photo');
+          this.log.warn('media viewer changed photo');
           return;
         }
         
-        console.log('indochina', blob);
+        this.log('indochina', blob);
         if(container.firstElementChild) {
           container.firstElementChild.remove();
         }

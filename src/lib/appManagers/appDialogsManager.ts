@@ -2,12 +2,22 @@ import { MTProto } from "../mtproto/mtproto";
 import { $rootScope, findUpTag } from "../utils";
 import appImManager from "./appImManager";
 import appPeersManager from './appPeersManager';
-import { DialogDom } from "../services";
 import appMessagesManager from "./appMessagesManager";
 import appUsersManager from "./appUsersManager";
 import appSidebarRight from "./appSidebarRight";
 import { RichTextProcessor } from "../richtextprocessor";
 import { ripple } from "../../components/misc";
+
+type DialogDom = {
+  avatarDiv: HTMLDivElement,
+  captionDiv: HTMLDivElement,
+  titleSpan: HTMLSpanElement,
+  statusSpan: HTMLSpanElement,
+  lastTimeSpan: HTMLSpanElement,
+  unreadMessagesSpan: HTMLSpanElement,
+  lastMessageSpan: HTMLSpanElement,
+  listEl: HTMLLIElement
+};
 
 export class AppDialogsManager {
   public pinnedChatList = document.getElementById('dialogs-pinned') as HTMLUListElement;
@@ -190,13 +200,13 @@ export class AppDialogsManager {
             }
   
             if(document.type == 'video') {
-              lastMessageText += '<i>Video</i>';
+              lastMessageText = '<i>Video' + (lastMessage.message ? ', ' : '') + '</i>';
               found = true;
             } else if(document.type == 'voice') {
-              lastMessageText += '<i>Voice message</i>';
+              lastMessageText = '<i>Voice message</i>';
               found = true;
             } else if(document.type == 'gif') {
-              lastMessageText += '<i>GIF</i>';
+              lastMessageText = '<i>GIF' + (lastMessage.message ? ', ' : '') + '</i>';
               found = true;
             }
   

@@ -9,7 +9,6 @@ import { RichTextProcessor } from "../richtextprocessor";
 import { logger } from "../polyfill";
 import appImManager from "./appImManager";
 import appMediaViewer from "./appMediaViewer";
-import appDocsManager from "./appDocsManager";
 
 class AppSidebarRight {
   public sidebarEl = document.querySelector('.profile-container') as HTMLDivElement;

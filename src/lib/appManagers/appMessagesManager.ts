@@ -1639,7 +1639,11 @@ export class AppMessagesManager {
 
   public getSearch(peerID = 0, query: string = '', inputFilter: {
     _?: string
-  } = {_: 'inputMessagesFilterEmpty'}, maxID: number, limit: number) {
+  } = {_: 'inputMessagesFilterEmpty'}, maxID: number, limit: number, offsetRate = 0): Promise<{
+    count: number,
+    next_rate: number,
+    history: number[]
+  }> {
     //peerID = peerID ? parseInt(peerID) : 0;
     var foundMsgs: number[] = [];
     var useSearchCache = !query;
@@ -1713,6 +1717,7 @@ export class AppMessagesManager {
           default:
             return Promise.resolve({
               count: 0,
+              next_rate: 0,
               history: [] as number[]
             });
         }
@@ -1756,6 +1761,7 @@ export class AppMessagesManager {
 
       return Promise.resolve({
         count: 0,
+        next_rate: 0,
         history: foundMsgs
       });
     }
@@ -1793,7 +1799,7 @@ export class AppMessagesManager {
 
       apiPromise = MTProto.apiManager.invokeApi('messages.searchGlobal', {
         q: query,
-        offset_date: offsetDate,
+        offset_rate: offsetRate,
         offset_peer: AppPeersManager.getInputPeerByID(offsetPeerID),
         offset_id: appMessagesIDsManager.getMessageLocalID(offsetID),
         limit: limit || 20
@@ -1807,6 +1813,8 @@ export class AppMessagesManager {
       appUsersManager.saveApiUsers(searchResult.users);
       appChatsManager.saveApiChats(searchResult.chats);
       this.saveMessages(searchResult.messages);
+
+      console.log('messages.search result:', searchResult);
 
       var foundCount: number = searchResult.count || searchResult.messages.length;
 
@@ -1830,12 +1838,14 @@ export class AppMessagesManager {
 
       return {
         count: foundCount,
+        next_rate: searchResult.next_rate,
         history: foundMsgs
-      }
+      };
     }, (error) => {
       if(error.code == 400) {
         error.handled = true;
       }
+      
       return Promise.reject(error);
     });
   }

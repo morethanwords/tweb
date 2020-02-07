@@ -30,18 +30,6 @@ export const appStickersManager = AppStickersManager;
 export const appSidebarRight = AppSidebarRight;
 export const appSidebarLeft = AppSidebarLeft;
 
-
-export type DialogDom = {
-  avatarDiv: HTMLDivElement,
-  captionDiv: HTMLDivElement,
-  titleSpan: HTMLSpanElement,
-  statusSpan: HTMLSpanElement,
-  lastTimeSpan: HTMLSpanElement,
-  unreadMessagesSpan: HTMLSpanElement,
-  lastMessageSpan: HTMLSpanElement,
-  listEl: HTMLLIElement
-};
-
 (window as any).Services = {
   appUsersManager,
   appChatsManager,
