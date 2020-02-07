@@ -195,6 +195,9 @@ export class AppDialogsManager {
             } else if(document.type == 'voice') {
               lastMessageText += '<i>Voice message</i>';
               found = true;
+            } else if(document.type == 'gif') {
+              lastMessageText += '<i>GIF</i>';
+              found = true;
             }
   
             if(found) {

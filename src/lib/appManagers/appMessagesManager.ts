@@ -1878,7 +1878,7 @@ export class AppMessagesManager {
     this.newDialogsToHandle = {};
   }
 
-  public readHistory(peerID: number, maxID = 0) {
+  public readHistory(peerID: number, maxID = 0, minID = 0) {
     // console.trace('start read')
     var isChannel = AppPeersManager.isChannel(peerID);
     var historyStorage = this.historiesStorage[peerID];
@@ -1971,16 +1971,18 @@ export class AppMessagesManager {
         message = this.messagesStorage[messageID];
         if(message && !message.pFlags.out) {
           message.pFlags.unread = false;
+
           if(this.messagesForHistory[messageID]) {
             this.messagesForHistory[messageID].pFlags.unread = false;
           }
+
           if(this.messagesForDialogs[messageID]) {
             this.messagesForDialogs[messageID].pFlags.unread = false;
           }
           //NotificationsManager.cancel('msg' + messageID); // warning
         }
 
-        if(messageID == maxID) break;
+        if(messageID == minID) break;
       }
     }
 
@@ -2372,11 +2374,10 @@ export class AppMessagesManager {
           }
         }
         if(foundDialog[0]) {
-          if(!isOut &&
-            newUnreadCount &&
-            foundDialog[0].top_message <= maxID) {
+          if(!isOut && newUnreadCount && foundDialog[0].top_message <= maxID) {
             newUnreadCount = foundDialog[0].unread_count = 0;
           }
+
           let dialogKey = isOut ? 'read_outbox_max_id' : 'read_inbox_max_id';
           foundDialog[0][dialogKey] = maxID;
         }

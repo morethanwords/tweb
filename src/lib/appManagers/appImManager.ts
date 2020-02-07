@@ -350,9 +350,10 @@ export class AppImManager {
 
     if(readed.length) {
       let max = Math.max(...readed);
+      let min = Math.min(...readed);
 
       //appMessagesManager.readMessages(readed);
-      appMessagesManager.readHistory(this.peerID, max);
+      appMessagesManager.readHistory(this.peerID, max, min);
     }
 
     if(this.scroll.scrollHeight - (this.scroll.scrollTop + this.scroll.offsetHeight) == 0/* <= 5 */) {

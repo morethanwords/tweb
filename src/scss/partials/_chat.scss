@@ -225,19 +225,25 @@
 			&.photo, &.video {
 				width: min-content;
 
-				.message {
+				/* .message {
 					width: min-content;
 					max-width: min-content;
 
 					/* .time {
 						max-width: min-content;
 						overflow: hidden;
-					} */
-				}
+					}
+				} */
 
 				.box.web {
 					width: min-content;
 					max-width: min-content;
+				}
+			}
+
+			&.webpage {
+				.time {
+					float: none;
 				}
 			}
 
