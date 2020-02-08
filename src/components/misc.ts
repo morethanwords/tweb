@@ -376,62 +376,151 @@ export function scrollable(el: HTMLDivElement, x = false, y = true) {
   
   let resize = () => {
     // @ts-ignore
-    scrollHeight = container[scrollType];
+    scrollSize = container[scrollType];
     
     let rect = container.getBoundingClientRect();
     
     // @ts-ignore
-    height = rect[type];
+    size = rect[type];
     
-    if(!height || height == scrollHeight) {
-      thumbHeight = 0;
+    if(!size || size == scrollSize) {
+      thumbSize = 0;
       
       // @ts-ignore
-      thumb.style[type] = thumbHeight + 'px';
+      thumb.style[type] = thumbSize + 'px';
       return;
     }
     //if(!height) return;
     
-    let divider = scrollHeight / height / 0.5;
-    thumbHeight = height / divider;
+    let divider = scrollSize / size / 0.5;
+    thumbSize = size / divider;
     
-    if(thumbHeight < 20) thumbHeight = 20;
+    if(thumbSize < 20) thumbSize = 20;
     
     // @ts-ignore
-    thumb.style[type] = thumbHeight + 'px';
+    thumb.style[type] = thumbSize + 'px';
     
     // @ts-ignore
     //console.log('onresize', thumb.style[type], thumbHeight, height);
   };
   
-  let scrollHeight = -1;
-  let height = 0;
-  let thumbHeight = 0;
+  let scrollSize = -1;
+  let size = 0;
+  let thumbSize = 0;
   window.addEventListener('resize', resize);
   //container.addEventListener('DOMNodeInserted', resize);
-  
-  container.addEventListener('scroll', (e) => {
+
+  let hiddenElements: {
+    up: Element[],
+    down: Element[]
+  } = {
+    up: [],
+    down: []
+  };
+
+  let paddings = {up: 0, down: 0};
+
+  let paddingTopDiv = document.createElement('div');
+  paddingTopDiv.classList.add('scroll-padding');
+  let paddingBottomDiv = document.createElement('div');
+  paddingBottomDiv.classList.add('scroll-padding');
+
+  let onScroll = (e: Event) => {
     // @ts-ignore
-    if(container[scrollType] != scrollHeight || thumbHeight == 0) {
+    //let st = container[scrollSide];
+
+    // @ts-ignore
+    if(container[scrollType] != scrollSize || thumbSize == 0) {
       resize();
     }
+
+    let splitUp = container.querySelector('ul');
+    let children = Array.from(splitUp.children) as HTMLElement[];
+    let firstVisible = -1, lastVisible = -1;
+    let length = children.length;
+    for(let i = 0; i < length; ++i) {
+      let child = children[i];
+      if(isElementInViewport(child)) {
+        if(firstVisible < 0) firstVisible = i;
+        lastVisible = i;
+      }
+    }
+
+    if(firstVisible > 0) {
+      let sliced = children.slice(0, firstVisible);
+
+      for(let child of sliced) {
+        paddings.up += child.scrollHeight;
+        hiddenElements.up.push(child);
+        child.parentElement.removeChild(child);
+      }
+
+      //console.log('sliced up', sliced.length);
+
+      //sliced.forEach(child => child.style.display = 'none');
+      paddingTopDiv.style.height = paddings.up + 'px';
+      //console.log('onscroll need to add padding: ', paddings.up);
+    } else if(hiddenElements.up.length) {
+      while(isElementInViewport(paddingTopDiv) && paddings.up) {
+        let child = hiddenElements.up.pop();
+
+        splitUp.prepend(child);
+  
+        paddings.up -= child.scrollHeight;
+        paddingTopDiv.style.height = paddings.up + 'px';
+      }
+    }
+
+    if(lastVisible < (length - 1)) {
+      let sliced = children.slice(lastVisible + 1).reverse();
+
+      for(let child of sliced) {
+        paddings.down += child.scrollHeight;
+        hiddenElements.down.unshift(child);
+        child.parentElement.removeChild(child);
+      }
+
+      //console.log('onscroll sliced down', sliced.length);
+
+      //sliced.forEach(child => child.style.display = 'none');
+      paddingBottomDiv.style.height = paddings.down + 'px';
+      //console.log('onscroll need to add padding: ', paddings.up);
+    } else if(hiddenElements.down.length) {
+      while(isElementInViewport(paddingBottomDiv) && paddings.down) {
+        let child = hiddenElements.down.shift();
+
+        splitUp.append(child);
+  
+        paddings.down -= child.scrollHeight;
+        paddingBottomDiv.style.height = paddings.down + 'px';
+      }
+    }
+
+    //console.log('onscroll', container, firstVisible, lastVisible, hiddenElements);
     
     // @ts-ignore
-    let value = container[scrollSide] / (scrollHeight - height) * 100;
-    let maxValue = 100 - (thumbHeight / height * 100);
+    let value = container[scrollSide] / (scrollSize - size) * 100;
+    let maxValue = 100 - (thumbSize / size * 100);
     
     //console.log('onscroll', container.scrollHeight, thumbHeight, height, value, maxValue);
     
     // @ts-ignore
     thumb.style[side] = (value >= maxValue ? maxValue : value) + '%';
-  });
+
+    //lastScrollPos = st;
+  };
   
+  let lastScrollPos = 0;
+  container.addEventListener('scroll', onScroll);
+  
+  container.append(paddingTopDiv);
   Array.from(el.children).forEach(c => container.append(c));
+  container.append(paddingBottomDiv);
   
   el.append(container);//container.append(el);
   container.parentElement.append(thumb);
   resize();
-  return container;
+  return {container, hiddenElements, onScroll};
 }
 
 export function wrapPhoto(this: AppImManager, photo: any, message: any, container: HTMLDivElement) {

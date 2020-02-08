@@ -1,6 +1,6 @@
 import apiManager from "../mtproto/apiManager";
 import apiFileManager from '../mtproto/apiFileManager';
-import { $rootScope, findUpTag } from "../utils";
+import { $rootScope, findUpTag, isElementInViewport } from "../utils";
 import appImManager from "./appImManager";
 import appPeersManager from './appPeersManager';
 import appMessagesManager from "./appMessagesManager";
@@ -20,11 +20,9 @@ type DialogDom = {
 };
 
 export class AppDialogsManager {
-  public pinnedChatList = document.getElementById('dialogs-pinned') as HTMLUListElement;
   public chatList = document.getElementById('dialogs') as HTMLUListElement;
+  public chatsHidden: any;
   
-  
-
   public myID = 0;
   public doms: {[x: number]: any} = {};
 
@@ -40,7 +38,6 @@ export class AppDialogsManager {
 
     //let chatClosedDiv = document.getElementById('chat-closed');
 
-    this.setListClickListener(this.pinnedChatList);
     this.setListClickListener(this.chatList);
   }
 
@@ -131,20 +128,54 @@ export class AppDialogsManager {
   }
 
   public sortDom() {
-    /* let sorted =  */appMessagesManager.dialogsStorage.dialogs
+    console.log('sortDom');
+    //return;
+
+    let dialogs = appMessagesManager.dialogsStorage.dialogs;
+
+    let inUpper: HTMLLIElement[] = [];
+    let inBottom: HTMLLIElement[] = [];
+
+    let lastPinnedIndex = -1;
+    for(let i = 0; i < dialogs.length; ++i) {
+      let dialog = dialogs[i];
+      if(!dialog.pFlags.pinned) break;
+      lastPinnedIndex = i;
+    }
+
+    let sorted = dialogs
     .filter((d: any) => !d.pFlags.pinned)
     .sort((a: any, b: any) => {
       let timeA = appMessagesManager.getMessage(a.top_message).date;
       let timeB = appMessagesManager.getMessage(b.top_message).date;
 
       return timeB - timeA;
-    })
-    .forEach((d: any) => {
+    });
+
+    if(lastPinnedIndex != -1) {
+      sorted = dialogs.slice(0, lastPinnedIndex + 1).concat(sorted);
+    }
+
+    let inViewportIndex = -1;
+    sorted.forEach((d: any) => {
       let dom = this.getDialogDom(d.peerID);
       if(!dom) return;
 
-      this.chatList.append(dom.listEl);
+      if(this.chatsHidden.up.find((d: HTMLLIElement) => d === dom.listEl)) {
+        inUpper.push(dom.listEl);
+      } else if(isElementInViewport(dom.listEl)) {
+        this.chatList.insertBefore(dom.listEl, this.chatList.children[++inViewportIndex]);
+      } else if(this.chatsHidden.down.find((d: HTMLLIElement) => d === dom.listEl)) {
+        inBottom.push(dom.listEl);
+      } else {
+        console.warn('found no dom!', dom);
+      }
+
+      //this.chatList.append(dom.listEl);
     });
+
+    this.chatsHidden.up = inUpper;
+    this.chatsHidden.down = inBottom;
   }
 
   public setLastMessage(dialog: any, lastMessage?: any, dom?: DialogDom) {
@@ -405,7 +436,13 @@ export class AppDialogsManager {
     };
 
     if(!container) {
-      (dialog.pFlags.pinned ? this.pinnedChatList : this.chatList).append(li);
+      this.chatList.append(li);
+      //this.appendTo.push(li);
+
+      if(dialog.pFlags.pinned) {
+        li.classList.add('dialog-pinned');
+      }
+
       this.doms[dialog.peerID] = dom;
       this.setLastMessage(dialog);
     } else {

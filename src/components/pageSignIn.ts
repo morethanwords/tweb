@@ -51,7 +51,7 @@ export default () => {
   wrapper.appendChild(list);
 
   //let wrapperScroll = OverlayScrollbars(wrapper, (window as any).scrollbarOptions);
-  let wrapperScroll = scrollable(wrapper);
+  scrollable(wrapper);
 
   let initedSelect = false;
 

@@ -13,6 +13,7 @@ import appStickersManager, { MTStickerSet } from "../lib/appManagers/appStickers
 import { AppImManager } from "../lib/appManagers/appImManager";
 import { AppMessagesManager } from "../lib/appManagers/appMessagesManager";
 import appSidebarRight from "../lib/appManagers/appSidebarRight";
+import appSidebarLeft from "../lib/appManagers/appSidebarLeft";
 
 const EMOTICONSSTICKERGROUP = 'emoticons-dropdown';
 
@@ -175,7 +176,7 @@ let initEmoticonsDropdown = (pageEl: HTMLDivElement,
 
     let prevCategoryIndex = 1;
     let menu = contentEmojiDiv.nextElementSibling as HTMLUListElement;
-    let emojiScroll = scrollable(contentEmojiDiv);
+    let emojiScroll = scrollable(contentEmojiDiv).container;
     emojiScroll.addEventListener('scroll', (e) => {
       prevCategoryIndex = emoticonsContentOnScroll(menu, heights, prevCategoryIndex, emojiScroll);
     });
@@ -341,7 +342,7 @@ let initEmoticonsDropdown = (pageEl: HTMLDivElement,
     });
 
     let prevCategoryIndex = 0;
-    let stickersScroll = scrollable(contentStickersDiv);
+    let stickersScroll = scrollable(contentStickersDiv).container;
     stickersScroll.addEventListener('scroll', (e) => {
       lazyLoadQueue.check();
       lottieLoader.checkAnimations();
@@ -362,71 +363,14 @@ export default () => import('../lib/services').then(services => {
 
   let {appImManager, appMessagesManager, appDialogsManager, apiUpdatesManager, appUsersManager} = services;
 //export default () => {
-  let chatsContainer = document.getElementById('chats-container') as HTMLDivElement;
-  let d = document.createElement('div');
-  d.classList.add('preloader');
-  putPreloader(d);
-  chatsContainer.append(d);
 
   let pageEl = document.body.getElementsByClassName('page-chats')[0] as HTMLDivElement;
   pageEl.style.display = '';
 
-  const loadCount = Math.round(document.body.scrollHeight / 70 * 1.5);
-
-  let chatsScroll = scrollable(chatsContainer as HTMLDivElement);
-  let sidebarScroll = scrollable(document.body.querySelector('.profile-container'));
-  let chatScroll = scrollable(document.getElementById('bubbles') as HTMLDivElement);
+  let sidebarScroll = scrollable(document.body.querySelector('.profile-container')).container;
+  let chatScroll = scrollable(document.getElementById('bubbles') as HTMLDivElement).container;
 
   apiUpdatesManager.attach();
-
-  let offsetIndex = 0;
-  let loadDialogsPromise: Promise<any>;
-  let loadDialogs = async() => {
-    if(loadDialogsPromise) return loadDialogsPromise;
-
-    chatsContainer.append(d);
-
-    //let offset = appMessagesManager.generateDialogIndex();/* appMessagesManager.dialogsNum */;
-
-    try {
-      loadDialogsPromise = appMessagesManager.getConversations('', offsetIndex, loadCount);
-
-      let result = await loadDialogsPromise;
-
-      console.log('loaded ' + loadCount + ' dialogs by offset:', offsetIndex, result);
-
-      if(result && result.dialogs && result.dialogs.length) {
-        offsetIndex = result.dialogs[result.dialogs.length - 1].index;
-        result.dialogs.forEach((dialog: any) => {
-          appDialogsManager.addDialog(dialog);
-        });
-      }
-    } catch(err) {
-      console.error(err);
-    }
-
-    d.remove();
-    loadDialogsPromise = undefined;
-  };
-
-  let onScroll = () => {
-    if(!loadDialogsPromise) {
-      let d = Array.from(appDialogsManager.chatList.childNodes).slice(-5);
-      for(let node of d) {
-        if(isElementInViewport(node)) {
-          loadDialogs();
-          break;
-        }
-      }
-
-      //console.log('last 5 dialogs:', d);
-    }
-  };
-
-  chatsScroll.addEventListener('scroll', onScroll);
-  window.addEventListener('resize', () => {
-    setTimeout(onScroll, 0);
-  });
 
   // @ts-ignore
   document.addEventListener('user_update', (e: CustomEvent) => {
@@ -797,9 +741,8 @@ export default () => import('../lib/services').then(services => {
     });
   });
 
-
-  loadDialogs().then(result => {
-    onScroll();
+  appSidebarLeft.loadDialogs().then(result => {
+    appSidebarLeft.onChatsScroll();
     appImManager.setScroll(chatScroll);
     appSidebarRight.setScroll(sidebarScroll);
   });

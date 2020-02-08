@@ -30,7 +30,7 @@ export class AppMessagesIDsManager {
   }
 
   public getMessageLocalID(fullMsgID: number) {
-    if (!fullMsgID) {
+    if(!fullMsgID) {
       return 0;
     }
     return fullMsgID % this.fullMsgIDModulus;

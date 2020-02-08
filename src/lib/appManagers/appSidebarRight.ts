@@ -65,6 +65,8 @@ class AppSidebarRight {
 
   private log = logger('SR');
 
+  private peerID = 0;
+
   constructor() {
     let container = this.profileContentEl.querySelector('.profile-tabs-content') as HTMLDivElement;
     let tabs = this.profileContentEl.querySelector('.profile-tabs') as HTMLUListElement;
@@ -143,7 +145,7 @@ class AppSidebarRight {
   }
 
   public loadSidebarMedia(single = false) {
-    let peerID = $rootScope.selectedPeerID;
+    let peerID = this.peerID;
     
     let typesToLoad = single ? [this.sharedMediaType] : this.sharedMediaTypes;
 
@@ -164,14 +166,14 @@ class AppSidebarRight {
         ? appMessagesManager.historiesStorage[peerID].history.slice() : [];
 
       maxID = !maxID && ids.length ? ids[ids.length - 1] : maxID;
-      this.log('search house of glass pre', type, ids, maxID);
+      //this.log('search house of glass pre', type, ids, maxID);
 
       return this.loadSidebarMediaPromises[type] = appMessagesManager.getSearch(peerID, '', {_: type}, maxID, 50)
       .then(value => {
         ids = ids.concat(value.history);
         history.push(...ids);
 
-        this.log('search house of glass', type, value, ids, this.cleared);
+        //this.log('search house of glass', type, value, ids, this.cleared);
 
         if($rootScope.selectedPeerID != peerID) {
           this.log.warn('peer changed');
@@ -188,11 +190,11 @@ class AppSidebarRight {
           let message = appMessagesManager.getMessage(mid);
           if(!message.media) return;
 
-          /* 'inputMessagesFilterContacts', 
-    'inputMessagesFilterPhotoVideo', 
-    'inputMessagesFilterDocument', 
-    'inputMessagesFilterUrl', 
-    'inputMessagesFilterVoice'*/
+          /*'inputMessagesFilterContacts', 
+            'inputMessagesFilterPhotoVideo', 
+            'inputMessagesFilterDocument', 
+            'inputMessagesFilterUrl', 
+            'inputMessagesFilterVoice'*/
           switch(type) {
             case 'inputMessagesFilterPhotoVideo': {
               /* if(!(message.media.photo || message.media.document || message.media.webpage.document)) {
@@ -281,7 +283,8 @@ class AppSidebarRight {
   }
 
   public fillProfileElements() {
-    let peerID = $rootScope.selectedPeerID;
+    let peerID = this.peerID = $rootScope.selectedPeerID;
+    this.loadSidebarMediaPromises = {};
 
     this.profileContentEl.parentElement.scrollTop = 0;
     this.profileElements.bio.style.display = 'none';
@@ -311,19 +314,19 @@ class AppSidebarRight {
     };
 
     // username
-    let username = appPeersManager.getPeerUsername($rootScope.selectedPeerID);
+    let username = appPeersManager.getPeerUsername(peerID);
     if(username) {
-      setText(appPeersManager.getPeerUsername($rootScope.selectedPeerID), this.profileElements.username);
+      setText(appPeersManager.getPeerUsername(peerID), this.profileElements.username);
     }
 
-    if($rootScope.selectedPeerID > 0) {
-      let user = appUsersManager.getUser($rootScope.selectedPeerID);
+    if(peerID > 0) {
+      let user = appUsersManager.getUser(peerID);
       if(user.phone) {
         setText('+' + formatPhoneNumber(user.phone).formatted, this.profileElements.phone);
       }
 
-      appProfileManager.getProfile($rootScope.selectedPeerID, true).then(userFull => {
-        if($rootScope.selectedPeerID != peerID) {
+      appProfileManager.getProfile(peerID, true).then(userFull => {
+        if(this.peerID != peerID) {
           this.log.warn('peer changed');
           return;
         }
@@ -340,10 +343,10 @@ class AppSidebarRight {
         }
       });
     } else {
-      let chat = appPeersManager.getPeer($rootScope.selectedPeerID);
+      let chat = appPeersManager.getPeer(peerID);
 
       appProfileManager.getChatFull(chat.id).then((chatFull: any) => {
-        if($rootScope.selectedPeerID != peerID) {
+        if(this.peerID != peerID) {
           this.log.warn('peer changed');
           return;
         }
@@ -356,7 +359,7 @@ class AppSidebarRight {
       });
     }
 
-    let dialog: any = appMessagesManager.getDialogByPeerID($rootScope.selectedPeerID);
+    let dialog: any = appMessagesManager.getDialogByPeerID(peerID);
     if(dialog.length) {
       dialog = dialog[0];
       let muted = false;
@@ -368,8 +371,8 @@ class AppSidebarRight {
         }
       }
 
-      if($rootScope.selectedPeerID < 0) { // not human
-        let isChannel = appPeersManager.isChannel($rootScope.selectedPeerID) && !appPeersManager.isMegagroup($rootScope.selectedPeerID);
+      if(peerID < 0) { // not human
+        let isChannel = appPeersManager.isChannel(peerID) && !appPeersManager.isMegagroup(peerID);
         if(isChannel) {
           appImManager.btnMute.classList.remove('tgico-mute', 'tgico-unmute');
           appImManager.btnMute.classList.add(muted ? 'tgico-unmute' : 'tgico-mute');

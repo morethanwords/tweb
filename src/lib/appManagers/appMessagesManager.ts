@@ -2418,7 +2418,7 @@ export class AppMessagesManager {
 
         // need be commented for read out messages
         //if(newUnreadCount != 0 || !isOut) { // fix 16.11.2019 (maybe not)
-          console.warn(dT(), 'cnt', peerID, newUnreadCount);
+          console.warn(dT(), 'cnt', peerID, newUnreadCount, isOut, foundDialog, update, foundAffected);
           $rootScope.$broadcast('dialog_unread', {peerID: peerID, count: newUnreadCount});
         //}
 
@@ -3068,7 +3068,7 @@ export class AppMessagesManager {
   public requestHistory(peerID: number, maxID: number, limit: number, offset = 0) {
     var isChannel = AppPeersManager.isChannel(peerID);
 
-    console.trace('requestHistory', peerID, maxID, limit, offset);
+    //console.trace('requestHistory', peerID, maxID, limit, offset);
 
     return MTProto.apiManager.invokeApi('messages.getHistory', {
       peer: AppPeersManager.getInputPeerByID(peerID),
@@ -3079,16 +3079,7 @@ export class AppMessagesManager {
       max_id: 0,
       min_id: 0,
       hash: 0
-    }/* {
-      peer: AppPeersManager.getInputPeerByID(peerID),
-      offset_id: offset,
-      offset_date: 0,
-      add_offset: offset || 0,
-      limit: limit || 0,
-      max_id: maxID,
-      min_id: 0,
-      hash: 0
-    } */, {
+    }, {
       timeout: 300,
       noErrorBox: true
     }).then((historyResult: any) => {
@@ -3101,22 +3092,19 @@ export class AppMessagesManager {
       }
 
       var length = historyResult.messages.length;
-      if(length &&
-        historyResult.messages[length - 1].deleted) {
+      if(length && historyResult.messages[length - 1].deleted) {
         historyResult.messages.splice(length - 1, 1);
         length--;
         historyResult.count--;
       }
 
-      if(
-        peerID < 0 ||
-        !appUsersManager.isBot(peerID) ||
-        (length == limit && limit < historyResult.count)
-      ) {
+      // don't need the intro now
+      /* if(peerID < 0 || !appUsersManager.isBot(peerID) || (length == limit && limit < historyResult.count)) {
         return historyResult;
-      }
+      } */
+      return historyResult;
 
-      return appProfileManager.getProfile(peerID).then((userFull: any) => {
+      /* return appProfileManager.getProfile(peerID).then((userFull: any) => {
         var description = userFull.bot_info && userFull.bot_info.description;
         if(description) {
           var messageID = this.tempID--;
@@ -3142,7 +3130,7 @@ export class AppMessagesManager {
         }
 
         return historyResult;
-      });
+      }); */
     }, (error) => {
       switch (error.type) {
         case 'CHANNEL_PRIVATE':

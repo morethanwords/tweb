@@ -132,6 +132,7 @@ export class AppImManager {
 
   private topbar: HTMLDivElement = null;
   private chatInput: HTMLDivElement = null;
+  scrolledAll: boolean;
 
   constructor() {
     this.log = logger('IM');
@@ -380,30 +381,39 @@ export class AppImManager {
 
     // load more history
     if(!this.getHistoryPromise && !this.getHistoryTimeout /* && false */) {
-      let history = Object.keys(this.bubbles).map(id => +id).sort();
-      /* let history = appMessagesManager.historiesStorage[this.peerID].history;
-      let length = history.length; */
       this.getHistoryTimeout = setTimeout(() => { // must be
+        let history = Object.keys(this.bubbles).map(id => +id).sort();
+
+        /* let history = appMessagesManager.historiesStorage[this.peerID].history;
+        let length = history.length; */
+
+        // filter negative ids
+        for(let i = 0; i < history.length; ++i) {
+          if(history[i] <= 0) history.splice(i, 1);
+          else break;
+        }
+
         this.getHistoryTimeout = 0;
 
         let willLoad = false;
-        for(let i = 0; i < 10; ++i) {
-          let msgID = history[i];
-          if(!(msgID in this.bubbles) || msgID <= 0) continue;
+        if(!this.scrolledAll) {
+          for(let i = 0; i < 10; ++i) {
+            let msgID = history[i];
+    
+            let bubble = this.bubbles[msgID];
+    
+            if(isElementInViewport(bubble)) {
+              willLoad = true;
   
-          let bubble = this.bubbles[msgID];
-  
-          if(isElementInViewport(bubble)) {
-            willLoad = true;
-
-            this.log('Will load more (up) history by id:', history[0], 'maxID:', history[history.length - 1], history, bubble);
-            /* false &&  */!testScroll && this.getHistory(history[0], true).then(() => { // uncomment
-              this.onScroll();
-            }).catch(err => {
-              this.log.warn('Could not load more history, err:', err);
-            });
-  
-            break;
+              this.log('Will load more (up) history by id:', history[0], 'maxID:', history[history.length - 1], history, bubble);
+              /* false &&  */!testScroll && this.getHistory(history[0], true).then(() => { // uncomment
+                this.onScroll();
+              }).catch(err => {
+                this.log.warn('Could not load more history, err:', err);
+              });
+    
+              break;
+            }
           }
         }
 
@@ -413,8 +423,6 @@ export class AppImManager {
         if(!willLoad && history.indexOf(/* this.lastDialog */dialog.top_message) === -1) {
           let lastMsgIDs = history.slice(-10);
           for(let msgID of lastMsgIDs) {
-            if(!(msgID in this.bubbles) || msgID <= 0) continue;
-    
             let bubble = this.bubbles[msgID];
     
             if(isElementInViewport(bubble)) {
@@ -520,6 +528,7 @@ export class AppImManager {
   
   public cleanup() {
     this.peerID = $rootScope.selectedPeerID = 0;
+    this.scrolledAll = false;
 
     if(this.lastContainerDiv) this.lastContainerDiv.remove();
     if(this.firstContainerDiv) this.firstContainerDiv.remove();
@@ -645,7 +654,7 @@ export class AppImManager {
 
       appSidebarRight.fillProfileElements()
     ]).catch(err => {
-      this.log.error(err);
+      this.log.error('setPeer promises error:', err);
     });
   }
 
@@ -1189,7 +1198,12 @@ export class AppImManager {
       if(!result || !result.history) {
         console.timeEnd('render history total');
         return true;
-      } 
+      }
+
+      // commented bot getProfile in getHistory!
+      if(!result.history/* .filter((id: number) => id > 0) */.length && !isBackLimit) {
+        this.scrolledAll = true;
+      }
   
       //this.chatInner.innerHTML = '';
 
