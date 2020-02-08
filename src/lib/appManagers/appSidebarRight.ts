@@ -380,6 +380,12 @@ class AppSidebarRight {
       } else {
         appImManager.btnMute.style.display = 'none';
       }
+
+      appImManager.btnMenuMute.classList.remove('tgico-mute', 'tgico-unmute');
+      appImManager.btnMenuMute.classList.add(muted ? 'tgico-unmute' : 'tgico-mute');
+      let rp = appImManager.btnMenuMute.firstElementChild;
+      appImManager.btnMenuMute.innerText = muted ? 'Unmute' : 'Mute';
+      appImManager.btnMenuMute.appendChild(rp);
     }
 
     //this.loadSidebarMedia();

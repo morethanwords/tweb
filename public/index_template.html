@@ -242,7 +242,16 @@
     </div>
     <div class="chats-container sidebar sidebar-left">
       <div class="sidebar-header">
-        <button class="btn-icon tgico-menu rp sidebar-tools-button"></button>
+        <div class="btn-icon tgico-menu btn-menu-toggle rp sidebar-tools-button">
+          <div class="btn-menu bottom-right">
+            <div class="btn-menu-item menu-new-group tgico-newgroup rp">New Group</div>
+            <div class="btn-menu-item menu-contacts tgico-user rp">Contacts</div>
+            <div class="btn-menu-item menu-archive tgico-archive rp">Archived</div>
+            <div class="btn-menu-item menu-saved tgico-savedmessages rp">Saved</div>
+            <div class="btn-menu-item menu-settings tgico-settings rp">Settings</div>
+            <div class="btn-menu-item menu-help tgico-help rp">Help</div>
+          </div>
+        </div>
         <div class="input-search">
           <input type="text" placeholder="Search" id="global-search" />
           <span class="tgico tgico-search"></span>
@@ -278,15 +287,7 @@
               <div class="pinned-message-border"></div>
               <div class="pinned-message-content">
                 <div class="pinned-message-title">Pinned Message</div>
-                <div class="pinned-message-subtitle">At the end of this stage, all apps should be able to:
-                + Update the chat list and receive new messages.
-                + Send new messages.
-                - Display and send media, files and links. (2 дня)
-                + Display a 'Shared media' section for chats that includes photos and files. (2 дня максимум)
-                + Display stickers, send emoji and stickers. (3 дня)
-                + Use the default camomile background in chats. (1 день)
-                - Search for messages in chats. (2 дня (+фикс скролла))
-                </div>
+                <div class="pinned-message-subtitle"></div>
               </div>
             </div>
           </div>
@@ -294,7 +295,12 @@
         <div class="pinned-msg"></div>
         <div class="btn-icon rp tool-mute chat-mute-button" style="display: none;"></div>
         <div class="btn-icon rp tgico-search chat-search-button"></div>
-        <div class="btn-icon rp tgico-more chat-more-button"></div>
+        <div class="btn-icon btn-menu-toggle rp tgico-more chat-more-button">
+          <div class="btn-menu bottom-left">
+            <div class="btn-menu-item menu-mute rp">Mute</div>
+            <div class="btn-menu-item menu-delete tgico-delete danger rp">Delete and Leave</div>
+          </div>
+        </div>
       </div>
       <div id="bubbles">
         <div id="bubbles-inner"></div>
@@ -364,10 +370,10 @@
 
         <button class="btn-icon rp tgico-edit sidebar-edit-button"></button>
 
-        <div class="btn-icon tgico-more rp sidebar-menu-button">
-          <div class="sidebar-menu is-bottom-left">
-            <button class="btn-icon rp tgico-edit sidebar-menu-edit"></button>
-            <button class="sidebar-menu-block a-menu-item is-danger">Block</button>
+        <div class="btn-icon tgico-more rp btn-menu-toggle">
+          <div class="btn-menu bottom-left">
+            <div class="btn-menu-item menu-mute rp">Mute</div>
+            <div class="btn-menu-item menu-delete tgico-delete danger rp">Delete and Leave</div>
           </div>
         </div>
       </div>

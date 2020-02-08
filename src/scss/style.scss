@@ -127,6 +127,86 @@ input {
   }
 }
 
+.danger {
+  color: $color-error!important;
+}
+
+.btn-menu-toggle {
+  position: relative;
+  overflow: visible;
+
+  &.menu-open {
+    background-color: rgba(112, 117, 121, 0.08);
+  }
+
+  .btn-menu {
+    visibility: hidden;
+    position: absolute;
+    background: #fff;
+    box-shadow: 0 5px 8px 1px rgba(0,0,0,.24);
+    z-index: 1;
+    top: 100%;
+    margin-top: 8px;
+    padding: 9px 0;
+    border-radius: $border-radius;
+    opacity: 0;
+    transform: scale(.8);
+    transition-property: opacity,transform,visibility;
+    transition-duration: .2s;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 16px;
+
+    &.active {
+      visibility: visible;
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    &.bottom-left {
+      right: 0;
+      top: 100%;
+      transform-origin: top right;
+    }
+
+    &.bottom-right {
+      left: 0;
+      top: 100%;
+      transform-origin: top left;
+    }
+
+    > div {
+      display: flex;
+      position: relative;
+      padding: 0 40px 0 20px;
+      height: 56px;
+      cursor: pointer;
+      background-position: 16px center;
+      background-size: 24px 24px;
+      background-repeat: no-repeat;
+      color: #000;
+      text-transform: none;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      align-items: center;
+
+      &:hover {
+        background-color: rgba(112, 117, 121, 0.06);
+      }
+
+      &:before {
+        color: $color-gray;
+        font-size: 1.5rem;
+        margin-right: 35px;
+      }
+
+      &.danger:before {
+        color: $color-error;
+      }
+    }
+  }
+}
+
 .user-avatar {
   color: #fff;
   width: 52px;
@@ -200,6 +280,7 @@ input {
   height: 100%;
   overflow: hidden;
   background: transparent;
+  border-radius: inherit;
 }
 
 .c-ripple__circle {

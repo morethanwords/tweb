@@ -6,7 +6,7 @@ import {str2bigInt, bpe, equalsInt, greater,
   divide_, one, bigInt2str, powMod} from 'leemon';
 
 // @ts-ignore
-import {BigInteger, SecureRandom} from 'jsbn';
+import {BigInteger} from 'jsbn';
 
 import CryptoJS from './crypto.js';
 import { addPadding, bytesToHex, bytesFromHex, nextRandomInt, bytesFromBigInt, dT, bytesFromWords } from '../bin_utils';

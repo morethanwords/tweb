@@ -11,7 +11,7 @@ class AbridgedPacketCodec {
       header = new Uint8Array([len]);
     } else {
       header = new Uint8Array([0x7f, ...addPadding(bytesFromHex(len.toString(16)).reverse(), 3, true)/* .reverse() */]);
-      console.log('got nobody cause im braindead', header, len);
+      //console.log('got nobody cause im braindead', header, len);
     }
     
     return new Uint8Array([...header, ...data]);

@@ -179,6 +179,8 @@ export class ApiFileManager {
       return Promise.reject({type: 'BROWSER_BLOB_NOT_SUPPORTED'});
     }
 
+    this.log('downloadSmallFile', location, options);
+
     let dcID = options.dcID || location.dc_id;
     let mimeType = options.mimeType || 'image/jpeg';
     var fileName = this.getFileName(location);
@@ -270,7 +272,7 @@ export class ApiFileManager {
     var cachedPromise = this.cachedSavePromises[fileName] || this.cachedDownloadPromises[fileName];
     var fileStorage = this.getFileStorage();
 
-    this.log('downloadFile', fileStorage.name, fileName, fileName.length, location, arguments);
+    //this.log('downloadFile', fileStorage.name, fileName, fileName.length, location, arguments);
 
     if(cachedPromise) {
       if(toFileEntry) {
@@ -281,7 +283,7 @@ export class ApiFileManager {
         });
       }
 
-      this.log('downloadFile cachedPromise');
+      //this.log('downloadFile cachedPromise');
 
       if(size) {
         let blob = await cachedPromise;
@@ -296,7 +298,7 @@ export class ApiFileManager {
       }
     }
 
-    this.log('arriba');
+    //this.log('arriba');
 
     //var deferred = $q.defer()
     let deferredHelper: any = {notify: () => {}};
@@ -321,7 +323,7 @@ export class ApiFileManager {
     };
 
     fileStorage.getFile(fileName, size).then(async(blob: Blob) => {
-      this.log('is that i wanted');
+      //this.log('is that i wanted');
 
       if(blob.size < size) {
         this.log('downloadFile need to deleteFile 2, wrong size:', blob.size, size);
@@ -338,7 +340,7 @@ export class ApiFileManager {
       }
     //}, () => {
     }).catch(() => {
-      this.log('not i wanted');
+      //this.log('not i wanted');
       var fileWriterPromise = toFileEntry ? FileManager.getFileWriter(toFileEntry) : fileStorage.getFileWriter(fileName, mimeType);
 
       var processDownloaded = (bytes: any) => {

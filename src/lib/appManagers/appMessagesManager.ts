@@ -15,6 +15,7 @@ import ServerTimeManager from "../mtproto/serverTimeManager";
 import apiFileManager, { CancellablePromise } from "../mtproto/apiFileManager";
 import { MTDocument, ProgressivePreloader } from "../../components/misc";
 import appDocsManager from "./appDocsManager";
+import appImManager from "./appImManager";
 
 type HistoryStorage = {
   count: number | null,
@@ -390,24 +391,30 @@ export class AppMessagesManager {
       caption = RichTextProcessor.parseMarkdown(caption, entities);
     }
 
+    let actionName = '';
     if(!options.isMedia) {
       attachType = 'document';
       apiFileName = 'document.' + fileType.split('/')[1];
+      actionName = 'sendMessageUploadDocumentAction';
     } else if(isDocument) { // maybe it's a sticker
       attachType = 'document';
       apiFileName = '';
     } else if(['image/jpeg', 'image/png', 'image/bmp'].indexOf(fileType) >= 0) {
       attachType = 'photo';
       apiFileName = 'photo.' + fileType.split('/')[1];
+      actionName = 'sendMessageUploadPhotoAction';
     } else if(fileType.substr(0, 6) == 'audio/' || ['video/ogg'].indexOf(fileType) >= 0) {
       attachType = 'audio';
       apiFileName = 'audio.' + (fileType.split('/')[1] == 'ogg' ? 'ogg' : 'mp3');
+      actionName = 'sendMessageUploadAudioAction';
     } else if(fileType.substr(0, 6) == 'video/') {
       attachType = 'video';
       apiFileName = 'video.mp4';
+      actionName = 'sendMessageUploadVideoAction';
     } else {
       attachType = 'document';
       apiFileName = 'document.' + fileType.split('/')[1];
+      actionName = 'sendMessageUploadDocumentAction';
     }
 
     // console.log(attachType, apiFileName, file.type)
@@ -457,6 +464,7 @@ export class AppMessagesManager {
 
     preloader.preloader.onclick = () => {
       console.log('cancelling upload', media);
+      appImManager.setTyping('sendMessageCancelAction');
       media.progress.cancel();
     };
 
@@ -504,6 +512,8 @@ export class AppMessagesManager {
       uploadPromise: ReturnType<typeof apiFileManager.uploadFile> = null;
 
     let invoke = (flags: number, inputMedia: any) => {
+      appImManager.setTyping('sendMessageCancelAction');
+
       return MTProto.apiManager.invokeApi('messages.sendMedia', {
         flags: flags,
         peer: AppPeersManager.getInputPeerByID(peerID),
@@ -604,6 +614,7 @@ export class AppMessagesManager {
             console.log('upload progress', progress);
             media.progress.done = progress.done;
             media.progress.percent = Math.max(1, Math.floor(100 * progress.done / progress.total));
+            appImManager.setTyping({_: actionName, progress: media.progress.percent | 0});
             preloader.setProgress(media.progress.percent); // lol, nice
             $rootScope.$broadcast('history_update', {peerID: peerID});
           };

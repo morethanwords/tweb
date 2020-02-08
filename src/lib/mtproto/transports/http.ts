@@ -8,7 +8,7 @@ export default class HTTP extends MTTransport {
 
   send = (data: Uint8Array) => {
     return fetch(this.url, {method: 'POST', body: data}).then(response => {
-      console.log('http response', response/* , response.arrayBuffer() */);
+      //console.log('http response', response/* , response.arrayBuffer() */);
 
       if(response.status != 200) {
         response.arrayBuffer().then(buffer => {

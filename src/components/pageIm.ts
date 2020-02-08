@@ -533,15 +533,24 @@ export default () => import('../lib/services').then(services => {
     }
   });
 
+  let lastTimeType = 0;
   messageInput.addEventListener('input', function(this: typeof messageInput, e) {
     //console.log('messageInput input', this.innerText, serializeNodes(Array.from(messageInput.childNodes)));
     if(!this.innerText.trim() && !serializeNodes(Array.from(messageInput.childNodes)).trim()) {
       this.innerHTML = '';
       btnSend.classList.remove('tgico-send');
       btnSend.classList.add('tgico-microphone2');
+
+      appImManager.setTyping('sendMessageCancelAction');
     } else if(!btnSend.classList.contains('tgico-send')) {
       btnSend.classList.add('tgico-send');
       btnSend.classList.remove('tgico-microphone2');
+
+      let time = Date.now();
+      if(time - lastTimeType >= 6000) {
+        lastTimeType = time;
+        appImManager.setTyping('sendMessageTypingAction');
+      }
     }
   });
 
@@ -748,6 +757,45 @@ export default () => import('../lib/services').then(services => {
 
     toggleEmoticons.classList.toggle('active');
   }; */
+
+  let openedMenu: HTMLDivElement = null;
+  let onMouseMove = (e: MouseEvent) => {
+    let rect = openedMenu.getBoundingClientRect();
+    let {clientX, clientY} = e;
+
+    let diffX = clientX >= rect.right ? clientX - rect.right : rect.left - clientX;
+    let diffY = clientY >= rect.bottom ? clientY - rect.bottom : rect.top - clientY;
+
+    if(diffX >= 100 || diffY >= 100) {
+      openedMenu.parentElement.click();
+    }
+    //console.log('mousemove', diffX, diffY);
+  };
+  
+  Array.from(document.getElementsByClassName('btn-menu-toggle')).forEach((el) => {
+    el.addEventListener('click', (e) => {
+      window.removeEventListener('mousemove', onMouseMove);
+      openedMenu = el.querySelector('.btn-menu');
+      e.cancelBubble = true;
+
+      if(el.classList.contains('menu-open')) {
+        el.classList.remove('menu-open');
+        openedMenu.classList.remove('active');
+      } else {
+        el.classList.add('menu-open');
+        openedMenu.classList.add('active');
+
+        window.addEventListener('click', () => {
+          //(el as HTMLDivElement).click();
+          el.classList.remove('menu-open');
+          openedMenu.classList.remove('active');
+          window.removeEventListener('mousemove', onMouseMove);
+        }, {once: true});
+
+        window.addEventListener('mousemove', onMouseMove);
+      }
+    });
+  });
 
 
   loadDialogs().then(result => {

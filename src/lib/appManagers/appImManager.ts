@@ -1,4 +1,4 @@
-import { MTProto } from "../mtproto/mtproto";
+import apiManager from '../mtproto/apiManager';
 import { $rootScope, isElementInViewport, numberWithCommas } from "../utils";
 import appUsersManager from "./appUsersManager";
 import appMessagesManager from "./appMessagesManager";
@@ -88,6 +88,7 @@ class ScrollPosition {
 export class AppImManager {
   public pageEl = document.querySelector('.page-chats') as HTMLDivElement;
   public btnMute = this.pageEl.querySelector('.tool-mute') as HTMLButtonElement;
+  public btnMenuMute = this.pageEl.querySelector('.menu-mute') as HTMLButtonElement;
   public avatarEl = document.getElementById('im-avatar') as HTMLDivElement;
   public titleEl = document.getElementById('im-title') as HTMLDivElement;
   public subtitleEl = document.getElementById('im-subtitle') as HTMLDivElement;
@@ -129,14 +130,20 @@ export class AppImManager {
   private typingTimeouts: {[peerID: number]: number} = {};
   private typingUsers: {[userID: number]: number} = {} // to peerID
 
+  private topbar: HTMLDivElement = null;
+  private chatInput: HTMLDivElement = null;
+
   constructor() {
     this.log = logger('IM');
 
     this.preloader = new ProgressivePreloader(null, false);
 
-    MTProto.apiManager.getUserID().then((id) => {
+    apiManager.getUserID().then((id) => {
       this.myID = id;
     });
+
+    this.topbar = document.getElementById('topbar') as HTMLDivElement;
+    this.chatInput = document.getElementById('chat-input') as HTMLDivElement;
 
     $rootScope.$on('user_auth', (e: CustomEvent) => {
       let userAuth = e.detail;
@@ -328,7 +335,7 @@ export class AppImManager {
     if(!this.myID) return Promise.resolve();
 
     appUsersManager.setUserStatus(this.myID, this.offline);
-    return MTProto.apiManager.invokeApi('account.updateStatus', {
+    return apiManager.invokeApi('account.updateStatus', {
       offline: this.offline
     }, {noErrorBox: true});
   }
@@ -542,6 +549,13 @@ export class AppImManager {
   }
 
   public setPeer(peerID: number, lastMsgID = 0) {
+    if(peerID == 0) {
+      appSidebarRight.toggleSidebar(false);
+      this.topbar.style.display = this.chatInput.style.display = 'none';
+      this.cleanup();
+      return Promise.resolve(false);
+    }
+
     let samePeer = this.peerID == peerID;
 
     if(samePeer && !testScroll && !lastMsgID) {
@@ -596,6 +610,7 @@ export class AppImManager {
 
     this.titleEl.innerText = appSidebarRight.profileElements.name.innerText = dom.titleSpan.innerText;
 
+    this.topbar.style.display = this.chatInput.style.display = '';
     appSidebarRight.toggleSidebar(true);
 
     return Promise.all([
@@ -632,6 +647,20 @@ export class AppImManager {
     ]).catch(err => {
       this.log.error(err);
     });
+  }
+
+  public setTyping(action: any): Promise<boolean> {
+    if(!this.peerID) return Promise.resolve(false);
+
+    if(typeof(action) == 'string') {
+      action = {_: action};
+    }
+
+    let input = appPeersManager.getInputPeerByID(this.peerID);
+    return apiManager.invokeApi('messages.setTyping', {
+      peer: input,
+      action: action
+    }) as Promise<boolean>;
   }
 
   public updateUnreadByDialog(dialog: any) {

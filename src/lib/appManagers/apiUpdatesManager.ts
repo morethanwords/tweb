@@ -1,4 +1,5 @@
-import { MTProto } from "../mtproto/mtproto";
+import apiManager from '../mtproto/apiManager';
+import networkerFactory from '../mtproto/networkerFactory';
 import { dT, $rootScope, tsNow } from "../utils";
 import appPeersManager from "./appPeersManager";
 import appUsersManager from "./appUsersManager";
@@ -26,7 +27,7 @@ export class ApiUpdatesManager {
   public myID = 0;
 
   constructor() {
-    MTProto.apiManager.getUserID().then((id) => {
+    apiManager.getUserID().then((id) => {
       this.myID = id;
     });
   }
@@ -193,7 +194,7 @@ export class ApiUpdatesManager {
       updatesState.syncPending = false;
     }
   
-    MTProto.apiManager.invokeApi('updates.getDifference', {
+    apiManager.invokeApi('updates.getDifference', {
       pts: updatesState.pts, 
       date: updatesState.date, 
       qts: -1
@@ -267,7 +268,7 @@ export class ApiUpdatesManager {
       channelState.syncPending = false;
     }
     // console.log(dT(), 'Get channel diff', appChatsManager.getChat(channelID), channelState.pts)
-    MTProto.apiManager.invokeApi('updates.getChannelDifference', {
+    apiManager.invokeApi('updates.getChannelDifference', {
       channel: appChatsManager.getChannelInput(channelID),
       filter: {_: 'channelMessagesFilterEmpty'},
       pts: channelState.pts,
@@ -499,8 +500,8 @@ export class ApiUpdatesManager {
   }
   
   public attach() {
-    MTProto.networkerFactory.setUpdatesProcessor(this.processUpdateMessage.bind(this));
-    MTProto.apiManager.invokeApi('updates.getState', {}, {noErrorBox: true}).then((stateResult: any) => {
+    networkerFactory.setUpdatesProcessor(this.processUpdateMessage.bind(this));
+    apiManager.invokeApi('updates.getState', {}, {noErrorBox: true}).then((stateResult: any) => {
       this.updatesState.seq = stateResult.seq;
       this.updatesState.pts = stateResult.pts;
       this.updatesState.date = stateResult.date;

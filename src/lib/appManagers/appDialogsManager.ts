@@ -1,10 +1,10 @@
-import { MTProto } from "../mtproto/mtproto";
+import apiManager from "../mtproto/apiManager";
+import apiFileManager from '../mtproto/apiFileManager';
 import { $rootScope, findUpTag } from "../utils";
 import appImManager from "./appImManager";
 import appPeersManager from './appPeersManager';
 import appMessagesManager from "./appMessagesManager";
 import appUsersManager from "./appUsersManager";
-import appSidebarRight from "./appSidebarRight";
 import { RichTextProcessor } from "../richtextprocessor";
 import { ripple } from "../../components/misc";
 
@@ -23,14 +23,13 @@ export class AppDialogsManager {
   public pinnedChatList = document.getElementById('dialogs-pinned') as HTMLUListElement;
   public chatList = document.getElementById('dialogs') as HTMLUListElement;
   
-  private topbar: HTMLDivElement = null;
-  private chatInput: HTMLDivElement = null;
+  
 
   public myID = 0;
   public doms: {[x: number]: any} = {};
 
   constructor() {
-    MTProto.apiManager.getUserID().then((id) => {
+    apiManager.getUserID().then((id) => {
       this.myID = id;
     });
 
@@ -40,8 +39,6 @@ export class AppDialogsManager {
     });
 
     //let chatClosedDiv = document.getElementById('chat-closed');
-    this.topbar = document.getElementById('topbar') as HTMLDivElement;
-    this.chatInput = document.getElementById('chat-input') as HTMLDivElement;
 
     this.setListClickListener(this.pinnedChatList);
     this.setListClickListener(this.chatList);
@@ -52,21 +49,22 @@ export class AppDialogsManager {
       let target = e.target as HTMLElement;
       let elem = target.tagName != 'LI' ? findUpTag(target, 'LI') : target;
 
+      if(!elem) {
+        return;
+      }
+
       if(elem) {
         /* if(chatClosedDiv) {
           chatClosedDiv.style.display = 'none';
         } */
-        this.topbar.style.display = this.chatInput.style.display = '';
 
         if(onFound) onFound();
 
-        
         let peerID = +elem.getAttribute('data-peerID');
         let lastMsgID = +elem.getAttribute('data-mid');
         appImManager.setPeer(peerID, lastMsgID);
       } else /* if(chatClosedDiv) */ {
-        appSidebarRight.toggleSidebar(false);
-        this.topbar.style.display = this.chatInput.style.display = 'none';
+        appImManager.setPeer(0);
         //chatClosedDiv.style.display = '';
       }
     });
@@ -114,7 +112,7 @@ export class AppDialogsManager {
       return true;
     }
 
-    let res = await MTProto.apiFileManager.downloadSmallFile({
+    let res = await apiFileManager.downloadSmallFile({
       _: 'inputPeerPhotoFileLocation', 
       dc_id: location.dc_id, 
       flags: 0, 

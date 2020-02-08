@@ -88,6 +88,8 @@ export class AppPhotosManager {
     //console.log('choosePhotoSize', photo);
     
     let sizes = photo.sizes || photo.thumbs;
+    if(!sizes) return bestPhotoSize;
+
     sizes.forEach((photoSize: typeof bestPhotoSize) => {
       if(!photoSize.w || !photoSize.h) return;
 
@@ -190,7 +192,7 @@ export class AppPhotosManager {
     return photoSize;
   }
   
-  public async preloadPhoto(photoID: any, photoSize?: any): Promise<Blob> {
+  public async preloadPhoto(photoID: any, photoSize?: MTPhotoSize): Promise<Blob> {
     let photo: any = null;
 
     if(typeof(photoID) === 'string') {
@@ -207,7 +209,7 @@ export class AppPhotosManager {
       photoSize = this.choosePhotoSize(photo, fullWidth, fullHeight);
     }
 
-    if(photoSize) {
+    if(photoSize && photoSize._ != 'photoSizeEmpty') {
       photoSize.preloaded = true;
 
       // maybe it's a thumb
@@ -242,7 +244,7 @@ export class AppPhotosManager {
         console.log('Photos downloadSmallFile exec', photo, location);
         return MTProto.apiFileManager.downloadSmallFile(location);
       }
-    } else return Promise.reject('no fullPhotoSize');
+    } else return Promise.reject('no photoSize');
   }
   
   public getPhoto(photoID: string) {

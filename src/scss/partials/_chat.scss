@@ -227,11 +227,6 @@
 				}
 			}
 
-			img, video {
-				/* object-fit: contain; */
-				object-fit: cover;
-			}
-
 			.emoji {
 				height: 18px;
 				width: 18px;
@@ -296,6 +291,10 @@
 				max-width: 300px;
 				max-height: 300px;
 
+				img {
+					object-fit: contain;
+				}
+
 				.message.message-empty {
 					display: none;
 				}
@@ -335,6 +334,11 @@
 				.attachment {
 					max-width: 380px;
 					max-height: 380px;
+				}
+
+				img, video {
+					/* object-fit: contain; */
+					object-fit: cover;
 				}
 			}
 

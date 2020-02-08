@@ -100,7 +100,7 @@ class MTPNetworker {
 
     this.log = logger('NET-' + dcID + (this.upload ? '-U' : ''));
 
-    this.log('constructor', this.authKey, this.authKeyID, this.serverSalt);
+    this.log('constructor'/* , this.authKey, this.authKeyID, this.serverSalt */);
 
     this.updateSession();
 

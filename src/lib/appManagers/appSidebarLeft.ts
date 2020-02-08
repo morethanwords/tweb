@@ -2,14 +2,19 @@ import { logger } from "../polyfill";
 import { scrollable } from "../../components/misc";
 import appMessagesManager from "./appMessagesManager";
 import appDialogsManager from "./appDialogsManager";
-import { isElementInViewport } from "../utils";
+import { isElementInViewport, $rootScope } from "../utils";
 import appMessagesIDsManager from "./appMessagesIDsManager";
+import apiManager from '../mtproto/apiManager';
+import appImManager from "./appImManager";
 
 class AppSidebarLeft {
   private sidebarEl = document.querySelector('.page-chats .chats-container') as HTMLDivElement;
   private searchInput = document.getElementById('global-search') as HTMLInputElement;
   private toolsBtn = this.sidebarEl.querySelector('.sidebar-tools-button') as HTMLButtonElement;
   private searchContainer = this.sidebarEl.querySelector('#search-container') as HTMLDivElement;
+
+  private menuEl = this.toolsBtn.querySelector('.btn-menu');
+  private savedBtn = this.menuEl.querySelector('.menu-saved');
   
   private listsContainer: HTMLDivElement = null;
   private searchMessagesList: HTMLUListElement = null;
@@ -27,9 +32,24 @@ class AppSidebarLeft {
 
   private query = '';
   
+  public myID = 0;
+  
   constructor() {
     this.listsContainer = scrollable(this.searchContainer);
     this.searchMessagesList = document.createElement('ul');
+
+    apiManager.getUserID().then((id) => {
+      this.myID = id;
+    });
+
+    $rootScope.$on('user_auth', (e: CustomEvent) => {
+      let userAuth = e.detail;
+      this.myID = userAuth ? userAuth.id : 0;
+    });
+
+    this.savedBtn.addEventListener('click', () => {
+      appImManager.setPeer(this.myID);
+    });
     
     this.listsContainer.addEventListener('scroll', this.onSidebarScroll.bind(this));
     
