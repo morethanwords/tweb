@@ -1,4 +1,4 @@
-import { LazyLoadQueue, horizontalMenu, wrapDocument } from "../../components/misc";
+import { LazyLoadQueue, horizontalMenu, wrapDocument, formatPhoneNumber } from "../../components/misc";
 import { isElementInViewport, $rootScope } from "../utils";
 import appMessagesManager from "./appMessagesManager";
 import appPhotosManager from "./appPhotosManager";
@@ -319,7 +319,7 @@ class AppSidebarRight {
     if($rootScope.selectedPeerID > 0) {
       let user = appUsersManager.getUser($rootScope.selectedPeerID);
       if(user.phone) {
-        setText(user.phone, this.profileElements.phone);
+        setText('+' + formatPhoneNumber(user.phone).formatted, this.profileElements.phone);
       }
 
       appProfileManager.getProfile($rootScope.selectedPeerID, true).then(userFull => {

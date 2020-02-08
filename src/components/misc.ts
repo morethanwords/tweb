@@ -112,9 +112,9 @@ export class ProgressivePreloader {
     
     this.preloader.innerHTML = `
     <div class="you-spin-me-round">
-      <svg xmlns="http://www.w3.org/2000/svg" class="preloader-circular" viewBox="25 25 50 50">
-        <circle class="preloader-path-new" cx="50" cy="50" r="23" fill="none" stroke-miterlimit="10"/>
-      </svg>
+    <svg xmlns="http://www.w3.org/2000/svg" class="preloader-circular" viewBox="25 25 50 50">
+    <circle class="preloader-path-new" cx="50" cy="50" r="23" fill="none" stroke-miterlimit="10"/>
+    </svg>
     </div>`;
     
     if(cancelable) {
@@ -222,16 +222,16 @@ export class LazyLoadQueue {
 
 export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement, message: any, justLoader = true, preloader?: ProgressivePreloader) {
   //if(!container.firstElementChild || container.firstElementChild.tagName != 'IMG') {
-    let size = appPhotosManager.setAttachmentSize(doc, container);
+  let size = appPhotosManager.setAttachmentSize(doc, container);
   //}
-
+  
   let peerID = this.peerID ? this.peerID : this.currentMessageID;
-
+  
   //container.classList.add('video');
-
+  
   let img = container.firstElementChild as HTMLImageElement || new Image();
   img.setAttribute('message-id', '' + message.id);
-
+  
   if(!container.contains(img)) {
     container.append(img);
   }
@@ -274,7 +274,7 @@ export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement,
       //source.src = doc.url;
       source.src = URL.createObjectURL(blob);
       source.type = doc.mime_type;
-
+      
       if(img && container.contains(img)) {
         container.removeChild(img);
       }
@@ -294,7 +294,7 @@ export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement,
         this.log.warn('peer changed');
         return;
       }
-
+      
       img.src = URL.createObjectURL(blob);
       
       /* image.style.height = doc.h + 'px';
@@ -306,7 +306,7 @@ export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement,
         preloader.detach();
       }
     });
-
+    
     return this.peerID ? this.loadMediaQueuePush(load) : load();
   }
 }
@@ -321,7 +321,7 @@ export function wrapDocument(doc: MTDocument, withTime = false): HTMLDivElement 
   let extSplitted = doc.file_name ? doc.file_name.split('.') : '';
   let ext = '';
   ext = extSplitted.length > 1 && Array.isArray(extSplitted) ? extSplitted.pop().toLowerCase() : 'file';
-
+  
   let ext2 = ext;
   if(doc.type == 'photo') {
     docDiv.classList.add('photo');
@@ -353,7 +353,7 @@ export function scrollable(el: HTMLDivElement, x = false, y = true) {
   container.classList.add('scrollable');
   if(x) container.classList.add('scrollable-x');
   if(y) container.classList.add('scrollable-y');
-
+  
   let type = x ? 'width' : 'height';
   let side = x ? 'left' : 'top';
   let scrollType = x ? 'scrollWidth' : 'scrollHeight';
@@ -367,61 +367,61 @@ export function scrollable(el: HTMLDivElement, x = false, y = true) {
       container.classList.remove('active');
     }, {once: true}); */
   });
-
+  
   let thumb = document.createElement('div');
   thumb.className = 'scrollbar-thumb';
-
+  
   // @ts-ignore
   thumb.style[type] = '30px';
-
+  
   let resize = () => {
     // @ts-ignore
     scrollHeight = container[scrollType];
-
+    
     let rect = container.getBoundingClientRect();
-
+    
     // @ts-ignore
     height = rect[type];
-
+    
     if(!height || height == scrollHeight) {
       thumbHeight = 0;
-
+      
       // @ts-ignore
       thumb.style[type] = thumbHeight + 'px';
       return;
     }
     //if(!height) return;
-
+    
     let divider = scrollHeight / height / 0.5;
     thumbHeight = height / divider;
-
+    
     if(thumbHeight < 20) thumbHeight = 20;
-
+    
     // @ts-ignore
     thumb.style[type] = thumbHeight + 'px';
-
+    
     // @ts-ignore
-    console.log('onresize', thumb.style[type], thumbHeight, height);
+    //console.log('onresize', thumb.style[type], thumbHeight, height);
   };
-
+  
   let scrollHeight = -1;
   let height = 0;
   let thumbHeight = 0;
   window.addEventListener('resize', resize);
   //container.addEventListener('DOMNodeInserted', resize);
-
+  
   container.addEventListener('scroll', (e) => {
     // @ts-ignore
     if(container[scrollType] != scrollHeight || thumbHeight == 0) {
       resize();
     }
-
+    
     // @ts-ignore
     let value = container[scrollSide] / (scrollHeight - height) * 100;
     let maxValue = 100 - (thumbHeight / height * 100);
-
-    console.log('onscroll', container.scrollHeight, thumbHeight, height, value, maxValue);
-
+    
+    //console.log('onscroll', container.scrollHeight, thumbHeight, height, value, maxValue);
+    
     // @ts-ignore
     thumb.style[side] = (value >= maxValue ? maxValue : value) + '%';
   });
@@ -436,19 +436,19 @@ export function scrollable(el: HTMLDivElement, x = false, y = true) {
 
 export function wrapPhoto(this: AppImManager, photo: any, message: any, container: HTMLDivElement) {
   //container.classList.add('photo');
-
+  
   let peerID = this.peerID;
-
+  
   let size = appPhotosManager.setAttachmentSize(photo.id, container);
   let image = container.firstElementChild as HTMLImageElement || new Image();
   image.setAttribute('message-id', message.mid);
-
+  
   if(!container.contains(image)) {
     container.append(image);
   }
-
+  
   let preloader = new ProgressivePreloader(container, false);
-
+  
   let load = () => appPhotosManager.preloadPhoto(photo.id, size).then((blob) => {
     if(this.peerID != peerID) {
       this.log.warn('peer changed');
@@ -456,16 +456,16 @@ export function wrapPhoto(this: AppImManager, photo: any, message: any, containe
     }
     
     image.src = URL.createObjectURL(blob);
-
+    
     preloader.detach();
   });
-
+  
   console.log('wrapPhoto', load, container, image);
-
+  
   return this.loadMediaQueue ? this.loadMediaQueuePush(load) : load();
 }
 
-export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: () => boolean, lazyLoadQueue?: LazyLoadQueue, group?: string, canvas?: boolean) {
+export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: () => boolean, lazyLoadQueue?: LazyLoadQueue, group?: string, canvas?: boolean, play = false) {
   let stickerType = doc.mime_type == "application/x-tgsticker" ? 2 : (doc.mime_type == "image/webp" ? 1 : 0);
   
   if(!stickerType) {
@@ -539,6 +539,10 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
             }
           });
         }
+        
+        if(play) {
+          animation.play();
+        }
       });
       
       reader.readAsArrayBuffer(blob);
@@ -573,7 +577,7 @@ export function horizontalMenu(tabs: HTMLUListElement, content: HTMLDivElement, 
     
     console.log('tabs click:', target);
     
-    if(target.classList.contains('active')) return false;
+    if(!target || target.classList.contains('active')) return false;
     
     let prev = tabs.querySelector('li.active') as HTMLLIElement;
     prev && prev.classList.remove('active');
@@ -607,7 +611,7 @@ export function horizontalMenu(tabs: HTMLUListElement, content: HTMLDivElement, 
         setTimeout(() => {
           content.classList.add('animated');
           content.style.marginLeft = '';
-        }, 0);
+        }, 10);
       }
     }
     
@@ -650,4 +654,32 @@ export function getNearestDc() {
     
     return nearestDcResult;
   });
+}
+
+export function formatPhoneNumber(str: string) {
+  str = str.replace(/\D/g, '');
+  let phoneCode = str.slice(0, 6);
+
+  console.log('str', str, phoneCode);
+
+  let sortedCountries = Config.Countries.slice().sort((a, b) => b.phoneCode.length - a.phoneCode.length);
+
+  let country = sortedCountries.find((c) => {
+    return c.phoneCode.split(' and ').find((c) => phoneCode.indexOf(c.replace(/\D/g, '')) == 0);
+  });
+
+  let pattern = country ? country.pattern || country.phoneCode : '';
+  if(country) {
+    pattern.split('').forEach((symbol, idx) => {
+      if(symbol == ' ' && str[idx] != ' ' && str.length > idx) {
+        str = str.slice(0, idx) + ' ' + str.slice(idx);
+      }
+    });
+    
+    if(country.pattern) {
+      str = str.slice(0, country.pattern.length);
+    }
+  }
+
+  return {formatted: str, country};
 }

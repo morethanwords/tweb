@@ -94,9 +94,11 @@ class LottieLoader {
 
   public getAnimation(el: HTMLElement, group = '') {
     let groups = group ? [group] : Object.keys(this.animations);
+    console.log('getAnimation', groups, this.animations);
     for(let group of groups) {
       let animations = this.animations[group];
 
+      
       let animation = animations.find(a => a.container === el);
       if(animation) return animation.animation;
     }

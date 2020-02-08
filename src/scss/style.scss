@@ -545,15 +545,18 @@ input {
 
 .select-wrapper {
   max-height: 300px;
-  height: auto;
+  /* height: auto; */
   position: absolute;
   width: 100%;
   top: calc(100% + 10px);
   left: 0;
-  overflow-y: auto;
+  overflow: hidden;
   background-color: #fff;
   z-index: 3;
   border-radius: $border-radius;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
   
   ul {
     margin: 10px 0;
@@ -1097,6 +1100,11 @@ $width: 100px;
 }
 
 div.scrollable::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+div.scrollable::-webkit-scrollbar-thumb {
   width: 0;
   height: 0;
 }

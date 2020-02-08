@@ -916,7 +916,8 @@ export class AppImManager {
               }
 
               return true;
-            })/* .then(() => {
+            }, null, '', false, !!message.pending)/* .then(() => {
+              
               attachmentDiv.style.width = '';
               attachmentDiv.style.height = '';
             }) */;

@@ -1,8 +1,9 @@
 import { MTProto } from "../lib/mtproto/mtproto";
-import { putPreloader, getNearestDc, scrollable } from "./misc";
+import { putPreloader, getNearestDc, scrollable, formatPhoneNumber } from "./misc";
 import {RichTextProcessor} from '../lib/richtextprocessor';
+import * as Config from '../lib/config';
 
-import { unifiedCountryCodeEmoji, countryCodeEmoji, findUpTag } from "../lib/utils";
+import { findUpTag } from "../lib/utils";
 import pageAuthCode from "./pageAuthCode";
 
 let installed = false;
@@ -11,13 +12,15 @@ type Country = {
   name: string,
   code: string,
   phoneCode: string,
+  pattern: string,
+  emoji: string,
   li?: HTMLLIElement[]
 };
 
-import _countries from '../countries_pretty.json';
+//import _countries from '../countries_pretty.json';
 
-//export default () => import('../countries_pretty.json').then(async(results) => {
 export default () => {
+//export default () => import('../countries.json').then(_countries => {
   //let pageAuthCode = await import('./pageAuthCode');
   //Array.from(document.querySelectorAll('body > .whole:not(.page-authCode)')).forEach(div => div.style.display = 'none');
   const pageEl = document.body.getElementsByClassName('page-sign')[0] as HTMLDivElement;
@@ -33,8 +36,8 @@ export default () => {
 
   installed = true;
 
-  //const countries: Country[] = results[0].default;
-  const countries: Country[] = _countries;
+  //const countries: Country[] = _countries.default.filter(c => c.emoji);
+  const countries: Country[] = Config.Countries.filter(c => c.emoji);
 
   let lastCountrySelected = '';
 
@@ -60,7 +63,8 @@ export default () => {
   
         /* let unified = unifiedCountryCodeEmoji(c.code);
         let emoji = unified.split('-').reduce((prev, curr) => prev + String.fromCodePoint(parseInt(curr, 16)), ''); */
-        let emoji = countryCodeEmoji(c.code);
+        //let emoji = countryCodeEmoji(c.code);
+        let emoji = c.emoji;
 
         let liArr: Array<HTMLLIElement> = [];
         c.phoneCode.split(' and ').forEach((phoneCode: string) => {
@@ -151,28 +155,16 @@ export default () => {
     else selectCountryCode.focus();
   });
 
+  let sortedCountries = countries.slice().sort((a, b) => b.phoneCode.length - a.phoneCode.length);
+
   let telEl = pageEl.querySelector('input[name="phone"]') as HTMLInputElement;
   telEl.addEventListener('input', function(this: typeof telEl, e) {
     this.classList.remove('error');
-    this.value = '+' + this.value
-      .replace(/[^0-9\s]/g, '')
-      /* .replace(/(\d{1,4})(\d{1,3})?(\d{1,3})?/g, function(txt, f, s, t) {
-        if (t) {
-          return `(${f}) ${s}-${t}`
-        } else if (s) {
-          return `(${f}) ${s}`
-        } else if (f) {
-          return `(${f})`
-        }
-      }) */;
-    
-    let sorted = countries.slice().sort((a, b) => b.phoneCode.length - a.phoneCode.length);
-    let phoneCode = this.value.slice(1, 7).replace(/\D/g, '');
-    let country = sorted.find((c) => {
-      return c.phoneCode.split(' and ').find((c) => phoneCode.indexOf(c) == 0);
-    });
 
-    console.log(phoneCode, country);
+    let {formatted, country} = formatPhoneNumber(this.value);
+    this.value = formatted ? '+' + formatted : '';
+
+    console.log(formatted, country);
 
     let countryName = country ? country.name : ''/* 'Unknown' */;
     if(countryName != selectCountryCode.value) {
@@ -180,8 +172,10 @@ export default () => {
       lastCountrySelected = countryName;
     }
 
-    if(this.value.length >= 9) {
+    if(country && (this.value.length - 1) >= (country.pattern ? country.pattern.length : 9)) {
       btnNext.style.display = '';
+    } else {
+      btnNext.style.display = 'none';
     }
   });
 
