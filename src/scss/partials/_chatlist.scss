@@ -42,49 +42,61 @@
 
   ul {
     margin: 0;
-    padding: 0 .5rem;
-  }
-
-  #dialogs-pinned {
-    border-bottom: 1px solid #DADCE0;
-
-    &:empty {
-      display: none;
-    }
+    //padding: 0 .5rem;
+    display: grid;
+    grid-auto-columns: 1fr;
+    /* grid-gap: 4px; */
   }
 
   li {
-    padding: 0 .5rem;
+    padding: 2px 0;
+    overflow: hidden;
+    background-color: #fff;
+  }
+
+  li > .rp {
     height: 70px;
     max-height: 70px;
-    overflow: hidden;
     border-radius: $border-radius;
-    background-color: #fff;
     display: grid;
     align-items: center;
     grid-template-columns: 60px calc(100% - 60px);
     position: relative;
-    /* grid-template-columns: 60px calc(85% - 60px) 15%; */
-
     cursor: pointer;
+    padding: 0 .5rem;
+    margin: 0 .5rem;
+    overflow: hidden;
 
     &:hover {
       background: rgba(112, 117, 121, .08);
     }
-
-    &.active {
-      background: darken(rgba(112, 117, 121, .1), .8);
-    }
-
-    /* &.dialog-pinned + li:not(.dialog-pinned) {
-      
-    } */
   }
+
+  li.active > .rp {
+    background: darken(rgba(112, 117, 121, .1), .8);
+  }
+
+  .pinned-delimiter {
+    display: flex;
+    padding: 8px 0 4px;
+
+    span {
+      margin: 0;
+      width: 100%;
+      height: 1px;
+      background-color: #DADCE0;
+    }
+  }
+
+  /* li.dialog-pinned + .pinned-delimiter {
+    display: flex;
+  } */
 
   p {
     margin: 0;
     display: flex;
     justify-content: space-between;
+    align-items: center;
     height: 1.7rem; // hot-fix
     
     span:not(.tgico-pinnedchat):not(.emoji):last-child {
@@ -117,9 +129,6 @@
   }
 
   .user-last-message {
-    /* display: block; */
-    /* display: flex;
-    align-items: center; */
     max-width: 80%;
 
     i {
@@ -142,16 +151,7 @@
       color: $success-color;
       font-size: 1.15rem;
     }
-  } 
-
-  /* .dialog-details {
-    text-align: right;
-
-    :first-child {
-      font-size: .9rem;
-      display: block;
-    }
-  } */
+  }
 
   .unread, .unread-muted {
     border-radius: 12px;

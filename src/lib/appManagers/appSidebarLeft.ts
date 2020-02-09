@@ -1,5 +1,6 @@
 import { logger } from "../polyfill";
-import { scrollable, putPreloader } from "../../components/misc";
+import { putPreloader } from "../../components/misc";
+import Scrollable from '../../components/scrollable';
 import appMessagesManager from "./appMessagesManager";
 import appDialogsManager from "./appDialogsManager";
 import { isElementInViewport } from "../utils";
@@ -20,12 +21,9 @@ class AppSidebarLeft {
   
   private chatsContainer = document.getElementById('chats-container') as HTMLDivElement;
   private chatsOffsetIndex = 0;
-  private chatsScroll: HTMLDivElement;
-  private chatsHidden: any;
   private chatsPreloader: HTMLDivElement;
   private chatsLoadCount = 0;
   private loadDialogsPromise: Promise<any>;
-  private hiddenScroll: any;
   
   private log = logger('SL');
   
@@ -39,6 +37,8 @@ class AppSidebarLeft {
   private searchTimeout: number = 0;
   
   private query = '';
+
+  public scroll: Scrollable = null;
   
   constructor() {
     this.chatsPreloader = document.createElement('div');
@@ -48,16 +48,13 @@ class AppSidebarLeft {
     
     this.chatsLoadCount = Math.round(document.body.scrollHeight / 70 * 1.5);
     
-    let {container: chatsScroll, hiddenElements: chatsHidden, onScroll: hiddenScroll} = scrollable(this.chatsContainer as HTMLDivElement);
-    this.chatsScroll = chatsScroll;
-    this.chatsHidden = chatsHidden;
-    this.hiddenScroll = hiddenScroll;
-
-    appDialogsManager.chatsHidden = this.chatsHidden;
+    this.scroll = new Scrollable(this.chatsContainer as HTMLDivElement);
+    appDialogsManager.chatsHidden = this.scroll.hiddenElements;
+    this.scroll.setVirtualContainer(appDialogsManager.chatList);
     
-    chatsScroll.addEventListener('scroll', this.onChatsScroll.bind(this));
+    this.scroll.container.addEventListener('scroll', this.onChatsScroll.bind(this));
     
-    this.listsContainer = scrollable(this.searchContainer).container;
+    this.listsContainer = new Scrollable(this.searchContainer).container;
     this.searchMessagesList = document.createElement('ul');
     
     this.savedBtn.addEventListener('click', () => {
@@ -163,8 +160,8 @@ class AppSidebarLeft {
         });
       }
 
-      this.log('loaded ' + this.chatsLoadCount + ' dialogs by offset:', this.chatsOffsetIndex, result, this.chatsHidden);
-      this.hiddenScroll();
+      this.log('loaded ' + this.chatsLoadCount + ' dialogs by offset:', this.chatsOffsetIndex, result, this.scroll.hiddenElements);
+      this.scroll.onScroll();
     } catch(err) {
       this.log.error(err);
     }
@@ -174,7 +171,8 @@ class AppSidebarLeft {
   }
   
   public onChatsScroll() {
-    if(this.chatsHidden.down.length > 0/*  || 1 == 1 */) return;
+    //this.log(this.scroll);
+    if(this.scroll.hiddenElements.down.length > 0/*  || 1 == 1 */) return;
     
     if(!this.loadDialogsPromise) {
       let d = Array.from(appDialogsManager.chatList.childNodes).slice(-5);

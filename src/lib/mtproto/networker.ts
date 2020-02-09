@@ -290,6 +290,10 @@ class MTPNetworker {
     }
   
     options.resultType = serializer.storeMethod(method, params);
+
+    if(method == 'account.updateNotifySettings') {
+      this.log('api call body:', serializer.getBytes(true));
+    }
   
     var messageID = timeManager.generateID();
     var seqNo = this.generateSeqNo();

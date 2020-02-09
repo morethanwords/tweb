@@ -1,7 +1,8 @@
 //import { appImManager, appMessagesManager, appDialogsManager, apiUpdatesManager, appUsersManager } from "../lib/services";
-import { putPreloader, horizontalMenu, wrapSticker, MTDocument, LazyLoadQueue, scrollable } from "./misc";
+import { horizontalMenu, wrapSticker, MTDocument, LazyLoadQueue } from "./misc";
+import Scrollable from './scrollable';
 
-import { isElementInViewport, whichChild, findUpTag } from "../lib/utils";
+import { whichChild, findUpTag } from "../lib/utils";
 import {stackBlurImage} from '../lib/StackBlur';
 import * as Config from '../lib/config';
 import { RichTextProcessor } from "../lib/richtextprocessor";
@@ -12,7 +13,6 @@ import CryptoWorker from '../lib/crypto/cryptoworker';
 import appStickersManager, { MTStickerSet } from "../lib/appManagers/appStickersManager";
 import { AppImManager } from "../lib/appManagers/appImManager";
 import { AppMessagesManager } from "../lib/appManagers/appMessagesManager";
-import appSidebarRight from "../lib/appManagers/appSidebarRight";
 import appSidebarLeft from "../lib/appManagers/appSidebarLeft";
 
 const EMOTICONSSTICKERGROUP = 'emoticons-dropdown';
@@ -176,12 +176,13 @@ let initEmoticonsDropdown = (pageEl: HTMLDivElement,
 
     let prevCategoryIndex = 1;
     let menu = contentEmojiDiv.nextElementSibling as HTMLUListElement;
-    let emojiScroll = scrollable(contentEmojiDiv).container;
-    emojiScroll.addEventListener('scroll', (e) => {
-      prevCategoryIndex = emoticonsContentOnScroll(menu, heights, prevCategoryIndex, emojiScroll);
+    let emojiScroll = new Scrollable(contentEmojiDiv);
+    emojiScroll.container.addEventListener('scroll', (e) => {
+      prevCategoryIndex = emoticonsContentOnScroll(menu, heights, prevCategoryIndex, emojiScroll.container);
     });
+    //emojiScroll.setVirtualContainer(emojiScroll.container);
 
-    emoticonsMenuOnClick(menu, heights, emojiScroll);
+    emoticonsMenuOnClick(menu, heights, emojiScroll.container);
   }
 
   let stickersInit = () => {
@@ -191,7 +192,7 @@ let initEmoticonsDropdown = (pageEl: HTMLDivElement,
     let menuWrapper = contentStickersDiv.nextElementSibling as HTMLDivElement;
     let menu = menuWrapper.firstElementChild as HTMLUListElement;
 
-    let menuScroll = scrollable(menuWrapper, true, false);
+    let menuScroll = new Scrollable(menuWrapper, true, false);
 
     let stickersDiv = document.createElement('div');
     stickersDiv.classList.add('stickers-categories');
@@ -264,6 +265,8 @@ let initEmoticonsDropdown = (pageEl: HTMLDivElement,
       Array.from(stickersDiv.children).forEach((div, i) => {
         heights[i] = (heights[i - 1] || 0) + div.scrollHeight;
       });
+
+      //stickersScroll.onScroll();
 
       //return heights.push(prevHeight + scrollHeight) - 1;
     };
@@ -342,15 +345,16 @@ let initEmoticonsDropdown = (pageEl: HTMLDivElement,
     });
 
     let prevCategoryIndex = 0;
-    let stickersScroll = scrollable(contentStickersDiv).container;
-    stickersScroll.addEventListener('scroll', (e) => {
+    let stickersScroll = new Scrollable(contentStickersDiv);
+    stickersScroll.container.addEventListener('scroll', (e) => {
       lazyLoadQueue.check();
       lottieLoader.checkAnimations();
 
-      prevCategoryIndex = emoticonsContentOnScroll(menu, heights, prevCategoryIndex, stickersScroll);
+      prevCategoryIndex = emoticonsContentOnScroll(menu, heights, prevCategoryIndex, stickersScroll.container);
     });
+    stickersScroll.setVirtualContainer(stickersDiv);
 
-    emoticonsMenuOnClick(menu, heights, stickersScroll);
+    emoticonsMenuOnClick(menu, heights, stickersScroll.container);
 
     stickersInit = null;
   };
@@ -367,8 +371,7 @@ export default () => import('../lib/services').then(services => {
   let pageEl = document.body.getElementsByClassName('page-chats')[0] as HTMLDivElement;
   pageEl.style.display = '';
 
-  let sidebarScroll = scrollable(document.body.querySelector('.profile-container')).container;
-  let chatScroll = scrollable(document.getElementById('bubbles') as HTMLDivElement).container;
+  let chatScroll = new Scrollable(document.getElementById('bubbles') as HTMLDivElement).container;
 
   apiUpdatesManager.attach();
 
@@ -577,7 +580,7 @@ export default () => import('../lib/services').then(services => {
 
   let inputMessageContainer = document.getElementsByClassName('input-message-container')[0] as HTMLDivElement;
   
-  let inputScroll = scrollable(inputMessageContainer);
+  let inputScroll = new Scrollable(inputMessageContainer);
 
   let sendMessage = () => {
     let str = serializeNodes(Array.from(messageInput.childNodes));
@@ -744,6 +747,5 @@ export default () => import('../lib/services').then(services => {
   appSidebarLeft.loadDialogs().then(result => {
     appSidebarLeft.onChatsScroll();
     appImManager.setScroll(chatScroll);
-    appSidebarRight.setScroll(sidebarScroll);
   });
 });

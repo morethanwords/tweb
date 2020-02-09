@@ -242,6 +242,7 @@ class TLSerialization {
     var i, condType;
     var fieldBit;
     var len = methodData.params.length;
+    //console.log('storeMethod', len, methodData);
     for(i = 0; i < len; i++) {
       param = methodData.params[i];
       type = param.type;
@@ -339,18 +340,22 @@ class TLSerialization {
     var condType;
     var fieldBit;
     var len = constructorData.params.length;
+    //console.log('storeObject', len, constructorData);
     for(i = 0; i < len; i++) {
       param = constructorData.params[i];
       type = param.type;
 
+      //console.log('storeObject', param, type);
       if(type.indexOf('?') !== -1) {
         condType = type.split('?');
         fieldBit = condType[0].split('.');
+        //console.log('storeObject fieldBit', fieldBit, obj[fieldBit[0]]);
         if(!(obj[fieldBit[0]] & (1 << +fieldBit[1]))) {
           continue;
         }
         type = condType[1];
       }
+      //console.log('storeObject', param, type);
   
       this.storeObject(obj[param.name], type, field + '[' + predicate + '][' + param.name + ']');
     }
@@ -707,8 +712,11 @@ class TLDeserialization {
           fieldBit = condType[0].split('.');
 
           if(!(result[fieldBit[0]] & (1 << fieldBit[1]))) {
+            //console.log('fetchObject bad', constructorData, result[fieldBit[0]], fieldBit);
             continue;
           }
+
+          //console.log('fetchObject good', constructorData, result[fieldBit[0]], fieldBit);
 
           type = condType[1];
         }

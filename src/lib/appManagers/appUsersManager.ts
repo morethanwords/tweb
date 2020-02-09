@@ -28,7 +28,7 @@ export class AppUsersManager {
 
     $rootScope.$on('apiUpdate', (e: CustomEvent) => {
       let update = e.detail;
-      console.log('on apiUpdate', update);
+      //console.log('on apiUpdate', update);
       switch(update._) {
         case 'updateUserStatus':
           var userID = update.user_id;

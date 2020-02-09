@@ -101,6 +101,7 @@ export class AppImManager {
 
   public myID = 0;
   public peerID = 0;
+  public muted = false;
 
   public lastDialog: any;
   public bubbles: {[mid: number]: HTMLDivElement} = {};
@@ -198,54 +199,8 @@ export class AppImManager {
     $rootScope.$on('apiUpdate', (e: CustomEvent) => {
       let update = e.detail;
 
-      switch(update._) {
-        case 'updateUserTyping':
-        case 'updateChatUserTyping':
-          if(this.myID == update.user_id) {
-            return;
-          }
-
-          var peerID = update._ == 'updateUserTyping' ? update.user_id : -update.chat_id;
-          this.typingUsers[update.user_id] = peerID;
-
-          if(!appUsersManager.hasUser(update.user_id)) {
-            if(update.chat_id &&
-              appChatsManager.hasChat(update.chat_id) &&
-              !appChatsManager.isChannel(update.chat_id)) {
-              appProfileManager.getChatFull(update.chat_id);
-            }
-
-            //return;
-          }
-
-          appUsersManager.forceUserOnline(update.user_id);
-
-          let dialog = appMessagesManager.getDialogByPeerID(peerID)[0];
-          let currentPeer = this.peerID == peerID;
-
-          if(this.typingTimeouts[peerID]) clearTimeout(this.typingTimeouts[peerID]);
-          else if(dialog) {
-            appDialogsManager.setTyping(dialog, appUsersManager.getUser(update.user_id));
-
-            if(currentPeer) { // user
-              this.setPeerStatus();
-            }
-          }
-
-          this.typingTimeouts[peerID] = setTimeout(() => {
-            this.typingTimeouts[peerID] = 0;
-            delete this.typingUsers[update.user_id];
-
-            if(dialog) {
-              appDialogsManager.unsetTyping(dialog);
-            }
-
-            // лень просчитывать случаи
-            this.setPeerStatus();
-          }, 6000);
-          break;
-      }
-    })
+      this.handleUpdate(update);
+    });
 
     window.addEventListener('blur', () => {
       lottieLoader.checkAnimations(true);
@@ -297,6 +252,9 @@ export class AppImManager {
       let mid = +this.pinnedMessageContainer.getAttribute('data-mid');
       this.setPeer(this.peerID, mid);
     });
+
+    this.btnMenuMute.addEventListener('click', () => this.mutePeer());
+    this.btnMute.addEventListener('click', () => this.mutePeer());
 
     this.updateStatusInterval = window.setInterval(() => this.updateStatus(), 50e3);
     this.updateStatus();
@@ -524,11 +482,10 @@ export class AppImManager {
     }
   }
 
-  
-  
   public cleanup() {
     this.peerID = $rootScope.selectedPeerID = 0;
     this.scrolledAll = false;
+    this.muted = false;
 
     if(this.lastContainerDiv) this.lastContainerDiv.remove();
     if(this.firstContainerDiv) this.firstContainerDiv.remove();
@@ -544,6 +501,8 @@ export class AppImManager {
     this.unreaded = [];
     this.unreadOut = [];
     this.loadMediaQueue = [];
+
+    lottieLoader.checkAnimations(false, 'chat', true);
 
     console.time('chatInner clear');
 
@@ -954,7 +913,7 @@ export class AppImManager {
               }
 
               return true;
-            }, null, '', false, !!message.pending)/* .then(() => {
+            }, null, 'chat', false, !!message.pending || !multipleRender)/* .then(() => {
               
               attachmentDiv.style.width = '';
               attachmentDiv.style.height = '';
@@ -1238,6 +1197,150 @@ export class AppImManager {
 
       return true;
     });
+  }
+
+  public setMutedState(muted = false) {
+    appSidebarRight.profileElements.notificationsCheckbox.checked = !muted;
+    appSidebarRight.profileElements.notificationsStatus.innerText = muted ? 'Disabled' : 'Enabled';
+
+    let peerID = this.peerID;
+
+    this.muted = muted;
+    if(peerID < 0) { // not human
+      let isChannel = appPeersManager.isChannel(peerID) && !appPeersManager.isMegagroup(peerID);
+      if(isChannel) {
+        this.btnMute.classList.remove('tgico-mute', 'tgico-unmute');
+        this.btnMute.classList.add(muted ? 'tgico-unmute' : 'tgico-mute');
+        this.btnMute.style.display = '';
+      } else {
+        this.btnMute.style.display = 'none';
+      }
+    } else {
+      this.btnMute.style.display = 'none';
+    }
+
+    this.btnMenuMute.classList.remove('tgico-mute', 'tgico-unmute');
+    this.btnMenuMute.classList.add(muted ? 'tgico-unmute' : 'tgico-mute');
+    let rp = this.btnMenuMute.firstElementChild;
+    this.btnMenuMute.innerText = muted ? 'Unmute' : 'Mute';
+    this.btnMenuMute.appendChild(rp);
+  }
+
+  public mutePeer() {
+    let inputPeer = appPeersManager.getInputPeerByID(this.peerID);
+    let inputNotifyPeer = {
+      _: 'inputNotifyPeer',
+      peer: inputPeer
+    };
+
+    let settings: any = {
+      _: 'inputPeerNotifySettings',
+      flags: 0,
+      mute_until: 0
+    };
+
+    if(!this.muted) {
+      settings.flags |= 2 << 1;
+      settings.mute_until = 2147483646;
+    } else {
+      settings.flags |= 1 << 1;
+    }
+
+    apiManager.invokeApi('account.updateNotifySettings', {
+      peer: inputNotifyPeer,
+      settings: settings
+    }).then(res => {
+      this.handleUpdate({_: 'updateNotifySettings', peer: inputNotifyPeer, notify_settings: settings});
+    });
+
+    /* return apiManager.invokeApi('account.getNotifySettings', {
+      peer: inputNotifyPeer
+    }).then((settings: any) => {
+      settings.flags |= 2 << 1;
+      settings.mute_until = 2000000000; // 2147483646
+
+      return apiManager.invokeApi('account.updateNotifySettings', {
+        peer: inputNotifyPeer,
+        settings: Object.assign(settings, {
+          _: 'inputPeerNotifySettings'
+        })
+      }).then(res => {
+        this.log('mute result:', res);
+      });
+    }); */
+    
+  }
+
+  public handleUpdate(update: any) {
+    switch(update._) {
+      case 'updateUserTyping':
+      case 'updateChatUserTyping':
+        if(this.myID == update.user_id) {
+          return;
+        }
+
+        var peerID = update._ == 'updateUserTyping' ? update.user_id : -update.chat_id;
+        this.typingUsers[update.user_id] = peerID;
+
+        if(!appUsersManager.hasUser(update.user_id)) {
+          if(update.chat_id &&
+            appChatsManager.hasChat(update.chat_id) &&
+            !appChatsManager.isChannel(update.chat_id)) {
+            appProfileManager.getChatFull(update.chat_id);
+          }
+
+            //return;
+        }
+
+        appUsersManager.forceUserOnline(update.user_id);
+
+        let dialog = appMessagesManager.getDialogByPeerID(peerID)[0];
+        let currentPeer = this.peerID == peerID;
+
+        if(this.typingTimeouts[peerID]) clearTimeout(this.typingTimeouts[peerID]);
+        else if(dialog) {
+          appDialogsManager.setTyping(dialog, appUsersManager.getUser(update.user_id));
+
+          if(currentPeer) { // user
+            this.setPeerStatus();
+          }
+        }
+
+        this.typingTimeouts[peerID] = setTimeout(() => {
+          this.typingTimeouts[peerID] = 0;
+          delete this.typingUsers[update.user_id];
+
+          if(dialog) {
+            appDialogsManager.unsetTyping(dialog);
+          }
+
+          // лень просчитывать случаи
+          this.setPeerStatus();
+        }, 6000);
+        break;
+          
+      case 'updateNotifySettings': {
+        let {peer, notify_settings} = update;
+
+        // peer was NotifyPeer
+        peer = peer.peer;
+
+        let peerID = appPeersManager.getPeerID(peer);
+
+        let dialog = appMessagesManager.getDialogByPeerID(peerID)[0];
+        if(dialog) {
+          dialog.notify_settings = notify_settings;
+        }
+
+        if(peerID == this.peerID) {
+          let muted = notify_settings.mute_until ? new Date(notify_settings.mute_until * 1000) > new Date() : false;
+          this.setMutedState(muted);
+        }
+
+        this.log('updateNotifySettings', peerID, notify_settings);
+        break;
+      }
+    }
   }
 }
 

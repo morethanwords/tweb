@@ -16,17 +16,23 @@ type DialogDom = {
   lastTimeSpan: HTMLSpanElement,
   unreadMessagesSpan: HTMLSpanElement,
   lastMessageSpan: HTMLSpanElement,
+  containerEl: HTMLDivElement,
   listEl: HTMLLIElement
 };
 
 export class AppDialogsManager {
   public chatList = document.getElementById('dialogs') as HTMLUListElement;
+  public pinnedDelimiter: HTMLDivElement;
   public chatsHidden: any;
   
   public myID = 0;
   public doms: {[x: number]: any} = {};
 
   constructor() {
+    this.pinnedDelimiter = document.createElement('div');
+    this.pinnedDelimiter.classList.add('pinned-delimiter');
+    this.pinnedDelimiter.appendChild(document.createElement('span'));
+
     apiManager.getUserID().then((id) => {
       this.myID = id;
     });
@@ -168,7 +174,7 @@ export class AppDialogsManager {
       } else if(this.chatsHidden.down.find((d: HTMLLIElement) => d === dom.listEl)) {
         inBottom.push(dom.listEl);
       } else {
-        console.warn('found no dom!', dom);
+        //console.warn('found no dom!', dom, d);
       }
 
       //this.chatList.append(dom.listEl);
@@ -395,12 +401,22 @@ export class AppDialogsManager {
     //captionDiv.append(titleSpan);
     //captionDiv.append(span);
 
+
+
+    let paddingDiv = document.createElement('div');
+    paddingDiv.classList.add('rp');
+    paddingDiv.append(avatarDiv, captionDiv);
+    ripple(paddingDiv);
+
     let li = document.createElement('li');
+    li.append(paddingDiv);
+    li.setAttribute('data-peerID', '' + peerID);
+    /* let li = document.createElement('li');
     li.classList.add('rp');
     li.append(avatarDiv, captionDiv);
     li.setAttribute('data-peerID', '' + peerID);
 
-    ripple(li);
+    ripple(li); */
 
     /* let detailsDiv = document.createElement('div');
     detailsDiv.classList.add('dialog-details'); */
@@ -432,6 +448,7 @@ export class AppDialogsManager {
       lastTimeSpan,
       unreadMessagesSpan,
       lastMessageSpan: span,
+      containerEl: paddingDiv,
       listEl: li
     };
 
@@ -441,6 +458,8 @@ export class AppDialogsManager {
 
       if(dialog.pFlags.pinned) {
         li.classList.add('dialog-pinned');
+        //this.chatList.insertBefore(this.pinnedDelimiter, li.nextSibling);
+        dom.listEl.append(this.pinnedDelimiter);
       }
 
       this.doms[dialog.peerID] = dom;

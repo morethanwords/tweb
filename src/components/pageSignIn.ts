@@ -1,5 +1,6 @@
 import { MTProto } from "../lib/mtproto/mtproto";
-import { putPreloader, getNearestDc, scrollable, formatPhoneNumber } from "./misc";
+import { putPreloader, getNearestDc, formatPhoneNumber } from "./misc";
+import Scrollable from './scrollable';
 import {RichTextProcessor} from '../lib/richtextprocessor';
 import * as Config from '../lib/config';
 
@@ -51,7 +52,7 @@ export default () => {
   wrapper.appendChild(list);
 
   //let wrapperScroll = OverlayScrollbars(wrapper, (window as any).scrollbarOptions);
-  scrollable(wrapper);
+  let scroll = new Scrollable(wrapper);
 
   let initedSelect = false;
 

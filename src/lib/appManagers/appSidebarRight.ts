@@ -1,4 +1,5 @@
 import { LazyLoadQueue, horizontalMenu, wrapDocument, formatPhoneNumber } from "../../components/misc";
+import Scrollable from '../../components/scrollable';
 import { isElementInViewport, $rootScope } from "../utils";
 import appMessagesManager from "./appMessagesManager";
 import appPhotosManager from "./appPhotosManager";
@@ -33,7 +34,7 @@ class AppSidebarRight {
     contentAudio: this.profileContentEl.querySelector('#content-audio') as HTMLDivElement,
   };
 
-  public sidebarScroll: HTMLDivElement = null;
+  public lastSharedMediaDiv: HTMLDivElement = null;
 
   private loadSidebarMediaPromises: {
     [type: string]: Promise<void>
@@ -67,13 +68,21 @@ class AppSidebarRight {
 
   private peerID = 0;
 
+  public sidebarScroll: Scrollable = null;
+
   constructor() {
     let container = this.profileContentEl.querySelector('.profile-tabs-content') as HTMLDivElement;
     let tabs = this.profileContentEl.querySelector('.profile-tabs') as HTMLUListElement;
 
+    this.sidebarScroll = new Scrollable(this.sidebarEl);
+    this.sidebarScroll.container.addEventListener('scroll', this.onSidebarScroll.bind(this));
+
     horizontalMenu(tabs, container, (id, tabContent) => {
       this.sharedMediaType = this.sharedMediaTypes[id];
       this.sharedMediaSelected = tabContent.firstElementChild as HTMLDivElement;
+
+      this.log('setVirtualContainer', this.sharedMediaSelected);
+      this.sidebarScroll.setVirtualContainer(this.sharedMediaSelected);
     }, this.onSidebarScroll.bind(this));
 
     (tabs.children[1] as HTMLLIElement).click(); // set media
@@ -96,6 +105,11 @@ class AppSidebarRight {
       appMediaViewer.openMedia(message, false);
     });
 
+    this.profileElements.notificationsCheckbox.addEventListener('change', () => {
+      let checked = this.profileElements.notificationsCheckbox.checked;
+      appImManager.mutePeer();
+    });
+
     window.addEventListener('resize', () => {
       setTimeout(() => this.onSidebarScroll(), 0);
     });
@@ -104,7 +118,7 @@ class AppSidebarRight {
   public onSidebarScroll() {
     this.lazyLoadQueueSidebar.check();
 
-    if(this.sharedMediaSelected) {
+    if(this.sharedMediaSelected && !this.sidebarScroll.hiddenElements.down.length/* && false */) {
       let media = Array.from(this.sharedMediaSelected.childNodes).slice(-15);
       for(let div of media) {
         if(isElementInViewport(div)) {
@@ -115,16 +129,6 @@ class AppSidebarRight {
         }
       }
     }
-  }
-
-  public setScroll(scroll: HTMLDivElement) {
-    this.sidebarScroll = scroll;
-    this.sidebarScroll.addEventListener('scroll', this.onSidebarScroll.bind(this));
-    /* this.sidebarScroll.options({
-      callbacks: {
-        onScroll: this.onSidebarScroll.bind(this)
-      }
-    }); */
   }
 
   public toggleSidebar(enable?: boolean) {
@@ -239,8 +243,14 @@ class AppSidebarRight {
               div.setAttribute('message-id', '' + mid);
       
               this.lazyLoadQueueSidebar.push({div, load});
+
+              this.lastSharedMediaDiv.append(div);
+              if(this.lastSharedMediaDiv.childElementCount == 3) {
+                this.sharedMedia.contentMedia.append(this.lastSharedMediaDiv);
+                this.lastSharedMediaDiv = document.createElement('div');
+              }
       
-              this.sharedMedia.contentMedia.append(div);
+              //this.sharedMedia.contentMedia.append(div);
 
               break;
             }
@@ -285,12 +295,13 @@ class AppSidebarRight {
   public fillProfileElements() {
     let peerID = this.peerID = $rootScope.selectedPeerID;
     this.loadSidebarMediaPromises = {};
+    this.lastSharedMediaDiv = document.createElement('div');
 
     this.profileContentEl.parentElement.scrollTop = 0;
     this.profileElements.bio.style.display = 'none';
     this.profileElements.phone.style.display = 'none';
     this.profileElements.username.style.display = 'none';
-    this.profileElements.notificationsCheckbox.setAttribute('checked', 'checked');
+    this.profileElements.notificationsCheckbox.checked = true;
     this.profileElements.notificationsStatus.innerText = 'Enabled';
 
     Object.keys(this.sharedMedia).forEach(key => {
@@ -365,30 +376,9 @@ class AppSidebarRight {
       let muted = false;
       if(dialog.notify_settings && dialog.notify_settings.mute_until) {
         muted = new Date(dialog.notify_settings.mute_until * 1000) > new Date();
-        if(muted) {
-          this.profileElements.notificationsCheckbox.removeAttribute('checked');
-          this.profileElements.notificationsStatus.innerText = 'Disabled';
-        }
       }
 
-      if(peerID < 0) { // not human
-        let isChannel = appPeersManager.isChannel(peerID) && !appPeersManager.isMegagroup(peerID);
-        if(isChannel) {
-          appImManager.btnMute.classList.remove('tgico-mute', 'tgico-unmute');
-          appImManager.btnMute.classList.add(muted ? 'tgico-unmute' : 'tgico-mute');
-          appImManager.btnMute.style.display = '';
-        } else {
-          appImManager.btnMute.style.display = 'none';
-        }
-      } else {
-        appImManager.btnMute.style.display = 'none';
-      }
-
-      appImManager.btnMenuMute.classList.remove('tgico-mute', 'tgico-unmute');
-      appImManager.btnMenuMute.classList.add(muted ? 'tgico-unmute' : 'tgico-mute');
-      let rp = appImManager.btnMenuMute.firstElementChild;
-      appImManager.btnMenuMute.innerText = muted ? 'Unmute' : 'Mute';
-      appImManager.btnMenuMute.appendChild(rp);
+      appImManager.setMutedState(muted);
     }
 
     //this.loadSidebarMedia();

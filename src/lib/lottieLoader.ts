@@ -2,18 +2,19 @@ import LottiePlayer, { AnimationConfigWithPath, AnimationConfigWithData, Animati
 import { isElementInViewport, isInDOM } from "./utils";
 
 class LottieLoader {
-  private lottie: /* any */ typeof LottiePlayer = null;
+  public lottie: /* any */ typeof LottiePlayer = null;
   private animations: {
     [group: string]: {
       animation: AnimationItem, 
       container: HTMLDivElement, 
       paused: boolean,
-      autoplay: boolean
+      autoplay: boolean,
+      canvas: boolean
     }[]
   } = {};
   private debug = false;
 
-  public checkAnimations(blurred?: boolean, group?: string) {
+  public checkAnimations(blurred?: boolean, group?: string, destroy = false) {
     let groups = group ? [group] : Object.keys(this.animations);
 
     if(group && !this.animations[group]) {
@@ -27,9 +28,17 @@ class LottieLoader {
 
       let length = animations.length;
       for(let i = length - 1; i >= 0; --i) {
-        let {animation, container, paused, autoplay} = animations[i];
+        let {animation, container, paused, autoplay, canvas} = animations[i];
+
+        if(canvas && isElementInViewport(container)) {
+          let c = container.firstElementChild as HTMLCanvasElement;
+          if(!c.height && !c.width) {
+            console.log('lottie need resize');
+            animation.resize();
+          }
+        }
   
-        if(!isInDOM(container)) {
+        if(destroy && !isInDOM(container)) {
           this.debug && console.log('destroy animation');
           animation.destroy();
           animations.splice(i, 1);
@@ -82,7 +91,8 @@ class LottieLoader {
       animation, 
       container: params.container as HTMLDivElement, 
       paused: !params.autoplay,
-      autoplay: params.autoplay
+      autoplay: params.autoplay,
+      canvas: params.renderer == 'canvas'
     });
 
     if(params.autoplay) {

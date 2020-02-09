@@ -8,6 +8,7 @@ import appDocsManager from "../lib/appManagers/appDocsManager";
 import {AppImManager} from "../lib/appManagers/appImManager";
 import {AppMediaViewer} from '../lib/appManagers/appMediaViewer';
 import { RichTextProcessor } from "../lib/richtextprocessor";
+import lottieLoader from "../lib/lottieLoader";
 
 export type MTDocument = {
   _: 'document',
@@ -434,7 +435,8 @@ export function scrollable(el: HTMLDivElement, x = false, y = true) {
       resize();
     }
 
-    let splitUp = container.querySelector('ul');
+    //let splitUp = container.querySelector('ul');
+    let splitUp = container.children[1];
     let children = Array.from(splitUp.children) as HTMLElement[];
     let firstVisible = -1, lastVisible = -1;
     let length = children.length;
@@ -627,7 +629,15 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
               }, {once: true});
             }
           });
-        }
+        } /* else {
+          let canvas = div.firstElementChild as HTMLCanvasElement;
+          if(!canvas.width && !canvas.height) {
+            console.log('Need lottie resize');
+            
+            // @ts-ignore
+            animation.resize();
+          }
+        } */
         
         if(play) {
           animation.play();
