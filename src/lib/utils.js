@@ -324,6 +324,17 @@ export function numberWithCommas(x) {
   return parts.join(".");
 }
 
+export function findUpClassName(el, className) {
+  if(el.classList.contains(className)) return el; // 03.02.2020
+
+  while(el.parentNode) {
+    el = el.parentNode;
+    if(el.classList.contains(className)) 
+      return el;
+  }
+  return null;
+}
+
 export function findUpTag(el, tag) {
   if(el.tagName == tag) return el; // 03.02.2020
 

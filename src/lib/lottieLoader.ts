@@ -33,7 +33,7 @@ class LottieLoader {
         if(canvas && isElementInViewport(container)) {
           let c = container.firstElementChild as HTMLCanvasElement;
           if(!c.height && !c.width) {
-            console.log('lottie need resize');
+            //console.log('lottie need resize');
             animation.resize();
           }
         }
@@ -104,7 +104,7 @@ class LottieLoader {
 
   public getAnimation(el: HTMLElement, group = '') {
     let groups = group ? [group] : Object.keys(this.animations);
-    console.log('getAnimation', groups, this.animations);
+    //console.log('getAnimation', groups, this.animations);
     for(let group of groups) {
       let animations = this.animations[group];
 

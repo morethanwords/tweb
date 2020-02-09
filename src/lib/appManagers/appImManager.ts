@@ -1,10 +1,10 @@
 import apiManager from '../mtproto/apiManager';
-import { $rootScope, isElementInViewport, numberWithCommas } from "../utils";
+import { $rootScope, isElementInViewport, numberWithCommas, findUpClassName } from "../utils";
 import appUsersManager from "./appUsersManager";
 import appMessagesManager from "./appMessagesManager";
 import appPeersManager from "./appPeersManager";
 import appProfileManager from "./appProfileManager";
-import { ProgressivePreloader, wrapDocument, wrapSticker, wrapVideo, wrapPhoto } from "../../components/misc";
+import { ProgressivePreloader, wrapDocument, wrapSticker, wrapVideo, wrapPhoto, openBtnMenu } from "../../components/misc";
 import appDialogsManager from "./appDialogsManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import appPhotosManager from "./appPhotosManager";
@@ -16,6 +16,7 @@ import appMediaViewer from "./appMediaViewer";
 import appSidebarLeft from "./appSidebarLeft";
 import appChatsManager from "./appChatsManager";
 import appMessagesIDsManager from "./appMessagesIDsManager";
+import apiUpdatesManager from './apiUpdatesManager';
 
 console.log('appImManager included!');
 
@@ -133,12 +134,28 @@ export class AppImManager {
 
   private topbar: HTMLDivElement = null;
   private chatInput: HTMLDivElement = null;
-  scrolledAll: boolean;
+  private scrolledAll: boolean;
+
+  public contextMenu = document.getElementById('bubble-contextmenu') as HTMLDivElement;
+  private contextMenuPin = this.contextMenu.querySelector('.menu-pin') as HTMLDivElement;
+  private contextMenuMsgID: number;
+
+  private popupDeleteMessage: {
+    popupEl?: HTMLDivElement,
+    deleteBothBtn?: HTMLButtonElement,
+    deleteMeBtn?: HTMLButtonElement,
+    cancelBtn?: HTMLButtonElement
+  } = {};
 
   constructor() {
     this.log = logger('IM');
 
     this.preloader = new ProgressivePreloader(null, false);
+
+    this.popupDeleteMessage.popupEl = this.pageEl.querySelector('.popup-delete-message') as HTMLDivElement;
+    this.popupDeleteMessage.deleteBothBtn = this.popupDeleteMessage.popupEl.querySelector('.popup-delete-both') as HTMLButtonElement;
+    this.popupDeleteMessage.deleteMeBtn = this.popupDeleteMessage.popupEl.querySelector('.popup-delete-me') as HTMLButtonElement;
+    this.popupDeleteMessage.cancelBtn = this.popupDeleteMessage.popupEl.querySelector('.popup-close') as HTMLButtonElement;
 
     apiManager.getUserID().then((id) => {
       this.myID = id;
@@ -256,11 +273,146 @@ export class AppImManager {
     this.btnMenuMute.addEventListener('click', () => this.mutePeer());
     this.btnMute.addEventListener('click', () => this.mutePeer());
 
+    this.chatInner.addEventListener('contextmenu', e => {
+      let bubble = findUpClassName(e.target, 'bubble');
+      if(bubble) {
+        e.preventDefault();
+        e.cancelBubble = true;
+        
+        let msgID = 0;
+        for(let id in this.bubbles) {
+          if(this.bubbles[id] === bubble) {
+            msgID = +id;
+            break;
+          }
+        }
+
+        if(!msgID) return;
+
+        if(this.myID == this.peerID || 
+          (this.peerID < 0 && !appPeersManager.isChannel(this.peerID) && !appPeersManager.isMegagroup(this.peerID))) {
+          this.contextMenuPin.style.display = '';
+        } else this.contextMenuPin.style.display = 'none';
+
+        this.contextMenuMsgID = msgID;
+
+        let side = bubble.parentElement.classList.contains('in') ? 'left' : 'right';
+
+        this.contextMenu.classList.remove('bottom-left', 'bottom-right');
+        this.contextMenu.classList.add(side == 'left' ? 'bottom-right' : 'bottom-left');
+
+        let {clientX, clientY} = e;
+
+        this.contextMenu.style.left = (side == 'right' ? clientX - this.contextMenu.scrollWidth : clientX) + 'px';
+        if((clientY + this.contextMenu.scrollHeight) > window.innerHeight) {
+          this.contextMenu.style.top = (window.innerHeight - this.contextMenu.scrollHeight) + 'px';
+        } else {
+          this.contextMenu.style.top = clientY + 'px';
+        }
+
+        //this.contextMenu.classList.add('active');
+        openBtnMenu(this.contextMenu);
+
+        this.log('contextmenu', e, bubble, msgID, side);
+      }
+    });
+
+    this.contextMenu.querySelector('.menu-copy').addEventListener('click', () => {
+      let message = appMessagesManager.getMessage(this.contextMenuMsgID);
+
+      let str = message ? message.message : '';
+
+      var textArea = document.createElement("textarea");
+      textArea.value = str;
+      textArea.style.position = "fixed";  //avoid scrolling to bottom
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+
+      try {
+        document.execCommand('copy');
+      } catch (err) {
+        console.error('Oops, unable to copy', err);
+      }
+
+      document.body.removeChild(textArea);
+    });
+
+    this.contextMenu.querySelector('.menu-delete').addEventListener('click', () => {
+      if(this.peerID == this.myID) {
+        this.popupDeleteMessage.deleteBothBtn.style.display = 'none';
+        this.popupDeleteMessage.deleteMeBtn.innerText = 'DELETE';
+      } else {
+        this.popupDeleteMessage.deleteBothBtn.style.display = '';
+        this.popupDeleteMessage.deleteMeBtn.innerText = 'DELETE JUST FOR ME';
+
+        if(this.peerID > 0) {
+          let title = appPeersManager.getPeerTitle(this.peerID);
+          this.popupDeleteMessage.deleteBothBtn.innerText = 'DELETE FOR ME AND ' + title.split(' ')[0];
+        } else {
+          this.popupDeleteMessage.deleteBothBtn.innerText = 'DELETE FOR ALL';
+        }
+      }
+
+      this.popupDeleteMessage.popupEl.classList.add('active');
+    });
+
+    this.contextMenuPin.addEventListener('click', () => {
+      apiManager.invokeApi('messages.updatePinnedMessage', {
+        flags: 0,
+        peer: appPeersManager.getInputPeerByID(this.peerID),
+        id: this.contextMenuMsgID
+      }).then(updates => {
+        this.log('pinned updates:', updates);
+        apiUpdatesManager.processUpdateMessage(updates);
+      });
+    });
+
+    this.popupDeleteMessage.deleteBothBtn.addEventListener('click', () => {
+      this.deleteMessages(true);
+      this.popupDeleteMessage.cancelBtn.click();
+    });
+
+    this.popupDeleteMessage.deleteMeBtn.addEventListener('click', () => {
+      this.deleteMessages(false);
+      this.popupDeleteMessage.cancelBtn.click();
+    });
+
     this.updateStatusInterval = window.setInterval(() => this.updateStatus(), 50e3);
     this.updateStatus();
     setInterval(() => this.setPeerStatus(), 60e3);
     
     this.loadMediaQueueProcess();
+  }
+
+  public deleteMessages(revoke = false) {
+    let flags = revoke ? 1 : 0;
+    let ids = [this.contextMenuMsgID];
+
+    apiManager.invokeApi('messages.deleteMessages', {
+      flags: flags,
+      revoke: revoke,
+      id: ids
+    }).then((affectedMessages: any) => {
+      this.log('deleted messages:', affectedMessages);
+
+      apiUpdatesManager.processUpdateMessage({
+        _: 'updateShort',
+        update: {
+          _: 'updatePts',
+          pts: affectedMessages.pts,
+          pts_count: affectedMessages.pts_count
+        }
+      });
+
+      apiUpdatesManager.processUpdateMessage({
+        _: 'updateShort',
+        update: {
+          _: 'updateDeleteMessages',
+          messages: ids
+        }
+      });
+    });
   }
 
   public loadMediaQueuePush(cb: () => Promise<void>) {
@@ -1342,6 +1494,22 @@ export class AppImManager {
         }
 
         this.log('updateNotifySettings', peerID, notify_settings);
+        break;
+      }
+
+      case 'updateChatPinnedMessage':
+      case 'updateUserPinnedMessage': {
+        let {id} = update;
+
+        this.log('updateUserPinnedMessage', update);
+
+        this.pinnedMsgID = id;
+        // hz nado li tut appMessagesIDsManager.getFullMessageID(update.max_id, channelID);
+        let peerID = update.user_id || -update.chat_id || -update.channel_id;
+        if(peerID == this.peerID) {
+          appMessagesManager.wrapSingleMessage(id);
+        }
+
         break;
       }
     }

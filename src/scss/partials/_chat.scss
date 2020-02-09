@@ -883,6 +883,12 @@
 	} */
 }
 
+#bubble-contextmenu {
+	position: fixed;
+	right: auto;
+	bottom: auto;
+}
+
 .emoji-dropdown {
 	position: absolute;
 	left: 0;
@@ -1086,5 +1092,42 @@
 				height: 100%;
 			}
 		} 
+	}
+}
+
+.popup {
+	&.popup-delete-message {
+		
+
+		.popup-header {
+			margin-bottom: 1rem;
+		}
+	}
+
+	.popup-buttons {
+		display: flex;
+		flex-direction: column;
+		justify-content: flex-end;
+		align-items: flex-end;
+
+		button {
+			background: none;
+			outline: none;
+			border: none;
+			padding: .5rem .5rem;
+			text-transform: uppercase;
+			transition: .2s;
+			border-radius: $border-radius;
+			cursor: pointer;
+			color: $blue;
+
+			&:hover {
+				background-color: rgba(112, 117, 121, 0.08);
+			}
+			
+			& + button {
+				margin-top: .5rem;
+			}
+		}
 	}
 }

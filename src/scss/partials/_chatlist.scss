@@ -64,7 +64,7 @@
     position: relative;
     cursor: pointer;
     padding: 0 8.5px;
-    margin: 0 8.5px;
+    margin: 0 8.5px 0 8px;
     overflow: hidden;
 
     &:hover {
@@ -146,11 +146,12 @@
   }
 
   .message-status {
-    margin-right: .25rem;
+    margin-right: .1rem;
+    margin-top: .3rem;
 
     &[class*=" tgico-"] {
       color: $success-color;
-      font-size: 1.15rem;
+      font-size: 1.25rem;
     }
   }
 

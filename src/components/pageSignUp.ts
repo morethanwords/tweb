@@ -18,22 +18,6 @@ export default (_authCode: typeof authCode) => {
   let pageElement = document.body.getElementsByClassName('page-signUp')[0] as HTMLDivElement;
   pageElement.style.display = '';
 
-  let findUpClassName = (el: Element | HTMLElement, className: string): HTMLElement => {
-    while(el.parentNode) {
-      // @ts-ignore
-      el = el.parentNode;
-      if(el.classList.contains(className))
-        return <HTMLElement>el;
-    }
-    return null;
-  };
-  Array.from(document.body.getElementsByClassName('popup-close')).forEach(el => {
-    let popup = findUpClassName(el, 'popup');
-    el.addEventListener('click', () => {
-      popup.classList.remove('is-visible');
-    });
-  });
-
   const avatarInput = document.getElementById('avatar-input') as HTMLInputElement;
   const avatarPopup = pageElement.getElementsByClassName('popup-avatar')[0];
   const avatarPreview = pageElement.querySelector('#canvas-avatar') as HTMLCanvasElement;
@@ -46,7 +30,7 @@ export default (_authCode: typeof authCode) => {
   (avatarPopup.getElementsByClassName('popup-close')[0] as HTMLButtonElement)
   .addEventListener('click', function(this, e) {
     /* let popup = findUpClassName(this, 'popup');
-    popup.classList.remove('is-visible'); */
+    popup.classList.remove('active'); */
 
     setTimeout(() => {
       cropper.removeHandlers();
@@ -67,7 +51,7 @@ export default (_authCode: typeof authCode) => {
   // apply
   avatarPopup.getElementsByClassName('btn-crop')[0].addEventListener('click', () => {
     cropper.crop();
-    avatarPopup.classList.remove('is-visible');
+    avatarPopup.classList.remove('active');
     cropper.removeHandlers();
 
     avatarPreview.toBlob(blob => {
@@ -120,7 +104,7 @@ export default (_authCode: typeof authCode) => {
         avatarInput.value = '';
       };
 
-      avatarPopup.classList.add('is-visible');
+      avatarPopup.classList.add('active');
       //console.log(contents);
     };
 

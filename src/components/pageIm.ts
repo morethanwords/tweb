@@ -1,5 +1,5 @@
 //import { appImManager, appMessagesManager, appDialogsManager, apiUpdatesManager, appUsersManager } from "../lib/services";
-import { horizontalMenu, wrapSticker, MTDocument, LazyLoadQueue } from "./misc";
+import { horizontalMenu, wrapSticker, MTDocument, LazyLoadQueue, openBtnMenu } from "./misc";
 import Scrollable from './scrollable';
 
 import { whichChild, findUpTag } from "../lib/utils";
@@ -712,27 +712,13 @@ export default () => import('../lib/services').then(services => {
     toggleEmoticons.classList.toggle('active');
   }; */
 
-  let openedMenu: HTMLDivElement = null;
-  let onMouseMove = (e: MouseEvent) => {
-    let rect = openedMenu.getBoundingClientRect();
-    let {clientX, clientY} = e;
-
-    let diffX = clientX >= rect.right ? clientX - rect.right : rect.left - clientX;
-    let diffY = clientY >= rect.bottom ? clientY - rect.bottom : rect.top - clientY;
-
-    if(diffX >= 100 || diffY >= 100) {
-      openedMenu.parentElement.click();
-    }
-    //console.log('mousemove', diffX, diffY);
-  };
-  
   Array.from(document.getElementsByClassName('btn-menu-toggle')).forEach((el) => {
     el.addEventListener('click', (e) => {
       console.log('click pageIm');
       if(!el.classList.contains('btn-menu-toggle')) return false;
 
-      window.removeEventListener('mousemove', onMouseMove);
-      openedMenu = el.querySelector('.btn-menu');
+      //window.removeEventListener('mousemove', onMouseMove);
+      let openedMenu = el.querySelector('.btn-menu') as HTMLDivElement;
       e.cancelBubble = true;
 
       if(el.classList.contains('menu-open')) {
@@ -740,16 +726,8 @@ export default () => import('../lib/services').then(services => {
         openedMenu.classList.remove('active');
       } else {
         el.classList.add('menu-open');
-        openedMenu.classList.add('active');
-
-        window.addEventListener('click', () => {
-          //(el as HTMLDivElement).click();
-          el.classList.remove('menu-open');
-          openedMenu.classList.remove('active');
-          window.removeEventListener('mousemove', onMouseMove);
-        }, {once: true});
-
-        window.addEventListener('mousemove', onMouseMove);
+        
+        openBtnMenu(openedMenu);
       }
     });
   });

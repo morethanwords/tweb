@@ -410,7 +410,7 @@ export function scrollable(el: HTMLDivElement, x = false, y = true) {
   let thumbSize = 0;
   window.addEventListener('resize', resize);
   //container.addEventListener('DOMNodeInserted', resize);
-
+  
   let hiddenElements: {
     up: Element[],
     down: Element[]
@@ -418,23 +418,23 @@ export function scrollable(el: HTMLDivElement, x = false, y = true) {
     up: [],
     down: []
   };
-
+  
   let paddings = {up: 0, down: 0};
-
+  
   let paddingTopDiv = document.createElement('div');
   paddingTopDiv.classList.add('scroll-padding');
   let paddingBottomDiv = document.createElement('div');
   paddingBottomDiv.classList.add('scroll-padding');
-
+  
   let onScroll = (e: Event) => {
     // @ts-ignore
     //let st = container[scrollSide];
-
+    
     // @ts-ignore
     if(container[scrollType] != scrollSize || thumbSize == 0) {
       resize();
     }
-
+    
     //let splitUp = container.querySelector('ul');
     let splitUp = container.children[1];
     let children = Array.from(splitUp.children) as HTMLElement[];
@@ -447,57 +447,57 @@ export function scrollable(el: HTMLDivElement, x = false, y = true) {
         lastVisible = i;
       }
     }
-
+    
     if(firstVisible > 0) {
       let sliced = children.slice(0, firstVisible);
-
+      
       for(let child of sliced) {
         paddings.up += child.scrollHeight;
         hiddenElements.up.push(child);
         child.parentElement.removeChild(child);
       }
-
+      
       //console.log('sliced up', sliced.length);
-
+      
       //sliced.forEach(child => child.style.display = 'none');
       paddingTopDiv.style.height = paddings.up + 'px';
       //console.log('onscroll need to add padding: ', paddings.up);
     } else if(hiddenElements.up.length) {
       while(isElementInViewport(paddingTopDiv) && paddings.up) {
         let child = hiddenElements.up.pop();
-
+        
         splitUp.prepend(child);
-  
+        
         paddings.up -= child.scrollHeight;
         paddingTopDiv.style.height = paddings.up + 'px';
       }
     }
-
+    
     if(lastVisible < (length - 1)) {
       let sliced = children.slice(lastVisible + 1).reverse();
-
+      
       for(let child of sliced) {
         paddings.down += child.scrollHeight;
         hiddenElements.down.unshift(child);
         child.parentElement.removeChild(child);
       }
-
+      
       //console.log('onscroll sliced down', sliced.length);
-
+      
       //sliced.forEach(child => child.style.display = 'none');
       paddingBottomDiv.style.height = paddings.down + 'px';
       //console.log('onscroll need to add padding: ', paddings.up);
     } else if(hiddenElements.down.length) {
       while(isElementInViewport(paddingBottomDiv) && paddings.down) {
         let child = hiddenElements.down.shift();
-
+        
         splitUp.append(child);
-  
+        
         paddings.down -= child.scrollHeight;
         paddingBottomDiv.style.height = paddings.down + 'px';
       }
     }
-
+    
     //console.log('onscroll', container, firstVisible, lastVisible, hiddenElements);
     
     // @ts-ignore
@@ -508,7 +508,7 @@ export function scrollable(el: HTMLDivElement, x = false, y = true) {
     
     // @ts-ignore
     thumb.style[side] = (value >= maxValue ? maxValue : value) + '%';
-
+    
     //lastScrollPos = st;
   };
   
@@ -758,15 +758,15 @@ export function getNearestDc() {
 export function formatPhoneNumber(str: string) {
   str = str.replace(/\D/g, '');
   let phoneCode = str.slice(0, 6);
-
+  
   console.log('str', str, phoneCode);
-
+  
   let sortedCountries = Config.Countries.slice().sort((a, b) => b.phoneCode.length - a.phoneCode.length);
-
+  
   let country = sortedCountries.find((c) => {
     return c.phoneCode.split(' and ').find((c) => phoneCode.indexOf(c.replace(/\D/g, '')) == 0);
   });
-
+  
   let pattern = country ? country.pattern || country.phoneCode : '';
   if(country) {
     pattern.split('').forEach((symbol, idx) => {
@@ -779,6 +779,44 @@ export function formatPhoneNumber(str: string) {
       str = str.slice(0, country.pattern.length);
     }
   }
-
+  
   return {formatted: str, country};
+}
+
+let onMouseMove = (e: MouseEvent) => {
+  let rect = openedMenu.getBoundingClientRect();
+  let {clientX, clientY} = e;
+  
+  let diffX = clientX >= rect.right ? clientX - rect.right : rect.left - clientX;
+  let diffY = clientY >= rect.bottom ? clientY - rect.bottom : rect.top - clientY;
+  
+  if(diffX >= 100 || diffY >= 100) {
+    openedMenu.classList.remove('active');
+    openedMenu.parentElement.classList.remove('menu-open');
+    //openedMenu.parentElement.click();
+  }
+  //console.log('mousemove', diffX, diffY);
+};
+
+let openedMenu: HTMLDivElement = null;
+export function openBtnMenu(menuElement: HTMLDivElement) {
+  if(openedMenu) {
+    openedMenu.classList.remove('active');
+    openedMenu.parentElement.classList.remove('menu-open');
+  }
+  
+  openedMenu = menuElement;
+  openedMenu.classList.add('active');
+  
+  window.addEventListener('click', () => {
+    if(openedMenu) {
+      openedMenu.parentElement.classList.remove('menu-open');
+      openedMenu.classList.remove('active');
+      openedMenu = null;
+    }
+    
+    window.removeEventListener('mousemove', onMouseMove);
+  }, {once: true});
+  
+  window.addEventListener('mousemove', onMouseMove);
 }

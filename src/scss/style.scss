@@ -175,6 +175,20 @@ input {
     transform-origin: top left;
   }
 
+  &.top-left {
+    top: initial;
+    right: 0;
+    bottom: 100%;
+    transform-origin: bottom right;
+  }
+
+  &.top-right {
+    top: initial;
+    left: 0;
+    bottom: 100%;
+    transform-origin: bottom left;
+  }
+
   > div {
     display: flex;
     position: relative;
@@ -925,7 +939,7 @@ $width: 100px;
 }
 
 .popup {
-  position: fixed;
+  position: fixed!important;
   left: 0;
   top: 0;
   height: 100%;
@@ -948,7 +962,7 @@ $width: 100px;
   justify-content: center;
 }
 
-.popup.is-visible {
+.popup.active {
   opacity: 1;
   visibility: visible;
   -webkit-transition: opacity 0.3s 0s, visibility 0s 0s;
@@ -977,7 +991,7 @@ $width: 100px;
   transition-duration: 0.3s;
 }
 
-.popup-close {
+span.popup-close {
   /* position: absolute;
   left: 20px;
   top: 12.5px; */
@@ -1021,7 +1035,7 @@ $width: 100px;
   } */
 }
 
-.popup.is-visible .popup-container {
+.popup.active .popup-container {
   -webkit-transform: translateY(0);
   -moz-transform: translateY(0);
   -ms-transform: translateY(0);

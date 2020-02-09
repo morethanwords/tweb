@@ -7,7 +7,6 @@ import { nextRandomInt, bigint } from "../bin_utils";
 import { MTProto, telegramMeWebService } from "../mtproto/mtproto";
 import apiUpdatesManager from "./apiUpdatesManager";
 import appPhotosManager from "./appPhotosManager";
-import appProfileManager from "./appProfileManager";
 
 import AppStorage from '../storage';
 import AppPeersManager from "./appPeersManager";
