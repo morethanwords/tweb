@@ -728,6 +728,9 @@ export default () => import('../lib/services').then(services => {
   
   Array.from(document.getElementsByClassName('btn-menu-toggle')).forEach((el) => {
     el.addEventListener('click', (e) => {
+      console.log('click pageIm');
+      if(!el.classList.contains('btn-menu-toggle')) return false;
+
       window.removeEventListener('mousemove', onMouseMove);
       openedMenu = el.querySelector('.btn-menu');
       e.cancelBubble = true;

@@ -60,11 +60,11 @@
     border-radius: $border-radius;
     display: grid;
     align-items: center;
-    grid-template-columns: 60px calc(100% - 60px);
+    grid-template-columns: 64px calc(100% - 64px - 6.5px);
     position: relative;
     cursor: pointer;
-    padding: 0 .5rem;
-    margin: 0 .5rem;
+    padding: 0 8.5px;
+    margin: 0 8.5px;
     overflow: hidden;
 
     &:hover {

@@ -74,20 +74,27 @@ class AppSidebarLeft {
     
     appDialogsManager.setListClickListener(this.searchMessagesList);
     
+    let clickTimeout = 0;
     this.searchInput.addEventListener('focus', (e) => {
-      this.toolsBtn.classList.remove('tgico-menu');
+      this.toolsBtn.classList.remove('tgico-menu', 'btn-menu-toggle');
       this.toolsBtn.classList.add('tgico-back');
       this.searchContainer.classList.add('active');
       
       if(!this.searchInput.value) {
         this.searchMessagesList.innerHTML = '';
       }
-      
+
       this.searchInput.addEventListener('blur', (e) => {
         if(!this.searchInput.value) {
           this.toolsBtn.classList.add('tgico-menu');
           this.toolsBtn.classList.remove('tgico-back');
           this.searchContainer.classList.remove('active');
+          
+
+          setTimeout(() => {
+            //this.toolsBtn.click();
+            this.toolsBtn.classList.add('btn-menu-toggle');
+          }, 200);
         }
         
         /* this.peerID = 0;
@@ -121,15 +128,20 @@ class AppSidebarLeft {
       });
     });
     
-    this.toolsBtn.addEventListener('click', () => {
+    this.toolsBtn.addEventListener('click', (e) => {
+      this.log('click', this.toolsBtn.classList.contains('tgico-back'));
       if(this.toolsBtn.classList.contains('tgico-back')) {
         this.searchInput.value = '';
-        this.toolsBtn.classList.add('tgico-menu');
+        this.toolsBtn.classList.add('tgico-menu', 'btn-menu-toggle');
         this.toolsBtn.classList.remove('tgico-back');
         this.searchContainer.classList.remove('active');
         this.peerID = 0;
+        e.stopPropagation();
+        e.cancelBubble = true;
+        e.preventDefault();
+        return false;
       }
-    });
+    }, true);
     
     window.addEventListener('resize', () => {
       this.chatsLoadCount = Math.round(document.body.scrollHeight / 70 * 1.5);
