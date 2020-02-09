@@ -215,7 +215,8 @@
 				width: min-content;
 
 				.box.web {
-					width: min-content;
+					width: max-content;
+					/* width: min-content; */
 					max-width: 100%;
 				}
 			}
@@ -427,9 +428,8 @@
 			}
 
 			.message {
-        font-size: 1rem;
+				font-size: 1rem;
 				padding: 0 .6rem .2675rem .6rem;
-				padding-top: 0;
 				overflow: hidden;
 				text-overflow: ellipsis;
 				max-width: 100%;
@@ -501,11 +501,6 @@
 				cursor: pointer;
 			}
 
-			&.forwarded/*  .message-empty + */ .attachment {
-				border-top-left-radius: 0;
-				border-top-right-radius: 0;
-			}
-
 			> .name {
 				padding: .2675rem .6rem 0 .6rem;
 				font-weight: 500;
@@ -517,6 +512,22 @@
 				overflow: hidden;
 				text-overflow: ellipsis;
 				white-space: nowrap;
+			}
+
+			&:not(.webpage) {
+				&.photo, &.video {
+					.name {
+						padding-bottom: .2675rem;
+					}
+	
+					.message:not(.message-empty) {
+						padding-top: .2675rem;
+					}
+				}
+			}
+
+			&.hide-name .message:not(.message-empty) {
+				padding-top: .2675rem;
 			}
 
 			&:not(.sticker):not(.emoji-big):last-child:after {
@@ -594,7 +605,13 @@
 
         &:first-child:last-child {
           border-radius: 12px 12px 12px 0px;
-        }
+				}
+
+				&.forwarded .attachment,
+				&:not(.hide-name):not(.sticker) .attachment {
+					border-top-left-radius: 0;
+					border-top-right-radius: 0;
+				}
 			}
 		}
 
@@ -674,7 +691,12 @@
 
         &:first-child:last-child {
 					border-radius: 12px 12px 0px 12px;
-        }
+				}
+				
+				&.forwarded .attachment {
+					border-top-left-radius: 0;
+					border-top-right-radius: 0;
+				}
 			}
 			
 			.user-avatar {

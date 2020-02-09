@@ -297,6 +297,10 @@ class AppSidebarRight {
     this.loadSidebarMediaPromises = {};
     this.lastSharedMediaDiv = document.createElement('div');
 
+    if(this.sharedMediaSelected) {
+      this.sidebarScroll.setVirtualContainer(this.sharedMediaSelected);
+    }
+
     this.profileContentEl.parentElement.scrollTop = 0;
     this.profileElements.bio.style.display = 'none';
     this.profileElements.phone.style.display = 'none';

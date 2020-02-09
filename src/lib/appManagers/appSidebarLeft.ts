@@ -49,8 +49,8 @@ class AppSidebarLeft {
     this.chatsLoadCount = Math.round(document.body.scrollHeight / 70 * 1.5);
     
     this.scroll = new Scrollable(this.chatsContainer as HTMLDivElement);
-    appDialogsManager.chatsHidden = this.scroll.hiddenElements;
     this.scroll.setVirtualContainer(appDialogsManager.chatList);
+    appDialogsManager.chatsHidden = this.scroll.hiddenElements;
     
     this.scroll.container.addEventListener('scroll', this.onChatsScroll.bind(this));
     
@@ -171,7 +171,7 @@ class AppSidebarLeft {
   }
   
   public onChatsScroll() {
-    //this.log(this.scroll);
+    this.log(this.scroll);
     if(this.scroll.hiddenElements.down.length > 0/*  || 1 == 1 */) return;
     
     if(!this.loadDialogsPromise) {

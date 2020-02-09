@@ -134,7 +134,6 @@ export class AppDialogsManager {
   }
 
   public sortDom() {
-    console.log('sortDom');
     //return;
 
     let dialogs = appMessagesManager.dialogsStorage.dialogs;
@@ -142,11 +141,11 @@ export class AppDialogsManager {
     let inUpper: HTMLLIElement[] = [];
     let inBottom: HTMLLIElement[] = [];
 
-    let lastPinnedIndex = -1;
+    let pinnedDialogs = [];
     for(let i = 0; i < dialogs.length; ++i) {
       let dialog = dialogs[i];
       if(!dialog.pFlags.pinned) break;
-      lastPinnedIndex = i;
+      pinnedDialogs.push(dialog);
     }
 
     let sorted = dialogs
@@ -158,27 +157,44 @@ export class AppDialogsManager {
       return timeB - timeA;
     });
 
-    if(lastPinnedIndex != -1) {
-      sorted = dialogs.slice(0, lastPinnedIndex + 1).concat(sorted);
-    }
+    sorted = pinnedDialogs.concat(sorted);
 
-    let inViewportIndex = -1;
-    sorted.forEach((d: any) => {
+    //console.log('sortDom', sorted, this.chatsHidden, this.chatsHidden.up, this.chatsHidden.down);
+
+    let hiddenLength: number = this.chatsHidden.up.length;
+    let inViewportLength = this.chatList.childElementCount;
+
+    this.chatList.innerHTML = '';
+
+    let inViewportIndex = 0;
+    sorted.forEach((d: any, idx) => {
       let dom = this.getDialogDom(d.peerID);
       if(!dom) return;
 
-      if(this.chatsHidden.up.find((d: HTMLLIElement) => d === dom.listEl)) {
+      if(inUpper.length < hiddenLength) {
+        inUpper.push(dom.listEl);
+      } else if(inViewportIndex <= inViewportLength - 1) {
+        this.chatList.append(dom.listEl);
+        ++inViewportIndex;
+        //this.chatList.insertBefore(dom.listEl, this.chatList.children[inViewportIndex++]);
+      } else {
+        inBottom.push(dom.listEl);
+      }
+
+      /* if(this.chatsHidden.up.find((d: HTMLLIElement) => d === dom.listEl)) {
         inUpper.push(dom.listEl);
       } else if(isElementInViewport(dom.listEl)) {
         this.chatList.insertBefore(dom.listEl, this.chatList.children[++inViewportIndex]);
       } else if(this.chatsHidden.down.find((d: HTMLLIElement) => d === dom.listEl)) {
         inBottom.push(dom.listEl);
       } else {
-        //console.warn('found no dom!', dom, d);
-      }
+        //console.warn('sortDom found no dom!', dom, d);
+      } */
 
       //this.chatList.append(dom.listEl);
     });
+
+    console.log('sortDom', sorted.length, inUpper.length, this.chatList.childElementCount, inBottom.length);
 
     this.chatsHidden.up = inUpper;
     this.chatsHidden.down = inBottom;

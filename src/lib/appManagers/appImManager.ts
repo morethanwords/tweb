@@ -578,8 +578,10 @@ export class AppImManager {
 
     this.titleEl.innerText = appSidebarRight.profileElements.name.innerText = dom.titleSpan.innerText;
 
-    this.topbar.style.display = this.chatInput.style.display = '';
+    this.topbar.style.display = '';
     appSidebarRight.toggleSidebar(true);
+
+    this.chatInput.style.display = appPeersManager.isChannel(peerID) && !appPeersManager.isMegagroup(peerID) ? 'none' : '';
 
     return Promise.all([
       this.getHistory(lastMsgID).then(() => {
@@ -1012,11 +1014,13 @@ export class AppImManager {
           }
         } */
 
-        if(!bubble.classList.contains('sticker')) {
+        if(!bubble.classList.contains('sticker') && (peerID < 0 && peerID != message.fromID)) {
           let nameDiv = document.createElement('div');
           nameDiv.classList.add('name');
           nameDiv.innerText = title;
           bubble.append(nameDiv);
+        } else {
+          bubble.classList.add('hide-name');
         }
   
         //bubble.prepend(avatarDiv);

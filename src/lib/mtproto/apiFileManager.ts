@@ -179,7 +179,7 @@ export class ApiFileManager {
       return Promise.reject({type: 'BROWSER_BLOB_NOT_SUPPORTED'});
     }
 
-    this.log('downloadSmallFile', location, options);
+    //this.log('downloadSmallFile', location, options);
 
     let dcID = options.dcID || location.dc_id;
     let mimeType = options.mimeType || 'image/jpeg';
@@ -210,7 +210,7 @@ export class ApiFileManager {
           limit: 1024 * 1024
         };
 
-        this.log('next small promise', params);
+        //this.log('next small promise', params);
         return apiManager.invokeApi('upload.getFile', params, {
           dcID: dcID,
           fileDownload: true,

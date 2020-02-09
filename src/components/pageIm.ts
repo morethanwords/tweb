@@ -39,7 +39,7 @@ let initEmoticonsDropdown = (pageEl: HTMLDivElement,
   });
   (tabs.children[0] as HTMLLIElement).click(); // set media
 
-  let emoticonsMenuOnClick = (menu: HTMLUListElement, heights: number[], scroll: HTMLDivElement) => {
+  let emoticonsMenuOnClick = (menu: HTMLUListElement, heights: number[], scroll: Scrollable) => {
     menu.addEventListener('click', function(e) {
       let target = e.target as HTMLLIElement;
       target = findUpTag(target, 'LI');
@@ -47,15 +47,17 @@ let initEmoticonsDropdown = (pageEl: HTMLDivElement,
       let index = whichChild(target);
       let y = heights[index - 1/* 2 */] || 0; // 10 == padding .scrollable
 
-      //console.log(target, index, heights, y, scroll);
+      console.log('emoticonsMenuOnClick', index, y, scroll.container.scrollHeight, scroll);
 
-      //scroll.scroll({y: y + 'px'});
-      scroll.scrollTop = y;
+      scroll.onAddedBottom = () => { // привет, костыль, давно не виделись!
+        scroll.container.scrollTop = y;
+        scroll.onAddedBottom = () => {};
+      };
+      scroll.container.scrollTop = y;
     });
   };
 
   let emoticonsContentOnScroll = (menu: HTMLUListElement, heights: number[], prevCategoryIndex: number, scroll: HTMLDivElement) => {
-    let pos = scroll.scroll();
     let y = scroll.scrollTop;
 
     //console.log(heights, y);
@@ -182,7 +184,7 @@ let initEmoticonsDropdown = (pageEl: HTMLDivElement,
     });
     //emojiScroll.setVirtualContainer(emojiScroll.container);
 
-    emoticonsMenuOnClick(menu, heights, emojiScroll.container);
+    emoticonsMenuOnClick(menu, heights, emojiScroll);
   }
 
   let stickersInit = () => {
@@ -354,7 +356,7 @@ let initEmoticonsDropdown = (pageEl: HTMLDivElement,
     });
     stickersScroll.setVirtualContainer(stickersDiv);
 
-    emoticonsMenuOnClick(menu, heights, stickersScroll.container);
+    emoticonsMenuOnClick(menu, heights, stickersScroll);
 
     stickersInit = null;
   };
@@ -431,6 +433,7 @@ export default () => import('../lib/services').then(services => {
   document.addEventListener('dialogs_multiupdate', (e: CustomEvent) => {
     let dialogs = e.detail;
 
+    let performed = 0;
     for(let id in dialogs) {
       let dialog = dialogs[id];
 
@@ -442,9 +445,13 @@ export default () => import('../lib/services').then(services => {
       } 
 
       appDialogsManager.setLastMessage(dialog);
+
+      ++performed;
     }
 
-    appDialogsManager.sortDom();
+    if(performed) {
+      appDialogsManager.sortDom();
+    }
   });
 
   // @ts-ignore

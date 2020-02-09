@@ -1304,7 +1304,7 @@ div.scrollable::-webkit-scrollbar-thumb {
       flex-direction: column;
     }
     
-    > div {
+    > div:not(.scroll-padding) {
       width: 100%;
       padding: 7.5px;
       max-width: 100%;

@@ -27,6 +27,8 @@ export default class Scrollable {
 
   public splitUp: HTMLElement;
 
+  public onAddedBottom: () => void = null;
+
   /* public topObserver: IntersectionObserver;
   public isTopIntersecting: boolean;
   public bottomObserver: IntersectionObserver;
@@ -129,14 +131,9 @@ export default class Scrollable {
 
   public setVirtualContainer(el: HTMLElement) {
     this.splitUp = el;
-    this.hiddenElements = {
-      up: [],
-      down: []
-    };
-    this.paddings = {
-      up: 0,
-      down: 0
-    };
+    
+    this.hiddenElements.up.length = this.hiddenElements.down.length = 0;
+    this.paddings.up = this.paddings.down = 0;
 
     if(this.paddingTopDiv.parentElement) {
       this.paddingTopDiv.style.height = '';
@@ -235,6 +232,8 @@ export default class Scrollable {
         this.paddings.down -= child.scrollHeight;
         this.paddingBottomDiv.style.height = this.paddings.down + 'px';
       }
+
+      if(this.onAddedBottom) this.onAddedBottom();
     }
 
     //console.log('onscroll', container, firstVisible, lastVisible, hiddenElements);

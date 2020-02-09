@@ -563,7 +563,7 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
     console.error('wrong doc for wrapSticker!', doc, div);
   }
   
-  console.log('wrap sticker', doc);
+  //console.log('wrap sticker', doc);
   
   if(doc.thumbs && !div.firstElementChild) {
     let thumb = doc.thumbs[0];
