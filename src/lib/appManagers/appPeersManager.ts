@@ -3,6 +3,22 @@ import appChatsManager from "./appChatsManager";
 import { isObject } from "../utils";
 import { RichTextProcessor } from "../richtextprocessor";
 
+// https://github.com/eelcohn/Telegram-API/wiki/Calculating-color-for-a-Telegram-user-on-IRC
+/*
+  HTML-color  IRC-color  Description
+  #c03d33     4          red
+  #4fad2d     3          green
+  #d09306     7          yellow
+  #168acd     10         blue
+  #8544d6     6          purple
+  #cd4073     13         pink
+  #2996ad     11         sea
+  #ce671b     5          orange
+  */
+const DialogColorsFg = ['#c03d33', '#4fad2d', '#d09306', '#168acd', '#8544d6', '#cd4073', '#2996ad', '#ce671b'];
+const DialogColors = ['#e17076', '#7bc862', '#e5ca77', '#65AADD', '#a695e7', '#ee7aae', '#6ec9cb', '#faa774'];
+const DialogColorsMap = [0, 7, 4, 1, 6, 3, 5];
+
 const AppPeersManager = {
   getPeerPhoto: (peerID: number) => {
     return peerID > 0
@@ -113,6 +129,12 @@ const AppPeersManager = {
       user_id: peerID,
       access_hash: appUsersManager.getUser(peerID).access_hash || 0
     };
+  },
+
+  getPeerColorByID: (peerID: number, pic = true) => {
+    let idx = DialogColorsMap[(peerID < 0 ? -peerID : peerID) % 7];
+    let color = (pic ? DialogColors : DialogColorsFg)[idx];
+    return color;
   },
 
   isMegagroup: (peerID: number) => {

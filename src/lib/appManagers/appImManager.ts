@@ -356,6 +356,7 @@ export class AppImManager {
 
   public contextMenu = document.getElementById('bubble-contextmenu') as HTMLDivElement;
   private contextMenuPin = this.contextMenu.querySelector('.menu-pin') as HTMLDivElement;
+  private contextMenuEdit = this.contextMenu.querySelector('.menu-edit') as HTMLDivElement;
   private contextMenuMsgID: number;
 
   public replyElements: {
@@ -568,6 +569,8 @@ export class AppImManager {
         this.contextMenuMsgID = msgID;
 
         let side = bubble.parentElement.classList.contains('in') ? 'left' : 'right';
+
+        this.contextMenuEdit.style.display = side == 'right' ? '' : 'none';
 
         this.contextMenu.classList.remove('bottom-left', 'bottom-right');
         this.contextMenu.classList.add(side == 'left' ? 'bottom-right' : 'bottom-left');
@@ -1475,6 +1478,7 @@ export class AppImManager {
           let nameDiv = document.createElement('div');
           nameDiv.classList.add('name');
           nameDiv.innerHTML = 'Forwarded from ' + title;
+          nameDiv.style.color = appPeersManager.getPeerColorByID(message.fromID);
           bubble.append(nameDiv);
         }
       } else {
@@ -1545,6 +1549,7 @@ export class AppImManager {
           let nameDiv = document.createElement('div');
           nameDiv.classList.add('name');
           nameDiv.innerHTML = title;
+          nameDiv.style.color = appPeersManager.getPeerColorByID(message.fromID);
           bubble.append(nameDiv);
         } else if(!message.reply_to_mid) {
           bubble.classList.add('hide-name');
