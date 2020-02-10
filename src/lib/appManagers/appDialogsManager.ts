@@ -20,6 +20,9 @@ type DialogDom = {
   listEl: HTMLLIElement
 };
 
+const DialogColors = ['#c03d33', '#4fad2d', '#d09306', '#168acd', '#8544d6', '#cd4073', '#2996ad', '#ce671b'];
+const DialogColorsMap = [0, 7, 4, 1, 6, 3, 5];
+
 export class AppDialogsManager {
   public chatList = document.getElementById('dialogs') as HTMLUListElement;
   public pinnedDelimiter: HTMLDivElement;
@@ -73,6 +76,17 @@ export class AppDialogsManager {
     });
   }
 
+  /*
+  HTML-color  IRC-color  Description
+  #c03d33     4          red
+  #4fad2d     3          green
+  #d09306     7          yellow
+  #168acd     10         blue
+  #8544d6     6          purple
+  #cd4073     13         pink
+  #2996ad     11         sea
+  #ce671b     5          orange
+  */
   public async loadDialogPhoto(div: HTMLDivElement, peerID: number | string, isDialog = false): Promise<boolean> {
     let inputPeer: any;
     let location: any;
@@ -98,8 +112,14 @@ export class AppDialogsManager {
         div.firstChild.remove();
       }
 
+      let color = '';
+      if(typeof(peerID) != 'string') {
+        color = DialogColors[DialogColorsMap[(peerID < 0 ? -peerID : peerID) % 7]];
+      }
+
       div.classList.remove('tgico-savedmessages');
       div.style.fontSize = '';
+      div.style.backgroundColor = color;
 
       let abbrSplitted = (typeof(peerID) != 'string' ? appPeersManager.getPeerTitle(peerID, true) : peerID).split(' ');
       let abbr = (abbrSplitted.length == 2 ? 
