@@ -188,7 +188,7 @@ export class AppMessagesManager {
     var message: any;
 
     if(historyStorage === undefined) {
-      historyStorage = this.historiesStorage[peerID] = {count: null, history: [], pending: []}
+      historyStorage = this.historiesStorage[peerID] = {count: null, history: [], pending: []};
     }
 
     var fromID = appUsersManager.getSelf().id;
@@ -203,14 +203,14 @@ export class AppMessagesManager {
     }
 
     if(replyToMsgID) {
-      flags |= 8
+      flags |= 8;
     }
 
     if(asChannel) {
-      fromID = 0
-      pFlags.post = true
+      fromID = 0;
+      pFlags.post = true;
     } else {
-      flags |= 256
+      flags |= 256;
     }
 
     message = {
@@ -340,7 +340,7 @@ export class AppMessagesManager {
         if(this.pendingAfterMsgs[peerID] === sentRequestOptions) {
           delete this.pendingAfterMsgs[peerID];
         }
-      })
+      });
 
       this.pendingAfterMsgs[peerID] = sentRequestOptions;
     }

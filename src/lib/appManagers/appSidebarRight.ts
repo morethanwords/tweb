@@ -21,6 +21,7 @@ class AppSidebarRight {
     bio: this.profileContentEl.querySelector('.profile-row-bio') as HTMLDivElement,
     username: this.profileContentEl.querySelector('.profile-row-username') as HTMLDivElement,
     phone: this.profileContentEl.querySelector('.profile-row-phone') as HTMLDivElement,
+    notificationsRow: this.profileContentEl.querySelector('.profile-row-notifications') as HTMLDivElement,
     notificationsCheckbox: this.profileContentEl.querySelector('#profile-notifications') as HTMLInputElement,
     notificationsStatus: this.profileContentEl.querySelector('.profile-row-notifications > p') as HTMLParagraphElement
   };
@@ -69,23 +70,53 @@ class AppSidebarRight {
   private peerID = 0;
 
   public sidebarScroll: Scrollable = null;
+  private savedVirtualStates: {
+    [id: number]: {
+      hiddenElements: any,
+      paddings: any
+    }
+  }
+
+  private profileTabs: HTMLUListElement;
+  private prevTabID = -1;
 
   constructor() {
     let container = this.profileContentEl.querySelector('.profile-tabs-content') as HTMLDivElement;
-    let tabs = this.profileContentEl.querySelector('.profile-tabs') as HTMLUListElement;
+    this.profileTabs = this.profileContentEl.querySelector('.profile-tabs') as HTMLUListElement;
 
     this.sidebarScroll = new Scrollable(this.sidebarEl);
     this.sidebarScroll.container.addEventListener('scroll', this.onSidebarScroll.bind(this));
 
-    horizontalMenu(tabs, container, (id, tabContent) => {
+    horizontalMenu(this.profileTabs, container, (id, tabContent) => {
       this.sharedMediaType = this.sharedMediaTypes[id];
       this.sharedMediaSelected = tabContent.firstElementChild as HTMLDivElement;
 
-      this.log('setVirtualContainer', this.sharedMediaSelected);
+      if(this.prevTabID != -1) {
+        this.savedVirtualStates[this.prevTabID] = {
+          hiddenElements: {
+            up: this.sidebarScroll.hiddenElements.up.slice(),
+            down: this.sidebarScroll.hiddenElements.down.slice(),
+          },
+          paddings: {
+            up: this.sidebarScroll.paddings.up,
+            down: this.sidebarScroll.paddings.down
+          } 
+        };
+      }
+
+      this.prevTabID = id;
+
+      this.log('setVirtualContainer', id, this.sharedMediaSelected);
       this.sidebarScroll.setVirtualContainer(this.sharedMediaSelected);
+
+      if(this.savedVirtualStates[id]) {
+        this.log(this.savedVirtualStates[id]);
+        this.sidebarScroll.hiddenElements = this.savedVirtualStates[id].hiddenElements;
+        this.sidebarScroll.paddings = this.savedVirtualStates[id].paddings;
+      }
     }, this.onSidebarScroll.bind(this));
 
-    (tabs.children[1] as HTMLLIElement).click(); // set media
+    //(this.profileTabs.children[1] as HTMLLIElement).click(); // set media
 
     let sidebarCloseBtn = this.sidebarEl.querySelector('.sidebar-close-button') as HTMLButtonElement;
     sidebarCloseBtn.addEventListener('click', () => {
@@ -297,14 +328,21 @@ class AppSidebarRight {
     this.loadSidebarMediaPromises = {};
     this.lastSharedMediaDiv = document.createElement('div');
 
+    this.log('fillProfileElements');
+
+    this.savedVirtualStates = {};
+    this.prevTabID = -1;
+    (this.profileTabs.children[1] as HTMLLIElement).click(); // set media
+
     if(this.sharedMediaSelected) {
-      this.sidebarScroll.setVirtualContainer(this.sharedMediaSelected);
+      //this.sidebarScroll.setVirtualContainer(this.sharedMediaSelected);
     }
 
     this.profileContentEl.parentElement.scrollTop = 0;
     this.profileElements.bio.style.display = 'none';
     this.profileElements.phone.style.display = 'none';
     this.profileElements.username.style.display = 'none';
+    this.profileElements.notificationsRow.style.display = '';
     this.profileElements.notificationsCheckbox.checked = true;
     this.profileElements.notificationsStatus.innerText = 'Enabled';
 
@@ -329,14 +367,16 @@ class AppSidebarRight {
     };
 
     // username
-    let username = appPeersManager.getPeerUsername(peerID);
-    if(username) {
-      setText(appPeersManager.getPeerUsername(peerID), this.profileElements.username);
+    if(peerID != appImManager.myID) {
+      let username = appPeersManager.getPeerUsername(peerID);
+      if(username) {
+        setText(appPeersManager.getPeerUsername(peerID), this.profileElements.username);
+      }
     }
 
     if(peerID > 0) {
       let user = appUsersManager.getUser(peerID);
-      if(user.phone) {
+      if(user.phone && peerID != appImManager.myID) {
         setText('+' + formatPhoneNumber(user.phone).formatted, this.profileElements.phone);
       }
 
@@ -346,7 +386,7 @@ class AppSidebarRight {
           return;
         }
 
-        if(userFull.rAbout) {
+        if(userFull.rAbout && peerID != appImManager.myID) {
           setText(userFull.rAbout, this.profileElements.bio);
         }
   
@@ -374,15 +414,19 @@ class AppSidebarRight {
       });
     }
 
-    let dialog: any = appMessagesManager.getDialogByPeerID(peerID);
-    if(dialog.length) {
-      dialog = dialog[0];
-      let muted = false;
-      if(dialog.notify_settings && dialog.notify_settings.mute_until) {
-        muted = new Date(dialog.notify_settings.mute_until * 1000) > new Date();
+    if(peerID != appImManager.myID) {
+      let dialog: any = appMessagesManager.getDialogByPeerID(peerID);
+      if(dialog.length) {
+        dialog = dialog[0];
+        let muted = false;
+        if(dialog.notify_settings && dialog.notify_settings.mute_until) {
+          muted = new Date(dialog.notify_settings.mute_until * 1000) > new Date();
+        }
+  
+        appImManager.setMutedState(muted);
       }
-
-      appImManager.setMutedState(muted);
+    } else {
+      this.profileElements.notificationsRow.style.display = 'none';
     }
 
     //this.loadSidebarMedia();

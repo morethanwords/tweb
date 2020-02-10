@@ -140,12 +140,21 @@ export class AppImManager {
   private contextMenuPin = this.contextMenu.querySelector('.menu-pin') as HTMLDivElement;
   private contextMenuMsgID: number;
 
+  public replyElements: {
+    container?: HTMLDivElement,
+    cancelBtn?: HTMLButtonElement,
+    titleEl?: HTMLDivElement,
+    subtitleEl?: HTMLDivElement
+  } = {};
+
   private popupDeleteMessage: {
     popupEl?: HTMLDivElement,
     deleteBothBtn?: HTMLButtonElement,
     deleteMeBtn?: HTMLButtonElement,
     cancelBtn?: HTMLButtonElement
   } = {};
+
+  public replyToMsgID = 0;
 
   constructor() {
     this.log = logger('IM');
@@ -156,6 +165,11 @@ export class AppImManager {
     this.popupDeleteMessage.deleteBothBtn = this.popupDeleteMessage.popupEl.querySelector('.popup-delete-both') as HTMLButtonElement;
     this.popupDeleteMessage.deleteMeBtn = this.popupDeleteMessage.popupEl.querySelector('.popup-delete-me') as HTMLButtonElement;
     this.popupDeleteMessage.cancelBtn = this.popupDeleteMessage.popupEl.querySelector('.popup-close') as HTMLButtonElement;
+
+    this.replyElements.container = this.pageEl.querySelector('.reply-wrapper') as HTMLDivElement;
+    this.replyElements.cancelBtn = this.replyElements.container.querySelector('.reply-cancel') as HTMLButtonElement;
+    this.replyElements.titleEl = this.replyElements.container.querySelector('.reply-title') as HTMLDivElement;
+    this.replyElements.subtitleEl = this.replyElements.container.querySelector('.reply-subtitle') as HTMLDivElement;
 
     apiManager.getUserID().then((id) => {
       this.myID = id;
@@ -356,6 +370,15 @@ export class AppImManager {
 
       this.popupDeleteMessage.popupEl.classList.add('active');
     });
+    
+    this.contextMenu.querySelector('.menu-reply').addEventListener('click', () => {
+      let message = appMessagesManager.getMessage(this.contextMenuMsgID);
+      let title = appPeersManager.getPeerTitle(message.fromID).split(' ')[0];
+      this.replyElements.titleEl.innerText = title;
+      this.replyElements.subtitleEl.innerText = message.message || '';
+      this.replyElements.container.classList.add('active');
+      this.replyToMsgID = this.contextMenuMsgID;
+    });
 
     this.contextMenuPin.addEventListener('click', () => {
       apiManager.invokeApi('messages.updatePinnedMessage', {
@@ -366,6 +389,11 @@ export class AppImManager {
         this.log('pinned updates:', updates);
         apiUpdatesManager.processUpdateMessage(updates);
       });
+    });
+
+    this.replyElements.cancelBtn.addEventListener('click', () => {
+      this.replyElements.container.classList.remove('active');
+      this.replyToMsgID = 0;
     });
 
     this.popupDeleteMessage.deleteBothBtn.addEventListener('click', () => {
@@ -1113,7 +1141,7 @@ export class AppImManager {
       /* let fromTitle =  */appPeersManager.getPeerTitle(fwd.from_id);
     }
 
-    if((this.peerID < 0 && !our) || message.fwd_from) { // chat
+    if((this.peerID < 0 && !our) || message.fwd_from || message.reply_to_mid) { // chat
       let title = appPeersManager.getPeerTitle(message.fwdFromID || message.fromID);
       //this.log(title);
 
@@ -1152,6 +1180,7 @@ export class AppImManager {
           box.append(quote);
 
           bubble.append(box);
+          //bubble.classList.add('reply');
         }
 
         /* if(message.media) {
@@ -1171,7 +1200,7 @@ export class AppImManager {
           nameDiv.classList.add('name');
           nameDiv.innerText = title;
           bubble.append(nameDiv);
-        } else {
+        } else if(!message.reply_to_mid) {
           bubble.classList.add('hide-name');
         }
   
@@ -1243,11 +1272,22 @@ export class AppImManager {
     let justDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     let dateTimestamp = justDate.getTime();
     if(!(dateTimestamp in this.dateMessages)) {
-      const months = ['January', 'February', 'March', 'April', 'May', 'June', 
-        'July', 'August', 'September', 'October', 'November', 'December'];
-      let str = justDate.getFullYear() == new Date().getFullYear() ? 
-        months[justDate.getMonth()] + ' ' + justDate.getDate() : 
-        justDate.toISOString().split('T')[0].split('-').reverse().join('.');
+      let str = '';
+
+      let today = new Date();
+      today.setHours(0);
+      today.setMinutes(0);
+      today.setSeconds(0);
+
+      if(today < date) {
+        str = 'Today';
+      } else {
+        const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+          'July', 'August', 'September', 'October', 'November', 'December'];
+        str = justDate.getFullYear() == new Date().getFullYear() ? 
+          months[justDate.getMonth()] + ' ' + justDate.getDate() : 
+          justDate.toISOString().split('T')[0].split('-').reverse().join('.');
+      }
 
       let div = document.createElement('div');
       div.classList.add('service');

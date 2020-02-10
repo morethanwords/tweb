@@ -146,6 +146,11 @@ export class AppDialogsManager {
       let dialog = dialogs[i];
       if(!dialog.pFlags.pinned) break;
       pinnedDialogs.push(dialog);
+
+      let dom = this.getDialogDom(dialog.peerID);
+      if(dom) {
+        dom.listEl.append(this.pinnedDelimiter);
+      }
     }
 
     let sorted = dialogs

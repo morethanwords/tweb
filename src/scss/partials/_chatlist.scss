@@ -99,9 +99,14 @@
     align-items: center;
     height: 1.7rem; // hot-fix
     
-    span:not(.tgico-pinnedchat):not(.emoji):last-child {
+    /* span:not(.tgico-pinnedchat):not(.emoji):last-child { */
+    .user-title + span {
       /* font-size: .9rem; */
       font-size: .8rem;
+    }
+
+    .user-last-message + span:not(.tgico-pinnedchat) {
+      font-size: .9rem;
     }
   }
 

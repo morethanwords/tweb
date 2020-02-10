@@ -594,7 +594,11 @@ export default () => import('../lib/services').then(services => {
 
     //console.log('childnode str after:', str);
 
-    appMessagesManager.sendText(appImManager.peerID, str);
+    appMessagesManager.sendText(appImManager.peerID, str, {
+      replyToMsgID: appImManager.replyToMsgID == 0 ? undefined : appImManager.replyToMsgID
+    });
+    appImManager.replyToMsgID = 0;
+    appImManager.replyElements.container.classList.remove('active');
     appImManager.scroll.scrollTop = appImManager.scroll.scrollHeight;
     messageInput.innerText = '';
 
