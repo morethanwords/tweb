@@ -221,7 +221,7 @@ export class LazyLoadQueue {
   }
 }
 
-export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement, message: any, justLoader = true, preloader?: ProgressivePreloader) {
+export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement, message: any, justLoader = true, preloader?: ProgressivePreloader, controls = true) {
   //if(!container.firstElementChild || container.firstElementChild.tagName != 'IMG') {
   let size = appPhotosManager.setAttachmentSize(doc, container);
   //}
@@ -260,11 +260,11 @@ export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement,
       console.log('loaded doc:', doc, blob, container);
       
       let video = document.createElement('video');
-      video.loop = true;
-      video.autoplay = true;
+      video.loop = controls;
+      video.autoplay = controls;
       
       if(!justLoader) {
-        video.controls = true;
+        video.controls = controls;
       } else {
         video.volume = 0;
       }

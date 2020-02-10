@@ -133,7 +133,7 @@ export class AppMediaViewer {
   
   public openMedia(message: any, reverse = false) {
     this.log('openMedia doc:', message);
-    let media = message.media.photo || message.media.document || message.media.webpage.document;
+    let media = message.media.photo || message.media.document || message.media.webpage.photo || message.media.webpage.document;
     
     let isVideo = media.mime_type == 'video/mp4';
     

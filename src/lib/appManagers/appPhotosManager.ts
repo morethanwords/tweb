@@ -153,13 +153,13 @@ export class AppPhotosManager {
       let image = new Image();
       image.src = URL.createObjectURL(blob);
       
-      // image.style.width = '100%';
-      // image.style.height = '100%';
+      image.style.width = '100%';
+      image.style.height = '100%';
       div.append(image);
     }
   }
   
-  public setAttachmentSize(photoID: any, div: HTMLDivElement, w = 380, h = 0/* 380 */) {
+  public setAttachmentSize(photoID: any, div: HTMLDivElement, w = 380, h = 380, isSticker = false) {
     let photo: /* MTDocument | MTPhoto */any = null;
 
     if(typeof(photoID) === 'string') {
@@ -174,7 +174,7 @@ export class AppPhotosManager {
     
     let sizes = photo.sizes || photo.thumbs;
     if(sizes && sizes[0].bytes) {
-      this.setAttachmentPreview(sizes[0].bytes, div);
+      this.setAttachmentPreview(sizes[0].bytes, div, isSticker);
     }
 
     if(photo._ == 'document' /* && photo.type != 'video' */ && photo.type != 'gif') {

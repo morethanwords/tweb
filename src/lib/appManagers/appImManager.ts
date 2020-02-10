@@ -477,6 +477,24 @@ export class AppImManager {
 
     this.chatInner.addEventListener('click', (e) => {
       let target = e.target as HTMLElement;
+      let bubble: HTMLDivElement = null;
+      try {
+        bubble = findUpClassName(e.target, 'bubble');
+      } catch(err) {}
+
+      if(target.tagName == 'VIDEO' && bubble && bubble.classList.contains('round')) {
+        let video = target as HTMLVideoElement;
+        video.currentTime = 0;
+        if(video.paused) {
+          video.play();
+          video.volume = 1;
+        } else {
+          video.pause();
+          video.volume = 0;
+        }
+        return;
+      }
+
       if(target.tagName == 'IMG' || target.tagName == 'VIDEO') {
         let messageID = +target.getAttribute('message-id');
         let message = appMessagesManager.getMessage(messageID);
@@ -488,8 +506,6 @@ export class AppImManager {
 
         appMediaViewer.openMedia(message, true);
       } else if(target.tagName == 'DIV') {
-        let bubble = findUpClassName(e.target, 'bubble');
-
         if(bubble) {
           if(bubble.classList.contains('is-reply')/*  || bubble.classList.contains('forwarded') */) {
             let originalMessageID = +bubble.getAttribute('data-original-mid');
@@ -686,7 +702,7 @@ export class AppImManager {
   }
 
   public async loadMediaQueueProcess(): Promise<void[]> {
-    if(this.loadMediaQueuePromise /* || 1 == 1 */) return this.loadMediaQueuePromise;
+    if(this.loadMediaQueuePromise/*  || 1 == 1 */) return this.loadMediaQueuePromise;
 
     let woo = this.loadMediaQueue.splice(-5, 5).reverse().map(f => f());
 
@@ -1324,7 +1340,8 @@ export class AppImManager {
               bubble.classList.add('sticker-animated');
             }
 
-            appPhotosManager.setAttachmentSize(doc, attachmentDiv);
+            appPhotosManager.setAttachmentSize(doc, attachmentDiv, undefined, undefined, true);
+            let preloader = new ProgressivePreloader(attachmentDiv, false);
             bubble.style.height = attachmentDiv.style.height;
             bubble.style.width = attachmentDiv.style.width;
             //appPhotosManager.setAttachmentSize(doc, bubble);
@@ -1335,11 +1352,11 @@ export class AppImManager {
               }
 
               return true;
-            }, null, 'chat', false, !!message.pending || !multipleRender)/* .then(() => {
-              
-              attachmentDiv.style.width = '';
-              attachmentDiv.style.height = '';
-            }) */;
+            }, null, 'chat', false, !!message.pending || !multipleRender).then(() => {
+              preloader.detach();
+              /* attachmentDiv.style.width = '';
+              attachmentDiv.style.height = ''; */
+            });
 
             this.loadMediaQueuePush(load);
 
@@ -1347,8 +1364,12 @@ export class AppImManager {
           } else if(doc.mime_type == 'video/mp4') {
             this.log('never get free 2', doc);
 
+            if(doc.type == 'round') {
+              bubble.classList.add('round');
+            }
+
             bubble.classList.add('video');
-            wrapVideo.call(this, doc, attachmentDiv, message);
+            wrapVideo.call(this, doc, attachmentDiv, message, doc.type != 'round', null, false);
 
             break;
           } else {
@@ -1378,9 +1399,9 @@ export class AppImManager {
     if((this.peerID < 0 && !our) || message.fwd_from || message.reply_to_mid) { // chat
       let title = appPeersManager.getPeerTitle(message.fwdFromID || message.fromID);
 
-      let isHidden = message.fwd_from && !message.fwd_from.from_id;
+      let isHidden = message.fwd_from && !message.fwd_from.from_id && !message.fwd_from.channel_id;
       if(isHidden) {
-        this.log('message render hidden', message);
+        this.log('message to render hidden', message);
         title = message.fwd_from.from_name;
         bubble.classList.add('hidden-profile');
       }
@@ -1413,7 +1434,7 @@ export class AppImManager {
           let originalMessage = appMessagesManager.getMessage(message.reply_to_mid);
           let originalPeerTitle = appPeersManager.getPeerTitle(originalMessage.fromID) || '';
 
-          this.log('message to render one more time punks not dead', originalMessage, originalPeerTitle, bubble);
+          this.log('message to render reply', originalMessage, originalPeerTitle, bubble);
 
           let originalText = '';
           if(originalMessage.message) {
