@@ -240,6 +240,16 @@
         </div>
       </div>
     </div>
+    <div class="popup popup-delete-message">
+      <div class="popup-container z-depth-1">
+        <div class="popup-header">Do you want to delete this message?</div>
+        <div class="popup-buttons">
+          <button class="btn popup-delete-both danger rp"></button>
+          <button class="btn popup-delete-me danger rp"></button>
+          <button class="btn popup-close rp">CANCEL</button>
+        </div>
+      </div>
+    </div>
     <div class="chats-container sidebar sidebar-left">
       <div class="sidebar-header">
         <div class="btn-icon tgico-menu btn-menu-toggle rp sidebar-tools-button">
@@ -313,6 +323,13 @@
           <button class="btn-circle tgico-channel"><span>Channel</span></button>
         </div>
       </div> -->
+      <div class="btn-menu" id="bubble-contextmenu">
+        <div class="btn-menu-item menu-reply tgico-reply rp">Reply</div>
+        <div class="btn-menu-item menu-copy tgico-copy rp">Copy</div>
+        <div class="btn-menu-item menu-pin tgico-pin rp">Pin</div>
+        <div class="btn-menu-item menu-forward tgico-forward rp">Forward</div>
+        <div class="btn-menu-item menu-delete tgico-delete danger rp">Delete</div>
+      </div>
       <div id="chat-input" style="display: none;">
       <!-- <div id="chat-input"> -->
         <div class="emoji-dropdown">
@@ -345,18 +362,30 @@
                   </ul>
                 </div>
               </div>
-              <div class="gifs-padding"><div id="content-gifs">3</div></div>
+              <div class="gifs-padding"><div id="content-gifs"></div></div>
             </div>
           </div>
         </div>
         <div class="input-message">
-          <button class="btn-icon rp tgico-smile toggle-emoticons"></button>
-          <!-- <textarea type="text" id="input-message" placeholder="Message" contenteditable="true"></textarea> -->
-          <div class="input-message-container">
-            <div id="input-message" contenteditable="true" data-placeholder="Message"></div>
+          <div class="reply-wrapper">
+            <button class="btn-icon rp tgico-close reply-cancel"></button>
+            <div class="reply">
+              <div class="reply-border"></div>
+              <div class="reply-content">
+                <div class="reply-title">Denny</div>
+                <div class="reply-subtitle">Hello!</div>
+              </div>
+            </div>
           </div>
-          <button class="btn-icon rp tgico-attach" id="attach-file"></button>
-          <input type="file" id="input-file" style="display: none;" />
+          <div class="new-message-wrapper">
+            <button class="btn-icon rp tgico-smile toggle-emoticons"></button>
+            <!-- <textarea type="text" id="input-message" placeholder="Message" contenteditable="true"></textarea> -->
+            <div class="input-message-container">
+              <div id="input-message" contenteditable="true" data-placeholder="Message"></div>
+            </div>
+            <button class="btn-icon rp tgico-attach" id="attach-file"></button>
+            <input type="file" id="input-file" style="display: none;" />
+          </div>
         </div>
         <button class="btn-circle z-depth-1 btn-icon tgico-microphone2" id="btn-send"></button>
       </div>
@@ -370,8 +399,8 @@
 
         <div class="btn-icon tgico-more rp btn-menu-toggle">
           <div class="btn-menu bottom-left">
-            <div class="btn-menu-item menu-mute rp">Mute</div>
-            <div class="btn-menu-item menu-delete tgico-delete danger rp">Delete and Leave</div>
+            <!-- <div class="btn-menu-item menu-mute rp">Mute</div>
+            <div class="btn-menu-item menu-delete tgico-delete danger rp">Delete and Leave</div> -->
           </div>
         </div>
       </div>
@@ -393,8 +422,10 @@
           <p class="profile-row-label">Phone</p>
         </div>
         <div class="profile-row profile-row-notifications">
-          <input type="checkbox" id="profile-notifications" checked="checked">
-          <span>Notifications</span>
+          <label>
+            <input type="checkbox" id="profile-notifications" checked="checked">
+            <span>Notifications</span>
+          </label>
           <p class="profile-row-label">Enabled</p>
         </div>
 

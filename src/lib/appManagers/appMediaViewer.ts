@@ -133,7 +133,7 @@ export class AppMediaViewer {
   
   public openMedia(message: any, reverse = false) {
     this.log('openMedia doc:', message);
-    let media = message.media.photo || message.media.document || message.media.webpage.photo || message.media.webpage.document;
+    let media = message.media.photo || message.media.document || message.media.webpage.document || message.media.webpage.photo;
     
     let isVideo = media.mime_type == 'video/mp4';
     
@@ -153,7 +153,7 @@ export class AppMediaViewer {
     this.author.date.innerText = dateStr;
     
     let name = appPeersManager.getPeerTitle(message.fromID);
-    this.author.nameEl.innerText = name;
+    this.author.nameEl.innerHTML = name;
     
     if(message.message) {
       this.content.caption.innerHTML = RichTextProcessor.wrapRichText(message.message, {
@@ -174,9 +174,17 @@ export class AppMediaViewer {
       //this.preloader.setProgress(75);
 
       this.log('will wrap video');
-      
+
+      appPhotosManager.setAttachmentSize(media, container, appPhotosManager.windowW, appPhotosManager.windowH);
       wrapVideo.call(this, media, container, message, false, this.preloader).then(() => {
+        if(this.currentMessageID != message.mid) {
+          this.log.warn('media viewer changed video');
+          return;
+        }
+
         container.classList.remove('loading');
+        container.style.width = '';
+        container.style.height = '';
       });
     } else {
       let size = appPhotosManager.setAttachmentSize(media.id, container, appPhotosManager.windowW, appPhotosManager.windowH);
@@ -206,6 +214,8 @@ export class AppMediaViewer {
         container.style.height = '';
         
         this.preloader.detach();
+      }).catch(err => {
+        this.log.error(err);
       });
     }
     

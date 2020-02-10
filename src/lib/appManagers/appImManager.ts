@@ -1,5 +1,5 @@
 import apiManager from '../mtproto/apiManager';
-import { $rootScope, isElementInViewport, numberWithCommas, findUpClassName } from "../utils";
+import { $rootScope, isElementInViewport, numberWithCommas, findUpClassName, formatNumber } from "../utils";
 import appUsersManager from "./appUsersManager";
 import appMessagesManager from "./appMessagesManager";
 import appPeersManager from "./appPeersManager";
@@ -138,8 +138,8 @@ class ChatInput {
             if(this.lastUrl != url) return;
             console.log(webpage);
   
-            appImManager.replyElements.titleEl.innerText = webpage.site_name || webpage.title || '';
-            appImManager.replyElements.subtitleEl.innerText = webpage.description || webpage.url || '';
+            appImManager.replyElements.titleEl.innerHTML = RichTextProcessor.wrapEmojiText(webpage.site_name || webpage.title || '');
+            appImManager.replyElements.subtitleEl.innerHTML = RichTextProcessor.wrapEmojiText(webpage.description || webpage.url || '');
             appImManager.replyElements.container.classList.add('active');
             appImManager.replyToMsgID = 0;
             appImManager.noWebPage = false;
@@ -195,9 +195,7 @@ class ChatInput {
       // console.log('messageInput paste', text);
       let entities = RichTextProcessor.parseEntities(text);
   
-      text = RichTextProcessor.wrapRichText(text, {
-        entities: entities.filter(e => e._ == 'messageEntityEmoji')
-      });
+      text = RichTextProcessor.wrapEmojiText(text);
   
       // console.log('messageInput paste after', text);
   
@@ -340,6 +338,7 @@ export class AppImManager {
 
   public loadMediaQueue: Array<() => Promise<void>> = [];
   private loadMediaQueuePromise: Promise<void[]> = null;
+  private loadingMedia = 0;
   
   public scroll: HTMLDivElement = null;
   public scrollPosition: ScrollPosition = null;
@@ -445,7 +444,7 @@ export class AppImManager {
         this.log('setting pinned message', message);
         this.pinnedMessageContainer.setAttribute('data-mid', mid);
         this.pinnedMessageContainer.style.display = '';
-        this.pinnedMessageContent.innerHTML = RichTextProcessor.wrapPlainText(message.message);
+        this.pinnedMessageContent.innerHTML = RichTextProcessor.wrapEmojiText(message.message);
       }
     });
 
@@ -482,7 +481,9 @@ export class AppImManager {
         bubble = findUpClassName(e.target, 'bubble');
       } catch(err) {}
 
-      if(target.tagName == 'VIDEO' && bubble && bubble.classList.contains('round')) {
+      if(!bubble) return;
+
+      if(target.tagName == 'VIDEO' && bubble.classList.contains('round')) {
         let video = target as HTMLVideoElement;
         video.currentTime = 0;
         if(video.paused) {
@@ -506,11 +507,15 @@ export class AppImManager {
 
         appMediaViewer.openMedia(message, true);
       } else if(target.tagName == 'DIV') {
-        if(bubble) {
-          if(bubble.classList.contains('is-reply')/*  || bubble.classList.contains('forwarded') */) {
-            let originalMessageID = +bubble.getAttribute('data-original-mid');
-            this.setPeer(this.peerID, originalMessageID);
-          }
+        let isReplyClick = false;
+      
+        try {
+          isReplyClick = !!findUpClassName(e.target, 'box');
+        } catch(err) {}
+
+        if(isReplyClick && bubble.classList.contains('is-reply')/*  || bubble.classList.contains('forwarded') */) {
+          let originalMessageID = +bubble.getAttribute('data-original-mid');
+          this.setPeer(this.peerID, originalMessageID);
         }
       }
 
@@ -614,7 +619,7 @@ export class AppImManager {
 
         if(this.peerID > 0) {
           let title = appPeersManager.getPeerTitle(this.peerID);
-          this.popupDeleteMessage.deleteBothBtn.innerText = 'DELETE FOR ME AND ' + title.split(' ')[0];
+          this.popupDeleteMessage.deleteBothBtn.innerHTML = 'DELETE FOR ME AND ' + title;
         } else {
           this.popupDeleteMessage.deleteBothBtn.innerText = 'DELETE FOR ALL';
         }
@@ -625,9 +630,9 @@ export class AppImManager {
     
     this.contextMenu.querySelector('.menu-reply').addEventListener('click', () => {
       let message = appMessagesManager.getMessage(this.contextMenuMsgID);
-      let title = appPeersManager.getPeerTitle(message.fromID).split(' ')[0];
-      this.replyElements.titleEl.innerText = title;
-      this.replyElements.subtitleEl.innerText = message.message || '';
+      let title = appPeersManager.getPeerTitle(message.fromID);
+      this.replyElements.titleEl.innerHTML = title;
+      this.replyElements.subtitleEl.innerHTML = message.message ? RichTextProcessor.wrapEmojiText(message.message) : '';
       this.replyElements.container.classList.add('active');
       this.replyToMsgID = this.contextMenuMsgID;
     });
@@ -701,13 +706,23 @@ export class AppImManager {
     this.loadMediaQueueProcess();
   }
 
-  public async loadMediaQueueProcess(): Promise<void[]> {
-    if(this.loadMediaQueuePromise/*  || 1 == 1 */) return this.loadMediaQueuePromise;
+  public async loadMediaQueueProcessOld(): Promise<void[]> {
+    if(this.loadMediaQueuePromise /* || 1 == 1 */) return this.loadMediaQueuePromise;
 
     let woo = this.loadMediaQueue.splice(-5, 5).reverse().map(f => f());
 
     if(woo.length) {
       this.log('Will load more media:', woo.length);
+
+      woo.forEach(async(promise) => {
+        try {
+          await promise;
+        } catch(err) {
+          this.log.error('loadMediaQueue error:', err);
+        }
+
+        this.loadingMedia--;
+      });
 
       try {
         this.loadMediaQueuePromise = Promise.all(woo);
@@ -721,6 +736,26 @@ export class AppImManager {
     
     if(this.loadMediaQueue.length) return this.loadMediaQueueProcess();
     return this.loadMediaQueuePromise;
+  }
+
+  public async loadMediaQueueProcess(): Promise<void[]> {
+    if(this.loadingMedia >= 5) return;
+
+    let item = this.loadMediaQueue.pop();
+    if(item) {
+      this.loadingMedia++;
+
+      let promise = item();
+      try {
+        await promise;
+      } catch(err) {
+        this.log.error('loadMediaQueue error:', err);
+      }
+
+      this.loadingMedia--;
+    }
+    
+    if(this.loadMediaQueue.length) return this.loadMediaQueueProcess();
   }
 
   public updateStatus() {
@@ -771,7 +806,7 @@ export class AppImManager {
     }
 
     // load more history
-    if(!this.getHistoryPromise && !this.getHistoryTimeout /* && false */) {
+    if(!this.getHistoryPromise && !this.getHistoryTimeout && !testScroll) {
       this.getHistoryTimeout = setTimeout(() => { // must be
         let history = Object.keys(this.bubbles).map(id => +id).sort();
 
@@ -853,17 +888,31 @@ export class AppImManager {
       let isChannel = appPeersManager.isChannel(this.peerID) && !appPeersManager.isMegagroup(this.peerID);
 
       this.log('setPeerStatus', chat);
-      // will redirect if wrong
-      appProfileManager.getChatFull(chat.id).then((res: any) => {
-        this.log('chatInfo res:', res);
+    
+      Promise.all([
+        appPeersManager.isMegagroup(this.peerID) ? apiManager.invokeApi('messages.getOnlines', {
+          peer: appPeersManager.getInputPeerByID(this.peerID)
+        }) as Promise<any> : Promise.resolve(),
+        // will redirect if wrong
+        appProfileManager.getChatFull(chat.id)
+      ]).then(results => {
+        let [chatOnlines, chatInfo] = results;
 
-        if(res.pinned_msg_id) { // request pinned message
-          this.pinnedMsgID = res.pinned_msg_id;
-          appMessagesManager.wrapSingleMessage(res.pinned_msg_id);
+        let onlines = chatOnlines ? chatOnlines.onlines : 1;
+
+        this.log('chatInfo res:', chatInfo);
+
+        if(chatInfo.pinned_msg_id) { // request pinned message
+          this.pinnedMsgID = chatInfo.pinned_msg_id;
+          appMessagesManager.wrapSingleMessage(chatInfo.pinned_msg_id);
         }
 
-        let participants_count = res.participants_count || res.participants.participants.length;
+        let participants_count = chatInfo.participants_count || chatInfo.participants.participants.length;
         let subtitle = numberWithCommas(participants_count) + ' ' + (isChannel ? 'subscribers' : 'members');
+
+        if(onlines > 1) {
+          subtitle += ', ' + numberWithCommas(onlines) + ' online';
+        }
 
         this.subtitleEl.innerText = appSidebarRight.profileElements.subtitle.innerText = subtitle;
       });
@@ -1012,7 +1061,7 @@ export class AppImManager {
 
     this.setPeerStatus();
 
-    this.titleEl.innerText = appSidebarRight.profileElements.name.innerText = dom.titleSpan.innerText;
+    this.titleEl.innerHTML = appSidebarRight.profileElements.name.innerHTML = dom.titleSpan.innerHTML;
 
     this.topbar.style.display = '';
     appSidebarRight.toggleSidebar(true);
@@ -1028,6 +1077,8 @@ export class AppImManager {
 
           if(lastMsgID != dialog.top_message) {
             this.bubbles[lastMsgID].scrollIntoView();
+          } else {
+            this.scroll.scrollTop = this.scroll.scrollHeight;
           }
         } else if(dialog.top_message) { // add last message, bc in getHistory will load < max_id
           this.renderMessage(appMessagesManager.getMessage(dialog.top_message));
@@ -1126,25 +1177,30 @@ export class AppImManager {
     this.log('message to render:', message);
 
     //messageDiv.innerText = message.message;
+
+    // bubble
+    let bubble = document.createElement('div');
+    bubble.classList.add('bubble');
+
+    this.bubbles[+message.mid] = bubble;
   
     // time section
   
     let date = new Date(message.date * 1000);
     let time = ('0' + date.getHours()).slice(-2) + 
       ':' + ('0' + date.getMinutes()).slice(-2);
+
+    if(message.views) {
+      bubble.classList.add('channel-post');
+      time = formatNumber(message.views, 1) + ' <i class="tgico-channelviews"></i> ' + time;
+    }
   
     let timeSpan = document.createElement('span');
     timeSpan.classList.add('time');
   
     let timeInner = document.createElement('div');
     timeInner.classList.add('inner', 'tgico');
-    timeInner.innerText = time;
-  
-    // bubble
-    let bubble = document.createElement('div');
-    bubble.classList.add('bubble');
-
-    this.bubbles[+message.mid] = bubble;
+    timeInner.innerHTML = time;
   
     let richText = RichTextProcessor.wrapRichText(message.message, {
       entities: message.totalEntities
@@ -1182,6 +1238,7 @@ export class AppImManager {
     timeSpan.appendChild(timeInner);
     messageDiv.append(timeSpan);
     bubble.prepend(messageDiv);
+    //bubble.prepend(timeSpan, messageDiv); // that's bad
   
     if(our) {
       if(message.pFlags.unread) this.unreadOut.push(message.mid);
@@ -1287,8 +1344,10 @@ export class AppImManager {
             doc = webpage.document;
 
             if(doc.type == 'gif' || doc.type == 'video') {
-              bubble.classList.add('video');
-              wrapVideo.call(this, doc, preview, message);
+              //if(doc.size <= 20e6) {
+                bubble.classList.add('video');
+                wrapVideo.call(this, doc, preview, message);
+              //}
             } else {
               doc = null;
             }
@@ -1307,7 +1366,7 @@ export class AppImManager {
 
           nameEl.setAttribute('target', '_blank');
           nameEl.href = webpage.url || '#';
-          nameEl.innerText = webpage.site_name || '';
+          nameEl.innerHTML = webpage.site_name ? RichTextProcessor.wrapEmojiText(webpage.site_name) : '';
 
           if(webpage.description) {
             textDiv.innerHTML = RichTextProcessor.wrapRichText(webpage.description);
@@ -1318,7 +1377,8 @@ export class AppImManager {
           quote.append(nameEl, titleDiv, textDiv);
           box.append(quote);
 
-          bubble.prepend(box);
+          //bubble.prepend(box);
+          bubble.prepend(timeSpan, box);
 
           //this.log('night running', bubble.scrollHeight);
 
@@ -1361,7 +1421,7 @@ export class AppImManager {
             this.loadMediaQueuePush(load);
 
             break;
-          } else if(doc.mime_type == 'video/mp4') {
+          } else if(doc.mime_type == 'video/mp4' && doc.size <= 20e6) {
             this.log('never get free 2', doc);
 
             if(doc.type == 'round') {
@@ -1414,7 +1474,7 @@ export class AppImManager {
         if(!bubble.classList.contains('sticker')) {
           let nameDiv = document.createElement('div');
           nameDiv.classList.add('name');
-          nameDiv.innerText = 'Forwarded from ' + title;
+          nameDiv.innerHTML = 'Forwarded from ' + title;
           bubble.append(nameDiv);
         }
       } else {
@@ -1455,7 +1515,7 @@ export class AppImManager {
             }
           }
 
-          nameEl.innerText = originalPeerTitle;
+          nameEl.innerHTML = originalPeerTitle;
           textDiv.innerHTML = originalText;
 
           quote.append(nameEl, textDiv);
@@ -1484,7 +1544,7 @@ export class AppImManager {
         if(!bubble.classList.contains('sticker') && (peerID < 0 && peerID != message.fromID)) {
           let nameDiv = document.createElement('div');
           nameDiv.classList.add('name');
-          nameDiv.innerText = title;
+          nameDiv.innerHTML = title;
           bubble.append(nameDiv);
         } else if(!message.reply_to_mid) {
           bubble.classList.add('hide-name');
@@ -1614,6 +1674,12 @@ export class AppImManager {
     let loadCount = Object.keys(this.bubbles).length > 0 ? 
       20 : 
       (this.chatInner.parentElement.parentElement.scrollHeight) / 30 * 1.25 | 0;
+
+    if(testScroll) {
+      loadCount = 1;
+      //if(Object.keys(this.bubbles).length > 0)
+      return Promise.resolve(true);
+    }
 
     console.time('render getHistory');
     console.time('render history total');

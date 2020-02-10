@@ -472,6 +472,18 @@ export function formatBytes(bytes, decimals = 2) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
+export function formatNumber(bytes, decimals = 2) {
+  if(bytes === 0) return '0';
+
+  const k = 1000;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['', 'K', 'M', 'B', 'T'];
+
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + sizes[i];
+}
+
 export function deepEqual(x, y) {
   const ok = Object.keys, tx = typeof x, ty = typeof y;
   return x && y && tx === 'object' && tx === ty ? (
@@ -551,11 +563,11 @@ export function calcImageInBox (imageW, imageH, boxW, boxH, noZooom) {
   var boxedImageW = boxW
   var boxedImageH = boxH
 
-  if ((imageW / imageH) > (boxW / boxH)) {
+  if((imageW / imageH) > (boxW / boxH)) {
     boxedImageH = parseInt(imageH * boxW / imageW)
-  }else {
+  } else {
     boxedImageW = parseInt(imageW * boxH / imageH)
-    if (boxedImageW > boxW) {
+    if(boxedImageW > boxW) {
       boxedImageH = parseInt(boxedImageH * boxW / boxedImageW)
       boxedImageW = boxW
     }
@@ -566,7 +578,7 @@ export function calcImageInBox (imageW, imageH, boxW, boxH, noZooom) {
   //   imageH = Math.floor(imageH / 2)
   // }
 
-  if (noZooom && boxedImageW >= imageW && boxedImageH >= imageH) {
+  if(noZooom && boxedImageW >= imageW && boxedImageH >= imageH) {
     boxedImageW = imageW
     boxedImageH = imageH
   }

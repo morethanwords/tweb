@@ -159,7 +159,7 @@ export class AppPhotosManager {
     }
   }
   
-  public setAttachmentSize(photoID: any, div: HTMLDivElement, w = 380, h = 380, isSticker = false) {
+  public setAttachmentSize(photoID: any, div: HTMLDivElement, boxWidth = 380, boxHeight = 380, isSticker = false) {
     let photo: /* MTDocument | MTPhoto */any = null;
 
     if(typeof(photoID) === 'string') {
@@ -169,7 +169,7 @@ export class AppPhotosManager {
       photo = photoID;
     }
     
-    let photoSize = this.choosePhotoSize(photo, w, h);
+    let photoSize = this.choosePhotoSize(photo, boxWidth, boxHeight);
     //console.log('setAttachmentSize', photo, photo.sizes[0].bytes, div);
     
     let sizes = photo.sizes || photo.thumbs;
@@ -177,16 +177,14 @@ export class AppPhotosManager {
       this.setAttachmentPreview(sizes[0].bytes, div, isSticker);
     }
 
-    if(photo._ == 'document' /* && photo.type != 'video' */ && photo.type != 'gif') {
-      div.style.width = (photo.w || 512) + 'px';
-      div.style.height = (photo.h || 512) + 'px';
-      
-      /* if(div.lastElementChild) {
-        div.lastElementChild.width 
-      } */
+    if(photo._ == 'document' /* && photo.type != 'video' *//*  && photo.type != 'gif' */) {
+      let {w, h} = calcImageInBox(photo.w || 512, photo.h || 512, boxWidth, boxHeight);
+      div.style.width = w + 'px';
+      div.style.height = h + 'px';
     } else {
-      div.style.width = (photoSize.w || 100) + 'px';
-      div.style.height = (photoSize.h || 100) + 'px';
+      let {w, h} = calcImageInBox(photoSize.w || 100, photoSize.h || 100, boxWidth, boxHeight);
+      div.style.width = w + 'px';
+      div.style.height = h + 'px';
     }
     
     return photoSize;

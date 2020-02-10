@@ -101,7 +101,7 @@ export class AppDialogsManager {
       div.classList.remove('tgico-savedmessages');
       div.style.fontSize = '';
 
-      let abbrSplitted = (typeof(peerID) != 'string' ? appPeersManager.getPeerTitle(peerID) : peerID).split(' ');
+      let abbrSplitted = (typeof(peerID) != 'string' ? appPeersManager.getPeerTitle(peerID, true) : peerID).split(' ');
       let abbr = (abbrSplitted.length == 2 ? 
         abbrSplitted[0][0] + abbrSplitted[1][0] : 
         abbrSplitted[0][0]).toUpperCase();
@@ -413,7 +413,7 @@ export class AppDialogsManager {
     //console.log('trying to load photo for:', title);
     this.loadDialogPhoto(avatarDiv, dialog.peerID, true);
 
-    titleSpan.innerText = title;
+    titleSpan.innerHTML = title;
     //p.classList.add('')
     
     let span = document.createElement('span');

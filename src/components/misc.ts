@@ -222,9 +222,9 @@ export class LazyLoadQueue {
 }
 
 export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement, message: any, justLoader = true, preloader?: ProgressivePreloader, controls = true) {
-  //if(!container.firstElementChild || container.firstElementChild.tagName != 'IMG') {
-  let size = appPhotosManager.setAttachmentSize(doc, container);
-  //}
+  if(!container.firstElementChild || container.firstElementChild.tagName != 'IMG') {
+    let size = appPhotosManager.setAttachmentSize(doc, container);
+  }
   
   let peerID = this.peerID ? this.peerID : this.currentMessageID;
   
@@ -240,7 +240,7 @@ export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement,
   //return Promise.resolve();
   
   if(!preloader) {
-    preloader = new ProgressivePreloader(container, true);
+    preloader = new ProgressivePreloader(container, false);
   }
   
   let loadVideo = () => {
@@ -282,12 +282,15 @@ export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement,
       
       video.append(source);
       container.append(video);
+
+      //container.style.width = '';
+      //container.style.height = '';
       
       preloader.detach();
     });
   };
   
-  if(doc.type == 'gif') {
+  if(doc.type == 'gif' || true) { // extra fix
     return this.peerID ? this.loadMediaQueuePush(loadVideo) : loadVideo();
   } else { // if video
     let load = () => appPhotosManager.preloadPhoto(doc).then((blob) => {
@@ -301,7 +304,10 @@ export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement,
       /* image.style.height = doc.h + 'px';
       image.style.width = doc.w + 'px'; */
 
-      
+      /* if(justLoader) { // extra fix
+        justLoader = false;
+        controls = false;
+      } */
       
       if(!justLoader) {
         return loadVideo();
@@ -555,10 +561,10 @@ export function wrapPhoto(this: AppImManager, photo: any, message: any, containe
     
     preloader.detach();
 
-    image.style.width = '';
-    image.style.height = '';
-    container.style.width = '';
-    container.style.height = '';
+    //image.style.width = '';
+    //image.style.height = '';
+    //container.style.width = '';
+    //container.style.height = '';
   });
   
   console.log('wrapPhoto', load, container, image);

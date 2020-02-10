@@ -132,6 +132,12 @@
 
   .user-title {
     max-width: 80%;
+
+    .emoji {
+      vertical-align: top;
+      width: 18px;
+      height: 18px;
+    }
   }
 
   .user-last-message {

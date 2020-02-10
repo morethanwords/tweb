@@ -1,6 +1,7 @@
 import appUsersManager from "./appUsersManager";
 import appChatsManager from "./appChatsManager";
 import { isObject } from "../utils";
+import { RichTextProcessor } from "../richtextprocessor";
 
 const AppPeersManager = {
   getPeerPhoto: (peerID: number) => {
@@ -20,7 +21,7 @@ const AppPeersManager = {
     return false;
   },
 
-  getPeerTitle: (peerID: number | any) => {
+  getPeerTitle: (peerID: number | any, plainText = false) => {
     let peer: any = {}; 
     if(!isObject(peerID)) {
       peer = AppPeersManager.getPeer(peerID);
@@ -37,7 +38,7 @@ const AppPeersManager = {
       title = peer.title;
     }
     
-    return title;
+    return plainText ? title : RichTextProcessor.wrapEmojiText(title);
   },
 
   getOutputPeer: (peerID: number) => {

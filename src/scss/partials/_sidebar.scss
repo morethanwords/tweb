@@ -36,6 +36,11 @@
     font-size: 23px;
     font-weight: 500;
     margin: 3px 0;
+
+    span.emoji {
+      vertical-align: inherit;
+      min-width: min-content;
+    }
   }
 
   .profile-subtitle {
