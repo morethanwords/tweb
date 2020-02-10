@@ -186,6 +186,7 @@ export class AppMessagesManager {
     var isMegagroup = isChannel && AppPeersManager.isMegagroup(peerID);
     var asChannel = isChannel && !isMegagroup ? true : false;
     var message: any;
+    let noWebPage = options.noWebPage || false;
 
     if(historyStorage === undefined) {
       historyStorage = this.historiesStorage[peerID] = {count: null, history: [], pending: []};
@@ -267,6 +268,10 @@ export class AppMessagesManager {
         flags |= 128;
       }
 
+      if(noWebPage) {
+        flags |= 2;
+      }
+
       var apiPromise: any;
       if(options.viaBotID) {
         apiPromise = MTProto.apiManager.invokeApi('messages.sendInlineBotResult', {
@@ -284,6 +289,7 @@ export class AppMessagesManager {
 
         apiPromise = MTProto.apiManager.invokeApi('messages.sendMessage', {
           flags: flags,
+          no_webpage: noWebPage,
           peer: AppPeersManager.getInputPeerByID(peerID),
           message: text,
           random_id: randomID,

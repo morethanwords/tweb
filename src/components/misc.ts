@@ -807,6 +807,7 @@ export function openBtnMenu(menuElement: HTMLDivElement) {
   
   openedMenu = menuElement;
   openedMenu.classList.add('active');
+  openedMenu.parentElement.classList.add('menu-open');
   
   window.addEventListener('click', () => {
     if(openedMenu) {

@@ -4,11 +4,12 @@ import appUsersManager from "./appUsersManager";
 import appMessagesManager from "./appMessagesManager";
 import appPeersManager from "./appPeersManager";
 import appProfileManager from "./appProfileManager";
-import { ProgressivePreloader, wrapDocument, wrapSticker, wrapVideo, wrapPhoto, openBtnMenu } from "../../components/misc";
+import { ProgressivePreloader, wrapDocument, wrapSticker, wrapVideo, wrapPhoto, openBtnMenu, LazyLoadQueue } from "../../components/misc";
 import appDialogsManager from "./appDialogsManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import appPhotosManager from "./appPhotosManager";
 import appSidebarRight from './appSidebarRight';
+import Scrollable from '../../components/scrollable';
 
 import { logger } from "../polyfill";
 import lottieLoader from "../lottieLoader";
@@ -17,6 +18,7 @@ import appSidebarLeft from "./appSidebarLeft";
 import appChatsManager from "./appChatsManager";
 import appMessagesIDsManager from "./appMessagesIDsManager";
 import apiUpdatesManager from './apiUpdatesManager';
+import initEmoticonsDropdown, { EMOTICONSSTICKERGROUP } from '../../components/emoticonsDropdown';
 
 console.log('appImManager included!');
 
@@ -86,6 +88,221 @@ class ScrollPosition {
   }
 }
 
+class ChatInput {
+  public pageEl = document.querySelector('.page-chats') as HTMLDivElement;
+  public messageInput = document.getElementById('input-message') as HTMLDivElement/* HTMLInputElement */;
+  public fileInput = document.getElementById('input-file') as HTMLInputElement;
+  public inputMessageContainer = document.getElementsByClassName('input-message-container')[0] as HTMLDivElement;
+  public inputScroll = new Scrollable(this.inputMessageContainer);
+  public btnSend = document.getElementById('btn-send') as HTMLButtonElement;
+  public emoticonsDropdown: HTMLDivElement = null;
+  public emoticonsTimeout: number = 0;
+  public toggleEmoticons: HTMLButtonElement;
+  public emoticonsLazyLoadQueue: LazyLoadQueue = null;
+  public lastUrl = '';
+  public lastTimeType = 0;
+
+  constructor() {
+    this.toggleEmoticons = this.pageEl.querySelector('.toggle-emoticons') as HTMLButtonElement;
+
+    this.messageInput.addEventListener('keydown', (e: KeyboardEvent) => {
+      if(e.key == 'Enter') {
+        if(e.shiftKey) {
+          return;
+        }
+  
+        this.sendMessage();
+      }
+    });
+
+    this.messageInput.addEventListener('input', (e) => {
+      console.log('messageInput input', this.messageInput.innerText, this.serializeNodes(Array.from(this.messageInput.childNodes)));
+  
+      let value = this.messageInput.innerText;
+  
+      let entities = RichTextProcessor.parseEntities(value);
+      console.log('messageInput entities', entities);
+  
+      let entityUrl = entities.find(e => e._ == 'messageEntityUrl');
+      if(entityUrl) { // need to get webpage
+        let url = value.slice(entityUrl.offset, entityUrl.offset + entityUrl.length);
+  
+        console.log('messageInput url:', url);
+  
+        if(this.lastUrl != url) {
+          this.lastUrl = url;
+          apiManager.invokeApi('messages.getWebPage', {
+            url: url,
+            hash: 0
+          }).then((webpage: any) => {
+            if(this.lastUrl != url) return;
+            console.log(webpage);
+  
+            appImManager.replyElements.titleEl.innerText = webpage.site_name || webpage.title || '';
+            appImManager.replyElements.subtitleEl.innerText = webpage.description || webpage.url || '';
+            appImManager.replyElements.container.classList.add('active');
+            appImManager.replyToMsgID = 0;
+            appImManager.noWebPage = false;
+          });
+        }
+      }
+  
+      if(!value.trim() && !this.serializeNodes(Array.from(this.messageInput.childNodes)).trim()) {
+        this.messageInput.innerHTML = '';
+        this.btnSend.classList.remove('tgico-send');
+        this.btnSend.classList.add('tgico-microphone2');
+  
+        appImManager.setTyping('sendMessageCancelAction');
+      } else if(!this.btnSend.classList.contains('tgico-send')) {
+        this.btnSend.classList.add('tgico-send');
+        this.btnSend.classList.remove('tgico-microphone2');
+  
+        let time = Date.now();
+        if(time - this.lastTimeType >= 6000) {
+          this.lastTimeType = time;
+          appImManager.setTyping('sendMessageTypingAction');
+        }
+      }
+    });
+
+    this.messageInput.addEventListener('copy', (e) => {
+      const selection = document.getSelection();
+      
+      let range = selection.getRangeAt(0);
+      let ancestorContainer = range.commonAncestorContainer;
+  
+      let str = '';
+  
+      let selectedNodes = Array.from(ancestorContainer.childNodes).slice(range.startOffset, range.endOffset);
+      if(selectedNodes.length) {
+        str = this.serializeNodes(selectedNodes);
+      } else {
+        str = selection.toString();
+      }
+  
+      console.log('messageInput copy', str, ancestorContainer.childNodes, range);
+  
+      // @ts-ignore
+      event.clipboardData.setData('text/plain', str);
+      event.preventDefault();
+    });
+    
+    this.messageInput.addEventListener('paste', (e) => {
+      e.preventDefault();
+      // @ts-ignore
+      let text = (e.originalEvent || e).clipboardData.getData('text/plain');
+  
+      // console.log('messageInput paste', text);
+      let entities = RichTextProcessor.parseEntities(text);
+  
+      text = RichTextProcessor.wrapRichText(text, {
+        entities: entities.filter(e => e._ == 'messageEntityEmoji')
+      });
+  
+      // console.log('messageInput paste after', text);
+  
+      // @ts-ignore
+      //let html = (e.originalEvent || e).clipboardData.getData('text/html');
+  
+      // @ts-ignore
+      //console.log('paste text', text, );
+      window.document.execCommand('insertHTML', false, text);
+    });
+
+    this.fileInput.addEventListener('change', (e) => {
+      var file = (e.target as HTMLInputElement & EventTarget).files[0];
+      if(!file) {
+        return;
+      }
+      
+      console.log('selected file:', file, typeof(file));
+  
+      this.fileInput.value = '';
+  
+      appMessagesManager.sendFile(appImManager.peerID, file, {isMedia: true});
+      appImManager.scroll.scrollTop = appImManager.scroll.scrollHeight;
+  
+      /* MTProto.apiFileManager.uploadFile(file).then((inputFile) => {
+        console.log('uploaded smthn', inputFile);
+      }); */
+    }, false);
+  
+    this.pageEl.querySelector('#attach-file').addEventListener('click', () => {
+      this.fileInput.click();
+    });
+
+    this.btnSend.addEventListener('click', () => {
+      if(this.btnSend.classList.contains('tgico-send')) {
+        this.sendMessage();
+      }
+    });
+
+    this.toggleEmoticons.onmouseover = (e) => {
+      clearTimeout(this.emoticonsTimeout);
+      this.emoticonsTimeout = setTimeout(() => {
+        if(!this.emoticonsDropdown) {
+          let res = initEmoticonsDropdown(this.pageEl, appImManager, 
+            appMessagesManager, this.messageInput, this.toggleEmoticons, this.btnSend);
+          
+          this.emoticonsDropdown = res.dropdown;
+          this.emoticonsLazyLoadQueue = res.lazyLoadQueue;
+
+          this.toggleEmoticons.onmouseout = this.emoticonsDropdown.onmouseout = (e) => {
+            clearTimeout(this.emoticonsTimeout);
+            this.emoticonsTimeout = setTimeout(() => {
+              this.emoticonsDropdown.classList.remove('active');
+              this.toggleEmoticons.classList.remove('active');
+              lottieLoader.checkAnimations(true, EMOTICONSSTICKERGROUP);
+            }, 200);
+          };
+
+          this.emoticonsDropdown.onmouseover = (e) => {
+            clearTimeout(this.emoticonsTimeout);
+          };
+        } else {
+          this.emoticonsDropdown.classList.add('active');
+          this.emoticonsLazyLoadQueue.check();
+        }
+    
+        this.toggleEmoticons.classList.add('active');
+
+        lottieLoader.checkAnimations(false, EMOTICONSSTICKERGROUP);
+      }, 0/* 200 */);
+    };
+  }
+  
+  public serializeNodes(nodes: Node[]): string {
+    return nodes.reduce((str, child: any) => {
+      //console.log('childNode', str, child, typeof(child), typeof(child) === 'string', child.innerText);
+
+      if(typeof(child) === 'object' && child.textContent) return str += child.textContent;
+      if(child.innerText) return str += child.innerText;
+      if(child.tagName == 'IMG' && child.classList && child.classList.contains('emoji')) return str += child.getAttribute('emoji');
+
+      return str;
+    }, '');
+  };
+
+  public sendMessage() {
+    let str = this.serializeNodes(Array.from(this.messageInput.childNodes));
+
+    //console.log('childnode str after:', str);
+    this.lastUrl = '';
+    appMessagesManager.sendText(appImManager.peerID, str, {
+      replyToMsgID: appImManager.replyToMsgID == 0 ? undefined : appImManager.replyToMsgID,
+      noWebPage: appImManager.noWebPage
+    });
+    appImManager.replyToMsgID = 0;
+    appImManager.noWebPage = false;
+    appImManager.replyElements.container.classList.remove('active');
+    appImManager.scroll.scrollTop = appImManager.scroll.scrollHeight;
+    this.messageInput.innerText = '';
+
+    this.btnSend.classList.remove('tgico-send');
+    this.btnSend.classList.add('tgico-microphone2');
+  };
+}
+
 export class AppImManager {
   public pageEl = document.querySelector('.page-chats') as HTMLDivElement;
   public btnMute = this.pageEl.querySelector('.tool-mute') as HTMLButtonElement;
@@ -99,6 +316,8 @@ export class AppImManager {
   public lastContainerDiv: HTMLDivElement;
   private getHistoryPromise: Promise<boolean>;
   private getHistoryTimeout = 0;
+
+  private chatInputC: ChatInput = null;
 
   public myID = 0;
   public peerID = 0;
@@ -155,9 +374,12 @@ export class AppImManager {
   } = {};
 
   public replyToMsgID = 0;
+  public noWebPage = false;
 
   constructor() {
     this.log = logger('IM');
+
+    this.chatInputC = new ChatInput();
 
     this.preloader = new ProgressivePreloader(null, false);
 
@@ -265,6 +487,15 @@ export class AppImManager {
         }
 
         appMediaViewer.openMedia(message, true);
+      } else if(target.tagName == 'DIV') {
+        let bubble = findUpClassName(e.target, 'bubble');
+
+        if(bubble) {
+          if(bubble.classList.contains('is-reply')/*  || bubble.classList.contains('forwarded') */) {
+            let originalMessageID = +bubble.getAttribute('data-original-mid');
+            this.setPeer(this.peerID, originalMessageID);
+          }
+        }
       }
 
       //console.log('chatInner click', e);
@@ -288,7 +519,12 @@ export class AppImManager {
     this.btnMute.addEventListener('click', () => this.mutePeer());
 
     this.chatInner.addEventListener('contextmenu', e => {
-      let bubble = findUpClassName(e.target, 'bubble');
+      let bubble: HTMLDivElement = null;
+
+      try {
+        bubble = findUpClassName(e.target, 'bubble');
+      } catch(e) {}
+
       if(bubble) {
         e.preventDefault();
         e.cancelBubble = true;
@@ -394,6 +630,7 @@ export class AppImManager {
     this.replyElements.cancelBtn.addEventListener('click', () => {
       this.replyElements.container.classList.remove('active');
       this.replyToMsgID = 0;
+      this.noWebPage = true;
     });
 
     this.popupDeleteMessage.deleteBothBtn.addEventListener('click', () => {
@@ -684,14 +921,12 @@ export class AppImManager {
 
     lottieLoader.checkAnimations(false, 'chat', true);
 
-    console.time('chatInner clear');
+    // clear input 
+    this.chatInputC.messageInput.innerHTML = '';
+    this.replyElements.cancelBtn.click();
 
+    // clear messages
     this.chatInner.innerHTML = '';
-    /* Array.from(this.chatInner.children).forEach(c => {
-      this.chatInner.removeChild(c);
-    }); */
-
-    console.timeEnd('chatInner clear');
 
     //appSidebarRight.minMediaID = {};
   }
@@ -706,13 +941,18 @@ export class AppImManager {
 
     let samePeer = this.peerID == peerID;
 
-    if(samePeer && !testScroll && !lastMsgID) {
-      return Promise.resolve(true); // uncomment
-    }
+    if(samePeer) {
+      if(!testScroll && !lastMsgID) {
+        return Promise.resolve(true);
+      }
 
-    if(samePeer && lastMsgID == this.lastDialog.top_message) {
       if(this.bubbles[lastMsgID]) {
-        this.scroll.scrollTop = this.scroll.scrollHeight;
+        if(lastMsgID == this.lastDialog.top_message) {
+          this.scroll.scrollTop = this.scroll.scrollHeight;
+        } else {
+          this.bubbles[lastMsgID].scrollIntoView();
+        }
+
         return Promise.resolve(true);
       }
     }
@@ -1135,17 +1375,19 @@ export class AppImManager {
       }
     }
 
-    if(message.fwd_from) {
-      let fwd = message.fwd_from;
-      //let peerFrom = appPeersManager.getPeerTitle()
-      /* let fromTitle =  */appPeersManager.getPeerTitle(fwd.from_id);
-    }
-
     if((this.peerID < 0 && !our) || message.fwd_from || message.reply_to_mid) { // chat
       let title = appPeersManager.getPeerTitle(message.fwdFromID || message.fromID);
+
+      let isHidden = message.fwd_from && !message.fwd_from.from_id;
+      if(isHidden) {
+        this.log('message render hidden', message);
+        title = message.fwd_from.from_name;
+        bubble.classList.add('hidden-profile');
+      }
+      
       //this.log(title);
 
-      if(message.fwdFromID) {
+      if(message.fwdFromID || message.fwd_from) {
         bubble.classList.add('forwarded');
 
         if(!bubble.classList.contains('sticker')) {
@@ -1171,16 +1413,39 @@ export class AppImManager {
           let originalMessage = appMessagesManager.getMessage(message.reply_to_mid);
           let originalPeerTitle = appPeersManager.getPeerTitle(originalMessage.fromID) || '';
 
+          this.log('message to render one more time punks not dead', originalMessage, originalPeerTitle, bubble);
+
+          let originalText = '';
+          if(originalMessage.message) {
+            originalText = RichTextProcessor.wrapRichText(originalMessage.message, {
+              entities: originalMessage.totalEntities
+            });
+          }
+
+          if(originalMessage.media) {
+            switch(originalMessage.media._) {
+              case 'messageMediaPhoto':
+                if(!originalText) originalText = 'Photo';
+                break;
+              
+              default:
+                if(!originalText) originalText = originalMessage.media._;
+                break;
+            }
+          }
+
           nameEl.innerText = originalPeerTitle;
-          textDiv.innerHTML = RichTextProcessor.wrapRichText(originalMessage.message, {
-            entities: originalMessage.totalEntities
-          });
+          textDiv.innerHTML = originalText;
 
           quote.append(nameEl, textDiv);
           box.append(quote);
 
+          if(originalMessage.mid) {
+            bubble.setAttribute('data-original-mid', originalMessage.mid);
+          }          
+
           bubble.append(box);
-          //bubble.classList.add('reply');
+          bubble.classList.add('is-reply');
         }
 
         /* if(message.media) {
@@ -1212,7 +1477,8 @@ export class AppImManager {
         //}
       }
 
-      if(!our && this.peerID < 0) {
+      if(!our && this.peerID < 0 && 
+        (!appPeersManager.isChannel(this.peerID) || appPeersManager.isMegagroup(this.peerID))) {
         let avatarDiv = document.createElement('div');
         avatarDiv.classList.add('user-avatar');
     
@@ -1556,4 +1822,5 @@ export class AppImManager {
   }
 }
 
-export default new AppImManager();
+const appImManager = new AppImManager();
+export default appImManager;

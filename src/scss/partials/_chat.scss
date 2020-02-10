@@ -257,7 +257,8 @@
 				}
 			}
 
-			.message:not(.message-empty) + .attachment {
+			.message:not(.message-empty) + .attachment,
+			&.is-reply .attachment {
 				border-bottom-left-radius: 0;
 				border-bottom-right-radius: 0;
 			}
@@ -682,6 +683,7 @@
 			box-shadow: 0 1px 2px 0 rgba(16, 35, 47, 0.07);
 			margin-right: .5rem;
 			padding: 4.5px .5rem;
+			/* padding: 3px .5rem 6px .5rem; */
 			min-height: 3.25rem;
 			max-height: 30rem;
 			caret-color: $button-primary-background;
@@ -716,7 +718,7 @@
 				height: 0px;
 		
 				&.active {
-					height: 35px;
+					height: 39px;
 				}
 		
 				.reply {
@@ -732,7 +734,7 @@
 				align-items: flex-end;
 
 				.btn-icon:before {
-					vertical-align: middle;
+					vertical-align: bottom;
 				}
 			}
 

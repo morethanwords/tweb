@@ -57,8 +57,11 @@ class AppSidebarLeft {
     this.listsContainer = new Scrollable(this.searchContainer).container;
     this.searchMessagesList = document.createElement('ul');
     
-    this.savedBtn.addEventListener('click', () => {
-      appImManager.setPeer(appImManager.myID);
+    this.savedBtn.addEventListener('click', (e) => {
+      this.log('savedbtn click');
+      setTimeout(() => { // menu doesn't close if no timeout (lol)
+        appImManager.setPeer(appImManager.myID);
+      }, 0);
     });
     
     /* this.listsContainer.insertBefore(this.searchMessagesList, this.listsContainer.lastElementChild);
@@ -141,6 +144,8 @@ class AppSidebarLeft {
         e.preventDefault();
         return false;
       }
+
+      return true;
     }, true);
     
     window.addEventListener('resize', () => {
