@@ -300,10 +300,14 @@ export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement,
       
       /* image.style.height = doc.h + 'px';
       image.style.width = doc.w + 'px'; */
+
+      
       
       if(!justLoader) {
         return loadVideo();
       } else {
+        container.style.width = '';
+        container.style.height = '';
         preloader.detach();
       }
     });
@@ -532,6 +536,7 @@ export function wrapPhoto(this: AppImManager, photo: any, message: any, containe
   
   let size = appPhotosManager.setAttachmentSize(photo.id, container);
   let image = container.firstElementChild as HTMLImageElement || new Image();
+  //let size = appPhotosManager.setAttachmentSize(photo.id, image);
   image.setAttribute('message-id', message.mid);
   
   if(!container.contains(image)) {
@@ -549,6 +554,11 @@ export function wrapPhoto(this: AppImManager, photo: any, message: any, containe
     image.src = URL.createObjectURL(blob);
     
     preloader.detach();
+
+    image.style.width = '';
+    image.style.height = '';
+    container.style.width = '';
+    container.style.height = '';
   });
   
   console.log('wrapPhoto', load, container, image);

@@ -295,11 +295,13 @@
 				.attachment {
 					max-width: 380px;
 					max-height: 380px;
+
+					width: max-content;
 				}
 				
 				img, video {
-					/* object-fit: contain; */
-					object-fit: cover;
+					object-fit: contain;
+					/* object-fit: cover; */
 				}
 			}
 			
@@ -308,7 +310,7 @@
 					//max-height: fit-content;
 					
 					img {
-						width: 100%;
+						/* width: 100%; */
 						/* height: 100%; */
 					}
 				}
@@ -351,11 +353,13 @@
 						user-select: none;
 						cursor: pointer;
 						position: relative;
+
+						width: max-content;
 						
 						img, video {
 							max-width: 100%;
-							width: 100%;
-							height: 100%;
+							/* width: 100%;
+							height: 100%; */
 						}
 					}
 					
