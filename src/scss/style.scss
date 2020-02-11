@@ -1,5 +1,7 @@
 $placeholder-color: #9e9e9e;
 $border-radius: 8px;
+$border-radius-medium: 10px;
+$border-radius-big: 12px;
 $button-primary-background: #4EA4F6;
 $success-color: #4DCD5E;
 $color-error: #E53935;
@@ -770,6 +772,7 @@ input:focus, button:focus {
   cursor: pointer;
   overflow: hidden;
   position: relative;
+  padding: 0; // new
   
   &:hover {
     background: darken($button-primary-background, 8%);
@@ -994,47 +997,17 @@ $width: 100px;
 }
 
 span.popup-close {
-  /* position: absolute;
-  left: 20px;
-  top: 12.5px; */
-  /* width: 100%; */
-  height: 18px;
   cursor: pointer;
+  color: $color-gray;
   z-index: 3;
   text-align: center;
   justify-self: center;
   line-height: 1;
+  transition: .2s;
   
-  svg {
-    max-width: 100%;
-    max-height: 100%;
+  &:hover {
+    color: #000;
   }
-  
-  path {
-    fill: $color-gray;
-    transition: .2s all;
-  }
-  
-  &:hover path {
-    fill: #000;
-  }
-  
-  /* &:before, &:after {
-    position: absolute;
-    left: 15px;
-    content: ' ';
-    height: 15px;
-    width: 1px;
-    background-color: #707579;
-  }
-  
-  &:before {
-    transform: rotate(45deg);
-  }
-  
-  &:after {
-    transform: rotate(-45deg);
-  } */
 }
 
 .popup.active .popup-container {
@@ -1332,6 +1305,84 @@ div.scrollable::-webkit-scrollbar-thumb {
 
 .justify-start {
   justify-content: flex-start;
+}
+
+.popup-send-photo {
+  .popup-container {
+    max-width: 420px;
+    max-height: 425px;
+    overflow: hidden;
+    /* padding: 12px 20px 50px; */
+    padding: 12px 20px 32.5px;
+    border-radius: $border-radius-medium;
+  }
+
+  .popup-header {
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12.5px;
+
+    .popup-close {
+      font-size: 1.5rem;
+      margin-left: .5rem;
+    }
+
+    .popup-title {
+      flex: 1;
+      padding: 0 2rem;
+      margin: 0;
+      font-size: 1.35rem;
+      font-weight: 500;
+    }
+
+    .btn-primary {
+      width: 80px;
+      height: 35px;
+      font-size: 1rem;
+      padding: 0;
+      border-radius: $border-radius-medium;
+    }
+  }
+
+  .popup-photo {
+    max-width: 378px;
+    max-height: 256px;
+    display: flex;
+    overflow: hidden;
+    justify-content: center;
+    width: fit-content;
+    border-radius: $border-radius-medium;
+    /* align-items: center; */
+
+    .document {
+      max-width: 100%;
+      overflow: hidden;
+      cursor: default;
+
+      .document-name {
+        font-weight: normal;
+        width: 100%;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+
+    img {
+      object-fit: contain;
+    }
+  }
+
+  .input-field {
+    margin-top: 25px;
+
+    input {
+      height: 55px;
+      font-size: 1.15rem;
+      padding: 0 15px;
+      border-radius: $border-radius-medium;
+    }
+  }
 }
 
 .page-chats {

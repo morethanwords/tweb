@@ -1,5 +1,5 @@
 import apiManager from '../mtproto/apiManager';
-import { $rootScope, isElementInViewport, numberWithCommas, findUpClassName, formatNumber } from "../utils";
+import { $rootScope, isElementInViewport, numberWithCommas, findUpClassName, formatNumber, placeCaretAtEnd, calcImageInBox } from "../utils";
 import appUsersManager from "./appUsersManager";
 import appMessagesManager from "./appMessagesManager";
 import appPeersManager from "./appPeersManager";
@@ -102,8 +102,34 @@ class ChatInput {
   public lastUrl = '';
   public lastTimeType = 0;
 
+  public attachMenu: {
+    container?: HTMLButtonElement,
+    media?: HTMLDivElement,
+    document?: HTMLDivElement,
+    poll?: HTMLDivElement
+  } = {};
+
+  public attachMediaPopUp: {
+    container?: HTMLDivElement,
+    titleEl?: HTMLDivElement,
+    sendBtn?: HTMLButtonElement,
+    mediaContainer?: HTMLDivElement,
+    captionInput?: HTMLInputElement
+  } = {};
+
   constructor() {
     this.toggleEmoticons = this.pageEl.querySelector('.toggle-emoticons') as HTMLButtonElement;
+
+    this.attachMenu.container = document.getElementById('attach-file') as HTMLButtonElement;
+    this.attachMenu.media = this.attachMenu.container.querySelector('.menu-media') as HTMLDivElement;
+    this.attachMenu.document = this.attachMenu.container.querySelector('.menu-document') as HTMLDivElement;
+    this.attachMenu.poll = this.attachMenu.container.querySelector('.menu-poll') as HTMLDivElement;
+
+    this.attachMediaPopUp.container = this.pageEl.querySelector('.popup-send-photo') as HTMLDivElement;
+    this.attachMediaPopUp.titleEl = this.attachMediaPopUp.container.querySelector('.popup-title') as HTMLDivElement;
+    this.attachMediaPopUp.sendBtn = this.attachMediaPopUp.container.querySelector('.btn-primary') as HTMLButtonElement;
+    this.attachMediaPopUp.mediaContainer = this.attachMediaPopUp.container.querySelector('.popup-photo') as HTMLDivElement;
+    this.attachMediaPopUp.captionInput = this.attachMediaPopUp.container.querySelector('input') as HTMLInputElement;
 
     this.messageInput.addEventListener('keydown', (e: KeyboardEvent) => {
       if(e.key == 'Enter') {
@@ -116,18 +142,18 @@ class ChatInput {
     });
 
     this.messageInput.addEventListener('input', (e) => {
-      console.log('messageInput input', this.messageInput.innerText, this.serializeNodes(Array.from(this.messageInput.childNodes)));
+      //console.log('messageInput input', this.messageInput.innerText, this.serializeNodes(Array.from(this.messageInput.childNodes)));
   
       let value = this.messageInput.innerText;
   
       let entities = RichTextProcessor.parseEntities(value);
-      console.log('messageInput entities', entities);
+      //console.log('messageInput entities', entities);
   
       let entityUrl = entities.find(e => e._ == 'messageEntityUrl');
       if(entityUrl) { // need to get webpage
         let url = value.slice(entityUrl.offset, entityUrl.offset + entityUrl.length);
   
-        console.log('messageInput url:', url);
+        //console.log('messageInput url:', url);
   
         if(this.lastUrl != url) {
           this.lastUrl = url;
@@ -136,7 +162,7 @@ class ChatInput {
             hash: 0
           }).then((webpage: any) => {
             if(this.lastUrl != url) return;
-            console.log(webpage);
+            //console.log(webpage);
   
             appImManager.replyElements.titleEl.innerHTML = RichTextProcessor.wrapEmojiText(webpage.site_name || webpage.title || '');
             appImManager.replyElements.subtitleEl.innerHTML = RichTextProcessor.wrapEmojiText(webpage.description || webpage.url || '');
@@ -187,14 +213,12 @@ class ChatInput {
       event.preventDefault();
     });
     
-    this.messageInput.addEventListener('paste', (e) => {
+    /* this.messageInput.addEventListener('paste', (e) => {
       e.preventDefault();
       // @ts-ignore
       let text = (e.originalEvent || e).clipboardData.getData('text/plain');
   
       // console.log('messageInput paste', text);
-      let entities = RichTextProcessor.parseEntities(text);
-  
       text = RichTextProcessor.wrapEmojiText(text);
   
       // console.log('messageInput paste after', text);
@@ -205,28 +229,112 @@ class ChatInput {
       // @ts-ignore
       //console.log('paste text', text, );
       window.document.execCommand('insertHTML', false, text);
-    });
+    }); */
 
+    let attachFile = (file: File) => {
+      console.log('selected file:', file, typeof(file));
+
+      willAttachFile = file;
+  
+      this.fileInput.value = '';
+
+      this.attachMediaPopUp.captionInput.value = '';
+      this.attachMediaPopUp.mediaContainer.innerHTML = '';
+
+      switch(willAttach) {
+        case 'media': {
+          let img = new Image();
+          img.src = URL.createObjectURL(file);
+          img.onload = () => {
+            willAttachWidth = img.naturalWidth;
+            willAttachHeight = img.naturalHeight;
+          };
+
+          this.attachMediaPopUp.titleEl.innerText = 'Send Photo';
+          
+          this.attachMediaPopUp.mediaContainer.append(img);
+          this.attachMediaPopUp.container.classList.add('active');
+
+          break;
+        }
+
+        case 'document': {
+          let docDiv = wrapDocument({
+            file: file,
+            file_name: file.name || '',
+            size: file.size,
+            type: ['image/jpeg',
+            'image/png',
+            'image/gif',
+            'image/webp',
+            'image/bmp'].indexOf(file.type) !== -1 ? 'photo' : 'doc'
+          } as any, false);
+
+          this.attachMediaPopUp.titleEl.innerText = 'Send File';
+
+          this.attachMediaPopUp.mediaContainer.append(docDiv);
+          this.attachMediaPopUp.container.classList.add('active');
+          break;
+        }
+      }
+    };
+
+    let willAttach = '';
+    let willAttachFile: File = null;
+    let willAttachWidth = 0, willAttachHeight = 0;
     this.fileInput.addEventListener('change', (e) => {
       var file = (e.target as HTMLInputElement & EventTarget).files[0];
       if(!file) {
         return;
       }
       
-      console.log('selected file:', file, typeof(file));
-  
-      this.fileInput.value = '';
-  
-      appMessagesManager.sendFile(appImManager.peerID, file, {isMedia: true});
-      appImManager.scroll.scrollTop = appImManager.scroll.scrollHeight;
-  
-      /* MTProto.apiFileManager.uploadFile(file).then((inputFile) => {
-        console.log('uploaded smthn', inputFile);
-      }); */
+      attachFile(file);
     }, false);
-  
-    this.pageEl.querySelector('#attach-file').addEventListener('click', () => {
+
+    this.attachMenu.media.addEventListener('click', () => {
+      willAttach = 'media';
       this.fileInput.click();
+    });
+
+    this.attachMenu.document.addEventListener('click', () => {
+      willAttach = 'document';
+      this.fileInput.click();
+    });
+
+    document.addEventListener('paste', (event) => {
+      if(!appImManager.peerID || this.attachMediaPopUp.container.classList.contains('active')) {
+        return;
+      }
+
+      // @ts-ignore
+      var items = (event.clipboardData || event.originalEvent.clipboardData).items;
+      //console.log(items); // will give you the mime types
+      for(let i = 0; i < items.length; ++i) {
+        if(items[i].kind == 'file') {
+          event.cancelBubble = true;
+          event.stopPropagation();
+
+          let file = items[i].getAsFile();
+          //console.log(items[i], file);
+          if(!file) continue;
+
+          willAttach = file.type.indexOf('image/') === 0 ? 'media' : "document";
+          attachFile(file);
+        }
+      }
+    }, true);
+
+    this.attachMediaPopUp.sendBtn.addEventListener('click', () => {
+      this.attachMediaPopUp.container.classList.remove('active');
+      let caption = this.attachMediaPopUp.captionInput.value;
+
+      appMessagesManager.sendFile(appImManager.peerID, willAttachFile, {
+        isMedia: true, 
+        caption,
+        width: willAttachWidth,
+        height: willAttachHeight
+      });
+      appImManager.scroll.scrollTop = appImManager.scroll.scrollHeight;
     });
 
     this.btnSend.addEventListener('click', () => {
@@ -497,7 +605,7 @@ export class AppImManager {
         return;
       }
 
-      if(target.tagName == 'IMG' || target.tagName == 'VIDEO') {
+      if((target.tagName == 'IMG' && !target.classList.contains('emoji')) || target.tagName == 'VIDEO') {
         let messageID = +target.getAttribute('message-id');
         let message = appMessagesManager.getMessage(messageID);
 
@@ -539,6 +647,45 @@ export class AppImManager {
 
     this.btnMenuMute.addEventListener('click', () => this.mutePeer());
     this.btnMute.addEventListener('click', () => this.mutePeer());
+
+    let onKeyDown = (e: KeyboardEvent) => {
+      let target = e.target as HTMLElement;
+
+      //if(target.tagName == 'INPUT') return;
+
+      this.log('onkeydown', e);
+
+      if(this.chatInputC.attachMediaPopUp.container.classList.contains('active')) {
+        if(target.tagName != 'INPUT') {
+          this.chatInputC.attachMediaPopUp.captionInput.focus();
+        }
+
+        if(e.key == 'Enter') {
+          this.chatInputC.attachMediaPopUp.sendBtn.click();
+        } else if(e.key == 'Escape') {
+          this.chatInputC.attachMediaPopUp.container.classList.remove('active');
+        }
+
+        return;
+      }
+
+      if(e.target != this.chatInputC.messageInput && target.tagName != 'INPUT') {
+        this.chatInputC.messageInput.focus();
+        placeCaretAtEnd(this.chatInputC.messageInput);
+      }
+    };
+
+    document.body.addEventListener('keydown', onKeyDown);
+
+    /* this.chatInner.addEventListener('mouseover', () => {
+      document.body.addEventListener('keydown', onKeyDown);
+
+      this.log('mouseover');
+
+      this.chatInner.addEventListener('mouseout', () => {
+        document.body.removeEventListener('keydown', onKeyDown);
+      }, {once: true});
+    }); */
 
     this.chatInner.addEventListener('contextmenu', e => {
       let bubble: HTMLDivElement = null;
@@ -1272,9 +1419,15 @@ export class AppImManager {
               if(pending.size < 1e6) {
                 let img = new Image();
                 img.src = URL.createObjectURL(pending.file);
+
+                let {w, h} = calcImageInBox(pending.w, pending.h, 380, 380);
+
+                attachmentDiv.style.width = w + 'px';
+                attachmentDiv.style.height = h + 'px';
   
                 attachmentDiv.append(img);
                 preloader.attach(attachmentDiv, false);
+                bubble.classList.add('hide-name', 'photo');
 
                 break;
               }
@@ -1478,7 +1631,7 @@ export class AppImManager {
           let nameDiv = document.createElement('div');
           nameDiv.classList.add('name');
           nameDiv.innerHTML = 'Forwarded from ' + title;
-          nameDiv.style.color = appPeersManager.getPeerColorByID(message.fromID);
+          nameDiv.style.color = appPeersManager.getPeerColorByID(message.fromID, false);
           bubble.append(nameDiv);
         }
       } else {
@@ -1549,7 +1702,7 @@ export class AppImManager {
           let nameDiv = document.createElement('div');
           nameDiv.classList.add('name');
           nameDiv.innerHTML = title;
-          nameDiv.style.color = appPeersManager.getPeerColorByID(message.fromID);
+          nameDiv.style.color = appPeersManager.getPeerColorByID(message.fromID, false);
           bubble.append(nameDiv);
         } else if(!message.reply_to_mid) {
           bubble.classList.add('hide-name');

@@ -371,7 +371,9 @@ export class AppMessagesManager {
     isMedia?: boolean,
     replyToMsgID?: number,
     caption?: string,
-    entities?: any[]
+    entities?: any[],
+    width?: number,
+    height?: number
   } = {}) {
     peerID = AppPeersManager.getPeerMigratedTo(peerID) || peerID;
     var messageID = this.tempID--;
@@ -459,6 +461,8 @@ export class AppMessagesManager {
       size: file.size,
       file: file,
       preloader: preloader,
+      w: options.width,
+      h: options.height,
       progress: {
         percent: 1, 
         total: file.size,

@@ -188,7 +188,7 @@ class AppSidebarLeft {
   }
   
   public onChatsScroll() {
-    this.log(this.scroll);
+    //this.log(this.scroll);
     if(this.scroll.hiddenElements.down.length > 0/*  || 1 == 1 */) return;
     
     if(!this.loadDialogsPromise) {
