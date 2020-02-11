@@ -314,7 +314,10 @@ input {
 }
 .c-ripple.active .c-ripple__circle {
   //-webkit-animation: a-ripple 750ms ease-in;
-  animation: a-ripple 750ms ease-in-out;
+  //animation: a-ripple 750ms ease-in-out;
+  will-change: padding-bottom, width, opacity;
+  -webkit-animation: a-ripple 625ms ease-in-out;
+  animation: a-ripple 625ms ease-in-out;
 }
 
 /**
@@ -324,6 +327,7 @@ input {
 @-webkit-keyframes a-ripple {
   0% {
     opacity: 0;
+    //opacity: 1;
   }
   25% {
     opacity: 1;
@@ -337,6 +341,7 @@ input {
 @keyframes a-ripple {
   0% {
     opacity: 0;
+    //opacity: 1;
   }
   25% {
     opacity: 1;
@@ -394,6 +399,12 @@ input {
     .document-ico {
       padding-top: 1.5rem;
       background-image: url('../assets/img/doc-in.svg');
+    }
+  }
+
+  &.photo {
+    .document-ico {
+      border-radius: $border-radius;
     }
   }
   
@@ -488,7 +499,7 @@ input {
     transform: translateY(-50%);
     background-color: #fff;
     font-size: 0.85rem;
-    transition: .2s all;
+    transition: .2s all, .1s opacity;
     display: inline-block;
     cursor: text;
   }
@@ -542,6 +553,8 @@ input {
       transform: none;
       padding: 0 5px;
       left: 7.5px;
+      font-size: 0.85rem!important;
+      opacity: 1;
     }
   }
 }
@@ -930,8 +943,6 @@ $width: 100px;
   display: inline-block;
   /* width: 100%;
   height: 100%; */
-  width: 18px;
-  height: 18px;
   max-width: 100%;
   max-height: 100%;
   vertical-align: middle;
@@ -940,7 +951,11 @@ $width: 100px;
   font-size: 1em;
 
   font-family: apple color emoji,segoe ui emoji,noto color emoji,android emoji,emojisymbols,emojione mozilla,twemoji mozilla,segoe ui symbol;
+}
 
+img.emoji {
+  width: 18px;
+  height: 18px;
 }
 
 .popup {
@@ -1309,6 +1324,7 @@ div.scrollable::-webkit-scrollbar-thumb {
 
 .popup-send-photo {
   .popup-container {
+    width: 420px;
     max-width: 420px;
     max-height: 425px;
     overflow: hidden;
@@ -1352,6 +1368,7 @@ div.scrollable::-webkit-scrollbar-thumb {
     justify-content: center;
     width: fit-content;
     border-radius: $border-radius-medium;
+    margin: 0 auto;
     /* align-items: center; */
 
     .document {
@@ -1366,6 +1383,12 @@ div.scrollable::-webkit-scrollbar-thumb {
         overflow: hidden;
         text-overflow: ellipsis;
       }
+
+      /* &.photo {
+        .document-ico {
+          border-radius: $border-radius;
+        }
+      } */
     }
 
     img {
@@ -1381,6 +1404,15 @@ div.scrollable::-webkit-scrollbar-thumb {
       font-size: 1.15rem;
       padding: 0 15px;
       border-radius: $border-radius-medium;
+
+      &:focus {
+        padding: 0 14.5px;
+      }
+    }
+
+    label {
+      font-size: inherit;
+      opacity: 0;
     }
   }
 }

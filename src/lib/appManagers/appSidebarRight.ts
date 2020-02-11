@@ -1,4 +1,4 @@
-import { LazyLoadQueue, horizontalMenu, wrapDocument, formatPhoneNumber } from "../../components/misc";
+import { horizontalMenu, formatPhoneNumber } from "../../components/misc";
 import Scrollable from '../../components/scrollable';
 import { isElementInViewport, $rootScope } from "../utils";
 import appMessagesManager from "./appMessagesManager";
@@ -10,6 +10,8 @@ import { RichTextProcessor } from "../richtextprocessor";
 import { logger } from "../polyfill";
 import appImManager from "./appImManager";
 import appMediaViewer from "./appMediaViewer";
+import LazyLoadQueue from "../../components/lazyLoadQueue";
+import { wrapDocument } from "../../components/wrappers";
 
 class AppSidebarRight {
   public sidebarEl = document.querySelector('.profile-container') as HTMLDivElement;

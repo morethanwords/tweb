@@ -1,9 +1,11 @@
-import { MTProto } from "../mtproto/mtproto";
 import appUsersManager from "./appUsersManager";
 import { copy, calcImageInBox } from "../utils";
 import fileManager from '../filemanager';
 import { bytesFromHex } from "../bin_utils";
-import { MTPhotoSize } from "../../components/misc";
+import { MTPhotoSize } from "../../components/wrappers";
+import apiFileManager from "../mtproto/apiFileManager";
+import apiManager from "../mtproto/apiManager";
+//import { MTPhotoSize } from "../../components/misc";
 
 type MTPhoto = {
   _: 'photo',
@@ -53,7 +55,7 @@ export class AppPhotosManager {
     
     apiPhoto.sizes.forEach((photoSize: any) => {
       if(photoSize._ == 'photoCachedSize') {
-        MTProto.apiFileManager.saveSmallFile(photoSize.location, photoSize.bytes);
+        apiFileManager.saveSmallFile(photoSize.location, photoSize.bytes);
         
         console.log('clearing photo cached size', apiPhoto);
         
@@ -109,7 +111,7 @@ export class AppPhotosManager {
   
   public getUserPhotos(userID: number, maxID: number, limit: number) {
     var inputUser = appUsersManager.getUserInput(userID);
-    return MTProto.apiManager.invokeApi('photos.getUserPhotos', {
+    return apiManager.invokeApi('photos.getUserPhotos', {
       user_id: inputUser,
       offset: 0,
       limit: limit || 20,
@@ -221,26 +223,26 @@ export class AppPhotosManager {
       } : photoSize.location;
   
       /* if(overwrite) {
-        await MTProto.apiFileManager.deleteFile(location);
+        await apiFileManager.deleteFile(location);
         console.log('Photos deleted file!');
       } */
 
       if(isPhoto/*  && photoSize.size >= 1e6 */) {
         console.log('Photos downloadFile exec', photo);
-        /* let promise = MTProto.apiFileManager.downloadFile(photo.dc_id, location, photoSize.size);
+        /* let promise = apiFileManager.downloadFile(photo.dc_id, location, photoSize.size);
 
         let blob = await promise;
         if(blob.size < photoSize.size && overwrite) {
-          await MTProto.apiFileManager.deleteFile(location);
+          await apiFileManager.deleteFile(location);
           console.log('Photos deleted file!');
-          return MTProto.apiFileManager.downloadFile(photo.dc_id, location, photoSize.size);
+          return apiFileManager.downloadFile(photo.dc_id, location, photoSize.size);
         }
 
         return blob; */
-        return MTProto.apiFileManager.downloadFile(photo.dc_id, location, photoSize.size);
+        return apiFileManager.downloadFile(photo.dc_id, location, photoSize.size);
       } else {
         console.log('Photos downloadSmallFile exec', photo, location);
-        return MTProto.apiFileManager.downloadSmallFile(location);
+        return apiFileManager.downloadSmallFile(location);
       }
     } else return Promise.reject('no photoSize');
   }
@@ -359,7 +361,7 @@ export class AppPhotosManager {
     
     fileManager.chooseSaveFile(fileName, ext, mimeType).then((writableFileEntry) => {
       if(writableFileEntry) {
-        MTProto.apiFileManager.downloadFile(photo.dc_id, inputFileLocation, fullPhotoSize.size, {
+        apiFileManager.downloadFile(photo.dc_id, inputFileLocation, fullPhotoSize.size, {
           mimeType: mimeType,
           toFileEntry: writableFileEntry
         }).then(() => {
@@ -369,12 +371,12 @@ export class AppPhotosManager {
         });
       }
     }, () => {
-      var cachedBlob = MTProto.apiFileManager.getCachedFile(inputFileLocation)
+      var cachedBlob = apiFileManager.getCachedFile(inputFileLocation)
       if (cachedBlob) {
         return fileManager.download(cachedBlob, mimeType, fileName);
       }
       
-      MTProto.apiFileManager.downloadFile(photo.dc_id, inputFileLocation, fullPhotoSize.size, {mimeType: mimeType})
+      apiFileManager.downloadFile(photo.dc_id, inputFileLocation, fullPhotoSize.size, {mimeType: mimeType})
       .then((blob: Blob) => {
         fileManager.download(blob, mimeType, fileName);
       }, (e: any) => {

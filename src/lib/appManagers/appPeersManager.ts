@@ -105,6 +105,22 @@ const AppPeersManager = {
     return (peerID < 0) && appChatsManager.isChannel(-peerID);
   },
 
+  isMegagroup: (peerID: number) => {
+    return (peerID < 0) && appChatsManager.isMegagroup(-peerID);
+  },
+
+  isAnyGroup: (peerID: number): boolean => {
+    return (peerID < 0) && !appChatsManager.isBroadcast(-peerID);
+  },
+
+  isBroadcast: (id: number): boolean => {
+    return AppPeersManager.isChannel(id) && !AppPeersManager.isMegagroup(id);
+  },
+
+  isBot: (peerID: number): boolean => {
+    return (peerID > 0) && appUsersManager.isBot(peerID);
+  },
+
   getInputPeerByID: (peerID: number) => {
     if (!peerID) {
       return {_: 'inputPeerEmpty'}
@@ -135,10 +151,6 @@ const AppPeersManager = {
     let idx = DialogColorsMap[(peerID < 0 ? -peerID : peerID) % 7];
     let color = (pic ? DialogColors : DialogColorsFg)[idx];
     return color;
-  },
-
-  isMegagroup: (peerID: number) => {
-    return (peerID < 0) && appChatsManager.isMegagroup(-peerID);
   },
 
   getPeerSearchText: (peerID: number) => {

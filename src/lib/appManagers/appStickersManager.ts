@@ -1,6 +1,7 @@
-import { MTDocument } from "../../components/misc";
 import AppStorage from '../storage';
-import { MTProto } from "../mtproto/mtproto";
+import { MTDocument } from '../../components/wrappers';
+import apiManager from '../mtproto/apiManager';
+import apiFileManager from '../mtproto/apiFileManager';
 
 export type MTStickerSet = {
   _: 'stickerSet',
@@ -78,7 +79,7 @@ class appStickersManager {
   }) {
     if(this.stickerSets[set.id]) return this.stickerSets[set.id];
     
-    let promise = MTProto.apiManager.invokeApi('messages.getStickerSet', {
+    let promise = apiManager.invokeApi('messages.getStickerSet', {
       stickerset: {
         _: 'inputStickerSetID',
         id: set.id,
@@ -132,7 +133,7 @@ class appStickersManager {
     let thumb = stickerSet.thumb;
     let dcID = stickerSet.thumb_dc_id;
 
-    let promise = MTProto.apiFileManager.downloadSmallFile({
+    let promise = apiFileManager.downloadSmallFile({
       _: 'inputStickerSetThumb',
       stickerset: {
         _: 'inputStickerSetID',

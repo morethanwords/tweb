@@ -137,6 +137,12 @@
 			box-sizing: border-box;
 			min-height: 100%;
 			justify-content: flex-end;
+
+			&.is-chat {
+				.in {
+					padding-left: 36px;
+				}
+			}
 		}
 		
 		.service {
@@ -474,12 +480,12 @@
 			
 			.user-avatar {
 				position: absolute;
-				left: -2.5rem;
-				width: 32px;
-				height: 32px;
-				line-height: 32px;
+				left: -3rem;
+				width: 40px;
+				height: 40px;
+				line-height: 40px;
 				bottom: 0;
-				font-size: .85rem;
+				font-size: 1rem;
 			}
 			
 			&:not(.forwarded).hide-name, &.emoji-big {
@@ -657,16 +663,26 @@
 				}
 			}
 			
-			.bubble.read {
+			.bubble.is-read {
 				.time .tgico:after {
 					content: $tgico-checks;
 				}
 			}
 			
-			.bubble.sent {
+			.bubble.is-sent {
 				.time .tgico:after {
 					content: $tgico-check;
 				}
+			}
+
+			.bubble.is-sending {
+				.time .tgico:after {
+					content: $tgico-sending;
+				}
+			}
+
+			.bubble.is-reply .name {
+				display: none;
 			}
 			
 			.bubble {

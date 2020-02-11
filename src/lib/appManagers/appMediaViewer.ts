@@ -1,13 +1,15 @@
-import { MTDocument, ProgressivePreloader, wrapVideo } from "../../components/misc";
+//import { MTDocument, ProgressivePreloader, wrapVideo } from "../../components/misc";
 import appPeersManager from "./appPeersManager";
 import appDialogsManager from "./appDialogsManager";
 import appPhotosManager from "./appPhotosManager";
 import appSidebarRight from "./appSidebarRight";
 import { $rootScope } from "../utils";
 import appMessagesManager from "./appMessagesManager";
-import { CancellablePromise } from "../mtproto/apiFileManager";
+//import { CancellablePromise } from "../mtproto/apiFileManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import { logger } from "../polyfill";
+import ProgressivePreloader from "../../components/preloader";
+import { wrapVideo } from "../../components/wrappers";
 
 export class AppMediaViewer {
   private overlaysDiv = document.querySelector('.overlays') as HTMLDivElement;

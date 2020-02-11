@@ -1,6 +1,6 @@
 import { AppImManager } from "../lib/appManagers/appImManager";
 import { AppMessagesManager } from "../lib/appManagers/appMessagesManager";
-import { LazyLoadQueue, horizontalMenu, MTDocument, wrapSticker } from "./misc";
+import { horizontalMenu } from "./misc";
 import lottieLoader from "../lib/lottieLoader";
 import Scrollable from "./scrollable";
 import { findUpTag, whichChild } from "../lib/utils";
@@ -8,6 +8,8 @@ import { RichTextProcessor } from "../lib/richtextprocessor";
 import appStickersManager, { MTStickerSet } from "../lib/appManagers/appStickersManager";
 import apiManager from '../lib/mtproto/apiManager';
 import CryptoWorker from '../lib/crypto/cryptoworker';
+import LazyLoadQueue from "./lazyLoadQueue";
+import { MTDocument, wrapSticker } from "./wrappers";
 
 export const EMOTICONSSTICKERGROUP = 'emoticons-dropdown';
 

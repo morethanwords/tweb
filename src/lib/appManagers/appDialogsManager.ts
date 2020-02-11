@@ -22,11 +22,14 @@ type DialogDom = {
 
 export class AppDialogsManager {
   public chatList = document.getElementById('dialogs') as HTMLUListElement;
+  public chatListArchived = document.getElementById('dialogs-archived') as HTMLUListElement;
   public pinnedDelimiter: HTMLDivElement;
   public chatsHidden: any;
   
   public myID = 0;
-  public doms: {[x: number]: any} = {};
+  public doms: {[peerID: number]: DialogDom} = {};
+  public domsArchived: {[peerID: number]: DialogDom} = {};
+  public lastActiveListElement: HTMLElement = null;
 
   constructor() {
     this.pinnedDelimiter = document.createElement('div');
@@ -56,6 +59,10 @@ export class AppDialogsManager {
         return;
       }
 
+      if(this.lastActiveListElement) {
+        this.lastActiveListElement.classList.remove('active');
+      }
+
       if(elem) {
         /* if(chatClosedDiv) {
           chatClosedDiv.style.display = 'none';
@@ -66,6 +73,8 @@ export class AppDialogsManager {
         let peerID = +elem.getAttribute('data-peerID');
         let lastMsgID = +elem.getAttribute('data-mid');
         appImManager.setPeer(peerID, lastMsgID);
+        elem.classList.add('active');
+        this.lastActiveListElement = elem;
       } else /* if(chatClosedDiv) */ {
         appImManager.setPeer(0);
         //chatClosedDiv.style.display = '';
@@ -140,7 +149,7 @@ export class AppDialogsManager {
     return true;
   }
 
-  public sortDom() {
+  public sortDom(archived = false) {
     //return;
 
     let dialogs = appMessagesManager.dialogsStorage.dialogs;
@@ -153,10 +162,16 @@ export class AppDialogsManager {
       let dialog = dialogs[i];
       if(!dialog.pFlags.pinned) break;
       pinnedDialogs.push(dialog);
+    }
 
-      let dom = this.getDialogDom(dialog.peerID);
+    if(pinnedDialogs.length) {
+      let dom = this.getDialogDom(pinnedDialogs[pinnedDialogs.length - 1].peerID);
       if(dom) {
         dom.listEl.append(this.pinnedDelimiter);
+      }
+    } else {
+      if(this.pinnedDelimiter.parentElement) {
+        this.pinnedDelimiter.parentElement.removeChild(this.pinnedDelimiter);
       }
     }
 
@@ -372,13 +387,14 @@ export class AppDialogsManager {
   }
 
   public getDialogDom(peerID: number) {
-    return this.doms[peerID] as DialogDom;
+    return this.doms[peerID] || this.domsArchived[peerID];
   }
 
   public addDialog(dialog: {
     peerID: number,
     pFlags: any,
-    peer: any
+    peer: any,
+    folder_id?: number
   }, container?: HTMLUListElement, drawStatus = true) {
     let peerID: number = dialog.peerID;
 
@@ -481,7 +497,14 @@ export class AppDialogsManager {
     };
 
     if(!container) {
-      this.chatList.append(li);
+      if(dialog.folder_id) {
+        this.chatListArchived.append(li);
+        this.domsArchived[dialog.peerID] = dom;
+      } else {
+        this.chatList.append(li);
+        this.doms[dialog.peerID] = dom;
+      }
+      
       //this.appendTo.push(li);
 
       if(dialog.pFlags.pinned) {
@@ -490,7 +513,6 @@ export class AppDialogsManager {
         dom.listEl.append(this.pinnedDelimiter);
       }
 
-      this.doms[dialog.peerID] = dom;
       this.setLastMessage(dialog);
     } else {
       container.append(li);

@@ -1,4 +1,3 @@
-import { MTProto } from "../lib/mtproto/mtproto";
 import { putPreloader, getNearestDc, formatPhoneNumber } from "./misc";
 import Scrollable from './scrollable';
 import {RichTextProcessor} from '../lib/richtextprocessor';
@@ -6,6 +5,7 @@ import * as Config from '../lib/config';
 
 import { findUpTag } from "../lib/utils";
 import pageAuthCode from "./pageAuthCode";
+import apiManager from "../lib/mtproto/apiManager";
 
 let installed = false;
 
@@ -193,8 +193,8 @@ export default () => {
     this.removeAttribute('readonly'); // fix autocomplete
   });*/
 
-  /* MTProto.authorizer.auth(2);
-  MTProto.networkerFactory.startAll(); */
+  /* authorizer.auth(2);
+  networkerFactory.startAll(); */
 
   btnNext.addEventListener('click', function(this: HTMLElement, e) {
     this.setAttribute('disabled', 'true');
@@ -204,7 +204,7 @@ export default () => {
     //this.innerHTML = 'PLEASE WAIT...';
 
     let phone_number = telEl.value;
-    MTProto.apiManager.invokeApi('auth.sendCode', {
+    apiManager.invokeApi('auth.sendCode', {
       /* flags: 0, */
       phone_number: phone_number,
       api_id: Config.App.id,

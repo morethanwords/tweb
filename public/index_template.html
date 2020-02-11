@@ -252,7 +252,8 @@
         </div>
         <div class="popup-photo"></div>
         <div class="input-field">
-          <input type="text" name="photo-caption" id="photo-caption" placeholder="Add a caption..." autocomplete="off" />
+          <input type="text" name="photo-caption" id="photo-caption" placeholder="Add a caption..." autocomplete="off" required />
+          <label for="photo-caption">Caption</label>
         </div>
       </div>
     </div>
@@ -278,8 +279,10 @@
         <div id="chats-container">
           <ul id="dialogs"></ul>
         </div>
-        <div id="search-container">
+        <div id="chats-archived-container">
+          <ul id="dialogs-archived"></ul>
         </div>
+        <div id="search-container"></div>
       </div>
     </div>
     <div class="chat-container">

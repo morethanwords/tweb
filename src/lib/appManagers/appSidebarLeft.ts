@@ -1,11 +1,42 @@
 import { logger } from "../polyfill";
-import { putPreloader } from "../../components/misc";
+import { putPreloader, formatPhoneNumber } from "../../components/misc";
 import Scrollable from '../../components/scrollable';
 import appMessagesManager from "./appMessagesManager";
 import appDialogsManager from "./appDialogsManager";
-import { isElementInViewport } from "../utils";
+import { isElementInViewport, numberWithCommas } from "../utils";
 import appMessagesIDsManager from "./appMessagesIDsManager";
 import appImManager from "./appImManager";
+import appUsersManager from "./appUsersManager";
+import { appPeersManager } from "../services";
+
+class SearchGroup {
+  container: HTMLDivElement;
+  nameEl: HTMLDivElement;
+  list: HTMLUListElement;
+
+  constructor(public name: string, public type: string) {
+    this.list = document.createElement('ul');
+    this.container = document.createElement('div');
+    this.nameEl = document.createElement('div');
+    this.nameEl.classList.add('search-group__name');
+    this.nameEl.innerText = name;
+
+    this.container.classList.add('search-group');
+    this.container.append(this.nameEl, this.list);
+    this.container.style.display = 'none';
+
+    appDialogsManager.setListClickListener(this.list);
+  }
+
+  clear() {
+    this.container.style.display = 'none';
+    this.list.innerHTML = '';
+  }
+
+  setActive() {
+    this.container.style.display = '';
+  }
+}
 
 class AppSidebarLeft {
   private sidebarEl = document.querySelector('.page-chats .chats-container') as HTMLDivElement;
@@ -15,10 +46,11 @@ class AppSidebarLeft {
   
   private menuEl = this.toolsBtn.querySelector('.btn-menu');
   private savedBtn = this.menuEl.querySelector('.menu-saved');
+  private archivedBtn = this.menuEl.querySelector('.menu-archive');
   
   private listsContainer: HTMLDivElement = null;
-  private searchMessagesList: HTMLUListElement = null;
   
+  private chatsArchivedContainer = document.getElementById('chats-archived-container') as HTMLDivElement;
   private chatsContainer = document.getElementById('chats-container') as HTMLDivElement;
   private chatsOffsetIndex = 0;
   private chatsPreloader: HTMLDivElement;
@@ -39,6 +71,13 @@ class AppSidebarLeft {
   private query = '';
 
   public scroll: Scrollable = null;
+
+  public searchGroups: {[group: string]: SearchGroup} = {
+    contacts: new SearchGroup('Contacts and Chats', 'contacts'),
+    globalContacts: new SearchGroup('Global Search', 'contacts'),
+    globalMessages: new SearchGroup('Global Search', 'messages'),
+    privateMessages: new SearchGroup('Private Search', 'messages')
+  };
   
   constructor() {
     this.chatsPreloader = document.createElement('div');
@@ -55,13 +94,22 @@ class AppSidebarLeft {
     this.scroll.container.addEventListener('scroll', this.onChatsScroll.bind(this));
     
     this.listsContainer = new Scrollable(this.searchContainer).container;
-    this.searchMessagesList = document.createElement('ul');
+
+    for(let i in this.searchGroups) {
+      this.listsContainer.append(this.searchGroups[i].container);
+    }
     
     this.savedBtn.addEventListener('click', (e) => {
       this.log('savedbtn click');
       setTimeout(() => { // menu doesn't close if no timeout (lol)
         appImManager.setPeer(appImManager.myID);
       }, 0);
+    });
+    
+    this.archivedBtn.addEventListener('click', (e) => {
+      this.chatsArchivedContainer.classList.add('active');
+      this.toolsBtn.classList.remove('tgico-menu', 'btn-menu-toggle');
+      this.toolsBtn.classList.add('tgico-back');
     });
     
     /* this.listsContainer.insertBefore(this.searchMessagesList, this.listsContainer.lastElementChild);
@@ -75,8 +123,6 @@ class AppSidebarLeft {
     
     //this.searchContainer.append(this.listsContainer);
     
-    appDialogsManager.setListClickListener(this.searchMessagesList);
-    
     let clickTimeout = 0;
     this.searchInput.addEventListener('focus', (e) => {
       this.toolsBtn.classList.remove('tgico-menu', 'btn-menu-toggle');
@@ -84,7 +130,9 @@ class AppSidebarLeft {
       this.searchContainer.classList.add('active');
       
       if(!this.searchInput.value) {
-        this.searchMessagesList.innerHTML = '';
+        for(let i in this.searchGroups) {
+          this.searchGroups[i].clear();
+        }
       }
 
       this.searchInput.addEventListener('blur', (e) => {
@@ -111,10 +159,6 @@ class AppSidebarLeft {
       let value = this.searchInput.value;
       this.log('input', value);
       
-      if(this.listsContainer.contains(this.searchMessagesList)) {
-        this.listsContainer.removeChild(this.searchMessagesList);
-      }
-      
       if(!value.trim()) {
         return;
       }
@@ -124,11 +168,13 @@ class AppSidebarLeft {
       this.loadedCount = 0;
       this.foundCount = 0;
       this.offsetRate = 0;
-      this.searchMessagesList.innerHTML = '';
+      
+      for(let i in this.searchGroups) {
+        this.searchGroups[i].clear();
+      }
+      
       this.searchPromise = null;
-      this.searchMore().then(() => {
-        this.listsContainer.append(this.searchMessagesList);
-      });
+      this.searchMore();
     });
     
     this.toolsBtn.addEventListener('click', (e) => {
@@ -138,6 +184,7 @@ class AppSidebarLeft {
         this.toolsBtn.classList.add('tgico-menu', 'btn-menu-toggle');
         this.toolsBtn.classList.remove('tgico-back');
         this.searchContainer.classList.remove('active');
+        this.chatsArchivedContainer.classList.remove('active');
         this.peerID = 0;
         e.stopPropagation();
         e.cancelBubble = true;
@@ -156,6 +203,10 @@ class AppSidebarLeft {
         this.onChatsScroll();
       }, 0);
     });
+
+    /* appUsersManager.getTopPeers().then(categories => {
+      this.log('got top categories:', categories);
+    }); */
   }
   
   public async loadDialogs() {
@@ -207,7 +258,7 @@ class AppSidebarLeft {
   public onSidebarScroll() {
     if(!this.query.trim()) return;
     
-    let elements = Array.from(this.searchMessagesList.childNodes).slice(-5);
+    let elements = Array.from(this.searchGroups[this.peerID ? 'privateMessages' : 'globalMessages'].list.childNodes).slice(-5);
     for(let li of elements) {
       if(isElementInViewport(li)) {
         this.log('Will load more search');
@@ -244,6 +295,64 @@ class AppSidebarLeft {
     }
     
     let maxID = appMessagesIDsManager.getMessageIDInfo(this.minMsgID)[0];
+
+    if(!this.peerID && !maxID) {
+      appUsersManager.searchContacts(query, 20).then((contacts: any) => {
+        if(this.searchInput.value != query) {
+          return;
+        }
+
+        this.log('input search contacts result:', contacts);
+
+        let setResults = (results: any, group: SearchGroup, showMembersCount = false) => {
+          results.forEach((inputPeer: any) => {
+            let peerID = appPeersManager.getPeerID(inputPeer);
+            let peer = appPeersManager.getPeer(peerID);
+            let originalDialog = appMessagesManager.getDialogByPeerID(peerID)[0];
+
+            this.log('contacts peer', peer);
+          
+            if(!originalDialog) {
+              this.log('no original dialog by peerID:', peerID);
+              
+              originalDialog = {
+                peerID: peerID,
+                pFlags: {},
+                peer: peer
+              };
+            }
+            
+            let {dialog, dom} = appDialogsManager.addDialog(originalDialog, group.list, false);
+
+            if(showMembersCount && (peer.participants_count || peer.participants)) {
+              let isChannel = appPeersManager.isChannel(peerID) && !appPeersManager.isMegagroup(peerID);
+              let participants_count = peer.participants_count || peer.participants.participants.length;
+              let subtitle = numberWithCommas(participants_count) + ' ' + (isChannel ? 'subscribers' : 'members');
+              dom.lastMessageSpan.innerText = subtitle;
+            } else {
+              let username = appPeersManager.getPeerUsername(peerID);
+              if(!username) {
+                let user = appUsersManager.getUser(peerID);
+                if(user && user.phone) {
+                  username = '+' + formatPhoneNumber(user.phone).formatted;
+                }
+              } else {
+                username = '@' + username;
+              }
+              
+              dom.lastMessageSpan.innerText = username;
+            }
+          });
+
+          if(results.length) {
+            group.setActive();
+          }
+        };
+
+        setResults(contacts.my_results, this.searchGroups.contacts, true);
+        setResults(contacts.results, this.searchGroups.globalContacts);
+      });
+    }
     
     return this.searchPromise = appMessagesManager.getSearch(this.peerID, query, null, maxID, 20, this.offsetRate).then(res => {
       this.searchPromise = null;
@@ -260,6 +369,9 @@ class AppSidebarLeft {
         history.shift();
       }
       
+      let searchGroup = this.searchGroups[this.peerID ? 'privateMessages' : 'globalMessages'];
+      searchGroup.setActive();
+
       history.forEach((msgID: number) => {
         let message = appMessagesManager.getMessage(msgID);
         let originalDialog = appMessagesManager.getDialogByPeerID(message.peerID)[0];
@@ -274,7 +386,7 @@ class AppSidebarLeft {
           };
         }
         
-        let {dialog, dom} = appDialogsManager.addDialog(originalDialog, this.searchMessagesList, false);
+        let {dialog, dom} = appDialogsManager.addDialog(originalDialog, searchGroup.list, false);
         appDialogsManager.setLastMessage(dialog, message, dom);
       });
       

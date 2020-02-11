@@ -1,5 +1,5 @@
 //import { appImManager, appMessagesManager, appDialogsManager, apiUpdatesManager, appUsersManager } from "../lib/services";
-import { LazyLoadQueue, openBtnMenu } from "./misc";
+import { openBtnMenu } from "./misc";
 import Scrollable from './scrollable';
 
 import {stackBlurImage} from '../lib/StackBlur';
@@ -50,28 +50,11 @@ export default () => import('../lib/services').then(services => {
   });
 
   // @ts-ignore
-  document.addEventListener('history_multiappend', (e: CustomEvent) => {
-    //let msgIDsByPeer = e.detail;
-
-    appDialogsManager.sortDom();
-  });
-
-  // @ts-ignore
   document.addEventListener('dialog_top', (e: CustomEvent) => {
     let dialog: any = e.detail;
 
     appDialogsManager.setLastMessage(dialog);
     appDialogsManager.sortDom();
-  });
-
-  // @ts-ignore
-  document.addEventListener('history_delete', (e: CustomEvent) => {
-    let detail: {
-      peerID: string,
-      msgs: {[x: number]: boolean}
-    } = e.detail;
-
-    appImManager.deleteMessagesByIDs(Object.keys(detail.msgs).map(s => +s));
   });
 
   // @ts-ignore

@@ -108,7 +108,7 @@
   content: "\e918";
 }
 .tgico-sending:before {
-  content: "\e919";
+  content: $tgico-sending;
 }
 .tgico-sendingerror:before {
   content: "\e91a";

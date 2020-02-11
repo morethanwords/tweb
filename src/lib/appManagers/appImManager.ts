@@ -4,7 +4,7 @@ import appUsersManager from "./appUsersManager";
 import appMessagesManager from "./appMessagesManager";
 import appPeersManager from "./appPeersManager";
 import appProfileManager from "./appProfileManager";
-import { ProgressivePreloader, wrapDocument, wrapSticker, wrapVideo, wrapPhoto, openBtnMenu, LazyLoadQueue } from "../../components/misc";
+//import { ProgressivePreloader, wrapDocument, wrapSticker, wrapVideo, wrapPhoto, openBtnMenu, LazyLoadQueue } from "../../components/misc";
 import appDialogsManager from "./appDialogsManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import appPhotosManager from "./appPhotosManager";
@@ -19,6 +19,10 @@ import appChatsManager from "./appChatsManager";
 import appMessagesIDsManager from "./appMessagesIDsManager";
 import apiUpdatesManager from './apiUpdatesManager';
 import initEmoticonsDropdown, { EMOTICONSSTICKERGROUP } from '../../components/emoticonsDropdown';
+import LazyLoadQueue from '../../components/lazyLoadQueue';
+import { wrapDocument, wrapPhoto, wrapVideo, wrapSticker } from '../../components/wrappers';
+import ProgressivePreloader from '../../components/preloader';
+import { openBtnMenu } from '../../components/misc';
 
 console.log('appImManager included!');
 
@@ -213,7 +217,7 @@ class ChatInput {
       event.preventDefault();
     });
     
-    /* this.messageInput.addEventListener('paste', (e) => {
+    this.messageInput.addEventListener('paste', (e) => {
       e.preventDefault();
       // @ts-ignore
       let text = (e.originalEvent || e).clipboardData.getData('text/plain');
@@ -229,7 +233,7 @@ class ChatInput {
       // @ts-ignore
       //console.log('paste text', text, );
       window.document.execCommand('insertHTML', false, text);
-    }); */
+    });
 
     let attachFile = (file: File) => {
       console.log('selected file:', file, typeof(file));
@@ -240,6 +244,8 @@ class ChatInput {
 
       this.attachMediaPopUp.captionInput.value = '';
       this.attachMediaPopUp.mediaContainer.innerHTML = '';
+      this.attachMediaPopUp.mediaContainer.style.width = '';
+      this.attachMediaPopUp.mediaContainer.style.height = '';
 
       switch(willAttach) {
         case 'media': {
@@ -248,11 +254,14 @@ class ChatInput {
           img.onload = () => {
             willAttachWidth = img.naturalWidth;
             willAttachHeight = img.naturalHeight;
+
+            let {w, h} = calcImageInBox(willAttachWidth, willAttachHeight, 378, 256);
+            this.attachMediaPopUp.mediaContainer.style.width = w + 'px';
+            this.attachMediaPopUp.mediaContainer.style.height = h + 'px';
+            this.attachMediaPopUp.mediaContainer.append(img);
           };
 
           this.attachMediaPopUp.titleEl.innerText = 'Send Photo';
-          
-          this.attachMediaPopUp.mediaContainer.append(img);
           this.attachMediaPopUp.container.classList.add('active');
 
           break;
@@ -308,7 +317,7 @@ class ChatInput {
 
       // @ts-ignore
       var items = (event.clipboardData || event.originalEvent.clipboardData).items;
-      //console.log(items); // will give you the mime types
+      //console.log('item', event.clipboardData.getData());
       for(let i = 0; i < items.length; ++i) {
         if(items[i].kind == 'file') {
           event.cancelBubble = true;
@@ -526,15 +535,42 @@ export class AppImManager {
       let msgIDs = msgIDsByPeer[this.peerID];
 
       this.renderMessagesByIDs(msgIDs);
+
+      appDialogsManager.sortDom();
     });
 
+    $rootScope.$on('history_delete', (e: CustomEvent) => {
+      let detail: {
+        peerID: string,
+        msgs: {[x: number]: boolean}
+      } = e.detail;
+
+      this.deleteMessagesByIDs(Object.keys(detail.msgs).map(s => +s));
+    });
+
+    // Calls when message successfully sent and we have an ID
     $rootScope.$on('message_sent', (e: CustomEvent) => {
       let {tempID, mid} = e.detail;
+
+      this.log('message_sent', e.detail);
 
       let bubble = this.bubbles[tempID];
       if(bubble) {
         this.bubbles[mid] = bubble;
+
+        this.log('message_sent', bubble);
+
+        let media = bubble.querySelector('img, video');
+        if(media) {
+          media.setAttribute('message-id', mid);
+        }
+        
+        bubble.classList.remove('is-sending');
+        bubble.classList.add('is-sent');
+
         delete this.bubbles[tempID];
+      } else {
+        this.log.warn('message_sent there is no bubble', e.detail);
       }
 
       let length = this.unreadOut.length;
@@ -964,10 +1000,12 @@ export class AppImManager {
         let length = history.length; */
 
         // filter negative ids
+        let lastBadIndex = 0;
         for(let i = 0; i < history.length; ++i) {
-          if(history[i] <= 0) history.splice(i, 1);
+          if(history[i] <= 0) lastBadIndex = i;
           else break;
         }
+        history = history.slice(lastBadIndex + 1);
 
         this.getHistoryTimeout = 0;
 
@@ -977,6 +1015,11 @@ export class AppImManager {
             let msgID = history[i];
     
             let bubble = this.bubbles[msgID];
+
+            if(!bubble) {
+              this.log.error('no bubble by msgID:', msgID);
+              continue;
+            }
     
             if(isElementInViewport(bubble)) {
               willLoad = true;
@@ -994,6 +1037,9 @@ export class AppImManager {
         }
 
         let dialog = appMessagesManager.getDialogByPeerID(this.peerID)[0];
+        if(!dialog) {
+          return;
+        }
 
         // if scroll down after search
         if(!willLoad && history.indexOf(/* this.lastDialog */dialog.top_message) === -1) {
@@ -1162,7 +1208,7 @@ export class AppImManager {
       }
 
       if(this.bubbles[lastMsgID]) {
-        if(lastMsgID == this.lastDialog.top_message) {
+        if(this.lastDialog && lastMsgID == this.lastDialog.top_message) {
           this.scroll.scrollTop = this.scroll.scrollHeight;
         } else {
           this.bubbles[lastMsgID].scrollIntoView();
@@ -1179,44 +1225,46 @@ export class AppImManager {
     this.peerID = $rootScope.selectedPeerID = peerID;
 
     // no dialog
-    if(!appMessagesManager.getDialogByPeerID(this.peerID).length) {
+    /* if(!appMessagesManager.getDialogByPeerID(this.peerID).length) {
       this.log.error('No dialog by peerID:', this.peerID);
       return Promise.reject();
-    }
+    } */
 
     this.pinnedMessageContainer.style.display = 'none';
 
     this.preloader.attach(this.chatInner);
 
-    if(this.lastDialog) {
-      let lastDom = appDialogsManager.getDialogDom(this.lastDialog.peerID);
-      lastDom.listEl.classList.remove('active');
-    }
-
-    let dialog = this.lastDialog = appMessagesManager.getDialogByPeerID(this.peerID)[0];
+    let dialog = this.lastDialog = appMessagesManager.getDialogByPeerID(this.peerID)[0] || null;
     this.log('setPeer peerID:', this.peerID, dialog);
-    appDialogsManager.loadDialogPhoto(this.avatarEl, dialog.peerID);
-    appDialogsManager.loadDialogPhoto(appSidebarRight.profileElements.avatar, dialog.peerID);
+    appDialogsManager.loadDialogPhoto(this.avatarEl, this.peerID);
+    appDialogsManager.loadDialogPhoto(appSidebarRight.profileElements.avatar, this.peerID);
 
-    this.firstTopMsgID = dialog.top_message || 0;
+    this.firstTopMsgID = dialog ? dialog.top_message : 0;
 
-    let dom = appDialogsManager.getDialogDom(this.peerID);
+    /* let dom = appDialogsManager.getDialogDom(this.peerID);
     if(!dom) {
       this.log.warn('No rendered dialog by peerID:', this.peerID);
       appDialogsManager.addDialog(dialog);
       dom = appDialogsManager.getDialogDom(this.peerID);
     }
     // warning need check
-    dom.listEl.classList.add('active');
+    dom.listEl.classList.add('active'); */
 
     this.setPeerStatus();
 
-    this.titleEl.innerHTML = appSidebarRight.profileElements.name.innerHTML = dom.titleSpan.innerHTML;
+    //this.titleEl.innerHTML = appSidebarRight.profileElements.name.innerHTML = dom.titleSpan.innerHTML;
+    this.titleEl.innerHTML = appSidebarRight.profileElements.name.innerHTML = appPeersManager.getPeerTitle(this.peerID);
 
     this.topbar.style.display = '';
     appSidebarRight.toggleSidebar(true);
 
     this.chatInput.style.display = appPeersManager.isChannel(peerID) && !appPeersManager.isMegagroup(peerID) ? 'none' : '';
+
+    if(appPeersManager.isAnyGroup(peerID)) {
+      this.chatInner.classList.add('is-chat');
+    } else {
+      this.chatInner.classList.remove('is-chat');
+    }
 
     return Promise.all([
       this.getHistory(lastMsgID).then(() => {
@@ -1230,7 +1278,7 @@ export class AppImManager {
           } else {
             this.scroll.scrollTop = this.scroll.scrollHeight;
           }
-        } else if(dialog.top_message) { // add last message, bc in getHistory will load < max_id
+        } else if(dialog && dialog.top_message) { // add last message, bc in getHistory will load < max_id
           this.renderMessage(appMessagesManager.getMessage(dialog.top_message));
         }
         
@@ -1240,10 +1288,10 @@ export class AppImManager {
         
         this.preloader.detach();
 
-        setTimeout(() => {
+        //setTimeout(() => {
           //appSidebarRight.fillProfileElements();
           appSidebarRight.loadSidebarMedia();
-        }, 0);
+        //}, 500);
         
         return true;
       })/* .catch(err => {
@@ -1271,15 +1319,17 @@ export class AppImManager {
   }
 
   public updateUnreadByDialog(dialog: any) {
-    let maxID = dialog.read_outbox_max_id;
+    let maxID = this.peerID == this.myID ? dialog.read_inbox_max_id : dialog.read_outbox_max_id;
+
+    this.log('updateUnreadByDialog', maxID, dialog, this.unreadOut);
 
     let length = this.unreadOut.length;
     for(let i = length - 1; i >= 0; --i) {
       let msgID = this.unreadOut[i];
-      if(msgID <= maxID) {
+      if(msgID > 0 && msgID <= maxID) {
         let bubble = this.bubbles[msgID];
-        bubble.classList.remove('sent');
-        bubble.classList.add('read');
+        bubble.classList.remove('is-sent');
+        bubble.classList.add('is-read');
         this.unreadOut.splice(i, 1);
       }
     }
@@ -1391,8 +1441,10 @@ export class AppImManager {
     //bubble.prepend(timeSpan, messageDiv); // that's bad
   
     if(our) {
-      if(message.pFlags.unread) this.unreadOut.push(message.mid);
-      let status = message.pFlags.unread ? 'sent' : 'read';
+      if(message.pFlags.unread || message.mid < 0) this.unreadOut.push(message.mid); // message.mid < 0 added 11.02.2020
+      let status = '';
+      if(message.mid < 0) status = 'is-sending';
+      else status = message.pFlags.unread ? 'is-sent' : 'is-read';
       bubble.classList.add(status);
     } else {
       //this.log('not our message', message, message.pFlags.unread);
@@ -1416,7 +1468,7 @@ export class AppImManager {
 
           switch(pending.type) {
             case 'photo': {
-              if(pending.size < 1e6) {
+              if(pending.size < 5e6) {
                 let img = new Image();
                 img.src = URL.createObjectURL(pending.file);
 
@@ -1486,8 +1538,6 @@ export class AppImManager {
 
           let textDiv = document.createElement('div');
           textDiv.classList.add('text');
-
-          let loadedVideo = false;
 
           let preview: HTMLDivElement = null;
           if(webpage.photo || webpage.document) {
@@ -1631,7 +1681,7 @@ export class AppImManager {
           let nameDiv = document.createElement('div');
           nameDiv.classList.add('name');
           nameDiv.innerHTML = 'Forwarded from ' + title;
-          nameDiv.style.color = appPeersManager.getPeerColorByID(message.fromID, false);
+          //nameDiv.style.color = appPeersManager.getPeerColorByID(message.fromID, false);
           bubble.append(nameDiv);
         }
       } else {
@@ -1768,9 +1818,9 @@ export class AppImManager {
       this.chatInner.append(containerDiv);
     }
 
-    if(bubble.classList.contains('webpage')) {
+    /* if(bubble.classList.contains('webpage')) {
       this.log('night running', bubble, bubble.scrollHeight);
-    }
+    } */
 
     //return //this.scrollPosition.restore();
 
@@ -1825,7 +1875,7 @@ export class AppImManager {
   public getHistory(maxID = 0, reverse = false, isBackLimit = false) {
     let peerID = this.peerID;
 
-    if(!maxID && this.lastDialog.top_message) {
+    if(!maxID && this.lastDialog && this.lastDialog.top_message) {
       maxID = this.lastDialog.top_message/*  + 1 */;
     }
 

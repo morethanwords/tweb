@@ -1,6 +1,8 @@
 import { SearchIndexManager, safeReplaceObject, isObject, tsNow, copy, $rootScope } from "../utils";
-import { MTProto } from "../mtproto/mtproto";
 import { RichTextProcessor } from "../richtextprocessor";
+import appChatsManager from "./appChatsManager";
+import apiManager from "../mtproto/apiManager";
+import serverTimeManager from "../mtproto/serverTimeManager";
 
 export class AppUsersManager {
   public users: any = {};
@@ -13,7 +15,7 @@ export class AppUsersManager {
   public myID: number;
 
   constructor() {
-    MTProto.apiManager.getUserID().then((id) => {
+    apiManager.getUserID().then((id) => {
       this.myID = id;
     });
 
@@ -37,11 +39,11 @@ export class AppUsersManager {
             user.status = update.status;
             if(user.status) {
               if(user.status.expires) {
-                user.status.expires -= MTProto.serverTimeManager.serverTimeOffset;
+                user.status.expires -= serverTimeManager.serverTimeOffset;
               }
 
               if(user.status.was_online) {
-                user.status.was_online -= MTProto.serverTimeManager.serverTimeOffset;
+                user.status.was_online -= serverTimeManager.serverTimeOffset;
               }
             }
 
@@ -149,8 +151,7 @@ export class AppUsersManager {
   }
 
   public saveApiUsers(apiUsers: any[]) {
-    // @ts-ignore
-    apiUsers.forEach(this.saveApiUser.bind(this));
+    apiUsers.forEach((user) => this.saveApiUser(user));
   }
 
   public saveApiUser(apiUser: any, noReplace?: boolean) {
@@ -200,11 +201,11 @@ export class AppUsersManager {
 
     if(apiUser.status) {
       if(apiUser.status.expires) {
-        apiUser.status.expires -= MTProto.serverTimeManager.serverTimeOffset
+        apiUser.status.expires -= serverTimeManager.serverTimeOffset
       }
 
       if(apiUser.status.was_online) {
-        apiUser.status.was_online -= MTProto.serverTimeManager.serverTimeOffset
+        apiUser.status.was_online -= serverTimeManager.serverTimeOffset
       }
     }
 
@@ -349,20 +350,6 @@ export class AppUsersManager {
     return user;
   }
 
-  /* public openUser(userID: number, override) {
-    var scope = $rootScope.$new()
-    scope.userID = userID
-    scope.override = override || {}
-
-    var modalInstance = $modal.open({
-      templateUrl: templateUrl('user_modal'),
-      controller: 'UserModalController',
-      scope: scope,
-      windowClass: 'user_modal_window mobile_modal',
-      backdrop: 'single'
-    })
-  } */
-
   /* function importContact (phone, firstName, lastName) {
       return MtpApiManager.invokeApi('contacts.importContacts', {
         contacts: [{
@@ -424,12 +411,41 @@ export class AppUsersManager {
       ids.push(this.getUserInput(userID));
     })
 
-    return MTProto.apiManager.invokeApi('contacts.deleteContacts', {
+    return apiManager.invokeApi('contacts.deleteContacts', {
       id: ids
     }).then(() => {
       userIDs.forEach((userID) => {
         this.onContactUpdated(userID, false);
       });
+    });
+  }
+
+  public getTopPeers() {
+    return apiManager.invokeApi('contacts.getTopPeers', {
+      flags: 1,
+      correspondents: true,
+      offset: 0,
+      limit: 5,
+      hash: 0,
+    }).then((peers: any) => {
+      //console.log(peers);
+      this.saveApiUsers(peers.users);
+      appChatsManager.saveApiChats(peers.chats);
+
+      return peers.categories;
+    });
+  }
+
+  public searchContacts(query: string, limit = 20) {
+    return apiManager.invokeApi('contacts.search', {
+      q: query,
+      limit
+    }).then((peers: any) => {
+      //console.log(peers);
+      this.saveApiUsers(peers.users);
+      appChatsManager.saveApiChats(peers.chats);
+
+      return peers;
     });
   }
 
@@ -452,19 +468,6 @@ export class AppUsersManager {
       }
     }
   }
-
-  /* function openImportContact () {
-    return $modal.open({
-      templateUrl: templateUrl('import_contact_modal'),
-      controller: 'ImportContactModalController',
-      windowClass: 'md_simple_modal_window mobile_modal'
-    }).result.then(function (foundUserID) {
-      if (!foundUserID) {
-        return $q.reject()
-      }
-      return foundUserID
-    })
-  } */
 
   public setUserStatus(userID: number, offline: boolean) {
     if(this.isBot(userID)) {

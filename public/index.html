@@ -175,14 +175,7 @@
     <div class="popup popup-avatar">
       <div class="popup-container z-depth-1">
         <div class="popup-header">
-          <span class="popup-close">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-              <g fill="none" fill-rule="evenodd">
-                <polygon points="0 0 24 0 24 24 0 24"/>
-                <path fill-rule="nonzero" d="M5.20970461,5.38710056 L5.29289322,5.29289322 C5.65337718,4.93240926 6.22060824,4.90467972 6.61289944,5.20970461 L6.70710678,5.29289322 L12,10.585 L17.2928932,5.29289322 C17.6834175,4.90236893 18.3165825,4.90236893 18.7071068,5.29289322 C19.0976311,5.68341751 19.0976311,6.31658249 18.7071068,6.70710678 L13.415,12 L18.7071068,17.2928932 C19.0675907,17.6533772 19.0953203,18.2206082 18.7902954,18.6128994 L18.7071068,18.7071068 C18.3466228,19.0675907 17.7793918,19.0953203 17.3871006,18.7902954 L17.2928932,18.7071068 L12,13.415 L6.70710678,18.7071068 C6.31658249,19.0976311 5.68341751,19.0976311 5.29289322,18.7071068 C4.90236893,18.3165825 4.90236893,17.6834175 5.29289322,17.2928932 L10.585,12 L5.29289322,6.70710678 C4.93240926,6.34662282 4.90467972,5.77939176 5.20970461,5.38710056 L5.29289322,5.29289322 L5.20970461,5.38710056 Z"/>
-              </g>
-            </svg>
-          </span>
+          <span class="popup-close tgico-close"></span>
           <h6>Drag to Reposition</h6>
         </div>
         <div class="crop"></div>
@@ -250,6 +243,20 @@
         </div>
       </div>
     </div>
+    <div class="popup popup-send-photo">
+      <div class="popup-container z-depth-1">
+        <div class="popup-header">
+          <span class="btn-icon popup-close tgico-close"></span>
+          <div class="popup-title">Send Photo</div>
+          <button class="btn-primary">SEND</button>
+        </div>
+        <div class="popup-photo"></div>
+        <div class="input-field">
+          <input type="text" name="photo-caption" id="photo-caption" placeholder="Add a caption..." autocomplete="off" required />
+          <label for="photo-caption">Caption</label>
+        </div>
+      </div>
+    </div>
     <div class="chats-container sidebar sidebar-left">
       <div class="sidebar-header">
         <div class="btn-icon tgico-menu btn-menu-toggle rp sidebar-tools-button">
@@ -271,6 +278,9 @@
       <div class="sidebar-content">
         <div id="chats-container">
           <ul id="dialogs"></ul>
+        </div>
+        <div id="chats-archived-container">
+          <ul id="dialogs-archived"></ul>
         </div>
         <div id="search-container">
         </div>
@@ -325,6 +335,7 @@
       </div> -->
       <div class="btn-menu" id="bubble-contextmenu">
         <div class="btn-menu-item menu-reply tgico-reply rp">Reply</div>
+        <div class="btn-menu-item menu-edit tgico-edit rp">Edit</div>
         <div class="btn-menu-item menu-copy tgico-copy rp">Copy</div>
         <div class="btn-menu-item menu-pin tgico-pin rp">Pin</div>
         <div class="btn-menu-item menu-forward tgico-forward rp">Forward</div>
@@ -372,8 +383,8 @@
             <div class="reply">
               <div class="reply-border"></div>
               <div class="reply-content">
-                <div class="reply-title">Denny</div>
-                <div class="reply-subtitle">Hello!</div>
+                <div class="reply-title"></div>
+                <div class="reply-subtitle"></div>
               </div>
             </div>
           </div>
@@ -383,7 +394,13 @@
             <div class="input-message-container">
               <div id="input-message" contenteditable="true" data-placeholder="Message"></div>
             </div>
-            <button class="btn-icon rp tgico-attach" id="attach-file"></button>
+            <button class="btn-icon rp tgico-attach btn-menu-toggle" id="attach-file">
+              <div class="btn-menu top-left">
+                <div class="btn-menu-item menu-media tgico-photo rp">Photo or Video</div>
+                <div class="btn-menu-item menu-document tgico-document rp">Document</div>
+                <div class="btn-menu-item menu-poll tgico-poll rp">Poll</div>
+              </div>
+            </button>
             <input type="file" id="input-file" style="display: none;" />
           </div>
         </div>

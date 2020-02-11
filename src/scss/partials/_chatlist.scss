@@ -46,6 +46,7 @@
     display: grid;
     grid-auto-columns: 1fr;
     /* grid-gap: 4px; */
+    width: 100%;
   }
 
   li {
@@ -133,10 +134,18 @@
   .user-title {
     max-width: 80%;
 
-    .emoji {
+    img.emoji {
       vertical-align: top;
       width: 18px;
       height: 18px;
+    }
+
+    span.emoji {
+      overflow: visible;
+      margin: 0;
+      width: auto;
+      font-size: 14px;
+      vertical-align: unset;
     }
   }
 
@@ -148,11 +157,15 @@
       color: $darkblue;
     }
 
-    .emoji {
-      font-size: 1.2rem;
+    img.emoji {
       width: 20px;
       height: 20px;
+    }
+
+    span.emoji {
+      font-size: 1.2rem;
       margin: 0 .125rem;
+      overflow: visible;
     }
   }
 

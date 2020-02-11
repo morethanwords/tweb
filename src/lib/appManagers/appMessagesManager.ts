@@ -4,7 +4,7 @@ import appChatsManager from "./appChatsManager";
 import appUsersManager from "./appUsersManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import { nextRandomInt, bigint } from "../bin_utils";
-import { MTProto, telegramMeWebService } from "../mtproto/mtproto";
+import { telegramMeWebService } from "../mtproto/mtproto";
 import apiUpdatesManager from "./apiUpdatesManager";
 import appPhotosManager from "./appPhotosManager";
 
@@ -12,9 +12,12 @@ import AppStorage from '../storage';
 import AppPeersManager from "./appPeersManager";
 import ServerTimeManager from "../mtproto/serverTimeManager";
 import apiFileManager, { CancellablePromise } from "../mtproto/apiFileManager";
-import { MTDocument, ProgressivePreloader } from "../../components/misc";
 import appDocsManager from "./appDocsManager";
 import appImManager from "./appImManager";
+import { MTDocument } from "../../components/wrappers";
+import ProgressivePreloader from "../../components/preloader";
+import serverTimeManager from "../mtproto/serverTimeManager";
+import apiManager from "../mtproto/apiManager";
 
 type HistoryStorage = {
   count: number | null,
@@ -221,7 +224,7 @@ export class AppMessagesManager {
       to_id: AppPeersManager.getOutputPeer(peerID),
       flags: flags,
       pFlags: pFlags,
-      date: tsNow(true) + MTProto.serverTimeManager.serverTimeOffset,
+      date: tsNow(true) + serverTimeManager.serverTimeOffset,
       message: text,
       random_id: randomIDS,
       reply_to_msg_id: replyToMsgID,
@@ -274,7 +277,7 @@ export class AppMessagesManager {
 
       var apiPromise: any;
       if(options.viaBotID) {
-        apiPromise = MTProto.apiManager.invokeApi('messages.sendInlineBotResult', {
+        apiPromise = apiManager.invokeApi('messages.sendInlineBotResult', {
           flags: flags,
           peer: AppPeersManager.getInputPeerByID(peerID),
           random_id: randomID,
@@ -287,7 +290,7 @@ export class AppMessagesManager {
           flags |= 8;
         }
 
-        apiPromise = MTProto.apiManager.invokeApi('messages.sendMessage', {
+        apiPromise = apiManager.invokeApi('messages.sendMessage', {
           flags: flags,
           no_webpage: noWebPage,
           peer: AppPeersManager.getInputPeerByID(peerID),
@@ -523,7 +526,7 @@ export class AppMessagesManager {
     let invoke = (flags: number, inputMedia: any) => {
       appImManager.setTyping('sendMessageCancelAction');
 
-      return MTProto.apiManager.invokeApi('messages.sendMedia', {
+      return apiManager.invokeApi('messages.sendMedia', {
         flags: flags,
         peer: AppPeersManager.getInputPeerByID(peerID),
         media: inputMedia,
@@ -767,7 +770,7 @@ export class AppMessagesManager {
     var flags = 0;
 
     if(this.dialogsOffsetDate) {
-      offsetDate = this.dialogsOffsetDate + MTProto.serverTimeManager.serverTimeOffset;
+      offsetDate = this.dialogsOffsetDate + serverTimeManager.serverTimeOffset;
       offsetIndex = this.dialogsOffsetDate * 0x10000;
       flags |= 1;
     }
@@ -776,7 +779,7 @@ export class AppMessagesManager {
     /* let id = 296814355;
     hash = (((hash * 0x4F25) & 0x7FFFFFFF) + id) & 0x7FFFFFFF; */
 
-    return MTProto.apiManager.invokeApi('messages.getDialogs', {
+    return apiManager.invokeApi('messages.getDialogs', {
       flags: flags,
       offset_date: offsetDate,
       offset_id: appMessagesIDsManager.getMessageLocalID(offsetID),
@@ -851,7 +854,7 @@ export class AppMessagesManager {
 
   public generateDialogIndex(date?: any) {
     if(date === undefined) {
-      date = tsNow(true) + MTProto.serverTimeManager.serverTimeOffset;
+      date = tsNow(true) + serverTimeManager.serverTimeOffset;
     }
     return (date * 0x10000) + ((++this.dialogsNum) & 0xFFFF);
   }
@@ -925,7 +928,7 @@ export class AppMessagesManager {
 
     console.log('will reloadConversation', peerID);
 
-    return MTProto.apiManager.invokeApi('messages.getPeerDialogs', {
+    return apiManager.invokeApi('messages.getPeerDialogs', {
       peers: peers
     }).then(this.applyConversations.bind(this));
   }
@@ -972,7 +975,7 @@ export class AppMessagesManager {
         apiMessage.reply_to_mid = appMessagesIDsManager.getFullMessageID(apiMessage.reply_to_msg_id, channelID);
       }
 
-      apiMessage.date -= MTProto.serverTimeManager.serverTimeOffset;
+      apiMessage.date -= serverTimeManager.serverTimeOffset;
 
       apiMessage.peerID = peerID;
       apiMessage.fromID = apiMessage.pFlags.post ? peerID : apiMessage.from_id;
@@ -993,7 +996,7 @@ export class AppMessagesManager {
           apiMessage.fwdPostID = fwdHeader.channel_post;
         }
 
-        fwdHeader.date -= MTProto.serverTimeManager.serverTimeOffset;
+        fwdHeader.date -= serverTimeManager.serverTimeOffset;
       }
 
       if(apiMessage.via_bot_id > 0) {
@@ -1579,7 +1582,7 @@ export class AppMessagesManager {
     notification.silent = message.pFlags.silent || false
 
     if(notificationPhoto.location && !notificationPhoto.location.empty) {
-      MTProto.apiFileManager.downloadSmallFile(notificationPhoto.location/* , notificationPhoto.size */)
+      apiFileManager.downloadSmallFile(notificationPhoto.location/* , notificationPhoto.size */)
       .then((blob) => {
         if(message.pFlags.unread) {
           notification.image = blob
@@ -1798,7 +1801,7 @@ export class AppMessagesManager {
     var apiPromise
 
     if(peerID || !query) {
-      apiPromise = MTProto.apiManager.invokeApi('messages.search', {
+      apiPromise = apiManager.invokeApi('messages.search', {
         flags: 0,
         peer: AppPeersManager.getInputPeerByID(peerID),
         q: query || '',
@@ -1826,7 +1829,7 @@ export class AppMessagesManager {
         offsetPeerID = this.getMessagePeer(offsetMessage);
       }
 
-      apiPromise = MTProto.apiManager.invokeApi('messages.searchGlobal', {
+      apiPromise = apiManager.invokeApi('messages.searchGlobal', {
         q: query,
         offset_rate: offsetRate,
         offset_peer: AppPeersManager.getInputPeerByID(offsetPeerID),
@@ -1950,12 +1953,12 @@ export class AppMessagesManager {
 
     var apiPromise: any;
     if(isChannel) {
-      apiPromise = MTProto.apiManager.invokeApi('channels.readHistory', {
+      apiPromise = apiManager.invokeApi('channels.readHistory', {
         channel: appChatsManager.getChannelInput(-peerID),
         max_id: maxID
       });
     } else {
-      apiPromise = MTProto.apiManager.invokeApi('messages.readHistory', {
+      apiPromise = apiManager.invokeApi('messages.readHistory', {
         peer: AppPeersManager.getInputPeerByID(peerID),
         max_id: maxID
       }).then((affectedMessages: any) => {
@@ -2041,7 +2044,7 @@ export class AppMessagesManager {
       let msgIDs = splitted.msgIDs[channelID];
 
       if(channelID > 0) {
-        MTProto.apiManager.invokeApi('channels.readMessageContents', {
+        apiManager.invokeApi('channels.readMessageContents', {
           channel: appChatsManager.getChannelInput(channelID),
           id: msgIDs
         }).then(() => {
@@ -2055,7 +2058,7 @@ export class AppMessagesManager {
           });
         });
       } else {
-        MTProto.apiManager.invokeApi('messages.readMessageContents', {
+        apiManager.invokeApi('messages.readMessageContents', {
           id: msgIDs
         }).then((affectedMessages: any) => {
           apiUpdatesManager.processUpdateMessage({
@@ -2096,7 +2099,7 @@ export class AppMessagesManager {
             var msgs: any = {}
             msgs[tempID] = true;
 
-            $rootScope.$broadcast('history_delete', {peerID: peerID, msgs: msgs});
+            //$rootScope.$broadcast('history_delete', {peerID: peerID, msgs: msgs}); // commented 11.02.2020
 
             this.finalizePendingMessageCallbacks(tempID, mid);
           } else {
@@ -2255,7 +2258,7 @@ export class AppMessagesManager {
       case 'updatePinnedDialogs': {
         var newPinned: any = {};
         if(!update.order) {
-          MTProto.apiManager.invokeApi('messages.getPinnedDialogs', {}).then((dialogsResult: any) => {
+          apiManager.invokeApi('messages.getPinnedDialogs', {}).then((dialogsResult: any) => {
             dialogsResult.dialogs.reverse();
             this.applyConversations(dialogsResult);
 
@@ -2343,7 +2346,7 @@ export class AppMessagesManager {
           } else {
             var msgs: any = {};
             msgs[mid] = true;
-            $rootScope.$broadcast('history_delete', {peerID: peerID, msgs: msgs});
+            /////////$rootScope.$broadcast('history_delete', {peerID: peerID, msgs: msgs}); // commented 11.02.2020
           }
         } else {
           $rootScope.$broadcast('message_edit', {
@@ -2654,7 +2657,7 @@ export class AppMessagesManager {
           to_id: AppPeersManager.getOutputPeer(peerID),
           flags: 0,
           pFlags: {unread: true},
-          date: (update.inbox_date || tsNow(true)) + MTProto.serverTimeManager.serverTimeOffset,
+          date: (update.inbox_date || tsNow(true)) + serverTimeManager.serverTimeOffset,
           message: update.message,
           media: update.media,
           entities: update.entities
@@ -2845,7 +2848,7 @@ export class AppMessagesManager {
       max_seen_msg: maxID
     });
 
-    MTProto.apiManager.invokeApi('messages.receivedMessages', {
+    apiManager.invokeApi('messages.receivedMessages', {
       max_id: maxID
     });
   }
@@ -3079,7 +3082,7 @@ export class AppMessagesManager {
 
     //console.trace('requestHistory', peerID, maxID, limit, offset);
 
-    return MTProto.apiManager.invokeApi('messages.getHistory', {
+    return apiManager.invokeApi('messages.getHistory', {
       peer: AppPeersManager.getInputPeerByID(peerID),
       offset_id: maxID ? appMessagesIDsManager.getMessageLocalID(maxID) : 0,
       offset_date: 0,
@@ -3124,7 +3127,7 @@ export class AppMessagesManager {
             to_id: AppPeersManager.getOutputPeer(peerID),
             flags: 0,
             pFlags: {},
-            date: tsNow(true) + MTProto.serverTimeManager.serverTimeOffset,
+            date: tsNow(true) + serverTimeManager.serverTimeOffset,
             action: {
               _: 'messageActionBotIntro',
               description: description
@@ -3233,12 +3236,12 @@ export class AppMessagesManager {
       var promise;
       channelID = +channelID;
       if(channelID > 0) {
-        promise = MTProto.apiManager.invokeApi('channels.getMessages', {
+        promise = apiManager.invokeApi('channels.getMessages', {
           channel: appChatsManager.getChannelInput(channelID),
           id: msgIDs
         });
       } else {
-        promise = MTProto.apiManager.invokeApi('messages.getMessages', {
+        promise = apiManager.invokeApi('messages.getMessages', {
           id: msgIDs
         });
       }

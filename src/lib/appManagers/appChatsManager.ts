@@ -23,7 +23,7 @@ export class AppChatsManager {
   }
 
   public saveApiChats(apiChats: any[]) {
-    apiChats.forEach(this.saveApiChat.bind(this));
+    apiChats.forEach(chat => this.saveApiChat(chat));
   }
 
   public saveApiChat(apiChat: any) {
@@ -254,27 +254,6 @@ export class AppChatsManager {
     }
     return participants;
   }
-
-  /* public openChat(chatID: number, accessHash: string) {
-    var scope = $rootScope.$new()
-    scope.chatID = chatID
-
-    if(this.isChannel(chatID)) {
-      var modalInstance = $modal.open({
-        templateUrl: templateUrl('channel_modal'),
-        controller: 'ChannelModalController',
-        scope: scope,
-        windowClass: 'chat_modal_window channel_modal_window mobile_modal'
-      })
-    } else {
-      var modalInstance = $modal.open({
-        templateUrl: templateUrl('chat_modal'),
-        controller: 'ChatModalController',
-        scope: scope,
-        windowClass: 'chat_modal_window mobile_modal'
-      })
-    }
-  } */
 }
 
 export default new AppChatsManager();
