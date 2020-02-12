@@ -1249,6 +1249,11 @@ div.scrollable::-webkit-scrollbar-thumb {
   opacity: .4;
 }
 
+[contenteditable] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 .menu-horizontal {
   width: 100%;
   color: $darkgrey;

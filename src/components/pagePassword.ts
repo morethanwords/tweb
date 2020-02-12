@@ -1,10 +1,10 @@
-import {MTProto} from '../lib/mtproto/mtproto';
-
 import pageIm from './pageIm';
 import CryptoWorker from '../lib/crypto/cryptoworker';
 import { putPreloader } from './misc';
 
 import LottieLoader from '../lib/lottieLoader';
+import passwordManager from '../lib/mtproto/passwordManager';
+import apiManager from '../lib/mtproto/apiManager';
 
 let installed = false;
 
@@ -97,15 +97,15 @@ export default async() => {
     this.textContent = 'PLEASE WAIT...';
     putPreloader(this);
 
-    MTProto.passwordManager.getState()
+    passwordManager.getState()
     .then(state => {
       console.log(state);
-      MTProto.passwordManager.check(state, value).then((response: any) => {
+      passwordManager.check(state, value).then((response: any) => {
         console.log('passwordManager response:', response);
         
         switch(response._) {
           case 'auth.authorization':
-            MTProto.apiManager.setUserAuth({
+            apiManager.setUserAuth({
               id: response.user.id
             });
     

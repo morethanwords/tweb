@@ -52,6 +52,7 @@ class AppSidebarLeft {
   
   private chatsArchivedContainer = document.getElementById('chats-archived-container') as HTMLDivElement;
   private chatsContainer = document.getElementById('chats-container') as HTMLDivElement;
+  private chatsArchivedOffsetIndex = 0;
   private chatsOffsetIndex = 0;
   private chatsPreloader: HTMLDivElement;
   private chatsLoadCount = 0;
@@ -71,6 +72,7 @@ class AppSidebarLeft {
   private query = '';
 
   public scroll: Scrollable = null;
+  public scrollArchived: Scrollable = null;
 
   public searchGroups: {[group: string]: SearchGroup} = {
     contacts: new SearchGroup('Contacts and Chats', 'contacts'),
@@ -90,11 +92,14 @@ class AppSidebarLeft {
     this.scroll = new Scrollable(this.chatsContainer as HTMLDivElement);
     this.scroll.setVirtualContainer(appDialogsManager.chatList);
     appDialogsManager.chatsHidden = this.scroll.hiddenElements;
-    
     this.scroll.container.addEventListener('scroll', this.onChatsScroll.bind(this));
+
+    this.scrollArchived = new Scrollable(this.chatsArchivedContainer as HTMLDivElement);
+    this.scrollArchived.setVirtualContainer(appDialogsManager.chatListArchived);
+    appDialogsManager.chatsArchivedHidden = this.scrollArchived.hiddenElements;
+    this.scroll.container.addEventListener('scroll', this.onChatsArchivedScroll.bind(this));
     
     this.listsContainer = new Scrollable(this.searchContainer).container;
-
     for(let i in this.searchGroups) {
       this.listsContainer.append(this.searchGroups[i].container);
     }
@@ -200,7 +205,9 @@ class AppSidebarLeft {
       
       setTimeout(() => {
         this.onSidebarScroll();
+        this.scroll.onScroll();
         this.onChatsScroll();
+        this.onChatsArchivedScroll();
       }, 0);
     });
 
@@ -209,26 +216,34 @@ class AppSidebarLeft {
     }); */
   }
   
-  public async loadDialogs() {
+  public async loadDialogs(archived = false) {
     if(this.loadDialogsPromise/*  || 1 == 1 */) return this.loadDialogsPromise;
     
-    this.chatsContainer.append(this.chatsPreloader);
+    (archived ? this.chatsArchivedContainer : this.chatsContainer).append(this.chatsPreloader);
     
     //let offset = appMessagesManager.generateDialogIndex();/* appMessagesManager.dialogsNum */;
+
+    let offset = archived ? this.chatsArchivedOffsetIndex : this.chatsOffsetIndex;
+    //let offset = 0;
+    
     
     try {
-      this.loadDialogsPromise = appMessagesManager.getConversations('', this.chatsOffsetIndex, this.chatsLoadCount);
+      this.loadDialogsPromise = appMessagesManager.getConversations('', offset, this.chatsLoadCount, +archived);
       
       let result = await this.loadDialogsPromise;
       
       if(result && result.dialogs && result.dialogs.length) {
-        this.chatsOffsetIndex = result.dialogs[result.dialogs.length - 1].index;
+        let index = result.dialogs[result.dialogs.length - 1].index;
+
+        if(archived) this.chatsArchivedOffsetIndex = index;
+        else this.chatsOffsetIndex = index;
+
         result.dialogs.forEach((dialog: any) => {
           appDialogsManager.addDialog(dialog);
         });
       }
 
-      this.log('loaded ' + this.chatsLoadCount + ' dialogs by offset:', this.chatsOffsetIndex, result, this.scroll.hiddenElements);
+      this.log('loaded ' + this.chatsLoadCount + ' dialogs by offset:', offset, result, this.scroll.hiddenElements);
       this.scroll.onScroll();
     } catch(err) {
       this.log.error(err);
@@ -239,7 +254,7 @@ class AppSidebarLeft {
   }
   
   public onChatsScroll() {
-    //this.log(this.scroll);
+    //this.log(this.scroll.hiddenElements.down.length, this.loadDialogsPromise, appDialogsManager.chatList.childNodes);
     if(this.scroll.hiddenElements.down.length > 0/*  || 1 == 1 */) return;
     
     if(!this.loadDialogsPromise) {
@@ -247,6 +262,23 @@ class AppSidebarLeft {
       for(let node of d) {
         if(isElementInViewport(node)) {
           this.loadDialogs();
+          break;
+        }
+      }
+      
+      //console.log('last 5 dialogs:', d);
+    }
+  }
+
+  public onChatsArchivedScroll() {
+    //this.log(this.scrollArchived.hiddenElements.down.length, this.loadDialogsPromise, appDialogsManager.chatListArchived.childNodes);
+    if(this.scrollArchived.hiddenElements.down.length > 0/*  || 1 == 1 */) return;
+    
+    if(!this.loadDialogsPromise) {
+      let d = Array.from(appDialogsManager.chatListArchived.childNodes).slice(-5);
+      for(let node of d) {
+        if(isElementInViewport(node)) {
+          this.loadDialogs(true);
           break;
         }
       }
@@ -339,7 +371,7 @@ class AppSidebarLeft {
               } else {
                 username = '@' + username;
               }
-              
+
               dom.lastMessageSpan.innerText = username;
             }
           });

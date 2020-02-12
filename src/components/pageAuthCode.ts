@@ -1,11 +1,10 @@
-import {MTProto} from '../lib/mtproto/mtproto';
-
 import pageSignIn from './pageSignIn';
 import pageSignUp from './pageSignUp';
 import pageIm from './pageIm';
 import pagePassword from './pagePassword';
 import CryptoWorker from '../lib/crypto/cryptoworker';
 import LottieLoader from '../lib/lottieLoader';
+import apiManager from '../lib/mtproto/apiManager';
 
 let installed = false;
 let authCode: {
@@ -102,7 +101,7 @@ export default async(_authCode: typeof authCode) => {
 
       codeInput.setAttribute('disabled', 'true');
 
-      changePhonePromise = MTProto.apiManager.invokeApi('auth.sendCode', {
+      changePhonePromise = apiManager.invokeApi('auth.sendCode', {
         /* flags: 0, */
         phone_number: phone_number,
         api_id: Config.App.id,
@@ -179,13 +178,13 @@ export default async(_authCode: typeof authCode) => {
 
     console.log('invoking auth.signIn with params:', params);
 
-    MTProto.apiManager.invokeApi('auth.signIn', params)
+    apiManager.invokeApi('auth.signIn', params)
     .then((response: any) => {
       console.log('auth.signIn response:', response);
       
       switch(response._) {
         case 'auth.authorization':
-          MTProto.apiManager.setUserAuth({
+          apiManager.setUserAuth({
             id: response.user.id
           });
 

@@ -43,8 +43,10 @@
   ul {
     margin: 0;
     //padding: 0 .5rem;
-    display: grid;
-    grid-auto-columns: 1fr;
+    /* display: grid;
+    grid-auto-columns: 1fr; */
+    display: flex;
+    flex-direction: column;
     /* grid-gap: 4px; */
     width: 100%;
   }

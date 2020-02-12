@@ -129,7 +129,7 @@ export default class Scrollable {
     //console.log('onresize', thumb.style[type], thumbHeight, height);
   }
 
-  public setVirtualContainer(el: HTMLElement) {
+  public setVirtualContainer(el?: HTMLElement) {
     this.splitUp = el;
     
     this.hiddenElements.up.length = this.hiddenElements.down.length = 0;
@@ -143,8 +143,10 @@ export default class Scrollable {
     //this.topObserver.observe(this.paddingTopDiv);
     //this.bottomObserver.observe(this.paddingBottomDiv);
 
-    el.parentElement.insertBefore(this.paddingTopDiv, el);
-    el.parentNode.insertBefore(this.paddingBottomDiv, el.nextSibling);
+    if(el) {
+      el.parentElement.insertBefore(this.paddingTopDiv, el);
+      el.parentNode.insertBefore(this.paddingBottomDiv, el.nextSibling);
+    }
   }
 
   public onScroll() {

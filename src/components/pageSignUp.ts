@@ -1,4 +1,3 @@
-import {MTProto} from '../lib/mtproto/mtproto';
 import {putPreloader} from './misc';
 
 let installed = false;
@@ -9,6 +8,7 @@ let authCode: {
 
 import resizeableImage from '../lib/cropper';
 import pageIm from './pageIm';
+import apiManager from '../lib/mtproto/apiManager';
 
 export default (_authCode: typeof authCode) => {
   authCode = _authCode;
@@ -75,10 +75,10 @@ export default (_authCode: typeof authCode) => {
     /* console.log(file, typeof(file)); */
 
     // @ts-ignore
-    /* MTProto.apiFileManager.uploadFile(file).then(function(inputFile) {
+    /* apiFileManager.uploadFile(file).then(function(inputFile) {
       console.log('uploaded smthn', inputFile);
 
-      MTProto.apiManager.invokeApi('photos.uploadProfilePhoto', {
+      apiManager.invokeApi('photos.uploadProfilePhoto', {
         file: inputFile
       }).then(function (updateResult) {
         console.log('updated photo!');
@@ -137,10 +137,10 @@ export default (_authCode: typeof authCode) => {
 
     console.log('invoking uploadFile...');
     // @ts-ignore
-    MTProto.apiFileManager.uploadFile(avatarBlob).then((inputFile: any) => {
+    apiFileManager.uploadFile(avatarBlob).then((inputFile: any) => {
       console.log('uploaded smthn', inputFile);
   
-      MTProto.apiManager.invokeApi('photos.uploadProfilePhoto', {
+      apiManager.invokeApi('photos.uploadProfilePhoto', {
         file: inputFile
       }).then((updateResult) => {
         console.log('updated photo!');
@@ -179,13 +179,13 @@ export default (_authCode: typeof authCode) => {
     this.textContent = 'PLEASE WAIT...';
     putPreloader(this);
 
-    MTProto.apiManager.invokeApi('auth.signUp', params)
+    apiManager.invokeApi('auth.signUp', params)
     .then((response: any) => {
       console.log('auth.signUp response:', response);
       
       switch(response._) {
         case 'auth.authorization': // success
-          MTProto.apiManager.setUserAuth({ // warning
+          apiManager.setUserAuth({ // warning
             id: response.user.id
           });
 

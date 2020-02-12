@@ -19,7 +19,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
   let dropdown = pageEl.querySelector('.emoji-dropdown') as HTMLDivElement;
   dropdown.classList.add('active'); // need
 
-  let lazyLoadQueue = new LazyLoadQueue();
+  let lazyLoadQueue = new LazyLoadQueue(5);
 
   let container = pageEl.querySelector('.emoji-container .tabs-container') as HTMLDivElement;
   let tabs = pageEl.querySelector('.emoji-dropdown .emoji-tabs') as HTMLUListElement;

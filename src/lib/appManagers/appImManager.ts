@@ -931,6 +931,8 @@ export class AppImManager {
     if(item) {
       this.loadingMedia++;
 
+      let peerID = this.peerID;
+
       let promise = item();
       try {
         await promise;
@@ -938,7 +940,9 @@ export class AppImManager {
         this.log.error('loadMediaQueue error:', err);
       }
 
-      this.loadingMedia--;
+      if(peerID == this.peerID) {
+        this.loadingMedia--;
+      }
     }
     
     if(this.loadMediaQueue.length) return this.loadMediaQueueProcess();
@@ -1179,6 +1183,7 @@ export class AppImManager {
     this.unreaded = [];
     this.unreadOut = [];
     this.loadMediaQueue = [];
+    this.loadingMedia = 0;
 
     lottieLoader.checkAnimations(false, 'chat', true);
 

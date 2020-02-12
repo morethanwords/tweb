@@ -25,6 +25,7 @@ export class AppDialogsManager {
   public chatListArchived = document.getElementById('dialogs-archived') as HTMLUListElement;
   public pinnedDelimiter: HTMLDivElement;
   public chatsHidden: any;
+  public chatsArchivedHidden: any;
   
   public myID = 0;
   public doms: {[peerID: number]: DialogDom} = {};
@@ -48,6 +49,7 @@ export class AppDialogsManager {
     //let chatClosedDiv = document.getElementById('chat-closed');
 
     this.setListClickListener(this.chatList);
+    this.setListClickListener(this.chatListArchived);
   }
 
   public setListClickListener(list: HTMLUListElement, onFound?: () => void) {
@@ -152,46 +154,58 @@ export class AppDialogsManager {
   public sortDom(archived = false) {
     //return;
 
-    let dialogs = appMessagesManager.dialogsStorage.dialogs;
+    let dialogs = appMessagesManager.dialogsStorage.dialogs.slice();
 
     let inUpper: HTMLLIElement[] = [];
     let inBottom: HTMLLIElement[] = [];
 
     let pinnedDialogs = [];
-    for(let i = 0; i < dialogs.length; ++i) {
-      let dialog = dialogs[i];
-      if(!dialog.pFlags.pinned) break;
-      pinnedDialogs.push(dialog);
-    }
 
-    if(pinnedDialogs.length) {
-      let dom = this.getDialogDom(pinnedDialogs[pinnedDialogs.length - 1].peerID);
-      if(dom) {
-        dom.listEl.append(this.pinnedDelimiter);
+    let sorted = dialogs;
+
+    if(!archived) {
+      for(let i = 0; i < dialogs.length; ++i) {
+        let dialog = dialogs[i];
+        if(!dialog.pFlags.pinned) break;
+        pinnedDialogs.push(dialog);
       }
+
+      if(pinnedDialogs.length) {
+        let dom = this.getDialogDom(pinnedDialogs[pinnedDialogs.length - 1].peerID);
+        if(dom) {
+          dom.listEl.append(this.pinnedDelimiter);
+        }
+      } else {
+        if(this.pinnedDelimiter.parentElement) {
+          this.pinnedDelimiter.parentElement.removeChild(this.pinnedDelimiter);
+        }
+      }
+
+      sorted = sorted.filter((d: any) => !d.pFlags.pinned && d.folder_id != 1);
     } else {
-      if(this.pinnedDelimiter.parentElement) {
-        this.pinnedDelimiter.parentElement.removeChild(this.pinnedDelimiter);
-      }
+      sorted = sorted.filter((d: any) => d.folder_id == 1);
     }
 
-    let sorted = dialogs
-    .filter((d: any) => !d.pFlags.pinned)
-    .sort((a: any, b: any) => {
+    sorted = sorted.sort((a: any, b: any) => {
       let timeA = appMessagesManager.getMessage(a.top_message).date;
       let timeB = appMessagesManager.getMessage(b.top_message).date;
 
       return timeB - timeA;
     });
 
-    sorted = pinnedDialogs.concat(sorted);
+    if(!archived) {
+      sorted = pinnedDialogs.concat(sorted);
+    }
 
     //console.log('sortDom', sorted, this.chatsHidden, this.chatsHidden.up, this.chatsHidden.down);
 
-    let hiddenLength: number = this.chatsHidden.up.length;
-    let inViewportLength = this.chatList.childElementCount;
+    let chatList = archived ? this.chatListArchived : this.chatList;
+    let chatsHidden = archived ? this.chatsArchivedHidden : this.chatsHidden;
 
-    this.chatList.innerHTML = '';
+    let hiddenLength: number = chatsHidden.up.length;
+    let inViewportLength = chatList.childElementCount;
+
+    chatList.innerHTML = '';
 
     let inViewportIndex = 0;
     sorted.forEach((d: any, idx) => {
@@ -221,10 +235,10 @@ export class AppDialogsManager {
       //this.chatList.append(dom.listEl);
     });
 
-    console.log('sortDom', sorted.length, inUpper.length, this.chatList.childElementCount, inBottom.length);
+    console.log('sortDom', sorted.length, inUpper.length, chatList.childElementCount, inBottom.length);
 
-    this.chatsHidden.up = inUpper;
-    this.chatsHidden.down = inBottom;
+    chatsHidden.up = inUpper;
+    chatsHidden.down = inBottom;
   }
 
   public setLastMessage(dialog: any, lastMessage?: any, dom?: DialogDom) {
@@ -398,7 +412,7 @@ export class AppDialogsManager {
   }, container?: HTMLUListElement, drawStatus = true) {
     let peerID: number = dialog.peerID;
 
-    if((peerID in this.doms) && !container) return;
+    if((this.doms[peerID] || this.domsArchived[peerID]) && !container) return;
 
     let title = appPeersManager.getPeerTitle(peerID);
 
@@ -497,7 +511,7 @@ export class AppDialogsManager {
     };
 
     if(!container) {
-      if(dialog.folder_id) {
+      if(dialog.folder_id && dialog.folder_id == 1) {
         this.chatListArchived.append(li);
         this.domsArchived[dialog.peerID] = dom;
       } else {

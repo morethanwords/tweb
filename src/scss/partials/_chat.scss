@@ -190,10 +190,17 @@
 				}
 			}
 			
-			.emoji {
+			img.emoji {
 				height: 18px;
 				width: 18px;
 				margin: 0 .05rem;
+			}
+
+			span.emoji {
+				height: auto;
+				width: auto;
+				overflow: visible;
+				vertical-align: unset;
 			}
 			
 			&.emoji-big {
@@ -915,11 +922,15 @@
 			color: #111;
 		}
 
-		.emoji {
-			font-size: 16px;
+		img.emoji {
 			height: 16px;
 			width: 16px;
 			vertical-align: top;
+		}
+
+		span.emoji {
+			font-size: 16px;
+			vertical-align: unset;
 		}
 	}
 	

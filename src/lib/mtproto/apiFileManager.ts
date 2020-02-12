@@ -218,7 +218,9 @@ export class ApiFileManager {
         });
       }, dcID);
 
-      var processDownloaded = function(bytes: any) {
+      var processDownloaded = (bytes: Uint8Array) => {
+        //this.log('processDownloaded', location, bytes);
+
         return Promise.resolve(bytes);
         /* if(!location.sticker || WebpManager.isWebpSupported()) {
           return qSync.when(bytes);

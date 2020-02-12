@@ -60,7 +60,7 @@ export class AppMessagesManager {
 
   public maxSeenID = 0;
 
-  public allDialogsLoaded = false;
+  public allDialogsLoaded: {[folder_id: number]: boolean} = {};
   public dialogsOffsetDate = 0;
   public pinnedIndex = 0;
   public dialogsNum = 0;
@@ -705,11 +705,18 @@ export class AppMessagesManager {
     };
   }
 
-  public getConversations(query?: string, offsetIndex?: number, limit = 20) {
-    var curDialogStorage = this.dialogsStorage;
-    var isSearch = typeof(query) == 'string' && query.length;
+  public getConversations(query?: string, offsetIndex?: number, limit = 20, folderID = -1) {
+    //var curDialogStorage = this.dialogsStorage;
+    //var isSearch = typeof(query) == 'string' && query.length;
+    let curDialogStorage = this.dialogsStorage.dialogs;
 
-    if(isSearch) {
+    if(folderID > 0) {
+      curDialogStorage = curDialogStorage.filter(d => d.folder_id == folderID);
+    } else {
+      curDialogStorage = curDialogStorage.filter(d => d.folder_id != 1);
+    }
+
+    /* if(isSearch) {
       if(!limit || this.cachedResults.query !== query) {
         this.cachedResults.query = query;
 
@@ -724,30 +731,38 @@ export class AppMessagesManager {
         this.cachedResults.count = this.cachedResults.dialogs.length;
       }
       curDialogStorage = this.cachedResults;
-    } else {
+    } else { */
       this.cachedResults.query = false;
-    }
+    //}
 
-    var offset = 0
+    var offset = 0;
     if(offsetIndex > 0) {
-      for(offset = 0; offset < curDialogStorage.dialogs.length; offset++) {
-        if(offsetIndex > curDialogStorage.dialogs[offset].index) {
+      for(; offset < curDialogStorage.length; offset++) {
+        if(offsetIndex > curDialogStorage[offset].index) {
           break;
         }
       }
     }
 
-    if(isSearch || this.allDialogsLoaded || curDialogStorage.dialogs.length >= offset + limit) {
+    if(/* isSearch ||  */this.allDialogsLoaded[folderID] || curDialogStorage.length >= offset + limit) {
       return Promise.resolve({
-        dialogs: curDialogStorage.dialogs.slice(offset, offset + limit)
+        dialogs: curDialogStorage.slice(offset, offset + limit)
       });
     }
 
-    return this.getTopMessages(limit).then(() => {
-      offset = 0
+    return this.getTopMessages(limit, folderID).then(() => {
+      let curDialogStorage = this.dialogsStorage.dialogs;
+
+      if(folderID > 0) {
+        curDialogStorage = curDialogStorage.filter(d => d.folder_id == folderID);
+      } else {
+        curDialogStorage = curDialogStorage.filter(d => d.folder_id != 1);
+      }
+
+      offset = 0;
       if(offsetIndex > 0) {
-        for(offset = 0; offset < curDialogStorage.dialogs.length; offset++) {
-          if(offsetIndex > curDialogStorage.dialogs[offset].index) {
+        for(offset = 0; offset < curDialogStorage.length; offset++) {
+          if(offsetIndex > curDialogStorage[offset].index) {
             break;
           }
         }
@@ -756,12 +771,12 @@ export class AppMessagesManager {
       //console.warn(offset, offset + limit, curDialogStorage.dialogs.length, this.dialogsStorage.dialogs.length);
 
       return {
-        dialogs: curDialogStorage.dialogs.slice(offset, offset + limit)
+        dialogs: curDialogStorage.slice(offset, offset + limit)
       };
     });
   }
 
-  public getTopMessages(limit: number) {
+  public getTopMessages(limit: number, folderID = -1) {
     var dialogs = this.dialogsStorage.dialogs;
     var offsetDate = 0;
     var offsetID = 0;
@@ -775,12 +790,16 @@ export class AppMessagesManager {
       flags |= 1;
     }
 
+    if(folderID > 0) {
+      flags |= 1;
+      flags |= 2;
+    }
+
     let hash = 0;
-    /* let id = 296814355;
-    hash = (((hash * 0x4F25) & 0x7FFFFFFF) + id) & 0x7FFFFFFF; */
 
     return apiManager.invokeApi('messages.getDialogs', {
       flags: flags,
+      folder_id: folderID,
       offset_date: offsetDate,
       offset_id: appMessagesIDsManager.getMessageLocalID(offsetID),
       offset_peer: AppPeersManager.getInputPeerByID(offsetPeerID),
@@ -789,6 +808,8 @@ export class AppMessagesManager {
     }, {
       timeout: 300
     }).then((dialogsResult: any) => {
+      console.log('messages.getDialogs result:', dialogsResult);
+
       if(!offsetDate) {
         telegramMeWebService.setAuthorized(true);
       }
@@ -841,7 +862,7 @@ export class AppMessagesManager {
       if(!dialogsResult.dialogs.length ||
         !dialogsResult.count ||
         dialogs.length >= dialogsResult.count) {
-        this.allDialogsLoaded = true;
+        this.allDialogsLoaded[folderID] = true;
       }
 
       if(hasPrepend && !this.newDialogsHandlePromise) {
@@ -1313,6 +1334,7 @@ export class AppMessagesManager {
 
     dialog.index = this.generateDialogIndex(topDate);
     dialog.peerID = peerID;
+    if(!dialog.folder_id) dialog.folder_id = 0;
 
     this.pushDialogToStorage(dialog, offsetDate);
 

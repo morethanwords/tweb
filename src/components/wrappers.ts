@@ -8,6 +8,7 @@ import { formatBytes } from "../lib/utils";
 import ProgressivePreloader from './preloader';
 import LazyLoadQueue from './lazyLoadQueue';
 import apiFileManager from '../lib/mtproto/apiFileManager';
+import appWebpManager from '../lib/appManagers/appWebpManager';
 
 export type MTDocument = {
   _: 'document',
@@ -224,7 +225,7 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
     console.error('wrong doc for wrapSticker!', doc, div);
   }
   
-  //console.log('wrap sticker', doc);
+  console.log('wrap sticker', doc);
   
   if(doc.thumbs && !div.firstElementChild) {
     let thumb = doc.thumbs[0];
@@ -308,7 +309,10 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
       reader.readAsArrayBuffer(blob);
     } else if(stickerType == 1) {
       let img = new Image();
-      img.src = URL.createObjectURL(blob);
+      
+      appWebpManager.polyfillImage(img, blob);
+      
+      //img.src = URL.createObjectURL(blob);
       
       /* div.style.height = doc.h + 'px';
       div.style.width = doc.w + 'px'; */

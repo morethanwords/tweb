@@ -53,7 +53,7 @@ class AppSidebarRight {
   public sharedMediaType: string = '';
   private sharedMediaSelected: HTMLDivElement = null;
 
-  private lazyLoadQueueSidebar = new LazyLoadQueue();
+  private lazyLoadQueueSidebar = new LazyLoadQueue(5);
   /* public minMediaID: {
     [type: string]: number
   } = {}; */
@@ -144,7 +144,10 @@ class AppSidebarRight {
     });
 
     window.addEventListener('resize', () => {
-      setTimeout(() => this.onSidebarScroll(), 0);
+      setTimeout(() => {
+        this.sidebarScroll.onScroll();
+        this.onSidebarScroll();
+      }, 0);
     });
   }
 
@@ -334,6 +337,7 @@ class AppSidebarRight {
 
     this.savedVirtualStates = {};
     this.prevTabID = -1;
+    this.sidebarScroll.setVirtualContainer(null);
     (this.profileTabs.children[1] as HTMLLIElement).click(); // set media
 
     if(this.sharedMediaSelected) {
@@ -347,6 +351,8 @@ class AppSidebarRight {
     this.profileElements.notificationsRow.style.display = '';
     this.profileElements.notificationsCheckbox.checked = true;
     this.profileElements.notificationsStatus.innerText = 'Enabled';
+
+    this.lazyLoadQueueSidebar.clear();
 
     Object.keys(this.sharedMedia).forEach(key => {
       this.sharedMedia[key].innerHTML = '';

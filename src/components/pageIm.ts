@@ -7,7 +7,10 @@ import lottieLoader from "../lib/lottieLoader";
 
 import appSidebarLeft from "../lib/appManagers/appSidebarLeft";
 
-
+/* (window as any).libraryLoaded = function(lol: any) {
+  // @ts-ignore
+  console.log('libraryLoaded', lol, this, window.webpMachine);
+} */
 
 export default () => import('../lib/services').then(services => {
   console.log('included services', services);
@@ -193,5 +196,7 @@ export default () => import('../lib/services').then(services => {
   appSidebarLeft.loadDialogs().then(result => {
     appSidebarLeft.onChatsScroll();
     appImManager.setScroll(chatScroll);
+
+    appSidebarLeft.loadDialogs(true);
   });
 });
