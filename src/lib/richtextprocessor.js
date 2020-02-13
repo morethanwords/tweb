@@ -514,9 +514,9 @@ function wrapRichText (text, options = {}) {
            *///html.push(`<span class="emoji-outer emoji-sizer" contenteditable="false">${emojiSupported ? encodeEntities(entityText) : inner}\u200B</span>`);
         //}
 
-        inner = `<img src="assets/img/blank.gif" alt="" class="emoji" style="background: url(${emojiData.sheetUrl}${entity.coords.sheetNo}.png);
+        inner = `<img src="assets/img/blank.gif" alt="${encodeEntities(entityText)}" class="emoji" style="background: url(${emojiData.sheetUrl}${entity.coords.sheetNo}.png);
         background-position:${entity.coords.column}% ${entity.coords.row}%;
-        background-size:${emojiData.sizeX}% ${emojiData.sizeY}%" emoji="${encodeEntities(entityText)}">`;
+        background-size:${emojiData.sizeX}% ${emojiData.sizeY}%">`;
 
         //html.push(`<span class="emoji-outer emoji-sizer" contenteditable="false">${emojiSupported ? encodeEntities(entityText) : inner}\u200B</span>`);
 
@@ -784,7 +784,8 @@ let RichTextProcessor = {
   parseMarkdown: parseMarkdown,
   parseEmojis: parseEmojis,
   mergeEntities: mergeEntities,
-  getEmojiSpritesheetCoords: getEmojiSpritesheetCoords
+  getEmojiSpritesheetCoords: getEmojiSpritesheetCoords,
+  emojiSupported: emojiSupported
 };
 
 window.RichTextProcessor = RichTextProcessor;

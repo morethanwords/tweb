@@ -75,12 +75,12 @@ export class ApiManager {
     }
     
     return Promise.all(logoutPromises).then(() => {
-      AppStorage.remove('dc', 'user_auth');
+      AppStorage.remove('dc', 'user_auth', 'stickerSets');
       this.baseDcID = 0;
       this.telegramMeNotify(false);
       return this.mtpClearStorage();
     }, (error) => {
-      storageKeys.push('dc', 'user_auth');
+      storageKeys.push('dc', 'user_auth', 'stickerSets');
       AppStorage.remove(storageKeys);
       this.baseDcID = 0;
       error.handled = true;

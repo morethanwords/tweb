@@ -10,6 +10,7 @@ import apiManager from '../lib/mtproto/apiManager';
 import CryptoWorker from '../lib/crypto/cryptoworker';
 import LazyLoadQueue from "./lazyLoadQueue";
 import { MTDocument, wrapSticker } from "./wrappers";
+import appWebpManager from "../lib/appManagers/appWebpManager";
 
 export const EMOTICONSSTICKERGROUP = 'emoticons-dropdown';
 
@@ -310,7 +311,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
           let thumb = stickerSet.set.thumb;
 
           appStickersManager.getStickerSetThumb(stickerSet.set).then(async(blob) => {
-            if(thumb.w == 1 && thumb.h == 1) {
+            if(thumb.w == 1 && thumb.h == 1) { // means animated
               const reader = new FileReader();
 
               reader.addEventListener('loadend', async(e) => {
@@ -329,7 +330,8 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
               reader.readAsArrayBuffer(blob);
             } else {
               let image = new Image();
-              image.src = URL.createObjectURL(blob);
+              //image.src = URL.createObjectURL(blob);
+              appWebpManager.polyfillImage(image, blob);
   
               li.append(image);
             }

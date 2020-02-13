@@ -1,4 +1,4 @@
-import { $rootScope, safeReplaceObject, templateUrl, calcImageInBox, encodeEntities, copy } from "../utils";
+import { $rootScope, safeReplaceObject, calcImageInBox, encodeEntities, copy } from "../utils";
 import appPhotosManager from "./appPhotosManager";
 import appDocsManager from "./appDocsManager";
 import { RichTextProcessor } from "../richtextprocessor";

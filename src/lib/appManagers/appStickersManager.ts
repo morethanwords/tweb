@@ -146,6 +146,10 @@ class appStickersManager {
 
     return await promise;
   }
+
+  public async cleanup() { // if logout
+    await AppStorage.remove('stickerSets');
+  }
 }
 
 export default new appStickersManager();

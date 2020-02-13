@@ -62,7 +62,7 @@ export class AppMessagesManager {
   public maxSeenID = 0;
 
   public allDialogsLoaded: {[folder_id: number]: boolean} = {};
-  public dialogsOffsetDate = 0;
+  public dialogsOffsetDate: {[folder_id: number]: number} = {};
   public pinnedIndex = 0;
   public dialogsNum = 0;
 
@@ -73,8 +73,8 @@ export class AppMessagesManager {
   public newMessagesToHandle: any = {};
   public newDialogsHandlePromise = 0;
   public newDialogsToHandle: any = {};
-  public notificationsHandlePromise = 0;
-  public notificationsToHandle: any = {};
+  //public notificationsHandlePromise = 0;
+  //public notificationsToHandle: any = {};
   public newUpdatesAfterReloadToHandle: any = {};
 
   public fwdMessagesPluralize = _('conversation_forwarded_X_messages');
@@ -802,9 +802,9 @@ export class AppMessagesManager {
     var offsetIndex = 0;
     var flags = 0;
 
-    if(this.dialogsOffsetDate) {
-      offsetDate = this.dialogsOffsetDate + serverTimeManager.serverTimeOffset;
-      offsetIndex = this.dialogsOffsetDate * 0x10000;
+    if(this.dialogsOffsetDate[folderID]) {
+      offsetDate = this.dialogsOffsetDate[folderID] + serverTimeManager.serverTimeOffset;
+      offsetIndex = this.dialogsOffsetDate[folderID] * 0x10000;
       flags |= 1;
     }
 
@@ -898,7 +898,7 @@ export class AppMessagesManager {
     return (date * 0x10000) + ((++this.dialogsNum) & 0xFFFF);
   }
 
-  public pushDialogToStorage(dialog: any, offsetDate?: any) {
+  public pushDialogToStorage(dialog: any, offsetDate?: number) {
     var dialogs = this.dialogsStorage.dialogs;
     var pos = this.getDialogByPeerID(dialog.peerID)[1];
     if(pos !== undefined) {
@@ -907,12 +907,12 @@ export class AppMessagesManager {
 
     if(offsetDate &&
         !dialog.pFlags.pinned &&
-        (!this.dialogsOffsetDate || offsetDate < this.dialogsOffsetDate)) {
+        (!this.dialogsOffsetDate[dialog.folder_id] || offsetDate < this.dialogsOffsetDate[dialog.folder_id])) {
       if(pos !== undefined) {
         // So the dialog jumped to the last position
         return false;
       }
-      this.dialogsOffsetDate = offsetDate;
+      this.dialogsOffsetDate[dialog.folder_id] = offsetDate;
     }
 
     var index = dialog.index;
@@ -1092,7 +1092,7 @@ export class AppMessagesManager {
       if(apiMessage.action) {
         var migrateFrom;
         var migrateTo;
-        switch (apiMessage.action._) {
+        switch(apiMessage.action._) {
           case 'messageActionChatEditPhoto':
             appPhotosManager.savePhoto(apiMessage.action.photo, mediaContext);
             if(isBroadcast) {
@@ -1332,9 +1332,7 @@ export class AppMessagesManager {
     dialog.top_message = mid;
     dialog.read_inbox_max_id = appMessagesIDsManager.getFullMessageID(dialog.read_inbox_max_id, channelID);
 
-    //peerID == 228260936 && console.log('we get drunk', dialog, dialog.read_outbox_max_id);
     dialog.read_outbox_max_id = appMessagesIDsManager.getFullMessageID(dialog.read_outbox_max_id, channelID);
-    //peerID == 228260936 && console.log('we get high', dialog, dialog.read_outbox_max_id);
 
     var topDate = message.date;
     if(channelID) {
@@ -1398,11 +1396,11 @@ export class AppMessagesManager {
     }*/ // WARNING
   }
 
-  public handleNotifications() {
+  /*public handleNotifications() {
     clearTimeout(this.notificationsHandlePromise);
     this.notificationsHandlePromise = 0;
 
-    var timeout = $rootScope.idle.isIDLE /* && StatusManager.isOtherDeviceActive() */ ? 30000 : 1000;
+    var timeout = $rootScope.idle.isIDLE /* && StatusManager.isOtherDeviceActive() * ? 30000 : 1000;
     Object.keys(this.notificationsToHandle).forEach((key: any) => {
       let notifyPeerToHandle = this.notificationsToHandle[key];
       notifyPeerToHandle.isMutedPromise.then((muted: boolean) => {
@@ -1423,9 +1421,9 @@ export class AppMessagesManager {
     });
 
     this.notificationsToHandle = {};
-  }
+  }*/
 
-  public notifyAboutMessage(message: any, options: any = {}) {
+  /*public notifyAboutMessage(message: any, options: any = {}) {
     var peerID = this.getMessagePeer(message);
     var peerString: string;
     var notification: any = {};
@@ -1623,7 +1621,7 @@ export class AppMessagesManager {
     notification.silent = message.pFlags.silent || false
 
     if(notificationPhoto.location && !notificationPhoto.location.empty) {
-      apiFileManager.downloadSmallFile(notificationPhoto.location/* , notificationPhoto.size */)
+      apiFileManager.downloadSmallFile(notificationPhoto.location/* , notificationPhoto.size *)
       .then((blob) => {
         if(message.pFlags.unread) {
           notification.image = blob
@@ -1633,7 +1631,7 @@ export class AppMessagesManager {
     } else {
       // NotificationsManager.notify(notification) // warning
     }
-  }
+  }*/
 
   public mergeReplyKeyboard(historyStorage: any, message: any) {
     // console.log('merge', message.mid, message.reply_markup, historyStorage.reply_markup)
@@ -2249,13 +2247,13 @@ export class AppMessagesManager {
           this.newDialogsHandlePromise = window.setTimeout(this.handleNewDialogs.bind(this), 0);
         }
 
-        if(inboxUnread &&
+        /*if(inboxUnread &&
             ($rootScope.selectedPeerID != peerID || $rootScope.idle.isIDLE)) {
           var notifyPeer = message.flags & 16 ? message.from_id : peerID;
           var notifyPeerToHandle = this.notificationsToHandle[notifyPeer];
           if(notifyPeerToHandle === undefined) {
             notifyPeerToHandle = this.notificationsToHandle[notifyPeer] = {
-              isMutedPromise: Promise.resolve()/* NotificationsManager.getPeerMuted(notifyPeer) */, // WARNING
+              isMutedPromise: Promise.resolve()/* NotificationsManager.getPeerMuted(notifyPeer), // WARNING
               fwd_count: 0,
               from_id: 0
             };
@@ -2274,7 +2272,7 @@ export class AppMessagesManager {
           if(!this.notificationsHandlePromise) {
             this.notificationsHandlePromise = window.setTimeout(this.handleNotifications.bind(this), 1000);
           }
-        }
+        } */
         break;
       }
 
@@ -3137,6 +3135,8 @@ export class AppMessagesManager {
       timeout: 300,
       noErrorBox: true
     }).then((historyResult: any) => {
+      console.log('requestHistory result:', historyResult);
+
       appUsersManager.saveApiUsers(historyResult.users);
       appChatsManager.saveApiChats(historyResult.chats);
       this.saveMessages(historyResult.messages);

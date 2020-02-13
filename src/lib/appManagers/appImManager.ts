@@ -1,5 +1,5 @@
 import apiManager from '../mtproto/apiManager';
-import { $rootScope, isElementInViewport, numberWithCommas, findUpClassName, formatNumber, placeCaretAtEnd, calcImageInBox, findUpTag } from "../utils";
+import { $rootScope, isElementInViewport, numberWithCommas, findUpClassName, formatNumber, placeCaretAtEnd, calcImageInBox, findUpTag, getRichValue, getRichValueWithCaret, getSelectedText } from "../utils";
 import appUsersManager from "./appUsersManager";
 import appMessagesManager from "./appMessagesManager";
 import appPeersManager from "./appPeersManager";
@@ -140,7 +140,7 @@ class ChatInput {
 
     this.messageInput.addEventListener('keydown', (e: KeyboardEvent) => {
       if(e.key == 'Enter') {
-        if(e.shiftKey) {
+        if(e.shiftKey || e.ctrlKey) {
           return;
         }
   
@@ -201,29 +201,36 @@ class ChatInput {
       }
     });
 
-    this.messageInput.addEventListener('copy', (e) => {
-      const selection = document.getSelection();
-      
-      let range = selection.getRangeAt(0);
-      let ancestorContainer = range.commonAncestorContainer;
+    if(!RichTextProcessor.emojiSupported) {
+      this.messageInput.addEventListener('copy', (e) => {
+        const selection = document.getSelection();
+        
+        let range = selection.getRangeAt(0);
+        let ancestorContainer = range.commonAncestorContainer;
+    
+        let str = '';
+    
+        let selectedNodes = Array.from(ancestorContainer.childNodes).slice(range.startOffset, range.endOffset);
+        if(selectedNodes.length) {
+          str = this.serializeNodes(selectedNodes);
+        } else {
+          str = selection.toString();
+        }
+    
+        //console.log('messageInput copy', str, ancestorContainer.childNodes, range);
   
-      let str = '';
-  
-      let selectedNodes = Array.from(ancestorContainer.childNodes).slice(range.startOffset, range.endOffset);
-      if(selectedNodes.length) {
-        str = this.serializeNodes(selectedNodes);
-      } else {
-        str = selection.toString();
-      }
-  
-      console.log('messageInput copy', str, ancestorContainer.childNodes, range);
-  
-      // @ts-ignore
-      event.clipboardData.setData('text/plain', str);
-      event.preventDefault();
-    });
+        //let str = getRichValueWithCaret(this.messageInput);
+        //console.log('messageInput childNode copy:', str);
+    
+        // @ts-ignore
+        event.clipboardData.setData('text/plain', str);
+        event.preventDefault();
+      });
+    }
     
     this.messageInput.addEventListener('paste', (e) => {
+      //console.log('messageInput paste');
+
       e.preventDefault();
       // @ts-ignore
       let text = (e.originalEvent || e).clipboardData.getData('text/plain');
@@ -321,11 +328,14 @@ class ChatInput {
         return;
       }
 
+      //console.log('document paste');
+
       // @ts-ignore
       var items = (event.clipboardData || event.originalEvent.clipboardData).items;
       //console.log('item', event.clipboardData.getData());
       for(let i = 0; i < items.length; ++i) {
         if(items[i].kind == 'file') {
+          event.preventDefault()
           event.cancelBubble = true;
           event.stopPropagation();
 
@@ -398,16 +408,19 @@ class ChatInput {
 
       if(typeof(child) === 'object' && child.textContent) return str += child.textContent;
       if(child.innerText) return str += child.innerText;
-      if(child.tagName == 'IMG' && child.classList && child.classList.contains('emoji')) return str += child.getAttribute('emoji');
+      if(child.tagName == 'IMG' && child.classList && child.classList.contains('emoji')) return str += child.getAttribute('alt');
 
       return str;
     }, '');
   };
 
   public sendMessage() {
-    let str = this.serializeNodes(Array.from(this.messageInput.childNodes));
+    //let str = this.serializeNodes(Array.from(this.messageInput.childNodes));
+    let str = getRichValue(this.messageInput);
 
-    //console.log('childnode str after:', str);
+    //console.log('childnode str after:', str/* , getRichValue(this.messageInput) */);
+
+    //return;
     this.lastUrl = '';
     appMessagesManager.sendText(appImManager.peerID, str, {
       replyToMsgID: appImManager.replyToMsgID == 0 ? undefined : appImManager.replyToMsgID,
@@ -767,6 +780,12 @@ export class AppImManager {
           this.chatInputC.attachMediaPopUp.container.classList.remove('active');
         }
 
+        return;
+      }
+
+      if(e.key == 'Meta' || e.key == 'Control') {
+        return;
+      } else if(e.key == 'c' && (e.ctrlKey || e.metaKey) && target.tagName != 'INPUT') {
         return;
       }
 
@@ -1465,6 +1484,7 @@ export class AppImManager {
   }
 
   public renderMessage(message: any, reverse = false, multipleRender?: boolean, bubble: HTMLDivElement = null) {
+    this.log('message to render:', message);
     if(message.deleted) return;
 
     let peerID = this.peerID;
@@ -1472,8 +1492,6 @@ export class AppImManager {
   
     let messageDiv = document.createElement('div');
     messageDiv.classList.add('message');
-
-    this.log('message to render:', message);
 
     //messageDiv.innerText = message.message;
 
@@ -1824,7 +1842,7 @@ export class AppImManager {
           let originalMessage = appMessagesManager.getMessage(message.reply_to_mid);
           let originalPeerTitle = appPeersManager.getPeerTitle(originalMessage.fromID) || '';
 
-          this.log('message to render reply', originalMessage, originalPeerTitle, bubble);
+          this.log('message to render reply', originalMessage, originalPeerTitle, bubble, message);
 
           let originalText = '';
           if(originalMessage.message) {

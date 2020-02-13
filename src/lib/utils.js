@@ -172,12 +172,12 @@ export function getRichValueWithCaret (field) {
   var selOffset
   if (sel && sel.rangeCount) {
     var range = sel.getRangeAt(0)
-    if (range.startContainer &&
+    /* if (range.startContainer &&
       range.startContainer == range.endContainer &&
-      range.startOffset == range.endOffset) {
+      range.startOffset == range.endOffset) { */
       selNode = range.startContainer
       selOffset = range.startOffset
-    }
+    //}
   }
 
   getRichElementValue(field, lines, line, selNode, selOffset)
@@ -312,7 +312,35 @@ export const $rootScope = {
   }
 };
 
-export const _ = (str/* : string */) => str;
+export const langPack = {
+  "messageActionChatCreate": "created the group",
+	"messageActionChatEditTitle": "changed group name",
+	"messageActionChatEditPhoto": "changed group photo",
+	"messageActionChatDeletePhoto": "removed group photo",
+	"messageActionChatReturn": "returned to group",
+	"messageActionChatJoined": "joined the group",
+  "messageActionChatAddUser": "invited {user}",
+  "messageActionChatAddUsers": "invited {} users",
+	"messageActionChatLeave": "left group",
+	"messageActionChatDeleteUser": "removed user",
+	"messageActionChatJoinedByLink": "joined the group",
+	"messageActionChannelCreate": "Channel created",
+	"messageActionChannelEditTitle": "Channel renamed",
+	"messageActionChannelEditPhoto": "Channel photo updated",
+	"messageActionChannelDeletePhoto": "Channel photo removed",
+	"messageActionPinMessage": "pinned message",
+
+  "messageActionPhoneCall.in_ok": "Incoming Call",
+	"messageActionPhoneCall.out_ok": "Outgoing Call",
+	"messageActionPhoneCall.in_missed": "Missed Call",
+	"messageActionPhoneCall.out_missed": "Cancelled Call",
+};
+
+export const _ = (str/* : string */) => {
+  str = str.replace('_raw', '');
+
+  return langPack[str] ? langPack[str] : str;
+};
 
 export function isObject(object) {
   return typeof(object) === 'object' && object !== null;
@@ -538,33 +566,6 @@ export function listUniqSorted (list) {
   }
 
   return resultList
-}
-
-export function templateUrl (tplName) {
-  var forceLayout = {
-    confirm_modal: 'desktop',
-    error_modal: 'desktop',
-    media_modal_layout: 'desktop',
-    slider: 'desktop',
-    reply_message: 'desktop',
-    full_round: 'desktop',
-    message_body: 'desktop',
-    message_media: 'desktop',
-    message_attach_game: 'desktop',
-    forwarded_messages: 'desktop',
-    chat_invite_link_modal: 'desktop',
-    reply_markup: 'desktop',
-    short_message: 'desktop',
-    pinned_message: 'desktop',
-    channel_edit_modal: 'desktop',
-    megagroup_edit_modal: 'desktop',
-    inline_results: 'desktop',
-    composer_dropdown: 'desktop',
-    peer_pinned_message_bar: 'desktop',
-    report_msgs_modal: 'desktop'
-  }
-  var layout = forceLayout[tplName] || (Config.Mobile ? 'mobile' : 'desktop')
-  return 'partials/' + layout + '/' + tplName + '.html'
 }
 
 export function encodeEntities (value) {

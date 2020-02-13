@@ -215,7 +215,7 @@ export class AppDialogsManager {
       if(inUpper.length < hiddenLength) {
         inUpper.push(dom.listEl);
       } else if(inViewportIndex <= inViewportLength - 1) {
-        this.chatList.append(dom.listEl);
+        chatList.append(dom.listEl);
         ++inViewportIndex;
         //this.chatList.insertBefore(dom.listEl, this.chatList.children[inViewportIndex++]);
       } else {
@@ -368,10 +368,6 @@ export class AppDialogsManager {
   public setUnreadMessages(dialog: any) {
     let dom = this.getDialogDom(dialog.peerID);
 
-    if(dialog.peerID == 228260936) {
-      console.log('dialog setUnreadMessages', dialog);
-    }
-
     dom.statusSpan.innerHTML = '';
     let lastMessage = appMessagesManager.getMessage(dialog.top_message);
     if(lastMessage._ != 'messageEmpty' && 
@@ -380,7 +376,7 @@ export class AppDialogsManager {
       let outgoing = (lastMessage.pFlags && lastMessage.pFlags.unread)
         /*  && dialog.read_outbox_max_id != 0 */; // maybe uncomment, 31.01.2020
     
-      console.log('outgoing', outgoing, lastMessage);
+      //console.log('outgoing', outgoing, lastMessage);
   
       if(outgoing) {
         dom.statusSpan.classList.remove('tgico-checks');
