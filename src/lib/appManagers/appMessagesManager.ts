@@ -18,6 +18,7 @@ import { MTDocument } from "../../components/wrappers";
 import ProgressivePreloader from "../../components/preloader";
 import serverTimeManager from "../mtproto/serverTimeManager";
 import apiManager from "../mtproto/apiManager";
+import appWebPagesManager from "./appWebPagesManager";
 
 type HistoryStorage = {
   count: number | null,
@@ -96,13 +97,13 @@ export class AppMessagesManager {
 
     $rootScope.$on('webpage_updated', (e: CustomEvent) => {
       let eventData = e.detail;
-      eventData.msgs((msgID: number) => {
+      eventData.msgs.forEach((msgID: number) => {
         var historyMessage = this.messagesForHistory[msgID];
         if(historyMessage) {
-          /* historyMessage.media = {
+          historyMessage.media = {
             _: 'messageMediaWebPage',
-            webpage: AppWebPagesManager.wrapForHistory(eventData.id)
-          }; */ // warning
+            webpage: appWebPagesManager.wrapForHistory(eventData.id)
+          };
 
           $rootScope.$broadcast('message_edit', {
             peerID: this.getMessagePeer(historyMessage),
@@ -162,7 +163,17 @@ export class AppMessagesManager {
     return sendEntites;
   }
 
-  public sendText(peerID: number, text: string, options: any = {}) {
+  public sendText(peerID: number, text: string, options: {
+    entities?: any[],
+    replyToMsgID?: number,
+    viaBotID?: number,
+    queryID?: number,
+    resultID?: number,
+    noWebPage?: boolean,
+    reply_markup?: any,
+    clearDraft?: boolean,
+    webPage?: any
+  } = {}) {
     if(typeof(text) != 'string') {
       return;
     }
@@ -234,6 +245,13 @@ export class AppMessagesManager {
       views: asChannel && 1,
       pending: true
     };
+
+    if(options.webPage) {
+      message.media = {
+        _: 'messageMediaWebPage',
+        webpage: options.webPage
+      };
+    }
 
     var toggleError = (on: any) => {
       var historyMessage = this.messagesForHistory[messageID];
@@ -954,7 +972,10 @@ export class AppMessagesManager {
     }).then(this.applyConversations.bind(this));
   }
 
-  public saveMessages(apiMessages: any[], options: any = {}) {
+  public saveMessages(apiMessages: any[], options: {
+    isNew?: boolean,
+    isEdited?: boolean
+  } = {}) {
     apiMessages.forEach((apiMessage) => {
       if(apiMessage.pFlags === undefined) {
         apiMessage.pFlags = {};
@@ -1049,15 +1070,12 @@ export class AppMessagesManager {
             }
             break;
           case 'messageMediaWebPage':
-            if(apiMessage.media.webpage.document) {
+            /* if(apiMessage.media.webpage.document) {
               appDocsManager.saveDoc(apiMessage.media.webpage.document, mediaContext);
-            }
-            //AppWebPagesManager.saveWebPage(apiMessage.media.webpage, apiMessage.mid, mediaContext);
+            } */
+            appWebPagesManager.saveWebPage(apiMessage.media.webpage, apiMessage.mid, mediaContext);
             break;
-          /*case 'messageMediaWebPage':
-            AppWebPagesManager.saveWebPage(apiMessage.media.webpage, apiMessage.mid, mediaContext);
-            break;
-          case 'messageMediaGame':
+          /*case 'messageMediaGame':
             AppGamesManager.saveGame(apiMessage.media.game, apiMessage.mid, mediaContext);
             apiMessage.media.handleMessage = true;
             break; */
@@ -2198,7 +2216,7 @@ export class AppMessagesManager {
 
         if(randomID) {
           if(pendingMessage = this.finalizePendingMessage(randomID, message)) {
-            $rootScope.$broadcast('history_update', {peerID: peerID});
+            $rootScope.$broadcast('history_update', {peerID: peerID, mid: message.mid});
           }
 
           delete this.pendingByMessageID[message.mid];
@@ -2362,7 +2380,7 @@ export class AppMessagesManager {
 
         var dialog = this.getDialogByPeerID(peerID)[0];
         var isTopMessage = dialog && dialog.top_message == mid;
-        if(message.clear_history) {
+        if(message.clear_history) { // that's will never happen
           if(isTopMessage) {
             $rootScope.$broadcast('dialog_flush', {peerID: peerID});
           } else {
@@ -2374,7 +2392,8 @@ export class AppMessagesManager {
           $rootScope.$broadcast('message_edit', {
             peerID: peerID,
             id: message.id,
-            mid: mid
+            mid: mid,
+            justMedia: false
           });
 
           if(isTopMessage) {
@@ -2773,16 +2792,16 @@ export class AppMessagesManager {
           )
           break
 
-        /* case 'messageMediaWebPage':
+         case 'messageMediaWebPage':
           if(!message.media.webpage ||
             message.media.webpage._ == 'webPageEmpty') {
             delete message.media
             break
           }
-          message.media.webpage = AppWebPagesManager.wrapForHistory(message.media.webpage.id)
+          message.media.webpage = appWebPagesManager.wrapForHistory(message.media.webpage.id)
           break
 
-        case 'messageMediaGame':
+        /*case 'messageMediaGame':
           message.media.game = AppGamesManager.wrapForHistory(message.media.game.id)
           break */
       }

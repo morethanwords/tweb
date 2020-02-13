@@ -9,6 +9,7 @@ import ProgressivePreloader from './preloader';
 import LazyLoadQueue from './lazyLoadQueue';
 import apiFileManager from '../lib/mtproto/apiFileManager';
 import appWebpManager from '../lib/appManagers/appWebpManager';
+import {wrapPlayer} from '../lib/ckin';
 
 export type MTDocument = {
   _: 'document',
@@ -43,7 +44,7 @@ export type MTPhotoSize = {
   preloaded?: boolean // custom added
 };
 
-export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement, message: any, justLoader = true, preloader?: ProgressivePreloader, controls = true) {
+export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement, message: any, justLoader = true, preloader?: ProgressivePreloader, controls = true, round = false) {
   if(!container.firstElementChild || container.firstElementChild.tagName != 'IMG') {
     let size = appPhotosManager.setAttachmentSize(doc, container);
   }
@@ -62,16 +63,17 @@ export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement,
   //return Promise.resolve();
   
   if(!preloader) {
-    preloader = new ProgressivePreloader(container, false);
+    preloader = new ProgressivePreloader(container, true);
   }
   
   let loadVideo = () => {
     let promise = appDocsManager.downloadDoc(doc);
     
-    /* promise.notify = (details: {done: number, total: number}) => {
+    promise.notify = (details: {done: number, total: number}) => {
       console.log('doc download', promise, details);
-      preloader.setProgress(details.done);
-    }; */
+      let percents = details.done / details.total * 100;
+      preloader.setProgress(percents);
+    };
     
     return promise.then(blob => {
       if((this.peerID ? this.peerID : this.currentMessageID) != peerID) {
@@ -82,15 +84,15 @@ export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement,
       console.log('loaded doc:', doc, blob, container);
       
       let video = document.createElement('video');
-      video.loop = controls;
+      /* video.loop = controls;
       video.autoplay = controls;
       
       if(!justLoader) {
         video.controls = controls;
       } else {
         video.volume = 0;
-      }
-      
+      } */
+
       video.setAttribute('message-id', '' + message.id);
       
       let source = document.createElement('source');
@@ -103,7 +105,14 @@ export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement,
       }
       
       video.append(source);
+
       container.append(video);
+
+      if(!justLoader) {
+        video.dataset.ckin = round ? 'circle' : 'default';
+        video.dataset.overlay = '1';
+        wrapPlayer(video);
+      }
 
       //container.style.width = '';
       //container.style.height = '';

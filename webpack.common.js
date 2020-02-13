@@ -51,7 +51,11 @@ module.exports = {
   resolve: {
     extensions: [ '.ts', '.js' ],
   },
-  entry: './src/index.ts',
+  //entry: './src/index.ts',
+  entry: {
+    index: './src/index.ts',
+    webp: './src/lib/webp.ts'
+  },
   /* entry: {
     index: './src/index.ts',
     'lottie-web': ['lottie-web']
@@ -88,7 +92,8 @@ module.exports = {
         minifyCSS: true,
         minifyURLs: true
       }, */
-      chunks: "all"
+      chunks: "all",
+      excludeChunks: ['webp']
     })
   ],
 };

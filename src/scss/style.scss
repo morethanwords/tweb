@@ -35,10 +35,19 @@ $time-size: 12px;
 @import "partials/sidebar";
 @import "partials/leftSidebar";
 @import "partials/mediaViewer";
+@import "partials/ckin";
 
 html, body {
   height: 100%;
   width: 100%;
+}
+
+html {
+  font-size: 15px;
+}
+
+a {
+  color: $blue;
 }
 
 button, input, optgroup, select, textarea, html {

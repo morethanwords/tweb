@@ -300,6 +300,9 @@ export class AppDialogsManager {
             } else if(document.type == 'gif') {
               lastMessageText = '<i>GIF' + (lastMessage.message ? ', ' : '') + '</i>';
               found = true;
+            } else if(document.type == 'round') {
+              lastMessageText = '<i>Videomessage' + (lastMessage.message ? ', ' : '') + '</i>';
+              found = true;
             }
   
             if(found) {

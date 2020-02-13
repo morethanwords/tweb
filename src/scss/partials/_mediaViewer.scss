@@ -123,6 +123,7 @@
       width: 10rem;
       height: 100%;
       cursor: pointer;
+      z-index: 2;
 
       &:hover {
         > span {

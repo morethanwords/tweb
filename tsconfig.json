@@ -63,6 +63,11 @@
   },
   "exclude": [
     "node_modules",
-    "public"
+    "public",
+    "coverage",
+    "./src/lib/*.js",
+    "src/lib/StackBlur.js",
+    "./src/*.js",
+    "*.js",
   ]
 }

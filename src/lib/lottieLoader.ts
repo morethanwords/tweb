@@ -70,7 +70,7 @@ class LottieLoader {
     } */
 
     //params.autoplay = false;
-    //params.renderer = 'canvas';
+    params.renderer = 'canvas';
     params.rendererSettings = {
       //context: canvasContext, // the canvas context
       //preserveAspectRatio: 'xMinYMin slice', // Supports the same options as the svg element's preserveAspectRatio property
