@@ -70,18 +70,20 @@ export default () => import('../lib/services').then(services => {
 
       console.log('updating dialog:', dialog);
 
+      ++performed;
+
       if(!(dialog.peerID in appDialogsManager.doms)) {
         appDialogsManager.addDialog(dialog);
         continue;
       } 
 
       appDialogsManager.setLastMessage(dialog);
-
-      ++performed;
     }
 
     if(performed) {
+      console.log('will sortDom');
       appDialogsManager.sortDom();
+      appDialogsManager.sortDom(true);
     }
   });
 

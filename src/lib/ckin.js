@@ -173,6 +173,8 @@ export function wrapPlayer(video) {
   wrapper.appendChild(video);
 
   stylePlayer(wrapper, video);
+
+  return wrapper;
 }
 
 function buildControls(skin) {

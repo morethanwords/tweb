@@ -61,9 +61,9 @@ export class AppDialogsManager {
         return;
       }
 
-      if(this.lastActiveListElement) {
+      /* if(this.lastActiveListElement) {
         this.lastActiveListElement.classList.remove('active');
-      }
+      } */
 
       if(elem) {
         /* if(chatClosedDiv) {

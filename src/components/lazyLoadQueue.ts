@@ -106,7 +106,7 @@ export default class LazyLoadQueue {
       let {div} = this.lazyLoadMedia[i];
       
       if(isElementInViewport(div)) {
-        console.log('will load div:', div);
+        //console.log('will load div:', div);
         this.lazyLoadMedia[i].wasSeen = true;
         this.processQueue(i);
         //this.lazyLoadMedia.splice(i, 1);

@@ -225,7 +225,9 @@ export class AppMediaViewer {
     let index = history.findIndex(m => m == message.mid);
     let comparer = (mid: number) => {
       let _message = appMessagesManager.getMessage(mid);
-      if(_message.media && _message.media.photo) return true;
+      let media = _message.media;
+
+      if(media && (media.photo || (media.document && ['video', 'gif'].indexOf(media.document.type) !== -1))) return true;
       return false;
     };
     

@@ -42,6 +42,11 @@
   border-radius: 0 !important;
   display: -ms-flexbox;
   display: flex;
+
+  video {
+    max-height: none;
+    max-width: none;
+  }
 }
 
 .default {
@@ -290,7 +295,7 @@ video::-webkit-media-controls-enclosure {
 }
 
 .bottom-controls {
-  padding: 3px 4px 5px 4px;
+  padding: 3px 4px 0px 4px;
   //padding: 5px 4px 5px 4px;
   display: flex;
   justify-content: space-between;
@@ -308,8 +313,8 @@ video::-webkit-media-controls-enclosure {
   color: #fff;
   font-size: 13px;
   float: left;
-  margin-top: 1px;
-  }
+  //margin-top: 1px;
+}
 .circle .circle-time-left {
   position: absolute;
   top: 3px;

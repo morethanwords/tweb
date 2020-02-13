@@ -1,5 +1,5 @@
 import apiManager from '../mtproto/apiManager';
-import { $rootScope, isElementInViewport, numberWithCommas, findUpClassName, formatNumber, placeCaretAtEnd, calcImageInBox } from "../utils";
+import { $rootScope, isElementInViewport, numberWithCommas, findUpClassName, formatNumber, placeCaretAtEnd, calcImageInBox, findUpTag } from "../utils";
 import appUsersManager from "./appUsersManager";
 import appMessagesManager from "./appMessagesManager";
 import appPeersManager from "./appPeersManager";
@@ -435,6 +435,7 @@ export class AppImManager {
   public subtitleEl = document.getElementById('im-subtitle') as HTMLDivElement;
   public chatInner = document.getElementById('bubbles-inner') as HTMLDivElement;
   public searchBtn = this.pageEl.querySelector('.chat-search-button') as HTMLButtonElement;
+  public goDownBtn = this.pageEl.querySelector('#bubbles-go-down') as HTMLButtonElement;
   public firstContainerDiv: HTMLDivElement;
   public lastContainerDiv: HTMLDivElement;
   private getHistoryPromise: Promise<boolean>;
@@ -664,6 +665,8 @@ export class AppImManager {
 
       if(!bubble) return;
 
+      if(['IMG', 'VIDEO', 'SVG', 'DIV'].indexOf(target.tagName) === -1) target = findUpTag(target, 'DIV');
+
       /* if(target.tagName == 'VIDEO' && bubble.classList.contains('round')) {
         let video = target as HTMLVideoElement;
         video.currentTime = 0;
@@ -678,6 +681,24 @@ export class AppImManager {
       } */
 
       if(target.tagName == 'DIV') {
+        if(target.classList.contains('forward')) {
+          let savedFrom = bubble.dataset.savedFrom;
+          let splitted = savedFrom.split('_');
+          let peerID = +splitted[0];
+          let msgID = +splitted[1];
+          this.log('savedFrom', peerID, msgID);
+          this.setPeer(peerID, msgID, true);
+          return;
+        } else if(target.classList.contains('user-avatar') || target.classList.contains('name')) {
+          let peerID = +target.dataset.peerID;
+          
+          if(!isNaN(peerID)) {
+            this.setPeer(peerID);
+          }
+
+          return;
+        }
+
         let isReplyClick = false;
       
         try {
@@ -690,6 +711,12 @@ export class AppImManager {
         }
       } else if(bubble.classList.contains('round')) {
         
+      } else if(target.tagName == 'IMG' && target.parentElement.classList.contains('user-avatar')) {
+        let peerID = +target.parentElement.dataset.peerID;
+          
+        if(!isNaN(peerID)) {
+          this.setPeer(peerID);
+        }
       } else if((target.tagName == 'IMG' && !target.classList.contains('emoji')) || target.tagName == 'VIDEO') {
         let messageID = +target.getAttribute('message-id');
         let message = appMessagesManager.getMessage(messageID);
@@ -888,6 +915,14 @@ export class AppImManager {
       this.deleteMessages(false);
       this.popupDeleteMessage.cancelBtn.click();
     });
+    
+    this.goDownBtn.addEventListener('click', () => {
+      if(this.lastDialog) {
+        this.setPeer(this.peerID, this.lastDialog.top_message);
+      } else {
+        this.scroll.scrollTop = this.scroll.scrollHeight;
+      }
+    });
 
     this.updateStatusInterval = window.setInterval(() => this.updateStatus(), 50e3);
     this.updateStatus();
@@ -1056,7 +1091,8 @@ export class AppImManager {
 
         let willLoad = false;
         if(!this.scrolledAll) {
-          for(let i = 0; i < 10; ++i) {
+          let length = history.length < 10 ? history.length : 10;
+          for(let i = 0; i < length; ++i) {
             let msgID = history[i];
     
             let bubble = this.bubbles[msgID];
@@ -1117,6 +1153,7 @@ export class AppImManager {
     this.scroll = scroll;
     this.scrollPosition = new ScrollPosition(this.chatInner);
     this.scroll.addEventListener('scroll', this.onScroll.bind(this));
+    this.scroll.parentElement.classList.add('scrolled-down');
   }
 
   public setPeerStatus() {
@@ -1242,10 +1279,10 @@ export class AppImManager {
     //appSidebarRight.minMediaID = {};
   }
 
-  public setPeer(peerID: number, lastMsgID = 0) {
+  public setPeer(peerID: number, lastMsgID = 0, forwarding = false) {
     if(peerID == 0) {
       appSidebarRight.toggleSidebar(false);
-      this.topbar.style.display = this.chatInput.style.display = 'none';
+      this.topbar.style.display = this.chatInput.style.display = this.goDownBtn.style.display = 'none';
       this.cleanup();
       return Promise.resolve(false);
     }
@@ -1285,9 +1322,12 @@ export class AppImManager {
     this.preloader.attach(this.chatInner);
 
     let dialog = this.lastDialog = appMessagesManager.getDialogByPeerID(this.peerID)[0] || null;
-    this.log('setPeer peerID:', this.peerID, dialog);
+    this.log('setPeer peerID:', this.peerID, dialog, lastMsgID);
     appDialogsManager.loadDialogPhoto(this.avatarEl, this.peerID);
     appDialogsManager.loadDialogPhoto(appSidebarRight.profileElements.avatar, this.peerID);
+    if(appDialogsManager.lastActiveListElement) {
+      appDialogsManager.lastActiveListElement.classList.remove('active');
+    }
 
     this.firstTopMsgID = dialog ? dialog.top_message : 0;
 
@@ -1305,7 +1345,7 @@ export class AppImManager {
     //this.titleEl.innerHTML = appSidebarRight.profileElements.name.innerHTML = dom.titleSpan.innerHTML;
     this.titleEl.innerHTML = appSidebarRight.profileElements.name.innerHTML = appPeersManager.getPeerTitle(this.peerID);
 
-    this.topbar.style.display = '';
+    this.topbar.style.display = this.goDownBtn.style.display = '';
     appSidebarRight.toggleSidebar(true);
 
     this.chatInput.style.display = appPeersManager.isChannel(peerID) && !appPeersManager.isMegagroup(peerID) ? 'none' : '';
@@ -1317,14 +1357,21 @@ export class AppImManager {
     }
 
     return Promise.all([
-      this.getHistory(lastMsgID).then(() => {
+      this.getHistory(forwarding ? lastMsgID + 1 : lastMsgID).then(() => {
         this.log('setPeer removing preloader');
 
         if(lastMsgID) {
-          this.renderMessage(appMessagesManager.getMessage(lastMsgID));
+          if(!forwarding) {
+            let message = appMessagesManager.getMessage(lastMsgID);
+            this.log('setPeer render last message:', message, lastMsgID);
+            this.renderMessage(message);
+          }
 
           if(!dialog || lastMsgID != dialog.top_message) {
-            this.bubbles[lastMsgID].scrollIntoView();
+            let bubble = this.bubbles[lastMsgID];
+            
+            if(bubble) this.bubbles[lastMsgID].scrollIntoView();
+            else this.log.warn('no bubble by lastMsgID:', lastMsgID);
           } else {
             this.scroll.scrollTop = this.scroll.scrollHeight;
           }
@@ -1418,6 +1465,8 @@ export class AppImManager {
   }
 
   public renderMessage(message: any, reverse = false, multipleRender?: boolean, bubble: HTMLDivElement = null) {
+    if(message.deleted) return;
+
     let peerID = this.peerID;
     let our = message.fromID == this.myID;
   
@@ -1694,7 +1743,7 @@ export class AppImManager {
             }
 
             bubble.classList.add('video');
-            wrapVideo.call(this, doc, attachmentDiv, message, doc.type != 'round', null, false, doc.type == 'round');
+            wrapVideo.call(this, doc, attachmentDiv, message, true, null, false, doc.type == 'round');
 
             break;
           } else {
@@ -1736,10 +1785,25 @@ export class AppImManager {
       if(message.fwdFromID || message.fwd_from) {
         bubble.classList.add('forwarded');
 
+        if(message.savedFrom) {
+          let fwd = document.createElement('div');
+          fwd.classList.add('forward'/* , 'tgico-forward' */);
+          fwd.innerHTML = `
+          <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24">
+            <defs>
+              <path d="M13.55 3.24L13.64 3.25L13.73 3.27L13.81 3.29L13.9 3.32L13.98 3.35L14.06 3.39L14.14 3.43L14.22 3.48L14.29 3.53L14.36 3.59L14.43 3.64L22.23 10.85L22.36 10.99L22.48 11.15L22.57 11.31L22.64 11.48L22.69 11.66L22.72 11.85L22.73 12.04L22.71 12.22L22.67 12.41L22.61 12.59L22.53 12.76L22.42 12.93L22.29 13.09L22.23 13.15L14.43 20.36L14.28 20.48L14.12 20.58L13.95 20.66L13.77 20.72L13.58 20.76L13.4 20.77L13.22 20.76L13.03 20.73L12.85 20.68L12.68 20.61L12.52 20.52L12.36 20.4L12.22 20.27L12.16 20.2L12.1 20.13L12.05 20.05L12.01 19.98L11.96 19.9L11.93 19.82L11.89 19.73L11.87 19.65L11.84 19.56L11.83 19.47L11.81 19.39L11.81 19.3L11.8 19.2L11.8 16.42L11 16.49L10.23 16.58L9.51 16.71L8.82 16.88L8.18 17.09L7.57 17.33L7.01 17.6L6.48 17.91L5.99 18.26L5.55 18.64L5.14 19.05L4.77 19.51L4.43 19.99L4.29 20.23L4.21 20.35L4.11 20.47L4 20.57L3.88 20.65L3.75 20.72L3.62 20.78L3.48 20.82L3.33 20.84L3.19 20.84L3.04 20.83L2.9 20.79L2.75 20.74L2.62 20.68L2.53 20.62L2.45 20.56L2.38 20.5L2.31 20.43L2.25 20.36L2.2 20.28L2.15 20.19L2.11 20.11L2.07 20.02L2.04 19.92L2.02 19.83L2.01 19.73L2 19.63L2.04 17.99L2.19 16.46L2.46 15.05L2.85 13.75L3.35 12.58L3.97 11.53L4.7 10.6L5.55 9.8L6.51 9.12L7.59 8.56L8.77 8.13L10.07 7.83L11.48 7.65L11.8 7.63L11.8 4.8L11.91 4.56L12.02 4.35L12.14 4.16L12.25 3.98L12.37 3.82L12.48 3.68L12.61 3.56L12.73 3.46L12.85 3.38L12.98 3.31L13.11 3.27L13.24 3.24L13.37 3.23L13.46 3.23L13.55 3.24Z" id="b13RmHDQtl"></path>
+            </defs>
+            <use xlink:href="#b13RmHDQtl" opacity="1" fill="#fff" fill-opacity="1"></use>
+          </svg>`;
+          bubble.append(fwd);
+          bubble.dataset.savedFrom = message.savedFrom;
+        }
+
         if(!bubble.classList.contains('sticker')) {
           let nameDiv = document.createElement('div');
           nameDiv.classList.add('name');
           nameDiv.innerHTML = 'Forwarded from ' + title;
+          nameDiv.dataset.peerID = message.fwdFromID;
           //nameDiv.style.color = appPeersManager.getPeerColorByID(message.fromID, false);
           bubble.append(nameDiv);
         }
@@ -1789,7 +1853,7 @@ export class AppImManager {
 
           if(originalMessage.mid) {
             bubble.setAttribute('data-original-mid', originalMessage.mid);
-          }          
+          }
 
           bubble.append(box);
           bubble.classList.add('is-reply');
@@ -1812,6 +1876,7 @@ export class AppImManager {
           nameDiv.classList.add('name');
           nameDiv.innerHTML = title;
           nameDiv.style.color = appPeersManager.getPeerColorByID(message.fromID, false);
+          nameDiv.dataset.peerID = message.fromID;
           bubble.append(nameDiv);
         } else if(!message.reply_to_mid) {
           bubble.classList.add('hide-name');
@@ -1838,6 +1903,8 @@ export class AppImManager {
   
           appDialogsManager.loadDialogPhoto(avatarDiv, title);
         }
+
+        avatarDiv.dataset.peerID = message.fromID;
   
         bubble.append(avatarDiv);
       }

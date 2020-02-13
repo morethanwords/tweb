@@ -108,10 +108,17 @@ export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement,
 
       container.append(video);
 
-      if(!justLoader) {
+      if(!justLoader || round) {
         video.dataset.ckin = round ? 'circle' : 'default';
         video.dataset.overlay = '1';
-        wrapPlayer(video);
+        let wrapper = wrapPlayer(video);
+
+        if(!round) {
+          (wrapper.querySelector('.toggle') as HTMLButtonElement).click();
+        }
+      } else if(doc.type == 'gif') {
+        video.autoplay = true;
+        video.loop = true;
       }
 
       //container.style.width = '';

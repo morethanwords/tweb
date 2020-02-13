@@ -1034,9 +1034,10 @@ export class AppMessagesManager {
 
           apiMessage.fromID = fwdHeader.channel_id ? -fwdHeader.channel_id : fwdHeader.from_id;
         } else {
-          apiMessage.fwdFromID = fwdHeader.channel_id ? -fwdHeader.channel_id : fwdHeader.from_id;
           apiMessage.fwdPostID = fwdHeader.channel_post;
         }
+
+        apiMessage.fwdFromID = fwdHeader.channel_id ? -fwdHeader.channel_id : fwdHeader.from_id;
 
         fwdHeader.date -= serverTimeManager.serverTimeOffset;
       }
