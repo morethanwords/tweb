@@ -419,7 +419,8 @@
 			
 			.box {
 				font-size: .95rem;
-				margin: .25rem;
+				// margin: .25rem;
+				margin: 4px 4px 4px 6px;
 				padding: .25rem;
 				margin-bottom: -5px;
 				border-radius: 4px;
@@ -430,8 +431,8 @@
 				} */
 				
 				&.web {
-					margin-top: -5px;
-					margin-bottom: 5px;
+					margin-top: -6px;
+					// margin-bottom: 5px;
 					max-width: 100%;
 					overflow: hidden;
 					
@@ -441,7 +442,7 @@
 						/* max-height: 100%;
 						max-width: 100%; */
 						border-radius: 4px;
-						margin-bottom: 6px;
+						margin-bottom: 3px;
 						overflow: hidden;
 						user-select: none;
 						cursor: pointer;
@@ -457,11 +458,13 @@
 					}
 					
 					.title {
-						line-height: 1.4;
+						letter-spacing: -0.2px;
+						line-height: 1.2;
 						font-weight: 500;
 					}
 					
 					.name {
+						letter-spacing: -0.3px;
 						display: block;
 						
 						&:hover {
@@ -473,14 +476,24 @@
 						overflow: hidden;
 						text-overflow: ellipsis;
 						line-height: 1.2;
+						letter-spacing: -0.3px;
+						margin-top: 2px;
+						font-size: 0.965rem;
 					}
 				}
 				
 				.quote {
-					padding-left: .5rem;
+					// padding-left: .5rem;
+					padding-left: 0.55rem;
+					margin-top: 6px;
 					max-width: 100%;
 					overflow: hidden;
 					width: 100%;
+
+					.text {
+						line-height: 1.2;
+					}
+
 				}
 				
 				.name {
@@ -690,7 +703,7 @@
 				color: $darkblue;
 			}
 			
-			.box:hover {
+			.quote:hover {
 				background-color: $light;
 			}
 
@@ -705,6 +718,7 @@
 			
 			.quote {
 				border-left: 2px $darkblue solid;
+				//margin-top: 6px; //MOJET VREMENNO
 				
 				.name {
 					color: $darkblue;
@@ -760,11 +774,7 @@
 		.out {
 			align-items: flex-end;
 			
-			a {
-				color: $darkgreen;
-			}
-			
-			.box:hover {
+			.quote:hover {
 				background-color: rgba($green, 0.12);
 			}
 

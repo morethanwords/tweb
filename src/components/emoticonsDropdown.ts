@@ -36,7 +36,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
   });
   (tabs.children[0] as HTMLLIElement).click(); // set media
 
-  let emoticonsMenuOnClick = (menu: HTMLUListElement, heights: number[], scroll: Scrollable) => {
+  let emoticonsMenuOnClick = (menu: HTMLUListElement, heights: number[], scroll: Scrollable, menuScroll?: Scrollable) => {
     menu.addEventListener('click', function(e) {
       let target = e.target as HTMLLIElement;
       target = findUpTag(target, 'LI');
@@ -44,8 +44,11 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
       let index = whichChild(target);
       let y = heights[index - 1/* 2 */] || 0; // 10 == padding .scrollable
 
-      console.log('emoticonsMenuOnClick', index, y, scroll.container.scrollHeight, scroll);
-
+      /* if(menuScroll) {
+        menuScroll.container.scrollLeft = target.scrollWidth * index;
+      }
+      console.log('emoticonsMenuOnClick', menu.getBoundingClientRect(), target.getBoundingClientRect());
+ */
       scroll.onAddedBottom = () => { // привет, костыль, давно не виделись!
         scroll.container.scrollTop = y;
         scroll.onAddedBottom = () => {};
@@ -54,7 +57,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
     });
   };
 
-  let emoticonsContentOnScroll = (menu: HTMLUListElement, heights: number[], prevCategoryIndex: number, scroll: HTMLDivElement) => {
+  let emoticonsContentOnScroll = (menu: HTMLUListElement, heights: number[], prevCategoryIndex: number, scroll: HTMLDivElement, menuScroll?: Scrollable) => {
     let y = scroll.scrollTop;
 
     //console.log(heights, y);
@@ -65,6 +68,14 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
         menu.children[prevCategoryIndex].classList.remove('active');
         prevCategoryIndex = i/*  + 1 */;
         menu.children[prevCategoryIndex].classList.add('active');
+
+        if(menuScroll) {
+          if(i < heights.length - 4) {
+            menuScroll.container.scrollLeft = (i - 3) * 50;
+          } else {
+            menuScroll.container.scrollLeft = i * 50;
+          }
+        }
 
         break;
       }
@@ -350,11 +361,11 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
       lazyLoadQueue.check();
       lottieLoader.checkAnimations();
 
-      prevCategoryIndex = emoticonsContentOnScroll(menu, heights, prevCategoryIndex, stickersScroll.container);
+      prevCategoryIndex = emoticonsContentOnScroll(menu, heights, prevCategoryIndex, stickersScroll.container, menuScroll);
     });
     stickersScroll.setVirtualContainer(stickersDiv);
 
-    emoticonsMenuOnClick(menu, heights, stickersScroll);
+    emoticonsMenuOnClick(menu, heights, stickersScroll, menuScroll);
 
     stickersInit = null;
   };

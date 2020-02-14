@@ -1,4 +1,4 @@
-import { isElementInViewport, isScrolledIntoView } from "../lib/utils";
+import { isElementInViewport, isScrolledIntoView, cancelEvent } from "../lib/utils";
 
 export default class Scrollable {
   public container: HTMLDivElement;
@@ -8,6 +8,7 @@ export default class Scrollable {
   public side: string;
   public scrollType: string;
   public scrollSide: string;
+  public clientAxis: string;
 
   public scrollSize = -1;
   public size = 0;
@@ -64,12 +65,14 @@ export default class Scrollable {
       this.side = 'left';
       this.scrollType = 'scrollWidth';
       this.scrollSide = 'scrollLeft';
+      this.clientAxis = 'clientX';
     } else if(y) {
       this.container.classList.add('scrollable-y');
       this.type = 'height';
       this.side = 'top';
       this.scrollType = 'scrollHeight';
       this.scrollSide = 'scrollTop';
+      this.clientAxis = 'clientY';
     } else {
       throw new Error('no side for scroll');
     }
@@ -79,6 +82,28 @@ export default class Scrollable {
     
     // @ts-ignore
     this.thumb.style[this.type] = '30px';
+
+    let onMouseMove = (e: MouseEvent) => {
+      let rect = this.thumb.getBoundingClientRect();
+
+      let diff: number;
+      // @ts-ignore
+      diff = e[this.clientAxis] - rect[this.side];
+      // @ts-ignore
+      this.container[this.scrollSide] += diff * 0.5;
+
+      console.log('onMouseMove', e, diff);
+
+      cancelEvent(e);
+    };
+
+    this.thumb.addEventListener('mousedown', () => {
+      window.addEventListener('mousemove', onMouseMove);
+
+      window.addEventListener('mouseup', () => {
+        window.removeEventListener('mousemove', onMouseMove);
+      }, {once: true});
+    });
 
     this.container.addEventListener('mouseover', this.resize.bind(this));
     window.addEventListener('resize', this.resize.bind(this));

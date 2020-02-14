@@ -140,7 +140,13 @@ class ChatInput {
 
     this.messageInput.addEventListener('keydown', (e: KeyboardEvent) => {
       if(e.key == 'Enter') {
-        if(e.shiftKey || e.ctrlKey) {
+        /* if(e.ctrlKey || e.metaKey) {
+          this.messageInput.innerHTML += '<br>';
+          placeCaretAtEnd(this.message)
+          return;
+        } */
+
+        if(e.shiftKey || e.ctrlKey || e.metaKey) {
           return;
         }
   
@@ -646,20 +652,24 @@ export class AppImManager {
           this.pinnedMessageContent.innerHTML = RichTextProcessor.wrapEmojiText(message.message);
         }
 
-        let idx = this.needUpdate.findIndex(v => v.replyMid == mid);
-        if(idx !== -1) {
-          let {mid, replyMid} = this.needUpdate.splice(idx, 1)[0];
-          let bubble = this.bubbles[mid];
-          if(!bubble) return;
+        let length = this.needUpdate.length;
+        for(let i = length - 1; i >= 0; --i) {
+          if(this.needUpdate[i].replyMid == mid) {
+            let {mid, replyMid} = this.needUpdate.splice(i, 1)[0];
 
-          let message = appMessagesManager.getMessage(mid);
-
-          let repliedMessage = appMessagesManager.getMessage(replyMid);
-          if(repliedMessage.deleted) { // чтобы не пыталось бесконечно загрузить удалённое сообщение
-            delete message.reply_to_mid; // WARNING!
+            //this.log('messages_downloaded', mid, replyMid, i, this.needUpdate, this.needUpdate.length, mids, this.bubbles[mid]);
+            let bubble = this.bubbles[mid];
+            if(!bubble) return;
+  
+            let message = appMessagesManager.getMessage(mid);
+  
+            let repliedMessage = appMessagesManager.getMessage(replyMid);
+            if(repliedMessage.deleted) { // чтобы не пыталось бесконечно загрузить удалённое сообщение
+              delete message.reply_to_mid; // WARNING!
+            }
+  
+            this.renderMessage(message, false, false, bubble, false);
           }
-
-          this.renderMessage(message, false, false, bubble, false);
         }
       });
     });
@@ -1517,6 +1527,10 @@ export class AppImManager {
 
     //messageDiv.innerText = message.message;
 
+    if(!multipleRender) {
+      this.scrollPosition.prepareFor(reverse ? 'up' : 'down'); // лагает из-за этого
+    }
+
     // bubble
     if(!bubble) {
       bubble = document.createElement('div');
@@ -1870,10 +1884,9 @@ export class AppImManager {
 
           // need to download separately
           if(originalMessage._ == 'messageEmpty') {
-            this.log('message to render reply empty, need download');
-            if(appMessagesManager.wrapSingleMessage(message.reply_to_mid).loading) {
-              this.needUpdate.push({replyMid: message.reply_to_mid, mid: message.mid});
-            }
+            this.log('message to render reply empty, need download', message, message.reply_to_mid);
+            appMessagesManager.wrapSingleMessage(message.reply_to_mid);
+            this.needUpdate.push({replyMid: message.reply_to_mid, mid: message.mid});
 
             originalPeerTitle = 'Loading...';
           }
@@ -1978,10 +1991,6 @@ export class AppImManager {
       // @ts-ignore
       let str = name.outerHTML + ' ' + langPack[action._];
       bubble.innerHTML = `<div class="service-msg">${str}</div>`;
-    }
-
-    if(!multipleRender) {
-      this.scrollPosition.prepareFor(reverse ? 'up' : 'down'); // лагает из-за этого
     }
   
     if(updatePosition) {
