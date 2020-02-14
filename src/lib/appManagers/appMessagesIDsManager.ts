@@ -37,8 +37,8 @@ export class AppMessagesIDsManager {
   }
 
   public splitMessageIDsByChannels (mids: any[]) {
-    var msgIDsByChannels: any = {};
-    var midsByChannels: any = {};
+    var msgIDsByChannels: {[channelID: number]: number[]} = {};
+    var midsByChannels: {[channelID: number]: number[]} = {};
     var i;
     var mid, msgChannel;
     var channelID;

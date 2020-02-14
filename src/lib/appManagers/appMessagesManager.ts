@@ -3206,7 +3206,7 @@ export class AppMessagesManager {
     });
   }
 
-  public wrapForDialog(msgID: number, dialog?: any) {
+  /* public wrapForDialog(msgID: number, dialog?: any) {
     var useCache = msgID && dialog !== undefined;
     var unreadCount = dialog && dialog.unread_count;
 
@@ -3255,7 +3255,7 @@ export class AppMessagesManager {
     }
 
     return message;
-  }
+  } */
 
   public fetchSingleMessages() {
     if(this.fetchSingleMessagesPromise) {
@@ -3263,20 +3263,21 @@ export class AppMessagesManager {
     }
 
     var mids = this.needSingleMessages.slice();
-    this.needSingleMessages = [];
+    this.needSingleMessages.length = 0;
 
     var splitted = appMessagesIDsManager.splitMessageIDsByChannels(mids);
     let promises: Promise<void>[] = [];
     Object.keys(splitted.msgIDs).forEach((channelID: number | string) => {
-      let msgIDs = splitted.msgIDs[channelID].map((mid: number) => {
+      channelID = +channelID;
+
+      let msgIDs = splitted.msgIDs[channelID].map((msgID: number) => {
         return {
           _: 'inputMessageID',
-          id: mid
+          id: msgID
         };
       });
 
       var promise;
-      channelID = +channelID;
       if(channelID > 0) {
         promise = apiManager.invokeApi('channels.getMessages', {
           channel: appChatsManager.getChannelInput(channelID),
@@ -3293,43 +3294,39 @@ export class AppMessagesManager {
         appChatsManager.saveApiChats(getMessagesResult.chats);
         this.saveMessages(getMessagesResult.messages);
 
-        $rootScope.$broadcast('messages_downloaded', splitted.mids[channelID])
+        $rootScope.$broadcast('messages_downloaded', splitted.mids[+channelID]);
       }));
     });
 
     return this.fetchSingleMessagesPromise = Promise.all(promises).then(() => {
+      this.fetchSingleMessagesTimeout = 0;
       this.fetchSingleMessagesPromise = null;
       if(this.needSingleMessages.length) this.fetchSingleMessages();
     }).catch(() => {
+      this.fetchSingleMessagesTimeout = 0;
       this.fetchSingleMessagesPromise = null;
       if(this.needSingleMessages.length) this.fetchSingleMessages();
     });
   }
 
-  /* public wrapSingleMessage(msgID: number) {
+  public wrapSingleMessage(msgID: number) {
     if(this.messagesStorage[msgID]) {
-      return this.wrapForDialog(msgID);
+      //let ret = this.wrapForDialog(msgID); // hm
+      $rootScope.$broadcast('messages_downloaded', [msgID]);
+      //return ret;
+      return {mid: msgID, loading: false};
     }
 
     if(this.needSingleMessages.indexOf(msgID) == -1) {
       this.needSingleMessages.push(msgID);
       if(this.fetchSingleMessagesTimeout == 0) {
-        this.fetchSingleMessagesTimeout = window.setTimeout(this.fetchSingleMessages.bind(this), 100);
+        this.fetchSingleMessagesTimeout = window.setTimeout(this.fetchSingleMessages.bind(this), 25);
       }
-    }
 
-    return {mid: msgID, loading: true};
-  } */
-  public wrapSingleMessage(msgID: number) {
-    if(this.messagesStorage[msgID]) {
-      $rootScope.$broadcast('messages_downloaded', msgID);
-      return;
-    }
-
-    if(this.needSingleMessages.indexOf(msgID) == -1) {
-      this.needSingleMessages.push(msgID);
-      this.fetchSingleMessages();
-    }
+      return {mid: msgID, loading: true};
+    } 
+    
+    return {mid: msgID, loading: false};
   }
 }
 

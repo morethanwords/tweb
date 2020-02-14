@@ -1,6 +1,6 @@
 import apiManager from "../mtproto/apiManager";
 import apiFileManager from '../mtproto/apiFileManager';
-import { $rootScope, findUpTag, isElementInViewport } from "../utils";
+import { $rootScope, findUpTag, isElementInViewport, langPack } from "../utils";
 import appImManager from "./appImManager";
 import appPeersManager from './appPeersManager';
 import appMessagesManager from "./appMessagesManager";
@@ -313,6 +313,11 @@ export class AppDialogsManager {
             console.warn('Got unknown lastMessage.media type!', lastMessage);
             break;
         }
+      }
+
+      if(lastMessage.action) {
+        // @ts-ignore
+        lastMessageText = langPack[lastMessage.action._];
       }
       
       dom.lastMessageSpan.innerHTML = lastMessageText + 

@@ -178,9 +178,8 @@
 		}
 		
 		.service {
-			justify-content: center;
-			align-self: center;
 			margin: 1rem 0;
+			align-self: center;
 			
 			.service-msg {
 				color: #fff;
@@ -190,6 +189,14 @@
 				font-size: 15px;
 				border-radius: 12px;
 				user-select: none;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+
+				.name {
+					cursor: pointer;
+					margin-right: 5px;
+				}
 			}
 		}
 		
@@ -487,6 +494,20 @@
 					cursor: pointer;
 				}
 			}
+
+			&.is-reply {
+				&.emoji-big, &.sticker {
+					.box {
+						padding: 10px;
+						border-radius: 12px;
+						border: 1px solid #ccc;
+						max-width: 300px;
+						white-space: nowrap;
+						position: absolute;
+						top: 0;
+					}
+				}
+			}
 			
 			.message {
 				font-size: 16px;
@@ -542,7 +563,7 @@
 					position: absolute;
 					bottom: 0;
 					right: 0;
-					font-size: .75rem;
+					font-size: 12px;
 					display: flex;
 					align-items: center;
 					line-height: 1;
@@ -570,6 +591,20 @@
 
 			&.is-edited .time {
 				width: 90px;
+			}
+
+			.message.message-empty .time {
+				padding: 0;
+				display: flex;
+				align-items: center;
+				width: auto;
+
+				.inner {
+					margin-bottom: 0;
+					position: relative;
+					padding: 0 2.5px;
+					bottom: 0;
+				}
 			}
 			
 			.user-avatar {
@@ -658,6 +693,15 @@
 			.box:hover {
 				background-color: $light;
 			}
+
+			.bubble.is-reply {
+				&.emoji-big, &.sticker {
+					.box {
+						left: calc(100% + 10px);
+						background-color: #fff;
+					}
+				}
+			}
 			
 			.quote {
 				border-left: 2px $darkblue solid;
@@ -673,11 +717,11 @@
 			}
 			
 			.time {
-				color: rgba($darkgrey, 0.6);
-				width: 2rem;
+				color: #a3adb6;
+				width: 36px;
 				
 				.inner {
-					padding: 0 .35rem;
+					padding: 0 7px 0 5px;
 					margin-bottom: 4px;
 				}
 			}
@@ -705,8 +749,8 @@
 				}
 				
 				&.forwarded .attachment,
-				&.is-reply .attachment,
-				&:not(.hide-name):not(.sticker) .attachment {
+				&.is-reply .attachment/* ,
+				&:not(.hide-name):not(.sticker) .attachment */ {
 					border-top-left-radius: 0;
 					border-top-right-radius: 0;
 				}
@@ -723,6 +767,16 @@
 			.box:hover {
 				background-color: rgba($green, 0.12);
 			}
+
+			.bubble.is-reply {
+				&.emoji-big, &.sticker {
+					.box {
+						background-color: #eeffde;
+						right: calc(100% + 10px);
+						border-color: rgba($green, .12);
+					}
+				}
+			}
 			
 			.quote {
 				border-left: 2px $darkgreen solid;
@@ -734,20 +788,20 @@
 			
 			.time {
 				color: $darkgreen;
-				width: 48px;
+				width: 50px;
 				display: inline-block;
 				
 				.inner {
-					padding: 0 .25rem;
+					padding: 0 4px 0 4px;
 					bottom: 1px;
 				}
 			}
 			
 			.bubble {
 				.time .tgico:after {
-					font-size: 1.1rem;
+					font-size: 19px;
 					vertical-align: middle;
-					margin-left: .1rem;
+					margin-left: 1px;
 				}
 			}
 			
@@ -901,6 +955,12 @@
 			background-image: url('../../assets/img/msg-tail-left.svg');
 			transform: scaleX(-1);
 		}
+
+		#attach-file {
+			&.menu-open {
+				color: $blue;
+			}
+		}
 		
 		> div {
 			display: flex;
@@ -950,7 +1010,7 @@
 			color: $placeholder-color;
 			font-size: 1.5rem;
 			line-height: 1.5rem;
-			
+			transition: .2s color;
 			flex: 0 0 auto;
 			
 			&.active {
@@ -1307,8 +1367,6 @@
 
 .popup {
 	&.popup-delete-message {
-		
-		
 		.popup-header {
 			margin-bottom: 1rem;
 		}

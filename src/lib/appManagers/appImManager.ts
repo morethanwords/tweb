@@ -1,5 +1,5 @@
 import apiManager from '../mtproto/apiManager';
-import { $rootScope, isElementInViewport, numberWithCommas, findUpClassName, formatNumber, placeCaretAtEnd, calcImageInBox, findUpTag, getRichValue, getRichValueWithCaret, getSelectedText } from "../utils";
+import { $rootScope, isElementInViewport, numberWithCommas, findUpClassName, formatNumber, placeCaretAtEnd, calcImageInBox, findUpTag, getRichValue, getRichValueWithCaret, getSelectedText, langPack } from "../utils";
 import appUsersManager from "./appUsersManager";
 import appMessagesManager from "./appMessagesManager";
 import appPeersManager from "./appPeersManager";
@@ -259,6 +259,7 @@ class ChatInput {
       this.attachMediaPopUp.mediaContainer.innerHTML = '';
       this.attachMediaPopUp.mediaContainer.style.width = '';
       this.attachMediaPopUp.mediaContainer.style.height = '';
+      this.attachMediaPopUp.mediaContainer.classList.remove('is-document');
 
       switch(willAttach) {
         case 'media': {
@@ -295,6 +296,7 @@ class ChatInput {
           this.attachMediaPopUp.titleEl.innerText = 'Send File';
 
           this.attachMediaPopUp.mediaContainer.append(docDiv);
+          this.attachMediaPopUp.mediaContainer.classList.add('is-document');
           this.attachMediaPopUp.container.classList.add('active');
           break;
         }
@@ -465,6 +467,7 @@ export class AppImManager {
   public dateMessages: {[timestamp: number]: { div: HTMLDivElement, firstTimestamp: number }} = {};
   public unreaded: number[] = [];
   public unreadOut: number[] = [];
+  public needUpdate: {replyMid: number, mid: number}[] = []; // if need wrapSingleMessage
   
   public offline = false;
   public updateStatusInterval = 0;
@@ -628,19 +631,37 @@ export class AppImManager {
       if(!bubble) return;
 
       let message = appMessagesManager.getMessage(mid);
-      this.renderMessage(message, false, false, bubble);
+      this.renderMessage(message, false, false, bubble, false);
     });
 
     $rootScope.$on('messages_downloaded', (e: CustomEvent) => {
-      let mid = e.detail;
+      let mids: number[] = e.detail;
       
-      if(this.pinnedMsgID == mid) {
-        let message = appMessagesManager.getMessage(mid);
-        this.log('setting pinned message', message);
-        this.pinnedMessageContainer.setAttribute('data-mid', mid);
-        this.pinnedMessageContainer.style.display = '';
-        this.pinnedMessageContent.innerHTML = RichTextProcessor.wrapEmojiText(message.message);
-      }
+      mids.forEach(mid => {
+        if(this.pinnedMsgID == mid) {
+          let message = appMessagesManager.getMessage(mid);
+          this.log('setting pinned message', message);
+          this.pinnedMessageContainer.dataset.mid = '' + mid;
+          this.pinnedMessageContainer.style.display = '';
+          this.pinnedMessageContent.innerHTML = RichTextProcessor.wrapEmojiText(message.message);
+        }
+
+        let idx = this.needUpdate.findIndex(v => v.replyMid == mid);
+        if(idx !== -1) {
+          let {mid, replyMid} = this.needUpdate.splice(idx, 1)[0];
+          let bubble = this.bubbles[mid];
+          if(!bubble) return;
+
+          let message = appMessagesManager.getMessage(mid);
+
+          let repliedMessage = appMessagesManager.getMessage(replyMid);
+          if(repliedMessage.deleted) { // чтобы не пыталось бесконечно загрузить удалённое сообщение
+            delete message.reply_to_mid; // WARNING!
+          }
+
+          this.renderMessage(message, false, false, bubble, false);
+        }
+      });
     });
 
     $rootScope.$on('apiUpdate', (e: CustomEvent) => {
@@ -1285,6 +1306,7 @@ export class AppImManager {
     this.unreadOut = [];
     this.loadMediaQueue = [];
     this.loadingMedia = 0;
+    this.needUpdate.length = 0;
 
     lottieLoader.checkAnimations(false, 'chat', true);
 
@@ -1344,7 +1366,7 @@ export class AppImManager {
     this.log('setPeer peerID:', this.peerID, dialog, lastMsgID);
     appDialogsManager.loadDialogPhoto(this.avatarEl, this.peerID);
     appDialogsManager.loadDialogPhoto(appSidebarRight.profileElements.avatar, this.peerID);
-    if(appDialogsManager.lastActiveListElement) {
+    if(!samePeer && appDialogsManager.lastActiveListElement) {
       appDialogsManager.lastActiveListElement.classList.remove('active');
     }
 
@@ -1483,7 +1505,7 @@ export class AppImManager {
     });
   }
 
-  public renderMessage(message: any, reverse = false, multipleRender?: boolean, bubble: HTMLDivElement = null) {
+  public renderMessage(message: any, reverse = false, multipleRender?: boolean, bubble: HTMLDivElement = null, updatePosition = true) {
     this.log('message to render:', message);
     if(message.deleted) return;
 
@@ -1844,6 +1866,16 @@ export class AppImManager {
 
           this.log('message to render reply', originalMessage, originalPeerTitle, bubble, message);
 
+          // need to download separately
+          if(originalMessage._ == 'messageEmpty') {
+            this.log('message to render reply empty, need download');
+            if(appMessagesManager.wrapSingleMessage(message.reply_to_mid).loading) {
+              this.needUpdate.push({replyMid: message.reply_to_mid, mid: message.mid});
+            }
+
+            originalPeerTitle = 'Loading...';
+          }
+
           let originalText = '';
           if(originalMessage.message) {
             originalText = RichTextProcessor.wrapRichText(originalMessage.message, {
@@ -1871,6 +1903,8 @@ export class AppImManager {
 
           if(originalMessage.mid) {
             bubble.setAttribute('data-original-mid', originalMessage.mid);
+          } else {
+            bubble.setAttribute('data-original-mid', message.reply_to_mid);
           }
 
           bubble.append(box);
@@ -1927,39 +1961,100 @@ export class AppImManager {
         bubble.append(avatarDiv);
       }
     }
-  
-    let type = our ? 'out' : 'in';
 
-    let containerDiv = reverse ? this.firstContainerDiv : this.lastContainerDiv;
-    if(!containerDiv || !containerDiv.classList.contains(type)) {
-      /* if(containerDiv) {
-        if(reverse) this.chatInner.prepend(containerDiv);
-        else this.chatInner.append(containerDiv);
-      } */
-  
-      containerDiv = document.createElement('div');
-      containerDiv.classList.add(type);
+    if(message._ == 'messageService') {
+      bubble.className = 'service';
 
-      if(!this.firstContainerDiv) this.firstContainerDiv = containerDiv;
+      let action = message.action;
 
-      if(reverse) this.firstContainerDiv = containerDiv;
-      else this.lastContainerDiv = containerDiv;
+      let title = appPeersManager.getPeerTitle(message.fromID);
+      let name = document.createElement('div');
+      name.classList.add('name');
+      name.dataset.peerID = message.fromID;
+      name.innerHTML = title;
+
+      // @ts-ignore
+      let str = name.outerHTML + ' ' + langPack[action._];
+      bubble.innerHTML = `<div class="service-msg">${str}</div>`;
     }
 
-    if(reverse) {
-      if(!multipleRender) {
-        this.scrollPosition.prepareFor('up'); // лагает из-за этого
+    if(!multipleRender) {
+      this.scrollPosition.prepareFor(reverse ? 'up' : 'down'); // лагает из-за этого
+    }
+  
+    if(updatePosition) {
+      let type = our ? 'out' : 'in';
+      let containerDiv = reverse ? this.firstContainerDiv : this.lastContainerDiv;
+      if(!containerDiv || !containerDiv.classList.contains(type)) {
+        /* if(containerDiv) {
+          if(reverse) this.chatInner.prepend(containerDiv);
+          else this.chatInner.append(containerDiv);
+        } */
+    
+        containerDiv = document.createElement('div');
+        containerDiv.classList.add(type);
+  
+        if(!this.firstContainerDiv) this.firstContainerDiv = containerDiv;
+  
+        if(reverse) this.firstContainerDiv = containerDiv;
+        else this.lastContainerDiv = containerDiv;
+      }
+  
+      if(reverse) {
+        /* if(!multipleRender) {
+          this.scrollPosition.prepareFor('up'); // лагает из-за этого
+        } */
+  
+        containerDiv.prepend(bubble);
+        this.chatInner.prepend(containerDiv);
+      } else {
+        /* if(!multipleRender) {
+          this.scrollPosition.prepareFor('down'); // лагает из-за этого
+        } */
+  
+        containerDiv.append(bubble);
+        this.chatInner.append(containerDiv);
       }
 
-      containerDiv.prepend(bubble);
-      this.chatInner.prepend(containerDiv);
-    } else {
-      if(!multipleRender) {
-        this.scrollPosition.prepareFor('down'); // лагает из-за этого
-      }
+      let justDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      let dateTimestamp = justDate.getTime();
+      if(!(dateTimestamp in this.dateMessages)) {
+        let str = '';
 
-      containerDiv.append(bubble);
-      this.chatInner.append(containerDiv);
+        let today = new Date();
+        today.setHours(0);
+        today.setMinutes(0);
+        today.setSeconds(0);
+
+        if(today < date) {
+          str = 'Today';
+        } else {
+          const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+            'July', 'August', 'September', 'October', 'November', 'December'];
+          str = justDate.getFullYear() == new Date().getFullYear() ? 
+            months[justDate.getMonth()] + ' ' + justDate.getDate() : 
+            justDate.toISOString().split('T')[0].split('-').reverse().join('.');
+        }
+
+        let div = document.createElement('div');
+        div.classList.add('service');
+        div.innerHTML = `<div class="service-msg">${str}</div>`;
+        this.log('need to render date message', dateTimestamp, str);
+        
+        this.dateMessages[dateTimestamp] = {
+          div, 
+          firstTimestamp: date.getTime()
+        };
+
+        //this.chatInner.insertBefore(div, containerDiv);
+        containerDiv.insertBefore(div, bubble);
+      } else {
+        let dateMessage = this.dateMessages[dateTimestamp];
+        if(dateMessage.firstTimestamp > date.getTime()) {
+          //this.chatInner.insertBefore(dateMessage.div, containerDiv);
+          containerDiv.insertBefore(dateMessage.div, bubble);
+        }
+      }
     }
 
     /* if(bubble.classList.contains('webpage')) {
@@ -1967,46 +2062,6 @@ export class AppImManager {
     } */
 
     //return //this.scrollPosition.restore();
-
-    let justDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    let dateTimestamp = justDate.getTime();
-    if(!(dateTimestamp in this.dateMessages)) {
-      let str = '';
-
-      let today = new Date();
-      today.setHours(0);
-      today.setMinutes(0);
-      today.setSeconds(0);
-
-      if(today < date) {
-        str = 'Today';
-      } else {
-        const months = ['January', 'February', 'March', 'April', 'May', 'June', 
-          'July', 'August', 'September', 'October', 'November', 'December'];
-        str = justDate.getFullYear() == new Date().getFullYear() ? 
-          months[justDate.getMonth()] + ' ' + justDate.getDate() : 
-          justDate.toISOString().split('T')[0].split('-').reverse().join('.');
-      }
-
-      let div = document.createElement('div');
-      div.classList.add('service');
-      div.innerHTML = `<div class="service-msg">${str}</div>`;
-      this.log('need to render date message', dateTimestamp, str);
-      
-      this.dateMessages[dateTimestamp] = {
-        div, 
-        firstTimestamp: date.getTime()
-      };
-
-      //this.chatInner.insertBefore(div, containerDiv);
-      containerDiv.insertBefore(div, bubble);
-    } else {
-      let dateMessage = this.dateMessages[dateTimestamp];
-      if(dateMessage.firstTimestamp > date.getTime()) {
-        //this.chatInner.insertBefore(dateMessage.div, containerDiv);
-        containerDiv.insertBefore(dateMessage.div, bubble);
-      }
-    }
 
     if(!multipleRender) {
       this.scrollPosition.restore();  // лагает из-за этого

@@ -324,11 +324,11 @@ export const langPack = {
 	"messageActionChatLeave": "left group",
 	"messageActionChatDeleteUser": "removed user",
 	"messageActionChatJoinedByLink": "joined the group",
+	"messageActionPinMessage": "pinned message",
 	"messageActionChannelCreate": "Channel created",
 	"messageActionChannelEditTitle": "Channel renamed",
 	"messageActionChannelEditPhoto": "Channel photo updated",
 	"messageActionChannelDeletePhoto": "Channel photo removed",
-	"messageActionPinMessage": "pinned message",
 
   "messageActionPhoneCall.in_ok": "Incoming Call",
 	"messageActionPhoneCall.out_ok": "Outgoing Call",

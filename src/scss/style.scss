@@ -1385,6 +1385,10 @@ div.scrollable::-webkit-scrollbar-thumb {
     margin: 0 auto;
     /* align-items: center; */
 
+    &.is-document {
+      margin-left: 0;
+    }
+
     .document {
       max-width: 100%;
       overflow: hidden;

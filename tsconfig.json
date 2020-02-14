@@ -65,8 +65,8 @@
     "node_modules",
     "public",
     "coverage",
+    "./src/lib/StackBlur.js",
     "./src/lib/*.js",
-    "src/lib/StackBlur.js",
     "./src/*.js",
     "*.js",
   ]

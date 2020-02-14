@@ -54,7 +54,7 @@ export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement,
   //container.classList.add('video');
   
   let img = container.firstElementChild as HTMLImageElement || new Image();
-  img.setAttribute('message-id', '' + message.id);
+  img.setAttribute('message-id', '' + message.mid);
   
   if(!container.contains(img)) {
     container.append(img);
@@ -93,7 +93,7 @@ export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement,
         video.volume = 0;
       } */
 
-      video.setAttribute('message-id', '' + message.id);
+      video.setAttribute('message-id', '' + message.mid);
       
       let source = document.createElement('source');
       //source.src = doc.url;
