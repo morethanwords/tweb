@@ -303,7 +303,7 @@ class AppSidebarRight {
                 }
               }
 
-              //console.log('come back down to my knees', message);
+              //this.log('come back down to my knees', message);
 
               let div = wrapDocument(message.media.document, true);
               this.sharedMedia.contentDocuments.append(div);

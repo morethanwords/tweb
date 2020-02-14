@@ -38,6 +38,25 @@
     }
   }
 
+  .sidebar-tools-button .btn-menu {
+    width: 217px;
+
+    .archived-count {
+      border-radius: 12px;
+      min-width: 24px;
+      padding: 0 8px;
+      height: 24px;
+      text-align: center;
+      line-height: 24px;
+      color: #fff;
+      font-weight: 500;
+      background-color: #c5c9cc;
+      justify-self: flex-end;
+      position: absolute;
+      right: 16px;
+    }
+  }
+
   .search-group {
     width: 100%;
     border-bottom: 1px solid #DADCE0;

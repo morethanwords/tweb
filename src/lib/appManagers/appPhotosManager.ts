@@ -228,7 +228,7 @@ export class AppPhotosManager {
       } */
 
       if(isPhoto/*  && photoSize.size >= 1e6 */) {
-        console.log('Photos downloadFile exec', photo);
+        //console.log('Photos downloadFile exec', photo);
         /* let promise = apiFileManager.downloadFile(photo.dc_id, location, photoSize.size);
 
         let blob = await promise;
@@ -241,7 +241,7 @@ export class AppPhotosManager {
         return blob; */
         return apiFileManager.downloadFile(photo.dc_id, location, photoSize.size);
       } else {
-        console.log('Photos downloadSmallFile exec', photo, location);
+        //console.log('Photos downloadSmallFile exec', photo, location);
         return apiFileManager.downloadSmallFile(location);
       }
     } else return Promise.reject('no photoSize');

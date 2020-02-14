@@ -314,7 +314,7 @@ export class ApiFileManager {
       }
     }
 
-    this.log('arriba');
+    //this.log('arriba');
 
     //var deferred = $q.defer()
     let deferredHelper: any = {notify: () => {}};
@@ -468,7 +468,7 @@ export class ApiFileManager {
       }
     };
 
-    console.log(deferred, deferred.notify, deferred.cancel);
+    //console.log(deferred, deferred.notify, deferred.cancel);
 
     if(!toFileEntry) {
       this.cachedDownloadPromises[fileName] = deferred;

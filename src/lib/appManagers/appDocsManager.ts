@@ -1,5 +1,4 @@
 import apiFileManager, { CancellablePromise } from '../mtproto/apiFileManager';
-import {$rootScope} from '../utils';
 import FileManager from '../filemanager';
 import {RichTextProcessor} from '../richtextprocessor';
 //import { MTDocument } from '../../components/misc';
@@ -233,7 +232,7 @@ class AppDocsManager {
     
     //historyDoc.progress.cancel = downloadPromise.cancel;
 
-    console.log('return downloadPromise:', downloadPromise);
+    //console.log('return downloadPromise:', downloadPromise);
     
     return downloadPromise;
   }
@@ -253,7 +252,7 @@ class AppDocsManager {
         console.log('saved doc', doc);
       });
 
-      console.log('got promise from downloadDoc', promise);
+      //console.log('got promise from downloadDoc', promise);
   
       return {promise};
     } catch(err) {

@@ -254,6 +254,12 @@ export default class Scrollable {
       while((isElementInViewport(this.paddingBottomDiv) || isScrolledIntoView(this.paddingBottomDiv)) && this.paddings.down) {
         let child = this.hiddenElements.down.shift();
 
+        if(!child) {
+          this.paddings.down = 0;
+          this.paddingBottomDiv.style.height = '0px';
+          break;
+        }
+
         splitUp.append(child);
   
         this.paddings.down -= child.scrollHeight;

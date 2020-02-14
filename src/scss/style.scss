@@ -1282,7 +1282,8 @@ div.scrollable::-webkit-scrollbar-thumb {
   width: 4px;
   //margin-left: 2px;
   background-color: #000;
-  cursor: grab;
+  //cursor: grab;
+  cursor: default;
   opacity: 0;
   transition-property: opacity,width,right;
   transition-duration: .2s;

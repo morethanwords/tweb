@@ -485,7 +485,6 @@
 				.quote {
 					// padding-left: .5rem;
 					padding-left: 0.55rem;
-					margin-top: 6px;
 					max-width: 100%;
 					overflow: hidden;
 					width: 100%;
@@ -518,7 +517,17 @@
 						white-space: nowrap;
 						position: absolute;
 						top: 0;
+
+						.quote {
+							margin-top: 0;
+						}
 					}
+				}
+
+				.quote .text {
+					white-space: nowrap;
+					text-overflow: ellipsis;
+					overflow: hidden;
 				}
 			}
 			
@@ -672,6 +681,10 @@
 			&.hide-name .message:not(.message-empty) {
 				//padding-top: .2675rem;
 				padding-top: 6px;
+			}
+
+			&.hide-name:not(.sticker):not(.emoji-big) .box:not(.web) .quote {
+				margin-top: 6px;
 			}
 			
 			&:not(.sticker):not(.emoji-big):not(.round):last-child:after {

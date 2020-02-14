@@ -1,7 +1,7 @@
 import { logger } from "../polyfill";
 import { putPreloader, formatPhoneNumber } from "../../components/misc";
 import Scrollable from '../../components/scrollable';
-import appMessagesManager from "./appMessagesManager";
+import appMessagesManager, { AppMessagesManager } from "./appMessagesManager";
 import appDialogsManager from "./appDialogsManager";
 import { isElementInViewport, numberWithCommas } from "../utils";
 import appMessagesIDsManager from "./appMessagesIDsManager";
@@ -47,6 +47,7 @@ class AppSidebarLeft {
   private menuEl = this.toolsBtn.querySelector('.btn-menu');
   private savedBtn = this.menuEl.querySelector('.menu-saved');
   private archivedBtn = this.menuEl.querySelector('.menu-archive');
+  private archivedCount = this.archivedBtn.querySelector('.archived-count') as HTMLSpanElement;
   
   private listsContainer: HTMLDivElement = null;
   
@@ -56,7 +57,8 @@ class AppSidebarLeft {
   private chatsOffsetIndex = 0;
   private chatsPreloader: HTMLDivElement;
   private chatsLoadCount = 0;
-  private loadDialogsPromise: Promise<any>;
+  //private loadDialogsPromise: Promise<any>;
+  private loadDialogsPromise: ReturnType<AppMessagesManager["getConversations"]>;
   
   private log = logger('SL');
   
@@ -246,6 +248,11 @@ class AppSidebarLeft {
         result.dialogs.forEach((dialog: any) => {
           appDialogsManager.addDialog(dialog);
         });
+      }
+
+      if(archived) {
+        let count = result.count;
+        this.archivedCount.innerText = '' + count;
       }
 
       this.log('loaded ' + this.chatsLoadCount + ' dialogs by offset:', offset, result, this.scroll.hiddenElements);

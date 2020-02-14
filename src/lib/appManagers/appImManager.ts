@@ -73,10 +73,10 @@ class ScrollPosition {
     //console.log('scrollPosition restore 2', this.node.scrollHeight, (this.node.scrollHeight
       //- this.previousScrollHeightMinusTop) + 'px', this.container);
 
-    //if(this.readyFor === 'up') {
+    if(this.readyFor === 'up' || appImManager.scroll.parentElement.classList.contains('scrolled-down')) {
       this.container.scrollTop = this.node.scrollHeight
         - this.previousScrollHeightMinusTop;
-    //}
+    }
   
     // 'down' doesn't need to be special cased unless the
     // content was flowing upwards, which would only happen
@@ -122,7 +122,17 @@ class ChatInput {
     captionInput?: HTMLInputElement
   } = {};
 
+  public replyElements: {
+    container?: HTMLDivElement,
+    cancelBtn?: HTMLButtonElement,
+    titleEl?: HTMLDivElement,
+    subtitleEl?: HTMLDivElement
+  } = {};
+
   public willSendWebPage: any = null;
+  public replyToMsgID = 0;
+  public editMsgID = 0;
+  public noWebPage = false;
 
   constructor() {
     this.toggleEmoticons = this.pageEl.querySelector('.toggle-emoticons') as HTMLButtonElement;
@@ -137,6 +147,11 @@ class ChatInput {
     this.attachMediaPopUp.sendBtn = this.attachMediaPopUp.container.querySelector('.btn-primary') as HTMLButtonElement;
     this.attachMediaPopUp.mediaContainer = this.attachMediaPopUp.container.querySelector('.popup-photo') as HTMLDivElement;
     this.attachMediaPopUp.captionInput = this.attachMediaPopUp.container.querySelector('input') as HTMLInputElement;
+
+    this.replyElements.container = this.pageEl.querySelector('.reply-wrapper') as HTMLDivElement;
+    this.replyElements.cancelBtn = this.replyElements.container.querySelector('.reply-cancel') as HTMLButtonElement;
+    this.replyElements.titleEl = this.replyElements.container.querySelector('.reply-title') as HTMLDivElement;
+    this.replyElements.subtitleEl = this.replyElements.container.querySelector('.reply-subtitle') as HTMLDivElement;
 
     this.messageInput.addEventListener('keydown', (e: KeyboardEvent) => {
       if(e.key == 'Enter') {
@@ -177,13 +192,12 @@ class ChatInput {
           }).then((webpage: any) => {
             appWebPagesManager.saveWebPage(webpage);
             if(this.lastUrl != url) return;
-            //console.log(webpage);
-  
-            appImManager.replyElements.titleEl.innerHTML = RichTextProcessor.wrapEmojiText(webpage.site_name || webpage.title || '');
-            appImManager.replyElements.subtitleEl.innerHTML = RichTextProcessor.wrapEmojiText(webpage.description || webpage.url || '');
-            appImManager.replyElements.container.classList.add('active');
-            appImManager.replyToMsgID = 0;
-            appImManager.noWebPage = false;
+            console.log('got webpage: ', webpage);
+
+            this.setTopInfo(webpage.site_name || webpage.title, webpage.description || webpage.url);
+
+            this.replyToMsgID = 0;
+            this.noWebPage = false;
             this.willSendWebPage = webpage;
           });
         }
@@ -408,6 +422,26 @@ class ChatInput {
         lottieLoader.checkAnimations(false, EMOTICONSSTICKERGROUP);
       }, 0/* 200 */);
     };
+
+    this.replyElements.cancelBtn.addEventListener('click', () => {
+      this.replyElements.container.classList.remove('active');
+      this.replyToMsgID = 0;
+
+      if(this.editMsgID) {
+        if(this.willSendWebPage) {
+          let message = appMessagesManager.getMessage(this.editMsgID);
+          this.setTopInfo('Editing', message.message);
+        } else {
+          this.editMsgID = 0;
+          this.messageInput.innerHTML = '';
+          this.btnSend.classList.remove('tgico-send');
+          this.btnSend.classList.add('tgico-microphone2');
+        }
+      }
+
+      this.noWebPage = true;
+      this.willSendWebPage = null;
+    });
   }
   
   public serializeNodes(nodes: Node[]): string {
@@ -430,14 +464,23 @@ class ChatInput {
 
     //return;
     this.lastUrl = '';
-    appMessagesManager.sendText(appImManager.peerID, str, {
-      replyToMsgID: appImManager.replyToMsgID == 0 ? undefined : appImManager.replyToMsgID,
-      noWebPage: appImManager.noWebPage,
-      webPage: this.willSendWebPage
-    });
-    appImManager.replyToMsgID = 0;
-    appImManager.noWebPage = false;
-    appImManager.replyElements.container.classList.remove('active');
+
+    if(this.editMsgID) {
+      appMessagesManager.editMessage(this.editMsgID, str, {
+        noWebPage: this.noWebPage
+      });
+    } else {
+      appMessagesManager.sendText(appImManager.peerID, str, {
+        replyToMsgID: this.replyToMsgID == 0 ? undefined : this.replyToMsgID,
+        noWebPage: this.noWebPage,
+        webPage: this.willSendWebPage
+      });
+    }
+    
+    this.editMsgID = 0;
+    this.replyToMsgID = 0;
+    this.noWebPage = false;
+    this.replyElements.container.classList.remove('active');
     appImManager.scroll.scrollTop = appImManager.scroll.scrollHeight;
     this.willSendWebPage = null;
     this.messageInput.innerText = '';
@@ -445,6 +488,23 @@ class ChatInput {
     this.btnSend.classList.remove('tgico-send');
     this.btnSend.classList.add('tgico-microphone2');
   };
+
+  public setTopInfo(title: string, subtitle: string, input?: string) {
+    //appImManager.scrollPosition.prepareFor('down');
+
+    this.replyElements.titleEl.innerHTML = title ? RichTextProcessor.wrapEmojiText(title) : '';
+    this.replyElements.subtitleEl.innerHTML = subtitle ? RichTextProcessor.wrapEmojiText(subtitle) : '';
+    this.replyElements.container.classList.add('active');
+
+    if(input !== undefined) {
+      this.messageInput.innerHTML = input ? RichTextProcessor.wrapRichText(input) : '';
+
+      this.btnSend.classList.remove('tgico-microphone2');
+      this.btnSend.classList.add('tgico-send');
+    }
+
+    //appImManager.scrollPosition.restore();
+  }
 }
 
 export class AppImManager {
@@ -508,22 +568,12 @@ export class AppImManager {
   private contextMenuEdit = this.contextMenu.querySelector('.menu-edit') as HTMLDivElement;
   private contextMenuMsgID: number;
 
-  public replyElements: {
-    container?: HTMLDivElement,
-    cancelBtn?: HTMLButtonElement,
-    titleEl?: HTMLDivElement,
-    subtitleEl?: HTMLDivElement
-  } = {};
-
   private popupDeleteMessage: {
     popupEl?: HTMLDivElement,
     deleteBothBtn?: HTMLButtonElement,
     deleteMeBtn?: HTMLButtonElement,
     cancelBtn?: HTMLButtonElement
   } = {};
-
-  public replyToMsgID = 0;
-  public noWebPage = false;
 
   constructor() {
     this.log = logger('IM');
@@ -536,11 +586,6 @@ export class AppImManager {
     this.popupDeleteMessage.deleteBothBtn = this.popupDeleteMessage.popupEl.querySelector('.popup-delete-both') as HTMLButtonElement;
     this.popupDeleteMessage.deleteMeBtn = this.popupDeleteMessage.popupEl.querySelector('.popup-delete-me') as HTMLButtonElement;
     this.popupDeleteMessage.cancelBtn = this.popupDeleteMessage.popupEl.querySelector('.popup-close') as HTMLButtonElement;
-
-    this.replyElements.container = this.pageEl.querySelector('.reply-wrapper') as HTMLDivElement;
-    this.replyElements.cancelBtn = this.replyElements.container.querySelector('.reply-cancel') as HTMLButtonElement;
-    this.replyElements.titleEl = this.replyElements.container.querySelector('.reply-title') as HTMLDivElement;
-    this.replyElements.subtitleEl = this.replyElements.container.querySelector('.reply-subtitle') as HTMLDivElement;
 
     apiManager.getUserID().then((id) => {
       this.myID = id;
@@ -931,11 +976,16 @@ export class AppImManager {
     
     this.contextMenu.querySelector('.menu-reply').addEventListener('click', () => {
       let message = appMessagesManager.getMessage(this.contextMenuMsgID);
-      let title = appPeersManager.getPeerTitle(message.fromID);
-      this.replyElements.titleEl.innerHTML = title;
-      this.replyElements.subtitleEl.innerHTML = message.message ? RichTextProcessor.wrapEmojiText(message.message) : '';
-      this.replyElements.container.classList.add('active');
-      this.replyToMsgID = this.contextMenuMsgID;
+      this.chatInputC.setTopInfo(appPeersManager.getPeerTitle(message.fromID), message.message);
+      this.chatInputC.replyToMsgID = this.contextMenuMsgID;
+      this.chatInputC.editMsgID = 0;
+    });
+
+    this.contextMenuEdit.addEventListener('click', () => {
+      let message = appMessagesManager.getMessage(this.contextMenuMsgID);
+      this.chatInputC.setTopInfo('Editing', message.message, message.message);
+      this.chatInputC.replyToMsgID = 0;
+      this.chatInputC.editMsgID = this.contextMenuMsgID;
     });
 
     this.contextMenuPin.addEventListener('click', () => {
@@ -947,13 +997,6 @@ export class AppImManager {
         this.log('pinned updates:', updates);
         apiUpdatesManager.processUpdateMessage(updates);
       });
-    });
-
-    this.replyElements.cancelBtn.addEventListener('click', () => {
-      this.replyElements.container.classList.remove('active');
-      this.replyToMsgID = 0;
-      this.noWebPage = true;
-      this.chatInputC.willSendWebPage = null;
     });
 
     this.popupDeleteMessage.deleteBothBtn.addEventListener('click', () => {
@@ -1322,7 +1365,7 @@ export class AppImManager {
 
     // clear input 
     this.chatInputC.messageInput.innerHTML = '';
-    this.replyElements.cancelBtn.click();
+    this.chatInputC.replyElements.cancelBtn.click();
 
     // clear messages
     this.chatInner.innerHTML = '';
@@ -1894,7 +1937,8 @@ export class AppImManager {
           let originalText = '';
           if(originalMessage.message) {
             originalText = RichTextProcessor.wrapRichText(originalMessage.message, {
-              entities: originalMessage.totalEntities
+              entities: originalMessage.totalEntities,
+              noLinebreaks: true
             });
           }
 
@@ -1945,7 +1989,7 @@ export class AppImManager {
           nameDiv.style.color = appPeersManager.getPeerColorByID(message.fromID, false);
           nameDiv.dataset.peerID = message.fromID;
           bubble.append(nameDiv);
-        } else if(!message.reply_to_mid) {
+        } else /* if(!message.reply_to_mid) */ {
           bubble.classList.add('hide-name');
         }
   
@@ -1975,6 +2019,8 @@ export class AppImManager {
   
         bubble.append(avatarDiv);
       }
+    } else {
+      bubble.classList.add('hide-name');
     }
 
     if(message._ == 'messageService') {
@@ -2211,10 +2257,10 @@ export class AppImManager {
     };
 
     if(!this.muted) {
-      settings.flags |= 2 << 1;
+      settings.flags |= 1 << 2;
       settings.mute_until = 2147483646;
     } else {
-      settings.flags |= 1 << 1;
+      settings.flags |= 2;
     }
 
     apiManager.invokeApi('account.updateNotifySettings', {

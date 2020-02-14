@@ -44,6 +44,7 @@ export class AppMessagesManager {
   public pendingTopMsgs: any = {};
   public sendFilePromise: CancellablePromise<void> = Promise.resolve();
   public tempID = -1;
+  public tempFinalizeCallbacks: any = {};
 
   public dialogsIndex: any = SearchIndexManager.createIndex();
   public cachedResults: any = {query: false};
@@ -161,6 +162,70 @@ export class AppMessagesManager {
       }
     });
     return sendEntites;
+  }
+
+  public editMessage(messageID: number, text: string, options: {
+    noWebPage?: boolean
+  } = {}) {
+    if(typeof(text) !== 'string' || !this.canEditMessage(messageID)) {
+      return Promise.reject();
+    }
+
+    if(messageID < 0) {
+      if(this.tempFinalizeCallbacks[messageID] === undefined) {
+        this.tempFinalizeCallbacks[messageID] = {}
+      }
+
+      let promise = new Promise((resolve, reject) => {
+        this.tempFinalizeCallbacks[messageID].edit = (mid: number) => {
+          console.log('invoke callback', mid)
+          this.editMessage(mid, text).then(resolve, reject);
+        }
+      });
+
+      return promise;
+    }
+
+    var entities: any = [];
+    text = RichTextProcessor.parseMarkdown(text, entities)
+
+    var message = this.getMessage(messageID);
+    var peerID = this.getMessagePeer(message);
+    var flags = 0;
+    let noWebPage = options.noWebPage || false;
+
+    if(noWebPage) {
+      flags |= 2;
+    }
+
+    if(text) {
+      flags |= 8 | 1 << 11;
+    }
+
+    /* if(message.media) {
+      flags |= 1 << 14;
+    } */
+
+    return apiManager.invokeApi('messages.editMessage', {
+      flags: flags,
+      peer: AppPeersManager.getInputPeerByID(peerID),
+      id: appMessagesIDsManager.getMessageLocalID(messageID),
+      message: text,
+      media: message.media,
+      entities: this.getInputEntities(entities),
+      no_webpage: noWebPage,
+    }).then((updates) => {
+      apiUpdatesManager.processUpdateMessage(updates)
+    }, (error) => {
+      if(error && error.type == 'MESSAGE_NOT_MODIFIED') {
+        error.handled = true;
+        return;
+      }
+      if(error && error.type == 'MESSAGE_EMPTY') {
+        error.handled = true;
+      }
+      return Promise.reject(error);
+    });
   }
 
   public sendText(peerID: number, text: string, options: {
@@ -764,11 +829,12 @@ export class AppMessagesManager {
 
     if(/* isSearch ||  */this.allDialogsLoaded[folderID] || curDialogStorage.length >= offset + limit) {
       return Promise.resolve({
-        dialogs: curDialogStorage.slice(offset, offset + limit)
+        dialogs: curDialogStorage.slice(offset, offset + limit),
+        count: curDialogStorage.length
       });
     }
 
-    return this.getTopMessages(limit, folderID).then(() => {
+    return this.getTopMessages(limit, folderID).then(count => {
       let curDialogStorage = this.dialogsStorage.dialogs;
 
       if(folderID > 0) {
@@ -789,18 +855,25 @@ export class AppMessagesManager {
       //console.warn(offset, offset + limit, curDialogStorage.dialogs.length, this.dialogsStorage.dialogs.length);
 
       return {
-        dialogs: curDialogStorage.slice(offset, offset + limit)
+        dialogs: curDialogStorage.slice(offset, offset + limit),
+        count: count
       };
     });
   }
 
-  public getTopMessages(limit: number, folderID = -1) {
+  public getTopMessages(limit: number, folderID = -1): Promise<number> {
     var dialogs = this.dialogsStorage.dialogs;
     var offsetDate = 0;
     var offsetID = 0;
     var offsetPeerID = 0;
     var offsetIndex = 0;
     var flags = 0;
+
+    if(folderID > 0) {
+      dialogs = dialogs.filter(d => d.folder_id == folderID);
+    } else {
+      dialogs = dialogs.filter(d => d.folder_id != 1);
+    }
 
     if(this.dialogsOffsetDate[folderID]) {
       offsetDate = this.dialogsOffsetDate[folderID] + serverTimeManager.serverTimeOffset;
@@ -888,6 +961,8 @@ export class AppMessagesManager {
       } else {
         $rootScope.$broadcast('dialogs_multiupdate', {});
       }
+
+      return dialogsResult.count;
     });
   }
 
@@ -1230,6 +1305,25 @@ export class AppMessagesManager {
     }
 
     return true;
+  }
+
+  public canEditMessage(messageID: number) {
+    if (!this.messagesStorage[messageID]) {
+      return false
+    }
+    var message = this.messagesStorage[messageID]
+    if (!message ||
+        !message.canBeEdited) {
+      return false
+    }
+    if (this.getMessagePeer(message) == appUsersManager.getSelf().id) {
+      return true
+    }
+    if (message.date < tsNow(true) - 2 * 86400 ||
+        !message.pFlags.out) {
+      return false
+    }
+    return true
   }
 
   public applyConversations(dialogsResult: any) {
@@ -2875,7 +2969,20 @@ export class AppMessagesManager {
     return false
   }
 
+  /* public finalizePendingMessageCallbacks(tempID: number, mid: number) {
+    $rootScope.$broadcast('message_sent', {tempID, mid});
+  } */
+
   public finalizePendingMessageCallbacks(tempID: number, mid: number) {
+    var callbacks = this.tempFinalizeCallbacks[tempID];
+    console.warn(dT(), callbacks, tempID);
+    if(callbacks !== undefined) {
+      callbacks.forEach((callback: any) => {
+        callback(mid);
+      });
+      delete this.tempFinalizeCallbacks[tempID];
+    }
+
     $rootScope.$broadcast('message_sent', {tempID, mid});
   }
 
