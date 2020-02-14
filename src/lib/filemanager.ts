@@ -1,16 +1,20 @@
 import {bytesToArrayBuffer, blobSafeMimeType, blobConstruct, bytesToBase64} from './bin_utils';
 
-class FileManager {
-  /* $window.URL = $window.URL || $window.webkitURL
-  $window.BlobBuilder = $window.BlobBuilder || $window.WebKitBlobBuilder || $window.MozBlobBuilder */
+import 'web-streams-polyfill/ponyfill';
+// @ts-ignore
+import streamSaver from 'streamsaver';
+if(window.location.href.indexOf('localhost') === -1) {
+  streamSaver.mitm = 'mitm.html';
+}
 
+class FileManager {
   public isSafari = 'safari' in window;
   public safariVersion = parseFloat(this.isSafari && (navigator.userAgent.match(/Version\/(\d+\.\d+).* Safari/) || [])[1]);
   public safariWithDownload = this.isSafari && this.safariVersion >= 11.0;
   public buggyUnknownBlob = this.isSafari && !this.safariWithDownload;
-
+  
   public blobSupported = true;
-
+  
   constructor() {
     try {
       blobConstruct([], '');
@@ -18,12 +22,12 @@ class FileManager {
       this.blobSupported = false;
     }
   }
-
+  
   public isAvailable() {
     return this.blobSupported;
   }
-
-  public copy(fromFileEntry: any, toFileEntry: any) {
+  
+  /* public copy(fromFileEntry: any, toFileEntry: any) {
     return this.getFileWriter(toFileEntry).then((fileWriter) => {
       return this.write(fileWriter, fromFileEntry).then(() => {
         return fileWriter;
@@ -32,13 +36,28 @@ class FileManager {
           // @ts-ignore
           fileWriter.truncate(0);
         } catch (e) {}
-
+        
         return Promise.reject(error);
       });
     });
+  } */
+  public copy(fromFileEntry: any, toFileEntry: any) {
+    return this.write(toFileEntry, fromFileEntry).then(() => {
+      console.log('copy success');
+      return toFileEntry;
+    }, (error: any) => {
+      console.error('copy error 1:', error);
+      try {
+        toFileEntry.truncate(0);
+      } catch(e) {
+        console.error('copy error', e);
+      }
+      
+      return Promise.reject(error);
+    });
   }
-
-  public write(fileWriter: any, bytes: any) {
+  
+  /* public write(fileWriter: any, bytes: any) {
     return new Promise((resolve, reject) => {
       fileWriter.onwriteend = function(e: any) {
         resolve();
@@ -46,7 +65,7 @@ class FileManager {
       fileWriter.onerror = function(e: any) {
         reject(e);
       };
-  
+      
       if(bytes.file) {
         bytes.file((file: any) => {
           fileWriter.write(file);
@@ -62,54 +81,52 @@ class FileManager {
         }
       }
     });
-  }
+  } */
+  
+  public write(fileWriter: any, bytes: any): Promise<void> {
+    if(bytes.file) {
+      return bytes.file((file: any) => {
+        return fileWriter.write(file);
+      });
+    } else if(bytes instanceof Blob) { // is file bytes
+      return new Promise((resolve, reject) => {
+        let fileReader = new FileReader();
+        fileReader.onload = function(event) {
+          let arrayBuffer = event.target.result as ArrayBuffer;
 
-  public chooseSaveFile(fileName: string, ext: string, mimeType: string) {
-    return Promise.reject();
-    /* if(!window.chrome || !chrome.fileSystem || !chrome.fileSystem.chooseEntry) {
-      //return qSync.reject()
-      return Promise.reject();
+          let arr = new Uint8Array(arrayBuffer);
+
+          fileWriter.write(arr).then(resolve, reject);
+        };
+
+        fileReader.readAsArrayBuffer(bytes);
+      });
+    } else {
+      //var blob = blobConstruct([bytesToArrayBuffer(bytes)]);
+      //return fileWriter.write(blob);
+      return fileWriter.write(bytes);
     }
-    var deferred = $q.defer()
-
-    chrome.fileSystem.chooseEntry({
-      type: 'saveFile',
-      suggestedName: fileName,
-      accepts: [{
-        mimeTypes: [mimeType],
-        extensions: [ext]
-      }]
-    }, function (writableFileEntry) {
-      deferred.resolve(writableFileEntry)
-    })
-
-    return deferred.promise */
   }
-
-  public getFileWriter(fileEntry: any) {
-    return new Promise((resolve, reject) => {
-      fileEntry.createWriter(resolve, reject);
+  
+  public chooseSaveFile(fileName: string, ext: string, mimeType: string, size?: number): any {
+    let fileStream = streamSaver.createWriteStream(fileName, {
+      size: size,
+      writableStrategy: undefined,
+      readableStrategy: undefined
     });
+    let writer = fileStream.getWriter();
+    return writer;
   }
 
   public getFakeFileWriter(mimeType: string, saveFileCallback: any) {
     var blobParts: Array<Blob> = [];
-    var fakeFileWriter: any = {
-      write: (blob: Blob) => {
+    var fakeFileWriter = {
+      write: async(blob: Blob) => {
         if(!this.blobSupported) {
-          if(fakeFileWriter.onerror) {
-            fakeFileWriter.onerror(new Error('Blob not supported by browser'));
-          }
-
-          return false;
+          throw false;
         }
-
+        
         blobParts.push(blob);
-        setTimeout(() => {
-          if(fakeFileWriter.onwriteend) {
-            fakeFileWriter.onwriteend();
-          }
-        }, 0);
       },
       truncate: () => {
         blobParts = [];
@@ -119,14 +136,14 @@ class FileManager {
         if(saveFileCallback) {
           saveFileCallback(blob);
         }
-
+        
         return blob;
       }
     };
-
+    
     return fakeFileWriter;
   }
-
+  
   public getUrl(fileData: any, mimeType: string) {
     var safeMimeType = blobSafeMimeType(mimeType);
     // console.log(dT(), 'get url', fileData, mimeType, fileData.toURL !== undefined, fileData instanceof Blob)
@@ -138,7 +155,7 @@ class FileManager {
     }
     return 'data:' + safeMimeType + ';base64,' + bytesToBase64(fileData);
   }
-
+  
   public getByteArray(fileData: any) {
     if(fileData instanceof Blob) {
       return new Promise((resolve, reject) => {
@@ -146,7 +163,7 @@ class FileManager {
           var reader = new FileReader();
           reader.onloadend = (e) => {
             // @ts-ignore
-           resolve(new Uint8Array(e.target.result));
+            resolve(new Uint8Array(e.target.result));
           };
           reader.onerror = (e) => {
             reject(e);
@@ -163,11 +180,11 @@ class FileManager {
         }, reject);
       });
     }
-
+    
     return Promise.resolve(fileData);
     //return $q.when(fileData);
   }
-
+  
   public getDataUrl(blob: any) {
     return new Promise((resolve, reject) => {
       try {
@@ -181,7 +198,7 @@ class FileManager {
       }
     });
   }
-
+  
   public getFileCorrectUrl(blob: any, mimeType: string) {
     if(this.buggyUnknownBlob && blob instanceof Blob) {
       // @ts-ignore
@@ -190,48 +207,48 @@ class FileManager {
         return this.getDataUrl(blob);
       }
     }
-
+    
     return Promise.resolve(this.getUrl(blob, mimeType));
   }
-
+  
   // downloadFile
   public download(blob: any, mimeType: string, fileName: string) {
     if(window.navigator && navigator.msSaveBlob !== undefined) {
       window.navigator.msSaveBlob(blob, fileName);
       return false;
     }
-
+    
     if(window.navigator && 'getDeviceStorage' in navigator) {
       var storageName = 'sdcard';
       var subdir = 'telegram/';
       switch(mimeType.split('/')[0]) {
         case 'video':
-          storageName = 'videos';
-          break;
+        storageName = 'videos';
+        break;
         case 'audio':
-          storageName = 'music';
-          break;
+        storageName = 'music';
+        break;
         case 'image':
-          storageName = 'pictures';
-          break;
+        storageName = 'pictures';
+        break;
       }
-
+      
       // @ts-ignore
       var deviceStorage = navigator.getDeviceStorage(storageName);
       var request = deviceStorage.addNamed(blob, subdir + fileName);
-
+      
       request.onsuccess = function () {
         console.log('Device storage save result', this.result);
       };
       request.onerror = () => {};
       return;
     }
-
+    
     var popup: Window;
     if(this.isSafari && !this.safariWithDownload) {
       popup = window.open();
     }
-
+    
     this.getFileCorrectUrl(blob, mimeType).then((url) => {
       if(popup) {
         try {
@@ -240,7 +257,7 @@ class FileManager {
           return;
         } catch (e) {}
       }
-
+      
       var anchor = document.createElementNS('http://www.w3.org/1999/xhtml', 'a') as HTMLAnchorElement;
       anchor.href = url as string;
       if(!this.safariWithDownload) {
@@ -254,29 +271,30 @@ class FileManager {
       anchor.style.position = 'absolute';
       anchor.style.top = '1px';
       anchor.style.left = '1px';
-
+      
       document.body.append(anchor);
-
+      
       try {
         var clickEvent = document.createEvent('MouseEvents');
         clickEvent.initMouseEvent(
           'click', true, false, window, 0, 0, 0, 0, 0
           , false, false, false, false, 0, null
-        )
-        anchor.dispatchEvent(clickEvent);
-      } catch (e) {
-        console.error('Download click error', e);
-        try {
-          anchor.click();
+          )
+          anchor.dispatchEvent(clickEvent);
         } catch (e) {
-          window.open(url as string, '_blank');
+          console.error('Download click error', e);
+          try {
+            anchor.click();
+          } catch (e) {
+            window.open(url as string, '_blank');
+          }
         }
-      }
-      setTimeout(() => {
-        anchor.remove();
-      }, 100);
-    })
+        setTimeout(() => {
+          anchor.remove();
+        }, 100);
+      })
+    }
   }
-}
-
-export default new FileManager();
+  
+  export default new FileManager();
+  

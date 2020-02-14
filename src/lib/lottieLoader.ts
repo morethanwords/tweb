@@ -1,4 +1,7 @@
-import LottiePlayer, { AnimationConfigWithPath, AnimationConfigWithData, AnimationItem } from "lottie-web";
+//import LottiePlayer, { AnimationConfigWithPath, AnimationConfigWithData, AnimationItem } from "lottie-web";
+// @ts-ignore
+import LottiePlayer, { AnimationConfigWithPath, AnimationConfigWithData, AnimationItem } from "lottie-web/build/player/lottie_canvas.min.js";
+//import LottiePlayer, { AnimationConfigWithPath, AnimationConfigWithData, AnimationItem } from "lottie-web/build/player/lottie_light.min.js";
 import { isElementInViewport, isInDOM } from "./utils";
 
 class LottieLoader {

@@ -1726,7 +1726,9 @@ export class AppImManager {
             textDiv.innerHTML = RichTextProcessor.wrapRichText(webpage.description);
           }
 
-          //textDiv.innerText = webpage.description || '';
+          if(webpage.title) {
+            titleDiv.innerHTML = RichTextProcessor.wrapRichText(webpage.title);
+          }
 
           quote.append(nameEl, titleDiv, textDiv);
           box.append(quote);

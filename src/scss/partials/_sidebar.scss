@@ -163,15 +163,17 @@
 
     #content-docs {
       padding: 15px;
+      padding-top: 3px;
 
       .document {
         padding-left: 5rem;
         padding-right: 1rem;
-        height: 54px;
+        //height: 54px;
+        height: calc(54px + 1.5rem);
 
-        & + .document {
+        /* & + .document {
           margin-top: 1.5rem;
-        }
+        } */
       }
 
       .document-name {

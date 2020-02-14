@@ -9,6 +9,7 @@ let authCode: {
 import resizeableImage from '../lib/cropper';
 import pageIm from './pageIm';
 import apiManager from '../lib/mtproto/apiManager';
+import apiFileManager from '../lib/mtproto/apiFileManager';
 
 export default (_authCode: typeof authCode) => {
   authCode = _authCode;
@@ -71,19 +72,6 @@ export default (_authCode: typeof authCode) => {
     if(!file) {
       return;
     }
-    
-    /* console.log(file, typeof(file)); */
-
-    // @ts-ignore
-    /* apiFileManager.uploadFile(file).then(function(inputFile) {
-      console.log('uploaded smthn', inputFile);
-
-      apiManager.invokeApi('photos.uploadProfilePhoto', {
-        file: inputFile
-      }).then(function (updateResult) {
-        console.log('updated photo!');
-      });
-    }); */
 
     var reader = new FileReader();
     reader.onload = (e) => {
@@ -94,18 +82,11 @@ export default (_authCode: typeof authCode) => {
       avatarImage.src = contents;
 
       avatarImage.onload = () => {
-        /* avatarPreviewCtx.drawImage(avatarImage,
-          70, 20,   // Start at 70/20 pixels from the left and the top of the image (crop),
-          50, 50,   // "Get" a `50 * 50` (w * h) area from the source image (crop),
-          0, 0,     // Place the result at 0, 0 in the canvas,
-          100, 100); // With as width / height: 100 * 100 (scale) */
-
         cropper = resizeableImage(avatarImage, avatarPreview);
         avatarInput.value = '';
       };
 
       avatarPopup.classList.add('active');
-      //console.log(contents);
     };
 
     reader.readAsDataURL(file);
@@ -136,7 +117,6 @@ export default (_authCode: typeof authCode) => {
     }
 
     console.log('invoking uploadFile...');
-    // @ts-ignore
     apiFileManager.uploadFile(avatarBlob).then((inputFile: any) => {
       console.log('uploaded smthn', inputFile);
   

@@ -248,12 +248,12 @@ export class ApiFileManager {
     return fileStorage.getFile(fileName, size);
   }
 
-  public async downloadFile(dcID: number, location: any, size: number, options: {
+  public downloadFile(dcID: number, location: any, size: number, options: {
     mimeType?: string,
     dcID?: number,
     toFileEntry?: any,
     limitPart?: number
-  } = {}): Promise<Blob> {
+  } = {}): CancellablePromise<Blob> {
     if(!FileManager.isAvailable()) {
       return Promise.reject({type: 'BROWSER_BLOB_NOT_SUPPORTED'});
     }
@@ -288,19 +288,33 @@ export class ApiFileManager {
       //this.log('downloadFile cachedPromise');
 
       if(size) {
-        let blob = await cachedPromise;
+        /* let blob = await cachedPromise;
         if(blob.size < size) {
           this.log('downloadFile need to deleteFile, wrong size:', blob.size, size);
           await this.deleteFile(location);
         } else {
           return cachedPromise;
-        }
+        } */
+        return cachedPromise.then((blob: Blob) => {
+          if(blob.size < size) {
+            this.log('downloadFile need to deleteFile, wrong size:', blob.size, size);
+
+            return this.deleteFile(location).then(() => {
+              return this.downloadFile(dcID, location, size, options);
+            }).catch(() => {
+              return this.downloadFile(dcID, location, size, options);
+            });
+          } else {
+            //return cachedPromise;
+            return blob;
+          }
+        });
       } else {
         return cachedPromise;
       }
     }
 
-    //this.log('arriba');
+    this.log('arriba');
 
     //var deferred = $q.defer()
     let deferredHelper: any = {notify: () => {}};
@@ -310,16 +324,17 @@ export class ApiFileManager {
     });
     Object.assign(deferred, deferredHelper);
 
+    //return;
+
     var canceled = false;
     var resolved = false;
     var mimeType = options.mimeType || 'image/jpeg',
       cacheFileWriter: any;
     var errorHandler = (error: any) => {
-      deferred.reject(error)
+      deferred.reject(error);
       errorHandler = () => {};
 
-      if(cacheFileWriter &&
-        (!error || error.type != 'DOWNLOAD_CANCELED')) {
+      if(cacheFileWriter && (!error || error.type != 'DOWNLOAD_CANCELED')) {
         cacheFileWriter.truncate(0);
       }
     };
@@ -336,14 +351,15 @@ export class ApiFileManager {
       if(toFileEntry) {
         FileManager.copy(blob, toFileEntry).then(() => {
           deferred.resolve();
-        }, errorHandler)
+        }, errorHandler);
       } else {
         deferred.resolve(this.cachedDownloads[fileName] = blob);
       }
     //}, () => {
     }).catch(() => {
       //this.log('not i wanted');
-      var fileWriterPromise = toFileEntry ? FileManager.getFileWriter(toFileEntry) : fileStorage.getFileWriter(fileName, mimeType);
+      //var fileWriterPromise = toFileEntry ? FileManager.getFileWriter(toFileEntry) : fileStorage.getFileWriter(fileName, mimeType);
+      var fileWriterPromise = toFileEntry ? Promise.resolve(toFileEntry) : fileStorage.getFileWriter(fileName, mimeType);
 
       var processDownloaded = (bytes: any) => {
         return Promise.resolve(bytes);
@@ -414,7 +430,7 @@ export class ApiFileManager {
                   return Promise.resolve();
                 }
 
-                return processDownloaded(result.bytes).then((processedResult) => {
+                return processDownloaded(result.bytes).then((processedResult: Uint8Array) => {
                   return FileManager.write(fileWriter, processedResult).then(() => {
                     writeFileDeferred.resolve();
                   }, errorHandler).then(() => {
@@ -427,7 +443,7 @@ export class ApiFileManager {
                         deferred.resolve(this.cachedDownloads[fileName] = fileWriter.finalize());
                       }
                     } else {
-                      this.log('deferred notify 2:', {done: offset + limit, total: size});
+                      this.log('deferred notify 2:', {done: offset + limit, total: size}, deferred);
                       deferred.notify({done: offset + limit, total: size});
                     }
                   });
@@ -448,6 +464,8 @@ export class ApiFileManager {
         errorHandler({type: 'DOWNLOAD_CANCELED'});
       }
     };
+
+    console.log(deferred, deferred.notify, deferred.cancel);
 
     if(!toFileEntry) {
       this.cachedDownloadPromises[fileName] = deferred;

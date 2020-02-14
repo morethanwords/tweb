@@ -61,9 +61,19 @@ button, input, optgroup, select, textarea, html {
   min-width: 100%;
 }
 
+.container {
+  margin: 0 auto;
+}
+
 h1, h2, h3, h4, h5, h6 {
   letter-spacing: -.66px;
   font-weight: 500;
+}
+
+h4 {
+  font-size: 2.28rem;
+  margin: 1.52rem 0 .912rem 0;
+  line-height: 110%;
 }
 
 input {
@@ -388,7 +398,7 @@ input {
   cursor: pointer;
   position: relative;
   
-  .document-ico {
+  .document-ico, .document-download {
     position: absolute;
     left: 0;
     width: 54px;
@@ -402,6 +412,28 @@ input {
     background-size: contain;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .document-download {
+    z-index: 3;
+    background-color: rgb(101, 161, 227);	
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    cursor: pointer;
+    
+    .tgico-download {
+      transform: scale(1);
+      transition: .2s scale;
+    }
+
+    &.downloading {
+      .tgico-download {
+        transform: scale(0);
+      }
+    }
   }
 
   &:not(.photo) {
@@ -692,7 +724,7 @@ input {
     
     text-align: left;
     display: grid;
-    grid-template-columns: 15% 65% 20%;
+    grid-template-columns: 15% 60% 25%;
     
     &:hover {
       background-color: rgba(112, 117, 121, .08);
@@ -1059,6 +1091,7 @@ span.popup-close {
   justify-content: space-between; */
   display: flex;
   margin-bottom: 2rem;
+  align-items: center;
 }
 
 .popup-avatar {
@@ -1074,12 +1107,17 @@ span.popup-close {
       right: 15px;
     }
   }
+
+  .popup-close {
+    font-size: 1.5rem;
+  }
   
   h6 {
     font-size: 1.1rem;
     text-align: left;
     margin: 0;
     margin-left: 1.5rem;
+    font-weight: 400;
   }
   
   .crop {

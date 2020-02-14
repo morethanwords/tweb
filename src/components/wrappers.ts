@@ -7,7 +7,7 @@ import {AppImManager} from "../lib/appManagers/appImManager";
 import { formatBytes } from "../lib/utils";
 import ProgressivePreloader from './preloader';
 import LazyLoadQueue from './lazyLoadQueue';
-import apiFileManager from '../lib/mtproto/apiFileManager';
+import apiFileManager, { CancellablePromise } from '../lib/mtproto/apiFileManager';
 import appWebpManager from '../lib/appManagers/appWebpManager';
 import {wrapPlayer} from '../lib/ckin';
 
@@ -190,9 +190,44 @@ export function wrapDocument(doc: MTDocument, withTime = false): HTMLDivElement 
   
   docDiv.innerHTML = `
   <div class="document-ico ext-${ext}">${ext2}</div>
+  <div class="document-download"><div class="tgico-download"></div></div>
   <div class="document-name">${fileName}</div>
   <div class="document-size">${size}</div>
   `;
+
+  let downloadDiv = docDiv.querySelector('.document-download') as HTMLDivElement;
+  let preloader: ProgressivePreloader;
+  let promise: CancellablePromise<Blob>;
+
+  docDiv.addEventListener('click', () => {
+    if(!promise) {
+      if(!preloader) {
+        preloader = new ProgressivePreloader(downloadDiv, true);
+      } else {
+        preloader.attach(downloadDiv, true);
+      }
+      
+      promise = appDocsManager.saveDocFile(doc.id);
+      promise.notify = (details: {done: number, total: number}) => {
+        console.log('docDiv download', promise, details);
+        let percents = details.done / details.total * 100;
+        preloader.setProgress(percents);
+      };
+
+      downloadDiv.classList.add('downloading');
+  
+      promise.then(() => {
+        downloadDiv.classList.remove('downloading');
+        preloader.detach();
+        downloadDiv.remove();
+      });
+    } else {
+      downloadDiv.classList.remove('downloading');
+      promise.cancel();
+      preloader.detach();
+      promise = null;
+    }
+  });
   
   return docDiv;
 }

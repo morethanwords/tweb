@@ -59,6 +59,8 @@ module.exports = merge(common, {
         files.forEach(file => {
           //console.log('to unlink 1:', file);
 
+          if(file.includes('mitm.') || file.includes('sw.js')) return;
+
           let p = path.resolve(buildDir + file);
           if(!newlyCreatedAssets[file] && ['.gz', '.js'].find(ext => file.endsWith(ext)) !== undefined) {
 

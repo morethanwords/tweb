@@ -232,27 +232,37 @@ class AppDocsManager {
     }; */
     
     //historyDoc.progress.cancel = downloadPromise.cancel;
+
+    console.log('return downloadPromise:', downloadPromise);
     
     return downloadPromise;
   }
   
-  /* public saveDocFile(docID: string) {
-    var doc = this.docs[docID]
-    var historyDoc = this.docsForHistory[docID] || doc || {}
-    var mimeType = doc.mime_type
-    var fileName = this.getFileName(doc)
-    var ext = (fileName.split('.', 2) || [])[1] || ''
-    
-    FileManager.chooseSave(this.getFileName(doc), ext, doc.mime_type).then((writableFileEntry) => {
-      if (writableFileEntry) {
-        this.downloadDoc(docID, writableFileEntry)
-      }
-    }, () => {
-      this.downloadDoc(docID).then((blob) => {
+  public saveDocFile(docID: string): CancellablePromise<Blob> {
+    var doc = this.docs[docID];
+    var fileName = this.getFileName(doc);
+    var ext = (fileName.split('.', 2) || [])[1] || '';
+
+    try {
+      let writer = FileManager.chooseSaveFile(fileName, ext, doc.mime_type, doc.size);
+      return writer.ready.then(() => {
+        let promise = this.downloadDoc(docID, writer);
+        promise.then(() => {
+          writer.close();
+          console.log('saved doc', doc);
+        });
+  
+        return promise;
+      }); 
+    } catch(err) {
+      let promise = this.downloadDoc(docID);
+      promise.then((blob) => {
         FileManager.download(blob, doc.mime_type, fileName)
-      })
-    })
-  } */
+      });
+
+      return promise;
+    }
+  }
 }
 
 export default new AppDocsManager();

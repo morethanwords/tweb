@@ -283,7 +283,7 @@ export class AppPhotosManager {
     return photo;
   }
   
-  public wrapForFull(photoID: string) {
+  /* public wrapForFull(photoID: string) {
     var photo = this.wrapForHistory(photoID);
     var fullWidth = document.body.scrollWidth - (Config.Mobile ? 0 : 32);
     var fullHeight = document.body.scrollHeight - (Config.Mobile ? 0 : 116);
@@ -310,38 +310,6 @@ export class AppPhotosManager {
     photo.full = full;
     
     return photo;
-  }
-  
-  /* public openPhoto(photoID: number, list: any) {
-    if(!photoID || photoID === '0') {
-      return false;
-    }
-    
-    var scope = $rootScope.$new(true);
-    
-    scope.photoID = photoID;
-    
-    var controller = 'PhotoModalController';
-    if (list && list.p > 0) {
-      controller = 'UserpicModalController';
-      scope.userID = list.p;
-    } else if (list && list.p < 0) {
-      controller = 'ChatpicModalController';
-      scope.chatID = -list.p;
-    } else if (list && list.m > 0) {
-      scope.messageID = list.m;
-      if (list.w) {
-        scope.webpageID = list.w;
-      }
-    }
-    
-    var modalInstance = $modal.open({
-      templateUrl: templateUrl('photo_modal'),
-      windowTemplateUrl: templateUrl('media_modal_layout'),
-      controller: controller,
-      scope: scope,
-      windowClass: 'photo_modal_window'
-    });
   } */
   
   public downloadPhoto(photoID: string) {
@@ -349,28 +317,36 @@ export class AppPhotosManager {
     var ext = 'jpg';
     var mimeType = 'image/jpeg';
     var fileName = 'photo' + photoID + '.' + ext;
-    var fullWidth = Math.max(screen.width || 0, document.body.scrollWidth - 36, 800);
-    var fullHeight = Math.max(screen.height || 0, document.body.scrollHeight - 150, 800);
+    var fullWidth = this.windowW;
+    var fullHeight = this.windowH;
     var fullPhotoSize = this.choosePhotoSize(photo, fullWidth, fullHeight);
     var inputFileLocation = {
-      _: 'inputFileLocation',
-      volume_id: fullPhotoSize.location.volume_id,
-      local_id: fullPhotoSize.location.local_id,
-      secret: fullPhotoSize.location.secret
+      // @ts-ignore
+      _: photo._ == 'document' ? 'inputDocumentFileLocation' : 'inputPhotoFileLocation',
+      id: photo.id,
+      access_hash: photo.access_hash,
+      file_reference: photo.file_reference,
+      thumb_size: fullPhotoSize.type
     };
     
-    fileManager.chooseSaveFile(fileName, ext, mimeType).then((writableFileEntry) => {
-      if(writableFileEntry) {
+    try { // photo.dc_id, location, photoSize.size
+      let writer = fileManager.chooseSaveFile(fileName, ext, mimeType, fullPhotoSize.size);
+      writer.ready.then(() => {
+        console.log('ready');
         apiFileManager.downloadFile(photo.dc_id, inputFileLocation, fullPhotoSize.size, {
           mimeType: mimeType,
-          toFileEntry: writableFileEntry
+          toFileEntry: writer
         }).then(() => {
-          // console.log('file save done')
+          writer.close();
+          //writer.abort();
+          console.log('file save done', fileName, ext, mimeType, writer);
         }, (e: any) => {
           console.log('photo download failed', e);
         });
-      }
-    }, () => {
+      });
+    } catch(err) {
+      console.error('err', err);
+
       var cachedBlob = apiFileManager.getCachedFile(inputFileLocation)
       if (cachedBlob) {
         return fileManager.download(cachedBlob, mimeType, fileName);
@@ -382,7 +358,7 @@ export class AppPhotosManager {
       }, (e: any) => {
         console.log('photo download failed', e);
       });
-    });
+    }
   }
 }
 

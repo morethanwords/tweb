@@ -66,6 +66,11 @@ export class AppMediaViewer {
         this.buttons.next.style.display = 'none';
       }
     });
+
+    this.buttons.download.addEventListener('click', () => {
+      let message = appMessagesManager.getMessage(this.currentMessageID);
+      appPhotosManager.downloadPhoto(message.media.photo.id);
+    });
     /* this.buttons.prev.onclick = (e) => {
       let history = appSidebarRight.historiesStorage[$rootScope.selectedPeerID]['inputMessagesFilterPhotoVideo'].slice();
       
