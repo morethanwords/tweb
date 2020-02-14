@@ -1,9 +1,12 @@
 import { isInDOM } from "../lib/utils";
+import { CancellablePromise } from "../lib/mtproto/apiFileManager";
 
 export default class ProgressivePreloader {
   public preloader: HTMLDivElement = null;
   private circle: SVGCircleElement = null;
   private progress = 0;
+  private promise: CancellablePromise<any> = null;
+  private tempID = 0;
   constructor(elem?: Element, private cancelable = true) {
     this.preloader = document.createElement('div');
     this.preloader.classList.add('preloader-container');
@@ -30,9 +33,37 @@ export default class ProgressivePreloader {
     if(elem) {
       this.attach(elem);
     }
+
+    if(this.cancelable) {
+      this.preloader.addEventListener('click', () => {
+        if(this.promise && this.promise.cancel) {
+          this.promise.cancel();
+          this.detach();
+        }
+      });
+    }
   }
   
-  public attach(elem: Element, reset = true) {
+  public attach(elem: Element, reset = true, promise?: CancellablePromise<any>) {
+    if(promise) {
+      this.promise = promise;
+
+      let tempID = --this.tempID;
+      promise.then(() => {
+        if(tempID == this.tempID) {
+          this.detach();
+        }
+      });
+
+      promise.notify = (details: {done: number, total: number}) => {
+        if(tempID != this.tempID) return;
+
+        console.log('preloader download', promise, details);
+        let percents = details.done / details.total * 100;
+        this.setProgress(percents);
+      };
+    }
+
     if(this.cancelable && reset) {
       this.setProgress(0);
     }

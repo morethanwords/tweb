@@ -238,29 +238,31 @@ class AppDocsManager {
     return downloadPromise;
   }
   
-  public saveDocFile(docID: string): CancellablePromise<Blob> {
+  public async saveDocFile(docID: string) {
     var doc = this.docs[docID];
     var fileName = this.getFileName(doc);
     var ext = (fileName.split('.', 2) || [])[1] || '';
 
     try {
       let writer = FileManager.chooseSaveFile(fileName, ext, doc.mime_type, doc.size);
-      return writer.ready.then(() => {
-        let promise = this.downloadDoc(docID, writer);
-        promise.then(() => {
-          writer.close();
-          console.log('saved doc', doc);
-        });
+      await writer.ready;
+
+      let promise = this.downloadDoc(docID, writer);
+      promise.then(() => {
+        writer.close();
+        console.log('saved doc', doc);
+      });
+
+      console.log('got promise from downloadDoc', promise);
   
-        return promise;
-      }); 
+      return {promise};
     } catch(err) {
       let promise = this.downloadDoc(docID);
       promise.then((blob) => {
         FileManager.download(blob, doc.mime_type, fileName)
       });
 
-      return promise;
+      return {promise};
     }
   }
 }

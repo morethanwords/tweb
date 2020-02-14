@@ -69,11 +69,7 @@ export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement,
   let loadVideo = () => {
     let promise = appDocsManager.downloadDoc(doc);
     
-    promise.notify = (details: {done: number, total: number}) => {
-      console.log('doc download', promise, details);
-      let percents = details.done / details.total * 100;
-      preloader.setProgress(percents);
-    };
+    preloader.attach(container, true, promise);
     
     return promise.then(blob => {
       if((this.peerID ? this.peerID : this.currentMessageID) != peerID) {
@@ -92,7 +88,7 @@ export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement,
       } else {
         video.volume = 0;
       } */
-
+      
       video.setAttribute('message-id', '' + message.mid);
       
       let source = document.createElement('source');
@@ -105,14 +101,14 @@ export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement,
       }
       
       video.append(source);
-
+      
       container.append(video);
-
+      
       if(!justLoader || round) {
         video.dataset.ckin = round ? 'circle' : 'default';
         video.dataset.overlay = '1';
         let wrapper = wrapPlayer(video);
-
+        
         if(!round) {
           (wrapper.querySelector('.toggle') as HTMLButtonElement).click();
         }
@@ -120,11 +116,9 @@ export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement,
         video.autoplay = true;
         video.loop = true;
       }
-
+      
       //container.style.width = '';
       //container.style.height = '';
-      
-      preloader.detach();
     });
   };
   
@@ -141,7 +135,7 @@ export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement,
       
       /* image.style.height = doc.h + 'px';
       image.style.width = doc.w + 'px'; */
-
+      
       /* if(justLoader) { // extra fix
         justLoader = false;
         controls = false;
@@ -194,37 +188,35 @@ export function wrapDocument(doc: MTDocument, withTime = false): HTMLDivElement 
   <div class="document-name">${fileName}</div>
   <div class="document-size">${size}</div>
   `;
-
+  
   let downloadDiv = docDiv.querySelector('.document-download') as HTMLDivElement;
   let preloader: ProgressivePreloader;
   let promise: CancellablePromise<Blob>;
-
+  
   docDiv.addEventListener('click', () => {
     if(!promise) {
-      if(!preloader) {
-        preloader = new ProgressivePreloader(downloadDiv, true);
-      } else {
-        preloader.attach(downloadDiv, true);
+      if(downloadDiv.classList.contains('downloading')) {
+        return; // means not ready yet
       }
       
-      promise = appDocsManager.saveDocFile(doc.id);
-      promise.notify = (details: {done: number, total: number}) => {
-        console.log('docDiv download', promise, details);
-        let percents = details.done / details.total * 100;
-        preloader.setProgress(percents);
-      };
+      if(!preloader) {
+        preloader = new ProgressivePreloader(null, true);
+      }
+      
+      appDocsManager.saveDocFile(doc.id).then(res => {
+        promise = res.promise;
+
+        preloader.attach(downloadDiv, true, promise);
+
+        promise.then(() => {
+          downloadDiv.classList.remove('downloading');
+          downloadDiv.remove();
+        });
+      })
 
       downloadDiv.classList.add('downloading');
-  
-      promise.then(() => {
-        downloadDiv.classList.remove('downloading');
-        preloader.detach();
-        downloadDiv.remove();
-      });
     } else {
       downloadDiv.classList.remove('downloading');
-      promise.cancel();
-      preloader.detach();
       promise = null;
     }
   });
@@ -248,21 +240,25 @@ export function wrapPhoto(this: AppImManager, photo: any, message: any, containe
   
   let preloader = new ProgressivePreloader(container, false);
   
-  let load = () => appPhotosManager.preloadPhoto(photo.id, size).then((blob) => {
-    if(this.peerID != peerID) {
-      this.log.warn('peer changed');
-      return;
-    }
-    
-    image.src = URL.createObjectURL(blob);
-    
-    preloader.detach();
+  let load = () => {
+    let promise = appPhotosManager.preloadPhoto(photo.id, size);
 
-    //image.style.width = '';
-    //image.style.height = '';
-    //container.style.width = '';
-    //container.style.height = '';
-  });
+    preloader.attach(container, true, promise);
+
+    return promise.then((blob) => {
+      if(this.peerID != peerID) {
+        this.log.warn('peer changed');
+        return;
+      }
+      
+      image.src = URL.createObjectURL(blob);
+      
+      //image.style.width = '';
+      //image.style.height = '';
+      //container.style.width = '';
+      //container.style.height = '';
+    });
+  };
   
   console.log('wrapPhoto', load, container, image);
   

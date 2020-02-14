@@ -462,6 +462,9 @@ export class ApiFileManager {
         canceled = true;
         delete this.cachedDownloadPromises[fileName];
         errorHandler({type: 'DOWNLOAD_CANCELED'});
+        if(toFileEntry) {
+          toFileEntry.abort();
+        }
       }
     };
 
