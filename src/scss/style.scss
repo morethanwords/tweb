@@ -1227,16 +1227,16 @@ span.popup-close {
   //display: none;
   opacity: 0;
   visibility: hidden;
-  -webkit-transition: opacity 0.25s 0s, visibility 0s 0.25s;
-  -moz-transition: opacity 0.25s 0s, visibility 0s 0.25s;
-  transition: opacity 0.25s 0s, visibility 0s 0.25s;
+  -webkit-transition: opacity 0.2s 0s, visibility 0s 0.2s;
+  -moz-transition: opacity 0.2s 0s, visibility 0s 0.2s;
+  transition: opacity 0.2s 0s, visibility 0s 0.2s;
 
   &.active {
     opacity: 1;
     visibility: visible;
-    -webkit-transition: opacity 0.25s 0s, visibility 0s 0s;
-    -moz-transition: opacity 0.25s 0s, visibility 0s 0s;
-    transition: opacity 0.25s 0s, visibility 0s 0s;
+    -webkit-transition: opacity 0.2s 0s, visibility 0s 0s;
+    -moz-transition: opacity 0.2s 0s, visibility 0s 0s;
+    transition: opacity 0.2s 0s, visibility 0s 0s;
   }
 }
 

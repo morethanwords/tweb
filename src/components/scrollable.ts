@@ -284,6 +284,8 @@ export default class Scrollable {
       }
 
       if(this.onAddedBottom) this.onAddedBottom();
+    } else {
+      this.paddingBottomDiv.style.height = '0px';
     }
 
     //console.log('onscroll', container, firstVisible, lastVisible, hiddenElements);

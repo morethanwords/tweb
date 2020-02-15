@@ -184,6 +184,7 @@
     left: 0;
     top: 0;
     transform-origin: top left;
+    overflow: hidden;
 
     .ckin__player {
       width: 100%;
@@ -197,7 +198,7 @@
     }
 
     &.active {
-      transition: .25s all;
+      transition: .2s all;
     }
   }
 }

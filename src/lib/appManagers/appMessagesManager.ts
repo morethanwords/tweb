@@ -974,7 +974,7 @@ export class AppMessagesManager {
   }
 
   public pushDialogToStorage(dialog: any, offsetDate?: number) {
-    var dialogs = this.dialogsStorage.dialogs;
+    var dialogs = this.dialogsStorage.dialogs/* .filter(d => d.folder_id == dialog.folder_id) */;
     var pos = this.getDialogByPeerID(dialog.peerID)[1];
     if(pos !== undefined) {
       dialogs.splice(pos, 1);
@@ -1346,9 +1346,18 @@ export class AppMessagesManager {
       }
 
       if(topMessage) {
-        var wasBefore = this.getDialogByPeerID(peerID).length > 0;
+        let wasDialogBefore = this.getDialogByPeerID(peerID)[0];
+
+        // here need to just replace, not FULL replace dialog! WARNING
+        if(wasDialogBefore.pFlags.pinned) {
+          if(!dialog.pFlags) dialog.pFlags = {};
+          dialog.pFlags.pinned = true;
+          dialog.pinnedIndex = wasDialogBefore.pinnedIndex;
+        }
+
         this.saveConversation(dialog);
-        if(wasBefore) {
+
+        if(wasDialogBefore) {
           this.clearDialogCache(topMessage);
           $rootScope.$broadcast('dialog_top', dialog);
         } else {
@@ -1425,7 +1434,6 @@ export class AppMessagesManager {
 
     dialog.top_message = mid;
     dialog.read_inbox_max_id = appMessagesIDsManager.getFullMessageID(dialog.read_inbox_max_id, channelID);
-
     dialog.read_outbox_max_id = appMessagesIDsManager.getFullMessageID(dialog.read_outbox_max_id, channelID);
 
     var topDate = message.date;
@@ -1439,8 +1447,10 @@ export class AppMessagesManager {
     if(savedDraft && savedDraft.date > topDate) {
       topDate = savedDraft.date;
     }
+
     if(dialog.pFlags.pinned) {
-      topDate = this.generateDialogPinnedDate();
+      topDate = this.generateDialogPinnedDate(dialog);
+      //console.log('topDate', peerID, topDate);
     }
 
     dialog.index = this.generateDialogIndex(topDate);
@@ -2015,8 +2025,20 @@ export class AppMessagesManager {
     });
   }
   
-  public generateDialogPinnedDate() {
-    return 0x7fffff00 + ((this.pinnedIndex++) & 0xff);
+  public generateDialogPinnedDate(dialog?: any) {
+    let pinnedIndex: number;
+    
+    if(dialog) {
+      if(dialog.pinnedIndex) {
+        pinnedIndex = dialog.pinnedIndex;
+      } else {
+        dialog.pinnedIndex = pinnedIndex = this.pinnedIndex++;
+      }
+    } else {
+      pinnedIndex = this.pinnedIndex++;
+    }
+
+    return 0x7fffff00 + (pinnedIndex & 0xff);
   }
 
   public handleNewMessages() {
@@ -2383,7 +2405,7 @@ export class AppMessagesManager {
         }
 
         var dialog = foundDialog[0];
-        dialog.index = this.generateDialogIndex(this.generateDialogPinnedDate());
+        dialog.index = this.generateDialogIndex(this.generateDialogPinnedDate(dialog));
         dialog.pFlags.pinned = true;
         break;
       }
@@ -2428,7 +2450,7 @@ export class AppMessagesManager {
           }
 
           var dialog = foundDialog[0]
-          dialog.index = this.generateDialogIndex(this.generateDialogPinnedDate());
+          dialog.index = this.generateDialogIndex(this.generateDialogPinnedDate(dialog));
           dialog.pFlags.pinned = true;
 
           this.newDialogsToHandle[peerID] = dialog

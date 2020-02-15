@@ -146,7 +146,7 @@ class AppSidebarRight {
       let prev = ids[idx + 1] || null;
       let next = ids[idx - 1] || null;
 
-      appMediaViewer.openMedia(message, false, target, this.mediaDivsByIDs[prev] || null, this.mediaDivsByIDs[next] || null);
+      appMediaViewer.openMedia(message, target, this.mediaDivsByIDs[prev] || null, this.mediaDivsByIDs[next] || null);
     });
 
     this.profileElements.notificationsCheckbox.addEventListener('change', () => {

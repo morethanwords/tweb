@@ -276,7 +276,7 @@ export class ApiFileManager {
     var cachedPromise = this.cachedSavePromises[fileName] || this.cachedDownloadPromises[fileName];
     var fileStorage = this.getFileStorage();
 
-    this.log('downloadFile', fileStorage.name, fileName, fileName.length, location, arguments);
+    //this.log('downloadFile', fileStorage.name, fileName, fileName.length, location, arguments);
 
     if(cachedPromise) {
       if(toFileEntry) {
