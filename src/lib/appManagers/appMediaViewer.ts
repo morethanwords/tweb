@@ -26,7 +26,8 @@ export class AppMediaViewer {
   private content = {
     container: this.overlaysDiv.querySelector('.media-viewer-media') as HTMLDivElement,
     caption: this.overlaysDiv.querySelector('.media-viewer-caption') as HTMLDivElement,
-    mover: this.overlaysDiv.querySelector('.media-viewer-mover') as HTMLDivElement
+    //mover: this.overlaysDiv.querySelector('.media-viewer-mover') as HTMLDivElement
+    mover: document.querySelector('.media-viewer-mover') as HTMLDivElement
   };
   
   public currentMessageID = 0;
@@ -37,10 +38,14 @@ export class AppMediaViewer {
   private nextTarget: HTMLElement = null;
 
   public log: ReturnType<typeof logger>; 
+  public onKeyDownBinded: any;
+  public onClickBinded: any;
   
   constructor() {
     this.log = logger('AMV');
     this.preloader = new ProgressivePreloader();
+
+    this.onKeyDownBinded = this.onKeyDown.bind(this);
     
     this.buttons.close.addEventListener('click', () => {
       //this.overlaysDiv.classList.remove('active');
@@ -48,6 +53,12 @@ export class AppMediaViewer {
       this.currentMessageID = 0;
 
       this.setMoverToTarget(this.lastTarget, true);
+
+      this.lastTarget = null;
+      this.prevTarget = null;
+      this.nextTarget = null;
+
+      window.removeEventListener('keydown', this.onKeyDownBinded);
     });
     
     this.buttons.prev.addEventListener('click', () => {
@@ -73,31 +84,85 @@ export class AppMediaViewer {
       appPhotosManager.downloadPhoto(message.media.photo.id);
     });
 
-    this.overlaysDiv.addEventListener('click', (e) => {
+    this.onClickBinded = (e: MouseEvent) => {
       let target = e.target as HTMLElement;
 
       if(target == this.mediaViewerDiv || target.tagName == 'IMG') {
         this.buttons.close.click();
       }
-    });
+    };
+
+    this.overlaysDiv.addEventListener('click', this.onClickBinded);
+    this.content.mover.addEventListener('click', this.onClickBinded);
+    //this.content.mover.append(this.buttons.prev, this.buttons.next);
   }
 
-  public setMoverToTarget(target: HTMLElement, closing = false) {
+  public onKeyDown(e: KeyboardEvent) {
+    //this.log('onKeyDown', e);
+    
+    if(e.key == 'ArrowRight') {
+      this.buttons.next.click();
+    } else if(e.key == 'ArrowLeft') {
+      this.buttons.prev.click();
+    }
+  }
+
+  public setMoverToTarget(target: HTMLElement, closing = false, fromRight = 0) {
     let mover = this.content.mover;
 
     if(!closing) {
       mover.innerHTML = '';
+      mover.append(this.buttons.prev, this.buttons.next);
     }
+
+    let wasActive = fromRight !== 0;
+
+    let delay = wasActive ? 350 : 200;
+
+    /* if(wasActive) {
+      this.moveTheMover(mover);
+      mover = this.setNewMover();
+    } */
+
+    this.log('setMoverToTarget', target, closing, wasActive, fromRight);
 
     let rect = target.getBoundingClientRect();
     let containerRect = this.content.container.getBoundingClientRect();
-    let scaleX = rect.width / containerRect.width;
-    let scaleY = rect.height / containerRect.height;
-    mover.style.transform = `translate(${rect.left}px, ${rect.top}px) scale(${scaleX}, ${scaleY})`;
+    
+    let transform = '';
+    let left: number;
+    let top: number;
+
+    if(wasActive) {
+      left = fromRight === 1 ? appPhotosManager.windowW : -containerRect.width;
+      top = containerRect.top;
+    } else {
+      left = rect.left;
+      top = rect.top;
+    }
+
+    transform += `translate(${left}px,${top}px) `;
+
     mover.style.width = containerRect.width + 'px';
     mover.style.height = containerRect.height + 'px';
 
-    mover.style.borderRadius = window.getComputedStyle(target.parentElement).getPropertyValue('border-radius');
+    mover.classList.remove('cover');
+
+    let borderRadius = '';
+    if(!wasActive) {
+      let scaleX = rect.width / containerRect.width;
+      let scaleY = rect.height / containerRect.height;
+      transform += `scale(${scaleX},${scaleY}) `;
+
+      borderRadius = window.getComputedStyle(target.parentElement).getPropertyValue('border-radius');
+      mover.style.borderRadius = borderRadius;
+    }
+
+    mover.style.transform = transform;
+
+    if(wasActive) {
+      this.log('setMoverToTarget', mover.style.transform);
+    }
 
     if(!closing) {
       let img: HTMLImageElement;
@@ -107,6 +172,8 @@ export class AppMediaViewer {
         //img.style.objectFit = 'cover';
         img = new Image();
         img.src = target.style.backgroundImage.slice(5, -2);
+        //mover.classList.add('cover');
+        //mover.style.backgroundImage = target.style.backgroundImage;
       } else if(target.tagName == 'IMG') {
         img = new Image();
         img.src = (target as HTMLImageElement).src;
@@ -119,31 +186,91 @@ export class AppMediaViewer {
       }
 
       if(img) {
-        mover.appendChild(img);
+        img.style.borderRadius = borderRadius;
+        mover.prepend(img);
       } else if(video) {
-        mover.appendChild(video);
+        video.style.borderRadius = borderRadius;
+        mover.prepend(video);
       }
   
       mover.style.display = '';
-      mover.classList.add('active');
+
+      setTimeout(() => {
+        mover.classList.add(wasActive ? 'moving' : 'active');
+      }, 0); 
     } else {
       setTimeout(() => {
         this.overlaysDiv.classList.remove('active');
-      }, 200 / 2);
+      }, 0);
+
+      setTimeout(() => {
+        mover.style.borderRadius = borderRadius;
+
+        if(mover.firstElementChild) {
+          (mover.firstElementChild as HTMLElement).style.borderRadius = borderRadius;
+        }
+      }, delay / 2);
+
+      if(target.tagName == 'DIV') {
+        mover.classList.add('cover');
+      }
+
       setTimeout(() => {
         mover.innerHTML = '';
-        mover.classList.remove('active');
+        mover.classList.remove('moving', 'active', 'cover');
         mover.style.display = 'none';
-      }, 200);
+      }, delay);
     }
 
     return () => {
-      mover.style.transform = `translate(${containerRect.left}px, ${containerRect.top}px) scale(1, 1)`;
+      mover.style.transform = `translate(${containerRect.left}px,${containerRect.top}px) scale(1,1)`;
 
       setTimeout(() => {
         mover.style.borderRadius = '';
-      }, 200 / 2);
+
+        if(mover.firstElementChild) {
+          (mover.firstElementChild as HTMLElement).style.borderRadius = '';
+        }
+
+        mover.classList.remove('cover');
+      }, delay / 2);
     };
+  }
+
+  public moveTheMover(mover: HTMLDivElement, toLeft = true) {
+    let windowW = appPhotosManager.windowW;
+    let windowH = appPhotosManager.windowH;
+
+    mover.classList.add('moving');
+
+    let rect = mover.getBoundingClientRect();
+
+    let newTransform = mover.style.transform.replace(/translate\((.+?),/, /* 'translate(-' + windowW + 'px,', */ (match, p1) => {
+      this.log('replace func', match, p1);
+      let x = +p1.slice(0, -2);
+      x = toLeft ? -rect.width : windowW;
+
+      return match.replace(p1, x + 'px');
+    });
+
+    this.log('set newTransform:', newTransform, mover.style.transform, toLeft);
+    mover.style.transform = newTransform;
+
+    setTimeout(() => {
+      mover.remove();
+    }, 350);
+  }
+
+  public setNewMover() {
+    let newMover = document.createElement('div');
+    newMover.classList.add('media-viewer-mover');
+
+    let oldMover = this.content.mover;
+    oldMover.parentElement.append(newMover);
+
+    newMover.addEventListener('click', this.onClickBinded);
+
+    return this.content.mover = newMover;
   }
   
   public openMedia(message: any, target?: HTMLElement, prevTarget?: HTMLElement, nextTarget?: HTMLElement) {
@@ -151,10 +278,20 @@ export class AppMediaViewer {
     let media = message.media.photo || message.media.document || message.media.webpage.document || message.media.webpage.photo;
     
     let isVideo = media.mime_type == 'video/mp4';
+
+    let fromRight = 0;
+    if(this.lastTarget !== null) {
+      if(this.lastTarget === prevTarget) {
+        fromRight = 1;
+      } else if(this.lastTarget === nextTarget) {
+        fromRight = -1;
+      }
+    }
     
     this.currentMessageID = message.mid;
     this.prevTarget = prevTarget || null;
     this.nextTarget = nextTarget || null;
+    this.lastTarget = target;
     
     let container = this.content.container;
     
@@ -180,15 +317,22 @@ export class AppMediaViewer {
     }
     
     appDialogsManager.loadDialogPhoto(this.author.avatarEl, message.fromID);
-    
-    this.overlaysDiv.classList.add('active');
-
-    container.classList.add('loading');
 
     // ok set
+
+    let wasActive = fromRight !== 0;
+    if(wasActive) {
+      this.moveTheMover(this.content.mover, fromRight === 1);
+      this.setNewMover();
+    } else {
+      window.addEventListener('keydown', this.onKeyDownBinded);
+      this.overlaysDiv.classList.add('active');
+    }
+
+    this.log('wasActive:', wasActive);
+
     let mover = this.content.mover;
 
-    this.lastTarget = target;
     let maxWidth = appPhotosManager.windowW - 16;
     let maxHeight = appPhotosManager.windowH - 100;
     if(isVideo) {
@@ -196,8 +340,8 @@ export class AppMediaViewer {
 
       this.log('will wrap video', media, size);
 
-      let afterTimeout = this.setMoverToTarget(target);
-      
+      let afterTimeout = this.setMoverToTarget(target, false, fromRight);
+      //if(wasActive) return;
       setTimeout(() => {
         afterTimeout();
 
@@ -207,12 +351,12 @@ export class AppMediaViewer {
             return;
           }
         });
-      });
+      }, 0);
     } else {
       let size = appPhotosManager.setAttachmentSize(media.id, container, maxWidth, maxHeight);
 
-      let afterTimeout = this.setMoverToTarget(target);
-      
+      let afterTimeout = this.setMoverToTarget(target, false, fromRight);
+      //if(wasActive) return;
       setTimeout(() => {
         afterTimeout();
         this.preloader.attach(mover);
@@ -228,7 +372,7 @@ export class AppMediaViewer {
 
           let image = mover.firstElementChild as HTMLImageElement || new Image();
           image.src = URL.createObjectURL(blob);
-          mover.append(image);
+          mover.prepend(image);
 
           this.preloader.detach();
         }).catch(err => {

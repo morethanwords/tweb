@@ -118,47 +118,6 @@
       /* object-fit: cover; */
       object-fit: contain;
     }
-
-    .media-viewer-switcher-left, .media-viewer-switcher-right {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 10rem;
-      height: 100%;
-      cursor: pointer;
-      z-index: 5;
-
-      &:hover {
-        > span {
-          opacity: 1;
-        }
-      }
-    }
-
-    .media-viewer-switcher-right {
-      left: auto;
-      right: 0;
-    }
-
-    .media-viewer-prev-button, .media-viewer-next-button {
-      cursor: pointer;
-      position: absolute;
-      color: #fff;
-      font-size: 3rem;
-      left: 2rem;
-      top: 50%;
-      transform: translateY(-50%) rotate(90deg);
-      opacity: 0;
-      transition: .2s opacity;
-      z-index: 5;
-      /* box-shadow: 0 1px 2px 0 rgba(16, 35, 47, 0.07); */
-    }
-
-    .media-viewer-next-button {
-      left: auto;
-      right: 2rem;
-      transform: translateY(-50%) rotate(-90deg);
-    }
     
     .media-viewer-caption {
       flex: 1;
@@ -176,15 +135,62 @@
     }
   }
 
+  &-switcher-left, &-switcher-right {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 10rem;
+    height: 100%;
+    cursor: pointer;
+    z-index: 5;
+
+    &:hover {
+      > span {
+        opacity: 1;
+      }
+    }
+  }
+
+  &-switcher-right {
+    left: auto;
+    right: 0;
+  }
+
+  &-prev-button, &-next-button {
+    cursor: pointer;
+    position: absolute;
+    color: #fff;
+    font-size: 3rem;
+    left: 2rem;
+    top: 50%;
+    transform: translateY(-50%) rotate(90deg);
+    opacity: 0;
+    transition: .2s opacity;
+    z-index: 5;
+    /* box-shadow: 0 1px 2px 0 rgba(16, 35, 47, 0.07); */
+  }
+
+  &-next-button {
+    left: auto;
+    right: 2rem;
+    transform: translateY(-50%) rotate(-90deg);
+  }
+
   &-mover {
-    position: fixed;
+    position: fixed!important;
     z-index: 4;
     display: flex;
+    justify-content: center;
+    min-height: auto!important;
     //transition: .5s all;
     left: 0;
     top: 0;
     transform-origin: top left;
     overflow: hidden;
+    //border-radius: 0;
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center center;
 
     .ckin__player {
       width: 100%;
@@ -192,13 +198,26 @@
     }
 
     img, video {
-      /* object-fit: contain; */
       width: 100%;
       height: 100%;
     }
 
+    &.cover {
+      align-items: center;
+
+      img, video {
+        width: auto;
+        height: auto;
+        overflow: hidden;
+      }
+    }
+
     &.active {
-      transition: .2s all;
+      transition: .2s transform;
+    }
+
+    &.moving {
+      transition: 350ms transform ease;
     }
   }
 }
