@@ -29,7 +29,8 @@ export type MTDocument = {
   h?: number,
   w?: number,
   file_name?: string,
-  file?: File
+  file?: File,
+  duration?: number
 };
 
 export type MTPhotoSize = {
@@ -235,23 +236,55 @@ export function wrapDocument(doc: MTDocument, withTime = false): HTMLDivElement 
   return docDiv;
 }
 
+let lastAudioToggle: HTMLDivElement = null;
+
 export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
   let div = document.createElement('div');
   div.classList.add('audio');
 
+  let duration = doc.duration;
+
+  // @ts-ignore
+  let durationStr = String(duration | 0).toHHMMSS(true);
+
   div.innerHTML = `
   <div class="audio-toggle audio-ico tgico-largeplay"></div>
   <div class="audio-download"><div class="tgico-download"></div></div>
-  <div class="audio-title"></div>
-  <div class="audio-subtitle"></div>
-  <div class="audio-time"></div>
+  <div class="audio-time">${durationStr}</div>
   `;
 
-  console.log('wrapping audio', doc);
+  console.log('wrapping audio', doc, doc.attributes[0].waveform);
+
+  let timeDiv = div.lastElementChild as HTMLDivElement;
   
   let downloadDiv = div.querySelector('.audio-download') as HTMLDivElement;
   let preloader: ProgressivePreloader;
   let promise: CancellablePromise<Blob>;
+
+  let svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.classList.add('audio-waveform');
+  svg.setAttributeNS(null, 'width', '250');
+  svg.setAttributeNS(null, 'height', '23');
+  svg.setAttributeNS(null, 'viewBox', '0 0 250 23');
+
+  div.insertBefore(svg, div.lastElementChild);
+  let wave = doc.attributes[0].waveform as Uint8Array;
+
+  let index = 0;
+  for(let uint8 of wave) {
+    let percents = uint8 / 255;
+
+    let height = 23 * percents;
+    if(/* !height ||  */height < 2) {
+      height = 2;
+    }
+
+    svg.insertAdjacentHTML('beforeend', `
+      <rect x="${index * 4}" y="${23 - height}" width="2" height="${height}" rx="1" ry="1"></rect>
+    `);
+    
+    ++index;
+  }
 
   let onClick = () => {
     if(!promise) {
@@ -276,9 +309,57 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
         source.type = doc.mime_type;
 
         div.removeEventListener('click', onClick);
-        div.querySelector('.audio-toggle').addEventListener('click', () => {
-          audio.currentTime = 0;
-          audio.play();
+        let toggle = div.querySelector('.audio-toggle') as HTMLDivElement;
+
+        let interval = 0;
+
+        toggle.addEventListener('click', () => {
+          if(audio.paused) {
+            if(lastAudioToggle && lastAudioToggle.classList.contains('tgico-largepause')) {
+              lastAudioToggle.click();
+            }
+
+            audio.currentTime = 0;
+            audio.play();
+
+            lastAudioToggle = toggle;
+  
+            toggle.classList.remove('tgico-largeplay');
+            toggle.classList.add('tgico-largepause');
+
+            (Array.from(svg.children) as HTMLElement[]).forEach(node => node.classList.remove('active'));
+
+            let lastIndex = 0;
+            interval = setInterval(() => {
+              if(lastIndex >= svg.childElementCount) {
+                clearInterval(interval);
+                return;
+              }
+
+              // @ts-ignore
+              timeDiv.innerText = String(audio.currentTime | 0).toHHMMSS(true);
+
+              //svg.children[lastIndex].setAttributeNS(null, 'fill', '#000');
+              svg.children[lastIndex].classList.add('active');
+              ++lastIndex;
+              //console.log('lastIndex:', lastIndex, audio.currentTime);
+            }, duration * 1000 / svg.childElementCount | 0/* 63 * duration / 10 */);
+          } else {
+            audio.pause();
+            toggle.classList.add('tgico-largeplay');
+            toggle.classList.remove('tgico-largepause');
+
+            clearInterval(interval);
+          }
+        });
+
+        audio.addEventListener('ended', () => {
+          toggle.classList.add('tgico-largeplay');
+          toggle.classList.remove('tgico-largepause');
+          clearInterval(interval);
+
+          // @ts-ignore
+          timeDiv.innerText = String(audio.currentTime | 0).toHHMMSS(true);
         });
 
         audio.append(source);

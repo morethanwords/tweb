@@ -239,6 +239,12 @@
 				}
 			}
 
+			&:not(.hide-name) {
+				.audio {
+					margin: 4px 0;
+				}
+			}
+
 			&:hover {
 				.forward {
 					opacity: 1;
@@ -896,6 +902,26 @@
 			.user-avatar {
 				left: auto;
 				right: -2.5rem;
+			}
+
+			.audio {
+				&-waveform {
+					rect {
+						fill: #B8DDA9;
+
+						&.active {
+							fill: #68AB5A;
+						}
+					}
+				}
+
+				&-time {
+					color: #68AB5A;
+				}
+
+				&-toggle, &-download {
+					background-color: #68AB5A;
+				}
 			}
 		}
 	}

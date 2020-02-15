@@ -480,7 +480,8 @@ input {
   position: relative;
   padding-left: 67px;
   min-height: 54px;
-  width: 256px;
+  max-width: 286px;
+  overflow: visible!important;
 
   &-toggle, &-download {
     border-radius: 50%;
@@ -491,6 +492,28 @@ input {
 
   &-download {
     z-index: 2;
+  }
+
+  &-waveform {
+    height: 23px;
+
+    //overflow: visible!important;
+
+    rect {
+      //overflow: visible!important;
+      fill: #CBCBCB;
+
+      &.active {
+        fill: $blue;
+      }
+    }
+  }
+
+  &-time {
+    font-size: 14px;
+    color: $color-gray;
+    margin-top: 4px;
+    margin-left: -1px;
   }
 }
 

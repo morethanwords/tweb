@@ -112,7 +112,7 @@ class AppSidebarRight {
 
       this.prevTabID = id;
 
-      this.log('setVirtualContainer', id, this.sharedMediaSelected);
+      //this.log('setVirtualContainer', id, this.sharedMediaSelected);
       this.sidebarScroll.setVirtualContainer(this.sharedMediaSelected);
 
       if(this.savedVirtualStates[id]) {
@@ -169,7 +169,7 @@ class AppSidebarRight {
       let media = Array.from(this.sharedMediaSelected.childNodes).slice(-15);
       for(let div of media) {
         if(isElementInViewport(div)) {
-          this.log('Will load more media');
+          //this.log('Will load more media');
           this.loadSidebarMedia(true);
   
           break;
@@ -256,12 +256,12 @@ class AppSidebarRight {
               let media = message.media.photo || message.media.document || (message.media.webpage && message.media.webpage.document);
 
               if(!media) {
-                this.log('no media!', message);
+                //this.log('no media!', message);
                 break;
               }
 
               if(media._ == 'document' && media.type != 'video'/*  && media.type != 'gif' */) {
-                this.log('broken video', media);
+                //this.log('broken video', media);
                 break;
               }
 
@@ -334,7 +334,7 @@ class AppSidebarRight {
               let previewDiv = document.createElement('div');
               previewDiv.classList.add('preview');
 
-              this.log('wrapping webpage', webpage);
+              //this.log('wrapping webpage', webpage);
 
               if(webpage.photo) {
                 let load = () => appPhotosManager.preloadPhoto(webpage.photo.id, appPhotosManager.choosePhotoSize(webpage.photo, 380, 0))
@@ -394,7 +394,7 @@ class AppSidebarRight {
             } */
             
             default:
-              console.warn('death is my friend', message);
+              //console.warn('death is my friend', message);
               break;
           }
         });
@@ -416,7 +416,7 @@ class AppSidebarRight {
     this.loadSidebarMediaPromises = {};
     this.lastSharedMediaDiv = document.createElement('div');
 
-    this.log('fillProfileElements');
+    //this.log('fillProfileElements');
 
     this.savedVirtualStates = {};
     this.prevTabID = -1;
@@ -483,7 +483,7 @@ class AppSidebarRight {
           setText(userFull.rAbout, this.profileElements.bio);
         }
   
-        this.log('userFull', userFull);
+        //this.log('userFull', userFull);
 
         if(userFull.pinned_msg_id) { // request pinned message
           appImManager.pinnedMsgID = userFull.pinned_msg_id;
@@ -499,7 +499,7 @@ class AppSidebarRight {
           return;
         }
 
-        this.log('chatInfo res 2:', chatFull);
+        //this.log('chatInfo res 2:', chatFull);
 
         if(chatFull.about) {
           setText(RichTextProcessor.wrapRichText(chatFull.about), this.profileElements.bio);
