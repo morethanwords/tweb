@@ -3,7 +3,7 @@ import { putPreloader, formatPhoneNumber } from "../../components/misc";
 import Scrollable from '../../components/scrollable';
 import appMessagesManager, { AppMessagesManager } from "./appMessagesManager";
 import appDialogsManager from "./appDialogsManager";
-import { isElementInViewport, numberWithCommas } from "../utils";
+import { isElementInViewport, numberWithCommas, cancelEvent } from "../utils";
 import appMessagesIDsManager from "./appMessagesIDsManager";
 import appImManager from "./appImManager";
 import appUsersManager from "./appUsersManager";
@@ -42,12 +42,13 @@ class AppSidebarLeft {
   private sidebarEl = document.querySelector('.page-chats .chats-container') as HTMLDivElement;
   private searchInput = document.getElementById('global-search') as HTMLInputElement;
   private toolsBtn = this.sidebarEl.querySelector('.sidebar-tools-button') as HTMLButtonElement;
+  private backBtn = this.sidebarEl.querySelector('.sidebar-back-button') as HTMLButtonElement;
   private searchContainer = this.sidebarEl.querySelector('#search-container') as HTMLDivElement;
   
   private menuEl = this.toolsBtn.querySelector('.btn-menu');
   private savedBtn = this.menuEl.querySelector('.menu-saved');
   private archivedBtn = this.menuEl.querySelector('.menu-archive');
-  private archivedCount = this.archivedBtn.querySelector('.archived-count') as HTMLSpanElement;
+  public archivedCount = this.archivedBtn.querySelector('.archived-count') as HTMLSpanElement;
   
   private listsContainer: HTMLDivElement = null;
   
@@ -120,8 +121,10 @@ class AppSidebarLeft {
     
     this.archivedBtn.addEventListener('click', (e) => {
       this.chatsArchivedContainer.classList.add('active');
-      this.toolsBtn.classList.remove('tgico-menu', 'btn-menu-toggle');
-      this.toolsBtn.classList.add('tgico-back');
+      this.toolsBtn.classList.remove('active');
+      this.backBtn.classList.add('active');
+      //this.toolsBtn.classList.remove('tgico-menu', 'btn-menu-toggle');
+      //this.toolsBtn.classList.add('tgico-back');
     });
     
     /* this.listsContainer.insertBefore(this.searchMessagesList, this.listsContainer.lastElementChild);
@@ -135,10 +138,11 @@ class AppSidebarLeft {
     
     //this.searchContainer.append(this.listsContainer);
     
-    let clickTimeout = 0;
     this.searchInput.addEventListener('focus', (e) => {
-      this.toolsBtn.classList.remove('tgico-menu', 'btn-menu-toggle');
-      this.toolsBtn.classList.add('tgico-back');
+      /* this.toolsBtn.classList.remove('tgico-menu', 'btn-menu-toggle');
+      this.toolsBtn.classList.add('tgico-back'); */
+      this.toolsBtn.classList.remove('active');
+      this.backBtn.classList.add('active');
       this.searchContainer.classList.add('active');
       
       if(!this.searchInput.value) {
@@ -149,15 +153,17 @@ class AppSidebarLeft {
 
       this.searchInput.addEventListener('blur', (e) => {
         if(!this.searchInput.value) {
-          this.toolsBtn.classList.add('tgico-menu');
-          this.toolsBtn.classList.remove('tgico-back');
+          /* this.toolsBtn.classList.add('tgico-menu');
+          this.toolsBtn.classList.remove('tgico-back'); */
+          this.toolsBtn.classList.add('active');
+          this.backBtn.classList.remove('active');
           this.searchContainer.classList.remove('active');
           
 
-          setTimeout(() => {
+          /* setTimeout(() => {
             //this.toolsBtn.click();
             this.toolsBtn.classList.add('btn-menu-toggle');
-          }, 200);
+          }, 200); */
         }
         
         /* this.peerID = 0;
@@ -188,24 +194,12 @@ class AppSidebarLeft {
       this.searchPromise = null;
       this.searchMore();
     });
-    
-    this.toolsBtn.addEventListener('click', (e) => {
-      this.log('click', this.toolsBtn.classList.contains('tgico-back'));
-      if(this.toolsBtn.classList.contains('tgico-back')) {
-        this.searchInput.value = '';
-        this.toolsBtn.classList.add('tgico-menu', 'btn-menu-toggle');
-        this.toolsBtn.classList.remove('tgico-back');
-        this.searchContainer.classList.remove('active');
-        this.chatsArchivedContainer.classList.remove('active');
-        this.peerID = 0;
-        e.stopPropagation();
-        e.cancelBubble = true;
-        e.preventDefault();
-        return false;
-      }
 
-      return true;
-    }, true);
+    this.backBtn.addEventListener('click', (e) => {
+      this.chatsArchivedContainer.classList.remove('active');
+      this.toolsBtn.classList.add('active');
+      this.backBtn.classList.remove('active');
+    });
     
     window.addEventListener('resize', () => {
       this.chatsLoadCount = Math.round(document.body.scrollHeight / 70 * 1.5);
@@ -250,10 +244,10 @@ class AppSidebarLeft {
         });
       }
 
-      if(archived) {
+      /* if(archived) {
         let count = result.count;
         this.archivedCount.innerText = '' + count;
-      }
+      } */
 
       this.log('loaded ' + this.chatsLoadCount + ' dialogs by offset:', offset, result, this.scroll.hiddenElements);
       this.scroll.onScroll();

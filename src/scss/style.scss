@@ -391,49 +391,20 @@ input {
 
 .document {
   padding-left: 4.5rem;
-  display: flex;
-  flex-direction: column;
   height: 70px;
-  justify-content: center;
-  cursor: pointer;
-  position: relative;
   
-  .document-ico, .document-download {
-    position: absolute;
-    left: 0;
-    width: 54px;
-    height: 54px;
-    color: #fff;
+  &-ico, &-download {
     font-weight: 500;
     letter-spacing: 1px;
     font-size: 1.1rem;
-    display: flex;
-    justify-content: center;
     background-size: contain;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
-  .document-download {
-    z-index: 3;
+  &-download {
     background-color: rgb(101, 161, 227);	
     border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
-    cursor: pointer;
-    
-    .tgico-download {
-      transform: scale(1);
-      transition: .2s scale;
-    }
-
-    &.downloading {
-      .tgico-download {
-        transform: scale(0);
-      }
-    }
   }
 
   &:not(.photo) {
@@ -449,23 +420,77 @@ input {
     }
   }
   
-  .document-name {
+  &-name {
     white-space: nowrap;
     font-weight: 500;
     line-height: 1.3;
   }
   
-  .document-size {
+  &-size {
     white-space: nowrap;
     color: $darkgrey;
     font-size: 14px;
     padding-right: 32px;
     line-height: 1.3;
   }
+}
+
+.document, .audio {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+
+  &-ico, &-download {
+    position: absolute;
+    left: 0;
+    width: 54px;
+    height: 54px;
+    color: #fff;
+    display: flex;
+    justify-content: center;
+  }
+
+  &-download {
+    z-index: 3;
+    align-items: center;
+    font-size: 24px;
+    cursor: pointer;
+    
+    .tgico-download {
+      transform: scale(1);
+      transition: .2s scale;
+    }
+
+    &.downloading {
+      .tgico-download {
+        transform: scale(0);
+      }
+    }
+  }
 
   .preloader-container {
     width: 42px;
     height: 42px;
+  }
+}
+
+.audio {
+  position: relative;
+  padding-left: 67px;
+  min-height: 54px;
+  width: 256px;
+
+  &-toggle, &-download {
+    border-radius: 50%;
+    background-color: $blue;
+    font-size: 2.5rem;
+    align-items: center;
+  }
+
+  &-download {
+    z-index: 2;
   }
 }
 

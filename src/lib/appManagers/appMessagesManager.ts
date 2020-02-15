@@ -1349,7 +1349,7 @@ export class AppMessagesManager {
         let wasDialogBefore = this.getDialogByPeerID(peerID)[0];
 
         // here need to just replace, not FULL replace dialog! WARNING
-        if(wasDialogBefore.pFlags.pinned) {
+        if(wasDialogBefore && wasDialogBefore.pFlags && wasDialogBefore.pFlags.pinned) {
           if(!dialog.pFlags) dialog.pFlags = {};
           dialog.pFlags.pinned = true;
           dialog.pinnedIndex = wasDialogBefore.pinnedIndex;

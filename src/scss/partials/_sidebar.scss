@@ -184,5 +184,60 @@
         text-overflow: ellipsis;
       }
     }
+
+    #content-links {
+      padding: 0 15px 15px 15px;
+
+      > div {
+        display: flex;
+        flex-direction: column;
+        margin-top: 15px;
+        padding-bottom: 10px;
+        position: relative;
+        padding-left: 60px;
+        overflow: hidden;
+        //min-height: 48px;
+        min-height: 58px;
+
+        .preview {
+          height: 48px;
+          width: 48px;
+          border-radius: $border-radius;
+          overflow: hidden;
+          position: absolute;
+          left: 0;
+          top: 0;
+          background-repeat: no-repeat;
+          background-size: cover;
+          background-position: center center;
+
+          &.empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: #fff;
+            text-transform: uppercase;
+            background-color: $blue;
+          }
+        }
+
+        .url {
+          white-space: nowrap;
+          text-overflow: ellipsis;
+          overflow: hidden;
+        }
+      }
+    }
+
+    #content-audio {
+      padding: 0 15px 15px 15px;
+
+      > div {
+        margin-top: 15px;
+        padding-bottom: 10px;
+        min-height: 60px;
+      }
+    }
   }
 }

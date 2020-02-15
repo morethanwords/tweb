@@ -200,6 +200,9 @@
     img, video {
       width: 100%;
       height: 100%;
+      opacity: 1;
+      transition: .2s opacity;
+      user-select: none;
     }
 
     &.cover {
@@ -209,6 +212,7 @@
         width: auto;
         height: auto;
         overflow: hidden;
+        opacity: 0;
       }
     }
 

@@ -209,11 +209,11 @@ export class AppMediaViewer {
         if(mover.firstElementChild) {
           (mover.firstElementChild as HTMLElement).style.borderRadius = borderRadius;
         }
-      }, delay / 2);
 
-      if(target.tagName == 'DIV') {
-        mover.classList.add('cover');
-      }
+        if(target.tagName == 'DIV') {
+          mover.classList.add('cover');
+        }
+      }, delay / 2);
 
       setTimeout(() => {
         mover.innerHTML = '';

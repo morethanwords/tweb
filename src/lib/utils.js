@@ -328,7 +328,8 @@ export const langPack = {
 	"messageActionChannelCreate": "Channel created",
 	"messageActionChannelEditTitle": "Channel renamed",
 	"messageActionChannelEditPhoto": "Channel photo updated",
-	"messageActionChannelDeletePhoto": "Channel photo removed",
+  "messageActionChannelDeletePhoto": "Channel photo removed",
+  "messageActionHistoryClear": "History cleared",
 
   "messageActionPhoneCall.in_ok": "Incoming Call",
 	"messageActionPhoneCall.out_ok": "Outgoing Call",
@@ -582,7 +583,7 @@ export function calcImageInBox (imageW, imageH, boxW, boxH, noZooom) {
   if(imageW < boxW && imageH < boxH) {
     return {w: imageW, h: imageH};
   }
-  
+
   var boxedImageW = boxW
   var boxedImageH = boxH
 

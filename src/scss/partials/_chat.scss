@@ -52,6 +52,7 @@
 		background-color: #fff;
 		box-sizing: border-box;
 		user-select: none;
+		-webkit-user-select: none;
 		display: flex;
 		align-items: center;
 		box-shadow: 0 1px 2px 0 rgba(16, 35, 47, 0.07);
@@ -171,6 +172,7 @@
 			opacity: 0;
 			transition: .2s opacity;
 			user-select: none;
+			-webkit-user-select: none;
 
 			&:before {
 				margin-left: .75px;
@@ -279,6 +281,7 @@
 				box-shadow: none;
 				line-height: 1;
 				user-select: none;
+				-webkit-user-select: none;
 				
 				.attachment {
 					padding-top: .5rem;
@@ -445,6 +448,7 @@
 						margin-bottom: 3px;
 						overflow: hidden;
 						user-select: none;
+						-webkit-user-select: none;
 						cursor: pointer;
 						position: relative;
 
@@ -1236,6 +1240,7 @@
 				border-radius: 8px;
 				cursor: pointer;
 				user-select: none;
+				-webkit-user-select: none;
 				
 				width: 44px;
 				height: 44px;
@@ -1282,6 +1287,7 @@
 				/* overflow: hidden; */
 				cursor: pointer;
 				user-select: none;
+				-webkit-user-select: none;
 				/* margin: 3.5px 0;
 				margin-right: 6.25px; */
 				padding: 1px 2.5px;

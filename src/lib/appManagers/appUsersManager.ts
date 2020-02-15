@@ -291,7 +291,7 @@ export class AppUsersManager {
 
   public getUserInput(id: number) {
     var user = this.getUser(id);
-    if(user.pFlags.self) {
+    if(user.pFlags && user.pFlags.self) {
       return {_: 'inputUserSelf'};
     }
 

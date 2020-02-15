@@ -7,6 +7,7 @@ import appMessagesManager from "./appMessagesManager";
 import appUsersManager from "./appUsersManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import { ripple } from "../../components/misc";
+import appSidebarLeft from "./appSidebarLeft";
 
 type DialogDom = {
   avatarDiv: HTMLDivElement,
@@ -246,6 +247,8 @@ export class AppDialogsManager {
       lastMessage = appMessagesManager.getMessage(dialog.top_message);
     }
 
+    console.log('setlastMessage:', lastMessage);
+
     if(lastMessage._ == 'messageEmpty') return;
 
     if(!dom) {
@@ -401,6 +404,20 @@ export class AppDialogsManager {
     } else if(dialog.pFlags.pinned) {
       dom.unreadMessagesSpan.classList.remove('unread', 'unread-muted');
       dom.unreadMessagesSpan.classList.add('tgico-pinnedchat');
+    }
+
+    // set archived new count
+    if(dialog.folder_id == 1) {
+      let sum = Object.keys(this.domsArchived).map(p => +p).reduce((acc: number, peerID: number) => {
+        let dialog = appMessagesManager.getDialogByPeerID(peerID)[0];
+        if(dialog) {
+          return acc + dialog.unread_count;
+        }
+
+        return acc;
+      }, 0);
+
+      appSidebarLeft.archivedCount.innerText = '' + sum;
     }
   }
 

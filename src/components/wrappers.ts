@@ -155,6 +155,10 @@ export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement,
 }
 
 export function wrapDocument(doc: MTDocument, withTime = false): HTMLDivElement {
+  if(doc.type == 'voice') {
+    return wrapAudio(doc, withTime);
+  }
+
   let docDiv = document.createElement('div');
   docDiv.classList.add('document');
   
@@ -229,6 +233,69 @@ export function wrapDocument(doc: MTDocument, withTime = false): HTMLDivElement 
   }); */
   
   return docDiv;
+}
+
+export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
+  let div = document.createElement('div');
+  div.classList.add('audio');
+
+  div.innerHTML = `
+  <div class="audio-toggle audio-ico tgico-largeplay"></div>
+  <div class="audio-download"><div class="tgico-download"></div></div>
+  <div class="audio-title"></div>
+  <div class="audio-subtitle"></div>
+  <div class="audio-time"></div>
+  `;
+
+  console.log('wrapping audio', doc);
+  
+  let downloadDiv = div.querySelector('.audio-download') as HTMLDivElement;
+  let preloader: ProgressivePreloader;
+  let promise: CancellablePromise<Blob>;
+
+  let onClick = () => {
+    if(!promise) {
+      if(downloadDiv.classList.contains('downloading')) {
+        return; // means not ready yet
+      }
+      
+      if(!preloader) {
+        preloader = new ProgressivePreloader(null, true);
+      }
+      
+      let promise = appDocsManager.downloadDoc(doc.id);
+      preloader.attach(downloadDiv, true, promise);
+
+      promise.then(blob => {
+        downloadDiv.classList.remove('downloading');
+        downloadDiv.remove();
+
+        let audio = document.createElement('audio');
+        let source = document.createElement('source');
+        source.src = URL.createObjectURL(blob);
+        source.type = doc.mime_type;
+
+        div.removeEventListener('click', onClick);
+        div.querySelector('.audio-toggle').addEventListener('click', () => {
+          audio.currentTime = 0;
+          audio.play();
+        });
+
+        audio.append(source);
+      });
+
+      downloadDiv.classList.add('downloading');
+    } else {
+      downloadDiv.classList.remove('downloading');
+      promise = null;
+    }
+  };
+  
+  div.addEventListener('click', onClick);
+
+  div.click();
+  
+  return div;
 }
 
 export function wrapPhoto(this: AppImManager, photo: any, message: any, container: HTMLDivElement) {

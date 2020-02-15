@@ -11,7 +11,7 @@ import { logger } from "../polyfill";
 import appImManager from "./appImManager";
 import appMediaViewer from "./appMediaViewer";
 import LazyLoadQueue from "../../components/lazyLoadQueue";
-import { wrapDocument } from "../../components/wrappers";
+import { wrapDocument, wrapAudio } from "../../components/wrappers";
 
 class AppSidebarRight {
   public sidebarEl = document.querySelector('.profile-container') as HTMLDivElement;
@@ -305,7 +305,7 @@ class AppSidebarRight {
             }
             
             case 'inputMessagesFilterDocument': {
-              if(!message.media.document) {
+              if(!message.media.document || message.media.document.type == 'voice') {
                 break;
               }
 
@@ -322,9 +322,79 @@ class AppSidebarRight {
               this.sharedMedia.contentDocuments.append(div);
               break;
             }
+
+            case 'inputMessagesFilterUrl': {
+              if(!message.media.webpage || message.media.webpage._ == 'webPageEmpty') {
+                break;
+              }
+
+              let webpage = message.media.webpage;
+              let div = document.createElement('div');
+              
+              let previewDiv = document.createElement('div');
+              previewDiv.classList.add('preview');
+
+              this.log('wrapping webpage', webpage);
+
+              if(webpage.photo) {
+                let load = () => appPhotosManager.preloadPhoto(webpage.photo.id, appPhotosManager.choosePhotoSize(webpage.photo, 380, 0))
+                .then((blob) => {
+                  if($rootScope.selectedPeerID != peerID) {
+                    this.log.warn('peer changed');
+                    return;
+                  }
+        
+                  previewDiv.style.backgroundImage = 'url(' + URL.createObjectURL(blob) + ')';
+                });
+  
+                this.lazyLoadQueueSidebar.push({div: previewDiv, load});
+              } else {
+                previewDiv.innerText = (webpage.title || webpage.description || webpage.url || webpage.display_url).slice(0, 1);
+                previewDiv.classList.add('empty');
+              }
+
+              let title = webpage.rTitle || '';
+              let subtitle = webpage.rDescription || '';
+              let url = RichTextProcessor.wrapRichText(webpage.url || '');
+
+              if(!title) {
+                //title = new URL(webpage.url).hostname;
+                title = webpage.display_url.split('/', 1)[0];
+              }
+
+              div.append(previewDiv);
+              div.insertAdjacentHTML('beforeend', `
+                <div class="title">${title}</div>
+                <div class="subtitle">${subtitle}</div>
+                <div class="url">${url}</div>
+              `);
+
+              if(div.innerText.trim().length) {
+                this.sharedMedia.contentLinks.append(div);
+              }
+
+              break;
+            }
+
+            /* case 'inputMessagesFilterVoice': {
+              //this.log('wrapping audio', message.media);
+              if(!message.media || !message.media.document || message.media.document.type != 'voice') {
+                break;
+              }
+
+              let doc = message.media.document;
+
+              this.log('wrapping audio', doc);
+
+              let audioDiv = wrapAudio(doc);
+
+              this.sharedMedia.contentAudio.append(audioDiv);
+
+              break;
+            } */
             
             default:
-              //console.warn('death is my friend', message);
+              console.warn('death is my friend', message);
               break;
           }
         });

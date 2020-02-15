@@ -575,6 +575,8 @@ export class AppImManager {
     cancelBtn?: HTMLButtonElement
   } = {};
 
+  private setPeerPromise: Promise<boolean> = null;
+
   constructor() {
     this.log = logger('IM');
 
@@ -818,7 +820,26 @@ export class AppImManager {
           return;
         }
 
-        appMediaViewer.openMedia(message, target as HTMLImageElement);
+        let ids = Object.keys(this.bubbles).map(k => +k).filter(id => {
+          let message = appMessagesManager.getMessage(id);
+
+          return message.media && (message.media.photo 
+            || (message.media.document && (message.media.document.type == 'video' || message.media.document.type == 'gif'))
+            || (message.media.webpage && (message.media.webpage.document || message.media.webpage.photo)));
+        }).sort();
+        let idx = ids.findIndex(i => i == messageID);
+
+        let prev = ids[idx + 1] || null;
+        let next = ids[idx - 1] || null;
+
+        let prevTarget = this.bubbles[prev] ? this.bubbles[prev].querySelector('img, video') as HTMLElement : null;
+        let nextTarget = this.bubbles[next] ? this.bubbles[next].querySelector('img, video') as HTMLElement : null;
+
+        this.log('ids', ids, idx, this.bubbles[prev], this.bubbles[next]);
+
+        appMediaViewer.openMedia(message, target, nextTarget, prevTarget);
+
+        //appMediaViewer.openMedia(message, target as HTMLImageElement);
       }
 
       //console.log('chatInner click', e);
@@ -979,7 +1000,7 @@ export class AppImManager {
     
     this.contextMenu.querySelector('.menu-reply').addEventListener('click', () => {
       let message = appMessagesManager.getMessage(this.contextMenuMsgID);
-      this.chatInputC.setTopInfo(appPeersManager.getPeerTitle(message.fromID), message.message);
+      this.chatInputC.setTopInfo(appPeersManager.getPeerTitle(message.fromID, true), message.message);
       this.chatInputC.replyToMsgID = this.contextMenuMsgID;
       this.chatInputC.editMsgID = 0;
     });
@@ -1417,7 +1438,11 @@ export class AppImManager {
 
     let samePeer = this.peerID == peerID;
 
-    appMessagesManager.readHistory(this.peerID, lastMsgID); // lol
+    if(this.setPeerPromise && samePeer) return this.setPeerPromise;
+
+    if(lastMsgID) {
+      appMessagesManager.readHistory(peerID, lastMsgID); // lol
+    }
 
     if(samePeer) {
       if(!testScroll && !lastMsgID) {
@@ -1488,7 +1513,7 @@ export class AppImManager {
       this.chatInner.classList.remove('is-chat');
     }
 
-    return Promise.all([
+    return this.setPeerPromise = Promise.all([
       this.getHistory(forwarding ? lastMsgID + 1 : lastMsgID).then(() => {
         this.log('setPeer removing preloader');
 
@@ -1528,8 +1553,19 @@ export class AppImManager {
       }) */,
 
       appSidebarRight.fillProfileElements()
-    ]).catch(err => {
+    ]).then(() => {
+      if(this.peerID == peerID) {
+        this.setPeerPromise = null;
+      }
+
+      return true;
+    }).catch(err => {
+      if(this.peerID == peerID) {
+        this.setPeerPromise = null;
+      }
+      
       this.log.error('setPeer promises error:', err);
+      return false;
     });
   }
 
@@ -1591,7 +1627,7 @@ export class AppImManager {
   }
 
   public renderMessagesByIDs(msgIDs: number[]) {
-    if(!this.bubbles[this.firstTopMsgID]) { // seems search active
+    if(!this.bubbles[this.firstTopMsgID] && Object.keys(this.bubbles).length) { // seems search active
       this.log('seems search is active, skipping render:', msgIDs);
       return;
     }

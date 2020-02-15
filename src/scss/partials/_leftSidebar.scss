@@ -38,6 +38,42 @@
     }
   }
 
+  .sidebar-header__btn-container {
+    position: relative;
+    width: 39.75px;
+    height: 39px;
+
+    > * {
+      visibility: hidden;
+      opacity: 0;
+      position: absolute;
+      left: 0;
+      top: 0;
+      transition: .2s opacity;
+      z-index: 2;
+
+      &:before {
+        transition: .2s transform;
+        transform: rotate(180deg);
+      }
+
+      & + * {
+        margin-left: 0!important;
+      }
+
+      &.active {
+        margin-top: 1px;
+        opacity: 1;
+        visibility: visible;
+        color: #707579;
+
+        &:before {
+          transform: rotate(0deg);
+        }
+      }
+    }
+  }
+
   .sidebar-tools-button .btn-menu {
     width: 217px;
 
@@ -54,6 +90,10 @@
       justify-self: flex-end;
       position: absolute;
       right: 16px;
+    }
+
+    .archived-count:empty {
+      display: none;
     }
   }
 
