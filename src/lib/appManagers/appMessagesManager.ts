@@ -501,7 +501,9 @@ export class AppMessagesManager {
       apiFileName = 'audio.' + (fileType.split('/')[1] == 'ogg' ? 'ogg' : 'mp3');
       actionName = 'sendMessageUploadAudioAction';
     } else if(fileType.substr(0, 6) == 'video/') {
-      attachType = 'video';
+      //attachType = 'video';
+      //apiFileName = 'video.mp4';
+      attachType = 'document'; // last minute fix
       apiFileName = 'video.mp4';
       actionName = 'sendMessageUploadVideoAction';
     } else {

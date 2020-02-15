@@ -156,7 +156,7 @@ export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement,
   }
 }
 
-export function wrapDocument(doc: MTDocument, withTime = false): HTMLDivElement {
+export function wrapDocument(doc: MTDocument, withTime = false, uploading = false): HTMLDivElement {
   if(doc.type == 'voice') {
     return wrapAudio(doc, withTime);
   }
@@ -190,49 +190,44 @@ export function wrapDocument(doc: MTDocument, withTime = false): HTMLDivElement 
   
   docDiv.innerHTML = `
   <div class="document-ico ext-${ext}">${ext2}</div>
-  <div class="document-download"><div class="tgico-download"></div></div>
+  ${!uploading ? `<div class="document-download"><div class="tgico-download"></div></div>` : ''}
   <div class="document-name">${fileName}</div>
   <div class="document-size">${size}</div>
   `;
-  
-  let downloadDiv = docDiv.querySelector('.document-download') as HTMLDivElement;
-  let preloader: ProgressivePreloader;
-  let promise: CancellablePromise<Blob>;
-  
-  docDiv.addEventListener('click', () => {
-    if(!promise) {
-      if(downloadDiv.classList.contains('downloading')) {
-        return; // means not ready yet
-      }
-      
-      if(!preloader) {
-        preloader = new ProgressivePreloader(null, true);
-      }
-      
-      appDocsManager.saveDocFile(doc.id).then(res => {
-        promise = res.promise;
-        
-        preloader.attach(downloadDiv, true, promise);
-        
-        promise.then(() => {
-          downloadDiv.classList.remove('downloading');
-          downloadDiv.remove();
-        });
-      })
-      
-      downloadDiv.classList.add('downloading');
-    } else {
-      downloadDiv.classList.remove('downloading');
-      promise = null;
-    }
-  });
-  
-  /* apiFileManager.getDownloadedFile(Object.assign({}, doc, {_: 'inputDocumentFileLocation'})).then(() => {
-    downloadDiv.classList.remove('downloading');
-    downloadDiv.remove();
-  }, () => {
+
+  if(!uploading) {
+    let downloadDiv = docDiv.querySelector('.document-download') as HTMLDivElement;
+    let preloader: ProgressivePreloader;
+    let promise: CancellablePromise<Blob>;
     
-  }); */
+    docDiv.addEventListener('click', () => {
+      if(!promise) {
+        if(downloadDiv.classList.contains('downloading')) {
+          return; // means not ready yet
+        }
+        
+        if(!preloader) {
+          preloader = new ProgressivePreloader(null, true);
+        }
+        
+        appDocsManager.saveDocFile(doc.id).then(res => {
+          promise = res.promise;
+          
+          preloader.attach(downloadDiv, true, promise);
+          
+          promise.then(() => {
+            downloadDiv.classList.remove('downloading');
+            downloadDiv.remove();
+          });
+        })
+        
+        downloadDiv.classList.add('downloading');
+      } else {
+        downloadDiv.classList.remove('downloading');
+        promise = null;
+      }
+    });
+  }
   
   return docDiv;
 }

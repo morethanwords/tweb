@@ -6,6 +6,8 @@ import { RichTextProcessor } from "../richtextprocessor";
 import { logger } from "../polyfill";
 import ProgressivePreloader from "../../components/preloader";
 import { wrapVideo } from "../../components/wrappers";
+import { findUpClassName } from "../utils";
+import appDocsManager from "./appDocsManager";
 
 export class AppMediaViewer {
   private overlaysDiv = document.querySelector('.overlays') as HTMLDivElement;
@@ -81,13 +83,33 @@ export class AppMediaViewer {
 
     this.buttons.download.addEventListener('click', () => {
       let message = appMessagesManager.getMessage(this.currentMessageID);
-      appPhotosManager.downloadPhoto(message.media.photo.id);
+      if(message.media.photo) {
+        appPhotosManager.downloadPhoto(message.media.photo.id);
+      } else {
+        let document: any = null;
+
+        if(message.media.webpage) document = message.media.webpage.document;
+        else document = message.media.document;
+
+        if(document) {
+          console.log('will save document:', document);
+          appDocsManager.saveDocFile(document.id);
+        }
+      }
     });
 
     this.onClickBinded = (e: MouseEvent) => {
       let target = e.target as HTMLElement;
 
-      if(target == this.mediaViewerDiv || target.tagName == 'IMG') {
+      let mover: HTMLDivElement = null;
+      ['media-viewer-mover', 'media-viewer-buttons', 'media-viewer-author'].find(s => {
+        try {
+          mover = findUpClassName(target, s);
+          if(mover) return true;
+        } catch(err) {return false;}
+      });
+
+      if(/* target == this.mediaViewerDiv */!mover || target.tagName == 'IMG') {
         this.buttons.close.click();
       }
     };

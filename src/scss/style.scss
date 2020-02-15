@@ -1382,6 +1382,7 @@ div.scrollable::-webkit-scrollbar-thumb {
     &.active {
       position: relative;
       color: $blue;
+      font-size: 16px;
       
       &:after {
         content: '';

@@ -162,13 +162,18 @@
     }
 
     #content-docs {
-      padding: 3px 15px;
+      padding: 7px 20px;
 
       .document {
-        padding-left: 5rem;
+        padding-left: 4rem;
         padding-right: 1rem;
         //height: 54px;
-        height: calc(54px + 1.5rem);
+        height: calc(50px + 1.5rem);
+
+        &-ico, &-download {
+          width: 48px;
+          height: 48px;
+        }
 
         /* & + .document {
           margin-top: 1.5rem;
@@ -191,8 +196,10 @@
       > div {
         display: flex;
         flex-direction: column;
-        margin-top: 15px;
-        padding-bottom: 10px;
+        margin-top: 20px;
+        margin-left: 5px;
+        padding-bottom: 2px;
+        //padding-bottom: 10px;
         position: relative;
         padding-left: 60px;
         overflow: hidden;
@@ -202,7 +209,7 @@
         .preview {
           height: 48px;
           width: 48px;
-          border-radius: $border-radius;
+          border-radius: 5px;
           overflow: hidden;
           position: absolute;
           left: 0;
@@ -227,6 +234,16 @@
           text-overflow: ellipsis;
           overflow: hidden;
         }
+      }
+
+      .title {
+        font-size: 16px;
+        margin-top: 3px;
+      }
+
+      .subtitle {
+        font-size: 14px;
+        max-width: 300px;
       }
     }
 

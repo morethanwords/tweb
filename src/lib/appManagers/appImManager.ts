@@ -281,6 +281,12 @@ class ChatInput {
       this.attachMediaPopUp.mediaContainer.style.height = '';
       this.attachMediaPopUp.mediaContainer.classList.remove('is-document');
 
+      if(file.type.indexOf('video/') === 0) {
+        willAttach = 'document';
+      } else if(file.type.indexOf('image/') === -1 && willAttach == 'media') {
+        willAttach = 'document';
+      }
+
       switch(willAttach) {
         case 'media': {
           let img = new Image();
@@ -311,7 +317,7 @@ class ChatInput {
             'image/gif',
             'image/webp',
             'image/bmp'].indexOf(file.type) !== -1 ? 'photo' : 'doc'
-          } as any, false);
+          } as any, false, true);
 
           this.attachMediaPopUp.titleEl.innerText = 'Send File';
 
@@ -382,6 +388,11 @@ class ChatInput {
         height: willAttachHeight
       });
       appImManager.scroll.scrollTop = appImManager.scroll.scrollHeight;
+
+      let dialog = appMessagesManager.getDialogByPeerID(appImManager.peerID)[0];
+      if(dialog && dialog.top_message) {
+        appMessagesManager.readHistory(appImManager.peerID, dialog.top_message); // lol
+      }
     });
 
     this.btnSend.addEventListener('click', () => {
@@ -477,6 +488,11 @@ class ChatInput {
       });
 
       appImManager.scroll.scrollTop = appImManager.scroll.scrollHeight;
+    }
+
+    let dialog = appMessagesManager.getDialogByPeerID(appImManager.peerID)[0];
+    if(dialog && dialog.top_message) {
+      appMessagesManager.readHistory(appImManager.peerID, dialog.top_message); // lol
     }
     
     this.editMsgID = 0;
@@ -646,7 +662,10 @@ export class AppImManager {
       } = e.detail;
 
       this.deleteMessagesByIDs(Object.keys(detail.msgs).map(s => +s));
-      this.deleteEmptySideDivs();
+
+      setTimeout(() => {
+        this.deleteEmptySideDivs();
+      }, 0);
     });
 
     // Calls when message successfully sent and we have an ID
@@ -1780,7 +1799,7 @@ export class AppImManager {
 
             case 'audio':
             case 'document': {
-              let docDiv = wrapDocument(pending);
+              let docDiv = wrapDocument(pending, false, true);
 
               let icoDiv = docDiv.querySelector('.document-ico');
               preloader.attach(icoDiv, false);

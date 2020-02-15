@@ -256,6 +256,7 @@
 
 				.reply-content {
 					height: auto;
+					min-height: 32px;
 				}
 			}
 			
@@ -508,7 +509,7 @@
 					width: 100%;
 				}
 
-				.text, .reply-subtitle {
+				.text/* , .reply-subtitle */ {
 					line-height: 1.2;
 				}
 				
@@ -519,6 +520,7 @@
 			}
 
 			.reply {
+				max-width: 300px;
 				margin-bottom: 6px;
 				margin-top: 0;
 				cursor: pointer;
@@ -1132,6 +1134,7 @@
 			height: 32px;
 			display: flex;
 			flex-direction: column;
+			justify-content: space-between;
 		}
 		
 		&-title {
@@ -1140,7 +1143,8 @@
 		
 		&-title, &-subtitle {
 			font-size: 14px;
-			line-height: 18px;
+			//line-height: 18px;
+			line-height: 1;
 			overflow: hidden;
 			white-space: nowrap;
 			text-overflow: ellipsis;
