@@ -10,6 +10,7 @@ import LazyLoadQueue from './lazyLoadQueue';
 import apiFileManager, { CancellablePromise } from '../lib/mtproto/apiFileManager';
 import appWebpManager from '../lib/appManagers/appWebpManager';
 import {wrapPlayer} from '../lib/ckin';
+import { RichTextProcessor } from '../lib/richtextprocessor';
 
 export type MTDocument = {
   _: 'document',
@@ -159,7 +160,7 @@ export function wrapDocument(doc: MTDocument, withTime = false): HTMLDivElement 
   if(doc.type == 'voice') {
     return wrapAudio(doc, withTime);
   }
-
+  
   let docDiv = document.createElement('div');
   docDiv.classList.add('document');
   
@@ -210,27 +211,27 @@ export function wrapDocument(doc: MTDocument, withTime = false): HTMLDivElement 
       
       appDocsManager.saveDocFile(doc.id).then(res => {
         promise = res.promise;
-
+        
         preloader.attach(downloadDiv, true, promise);
-
+        
         promise.then(() => {
           downloadDiv.classList.remove('downloading');
           downloadDiv.remove();
         });
       })
-
+      
       downloadDiv.classList.add('downloading');
     } else {
       downloadDiv.classList.remove('downloading');
       promise = null;
     }
   });
-
+  
   /* apiFileManager.getDownloadedFile(Object.assign({}, doc, {_: 'inputDocumentFileLocation'})).then(() => {
     downloadDiv.classList.remove('downloading');
     downloadDiv.remove();
   }, () => {
-
+    
   }); */
   
   return docDiv;
@@ -241,51 +242,51 @@ let lastAudioToggle: HTMLDivElement = null;
 export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
   let div = document.createElement('div');
   div.classList.add('audio');
-
+  
   let duration = doc.duration;
-
+  
   // @ts-ignore
   let durationStr = String(duration | 0).toHHMMSS(true);
-
+  
   div.innerHTML = `
   <div class="audio-toggle audio-ico tgico-largeplay"></div>
   <div class="audio-download"><div class="tgico-download"></div></div>
   <div class="audio-time">${durationStr}</div>
   `;
-
+  
   console.log('wrapping audio', doc, doc.attributes[0].waveform);
-
+  
   let timeDiv = div.lastElementChild as HTMLDivElement;
   
   let downloadDiv = div.querySelector('.audio-download') as HTMLDivElement;
   let preloader: ProgressivePreloader;
   let promise: CancellablePromise<Blob>;
-
+  
   let svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.classList.add('audio-waveform');
   svg.setAttributeNS(null, 'width', '250');
   svg.setAttributeNS(null, 'height', '23');
   svg.setAttributeNS(null, 'viewBox', '0 0 250 23');
-
+  
   div.insertBefore(svg, div.lastElementChild);
   let wave = doc.attributes[0].waveform as Uint8Array;
-
+  
   let index = 0;
   for(let uint8 of wave) {
     let percents = uint8 / 255;
-
+    
     let height = 23 * percents;
     if(/* !height ||  */height < 2) {
       height = 2;
     }
-
+    
     svg.insertAdjacentHTML('beforeend', `
-      <rect x="${index * 4}" y="${23 - height}" width="2" height="${height}" rx="1" ry="1"></rect>
+    <rect x="${index * 4}" y="${23 - height}" width="2" height="${height}" rx="1" ry="1"></rect>
     `);
     
     ++index;
   }
-
+  
   let onClick = () => {
     if(!promise) {
       if(downloadDiv.classList.contains('downloading')) {
@@ -298,47 +299,47 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
       
       let promise = appDocsManager.downloadDoc(doc.id);
       preloader.attach(downloadDiv, true, promise);
-
+      
       promise.then(blob => {
         downloadDiv.classList.remove('downloading');
         downloadDiv.remove();
-
+        
         let audio = document.createElement('audio');
         let source = document.createElement('source');
         source.src = URL.createObjectURL(blob);
         source.type = doc.mime_type;
-
+        
         div.removeEventListener('click', onClick);
         let toggle = div.querySelector('.audio-toggle') as HTMLDivElement;
-
+        
         let interval = 0;
-
+        
         toggle.addEventListener('click', () => {
           if(audio.paused) {
             if(lastAudioToggle && lastAudioToggle.classList.contains('tgico-largepause')) {
               lastAudioToggle.click();
             }
-
+            
             audio.currentTime = 0;
             audio.play();
-
+            
             lastAudioToggle = toggle;
-  
+            
             toggle.classList.remove('tgico-largeplay');
             toggle.classList.add('tgico-largepause');
-
+            
             (Array.from(svg.children) as HTMLElement[]).forEach(node => node.classList.remove('active'));
-
+            
             let lastIndex = 0;
             interval = setInterval(() => {
               if(lastIndex >= svg.childElementCount) {
                 clearInterval(interval);
                 return;
               }
-
+              
               // @ts-ignore
               timeDiv.innerText = String(audio.currentTime | 0).toHHMMSS(true);
-
+              
               //svg.children[lastIndex].setAttributeNS(null, 'fill', '#000');
               svg.children[lastIndex].classList.add('active');
               ++lastIndex;
@@ -348,23 +349,23 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
             audio.pause();
             toggle.classList.add('tgico-largeplay');
             toggle.classList.remove('tgico-largepause');
-
+            
             clearInterval(interval);
           }
         });
-
+        
         audio.addEventListener('ended', () => {
           toggle.classList.add('tgico-largeplay');
           toggle.classList.remove('tgico-largepause');
           clearInterval(interval);
-
+          
           // @ts-ignore
           timeDiv.innerText = String(audio.currentTime | 0).toHHMMSS(true);
         });
-
+        
         audio.append(source);
       });
-
+      
       downloadDiv.classList.add('downloading');
     } else {
       downloadDiv.classList.remove('downloading');
@@ -373,7 +374,7 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
   };
   
   div.addEventListener('click', onClick);
-
+  
   div.click();
   
   return div;
@@ -397,9 +398,9 @@ export function wrapPhoto(this: AppImManager, photo: any, message: any, containe
   
   let load = () => {
     let promise = appPhotosManager.preloadPhoto(photo.id, size);
-
+    
     preloader.attach(container, true, promise);
-
+    
     return promise.then((blob) => {
       if(this.peerID != peerID) {
         this.log.warn('peer changed');
@@ -526,4 +527,64 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
   });
   
   return lazyLoadQueue ? (lazyLoadQueue.push({div, load}), Promise.resolve()) : load();
+}
+
+export function wrapReply(title: string, subtitle: string, media?: any) {
+  let div = document.createElement('div');
+  div.classList.add('reply');
+  
+  let replyBorder = document.createElement('div');
+  replyBorder.classList.add('reply-border');
+  
+  let replyContent = document.createElement('div');
+  replyContent.classList.add('reply-content');
+  
+  let replyTitle = document.createElement('div');
+  replyTitle.classList.add('reply-title');
+  
+  let replySubtitle = document.createElement('div');
+  replySubtitle.classList.add('reply-subtitle');
+  
+  replyTitle.innerHTML = title ? RichTextProcessor.wrapEmojiText(title) : '';
+  
+  if(media) {
+    if(media.photo) {
+      replySubtitle.innerHTML = 'Photo';
+    } else if(media.document && media.document.type) {
+      replySubtitle.innerHTML = media.document.type;
+    } else if(media.webpage) {
+      replySubtitle.innerHTML = RichTextProcessor.wrapPlainText(media.webpage.url);
+    } else {
+      replySubtitle.innerHTML = media._;
+    }
+
+    if(media.photo || (media.document && ['video'].indexOf(media.document.type) !== -1)) {
+      let replyMedia = document.createElement('div');
+      replyMedia.classList.add('reply-media');
+  
+      let photo = media.photo || media.document;
+      
+      let sizes = photo.sizes || photo.thumbs;
+      if(sizes && sizes[0].bytes) {
+        appPhotosManager.setAttachmentPreview(sizes[0].bytes, replyMedia, false, true);
+      }
+      
+      appPhotosManager.preloadPhoto(photo, appPhotosManager.choosePhotoSize(photo, 32, 32))
+      .then((blob) => {
+        replyMedia.style.backgroundImage = 'url(' + URL.createObjectURL(blob) + ')';
+      });
+  
+      replyContent.append(replyMedia);
+      div.classList.add('is-reply-media');
+    }
+  } else {
+    replySubtitle.innerHTML = subtitle ? RichTextProcessor.wrapEmojiText(subtitle) : '';
+  }
+  
+  replyContent.append(replyTitle, replySubtitle);
+  div.append(replyBorder, replyContent);
+  
+  console.log('wrapReply', title, subtitle, media);
+  
+  return div;
 }

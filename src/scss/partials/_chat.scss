@@ -250,6 +250,14 @@
 					opacity: 1;
 				}
 			}
+
+			.reply {
+				width: auto;
+
+				.reply-content {
+					height: auto;
+				}
+			}
 			
 			&.photo, &.video {
 				width: min-content;
@@ -426,7 +434,7 @@
 				}
 			}
 			
-			.box {
+			.box, .reply {
 				font-size: .95rem;
 				// margin: .25rem;
 				margin: 4px 4px 4px 6px;
@@ -498,43 +506,45 @@
 					max-width: 100%;
 					overflow: hidden;
 					width: 100%;
+				}
 
-					.text {
-						line-height: 1.2;
-					}
-
+				.text, .reply-subtitle {
+					line-height: 1.2;
 				}
 				
-				.name {
+				.name, .reply-title {
 					font-weight: 500;
 					display: inline!important;
 				}
-				
-				&:not(.web) {
-					margin-bottom: 0;
-					margin-top: 0;
-					cursor: pointer;
-				}
+			}
+
+			.reply {
+				margin-bottom: 6px;
+				margin-top: 0;
+				cursor: pointer;
 			}
 
 			&.is-reply {
 				&.emoji-big, &.sticker {
-					.box {
+					.reply {
 						padding: 10px;
 						border-radius: 12px;
 						border: 1px solid #ccc;
 						max-width: 300px;
+						height: 54px;
+						max-height: 54px;
 						white-space: nowrap;
 						position: absolute;
 						top: 0;
+						margin-bottom: 0;
 
-						.quote {
+						.reply-content {
 							margin-top: 0;
 						}
 					}
 				}
 
-				.quote .text {
+				.reply-content {
 					white-space: nowrap;
 					text-overflow: ellipsis;
 					overflow: hidden;
@@ -688,12 +698,12 @@
 				}
 			}
 			
-			&.hide-name .message:not(.message-empty) {
+			&.hide-name:not(.is-reply) .message:not(.message-empty) {
 				//padding-top: .2675rem;
 				padding-top: 6px;
 			}
 
-			&.hide-name:not(.sticker):not(.emoji-big) .box:not(.web) .quote {
+			&.hide-name:not(.sticker):not(.emoji-big) .reply {
 				margin-top: 6px;
 			}
 			
@@ -726,13 +736,13 @@
 				color: $darkblue;
 			}
 			
-			.quote:hover {
+			.quote:hover, .reply:hover {
 				background-color: $light;
 			}
 
 			.bubble.is-reply {
 				&.emoji-big, &.sticker {
-					.box {
+					.box, .reply {
 						left: calc(100% + 10px);
 						background-color: #fff;
 					}
@@ -741,16 +751,15 @@
 			
 			.quote {
 				border-left: 2px $darkblue solid;
-				//margin-top: 6px; //MOJET VREMENNO
-				
-				.name {
-					color: $darkblue;
-				}
 				
 				* {
 					overflow: hidden;
 					text-overflow: ellipsis;
 				}
+			}
+
+			.quote .name, .reply-title {
+				color: $darkblue;
 			}
 			
 			.time {
@@ -798,13 +807,13 @@
 		.out {
 			align-items: flex-end;
 			
-			.quote:hover {
+			.quote:hover, .reply:hover {
 				background-color: rgba($green, 0.12);
 			}
 
 			.bubble.is-reply {
 				&.emoji-big, &.sticker {
-					.box {
+					.box, .reply {
 						background-color: #eeffde;
 						right: calc(100% + 10px);
 						border-color: rgba($green, .12);
@@ -814,10 +823,14 @@
 			
 			.quote {
 				border-left: 2px $darkgreen solid;
-				
-				.name {
-					color: $darkgreen;
-				}
+			}
+
+			.reply-border {
+				background-color: $darkgreen;
+			}
+
+			.quote .name, .reply-title {
+				color: $darkgreen;
 			}
 			
 			.time {
@@ -920,7 +933,7 @@
 				}
 
 				&-toggle, &-download {
-					background-color: #68AB5A;
+					background-color: #4FAE4E;
 				}
 			}
 		}
@@ -1089,7 +1102,14 @@
 		width: 187px;
 		margin-right: 1rem;
 		max-height: 35px;
+		position: relative;
 		/* padding: .25rem; */
+
+		&.is-reply-media {
+			.pinned-message-content, .reply-content {
+				padding-left: 40px;
+			}
+		}
 		
 		&:hover {
 			background-color: rgba(112, 117, 121, 0.08);
@@ -1108,6 +1128,10 @@
 			flex-shrink: 1;
 			overflow: hidden;
 			pointer-events: none;
+			position: relative;
+			height: 32px;
+			display: flex;
+			flex-direction: column;
 		}
 		
 		&-title {
@@ -1125,6 +1149,19 @@
 		&-subtitle {
 			white-space: nowrap;
 			color: #111;
+		}
+
+		&-media {
+			height: 32px;
+			width: 32px;
+			border-radius: 8px;
+			overflow: hidden;
+			position: absolute;
+			left: 0;
+			top: 0;
+			background-repeat: no-repeat;
+			background-size: cover;
+			background-position: center center;
 		}
 
 		img.emoji {

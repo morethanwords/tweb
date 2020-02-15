@@ -479,14 +479,14 @@ input {
 .audio {
   position: relative;
   padding-left: 67px;
-  min-height: 54px;
+  min-height: 58px;
   max-width: 286px;
   overflow: visible!important;
 
   &-toggle, &-download {
     border-radius: 50%;
     background-color: $blue;
-    font-size: 2.5rem;
+    font-size: 2.2rem;
     align-items: center;
   }
 
@@ -512,7 +512,7 @@ input {
   &-time {
     font-size: 14px;
     color: $color-gray;
-    margin-top: 4px;
+    margin-top: 3px;
     margin-left: -1px;
   }
 }
@@ -1317,10 +1317,12 @@ div.scrollable::-webkit-scrollbar-thumb {
 
   &.scrollable-x {
     overflow-x: auto;
+    scrollbar-width: none;
   }
 
   &.scrollable-y {
     overflow-y: auto;
+    scrollbar-width: none;
   }
 
   &.scrollable-x ~ .scrollbar-thumb {

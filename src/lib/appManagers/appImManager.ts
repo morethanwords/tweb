@@ -20,7 +20,7 @@ import appMessagesIDsManager from "./appMessagesIDsManager";
 import apiUpdatesManager from './apiUpdatesManager';
 import initEmoticonsDropdown, { EMOTICONSSTICKERGROUP } from '../../components/emoticonsDropdown';
 import LazyLoadQueue from '../../components/lazyLoadQueue';
-import { wrapDocument, wrapPhoto, wrapVideo, wrapSticker } from '../../components/wrappers';
+import { wrapDocument, wrapPhoto, wrapVideo, wrapSticker, wrapReply } from '../../components/wrappers';
 import ProgressivePreloader from '../../components/preloader';
 import { openBtnMenu } from '../../components/misc';
 import appWebPagesManager from './appWebPagesManager';
@@ -490,11 +490,15 @@ class ChatInput {
     this.btnSend.classList.add('tgico-microphone2');
   };
 
-  public setTopInfo(title: string, subtitle: string, input?: string) {
+  public setTopInfo(title: string, subtitle: string, input?: string, media?: any) {
     //appImManager.scrollPosition.prepareFor('down');
 
-    this.replyElements.titleEl.innerHTML = title ? RichTextProcessor.wrapEmojiText(title) : '';
-    this.replyElements.subtitleEl.innerHTML = subtitle ? RichTextProcessor.wrapEmojiText(subtitle) : '';
+    if(this.replyElements.container.lastElementChild.tagName == 'DIV') {
+      this.replyElements.container.lastElementChild.remove();
+      this.replyElements.container.append(wrapReply(title, subtitle, media));
+    }
+    //this.replyElements.titleEl.innerHTML = title ? RichTextProcessor.wrapEmojiText(title) : '';
+    //this.replyElements.subtitleEl.innerHTML = subtitle ? RichTextProcessor.wrapEmojiText(subtitle) : '';
     this.replyElements.container.classList.add('active');
 
     if(input !== undefined) {
@@ -796,7 +800,7 @@ export class AppImManager {
         let isReplyClick = false;
       
         try {
-          isReplyClick = !!findUpClassName(e.target, 'box');
+          isReplyClick = !!findUpClassName(e.target, 'reply');
         } catch(err) {}
 
         if(isReplyClick && bubble.classList.contains('is-reply')/*  || bubble.classList.contains('forwarded') */) {
@@ -1000,14 +1004,14 @@ export class AppImManager {
     
     this.contextMenu.querySelector('.menu-reply').addEventListener('click', () => {
       let message = appMessagesManager.getMessage(this.contextMenuMsgID);
-      this.chatInputC.setTopInfo(appPeersManager.getPeerTitle(message.fromID, true), message.message);
+      this.chatInputC.setTopInfo(appPeersManager.getPeerTitle(message.fromID, true), message.message, undefined, message.media);
       this.chatInputC.replyToMsgID = this.contextMenuMsgID;
       this.chatInputC.editMsgID = 0;
     });
 
     this.contextMenuEdit.addEventListener('click', () => {
       let message = appMessagesManager.getMessage(this.contextMenuMsgID);
-      this.chatInputC.setTopInfo('Editing', message.message, message.message);
+      this.chatInputC.setTopInfo('Editing', message.message, message.message, message.media);
       this.chatInputC.replyToMsgID = 0;
       this.chatInputC.editMsgID = this.contextMenuMsgID;
     });
@@ -1563,7 +1567,7 @@ export class AppImManager {
       if(this.peerID == peerID) {
         this.setPeerPromise = null;
       }
-      
+
       this.log.error('setPeer promises error:', err);
       return false;
     });
@@ -1992,20 +1996,8 @@ export class AppImManager {
         }
       } else {
         if(message.reply_to_mid) {
-          let box = document.createElement('div');
-          box.classList.add('box');
-
-          let quote = document.createElement('div');
-          quote.classList.add('quote');
-
-          let nameEl = document.createElement('a');
-          nameEl.classList.add('name');
-
-          let textDiv = document.createElement('div');
-          textDiv.classList.add('text');
-
           let originalMessage = appMessagesManager.getMessage(message.reply_to_mid);
-          let originalPeerTitle = appPeersManager.getPeerTitle(originalMessage.fromID) || '';
+          let originalPeerTitle = appPeersManager.getPeerTitle(originalMessage.fromID, true) || '';
 
           this.log('message to render reply', originalMessage, originalPeerTitle, bubble, message);
 
@@ -2018,53 +2010,15 @@ export class AppImManager {
             originalPeerTitle = 'Loading...';
           }
 
-          let originalText = '';
-          if(originalMessage.message) {
-            originalText = RichTextProcessor.wrapRichText(originalMessage.message, {
-              entities: originalMessage.totalEntities,
-              noLinebreaks: true
-            });
-          }
-
-          if(originalMessage.media) {
-            switch(originalMessage.media._) {
-              case 'messageMediaPhoto':
-                if(!originalText) originalText = 'Photo';
-                break;
-              
-              default:
-                if(!originalText) originalText = originalMessage.media._;
-                break;
-            }
-          }
-
-          nameEl.innerHTML = originalPeerTitle;
-          textDiv.innerHTML = originalText;
-
-          quote.append(nameEl, textDiv);
-          box.append(quote);
-
           if(originalMessage.mid) {
             bubble.setAttribute('data-original-mid', originalMessage.mid);
           } else {
             bubble.setAttribute('data-original-mid', message.reply_to_mid);
           }
 
-          bubble.append(box);
+          bubble.append(wrapReply(originalPeerTitle, originalMessage.message || '', originalMessage.media));
           bubble.classList.add('is-reply');
         }
-
-        /* if(message.media) {
-          switch(message.media._) {
-            case 'messageMediaWebPage': {
-              let nameDiv = document.createElement('div');
-              nameDiv.classList.add('name');
-              nameDiv.innerText = title;
-              bubble.append(nameDiv);
-              break;
-            }
-          }
-        } */
 
         if(!bubble.classList.contains('sticker') && (peerID < 0 && peerID != message.fromID)) {
           let nameDiv = document.createElement('div');
