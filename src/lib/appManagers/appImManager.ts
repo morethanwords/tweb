@@ -475,13 +475,14 @@ class ChatInput {
         noWebPage: this.noWebPage,
         webPage: this.willSendWebPage
       });
+
+      appImManager.scroll.scrollTop = appImManager.scroll.scrollHeight;
     }
     
     this.editMsgID = 0;
     this.replyToMsgID = 0;
     this.noWebPage = false;
     this.replyElements.container.classList.remove('active');
-    appImManager.scroll.scrollTop = appImManager.scroll.scrollHeight;
     this.willSendWebPage = null;
     this.messageInput.innerText = '';
 
@@ -815,7 +816,7 @@ export class AppImManager {
           return;
         }
 
-        appMediaViewer.openMedia(message, true);
+        appMediaViewer.openMedia(message, true, target as HTMLImageElement);
       }
 
       //console.log('chatInner click', e);

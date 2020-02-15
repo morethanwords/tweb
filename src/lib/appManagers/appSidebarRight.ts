@@ -82,6 +82,10 @@ class AppSidebarRight {
   private profileTabs: HTMLUListElement;
   private prevTabID = -1;
 
+  private mediaDivsByIDs: {
+    [mid: number]: HTMLDivElement
+  } = {};
+
   constructor() {
     let container = this.profileContentEl.querySelector('.profile-tabs-content') as HTMLDivElement;
     this.profileTabs = this.profileContentEl.querySelector('.profile-tabs') as HTMLUListElement;
@@ -135,7 +139,14 @@ class AppSidebarRight {
       }
 
       let message = appMessagesManager.getMessage(messageID);
-      appMediaViewer.openMedia(message, false);
+
+      let ids = Object.keys(this.mediaDivsByIDs).map(k => +k).sort();
+      let idx = ids.findIndex(i => i == messageID);
+
+      let prev = ids[idx + 1] || null;
+      let next = ids[idx - 1] || null;
+
+      appMediaViewer.openMedia(message, false, target, this.mediaDivsByIDs[prev] || null, this.mediaDivsByIDs[next] || null);
     });
 
     this.profileElements.notificationsCheckbox.addEventListener('change', () => {
@@ -285,6 +296,8 @@ class AppSidebarRight {
                 this.sharedMedia.contentMedia.append(this.lastSharedMediaDiv);
                 this.lastSharedMediaDiv = document.createElement('div');
               }
+
+              this.mediaDivsByIDs[mid] = div;
       
               //this.sharedMedia.contentMedia.append(div);
 
@@ -351,6 +364,8 @@ class AppSidebarRight {
     this.profileElements.notificationsRow.style.display = '';
     this.profileElements.notificationsCheckbox.checked = true;
     this.profileElements.notificationsStatus.innerText = 'Enabled';
+
+    this.mediaDivsByIDs = {};
 
     this.lazyLoadQueueSidebar.clear();
 

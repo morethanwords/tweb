@@ -579,6 +579,10 @@ export function encodeEntities (value) {
 }
 
 export function calcImageInBox (imageW, imageH, boxW, boxH, noZooom) {
+  if(imageW < boxW && imageH < boxH) {
+    return {w: imageW, h: imageH};
+  }
+  
   var boxedImageW = boxW
   var boxedImageH = boxH
 

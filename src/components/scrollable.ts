@@ -66,6 +66,23 @@ export default class Scrollable {
       this.scrollType = 'scrollWidth';
       this.scrollSide = 'scrollLeft';
       this.clientAxis = 'clientX';
+
+      let scrollHorizontally = (e: any) => {
+        e = window.event || e;
+        var delta = Math.max(-1, Math.min(1, (e.wheelDelta || -e.detail)));
+        this.container.scrollLeft -= (delta * 20);
+        e.preventDefault();
+      };
+      if(this.container.addEventListener) {
+        // IE9, Chrome, Safari, Opera
+        this.container.addEventListener("mousewheel", scrollHorizontally, false);
+        // Firefox
+        this.container.addEventListener("DOMMouseScroll", scrollHorizontally, false);
+      } else {
+        // IE 6/7/8
+        // @ts-ignore
+        this.container.attachEvent("onmousewheel", scrollHorizontally);
+      }
     } else if(y) {
       this.container.classList.add('scrollable-y');
       this.type = 'height';

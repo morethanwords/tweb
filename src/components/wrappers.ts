@@ -45,7 +45,7 @@ export type MTPhotoSize = {
 };
 
 export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement, message: any, justLoader = true, preloader?: ProgressivePreloader, controls = true, round = false) {
-  if(!container.firstElementChild || container.firstElementChild.tagName != 'IMG') {
+  if(!container.firstElementChild || (container.firstElementChild.tagName != 'IMG' && container.firstElementChild.tagName != 'VIDEO')) {
     let size = appPhotosManager.setAttachmentSize(doc, container);
   }
   
@@ -220,6 +220,13 @@ export function wrapDocument(doc: MTDocument, withTime = false): HTMLDivElement 
       promise = null;
     }
   });
+
+  /* apiFileManager.getDownloadedFile(Object.assign({}, doc, {_: 'inputDocumentFileLocation'})).then(() => {
+    downloadDiv.classList.remove('downloading');
+    downloadDiv.remove();
+  }, () => {
+
+  }); */
   
   return docDiv;
 }

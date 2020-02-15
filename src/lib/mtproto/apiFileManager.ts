@@ -241,9 +241,11 @@ export class ApiFileManager {
     });
   }
 
-  public getDownloadedFile(location: any, size: any) {
+  public getDownloadedFile(location: any, size?: any) {
     var fileStorage = this.getFileStorage();
-    var fileName = this.getFileName(location);
+    var fileName = typeof(location) !== 'string' ? this.getFileName(location) : location;
+
+    //console.log('getDownloadedFile', location, fileName);
 
     return fileStorage.getFile(fileName, size);
   }
@@ -274,7 +276,7 @@ export class ApiFileManager {
     var cachedPromise = this.cachedSavePromises[fileName] || this.cachedDownloadPromises[fileName];
     var fileStorage = this.getFileStorage();
 
-    //this.log('downloadFile', fileStorage.name, fileName, fileName.length, location, arguments);
+    this.log('downloadFile', fileStorage.name, fileName, fileName.length, location, arguments);
 
     if(cachedPromise) {
       if(toFileEntry) {

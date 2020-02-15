@@ -776,7 +776,8 @@
 				}
 				
 				&.forwarded .attachment,
-				&.is-reply .attachment/* ,
+				&.is-reply .attachment,
+				&:not(.hide-name) .message-empty + .attachment/* ,
 				&:not(.hide-name):not(.sticker) .attachment */ {
 					border-top-left-radius: 0;
 					border-top-right-radius: 0;

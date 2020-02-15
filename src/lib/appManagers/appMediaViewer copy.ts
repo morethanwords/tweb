@@ -13,7 +13,6 @@ import { wrapVideo } from "../../components/wrappers";
 
 export class AppMediaViewer {
   private overlaysDiv = document.querySelector('.overlays') as HTMLDivElement;
-  private mediaViewerDiv = this.overlaysDiv.firstElementChild as HTMLDivElement;
   private author = {
     avatarEl: this.overlaysDiv.querySelector('.user-avatar') as HTMLDivElement,
     nameEl: this.overlaysDiv.querySelector('.media-viewer-name') as HTMLDivElement,
@@ -38,10 +37,7 @@ export class AppMediaViewer {
   private higherMsgID: number | undefined = 0;
   private lowerMsgID: number | undefined = 0;
   private preloader: ProgressivePreloader = null;
-
   private lastTarget: HTMLElement = null;
-  private prevTarget: HTMLElement = null;
-  private nextTarget: HTMLElement = null;
 
   public log: ReturnType<typeof logger>; 
   
@@ -57,7 +53,7 @@ export class AppMediaViewer {
       this.setMoverToTarget(this.lastTarget, true);
     });
     
-    /* this.buttons.prev.addEventListener('click', () => {
+    this.buttons.prev.addEventListener('click', () => {
       let id = this.reverse ? this.lowerMsgID : this.higherMsgID;
       if(id) {
         this.openMedia(appMessagesManager.getMessage(id), this.reverse);
@@ -73,36 +69,11 @@ export class AppMediaViewer {
       } else {
         this.buttons.next.style.display = 'none';
       }
-    }); */
-    this.buttons.prev.addEventListener('click', () => {
-      let target = this.prevTarget;
-      if(target) {
-        target.click();
-      } else {
-        this.buttons.prev.style.display = 'none';
-      }
-    });
-    
-    this.buttons.next.addEventListener('click', () => {
-      let target = this.nextTarget;
-      if(target) {
-        target.click();
-      } else {
-        this.buttons.next.style.display = 'none';
-      }
     });
 
     this.buttons.download.addEventListener('click', () => {
       let message = appMessagesManager.getMessage(this.currentMessageID);
       appPhotosManager.downloadPhoto(message.media.photo.id);
-    });
-
-    this.overlaysDiv.addEventListener('click', (e) => {
-      let target = e.target as HTMLElement;
-
-      if(target == this.mediaViewerDiv || target.tagName == 'IMG') {
-        this.buttons.close.click();
-      }
     });
     /* this.buttons.prev.onclick = (e) => {
       let history = appSidebarRight.historiesStorage[$rootScope.selectedPeerID]['inputMessagesFilterPhotoVideo'].slice();
@@ -179,12 +150,9 @@ export class AppMediaViewer {
     }
 
     let rect = target.getBoundingClientRect();
-    let containerRect = this.content.container.getBoundingClientRect();
-    let scaleX = rect.width / containerRect.width;
-    let scaleY = rect.height / containerRect.height;
-    mover.style.transform = `translate(${rect.left}px, ${rect.top}px) scale(${scaleX}, ${scaleY})`;
-    mover.style.width = containerRect.width + 'px';
-    mover.style.height = containerRect.height + 'px';
+    mover.style.transform = `translate(${rect.left}px, ${rect.top}px)`;
+    mover.style.width = rect.width + 'px';
+    mover.style.height = rect.height + 'px';
 
     if(!closing) {
       let img: HTMLImageElement;
@@ -198,12 +166,12 @@ export class AppMediaViewer {
         img = new Image();
         img.src = (target as HTMLImageElement).src;
         img.style.objectFit = 'contain';
-      } else if(target.tagName == 'VIDEO') {
-        video = document.createElement('video');
+      }/*  else if(target.tagName == 'VIDEO') {
+        let video = document.createElement('video');
         let source = document.createElement('source');
         source.src = target.querySelector('source').src;
         video.append(source);
-      }
+      } */
 
       if(img) {
         mover.appendChild(img);
@@ -216,29 +184,20 @@ export class AppMediaViewer {
     } else {
       setTimeout(() => {
         this.overlaysDiv.classList.remove('active');
-      }, 125);
-      setTimeout(() => {
-        mover.innerHTML = '';
         mover.classList.remove('active');
         mover.style.display = 'none';
       }, 250);
     }
-
-    return () => {
-      mover.style.transform = `translate(${containerRect.left}px, ${containerRect.top}px) scale(1, 1)`;
-    };
   }
   
-  public openMedia(message: any, reverse = false, target?: HTMLElement, prevTarget?: HTMLElement, nextTarget?: HTMLElement) {
-    this.log('openMedia doc:', message, prevTarget, nextTarget);
+  public openMedia(message: any, reverse = false, target?: HTMLElement) {
+    this.log('openMedia doc:', message);
     let media = message.media.photo || message.media.document || message.media.webpage.document || message.media.webpage.photo;
     
     let isVideo = media.mime_type == 'video/mp4';
     
     this.currentMessageID = message.mid;
     this.reverse = reverse;
-    this.prevTarget = prevTarget || null;
-    this.nextTarget = nextTarget || null;
     
     let container = this.content.container;
     
@@ -272,30 +231,30 @@ export class AppMediaViewer {
     // ok set
     let mover = this.content.mover;
 
+    let rect = target.getBoundingClientRect();
+      
     this.lastTarget = target;
-    //this.setMoverToTarget(target);
+    this.setMoverToTarget(target);
     let maxWidth = appPhotosManager.windowW - 16;
     let maxHeight = appPhotosManager.windowH - 100;
     if(isVideo) {
       //this.preloader.attach(container);
       //this.preloader.setProgress(75);
 
+      this.log('will wrap video');
+
       let size = appPhotosManager.setAttachmentSize(media, container, maxWidth, maxHeight);
-
-      this.log('will wrap video', media, size);
-
-      let afterTimeout = this.setMoverToTarget(target);
-      
-      setTimeout(() => {
-        afterTimeout();
-
-        wrapVideo.call(this, media, mover, message, false, this.preloader).then(() => {
-          if(this.currentMessageID != message.mid) {
-            this.log.warn('media viewer changed video');
-            return;
-          }
-        });
+      let containerRect = container.getBoundingClientRect();
+      let scaleX = containerRect.width / rect.width;
+      let scaleY = containerRect.height / rect.height;
+      mover.style.transform = `translate(${containerRect.left}px, ${containerRect.top}px) scale(${scaleX}, ${scaleY})`;
+      wrapVideo.call(this, media, mover, message, false, this.preloader).then(() => {
+        if(this.currentMessageID != message.mid) {
+          this.log.warn('media viewer changed video');
+          return;
+        }
       });
+
 
       /* appPhotosManager.setAttachmentSize(media, container, appPhotosManager.windowW, appPhotosManager.windowH);
       wrapVideo.call(this, media, container, message, false, this.preloader).then(() => {
@@ -311,33 +270,39 @@ export class AppMediaViewer {
     } else {
       let size = appPhotosManager.setAttachmentSize(media.id, container, maxWidth, maxHeight);
 
-      let afterTimeout = this.setMoverToTarget(target);
+      let containerRect = container.getBoundingClientRect();
+      let scaleX = containerRect.width / rect.width;
+      let scaleY = containerRect.height / rect.height;
+      mover.style.transform = `translate(${containerRect.left}px, ${containerRect.top}px) scale(${scaleX}, ${scaleY})`;
       
-      setTimeout(() => {
-        afterTimeout();
-        this.preloader.attach(mover);
+      this.preloader.attach(mover);
+      //this.preloader.setProgress(75);
+      
+      let cancellablePromise = appPhotosManager.preloadPhoto(media.id, size);
+      cancellablePromise.then((blob) => {
+        if(this.currentMessageID != message.mid) {
+          this.log.warn('media viewer changed photo');
+          return;
+        }
+        
+        this.log('indochina', blob);
 
-        let cancellablePromise = appPhotosManager.preloadPhoto(media.id, size);
-        cancellablePromise.then((blob) => {
-          if(this.currentMessageID != message.mid) {
-            this.log.warn('media viewer changed photo');
-            return;
-          }
-          
-          this.log('indochina', blob);
+        let image = mover.firstElementChild as HTMLImageElement || new Image();
+        image.src = URL.createObjectURL(blob);
+        mover.append(image);
 
-          let image = mover.firstElementChild as HTMLImageElement || new Image();
-          image.src = URL.createObjectURL(blob);
-          mover.append(image);
-
-          this.preloader.detach();
-        }).catch(err => {
-          this.log.error(err);
-        });
-      }, 0);
+        /* container.classList.remove('loading');
+        
+        container.style.width = '';
+        container.style.height = ''; */
+        
+        this.preloader.detach();
+      }).catch(err => {
+        this.log.error(err);
+      });
     }
     
-    /* let history = appSidebarRight.historiesStorage[$rootScope.selectedPeerID]['inputMessagesFilterPhotoVideo'].slice();
+    let history = appSidebarRight.historiesStorage[$rootScope.selectedPeerID]['inputMessagesFilterPhotoVideo'].slice();
     let index = history.findIndex(m => m == message.mid);
     let comparer = (mid: number) => {
       let _message = appMessagesManager.getMessage(mid);
@@ -356,10 +321,7 @@ export class AppMediaViewer {
     } else {
       this.buttons.prev.style.display = this.higherMsgID !== undefined ? '' : 'none';
       this.buttons.next.style.display = this.lowerMsgID !== undefined ? '' : 'none';
-    } */
-
-    this.buttons.prev.style.display = this.prevTarget ? '' : 'none';
-    this.buttons.next.style.display = this.nextTarget ? '' : 'none';
+    }
     
     //console.log('prev and next', prevMsgID, nextMsgID);
   }
