@@ -233,6 +233,7 @@
         </div>
       </div>
     </div>
+    <div class="media-viewer-mover" style="display: none;"></div>
     <div class="popup popup-delete-message">
       <div class="popup-container z-depth-1">
         <div class="popup-header">Do you want to delete this message?</div>
@@ -259,15 +260,18 @@
     </div>
     <div class="chats-container sidebar sidebar-left">
       <div class="sidebar-header">
-        <div class="btn-icon tgico-menu btn-menu-toggle rp sidebar-tools-button">
-          <div class="btn-menu bottom-right">
-            <div class="btn-menu-item menu-new-group tgico-newgroup rp">New Group</div>
-            <div class="btn-menu-item menu-contacts tgico-user rp">Contacts</div>
-            <div class="btn-menu-item menu-archive tgico-archive rp">Archived</div>
-            <div class="btn-menu-item menu-saved tgico-savedmessages rp">Saved</div>
-            <div class="btn-menu-item menu-settings tgico-settings rp">Settings</div>
-            <div class="btn-menu-item menu-help tgico-help rp">Help</div>
+        <div class="sidebar-header__btn-container">
+          <div class="btn-icon tgico-menu btn-menu-toggle rp sidebar-tools-button active">
+            <div class="btn-menu bottom-right">
+              <div class="btn-menu-item menu-new-group tgico-newgroup rp">New Group</div>
+              <div class="btn-menu-item menu-contacts tgico-user rp">Contacts</div>
+              <div class="btn-menu-item menu-archive tgico-archive rp">Archived <span class="archived-count"></span></div>
+              <div class="btn-menu-item menu-saved tgico-savedmessages rp">Saved</div>
+              <div class="btn-menu-item menu-settings tgico-settings rp">Settings</div>
+              <div class="btn-menu-item menu-help tgico-help rp">Help</div>
+            </div>
           </div>
+          <div class="btn-icon tgico-back rp sidebar-back-button"></div>
         </div>
         <div class="input-search">
           <input type="text" placeholder="Search" id="global-search" />
@@ -412,7 +416,7 @@
         <button class="btn-icon rp tgico-close sidebar-close-button"></button>
         <div class="sidebar-title">Info</div>
 
-        <button class="btn-icon rp tgico-edit sidebar-edit-button"></button>
+        <!-- <button class="btn-icon rp tgico-edit sidebar-edit-button"></button> -->
 
         <div class="btn-icon tgico-more rp btn-menu-toggle">
           <div class="btn-menu bottom-left">
@@ -474,4 +478,4 @@
   <script src="main.bundle.js"></script> -->
 
 </html>
-<script type="text/javascript" src="runtime.bundle.js"></script><script type="text/javascript" src="npm.aes-js.chunk.js"></script><script type="text/javascript" src="npm.jsbn.chunk.js"></script><script type="text/javascript" src="npm.leemon.chunk.js"></script><script type="text/javascript" src="npm.lottie-web.chunk.js"></script><script type="text/javascript" src="npm.web-streams-polyfill.chunk.js"></script><script type="text/javascript" src="vendors~index.chunk.js"></script><script type="text/javascript" src="index.chunk.js"></script><script type="text/javascript" src="npm.webp-hero.chunk.js"></script>
+<script type="text/javascript" src="npm.aes-js.chunk.js"></script><script type="text/javascript" src="npm.jsbn.chunk.js"></script><script type="text/javascript" src="npm.leemon.chunk.js"></script><script type="text/javascript" src="npm.lottie-web.chunk.js"></script><script type="text/javascript" src="npm.web-streams-polyfill.chunk.js"></script><script type="text/javascript" src="vendors~index.chunk.js"></script><script type="text/javascript" src="index.bundle.js"></script><script type="text/javascript" src="webp.bundle.js"></script>

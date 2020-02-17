@@ -108,7 +108,7 @@ class AppSidebarLeft {
     }
     
     this.savedBtn.addEventListener('click', (e) => {
-      this.log('savedbtn click');
+      ///////this.log('savedbtn click');
       setTimeout(() => { // menu doesn't close if no timeout (lol)
         let dom = appDialogsManager.getDialogDom(appImManager.myID);
         if(dom) {
@@ -158,7 +158,7 @@ class AppSidebarLeft {
           this.toolsBtn.classList.add('active');
           this.backBtn.classList.remove('active');
           this.searchContainer.classList.remove('active');
-          
+          this.backBtn.click();
 
           /* setTimeout(() => {
             //this.toolsBtn.click();
@@ -175,9 +175,10 @@ class AppSidebarLeft {
     this.searchInput.addEventListener('input', (e) => {
       //console.log('messageInput input', this.innerText, serializeNodes(Array.from(messageInput.childNodes)));
       let value = this.searchInput.value;
-      this.log('input', value);
+      ////////this.log('input', value);
       
       if(!value.trim()) {
+        //this.peerID = 0;
         return;
       }
       
@@ -199,6 +200,9 @@ class AppSidebarLeft {
       this.chatsArchivedContainer.classList.remove('active');
       this.toolsBtn.classList.add('active');
       this.backBtn.classList.remove('active');
+      this.searchInput.value = '';
+      this.searchContainer.classList.remove('active');
+      this.peerID = 0;
     });
     
     window.addEventListener('resize', () => {
@@ -249,7 +253,7 @@ class AppSidebarLeft {
         this.archivedCount.innerText = '' + count;
       } */
 
-      this.log('loaded ' + this.chatsLoadCount + ' dialogs by offset:', offset, result, this.scroll.hiddenElements);
+      /////this.log('loaded ' + this.chatsLoadCount + ' dialogs by offset:', offset, result, this.scroll.hiddenElements);
       this.scroll.onScroll();
     } catch(err) {
       this.log.error(err);
@@ -340,7 +344,7 @@ class AppSidebarLeft {
           return;
         }
 
-        this.log('input search contacts result:', contacts);
+        ///////this.log('input search contacts result:', contacts);
 
         let setResults = (results: any, group: SearchGroup, showMembersCount = false) => {
           results.forEach((inputPeer: any) => {
@@ -348,10 +352,10 @@ class AppSidebarLeft {
             let peer = appPeersManager.getPeer(peerID);
             let originalDialog = appMessagesManager.getDialogByPeerID(peerID)[0];
 
-            this.log('contacts peer', peer);
+            //////////this.log('contacts peer', peer);
           
             if(!originalDialog) {
-              this.log('no original dialog by peerID:', peerID);
+              /////////this.log('no original dialog by peerID:', peerID);
               
               originalDialog = {
                 peerID: peerID,
@@ -399,7 +403,7 @@ class AppSidebarLeft {
         return;
       }
       
-      this.log('input search result:', this.peerID, query, null, maxID, 20, res);
+      /////////this.log('input search result:', this.peerID, query, null, maxID, 20, res);
       
       let {count, history, next_rate} = res;
       
@@ -415,7 +419,7 @@ class AppSidebarLeft {
         let originalDialog = appMessagesManager.getDialogByPeerID(message.peerID)[0];
         
         if(!originalDialog) {
-          this.log('no original dialog by message:', message);
+          ////////this.log('no original dialog by message:', message);
           
           originalDialog = {
             peerID: message.peerID,

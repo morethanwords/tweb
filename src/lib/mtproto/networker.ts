@@ -249,7 +249,7 @@ class MTPNetworker {
     let serializer = new TLSerialization(options);
   
     if(!this.connectionInited) { // this will call once for each new session
-      this.log('Wrap api call !this.connectionInited');
+      ///////this.log('Wrap api call !this.connectionInited');
       
       let invokeWithLayer = Config.Schema.API.methods.find((m: any) => m.method == 'invokeWithLayer');
       if(!invokeWithLayer) throw new Error('no invokeWithLayer!');
@@ -291,9 +291,9 @@ class MTPNetworker {
   
     options.resultType = serializer.storeMethod(method, params);
 
-    if(method == 'account.updateNotifySettings') {
+    /* if(method == 'account.updateNotifySettings') {
       this.log('api call body:', serializer.getBytes(true));
-    }
+    } */
   
     var messageID = timeManager.generateID();
     var seqNo = this.generateSeqNo();
@@ -304,10 +304,10 @@ class MTPNetworker {
       isAPI: true
     };
   
-    if(Config.Modes.debug || true) {
+    if(Config.Modes.debug/*  || true */) {
       this.log('Api call', method, message, params, options);
     } else {
-      this.log('Api call', method);
+      //////this.log('Api call', method);
     }
   
     return this.pushMessage(message, options);
@@ -1209,7 +1209,7 @@ class MTPNetworker {
 
             if(sentMessage.isAPI && !this.connectionInited) {
               this.connectionInited = true;
-              this.log('Rpc set connectionInited to:', this.connectionInited, this);
+              ////this.log('Rpc set connectionInited to:', this.connectionInited);
             }
           }
   

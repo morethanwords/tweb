@@ -331,7 +331,7 @@ export function addPadding(bytes: any, blockSize: number = 16, zeroes?: boolean,
   let len = bytes.byteLength || bytes.length;
   let needPadding = blockSize - (len % blockSize);
   if(needPadding > 0 && (needPadding < blockSize || full)) {
-    console.log('addPadding()', len, blockSize, needPadding);
+    ////console.log('addPadding()', len, blockSize, needPadding);
     let padding = new Array(needPadding);
     if(zeroes) {
       for(let i = 0; i < needPadding; i++) {

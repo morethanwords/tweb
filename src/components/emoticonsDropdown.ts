@@ -111,7 +111,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
     categories.pop();
     delete sorted["Skin Tones"];
 
-    console.time('emojiParse');
+    //console.time('emojiParse');
     for(let category in sorted) {
       let div = document.createElement('div');
       div.classList.add('emoji-category');
@@ -141,7 +141,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
 
       divs[category] = div;
     }
-    console.timeEnd('emojiParse');
+    //console.timeEnd('emojiParse');
 
     let heights: number[] = [0];
 

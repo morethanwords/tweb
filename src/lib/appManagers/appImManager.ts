@@ -672,13 +672,13 @@ export class AppImManager {
     $rootScope.$on('message_sent', (e: CustomEvent) => {
       let {tempID, mid} = e.detail;
 
-      this.log('message_sent', e.detail);
+      ////this.log('message_sent', e.detail);
 
       let bubble = this.bubbles[tempID];
       if(bubble) {
         this.bubbles[mid] = bubble;
 
-        this.log('message_sent', bubble);
+        /////this.log('message_sent', bubble);
 
         let media = bubble.querySelector('img, video');
         if(media) {
@@ -719,7 +719,7 @@ export class AppImManager {
       mids.forEach(mid => {
         if(this.pinnedMsgID == mid) {
           let message = appMessagesManager.getMessage(mid);
-          this.log('setting pinned message', message);
+          /////this.log('setting pinned message', message);
           this.pinnedMessageContainer.dataset.mid = '' + mid;
           this.pinnedMessageContainer.style.display = '';
           this.pinnedMessageContent.innerHTML = RichTextProcessor.wrapEmojiText(message.message);
@@ -803,7 +803,7 @@ export class AppImManager {
           let splitted = savedFrom.split('_');
           let peerID = +splitted[0];
           let msgID = +splitted[1];
-          this.log('savedFrom', peerID, msgID);
+          ////this.log('savedFrom', peerID, msgID);
           this.setPeer(peerID, msgID, true);
           return;
         } else if(target.classList.contains('user-avatar') || target.classList.contains('name')) {
@@ -858,7 +858,7 @@ export class AppImManager {
         let prevTarget = this.bubbles[prev] ? this.bubbles[prev].querySelector('img, video') as HTMLElement : null;
         let nextTarget = this.bubbles[next] ? this.bubbles[next].querySelector('img, video') as HTMLElement : null;
 
-        this.log('ids', ids, idx, this.bubbles[prev], this.bubbles[next]);
+        /////this.log('ids', ids, idx, this.bubbles[prev], this.bubbles[next]);
 
         appMediaViewer.openMedia(message, target, nextTarget, prevTarget);
 
@@ -977,7 +977,7 @@ export class AppImManager {
         //this.contextMenu.classList.add('active');
         openBtnMenu(this.contextMenu);
 
-        this.log('contextmenu', e, bubble, msgID, side);
+        /////this.log('contextmenu', e, bubble, msgID, side);
       }
     });
 
@@ -1041,7 +1041,7 @@ export class AppImManager {
         peer: appPeersManager.getInputPeerByID(this.peerID),
         id: this.contextMenuMsgID
       }).then(updates => {
-        this.log('pinned updates:', updates);
+        /////this.log('pinned updates:', updates);
         apiUpdatesManager.processUpdateMessage(updates);
       });
     });
@@ -1082,7 +1082,7 @@ export class AppImManager {
       revoke: revoke,
       id: ids
     }).then((affectedMessages: any) => {
-      this.log('deleted messages:', affectedMessages);
+      /////this.log('deleted messages:', affectedMessages);
 
       apiUpdatesManager.processUpdateMessage({
         _: 'updateShort',
@@ -1143,7 +1143,7 @@ export class AppImManager {
     let woo = this.loadMediaQueue.splice(-5, 5).reverse().map(f => f());
 
     if(woo.length) {
-      this.log('Will load more media:', woo.length);
+      ///this.log('Will load more media:', woo.length);
 
       woo.forEach(async(promise) => {
         try {
@@ -1276,7 +1276,7 @@ export class AppImManager {
             if(isElementInViewport(bubble)) {
               willLoad = true;
   
-              this.log('Will load more (up) history by id:', history[0], 'maxID:', history[history.length - 1], history, bubble);
+              ////this.log('Will load more (up) history by id:', history[0], 'maxID:', history[history.length - 1], history, bubble);
               /* false &&  */!testScroll && this.getHistory(history[0], true).then(() => { // uncomment
                 this.onScroll();
               }).catch(err => {
@@ -1305,7 +1305,7 @@ export class AppImManager {
             if(isElementInViewport(bubble)) {
               willLoad = true;
   
-              this.log('Will load more (down) history by maxID:', lastMsgIDs[lastMsgIDs.length - 1], lastMsgIDs, bubble);
+              ////this.log('Will load more (down) history by maxID:', lastMsgIDs[lastMsgIDs.length - 1], lastMsgIDs, bubble);
               /* false &&  */!testScroll && this.getHistory(lastMsgIDs[lastMsgIDs.length - 1], false, true).then(() => { // uncomment
                 this.onScroll();
               }).catch(err => {
@@ -1339,7 +1339,7 @@ export class AppImManager {
       let chat = appPeersManager.getPeer(this.peerID);
       let isChannel = appPeersManager.isChannel(this.peerID) && !appPeersManager.isMegagroup(this.peerID);
 
-      this.log('setPeerStatus', chat);
+      ///////this.log('setPeerStatus', chat);
     
       Promise.all([
         appPeersManager.isMegagroup(this.peerID) ? apiManager.invokeApi('messages.getOnlines', {
@@ -1352,7 +1352,7 @@ export class AppImManager {
 
         let onlines = chatOnlines ? chatOnlines.onlines : 1;
 
-        this.log('chatInfo res:', chatInfo);
+        ///////////this.log('chatInfo res:', chatInfo);
 
         if(chatInfo.pinned_msg_id) { // request pinned message
           this.pinnedMsgID = chatInfo.pinned_msg_id;
@@ -1502,7 +1502,7 @@ export class AppImManager {
     this.preloader.attach(this.chatInner);
 
     let dialog = appMessagesManager.getDialogByPeerID(this.peerID)[0] || null;
-    this.log('setPeer peerID:', this.peerID, dialog, lastMsgID);
+    //////this.log('setPeer peerID:', this.peerID, dialog, lastMsgID);
     appDialogsManager.loadDialogPhoto(this.avatarEl, this.peerID);
     appDialogsManager.loadDialogPhoto(appSidebarRight.profileElements.avatar, this.peerID);
     if(!samePeer && appDialogsManager.lastActiveListElement) {
@@ -1538,12 +1538,12 @@ export class AppImManager {
 
     return this.setPeerPromise = Promise.all([
       this.getHistory(forwarding ? lastMsgID + 1 : lastMsgID).then(() => {
-        this.log('setPeer removing preloader');
+        ////this.log('setPeer removing preloader');
 
         if(lastMsgID) {
           if(!forwarding) {
             let message = appMessagesManager.getMessage(lastMsgID);
-            this.log('setPeer render last message:', message, lastMsgID);
+            //////this.log('setPeer render last message:', message, lastMsgID);
             this.renderMessage(message);
           }
 
@@ -1609,7 +1609,7 @@ export class AppImManager {
   public updateUnreadByDialog(dialog: any) {
     let maxID = this.peerID == this.myID ? dialog.read_inbox_max_id : dialog.read_outbox_max_id;
 
-    this.log('updateUnreadByDialog', maxID, dialog, this.unreadOut);
+    ///////this.log('updateUnreadByDialog', maxID, dialog, this.unreadOut);
 
     let length = this.unreadOut.length;
     for(let i = length - 1; i >= 0; --i) {
@@ -1629,7 +1629,7 @@ export class AppImManager {
         let dialog = appMessagesManager.getDialogByPeerID(this.peerID)[0];
 
         if(dialog) {
-          this.log('setting firstTopMsgID after delete:', id, dialog.top_message, dialog);
+          ///////this.log('setting firstTopMsgID after delete:', id, dialog.top_message, dialog);
           this.firstTopMsgID = dialog.top_message;
         }
       }
@@ -1651,14 +1651,14 @@ export class AppImManager {
 
   public renderMessagesByIDs(msgIDs: number[]) {
     if(!this.bubbles[this.firstTopMsgID] && Object.keys(this.bubbles).length) { // seems search active
-      this.log('seems search is active, skipping render:', msgIDs);
+      //////this.log('seems search is active, skipping render:', msgIDs);
       return;
     }
 
     msgIDs.forEach((msgID: number) => {
       let message = appMessagesManager.getMessage(msgID);
 
-      this.log('got new message to append:', message);
+      /////////this.log('got new message to append:', message);
 
       //this.unreaded.push(msgID);
       this.renderMessage(message);
@@ -1666,7 +1666,7 @@ export class AppImManager {
   }
 
   public renderMessage(message: any, reverse = false, multipleRender?: boolean, bubble: HTMLDivElement = null, updatePosition = true) {
-    this.log('message to render:', message);
+    /////this.log('message to render:', message);
     if(message.deleted) return;
 
     let peerID = this.peerID;
@@ -1817,7 +1817,7 @@ export class AppImManager {
 
         case 'messageMediaPhoto': {
           let photo = message.media.photo;
-          this.log('messageMediaPhoto', photo);
+          ////////this.log('messageMediaPhoto', photo);
 
           bubble.classList.add('hide-name', 'photo');
 
@@ -1829,7 +1829,7 @@ export class AppImManager {
           processingWebPage = true;
 
           let webpage = message.media.webpage;
-          this.log('messageMediaWebPage', webpage);
+          ////////this.log('messageMediaWebPage', webpage);
           if(webpage._ == 'webPageEmpty') {
             break;
           } 
@@ -1911,7 +1911,7 @@ export class AppImManager {
             break;
           } */
 
-          this.log('messageMediaDocument', doc);
+          ////////this.log('messageMediaDocument', doc);
 
           if(doc.sticker && doc.size <= 1e6) {
             bubble.classList.add('sticker');
@@ -1942,7 +1942,7 @@ export class AppImManager {
 
             break;
           } else if(doc.mime_type == 'video/mp4' && doc.size <= 20e6) {
-            this.log('never get free 2', doc);
+            ////////this.log('never get free 2', doc);
 
             if(doc.type == 'round') {
               bubble.classList.add('round');
@@ -1981,7 +1981,7 @@ export class AppImManager {
 
       let isHidden = message.fwd_from && !message.fwd_from.from_id && !message.fwd_from.channel_id;
       if(isHidden) {
-        this.log('message to render hidden', message);
+        ///////this.log('message to render hidden', message);
         title = message.fwd_from.from_name;
         bubble.classList.add('hidden-profile');
       }
@@ -2018,11 +2018,11 @@ export class AppImManager {
           let originalMessage = appMessagesManager.getMessage(message.reply_to_mid);
           let originalPeerTitle = appPeersManager.getPeerTitle(originalMessage.fromID, true) || '';
 
-          this.log('message to render reply', originalMessage, originalPeerTitle, bubble, message);
+          /////////this.log('message to render reply', originalMessage, originalPeerTitle, bubble, message);
 
           // need to download separately
           if(originalMessage._ == 'messageEmpty') {
-            this.log('message to render reply empty, need download', message, message.reply_to_mid);
+            //////////this.log('message to render reply empty, need download', message, message.reply_to_mid);
             appMessagesManager.wrapSingleMessage(message.reply_to_mid);
             this.needUpdate.push({replyMid: message.reply_to_mid, mid: message.mid});
 
@@ -2063,7 +2063,7 @@ export class AppImManager {
         let avatarDiv = document.createElement('div');
         avatarDiv.classList.add('user-avatar');
     
-        this.log('exec loadDialogPhoto', message);
+        /////////this.log('exec loadDialogPhoto', message);
         if(message.fromID) { // if no - user hidden
           appDialogsManager.loadDialogPhoto(avatarDiv, message.fromID);
         } else if(!title && message.fwd_from && message.fwd_from.from_name) {
@@ -2091,8 +2091,12 @@ export class AppImManager {
       name.dataset.peerID = message.fromID;
       name.innerHTML = title;
 
+      let _ = action._;
+      if(_ == "messageActionPhoneCall") {
+        _ += '.' + action.type;
+      }
       // @ts-ignore
-      let str = name.outerHTML + ' ' + langPack[action._];
+      let str = (name.innerText ? name.outerHTML + ' ' : '') + langPack[_];
       bubble.innerHTML = `<div class="service-msg">${str}</div>`;
     }
   
@@ -2153,7 +2157,7 @@ export class AppImManager {
         let div = document.createElement('div');
         div.classList.add('service');
         div.innerHTML = `<div class="service-msg">${str}</div>`;
-        this.log('need to render date message', dateTimestamp, str);
+        ////////this.log('need to render date message', dateTimestamp, str);
         
         this.dateMessages[dateTimestamp] = {
           div, 
@@ -2203,8 +2207,8 @@ export class AppImManager {
       return Promise.resolve(true);
     }
 
-    console.time('render getHistory');
-    console.time('render history total');
+    //console.time('render getHistory');
+    //console.time('render history total');
 
     let backLimit = 0;
     if(isBackLimit) {
@@ -2215,18 +2219,18 @@ export class AppImManager {
 
     return this.getHistoryPromise = appMessagesManager.getHistory(this.peerID, maxID, loadCount, backLimit)
     .then((result: any) => {
-      this.log('getHistory result by maxID:', maxID, reverse, isBackLimit, result);
+      ///////this.log('getHistory result by maxID:', maxID, reverse, isBackLimit, result);
 
-      console.timeEnd('render getHistory');
+      //console.timeEnd('render getHistory');
 
       if(this.peerID != peerID) {
         this.log.warn('peer changed');
-        console.timeEnd('render history total');
+        //console.timeEnd('render history total');
         return Promise.reject();
       }
 
       if(!result || !result.history) {
-        console.timeEnd('render history total');
+        //console.timeEnd('render history total');
         return true;
       }
 
@@ -2245,7 +2249,7 @@ export class AppImManager {
       
       if(reverse) history.reverse();
 
-      console.time('render history');
+      //console.time('render history');
 
       if(!isBackLimit) {
         this.scrollPosition.prepareFor(reverse ? 'up' : 'down');
@@ -2264,11 +2268,11 @@ export class AppImManager {
         this.scrollPosition.restore();
       }
 
-      console.timeEnd('render history');
+      //console.timeEnd('render history');
 
       this.getHistoryPromise = undefined;
 
-      console.timeEnd('render history total');
+      //console.timeEnd('render history total');
 
       return true;
     });
@@ -2412,7 +2416,7 @@ export class AppImManager {
           this.setMutedState(muted);
         }
 
-        this.log('updateNotifySettings', peerID, notify_settings);
+        /////this.log('updateNotifySettings', peerID, notify_settings);
         break;
       }
 
@@ -2420,7 +2424,7 @@ export class AppImManager {
       case 'updateUserPinnedMessage': {
         let {id} = update;
 
-        this.log('updateUserPinnedMessage', update);
+        /////this.log('updateUserPinnedMessage', update);
 
         this.pinnedMsgID = id;
         // hz nado li tut appMessagesIDsManager.getFullMessageID(update.max_id, channelID);

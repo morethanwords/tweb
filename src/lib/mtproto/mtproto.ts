@@ -73,4 +73,4 @@ export namespace MTProto {
   export const serverTimeManager = ServerTimeManager;
 }
 
-(window as any).MTProto = MTProto;
+//(window as any).MTProto = MTProto;

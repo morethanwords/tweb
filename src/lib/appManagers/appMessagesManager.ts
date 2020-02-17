@@ -901,7 +901,7 @@ export class AppMessagesManager {
     }, {
       timeout: 300
     }).then((dialogsResult: any) => {
-      console.log('messages.getDialogs result:', dialogsResult);
+      ///////console.log('messages.getDialogs result:', dialogsResult);
 
       if(!offsetDate) {
         telegramMeWebService.setAuthorized(true);
@@ -1834,7 +1834,7 @@ export class AppMessagesManager {
       this.lastSearchResults = [];
     }
 
-    console.log(dT(), 'search', useSearchCache, sameSearchCache, this.lastSearchResults, maxID);
+    //console.log(dT(), 'search', useSearchCache, sameSearchCache, this.lastSearchResults, maxID);
 
     if(peerID && !maxID && !query) {
       var historyStorage = this.historiesStorage[peerID];
@@ -1991,7 +1991,7 @@ export class AppMessagesManager {
       appChatsManager.saveApiChats(searchResult.chats);
       this.saveMessages(searchResult.messages);
 
-      console.log('messages.search result:', searchResult);
+      ///////////console.log('messages.search result:', searchResult);
 
       var foundCount: number = searchResult.count || searchResult.messages.length;
 
@@ -2140,11 +2140,11 @@ export class AppMessagesManager {
         }
 
         foundDialog.unread_count = index == -1 ? 0 : index;
-        console.log('readHistory set unread_count to:', foundDialog.unread_count, foundDialog);
+        ////////console.log('readHistory set unread_count to:', foundDialog.unread_count, foundDialog);
         $rootScope.$broadcast('dialog_unread', {peerID: peerID, count: foundDialog.unread_count});
         $rootScope.$broadcast('messages_read');
         if(historyStorage && historyStorage.history.length) {
-          console.warn('readPromise:', index, historyStorage.history[index != -1 ? index : 0]);
+          ////////console.warn('readPromise:', index, historyStorage.history[index != -1 ? index : 0]);
           foundDialog.read_inbox_max_id = historyStorage.history[index != -1 ? index : 0];
         }
 
@@ -2233,7 +2233,7 @@ export class AppMessagesManager {
   }
 
   public handleUpdate(update: any) {
-    console.log('AMM: handleUpdate:', update._);
+    //console.log('AMM: handleUpdate:', update._);
     switch(update._) {
       case 'updateMessageID': {
         var randomID = update.random_id;
@@ -2588,7 +2588,7 @@ export class AppMessagesManager {
 
         // need be commented for read out messages
         //if(newUnreadCount != 0 || !isOut) { // fix 16.11.2019 (maybe not)
-          console.warn(dT(), 'cnt', peerID, newUnreadCount, isOut, foundDialog, update, foundAffected);
+          //////////console.warn(dT(), 'cnt', peerID, newUnreadCount, isOut, foundDialog, update, foundAffected);
           $rootScope.$broadcast('dialog_unread', {peerID: peerID, count: newUnreadCount});
         //}
 
@@ -3266,7 +3266,7 @@ export class AppMessagesManager {
       timeout: 300,
       noErrorBox: true
     }).then((historyResult: any) => {
-      console.log('requestHistory result:', historyResult);
+      ///console.log('requestHistory result:', historyResult);
 
       appUsersManager.saveApiUsers(historyResult.users);
       appChatsManager.saveApiChats(historyResult.chats);

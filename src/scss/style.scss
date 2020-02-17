@@ -453,7 +453,7 @@ input {
   }
 
   &-download {
-    z-index: 3;
+    z-index: 2;
     align-items: center;
     font-size: 24px;
     cursor: pointer;
@@ -1318,11 +1318,13 @@ div.scrollable::-webkit-scrollbar-thumb {
   &.scrollable-x {
     overflow-x: auto;
     scrollbar-width: none;
+    -ms-overflow-style: none;
   }
 
   &.scrollable-y {
     overflow-y: auto;
     scrollbar-width: none;
+    -ms-overflow-style: none;
   }
 
   &.scrollable-x ~ .scrollbar-thumb {
@@ -1378,11 +1380,11 @@ div.scrollable::-webkit-scrollbar-thumb {
     text-align: center;
     flex: 1;
     user-select: none;
+    font-size: 16px;
     
     &.active {
       position: relative;
       color: $blue;
-      font-size: 16px;
       
       &:after {
         content: '';

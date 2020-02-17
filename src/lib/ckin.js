@@ -267,7 +267,7 @@ function buildControls(skin) {
 }
 
 function attachSkin(skin) {
-	console.log("skin: " + skin);
+	//console.log("skin: " + skin);
 	if (typeof skin != 'undefined' && skin != '') {
 		return skin;
 	} else {

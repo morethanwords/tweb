@@ -18,24 +18,31 @@ class AppWebpManager {
     }); */
 
     this.webpSupported().then(res => {
-      this.loaded = new Promise((resolve, reject) => {
-        if(!res) {
-          (window as any).webpLoaded = () => {
-            console.log('webpHero loaded');
-            this.webpMachine = new (window as any).WebpMachine();
-            resolve();
-          };
-      
-          let sc = document.createElement('script');
-          sc.src = 'webp.bundle.js';
-          sc.async = true;
-          sc.onload = (window as any).webpLoaded;
-      
-          document.body.appendChild(sc);
-        } else {
+    });
+  }
+
+  public loadWebpHero() {
+    if(this.loaded) return this.loaded;
+
+    this.loaded = new Promise(async(resolve, reject) => {
+      let res = await this.webpSupported();
+
+      if(!res) {
+        (window as any).webpLoaded = () => {
+          console.log('webpHero loaded');
+          this.webpMachine = new (window as any).WebpMachine();
           resolve();
-        }
-      });
+        };
+    
+        let sc = document.createElement('script');
+        sc.src = 'npm.webp-hero.chunk.js';
+        sc.async = true;
+        sc.onload = (window as any).webpLoaded;
+    
+        document.body.appendChild(sc);
+      } else {
+        resolve();
+      }
     });
   }
 
@@ -47,7 +54,13 @@ class AppWebpManager {
   async processQueue() {
     if(this.busyPromise) return;
 
+    this.busyPromise = Promise.resolve('');
+
     let {img, bytes} = this.queue.pop();
+
+    if(!this.loaded) {
+      this.loadWebpHero();
+    }
 
     await this.loaded;
 
@@ -62,6 +75,8 @@ class AppWebpManager {
   }
 
   webpSupported() {
+    if(this.webpSupport) return this.webpSupport;
+
     return this.webpSupport = new Promise((resolve, reject) => {
       var webP = new Image();     
       webP.src = 'data:image/webp;base64,UklGRi4AAABXRUJQVlA4TCEAAAAvAUAAEB8wAiMw' + 

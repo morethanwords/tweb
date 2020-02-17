@@ -179,7 +179,7 @@ class AppSidebarRight {
   }
 
   public toggleSidebar(enable?: boolean) {
-    this.log('sidebarEl', this.sidebarEl, enable, isElementInViewport(this.sidebarEl));
+    /////this.log('sidebarEl', this.sidebarEl, enable, isElementInViewport(this.sidebarEl));
 
     /* if(enable !== undefined) {
       this.sidebarEl.style.display = enable ? 'block' : 'none';

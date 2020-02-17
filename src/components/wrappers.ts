@@ -79,7 +79,7 @@ export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement,
         return;
       }
       
-      console.log('loaded doc:', doc, blob, container);
+      ///////console.log('loaded doc:', doc, blob, container);
       
       let video = document.createElement('video');
       /* video.loop = controls;
@@ -249,7 +249,7 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
   <div class="audio-time">${durationStr}</div>
   `;
   
-  console.log('wrapping audio', doc, doc.attributes[0].waveform);
+  //////console.log('wrapping audio', doc, doc.attributes[0].waveform);
   
   let timeDiv = div.lastElementChild as HTMLDivElement;
   
@@ -303,6 +303,8 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
         let source = document.createElement('source');
         source.src = URL.createObjectURL(blob);
         source.type = doc.mime_type;
+
+        audio.volume = 1;
         
         div.removeEventListener('click', onClick);
         let toggle = div.querySelector('.audio-toggle') as HTMLDivElement;
@@ -359,6 +361,8 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
         });
         
         audio.append(source);
+        audio.style.display = 'none';
+        div.append(audio);
       });
       
       downloadDiv.classList.add('downloading');
@@ -411,7 +415,7 @@ export function wrapPhoto(this: AppImManager, photo: any, message: any, containe
     });
   };
   
-  console.log('wrapPhoto', load, container, image);
+  /////////console.log('wrapPhoto', load, container, image);
   
   return this.loadMediaQueue ? this.loadMediaQueuePush(load) : load();
 }
@@ -423,7 +427,7 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
     console.error('wrong doc for wrapSticker!', doc, div);
   }
   
-  console.log('wrap sticker', doc);
+  ///////console.log('wrap sticker', doc);
   
   if(doc.thumbs && !div.firstElementChild) {
     let thumb = doc.thumbs[0];
@@ -579,7 +583,7 @@ export function wrapReply(title: string, subtitle: string, media?: any) {
   replyContent.append(replyTitle, replySubtitle);
   div.append(replyBorder, replyContent);
   
-  console.log('wrapReply', title, subtitle, media);
+  /////////console.log('wrapReply', title, subtitle, media);
   
   return div;
 }

@@ -74,7 +74,7 @@ export function horizontalMenu(tabs: HTMLUListElement, content: HTMLDivElement, 
       target = findUpTag(target, 'LI');
     }
     
-    console.log('tabs click:', target);
+    ///////console.log('tabs click:', target);
     
     if(!target || target.classList.contains('active')) return false;
     
@@ -90,14 +90,14 @@ export function horizontalMenu(tabs: HTMLUListElement, content: HTMLDivElement, 
     let tabContent = content.children[id] as HTMLDivElement;
     tabContent.classList.add('active');
     
-    console.log('mambo rap', prevId, id);
+    /////console.log('mambo rap', prevId, id);
     
     //content.style.marginLeft = id > 0 ? (-id * 100) + '%' : '';
     let toRight = prevId < id;
     if(prevId != -1) {
       content.style.width = '200%';
       
-      console.log('mambo rap setting', toRight);
+      //////console.log('mambo rap setting', toRight);
       
       content.classList.remove('animated');
       
@@ -159,7 +159,7 @@ export function formatPhoneNumber(str: string) {
   str = str.replace(/\D/g, '');
   let phoneCode = str.slice(0, 6);
   
-  console.log('str', str, phoneCode);
+  ////console.log('str', str, phoneCode);
   
   let sortedCountries = Config.Countries.slice().sort((a, b) => b.phoneCode.length - a.phoneCode.length);
   

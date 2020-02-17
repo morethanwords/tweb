@@ -236,7 +236,7 @@ export class AppDialogsManager {
       //this.chatList.append(dom.listEl);
     });
 
-    console.log('sortDom', sorted.length, inUpper.length, chatList.childElementCount, inBottom.length);
+    //////console.log('sortDom', sorted.length, inUpper.length, chatList.childElementCount, inBottom.length);
 
     chatsHidden.up = inUpper;
     chatsHidden.down = inBottom;
@@ -247,7 +247,7 @@ export class AppDialogsManager {
       lastMessage = appMessagesManager.getMessage(dialog.top_message);
     }
 
-    console.log('setlastMessage:', lastMessage);
+    ///////console.log('setlastMessage:', lastMessage);
 
     if(lastMessage._ == 'messageEmpty') return;
 
@@ -313,7 +313,7 @@ export class AppDialogsManager {
             }
   
           default:
-            console.warn('Got unknown lastMessage.media type!', lastMessage);
+            ///////console.warn('Got unknown lastMessage.media type!', lastMessage);
             break;
         }
       }
@@ -342,7 +342,7 @@ export class AppDialogsManager {
           senderBold.innerText = str + ': ';
           //console.log(sender, senderBold.innerText);
           dom.lastMessageSpan.prepend(senderBold);
-        } else console.log('no sender', lastMessage, peerID);
+        } //////// else console.log('no sender', lastMessage, peerID);
       }
     }
 

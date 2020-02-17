@@ -49,7 +49,7 @@ export class AppUsersManager {
 
             user.sortStatus = this.getUserStatusForSort(user.status);
             $rootScope.$broadcast('user_update', userID);
-          } else console.warn('No user by id:', userID);
+          } //////else console.warn('No user by id:', userID);
           break;
   
         case 'updateUserPhoto':

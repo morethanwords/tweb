@@ -12,7 +12,7 @@ module.exports = merge(common, {
   mode: 'production',
 
   optimization: {
-    runtimeChunk: 'single',
+    //runtimeChunk: 'single',
     splitChunks: {
       chunks: 'all',
       maxInitialRequests: Infinity,

@@ -396,7 +396,7 @@ export class ApiFileManager {
           fileWriter.seek(startOffset);
           deferred.notify({done: startOffset, total: size});
 
-          this.log('deferred notify 1:', {done: startOffset, total: size});
+          /////this.log('deferred notify 1:', {done: startOffset, total: size});
         }
 
         for(offset = startOffset; offset < size; offset += limit) {
@@ -408,7 +408,7 @@ export class ApiFileManager {
           });
           Object.assign(writeFileDeferred, writeFileDeferredHelper);
 
-          this.log('offset:', startOffset);
+          ////this.log('offset:', startOffset);
 
           ;((isFinal, offset, writeFileDeferred, writeFilePromise) => {
             return this.downloadRequest(dcID, () => {
@@ -445,7 +445,7 @@ export class ApiFileManager {
                         deferred.resolve(this.cachedDownloads[fileName] = fileWriter.finalize());
                       }
                     } else {
-                      this.log('deferred notify 2:', {done: offset + limit, total: size}, deferred);
+                      ////this.log('deferred notify 2:', {done: offset + limit, total: size}, deferred);
                       deferred.notify({done: offset + limit, total: size});
                     }
                   });
@@ -584,7 +584,7 @@ export class ApiFileManager {
               return;
             }
 
-            this.log('Starting to upload file, isBig:', isBigFile, fileID, part, e.target.result);
+            //////this.log('Starting to upload file, isBig:', isBigFile, fileID, part, e.target.result);
 
             apiManager.invokeApi(method, {
               file_id: fileID,
@@ -599,7 +599,7 @@ export class ApiFileManager {
               doneParts++;
               uploadResolve();
 
-              this.log('Progress', doneParts * partSize / fileSize);
+              //////this.log('Progress', doneParts * partSize / fileSize);
               if(doneParts >= totalParts) {
                 deferred.resolve(resultInputFile);
                 resolved = true;

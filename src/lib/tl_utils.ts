@@ -68,7 +68,7 @@ class TLSerialization {
       return;
     }
   
-    console.trace('Increase buffer', this.offset, needBytes, this.maxLength);
+    ///console.trace('Increase buffer', this.offset, needBytes, this.maxLength);
     this.maxLength = Math.ceil(Math.max(this.maxLength * 2, this.offset + needBytes + 16) / 4) * 4;
     var previousBuffer = this.buffer;
     var previousArray = new Int32Array(previousBuffer);

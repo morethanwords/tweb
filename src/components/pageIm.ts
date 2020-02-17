@@ -13,7 +13,7 @@ import appSidebarLeft from "../lib/appManagers/appSidebarLeft";
 } */
 
 export default () => import('../lib/services').then(services => {
-  console.log('included services', services);
+  //console.log('included services', services);
 
   let {appImManager, appMessagesManager, appDialogsManager, apiUpdatesManager, appUsersManager} = services;
 //export default () => {
@@ -68,7 +68,7 @@ export default () => import('../lib/services').then(services => {
     for(let id in dialogs) {
       let dialog = dialogs[id];
 
-      console.log('updating dialog:', dialog);
+      /////console.log('updating dialog:', dialog);
 
       ++performed;
 
@@ -81,7 +81,7 @@ export default () => import('../lib/services').then(services => {
     }
 
     if(performed) {
-      console.log('will sortDom');
+      /////////console.log('will sortDom');
       appDialogsManager.sortDom();
       appDialogsManager.sortDom(true);
     }

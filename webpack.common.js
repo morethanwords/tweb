@@ -93,7 +93,7 @@ module.exports = {
         minifyURLs: true
       }, */
       chunks: "all",
-      excludeChunks: ['webp']
+      excludeChunks: ['npm.webp-hero']
     })
   ],
 };

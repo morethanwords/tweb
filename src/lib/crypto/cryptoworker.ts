@@ -32,7 +32,7 @@ class CryptoWorker {
 
     if(window.Worker/*  && 1 == 2 */) {
       import('./crypto.worker.js').then((CryptoWebWorker: any) => {
-        console.log(CryptoWebWorker);
+        //console.log(CryptoWebWorker);
         var tmpWorker = new CryptoWebWorker.default();
         //var tmpWorker = new Worker();
         tmpWorker.onmessage = (e: any) => {

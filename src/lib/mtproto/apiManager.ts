@@ -199,7 +199,7 @@ export class ApiManager {
     stopTime?: number,
     rawError?: any
   } = {}) {
-    this.log('Invoke api', method, params, options);
+    ///////this.log('Invoke api', method, params, options);
     
     return new Promise((resolve, reject) => {
       let rejectPromise = (error: any) => {

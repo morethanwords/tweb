@@ -146,7 +146,7 @@ export class AppMediaViewer {
       mover = this.setNewMover();
     } */
 
-    this.log('setMoverToTarget', target, closing, wasActive, fromRight);
+    ///////this.log('setMoverToTarget', target, closing, wasActive, fromRight);
 
     let rect = target.getBoundingClientRect();
     let containerRect = this.content.container.getBoundingClientRect();
@@ -182,9 +182,9 @@ export class AppMediaViewer {
 
     mover.style.transform = transform;
 
-    if(wasActive) {
+    /* if(wasActive) {
       this.log('setMoverToTarget', mover.style.transform);
-    }
+    } */
 
     if(!closing) {
       let img: HTMLImageElement;
@@ -268,14 +268,14 @@ export class AppMediaViewer {
     let rect = mover.getBoundingClientRect();
 
     let newTransform = mover.style.transform.replace(/translate\((.+?),/, /* 'translate(-' + windowW + 'px,', */ (match, p1) => {
-      this.log('replace func', match, p1);
+      /////////this.log('replace func', match, p1);
       let x = +p1.slice(0, -2);
       x = toLeft ? -rect.width : windowW;
 
       return match.replace(p1, x + 'px');
     });
 
-    this.log('set newTransform:', newTransform, mover.style.transform, toLeft);
+    ////////this.log('set newTransform:', newTransform, mover.style.transform, toLeft);
     mover.style.transform = newTransform;
 
     setTimeout(() => {
@@ -296,7 +296,7 @@ export class AppMediaViewer {
   }
   
   public openMedia(message: any, target?: HTMLElement, prevTarget?: HTMLElement, nextTarget?: HTMLElement) {
-    this.log('openMedia doc:', message, prevTarget, nextTarget);
+    ////////this.log('openMedia doc:', message, prevTarget, nextTarget);
     let media = message.media.photo || message.media.document || message.media.webpage.document || message.media.webpage.photo;
     
     let isVideo = media.mime_type == 'video/mp4';
@@ -351,7 +351,7 @@ export class AppMediaViewer {
       this.overlaysDiv.classList.add('active');
     }
 
-    this.log('wasActive:', wasActive);
+    ////////this.log('wasActive:', wasActive);
 
     let mover = this.content.mover;
 
@@ -360,7 +360,7 @@ export class AppMediaViewer {
     if(isVideo) {
       let size = appPhotosManager.setAttachmentSize(media, container, maxWidth, maxHeight);
 
-      this.log('will wrap video', media, size);
+      ////////this.log('will wrap video', media, size);
 
       let afterTimeout = this.setMoverToTarget(target, false, fromRight);
       //if(wasActive) return;
@@ -390,7 +390,7 @@ export class AppMediaViewer {
             return;
           }
           
-          this.log('indochina', blob);
+          ///////this.log('indochina', blob);
 
           let image = mover.firstElementChild as HTMLImageElement || new Image();
           image.src = URL.createObjectURL(blob);
