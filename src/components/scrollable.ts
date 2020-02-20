@@ -292,4 +292,24 @@ export default class Scrollable {
 
     //lastScrollPos = st;
   }
+
+  set scrollTop(y: number) {
+    this.container.scrollTop = y;
+  }
+
+  get scrollTop() {
+    return this.container.scrollTop;
+  }
+
+  get scrollHeight() {
+    return this.container.scrollHeight;
+  }
+
+  get parentElement() {
+    return this.container.parentElement;
+  }
+
+  get offsetHeight() {
+    return this.container.offsetHeight;
+  }
 }

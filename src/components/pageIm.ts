@@ -1,16 +1,9 @@
 //import { appImManager, appMessagesManager, appDialogsManager, apiUpdatesManager, appUsersManager } from "../lib/services";
 import { openBtnMenu } from "./misc";
-import Scrollable from './scrollable';
 
 import {stackBlurImage} from '../lib/StackBlur';
-import lottieLoader from "../lib/lottieLoader";
 
 import appSidebarLeft from "../lib/appManagers/appSidebarLeft";
-
-/* (window as any).libraryLoaded = function(lol: any) {
-  // @ts-ignore
-  console.log('libraryLoaded', lol, this, window.webpMachine);
-} */
 
 export default () => import('../lib/services').then(services => {
   //console.log('included services', services);
@@ -20,8 +13,6 @@ export default () => import('../lib/services').then(services => {
 
   let pageEl = document.body.getElementsByClassName('page-chats')[0] as HTMLDivElement;
   pageEl.style.display = '';
-
-  let chatScroll = new Scrollable(document.getElementById('bubbles') as HTMLDivElement).container;
 
   apiUpdatesManager.attach();
 
@@ -179,7 +170,7 @@ export default () => import('../lib/services').then(services => {
 
   Array.from(document.getElementsByClassName('btn-menu-toggle')).forEach((el) => {
     el.addEventListener('click', (e) => {
-      console.log('click pageIm');
+      //console.log('click pageIm');
       if(!el.classList.contains('btn-menu-toggle')) return false;
 
       //window.removeEventListener('mousemove', onMouseMove);
@@ -197,8 +188,6 @@ export default () => import('../lib/services').then(services => {
 
   appSidebarLeft.loadDialogs().then(result => {
     appSidebarLeft.onChatsScroll();
-    appImManager.setScroll(chatScroll);
-
     appSidebarLeft.loadDialogs(true);
   });
 });
