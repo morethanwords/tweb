@@ -83,7 +83,7 @@ class AppSidebarLeft {
     globalMessages: new SearchGroup('Global Search', 'messages'),
     privateMessages: new SearchGroup('Private Search', 'messages')
   };
-  
+
   constructor() {
     this.chatsPreloader = document.createElement('div');
     this.chatsPreloader.classList.add('preloader');
@@ -94,13 +94,14 @@ class AppSidebarLeft {
     
     this.scroll = new Scrollable(this.chatsContainer as HTMLDivElement);
     this.scroll.setVirtualContainer(appDialogsManager.chatList);
+    this.scroll.onScrolledBottom = this.onChatsScroll.bind(this);
     appDialogsManager.chatsHidden = this.scroll.hiddenElements;
-    this.scroll.container.addEventListener('scroll', this.onChatsScroll.bind(this));
+    //this.scroll.container.addEventListener('scroll', this.onChatsScroll.bind(this));
 
     this.scrollArchived = new Scrollable(this.chatsArchivedContainer as HTMLDivElement);
     this.scrollArchived.setVirtualContainer(appDialogsManager.chatListArchived);
     appDialogsManager.chatsArchivedHidden = this.scrollArchived.hiddenElements;
-    this.scroll.container.addEventListener('scroll', this.onChatsArchivedScroll.bind(this));
+    //this.scrollArchived.container.addEventListener('scroll', this.onChatsArchivedScroll.bind(this));
     
     this.listsContainer = new Scrollable(this.searchContainer).container;
     for(let i in this.searchGroups) {
@@ -211,7 +212,7 @@ class AppSidebarLeft {
       setTimeout(() => {
         this.onSidebarScroll();
         this.scroll.onScroll();
-        this.onChatsScroll();
+        //this.onChatsScroll();
         this.onChatsArchivedScroll();
       }, 0);
     });
@@ -265,19 +266,9 @@ class AppSidebarLeft {
   
   public onChatsScroll() {
     //this.log(this.scroll.hiddenElements.down.length, this.loadDialogsPromise, appDialogsManager.chatList.childNodes);
-    if(this.scroll.hiddenElements.down.length > 0/*  || 1 == 1 */) return;
+    if(this.scroll.hiddenElements.down.length > 0 || this.loadDialogsPromise/*  || 1 == 1 */) return;
     
-    if(!this.loadDialogsPromise) {
-      let d = Array.from(appDialogsManager.chatList.childNodes).slice(-5);
-      for(let node of d) {
-        if(isElementInViewport(node)) {
-          this.loadDialogs();
-          break;
-        }
-      }
-      
-      //console.log('last 5 dialogs:', d);
-    }
+    this.loadDialogs();
   }
 
   public onChatsArchivedScroll() {

@@ -1634,37 +1634,11 @@ export class AppImManager {
     }
   
     if(updatePosition) {
-      let type = our ? 'out' : 'in';
-      let containerDiv = reverse ? this.firstContainerDiv : this.lastContainerDiv;
-      if(!containerDiv || !containerDiv.classList.contains(type)) {
-        /* if(containerDiv) {
-          if(reverse) this.chatInner.prepend(containerDiv);
-          else this.chatInner.append(containerDiv);
-        } */
-    
-        containerDiv = document.createElement('div');
-        containerDiv.classList.add(type);
-  
-        if(!this.firstContainerDiv) this.firstContainerDiv = containerDiv;
-  
-        if(reverse) this.firstContainerDiv = containerDiv;
-        else this.lastContainerDiv = containerDiv;
-      }
-  
+      bubble.classList.add(our ? 'is-out' : 'is-in');
       if(reverse) {
-        /* if(!multipleRender) {
-          this.scrollPosition.prepareFor('up'); // лагает из-за этого
-        } */
-  
-        containerDiv.prepend(bubble);
-        this.chatInner.prepend(containerDiv);
+        this.chatInner.prepend(bubble);
       } else {
-        /* if(!multipleRender) {
-          this.scrollPosition.prepareFor('down'); // лагает из-за этого
-        } */
-  
-        containerDiv.append(bubble);
-        this.chatInner.append(containerDiv);
+        this.chatInner.append(bubble);
       }
 
       let justDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -1698,12 +1672,13 @@ export class AppImManager {
         };
 
         //this.chatInner.insertBefore(div, containerDiv);
-        containerDiv.insertBefore(div, bubble);
+        //containerDiv.insertBefore(div, bubble);
+        this.chatInner.insertBefore(div, bubble);
       } else {
         let dateMessage = this.dateMessages[dateTimestamp];
         if(dateMessage.firstTimestamp > date.getTime()) {
           //this.chatInner.insertBefore(dateMessage.div, containerDiv);
-          containerDiv.insertBefore(dateMessage.div, bubble);
+          this.chatInner.insertBefore(dateMessage.div, bubble);
         }
       }
     }

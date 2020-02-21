@@ -47,17 +47,17 @@ export default class Scrollable {
     this.topObserver = new IntersectionObserver(entries => {
       let entry = entries[0];
       
-      // console.log('top intersection:', entries, this.isTopIntersecting, entry.isIntersecting, entry.intersectionRatio > 0);
+      console.log('top intersection:', entries, this.isTopIntersecting, entry.isIntersecting, entry.intersectionRatio > 0);
       if(this.isTopIntersecting = entry.isIntersecting) {
         this.onTopIntersection(entry);
       }
-      // console.log('top intersection end');
+      console.log('top intersection end');
     }, {threshold: arr});
 
     this.bottomObserver = new IntersectionObserver(entries => {
       let entry = entries[0];
 
-      // console.log('bottom intersection:', entries, this.isBottomIntersecting, entry.isIntersecting, entry.intersectionRatio > 0);
+      console.log('bottom intersection:', entries, this.isBottomIntersecting, entry.isIntersecting, entry.intersectionRatio > 0);
       if(this.isBottomIntersecting = entry.isIntersecting) {
         this.onBottomIntersection(entry);
         
@@ -69,48 +69,31 @@ export default class Scrollable {
       //console.log('splitObserver', entries);
 
       for(let entry of entries) {
-        //console.log('onscroll entry', entry.target, entry.isIntersecting, entry);
-        if(!entry.isIntersecting && entry.target.parentElement) {
+        if(!entry.isIntersecting/*  && entry.target.parentElement */) {
           let child = entry.target;
-          //console.log('onscroll entry', entry.boundingClientRect, child, entry);
+          console.log('onscroll entry', entry.boundingClientRect, child, entry);
 
           let isTop = (entry.boundingClientRect.top + this.splitOffset) <= 0;
           let isBottom = entry.rootBounds.height <= entry.boundingClientRect.top;
 
+          let height = child.scrollHeight;
+          let toPush = {element: child, height};
           if(isTop) {
-            let sliced: Element[] = [child];
+            this.paddings.up += height;
+            this.hiddenElements.up.push(toPush);
+            child.parentElement.removeChild(child);
 
-            while(child.previousElementSibling) {
-              sliced.push(child = child.previousElementSibling);
-            }
+            console.log('onscroll sliced up', child);
 
-            sliced.reverse();
-            sliced.forEach(child => {
-              let height = child.scrollHeight;
-              this.paddings.up += height;
-              this.hiddenElements.up.push({element: child, height});
-              child.parentElement.removeChild(child);
-              this.paddingTopDiv.style.height = this.paddings.up + 'px';
-            });
-
-            //console.log('onscroll sliced up', sliced);
+            this.paddingTopDiv.style.height = this.paddings.up + 'px';
           } else if(isBottom) {
-            let sliced: Element[] = [child];
-
-            while(child.nextElementSibling) {
-              sliced.push(child = child.nextElementSibling);
-            }
-
-            sliced.reverse();
-            sliced.forEach(child => {
-              let height = child.scrollHeight;
-              this.paddings.down += height;
-              this.hiddenElements.down.unshift({element: child, height});
-              child.parentElement.removeChild(child);
-              this.paddingBottomDiv.style.height = this.paddings.down + 'px';
-            });
+            this.paddings.down += height;
+            this.hiddenElements.down.unshift(toPush);
+            child.parentElement.removeChild(child);
       
-            //console.log('onscroll sliced down', sliced);
+            console.log('onscroll sliced down', child);
+      
+            this.paddingBottomDiv.style.height = this.paddings.down + 'px';
           }
 
           //console.log('splitObserver', entry, entry.target, isTop);
@@ -168,7 +151,7 @@ export default class Scrollable {
       // @ts-ignore
       this.container[this.scrollSide] += diff * 0.5;
 
-      // console.log('onMouseMove', e, diff);
+      console.log('onMouseMove', e, diff);
 
       cancelEvent(e);
     };
@@ -264,7 +247,7 @@ export default class Scrollable {
     // @ts-ignore
     //let st = container[scrollSide];
 
-    console.time('scroll onScroll');
+    //console.time('scroll onScroll');
 
     // @ts-ignore
     if(this.container[this.scrollType] != this.scrollSize || this.thumbSize == 0) {
@@ -280,11 +263,40 @@ export default class Scrollable {
     // @ts-ignore
     this.thumb.style[this.side] = (value >= maxValue ? maxValue : value) + '%';
 
-    console.timeEnd('scroll onScroll');
+    //console.timeEnd('scroll onScroll');
   }
 
-  public onTopIntersection(entry: IntersectionObserverEntry) {
-    // console.log('onTopIntersection');
+  public async onTopIntersection2(entry: IntersectionObserverEntry) {
+    console.log('onTopIntersection');
+
+    if(this.hiddenElements.up.length && this.paddings.up) {
+      //while(this.isTopIntersecting && this.paddings.up) {
+        let child = this.hiddenElements.up.pop();
+        
+        console.log('top returning from hidden', child);
+
+        if(!child) {
+          this.paddings.up = 0;
+          this.paddingTopDiv.style.height = '0px';
+          return;
+        }
+
+        /* await new Promise((resolve, reject) => {
+          window.requestAnimationFrame(resolve);
+        }); */
+
+        this.splitUp.prepend(child.element);
+        this.paddings.up -= child.height;
+
+        this.paddingTopDiv.style.height = this.paddings.up + 'px';
+      //}
+    } else {
+      this.paddingTopDiv.style.height = '0px';
+    }
+  }
+
+  public async onTopIntersection(entry: IntersectionObserverEntry) {
+    console.log('onTopIntersection');
 
     if(this.hiddenElements.up.length && this.paddings.up) {
       let needHeight = entry.intersectionRect.height + this.splitOffset;
@@ -292,7 +304,7 @@ export default class Scrollable {
       while(needHeight > 0 && this.paddings.up) {
         let child = this.hiddenElements.up.pop();
         
-        // console.log('top returning from hidden', child);
+        console.log('top returning from hidden', child);
 
         if(!child) {
           this.paddings.up = 0;
@@ -317,8 +329,33 @@ export default class Scrollable {
     }
   }
 
+  public onBottomIntersection2() {
+    console.log('onBottomIntersection');
+
+    if(this.hiddenElements.down.length && this.paddings.down) {
+      //while(this.isBottomIntersecting && this.paddings.down) {
+        let child = this.hiddenElements.down.shift();
+
+        if(!child) {
+          this.paddings.down = 0;
+          this.paddingBottomDiv.style.height = '0px';
+          return;//break;
+        }
+
+        this.splitUp.append(child.element);
+  
+        this.paddings.down -= child.height;
+        this.paddingBottomDiv.style.height = this.paddings.down + 'px';
+      //}
+
+      if(this.onAddedBottom) this.onAddedBottom();
+    } else {
+      this.paddingBottomDiv.style.height = '0px';
+    }
+  }
+
   public onBottomIntersection(entry: IntersectionObserverEntry) {
-    // console.log('onBottomIntersection');
+    console.log('onBottomIntersection');
 
     if(this.hiddenElements.down.length && this.paddings.down) {
       let needHeight = entry.intersectionRect.height + this.splitOffset;

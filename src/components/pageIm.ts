@@ -187,7 +187,7 @@ export default () => import('../lib/services').then(services => {
   });
 
   appSidebarLeft.loadDialogs().then(result => {
-    appSidebarLeft.onChatsScroll();
+    //appSidebarLeft.onChatsScroll();
     appSidebarLeft.loadDialogs(true);
   });
 });

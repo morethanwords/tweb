@@ -153,12 +153,12 @@ export class AppDialogsManager {
   }
 
   public sortDom(archived = false) {
-    //return;
+    return;
 
     let dialogs = appMessagesManager.dialogsStorage.dialogs.slice();
 
-    let inUpper: HTMLLIElement[] = [];
-    let inBottom: HTMLLIElement[] = [];
+    let inUpper: {element: HTMLLIElement, height: number}[] = [];
+    let inBottom: {element: HTMLLIElement, height: number}[] = [];
 
     let pinnedDialogs = [];
 
@@ -214,26 +214,13 @@ export class AppDialogsManager {
       if(!dom) return;
 
       if(inUpper.length < hiddenLength) {
-        inUpper.push(dom.listEl);
+        inUpper.push({element: dom.listEl, height: 0});
       } else if(inViewportIndex <= inViewportLength - 1) {
         chatList.append(dom.listEl);
         ++inViewportIndex;
-        //this.chatList.insertBefore(dom.listEl, this.chatList.children[inViewportIndex++]);
       } else {
-        inBottom.push(dom.listEl);
+        inBottom.push({element: dom.listEl, height: 0});
       }
-
-      /* if(this.chatsHidden.up.find((d: HTMLLIElement) => d === dom.listEl)) {
-        inUpper.push(dom.listEl);
-      } else if(isElementInViewport(dom.listEl)) {
-        this.chatList.insertBefore(dom.listEl, this.chatList.children[++inViewportIndex]);
-      } else if(this.chatsHidden.down.find((d: HTMLLIElement) => d === dom.listEl)) {
-        inBottom.push(dom.listEl);
-      } else {
-        //console.warn('sortDom found no dom!', dom, d);
-      } */
-
-      //this.chatList.append(dom.listEl);
     });
 
     //////console.log('sortDom', sorted.length, inUpper.length, chatList.childElementCount, inBottom.length);
@@ -536,7 +523,8 @@ export class AppDialogsManager {
         this.chatListArchived.append(li);
         this.domsArchived[dialog.peerID] = dom;
       } else {
-        this.chatList.append(li);
+        //this.chatList.append(li);
+        appSidebarLeft.scroll.splitAppend(li);
         this.doms[dialog.peerID] = dom;
       }
       
