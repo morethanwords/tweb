@@ -35,6 +35,7 @@
     "babel-jest": "^24.9.0",
     "compression-webpack-plugin": "^3.1.0",
     "css-loader": "^3.2.0",
+    "fastdom": "^1.0.9",
     "file-loader": "^4.3.0",
     "html-webpack-plugin": "^3.2.0",
     "install": "^0.13.0",

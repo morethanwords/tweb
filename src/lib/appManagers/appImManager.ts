@@ -70,8 +70,6 @@ export class AppImManager {
   public chatInner = document.getElementById('bubbles-inner') as HTMLDivElement;
   public searchBtn = this.pageEl.querySelector('.chat-search-button') as HTMLButtonElement;
   public goDownBtn = this.pageEl.querySelector('#bubbles-go-down') as HTMLButtonElement;
-  public firstContainerDiv: HTMLDivElement;
-  public lastContainerDiv: HTMLDivElement;
   private getHistoryPromise: Promise<boolean>;
   private getHistoryTimeout = 0;
 
@@ -185,7 +183,7 @@ export class AppImManager {
 
       this.renderMessagesByIDs(msgIDs);
 
-      appDialogsManager.sortDom();
+      //appDialogsManager.sortDom();
     });
 
     $rootScope.$on('history_delete', (e: CustomEvent) => {
@@ -627,6 +625,8 @@ export class AppImManager {
   }
 
   public deleteEmptySideDivs() {
+    return;
+
     let nodes = Array.from(this.chatInner.childNodes) as HTMLDivElement[];
     nodes.filter((node) => {
       let childElementCount = node.childElementCount;
@@ -844,10 +844,10 @@ export class AppImManager {
   }
 
   public setScroll() {
-    this.scrollable = new Scrollable(this.bubblesContainer);
+    this.scrollable = new Scrollable(this.bubblesContainer, false, true, 1500);
     this.scroll = this.scrollable.container;
 
-    //this.scrollable.setVirtualContainer(this.chatInner);
+    this.scrollable.setVirtualContainer(this.chatInner);
 
     this.scrollPosition = new ScrollPosition(this.chatInner);
     this.scroll.addEventListener('scroll', this.onScroll.bind(this));
@@ -949,11 +949,6 @@ export class AppImManager {
     this.scrolledAllDown = false;
     this.muted = false;
 
-    if(this.lastContainerDiv) this.lastContainerDiv.remove();
-    if(this.firstContainerDiv) this.firstContainerDiv.remove();
-    this.lastContainerDiv = undefined;
-    this.firstContainerDiv = undefined;
-
     for(let i in this.bubbles) {
       let bubble = this.bubbles[i];
       bubble.remove();
@@ -974,6 +969,8 @@ export class AppImManager {
 
     // clear messages
     this.chatInner.innerHTML = '';
+
+    this.scrollable.setVirtualContainer(this.chatInner);
 
     //appSidebarRight.minMediaID = {};
   }
@@ -1635,10 +1632,15 @@ export class AppImManager {
   
     if(updatePosition) {
       bubble.classList.add(our ? 'is-out' : 'is-in');
-      if(reverse) {
+      /* if(reverse) {
         this.chatInner.prepend(bubble);
       } else {
         this.chatInner.append(bubble);
+      } */
+      if(reverse) {
+        this.scrollable.prepend(bubble);
+      } else {
+        this.scrollable.append(bubble);
       }
 
       let justDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -1673,12 +1675,12 @@ export class AppImManager {
 
         //this.chatInner.insertBefore(div, containerDiv);
         //containerDiv.insertBefore(div, bubble);
-        this.chatInner.insertBefore(div, bubble);
+        this.scrollable.insertBefore(div, bubble);// this.chatInner.insertBefore(div, bubble);
       } else {
         let dateMessage = this.dateMessages[dateTimestamp];
         if(dateMessage.firstTimestamp > date.getTime()) {
           //this.chatInner.insertBefore(dateMessage.div, containerDiv);
-          this.chatInner.insertBefore(dateMessage.div, bubble);
+          this.scrollable.insertBefore(dateMessage.div, bubble);// this.chatInner.insertBefore(dateMessage.div, bubble);
         }
       }
     }
@@ -1707,7 +1709,7 @@ export class AppImManager {
 
     let loadCount = Object.keys(this.bubbles).length > 0 ? 
       20 : 
-      (this.chatInner.parentElement.parentElement.scrollHeight) / 30 * 1.25 | 0;
+      this.scrollable.container.parentElement.scrollHeight / 30 * 1.25 | 0;
 
     /* if(testScroll) {
       loadCount = 1;

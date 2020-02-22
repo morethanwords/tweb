@@ -3,7 +3,7 @@ import { putPreloader, formatPhoneNumber } from "../../components/misc";
 import Scrollable from '../../components/scrollable';
 import appMessagesManager, { AppMessagesManager } from "./appMessagesManager";
 import appDialogsManager from "./appDialogsManager";
-import { isElementInViewport, numberWithCommas, cancelEvent } from "../utils";
+import { isElementInViewport, numberWithCommas } from "../utils";
 import appMessagesIDsManager from "./appMessagesIDsManager";
 import appImManager from "./appImManager";
 import appUsersManager from "./appUsersManager";
@@ -25,7 +25,7 @@ class SearchGroup {
     this.container.append(this.nameEl, this.list);
     this.container.style.display = 'none';
 
-    appDialogsManager.setListClickListener(this.list);
+    //appDialogsManager.setListClickListener(this.list);
   }
 
   clear() {
@@ -88,7 +88,7 @@ class AppSidebarLeft {
     this.chatsPreloader = document.createElement('div');
     this.chatsPreloader.classList.add('preloader');
     putPreloader(this.chatsPreloader);
-    this.chatsContainer.append(this.chatsPreloader);
+    //this.chatsContainer.append(this.chatsPreloader);
     
     this.chatsLoadCount = Math.round(document.body.scrollHeight / 70 * 1.5);
     
@@ -128,20 +128,16 @@ class AppSidebarLeft {
       //this.toolsBtn.classList.add('tgico-back');
     });
     
-    /* this.listsContainer.insertBefore(this.searchMessagesList, this.listsContainer.lastElementChild);
-    for(let i = 0; i < 25; ++i) {
+    /* for(let i = 0; i < 100; ++i) {
       let li = document.createElement('li');
-      li.innerHTML = `<div class="user-avatar is-online" style="font-size: 0px;"><img src="assets/img/camomile.jpg"></div><div class="user-caption"><p><span class="user-title">Влад</span><span><span class="message-status"></span><span class="message-time">14:41</span></span></p><p><span class="user-last-message">это важно</span><span class="tgico-pinnedchat"></span></p></div><div class="c-ripple"><span class="c-ripple__circle" style="top: 65px; left: 338.5px;"></span></div>`;
-      this.searchMessagesList.append(li);
+      li.dataset.id = '' + i;
+      li.innerHTML = `<div class="rp"><div class="user-avatar" style="background-color: rgb(166, 149, 231); font-size: 0px;"><img src="blob:https://localhost:9000/ce99a2a3-f34b-4ca1-a09e-f716f89930d8"></div><div class="user-caption"><p><span class="user-title">${i}</span><span><span class="message-status"></span><span class="message-time">18:33</span></span></p><p><span class="user-last-message"><b>Ильяс: </b>Гагагагга</span><span></span></p></div></div>`;
+      this.scroll.append(li);
     } */
     
     this.listsContainer.addEventListener('scroll', this.onSidebarScroll.bind(this));
-    
-    //this.searchContainer.append(this.listsContainer);
-    
+
     this.searchInput.addEventListener('focus', (e) => {
-      /* this.toolsBtn.classList.remove('tgico-menu', 'btn-menu-toggle');
-      this.toolsBtn.classList.add('tgico-back'); */
       this.toolsBtn.classList.remove('active');
       this.backBtn.classList.add('active');
       this.searchContainer.classList.add('active');
@@ -154,17 +150,10 @@ class AppSidebarLeft {
 
       this.searchInput.addEventListener('blur', (e) => {
         if(!this.searchInput.value) {
-          /* this.toolsBtn.classList.add('tgico-menu');
-          this.toolsBtn.classList.remove('tgico-back'); */
           this.toolsBtn.classList.add('active');
           this.backBtn.classList.remove('active');
           this.searchContainer.classList.remove('active');
           this.backBtn.click();
-
-          /* setTimeout(() => {
-            //this.toolsBtn.click();
-            this.toolsBtn.classList.add('btn-menu-toggle');
-          }, 200); */
         }
         
         /* this.peerID = 0;
@@ -223,6 +212,8 @@ class AppSidebarLeft {
   }
   
   public async loadDialogs(archived = false) {
+    //return;
+    
     if(this.loadDialogsPromise/*  || 1 == 1 */) return this.loadDialogsPromise;
     
     (archived ? this.chatsArchivedContainer : this.chatsContainer).append(this.chatsPreloader);

@@ -1,8 +1,6 @@
 //import { appImManager, appMessagesManager, appDialogsManager, apiUpdatesManager, appUsersManager } from "../lib/services";
 import { openBtnMenu } from "./misc";
-
 import {stackBlurImage} from '../lib/StackBlur';
-
 import appSidebarLeft from "../lib/appManagers/appSidebarLeft";
 
 export default () => import('../lib/services').then(services => {

@@ -1,6 +1,6 @@
 import apiManager from "../mtproto/apiManager";
 import apiFileManager from '../mtproto/apiFileManager';
-import { $rootScope, findUpTag, isElementInViewport, langPack } from "../utils";
+import { $rootScope, findUpTag, langPack } from "../utils";
 import appImManager from "./appImManager";
 import appPeersManager from './appPeersManager';
 import appMessagesManager from "./appMessagesManager";
@@ -8,6 +8,7 @@ import appUsersManager from "./appUsersManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import { ripple } from "../../components/misc";
 import appSidebarLeft from "./appSidebarLeft";
+import Scrollable from "../../components/scrollable";
 
 type DialogDom = {
   avatarDiv: HTMLDivElement,
@@ -25,8 +26,8 @@ export class AppDialogsManager {
   public chatList = document.getElementById('dialogs') as HTMLUListElement;
   public chatListArchived = document.getElementById('dialogs-archived') as HTMLUListElement;
   public pinnedDelimiter: HTMLDivElement;
-  public chatsHidden: any;
-  public chatsArchivedHidden: any;
+  public chatsHidden: Scrollable["hiddenElements"];
+  public chatsArchivedHidden: Scrollable["hiddenElements"];
   
   public myID = 0;
   public doms: {[peerID: number]: DialogDom} = {};
@@ -153,7 +154,7 @@ export class AppDialogsManager {
   }
 
   public sortDom(archived = false) {
-    return;
+    // return;
 
     let dialogs = appMessagesManager.dialogsStorage.dialogs.slice();
 
@@ -205,6 +206,9 @@ export class AppDialogsManager {
 
     let hiddenLength: number = chatsHidden.up.length;
     let inViewportLength = chatList.childElementCount;
+    let hiddenConcated = chatsHidden.up.concat(chatsHidden.down);
+
+    //console.log('sortDom clearing innerHTML', archived, hiddenLength, inViewportLength);
 
     chatList.innerHTML = '';
 
@@ -214,16 +218,18 @@ export class AppDialogsManager {
       if(!dom) return;
 
       if(inUpper.length < hiddenLength) {
-        inUpper.push({element: dom.listEl, height: 0});
+        let child = hiddenConcated.find(obj => obj.element == dom.listEl);
+        inUpper.push({element: dom.listEl, height: child ? child.height : 0});
       } else if(inViewportIndex <= inViewportLength - 1) {
         chatList.append(dom.listEl);
         ++inViewportIndex;
       } else {
-        inBottom.push({element: dom.listEl, height: 0});
+        let child = hiddenConcated.find(obj => obj.element == dom.listEl);
+        inBottom.push({element: dom.listEl, height: child ? child.height : 0});
       }
     });
 
-    //////console.log('sortDom', sorted.length, inUpper.length, chatList.childElementCount, inBottom.length);
+    //console.log('sortDom', sorted.length, inUpper.length, chatList.childElementCount, inBottom.length);
 
     chatsHidden.up = inUpper;
     chatsHidden.down = inBottom;
@@ -524,7 +530,7 @@ export class AppDialogsManager {
         this.domsArchived[dialog.peerID] = dom;
       } else {
         //this.chatList.append(li);
-        appSidebarLeft.scroll.splitAppend(li);
+        appSidebarLeft.scroll.append(li);
         this.doms[dialog.peerID] = dom;
       }
       

@@ -32,7 +32,7 @@ export const appDocsManager = AppDocsManager;
 export const appSidebarRight = AppSidebarRight;
 export const appSidebarLeft = AppSidebarLeft;
 
-/* (window as any).Services = {
+(window as any).Services = {
   appUsersManager,
   appChatsManager,
   apiUpdatesManager,
@@ -48,4 +48,4 @@ export const appSidebarLeft = AppSidebarLeft;
   appSidebarRight,
   appSidebarLeft
   //appSharedMediaManager
-}; */
+};

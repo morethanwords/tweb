@@ -329,7 +329,7 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
             
             let lastIndex = 0;
             interval = setInterval(() => {
-              if(lastIndex >= svg.childElementCount) {
+              if(lastIndex > svg.childElementCount || isNaN(audio.duration)) {
                 clearInterval(interval);
                 return;
               }
@@ -337,11 +337,14 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
               // @ts-ignore
               timeDiv.innerText = String(audio.currentTime | 0).toHHMMSS(true);
               
+              lastIndex = Math.round(audio.currentTime / audio.duration * 62);
+
               //svg.children[lastIndex].setAttributeNS(null, 'fill', '#000');
               svg.children[lastIndex].classList.add('active');
-              ++lastIndex;
+              //++lastIndex;
               //console.log('lastIndex:', lastIndex, audio.currentTime);
-            }, duration * 1000 / svg.childElementCount | 0/* 63 * duration / 10 */);
+            //}, duration * 1000 / svg.childElementCount | 0/* 63 * duration / 10 */);
+            }, 20);
           } else {
             audio.pause();
             toggle.classList.add('tgico-largeplay');
