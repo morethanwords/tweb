@@ -256,10 +256,9 @@ export class AppImManager {
           this.pinnedMessageContent.innerHTML = RichTextProcessor.wrapEmojiText(message.message);
         }
 
-        let length = this.needUpdate.length;
-        for(let i = length - 1; i >= 0; --i) {
-          if(this.needUpdate[i].replyMid == mid) {
-            let {mid, replyMid} = this.needUpdate.splice(i, 1)[0];
+        this.needUpdate.forEachReverse((obj, idx) => {
+          if(obj.replyMid == mid) {
+            let {mid, replyMid} = this.needUpdate.splice(idx, 1)[0];
 
             //this.log('messages_downloaded', mid, replyMid, i, this.needUpdate, this.needUpdate.length, mids, this.bubbles[mid]);
             let bubble = this.bubbles[mid];
@@ -274,7 +273,7 @@ export class AppImManager {
   
             this.renderMessage(message, false, false, bubble, false);
           }
-        }
+        });
       });
     });
 
@@ -314,19 +313,6 @@ export class AppImManager {
       if(!bubble) return;
 
       if(['IMG', 'VIDEO', 'SVG', 'DIV'].indexOf(target.tagName) === -1) target = findUpTag(target, 'DIV');
-
-      /* if(target.tagName == 'VIDEO' && bubble.classList.contains('round')) {
-        let video = target as HTMLVideoElement;
-        video.currentTime = 0;
-        if(video.paused) {
-          video.play();
-          video.volume = 1;
-        } else {
-          video.pause();
-          video.volume = 0;
-        }
-        return;
-      } */
 
       if(target.tagName == 'DIV') {
         if(target.classList.contains('forward')) {
@@ -720,24 +706,20 @@ export class AppImManager {
     if(!this.myID) return Promise.resolve();
 
     appUsersManager.setUserStatus(this.myID, this.offline);
-    return apiManager.invokeApi('account.updateStatus', {
-      offline: this.offline
-    }, {noErrorBox: true});
+    return apiManager.invokeApi('account.updateStatus', {offline: this.offline});
   }
 
   public onScroll() {
-    let length = this.unreaded.length;
     let readed: number[] = [];
 
-    for(let i = length - 1; i >= 0; --i) {
-      let msgID = this.unreaded[i];
+    this.unreaded.forEachReverse((msgID, idx) => {
       let bubble = this.bubbles[msgID];
 
       if(isElementInViewport(bubble)) {
         readed.push(msgID);
-        this.unreaded.splice(i, 1);
+        this.unreaded.splice(idx, 1);
       }
-    }
+    });
 
     lottieLoader.checkAnimations();
 
@@ -844,7 +826,7 @@ export class AppImManager {
   }
 
   public setScroll() {
-    this.scrollable = new Scrollable(this.bubblesContainer, false, true, 1500);
+    this.scrollable = new Scrollable(this.bubblesContainer, false, true, 750/* 1500 */);
     this.scroll = this.scrollable.container;
 
     this.scrollable.setVirtualContainer(this.chatInner);
@@ -1056,7 +1038,7 @@ export class AppImManager {
     this.titleEl.innerHTML = appSidebarRight.profileElements.name.innerHTML = title;
 
     this.topbar.style.display = this.goDownBtn.style.display = '';
-    appSidebarRight.toggleSidebar(true);
+    //appSidebarRight.toggleSidebar(true);
 
     this.chatInput.style.display = appPeersManager.isChannel(peerID) && !appPeersManager.isMegagroup(peerID) ? 'none' : '';
 
@@ -1142,15 +1124,14 @@ export class AppImManager {
     ///////this.log('updateUnreadByDialog', maxID, dialog, this.unreadOut);
 
     let length = this.unreadOut.length;
-    for(let i = length - 1; i >= 0; --i) {
-      let msgID = this.unreadOut[i];
+    this.unreadOut.forEachReverse((msgID, idx) => {
       if(msgID > 0 && msgID <= maxID) {
         let bubble = this.bubbles[msgID];
         bubble.classList.remove('is-sent');
         bubble.classList.add('is-read');
-        this.unreadOut.splice(i, 1);
+        this.unreadOut.splice(idx, 1);
       }
-    }
+    });
   }
 
   public deleteMessagesByIDs(msgIDs: number[]) {
@@ -1632,11 +1613,6 @@ export class AppImManager {
   
     if(updatePosition) {
       bubble.classList.add(our ? 'is-out' : 'is-in');
-      /* if(reverse) {
-        this.chatInner.prepend(bubble);
-      } else {
-        this.chatInner.append(bubble);
-      } */
       if(reverse) {
         this.scrollable.prepend(bubble);
       } else {
@@ -1673,14 +1649,11 @@ export class AppImManager {
           firstTimestamp: date.getTime()
         };
 
-        //this.chatInner.insertBefore(div, containerDiv);
-        //containerDiv.insertBefore(div, bubble);
-        this.scrollable.insertBefore(div, bubble);// this.chatInner.insertBefore(div, bubble);
+        this.scrollable.insertBefore(div, bubble);
       } else {
         let dateMessage = this.dateMessages[dateTimestamp];
         if(dateMessage.firstTimestamp > date.getTime()) {
-          //this.chatInner.insertBefore(dateMessage.div, containerDiv);
-          this.scrollable.insertBefore(dateMessage.div, bubble);// this.chatInner.insertBefore(dateMessage.div, bubble);
+          this.scrollable.insertBefore(dateMessage.div, bubble);
         }
       }
     }
@@ -1765,14 +1738,11 @@ export class AppImManager {
         this.scrollPosition.prepareFor(reverse ? 'up' : 'down');
       }
       
-      let length = history.length;
-      for(let i = length - 1; i >= 0; --i) {
-        let msgID = history[i];
-  
+      history.forEachReverse((msgID: number) => {
         let message = appMessagesManager.getMessage(msgID);
   
         this.renderMessage(message, reverse, true);
-      }
+      });
 
       if(!isBackLimit) {
         this.scrollPosition.restore();

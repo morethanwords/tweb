@@ -52,8 +52,7 @@ export default class Scrollable {
   
   public splitObserver: IntersectionObserver;
   public splitMeasure: Promise<{element: Element, height: number}[]> = null;
-  public splitMeasureAdd: Promise<number> = null;
-  public splitMutate: Promise<void> = null;
+  public splitMutate: Promise</* void */number> = null;
   
   constructor(public el: HTMLDivElement, x = false, y = true, public splitOffset = 300) {
     this.container = document.createElement('div');
@@ -174,15 +173,14 @@ export default class Scrollable {
     console.log('splitObserver', entries);
     for(let entry of entries) { // there may be duplicates (1st - not intersecting, 2nd - intersecting)
       //console.log('onscroll entry', entry.target, entry.isIntersecting, entry);
-      if(!entry.target.parentElement || !entry.rootBounds) continue;
-
-      let child = entry.target;
-      let needHeight = this.splitOffset;
-      if(!entry.isIntersecting) {
+      if(!entry.isIntersecting && entry.target.parentElement && entry.rootBounds) {
+        let child = entry.target;
+        
         let isTop = entry.boundingClientRect.top <= 0;
         let isBottom = entry.rootBounds.height <= entry.boundingClientRect.top;
         console.log('onscroll entry', isTop, isBottom, child, entry);
         
+        let needHeight = this.splitOffset;
         //console.log('will call measure');
         if(isTop) { // when scrolling down
           //this.onBottomIntersection(entry);
@@ -205,10 +203,12 @@ export default class Scrollable {
             if(this.splitMutate) fastdom.clear(this.splitMutate);
             
             this.splitMutate = fastdom.mutate(() => {
+              let sum = 0;
               sliced.forEachReverse((child) => {
                 let {element, height} = child;
                 if(!this.splitUp.contains(element)) return;
                 
+                sum += height;
                 this.paddings.up += height;
                 this.hiddenElements.up.push(child);
                 this.splitUp.removeChild(element);
@@ -216,6 +216,11 @@ export default class Scrollable {
               });
 
               this.paddingTopDiv.style.height = this.paddings.up + 'px';
+              return sum;
+            });
+
+            this.splitMutate.then(sum => {
+              this.onBottomIntersection(sum);
             });
           });
           
@@ -241,10 +246,12 @@ export default class Scrollable {
             if(this.splitMutate) fastdom.clear(this.splitMutate);
             
             this.splitMutate = fastdom.mutate(() => {
+              let sum = 0;
               sliced.forEachReverse((child) => {
                 let {element, height} = child;
                 if(!this.splitUp.contains(element)) return;
                 
+                sum += height;
                 this.paddings.down += height;
                 this.hiddenElements.down.unshift(child);
                 this.splitUp.removeChild(element);
@@ -252,6 +259,11 @@ export default class Scrollable {
               });
               
               this.paddingBottomDiv.style.height = this.paddings.down + 'px';
+              return sum;
+            });
+
+            this.splitMutate.then(sum => {
+              this.onTopIntersection(sum);
             });
           });
           
@@ -259,37 +271,6 @@ export default class Scrollable {
         }
         
         //console.log('splitObserver', entry, entry.target, isTop);
-      } else {
-        let isTop = entry.boundingClientRect.top <= entry.rootBounds.top;
-        let isBottom = entry.boundingClientRect.bottom >= entry.rootBounds.bottom;
-
-        if(isTop) { // when scrolling up
-          if(this.splitMeasureAdd) fastdom.clear(this.splitMeasureAdd);
-          this.splitMeasureAdd = fastdom.measure(() => {
-            while(child = child.previousElementSibling) {
-              needHeight -= child.scrollHeight;
-            }
-
-            return needHeight;
-          });
-
-          this.splitMeasureAdd.then(needHeight => {
-            this.onTopIntersection(needHeight);
-          });
-        } else if(isBottom) { // when scrolling down
-          if(this.splitMeasureAdd) fastdom.clear(this.splitMeasureAdd);
-          this.splitMeasureAdd = fastdom.measure(() => {
-            while(child = child.nextElementSibling) {
-              needHeight -= child.scrollHeight;
-            }
-
-            return needHeight;
-          });
-
-          this.splitMeasureAdd.then(needHeight => {
-            this.onBottomIntersection(needHeight);
-          });
-        }
       }
     }
   }

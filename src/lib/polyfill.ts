@@ -46,20 +46,21 @@ Uint8Array.prototype.concat = function(...args: Array<Uint8Array | ArrayBuffer |
   return bufferConcats(this, ...args);
 };
 
-/* Uint8Array.prototype.concat = function(array: number[] | ArrayBuffer | Uint8Array) {
-  let res = new Uint8Array(this.length + (array instanceof ArrayBuffer ? array.byteLength : array.length));
-
-  res.set(this);
-  res.set(array instanceof ArrayBuffer ? new Uint8Array(array) : array, this.length);
-
-  return res;
-}; */
+Array.prototype.forEachReverse = function<T>(callback: (value: T, index?: number, array?: Array<T>) => void) {
+  let length = this.length;
+  for(var i = length - 1; i >= 0; --i) {
+    callback(this[i], i, this);
+  }
+};
 
 declare global {
   interface Uint8Array {
     hex: string;
     randomize: () => Uint8Array,
-    //concat: (array: number[] | ArrayBuffer | Uint8Array) => Uint8Array
     concat: (...args: Array<Uint8Array | ArrayBuffer | number[]>) => Uint8Array
+  }
+
+  interface Array<T> {
+    forEachReverse(callback: (value: T, index?: number, array?: Array<T>) => void): void;
   }
 }
