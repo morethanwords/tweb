@@ -423,23 +423,50 @@ export function wrapPhoto(this: AppImManager, photo: any, message: any, containe
   return this.loadMediaQueue ? this.loadMediaQueuePush(load) : load();
 }
 
-export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: () => boolean, lazyLoadQueue?: LazyLoadQueue, group?: string, canvas?: boolean, play = false) {
+export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: () => boolean, lazyLoadQueue?: LazyLoadQueue, group?: string, canvas?: boolean, play = false, onlyThumb = false) {
   let stickerType = doc.mime_type == "application/x-tgsticker" ? 2 : (doc.mime_type == "image/webp" ? 1 : 0);
   
   if(!stickerType) {
     console.error('wrong doc for wrapSticker!', doc, div);
   }
   
-  ///////console.log('wrap sticker', doc);
+  //////console.log('wrap sticker', doc, onlyThumb);
   
   if(doc.thumbs && !div.firstElementChild) {
     let thumb = doc.thumbs[0];
+
+    ///////console.log('wrap sticker', thumb);
     
     if(thumb.bytes) {
       apiFileManager.saveSmallFile(thumb.location, thumb.bytes);
       
       appPhotosManager.setAttachmentPreview(thumb.bytes, div, true);
+
+      if(onlyThumb) return Promise.resolve();
     }
+  }
+
+  if(onlyThumb && doc.thumbs) {
+    let thumb = doc.thumbs[0];
+
+    let load = () => apiFileManager.downloadSmallFile({
+      _: 'inputDocumentFileLocation',
+      access_hash: doc.access_hash,
+      file_reference: doc.file_reference,
+      thumb_size: thumb.type,
+      id: doc.id
+    }, {dcID: doc.dc_id}).then(blob => {
+      let img = new Image();
+      
+      appWebpManager.polyfillImage(img, blob);
+
+      div.append(img);
+    
+      div.setAttribute('file-id', doc.id);
+      appStickersManager.saveSticker(doc);
+    });
+
+    return lazyLoadQueue ? (lazyLoadQueue.push({div, load}), Promise.resolve()) : load();
   }
   
   let load = () => apiFileManager.downloadSmallFile({

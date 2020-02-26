@@ -69,7 +69,7 @@ export default () => import('../lib/services').then(services => {
       appDialogsManager.setLastMessage(dialog);
     }
 
-    if(performed) {
+    if(performed/*  && false */) {
       /////////console.log('will sortDom');
       appDialogsManager.sortDom();
       appDialogsManager.sortDom(true);

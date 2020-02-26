@@ -139,7 +139,7 @@ export class AppPhotosManager {
     });
   }
   
-  public setAttachmentPreview(bytes: Uint8Array, div: HTMLDivElement, isSticker = false, background = false) {
+  public setAttachmentPreview(bytes: Uint8Array, div: HTMLElement, isSticker = false, background = false) {
     //image.src = "data:image/jpeg;base64," + bytesToBase64(photo.sizes[0].bytes);
     //photo.sizes[0].bytes = new Uint8Array([...photo.sizes[0].bytes].reverse());
     

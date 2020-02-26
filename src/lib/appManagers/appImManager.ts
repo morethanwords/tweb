@@ -826,7 +826,7 @@ export class AppImManager {
   }
 
   public setScroll() {
-    this.scrollable = new Scrollable(this.bubblesContainer, false, true, 750/* 1500 */);
+    this.scrollable = new Scrollable(this.bubblesContainer, false, true, 750, 'IM'/* 1500 */);
     this.scroll = this.scrollable.container;
 
     this.scrollable.setVirtualContainer(this.chatInner);
@@ -1192,14 +1192,22 @@ export class AppImManager {
       this.scrollPosition.prepareFor(reverse ? 'up' : 'down'); // лагает из-за этого
     }
 
+    let bubbleContainer: HTMLDivElement;
+
     // bubble
     if(!bubble) {
+      bubbleContainer = document.createElement('div');
+      bubbleContainer.classList.add('bubble__container');
+
       bubble = document.createElement('div');
       bubble.classList.add('bubble');
+      bubble.appendChild(bubbleContainer);
       this.bubbles[+message.mid] = bubble;
     } else {
       bubble.className = 'bubble';
-      bubble.innerHTML = '';
+      bubbleContainer = bubble.firstElementChild as HTMLDivElement;
+      bubbleContainer.innerHTML = '';
+      //bubble.innerHTML = '';
     }
   
     // time section
@@ -1243,7 +1251,7 @@ export class AppImManager {
         messageDiv.classList.add('message-empty');
         bubble.classList.add('emoji-' + emojiEntities.length + 'x', 'emoji-big');
 
-        bubble.append(attachmentDiv);
+        bubbleContainer.append(attachmentDiv);
       } else {
         messageDiv.innerHTML = richText;
       }
@@ -1260,7 +1268,7 @@ export class AppImManager {
 
     timeSpan.appendChild(timeInner);
     messageDiv.append(timeSpan);
-    bubble.prepend(messageDiv);
+    bubbleContainer.prepend(messageDiv);
     //bubble.prepend(timeSpan, messageDiv); // that's bad
   
     if(our) {
@@ -1409,7 +1417,7 @@ export class AppImManager {
           box.append(quote);
 
           //bubble.prepend(box);
-          bubble.prepend(timeSpan, box);
+          bubbleContainer.prepend(timeSpan, box);
 
           //this.log('night running', bubble.scrollHeight);
 
@@ -1433,8 +1441,8 @@ export class AppImManager {
 
             appPhotosManager.setAttachmentSize(doc, attachmentDiv, undefined, undefined, true);
             let preloader = new ProgressivePreloader(attachmentDiv, false);
-            bubble.style.height = attachmentDiv.style.height;
-            bubble.style.width = attachmentDiv.style.width;
+            bubbleContainer.style.height = attachmentDiv.style.height;
+            bubbleContainer.style.width = attachmentDiv.style.width;
             //appPhotosManager.setAttachmentSize(doc, bubble);
             let load = () => wrapSticker(doc, attachmentDiv, () => {
               if(this.peerID != peerID) {
@@ -1483,7 +1491,7 @@ export class AppImManager {
       }
 
       if(!processingWebPage) {
-        bubble.append(attachmentDiv);
+        bubbleContainer.append(attachmentDiv);
       }
     }
 
@@ -1512,7 +1520,7 @@ export class AppImManager {
             </defs>
             <use xlink:href="#b13RmHDQtl" opacity="1" fill="#fff" fill-opacity="1"></use>
           </svg>`;
-          bubble.append(fwd);
+          bubbleContainer.append(fwd);
           bubble.dataset.savedFrom = message.savedFrom;
         }
 
@@ -1522,7 +1530,7 @@ export class AppImManager {
           nameDiv.innerHTML = 'Forwarded from ' + title;
           nameDiv.dataset.peerID = message.fwdFromID;
           //nameDiv.style.color = appPeersManager.getPeerColorByID(message.fromID, false);
-          bubble.append(nameDiv);
+          bubbleContainer.append(nameDiv);
         }
       } else {
         if(message.reply_to_mid) {
@@ -1546,7 +1554,7 @@ export class AppImManager {
             bubble.setAttribute('data-original-mid', message.reply_to_mid);
           }
 
-          bubble.append(wrapReply(originalPeerTitle, originalMessage.message || '', originalMessage.media));
+          bubbleContainer.append(wrapReply(originalPeerTitle, originalMessage.message || '', originalMessage.media));
           bubble.classList.add('is-reply');
         }
 
@@ -1556,7 +1564,7 @@ export class AppImManager {
           nameDiv.innerHTML = title;
           nameDiv.style.color = appPeersManager.getPeerColorByID(message.fromID, false);
           nameDiv.dataset.peerID = message.fromID;
-          bubble.append(nameDiv);
+          bubbleContainer.append(nameDiv);
         } else /* if(!message.reply_to_mid) */ {
           bubble.classList.add('hide-name');
         }
@@ -1585,14 +1593,14 @@ export class AppImManager {
 
         avatarDiv.dataset.peerID = message.fromID;
   
-        bubble.append(avatarDiv);
+        bubbleContainer.append(avatarDiv);
       }
     } else {
       bubble.classList.add('hide-name');
     }
 
     if(message._ == 'messageService') {
-      bubble.className = 'service';
+      bubble.className = 'bubble service';
 
       let action = message.action;
 
@@ -1608,11 +1616,11 @@ export class AppImManager {
       }
       // @ts-ignore
       let str = (name.innerText ? name.outerHTML + ' ' : '') + langPack[_];
-      bubble.innerHTML = `<div class="service-msg">${str}</div>`;
+      bubbleContainer.innerHTML = `<div class="service-msg">${str}</div>`;
     }
   
+    bubble.classList.add(our ? 'is-out' : 'is-in');
     if(updatePosition) {
-      bubble.classList.add(our ? 'is-out' : 'is-in');
       if(reverse) {
         this.scrollable.prepend(bubble);
       } else {
@@ -1640,7 +1648,7 @@ export class AppImManager {
         }
 
         let div = document.createElement('div');
-        div.classList.add('service');
+        div.className = 'bubble service';
         div.innerHTML = `<div class="service-msg">${str}</div>`;
         ////////this.log('need to render date message', dateTimestamp, str);
         
@@ -1737,8 +1745,8 @@ export class AppImManager {
       if(!isBackLimit) {
         this.scrollPosition.prepareFor(reverse ? 'up' : 'down');
       }
-      
-      history.forEachReverse((msgID: number) => {
+
+      /* for(let i = 0; i < 25; ++i) */ history.forEachReverse((msgID: number) => {
         let message = appMessagesManager.getMessage(msgID);
   
         this.renderMessage(message, reverse, true);

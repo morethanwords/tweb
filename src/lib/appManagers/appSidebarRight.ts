@@ -13,6 +13,8 @@ import appMediaViewer from "./appMediaViewer";
 import LazyLoadQueue from "../../components/lazyLoadQueue";
 import { wrapDocument, wrapAudio } from "../../components/wrappers";
 
+const testScroll = false;
+
 class AppSidebarRight {
   public sidebarEl = document.querySelector('.profile-container') as HTMLDivElement;
   public profileContentEl = document.querySelector('.profile-content') as HTMLDivElement;
@@ -77,7 +79,7 @@ class AppSidebarRight {
       hiddenElements: any,
       paddings: any
     }
-  }
+  } = {};
 
   private profileTabs: HTMLUListElement;
   private prevTabID = -1;
@@ -90,7 +92,7 @@ class AppSidebarRight {
     let container = this.profileContentEl.querySelector('.profile-tabs-content') as HTMLDivElement;
     this.profileTabs = this.profileContentEl.querySelector('.profile-tabs') as HTMLUListElement;
 
-    this.sidebarScroll = new Scrollable(this.sidebarEl);
+    this.sidebarScroll = new Scrollable(this.sidebarEl, false, true, 500, 'SR');
     this.sidebarScroll.container.addEventListener('scroll', this.onSidebarScroll.bind(this));
 
     horizontalMenu(this.profileTabs, container, (id, tabContent) => {
@@ -160,6 +162,23 @@ class AppSidebarRight {
         this.onSidebarScroll();
       }, 0);
     });
+
+    if(testScroll) {
+      let div = document.createElement('div');
+      for(let i = 0; i < 500; ++i) {
+        //div.insertAdjacentHTML('beforeend', `<div message-id="0" style="background-image: url(assets/img/camomile.jpg);"></div>`);
+        div.insertAdjacentHTML('beforeend', `<div data-id="${i / 3 | 0}">${i / 3 | 0}</div>`);
+  
+        if((i + 1) % 3 == 0) {
+          this.sharedMedia.contentMedia.append(div);
+          div = document.createElement('div');
+        }
+  
+        div.dataset.id = '' + (i / 3 | 0);
+      }
+      this.sharedMedia.contentMedia.append(div);
+      (this.profileTabs.children[1] as HTMLLIElement).click(); // set media
+    }
   }
 
   public onSidebarScroll() {
@@ -196,6 +215,10 @@ class AppSidebarRight {
   }
 
   public loadSidebarMedia(single = false) {
+    if(testScroll) {
+      return;
+    }
+
     let peerID = this.peerID;
     
     let typesToLoad = single ? [this.sharedMediaType] : this.sharedMediaTypes;
@@ -467,6 +490,21 @@ class AppSidebarRight {
       }
     }
 
+    if(peerID != appImManager.myID) {
+      let dialog: any = appMessagesManager.getDialogByPeerID(peerID);
+      if(dialog.length) {
+        dialog = dialog[0];
+        let muted = false;
+        if(dialog.notify_settings && dialog.notify_settings.mute_until) {
+          muted = new Date(dialog.notify_settings.mute_until * 1000) > new Date();
+        }
+  
+        appImManager.setMutedState(muted);
+      }
+    } else {
+      this.profileElements.notificationsRow.style.display = 'none';
+    }
+
     if(peerID > 0) {
       let user = appUsersManager.getUser(peerID);
       if(user.phone && peerID != appImManager.myID) {
@@ -489,6 +527,8 @@ class AppSidebarRight {
           appImManager.pinnedMsgID = userFull.pinned_msg_id;
           appMessagesManager.wrapSingleMessage(userFull.pinned_msg_id);
         }
+
+        this.sidebarScroll.getScrollTopOffset();
       });
     } else {
       let chat = appPeersManager.getPeer(peerID);
@@ -504,24 +544,12 @@ class AppSidebarRight {
         if(chatFull.about) {
           setText(RichTextProcessor.wrapRichText(chatFull.about), this.profileElements.bio);
         }
+
+        this.sidebarScroll.getScrollTopOffset();
       });
     }
 
-    if(peerID != appImManager.myID) {
-      let dialog: any = appMessagesManager.getDialogByPeerID(peerID);
-      if(dialog.length) {
-        dialog = dialog[0];
-        let muted = false;
-        if(dialog.notify_settings && dialog.notify_settings.mute_until) {
-          muted = new Date(dialog.notify_settings.mute_until * 1000) > new Date();
-        }
-  
-        appImManager.setMutedState(muted);
-      }
-    } else {
-      this.profileElements.notificationsRow.style.display = 'none';
-    }
-
+    this.sidebarScroll.getScrollTopOffset();
     //this.loadSidebarMedia();
   }
 }

@@ -249,7 +249,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
 
       docs.forEach(doc => {
         let div = document.createElement('div');
-        wrapSticker(doc, div, undefined, lazyLoadQueue, EMOTICONSSTICKERGROUP, true);
+        wrapSticker(doc, div, undefined, lazyLoadQueue, EMOTICONSSTICKERGROUP, true, false, true);
 
         categoryDiv.append(div);
       });
@@ -293,7 +293,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
       let categoryDiv = document.createElement('div');
       categoryDiv.classList.add('sticker-category');
 
-      stickersDiv.prepend(categoryDiv);
+      stickersScroll.prepend(categoryDiv);
       
       categoryPush(categoryDiv, stickers.stickers, true);
     });
@@ -314,14 +314,14 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
 
         menu.append(li);
 
-        stickersDiv.append(categoryDiv);
+        stickersScroll.append(categoryDiv);
 
         let stickerSet = await appStickersManager.getStickerSet(set);
         
         if(stickerSet.set.thumb) {
           let thumb = stickerSet.set.thumb;
 
-          appStickersManager.getStickerSetThumb(stickerSet.set).then(async(blob) => {
+          appStickersManager.getStickerSetThumb(stickerSet.set).then((blob) => {
             if(thumb.w == 1 && thumb.h == 1) { // means animated
               const reader = new FileReader();
 

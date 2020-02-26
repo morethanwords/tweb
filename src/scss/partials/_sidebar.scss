@@ -130,6 +130,7 @@
       width: 100%;
       display: flex;
       flex-direction: column;
+      padding-top: 4px;
 
       > div {
         display: grid;
@@ -137,10 +138,7 @@
         grid-auto-rows: max-content;
         grid-gap: 3.5px;
         place-items: start;
-        
-        & + div {
-          margin-top: 3.5px;
-        }
+        padding-top: 3.5px;
 
         > div {
           width: 100%;
@@ -149,6 +147,11 @@
           background-repeat: no-repeat;
           background-size: cover;
           background-position: center center;
+
+          display: flex;
+          background-color: #cecece;
+          justify-content: center;
+          align-items: center;
   
           &::before {
             content: "";

@@ -9,6 +9,8 @@ import appImManager from "./appImManager";
 import appUsersManager from "./appUsersManager";
 import { appPeersManager } from "../services";
 
+let testScroll = false;
+
 class SearchGroup {
   container: HTMLDivElement;
   nameEl: HTMLDivElement;
@@ -57,7 +59,7 @@ class AppSidebarLeft {
   private chatsArchivedOffsetIndex = 0;
   private chatsOffsetIndex = 0;
   private chatsPreloader: HTMLDivElement;
-  private chatsLoadCount = 0;
+  //private chatsLoadCount = 0;
   //private loadDialogsPromise: Promise<any>;
   private loadDialogsPromise: ReturnType<AppMessagesManager["getConversations"]>;
   
@@ -90,15 +92,15 @@ class AppSidebarLeft {
     putPreloader(this.chatsPreloader);
     //this.chatsContainer.append(this.chatsPreloader);
     
-    this.chatsLoadCount = Math.round(document.body.scrollHeight / 70 * 1.5);
+    //this.chatsLoadCount = Math.round(document.body.scrollHeight / 70 * 1.5);
     
-    this.scroll = new Scrollable(this.chatsContainer as HTMLDivElement);
+    this.scroll = new Scrollable(this.chatsContainer as HTMLDivElement, false, true, 300, 'CL');
     this.scroll.setVirtualContainer(appDialogsManager.chatList);
     this.scroll.onScrolledBottom = this.onChatsScroll.bind(this);
     appDialogsManager.chatsHidden = this.scroll.hiddenElements;
     //this.scroll.container.addEventListener('scroll', this.onChatsScroll.bind(this));
 
-    this.scrollArchived = new Scrollable(this.chatsArchivedContainer as HTMLDivElement);
+    this.scrollArchived = new Scrollable(this.chatsArchivedContainer as HTMLDivElement, false, true, 300, 'CLA');
     this.scrollArchived.setVirtualContainer(appDialogsManager.chatListArchived);
     appDialogsManager.chatsArchivedHidden = this.scrollArchived.hiddenElements;
     //this.scrollArchived.container.addEventListener('scroll', this.onChatsArchivedScroll.bind(this));
@@ -128,12 +130,14 @@ class AppSidebarLeft {
       //this.toolsBtn.classList.add('tgico-back');
     });
     
-    /* for(let i = 0; i < 100; ++i) {
-      let li = document.createElement('li');
-      li.dataset.id = '' + i;
-      li.innerHTML = `<div class="rp"><div class="user-avatar" style="background-color: rgb(166, 149, 231); font-size: 0px;"><img src="blob:https://localhost:9000/ce99a2a3-f34b-4ca1-a09e-f716f89930d8"></div><div class="user-caption"><p><span class="user-title">${i}</span><span><span class="message-status"></span><span class="message-time">18:33</span></span></p><p><span class="user-last-message"><b>Ильяс: </b>Гагагагга</span><span></span></p></div></div>`;
-      this.scroll.append(li);
-    } */
+    if(testScroll) {
+      for(let i = 0; i < 1000; ++i) {
+        let li = document.createElement('li');
+        li.dataset.id = '' + i;
+        li.innerHTML = `<div class="rp"><div class="user-avatar" style="background-color: rgb(166, 149, 231); font-size: 0px;"><img src="blob:https://localhost:9000/ce99a2a3-f34b-4ca1-a09e-f716f89930d8"></div><div class="user-caption"><p><span class="user-title">${i}</span><span><span class="message-status"></span><span class="message-time">18:33</span></span></p><p><span class="user-last-message"><b>Ильяс: </b>Гагагагга</span><span></span></p></div></div>`;
+        this.scroll.append(li);
+      }
+    }
     
     this.listsContainer.addEventListener('scroll', this.onSidebarScroll.bind(this));
 
@@ -196,7 +200,7 @@ class AppSidebarLeft {
     });
     
     window.addEventListener('resize', () => {
-      this.chatsLoadCount = Math.round(document.body.scrollHeight / 70 * 1.5);
+      //this.chatsLoadCount = Math.round(document.body.scrollHeight / 70 * 1.5);
       
       setTimeout(() => {
         this.onSidebarScroll();
@@ -212,7 +216,9 @@ class AppSidebarLeft {
   }
   
   public async loadDialogs(archived = false) {
-    //return;
+    if(testScroll) {
+      return;
+    }
     
     if(this.loadDialogsPromise/*  || 1 == 1 */) return this.loadDialogsPromise;
     
@@ -225,9 +231,12 @@ class AppSidebarLeft {
     
     
     try {
-      this.loadDialogsPromise = appMessagesManager.getConversations('', offset, this.chatsLoadCount, +archived);
+      console.time('getDialogs time');
+      this.loadDialogsPromise = appMessagesManager.getConversations('', offset, 50/*this.chatsLoadCount */, +archived);
       
       let result = await this.loadDialogsPromise;
+
+      console.timeEnd('getDialogs time');
       
       if(result && result.dialogs && result.dialogs.length) {
         let index = result.dialogs[result.dialogs.length - 1].index;
@@ -245,7 +254,7 @@ class AppSidebarLeft {
         this.archivedCount.innerText = '' + count;
       } */
 
-      /////this.log('loaded ' + this.chatsLoadCount + ' dialogs by offset:', offset, result, this.scroll.hiddenElements);
+      //this.log('getDialogs ' + this.chatsLoadCount + ' dialogs by offset:', offset, result, this.scroll.hiddenElements);
       this.scroll.onScroll();
     } catch(err) {
       this.log.error(err);
