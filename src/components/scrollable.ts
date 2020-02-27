@@ -73,6 +73,11 @@ export default class Scrollable {
   public splitMutateIntersectionTop: Promise<void> = null;
   public splitMutateIntersectionBottom: Promise<void> = null;
   
+  public getScrollHeightPromises: Array<{
+    element: Element,
+    task: Promise<any>
+  }> = [];
+  
   public onScrollMeasure: Promise<any> = null;
   
   public lastScrollTop: number = 0;
@@ -269,16 +274,16 @@ export default class Scrollable {
         if(this.debug) {
           this.log('sliced down', sliced);
         }
-
+        
         this.paddingBottomDiv.style.height = this.paddings.down + 'px';
       });
     });
   }
-
+  
   public detachByPrevScroll(child: Element, prevScrollTop: number, needHeight = 0) {
     if(this.splitMeasureBottom) fastdom.clear(this.splitMeasureBottom);
     if(this.splitMutateBottom) fastdom.clear(this.splitMutateBottom);
-
+    
     let attachToTop = this.paddings.up < prevScrollTop;
     
     this.splitMeasureBottom = fastdom.measure(() => {
@@ -496,9 +501,9 @@ export default class Scrollable {
     this.splitObserver = new IntersectionObserver((entries) => this.splitObserve(entries), {root: this.el}); */
     
     this.log('setVirtualContainer:', el, this);
-
+    
     this.getScrollTopOffset();
-
+    
     if(el) {
       fastdom.mutate(() => {
         el.parentElement.insertBefore(this.paddingTopDiv, el);
@@ -506,13 +511,13 @@ export default class Scrollable {
       });
     }
   }
-
+  
   public getScrollTopOffset() {
     if(this.splitUp && this.splitUp.parentElement && this.splitUp.parentElement != this.container) { // need to find offset
       fastdom.measure(() => {
         let rect = this.splitUp.getBoundingClientRect();
         let containerRect = this.container.getBoundingClientRect();
-  
+        
         this.scrollTopOffset = rect.top - containerRect.top;
         this.log('set scrollTopOffset to:', this.scrollTopOffset);
       });
@@ -571,12 +576,12 @@ export default class Scrollable {
         if(sum < visibleUntil && firstVisibleElement) {
           lastVisibleElement = element;
         }
-
+        
         sum += element.scrollHeight;
         
         //this.log(sum, element);
       }
-
+      
       if(!lastVisibleElement && firstVisibleElement) {
         lastVisibleElement = firstVisibleElement;
       }
@@ -622,7 +627,7 @@ export default class Scrollable {
           if(this.debug) {
             this.log.warn('will detach all of top', length, this.splitUp.childElementCount, maxScrollTop, this.paddings,  this.lastScrollTop);
           }
-
+          
           this.detachTop(children[length - 1], 0).then(() => { // now need to move from one hidden array to another one
             this.onManualScrollBottom(scrollTop, needHeight);
           });
@@ -634,7 +639,7 @@ export default class Scrollable {
           if(this.debug) {
             this.log('will detach bottom by:', lastVisibleElement, needHeight);
           }
-
+          
           this.detachBottom(lastVisibleElement, needHeight);
           
           let child = firstVisibleElement;
@@ -655,7 +660,7 @@ export default class Scrollable {
           if(this.debug) {
             this.log.warn('will detach all of bottom', length, this.splitUp.childElementCount, maxScrollTop, this.paddings, this.lastScrollTop);
           }
-
+          
           this.detachBottom(children[0], 0).then(() => { // now need to move from one hidden array to another one
             this.onManualScrollTop(scrollTop, needHeight, maxScrollTop);
           });
@@ -667,7 +672,7 @@ export default class Scrollable {
       if(this.debug) {
         this.log('onScroll', (performance.now() - perf).toFixed(3), length, scrollTop, maxScrollTop, toBottom, firstVisibleElement, lastVisibleElement, visibleFrom, visibleUntil, this.scrollTopOffset);
       }
-
+      
       this.lastScrollTop = scrollTop;
       
       return {value, maxValue};
@@ -722,7 +727,7 @@ export default class Scrollable {
       if(this.debug) {
         this.log.warn('shake it off now', this, length, this.splitUp.childElementCount);
       }
-
+      
       this.paddingTopDiv.style.height = this.paddings.up + 'px';
       this.onBottomIntersection(outerHeight + (needHeight * 2));
     });
@@ -789,7 +794,7 @@ export default class Scrollable {
         
         this.splitUp.appendChild(fragment);
         this.paddingBottomDiv.style.height = this.paddings.down + 'px';
-
+        
         /* if(this.debug) {
           this.log('onBottomIntersection append:', fragment, needHeight);
         } */
@@ -801,74 +806,221 @@ export default class Scrollable {
     });
   }
   
-  public prepend(...smth: (string | Node)[]) {
+  public prepend(...smth: Element[]) {
     if(this.splitUp) {
+      smth.forEach(node => {
+        this.removeElement(node);
+      });
+      
       if(this.hiddenElements.up.length) {
-        smth.forEach(node => {
-          if(typeof(node) !== 'string') {
-            this.hiddenElements.up.push({
-              element: node as Element, 
-              height: (node as Element).scrollHeight || 1
+        fastdom.mutate(() => {
+          this.splitUp.append(...smth);
+        }).then(() => {
+          return fastdom.measure(() => {
+            smth.forEachReverse(node => {
+              let height = node.scrollHeight;
+              this.log('will append element to up hidden', node, height);
+              this.paddings.up += height;
+              this.hiddenElements.up.unshift({
+                element: node, 
+                height: height
+              });
             });
-          }
+          });
+        }).then(() => {
+          fastdom.mutate(() => {
+            smth.forEachReverse(node => {
+              if(node.parentElement) {
+                node.parentElement.removeChild(node);
+              }
+            });
+            
+            this.paddingTopDiv.style.height = this.paddings.up + 'px';
+            
+            this.onScroll();
+          });
         });
       } else {
         this.splitUp.prepend(...smth);
+        this.onScroll();
       }
     } else {
       this.container.prepend(...smth);
+      this.onScroll();
     }
     
-    this.onScroll();
+    //this.onScroll();
   }
   
-  public append(...smth: (string | Node)[]) {
+  public append(...smth: Element[]) {
     if(this.splitUp) {
+      smth.forEach(node => {
+        this.removeElement(node);
+      });
+      
       if(this.hiddenElements.down.length) {
-        smth.forEachReverse(node => {
-          if(typeof(node) !== 'string') {
-            this.hiddenElements.down.unshift({
-              element: node as Element, 
-              height: (node as Element).scrollHeight || 1
+        fastdom.mutate(() => {
+          this.splitUp.append(...smth);
+        }).then(() => {
+          return fastdom.measure(() => {
+            smth.forEach(node => {
+              let height = node.scrollHeight;
+              this.log('will append element to down hidden', node, height);
+              this.paddings.down += height;
+              this.hiddenElements.down.push({
+                element: node, 
+                height: height
+              });
             });
-          }
+          });
+        }).then(() => {
+          fastdom.mutate(() => {
+            smth.forEach(node => {
+              if(node.parentElement) {
+                node.parentElement.removeChild(node);
+              }
+            });
+            
+            this.paddingBottomDiv.style.height = this.paddings.down + 'px';
+            
+            this.onScroll();
+          });
         });
       } else {
         this.splitUp.append(...smth);
+        this.onScroll();
       }
     } else {
       this.container.append(...smth);
+      this.onScroll();
     }
     
-    this.onScroll();
+    //this.onScroll();
   }
   
-  public insertBefore(newChild: Element, refChild: Element) {
+  public removeElement(element: Element) {
+    if(!this.splitUp) {
+      if(this.container.contains(element)) {
+        //fastdom.mutate(() => this.container.removeChild(element));
+        this.container.removeChild(element);
+      }
+      
+      return;
+    } else {
+      if(this.splitUp.contains(element)) {
+        //fastdom.mutate(() => this.splitUp.removeChild(element));
+        this.splitUp.removeChild(element);
+        return;
+      }
+    }
+    
+    let index = this.hiddenElements.up.findIndex(c => c.element == element);
+    let child: {element: Element, height: number};
+    let foundUp = false;
+    if(index !== -1) {
+      child = this.hiddenElements.up.splice(index, 1)[0];
+      this.paddings.up -= child.height;
+      foundUp = true;
+    } else {
+      index = this.hiddenElements.down.findIndex(c => c.element == element);
+      if(index !== -1) {
+        child = this.hiddenElements.down.splice(index, 1)[0];
+        this.paddings.down -= child.height;
+      }
+    }
+    
+    if(!child) return;
+    
+    //fastdom.mutate(() => { 
+    if(foundUp) {
+      this.paddingTopDiv.style.height = this.paddings.up + 'px';
+    } else {
+      this.paddingBottomDiv.style.height = this.paddings.down + 'px';
+    }
+    //});
+    
+    return child;
+  }
+  
+  public insertBefore(newChild: Element, refChild: Element, height?: number) {
+    this.log('insertBefore', newChild, refChild);
+    return;
+    
     if(this.splitUp) {
       let index = -1;
       index = this.hiddenElements.up.findIndex(c => c.element == refChild);
       
-      // возможно здесь нужно очищать предыдущую высоту если newChild уже скрыт (но может и не нужно)
+      let child = this.removeElement(newChild);
+      if(child) {
+        height = child.height;
+      } else if(height === undefined) {
+        let p = this.getScrollHeightPromises.find(p => p.element == newChild);
+        if(!p) p = {element: newChild, task: null};
+        else fastdom.clear(p.task);
+        
+        let promise: any;
+        
+        return p.task = promise = fastdom.mutate(() => {
+          this.splitUp.append(newChild);
+          
+          return fastdom.measure(() => {
+            if(p.task != promise) return;
+            
+            let height = newChild.scrollHeight;
+            
+            return fastdom.mutate(() => {
+              if(p.task != promise || !newChild.parentElement) return;
+              
+              this.splitUp.removeChild(newChild);
+              
+              this.insertBefore(newChild, refChild, height);
+              
+              this.getScrollHeightPromises = this.getScrollHeightPromises.filter(p => p.element != newChild);
+              
+              return height;
+            });
+          });
+        });
+      }
+      
       if(index !== -1) {
-        this.hiddenElements.up.splice(index, 0, {element: newChild, height: newChild.scrollHeight || 1});
-        this.onScroll();
+        this.hiddenElements.up.splice(index, 0, {element: newChild, height: height});
+        this.paddings.up += height;
+        fastdom.mutate(() => {
+          this.paddingTopDiv.style.height = this.paddings.up + 'px';
+          this.onScroll();
+        });
         return index;
       } else {
-        index = this.hiddenElements.down.findIndex(c => c.element == newChild);
+        index = this.hiddenElements.down.findIndex(c => c.element == refChild);
         
         if(index !== -1) {
-          this.hiddenElements.down.splice(index, 0, {element: newChild, height: newChild.scrollHeight || 1});
-          this.onScroll();
+          this.hiddenElements.down.splice(index, 0, {element: newChild, height: height});
+          this.paddings.down += height;
+          fastdom.mutate(() => {
+            this.paddingBottomDiv.style.height = this.paddings.down + 'px';
+            this.onScroll();
+          });
           return index;
         }
       }
       
-      this.onScroll();
-      return this.splitUp.insertBefore(newChild, refChild);
+      fastdom.mutate(() => {
+        this.log('inserting', newChild, 'before', refChild, this.splitUp.contains(refChild));
+        if(!this.splitUp.contains(refChild)) {
+          this.log.error('no refChild in splitUp', refChild, newChild, this.hiddenElements);
+          return;
+        }
+        
+        this.splitUp.insertBefore(newChild, refChild);
+        this.onScroll();
+      });
+      return;
     }
     
+    let ret = this.container.insertBefore(newChild, refChild);
     this.onScroll();
-    return this.container.insertBefore(newChild, refChild);
+    return ret;
   }
   
   set scrollTop(y: number) {

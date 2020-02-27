@@ -1710,7 +1710,7 @@ export class AppImManager {
 
     return this.getHistoryPromise = appMessagesManager.getHistory(this.peerID, maxID, loadCount, backLimit)
     .then((result: any) => {
-      ///////this.log('getHistory result by maxID:', maxID, reverse, isBackLimit, result);
+      this.log('getHistory result by maxID:', maxID, reverse, isBackLimit, result);
 
       //console.timeEnd('render getHistory');
 
