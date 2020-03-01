@@ -53,6 +53,23 @@ Array.prototype.forEachReverse = function<T>(callback: (value: T, index?: number
   }
 };
 
+Array.prototype.findAndSplice = function<T>(verify: (value: T, index?: number, array?: Array<T>) => boolean) {
+  let index = this.findIndex(verify);
+  return index !== -1 ? this.splice(index, 1)[0] : undefined;
+};
+
+String.prototype.toHHMMSS = function(leadZero = false) {
+  let sec_num = parseInt(this + '', 10);
+  let hours: any = Math.floor(sec_num / 3600);
+  let minutes: any = Math.floor((sec_num - (hours * 3600)) / 60);
+  let seconds: any = sec_num - (hours * 3600) - (minutes * 60);
+  
+  if(hours   < 10) hours   = "0" + hours;
+  if(minutes < 10) minutes = leadZero ? "0" + minutes : minutes;
+  if(seconds < 10) seconds = "0" + seconds;
+  return minutes + ':' + seconds;
+}
+
 declare global {
   interface Uint8Array {
     hex: string;
@@ -62,5 +79,10 @@ declare global {
 
   interface Array<T> {
     forEachReverse(callback: (value: T, index?: number, array?: Array<T>) => void): void;
+    findAndSplice(verify: (value: T, index?: number, array?: Array<T>) => boolean): T;
+  }
+
+  interface String {
+    toHHMMSS(leadZero?: boolean): string;
   }
 }

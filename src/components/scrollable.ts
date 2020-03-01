@@ -32,12 +32,13 @@ export default class Scrollable {
   
   public type: string;
   public side: string;
+  public translate: string;
   public scrollType: string;
   public scrollSide: string;
   public clientAxis: string;
   
-  public scrollSize = -1;
-  public size = 0;
+  public scrollSize = -1; // it will be scrollHeight
+  public size = 0; // it will be outerHeight of container (not scrollHeight)
   public thumbSize = 0;
   
   public hiddenElements: {
@@ -57,11 +58,12 @@ export default class Scrollable {
   public onAddedBottom: () => void = null;
   public onScrolledTop: () => void = null;
   public onScrolledBottom: () => void = null;
+  public onScrolledTopFired = false;
+  public onScrolledBottomFired = false;
   
   public topObserver: IntersectionObserver;
   public bottomObserver: IntersectionObserver;
   
-  public splitObserver: IntersectionObserver;
   public splitMeasureTop: Promise<{element: Element, height: number}[]> = null;
   public splitMeasureBottom: Scrollable['splitMeasureTop'] = null;
   public splitMeasureAdd: Promise<number> = null;
@@ -86,37 +88,17 @@ export default class Scrollable {
   private log: ReturnType<typeof logger>;
   private debug = false;
   
-  constructor(public el: HTMLDivElement, x = false, y = true, public splitOffset = 300, logPrefix = '') {
+  constructor(public el: HTMLDivElement, x = false, y = true, public splitOffset = 300, logPrefix = '', public appendTo = el, public onScrollOffset = splitOffset) {
     this.container = document.createElement('div');
     this.container.classList.add('scrollable');
     
     this.log = logger('SCROLL' + (logPrefix ? '-' + logPrefix : ''));
     
-    let arr = [];
-    for(let i = 0.001; i < 1; i += 0.001) arr.push(i);
-    this.topObserver = new IntersectionObserver(entries => {
-      let entry = entries[entries.length - 1];
-      
-      //console.log('top intersection:', entries, entry.isIntersecting, entry.intersectionRatio > 0);
-      if(entry.isIntersecting) {
-        if(this.onScrolledTop) this.onScrolledTop();
-      }
-      // console.log('top intersection end');
-    }, {root: this.el});
-    
-    this.bottomObserver = new IntersectionObserver(entries => {
-      let entry = entries[entries.length - 1];
-      
-      //console.log('bottom intersection:', entries, entry, entry.isIntersecting, entry.intersectionRatio > 0);
-      if(entry.isIntersecting) {
-        if(this.onScrolledBottom) this.onScrolledBottom();
-      }
-    }, {root: this.el});
-    
     if(x) {
       this.container.classList.add('scrollable-x');
       this.type = 'width';
       this.side = 'left';
+      this.translate = 'translateX';
       this.scrollType = 'scrollWidth';
       this.scrollSide = 'scrollLeft';
       this.clientAxis = 'clientX';
@@ -141,6 +123,7 @@ export default class Scrollable {
       this.container.classList.add('scrollable-y');
       this.type = 'height';
       this.side = 'top';
+      this.translate = 'translateY';
       this.scrollType = 'scrollHeight';
       this.scrollSide = 'scrollTop';
       this.clientAxis = 'clientY';
@@ -181,16 +164,14 @@ export default class Scrollable {
     window.addEventListener('resize', () => {
       //this.resize.bind(this);
       this.onScroll();
+      this.resize();
     });
     
     this.paddingTopDiv = document.createElement('div');
     this.paddingTopDiv.classList.add('scroll-padding');
     this.paddingBottomDiv = document.createElement('div');
     this.paddingBottomDiv.classList.add('scroll-padding');
-    
-    this.topObserver.observe(this.paddingTopDiv);
-    this.bottomObserver.observe(this.paddingBottomDiv);
-    
+
     this.container.addEventListener('scroll', this.onScroll.bind(this));
     
     Array.from(el.children).forEach(c => this.container.append(c));
@@ -280,181 +261,9 @@ export default class Scrollable {
     });
   }
   
-  public detachByPrevScroll(child: Element, prevScrollTop: number, needHeight = 0) {
-    if(this.splitMeasureBottom) fastdom.clear(this.splitMeasureBottom);
-    if(this.splitMutateBottom) fastdom.clear(this.splitMutateBottom);
-    
-    let attachToTop = this.paddings.up < prevScrollTop;
-    
-    this.splitMeasureBottom = fastdom.measure(() => {
-      let sliced: {element: Element, height: number}[] = [];
-      
-      do {
-        if(needHeight > 0) {
-          needHeight -= child.scrollHeight;
-        } else {
-          sliced.push({element: child, height: child.scrollHeight});
-        }
-      } while(child = child.nextElementSibling);
-      return sliced;
-    });
-    
-    return this.splitMeasureBottom.then(sliced => {
-      if(this.splitMutateBottom) fastdom.clear(this.splitMutateBottom);
-      
-      return this.splitMutateBottom = fastdom.mutate(() => {
-        sliced.forEachReverse((child) => {
-          let {element, height} = child;
-          if(!this.splitUp.contains(element)) return;
-          
-          this.paddings.down += height;
-          this.hiddenElements.down.unshift(child);
-          this.splitUp.removeChild(element);
-          //element.parentElement.removeChild(element);
-        });
-        
-        this.log('sliced down', sliced);
-        this.paddingBottomDiv.style.height = this.paddings.down + 'px';
-      });
-    });
-  }
-  
-  public splitObserve(entries: IntersectionObserverEntry[]) {
-    let sorted: {
-      intersecting: {
-        top?: IntersectionObserverEntry,
-        bottom?: IntersectionObserverEntry
-      },
-      notIntersecting: {
-        top?: IntersectionObserverEntry,
-        bottom?: IntersectionObserverEntry
-      }
-    } = {
-      intersecting: {},
-      notIntersecting: {}
-    };
-    
-    for(let entry of entries) { // there may be duplicates (1st - not intersecting, 2nd - intersecting)
-      //console.log('onscroll entry 1', entry.target, entry.isIntersecting, entry);
-      if(!entry.target.parentElement || !entry.rootBounds) continue;
-      
-      if(!entry.isIntersecting) {
-        let isTop = entry.boundingClientRect.top <= 0;
-        let isBottom = entry.rootBounds.height <= entry.boundingClientRect.top;
-        //console.log('onscroll entry notIntersecting', isTop, isBottom, entry.target, entry);
-        
-        if(isTop) {
-          sorted.notIntersecting.top = entry;
-        } else if(isBottom && !sorted.notIntersecting.bottom) {
-          sorted.notIntersecting.bottom = entry;
-        }
-        
-        //console.log('splitObserver', entry, entry.target, isTop);
-      } else {
-        let isTop = entry.boundingClientRect.top <= entry.rootBounds.top;
-        let isBottom = entry.boundingClientRect.bottom >= entry.rootBounds.bottom;
-        
-        if(isTop) {
-          sorted.intersecting.top = entry;
-        } else if(isBottom && !sorted.intersecting.bottom) {
-          sorted.intersecting.bottom = entry;
-        }
-        
-        // if(isTop) {
-        //   this.onTopIntersection(entry.boundingClientRect.height);
-        // } else if(isBottom) {
-        //   this.onTopIntersection(entry.boundingClientRect.height);
-        // }
-      }
-    }
-    
-    console.log('splitObserve', entries, sorted);
-    
-    let needHeight = this.splitOffset;
-    let isOutOfView: boolean;
-    let entry: IntersectionObserverEntry;
-    if(entry = sorted.notIntersecting.top) { // scrolled bottom
-      let child = entry.target;
-      
-      let diff = entry.boundingClientRect.bottom + needHeight;
-      if(diff < 0) { // maybe need <=, means out of view
-        if(!(child = child.nextElementSibling)) {
-          this.detachTop(this.splitUp.lastElementChild, 0);
-        } else {
-          if(this.splitMeasureRemoveBad) fastdom.clear(this.splitMeasureRemoveBad);
-          this.splitMeasureRemoveBad = fastdom.measure(() => {
-            do {
-              diff += child.scrollHeight;
-            } while(diff < 0 && (child = child.nextElementSibling));
-            
-            return child || this.splitUp.lastElementChild;
-          });
-          
-          this.splitMeasureRemoveBad.then(child => {
-            this.detachTop(child, 0);
-          });
-        }
-      } else {
-        this.detachTop(child, needHeight);
-      }
-    }
-    
-    if(entry = sorted.notIntersecting.bottom) { // scrolled top
-      isOutOfView = (entry.boundingClientRect.top - needHeight) >= entry.rootBounds.height;
-      this.detachBottom(entry.target, isOutOfView ? 0 : needHeight);
-    }
-    
-    if(entry = sorted.intersecting.top) { // scrolling top
-      let needHeight = this.splitOffset;
-      
-      let child = entry.target;
-      if(this.splitMeasureAdd) fastdom.clear(this.splitMeasureAdd);
-      this.splitMeasureAdd = fastdom.measure(() => {
-        while(child = child.previousElementSibling) {
-          needHeight -= child.scrollHeight;
-        }
-        
-        return needHeight;
-      });
-      
-      this.splitMeasureAdd.then(needHeight => {
-        this.onTopIntersection(needHeight);
-      });
-    }
-    
-    if(entry = sorted.intersecting.bottom) { // scrolling bottom
-      let needHeight = this.splitOffset;
-      
-      let child = entry.target;
-      if(this.splitMeasureAdd) fastdom.clear(this.splitMeasureAdd);
-      this.splitMeasureAdd = fastdom.measure(() => {
-        while(child = child.nextElementSibling) {
-          needHeight -= child.scrollHeight;
-        }
-        
-        return needHeight;
-      });
-      
-      this.splitMeasureAdd.then(needHeight => {
-        this.onBottomIntersection(needHeight);
-      });
-    }
-  }
-  
-  public async resize() {
+  public resize() {
     //console.time('scroll resize');
-    
-    await fastdom.measure(() => {
-      // @ts-ignore
-      this.scrollSize = this.container[this.scrollType];
-      
-      let rect = this.container.getBoundingClientRect();
-      
-      // @ts-ignore
-      this.size = rect[this.type];
-    });
-    
-    await fastdom.mutate(() => {
+    fastdom.mutate(() => {
       if(!this.size || this.size == this.scrollSize) {
         this.thumbSize = 0;
         
@@ -480,7 +289,7 @@ export default class Scrollable {
     //console.log('onresize', thumb.style[type], thumbHeight, height);
   }
   
-  public async setVirtualContainer(el?: HTMLElement) {
+  public setVirtualContainer(el?: HTMLElement) {
     this.splitUp = el;
     
     this.hiddenElements.up.length = this.hiddenElements.down.length = 0;
@@ -494,12 +303,6 @@ export default class Scrollable {
       });
     }
     
-    /* if(this.splitObserver) {
-      this.splitObserver.disconnect();
-    }
-    
-    this.splitObserver = new IntersectionObserver((entries) => this.splitObserve(entries), {root: this.el}); */
-    
     this.log('setVirtualContainer:', el, this);
     
     this.getScrollTopOffset();
@@ -509,6 +312,9 @@ export default class Scrollable {
         el.parentElement.insertBefore(this.paddingTopDiv, el);
         el.parentNode.insertBefore(this.paddingBottomDiv, el.nextSibling);
       });
+    } else {
+      this.paddingTopDiv.remove();
+      this.paddingBottomDiv.remove();
     }
   }
   
@@ -529,33 +335,66 @@ export default class Scrollable {
   public onScroll() {
     if(this.onScrollMeasure) fastdom.clear(this.onScrollMeasure);
     this.onScrollMeasure = fastdom.measure(() => {
+      // @ts-ignore quick brown fix
+      this.size = this.parentElement[this.scrollType];
+      
       // @ts-ignore
-      if(this.container[this.scrollType] != this.scrollSize || this.thumbSize == 0) {
+      let scrollSize = this.container[this.scrollType];
+      if(scrollSize != this.scrollSize || this.thumbSize == 0) {
         this.resize();
       }
-      
+      this.scrollSize = scrollSize;
+
       // @ts-ignore
-      let value = this.container[this.scrollSide] / (this.scrollSize - this.size) * 100;
-      let maxValue = 100 - (this.thumbSize / this.size * 100);
+      let scrollPos = this.container[this.scrollSide];
       
+      // let value = scrollPos / (this.scrollSize - this.size) * 100;
+      // let maxValue = 100 - (this.thumbSize / this.size * 100);
+      let value = scrollPos / (this.scrollSize - this.size) * this.size;
+      let maxValue = this.size - this.thumbSize;
+      
+      //this.log(scrollPos, this.scrollSize, this.size, value, scrollPos / (this.scrollSize - this.size) * this.size);
       let ret = {value, maxValue};
+
+      let scrollTop = scrollPos - this.scrollTopOffset;
+      let maxScrollTop = this.scrollSize - this.scrollTopOffset - this.size;
+
+      if(this.onScrolledBottom) {
+        if(!this.hiddenElements.down.length && (maxScrollTop - scrollTop) <= this.onScrollOffset) {
+          if(!this.onScrolledBottomFired) {
+            this.onScrolledBottomFired = true;
+            this.onScrolledBottom();
+          }
+        } else {
+          this.onScrolledBottomFired = false;
+        }
+      }
+
+      if(this.onScrolledTop) {
+        //this.log('onScrolledTop:', scrollTop, this.onScrollOffset);
+        if(!this.hiddenElements.up.length && scrollTop <= this.onScrollOffset) {
+          if(!this.onScrolledTopFired) {
+            this.onScrolledTopFired = true;
+            this.onScrolledTop();
+          }
+        } else {
+          this.onScrolledTopFired = false;
+        }
+      }
       
       if(!this.splitUp) {
         return ret;
       }
       
       let perf = performance.now();
-      let scrollTop = this.scrollTop - this.scrollTopOffset;
-      let outerHeight = this.parentElement.scrollHeight;
       
-      let maxScrollTop = this.scrollHeight - this.scrollTopOffset - outerHeight;
       if(scrollTop < 0) scrollTop = 0;
       else if(scrollTop > maxScrollTop) scrollTop = maxScrollTop;
       
       let toBottom = scrollTop > this.lastScrollTop;
       
       let visibleFrom = /* scrollTop < this.paddings.up ? scrollTop :  */scrollTop - this.paddings.up;
-      let visibleUntil = visibleFrom + outerHeight;
+      let visibleUntil = visibleFrom + this.size;
       let sum = 0;
       
       let firstVisibleElement: Element;
@@ -619,10 +458,6 @@ export default class Scrollable {
             this.onBottomIntersection(needHeight);
             return needHeight;
           });
-          
-          /* this.splitMeasureAdd.then(needHeight => {
-            this.onBottomIntersection(needHeight);
-          }); */
         } else if(length) { // scrolled manually or safari
           if(this.debug) {
             this.log.warn('will detach all of top', length, this.splitUp.childElementCount, maxScrollTop, this.paddings,  this.lastScrollTop);
@@ -652,10 +487,6 @@ export default class Scrollable {
             this.onTopIntersection(needHeight);
             return needHeight;
           });
-          
-          /* this.splitMeasureAdd.then(needHeight => {
-            this.onTopIntersection(needHeight);
-          }); */
         } else if(length) { // scrolled manually or safari
           if(this.debug) {
             this.log.warn('will detach all of bottom', length, this.splitUp.childElementCount, maxScrollTop, this.paddings, this.lastScrollTop);
@@ -681,7 +512,8 @@ export default class Scrollable {
     this.onScrollMeasure.then(({value, maxValue}) => {
       fastdom.mutate(() => {
         // @ts-ignore
-        this.thumb.style[this.side] = (value >= maxValue ? maxValue : value) + '%';
+        //this.thumb.style[this.side] = (value >= maxValue ? maxValue : value) + '%';
+        this.thumb.style.transform = this.translate + '(' + (value >= maxValue ? maxValue : value) + 'px)';
       });
     });
     
@@ -691,7 +523,7 @@ export default class Scrollable {
   public onManualScrollTop(scrollTop: number, needHeight: number, maxScrollTop: number) {
     //if(this.splitMutateRemoveBad) fastdom.clear(this.splitMutateRemoveBad);
     this.splitMutateRemoveBad = fastdom.mutate(() => {
-      let h = maxScrollTop - (scrollTop + outerHeight);
+      let h = maxScrollTop - (scrollTop + this.size);
       
       while(this.paddings.down < h && this.paddings.up) {
         let child = this.hiddenElements.up.pop();
@@ -705,11 +537,8 @@ export default class Scrollable {
       }
       
       this.paddingBottomDiv.style.height = this.paddings.down + 'px';
-      this.onTopIntersection((outerHeight * 2) + (needHeight * 2));
+      this.onTopIntersection((this.size * 2) + (needHeight * 2));
     });
-    
-    /* this.splitMutateRemoveBad.then(() => {
-    }); */
   }
   
   public onManualScrollBottom(scrollTop: number, needHeight: number) {
@@ -729,11 +558,8 @@ export default class Scrollable {
       }
       
       this.paddingTopDiv.style.height = this.paddings.up + 'px';
-      this.onBottomIntersection(outerHeight + (needHeight * 2));
+      this.onBottomIntersection(this.size + (needHeight * 2));
     });
-    
-    /* this.splitMutateRemoveBad.then(() => {
-    }); */
   }
   
   public onTopIntersection(needHeight: number) {
@@ -813,7 +639,7 @@ export default class Scrollable {
       });
       
       if(this.hiddenElements.up.length) {
-        fastdom.mutate(() => {
+        /* fastdom.mutate(() => {
           this.splitUp.append(...smth);
         }).then(() => {
           return fastdom.measure(() => {
@@ -839,13 +665,26 @@ export default class Scrollable {
             
             this.onScroll();
           });
+        }); */
+        this.splitUp.prepend(...smth);
+        smth.forEachReverse(node => {
+          let height = node.scrollHeight;
+          this.log('will append element to up hidden', node, height);
+          this.paddings.up += height;
+          this.hiddenElements.up.unshift({
+            element: node, 
+            height: height
+          });
+          node.parentElement.removeChild(node);
         });
+        this.paddingTopDiv.style.height = this.paddings.up + 'px';
+        this.onScroll();
       } else {
         this.splitUp.prepend(...smth);
         this.onScroll();
       }
     } else {
-      this.container.prepend(...smth);
+      this.appendTo.prepend(...smth);
       this.onScroll();
     }
     
@@ -891,7 +730,7 @@ export default class Scrollable {
         this.onScroll();
       }
     } else {
-      this.container.append(...smth);
+      this.appendTo.append(...smth);
       this.onScroll();
     }
     
@@ -914,17 +753,14 @@ export default class Scrollable {
       }
     }
     
-    let index = this.hiddenElements.up.findIndex(c => c.element == element);
-    let child: {element: Element, height: number};
+    let child = this.hiddenElements.up.findAndSplice(c => c.element == element);
     let foundUp = false;
-    if(index !== -1) {
-      child = this.hiddenElements.up.splice(index, 1)[0];
+    if(child) {
       this.paddings.up -= child.height;
       foundUp = true;
     } else {
-      index = this.hiddenElements.down.findIndex(c => c.element == element);
-      if(index !== -1) {
-        child = this.hiddenElements.down.splice(index, 1)[0];
+      child = this.hiddenElements.down.findAndSplice(c => c.element == element);
+      if(child) {
         this.paddings.down -= child.height;
       }
     }
@@ -943,7 +779,7 @@ export default class Scrollable {
   }
   
   public insertBefore(newChild: Element, refChild: Element, height?: number) {
-    this.log('insertBefore', newChild, refChild);
+    //this.log('insertBefore', newChild, refChild);
     return;
     
     if(this.splitUp) {
@@ -1021,6 +857,29 @@ export default class Scrollable {
     let ret = this.container.insertBefore(newChild, refChild);
     this.onScroll();
     return ret;
+  }
+
+  public scrollIntoView(element: Element) {
+    if(element.parentElement) {
+      element.scrollIntoView();
+    } else if(this.splitUp) {
+      let index = this.hiddenElements.up.findIndex(e => e.element == element);
+      let y = 0;
+      if(index !== -1) {
+        for(let i = 0; i < index; ++i) {
+          y += this.hiddenElements.up[i].height;
+        }
+
+        this.scrollTop = y;
+      } else if((index = this.hiddenElements.down.findIndex(e => e.element == element)) !== -1) {
+        y += this.paddings.up + this.size;
+        for(let i = 0; i < index; ++i) {
+          y += this.hiddenElements.down[i].height;
+        }
+
+        this.scrollTop = y;
+      }
+    }
   }
   
   set scrollTop(y: number) {

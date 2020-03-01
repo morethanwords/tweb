@@ -259,15 +259,21 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
   
   let svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.classList.add('audio-waveform');
-  svg.setAttributeNS(null, 'width', '250');
+  svg.setAttributeNS(null, 'width', '190');
   svg.setAttributeNS(null, 'height', '23');
-  svg.setAttributeNS(null, 'viewBox', '0 0 250 23');
+  svg.setAttributeNS(null, 'viewBox', '0 0 190 23');
   
   div.insertBefore(svg, div.lastElementChild);
   let wave = doc.attributes[0].waveform as Uint8Array;
   
   let index = 0;
+  let skipped = 0;
   for(let uint8 of wave) {
+    if (index > 0 && index % 4 == 0) {
+      ++index;
+      ++skipped;
+      continue;
+    }
     let percents = uint8 / 255;
     
     let height = 23 * percents;
@@ -276,12 +282,14 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
     }
     
     svg.insertAdjacentHTML('beforeend', `
-    <rect x="${index * 4}" y="${23 - height}" width="2" height="${height}" rx="1" ry="1"></rect>
+    <rect x="${(index - skipped) * 4}" y="${23 - height}" width="2" height="${height}" rx="1" ry="1"></rect>
     `);
     
     ++index;
   }
   
+  let progress = div.querySelector('.audio-waveform') as HTMLDivElement;
+
   let onClick = () => {
     if(!promise) {
       if(downloadDiv.classList.contains('downloading')) {
@@ -310,6 +318,7 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
         let toggle = div.querySelector('.audio-toggle') as HTMLDivElement;
         
         let interval = 0;
+        let lastIndex = 0;
         
         toggle.addEventListener('click', () => {
           if(audio.paused) {
@@ -327,7 +336,6 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
             
             (Array.from(svg.children) as HTMLElement[]).forEach(node => node.classList.remove('active'));
             
-            let lastIndex = 0;
             interval = setInterval(() => {
               if(lastIndex > svg.childElementCount || isNaN(audio.duration)) {
                 clearInterval(interval);
@@ -337,10 +345,11 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
               // @ts-ignore
               timeDiv.innerText = String(audio.currentTime | 0).toHHMMSS(true);
               
-              lastIndex = Math.round(audio.currentTime / audio.duration * 62);
+              lastIndex = Math.round(audio.currentTime / audio.duration * 47);
 
               //svg.children[lastIndex].setAttributeNS(null, 'fill', '#000');
-              svg.children[lastIndex].classList.add('active');
+              //svg.children[lastIndex].classList.add('active'); #Иногда пропускает полоски..
+              (Array.from(svg.children) as HTMLElement[]).slice(0,lastIndex+1).forEach(node => node.classList.add('active'));
               //++lastIndex;
               //console.log('lastIndex:', lastIndex, audio.currentTime);
             //}, duration * 1000 / svg.childElementCount | 0/* 63 * duration / 10 */);
@@ -358,10 +367,50 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
           toggle.classList.add('tgico-largeplay');
           toggle.classList.remove('tgico-largepause');
           clearInterval(interval);
+          (Array.from(svg.children) as HTMLElement[]).forEach(node => node.classList.remove('active'));
           
           // @ts-ignore
           timeDiv.innerText = String(audio.currentTime | 0).toHHMMSS(true);
         });
+        
+        let mousedown = false, mousemove = false;
+        progress.addEventListener('mouseleave', (e) => {
+          if(mousedown) {
+            audio.play();
+            mousedown = false;
+          }
+          mousemove = false;
+        })
+        progress.addEventListener('mousemove', (e) => {
+          mousemove = true;
+          if(mousedown) scrub(e, audio, progress);
+        });
+        progress.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          if(!audio.paused) {
+            audio.pause();
+            scrub(e, audio, progress);
+            mousedown = true;
+          }
+        });
+        progress.addEventListener('mouseup', (e) => {
+          if (mousemove && mousedown) {
+            audio.play();
+            mousedown = false;
+          }
+        });
+        progress.addEventListener('click', (e) => {
+          if(!audio.paused) scrub(e, audio, progress);
+        });
+
+        function scrub(e: MouseEvent, audio: HTMLAudioElement, progress: HTMLDivElement) {
+          let scrubTime = e.offsetX / 190 /* width */ * audio.duration;
+          (Array.from(svg.children) as HTMLElement[]).forEach(node => node.classList.remove('active'));
+          lastIndex = Math.round(scrubTime / audio.duration * 47);
+
+          (Array.from(svg.children) as HTMLElement[]).slice(0,lastIndex+1).forEach(node => node.classList.add('active'));
+          audio.currentTime = scrubTime;
+        }
         
         audio.append(source);
         audio.style.display = 'none';

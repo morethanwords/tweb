@@ -29,11 +29,15 @@ $bg: #ffffff;
 $text-size: 16px;
 $time-size: 12px;
 
+//$large-screen: 1680px;
+$large-screen: 16800px;
+
 @import "partials/ico";
 @import "partials/chatlist";
 @import "partials/chat";
 @import "partials/sidebar";
 @import "partials/leftSidebar";
+@import "partials/rightSidebar";
 @import "partials/mediaViewer";
 @import "partials/ckin";
 @import "partials/emojiDropdown";
@@ -59,7 +63,18 @@ button, input, optgroup, select, textarea, html {
   height: 100vh;
   min-height: 100vh;
   width: 100%;
-  min-width: 100%;
+  //min-width: 100%;
+  margin: 0 auto;
+  max-width: $large-screen;
+
+  @media (min-width: $large-screen) {
+    border-top-width: 0;
+    border-bottom-width: 0;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-style: solid;
+    border-color: #DADCE0;
+  }
 }
 
 .container {
@@ -481,13 +496,13 @@ input {
   position: relative;
   padding-left: 67px;
   min-height: 58px;
-  max-width: 286px;
+  max-width: 244px;
   overflow: visible!important;
 
   &-toggle, &-download {
     border-radius: 50%;
     background-color: $blue;
-    font-size: 2.2rem;
+    font-size: 2.3rem;
     align-items: center;
   }
 
@@ -1561,19 +1576,6 @@ div.scrollable::-webkit-scrollbar-thumb {
     /* grid-column: 2; */
     width: 100%;
     flex: 1;
-  }
-  
-  .profile-container {
-    //display: none;
-    width: 0%;
-    /* grid-column: 3; */
-    position: relative;
-
-    transition: .2s ease-in-out;
-
-    > .scrollable {
-      min-width: 25vw;
-    }
   }
   
   .preloader {

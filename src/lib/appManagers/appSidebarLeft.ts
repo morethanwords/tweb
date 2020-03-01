@@ -87,9 +87,7 @@ class AppSidebarLeft {
   };
 
   constructor() {
-    this.chatsPreloader = document.createElement('div');
-    this.chatsPreloader.classList.add('preloader');
-    putPreloader(this.chatsPreloader);
+    this.chatsPreloader = putPreloader(null, true);
     //this.chatsContainer.append(this.chatsPreloader);
     
     //this.chatsLoadCount = Math.round(document.body.scrollHeight / 70 * 1.5);
@@ -98,7 +96,6 @@ class AppSidebarLeft {
     this.scroll.setVirtualContainer(appDialogsManager.chatList);
     this.scroll.onScrolledBottom = this.onChatsScroll.bind(this);
     appDialogsManager.chatsHidden = this.scroll.hiddenElements;
-    //this.scroll.container.addEventListener('scroll', this.onChatsScroll.bind(this));
 
     this.scrollArchived = new Scrollable(this.chatsArchivedContainer as HTMLDivElement, false, true, 300, 'CLA');
     this.scrollArchived.setVirtualContainer(appDialogsManager.chatListArchived);
@@ -134,7 +131,7 @@ class AppSidebarLeft {
       for(let i = 0; i < 1000; ++i) {
         let li = document.createElement('li');
         li.dataset.id = '' + i;
-        li.innerHTML = `<div class="rp"><div class="user-avatar" style="background-color: rgb(166, 149, 231); font-size: 0px;"><img src="blob:https://localhost:9000/ce99a2a3-f34b-4ca1-a09e-f716f89930d8"></div><div class="user-caption"><p><span class="user-title">${i}</span><span><span class="message-status"></span><span class="message-time">18:33</span></span></p><p><span class="user-last-message"><b>Ильяс: </b>Гагагагга</span><span></span></p></div></div>`;
+        li.innerHTML = `<div class="rp"><div class="user-avatar" style="background-color: rgb(166, 149, 231); font-size: 0px;"><img src="#"></div><div class="user-caption"><p><span class="user-title">${i}</span><span><span class="message-status"></span><span class="message-time">18:33</span></span></p><p><span class="user-last-message"><b>-_-_-_-: </b>qweasd</span><span></span></p></div></div>`;
         this.scroll.append(li);
       }
     }

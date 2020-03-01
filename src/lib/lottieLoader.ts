@@ -33,9 +33,9 @@ class LottieLoader {
       for(let i = length - 1; i >= 0; --i) {
         let {animation, container, paused, autoplay, canvas} = animations[i];
 
-        if(canvas && isElementInViewport(container)) {
+        if(canvas) {
           let c = container.firstElementChild as HTMLCanvasElement;
-          if(!c.height && !c.width) {
+          if(!c.height && !c.width && isElementInViewport(container)) {
             //console.log('lottie need resize');
             animation.resize();
           }

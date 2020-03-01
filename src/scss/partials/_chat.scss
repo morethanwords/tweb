@@ -370,8 +370,8 @@
 					cursor: pointer;
 					background: none!important;
 					box-shadow: none;
-					max-width: 300px;
-					max-height: 300px;
+					/* max-width: 300px;
+					max-height: 300px; */
 				}
 				
 				img {
@@ -384,6 +384,13 @@
 				
 				&:hover .message.message-empty {
 					display: block;
+				}
+			}
+
+			&.sticker {
+				.bubble__container {
+					max-width: 200px;
+					max-height: 200px;
 				}
 			}
 
@@ -702,11 +709,11 @@
 				/* padding-bottom: 4px; */
 				color: $darkblue;
 				font-size: .9rem;
-				width: max-content;
 				max-width: 100%;
 				overflow: hidden;
 				text-overflow: ellipsis;
-				white-space: nowrap;
+				//width: max-content;
+				//white-space: nowrap;
 			}
 			
 			&:not(.webpage) {
@@ -732,15 +739,24 @@
 				margin-top: 6px;
 			}
 			
-			&:not(.sticker):not(.emoji-big):not(.round):last-child .bubble__container:after {
+			&:not(.sticker):not(.emoji-big):not(.round).is-group-last .bubble__container:after {
 				position: absolute;
-				bottom: -1px;
+				bottom: 0;
 				width: 11px;
 				height: 20px;
 				background-repeat: no-repeat repeat;
 				content: '';
 				background-size: 11px 20px;
+				background-position-y: 1px;
 			}
+		}
+
+		.bubble-audio.is-in .time {
+			width: inherit;
+		}
+
+		.bubble-audio.is-out .time {
+			width: inherit;
 		}
 		
 		/* .bubble + .bubble {
@@ -761,11 +777,11 @@
 				border-radius: 6px 12px 12px 6px;
 			}
 				
-			&:first-child .bubble__container {
+			&.is-group-first .bubble__container {
 				border-radius: 12px 12px 12px 6px;
 			}
 			
-			&:last-child .bubble__container {
+			&.is-group-last .bubble__container {
 				border-radius: 6px 12px 12px 0px;
 				//border-radius: 12px 12px 12px 0px;
 				
@@ -775,7 +791,7 @@
 				}
 			}
 				
-			&:first-child:last-child .bubble__container {
+			&.is-group-first.is-group-last .bubble__container {
 				border-radius: 12px 12px 12px 0px;
 			}
 			
@@ -835,11 +851,11 @@
 				border-radius: 12px 6px 6px 12px;
 			}
 				
-			&:first-child .bubble__container {
+			&.is-group-first .bubble__container {
 				border-radius: 12px 12px 6px 12px;
 			}
 				
-			&:last-child .bubble__container {
+			&.is-group-last .bubble__container {
 				border-radius: 12px 6px 0px 12px;
 					
 				&:after {
@@ -848,7 +864,7 @@
 				}
 			}
 				
-			&:first-child:last-child .bubble__container {
+			&.is-group-first.is-group-last .bubble__container {
 				border-radius: 12px 12px 0px 12px;
 			}
 				

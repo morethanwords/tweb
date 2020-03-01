@@ -52,11 +52,23 @@ export function ripple(elem: Element) {
   }
 }
 
-export function putPreloader(elem: Element) {
+export function putPreloader(elem: Element, returnDiv = false) {
   const html = `
   <svg xmlns="http://www.w3.org/2000/svg" class="preloader-circular" viewBox="25 25 50 50">
   <circle class="preloader-path" cx="50" cy="50" r="20" fill="none" stroke-miterlimit="10"/>
   </svg>`;
+
+  if(returnDiv) {
+    let div = document.createElement('div');
+    div.classList.add('preloader');
+    div.innerHTML = html;
+
+    if(elem) {
+      elem.appendChild(div);
+    }
+    
+    return div;
+  }
   
   elem.innerHTML += html;
 }
@@ -76,18 +88,19 @@ export function horizontalMenu(tabs: HTMLUListElement, content: HTMLDivElement, 
     
     ///////console.log('tabs click:', target);
     
-    if(!target || target.classList.contains('active')) return false;
+    if(!target) return false;
+
+    let id = whichChild(target);
+    let tabContent = content.children[id] as HTMLDivElement;
+    if(onClick) onClick(id, tabContent);
+    if(target.classList.contains('active') || id == prevId) {
+      return false;
+    }
     
     let prev = tabs.querySelector('li.active') as HTMLLIElement;
     prev && prev.classList.remove('active');
     
     target.classList.add('active');
-    
-    let id = whichChild(target);
-    
-    if(id == prevId) return false;
-    
-    let tabContent = content.children[id] as HTMLDivElement;
     tabContent.classList.add('active');
     
     /////console.log('mambo rap', prevId, id);
@@ -139,7 +152,6 @@ export function horizontalMenu(tabs: HTMLUListElement, content: HTMLDivElement, 
       if(onTransitionEnd) onTransitionEnd();
     }, 200);
     
-    if(onClick) onClick(id, tabContent);
     prevTabContent = tabContent;
   });
 }
