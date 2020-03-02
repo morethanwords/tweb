@@ -431,37 +431,39 @@
         </div>
       </div>
       <div class="profile-content">
-        <div class="profile-avatar user-avatar"></div>
-        <div class="profile-name"></div>
-        <div class="profile-subtitle"></div>
-
-        <div class="profile-row profile-row-bio tgico-info">
-          <p></p>
-          <p class="profile-row-label">Bio</p>
+        <div class="profile-content-wrapper">
+          <div class="profile-avatar user-avatar"></div>
+          <div class="profile-name"></div>
+          <div class="profile-subtitle"></div>
+  
+          <div class="profile-row profile-row-bio tgico-info">
+            <p></p>
+            <p class="profile-row-label">Bio</p>
+          </div>
+          <div class="profile-row profile-row-username tgico-username">
+            <p></p>
+            <p class="profile-row-label">Username</p>
+          </div>
+          <div class="profile-row profile-row-phone tgico-phone">
+            <p></p>
+            <p class="profile-row-label">Phone</p>
+          </div>
+          <div class="profile-row profile-row-notifications">
+            <label>
+              <input type="checkbox" id="profile-notifications" checked="checked">
+              <span>Notifications</span>
+            </label>
+            <p class="profile-row-label">Enabled</p>
+          </div>
+  
+          <ul class="profile-tabs menu-horizontal">
+            <li class="profile-tabs-members rp" style="display: none;">Members</li>
+            <li class="profile-tabs-media rp">Media</li>
+            <li class="profile-tabs-docs rp">Docs</li>
+            <li class="profile-tabs-links rp">Links</li>
+            <li class="profile-tabs-audio rp">Audio</li>
+          </ul>
         </div>
-        <div class="profile-row profile-row-username tgico-username">
-          <p></p>
-          <p class="profile-row-label">Username</p>
-        </div>
-        <div class="profile-row profile-row-phone tgico-phone">
-          <p></p>
-          <p class="profile-row-label">Phone</p>
-        </div>
-        <div class="profile-row profile-row-notifications">
-          <label>
-            <input type="checkbox" id="profile-notifications" checked="checked">
-            <span>Notifications</span>
-          </label>
-          <p class="profile-row-label">Enabled</p>
-        </div>
-
-        <ul class="profile-tabs menu-horizontal">
-          <li class="profile-tabs-members rp" style="display: none;">Members</li>
-          <li class="profile-tabs-media rp">Media</li>
-          <li class="profile-tabs-docs rp">Docs</li>
-          <li class="profile-tabs-links rp">Links</li>
-          <li class="profile-tabs-audio rp">Audio</li>
-        </ul>
         <div class="content-container">
           <div class="profile-tabs-content tabs-container">
             <div class="content-members-container"><div id="content-members"></div></div>

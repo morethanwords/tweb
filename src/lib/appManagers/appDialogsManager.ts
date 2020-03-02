@@ -34,6 +34,8 @@ export class AppDialogsManager {
   public domsArchived: {[peerID: number]: DialogDom} = {};
   public lastActiveListElement: HTMLElement = null;
 
+  public savedAvatarURLs: {[peerID: number]: string} = {};
+
   constructor() {
     this.pinnedDelimiter = document.createElement('div');
     this.pinnedDelimiter.classList.add('pinned-delimiter');
@@ -86,10 +88,11 @@ export class AppDialogsManager {
     });
   }
 
-  public async loadDialogPhoto(div: HTMLDivElement, peerID: number | string, isDialog = false): Promise<boolean> {
+  // peerID == peerID || title
+  public async loadDialogPhoto(div: HTMLDivElement, peerID: number, isDialog = false, title = ''): Promise<boolean> {
     let inputPeer: any;
     let location: any;
-    if(typeof(peerID) != 'string') {
+    if(peerID) {
       inputPeer = appPeersManager.getInputPeerByID(peerID);
       location = appPeersManager.getPeerPhoto(peerID);
     }
@@ -113,7 +116,7 @@ export class AppDialogsManager {
       }
 
       let color = '';
-      if(typeof(peerID) != 'string' && peerID != this.myID) {
+      if(peerID && peerID != this.myID) {
         color = appPeersManager.getPeerColorByID(peerID);
       }
 
@@ -121,7 +124,7 @@ export class AppDialogsManager {
       div.style.fontSize = '';
       div.style.backgroundColor = color;
 
-      let abbrSplitted = (typeof(peerID) != 'string' ? appPeersManager.getPeerTitle(peerID, true) : peerID).split(' ');
+      let abbrSplitted = (!title && peerID ? appPeersManager.getPeerTitle(peerID, true) : title).split(' ');
       let abbr = (abbrSplitted.length == 2 ? 
         abbrSplitted[0][0] + abbrSplitted[1][0] : 
         abbrSplitted[0][0]).toUpperCase();
@@ -135,17 +138,21 @@ export class AppDialogsManager {
       return true;
     }
 
-    let res = await apiFileManager.downloadSmallFile({
-      _: 'inputPeerPhotoFileLocation', 
-      dc_id: location.dc_id, 
-      flags: 0, 
-      peer: inputPeer, 
-      volume_id: location.photo_small.volume_id, 
-      local_id: location.photo_small.local_id
-    });
+    if(!this.savedAvatarURLs[peerID]) {
+      let res = await apiFileManager.downloadSmallFile({
+        _: 'inputPeerPhotoFileLocation', 
+        dc_id: location.dc_id, 
+        flags: 0, 
+        peer: inputPeer, 
+        volume_id: location.photo_small.volume_id, 
+        local_id: location.photo_small.local_id
+      });
+
+      this.savedAvatarURLs[peerID] = URL.createObjectURL(res);
+    }
 
     let img = new Image();
-    img.src = URL.createObjectURL(res);
+    img.src = this.savedAvatarURLs[peerID];
     div.innerHTML = '';
     div.style.fontSize = '0'; // need
     div.append(img);

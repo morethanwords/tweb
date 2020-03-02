@@ -132,7 +132,7 @@ class BubbleGroups {
       this.groups.push(group = [bubble]);
     }
 
-    console.log('addBubble', bubble, message.mid, fromID, reverse, group);
+    //console.log('addBubble', bubble, message.mid, fromID, reverse, group);
     
     this.bubblesByGroups[reverse ? 'unshift' : 'push']({timestamp, fromID, mid: message.mid, group});
     this.updateGroup(group);
@@ -153,7 +153,7 @@ class BubbleGroups {
       
       let first = group[0];
 
-      console.log('updateGroup', group, first);
+      //console.log('updateGroup', group, first);
       
       if(group.length == 1) {
         first.classList.add('is-group-first', 'is-group-last');
@@ -705,6 +705,7 @@ export class AppImManager {
       if(dialog) {
         this.setPeer(this.peerID, dialog.top_message);
       } else {
+        this.log('will scroll down 3');
         this.scroll.scrollTop = this.scroll.scrollHeight;
       }
     });
@@ -877,7 +878,7 @@ export class AppImManager {
       }
     });
     
-    lottieLoader.checkAnimations();
+    lottieLoader.checkAnimations(false, 'chat');
     
     if(readed.length) {
       let max = Math.max(...readed);
@@ -903,8 +904,10 @@ export class AppImManager {
   }
   
   public setScroll() {
-    this.scrollable = new Scrollable(this.bubblesContainer, false, true, 750, 'IM', this.chatInner/* 1500 */, 300);
+    this.scrollable = new Scrollable(this.bubblesContainer, false, true, 750, 'IM', this.chatInner/* 1500 */, 450);
     this.scroll = this.scrollable.container;
+
+    this.bubblesContainer.append(this.goDownBtn);
     
     this.scrollable.setVirtualContainer(this.chatInner);
     this.scrollable.onScrolledTop = () => this.loadMoreHistory(true);
@@ -1062,6 +1065,7 @@ export class AppImManager {
         let dialog = appMessagesManager.getDialogByPeerID(peerID)[0];
         
         if(dialog && lastMsgID == dialog.top_message) {
+          this.log('will scroll down', this.scroll.scrollTop, this.scroll.scrollHeight);
           this.scroll.scrollTop = this.scroll.scrollHeight;
         } else {
           //this.bubbles[lastMsgID].scrollIntoView();
@@ -1086,7 +1090,7 @@ export class AppImManager {
     
     this.pinnedMessageContainer.style.display = 'none';
     
-    this.preloader.attach(this.chatInner);
+    this.preloader.attach(this.bubblesContainer);
     
     let dialog = appMessagesManager.getDialogByPeerID(this.peerID)[0] || null;
     //////this.log('setPeer peerID:', this.peerID, dialog, lastMsgID);
@@ -1119,7 +1123,7 @@ export class AppImManager {
     this.titleEl.innerHTML = appSidebarRight.profileElements.name.innerHTML = title;
     
     this.topbar.style.display = this.goDownBtn.style.display = '';
-    appSidebarRight.toggleSidebar(true);
+    //appSidebarRight.toggleSidebar(true);
     
     this.chatInput.style.display = appPeersManager.isChannel(peerID) && !appPeersManager.isMegagroup(peerID) ? 'none' : '';
     
@@ -1148,6 +1152,7 @@ export class AppImManager {
             if(bubble) this.bubbles[lastMsgID].scrollIntoView();
             else this.log.warn('no bubble by lastMsgID:', lastMsgID);
           } else {
+            this.log('will scroll down 2');
             this.scroll.scrollTop = this.scroll.scrollHeight;
           }
         } else if(dialog && dialog.top_message) { // add last message, bc in getHistory will load < max_id
@@ -1183,6 +1188,7 @@ export class AppImManager {
       }
       
       this.log.error('setPeer promises error:', err);
+      this.preloader.detach();
       return false;
     });
   }
@@ -1497,7 +1503,7 @@ export class AppImManager {
             bubble.classList.add('photo');
             //appPhotosManager.savePhoto(webpage.photo); // hot-fix because no webpage manager
             
-            wrapPhoto.call(this, webpage.photo, message, preview);
+            wrapPhoto.call(this, webpage.photo, message, preview, 380, 300);
           }
           
           if(preview) {
@@ -1688,7 +1694,7 @@ export class AppImManager {
         } else if(!title && message.fwd_from && message.fwd_from.from_name) {
           title = message.fwd_from.from_name;
           
-          appDialogsManager.loadDialogPhoto(avatarDiv, title);
+          appDialogsManager.loadDialogPhoto(avatarDiv, 0, false, title);
         }
         
         avatarDiv.dataset.peerID = message.fromID;
@@ -1824,12 +1830,20 @@ export class AppImManager {
       if(!isBackLimit) {
         this.scrollPosition.prepareFor(reverse ? 'up' : 'down');
       }
-      
-      /* for(let i = 0; i < 25; ++i) */ history.forEachReverse((msgID: number) => {
-        let message = appMessagesManager.getMessage(msgID);
-        
-        this.renderMessage(message, reverse, true);
-      });
+
+      if(testScroll) {
+        for(let i = 0; i < 25; ++i) history.forEachReverse((msgID: number) => {
+          let message = appMessagesManager.getMessage(msgID);
+          
+          this.renderMessage(message, reverse, true);
+        });
+      } else {
+        history.forEachReverse((msgID: number) => {
+          let message = appMessagesManager.getMessage(msgID);
+          
+          this.renderMessage(message, reverse, true);
+        });
+      }
       
       if(!isBackLimit) {
         this.scrollPosition.restore();

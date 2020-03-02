@@ -52,6 +52,10 @@ export class AppMediaViewer {
     this.buttons.close.addEventListener('click', () => {
       //this.overlaysDiv.classList.remove('active');
       this.content.container.innerHTML = '';
+      if(this.content.container.firstElementChild) {
+        URL.revokeObjectURL((this.content.container.firstElementChild as HTMLImageElement).src);
+      }
+
       this.currentMessageID = 0;
 
       this.setMoverToTarget(this.lastTarget, true);

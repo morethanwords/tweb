@@ -431,12 +431,12 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
   return div;
 }
 
-export function wrapPhoto(this: AppImManager, photo: any, message: any, container: HTMLDivElement) {
+export function wrapPhoto(this: AppImManager, photo: any, message: any, container: HTMLDivElement, boxWidth = 380, boxHeight = 380) {
   //container.classList.add('photo');
   
   let peerID = this.peerID;
   
-  let size = appPhotosManager.setAttachmentSize(photo.id, container);
+  let size = appPhotosManager.setAttachmentSize(photo.id, container, boxWidth, boxHeight);
   let image = container.firstElementChild as HTMLImageElement || new Image();
   //let size = appPhotosManager.setAttachmentSize(photo.id, image);
   image.setAttribute('message-id', message.mid);

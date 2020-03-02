@@ -33,6 +33,7 @@
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
+  height: 100%;
 
   .profile-name {
     text-align: center;
@@ -106,11 +107,17 @@
     margin-left: -54px;
   }
 
+  &-wrapper {
+    flex: 0 0 auto;
+  }
+
   .content-container {
     width: 100%;
     max-width: 100%;
-    overflow: hidden;
-    flex: 1;
+    //overflow: hidden;
+    flex: 1 1 auto;
+    position: relative;
+    //height: 1%; // fix safari
   }
 
   .profile-tabs {
@@ -118,7 +125,8 @@
   }
 
   .profile-tabs-content {
-    height: 100%;
+    min-height: 100%;
+    position: absolute; // FIX THE SAFARI!
     /* width: 500%;
     margin-left: -100%;
  */
@@ -131,7 +139,7 @@
     } */
 
     > div {
-      height: 100%;
+      //height: 100%;
       position: relative;
     }
 

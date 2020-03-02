@@ -87,6 +87,8 @@ class AppSidebarRight {
   private mediaDivsByIDs: {
     [mid: number]: HTMLDivElement
   } = {};
+
+  public urlsToRevoke: string[] = [];
   
   constructor() {
     let container = this.profileContentEl.querySelector('.profile-tabs-content') as HTMLDivElement;
@@ -212,7 +214,7 @@ class AppSidebarRight {
   }
   
   public loadSidebarMedia(single = false) {
-    if(testScroll /* || 1 == 1 */) {
+    if(testScroll/*  || 1 == 1 */) {
       return;
     }
 
@@ -298,14 +300,17 @@ class AppSidebarRight {
               
               //this.log('inputMessagesFilterPhotoVideo', message, media);
               
-              let load = () => appPhotosManager.preloadPhoto(media, appPhotosManager.choosePhotoSize(media, 380, 0))
+              let load = () => appPhotosManager.preloadPhoto(media, appPhotosManager.choosePhotoSize(media, 200, 200))
               .then((blob) => {
                 if($rootScope.selectedPeerID != peerID) {
                   this.log.warn('peer changed');
                   return;
                 }
+
+                let url = URL.createObjectURL(blob);
+                this.urlsToRevoke.push(url);
                 
-                div.style.backgroundImage = 'url(' + URL.createObjectURL(blob) + ')';
+                div.style.backgroundImage = 'url(' + url + ')';
               });
               
               div.setAttribute('message-id', '' + message.mid);
@@ -372,8 +377,11 @@ class AppSidebarRight {
                     this.log.warn('peer changed');
                     return;
                   }
+
+                  let url = URL.createObjectURL(blob);
+                  this.urlsToRevoke.push(url);
                   
-                  previewDiv.style.backgroundImage = 'url(' + URL.createObjectURL(blob) + ')';
+                  previewDiv.style.backgroundImage = 'url(' + url + ')';
                 });
                 
                 this.lazyLoadQueueSidebar.push({div: previewDiv, load});
@@ -475,6 +483,11 @@ class AppSidebarRight {
         putPreloader(parent, true);
       }
     });
+
+    this.urlsToRevoke.forEach(url => {
+      URL.revokeObjectURL(url);
+    });
+    this.urlsToRevoke.length = 0;
     
     this.sharedMediaTypes.forEach(type => {
       //this.minMediaID[type] = 0;

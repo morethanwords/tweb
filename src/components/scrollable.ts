@@ -86,7 +86,7 @@ export default class Scrollable {
   public scrollTopOffset: number = 0;
   
   private log: ReturnType<typeof logger>;
-  private debug = false;
+  private debug = true;
   
   constructor(public el: HTMLDivElement, x = false, y = true, public splitOffset = 300, logPrefix = '', public appendTo = el, public onScrollOffset = splitOffset) {
     this.container = document.createElement('div');
@@ -333,6 +333,8 @@ export default class Scrollable {
   }
   
   public onScroll() {
+    this.log('onScroll call');
+
     if(this.onScrollMeasure) fastdom.clear(this.onScrollMeasure);
     this.onScrollMeasure = fastdom.measure(() => {
       // @ts-ignore quick brown fix
@@ -467,6 +469,10 @@ export default class Scrollable {
             this.onManualScrollBottom(scrollTop, needHeight);
           });
         } else if(this.paddings.down) { // scrolled manually or safari
+          if(this.debug) {
+            this.log.warn('seems manually scrolled bottom', this.paddings.up, this.lastScrollTop);
+          }
+
           this.onManualScrollBottom(scrollTop, needHeight);
         }
       } else { // scrolling top
@@ -496,6 +502,10 @@ export default class Scrollable {
             this.onManualScrollTop(scrollTop, needHeight, maxScrollTop);
           });
         } else if(this.paddings.up) {
+          if(this.debug) {
+            this.log.warn('seems manually scrolled top', this.paddings.down, this.lastScrollTop);
+          }
+
           this.onManualScrollTop(scrollTop, needHeight, maxScrollTop);
         }
       }
@@ -510,11 +520,11 @@ export default class Scrollable {
     });
     
     this.onScrollMeasure.then(({value, maxValue}) => {
-      fastdom.mutate(() => {
+      //fastdom.mutate(() => {
         // @ts-ignore
         //this.thumb.style[this.side] = (value >= maxValue ? maxValue : value) + '%';
         this.thumb.style.transform = this.translate + '(' + (value >= maxValue ? maxValue : value) + 'px)';
-      });
+      //});
     });
     
     //console.timeEnd('scroll onScroll');
@@ -536,6 +546,7 @@ export default class Scrollable {
         this.log.warn('bait it off now', this, length, this.splitUp.childElementCount, scrollTop, this.paddings.up, h);
       }
       
+      this.paddingTopDiv.style.height = this.paddings.up + 'px';
       this.paddingBottomDiv.style.height = this.paddings.down + 'px';
       this.onTopIntersection((this.size * 2) + (needHeight * 2));
     });
@@ -558,6 +569,7 @@ export default class Scrollable {
       }
       
       this.paddingTopDiv.style.height = this.paddings.up + 'px';
+      this.paddingBottomDiv.style.height = this.paddings.down + 'px';
       this.onBottomIntersection(this.size + (needHeight * 2));
     });
   }
