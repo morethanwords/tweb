@@ -1,5 +1,5 @@
 import apiManager from '../mtproto/apiManager';
-import { $rootScope, isElementInViewport, numberWithCommas, findUpClassName, formatNumber, placeCaretAtEnd, calcImageInBox, findUpTag, langPack } from "../utils";
+import { $rootScope, isElementInViewport, numberWithCommas, findUpClassName, formatNumber, placeCaretAtEnd, calcImageInBox, findUpTag, langPack, generatePathData } from "../utils";
 import appUsersManager from "./appUsersManager";
 import appMessagesManager from "./appMessagesManager";
 import appPeersManager from "./appPeersManager";
@@ -32,17 +32,18 @@ class ScrollPosition {
   container: HTMLElement;
   rAF: number;
   debug = true;
+  prepared = false;
   
   constructor(node: HTMLElement) {
     this.container = node.parentElement;
   }
   
-  restore() {
+  restore(callback?: () => void) {
     let setScrollTop = this.container.scrollHeight - this.previousScrollHeightMinusTop;
     if(this.debug) appImManager.log('scrollPosition restore', this.readyFor, this.container.scrollHeight, 
       setScrollTop, this.container, this.container.parentElement.classList.contains('scrolled-down'));
 
-    if(this.readyFor === 'up'/*  || this.container.parentElement.classList.contains('scrolled-down') */) {
+    if(this.readyFor === 'up' || this.container.parentElement.classList.contains('scrolled-down')) {
       if(this.debug) appImManager.log('scrollPosition restore 2', this.readyFor, this.container.scrollHeight, 
         setScrollTop, this.container);
 
@@ -50,13 +51,17 @@ class ScrollPosition {
       this.rAF = window.requestAnimationFrame(() => {
         this.container.scrollTop = this.container.scrollHeight - this.previousScrollHeightMinusTop;
         this.rAF = 0;
+        this.prepared = false;
+
+        callback && callback();
       });
-    } else if(this.container.parentElement.classList.contains('scrolled-down')) {
+    }/*  else if(this.container.parentElement.classList.contains('scrolled-down')) {
       if(this.debug) appImManager.log('scrollPosition restore 2', this.readyFor, this.container.scrollHeight, 
         setScrollTop, this.container);
 
       this.container.scrollTop = setScrollTop;
-    }
+      this.prepared = false;
+    } */
     
     // 'down' doesn't need to be special cased unless the
     // content was flowing upwards, which would only happen
@@ -65,6 +70,8 @@ class ScrollPosition {
   }
   
   prepareFor(direction = 'up') {
+    //if(this.prepared) return;
+
     if(this.rAF) {
       window.cancelAnimationFrame(this.rAF);
       this.rAF = 0;
@@ -81,7 +88,7 @@ class ScrollPosition {
     //let scrollTop = this.container.scrollTop;
     //this.previousScrollHeightMinusTop = scrollTop > 0 || this.readyFor == 'up' ? this.container.scrollHeight - this.container.scrollTop : 0;
     
-    if(this.debug) appImManager.log.trace('scrollPosition prepareFor', direction, this.container.scrollHeight, 
+    if(this.debug) appImManager.log.warn('scrollPosition prepareFor', direction, this.container.scrollHeight, 
       this.container.scrollTop, this.previousScrollHeightMinusTop);
   }
 }
@@ -135,17 +142,63 @@ class BubbleGroups {
     //console.log('addBubble', bubble, message.mid, fromID, reverse, group);
     
     this.bubblesByGroups[reverse ? 'unshift' : 'push']({timestamp, fromID, mid: message.mid, group});
-    this.updateGroup(group);
+    this.updateGroup(group, reverse);
+  }
+
+  setClipIfNeeded(bubble: HTMLDivElement, remove = false) {
+    if(bubble.classList.contains('is-message-empty')/*  && !bubble.classList.contains('is-reply') */ 
+      && (bubble.classList.contains('photo') || bubble.classList.contains('video'))) {
+      let container = bubble.querySelector('.bubble__media-container') as SVGSVGElement;
+      if(!container) return;
+
+      Array.from(container.children).forEach(object => {
+        if(object instanceof SVGDefsElement) return;
+
+        if(remove) {
+          object.removeAttributeNS(null, 'clip-path');
+        } else {
+          let clipID = container.dataset.clipID;
+          let path = container.firstElementChild.firstElementChild.lastElementChild as SVGPathElement;
+          let width = +object.getAttributeNS(null, 'width');
+          let height = +object.getAttributeNS(null, 'height');
+          let isOut = bubble.classList.contains('is-out');
+          let isReply = bubble.classList.contains('is-reply');
+          let d = '';
+  
+          console.log('setClipIfNeeded', object, width, height, isOut);
+  
+          let tr: number, tl: number;
+          if(bubble.classList.contains('forwarded') || isReply) {
+            tr = tl = 0;
+          } else if(isOut) {
+            tr = bubble.classList.contains('is-group-first') ? 12 : 6;
+            tl = 12;
+          } else {
+            tr = 12;
+            tl = bubble.classList.contains('is-group-first') ? 12 : 6;
+          }
+  
+          if(isOut) {
+            d = generatePathData(0, 0, width - 9, height, tl, tr, 0, 12);
+          } else {
+            d = generatePathData(9, 0, width - 9, height, tl, tr, 12, 0);
+          }
+          
+          path.setAttributeNS(null, 'd', d);
+          object.setAttributeNS(null, 'clip-path', 'url(#' + clipID + ')');
+        }
+      });
+    }
   }
   
-  updateGroup(group: HTMLDivElement[]) {
+  updateGroup(group: HTMLDivElement[], reverse = false) {
     if(this.updateRAFs.has(group)) {
       window.cancelAnimationFrame(this.updateRAFs.get(group));
       this.updateRAFs.delete(group);
     }
     
-    this.updateRAFs.set(group, window.requestAnimationFrame(() => {
-      this.updateRAFs.delete(group);
+    //this.updateRAFs.set(group, window.requestAnimationFrame(() => {
+      //this.updateRAFs.delete(group);
       
       if(!group.length) {
         return;
@@ -153,26 +206,34 @@ class BubbleGroups {
       
       let first = group[0];
 
+      //appImManager.scrollPosition.prepareFor(reverse ? 'up' : 'down');
+
       //console.log('updateGroup', group, first);
       
       if(group.length == 1) {
         first.classList.add('is-group-first', 'is-group-last');
+        this.setClipIfNeeded(first);
         return;
       } else {
         first.classList.remove('is-group-last');
         first.classList.add('is-group-first');
+        this.setClipIfNeeded(first, true);
       }
       
       let length = group.length - 1;
       for(let i = 1; i < length; ++i) {
         let bubble = group[i];
         bubble.classList.remove('is-group-last', 'is-group-first');
+        this.setClipIfNeeded(bubble, true);
       }
       
       let last = group[group.length - 1];
       last.classList.remove('is-group-first');
       last.classList.add('is-group-last');
-    }));
+      this.setClipIfNeeded(last);
+
+      //appImManager.scrollPosition.restore();
+    //}));
   }
 
   updateGroupByMessageID(mid: number) {
@@ -202,8 +263,8 @@ export class AppImManager {
   public chatInner = document.getElementById('bubbles-inner') as HTMLDivElement;
   public searchBtn = this.pageEl.querySelector('.chat-search-button') as HTMLButtonElement;
   public goDownBtn = this.pageEl.querySelector('#bubbles-go-down') as HTMLButtonElement;
-  private getHistoryPromise: Promise<boolean>;
-  private getHistoryTimeout = 0;
+  private getHistoryTopPromise: Promise<boolean>;
+  private getHistoryBottomPromise: Promise<boolean>;
   
   private chatInputC: ChatInput = null;
   
@@ -212,7 +273,12 @@ export class AppImManager {
   public muted = false;
   
   public bubbles: {[mid: number]: HTMLDivElement} = {};
-  public dateMessages: {[timestamp: number]: { div: HTMLDivElement, firstTimestamp: number }} = {};
+  public dateMessages: {[timestamp: number]: { 
+    div: HTMLDivElement, 
+    firstTimestamp: number, 
+    bubble: HTMLDivElement, 
+    timeout?: number 
+  }} = {};
   public unreaded: number[] = [];
   public unreadOut: number[] = [];
   public needUpdate: {replyMid: number, mid: number}[] = []; // if need wrapSingleMessage
@@ -227,7 +293,6 @@ export class AppImManager {
   private firstTopMsgID = 0;
   
   public loadMediaQueue: Array<() => Promise<void>> = [];
-  private loadMediaQueuePromise: Promise<void[]> = null;
   private loadingMedia = 0;
   
   public scroll: HTMLDivElement = null;
@@ -348,11 +413,6 @@ export class AppImManager {
         
         /////this.log('message_sent', bubble);
         
-        let media = bubble.querySelector('img, video');
-        if(media) {
-          media.setAttribute('message-id', mid);
-        }
-        
         bubble.classList.remove('is-sending');
         bubble.classList.add('is-sent');
 
@@ -380,7 +440,7 @@ export class AppImManager {
       if(!bubble) return;
       
       let message = appMessagesManager.getMessage(mid);
-      this.renderMessage(message, false, false, bubble, false);
+      this.renderMessage(message, true, false, bubble, false);
     });
     
     $rootScope.$on('messages_downloaded', (e: CustomEvent) => {
@@ -410,7 +470,8 @@ export class AppImManager {
               delete message.reply_to_mid; // WARNING!
             }
             
-            this.renderMessage(message, false, false, bubble, false);
+            this.renderMessage(message, true, false, bubble, false);
+            //this.renderMessage(message, true, true, bubble, false);
           }
         });
       });
@@ -451,7 +512,7 @@ export class AppImManager {
       
       if(!bubble) return;
       
-      if(['IMG', 'VIDEO', 'SVG', 'DIV'].indexOf(target.tagName) === -1) target = findUpTag(target, 'DIV');
+      if(['IMG', 'VIDEO', 'SVG', 'DIV', 'image'].indexOf(target.tagName) === -1) target = findUpTag(target, 'DIV');
       
       if(target.tagName == 'DIV') {
         if(target.classList.contains('forward')) {
@@ -490,31 +551,39 @@ export class AppImManager {
         if(!isNaN(peerID)) {
           this.setPeer(peerID);
         }
-      } else if((target.tagName == 'IMG' && !target.classList.contains('emoji')) || target.tagName == 'VIDEO') {
-        let messageID = +target.getAttribute('message-id');
+      } else if(((target.tagName == 'IMG' || target.tagName == 'image') && !target.classList.contains('emoji')) || target.tagName == 'VIDEO') {
+        let messageID = 0;
+        for(let mid in this.bubbles) {
+          if(this.bubbles[mid] == bubble) {
+            messageID = +mid;
+            break;
+          }
+        }
         let message = appMessagesManager.getMessage(messageID);
-        
         if(!message) {
           this.log.warn('no message by messageID:', messageID);
           return;
         }
         
         let ids = Object.keys(this.bubbles).map(k => +k).filter(id => {
+          if(!this.scrollable.visibleElements.find(e => e.element == this.bubbles[id])) return false;
+
           let message = appMessagesManager.getMessage(id);
           
           return message.media && (message.media.photo || (message.media.document && (message.media.document.type == 'video' || message.media.document.type == 'gif')) || (message.media.webpage && (message.media.webpage.document || message.media.webpage.photo)));
         }).sort();
         let idx = ids.findIndex(i => i == messageID);
-        
-        let prev = ids[idx + 1] || null;
-        let next = ids[idx - 1] || null;
-        
-        let prevTarget = this.bubbles[prev] ? this.bubbles[prev].querySelector('img, video') as HTMLElement : null;
-        let nextTarget = this.bubbles[next] ? this.bubbles[next].querySelector('img, video') as HTMLElement : null;
+
+        let targets = ids.map(id => ({
+          //element: (this.bubbles[id].querySelector('img, video') || this.bubbles[id].querySelector('image')) as HTMLElement, 
+          element: this.bubbles[id].querySelector('img, video, .bubble__media-container') as HTMLElement,
+          mid: id
+        }));
         
         /////this.log('ids', ids, idx, this.bubbles[prev], this.bubbles[next]);
         
-        appMediaViewer.openMedia(message, target, nextTarget, prevTarget);
+        appMediaViewer.openMedia(message, targets[idx].element, true, 
+          this.scroll.parentElement, targets.slice(0, idx), targets.slice(idx + 1));
         
         //appMediaViewer.openMedia(message, target as HTMLImageElement);
       }
@@ -578,10 +647,12 @@ export class AppImManager {
       let bubble: HTMLDivElement = null;
       
       try {
-        bubble = findUpClassName(e.target, 'bubble');
+        bubble = findUpClassName(e.target, 'bubble__container');
       } catch(e) {}
       
       if(bubble) {
+        bubble = bubble.parentElement as HTMLDivElement; // bc container
+
         e.preventDefault();
         e.cancelBubble = true;
         
@@ -601,7 +672,7 @@ export class AppImManager {
         
         this.contextMenuMsgID = msgID;
         
-        let side = bubble.parentElement.classList.contains('in') ? 'left' : 'right';
+        let side = bubble.classList.contains('is-in') ? 'left' : 'right';
         
         this.contextMenuEdit.style.display = side == 'right' ? '' : 'none';
         
@@ -815,54 +886,52 @@ export class AppImManager {
   }
 
   public loadMoreHistory(top: boolean) {
-    // load more history
-    // возможно нужно добавить разные таймауты для верха и низа
-    if(!this.getHistoryPromise && !this.getHistoryTimeout && this.peerID && !testScroll) {
-      this.getHistoryTimeout = setTimeout(() => { // must be
-        let history = Object.keys(this.bubbles).map(id => +id).sort();
-        
-        /* let history = appMessagesManager.historiesStorage[this.peerID].history;
-        let length = history.length; */
-        
-        // filter negative ids
-        let lastBadIndex = -1;
-        for(let i = 0; i < history.length; ++i) {
-          if(history[i] <= 0) lastBadIndex = i;
-          else break;
-        }
-        if(lastBadIndex != -1) {
-          history = history.slice(lastBadIndex + 1);
-        }
-        
-        this.getHistoryTimeout = 0;
-        
-        if(!this.scrolledAll && top) {
-          this.log('Will load more (up) history by id:', history[0], 'maxID:', history[history.length - 1], history);
-          /* false &&  */!testScroll && this.getHistory(history[0], true).then(() => { // uncomment
-            this.onScroll();
-          }).catch(err => {
-            this.log.warn('Could not load more history, err:', err);
-          });
-        }
-        
-        if(this.scrolledAllDown) return;
-        
-        let dialog = appMessagesManager.getDialogByPeerID(this.peerID)[0];
-        /* if(!dialog) {
-          this.log.warn('no dialog for load history');
-          return;
-        } */
-        
-        // if scroll down after search
-        if(!top && (!dialog || history.indexOf(dialog.top_message) === -1)) {
-          this.log('Will load more (down) history by maxID:', history[history.length - 1], history);
-          /* false &&  */!testScroll && this.getHistory(history[history.length - 1], false, true).then(() => { // uncomment
-            this.onScroll();
-          }).catch(err => {
-            this.log.warn('Could not load more history, err:', err);
-          });
-        }
-      }, 0);
+    this.log('loadMoreHistory', top);
+    if(!this.peerID || testScroll || (top && this.getHistoryTopPromise) || (!top && this.getHistoryBottomPromise)) return;
+
+    let history = Object.keys(this.bubbles).map(id => +id).sort();
+    if(!history.length) return;
+    
+    /* let history = appMessagesManager.historiesStorage[this.peerID].history;
+    let length = history.length; */
+    
+    // filter negative ids
+    let lastBadIndex = -1;
+    for(let i = 0; i < history.length; ++i) {
+      if(history[i] <= 0) lastBadIndex = i;
+      else break;
+    }
+    if(lastBadIndex != -1) {
+      history = history.slice(lastBadIndex + 1);
+    }
+    
+    if(top && !this.scrolledAll) {
+      this.scrollable.lock('both');
+      this.log('Will load more (up) history by id:', history[0], 'maxID:', history[history.length - 1], history);
+      /* false &&  */this.getHistory(history[0], true).then(() => {
+        this.onScroll();
+      }).catch(err => {
+        this.log.warn('Could not load more history, err:', err);
+      });
+    }
+
+    if(this.scrolledAllDown) return;
+    
+    let dialog = appMessagesManager.getDialogByPeerID(this.peerID)[0];
+    /* if(!dialog) {
+      this.log.warn('no dialog for load history');
+      return;
+    } */
+    
+    // if scroll down after search
+    if(!top && (!dialog || history.indexOf(dialog.top_message) === -1)) {
+      this.scrollable.lock('both');
+      this.log('Will load more (down) history by maxID:', history[history.length - 1], history);
+      /* false &&  */this.getHistory(history[history.length - 1], false, true).then(() => {
+        this.onScroll();
+      }).catch(err => {
+        this.log.warn('Could not load more history, err:', err);
+      });
     }
   }
   
@@ -904,7 +973,7 @@ export class AppImManager {
   }
   
   public setScroll() {
-    this.scrollable = new Scrollable(this.bubblesContainer, false, true, 750, 'IM', this.chatInner/* 1500 */, 450);
+    this.scrollable = new Scrollable(this.bubblesContainer, 'y', 750, 'IM', this.chatInner/* 1500 */, 300);
     this.scroll = this.scrollable.container;
 
     this.bubblesContainer.append(this.goDownBtn);
@@ -1036,8 +1105,6 @@ export class AppImManager {
     this.chatInner.innerHTML = '';
     
     this.scrollable.setVirtualContainer(this.chatInner);
-    
-    //appSidebarRight.minMediaID = {};
   }
   
   public setPeer(peerID: number, lastMsgID = 0, forwarding = false) {
@@ -1099,17 +1166,14 @@ export class AppImManager {
     if(!samePeer && appDialogsManager.lastActiveListElement) {
       appDialogsManager.lastActiveListElement.classList.remove('active');
     }
+
+    let dom = appDialogsManager.getDialogDom(this.peerID);
+    if(dom) {
+      appDialogsManager.lastActiveListElement = dom.listEl;
+      dom.listEl.classList.add('active');
+    }
     
     this.firstTopMsgID = dialog ? dialog.top_message : 0;
-    
-    /* let dom = appDialogsManager.getDialogDom(this.peerID);
-    if(!dom) {
-      this.log.warn('No rendered dialog by peerID:', this.peerID);
-      appDialogsManager.addDialog(dialog);
-      dom = appDialogsManager.getDialogDom(this.peerID);
-    }
-    // warning need check
-    dom.listEl.classList.add('active'); */
     
     this.setPeerStatus();
     
@@ -1136,14 +1200,14 @@ export class AppImManager {
     //this.scroll.scrollTop = this.scroll.scrollHeight;
 
     return this.setPeerPromise = Promise.all([
-      this.getHistory(forwarding ? lastMsgID + 1 : lastMsgID).then(() => {
+      this.getHistory(forwarding ? lastMsgID + 1 : lastMsgID, true).then(() => {
         ////this.log('setPeer removing preloader');
 
         if(lastMsgID) {
           if(!forwarding) {
             let message = appMessagesManager.getMessage(lastMsgID);
             //////this.log('setPeer render last message:', message, lastMsgID);
-            this.renderMessage(message);
+            this.renderMessage(message, false, true);
           }
           
           if(!dialog || lastMsgID != dialog.top_message) {
@@ -1260,6 +1324,7 @@ export class AppImManager {
     });
   }
   
+  // reverse means top, will save scrollPosition if bubble will be higher
   public renderMessage(message: any, reverse = false, multipleRender?: boolean, bubble: HTMLDivElement = null, updatePosition = true) {
     /////this.log('message to render:', message);
     if(message.deleted) return;
@@ -1357,8 +1422,7 @@ export class AppImManager {
         
         attachmentDiv.innerHTML = richText;
         
-        messageDiv.classList.add('message-empty');
-        bubble.classList.add('emoji-' + emojiEntities.length + 'x', 'emoji-big');
+        bubble.classList.add('is-message-empty', 'emoji-' + emojiEntities.length + 'x', 'emoji-big');
         
         bubbleContainer.append(attachmentDiv);
       } else {
@@ -1397,7 +1461,7 @@ export class AppImManager {
       attachmentDiv.classList.add('attachment');
       
       if(!message.message) {
-        messageDiv.classList.add('message-empty');
+        bubble.classList.add('is-message-empty');
       }
       
       let processingWebPage = false;
@@ -1432,7 +1496,7 @@ export class AppImManager {
               let icoDiv = docDiv.querySelector('.document-ico');
               preloader.attach(icoDiv, false);
               
-              messageDiv.classList.remove('message-empty');
+              bubble.classList.remove('is-message-empty');
               messageDiv.append(docDiv);
               processingWebPage = true;
               break;
@@ -1449,7 +1513,7 @@ export class AppImManager {
           
           bubble.classList.add('hide-name', 'photo');
           
-          wrapPhoto.call(this, photo, message, attachmentDiv);
+          wrapPhoto.call(this, photo, message, attachmentDiv, undefined, undefined, true, our);
           break;
         }
         
@@ -1492,7 +1556,7 @@ export class AppImManager {
             if(doc.type == 'gif' || doc.type == 'video') {
               //if(doc.size <= 20e6) {
               bubble.classList.add('video');
-              wrapVideo.call(this, doc, preview, message);
+              wrapVideo.call(this, doc, preview, message, true, null, false, false, 380, 300);
               //}
             } else {
               doc = null;
@@ -1503,7 +1567,7 @@ export class AppImManager {
             bubble.classList.add('photo');
             //appPhotosManager.savePhoto(webpage.photo); // hot-fix because no webpage manager
             
-            wrapPhoto.call(this, webpage.photo, message, preview, 380, 300);
+            wrapPhoto.call(this, webpage.photo, message, preview, 380, 300, false);
           }
           
           if(preview) {
@@ -1576,14 +1640,14 @@ export class AppImManager {
               bubble.classList.add('round');
             }
             
-            bubble.classList.add('video');
-            wrapVideo.call(this, doc, attachmentDiv, message, true, null, false, doc.type == 'round');
+            bubble.classList.add('hide-name', 'video');
+            wrapVideo.call(this, doc, attachmentDiv, message, true, null, false, doc.type == 'round', 380, 380, doc.type != 'round', our);
             
             break;
           } else if(doc.mime_type == 'audio/ogg') {
             let docDiv = wrapDocument(doc);
             
-            messageDiv.classList.remove('message-empty');
+            bubble.classList.remove('is-message-empty');
             
             bubble.classList.add('bubble-audio');
             messageDiv.append(docDiv);
@@ -1593,7 +1657,7 @@ export class AppImManager {
           } else {
             let docDiv = wrapDocument(doc);
             
-            messageDiv.classList.remove('message-empty');
+            bubble.classList.remove('is-message-empty');
             messageDiv.append(docDiv);
             processingWebPage = true;
             
@@ -1602,7 +1666,7 @@ export class AppImManager {
         }
         
         default:
-        messageDiv.classList.remove('message-empty');
+        bubble.classList.remove('is-message-empty');
         messageDiv.innerHTML = 'unrecognized media type: ' + message.media._;
         messageDiv.append(timeSpan);
         this.log.warn('unrecognized media type:', message.media._, message);
@@ -1705,18 +1769,20 @@ export class AppImManager {
       bubble.classList.add('hide-name');
     }
     
+    bubble.dataset.mid = message.mid;
     bubble.classList.add(our ? 'is-out' : 'is-in');
     if(updatePosition) {
+      this.bubbleGroups.addBubble(bubble, message, reverse);
+      
       if(reverse) {
         this.scrollable.prepend(bubble);
       } else {
         this.scrollable.append(bubble);
       }
-
-      this.bubbleGroups.addBubble(bubble, message, reverse);
       
       let justDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
       let dateTimestamp = justDate.getTime();
+      let needUpdatePos = false;
       if(!(dateTimestamp in this.dateMessages)) {
         let str = '';
         
@@ -1740,16 +1806,27 @@ export class AppImManager {
         ////////this.log('need to render date message', dateTimestamp, str);
         
         this.dateMessages[dateTimestamp] = {
-          div, 
+          div,
+          bubble,
           firstTimestamp: date.getTime()
         };
         
-        this.scrollable.insertBefore(div, bubble);
+        needUpdatePos = true;
       } else {
         let dateMessage = this.dateMessages[dateTimestamp];
         if(dateMessage.firstTimestamp > date.getTime()) {
-          this.scrollable.insertBefore(dateMessage.div, bubble);
+          dateMessage.bubble = bubble;
+          needUpdatePos = true;
         }
+      }
+
+      let dateMessage = this.dateMessages[dateTimestamp];
+      if(needUpdatePos && !dateMessage.timeout) {
+        dateMessage.timeout = setTimeout(() => {
+          delete dateMessage.timeout;
+
+          this.scrollable.insertBefore(dateMessage.div, dateMessage.bubble);
+        }, 0);
       }
     } else {
       this.bubbleGroups.updateGroupByMessageID(message.mid);
@@ -1792,10 +1869,12 @@ export class AppImManager {
       loadCount = 0;
       maxID += 1;
     }
-    
-    return this.getHistoryPromise = appMessagesManager.getHistory(this.peerID, maxID, loadCount, backLimit)
-    .then((result: any) => {
+
+    let promise = appMessagesManager.getHistory(this.peerID, maxID, loadCount, backLimit)
+    .then((result) => {
       this.log('getHistory result by maxID:', maxID, reverse, isBackLimit, result);
+
+      (reverse ? this.getHistoryTopPromise = undefined : this.getHistoryBottomPromise = undefined);
       
       //console.timeEnd('render getHistory');
       
@@ -1821,24 +1900,26 @@ export class AppImManager {
       
       //this.chatInner.innerHTML = '';
       
-      let history = result.history.slice();
-      
-      if(reverse) history.reverse();
+      //let method = reverse ? result.history.forEach : result.history.forEachReverse;
+      let method = reverse ? Array.prototype.forEach : Array.prototype.forEachReverse;
+      method = method.bind(result.history);
       
       //console.time('render history');
+
+      this.log('getHistory method', method);
       
       if(!isBackLimit) {
         this.scrollPosition.prepareFor(reverse ? 'up' : 'down');
       }
 
       if(testScroll) {
-        for(let i = 0; i < 25; ++i) history.forEachReverse((msgID: number) => {
+        for(let i = 0; i < 25; ++i) method((msgID) => {
           let message = appMessagesManager.getMessage(msgID);
           
           this.renderMessage(message, reverse, true);
         });
       } else {
-        history.forEachReverse((msgID: number) => {
+        method((msgID) => {
           let message = appMessagesManager.getMessage(msgID);
           
           this.renderMessage(message, reverse, true);
@@ -1846,17 +1927,28 @@ export class AppImManager {
       }
       
       if(!isBackLimit) {
-        this.scrollPosition.restore();
+        this.scrollPosition.restore(() => {
+          this.scrollable.unlock('both');
+        });
+      } else {
+        this.scrollable.unlock('both');
       }
       
       //console.timeEnd('render history');
       
-      this.getHistoryPromise = undefined;
-      
       //console.timeEnd('render history total');
       
       return true;
-    });
+    }, () => {
+      (reverse ? this.getHistoryTopPromise = undefined : this.getHistoryBottomPromise = undefined);
+      this.scrollable.unlock('both');
+      return false;
+    })/* .then(res => {
+      this.scrollable.unlock(reverse);
+      return res;
+    }) */;
+    
+    return (reverse ? this.getHistoryTopPromise = promise : this.getHistoryBottomPromise = promise);
   }
   
   public setMutedState(muted = false) {

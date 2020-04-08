@@ -7,10 +7,11 @@ import {AppImManager} from "../lib/appManagers/appImManager";
 import { formatBytes } from "../lib/utils";
 import ProgressivePreloader from './preloader';
 import LazyLoadQueue from './lazyLoadQueue';
-import apiFileManager, { CancellablePromise } from '../lib/mtproto/apiFileManager';
+import apiFileManager from '../lib/mtproto/apiFileManager';
 import appWebpManager from '../lib/appManagers/appWebpManager';
 import {wrapPlayer} from '../lib/ckin';
 import { RichTextProcessor } from '../lib/richtextprocessor';
+import { CancellablePromise } from '../lib/polyfill';
 
 export type MTDocument = {
   _: 'document',
@@ -46,27 +47,43 @@ export type MTPhotoSize = {
   preloaded?: boolean // custom added
 };
 
-export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement, message: any, justLoader = true, preloader?: ProgressivePreloader, controls = true, round = false) {
-  if(!container.firstElementChild || (container.firstElementChild.tagName != 'IMG' && container.firstElementChild.tagName != 'VIDEO')) {
-    let size = appPhotosManager.setAttachmentSize(doc, container);
+export function wrapVideo(this: AppImManager, doc: MTDocument, container: HTMLDivElement, message: any, justLoader = true, preloader?: ProgressivePreloader, controls = true, round = false, boxWidth = 380, boxHeight = 380, withTail = false, isOut = false) {
+  let img: HTMLImageElement | SVGImageElement;
+  let peerID = this.peerID;
+
+  if(withTail) {
+    img = wrapMediaWithTail(doc, message, container, boxWidth, boxHeight, isOut);
+  } else {
+    if(!container.firstElementChild || (container.firstElementChild.tagName != 'IMG' && container.firstElementChild.tagName != 'VIDEO')) {
+      let size = appPhotosManager.setAttachmentSize(doc, container, boxWidth, boxHeight);
+    }
+    
+    img = container.firstElementChild as HTMLImageElement || new Image();
+    
+    if(!container.contains(img)) {
+      container.append(img);
+    }
   }
-  
-  let peerID = this.peerID ? this.peerID : this.currentMessageID;
-  
-  //container.classList.add('video');
-  
-  let img = container.firstElementChild as HTMLImageElement || new Image();
-  img.setAttribute('message-id', '' + message.mid);
-  
-  if(!container.contains(img)) {
-    container.append(img);
-  }
-  
-  //return Promise.resolve();
   
   if(!preloader) {
     preloader = new ProgressivePreloader(container, true);
   }
+
+  let video = document.createElement('video');
+  if(withTail) {
+    let foreignObject = document.createElementNS("http://www.w3.org/2000/svg", 'foreignObject');
+    let width = img.getAttributeNS(null, 'width');
+    let height = img.getAttributeNS(null, 'height');
+    foreignObject.setAttributeNS(null, 'width', width);
+    foreignObject.setAttributeNS(null, 'height', height);
+    video.width = +width;
+    video.height = +height;
+    foreignObject.append(video);
+    img.parentElement.append(foreignObject);
+  }
+
+  let source = document.createElement('source');
+  video.append(source);
   
   let loadVideo = () => {
     let promise = appDocsManager.downloadDoc(doc);
@@ -74,37 +91,27 @@ export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement,
     preloader.attach(container, true, promise);
     
     return promise.then(blob => {
-      if((this.peerID ? this.peerID : this.currentMessageID) != peerID) {
+      if(this.peerID != peerID) {
         this.log.warn('peer changed');
         return;
       }
+
+      //return;
       
       ///////console.log('loaded doc:', doc, blob, container);
       
-      let video = document.createElement('video');
-      /* video.loop = controls;
-      video.autoplay = controls;
-      
-      if(!justLoader) {
-        video.controls = controls;
-      } else {
-        video.volume = 0;
-      } */
-      
-      video.setAttribute('message-id', '' + message.mid);
-      
-      let source = document.createElement('source');
       //source.src = doc.url;
-      source.src = URL.createObjectURL(blob);
       source.type = doc.mime_type;
-      
-      if(img && container.contains(img)) {
-        container.removeChild(img);
-      }
-      
+      source.src = URL.createObjectURL(blob);
       video.append(source);
-      
-      container.append(video);
+
+      if(!withTail) {
+        if(img && container.contains(img)) {
+          container.removeChild(img);
+        }
+
+        container.append(video);
+      }
       
       if(!justLoader || round) {
         video.dataset.ckin = round ? 'circle' : 'default';
@@ -118,15 +125,12 @@ export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement,
         video.autoplay = true;
         video.loop = true;
       }
-      
-      //container.style.width = '';
-      //container.style.height = '';
     });
   };
   
   if(doc.type == 'gif' || true) { // extra fix
-    return this.peerID ? this.loadMediaQueuePush(loadVideo) : loadVideo();
-  } else { // if video
+    return this.loadMediaQueuePush(loadVideo);
+  } /* else { // if video
     let load = () => appPhotosManager.preloadPhoto(doc).then((blob) => {
       if((this.peerID ? this.peerID : this.currentMessageID) != peerID) {
         this.log.warn('peer changed');
@@ -134,14 +138,6 @@ export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement,
       }
       
       img.src = URL.createObjectURL(blob);
-      
-      /* image.style.height = doc.h + 'px';
-      image.style.width = doc.w + 'px'; */
-      
-      /* if(justLoader) { // extra fix
-        justLoader = false;
-        controls = false;
-      } */
       
       if(!justLoader) {
         return loadVideo();
@@ -153,7 +149,7 @@ export function wrapVideo(this: any, doc: MTDocument, container: HTMLDivElement,
     });
     
     return this.peerID ? this.loadMediaQueuePush(load) : load();
-  }
+  } */
 }
 
 export function wrapDocument(doc: MTDocument, withTime = false, uploading = false): HTMLDivElement {
@@ -194,7 +190,7 @@ export function wrapDocument(doc: MTDocument, withTime = false, uploading = fals
   <div class="document-name">${fileName}</div>
   <div class="document-size">${size}</div>
   `;
-
+  
   if(!uploading) {
     let downloadDiv = docDiv.querySelector('.document-download') as HTMLDivElement;
     let preloader: ProgressivePreloader;
@@ -289,7 +285,7 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
   }
   
   let progress = div.querySelector('.audio-waveform') as HTMLDivElement;
-
+  
   let onClick = () => {
     if(!promise) {
       if(downloadDiv.classList.contains('downloading')) {
@@ -311,7 +307,7 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
         let source = document.createElement('source');
         source.src = URL.createObjectURL(blob);
         source.type = doc.mime_type;
-
+        
         audio.volume = 1;
         
         div.removeEventListener('click', onClick);
@@ -346,13 +342,13 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
               timeDiv.innerText = String(audio.currentTime | 0).toHHMMSS(true);
               
               lastIndex = Math.round(audio.currentTime / audio.duration * 47);
-
+              
               //svg.children[lastIndex].setAttributeNS(null, 'fill', '#000');
               //svg.children[lastIndex].classList.add('active'); #Иногда пропускает полоски..
               (Array.from(svg.children) as HTMLElement[]).slice(0,lastIndex+1).forEach(node => node.classList.add('active'));
               //++lastIndex;
               //console.log('lastIndex:', lastIndex, audio.currentTime);
-            //}, duration * 1000 / svg.childElementCount | 0/* 63 * duration / 10 */);
+              //}, duration * 1000 / svg.childElementCount | 0/* 63 * duration / 10 */);
             }, 20);
           } else {
             audio.pause();
@@ -402,12 +398,12 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
         progress.addEventListener('click', (e) => {
           if(!audio.paused) scrub(e, audio, progress);
         });
-
+        
         function scrub(e: MouseEvent, audio: HTMLAudioElement, progress: HTMLDivElement) {
           let scrubTime = e.offsetX / 190 /* width */ * audio.duration;
           (Array.from(svg.children) as HTMLElement[]).forEach(node => node.classList.remove('active'));
           lastIndex = Math.round(scrubTime / audio.duration * 47);
-
+          
           (Array.from(svg.children) as HTMLElement[]).slice(0,lastIndex+1).forEach(node => node.classList.add('active'));
           audio.currentTime = scrubTime;
         }
@@ -431,22 +427,99 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
   return div;
 }
 
-export function wrapPhoto(this: AppImManager, photo: any, message: any, container: HTMLDivElement, boxWidth = 380, boxHeight = 380) {
-  //container.classList.add('photo');
+function wrapMediaWithTail(photo: any, message: {mid: number, message: string}, container: HTMLDivElement, boxWidth: number, boxHeight: number, isOut: boolean) {
+  let svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.classList.add('bubble__media-container', isOut ? 'is-out' : 'is-in');
   
+  let size = appPhotosManager.setAttachmentSize(photo.type ? photo : photo.id, svg, boxWidth, boxHeight);
+  let image = svg.firstElementChild as SVGImageElement || document.createElementNS("http://www.w3.org/2000/svg", "image");
+  
+  let width = +svg.getAttributeNS(null, 'width');
+  let height = +svg.getAttributeNS(null, 'height');
+  
+  //container.style.width = (width - 9) + 'px'; // maybe return
+  
+  let clipID = 'clip' + message.mid;
+  svg.dataset.clipID = clipID;
+  //image.setAttributeNS(null, 'clip-path', `url(#${clipID})`);
+  if(!svg.contains(image)) {
+    image.setAttributeNS(null, 'width', '' + width);
+    image.setAttributeNS(null, 'height', '' + height);
+    svg.append(image);
+  }
+  
+  let defs = document.createElementNS("http://www.w3.org/2000/svg", 'defs');
+  let clipPathHTML: string = '';/*  = `
+  <use href="#message-tail" transform="translate(${width - 2}, ${height}) scale(-1, -1)"></use>
+  <rect width="${width - 9}" height="${height}" rx="12"></rect>
+  `; */
+  
+  //window.getComputedStyle(container).getPropertyValue('border-radius');
+  
+  if(message.message) {
+    //clipPathHTML += `<rect width="${width}" height="${height}"></rect>`;
+  } else {
+    /* if(isOut) {
+      clipPathHTML += `
+      <use href="#message-tail" transform="translate(${width - 2}, ${height}) scale(-1, -1)"></use>
+      <path d="${generatePathData(0, 0, width - 9, height, 6, 0, 12, 12)}" />
+      `;
+    } else {
+      clipPathHTML += `
+      <use href="#message-tail" transform="translate(0, ${height}) scale(1, -1)"></use>
+      <path d="${generatePathData(0, 0, width - 9, height, 12, 12, 0, 6)}" />
+      `;
+    } */
+    if(isOut) {
+      clipPathHTML += `
+      <use href="#message-tail" transform="translate(${width - 2}, ${height}) scale(-1, -1)"></use>
+      <path />
+      `;
+    } else {
+      clipPathHTML += `
+      <use href="#message-tail" transform="translate(2, ${height}) scale(1, -1)"></use>
+      <path />
+      `;
+    }
+  }
+  
+  /* if(isOut) { // top-right, bottom-right
+    clipPathHTML += `
+    <rect class="br-tr" width="12" height="12" x="${width - 9 - 12}" y="0"></rect>
+    <rect class="br-br" width="12" height="12" x="${width - 9 - 12}" y="${height - 12}"></rect>
+    `
+  } else { // top-left, bottom-left
+    clipPathHTML += `
+    <rect class="br-tl" width="12" height="12" x="0" y="0"></rect>
+    <rect class="br-bl" width="12" height="12" x="0" y="${height - 12}"></rect>
+    `;
+  } */
+  defs.innerHTML = `<clipPath id="${clipID}">${clipPathHTML}</clipPath>`;
+  
+  svg.prepend(defs);
+  container.appendChild(svg);
+
+  return image;
+}
+
+export function wrapPhoto(this: AppImManager, photo: any, message: any, container: HTMLDivElement, boxWidth = 380, boxHeight = 380, withTail = true, isOut = false) {
   let peerID = this.peerID;
   
-  let size = appPhotosManager.setAttachmentSize(photo.id, container, boxWidth, boxHeight);
-  let image = container.firstElementChild as HTMLImageElement || new Image();
-  //let size = appPhotosManager.setAttachmentSize(photo.id, image);
-  image.setAttribute('message-id', message.mid);
-  
-  if(!container.contains(image)) {
-    container.append(image);
+  let size: MTPhotoSize;
+  let image: SVGImageElement | HTMLImageElement;
+  if(withTail) {
+    image = wrapMediaWithTail(photo, message, container, boxWidth, boxHeight, isOut);
+  } else {
+    size = appPhotosManager.setAttachmentSize(photo.id, container, boxWidth, boxHeight);
+    
+    image = container.firstElementChild as HTMLImageElement || new Image();
+    
+    if(!container.contains(image)) {
+      container.appendChild(image);
+    }
   }
   
   let preloader = new ProgressivePreloader(container, false);
-  
   let load = () => {
     let promise = appPhotosManager.preloadPhoto(photo.id, size);
     
@@ -458,12 +531,11 @@ export function wrapPhoto(this: AppImManager, photo: any, message: any, containe
         return;
       }
       
-      image.src = URL.createObjectURL(blob);
-      
-      //image.style.width = '';
-      //image.style.height = '';
-      //container.style.width = '';
-      //container.style.height = '';
+      if(withTail) {
+        image.setAttributeNS(null, 'href', URL.createObjectURL(blob));
+      } else if(image instanceof Image) {
+        image.src = URL.createObjectURL(blob);
+      }
     });
   };
   
@@ -483,21 +555,21 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
   
   if(doc.thumbs && !div.firstElementChild) {
     let thumb = doc.thumbs[0];
-
+    
     ///////console.log('wrap sticker', thumb);
     
     if(thumb.bytes) {
       apiFileManager.saveSmallFile(thumb.location, thumb.bytes);
       
       appPhotosManager.setAttachmentPreview(thumb.bytes, div, true);
-
+      
       if(onlyThumb) return Promise.resolve();
     }
   }
-
+  
   if(onlyThumb && doc.thumbs) {
     let thumb = doc.thumbs[0];
-
+    
     let load = () => apiFileManager.downloadSmallFile({
       _: 'inputDocumentFileLocation',
       access_hash: doc.access_hash,
@@ -508,13 +580,13 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
       let img = new Image();
       
       appWebpManager.polyfillImage(img, blob);
-
+      
       div.append(img);
-    
+      
       div.setAttribute('file-id', doc.id);
       appStickersManager.saveSticker(doc);
     });
-
+    
     return lazyLoadQueue ? (lazyLoadQueue.push({div, load}), Promise.resolve()) : load();
   }
   
@@ -635,11 +707,11 @@ export function wrapReply(title: string, subtitle: string, media?: any) {
     } else {
       replySubtitle.innerHTML = media._;
     }
-
+    
     if(media.photo || (media.document && ['video'].indexOf(media.document.type) !== -1)) {
       let replyMedia = document.createElement('div');
       replyMedia.classList.add('reply-media');
-  
+      
       let photo = media.photo || media.document;
       
       let sizes = photo.sizes || photo.thumbs;
@@ -651,7 +723,7 @@ export function wrapReply(title: string, subtitle: string, media?: any) {
       .then((blob) => {
         replyMedia.style.backgroundImage = 'url(' + URL.createObjectURL(blob) + ')';
       });
-  
+      
       replyContent.append(replyMedia);
       div.classList.add('is-reply-media');
     }

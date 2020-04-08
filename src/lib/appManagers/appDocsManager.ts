@@ -1,6 +1,7 @@
-import apiFileManager, { CancellablePromise } from '../mtproto/apiFileManager';
+import apiFileManager from '../mtproto/apiFileManager';
 import FileManager from '../filemanager';
 import {RichTextProcessor} from '../richtextprocessor';
+import { CancellablePromise } from '../polyfill';
 //import { MTDocument } from '../../components/misc';
 
 class AppDocsManager {

@@ -5,31 +5,62 @@ export function logger(prefix: string) {
   function Log(...args: any[]) {
     return console.log(dT(), '[' + prefix + ']:', ...args);
   }
-
+  
   Log.warn = function(...args: any[]) {
     return console.warn(dT(), '[' + prefix + ']:', ...args);
   };
-
+  
   Log.info = function(...args: any[]) {
     return console.info(dT(), '[' + prefix + ']:', ...args);
   };
-
+  
   Log.error = function(...args: any[]) {
     return console.error(dT(), '[' + prefix + ']:', ...args);
   };
-
+  
   Log.trace = function(...args: any[]) {
     return console.trace(dT(), '[' + prefix + ']:', ...args);
   }
-
+  
   return Log;
 };
+
+export interface CancellablePromise<T> extends Promise<T> {
+  resolve?: (...args: any[]) => void,
+  reject?: (...args: any[]) => void,
+  cancel?: () => void,
+  notify?: (...args: any[]) => void,
+  isFulfilled?: boolean,
+  isRejected?: boolean
+}
+
+export function deferredPromise<T>() {
+  let deferredHelper: any = {notify: () => {}, isFulfilled: false, isRejected: false};
+  let deferred: CancellablePromise<T> = new Promise<T>((resolve, reject) => {
+    deferredHelper.resolve = (value: T) => {
+      if(deferred.isFulfilled) return;
+
+      deferred.isFulfilled = true;
+      resolve(value);
+    };
+    
+    deferredHelper.reject = (...args: any[]) => {
+      if(deferred.isRejected) return;
+      
+      deferred.isRejected = true;
+      reject(...args);
+    };
+  });
+  Object.assign(deferred, deferredHelper);
+
+  return deferred;
+}
 
 Object.defineProperty(Uint8Array.prototype, 'hex', {
   get: function(): string {
     return bytesToHex([...this]);
   },
-
+  
   set: function(str: string) {
     this.set(bytesFromHex(str));
   },
@@ -76,12 +107,12 @@ declare global {
     randomize: () => Uint8Array,
     concat: (...args: Array<Uint8Array | ArrayBuffer | number[]>) => Uint8Array
   }
-
+  
   interface Array<T> {
     forEachReverse(callback: (value: T, index?: number, array?: Array<T>) => void): void;
     findAndSplice(verify: (value: T, index?: number, array?: Array<T>) => boolean): T;
   }
-
+  
   interface String {
     toHHMMSS(leadZero?: boolean): string;
   }

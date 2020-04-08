@@ -3,14 +3,7 @@ import { nextRandomInt } from "../bin_utils";
 import IdbFileStorage from "../idb";
 import FileManager from "../filemanager";
 import apiManager from "./apiManager";
-import { logger } from "../polyfill";
-
-export interface CancellablePromise<T> extends Promise<T> {
-  resolve?: (...args: any[]) => void,
-  reject?: (...args: any[]) => void,
-  cancel?: () => void,
-  notify?: (...args: any[]) => void
-}
+import { logger, deferredPromise, CancellablePromise } from "../polyfill";
 
 export class ApiFileManager {
   public cachedFs = false;
@@ -319,12 +312,7 @@ export class ApiFileManager {
     //this.log('arriba');
 
     //var deferred = $q.defer()
-    let deferredHelper: any = {notify: () => {}};
-    let deferred: CancellablePromise<Blob> = new Promise((resolve, reject) => {
-      deferredHelper.resolve = resolve;
-      deferredHelper.reject = reject;
-    });
-    Object.assign(deferred, deferredHelper);
+    let deferred = deferredPromise<Blob>();
 
     //return;
 

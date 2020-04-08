@@ -93,8 +93,6 @@ export default class Scrollable {
   private debug = true;
   
   private measureMutex: CancellablePromise<void>;
-  private prependLocked = false;
-  private appendLocked = false;
   
   constructor(public el: HTMLElement, axis: 'y' | 'x' = 'y', public splitOffset = 300, logPrefix = '', public appendTo = el, public onScrollOffset = splitOffset) {
     this.container = document.createElement('div');
@@ -197,21 +195,18 @@ export default class Scrollable {
     setTimeout(() => {
       // @ts-ignore
       this.size = this.container[this.clientSize];
-      this.resize();
     }, 0);
     
     this.container.parentElement.append(this.thumb);
+    this.resize();
   }
   
   public detachTop(fromIndex: number, needHeight = 0, detachAll = false) {
     //if(this.splitMeasureBottom) fastdom.clear(this.splitMeasureBottom);
     if(this.splitMutateBottom) fastdom.clear(this.splitMutateBottom);
-    if(this.prependLocked) return;
     
     //return this.splitMeasureBottom = fastdom.measure(() => {
     return this.splitMutateBottom = fastdom.mutate(() => {
-      if(this.prependLocked) return;
-      
       let spliceTo = -1;
       
       let needToDetachHeight = needHeight;
@@ -231,20 +226,19 @@ export default class Scrollable {
       //if(this.splitMutateBottom) fastdom.clear(this.splitMutateBottom);
       //return this.splitMutateBottom = fastdom.mutate(() => {
       let spliced = this.visibleElements.splice(0, spliceTo + 1);
-      if(this.debug) {
-        this.log('spliced up', spliced);
-      }
-      
-      spliced.forEach((child, idx) => {
-        if(!child.element.parentElement) {
-          this.log.error('no child in splitUp (up):', child, child.element, 0, spliceTo + 1, idx, spliced);
-        }
+      spliced.forEach(child => {
+        //if(!this.splitUp.contains(child.element)) return false;
         
         this.paddings.up += child.height;
         this.splitUp.removeChild(child.element);
       });
       
       this.hiddenElements.up.push(...spliced);
+      
+      if(this.debug) {
+        this.log('spliced up', spliced);
+      }
+      
       this.paddingTopDiv.style.height = this.paddings.up + 'px';
       //});
     });
@@ -253,11 +247,9 @@ export default class Scrollable {
   public detachBottom(fromIndex: number, needHeight = 0, detachAll = false) {
     //if(this.splitMeasureBottom) fastdom.clear(this.splitMeasureBottom);
     if(this.splitMutateBottom) fastdom.clear(this.splitMutateBottom);
-    if(this.appendLocked) return;
     
     //return this.splitMeasureBottom = fastdom.measure(() => {
     return this.splitMutateBottom = fastdom.mutate(() => {
-      if(this.appendLocked) return;
       let spliceFrom = -1;
       let spliceTo = 0;
       
@@ -278,20 +270,19 @@ export default class Scrollable {
       //if(this.splitMutateBottom) fastdom.clear(this.splitMutateBottom);
       //return this.splitMutateBottom = fastdom.mutate(() => {
       let spliced = this.visibleElements.splice(spliceFrom, spliceTo - spliceFrom + 1);
-      if(this.debug) {
-        this.log('spliced down', spliced, spliceFrom, spliceTo - spliceFrom + 1, length);
-      }
-      
-      spliced.forEach((child, idx) => {
-        if(!child.element.parentElement) {
-          this.log.error('no child in splitUp (down):', child, child.element, spliceFrom, spliceTo - spliceFrom + 1, idx, spliced);
-        }
+      spliced.forEach((child) => {
+        //if(!this.splitUp.contains(child.element)) return false;
         
         this.paddings.down += child.height;
         this.splitUp.removeChild(child.element);
       });
       
       this.hiddenElements.down.unshift(...spliced);
+      
+      if(this.debug) {
+        this.log('spliced down', spliced, spliceFrom, spliceTo - spliceFrom + 1, length);
+      }
+      
       this.paddingBottomDiv.style.height = this.paddings.down + 'px';
       //});
     });
@@ -333,8 +324,12 @@ export default class Scrollable {
     this.paddings.up = this.paddings.down = 0;
     this.lastScrollTop = 0;
     
-    this.paddingTopDiv.style.height = '';
-    this.paddingBottomDiv.style.height = '';
+    if(this.paddingTopDiv.parentElement) {
+      fastdom.mutate(() => {
+        this.paddingTopDiv.style.height = '';
+        this.paddingBottomDiv.style.height = '';
+      });
+    }
     
     this.log('setVirtualContainer:', el, this);
     
@@ -349,40 +344,6 @@ export default class Scrollable {
       this.paddingTopDiv.remove();
       this.paddingBottomDiv.remove();
     }
-  }
-  
-  get state() {
-    return {
-      hiddenElements: {
-        up: this.hiddenElements.up.slice(),
-        down: this.hiddenElements.down.slice(),
-      },
-      paddings: {
-        up: this.paddings.up,
-        down: this.paddings.down
-      },
-      visibleElements: this.visibleElements.slice(),
-      scrollSize: this.scrollSize
-    };
-  }
-  
-  set state(state: {
-    visibleElements: Scrollable['visibleElements'],
-    hiddenElements: Scrollable['hiddenElements'],
-    paddings: Scrollable['paddings'],
-    scrollSize: Scrollable['scrollSize']
-  }) {
-    this.visibleElements = state.visibleElements;
-    this.hiddenElements = state.hiddenElements;
-    this.paddings = state.paddings;
-    this.scrollSize = state.scrollSize;
-    
-    fastdom.mutate(() => {
-      this.paddingTopDiv.style.height = this.paddings.up + 'px';
-      this.paddingBottomDiv.style.height = this.paddings.down + 'px';
-      
-      this.onScroll();
-    });
   }
   
   public getScrollTopOffset() {
@@ -402,11 +363,11 @@ export default class Scrollable {
   public onScroll() {
     //return;
     if(this.debug) {
-      this.log('onScroll call', this.onScrollMeasure);
+      this.log('onScroll call');
     }
     
     let appendTo = this.splitUp || this.appendTo;
-    
+
     clearTimeout(this.disableHoverTimeout);
     if(this.el != this.appendTo) {
       if(!appendTo.classList.contains('disable-hover')) {
@@ -430,7 +391,7 @@ export default class Scrollable {
       if(this.measureMutex.isFulfilled) {
         // @ts-ignore quick brown fix
         this.size = this.container[this.clientSize];
-        
+
         // @ts-ignore
         let scrollSize = this.container[this.scrollType];
         if(scrollSize != this.scrollSize || this.thumbSize == 0) {
@@ -468,10 +429,10 @@ export default class Scrollable {
       if(this.onScrolledTop) {
         //this.log('onScrolledTop:', scrollTop, this.onScrollOffset);
         if(!this.hiddenElements.up.length && scrollTop <= this.onScrollOffset) {
-          if(/* !this.onScrolledTopFired */!this.prependLocked) {
+          //if(!this.onScrolledTopFired) {
             this.onScrolledTopFired = true;
             this.onScrolledTop();
-          }
+          //}
         } else {
           this.onScrolledTopFired = false;
         }
@@ -518,10 +479,6 @@ export default class Scrollable {
       
       // возможно устанавливать прошлый скролл нужно уже после этого промиса, т.к. он может очиститься
       if(scrollTop == this.lastScrollTop) {
-        if(this.debug) {
-          this.log('onScroll ==', (performance.now() - perf).toFixed(3), length, scrollTop, maxScrollTop, toBottom, firstVisibleElementIndex, lastVisibleElementIndex, visibleFrom, visibleUntil, this.scrollTopOffset, this.scrollSize);
-        }
-        
         this.lastScrollTop = scrollTop;
         if(firstVisibleElementIndex !== -1) this.detachTop(firstVisibleElementIndex, needHeight);
         if(lastVisibleElementIndex !== -1) this.detachBottom(lastVisibleElementIndex, needHeight);
@@ -573,7 +530,7 @@ export default class Scrollable {
           }
           
           //if((lastVisibleElementIndex + 1) < length) {
-          this.detachBottom(lastVisibleElementIndex, needHeight);
+            this.detachBottom(lastVisibleElementIndex, needHeight);
           //}
           
           for(let i = firstVisibleElementIndex - 1; i >= 0; --i) {
@@ -606,6 +563,7 @@ export default class Scrollable {
       }
       
       this.lastScrollTop = scrollTop;
+      
       this.onScrollMeasure = 0;
     });
   }
@@ -628,9 +586,7 @@ export default class Scrollable {
       
       this.paddingTopDiv.style.height = this.paddings.up + 'px';
       this.paddingBottomDiv.style.height = this.paddings.down + 'px';
-
-      if(!this.paddings.up) this.onBottomIntersection((this.size * 2) + (needHeight * 2));
-      else this.onTopIntersection((this.size * 2) + (needHeight * 2));
+      this.onTopIntersection((this.size * 2) + (needHeight * 2));
     });
   }
   
@@ -647,14 +603,12 @@ export default class Scrollable {
       }
       
       if(this.debug) {
-        this.log.warn('manual scroll bottom', this, length, this.splitUp.childElementCount, scrollTop, this.paddings.down, h);
+        this.log.warn('manual scroll bottom', this, length, this.splitUp.childElementCount);
       }
       
       this.paddingTopDiv.style.height = this.paddings.up + 'px';
       this.paddingBottomDiv.style.height = this.paddings.down + 'px';
-      
-      if(!this.paddings.down) this.onTopIntersection(this.size + (needHeight * 2));
-      else this.onBottomIntersection(this.size + (needHeight * 2));
+      this.onBottomIntersection(this.size + (needHeight * 2));
     });
   }
   
@@ -730,67 +684,99 @@ export default class Scrollable {
     });
   }
   
-  public prepend(element: HTMLElement) {
+  public prepend(...smth: Element[]) {
     if(this.splitUp) {
-      this.removeElement(element);
+      smth.forEach(node => {
+        this.removeElement(node);
+      });
       
-      if(this.hiddenElements.up.length && !this.prependLocked) {
-        this.splitUp.prepend(element);
-        
-        let height = element.scrollHeight;
-        this.log('will append element to up hidden', element, height);
-        this.paddings.up += height;
-        this.hiddenElements.up.unshift({
-          element: element, 
-          height: height
+      if(this.hiddenElements.up.length) {
+        /* fastdom.mutate(() => {
+          this.splitUp.append(...smth);
+        }).then(() => {
+          return fastdom.measure(() => {
+            smth.forEachReverse(node => {
+              let height = node.scrollHeight;
+              this.log('will append element to up hidden', node, height);
+              this.paddings.up += height;
+              this.hiddenElements.up.unshift({
+                element: node, 
+                height: height
+              });
+            });
+          });
+        }).then(() => {
+          fastdom.mutate(() => {
+            smth.forEachReverse(node => {
+              if(node.parentElement) {
+                node.parentElement.removeChild(node);
+              }
+            });
+            
+            this.paddingTopDiv.style.height = this.paddings.up + 'px';
+            
+            this.onScroll();
+          });
+        }); */
+        this.splitUp.prepend(...smth);
+        smth.forEachReverse(node => {
+          let height = node.scrollHeight;
+          this.log('will append element to up hidden', node, height);
+          this.paddings.up += height;
+          this.hiddenElements.up.unshift({
+            element: node, 
+            height: height
+          });
+          node.parentElement.removeChild(node);
         });
-        element.parentElement.removeChild(element);
-        
         this.paddingTopDiv.style.height = this.paddings.up + 'px';
         this.onScroll();
       } else {
-        this.splitUp.prepend(element);
-        let el = {element, height: 0};
-        this.visibleElements.unshift(el);
-        
+        this.splitUp.prepend(...smth);
         fastdom.measure(() => {
-          if(!element.parentElement) return;
-          let height = element.scrollHeight;
-          el.height = height;
-          this.scrollSize += height;
+          smth.forEachReverse(element => {
+            if(!element.parentElement) return;
+            this.visibleElements.unshift({element: element, height: element.scrollHeight});
+          });
         });
         this.onScroll();
       }
     } else {
-      this.appendTo.prepend(element);
+      this.appendTo.prepend(...smth);
       this.onScroll();
     }
     
     //this.onScroll();
   }
   
-  public append(element: HTMLElement) {
+  public append(...smth: Element[]) {
     if(this.splitUp) {
-      this.removeElement(element);
+      smth.forEach(node => {
+        this.removeElement(node);
+      });
       
-      if(this.hiddenElements.down.length && !this.appendLocked) {
+      if(this.hiddenElements.down.length) {
         fastdom.mutate(() => {
-          this.splitUp.append(element);
+          this.splitUp.append(...smth);
         }).then(() => {
           return fastdom.measure(() => {
-            let height = element.scrollHeight;
-            this.log('will append element to down hidden', element, height);
-            this.paddings.down += height;
-            this.hiddenElements.down.push({
-              element: element, 
-              height: height
+            smth.forEach(node => {
+              let height = node.scrollHeight;
+              this.log('will append element to down hidden', node, height);
+              this.paddings.down += height;
+              this.hiddenElements.down.push({
+                element: node, 
+                height: height
+              });
             });
           });
         }).then(() => {
           fastdom.mutate(() => {
-            if(element.parentElement) {
-              element.parentElement.removeChild(element);
-            }
+            smth.forEach(node => {
+              if(node.parentElement) {
+                node.parentElement.removeChild(node);
+              }
+            });
             
             this.paddingBottomDiv.style.height = this.paddings.down + 'px';
             
@@ -798,32 +784,21 @@ export default class Scrollable {
           });
         });
       } else {
-        this.splitUp.append(element);
-        let el = {element, height: 0};
-        this.visibleElements.push(el);
-        
+        this.splitUp.append(...smth);
         fastdom.measure(() => {
-          if(!element.parentElement) return;
-          let height = element.scrollHeight;
-          el.height = height;
-          this.scrollSize += height;
+          smth.forEach(element => {
+            if(!element.parentElement) return;
+            this.visibleElements.push({element: element, height: element.scrollHeight});
+          });
         });
         this.onScroll();
       }
     } else {
-      this.appendTo.append(element);
+      this.appendTo.append(...smth);
       this.onScroll();
     }
     
     //this.onScroll();
-  }
-  
-  public contains(element: Element) {
-    if(!this.splitUp) {
-      return this.appendTo.contains(element);
-    }
-    
-    return !!element.parentElement || !!this.hiddenElements.up.find(c => c.element == element) || !!this.hiddenElements.down.find(c => c.element == element);
   }
   
   public removeElement(element: Element) {
@@ -868,13 +843,8 @@ export default class Scrollable {
   }
   
   public insertBefore(newChild: Element, refChild: Element, height?: number) {
-    this.log('insertBefore', newChild, newChild.textContent, refChild);
-    //return;
-    if(!this.splitUp) {
-      let ret = this.appendTo.insertBefore(newChild, refChild);
-      this.onScroll();
-      return ret;
-    }
+    //this.log('insertBefore', newChild, refChild);
+    return;
     
     if(this.splitUp) {
       let index = -1;
@@ -947,6 +917,10 @@ export default class Scrollable {
       });
       return;
     }
+    
+    let ret = this.container.insertBefore(newChild, refChild);
+    this.onScroll();
+    return ret;
   }
   
   public scrollIntoView(element: Element) {
@@ -972,18 +946,6 @@ export default class Scrollable {
     }
   }
   
-  public lock(side: 'top' | 'down' | 'both' = 'down') {
-    if(side == 'top') this.prependLocked = true;
-    else if(side == 'down') this.appendLocked = true;
-    else this.prependLocked = this.appendLocked = true;
-  }
-  
-  public unlock(side: 'top' | 'down' | 'both' = 'down') {
-    if(side == 'top') this.prependLocked = false;
-    else if(side == 'down') this.appendLocked = false;
-    else this.prependLocked = this.appendLocked = false;
-  }
-  
   set scrollTop(y: number) {
     fastdom.mutate(() => {
       this.container.scrollTop = y;
@@ -1005,7 +967,7 @@ export default class Scrollable {
   get offsetHeight() {
     return this.container.offsetHeight;
   }
-  
+
   get length() {
     return this.hiddenElements.up.length + this.visibleElements.length + this.hiddenElements.down.length;
   }

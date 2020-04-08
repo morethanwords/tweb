@@ -36,16 +36,16 @@ export class AppPhotosManager {
   constructor() {
     window.addEventListener('resize', (e) => {
       //fastdom.measure(() => {
-        this.windowW = document.body.scrollWidth;
-        this.windowH = document.body.scrollHeight;
+      this.windowW = document.body.scrollWidth;
+      this.windowH = document.body.scrollHeight;
       //});
       //console.log(`Set windowW, windowH: ${this.windowW}x${this.windowH}`);
     });
-
+    
     //fastdom.measure(() => {
-      console.log('measure works');
-      this.windowW = document.body.scrollWidth;
-      this.windowH = document.body.scrollHeight;
+    console.log('measure works');
+    this.windowW = document.body.scrollWidth;
+    this.windowH = document.body.scrollHeight;
     //});
   }
   
@@ -79,7 +79,7 @@ export class AppPhotosManager {
       width *= 2;
       height *= 2;
     }
-
+    
     /*
     s	box	100x100
     m	box	320x320
@@ -93,21 +93,21 @@ export class AppPhotosManager {
     
     let bestPhotoSize: MTPhotoSize = {_: 'photoSizeEmpty'};
     let bestDiff = 0xFFFFFF;
-
+    
     //console.log('choosePhotoSize', photo);
     
     let sizes = photo.sizes || photo.thumbs;
     if(!sizes) return bestPhotoSize;
-
+    
     sizes.forEach((photoSize: typeof bestPhotoSize) => {
       if(!photoSize.w || !photoSize.h) return;
-
+      
       let diff = Math.abs(photoSize.w * photoSize.h - width * height);
       if(diff < bestDiff) {
         bestPhotoSize = photoSize;
         bestDiff = diff;
       }
-
+      
       //console.log('diff', diff, photoSize, bestPhotoSize);
     });
     
@@ -139,7 +139,7 @@ export class AppPhotosManager {
     });
   }
   
-  public setAttachmentPreview(bytes: Uint8Array, div: HTMLElement, isSticker = false, background = false) {
+  public setAttachmentPreview(bytes: Uint8Array, element: HTMLElement | SVGSVGElement, isSticker = false, background = false) {
     //image.src = "data:image/jpeg;base64," + bytesToBase64(photo.sizes[0].bytes);
     //photo.sizes[0].bytes = new Uint8Array([...photo.sizes[0].bytes].reverse());
     
@@ -154,23 +154,30 @@ export class AppPhotosManager {
     
     //console.log('setAttachmentPreview', bytes, arr, div, isSticker);
     
-    let blob = new Blob([arr], { type: "image/jpeg" } );
+    let blob = new Blob([arr], {type: "image/jpeg"});
     
     if(background) {
-      div.style.backgroundImage = 'url(' + URL.createObjectURL(blob) + ')';
+      element.style.backgroundImage = 'url(' + URL.createObjectURL(blob) + ')';
     } else {
-      let image = new Image();
-      image.src = URL.createObjectURL(blob);
-      
-      image.style.width = '100%';
-      image.style.height = '100%';
-      div.append(image);
+      if(element instanceof SVGSVGElement) {
+        let image = document.createElementNS("http://www.w3.org/2000/svg", "image");
+        image.setAttributeNS(null, 'href', URL.createObjectURL(blob));
+        //image.setAttributeNS(null, 'preserveAspectRatio', 'xMinYMin slice');
+        element.append(image);
+      } else {
+        let image = new Image();
+        image.src = URL.createObjectURL(blob);
+        
+        image.style.width = '100%';
+        image.style.height = '100%';
+        element.append(image);
+      }
     }
   }
   
-  public setAttachmentSize(photoID: any, div: HTMLDivElement, boxWidth = 380, boxHeight = 380, isSticker = false) {
+  public setAttachmentSize(photoID: any, element: HTMLElement | SVGSVGElement, boxWidth = 380, boxHeight = 380, isSticker = false) {
     let photo: /* MTDocument | MTPhoto */any = null;
-
+    
     if(typeof(photoID) === 'string') {
       photo = this.photos[photoID];
       if(!photo) return {_: 'photoEmpty'};
@@ -183,17 +190,32 @@ export class AppPhotosManager {
     
     let sizes = photo.sizes || photo.thumbs;
     if(sizes && sizes[0].bytes) {
-      this.setAttachmentPreview(sizes[0].bytes, div, isSticker);
+      this.setAttachmentPreview(sizes[0].bytes, element, isSticker);
     }
-
-    if(photo._ == 'document' /* && photo.type != 'video' *//*  && photo.type != 'gif' */) {
-      let {w, h} = calcImageInBox(photo.w || 512, photo.h || 512, boxWidth, boxHeight);
-      div.style.width = w + 'px';
-      div.style.height = h + 'px';
+    
+    let width: number;
+    let height: number;
+    if(photo._ == 'document') {
+      width = photo.w || 512;
+      height = photo.h || 512;
     } else {
-      let {w, h} = calcImageInBox(photoSize.w || 100, photoSize.h || 100, boxWidth, boxHeight);
-      div.style.width = w + 'px';
-      div.style.height = h + 'px';
+      width = photoSize.w || 100;
+      height = photoSize.h || 100;
+    }
+    
+    let {w, h} = calcImageInBox(width, height, boxWidth, boxHeight);
+    if(element instanceof SVGSVGElement) {
+      element.setAttributeNS(null, 'width', '' + w);
+      element.setAttributeNS(null, 'height', '' + h);
+      
+      if(element.firstElementChild) {
+        let imageSvg = element.firstElementChild as SVGImageElement;
+        imageSvg.setAttributeNS(null, 'width', '' + w);
+        imageSvg.setAttributeNS(null, 'height', '' + h);
+      }
+    } else {
+      element.style.width = w + 'px';
+      element.style.height = h + 'px';
     }
     
     return photoSize;
@@ -201,7 +223,7 @@ export class AppPhotosManager {
   
   public async preloadPhoto(photoID: any, photoSize?: MTPhotoSize): Promise<Blob> {
     let photo: any = null;
-
+    
     if(typeof(photoID) === 'string') {
       photo = this.photos[photoID];
       if(!photo) return Promise.reject();
@@ -212,13 +234,13 @@ export class AppPhotosManager {
     if(!photoSize) {
       let fullWidth = this.windowW/*  - (Config.Mobile ? 20 : 32) */;
       let fullHeight = this.windowH/*  - (Config.Mobile ? 150 : 116) */;
-
+      
       photoSize = this.choosePhotoSize(photo, fullWidth, fullHeight);
     }
-
+    
     if(photoSize && photoSize._ != 'photoSizeEmpty') {
       photoSize.preloaded = true;
-
+      
       // maybe it's a thumb
       let isPhoto = photoSize.size && photo.access_hash && photo.file_reference;
       let location = isPhoto ? {
@@ -228,23 +250,23 @@ export class AppPhotosManager {
         file_reference: photo.file_reference,
         thumb_size: photoSize.type
       } : photoSize.location;
-  
+      
       /* if(overwrite) {
         await apiFileManager.deleteFile(location);
         console.log('Photos deleted file!');
       } */
-
+      
       if(isPhoto/*  && photoSize.size >= 1e6 */) {
         //console.log('Photos downloadFile exec', photo);
         /* let promise = apiFileManager.downloadFile(photo.dc_id, location, photoSize.size);
-
+        
         let blob = await promise;
         if(blob.size < photoSize.size && overwrite) {
           await apiFileManager.deleteFile(location);
           console.log('Photos deleted file!');
           return apiFileManager.downloadFile(photo.dc_id, location, photoSize.size);
         }
-
+        
         return blob; */
         return apiFileManager.downloadFile(photo.dc_id, location, photoSize.size);
       } else {
@@ -353,7 +375,7 @@ export class AppPhotosManager {
       });
     } catch(err) {
       console.error('err', err);
-
+      
       var cachedBlob = apiFileManager.getCachedFile(inputFileLocation)
       if (cachedBlob) {
         return fileManager.download(cachedBlob, mimeType, fileName);

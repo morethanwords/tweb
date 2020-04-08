@@ -77,6 +77,11 @@ button, input, optgroup, select, textarea, html {
   }
 }
 
+.disable-hover,
+.disable-hover * {
+  pointer-events: none !important;
+}
+
 .container {
   margin: 0 auto;
 }
@@ -303,6 +308,10 @@ input {
     top: 79%;
     width: 12px;
     height: 12px;
+  }
+
+  &.tgico-avatar_deletedaccount {
+    font-size: 3rem;
   }
 }
 
@@ -1304,7 +1313,7 @@ span.popup-close {
   }
 }
 
-div.scrollable::-webkit-scrollbar {
+/* div.scrollable::-webkit-scrollbar {
   width: 0;
   height: 0;
 }
@@ -1321,7 +1330,7 @@ div.scrollable::-webkit-scrollbar-thumb {
 }
 ::-webkit-scrollbar-corner {
   background-color: transparent;
-}
+} */
 
 .scrollable {
   width: 100%;
@@ -1329,7 +1338,19 @@ div.scrollable::-webkit-scrollbar-thumb {
   overflow-y: hidden;
   overflow-x: hidden;
   max-height: 100%;
-  position: relative;
+  //position: relative;
+
+  will-change: transform;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  bottom: 0px;
+  right: 0px;
+  display: flex;
+  flex-direction: column;
 
   &.scrollable-x {
     overflow-x: auto;
@@ -1350,6 +1371,14 @@ div.scrollable::-webkit-scrollbar-thumb {
     height: 4px;
     bottom: 0px;
   }
+
+  .scroll-padding {
+    flex: 0 0 auto;
+
+    &:first-child + * {
+      flex: 1 1 auto;
+    }
+  }
 }
 
 .scrollbar-thumb {
@@ -1362,9 +1391,11 @@ div.scrollable::-webkit-scrollbar-thumb {
   //cursor: grab;
   cursor: default;
   opacity: 0;
-  transition-property: opacity,width,right;
+  transition-property: opacity;
   transition-duration: .2s;
   transition-timing-function: ease-in-out;
+
+  display: none;
 
   border-radius: $border-radius;
   z-index: 2;

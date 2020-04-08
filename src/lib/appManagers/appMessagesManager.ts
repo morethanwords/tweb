@@ -11,7 +11,7 @@ import appPhotosManager from "./appPhotosManager";
 import AppStorage from '../storage';
 import AppPeersManager from "./appPeersManager";
 import ServerTimeManager from "../mtproto/serverTimeManager";
-import apiFileManager, { CancellablePromise } from "../mtproto/apiFileManager";
+import apiFileManager from "../mtproto/apiFileManager";
 import appDocsManager from "./appDocsManager";
 import appImManager from "./appImManager";
 import { MTDocument } from "../../components/wrappers";
@@ -19,6 +19,7 @@ import ProgressivePreloader from "../../components/preloader";
 import serverTimeManager from "../mtproto/serverTimeManager";
 import apiManager from "../mtproto/apiManager";
 import appWebPagesManager from "./appWebPagesManager";
+import { CancellablePromise, deferredPromise } from "../polyfill";
 
 type HistoryStorage = {
   count: number | null,
@@ -660,15 +661,7 @@ export class AppMessagesManager {
         
         invoke(flags, inputMedia);
       } else if(file instanceof File || file instanceof Blob) {
-        let deferredHelper: {
-          resolve?: () => void,
-          reject?: (error: any) => void
-        } = {};
-        let deferred: CancellablePromise<void> = new Promise((resolve, reject) => {
-          deferredHelper.resolve = resolve;
-          deferredHelper.reject = reject;
-        });
-        Object.assign(deferred, deferredHelper);
+        let deferred = deferredPromise<void>();
 
         this.sendFilePromise.then(() => {
           if(!uploaded || message.error) {
@@ -1816,7 +1809,7 @@ export class AppMessagesManager {
 
   public getSearch(peerID = 0, query: string = '', inputFilter: {
     _?: string
-  } = {_: 'inputMessagesFilterEmpty'}, maxID: number, limit: number, offsetRate = 0): Promise<{
+  } = {_: 'inputMessagesFilterEmpty'}, maxID: number, limit: number, offsetRate = 0, backLimit = 0): Promise<{
     count: number,
     next_rate: number,
     history: number[]
@@ -1953,9 +1946,9 @@ export class AppMessagesManager {
         filter: inputFilter || {_: 'inputMessagesFilterEmpty'},
         min_date: 0,
         max_date: 0,
-        limit: limit || 20,
+        limit: limit,
         offset_id: appMessagesIDsManager.getMessageLocalID(maxID) || 0,
-        add_offset: 0,
+        add_offset: backLimit ? -backLimit : 0,
         max_id: 0,
         min_id: 0
       }, {
@@ -3024,7 +3017,12 @@ export class AppMessagesManager {
     });
   }
 
-  public getHistory(peerID: number, maxID = 0, limit = 0, backLimit?: number, prerendered?: number) {
+  public getHistory(peerID: number, maxID = 0, limit = 0, backLimit?: number, prerendered?: number): Promise<{
+    count: number,
+    history: number[],
+    unreadOffset: number,
+    unreadSkip: boolean
+  }> {
     if(this.migratedFromTo[peerID]) {
       peerID = this.migratedFromTo[peerID];
     }

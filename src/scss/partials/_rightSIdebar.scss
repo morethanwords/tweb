@@ -95,11 +95,15 @@
     margin-top: 1px;
   }
 
-  .user-avatar {
+  .profile-avatar.user-avatar {
     width: 120px;
     height: 120px;
     margin: 0 auto 20px;
-    font-size: 4rem!important;
+    font-size: 4rem;
+
+    &.tgico-avatar_deletedaccount {
+      font-size: 6rem;
+    }
   }
 
   [type="checkbox"] + span {

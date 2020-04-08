@@ -1,8 +1,8 @@
 import apiManager from "../lib/mtproto/apiManager";
-import { whichChild, isElementInViewport, isInDOM, findUpTag } from "../lib/utils";
+import { whichChild, findUpTag } from "../lib/utils";
 
 let onRippleClick = function(this: HTMLElement, e: MouseEvent) {
-  var $circle = this.firstElementChild as HTMLSpanElement;//this.querySelector('.c-ripple__circle') as HTMLSpanElement;
+  var $circle = this.firstElementChild as HTMLSpanElement;
   
   var rect = this.parentElement.getBoundingClientRect();
   var x = e.clientX - rect.left; //x position within the element.
@@ -66,7 +66,7 @@ export function putPreloader(elem: Element, returnDiv = false) {
     if(elem) {
       elem.appendChild(div);
     }
-    
+
     return div;
   }
   

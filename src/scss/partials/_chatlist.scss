@@ -53,7 +53,7 @@
 
   li {
     padding: 2px 0;
-    overflow: hidden;
+    //overflow: hidden;
     background-color: #fff;
   }
 
@@ -61,12 +61,15 @@
     height: 70px;
     max-height: 70px;
     border-radius: $border-radius;
-    display: grid;
-    align-items: center;
-    grid-template-columns: 64px calc(100% - 64px - 6.5px);
+    //align-items: center;
+    /* display: grid;
+    grid-template-columns: 64px calc(100% - 64px - 6.5px); */
+    display: flex;
+    align-items: flex-start;
+    flex-direction: row;
     position: relative;
     cursor: pointer;
-    padding: 0 8.5px;
+    padding: 8px 8.5px;
     margin: 0 8.5px 0 8px;
     overflow: hidden;
 
@@ -99,8 +102,11 @@
     margin: 0;
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    height: 1.7rem; // hot-fix
+    flex-direction: row;
+    //align-items: center;
+    align-items: flex-start;
+    //height: 1.7rem; // hot-fix
+    height: 27px; // maybe new hot-fix
     
     /* span:not(.tgico-pinnedchat):not(.emoji):last-child { */
     .user-title + span {
@@ -119,11 +125,16 @@
     overflow: hidden;
     text-overflow: ellipsis;
     vertical-align: middle;
-    margin: .1rem 0;
+    //margin: .1rem 0;
+    line-height: 27px;
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
+  }
+
+  .user-avatar {
+    flex: 0 0 auto;
   }
 
   .user-caption {
@@ -131,6 +142,9 @@
     max-height: 100%;
     overflow: hidden;
     color: $color-gray;
+    flex: 1 1 auto;
+    padding-right: 6.5px;
+    padding-left: 10px;
   }
 
   .user-title {
@@ -147,7 +161,8 @@
       margin: 0;
       width: auto;
       font-size: 14px;
-      vertical-align: unset;
+      //vertical-align: unset;
+      margin-top: -1.5px;
     }
   }
 
@@ -168,38 +183,43 @@
       font-size: 1.2rem;
       margin: 0 .125rem;
       overflow: visible;
+      margin-top: -1.5px;
     }
   }
 
   .message-status {
     margin-right: .1rem;
-    margin-top: .3rem;
+    //margin-top: .3rem;
+    margin-top: -.3rem;
 
     &[class*=" tgico-"] {
       color: $success-color;
       font-size: 1.25rem;
     }
+
+    &:before {
+      vertical-align: middle;
+    }
   }
 
-  .unread, .unread-muted {
-    border-radius: 12px;
-    min-width: 24px;
-    padding: 0 8px;
+  .unread, .unread-muted, .tgico-pinnedchat {
     height: 24px;
     text-align: center;
     line-height: 24px;
     color: #fff;
+    border-radius: 12px;
+    margin-top: 1.5px;
+  }
+
+  .unread, .unread-muted {
+    min-width: 24px;
+    padding: 0 8px;
     font-weight: 500;
   }
 
   .tgico-pinnedchat {
-    border-radius: 50%;
     width: 24px;
-    height: 24px;
-    line-height: 24px;
     font-size: 1.5rem;
-    color: #fff;
-    text-align: center;
   }
 
   .unread:empty, .unread-muted:empty {

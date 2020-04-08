@@ -24,7 +24,7 @@ export default () => import('../lib/services').then(services => {
     //console.log('updating user:', user, dialog);
 
     if(dialog && !appUsersManager.isBot(dialog.peerID) && dialog.peerID != appImManager.myID) {
-      let online = user.status._ == 'userStatusOnline';
+      let online = user.status && user.status._ == 'userStatusOnline';
       let dom = appDialogsManager.getDialogDom(dialog.peerID);
 
       if(dom) {

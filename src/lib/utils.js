@@ -312,6 +312,60 @@ export const $rootScope = {
   }
 };
 
+// generate a path's arc data parameter
+// http://www.w3.org/TR/SVG/paths.html#PathDataEllipticalArcCommands
+var arcParameter = function(rx, ry, xAxisRotation, largeArcFlag, sweepFlag, x, y) {
+  return [rx, ',', ry, ' ',
+          xAxisRotation, ' ',
+          largeArcFlag, ',',
+          sweepFlag, ' ',
+          x, ',', y ].join('');
+};
+
+export function generatePathData( x, y, width, height, tl, tr, br, bl ) {
+  var data = [];
+
+  // start point in top-middle of the rectangle
+  data.push('M' + (x + width / 2) + ',' + y);
+
+  // next we go to the right
+  data.push('H' + (x + width - tr));
+
+  if (tr > 0) {
+      // now we draw the arc in the top-right corner
+      data.push('A' + arcParameter(tr, tr, 0, 0, 1, (x + width), (y + tr)));
+  }
+
+  // next we go down
+  data.push('V' + (y + height - br));
+
+  if (br > 0) {
+      // now we draw the arc in the lower-right corner
+      data.push('A' + arcParameter(br, br, 0, 0, 1, (x + width - br), (y + height)));
+  }
+
+  // now we go to the left
+  data.push('H' + (x + bl));
+
+  if (bl > 0) {
+      // now we draw the arc in the lower-left corner
+      data.push('A' + arcParameter(bl, bl, 0, 0, 1, (x + 0), (y + height - bl)));
+  }
+
+  // next we go up
+  data.push('V' + (y + tl));
+
+  if (tl > 0) {
+      // now we draw the arc in the top-left corner
+      data.push('A' + arcParameter(tl, tl, 0, 0, 1, (x + tl), (y + 0)));
+  }
+
+  // and we close the path
+  data.push('Z');
+
+  return data.join(' ');
+};
+
 export const langPack = {
   "messageActionChatCreate": "created the group",
 	"messageActionChatEditTitle": "changed group name",
@@ -374,8 +428,8 @@ export function numberWithCommas(x) {
 export function findUpClassName(el, className) {
   if(el.classList.contains(className)) return el; // 03.02.2020
 
-  while(el.parentNode) {
-    el = el.parentNode;
+  while(el.parentElement) {
+    el = el.parentElement;
     if(el.classList.contains(className)) 
       return el;
   }
@@ -385,8 +439,8 @@ export function findUpClassName(el, className) {
 export function findUpTag(el, tag) {
   if(el.tagName == tag) return el; // 03.02.2020
 
-  while(el.parentNode) {
-    el = el.parentNode;
+  while(el.parentElement) {
+    el = el.parentElement;
     if(el.tagName === tag) 
       return el;
   }

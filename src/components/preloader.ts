@@ -1,5 +1,5 @@
 import { isInDOM } from "../lib/utils";
-import { CancellablePromise } from "../lib/mtproto/apiFileManager";
+import { CancellablePromise } from "../lib/polyfill";
 
 export default class ProgressivePreloader {
   public preloader: HTMLDivElement = null;

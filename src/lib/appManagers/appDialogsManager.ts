@@ -1,6 +1,6 @@
 import apiManager from "../mtproto/apiManager";
 import apiFileManager from '../mtproto/apiFileManager';
-import { $rootScope, findUpTag, langPack } from "../utils";
+import { $rootScope, findUpTag, langPack, findUpClassName } from "../utils";
 import appImManager from "./appImManager";
 import appPeersManager from './appPeersManager';
 import appMessagesManager from "./appMessagesManager";
@@ -27,7 +27,9 @@ export class AppDialogsManager {
   public chatListArchived = document.getElementById('dialogs-archived') as HTMLUListElement;
   public pinnedDelimiter: HTMLDivElement;
   public chatsHidden: Scrollable["hiddenElements"];
+  public chatsVisible: Scrollable["visibleElements"];
   public chatsArchivedHidden: Scrollable["hiddenElements"];
+  public chatsArchivedVisible: Scrollable["visibleElements"];
   
   public myID = 0;
   public doms: {[peerID: number]: DialogDom} = {};
@@ -59,15 +61,17 @@ export class AppDialogsManager {
   public setListClickListener(list: HTMLUListElement, onFound?: () => void) {
     list.addEventListener('click', (e: Event) => {
       let target = e.target as HTMLElement;
-      let elem = target.tagName != 'LI' ? findUpTag(target, 'LI') : target;
+      let elem = target.classList.contains('rp') ? target : findUpClassName(target, 'rp');
 
       if(!elem) {
         return;
       }
 
-      /* if(this.lastActiveListElement) {
+      elem = elem.parentElement;
+
+      if(this.lastActiveListElement) {
         this.lastActiveListElement.classList.remove('active');
-      } */
+      }
 
       if(elem) {
         /* if(chatClosedDiv) {
@@ -105,9 +109,21 @@ export class AppDialogsManager {
       }
       
       div.style.backgroundColor = '';
-      div.style.fontSize = '';
       div.classList.add('tgico-savedmessages');
       return true;
+    }
+
+    if(peerID) {
+      let user = appUsersManager.getUser(peerID);
+      if(user && user.pFlags && user.pFlags.deleted) {
+        if(div.firstChild) {
+          div.firstChild.remove();
+        }
+        
+        div.style.backgroundColor = '';
+        div.classList.add('tgico-avatar_deletedaccount');
+        return true;
+      }
     }
 
     //if(!location || location.empty || !location.photo_small) {
@@ -120,8 +136,7 @@ export class AppDialogsManager {
         color = appPeersManager.getPeerColorByID(peerID);
       }
 
-      div.classList.remove('tgico-savedmessages');
-      div.style.fontSize = '';
+      div.classList.remove('tgico-savedmessages', 'tgico-avatar_deletedaccount');
       div.style.backgroundColor = color;
 
       let abbrSplitted = (!title && peerID ? appPeersManager.getPeerTitle(peerID, true) : title).split(' ');
@@ -154,19 +169,22 @@ export class AppDialogsManager {
     let img = new Image();
     img.src = this.savedAvatarURLs[peerID];
     div.innerHTML = '';
-    div.style.fontSize = '0'; // need
+    //div.style.fontSize = '0'; // need
+    //div.style.backgroundColor = '';
     div.append(img);
 
     return true;
   }
 
   public sortDom(archived = false) {
-    // return;
+    //return;
+    //if(archived) return;
 
     let dialogs = appMessagesManager.dialogsStorage.dialogs.slice();
 
-    let inUpper: {element: HTMLLIElement, height: number}[] = [];
-    let inBottom: {element: HTMLLIElement, height: number}[] = [];
+    let inUpper: Scrollable['hiddenElements']['up'] = [];
+    let inBottom: Scrollable['hiddenElements']['down'] = [];
+    let inVisible: Scrollable['visibleElements'] = [];
 
     let pinnedDialogs = [];
 
@@ -210,10 +228,11 @@ export class AppDialogsManager {
 
     let chatList = archived ? this.chatListArchived : this.chatList;
     let chatsHidden = archived ? this.chatsArchivedHidden : this.chatsHidden;
+    let chatsVisible = archived ? this.chatsArchivedVisible : this.chatsVisible;
 
     let hiddenLength: number = chatsHidden.up.length;
     let inViewportLength = chatList.childElementCount;
-    let hiddenConcated = chatsHidden.up.concat(chatsHidden.down);
+    let concated = chatsHidden.up.concat(chatsVisible, chatsHidden.down);
 
     //console.log('sortDom clearing innerHTML', archived, hiddenLength, inViewportLength);
 
@@ -224,21 +243,27 @@ export class AppDialogsManager {
       let dom = this.getDialogDom(d.peerID);
       if(!dom) return;
 
+      let child = concated.find(obj => obj.element == dom.listEl);
+      if(!child) {
+        return console.error('no child by listEl:', dom.listEl, archived, concated);
+      }
+
       if(inUpper.length < hiddenLength) {
-        let child = hiddenConcated.find(obj => obj.element == dom.listEl);
-        inUpper.push({element: dom.listEl, height: child ? child.height : 0});
+        inUpper.push(child);
       } else if(inViewportIndex <= inViewportLength - 1) {
         chatList.append(dom.listEl);
+        inVisible.push(child);
         ++inViewportIndex;
       } else {
-        let child = hiddenConcated.find(obj => obj.element == dom.listEl);
-        inBottom.push({element: dom.listEl, height: child ? child.height : 0});
+        inBottom.push(child);
       }
     });
 
     //console.log('sortDom', sorted.length, inUpper.length, chatList.childElementCount, inBottom.length);
 
     chatsHidden.up = inUpper;
+    chatsVisible.length = 0;
+    chatsVisible.push(...inVisible);
     chatsHidden.down = inBottom;
   }
 
@@ -368,7 +393,7 @@ export class AppDialogsManager {
 
     dom.listEl.setAttribute('data-mid', lastMessage.mid);
 
-    if(this.doms[peerID]) {
+    if(this.doms[peerID] || this.domsArchived[peerID]) {
       this.setUnreadMessages(dialog);
     }
   }
@@ -490,15 +515,6 @@ export class AppDialogsManager {
     let li = document.createElement('li');
     li.append(paddingDiv);
     li.setAttribute('data-peerID', '' + peerID);
-    /* let li = document.createElement('li');
-    li.classList.add('rp');
-    li.append(avatarDiv, captionDiv);
-    li.setAttribute('data-peerID', '' + peerID);
-
-    ripple(li); */
-
-    /* let detailsDiv = document.createElement('div');
-    detailsDiv.classList.add('dialog-details'); */
 
     let statusSpan = document.createElement('span');
     statusSpan.classList.add('message-status');
@@ -533,15 +549,12 @@ export class AppDialogsManager {
 
     if(!container) {
       if(dialog.folder_id && dialog.folder_id == 1) {
-        this.chatListArchived.append(li);
+        appSidebarLeft.scrollArchived.append(li);
         this.domsArchived[dialog.peerID] = dom;
       } else {
-        //this.chatList.append(li);
         appSidebarLeft.scroll.append(li);
         this.doms[dialog.peerID] = dom;
       }
-      
-      //this.appendTo.push(li);
 
       if(dialog.pFlags.pinned) {
         li.classList.add('dialog-pinned');

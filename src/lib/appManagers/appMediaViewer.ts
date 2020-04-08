@@ -6,8 +6,9 @@ import { RichTextProcessor } from "../richtextprocessor";
 import { logger } from "../polyfill";
 import ProgressivePreloader from "../../components/preloader";
 import { wrapVideo } from "../../components/wrappers";
-import { findUpClassName } from "../utils";
+import { findUpClassName, $rootScope, generatePathData } from "../utils";
 import appDocsManager from "./appDocsManager";
+import { wrapPlayer } from "../ckin";
 
 export class AppMediaViewer {
   private overlaysDiv = document.querySelector('.overlays') as HTMLDivElement;
@@ -36,12 +37,25 @@ export class AppMediaViewer {
   private preloader: ProgressivePreloader = null;
 
   private lastTarget: HTMLElement = null;
-  private prevTarget: HTMLElement = null;
-  private nextTarget: HTMLElement = null;
+  private prevTargets: {
+    element: HTMLElement,
+    mid: number
+  }[] = [];
+  private nextTargets: AppMediaViewer['prevTargets'] = [];
+  private targetContainer: HTMLElement = null;
+  private loadMore: () => void = null;
 
   public log: ReturnType<typeof logger>; 
   public onKeyDownBinded: any;
   public onClickBinded: any;
+
+  private peerID = 0;
+  private loadMediaPromiseUp: Promise<void> = null;
+  private loadMediaPromiseDown: Promise<void> = null;
+  private loadedAllMediaUp = false;
+  private loadedAllMediaDown = false;
+
+  private reverse = false; // reverse means next = higher msgid
   
   constructor() {
     this.log = logger('AMV');
@@ -56,30 +70,35 @@ export class AppMediaViewer {
         URL.revokeObjectURL((this.content.container.firstElementChild as HTMLImageElement).src);
       }
 
+      this.peerID = 0;
       this.currentMessageID = 0;
 
       this.setMoverToTarget(this.lastTarget, true);
 
       this.lastTarget = null;
-      this.prevTarget = null;
-      this.nextTarget = null;
+      this.prevTargets = [];
+      this.nextTargets = [];
+      this.loadedAllMediaUp = this.loadedAllMediaDown = false;
+      this.loadMediaPromiseUp = this.loadMediaPromiseDown = null;
 
       window.removeEventListener('keydown', this.onKeyDownBinded);
     });
     
     this.buttons.prev.addEventListener('click', () => {
-      let target = this.prevTarget;
+      let target = this.prevTargets.pop();
       if(target) {
-        target.click();
+        this.nextTargets.unshift({element: this.lastTarget, mid: this.currentMessageID});
+        this.openMedia(appMessagesManager.getMessage(target.mid), target.element);
       } else {
         this.buttons.prev.style.display = 'none';
       }
     });
     
     this.buttons.next.addEventListener('click', () => {
-      let target = this.nextTarget;
+      let target = this.nextTargets.shift();
       if(target) {
-        target.click();
+        this.prevTargets.push({element: this.lastTarget, mid: this.currentMessageID});
+        this.openMedia(appMessagesManager.getMessage(target.mid), target.element);
       } else {
         this.buttons.next.style.display = 'none';
       }
@@ -113,7 +132,7 @@ export class AppMediaViewer {
         } catch(err) {return false;}
       });
 
-      if(/* target == this.mediaViewerDiv */!mover || target.tagName == 'IMG') {
+      if(/* target == this.mediaViewerDiv */!mover || target.tagName == 'IMG' || target.tagName == 'image') {
         this.buttons.close.click();
       }
     };
@@ -144,6 +163,7 @@ export class AppMediaViewer {
     let wasActive = fromRight !== 0;
 
     let delay = wasActive ? 350 : 200;
+    //let delay = wasActive ? 350 : 10000;
 
     /* if(wasActive) {
       this.moveTheMover(mover);
@@ -152,7 +172,19 @@ export class AppMediaViewer {
 
     ///////this.log('setMoverToTarget', target, closing, wasActive, fromRight);
 
-    let rect = target.getBoundingClientRect();
+    let realParent: HTMLDivElement;
+
+    let rect: DOMRect;
+    if(target) {
+      if(target instanceof SVGImageElement || target.parentElement instanceof SVGForeignObjectElement) {
+        realParent = findUpClassName(target, 'attachment');
+        rect = realParent.getBoundingClientRect();
+      } else {
+        realParent = target.parentElement as HTMLDivElement;
+        rect = target.getBoundingClientRect();
+      }
+    }
+
     let containerRect = this.content.container.getBoundingClientRect();
     
     let transform = '';
@@ -174,13 +206,22 @@ export class AppMediaViewer {
 
     mover.classList.remove('cover');
 
-    let borderRadius = '';
+    let scaleX = rect.width / containerRect.width;
+    let scaleY = rect.height / containerRect.height;
     if(!wasActive) {
-      let scaleX = rect.width / containerRect.width;
-      let scaleY = rect.height / containerRect.height;
       transform += `scale(${scaleX},${scaleY}) `;
+    }
 
-      borderRadius = window.getComputedStyle(target.parentElement).getPropertyValue('border-radius');
+    let borderRadius = window.getComputedStyle(realParent).getPropertyValue('border-radius');
+    let brSplitted = borderRadius.split(' ');
+    if(brSplitted.length != 4) {
+      if(!brSplitted[0]) brSplitted[0] = '0px';
+      for(let i = brSplitted.length; i < 4; ++i) {
+        brSplitted[i] = brSplitted[i % 2] || brSplitted[0] || '0px';
+      }
+    }
+    borderRadius = brSplitted.map(r => (parseInt(r) / scaleX) + 'px').join(' ');
+    if(!wasActive) {
       mover.style.borderRadius = borderRadius;
     }
 
@@ -189,6 +230,9 @@ export class AppMediaViewer {
     /* if(wasActive) {
       this.log('setMoverToTarget', mover.style.transform);
     } */
+
+    let path: SVGPathElement;
+    let isOut = target.classList.contains('is-out');
 
     if(!closing) {
       let img: HTMLImageElement;
@@ -200,15 +244,63 @@ export class AppMediaViewer {
         img.src = target.style.backgroundImage.slice(5, -2);
         //mover.classList.add('cover');
         //mover.style.backgroundImage = target.style.backgroundImage;
-      } else if(target.tagName == 'IMG') {
+      } else if(target.tagName == 'IMG' || target.tagName == 'image') {
         img = new Image();
-        img.src = (target as HTMLImageElement).src;
+        img.src = target instanceof SVGImageElement ? target.getAttributeNS(null, 'href') : (target as HTMLImageElement).src;
         img.style.objectFit = 'contain';
       } else if(target.tagName == 'VIDEO') {
         video = document.createElement('video');
         let source = document.createElement('source');
         source.src = target.querySelector('source').src;
         video.append(source);
+      } else if(target instanceof SVGSVGElement) {
+        let clipID = target.dataset.clipID;
+        let newClipID = clipID + '-mv';
+
+        let {width, height} = containerRect;
+
+        let newSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        newSvg.setAttributeNS(null, 'width', '' + width);
+        newSvg.setAttributeNS(null, 'height', '' + height);
+
+        newSvg.insertAdjacentHTML('beforeend', target.firstElementChild.outerHTML.replace(clipID, newClipID));
+        newSvg.insertAdjacentHTML('beforeend', target.lastElementChild.outerHTML.replace(clipID, newClipID));
+
+        // теперь надо выставить новую позицию для хвостика
+        let defs = newSvg.firstElementChild;
+        let use = defs.firstElementChild.firstElementChild as SVGUseElement;
+        if(use instanceof SVGUseElement) {
+          let transform = use.getAttributeNS(null, 'transform');
+          transform = transform.replace(/translate\((.+?), (.+?)\) scale\((.+?), (.+?)\)/, (match, x, y, sX, sY) => {
+            x = +x;
+            if(x != 2) {
+              x = width - (2 / scaleX);
+            } else {
+              x = 2 / scaleX;
+            }
+            
+            y = height;
+  
+            return `translate(${x}, ${y}) scale(${+sX / scaleX}, ${+sY / scaleY})`;
+          });
+          use.setAttributeNS(null, 'transform', transform);
+  
+          // и новый RECT
+          path = defs.firstElementChild.lastElementChild as SVGPathElement;
+
+          // код ниже нужен только чтобы скрыть моргание до момента как сработает таймаут
+          let d: string;
+          let br = borderRadius.split(' ').map(v => parseInt(v));
+          if(isOut) d = generatePathData(0, 0, width - 9 / scaleX, height, ...br);
+          else d = generatePathData(9 / scaleX, 0, width - 9 / scaleX, height, ...br);
+          path.setAttributeNS(null, 'd', d);
+        }
+
+        let mediaEl = newSvg.lastElementChild;
+        mediaEl.setAttributeNS(null, 'width', '' + containerRect.width);
+        mediaEl.setAttributeNS(null, 'height', '' + containerRect.height);
+        
+        mover.prepend(newSvg);
       }
 
       if(img) {
@@ -223,8 +315,16 @@ export class AppMediaViewer {
 
       setTimeout(() => {
         mover.classList.add(wasActive ? 'moving' : 'active');
-      }, 0); 
+      }, 0);
     } else {
+      if(target instanceof SVGSVGElement) {
+        path = mover.querySelector('path');
+
+        if(path) {
+          this.sizeTailPath(path, containerRect, scaleX, delay, false, isOut, borderRadius);
+        }
+      }
+
       setTimeout(() => {
         this.overlaysDiv.classList.remove('active');
       }, 0);
@@ -260,18 +360,49 @@ export class AppMediaViewer {
 
         mover.classList.remove('cover');
       }, delay / 2);
+
+      if(path) {
+        this.sizeTailPath(path, containerRect, scaleX, delay, true, isOut, borderRadius);
+      }
     };
+  }
+
+  public sizeTailPath(path: SVGPathElement, rect: DOMRect, scaleX: number, delay: number, upscale: boolean, isOut: boolean, borderRadius: string) {
+    let start = Date.now();
+    let {width, height} = rect;
+    delay = delay / 2;
+
+    let br = borderRadius.split(' ').map(v => parseInt(v));
+
+    let step = () => {
+      let diff = Date.now() - start;
+
+      let progress = diff / delay;
+      if(progress > 1) progress = 1;
+      if(upscale) progress = 1 - progress;
+
+      let _br = br.map(v => v * progress);
+
+      let d: string;
+      if(isOut) d = generatePathData(0, 0, width - (9 / scaleX * progress), height, ..._br);
+      else d = generatePathData(9 / scaleX * progress, 0, width/* width - (9 / scaleX * progress) */, height, ..._br);
+      path.setAttributeNS(null, 'd', d);
+
+      if(diff < delay) window.requestAnimationFrame(step);
+    };
+    
+    //window.requestAnimationFrame(step);
+    step();
   }
 
   public moveTheMover(mover: HTMLDivElement, toLeft = true) {
     let windowW = appPhotosManager.windowW;
-    let windowH = appPhotosManager.windowH;
 
     mover.classList.add('moving');
 
     let rect = mover.getBoundingClientRect();
 
-    let newTransform = mover.style.transform.replace(/translate\((.+?),/, /* 'translate(-' + windowW + 'px,', */ (match, p1) => {
+    let newTransform = mover.style.transform.replace(/translate\((.+?),/, (match, p1) => {
       /////////this.log('replace func', match, p1);
       let x = +p1.slice(0, -2);
       x = toLeft ? -rect.width : windowW;
@@ -298,28 +429,148 @@ export class AppMediaViewer {
 
     return this.content.mover = newMover;
   }
+
+  public isElementVisible(container: HTMLElement, target: HTMLElement) {
+    let rect = container.getBoundingClientRect();
+    let targetRect = target.getBoundingClientRect();
+
+    return targetRect.bottom > rect.top && targetRect.top < rect.bottom;
+  }
+
+  // нет смысла делать проверку для reverse и loadMediaPromise
+  public loadMoreMedia(older = true) {
+    //if(!older && this.reverse) return;
+
+    if(older && this.loadedAllMediaDown) return;
+    else if(!older && this.loadedAllMediaUp) return;
+
+    if(older && this.loadMediaPromiseDown) return this.loadMediaPromiseDown;
+    else if(!older && this.loadMediaPromiseUp) return this.loadMediaPromiseUp;
+
+    let loadCount = 50;
+    let backLimit = older ? 0 : loadCount;
+    let maxID = this.currentMessageID;
   
-  public openMedia(message: any, target?: HTMLElement, prevTarget?: HTMLElement, nextTarget?: HTMLElement) {
+    let anchor: {element: HTMLElement, mid: number};
+    if(older) {
+      anchor = this.reverse ? this.prevTargets[0] : this.nextTargets[this.nextTargets.length - 1];
+    } else {
+      anchor = this.reverse ? this.nextTargets[this.nextTargets.length - 1] : this.prevTargets[0];
+    }
+
+    if(anchor) maxID = anchor.mid;
+    if(!older) maxID += 1;
+
+    let peerID = this.peerID;
+
+    let promise = appMessagesManager.getSearch(peerID, '', 
+      {_: 'inputMessagesFilterPhotoVideo'}, maxID, loadCount/* older ? loadCount : 0 */, 0, backLimit).then(value => {
+      if(this.peerID != peerID) {
+        this.log.warn('peer changed');
+        return;
+      }
+
+      this.log('loaded more media by maxID:', maxID, value, older, this.reverse);
+
+      if(value.history.length < loadCount) {
+        /* if(this.reverse) {
+          if(older) this.loadedAllMediaUp = true;
+          else this.loadedAllMediaDown = true;
+        } else { */
+          if(older) this.loadedAllMediaDown = true;
+          else this.loadedAllMediaUp = true;
+        //}
+      }
+
+      let method = older ? value.history.forEach : value.history.forEachReverse;
+      method.call(value.history, mid => {
+        let message = appMessagesManager.getMessage(mid);
+        let media = message.media;
+
+        if(!media || !(media.photo || media.document || (media.webpage && media.webpage.document))) return;
+        if(media._ == 'document' && media.type != 'video') return;
+
+        let t = {element: null as HTMLElement, mid: mid};
+        if(older) {
+          if(this.reverse) this.prevTargets.unshift(t);
+          else this.nextTargets.push(t);
+        } else {
+          if(this.reverse) this.nextTargets.push(t);
+          else this.prevTargets.unshift(t);
+        }
+      });
+
+      this.buttons.prev.style.display = this.prevTargets.length ? '' : 'none';
+      this.buttons.next.style.display = this.nextTargets.length ? '' : 'none';
+    }, () => {}).then(() => {
+      if(older) this.loadMediaPromiseDown = null;
+      else this.loadMediaPromiseUp = null;
+    });
+
+    if(older) this.loadMediaPromiseDown = promise;
+    else this.loadMediaPromiseUp = promise;
+
+    return promise;
+  }
+
+  public updateMediaSource(target: HTMLElement, url: string, tagName: 'source' | 'image') {
+    //if(target instanceof SVGSVGElement) {
+      let el = target.querySelector(tagName);
+      if(tagName == 'source') (el as HTMLSourceElement).src = url;
+      else el.setAttributeNS(null, 'href', url);
+    /* } else {
+
+    } */
+  }
+  
+  public openMedia(message: any, target?: HTMLElement, reverse = false, targetContainer?: HTMLElement, 
+    prevTargets: AppMediaViewer['prevTargets'] = [], nextTargets: AppMediaViewer['prevTargets'] = [], loadMore: () => void = null) {
     ////////this.log('openMedia doc:', message, prevTarget, nextTarget);
     let media = message.media.photo || message.media.document || message.media.webpage.document || message.media.webpage.photo;
     
     let isVideo = media.mime_type == 'video/mp4';
+    let isFirstOpen = !this.peerID;
+
+    if(isFirstOpen) {
+      this.peerID = $rootScope.selectedPeerID;
+      this.targetContainer = targetContainer;
+      this.prevTargets = prevTargets;
+      this.nextTargets = nextTargets;
+      this.reverse = reverse;
+      //this.loadMore = loadMore;
+    }
+
+    /* if(this.nextTargets.length < 10 && this.loadMore) {
+      this.loadMore();
+    } */
 
     let fromRight = 0;
-    if(this.lastTarget !== null) {
-      if(this.lastTarget === prevTarget) {
-        fromRight = 1;
-      } else if(this.lastTarget === nextTarget) {
-        fromRight = -1;
-      }
+    if(!isFirstOpen) {
+      //if(this.lastTarget === prevTarget) {
+      if(this.reverse) fromRight = this.currentMessageID < message.mid ? 1 : -1;
+      else fromRight = this.currentMessageID > message.mid ? 1 : -1;
     }
-    
-    this.currentMessageID = message.mid;
-    this.prevTarget = prevTarget || null;
-    this.nextTarget = nextTarget || null;
-    this.lastTarget = target;
+
+    //if(prevTarget && (!prevTarget.parentElement || !this.isElementVisible(this.targetContainer, prevTarget))) prevTarget = null;
+    //if(nextTarget && (!nextTarget.parentElement || !this.isElementVisible(this.targetContainer, nextTarget))) nextTarget = null;
+
+    this.buttons.prev.style.display = this.prevTargets.length ? '' : 'none';
+    this.buttons.next.style.display = this.nextTargets.length ? '' : 'none';
     
     let container = this.content.container;
+    let useContainerAsTarget = !target;
+    if(useContainerAsTarget) target = container;
+
+    this.currentMessageID = message.mid;
+    this.lastTarget = target;
+
+    if(this.nextTargets.length < 20) {
+      this.loadMoreMedia(!this.reverse);
+    }
+
+    if(this.prevTargets.length < 20) {
+      this.loadMoreMedia(this.reverse);
+    }
     
     if(container.firstElementChild) {
       container.innerHTML = '';
@@ -366,25 +617,82 @@ export class AppMediaViewer {
 
       ////////this.log('will wrap video', media, size);
 
+      if(useContainerAsTarget) target = target.querySelector('img, video') || target;
+
       let afterTimeout = this.setMoverToTarget(target, false, fromRight);
       //if(wasActive) return;
+      //return;
       setTimeout(() => {
         afterTimeout();
+        //return;
 
-        wrapVideo.call(this, media, mover, message, false, this.preloader).then(() => {
+        let video = mover.querySelector('video') || document.createElement('video');
+        let source: HTMLSourceElement;
+        if(video.firstElementChild) {
+          source = video.firstElementChild as HTMLSourceElement;
+        }
+
+        video.dataset.ckin = 'default';
+        video.dataset.overlay = '1';
+        
+        if(!source || !source.src) {
+          let promise = appDocsManager.downloadDoc(media);
+          this.preloader.attach(mover, true, promise);
+  
+          promise.then(blob => {
+            if(this.currentMessageID != message.mid) {
+              this.log.warn('media viewer changed video');
+              return;
+            }
+
+            let url = URL.createObjectURL(blob);
+            if(target instanceof SVGSVGElement) {
+              this.updateMediaSource(mover, url, 'source');
+              this.updateMediaSource(target, url, 'source');
+            } else {
+              let img = mover.firstElementChild;
+              if(img instanceof Image) {
+                mover.removeChild(img);
+              }
+
+              source = document.createElement('source');
+              //source.src = doc.url;
+              source.src = url;
+              source.type = media.mime_type;
+
+              mover.prepend(video);
+              
+              video.append(source);
+            }
+
+            let wrapper = wrapPlayer(video);
+            (wrapper.querySelector('.toggle') as HTMLButtonElement).click();
+          });
+        } else {
+          let wrapper = wrapPlayer(video);
+          (wrapper.querySelector('.toggle') as HTMLButtonElement).click();
+        }
+
+        
+
+        /* wrapVideo.call(this, media, mover, message, false, this.preloader).then(() => {
           if(this.currentMessageID != message.mid) {
             this.log.warn('media viewer changed video');
             return;
           }
-        });
+        }); */
       }, 0);
     } else {
       let size = appPhotosManager.setAttachmentSize(media.id, container, maxWidth, maxHeight);
 
+      if(useContainerAsTarget) target = target.querySelector('img, video') || target;
+
       let afterTimeout = this.setMoverToTarget(target, false, fromRight);
+      //return;
       //if(wasActive) return;
       setTimeout(() => {
         afterTimeout();
+        //return;
         this.preloader.attach(mover);
 
         let cancellablePromise = appPhotosManager.preloadPhoto(media.id, size);
@@ -396,9 +704,15 @@ export class AppMediaViewer {
           
           ///////this.log('indochina', blob);
 
-          let image = mover.firstElementChild as HTMLImageElement || new Image();
-          image.src = URL.createObjectURL(blob);
-          mover.prepend(image);
+          let url = URL.createObjectURL(blob);
+          if(target instanceof SVGSVGElement) {
+            this.updateMediaSource(target, url, 'image');
+            this.updateMediaSource(mover, url, 'image');
+          } else {
+            let image = mover.firstElementChild as HTMLImageElement || new Image();
+            image.src = url;
+            mover.prepend(image);
+          }
 
           this.preloader.detach();
         }).catch(err => {
@@ -406,9 +720,6 @@ export class AppMediaViewer {
         });
       }, 0);
     }
-    
-    this.buttons.prev.style.display = this.prevTarget ? '' : 'none';
-    this.buttons.next.style.display = this.nextTarget ? '' : 'none';
   }
 }
 

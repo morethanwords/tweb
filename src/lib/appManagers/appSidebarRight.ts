@@ -41,9 +41,8 @@ class AppSidebarRight {
   
   public lastSharedMediaDiv: HTMLDivElement = null;
   
-  private loadSidebarMediaPromises: {
-    [type: string]: Promise<void>
-  } = {};
+  private loadSidebarMediaPromises: {[type: string]: Promise<void>} = {};
+  private loadedAllMedia: {[type: string]: boolean} = {};
   
   public sharedMediaTypes = [
     'inputMessagesFilterContacts', 
@@ -73,12 +72,9 @@ class AppSidebarRight {
   
   private peerID = 0;
   
-  public sidebarScroll: Scrollable = null;
+  public scroll: Scrollable = null;
   private savedVirtualStates: {
-    [id: number]: {
-      hiddenElements: any,
-      paddings: any
-    }
+    [id: number]: Scrollable['state']
   } = {};
   
   private profileTabs: HTMLUListElement;
@@ -94,10 +90,10 @@ class AppSidebarRight {
     let container = this.profileContentEl.querySelector('.profile-tabs-content') as HTMLDivElement;
     this.profileTabs = this.profileContentEl.querySelector('.profile-tabs') as HTMLUListElement;
     
-    this.sidebarScroll = new Scrollable(this.sidebarEl, false, true, 500, 'SR');
-    this.sidebarScroll.container.addEventListener('scroll', this.onSidebarScroll.bind(this));
-    this.sidebarScroll.onScrolledBottom = () => {
-      if(this.sharedMediaSelected && !this.sidebarScroll.hiddenElements.down.length 
+    this.scroll = new Scrollable(this.sidebarEl, 'y', 1200, 'SR');
+    this.scroll.container.addEventListener('scroll', this.onSidebarScroll.bind(this));
+    this.scroll.onScrolledBottom = () => {
+      if(this.sharedMediaSelected && !this.scroll.hiddenElements.down.length 
         && this.sharedMediaSelected.childElementCount/* && false */) {
         this.loadSidebarMedia(true);
       }
@@ -114,27 +110,17 @@ class AppSidebarRight {
       }
       
       if(this.prevTabID != -1) {
-        this.savedVirtualStates[this.prevTabID] = {
-          hiddenElements: {
-            up: this.sidebarScroll.hiddenElements.up.slice(),
-            down: this.sidebarScroll.hiddenElements.down.slice(),
-          },
-          paddings: {
-            up: this.sidebarScroll.paddings.up,
-            down: this.sidebarScroll.paddings.down
-          } 
-        };
+        this.savedVirtualStates[this.prevTabID] = this.scroll.state;
       }
       
       this.prevTabID = id;
       
       this.log('setVirtualContainer', id, this.sharedMediaSelected);
-      this.sidebarScroll.setVirtualContainer(this.sharedMediaSelected);
+      this.scroll.setVirtualContainer(this.sharedMediaSelected);
       
       if(this.savedVirtualStates[id]) {
         this.log(this.savedVirtualStates[id]);
-        this.sidebarScroll.hiddenElements = this.savedVirtualStates[id].hiddenElements;
-        this.sidebarScroll.paddings = this.savedVirtualStates[id].paddings;
+        this.scroll.state = this.savedVirtualStates[id];
       }
     }, this.onSidebarScroll.bind(this));
     
@@ -146,7 +132,7 @@ class AppSidebarRight {
     this.sharedMedia.contentMedia.addEventListener('click', (e) => {
       let target = e.target as HTMLDivElement;
       
-      let messageID = +target.getAttribute('message-id');
+      let messageID = +target.dataset.mid;
       if(!messageID) {
         this.log.warn('no messageID by click on target:', target);
         return;
@@ -156,11 +142,11 @@ class AppSidebarRight {
       
       let ids = Object.keys(this.mediaDivsByIDs).map(k => +k).sort();
       let idx = ids.findIndex(i => i == messageID);
+
+      let targets = ids.map(id => ({element: this.mediaDivsByIDs[id], mid: id}));
       
-      let prev = ids[idx + 1] || null;
-      let next = ids[idx - 1] || null;
-      
-      appMediaViewer.openMedia(message, target, this.mediaDivsByIDs[prev] || null, this.mediaDivsByIDs[next] || null);
+      appMediaViewer.openMedia(message, target, false, this.sidebarEl, 
+        targets.slice(idx + 1).reverse(), targets.slice(0, idx).reverse(), () => this.loadSidebarMedia(true));
     });
     
     this.profileElements.notificationsCheckbox.addEventListener('change', () => {
@@ -170,7 +156,7 @@ class AppSidebarRight {
     
     window.addEventListener('resize', () => {
       setTimeout(() => {
-        this.sidebarScroll.onScroll();
+        this.scroll.onScroll();
         this.onSidebarScroll();
       }, 0);
     });
@@ -178,7 +164,7 @@ class AppSidebarRight {
     if(testScroll) {
       let div = document.createElement('div');
       for(let i = 0; i < 500; ++i) {
-        //div.insertAdjacentHTML('beforeend', `<div message-id="0" style="background-image: url(assets/img/camomile.jpg);"></div>`);
+        //div.insertAdjacentHTML('beforeend', `<div style="background-image: url(assets/img/camomile.jpg);"></div>`);
         div.insertAdjacentHTML('beforeend', `<div data-id="${i / 3 | 0}">${i / 3 | 0}</div>`);
         
         if((i + 1) % 3 == 0) {
@@ -201,8 +187,10 @@ class AppSidebarRight {
     /////this.log('sidebarEl', this.sidebarEl, enable, isElementInViewport(this.sidebarEl));
     
     if(enable !== undefined) {
-      if(enable) this.sidebarEl.classList.add('active');
-      else this.sidebarEl.classList.remove('active');
+      if(enable) {
+        setTimeout(() => this.lazyLoadQueueSidebar.check(), 200);
+        this.sidebarEl.classList.add('active');
+      } else this.sidebarEl.classList.remove('active');
       return;
     }
     
@@ -223,9 +211,13 @@ class AppSidebarRight {
     let peerID = this.peerID;
     
     let typesToLoad = single ? [this.sharedMediaType] : this.sharedMediaTypes;
+    typesToLoad = typesToLoad.filter(type => !this.loadedAllMedia[type]);
+    if(!typesToLoad.length) return;
     
     if(!this.historiesStorage[peerID]) this.historiesStorage[peerID] = {};
     let historyStorage = this.historiesStorage[peerID];
+
+    this.scroll.lock();
     
     let promises = typesToLoad.map(type => {
       if(this.loadSidebarMediaPromises[type]) return this.loadSidebarMediaPromises[type];
@@ -243,12 +235,17 @@ class AppSidebarRight {
       maxID = !maxID && ids.length ? ids[ids.length - 1] : maxID;
       //this.log('search house of glass pre', type, ids, maxID);
       
-      return this.loadSidebarMediaPromises[type] = appMessagesManager.getSearch(peerID, '', {_: type}, maxID, history.length ? 50 : 15)
+      let loadCount = history.length ? 50 : 15;
+      return this.loadSidebarMediaPromises[type] = appMessagesManager.getSearch(peerID, '', {_: type}, maxID, loadCount)
       .then(value => {
         ids = ids.concat(value.history);
         history.push(...ids);
         
-        //this.log('search house of glass', type, value, ids, this.cleared);
+        this.log('search house of glass', type, value, ids, this.cleared);
+
+        if(value.history.length < loadCount) {
+          this.loadedAllMedia[type] = true;
+        }
         
         if($rootScope.selectedPeerID != peerID) {
           this.log.warn('peer changed');
@@ -266,6 +263,8 @@ class AppSidebarRight {
           let message = appMessagesManager.getMessage(mid);
           if(message.media) messages.push(message);
         }
+
+        let elemsToAppend: HTMLElement[] = [];
         
         /*'inputMessagesFilterContacts', 
         'inputMessagesFilterPhotoVideo', 
@@ -280,7 +279,7 @@ class AppSidebarRight {
               let media = message.media.photo || message.media.document || (message.media.webpage && message.media.webpage.document);
               if(!media) {
                 //this.log('no media!', message);
-                continue;;
+                continue;
               }
               
               if(media._ == 'document' && media.type != 'video'/*  && media.type != 'gif' */) {
@@ -313,13 +312,16 @@ class AppSidebarRight {
                 div.style.backgroundImage = 'url(' + url + ')';
               });
               
-              div.setAttribute('message-id', '' + message.mid);
+              div.dataset.mid = '' + message.mid;
               
               this.lazyLoadQueueSidebar.push({div, load});
               
               this.lastSharedMediaDiv.append(div);
               if(this.lastSharedMediaDiv.childElementCount == 3) {
-                this.sidebarScroll.append(this.lastSharedMediaDiv);
+                if(!this.scroll.contains(this.lastSharedMediaDiv)) {
+                  elemsToAppend.push(this.lastSharedMediaDiv);
+                }
+                
                 this.lastSharedMediaDiv = document.createElement('div');
               }
               
@@ -349,7 +351,7 @@ class AppSidebarRight {
               //this.log('come back down to my knees', message);
               
               let div = wrapDocument(message.media.document, true);
-              this.sidebarScroll.append(div);
+              elemsToAppend.push(div);
             }
             break;
           }
@@ -407,7 +409,7 @@ class AppSidebarRight {
               `);
               
               if(div.innerText.trim().length) {
-                this.sidebarScroll.append(div);
+                elemsToAppend.push(div);
               }
               
             }
@@ -437,6 +439,16 @@ class AppSidebarRight {
           break;
         }
 
+        if(this.lastSharedMediaDiv.childElementCount && !this.scroll.contains(this.lastSharedMediaDiv)) {
+          elemsToAppend.push(this.lastSharedMediaDiv);
+        }
+
+        if(elemsToAppend.length) {
+          window.requestAnimationFrame(() => {
+            elemsToAppend.forEach(el => this.scroll.append(el));
+          });
+        }
+
         if(sharedMediaDiv) {
           let parent = sharedMediaDiv.parentElement;
           if(parent.lastElementChild.classList.contains('preloader')) {
@@ -453,12 +465,15 @@ class AppSidebarRight {
       });
     });
     
-    return promises;
+    return Promise.all(promises).then(() => {
+      this.scroll.unlock();
+    });
   }
   
   public fillProfileElements() {
     let peerID = this.peerID = $rootScope.selectedPeerID;
     this.loadSidebarMediaPromises = {};
+    this.loadedAllMedia = {};
     this.lastSharedMediaDiv = document.createElement('div');
     
     //this.log('fillProfileElements');
@@ -496,7 +511,7 @@ class AppSidebarRight {
     
     this.savedVirtualStates = {};
     this.prevTabID = -1;
-    this.sidebarScroll.setVirtualContainer(null);
+    this.scroll.setVirtualContainer(null);
     (this.profileTabs.children[1] as HTMLLIElement).click(); // set media
     
     let setText = (text: string, el: HTMLDivElement) => {
@@ -554,7 +569,7 @@ class AppSidebarRight {
           appMessagesManager.wrapSingleMessage(userFull.pinned_msg_id);
         }
         
-        this.sidebarScroll.getScrollTopOffset();
+        this.scroll.getScrollTopOffset();
       });
     } else {
       let chat = appPeersManager.getPeer(peerID);
@@ -571,11 +586,11 @@ class AppSidebarRight {
           setText(RichTextProcessor.wrapRichText(chatFull.about), this.profileElements.bio);
         }
         
-        this.sidebarScroll.getScrollTopOffset();
+        this.scroll.getScrollTopOffset();
       });
     }
     
-    this.sidebarScroll.getScrollTopOffset();
+    this.scroll.getScrollTopOffset();
     //this.loadSidebarMedia();
   }
 }

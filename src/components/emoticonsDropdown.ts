@@ -49,10 +49,10 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
       }
       console.log('emoticonsMenuOnClick', menu.getBoundingClientRect(), target.getBoundingClientRect());
  */
-      scroll.onAddedBottom = () => { // привет, костыль, давно не виделись!
+      /* scroll.onAddedBottom = () => { // привет, костыль, давно не виделись!
         scroll.container.scrollTop = y;
         scroll.onAddedBottom = () => {};
-      };
+      }; */
       scroll.container.scrollTop = y;
     });
   };
@@ -186,7 +186,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
 
     let prevCategoryIndex = 1;
     let menu = contentEmojiDiv.nextElementSibling as HTMLUListElement;
-    let emojiScroll = new Scrollable(contentEmojiDiv);
+    let emojiScroll = new Scrollable(contentEmojiDiv, 'y', 500, 'EMOJI', contentEmojiDiv);
     emojiScroll.container.addEventListener('scroll', (e) => {
       prevCategoryIndex = emoticonsContentOnScroll(menu, heights, prevCategoryIndex, emojiScroll.container);
     });
@@ -202,7 +202,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
     let menuWrapper = contentStickersDiv.nextElementSibling as HTMLDivElement;
     let menu = menuWrapper.firstElementChild as HTMLUListElement;
 
-    let menuScroll = new Scrollable(menuWrapper, true, false);
+    let menuScroll = new Scrollable(menuWrapper, 'x');
 
     let stickersDiv = document.createElement('div');
     stickersDiv.classList.add('stickers-categories');
@@ -244,6 +244,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
 
     let heights: number[] = [];
 
+    let heightRAF = 0;
     let categoryPush = (categoryDiv: HTMLDivElement, docs: MTDocument[], prepend?: boolean) => {
       //if((docs.length % 5) != 0) categoryDiv.classList.add('not-full');
 
@@ -254,11 +255,8 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
         categoryDiv.append(div);
       });
 
-      /* if(prepend) {
-        stickersDiv.prepend(categoryDiv);
-      } else {
-        stickersDiv.append(categoryDiv);
-      } */
+      if(prepend) stickersScroll.prepend(categoryDiv);
+      else stickersScroll.append(categoryDiv);
 
       setTimeout(() => lazyLoadQueue.check(), 0);
 
@@ -271,92 +269,30 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
         return heights.unshift(scrollHeight) - 1;
       } */
 
-      heights.length = 0;
-      Array.from(stickersDiv.children).forEach((div, i) => {
-        heights[i] = (heights[i - 1] || 0) + div.scrollHeight;
+      if(heightRAF) window.cancelAnimationFrame(heightRAF);
+      heightRAF = window.requestAnimationFrame(() => {
+        heightRAF = 0;
+
+        heights.length = 0;
+        let concated = stickersScroll.hiddenElements.up.concat(stickersScroll.visibleElements, stickersScroll.hiddenElements.down);
+        concated.forEach((el, i) => {
+          heights[i] = (heights[i - 1] || 0) + el.height;
+        });
+  
+        console.log('stickers concated', concated, heights);
       });
+      
+      /* Array.from(stickersDiv.children).forEach((div, i) => {
+        heights[i] = (heights[i - 1] || 0) + div.scrollHeight;
+      }); */
 
       //stickersScroll.onScroll();
 
       //return heights.push(prevHeight + scrollHeight) - 1;
     };
 
-    apiManager.invokeApi('messages.getRecentStickers', {flags: 0, hash: 0}).then((res) => {
-      let stickers: {
-        _: string,
-        hash: number,
-        packs: any[],
-        stickers: MTDocument[],
-        dates: number[]
-      } = res as any;
-
-      let categoryDiv = document.createElement('div');
-      categoryDiv.classList.add('sticker-category');
-
-      stickersScroll.prepend(categoryDiv);
-      
-      categoryPush(categoryDiv, stickers.stickers, true);
-    });
-
-    apiManager.invokeApi('messages.getAllStickers', {hash: 0}).then((res) => {
-      let stickers: {
-        _: 'messages.allStickers',
-        hash: number,
-        sets: Array<MTStickerSet>
-      } = res as any;
-
-      stickers.sets/* .slice(0, 10) */.forEach(async(set) => {
-        let categoryDiv = document.createElement('div');
-        categoryDiv.classList.add('sticker-category');
-
-        let li = document.createElement('li');
-        li.classList.add('btn-icon');
-
-        menu.append(li);
-
-        stickersScroll.append(categoryDiv);
-
-        let stickerSet = await appStickersManager.getStickerSet(set);
-        
-        if(stickerSet.set.thumb) {
-          let thumb = stickerSet.set.thumb;
-
-          appStickersManager.getStickerSetThumb(stickerSet.set).then((blob) => {
-            if(thumb.w == 1 && thumb.h == 1) { // means animated
-              const reader = new FileReader();
-
-              reader.addEventListener('loadend', async(e) => {
-                // @ts-ignore
-                const text = e.srcElement.result;
-                let json = await CryptoWorker.gzipUncompress<string>(text, true);
-
-                let animation = await lottieLoader.loadAnimation({
-                  container: li,
-                  loop: true,
-                  autoplay: false,
-                  animationData: JSON.parse(json)
-                }, EMOTICONSSTICKERGROUP);
-              });
-
-              reader.readAsArrayBuffer(blob);
-            } else {
-              let image = new Image();
-              //image.src = URL.createObjectURL(blob);
-              appWebpManager.polyfillImage(image, blob);
-  
-              li.append(image);
-            }
-          });
-        } else { // as thumb will be used first sticker
-          wrapSticker(stickerSet.documents[0], li as any, undefined, undefined, EMOTICONSSTICKERGROUP); // kostil
-        }
-
-        categoryPush(categoryDiv, stickerSet.documents);
-      });
-    });
-
     let prevCategoryIndex = 0;
-    let stickersScroll = new Scrollable(contentStickersDiv);
+    let stickersScroll = new Scrollable(contentStickersDiv, 'y', 500, 'STICKERS');
     stickersScroll.container.addEventListener('scroll', (e) => {
       lazyLoadQueue.check();
       lottieLoader.checkAnimations();
@@ -364,10 +300,89 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
       prevCategoryIndex = emoticonsContentOnScroll(menu, heights, prevCategoryIndex, stickersScroll.container, menuScroll);
     });
     stickersScroll.setVirtualContainer(stickersDiv);
+    stickersScroll.lock('both');
 
     emoticonsMenuOnClick(menu, heights, stickersScroll, menuScroll);
 
     stickersInit = null;
+
+    Promise.all([
+      apiManager.invokeApi('messages.getRecentStickers', {flags: 0, hash: 0}).then((res) => {
+        let stickers: {
+          _: string,
+          hash: number,
+          packs: any[],
+          stickers: MTDocument[],
+          dates: number[]
+        } = res as any;
+  
+        let categoryDiv = document.createElement('div');
+        categoryDiv.classList.add('sticker-category');
+  
+        //stickersScroll.prepend(categoryDiv);
+        
+        categoryPush(categoryDiv, stickers.stickers, true);
+      }),
+
+      apiManager.invokeApi('messages.getAllStickers', {hash: 0}).then(async(res) => {
+        let stickers: {
+          _: 'messages.allStickers',
+          hash: number,
+          sets: Array<MTStickerSet>
+        } = res as any;
+
+        for(let set of stickers.sets) {
+          let categoryDiv = document.createElement('div');
+          categoryDiv.classList.add('sticker-category');
+  
+          let li = document.createElement('li');
+          li.classList.add('btn-icon');
+  
+          menu.append(li);
+  
+          //stickersScroll.append(categoryDiv);
+  
+          let stickerSet = await appStickersManager.getStickerSet(set);
+          
+          if(stickerSet.set.thumb) {
+            let thumb = stickerSet.set.thumb;
+  
+            appStickersManager.getStickerSetThumb(stickerSet.set).then((blob) => {
+              if(thumb.w == 1 && thumb.h == 1) { // means animated
+                const reader = new FileReader();
+  
+                reader.addEventListener('loadend', async(e) => {
+                  // @ts-ignore
+                  const text = e.srcElement.result;
+                  let json = await CryptoWorker.gzipUncompress<string>(text, true);
+  
+                  let animation = await lottieLoader.loadAnimation({
+                    container: li,
+                    loop: true,
+                    autoplay: false,
+                    animationData: JSON.parse(json)
+                  }, EMOTICONSSTICKERGROUP);
+                });
+  
+                reader.readAsArrayBuffer(blob);
+              } else {
+                let image = new Image();
+                //image.src = URL.createObjectURL(blob);
+                appWebpManager.polyfillImage(image, blob);
+    
+                li.append(image);
+              }
+            });
+          } else { // as thumb will be used first sticker
+            wrapSticker(stickerSet.documents[0], li as any, undefined, undefined, EMOTICONSSTICKERGROUP); // kostil
+          }
+  
+          categoryPush(categoryDiv, stickerSet.documents, false);
+        }
+      })
+    ]).then(() => {
+      stickersScroll.unlock('both');
+    });
   };
 
   return {dropdown, lazyLoadQueue};

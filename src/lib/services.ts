@@ -14,6 +14,7 @@ import AppStickersManager from './appManagers/appStickersManager';
 import AppDocsManager from './appManagers/appDocsManager';
 import AppSidebarRight from './appManagers/appSidebarRight';
 import AppSidebarLeft from './appManagers/appSidebarLeft';
+import AppMediaViewer from './appManagers/appMediaViewer';
 //import AppSharedMediaManager from './appManagers/appSharedMediaManager';
 
 export const appUsersManager = AppUsersManager;
@@ -31,6 +32,7 @@ export const appDocsManager = AppDocsManager;
 //export const appSharedMediaManager = AppSharedMediaManager;
 export const appSidebarRight = AppSidebarRight;
 export const appSidebarLeft = AppSidebarLeft;
+export const appMediaViewer = AppMediaViewer;
 
 (window as any).Services = {
   appUsersManager,
@@ -46,6 +48,7 @@ export const appSidebarLeft = AppSidebarLeft;
   appImManager,
   appStickersManager,
   appSidebarRight,
-  appSidebarLeft
+  appSidebarLeft,
+  appMediaViewer
   //appSharedMediaManager
 };
