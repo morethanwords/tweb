@@ -5,7 +5,7 @@ class AppWebpManager {
   public webpMachine: any = null;
   public loaded: Promise<void>;
   public busyPromise: Promise<string>;
-  public queue: {bytes: Uint8Array, img: HTMLImageElement}[] = [];
+  public queue: {bytes: Uint8Array, img: HTMLImageElement, callback: () => void}[] = [];
   //public worker: any;
   public webpSupport: Promise<boolean> = null;
 
@@ -56,7 +56,7 @@ class AppWebpManager {
 
     this.busyPromise = Promise.resolve('');
 
-    let {img, bytes} = this.queue.pop();
+    let {img, bytes, callback} = this.queue.pop();
 
     if(!this.loaded) {
       this.loadWebpHero();
@@ -66,6 +66,7 @@ class AppWebpManager {
 
     this.busyPromise = this.convert(bytes);
     img.src = await this.busyPromise;
+    callback();
 
     this.busyPromise = null;
 
@@ -97,15 +98,17 @@ class AppWebpManager {
       return;
     }
 
-    const reader = new FileReader();
-    reader.addEventListener('loadend', async(e) => {
-      // @ts-ignore
-      let bytes = new Uint8Array(e.srcElement.result);
-      
-      this.queue.push({bytes, img});
-      this.processQueue();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.addEventListener('loadend', (e) => {
+        // @ts-ignore
+        let bytes = new Uint8Array(e.srcElement.result);
+        
+        this.queue.push({bytes, img, callback: resolve});
+        this.processQueue();
+      });
+      reader.readAsArrayBuffer(blob);
     });
-    reader.readAsArrayBuffer(blob);
   }
 }
 

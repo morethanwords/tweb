@@ -22,11 +22,6 @@ class CryptoWorker {
   private pending: Array<Task> = [];
   private debug = false;
 
-  // @ts-ignore
-  // private webCrypto = Config.Modes.webcrypto && window.crypto && (window.crypto.subtle || window.crypto.webkitSubtle); /* || window.msCrypto && window.msCrypto.subtle*/
-  // private useSha1Crypto = this.webCrypto && this.webCrypto.digest !== undefined;
-  // private useSha256Crypto = this.webCrypto && this.webCrypto.digest !== undefined;
-
   constructor() {
     console.log(dT(), 'CW constructor');
 
@@ -96,57 +91,18 @@ class CryptoWorker {
     //if(this.webWorker) {
       return this.performTaskWorker<Uint8Array>('sha1-hash', bytes);
     //}
-
-    /* if(this.useSha1Crypto) {
-      console.error('usesha1crypto');
-      // We don't use buffer since typedArray.subarray(...).buffer gives the whole buffer and not sliced one. webCrypto.digest supports typed array
-      return new Promise((resolve, reject) => {
-        var bytesTyped = Array.isArray(bytes) ? convertToUint8Array(bytes) : bytes;
-        // console.log(dT(), 'Native sha1 start')
-
-        this.webCrypto.digest({name: 'SHA-1'}, bytesTyped).then((digest: ArrayBuffer) => {
-          // console.log(dT(), 'Native sha1 done')
-          resolve(digest);
-        }, (e: ErrorEvent) => {
-          console.error('Crypto digest error', e);
-          this.useSha1Crypto = false;
-          resolve(sha1HashSync(bytes));
-        })
-      });
-    }
-
-    return Promise.resolve(sha1HashSync(bytes)); */
   }
 
   public sha256Hash(bytes: any) {
     //if(this.webWorker) {
       return this.performTaskWorker<number[]>('sha256-hash', bytes);
     //}
-
-    /* if(this.useSha256Crypto) {
-      return new Promise((resolve, reject) => {
-        var bytesTyped = Array.isArray(bytes) ? convertToUint8Array(bytes) : bytes;
-        // console.log(dT(), 'Native sha1 start')
-        this.webCrypto.digest({name: 'SHA-256'}, bytesTyped).then((digest: ArrayBuffer) => {
-          // console.log(dT(), 'Native sha1 done')
-          resolve(digest);
-        }, (e: ErrorEvent) => {
-          console.error('Crypto digest error', e);
-          this.useSha256Crypto = false;
-          resolve(sha256HashSync(bytes));
-        })
-      });
-    }
-
-    return Promise.resolve(sha256HashSync(bytes)); */
   }
 
   public pbkdf2(buffer: Uint8Array, salt: Uint8Array, iterations: number) {
     //if(this.webWorker) {
       return this.performTaskWorker<ArrayBuffer>('pbkdf2', buffer, salt, iterations);
     //}
-
-    //return hash_pbkdf2(buffer, salt, iterations);
   }
 
   public aesEncrypt(bytes: any, keyBytes: any, ivBytes: any) {
@@ -154,8 +110,6 @@ class CryptoWorker {
       return this.performTaskWorker<ArrayBuffer>('aes-encrypt', convertToArrayBuffer(bytes), 
         convertToArrayBuffer(keyBytes), convertToArrayBuffer(ivBytes));
     //}
-
-    //return Promise.resolve<ArrayBuffer>(convertToArrayBuffer(aesEncryptSync(bytes, keyBytes, ivBytes)));
   }
 
   public aesDecrypt(encryptedBytes: any, keyBytes: any, ivBytes: any): Promise<ArrayBuffer> {
@@ -164,8 +118,6 @@ class CryptoWorker {
         encryptedBytes, keyBytes, ivBytes)
         .then(bytes => convertToArrayBuffer(bytes));
     //}
-
-    //return Promise.resolve<ArrayBuffer>(convertToArrayBuffer(aesDecryptSync(encryptedBytes, keyBytes, ivBytes)));
   }
 
   public rsaEncrypt(publicKey: {modulus: string, exponent: string}, bytes: any): Promise<number[]> {
@@ -178,29 +130,21 @@ class CryptoWorker {
     //if(this.webWorker) {
       return this.performTaskWorker<[number[], number[], number]>('factorize', bytes);
     //}
-
-    //return Promise.resolve(pqPrimeFactorization(bytes));
   }
 
   public modPow(x: any, y: any, m: any) {
     //if(this.webWorker) {
       return this.performTaskWorker<number[]>('mod-pow', x, y, m);
     //}
-
-    //return Promise.resolve(bytesModPow(x, y, m));
   }
 
   public gzipUncompress<T>(bytes: ArrayBuffer, toString?: boolean) {
     //if(this.webWorker) {
       return this.performTaskWorker<T>('unzip', bytes, toString);
     //}
-
-    //return Promise.resolve(gzipUncompress(bytes, toString) as T);
   }
 }
 
 const cryptoWorker = new CryptoWorker();
-
 (window as any).CryptoWorker = cryptoWorker;
-
 export default cryptoWorker;

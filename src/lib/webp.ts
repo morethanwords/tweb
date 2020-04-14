@@ -1,4 +1,3 @@
-
 import {Webp} from "webp-hero/libwebp/dist/webp.js"
 import {detectWebpSupport} from "webp-hero/dist/detect-webp-support.js"
 
@@ -30,22 +29,21 @@ export class WebpMachine {
 	 * Decode raw webp data into a png data url
 	 */
 	async decode(webpData: Uint8Array): Promise<string> {
-		if (this.busy) throw new WebpMachineError("cannot decode when already busy")
-		this.busy = true
+		if(this.busy) throw new WebpMachineError("cannot decode when already busy");
+		this.busy = true;
 
 		try {
-			await relax()
-			const canvas = document.createElement("canvas")
-			this.webp.setCanvas(canvas)
-			this.webp.webpToSdl(webpData, webpData.length)
-			this.busy = false
-			return canvas.toDataURL()
-		}
-		catch (error) {
-			this.busy = false
-			error.name = WebpMachineError.name
-			error.message = `failed to decode webp image: ${error.message}`
-			throw error
+			await relax();
+			const canvas = document.createElement("canvas");
+			this.webp.setCanvas(canvas);
+			this.webp.webpToSdl(webpData, webpData.length);
+			this.busy = false;
+			return canvas.toDataURL();
+		} catch(error) {
+			this.busy = false;
+			error.name = WebpMachineError.name;
+			error.message = `failed to decode webp image: ${error.message}`;
+			throw error;
 		}
 	}
 }

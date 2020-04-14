@@ -6,17 +6,16 @@ import { CancellablePromise } from '../polyfill';
 
 class AppDocsManager {
   private docs: any = {};
-  
-  constructor() {
-    
-  }
-  
+
   public saveDoc(apiDoc: /* MTDocument */any, context?: any) {
+    console.log('saveDoc', apiDoc, this.docs[apiDoc.id]);
+    if(this.docs[apiDoc.id]) return this.docs[apiDoc.id];
+
     this.docs[apiDoc.id] = apiDoc;
     
-    if(context) {
+    /* if(context) {
       Object.assign(apiDoc, context);
-    }
+    } */
     
     if(apiDoc.thumb && apiDoc.thumb._ == 'photoCachedSize') {
       apiFileManager.saveSmallFile(apiDoc.thumb.location, apiDoc.thumb.bytes);
@@ -125,6 +124,8 @@ class AppDocsManager {
     if(apiDoc._ == 'documentEmpty') {
       apiDoc.size = 0;
     }
+
+    return apiDoc;
   }
   
   public getDoc(docID: string) {

@@ -1,7 +1,7 @@
 import apiManager from "../mtproto/apiManager";
 import apiFileManager from '../mtproto/apiFileManager';
-import { $rootScope, findUpTag, langPack, findUpClassName } from "../utils";
-import appImManager from "./appImManager";
+import { $rootScope, langPack, findUpClassName } from "../utils";
+import appImManager, { AppImManager } from "./appImManager";
 import appPeersManager from './appPeersManager';
 import appMessagesManager from "./appMessagesManager";
 import appUsersManager from "./appUsersManager";
@@ -38,6 +38,10 @@ export class AppDialogsManager {
 
   public savedAvatarURLs: {[peerID: number]: string} = {};
 
+  private rippleCallback: (value?: boolean | PromiseLike<boolean>) => void = null;
+  private lastClickID = 0;
+  private lastGoodClickID = 0;
+
   constructor() {
     this.pinnedDelimiter = document.createElement('div');
     this.pinnedDelimiter.classList.add('pinned-delimiter');
@@ -52,6 +56,13 @@ export class AppDialogsManager {
       this.myID = userAuth ? userAuth.id : 0;
     });
 
+    $rootScope.$on('history_request', () => { // will call at history request api or cache RENDERED!
+      if(this.rippleCallback) {
+        this.rippleCallback();
+        this.rippleCallback = null;
+      }
+    });
+
     //let chatClosedDiv = document.getElementById('chat-closed');
 
     this.setListClickListener(this.chatList);
@@ -60,6 +71,8 @@ export class AppDialogsManager {
 
   public setListClickListener(list: HTMLUListElement, onFound?: () => void) {
     list.addEventListener('click', (e: Event) => {
+      //return;
+      console.log('dialogs click list');
       let target = e.target as HTMLElement;
       let elem = target.classList.contains('rp') ? target : findUpClassName(target, 'rp');
 
@@ -69,10 +82,15 @@ export class AppDialogsManager {
 
       elem = elem.parentElement;
 
-      if(this.lastActiveListElement) {
+      let samePeer = this.lastActiveListElement == elem;
+
+      if(this.lastActiveListElement && !samePeer) {
         this.lastActiveListElement.classList.remove('active');
       }
 
+      let startTime = Date.now();
+      let result: ReturnType<AppImManager['setPeer']>;
+      //console.log('appDialogsManager: lock lazyLoadQueue');
       if(elem) {
         /* if(chatClosedDiv) {
           chatClosedDiv.style.display = 'none';
@@ -81,14 +99,46 @@ export class AppDialogsManager {
         if(onFound) onFound();
 
         let peerID = +elem.getAttribute('data-peerID');
-        let lastMsgID = +elem.getAttribute('data-mid');
-        appImManager.setPeer(peerID, lastMsgID);
-        elem.classList.add('active');
-        this.lastActiveListElement = elem;
+        let lastMsgID = +elem.dataset.mid;
+
+        if(!samePeer) {
+          elem.classList.add('active');
+          this.lastActiveListElement = elem;
+        }
+
+        result = appImManager.setPeer(peerID, lastMsgID, false, true);
+
+        if(result instanceof Promise) {
+          this.lastGoodClickID = this.lastClickID;
+          appImManager.lazyLoadQueue.lock();
+        }
       } else /* if(chatClosedDiv) */ {
-        appImManager.setPeer(0);
+        result = appImManager.setPeer(0);
         //chatClosedDiv.style.display = '';
       }
+
+      /* if(!(result instanceof Promise)) { // if click on same dialog
+        this.rippleCallback();
+        this.rippleCallback = null;
+      } */
+
+      /* promise.then(() => {
+        appImManager.lazyLoadQueue.unlock();
+      }); */
+
+      /* promise.then(() => {
+        let length = appImManager.lazyLoadQueue.length();
+        console.log('pre ripple callback', length);
+
+        if(length) {
+          setTimeout(() => {
+            this.rippleCallback();
+          }, length * 25);
+        } else {
+          let elapsedTime = Date.now() - startTime;
+          this.rippleCallback(elapsedTime > 200);
+        }
+      }); */
     });
   }
 
@@ -110,6 +160,7 @@ export class AppDialogsManager {
       
       div.style.backgroundColor = '';
       div.classList.add('tgico-savedmessages');
+      div.classList.remove('tgico-avatar_deletedaccount');
       return true;
     }
 
@@ -171,7 +222,10 @@ export class AppDialogsManager {
     div.innerHTML = '';
     //div.style.fontSize = '0'; // need
     //div.style.backgroundColor = '';
-    div.append(img);
+
+    window.requestAnimationFrame(() => {
+      div.append(img);
+    });
 
     return true;
   }
@@ -364,7 +418,8 @@ export class AppDialogsManager {
             str = sender.first_name || sender.last_name || sender.username;
           }
 
-          senderBold.innerText = str + ': ';
+          //senderBold.innerText = str + ': ';
+          senderBold.innerHTML = RichTextProcessor.wrapRichText(str, {noLinebreakers: true}) + ': ';
           //console.log(sender, senderBold.innerText);
           dom.lastMessageSpan.prepend(senderBold);
         } //////// else console.log('no sender', lastMessage, peerID);
@@ -505,12 +560,25 @@ export class AppDialogsManager {
     //captionDiv.append(titleSpan);
     //captionDiv.append(span);
 
-
-
     let paddingDiv = document.createElement('div');
     paddingDiv.classList.add('rp');
     paddingDiv.append(avatarDiv, captionDiv);
-    ripple(paddingDiv);
+
+    ripple(paddingDiv, (id) => {
+      console.log('dialogs click element');
+      this.lastClickID = id;
+
+      return new Promise((resolve, reject) => {
+        this.rippleCallback = resolve;
+        //setTimeout(() => resolve(), 100);
+        //window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()));
+      });
+    }, (id) => {
+      //console.log('appDialogsManager: ripple onEnd called!');
+      if(id == this.lastGoodClickID) {
+        appImManager.lazyLoadQueue.unlock();
+      }
+    });
 
     let li = document.createElement('li');
     li.append(paddingDiv);

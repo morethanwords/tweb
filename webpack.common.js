@@ -54,7 +54,8 @@ module.exports = {
   //entry: './src/index.ts',
   entry: {
     index: './src/index.ts',
-    webp: './src/lib/webp.ts'
+    webp: './src/lib/webp.ts',
+    lottie: './src/lib/lottie.ts'
   },
   /* entry: {
     index: './src/index.ts',
@@ -72,6 +73,7 @@ module.exports = {
     contentBase: path.join(__dirname, 'public'),
     watchContentBase: true,
     compress: true,
+    http2: true,
     port: 9000
   },
 
@@ -93,7 +95,7 @@ module.exports = {
         minifyURLs: true
       }, */
       chunks: "all",
-      excludeChunks: ['npm.webp-hero']
+      excludeChunks: ['npm.webp-hero', 'npm.lottie-web']
     })
   ],
 };

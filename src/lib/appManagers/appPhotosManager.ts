@@ -5,10 +5,6 @@ import { bytesFromHex } from "../bin_utils";
 import { MTPhotoSize } from "../../components/wrappers";
 import apiFileManager from "../mtproto/apiFileManager";
 import apiManager from "../mtproto/apiManager";
-//import { MTPhotoSize } from "../../components/misc";
-
-//import fastdom from "fastdom";
-//import 'fastdom/fastdom-strict'; // exclude in production
 
 type MTPhoto = {
   _: 'photo',
@@ -20,7 +16,9 @@ type MTPhoto = {
   date: number,
   sizes: Array<MTPhotoSize>,
   dc_id: number,
-  user_id: number
+  user_id: number,
+
+  downloaded?: boolean
 };
 
 export class AppPhotosManager {
@@ -35,36 +33,32 @@ export class AppPhotosManager {
   
   constructor() {
     window.addEventListener('resize', (e) => {
-      //fastdom.measure(() => {
       this.windowW = document.body.scrollWidth;
       this.windowH = document.body.scrollHeight;
-      //});
-      //console.log(`Set windowW, windowH: ${this.windowW}x${this.windowH}`);
     });
     
-    //fastdom.measure(() => {
-    console.log('measure works');
     this.windowW = document.body.scrollWidth;
     this.windowH = document.body.scrollHeight;
-    //});
   }
   
-  public savePhoto(apiPhoto: any, context?: any) {
-    if(context) {
-      Object.assign(apiPhoto, context);
-    }
+  public savePhoto(photo: MTPhoto, context?: any) {
+    if(this.photos[photo.id]) return this.photos[photo.id];
+
+    /* if(context) {
+      Object.assign(photo, context);
+    } */ // warning
     
-    if(!apiPhoto.id) {
-      console.warn('no apiPhoto.id', apiPhoto);
-    } else this.photos[apiPhoto.id] = apiPhoto;
+    if(!photo.id) {
+      console.warn('no apiPhoto.id', photo);
+    } else this.photos[photo.id] = photo;
     
-    if(!('sizes' in apiPhoto)) return;
+    if(!('sizes' in photo)) return;
     
-    apiPhoto.sizes.forEach((photoSize: any) => {
+    photo.sizes.forEach((photoSize: any) => {
       if(photoSize._ == 'photoCachedSize') {
         apiFileManager.saveSmallFile(photoSize.location, photoSize.bytes);
         
-        console.log('clearing photo cached size', apiPhoto);
+        console.log('clearing photo cached size', photo);
         
         // Memory
         photoSize.size = photoSize.bytes.length;
@@ -72,6 +66,25 @@ export class AppPhotosManager {
         photoSize._ = 'photoSize';
       }
     });
+
+    /* if(!photo.downloaded) {
+      photo.downloaded = apiFileManager.isFileExists({
+        _: 'inputPhotoFileLocation',
+        id: photo.id,
+        access_hash: photo.access_hash,
+        file_reference: photo.file_reference
+      });
+      // apiFileManager.isFileExists({
+      //   _: 'inputPhotoFileLocation',
+      //   id: photo.id,
+      //   access_hash: photo.access_hash,
+      //   file_reference: photo.file_reference
+      // }).then(downloaded => {
+      //   photo.downloaded = downloaded;
+      // });
+    } */
+
+    return photo;
   }
   
   public choosePhotoSize(photo: any, width = 0, height = 0) {
@@ -140,9 +153,6 @@ export class AppPhotosManager {
   }
   
   public setAttachmentPreview(bytes: Uint8Array, element: HTMLElement | SVGSVGElement, isSticker = false, background = false) {
-    //image.src = "data:image/jpeg;base64," + bytesToBase64(photo.sizes[0].bytes);
-    //photo.sizes[0].bytes = new Uint8Array([...photo.sizes[0].bytes].reverse());
-    
     let arr: Uint8Array;
     if(!isSticker) {
       arr = AppPhotosManager.jf.concat(bytes.slice(3), AppPhotosManager.Df);
@@ -157,12 +167,18 @@ export class AppPhotosManager {
     let blob = new Blob([arr], {type: "image/jpeg"});
     
     if(background) {
-      element.style.backgroundImage = 'url(' + URL.createObjectURL(blob) + ')';
+      let url = URL.createObjectURL(blob);
+      let img = new Image();
+      img.src = url;
+      img.onload = () => {
+        element.style.backgroundImage = 'url(' + url + ')';
+      };
+
+      //element.style.backgroundImage = 'url(' + url + ')';
     } else {
       if(element instanceof SVGSVGElement) {
-        let image = document.createElementNS("http://www.w3.org/2000/svg", "image");
+        let image = element.firstElementChild as SVGImageElement || document.createElementNS("http://www.w3.org/2000/svg", "image");
         image.setAttributeNS(null, 'href', URL.createObjectURL(blob));
-        //image.setAttributeNS(null, 'preserveAspectRatio', 'xMinYMin slice');
         element.append(image);
       } else {
         let image = new Image();
@@ -189,7 +205,7 @@ export class AppPhotosManager {
     //console.log('setAttachmentSize', photo, photo.sizes[0].bytes, div);
     
     let sizes = photo.sizes || photo.thumbs;
-    if(sizes && sizes[0].bytes) {
+    if((!photo.downloaded || isSticker) && sizes && sizes[0].bytes) {
       this.setAttachmentPreview(sizes[0].bytes, element, isSticker);
     }
     
@@ -221,7 +237,7 @@ export class AppPhotosManager {
     return photoSize;
   }
   
-  public async preloadPhoto(photoID: any, photoSize?: MTPhotoSize): Promise<Blob> {
+  public preloadPhoto(photoID: any, photoSize?: MTPhotoSize): Promise<Blob> {
     let photo: any = null;
     
     if(typeof(photoID) === 'string') {
@@ -239,8 +255,6 @@ export class AppPhotosManager {
     }
     
     if(photoSize && photoSize._ != 'photoSizeEmpty') {
-      photoSize.preloaded = true;
-      
       // maybe it's a thumb
       let isPhoto = photoSize.size && photo.access_hash && photo.file_reference;
       let location = isPhoto ? {
@@ -250,34 +264,29 @@ export class AppPhotosManager {
         file_reference: photo.file_reference,
         thumb_size: photoSize.type
       } : photoSize.location;
-      
-      /* if(overwrite) {
-        await apiFileManager.deleteFile(location);
-        console.log('Photos deleted file!');
-      } */
-      
+
+      let promise: Promise<Blob>;
+
       if(isPhoto/*  && photoSize.size >= 1e6 */) {
         //console.log('Photos downloadFile exec', photo);
-        /* let promise = apiFileManager.downloadFile(photo.dc_id, location, photoSize.size);
-        
-        let blob = await promise;
-        if(blob.size < photoSize.size && overwrite) {
-          await apiFileManager.deleteFile(location);
-          console.log('Photos deleted file!');
-          return apiFileManager.downloadFile(photo.dc_id, location, photoSize.size);
-        }
-        
-        return blob; */
-        return apiFileManager.downloadFile(photo.dc_id, location, photoSize.size);
+        promise = apiFileManager.downloadFile(photo.dc_id, location, photoSize.size);
       } else {
         //console.log('Photos downloadSmallFile exec', photo, location);
-        return apiFileManager.downloadSmallFile(location);
+        promise = apiFileManager.downloadSmallFile(location);
       }
+
+      if(typeof(photoID) === 'string') {
+        promise.then(() => {
+          this.photos[photoID].downloaded = true;
+        });
+      }
+
+      return promise;
     } else return Promise.reject('no photoSize');
   }
   
   public getPhoto(photoID: string) {
-    return this.photos[photoID] || {_: 'photoEmpty'};
+    return this.photos[photoID] || {_: 'photoEmpty'} as unknown as Partial<MTPhoto>;
   }
   
   public wrapForHistory(photoID: string, options: any = {}) {
@@ -311,36 +320,7 @@ export class AppPhotosManager {
     
     return photo;
   }
-  
-  /* public wrapForFull(photoID: string) {
-    var photo = this.wrapForHistory(photoID);
-    var fullWidth = document.body.scrollWidth - (Config.Mobile ? 0 : 32);
-    var fullHeight = document.body.scrollHeight - (Config.Mobile ? 0 : 116);
-    if (!Config.Mobile && fullWidth > 800) {
-      fullWidth -= 208;
-    }
-    var fullPhotoSize = this.choosePhotoSize(photo, fullWidth, fullHeight);
-    var full: any = {};
-    
-    full.width = fullWidth;
-    full.height = fullHeight;
-    
-    if (fullPhotoSize && fullPhotoSize._ != 'photoSizeEmpty') {
-      var wh = calcImageInBox(fullPhotoSize.w, fullPhotoSize.h, fullWidth, fullHeight, true);
-      full.width = wh.w;
-      full.height = wh.h;
-      
-      full.modalWidth = Math.max(full.width, Math.min(400, fullWidth));
-      
-      full.location = fullPhotoSize.location;
-      full.size = fullPhotoSize.size;
-    }
-    
-    photo.full = full;
-    
-    return photo;
-  } */
-  
+
   public downloadPhoto(photoID: string) {
     var photo = this.photos[photoID];
     var ext = 'jpg';

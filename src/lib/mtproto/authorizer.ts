@@ -408,7 +408,8 @@ export class Authorizer {
     var gBytes = bytesFromHex(auth.g.toString(16));
     
     auth.b = new Array(256);
-    MTProto.secureRandom.nextBytes(auth.b);
+    auth.b = [...new Uint8Array(auth.b.length).randomize()];
+    //MTProto.secureRandom.nextBytes(auth.b);
     
     try {
       var gB = await CryptoWorker.modPow(gBytes, auth.b, auth.dhPrime);

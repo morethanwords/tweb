@@ -1,4 +1,4 @@
-import { putPreloader, getNearestDc, formatPhoneNumber } from "./misc";
+import { putPreloader, formatPhoneNumber } from "./misc";
 import Scrollable from './scrollable';
 import {RichTextProcessor} from '../lib/richtextprocessor';
 import * as Config from '../lib/config';
@@ -237,7 +237,14 @@ export default () => {
   });
 
   let tryAgain = () => {
-    getNearestDc().then((nearestDcResult: any) => {
+    apiManager.invokeApi('help.getNearestDc').then((nearestDcResult: any) => {
+      if(nearestDcResult.nearest_dc != nearestDcResult.this_dc) {
+        //MTProto.apiManager.baseDcID = nearestDcResult.nearest_dc;
+        apiManager.getNetworker(nearestDcResult.nearest_dc);
+      }
+      
+      return nearestDcResult;
+    }).then((nearestDcResult: any) => {
       let country = countries.find((c) => c.code == nearestDcResult.country);
       if(country) {
         if(!selectCountryCode.value.length && !telEl.value.length) {

@@ -1,14 +1,11 @@
-//import LottiePlayer, { AnimationConfigWithPath, AnimationConfigWithData, AnimationItem } from "lottie-web";
-// @ts-ignore
-import LottiePlayer, { AnimationConfigWithPath, AnimationConfigWithData, AnimationItem } from "lottie-web/build/player/lottie_canvas.min.js";
-//import LottiePlayer, { AnimationConfigWithPath, AnimationConfigWithData, AnimationItem } from "lottie-web/build/player/lottie_light.min.js";
 import { isElementInViewport, isInDOM } from "./utils";
+import LottiePlayer, { AnimationConfigWithPath, AnimationConfigWithData, AnimationItem } from "lottie-web/build/player/lottie.d";
 
 class LottieLoader {
-  public lottie: /* any */ typeof LottiePlayer = null;
+  private lottie: /* any */ typeof LottiePlayer = null;
   private animations: {
     [group: string]: {
-      animation: AnimationItem, 
+      animation: /* any */AnimationItem, 
       container: HTMLDivElement, 
       paused: boolean,
       autoplay: boolean,
@@ -16,6 +13,28 @@ class LottieLoader {
     }[]
   } = {};
   private debug = false;
+  public loaded: Promise<void>;
+  private lastTimeLoad = 0;
+  private waitingTimeouts = 0;
+
+  public loadLottie() {
+    if(this.loaded) return this.loaded;
+
+    this.loaded = new Promise((resolve, reject) => {
+      (window as any).lottieLoaded = () => {
+        console.log('lottie loaded');
+        this.lottie = (window as any).lottie;
+        resolve();
+      };
+    
+      let sc = document.createElement('script');
+      sc.src = 'npm.lottie-web.chunk.js';
+      sc.async = true;
+      sc.onload = (window as any).lottieLoaded;
+    
+      document.body.appendChild(sc);
+    });
+  }
 
   public checkAnimations(blurred?: boolean, group?: string, destroy = false) {
     let groups = group ? [group] : Object.keys(this.animations);
@@ -33,6 +52,13 @@ class LottieLoader {
       for(let i = length - 1; i >= 0; --i) {
         let {animation, container, paused, autoplay, canvas} = animations[i];
 
+        if(destroy && !isInDOM(container)) {
+          this.debug && console.log('destroy animation');
+          animation.destroy();
+          animations.splice(i, 1);
+          continue;
+        }
+
         if(canvas) {
           let c = container.firstElementChild as HTMLCanvasElement;
           if(!c.height && !c.width && isElementInViewport(container)) {
@@ -41,16 +67,9 @@ class LottieLoader {
           }
         }
   
-        if(destroy && !isInDOM(container)) {
-          this.debug && console.log('destroy animation');
-          animation.destroy();
-          animations.splice(i, 1);
-          continue;
-        }
-  
         if(!autoplay) continue;
         
-        if(!isElementInViewport(container) || blurred) {
+        if(blurred || !isElementInViewport(container)) {
           if(!paused) {
             this.debug && console.log('pause animation', isElementInViewport(container), container);
             animation.pause();
@@ -66,16 +85,10 @@ class LottieLoader {
   }
 
   public async loadAnimation(params: /* any */AnimationConfigWithPath | AnimationConfigWithData, group = '') {
-    /* if(!this.lottie) {
-      this.lottie = (await import(
-        'lottie-web')).default;
-      this.lottie.setQuality('low');
-    } */
-
     //params.autoplay = false;
     params.renderer = 'canvas';
     params.rendererSettings = {
-      //context: canvasContext, // the canvas context
+      //context: context, // the canvas context
       //preserveAspectRatio: 'xMinYMin slice', // Supports the same options as the svg element's preserveAspectRatio property
       clearCanvas: true,
       progressiveLoad: true, // Boolean, only svg renderer, loads dom elements when needed. Might speed up initialization for large number of elements.
@@ -83,12 +96,27 @@ class LottieLoader {
     };
 
     if(!this.lottie) {
-      this.lottie = LottiePlayer;
-      //this.lottie.setQuality('low');
-      this.lottie.setQuality(10);
+      if(!this.loaded) this.loadLottie();
+      await this.loaded;
+
+      this.lottie.setQuality('low');
+      //this.lottie.setQuality(10);
+    }
+
+    let time = Date.now();
+    let diff = time - this.lastTimeLoad;
+    let delay = 150;
+    if(diff < delay) {
+      delay *= ++this.waitingTimeouts;
+      console.log('lottieloader delay:', delay);
+      //await new Promise((resolve) => setTimeout(resolve, delay));
+      this.waitingTimeouts--;
     }
 
     let animation = this.lottie.loadAnimation(params);
+
+    this.lastTimeLoad = Date.now();
+
     if(!this.animations[group]) this.animations[group] = [];
     this.animations[group].push({
       animation, 
@@ -101,7 +129,7 @@ class LottieLoader {
     if(params.autoplay) {
       this.checkAnimations();
     }
-    
+
     return animation;
   }
 

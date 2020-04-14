@@ -128,7 +128,8 @@ class MTPNetworker {
     this.seqNo = 0;
     this.prevSessionID = this.sessionID;
     this.sessionID = new Array(8);
-    MTProto.secureRandom.nextBytes(this.sessionID);
+    this.sessionID = [...new Uint8Array(this.sessionID.length).randomize()];
+    //MTProto.secureRandom.nextBytes(this.sessionID);
   }
 
   public setupMobileSleep() {
@@ -789,7 +790,8 @@ class MTPNetworker {
   
     var paddingLength = (16 - (data.offset % 16)) + 16 * (1 + nextRandomInt(5));
     var padding = new Array(paddingLength);
-    MTProto.secureRandom.nextBytes(padding);
+    padding = [...new Uint8Array(padding.length).randomize()];
+    //MTProto.secureRandom.nextBytes(padding);
   
     var dataWithPadding = bufferConcat(dataBuffer, padding);
     // this.log('Adding padding', dataBuffer, padding, dataWithPadding)

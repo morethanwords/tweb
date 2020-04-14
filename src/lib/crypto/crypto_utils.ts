@@ -1,4 +1,5 @@
 import sha1 from '@cryptography/sha1';
+import sha256 from '@cryptography/sha256';
 
 import {str2bigInt, bpe, equalsInt, greater, 
   copy_, eGCD_, add_, rightShift_, sub_, copyInt_, isZero,
@@ -14,6 +15,21 @@ import { addPadding, bytesToHex, bytesFromHex, nextRandomInt, bytesFromBigInt, d
 export function bytesFromLeemonBigInt(bigInt: BigInteger) {
   var str = bigInt2str(bigInt, 16);
   return bytesFromHex(str);
+}
+
+export function bytesToWordss(input: ArrayBuffer | Uint8Array) {
+  let bytes: Uint8Array;
+  if(input instanceof ArrayBuffer) bytes = new Uint8Array(input);
+  else bytes = input;
+
+  var len = bytes.length;
+  var words: number[] = [];
+  var i;
+  for(i = 0; i < len; i++) {
+    words[i >>> 2] |= bytes[i] << (24 - (i % 4) * 8);
+  }
+
+  return new Uint32Array(words);
 }
 
 export function bytesToWords(bytes: any) {
@@ -46,23 +62,30 @@ export function sha1HashSync(bytes: number[] | ArrayBuffer | Uint8Array) {
   return new Uint8Array(hashBytes);
 }
 
-export function sha256HashSync(bytes: any) {
-  // console.log(dT(), 'SHA-2 hash start', bytes.byteLength || bytes.length)
-  var hashWords = CryptoJS.SHA256(bytesToWords(bytes));
-  // console.log(dT(), 'SHA-2 hash finish')
+export function sha256HashSync(bytes: Uint8Array | ArrayBuffer) {
+  //console.log(dT(), 'SHA-256 hash start');
 
-  var hashBytes = bytesFromWords(hashWords);
+  let words = bytesToWordss(bytes);
+  let hash = sha256(words);
 
-  return hashBytes;
+  // bytesFromWords below
+  var o = [];
+  for(var i = 0; i < hash.length * 4; i++) {
+    o.push((hash[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff);
+  }
+
+  //console.log(dT(), 'SHA-256 hash finish');
+
+  return o;
 }
 
-export function aesEncryptSync(bytes: any, keyBytes: any, ivBytes: any, _mode = 'IGE') {
+export function aesEncryptSync(bytes: any, keyBytes: any, ivBytes: any) {
   // console.log(dT(), 'AES encrypt start', len/*, bytesToHex(keyBytes), bytesToHex(ivBytes)*/)
   // console.log('aes before padding bytes:', bytesToHex(bytes));
   bytes = addPadding(bytes);
   // console.log('aes after padding bytes:', bytesToHex(bytes));
 
-  let mode = CryptoJS.mode[_mode];
+  let mode = CryptoJS.mode.IGE;
 
   let encryptedWords = CryptoJS.AES.encrypt(bytesToWords(bytes), bytesToWords(keyBytes), {
     iv: bytesToWords(ivBytes),
@@ -76,9 +99,9 @@ export function aesEncryptSync(bytes: any, keyBytes: any, ivBytes: any, _mode = 
   return encryptedBytes;
 }
 
-export function aesDecryptSync(encryptedBytes: any, keyBytes: any, ivBytes: any, _mode = 'IGE') {
+export function aesDecryptSync(encryptedBytes: any, keyBytes: any, ivBytes: any) {
 
-  let mode = CryptoJS.mode[_mode];
+  let mode = CryptoJS.mode.IGE;
   // console.log(dT(), 'AES decrypt start', encryptedBytes.length)
   var decryptedWords = CryptoJS.AES.decrypt({ciphertext: bytesToWords(encryptedBytes)}, bytesToWords(keyBytes), {
     iv: bytesToWords(ivBytes),
@@ -98,11 +121,6 @@ export function rsaEncrypt(publicKey: {modulus: string, exponent: string}, bytes
 
   bytes = addPadding(bytes, 255);
 
-  /* var N = new BigInteger(publicKey.modulus, 16);
-  var E = new BigInteger(publicKey.exponent, 16);
-  var X = new BigInteger(bytes);
-  var encryptedBigInt = X.modPowInt(E, N),
-    encryptedBytes = bytesFromBigInt(encryptedBigInt, 256); */
   var N = str2bigInt(publicKey.modulus, 16);
   var E = str2bigInt(publicKey.exponent, 16);
   var X = str2bigInt(bytesToHex(bytes), 16);
@@ -110,7 +128,7 @@ export function rsaEncrypt(publicKey: {modulus: string, exponent: string}, bytes
   var encryptedBigInt = powMod(X, E, N);
   var encryptedBytes = bytesFromHex(bigInt2str(encryptedBigInt, 16));
 
-  console.log(dT(), 'RSA encrypt finish'/* , encryptedBytes *//* , bigInt2str(encryptedBigInt, 16) */);
+  console.log(dT(), 'RSA encrypt finish');
 
   return encryptedBytes;
 }
@@ -172,161 +190,10 @@ export function pqPrimeFactorization(pqBytes: any) {
     console.error('Pq leemon Exception', e);
   }
 
-  /* if(result === false && what.bitLength() <= 64) {
-    console.time('PQ long');
-    try {
-      result = pqPrimeLong(goog.math.Long.fromString(what.toString(16), 16));
-    } catch (e) {
-      console.error('Pq long Exception', e);
-    }
-    console.timeEnd('PQ long');
-  }
-  // console.log(result)
-
-  if(result === false) {
-    console.time('pq BigInt');
-    result = pqPrimeBigInteger(what);
-    console.timeEnd('pq BigInt');
-  } */
-
   console.log(dT(), 'PQ finish');
 
   return result;
 }
-
-/* export function pqPrimeBigInteger(what: any) {
-  var it = 0,
-    g;
-  for(var i = 0; i < 3; i++) {
-    var q = (nextRandomInt(128) & 15) + 17;
-    var x = bigint(nextRandomInt(1000000000) + 1);
-    var y = x.clone();
-    var lim = 1 << (i + 18);
-
-    for(var j = 1; j < lim; j++) {
-      ++it;
-      var a = x.clone();
-      var b = x.clone();
-      var c = bigint(q);
-
-      while(!b.equals(BigInteger.ZERO)) {
-        if(!b.and(BigInteger.ONE).equals(BigInteger.ZERO)) {
-          c = c.add(a);
-          if(c.compareTo(what) > 0) {
-            c = c.subtract(what);
-          }
-        }
-        a = a.add(a);
-        if(a.compareTo(what) > 0) {
-          a = a.subtract(what);
-        }
-        b = b.shiftRight(1);
-      }
-
-      x = c.clone();
-      var z = x.compareTo(y) < 0 ? y.subtract(x) : x.subtract(y);
-      g = z.gcd(what);
-      if(!g.equals(BigInteger.ONE)) {
-        break;
-      }
-      if((j & (j - 1)) == 0) {
-        y = x.clone();
-      }
-    }
-    if(g.compareTo(BigInteger.ONE) > 0) {
-      break;
-    }
-  }
-
-  var f = what.divide(g), P, Q;
-
-  if(g.compareTo(f) > 0) {
-    P = f;
-    Q = g;
-  } else {
-    P = g;
-    Q = f;
-  }
-
-  return [bytesFromBigInt(P), bytesFromBigInt(Q), it];
-} */
-
-/* export function gcdLong(a: any, b: any) {
-  while(a.notEquals(goog.math.Long.ZERO) && b.notEquals(goog.math.Long.ZERO)) {
-    while(b.and(goog.math.Long.ONE).equals(goog.math.Long.ZERO)) {
-      b = b.shiftRight(1);
-    }
-
-    while(a.and(goog.math.Long.ONE).equals(goog.math.Long.ZERO)) {
-      a = a.shiftRight(1);
-    }
-
-    if(a.compare(b) > 0) {
-      a = a.subtract(b);
-    } else {
-      b = b.subtract(a);
-    }
-  }
-
-  return b.equals(goog.math.Long.ZERO) ? a : b;
-} */
-
-/* export function pqPrimeLong(what: any) {
-  var it = 0,
-    g;
-  for (var i = 0; i < 3; i++) {
-    var q = goog.math.Long.fromInt((nextRandomInt(128) & 15) + 17);
-    var x = goog.math.Long.fromInt(nextRandomInt(1000000000) + 1);
-    var y = x;
-    var lim = 1 << (i + 18);
-
-    for(var j = 1; j < lim; j++) {
-      ++it;
-      var a = x;
-      var b = x;
-      var c = q;
-
-      while(b.notEquals(goog.math.Long.ZERO)) {
-        if(b.and(goog.math.Long.ONE).notEquals(goog.math.Long.ZERO)) {
-          c = c.add(a);
-          if (c.compare(what) > 0) {
-            c = c.subtract(what);
-          }
-        }
-        a = a.add(a);
-        if(a.compare(what) > 0) {
-          a = a.subtract(what);
-        }
-        b = b.shiftRight(1);
-      }
-
-      x = c;
-      var z = x.compare(y) < 0 ? y.subtract(x) : x.subtract(y);
-      g = gcdLong(z, what);
-      if(g.notEquals(goog.math.Long.ONE)) {
-        break;
-      }
-      if((j & (j - 1)) == 0) {
-        y = x;
-      }
-    }
-    if(g.compare(goog.math.Long.ONE) > 0) {
-      break;
-    }
-  }
-
-  var f = what.div(g), P, Q;
-
-  if(g.compare(f) > 0) {
-    P = f;
-    Q = g;
-  } else {
-    P = g;
-    Q = f;
-  }
-
-  return [bytesFromHex(P.toString(16)), bytesFromHex(Q.toString(16)), it];
-} */
 
 export function pqPrimeLeemon(what: any) {
   var minBits = 64;

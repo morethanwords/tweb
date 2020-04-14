@@ -1,6 +1,6 @@
 //import { appImManager, appMessagesManager, appDialogsManager, apiUpdatesManager, appUsersManager } from "../lib/services";
 import { openBtnMenu } from "./misc";
-import {stackBlurImage} from '../lib/StackBlur';
+//import {stackBlurImage} from '../lib/StackBlur';
 import appSidebarLeft from "../lib/appManagers/appSidebarLeft";
 
 export default () => import('../lib/services').then(services => {
@@ -130,7 +130,7 @@ export default () => import('../lib/services').then(services => {
     }
   }); */
 
-  fetch('assets/img/camomile.jpg')
+  /* fetch('assets/img/camomile.jpg')
   .then(res => res.blob())
   .then(blob => {
     let img = new Image();
@@ -139,7 +139,11 @@ export default () => import('../lib/services').then(services => {
     img.onload = () => {
       let id = 'chat-background-canvas';
       var canvas  = document.getElementById(id) as HTMLCanvasElement;
-      URL.revokeObjectURL(url);
+      //URL.revokeObjectURL(url);
+
+      let elements = ['.chat-container'].map(selector => {
+        return document.querySelector(selector) as HTMLDivElement;
+      });
 
       stackBlurImage(img, id, 15, 0);
 
@@ -147,13 +151,12 @@ export default () => import('../lib/services').then(services => {
         //let dataUrl = canvas.toDataURL('image/jpeg', 1);
         let dataUrl = URL.createObjectURL(blob);
 
-        [/* '.chat-background', '#chat-closed' */'.chat-container'].forEach(selector => {
-          let bg = document.querySelector(selector) as HTMLDivElement;
-          bg.style.backgroundImage = 'url(' + dataUrl + ')';
+        elements.forEach(el => {
+          el.style.backgroundImage = 'url(' + dataUrl + ')';
         });
       }, 'image/jpeg', 1);
     };
-  });
+  }); */
 
   /* toggleEmoticons.onclick = (e) => {
     if(!emoticonsDropdown) {

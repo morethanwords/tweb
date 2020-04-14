@@ -42,9 +42,7 @@ export type MTPhotoSize = {
   size?: number,
   type?: string, // i, m, x, y, w by asc
   location?: any,
-  bytes?: Uint8Array, // if type == 'i'
-  
-  preloaded?: boolean // custom added
+  bytes?: Uint8Array // if type == 'i'
 };
 
 export function wrapVideo(this: AppImManager, doc: MTDocument, container: HTMLDivElement, message: any, justLoader = true, preloader?: ProgressivePreloader, controls = true, round = false, boxWidth = 380, boxHeight = 380, withTail = false, isOut = false) {
@@ -129,7 +127,7 @@ export function wrapVideo(this: AppImManager, doc: MTDocument, container: HTMLDi
   };
   
   if(doc.type == 'gif' || true) { // extra fix
-    return this.loadMediaQueuePush(loadVideo);
+    return this.lazyLoadQueue.push({div: container, load: loadVideo, wasSeen: true});
   } /* else { // if video
     let load = () => appPhotosManager.preloadPhoto(doc).then((blob) => {
       if((this.peerID ? this.peerID : this.currentMessageID) != peerID) {
@@ -430,46 +428,24 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
 function wrapMediaWithTail(photo: any, message: {mid: number, message: string}, container: HTMLDivElement, boxWidth: number, boxHeight: number, isOut: boolean) {
   let svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.classList.add('bubble__media-container', isOut ? 'is-out' : 'is-in');
+
+  let image = document.createElementNS("http://www.w3.org/2000/svg", "image");
+  svg.append(image);
   
-  let size = appPhotosManager.setAttachmentSize(photo.type ? photo : photo.id, svg, boxWidth, boxHeight);
-  let image = svg.firstElementChild as SVGImageElement || document.createElementNS("http://www.w3.org/2000/svg", "image");
+  let size = appPhotosManager.setAttachmentSize(photo.type ? photo : photo.id, svg, boxWidth, boxHeight, false);
   
   let width = +svg.getAttributeNS(null, 'width');
   let height = +svg.getAttributeNS(null, 'height');
-  
-  //container.style.width = (width - 9) + 'px'; // maybe return
-  
+
   let clipID = 'clip' + message.mid;
   svg.dataset.clipID = clipID;
-  //image.setAttributeNS(null, 'clip-path', `url(#${clipID})`);
-  if(!svg.contains(image)) {
-    image.setAttributeNS(null, 'width', '' + width);
-    image.setAttributeNS(null, 'height', '' + height);
-    svg.append(image);
-  }
   
   let defs = document.createElementNS("http://www.w3.org/2000/svg", 'defs');
-  let clipPathHTML: string = '';/*  = `
-  <use href="#message-tail" transform="translate(${width - 2}, ${height}) scale(-1, -1)"></use>
-  <rect width="${width - 9}" height="${height}" rx="12"></rect>
-  `; */
-  
-  //window.getComputedStyle(container).getPropertyValue('border-radius');
+  let clipPathHTML: string = '';
   
   if(message.message) {
     //clipPathHTML += `<rect width="${width}" height="${height}"></rect>`;
   } else {
-    /* if(isOut) {
-      clipPathHTML += `
-      <use href="#message-tail" transform="translate(${width - 2}, ${height}) scale(-1, -1)"></use>
-      <path d="${generatePathData(0, 0, width - 9, height, 6, 0, 12, 12)}" />
-      `;
-    } else {
-      clipPathHTML += `
-      <use href="#message-tail" transform="translate(0, ${height}) scale(1, -1)"></use>
-      <path d="${generatePathData(0, 0, width - 9, height, 12, 12, 0, 6)}" />
-      `;
-    } */
     if(isOut) {
       clipPathHTML += `
       <use href="#message-tail" transform="translate(${width - 2}, ${height}) scale(-1, -1)"></use>
@@ -482,18 +458,7 @@ function wrapMediaWithTail(photo: any, message: {mid: number, message: string}, 
       `;
     }
   }
-  
-  /* if(isOut) { // top-right, bottom-right
-    clipPathHTML += `
-    <rect class="br-tr" width="12" height="12" x="${width - 9 - 12}" y="0"></rect>
-    <rect class="br-br" width="12" height="12" x="${width - 9 - 12}" y="${height - 12}"></rect>
-    `
-  } else { // top-left, bottom-left
-    clipPathHTML += `
-    <rect class="br-tl" width="12" height="12" x="0" y="0"></rect>
-    <rect class="br-bl" width="12" height="12" x="0" y="${height - 12}"></rect>
-    `;
-  } */
+
   defs.innerHTML = `<clipPath id="${clipID}">${clipPathHTML}</clipPath>`;
   
   svg.prepend(defs);
@@ -502,15 +467,17 @@ function wrapMediaWithTail(photo: any, message: {mid: number, message: string}, 
   return image;
 }
 
-export function wrapPhoto(this: AppImManager, photo: any, message: any, container: HTMLDivElement, boxWidth = 380, boxHeight = 380, withTail = true, isOut = false) {
+export async function wrapPhoto(this: AppImManager, photoID: string, message: any, container: HTMLDivElement, boxWidth = 380, boxHeight = 380, withTail = true, isOut = false) {
   let peerID = this.peerID;
-  
+
+  let photo = appPhotosManager.getPhoto(photoID);
+
   let size: MTPhotoSize;
   let image: SVGImageElement | HTMLImageElement;
   if(withTail) {
     image = wrapMediaWithTail(photo, message, container, boxWidth, boxHeight, isOut);
-  } else {
-    size = appPhotosManager.setAttachmentSize(photo.id, container, boxWidth, boxHeight);
+  } else { // means webpage's preview
+    size = appPhotosManager.setAttachmentSize(photoID, container, boxWidth, boxHeight, false);
     
     image = container.firstElementChild as HTMLImageElement || new Image();
     
@@ -518,12 +485,17 @@ export function wrapPhoto(this: AppImManager, photo: any, message: any, containe
       container.appendChild(image);
     }
   }
-  
-  let preloader = new ProgressivePreloader(container, false);
+
+  console.log('wrapPhoto downloaded:', photo, photo.downloaded, container);
+
+  let preloader: ProgressivePreloader;
+  if(!photo.downloaded) preloader = new ProgressivePreloader(container, false);
   let load = () => {
-    let promise = appPhotosManager.preloadPhoto(photo.id, size);
+    let promise = appPhotosManager.preloadPhoto(photoID, size);
     
-    preloader.attach(container, true, promise);
+    if(preloader) {
+      preloader.attach(container, true, promise);
+    }
     
     return promise.then((blob) => {
       if(this.peerID != peerID) {
@@ -541,11 +513,15 @@ export function wrapPhoto(this: AppImManager, photo: any, message: any, containe
   
   /////////console.log('wrapPhoto', load, container, image);
   
-  return this.loadMediaQueue ? this.loadMediaQueuePush(load) : load();
+  return photo.downloaded ? load() : this.lazyLoadQueue.push({div: container, load: load, wasSeen: true});
 }
 
 export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: () => boolean, lazyLoadQueue?: LazyLoadQueue, group?: string, canvas?: boolean, play = false, onlyThumb = false) {
   let stickerType = doc.mime_type == "application/x-tgsticker" ? 2 : (doc.mime_type == "image/webp" ? 1 : 0);
+
+  if(stickerType == 2 && !LottieLoader.loaded) {
+    LottieLoader.loadLottie();
+  }
   
   if(!stickerType) {
     console.error('wrong doc for wrapSticker!', doc, div);
@@ -601,17 +577,21 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
     //console.log('loaded sticker:', blob, div);
     if(middleware && !middleware()) return;
     
-    if(div.firstElementChild) {
+    /* if(div.firstElementChild) {
       div.firstElementChild.remove();
-    }
+    } */
     
     if(stickerType == 2) {
       const reader = new FileReader();
       
       reader.addEventListener('loadend', async(e) => {
+        console.time('decompress sticker' + doc.id);
+        console.time('render sticker' + doc.id);
         // @ts-ignore
         const text = e.srcElement.result;
         let json = await CryptoWorker.gzipUncompress<string>(text, true);
+
+        console.timeEnd('decompress sticker' + doc.id);
         
         let animation = await LottieLoader.loadAnimation({
           container: div,
@@ -620,6 +600,12 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
           animationData: JSON.parse(json),
           renderer: canvas ? 'canvas' : 'svg'
         }, group);
+
+        console.timeEnd('render sticker' + doc.id);
+
+        if(div.firstElementChild && div.firstElementChild.tagName != 'CANVAS') {
+          div.firstElementChild.remove();
+        }
         
         if(!canvas) {
           div.addEventListener('mouseover', (e) => {
@@ -663,7 +649,11 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
     } else if(stickerType == 1) {
       let img = new Image();
       
-      appWebpManager.polyfillImage(img, blob);
+      appWebpManager.polyfillImage(img, blob).then(() => {
+        if(div.firstElementChild && div.firstElementChild != img) {
+          div.firstElementChild.remove();
+        }
+      });
       
       //img.src = URL.createObjectURL(blob);
       

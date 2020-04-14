@@ -29,8 +29,8 @@ $bg: #ffffff;
 $text-size: 16px;
 $time-size: 12px;
 
-//$large-screen: 1680px;
-$large-screen: 16800px;
+$large-screen: 1680px;
+//$large-screen: 16800px;
 
 @import "partials/ico";
 @import "partials/chatlist";
@@ -66,15 +66,6 @@ button, input, optgroup, select, textarea, html {
   //min-width: 100%;
   margin: 0 auto;
   max-width: $large-screen;
-
-  @media (min-width: $large-screen) {
-    border-top-width: 0;
-    border-bottom-width: 0;
-    border-left-width: 1px;
-    border-right-width: 1px;
-    border-style: solid;
-    border-color: #DADCE0;
-  }
 }
 
 .disable-hover,
@@ -336,83 +327,46 @@ input {
   position: absolute;
   top: 0;
   left: 0;
+  bottom: 0;
+  right: 0;
   width: 100%;
   height: 100%;
   overflow: hidden;
   background: transparent;
   border-radius: inherit;
+
+  &__circle {
+    background-color: rgba(0,0,0,.08);
+    display: block;
+    position: absolute;
+    transform: scale(0);
+    border-radius: 50%;
+    animation: ripple-effect .7s forwards;
+    transition: .35s opacity;
+    overflow: hidden;
+  }
+
+  &__circle.hiding {
+    opacity: 0;
+  }
 }
 
-.c-ripple__circle {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  -webkit-transform: translate(-50%, -50%);
-          transform: translate(-50%, -50%);
-  opacity: 0;
-  width: 0;
-  height: 0;
-  border-radius: 50%;
-  /* background: rgba(255, 255, 255, 0.25); */
-  background: rgba(112, 117, 121, .08);
-}
-.c-ripple.active .c-ripple__circle {
-  //-webkit-animation: a-ripple 750ms ease-in;
-  //animation: a-ripple 750ms ease-in-out;
-  will-change: padding-bottom, width, opacity;
-  -webkit-animation: a-ripple 625ms ease-in-out;
-  animation: a-ripple 625ms ease-in-out;
-}
-
-/**
- * Animation: Ripple
- * --------------------------------------------------
- */
-@-webkit-keyframes a-ripple {
+@keyframes ripple-effect {
   0% {
-    opacity: 0;
-    //opacity: 1;
+    //transform: translate(-50%, -50%) scale(0);
+    transform: scale(0);
   }
-  25% {
-    opacity: 1;
-  }
-  100% {
-    width: 200%;
-    padding-bottom: 200%;
-    opacity: 0;
-  }
-}
-@keyframes a-ripple {
-  0% {
-    opacity: 0;
-    //opacity: 1;
-  }
-  25% {
-    opacity: 1;
-  }
-  100% {
-    width: 200%;
-    padding-bottom: 200%;
-    opacity: 0;
-  }
-}
 
-/* .ripple {
-  background-color: rgba(112, 117, 121, .08);
-  width: 1rem;
-  height: 1rem;
-  position: absolute;
-  border-radius: 50%;
-  transform: translateX(-100%) translateY(-100%);
-  mix-blend-mode: screen;
-  animation: ripple 750ms ease-out forwards;
-}
+  /* 50% {
+    opacity: 1;
+  } */
 
-@keyframes ripple {
-  0%   { transform: translate(-100%, -100%); }
-  80%  { transform: translate(-100%, -100%) scale(50); }
-  100% { transform: translate(-100%, -100%) scale(50); }
-} */
+  to {
+    transform: scale(2);
+    //transform: translate(-50%, -50%) scale(2);
+    //opacity: 0;
+  }
+}
 
 .document {
   padding-left: 4.5rem;
@@ -809,6 +763,10 @@ input {
     width: 24px;
     font-size: 24px;
     line-height: 1;
+  }
+
+  .scrollable {
+    position: relative;
   }
 }
 
@@ -1313,7 +1271,7 @@ span.popup-close {
   }
 }
 
-/* div.scrollable::-webkit-scrollbar {
+div.scrollable::-webkit-scrollbar {
   width: 0;
   height: 0;
 }
@@ -1330,7 +1288,7 @@ div.scrollable::-webkit-scrollbar-thumb {
 }
 ::-webkit-scrollbar-corner {
   background-color: transparent;
-} */
+}
 
 .scrollable {
   width: 100%;
@@ -1395,7 +1353,7 @@ div.scrollable::-webkit-scrollbar-thumb {
   transition-duration: .2s;
   transition-timing-function: ease-in-out;
 
-  display: none;
+  //display: none;
 
   border-radius: $border-radius;
   z-index: 2;
@@ -1621,6 +1579,15 @@ div.scrollable::-webkit-scrollbar-thumb {
     .preloader-path {
       stroke: $button-primary-background;
     }
+  }
+
+  @media (min-width: $large-screen) {
+    border-top-width: 0;
+    border-bottom-width: 0;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-style: solid;
+    border-color: #DADCE0;
   }
 }
 

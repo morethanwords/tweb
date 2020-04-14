@@ -7,9 +7,13 @@
   <meta name="description" content="">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- <link rel="manifest" href="/site.webmanifest"> -->
-  <link rel="apple-touch-icon" href="icon.png">
-  <!-- Place favicon.ico in the root directory -->
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/img/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/img/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/img/favicon-16x16.png">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="mask-icon" href="assets/img/safari-pinned-tab.svg" color="#64a3f0">
+  <meta name="msapplication-TileColor" content="#da532c">
+  <meta name="theme-color" content="#ffffff">
 
   <style>
     /* cyrillic */
@@ -191,6 +195,11 @@
     </div>
   </div>
   <div class="whole valign-wrapper page-chats" style="display: none;">
+    <svg style="position: absolute; top: -10000px; left: -10000px;">
+      <defs id="svg-defs">
+        <path id="message-tail" d="M1.00002881,1.03679295e-14 L7,0 L7,17 C6.8069969,14.1607017 6.12380234,11.2332513 4.95041634,8.21764872 C4.04604748,5.89342034 2.50413132,3.73337411 0.324667862,1.73751004 L0.324652538,1.73752677 C-0.0826597201,1.36452676 -0.110475289,0.731958677 0.262524727,0.324646419 C0.451952959,0.117792698 0.719544377,1.0985861e-14 1.00002881,1.04360964e-14 Z"></path>
+      </defs>
+    </svg>
     <div class="overlays">
       <div class="media-viewer">
         <div class="media-viewer-author">
@@ -323,7 +332,7 @@
           </div>
         </div>
       </div>
-      <div id="bubbles">
+      <div id="bubbles" class="scrolled-down">
         <div id="bubbles-inner"></div>
         <div id="bubbles-go-down" class="tgico-down z-depth-1 rp" style="display: none;"></div>
       </div>
@@ -411,6 +420,7 @@
         <button class="btn-circle z-depth-1 btn-icon tgico-microphone2" id="btn-send"></button>
       </div>
     </div>
+    <!-- <div class="profile-container sidebar sidebar-right" style="width: 25%;"> -->
     <div class="profile-container sidebar sidebar-right">
       <div class="sidebar-header">
         <button class="btn-icon rp tgico-close sidebar-close-button"></button>
@@ -426,56 +436,50 @@
         </div>
       </div>
       <div class="profile-content">
-        <div class="profile-avatar user-avatar"></div>
-        <div class="profile-name"></div>
-        <div class="profile-subtitle"></div>
-
-        <div class="profile-row profile-row-bio tgico-info">
-          <p></p>
-          <p class="profile-row-label">Bio</p>
+        <div class="profile-content-wrapper">
+          <div class="profile-avatar user-avatar"></div>
+          <div class="profile-name"></div>
+          <div class="profile-subtitle"></div>
+  
+          <div class="profile-row profile-row-bio tgico-info">
+            <p></p>
+            <p class="profile-row-label">Bio</p>
+          </div>
+          <div class="profile-row profile-row-username tgico-username">
+            <p></p>
+            <p class="profile-row-label">Username</p>
+          </div>
+          <div class="profile-row profile-row-phone tgico-phone">
+            <p></p>
+            <p class="profile-row-label">Phone</p>
+          </div>
+          <div class="profile-row profile-row-notifications">
+            <label>
+              <input type="checkbox" id="profile-notifications" checked="checked">
+              <span>Notifications</span>
+            </label>
+            <p class="profile-row-label">Enabled</p>
+          </div>
+  
+          <ul class="profile-tabs menu-horizontal">
+            <li class="profile-tabs-members rp" style="display: none;">Members</li>
+            <li class="profile-tabs-media rp">Media</li>
+            <li class="profile-tabs-docs rp">Docs</li>
+            <li class="profile-tabs-links rp">Links</li>
+            <li class="profile-tabs-audio rp">Audio</li>
+          </ul>
         </div>
-        <div class="profile-row profile-row-username tgico-username">
-          <p></p>
-          <p class="profile-row-label">Username</p>
-        </div>
-        <div class="profile-row profile-row-phone tgico-phone">
-          <p></p>
-          <p class="profile-row-label">Phone</p>
-        </div>
-        <div class="profile-row profile-row-notifications">
-          <label>
-            <input type="checkbox" id="profile-notifications" checked="checked">
-            <span>Notifications</span>
-          </label>
-          <p class="profile-row-label">Enabled</p>
-        </div>
-
-        <ul class="profile-tabs menu-horizontal">
-          <li class="profile-tabs-members rp" style="display: none;">Members</li>
-          <li class="profile-tabs-media rp">Media</li>
-          <li class="profile-tabs-docs rp">Docs</li>
-          <li class="profile-tabs-links rp">Links</li>
-          <li class="profile-tabs-audio rp">Audio</li>
-        </ul>
         <div class="content-container">
           <div class="profile-tabs-content tabs-container">
-            <div class="content-members-container"><div id="content-members">1</div></div>
+            <div class="content-members-container"><div id="content-members"></div></div>
             <div class="content-media-container"><div id="content-media"></div></div>
             <div class="content-docs-container"><div id="content-docs"></div></div>
-            <div class="content-links-container"><div id="content-links">4</div></div>
-            <div class="content-audio-container"><div id="content-audio">5</div></div>
+            <div class="content-links-container"><div id="content-links"></div></div>
+            <div class="content-audio-container"><div id="content-audio"></div></div>
           </div>
         </div>
       </div>
     </div>
   </div>
-  <!-- <script src="bundle.js"></script> -->
-  <!-- <script src="npm.aes-js.chunk.js"></script>
-  <script src="npm.jsbn.chunk.js"></script>
-  <script src="npm.leemon.chunk.js"></script>
-  <script src="npm.lottie-web.chunk.js"></script>
-  <script src="vendors~main.chunk.js"></script>
-  <script src="main.bundle.js"></script> -->
-
 </html>
-<script type="text/javascript" src="npm.aes-js.chunk.js"></script><script type="text/javascript" src="npm.jsbn.chunk.js"></script><script type="text/javascript" src="npm.leemon.chunk.js"></script><script type="text/javascript" src="npm.lottie-web.chunk.js"></script><script type="text/javascript" src="npm.web-streams-polyfill.chunk.js"></script><script type="text/javascript" src="vendors~index.chunk.js"></script><script type="text/javascript" src="index.bundle.js"></script><script type="text/javascript" src="webp.bundle.js"></script>
+<script type="text/javascript" src="npm.aes-js.chunk.js"></script><script type="text/javascript" src="npm.jsbn.chunk.js"></script><script type="text/javascript" src="npm.leemon.chunk.js"></script><script type="text/javascript" src="npm.web-streams-polyfill.chunk.js"></script><script type="text/javascript" src="vendors~index.chunk.js"></script><script type="text/javascript" src="index.bundle.js"></script><script type="text/javascript" src="webp.bundle.js"></script><script type="text/javascript" src="lottie.bundle.js"></script>

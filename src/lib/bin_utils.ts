@@ -10,13 +10,6 @@ import {BigInteger, SecureRandom} from 'jsbn';
 // @ts-ignore
 import pako from 'pako/dist/pako_inflate.min.js';
 
-//import { dT } from './utils.js';
-
-/* import './closure_long.js';
-//var goog = window ? window.goog as any : this.goog;
-var goog = typeof(window) !== 'undefined' ? window.goog : this.goog; */
-
-
 var _logTimer = (new Date()).getTime()
 export function dT () {
   return '[' + (((new Date()).getTime() - _logTimer) / 1000).toFixed(3) + ']'

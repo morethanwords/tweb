@@ -1,5 +1,8 @@
 import { bytesToHex, bytesFromHex, dT, bufferConcats } from "./bin_utils";
-import { MTProto } from "./mtproto/mtproto";
+// @ts-ignore
+import {SecureRandom} from 'jsbn';
+
+export const secureRandom = new SecureRandom();
 
 export function logger(prefix: string) {
   function Log(...args: any[]) {
@@ -69,7 +72,7 @@ Object.defineProperty(Uint8Array.prototype, 'hex', {
 });
 
 Uint8Array.prototype.randomize = function() {
-  MTProto.secureRandom.nextBytes(this);
+  secureRandom.nextBytes(this);
   return this;
 };
 

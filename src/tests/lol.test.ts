@@ -3,7 +3,7 @@ import { bytesFromHex, bytesFromArrayBuffer } from '../lib/bin_utils';
 
 test('factorize', () => {
   for(let i = 0; i < 10; ++i) {
-    CryptoWorker.factorize(new Uint8Array([20, 149, 30, 137, 202, 169, 105, 69])).then((pAndQ: any) => {
+    CryptoWorker.factorize(new Uint8Array([20, 149, 30, 137, 202, 169, 105, 69])).then(pAndQ => {
       pAndQ.pop();
       expect(pAndQ).toEqual([[59, 165, 190, 67], [88, 86, 117, 215]]);
     });
@@ -22,6 +22,12 @@ test('sha1', () => {
       249,   0,  96, 235,  11,  10,
       173, 197
     ]);
+  });
+});
+
+test('sha256', () => {
+  CryptoWorker.sha256Hash(new Uint8Array([112, 20, 211, 20, 106, 249, 203, 252, 39, 107, 106, 194, 63, 60, 13, 130, 51, 78, 107, 6, 110, 156, 214, 65, 205, 10, 30, 150, 79, 10, 145, 194, 232, 240, 127, 55, 146, 103, 248, 227, 160, 172, 30, 153, 122, 189, 110, 162, 33, 86, 174, 117])).then(bytes => {  
+    expect(bytes).toEqual(new Uint8Array([158, 59, 39, 247, 130, 244, 235, 160, 16, 249, 34, 114, 67, 171, 203, 208, 187, 72, 217, 106, 253, 62, 195, 242, 52, 118, 99, 72, 221, 29, 203, 95]));
   });
 });
 

@@ -5,7 +5,6 @@ import appMessagesManager from "./appMessagesManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import { logger } from "../polyfill";
 import ProgressivePreloader from "../../components/preloader";
-import { wrapVideo } from "../../components/wrappers";
 import { findUpClassName, $rootScope, generatePathData } from "../utils";
 import appDocsManager from "./appDocsManager";
 import { wrapPlayer } from "../ckin";

@@ -6,8 +6,6 @@ import apiManager from "./apiManager";
 import { logger, deferredPromise, CancellablePromise } from "../polyfill";
 
 export class ApiFileManager {
-  public cachedFs = false;
-  public cachedFsPromise = false;
   public cachedSavePromises: {
     [fileName: string]: Promise<Blob>
   } = {};
@@ -17,6 +15,9 @@ export class ApiFileManager {
   public cachedDownloads: {
     [fileName: string]: any
   } = {};
+
+  /* public indexedKeys: Set<string> = new Set();
+  private keysLoaded = false; */
 
   public downloadPulls: {
     [x: string]: Array<{
@@ -93,8 +94,8 @@ export class ApiFileManager {
         var fileName = (location.file_name as string || '').split('.');
         var ext: string = fileName[fileName.length - 1] || '';
 
-        if(location.stickerType == 1 /* && !WebpManager.isWebpSupported() */) { // warning
-          ext += 'webp'; /* 'png'; */
+        if(location.stickerType == 1) {
+          ext += 'webp';
         } else if(location.stickerType == 2) {
           ext += 'tgs';
         }
@@ -109,13 +110,13 @@ export class ApiFileManager {
 
         var ext: string = 'jpg';
         if(location.stickerType == 1) {
-          ext = 'webp'/* WebpManager.isWebpSupported() ? 'webp' :  'png'*/;
+          ext = 'webp';
         } else if(location.stickerType == 2) {
           ext += 'tgs';
         }
 
         if(location.volume_id) {
-          return location.volume_id + '_' + location.local_id /* + '_' + location.secret */ + '.' + ext;
+          return location.volume_id + '_' + location.local_id + '.' + ext;
         } else {
           return location.id + '_' + location.access_hash + '.' + ext;
         }
@@ -138,18 +139,15 @@ export class ApiFileManager {
   }
 
   public getFileStorage(): typeof IdbFileStorage {
-    if(!Config.Modes.memory_only) {
-      /* if(TmpfsFileStorage.isAvailable()) {
-        return TmpfsFileStorage;
-      } */
-      
-      if(IdbFileStorage.isAvailable()) {
-        return IdbFileStorage;
-      }
-    }
-
-    return IdbFileStorage/* MemoryFileStorage */;
+    return IdbFileStorage;
   }
+
+  /* public isFileExists(location: any) {
+    var fileName = this.getFileName(location);
+
+    return this.cachedDownloads[fileName] || this.indexedKeys.has(fileName);
+    //return this.cachedDownloads[fileName] || this.indexedKeys.has(fileName) ? Promise.resolve(true) : this.getFileStorage().isFileExists(fileName);
+  } */
 
   public saveSmallFile(location: any, bytes: Uint8Array) {
     var fileName = this.getFileName(location);
@@ -171,6 +169,10 @@ export class ApiFileManager {
     if(!FileManager.isAvailable()) {
       return Promise.reject({type: 'BROWSER_BLOB_NOT_SUPPORTED'});
     }
+
+    /* if(!this.keysLoaded) {
+      this.getIndexedKeys();
+    } */
 
     //this.log('downloadSmallFile', location, options);
 
@@ -243,6 +245,14 @@ export class ApiFileManager {
     return fileStorage.getFile(fileName, size);
   }
 
+  /* public getIndexedKeys() {
+    this.keysLoaded = true;
+    this.getFileStorage().getAllKeys().then(keys => {
+      this.indexedKeys.clear();
+      this.indexedKeys = new Set(keys);
+    });
+  } */
+
   public downloadFile(dcID: number, location: any, size: number, options: {
     mimeType?: string,
     dcID?: number,
@@ -253,14 +263,8 @@ export class ApiFileManager {
       return Promise.reject({type: 'BROWSER_BLOB_NOT_SUPPORTED'});
     }
 
-    /* var processSticker = false;
-    if(location.sticker && !WebpManager.isWebpSupported()) {
-      if(options.toFileEntry || size > 524288) {
-        delete location.sticker;
-      } else {
-        processSticker = true;
-        options.mime = 'image/png';
-      }
+    /* if(!this.keysLoaded) {
+      this.getIndexedKeys();
     } */
 
     // this.log('Dload file', dcID, location, size)
@@ -273,8 +277,6 @@ export class ApiFileManager {
 
     if(cachedPromise) {
       if(toFileEntry) {
-        /* let blob = await cachedPromise;
-        return FileManager.copy(blob, toFileEntry) as Promise<Blob>; */
         return cachedPromise.then((blob: any) => {
           return FileManager.copy(blob, toFileEntry);
         });
@@ -283,13 +285,6 @@ export class ApiFileManager {
       //this.log('downloadFile cachedPromise');
 
       if(size) {
-        /* let blob = await cachedPromise;
-        if(blob.size < size) {
-          this.log('downloadFile need to deleteFile, wrong size:', blob.size, size);
-          await this.deleteFile(location);
-        } else {
-          return cachedPromise;
-        } */
         return cachedPromise.then((blob: Blob) => {
           if(blob.size < size) {
             this.log('downloadFile need to deleteFile, wrong size:', blob.size, size);
@@ -300,7 +295,6 @@ export class ApiFileManager {
               return this.downloadFile(dcID, location, size, options);
             });
           } else {
-            //return cachedPromise;
             return blob;
           }
         });
@@ -309,12 +303,7 @@ export class ApiFileManager {
       }
     }
 
-    //this.log('arriba');
-
-    //var deferred = $q.defer()
     let deferred = deferredPromise<Blob>();
-
-    //return;
 
     var canceled = false;
     var resolved = false;
@@ -345,7 +334,6 @@ export class ApiFileManager {
       } else {
         deferred.resolve(this.cachedDownloads[fileName] = blob);
       }
-    //}, () => {
     }).catch(() => {
       //this.log('not i wanted');
       //var fileWriterPromise = toFileEntry ? FileManager.getFileWriter(toFileEntry) : fileStorage.getFileWriter(fileName, mimeType);
@@ -496,7 +484,6 @@ export class ApiFileManager {
     var totalParts = Math.ceil(fileSize / partSize);
 
     var fileID = [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)];
-    //var deferred = $q.defer();
 
     var _part = 0,
       resultInputFile = {
@@ -506,23 +493,6 @@ export class ApiFileManager {
         name: file instanceof File ? file.name : '',
         md5_checksum: ''
     };
-
-    /* let deferred: {
-      then?: any,
-      resolve?: (input: typeof resultInputFile) => void,
-      reject?: (error: any) => void,
-      promise?: any,
-
-      cancel?: () => void,
-      notify?: (details: {done: number, total: number}) => void
-    } = {
-      
-    };
-
-    deferred.promise = new Promise<typeof resultInputFile>((resolve, reject) => {
-      deferred.resolve = resolve;
-      deferred.reject = reject;
-    }); */
 
     let deferredHelper: {
       resolve?: (input: typeof resultInputFile) => void,
@@ -538,7 +508,6 @@ export class ApiFileManager {
 
       deferredHelper.resolve = resolve;
       deferredHelper.reject = reject;
-      //return Promise.resolve();
     });
     Object.assign(deferred, deferredHelper);
 

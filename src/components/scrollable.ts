@@ -90,11 +90,16 @@ export default class Scrollable {
   private disableHoverTimeout: number = 0;
   
   private log: ReturnType<typeof logger>;
-  private debug = true;
+  private debug = false;
   
   private measureMutex: CancellablePromise<void>;
   private prependLocked = false;
   private appendLocked = false;
+
+  private prependFragment: DocumentFragment = null;
+  private appendFragment: DocumentFragment = null;
+  private prependFragmentId = 0;
+  private appendFragmentId = 0;
   
   constructor(public el: HTMLElement, axis: 'y' | 'x' = 'y', public splitOffset = 300, logPrefix = '', public appendTo = el, public onScrollOffset = splitOffset) {
     this.container = document.createElement('div');
@@ -194,11 +199,11 @@ export default class Scrollable {
     
     el.append(this.container);
     
-    setTimeout(() => {
+    window.requestAnimationFrame(() => {
       // @ts-ignore
       this.size = this.container[this.clientSize];
       this.resize();
-    }, 0);
+    });
     
     this.container.parentElement.append(this.thumb);
   }
@@ -763,7 +768,8 @@ export default class Scrollable {
       }
     } else {
       this.appendTo.prepend(element);
-      this.onScroll();
+      this.visibleElements.unshift({element, height: 0});
+      //this.onScroll();
     }
     
     //this.onScroll();
@@ -812,10 +818,51 @@ export default class Scrollable {
       }
     } else {
       this.appendTo.append(element);
-      this.onScroll();
+      this.visibleElements.push({element, height: 0});
+      //this.onScroll();
     }
     
     //this.onScroll();
+  }
+
+  public prependByBatch(element: HTMLElement) {
+    let perf = performance.now();
+    let fragment = this.prependFragment ?? (this.prependFragment = document.createDocumentFragment());
+    fragment.prepend(element);
+
+    if(this.prependFragmentId) window.cancelAnimationFrame(this.prependFragmentId);
+    this.prependFragmentId = window.requestAnimationFrame(() => {
+      this.prependFragment = null;
+      this.prependFragmentId = 0;
+
+      for(let length = fragment.childElementCount, i = length - 1; i >= 0; --i) {
+        let element = fragment.children[i];
+        this.visibleElements.unshift({element, height: 0});
+      }
+
+      this.log('prependByBatch perf:', performance.now() - perf, fragment.childElementCount);
+      this.appendTo.prepend(fragment);
+      //this.onScroll();
+    });
+  }
+
+  public appendByBatch(element: HTMLElement) {
+    let fragment = this.appendFragment ?? (this.appendFragment = document.createDocumentFragment());
+    fragment.append(element);
+
+    if(this.appendFragmentId) window.cancelAnimationFrame(this.appendFragmentId);
+    this.appendFragmentId = window.requestAnimationFrame(() => {
+      this.appendFragment = null;
+      this.appendFragmentId = 0;
+
+      for(let i = 0, length = fragment.childElementCount; i < length; ++i) {
+        let element = fragment.children[i];
+        this.visibleElements.push({element, height: 0});
+      }
+
+      this.appendTo.append(fragment);
+      //this.onScroll();
+    });
   }
   
   public contains(element: Element) {
@@ -985,9 +1032,9 @@ export default class Scrollable {
   }
   
   set scrollTop(y: number) {
-    fastdom.mutate(() => {
+    //fastdom.mutate(() => {
       this.container.scrollTop = y;
-    });
+    //});
   }
   
   get scrollTop() {
@@ -996,6 +1043,10 @@ export default class Scrollable {
   
   get scrollHeight() {
     return this.container.scrollHeight;
+  }
+
+  get innerHeight() {
+    return this.size;
   }
   
   get parentElement() {

@@ -254,6 +254,48 @@ class IdbFileStorage {
     });
   }
 
+  public getAllKeys(): Promise<Array<string>> {
+    console.time('getAllEntries');
+    return this.openDatabase().then((db) => {
+      // @ts-ignore
+      var objectStore = db.transaction([this.dbStoreName], IDBTransaction.READ || 'readonly')
+        .objectStore(this.dbStoreName);
+      var request = objectStore.getAllKeys();
+
+      return new Promise((resolve, reject) => {
+        request.onsuccess = function(event) {
+          // @ts-ignore
+          var result = event.target.result;
+          resolve(result);
+          console.timeEnd('getAllEntries');
+        }
+  
+        request.onerror = reject;
+      });
+    });
+  }
+
+  public isFileExists(fileName: string): Promise<boolean> {
+    console.time('isFileExists');
+    return this.openDatabase().then((db) => {
+      // @ts-ignore
+      var objectStore = db.transaction([this.dbStoreName], IDBTransaction.READ || 'readonly')
+        .objectStore(this.dbStoreName);
+      var request = objectStore.openCursor(fileName);
+
+      return new Promise((resolve, reject) => {
+        request.onsuccess = function(event) {
+          // @ts-ignore
+          var cursor = event.target.result;
+          resolve(!!cursor);
+          console.timeEnd('isFileExists');
+        }
+  
+        request.onerror = reject;
+      });
+    });
+  }
+
   public getFileWriter(fileName: string, mimeType: string) {
     var fakeWriter = FileManager.getFakeFileWriter(mimeType, (blob: any) => {
       this.saveFile(fileName, blob);

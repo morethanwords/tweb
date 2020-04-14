@@ -1,55 +1,95 @@
-import apiManager from "../lib/mtproto/apiManager";
 import { whichChild, findUpTag } from "../lib/utils";
 
-let onRippleClick = function(this: HTMLElement, e: MouseEvent) {
-  var $circle = this.firstElementChild as HTMLSpanElement;
-  
-  var rect = this.parentElement.getBoundingClientRect();
-  var x = e.clientX - rect.left; //x position within the element.
-  var y = e.clientY - rect.top;
-  
-  /* var x = e.pageX - this.parentElement.offsetLeft;
-  var y = e.pageY - this.parentElement.offsetTop - this.parentElement.scrollHeight; */
-  
-  $circle.style.top = y + 'px';
-  $circle.style.left = x + 'px';
-  
-  this.classList.add('active');
-  
-  //console.log('onrippleclick', e/* e.pageY, this.parentElement.offsetTop */);
-};
-
-export function ripple(elem: Element) {
-  /* elem.addEventListener('click', function(e) {
-    var $circle = elem.querySelector('.c-ripple__circle') as HTMLSpanElement;
-    
-    var x = e.pageX - elem.offsetLeft;
-    var y = e.pageY - elem.offsetTop;
-    
-    $circle.style.top = y + 'px';
-    $circle.style.left = x + 'px';
-    
-    elem.classList.add('active');
-  }); */
-  
+let rippleClickID = 0;
+export function ripple(elem: HTMLElement, callback: (id: number) => Promise<boolean | void> = () => Promise.resolve(), onEnd: (id: number) => void = null) {
   let r = document.createElement('div');
   r.classList.add('c-ripple');
-  
-  let span = document.createElement('span');
-  span.classList.add('c-ripple__circle');
-  
-  r.append(span);
+
   elem.append(r);
+
+  elem.addEventListener('mousedown', (e) => {
+    let startTime = Date.now();
+    let span = document.createElement('span');
+
+    let clickID = rippleClickID++;
+
+    let handler = () => {
+      let elapsedTime = Date.now() - startTime;
+      if(elapsedTime < 700) {
+        let delay = Math.max(700 - elapsedTime, 350);
+        setTimeout(() => span.classList.add('hiding'), Math.max(delay - 350, 0));
+
+        setTimeout(() => {
+          //console.log('ripple elapsedTime total pre-remove:', Date.now() - startTime);
+          span.remove();
+          if(onEnd) onEnd(clickID);
+        }, delay);
+      } else {
+        span.classList.add('hiding');
+        setTimeout(() => {
+          //console.log('ripple elapsedTime total pre-remove:', Date.now() - startTime);
+          span.remove();
+          if(onEnd) onEnd(clickID);
+        }, 350);
+      }
+    };
+
+    callback && callback(clickID);
+
+    /* callback().then((bad) => {
+      if(bad) {
+        span.remove();
+        return;
+      } */
+      
+      //console.log('ripple after promise', Date.now() - startTime);
+      //console.log('ripple tooSlow:', tooSlow);
+      /* if(tooSlow) {
+        span.remove();
+        return;
+      } */
+
+      window.requestAnimationFrame(() => {
+        span.classList.add('c-ripple__circle');
+        let rect = r.getBoundingClientRect();
+
+        let clickX = e.clientX - rect.left;
+        let clickY = e.clientY - rect.top;
+
+        let size: number, clickPos: number;
+        if(rect.width > rect.height) {
+          size = rect.width;
+          clickPos = clickX;
+        } else {
+          size = rect.height;
+          clickPos = clickY;
+        }
+
+        let offsetFromCenter = clickPos > (size / 2) ? size - clickPos : clickPos;
+        size = size - offsetFromCenter;
+        size *= 1.1;
+
+        // center of circle
+        let x = clickX - size / 2;
+        let y = clickY - size / 2;
+
+        //console.log('ripple click', offsetFromCenter, size, clickX, clickY);
+
+        span.style.width = span.style.height = size + 'px';
+        span.style.left = x + 'px';
+        span.style.top = y + 'px';
   
-  r.addEventListener('click', onRippleClick);
-  
-  let onEnd = () => {
-    r.classList.remove('active');
-  };
-  
-  for(let type of ['animationend', 'webkitAnimationEnd', 'oanimationend', 'MSAnimationEnd']) {
-    r.addEventListener(type, onEnd);
-  }
+        r.append(span);
+        //r.classList.add('active');
+        //handler();
+      });
+    //});
+    
+    window.addEventListener('mouseup', () => {
+      //console.time('appImManager: pre render start');
+      handler();
+    }, {once: true});
+  });
 }
 
 export function putPreloader(elem: Element, returnDiv = false) {
@@ -153,17 +193,6 @@ export function horizontalMenu(tabs: HTMLUListElement, content: HTMLDivElement, 
     }, 200);
     
     prevTabContent = tabContent;
-  });
-}
-
-export function getNearestDc() {
-  return apiManager.invokeApi('help.getNearestDc').then((nearestDcResult: any) => {
-    if(nearestDcResult.nearest_dc != nearestDcResult.this_dc) {
-      //MTProto.apiManager.baseDcID = nearestDcResult.nearest_dc;
-      apiManager.getNetworker(nearestDcResult.nearest_dc);
-    }
-    
-    return nearestDcResult;
   });
 }
 

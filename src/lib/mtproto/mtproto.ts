@@ -54,13 +54,8 @@ export class TelegramMeWebService {
 
 export const telegramMeWebService = new TelegramMeWebService();
 
-// @ts-ignore
-import {SecureRandom} from 'jsbn';
-
 export namespace MTProto {
   //$($window).on('click keydown', rng_seed_time); // WARNING!
-
-  export const secureRandom = new SecureRandom();
 
   export const passwordManager = PasswordManager;
   export const dcConfigurator = DcConfigurator;
@@ -73,4 +68,4 @@ export namespace MTProto {
   export const serverTimeManager = ServerTimeManager;
 }
 
-//(window as any).MTProto = MTProto;
+(window as any).MTProto = MTProto;

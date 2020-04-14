@@ -21,11 +21,18 @@ import apiManager from "../mtproto/apiManager";
 import appWebPagesManager from "./appWebPagesManager";
 import { CancellablePromise, deferredPromise } from "../polyfill";
 
-type HistoryStorage = {
+export type HistoryStorage = {
   count: number | null,
   history: number[],
   pending: number[],
   readPromise?: any
+};
+
+export type HistoryResult = {
+  count: number,
+  history: number[],
+  unreadOffset: number,
+  unreadSkip: boolean
 };
 
 export class AppMessagesManager {
@@ -1137,7 +1144,7 @@ export class AppMessagesManager {
             if(apiMessage.media.ttl_seconds) {
               apiMessage.media = {_: 'messageMediaUnsupportedWeb'};
             } else {
-              appDocsManager.saveDoc(apiMessage.media.document, mediaContext);
+              apiMessage.media.document = appDocsManager.saveDoc(apiMessage.media.document, mediaContext); // 11.04.2020 warning
             }
             break;
           case 'messageMediaWebPage':
@@ -3017,12 +3024,7 @@ export class AppMessagesManager {
     });
   }
 
-  public getHistory(peerID: number, maxID = 0, limit = 0, backLimit?: number, prerendered?: number): Promise<{
-    count: number,
-    history: number[],
-    unreadOffset: number,
-    unreadSkip: boolean
-  }> {
+  public getHistory(peerID: number, maxID = 0, limit = 0, backLimit?: number, prerendered?: number) {
     if(this.migratedFromTo[peerID]) {
       peerID = this.migratedFromTo[peerID];
     }
@@ -3095,10 +3097,12 @@ export class AppMessagesManager {
       } else {
         limit = limit || (offset ? 20 : (prerendered || 5));
       }
+
       var history = historyStorage.history.slice(offset, offset + limit);
       if(!maxID && historyStorage.pending.length) {
         history = historyStorage.pending.slice().concat(history);
       }
+
       return this.wrapHistoryResult(peerID, {
         count: historyStorage.count,
         history: history,
@@ -3230,7 +3234,7 @@ export class AppMessagesManager {
     });
   }
 
-  public wrapHistoryResult(peerID: number, result: any) {
+  public wrapHistoryResult(peerID: number, result: HistoryResult) {
     var unreadOffset = result.unreadOffset;
     if(unreadOffset) {
       var i;
@@ -3243,13 +3247,16 @@ export class AppMessagesManager {
         }
       }
     }
-    return Promise.resolve(result);
+    return result;
+    //return Promise.resolve(result);
   }
 
   public requestHistory(peerID: number, maxID: number, limit: number, offset = 0) {
     var isChannel = AppPeersManager.isChannel(peerID);
 
     //console.trace('requestHistory', peerID, maxID, limit, offset);
+
+    $rootScope.$broadcast('history_request');
 
     return apiManager.invokeApi('messages.getHistory', {
       peer: AppPeersManager.getInputPeerByID(peerID),
