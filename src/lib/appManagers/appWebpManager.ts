@@ -65,7 +65,11 @@ class AppWebpManager {
     await this.loaded;
 
     this.busyPromise = this.convert(bytes);
-    img.src = await this.busyPromise;
+    let imgTemp = new Image();
+    imgTemp.src = await this.busyPromise;
+    imgTemp.onload = () => {
+      img.src = imgTemp.src;
+    };
     callback();
 
     this.busyPromise = null;

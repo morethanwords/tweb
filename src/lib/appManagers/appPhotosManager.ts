@@ -7,7 +7,7 @@ import apiFileManager from "../mtproto/apiFileManager";
 import apiManager from "../mtproto/apiManager";
 
 type MTPhoto = {
-  _: 'photo',
+  _: 'photo' | 'photoEmpty' | string,
   pFlags: any,
   flags: number,
   id: string,
@@ -18,7 +18,8 @@ type MTPhoto = {
   dc_id: number,
   user_id: number,
 
-  downloaded?: boolean
+  downloaded?: boolean | number,
+  url?: string
 };
 
 export class AppPhotosManager {
@@ -52,7 +53,7 @@ export class AppPhotosManager {
       console.warn('no apiPhoto.id', photo);
     } else this.photos[photo.id] = photo;
     
-    if(!('sizes' in photo)) return;
+    /* if(!('sizes' in photo)) return;
     
     photo.sizes.forEach((photoSize: any) => {
       if(photoSize._ == 'photoCachedSize') {
@@ -65,7 +66,7 @@ export class AppPhotosManager {
         delete photoSize.bytes;
         photoSize._ = 'photoSize';
       }
-    });
+    }); */
 
     /* if(!photo.downloaded) {
       photo.downloaded = apiFileManager.isFileExists({
@@ -141,7 +142,8 @@ export class AppPhotosManager {
       var photoIDs = [];
       var context = {user_id: userID};
       for(var i = 0; i < photosResult.photos.length; i++) {
-        this.savePhoto(photosResult.photos[i], context);
+        //this.savePhoto(photosResult.photos[i], context);
+        photosResult.photos[i] = this.savePhoto(photosResult.photos[i], context);
         photoIDs.push(photosResult.photos[i].id);
       }
       
@@ -237,8 +239,8 @@ export class AppPhotosManager {
     return photoSize;
   }
   
-  public preloadPhoto(photoID: any, photoSize?: MTPhotoSize): Promise<Blob> {
-    let photo: any = null;
+  public preloadPhoto(photoID: any, photoSize?: MTPhotoSize): Promise<Blob | string> {
+    let photo: MTPhoto = null;
     
     if(typeof(photoID) === 'string') {
       photo = this.photos[photoID];
@@ -267,6 +269,10 @@ export class AppPhotosManager {
 
       let promise: Promise<Blob>;
 
+      /* if(photo.downloaded == photoSize.size && photo.url) {
+        return Promise.resolve(photo.url);
+      } */
+
       if(isPhoto/*  && photoSize.size >= 1e6 */) {
         //console.log('Photos downloadFile exec', photo);
         promise = apiFileManager.downloadFile(photo.dc_id, location, photoSize.size);
@@ -276,8 +282,14 @@ export class AppPhotosManager {
       }
 
       if(typeof(photoID) === 'string') {
-        promise.then(() => {
-          this.photos[photoID].downloaded = true;
+        let photo = this.photos[photoID]; 
+        promise.then(blob => {
+          if(!photo.downloaded || photo.downloaded < blob.size) {
+            photo.downloaded = blob.size;
+            photo.url = URL.createObjectURL(blob);
+
+            console.log('wrote photo:', photo, photoSize, blob);
+          }
         });
       }
 

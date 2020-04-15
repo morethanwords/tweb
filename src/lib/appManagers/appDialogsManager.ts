@@ -6,7 +6,7 @@ import appPeersManager from './appPeersManager';
 import appMessagesManager from "./appMessagesManager";
 import appUsersManager from "./appUsersManager";
 import { RichTextProcessor } from "../richtextprocessor";
-import { ripple } from "../../components/misc";
+import { ripple, renderImageFromUrl } from "../../components/misc";
 import appSidebarLeft from "./appSidebarLeft";
 import Scrollable from "../../components/scrollable";
 
@@ -219,13 +219,14 @@ export class AppDialogsManager {
 
     let img = new Image();
     img.src = this.savedAvatarURLs[peerID];
+    //renderImageFromUrl(img, this.savedAvatarURLs[peerID]);
     div.innerHTML = '';
     //div.style.fontSize = '0'; // need
     //div.style.backgroundColor = '';
 
-    window.requestAnimationFrame(() => {
+    //window.requestAnimationFrame(() => {
       div.append(img);
-    });
+    //});
 
     return true;
   }

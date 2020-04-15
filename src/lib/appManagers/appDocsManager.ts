@@ -2,12 +2,12 @@ import apiFileManager from '../mtproto/apiFileManager';
 import FileManager from '../filemanager';
 import {RichTextProcessor} from '../richtextprocessor';
 import { CancellablePromise } from '../polyfill';
-//import { MTDocument } from '../../components/misc';
+import { MTDocument } from '../../components/wrappers';
 
 class AppDocsManager {
   private docs: any = {};
 
-  public saveDoc(apiDoc: /* MTDocument */any, context?: any) {
+  public saveDoc(apiDoc: MTDocument/* any */, context?: any) {
     console.log('saveDoc', apiDoc, this.docs[apiDoc.id]);
     if(this.docs[apiDoc.id]) return this.docs[apiDoc.id];
 
@@ -136,15 +136,17 @@ class AppDocsManager {
     return this.docs[docID] !== undefined;
   }
   
-  public getFileName(doc: any) {
-    if (doc.file_name) {
-      return doc.file_name
+  public getFileName(doc: MTDocument) {
+    if(doc.file_name) {
+      return doc.file_name;
     }
-    var fileExt = '.' + doc.mime_type.split('/')[1]
-    if (fileExt == '.octet-stream') {
-      fileExt = ''
+
+    var fileExt = '.' + doc.mime_type.split('/')[1];
+    if(fileExt == '.octet-stream') {
+      fileExt = '';
     }
-    return 't_' + (doc.type || 'file') + doc.id + fileExt
+
+    return 't_' + (doc.type || 'file') + doc.id + fileExt;
   }
   
   public updateDocDownloaded(docID: string) {
@@ -166,8 +168,8 @@ class AppDocsManager {
     }
   }
   
-  public downloadDoc(docID: any, toFileEntry?: any): CancellablePromise<Blob> {
-    let doc: any;
+  public downloadDoc(docID: string | MTDocument, toFileEntry?: any): CancellablePromise<Blob> {
+    let doc: MTDocument;
     if(typeof(docID) === 'string') {
       doc = this.docs[docID];
     } else {

@@ -21,7 +21,8 @@ class AppWebPagesManager {
   
   saveWebPage(apiWebPage: any, messageID?: number, mediaContext?: any) {
     if(apiWebPage.photo && apiWebPage.photo._ === 'photo') {
-      appPhotosManager.savePhoto(apiWebPage.photo, mediaContext);
+      //appPhotosManager.savePhoto(apiWebPage.photo, mediaContext);
+      apiWebPage.photo = appPhotosManager.savePhoto(apiWebPage.photo, mediaContext);
     } else {
       delete apiWebPage.photo;
     }

@@ -92,6 +92,16 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
   });
 }
 
+export function renderImageFromUrl(elem: HTMLElement | HTMLImageElement | SVGImageElement, url: string) {
+  let img = new Image();
+  img.src = url;
+  img.onload = () => {
+    if(elem instanceof HTMLImageElement) elem.src = url;
+    else if(elem instanceof SVGImageElement) elem.setAttributeNS(null, 'href', url);
+    else elem.style.backgroundImage = 'url(' + url + ')';
+  };
+}
+
 export function putPreloader(elem: Element, returnDiv = false) {
   const html = `
   <svg xmlns="http://www.w3.org/2000/svg" class="preloader-circular" viewBox="25 25 50 50">

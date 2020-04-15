@@ -94,25 +94,12 @@ export class ApiFileManager {
         var fileName = (location.file_name as string || '').split('.');
         var ext: string = fileName[fileName.length - 1] || '';
 
-        if(location.stickerType == 1) {
-          ext += 'webp';
-        } else if(location.stickerType == 2) {
-          ext += 'tgs';
-        }
-
         var versionPart = location.version ? ('v' + location.version) : '';
         return (fileName[0] ? fileName[0] + '_' : '') + location.id + versionPart + (ext ? '.' + ext : ext);
 
       default:
         if(!location.volume_id && !location.file_reference) {
           this.log.trace('Empty location', location);
-        }
-
-        var ext: string = 'jpg';
-        if(location.stickerType == 1) {
-          ext = 'webp';
-        } else if(location.stickerType == 2) {
-          ext += 'tgs';
         }
 
         if(location.volume_id) {

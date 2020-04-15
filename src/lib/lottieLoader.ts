@@ -61,6 +61,11 @@ class LottieLoader {
 
         if(canvas) {
           let c = container.firstElementChild as HTMLCanvasElement;
+          if(!c) {
+            console.warn('no canvas element for check!', container, animations[i]);
+            continue;
+          }
+          
           if(!c.height && !c.width && isElementInViewport(container)) {
             //console.log('lottie need resize');
             animation.resize();

@@ -1,6 +1,8 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
+let allowedIPs = ['195.66.140.39', '192.168.31.144', '127.0.0.1', '192.168.31.1', '192.168.31.192'];
+
 module.exports = {
   module: {
     rules: [
@@ -74,7 +76,28 @@ module.exports = {
     watchContentBase: true,
     compress: true,
     http2: true,
-    port: 9000
+    host: '0.0.0.0',
+    port: 9000,
+    overlay: true,
+    useLocalIp: true,
+    before: function(app, server, compiler) {
+      app.use((req, res, next) => {
+        let IP = '';
+        if(req.headers['cf-connecting-ip']) {
+          IP = req.headers['cf-connecting-ip'];
+        } else {
+          IP = req.connection.remoteAddress.split(':').pop();
+        }
+      
+        if(!allowedIPs.includes(IP)) {
+          console.log('Bad IP connecting: ' + IP, req.url);
+          res.status(404).send('Nothing interesting here.');
+        } else {
+          console.log(req.url, IP);
+          next();
+        }
+      });
+    }
   },
 
   plugins: [

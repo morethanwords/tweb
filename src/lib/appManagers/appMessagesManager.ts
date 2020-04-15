@@ -1137,7 +1137,8 @@ export class AppMessagesManager {
             if(apiMessage.media.ttl_seconds) {
               apiMessage.media = {_: 'messageMediaUnsupportedWeb'};
             } else {
-              appPhotosManager.savePhoto(apiMessage.media.photo, mediaContext);
+              apiMessage.media.photo = appPhotosManager.savePhoto(apiMessage.media.photo, mediaContext);
+              //appPhotosManager.savePhoto(apiMessage.media.photo, mediaContext);
             }
             break
           case 'messageMediaDocument':
@@ -1171,7 +1172,8 @@ export class AppMessagesManager {
         var migrateTo;
         switch(apiMessage.action._) {
           case 'messageActionChatEditPhoto':
-            appPhotosManager.savePhoto(apiMessage.action.photo, mediaContext);
+            apiMessage.action.photo = appPhotosManager.savePhoto(apiMessage.action.photo, mediaContext);
+            //appPhotosManager.savePhoto(apiMessage.action.photo, mediaContext);
             if(isBroadcast) {
               apiMessage.action._ = 'messageActionChannelEditPhoto';
             }

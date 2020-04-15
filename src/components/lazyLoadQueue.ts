@@ -14,6 +14,8 @@ export default class LazyLoadQueue {
   private lockPromise: Promise<void> = null;
   private unlockResolve: () => void = null;
 
+  private log = console.log.bind(console, '[LL]:');
+
   constructor(private parallelLimit = 5) {
 
   }
@@ -67,13 +69,13 @@ export default class LazyLoadQueue {
 
       let tempID = this.tempID;
 
-      console.log('lazyLoadQueue: will load media', this.lockPromise);
+      this.log('will load media', this.lockPromise, item);
 
       try {
         if(this.lockPromise) {
           let perf = performance.now();
           await this.lockPromise; 
-          console.log('lazyLoadQueue: waited lock:', performance.now() - perf);
+          this.log('waited lock:', performance.now() - perf);
         }
         
         await new Promise((resolve, reject) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
@@ -86,7 +88,7 @@ export default class LazyLoadQueue {
         this.loadingMedia--;
       }
 
-      console.log('lazyLoadQueue: loaded media');
+      this.log('loaded media');
 
       if(this.lazyLoadMedia.length) {
         this.processQueue();

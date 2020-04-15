@@ -12,9 +12,10 @@ import appWebpManager from '../lib/appManagers/appWebpManager';
 import {wrapPlayer} from '../lib/ckin';
 import { RichTextProcessor } from '../lib/richtextprocessor';
 import { CancellablePromise } from '../lib/polyfill';
+import { renderImageFromUrl } from './misc';
 
 export type MTDocument = {
-  _: 'document',
+  _: 'document' | 'documentEmpty',
   pFlags: any,
   flags: number,
   id: string,
@@ -27,12 +28,25 @@ export type MTDocument = {
   dc_id: number,
   attributes: any[],
   
+  thumb?: MTPhotoSize,
   type?: string,
   h?: number,
   w?: number,
   file_name?: string,
   file?: File,
-  duration?: number
+  duration?: number,
+  downloaded?: boolean,
+  version?: any,
+
+  audioTitle?: string,
+  audioPerformer?: string,
+
+  sticker?: boolean,
+  stickerEmoji?: string,
+  stickerEmojiRaw?: string,
+  stickerSetInput?: any,
+
+  animated?: boolean
 };
 
 export type MTPhotoSize = {
@@ -497,17 +511,13 @@ export async function wrapPhoto(this: AppImManager, photoID: string, message: an
       preloader.attach(container, true, promise);
     }
     
-    return promise.then((blob) => {
+    return promise.then(() => {
       if(this.peerID != peerID) {
         this.log.warn('peer changed');
         return;
       }
-      
-      if(withTail) {
-        image.setAttributeNS(null, 'href', URL.createObjectURL(blob));
-      } else if(image instanceof Image) {
-        image.src = URL.createObjectURL(blob);
-      }
+
+      renderImageFromUrl(image, photo.url);
     });
   };
   
@@ -525,14 +535,15 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
   
   if(!stickerType) {
     console.error('wrong doc for wrapSticker!', doc, div);
+    return Promise.resolve();
   }
   
-  //////console.log('wrap sticker', doc, onlyThumb);
+  console.log('wrap sticker', doc, div, onlyThumb);
   
   if(doc.thumbs && !div.firstElementChild) {
     let thumb = doc.thumbs[0];
     
-    ///////console.log('wrap sticker', thumb);
+    console.log('wrap sticker', thumb, div);
     
     if(thumb.bytes) {
       apiFileManager.saveSmallFile(thumb.location, thumb.bytes);
@@ -566,14 +577,7 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
     return lazyLoadQueue ? (lazyLoadQueue.push({div, load}), Promise.resolve()) : load();
   }
   
-  let load = () => apiFileManager.downloadSmallFile({
-    _: 'inputDocumentFileLocation',
-    access_hash: doc.access_hash,
-    file_reference: doc.file_reference,
-    thumb_size: ''/* document.thumbs[0].type */,
-    id: doc.id,
-    stickerType: stickerType
-  }, {mimeType: doc.mime_type, dcID: doc.dc_id}).then(blob => {
+  let load = () => appDocsManager.downloadDoc(doc.id).then(blob => {
     //console.log('loaded sticker:', blob, div);
     if(middleware && !middleware()) return;
     
@@ -666,7 +670,7 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
     appStickersManager.saveSticker(doc);
   });
   
-  return lazyLoadQueue ? (lazyLoadQueue.push({div, load}), Promise.resolve()) : load();
+  return lazyLoadQueue && (!doc.downloaded || stickerType == 2) ? (lazyLoadQueue.push({div, load, wasSeen: group == 'chat'}), Promise.resolve()) : load();
 }
 
 export function wrapReply(title: string, subtitle: string, media?: any) {
@@ -710,8 +714,8 @@ export function wrapReply(title: string, subtitle: string, media?: any) {
       }
       
       appPhotosManager.preloadPhoto(photo, appPhotosManager.choosePhotoSize(photo, 32, 32))
-      .then((blob) => {
-        replyMedia.style.backgroundImage = 'url(' + URL.createObjectURL(blob) + ')';
+      .then(blob => {
+        renderImageFromUrl(replyMedia, photo.url || URL.createObjectURL(blob));
       });
       
       replyContent.append(replyMedia);
