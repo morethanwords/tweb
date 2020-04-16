@@ -92,14 +92,26 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
   });
 }
 
-export function renderImageFromUrl(elem: HTMLElement | HTMLImageElement | SVGImageElement, url: string) {
-  let img = new Image();
-  img.src = url;
-  img.onload = () => {
-    if(elem instanceof HTMLImageElement) elem.src = url;
-    else if(elem instanceof SVGImageElement) elem.setAttributeNS(null, 'href', url);
-    else elem.style.backgroundImage = 'url(' + url + ')';
-  };
+let loadedURLs: {[url: string]: boolean} = {};
+let set = (elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLSourceElement, url: string) => {
+  if(elem instanceof HTMLImageElement || elem instanceof HTMLSourceElement) elem.src = url;
+  else if(elem instanceof SVGImageElement) elem.setAttributeNS(null, 'href', url);
+  else elem.style.backgroundImage = 'url(' + url + ')';
+};
+
+export function renderImageFromUrl(elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLSourceElement, url: string) {
+  if(loadedURLs[url]) return set(elem, url);
+
+  if(elem instanceof HTMLSourceElement) {
+    return elem.src = url;
+  } else {
+    let loader = new Image();
+    loader.src = url;
+    loader.onload = () => {
+      set(elem, url);
+      loadedURLs[url] = true;
+    };
+  }
 }
 
 export function putPreloader(elem: Element, returnDiv = false) {

@@ -28,76 +28,6 @@ console.log('appImManager included!');
 
 let testScroll = false;
 
-class ScrollPosition {
-  previousScrollHeightMinusTop = 0;
-  readyFor = 'up';
-  container: HTMLElement;
-  rAF: number;
-  debug = true;
-  prepared = false;
-  
-  constructor(node: HTMLElement) {
-    this.container = node.parentElement;
-  }
-  
-  restore(callback?: () => void) {
-    return;
-
-    let setScrollTop = this.container.scrollHeight - this.previousScrollHeightMinusTop;
-    if(this.debug) appImManager.log('scrollPosition restore', this.readyFor, this.container.scrollHeight, 
-      setScrollTop, this.container, this.container.parentElement.classList.contains('scrolled-down'));
-
-    if(this.readyFor === 'up' || this.container.parentElement.classList.contains('scrolled-down')) {
-      if(this.debug) appImManager.log('scrollPosition restore 2', this.readyFor, this.container.scrollHeight, 
-        setScrollTop, this.container);
-
-      if(this.rAF) window.cancelAnimationFrame(this.rAF);
-      this.rAF = window.requestAnimationFrame(() => {
-        this.container.scrollTop = this.container.scrollHeight - this.previousScrollHeightMinusTop;
-        this.rAF = 0;
-        this.prepared = false;
-
-        callback && callback();
-      });
-    }/*  else if(this.container.parentElement.classList.contains('scrolled-down')) {
-      if(this.debug) appImManager.log('scrollPosition restore 2', this.readyFor, this.container.scrollHeight, 
-        setScrollTop, this.container);
-
-      this.container.scrollTop = setScrollTop;
-      this.prepared = false;
-    } */
-    
-    // 'down' doesn't need to be special cased unless the
-    // content was flowing upwards, which would only happen
-    // if the container is position: absolute, bottom: 0 for
-    // a Facebook messages effect
-  }
-  
-  prepareFor(direction = 'up') {
-    return;
-    //if(this.prepared) return;
-
-    if(this.rAF) {
-      window.cancelAnimationFrame(this.rAF);
-      this.rAF = 0;
-    }
-
-    this.readyFor = direction;
-
-    if(direction == 'down') {
-      let scrollTop = this.container.scrollTop;
-      this.previousScrollHeightMinusTop = scrollTop > 0 ? this.container.scrollHeight - scrollTop : 0;
-    } else {
-      this.previousScrollHeightMinusTop = this.container.scrollHeight - this.container.scrollTop;
-    }
-    //let scrollTop = this.container.scrollTop;
-    //this.previousScrollHeightMinusTop = scrollTop > 0 || this.readyFor == 'up' ? this.container.scrollHeight - this.container.scrollTop : 0;
-    
-    if(this.debug) appImManager.log.warn('scrollPosition prepareFor', direction, this.container.scrollHeight, 
-      this.container.scrollTop, this.previousScrollHeightMinusTop);
-  }
-}
-
 export class AppImManager {
   public pageEl = document.querySelector('.page-chats') as HTMLDivElement;
   public btnMute = this.pageEl.querySelector('.tool-mute') as HTMLButtonElement;
@@ -142,8 +72,7 @@ export class AppImManager {
   
   public scroll: HTMLDivElement = null;
   public scrollable: Scrollable = null;
-  public scrollPosition: ScrollPosition = null;
-  
+
   public log: ReturnType<typeof logger>;
   
   private preloader: ProgressivePreloader = null;
@@ -171,6 +100,8 @@ export class AppImManager {
   private setPeerPromise: Promise<boolean> = null;
   
   public bubbleGroups = new BubbleGroups();
+
+  private scrolledDown = true;
   
   constructor() {
     /* if(!lottieLoader.loaded) {
@@ -204,7 +135,7 @@ export class AppImManager {
     $rootScope.$on('history_append', (e: CustomEvent) => {
       let details = e.detail;
       
-      this.renderMessagesByIDs([details.messageID]);
+      this.renderNewMessagesByIDs([details.messageID]);
     });
     
     // will call when sent for update pos
@@ -221,8 +152,6 @@ export class AppImManager {
         //this.log('history_update', this.bubbles[mid], mid, message);
 
         this.renderMessage(message, false, false, bubble);
-        
-        this.deleteEmptySideDivs();
       }
     });
     
@@ -232,9 +161,7 @@ export class AppImManager {
       
       let msgIDs = msgIDsByPeer[this.peerID];
       
-      this.renderMessagesByIDs(msgIDs);
-      
-      //appDialogsManager.sortDom();
+      this.renderNewMessagesByIDs(msgIDs);
     });
     
     $rootScope.$on('history_delete', (e: CustomEvent) => {
@@ -244,10 +171,6 @@ export class AppImManager {
       } = e.detail;
       
       this.deleteMessagesByIDs(Object.keys(detail.msgs).map(s => +s));
-      
-      setTimeout(() => {
-        this.deleteEmptySideDivs();
-      }, 0);
     });
     
     // Calls when message successfully sent and we have an ID
@@ -667,37 +590,6 @@ export class AppImManager {
     });
   }
   
-  public deleteEmptySideDivs() {
-    return;
-    
-    let nodes = Array.from(this.chatInner.childNodes) as HTMLDivElement[];
-    nodes.filter((node) => {
-      let childElementCount = node.childElementCount;
-      
-      if(!childElementCount) {
-        node.remove();
-        return false;
-      } else if(childElementCount == 1) {
-        let child = node.firstElementChild;
-        if(child.classList.contains('service')) {
-          node.remove();
-          return false;
-        }
-      }
-      
-      return true;
-    }).forEach(node => {
-      let nextNode = node.nextElementSibling;
-      if(nextNode && node.className == nextNode.className) {
-        (Array.from(node.childNodes) as HTMLDivElement[]).reverse().forEach(div => {
-          nextNode.prepend(div);
-        });
-        
-        node.remove();
-      }
-    });
-  }
-  
   public updateStatus() {
     if(!this.myID) return Promise.resolve();
     
@@ -779,8 +671,10 @@ export class AppImManager {
     
     if(this.scroll.scrollHeight - (this.scroll.scrollTop + this.scroll.offsetHeight) == 0/* <= 5 */) {
       this.scroll.parentElement.classList.add('scrolled-down');
+      this.scrolledDown = true;
     } else if(this.scroll.parentElement.classList.contains('scrolled-down')) {
       this.scroll.parentElement.classList.remove('scrolled-down');
+      this.scrolledDown = false;
     }
   }
   
@@ -793,8 +687,7 @@ export class AppImManager {
     //this.scrollable.setVirtualContainer(this.chatInner);
     this.scrollable.onScrolledTop = () => this.loadMoreHistory(true);
     this.scrollable.onScrolledBottom = () => this.loadMoreHistory(false);
-    
-    this.scrollPosition = new ScrollPosition(this.chatInner);
+
     this.scroll.addEventListener('scroll', this.onScroll.bind(this));
     this.scroll.parentElement.classList.add('scrolled-down');
   }
@@ -931,6 +824,7 @@ export class AppImManager {
     this.getHistoryTopPromise = this.getHistoryBottomPromise = undefined;
     
     //this.scrollable.setVirtualContainer(this.chatInner);
+    this.scrollable.setVirtualContainer(null);
 
     ////console.timeEnd('appImManager cleanup');
   }
@@ -996,6 +890,8 @@ export class AppImManager {
     this.chatInner.style.visibility = 'hidden';
     this.chatInput.style.display = appPeersManager.isChannel(peerID) && !appPeersManager.isMegagroup(peerID) ? 'none' : '';
     this.topbar.style.display = '';
+    if(appPeersManager.isAnyGroup(peerID)) this.chatInner.classList.add('is-chat');
+    else this.chatInner.classList.remove('is-chat');
     window.requestAnimationFrame(() => {
       //this.chatInner.style.visibility = 'hidden';
 
@@ -1010,8 +906,8 @@ export class AppImManager {
       //this.chatInput.style.display = appPeersManager.isChannel(peerID) && !appPeersManager.isMegagroup(peerID) ? 'none' : '';
       //appSidebarRight.toggleSidebar(true);
       
-      if(appPeersManager.isAnyGroup(peerID)) this.chatInner.classList.add('is-chat');
-      else this.chatInner.classList.remove('is-chat');
+      //if(appPeersManager.isAnyGroup(peerID)) this.chatInner.classList.add('is-chat');
+      //else this.chatInner.classList.remove('is-chat');
 
       if(!fromClick) {
         if(!samePeer && appDialogsManager.lastActiveListElement) {
@@ -1141,12 +1037,13 @@ export class AppImManager {
     lottieLoader.checkAnimations();
   }
   
-  public renderMessagesByIDs(msgIDs: number[]) {
+  public renderNewMessagesByIDs(msgIDs: number[]) {
     if(!this.bubbles[this.firstTopMsgID] && Object.keys(this.bubbles).length) { // seems search active
       //////this.log('seems search is active, skipping render:', msgIDs);
       return;
     }
     
+    let scrolledDown = this.scrolledDown;
     msgIDs.forEach((msgID: number) => {
       let message = appMessagesManager.getMessage(msgID);
       
@@ -1155,10 +1052,11 @@ export class AppImManager {
       //this.unreaded.push(msgID);
       this.renderMessage(message);
     });
+    if(scrolledDown) this.scrollable.scrollTop = this.scrollable.scrollHeight;
   }
   
-  // reverse means top, will save scrollPosition if bubble will be higher
-  public renderMessage(message: any, reverse = false, multipleRender?: boolean, bubble: HTMLDivElement = null, updatePosition = true) {
+  // reverse means top
+  public renderMessage(message: any, reverse = false, multipleRender = false, bubble: HTMLDivElement = null, updatePosition = true) {
     /////this.log('message to render:', message);
     if(message.deleted) return;
     
@@ -1169,11 +1067,7 @@ export class AppImManager {
     messageDiv.classList.add('message');
     
     //messageDiv.innerText = message.message;
-    
-    if(!multipleRender) {
-      this.scrollPosition.prepareFor(reverse ? 'up' : 'down'); // лагает из-за этого
-    }
-    
+
     let bubbleContainer: HTMLDivElement;
     
     // bubble
@@ -1406,8 +1300,7 @@ export class AppImManager {
           
           if(webpage.photo && !doc) {
             bubble.classList.add('photo');
-            //appPhotosManager.savePhoto(webpage.photo); // hot-fix because no webpage manager
-            
+
             wrapPhoto.call(this, webpage.photo.id, message, preview, 380, 300, false);
           }
           
@@ -1440,10 +1333,7 @@ export class AppImManager {
         
         case 'messageMediaDocument': {
           let doc = message.media.document;
-          /* if(document.size > 1e6) { // 1mb
-            break;
-          } */
-          
+
           this.log('messageMediaDocument', doc, bubble);
           
           if(doc.sticker && doc.size <= 1e6) {
@@ -1468,7 +1358,7 @@ export class AppImManager {
             }, this.lazyLoadQueue, 'chat', false, !!message.pending || !multipleRender);
 
             break;
-          } else if(doc.mime_type == 'video/mp4' && doc.size <= 20e6) {
+          } else if((doc.type == 'video' || doc.type == 'gif') && doc.size <= 20e6) {
             this.log('never get free 2', doc);
             
             if(doc.type == 'round') {
@@ -1614,16 +1504,13 @@ export class AppImManager {
         } else {
           this.scrollable.appendByBatch(bubble);
         } */
-        /* if(reverse) {
-          this.scrollable.prepend(bubble);
-
-          if(!this.scrollable.scrollTop) {
-            let height = bubble.scrollHeight;
-            this.scrollable.scrollTop += height;
+        if(!multipleRender) {
+          if(reverse) {
+            this.scrollable.prepend(bubble);
+          } else {
+            this.scrollable.append(bubble);
           }
-        } else {
-          this.scrollable.append(bubble);
-        } */
+        }
       //});
       
       let justDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -1681,12 +1568,6 @@ export class AppImManager {
     /* if(bubble.classList.contains('webpage')) {
       this.log('night running', bubble, bubble.scrollHeight);
     } */
-    
-    //return //this.scrollPosition.restore();
-    
-    if(!multipleRender) {
-      this.scrollPosition.restore();  // лагает из-за этого
-    }
 
     return bubble;
   }
@@ -1714,10 +1595,6 @@ export class AppImManager {
     //console.time('appImManager render history');
 
     this.log('getHistory method', method);
-    
-    if(!isBackLimit) {
-      this.scrollPosition.prepareFor(reverse ? 'up' : 'down');
-    }
 
     let firstLoad = !!this.setPeerPromise && false;
 
@@ -1731,7 +1608,7 @@ export class AppImManager {
         bubbles.push(bubble);
       }); */
 
-      //let innerHeight = this.scrollable.innerHeight;
+      let leftHeightToScroll = this.scrollable.innerHeight;
 
       //console.timeEnd('appImManager: pre render start');
 
@@ -1789,7 +1666,12 @@ export class AppImManager {
                   //let height = Math.ceil(bubble.getBoundingClientRect().height);
                   this.scrollable.scrollTop += height;
                   //innerHeight -= height;
-                } else {
+                }
+                /* if(leftHeightToScroll >= 0) {
+                  let height = bubble.scrollHeight;
+                  leftHeightToScroll -= height;
+                  this.scrollable.scrollTop += height;
+                } */ else {
                   renderedFirstScreen = true;
                   resolve();
                   resolved = true;
@@ -1906,7 +1788,8 @@ export class AppImManager {
       return (reverse ? this.getHistoryTopPromise = promise : this.getHistoryBottomPromise = promise);
     } else {
       let promise = this.performHistoryResult(result.history || [], reverse, isBackLimit, additionMsgID, true);
-      return (reverse ? this.getHistoryTopPromise = promise : this.getHistoryBottomPromise = promise);
+      //return (reverse ? this.getHistoryTopPromise = promise : this.getHistoryBottomPromise = promise);
+      return promise;
       //return this.performHistoryResult(result.history || [], reverse, isBackLimit, additionMsgID, true);
     }
   }

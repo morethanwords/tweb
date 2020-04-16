@@ -5,7 +5,7 @@ class AppWebpManager {
   public webpMachine: any = null;
   public loaded: Promise<void>;
   public busyPromise: Promise<string>;
-  public queue: {bytes: Uint8Array, img: HTMLImageElement, callback: () => void}[] = [];
+  public queue: {bytes: Uint8Array, img: HTMLImageElement, callback: (url: string) => void}[] = [];
   //public worker: any;
   public webpSupport: Promise<boolean> = null;
 
@@ -65,12 +65,13 @@ class AppWebpManager {
     await this.loaded;
 
     this.busyPromise = this.convert(bytes);
+    let url = await this.busyPromise;
     let imgTemp = new Image();
-    imgTemp.src = await this.busyPromise;
+    imgTemp.src = url;
     imgTemp.onload = () => {
       img.src = imgTemp.src;
     };
-    callback();
+    callback(url);
 
     this.busyPromise = null;
 
@@ -98,11 +99,12 @@ class AppWebpManager {
 
     //if(await this.webpMachine.webpSupport) {
     if(await this.webpSupport) {
-      img.src = URL.createObjectURL(blob);
-      return;
+      let url = URL.createObjectURL(blob);
+      img.src = url;
+      return url;
     }
 
-    return new Promise((resolve, reject) => {
+    return new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.addEventListener('loadend', (e) => {
         // @ts-ignore

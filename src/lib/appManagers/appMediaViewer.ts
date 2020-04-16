@@ -8,6 +8,7 @@ import ProgressivePreloader from "../../components/preloader";
 import { findUpClassName, $rootScope, generatePathData } from "../utils";
 import appDocsManager from "./appDocsManager";
 import { wrapPlayer } from "../ckin";
+import { renderImageFromUrl } from "../../components/misc";
 
 export class AppMediaViewer {
   private overlaysDiv = document.querySelector('.overlays') as HTMLDivElement;
@@ -514,9 +515,8 @@ export class AppMediaViewer {
 
   public updateMediaSource(target: HTMLElement, url: string, tagName: 'source' | 'image') {
     //if(target instanceof SVGSVGElement) {
-      let el = target.querySelector(tagName);
-      if(tagName == 'source') (el as HTMLSourceElement).src = url;
-      else el.setAttributeNS(null, 'href', url);
+      let el = target.querySelector(tagName) as HTMLElement;
+      renderImageFromUrl(el, url);
     /* } else {
 
     } */
@@ -644,7 +644,7 @@ export class AppMediaViewer {
               return;
             }
 
-            let url = URL.createObjectURL(blob);
+            let url = media.url;
             if(target instanceof SVGSVGElement) {
               this.updateMediaSource(mover, url, 'source');
               this.updateMediaSource(target, url, 'source');
@@ -655,8 +655,7 @@ export class AppMediaViewer {
               }
 
               source = document.createElement('source');
-              //source.src = doc.url;
-              source.src = url;
+              renderImageFromUrl(source, url);
               source.type = media.mime_type;
 
               mover.prepend(video);
@@ -703,13 +702,14 @@ export class AppMediaViewer {
           
           ///////this.log('indochina', blob);
 
-          let url = URL.createObjectURL(blob);
+          let url = media.url;
           if(target instanceof SVGSVGElement) {
             this.updateMediaSource(target, url, 'image');
             this.updateMediaSource(mover, url, 'image');
           } else {
             let image = mover.firstElementChild as HTMLImageElement || new Image();
-            image.src = url;
+            //image.src = url;
+            renderImageFromUrl(image, url);
             mover.prepend(image);
           }
 

@@ -218,8 +218,7 @@ export class AppDialogsManager {
     }
 
     let img = new Image();
-    img.src = this.savedAvatarURLs[peerID];
-    //renderImageFromUrl(img, this.savedAvatarURLs[peerID]);
+    renderImageFromUrl(img, this.savedAvatarURLs[peerID]);
     div.innerHTML = '';
     //div.style.fontSize = '0'; // need
     //div.style.backgroundColor = '';

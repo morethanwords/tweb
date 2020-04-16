@@ -8,11 +8,6 @@ if(window.location.href.indexOf('localhost') === -1) {
 }
 
 class FileManager {
-  public isSafari = 'safari' in window;
-  public safariVersion = parseFloat(this.isSafari && (navigator.userAgent.match(/Version\/(\d+\.\d+).* Safari/) || [])[1]);
-  public safariWithDownload = this.isSafari && this.safariVersion >= 11.0;
-  public buggyUnknownBlob = this.isSafari && !this.safariWithDownload;
-  
   public blobSupported = true;
   
   constructor() {
@@ -93,12 +88,12 @@ class FileManager {
         let fileReader = new FileReader();
         fileReader.onload = function(event) {
           let arrayBuffer = event.target.result as ArrayBuffer;
-
+          
           let arr = new Uint8Array(arrayBuffer);
-
+          
           fileWriter.write(arr).then(resolve, reject);
         };
-
+        
         fileReader.readAsArrayBuffer(bytes);
       });
     } else {
@@ -117,7 +112,7 @@ class FileManager {
     let writer = fileStream.getWriter();
     return writer;
   }
-
+  
   public getFakeFileWriter(mimeType: string, saveFileCallback: any) {
     var blobParts: Array<Blob> = [];
     var fakeFileWriter = {
@@ -143,76 +138,16 @@ class FileManager {
     
     return fakeFileWriter;
   }
-  
-  public getUrl(fileData: any, mimeType: string) {
+
+  public getFileCorrectUrl(fileData: Blob | number[], mimeType: string): string {
     var safeMimeType = blobSafeMimeType(mimeType);
-    // console.log(dT(), 'get url', fileData, mimeType, fileData.toURL !== undefined, fileData instanceof Blob)
-    if(fileData.toURL !== undefined) {
-      return fileData.toURL(safeMimeType);
-    }
     if(fileData instanceof Blob) {
       return URL.createObjectURL(fileData);
     }
     return 'data:' + safeMimeType + ';base64,' + bytesToBase64(fileData);
   }
   
-  public getByteArray(fileData: any) {
-    if(fileData instanceof Blob) {
-      return new Promise((resolve, reject) => {
-        try {
-          var reader = new FileReader();
-          reader.onloadend = (e) => {
-            // @ts-ignore
-            resolve(new Uint8Array(e.target.result));
-          };
-          reader.onerror = (e) => {
-            reject(e);
-          };
-          reader.readAsArrayBuffer(fileData);
-        } catch(e) {
-          reject(e);
-        }
-      });
-    } else if(fileData.file) {
-      return new Promise((resolve, reject) => {
-        fileData.file((blob: any) => {
-          this.getByteArray(blob).then(resolve, reject);
-        }, reject);
-      });
-    }
-    
-    return Promise.resolve(fileData);
-    //return $q.when(fileData);
-  }
-  
-  public getDataUrl(blob: any) {
-    return new Promise((resolve, reject) => {
-      try {
-        var reader = new FileReader();
-        reader.onloadend = () => {
-          resolve(reader.result);
-        };
-        reader.readAsDataURL(blob);
-      } catch (e) {
-        reject(e);
-      }
-    });
-  }
-  
-  public getFileCorrectUrl(blob: any, mimeType: string) {
-    if(this.buggyUnknownBlob && blob instanceof Blob) {
-      // @ts-ignore
-      mimeType = blob.type || blob.mimeType || mimeType || ''
-      if(!mimeType.match(/image\/(jpeg|gif|png|bmp)|video\/quicktime/)) {
-        return this.getDataUrl(blob);
-      }
-    }
-    
-    return Promise.resolve(this.getUrl(blob, mimeType));
-  }
-  
-  // downloadFile
-  public download(blob: any, mimeType: string, fileName: string) {
+  public download(blob: Blob, mimeType: string, fileName: string) {
     if(window.navigator && navigator.msSaveBlob !== undefined) {
       window.navigator.msSaveBlob(blob, fileName);
       return false;
@@ -244,57 +179,37 @@ class FileManager {
       return;
     }
     
-    var popup: Window;
-    if(this.isSafari && !this.safariWithDownload) {
-      popup = window.open();
+    let url = this.getFileCorrectUrl(blob, mimeType);
+    var anchor = document.createElementNS('http://www.w3.org/1999/xhtml', 'a') as HTMLAnchorElement;
+    anchor.href = url as string;
+    anchor.download = fileName;
+    if(anchor.dataset) {
+      anchor.dataset.downloadurl = ['video/quicktime', fileName, url].join(':');
     }
     
-    this.getFileCorrectUrl(blob, mimeType).then((url) => {
-      if(popup) {
-        try {
-          // @ts-ignore
-          popup.location.href = url;
-          return;
-        } catch (e) {}
-      }
-      
-      var anchor = document.createElementNS('http://www.w3.org/1999/xhtml', 'a') as HTMLAnchorElement;
-      anchor.href = url as string;
-      if(!this.safariWithDownload) {
-        anchor.target = '_blank';
-      }
-      anchor.download = fileName;
-      if(anchor.dataset) {
-        anchor.dataset.downloadurl = ['video/quicktime', fileName, url].join(':');
-      }
-      
-      anchor.style.position = 'absolute';
-      anchor.style.top = '1px';
-      anchor.style.left = '1px';
-      
-      document.body.append(anchor);
-      
+    anchor.style.position = 'absolute';
+    anchor.style.top = '1px';
+    anchor.style.left = '1px';
+    
+    document.body.append(anchor);
+    
+    try {
+      var clickEvent = document.createEvent('MouseEvents');
+      clickEvent.initMouseEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
+      anchor.dispatchEvent(clickEvent);
+    } catch (e) {
+      console.error('Download click error', e);
       try {
-        var clickEvent = document.createEvent('MouseEvents');
-        clickEvent.initMouseEvent(
-          'click', true, false, window, 0, 0, 0, 0, 0
-          , false, false, false, false, 0, null
-          )
-          anchor.dispatchEvent(clickEvent);
-        } catch (e) {
-          console.error('Download click error', e);
-          try {
-            anchor.click();
-          } catch (e) {
-            window.open(url as string, '_blank');
-          }
-        }
-        setTimeout(() => {
-          anchor.remove();
-        }, 100);
-      })
+        anchor.click();
+      } catch (e) {
+        window.open(url as string, '_blank');
+      }
     }
+    
+    setTimeout(() => {
+      anchor.remove();
+    }, 100);
   }
-  
-  export default new FileManager();
-  
+}
+
+export default new FileManager();

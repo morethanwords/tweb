@@ -2,7 +2,7 @@ import appUsersManager from "./appUsersManager";
 import { copy, calcImageInBox } from "../utils";
 import fileManager from '../filemanager';
 import { bytesFromHex } from "../bin_utils";
-import { MTPhotoSize } from "../../components/wrappers";
+import { MTPhotoSize, MTDocument } from "../../components/wrappers";
 import apiFileManager from "../mtproto/apiFileManager";
 import apiManager from "../mtproto/apiManager";
 
@@ -207,7 +207,7 @@ export class AppPhotosManager {
     //console.log('setAttachmentSize', photo, photo.sizes[0].bytes, div);
     
     let sizes = photo.sizes || photo.thumbs;
-    if((!photo.downloaded || isSticker) && sizes && sizes[0].bytes) {
+    if((!photo.downloaded || (isSticker && photo.animated)) && sizes && sizes[0].bytes) {
       this.setAttachmentPreview(sizes[0].bytes, element, isSticker);
     }
     
@@ -225,6 +225,8 @@ export class AppPhotosManager {
     if(element instanceof SVGSVGElement) {
       element.setAttributeNS(null, 'width', '' + w);
       element.setAttributeNS(null, 'height', '' + h);
+
+      console.log('set dimensions to svg element:', element, w, h);
       
       if(element.firstElementChild) {
         let imageSvg = element.firstElementChild as SVGImageElement;

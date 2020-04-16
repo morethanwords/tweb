@@ -36,6 +36,7 @@ export type MTDocument = {
   file?: File,
   duration?: number,
   downloaded?: boolean,
+  url?: string,
   version?: any,
 
   audioTitle?: string,
@@ -110,11 +111,10 @@ export function wrapVideo(this: AppImManager, doc: MTDocument, container: HTMLDi
 
       //return;
       
-      ///////console.log('loaded doc:', doc, blob, container);
+      console.log('loaded doc:', doc, doc.url, blob, container);
       
-      //source.src = doc.url;
+      renderImageFromUrl(source, doc.url);
       source.type = doc.mime_type;
-      source.src = URL.createObjectURL(blob);
       video.append(source);
 
       if(!withTail) {
@@ -141,7 +141,7 @@ export function wrapVideo(this: AppImManager, doc: MTDocument, container: HTMLDi
   };
   
   if(doc.type == 'gif' || true) { // extra fix
-    return this.lazyLoadQueue.push({div: container, load: loadVideo, wasSeen: true});
+    return doc.downloaded ? loadVideo() : this.lazyLoadQueue.push({div: container, load: loadVideo, wasSeen: true});
   } /* else { // if video
     let load = () => appPhotosManager.preloadPhoto(doc).then((blob) => {
       if((this.peerID ? this.peerID : this.currentMessageID) != peerID) {
@@ -446,7 +446,7 @@ function wrapMediaWithTail(photo: any, message: {mid: number, message: string}, 
   let image = document.createElementNS("http://www.w3.org/2000/svg", "image");
   svg.append(image);
   
-  let size = appPhotosManager.setAttachmentSize(photo.type ? photo : photo.id, svg, boxWidth, boxHeight, false);
+  let size = appPhotosManager.setAttachmentSize(photo._ == 'document' ? photo : photo.id, svg, boxWidth, boxHeight);
   
   let width = +svg.getAttributeNS(null, 'width');
   let height = +svg.getAttributeNS(null, 'height');
@@ -540,7 +540,7 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
   
   console.log('wrap sticker', doc, div, onlyThumb);
   
-  if(doc.thumbs && !div.firstElementChild) {
+  if(doc.thumbs && !div.firstElementChild && (!doc.downloaded || stickerType == 2)) {
     let thumb = doc.thumbs[0];
     
     console.log('wrap sticker', thumb, div);
@@ -652,17 +652,19 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
       reader.readAsArrayBuffer(blob);
     } else if(stickerType == 1) {
       let img = new Image();
-      
-      appWebpManager.polyfillImage(img, blob).then(() => {
-        if(div.firstElementChild && div.firstElementChild != img) {
-          div.firstElementChild.remove();
-        }
-      });
-      
-      //img.src = URL.createObjectURL(blob);
-      
-      /* div.style.height = doc.h + 'px';
-      div.style.width = doc.w + 'px'; */
+
+      if(!doc.url) {
+        appWebpManager.polyfillImage(img, blob).then((url) => {
+          doc.url = url;
+          
+          if(div.firstElementChild && div.firstElementChild != img) {
+            div.firstElementChild.remove();
+          }
+        });
+      } else {
+        img.src = doc.url;
+      }
+
       div.append(img);
     }
     

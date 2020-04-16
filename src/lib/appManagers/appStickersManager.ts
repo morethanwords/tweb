@@ -129,7 +129,7 @@ class appStickersManager {
     }); */
   }
 
-  public async getStickerSetThumb(stickerSet: MTStickerSet) {
+  public getStickerSetThumb(stickerSet: MTStickerSet) {
     let thumb = stickerSet.thumb;
     let dcID = stickerSet.thumb_dc_id;
 
@@ -144,7 +144,7 @@ class appStickersManager {
       local_id: thumb.location.local_id
     }, {dcID: dcID});
 
-    return await promise;
+    return promise;
   }
 
   public async cleanup() { // if logout

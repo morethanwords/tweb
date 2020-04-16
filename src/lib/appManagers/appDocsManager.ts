@@ -37,10 +37,10 @@ class AppDocsManager {
           break;
 
         case 'documentAttributeAudio':
-          apiDoc.duration = attribute.duration
-          apiDoc.audioTitle = attribute.title
-          apiDoc.audioPerformer = attribute.performer
-          apiDoc.type = attribute.pFlags.voice ? 'voice' : 'audio'
+          apiDoc.duration = attribute.duration;
+          apiDoc.audioTitle = attribute.title;
+          apiDoc.audioPerformer = attribute.performer;
+          apiDoc.type = attribute.pFlags.voice ? 'voice' : 'audio';
           break;
 
         case 'documentAttributeVideo':
@@ -49,7 +49,7 @@ class AppDocsManager {
           apiDoc.h = attribute.h;
           if(apiDoc.thumbs && attribute.pFlags.round_message) {
             apiDoc.type = 'round';
-          } else if(apiDoc.thumbs) {
+          } else /* if(apiDoc.thumbs) */ {
             apiDoc.type = 'video';
           }
           break;
@@ -64,14 +64,14 @@ class AppDocsManager {
 
           if(attribute.stickerset) {
             if(attribute.stickerset._ == 'inputStickerSetEmpty') {
-              delete attribute.stickerset
+              delete attribute.stickerset;
             } else if(attribute.stickerset._ == 'inputStickerSetID') {
-              apiDoc.stickerSetInput = attribute.stickerset
+              apiDoc.stickerSetInput = attribute.stickerset;
             }
           }
 
           if(apiDoc.thumbs && apiDoc.mime_type == 'image/webp') {
-            apiDoc.type = 'sticker'
+            apiDoc.type = 'sticker';
           } else if(apiDoc.mime_type == 'application/x-tgsticker') {
             apiDoc.type = 'sticker';
             apiDoc.animated = true;
@@ -103,22 +103,22 @@ class AppDocsManager {
           apiDoc.mime_type = 'video/mp4';
           break;
         case 'sticker':
-          apiDoc.mime_type = 'image/webp'
-          break
+          apiDoc.mime_type = 'image/webp';
+          break;
         case 'audio':
-          apiDoc.mime_type = 'audio/mpeg'
-          break
+          apiDoc.mime_type = 'audio/mpeg';
+          break;
         case 'voice':
-          apiDoc.mime_type = 'audio/ogg'
-          break
+          apiDoc.mime_type = 'audio/ogg';
+          break;
         default:
-          apiDoc.mime_type = 'application/octet-stream'
-          break
+          apiDoc.mime_type = 'application/octet-stream';
+          break;
       }
     }
     
     if(!apiDoc.file_name) {
-      apiDoc.file_name = ''
+      apiDoc.file_name = '';
     }
     
     if(apiDoc._ == 'documentEmpty') {
@@ -130,10 +130,6 @@ class AppDocsManager {
   
   public getDoc(docID: string) {
     return this.docs[docID] || {_: 'documentEmpty'};
-  }
-  
-  public hasDoc(docID: string) {
-    return this.docs[docID] !== undefined;
   }
   
   public getFileName(doc: MTDocument) {
@@ -209,9 +205,9 @@ class AppDocsManager {
       if(blob) {
         doc.downloaded = true;
 
-        /* FileManager.getFileCorrectUrl(blob, doc.mime_type).then((url) => {
-          doc.url = url;
-        }); */
+        if(/* !doc.animated ||  */doc.type != 'sticker') {
+          doc.url = FileManager.getFileCorrectUrl(blob, doc.mime_type);
+        }
       }
 
       /* doc.progress.percent = 100;

@@ -875,9 +875,8 @@ export default class Scrollable {
   
   public removeElement(element: Element) {
     if(!this.splitUp) {
-      if(this.container.contains(element)) {
-        //fastdom.mutate(() => this.container.removeChild(element));
-        this.container.removeChild(element);
+      if(element.parentElement) {
+        element.remove();
       }
       
       return;
