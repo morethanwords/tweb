@@ -71,9 +71,9 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
 
         if(menuScroll) {
           if(i < heights.length - 4) {
-            menuScroll.container.scrollLeft = (i - 3) * 50;
+            menuScroll.container.scrollLeft = (i - 3) * 47;
           } else {
-            menuScroll.container.scrollLeft = i * 50;
+            menuScroll.container.scrollLeft = i * 47;
           }
         }
 
@@ -85,7 +85,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
   };
 
   {
-    let categories = ["Smileys & Emotion", "Animals & Nature", "Food & Drink", "Travel & Places", "Activities", "Objects", "Symbols", "Flags", "Skin Tones"];
+    let categories = ["Smileys & Emotion", "Animals & Nature", "Food & Drink", "Travel & Places", "Activities", "Objects", /* "Symbols",  */"Flags", "Skin Tones"];
     let divs: {
       [category: string]: HTMLDivElement
     } = {};
@@ -100,11 +100,15 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
       let details = Config.Emoji.emoji[unified];
       let category = details[keyCategory];
 
+      if(category == 'Symbols') category = 'Objects';
+
       details.unified = unified;
 
       if(!sorted[category]) sorted[category] = [];
       sorted[category][details.sort_order] = details;
     }
+
+    //console.log('emoticons sorted:', sorted);
 
     Object.keys(sorted).forEach(c => sorted[c].sort());
 
@@ -143,20 +147,29 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
     }
     //console.timeEnd('emojiParse');
 
+    let contentEmojiDiv = document.getElementById('content-emoji') as HTMLDivElement;
     let heights: number[] = [0];
 
-    let contentEmojiDiv = document.getElementById('content-emoji') as HTMLDivElement;
-    categories.forEach(category => {
+    let prevCategoryIndex = 1;
+    let menu = contentEmojiDiv.nextElementSibling as HTMLUListElement;
+    let emojiScroll = new Scrollable(contentEmojiDiv, 'y', 500, 'EMOJI', null);
+    emojiScroll.container.addEventListener('scroll', (e) => {
+      prevCategoryIndex = emoticonsContentOnScroll(menu, heights, prevCategoryIndex, emojiScroll.container);
+    });
+    //emojiScroll.setVirtualContainer(emojiScroll.container);
+
+    categories.map(category => {
       let div = divs[category];
 
       if(!div) {
         console.error('no div by category:', category);
       }
 
-      contentEmojiDiv.append(div);
+      emojiScroll.append(div);
+      return div;
+    }).forEach(div => {
+      //console.log('emoji heights push: ', (heights[heights.length - 1] || 0) + div.scrollHeight, div, div.scrollHeight);
       heights.push((heights[heights.length - 1] || 0) + div.scrollHeight);
-
-      //console.log(div, div.scrollHeight);
     });
 
     contentEmojiDiv.addEventListener('click', function(e) {
@@ -183,14 +196,6 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
       btnSend.classList.add('tgico-send');
       btnSend.classList.remove('tgico-microphone2');
     });
-
-    let prevCategoryIndex = 1;
-    let menu = contentEmojiDiv.nextElementSibling as HTMLUListElement;
-    let emojiScroll = new Scrollable(contentEmojiDiv, 'y', 500, 'EMOJI', contentEmojiDiv);
-    emojiScroll.container.addEventListener('scroll', (e) => {
-      prevCategoryIndex = emoticonsContentOnScroll(menu, heights, prevCategoryIndex, emojiScroll.container);
-    });
-    //emojiScroll.setVirtualContainer(emojiScroll.container);
 
     emoticonsMenuOnClick(menu, heights, emojiScroll);
   }
@@ -273,13 +278,15 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
       heightRAF = window.requestAnimationFrame(() => {
         heightRAF = 0;
 
+        let paddingTop = parseInt(window.getComputedStyle(stickersScroll.container).getPropertyValue('padding-top')) || 0;
+
         heights.length = 0;
         let concated = stickersScroll.hiddenElements.up.concat(stickersScroll.visibleElements, stickersScroll.hiddenElements.down);
         concated.forEach((el, i) => {
-          heights[i] = (heights[i - 1] || 0) + el.height;
+          heights[i] = (heights[i - 1] || 0) + el.height + (i == 0 ? paddingTop : 0);
         });
   
-        console.log('stickers concated', concated, heights);
+        //console.log('stickers concated', concated, heights);
       });
       
       /* Array.from(stickersDiv.children).forEach((div, i) => {
@@ -343,12 +350,13 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
           //stickersScroll.append(categoryDiv);
   
           let stickerSet = await appStickersManager.getStickerSet(set);
+
+          //console.log('got stickerSet', stickerSet, li);
           
           if(stickerSet.set.thumb) {
-            let thumb = stickerSet.set.thumb;
-  
             appStickersManager.getStickerSetThumb(stickerSet.set).then((blob) => {
-              if(thumb.w == 1 && thumb.h == 1) { // means animated
+              //console.log('setting thumb', stickerSet, blob);
+              if(stickerSet.set.pFlags.animated) { // means animated
                 const reader = new FileReader();
   
                 reader.addEventListener('loadend', async(e) => {

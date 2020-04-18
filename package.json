@@ -6,7 +6,7 @@
   "scripts": {
     "start": "webpack-dev-server --open --config webpack.dev.js",
     "start-production": "webpack-dev-server --open --config webpack.prod.js",
-    "serve-serve": "webpack-serve --compress --port 9001 --host localhost --no-watch --static ./public --config webpack.prod.js",
+    "serve": "node server.js",
     "build": "webpack --config webpack.prod.js",
     "test": "jest --config=jest.config.js",
     "profile": "webpack --profile --json > stats.json --config webpack.prod.js"
@@ -21,6 +21,7 @@
     "@babel/core": "^7.9.0",
     "@babel/preset-env": "^7.9.5",
     "@babel/preset-typescript": "^7.9.0",
+    "@cryptography/aes": "^0.1.1",
     "@cryptography/sha1": "^0.1.0",
     "@cryptography/sha256": "^0.2.0",
     "@types/aes-js": "^3.1.1",

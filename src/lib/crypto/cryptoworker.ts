@@ -88,36 +88,26 @@ class CryptoWorker {
   }
 
   public sha1Hash(bytes: number[] | ArrayBuffer | Uint8Array): Promise<Uint8Array> {
-    //if(this.webWorker) {
-      return this.performTaskWorker<Uint8Array>('sha1-hash', bytes);
-    //}
+    return this.performTaskWorker<Uint8Array>('sha1-hash', bytes);
   }
 
   public sha256Hash(bytes: any) {
-    //if(this.webWorker) {
-      return this.performTaskWorker<number[]>('sha256-hash', bytes);
-    //}
+    return this.performTaskWorker<number[]>('sha256-hash', bytes);
   }
 
   public pbkdf2(buffer: Uint8Array, salt: Uint8Array, iterations: number) {
-    //if(this.webWorker) {
-      return this.performTaskWorker<ArrayBuffer>('pbkdf2', buffer, salt, iterations);
-    //}
+    return this.performTaskWorker<ArrayBuffer>('pbkdf2', buffer, salt, iterations);
   }
 
   public aesEncrypt(bytes: any, keyBytes: any, ivBytes: any) {
-    //if(this.webWorker) {
-      return this.performTaskWorker<ArrayBuffer>('aes-encrypt', convertToArrayBuffer(bytes), 
-        convertToArrayBuffer(keyBytes), convertToArrayBuffer(ivBytes));
-    //}
+    return this.performTaskWorker<ArrayBuffer>('aes-encrypt', convertToArrayBuffer(bytes), 
+      convertToArrayBuffer(keyBytes), convertToArrayBuffer(ivBytes));
   }
 
   public aesDecrypt(encryptedBytes: any, keyBytes: any, ivBytes: any): Promise<ArrayBuffer> {
-    //if(this.webWorker) {
-      return this.performTaskWorker<ArrayBuffer>('aes-decrypt', 
-        encryptedBytes, keyBytes, ivBytes)
-        .then(bytes => convertToArrayBuffer(bytes));
-    //}
+    return this.performTaskWorker<ArrayBuffer>('aes-decrypt', 
+      encryptedBytes, keyBytes, ivBytes)
+      .then(bytes => convertToArrayBuffer(bytes));
   }
 
   public rsaEncrypt(publicKey: {modulus: string, exponent: string}, bytes: any): Promise<number[]> {
@@ -127,21 +117,15 @@ class CryptoWorker {
   public factorize(bytes: any) {
     bytes = convertToByteArray(bytes);
 
-    //if(this.webWorker) {
-      return this.performTaskWorker<[number[], number[], number]>('factorize', bytes);
-    //}
+    return this.performTaskWorker<[number[], number[], number]>('factorize', bytes);
   }
 
   public modPow(x: any, y: any, m: any) {
-    //if(this.webWorker) {
-      return this.performTaskWorker<number[]>('mod-pow', x, y, m);
-    //}
+    return this.performTaskWorker<number[]>('mod-pow', x, y, m);
   }
 
   public gzipUncompress<T>(bytes: ArrayBuffer, toString?: boolean) {
-    //if(this.webWorker) {
-      return this.performTaskWorker<T>('unzip', bytes, toString);
-    //}
+    return this.performTaskWorker<T>('unzip', bytes, toString);
   }
 }
 

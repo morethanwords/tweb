@@ -2,6 +2,7 @@ import AppStorage from '../storage';
 import { MTDocument } from '../../components/wrappers';
 import apiManager from '../mtproto/apiManager';
 import apiFileManager from '../mtproto/apiFileManager';
+import appDocsManager from './appDocsManager';
 
 export type MTStickerSet = {
   _: 'stickerSet',
@@ -27,6 +28,9 @@ export type MTStickerSet = {
     h: number,
     size: number
   },
+  pFlags: {
+    animated?: boolean
+  }
   thumb_dc_id?: number,
   count: number,
   hash: number
@@ -52,12 +56,23 @@ class appStickersManager {
       [stickerSetID: string]: MTStickerSetFull
     }>('stickerSets').then((sets) => {
       if(sets) {
+        for(let id in sets) {
+          let set = sets[id];
+          set.documents.forEach(doc => {
+            delete doc.downloaded;
+            delete doc.url;
+
+            this.saveSticker(doc);
+          });
+        }
+
         this.stickerSets = sets;
       }
     });
   }
   
   public saveSticker(doc: MTDocument) {
+    if(this.documents[doc.id]) return this.documents[doc.id];
     /* Object.keys(doc).forEach(key => {
       if(doc[key] instanceof Uint8Array) {
         doc[key] = Array.from(doc[key]);
@@ -66,7 +81,10 @@ class appStickersManager {
 
     doc.file_reference = Array.from(doc.file_reference);
 
+    appDocsManager.saveDoc(doc);
     this.documents[doc.id] = doc;
+
+    return doc;
   }
   
   public getSticker(fileID: string) {

@@ -2,18 +2,19 @@
   .input-search {
     position: relative;
     width: 100%;
-    margin-left: 1rem;
+    margin-left: 22px;
 
     input {
       background-color: rgba(112, 117, 121, .08);
       border: 2px solid transparent;
-      height: 3rem;
+      height: 44px;
       border-radius: 22px;
       box-sizing: border-box;
-      padding: 0 1.5rem 0 3rem;
+      padding: 0px 1.5rem 0 40px;
       -webkit-transition: all .15s ease-out;
       transition: all .15s ease-out;
       width: 100%;
+      font-size: 16px;
 
       &:focus {
         background-color: rgba(112, 117, 121, 0);
@@ -28,15 +29,19 @@
 
     .tgico {
       position: absolute;
-      left: 1rem;
+      left: 12px;
       top: 50%;
       transform: translateY(-50%);
       text-align: center;
-      font-size: 1.65rem;
+      font-size: 24px;
       color: $color-gray;
       opacity: .6;
       -webkit-transition: all .15s ease-out;
       transition: all .15s ease-out;
+
+      &:before {
+        vertical-align: middle;
+      }
     }
   }
 
@@ -69,8 +74,8 @@
     flex-direction: row;
     position: relative;
     cursor: pointer;
-    padding: 8px 8.5px;
-    margin: 0 8.5px 0 8px;
+    padding: 7px 8.5px;
+    margin: 0px 8px 2px 7px;
     overflow: hidden;
 
     &:hover {
@@ -84,7 +89,7 @@
 
   .pinned-delimiter {
     display: flex;
-    padding: 8px 0 4px;
+    padding: 6px 0 6px;
 
     span {
       margin: 0;
@@ -111,7 +116,9 @@
     /* span:not(.tgico-pinnedchat):not(.emoji):last-child { */
     .user-title + span {
       /* font-size: .9rem; */
-      font-size: .8rem;
+      //font-size: .8rem;
+      font-size: .75rem;
+      padding: 2px 0px 0px 0px;
     }
 
     .user-last-message + span:not(.tgico-pinnedchat) {
@@ -143,7 +150,7 @@
     overflow: hidden;
     color: $color-gray;
     flex: 1 1 auto;
-    padding-right: 6.5px;
+    padding-right: 3.5px;
     padding-left: 10px;
   }
 
@@ -209,6 +216,7 @@
     color: #fff;
     border-radius: 12px;
     margin-top: 1.5px;
+    margin-right: -2px;
   }
 
   .unread, .unread-muted {

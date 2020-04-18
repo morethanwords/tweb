@@ -78,14 +78,16 @@ export class ApiManager {
       AppStorage.remove('dc', 'user_auth', 'stickerSets');
       this.baseDcID = 0;
       this.telegramMeNotify(false);
-      return this.mtpClearStorage();
+      this.mtpClearStorage();
     }, (error) => {
       storageKeys.push('dc', 'user_auth', 'stickerSets');
       AppStorage.remove(storageKeys);
       this.baseDcID = 0;
       error.handled = true;
       this.telegramMeNotify(false);
-      return this.mtpClearStorage();
+      this.mtpClearStorage();
+    }).then(() => {
+      location.pathname = '/';
     });
   }
   
@@ -224,17 +226,7 @@ export class ApiManager {
           setTimeout(() => {
             if(!error.handled) {
               if(error.code == 401) {
-                // @ts-ignore WARNING!
-                this.logOut().finally(() => {
-                  if(location.protocol == 'http:' &&
-                  !Config.Modes.http &&
-                  Config.App.domains.indexOf(location.hostname) != -1) {
-                    location.href = location.href.replace(/^http:/, 'https:');
-                  } else {
-                    location.hash = '/login';
-                    // AppRuntimeManager.reload(); // WARNING
-                  }
-                })
+                this.logOut();
               } else {
                 // ErrorService.show({error: error}); // WARNING
               }

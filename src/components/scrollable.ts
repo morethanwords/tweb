@@ -104,6 +104,10 @@ export default class Scrollable {
   constructor(public el: HTMLElement, axis: 'y' | 'x' = 'y', public splitOffset = 300, logPrefix = '', public appendTo = el, public onScrollOffset = splitOffset) {
     this.container = document.createElement('div');
     this.container.classList.add('scrollable');
+
+    if(!appendTo) {
+      this.appendTo = this.container;
+    }
     
     this.log = logger('SCROLL' + (logPrefix ? '-' + logPrefix : ''));
     
@@ -413,7 +417,7 @@ export default class Scrollable {
     let appendTo = this.splitUp || this.appendTo;
     
     clearTimeout(this.disableHoverTimeout);
-    if(this.el != this.appendTo) {
+    if(this.el != this.appendTo && this.appendTo != this.container) {
       if(!appendTo.classList.contains('disable-hover')) {
         appendTo.classList.add('disable-hover');
       }

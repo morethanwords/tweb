@@ -1,6 +1,7 @@
-import { bytesFromHex, addPadding } from "../../bin_utils";
+//import { bytesFromHex, addPadding } from "../../bin_utils";
+import { Codec } from "./codec";
 
-class AbridgedPacketCodec {
+class AbridgedPacketCodec implements Codec {
   public tag = 0xef;
   public obfuscateTag = new Uint8Array([this.tag, this.tag, this.tag, this.tag]);
 
@@ -9,12 +10,14 @@ class AbridgedPacketCodec {
     let header: Uint8Array;
     if(len < 127) {
       header = new Uint8Array([len]);
-    } else {
-      header = new Uint8Array([0x7f, ...addPadding(bytesFromHex(len.toString(16)).reverse(), 3, true)/* .reverse() */]);
+    } else { // Length: payload length, divided by four, and encoded as 3 length bytes (little endian)
+      //header = new Uint8Array([0x7f, ...addPadding(bytesFromHex(len.toString(16)).reverse(), 3, true)/* .reverse() */]);
+      header = new Uint8Array([0x7f, len & 0xFF, (len >> 8) & 0xFF, (len >> 16) & 0xFF]);
       //console.log('got nobody cause im braindead', header, len);
     }
     
-    return new Uint8Array([...header, ...data]);
+    return header.concat(data);
+    //return new Uint8Array([...header, ...data]);
   }
 
   public readPacket(data: Uint8Array) {

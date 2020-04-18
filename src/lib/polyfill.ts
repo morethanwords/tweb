@@ -80,6 +80,10 @@ Uint8Array.prototype.concat = function(...args: Array<Uint8Array | ArrayBuffer |
   return bufferConcats(this, ...args);
 };
 
+Uint8Array.prototype.toString = function() {
+  return String.fromCharCode.apply(null, [...this]);
+};
+
 Array.prototype.forEachReverse = function<T>(callback: (value: T, index?: number, array?: Array<T>) => void) {
   let length = this.length;
   for(var i = length - 1; i >= 0; --i) {
@@ -108,7 +112,8 @@ declare global {
   interface Uint8Array {
     hex: string;
     randomize: () => Uint8Array,
-    concat: (...args: Array<Uint8Array | ArrayBuffer | number[]>) => Uint8Array
+    concat: (...args: Array<Uint8Array | ArrayBuffer | number[]>) => Uint8Array,
+    toString: () => string
   }
   
   interface Array<T> {

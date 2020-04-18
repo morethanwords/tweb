@@ -282,7 +282,7 @@ export function longToInts(sLong: string) {
   return [divRem[0].intValue(), divRem[1].intValue()];
 }
 
-export function bytesFromWords(wordArray: any) {
+export function bytesFromWords(wordArray: {words: number[] | Uint8Array | Uint32Array, sigBytes: number}) {
   var words = wordArray.words;
   var sigBytes = wordArray.sigBytes;
   var bytes = [];
@@ -292,6 +292,30 @@ export function bytesFromWords(wordArray: any) {
   }
 
   return bytes;
+}
+
+export function bytesFromWordss(input: Uint32Array) {
+  var o = [];
+  for(var i = 0; i < input.length * 4; i++) {
+    o.push((input[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff);
+  }
+
+  return o;
+}
+
+export function bytesToWordss(input: ArrayBuffer | Uint8Array) {
+  let bytes: Uint8Array;
+  if(input instanceof ArrayBuffer) bytes = new Uint8Array(input);
+  else bytes = input;
+
+  var len = bytes.length;
+  var words: number[] = [];
+  var i;
+  for(i = 0; i < len; i++) {
+    words[i >>> 2] |= bytes[i] << (24 - (i % 4) * 8);
+  }
+
+  return new Uint32Array(words);
 }
 
 export function longToBytes(sLong: string) {

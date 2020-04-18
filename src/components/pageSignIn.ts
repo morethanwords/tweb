@@ -38,7 +38,7 @@ export default () => {
   installed = true;
 
   //const countries: Country[] = _countries.default.filter(c => c.emoji);
-  const countries: Country[] = Config.Countries.filter(c => c.emoji);
+  const countries: Country[] = Config.Countries.filter(c => c.emoji).sort((a, b) => a.name.localeCompare(b.name));
 
   let lastCountrySelected = '';
 
@@ -174,9 +174,9 @@ export default () => {
     }
 
     if(country && (this.value.length - 1) >= (country.pattern ? country.pattern.length : 9)) {
-      btnNext.style.display = '';
+      btnNext.style.visibility = '';
     } else {
-      btnNext.style.display = 'none';
+      btnNext.style.visibility = 'hidden';
     }
   });
 

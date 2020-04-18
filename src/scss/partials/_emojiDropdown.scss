@@ -8,7 +8,7 @@
 	height: 420px;
 	background: #fff;
 	box-shadow: 0px 5px 10px 5px rgba(16, 35, 47, 0.14);
-	border-radius: 12px;
+	border-radius: 10px;
 	z-index: 2;
 	/* 	display: none; */
 	display: flex;
@@ -25,7 +25,14 @@
 	}
 	
 	> .menu-horizontal {
-		padding: 0 3rem;
+		padding: 0px 58px 0px 58px;
+		font-weight: 500;
+		margin-top: 2px;
+
+		> li.active:after {
+			left: 29px;
+			right: 28px;
+		}
 	}
 	
 	.emoji-container {
@@ -33,6 +40,10 @@
 		max-width: 100%;
 		overflow: hidden;
 		height: 100%;
+	}
+
+	.btn-icon {
+		color: #8d969c;
 	}
 	
 	.tabs-container {
@@ -42,19 +53,27 @@
 		.emoji-category {
 			font-size: 2.25rem;
 			line-height: 2.25rem;
-			margin-top: 1px;
+			padding-top: 1px;
+
+			display: grid;
+			grid-column-gap: 2.44px;
+			grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+
+			&:first-child {
+				padding-top: 5px;
+			}
 			
 			> * {
 				margin: 0;
-				padding: 5px 5px;
+				padding: 4px 4px;
 				line-height: inherit;
 				border-radius: 8px;
 				cursor: pointer;
 				user-select: none;
 				-webkit-user-select: none;
 				
-				width: 44px;
-				height: 44px;
+				width: 42px;
+    		height: 42px;
 				
 				.emoji {
 					width: 100%;
@@ -72,7 +91,7 @@
 			} */
 		}
 		
-		.emoji-category, .sticker-category {
+		.sticker-category {
 			display: flex;
 			align-items: center;
 			justify-content: space-between;
@@ -104,6 +123,7 @@
 				padding: 1px 2.5px;
 				justify-content: center;
 				border-radius: 12px;
+				padding: 0;
 				
 				&:hover {
 					background-color: rgba(112, 117, 121, 0.08);
@@ -129,7 +149,7 @@
 			> div:first-of-type {
 				flex: 1;
 				padding: 0;
-				padding-top: 10px;
+				//padding-top: 10px;
 			}
 		}
 		
@@ -146,9 +166,9 @@
 	
 	.emoji-padding, .stickers-padding {
 		.menu-horizontal {
-			height: 50px;
+			height: 47px;
 			border-bottom: none;
-			padding: 0;
+			padding: 2px 2px 2px 2px;
 			width: 100%;
 			
 			li {
@@ -168,9 +188,11 @@
 		}
 	}
 	
-	/* #content-stickers {
-		padding: 0;
-	} */
+	#content-stickers {
+		.scrollable {
+			padding: 15px 5px 0;
+		}
+	}
 
 	.emoji-padding, .stickers-padding {
 		.menu-horizontal > li {

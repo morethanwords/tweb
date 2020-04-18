@@ -48,7 +48,7 @@ html, body {
 }
 
 html {
-  font-size: 15px;
+  font-size: $text-size;
 }
 
 a {
@@ -83,8 +83,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 h4 {
-  font-size: 2.28rem;
-  margin: 1.52rem 0 .912rem 0;
+  font-size: 2rem;
+  margin: 1.5rem 0 1rem 0;
   line-height: 110%;
 }
 
@@ -94,7 +94,6 @@ input {
 
 .subtitle {
   /* font-weight: 500; */
-  font-size: 1rem;
   color: $placeholder-color;
   line-height: 1.25;
 }
@@ -103,7 +102,8 @@ input {
 .page-authCode .input-wrapper, 
 .page-signUp .input-wrapper, 
 .page-password .input-wrapper {
-  margin-top: 3rem;
+  /* margin-top: 3rem; */
+  margin-top: 50px;
 }
 
 .page-authCode {
@@ -281,7 +281,7 @@ input {
   
   &[class*=" tgico-"] {
     line-height: 52px;
-    font-size: 1.5rem;
+    font-size: 28px;
   }
   
   path {
@@ -496,6 +496,14 @@ input {
   }
 }
 
+.page-sign {
+  .auth-image {
+    width: 160px;
+    height: 160px;
+    margin-bottom: 45px;
+  }
+}
+
 .page-signUp {
   .auth-image {
     border-radius: 50%;
@@ -524,7 +532,7 @@ input {
 }
 
 .input-wrapper {
-  width: 350px;
+  width: 360px;
   margin: 0 auto;
 }
 
@@ -536,7 +544,7 @@ input {
     content: " ";
     top: 50%;
     bottom: 0;
-    right: 15px;
+    right: 21px;
     cursor: pointer;
     
     height: 0;
@@ -546,12 +554,12 @@ input {
     border-radius: 1px;
     border-width: 0 2px 2px 0;
     display: inline-block;
-    padding: 4px;
+    padding: 5px;
     vertical-align: middle;
     
     z-index: 2;
     
-    margin-top: -7px;
+    margin-top: -9px;
     transform: rotate(45deg);
     -webkit-transform: rotate(45deg);
     transition: .2s all;
@@ -560,13 +568,12 @@ input {
   label {
     position: absolute;
     color: $placeholder-color;
-    left: 12.5px;
+    left: 1rem;
     right: auto;
     z-index: 2;
     top: 50%;
     transform: translateY(-50%);
     background-color: #fff;
-    font-size: 0.85rem;
     transition: .2s all, .1s opacity;
     display: inline-block;
     cursor: text;
@@ -574,12 +581,11 @@ input {
   
   input {
     border: 1px solid #DADCE0;
-    border-radius: $border-radius;
-    padding: 0 12.5px;
+    border-radius: $border-radius-big;
+    padding: 0 1rem;
     box-sizing: border-box;
-    font-size: 0.85rem;
     width: 100%;
-    height: 45px;
+    height: 54px;
     transition: .2s border-color;
     position: relative;
     z-index: 1;
@@ -587,8 +593,8 @@ input {
     
     &:focus {
       border-color: $button-primary-background;
-      border-width: 1.5px;
-      padding: 0 12px;
+      border-width: 2px;
+      padding: 0 calc(1rem - 1px);
     }
     
     &:disabled {
@@ -606,7 +612,7 @@ input {
     }
     
     &:focus ~ .arrow-down {
-      margin-top: -2px;
+      margin-top: -4px;
       transform: rotate(225deg);
       -webkit-transform: rotate(225deg);
       border-color: $button-primary-background;
@@ -617,21 +623,21 @@ input {
     }
     
     &:focus + label, &:valid + label, &:disabled + label {
-      top: -8.5px;
+      top: -.5rem;
       transform: none;
       padding: 0 5px;
-      left: 7.5px;
-      font-size: 0.85rem!important;
+      left: .75rem;
+      font-size: 0.75rem!important;
       opacity: 1;
     }
   }
 }
 
 .checkbox-field {
-  margin: 1rem 0;
+  margin: 1.25rem 0;
   display: block;
   text-align: left;
-  padding: 0 1rem;
+  padding: 0 19px;
   /* font-weight: 500; */
   position: relative;
 }
@@ -646,12 +652,11 @@ input {
   
   & + span {
     position: relative;
-    padding-left: 35px;
+    padding-left: calc(18px + 2.25rem);
     cursor: pointer;
     display: inline-block;
     height: 25px;
     line-height: 25px;
-    font-size: 1rem;
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
@@ -718,7 +723,7 @@ input {
 }
 
 .input-wrapper > * ~ * {
-  margin-top: 1.2rem;
+  margin-top: 1.5rem;
 }
 
 .select-wrapper {
@@ -726,7 +731,7 @@ input {
   /* height: auto; */
   position: absolute;
   width: 100%;
-  top: calc(100% + 10px);
+  top: calc(100% + .5rem);
   left: 0;
   overflow: hidden;
   background-color: #fff;
@@ -737,15 +742,15 @@ input {
   flex-wrap: wrap;
   
   ul {
-    margin: 10px 0;
+    margin: .5rem 0;
   }
   
   li {
     /* display: flex; */
     align-items: center;
-    padding: 0 12.5px;
+    padding: 0 1rem;
     justify-content: space-between;
-    height: 50px;
+    height: 3.5rem;
     cursor: pointer;
     font-weight: 500;
     
@@ -850,8 +855,7 @@ input:focus, button:focus {
   border-radius: $border-radius;
   width: 100%;
   text-align: center;
-  font-size: 0.85rem;
-  height: 45px;
+  height: 54px;
   border: none;
   font-weight: 500;
   cursor: pointer;
@@ -1385,7 +1389,7 @@ div.scrollable::-webkit-scrollbar-thumb {
     text-align: center;
     flex: 1;
     user-select: none;
-    font-size: 16px;
+    font-size: 1rem;
     
     &.active {
       position: relative;

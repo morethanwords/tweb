@@ -8,6 +8,7 @@ import appMessagesIDsManager from "./appMessagesIDsManager";
 import appImManager from "./appImManager";
 import appUsersManager from "./appUsersManager";
 import { appPeersManager } from "../services";
+import apiManager from "../mtproto/apiManager";
 
 let testScroll = false;
 
@@ -50,6 +51,7 @@ class AppSidebarLeft {
   private menuEl = this.toolsBtn.querySelector('.btn-menu');
   private savedBtn = this.menuEl.querySelector('.menu-saved');
   private archivedBtn = this.menuEl.querySelector('.menu-archive');
+  private logOutBtn = this.menuEl.querySelector('.menu-logout');
   public archivedCount = this.archivedBtn.querySelector('.archived-count') as HTMLSpanElement;
   
   private listsContainer: HTMLDivElement = null;
@@ -129,6 +131,10 @@ class AppSidebarLeft {
       this.backBtn.classList.add('active');
       //this.toolsBtn.classList.remove('tgico-menu', 'btn-menu-toggle');
       //this.toolsBtn.classList.add('tgico-back');
+    });
+
+    this.logOutBtn.addEventListener('click', (e) => {
+      apiManager.logOut();
     });
     
     if(testScroll) {

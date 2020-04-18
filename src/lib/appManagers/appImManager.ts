@@ -1336,7 +1336,7 @@ export class AppImManager {
 
           this.log('messageMediaDocument', doc, bubble);
           
-          if(doc.sticker && doc.size <= 1e6) {
+          if(doc.sticker/*  && doc.size <= 1e6 */) {
             bubble.classList.add('sticker');
             
             if(doc.animated) {

@@ -543,7 +543,7 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
   if(doc.thumbs && !div.firstElementChild && (!doc.downloaded || stickerType == 2)) {
     let thumb = doc.thumbs[0];
     
-    console.log('wrap sticker', thumb, div);
+    //console.log('wrap sticker', thumb, div);
     
     if(thumb.bytes) {
       apiFileManager.saveSmallFile(thumb.location, thumb.bytes);

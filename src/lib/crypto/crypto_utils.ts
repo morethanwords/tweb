@@ -1,5 +1,6 @@
 import sha1 from '@cryptography/sha1';
 import sha256 from '@cryptography/sha256';
+import {IGE} from '@cryptography/aes';
 
 import {str2bigInt, bpe, equalsInt, greater, 
   copy_, eGCD_, add_, rightShift_, sub_, copyInt_, isZero,
@@ -9,41 +10,11 @@ import {str2bigInt, bpe, equalsInt, greater,
 // @ts-ignore
 import {BigInteger} from 'jsbn';
 
-import CryptoJS from './crypto.js';
-import { addPadding, bytesToHex, bytesFromHex, nextRandomInt, bytesFromBigInt, dT, bytesFromWords } from '../bin_utils';
+import { addPadding, bytesToHex, bytesFromHex, nextRandomInt, bytesFromBigInt, dT, bytesFromWords, bytesToWordss, bytesFromWordss } from '../bin_utils';
 
 export function bytesFromLeemonBigInt(bigInt: BigInteger) {
   var str = bigInt2str(bigInt, 16);
   return bytesFromHex(str);
-}
-
-export function bytesToWordss(input: ArrayBuffer | Uint8Array) {
-  let bytes: Uint8Array;
-  if(input instanceof ArrayBuffer) bytes = new Uint8Array(input);
-  else bytes = input;
-
-  var len = bytes.length;
-  var words: number[] = [];
-  var i;
-  for(i = 0; i < len; i++) {
-    words[i >>> 2] |= bytes[i] << (24 - (i % 4) * 8);
-  }
-
-  return new Uint32Array(words);
-}
-
-export function bytesToWords(bytes: any) {
-  if(bytes instanceof ArrayBuffer) {
-    bytes = new Uint8Array(bytes);
-  }
-  var len = bytes.length;
-  var words: any = [];
-  var i;
-  for(i = 0; i < len; i++) {
-    words[i >>> 2] |= bytes[i] << (24 - (i % 4) * 8);
-  }
-
-  return new CryptoJS.lib.WordArray.init(words, len);
 }
 
 export function sha1HashSync(bytes: number[] | ArrayBuffer | Uint8Array) {
@@ -68,53 +39,34 @@ export function sha256HashSync(bytes: Uint8Array | ArrayBuffer) {
   let words = bytesToWordss(bytes);
   let hash = sha256(words);
 
-  // bytesFromWords below
-  var o = [];
-  for(var i = 0; i < hash.length * 4; i++) {
-    o.push((hash[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff);
-  }
-
   //console.log(dT(), 'SHA-256 hash finish');
 
-  return o;
+  return bytesFromWordss(hash);
 }
 
-export function aesEncryptSync(bytes: any, keyBytes: any, ivBytes: any) {
-  // console.log(dT(), 'AES encrypt start', len/*, bytesToHex(keyBytes), bytesToHex(ivBytes)*/)
+export function aesEncryptSync(bytes: ArrayBuffer, keyBytes: ArrayBuffer, ivBytes: ArrayBuffer) {
+  //console.log(dT(), 'AES encrypt start', bytes, keyBytes, ivBytes);
   // console.log('aes before padding bytes:', bytesToHex(bytes));
   bytes = addPadding(bytes);
   // console.log('aes after padding bytes:', bytesToHex(bytes));
 
-  let mode = CryptoJS.mode.IGE;
+  const cipher = new IGE(bytesToWordss(keyBytes), bytesToWordss(ivBytes));
+  const encryptedBytes = cipher.encrypt(bytesToWordss(bytes));
+  //console.log(dT(), 'AES encrypt finish');
 
-  let encryptedWords = CryptoJS.AES.encrypt(bytesToWords(bytes), bytesToWords(keyBytes), {
-    iv: bytesToWords(ivBytes),
-    padding: CryptoJS.pad.NoPadding,
-    mode//: CryptoJS.mode.IGE
-  }).ciphertext;
-
-  let encryptedBytes = bytesFromWords(encryptedWords);
-  // console.log(dT(), 'AES encrypt finish')
-
-  return encryptedBytes;
+  return bytesFromWordss(encryptedBytes);
 }
 
-export function aesDecryptSync(encryptedBytes: any, keyBytes: any, ivBytes: any) {
+export function aesDecryptSync(bytes: Uint8Array, keyBytes: Uint8Array, ivBytes: Uint8Array) {
+  //console.log(dT(), 'AES decrypt start', bytes, keyBytes, ivBytes);
 
-  let mode = CryptoJS.mode.IGE;
-  // console.log(dT(), 'AES decrypt start', encryptedBytes.length)
-  var decryptedWords = CryptoJS.AES.decrypt({ciphertext: bytesToWords(encryptedBytes)}, bytesToWords(keyBytes), {
-    iv: bytesToWords(ivBytes),
-    padding: CryptoJS.pad.NoPadding,
-    mode//: CryptoJS.mode.IGE
-  });
+  const cipher = new IGE(bytesToWordss(keyBytes), bytesToWordss(ivBytes));
+  const decryptedBytes = cipher.decrypt(bytesToWordss(bytes));
 
-  var bytes = bytesFromWords(decryptedWords);
-  // console.log(dT(), 'AES decrypt finish')
+  //console.log(dT(), 'AES decrypt finish');
 
-  return bytes;
+  return bytesFromWordss(decryptedBytes);
 }
-
 
 export function rsaEncrypt(publicKey: {modulus: string, exponent: string}, bytes: any): number[] {
   console.log(dT(), 'RSA encrypt start', publicKey, bytes);
