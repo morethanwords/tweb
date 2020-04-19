@@ -61,15 +61,6 @@ export function cancelEvent (event) {
   return false
 }
 
-export function onCtrlEnter (textarea, cb) {
-  $(textarea).on('keydown', function (e) {
-    if (e.keyCode == 13 && (e.ctrlKey || e.metaKey)) {
-      cb()
-      return cancelEvent(e)
-    }
-  })
-}
-
 export function setFieldSelection (field, from, to) {
   field = $(field)[0]
   try {
@@ -307,6 +298,7 @@ export const $rootScope = {
   },
 
   selectedPeerID: 0,
+  myID: 0,
   idle: {
     isIDLE: false
   }

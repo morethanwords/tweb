@@ -1,16 +1,14 @@
 import { logger } from "../polyfill";
-import { putPreloader, formatPhoneNumber } from "../../components/misc";
+import { formatPhoneNumber } from "../../components/misc";
 import Scrollable from '../../components/scrollable';
-import appMessagesManager, { AppMessagesManager } from "./appMessagesManager";
+import appMessagesManager from "./appMessagesManager";
 import appDialogsManager from "./appDialogsManager";
-import { isElementInViewport, numberWithCommas } from "../utils";
+import { isElementInViewport, numberWithCommas, $rootScope } from "../utils";
 import appMessagesIDsManager from "./appMessagesIDsManager";
 import appImManager from "./appImManager";
 import appUsersManager from "./appUsersManager";
-import { appPeersManager } from "../services";
 import apiManager from "../mtproto/apiManager";
-
-let testScroll = false;
+import appPeersManager from './appPeersManager';
 
 class SearchGroup {
   container: HTMLDivElement;
@@ -56,18 +54,6 @@ class AppSidebarLeft {
   
   private listsContainer: HTMLDivElement = null;
   
-  private chatsArchivedContainer = document.getElementById('chats-archived-container') as HTMLDivElement;
-  private chatsContainer = document.getElementById('chats-container') as HTMLDivElement;
-  private chatsArchivedOffsetIndex = 0;
-  private chatsOffsetIndex = 0;
-  private chatsPreloader: HTMLDivElement;
-  //private chatsLoadCount = 0;
-  //private loadDialogsPromise: Promise<any>;
-  private loadDialogsPromise: ReturnType<AppMessagesManager["getConversations"]>;
-
-  private loadedAll = false;
-  private loadedArchivedAll = false;
-  
   private log = logger('SL');
   
   private peerID = 0;
@@ -81,37 +67,16 @@ class AppSidebarLeft {
   
   private query = '';
 
-  public scroll: Scrollable = null;
-  public scrollArchived: Scrollable = null;
-
-  public searchGroups: {[group: string]: SearchGroup} = {
-    contacts: new SearchGroup('Contacts and Chats', 'contacts'),
-    globalContacts: new SearchGroup('Global Search', 'contacts'),
-    globalMessages: new SearchGroup('Global Search', 'messages'),
-    privateMessages: new SearchGroup('Private Search', 'messages')
-  };
+  public searchGroups: {[group: string]: SearchGroup} = {};
 
   constructor() {
-    this.chatsPreloader = putPreloader(null, true);
-    //this.chatsContainer.append(this.chatsPreloader);
-    
-    //this.chatsLoadCount = Math.round(document.body.scrollHeight / 70 * 1.5);
-
-    let splitOffset = 1110;
-    
-    this.scroll = new Scrollable(this.chatsContainer, 'y', splitOffset, 'CL', appDialogsManager.chatList, 500);
-    this.scroll.setVirtualContainer(appDialogsManager.chatList);
-    this.scroll.onScrolledBottom = this.onChatsScroll.bind(this);
-    appDialogsManager.chatsHidden = this.scroll.hiddenElements;
-    appDialogsManager.chatsVisible = this.scroll.visibleElements;
-
-    this.scrollArchived = new Scrollable(this.chatsArchivedContainer, 'y', splitOffset, 'CLA', appDialogsManager.chatListArchived, 500);
-    this.scrollArchived.setVirtualContainer(appDialogsManager.chatListArchived);
-    this.scrollArchived.onScrolledBottom = this.onChatsArchivedScroll.bind(this);
-    appDialogsManager.chatsArchivedHidden = this.scrollArchived.hiddenElements;
-    appDialogsManager.chatsArchivedVisible = this.scrollArchived.visibleElements;
-    //this.scrollArchived.container.addEventListener('scroll', this.onChatsArchivedScroll.bind(this));
-    
+    this.searchGroups = {
+      contacts: new SearchGroup('Contacts and Chats', 'contacts'),
+      globalContacts: new SearchGroup('Global Search', 'contacts'),
+      globalMessages: new SearchGroup('Global Search', 'messages'),
+      privateMessages: new SearchGroup('Private Search', 'messages')
+    };
+  
     this.listsContainer = new Scrollable(this.searchContainer).container;
     for(let i in this.searchGroups) {
       this.listsContainer.append(this.searchGroups[i].container);
@@ -126,7 +91,7 @@ class AppSidebarLeft {
     });
     
     this.archivedBtn.addEventListener('click', (e) => {
-      this.chatsArchivedContainer.classList.add('active');
+      appDialogsManager.chatsArchivedContainer.classList.add('active');
       this.toolsBtn.classList.remove('active');
       this.backBtn.classList.add('active');
       //this.toolsBtn.classList.remove('tgico-menu', 'btn-menu-toggle');
@@ -136,15 +101,6 @@ class AppSidebarLeft {
     this.logOutBtn.addEventListener('click', (e) => {
       apiManager.logOut();
     });
-    
-    if(testScroll) {
-      for(let i = 0; i < 1000; ++i) {
-        let li = document.createElement('li');
-        li.dataset.id = '' + i;
-        li.innerHTML = `<div class="rp"><div class="user-avatar" style="background-color: rgb(166, 149, 231); font-size: 0px;"><img src="#"></div><div class="user-caption"><p><span class="user-title">${i}</span><span><span class="message-status"></span><span class="message-time">18:33</span></span></p><p><span class="user-last-message"><b>-_-_-_-: </b>qweasd</span><span></span></p></div></div>`;
-        this.scroll.append(li);
-      }
-    }
     
     this.listsContainer.addEventListener('scroll', this.onSidebarScroll.bind(this));
 
@@ -198,99 +154,29 @@ class AppSidebarLeft {
     });
 
     this.backBtn.addEventListener('click', (e) => {
-      this.chatsArchivedContainer.classList.remove('active');
+      appDialogsManager.chatsArchivedContainer.classList.remove('active');
       this.toolsBtn.classList.add('active');
       this.backBtn.classList.remove('active');
       this.searchInput.value = '';
       this.searchContainer.classList.remove('active');
       this.peerID = 0;
     });
-    
+
     window.addEventListener('resize', () => {
       //this.chatsLoadCount = Math.round(document.body.scrollHeight / 70 * 1.5);
       
       setTimeout(() => {
         this.onSidebarScroll();
-        this.scroll.onScroll();
-        //this.onChatsScroll();
-        this.onChatsArchivedScroll();
       }, 0);
+    });
+
+    $rootScope.$on('dialogs_archived_unread', (e: CustomEvent) => {
+      this.archivedCount.innerText = '' + e.detail.count;
     });
 
     /* appUsersManager.getTopPeers().then(categories => {
       this.log('got top categories:', categories);
     }); */
-  }
-  
-  public async loadDialogs(archived = false) {
-    if(testScroll) {
-      return;
-    }
-    
-    if(this.loadDialogsPromise/*  || 1 == 1 */) return this.loadDialogsPromise;
-    
-    (archived ? this.chatsArchivedContainer : this.chatsContainer).append(this.chatsPreloader);
-    
-    //let offset = appMessagesManager.generateDialogIndex();/* appMessagesManager.dialogsNum */;
-
-    let offset = archived ? this.chatsArchivedOffsetIndex : this.chatsOffsetIndex;
-    //let offset = 0;
-
-    let scroll = archived ? this.scrollArchived : this.scroll;
-    scroll.lock();
-    
-    try {
-      console.time('getDialogs time');
-
-      let loadCount = 50/*this.chatsLoadCount */;
-      this.loadDialogsPromise = appMessagesManager.getConversations('', offset, loadCount, +archived);
-      
-      let result = await this.loadDialogsPromise;
-
-      console.timeEnd('getDialogs time');
-      
-      if(result && result.dialogs && result.dialogs.length) {
-        let index = result.dialogs[result.dialogs.length - 1].index;
-
-        if(archived) this.chatsArchivedOffsetIndex = index;
-        else this.chatsOffsetIndex = index;
-
-        result.dialogs.forEach((dialog: any) => {
-          appDialogsManager.addDialog(dialog);
-        });
-      }
-
-      if(!result.dialogs.length || (archived ? this.scrollArchived.length == result.count : this.scroll.length == result.count)) { // loaded all
-        if(archived) this.loadedArchivedAll = true;
-        else this.loadedAll = true;
-      }
-
-      /* if(archived) {
-        let count = result.count;
-        this.archivedCount.innerText = '' + count;
-      } */
-
-      this.log('getDialogs ' + loadCount + ' dialogs by offset:', offset, result, this.scroll.length);
-      this.scroll.onScroll();
-    } catch(err) {
-      this.log.error(err);
-    }
-    
-    this.chatsPreloader.remove();
-    this.loadDialogsPromise = undefined;
-    scroll.unlock();
-  }
-  
-  public onChatsScroll() {
-    if(this.loadedAll || this.scroll.hiddenElements.down.length > 0 || this.loadDialogsPromise/*  || 1 == 1 */) return;
-    
-    this.loadDialogs();
-  }
-
-  public onChatsArchivedScroll() {
-    if(this.loadedArchivedAll || this.scrollArchived.hiddenElements.down.length > 0 || this.loadDialogsPromise/*  || 1 == 1 */) return;
-    
-    this.loadDialogs(true);
   }
   
   public onSidebarScroll() {

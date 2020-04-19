@@ -133,8 +133,8 @@ input {
 
 .btn-icon {
   text-align: center;
-  font-size: 1.65rem;
-  line-height: 1.65rem;
+  font-size: 1.5rem;
+  line-height: 1.5rem;
   border-radius: 50%;
   -webkit-transition: background-color .15s ease-out;
   transition: background-color .15s ease-out;
@@ -494,6 +494,32 @@ input {
     margin-top: 3px;
     margin-left: -1px;
   }
+}
+
+#auth-pages {
+  max-width: 720px; // 360 + 360 / 2
+  overflow: hidden;
+
+  .tabs-container {
+    &.animated {
+      transition: .42s transform;
+    }
+
+    > div {
+      justify-content: center;
+      /* &.active {
+        flex-direction: row;
+      } */
+
+      > div {
+        padding: 0;
+        overflow: visible;
+        /* display: flex;
+        flex-direction: column;
+        justify-content: center; */
+      }
+    }
+  } 
 }
 
 .page-sign {
@@ -1302,7 +1328,7 @@ div.scrollable::-webkit-scrollbar-thumb {
   max-height: 100%;
   //position: relative;
 
-  will-change: transform;
+  //will-change: transform;
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
 
@@ -1412,12 +1438,13 @@ div.scrollable::-webkit-scrollbar-thumb {
 
 .tabs-container {
   min-width: 100%;
+  width: 100%;
   display: flex;
   /* overflow: hidden; */
   overflow-x: hidden;
 
   &.animated {
-    transition: .2s margin-left;
+    transition: .3s transform;
   }
   
   > div {

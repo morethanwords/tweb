@@ -1,4 +1,4 @@
-import { whichChild, findUpTag } from "../lib/utils";
+import { whichChild, findUpTag, cancelEvent } from "../lib/utils";
 
 let rippleClickID = 0;
 export function ripple(elem: HTMLElement, callback: (id: number) => Promise<boolean | void> = () => Promise.resolve(), onEnd: (id: number) => void = null) {
@@ -8,10 +8,16 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
   elem.append(r);
 
   elem.addEventListener('mousedown', (e) => {
+    if(elem.dataset.ripple == '0') {
+      return false;
+    }
+
     let startTime = Date.now();
     let span = document.createElement('span');
 
     let clickID = rippleClickID++;
+
+    console.log('ripple mousedown');
 
     let handler = () => {
       let elapsedTime = Date.now() - startTime;
@@ -135,87 +141,125 @@ export function putPreloader(elem: Element, returnDiv = false) {
   elem.innerHTML += html;
 }
 
-export function horizontalMenu(tabs: HTMLUListElement, content: HTMLDivElement, onClick?: (id: number, tabContent: HTMLDivElement) => void, onTransitionEnd?: () => void) {
+export function horizontalMenu(tabs: HTMLUListElement, content: HTMLDivElement, onClick?: (id: number, tabContent: HTMLDivElement) => void, onTransitionEnd?: () => void, transitionTime = 300) {
   let hideTimeout: number = 0;
   let prevTabContent: HTMLDivElement = null;
   
   let prevId = -1;
-  
-  tabs.addEventListener('click', function(e) {
-    let target = e.target as HTMLLIElement;
-    
-    if(target.tagName != 'LI') {
-      target = findUpTag(target, 'LI');
-    }
-    
-    ///////console.log('tabs click:', target);
-    
-    if(!target) return false;
+  let children = Array.from(content.children);
+  let tabsChildren = tabs ? Array.from(tabs.children) : [];
+  let activeInSlide: Set<Element> = new Set();
 
-    let id = whichChild(target);
+  let selectTab = (id: number) => {
+    if(id == prevId) return false;
+
+    let p = prevTabContent;
+
+    /* children.forEach(child => {
+      if(child != p) {
+        child.classList.remove('active');
+      }
+    }); */
+
     let tabContent = content.children[id] as HTMLDivElement;
-    if(onClick) onClick(id, tabContent);
-    if(target.classList.contains('active') || id == prevId) {
-      return false;
-    }
-    
-    let prev = tabs.querySelector('li.active') as HTMLLIElement;
-    prev && prev.classList.remove('active');
-    
-    target.classList.add('active');
     tabContent.classList.add('active');
-    
-    /////console.log('mambo rap', prevId, id);
-    
+
+    if(!activeInSlide.has(tabContent)) {
+      activeInSlide.add(tabContent);
+    }
+
     //content.style.marginLeft = id > 0 ? (-id * 100) + '%' : '';
     let toRight = prevId < id;
     if(prevId != -1) {
-      content.style.width = '200%';
+      content.style.cssText = `width: ${activeInSlide.size * 100}%; will-change: width, transform; transform: translateX(-${100 - 100 / activeInSlide.size}%);`;
       
       //////console.log('mambo rap setting', toRight);
       
       content.classList.remove('animated');
-      
       if(toRight) {
         content.classList.add('animated');
-        content.style.marginLeft = '-100%';
       } else {
-        
-        content.style.marginLeft = '-100%';
-        setTimeout(() => {
+        window.requestAnimationFrame(() => {
           content.classList.add('animated');
-          content.style.marginLeft = '';
-        }, 10);
+          content.style.transform = '';
+        });
       }
     }
     
+    if(hideTimeout) clearTimeout(hideTimeout);
+    if(p/*  && false */) {
+      //if(tabs) tabs.classList.add('disable-hover');
+
+      if(tabs) {
+        tabsChildren.forEach((c, idx) => {
+          if(idx != prevId && idx != id) {
+            (c as HTMLElement).dataset.ripple = '0';
+          }
+        });
+      }
+
+      hideTimeout = setTimeout(() => {
+        children.forEach(child => {
+          if(child != tabContent) {
+            child.classList.remove('active');
+            activeInSlide.delete(child);
+          }
+        });
+
+        if(tabs) {
+          tabsChildren.forEach(c => {
+            delete (c as HTMLElement).dataset.ripple;
+          });
+        }
+  
+        content.classList.remove('animated');
+        content.style.cssText = '';
+    
+        hideTimeout = 0;
+        
+        if(onTransitionEnd) onTransitionEnd();
+        //if(tabs) tabs.classList.remove('disable-hover');
+      }, transitionTime);
+    } 
+    
     prevId = id;
-    
-    let p = prevTabContent;
-    clearTimeout(hideTimeout);
-    if(p) hideTimeout = setTimeout(() => {
-      if(toRight) {
-        p.classList.remove('active');
-        content.classList.remove('animated');
-        content.style.width = '100%'; 
-      }
-      
-      /* content.style.marginLeft = '0%';
-      content.style.width = '100%'; */
-      
-      if(!toRight) {
-        p.classList.remove('active');
-        content.classList.remove('animated');
-        content.style.width = '100%';
-      }
-      
-      content.style.marginLeft = '';
-      
-      if(onTransitionEnd) onTransitionEnd();
-    }, 200);
-    
     prevTabContent = tabContent;
-  });
+  };
+
+  if(tabs) {
+    tabs.addEventListener('click', function(e) {
+      let target = e.target as HTMLLIElement;
+      
+      if(target.tagName != 'LI') {
+        target = findUpTag(target, 'LI');
+      }
+      
+      //console.log('tabs click:', target);
+      
+      if(!target) return false;
+
+      let id = whichChild(target);
+      let tabContent = content.children[id] as HTMLDivElement;
+
+      if(activeInSlide.size >= 2 && !activeInSlide.has(tabContent)) {
+        cancelEvent(e);
+        return false;
+      }
+
+      if(onClick) onClick(id, tabContent);
+      if(target.classList.contains('active') || id == prevId) {
+        return false;
+      }
+      
+      let prev = tabs.querySelector('li.active') as HTMLLIElement;
+      prev && prev.classList.remove('active');
+      
+      target.classList.add('active');
+      selectTab(id);
+    });
+  }
+  
+  return selectTab;
 }
 
 export function formatPhoneNumber(str: string) {

@@ -1,14 +1,13 @@
-import apiManager from "../mtproto/apiManager";
-import apiFileManager from '../mtproto/apiFileManager';
-import { $rootScope, langPack, findUpClassName } from "../utils";
+import { langPack, findUpClassName, $rootScope } from "../utils";
 import appImManager, { AppImManager } from "./appImManager";
 import appPeersManager from './appPeersManager';
-import appMessagesManager from "./appMessagesManager";
+import appMessagesManager, { AppMessagesManager } from "./appMessagesManager";
 import appUsersManager from "./appUsersManager";
 import { RichTextProcessor } from "../richtextprocessor";
-import { ripple, renderImageFromUrl } from "../../components/misc";
-import appSidebarLeft from "./appSidebarLeft";
+import { ripple, putPreloader } from "../../components/misc";
 import Scrollable from "../../components/scrollable";
+import appProfileManager from "./appProfileManager";
+import { logger } from "../polyfill";
 
 type DialogDom = {
   avatarDiv: HTMLDivElement,
@@ -22,6 +21,8 @@ type DialogDom = {
   listEl: HTMLLIElement
 };
 
+let testScroll = false;
+
 export class AppDialogsManager {
   public chatList = document.getElementById('dialogs') as HTMLUListElement;
   public chatListArchived = document.getElementById('dialogs-archived') as HTMLUListElement;
@@ -31,42 +32,228 @@ export class AppDialogsManager {
   public chatsArchivedHidden: Scrollable["hiddenElements"];
   public chatsArchivedVisible: Scrollable["visibleElements"];
   
-  public myID = 0;
   public doms: {[peerID: number]: DialogDom} = {};
   public domsArchived: {[peerID: number]: DialogDom} = {};
   public lastActiveListElement: HTMLElement = null;
-
-  public savedAvatarURLs: {[peerID: number]: string} = {};
 
   private rippleCallback: (value?: boolean | PromiseLike<boolean>) => void = null;
   private lastClickID = 0;
   private lastGoodClickID = 0;
 
+  public chatsArchivedContainer = document.getElementById('chats-archived-container') as HTMLDivElement;
+  public chatsContainer = document.getElementById('chats-container') as HTMLDivElement;
+  private chatsArchivedOffsetIndex = 0;
+  private chatsOffsetIndex = 0;
+  private chatsPreloader: HTMLDivElement;
+  //private chatsLoadCount = 0;
+  //private loadDialogsPromise: Promise<any>;
+  private loadDialogsPromise: ReturnType<AppMessagesManager["getConversations"]>;
+
+  private loadedAll = false;
+  private loadedArchivedAll = false;
+
+  public scroll: Scrollable = null;
+  public scrollArchived: Scrollable = null;
+
+  private log = logger('DIALOGS');
+
   constructor() {
+    this.chatsPreloader = putPreloader(null, true);
+    //this.chatsContainer.append(this.chatsPreloader);
+    
     this.pinnedDelimiter = document.createElement('div');
     this.pinnedDelimiter.classList.add('pinned-delimiter');
     this.pinnedDelimiter.appendChild(document.createElement('span'));
 
-    apiManager.getUserID().then((id) => {
-      this.myID = id;
-    });
+    //this.chatsLoadCount = Math.round(document.body.scrollHeight / 70 * 1.5);
 
-    $rootScope.$on('user_auth', (e: CustomEvent) => {
-      let userAuth = e.detail;
-      this.myID = userAuth ? userAuth.id : 0;
-    });
+    let splitOffset = 1110;
+    
+    this.scroll = new Scrollable(this.chatsContainer, 'y', splitOffset, 'CL', this.chatList, 500);
+    this.scroll.setVirtualContainer(this.chatList);
+    this.scroll.onScrolledBottom = this.onChatsScroll.bind(this);
+    this.chatsHidden = this.scroll.hiddenElements;
+    this.chatsVisible = this.scroll.visibleElements;
 
-    $rootScope.$on('history_request', () => { // will call at history request api or cache RENDERED!
-      if(this.rippleCallback) {
-        this.rippleCallback();
-        this.rippleCallback = null;
-      }
-    });
+    this.scrollArchived = new Scrollable(this.chatsArchivedContainer, 'y', splitOffset, 'CLA', this.chatListArchived, 500);
+    this.scrollArchived.setVirtualContainer(this.chatListArchived);
+    this.scrollArchived.onScrolledBottom = this.onChatsArchivedScroll.bind(this);
+    this.chatsArchivedHidden = this.scrollArchived.hiddenElements;
+    this.chatsArchivedVisible = this.scrollArchived.visibleElements;
+    //this.scrollArchived.container.addEventListener('scroll', this.onChatsArchivedScroll.bind(this));
 
     //let chatClosedDiv = document.getElementById('chat-closed');
 
     this.setListClickListener(this.chatList);
     this.setListClickListener(this.chatListArchived);
+
+    if(testScroll) {
+      for(let i = 0; i < 1000; ++i) {
+        let li = document.createElement('li');
+        li.dataset.id = '' + i;
+        li.innerHTML = `<div class="rp"><div class="user-avatar" style="background-color: rgb(166, 149, 231); font-size: 0px;"><img src="#"></div><div class="user-caption"><p><span class="user-title">${i}</span><span><span class="message-status"></span><span class="message-time">18:33</span></span></p><p><span class="user-last-message"><b>-_-_-_-: </b>qweasd</span><span></span></p></div></div>`;
+        this.scroll.append(li);
+      }
+    }
+
+    window.addEventListener('resize', () => {
+      //this.chatsLoadCount = Math.round(document.body.scrollHeight / 70 * 1.5);
+      
+      setTimeout(() => {
+        this.onChatsArchivedScroll();
+      }, 0);
+    });
+
+    $rootScope.$on('user_update', (e: CustomEvent) => {
+      let userID = e.detail;
+
+      let user = appUsersManager.getUser(userID);
+
+      let dialog = appMessagesManager.getDialogByPeerID(user.id)[0];
+      //console.log('updating user:', user, dialog);
+
+      if(dialog && !appUsersManager.isBot(dialog.peerID) && dialog.peerID != $rootScope.myID) {
+        let online = user.status && user.status._ == 'userStatusOnline';
+        let dom = this.getDialogDom(dialog.peerID);
+
+        if(dom) {
+          if(online) {
+            dom.avatarDiv.classList.add('is-online');
+          } else {
+            dom.avatarDiv.classList.remove('is-online');
+          }
+        }
+      }
+
+      if(appImManager.peerID == user.id) {
+        appImManager.setPeerStatus();
+      }
+    });
+
+    $rootScope.$on('dialog_top', (e: CustomEvent) => {
+      let dialog: any = e.detail;
+
+      this.setLastMessage(dialog);
+      this.sortDom();
+    });
+
+    $rootScope.$on('dialogs_multiupdate', (e: CustomEvent) => {
+      let dialogs = e.detail;
+
+      let performed = 0;
+      for(let id in dialogs) {
+        let dialog = dialogs[id];
+
+        /////console.log('updating dialog:', dialog);
+
+        ++performed;
+
+        if(!(dialog.peerID in this.doms)) {
+          this.addDialog(dialog);
+          continue;
+        } 
+
+        this.setLastMessage(dialog);
+      }
+
+      if(performed/*  && false */) {
+        /////////console.log('will sortDom');
+        this.sortDom();
+        this.sortDom(true);
+      }
+    });
+
+    $rootScope.$on('dialog_unread', (e: CustomEvent) => {
+      let info: {
+        peerID: number,
+        count: number
+      } = e.detail;
+
+      let dialog = appMessagesManager.getDialogByPeerID(info.peerID)[0];
+      if(dialog) {
+        this.setUnreadMessages(dialog);
+
+        if(dialog.peerID == appImManager.peerID) {
+          appImManager.updateUnreadByDialog(dialog);
+        }
+      }
+    });
+
+    this.loadDialogs().then(result => {
+      //appSidebarLeft.onChatsScroll();
+      this.loadDialogs(true);
+    });
+  }
+
+  public async loadDialogs(archived = false) {
+    if(testScroll) {
+      return;
+    }
+    
+    if(this.loadDialogsPromise/*  || 1 == 1 */) return this.loadDialogsPromise;
+    
+    (archived ? this.chatsArchivedContainer : this.chatsContainer).append(this.chatsPreloader);
+    
+    //let offset = appMessagesManager.generateDialogIndex();/* appMessagesManager.dialogsNum */;
+
+    let offset = archived ? this.chatsArchivedOffsetIndex : this.chatsOffsetIndex;
+    //let offset = 0;
+
+    let scroll = archived ? this.scrollArchived : this.scroll;
+    scroll.lock();
+    
+    try {
+      console.time('getDialogs time');
+
+      let loadCount = 50/*this.chatsLoadCount */;
+      this.loadDialogsPromise = appMessagesManager.getConversations('', offset, loadCount, +archived);
+      
+      let result = await this.loadDialogsPromise;
+
+      console.timeEnd('getDialogs time');
+      
+      if(result && result.dialogs && result.dialogs.length) {
+        let index = result.dialogs[result.dialogs.length - 1].index;
+
+        if(archived) this.chatsArchivedOffsetIndex = index;
+        else this.chatsOffsetIndex = index;
+
+        result.dialogs.forEach((dialog: any) => {
+          this.addDialog(dialog);
+        });
+      }
+
+      if(!result.dialogs.length || (archived ? this.scrollArchived.length == result.count : this.scroll.length == result.count)) { // loaded all
+        if(archived) this.loadedArchivedAll = true;
+        else this.loadedAll = true;
+      }
+
+      /* if(archived) {
+        let count = result.count;
+        this.archivedCount.innerText = '' + count;
+      } */
+
+      this.log('getDialogs ' + loadCount + ' dialogs by offset:', offset, result, this.scroll.length);
+      this.scroll.onScroll();
+    } catch(err) {
+      this.log.error(err);
+    }
+    
+    this.chatsPreloader.remove();
+    this.loadDialogsPromise = undefined;
+    scroll.unlock();
+  }
+  
+  public onChatsScroll() {
+    if(this.loadedAll || this.scroll.hiddenElements.down.length > 0 || this.loadDialogsPromise/*  || 1 == 1 */) return;
+    
+    this.loadDialogs();
+  }
+
+  public onChatsArchivedScroll() {
+    if(this.loadedArchivedAll || this.scrollArchived.hiddenElements.down.length > 0 || this.loadDialogsPromise/*  || 1 == 1 */) return;
+    
+    this.loadDialogs(true);
   }
 
   public setListClickListener(list: HTMLUListElement, onFound?: () => void) {
@@ -142,94 +329,6 @@ export class AppDialogsManager {
     });
   }
 
-  // peerID == peerID || title
-  public async loadDialogPhoto(div: HTMLDivElement, peerID: number, isDialog = false, title = ''): Promise<boolean> {
-    let inputPeer: any;
-    let location: any;
-    if(peerID) {
-      inputPeer = appPeersManager.getInputPeerByID(peerID);
-      location = appPeersManager.getPeerPhoto(peerID);
-    }
-
-    //console.log('loadDialogPhoto location:', location, inputPeer);
-
-    if(peerID == this.myID && (isDialog || $rootScope.selectedPeerID == this.myID)) {
-      if(div.firstChild) {
-        div.firstChild.remove();
-      }
-      
-      div.style.backgroundColor = '';
-      div.classList.add('tgico-savedmessages');
-      div.classList.remove('tgico-avatar_deletedaccount');
-      return true;
-    }
-
-    if(peerID) {
-      let user = appUsersManager.getUser(peerID);
-      if(user && user.pFlags && user.pFlags.deleted) {
-        if(div.firstChild) {
-          div.firstChild.remove();
-        }
-        
-        div.style.backgroundColor = '';
-        div.classList.add('tgico-avatar_deletedaccount');
-        return true;
-      }
-    }
-
-    //if(!location || location.empty || !location.photo_small) {
-      if(div.firstChild) {
-        div.firstChild.remove();
-      }
-
-      let color = '';
-      if(peerID && peerID != this.myID) {
-        color = appPeersManager.getPeerColorByID(peerID);
-      }
-
-      div.classList.remove('tgico-savedmessages', 'tgico-avatar_deletedaccount');
-      div.style.backgroundColor = color;
-
-      let abbrSplitted = (!title && peerID ? appPeersManager.getPeerTitle(peerID, true) : title).split(' ');
-      let abbr = (abbrSplitted.length == 2 ? 
-        abbrSplitted[0][0] + abbrSplitted[1][0] : 
-        abbrSplitted[0][0]).toUpperCase();
-
-      //div.innerText = peer.initials.toUpperCase();
-      div.innerText = abbr.toUpperCase();
-      //return Promise.resolve(true);
-    //}
-
-    if(!location || location.empty || !location.photo_small) {
-      return true;
-    }
-
-    if(!this.savedAvatarURLs[peerID]) {
-      let res = await apiFileManager.downloadSmallFile({
-        _: 'inputPeerPhotoFileLocation', 
-        dc_id: location.dc_id, 
-        flags: 0, 
-        peer: inputPeer, 
-        volume_id: location.photo_small.volume_id, 
-        local_id: location.photo_small.local_id
-      });
-
-      this.savedAvatarURLs[peerID] = URL.createObjectURL(res);
-    }
-
-    let img = new Image();
-    renderImageFromUrl(img, this.savedAvatarURLs[peerID]);
-    div.innerHTML = '';
-    //div.style.fontSize = '0'; // need
-    //div.style.backgroundColor = '';
-
-    //window.requestAnimationFrame(() => {
-      div.append(img);
-    //});
-
-    return true;
-  }
-
   public sortDom(archived = false) {
     //return;
     //if(archived) return;
@@ -299,7 +398,7 @@ export class AppDialogsManager {
 
       let child = concated.find(obj => obj.element == dom.listEl);
       if(!child) {
-        return console.error('no child by listEl:', dom.listEl, archived, concated);
+        return this.log.error('no child by listEl:', dom.listEl, archived, concated);
       }
 
       if(inUpper.length < hiddenLength) {
@@ -412,7 +511,7 @@ export class AppDialogsManager {
           let senderBold = document.createElement('b');
 
           let str = '';
-          if(sender.id == this.myID) {
+          if(sender.id == $rootScope.myID) {
             str = 'You';
           } else {
             str = sender.first_name || sender.last_name || sender.username;
@@ -459,7 +558,7 @@ export class AppDialogsManager {
     dom.statusSpan.innerHTML = '';
     let lastMessage = appMessagesManager.getMessage(dialog.top_message);
     if(lastMessage._ != 'messageEmpty' && 
-      lastMessage.from_id == this.myID && lastMessage.peerID != this.myID && 
+      lastMessage.from_id == $rootScope.myID && lastMessage.peerID != $rootScope.myID && 
       dialog.read_outbox_max_id) { // maybe comment, 06.20.2020
       let outgoing = (lastMessage.pFlags && lastMessage.pFlags.unread)
         /*  && dialog.read_outbox_max_id != 0 */; // maybe uncomment, 31.01.2020
@@ -497,7 +596,7 @@ export class AppDialogsManager {
         return acc;
       }, 0);
 
-      appSidebarLeft.archivedCount.innerText = '' + sum;
+      $rootScope.$broadcast('dialogs_archived_unread', {count: sum});
     }
   }
 
@@ -520,7 +619,7 @@ export class AppDialogsManager {
     let avatarDiv = document.createElement('div');
     avatarDiv.classList.add('user-avatar');
 
-    if(drawStatus && peerID != this.myID) {
+    if(drawStatus && peerID != $rootScope.myID) {
       let peer = dialog.peer;
       
       switch(peer._) {
@@ -544,12 +643,12 @@ export class AppDialogsManager {
     let titleSpan = document.createElement('span');
     titleSpan.classList.add('user-title');
 
-    if(peerID == this.myID) {
+    if(peerID == $rootScope.myID) {
       title = 'Saved Messages';
     } 
 
     //console.log('trying to load photo for:', title);
-    this.loadDialogPhoto(avatarDiv, dialog.peerID, true);
+    appProfileManager.putPhoto(avatarDiv, dialog.peerID, true);
 
     titleSpan.innerHTML = title;
     //p.classList.add('')
@@ -565,7 +664,7 @@ export class AppDialogsManager {
     paddingDiv.append(avatarDiv, captionDiv);
 
     ripple(paddingDiv, (id) => {
-      console.log('dialogs click element');
+      this.log('dialogs click element');
       this.lastClickID = id;
 
       return new Promise((resolve, reject) => {
@@ -617,10 +716,10 @@ export class AppDialogsManager {
 
     if(!container) {
       if(dialog.folder_id && dialog.folder_id == 1) {
-        appSidebarLeft.scrollArchived.append(li);
+        this.scrollArchived.append(li);
         this.domsArchived[dialog.peerID] = dom;
       } else {
-        appSidebarLeft.scroll.append(li);
+        this.scroll.append(li);
         this.doms[dialog.peerID] = dom;
       }
 

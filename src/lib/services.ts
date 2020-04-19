@@ -22,7 +22,6 @@ export const appChatsManager = AppChatsManager;
 export const appMessagesIDsManager = AppMessagesIDsManager;
 export const apiUpdatesManager = ApiUpdatesManager;
 export const appPhotosManager = AppPhotosManager;
-export const appDialogsManager = AppDialogsManager;
 export const appMessagesManager = AppMessagesManager;
 export const appProfileManager = AppProfileManager;
 export const appImManager = AppImManager;
@@ -33,6 +32,7 @@ export const appDocsManager = AppDocsManager;
 export const appSidebarRight = AppSidebarRight;
 export const appSidebarLeft = AppSidebarLeft;
 export const appMediaViewer = AppMediaViewer;
+export const appDialogsManager = AppDialogsManager;
 
 (window as any).Services = {
   appUsersManager,

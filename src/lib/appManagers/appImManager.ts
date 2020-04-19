@@ -120,7 +120,7 @@ export class AppImManager {
     this.popupDeleteMessage.cancelBtn = this.popupDeleteMessage.popupEl.querySelector('.popup-close') as HTMLButtonElement;
     
     apiManager.getUserID().then((id) => {
-      this.myID = id;
+      this.myID = $rootScope.myID = id;
     });
     
     this.topbar = document.getElementById('topbar') as HTMLDivElement;
@@ -128,7 +128,7 @@ export class AppImManager {
     
     $rootScope.$on('user_auth', (e: CustomEvent) => {
       let userAuth = e.detail;
-      this.myID = userAuth ? userAuth.id : 0;
+      this.myID = $rootScope.myID = userAuth ? userAuth.id : 0;
     });
     
     // will call when message is sent (only 1)
@@ -558,6 +558,7 @@ export class AppImManager {
     setInterval(() => this.setPeerStatus(), 60e3);
     
     this.setScroll();
+    apiUpdatesManager.attach();
   }
   
   public deleteMessages(revoke = false) {
@@ -882,8 +883,8 @@ export class AppImManager {
     
     let dialog = appMessagesManager.getDialogByPeerID(this.peerID)[0] || null;
     //////this.log('setPeer peerID:', this.peerID, dialog, lastMsgID);
-    appDialogsManager.loadDialogPhoto(this.avatarEl, this.peerID);
-    appDialogsManager.loadDialogPhoto(appSidebarRight.profileElements.avatar, this.peerID);
+    appProfileManager.putPhoto(this.avatarEl, this.peerID);
+    appProfileManager.putPhoto(appSidebarRight.profileElements.avatar, this.peerID);
 
     this.firstTopMsgID = dialog ? dialog.top_message : 0;
     
@@ -1248,7 +1249,9 @@ export class AppImManager {
           
           bubble.classList.add('hide-name', 'photo');
           
-          wrapPhoto.call(this, photo.id, message, attachmentDiv, undefined, undefined, true, our);
+          wrapPhoto(photo.id, message, attachmentDiv, undefined, undefined, true, our, this.lazyLoadQueue, () => {
+            return this.peerID == peerID;
+          });
           break;
         }
         
@@ -1291,7 +1294,20 @@ export class AppImManager {
             if(doc.type == 'gif' || doc.type == 'video') {
               //if(doc.size <= 20e6) {
               bubble.classList.add('video');
-              wrapVideo.call(this, doc, preview, message, true, null, false, false, 380, 300);
+              wrapVideo({
+                doc, 
+                container: preview, 
+                message, 
+                justLoader: true, 
+                preloader: null, 
+                round: false, 
+                boxWidth: 380,
+                boxHeight: 300,
+                lazyLoadQueue: this.lazyLoadQueue,
+                middleware: () => {
+                  return this.peerID == peerID;
+                }
+              });
               //}
             } else {
               doc = null;
@@ -1301,7 +1317,9 @@ export class AppImManager {
           if(webpage.photo && !doc) {
             bubble.classList.add('photo');
 
-            wrapPhoto.call(this, webpage.photo.id, message, preview, 380, 300, false);
+            wrapPhoto(webpage.photo.id, message, preview, 380, 300, false, null, this.lazyLoadQueue, () => {
+              return this.peerID == peerID;
+            });
           }
           
           if(preview) {
@@ -1366,7 +1384,23 @@ export class AppImManager {
             }
             
             bubble.classList.add('hide-name', 'video');
-            wrapVideo.call(this, doc, attachmentDiv, message, true, null, false, doc.type == 'round', 380, 380, doc.type != 'round', our);
+            //wrapVideo.call(this, doc, attachmentDiv, message, true, null, false, doc.type == 'round', 380, 380, doc.type != 'round', our);
+            wrapVideo({
+              doc, 
+              container: attachmentDiv, 
+              message, 
+              justLoader: true, 
+              preloader: null, 
+              round: doc.type == 'round',
+              boxWidth: 380,
+              boxHeight: 380, 
+              withTail: doc.type != 'round', 
+              isOut: our,
+              lazyLoadQueue: this.lazyLoadQueue,
+              middleware: () => {
+                return this.peerID == peerID;
+              }
+            });
             
             break;
           } else if(doc.mime_type == 'audio/ogg') {
@@ -1479,11 +1513,11 @@ export class AppImManager {
         
         /////////this.log('exec loadDialogPhoto', message);
         if(message.fromID) { // if no - user hidden
-          appDialogsManager.loadDialogPhoto(avatarDiv, message.fromID);
+          appProfileManager.putPhoto(avatarDiv, message.fromID);
         } else if(!title && message.fwd_from && message.fwd_from.from_name) {
           title = message.fwd_from.from_name;
           
-          appDialogsManager.loadDialogPhoto(avatarDiv, 0, false, title);
+          appProfileManager.putPhoto(avatarDiv, 0, false, title);
         }
         
         avatarDiv.dataset.peerID = message.fromID;

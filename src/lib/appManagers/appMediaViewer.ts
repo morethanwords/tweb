@@ -9,6 +9,7 @@ import { findUpClassName, $rootScope, generatePathData } from "../utils";
 import appDocsManager from "./appDocsManager";
 import { wrapPlayer } from "../ckin";
 import { renderImageFromUrl } from "../../components/misc";
+import appProfileManager from "./appProfileManager";
 
 export class AppMediaViewer {
   private overlaysDiv = document.querySelector('.overlays') as HTMLDivElement;
@@ -592,7 +593,7 @@ export class AppMediaViewer {
       this.content.caption.innerHTML = '';
     }
     
-    appDialogsManager.loadDialogPhoto(this.author.avatarEl, message.fromID);
+    appProfileManager.putPhoto(this.author.avatarEl, message.fromID);
 
     // ok set
 

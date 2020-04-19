@@ -3,7 +3,6 @@ import CryptoWorker from '../lib/crypto/cryptoworker';
 import LottieLoader from '../lib/lottieLoader';
 import appStickersManager from "../lib/appManagers/appStickersManager";
 import appDocsManager from "../lib/appManagers/appDocsManager";
-import {AppImManager} from "../lib/appManagers/appImManager";
 import { formatBytes } from "../lib/utils";
 import ProgressivePreloader from './preloader';
 import LazyLoadQueue from './lazyLoadQueue';
@@ -60,9 +59,21 @@ export type MTPhotoSize = {
   bytes?: Uint8Array // if type == 'i'
 };
 
-export function wrapVideo(this: AppImManager, doc: MTDocument, container: HTMLDivElement, message: any, justLoader = true, preloader?: ProgressivePreloader, controls = true, round = false, boxWidth = 380, boxHeight = 380, withTail = false, isOut = false) {
+export function wrapVideo({doc, container, message, justLoader, preloader, round, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue}: {
+  doc: MTDocument, 
+  container: HTMLDivElement, 
+  message: any, 
+  justLoader: boolean, 
+  preloader?: ProgressivePreloader, 
+  round: boolean, 
+  boxWidth: number, 
+  boxHeight: number, 
+  withTail?: boolean, 
+  isOut?: boolean,
+  middleware: () => boolean,
+  lazyLoadQueue: LazyLoadQueue
+}) {
   let img: HTMLImageElement | SVGImageElement;
-  let peerID = this.peerID;
 
   if(withTail) {
     img = wrapMediaWithTail(doc, message, container, boxWidth, boxHeight, isOut);
@@ -104,8 +115,7 @@ export function wrapVideo(this: AppImManager, doc: MTDocument, container: HTMLDi
     preloader.attach(container, true, promise);
     
     return promise.then(blob => {
-      if(this.peerID != peerID) {
-        this.log.warn('peer changed');
+      if(!middleware()) {
         return;
       }
 
@@ -141,7 +151,7 @@ export function wrapVideo(this: AppImManager, doc: MTDocument, container: HTMLDi
   };
   
   if(doc.type == 'gif' || true) { // extra fix
-    return doc.downloaded ? loadVideo() : this.lazyLoadQueue.push({div: container, load: loadVideo, wasSeen: true});
+    return doc.downloaded ? loadVideo() : lazyLoadQueue.push({div: container, load: loadVideo, wasSeen: true});
   } /* else { // if video
     let load = () => appPhotosManager.preloadPhoto(doc).then((blob) => {
       if((this.peerID ? this.peerID : this.currentMessageID) != peerID) {
@@ -481,9 +491,7 @@ function wrapMediaWithTail(photo: any, message: {mid: number, message: string}, 
   return image;
 }
 
-export async function wrapPhoto(this: AppImManager, photoID: string, message: any, container: HTMLDivElement, boxWidth = 380, boxHeight = 380, withTail = true, isOut = false) {
-  let peerID = this.peerID;
-
+export async function wrapPhoto(photoID: string, message: any, container: HTMLDivElement, boxWidth = 380, boxHeight = 380, withTail = true, isOut = false, lazyLoadQueue: LazyLoadQueue, middleware: () => boolean) {
   let photo = appPhotosManager.getPhoto(photoID);
 
   let size: MTPhotoSize;
@@ -512,10 +520,7 @@ export async function wrapPhoto(this: AppImManager, photoID: string, message: an
     }
     
     return promise.then(() => {
-      if(this.peerID != peerID) {
-        this.log.warn('peer changed');
-        return;
-      }
+      if(!middleware()) return;
 
       renderImageFromUrl(image, photo.url);
     });
@@ -523,7 +528,7 @@ export async function wrapPhoto(this: AppImManager, photoID: string, message: an
   
   /////////console.log('wrapPhoto', load, container, image);
   
-  return photo.downloaded ? load() : this.lazyLoadQueue.push({div: container, load: load, wasSeen: true});
+  return photo.downloaded ? load() : lazyLoadQueue.push({div: container, load: load, wasSeen: true});
 }
 
 export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: () => boolean, lazyLoadQueue?: LazyLoadQueue, group?: string, canvas?: boolean, play = false, onlyThumb = false) {
