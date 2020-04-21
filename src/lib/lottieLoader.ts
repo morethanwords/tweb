@@ -2,7 +2,7 @@ import { isElementInViewport, isInDOM } from "./utils";
 import LottiePlayer, { AnimationConfigWithPath, AnimationConfigWithData, AnimationItem } from "lottie-web/build/player/lottie.d";
 
 class LottieLoader {
-  private lottie: /* any */ typeof LottiePlayer = null;
+  public lottie: /* any */ typeof LottiePlayer = null;
   private animations: {
     [group: string]: {
       animation: /* any */AnimationItem, 
@@ -91,13 +91,16 @@ class LottieLoader {
 
   public async loadAnimation(params: /* any */AnimationConfigWithPath | AnimationConfigWithData, group = '') {
     //params.autoplay = false;
-    params.renderer = 'canvas';
+    //if(group != 'auth') {
+      params.renderer = 'canvas';
+    //}
+    
     params.rendererSettings = {
       //context: context, // the canvas context
       //preserveAspectRatio: 'xMinYMin slice', // Supports the same options as the svg element's preserveAspectRatio property
       clearCanvas: true,
       progressiveLoad: true, // Boolean, only svg renderer, loads dom elements when needed. Might speed up initialization for large number of elements.
-      hideOnTransparent: true, //Boolean, only svg renderer, hides elements when opacity reaches 0 (defaults to true)
+      hideOnTransparent: true, //Boolean, only svg renderer, hides elements when opacity reaches 0 (defaults to true),
     };
 
     if(!this.lottie) {

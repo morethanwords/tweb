@@ -1,52 +1,8 @@
 import { openBtnMenu, ripple } from "../components/misc";
 //import {stackBlurImage} from '../lib/StackBlur';
 import Page from "./page";
-//import appImManager from '../lib/appManagers/appImManager';
 
 let onFirstMount = () => import('../lib/appManagers/appImManager').then(() => {//import('../lib/services').then(services => {
-  //console.log('included services', services);
-
-//export default () => {
-  
-
-/* 
-  loadDialogs().then(result => {
-    //appImManager.setScroll(chatScroll);
-  });
-  return;
- */
-  
-
-  /* function placeCaretAfterNode(node: HTMLElement) {
-    if (typeof window.getSelection != "undefined") {
-        var range = document.createRange();
-        range.setStartAfter(node);
-        range.collapse(true);
-        var selection = window.getSelection();
-        selection.removeAllRanges();
-        selection.addRange(range);
-    }
-}
-
-  messageInput.onclick = (e) => {
-    let target = e.target as HTMLElement;
-    if(target.classList.contains('emoji-inner')) {
-      placeCaretAfterNode(target.parentElement);
-    } else if(target.classList.contains('emoji-sizer')) {
-      placeCaretAfterNode(target);
-    }
-    console.log('lol', target);
-  }; */
-
-  /* window.addEventListener('click', function(this, e) {
-    // @ts-ignore
-    let isInput = e.target.tagName == 'INPUT';
-    if(!isInput && !window.getSelection().toString()) {
-      console.log('click');
-      messageInput.focus();
-    }
-  }); */
-
   /* fetch('assets/img/camomile.jpg')
   .then(res => res.blob())
   .then(blob => {

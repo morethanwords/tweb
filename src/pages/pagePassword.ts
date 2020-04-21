@@ -7,42 +7,11 @@ import passwordManager from '../lib/mtproto/passwordManager';
 import apiManager from '../lib/mtproto/apiManager';
 import Page from './page';
 
-let onFirstMount = () => {
+let onFirstMount = (): Promise<any> => {
   let needFrame = 0;
   let animation: /* AnimationItem */any = undefined;
 
   let passwordVisible = false;
-
-  fetch('assets/img/TwoFactorSetupMonkeyClose.tgs')
-  .then(res => res.arrayBuffer())
-  .then(async(data) => {
-    let str = await CryptoWorker.gzipUncompress<string>(data, true);
-
-    animation = await LottieLoader.loadAnimation({
-      container: page.pageEl.querySelector('.auth-image'),
-      renderer: 'svg',
-      loop: false,
-      autoplay: false,
-      animationData: JSON.parse(str)
-    });
-
-    console.log(animation.getDuration(true));
-    //animation.goToAndStop(822);
-
-    animation.addEventListener('enterFrame', (e: any) => {
-      //console.log('enterFrame', e, needFrame);
-      let currentFrame = Math.round(e.currentTime);
-      
-      if((e.direction == 1 && currentFrame >= needFrame) ||
-        (e.direction == -1 && currentFrame <= needFrame)) {
-          animation.setSpeed(1);
-          animation.pause();
-        } 
-    });
-
-    needFrame = 49;
-    animation.play();
-  });
 
   const btnNext = page.pageEl.querySelector('button') as HTMLButtonElement;
   const passwordInput = document.getElementById('password') as HTMLInputElement;
@@ -124,6 +93,36 @@ let onFirstMount = () => {
   /* passwordInput.addEventListener('input', function(this, e) {
     
   }); */
+  return Promise.all([
+    LottieLoader.loadLottie(),
+
+    fetch('assets/img/TwoFactorSetupMonkeyClose.tgs')
+    .then(res => res.arrayBuffer())
+    .then(data => CryptoWorker.gzipUncompress<string>(data, true))
+    .then(str => LottieLoader.loadAnimation({
+      container: page.pageEl.querySelector('.auth-image'),
+      renderer: 'svg',
+      loop: false,
+      autoplay: false,
+      animationData: JSON.parse(str)
+    }))
+    .then(_animation => {
+      animation = _animation;
+      animation.addEventListener('enterFrame', (e: any) => {
+        //console.log('enterFrame', e, needFrame);
+        let currentFrame = Math.round(e.currentTime);
+        
+        if((e.direction == 1 && currentFrame >= needFrame) ||
+          (e.direction == -1 && currentFrame <= needFrame)) {
+            animation.setSpeed(1);
+            animation.pause();
+          } 
+      });
+  
+      needFrame = 49;
+      animation.play();
+    })
+  ]);
 };
 
 const page = new Page('page-password', true, onFirstMount);

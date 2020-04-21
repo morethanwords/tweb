@@ -1,6 +1,7 @@
 import Page from "./page";
 import { whichChild } from "../lib/utils";
 import { horizontalMenu } from "../components/misc";
+import lottieLoader from "../lib/lottieLoader";
 
 class PagesManager {
   private pageID = -1;
@@ -21,6 +22,14 @@ class PagesManager {
       if(this.pageID == id) return;
 
       this.selectTab(id);
+
+      // это нужно чтобы ресайзнуть канвас (из-за скрытого рендера будет 0х0)
+      if(this.pageID != -1) {
+        lottieLoader.loadLottie().then(() => {
+          // @ts-ignore
+          lottieLoader.lottie.resize();
+        });
+      }
 
       this.pageID = id;
     } else {

@@ -24,39 +24,11 @@ const EDITONSAMEPAGE = false;
 let headerElement: HTMLHeadElement = null;
 let sentTypeElement: HTMLParagraphElement = null;
 
-let onFirstMount = () => {
+let onFirstMount = (): Promise<any> => {
   let needFrame = 0, lastLength = 0;
   let animation: /* AnimationItem */any = undefined;
 
   const CODELENGTH = authCode.type.length;
-
-  fetch('assets/img/TwoFactorSetupMonkeyTracking.tgs')
-  .then(res => res.arrayBuffer())
-  .then(async(data) => {
-    let str = await CryptoWorker.gzipUncompress<string>(data, true);
-
-    animation = await LottieLoader.loadAnimation({
-      container: page.pageEl.querySelector('.auth-image'),
-      renderer: 'svg',
-      loop: false,
-      autoplay: false,
-      animationData: JSON.parse(str)
-    });
-
-    animation.setSpeed(1);
-    //console.log(animation.getDuration(), animation.getDuration(true));
-
-    animation.addEventListener('enterFrame', (e: any) => {
-      //console.log('enterFrame', e, needFrame);
-      let currentFrame = Math.round(e.currentTime);
-      
-      if((e.direction == 1 && currentFrame >= needFrame) ||
-        (e.direction == -1 && currentFrame <= needFrame)) {
-          animation.setSpeed(1);
-          animation.pause();
-        } 
-    });
-  });
 
   const codeInput = page.pageEl.querySelector('#code') as HTMLInputElement;
   const codeInputLabel = codeInput.nextElementSibling as HTMLLabelElement;
@@ -242,6 +214,37 @@ let onFirstMount = () => {
     /* animation.goToAndStop(15, true); */
     //animation.goToAndStop(length / max * );
   });
+
+  return Promise.all([
+    LottieLoader.loadLottie(),
+
+    fetch('assets/img/TwoFactorSetupMonkeyTracking.tgs')
+    .then(res => res.arrayBuffer())
+    .then(data => CryptoWorker.gzipUncompress<string>(data, true))
+    .then(str => LottieLoader.loadAnimation({
+      container: page.pageEl.querySelector('.auth-image'),
+      renderer: 'svg',
+      loop: false,
+      autoplay: false,
+      animationData: JSON.parse(str)
+    }))
+    .then(_animation => {
+      animation = _animation;
+      animation.setSpeed(1);
+      //console.log(animation.getDuration(), animation.getDuration(true));
+
+      animation.addEventListener('enterFrame', (e: any) => {
+        //console.log('enterFrame', e, needFrame);
+        let currentFrame = Math.round(e.currentTime);
+        
+        if((e.direction == 1 && currentFrame >= needFrame) ||
+          (e.direction == -1 && currentFrame <= needFrame)) {
+            animation.setSpeed(1);
+            animation.pause();
+          } 
+      });
+    })
+  ]);
 };
 
 const page = new Page('page-authCode', true, onFirstMount, (_authCode: typeof authCode) => {

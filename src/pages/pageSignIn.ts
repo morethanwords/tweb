@@ -30,7 +30,7 @@ let onFirstMount = () => {
   var parent = selectCountryCode.parentElement;
 
   var wrapper = document.createElement('div');
-  wrapper.classList.add('select-wrapper', 'z-depth-4');
+  wrapper.classList.add('select-wrapper', 'z-depth-3');
 
   var list = document.createElement('ul');
   wrapper.appendChild(list);
@@ -100,7 +100,7 @@ let onFirstMount = () => {
     parent.appendChild(wrapper);
   }/* , {once: true} */);
   selectCountryCode.addEventListener('blur', function(this: typeof selectCountryCode, e) {
-    parent.removeChild(wrapper);
+    //parent.removeChild(wrapper);
     e.cancelBubble = true;
   }, {capture: true});
 

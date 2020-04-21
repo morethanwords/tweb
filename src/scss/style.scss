@@ -98,24 +98,17 @@ input {
   line-height: 1.25;
 }
 
-.page-sign .input-wrapper, 
-.page-authCode .input-wrapper, 
-.page-signUp .input-wrapper, 
-.page-password .input-wrapper {
-  /* margin-top: 3rem; */
-  margin-top: 50px;
-}
-
 .page-authCode {
+  .auth-image {
+    transform: translateY(12px);
+  }
+
   .phone-wrapper {
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 1.52rem 0 0.912rem 0;
-    
+
     h4 {
-      margin: 0;
-      
       &[contenteditable="true"] {
         padding: 0 1rem;
         border: none;
@@ -128,6 +121,10 @@ input {
     .phone.error {
       border-color: $color-error!important;
     }
+  }
+
+  .subtitle {
+    margin-top: 0;
   }
 }
 
@@ -500,33 +497,59 @@ input {
   max-width: 720px; // 360 + 360 / 2
   overflow: hidden;
 
+  .subtitle {
+    margin: 0;
+  }
+
+  .input-wrapper {
+    margin-top: 49px;
+  }
+
   .tabs-container {
+    height: 100%;
+
     &.animated {
       transition: .42s transform;
     }
 
     > div {
-      justify-content: center;
+      /* justify-content: center; */
       /* &.active {
         flex-direction: row;
       } */
 
+      &:before, &:after {
+        content: " ";
+        flex: 1;
+        min-height: 3rem;
+        /* height: 105px; */
+        width: 100%;
+      }
+
       > div {
+        height: 810px;
         padding: 0;
-        overflow: visible;
-        /* display: flex;
+        flex: 1 1 auto;
+        display: flex;
         flex-direction: column;
-        justify-content: center; */
       }
     }
-  } 
+  }
+
+  @media (max-height: 858px) {
+    height: auto;
+
+    /* .tabs-container > div > div {
+      height: auto;
+    } */
+  }
 }
 
-.page-sign {
+.page-sign, .page-signUp {
   .auth-image {
-    width: 160px;
-    height: 160px;
-    margin-bottom: 45px;
+    width: 10rem;
+    height: 10rem;
+    margin-bottom: 1.5rem;
   }
 }
 
@@ -607,7 +630,7 @@ input {
   
   input {
     border: 1px solid #DADCE0;
-    border-radius: $border-radius-big;
+    border-radius: $border-radius-medium;
     padding: 0 1rem;
     box-sizing: border-box;
     width: 100%;
@@ -753,7 +776,7 @@ input {
 }
 
 .select-wrapper {
-  max-height: 300px;
+  max-height: 23.5rem;
   /* height: auto; */
   position: absolute;
   width: 100%;
@@ -762,7 +785,7 @@ input {
   overflow: hidden;
   background-color: #fff;
   z-index: 3;
-  border-radius: $border-radius;
+  border-radius: $border-radius-medium;
   display: flex;
   flex-direction: column;
   flex-wrap: wrap;
@@ -778,21 +801,22 @@ input {
     justify-content: space-between;
     height: 3.5rem;
     cursor: pointer;
-    font-weight: 500;
+    /* font-weight: 500; */
     
     text-align: left;
     display: grid;
-    grid-template-columns: 15% 60% 25%;
+    grid-template-columns: calc(26px + 2rem) 1fr 50px;
     
     &:hover {
       background-color: rgba(112, 117, 121, .08);
     }
   }
   
+  // +2 px bc of whitespace
   .emoji {
-    height: 24px;
-    width: 24px;
-    font-size: 24px;
+    height: 26px;
+    width: 26px;
+    font-size: 26px;
     line-height: 1;
   }
 
@@ -823,12 +847,11 @@ input:focus, button:focus {
   outline: none;
 }
 
+// this dimensions will be used for monkey business
 .auth-image {
-  width: 133px;
-  height: 133px;
-  margin-left: auto;
-  margin-right: auto;
-  margin-bottom: 1rem;
+  width: 166px;
+  height: 166px;
+  margin: 0 auto 18px;
 }
 
 /* .phone-wrapper {
@@ -878,7 +901,7 @@ input:focus, button:focus {
 .btn-primary {
   background: $button-primary-background;
   color: #fff;
-  border-radius: $border-radius;
+  border-radius: $border-radius-medium;
   width: 100%;
   text-align: center;
   height: 54px;
