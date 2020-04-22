@@ -52,7 +52,7 @@ export class AppImManager {
   public dateMessages: {[timestamp: number]: { 
     div: HTMLDivElement, 
     firstTimestamp: number, 
-    bubble: HTMLDivElement, 
+    container: HTMLDivElement,
     timeout?: number 
   }} = {};
   public unreaded: number[] = [];
@@ -102,6 +102,11 @@ export class AppImManager {
   public bubbleGroups = new BubbleGroups();
 
   private scrolledDown = true;
+  private onScrollRAF = 0;
+  private isScrollingTimeout = 0;
+
+  private datesIntersectionObserver: IntersectionObserver = null;
+  private lastDateMessageDiv: HTMLDivElement = null;
   
   constructor() {
     /* if(!lottieLoader.loaded) {
@@ -559,6 +564,26 @@ export class AppImManager {
     
     this.setScroll();
     apiUpdatesManager.attach();
+
+    this.datesIntersectionObserver = new IntersectionObserver((entries) => {
+      this.log('intersection', entries);
+
+      let entry = entries.filter(entry => entry.boundingClientRect.top < 0).sort((a, b) => b.boundingClientRect.top - a.boundingClientRect.top)[0];
+      if(!entry) return;
+      let container = entry.isIntersecting ? entry.target : entry.target.nextElementSibling;
+      for(let timestamp in this.dateMessages) {
+        let dateMessage = this.dateMessages[timestamp];
+        if(dateMessage.container == container) {
+          if(this.lastDateMessageDiv) {
+            this.lastDateMessageDiv.classList.remove('is-sticky');
+          }
+
+          dateMessage.div.classList.add('is-sticky');
+          this.lastDateMessageDiv = dateMessage.div;
+          break;
+        }
+      }
+    }/* , {root: this.chatInner} */);
   }
   
   public deleteMessages(revoke = false) {
@@ -641,42 +666,59 @@ export class AppImManager {
   }
   
   public onScroll() {
-    let readed: number[] = [];
+    if(this.onScrollRAF) window.cancelAnimationFrame(this.onScrollRAF);
+
+    this.onScrollRAF = window.requestAnimationFrame(() => {
+      let readed: number[] = [];
     
-    this.unreaded.forEachReverse((msgID, idx) => {
-      let bubble = this.bubbles[msgID];
-      
-      if(isElementInViewport(bubble)) {
-        readed.push(msgID);
-        this.unreaded.splice(idx, 1);
-      }
-    });
-    
-    lottieLoader.checkAnimations(false, 'chat');
-    
-    if(readed.length) {
-      let max = Math.max(...readed);
-      let min = Math.min(...readed);
-      
-      if(this.peerID < 0) {
-        max = appMessagesIDsManager.getMessageIDInfo(max)[0];
-        min = appMessagesIDsManager.getMessageIDInfo(min)[0];
-      }
-      
-      //appMessagesManager.readMessages(readed);
-      appMessagesManager.readHistory(this.peerID, max, min).catch((err: any) => {
-        this.log.error('readHistory err:', err);
-        appMessagesManager.readHistory(this.peerID, max, min);
+      this.unreaded.forEachReverse((msgID, idx) => {
+        let bubble = this.bubbles[msgID];
+        
+        if(isElementInViewport(bubble)) {
+          readed.push(msgID);
+          this.unreaded.splice(idx, 1);
+        }
       });
-    }
-    
-    if(this.scroll.scrollHeight - (this.scroll.scrollTop + this.scroll.offsetHeight) == 0/* <= 5 */) {
-      this.scroll.parentElement.classList.add('scrolled-down');
-      this.scrolledDown = true;
-    } else if(this.scroll.parentElement.classList.contains('scrolled-down')) {
-      this.scroll.parentElement.classList.remove('scrolled-down');
-      this.scrolledDown = false;
-    }
+      
+      lottieLoader.checkAnimations(false, 'chat');
+      
+      if(readed.length) {
+        let max = Math.max(...readed);
+        let min = Math.min(...readed);
+        
+        if(this.peerID < 0) {
+          max = appMessagesIDsManager.getMessageIDInfo(max)[0];
+          min = appMessagesIDsManager.getMessageIDInfo(min)[0];
+        }
+        
+        //appMessagesManager.readMessages(readed);
+        appMessagesManager.readHistory(this.peerID, max, min).catch((err: any) => {
+          this.log.error('readHistory err:', err);
+          appMessagesManager.readHistory(this.peerID, max, min);
+        });
+      }
+
+      if(this.isScrollingTimeout) {
+        clearTimeout(this.isScrollingTimeout);
+      } else {
+        this.chatInner.classList.add('is-scrolling');
+      }
+
+      this.isScrollingTimeout = setTimeout(() => {
+        this.chatInner.classList.remove('is-scrolling');
+        this.isScrollingTimeout = 0;
+      }, 300);
+      
+      if(this.scroll.scrollHeight - (this.scroll.scrollTop + this.scroll.offsetHeight) == 0/* <= 5 */) {
+        this.scroll.parentElement.classList.add('scrolled-down');
+        this.scrolledDown = true;
+      } else if(this.scroll.parentElement.classList.contains('scrolled-down')) {
+        this.scroll.parentElement.classList.remove('scrolled-down');
+        this.scrolledDown = false;
+      }
+
+      this.onScrollRAF = 0;
+    });
   }
   
   public setScroll() {
@@ -826,6 +868,9 @@ export class AppImManager {
     
     //this.scrollable.setVirtualContainer(this.chatInner);
     this.scrollable.setVirtualContainer(null);
+
+    this.datesIntersectionObserver.disconnect();
+    this.lastDateMessageDiv = null;
 
     ////console.timeEnd('appImManager cleanup');
   }
@@ -1055,6 +1100,60 @@ export class AppImManager {
     });
     if(scrolledDown) this.scrollable.scrollTop = this.scrollable.scrollHeight;
   }
+
+  public getDateContainerByMessage(message: any, reverse: boolean) {
+    let date = new Date(message.date * 1000);
+    let justDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    let dateTimestamp = justDate.getTime();
+    if(!(dateTimestamp in this.dateMessages)) {
+      let str = '';
+      
+      let today = new Date();
+      today.setHours(0);
+      today.setMinutes(0);
+      today.setSeconds(0);
+      
+      if(today < date) {
+        str = 'Today';
+      } else {
+        const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        str = justDate.getFullYear() == new Date().getFullYear() ? 
+        months[justDate.getMonth()] + ' ' + justDate.getDate() : 
+        justDate.toISOString().split('T')[0].split('-').reverse().join('.');
+      }
+      
+      let div = document.createElement('div');
+      div.className = 'bubble service is-date';
+      div.innerHTML = `<div class="bubble__container"><div class="service-msg">${str}</div></div>`;
+      ////////this.log('need to render date message', dateTimestamp, str);
+
+      let container = document.createElement('div');
+      container.className = 'bubbles-date-group';
+      
+      this.dateMessages[dateTimestamp] = {
+        div,
+        container,
+        firstTimestamp: date.getTime()
+      };
+
+      container.append(div);
+
+      if(reverse) {
+        let scrollTopPrevious = this.scrollable.scrollTop;
+        this.scrollable.prepend(container);
+
+        if(!scrollTopPrevious) {
+          this.scrollable.scrollTop += container.scrollHeight;
+        }
+      } else {
+        this.scrollable.append(container);
+      }
+
+      this.datesIntersectionObserver.observe(container);
+    }
+
+    return this.dateMessages[dateTimestamp];
+  }
   
   // reverse means top
   public renderMessage(message: any, reverse = false, multipleRender = false, bubble: HTMLDivElement = null, updatePosition = true) {
@@ -1117,6 +1216,15 @@ export class AppImManager {
       } else {
         this.scrollable.append(bubble);
       } */
+
+      let dateContainer = this.getDateContainerByMessage(message, reverse);
+      if(!updatePosition) {
+
+      } else if(reverse) {
+        dateContainer.container.insertBefore(bubble, dateContainer.div.nextSibling);
+      } else {
+        dateContainer.container.append(bubble);
+      }
 
       return bubble;
     }
@@ -1538,62 +1646,21 @@ export class AppImManager {
         } else {
           this.scrollable.appendByBatch(bubble);
         } */
-        if(!multipleRender) {
-          if(reverse) {
+        // раскомментировать ////// если рендер должен быть в другой функции (если хочешь сделать через requestAnimationFrame)
+        //////if(!multipleRender) {
+          /* if(reverse) {
             this.scrollable.prepend(bubble);
           } else {
             this.scrollable.append(bubble);
-          }
-        }
+          } */
+        //////}
       //});
       
-      let justDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-      let dateTimestamp = justDate.getTime();
-      let needUpdatePos = false;
-      if(!(dateTimestamp in this.dateMessages)) {
-        let str = '';
-        
-        let today = new Date();
-        today.setHours(0);
-        today.setMinutes(0);
-        today.setSeconds(0);
-        
-        if(today < date) {
-          str = 'Today';
-        } else {
-          const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-          str = justDate.getFullYear() == new Date().getFullYear() ? 
-          months[justDate.getMonth()] + ' ' + justDate.getDate() : 
-          justDate.toISOString().split('T')[0].split('-').reverse().join('.');
-        }
-        
-        let div = document.createElement('div');
-        div.className = 'bubble service';
-        div.innerHTML = `<div class="service-msg">${str}</div>`;
-        ////////this.log('need to render date message', dateTimestamp, str);
-        
-        this.dateMessages[dateTimestamp] = {
-          div,
-          bubble,
-          firstTimestamp: date.getTime()
-        };
-        
-        needUpdatePos = true;
+      let dateMessage = this.getDateContainerByMessage(message, reverse);
+      if(reverse) {
+        dateMessage.container.insertBefore(bubble, dateMessage.div.nextSibling);
       } else {
-        let dateMessage = this.dateMessages[dateTimestamp];
-        if(dateMessage.firstTimestamp > date.getTime()) {
-          dateMessage.bubble = bubble;
-          needUpdatePos = true;
-        }
-      }
-
-      let dateMessage = this.dateMessages[dateTimestamp];
-      if(needUpdatePos && !dateMessage.timeout) {
-        //dateMessage.timeout = setTimeout(() => {
-          delete dateMessage.timeout;
-
-          //this.scrollable.insertBefore(dateMessage.div, dateMessage.bubble);
-        //}, 0);
+        dateMessage.container.append(bubble);
       }
     } else {
       this.bubbleGroups.updateGroupByMessageID(message.mid);
@@ -1684,7 +1751,7 @@ export class AppImManager {
           let bubble = this.renderMessage(message, reverse, true);
           if(bubble) {
             if(reverse) {
-              this.scrollable.prepend(bubble);
+              ////////this.scrollable.prepend(bubble);
 
               //this.log('performHistoryResult scrollTop', this.scrollable.scrollTop, bubble.scrollHeight);
 
@@ -1712,7 +1779,7 @@ export class AppImManager {
                 }
               }
             } else {
-              this.scrollable.append(bubble);
+              ////////this.scrollable.append(bubble);
             }
           }
         //} while(cached && !this.scrollable.scrollTop);

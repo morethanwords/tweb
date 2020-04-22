@@ -171,6 +171,10 @@ $chat-max-width: 696px;
 					margin-left: 45px;
 				}
 			}
+
+			&.is-scrolling .is-sticky {
+				opacity: 1;
+			}
 		}
 
 		#bubbles-go-down {
@@ -225,6 +229,20 @@ $chat-max-width: 696px;
 			display: grid;
 			grid-template-columns: 1fr $chat-max-width 1fr;
 			grid-row-gap: 0px;
+
+			&.is-date {
+				position: -webkit-sticky;
+				position: sticky;
+				top: 5px;
+				z-index: 2;
+				pointer-events: none;
+
+				&.is-sticky {
+					-webkit-transition: opacity .3s ease;
+					transition: opacity .3s ease;
+					opacity: 0;
+				}
+			}
 			
 			&:before, &:after {
 				content: " ";
@@ -245,10 +263,11 @@ $chat-max-width: 696px;
 			}
 			
 			&.service {
-				display: block;
-				padding: 1rem 0;
+				//padding: 1rem 0;
+				padding: 5px 0;
 
 				.bubble__container {
+					justify-self: center;
 					max-width: 100%;
 				}
 			}
