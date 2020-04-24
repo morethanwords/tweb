@@ -1,4 +1,4 @@
-import { whichChild, findUpTag, cancelEvent } from "../lib/utils";
+import { whichChild, findUpTag } from "../lib/utils";
 
 let rippleClickID = 0;
 export function ripple(elem: HTMLElement, callback: (id: number) => Promise<boolean | void> = () => Promise.resolve(), onEnd: (id: number) => void = null) {
@@ -141,13 +141,13 @@ export function putPreloader(elem: Element, returnDiv = false) {
   elem.innerHTML += html;
 }
 
-export function horizontalMenu(tabs: HTMLUListElement, content: HTMLDivElement, onClick?: (id: number, tabContent: HTMLDivElement) => void, onTransitionEnd?: () => void, transitionTime = 300) {
+export function horizontalMenu(tabs: HTMLElement, content: HTMLDivElement, onClick?: (id: number, tabContent: HTMLDivElement) => void, onTransitionEnd?: () => void, transitionTime = 300) {
   let hideTimeout: number = 0;
   let prevTabContent: HTMLDivElement = null;
   
   let prevId = -1;
   let children = Array.from(content.children);
-  let tabsChildren = tabs ? Array.from(tabs.children) : [];
+  let tabsChildren = tabs ? Array.from(tabs.firstElementChild.children) : [];
   let activeInSlide: Set<Element> = new Set();
 
   let selectTab = (id: number) => {
@@ -227,6 +227,11 @@ export function horizontalMenu(tabs: HTMLUListElement, content: HTMLDivElement, 
   };
 
   if(tabs) {
+    let activeStripe = document.createElement('span');
+    activeStripe.classList.add('menu-horizontal__stripe');
+
+    tabs.append(activeStripe);
+
     tabs.addEventListener('click', function(e) {
       let target = e.target as HTMLLIElement;
       
@@ -242,7 +247,6 @@ export function horizontalMenu(tabs: HTMLUListElement, content: HTMLDivElement, 
       let tabContent = content.children[id] as HTMLDivElement;
 
       if(activeInSlide.size >= 2 && !activeInSlide.has(tabContent)) {
-        cancelEvent(e);
         return false;
       }
 
@@ -253,7 +257,13 @@ export function horizontalMenu(tabs: HTMLUListElement, content: HTMLDivElement, 
       
       let prev = tabs.querySelector('li.active') as HTMLLIElement;
       prev && prev.classList.remove('active');
-      
+
+      let tabsRect = tabs.getBoundingClientRect();
+      let textRect = target.firstElementChild.getBoundingClientRect();
+      activeStripe.style.cssText = `width: ${textRect.width + (2 * 2)}px; transform: translateX(${textRect.left - tabsRect.left}px);`;
+      //activeStripe.style.transform = `scaleX(${textRect.width}) translateX(${(textRect.left - tabsRect.left) / textRect.width + 0.5}px)`;
+      console.log('tabs click:', tabsRect, textRect);
+
       target.classList.add('active');
       selectTab(id);
     });

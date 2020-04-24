@@ -34,7 +34,9 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
     lottieLoader.checkAnimations(false, EMOTICONSSTICKERGROUP);
     lazyLoadQueue.check(); // for stickers
   });
-  (tabs.children[0] as HTMLLIElement).click(); // set media
+
+  (tabs.firstElementChild.children[0] as HTMLLIElement).click(); // set emoji tab
+  (tabs.lastElementChild as HTMLSpanElement).style.cssText = 'width: 44.1719px; transform: translateX(88.5781px);'; // мы снова встретились))))))
 
   let emoticonsMenuOnClick = (menu: HTMLUListElement, heights: number[], scroll: Scrollable, menuScroll?: Scrollable) => {
     menu.addEventListener('click', function(e) {
@@ -151,7 +153,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
     let heights: number[] = [0];
 
     let prevCategoryIndex = 1;
-    let menu = contentEmojiDiv.nextElementSibling as HTMLUListElement;
+    let menu = contentEmojiDiv.nextElementSibling.firstElementChild as HTMLUListElement;
     let emojiScroll = new Scrollable(contentEmojiDiv, 'y', 500, 'EMOJI', null);
     emojiScroll.container.addEventListener('scroll', (e) => {
       prevCategoryIndex = emoticonsContentOnScroll(menu, heights, prevCategoryIndex, emojiScroll.container);
@@ -205,7 +207,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
     //let stickersDiv = contentStickersDiv.querySelector('.os-content') as HTMLDivElement;
 
     let menuWrapper = contentStickersDiv.nextElementSibling as HTMLDivElement;
-    let menu = menuWrapper.firstElementChild as HTMLUListElement;
+    let menu = menuWrapper.firstElementChild.firstElementChild as HTMLUListElement;
 
     let menuScroll = new Scrollable(menuWrapper, 'x');
 

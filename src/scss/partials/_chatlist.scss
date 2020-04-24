@@ -1,4 +1,6 @@
 .chats-container {
+  position: relative;
+
   .input-search {
     position: relative;
     width: 100%;
@@ -155,8 +157,6 @@
   }
 
   .user-title {
-    max-width: 80%;
-
     img.emoji {
       vertical-align: top;
       width: 18px;
@@ -174,13 +174,6 @@
   }
 
   .user-last-message {
-    max-width: 80%;
-
-    i {
-      font-style: normal;
-      color: $darkblue;
-    }
-
     img.emoji {
       width: 20px;
       height: 20px;
@@ -191,6 +184,15 @@
       margin: 0 .125rem;
       overflow: visible;
       margin-top: -1.5px;
+    }
+  }
+
+  .user-title, .user-last-message {
+    max-width: 80%;
+
+    i {
+      font-style: normal;
+      color: $darkblue;
     }
   }
 
@@ -240,5 +242,18 @@
 
   .unread-muted, .tgico-pinnedchat {
     background: #c5c9cc;
+  }
+
+  .search-group {
+    width: 100%;
+    border-bottom: 1px solid #DADCE0;
+    padding: 1rem 0 .5rem;
+    margin-bottom: .5rem;
+
+    &__name {
+      color: $color-gray;
+      padding: 0 1.85rem;
+      padding-bottom: 1rem;
+    }
   }
 }

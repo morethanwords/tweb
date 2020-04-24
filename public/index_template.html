@@ -271,7 +271,7 @@
         </div>
       </div>
     </div>
-    <div class="chats-container sidebar sidebar-left">
+    <div class="chats-container sidebar sidebar-left" id="column-left">
       <div class="sidebar-header">
         <div class="sidebar-header__btn-container">
           <div class="btn-icon tgico-menu btn-menu-toggle rp sidebar-tools-button active">
@@ -300,7 +300,7 @@
         <div id="chats-archived-container">
           <ul id="dialogs-archived"></ul>
         </div>
-        <div id="search-container"></div>
+        <div class="sidebar-search" id="search-container"></div>
       </div>
     </div>
     <div class="chat-container">
@@ -362,33 +362,39 @@
       <div id="chat-input" style="display: none;">
       <!-- <div id="chat-input"> -->
         <div class="emoji-dropdown">
-          <ul class="emoji-tabs menu-horizontal">
-            <li class="emoji-tabs-emoji rp">Emoji</li>
-            <li class="emoji-tabs-stickers rp">Stickers</li>
-            <li class="emoji-tabs-gifs rp">GIFs</li>
-          </ul>
+          <nav class="emoji-tabs menu-horizontal">
+            <ul>
+              <li class="emoji-tabs-emoji rp"><span>Emoji</span></li>
+              <li class="emoji-tabs-stickers rp"><span>Stickers</span></li>
+              <li class="emoji-tabs-gifs rp"><span>GIFs</span></li>
+            </ul>
+          </nav>
           <div class="emoji-container">
             <div class="tabs-container">
               <div class="emoji-padding">
                 <div id="content-emoji"></div>
-                <ul class="menu-horizontal justify-start">
-                  <li class="btn-icon tgico-recent rp"></li>
-                  <li class="active btn-icon tgico-smile rp"></li>
-                  <li class="btn-icon tgico-animals rp"></li>
-                  <li class="btn-icon tgico-eats rp"></li>
-                  <li class="btn-icon tgico-car rp"></li>
-                  <li class="btn-icon tgico-sport rp"></li>
-                  <li class="btn-icon tgico-lamp rp"></li>
-                  <!-- <li class="btn-icon tgico-info rp"></li> -->
-                  <li class="btn-icon tgico-flag rp"></li>
-                </ul>
+                <nav class="menu-horizontal">
+                  <ul class="justify-start">
+                    <li class="btn-icon tgico-recent rp"></li>
+                    <li class="active btn-icon tgico-smile rp"></li>
+                    <li class="btn-icon tgico-animals rp"></li>
+                    <li class="btn-icon tgico-eats rp"></li>
+                    <li class="btn-icon tgico-car rp"></li>
+                    <li class="btn-icon tgico-sport rp"></li>
+                    <li class="btn-icon tgico-lamp rp"></li>
+                    <!-- <li class="btn-icon tgico-info rp"></li> -->
+                    <li class="btn-icon tgico-flag rp"></li>
+                  </ul>
+                </nav>
               </div>
               <div class="stickers-padding">
                 <div id="content-stickers"></div>
                 <div class="menu-wrapper">
-                  <ul class="menu-horizontal justify-start">
-                    <li class="btn-icon tgico-recent active"></li>
-                  </ul>
+                  <nav class="menu-horizontal">
+                    <ul class="justify-start">
+                      <li class="btn-icon tgico-recent active"></li>
+                    </ul>
+                  </nav>
                 </div>
               </div>
               <div class="gifs-padding"><div id="content-gifs"></div></div>
@@ -425,63 +431,79 @@
         <button class="btn-circle z-depth-1 btn-icon tgico-microphone2" id="btn-send"></button>
       </div>
     </div>
-    <!-- <div class="profile-container sidebar sidebar-right" style="width: 25%;"> -->
-    <div class="profile-container sidebar sidebar-right">
-      <div class="sidebar-header">
-        <button class="btn-icon rp tgico-close sidebar-close-button"></button>
-        <div class="sidebar-title">Info</div>
+    <div class="sidebar sidebar-right" id="column-right">
+      <div class="sidebar-content">
+        <div class="profile-container">
+          <div class="sidebar-header">
+            <button class="btn-icon rp tgico-close sidebar-close-button"></button>
+            <div class="sidebar-header__title">Info</div>
+    
+            <!-- <button class="btn-icon rp tgico-edit sidebar-edit-button"></button> -->
+    
+            <div class="btn-icon tgico-more rp"></div>
+            <!-- <div class="btn-icon tgico-more rp btn-menu-toggle">
+              <div class="btn-menu bottom-left"> -->
+                <!-- <div class="btn-menu-item menu-mute rp">Mute</div>
+                <div class="btn-menu-item menu-delete tgico-delete danger rp">Delete and Leave</div> -->
+              <!-- </div>
+            </div> -->
+          </div>
+          <div class="profile-content">
+            <div class="profile-content-wrapper">
+              <div class="profile-avatar user-avatar"></div>
+              <div class="profile-name"></div>
+              <div class="profile-subtitle"></div>
+      
+              <div class="profile-row profile-row-bio tgico-info">
+                <p></p>
+                <p class="profile-row-label">Bio</p>
+              </div>
+              <div class="profile-row profile-row-username tgico-username">
+                <p></p>
+                <p class="profile-row-label">Username</p>
+              </div>
+              <div class="profile-row profile-row-phone tgico-phone">
+                <p></p>
+                <p class="profile-row-label">Phone</p>
+              </div>
+              <div class="profile-row profile-row-notifications">
+                <label>
+                  <input type="checkbox" id="profile-notifications" checked="checked">
+                  <span>Notifications</span>
+                </label>
+                <p class="profile-row-label">Enabled</p>
+              </div>
 
-        <!-- <button class="btn-icon rp tgico-edit sidebar-edit-button"></button> -->
-
-        <div class="btn-icon tgico-more rp btn-menu-toggle">
-          <div class="btn-menu bottom-left">
-            <!-- <div class="btn-menu-item menu-mute rp">Mute</div>
-            <div class="btn-menu-item menu-delete tgico-delete danger rp">Delete and Leave</div> -->
+              <nav class="profile-tabs menu-horizontal">
+                <ul>
+                  <li class="profile-tabs-members rp" style="display: none;"><span>Members</span></li>
+                  <li class="profile-tabs-media rp"><span>Media</span></li>
+                  <li class="profile-tabs-docs rp"><span>Docs</span></li>
+                  <li class="profile-tabs-links rp"><span>Links</span></li>
+                  <li class="profile-tabs-audio rp"><span>Audio</span></li>
+                </ul>
+              </nav>
+            </div>
+            <div class="content-container">
+              <div class="profile-tabs-content tabs-container">
+                <div class="content-members-container"><div id="content-members"></div></div>
+                <div class="content-media-container"><div id="content-media"></div></div>
+                <div class="content-docs-container"><div id="content-docs"></div></div>
+                <div class="content-links-container"><div id="content-links"></div></div>
+                <div class="content-audio-container"><div id="content-audio"></div></div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="profile-content">
-        <div class="profile-content-wrapper">
-          <div class="profile-avatar user-avatar"></div>
-          <div class="profile-name"></div>
-          <div class="profile-subtitle"></div>
-  
-          <div class="profile-row profile-row-bio tgico-info">
-            <p></p>
-            <p class="profile-row-label">Bio</p>
+        <div class="sidebar-search chats-container" id="search-private-container">
+          <div class="sidebar-header">
+            <button class="btn-icon rp tgico-close sidebar-close-button"></button>
+            <div class="input-search">
+              <input type="text" placeholder="Search" id="private-search" />
+              <span class="tgico tgico-search"></span>
+            </div>
           </div>
-          <div class="profile-row profile-row-username tgico-username">
-            <p></p>
-            <p class="profile-row-label">Username</p>
-          </div>
-          <div class="profile-row profile-row-phone tgico-phone">
-            <p></p>
-            <p class="profile-row-label">Phone</p>
-          </div>
-          <div class="profile-row profile-row-notifications">
-            <label>
-              <input type="checkbox" id="profile-notifications" checked="checked">
-              <span>Notifications</span>
-            </label>
-            <p class="profile-row-label">Enabled</p>
-          </div>
-  
-          <ul class="profile-tabs menu-horizontal">
-            <li class="profile-tabs-members rp" style="display: none;">Members</li>
-            <li class="profile-tabs-media rp">Media</li>
-            <li class="profile-tabs-docs rp">Docs</li>
-            <li class="profile-tabs-links rp">Links</li>
-            <li class="profile-tabs-audio rp">Audio</li>
-          </ul>
-        </div>
-        <div class="content-container">
-          <div class="profile-tabs-content tabs-container">
-            <div class="content-members-container"><div id="content-members"></div></div>
-            <div class="content-media-container"><div id="content-media"></div></div>
-            <div class="content-docs-container"><div id="content-docs"></div></div>
-            <div class="content-links-container"><div id="content-links"></div></div>
-            <div class="content-audio-container"><div id="content-audio"></div></div>
-          </div>
+          <div class="chats-container"></div>
         </div>
       </div>
     </div>

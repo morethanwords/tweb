@@ -12,12 +12,14 @@ import appImManager from "./appImManager";
 import appMediaViewer from "./appMediaViewer";
 import LazyLoadQueue from "../../components/lazyLoadQueue";
 import { wrapDocument, wrapAudio } from "../../components/wrappers";
+import AppSearch, { SearchGroup } from "../../components/appSearch";
 
 const testScroll = false;
 
 class AppSidebarRight {
-  public sidebarEl = document.querySelector('.profile-container') as HTMLDivElement;
-  public profileContentEl = document.querySelector('.profile-content') as HTMLDivElement;
+  public sidebarEl = document.getElementById('column-right') as HTMLDivElement;
+  public profileContainer = this.sidebarEl.querySelector('.profile-container') as HTMLDivElement;
+  public profileContentEl = this.sidebarEl.querySelector('.profile-content') as HTMLDivElement;
   public profileElements = {
     avatar: this.profileContentEl.querySelector('.profile-avatar') as HTMLDivElement,
     name: this.profileContentEl.querySelector('.profile-name') as HTMLDivElement,
@@ -88,12 +90,19 @@ class AppSidebarRight {
   } = {};
   
   public urlsToRevoke: string[] = [];
+
+  private searchContainer = this.sidebarEl.querySelector('#search-private-container') as HTMLDivElement;
+  public searchCloseBtn = this.searchContainer.querySelector('.sidebar-close-button') as HTMLButtonElement;
+  private searchInput = document.getElementById('private-search') as HTMLInputElement;
+  public privateSearch = new AppSearch(this.searchContainer.querySelector('.chats-container') as HTMLDivElement, this.searchInput, {
+    messages: new SearchGroup('Private Search', 'messages')
+  });
   
   constructor() {
     let container = this.profileContentEl.querySelector('.profile-tabs-content') as HTMLDivElement;
     this.profileTabs = this.profileContentEl.querySelector('.profile-tabs') as HTMLUListElement;
     
-    this.scroll = new Scrollable(this.sidebarEl, 'y', 1200, 'SR');
+    this.scroll = new Scrollable(this.profileContainer, 'y', 1200, 'SR');
     this.scroll.container.addEventListener('scroll', this.onSidebarScroll.bind(this));
     this.scroll.onScrolledBottom = () => {
       if(this.sharedMediaSelected && !this.scroll.hiddenElements.down.length && this.sharedMediaSelected.childElementCount/* && false */) {
@@ -130,6 +139,11 @@ class AppSidebarRight {
     let sidebarCloseBtn = this.sidebarEl.querySelector('.sidebar-close-button') as HTMLButtonElement;
     sidebarCloseBtn.addEventListener('click', () => {
       this.toggleSidebar(false);
+    });
+
+    this.searchCloseBtn.addEventListener('click', () => {
+      this.searchContainer.classList.remove('active');
+      this.privateSearch.reset();
     });
     
     this.sharedMedia.contentMedia.addEventListener('click', (e) => {
@@ -175,6 +189,12 @@ class AppSidebarRight {
       (this.profileTabs.children[1] as HTMLLIElement).click(); // set media
     }
   }
+
+  public beginSearch() {
+    this.toggleSidebar(true);
+    this.searchContainer.classList.add('active');
+    this.privateSearch.beginSearch(this.peerID);
+  }
   
   public onSidebarScroll() {
     this.lazyLoadQueueSidebar.check();
@@ -191,12 +211,8 @@ class AppSidebarRight {
       
       return;
     }
-    
-    if(this.sidebarEl.classList.contains('active')) {
-      this.sidebarEl.classList.remove('active');
-    } else {
-      this.sidebarEl.classList.add('active');
-    }
+
+    this.sidebarEl.classList.toggle('active');
   }
   
   public performSearchResult(ids: number[], type: string) {
@@ -533,7 +549,7 @@ class AppSidebarRight {
       this.savedVirtualStates = {};
       this.prevTabID = -1;
       this.scroll.setVirtualContainer(null);
-      (this.profileTabs.children[1] as HTMLLIElement).click(); // set media
+      (this.profileTabs.firstElementChild.children[1] as HTMLLIElement).click(); // set media
 
       //this.scroll.getScrollTopOffset();
       

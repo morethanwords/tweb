@@ -1,4 +1,4 @@
-import { langPack, findUpClassName, $rootScope } from "../utils";
+import { langPack, findUpClassName, $rootScope, escapeRegExp } from "../utils";
 import appImManager, { AppImManager } from "./appImManager";
 import appPeersManager from './appPeersManager';
 import appMessagesManager, { AppMessagesManager } from "./appMessagesManager";
@@ -420,7 +420,7 @@ export class AppDialogsManager {
     chatsHidden.down = inBottom;
   }
 
-  public setLastMessage(dialog: any, lastMessage?: any, dom?: DialogDom) {
+  public setLastMessage(dialog: any, lastMessage?: any, dom?: DialogDom, highlightWord?: string) {
     if(!lastMessage) {
       lastMessage = appMessagesManager.getMessage(dialog.top_message);
     }
@@ -497,12 +497,58 @@ export class AppDialogsManager {
       }
 
       if(lastMessage.action) {
+        let action = lastMessage.action;
+
+        console.log('lastMessage action:', action);
+
+        let suffix = '';
+        let _ = action._;
+        if(_ == "messageActionPhoneCall") {
+          _ += '.' + action.type;
+
+          let duration = action.duration;
+          if(duration) {
+            let d = [];
+
+            d.push(duration % 60 + ' s');
+            if(duration > 60) d.push((duration / 60 | 0) + ' min');
+            if(duration > 3600) d.push((duration / 3600 | 0) + ' h');
+            suffix = ' (' + d.reverse().join(' ') + ')';
+          }
+        }
+
         // @ts-ignore
-        lastMessageText = langPack[lastMessage.action._];
+        lastMessageText = '<i>' + langPack[_] + suffix + '</i>';
       }
-      
-      dom.lastMessageSpan.innerHTML = lastMessageText + 
-        (lastMessage.message ? RichTextProcessor.wrapRichText(lastMessage.message.replace(/\n/g, ' '), {noLinebreakers: true}) : '');
+
+      let messageText = lastMessage.message;
+      let messageWrapped = '';
+      if(messageText) {
+        let entities = RichTextProcessor.parseEntities(messageText, {noLinebreakers: true});
+        if(highlightWord) {
+          let regExp = new RegExp(escapeRegExp(highlightWord), 'gi');
+          let match: any;
+  
+          if(!entities) entities = [];
+          let found = false;
+          while((match = regExp.exec(messageText)) !== null) {
+            entities.push({_: 'messageEntityHighlight', length: highlightWord.length, offset: match.index});
+            found = true;
+          }
+  
+          if(found) {
+            entities.sort((a: any, b: any) => a.offset - b.offset);
+          }
+        }
+  
+        messageWrapped = RichTextProcessor.wrapRichText(messageText.replace(/\n/g, ' '), {
+          noLinebreakers: true, 
+          entities: entities, 
+          noTextFormat: true
+        });
+      }
+
+      dom.lastMessageSpan.innerHTML = lastMessageText + messageWrapped;
   
       /* if(lastMessage.from_id == auth.id) { // You:  */
       if(peer._ != 'peerUser' && peerID != -lastMessage.from_id) {

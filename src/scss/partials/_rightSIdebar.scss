@@ -1,18 +1,20 @@
-.profile-container {
+#column-right {
   width: 0%;
   /* grid-column: 3; */
   position: relative;
   transition: .2s ease-in-out;
 
-  > .scrollable {
-    min-width: 25vw;
-    display: flex;
-    flex-direction: column;
-  }
-
-  @media (min-width: $large-screen) {
+  .profile-container {
     > .scrollable {
-      min-width: calc(#{$large-screen} / 4 - 1px);
+      min-width: 25vw;
+      display: flex;
+      flex-direction: column;
+    }
+  
+    @media (min-width: $large-screen) {
+      > .scrollable {
+        min-width: calc(#{$large-screen} / 4 - 1px);
+      }
     }
   }
 
@@ -26,6 +28,13 @@
 
   .sidebar-header {
     flex: 0 0 auto;
+  }
+
+  #search-private-container {
+    .chats-container {
+      position: relative;
+      flex: 1 1 auto;
+    }
   }
 }
 

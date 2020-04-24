@@ -26,6 +26,8 @@ import LazyLoadQueue from '../../components/lazyLoadQueue';
 
 console.log('appImManager included!');
 
+appSidebarLeft; // just to include
+
 let testScroll = false;
 
 export class AppImManager {
@@ -343,7 +345,7 @@ export class AppImManager {
         }
         
         let ids = Object.keys(this.bubbles).map(k => +k).filter(id => {
-          if(!this.scrollable.visibleElements.find(e => e.element == this.bubbles[id])) return false;
+          //if(!this.scrollable.visibleElements.find(e => e.element == this.bubbles[id])) return false;
 
           let message = appMessagesManager.getMessage(id);
           
@@ -370,7 +372,9 @@ export class AppImManager {
     
     this.searchBtn.addEventListener('click', (e) => {
       if(this.peerID) {
-        appSidebarLeft.beginSearch(this.peerID);
+        appSidebarRight.beginSearch();
+        //appSidebarLeft.archivedCount;
+        //appSidebarLeft.beginSearch(this.peerID);
       }
     });
     
@@ -912,6 +916,8 @@ export class AppImManager {
         
         return true;
       }
+    } else {
+      appSidebarRight.searchCloseBtn.click();
     }
     
     // clear 

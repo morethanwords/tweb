@@ -615,6 +615,13 @@ export function listUniqSorted (list) {
   return resultList
 }
 
+// credits to https://github.com/sindresorhus/escape-string-regexp/blob/master/index.js
+export function escapeRegExp(str) {
+  return str
+    .replace(/[|\\{}()[\]^$+*?.]/g, '\\$&')
+    .replace(/-/g, '\\x2d');
+}
+
 export function encodeEntities (value) {
   return value.replace(/&/g, '&amp;').replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function (value) {
     var hi = value.charCodeAt(0)

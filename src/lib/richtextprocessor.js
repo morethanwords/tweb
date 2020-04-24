@@ -547,6 +547,11 @@ function wrapRichText (text, options = {}) {
         )
         break
       case 'messageEntityBold':
+        if(options.noTextFormat) {
+          html.push(wrapRichNestedText(entityText, entity.nested, options));
+          break;
+        }
+        
         html.push(
           '<strong>',
           wrapRichNestedText(entityText, entity.nested, options),
@@ -554,13 +559,30 @@ function wrapRichText (text, options = {}) {
         )
         break
       case 'messageEntityItalic':
+        if(options.noTextFormat) {
+          html.push(wrapRichNestedText(entityText, entity.nested, options));
+          break;
+        }
+
         html.push(
           '<em>',
           wrapRichNestedText(entityText, entity.nested, options),
           '</em>'
         )
         break
+      case 'messageEntityHighlight':
+        html.push(
+          '<i>',
+          wrapRichNestedText(entityText, entity.nested, options),
+          '</i>'
+        )
+        break;
       case 'messageEntityCode':
+        if(options.noTextFormat) {
+          html.push(encodeEntities(entityText));
+          break;
+        }
+
         html.push(
           '<code>',
           encodeEntities(entityText),
@@ -568,6 +590,11 @@ function wrapRichText (text, options = {}) {
         )
         break
       case 'messageEntityPre':
+        if(options.noTextFormat) {
+          html.push(encodeEntities(entityText));
+          break;
+        }
+        
         html.push(
           '<pre><code', (entity.language ? ' class="language-' + encodeEntities(entity.language) + '"' : ''), '>',
           encodeEntities(entityText),

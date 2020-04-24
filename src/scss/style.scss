@@ -1422,16 +1422,22 @@ div.scrollable::-webkit-scrollbar-thumb {
 }
 
 .menu-horizontal {
-  width: 100%;
   color: $darkgrey;
-  margin-top: 0px;
-  margin-bottom: 0;
   border-bottom: 1px solid $lightgrey;
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
+  position: relative;
+
+  ul {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+  }
   
-  > li {
+  li {
     display: inline-block;
     padding: .75rem 1rem;
     cursor: pointer;
@@ -1439,23 +1445,26 @@ div.scrollable::-webkit-scrollbar-thumb {
     flex: 1;
     user-select: none;
     font-size: 1rem;
-    
+
     &.active {
-      position: relative;
       color: $blue;
-      
-      &:after {
-        content: '';
-        position: absolute;
-        background: $blue;
-        left: 24px;
-        right: 24px;
-        bottom: -1px;
-        height: 4px;
-        border-top-left-radius: 2px;
-        border-top-right-radius: 2px;
-      }
     }
+  }
+
+  &__stripe {
+    position: absolute;
+    background: $blue;
+    //left: 0;
+    left: -2px;
+    transition: .3s transform, .3s width;
+    //transition: .3s transform;
+    bottom: -1px;
+    height: 4px;
+    width: 1px; // need if using transform
+    transform: scaleX(1) translateX(0px);
+    border-top-left-radius: 2px;
+    border-top-right-radius: 2px;
+    z-index: 1;
   }
 }
 
@@ -1493,7 +1502,7 @@ div.scrollable::-webkit-scrollbar-thumb {
 }
 
 .justify-start {
-  justify-content: flex-start;
+  justify-content: flex-start!important;
 }
 
 .popup-send-photo {
@@ -1609,7 +1618,7 @@ div.scrollable::-webkit-scrollbar-thumb {
     max-height: 100%;
   }
   
-  .chats-container {
+  #column-left {
     width: 25%;
     /* grid-column: 1; */
   }
@@ -1632,6 +1641,24 @@ div.scrollable::-webkit-scrollbar-thumb {
     
     .preloader-path {
       stroke: $button-primary-background;
+    }
+  }
+
+  #search-container, #chats-archived-container, .sidebar-search {
+    display: none;
+    flex-direction: column;
+    width: 100%;
+    max-height: 100%;
+    height: 100%;
+    overflow: hidden;
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 3;
+    background: #fff;
+
+    &.active {
+      display: flex;
     }
   }
 
