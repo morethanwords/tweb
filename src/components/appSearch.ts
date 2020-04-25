@@ -175,9 +175,8 @@ export default class AppSearch {
             }
           });
 
-          if(results.length) {
-            group.setActive();
-          }
+          if(results.length) group.setActive();
+          else group.clear();
         };
 
         setResults(contacts.my_results, this.searchGroups.contacts, true);

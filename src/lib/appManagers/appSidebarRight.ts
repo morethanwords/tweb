@@ -11,7 +11,7 @@ import { logger } from "../polyfill";
 import appImManager from "./appImManager";
 import appMediaViewer from "./appMediaViewer";
 import LazyLoadQueue from "../../components/lazyLoadQueue";
-import { wrapDocument, wrapAudio } from "../../components/wrappers";
+import { wrapDocument } from "../../components/wrappers";
 import AppSearch, { SearchGroup } from "../../components/appSearch";
 
 const testScroll = false;
@@ -51,7 +51,7 @@ class AppSidebarRight {
     'inputMessagesFilterPhotoVideo', 
     'inputMessagesFilterDocument', 
     'inputMessagesFilterUrl', 
-    'inputMessagesFilterVoice'
+    'inputMessagesFilterMusic'
   ];
   public sharedMediaType: string = '';
   private sharedMediaSelected: HTMLDivElement = null;
@@ -227,11 +227,7 @@ class AppSidebarRight {
     
     let elemsToAppend: HTMLElement[] = [];
     
-    /*'inputMessagesFilterContacts', 
-    'inputMessagesFilterPhotoVideo', 
-    'inputMessagesFilterDocument', 
-    'inputMessagesFilterUrl', 
-    'inputMessagesFilterVoice'*/
+    // https://core.telegram.org/type/MessagesFilter
     switch(type) {
       case 'inputMessagesFilterPhotoVideo': {
         sharedMediaDiv = this.sharedMedia.contentMedia;
@@ -316,7 +312,7 @@ class AppSidebarRight {
         sharedMediaDiv = this.sharedMedia.contentDocuments;
         
         for(let message of messages) {
-          if(!message.media.document || message.media.document.type == 'voice') {
+          if(!message.media.document || message.media.document.type == 'voice' || message.media.document.type == 'audio') {
             continue;
           }
           
@@ -398,22 +394,19 @@ class AppSidebarRight {
         break;
       }
       
-      /* case 'inputMessagesFilterVoice': {
-        //this.log('wrapping audio', message.media);
-        if(!message.media || !message.media.document || message.media.document.type != 'voice') {
-          break;
+      case 'inputMessagesFilterMusic': {
+        sharedMediaDiv = this.sharedMedia.contentAudio;
+        
+        for(let message of messages) {
+          if(!message.media.document || message.media.document.type != 'audio') {
+            continue;
+          }
+
+          let div = wrapDocument(message.media.document, true);
+          elemsToAppend.push(div);
         }
-        
-        let doc = message.media.document;
-        
-        this.log('wrapping audio', doc);
-        
-        let audioDiv = wrapAudio(doc);
-        
-        this.sharedMedia.contentAudio.append(audioDiv);
-        
         break;
-      } */
+      }
       
       default:
       //console.warn('death is my friend', message);

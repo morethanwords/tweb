@@ -120,7 +120,7 @@
       /* font-size: .9rem; */
       //font-size: .8rem;
       font-size: .75rem;
-      padding: 2px 0px 0px 0px;
+      padding: 1px 0px 0px 0px;
     }
 
     .user-last-message + span:not(.tgico-pinnedchat) {
@@ -153,7 +153,12 @@
     color: $color-gray;
     flex: 1 1 auto;
     padding-right: 3.5px;
-    padding-left: 10px;
+    padding-left: 9px;
+    padding-top: 1px;
+
+    p:last-child {
+      margin-top: -3px;
+    }
   }
 
   .user-title {

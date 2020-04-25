@@ -175,23 +175,23 @@
       transform: translateY(0);
 }
 
-.default .progress {
-  position: relative;
-  margin: 0 16px;
-  height: 5px;
-  transition: height 0.3s;
-  background: rgba(255, 255, 255, 0.38);
-  cursor: pointer;
-  border-radius: 4px;
-  overflow: visible;
-}
+.default {
+  .media-progress {
+    margin: 0 16px;
+    height: 5px;
+    transition: height 0.3s;
+    background: rgba(255, 255, 255, 0.38);
+    border-radius: 4px;
+    overflow: visible;
 
-.default .progress__filled {
-  background: #63a2e3;
-  transform-origin: left;
-  border-radius: 4px;
-  height: 5px;
-  transform: scaleX(0);
+    &__filled {
+      background: #63a2e3;
+      transform-origin: left;
+      border-radius: 4px;
+      height: 5px;
+      transform: scaleX(0);
+    }
+  }
 }
 
 @media (max-width: 480px) {
@@ -204,93 +204,96 @@ video::-webkit-media-controls-enclosure {
   display: none !important;
 }
 
-.progress input {
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  background: transparent;
-  height: 4.5px;
+.media-progress {
+  position: relative;
   cursor: pointer;
-  padding: 0;
-  outline: none;
+
+  input[type=range] {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background: transparent;
+    height: 4.5px;
+    cursor: pointer;
+    padding: 0;
+    outline: none;
+
+    &:focus {
+      outline: none;
+
+      &::-webkit-slider-runnable-track {
+        background: transparent;
+      }
+
+      &::-moz-range-track {
+        outline: none;
+      }
+    }
+
+    &::-webkit-slider-runnable-track {
+      width: 100%;
+      cursor: pointer;
+      border-radius: 1.3px;
+      -webkit-appearance: none;
+      transition: all 0.4s ease;
+    }
+
+    &::-webkit-slider-thumb {
+      height: 15px;
+      width: 15px;
+      border-radius: 16px;
+      background: #63a2e3;
+      cursor: pointer;
+      -webkit-appearance: none;
+      margin-left: -1px;
+    }
+
+    &::-moz-range-track {
+      width: 100%;
+      height: 8.4px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      background: transparent;
+      border-radius: 1.3px;
+    }
+
+    &::-moz-range-thumb {
+      height: 14px;
+      width: 14px;
+      border-radius: 50px;
+      border: 1px solid #63a2e3;
+      background: #63a2e3;
+      cursor: pointer;
+      margin-top: 5px;
+    }
+  }
+
+  &__seek {
+    position: absolute;
+    top: 0;
+    width: 100%;
+    cursor: pointer;
+    margin: 0;
+  }
 }
 
-.progress input[type=range]:focus {
-  outline: none;
-}
+input[type=range] {
+  &::-ms-track {
+    visibility: hidden;
+  }
 
-.progress input[type=range]::-webkit-slider-runnable-track {
-  width: 100%;
-  cursor: pointer;
-  border-radius: 1.3px;
-  -webkit-appearance: none;
-  transition: all 0.4s ease;
-}
+  &::-ms-ticks {
+    background: none;
+    color: none;
+    border: none;
+  }
 
-.progress input[type=range]::-webkit-slider-thumb {
-  height: 15px;
-  width: 15px;
-  border-radius: 16px;
-  background: #63a2e3;
-  cursor: pointer;
-  -webkit-appearance: none;
-  margin-left: -1px;
-}
+  &::-ms-thumb {
+    visibility: hidden;
+  }
 
-.progress input[type=range]:focus::-webkit-slider-runnable-track {
-  background: transparent;
-}
-
-.progress input[type=range]::-moz-range-track {
-  width: 100%;
-  height: 8.4px;
-  cursor: pointer;
-  border: 1px solid transparent;
-  background: transparent;
-  border-radius: 1.3px;
-}
-
-.progress input[type=range]::-moz-range-thumb {
-  height: 14px;
-  width: 14px;
-  border-radius: 50px;
-  border: 1px solid #63a2e3;
-  background: #63a2e3;
-  cursor: pointer;
-  margin-top: 5px;
-}
-
-.progress input[type=range]:focus::-moz-range-track {
-  outline: none;
-}
-
-input[type=range]::-ms-track {
-  visibility: hidden;
-}
-
-input[type=range]::-ms-ticks {
-  background: none;
-  color: none;
-  border: none;
-}
-
-input[type=range]::-ms-thumb {
-  visibility: hidden;
-}
-
-input[type=range]::-ms-tooltip {
-  visibility: hidden;
-}
-
-.seek {
-  position: absolute;
-  top: 0;
-  width: 100%;
-  cursor: pointer;
-  margin: 0;
-}
-
-.seek:hover + .seek-tooltip {
-  display: block;
+  &::-ms-tooltip {
+    visibility: hidden;
+  }
 }
 
 .left-controls {
@@ -342,9 +345,10 @@ video[data-ckin="circle"] {
   top: 0;
   left: 0;
   cursor: pointer;
-}
-.progress-ring__circle {
-  transition: stroke-dashoffset;
+
+  &__circle {
+    transition: stroke-dashoffset;
+  }
 }
 
 .ckin__player.circle {

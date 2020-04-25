@@ -7,7 +7,7 @@ import { logger } from "../polyfill";
 import ProgressivePreloader from "../../components/preloader";
 import { findUpClassName, $rootScope, generatePathData } from "../utils";
 import appDocsManager from "./appDocsManager";
-import { wrapPlayer } from "../ckin";
+import VideoPlayer from "../mediaPlayer";
 import { renderImageFromUrl } from "../../components/misc";
 import appProfileManager from "./appProfileManager";
 
@@ -664,12 +664,10 @@ export class AppMediaViewer {
               video.append(source);
             }
 
-            let wrapper = wrapPlayer(video);
-            (wrapper.querySelector('.toggle') as HTMLButtonElement).click();
+            let player = new VideoPlayer(video, true);
           });
         } else {
-          let wrapper = wrapPlayer(video);
-          (wrapper.querySelector('.toggle') as HTMLButtonElement).click();
+          let player = new VideoPlayer(video, true);
         }
 
         

@@ -2,7 +2,6 @@ import {tsNow, isObject} from '../utils';
 import {convertToUint8Array, 
   bufferConcat, nextRandomInt, bytesToHex, longToBytes,
   bytesCmp, uintToInt, bigStringInt} from '../bin_utils';
-import {MTProto} from './mtproto';
 import {TLDeserialization, TLSerialization} from '../tl_utils';
 import CryptoWorker from '../crypto/cryptoworker';
 import AppStorage from '../storage';
@@ -285,8 +284,11 @@ class MTPNetworker {
     }
   
     if(options.afterMessageID) {
+      let invokeAfterMsg = Config.Schema.API.methods.find((m: any) => m.method == 'invokeAfterMsg');
+      if(!invokeAfterMsg) throw new Error('no invokeAfterMsg!');
+
       this.log('Api call options.afterMessageID!');
-      serializer.storeInt(0xcb9f372d, 'invokeAfterMsg');
+      serializer.storeInt(+invokeAfterMsg.id >>> 0, 'invokeAfterMsg');
       serializer.storeLong(options.afterMessageID, 'msg_id');
     }
   

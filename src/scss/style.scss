@@ -485,7 +485,12 @@ input {
     }
   }
 
-  &-time {
+  &-title {
+    font-size: 1rem;
+    color: #000;
+  }
+
+  &-time, &-subtitle {
     font-size: 14px;
     color: $color-gray;
     margin-top: 3px;

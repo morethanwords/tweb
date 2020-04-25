@@ -3,7 +3,7 @@ import { AppMessagesManager } from "../lib/appManagers/appMessagesManager";
 import { horizontalMenu } from "./misc";
 import lottieLoader from "../lib/lottieLoader";
 import Scrollable from "./scrollable";
-import { findUpTag, whichChild } from "../lib/utils";
+import { findUpTag, whichChild, calcImageInBox } from "../lib/utils";
 import { RichTextProcessor } from "../lib/richtextprocessor";
 import appStickersManager, { MTStickerSet } from "../lib/appManagers/appStickersManager";
 import apiManager from '../lib/mtproto/apiManager';
@@ -11,6 +11,8 @@ import CryptoWorker from '../lib/crypto/cryptoworker';
 import LazyLoadQueue from "./lazyLoadQueue";
 import { MTDocument, wrapSticker } from "./wrappers";
 import appWebpManager from "../lib/appManagers/appWebpManager";
+import appDocsManager from "../lib/appManagers/appDocsManager";
+import ProgressivePreloader from "./preloader";
 
 export const EMOTICONSSTICKERGROUP = 'emoticons-dropdown';
 
@@ -29,10 +31,12 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
 
     if(id == 1 && stickersInit) {
       stickersInit();
+    } else if(id == 2 && gifsInit) {
+      gifsInit();
     }
   }, () => {
     lottieLoader.checkAnimations(false, EMOTICONSSTICKERGROUP);
-    lazyLoadQueue.check(); // for stickers
+    lazyLoadQueue.check(); // for stickers or gifs
   });
 
   (tabs.firstElementChild.children[0] as HTMLLIElement).click(); // set emoji tab
@@ -393,6 +397,92 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
     ]).then(() => {
       stickersScroll.unlock('both');
     });
+  };
+
+  let gifsInit = () => {
+    let contentDiv = document.getElementById('content-gifs') as HTMLDivElement;
+    let masonry = contentDiv.firstElementChild as HTMLDivElement;
+
+    let scroll = new Scrollable(contentDiv, 'y', 500, 'GIFS', null);
+
+    scroll.container.addEventListener('scroll', (e) => {
+      lazyLoadQueue.check();
+    });
+
+    let width = 400;
+    let maxSingleWidth = width - 100;
+    let height = 100;
+
+    apiManager.invokeApi('messages.getSavedGifs', {hash: 0}).then((_res) => {
+      let res = _res as {
+        _: 'messages.savedGifs',
+        gifs: MTDocument[],
+        hash: number
+      };
+      console.log('getSavedGifs res:', res);
+
+      let line: MTDocument[] = [];
+
+      let wastedWidth = 0;
+
+      res.gifs.forEach((gif, idx) => {
+        res.gifs[idx] = appDocsManager.saveDoc(gif);
+      });
+
+      for(let i = 0, length = res.gifs.length; i < length;) {
+        let gif = res.gifs[i];
+
+        let gifWidth = gif.w;
+        let gifHeight = gif.h;
+        if(gifHeight < height) {
+          gifWidth = height / gifHeight * gifWidth;
+          gifHeight = height;
+        }
+
+        let willUseWidth = Math.min(maxSingleWidth, width - wastedWidth, gifWidth);
+        let {w, h} = calcImageInBox(gifWidth, gifHeight, willUseWidth, height);
+
+        /* wastedWidth += w;
+
+        if(wastedWidth == width || h < height) {
+          wastedWidth = 0;
+          console.log('completed line', i, line);
+          line = [];
+          continue;
+        }
+
+        line.push(gif); */
+        ++i;
+
+        console.log('gif:', gif, w, h);
+
+        let div = document.createElement('div');
+        div.style.width = w + 'px';
+        //div.style.height = h + 'px';
+        div.dataset.documentID = gif.id;
+
+        masonry.append(div);
+
+        let preloader = new ProgressivePreloader(div);
+        lazyLoadQueue.push({
+          div, 
+          load: () => {
+            let promise = appDocsManager.downloadDoc(gif);
+            preloader.attach(div, true, promise);
+    
+            promise.then(blob => {
+              preloader.detach();
+
+              div.innerHTML = `<video autoplay="true" muted="true" loop="true" src="${gif.url}" type="video/mp4"></video>`;
+            });
+
+            return promise;
+          }
+        });
+      }
+    });
+
+    gifsInit = undefined;
   };
 
   return {dropdown, lazyLoadQueue};

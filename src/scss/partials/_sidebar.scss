@@ -19,14 +19,18 @@
 
     &__title {
       flex: 1;
-      padding-left: 2rem;
       font-weight: 500;
-      font-size: 1.4rem;
+      padding-left: 23px;
+      font-size: 20px;
     }
 
     .btn-icon + .btn-icon {
       margin-left: .5rem;
     }
+  }
+
+  &-close-button {
+    padding-left: 10px;
   }
 
   &-content {

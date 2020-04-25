@@ -355,7 +355,7 @@ export class AppImManager {
 
         let targets = ids.map(id => ({
           //element: (this.bubbles[id].querySelector('img, video') || this.bubbles[id].querySelector('image')) as HTMLElement, 
-          element: this.bubbles[id].querySelector('img, video, .bubble__media-container') as HTMLElement,
+          element: this.bubbles[id].querySelector('.attachment img, .preview img, video, .bubble__media-container') as HTMLElement,
           mid: id
         }));
         
@@ -1490,7 +1490,7 @@ export class AppImManager {
             }, this.lazyLoadQueue, 'chat', false, !!message.pending || !multipleRender);
 
             break;
-          } else if((doc.type == 'video' || doc.type == 'gif') && doc.size <= 20e6) {
+          } else if((doc.type == 'video' || doc.type == 'gif' || doc.type == 'round') && doc.size <= 20e6) {
             this.log('never get free 2', doc);
             
             if(doc.type == 'round') {

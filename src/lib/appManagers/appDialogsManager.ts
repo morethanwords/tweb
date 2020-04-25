@@ -482,7 +482,7 @@ export class AppDialogsManager {
               lastMessageText = '<i>GIF' + (lastMessage.message ? ', ' : '') + '</i>';
               found = true;
             } else if(document.type == 'round') {
-              lastMessageText = '<i>Videomessage' + (lastMessage.message ? ', ' : '') + '</i>';
+              lastMessageText = '<i>Video message' + (lastMessage.message ? ', ' : '') + '</i>';
               found = true;
             }
   
@@ -524,11 +524,11 @@ export class AppDialogsManager {
       let messageText = lastMessage.message;
       let messageWrapped = '';
       if(messageText) {
-        let entities = RichTextProcessor.parseEntities(messageText, {noLinebreakers: true});
+        let entities = RichTextProcessor.parseEntities(messageText.replace(/\n/g, ' '), {noLinebreakers: true});
         if(highlightWord) {
           let regExp = new RegExp(escapeRegExp(highlightWord), 'gi');
           let match: any;
-  
+
           if(!entities) entities = [];
           let found = false;
           while((match = regExp.exec(messageText)) !== null) {
@@ -541,7 +541,7 @@ export class AppDialogsManager {
           }
         }
   
-        messageWrapped = RichTextProcessor.wrapRichText(messageText.replace(/\n/g, ' '), {
+        messageWrapped = RichTextProcessor.wrapRichText(messageText, {
           noLinebreakers: true, 
           entities: entities, 
           noTextFormat: true

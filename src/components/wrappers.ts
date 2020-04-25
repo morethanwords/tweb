@@ -8,7 +8,7 @@ import ProgressivePreloader from './preloader';
 import LazyLoadQueue from './lazyLoadQueue';
 import apiFileManager from '../lib/mtproto/apiFileManager';
 import appWebpManager from '../lib/appManagers/appWebpManager';
-import {wrapPlayer} from '../lib/ckin';
+import VideoPlayer, { MediaProgressLine } from '../lib/mediaPlayer';
 import { RichTextProcessor } from '../lib/richtextprocessor';
 import { CancellablePromise } from '../lib/polyfill';
 import { renderImageFromUrl } from './misc';
@@ -138,11 +138,7 @@ export function wrapVideo({doc, container, message, justLoader, preloader, round
       if(!justLoader || round) {
         video.dataset.ckin = round ? 'circle' : 'default';
         video.dataset.overlay = '1';
-        let wrapper = wrapPlayer(video);
-        
-        if(!round) {
-          (wrapper.querySelector('.toggle') as HTMLButtonElement).click();
-        }
+        let player = new VideoPlayer(video, !round);
       } else if(doc.type == 'gif') {
         video.autoplay = true;
         video.loop = true;
@@ -176,7 +172,9 @@ export function wrapVideo({doc, container, message, justLoader, preloader, round
 
 export function wrapDocument(doc: MTDocument, withTime = false, uploading = false): HTMLDivElement {
   if(doc.type == 'voice') {
-    return wrapAudio(doc, withTime);
+    return wrapVoiceMessage(doc, withTime);
+  } else if(doc.type == 'audio') {
+    return wrapAudio(doc);
   }
   
   let docDiv = document.createElement('div');
@@ -250,15 +248,124 @@ export function wrapDocument(doc: MTDocument, withTime = false, uploading = fals
   return docDiv;
 }
 
-let lastAudioToggle: HTMLDivElement = null;
-
 export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
   let div = document.createElement('div');
   div.classList.add('audio');
   
+  console.log('wrapAudio doc:', doc);
+  
+  /* let durationStr = String(doc.duration | 0).toHHMMSS(true);
+  let title = doc.audioTitle || doc.file_name;
+  let subtitle = doc.audioPerformer ? RichTextProcessor.wrapPlainText(doc.audioPerformer) : ''; */
+  let durationStr = '3:24';
+  let title = 'Million Telegrams';
+  let subtitle = 'Best Artist';
+  
+  div.innerHTML = `
+  <div class="audio-title">${title}</div>
+  <div class="audio-subtitle">${subtitle}</div>
+  <div class="audio-toggle audio-ico tgico-largeplay"></div>
+  <div class="audio-download"><div class="tgico-download"></div></div>
+  <div class="audio-time">${durationStr}</div>
+  `;
+  
+  //////console.log('wrapping audio', doc, doc.attributes[0].waveform);
+  
+  let timeDiv = div.lastElementChild as HTMLDivElement;
+  
+  let downloadDiv = div.querySelector('.audio-download') as HTMLDivElement;
+  let preloader: ProgressivePreloader;
+  let promise: CancellablePromise<Blob>;
+  let progress: MediaProgressLine;
+
+  let onClick = () => {
+    if(!promise) {
+      if(downloadDiv.classList.contains('downloading')) {
+        return; // means not ready yet
+      }
+      
+      if(!preloader) {
+        preloader = new ProgressivePreloader(null, true);
+      }
+      
+      let promise = appDocsManager.downloadDoc(doc.id);
+      preloader.attach(downloadDiv, true, promise);
+      
+      promise.then(blob => {
+        downloadDiv.classList.remove('downloading');
+        downloadDiv.remove();
+        
+        let audio = document.createElement('audio');
+        let source = document.createElement('source');
+        source.src = URL.createObjectURL(blob);
+        source.type = doc.mime_type;
+        
+        audio.volume = 1;
+
+        progress = new MediaProgressLine(audio);
+        
+        div.removeEventListener('click', onClick);
+        let toggle = div.querySelector('.audio-toggle') as HTMLDivElement;
+        let subtitle = div.querySelector('.audio-subtitle') as HTMLDivElement;
+
+        toggle.addEventListener('click', () => {
+          subtitle.innerHTML = '';
+          subtitle.append(progress.container);
+
+          if(audio.paused) {
+            if(lastAudioToggle && lastAudioToggle.classList.contains('tgico-largepause')) {
+              lastAudioToggle.click();
+            }
+            
+            audio.currentTime = 0;
+            audio.play();
+            
+            lastAudioToggle = toggle;
+            
+            toggle.classList.remove('tgico-largeplay');
+            toggle.classList.add('tgico-largepause');
+            
+            
+          } else {
+            audio.pause();
+            toggle.classList.add('tgico-largeplay');
+            toggle.classList.remove('tgico-largepause');
+          }
+        });
+        
+        audio.addEventListener('ended', () => {
+          toggle.classList.add('tgico-largeplay');
+          toggle.classList.remove('tgico-largepause');
+
+          timeDiv.innerText = String(audio.currentTime | 0).toHHMMSS(true);
+        });
+        
+        audio.style.display = 'none';
+        audio.append(source);
+        div.append(audio);
+      });
+      
+      downloadDiv.classList.add('downloading');
+    } else {
+      downloadDiv.classList.remove('downloading');
+      promise = null;
+    }
+  };
+  
+  div.addEventListener('click', onClick);
+  
+  div.click();
+  
+  return div;
+}
+
+let lastAudioToggle: HTMLDivElement = null;
+export function wrapVoiceMessage(doc: MTDocument, withTime = false): HTMLDivElement {
+  let div = document.createElement('div');
+  div.classList.add('audio', 'is-voice');
+  
   let duration = doc.duration;
   
-  // @ts-ignore
   let durationStr = String(duration | 0).toHHMMSS(true);
   
   div.innerHTML = `
@@ -359,8 +466,7 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
                 clearInterval(interval);
                 return;
               }
-              
-              // @ts-ignore
+
               timeDiv.innerText = String(audio.currentTime | 0).toHHMMSS(true);
               
               lastIndex = Math.round(audio.currentTime / audio.duration * 47);
@@ -387,7 +493,6 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
           clearInterval(interval);
           (Array.from(svg.children) as HTMLElement[]).forEach(node => node.classList.remove('active'));
           
-          // @ts-ignore
           timeDiv.innerText = String(audio.currentTime | 0).toHHMMSS(true);
         });
         
@@ -430,8 +535,8 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
           audio.currentTime = scrubTime;
         }
         
-        audio.append(source);
         audio.style.display = 'none';
+        audio.append(source);
         div.append(audio);
       });
       

@@ -59,13 +59,18 @@ $chat-max-width: 696px;
 		display: flex;
 		align-items: center;
 		box-shadow: 0 1px 2px 0 rgba(16, 35, 47, 0.07);
-		padding: .5rem 17px;
+		padding: .5rem 15px;
 		flex: 0 0 auto; /* Forces side columns to stay same width */
-		min-height: 60px;
-		max-height: 60px;
+		min-height: 61px;
+		max-height: 61px;
+		border-bottom: 1px solid #DADCE0;
 		
-		& > * {
+		/* & > * {
 			margin: 0 2px;
+		} */
+
+		.chat-more-button {
+			margin-left: 8px;
 		}
 		
 		.chat-info {
@@ -82,6 +87,7 @@ $chat-max-width: 696px;
 			display: flex;
 			align-items: center;
 			cursor: pointer;
+			margin-left: 4px;
 			
 			&:hover {
 				background-color: transparent;
@@ -168,7 +174,7 @@ $chat-max-width: 696px;
 
 			&.is-chat {
 				.is-in .bubble__container {
-					margin-left: 45px;
+					margin-left: 3rem;
 				}
 			}
 
@@ -207,10 +213,10 @@ $chat-max-width: 696px;
 			
 			.service-msg {
 				color: #fff;
-				background-color: rgba(#000, 0.22);
+				background-color: rgba(0, 0, 0, 0.24);
+    		font-size: 14px;
 				padding: 0 8px;
 				line-height: 24px;
-				font-size: 15px;
 				border-radius: 12px;
 				user-select: none;
 				display: flex;
@@ -250,7 +256,8 @@ $chat-max-width: 696px;
 			}
 
 			&__container {
-				min-width: 60px;
+				//min-width: 60px;
+				min-width: 56px;
 				max-width: 85%;
 				border-radius: 12px;
 				box-shadow: 0 1px 2px 0 rgba(16, 35, 47, 0.15);
@@ -685,10 +692,10 @@ $chat-max-width: 696px;
 				.message {
 					position: absolute;
 					bottom: .1rem;
-					right: .1rem;
+					right: .2rem;
 					border-radius: 12px;
 					background-color: rgba(0, 0, 0, .4);
-					padding: 0 .3rem;
+					padding: 0 .2rem;
 					z-index: 2;
 					
 					.time {
@@ -1064,7 +1071,7 @@ $chat-max-width: 696px;
 					}
 				}
 
-				&-time {
+				&-time, &-subtitle {
 					color: #68AB5A;
 				}
 

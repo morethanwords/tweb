@@ -94,7 +94,10 @@ export default class ProgressivePreloader {
       window.requestAnimationFrame(() => {
         if(!this.detached) return;
         this.detached = true;
-        this.preloader.parentElement.removeChild(this.preloader);
+
+        if(this.preloader.parentElement) {
+          this.preloader.parentElement.removeChild(this.preloader);
+        }
       });
     }
   }

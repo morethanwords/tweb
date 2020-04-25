@@ -9,6 +9,13 @@ import {bigint, intToUint, bigStringInt, bytesToHex, gzipUncompress, uintToInt} 
 import {isObject} from './utils';
 import * as Config from './config';
 
+const boolFalse = +Config.Schema.API.constructors.find((c: any) => c.predicate == 'boolFalse').id >>> 0;
+const boolTrue = +Config.Schema.API.constructors.find((c: any) => c.predicate == 'boolTrue').id >>> 0;
+const vector = +Config.Schema.API.constructors.find((c: any) => c.predicate == 'vector').id >>> 0;
+const gzipPacked = +Config.Schema.MTProto.constructors.find((c: any) => c.predicate == 'gzip_packed').id >>> 0;
+
+//console.log('boolFalse', boolFalse == 0xbc799737);
+
 class TLSerialization {
   public maxLength = 2048; // 2Kb
   public offset = 0; // in bytes
@@ -92,9 +99,9 @@ class TLSerialization {
   
   public storeBool(i: boolean, field?: string) {
     if(i) {
-      this.writeInt(0x997275b5, (field || '') + ':bool');
+      this.writeInt(boolTrue, (field || '') + ':bool');
     } else {
-      this.writeInt(0xbc799737, (field || '') + ':bool');
+      this.writeInt(boolFalse, (field || '') + ':bool');
     }
   }
   
@@ -289,7 +296,7 @@ class TLSerialization {
   
     if(Array.isArray(obj)) {
       if(type.substr(0, 6) == 'Vector') {
-        this.writeInt(0x1cb5c415, field + '[id]');
+        this.writeInt(vector, field + '[id]');
       } else if (type.substr(0, 6) != 'vector') {
         throw new Error('Invalid vector type ' + type);
       }
@@ -378,7 +385,6 @@ class TLDeserialization {
 
   constructor(buffer: ArrayBuffer | Uint8Array, options: any = {}) {
     //buffer = addPadding(buffer, 4, true); // fix 21.01.2020 for wss
-    //console.log("TCL: TLDeserialization -> constructor -> buffer", buffer, buffer instanceof ArrayBuffer);
     if(buffer instanceof ArrayBuffer) {
       this.buffer = buffer;
       this.byteView = new Uint8Array(this.buffer);
@@ -386,7 +392,8 @@ class TLDeserialization {
       this.buffer = buffer.buffer;
       this.byteView = buffer;
     }
-
+    
+    //console.log("TCL: TLDeserialization -> constructor -> buffer", buffer, this.byteView, this.byteView.hex);
     /* this.buffer = buffer;
     //this.intView = new Uint32Array(this.buffer);
     this.byteView = new Uint8Array(this.buffer); */
@@ -444,12 +451,12 @@ class TLDeserialization {
   
   public fetchBool(field?: string) {
     var i = this.readInt((field || '') + ':bool');
-    if(i == 0x997275b5) {
+    if(i == boolTrue) {
       return true;
-    } else if(i == 0xbc799737) {
+    } else if(i == boolFalse) {
       return false;
     }
-  
+
     this.offset -= 4;
     return this.fetchObject('Object', field);
   }
@@ -589,7 +596,7 @@ class TLDeserialization {
         var constructor = this.readInt(field + '[id]');
         var constructorCmp = uintToInt(constructor);
   
-        if(constructorCmp == 0x3072cfa1) { // Gzip packed
+        if(constructorCmp == gzipPacked) { // Gzip packed
           var compressed = this.fetchBytes(field + '[packed_string]');
           var uncompressed = gzipUncompress(compressed);
           var newDeserializer = new TLDeserialization(uncompressed);
@@ -597,7 +604,7 @@ class TLDeserialization {
           return newDeserializer.fetchObject(type, field);
         }
 
-        if(constructorCmp != 0x1cb5c415) {
+        if(constructorCmp != vector) {
           throw new Error('Invalid vector constructor ' + constructor);
         }
       }
@@ -645,7 +652,7 @@ class TLDeserialization {
       var constructor = this.readInt(field + '[id]');
       var constructorCmp = uintToInt(constructor);
   
-      if(constructorCmp == 0x3072cfa1) { // Gzip packed
+      if(constructorCmp == gzipPacked) { // Gzip packed
         var compressed = this.fetchBytes(field + '[packed_string]');
         var uncompressed = gzipUncompress(compressed);
         var newDeserializer = new TLDeserialization(uncompressed);
@@ -681,7 +688,7 @@ class TLDeserialization {
       }
 
       if(!constructorData) {
-        throw new Error('Constructor not found: ' + constructor + ' ' + this.fetchInt() + ' ' + this.fetchInt());
+        throw new Error('Constructor not found: ' + constructor + ' ' + this.fetchInt() + ' ' + this.fetchInt() + ' ' + field);
       }
     }
   

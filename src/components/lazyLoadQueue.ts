@@ -2,7 +2,7 @@ import { isElementInViewport } from "../lib/utils";
 
 type LazyLoadElement = {
   div: HTMLDivElement, 
-  load: () => Promise<void>, 
+  load: () => Promise<any>, 
   wasSeen?: boolean
 };
 
