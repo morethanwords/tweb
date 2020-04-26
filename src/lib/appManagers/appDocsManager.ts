@@ -5,19 +5,31 @@ import { CancellablePromise } from '../polyfill';
 import { MTDocument } from '../../components/wrappers';
 
 class AppDocsManager {
-  private docs: any = {};
+  private docs: {[docID: string]: MTDocument} = {};
 
   public saveDoc(apiDoc: MTDocument/* any */, context?: any) {
     console.log('saveDoc', apiDoc, this.docs[apiDoc.id]);
-    if(this.docs[apiDoc.id]) return this.docs[apiDoc.id];
+    if(this.docs[apiDoc.id]) {
+      let d = this.docs[apiDoc.id];
+
+      if(apiDoc.thumbs) {
+        if(!d.thumbs) d.thumbs = apiDoc.thumbs;
+        else if(apiDoc.thumbs[0].bytes && !d.thumbs[0].bytes) {
+          d.thumbs.unshift(apiDoc.thumbs[0]);
+        }
+      }
+
+      return context ? Object.assign(d, context) : d;
+    }
+    
+    if(context) {
+      Object.assign(apiDoc, context);
+    }
 
     this.docs[apiDoc.id] = apiDoc;
     
-    /* if(context) {
-      Object.assign(apiDoc, context);
-    } */
-    
     if(apiDoc.thumb && apiDoc.thumb._ == 'photoCachedSize') {
+      console.warn('this will happen!!!');
       apiFileManager.saveSmallFile(apiDoc.thumb.location, apiDoc.thumb.bytes);
       
       // Memory

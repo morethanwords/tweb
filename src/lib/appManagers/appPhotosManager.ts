@@ -1,12 +1,12 @@
 import appUsersManager from "./appUsersManager";
-import { copy, calcImageInBox } from "../utils";
+import { calcImageInBox, isObject } from "../utils";
 import fileManager from '../filemanager';
 import { bytesFromHex } from "../bin_utils";
-import { MTPhotoSize, MTDocument } from "../../components/wrappers";
+import { MTPhotoSize } from "../../components/wrappers";
 import apiFileManager from "../mtproto/apiFileManager";
 import apiManager from "../mtproto/apiManager";
 
-type MTPhoto = {
+export type MTPhoto = {
   _: 'photo' | 'photoEmpty' | string,
   pFlags: any,
   flags: number,
@@ -51,7 +51,7 @@ export class AppPhotosManager {
     
     if(!photo.id) {
       console.warn('no apiPhoto.id', photo);
-    } else this.photos[photo.id] = photo;
+    } else this.photos[photo.id] = photo as any;
     
     /* if(!('sizes' in photo)) return;
     
@@ -241,98 +241,61 @@ export class AppPhotosManager {
     return photoSize;
   }
   
-  public preloadPhoto(photoID: any, photoSize?: MTPhotoSize): Promise<Blob | string> {
-    let photo: MTPhoto = null;
-    
-    if(typeof(photoID) === 'string') {
-      photo = this.photos[photoID];
-      if(!photo) return Promise.reject();
-    } else {
-      photo = photoID;
-    }
+  public preloadPhoto(photoID: any, photoSize?: MTPhotoSize): Promise<Blob | void> {
+    let photo = this.getPhoto(photoID);
     
     if(!photoSize) {
-      let fullWidth = this.windowW/*  - (Config.Mobile ? 20 : 32) */;
-      let fullHeight = this.windowH/*  - (Config.Mobile ? 150 : 116) */;
+      let fullWidth = this.windowW;
+      let fullHeight = this.windowH;
       
       photoSize = this.choosePhotoSize(photo, fullWidth, fullHeight);
     }
-    
-    if(photoSize && photoSize._ != 'photoSizeEmpty') {
-      // maybe it's a thumb
-      let isPhoto = photoSize.size && photo.access_hash && photo.file_reference;
-      let location = isPhoto ? {
-        _: photo._ == 'document' ? 'inputDocumentFileLocation' : 'inputPhotoFileLocation',
-        id: photo.id,
-        access_hash: photo.access_hash,
-        file_reference: photo.file_reference,
-        thumb_size: photoSize.type
-      } : photoSize.location;
 
-      let promise: Promise<Blob>;
+    if(photo.downloaded >= photoSize.size && photo.url) {
+      return Promise.resolve();
+    }
 
-      /* if(photo.downloaded == photoSize.size && photo.url) {
-        return Promise.resolve(photo.url);
-      } */
-
-      if(isPhoto/*  && photoSize.size >= 1e6 */) {
-        //console.log('Photos downloadFile exec', photo);
-        promise = apiFileManager.downloadFile(photo.dc_id, location, photoSize.size);
-      } else {
-        //console.log('Photos downloadSmallFile exec', photo, location);
-        promise = apiFileManager.downloadSmallFile(location);
-      }
-
-      if(typeof(photoID) === 'string') {
-        let photo = this.photos[photoID]; 
-        promise.then(blob => {
-          if(!photo.downloaded || photo.downloaded < blob.size) {
-            photo.downloaded = blob.size;
-            photo.url = URL.createObjectURL(blob);
-
-            console.log('wrote photo:', photo, photoSize, blob);
-          }
-        });
-      }
-
-      return promise;
-    } else return Promise.reject('no photoSize');
-  }
-  
-  public getPhoto(photoID: string) {
-    return this.photos[photoID] || {_: 'photoEmpty'} as unknown as Partial<MTPhoto>;
-  }
-  
-  public wrapForHistory(photoID: string, options: any = {}) {
-    var photo = copy(this.photos[photoID]) || {_: 'photoEmpty'};
-    var width = options.website ? 64 : Math.min(this.windowW - 80, Config.Mobile ? 210 : 260);
-    var height = options.website ? 64 : Math.min(this.windowH - 100, Config.Mobile ? 210 : 260);
-    var thumbPhotoSize = this.choosePhotoSize(photo, width, height);
-    var thumb: any = {
-      width: width,
-      height: height
-    };
-    
-    if(options.website && Config.Mobile) {
-      width = 50;
-      height = 50;
+    if(!photoSize || photoSize._ == 'photoSizeEmpty') {
+      console.error('no photoSize by photo:', photo);
+      return Promise.reject('no photoSize');
     }
     
-    // console.log('chosen photo size', photoID, thumbPhotoSize)
-    if(thumbPhotoSize && thumbPhotoSize._ != 'photoSizeEmpty') {
-      var dim = calcImageInBox(thumbPhotoSize.w, thumbPhotoSize.h, width, height);
-      thumb.width = dim.w;
-      thumb.height = dim.h;
-      thumb.location = thumbPhotoSize.location;
-      thumb.size = thumbPhotoSize.size;
+    // maybe it's a thumb
+    let isPhoto = photoSize.size && photo.access_hash && photo.file_reference;
+    let location = isPhoto ? {
+      _: photo._ == 'document' ? 'inputDocumentFileLocation' : 'inputPhotoFileLocation',
+      id: photo.id,
+      access_hash: photo.access_hash,
+      file_reference: photo.file_reference,
+      thumb_size: photoSize.type
+    } : photoSize.location;
+
+    let promise: Promise<Blob>;
+    if(isPhoto/*  && photoSize.size >= 1e6 */) {
+      //console.log('Photos downloadFile exec', photo);
+      promise = apiFileManager.downloadFile(photo.dc_id, location, photoSize.size);
     } else {
-      thumb.width = 100;
-      thumb.height = 100;
+      //console.log('Photos downloadSmallFile exec', photo, location);
+      promise = apiFileManager.downloadSmallFile(location);
     }
-    
-    photo.thumb = thumb;
-    
-    return photo;
+
+    if(typeof(photoID) === 'string') {
+      let photo = this.photos[photoID]; 
+      promise.then(blob => {
+        if(!photo.downloaded || photo.downloaded < blob.size) {
+          photo.downloaded = blob.size;
+          photo.url = URL.createObjectURL(blob);
+
+          console.log('wrote photo:', photo, photoSize, blob);
+        }
+      });
+    }
+
+    return promise;
+  }
+  
+  public getPhoto(photoID: any): MTPhoto {
+    return isObject(photoID) ? photoID : this.photos[photoID];
   }
 
   public downloadPhoto(photoID: string) {

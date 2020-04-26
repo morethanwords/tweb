@@ -81,7 +81,7 @@ class appStickersManager {
 
     doc.file_reference = Array.from(doc.file_reference);
 
-    appDocsManager.saveDoc(doc);
+    doc = appDocsManager.saveDoc(doc);
     this.documents[doc.id] = doc;
 
     return doc;

@@ -189,6 +189,7 @@ export class ChatInput {
       console.log('selected file:', file, typeof(file));
 
       willAttachFile = file;
+      willAttachObjectURL = '';
   
       this.fileInput.value = '';
 
@@ -207,7 +208,7 @@ export class ChatInput {
       switch(willAttach) {
         case 'media': {
           let img = new Image();
-          img.src = URL.createObjectURL(file);
+          img.src = willAttachObjectURL = URL.createObjectURL(file);
           img.onload = () => {
             willAttachWidth = img.naturalWidth;
             willAttachHeight = img.naturalHeight;
@@ -248,6 +249,7 @@ export class ChatInput {
 
     let willAttach = '';
     let willAttachFile: File = null;
+    let willAttachObjectURL = '';
     let willAttachWidth = 0, willAttachHeight = 0;
     this.fileInput.addEventListener('change', (e) => {
       var file = (e.target as HTMLInputElement & EventTarget).files[0];
@@ -302,14 +304,11 @@ export class ChatInput {
         isMedia: true, 
         caption,
         width: willAttachWidth,
-        height: willAttachHeight
+        height: willAttachHeight,
+        objectURL: willAttachObjectURL
       });
-      appImManager.scroll.scrollTop = appImManager.scroll.scrollHeight;
-
-      let dialog = appMessagesManager.getDialogByPeerID(appImManager.peerID)[0];
-      if(dialog && dialog.top_message) {
-        appMessagesManager.readHistory(appImManager.peerID, dialog.top_message); // lol
-      }
+      
+      this.onMessageSent();
     });
 
     this.btnSend.addEventListener('click', () => {
@@ -384,6 +383,29 @@ export class ChatInput {
     }, '');
   };
 
+  public onMessageSent(scrollDown = true, clearInput = true) {
+    if(scrollDown) {
+      appImManager.scroll.scrollTop = appImManager.scroll.scrollHeight;
+    }
+
+    let dialog = appMessagesManager.getDialogByPeerID(appImManager.peerID)[0];
+    if(dialog && dialog.top_message) {
+      appMessagesManager.readHistory(appImManager.peerID, dialog.top_message); // lol
+    }
+
+    if(clearInput) {
+      this.lastUrl = '';
+      this.editMsgID = 0;
+      this.replyToMsgID = 0;
+      this.noWebPage = false;
+      this.replyElements.container.classList.remove('active');
+      this.willSendWebPage = null;
+      this.messageInput.innerText = '';
+      this.btnSend.classList.remove('tgico-send');
+      this.btnSend.classList.add('tgico-microphone2');
+    }
+  }
+
   public sendMessage() {
     //let str = this.serializeNodes(Array.from(this.messageInput.childNodes));
     let str = getRichValue(this.messageInput);
@@ -391,7 +413,6 @@ export class ChatInput {
     //console.log('childnode str after:', str/* , getRichValue(this.messageInput) */);
 
     //return;
-    this.lastUrl = '';
 
     if(this.editMsgID) {
       appMessagesManager.editMessage(this.editMsgID, str, {
@@ -403,24 +424,9 @@ export class ChatInput {
         noWebPage: this.noWebPage,
         webPage: this.willSendWebPage
       });
-
-      appImManager.scroll.scrollTop = appImManager.scroll.scrollHeight;
     }
 
-    let dialog = appMessagesManager.getDialogByPeerID(appImManager.peerID)[0];
-    if(dialog && dialog.top_message) {
-      appMessagesManager.readHistory(appImManager.peerID, dialog.top_message); // lol
-    }
-    
-    this.editMsgID = 0;
-    this.replyToMsgID = 0;
-    this.noWebPage = false;
-    this.replyElements.container.classList.remove('active');
-    this.willSendWebPage = null;
-    this.messageInput.innerText = '';
-
-    this.btnSend.classList.remove('tgico-send');
-    this.btnSend.classList.add('tgico-microphone2');
+    this.onMessageSent(!this.editMsgID);
   };
 
   public setTopInfo(title: string, subtitle: string, input?: string, media?: any) {

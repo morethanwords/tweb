@@ -693,7 +693,7 @@ export class AppMediaViewer {
         this.preloader.attach(mover);
 
         let cancellablePromise = appPhotosManager.preloadPhoto(media.id, size);
-        cancellablePromise.then((blob) => {
+        cancellablePromise.then(() => {
           if(this.currentMessageID != message.mid) {
             this.log.warn('media viewer changed photo');
             return;

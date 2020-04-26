@@ -44,7 +44,7 @@ export class AppImManager {
   private getHistoryTopPromise: Promise<boolean>;
   private getHistoryBottomPromise: Promise<boolean>;
   
-  private chatInputC: ChatInput = null;
+  public chatInputC: ChatInput = null;
   
   public myID = 0;
   public peerID = 0;
@@ -158,7 +158,12 @@ export class AppImManager {
         let message = appMessagesManager.getMessage(mid);
         //this.log('history_update', this.bubbles[mid], mid, message);
 
-        this.renderMessage(message, false, false, bubble);
+        let dateMessage = this.getDateContainerByMessage(message, false);
+        dateMessage.container.append(bubble);
+
+        this.bubbleGroups.addBubble(bubble, message, false);
+
+        //this.renderMessage(message, false, false, bubble);
       }
     });
     
@@ -191,9 +196,21 @@ export class AppImManager {
         this.bubbles[mid] = bubble;
         
         /////this.log('message_sent', bubble);
+
+        // set cached url to media
+        let message = appMessagesManager.getMessage(mid);
+        if(message.media && message.media.photo) {
+          let photo = appPhotosManager.getPhoto(tempID);
+          if(photo) {
+            let newPhoto = message.media.photo;
+            newPhoto.downloaded = photo.downloaded;
+            newPhoto.url = photo.url;
+          }
+        }
         
         bubble.classList.remove('is-sending');
         bubble.classList.add('is-sent');
+        bubble.dataset.mid = mid;
 
         this.bubbleGroups.removeBubble(bubble, tempID);
         
@@ -1163,7 +1180,7 @@ export class AppImManager {
   
   // reverse means top
   public renderMessage(message: any, reverse = false, multipleRender = false, bubble: HTMLDivElement = null, updatePosition = true) {
-    /////this.log('message to render:', message);
+    this.log('message to render:', message);
     if(message.deleted) return;
     
     let peerID = this.peerID;
@@ -1323,15 +1340,9 @@ export class AppImManager {
           switch(pending.type) {
             case 'photo': {
               if(pending.size < 5e6) {
-                let img = new Image();
-                img.src = URL.createObjectURL(pending.file);
-                
-                let {w, h} = calcImageInBox(pending.w, pending.h, 380, 380);
-                
-                attachmentDiv.style.width = w + 'px';
-                attachmentDiv.style.height = h + 'px';
-                
-                attachmentDiv.append(img);
+                this.log('will wrap pending photo:', pending, message, appPhotosManager.getPhoto(message.id));
+                wrapPhoto(message.id, message, attachmentDiv, undefined, undefined, true, true, this.lazyLoadQueue, null);
+
                 preloader.attach(attachmentDiv, false);
                 bubble.classList.add('hide-name', 'photo');
                 

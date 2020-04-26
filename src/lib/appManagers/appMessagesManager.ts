@@ -14,7 +14,7 @@ import ServerTimeManager from "../mtproto/serverTimeManager";
 import apiFileManager from "../mtproto/apiFileManager";
 import appDocsManager from "./appDocsManager";
 import appImManager from "./appImManager";
-import { MTDocument } from "../../components/wrappers";
+import { MTDocument, MTPhotoSize } from "../../components/wrappers";
 import ProgressivePreloader from "../../components/preloader";
 import serverTimeManager from "../mtproto/serverTimeManager";
 import apiManager from "../mtproto/apiManager";
@@ -37,7 +37,6 @@ export type HistoryResult = {
 
 export class AppMessagesManager {
   public messagesStorage: any = {};
-  public messagesForHistory: any = {};
   public messagesForDialogs: any = {};
   public historiesStorage: {
     [peerID: string]: HistoryStorage
@@ -107,20 +106,14 @@ export class AppMessagesManager {
     $rootScope.$on('webpage_updated', (e: CustomEvent) => {
       let eventData = e.detail;
       eventData.msgs.forEach((msgID: number) => {
-        var historyMessage = this.messagesForHistory[msgID];
-        if(historyMessage) {
-          historyMessage.media = {
-            _: 'messageMediaWebPage',
-            webpage: appWebPagesManager.wrapForHistory(eventData.id)
-          };
-
-          $rootScope.$broadcast('message_edit', {
-            peerID: this.getMessagePeer(historyMessage),
-            id: historyMessage.id,
-            mid: msgID,
-            justMedia: true
-          });
-        }
+        let message = this.getMessage(msgID);
+        message.webpage = appWebPagesManager.getWebPage(eventData.id); // warning
+        $rootScope.$broadcast('message_edit', {
+          peerID: this.getMessagePeer(message),
+          id: message.id,
+          mid: msgID,
+          justMedia: true
+        });
       });
     });
 
@@ -327,17 +320,10 @@ export class AppMessagesManager {
     }
 
     var toggleError = (on: any) => {
-      var historyMessage = this.messagesForHistory[messageID];
       if(on) {
         message.error = true;
-        if(historyMessage) {
-          historyMessage.error = true;
-        }
       } else {
         delete message.error;
-        if(historyMessage) {
-          delete historyMessage.error;
-        }
       }
       $rootScope.$broadcast('messages_pending');
     }
@@ -467,7 +453,8 @@ export class AppMessagesManager {
     caption?: string,
     entities?: any[],
     width?: number,
-    height?: number
+    height?: number,
+    objectURL?: string
   } = {}) {
     peerID = AppPeersManager.getPeerMigratedTo(peerID) || peerID;
     var messageID = this.tempID--;
@@ -487,6 +474,8 @@ export class AppMessagesManager {
     let isDocument = !(file instanceof File) && !(file instanceof Blob);
     let caption = options.caption || '';
 
+    let date = tsNow(true) + ServerTimeManager.serverTimeOffset;
+
     if(caption) {
       let entities = options.entities || [];
       caption = RichTextProcessor.parseMarkdown(caption, entities);
@@ -497,13 +486,31 @@ export class AppMessagesManager {
       attachType = 'document';
       apiFileName = 'document.' + fileType.split('/')[1];
       actionName = 'sendMessageUploadDocumentAction';
-    } else if(isDocument) { // maybe it's a sticker
+    } else if(isDocument) { // maybe it's a sticker or gif
       attachType = 'document';
       apiFileName = '';
     } else if(['image/jpeg', 'image/png', 'image/bmp'].indexOf(fileType) >= 0) {
       attachType = 'photo';
       apiFileName = 'photo.' + fileType.split('/')[1];
       actionName = 'sendMessageUploadPhotoAction';
+
+      let photo: any = {
+        _: 'photo',
+        id: '' + messageID,
+        sizes: [{
+          _: 'photoSize',
+          w: options.width,
+          h: options.height,
+          type: 'm',
+          size: file.size
+        } as MTPhotoSize],
+        w: options.width,
+        h: options.height,
+        downloaded: file.size,
+        url: options.objectURL || ''
+      };
+      
+      appPhotosManager.savePhoto(photo);
     } else if(fileType.substr(0, 6) == 'audio/' || ['video/ogg'].indexOf(fileType) >= 0) {
       attachType = 'audio';
       apiFileName = 'audio.' + (fileType.split('/')[1] == 'ogg' ? 'ogg' : 'mp3');
@@ -559,6 +566,7 @@ export class AppMessagesManager {
       preloader: preloader,
       w: options.width,
       h: options.height,
+      url: options.objectURL,
       progress: {
         percent: 1, 
         total: file.size,
@@ -580,7 +588,7 @@ export class AppMessagesManager {
       to_id: AppPeersManager.getOutputPeer(peerID),
       flags: flags,
       pFlags: pFlags,
-      date: tsNow(true) + ServerTimeManager.serverTimeOffset,
+      date: date,
       message: caption,
       media: isDocument ? {
         _: 'messageMediaDocument',
@@ -595,19 +603,10 @@ export class AppMessagesManager {
     };
 
     var toggleError = (on: boolean) => {
-      var historyMessage = this.messagesForHistory[messageID];
       if(on) {
         message.error = true;
-
-        if(historyMessage) {
-          historyMessage.error = true;
-        }
       } else {
         delete message.error;
-
-        if(historyMessage) {
-          delete historyMessage.error;
-        }
       }
 
       $rootScope.$broadcast('messages_pending');
@@ -677,6 +676,8 @@ export class AppMessagesManager {
           }
   
           uploadPromise && uploadPromise.then((inputFile) => {
+            console.log('appMessagesManager: sendFile uploaded:', inputFile);
+
             inputFile.name = apiFileName;
             uploaded = true;
             var inputMedia;
@@ -767,7 +768,6 @@ export class AppMessagesManager {
         historyStorage.pending.splice(pos, 1);
       }
 
-      delete this.messagesForHistory[tempID];
       delete this.messagesStorage[tempID];
 
       return true;
@@ -2177,10 +2177,6 @@ export class AppMessagesManager {
         if(message && !message.pFlags.out) {
           message.pFlags.unread = false;
 
-          if(this.messagesForHistory[messageID]) {
-            this.messagesForHistory[messageID].pFlags.unread = false;
-          }
-
           if(this.messagesForDialogs[messageID]) {
             this.messagesForDialogs[messageID].pFlags.unread = false;
           }
@@ -2235,7 +2231,7 @@ export class AppMessagesManager {
   }
 
   public handleUpdate(update: any) {
-    //console.log('AMM: handleUpdate:', update._);
+    console.log('AMM: handleUpdate:', update._);
     switch(update._) {
       case 'updateMessageID': {
         var randomID = update.random_id;
@@ -2252,13 +2248,7 @@ export class AppMessagesManager {
             if(pos != -1) {
               historyStorage.pending.splice(pos, 1);
             }
-            delete this.messagesForHistory[tempID];
             delete this.messagesStorage[tempID];
-
-            var msgs: any = {}
-            msgs[tempID] = true;
-
-            //$rootScope.$broadcast('history_delete', {peerID: peerID, msgs: msgs}); // commented 11.02.2020
 
             this.finalizePendingMessageCallbacks(tempID, mid);
           } else {
@@ -2489,23 +2479,11 @@ export class AppMessagesManager {
         this.saveMessages([message], {isEdited: true});
         safeReplaceObject(this.messagesStorage[mid], message);
 
-        var wasForHistory = this.messagesForHistory[mid];
-        if(wasForHistory !== undefined) {
-          delete this.messagesForHistory[mid];
-          var newForHistory = this.wrapForHistory(mid);
-          safeReplaceObject(wasForHistory, newForHistory);
-          this.messagesForHistory[mid] = wasForHistory;
-        }
-
         var dialog = this.getDialogByPeerID(peerID)[0];
         var isTopMessage = dialog && dialog.top_message == mid;
         if(message.clear_history) { // that's will never happen
           if(isTopMessage) {
             $rootScope.$broadcast('dialog_flush', {peerID: peerID});
-          } else {
-            var msgs: any = {};
-            msgs[mid] = true;
-            /////////$rootScope.$broadcast('history_delete', {peerID: peerID, msgs: msgs}); // commented 11.02.2020
           }
         } else {
           $rootScope.$broadcast('message_edit', {
@@ -2562,11 +2540,8 @@ export class AppMessagesManager {
           // console.warn('read', messageID, message.pFlags.unread, message)
           if(message && message.pFlags.unread) {
             message.pFlags.unread = false
-            if(this.messagesForHistory[messageID]) {
-              this.messagesForHistory[messageID].pFlags.unread = false;
-              if(!foundAffected) {
-                foundAffected = true;
-              }
+            if(!foundAffected) {
+              foundAffected = true;
             }
             if(this.messagesForDialogs[messageID]) {
               this.messagesForDialogs[messageID].pFlags.unread = false;
@@ -2614,14 +2589,10 @@ export class AppMessagesManager {
         var len = messages.length;
         var i;
         var messageID: number, message;
-        var historyMessage;
         for(i = 0; i < len; i++) {
           messageID = messages[i];
           if(message = this.messagesStorage[messageID]) {
             delete message.pFlags.media_unread;
-          }
-          if(historyMessage = this.messagesForHistory[messageID]) {
-            delete historyMessage.pFlags.media_unread;
           }
         }
         break;
@@ -2668,10 +2639,6 @@ export class AppMessagesManager {
             history.count++;
             history.msgs[messageID] = true;
 
-            if(this.messagesForHistory[messageID]) {
-              this.messagesForHistory[messageID].deleted = true;
-              delete this.messagesForHistory[messageID];
-            }
             if(this.messagesForDialogs[messageID]) {
               this.messagesForDialogs[messageID].deleted = true;
               delete this.messagesForDialogs[messageID];
@@ -2842,112 +2809,11 @@ export class AppMessagesManager {
           });
         }
         if(update.pFlags.popup && update.message) {
-          var historyMessage = this.wrapForHistory(messageID);
           //ErrorService.show({error: {code: 400, type: 'UPDATE_SERVICE_NOTIFICATION'}, historyMessage: historyMessage}); // warning
         }
         break;
       }
     }
-  }
-
-  public wrapForHistory(msgID: number) {
-    if(this.messagesForHistory[msgID] !== undefined) {
-      return this.messagesForHistory[msgID];
-    }
-
-    var message = copy(this.messagesStorage[msgID]) || {id: msgID};
-
-    if(message.media && message.media.progress !== undefined) {
-      message.media.progress = this.messagesStorage[msgID].media.progress;
-    }
-
-    var fromUser = message.from_id && appUsersManager.getUser(message.from_id);
-    var fromBot = fromUser && fromUser.pFlags.bot && fromUser.username || false;
-    var withBot = (fromBot ||
-      message.to_id && (
-      message.to_id.chat_id ||
-      message.to_id.user_id && appUsersManager.isBot(message.to_id.user_id)
-    )
-    )
-
-    if(message.media) {
-      if(message.media.caption &&
-        message.media.caption.length) {
-        message.media.rCaption = RichTextProcessor.wrapRichText(message.media.caption, {
-          noCommands: !withBot,
-          fromBot: fromBot
-        })
-      }
-
-      switch (message.media._) {
-        case 'messageMediaPhoto':
-          message.media.photo = appPhotosManager.wrapForHistory(message.media.photo.id)
-          break
-
-        /* case 'messageMediaDocument':
-          message.media.document = appDocsManager.wrapForHistory(message.media.document.id)
-          break */
-
-        case 'messageMediaGeo':
-          var mapUrl = 'https://maps.google.com/?q=' + message.media.geo['lat'] + ',' + message.media.geo['long']
-          message.media.mapUrl = mapUrl;//$sce.trustAsResourceUrl(mapUrl) // warning
-          break
-
-        case 'messageMediaVenue':
-          var mapUrl: string;
-          if(message.media.provider == 'foursquare' &&
-            message.media.venue_id) {
-            mapUrl = 'https://foursquare.com/v/' + encodeURIComponent(message.media.venue_id)
-          } else {
-            mapUrl = 'https://maps.google.com/?q=' + message.media.geo['lat'] + ',' + message.media.geo['long']
-          }
-          message.media.mapUrl = mapUrl;//$sce.trustAsResourceUrl(mapUrl) // warning
-          break
-
-        case 'messageMediaContact':
-          message.media.rFullName = RichTextProcessor.wrapRichText(
-            message.media.first_name + ' ' + (message.media.last_name || ''),
-            {noLinks: true, noLinebreaks: true}
-          )
-          break
-
-         case 'messageMediaWebPage':
-          if(!message.media.webpage ||
-            message.media.webpage._ == 'webPageEmpty') {
-            delete message.media
-            break
-          }
-          message.media.webpage = appWebPagesManager.wrapForHistory(message.media.webpage.id)
-          break
-
-        /*case 'messageMediaGame':
-          message.media.game = AppGamesManager.wrapForHistory(message.media.game.id)
-          break */
-      }
-    } else if(message.action) {
-      switch (message.action._) {
-        case 'messageActionChatEditPhoto':
-        case 'messageActionChannelEditPhoto':
-          message.action.photo = appPhotosManager.wrapForHistory(message.action.photo.id);
-          break
-
-        case 'messageActionChatCreate':
-        case 'messageActionChatEditTitle':
-        case 'messageActionChannelCreate':
-        case 'messageActionChannelEditTitle':
-          message.action.rTitle = RichTextProcessor.wrapRichText(message.action.title, {noLinebreaks: true}) || 'chat_title_deleted';
-          break
-
-        case 'messageActionBotIntro':
-          message.action.rDescription = RichTextProcessor.wrapRichText(message.action.description, {
-            noCommands: !withBot,
-            fromBot: fromBot
-          });
-          break;
-      }
-    }
-
-    return this.messagesForHistory[msgID] = message;
   }
 
   public finalizePendingMessage(randomID: number, finalMessage: any) {
@@ -2958,8 +2824,7 @@ export class AppMessagesManager {
       var peerID = pendingData[0];
       var tempID = pendingData[1];
       var historyStorage = this.historiesStorage[peerID],
-        message,
-        historyMessage;
+        message;
 
       // console.log('pending', randomID, historyStorage.pending)
       var pos = historyStorage.pending.indexOf(tempID);
@@ -2972,19 +2837,10 @@ export class AppMessagesManager {
         delete message.error;
         delete message.random_id;
         delete message.send;
-      }
-
-      if(historyMessage = this.messagesForHistory[tempID]) {
-        this.messagesForHistory[finalMessage.mid] = Object.assign(historyMessage, this.wrapForHistory(finalMessage.mid));
-        delete historyMessage.pending;
-        delete historyMessage.error;
-        delete historyMessage.random_id;
-        delete historyMessage.send;
 
         $rootScope.$broadcast('messages_pending');
       }
 
-      delete this.messagesForHistory[tempID];
       delete this.messagesStorage[tempID];
 
       this.finalizePendingMessageCallbacks(tempID, finalMessage.mid);
@@ -2994,10 +2850,6 @@ export class AppMessagesManager {
 
     return false
   }
-
-  /* public finalizePendingMessageCallbacks(tempID: number, mid: number) {
-    $rootScope.$broadcast('message_sent', {tempID, mid});
-  } */
 
   public finalizePendingMessageCallbacks(tempID: number, mid: number) {
     var callbacks = this.tempFinalizeCallbacks[tempID];

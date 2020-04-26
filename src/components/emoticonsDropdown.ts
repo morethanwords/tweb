@@ -206,6 +206,22 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
     emoticonsMenuOnClick(menu, heights, emojiScroll);
   }
 
+  let onMediaClick = (e: MouseEvent) => {
+    let target = e.target as HTMLDivElement;
+    target = findUpTag(target, 'DIV');
+    
+    let fileID = target.dataset.docID;
+    let document = appDocsManager.getDoc(fileID);
+    if(document._ != 'documentEmpty') {
+      appMessagesManager.sendFile(appImManager.peerID, document, {isMedia: true});
+      appImManager.chatInputC.onMessageSent(true, false);
+      dropdown.classList.remove('active');
+      toggleEl.classList.remove('active');
+    } else {
+      console.warn('got no doc by id:', fileID);
+    }
+  };
+
   let stickersInit = () => {
     let contentStickersDiv = document.getElementById('content-stickers') as HTMLDivElement;
     //let stickersDiv = contentStickersDiv.querySelector('.os-content') as HTMLDivElement;
@@ -236,22 +252,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
       }
     });
 
-    stickersDiv.addEventListener('click', (e) => {
-      let target = e.target as HTMLDivElement;
-      target = findUpTag(target, 'DIV');
-      
-      let fileID = target.getAttribute('file-id');
-      let document = appStickersManager.getSticker(fileID);
-
-      if(document) {
-        appMessagesManager.sendFile(appImManager.peerID, document, {isMedia: true});
-        appImManager.scroll.scrollTop = appImManager.scroll.scrollHeight;
-        dropdown.classList.remove('active');
-        toggleEl.classList.remove('active');
-      } else {
-        console.warn('got no sticker by id:', fileID);
-      }
-    });
+    stickersDiv.addEventListener('click', onMediaClick);
 
     let heights: number[] = [];
 
@@ -403,6 +404,8 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
     let contentDiv = document.getElementById('content-gifs') as HTMLDivElement;
     let masonry = contentDiv.firstElementChild as HTMLDivElement;
 
+    masonry.addEventListener('click', onMediaClick);
+
     let scroll = new Scrollable(contentDiv, 'y', 500, 'GIFS', null);
 
     scroll.container.addEventListener('scroll', (e) => {
@@ -459,7 +462,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
         let div = document.createElement('div');
         div.style.width = w + 'px';
         //div.style.height = h + 'px';
-        div.dataset.documentID = gif.id;
+        div.dataset.docID = gif.id;
 
         masonry.append(div);
 

@@ -348,19 +348,14 @@ class AppSidebarRight {
           //this.log('wrapping webpage', webpage);
           
           if(webpage.photo) {
-            let load = () => appPhotosManager.preloadPhoto(webpage.photo.id, appPhotosManager.choosePhotoSize(webpage.photo, 380, 0))
-            .then((blob) => {
+            let load = () => appPhotosManager.preloadPhoto(webpage.photo.id, appPhotosManager.choosePhotoSize(webpage.photo, 60, 60))
+            .then(() => {
               if($rootScope.selectedPeerID != peerID) {
                 this.log.warn('peer changed');
                 return;
               }
 
               renderImageFromUrl(previewDiv, webpage.photo.url);
-              
-              /* let url = URL.createObjectURL(blob);
-              this.urlsToRevoke.push(url);
-              
-              previewDiv.style.backgroundImage = 'url(' + url + ')'; */
             });
             
             this.lazyLoadQueueSidebar.push({div: previewDiv, load});

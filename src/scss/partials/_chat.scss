@@ -476,6 +476,10 @@ $chat-max-width: 696px;
 				.attachment {
 					max-width: 200px;
 					max-height: 200px;
+
+					img {
+						border-radius: 50%;
+					}
 				}
 			}
 			

@@ -19,7 +19,7 @@ class AppWebPagesManager {
     });
   }
   
-  saveWebPage(apiWebPage: any, messageID?: number, mediaContext?: any) {
+  public saveWebPage(apiWebPage: any, messageID?: number, mediaContext?: any) {
     if(apiWebPage.photo && apiWebPage.photo._ === 'photo') {
       //appPhotosManager.savePhoto(apiWebPage.photo, mediaContext);
       apiWebPage.photo = appPhotosManager.savePhoto(apiWebPage.photo, mediaContext);
@@ -102,19 +102,9 @@ class AppWebPagesManager {
       });
     }
   }
-  
-  wrapForHistory(webPageID: number) {
-    var webPage = copy(this.webpages[webPageID]) || {_: 'webPageEmpty'};
-    
-    if(webPage.photo && webPage.photo.id) {
-      webPage.photo = appPhotosManager.wrapForHistory(webPage.photo.id, {website: webPage.type != 'photo' && webPage.type != 'video'});
-    }
 
-    /* if (webPage.document && webPage.document.id) {
-      webPage.document = appDocsManager.wrapForHistory(webPage.document.id)
-    } */ // warning
-    
-    return webPage;
+  public getWebPage(id: string) {
+    return this.webpages[id];
   }
 }
 

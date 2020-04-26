@@ -596,7 +596,7 @@ function wrapMediaWithTail(photo: any, message: {mid: number, message: string}, 
   return image;
 }
 
-export async function wrapPhoto(photoID: string, message: any, container: HTMLDivElement, boxWidth = 380, boxHeight = 380, withTail = true, isOut = false, lazyLoadQueue: LazyLoadQueue, middleware: () => boolean) {
+export function wrapPhoto(photoID: string, message: any, container: HTMLDivElement, boxWidth = 380, boxHeight = 380, withTail = true, isOut = false, lazyLoadQueue: LazyLoadQueue, middleware: () => boolean) {
   let photo = appPhotosManager.getPhoto(photoID);
 
   let size: MTPhotoSize;
@@ -615,6 +615,12 @@ export async function wrapPhoto(photoID: string, message: any, container: HTMLDi
 
   console.log('wrapPhoto downloaded:', photo, photo.downloaded, container);
 
+  // так нельзя делать, потому что может быть загружен неправильный размер картинки
+  /* if(photo.downloaded && photo.url) {
+    renderImageFromUrl(image, photo.url);
+    return;
+  } */
+
   let preloader: ProgressivePreloader;
   if(!photo.downloaded) preloader = new ProgressivePreloader(container, false);
   let load = () => {
@@ -625,7 +631,7 @@ export async function wrapPhoto(photoID: string, message: any, container: HTMLDi
     }
     
     return promise.then(() => {
-      if(!middleware()) return;
+      if(middleware && !middleware()) return;
 
       renderImageFromUrl(image, photo.url);
     });
@@ -680,7 +686,7 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
       
       div.append(img);
       
-      div.setAttribute('file-id', doc.id);
+      div.dataset.docID = doc.id;
       appStickersManager.saveSticker(doc);
     });
     
@@ -778,7 +784,7 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
       div.append(img);
     }
     
-    div.setAttribute('file-id', doc.id);
+    div.dataset.docID = doc.id;
     appStickersManager.saveSticker(doc);
   });
   
@@ -827,7 +833,7 @@ export function wrapReply(title: string, subtitle: string, media?: any) {
       
       appPhotosManager.preloadPhoto(photo, appPhotosManager.choosePhotoSize(photo, 32, 32))
       .then(blob => {
-        renderImageFromUrl(replyMedia, photo.url || URL.createObjectURL(blob));
+        renderImageFromUrl(replyMedia, photo._ == 'photo' ? photo.url : URL.createObjectURL(blob));
       });
       
       replyContent.append(replyMedia);
