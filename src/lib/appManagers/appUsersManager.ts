@@ -1,7 +1,8 @@
 import { SearchIndexManager, safeReplaceObject, isObject, tsNow, copy, $rootScope } from "../utils";
 import { RichTextProcessor } from "../richtextprocessor";
 import appChatsManager from "./appChatsManager";
-import apiManager from "../mtproto/apiManager";
+//import apiManager from '../mtproto/apiManager';
+import apiManager from '../mtproto/mtprotoworker';
 import serverTimeManager from "../mtproto/serverTimeManager";
 
 export class AppUsersManager {

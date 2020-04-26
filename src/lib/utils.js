@@ -394,8 +394,8 @@ export function isObject(object) {
 }
 
 export function tsNow (seconds) {
-  var t = +new Date() + (window.tsOffset || 0)
-  return seconds ? Math.floor(t / 1000) : t
+  var t = +new Date();
+  return seconds ? Math.floor(t / 1000) : t;
 }
 
 export function safeReplaceObject (wasObject, newObject) {
@@ -888,7 +888,7 @@ function versionCompare (ver1, ver2) {
     cleanUsername: cleanUsername,
     search: search
   };
-  window.SearchIndexManager = SearchIndexManager;
+  //window.SearchIndexManager = SearchIndexManager;
 
   export {SearchIndexManager};
 //})(window)

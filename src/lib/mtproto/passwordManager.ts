@@ -1,9 +1,6 @@
 import apiManager from "./apiManager";
-
 import { bufferConcats, bytesToHex, bytesFromHex, bufferConcat, bytesXor } from "../bin_utils";
-
 import CryptoWorker from "../crypto/cryptoworker";
-
 import {str2bigInt, greater, isZero,
   // @ts-ignore
   bigInt2str, powMod, int2bigInt, mult, mod, sub, bitSize, negative, mult, add} from 'leemon';
@@ -80,19 +77,6 @@ export class PasswordManager {
     }, options);
   }
 
-  /* public makePasswordHash(salt: any, password: any) {
-    var passwordUTF8 = unescape(encodeURIComponent(password));
-
-    var buffer = new ArrayBuffer(passwordUTF8.length);
-    var byteView = new Uint8Array(buffer);
-    for(var i = 0, len = passwordUTF8.length; i < len; i++) {
-      byteView[i] = passwordUTF8.charCodeAt(i);
-    }
-
-    buffer = bufferConcat(bufferConcat(salt, byteView), salt);
-
-    return CryptoWorker.sha256Hash(buffer);
-  } */
   public makePasswordHash(password: string, client_salt: Uint8Array, server_salt: Uint8Array) {
     var passwordUTF8 = unescape(encodeURIComponent(password));
 

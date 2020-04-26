@@ -2,10 +2,12 @@ import pageSignIn from './pageSignIn';
 import pageSignUp from './pageSignUp';
 import pageIm from './pageIm';
 import pagePassword from './pagePassword';
-import CryptoWorker from '../lib/crypto/cryptoworker';
 import LottieLoader from '../lib/lottieLoader';
-import apiManager from '../lib/mtproto/apiManager';
+//import CryptoWorker from '../lib/crypto/cryptoworker';
+//import apiManager from '../lib/mtproto/apiManager';
+import apiManager from '../lib/mtproto/mtprotoworker';
 import Page from './page';
+import { App } from '../lib/mtproto/mtproto_config';
 
 let authCode: {
   _: string, // 'auth.sentCode'
@@ -49,8 +51,8 @@ let onFirstMount = (): Promise<any> => {
       changePhonePromise = apiManager.invokeApi('auth.sendCode', {
         /* flags: 0, */
         phone_number: phone_number,
-        api_id: Config.App.id,
-        api_hash: Config.App.hash,
+        api_id: App.id,
+        api_hash: App.hash,
         settings: {
           _: 'codeSettings', // that's how we sending Type
           flags: 0
@@ -122,7 +124,7 @@ let onFirstMount = (): Promise<any> => {
 
     console.log('invoking auth.signIn with params:', params);
 
-    apiManager.invokeApi('auth.signIn', params)
+    apiManager.invokeApi('auth.signIn', params, {ignoreErrors: true})
     .then((response: any) => {
       console.log('auth.signIn response:', response);
       
@@ -220,7 +222,7 @@ let onFirstMount = (): Promise<any> => {
 
     fetch('assets/img/TwoFactorSetupMonkeyTracking.tgs')
     .then(res => res.arrayBuffer())
-    .then(data => CryptoWorker.gzipUncompress<string>(data, true))
+    .then(data => apiManager.gzipUncompress<string>(data, true))
     .then(str => LottieLoader.loadAnimation({
       container: page.pageEl.querySelector('.auth-image'),
       renderer: 'svg',

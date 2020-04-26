@@ -1,7 +1,8 @@
 import Scrollable from "./scrollable";
 import LazyLoadQueue from "./lazyLoadQueue";
 import { RichTextProcessor } from "../lib/richtextprocessor";
-import apiManager from "../lib/mtproto/apiManager";
+//import apiManager from "../lib/mtproto/apiManager";
+import apiManager from "../lib/mtproto/mtprotoworker";
 import appWebPagesManager from "../lib/appManagers/appWebPagesManager";
 import appImManager from "../lib/appManagers/appImManager";
 import { calcImageInBox, getRichValue } from "../lib/utils";

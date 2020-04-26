@@ -1,4 +1,5 @@
 import {encodeEntities, copy/* , emojiUnicode */} from './utils';
+import Config from './config';
 
 var EmojiHelper = {
   emojiMap: (code) => { return code; },

@@ -1,10 +1,11 @@
 import pageIm from './pageIm';
-import CryptoWorker from '../lib/crypto/cryptoworker';
+//import CryptoWorker from '../lib/crypto/cryptoworker';
+//import apiManager from '../lib/mtproto/apiManager';
 import { putPreloader } from '../components/misc';
 
 import LottieLoader from '../lib/lottieLoader';
-import passwordManager from '../lib/mtproto/passwordManager';
-import apiManager from '../lib/mtproto/apiManager';
+//import passwordManager from '../lib/mtproto/passwordManager';
+import apiManager from '../lib/mtproto/mtprotoworker';
 import Page from './page';
 
 let onFirstMount = (): Promise<any> => {
@@ -58,27 +59,23 @@ let onFirstMount = (): Promise<any> => {
     this.textContent = 'PLEASE WAIT...';
     putPreloader(this);
 
-    passwordManager.getState()
-    .then(state => {
-      console.log(state);
-      passwordManager.check(state, value).then((response: any) => {
-        console.log('passwordManager response:', response);
+    apiManager.checkPassword(value).then((response: any) => {
+      console.log('passwordManager response:', response);
         
-        switch(response._) {
-          case 'auth.authorization':
-            apiManager.setUserAuth({
-              id: response.user.id
-            });
-    
-            pageIm.mount();
-            if(animation) animation.destroy();
-            break;
-          default:
-            btnNext.removeAttribute('disabled');
-            btnNext.innerText = response._;
-            break;
-        }
-      }).catch(handleError);
+      switch(response._) {
+        case 'auth.authorization':
+          apiManager.setUserAuth({
+            id: response.user.id
+          });
+  
+          pageIm.mount();
+          if(animation) animation.destroy();
+          break;
+        default:
+          btnNext.removeAttribute('disabled');
+          btnNext.innerText = response._;
+          break;
+      }
     }).catch(handleError);
   });
 
@@ -98,7 +95,7 @@ let onFirstMount = (): Promise<any> => {
 
     fetch('assets/img/TwoFactorSetupMonkeyClose.tgs')
     .then(res => res.arrayBuffer())
-    .then(data => CryptoWorker.gzipUncompress<string>(data, true))
+    .then(data => apiManager.gzipUncompress<string>(data, true))
     .then(str => LottieLoader.loadAnimation({
       container: page.pageEl.querySelector('.auth-image'),
       renderer: 'svg',

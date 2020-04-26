@@ -1,4 +1,5 @@
 import { whichChild, findUpTag } from "../lib/utils";
+import Config from "../lib/config";
 
 let rippleClickID = 0;
 export function ripple(elem: HTMLElement, callback: (id: number) => Promise<boolean | void> = () => Promise.resolve(), onEnd: (id: number) => void = null) {

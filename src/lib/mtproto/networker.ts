@@ -2,10 +2,10 @@ import {tsNow, isObject} from '../utils';
 import {convertToUint8Array, 
   bufferConcat, nextRandomInt, bytesToHex, longToBytes,
   bytesCmp, uintToInt, bigStringInt} from '../bin_utils';
-import {TLDeserialization, TLSerialization} from '../tl_utils';
+import {TLDeserialization, TLSerialization} from './tl_utils';
 import CryptoWorker from '../crypto/cryptoworker';
 import AppStorage from '../storage';
-import * as Config from '../config';
+import Schema from './schema';
 
 import timeManager from './timeManager';
 import NetworkerFactory from './networkerFactory';
@@ -13,10 +13,9 @@ import dcConfigurator from './dcConfigurator';
 import Socket from './transports/websocket';
 import HTTP from './transports/http';
 import { logger } from '../polyfill';
+import { Modes, App } from './mtproto_config';
 
-/* const chromeMatches = navigator.userAgent.match(/Chrome\/(\d+(\.\d+)?)/);
-const chromeVersion = chromeMatches && parseFloat(chromeMatches[1]) || false;
-const xhrSendBuffer = !('ArrayBufferView' in window) && (chromeVersion > 0 && chromeVersion < 30);*/
+console.error('networker included!', new Error().stack);
 
 type Message = {
   msg_id: string,
@@ -103,15 +102,11 @@ class MTPNetworker {
 
     this.updateSession();
 
-    if(!NetworkerFactory.offlineInited) {
-      NetworkerFactory.offlineInited = true;
-      /* $rootScope.offline = true
-      $rootScope.offlineConnecting = true */
-    }
-
-    if(Config.Navigator.mobile) {
-      this.setupMobileSleep();
-    }
+    // if(!NetworkerFactory.offlineInited) {
+    //   NetworkerFactory.offlineInited = true;
+    //   /* $rootScope.offline = true
+    //   $rootScope.offlineConnecting = true */
+    // }
 
     this.transport = dcConfigurator.chooseServer(this.dcID, this.upload);
 
@@ -129,25 +124,6 @@ class MTPNetworker {
     this.sessionID = new Array(8);
     this.sessionID = [...new Uint8Array(this.sessionID.length).randomize()];
     //MTProto.secureRandom.nextBytes(this.sessionID);
-  }
-
-  public setupMobileSleep() {
-    /* $rootScope.$watch('idle.isIDLE', (isIDLE) => {
-      if(isIDLE) {
-        this.sleepAfter = tsNow() + 30000;
-      } else {
-        delete this.sleepAfter;
-        this.checkLongPoll();
-      }
-    })
-  
-    $rootScope.$on('push_received', function() {
-      // this.log('push recieved', self.sleepAfter)
-      if(this.sleepAfter) {
-        this.sleepAfter = tsNow() + 30000;
-        this.checkLongPoll();
-      }
-    }) */
   }
 
   public updateSentMessage(sentMessageID: any) {
@@ -202,7 +178,7 @@ class MTPNetworker {
       body: serializer.getBytes()
     };
   
-    if(Config.Modes.debug) {
+    if(Modes.debug) {
       this.log('MT call', method, params, messageID, seqNo);
     }
   
@@ -221,7 +197,7 @@ class MTPNetworker {
       body: serializer.getBytes()
     };
   
-    if(Config.Modes.debug) {
+    if(Modes.debug) {
       this.log('MT message', object, messageID, seqNo);
     }
   
@@ -251,32 +227,32 @@ class MTPNetworker {
     if(!this.connectionInited) { // this will call once for each new session
       ///////this.log('Wrap api call !this.connectionInited');
       
-      let invokeWithLayer = Config.Schema.API.methods.find((m: any) => m.method == 'invokeWithLayer');
+      let invokeWithLayer = Schema.API.methods.find((m: any) => m.method == 'invokeWithLayer');
       if(!invokeWithLayer) throw new Error('no invokeWithLayer!');
       serializer.storeInt(+invokeWithLayer.id >>> 0, 'invokeWithLayer');
 
       // @ts-ignore
-      serializer.storeInt(Config.Schema.API.layer, 'layer');
+      serializer.storeInt(Schema.layer, 'layer');
   
-      let initConnection = Config.Schema.API.methods.find((m: any) => m.method == 'initConnection');
+      let initConnection = Schema.API.methods.find((m: any) => m.method == 'initConnection');
       if(!initConnection) throw new Error('no initConnection!');
   
       serializer.storeInt(+initConnection.id >>> 0, 'initConnection');
       serializer.storeInt(0x0, 'flags');
-      serializer.storeInt(Config.App.id, 'api_id');
+      serializer.storeInt(App.id, 'api_id');
       serializer.storeString(navigator.userAgent || 'Unknown UserAgent', 'device_model');
       serializer.storeString(navigator.platform || 'Unknown Platform', 'system_version');
-      serializer.storeString(Config.App.version, 'app_version');
+      serializer.storeString(App.version, 'app_version');
       serializer.storeString(navigator.language || 'en', 'system_lang_code');
       serializer.storeString('', 'lang_pack');
       serializer.storeString(navigator.language || 'en', 'lang_code');
       //serializer.storeInt(0x0, 'proxy');
       /* serializer.storeMethod('initConnection', {
         'flags': 0,
-        'api_id': Config.App.id,
+        'api_id': App.id,
         'device_model': navigator.userAgent || 'Unknown UserAgent',
         'system_version': navigator.platform || 'Unknown Platform',
-        'app_version': Config.App.version,
+        'app_version': App.version,
         'system_lang_code': navigator.language || 'en',
         'lang_pack': '',
         'lang_code': navigator.language || 'en'
@@ -284,7 +260,7 @@ class MTPNetworker {
     }
   
     if(options.afterMessageID) {
-      let invokeAfterMsg = Config.Schema.API.methods.find((m: any) => m.method == 'invokeAfterMsg');
+      let invokeAfterMsg = Schema.API.methods.find((m: any) => m.method == 'invokeAfterMsg');
       if(!invokeAfterMsg) throw new Error('no invokeAfterMsg!');
 
       this.log('Api call options.afterMessageID!');
@@ -307,7 +283,7 @@ class MTPNetworker {
       isAPI: true
     };
   
-    if(Config.Modes.debug/*  || true */) {
+    if(Modes.debug/*  || true */) {
       this.log('Api call', method, message, params, options);
     } else {
       //////this.log('Api call', method);
@@ -677,7 +653,7 @@ class MTPNetworker {
   
       this.sentMessages[message.msg_id] = containerSentMessage;
   
-      if(Config.Modes.debug || true) {
+      if(Modes.debug || true) {
         this.log('Container', innerMessages, message.msg_id, message.seq_no);
       }
     } else {
@@ -698,7 +674,7 @@ class MTPNetworker {
       self.toggleOffline(false);
       // this.log('parse for', message)
       self.parseResponse(result).then((response) => {
-        if(Config.Modes.debug) {
+        if(Modes.debug) {
           this.log('Server response', self.dcID, response);
         }
   
@@ -1194,7 +1170,7 @@ class MTPNetworker {
             }
           } else {
             if(deferred) {
-              if(Config.Modes.debug) {
+              if(Modes.debug) {
                 this.debug && this.log('Rpc response', message.result);
               } else {
                 var dRes = message.result._;

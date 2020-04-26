@@ -17,7 +17,8 @@ import appImManager from "./appImManager";
 import { MTDocument, MTPhotoSize } from "../../components/wrappers";
 import ProgressivePreloader from "../../components/preloader";
 import serverTimeManager from "../mtproto/serverTimeManager";
-import apiManager from "../mtproto/apiManager";
+//import apiManager from '../mtproto/apiManager';
+import apiManager from '../mtproto/mtprotoworker';
 import appWebPagesManager from "./appWebPagesManager";
 import { CancellablePromise, deferredPromise } from "../polyfill";
 
@@ -2925,9 +2926,9 @@ export class AppMessagesManager {
           limit = Math.max(10, prerendered, unreadCount + 2);
           unreadOffset = unreadCount;
         }
-      } else if('Mobile' in Config) {
+      }/*  else if('Mobile' in Config) {
         limit = 20;
-      }
+      } */
     }
 
     if(maxID > 0) {

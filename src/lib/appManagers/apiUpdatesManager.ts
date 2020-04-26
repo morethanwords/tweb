@@ -1,5 +1,6 @@
-import apiManager from '../mtproto/apiManager';
-import networkerFactory from '../mtproto/networkerFactory';
+//import apiManager from '../mtproto/apiManager';
+import apiManager from '../mtproto/mtprotoworker';
+//import networkerFactory from '../mtproto/networkerFactory';
 import { dT, $rootScope, tsNow } from "../utils";
 import appPeersManager from "./appPeersManager";
 import appUsersManager from "./appUsersManager";
@@ -500,7 +501,7 @@ export class ApiUpdatesManager {
   }
   
   public attach() {
-    networkerFactory.setUpdatesProcessor(this.processUpdateMessage.bind(this));
+    apiManager.setUpdatesProcessor(this.processUpdateMessage.bind(this));
     apiManager.invokeApi('updates.getState', {}, {noErrorBox: true}).then((stateResult: any) => {
       this.updatesState.seq = stateResult.seq;
       this.updatesState.pts = stateResult.pts;

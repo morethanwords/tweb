@@ -6,10 +6,13 @@ import networkerFactory from './networkerFactory';
 import { telegramMeWebService } from './mtproto';
 import authorizer from './authorizer';
 import { isObject, tsNow, $rootScope } from '../utils';
-import * as Config from '../config';
+import {App, Modes} from './mtproto_config';
 import dcConfigurator from './dcConfigurator';
 import HTTP from './transports/http';
 import { logger } from '../polyfill';
+import passwordManager from './passwordManager';
+
+console.error('apiManager included!');
 
 export class ApiManager {
   public cachedNetworkers: {[x: number]: MTPNetworker} = {};
@@ -55,7 +58,7 @@ export class ApiManager {
   public async logOut() {
     let storageKeys: Array<string> = [];
     
-    let prefix = Config.Modes.test ? 't_dc' : 'dc';
+    let prefix = Modes.test ? 't_dc' : 'dc';
     
     for(let dcID = 1; dcID <= 5; dcID++) {
       storageKeys.push(prefix + dcID + '_auth_key');
@@ -124,7 +127,7 @@ export class ApiManager {
   // mtpGetNetworker
   public async getNetworker(dcID: number, options: any = {}): Promise<MTPNetworker> {
     let upload = (options.fileUpload || options.fileDownload) 
-      && (dcConfigurator.chooseServer(dcID, true) instanceof HTTP || Config.Modes.multipleConnections);
+      && (dcConfigurator.chooseServer(dcID, true) instanceof HTTP || Modes.multipleConnections);
     let cache = upload ? this.cachedUploadNetworkers : this.cachedNetworkers;
     
     if(!dcID) {
@@ -315,7 +318,7 @@ export class ApiManager {
         this.getNetworker(dcID, options).then(performRequest, rejectPromise);
       } else {
         AppStorage.get<number>('dc').then((baseDcID) => {
-          this.getNetworker(this.baseDcID = dcID = baseDcID || Config.App.baseDcID, options).then(performRequest, rejectPromise);
+          this.getNetworker(this.baseDcID = dcID = baseDcID || App.baseDcID, options).then(performRequest, rejectPromise);
         });
       }
     });
@@ -326,6 +329,14 @@ export class ApiManager {
     return AppStorage.get<any>('user_auth').then((auth) => {
       this.telegramMeNotify(auth && auth.id > 0 || false);
       return auth.id || 0;
+    });
+  }
+
+  public checkPassword(value: string): Promise<any> {
+    return passwordManager.getState()
+    .then(state => {
+      console.log(state);
+      return passwordManager.check(state, value);
     });
   }
 }

@@ -1,12 +1,14 @@
 import { putPreloader, formatPhoneNumber } from "../components/misc";
 import Scrollable from '../components/scrollable';
 import {RichTextProcessor} from '../lib/richtextprocessor';
-import * as Config from '../lib/config';
+import Config from '../lib/config';
 
 import { findUpTag } from "../lib/utils";
 import pageAuthCode from "./pageAuthCode";
-import apiManager from "../lib/mtproto/apiManager";
+//import apiManager from "../lib/mtproto/apiManager";
+import apiManager from "../lib/mtproto/mtprotoworker";
 import Page from "./page";
+import { App, Modes } from "../lib/mtproto/mtproto_config";
 
 type Country = {
   name: string,
@@ -21,6 +23,18 @@ type Country = {
 let btnNext: HTMLButtonElement = null;
 
 let onFirstMount = () => {
+  if(Modes.test) {
+    Config.Countries.push({
+      name: 'Test Country',
+      phoneCode: '999 66',
+      code: 'TC',
+      emoji: '🤔',
+      pattern: '999 66 XXX XX'
+    });
+  
+    console.log('Added test country to list!');
+  }
+
   //const countries: Country[] = _countries.default.filter(c => c.emoji);
   const countries: Country[] = Config.Countries.filter(c => c.emoji).sort((a, b) => a.name.localeCompare(b.name));
 
@@ -189,15 +203,15 @@ let onFirstMount = () => {
 
     let phone_number = telEl.value;
     apiManager.invokeApi('auth.sendCode', {
-      /* flags: 0, */
+      //flags: 0,
       phone_number: phone_number,
-      api_id: Config.App.id,
-      api_hash: Config.App.hash,
+      api_id: App.id,
+      api_hash: App.hash,
       settings: {
         _: 'codeSettings', // that's how we sending Type
         flags: 0
       }
-      /* lang_code: navigator.language || 'en' */
+      //lang_code: navigator.language || 'en'
     }).then((code: any) => {
       console.log('got code', code);
 

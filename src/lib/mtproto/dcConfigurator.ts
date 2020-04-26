@@ -1,6 +1,7 @@
 import Socket from './transports/websocket';
 import MTTransport from './transports/transport';
 import HTTP from './transports/http';
+import { Modes } from './mtproto_config';
 
 type Servers = {
   [transport: string]: {
@@ -20,7 +21,7 @@ type Servers = {
 export class DcConfigurator {
   private sslSubdomains = ['pluto', 'venus', 'aurora', 'vesta', 'flora'];
 
-  private dcOptions = Config.Modes.test
+  private dcOptions = Modes.test
     ? [
       {id: 1, host: '149.154.175.10',  port: 80},
       {id: 2, host: '149.154.167.40',  port: 80},
@@ -47,7 +48,7 @@ export class DcConfigurator {
   };
 
   public chooseServer(dcID: number, upload?: boolean, transport = 'websocket') {
-    let servers = upload && (transport != 'websocket' || Config.Modes.multipleConnections) 
+    let servers = upload && (transport != 'websocket' || Modes.multipleConnections) 
       ? this.chosenUploadServers[transport] 
       : this.chosenServers[transport];
 
@@ -56,14 +57,14 @@ export class DcConfigurator {
 
       if(transport == 'websocket') {
         let subdomain = this.sslSubdomains[dcID - 1];
-        let path = Config.Modes.test ? 'apiws_test' : 'apiws';
+        let path = Modes.test ? 'apiws_test' : 'apiws';
         chosenServer = 'wss://' + subdomain + '.web.telegram.org/' + path;
         return servers[dcID] = new Socket(dcID, chosenServer);
       }
   
-      if(Config.Modes.ssl || !Config.Modes.http || transport == 'https') {
+      if(Modes.ssl || !Modes.http || transport == 'https') {
         let subdomain = this.sslSubdomains[dcID - 1] + (upload ? '-1' : '');
-        let path = Config.Modes.test ? 'apiw_test1' : 'apiw1';
+        let path = Modes.test ? 'apiw_test1' : 'apiw1';
         chosenServer = 'https://' + subdomain + '.web.telegram.org/' + path;
         return servers[dcID] = new HTTP(dcID, chosenServer);
       }

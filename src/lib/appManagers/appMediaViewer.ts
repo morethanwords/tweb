@@ -1,5 +1,4 @@
 import appPeersManager from "./appPeersManager";
-import appDialogsManager from "./appDialogsManager";
 import appPhotosManager from "./appPhotosManager";
 import appMessagesManager from "./appMessagesManager";
 import { RichTextProcessor } from "../richtextprocessor";

@@ -4,7 +4,8 @@ import fileManager from '../filemanager';
 import { bytesFromHex } from "../bin_utils";
 import { MTPhotoSize } from "../../components/wrappers";
 import apiFileManager from "../mtproto/apiFileManager";
-import apiManager from "../mtproto/apiManager";
+//import apiManager from '../mtproto/apiManager';
+import apiManager from '../mtproto/mtprotoworker';
 
 export type MTPhoto = {
   _: 'photo' | 'photoEmpty' | string,
@@ -89,7 +90,8 @@ export class AppPhotosManager {
   }
   
   public choosePhotoSize(photo: any, width = 0, height = 0) {
-    if(Config.Navigator.retina) {
+    //if(Config.Navigator.retina) {
+    if(window.devicePixelRatio > 1) {
       width *= 2;
       height *= 2;
     }
@@ -104,8 +106,21 @@ export class AppPhotosManager {
     b	crop	320x320
     c	crop	640x640
     d	crop	1280x1280 */
-    
+
     let bestPhotoSize: MTPhotoSize = {_: 'photoSizeEmpty'};
+    let sizes = (photo.sizes || photo.thumbs) as typeof bestPhotoSize[];
+    for(let photoSize of sizes) {
+      if(!photoSize.w || !photoSize.h) continue;
+
+      bestPhotoSize = photoSize;
+
+      let {w, h} = calcImageInBox(photoSize.w, photoSize.h, width, height);
+      if(w == width || h == height) {
+        break;
+      }
+    }
+    
+    /* let bestPhotoSize: MTPhotoSize = {_: 'photoSizeEmpty'};
     let bestDiff = 0xFFFFFF;
     
     //console.log('choosePhotoSize', photo);
@@ -123,9 +138,9 @@ export class AppPhotosManager {
       }
       
       //console.log('diff', diff, photoSize, bestPhotoSize);
-    });
+    }); */
     
-    //console.log('choosing', photo, width, height, bestPhotoSize);
+    console.log('choosing', photo, width, height, bestPhotoSize);
     
     return bestPhotoSize;
   }

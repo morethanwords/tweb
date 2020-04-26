@@ -1,11 +1,11 @@
-import {bytesToArrayBuffer, blobSafeMimeType, blobConstruct, bytesToBase64} from './bin_utils';
+import {blobSafeMimeType, blobConstruct, bytesToBase64} from './bin_utils';
 
-import 'web-streams-polyfill/ponyfill';
+/* import 'web-streams-polyfill/ponyfill';
 // @ts-ignore
 import streamSaver from 'streamsaver';
 if(window.location.href.indexOf('localhost') === -1) {
   streamSaver.mitm = 'mitm.html';
-}
+} */
 
 class FileManager {
   public blobSupported = true;
@@ -104,13 +104,14 @@ class FileManager {
   }
   
   public chooseSaveFile(fileName: string, ext: string, mimeType: string, size?: number): any {
-    let fileStream = streamSaver.createWriteStream(fileName, {
+    throw new Error('no writer');
+    /* let fileStream = streamSaver.createWriteStream(fileName, {
       size: size,
       writableStrategy: undefined,
       readableStrategy: undefined
     });
     let writer = fileStream.getWriter();
-    return writer;
+    return writer; */
   }
   
   public getFakeFileWriter(mimeType: string, saveFileCallback: any) {

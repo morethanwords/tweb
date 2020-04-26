@@ -2,7 +2,8 @@
 import appDialogsManager from "./appDialogsManager";
 import { $rootScope } from "../utils";
 import appImManager from "./appImManager";
-import apiManager from "../mtproto/apiManager";
+//import apiManager from '../mtproto/apiManager';
+import apiManager from '../mtproto/mtprotoworker';
 import AppSearch, { SearchGroup } from "../../components/appSearch";
 
 class AppSidebarLeft {

@@ -1,5 +1,6 @@
 import appPhotosManager from '../lib/appManagers/appPhotosManager';
-import CryptoWorker from '../lib/crypto/cryptoworker';
+//import CryptoWorker from '../lib/crypto/cryptoworker';
+import apiManager from '../lib/mtproto/mtprotoworker';
 import LottieLoader from '../lib/lottieLoader';
 import appStickersManager from "../lib/appManagers/appStickersManager";
 import appDocsManager from "../lib/appManagers/appDocsManager";
@@ -709,7 +710,7 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
         console.time('render sticker' + doc.id);
         // @ts-ignore
         const text = e.srcElement.result;
-        let json = await CryptoWorker.gzipUncompress<string>(text, true);
+        let json = await apiManager.gzipUncompress<string>(text, true);
 
         console.timeEnd('decompress sticker' + doc.id);
         

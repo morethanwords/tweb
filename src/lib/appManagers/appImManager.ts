@@ -1,4 +1,5 @@
-import apiManager from '../mtproto/apiManager';
+//import apiManager from '../mtproto/apiManager';
+import apiManager from '../mtproto/mtprotoworker';
 import { $rootScope, isElementInViewport, numberWithCommas, findUpClassName, formatNumber, placeCaretAtEnd, calcImageInBox, findUpTag, langPack } from "../utils";
 import appUsersManager from "./appUsersManager";
 import appMessagesManager from "./appMessagesManager";

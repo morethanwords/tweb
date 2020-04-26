@@ -1,7 +1,5 @@
-import {convertToArrayBuffer, convertToByteArray, dT} from '../bin_utils';
-
-// @ts-ignore
-//import Worker from './crypto.worker.js';
+import {dT} from '../bin_utils';
+import CryptoWorkerMethods from './crypto_methods';
 
 type Task = {
   taskID: number,
@@ -9,7 +7,7 @@ type Task = {
   args: any[]
 };
 
-class CryptoWorker {
+class CryptoWorker extends CryptoWorkerMethods {
   private webWorker: Worker | boolean = false;
   private taskID = 0;
   private awaiting: {
@@ -22,13 +20,35 @@ class CryptoWorker {
   private pending: Array<Task> = [];
   private debug = false;
 
+  private utils: {[name: string]: (...args: any[]) => any} = {};
+
   constructor() {
+    super();
     console.log(dT(), 'CW constructor');
 
-    if(window.Worker/*  && 1 == 2 */) {
-      import('./crypto.worker.js').then((CryptoWebWorker: any) => {
-        //console.log(CryptoWebWorker);
-        var tmpWorker = new CryptoWebWorker.default();
+    /// #if MTPROTO_WORKER
+    Promise.all([
+      import('./crypto_utils').then(utils => {
+        Object.assign(this.utils, {
+          'sha1-hash': utils.sha1HashSync,
+          'sha256-hash': utils.sha256HashSync,
+          'pbkdf2': utils.hash_pbkdf2,
+          'aes-encrypt': utils.aesEncryptSync,
+          'aes-decrypt': utils.aesDecryptSync,
+          'rsa-encrypt': utils.rsaEncrypt,
+          'factorize': utils.pqPrimeFactorization,
+          'mod-pow': utils.bytesModPow
+        });
+      }),
+
+      import('../bin_utils').then(utils => {
+        this.utils.unzip = utils.gzipUncompress;
+      })
+    ]);
+    /// #else
+    if(window.Worker) {
+      import('./crypto.worker.js').then((worker: any) => {
+        var tmpWorker = new worker.default();
         //var tmpWorker = new Worker();
         tmpWorker.onmessage = (e: any) => {
           if(!this.webWorker) {
@@ -41,11 +61,12 @@ class CryptoWorker {
         };
 
         tmpWorker.onerror = (error: any) => {
-          console.error('CW error', error/* , error.stack */);
+          console.error('CW error', error);
           this.webWorker = false;
         };
       });
     }
+    /// #endif
   }
 
   private finalizeTask(taskID: number, result: any) {
@@ -60,6 +81,9 @@ class CryptoWorker {
   public performTaskWorker<T>(task: string, ...args: any[]) {
     this.debug && console.log(dT(), 'CW start', task, args);
 
+    /// #if MTPROTO_WORKER
+    return Promise.resolve<T>(this.utils[task](...args));
+    /// #else
     return new Promise<T>((resolve, reject) => {
       this.awaiting[this.taskID] = {resolve, reject, taskName: task};
   
@@ -75,6 +99,7 @@ class CryptoWorker {
   
       this.taskID++;
     });
+    /// #endif
   }
 
   private releasePending() {
@@ -86,49 +111,8 @@ class CryptoWorker {
       this.pending.length = 0;
     }
   }
-
-  public sha1Hash(bytes: number[] | ArrayBuffer | Uint8Array): Promise<Uint8Array> {
-    return this.performTaskWorker<Uint8Array>('sha1-hash', bytes);
-  }
-
-  public sha256Hash(bytes: any) {
-    return this.performTaskWorker<number[]>('sha256-hash', bytes);
-  }
-
-  public pbkdf2(buffer: Uint8Array, salt: Uint8Array, iterations: number) {
-    return this.performTaskWorker<ArrayBuffer>('pbkdf2', buffer, salt, iterations);
-  }
-
-  public aesEncrypt(bytes: any, keyBytes: any, ivBytes: any) {
-    return this.performTaskWorker<ArrayBuffer>('aes-encrypt', convertToArrayBuffer(bytes), 
-      convertToArrayBuffer(keyBytes), convertToArrayBuffer(ivBytes));
-  }
-
-  public aesDecrypt(encryptedBytes: any, keyBytes: any, ivBytes: any): Promise<ArrayBuffer> {
-    return this.performTaskWorker<ArrayBuffer>('aes-decrypt', 
-      encryptedBytes, keyBytes, ivBytes)
-      .then(bytes => convertToArrayBuffer(bytes));
-  }
-
-  public rsaEncrypt(publicKey: {modulus: string, exponent: string}, bytes: any): Promise<number[]> {
-    return this.performTaskWorker<number[]>('rsa-encrypt', publicKey, bytes);
-  }
-
-  public factorize(bytes: any) {
-    bytes = convertToByteArray(bytes);
-
-    return this.performTaskWorker<[number[], number[], number]>('factorize', bytes);
-  }
-
-  public modPow(x: any, y: any, m: any) {
-    return this.performTaskWorker<number[]>('mod-pow', x, y, m);
-  }
-
-  public gzipUncompress<T>(bytes: ArrayBuffer, toString?: boolean) {
-    return this.performTaskWorker<T>('unzip', bytes, toString);
-  }
 }
 
 const cryptoWorker = new CryptoWorker();
-(window as any).CryptoWorker = cryptoWorker;
+//(window as any).CryptoWorker = cryptoWorker;
 export default cryptoWorker;

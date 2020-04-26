@@ -3,6 +3,13 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 let allowedIPs = ['195.66.140.39', '192.168.31.144', '127.0.0.1', '192.168.31.1', '192.168.31.192'];
 
+const opts = {
+  MTPROTO_WORKER: true,
+  version: 3,
+  "ifdef-verbose": true,       // add this for verbose output
+  "ifdef-triple-slash": true   // add this to use double slash comment instead of default triple slash
+};
+
 module.exports = {
   module: {
     rules: [
@@ -31,7 +38,10 @@ module.exports = {
       },
       {
         test: /\.ts?$/,
-        use: 'ts-loader',
+        use: [
+          'ts-loader', 
+          { loader: "ifdef-loader", options: opts }
+        ],
         exclude: /node_modules/,
       },
       {

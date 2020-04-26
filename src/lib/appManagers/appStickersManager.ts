@@ -1,6 +1,7 @@
 import AppStorage from '../storage';
 import { MTDocument } from '../../components/wrappers';
-import apiManager from '../mtproto/apiManager';
+//import apiManager from '../mtproto/apiManager';
+import apiManager from '../mtproto/mtprotoworker';
 import apiFileManager from '../mtproto/apiFileManager';
 import appDocsManager from './appDocsManager';
 

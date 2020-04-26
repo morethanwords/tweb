@@ -1,19 +1,11 @@
-import { dT } from "../utils";
-
 import { MTPNetworker } from "./networker";
 
 export class NetworkerFactory {
   public updatesProcessor: (obj: any, bool: boolean) => void = null;
-  public offlineInited = false;
+  //public offlineInited = false;
   public akStopped = false;
 
-  constructor() {
-    /* $rootScope.retryOnline = function() {
-      $(document.body).trigger('online');
-    } */
-  }
-
-  public startAll() {
+  /* public startAll() {
     if(this.akStopped) {
       this.akStopped = false;
 
@@ -27,7 +19,7 @@ export class NetworkerFactory {
 
   public stopAll() {
     this.akStopped = true;
-  }
+  } */
 
   public setUpdatesProcessor(callback: (obj: any, bool: boolean) => void) {
     this.updatesProcessor = callback;

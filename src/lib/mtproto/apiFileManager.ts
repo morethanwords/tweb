@@ -2,7 +2,8 @@ import { nextRandomInt } from "../bin_utils";
 
 import IdbFileStorage from "../idb";
 import FileManager from "../filemanager";
-import apiManager from "./apiManager";
+//import apiManager from "./apiManager";
+import apiManager from "./mtprotoworker";
 import { logger, deferredPromise, CancellablePromise } from "../polyfill";
 
 export class ApiFileManager {

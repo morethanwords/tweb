@@ -1,7 +1,8 @@
 import {putPreloader} from '../components/misc';
 import resizeableImage from '../lib/cropper';
 import pageIm from './pageIm';
-import apiManager from '../lib/mtproto/apiManager';
+//import apiManager from '../lib/mtproto/apiManager';
+import apiManager from '../lib/mtproto/mtprotoworker';
 import apiFileManager from '../lib/mtproto/apiFileManager';
 import Page from './page';
 

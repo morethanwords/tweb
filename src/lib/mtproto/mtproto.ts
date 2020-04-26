@@ -1,9 +1,8 @@
-import * as Config from '../config';
 import AppStorage from '../storage';
-
 import {tsNow} from '../utils';
+import { Modes, App } from './mtproto_config';
 
-import PasswordManager from './passwordManager';
+/* import PasswordManager from './passwordManager';
 import DcConfigurator from './dcConfigurator';
 import RSAKeysManager from './rsaKeysManager';
 import TimeManager from './timeManager';
@@ -11,11 +10,11 @@ import ServerTimeManager from './serverTimeManager';
 import Authorizer from './authorizer';
 import NetworkerFactory from './networkerFactory';
 import ApiManager from './apiManager';
-import ApiFileManager from './apiFileManager';
+import ApiFileManager from './apiFileManager'; */
 
 export class TelegramMeWebService {
-  public disabled = Config.Modes.test ||
-    Config.App.domains.indexOf(location.hostname) == -1 ||
+  public disabled = Modes.test ||
+    App.domains.indexOf(location.hostname) == -1 ||
     location.protocol != 'http:' && location.protocol != 'https:' ||
     location.protocol == 'https:' && location.hostname != 'web.telegram.org';
 
@@ -54,7 +53,7 @@ export class TelegramMeWebService {
 
 export const telegramMeWebService = new TelegramMeWebService();
 
-export namespace MTProto {
+/* export namespace MTProto {
   //$($window).on('click keydown', rng_seed_time); // WARNING!
 
   export const passwordManager = PasswordManager;
@@ -68,4 +67,4 @@ export namespace MTProto {
   export const serverTimeManager = ServerTimeManager;
 }
 
-(window as any).MTProto = MTProto;
+//(window as any).MTProto = MTProto; */

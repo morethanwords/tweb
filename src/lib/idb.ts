@@ -6,28 +6,11 @@ class IdbFileStorage {
   public dbStoreName = 'files';
   public dbVersion = 2;
   public openDbPromise: Promise<IDBDatabase>;
-  public storageIsAvailable: boolean;
-  public storeBlobsAvailable: boolean;
+  public storageIsAvailable = true;
+  public storeBlobsAvailable = true;
   public name = 'IndexedDB';
 
   constructor() {
-    // @ts-ignore
-    //window.indexedDB = window.indexedDB || window.webkitIndexedDB || window.mozIndexedDB || window.OIndexedDB || window.msIndexedDB;
-    // @ts-ignore
-    window.IDBTransaction = window.IDBTransaction || window.webkitIDBTransaction || window.OIDBTransaction || window.msIDBTransaction;
-    
-    this.storageIsAvailable = window.indexedDB !== undefined && window.IDBTransaction !== undefined;
-
-    // IndexedDB is REALLY slow without blob support in Safari 8, no point in it
-    if(this.storageIsAvailable &&
-      navigator.userAgent.indexOf('Safari') != -1 &&
-      navigator.userAgent.indexOf('Chrome') == -1 &&
-      navigator.userAgent.match(/Version\/[678]/)
-    ) {
-      this.storageIsAvailable = false;
-    }
-
-    this.storeBlobsAvailable = this.storageIsAvailable || false;
     this.openDatabase();
   }
 
@@ -103,8 +86,7 @@ class IdbFileStorage {
   public deleteFile(fileName: string): Promise<void> {
     return this.openDatabase().then((db) => {
       try {
-        // @ts-ignore
-        var objectStore = db.transaction([this.dbStoreName], IDBTransaction.READ_WRITE || 'readwrite')
+        var objectStore = db.transaction([this.dbStoreName], 'readwrite')
           .objectStore(this.dbStoreName);
 
         console.log('Delete file: `' + fileName + '`');
@@ -137,8 +119,7 @@ class IdbFileStorage {
       }
 
       try {
-        // @ts-ignore
-        var objectStore = db.transaction([this.dbStoreName], IDBTransaction.READ_WRITE || 'readwrite')
+        var objectStore = db.transaction([this.dbStoreName], 'readwrite')
           .objectStore(this.dbStoreName);
         var request = objectStore.put(blob, fileName);
       } catch(error) {
@@ -206,8 +187,7 @@ class IdbFileStorage {
 
   public storagePutB64String(db: IDBDatabase, fileName: string, b64string: string) {
     try {
-      // @ts-ignore
-      var objectStore = db.transaction([this.dbStoreName], IDBTransaction.READ_WRITE || 'readwrite')
+      var objectStore = db.transaction([this.dbStoreName], 'readwrite')
         .objectStore(this.dbStoreName);
       var request = objectStore.put(b64string, fileName);
     } catch(error) {
@@ -230,8 +210,7 @@ class IdbFileStorage {
 
   public getFile(fileName: string, size?: any): Promise<Blob> {
     return this.openDatabase().then((db) => {
-      // @ts-ignore
-      var objectStore = db.transaction([this.dbStoreName], IDBTransaction.READ || 'readonly')
+      var objectStore = db.transaction([this.dbStoreName], 'readonly')
         .objectStore(this.dbStoreName);
       var request = objectStore.get(fileName);
 
@@ -257,8 +236,7 @@ class IdbFileStorage {
   public getAllKeys(): Promise<Array<string>> {
     console.time('getAllEntries');
     return this.openDatabase().then((db) => {
-      // @ts-ignore
-      var objectStore = db.transaction([this.dbStoreName], IDBTransaction.READ || 'readonly')
+      var objectStore = db.transaction([this.dbStoreName], 'readonly')
         .objectStore(this.dbStoreName);
       var request = objectStore.getAllKeys();
 
@@ -278,8 +256,7 @@ class IdbFileStorage {
   public isFileExists(fileName: string): Promise<boolean> {
     console.time('isFileExists');
     return this.openDatabase().then((db) => {
-      // @ts-ignore
-      var objectStore = db.transaction([this.dbStoreName], IDBTransaction.READ || 'readonly')
+      var objectStore = db.transaction([this.dbStoreName], 'readonly')
         .objectStore(this.dbStoreName);
       var request = objectStore.openCursor(fileName);
 
@@ -307,6 +284,6 @@ class IdbFileStorage {
 
 const idbFileStorage = new IdbFileStorage(); 
 
-(window as any).IdbFileStorage = idbFileStorage;
+//(window as any).IdbFileStorage = idbFileStorage;
 
 export default idbFileStorage;

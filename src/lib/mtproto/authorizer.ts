@@ -1,4 +1,4 @@
-import { TLSerialization, TLDeserialization } from "../tl_utils";
+import { TLSerialization, TLDeserialization } from "./tl_utils";
 import dcConfigurator from "./dcConfigurator";
 import { dT, bytesToHex, bytesCmp, bytesFromHex, bytesXor } from "../bin_utils";
 import rsaKeysManager from "./rsaKeysManager";
@@ -9,11 +9,6 @@ import timeManager from "./timeManager";
 import { BigInteger } from "jsbn";
 
 import CryptoWorker from "../crypto/cryptoworker";
-import {MTProto} from './mtproto';
-
-/* const chromeMatches = navigator.userAgent.match(/Chrome\/(\d+(\.\d+)?)/);
-const chromeVersion = (chromeMatches && parseFloat(chromeMatches[1])) || false;
-const xhrSendBuffer = !('ArrayBufferView' in window) && (chromeVersion > 0 && chromeVersion < 30); */
 
 /* let fNewNonce: any = bytesFromHex('8761970c24cb2329b5b2459752c502f3057cb7e8dbab200e526e8767fdc73b3c').reverse();
 let fNonce: any = bytesFromHex('b597720d11faa5914ef485c529cde414').reverse();

@@ -6,13 +6,15 @@ import Scrollable from "./scrollable";
 import { findUpTag, whichChild, calcImageInBox } from "../lib/utils";
 import { RichTextProcessor } from "../lib/richtextprocessor";
 import appStickersManager, { MTStickerSet } from "../lib/appManagers/appStickersManager";
-import apiManager from '../lib/mtproto/apiManager';
-import CryptoWorker from '../lib/crypto/cryptoworker';
+//import apiManager from '../lib/mtproto/apiManager';
+import apiManager from '../lib/mtproto/mtprotoworker';
+//import CryptoWorker from '../lib/crypto/cryptoworker';
 import LazyLoadQueue from "./lazyLoadQueue";
 import { MTDocument, wrapSticker } from "./wrappers";
 import appWebpManager from "../lib/appManagers/appWebpManager";
 import appDocsManager from "../lib/appManagers/appDocsManager";
 import ProgressivePreloader from "./preloader";
+import Config from "../lib/config";
 
 export const EMOTICONSSTICKERGROUP = 'emoticons-dropdown';
 
@@ -369,7 +371,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
                 reader.addEventListener('loadend', async(e) => {
                   // @ts-ignore
                   const text = e.srcElement.result;
-                  let json = await CryptoWorker.gzipUncompress<string>(text, true);
+                  let json = await apiManager.gzipUncompress<string>(text, true);
   
                   let animation = await lottieLoader.loadAnimation({
                     container: li,
