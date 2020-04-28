@@ -118,7 +118,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
 
     //console.log('emoticons sorted:', sorted);
 
-    Object.keys(sorted).forEach(c => sorted[c].sort());
+    Object.keys(sorted).forEach(c => sorted[c].sort((a, b) => a - b));
 
     categories.pop();
     delete sorted["Skin Tones"];

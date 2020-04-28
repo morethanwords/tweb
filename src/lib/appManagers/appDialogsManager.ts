@@ -445,7 +445,7 @@ export class AppDialogsManager {
       if(lastMessage.media) {
         switch(lastMessage.media._) {
           case 'messageMediaPhoto':
-            lastMessageText += '<i>Photo' + (lastMessage.message ? ', ' : '') + '</i>';
+            lastMessageText += '<i>' + (lastMessage.grouped_id ? 'Album' : 'Photo') + (lastMessage.message ? ', ' : '') + '</i>';
             break;
           case 'messageMediaGeo':
             lastMessageText += '<i>Geolocation</i>';
@@ -512,7 +512,7 @@ export class AppDialogsManager {
 
             d.push(duration % 60 + ' s');
             if(duration > 60) d.push((duration / 60 | 0) + ' min');
-            if(duration > 3600) d.push((duration / 3600 | 0) + ' h');
+            //if(duration > 3600) d.push((duration / 3600 | 0) + ' h');
             suffix = ' (' + d.reverse().join(' ') + ')';
           }
         }

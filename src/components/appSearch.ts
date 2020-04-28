@@ -19,7 +19,7 @@ export class SearchGroup {
     this.nameEl.classList.add('search-group__name');
     this.nameEl.innerText = name;
 
-    this.container.classList.add('search-group');
+    this.container.classList.add('search-group', 'search-group-' + type);
     this.container.append(this.nameEl, this.list);
     this.container.style.display = 'none';
 

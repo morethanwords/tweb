@@ -39,6 +39,7 @@ export type HistoryResult = {
 export class AppMessagesManager {
   public messagesStorage: any = {};
   public messagesForDialogs: any = {};
+  public groupedMessagesStorage: {[groupID: string]: any} = {}; // will be used for albums
   public historiesStorage: {
     [peerID: string]: HistoryStorage
   } = {};
@@ -455,13 +456,15 @@ export class AppMessagesManager {
     entities?: any[],
     width?: number,
     height?: number,
-    objectURL?: string
+    objectURL?: string,
+    isRoundMessage?: boolean,
+    duration?: number
   } = {}) {
     peerID = AppPeersManager.getPeerMigratedTo(peerID) || peerID;
     var messageID = this.tempID--;
     var randomID = [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)];
     var randomIDS = bigint(randomID[0]).shiftLeft(32).add(bigint(randomID[1])).toString();
-    var historyStorage = this.historiesStorage[peerID];
+    var historyStorage = this.historiesStorage[peerID] ?? (this.historiesStorage[peerID] = {count: null, history: [], pending: []});
     var flags = 0;
     var pFlags: any = {};
     var replyToMsgID = options.replyToMsgID;
@@ -481,6 +484,8 @@ export class AppMessagesManager {
       let entities = options.entities || [];
       caption = RichTextProcessor.parseMarkdown(caption, entities);
     }
+
+    let attributes: any[] = [];
 
     let actionName = '';
     if(!options.isMedia) {
@@ -512,27 +517,55 @@ export class AppMessagesManager {
       };
       
       appPhotosManager.savePhoto(photo);
-    } else if(fileType.substr(0, 6) == 'audio/' || ['video/ogg'].indexOf(fileType) >= 0) {
+    } else if(fileType.indexOf('audio/') === 0 || ['video/ogg'].indexOf(fileType) >= 0) {
       attachType = 'audio';
       apiFileName = 'audio.' + (fileType.split('/')[1] == 'ogg' ? 'ogg' : 'mp3');
       actionName = 'sendMessageUploadAudioAction';
-    } else if(fileType.substr(0, 6) == 'video/') {
-      //attachType = 'video';
-      //apiFileName = 'video.mp4';
-      attachType = 'document'; // last minute fix
+    } else if(fileType.indexOf('video/') === 0) {
+      attachType = 'video';
       apiFileName = 'video.mp4';
       actionName = 'sendMessageUploadVideoAction';
+
+      let flags = 1;
+      if(options.isRoundMessage) flags |= 2;
+      let videoAttribute = {
+        _: 'documentAttributeVideo',
+        flags: flags,
+        pFlags: { // that's only for client, not going to telegram
+          supports_streaming: true,
+          round_message: options.isRoundMessage
+        }, 
+        round_message: options.isRoundMessage,
+        supports_streaming: true,
+        duration: options.duration,
+        w: options.width,
+        h: options.height
+      };
+
+      attributes.push(videoAttribute);
+
+      let doc: any = {
+        _: 'document',
+        id: '' + messageID,
+        duration: options.duration,
+        attributes: attributes,
+        w: options.width,
+        h: options.height,
+        downloaded: file.size,
+        thumbs: [],
+        mime_type: fileType,
+        url: options.objectURL || '',
+        size: file.size
+      };
+      
+      appDocsManager.saveDoc(doc);
     } else {
       attachType = 'document';
       apiFileName = 'document.' + fileType.split('/')[1];
       actionName = 'sendMessageUploadDocumentAction';
     }
 
-    // console.log(attachType, apiFileName, file.type)
-
-    if(historyStorage === undefined) {
-      historyStorage = this.historiesStorage[peerID] = {count: null, history: [], pending: []};
-    }
+    console.log('AMM: sendFile', attachType, apiFileName, file.type, options);
 
     var fromID = appUsersManager.getSelf().id;
     if(peerID != fromID) {
@@ -575,6 +608,8 @@ export class AppMessagesManager {
         cancel: () => {}
       }
     };
+
+    attributes.push({_: 'documentAttributeFilename', file_name: media.file_name});
 
     preloader.preloader.onclick = () => {
       console.log('cancelling upload', media);
@@ -690,17 +725,13 @@ export class AppMessagesManager {
                   file: inputFile
                 };
                 break;
-  
-              case 'document':
+
               default:
                 inputMedia = {
                   _: 'inputMediaUploadedDocument', 
                   file: inputFile, 
                   mime_type: fileType, 
-                  caption: '', 
-                  attributes: [
-                    {_: 'documentAttributeFilename', file_name: fileName}
-                  ]
+                  attributes: attributes
                 };
             }
   
@@ -1078,6 +1109,11 @@ export class AppMessagesManager {
 
       var mid = appMessagesIDsManager.getFullMessageID(apiMessage.id, channelID);
       apiMessage.mid = mid;
+
+      if(apiMessage.grouped_id) {
+        let storage = this.groupedMessagesStorage[apiMessage.grouped_id] ?? (this.groupedMessagesStorage[apiMessage.grouped_id] = {});
+        storage[mid] = apiMessage;
+      }
 
       var dialog = this.getDialogByPeerID(peerID)[0];
       if(dialog && mid > 0) {
@@ -3106,7 +3142,7 @@ export class AppMessagesManager {
     //return Promise.resolve(result);
   }
 
-  public requestHistory(peerID: number, maxID: number, limit: number, offset = 0) {
+  public requestHistory(peerID: number, maxID: number, limit: number, offset = 0): Promise<any> {
     var isChannel = AppPeersManager.isChannel(peerID);
 
     //console.trace('requestHistory', peerID, maxID, limit, offset);
@@ -3126,7 +3162,7 @@ export class AppMessagesManager {
       timeout: 300,
       noErrorBox: true
     }).then((historyResult: any) => {
-      ///console.log('requestHistory result:', historyResult);
+      console.log('requestHistory result:', historyResult, maxID, limit, offset);
 
       appUsersManager.saveApiUsers(historyResult.users);
       appChatsManager.saveApiChats(historyResult.chats);
@@ -3141,6 +3177,15 @@ export class AppMessagesManager {
         historyResult.messages.splice(length - 1, 1);
         length--;
         historyResult.count--;
+      }
+
+      // will load more history if last message is album grouped (because it can be not last item)
+      let historyStorage = this.historiesStorage[peerID];
+      // historyResult.messages: desc sorted
+      if(historyResult.messages[length - 1].grouped_id && (historyStorage.history.length + historyResult.messages.length) < historyResult.count) {
+        return this.requestHistory(peerID, historyResult.messages[length - 1].mid, 10, 0).then((_historyResult: any) => {
+          return historyResult;
+        });
       }
 
       // don't need the intro now

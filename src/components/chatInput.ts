@@ -187,10 +187,11 @@ export class ChatInput {
     });
 
     let attachFile = (file: File) => {
-      console.log('selected file:', file, typeof(file));
-
-      willAttachFile = file;
-      willAttachObjectURL = '';
+      willAttach.file = file;
+      delete willAttach.objectURL;
+      delete willAttach.duration;
+      delete willAttach.width;
+      delete willAttach.height;
   
       this.fileInput.value = '';
 
@@ -200,29 +201,55 @@ export class ChatInput {
       this.attachMediaPopUp.mediaContainer.style.height = '';
       this.attachMediaPopUp.mediaContainer.classList.remove('is-document');
 
-      if(file.type.indexOf('video/') === 0) {
-        willAttach = 'document';
-      } else if(file.type.indexOf('image/') === -1 && willAttach == 'media') {
-        willAttach = 'document';
+      if(willAttach.type == 'media' && !['image/', 'video/'].find(s => file.type.indexOf(s) === 0)) {
+        willAttach.type = 'document';
       }
 
-      switch(willAttach) {
+      console.log('selected file:', file, typeof(file), willAttach);
+
+      switch(willAttach.type) {
         case 'media': {
-          let img = new Image();
-          img.src = willAttachObjectURL = URL.createObjectURL(file);
-          img.onload = () => {
-            willAttachWidth = img.naturalWidth;
-            willAttachHeight = img.naturalHeight;
+          let isVideo = file.type.indexOf('video/') === 0;
 
-            let {w, h} = calcImageInBox(willAttachWidth, willAttachHeight, 378, 256);
-            this.attachMediaPopUp.mediaContainer.style.width = w + 'px';
-            this.attachMediaPopUp.mediaContainer.style.height = h + 'px';
-            this.attachMediaPopUp.mediaContainer.append(img);
-          };
+          if(isVideo) {
+            let video = document.createElement('video');
+            let source = document.createElement('source');
+            source.src = willAttach.objectURL = URL.createObjectURL(file);
+            video.autoplay = false;
+            video.controls = false;
 
-          this.attachMediaPopUp.titleEl.innerText = 'Send Photo';
-          this.attachMediaPopUp.container.classList.add('active');
+            video.onloadeddata = () => {
+              willAttach.width = video.videoWidth;
+              willAttach.height = video.videoHeight;
+              willAttach.duration = Math.floor(video.duration);
+  
+              let {w, h} = calcImageInBox(willAttach.width, willAttach.height, 378, 256);
+              this.attachMediaPopUp.mediaContainer.style.width = w + 'px';
+              this.attachMediaPopUp.mediaContainer.style.height = h + 'px';
+              this.attachMediaPopUp.mediaContainer.append(video);
+              this.attachMediaPopUp.container.classList.add('active');
+            };
 
+            video.append(source);
+  
+            this.attachMediaPopUp.titleEl.innerText = 'Send Video';
+          } else {
+            let img = new Image();
+            img.src = willAttach.objectURL = URL.createObjectURL(file);
+            img.onload = () => {
+              willAttach.width = img.naturalWidth;
+              willAttach.height = img.naturalHeight;
+  
+              let {w, h} = calcImageInBox(willAttach.width, willAttach.height, 378, 256);
+              this.attachMediaPopUp.mediaContainer.style.width = w + 'px';
+              this.attachMediaPopUp.mediaContainer.style.height = h + 'px';
+              this.attachMediaPopUp.mediaContainer.append(img);
+              this.attachMediaPopUp.container.classList.add('active');
+            };
+  
+            this.attachMediaPopUp.titleEl.innerText = 'Send Photo';
+          }
+          
           break;
         }
 
@@ -231,11 +258,7 @@ export class ChatInput {
             file: file,
             file_name: file.name || '',
             size: file.size,
-            type: ['image/jpeg',
-            'image/png',
-            'image/gif',
-            'image/webp',
-            'image/bmp'].indexOf(file.type) !== -1 ? 'photo' : 'doc'
+            type: file.type.indexOf('image/') !== -1 ? 'photo' : 'doc'
           } as any, false, true);
 
           this.attachMediaPopUp.titleEl.innerText = 'Send File';
@@ -248,10 +271,17 @@ export class ChatInput {
       }
     };
 
-    let willAttach = '';
-    let willAttachFile: File = null;
-    let willAttachObjectURL = '';
-    let willAttachWidth = 0, willAttachHeight = 0;
+    let willAttach: Partial<{
+      type: 'media' | 'document',
+      isMedia: boolean,
+      file: File,
+      caption: string,
+      objectURL: string,
+      width: number,
+      height: number,
+      duration: number
+    }> = {};
+
     this.fileInput.addEventListener('change', (e) => {
       var file = (e.target as HTMLInputElement & EventTarget).files[0];
       if(!file) {
@@ -262,12 +292,12 @@ export class ChatInput {
     }, false);
 
     this.attachMenu.media.addEventListener('click', () => {
-      willAttach = 'media';
+      willAttach.type = 'media';
       this.fileInput.click();
     });
 
     this.attachMenu.document.addEventListener('click', () => {
-      willAttach = 'document';
+      willAttach.type = 'document';
       this.fileInput.click();
     });
 
@@ -291,7 +321,7 @@ export class ChatInput {
           //console.log(items[i], file);
           if(!file) continue;
 
-          willAttach = file.type.indexOf('image/') === 0 ? 'media' : "document";
+          willAttach.type = file.type.indexOf('image/') === 0 ? 'media' : "document";
           attachFile(file);
         }
       }
@@ -299,15 +329,10 @@ export class ChatInput {
 
     this.attachMediaPopUp.sendBtn.addEventListener('click', () => {
       this.attachMediaPopUp.container.classList.remove('active');
-      let caption = this.attachMediaPopUp.captionInput.value;
+      willAttach.caption = this.attachMediaPopUp.captionInput.value;
+      willAttach.isMedia = willAttach.type == 'media';
 
-      appMessagesManager.sendFile(appImManager.peerID, willAttachFile, {
-        isMedia: true, 
-        caption,
-        width: willAttachWidth,
-        height: willAttachHeight,
-        objectURL: willAttachObjectURL
-      });
+      appMessagesManager.sendFile(appImManager.peerID, willAttach.file, willAttach);
       
       this.onMessageSent();
     });

@@ -5,6 +5,7 @@ import pageIm from './pageIm';
 import apiManager from '../lib/mtproto/mtprotoworker';
 import apiFileManager from '../lib/mtproto/apiFileManager';
 import Page from './page';
+import { calcImageInBox } from '../lib/utils';
 
 let authCode: {
   'phone_number': string,
@@ -14,9 +15,9 @@ let authCode: {
 let onFirstMount = () => {
   const pageElement = page.pageEl;
   const avatarInput = document.getElementById('avatar-input') as HTMLInputElement;
-  const avatarPopup = pageElement.getElementsByClassName('popup-avatar')[0];
+  const avatarPopup = document.getElementsByClassName('popup-avatar')[0];
   const avatarPreview = pageElement.querySelector('#canvas-avatar') as HTMLCanvasElement;
-  const cropContainer = avatarPopup.getElementsByClassName('crop')[0];
+  const cropContainer = avatarPopup.getElementsByClassName('crop')[0] as HTMLDivElement;
   let avatarImage = new Image();
   cropContainer.append(avatarImage);
 
@@ -76,11 +77,14 @@ let onFirstMount = () => {
       avatarImage.src = contents;
 
       avatarImage.onload = () => {
+        /* let {w, h} = calcImageInBox(avatarImage.naturalWidth, avatarImage.naturalHeight, 460, 554);
+        cropContainer.style.width = w + 'px';
+        cropContainer.style.height = h + 'px'; */
+        avatarPopup.classList.add('active');
+
         cropper = resizeableImage(avatarImage, avatarPreview);
         avatarInput.value = '';
       };
-
-      avatarPopup.classList.add('active');
     };
 
     reader.readAsDataURL(file);

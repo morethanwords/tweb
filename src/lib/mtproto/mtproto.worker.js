@@ -6,7 +6,7 @@ import networkerFactory from "./networkerFactory";
 //const ctx: Worker = self as any;
 const ctx = self;
 
-console.error('INCLUDE !!!', new Error().stack);
+//console.error('INCLUDE !!!', new Error().stack);
 
 networkerFactory.setUpdatesProcessor((obj, bool) => {
   ctx.postMessage({update: {obj, bool}});
@@ -28,10 +28,10 @@ ctx.onmessage = function(e) {
 
     default:
       return apiManager[e.data.task].apply(apiManager, e.data.args).then(result => {
-        console.log(e.data.task + ' result:', result, taskID);
+        //console.log(e.data.task + ' result:', result, taskID);
         ctx.postMessage({taskID: taskID, result: result});
       }).catch(err => {
-        console.error(e.data.task + ' err:', err, taskID);
+        //console.error(e.data.task + ' err:', err, taskID);
         ctx.postMessage({taskID: taskID, error: err});
       });
       //throw new Error('Unknown task: ' + e.data.task);

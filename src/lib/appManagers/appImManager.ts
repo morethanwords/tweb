@@ -24,6 +24,7 @@ import { ChatInput } from '../../components/chatInput';
 import Scrollable from '../../components/scrollable';
 import BubbleGroups from '../../components/bubbleGroups';
 import LazyLoadQueue from '../../components/lazyLoadQueue';
+import appDocsManager from './appDocsManager';
 
 console.log('appImManager included!');
 
@@ -200,12 +201,21 @@ export class AppImManager {
 
         // set cached url to media
         let message = appMessagesManager.getMessage(mid);
-        if(message.media && message.media.photo) {
-          let photo = appPhotosManager.getPhoto(tempID);
-          if(photo) {
-            let newPhoto = message.media.photo;
-            newPhoto.downloaded = photo.downloaded;
-            newPhoto.url = photo.url;
+        if(message.media) {
+          if(message.media.photo) {
+            let photo = appPhotosManager.getPhoto(tempID);
+            if(photo) {
+              let newPhoto = message.media.photo;
+              newPhoto.downloaded = photo.downloaded;
+              newPhoto.url = photo.url;
+            }
+          } else if(message.media.document) {
+            let doc = appDocsManager.getDoc(tempID);
+            if(doc && doc.type && doc.type != 'sticker') {
+              let newDoc = message.media.document;
+              newDoc.downloaded = doc.downloaded;
+              newDoc.url = doc.url;
+            }
           }
         }
         
@@ -368,7 +378,7 @@ export class AppImManager {
           let message = appMessagesManager.getMessage(id);
           
           return message.media && (message.media.photo || (message.media.document && (message.media.document.type == 'video' || message.media.document.type == 'gif')) || (message.media.webpage && (message.media.webpage.document || message.media.webpage.photo)));
-        }).sort();
+        }).sort((a, b) => a - b);
         let idx = ids.findIndex(i => i == messageID);
 
         let targets = ids.map(id => ({
@@ -377,7 +387,7 @@ export class AppImManager {
           mid: id
         }));
         
-        /////this.log('ids', ids, idx, this.bubbles[prev], this.bubbles[next]);
+        this.log('open mediaViewer with ids:', ids, idx, targets);
         
         appMediaViewer.openMedia(message, targets[idx].element, true, 
           this.scroll.parentElement, targets.slice(0, idx), targets.slice(idx + 1));
@@ -649,7 +659,7 @@ export class AppImManager {
     this.log('loadMoreHistory', top);
     if(!this.peerID || testScroll || this.setPeerPromise || (top && this.getHistoryTopPromise) || (!top && this.getHistoryBottomPromise)) return;
 
-    let history = Object.keys(this.bubbles).map(id => +id).sort();
+    let history = Object.keys(this.bubbles).map(id => +id).sort((a, b) => a - b);
     if(!history.length) return;
     
     /* let history = appMessagesManager.historiesStorage[this.peerID].history;
@@ -962,6 +972,9 @@ export class AppImManager {
     this.topbar.style.display = '';
     if(appPeersManager.isAnyGroup(peerID)) this.chatInner.classList.add('is-chat');
     else this.chatInner.classList.remove('is-chat');
+    if(appPeersManager.isChannel(peerID)) this.chatInner.classList.add('is-channel');
+    else this.chatInner.classList.remove('is-channel');
+    this.pinnedMessageContainer.style.display = 'none';
     window.requestAnimationFrame(() => {
       //this.chatInner.style.visibility = 'hidden';
 
@@ -970,7 +983,6 @@ export class AppImManager {
       else title = appPeersManager.getPeerTitle(this.peerID);
       //this.titleEl.innerHTML = appSidebarRight.profileElements.name.innerHTML = dom.titleSpan.innerHTML;
       this.titleEl.innerHTML = appSidebarRight.profileElements.name.innerHTML = title;
-      this.pinnedMessageContainer.style.display = 'none';
       this.goDownBtn.style.display = '';
       //this.topbar.style.display = this.goDownBtn.style.display = '';
       //this.chatInput.style.display = appPeersManager.isChannel(peerID) && !appPeersManager.isMegagroup(peerID) ? 'none' : '';
@@ -1340,15 +1352,37 @@ export class AppImManager {
           
           switch(pending.type) {
             case 'photo': {
-              if(pending.size < 5e6) {
+              //if(pending.size < 5e6) {
                 this.log('will wrap pending photo:', pending, message, appPhotosManager.getPhoto(message.id));
                 wrapPhoto(message.id, message, attachmentDiv, undefined, undefined, true, true, this.lazyLoadQueue, null);
 
                 preloader.attach(attachmentDiv, false);
                 bubble.classList.add('hide-name', 'photo');
-                
-                break;
-              }
+              //}
+
+              break;
+            }
+
+            case 'video': {
+              //if(pending.size < 5e6) {
+                let doc = appDocsManager.getDoc(message.id);
+                this.log('will wrap pending video:', pending, message, doc);
+                wrapVideo({
+                  doc, 
+                  container: attachmentDiv, 
+                  message, 
+                  boxWidth: 380,
+                  boxHeight: 380, 
+                  withTail: doc.type != 'round', 
+                  isOut: our,
+                  lazyLoadQueue: this.lazyLoadQueue,
+                  middleware: null
+                });
+
+                preloader.attach(attachmentDiv, false);
+                bubble.classList.add('hide-name', 'video');
+              //}
+              break;
             }
             
             case 'audio':
@@ -1424,9 +1458,6 @@ export class AppImManager {
                 doc, 
                 container: preview, 
                 message, 
-                justLoader: true, 
-                preloader: null, 
-                round: false, 
                 boxWidth: 380,
                 boxHeight: 300,
                 lazyLoadQueue: this.lazyLoadQueue,
@@ -1502,7 +1533,7 @@ export class AppImManager {
             }, this.lazyLoadQueue, 'chat', false, !!message.pending || !multipleRender);
 
             break;
-          } else if((doc.type == 'video' || doc.type == 'gif' || doc.type == 'round') && doc.size <= 20e6) {
+          } else if(doc.type == 'video' || doc.type == 'gif' || doc.type == 'round'/*  && doc.size <= 20e6 */) {
             this.log('never get free 2', doc);
             
             if(doc.type == 'round') {
@@ -1510,14 +1541,10 @@ export class AppImManager {
             }
             
             bubble.classList.add('hide-name', 'video');
-            //wrapVideo.call(this, doc, attachmentDiv, message, true, null, false, doc.type == 'round', 380, 380, doc.type != 'round', our);
             wrapVideo({
               doc, 
               container: attachmentDiv, 
               message, 
-              justLoader: true, 
-              preloader: null, 
-              round: doc.type == 'round',
               boxWidth: 380,
               boxHeight: 380, 
               withTail: doc.type != 'round', 
@@ -1861,11 +1888,11 @@ export class AppImManager {
     
     let loadCount = Object.keys(this.bubbles).length > 0 ? 20 : this.scrollable.innerHeight / 38/*  * 1.25 */ | 0;
     
-    /* if(testScroll) {
-      loadCount = 5;
+    if(testScroll) {
+      loadCount = 1;
       if(Object.keys(this.bubbles).length > 0)
       return Promise.resolve(true);
-    } */
+    }
     
     ////console.time('render history total');
     

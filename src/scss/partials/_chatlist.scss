@@ -152,9 +152,7 @@
     overflow: hidden;
     color: $color-gray;
     flex: 1 1 auto;
-    padding-right: 3.5px;
-    padding-left: 9px;
-    padding-top: 1px;
+    padding: 1px 3.5px 1px 9px;
 
     p:last-child {
       margin-top: -3px;
@@ -164,6 +162,7 @@
   .user-title {
     img.emoji {
       vertical-align: top;
+      margin-top: 4px;
       width: 18px;
       height: 18px;
     }
@@ -222,7 +221,7 @@
     line-height: 24px;
     color: #fff;
     border-radius: 12px;
-    margin-top: 1.5px;
+    margin-top: 4px;
     margin-right: -2px;
   }
 
@@ -257,8 +256,45 @@
 
     &__name {
       color: $color-gray;
-      padding: 0 1.85rem;
+      padding: 0 23px;
       padding-bottom: 1rem;
+      font-weight: 500;
+    }
+
+    &:not(.search-group-messages) {
+      .user-avatar {
+        width: 48px;
+        height: 48px;
+      }
+    }
+
+    &-contacts {
+      padding: 16px 0 7px;
+
+      li > .rp {
+        padding: 9px 11.5px !important;
+        height: 66px;
+      }
+
+      .search-group__name {
+        padding-bottom: 17px;
+      }
+
+      .user-caption {
+        padding: 1px 3.5px 1px 13px;
+      }
+
+      .user-title, b, .user-last-message b {
+        font-weight: normal;
+      }
+
+      p {
+        height: 24px;
+      }
+
+      span.user-last-message {
+        font-size: 14px;
+      }
     }
   }
 }

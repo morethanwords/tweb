@@ -15,7 +15,7 @@ import HTTP from './transports/http';
 import { logger } from '../polyfill';
 import { Modes, App } from './mtproto_config';
 
-console.error('networker included!', new Error().stack);
+//console.error('networker included!', new Error().stack);
 
 type Message = {
   msg_id: string,

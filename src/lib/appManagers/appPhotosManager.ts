@@ -109,14 +109,16 @@ export class AppPhotosManager {
 
     let bestPhotoSize: MTPhotoSize = {_: 'photoSizeEmpty'};
     let sizes = (photo.sizes || photo.thumbs) as typeof bestPhotoSize[];
-    for(let photoSize of sizes) {
-      if(!photoSize.w || !photoSize.h) continue;
-
-      bestPhotoSize = photoSize;
-
-      let {w, h} = calcImageInBox(photoSize.w, photoSize.h, width, height);
-      if(w == width || h == height) {
-        break;
+    if(sizes) {
+      for(let photoSize of sizes) {
+        if(!photoSize.w || !photoSize.h) continue;
+  
+        bestPhotoSize = photoSize;
+  
+        let {w, h} = calcImageInBox(photoSize.w, photoSize.h, width, height);
+        if(w == width || h == height) {
+          break;
+        }
       }
     }
     

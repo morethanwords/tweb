@@ -60,13 +60,10 @@ export type MTPhotoSize = {
   bytes?: Uint8Array // if type == 'i'
 };
 
-export function wrapVideo({doc, container, message, justLoader, preloader, round, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue}: {
+export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue}: {
   doc: MTDocument, 
   container: HTMLDivElement, 
   message: any, 
-  justLoader: boolean, 
-  preloader?: ProgressivePreloader, 
-  round: boolean, 
   boxWidth: number, 
   boxHeight: number, 
   withTail?: boolean, 
@@ -89,10 +86,6 @@ export function wrapVideo({doc, container, message, justLoader, preloader, round
       container.append(img);
     }
   }
-  
-  if(!preloader) {
-    preloader = new ProgressivePreloader(container, true);
-  }
 
   let video = document.createElement('video');
   if(withTail) {
@@ -112,11 +105,14 @@ export function wrapVideo({doc, container, message, justLoader, preloader, round
   
   let loadVideo = () => {
     let promise = appDocsManager.downloadDoc(doc);
-    
-    preloader.attach(container, true, promise);
+
+    if(!doc.downloaded) {
+      let preloader = new ProgressivePreloader(container, true);
+      preloader.attach(container, true, promise);
+    }
     
     return promise.then(blob => {
-      if(!middleware()) {
+      if(middleware && !middleware()) {
         return;
       }
 
@@ -136,57 +132,60 @@ export function wrapVideo({doc, container, message, justLoader, preloader, round
         container.append(video);
       }
       
-      if(!justLoader || round) {
-        video.dataset.ckin = round ? 'circle' : 'default';
-        video.dataset.overlay = '1';
-        let player = new VideoPlayer(video, !round);
-      } else if(doc.type == 'gif') {
+      if(doc.type == 'gif') {
         video.autoplay = true;
         video.loop = true;
+      } else if(doc.type == 'round') {
+        //video.dataset.ckin = doc.type == 'round' ? 'circle' : 'default';
+        video.dataset.ckin = 'circle';
+        video.dataset.overlay = '1';
+        let player = new VideoPlayer(video/* , doc.type != 'round' */);
       }
     });
   };
-  
-  if(doc.type == 'gif' || true) { // extra fix
-    return doc.downloaded ? loadVideo() : lazyLoadQueue.push({div: container, load: loadVideo, wasSeen: true});
-  } /* else { // if video
-    let load = () => appPhotosManager.preloadPhoto(doc).then((blob) => {
-      if((this.peerID ? this.peerID : this.currentMessageID) != peerID) {
-        this.log.warn('peer changed');
-        return;
-      }
-      
-      img.src = URL.createObjectURL(blob);
-      
-      if(!justLoader) {
-        return loadVideo();
-      } else {
-        container.style.width = '';
-        container.style.height = '';
-        preloader.detach();
-      }
+
+  if(doc.size >= 20e6 && !doc.downloaded) {
+    let downloadDiv = document.createElement('div');
+    downloadDiv.classList.add('download');
+
+    let span = document.createElement('span');
+    span.classList.add('tgico-download');
+    downloadDiv.append(span);
+
+    downloadDiv.addEventListener('click', () => {
+      downloadDiv.remove();
+      loadVideo();
     });
-    
-    return this.peerID ? this.loadMediaQueuePush(load) : load();
-  } */
+
+    container.append(downloadDiv);
+
+    return;
+  }
+  
+  return doc.downloaded ? loadVideo() : lazyLoadQueue.push({div: container, load: loadVideo, wasSeen: true});
 }
+
+let formatDate = (timestamp: number) => {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const date = new Date(timestamp * 1000);
+  
+  return months[date.getMonth()] + ' ' + date.getDate() + ', ' + date.getFullYear() 
+  + ' at ' + date.getHours() + ':' + ('0' + date.getMinutes()).slice(-2);
+};
 
 export function wrapDocument(doc: MTDocument, withTime = false, uploading = false): HTMLDivElement {
   if(doc.type == 'voice') {
     return wrapVoiceMessage(doc, withTime);
   } else if(doc.type == 'audio') {
-    return wrapAudio(doc);
+    return wrapAudio(doc, withTime);
   }
-  
-  let docDiv = document.createElement('div');
-  docDiv.classList.add('document');
-  
-  let iconDiv = document.createElement('div');
-  iconDiv.classList.add('tgico-document');
-  
+
   let extSplitted = doc.file_name ? doc.file_name.split('.') : '';
   let ext = '';
   ext = extSplitted.length > 1 && Array.isArray(extSplitted) ? extSplitted.pop().toLowerCase() : 'file';
+
+  let docDiv = document.createElement('div');
+  docDiv.classList.add('document', `ext-${ext}`);
   
   let ext2 = ext;
   if(doc.type == 'photo') {
@@ -198,15 +197,11 @@ export function wrapDocument(doc: MTDocument, withTime = false, uploading = fals
   let size = formatBytes(doc.size);
   
   if(withTime) {
-    let months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    let date = new Date(doc.date * 1000);
-    
-    size += ' · ' + months[date.getMonth()] + ' ' + date.getDate() + ', ' + date.getFullYear() 
-    + ' at ' + date.getHours() + ':' + ('0' + date.getMinutes()).slice(-2);
+    size += ' · ' + formatDate(doc.date);
   }
   
   docDiv.innerHTML = `
-  <div class="document-ico ext-${ext}">${ext2}</div>
+  <div class="document-ico">${ext2}</div>
   ${!uploading ? `<div class="document-download"><div class="tgico-download"></div></div>` : ''}
   <div class="document-name">${fileName}</div>
   <div class="document-size">${size}</div>
@@ -255,20 +250,30 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
   
   console.log('wrapAudio doc:', doc);
   
-  /* let durationStr = String(doc.duration | 0).toHHMMSS(true);
+  let durationStr = String(doc.duration | 0).toHHMMSS(true);
   let title = doc.audioTitle || doc.file_name;
-  let subtitle = doc.audioPerformer ? RichTextProcessor.wrapPlainText(doc.audioPerformer) : ''; */
-  let durationStr = '3:24';
+  let subtitle = doc.audioPerformer ? RichTextProcessor.wrapPlainText(doc.audioPerformer) : '';
+  /* let durationStr = '3:24';
   let title = 'Million Telegrams';
-  let subtitle = 'Best Artist';
+  let subtitle = 'Best Artist'; */
+
+  if(withTime) {
+    subtitle += (subtitle ? ' · ' : '') + formatDate(doc.date);
+  }
   
   div.innerHTML = `
-  <div class="audio-title">${title}</div>
-  <div class="audio-subtitle">${subtitle}</div>
-  <div class="audio-toggle audio-ico tgico-largeplay"></div>
   <div class="audio-download"><div class="tgico-download"></div></div>
-  <div class="audio-time">${durationStr}</div>
+  <div class="audio-toggle audio-ico tgico-largeplay"></div>
+  <div class="audio-details">
+    <div class="audio-title">${title}</div>
+    <div class="audio-subtitle">${subtitle}</div>
+    <div class="audio-time">${durationStr}</div>
+  </div>
   `;
+
+  /* if(!subtitle) {
+    div.classList.add('audio-no-subtitle');
+  } */
   
   //////console.log('wrapping audio', doc, doc.attributes[0].waveform);
   
@@ -281,15 +286,11 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
 
   let onClick = () => {
     if(!promise) {
-      if(downloadDiv.classList.contains('downloading')) {
-        return; // means not ready yet
-      }
-      
       if(!preloader) {
         preloader = new ProgressivePreloader(null, true);
       }
       
-      let promise = appDocsManager.downloadDoc(doc.id);
+      promise = appDocsManager.downloadDoc(doc.id);
       preloader.attach(downloadDiv, true, promise);
       
       promise.then(blob => {
@@ -298,7 +299,7 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
         
         let audio = document.createElement('audio');
         let source = document.createElement('source');
-        source.src = URL.createObjectURL(blob);
+        source.src = doc.url;
         source.type = doc.mime_type;
         
         audio.volume = 1;
@@ -343,18 +344,19 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
         
         audio.style.display = 'none';
         audio.append(source);
+        div.classList.add('audio-show-progress');
         div.append(audio);
       });
       
       downloadDiv.classList.add('downloading');
     } else {
       downloadDiv.classList.remove('downloading');
+      promise.cancel();
       promise = null;
     }
   };
   
   div.addEventListener('click', onClick);
-  
   div.click();
   
   return div;
@@ -418,15 +420,11 @@ export function wrapVoiceMessage(doc: MTDocument, withTime = false): HTMLDivElem
   
   let onClick = () => {
     if(!promise) {
-      if(downloadDiv.classList.contains('downloading')) {
-        return; // means not ready yet
-      }
-      
       if(!preloader) {
         preloader = new ProgressivePreloader(null, true);
       }
       
-      let promise = appDocsManager.downloadDoc(doc.id);
+      promise = appDocsManager.downloadDoc(doc.id);
       preloader.attach(downloadDiv, true, promise);
       
       promise.then(blob => {
@@ -435,7 +433,7 @@ export function wrapVoiceMessage(doc: MTDocument, withTime = false): HTMLDivElem
         
         let audio = document.createElement('audio');
         let source = document.createElement('source');
-        source.src = URL.createObjectURL(blob);
+        source.src = doc.url;
         source.type = doc.mime_type;
         
         audio.volume = 1;
@@ -544,12 +542,12 @@ export function wrapVoiceMessage(doc: MTDocument, withTime = false): HTMLDivElem
       downloadDiv.classList.add('downloading');
     } else {
       downloadDiv.classList.remove('downloading');
+      promise.cancel();
       promise = null;
     }
   };
   
   div.addEventListener('click', onClick);
-  
   div.click();
   
   return div;

@@ -19,7 +19,7 @@ class ApiManagerProxy extends CryptoWorkerMethods {
     }
   } = {} as any;
   private pending: Array<Task> = [];
-  private debug = true;
+  private debug = false;
 
   public updatesProcessor: (obj: any, bool: boolean) => void = null;
 

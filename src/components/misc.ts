@@ -151,7 +151,7 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLDivElement, onCli
   let tabsChildren = tabs ? Array.from(tabs.firstElementChild.children) : [];
   let activeInSlide: Set<Element> = new Set();
 
-  let selectTab = (id: number) => {
+  let selectTab = async(id: number) => {
     if(id == prevId) return false;
 
     let p = prevTabContent;
@@ -172,10 +172,25 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLDivElement, onCli
     //content.style.marginLeft = id > 0 ? (-id * 100) + '%' : '';
     let toRight = prevId < id;
     if(prevId != -1) {
-      content.style.cssText = `width: ${activeInSlide.size * 100}%; will-change: width, transform; transform: translateX(-${100 - 100 / activeInSlide.size}%);`;
-      
-      //////console.log('mambo rap setting', toRight);
-      
+      //content.classList.remove('animated');
+      await new Promise((resolve) => window.requestAnimationFrame(() => {
+        content.style.cssText = `will-change: width, transform; width: ${activeInSlide.size * 100}%; transform: translateX(-${100 - 100 / activeInSlide.size}%);`;
+
+        content.classList.remove('animated');
+        if(toRight) {
+          content.classList.add('animated');
+        } else {
+          window.requestAnimationFrame(() => {
+            content.classList.add('animated');
+            content.style.transform = '';
+          });
+        }
+
+        resolve();
+      }));
+
+      /* content.style.cssText = `will-change: width, transform; width: ${activeInSlide.size * 100}%; transform: translateX(-${100 - 100 / activeInSlide.size}%);`;
+
       content.classList.remove('animated');
       if(toRight) {
         content.classList.add('animated');
@@ -184,7 +199,7 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLDivElement, onCli
           content.classList.add('animated');
           content.style.transform = '';
         });
-      }
+      } */
     }
     
     if(hideTimeout) clearTimeout(hideTimeout);

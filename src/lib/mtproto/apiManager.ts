@@ -12,7 +12,7 @@ import HTTP from './transports/http';
 import { logger } from '../polyfill';
 import passwordManager from './passwordManager';
 
-console.error('apiManager included!');
+//console.error('apiManager included!');
 
 export class ApiManager {
   public cachedNetworkers: {[x: number]: MTPNetworker} = {};

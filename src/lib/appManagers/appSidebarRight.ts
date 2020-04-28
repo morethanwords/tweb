@@ -11,7 +11,7 @@ import { logger } from "../polyfill";
 import appImManager from "./appImManager";
 import appMediaViewer from "./appMediaViewer";
 import LazyLoadQueue from "../../components/lazyLoadQueue";
-import { wrapDocument } from "../../components/wrappers";
+import { wrapDocument, wrapAudio } from "../../components/wrappers";
 import AppSearch, { SearchGroup } from "../../components/appSearch";
 
 const testScroll = false;
@@ -20,6 +20,7 @@ class AppSidebarRight {
   public sidebarEl = document.getElementById('column-right') as HTMLDivElement;
   public profileContainer = this.sidebarEl.querySelector('.profile-container') as HTMLDivElement;
   public profileContentEl = this.sidebarEl.querySelector('.profile-content') as HTMLDivElement;
+  public contentContainer = this.sidebarEl.querySelector('.content-container') as HTMLDivElement;
   public profileElements = {
     avatar: this.profileContentEl.querySelector('.profile-avatar') as HTMLDivElement,
     name: this.profileContentEl.querySelector('.profile-name') as HTMLDivElement,
@@ -99,10 +100,11 @@ class AppSidebarRight {
   });
   
   constructor() {
-    let container = this.profileContentEl.querySelector('.profile-tabs-content') as HTMLDivElement;
+    let container = this.profileContentEl.querySelector('.content-container .tabs-container') as HTMLDivElement;
     this.profileTabs = this.profileContentEl.querySelector('.profile-tabs') as HTMLUListElement;
     
-    this.scroll = new Scrollable(this.profileContainer, 'y', 1200, 'SR');
+    this.scroll = new Scrollable(this.profileContainer, 'y', 1200, 'SR', undefined, 400);
+    //this.scroll = new Scrollable(this.profileContentEl, 'y', 1200, 'SR', undefined, 400);
     this.scroll.container.addEventListener('scroll', this.onSidebarScroll.bind(this));
     this.scroll.onScrolledBottom = () => {
       if(this.sharedMediaSelected && !this.scroll.hiddenElements.down.length && this.sharedMediaSelected.childElementCount/* && false */) {
@@ -116,16 +118,14 @@ class AppSidebarRight {
       
       this.sharedMediaType = this.sharedMediaTypes[id];
       this.sharedMediaSelected = tabContent.firstElementChild as HTMLDivElement;
-      
-      if(this.prevTabID != -1 && !this.sharedMediaSelected.childElementCount) { // quick brown fix
-        this.loadSidebarMedia(true);
+
+      if(this.profileTabs.offsetTop) {
+        this.scroll.scrollTop -= this.profileTabs.offsetTop;
       }
-      
+
       if(this.prevTabID != -1) {
         this.savedVirtualStates[this.prevTabID] = this.scroll.state;
       }
-      
-      this.prevTabID = id;
       
       this.log('setVirtualContainer', id, this.sharedMediaSelected);
       this.scroll.setVirtualContainer(this.sharedMediaSelected);
@@ -134,6 +134,15 @@ class AppSidebarRight {
         this.log(this.savedVirtualStates[id]);
         this.scroll.state = this.savedVirtualStates[id];
       }
+
+      if(this.prevTabID != -1 && !this.sharedMediaSelected.childElementCount) { // quick brown fix
+        this.contentContainer.classList.remove('loaded');
+        this.loadSidebarMedia(true);
+      }
+
+      this.prevTabID = id;
+
+      this.scroll.onScroll();
     }, this.onSidebarScroll.bind(this));
     
     let sidebarCloseBtn = this.sidebarEl.querySelector('.sidebar-close-button') as HTMLButtonElement;
@@ -157,7 +166,7 @@ class AppSidebarRight {
       
       let message = appMessagesManager.getMessage(messageID);
       
-      let ids = Object.keys(this.mediaDivsByIDs).map(k => +k).sort();
+      let ids = Object.keys(this.mediaDivsByIDs).map(k => +k).sort((a, b) => a - b);
       let idx = ids.findIndex(i => i == messageID);
       
       let targets = ids.map(id => ({element: this.mediaDivsByIDs[id], mid: id}));
@@ -397,7 +406,7 @@ class AppSidebarRight {
             continue;
           }
 
-          let div = wrapDocument(message.media.document, true);
+          let div = wrapAudio(message.media.document, true);
           elemsToAppend.push(div);
         }
         break;
@@ -422,6 +431,7 @@ class AppSidebarRight {
       let parent = sharedMediaDiv.parentElement;
       if(parent.lastElementChild.classList.contains('preloader')) {
         parent.lastElementChild.remove();
+        this.contentContainer.classList.add('loaded');
       }
     }
     
@@ -433,7 +443,7 @@ class AppSidebarRight {
       return;
     }
     
-    this.log('loadSidebarMedia', single, this.peerID);
+    this.log('loadSidebarMedia', single, this.peerID, this.loadSidebarMediaPromises);
     
     let peerID = this.peerID;
     
@@ -455,10 +465,10 @@ class AppSidebarRight {
       // render from cache
       if(history.length && this.usedFromHistory[type] < history.length && this.cleared[type]) {
         let ids = history.slice(this.usedFromHistory[type], this.usedFromHistory[type] + loadCount);
-        this.log('will render from cache', this.usedFromHistory[type], history, ids, loadCount);
+        this.log('loadSidebarMedia: will render from cache', this.usedFromHistory[type], history, ids, loadCount);
         this.usedFromHistory[type] += ids.length;
         this.performSearchResult(ids, type);
-        return;
+        return Promise.resolve();
       }
       
       // заливать новую картинку сюда только после полной отправки!
@@ -469,7 +479,7 @@ class AppSidebarRight {
       ? appMessagesManager.historiesStorage[peerID].history.slice() : [];
       
       maxID = !maxID && ids.length ? ids[ids.length - 1] : maxID;
-      this.log('search house of glass pre', type, ids, maxID);
+      this.log('loadSidebarMedia: search house of glass pre', type, ids, maxID);
       
       //let loadCount = history.length ? 50 : 15;
       return this.loadSidebarMediaPromises[type] = appMessagesManager.getSearch(peerID, '', {_: type}, maxID, loadCount)
@@ -477,7 +487,7 @@ class AppSidebarRight {
         ids = ids.concat(value.history);
         history.push(...ids);
         
-        this.log('search house of glass', type, value, ids, this.cleared);
+        this.log('loadSidebarMedia: search house of glass', type, value, ids, this.cleared);
 
         if($rootScope.selectedPeerID != peerID) {
           this.log.warn('peer changed');
@@ -515,6 +525,8 @@ class AppSidebarRight {
     this.lastSharedMediaDiv = document.createElement('div');
     
     //this.log('fillProfileElements');
+
+    this.contentContainer.classList.remove('loaded');
     
     window.requestAnimationFrame(() => {
       this.profileContentEl.parentElement.scrollTop = 0;

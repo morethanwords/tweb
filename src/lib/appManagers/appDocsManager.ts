@@ -3,6 +3,7 @@ import FileManager from '../filemanager';
 import {RichTextProcessor} from '../richtextprocessor';
 import { CancellablePromise } from '../polyfill';
 import { MTDocument } from '../../components/wrappers';
+import { isObject } from '../utils';
 
 class AppDocsManager {
   private docs: {[docID: string]: MTDocument} = {};
@@ -140,8 +141,8 @@ class AppDocsManager {
     return apiDoc;
   }
   
-  public getDoc(docID: string) {
-    return this.docs[docID] || {_: 'documentEmpty'};
+  public getDoc(docID: any): MTDocument {
+    return isObject(docID) ? docID : this.docs[docID];
   }
   
   public getFileName(doc: MTDocument) {
@@ -199,6 +200,8 @@ class AppDocsManager {
     }
     
     if(doc.downloaded && !toFileEntry) {
+      if(doc.url) return Promise.resolve(null);
+
       var cachedBlob = apiFileManager.getCachedFile(inputFileLocation);
       if(cachedBlob) {
         return Promise.resolve(cachedBlob);
@@ -217,7 +220,7 @@ class AppDocsManager {
       if(blob) {
         doc.downloaded = true;
 
-        if(/* !doc.animated ||  */doc.type != 'sticker') {
+        if(/* !doc.animated ||  */doc.type && doc.type != 'sticker') {
           doc.url = FileManager.getFileCorrectUrl(blob, doc.mime_type);
         }
       }
