@@ -554,6 +554,23 @@ $chat-max-width: 696px;
 					height: 100%;
 				}
 			}
+
+			&.is-album {
+				.attachment {
+					max-width: 451px;
+					max-height: none;
+
+					> div {
+						background-color: #000;
+						background-size: cover;
+						background-position: center center;
+						/* flex: 1 0 auto; */
+						max-width: 100%;
+						cursor: pointer;
+						position: absolute;
+					}
+				}
+			}
 			
 			//&.video {
 				//.attachment {

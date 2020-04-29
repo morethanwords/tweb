@@ -4,7 +4,7 @@ import appMessagesManager from "./appMessagesManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import { logger } from "../polyfill";
 import ProgressivePreloader from "../../components/preloader";
-import { findUpClassName, $rootScope, generatePathData } from "../utils";
+import { findUpClassName, $rootScope, generatePathData, fillPropertyValue } from "../utils";
 import appDocsManager from "./appDocsManager";
 import VideoPlayer from "../mediaPlayer";
 import { renderImageFromUrl } from "../../components/misc";
@@ -213,13 +213,7 @@ export class AppMediaViewer {
     }
 
     let borderRadius = window.getComputedStyle(realParent).getPropertyValue('border-radius');
-    let brSplitted = borderRadius.split(' ');
-    if(brSplitted.length != 4) {
-      if(!brSplitted[0]) brSplitted[0] = '0px';
-      for(let i = brSplitted.length; i < 4; ++i) {
-        brSplitted[i] = brSplitted[i % 2] || brSplitted[0] || '0px';
-      }
-    }
+    let brSplitted = fillPropertyValue(borderRadius) as string[];
     borderRadius = brSplitted.map(r => (parseInt(r) / scaleX) + 'px').join(' ');
     if(!wasActive) {
       mover.style.borderRadius = borderRadius;

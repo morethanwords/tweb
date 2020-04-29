@@ -59,15 +59,16 @@
   }
 
   li {
-    padding: 2px 0;
+    //padding: 0 0 2px 0;
+    padding-bottom: 4px;
     //overflow: hidden;
     background-color: #fff;
   }
 
   li > .rp {
-    height: 70px;
-    max-height: 70px;
-    border-radius: $border-radius;
+    height: 72px;
+    max-height: 72px;
+    border-radius: $border-radius-medium;
     //align-items: center;
     /* display: grid;
     grid-template-columns: 64px calc(100% - 64px - 6.5px); */
@@ -76,8 +77,8 @@
     flex-direction: row;
     position: relative;
     cursor: pointer;
-    padding: 7px 8.5px;
-    margin: 0px 8px 2px 7px;
+    padding: 9px 8.5px;
+    margin: 0px 8px 0px 7px;
     overflow: hidden;
 
     &:hover {
@@ -91,7 +92,7 @@
 
   .pinned-delimiter {
     display: flex;
-    padding: 6px 0 6px;
+    padding: 8px 0 4px;
 
     span {
       margin: 0;
@@ -270,6 +271,12 @@
 
     &-contacts {
       padding: 16px 0 7px;
+
+      li {
+        //margin-bottom: 2px;
+        padding-bottom: 4px;
+        padding-top: 2px;
+      }
 
       li > .rp {
         padding: 9px 11.5px !important;

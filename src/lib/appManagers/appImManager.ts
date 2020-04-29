@@ -17,14 +17,15 @@ import appSidebarLeft from "./appSidebarLeft";
 import appChatsManager from "./appChatsManager";
 import appMessagesIDsManager from "./appMessagesIDsManager";
 import apiUpdatesManager from './apiUpdatesManager';
-import { wrapDocument, wrapPhoto, wrapVideo, wrapSticker, wrapReply } from '../../components/wrappers';
+import { wrapDocument, wrapPhoto, wrapVideo, wrapSticker, wrapReply, MTPhotoSize } from '../../components/wrappers';
 import ProgressivePreloader from '../../components/preloader';
-import { openBtnMenu } from '../../components/misc';
+import { openBtnMenu, renderImageFromUrl } from '../../components/misc';
 import { ChatInput } from '../../components/chatInput';
 import Scrollable from '../../components/scrollable';
 import BubbleGroups from '../../components/bubbleGroups';
 import LazyLoadQueue from '../../components/lazyLoadQueue';
 import appDocsManager from './appDocsManager';
+import { Layouter, RectPart } from '../../components/groupedLayout';
 
 console.log('appImManager included!');
 
@@ -1195,6 +1196,13 @@ export class AppImManager {
   public renderMessage(message: any, reverse = false, multipleRender = false, bubble: HTMLDivElement = null, updatePosition = true) {
     this.log('message to render:', message);
     if(message.deleted) return;
+    else if(message.grouped_id) { // will render only last album's message
+      let storage = appMessagesManager.groupedMessagesStorage[message.grouped_id];
+      let maxID = Math.max(...Object.keys(storage).map(i => +i));
+      if(message.mid < maxID) {
+        return;
+      }
+    }
     
     let peerID = this.peerID;
     let our = message.fromID == this.myID;
@@ -1408,10 +1416,111 @@ export class AppImManager {
           ////////this.log('messageMediaPhoto', photo);
           
           bubble.classList.add('hide-name', 'photo');
-          
-          wrapPhoto(photo.id, message, attachmentDiv, undefined, undefined, true, our, this.lazyLoadQueue, () => {
-            return this.peerID == peerID;
-          });
+
+          if(message.grouped_id) {
+            bubble.classList.add('is-album');
+
+            let items: {size: MTPhotoSize, media: any}[] = [];
+
+            // higher msgID will be the last in album
+            let storage = appMessagesManager.groupedMessagesStorage[message.grouped_id];
+            for(let mid in storage) {
+              let m = appMessagesManager.getMessage(+mid);
+              let media = m.media.photo || m.media.document;
+
+              let size = appPhotosManager.choosePhotoSize(media, 380, 380);
+              items.push({size, media});
+            }
+
+            let spacing = 2;
+            let layouter = new Layouter(items.map(i => ({w: i.size.w, h: i.size.h})), 451, 100, spacing);
+            let layout = layouter.layout();
+            this.log('layout:', layout);
+
+            /* let borderRadius = window.getComputedStyle(realParent).getPropertyValue('border-radius');
+            let brSplitted = fillPropertyValue(borderRadius); */
+
+            for(let {geometry, sides} of layout) {
+              let {size, media} = items.shift();
+              let div = document.createElement('div');
+              div.classList.add('album-item');
+
+              div.style.width = geometry.width + 'px';
+              div.style.height = geometry.height + 'px';
+              div.style.top = geometry.y + 'px';
+              div.style.left = geometry.x + 'px';
+
+              if(sides & RectPart.Right) {
+                attachmentDiv.style.width = geometry.width + geometry.x + 'px';
+              }
+
+              if(sides & RectPart.Bottom) {
+                attachmentDiv.style.height = geometry.height + geometry.y + 'px';
+              }
+
+              if(sides & RectPart.Left && sides & RectPart.Top) {
+                div.style.borderTopLeftRadius = 'inherit';
+              }
+
+              if(sides & RectPart.Left && sides & RectPart.Bottom) {
+                div.style.borderBottomLeftRadius = 'inherit';
+              }
+
+              if(sides & RectPart.Right && sides & RectPart.Top) {
+                div.style.borderTopRightRadius = 'inherit';
+              }
+
+              if(sides & RectPart.Right && sides & RectPart.Bottom) {
+                div.style.borderBottomRightRadius = 'inherit';
+              }
+
+              /* if(geometry.y != 0) {
+                div.style.marginTop = spacing + 'px';
+              }
+
+              if(geometry.x != 0) {
+                div.style.marginLeft = spacing + 'px';
+              } */
+
+              let preloader = new ProgressivePreloader(div);
+
+              let load = () => appPhotosManager.preloadPhoto(media._ == 'photo' ? media.id : media, size)
+              .then((blob) => {
+                if(this.peerID != peerID) {
+                  this.log.warn('peer changed');
+                  return;
+                }
+
+                preloader.detach();
+                if(media && media.url) {
+                  renderImageFromUrl(div, media.url);
+                }/*  else {
+                  let url = URL.createObjectURL(blob);
+                  this.urlsToRevoke.push(url);
+                  
+                  let img = new Image();
+                  img.src = url;
+                  img.onload = () => {
+                    div.style.backgroundImage = 'url(' + url + ')';
+                  };
+                } */
+                
+                //div.style.backgroundImage = 'url(' + url + ')';
+              });
+
+              load();
+
+              // @ts-ignore
+              //div.style.backgroundColor = '#' + Math.floor(Math.random() * (2 ** 24 - 1)).toString(16).padStart(6, '0');
+
+              attachmentDiv.append(div);
+            }
+          } else {
+            wrapPhoto(photo.id, message, attachmentDiv, undefined, undefined, true, our, this.lazyLoadQueue, () => {
+              return this.peerID == peerID;
+            });
+          }
+
           break;
         }
         

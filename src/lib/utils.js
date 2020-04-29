@@ -632,6 +632,18 @@ export function encodeEntities (value) {
   }).replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
+export function fillPropertyValue(str) {
+  let splitted = str.split(' ');
+  if(splitted.length != 4) {
+    if(!splitted[0]) splitted[0] = '0px';
+    for(let i = splitted.length; i < 4; ++i) {
+      splitted[i] = splitted[i % 2] || splitted[0] || '0px';
+    }
+  }
+
+  return splitted;
+}
+
 export function calcImageInBox (imageW, imageH, boxW, boxH, noZooom) {
   if(imageW < boxW && imageH < boxH) {
     return {w: imageW, h: imageH};
