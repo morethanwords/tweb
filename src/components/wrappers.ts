@@ -259,6 +259,8 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
 
   if(withTime) {
     subtitle += (subtitle ? ' · ' : '') + formatDate(doc.date);
+  } else if(!subtitle) {
+    subtitle = 'Unknown Artist';
   }
   
   div.innerHTML = `
@@ -309,8 +311,14 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
         div.removeEventListener('click', onClick);
         let toggle = div.querySelector('.audio-toggle') as HTMLDivElement;
         let subtitle = div.querySelector('.audio-subtitle') as HTMLDivElement;
+        let launched = false;
 
         toggle.addEventListener('click', () => {
+          if(!launched) {
+            div.classList.add('audio-show-progress');
+            launched = true;
+          }
+
           subtitle.innerHTML = '';
           subtitle.append(progress.container);
 
@@ -326,8 +334,6 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
             
             toggle.classList.remove('tgico-largeplay');
             toggle.classList.add('tgico-largepause');
-            
-            
           } else {
             audio.pause();
             toggle.classList.add('tgico-largeplay');
@@ -344,7 +350,6 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
         
         audio.style.display = 'none';
         audio.append(source);
-        div.classList.add('audio-show-progress');
         div.append(audio);
       });
       

@@ -1,6 +1,6 @@
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
-import { $rootScope, isElementInViewport, numberWithCommas, findUpClassName, formatNumber, placeCaretAtEnd, calcImageInBox, findUpTag, langPack } from "../utils";
+import { $rootScope, isElementInViewport, numberWithCommas, findUpClassName, formatNumber, placeCaretAtEnd, findUpTag, langPack } from "../utils";
 import appUsersManager from "./appUsersManager";
 import appMessagesManager from "./appMessagesManager";
 import appPeersManager from "./appPeersManager";
@@ -19,7 +19,7 @@ import appMessagesIDsManager from "./appMessagesIDsManager";
 import apiUpdatesManager from './apiUpdatesManager';
 import { wrapDocument, wrapPhoto, wrapVideo, wrapSticker, wrapReply, MTPhotoSize } from '../../components/wrappers';
 import ProgressivePreloader from '../../components/preloader';
-import { openBtnMenu, renderImageFromUrl } from '../../components/misc';
+import { openBtnMenu, renderImageFromUrl, formatPhoneNumber } from '../../components/misc';
 import { ChatInput } from '../../components/chatInput';
 import Scrollable from '../../components/scrollable';
 import BubbleGroups from '../../components/bubbleGroups';
@@ -359,7 +359,7 @@ export class AppImManager {
         if(!isNaN(peerID)) {
           this.setPeer(peerID);
         }
-      } else if(((target.tagName == 'IMG' || target.tagName == 'image') && !target.classList.contains('emoji')) || target.tagName == 'VIDEO') {
+      } else if((target.tagName == 'IMG' && !target.classList.contains('emoji')) || target.tagName == 'image' || target.tagName == 'VIDEO') {
         let messageID = 0;
         for(let mid in this.bubbles) {
           if(this.bubbles[mid] == bubble) {
@@ -384,7 +384,7 @@ export class AppImManager {
 
         let targets = ids.map(id => ({
           //element: (this.bubbles[id].querySelector('img, video') || this.bubbles[id].querySelector('image')) as HTMLElement, 
-          element: this.bubbles[id].querySelector('.attachment img, .preview img, video, .bubble__media-container') as HTMLElement,
+          element: this.bubbles[id].querySelector('.attachment img, .preview img, video, .bubble__media-container, .album-item') as HTMLElement,
           mid: id
         }));
         
@@ -1680,10 +1680,38 @@ export class AppImManager {
             
             bubble.classList.remove('is-message-empty');
             messageDiv.append(docDiv);
+            messageDiv.classList.add((doc.type || 'document') + '-message');
             processingWebPage = true;
             
             break;
           }
+
+          break;
+        }
+
+        case 'messageMediaContact': {
+          this.log('wrapping contact', message);
+
+          let contactDiv = document.createElement('div');
+          contactDiv.classList.add('contact');
+          messageDiv.classList.add('contact-message');
+          processingWebPage = true;
+
+          let texts = [];
+          if(message.media.first_name) texts.push(RichTextProcessor.wrapEmojiText(message.media.first_name));
+          if(message.media.last_name) texts.push(RichTextProcessor.wrapEmojiText(message.media.last_name));
+
+          contactDiv.innerHTML = `
+            <div class="contact-avatar user-avatar"><img src="blob:https://192.168.0.105:9000/803514b4-4a46-4125-984f-ca8f86405ef2"></div>
+            <div class="contact-details">
+              <div class="contact-name">${texts.join(' ')}</div>
+              <div class="contact-number">${message.media.phone_number ? '+' + formatPhoneNumber(message.media.phone_number).formatted : 'Unknown phone number'}</div>
+            </div>`;
+
+          bubble.classList.remove('is-message-empty');
+          messageDiv.append(contactDiv);
+
+          break;
         }
         
         default:

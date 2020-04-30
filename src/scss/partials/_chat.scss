@@ -1,5 +1,9 @@
 $chat-max-width: 696px;
 
+#bubble-contextmenu > div {
+	padding: 0 84px 0 16px;
+}
+
 .chat-container {
 	display: flex;
 	// padding: 200px;
@@ -184,6 +188,12 @@ $chat-max-width: 696px;
 				}
 			}
 
+			&:not(.is-channel), &.is-chat {
+				.message {
+					max-width: 480px;
+				}
+			}
+
 			&.is-scrolling .is-sticky {
 				opacity: 1;
 			}
@@ -273,6 +283,17 @@ $chat-max-width: 696px;
 				/* font-size: 0; */
 				width: max-content;
 				height: fit-content;
+
+				> .user-avatar {
+					position: absolute;
+					left: -3rem;
+					width: 40px;
+					height: 40px;
+					line-height: 40px;
+					bottom: 0;
+					font-size: 1rem;
+					cursor: pointer;
+				}
 			}
 			
 			&.service {
@@ -723,10 +744,10 @@ $chat-max-width: 696px;
 				line-height: 21px;
 				word-break: break-word;
 				
-				* {
+				/* * {
 					overflow: hidden;
 					text-overflow: ellipsis;
-				}
+				} */
 				
 				&:last-child {
 					//padding-top: .2675rem;
@@ -735,6 +756,129 @@ $chat-max-width: 696px;
 
 				.emoji {
 					font-size: 1.2rem;
+				}
+			}
+
+			// all for audio (not voice)
+			.message.audio-message {
+				.audio {
+					justify-content: unset;
+					max-width: none;
+
+					&-time {
+						padding-bottom: 7px;
+					}
+
+					&-time, &-subtitle {
+						color: #4fae4e;
+						line-height: 1.45;
+						margin-top: 0;
+					}
+
+					&-title {
+						font-weight: 500;
+						margin-left: -1px;
+					}
+
+					&-details {
+						margin-top: 8px;
+					}
+
+					&-ico {
+						font-size: 2.15rem;
+					}
+				}
+
+				.media-progress {
+					/* width: calc(100% + 50px); */
+					width: 191px;
+					margin: 9px 0 9px;
+
+					&__filled {
+						background-color: #47aa41;
+						transform-origin: left;
+						height: 2px;
+					}
+
+					&__seek {
+						height: 2px;
+						overflow: visible !important;
+    				background: rgba(124, 195, 107, 0.52);
+						
+						&::-webkit-slider-thumb {
+							height: 12px;
+							width: 12px;
+							background: #47aa41;
+						}
+					}
+				}
+
+				//&.audio-message {
+					min-width: 275px;
+					//max-width: 380px !important;
+					max-width: 275px !important;
+					padding-top: 8px !important;
+					padding-left: 8px !important;
+
+					/* .audio-details * {
+						overflow: visible;
+					} */
+				//}
+
+				.tgico-largeplay:before {
+					content: "\e929";
+					margin-right: -2px;
+				}
+			}
+
+			.message.contact-message  {
+				min-width: 200px;
+				padding-left: 8px;
+
+				.contact {
+					display: flex;
+					padding: 2px 0;
+
+					&-avatar {
+						color: #fff;
+					}
+
+					&-details {
+						padding-left: 12px;
+						margin-top: 8px;
+					}
+
+					&-name {
+						font-size: 1rem;
+						font-weight: 500;
+					}
+
+					&-number {
+						font-size: 14px;
+						line-height: 1.4;
+					}
+				}
+
+				.time {
+					width: unset;
+				}
+			}
+
+			.message.document-message {
+				max-width: 325px !important;
+
+				.time {
+					width: unset;
+				}
+
+				.document {
+					padding-left: 66px;
+					height: 58px;
+
+					&-name {
+						line-height: 1.4;
+						margin-top: 1px;
+					}
 				}
 			}
 
@@ -808,17 +952,6 @@ $chat-max-width: 696px;
 
 			&.is-edited .time {
 				width: 90px;
-			}
-			
-			.user-avatar {
-				position: absolute;
-				left: -3rem;
-				width: 40px;
-				height: 40px;
-				line-height: 40px;
-				bottom: 0;
-				font-size: 1rem;
-				cursor: pointer;
 			}
 			
 			&:not(.forwarded).hide-name, &.emoji-big {
@@ -998,6 +1131,10 @@ $chat-max-width: 696px;
 					}
 				}
 			}
+
+			.audio-subtitle, .contact-number {
+				color: #707579;
+			}
 		}
 		
 		.is-out {
@@ -1005,6 +1142,11 @@ $chat-max-width: 696px;
 				margin-left: auto;
 				background-color: #eeffde;
 				border-radius: 12px 6px 6px 12px;
+
+				> .user-avatar {
+					left: auto;
+					right: -2.5rem;
+				}
 			}
 				
 			&.is-group-first .bubble__container {
@@ -1104,11 +1246,6 @@ $chat-max-width: 696px;
 			&.is-edited .time {
 				width: 85px;
 			}
-			
-			.user-avatar {
-				left: auto;
-				right: -2.5rem;
-			}
 
 			.document-ico:after {
 				border-top-color: #eeffde;
@@ -1145,6 +1282,10 @@ $chat-max-width: 696px;
 						}
 					}
 				}
+			}
+
+			.audio-subtitle, .contact-number, .document-size {
+				color: #4FAE4E;
 			}
 		}
 	}

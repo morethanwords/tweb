@@ -28,7 +28,6 @@
 
   .sidebar-header {
     flex: 0 0 auto;
-    padding: 10px 20px 11px 15px;
   }
 
   #search-private-container {
@@ -133,7 +132,7 @@
     }
 
     &-label {
-      color: $placeholder-color !important;
+      color: #707579 !important;
       font-size: 14px !important;
     }
 
@@ -146,7 +145,7 @@
   &-avatar.user-avatar {
     width: 120px;
     height: 120px;
-    margin: 0 auto 21px;
+    margin: 1px auto 21px;
     font-size: 4rem !important;
 
     &.tgico-avatar_deletedaccount {

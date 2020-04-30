@@ -187,7 +187,7 @@ input {
   top: 100%;
   margin-top: 8px;
   padding: 9px 0;
-  border-radius: $border-radius;
+  border-radius: $border-radius-medium;
   opacity: 0;
   transform: scale(.8);
   transition-property: opacity,transform,visibility;
@@ -250,7 +250,7 @@ input {
     &:before {
       color: $color-gray;
       font-size: 1.5rem;
-      margin-right: 35px;
+      margin-right: 32px;
     }
 
     &.danger:before {
@@ -265,7 +265,7 @@ input {
   height: 54px;
   line-height: 54px;
   border-radius: 50%;
-  background-color: $button-primary-background;
+  background-color: $blue;
   text-align: center;
   font-size: 1.25em;
   /* overflow: hidden; */
@@ -311,10 +311,14 @@ input {
   }
 }
 
-.user-title, b, .user-last-message b {
+.user-title, b/* , .user-last-message b */ {
   color: #000;
   font-weight: 500;
   //font-weight: normal;
+}
+
+.user-last-message b {
+  font-weight: 400;
 }
 
 .rp {
@@ -544,6 +548,13 @@ input {
     color: $color-gray;
     margin-top: 3px;
     margin-left: -1px;
+  }
+
+  &-title, &:not(.audio-show-progress) &-subtitle {
+    white-space: nowrap;
+		overflow: hidden;
+		max-width: 100%;
+		text-overflow: ellipsis;
   }
 }
 
