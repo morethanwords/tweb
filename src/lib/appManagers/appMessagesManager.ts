@@ -47,7 +47,7 @@ export class AppMessagesManager {
     count: any,
     dialogs: any[]
   } = {count: null, dialogs: []};
-  public pendingByRandomID: any = {};
+  public pendingByRandomID: {[randomID: string]: [number, number]} = {};
   public pendingByMessageID: any = {};
   public pendingAfterMsgs: any = {};
   public pendingTopMsgs: any = {};
@@ -449,17 +449,18 @@ export class AppMessagesManager {
     this.pendingByRandomID[randomIDS] = [peerID, messageID];
   }
 
-  public sendFile(peerID: number, file: File | Blob | MTDocument, options: {
-    isMedia?: boolean,
-    replyToMsgID?: number,
-    caption?: string,
-    entities?: any[],
-    width?: number,
-    height?: number,
-    objectURL?: string,
-    isRoundMessage?: boolean,
-    duration?: number
-  } = {}) {
+  public sendFile(peerID: number, file: File | Blob | MTDocument, options: Partial<{
+    isMedia: boolean,
+    replyToMsgID: number,
+    caption: string,
+    entities: any[],
+    width: number,
+    height: number,
+    objectURL: string,
+    isRoundMessage: boolean,
+    duration: number,
+    background: boolean
+  }> = {}) {
     peerID = AppPeersManager.getPeerMigratedTo(peerID) || peerID;
     var messageID = this.tempID--;
     var randomID = [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)];
@@ -656,6 +657,8 @@ export class AppMessagesManager {
 
       return apiManager.invokeApi('messages.sendMedia', {
         flags: flags,
+        background: options.background,
+        clear_draft: true,
         peer: AppPeersManager.getInputPeerByID(peerID),
         media: inputMedia,
         message: caption,
@@ -683,9 +686,10 @@ export class AppMessagesManager {
       if(replyToMsgID) {
         flags |= 1;
       }
-      if(asChannel) {
-        flags |= 16;
+      if(options.background) {
+        flags |= 64;
       }
+      flags |= 128; // clear_draft
 
       if(isDocument) {
         let {id, access_hash, file_reference} = file as MTDocument;
@@ -775,6 +779,293 @@ export class AppMessagesManager {
     setTimeout(message.send.bind(this), 0);
 
     this.pendingByRandomID[randomIDS] = [peerID, messageID];
+  }
+
+  public async sendAlbum(peerID: number, files: File[], options: Partial<{
+    entities: any[],
+    replyToMsgID: number,
+    caption: string,
+    sendFileDetails: Partial<{
+      duration: number,
+      width: number,
+      height: number,
+      objectURL: string,
+    }>[]
+  }> = {}) {
+    peerID = AppPeersManager.getPeerMigratedTo(peerID) || peerID;
+    let groupID: number;
+    let historyStorage = this.historiesStorage[peerID] ?? (this.historiesStorage[peerID] = {count: null, history: [], pending: []});
+    let flags = 0;
+    let pFlags: any = {};
+    let replyToMsgID = options.replyToMsgID;
+    let isChannel = AppPeersManager.isChannel(peerID);
+    let isMegagroup = isChannel && AppPeersManager.isMegagroup(peerID);
+    let asChannel = isChannel && !isMegagroup ? true : false;
+
+    let caption = options.caption || '';
+
+    let date = tsNow(true) + ServerTimeManager.serverTimeOffset;
+
+    if(caption) {
+      let entities = options.entities || [];
+      caption = RichTextProcessor.parseMarkdown(caption, entities);
+    }
+
+    console.log('AMM: sendAlbum', files, options);
+
+    let fromID = appUsersManager.getSelf().id;
+    if(peerID != fromID) {
+      pFlags.out = true;
+
+      if(!isChannel && !appUsersManager.isBot(peerID)) {
+        pFlags.unread = true;
+      }
+    }
+
+    if(replyToMsgID) {
+      flags |= 1;
+    }
+
+    if(asChannel) {
+      fromID = 0;
+      pFlags.post = true;
+    } else {
+      flags |= 128; // clear_draft
+    }
+
+    let ids = files.map(() => this.tempID--).reverse();
+    groupID = ids[ids.length - 1];
+    let messages = files.map((file, idx) => {
+      //let messageID = this.tempID--;
+      //if(!groupID) groupID = messageID;
+      let messageID = ids[idx];
+      let randomID = [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)];
+      let randomIDS = bigint(randomID[0]).shiftLeft(32).add(bigint(randomID[1])).toString();
+      let preloader = new ProgressivePreloader(null, true);
+
+      let details = options.sendFileDetails[idx];
+
+      let media = {
+        _: 'messageMediaPending',
+        type: 'album',
+        preloader: preloader,
+        progress: {
+          percent: 1, 
+          total: file.size,
+          done: 0,
+          cancel: () => {}
+        },
+        document: undefined as any,
+        photo: undefined as any
+      };
+
+      if(file.type.indexOf('video/') === 0) {
+        let flags = 1;
+        let videoAttribute = {
+          _: 'documentAttributeVideo',
+          flags: flags,
+          pFlags: { // that's only for client, not going to telegram
+            supports_streaming: true,
+            round_message: false
+          }, 
+          round_message: false,
+          supports_streaming: true,
+          duration: details.duration,
+          w: details.width,
+          h: details.height
+        };
+
+        let doc: any = {
+          _: 'document',
+          id: '' + messageID,
+          attributes: [videoAttribute],
+          downloaded: file.size,
+          thumbs: [],
+          mime_type: file.type,
+          url: details.objectURL || '',
+          size: file.size
+        };
+        
+        appDocsManager.saveDoc(doc);
+        media.document = doc;
+      } else {
+        let photo: any = {
+          _: 'photo',
+          id: '' + messageID,
+          sizes: [{
+            _: 'photoSize',
+            w: details.width,
+            h: details.height,
+            type: 'm',
+            size: file.size
+          } as MTPhotoSize],
+          w: details.width,
+          h: details.height,
+          downloaded: file.size,
+          url: details.objectURL || ''
+        };
+        
+        appPhotosManager.savePhoto(photo);
+        media.photo = photo;
+      }
+
+      preloader.preloader.onclick = () => {
+        console.log('cancelling upload', media);
+        appImManager.setTyping('sendMessageCancelAction');
+        media.progress.cancel();
+      };
+
+      let message = {
+        _: 'message',
+        id: messageID,
+        from_id: fromID,
+        grouped_id: groupID,
+        to_id: AppPeersManager.getOutputPeer(peerID),
+        flags: flags,
+        pFlags: pFlags,
+        date: date,
+        message: caption,
+        media: media,
+        random_id: randomIDS,
+        randomID: randomID,
+        reply_to_msg_id: replyToMsgID,
+        views: asChannel && 1,
+        pending: true,
+        error: false
+      };
+
+      this.saveMessages([message]);
+      historyStorage.pending.unshift(messageID);
+      //$rootScope.$broadcast('history_append', {peerID: peerID, messageID: messageID, my: true});
+
+      this.pendingByRandomID[randomIDS] = [peerID, messageID];
+
+      return message;
+    });
+
+    $rootScope.$broadcast('history_append', {peerID: peerID, messageID: messages[messages.length - 1].id, my: true});
+
+    let toggleError = (message: any, on: boolean) => {
+      if(on) {
+        message.error = true;
+      } else {
+        delete message.error;
+      }
+
+      $rootScope.$broadcast('messages_pending');
+    };
+
+    let uploaded = false,
+      uploadPromise: ReturnType<typeof apiFileManager.uploadFile> = null;
+
+    let inputPeer = AppPeersManager.getInputPeerByID(peerID);
+    let invoke = (multiMedia: any[]) => {
+      appImManager.setTyping('sendMessageCancelAction');
+
+      return apiManager.invokeApi('messages.sendMultiMedia', {
+        flags: flags,
+        peer: inputPeer,
+        multi_media: multiMedia,
+        reply_to_msg_id: appMessagesIDsManager.getMessageLocalID(replyToMsgID)
+      }).then((updates) => {
+        apiUpdatesManager.processUpdateMessage(updates);
+      }, (error) => {
+        messages.forEach(message => toggleError(message, true));
+      });
+    };
+
+    let inputs: any[] = [];
+    for(let i = 0, length = files.length; i < length; ++i) {
+      let file = files[i];
+      let message = messages[i];
+      let media = message.media;
+      let preloader = media.preloader;
+      let actionName = file.type.indexOf('video/') === 0 ? 'sendMessageUploadVideoAction' : 'sendMessageUploadPhotoAction';
+      let deferred = deferredPromise<void>();
+
+      await this.sendFilePromise;
+      this.sendFilePromise = deferred;
+
+      if(!uploaded || message.error) {
+        uploaded = false;
+        uploadPromise = apiFileManager.uploadFile(file);
+      }
+
+      uploadPromise.notify = (progress: {done: number, total: number}) => {
+        console.log('upload progress', progress);
+        media.progress.percent = Math.max(1, Math.floor(100 * progress.done / progress.total));
+        appImManager.setTyping({_: actionName, progress: media.progress.percent | 0});
+        preloader.setProgress(media.progress.percent); // lol, nice
+        $rootScope.$broadcast('history_update', {peerID: peerID});
+      };
+
+      await uploadPromise.then((inputFile) => {
+        console.log('appMessagesManager: sendAlbum file uploaded:', inputFile);
+
+        let inputMedia: any;
+        let details = options.sendFileDetails[i];
+        if(details.duration) {
+          inputMedia = {
+            _: 'inputMediaUploadedDocument',
+            flags: 0,
+            file: inputFile,
+            mime_type: file.type,
+            attributes: [{
+              _: 'documentAttributeVideo',
+              flags: 2,
+              supports_streaming: true,
+              duration: details.duration,
+              w: details.width,
+              h: details.height
+            }]
+          };
+        } else {
+          inputMedia = {
+            _: 'inputMediaUploadedPhoto', 
+            flags: 0, 
+            file: inputFile
+          };
+        }
+
+        return apiManager.invokeApi('messages.uploadMedia', {
+          peer: inputPeer,
+          media: inputMedia
+        }).then(messageMedia => {
+          let inputMedia: any;
+          if(messageMedia.photo) {
+            let photo = messageMedia.photo;
+            appPhotosManager.savePhoto(photo);
+            inputMedia = appPhotosManager.getInputByID(photo.id);
+          } else {
+            let doc = messageMedia.document;
+            appDocsManager.saveDoc(doc);
+            inputMedia = appDocsManager.getInputByID(doc.id);
+          }
+
+          inputs.push({
+            _: 'inputSingleMedia',
+            flags: 0,
+            media: inputMedia,
+            random_id: message.randomID,
+            message: caption,
+            entities: []
+          });
+
+          caption = ''; // only 1 caption for all inputs
+        }, () => {
+          toggleError(message, true);
+        });
+      }, () => {
+        toggleError(message, true);
+      });
+
+      console.log('appMessagesManager: sendAlbum uploadPromise.finally!');
+      deferred.resolve();
+      preloader.detach();
+    }
+
+    uploaded = true;
+    invoke(inputs);
   }
 
   public cancelPendingMessage(randomID: string) {
@@ -2273,6 +2564,7 @@ export class AppMessagesManager {
       case 'updateMessageID': {
         var randomID = update.random_id;
         var pendingData = this.pendingByRandomID[randomID];
+        console.log('AMM updateMessageID:', update, pendingData);
         if(pendingData) {
           var peerID: number = pendingData[0];
           var tempID = pendingData[1];

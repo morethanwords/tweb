@@ -17,15 +17,14 @@ import appSidebarLeft from "./appSidebarLeft";
 import appChatsManager from "./appChatsManager";
 import appMessagesIDsManager from "./appMessagesIDsManager";
 import apiUpdatesManager from './apiUpdatesManager';
-import { wrapDocument, wrapPhoto, wrapVideo, wrapSticker, wrapReply, MTPhotoSize } from '../../components/wrappers';
+import { wrapDocument, wrapPhoto, wrapVideo, wrapSticker, wrapReply, wrapAlbum } from '../../components/wrappers';
 import ProgressivePreloader from '../../components/preloader';
-import { openBtnMenu, renderImageFromUrl, formatPhoneNumber } from '../../components/misc';
+import { openBtnMenu, formatPhoneNumber } from '../../components/misc';
 import { ChatInput } from '../../components/chatInput';
 import Scrollable from '../../components/scrollable';
 import BubbleGroups from '../../components/bubbleGroups';
 import LazyLoadQueue from '../../components/lazyLoadQueue';
 import appDocsManager from './appDocsManager';
-import { Layouter, RectPart } from '../../components/groupedLayout';
 
 console.log('appImManager included!');
 
@@ -192,7 +191,27 @@ export class AppImManager {
     $rootScope.$on('message_sent', (e: CustomEvent) => {
       let {tempID, mid} = e.detail;
       
-      ////this.log('message_sent', e.detail);
+      this.log('message_sent', e.detail);
+
+      // set cached url to media
+      let message = appMessagesManager.getMessage(mid);
+      if(message.media) {
+        if(message.media.photo) {
+          let photo = appPhotosManager.getPhoto(tempID);
+          if(photo) {
+            let newPhoto = message.media.photo;
+            newPhoto.downloaded = photo.downloaded;
+            newPhoto.url = photo.url;
+          }
+        } else if(message.media.document) {
+          let doc = appDocsManager.getDoc(tempID);
+          if(doc && doc.type && doc.type != 'sticker') {
+            let newDoc = message.media.document;
+            newDoc.downloaded = doc.downloaded;
+            newDoc.url = doc.url;
+          }
+        }
+      }
       
       let bubble = this.bubbles[tempID];
       if(bubble) {
@@ -200,26 +219,15 @@ export class AppImManager {
         
         /////this.log('message_sent', bubble);
 
-        // set cached url to media
-        let message = appMessagesManager.getMessage(mid);
-        if(message.media) {
-          if(message.media.photo) {
-            let photo = appPhotosManager.getPhoto(tempID);
-            if(photo) {
-              let newPhoto = message.media.photo;
-              newPhoto.downloaded = photo.downloaded;
-              newPhoto.url = photo.url;
-            }
-          } else if(message.media.document) {
-            let doc = appDocsManager.getDoc(tempID);
-            if(doc && doc.type && doc.type != 'sticker') {
-              let newDoc = message.media.document;
-              newDoc.downloaded = doc.downloaded;
-              newDoc.url = doc.url;
-            }
-          }
+        // set new mids to album items for mediaViewer
+        if(message.grouped_id) {
+          let items = bubble.querySelectorAll('.album-item');
+          let groupIDs = Object.keys(appMessagesManager.groupedMessagesStorage[message.grouped_id]).map(i => +i).sort((a, b) => a - b);
+          (Array.from(items) as HTMLElement[]).forEach((item, idx) => {
+            item.dataset.mid = '' + groupIDs[idx];
+          });
         }
-        
+
         bubble.classList.remove('is-sending');
         bubble.classList.add('is-sent');
         bubble.dataset.mid = mid;
@@ -243,11 +251,16 @@ export class AppImManager {
       let {peerID, mid, id, justMedia} = e.detail;
       
       if(peerID != this.peerID) return;
+      let message = appMessagesManager.getMessage(mid);
       
       let bubble = this.bubbles[mid];
+      if(!bubble && message.grouped_id) {
+        let a = this.getAlbumBubble(message.grouped_id);
+        bubble = a.bubble;
+        message = a.message;
+      }
       if(!bubble) return;
       
-      let message = appMessagesManager.getMessage(mid);
       this.renderMessage(message, true, false, bubble, false);
     });
     
@@ -319,8 +332,51 @@ export class AppImManager {
       } catch(err) {}
       
       if(!bubble) return;
+
+      if((target.tagName == 'IMG' && !target.classList.contains('emoji') && !target.parentElement.classList.contains('user-avatar')) 
+        || target.tagName == 'image' 
+        || target.classList.contains('album-item')
+        || (target.tagName == 'VIDEO' && !bubble.classList.contains('round'))) {
+        let messageID = +findUpClassName(target, 'album-item')?.dataset.mid || +bubble.dataset.mid;
+        let message = appMessagesManager.getMessage(messageID);
+        if(!message) {
+          this.log.warn('no message by messageID:', messageID);
+          return;
+        }
+
+        let targets: {element: HTMLElement, mid: number}[] = [];
+        let ids = Object.keys(this.bubbles).map(k => +k).filter(id => {
+          //if(!this.scrollable.visibleElements.find(e => e.element == this.bubbles[id])) return false;
+  
+          let message = appMessagesManager.getMessage(id);
+          
+          return message.media && (message.media.photo || (message.media.document && (message.media.document.type == 'video' || message.media.document.type == 'gif')) || (message.media.webpage && (message.media.webpage.document || message.media.webpage.photo)));
+        }).sort((a, b) => a - b);
+
+        ids.forEach(id => {
+          let bubble = this.bubbles[id];
+
+          let elements = this.bubbles[id].querySelectorAll('.attachment img, .preview img, video, .bubble__media-container') as NodeListOf<HTMLElement>;
+          Array.from(elements).forEach((element: HTMLElement) => {
+            let albumItem = findUpClassName(element, 'album-item');
+            targets.push({
+              element,
+              mid: +albumItem?.dataset.mid || id
+            });
+          });
+        });
+
+        let idx = targets.findIndex(t => t.mid == messageID);
+
+        this.log('open mediaViewer single with ids:', ids, idx, targets);
+
+        appMediaViewer.openMedia(message, targets[idx].element, true, 
+          this.scroll.parentElement, targets.slice(0, idx), targets.slice(idx + 1)/* , !message.grouped_id */);
+        
+        //appMediaViewer.openMedia(message, target as HTMLImageElement);
+      }
       
-      if(['IMG', 'VIDEO', 'SVG', 'DIV', 'image'].indexOf(target.tagName) === -1) target = findUpTag(target, 'DIV');
+      if(['IMG', 'DIV'].indexOf(target.tagName) === -1) target = findUpTag(target, 'DIV');
       
       if(target.tagName == 'DIV') {
         if(target.classList.contains('forward')) {
@@ -351,49 +407,12 @@ export class AppImManager {
           let originalMessageID = +bubble.getAttribute('data-original-mid');
           this.setPeer(this.peerID, originalMessageID);
         }
-      } else if(bubble.classList.contains('round')) {
-        
       } else if(target.tagName == 'IMG' && target.parentElement.classList.contains('user-avatar')) {
         let peerID = +target.parentElement.dataset.peerID;
         
         if(!isNaN(peerID)) {
           this.setPeer(peerID);
         }
-      } else if((target.tagName == 'IMG' && !target.classList.contains('emoji')) || target.tagName == 'image' || target.tagName == 'VIDEO') {
-        let messageID = 0;
-        for(let mid in this.bubbles) {
-          if(this.bubbles[mid] == bubble) {
-            messageID = +mid;
-            break;
-          }
-        }
-        let message = appMessagesManager.getMessage(messageID);
-        if(!message) {
-          this.log.warn('no message by messageID:', messageID);
-          return;
-        }
-        
-        let ids = Object.keys(this.bubbles).map(k => +k).filter(id => {
-          //if(!this.scrollable.visibleElements.find(e => e.element == this.bubbles[id])) return false;
-
-          let message = appMessagesManager.getMessage(id);
-          
-          return message.media && (message.media.photo || (message.media.document && (message.media.document.type == 'video' || message.media.document.type == 'gif')) || (message.media.webpage && (message.media.webpage.document || message.media.webpage.photo)));
-        }).sort((a, b) => a - b);
-        let idx = ids.findIndex(i => i == messageID);
-
-        let targets = ids.map(id => ({
-          //element: (this.bubbles[id].querySelector('img, video') || this.bubbles[id].querySelector('image')) as HTMLElement, 
-          element: this.bubbles[id].querySelector('.attachment img, .preview img, video, .bubble__media-container, .album-item') as HTMLElement,
-          mid: id
-        }));
-        
-        this.log('open mediaViewer with ids:', ids, idx, targets);
-        
-        appMediaViewer.openMedia(message, targets[idx].element, true, 
-          this.scroll.parentElement, targets.slice(0, idx), targets.slice(idx + 1));
-        
-        //appMediaViewer.openMedia(message, target as HTMLImageElement);
       }
       
       //console.log('chatInner click', e);
@@ -654,6 +673,19 @@ export class AppImManager {
     
     appUsersManager.setUserStatus(this.myID, this.offline);
     return apiManager.invokeApi('account.updateStatus', {offline: this.offline});
+  }
+
+  public getAlbumBubble(groupID: string) {
+    let group = appMessagesManager.groupedMessagesStorage[groupID];
+    for(let i in group) {
+      let mid = +i;
+      if(this.bubbles[mid]) return {
+        bubble: this.bubbles[mid], 
+        message: appMessagesManager.getMessage(mid)
+      };
+    }
+
+    return null;
   }
 
   public loadMoreHistory(top: boolean) {
@@ -1294,14 +1326,38 @@ export class AppImManager {
     let timeInner = document.createElement('div');
     timeInner.classList.add('inner', 'tgico');
     timeInner.innerHTML = time;
+
+    let messageMessage: string, totalEntities: any[];
+    if(message.grouped_id) {
+      let group = appMessagesManager.groupedMessagesStorage[message.grouped_id];
+      let foundMessages = 0;
+      for(let i in group) {
+        let m = group[i];
+        if(m.message) {
+          if(++foundMessages > 1) break;
+          messageMessage = m.message;
+          totalEntities = m.totalEntities;
+        }  
+      }
+
+      if(foundMessages > 1) {
+        messageMessage = undefined;
+        totalEntities = undefined;
+      }
+    }
     
-    let richText = RichTextProcessor.wrapRichText(message.message, {
-      entities: message.totalEntities
+    if(!messageMessage && !totalEntities) {
+      messageMessage = message.message;
+      totalEntities = message.totalEntities;
+    }
+    
+    let richText = RichTextProcessor.wrapRichText(messageMessage, {
+      entities: totalEntities
     });
     
-    if(message.totalEntities) {
-      let emojiEntities = message.totalEntities.filter((e: any) => e._ == 'messageEntityEmoji');
-      let strLength = message.message.length;
+    if(totalEntities) {
+      let emojiEntities = totalEntities.filter((e: any) => e._ == 'messageEntityEmoji');
+      let strLength = messageMessage.length;
       let emojiStrLength = emojiEntities.reduce((acc: number, curr: any) => acc + curr.length, 0);
       
       if(emojiStrLength == strLength && emojiEntities.length <= 3) {
@@ -1348,23 +1404,37 @@ export class AppImManager {
       let attachmentDiv = document.createElement('div');
       attachmentDiv.classList.add('attachment');
       
-      if(!message.message) {
+      if(!messageMessage) {
         bubble.classList.add('is-message-empty');
       }
       
       let processingWebPage = false;
+      
       switch(message.media._) {
         case 'messageMediaPending': {
           let pending = message.media;
           let preloader = pending.preloader as ProgressivePreloader;
           
           switch(pending.type) {
+            case 'album': {
+              this.log('will wrap pending album');
+
+              bubble.classList.add('hide-name', 'photo', 'is-album');
+              wrapAlbum({
+                groupID: '' + message.id, 
+                attachmentDiv,
+                uploading: true,
+                isOut: true
+              });
+
+              break;
+            }
+
             case 'photo': {
               //if(pending.size < 5e6) {
                 this.log('will wrap pending photo:', pending, message, appPhotosManager.getPhoto(message.id));
                 wrapPhoto(message.id, message, attachmentDiv, undefined, undefined, true, true, this.lazyLoadQueue, null);
 
-                preloader.attach(attachmentDiv, false);
                 bubble.classList.add('hide-name', 'photo');
               //}
 
@@ -1401,6 +1471,7 @@ export class AppImManager {
               preloader.attach(icoDiv, false);
               
               bubble.classList.remove('is-message-empty');
+              messageDiv.classList.add((pending.type || 'document') + '-message');
               messageDiv.append(docDiv);
               processingWebPage = true;
               break;
@@ -1416,105 +1487,18 @@ export class AppImManager {
           ////////this.log('messageMediaPhoto', photo);
           
           bubble.classList.add('hide-name', 'photo');
-
           if(message.grouped_id) {
             bubble.classList.add('is-album');
 
-            let items: {size: MTPhotoSize, media: any}[] = [];
-
-            // higher msgID will be the last in album
-            let storage = appMessagesManager.groupedMessagesStorage[message.grouped_id];
-            for(let mid in storage) {
-              let m = appMessagesManager.getMessage(+mid);
-              let media = m.media.photo || m.media.document;
-
-              let size = appPhotosManager.choosePhotoSize(media, 380, 380);
-              items.push({size, media});
-            }
-
-            let spacing = 2;
-            let layouter = new Layouter(items.map(i => ({w: i.size.w, h: i.size.h})), 451, 100, spacing);
-            let layout = layouter.layout();
-            this.log('layout:', layout);
-
-            /* let borderRadius = window.getComputedStyle(realParent).getPropertyValue('border-radius');
-            let brSplitted = fillPropertyValue(borderRadius); */
-
-            for(let {geometry, sides} of layout) {
-              let {size, media} = items.shift();
-              let div = document.createElement('div');
-              div.classList.add('album-item');
-
-              div.style.width = geometry.width + 'px';
-              div.style.height = geometry.height + 'px';
-              div.style.top = geometry.y + 'px';
-              div.style.left = geometry.x + 'px';
-
-              if(sides & RectPart.Right) {
-                attachmentDiv.style.width = geometry.width + geometry.x + 'px';
-              }
-
-              if(sides & RectPart.Bottom) {
-                attachmentDiv.style.height = geometry.height + geometry.y + 'px';
-              }
-
-              if(sides & RectPart.Left && sides & RectPart.Top) {
-                div.style.borderTopLeftRadius = 'inherit';
-              }
-
-              if(sides & RectPart.Left && sides & RectPart.Bottom) {
-                div.style.borderBottomLeftRadius = 'inherit';
-              }
-
-              if(sides & RectPart.Right && sides & RectPart.Top) {
-                div.style.borderTopRightRadius = 'inherit';
-              }
-
-              if(sides & RectPart.Right && sides & RectPart.Bottom) {
-                div.style.borderBottomRightRadius = 'inherit';
-              }
-
-              /* if(geometry.y != 0) {
-                div.style.marginTop = spacing + 'px';
-              }
-
-              if(geometry.x != 0) {
-                div.style.marginLeft = spacing + 'px';
-              } */
-
-              let preloader = new ProgressivePreloader(div);
-
-              let load = () => appPhotosManager.preloadPhoto(media._ == 'photo' ? media.id : media, size)
-              .then((blob) => {
-                if(this.peerID != peerID) {
-                  this.log.warn('peer changed');
-                  return;
-                }
-
-                preloader.detach();
-                if(media && media.url) {
-                  renderImageFromUrl(div, media.url);
-                }/*  else {
-                  let url = URL.createObjectURL(blob);
-                  this.urlsToRevoke.push(url);
-                  
-                  let img = new Image();
-                  img.src = url;
-                  img.onload = () => {
-                    div.style.backgroundImage = 'url(' + url + ')';
-                  };
-                } */
-                
-                //div.style.backgroundImage = 'url(' + url + ')';
-              });
-
-              load();
-
-              // @ts-ignore
-              //div.style.backgroundColor = '#' + Math.floor(Math.random() * (2 ** 24 - 1)).toString(16).padStart(6, '0');
-
-              attachmentDiv.append(div);
-            }
+            wrapAlbum({
+              groupID: message.grouped_id, 
+              attachmentDiv,
+              middleware: () => {
+                return this.peerID == peerID;
+              },
+              isOut: our,
+              lazyLoadQueue: this.lazyLoadQueue
+            });
           } else {
             wrapPhoto(photo.id, message, attachmentDiv, undefined, undefined, true, our, this.lazyLoadQueue, () => {
               return this.peerID == peerID;
@@ -1650,19 +1634,33 @@ export class AppImManager {
             }
             
             bubble.classList.add('hide-name', 'video');
-            wrapVideo({
-              doc, 
-              container: attachmentDiv, 
-              message, 
-              boxWidth: 380,
-              boxHeight: 380, 
-              withTail: doc.type != 'round', 
-              isOut: our,
-              lazyLoadQueue: this.lazyLoadQueue,
-              middleware: () => {
-                return this.peerID == peerID;
-              }
-            });
+            if(message.grouped_id) {
+              bubble.classList.add('is-album');
+  
+              wrapAlbum({
+                groupID: message.grouped_id, 
+                attachmentDiv,
+                middleware: () => {
+                  return this.peerID == peerID;
+                },
+                isOut: our,
+                lazyLoadQueue: this.lazyLoadQueue
+              });
+            } else {
+              wrapVideo({
+                doc, 
+                container: attachmentDiv, 
+                message, 
+                boxWidth: 380,
+                boxHeight: 380, 
+                withTail: doc.type != 'round', 
+                isOut: our,
+                lazyLoadQueue: this.lazyLoadQueue,
+                middleware: () => {
+                  return this.peerID == peerID;
+                }
+              });
+            }
             
             break;
           } else if(doc.mime_type == 'audio/ogg') {

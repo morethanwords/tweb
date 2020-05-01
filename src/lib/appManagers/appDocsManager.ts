@@ -144,6 +144,21 @@ class AppDocsManager {
   public getDoc(docID: any): MTDocument {
     return isObject(docID) ? docID : this.docs[docID];
   }
+
+  public getInputByID(docID: any) {
+    let doc = this.getDoc(docID);
+    return {
+      _: 'inputMediaDocument',
+      flags: 0,
+      id: {
+        _: 'inputDocument',
+        id: doc.id,
+        access_hash: doc.access_hash,
+        file_reference: doc.file_reference
+      },
+      ttl_seconds: 0
+    };
+  }
   
   public getFileName(doc: MTDocument) {
     if(doc.file_name) {

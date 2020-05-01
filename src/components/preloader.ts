@@ -4,7 +4,6 @@ import { CancellablePromise } from "../lib/polyfill";
 export default class ProgressivePreloader {
   public preloader: HTMLDivElement = null;
   private circle: SVGCircleElement = null;
-  private progress = 0;
   private promise: CancellablePromise<any> = null;
   private tempID = 0;
   private detached = true;
@@ -103,8 +102,6 @@ export default class ProgressivePreloader {
   }
   
   public setProgress(percents: number) {
-    this.progress = percents;
-    
     if(!isInDOM(this.circle)) {
       return;
     }

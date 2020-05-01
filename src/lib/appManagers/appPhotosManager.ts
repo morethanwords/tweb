@@ -315,6 +315,21 @@ export class AppPhotosManager {
     return isObject(photoID) ? photoID : this.photos[photoID];
   }
 
+  public getInputByID(photoID: any) {
+    let photo = this.getPhoto(photoID);
+    return {
+      _: 'inputMediaPhoto',
+      flags: 0,
+      id: {
+        _: 'inputPhoto',
+        id: photo.id,
+        access_hash: photo.access_hash,
+        file_reference: photo.file_reference
+      },
+      ttl_seconds: 0
+    };
+  }
+
   public downloadPhoto(photoID: string) {
     var photo = this.photos[photoID];
     var ext = 'jpg';

@@ -121,6 +121,7 @@ class ApiManagerProxy extends CryptoWorkerMethods {
     stopTime?: number,
     rawError?: any
   } = {}): Promise<any> {
+    console.log('will invokeApi:', method, params, options);
     return this.performTaskWorker('invokeApi', method, params, options);
   }
 

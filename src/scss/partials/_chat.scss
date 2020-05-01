@@ -589,6 +589,10 @@ $chat-max-width: 696px;
 						max-width: 100%;
 						cursor: pointer;
 						position: absolute;
+
+						img, video {
+							border-radius: inherit;
+						}
 					}
 				}
 			}
@@ -1132,8 +1136,8 @@ $chat-max-width: 696px;
 				}
 			}
 
-			.audio-subtitle, .contact-number {
-				color: #707579;
+			.audio-subtitle, .contact-number, .audio-time {
+				color: #707579 !important;
 			}
 		}
 		
@@ -1375,6 +1379,16 @@ $chat-max-width: 696px;
 		#attach-file {
 			&.menu-open {
 				color: $blue;
+			}
+
+			.btn-menu {
+				padding: 8px 0;
+				right: -8px;
+    		bottom: calc(100% + 16px);
+				
+				> div {
+					padding: 0 38px 0 16px;
+				}
 			}
 		}
 		

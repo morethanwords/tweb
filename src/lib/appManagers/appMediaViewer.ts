@@ -56,6 +56,7 @@ export class AppMediaViewer {
   private loadedAllMediaDown = false;
 
   private reverse = false; // reverse means next = higher msgid
+  private needLoadMore = true;
   
   constructor() {
     this.log = logger('AMV');
@@ -517,7 +518,7 @@ export class AppMediaViewer {
   }
   
   public openMedia(message: any, target?: HTMLElement, reverse = false, targetContainer?: HTMLElement, 
-    prevTargets: AppMediaViewer['prevTargets'] = [], nextTargets: AppMediaViewer['prevTargets'] = [], loadMore: () => void = null) {
+    prevTargets: AppMediaViewer['prevTargets'] = [], nextTargets: AppMediaViewer['prevTargets'] = [], needLoadMore = true) {
     ////////this.log('openMedia doc:', message, prevTarget, nextTarget);
     let media = message.media.photo || message.media.document || message.media.webpage.document || message.media.webpage.photo;
     
@@ -530,6 +531,7 @@ export class AppMediaViewer {
       this.prevTargets = prevTargets;
       this.nextTargets = nextTargets;
       this.reverse = reverse;
+      this.needLoadMore = needLoadMore;
       //this.loadMore = loadMore;
     }
 
@@ -557,12 +559,14 @@ export class AppMediaViewer {
     this.currentMessageID = message.mid;
     this.lastTarget = target;
 
-    if(this.nextTargets.length < 20) {
-      this.loadMoreMedia(!this.reverse);
-    }
-
-    if(this.prevTargets.length < 20) {
-      this.loadMoreMedia(this.reverse);
+    if(this.needLoadMore) {
+      if(this.nextTargets.length < 20) {
+        this.loadMoreMedia(!this.reverse);
+      }
+  
+      if(this.prevTargets.length < 20) {
+        this.loadMoreMedia(this.reverse);
+      }
     }
     
     if(container.firstElementChild) {

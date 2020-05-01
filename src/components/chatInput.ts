@@ -5,11 +5,12 @@ import { RichTextProcessor } from "../lib/richtextprocessor";
 import apiManager from "../lib/mtproto/mtprotoworker";
 import appWebPagesManager from "../lib/appManagers/appWebPagesManager";
 import appImManager from "../lib/appManagers/appImManager";
-import { calcImageInBox, getRichValue } from "../lib/utils";
+import { getRichValue, calcImageInBox } from "../lib/utils";
 import { wrapDocument, wrapReply } from "./wrappers";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import initEmoticonsDropdown, { EMOTICONSSTICKERGROUP } from "./emoticonsDropdown";
 import lottieLoader from "../lib/lottieLoader";
+import { Layouter, RectPart } from "./groupedLayout";
 
 export class ChatInput {
   public pageEl = document.querySelector('.page-chats') as HTMLDivElement;
@@ -187,108 +188,178 @@ export class ChatInput {
     });
 
     let attachFile = (file: File) => {
-      willAttach.file = file;
-      delete willAttach.objectURL;
-      delete willAttach.duration;
-      delete willAttach.width;
-      delete willAttach.height;
+      return new Promise<HTMLDivElement>((resolve, reject) => {
+        let params: SendFileParams = {};
+        params.file = file;
+        console.log('selected file:', file, typeof(file), willAttach);
+        let itemDiv = document.createElement('div');
+        switch(willAttach.type) {
+          case 'media': {
+            let isVideo = file.type.indexOf('video/') === 0;
+
+            itemDiv.classList.add('popup-item-media');
   
+            if(isVideo) {
+              let video = document.createElement('video');
+              let source = document.createElement('source');
+              source.src = params.objectURL = URL.createObjectURL(file);
+              video.autoplay = false;
+              video.controls = false;
+  
+              video.onloadeddata = () => {
+                params.width = video.videoWidth;
+                params.height = video.videoHeight;
+                params.duration = Math.floor(video.duration);
+
+                itemDiv.append(video);
+                resolve(itemDiv);
+              };
+  
+              video.append(source);
+            } else {
+              let img = new Image();
+              img.src = params.objectURL = URL.createObjectURL(file);
+              img.onload = () => {
+                params.width = img.naturalWidth;
+                params.height = img.naturalHeight;
+
+                itemDiv.append(img);
+                resolve(itemDiv);
+              };
+            }
+            
+            break;
+          }
+  
+          case 'document': {
+            let docDiv = wrapDocument({
+              file: file,
+              file_name: file.name || '',
+              size: file.size,
+              type: file.type.indexOf('image/') !== -1 ? 'photo' : 'doc'
+            } as any, false, true);
+
+            itemDiv.append(docDiv);
+            resolve(itemDiv);
+            break;
+          }
+        }
+  
+        willAttach.sendFileDetails.push(params);
+      });
+    };
+
+    let attachFiles = (files: File[]) => {
       this.fileInput.value = '';
+
+      let container = this.attachMediaPopUp.container.firstElementChild as HTMLElement;
+      container.classList.remove('is-media', 'is-document', 'is-album');
 
       this.attachMediaPopUp.captionInput.value = '';
       this.attachMediaPopUp.mediaContainer.innerHTML = '';
-      this.attachMediaPopUp.mediaContainer.style.width = '';
-      this.attachMediaPopUp.mediaContainer.style.height = '';
-      this.attachMediaPopUp.mediaContainer.classList.remove('is-document');
+      this.attachMediaPopUp.mediaContainer.style.width = this.attachMediaPopUp.mediaContainer.style.height = '';
+      //willAttach.sendFileDetails.length = 0;
+      willAttach.sendFileDetails = []; // need new array
 
-      if(willAttach.type == 'media' && !['image/', 'video/'].find(s => file.type.indexOf(s) === 0)) {
-        willAttach.type = 'document';
-      }
+      files = files.filter(file => {
+        if(willAttach.type == 'media') {
+          return ['image/', 'video/'].find(s => file.type.indexOf(s) === 0);
+        } else {
+          return true;
+        }
+      });
 
-      console.log('selected file:', file, typeof(file), willAttach);
+      if(files.length) {
+        if(willAttach.type == 'document') {
+          this.attachMediaPopUp.titleEl.innerText = 'Send ' + (files.length > 1 ? files.length + ' Files' : 'File');
+          container.classList.add('is-document');
+        } else {
+          container.classList.add('is-media');
 
-      switch(willAttach.type) {
-        case 'media': {
-          let isVideo = file.type.indexOf('video/') === 0;
-
-          if(isVideo) {
-            let video = document.createElement('video');
-            let source = document.createElement('source');
-            source.src = willAttach.objectURL = URL.createObjectURL(file);
-            video.autoplay = false;
-            video.controls = false;
-
-            video.onloadeddata = () => {
-              willAttach.width = video.videoWidth;
-              willAttach.height = video.videoHeight;
-              willAttach.duration = Math.floor(video.duration);
-  
-              let {w, h} = calcImageInBox(willAttach.width, willAttach.height, 378, 256);
-              this.attachMediaPopUp.mediaContainer.style.width = w + 'px';
-              this.attachMediaPopUp.mediaContainer.style.height = h + 'px';
-              this.attachMediaPopUp.mediaContainer.append(video);
-              this.attachMediaPopUp.container.classList.add('active');
-            };
-
-            video.append(source);
-  
-            this.attachMediaPopUp.titleEl.innerText = 'Send Video';
-          } else {
-            let img = new Image();
-            img.src = willAttach.objectURL = URL.createObjectURL(file);
-            img.onload = () => {
-              willAttach.width = img.naturalWidth;
-              willAttach.height = img.naturalHeight;
-  
-              let {w, h} = calcImageInBox(willAttach.width, willAttach.height, 378, 256);
-              this.attachMediaPopUp.mediaContainer.style.width = w + 'px';
-              this.attachMediaPopUp.mediaContainer.style.height = h + 'px';
-              this.attachMediaPopUp.mediaContainer.append(img);
-              this.attachMediaPopUp.container.classList.add('active');
-            };
-  
-            this.attachMediaPopUp.titleEl.innerText = 'Send Photo';
-          }
+          let foundPhotos = 0;
+          let foundVideos = 0;
+          files.forEach(file => {
+            if(file.type.indexOf('image/') === 0) ++foundPhotos;
+            else if(file.type.indexOf('video/') === 0) ++foundVideos;
+          });
           
-          break;
-        }
-
-        case 'document': {
-          let docDiv = wrapDocument({
-            file: file,
-            file_name: file.name || '',
-            size: file.size,
-            type: file.type.indexOf('image/') !== -1 ? 'photo' : 'doc'
-          } as any, false, true);
-
-          this.attachMediaPopUp.titleEl.innerText = 'Send File';
-
-          this.attachMediaPopUp.mediaContainer.append(docDiv);
-          this.attachMediaPopUp.mediaContainer.classList.add('is-document');
-          this.attachMediaPopUp.container.classList.add('active');
-          break;
+          if(foundPhotos && foundVideos) {
+            this.attachMediaPopUp.titleEl.innerText = 'Send Album';
+          } else if(foundPhotos) {
+            this.attachMediaPopUp.titleEl.innerText = 'Send ' + (foundPhotos > 1 ? foundPhotos + ' Photos' : 'Photo');
+          } else if(foundVideos) {
+            this.attachMediaPopUp.titleEl.innerText = 'Send ' + (foundVideos > 1 ? foundVideos + ' Videos' : 'Video');
+          }
         }
       }
+
+      Promise.all(files.map(attachFile)).then(results => {
+        if(willAttach.type == 'media') {
+          if(willAttach.sendFileDetails.length > 1) {
+            container.classList.add('is-album');
+
+            let layouter = new Layouter(willAttach.sendFileDetails.map(o => ({w: o.width, h: o.height})), 380, 100, 4);
+            let layout = layouter.layout();
+
+            for(let {geometry, sides} of layout) {
+              let div = results.shift();
+
+              div.style.width = geometry.width + 'px';
+              div.style.height = geometry.height + 'px';
+              div.style.top = geometry.y + 'px';
+              div.style.left = geometry.x + 'px';
+
+              if(sides & RectPart.Right) {
+                this.attachMediaPopUp.mediaContainer.style.width = geometry.width + geometry.x + 'px';
+              }
+
+              if(sides & RectPart.Bottom) {
+                this.attachMediaPopUp.mediaContainer.style.height = geometry.height + geometry.y + 'px';
+              }
+
+              this.attachMediaPopUp.mediaContainer.append(div);
+            }
+
+            console.log('chatInput album layout:', layout);
+          } else {
+            let params = willAttach.sendFileDetails[0];
+            let div = results[0];
+            let {w, h} = calcImageInBox(params.width, params.height, 380, 320);
+            div.style.width = w + 'px';
+            div.style.height = h + 'px';
+            this.attachMediaPopUp.mediaContainer.append(div);
+          }
+        } else {
+          this.attachMediaPopUp.mediaContainer.append(...results);
+        }
+
+        this.attachMediaPopUp.container.classList.add('active');
+      });
     };
 
-    let willAttach: Partial<{
-      type: 'media' | 'document',
-      isMedia: boolean,
+    type SendFileParams = Partial<{
       file: File,
-      caption: string,
       objectURL: string,
       width: number,
       height: number,
       duration: number
-    }> = {};
+    }>;
+
+    let willAttach: Partial<{
+      type: 'media' | 'document',
+      isMedia: boolean,
+      sendFileDetails: SendFileParams[]
+    }> = {
+      sendFileDetails: []
+    };
 
     this.fileInput.addEventListener('change', (e) => {
-      var file = (e.target as HTMLInputElement & EventTarget).files[0];
-      if(!file) {
+      let files = (e.target as HTMLInputElement & EventTarget).files;
+      if(!files.length) {
         return;
       }
       
-      attachFile(file);
+      attachFiles(Array.from(files));
     }, false);
 
     this.attachMenu.media.addEventListener('click', () => {
@@ -329,10 +400,43 @@ export class ChatInput {
 
     this.attachMediaPopUp.sendBtn.addEventListener('click', () => {
       this.attachMediaPopUp.container.classList.remove('active');
-      willAttach.caption = this.attachMediaPopUp.captionInput.value;
+      let caption = this.attachMediaPopUp.captionInput.value;
       willAttach.isMedia = willAttach.type == 'media';
 
-      appMessagesManager.sendFile(appImManager.peerID, willAttach.file, willAttach);
+      console.log('will send files with options:', willAttach);
+
+      let peerID = appImManager.peerID;
+
+      if(willAttach.sendFileDetails.length > 1 && willAttach.isMedia) {
+        appMessagesManager.sendAlbum(peerID, willAttach.sendFileDetails.map(d => d.file), Object.assign({
+          caption,
+          replyToMsgID: this.replyToMsgID
+        }, willAttach));
+      } else {
+        if(caption) {
+          if(willAttach.sendFileDetails.length > 1) {
+            appMessagesManager.sendText(peerID, caption, {replyToMsgID: this.replyToMsgID});
+            caption = '';
+            this.replyToMsgID = 0;
+          }
+        }
+  
+        let promises = willAttach.sendFileDetails.map(params => {
+          let promise = appMessagesManager.sendFile(peerID, params.file, Object.assign({
+            isMedia: willAttach.isMedia, 
+            caption,
+            replyToMsgID: this.replyToMsgID
+          }, params));
+
+          caption = '';
+          this.replyToMsgID = 0;
+          return promise;
+        });
+      }
+
+      //Promise.all(promises);
+
+      //appMessagesManager.sendFile(appImManager.peerID, willAttach.file, willAttach);
       
       this.onMessageSent();
     });

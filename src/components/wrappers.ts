@@ -1,4 +1,4 @@
-import appPhotosManager from '../lib/appManagers/appPhotosManager';
+import appPhotosManager, { MTPhoto } from '../lib/appManagers/appPhotosManager';
 //import CryptoWorker from '../lib/crypto/cryptoworker';
 import apiManager from '../lib/mtproto/mtprotoworker';
 import LottieLoader from '../lib/lottieLoader';
@@ -13,6 +13,8 @@ import VideoPlayer, { MediaProgressLine } from '../lib/mediaPlayer';
 import { RichTextProcessor } from '../lib/richtextprocessor';
 import { CancellablePromise } from '../lib/polyfill';
 import { renderImageFromUrl } from './misc';
+import appMessagesManager from '../lib/appManagers/appMessagesManager';
+import { Layouter, RectPart } from './groupedLayout';
 
 export type MTDocument = {
   _: 'document' | 'documentEmpty',
@@ -75,6 +77,17 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
 
   if(withTail) {
     img = wrapMediaWithTail(doc, message, container, boxWidth, boxHeight, isOut);
+  } else if(!boxWidth && !boxHeight) { // album
+    let sizes = doc.thumbs;
+    if(!doc.downloaded && sizes && sizes[0].bytes) {
+      appPhotosManager.setAttachmentPreview(sizes[0].bytes, container, false);
+    }
+
+    img = container.firstElementChild as HTMLImageElement || new Image();
+
+    if(!container.contains(img)) {
+      container.append(img);
+    }
   } else {
     if(!container.firstElementChild || (container.firstElementChild.tagName != 'IMG' && container.firstElementChild.tagName != 'VIDEO')) {
       let size = appPhotosManager.setAttachmentSize(doc, container, boxWidth, boxHeight);
@@ -106,7 +119,9 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   let loadVideo = () => {
     let promise = appDocsManager.downloadDoc(doc);
 
-    if(!doc.downloaded) {
+    if(message.media.preloader) { // means upload
+      message.media.preloader.attach(container);
+    } else if(!doc.downloaded) {
       let preloader = new ProgressivePreloader(container, true);
       preloader.attach(container, true, promise);
     }
@@ -600,14 +615,24 @@ function wrapMediaWithTail(photo: any, message: {mid: number, message: string}, 
   return image;
 }
 
-export function wrapPhoto(photoID: string, message: any, container: HTMLDivElement, boxWidth = 380, boxHeight = 380, withTail = true, isOut = false, lazyLoadQueue: LazyLoadQueue, middleware: () => boolean) {
+export function wrapPhoto(photoID: string, message: any, container: HTMLDivElement, boxWidth = 380, boxHeight = 380, withTail = true, isOut = false, lazyLoadQueue: LazyLoadQueue, middleware: () => boolean, size: MTPhotoSize = null) {
   let photo = appPhotosManager.getPhoto(photoID);
 
-  let size: MTPhotoSize;
   let image: SVGImageElement | HTMLImageElement;
   if(withTail) {
     image = wrapMediaWithTail(photo, message, container, boxWidth, boxHeight, isOut);
-  } else { // means webpage's preview
+  } else if(size) { // album
+    let sizes = photo.sizes;
+    if(!photo.downloaded && sizes && sizes[0].bytes) {
+      appPhotosManager.setAttachmentPreview(sizes[0].bytes, container, false);
+    }
+
+    image = container.firstElementChild as HTMLImageElement || new Image();
+
+    if(!container.contains(image)) {
+      container.appendChild(image);
+    }
+  } else if(boxWidth && boxHeight) { // means webpage's preview
     size = appPhotosManager.setAttachmentSize(photoID, container, boxWidth, boxHeight, false);
     
     image = container.firstElementChild as HTMLImageElement || new Image();
@@ -626,7 +651,12 @@ export function wrapPhoto(photoID: string, message: any, container: HTMLDivEleme
   } */
 
   let preloader: ProgressivePreloader;
-  if(!photo.downloaded) preloader = new ProgressivePreloader(container, false);
+  if(message.media.preloader) { // means upload
+    message.media.preloader.attach(container);
+  } else if(!photo.downloaded) {
+    preloader = new ProgressivePreloader(container, false);
+  }
+
   let load = () => {
     let promise = appPhotosManager.preloadPhoto(photoID, size);
     
@@ -637,7 +667,7 @@ export function wrapPhoto(photoID: string, message: any, container: HTMLDivEleme
     return promise.then(() => {
       if(middleware && !middleware()) return;
 
-      renderImageFromUrl(image, photo.url);
+      renderImageFromUrl(image || container, photo.url);
     });
   };
   
@@ -853,4 +883,129 @@ export function wrapReply(title: string, subtitle: string, media?: any) {
   /////////console.log('wrapReply', title, subtitle, media);
   
   return div;
+}
+
+export function wrapAlbum({groupID, attachmentDiv, middleware, uploading, lazyLoadQueue, isOut}: {
+  groupID: string, 
+  attachmentDiv: HTMLElement,
+  middleware?: () => boolean,
+  lazyLoadQueue?: LazyLoadQueue,
+  uploading?: boolean,
+  isOut: boolean
+}) {
+  let items: {size: MTPhotoSize, media: any, message: any}[] = [];
+
+  // higher msgID will be the last in album
+  let storage = appMessagesManager.groupedMessagesStorage[groupID];
+  for(let mid in storage) {
+    let m = appMessagesManager.getMessage(+mid);
+    let media = m.media.photo || m.media.document;
+
+    let size: any = media._ == 'photo' ? appPhotosManager.choosePhotoSize(media, 380, 380) : {w: media.w, h: media.h};
+    items.push({size, media, message: m});
+  }
+
+  let spacing = 2;
+  let layouter = new Layouter(items.map(i => ({w: i.size.w, h: i.size.h})), 451, 100, spacing);
+  let layout = layouter.layout();
+  console.log('layout:', layout, items.map(i => ({w: i.size.w, h: i.size.h})));
+
+  /* let borderRadius = window.getComputedStyle(realParent).getPropertyValue('border-radius');
+  let brSplitted = fillPropertyValue(borderRadius); */
+
+  for(let {geometry, sides} of layout) {
+    let {size, media, message} = items.shift();
+    let div = document.createElement('div');
+    div.classList.add('album-item');
+    div.dataset.mid = message.mid;
+
+    div.style.width = geometry.width + 'px';
+    div.style.height = geometry.height + 'px';
+    div.style.top = geometry.y + 'px';
+    div.style.left = geometry.x + 'px';
+
+    if(sides & RectPart.Right) {
+      attachmentDiv.style.width = geometry.width + geometry.x + 'px';
+    }
+
+    if(sides & RectPart.Bottom) {
+      attachmentDiv.style.height = geometry.height + geometry.y + 'px';
+    }
+
+    if(sides & RectPart.Left && sides & RectPart.Top) {
+      div.style.borderTopLeftRadius = 'inherit';
+    }
+
+    if(sides & RectPart.Left && sides & RectPart.Bottom) {
+      div.style.borderBottomLeftRadius = 'inherit';
+    }
+
+    if(sides & RectPart.Right && sides & RectPart.Top) {
+      div.style.borderTopRightRadius = 'inherit';
+    }
+
+    if(sides & RectPart.Right && sides & RectPart.Bottom) {
+      div.style.borderBottomRightRadius = 'inherit';
+    }
+
+    if(media._ == 'photo') {
+      wrapPhoto(
+        media.id,
+        message,
+        div,
+        0,
+        0,
+        false,
+        isOut,
+        lazyLoadQueue,
+        middleware,
+        size
+      );
+    } else {
+      wrapVideo({
+        doc: message.media.document,
+        container: div,
+        message,
+        boxWidth: 0,
+        boxHeight: 0,
+        withTail: false,
+        isOut,
+        lazyLoadQueue,
+        middleware
+      });
+    }
+
+    /* let load = () => appPhotosManager.preloadPhoto(media._ == 'photo' ? media.id : media, size)
+    .then((blob) => {
+      if(middleware && !middleware()) {
+        console.warn('peer changed');
+        return;
+      }
+
+      if(!uploading) {
+        preloader.detach();
+      }
+      
+      if(media && media.url) {
+        renderImageFromUrl(div, media.url);
+      } else {
+        let url = URL.createObjectURL(blob);
+        
+        let img = new Image();
+        img.src = url;
+        img.onload = () => {
+          div.style.backgroundImage = 'url(' + url + ')';
+        };
+      }
+      
+      //div.style.backgroundImage = 'url(' + url + ')';
+    });
+
+    load(); */
+
+    // @ts-ignore
+    //div.style.backgroundColor = '#' + Math.floor(Math.random() * (2 ** 24 - 1)).toString(16).padStart(6, '0');
+
+    attachmentDiv.append(div);
+  }
 }

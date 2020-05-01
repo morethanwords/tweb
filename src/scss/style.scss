@@ -43,6 +43,10 @@ $large-screen: 1680px;
 @import "partials/emojiDropdown";
 @import "partials/scrollable";
 
+@import "partials/popups/popup";
+@import "partials/popups/editAvatar";
+@import "partials/popups/mediaAttacher";
+
 html, body {
   height: 100%;
   width: 100%;
@@ -1156,81 +1160,6 @@ img.emoji {
   height: 18px;
 }
 
-.popup {
-  position: fixed!important;
-  left: 0;
-  top: 0;
-  height: 100%;
-  max-width: none;
-  width: 100%;
-  z-index: 3;
-  background-color: rgba(0, 0, 0, .35);
-  margin: 0;
-  padding: 0;
-  box-shadow: none;
-  opacity: 0;
-  visibility: hidden;
-  -webkit-transition: opacity 0.3s 0s, visibility 0s 0.3s;
-  -moz-transition: opacity 0.3s 0s, visibility 0s 0.3s;
-  transition: opacity 0.3s 0s, visibility 0s 0.3s;
-  overflow: auto;
-  /* text-align: center; */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.popup.active {
-  opacity: 1;
-  visibility: visible;
-  -webkit-transition: opacity 0.3s 0s, visibility 0s 0s;
-  -moz-transition: opacity 0.3s 0s, visibility 0s 0s;
-  transition: opacity 0.3s 0s, visibility 0s 0s;
-}
-
-.popup-container {
-  position: relative;
-  /* max-width: 400px; */
-  border-radius: $border-radius;
-  background-color: #fff;
-  padding: 1rem;
-  -webkit-transform: translateY(-40px);
-  -moz-transform: translateY(-40px);
-  -ms-transform: translateY(-40px);
-  -o-transform: translateY(-40px);
-  transform: translateY(-40px);
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  -webkit-transition-property: -webkit-transform;
-  -moz-transition-property: -moz-transform;
-  transition-property: transform;
-  -webkit-transition-duration: 0.3s;
-  -moz-transition-duration: 0.3s;
-  transition-duration: 0.3s;
-}
-
-span.popup-close {
-  cursor: pointer;
-  color: $color-gray;
-  z-index: 3;
-  text-align: center;
-  justify-self: center;
-  line-height: 1;
-  transition: .2s;
-  
-  &:hover {
-    color: #000;
-  }
-}
-
-.popup.active .popup-container {
-  -webkit-transform: translateY(0);
-  -moz-transform: translateY(0);
-  -ms-transform: translateY(0);
-  -o-transform: translateY(0);
-  transform: translateY(0);
-}
-
 .btn-circle {
   border-radius: 50%;
   height: 54px;
@@ -1238,66 +1167,6 @@ span.popup-close {
   
   path {
     fill: white;
-  }
-}
-
-.popup-header {
-  /* display: grid;
-  align-items: center;
-  grid-template-columns: 9.5% 86.5%;
-  justify-content: space-between; */
-  display: flex;
-  margin-bottom: 2rem;
-  align-items: center;
-}
-
-.popup-avatar {
-  .popup-container {
-    max-width: 600px;
-    //max-height: 600px;
-    border-radius: $border-radius-medium;
-    padding: 15px 16px 16px 24px;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    
-    > button {
-      position: absolute;
-      bottom: 20px;
-      right: 20px;
-    }
-  }
-
-  .popup-close {
-    font-size: 1.5rem;
-    margin-top: 4px;
-  }
-
-  .popup-header {
-    margin-bottom: 1px;
-  }
-  
-  h6 {
-    font-size: 1.25rem;
-    text-align: left;
-    margin: 0;
-    margin-left: 2rem;
-  }
-  
-  .crop {
-    max-width: 100%;
-    max-height: 100%;
-    padding: 24px 54px 46px 46px;
-    border-radius: $border-radius;
-
-    > img {
-      display: none;
-    }
-    
-    img {
-      //height: 100%;
-      border-radius: $border-radius;
-    }
   }
 }
 
@@ -1485,105 +1354,6 @@ span.popup-close {
 
 .justify-start {
   justify-content: flex-start!important;
-}
-
-.popup-send-photo {
-  .popup-container {
-    width: 420px;
-    max-width: 420px;
-    max-height: 425px;
-    overflow: hidden;
-    /* padding: 12px 20px 50px; */
-    padding: 12px 20px 32.5px;
-    border-radius: $border-radius-medium;
-  }
-
-  .popup-header {
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12.5px;
-
-    .popup-close {
-      font-size: 1.5rem;
-      margin-left: .5rem;
-    }
-
-    .popup-title {
-      flex: 1;
-      padding: 0 2rem;
-      margin: 0;
-      font-size: 1.35rem;
-      font-weight: 500;
-    }
-
-    .btn-primary {
-      width: 80px;
-      height: 35px;
-      font-size: 1rem;
-      padding: 0;
-      border-radius: $border-radius-medium;
-    }
-  }
-
-  .popup-photo {
-    max-width: 378px;
-    max-height: 256px;
-    display: flex;
-    overflow: hidden;
-    justify-content: center;
-    width: fit-content;
-    border-radius: $border-radius-medium;
-    margin: 0 auto;
-    /* align-items: center; */
-
-    &.is-document {
-      margin-left: 0;
-    }
-
-    .document {
-      max-width: 100%;
-      overflow: hidden;
-      cursor: default;
-
-      .document-name {
-        font-weight: normal;
-        width: 100%;
-        max-width: 100%;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      /* &.photo {
-        .document-ico {
-          border-radius: $border-radius;
-        }
-      } */
-    }
-
-    img {
-      object-fit: contain;
-    }
-  }
-
-  .input-field {
-    margin-top: 25px;
-
-    input {
-      height: 55px;
-      font-size: 1.15rem;
-      padding: 0 15px;
-      border-radius: $border-radius-medium;
-
-      &:focus {
-        padding: 0 14.5px;
-      }
-    }
-
-    label {
-      font-size: inherit;
-      opacity: 0;
-    }
-  }
 }
 
 .page-chats {

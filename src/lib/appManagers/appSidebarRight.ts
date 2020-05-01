@@ -171,7 +171,7 @@ class AppSidebarRight {
       
       let targets = ids.map(id => ({element: this.mediaDivsByIDs[id], mid: id}));
       
-      appMediaViewer.openMedia(message, target, false, this.sidebarEl, targets.slice(idx + 1).reverse(), targets.slice(0, idx).reverse(), () => this.loadSidebarMedia(true));
+      appMediaViewer.openMedia(message, target, false, this.sidebarEl, targets.slice(idx + 1).reverse(), targets.slice(0, idx).reverse(), true);
     });
     
     this.profileElements.notificationsCheckbox.addEventListener('change', () => {
