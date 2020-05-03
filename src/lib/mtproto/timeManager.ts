@@ -1,5 +1,4 @@
 import AppStorage from '../storage';
-import { tsNow } from '../utils';
 import { nextRandomInt, longFromInts, dT } from '../bin_utils';
 
 export class TimeManager {
@@ -15,7 +14,7 @@ export class TimeManager {
   }
 
   public generateID(): string {
-    var timeTicks = tsNow(),
+    var timeTicks = Date.now(),
       timeSec = Math.floor(timeTicks / 1000) + this.timeOffset,
       timeMSec = timeTicks % 1000,
       random = nextRandomInt(0xFFFF);
@@ -34,7 +33,7 @@ export class TimeManager {
   }
 
   public applyServerTime(serverTime: number, localTime?: number) {
-    var newTimeOffset = serverTime - Math.floor((localTime || tsNow()) / 1000);
+    var newTimeOffset = serverTime - Math.floor((localTime || Date.now()) / 1000);
     var changed = Math.abs(this.timeOffset - newTimeOffset) > 10;
     AppStorage.set({
       server_time_offset: newTimeOffset

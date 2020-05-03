@@ -1,4 +1,4 @@
-import {tsNow, isObject} from '../utils';
+import {isObject} from '../bin_utils';
 import {convertToUint8Array, 
   bufferConcat, nextRandomInt, bytesToHex, longToBytes,
   bytesCmp, uintToInt, bigStringInt} from '../bin_utils';
@@ -295,7 +295,7 @@ class MTPNetworker {
   public checkLongPoll() {
     var isClean = this.cleanupSent();
     //this.log('Check lp', this.longPollPending, tsNow(), this.dcID, isClean, this);
-    if((this.longPollPending && tsNow() < this.longPollPending) ||
+    if((this.longPollPending && Date.now() < this.longPollPending) ||
       this.offline ||
       NetworkerFactory.akStopped) {
       //this.log('No lp this time');
@@ -307,7 +307,7 @@ class MTPNetworker {
       if(isClean && (
           baseDcID != self.dcID ||
           self.upload ||
-          (self.sleepAfter && tsNow() > self.sleepAfter)
+          (self.sleepAfter && Date.now() > self.sleepAfter)
         )) {
         //console.warn(dT(), 'Send long-poll for DC is delayed', self.dcID, self.sleepAfter);
         return;
@@ -320,7 +320,7 @@ class MTPNetworker {
   public sendLongPoll() {
     let maxWait = 25000;
 
-    this.longPollPending = tsNow() + maxWait;
+    this.longPollPending = Date.now() + maxWait;
     //this.log('Set lp', this.longPollPending, tsNow())
   
     this.wrapMtpCall('http_wait', {
@@ -364,7 +364,7 @@ class MTPNetworker {
   }
 
   public pushResend(messageID: string, delay = 0) {
-    var value = delay ? tsNow() + delay : 0;
+    var value = delay ? Date.now() + delay : 0;
     var sentMessage = this.sentMessages[messageID];
     if(sentMessage.container) {
       for(var i = 0; i < sentMessage.inner.length; i++) {
@@ -548,7 +548,7 @@ class MTPNetworker {
     var messages: Message[] = [],
       message: Message;
     var messagesByteLen = 0;
-    var currentTime: number = tsNow();
+    var currentTime = Date.now();
     var hasApiCall = false;
     var hasHttpWait = false;
     var lengthOverflow = false;
@@ -952,7 +952,7 @@ class MTPNetworker {
       delay = 0;
     } */
 
-    var nextReq = tsNow() + delay;
+    var nextReq = Date.now() + delay;
   
     if(delay && this.nextReq && this.nextReq <= nextReq) {
       return false;

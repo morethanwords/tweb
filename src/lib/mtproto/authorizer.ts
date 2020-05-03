@@ -2,7 +2,6 @@ import { TLSerialization, TLDeserialization } from "./tl_utils";
 import dcConfigurator from "./dcConfigurator";
 import { dT, bytesToHex, bytesCmp, bytesFromHex, bytesXor } from "../bin_utils";
 import rsaKeysManager from "./rsaKeysManager";
-import { tsNow } from "../utils";
 import timeManager from "./timeManager";
 
 // @ts-ignore
@@ -303,7 +302,7 @@ export class Authorizer {
   }
   
   public async mtpDecryptServerDhDataAnswer(auth: AuthOptions, encryptedAnswer: any) {
-    auth.localTime = tsNow();
+    auth.localTime = Date.now();
     
     // can't concat Array with Uint8Array!
     //auth.tmpAesKey = sha1BytesSync(auth.newNonce.concat(auth.serverNonce)).concat(sha1BytesSync(auth.serverNonce.concat(auth.newNonce)).slice(0, 12));

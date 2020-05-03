@@ -142,7 +142,7 @@ export class AppPhotosManager {
       //console.log('diff', diff, photoSize, bestPhotoSize);
     }); */
     
-    console.log('choosing', photo, width, height, bestPhotoSize);
+    //console.log('choosing', photo, width, height, bestPhotoSize);
     
     return bestPhotoSize;
   }

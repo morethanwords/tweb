@@ -125,14 +125,16 @@ $chat-max-width: 696px;
 		flex: 1 1 auto; /* Lets middle column shrink/grow to available width */
 		overflow: hidden;
 		position: relative;
+		padding: 0 .5rem;
 
 		> .scrollable {
 			//position: unset;
 
 			height: auto;
-			position: absolute;
+			/* position: absolute;
 			bottom: 0;
-			left: 0;
+			left: 0; */
+			position: relative;
 
 			//display: flex; // for end
 			//flex-direction: unset;

@@ -1,4 +1,4 @@
-import Scrollable from "./scrollable";
+import Scrollable from "./scrollable_new";
 import LazyLoadQueue from "./lazyLoadQueue";
 import { RichTextProcessor } from "../lib/richtextprocessor";
 //import apiManager from "../lib/mtproto/apiManager";

@@ -21,7 +21,8 @@ import { wrapDocument, wrapPhoto, wrapVideo, wrapSticker, wrapReply, wrapAlbum }
 import ProgressivePreloader from '../../components/preloader';
 import { openBtnMenu, formatPhoneNumber } from '../../components/misc';
 import { ChatInput } from '../../components/chatInput';
-import Scrollable from '../../components/scrollable';
+//import Scrollable from '../../components/scrollable';
+import Scrollable from '../../components/scrollable_new';
 import BubbleGroups from '../../components/bubbleGroups';
 import LazyLoadQueue from '../../components/lazyLoadQueue';
 import appDocsManager from './appDocsManager';
@@ -59,8 +60,7 @@ export class AppImManager {
     container: HTMLDivElement,
     timeout?: number 
   }} = {};
-  public unreaded: number[] = [];
-  public unreadOut: number[] = [];
+  public unreadOut = new Set<number>();
   public needUpdate: {replyMid: number, mid: number}[] = []; // if need wrapSingleMessage
   
   public offline = false;
@@ -84,8 +84,8 @@ export class AppImManager {
   private typingTimeouts: {[peerID: number]: number} = {};
   private typingUsers: {[userID: number]: number} = {} // to peerID
   
-  private topbar: HTMLDivElement = null;
-  private chatInput: HTMLDivElement = null;
+  private topbar = document.getElementById('topbar') as HTMLDivElement;
+  private chatInput = document.getElementById('chat-input') as HTMLDivElement;
   private scrolledAll: boolean;
   private scrolledAllDown: boolean;
   
@@ -111,6 +111,11 @@ export class AppImManager {
 
   private datesIntersectionObserver: IntersectionObserver = null;
   private lastDateMessageDiv: HTMLDivElement = null;
+
+  private unreadedObserver: IntersectionObserver = null;
+
+  private loadedTopTimes = 0;
+  private loadedBottomTimes = 0;
   
   constructor() {
     /* if(!lottieLoader.loaded) {
@@ -131,10 +136,7 @@ export class AppImManager {
     apiManager.getUserID().then((id) => {
       this.myID = $rootScope.myID = id;
     });
-    
-    this.topbar = document.getElementById('topbar') as HTMLDivElement;
-    this.chatInput = document.getElementById('chat-input') as HTMLDivElement;
-    
+
     $rootScope.$on('user_auth', (e: CustomEvent) => {
       let userAuth = e.detail;
       this.myID = $rootScope.myID = userAuth ? userAuth.id : 0;
@@ -238,12 +240,10 @@ export class AppImManager {
       } else {
         this.log.warn('message_sent there is no bubble', e.detail);
       }
-      
-      let length = this.unreadOut.length;
-      for(let i = 0; i < length; i++) {
-        if(this.unreadOut[i] == tempID) {
-          this.unreadOut[i] = mid;
-        }
+
+      if(this.unreadOut.has(tempID)) {
+        this.unreadOut.delete(tempID);
+        this.unreadOut.add(mid);
       }
     });
     
@@ -618,7 +618,7 @@ export class AppImManager {
     apiUpdatesManager.attach();
 
     this.datesIntersectionObserver = new IntersectionObserver((entries) => {
-      this.log('intersection', entries);
+      //this.log('intersection', entries);
 
       let entry = entries.filter(entry => entry.boundingClientRect.top < 0).sort((a, b) => b.boundingClientRect.top - a.boundingClientRect.top)[0];
       if(!entry) return;
@@ -636,6 +636,35 @@ export class AppImManager {
         }
       }
     }/* , {root: this.chatInner} */);
+
+    this.unreadedObserver = new IntersectionObserver((entries) => {
+      let readed: number[] = [];
+    
+      entries.forEach(entry => {
+        if(entry.isIntersecting) {
+          let target = entry.target as HTMLElement;
+          let mid = +target.dataset.mid;
+          readed.push(mid);
+          this.unreadedObserver.unobserve(target);
+        }
+      });
+
+      if(readed.length) {
+        let max = Math.max(...readed);
+        let min = Math.min(...readed);
+        
+        if(this.peerID < 0) {
+          max = appMessagesIDsManager.getMessageIDInfo(max)[0];
+          min = appMessagesIDsManager.getMessageIDInfo(min)[0];
+        }
+        
+        //appMessagesManager.readMessages(readed);
+        appMessagesManager.readHistory(this.peerID, max, min).catch((err: any) => {
+          this.log.error('readHistory err:', err);
+          appMessagesManager.readHistory(this.peerID, max, min);
+        });
+      }
+    });
   }
   
   public deleteMessages(revoke = false) {
@@ -709,7 +738,6 @@ export class AppImManager {
     }
     
     if(top && !this.scrolledAll) {
-      this.scrollable.lock('both');
       this.log('Will load more (up) history by id:', history[0], 'maxID:', history[history.length - 1], history);
       /* false &&  */this.getHistory(history[0], true);
     }
@@ -724,7 +752,6 @@ export class AppImManager {
     
     // if scroll down after search
     if(!top && (!dialog || history.indexOf(dialog.top_message) === -1)) {
-      this.scrollable.lock('both');
       this.log('Will load more (down) history by maxID:', history[history.length - 1], history);
       /* false &&  */this.getHistory(history[history.length - 1], false, true);
     }
@@ -734,34 +761,7 @@ export class AppImManager {
     if(this.onScrollRAF) window.cancelAnimationFrame(this.onScrollRAF);
 
     this.onScrollRAF = window.requestAnimationFrame(() => {
-      let readed: number[] = [];
-    
-      this.unreaded.forEachReverse((msgID, idx) => {
-        let bubble = this.bubbles[msgID];
-        
-        if(isElementInViewport(bubble)) {
-          readed.push(msgID);
-          this.unreaded.splice(idx, 1);
-        }
-      });
-      
       lottieLoader.checkAnimations(false, 'chat');
-      
-      if(readed.length) {
-        let max = Math.max(...readed);
-        let min = Math.min(...readed);
-        
-        if(this.peerID < 0) {
-          max = appMessagesIDsManager.getMessageIDInfo(max)[0];
-          min = appMessagesIDsManager.getMessageIDInfo(min)[0];
-        }
-        
-        //appMessagesManager.readMessages(readed);
-        appMessagesManager.readHistory(this.peerID, max, min).catch((err: any) => {
-          this.log.error('readHistory err:', err);
-          appMessagesManager.readHistory(this.peerID, max, min);
-        });
-      }
 
       if(this.isScrollingTimeout) {
         clearTimeout(this.isScrollingTimeout);
@@ -915,8 +915,7 @@ export class AppImManager {
     this.bubbles = {};
     this.dateMessages = {};
     this.bubbleGroups.cleanup();
-    this.unreaded = [];
-    this.unreadOut = [];
+    this.unreadOut.clear();
     this.needUpdate.length = 0;
     this.lazyLoadQueue.clear();
     
@@ -936,13 +935,17 @@ export class AppImManager {
 
     this.datesIntersectionObserver.disconnect();
     this.lastDateMessageDiv = null;
+    
+    this.unreadedObserver.disconnect();
+
+    this.loadedTopTimes = this.loadedBottomTimes = 0;
 
     ////console.timeEnd('appImManager cleanup');
   }
   
   public setPeer(peerID: number, lastMsgID = 0, forwarding = false, fromClick = false) {
-    //console.time('appImManager setPeer');
-    //console.time('appImManager setPeer pre promise');
+    console.time('appImManager setPeer');
+    console.time('appImManager setPeer pre promise');
     ////console.time('appImManager: pre render start');
     if(peerID == 0) {
       appSidebarRight.toggleSidebar(false);
@@ -1050,7 +1053,7 @@ export class AppImManager {
 
     //////appSidebarRight.toggleSidebar(true);
 
-    //console.timeEnd('appImManager setPeer pre promise');
+    console.timeEnd('appImManager setPeer pre promise');
     this.preloader.attach(this.bubblesContainer);
     return this.setPeerPromise = Promise.all([
       this.getHistory(forwarding ? lastMsgID + 1 : lastMsgID, true, false, additionMsgID).then(() => {
@@ -1074,7 +1077,7 @@ export class AppImManager {
         this.preloader.detach();
         this.chatInner.style.visibility = '';
 
-        //console.timeEnd('appImManager setPeer');
+        console.timeEnd('appImManager setPeer');
         
         //setTimeout(() => {
         //appSidebarRight.fillProfileElements();
@@ -1120,19 +1123,22 @@ export class AppImManager {
     
     ///////this.log('updateUnreadByDialog', maxID, dialog, this.unreadOut);
     
-    this.unreadOut.forEachReverse((msgID, idx) => {
+    for(let msgID of this.unreadOut) {
       if(msgID > 0 && msgID <= maxID) {
         let bubble = this.bubbles[msgID];
-        bubble.classList.remove('is-sent');
-        bubble.classList.add('is-read');
-        this.unreadOut.splice(idx, 1);
+        if(bubble) {
+          bubble.classList.remove('is-sent');
+          bubble.classList.add('is-read');
+        }
+        
+        this.unreadOut.delete(msgID);
       }
-    });
+    }
   }
   
-  public deleteMessagesByIDs(msgIDs: number[]) {
+  public deleteMessagesByIDs(msgIDs: number[], forever = true) {
     msgIDs.forEach(id => {
-      if(this.firstTopMsgID == id) {
+      if(this.firstTopMsgID == id && forever) {
         let dialog = appMessagesManager.getDialogByPeerID(this.peerID)[0];
         
         if(dialog) {
@@ -1145,11 +1151,14 @@ export class AppImManager {
       
       let bubble = this.bubbles[id];
       delete this.bubbles[id];
+
+      this.unreadedObserver.unobserve(bubble);
       this.scrollable.removeElement(bubble);
       //bubble.remove();
     });
     
     lottieLoader.checkAnimations();
+    this.deleteEmptyDateGroups();
   }
   
   public renderNewMessagesByIDs(msgIDs: number[]) {
@@ -1206,16 +1215,17 @@ export class AppImManager {
       };
 
       container.append(div);
+      //this.scrollable.prepareElement(div, false);
 
       if(reverse) {
-        let scrollTopPrevious = this.scrollable.scrollTop;
-        this.scrollable.prepend(container);
+        //let scrollTopPrevious = this.scrollable.scrollTop;
+        this.scrollable.prepend(container, false);
 
-        if(!scrollTopPrevious) {
+        /* if(!scrollTopPrevious) {
           this.scrollable.scrollTop += container.scrollHeight;
-        }
+        } */
       } else {
-        this.scrollable.append(container);
+        this.scrollable.append(container, false);
       }
 
       this.datesIntersectionObserver.observe(container);
@@ -1298,8 +1308,10 @@ export class AppImManager {
 
       } else if(reverse) {
         dateContainer.container.insertBefore(bubble, dateContainer.div.nextSibling);
+        //this.scrollable.prepareElement(bubble, false);
       } else {
         dateContainer.container.append(bubble);
+        //this.scrollable.prepareElement(bubble, true);
       }
 
       return bubble;
@@ -1387,7 +1399,7 @@ export class AppImManager {
     //bubble.prepend(timeSpan, messageDiv); // that's bad
     
     if(our) {
-      if(message.pFlags.unread || message.mid < 0) this.unreadOut.push(message.mid); // message.mid < 0 added 11.02.2020
+      if(message.pFlags.unread || message.mid < 0) this.unreadOut.add(message.mid); // message.mid < 0 added 11.02.2020
       let status = '';
       if(message.mid < 0) status = 'is-sending';
       else status = message.pFlags.unread ? 'is-sent' : 'is-read';
@@ -1395,7 +1407,7 @@ export class AppImManager {
     } else {
       //this.log('not our message', message, message.pFlags.unread);
       if(message.pFlags.unread) {
-        this.unreaded.push(message.mid); 
+        this.unreadedObserver.observe(bubble); 
       }
     }
     
@@ -1839,8 +1851,10 @@ export class AppImManager {
       let dateMessage = this.getDateContainerByMessage(message, reverse);
       if(reverse) {
         dateMessage.container.insertBefore(bubble, dateMessage.div.nextSibling);
+        //this.scrollable.prepareElement(bubble, false);
       } else {
         dateMessage.container.append(bubble);
+        //this.scrollable.prepareElement(bubble, true);
       }
     } else {
       this.bubbleGroups.updateGroupByMessageID(message.mid);
@@ -1868,14 +1882,17 @@ export class AppImManager {
     if(additionMsgID) {
       history.unshift(additionMsgID);
     }
-    
-    //let method = reverse ? result.history.forEach : result.history.forEachReverse;
-    let method = reverse ? Array.prototype.forEach : Array.prototype.forEachReverse;
-    method = method.bind(history);
-    
-    //console.time('appImManager render history');
 
-    this.log('getHistory method', method);
+    if(testScroll && additionMsgID) {
+      for(let i = 0; i < 3; ++i) {
+        let _history = history.slice();
+        setTimeout(() => {
+          this.performHistoryResult(_history, reverse, isBackLimit, 0, resetPromises);
+        }, (i + 1) * 2500);
+      }
+    }
+
+    console.time('appImManager render history');
 
     let firstLoad = !!this.setPeerPromise && false;
 
@@ -1889,13 +1906,15 @@ export class AppImManager {
         bubbles.push(bubble);
       }); */
 
-      let leftHeightToScroll = this.scrollable.innerHeight;
+      //let leftHeightToScroll = this.scrollable.innerHeight;
 
       //console.timeEnd('appImManager: pre render start');
 
       //this.log('start performHistoryResult, scrollTop:', this.scrollable.scrollTop, this.scrollable.scrollHeight, this.scrollable.innerHeight);
 
-      let renderedFirstScreen = false;
+      let method = (reverse ? history.shift : history.pop).bind(history);
+
+      let renderedFirstScreen = !!this.scrollable.scrollTop;
       let r = () => {
         //let bubble = bubbles.shift();
         //if(!bubble && !resolved) return resolve();
@@ -1912,13 +1931,12 @@ export class AppImManager {
         //let startTime = Date.now();
         //let elapsedTime = 0;
         //do {
-          let msgID = history.shift();
+          //let msgID = history.shift();
+          let msgID = method();
           if(!msgID) {
             if(resetPromises) {
               (reverse ? this.getHistoryTopPromise = undefined : this.getHistoryBottomPromise = undefined);
             }
-
-            this.scrollable.unlock('both');
 
             if(!resolved) {
               resolve(true);
@@ -1995,19 +2013,11 @@ export class AppImManager {
           this.renderMessage(message, reverse, true);
         });
       }); */
-    })/* .then(() => {
-      if(!isBackLimit) {
-        this.scrollPosition.restore(() => {
-          this.scrollable.unlock('both');
-        });
-      } else {
-        this.scrollable.unlock('both');
-      }
-      
-      //console.timeEnd('appImManager render history');
+    }).then(() => {
+      console.timeEnd('appImManager render history');
 
       return true;
-    }) */;
+    });
   }
   
   // reverse means scroll up
@@ -2021,10 +2031,13 @@ export class AppImManager {
       maxID = dialog.top_message/*  + 1 */;
     }
     
-    let loadCount = Object.keys(this.bubbles).length > 0 ? 20 : this.scrollable.innerHeight / 38/*  * 1.25 */ | 0;
+    let pageCount = this.bubblesContainer.clientHeight / 38/*  * 1.25 */ | 0;
+    //let loadCount = Object.keys(this.bubbles).length > 0 ? 50 : pageCount;
+    let realLoadCount = 50;
+    let loadCount = realLoadCount;
     
     if(testScroll) {
-      loadCount = 1;
+      //loadCount = 1;
       if(Object.keys(this.bubbles).length > 0)
       return Promise.resolve(true);
     }
@@ -2044,8 +2057,10 @@ export class AppImManager {
       $rootScope.$broadcast('history_request'); // for ripple
       result = new Promise((resolve, reject) => setTimeout(() => resolve(_result), 150));
     } */
+
+    let promise: Promise<boolean>;
     if(result instanceof Promise) {
-      let promise = result.then((result) => {
+      promise = result.then((result) => {
         this.log('getHistory result by maxID:', maxID, reverse, isBackLimit, result);
         
         //console.timeEnd('appImManager call getHistory');
@@ -2062,16 +2077,72 @@ export class AppImManager {
       }, (err) => {
         this.log.error('getHistory error:', err);
         (reverse ? this.getHistoryTopPromise = undefined : this.getHistoryBottomPromise = undefined);
-        this.scrollable.unlock('both');
         return false;
       });
 
-      return (reverse ? this.getHistoryTopPromise = promise : this.getHistoryBottomPromise = promise);
+      (reverse ? this.getHistoryTopPromise = promise : this.getHistoryBottomPromise = promise);
     } else {
-      let promise = this.performHistoryResult(result.history || [], reverse, isBackLimit, additionMsgID, true);
+      promise = this.performHistoryResult(result.history || [], reverse, isBackLimit, additionMsgID, true);
       //return (reverse ? this.getHistoryTopPromise = promise : this.getHistoryBottomPromise = promise);
-      return promise;
       //return this.performHistoryResult(result.history || [], reverse, isBackLimit, additionMsgID, true);
+    }
+
+    /* false &&  */promise.then(() => {
+      if(reverse) {
+        this.loadedTopTimes++;
+        this.loadedBottomTimes = Math.max(0, --this.loadedBottomTimes);
+      } else {
+        this.loadedBottomTimes++;
+        this.loadedTopTimes = Math.max(0, --this.loadedTopTimes);
+      }
+
+      let ids: number[];
+      if((reverse && this.loadedTopTimes > 2) || (!reverse && this.loadedBottomTimes > 2)) {
+        ids = Object.keys(this.bubbles).map(i => +i).sort((a, b) => a - b);
+      }
+
+      this.log('getHistory: slice loadedTimes:', reverse, pageCount, this.loadedTopTimes, this.loadedBottomTimes, ids && ids.length);
+
+      let removeCount = loadCount / 2;
+      let safeCount = realLoadCount * 2;
+      if(ids && ids.length > safeCount) {
+        if(reverse) {
+          //ids = ids.slice(-removeCount);
+          //ids = ids.slice(removeCount * 2);
+          ids = ids.slice(safeCount);
+          this.scrolledAllDown = false;
+        } else {
+          //ids = ids.slice(0, removeCount);
+          //ids = ids.slice(0, ids.length - (removeCount * 2));
+          ids = ids.slice(0, ids.length - safeCount);
+          this.scrolledAll = false;
+          this.log('getHistory: slice bottom: to:', ids.length, loadCount);
+        }
+
+        this.log('getHistory: will slice ids:', ids, reverse);
+
+        this.deleteMessagesByIDs(ids, false);
+        /* ids.forEach(id => {
+          this.bubbles[id].remove();
+          delete this.bubbles[id];
+        });
+
+        this.deleteEmptyDateGroups(); */
+      }
+    });
+
+    return promise;
+  }
+
+  public deleteEmptyDateGroups() {
+    for(let i in this.dateMessages) {
+      let dateMessage = this.dateMessages[i];
+
+      if(dateMessage.container.childElementCount == 1) { // only date div
+        dateMessage.container.remove();
+        this.datesIntersectionObserver.unobserve(dateMessage.container);
+        delete this.dateMessages[i];
+      }
     }
   }
   

@@ -1,16 +1,19 @@
 import AppStorage from '../storage';
 
 import { MTPNetworker } from './networker';
-import { bytesFromHex, bytesToHex } from '../bin_utils';
+import { bytesFromHex, bytesToHex, isObject } from '../bin_utils';
 import networkerFactory from './networkerFactory';
 import { telegramMeWebService } from './mtproto';
 import authorizer from './authorizer';
-import { isObject, tsNow, $rootScope } from '../utils';
 import {App, Modes} from './mtproto_config';
 import dcConfigurator from './dcConfigurator';
 import HTTP from './transports/http';
 import { logger } from '../polyfill';
 import passwordManager from './passwordManager';
+
+/// #if !MTPROTO_WORKER
+import { $rootScope } from '../utils';
+/// #endif
 
 //console.error('apiManager included!');
 
@@ -51,7 +54,10 @@ export class ApiManager {
     });
     
     this.telegramMeNotify(true);
+
+    /// #if !MTPROTO_WORKER
     $rootScope.$broadcast('user_auth', fullUserAuth);
+    /// #endif
   }
   
   // mtpLogOut
@@ -189,21 +195,21 @@ export class ApiManager {
   }
   
   // mtpInvokeApi
-  public invokeApi(method: string, params: any = {}, options: {
-    dcID?: number,
-    timeout?: number,
-    noErrorBox?: boolean,
-    fileUpload?: boolean,
-    ignoreErrors?: boolean,
-    fileDownload?: boolean,
-    createNetworker?: boolean,
-    singleInRequest?: boolean,
-    startMaxLength?: number,
+  public invokeApi(method: string, params: any = {}, options: Partial<{
+    dcID: number,
+    timeout: number,
+    noErrorBox: boolean,
+    fileUpload: boolean,
+    ignoreErrors: boolean,
+    fileDownload: boolean,
+    createNetworker: boolean,
+    singleInRequest: boolean,
+    startMaxLength: number,
     
-    waitTime?: number,
-    stopTime?: number,
-    rawError?: any
-  } = {}) {
+    waitTime: number,
+    stopTime: number,
+    rawError: any
+  }> = {}) {
     ///////this.log('Invoke api', method, params, options);
     
     return new Promise((resolve, reject) => {
@@ -287,7 +293,7 @@ export class ApiManager {
           } else if(!options.rawError && error.code == 420) {
             var waitTime = error.type.match(/^FLOOD_WAIT_(\d+)/)[1] || 10;
             
-            if(waitTime > (options.timeout || 60)) {
+            if(waitTime > (options.timeout !== undefined ? options.timeout : 60)) {
               return rejectPromise(error);
             }
             
@@ -295,7 +301,7 @@ export class ApiManager {
               performRequest(cachedNetworker);
             }, (waitTime + 5) * 1000); // 03.02.2020
           } else if(!options.rawError && (error.code == 500 || error.type == 'MSG_WAIT_FAILED')) {
-            var now = tsNow();
+            var now = Date.now();
             if(options.stopTime) {
               if(now >= options.stopTime) {
                 return rejectPromise(error);

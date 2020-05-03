@@ -1,5 +1,5 @@
 import { putPreloader, formatPhoneNumber } from "../components/misc";
-import Scrollable from '../components/scrollable';
+import Scrollable from '../components/scrollable_new';
 import {RichTextProcessor} from '../lib/richtextprocessor';
 import Config from '../lib/config';
 

@@ -108,8 +108,16 @@
 				content: "";
 				flex: auto;
 			} */
-			
+
 			> div {
+				width: 100%;
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				flex-wrap: wrap;
+			}
+			
+			> div > div {
 				width: 80px;
 				height: 80px;
 				display: flex;

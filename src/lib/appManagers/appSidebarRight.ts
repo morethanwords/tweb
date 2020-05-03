@@ -1,5 +1,6 @@
 import { horizontalMenu, formatPhoneNumber, putPreloader, renderImageFromUrl } from "../../components/misc";
-import Scrollable from '../../components/scrollable';
+//import Scrollable from '../../components/scrollable';
+import Scrollable from '../../components/scrollable_new';
 import { $rootScope } from "../utils";
 import appMessagesManager from "./appMessagesManager";
 import appPhotosManager from "./appPhotosManager";
@@ -79,10 +80,7 @@ class AppSidebarRight {
   private peerID = 0;
   
   public scroll: Scrollable = null;
-  private savedVirtualStates: {
-    [id: number]: Scrollable['state']
-  } = {};
-  
+
   private profileTabs: HTMLUListElement;
   private prevTabID = -1;
   
@@ -107,7 +105,7 @@ class AppSidebarRight {
     //this.scroll = new Scrollable(this.profileContentEl, 'y', 1200, 'SR', undefined, 400);
     this.scroll.container.addEventListener('scroll', this.onSidebarScroll.bind(this));
     this.scroll.onScrolledBottom = () => {
-      if(this.sharedMediaSelected && !this.scroll.hiddenElements.down.length && this.sharedMediaSelected.childElementCount/* && false */) {
+      if(this.sharedMediaSelected && this.sharedMediaSelected.childElementCount/* && false */) {
         this.log('onScrolledBottom will load media');
         this.loadSidebarMedia(true);
       }
@@ -123,17 +121,8 @@ class AppSidebarRight {
         this.scroll.scrollTop -= this.profileTabs.offsetTop;
       }
 
-      if(this.prevTabID != -1) {
-        this.savedVirtualStates[this.prevTabID] = this.scroll.state;
-      }
-      
       this.log('setVirtualContainer', id, this.sharedMediaSelected);
       this.scroll.setVirtualContainer(this.sharedMediaSelected);
-      
-      if(this.savedVirtualStates[id]) {
-        this.log(this.savedVirtualStates[id]);
-        this.scroll.state = this.savedVirtualStates[id];
-      }
 
       if(this.prevTabID != -1 && !this.sharedMediaSelected.childElementCount) { // quick brown fix
         this.contentContainer.classList.remove('loaded');
@@ -423,7 +412,7 @@ class AppSidebarRight {
     
     if(elemsToAppend.length) {
       //window.requestAnimationFrame(() => {
-      elemsToAppend.forEach(el => this.scroll.append(el));
+      elemsToAppend.forEach(el => this.scroll.append(el, false));
       //});
     }
     
@@ -452,9 +441,7 @@ class AppSidebarRight {
     if(!typesToLoad.length) return;
     
     let historyStorage = this.historiesStorage[peerID] ?? (this.historiesStorage[peerID] = {});
-    
-    this.scroll.lock();
-    
+
     let promises = typesToLoad.map(type => {
       if(this.loadSidebarMediaPromises[type]) return this.loadSidebarMediaPromises[type];
       
@@ -513,9 +500,7 @@ class AppSidebarRight {
       });
     });
     
-    return Promise.all(promises).then(() => {
-      this.scroll.unlock();
-    });
+    return Promise.all(promises);
   }
   
   public fillProfileElements() {
@@ -546,7 +531,6 @@ class AppSidebarRight {
         }
       });
       
-      this.savedVirtualStates = {};
       this.prevTabID = -1;
       this.scroll.setVirtualContainer(null);
       (this.profileTabs.firstElementChild.children[1] as HTMLLIElement).click(); // set media

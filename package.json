@@ -6,10 +6,11 @@
   "scripts": {
     "start": "webpack-dev-server --open --config webpack.dev.js",
     "start-production": "webpack-dev-server --open --config webpack.prod.js",
-    "serve": "node server.js",
+    "serve": "npm run build; node server.js",
     "build": "webpack --config webpack.prod.js",
     "test": "jest --config=jest.config.js",
-    "profile": "webpack --profile --json > stats.json --config webpack.prod.js"
+    "profile": "webpack --profile --json > stats.json --config webpack.prod.js",
+    "profile-dev": "webpack --profile --json > stats.json --config webpack.dev.js"
   },
   "author": "",
   "license": "ISC",
@@ -43,9 +44,7 @@
     "lottie-web": "^5.6.8",
     "node-sass": "^4.13.1",
     "npm": "^6.14.4",
-    "offscreen-canvas": "^0.1.1",
     "on-build-webpack": "^0.1.0",
-    "overlayscrollbars": "^1.12.0",
     "pako": "^1.0.11",
     "resolve-url-loader": "^3.1.1",
     "sass-loader": "^8.0.2",

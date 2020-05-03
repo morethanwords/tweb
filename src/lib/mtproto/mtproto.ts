@@ -1,5 +1,4 @@
 import AppStorage from '../storage';
-import {tsNow} from '../utils';
 import { Modes, App } from './mtproto_config';
 
 /* import PasswordManager from './passwordManager';
@@ -24,7 +23,7 @@ export class TelegramMeWebService {
     }
 
     AppStorage.get<any>('tgme_sync').then((curValue) => {
-      var ts = tsNow(true);
+      var ts = Date.now() / 1000;
       if(canRedirect &&
         curValue &&
         curValue.canRedirect == canRedirect &&

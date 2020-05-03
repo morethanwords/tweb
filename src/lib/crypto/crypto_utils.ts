@@ -2,6 +2,9 @@ import sha1 from '@cryptography/sha1';
 import sha256 from '@cryptography/sha256';
 import {IGE} from '@cryptography/aes';
 
+// @ts-ignore
+import pako from 'pako/dist/pako_inflate.min.js';
+
 import {str2bigInt, bpe, equalsInt, greater, 
   copy_, eGCD_, add_, rightShift_, sub_, copyInt_, isZero,
   // @ts-ignore
@@ -238,4 +241,13 @@ export function bytesModPow(x: any, y: any, m: any) {
   }
 
   return bytesFromBigInt(new BigInteger(x).modPow(new BigInteger(y), new BigInteger(m)), 256);
+}
+
+export function gzipUncompress(bytes: ArrayBuffer, toString: true): string;
+export function gzipUncompress(bytes: ArrayBuffer, toString?: false): Uint8Array;
+export function gzipUncompress(bytes: ArrayBuffer, toString?: boolean): string | Uint8Array {
+  //console.log(dT(), 'Gzip uncompress start');
+  var result = pako.inflate(bytes, toString ? {to: 'string'} : undefined);
+  //console.log(dT(), 'Gzip uncompress finish'/* , result */);
+  return result;
 }

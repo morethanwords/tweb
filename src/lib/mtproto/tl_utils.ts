@@ -5,9 +5,16 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import {bigint, intToUint, bigStringInt, bytesToHex, gzipUncompress, uintToInt} from '../bin_utils';
-import {isObject} from '../utils';
+import {bigint, intToUint, bigStringInt, bytesToHex, uintToInt, isObject} from '../bin_utils';
 import Schema from './schema';
+
+/// #if MTPROTO_WORKER
+// @ts-ignore
+import {gzipUncompress} from '../crypto/crypto_utils';
+/// #else
+// @ts-ignore
+import {gzipUncompress} from '../bin_utils';
+/// #endif
 
 const boolFalse = +Schema.API.constructors.find((c: any) => c.predicate == 'boolFalse').id >>> 0;
 const boolTrue = +Schema.API.constructors.find((c: any) => c.predicate == 'boolTrue').id >>> 0;

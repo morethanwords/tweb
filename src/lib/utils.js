@@ -4,9 +4,9 @@
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
-var _logTimer = (new Date()).getTime()
+var _logTimer = Date.now();
 export function dT () {
-  return '[' + (((new Date()).getTime() - _logTimer) / 1000).toFixed(3) + ']'
+  return '[' + ((Date.now() - _logTimer) / 1000).toFixed(3) + ']'
 }
 
 export function checkClick (e, noprevent) {

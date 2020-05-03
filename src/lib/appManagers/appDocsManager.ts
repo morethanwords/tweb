@@ -9,7 +9,7 @@ class AppDocsManager {
   private docs: {[docID: string]: MTDocument} = {};
 
   public saveDoc(apiDoc: MTDocument/* any */, context?: any) {
-    console.log('saveDoc', apiDoc, this.docs[apiDoc.id]);
+    //console.log('saveDoc', apiDoc, this.docs[apiDoc.id]);
     if(this.docs[apiDoc.id]) {
       let d = this.docs[apiDoc.id];
 

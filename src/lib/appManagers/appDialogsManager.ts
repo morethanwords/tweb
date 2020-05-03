@@ -1,11 +1,12 @@
-import { langPack, findUpClassName, $rootScope, escapeRegExp } from "../utils";
+import { langPack, findUpClassName, $rootScope, escapeRegExp, whichChild } from "../utils";
 import appImManager, { AppImManager } from "./appImManager";
 import appPeersManager from './appPeersManager';
 import appMessagesManager, { AppMessagesManager } from "./appMessagesManager";
 import appUsersManager from "./appUsersManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import { ripple, putPreloader } from "../../components/misc";
-import Scrollable from "../../components/scrollable";
+//import Scrollable from "../../components/scrollable";
+import Scrollable from "../../components/scrollable_new";
 import appProfileManager from "./appProfileManager";
 import { logger } from "../polyfill";
 
@@ -27,10 +28,10 @@ export class AppDialogsManager {
   public chatList = document.getElementById('dialogs') as HTMLUListElement;
   public chatListArchived = document.getElementById('dialogs-archived') as HTMLUListElement;
   public pinnedDelimiter: HTMLDivElement;
-  public chatsHidden: Scrollable["hiddenElements"];
+  /* public chatsHidden: Scrollable["hiddenElements"];
   public chatsVisible: Scrollable["visibleElements"];
   public chatsArchivedHidden: Scrollable["hiddenElements"];
-  public chatsArchivedVisible: Scrollable["visibleElements"];
+  public chatsArchivedVisible: Scrollable["visibleElements"]; */
   
   public doms: {[peerID: number]: DialogDom} = {};
   public domsArchived: {[peerID: number]: DialogDom} = {};
@@ -72,14 +73,14 @@ export class AppDialogsManager {
     this.scroll = new Scrollable(this.chatsContainer, 'y', splitOffset, 'CL', this.chatList, 500);
     this.scroll.setVirtualContainer(this.chatList);
     this.scroll.onScrolledBottom = this.onChatsScroll.bind(this);
-    this.chatsHidden = this.scroll.hiddenElements;
-    this.chatsVisible = this.scroll.visibleElements;
+    /* this.chatsHidden = this.scroll.hiddenElements;
+    this.chatsVisible = this.scroll.visibleElements; */
 
     this.scrollArchived = new Scrollable(this.chatsArchivedContainer, 'y', splitOffset, 'CLA', this.chatListArchived, 500);
     this.scrollArchived.setVirtualContainer(this.chatListArchived);
     this.scrollArchived.onScrolledBottom = this.onChatsArchivedScroll.bind(this);
-    this.chatsArchivedHidden = this.scrollArchived.hiddenElements;
-    this.chatsArchivedVisible = this.scrollArchived.visibleElements;
+    /* this.chatsArchivedHidden = this.scrollArchived.hiddenElements;
+    this.chatsArchivedVisible = this.scrollArchived.visibleElements; */
     //this.scrollArchived.container.addEventListener('scroll', this.onChatsArchivedScroll.bind(this));
 
     //let chatClosedDiv = document.getElementById('chat-closed');
@@ -88,12 +89,19 @@ export class AppDialogsManager {
     this.setListClickListener(this.chatListArchived);
 
     if(testScroll) {
-      for(let i = 0; i < 1000; ++i) {
+      let i = 0;
+      let add = () => {
         let li = document.createElement('li');
         li.dataset.id = '' + i;
-        li.innerHTML = `<div class="rp"><div class="user-avatar" style="background-color: rgb(166, 149, 231); font-size: 0px;"><img src="#"></div><div class="user-caption"><p><span class="user-title">${i}</span><span><span class="message-status"></span><span class="message-time">18:33</span></span></p><p><span class="user-last-message"><b>-_-_-_-: </b>qweasd</span><span></span></p></div></div>`;
+        li.id = '' + i;
+        li.innerHTML = `<div class="rp"><div class="user-avatar" style="background-color: rgb(166, 149, 231); font-size: 0px;"><img src="assets/img/pepe.jpg"></div><div class="user-caption"><p><span class="user-title">${i}</span><span><span class="message-status"></span><span class="message-time">18:33</span></span></p><p><span class="user-last-message"><b>-_-_-_-: </b>qweasd</span><span></span></p></div></div>`;
+        i++;
         this.scroll.append(li);
+      };
+      for(let i = 0; i < 1000; ++i) {
+        add();
       }
+      (window as any).addElement = add;
     }
 
     window.addEventListener('resize', () => {
@@ -134,7 +142,7 @@ export class AppDialogsManager {
       let dialog: any = e.detail;
 
       this.setLastMessage(dialog);
-      this.sortDom();
+      this.setDialogPosition(dialog);
     });
 
     $rootScope.$on('dialogs_multiupdate', (e: CustomEvent) => {
@@ -154,12 +162,7 @@ export class AppDialogsManager {
         } 
 
         this.setLastMessage(dialog);
-      }
-
-      if(performed/*  && false */) {
-        /////////console.log('will sortDom');
-        this.sortDom();
-        this.sortDom(true);
+        this.setDialogPosition(dialog);
       }
     });
 
@@ -200,8 +203,7 @@ export class AppDialogsManager {
     //let offset = 0;
 
     let scroll = archived ? this.scrollArchived : this.scroll;
-    scroll.lock();
-    
+
     try {
       console.time('getDialogs time');
 
@@ -241,17 +243,16 @@ export class AppDialogsManager {
     
     this.chatsPreloader.remove();
     this.loadDialogsPromise = undefined;
-    scroll.unlock();
   }
   
   public onChatsScroll() {
-    if(this.loadedAll || this.scroll.hiddenElements.down.length > 0 || this.loadDialogsPromise/*  || 1 == 1 */) return;
+    if(this.loadedAll /* || this.scroll.hiddenElements.down.length > 0 */ || this.loadDialogsPromise/*  || 1 == 1 */) return;
     
     this.loadDialogs();
   }
 
   public onChatsArchivedScroll() {
-    if(this.loadedArchivedAll || this.scrollArchived.hiddenElements.down.length > 0 || this.loadDialogsPromise/*  || 1 == 1 */) return;
+    if(this.loadedArchivedAll /* || this.scrollArchived.hiddenElements.down.length > 0 */ || this.loadDialogsPromise/*  || 1 == 1 */) return;
     
     this.loadDialogs(true);
   }
@@ -329,8 +330,32 @@ export class AppDialogsManager {
     });
   }
 
-  public sortDom(archived = false) {
-    //return;
+  public setDialogPosition(dialog: any) {
+    let pos = appMessagesManager.getDialogByPeerID(dialog.peerID)[1];
+    let dom = this.getDialogDom(dialog.peerID);
+    let prevPos = whichChild(dom.listEl);
+    if(prevPos == pos) {
+      return;
+    } else if(prevPos < pos) { // was higher
+      pos += 1;
+    }
+    
+    let chatList = dialog.folder_id == 1 ? this.chatListArchived : this.chatList;
+    if(chatList.childElementCount > pos) {
+      chatList.insertBefore(dom.listEl, chatList.children[pos]);
+    } else {
+      chatList.append(dom.listEl);
+    }
+
+    // fix order
+    (Array.from(chatList.children) as HTMLElement[]).forEach((el, idx) => {
+      el.dataset.virtual = '' + idx;
+    });
+
+    this.log('setDialogPosition:', dialog, dom, pos);
+  }
+
+  /* public sortDom(archived = false) {
     //if(archived) return;
 
     let dialogs = appMessagesManager.dialogsStorage.dialogs.slice();
@@ -338,7 +363,6 @@ export class AppDialogsManager {
     let inUpper: Scrollable['hiddenElements']['up'] = [];
     let inBottom: Scrollable['hiddenElements']['down'] = [];
     let inVisible: Scrollable['visibleElements'] = [];
-
     let pinnedDialogs = [];
 
     let sorted = dialogs;
@@ -396,7 +420,7 @@ export class AppDialogsManager {
       let dom = this.getDialogDom(d.peerID);
       if(!dom) return;
 
-      let child = concated.find(obj => obj.element == dom.listEl);
+      let child = concated.find((obj: any) => obj.element == dom.listEl);
       if(!child) {
         return this.log.error('no child by listEl:', dom.listEl, archived, concated);
       }
@@ -418,7 +442,7 @@ export class AppDialogsManager {
     chatsVisible.length = 0;
     chatsVisible.push(...inVisible);
     chatsHidden.down = inBottom;
-  }
+  } */
 
   public setLastMessage(dialog: any, lastMessage?: any, dom?: DialogDom, highlightWord?: string) {
     if(!lastMessage) {

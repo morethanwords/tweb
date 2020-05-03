@@ -45,11 +45,12 @@ div.scrollable::-webkit-scrollbar-thumb {
 
   &.scrollable-y {
     overflow-y: auto;
+    overflow-y: overlay;
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
 
-  &.scrollable-x ~ .scrollbar-thumb {
+  /* &.scrollable-x ~ .scrollbar-thumb {
     top: auto;
     right: auto;
     width: auto;
@@ -63,10 +64,10 @@ div.scrollable::-webkit-scrollbar-thumb {
     &:first-child + * {
       flex: 1 1 auto;
     }
-  }
+  } */
 }
 
-.scrollbar-thumb {
+/* .scrollbar-thumb {
   position: absolute;
   top: 0;
   right: 2px;
@@ -80,7 +81,7 @@ div.scrollable::-webkit-scrollbar-thumb {
   transition-duration: .2s;
   transition-timing-function: ease-in-out;
 
-  //display: none;
+  display: none;
 
   border-radius: $border-radius;
   z-index: 2;
@@ -88,4 +89,42 @@ div.scrollable::-webkit-scrollbar-thumb {
 
 :hover > .scrollbar-thumb {
   opacity: .4;
+} */
+
+
+
+
+
+
+
+// BROWSER SCROLL
+div.scrollable-y::-webkit-scrollbar {
+  width: .375rem;
+  height: 200px;
+}
+
+/* div.scrollable-y::-webkit-scrollbar-thumb {
+  border: 2px solid rgba(0, 0, 0, 0);
+  background-clip: padding-box;
+} */
+
+::-webkit-scrollbar-thumb {
+  opacity: 0;
+  transition: .2s ease-in-out;
+}
+
+div.scrollable:hover::-webkit-scrollbar-thumb {
+  height: 200px;
+  border-radius: $border-radius-medium;
+  background-color: rgba(0, 0, 0, 0.2);
+  opacity: 1;
+}
+
+::-webkit-scrollbar-button {
+  width: 0;
+  height: 0;
+  display: none;
+}
+::-webkit-scrollbar-corner {
+  background-color: transparent;
 }

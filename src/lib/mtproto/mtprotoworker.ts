@@ -1,4 +1,4 @@
-import {dT, isObject} from '../utils';
+import {dT, isObject, $rootScope} from '../utils';
 import AppStorage from '../storage';
 import CryptoWorkerMethods from '../crypto/crypto_methods';
 
@@ -126,6 +126,7 @@ class ApiManagerProxy extends CryptoWorkerMethods {
   }
 
   public setUserAuth(userAuth: {id: number}) {
+    $rootScope.$broadcast('user_auth', userAuth);
     return this.performTaskWorker('setUserAuth', userAuth);
   }
 

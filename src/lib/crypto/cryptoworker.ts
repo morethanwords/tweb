@@ -37,13 +37,14 @@ class CryptoWorker extends CryptoWorkerMethods {
           'aes-decrypt': utils.aesDecryptSync,
           'rsa-encrypt': utils.rsaEncrypt,
           'factorize': utils.pqPrimeFactorization,
-          'mod-pow': utils.bytesModPow
+          'mod-pow': utils.bytesModPow,
+          'unzip': utils.gzipUncompress
         });
-      }),
+      })/* ,
 
       import('../bin_utils').then(utils => {
         this.utils.unzip = utils.gzipUncompress;
-      })
+      }) */
     ]);
     /// #else
     if(window.Worker) {

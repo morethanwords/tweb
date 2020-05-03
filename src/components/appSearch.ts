@@ -1,5 +1,5 @@
 import appDialogsManager from "../lib/appManagers/appDialogsManager";
-import Scrollable from "./scrollable";
+import Scrollable from "./scrollable_new";
 import appMessagesIDsManager from "../lib/appManagers/appMessagesIDsManager";
 import appUsersManager from "../lib/appManagers/appUsersManager";
 import appPeersManager from '../lib/appManagers/appPeersManager';
@@ -147,7 +147,7 @@ export default class AppSearch {
                 peerID: peerID,
                 pFlags: {},
                 peer: peer
-              };
+              } as any;
             }
             
             let {dialog, dom} = appDialogsManager.addDialog(originalDialog, group.list, false);
@@ -213,7 +213,7 @@ export default class AppSearch {
             peerID: message.peerID,
             pFlags: {},
             peer: message.to_id
-          };
+          } as any;
         }
         
         let {dialog, dom} = appDialogsManager.addDialog(originalDialog, searchGroup.list, false);

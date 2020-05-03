@@ -7,12 +7,28 @@
 
 // @ts-ignore
 import {BigInteger, SecureRandom} from 'jsbn';
+
+/// #if !MTPROTO_WORKER
 // @ts-ignore
 import pako from 'pako/dist/pako_inflate.min.js';
 
-var _logTimer = (new Date()).getTime()
+export function gzipUncompress(bytes: ArrayBuffer, toString: true): string;
+export function gzipUncompress(bytes: ArrayBuffer, toString?: false): Uint8Array;
+export function gzipUncompress(bytes: ArrayBuffer, toString?: boolean): string | Uint8Array {
+  //console.log(dT(), 'Gzip uncompress start');
+  var result = pako.inflate(bytes, toString ? {to: 'string'} : undefined);
+  //console.log(dT(), 'Gzip uncompress finish'/* , result */);
+  return result;
+}
+/// #endif
+
+var _logTimer = Date.now();
 export function dT () {
-  return '[' + (((new Date()).getTime() - _logTimer) / 1000).toFixed(3) + ']'
+  return '[' + ((Date.now() - _logTimer) / 1000).toFixed(3) + ']'
+}
+
+export function isObject(object: any) {
+  return typeof(object) === 'object' && object !== null;
 }
 
 export function bigint(num: number) {
@@ -377,15 +393,6 @@ export function addPadding(bytes: any, blockSize: number = 16, zeroes?: boolean,
   }
 
   return bytes;
-}
-
-export function gzipUncompress(bytes: ArrayBuffer, toString: true): string;
-export function gzipUncompress(bytes: ArrayBuffer, toString?: false): Uint8Array;
-export function gzipUncompress(bytes: ArrayBuffer, toString?: boolean): string | Uint8Array {
-  //console.log(dT(), 'Gzip uncompress start');
-  var result = pako.inflate(bytes, toString ? {to: 'string'} : undefined);
-  //console.log(dT(), 'Gzip uncompress finish'/* , result */);
-  return result;
 }
 
 export function nextRandomInt(maxValue: number) {
