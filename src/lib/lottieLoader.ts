@@ -20,7 +20,7 @@ class LottieLoader {
   public loadLottie() {
     if(this.loaded) return this.loaded;
 
-    this.loaded = new Promise((resolve, reject) => {
+    return this.loaded = new Promise((resolve, reject) => {
       (window as any).lottieLoaded = () => {
         console.log('lottie loaded');
         this.lottie = (window as any).lottie;

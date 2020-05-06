@@ -59,6 +59,10 @@ export class ApiManager {
     $rootScope.$broadcast('user_auth', fullUserAuth);
     /// #endif
   }
+
+  public setBaseDcID(dcID: number) {
+    this.baseDcID = dcID;
+  }
   
   // mtpLogOut
   public async logOut() {
@@ -68,9 +72,7 @@ export class ApiManager {
     
     for(let dcID = 1; dcID <= 5; dcID++) {
       storageKeys.push(prefix + dcID + '_auth_key');
-      //storageKeys.push('dc' + dcID + '_auth_keyID');
-      //storageKeys.push('t_dc' + dcID + '_auth_key');
-      //storageKeys.push('t_dc' + dcID + '_auth_keyID');
+      //storageKeys.push(prefix + dcID + '_auth_keyID');
     }
     
     // WebPushApiManager.forceUnsubscribe(); // WARNING
@@ -95,9 +97,9 @@ export class ApiManager {
       error.handled = true;
       this.telegramMeNotify(false);
       this.mtpClearStorage();
-    }).then(() => {
+    })/* .then(() => {
       location.pathname = '/';
-    });
+    }) */;
   }
   
   public mtpClearStorage() {

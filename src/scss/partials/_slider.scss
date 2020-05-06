@@ -1,0 +1,79 @@
+.menu-horizontal {
+  color: $darkgrey;
+  border-bottom: 1px solid $lightgrey;
+  position: relative;
+
+  ul {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+  }
+  
+  li {
+    display: inline-block;
+    padding: .75rem 1rem;
+    cursor: pointer;
+    text-align: center;
+    flex: 1;
+    user-select: none;
+    font-size: 1rem;
+    font-weight: 500;
+
+    &.active {
+      color: $blue;
+    }
+  }
+
+  &__stripe {
+    position: absolute;
+    background: $blue;
+    //left: 0;
+    left: -2px;
+    transition: .3s transform, .3s width;
+    //transition: .3s transform;
+    bottom: -1px;
+    height: 4px;
+    width: 1px; // need if using transform
+    transform: scaleX(1) translateX(0px);
+    border-top-left-radius: 2px;
+    border-top-right-radius: 2px;
+    z-index: 1;
+  }
+}
+
+.tabs-container {
+  min-width: 100%;
+  width: 100%;
+  display: flex;
+  /* overflow: hidden; */
+  overflow-x: hidden;
+
+  &.animated {
+    transition: .3s transform;
+  }
+  
+  > div {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    /* transition: .2s all; */
+    display: none;
+
+    &.active {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    > div:not(.scroll-padding) {
+      width: 100%;
+      max-width: 100%;
+      /* overflow: hidden; */
+      position: relative;
+    }
+  }
+}

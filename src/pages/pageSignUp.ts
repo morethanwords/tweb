@@ -5,7 +5,6 @@ import pageIm from './pageIm';
 import apiManager from '../lib/mtproto/mtprotoworker';
 import apiFileManager from '../lib/mtproto/apiFileManager';
 import Page from './page';
-import { calcImageInBox } from '../lib/utils';
 
 let authCode: {
   'phone_number': string,

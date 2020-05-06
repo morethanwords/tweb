@@ -141,6 +141,15 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
       let div = document.createElement('div');
       div.classList.add('emoji-category');
 
+      let titleDiv = document.createElement('div');
+      titleDiv.classList.add('category-title');
+      titleDiv.innerText = category;
+
+      let itemsDiv = document.createElement('div');
+      itemsDiv.classList.add('category-items');
+
+      div.append(titleDiv, itemsDiv);
+
       let emojis = sorted[category];
       emojis.forEach(details => {
         let emoji = details.unified;
@@ -161,7 +170,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
 
         //spanEmoji = spanEmoji.firstElementChild as HTMLSpanElement;
         //spanEmoji.setAttribute('emoji', emoji);
-        div.appendChild(spanEmoji);
+        itemsDiv.appendChild(spanEmoji);
       });
 
       divs[category] = div;
@@ -272,17 +281,23 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
     let heights: number[] = [];
 
     let heightRAF = 0;
-    let categoryPush = (categoryDiv: HTMLDivElement, docs: MTDocument[], prepend?: boolean) => {
+    let categoryPush = (categoryDiv: HTMLDivElement, categoryTitle: string, docs: MTDocument[], prepend?: boolean) => {
       //if((docs.length % 5) != 0) categoryDiv.classList.add('not-full');
 
-      let container = document.createElement('div');
-      categoryDiv.append(container);
+      let itemsDiv = document.createElement('div');
+      itemsDiv.classList.add('category-items');
+
+      let titleDiv = document.createElement('div');
+      titleDiv.classList.add('category-title');
+      titleDiv.innerText = categoryTitle;
+
+      categoryDiv.append(titleDiv, itemsDiv);
 
       docs.forEach(doc => {
         let div = document.createElement('div');
         wrapSticker(doc, div, undefined, lazyLoadQueue, EMOTICONSSTICKERGROUP, true, false, true);
 
-        container.append(div);
+        itemsDiv.append(div);
       });
 
       if(prepend) stickersScroll.prepend(categoryDiv);
@@ -356,7 +371,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
   
         //stickersScroll.prepend(categoryDiv);
         
-        categoryPush(categoryDiv, stickers.stickers, true);
+        categoryPush(categoryDiv, 'Recent', stickers.stickers, true);
       }),
 
       apiManager.invokeApi('messages.getAllStickers', {hash: 0}).then(async(res) => {
@@ -413,7 +428,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
             wrapSticker(stickerSet.documents[0], li as any, undefined, undefined, EMOTICONSSTICKERGROUP); // kostil
           }
   
-          categoryPush(categoryDiv, stickerSet.documents, false);
+          categoryPush(categoryDiv, stickerSet.set.title, stickerSet.documents, false);
         }
       })
     ]);

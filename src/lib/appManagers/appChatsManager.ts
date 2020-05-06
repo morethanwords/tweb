@@ -1,4 +1,4 @@
-import { $rootScope, isObject, SearchIndexManager, safeReplaceObject, copy } from "../utils";
+import { $rootScope, isObject, SearchIndexManager, safeReplaceObject, copy, numberWithCommas } from "../utils";
 import { RichTextProcessor } from "../richtextprocessor";
 import appUsersManager from "./appUsersManager";
 
@@ -78,6 +78,7 @@ export class AppChatsManager {
   }
 
   public getChat(id: number) {
+    if(id < 0) id = -id;
     return this.chats[id] || {id: id, deleted: true, access_hash: this.channelAccess[id]};
   }
 
@@ -202,6 +203,14 @@ export class AppChatsManager {
       return (this.isMegagroup(id) ? 's' : 'c') + id + '_' + chat.access_hash;
     }
     return 'g' + id;
+  }
+
+  public getChatMembersString(id: number) {
+    let chat = this.getChat(id);
+
+    let isChannel = this.isChannel(id) && !this.isMegagroup(id);
+    let participants_count = chat.participants_count || chat.participants.participants.length;
+    return numberWithCommas(participants_count) + ' ' + (isChannel ? 'subscribers' : 'members');
   }
 
   public wrapForFull(id: number, fullChat: any) {

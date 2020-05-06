@@ -154,6 +154,7 @@ export default class BubbleGroups {
   
   cleanup() {
     this.bubblesByGroups = [];
+    this.groups = [];
     /* for(let value of this.updateRAFs.values()) {
       window.cancelAnimationFrame(value);
     }

@@ -107,10 +107,13 @@ let set = (elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLSourceEl
 };
 
 export function renderImageFromUrl(elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLSourceElement, url: string) {
-  if(loadedURLs[url]) return set(elem, url);
+  if(loadedURLs[url]) {
+    set(elem, url);
+    return true;
+  }
 
   if(elem instanceof HTMLSourceElement) {
-    return elem.src = url;
+    elem.src = url;
   } else {
     let loader = new Image();
     loader.src = url;
@@ -119,6 +122,8 @@ export function renderImageFromUrl(elem: HTMLElement | HTMLImageElement | SVGIma
       loadedURLs[url] = true;
     };
   }
+
+  return false;
 }
 
 export function putPreloader(elem: Element, returnDiv = false) {

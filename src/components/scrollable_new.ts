@@ -64,7 +64,7 @@ export default class Scrollable {
   private virtualTempIDBottom = 0;
   private lastTopID = 0;
   private lastBottomID = 0;
-  private lastScrollDirection = true; // true = bottom
+  private lastScrollDirection = 0; // true = bottom
 
   private setVisible(element: HTMLElement) {
     if(this.visible.has(element)) return;
@@ -116,11 +116,11 @@ export default class Scrollable {
         //this.debug && this.log('intersection entry:', entry, isTop, isBottom, this.lastTopID, this.lastBottomID);
       });
 
-      if(!filtered.length) {
+      if(!filtered.length || this.lastScrollDirection === 0) {
         return;
       }
 
-      if(this.lastScrollDirection) { // bottom
+      if(this.lastScrollDirection === 1) { // bottom
         let target = filtered[filtered.length - 1].target as HTMLElement;
         this.lastBottomID = +target.dataset.virtual;
 
@@ -300,6 +300,7 @@ export default class Scrollable {
     
     this.disableHoverTimeout = setTimeout(() => {
       appendTo.classList.remove('disable-hover');
+      this.lastScrollDirection = 0;
       
       if(!this.measureMutex.isFulfilled) {
         this.measureMutex.resolve();
@@ -346,8 +347,12 @@ export default class Scrollable {
         }
       }
       
-      this.lastScrollDirection = this.lastScrollTop < scrollTop;
-      this.lastScrollTop = scrollTop;
+      if(this.lastScrollTop != scrollTop) {
+        this.lastScrollDirection = this.lastScrollTop < scrollTop ? 1 : -1;
+        this.lastScrollTop = scrollTop;
+      } else {
+        this.lastScrollDirection = 0;
+      }
       this.onScrollMeasure = 0;
     });
   }

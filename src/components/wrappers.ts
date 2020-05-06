@@ -115,6 +115,23 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
 
   let source = document.createElement('source');
   video.append(source);
+
+  let span: HTMLSpanElement;
+  if(doc.type != 'round') {
+    span = document.createElement('span');
+    span.classList.add('video-time');
+    container.append(span);
+
+    if(doc.type != 'gif') {
+      span.innerText = (doc.duration + '').toHHMMSS(false);
+
+      let spanPlay = document.createElement('span');
+      spanPlay.classList.add('video-play', 'tgico-largeplay', 'btn-circle', 'position-center');
+      container.append(spanPlay);
+    } else {
+      span.innerText = 'GIF';
+    }
+  }
   
   let loadVideo = () => {
     let promise = appDocsManager.downloadDoc(doc);
@@ -133,7 +150,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
 
       //return;
       
-      console.log('loaded doc:', doc, doc.url, blob, container);
+      //console.log('loaded doc:', doc, doc.url, blob, container);
       
       renderImageFromUrl(source, doc.url);
       source.type = doc.mime_type;
@@ -164,7 +181,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     downloadDiv.classList.add('download');
 
     let span = document.createElement('span');
-    span.classList.add('tgico-download');
+    span.classList.add('btn-circle', 'tgico-download');
     downloadDiv.append(span);
 
     downloadDiv.addEventListener('click', () => {
@@ -172,7 +189,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       loadVideo();
     });
 
-    container.append(downloadDiv);
+    container.prepend(downloadDiv);
 
     return;
   }
@@ -642,7 +659,7 @@ export function wrapPhoto(photoID: string, message: any, container: HTMLDivEleme
     }
   }
 
-  console.log('wrapPhoto downloaded:', photo, photo.downloaded, container);
+  //console.log('wrapPhoto downloaded:', photo, photo.downloaded, container);
 
   // так нельзя делать, потому что может быть загружен неправильный размер картинки
   /* if(photo.downloaded && photo.url) {
@@ -727,6 +744,7 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
     return lazyLoadQueue ? (lazyLoadQueue.push({div, load}), Promise.resolve()) : load();
   }
   
+  let downloaded = doc.downloaded;
   let load = () => appDocsManager.downloadDoc(doc.id).then(blob => {
     //console.log('loaded sticker:', blob, div);
     if(middleware && !middleware()) return;
@@ -803,6 +821,16 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
     } else if(stickerType == 1) {
       let img = new Image();
 
+      if(!downloaded && (!div.firstElementChild || div.firstElementChild.tagName != 'IMG')) {
+        img.style.opacity = '' + 0;
+
+        img.onload = () => {
+          window.requestAnimationFrame(() => {
+            img.style.opacity = '';
+          });
+        };
+      }
+
       if(!doc.url) {
         appWebpManager.polyfillImage(img, blob).then((url) => {
           doc.url = url;
@@ -825,7 +853,7 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
   return lazyLoadQueue && (!doc.downloaded || stickerType == 2) ? (lazyLoadQueue.push({div, load, wasSeen: group == 'chat'}), Promise.resolve()) : load();
 }
 
-export function wrapReply(title: string, subtitle: string, media?: any) {
+export function wrapReply(title: string, subtitle: string, message?: any) {
   let div = document.createElement('div');
   div.classList.add('reply');
   
@@ -843,11 +871,15 @@ export function wrapReply(title: string, subtitle: string, media?: any) {
   
   replyTitle.innerHTML = title ? RichTextProcessor.wrapEmojiText(title) : '';
   
+  let media = message && message.media;
   if(media) {
-    if(media.photo) {
+    if(message.grouped_id) {
+      replySubtitle.innerHTML = 'Album';
+    } else if(media.photo) {
       replySubtitle.innerHTML = 'Photo';
     } else if(media.document && media.document.type) {
-      replySubtitle.innerHTML = media.document.type;
+      let type = media.document.type as string;
+      replySubtitle.innerHTML = type.charAt(0).toUpperCase() + type.slice(1); // capitalizeFirstLetter
     } else if(media.webpage) {
       replySubtitle.innerHTML = RichTextProcessor.wrapPlainText(media.webpage.url);
     } else {

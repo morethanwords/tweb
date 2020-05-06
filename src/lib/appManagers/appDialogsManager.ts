@@ -1,8 +1,8 @@
 import { langPack, findUpClassName, $rootScope, escapeRegExp, whichChild } from "../utils";
 import appImManager, { AppImManager } from "./appImManager";
 import appPeersManager from './appPeersManager';
-import appMessagesManager, { AppMessagesManager } from "./appMessagesManager";
-import appUsersManager from "./appUsersManager";
+import appMessagesManager, { AppMessagesManager, Dialog } from "./appMessagesManager";
+import appUsersManager, { User } from "./appUsersManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import { ripple, putPreloader } from "../../components/misc";
 //import Scrollable from "../../components/scrollable";
@@ -208,7 +208,7 @@ export class AppDialogsManager {
       console.time('getDialogs time');
 
       let loadCount = 50/*this.chatsLoadCount */;
-      this.loadDialogsPromise = appMessagesManager.getConversations('', offset, loadCount, +archived);
+      this.loadDialogsPromise = appMessagesManager.getConversations(offset, loadCount, +archived);
       
       let result = await this.loadDialogsPromise;
 
@@ -535,8 +535,8 @@ export class AppDialogsManager {
             let d = [];
 
             d.push(duration % 60 + ' s');
-            if(duration > 60) d.push((duration / 60 | 0) + ' min');
-            //if(duration > 3600) d.push((duration / 3600 | 0) + ' h');
+            if(duration >= 60) d.push((duration / 60 | 0) + ' min');
+            //if(duration >= 3600) d.push((duration / 3600 | 0) + ' h');
             suffix = ' (' + d.reverse().join(' ') + ')';
           }
         }
@@ -674,22 +674,33 @@ export class AppDialogsManager {
     return this.doms[peerID] || this.domsArchived[peerID];
   }
 
-  public addDialog(dialog: {
-    peerID: number,
-    pFlags: any,
-    peer: any,
-    folder_id?: number
-  }, container?: HTMLUListElement, drawStatus = true) {
+  public addDialog(_dialog: Dialog | number, container?: HTMLUListElement, drawStatus = true, rippleEnabled = true, onlyFirstName = false) {
+    let dialog: Dialog;
+    
+    if(typeof(_dialog) === 'number') {
+      let originalDialog = appMessagesManager.getDialogByPeerID(_dialog)[0];
+      if(!originalDialog) {
+        originalDialog = {
+          peerID: _dialog,
+          pFlags: {}
+        } as any;
+      }
+
+      dialog = originalDialog;
+    } else {
+      dialog = _dialog;
+    }
+
     let peerID: number = dialog.peerID;
 
     if((this.doms[peerID] || this.domsArchived[peerID]) && !container) return;
 
-    let title = appPeersManager.getPeerTitle(peerID);
+    let title = appPeersManager.getPeerTitle(peerID, false, onlyFirstName);
 
     let avatarDiv = document.createElement('div');
     avatarDiv.classList.add('user-avatar');
 
-    if(drawStatus && peerID != $rootScope.myID) {
+    if(drawStatus && peerID != $rootScope.myID && dialog.peer) {
       let peer = dialog.peer;
       
       switch(peer._) {
@@ -714,7 +725,7 @@ export class AppDialogsManager {
     titleSpan.classList.add('user-title');
 
     if(peerID == $rootScope.myID) {
-      title = 'Saved Messages';
+      title = onlyFirstName ? 'Saved' : 'Saved Messages';
     } 
 
     //console.log('trying to load photo for:', title);
@@ -733,21 +744,24 @@ export class AppDialogsManager {
     paddingDiv.classList.add('rp');
     paddingDiv.append(avatarDiv, captionDiv);
 
-    ripple(paddingDiv, (id) => {
-      this.log('dialogs click element');
-      this.lastClickID = id;
-
-      return new Promise((resolve, reject) => {
-        this.rippleCallback = resolve;
-        //setTimeout(() => resolve(), 100);
-        //window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()));
+    if(rippleEnabled) {
+      ripple(paddingDiv, (id) => {
+        this.log('dialogs click element');
+        this.lastClickID = id;
+  
+        return new Promise((resolve, reject) => {
+          this.rippleCallback = resolve;
+          //setTimeout(() => resolve(), 100);
+          //window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()));
+        });
+      }, (id) => {
+        //console.log('appDialogsManager: ripple onEnd called!');
+        if(id == this.lastGoodClickID) {
+          appImManager.lazyLoadQueue.unlock();
+        }
       });
-    }, (id) => {
-      //console.log('appDialogsManager: ripple onEnd called!');
-      if(id == this.lastGoodClickID) {
-        appImManager.lazyLoadQueue.unlock();
-      }
-    });
+    }
+    
 
     let li = document.createElement('li');
     li.append(paddingDiv);
@@ -807,22 +821,26 @@ export class AppDialogsManager {
     return {dom, dialog};
   }
 
-  public setTyping(dialog: any, user: any) {
+  public setTyping(dialog: Dialog, user: User) {
     let dom = this.getDialogDom(dialog.peerID);
 
     let str = '';
+    if(dialog.peerID < 0) {
+      let s = user.rFirstName || user.username;
+      if(!s) return;
+      str = s + ' ';
+    } 
 
     let senderBold = document.createElement('i');
-    if(dialog.peerID < 0) str = (user.first_name || user.last_name || user.username) + ' ';
     str += 'typing...';
-    senderBold.innerText = str;
+    senderBold.innerHTML = str;
 
     dom.lastMessageSpan.innerHTML = '';
     dom.lastMessageSpan.append(senderBold);
     dom.lastMessageSpan.classList.add('user-typing');
   }
 
-  public unsetTyping(dialog: any) {
+  public unsetTyping(dialog: Dialog) {
     let dom = this.getDialogDom(dialog.peerID);
     dom.lastMessageSpan.classList.remove('user-typing');
     this.setLastMessage(dialog, null, dom);

@@ -262,46 +262,57 @@
       font-weight: 500;
     }
 
-    &:not(.search-group-messages) {
-      .user-avatar {
-        width: 48px;
-        height: 48px;
-      }
-    }
-
     &-contacts {
       padding: 16px 0 7px;
-
-      li {
-        //margin-bottom: 2px;
-        padding-bottom: 4px;
-        padding-top: 2px;
-      }
-
-      li > .rp {
-        padding: 9px 11.5px !important;
-        height: 66px;
-      }
 
       .search-group__name {
         padding-bottom: 17px;
       }
-
-      .user-caption {
-        padding: 1px 3.5px 1px 13px;
-      }
-
-      .user-title, b, .user-last-message b {
-        font-weight: normal;
-      }
-
-      p {
-        height: 24px;
-      }
-
-      span.user-last-message {
-        font-size: 14px;
-      }
     }
+  }
+}
+
+// use together like class="chats-container contacts-container"
+.contacts-container, .search-group-contacts {
+  .user-avatar {
+    width: 48px;
+    height: 48px;
+  }
+
+  li {
+    //margin-bottom: 2px;
+    padding-bottom: 4px;
+    padding-top: 2px;
+  }
+
+  li > .rp {
+    padding: 9px 11.5px !important;
+    height: 66px;
+  }
+
+  .user-caption {
+    padding: 1px 3.5px 1px 13px;
+  }
+
+  .user-title, b, .user-last-message b {
+    font-weight: normal;
+  }
+
+  p {
+    height: 24px;
+  }
+
+  span.user-last-message {
+    font-size: 14px;
+  }
+}
+
+#contacts-container {
+  .sidebar-header {
+    margin-bottom: 1px;
+  }
+  
+  .input-search {
+    margin-left: 16px;
   }
 }

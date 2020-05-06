@@ -26,6 +26,7 @@ import Scrollable from '../../components/scrollable_new';
 import BubbleGroups from '../../components/bubbleGroups';
 import LazyLoadQueue from '../../components/lazyLoadQueue';
 import appDocsManager from './appDocsManager';
+import appForward from '../../components/appForward';
 
 console.log('appImManager included!');
 
@@ -333,6 +334,12 @@ export class AppImManager {
       
       if(!bubble) return;
 
+      //this.log('chatInner click:', target);
+      if(target.tagName == 'SPAN') {
+        (target.parentElement.querySelector('video') as HTMLElement).click(); // hot-fix for time and play button
+        return;
+      }
+
       if((target.tagName == 'IMG' && !target.classList.contains('emoji') && !target.parentElement.classList.contains('user-avatar')) 
         || target.tagName == 'image' 
         || target.classList.contains('album-item')
@@ -458,7 +465,9 @@ export class AppImManager {
         return;
       }
       
-      if(e.key == 'Meta' || e.key == 'Control') {
+      if(e.key == 'Escape' && this.peerID != 0) { // hide current dialog
+        this.setPeer(0);
+      } else if(e.key == 'Meta' || e.key == 'Control') {
         return;
       } else if(e.key == 'c' && (e.ctrlKey || e.metaKey) && target.tagName != 'INPUT') {
         return;
@@ -566,14 +575,18 @@ export class AppImManager {
     
     this.contextMenu.querySelector('.menu-reply').addEventListener('click', () => {
       let message = appMessagesManager.getMessage(this.contextMenuMsgID);
-      this.chatInputC.setTopInfo(appPeersManager.getPeerTitle(message.fromID, true), message.message, undefined, message.media);
+      this.chatInputC.setTopInfo(appPeersManager.getPeerTitle(message.fromID, true), message.message, undefined, message);
       this.chatInputC.replyToMsgID = this.contextMenuMsgID;
       this.chatInputC.editMsgID = 0;
+    });
+
+    this.contextMenu.querySelector('.menu-forward').addEventListener('click', () => {
+      appForward.init([this.contextMenuMsgID]);
     });
     
     this.contextMenuEdit.addEventListener('click', () => {
       let message = appMessagesManager.getMessage(this.contextMenuMsgID);
-      this.chatInputC.setTopInfo('Editing', message.message, message.message, message.media);
+      this.chatInputC.setTopInfo('Editing', message.message, message.message, message);
       this.chatInputC.replyToMsgID = 0;
       this.chatInputC.editMsgID = this.contextMenuMsgID;
     });
@@ -848,40 +861,11 @@ export class AppImManager {
       if(this.myID == this.peerID) {
         this.subtitleEl.innerText = appSidebarRight.profileElements.subtitle.innerText = '';
       } else if(user && user.status) {
-        let subtitle = '';
-        switch(user.status._) {
-          case 'userStatusRecently': {
-            subtitle += 'last seen recently';
-            break;
-          }
-          
-          case 'userStatusOffline': {
-            subtitle = 'last seen ';
-          
-            let date = user.status.was_online;
-            let now = Date.now() / 1000;
-            
-            if((now - date) < 60) {
-              subtitle += ' just now';
-            } else if((now - date) < 3600) {
-              subtitle += ((now - date) / 60 | 0) + ' minutes ago';
-            } else if(now - date < 86400) {
-              subtitle += ((now - date) / 3600 | 0) + ' hours ago';
-            } else {
-              let d = new Date(date * 1000);
-              subtitle += ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + ' at ' + 
-              ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
-            }
-            
-            break;
-          }
+        let subtitle = appUsersManager.getUserStatusString(user.id);
 
-          case 'userStatusOnline': {
-            this.subtitleEl.classList.add('online');
-            appSidebarRight.profileElements.subtitle.classList.add('online');
-            subtitle = 'online';
-            break;
-          }
+        if(subtitle == 'online') {
+          this.subtitleEl.classList.add('online');
+          appSidebarRight.profileElements.subtitle.classList.add('online');
         }
         
         appSidebarRight.profileElements.subtitle.innerText = subtitle;
@@ -951,6 +935,10 @@ export class AppImManager {
       appSidebarRight.toggleSidebar(false);
       this.topbar.style.display = this.chatInput.style.display = this.goDownBtn.style.display = 'none';
       this.cleanup();
+      if(appDialogsManager.lastActiveListElement) {
+        appDialogsManager.lastActiveListElement.classList.remove('active');
+        appDialogsManager.lastActiveListElement = null;
+      }
       return false;
     }
     
@@ -1087,9 +1075,9 @@ export class AppImManager {
         return true;
       })/* .catch(err => {
         this.log.error(err);
-      }) */,
+      }) *//* ,
       
-      appSidebarRight.fillProfileElements()/* ,
+      appSidebarRight.fillProfileElements() *//* ,
       appSidebarRight.loadSidebarMedia(true) */
     ]).catch(err => {
       this.log.error('setPeer promises error:', err);
@@ -1152,6 +1140,7 @@ export class AppImManager {
       let bubble = this.bubbles[id];
       delete this.bubbles[id];
 
+      this.bubbleGroups.removeBubble(bubble, id);
       this.unreadedObserver.unobserve(bubble);
       this.scrollable.removeElement(bubble);
       //bubble.remove();
@@ -1236,7 +1225,7 @@ export class AppImManager {
   
   // reverse means top
   public renderMessage(message: any, reverse = false, multipleRender = false, bubble: HTMLDivElement = null, updatePosition = true) {
-    this.log('message to render:', message);
+    //this.log('message to render:', message);
     if(message.deleted) return;
     else if(message.grouped_id) { // will render only last album's message
       let storage = appMessagesManager.groupedMessagesStorage[message.grouped_id];
@@ -1614,7 +1603,7 @@ export class AppImManager {
         case 'messageMediaDocument': {
           let doc = message.media.document;
 
-          this.log('messageMediaDocument', doc, bubble);
+          //this.log('messageMediaDocument', doc, bubble);
           
           if(doc.sticker/*  && doc.size <= 1e6 */) {
             bubble.classList.add('sticker');
@@ -1639,7 +1628,7 @@ export class AppImManager {
 
             break;
           } else if(doc.type == 'video' || doc.type == 'gif' || doc.type == 'round'/*  && doc.size <= 20e6 */) {
-            this.log('never get free 2', doc);
+            //this.log('never get free 2', doc);
             
             if(doc.type == 'round') {
               bubble.classList.add('round');
@@ -1700,7 +1689,7 @@ export class AppImManager {
         }
 
         case 'messageMediaContact': {
-          this.log('wrapping contact', message);
+          //this.log('wrapping contact', message);
 
           let contactDiv = document.createElement('div');
           contactDiv.classList.add('contact');
@@ -1791,7 +1780,7 @@ export class AppImManager {
             bubble.setAttribute('data-original-mid', message.reply_to_mid);
           }
           
-          bubbleContainer.append(wrapReply(originalPeerTitle, originalMessage.message || '', originalMessage.media));
+          bubbleContainer.append(wrapReply(originalPeerTitle, originalMessage.message || '', originalMessage));
           bubble.classList.add('is-reply');
         }
         
@@ -2033,7 +2022,7 @@ export class AppImManager {
     
     let pageCount = this.bubblesContainer.clientHeight / 38/*  * 1.25 */ | 0;
     //let loadCount = Object.keys(this.bubbles).length > 0 ? 50 : pageCount;
-    let realLoadCount = 50;
+    let realLoadCount = Object.keys(this.bubbles).length > 0 ? 40 : pageCount;//let realLoadCount = 50;
     let loadCount = realLoadCount;
     
     if(testScroll) {
@@ -2306,4 +2295,5 @@ export class AppImManager {
 }
 
 const appImManager = new AppImManager();
+(window as any).appImManager = appImManager;
 export default appImManager;

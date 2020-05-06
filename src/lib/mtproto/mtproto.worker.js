@@ -26,15 +26,26 @@ ctx.onmessage = function(e) {
         ctx.postMessage({taskID: taskID, result: result});
       });
 
-    default:
-      return apiManager[e.data.task].apply(apiManager, e.data.args).then(result => {
-        //console.log(e.data.task + ' result:', result, taskID);
-        ctx.postMessage({taskID: taskID, result: result});
-      }).catch(err => {
-        //console.error(e.data.task + ' err:', err, taskID);
+    default: {
+      try {
+        let result = apiManager[e.data.task].apply(apiManager, e.data.args);
+        if(result instanceof Promise) {
+          result.then(result => {
+            //console.log(e.data.task + ' result:', result, taskID);
+            ctx.postMessage({taskID: taskID, result: result});
+          }).catch(err => {
+            //console.error(e.data.task + ' err:', err, taskID);
+            ctx.postMessage({taskID: taskID, error: err});
+          });
+        } else {
+          ctx.postMessage({taskID: taskID, result: result});
+        }
+      } catch(err) {
         ctx.postMessage({taskID: taskID, error: err});
-      });
+      }
+
       //throw new Error('Unknown task: ' + e.data.task);
+    }
   }
 }
 

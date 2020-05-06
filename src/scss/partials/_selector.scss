@@ -1,0 +1,151 @@
+@keyframes scaleIn {
+  0% {
+    transform: scale(.2);
+  }
+
+  to {
+    transform: scale(1);
+  }
+}
+
+.selector {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+
+  &-search-container {
+    flex: 1 1 auto;
+    position: relative;
+    max-height: 132px;
+
+    .scrollable {
+      position: relative;
+    }
+  }
+
+  &-search {
+    padding: 0 24px 0 24px;
+    display: flex;
+    flex-flow: wrap;
+
+    input {
+      border: none;
+      padding: 7px 0px 19px 0px;
+      outline: none;
+      flex: 1 1 auto;
+    }
+  }
+
+  &-user {
+    color: #000;
+    background-color: rgba(112, 117, 121, 0.08);
+    font-size: 16px;
+    padding: 0 17px 0px 0px;
+    line-height: 31px;
+    margin-left: -4px;
+    margin-right: 12px;
+    height: 32px;
+    margin-bottom: 7px;
+    border-radius: 24px;
+    user-select: none;
+    flex: 0 0 auto;
+    transition: .2s all;
+
+    &:hover {
+      background-color: #fae2e3;
+      cursor: pointer;
+
+      .user-avatar:after {
+        opacity: 1;
+      }
+    }
+    
+    &.scale-in {
+      animation: scaleIn .15s ease forwards;
+    }
+
+    &.scale-out {
+      animation: scaleIn .1s ease forwards;
+      animation-direction: reverse;
+    }
+
+    .user-avatar {
+      height: 32px !important;
+      width: 32px !important;
+      float: left;
+      margin-right: 8px;
+      overflow: hidden;
+      font-size: 14px;
+
+      &:after {
+        position: absolute;
+        content: $tgico-close;
+        left: 0;
+        top: 0;
+        background-color: #df3f40;
+        height: 100%;
+        width: 100%;
+        z-index: 2;
+        font-size: 23px;
+        line-height: 32px;
+        opacity: 0;
+        transition: .2s opacity;
+        transform: scaleX(-1);
+      }
+    }
+  }
+
+  .chats-container {
+    height: 100%;
+    flex: 1 1 auto;
+  }
+
+  ul {
+    .user-avatar {
+      height: 48px;
+      width: 48px;
+    }
+
+    .user-caption {
+      padding: 1px 3.5px 1px 12px;
+    }
+
+    p {
+      height: 24px;
+    }
+
+    span.user-title {
+      font-weight: normal;
+    }
+    
+    span.user-last-message {
+        font-size: 14px;
+    }
+
+    li {
+      padding-bottom: 0;
+
+      > .rp {
+        margin: 0px 9px 0px 8px;
+        padding: 12px 8.5px;
+      }
+    }
+  }
+
+  hr {
+    width: 100%;
+    height: 1px;
+    border: none;
+    background-color: #DADCE0;
+    margin: 0 0 8px;
+  }
+
+  [type="checkbox"] + span {
+    padding-left: calc(9px + 2.25rem);
+  }
+
+  .checkbox {
+    margin-top: 11px;
+    padding-left: 11px;
+  }
+}

@@ -393,7 +393,7 @@ export class ChatInput {
           if(!file) continue;
 
           willAttach.type = file.type.indexOf('image/') === 0 ? 'media' : "document";
-          attachFile(file);
+          attachFiles([file]);
         }
       }
     }, true);
@@ -559,12 +559,12 @@ export class ChatInput {
     this.onMessageSent(!this.editMsgID);
   };
 
-  public setTopInfo(title: string, subtitle: string, input?: string, media?: any) {
+  public setTopInfo(title: string, subtitle: string, input?: string, message?: any) {
     //appImManager.scrollPosition.prepareFor('down');
 
     if(this.replyElements.container.lastElementChild.tagName == 'DIV') {
       this.replyElements.container.lastElementChild.remove();
-      this.replyElements.container.append(wrapReply(title, subtitle, media));
+      this.replyElements.container.append(wrapReply(title, subtitle, message));
     }
     //this.replyElements.titleEl.innerHTML = title ? RichTextProcessor.wrapEmojiText(title) : '';
     //this.replyElements.subtitleEl.innerHTML = subtitle ? RichTextProcessor.wrapEmojiText(subtitle) : '';

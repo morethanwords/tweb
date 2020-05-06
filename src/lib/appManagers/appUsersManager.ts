@@ -5,14 +5,41 @@ import appChatsManager from "./appChatsManager";
 import apiManager from '../mtproto/mtprotoworker';
 import serverTimeManager from "../mtproto/serverTimeManager";
 
+export type User = {
+  _: 'user',
+  access_hash: string,
+  first_name: string,
+  last_name: string,
+  username: string,
+  flags: number,
+  id: number,
+  phone: string,
+  photo: any,
+  
+  status?: Partial<{
+    _: 'userStatusOffline' | 'userStatusOnline' | 'userStatusRecently' | 'userStatusLastWeek' | 'userStatusLastMonth' | 'userStatusEmpty',
+    wasStatus: any,
+    was_online: number,
+    expires: number
+  }>,
+  
+  initials?: string,
+  num?: number,
+  pFlags: Partial<{verified: boolean, support: boolean, self: boolean, bot: boolean, min: number, deleted: boolean}>,
+  rFirstName?: string,
+  rFullName?: string,
+  sortName?: string,
+  sortStatus?: number,
+};
+
 export class AppUsersManager {
-  public users: any = {};
-  public usernames: any = {};
-  public userAccess: {[x: number]: string} = {};
+  public users: {[userID: number]: User} = {};
+  public usernames: {[username: string]: number} = {};
+  public userAccess: {[userID: number]: string} = {};
   public cachedPhotoLocations: any = {};
   public contactsIndex = SearchIndexManager.createIndex();
-  public contactsFillPromise: any;
-  public contactsList: any;
+  public contactsFillPromise: Promise<number[]>;
+  public contactsList: number[];
   public myID: number;
 
   constructor() {
@@ -80,28 +107,27 @@ export class AppUsersManager {
     });
   }
 
-  /* public fillContacts () {
+  public fillContacts() {
     if(this.contactsFillPromise) {
       return this.contactsFillPromise;
     }
 
-    return this.contactsFillPromise = MTProto.apiManager.invokeApi('contacts.getContacts', {
+    return this.contactsFillPromise = apiManager.invokeApi('contacts.getContacts', {
       hash: 0
     }).then((result: any) => {
-      var userID, searchText;
-      var i;
+      var userID;
       this.contactsList = [];
       this.saveApiUsers(result.users);
 
-      for(var i = 0; i < result.contacts.length; i++) {
-        userID = result.contacts[i].user_id
+      result.contacts.forEach((contact: any) => {
+        userID = contact.user_id;
         this.contactsList.push(userID);
-        //SearchIndexManager.indexObject(userID, getUserSearchText(userID), contactsIndex); WARNING
-      }
+        SearchIndexManager.indexObject(userID, this.getUserSearchText(userID), this.contactsIndex);
+      });
 
       return this.contactsList;
-    })
-  } */
+    });
+  }
 
   public getUserSearchText(id: number) {
     var user = this.users[id];
@@ -120,32 +146,28 @@ export class AppUsersManager {
             ' ' + serviceText;
   }
 
-  /* function getContacts (query) {
-      return fillContacts().then(function (contactsList) {
-        if (angular.isString(query) && query.length) {
-          var results = SearchIndexManager.search(query, contactsIndex)
-          var filteredContactsList = []
+  public getContacts(query?: string) {
+    return this.fillContacts().then(contactsList => {
+      if(query) {
+        const results: any = SearchIndexManager.search(query, this.contactsIndex);
+        const filteredContactsList = contactsList.filter(id => !!results[id]);
 
-          for (var i = 0; i < contactsList.length; i++) {
-            if (results[contactsList[i]]) {
-              filteredContactsList.push(contactsList[i])
-            }
-          }
-          contactsList = filteredContactsList
+        contactsList = filteredContactsList;
+      }
+
+      contactsList.sort((userID1: number, userID2: number) => {
+        const sortName1 = (this.users[userID1] || {}).sortName || '';
+        const sortName2 = (this.users[userID2] || {}).sortName || '';
+        if(sortName1 == sortName2) {
+          return 0;
         }
 
-        contactsList.sort(function (userID1, userID2) {
-          var sortName1 = (users[userID1] || {}.sortName) || ''
-          var sortName2 = (users[userID2] || {}.sortName) || ''
-          if (sortName1 == sortName2) {
-            return 0
-          }
-          return sortName1 > sortName2 ? 1 : -1
-        })
+        return sortName1 > sortName2 ? 1 : -1;
+      });
 
-        return contactsList
-      })
-  } */
+      return contactsList;
+    });
+  }
 
   public resolveUsername(username: string) {
     return this.usernames[username] || 0;
@@ -235,7 +257,7 @@ export class AppUsersManager {
     this.userAccess[id] = accessHash;
   }
 
-  public getUserStatusForSort(status: any) {
+  public getUserStatusForSort(status: User['status']) {
     if(status) {
       var expires = status.expires || status.was_online;
       if(expires) {
@@ -255,15 +277,75 @@ export class AppUsersManager {
     return 0;
   }
 
-  public getUser(id: any) {
+  public getUser(id: any): User {
     if(isObject(id)) {
       return id;
     }
-    return this.users[id] || {id: id, deleted: true, num: 1, access_hash: this.userAccess[id]};
+
+    return this.users[id] || {id: id, pFlags: {deleted: true}, num: 1, access_hash: this.userAccess[id]} as User;
   }
 
   public getSelf() {
     return this.getUser(this.myID);
+  }
+
+  public getUserStatusString(userID: number) {
+    if(this.isBot(userID)) {
+      return 'bot';
+    }
+
+    let user = this.getUser(userID);
+    if(!user || !user.status) {
+      return '';
+    }
+    
+    let str = '';
+    switch(user.status._) {
+      case 'userStatusRecently': {
+        str = 'last seen recently';
+        break;
+      }
+
+      case 'userStatusLastWeek': {
+        str = 'last seen last week';
+        break;
+      }
+
+      case 'userStatusLastMonth': {
+        str = 'last seen last month';
+        break;
+      }
+      
+      case 'userStatusOffline': {
+        str = 'last seen ';
+      
+        let date = user.status.was_online;
+        let now = Date.now() / 1000;
+        
+        if((now - date) < 60) {
+          str += ' just now';
+        } else if((now - date) < 3600) {
+          let c = (now - date) / 60 | 0;
+          str += c + ' ' + (c == 1 ? 'minute' : 'minutes') + ' ago';
+        } else if(now - date < 86400) {
+          let c = (now - date) / 3600 | 0;
+          str += c + ' ' + (c == 1 ? 'hour' : 'hours') + ' ago';
+        } else {
+          let d = new Date(date * 1000);
+          str += ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + ' at ' + 
+          ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+        }
+        
+        break;
+      }
+
+      case 'userStatusOnline': {
+        str = 'online';
+        break;
+      }
+    }
+
+    return str;
   }
 
   public isBot(id: number) {
@@ -345,12 +427,6 @@ export class AppUsersManager {
     }
   }
 
-  public wrapForFull(id: number) {
-    var user = this.getUser(id);
-
-    return user;
-  }
-
   /* function importContact (phone, firstName, lastName) {
       return MtpApiManager.invokeApi('contacts.importContacts', {
         contacts: [{
@@ -426,7 +502,7 @@ export class AppUsersManager {
       flags: 1,
       correspondents: true,
       offset: 0,
-      limit: 5,
+      limit: 30,
       hash: 0,
     }).then((peers: any) => {
       //console.log(peers);
@@ -477,7 +553,7 @@ export class AppUsersManager {
 
     var user = this.users[userID];
     if(user) {
-      var status = offline ? {
+      var status: any = offline ? {
         _: 'userStatusOffline',
         was_online: tsNow(true)
       } : {

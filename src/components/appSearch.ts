@@ -4,17 +4,19 @@ import appMessagesIDsManager from "../lib/appManagers/appMessagesIDsManager";
 import appUsersManager from "../lib/appManagers/appUsersManager";
 import appPeersManager from '../lib/appManagers/appPeersManager';
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
-import { numberWithCommas, escapeRegExp } from "../lib/utils";
+import { escapeRegExp } from "../lib/utils";
 import { formatPhoneNumber } from "./misc";
+import appChatsManager from "../lib/appManagers/appChatsManager";
 
 export class SearchGroup {
   container: HTMLDivElement;
   nameEl: HTMLDivElement;
   list: HTMLUListElement;
 
-  constructor(public name: string, public type: string) {
+  constructor(public name: string, public type: string, private clearable = true, className?: string) {
     this.list = document.createElement('ul');
     this.container = document.createElement('div');
+    if(className) this.container.classList.add(className);
     this.nameEl = document.createElement('div');
     this.nameEl.classList.add('search-group__name');
     this.nameEl.innerText = name;
@@ -28,7 +30,10 @@ export class SearchGroup {
 
   clear() {
     this.container.style.display = 'none';
-    this.list.innerHTML = '';
+
+    if(this.clearable) {
+      this.list.innerHTML = '';
+    }
   }
 
   setActive() {
@@ -47,7 +52,7 @@ export default class AppSearch {
 
   private query = '';
 
-  private listsContainer: HTMLDivElement = null;
+  public listsContainer: HTMLDivElement = null;
 
   private peerID = 0; // 0 - means global
 
@@ -155,11 +160,7 @@ export default class AppSearch {
             if(showMembersCount && (peer.participants_count || peer.participants)) {
               let regExp = new RegExp(`(${escapeRegExp(query)})`, 'gi');
               dom.titleSpan.innerHTML = dom.titleSpan.innerHTML.replace(regExp, '<i>$1</i>');
-
-              let isChannel = appPeersManager.isChannel(peerID) && !appPeersManager.isMegagroup(peerID);
-              let participants_count = peer.participants_count || peer.participants.participants.length;
-              let subtitle = numberWithCommas(participants_count) + ' ' + (isChannel ? 'subscribers' : 'members');
-              dom.lastMessageSpan.innerText = subtitle;
+              dom.lastMessageSpan.innerText = appChatsManager.getChatMembersString(-peerID);
             } else {
               let username = appPeersManager.getPeerUsername(peerID);
               if(!username) {

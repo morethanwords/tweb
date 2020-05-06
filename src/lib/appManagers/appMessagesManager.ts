@@ -38,7 +38,7 @@ export type HistoryResult = {
   unreadSkip: boolean
 };
 
-type Dialog = {
+export type Dialog = {
   _: 'dialog',
   top_message: number,
   read_inbox_max_id: number,
@@ -68,9 +68,14 @@ export class AppMessagesManager {
     [peerID: string]: HistoryStorage
   } = {};
   public dialogsStorage: {
-    count: any,
-    dialogs: Dialog[]
-  } = {count: null, dialogs: []};
+    count: number,
+    dialogs: {
+      [folderID: number]: Dialog[]
+    }
+  } = {
+    count: null,
+    dialogs: {}
+  };
   public pendingByRandomID: {[randomID: string]: [number, number]} = {};
   public pendingByMessageID: any = {};
   public pendingAfterMsgs: any = {};
@@ -1137,37 +1142,12 @@ export class AppMessagesManager {
     };
   }
 
-  public getConversations(query?: string, offsetIndex?: number, limit = 20, folderID = -1) {
-    //var curDialogStorage = this.dialogsStorage;
-    //var isSearch = typeof(query) == 'string' && query.length;
-    let curDialogStorage = this.dialogsStorage.dialogs;
+  public getConversations(offsetIndex?: number, limit = 20, folderID = 0) {
+    let curDialogStorage = this.dialogsStorage.dialogs[folderID] ?? (this.dialogsStorage.dialogs[folderID] = []);
 
-    if(folderID > 0) {
-      curDialogStorage = curDialogStorage.filter(d => d.folder_id == folderID);
-    } else {
-      curDialogStorage = curDialogStorage.filter(d => d.folder_id != 1);
-    }
+    this.cachedResults.query = false;
 
-    /* if(isSearch) {
-      if(!limit || this.cachedResults.query !== query) {
-        this.cachedResults.query = query;
-
-        var results: any = SearchIndexManager.search(query, this.dialogsIndex);
-
-        this.cachedResults.dialogs = [];
-        this.dialogsStorage.dialogs.forEach((dialog: any) => {
-          if(results[dialog.peerID]) {
-            this.cachedResults.dialogs.push(dialog);
-          }
-        })
-        this.cachedResults.count = this.cachedResults.dialogs.length;
-      }
-      curDialogStorage = this.cachedResults;
-    } else { */
-      this.cachedResults.query = false;
-    //}
-
-    var offset = 0;
+    let offset = 0;
     if(offsetIndex > 0) {
       for(; offset < curDialogStorage.length; offset++) {
         if(offsetIndex > curDialogStorage[offset].index) {
@@ -1176,7 +1156,7 @@ export class AppMessagesManager {
       }
     }
 
-    if(/* isSearch ||  */this.allDialogsLoaded[folderID] || curDialogStorage.length >= offset + limit) {
+    if(this.allDialogsLoaded[folderID] || curDialogStorage.length >= offset + limit) {
       return Promise.resolve({
         dialogs: curDialogStorage.slice(offset, offset + limit),
         count: curDialogStorage.length
@@ -1184,17 +1164,11 @@ export class AppMessagesManager {
     }
 
     return this.getTopMessages(limit, folderID).then(count => {
-      let curDialogStorage = this.dialogsStorage.dialogs;
-
-      if(folderID > 0) {
-        curDialogStorage = curDialogStorage.filter(d => d.folder_id == folderID);
-      } else {
-        curDialogStorage = curDialogStorage.filter(d => d.folder_id != 1);
-      }
+      let curDialogStorage = this.dialogsStorage.dialogs[folderID];
 
       offset = 0;
       if(offsetIndex > 0) {
-        for(offset = 0; offset < curDialogStorage.length; offset++) {
+        for(; offset < curDialogStorage.length; offset++) {
           if(offsetIndex > curDialogStorage[offset].index) {
             break;
           }
@@ -1210,19 +1184,13 @@ export class AppMessagesManager {
     });
   }
 
-  public getTopMessages(limit: number, folderID = -1): Promise<number> {
-    var dialogs = this.dialogsStorage.dialogs;
+  public getTopMessages(limit: number, folderID: number): Promise<number> {
+    var dialogs = this.dialogsStorage.dialogs[folderID];
     var offsetDate = 0;
     var offsetID = 0;
     var offsetPeerID = 0;
     var offsetIndex = 0;
     var flags = 0;
-
-    if(folderID > 0) {
-      dialogs = dialogs.filter(d => d.folder_id == folderID);
-    } else {
-      dialogs = dialogs.filter(d => d.folder_id != 1);
-    }
 
     if(this.dialogsOffsetDate[folderID]) {
       offsetDate = this.dialogsOffsetDate[folderID] + serverTimeManager.serverTimeOffset;
@@ -1260,13 +1228,10 @@ export class AppMessagesManager {
 
       var maxSeenIdIncremented = offsetDate ? true : false;
       var hasPrepend = false;
-      //dialogsResult.dialogs.reverse();
       let length = dialogsResult.dialogs.length;
       let noIDsDialogs: any = {};
       for(let i = length - 1; i >= 0; --i) {
         let dialog = dialogsResult.dialogs[i];
-      //}
-      //dialogsResult.dialogs.forEach((dialog: any) => {
 
         this.saveConversation(dialog);
         if(offsetIndex && dialog.index > offsetIndex) {
@@ -1284,8 +1249,6 @@ export class AppMessagesManager {
           maxSeenIdIncremented = true;
         }
       }
-      //});
-      //dialogsResult.dialogs.reverse();
 
       if(Object.keys(noIDsDialogs).length) {
         //setTimeout(() => { // test bad situation
@@ -1315,6 +1278,54 @@ export class AppMessagesManager {
     });
   }
 
+  public forwardMessages(peerID: number, mids: number[], options: Partial<{
+    withMyScore: boolean
+  }> = {}) {
+    peerID = AppPeersManager.getPeerMigratedTo(peerID) || peerID;
+    mids = mids.sort((a, b) => a - b);
+
+    var flags = 0;
+    if(options.withMyScore) {
+      flags |= 256;
+    }
+
+    let splitted = appMessagesIDsManager.splitMessageIDsByChannels(mids);
+    let promises: any[] = [];
+
+    for(let channelID in splitted.msgIDs) {
+      let msgIDs = splitted.msgIDs[channelID];
+      let len = msgIDs.length;
+      let randomIDs = [];
+      for(let i = 0; i < len; i++) {
+        randomIDs.push([nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)]);
+      }
+
+      let sentRequestOptions: any = {};
+      if(this.pendingAfterMsgs[peerID]) {
+        sentRequestOptions.afterMessageID = this.pendingAfterMsgs[peerID].messageID;
+      }
+
+      let promise = apiManager.invokeApi('messages.forwardMessages', {
+        flags: flags,
+        from_peer: AppPeersManager.getInputPeerByID(-channelID),
+        id: msgIDs,
+        random_id: randomIDs,
+        to_peer: AppPeersManager.getInputPeerByID(peerID)
+      }, sentRequestOptions).then((updates) => {
+        apiUpdatesManager.processUpdateMessage(updates);
+      }, () => {}).then(() => {
+        if(this.pendingAfterMsgs[peerID] === sentRequestOptions) {
+          delete this.pendingAfterMsgs[peerID];
+        }
+      });
+
+      this.pendingAfterMsgs[peerID] = sentRequestOptions;
+      promises.push(promise);
+    }
+
+    return Promise.all(promises);
+  }
+
   public generateDialogIndex(date?: any) {
     if(date === undefined) {
       date = tsNow(true) + serverTimeManager.serverTimeOffset;
@@ -1322,9 +1333,9 @@ export class AppMessagesManager {
     return (date * 0x10000) + ((++this.dialogsNum) & 0xFFFF);
   }
 
-  public pushDialogToStorage(dialog: any, offsetDate?: number) {
-    var dialogs = this.dialogsStorage.dialogs/* .filter(d => d.folder_id == dialog.folder_id) */;
-    var pos = this.getDialogByPeerID(dialog.peerID)[1];
+  public pushDialogToStorage(dialog: Dialog, offsetDate?: number) {
+    let dialogs = this.dialogsStorage.dialogs[dialog.folder_id] ?? (this.dialogsStorage.dialogs[dialog.folder_id] = []);
+    let pos = this.getDialogByPeerID(dialog.peerID)[1];
     if(pos !== undefined) {
       dialogs.splice(pos, 1);
     }
@@ -1339,15 +1350,14 @@ export class AppMessagesManager {
       this.dialogsOffsetDate[dialog.folder_id] = offsetDate;
     }
 
-    var index = dialog.index;
-    var i;
-    var len = dialogs.length;
+    let index = dialog.index;
+    let len = dialogs.length;
     if(!len || index < dialogs[len - 1].index) {
       dialogs.push(dialog);
     } else if(index >= dialogs[0].index) {
       dialogs.unshift(dialog);
     } else {
-      for(i = 0; i < len; i++) {
+      for(let i = 0; i < len; i++) {
         if(index > dialogs[i].index) {
           dialogs.splice(i, 0, dialog);
           break;
@@ -1377,22 +1387,10 @@ export class AppMessagesManager {
 
   public getDialogByPeerID(peerID: number): [Dialog, number] | [] {
     let dialogs = this.dialogsStorage.dialogs;
-    let byFolders: {[id: number]: number} = {};
-    for(let i = 0, length = dialogs.length; i < length; i++) {
-      let dialog = dialogs[i];
-      if(!byFolders[dialog.folder_id]) byFolders[dialog.folder_id] = 0;
-      byFolders[dialog.folder_id]++;
-
-      if(dialog.peerID == peerID) {
-        //return [dialog, i];
-        let sum = 0;
-        for(let id in byFolders) {
-          if(+id != dialog.folder_id) {
-            sum += byFolders[id];
-          }
-        }
-
-        return [dialog, i - sum];
+    for(let folderID in dialogs) {
+      let index = dialogs[folderID].findIndex(dialog => dialog.peerID == peerID);
+      if(index !== -1) {
+        return [dialogs[folderID][index], index];
       }
     }
 
@@ -1627,7 +1625,7 @@ export class AppMessagesManager {
     })
   }
 
-  public migrateChecks(migrateFrom: any, migrateTo: any) {
+  public migrateChecks(migrateFrom: number, migrateTo: number) {
     if(!this.migratedFromTo[migrateFrom] &&
       !this.migratedToFrom[migrateTo] &&
       appChatsManager.hasChat(-migrateTo)) {
@@ -1641,9 +1639,10 @@ export class AppMessagesManager {
         setTimeout(() => {
           var foundDialog = this.getDialogByPeerID(migrateFrom);
           if(foundDialog.length) {
-            this.dialogsStorage.dialogs.splice(foundDialog[1], 1);
+            this.dialogsStorage.dialogs[foundDialog[0].folder_id].splice(foundDialog[1], 1);
             $rootScope.$broadcast('dialog_drop', {peerID: migrateFrom});
           }
+
           $rootScope.$broadcast('dialog_migrate', {migrateFrom: migrateFrom, migrateTo: migrateTo});
         }, 100);
       }
@@ -1734,7 +1733,7 @@ export class AppMessagesManager {
       } else {
         var foundDialog = this.getDialogByPeerID(peerID);
         if(foundDialog.length) {
-          this.dialogsStorage.dialogs.splice(foundDialog[1], 1);
+          this.dialogsStorage.dialogs[foundDialog[0].folder_id].splice(foundDialog[1], 1);
           $rootScope.$broadcast('dialog_drop', {peerID: peerID});
         }
       }
@@ -1853,255 +1852,7 @@ export class AppMessagesManager {
     if(channelID && dialog.pts) {
       apiUpdatesManager.addChannelState(channelID, dialog.pts);
     }
-
-    /*if(Config.Modes.packed && !channelID && dialog.unread_count > 0 &&
-      this.maxSeenID && dialog.top_message > this.maxSeenID &&
-      message.pFlags.unread && !message.pFlags.out) {
-       var notifyPeer = message.flags & 16 ? message.from_id : peerID
-      NotificationsManager.getPeerMuted(notifyPeer).then((muted: any) => {
-        if(!muted) {
-          this.notifyAboutMessage(message);
-        }
-      }); 
-    }*/ // WARNING
   }
-
-  /*public handleNotifications() {
-    clearTimeout(this.notificationsHandlePromise);
-    this.notificationsHandlePromise = 0;
-
-    var timeout = $rootScope.idle.isIDLE /* && StatusManager.isOtherDeviceActive() * ? 30000 : 1000;
-    Object.keys(this.notificationsToHandle).forEach((key: any) => {
-      let notifyPeerToHandle = this.notificationsToHandle[key];
-      notifyPeerToHandle.isMutedPromise.then((muted: boolean) => {
-        var topMessage = notifyPeerToHandle.top_message
-        if(muted ||
-          !topMessage.pFlags.unread) {
-          return;
-        }
-
-        setTimeout(() => {
-          if(topMessage.pFlags.unread) {
-            this.notifyAboutMessage(topMessage, {
-              fwd_count: notifyPeerToHandle.fwd_count
-            });
-          }
-        }, timeout);
-      });
-    });
-
-    this.notificationsToHandle = {};
-  }*/
-
-  /*public notifyAboutMessage(message: any, options: any = {}) {
-    var peerID = this.getMessagePeer(message);
-    var peerString: string;
-    var notification: any = {};
-    var notificationMessage = '',
-      notificationPhoto;
-
-    var notifySettings: any = {}; //NotificationsManager.getNotifySettings(); // warning
-
-    if(message.fwdFromID && options.fwd_count) {
-      notificationMessage = options.fwd_count;// this.fwdMessagesPluralize(options.fwd_count); // warning
-    } else if(message.message) {
-      if(notifySettings.nopreview) {
-        notificationMessage = 'conversation_message_sent';
-      } else {
-        notificationMessage = RichTextProcessor.wrapPlainText(message.message);
-      }
-    } else if(message.media) {
-      var captionEmoji = '';
-      switch (message.media._) {
-        case 'messageMediaPhoto':
-          notificationMessage = _('conversation_media_photo_raw');
-          captionEmoji = 'рџ–ј';
-          break
-        case 'messageMediaDocument':
-          switch (message.media.document.type) {
-            case 'gif':
-              notificationMessage = _('conversation_media_gif_raw');
-              captionEmoji = 'рџЋ¬'
-              break
-            case 'sticker':
-              notificationMessage = _('conversation_media_sticker');
-              var stickerEmoji = message.media.document.stickerEmojiRaw;
-              if(stickerEmoji !== undefined) {
-                notificationMessage = RichTextProcessor.wrapPlainText(stickerEmoji) + ' ' + notificationMessage;
-              }
-              break;
-            case 'video':
-              notificationMessage = _('conversation_media_video_raw');
-              captionEmoji = 'рџ“№';
-              break;
-            case 'round':
-              notificationMessage = _('conversation_media_round_raw');
-              captionEmoji = 'рџ“№';
-              break;
-            case 'voice':
-            case 'audio':
-              notificationMessage = _('conversation_media_audio_raw');
-              break;
-            default:
-              if(message.media.document.file_name) {
-                notificationMessage = RichTextProcessor.wrapPlainText('рџ“Ћ ' + message.media.document.file_name);
-              } else {
-                notificationMessage = _('conversation_media_document_raw');
-                captionEmoji = 'рџ“Ћ';
-              }
-              break;
-          }
-          break;
-
-        case 'messageMediaGeo':
-        case 'messageMediaVenue':
-          notificationMessage = _('conversation_media_location_raw');
-          captionEmoji = 'рџ“Ќ';
-          break;
-        case 'messageMediaContact':
-          notificationMessage = _('conversation_media_contact_raw');
-          break;
-        case 'messageMediaGame':
-          notificationMessage = RichTextProcessor.wrapPlainText('рџЋ® ' + message.media.game.title);
-          break;
-        case 'messageMediaUnsupported':
-          notificationMessage = _('conversation_media_unsupported_raw');
-          break;
-        default:
-          notificationMessage = _('conversation_media_attachment_raw');
-          break;
-      }
-
-      if(captionEmoji != '' &&
-          message.media.caption) {
-        notificationMessage = RichTextProcessor.wrapPlainText(captionEmoji + ' ' + message.media.caption);
-      }
-    } else if(message._ == 'messageService') {
-      switch(message.action._) {
-        case 'messageActionChatCreate':
-          notificationMessage = _('conversation_group_created_raw');
-          break
-        case 'messageActionChatEditTitle':
-          notificationMessage = _('conversation_group_renamed_raw');
-          break
-        case 'messageActionChatEditPhoto':
-          notificationMessage = _('conversation_group_photo_updated_raw');
-          break
-        case 'messageActionChatDeletePhoto':
-          notificationMessage = _('conversation_group_photo_removed_raw');
-          break
-        case 'messageActionChatAddUser':
-        case 'messageActionChatAddUsers':
-          notificationMessage = _('conversation_invited_user_message_raw');
-          break
-        case 'messageActionChatReturn':
-          notificationMessage = _('conversation_returned_to_group_raw');
-          break
-        case 'messageActionChatJoined':
-          notificationMessage = _('conversation_joined_group_raw');
-          break
-        case 'messageActionChatDeleteUser':
-          notificationMessage = _('conversation_kicked_user_message_raw');
-          break
-        case 'messageActionChatLeave':
-          notificationMessage = _('conversation_left_group_raw');
-          break
-        case 'messageActionChatJoinedByLink':
-          notificationMessage = _('conversation_joined_by_link_raw');
-          break
-        case 'messageActionChannelCreate':
-          notificationMessage = _('conversation_created_channel_raw');
-          break
-        case 'messageActionChannelEditTitle':
-          notificationMessage = _('conversation_changed_channel_name_raw');
-          break
-        case 'messageActionChannelEditPhoto':
-          notificationMessage = _('conversation_changed_channel_photo_raw')
-          break
-        case 'messageActionChannelDeletePhoto':
-          notificationMessage = _('conversation_removed_channel_photo_raw')
-          break
-        case 'messageActionPinMessage':
-          notificationMessage = _('conversation_pinned_message_raw')
-          break
-        case 'messageActionGameScore':
-          notificationMessage = message.action.score;//this.gameScorePluralize(message.action.score); // warning
-          break
-
-        case 'messageActionPhoneCall':
-          switch(message.action.type) {
-            case 'out_missed':
-              notificationMessage = _('message_service_phonecall_canceled_raw')
-              break
-            case 'in_missed':
-              notificationMessage = _('message_service_phonecall_missed_raw')
-              break
-            case 'out_ok':
-              notificationMessage = _('message_service_phonecall_outgoing_raw')
-              break
-            case 'in_ok':
-              notificationMessage = _('message_service_phonecall_incoming_raw')
-              break
-          }
-          break
-      }
-    }
-
-    if(peerID > 0) {
-      var fromUser = appUsersManager.getUser(message.from_id);
-      var fromPhoto = appUsersManager.getUserPhoto(message.from_id);
-
-      notification.title = (fromUser.first_name || '') +
-        (fromUser.first_name && fromUser.last_name ? ' ' : '') +
-        (fromUser.last_name || '')
-      if(!notification.title) {
-        notification.title = fromUser.phone || _('conversation_unknown_user_raw')
-      }
-
-      notificationPhoto = fromPhoto
-
-      peerString = appUsersManager.getUserString(peerID)
-    } else {
-      notification.title = appChatsManager.getChat(-peerID).title || _('conversation_unknown_chat_raw')
-
-      if(message.from_id > 0) {
-        var fromUser = appUsersManager.getUser(message.from_id)
-        notification.title = (fromUser.first_name || fromUser.last_name || _('conversation_unknown_user_raw')) +
-        ' @ ' +
-        notification.title
-      }
-
-      notificationPhoto = appChatsManager.getChatPhoto(-peerID)
-
-      peerString = appChatsManager.getChatString(-peerID)
-    }
-
-    notification.title = RichTextProcessor.wrapPlainText(notification.title)
-
-    notification.onclick = function () {
-      $rootScope.$broadcast('history_focus', {
-        peerString: peerString,
-        messageID: message.flags & 16 ? message.mid : 0
-      })
-    }
-
-    notification.message = notificationMessage
-    notification.key = 'msg' + message.mid
-    notification.tag = peerString
-    notification.silent = message.pFlags.silent || false
-
-    if(notificationPhoto.location && !notificationPhoto.location.empty) {
-      apiFileManager.downloadSmallFile(notificationPhoto.location/* , notificationPhoto.size *)
-      .then((blob) => {
-        if(message.pFlags.unread) {
-          notification.image = blob
-          // NotificationsManager.notify(notification) // warning
-        }
-      })
-    } else {
-      // NotificationsManager.notify(notification) // warning
-    }
-  }*/
 
   public mergeReplyKeyboard(historyStorage: any, message: any) {
     // console.log('merge', message.mid, message.reply_markup, historyStorage.reply_markup)
@@ -2516,15 +2267,6 @@ export class AppMessagesManager {
       }
 
       return false;
-      /* if(foundDialog) {
-        // console.log('done read history', peerID)
-        foundDialog.unread_count = 0
-        $rootScope.$broadcast('dialog_unread', {peerID: peerID, count: 0})
-        $rootScope.$broadcast('messages_read')
-        if(historyStorage && historyStorage.history.length) {
-          foundDialog.read_inbox_max_id = historyStorage.history[0]
-        }
-      } */
     }).finally(() => {
       delete historyStorage.readPromise;
     });
@@ -2593,12 +2335,12 @@ export class AppMessagesManager {
   }
 
   public handleUpdate(update: any) {
-    console.log('AMM: handleUpdate:', update._);
+    //console.log('AMM: handleUpdate:', update._);
     switch(update._) {
       case 'updateMessageID': {
         var randomID = update.random_id;
         var pendingData = this.pendingByRandomID[randomID];
-        console.log('AMM updateMessageID:', update, pendingData);
+        //console.log('AMM updateMessageID:', update, pendingData);
         if(pendingData) {
           var peerID: number = pendingData[0];
           var tempID = pendingData[1];
@@ -2720,36 +2462,10 @@ export class AppMessagesManager {
           this.newDialogsHandlePromise = window.setTimeout(this.handleNewDialogs.bind(this), 0);
         }
 
-        /*if(inboxUnread &&
-            ($rootScope.selectedPeerID != peerID || $rootScope.idle.isIDLE)) {
-          var notifyPeer = message.flags & 16 ? message.from_id : peerID;
-          var notifyPeerToHandle = this.notificationsToHandle[notifyPeer];
-          if(notifyPeerToHandle === undefined) {
-            notifyPeerToHandle = this.notificationsToHandle[notifyPeer] = {
-              isMutedPromise: Promise.resolve()/* NotificationsManager.getPeerMuted(notifyPeer), // WARNING
-              fwd_count: 0,
-              from_id: 0
-            };
-          }
-
-          if(notifyPeerToHandle.from_id != message.from_id) {
-            notifyPeerToHandle.from_id = message.from_id;
-            notifyPeerToHandle.fwd_count = 0;
-          }
-          if(message.fwdFromID) {
-            notifyPeerToHandle.fwd_count++;
-          }
-
-          notifyPeerToHandle.top_message = message;
-
-          if(!this.notificationsHandlePromise) {
-            this.notificationsHandlePromise = window.setTimeout(this.handleNotifications.bind(this), 1000);
-          }
-        } */
         break;
       }
 
-      case 'updateDialogPinned': {
+      /* case 'updateDialogPinned': {
         var peerID = AppPeersManager.getPeerID(update.peer);
         var foundDialog = this.getDialogByPeerID(peerID);
 
@@ -2826,7 +2542,7 @@ export class AppMessagesManager {
           }
         })
         break;
-      }   
+      }    */
 
       case 'updateEditMessage':
       case 'updateEditChannelMessage': {
@@ -3092,37 +2808,41 @@ export class AppMessagesManager {
           delete this.historiesStorage[peerID];
           $rootScope.$broadcast('history_forbidden', peerID);
         }
+
         if(hasDialog != needDialog) {
           if(needDialog) {
             this.reloadConversation(-channelID);
           } else {
             if(foundDialog[0]) {
-              this.dialogsStorage.dialogs.splice(foundDialog[1], 1);
+              this.dialogsStorage.dialogs[foundDialog[0].folder_id].splice(foundDialog[1], 1);
               $rootScope.$broadcast('dialog_drop', {peerID: peerID});
             }
           }
         }
+
         break;
       }
 
       case 'updateChannelReload': {
-        var channelID: number = update.channel_id;
-        var peerID = -channelID;
-        var foundDialog = this.getDialogByPeerID(peerID);
+        let channelID: number = update.channel_id;
+        let peerID = -channelID;
+        let foundDialog = this.getDialogByPeerID(peerID);
         if(foundDialog[0]) {
-          this.dialogsStorage.dialogs.splice(foundDialog[1], 1);
+          this.dialogsStorage.dialogs[foundDialog[0].folder_id].splice(foundDialog[1], 1);
         }
+
         delete this.historiesStorage[peerID];
         this.reloadConversation(-channelID).then(() => {
           $rootScope.$broadcast('history_reload', peerID);
         });
+
         break;
       }
 
       case 'updateChannelMessageViews': {
-        var views = update.views;
-        var mid = appMessagesIDsManager.getFullMessageID(update.id, update.channel_id);
-        var message = this.getMessage(mid);
+        let views = update.views;
+        let mid = appMessagesIDsManager.getFullMessageID(update.id, update.channel_id);
+        let message = this.getMessage(mid);
         if(message && message.views && message.views < views) {
           message.views = views;
           $rootScope.$broadcast('message_views', {
@@ -3566,57 +3286,6 @@ export class AppMessagesManager {
       return Promise.reject(error);
     });
   }
-
-  /* public wrapForDialog(msgID: number, dialog?: any) {
-    var useCache = msgID && dialog !== undefined;
-    var unreadCount = dialog && dialog.unread_count;
-
-    if(useCache && this.messagesForDialogs[msgID] !== undefined) {
-      delete this.messagesForDialogs[msgID].typing;
-      this.messagesForDialogs[msgID].unreadCount = unreadCount;
-      return this.messagesForDialogs[msgID];
-    }
-
-    var message = copy(this.messagesStorage[msgID]);
-
-    if(!message || !message.to_id) {
-      if(dialog && dialog.peerID) {
-        message = {
-          _: 'message',
-          to_id: AppPeersManager.getOutputPeer(dialog.peerID),
-          deleted: true,
-          date: tsNow(true),
-          pFlags: {out: true}
-        }
-      } else {
-        return message;
-      }
-    }
-
-    message.peerID = this.getMessagePeer(message);
-    message.peerData = AppPeersManager.getPeer(message.peerID);
-    message.peerString = AppPeersManager.getPeerString(message.peerID);
-    message.unreadCount = unreadCount;
-    message.index = dialog && dialog.index || (message.date * 0x10000);
-    message.pinned = dialog && dialog.pFlags.pinned || false;
-
-    if(message._ == 'messageService' && message.action.user_id) {
-      message.action.user = appUsersManager.getUser(message.action.user_id);
-    }
-
-    if(message.message && message.message.length) {
-      message.richMessage = RichTextProcessor.wrapRichText(message.message.substr(0, 128), {noLinks: true, noLinebreaks: true});
-    }
-
-    message.dateText = message.date; //dateOrTimeFilter(message.date); // warning
-
-    if(useCache) {
-      message.draft = '';//DraftsManager.getServerDraft(message.peerID); // warning
-      this.messagesForDialogs[msgID] = message;
-    }
-
-    return message;
-  } */
 
   public fetchSingleMessages() {
     if(this.fetchSingleMessagesPromise) {

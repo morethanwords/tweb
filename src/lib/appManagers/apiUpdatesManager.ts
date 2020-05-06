@@ -24,8 +24,8 @@ export class ApiUpdatesManager {
   };
 
   public channelStates: any = {};
-  
   public myID = 0;
+  private attached = false;
 
   constructor() {
     apiManager.getUserID().then((id) => {
@@ -501,6 +501,9 @@ export class ApiUpdatesManager {
   }
   
   public attach() {
+    if(this.attached) return;
+    
+    this.attached = true;
     apiManager.setUpdatesProcessor(this.processUpdateMessage.bind(this));
     apiManager.invokeApi('updates.getState', {}, {noErrorBox: true}).then((stateResult: any) => {
       this.updatesState.seq = stateResult.seq;

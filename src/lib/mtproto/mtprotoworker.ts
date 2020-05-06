@@ -125,6 +125,10 @@ class ApiManagerProxy extends CryptoWorkerMethods {
     return this.performTaskWorker('invokeApi', method, params, options);
   }
 
+  public setBaseDcID(dcID: number) {
+    return this.performTaskWorker('setBaseDcID', dcID);
+  }
+
   public setUserAuth(userAuth: {id: number}) {
     $rootScope.$broadcast('user_auth', userAuth);
     return this.performTaskWorker('setUserAuth', userAuth);

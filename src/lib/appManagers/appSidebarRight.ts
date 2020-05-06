@@ -59,12 +59,6 @@ class AppSidebarRight {
   private sharedMediaSelected: HTMLDivElement = null;
   
   private lazyLoadQueueSidebar = new LazyLoadQueue(5);
-  /* public minMediaID: {
-    [type: string]: number
-  } = {}; */
-  public cleared: {
-    [type: string]: boolean
-  } = {};
   
   public historiesStorage: {
     [peerID: number]: {
@@ -121,7 +115,7 @@ class AppSidebarRight {
         this.scroll.scrollTop -= this.profileTabs.offsetTop;
       }
 
-      this.log('setVirtualContainer', id, this.sharedMediaSelected);
+      this.log('setVirtualContainer', id, this.sharedMediaSelected, this.sharedMediaSelected.childElementCount);
       this.scroll.setVirtualContainer(this.sharedMediaSelected);
 
       if(this.prevTabID != -1 && !this.sharedMediaSelected.childElementCount) { // quick brown fix
@@ -132,7 +126,10 @@ class AppSidebarRight {
       this.prevTabID = id;
 
       this.scroll.onScroll();
-    }, this.onSidebarScroll.bind(this));
+    }, () => {
+      this.onSidebarScroll.bind(this);
+      this.scroll.onScroll();
+    });
     
     let sidebarCloseBtn = this.sidebarEl.querySelector('.sidebar-close-button') as HTMLButtonElement;
     sidebarCloseBtn.addEventListener('click', () => {
@@ -212,24 +209,18 @@ class AppSidebarRight {
 
     this.sidebarEl.classList.toggle('active');
   }
-  
-  public performSearchResult(ids: number[], type: string) {
-    let peerID = this.peerID;
 
-    let sharedMediaDiv: HTMLDivElement;
+  public filterMessagesByType(ids: number[], type: string) {
     let messages: any[] = [];
     for(let mid of ids) {
       let message = appMessagesManager.getMessage(mid);
       if(message.media) messages.push(message);
     }
-    
-    let elemsToAppend: HTMLElement[] = [];
-    
-    // https://core.telegram.org/type/MessagesFilter
+
+    let filtered: any[] = [];
+
     switch(type) {
       case 'inputMessagesFilterPhotoVideo': {
-        sharedMediaDiv = this.sharedMedia.contentMedia;
-        
         for(let message of messages) {
           let media = message.media.photo || message.media.document || (message.media.webpage && message.media.webpage.document);
           if(!media) {
@@ -241,14 +232,85 @@ class AppSidebarRight {
             //this.log('broken video', media);
             continue;
           }
+
+          filtered.push(message);
+        }
+        
+        break;
+      }
+
+      case 'inputMessagesFilterDocument': {
+        for(let message of messages) {
+          if(!message.media.document || message.media.document.type == 'voice' || message.media.document.type == 'audio') {
+            continue;
+          }
           
+          let doc = message.media.document;
+          if(doc.attributes) {
+            if(doc.attributes.find((a: any) => a._ == "documentAttributeSticker")) {
+              continue;
+            }
+          }
+          
+          filtered.push(message);
+        }
+        break;
+      }
+
+      case 'inputMessagesFilterUrl': {
+        for(let message of messages) {
+          if(!message.media.webpage || message.media.webpage._ == 'webPageEmpty') {
+            continue;
+          }
+          
+          filtered.push(message);
+        }
+        
+        break;
+      }
+
+      case 'inputMessagesFilterMusic': {
+        for(let message of messages) {
+          if(!message.media.document || message.media.document.type != 'audio') {
+            continue;
+          }
+
+          filtered.push(message);
+        }
+
+        break;
+      }
+
+      default:
+        break;
+    }
+
+    return filtered;
+  }
+  
+  public performSearchResult(messages: any[], type: string) {
+    let peerID = this.peerID;
+
+    let sharedMediaDiv: HTMLDivElement;
+    
+    let elemsToAppend: HTMLElement[] = [];
+    
+    // https://core.telegram.org/type/MessagesFilter
+    switch(type) {
+      case 'inputMessagesFilterPhotoVideo': {
+        sharedMediaDiv = this.sharedMedia.contentMedia;
+        
+        for(let message of messages) {
+          let media = message.media.photo || message.media.document || (message.media.webpage && message.media.webpage.document);
+
           let div = document.createElement('div');
           //console.log(message, photo);
           
           let isPhoto = media._ == 'photo';
           
           let photo = isPhoto ? appPhotosManager.getPhoto(media.id) : null;
-          if(!photo || !photo.downloaded) {
+          let isDownloaded = (photo && photo.downloaded) || appPhotosManager.getDocumentCachedThumb(media.id);
+          if(!isDownloaded) {
             //this.log('inputMessagesFilterPhotoVideo', message, media, photo, div);
             
             let sizes = media.sizes || media.thumbs;
@@ -260,33 +322,39 @@ class AppSidebarRight {
           }
           
           //this.log('inputMessagesFilterPhotoVideo', message, media);
+
+          if(!isPhoto) {
+            let span = document.createElement('span');
+            span.classList.add('video-time');
+            div.append(span);
+
+            if(media.type != 'gif') {
+              span.innerText = (media.duration + '').toHHMMSS(false);
+
+              /* let spanPlay = document.createElement('span');
+              spanPlay.classList.add('video-play', 'tgico-largeplay', 'btn-circle', 'position-center');
+              div.append(spanPlay); */
+            } else {
+              span.innerText = 'GIF';
+            }
+          }
           
           let load = () => appPhotosManager.preloadPhoto(isPhoto ? media.id : media, appPhotosManager.choosePhotoSize(media, 200, 200))
-          .then((blob) => {
+          .then(() => {
             if($rootScope.selectedPeerID != peerID) {
               this.log.warn('peer changed');
               return;
             }
 
-            if(photo && photo.url) {
-              renderImageFromUrl(div, photo.url);
-            } else {
-              let url = URL.createObjectURL(blob);
-              this.urlsToRevoke.push(url);
-              
-              let img = new Image();
-              img.src = url;
-              img.onload = () => {
-                div.style.backgroundImage = 'url(' + url + ')';
-              };
+            let url = (photo && photo.url) || appPhotosManager.getDocumentCachedThumb(media.id).url;
+            if(url) {
+              renderImageFromUrl(div, url);
             }
-            
-            //div.style.backgroundImage = 'url(' + url + ')';
           });
           
           div.dataset.mid = '' + message.mid;
           
-          if(photo && photo.downloaded) load();
+          if(isDownloaded) load();
           else this.lazyLoadQueueSidebar.push({div, load});
           
           this.lastSharedMediaDiv.append(div);
@@ -310,19 +378,6 @@ class AppSidebarRight {
         sharedMediaDiv = this.sharedMedia.contentDocuments;
         
         for(let message of messages) {
-          if(!message.media.document || message.media.document.type == 'voice' || message.media.document.type == 'audio') {
-            continue;
-          }
-          
-          let doc = message.media.document;
-          if(doc.attributes) {
-            if(doc.attributes.find((a: any) => a._ == "documentAttributeSticker")) {
-              continue;
-            }
-          }
-          
-          //this.log('come back down to my knees', message);
-          
           let div = wrapDocument(message.media.document, true);
           elemsToAppend.push(div);
         }
@@ -333,10 +388,6 @@ class AppSidebarRight {
         sharedMediaDiv = this.sharedMedia.contentLinks;
         
         for(let message of messages) {
-          if(!message.media.webpage || message.media.webpage._ == 'webPageEmpty') {
-            continue;
-          }
-          
           let webpage = message.media.webpage;
           let div = document.createElement('div');
           
@@ -391,10 +442,6 @@ class AppSidebarRight {
         sharedMediaDiv = this.sharedMedia.contentAudio;
         
         for(let message of messages) {
-          if(!message.media.document || message.media.document.type != 'audio') {
-            continue;
-          }
-
           let div = wrapAudio(message.media.document, true);
           elemsToAppend.push(div);
         }
@@ -412,8 +459,10 @@ class AppSidebarRight {
     
     if(elemsToAppend.length) {
       //window.requestAnimationFrame(() => {
-      elemsToAppend.forEach(el => this.scroll.append(el, false));
+      //elemsToAppend.forEach(el => this.scroll.append(el, false));
       //});
+
+      sharedMediaDiv.append(...elemsToAppend);
     }
     
     if(sharedMediaDiv) {
@@ -439,6 +488,8 @@ class AppSidebarRight {
     let typesToLoad = single ? [this.sharedMediaType] : this.sharedMediaTypes;
     typesToLoad = typesToLoad.filter(type => !this.loadedAllMedia[type]);
     if(!typesToLoad.length) return;
+
+    let loadCount = (appPhotosManager.windowH / 130 | 0) * 3; // that's good for all types
     
     let historyStorage = this.historiesStorage[peerID] ?? (this.historiesStorage[peerID] = {});
 
@@ -447,19 +498,35 @@ class AppSidebarRight {
       
       let history = historyStorage[type] ?? (historyStorage[type] = []);
 
-      let loadCount = (appPhotosManager.windowH / 130 | 0) * 3;
-
       // render from cache
-      if(history.length && this.usedFromHistory[type] < history.length && this.cleared[type]) {
-        let ids = history.slice(this.usedFromHistory[type], this.usedFromHistory[type] + loadCount);
-        this.log('loadSidebarMedia: will render from cache', this.usedFromHistory[type], history, ids, loadCount);
-        this.usedFromHistory[type] += ids.length;
-        this.performSearchResult(ids, type);
+      if(history.length && this.usedFromHistory[type] < history.length) {
+        let messages: any[] = [];
+        let used = this.usedFromHistory[type];
+
+        do {
+          let ids = history.slice(used, used + loadCount);
+          this.log('loadSidebarMedia: will render from cache', used, history, ids, loadCount);
+          used += ids.length;
+
+          messages.push(...this.filterMessagesByType(ids, type));
+        } while(messages.length < loadCount && used < history.length);
+        
+        // если перебор
+        if(messages.length > loadCount) {
+          let diff = messages.length - loadCount;
+          messages = messages.slice(0, messages.length - diff);
+          used -= diff;
+        }
+
+        this.usedFromHistory[type] = used;
+        if(messages.length) {
+          this.performSearchResult(messages, type);
+        }
+
         return Promise.resolve();
       }
       
       // заливать новую картинку сюда только после полной отправки!
-      //let maxID = this.minMediaID[type] || 0;
       let maxID = history[history.length - 1] || 0;
       
       let ids = !maxID && appMessagesManager.historiesStorage[peerID] 
@@ -474,7 +541,7 @@ class AppSidebarRight {
         ids = ids.concat(value.history);
         history.push(...ids);
         
-        this.log('loadSidebarMedia: search house of glass', type, value, ids, this.cleared);
+        this.log('loadSidebarMedia: search house of glass', type, value, ids);
 
         if($rootScope.selectedPeerID != peerID) {
           this.log.warn('peer changed');
@@ -484,14 +551,11 @@ class AppSidebarRight {
         if(value.history.length < loadCount) {
           this.loadedAllMedia[type] = true;
         }
-        
-        if(this.cleared[type]) {
-          //ids = history;
-          delete this.cleared[type];
-        }
+
+        this.usedFromHistory[type] = history.length;
 
         if(ids.length) {
-          this.performSearchResult(ids, type);
+          this.performSearchResult(this.filterMessagesByType(ids, type), type);
         }
       }, (err) => {
         this.log.error('load error:', err);
@@ -550,8 +614,6 @@ class AppSidebarRight {
     this.urlsToRevoke.length = 0;
     
     this.sharedMediaTypes.forEach(type => {
-      //this.minMediaID[type] = 0;
-      this.cleared[type] = true;
       this.usedFromHistory[type] = 0;
     });
     

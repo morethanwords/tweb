@@ -42,6 +42,8 @@ $large-screen: 1680px;
 @import "partials/ckin";
 @import "partials/emojiDropdown";
 @import "partials/scrollable";
+@import "partials/slider";
+@import "partials/selector";
 
 @import "partials/popups/popup";
 @import "partials/popups/editAvatar";
@@ -169,6 +171,19 @@ input {
   }
 }
 
+.btn-corner {
+  position: absolute !important;
+  bottom: 20px;
+  right: 20px;
+  transition: .2s ease;
+  transform: translateY(calc(100% + 20px));
+  z-index: 3;
+
+  &.is-visible {
+    transform: translateY(0px);
+  }
+}
+
 .danger {
   color: $color-error!important;
 }
@@ -263,6 +278,16 @@ input {
   }
 }
 
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
 .user-avatar {
   color: #fff;
   width: 54px;
@@ -286,6 +311,10 @@ input {
     height: 100%;
     border-radius: inherit;
     user-select: none;
+
+    &.fade-in {
+      animation: fadeIn .2s ease forwards;
+    }
   }
   
   &[class*=" tgico-"] {
@@ -624,6 +653,23 @@ input {
   }
 }
 
+/* .page-signQR {
+  .auth-image {
+    position: relative;
+
+    .sign-logo {
+      width: 36px;
+      height: 36px;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: #fff;
+      border-radius: 50%;
+    }
+  }
+} */
+
 .page-signUp {
   .auth-image {
     border-radius: 50%;
@@ -837,6 +883,7 @@ input {
   
   &:not(:checked) + span:after {
     background-color: transparent;
+    border-color: #8d969c;
   }
   
   &:checked + span:after {
@@ -997,19 +1044,19 @@ input:focus, button:focus {
   }
 }
 
-/* // scaling... any units
-$width: 100px;
-
-.loader {
-  position: relative;
-  margin: 0 auto;
-  width: $width;
-  &:before {
-    content: '';
-    display: block;
-    padding-top: 100%;
+.btn-primary.btn-circle {
+  .preloader-circular {
+    height: calc(100% - 20px);
+    right: auto;
+    left: auto;
+    margin: 0;
+    top: 10px;
+    
+    .preloader-path {
+      stroke: #fff;
+    }
   }
-} */
+}
 
 .preloader {
   &-circular {
@@ -1164,6 +1211,7 @@ img.emoji {
   border-radius: 50%;
   height: 54px;
   width: 54px;
+  line-height: 54px;
   
   path {
     fill: white;
@@ -1271,89 +1319,15 @@ img.emoji {
   user-select: text;
 }
 
-.menu-horizontal {
-  color: $darkgrey;
-  border-bottom: 1px solid $lightgrey;
-  position: relative;
-
-  ul {
-    width: 100%;
-    height: 100%;
-    margin: 0;
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    position: relative;
-    z-index: 2;
-  }
-  
-  li {
-    display: inline-block;
-    padding: .75rem 1rem;
-    cursor: pointer;
-    text-align: center;
-    flex: 1;
-    user-select: none;
-    font-size: 1rem;
-    font-weight: 500;
-
-    &.active {
-      color: $blue;
-    }
-  }
-
-  &__stripe {
-    position: absolute;
-    background: $blue;
-    //left: 0;
-    left: -2px;
-    transition: .3s transform, .3s width;
-    //transition: .3s transform;
-    bottom: -1px;
-    height: 4px;
-    width: 1px; // need if using transform
-    transform: scaleX(1) translateX(0px);
-    border-top-left-radius: 2px;
-    border-top-right-radius: 2px;
-    z-index: 1;
-  }
-}
-
-.tabs-container {
-  min-width: 100%;
-  width: 100%;
-  display: flex;
-  /* overflow: hidden; */
-  overflow-x: hidden;
-
-  &.animated {
-    transition: .3s transform;
-  }
-  
-  > div {
-    width: 100%;
-    max-width: 100%;
-    overflow: hidden;
-    /* transition: .2s all; */
-    display: none;
-
-    &.active {
-      display: flex;
-      flex-direction: column;
-    }
-    
-    > div:not(.scroll-padding) {
-      width: 100%;
-      padding: 7.5px;
-      max-width: 100%;
-      overflow: hidden;
-      position: relative;
-    }
-  }
-}
-
 .justify-start {
   justify-content: flex-start!important;
+}
+
+.position-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
 }
 
 .page-chats {
@@ -1396,8 +1370,7 @@ img.emoji {
     }
   }
 
-  #search-container, #chats-archived-container, .sidebar-search {
-    display: none;
+  #search-container, .sidebar-search {
     flex-direction: column;
     width: 100%;
     max-height: 100%;
@@ -1408,10 +1381,6 @@ img.emoji {
     top: 0;
     z-index: 3;
     background: #fff;
-
-    &.active {
-      display: flex;
-    }
   }
 
   @media (min-width: $large-screen) {

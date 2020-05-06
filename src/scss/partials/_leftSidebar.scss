@@ -8,6 +8,10 @@
     position: relative;
   }
 
+  .sidebar-slider {
+    height: 100%;
+  }
+
   .sidebar-header__btn-container {
     position: relative;
     width: 39.75px;
@@ -67,5 +71,70 @@
     }
   }
 
-  
+  .search-group-people {
+    ul {
+      display: flex;
+      flex-direction: row;
+      padding-left: 4px;
+      margin-top: -1px;
+      padding-bottom: 1px;
+    }
+
+    li {
+      margin-right: 5px;
+      padding: 0;
+    }
+
+    .rp {
+      height: 98px;
+      max-height: 98px;
+      border-radius: 10px;
+      max-width: 78px;
+      width: 78px;
+      align-items: center;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      cursor: pointer;
+      padding: 12px 0 0 !important;
+      overflow: hidden;
+      margin: 0;
+    }
+    
+    .user-avatar {
+      width: 54px;
+      height: 54px;
+    }
+
+    .user-caption {
+      max-width: 65px;
+      padding: 2px 0px 9px;
+      font-size: 12px;
+    }
+
+    .user-title {
+      max-width: unset;
+    }
+
+    .search-group-scrollable {
+      position: relative;
+      
+      > .scrollable {
+        position: relative;
+      }
+    }
+  }
+}
+
+#search-container {
+  transition: 150ms ease-in-out opacity,150ms ease-in-out transform;
+  transform: scale(1.1, 1.1);
+  opacity: 0;
+  display: flex;
+
+  &.active {
+    transform: scale(1, 1);
+    transform-origin: center;
+    opacity: 1;
+  }
 }

@@ -8,7 +8,7 @@ export class ServerTimeManager {
 
   public midnightOffset = this.midnightNoOffset - (Math.floor(+this.midnightOffseted / 1000));
 
-  public serverTimeOffset = 0;
+  public serverTimeOffset = 0; // in seconds
   public timeParams = {
     midnightOffset: this.midnightOffset,
     serverTimeOffset: this.serverTimeOffset

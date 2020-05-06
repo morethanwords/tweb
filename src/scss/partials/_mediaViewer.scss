@@ -122,12 +122,12 @@
     .media-viewer-caption {
       flex: 1;
       text-align: center;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
       color: $darkgrey;
       transition: .2s;
+      max-width: 50vw;
+      word-break: break-word;
+      overflow: hidden;
+      text-overflow: ellipsis;
 
       &:hover {
         color: #fff;

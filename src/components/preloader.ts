@@ -49,11 +49,14 @@ export default class ProgressivePreloader {
       this.promise = promise;
 
       let tempID = --this.tempID;
-      promise.then(() => {
+      let onEnd = () => {
         if(tempID == this.tempID) {
           this.detach();
         }
-      });
+
+        promise.notify = null;
+      };
+      promise.then(onEnd, onEnd);
 
       promise.notify = (details: {done: number, total: number}) => {
         if(tempID != this.tempID) return;

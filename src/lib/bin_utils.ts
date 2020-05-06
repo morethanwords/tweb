@@ -66,7 +66,7 @@ export function bytesFromHex(hexString: string) {
   return bytes;
 }
 
-export function bytesToBase64(bytes: number[]) {
+export function bytesToBase64(bytes: number[] | Uint8Array) {
   var mod3
   var result = ''
 

@@ -37,7 +37,7 @@ const AppPeersManager = {
     return false;
   },
 
-  getPeerTitle: (peerID: number | any, plainText = false) => {
+  getPeerTitle: (peerID: number | any, plainText = false, onlyFirstName = false) => {
     let peer: any = {}; 
     if(!isObject(peerID)) {
       peer = AppPeersManager.getPeer(peerID);
@@ -52,6 +52,10 @@ const AppPeersManager = {
       else title = title.trim();
     } else {
       title = peer.title;
+    }
+
+    if(onlyFirstName) {
+      title = title.split(' ')[0];
     }
     
     return plainText ? title : RichTextProcessor.wrapEmojiText(title);

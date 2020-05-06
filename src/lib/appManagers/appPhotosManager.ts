@@ -27,6 +27,12 @@ export class AppPhotosManager {
   private photos: {
     [id: string]: MTPhoto
   } = {};
+  private documentThumbsCache: {
+    [docID: string]: {
+      downloaded: number, 
+      url: string
+    }
+  } = {};
   public windowW = 0;
   public windowH = 0;
   
@@ -243,7 +249,7 @@ export class AppPhotosManager {
       element.setAttributeNS(null, 'width', '' + w);
       element.setAttributeNS(null, 'height', '' + h);
 
-      console.log('set dimensions to svg element:', element, w, h);
+      //console.log('set dimensions to svg element:', element, w, h);
       
       if(element.firstElementChild) {
         let imageSvg = element.firstElementChild as SVGImageElement;
@@ -268,7 +274,10 @@ export class AppPhotosManager {
       photoSize = this.choosePhotoSize(photo, fullWidth, fullHeight);
     }
 
-    if(photo.downloaded >= photoSize.size && photo.url) {
+    let isDocument = photo._ == 'document';
+    let cacheContext = isDocument ? (this.documentThumbsCache[photo.id] ?? (this.documentThumbsCache[photo.id] = {downloaded: -1, url: ''})) : photo;
+
+    if(cacheContext.downloaded >= photoSize.size && cacheContext.url) {
       return Promise.resolve();
     }
 
@@ -280,7 +289,7 @@ export class AppPhotosManager {
     // maybe it's a thumb
     let isPhoto = photoSize.size && photo.access_hash && photo.file_reference;
     let location = isPhoto ? {
-      _: photo._ == 'document' ? 'inputDocumentFileLocation' : 'inputPhotoFileLocation',
+      _: isDocument ? 'inputDocumentFileLocation' : 'inputPhotoFileLocation',
       id: photo.id,
       access_hash: photo.access_hash,
       file_reference: photo.file_reference,
@@ -296,19 +305,20 @@ export class AppPhotosManager {
       promise = apiFileManager.downloadSmallFile(location);
     }
 
-    if(typeof(photoID) === 'string') {
-      let photo = this.photos[photoID]; 
-      promise.then(blob => {
-        if(!photo.downloaded || photo.downloaded < blob.size) {
-          photo.downloaded = blob.size;
-          photo.url = URL.createObjectURL(blob);
+    promise.then(blob => {
+      if(!cacheContext.downloaded || cacheContext.downloaded < blob.size) {
+        cacheContext.downloaded = blob.size;
+        cacheContext.url = URL.createObjectURL(blob);
 
-          console.log('wrote photo:', photo, photoSize, blob);
-        }
-      });
-    }
+        //console.log('wrote photo:', photo, photoSize, cacheContext, blob);
+      }
+    });
 
     return promise;
+  }
+
+  public getDocumentCachedThumb(docID: string) {
+    return this.documentThumbsCache[docID];
   }
   
   public getPhoto(photoID: any): MTPhoto {

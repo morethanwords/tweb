@@ -32,13 +32,6 @@ a {
   align-items: center;
 }
 
-
-// classic clearfix
-.clearfix {
-  clear: both;
-}
-
-
 // Z-levels
 .z-depth-0 {
   box-shadow: none !important;
@@ -82,54 +75,6 @@ a {
   0 11px 15px -7px rgba(0,0,0,0.2);
 }
 
-.hoverable {
-  transition: box-shadow .25s;
-  
-  &:hover {
-    box-shadow: 0 8px 17px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
-  }
-}
-
-// Icon Styles
-
-i {
-  line-height: inherit;
-  
-  &.left {
-    float: left;
-    margin-right: 15px;
-  }
-  &.right {
-    float: right;
-    margin-left: 15px;
-  }
-  &.tiny {
-    font-size: 1rem;
-  }
-  &.small {
-    font-size: 2rem;
-  }
-  &.medium {
-    font-size: 4rem;
-  }
-  &.large {
-    font-size: 6rem;
-  }
-}
-
-/*********************
-Transition Classes
-**********************/
-
-ul.staggered-list li {
-  opacity: 0;
-}
-
-.fade-in {
-  opacity: 0;
-  transform-origin: 0 50%;
-}
-
 /*******************
 Utility Classes
 *******************/
@@ -138,29 +83,11 @@ Utility Classes
   display: none !important;
 }
 
-// Text Align
-.left-align {
-  text-align: left;
-}
-.right-align {
-  text-align: right
-}
-.center, .center-align {
-  text-align: center;
-}
-
-.left {
-  float: left !important;
-}
-.right {
-  float: right !important;
-}
-
 // No Text Select
 .no-select {
   user-select: none;
 }
 
-.circle {
-  border-radius: 50%;
+.center-align {
+  text-align: center;
 }

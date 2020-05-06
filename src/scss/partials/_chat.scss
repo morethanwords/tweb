@@ -1,4 +1,5 @@
 $chat-max-width: 696px;
+$time-background: rgba(0, 0, 0, 0.35);
 
 #bubble-contextmenu > div {
 	padding: 0 84px 0 16px;
@@ -75,6 +76,10 @@ $chat-max-width: 696px;
 
 		.chat-more-button {
 			margin-left: 8px;
+
+			.btn-menu {
+				top: calc(100% + 7px);
+			}
 		}
 		
 		.chat-info {
@@ -134,7 +139,7 @@ $chat-max-width: 696px;
 			/* position: absolute;
 			bottom: 0;
 			left: 0; */
-			position: relative;
+			//position: relative; // неизвестно зачем это было
 
 			//display: flex; // for end
 			//flex-direction: unset;
@@ -163,6 +168,10 @@ $chat-max-width: 696px;
 				width: 50px;
 				height: 50px;
 			}
+
+			&-container .preloader-circular {
+				background-color: $time-background;
+			}
 		}
 		
 		#bubbles-inner {
@@ -185,6 +194,8 @@ $chat-max-width: 696px;
 			}
 
 			&.is-channel:not(.is-chat) {
+				padding-bottom: 55px;
+
 				.bubble__container {
 					max-width: 100%;
 				}
@@ -250,9 +261,11 @@ $chat-max-width: 696px;
 		
 		.bubble {
 			padding-top: 5px;
-			display: grid;
+			/* display: grid;
 			grid-template-columns: 1fr $chat-max-width 1fr;
-			grid-row-gap: 0px;
+			grid-row-gap: 0px; */
+			max-width: $chat-max-width;
+			margin: 0 auto;
 
 			&.is-date {
 				position: -webkit-sticky;
@@ -268,10 +281,10 @@ $chat-max-width: 696px;
 				}
 			}
 			
-			&:before, &:after {
+			/* &:before, &:after {
 				content: " ";
 				width: 100%;
-			}
+			} */
 
 			&__container {
 				//min-width: 60px;
@@ -303,7 +316,8 @@ $chat-max-width: 696px;
 				padding: 5px 0;
 
 				.bubble__container {
-					justify-self: center;
+					/* justify-self: center; */
+					margin: 0 auto;
 					max-width: 100%;
 				}
 			}
@@ -536,6 +550,8 @@ $chat-max-width: 696px;
 					height: auto;
 					max-width: 100%;
 					cursor: pointer;
+					opacity: 1;
+					transition: opacity .3s ease;
 				}
 
 				.download {
@@ -550,14 +566,14 @@ $chat-max-width: 696px;
 					align-items: center;
 
 					span {
-						width: 54px;
-						height: 54px;
-						line-height: 54px;
-						background-color: rgba(0, 0, 0, .7);
-						border-radius: 50%;
+						background-color: $time-background;
 						font-size: 23px;
 						color: #fff;
 						text-align: center;
+					}
+
+					& ~ .video-play {
+						display: none;
 					}
 				}
 			}
@@ -894,7 +910,7 @@ $chat-max-width: 696px;
 					bottom: .1rem;
 					right: .2rem;
 					border-radius: 12px;
-					background-color: rgba(0, 0, 0, .4);
+					background-color: $time-background;
 					padding: 0 .2rem;
 					z-index: 2;
 					
@@ -948,6 +964,32 @@ $chat-max-width: 696px;
 				}
 			}
 
+			span.video-time {
+				position: absolute;
+				top: 3px;
+				left: 3px;
+				border-radius: 12px;
+				background-color: $time-background;
+				padding: 0px 6px 0px 6px;
+				z-index: 2;
+				font-size: 12px;
+				color: white;
+				display: flex;
+				align-items: center;
+				cursor: pointer;
+				user-select: none;
+				-webkit-user-select: none;
+			}
+
+			span.video-play {
+				background-color: $time-background;
+				color: #fff;
+				text-align: center;
+				font-size: 34px;
+				line-height: 60px;
+				cursor: pointer;
+			}
+
 			&.is-edited.channel-post .time {
 				min-width: calc(5rem + 46px);
 			}
@@ -997,6 +1039,10 @@ $chat-max-width: 696px;
 						padding-top: 6px;
 					}
 				}
+			}
+
+			&:not(.webpage):not(.is-album):not(.sticker):not(.round) .attachment, .album-item {
+				background-color: #000;
 			}
 			
 			&.hide-name:not(.is-reply):not(.is-message-empty) .message {
@@ -1140,6 +1186,22 @@ $chat-max-width: 696px;
 
 			.audio-subtitle, .contact-number, .audio-time {
 				color: #707579 !important;
+			}
+
+			.message.audio-message {
+				.media-progress {
+					&__seek {
+						background: rgba(193, 207, 220, 0.39);
+					}
+
+					&__filled {
+						background-color: #0089ff;
+					}
+
+					input::-webkit-slider-thumb { 
+						background: #63a2e3; 
+					}
+				}
 			}
 		}
 		
