@@ -21,6 +21,7 @@ import serverTimeManager from "../mtproto/serverTimeManager";
 import apiManager from '../mtproto/mtprotoworker';
 import appWebPagesManager from "./appWebPagesManager";
 import { CancellablePromise, deferredPromise } from "../polyfill";
+import appPollsManager from "./appPollsManager";
 
 const APITIMEOUT = 0;
 
@@ -1501,7 +1502,10 @@ export class AppMessagesManager {
               apiMessage.media.photo = appPhotosManager.savePhoto(apiMessage.media.photo, mediaContext);
               //appPhotosManager.savePhoto(apiMessage.media.photo, mediaContext);
             }
-            break
+            break;
+          case 'messageMediaPoll':
+            appPollsManager.savePoll(apiMessage.media.poll, apiMessage.media.results);
+            break;
           case 'messageMediaDocument':
             if(apiMessage.media.ttl_seconds) {
               apiMessage.media = {_: 'messageMediaUnsupportedWeb'};

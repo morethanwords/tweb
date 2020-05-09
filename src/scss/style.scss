@@ -3,31 +3,20 @@ $border-radius: 8px;
 $border-radius-medium: 10px;
 $border-radius-big: 12px;
 $button-primary-background: #4EA4F6;
-$success-color: #4DCD5E;
+
+$color-green: #4DCD5E;
 $color-error: #E53935;
 $color-gray: #707579;
+$color-blue: #50a2e9;
 
-$lightblue: #e6ebee;
-$blue: #50a2e9;
-$darkblue: #50a2e9;
-
-$lightgreen: #eeffde;
-$green: #4dcd5e;
 $darkgreen: #50af4f;
-
-$dotgreen: #0ac630;
+$color-text-green: $darkgreen;
 
 $lightgrey: #dadce0;
-$grey: #c4c9cc;
-$darkgrey: #707579;
 
-$light: rgba($darkgrey, 0.08);
-
-$text: #000000;
-$bg: #ffffff;
+$light: rgba($color-gray, 0.08);
 
 $text-size: 16px;
-$time-size: 12px;
 
 $large-screen: 1680px;
 //$large-screen: 16800px;
@@ -35,6 +24,7 @@ $large-screen: 1680px;
 @import "partials/ico";
 @import "partials/chatlist";
 @import "partials/chat";
+@import "partials/chatBubble";
 @import "partials/sidebar";
 @import "partials/leftSidebar";
 @import "partials/rightSidebar";
@@ -59,7 +49,7 @@ html {
 }
 
 a {
-  color: $blue;
+  color: $color-blue;
 }
 
 button, input, optgroup, select, textarea, html {
@@ -163,7 +153,7 @@ input {
   justify-content: center;
 
   &.active {
-    color: $blue;
+    color: $color-blue;
   }
   
   &:hover {
@@ -186,15 +176,6 @@ input {
 
 .danger {
   color: $color-error!important;
-}
-
-.btn-menu-toggle {
-  position: relative;
-  overflow: visible;
-
-  &.menu-open {
-    background-color: rgba(112, 117, 121, 0.08);
-  }
 }
 
 .btn-menu {
@@ -294,7 +275,7 @@ input {
   height: 54px;
   line-height: 54px;
   border-radius: 50%;
-  background-color: $blue;
+  background-color: $color-blue;
   text-align: center;
   font-size: 1.25em;
   /* overflow: hidden; */
@@ -412,7 +393,7 @@ input {
   height: 70px;
 
   &-ico {
-    background-color: $blue;
+    background-color: $color-blue;
     border-radius: 5px;
     line-height: 10px;
 
@@ -442,7 +423,7 @@ input {
   }
 
   &-download {
-    background-color: $blue;
+    background-color: $color-blue;
     border-radius: 8px;
   }
 
@@ -490,7 +471,7 @@ input {
   
   &-size {
     white-space: nowrap;
-    color: $darkgrey;
+    color: $color-gray;
     font-size: 14px;
     padding-right: 32px;
     line-height: 1.3;
@@ -547,7 +528,7 @@ input {
 
   &-toggle, &-download {
     border-radius: 50%;
-    background-color: $blue;
+    background-color: $color-blue;
     font-size: 2.3rem;
     align-items: center;
   }
@@ -566,7 +547,7 @@ input {
       fill: #CBCBCB;
 
       &.active {
-        fill: $blue;
+        fill: $color-blue;
       }
     }
   }
@@ -670,32 +651,36 @@ input {
   }
 } */
 
+.avatar-edit {
+  position: relative;
+  border-radius: 50%;
+  cursor: pointer;
+  overflow: hidden;
+
+  &-canvas {
+    max-width: 100%;
+    max-height: 100%;
+    width: 100%;
+    height: 100%;
+    background-color: $color-blue;
+  }
+
+  .tgico-cameraadd {
+    position: absolute;
+    font-size: 48px;
+	  line-height: 48px;
+    top: 50%;
+    left: 50%;
+    transform: translateY(-50%) translateX(-50%);
+    z-index: 2;
+    color: #fff;
+  }
+}
+
 .page-signUp {
   .auth-image {
-    border-radius: 50%;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
     margin-top: 10px;
     margin-bottom: 14px;
-    
-    canvas {
-      max-width: 100%;
-      max-height: 100%;
-      width: 100%;
-      height: 100%;
-      background-color: $blue;
-    }
-    
-    svg {
-      position: absolute;
-      width: 48px;
-      height: 48px;
-      top: 50%;
-      left: 50%;
-      transform: translateY(-50%) translateX(-50%);
-      z-index: 2;
-    }
   }
 }
 
@@ -758,6 +743,10 @@ input {
     position: relative;
     z-index: 1;
     /* font-weight: 500; */
+
+    /* &:hover {
+      border-color: #000;
+    } */
     
     &:focus {
       border-color: $button-primary-background;
@@ -951,16 +940,16 @@ input {
 }
 
 ::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
-  color: $placeholder-color;
+  color: #a2acb4;
   opacity: 1; /* Firefox */
 }
 
 :-ms-input-placeholder { /* Internet Explorer 10-11 */
-  color: $placeholder-color;
+  color: #a2acb4;
 }
 
 ::-ms-input-placeholder { /* Microsoft Edge */
-  color: $placeholder-color;
+  color: #a2acb4;
 }
 
 input:focus, button:focus {
@@ -1019,7 +1008,7 @@ input:focus, button:focus {
 } */
 
 .btn-primary {
-  background: $blue;
+  background: $color-blue;
   color: #fff;
   border-radius: $border-radius-medium;
   width: 100%;
@@ -1033,7 +1022,7 @@ input:focus, button:focus {
   padding: 0; // new
   
   &:hover {
-    background: darken($blue, 8%);
+    background: darken($color-blue, 8%);
   }
   
   svg, use {
@@ -1055,6 +1044,16 @@ input:focus, button:focus {
     .preloader-path {
       stroke: #fff;
     }
+  }
+}
+
+.btn-menu-toggle {
+  position: relative;
+  overflow: visible !important;
+  font-weight: normal !important;
+
+  &:not(.btn-primary).menu-open {
+    background-color: rgba(112, 117, 121, 0.08);
   }
 }
 
@@ -1336,6 +1335,12 @@ img.emoji {
   display: flex;
   max-height: 100vh;
   min-height: 100vh;
+
+  .avatar-edit {
+    .tgico-cameraadd {
+      top: 52%;
+    }
+  }
   
   > div {
     height: 100%;

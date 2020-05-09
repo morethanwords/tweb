@@ -1,5 +1,5 @@
 .menu-horizontal {
-  color: $darkgrey;
+  color: $color-gray;
   border-bottom: 1px solid $lightgrey;
   position: relative;
 
@@ -25,13 +25,13 @@
     font-weight: 500;
 
     &.active {
-      color: $blue;
+      color: $color-blue;
     }
   }
 
   &__stripe {
     position: absolute;
-    background: $blue;
+    background: $color-blue;
     //left: 0;
     left: -2px;
     transition: .3s transform, .3s width;

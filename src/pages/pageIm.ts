@@ -1,4 +1,4 @@
-import { openBtnMenu, ripple } from "../components/misc";
+import { openBtnMenu/* , ripple */ } from "../components/misc";
 //import {stackBlurImage} from '../lib/StackBlur';
 import Page from "./page";
 
@@ -44,7 +44,7 @@ let onFirstMount = () => import('../lib/appManagers/appImManager').then(() => {/
 
   import('../lib/services');
 
-  (Array.from(document.getElementsByClassName('rp')) as HTMLElement[]).forEach(el => ripple(el));
+  //(Array.from(document.getElementsByClassName('rp')) as HTMLElement[]).forEach(el => ripple(el));
 
   Array.from(document.getElementsByClassName('btn-menu-toggle')).forEach((el) => {
     el.addEventListener('click', (e) => {

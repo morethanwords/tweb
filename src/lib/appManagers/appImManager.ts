@@ -1,6 +1,6 @@
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
-import { $rootScope, isElementInViewport, numberWithCommas, findUpClassName, formatNumber, placeCaretAtEnd, findUpTag, langPack } from "../utils";
+import { $rootScope, numberWithCommas, findUpClassName, formatNumber, placeCaretAtEnd, findUpTag, langPack } from "../utils";
 import appUsersManager from "./appUsersManager";
 import appMessagesManager from "./appMessagesManager";
 import appPeersManager from "./appPeersManager";
@@ -17,7 +17,7 @@ import appSidebarLeft from "./appSidebarLeft";
 import appChatsManager from "./appChatsManager";
 import appMessagesIDsManager from "./appMessagesIDsManager";
 import apiUpdatesManager from './apiUpdatesManager';
-import { wrapDocument, wrapPhoto, wrapVideo, wrapSticker, wrapReply, wrapAlbum } from '../../components/wrappers';
+import { wrapDocument, wrapPhoto, wrapVideo, wrapSticker, wrapReply, wrapAlbum, wrapPoll } from '../../components/wrappers';
 import ProgressivePreloader from '../../components/preloader';
 import { openBtnMenu, formatPhoneNumber } from '../../components/misc';
 import { ChatInput } from '../../components/chatInput';
@@ -838,8 +838,21 @@ export class AppImManager {
         let [chatOnlines, chatInfo] = results;
         
         let onlines = chatOnlines ? chatOnlines.onlines : 1;
+
+        if(chatInfo._ == 'chatFull' && chatInfo.participants && chatInfo.participants.participants) {
+          let participants = chatInfo.participants.participants;
+
+          onlines = participants.reduce((acc: number, participant: any) => {
+            let user = appUsersManager.getUser(participant.user_id);
+            if(user && user.status && user.status._ == 'userStatusOnline') {
+              return acc + 1;
+            }
+
+            return acc;
+          }, 0);
+        }
         
-        ///////////this.log('chatInfo res:', chatInfo);
+        this.log('chatInfo res:', chatInfo);
         
         if(chatInfo.pinned_msg_id) { // request pinned message
           this.pinnedMsgID = chatInfo.pinned_msg_id;
@@ -882,6 +895,9 @@ export class AppImManager {
           }
         }
       }
+    } else {
+      this.subtitleEl.innerText = 'bot';
+      appSidebarRight.profileElements.subtitle.innerText = 'bot';
     }
   }
   
@@ -1058,7 +1074,7 @@ export class AppImManager {
             this.scroll.scrollTop = this.scroll.scrollHeight;
           }
         }
-        
+
         /* this.onScroll();
         this.scrollable.onScroll();*/
         
@@ -1225,7 +1241,8 @@ export class AppImManager {
   
   // reverse means top
   public renderMessage(message: any, reverse = false, multipleRender = false, bubble: HTMLDivElement = null, updatePosition = true) {
-    //this.log('message to render:', message);
+    this.log('message to render:', message);
+    //return;
     if(message.deleted) return;
     else if(message.grouped_id) { // will render only last album's message
       let storage = appMessagesManager.groupedMessagesStorage[message.grouped_id];
@@ -1278,8 +1295,14 @@ export class AppImManager {
       if(_ == "messageActionPhoneCall") {
         _ += '.' + action.type;
       }
+
       // @ts-ignore
-      let str = (name.innerText ? name.outerHTML + ' ' : '') + langPack[_];
+      let l = langPack[_];
+      if(!l) {
+        l = '[' + _ + ']';
+      }
+      
+      let str = l[0].toUpperCase() == l[0] ? l : (name.innerText ? name.outerHTML + ' ' : '') + l;
       bubbleContainer.innerHTML = `<div class="service-msg">${str}</div>`;
 
       /* if(!updatePosition) {
@@ -1401,7 +1424,7 @@ export class AppImManager {
     }
     
     // media
-    if(message.media) {
+    if(message.media/*  && message.media._ == 'messageMediaPhoto' */) {
       let attachmentDiv = document.createElement('div');
       attachmentDiv.classList.add('attachment');
       
@@ -1712,6 +1735,15 @@ export class AppImManager {
 
           break;
         }
+
+        case 'messageMediaPoll': {
+          bubble.classList.remove('is-message-empty');
+          
+          let pollElement = wrapPoll(message.media.poll, message.media.results);
+          messageDiv.prepend(pollElement);
+
+          break;
+        }
         
         default:
         bubble.classList.remove('is-message-empty');
@@ -1877,7 +1909,7 @@ export class AppImManager {
         let _history = history.slice();
         setTimeout(() => {
           this.performHistoryResult(_history, reverse, isBackLimit, 0, resetPromises);
-        }, (i + 1) * 2500);
+        }, 0/* (i + 1) * 2500 */);
       }
     }
 
@@ -2092,8 +2124,8 @@ export class AppImManager {
 
       this.log('getHistory: slice loadedTimes:', reverse, pageCount, this.loadedTopTimes, this.loadedBottomTimes, ids && ids.length);
 
-      let removeCount = loadCount / 2;
-      let safeCount = realLoadCount * 2;
+      //let removeCount = loadCount / 2;
+      let safeCount = Math.min(realLoadCount * 2, 35); // cause i've been runningrunningrunning all day
       if(ids && ids.length > safeCount) {
         if(reverse) {
           //ids = ids.slice(-removeCount);
@@ -2210,48 +2242,50 @@ export class AppImManager {
   public handleUpdate(update: any) {
     switch(update._) {
       case 'updateUserTyping':
-      case 'updateChatUserTyping':
-      if(this.myID == update.user_id) {
-        return;
-      }
-      
-      var peerID = update._ == 'updateUserTyping' ? update.user_id : -update.chat_id;
-      this.typingUsers[update.user_id] = peerID;
-      
-      if(!appUsersManager.hasUser(update.user_id)) {
-        if(update.chat_id && appChatsManager.hasChat(update.chat_id) && !appChatsManager.isChannel(update.chat_id)) {
-          appProfileManager.getChatFull(update.chat_id);
+      case 'updateChatUserTyping': {
+        if(this.myID == update.user_id) {
+          return;
         }
         
-        //return;
-      }
-      
-      appUsersManager.forceUserOnline(update.user_id);
-      
-      let dialog = appMessagesManager.getDialogByPeerID(peerID)[0];
-      let currentPeer = this.peerID == peerID;
-      
-      if(this.typingTimeouts[peerID]) clearTimeout(this.typingTimeouts[peerID]);
-      else if(dialog) {
-        appDialogsManager.setTyping(dialog, appUsersManager.getUser(update.user_id));
+        var peerID = update._ == 'updateUserTyping' ? update.user_id : -update.chat_id;
+        this.typingUsers[update.user_id] = peerID;
         
-        if(currentPeer) { // user
+        if(!appUsersManager.hasUser(update.user_id)) {
+          if(update.chat_id && appChatsManager.hasChat(update.chat_id) && !appChatsManager.isChannel(update.chat_id)) {
+            appProfileManager.getChatFull(update.chat_id);
+          }
+          
+          //return;
+        }
+        
+        appUsersManager.forceUserOnline(update.user_id);
+        
+        let dialog = appMessagesManager.getDialogByPeerID(peerID)[0];
+        let currentPeer = this.peerID == peerID;
+        
+        if(this.typingTimeouts[peerID]) clearTimeout(this.typingTimeouts[peerID]);
+        else if(dialog) {
+          appDialogsManager.setTyping(dialog, appUsersManager.getUser(update.user_id));
+          
+          if(currentPeer) { // user
+            this.setPeerStatus();
+          }
+        }
+        
+        this.typingTimeouts[peerID] = setTimeout(() => {
+          this.typingTimeouts[peerID] = 0;
+          delete this.typingUsers[update.user_id];
+          
+          if(dialog) {
+            appDialogsManager.unsetTyping(dialog);
+          }
+          
+          // лень просчитывать случаи
           this.setPeerStatus();
-        }
+        }, 6000);
+
+        break;
       }
-      
-      this.typingTimeouts[peerID] = setTimeout(() => {
-        this.typingTimeouts[peerID] = 0;
-        delete this.typingUsers[update.user_id];
-        
-        if(dialog) {
-          appDialogsManager.unsetTyping(dialog);
-        }
-        
-        // лень просчитывать случаи
-        this.setPeerStatus();
-      }, 6000);
-      break;
       
       case 'updateNotifySettings': {
         let {peer, notify_settings} = update;

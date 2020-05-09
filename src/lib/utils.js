@@ -367,7 +367,7 @@ export const langPack = {
 	"messageActionChatJoined": "joined the group",
   "messageActionChatAddUser": "invited {user}",
   "messageActionChatAddUsers": "invited {} users",
-	"messageActionChatLeave": "left group",
+	"messageActionChatLeave": "left the group",
 	"messageActionChatDeleteUser": "removed user",
 	"messageActionChatJoinedByLink": "joined the group",
 	"messageActionPinMessage": "pinned message",

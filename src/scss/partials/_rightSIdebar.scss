@@ -98,12 +98,12 @@
 
   &-subtitle {
     text-align: center;
-    color: $darkgrey;
+    color: $color-gray;
     font-size: 14px;
     margin-bottom: 2px;
 
     &.online {
-      color: $darkblue;
+      color: $color-blue;
     }
   }
 
@@ -123,7 +123,7 @@
       left: 24px;
       /* top: 0; */
       font-size: 24px;
-      color: $darkgrey;
+      color: $color-gray;
     }
 
     p {
@@ -328,7 +328,7 @@
               font-size: 2rem;
               color: #fff;
               text-transform: uppercase;
-              background-color: $blue;
+              background-color: $color-blue;
             }
           }
   

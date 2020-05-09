@@ -16,10 +16,10 @@ import {gzipUncompress} from '../crypto/crypto_utils';
 import {gzipUncompress} from '../bin_utils';
 /// #endif
 
-const boolFalse = +Schema.API.constructors.find((c: any) => c.predicate == 'boolFalse').id >>> 0;
-const boolTrue = +Schema.API.constructors.find((c: any) => c.predicate == 'boolTrue').id >>> 0;
-const vector = +Schema.API.constructors.find((c: any) => c.predicate == 'vector').id >>> 0;
-const gzipPacked = +Schema.MTProto.constructors.find((c: any) => c.predicate == 'gzip_packed').id >>> 0;
+const boolFalse = +Schema.API.constructors.find(c => c.predicate == 'boolFalse').id >>> 0;
+const boolTrue = +Schema.API.constructors.find(c => c.predicate == 'boolTrue').id >>> 0;
+const vector = +Schema.API.constructors.find(c => c.predicate == 'vector').id >>> 0;
+const gzipPacked = +Schema.MTProto.constructors.find(c => c.predicate == 'gzip_packed').id >>> 0;
 
 //console.log('boolFalse', boolFalse == 0xbc799737);
 
@@ -628,7 +628,7 @@ class TLDeserialization {
       return result;
     }
   
-    var schema = (this.mtproto ? Schema.MTProto : Schema.API) as any;
+    var schema = this.mtproto ? Schema.MTProto : Schema.API;
     var predicate = false;
     var constructorData: any = false;
   
@@ -675,7 +675,7 @@ class TLDeserialization {
         }
       }
 
-      var i: number = index[constructorCmp];
+      var i = index[constructorCmp];
       if(i) {
         constructorData = schema.constructors[i];
       }

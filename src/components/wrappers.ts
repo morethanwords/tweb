@@ -15,6 +15,8 @@ import { CancellablePromise } from '../lib/polyfill';
 import { renderImageFromUrl } from './misc';
 import appMessagesManager from '../lib/appManagers/appMessagesManager';
 import { Layouter, RectPart } from './groupedLayout';
+import { Poll, PollResults } from '../lib/appManagers/appPollsManager';
+import PollElement from './poll';
 
 export type MTDocument = {
   _: 'document' | 'documentEmpty',
@@ -701,11 +703,11 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
   }
   
   if(!stickerType) {
-    console.error('wrong doc for wrapSticker!', doc, div);
+    console.error('wrong doc for wrapSticker!', doc);
     return Promise.resolve();
   }
   
-  console.log('wrap sticker', doc, div, onlyThumb);
+  //console.log('wrap sticker', doc, div, onlyThumb);
   
   if(doc.thumbs && !div.firstElementChild && (!doc.downloaded || stickerType == 2)) {
     let thumb = doc.thumbs[0];
@@ -875,6 +877,10 @@ export function wrapReply(title: string, subtitle: string, message?: any) {
   if(media) {
     if(message.grouped_id) {
       replySubtitle.innerHTML = 'Album';
+    } else if(media._ == 'messageMediaContact') {
+      replySubtitle.innerHTML = 'Contact';
+    } else if(media._ == 'messageMediaPoll') {
+      replySubtitle.innerHTML = media.poll.rReply;
     } else if(media.photo) {
       replySubtitle.innerHTML = 'Photo';
     } else if(media.document && media.document.type) {
@@ -946,7 +952,13 @@ export function wrapAlbum({groupID, attachmentDiv, middleware, uploading, lazyLo
   let brSplitted = fillPropertyValue(borderRadius); */
 
   for(let {geometry, sides} of layout) {
-    let {size, media, message} = items.shift();
+    let item = items.shift();
+    if(!item) {
+      console.error('no item for layout!');
+      continue;
+    }
+
+    let {size, media, message} = item;
     let div = document.createElement('div');
     div.classList.add('album-item');
     div.dataset.mid = message.mid;
@@ -1040,4 +1052,10 @@ export function wrapAlbum({groupID, attachmentDiv, middleware, uploading, lazyLo
 
     attachmentDiv.append(div);
   }
+}
+
+export function wrapPoll(poll: Poll, results: PollResults) {
+  let elem = new PollElement();
+  elem.setAttribute('poll-id', poll.id);
+  return elem;
 }

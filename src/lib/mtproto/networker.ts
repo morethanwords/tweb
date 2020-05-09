@@ -227,14 +227,14 @@ class MTPNetworker {
     if(!this.connectionInited) { // this will call once for each new session
       ///////this.log('Wrap api call !this.connectionInited');
       
-      let invokeWithLayer = Schema.API.methods.find((m: any) => m.method == 'invokeWithLayer');
+      let invokeWithLayer = Schema.API.methods.find(m => m.method == 'invokeWithLayer');
       if(!invokeWithLayer) throw new Error('no invokeWithLayer!');
       serializer.storeInt(+invokeWithLayer.id >>> 0, 'invokeWithLayer');
 
       // @ts-ignore
       serializer.storeInt(Schema.layer, 'layer');
   
-      let initConnection = Schema.API.methods.find((m: any) => m.method == 'initConnection');
+      let initConnection = Schema.API.methods.find(m => m.method == 'initConnection');
       if(!initConnection) throw new Error('no initConnection!');
   
       serializer.storeInt(+initConnection.id >>> 0, 'initConnection');
@@ -260,7 +260,7 @@ class MTPNetworker {
     }
   
     if(options.afterMessageID) {
-      let invokeAfterMsg = Schema.API.methods.find((m: any) => m.method == 'invokeAfterMsg');
+      let invokeAfterMsg = Schema.API.methods.find(m => m.method == 'invokeAfterMsg');
       if(!invokeAfterMsg) throw new Error('no invokeAfterMsg!');
 
       this.log('Api call options.afterMessageID!');

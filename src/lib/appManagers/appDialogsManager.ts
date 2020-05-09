@@ -9,6 +9,7 @@ import { ripple, putPreloader } from "../../components/misc";
 import Scrollable from "../../components/scrollable_new";
 import appProfileManager from "./appProfileManager";
 import { logger } from "../polyfill";
+import appChatsManager from "./appChatsManager";
 
 type DialogDom = {
   avatarDiv: HTMLDivElement,
@@ -474,6 +475,12 @@ export class AppDialogsManager {
           case 'messageMediaGeo':
             lastMessageText += '<i>Geolocation</i>';
             break;
+          case 'messageMediaPoll':
+            lastMessageText += '<i>' + lastMessage.media.poll.rReply + '</i>';
+            break;
+          case 'messageMediaContact':
+            lastMessageText += '<i>Contact</i>';
+            break;
           case 'messageMediaDocument':
             let document = lastMessage.media.document;
   
@@ -723,6 +730,18 @@ export class AppDialogsManager {
 
     let titleSpan = document.createElement('span');
     titleSpan.classList.add('user-title');
+
+    if(peerID < 0) {
+      let chat = appChatsManager.getChat(-peerID);
+      if(chat && chat.pFlags && chat.pFlags.verified) {
+        titleSpan.classList.add('is-verified');
+      }
+    } else {
+      let user = appUsersManager.getUser(peerID);
+      if(user && user.pFlags && user.pFlags.verified) {
+        titleSpan.classList.add('is-verified');
+      }
+    }
 
     if(peerID == $rootScope.myID) {
       title = onlyFirstName ? 'Saved' : 'Saved Messages';

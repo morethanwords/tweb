@@ -1,10 +1,9 @@
 import {putPreloader} from '../components/misc';
-import resizeableImage from '../lib/cropper';
 import pageIm from './pageIm';
 //import apiManager from '../lib/mtproto/apiManager';
 import apiManager from '../lib/mtproto/mtprotoworker';
-import apiFileManager from '../lib/mtproto/apiFileManager';
 import Page from './page';
+import popupAvatar from '../components/popupAvatar';
 
 let authCode: {
   'phone_number': string,
@@ -13,84 +12,13 @@ let authCode: {
 
 let onFirstMount = () => {
   const pageElement = page.pageEl;
-  const avatarInput = document.getElementById('avatar-input') as HTMLInputElement;
-  const avatarPopup = document.getElementsByClassName('popup-avatar')[0];
   const avatarPreview = pageElement.querySelector('#canvas-avatar') as HTMLCanvasElement;
-  const cropContainer = avatarPopup.getElementsByClassName('crop')[0] as HTMLDivElement;
-  let avatarImage = new Image();
-  cropContainer.append(avatarImage);
 
-  let avatarBlob: Blob;
-
-  (avatarPopup.getElementsByClassName('popup-close')[0] as HTMLButtonElement)
-  .addEventListener('click', function(this, e) {
-    /* let popup = findUpClassName(this, 'popup');
-    popup.classList.remove('active'); */
-
-    setTimeout(() => {
-      cropper.removeHandlers();
-      if(avatarImage) {
-        avatarImage.remove();
-      }
-    }, 200);
-
-    /* e.cancelBubble = true;
-    return false; */
-  });
-
-  let cropper = {
-    crop: () => {},
-    removeHandlers: () => {}
-  };
-
-  // apply
-  avatarPopup.getElementsByClassName('btn-crop')[0].addEventListener('click', () => {
-    cropper.crop();
-    avatarPopup.classList.remove('active');
-    cropper.removeHandlers();
-
-    avatarPreview.toBlob(blob => {
-      avatarBlob = blob; // save blob to send after reg
-
-      // darken
-      let ctx = avatarPreview.getContext('2d');
-      ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
-      ctx.fillRect(0, 0, avatarPreview.width, avatarPreview.height);
-    }, 'image/jpeg', 1);
-
-    avatarImage.remove();
-  });
-
-  avatarInput.addEventListener('change', (e: any) => {
-    var file = e.target.files[0];
-    if(!file) {
-      return;
-    }
-
-    var reader = new FileReader();
-    reader.onload = (e) => {
-      var contents = e.target.result as string;
-      
-      avatarImage = new Image();
-      cropContainer.append(avatarImage);
-      avatarImage.src = contents;
-
-      avatarImage.onload = () => {
-        /* let {w, h} = calcImageInBox(avatarImage.naturalWidth, avatarImage.naturalHeight, 460, 554);
-        cropContainer.style.width = w + 'px';
-        cropContainer.style.height = h + 'px'; */
-        avatarPopup.classList.add('active');
-
-        cropper = resizeableImage(avatarImage, avatarPreview);
-        avatarInput.value = '';
-      };
-    };
-
-    reader.readAsDataURL(file);
-  }, false);
-
+  let uploadAvatar: () => Promise<any>;
   pageElement.querySelector('.auth-image').addEventListener('click', () => {
-    avatarInput.click();
+    popupAvatar.open(avatarPreview, (_uploadAvatar) => {
+      uploadAvatar = _uploadAvatar;
+    });
   });
 
   const headerName = pageElement.getElementsByClassName('fullName')[0] as HTMLHeadingElement;
@@ -108,13 +36,13 @@ let onFirstMount = () => {
   };
 
   let sendAvatar = () => new Promise((resolve, reject) => {
-    if(!avatarBlob) {
+    if(!uploadAvatar) {
       console.log('User has not selected avatar');
       return resolve();
     }
 
     console.log('invoking uploadFile...');
-    apiFileManager.uploadFile(avatarBlob).then((inputFile: any) => {
+    uploadAvatar().then((inputFile: any) => {
       console.log('uploaded smthn', inputFile);
   
       apiManager.invokeApi('photos.uploadProfilePhoto', {

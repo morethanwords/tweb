@@ -30,10 +30,12 @@ const AppPeersManager = {
     if(peerID >= 0) {
       return false;
     }
-    var chat = appChatsManager.getChat(-peerID);
+
+    let chat = appChatsManager.getChat(-peerID);
     if(chat && chat.migrated_to && chat.pFlags.deactivated) {
       return AppPeersManager.getPeerID(chat.migrated_to);
     }
+    
     return false;
   },
 
@@ -66,10 +68,11 @@ const AppPeersManager = {
       return {_: 'peerUser', user_id: peerID};
     }
 
-    var chatID = -peerID;
+    let chatID = -peerID;
     if(appChatsManager.isChannel(chatID)) {
       return {_: 'peerChannel', channel_id: chatID};
     }
+
     return {_: 'peerChat', chat_id: chatID};
   },
 
@@ -99,8 +102,8 @@ const AppPeersManager = {
         ? peerString.user_id
         : -(peerString.channel_id || peerString.chat_id);
     }
-    var isUser = peerString.charAt(0) == 'u';
-    var peerParams = peerString.substr(1).split('_');
+    let isUser = peerString.charAt(0) == 'u';
+    let peerParams = peerString.substr(1).split('_');
 
     return isUser ? peerParams[0] : -peerParams[0] || 0;
   },
@@ -125,25 +128,52 @@ const AppPeersManager = {
     return (peerID > 0) && appUsersManager.isBot(peerID);
   },
 
-  getInputPeerByID: (peerID: number) => {
-    if (!peerID) {
-      return {_: 'inputPeerEmpty'}
+  getInputPeer: (peerString: string): any => {
+    var firstChar = peerString.charAt(0);
+    var peerParams = peerString.substr(1).split('_');
+    let id = +peerParams[0];
+
+    if(firstChar == 'u') {
+      appUsersManager.saveUserAccess(id, peerParams[1]);
+
+      return {
+        _: 'inputPeerUser',
+        user_id: id,
+        access_hash: peerParams[1]
+      };
+    } else if(firstChar == 'c' || firstChar == 's') {
+      appChatsManager.saveChannelAccess(id, peerParams[1]);
+      if(firstChar == 's') {
+        appChatsManager.saveIsMegagroup(id);
+      }
+
+      return {
+        _: 'inputPeerChannel',
+        channel_id: id,
+        access_hash: peerParams[1] || 0
+      };
+    } else {
+      return {
+        _: 'inputPeerChat',
+        chat_id: id
+      };
     }
-    if (peerID < 0) {
-      var chatID = -peerID
-      if (!appChatsManager.isChannel(chatID)) {
-        return {
-          _: 'inputPeerChat',
-          chat_id: chatID
-        };
+  },
+
+  getInputPeerByID: (peerID: number) => {
+    if(!peerID) {
+      return {_: 'inputPeerEmpty'};
+    }
+
+    if(peerID < 0) {
+      let chatID = -peerID;
+      if(!appChatsManager.isChannel(chatID)) {
+        return appChatsManager.getChatInputPeer(chatID);
       } else {
-        return {
-          _: 'inputPeerChannel',
-          channel_id: chatID,
-          access_hash: appChatsManager.getChat(chatID).access_hash || 0
-        };
+        return appChatsManager.getChannelInputPeer(chatID);
       }
     }
+
     return {
       _: 'inputPeerUser',
       user_id: peerID,
@@ -158,11 +188,11 @@ const AppPeersManager = {
   },
 
   getPeerSearchText: (peerID: number) => {
-    var text
+    let text;
     if(peerID > 0) {
       text = '%pu ' + appUsersManager.getUserSearchText(peerID);
     } else if(peerID < 0) {
-      var chat = appChatsManager.getChat(-peerID);
+      let chat = appChatsManager.getChat(-peerID);
       text = '%pg ' + (chat.title || '');
     }
     return text;

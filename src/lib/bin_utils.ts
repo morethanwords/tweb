@@ -345,17 +345,17 @@ export function longFromInts(high: number, low: number) {
 export function intToUint(val: number | string) {
   if(typeof(val) === 'string') val = parseInt(val);
 
-  if(val < 0) {
+  /* if(val < 0) {
     val = val + 4294967296;
-  }
+  } */
 
   return val;
 }
 
 export function uintToInt(val: number) {
-  if(val > 2147483647) {
+  /* if(val > 2147483647) {
     val = val - 4294967296;
-  }
+  } */
   
   return val;
 }

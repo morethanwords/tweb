@@ -176,12 +176,23 @@
       //vertical-align: unset;
       margin-top: -1.5px;
     }
+
+    &.is-verified:after {
+      content: " ";
+      background: url(/assets/img/icon-verified.svg);
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      vertical-align: text-bottom;
+      margin-left: 2px;
+    }
   }
 
   .user-last-message {
     img.emoji {
       width: 20px;
       height: 20px;
+      margin-top: -3px;
     }
 
     span.emoji {
@@ -193,11 +204,11 @@
   }
 
   .user-title, .user-last-message {
-    max-width: 80%;
+    max-width: 86%;
 
     i {
       font-style: normal;
-      color: $darkblue;
+      color: $color-blue;
     }
   }
 
@@ -207,7 +218,7 @@
     margin-top: -.3rem;
 
     &[class*=" tgico-"] {
-      color: $success-color;
+      color: $color-green;
       font-size: 1.25rem;
     }
 
@@ -242,7 +253,7 @@
   }
 
   .unread {
-    background: $success-color;
+    background: $color-green;
   }
 
   .unread-muted, .tgico-pinnedchat {
@@ -268,6 +279,10 @@
       .search-group__name {
         padding-bottom: 17px;
       }
+    }
+
+    &:last-child {
+      border-bottom: none;
     }
   }
 }

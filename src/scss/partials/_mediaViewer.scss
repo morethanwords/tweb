@@ -5,7 +5,7 @@
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, .88);
-  /* color: $darkgrey; */
+  /* color: $color-gray; */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -122,7 +122,7 @@
     .media-viewer-caption {
       flex: 1;
       text-align: center;
-      color: $darkgrey;
+      color: $color-gray;
       transition: .2s;
       max-width: 50vw;
       word-break: break-word;

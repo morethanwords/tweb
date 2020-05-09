@@ -158,12 +158,19 @@ export class AppUsersManager {
       contactsList.sort((userID1: number, userID2: number) => {
         const sortName1 = (this.users[userID1] || {}).sortName || '';
         const sortName2 = (this.users[userID2] || {}).sortName || '';
+
+        return sortName1.localeCompare(sortName2);
+      });
+
+      /* contactsList.sort((userID1: number, userID2: number) => {
+        const sortName1 = (this.users[userID1] || {}).sortName || '';
+        const sortName2 = (this.users[userID2] || {}).sortName || '';
         if(sortName1 == sortName2) {
           return 0;
-        }
-
+        } 
+        
         return sortName1 > sortName2 ? 1 : -1;
-      });
+      }); */
 
       return contactsList;
     });
@@ -215,7 +222,8 @@ export class AppUsersManager {
       this.usernames[searchUsername] = userID;
     }
 
-    apiUser.sortName = apiUser.pFlags.deleted ? '' : SearchIndexManager.cleanSearchText(apiUser.first_name + ' ' + (apiUser.last_name || ''));
+    //apiUser.sortName = apiUser.pFlags.deleted ? '' : SearchIndexManager.cleanSearchText(apiUser.first_name + ' ' + (apiUser.last_name || ''));
+    apiUser.sortName = apiUser.pFlags.deleted ? '' : apiUser.first_name + ' ' + (apiUser.last_name || '');
 
     var nameWords = apiUser.sortName.split(' ');
     var firstWord = nameWords.shift();

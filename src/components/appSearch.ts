@@ -13,10 +13,10 @@ export class SearchGroup {
   nameEl: HTMLDivElement;
   list: HTMLUListElement;
 
-  constructor(public name: string, public type: string, private clearable = true, className?: string) {
+  constructor(public name: string, public type: string, private clearable = true, className?: string, clickable = true) {
     this.list = document.createElement('ul');
     this.container = document.createElement('div');
-    if(className) this.container.classList.add(className);
+    if(className) this.container.className = className;
     this.nameEl = document.createElement('div');
     this.nameEl.classList.add('search-group__name');
     this.nameEl.innerText = name;
@@ -25,7 +25,9 @@ export class SearchGroup {
     this.container.append(this.nameEl, this.list);
     this.container.style.display = 'none';
 
-    appDialogsManager.setListClickListener(this.list);
+    if(clickable) {
+      appDialogsManager.setListClickListener(this.list);
+    }
   }
 
   clear() {

@@ -157,7 +157,5 @@ class LottieLoader {
 }
 
 const lottieLoader = new LottieLoader();
-
-//(window as any).LottieLoader = lottieLoader;
-
+(window as any).LottieLoader = lottieLoader;
 export default lottieLoader;

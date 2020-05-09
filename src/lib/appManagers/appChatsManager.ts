@@ -1,9 +1,43 @@
 import { $rootScope, isObject, SearchIndexManager, safeReplaceObject, copy, numberWithCommas } from "../utils";
 import { RichTextProcessor } from "../richtextprocessor";
 import appUsersManager from "./appUsersManager";
+import appPeersManager from "./appPeersManager";
+import apiManager from '../mtproto/mtprotoworker';
+import apiUpdatesManager from "./apiUpdatesManager";
+
+type Channel = {
+  _: 'channel',
+  flags: number,
+  pFlags: Partial<{
+    creator: true,
+    left: true,
+    broadcast: true,
+    verified: true,
+    megagroup: true,
+    restricted: true,
+    signatures: true,
+    min: true,
+    scam: true,
+    has_link: true,
+    has_geo: true,
+    slowmode_enabled: true
+  }>,
+  id: number,
+  access_hash?: string,
+  title: string,
+  username?: string,
+  photo: any,
+  date: number,
+  version: number,
+  restriction_reason?: any,
+  admin_rights?: any,
+  banned_rights?: any,
+  default_banned_rights?: any,
+  participants_count: number
+};
 
 export class AppChatsManager {
-  public chats: any = {};
+  public chats: {[id: number]: Channel | any} = {};
   public usernames: any = {};
   public channelAccess: any = {};
   public megagroups: any = {};
@@ -143,8 +177,7 @@ export class AppChatsManager {
 
   public isChannel(id: number) {
     var chat = this.chats[id];
-    if(chat && (chat._ == 'channel' || chat._ == 'channelForbidden') ||
-      this.channelAccess[id]) {
+    if(chat && (chat._ == 'channel' || chat._ == 'channelForbidden') || this.channelAccess[id]) {
       return true;
     }
     return false;
@@ -166,10 +199,6 @@ export class AppChatsManager {
     return this.isChannel(id) && !this.isMegagroup(id);
   }
 
-  public getChatInput(id: number) {
-    return id || 0;
-  }
-
   public getChannelInput(id: number) {
     if(!id) {
       return {_: 'inputChannelEmpty'};
@@ -177,6 +206,25 @@ export class AppChatsManager {
 
     return {
       _: 'inputChannel',
+      channel_id: id,
+      access_hash: this.getChat(id).access_hash || this.channelAccess[id] || 0
+    };
+  }
+
+  public getChatInputPeer(id: number) {
+    return {
+      _: 'inputPeerChat',
+      chat_id: id
+    };
+  }
+
+  public getChannelInputPeer(id: number) {
+    if(!id) {
+      return {_: 'inputPeerEmpty'};
+    }
+
+    return {
+      _: 'inputPeerChannel',
       channel_id: id,
       access_hash: this.getChat(id).access_hash || this.channelAccess[id] || 0
     };
@@ -217,7 +265,7 @@ export class AppChatsManager {
     var chatFull = copy(fullChat);
     var chat = this.getChat(id);
 
-    if (!chatFull.participants_count) {
+    if(!chatFull.participants_count) {
       chatFull.participants_count = chat.participants_count;
     }
 
@@ -226,7 +274,7 @@ export class AppChatsManager {
       chatFull.participants.participants = this.wrapParticipants(id, chatFull.participants.participants);
     }
 
-    if (chatFull.about) {
+    if(chatFull.about) {
       chatFull.rAbout = RichTextProcessor.wrapRichText(chatFull.about, {noLinebreaks: true});
     }
 
@@ -240,7 +288,7 @@ export class AppChatsManager {
     var chat = this.getChat(id);
     var myID = appUsersManager.getSelf().id;
     if(this.isChannel(id)) {
-      var isAdmin = chat.pFlags.creator || chat.pFlags.editor || chat.pFlags.moderator
+      var isAdmin = chat.pFlags.creator || chat.pFlags.editor || chat.pFlags.moderator;
       participants.forEach((participant) => {
         participant.canLeave = myID == participant.user_id;
         participant.canKick = isAdmin && participant._ == 'channelParticipant';
@@ -249,7 +297,7 @@ export class AppChatsManager {
         participant.user = appUsersManager.getUser(participant.user_id);
       });
     } else {
-      var isAdmin = chat.pFlags.creator || chat.pFlags.admins_enabled && chat.pFlags.admin
+      var isAdmin = chat.pFlags.creator || chat.pFlags.admins_enabled && chat.pFlags.admin;
       participants.forEach((participant) => {
         participant.canLeave = myID == participant.user_id;
         participant.canKick = !participant.canLeave && (
@@ -261,7 +309,69 @@ export class AppChatsManager {
         participant.user = appUsersManager.getUser(participant.user_id);
       });
     }
+
     return participants;
+  }
+
+  public createChannel(title: string, about: String): Promise<number> {
+    return apiManager.invokeApi('channels.createChannel', {
+      flags: 1,
+      broadcast: true,
+      title: title,
+      about: about
+    }).then((updates: any) => {
+      apiUpdatesManager.processUpdateMessage(updates);
+
+      return updates.chats[0].id;
+    });
+  }
+
+  public inviteToChannel(id: number, userIDs: number[]) {
+    let input = this.getChannelInput(id);
+    let usersInputs = userIDs.map(u => appUsersManager.getUserInput(u));
+
+    return apiManager.invokeApi('channels.inviteToChannel', {
+      channel: input,
+      users: usersInputs
+    }).then(updates => {
+      apiUpdatesManager.processUpdateMessage(updates);
+    });
+  }
+
+  public createChat(title: string, userIDs: number[]): Promise<number> {
+    return apiManager.invokeApi('messages.createChat', {
+      users: userIDs.map(u => appUsersManager.getUserInput(u)),
+      title: title
+    }).then(updates => {
+      apiUpdatesManager.processUpdateMessage(updates);
+
+      return updates.chats[0].id;
+    });
+  }
+
+  public editPhoto(id: number, inputFile: any) {
+    let isChannel = this.isChannel(id);
+
+    let inputChatPhoto = {
+      _: 'inputChatUploadedPhoto', 
+      file: inputFile
+    };
+
+    if(isChannel) {
+      return apiManager.invokeApi('channels.editPhoto', {
+        channel: this.getChannelInputPeer(id),
+        photo: inputChatPhoto
+      }).then(updates => {
+        apiUpdatesManager.processUpdateMessage(updates);
+      });
+    } else {
+      return apiManager.invokeApi('messages.editChatPhoto', {
+        chat_id: id,
+        photo: inputChatPhoto
+      }).then(updates => {
+        apiUpdatesManager.processUpdateMessage(updates);
+      });
+    }
   }
 }
 
