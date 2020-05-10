@@ -6,6 +6,18 @@
   max-width: $chat-max-width;
   margin: 0 auto;
 
+  &.is-selected {
+    &:before {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background-color: #7ca09f;
+      content: " ";
+      display: block;
+      left: 0;
+    }
+  }
+
   &.is-date {
     position: -webkit-sticky;
     position: sticky;
@@ -106,7 +118,7 @@
     }
   }
 
-  &:not(.is-group-last) .user-avatar {
+  &:not(.is-group-last) .bubble__container > .user-avatar {
     display: none;
   }
 
@@ -188,7 +200,7 @@
     }
   }
   
-  &.emoji-1x {
+  &.emoji-1x .attachment {
     font-size: 96px;
     
     img.emoji {
@@ -199,7 +211,7 @@
     }
   }
   
-  &.emoji-2x {
+  &.emoji-2x .attachment {
     font-size: 64px;
     
     img.emoji {
@@ -210,7 +222,7 @@
     }
   } 
   
-  &.emoji-3x {
+  &.emoji-3x .attachment {
     font-size: 52px;
     
     img.emoji {
@@ -590,6 +602,10 @@
       content: "\e929";
       margin-right: -2px;
     }
+
+    .time {
+      width: unset;
+    }
   }
 
   .message.contact-message  {
@@ -599,6 +615,7 @@
     .contact {
       display: flex;
       padding: 2px 0;
+      cursor: pointer;
 
       &-avatar {
         color: #fff;
@@ -639,6 +656,8 @@
       &-name {
         line-height: 1.4;
         margin-top: 1px;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
     }
   }
@@ -844,15 +863,15 @@
       cursor: pointer;
       margin-right: 5px;
     }
+
+    img.emoji {
+      margin-bottom: 3px;
+    }
   }
 }
 
-.bubble-audio.is-in .time {
-  width: inherit;
-}
-
-.bubble-audio.is-out .time {
-  width: inherit;
+.bubble-audio .time {
+  width: unset !important;
 }
 
 .bubble.is-in {
@@ -959,6 +978,14 @@
       }
     }
   }
+
+  /* .poll {
+    &-answer-selected {
+      &:before {
+        margin-left: -1px;
+      }
+    }
+  } */
 }
 
 .bubble.is-out {
@@ -1122,6 +1149,10 @@
         stroke: #4fae4e;
       }
 
+      &-answer-selected {
+        background-color: #4fae4e;
+      }
+
       &-answer:hover {
         .animation-ring {
           background-color: rgba(79, 174, 78, 0.08);
@@ -1163,7 +1194,7 @@ poll-element  {
 
       &-text {
         margin-top: 7px;
-        margin-left: 7px;
+        margin-left: 14px;
       }
 
       &-percents {
@@ -1174,7 +1205,26 @@ poll-element  {
         font-weight: 500;
         margin-top: 7px;
         transition: .34s opacity;
-        margin-left: -1px;
+        margin-left: -3px;
+        text-align: right;
+        width: 40px;
+      }
+
+      &-selected {
+        position: absolute;
+        top: 33px;
+        left: 26px;
+        color: #fff;
+        background: #50a2e9;
+        border-radius: 50%;
+        height: 12px;
+        width: 12px;
+        font-size: 11px;
+        line-height: 15px;
+        opacity: 0;
+        animation: fadeIn .1s ease forwards;
+        animation-direction: reverse;
+        animation-delay: .24s;
       }
 
       &:hover {
@@ -1182,7 +1232,9 @@ poll-element  {
           visibility: visible;
           transform: scale(1);
         }
-    
+      }
+
+      &.is-voting {
         .progress-ring__circle {
           stroke-dashoffset: -19.792;
           animation: pollAnswerRotate 0.65s linear infinite;
@@ -1197,13 +1249,16 @@ poll-element  {
     }
 
     &-line {
-      height: 28px;
+      height: 35px;
       position: absolute;
-      left: 11.5px;
-      top: 14px;
+      left: 17.5px;
+      top: 11px;
+      transition: stroke-dashoffset .34s linear, stroke-dasharray .34s linear;
+      stroke-dashoffset: 0;
+	    stroke-dasharray: 0, 485.9;
 
       use {
-        stroke-width: 3.5px;
+        stroke-width: 4px;
         stroke-linecap: round;
         stroke: #50a2e9;
         fill: none;
@@ -1223,7 +1278,7 @@ poll-element  {
     align-items: center;
     width: 34px;
     height: 34px;
-    margin-left: -1px;
+    margin-left: 5px;
     position: absolute;
     left: 0;
     top: 0;
@@ -1256,6 +1311,7 @@ poll-element  {
       stroke-dashoffset: 0;
       stroke-opacity: 1;
       stroke-width: 2;
+      stroke: #8d969c;
       fill: transparent;
     }
   }
@@ -1267,6 +1323,20 @@ poll-element  {
 
     .poll-answer-percents {
       opacity: 1;
+    }
+
+    .poll-answer-selected {
+      animation-direction: normal;
+    }
+  }
+
+  &.is-retracting {
+    .circle-hover {
+      transition-delay: .24s;
+    }
+
+    .animation-ring {
+      transition-delay: .22s;
     }
   }
 }

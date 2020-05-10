@@ -143,27 +143,40 @@ export class AppDialogsManager {
       let dialog: any = e.detail;
 
       this.setLastMessage(dialog);
+      this.setUnreadMessages(dialog);
       this.setDialogPosition(dialog);
+
+      this.setPinnedDelimiter();
     });
 
     $rootScope.$on('dialogs_multiupdate', (e: CustomEvent) => {
       let dialogs = e.detail;
 
-      let performed = 0;
       for(let id in dialogs) {
         let dialog = dialogs[id];
 
         /////console.log('updating dialog:', dialog);
 
-        ++performed;
-
         if(!(dialog.peerID in this.doms)) {
           this.addDialog(dialog);
-          continue;
         } 
 
         this.setLastMessage(dialog);
+        this.setUnreadMessages(dialog);
         this.setDialogPosition(dialog);
+      }
+
+      this.setPinnedDelimiter();
+    });
+
+    $rootScope.$on('dialog_drop', (e: CustomEvent) => {
+      let {peerID, dialog} = e.detail;
+
+      let dom = this.getDialogDom(peerID);
+      if(dom) {
+        dom.listEl.remove();
+        delete this.doms[peerID];
+        (dialog.folder_id == 1 ? this.scrollArchived : this.scroll).reorder();
       }
     });
 
@@ -184,6 +197,7 @@ export class AppDialogsManager {
     });
 
     this.loadDialogs().then(result => {
+      this.setPinnedDelimiter();
       //appSidebarLeft.onChatsScroll();
       this.loadDialogs(true);
     });
@@ -331,10 +345,11 @@ export class AppDialogsManager {
     });
   }
 
-  public setDialogPosition(dialog: any) {
+  public setDialogPosition(dialog: Dialog) {
     let pos = appMessagesManager.getDialogByPeerID(dialog.peerID)[1];
     let dom = this.getDialogDom(dialog.peerID);
     let prevPos = whichChild(dom.listEl);
+
     if(prevPos == pos) {
       return;
     } else if(prevPos < pos) { // was higher
@@ -348,102 +363,44 @@ export class AppDialogsManager {
       chatList.append(dom.listEl);
     }
 
-    // fix order
-    (Array.from(chatList.children) as HTMLElement[]).forEach((el, idx) => {
-      el.dataset.virtual = '' + idx;
-    });
+    (dialog.folder_id == 1 ? this.scrollArchived : this.scroll).reorder();
 
     this.log('setDialogPosition:', dialog, dom, pos);
   }
 
-  /* public sortDom(archived = false) {
-    //if(archived) return;
-
-    let dialogs = appMessagesManager.dialogsStorage.dialogs.slice();
-
-    let inUpper: Scrollable['hiddenElements']['up'] = [];
-    let inBottom: Scrollable['hiddenElements']['down'] = [];
-    let inVisible: Scrollable['visibleElements'] = [];
-    let pinnedDialogs = [];
-
-    let sorted = dialogs;
-
-    if(!archived) {
-      for(let i = 0; i < dialogs.length; ++i) {
-        let dialog = dialogs[i];
-        if(!dialog.pFlags.pinned) break;
-        pinnedDialogs.push(dialog);
+  public setPinnedDelimiter() {
+    let index = -1;
+    let dialogs = appMessagesManager.dialogsStorage.dialogs[0];
+    for(let dialog of dialogs) {
+      if(dialog.pFlags?.pinned) {
+        index++;
       }
+    }
 
-      if(pinnedDialogs.length) {
-        let dom = this.getDialogDom(pinnedDialogs[pinnedDialogs.length - 1].peerID);
-        if(dom) {
-          dom.listEl.append(this.pinnedDelimiter);
-        }
-      } else {
-        if(this.pinnedDelimiter.parentElement) {
-          this.pinnedDelimiter.parentElement.removeChild(this.pinnedDelimiter);
-        }
-      }
+    let currentIndex = (this.pinnedDelimiter.parentElement && whichChild(this.pinnedDelimiter.parentElement)) ?? -1;
 
-      sorted = sorted.filter((d: any) => !d.pFlags.pinned && d.folder_id != 1);
+    if(index == currentIndex) return;
+
+    let children = this.chatList.children;
+
+    let modifying: HTMLElement[] = [];
+    if(currentIndex != -1 && children.length > currentIndex) {
+      let li = children[currentIndex] as HTMLElement;
+      modifying.push(li);
+    }
+
+    if(index != -1 && children.length > index) {
+      let li = children[index] as HTMLElement;
+      modifying.push(li);
+      li.append(this.pinnedDelimiter);
     } else {
-      sorted = sorted.filter((d: any) => d.folder_id == 1);
+      this.pinnedDelimiter.remove();
     }
-
-    sorted = sorted.sort((a: any, b: any) => {
-      let timeA = appMessagesManager.getMessage(a.top_message).date;
-      let timeB = appMessagesManager.getMessage(b.top_message).date;
-
-      return timeB - timeA;
+      
+    modifying.forEach(elem => {
+      this.scroll.updateElement(elem);
     });
-
-    if(!archived) {
-      sorted = pinnedDialogs.concat(sorted);
-    }
-
-    //console.log('sortDom', sorted, this.chatsHidden, this.chatsHidden.up, this.chatsHidden.down);
-
-    let chatList = archived ? this.chatListArchived : this.chatList;
-    let chatsHidden = archived ? this.chatsArchivedHidden : this.chatsHidden;
-    let chatsVisible = archived ? this.chatsArchivedVisible : this.chatsVisible;
-
-    let hiddenLength: number = chatsHidden.up.length;
-    let inViewportLength = chatList.childElementCount;
-    let concated = chatsHidden.up.concat(chatsVisible, chatsHidden.down);
-
-    //console.log('sortDom clearing innerHTML', archived, hiddenLength, inViewportLength);
-
-    chatList.innerHTML = '';
-
-    let inViewportIndex = 0;
-    sorted.forEach((d: any, idx) => {
-      let dom = this.getDialogDom(d.peerID);
-      if(!dom) return;
-
-      let child = concated.find((obj: any) => obj.element == dom.listEl);
-      if(!child) {
-        return this.log.error('no child by listEl:', dom.listEl, archived, concated);
-      }
-
-      if(inUpper.length < hiddenLength) {
-        inUpper.push(child);
-      } else if(inViewportIndex <= inViewportLength - 1) {
-        chatList.append(dom.listEl);
-        inVisible.push(child);
-        ++inViewportIndex;
-      } else {
-        inBottom.push(child);
-      }
-    });
-
-    //console.log('sortDom', sorted.length, inUpper.length, chatList.childElementCount, inBottom.length);
-
-    chatsHidden.up = inUpper;
-    chatsVisible.length = 0;
-    chatsVisible.push(...inVisible);
-    chatsHidden.down = inBottom;
-  } */
+  }
 
   public setLastMessage(dialog: any, lastMessage?: any, dom?: DialogDom, highlightWord?: string) {
     if(!lastMessage) {
@@ -465,94 +422,7 @@ export class AppDialogsManager {
     //console.log('setting last message:', lastMessage);
 
     /* if(!dom.lastMessageSpan.classList.contains('user-typing')) */ {
-      let lastMessageText = '';
-
-      if(lastMessage.media) {
-        switch(lastMessage.media._) {
-          case 'messageMediaPhoto':
-            lastMessageText += '<i>' + (lastMessage.grouped_id ? 'Album' : 'Photo') + (lastMessage.message ? ', ' : '') + '</i>';
-            break;
-          case 'messageMediaGeo':
-            lastMessageText += '<i>Geolocation</i>';
-            break;
-          case 'messageMediaPoll':
-            lastMessageText += '<i>' + lastMessage.media.poll.rReply + '</i>';
-            break;
-          case 'messageMediaContact':
-            lastMessageText += '<i>Contact</i>';
-            break;
-          case 'messageMediaDocument':
-            let document = lastMessage.media.document;
-  
-            let found = false;
-            for(let attribute of document.attributes) {
-              if(found) break;
-  
-              switch(attribute._) {
-                case 'documentAttributeSticker':
-                  lastMessageText += RichTextProcessor.wrapRichText(attribute.alt) + '<i>Sticker</i>';
-                  found = true;
-                  break;
-                case 'documentAttributeFilename':
-                  lastMessageText += '<i>' + attribute.file_name + '</i>';
-                  found = true;
-                  break;
-                /* default:
-                  console.warn('Got unknown document type!', lastMessage);
-                  break; */
-              }
-            }
-  
-            if(document.type == 'video') {
-              lastMessageText = '<i>Video' + (lastMessage.message ? ', ' : '') + '</i>';
-              found = true;
-            } else if(document.type == 'voice') {
-              lastMessageText = '<i>Voice message</i>';
-              found = true;
-            } else if(document.type == 'gif') {
-              lastMessageText = '<i>GIF' + (lastMessage.message ? ', ' : '') + '</i>';
-              found = true;
-            } else if(document.type == 'round') {
-              lastMessageText = '<i>Video message' + (lastMessage.message ? ', ' : '') + '</i>';
-              found = true;
-            }
-  
-            if(found) {
-              break;
-            }
-  
-          default:
-            ///////console.warn('Got unknown lastMessage.media type!', lastMessage);
-            break;
-        }
-      }
-
-      if(lastMessage.action) {
-        let action = lastMessage.action;
-
-        console.log('lastMessage action:', action);
-
-        let suffix = '';
-        let _ = action._;
-        if(_ == "messageActionPhoneCall") {
-          _ += '.' + action.type;
-
-          let duration = action.duration;
-          if(duration) {
-            let d = [];
-
-            d.push(duration % 60 + ' s');
-            if(duration >= 60) d.push((duration / 60 | 0) + ' min');
-            //if(duration >= 3600) d.push((duration / 3600 | 0) + ' h');
-            suffix = ' (' + d.reverse().join(' ') + ')';
-          }
-        }
-
-        // @ts-ignore
-        lastMessageText = '<i>' + langPack[_] + suffix + '</i>';
-      }
-
-      let messageText = lastMessage.message;
+      /* let messageText = lastMessage.message;
       let messageWrapped = '';
       if(messageText) {
         let entities = RichTextProcessor.parseEntities(messageText.replace(/\n/g, ' '), {noLinebreakers: true});
@@ -577,9 +447,10 @@ export class AppDialogsManager {
           entities: entities, 
           noTextFormat: true
         });
-      }
+      } */
 
-      dom.lastMessageSpan.innerHTML = lastMessageText + messageWrapped;
+      //dom.lastMessageSpan.innerHTML = lastMessageText + messageWrapped;
+      dom.lastMessageSpan.innerHTML = lastMessage.rReply;
   
       /* if(lastMessage.from_id == auth.id) { // You:  */
       if(peer._ != 'peerUser' && peerID != -lastMessage.from_id) {
@@ -629,10 +500,9 @@ export class AppDialogsManager {
     }
   }
 
-  public setUnreadMessages(dialog: any) {
+  public setUnreadMessages(dialog: Dialog) {
     let dom = this.getDialogDom(dialog.peerID);
 
-    dom.statusSpan.innerHTML = '';
     let lastMessage = appMessagesManager.getMessage(dialog.top_message);
     if(lastMessage._ != 'messageEmpty' && 
       lastMessage.from_id == $rootScope.myID && lastMessage.peerID != $rootScope.myID && 
@@ -651,10 +521,11 @@ export class AppDialogsManager {
       }
     } else dom.statusSpan.classList.remove('tgico-check', 'tgico-checks');
 
-    dom.unreadMessagesSpan.innerHTML = '';
+    dom.unreadMessagesSpan.innerText = '';
+    dom.unreadMessagesSpan.classList.remove('tgico-pinnedchat');
     if(dialog.unread_count) {
-      dom.unreadMessagesSpan.innerHTML = dialog.unread_count;
-      dom.unreadMessagesSpan.classList.remove('tgico-pinnedchat');
+      dom.unreadMessagesSpan.innerText = '' + dialog.unread_count;
+      //dom.unreadMessagesSpan.classList.remove('tgico-pinnedchat');
       dom.unreadMessagesSpan.classList.add(new Date(dialog.notify_settings.mute_until * 1000) > new Date() ? 
       'unread-muted' : 'unread');
     } else if(dialog.pFlags.pinned) {
@@ -824,12 +695,6 @@ export class AppDialogsManager {
       } else {
         this.scroll.append(li);
         this.doms[dialog.peerID] = dom;
-      }
-
-      if(dialog.pFlags.pinned) {
-        li.classList.add('dialog-pinned');
-        //this.chatList.insertBefore(this.pinnedDelimiter, li.nextSibling);
-        dom.listEl.append(this.pinnedDelimiter);
       }
 
       this.setLastMessage(dialog);

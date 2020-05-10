@@ -362,6 +362,11 @@ $time-background: rgba(0, 0, 0, 0.35);
 			background-position: center center;
 		}
 
+		i {
+			font-style: normal;
+			color: $color-blue;
+		}
+
 		img.emoji {
 			height: 16px;
 			width: 16px;

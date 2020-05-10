@@ -875,22 +875,7 @@ export function wrapReply(title: string, subtitle: string, message?: any) {
   
   let media = message && message.media;
   if(media) {
-    if(message.grouped_id) {
-      replySubtitle.innerHTML = 'Album';
-    } else if(media._ == 'messageMediaContact') {
-      replySubtitle.innerHTML = 'Contact';
-    } else if(media._ == 'messageMediaPoll') {
-      replySubtitle.innerHTML = media.poll.rReply;
-    } else if(media.photo) {
-      replySubtitle.innerHTML = 'Photo';
-    } else if(media.document && media.document.type) {
-      let type = media.document.type as string;
-      replySubtitle.innerHTML = type.charAt(0).toUpperCase() + type.slice(1); // capitalizeFirstLetter
-    } else if(media.webpage) {
-      replySubtitle.innerHTML = RichTextProcessor.wrapPlainText(media.webpage.url);
-    } else {
-      replySubtitle.innerHTML = media._;
-    }
+    replySubtitle.innerHTML = message.rReply;
     
     if(media.photo || (media.document && ['video'].indexOf(media.document.type) !== -1)) {
       let replyMedia = document.createElement('div');
@@ -1054,8 +1039,9 @@ export function wrapAlbum({groupID, attachmentDiv, middleware, uploading, lazyLo
   }
 }
 
-export function wrapPoll(poll: Poll, results: PollResults) {
+export function wrapPoll(pollID: string, mid: number) {
   let elem = new PollElement();
-  elem.setAttribute('poll-id', poll.id);
+  elem.setAttribute('poll-id', pollID);
+  elem.setAttribute('message-id', '' + mid);
   return elem;
 }

@@ -3,6 +3,7 @@ import apiManager from '../lib/mtproto/mtprotoworker';
 import Page from './page';
 import pageIm from './pageIm';
 import pagePassword from './pagePassword';
+import pageSignIn from './pageSignIn';
 import { App } from '../lib/mtproto/mtproto_config';
 import { bytesToBase64, bytesCmp } from '../lib/bin_utils';
 import serverTimeManager from '../lib/mtproto/serverTimeManager';
@@ -52,6 +53,10 @@ interface LoginTokenSuccess {
 let onFirstMount = async() => {
   const pageElement = page.pageEl;
   const imageDiv = pageElement.querySelector('.auth-image') as HTMLDivElement;
+
+  page.pageEl.querySelector('.a-qr').addEventListener('click', () => {
+    pageSignIn.mount();
+  });
   
   const results = await Promise.all([
     import('qr-code-styling' as any)

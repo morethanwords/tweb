@@ -274,7 +274,7 @@ export class AppImManager {
           /////this.log('setting pinned message', message);
           this.pinnedMessageContainer.dataset.mid = '' + mid;
           this.pinnedMessageContainer.style.display = '';
-          this.pinnedMessageContent.innerHTML = RichTextProcessor.wrapEmojiText(message.message);
+          this.pinnedMessageContent.innerHTML = message.rReply;
         }
         
         this.needUpdate.forEachReverse((obj, idx) => {
@@ -329,10 +329,16 @@ export class AppImManager {
       let target = e.target as HTMLElement;
       let bubble: HTMLDivElement = null;
       try {
-        bubble = findUpClassName(e.target, 'bubble');
+        bubble = findUpClassName(target, 'bubble');
       } catch(err) {}
       
       if(!bubble) return;
+
+      let contactDiv = findUpClassName(target, 'contact');
+      if(contactDiv) {
+        this.setPeer(+contactDiv.dataset.peerID);
+        return;
+      }
 
       //this.log('chatInner click:', target);
       if(target.tagName == 'SPAN') {
@@ -859,7 +865,7 @@ export class AppImManager {
           appMessagesManager.wrapSingleMessage(chatInfo.pinned_msg_id);
         }
         
-        let participants_count = chatInfo.participants_count || chatInfo.participants.participants.length;
+        let participants_count = chatInfo.participants_count || (chatInfo.participants && chatInfo.participants.participants.length);
         let subtitle = numberWithCommas(participants_count) + ' ' + (isChannel ? 'subscribers' : 'members');
         
         if(onlines > 1) {
@@ -1091,9 +1097,9 @@ export class AppImManager {
         return true;
       })/* .catch(err => {
         this.log.error(err);
-      }) *//* ,
+      }) */,
       
-      appSidebarRight.fillProfileElements() *//* ,
+      appSidebarRight.fillProfileElements()/* ,
       appSidebarRight.loadSidebarMedia(true) */
     ]).catch(err => {
       this.log.error('setPeer promises error:', err);
@@ -1716,6 +1722,8 @@ export class AppImManager {
 
           let contactDiv = document.createElement('div');
           contactDiv.classList.add('contact');
+          contactDiv.dataset.peerID = '' + message.media.user_id;
+
           messageDiv.classList.add('contact-message');
           processingWebPage = true;
 
@@ -1724,11 +1732,15 @@ export class AppImManager {
           if(message.media.last_name) texts.push(RichTextProcessor.wrapEmojiText(message.media.last_name));
 
           contactDiv.innerHTML = `
-            <div class="contact-avatar user-avatar"><img src="blob:https://192.168.0.105:9000/803514b4-4a46-4125-984f-ca8f86405ef2"></div>
             <div class="contact-details">
               <div class="contact-name">${texts.join(' ')}</div>
               <div class="contact-number">${message.media.phone_number ? '+' + formatPhoneNumber(message.media.phone_number).formatted : 'Unknown phone number'}</div>
             </div>`;
+
+          let avatarDiv = document.createElement('div');
+          avatarDiv.classList.add('contact-avatar', 'user-avatar');
+          contactDiv.prepend(avatarDiv);
+          appProfileManager.putPhoto(avatarDiv, message.media.user_id);
 
           bubble.classList.remove('is-message-empty');
           messageDiv.append(contactDiv);
@@ -1739,7 +1751,7 @@ export class AppImManager {
         case 'messageMediaPoll': {
           bubble.classList.remove('is-message-empty');
           
-          let pollElement = wrapPoll(message.media.poll, message.media.results);
+          let pollElement = wrapPoll(message.media.poll.id, message.mid);
           messageDiv.prepend(pollElement);
 
           break;
@@ -1927,11 +1939,14 @@ export class AppImManager {
         bubbles.push(bubble);
       }); */
 
-      //let leftHeightToScroll = this.scrollable.innerHeight;
+      let scrollTop = this.scrollable.scrollTop;
+      let leftHeightToScroll = scrollTop > 0 ? 0 : (Object.keys(this.bubbles).length > 0 ? 1 : this.scrollable.container.clientHeight);
+      let setScrollRAF = 0;
+      let previousScrollHeightMinusTop = this.scrollable.scrollHeight - scrollTop;
 
       //console.timeEnd('appImManager: pre render start');
 
-      //this.log('start performHistoryResult, scrollTop:', this.scrollable.scrollTop, this.scrollable.scrollHeight, this.scrollable.innerHeight);
+      this.log('start performHistoryResult, scrollTop:', scrollTop, leftHeightToScroll);
 
       let method = (reverse ? history.shift : history.pop).bind(history);
 
@@ -1981,21 +1996,27 @@ export class AppImManager {
               } */
 
               if(!renderedFirstScreen) {
-                if(!this.scrollable.scrollTop) {
+                /* if(!this.scrollable.scrollTop) {
                   let height = bubble.scrollHeight;
                   //let height = Math.ceil(bubble.getBoundingClientRect().height);
                   this.scrollable.scrollTop += height;
                   //innerHeight -= height;
-                }
-                /* if(leftHeightToScroll >= 0) {
+                } */
+                /* if(leftHeightToScroll > 0) {
                   let height = bubble.scrollHeight;
                   leftHeightToScroll -= height;
-                  this.scrollable.scrollTop += height;
-                } */ else {
+
+                  if(setScrollRAF) window.cancelAnimationFrame(setScrollRAF);
+                  setScrollRAF = window.requestAnimationFrame(() => {
+                    //this.scrollable.scrollTop += height;
+                    this.scrollable.scrollTop = this.scrollable.scrollHeight - previousScrollHeightMinusTop;
+                  });
+                  //this.scrollable.scrollTop += height;
+                } else { */
                   renderedFirstScreen = true;
                   resolve();
                   resolved = true;
-                }
+                //}
               }
             } else {
               ////////this.scrollable.append(bubble);
@@ -2026,6 +2047,14 @@ export class AppImManager {
       };
   
       firstLoad ? window.requestAnimationFrame(r) : r();
+
+      if(reverse) {
+        //if(setScrollRAF) window.cancelAnimationFrame(setScrollRAF);
+        //setScrollRAF = window.requestAnimationFrame(() => {
+          //this.scrollable.scrollTop += height;
+          this.scrollable.scrollTop = this.scrollable.scrollHeight - previousScrollHeightMinusTop;
+        //});
+      }
       //r();
       /* method((msgID) => {
         let message = appMessagesManager.getMessage(msgID);
@@ -2054,7 +2083,7 @@ export class AppImManager {
     
     let pageCount = this.bubblesContainer.clientHeight / 38/*  * 1.25 */ | 0;
     //let loadCount = Object.keys(this.bubbles).length > 0 ? 50 : pageCount;
-    let realLoadCount = Object.keys(this.bubbles).length > 0 ? 40 : pageCount;//let realLoadCount = 50;
+    let realLoadCount = Object.keys(this.bubbles).length > 0 ? Math.max(40, pageCount) : pageCount;//let realLoadCount = 50;
     let loadCount = realLoadCount;
     
     if(testScroll) {
@@ -2122,10 +2151,9 @@ export class AppImManager {
         ids = Object.keys(this.bubbles).map(i => +i).sort((a, b) => a - b);
       }
 
-      this.log('getHistory: slice loadedTimes:', reverse, pageCount, this.loadedTopTimes, this.loadedBottomTimes, ids && ids.length);
-
       //let removeCount = loadCount / 2;
-      let safeCount = Math.min(realLoadCount * 2, 35); // cause i've been runningrunningrunning all day
+      let safeCount = realLoadCount * 2; // cause i've been runningrunningrunning all day
+      this.log('getHistory: slice loadedTimes:', reverse, pageCount, this.loadedTopTimes, this.loadedBottomTimes, ids && ids.length, safeCount);
       if(ids && ids.length > safeCount) {
         if(reverse) {
           //ids = ids.slice(-removeCount);

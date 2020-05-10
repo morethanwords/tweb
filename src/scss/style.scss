@@ -634,6 +634,20 @@ input {
   }
 }
 
+.page-sign, .page-signQR {
+  .qr {
+    margin-top: 1.5rem;
+  }
+
+  p.qr-description {
+    color: #707579;
+    line-height: 1.85;
+    text-align: left;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
 /* .page-signQR {
   .auth-image {
     position: relative;

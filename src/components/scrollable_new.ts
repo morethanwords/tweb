@@ -1,5 +1,7 @@
 import { logger, deferredPromise, CancellablePromise } from "../lib/polyfill";
-
+import smoothscroll from '../lib/smoothscroll';
+(window as any).__forceSmoothScrollPolyfill__ = true;
+smoothscroll.polyfill();
 /*
 var el = $0;
 var height = 0;
@@ -65,6 +67,8 @@ export default class Scrollable {
   private lastTopID = 0;
   private lastBottomID = 0;
   private lastScrollDirection = 0; // true = bottom
+
+  private scrollLocked = 0;
 
   private setVisible(element: HTMLElement) {
     if(this.visible.has(element)) return;
@@ -150,61 +154,6 @@ export default class Scrollable {
           this.setHidden(target);
         }
       }
-    });
-
-    // внизу - самый производительный вариант
-    if(false) this.observer = new IntersectionObserver(entries => {
-      entries/* .filter(entry => entry.isIntersecting) */.forEach((entry, idx, arr) => {
-        let target = entry.target as HTMLElement;
-
-        if(entry.isIntersecting) {
-          let isTop = entry.boundingClientRect.top <= 0;
-          let isBottom = entry.rootBounds.height <= (entry.boundingClientRect.top + entry.boundingClientRect.height);
-  
-          /* let id = +target.dataset.virtual;
-          let isOutOfRange = id < (this.lastTopID - 15) || id > (this.lastBottomID + 15);
-          if(isOutOfRange) {
-            this.debug && this.log('out of range, scroll jumped!');
-            if(idx == 0) this.lastTopID = id;
-            else if(idx == (arr.length - 1)) this.lastBottomID = id;
-          } */
-  
-          this.setVisible(target);
-          if(isTop) {
-            /* this.lastTopID = id;
-            this.debug && this.log('set lastTopID to:', this.lastTopID); */
-  
-            for(let i = 0; i < 15; ++i) {
-              target = target.previousElementSibling as HTMLElement;
-              if(!target) break;
-              this.setVisible(target);
-            }
-          } else if(isBottom) {
-            /* this.lastBottomID = id;
-            this.debug && this.log('set lastBottomID to:', this.lastBottomID); */
-  
-            for(let i = 0; i < 15; ++i) {
-              target = target.nextElementSibling as HTMLElement;
-              if(!target) break;
-              this.setVisible(target);
-            }
-          }
-        } else {
-          this.setHidden(target);
-        }
-        
-
-        //this.debug && this.log('intersection entry:', entry, isTop, isBottom, this.lastTopID, this.lastBottomID);
-      });
-
-      /* let minVisibleID = this.lastTopID - 15;
-      let maxVisibleID = this.lastBottomID + 15;
-      for(let target of this.visible) {
-        let id = +target.dataset.virtual;
-        if(id < minVisibleID || id > maxVisibleID) {
-          this.setHidden(target);
-        }
-      } */
     });
 
     if(!appendTo) {
@@ -326,7 +275,7 @@ export default class Scrollable {
       let scrollTop = scrollPos - this.scrollTopOffset;
       let maxScrollTop = this.scrollSize - this.scrollTopOffset - this.size;
 
-      if(this.onScrolledBottom) {
+      if(this.onScrolledBottom && !this.scrollLocked) {
         if((maxScrollTop - scrollTop) <= this.onScrollOffset) {
           //if(!this.onScrolledBottomFired) {
           this.onScrolledBottomFired = true;
@@ -337,7 +286,7 @@ export default class Scrollable {
         }
       }
       
-      if(this.onScrolledTop) {
+      if(this.onScrolledTop && !this.scrollLocked) {
         //this.log('onScrolledTop:', scrollTop, this.onScrollOffset);
         if(scrollTop <= this.onScrollOffset) {
           this.onScrolledTopFired = true;
@@ -354,6 +303,23 @@ export default class Scrollable {
         this.lastScrollDirection = 0;
       }
       this.onScrollMeasure = 0;
+    });
+  }
+
+  public reorder() {
+    (Array.from(this.splitUp.children) as HTMLElement[]).forEach((el, idx) => {
+      el.dataset.virtual = '' + idx;
+    });
+  }
+
+  public updateElement(element: HTMLElement) {
+    element.style.minHeight = '';
+    window.requestAnimationFrame(() => {
+      let height = element.scrollHeight;
+      
+      window.requestAnimationFrame(() => {
+        element.style.minHeight = height + 'px';
+      });
     });
   }
 
@@ -401,9 +367,29 @@ export default class Scrollable {
     return !!element.parentElement;
   }
 
-  public scrollIntoView(element: Element) {
+  public scrollIntoView(element: HTMLElement) {
     if(element.parentElement) {
-      element.scrollIntoView();
+      let scrollTop = this.scrollTop;
+      let offsetTop = element.offsetTop;
+      let clientHeight = this.container.clientHeight;
+
+      let height = element.scrollHeight;
+
+      let diff = (clientHeight - height) / 2;
+
+      /* if(scrollTop < offsetTop) {
+        offsetTop += diff;
+      } else { */
+        offsetTop -= diff;
+      //}
+
+      if(this.scrollLocked) clearTimeout(this.scrollLocked);
+      this.scrollLocked = setTimeout(() => {
+        this.scrollLocked = 0;
+        this.onScroll();
+      }, 468);
+      this.container.scrollTo({behavior: 'smooth', top: offsetTop});
+      //element.scrollIntoView({behavior: 'smooth', block: 'center'});
     }
   }
 

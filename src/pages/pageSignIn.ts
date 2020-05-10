@@ -5,6 +5,7 @@ import Config from '../lib/config';
 
 import { findUpTag } from "../lib/utils";
 import pageAuthCode from "./pageAuthCode";
+import pageSignQR from './pageSignQR';
 //import apiManager from "../lib/mtproto/apiManager";
 import apiManager from "../lib/mtproto/mtprotoworker";
 import Page from "./page";
@@ -53,6 +54,10 @@ let onFirstMount = () => {
   let scroll = new Scrollable(wrapper);
 
   let initedSelect = false;
+
+  page.pageEl.querySelector('.a-qr').addEventListener('click', () => {
+    pageSignQR.mount();
+  });
 
   selectCountryCode.addEventListener('focus', function(this: typeof selectCountryCode, e) {
     /* this.removeAttribute('readonly'); */
@@ -114,7 +119,7 @@ let onFirstMount = () => {
     parent.appendChild(wrapper);
   }/* , {once: true} */);
   selectCountryCode.addEventListener('blur', function(this: typeof selectCountryCode, e) {
-    //parent.removeChild(wrapper);
+    parent.removeChild(wrapper);
     e.cancelBubble = true;
   }, {capture: true});
 

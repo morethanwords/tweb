@@ -1,4 +1,9 @@
 import { RichTextProcessor } from "../richtextprocessor";
+import appMessagesManager from './appMessagesManager';
+import appPeersManager from './appPeersManager';
+import apiManager from "../mtproto/mtprotoworker";
+import apiUpdatesManager from "./apiUpdatesManager";
+import { $rootScope } from "../utils";
 
 export type PollAnswer = {
   _: 'pollAnswer',
@@ -58,24 +63,60 @@ export type Poll = {
   }>,
   rQuestion?: string,
   rReply?: string,
+  chosenIndex?: number
 };
 
 class AppPollsManager {
   private polls: {[id: string]: Poll} = {};
   private results: {[id: string]: PollResults} = {};
 
+  constructor() {
+    $rootScope.$on('apiUpdate', (e: CustomEvent) => {
+      let update = e.detail;
+      
+      this.handleUpdate(update);
+    });
+  }
+  
+  public handleUpdate(update: any) {
+    switch(update._) {
+      case 'updateMessagePoll': { // when someone voted, we too
+        console.log('updateMessagePoll:', update);
+
+        let poll: Poll = this.polls[update.poll_id] || update.poll;
+        if(!poll) {
+          break;
+        }
+
+        poll = this.savePoll(poll, update.results);
+        $rootScope.$broadcast('poll_update', {poll, results: update.results});
+        break;
+      }
+
+      default:
+        break;
+    }
+  }
+
   public savePoll(poll: Poll, results: PollResults) {
     let id = poll.id;
     if(this.polls[id]) {
-      this.results[id] = results;
-      return;
+      poll = this.polls[id];
+      this.saveResults(poll, results);
+      return poll;
     }
 
     this.polls[id] = poll;
-    this.results[id] = results;
 
     poll.rQuestion = RichTextProcessor.wrapEmojiText(poll.question);
     poll.rReply = RichTextProcessor.wrapEmojiText('📊') + ' ' + (poll.rQuestion || 'poll');
+    this.saveResults(poll, results);
+    return poll;
+  }
+
+  public saveResults(poll: Poll, results: PollResults) {
+    this.results[poll.id] = results;
+    poll.chosenIndex = (results && results.results && results.results.findIndex(answer => answer.pFlags?.chosen)) ?? -1;
   }
 
   public getPoll(pollID: string): {poll: Poll, results: PollResults} {
@@ -83,6 +124,27 @@ class AppPollsManager {
       poll: this.polls[pollID], 
       results: this.results[pollID]
     };
+  }
+
+  public sendVote(mid: number, optionIDs: number[]) {
+    let message = appMessagesManager.getMessage(mid);
+    let poll: Poll = message.media.poll;
+
+    let options: Uint8Array[] = optionIDs.map(index => {
+      return poll.answers[index].option;
+    });
+    
+    let inputPeer = appPeersManager.getInputPeerByID(message.peerID);
+    let messageID = message.id;
+
+    return apiManager.invokeApi('messages.sendVote', {
+      peer: inputPeer,
+      msg_id: messageID,
+      options
+    }).then(updates => {
+      console.log('appPollsManager sendVote updates:', updates);
+      apiUpdatesManager.processUpdateMessage(updates);
+    });
   }
 }
 
