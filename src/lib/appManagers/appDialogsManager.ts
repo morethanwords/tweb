@@ -1,18 +1,18 @@
-import { langPack, findUpClassName, $rootScope, escapeRegExp, whichChild } from "../utils";
+import { findUpClassName, $rootScope, escapeRegExp, whichChild, findUpTag } from "../utils";
 import appImManager, { AppImManager } from "./appImManager";
 import appPeersManager from './appPeersManager';
 import appMessagesManager, { AppMessagesManager, Dialog } from "./appMessagesManager";
 import appUsersManager, { User } from "./appUsersManager";
 import { RichTextProcessor } from "../richtextprocessor";
-import { ripple, putPreloader } from "../../components/misc";
+import { ripple, putPreloader, positionMenu, openBtnMenu } from "../../components/misc";
 //import Scrollable from "../../components/scrollable";
 import Scrollable from "../../components/scrollable_new";
-import appProfileManager from "./appProfileManager";
 import { logger } from "../polyfill";
 import appChatsManager from "./appChatsManager";
+import AvatarElement from "../../components/avatar";
 
 type DialogDom = {
-  avatarDiv: HTMLDivElement,
+  avatarEl: AvatarElement,
   captionDiv: HTMLDivElement,
   titleSpan: HTMLSpanElement,
   statusSpan: HTMLSpanElement,
@@ -24,6 +24,346 @@ type DialogDom = {
 };
 
 let testScroll = false;
+
+class PopupElement {
+  protected element = document.createElement('div');
+  protected container = document.createElement('div');
+  protected header = document.createElement('div');
+  protected title = document.createElement('div');
+
+  constructor(className: string) {
+    this.element.classList.add('popup');
+    this.element.className = 'popup' + (className ? ' ' + className : '');
+    this.container.classList.add('popup-container', 'z-depth-1');
+
+    this.header.classList.add('popup-header');
+    this.title.classList.add('popup-title');
+
+    this.header.append(this.title);
+    this.container.append(this.header);
+    this.element.append(this.container);
+  }
+
+  public show() {
+    document.body.append(this.element);
+    void this.element.offsetWidth; // reflow
+    this.element.classList.add('active');
+  }
+
+  public destroy() {
+    this.element.classList.remove('active');
+    setTimeout(() => {
+      this.element.remove();
+    }, 1000);
+  }
+}
+
+type PopupPeerButton = {
+  text: string,
+  callback?: () => void,
+  isDanger?: true,
+  isCancel?: true
+};
+
+class PopupPeer extends PopupElement {
+  constructor(private className: string, options: Partial<{
+    peerID: number,
+    title: string,
+    description: string,
+    buttons: Array<PopupPeerButton>
+  }> = {}) {
+    super('popup-peer' + (className ? ' ' + className : ''));
+
+    let avatarEl = new AvatarElement();
+    avatarEl.setAttribute('dialog', '1');
+    avatarEl.setAttribute('peer', '' + options.peerID);
+    avatarEl.classList.add('peer-avatar');
+
+    this.title.innerText = options.title || '';
+    this.header.prepend(avatarEl);
+
+    let p = document.createElement('p');
+    p.classList.add('popup-description');
+    p.innerHTML = options.description;
+
+    let buttonsDiv = document.createElement('div');
+    buttonsDiv.classList.add('popup-buttons');
+
+    let buttons = options.buttons.map(b => {
+      let button = document.createElement('button');
+      ripple(button);
+      button.className = 'btn' + (b.isDanger ? ' danger' : '');
+      button.innerHTML =  b.text;
+
+      if(b.callback) {
+        button.addEventListener('click', () => {
+          b.callback();
+          this.destroy();
+        });
+      } else if(b.isCancel) {
+        button.addEventListener('click', () => {
+          this.destroy();
+        });
+      }
+
+      return button;
+    });
+
+    buttonsDiv.append(...buttons);
+
+    this.container.append(p, buttonsDiv);
+  }
+}
+
+class DialogsContextMenu {
+  private element = document.getElementById('dialogs-contextmenu') as HTMLDivElement;
+  private buttons: {
+    archive: HTMLButtonElement,
+    pin: HTMLButtonElement,
+    mute: HTMLButtonElement,
+    unread: HTMLButtonElement,
+    delete: HTMLButtonElement,
+    //clear: HTMLButtonElement,
+  } = {} as any;
+  private selectedID: number;
+  private peerType: 'channel' | 'chat' | 'megagroup' | 'group' | 'saved';
+
+  constructor(private attachTo: HTMLElement[]) {
+    (Array.from(this.element.querySelectorAll('.btn-menu-item')) as HTMLElement[]).forEach(el => {
+      let name = el.className.match(/ menu-(.+?) /)[1];
+      // @ts-ignore
+      this.buttons[name] = el;
+    });
+
+    const onContextMenu = (e: MouseEvent) => {
+      let li: HTMLDivElement = null;
+      
+      try {
+        li = findUpTag(e.target, 'LI');
+      } catch(e) {}
+      
+      if(!li) return;
+
+      e.preventDefault();
+
+      if(this.element.classList.contains('active')) {
+        /* this.element.classList.remove('active');
+        this.element.parentElement.classList.remove('menu-open'); */
+        return false;
+      }
+      
+      e.cancelBubble = true;
+
+      this.selectedID = +li.getAttribute('data-peerID');
+      const dialog = appMessagesManager.getDialogByPeerID(this.selectedID)[0];
+      const notOurDialog = dialog.peerID != $rootScope.myID;
+
+      // archive button
+      if(notOurDialog) {
+        const button = this.buttons.archive;
+        let text = '';
+        if(dialog.folder_id == 1) {
+          text = 'Unarchive chat';
+          button.classList.remove('tgico-archive');
+        } else {
+          text = 'Archive chat';
+          button.classList.add('tgico-archive');
+        }
+        button.innerText = text;
+        this.buttons.archive.style.display = '';
+      } else {
+        this.buttons.archive.style.display = 'none';
+      }
+      
+      // pin button
+      {
+        const button = this.buttons.pin;
+        let text = '';
+        if(dialog.pFlags?.pinned) {
+          text = 'Unpin from top';
+          button.classList.remove('tgico-pin');
+        } else {
+          text = 'Pin to top';
+          button.classList.add('tgico-pin');
+        }
+        button.innerText = text;
+      }
+
+      // mute button
+      if(notOurDialog) {
+        const button = this.buttons.mute;
+        let text = '';
+        if(dialog.notify_settings && dialog.notify_settings.mute_until > (Date.now() / 1000 | 0)) {
+          text = 'Enable notifications';
+          button.classList.remove('tgico-mute');
+        } else {
+          text = 'Disable notifications';
+          button.classList.add('tgico-mute');
+        }
+        button.innerText = text;
+        this.buttons.mute.style.display = '';
+      } else {
+        this.buttons.mute.style.display = 'none';
+      }
+
+      // unread button
+      {
+        const button = this.buttons.unread;
+        let text = '';
+        if(dialog.pFlags?.unread_mark) {
+          text = 'Mark as read';
+          button.classList.add('tgico-message');
+        } else {
+          text = 'Mark as unread';
+          button.classList.remove('tgico-message');
+        }
+        button.innerText = text;
+      }
+
+      /* // clear history button
+      if(appPeersManager.isChannel(this.selectedID)) {
+        this.buttons.clear.style.display = 'none';
+      } else {
+        this.buttons.clear.style.display = '';
+      } */
+
+      // delete button
+      let deleteButtonText = '';
+      if(appPeersManager.isMegagroup(this.selectedID)) {
+        deleteButtonText = 'Leave group';
+        this.peerType = 'megagroup';
+      } else if(appPeersManager.isChannel(this.selectedID)) {
+        deleteButtonText = 'Leave channel';
+        this.peerType = 'channel';
+      } else if(this.selectedID < 0) {
+        deleteButtonText = 'Delete and leave';
+        this.peerType = 'group';
+      } else {
+        deleteButtonText = 'Delete chat';
+        this.peerType = this.selectedID == $rootScope.myID ? 'saved' : 'chat';
+      }
+      this.buttons.delete.innerText = deleteButtonText;
+
+      li.classList.add('menu-open');
+      positionMenu(e, this.element);
+      openBtnMenu(this.element, () => {
+        li.classList.remove('menu-open');
+      });
+    };
+
+    this.attachTo.forEach(el => {
+      el.addEventListener('contextmenu', onContextMenu);
+    });
+
+    this.buttons.archive.addEventListener('click', () => {
+      let dialog = appMessagesManager.getDialogByPeerID(this.selectedID)[0];
+      if(dialog) {
+        appMessagesManager.editPeerFolders([dialog.peerID], +!dialog.folder_id);
+      }
+    });
+
+    this.buttons.pin.addEventListener('click', () => {
+      appMessagesManager.toggleDialogPin(this.selectedID);
+    });
+
+    this.buttons.mute.addEventListener('click', () => {
+      appImManager.mutePeer(this.selectedID);
+    });
+
+    this.buttons.unread.addEventListener('click', () => {
+      appMessagesManager.markDialogUnread(this.selectedID);
+    });
+
+    this.buttons.delete.addEventListener('click', () => {
+      let firstName = appPeersManager.getPeerTitle(this.selectedID, false, true);
+
+      let callback = (justClear: boolean) => {
+        appMessagesManager.flushHistory(this.selectedID, justClear);
+      };
+
+      let title: string, description: string, buttons: PopupPeerButton[];
+      switch(this.peerType) {
+        case 'channel': {
+          title = 'Leave Channel?';
+          description = `Are you sure you want to leave this channel?`;
+          buttons = [{
+            text: 'LEAVE ' + firstName,
+            isDanger: true,
+            callback: () => callback(true)
+          }];
+
+          break;
+        }
+
+        case 'megagroup': {
+          title = 'Leave Group?';
+          description = `Are you sure you want to leave this group?`;
+          buttons = [{
+            text: 'LEAVE ' + firstName,
+            isDanger: true,
+            callback: () => callback(true)
+          }];
+
+          break;
+        }
+
+        case 'chat': {
+          title = 'Delete Chat?';
+          description = `Are you sure you want to delete chat with <b>${firstName}</b>?`;
+          buttons = [{
+            text: 'DELETE FOR ME AND ' + firstName,
+            isDanger: true,
+            callback: () => callback(false)
+          }, {
+            text: 'DELETE JUST FOR ME',
+            isDanger: true,
+            callback: () => callback(true)
+          }];
+
+          break;
+        }
+
+        case 'saved': {
+          title = 'Delete Saved Messages?';
+          description = `Are you sure you want to delete all your saved messages?`;
+          buttons = [{
+            text: 'DELETE SAVED MESSAGES',
+            isDanger: true,
+            callback: () => callback(false)
+          }];
+
+          break;
+        }
+
+        case 'group': {
+          title = 'Delete and leave Group?';
+          description = `Are you sure you want to delete all message history and leave <b>${firstName}</b>?`;
+          buttons = [{
+            text: 'DELETE AND LEAVE ' + firstName,
+            isDanger: true,
+            callback: () => callback(true)
+          }];
+
+          break;
+        }
+      }
+
+      buttons.push({
+        text: 'CANCEL',
+        isCancel: true
+      });
+
+      let popup = new PopupPeer('popup-delete-chat', {
+        peerID: this.selectedID,
+        title: title,
+        description: description,
+        buttons: buttons
+      });
+
+      popup.show();
+    });
+  }
+}
 
 export class AppDialogsManager {
   public chatList = document.getElementById('dialogs') as HTMLUListElement;
@@ -58,6 +398,8 @@ export class AppDialogsManager {
   public scrollArchived: Scrollable = null;
 
   private log = logger('DIALOGS');
+
+  private contextMenu = new DialogsContextMenu([this.chatList, this.chatListArchived]);
 
   constructor() {
     this.chatsPreloader = putPreloader(null, true);
@@ -127,9 +469,9 @@ export class AppDialogsManager {
 
         if(dom) {
           if(online) {
-            dom.avatarDiv.classList.add('is-online');
+            dom.avatarEl.classList.add('is-online');
           } else {
-            dom.avatarDiv.classList.remove('is-online');
+            dom.avatarEl.classList.remove('is-online');
           }
         }
       }
@@ -143,10 +485,17 @@ export class AppDialogsManager {
       let dialog: any = e.detail;
 
       this.setLastMessage(dialog);
-      this.setUnreadMessages(dialog);
       this.setDialogPosition(dialog);
 
       this.setPinnedDelimiter();
+    });
+
+    $rootScope.$on('dialog_flush', (e: CustomEvent) => {
+      let peerID: number = e.detail.peerID;
+      let dialog = appMessagesManager.getDialogByPeerID(peerID)[0];
+      if(dialog) {
+        this.setLastMessage(dialog);
+      }
     });
 
     $rootScope.$on('dialogs_multiupdate', (e: CustomEvent) => {
@@ -162,7 +511,6 @@ export class AppDialogsManager {
         } 
 
         this.setLastMessage(dialog);
-        this.setUnreadMessages(dialog);
         this.setDialogPosition(dialog);
       }
 
@@ -309,7 +657,7 @@ export class AppDialogsManager {
           this.lastActiveListElement = elem;
         }
 
-        result = appImManager.setPeer(peerID, lastMsgID, false, true);
+        result = appImManager.setPeer(peerID, lastMsgID, true);
 
         if(result instanceof Promise) {
           this.lastGoodClickID = this.lastClickID;
@@ -349,6 +697,9 @@ export class AppDialogsManager {
     let pos = appMessagesManager.getDialogByPeerID(dialog.peerID)[1];
     let dom = this.getDialogDom(dialog.peerID);
     let prevPos = whichChild(dom.listEl);
+
+    let wrongFolder = (dialog.folder_id == 1 && this.chatList == dom.listEl.parentElement) || (dialog.folder_id == 0 && this.chatListArchived == dom.listEl.parentElement);
+    if(wrongFolder) prevPos = 0xFFFF;
 
     if(prevPos == pos) {
       return;
@@ -408,11 +759,15 @@ export class AppDialogsManager {
     }
 
     ///////console.log('setlastMessage:', lastMessage);
-
-    if(lastMessage._ == 'messageEmpty') return;
-
     if(!dom) {
       dom = this.getDialogDom(dialog.peerID);
+    }
+
+    if(lastMessage._ == 'messageEmpty') {
+      dom.lastMessageSpan.innerHTML = '';
+      dom.lastTimeSpan.innerHTML = '';
+      dom.listEl.removeAttribute('data-mid');
+      return;
     }
 
     let peer = dialog.peer;
@@ -422,11 +777,12 @@ export class AppDialogsManager {
     //console.log('setting last message:', lastMessage);
 
     /* if(!dom.lastMessageSpan.classList.contains('user-typing')) */ {
-      /* let messageText = lastMessage.message;
-      let messageWrapped = '';
-      if(messageText) {
+
+      if(highlightWord && lastMessage.message) {
+        let lastMessageText = appMessagesManager.getRichReplyText(lastMessage, '');
+
+        let messageText = lastMessage.message;
         let entities = RichTextProcessor.parseEntities(messageText.replace(/\n/g, ' '), {noLinebreakers: true});
-        if(highlightWord) {
           let regExp = new RegExp(escapeRegExp(highlightWord), 'gi');
           let match: any;
 
@@ -436,21 +792,23 @@ export class AppDialogsManager {
             entities.push({_: 'messageEntityHighlight', length: highlightWord.length, offset: match.index});
             found = true;
           }
-  
+    
           if(found) {
             entities.sort((a: any, b: any) => a.offset - b.offset);
           }
-        }
-  
-        messageWrapped = RichTextProcessor.wrapRichText(messageText, {
+    
+        let messageWrapped = RichTextProcessor.wrapRichText(messageText, {
           noLinebreakers: true, 
           entities: entities, 
           noTextFormat: true
         });
-      } */
 
-      //dom.lastMessageSpan.innerHTML = lastMessageText + messageWrapped;
-      dom.lastMessageSpan.innerHTML = lastMessage.rReply;
+        dom.lastMessageSpan.innerHTML = lastMessageText + messageWrapped;
+      } else if(!lastMessage.deleted) {
+        dom.lastMessageSpan.innerHTML = lastMessage.rReply;
+      } else {
+        dom.lastMessageSpan.innerHTML = '';
+      }
   
       /* if(lastMessage.from_id == auth.id) { // You:  */
       if(peer._ != 'peerUser' && peerID != -lastMessage.from_id) {
@@ -473,25 +831,27 @@ export class AppDialogsManager {
       }
     }
 
-    let timeStr = '';
-    let timestamp = lastMessage.date;
-    let now = Date.now() / 1000;
-    let time = new Date(lastMessage.date * 1000);
-
-    if((now - timestamp) < 86400) { // if < 1 day
-      timeStr = ('0' + time.getHours()).slice(-2) + 
-        ':' + ('0' + time.getMinutes()).slice(-2);
-    } else if((now - timestamp) < (86400 * 7)) { // week
-      let date = new Date(timestamp * 1000);
-      timeStr = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()];
-    } else {
-      let months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-      timeStr = months[time.getMonth()] + 
-        ' ' + ('0' + time.getDate()).slice(-2);
-    }
-
-    dom.lastTimeSpan.innerHTML = timeStr;
+    if(!lastMessage.deleted) {
+      let timeStr = '';
+      let timestamp = lastMessage.date;
+      let now = Date.now() / 1000;
+      let time = new Date(lastMessage.date * 1000);
+  
+      if((now - timestamp) < 86400) { // if < 1 day
+        timeStr = ('0' + time.getHours()).slice(-2) + 
+          ':' + ('0' + time.getMinutes()).slice(-2);
+      } else if((now - timestamp) < (86400 * 7)) { // week
+        let date = new Date(timestamp * 1000);
+        timeStr = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()];
+      } else {
+        let months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  
+        timeStr = months[time.getMonth()] + 
+          ' ' + ('0' + time.getDate()).slice(-2);
+      }
+  
+      dom.lastTimeSpan.innerHTML = timeStr;
+    } else dom.lastTimeSpan.innerHTML = '';
 
     dom.listEl.setAttribute('data-mid', lastMessage.mid);
 
@@ -504,7 +864,7 @@ export class AppDialogsManager {
     let dom = this.getDialogDom(dialog.peerID);
 
     let lastMessage = appMessagesManager.getMessage(dialog.top_message);
-    if(lastMessage._ != 'messageEmpty' && 
+    if(lastMessage._ != 'messageEmpty' && !lastMessage.deleted && 
       lastMessage.from_id == $rootScope.myID && lastMessage.peerID != $rootScope.myID && 
       dialog.read_outbox_max_id) { // maybe comment, 06.20.2020
       let outgoing = (lastMessage.pFlags && lastMessage.pFlags.unread)
@@ -523,12 +883,12 @@ export class AppDialogsManager {
 
     dom.unreadMessagesSpan.innerText = '';
     dom.unreadMessagesSpan.classList.remove('tgico-pinnedchat');
-    if(dialog.unread_count) {
-      dom.unreadMessagesSpan.innerText = '' + dialog.unread_count;
+    if(dialog.unread_count || dialog.pFlags.unread_mark) {
+      dom.unreadMessagesSpan.innerText = '' + (dialog.unread_count || ' ');
       //dom.unreadMessagesSpan.classList.remove('tgico-pinnedchat');
       dom.unreadMessagesSpan.classList.add(new Date(dialog.notify_settings.mute_until * 1000) > new Date() ? 
       'unread-muted' : 'unread');
-    } else if(dialog.pFlags.pinned) {
+    } else if(dialog.pFlags.pinned && dialog.folder_id == 0) {
       dom.unreadMessagesSpan.classList.remove('unread', 'unread-muted');
       dom.unreadMessagesSpan.classList.add('tgico-pinnedchat');
     }
@@ -575,8 +935,10 @@ export class AppDialogsManager {
 
     let title = appPeersManager.getPeerTitle(peerID, false, onlyFirstName);
 
-    let avatarDiv = document.createElement('div');
-    avatarDiv.classList.add('user-avatar');
+    let avatarEl = new AvatarElement();
+    avatarEl.setAttribute('dialog', '1');
+    avatarEl.setAttribute('peer', '' + peerID);
+    avatarEl.classList.add('dialog-avatar');
 
     if(drawStatus && peerID != $rootScope.myID && dialog.peer) {
       let peer = dialog.peer;
@@ -587,7 +949,7 @@ export class AppDialogsManager {
           //console.log('found user', user);
   
           if(user.status && user.status._ == 'userStatusOnline') {
-            avatarDiv.classList.add('is-online');
+            avatarEl.classList.add('is-online');
           }
   
           break;
@@ -618,9 +980,6 @@ export class AppDialogsManager {
       title = onlyFirstName ? 'Saved' : 'Saved Messages';
     } 
 
-    //console.log('trying to load photo for:', title);
-    appProfileManager.putPhoto(avatarDiv, dialog.peerID, true);
-
     titleSpan.innerHTML = title;
     //p.classList.add('')
     
@@ -632,7 +991,7 @@ export class AppDialogsManager {
 
     let paddingDiv = document.createElement('div');
     paddingDiv.classList.add('rp');
-    paddingDiv.append(avatarDiv, captionDiv);
+    paddingDiv.append(avatarEl, captionDiv);
 
     if(rippleEnabled) {
       ripple(paddingDiv, (id) => {
@@ -677,7 +1036,7 @@ export class AppDialogsManager {
     captionDiv.append(titleP, messageP);
 
     let dom: DialogDom = {
-      avatarDiv,
+      avatarEl,
       captionDiv,
       titleSpan,
       statusSpan,

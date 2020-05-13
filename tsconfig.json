@@ -66,6 +66,7 @@
     "public",
     "coverage",
     "./src/lib/ckin.js",
+    "./src/lib/crypto/crypto.worker.js",
     "src/lib/config.ts",
     "./src/lib/StackBlur.js",
     "./src/lib/*.js",

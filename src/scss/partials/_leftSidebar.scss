@@ -101,7 +101,7 @@
       margin: 0;
     }
     
-    .user-avatar {
+    .dialog-avatar {
       width: 54px;
       height: 54px;
     }
@@ -155,7 +155,7 @@
   }
 }
 
-.new-channel-container, .new-group-container {
+.new-channel-container, .new-group-container, .edit-profile-container {
   .sidebar-content {
     flex-direction: column;
   }
@@ -178,9 +178,76 @@
   }
 
   .caption {
-    font-size: 14px;
+    font-size: 0.875rem;
     margin-top: 14px;
     margin-left: 23px;
     color: #707579;
+  }
+}
+
+.new-group-members {
+  padding: 1.5rem 0 0.4375rem;
+
+  .search-group__name {
+    text-transform: capitalize;
+  }
+}
+
+.settings-container {
+  .profile {
+    &-button {
+      display: flex;
+      padding: 1.125rem 0.625rem;
+      height: 3.5rem;
+      line-height: 1.4;
+      border-radius: 0.625rem;
+      margin: 0px 0.5rem 0px 0.4375rem;
+
+      &:hover {
+        background: rgba(112, 117, 121, 0.08);
+        cursor: pointer;
+      }
+
+      &:before {
+        font-size: 24px;
+        color: #707579;
+        margin-left: 0.375rem;
+        margin-top: -0.0625rem;
+      }
+
+      p {
+        padding-left: 2rem;
+        user-select: none;
+      }
+    }
+
+    &-buttons {
+      margin-top: .9375rem;
+      width: 100%;
+    }
+  }
+}
+
+.edit-profile-container {
+  .caption {
+    margin-top: 1.063rem;
+    margin-left: 1.438rem;
+    line-height: 1.2;
+    padding-bottom: 1.438rem;
+  }
+
+  .sidebar-left-h2 {
+    color: #707579;
+    padding: 0 1.438rem;
+    padding-bottom: 1.5rem;
+    font-weight: 500;
+  }
+
+  hr {
+    margin-bottom: 1.5rem;
+  }
+
+  .scroll-wrapper {
+    width: 100%;
   }
 }

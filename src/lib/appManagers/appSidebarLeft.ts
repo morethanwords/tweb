@@ -13,6 +13,10 @@ import { appPeersManager } from "../services";
 import popupAvatar from "../../components/popupAvatar";
 import appChatsManager from "./appChatsManager";
 import { AppSelectPeers } from "../../components/appSelectPeers";
+import AvatarElement from "../../components/avatar";
+import appProfileManager from "./appProfileManager";
+
+AvatarElement;
 
 const SLIDERITEMSIDS = {
   archived: 1,
@@ -20,6 +24,8 @@ const SLIDERITEMSIDS = {
   newChannel: 3,
   addMembers: 4,
   newGroup: 5,
+  settings: 6,
+  editProfile: 7,
 };
 
 interface SliderTab {
@@ -317,6 +323,215 @@ class AppContactsTab implements SliderTab {
   }
 }
 
+class AppSettingsTab implements SliderTab {
+  private container = document.querySelector('.settings-container') as HTMLDivElement;
+  private avatarElem = this.container.querySelector('.profile-avatar') as AvatarElement;
+  private nameDiv = this.container.querySelector('.profile-name') as HTMLDivElement;
+  private phoneDiv = this.container.querySelector('.profile-subtitle') as HTMLDivElement;
+
+  private logOutBtn = this.container.querySelector('.menu-logout') as HTMLButtonElement;
+
+  private buttons: {
+    edit: HTMLButtonElement,
+    general: HTMLButtonElement,
+    notifications: HTMLButtonElement,
+    privacy: HTMLButtonElement,
+    language: HTMLButtonElement
+  } = {} as any;
+
+  constructor() {
+    (Array.from(this.container.querySelector('.profile-buttons').children) as HTMLButtonElement[]).forEach(el => {
+      let name = el.className.match(/ menu-(.+?) /)[1];
+      // @ts-ignore
+      this.buttons[name] = el;
+    });
+
+    $rootScope.$on('user_auth', (e: CustomEvent) => {
+      this.fillElements();
+    });
+
+    this.logOutBtn.addEventListener('click', (e) => {
+      apiManager.logOut();
+    });
+
+    this.buttons.edit.addEventListener('click', () => {
+      appSidebarLeft.selectTab(SLIDERITEMSIDS.editProfile);
+      appSidebarLeft.editProfileTab.fillElements();
+    });
+  }
+
+  public fillElements() {
+    let user = appUsersManager.getSelf();
+    this.avatarElem.setAttribute('peer', '' + user.id);
+
+    this.nameDiv.innerHTML = user.rFullName || '';
+    this.phoneDiv.innerHTML = user.rPhone || '';
+  }
+
+  onClose() {
+
+  }
+}
+
+class AppEditProfileTab implements SliderTab {
+  private container = document.querySelector('.edit-profile-container') as HTMLDivElement;
+  private scrollWrapper = this.container.querySelector('.scroll-wrapper') as HTMLDivElement;
+  private nextBtn = this.container.querySelector('.btn-corner') as HTMLButtonElement;
+  private canvas = this.container.querySelector('.avatar-edit-canvas') as HTMLCanvasElement;
+  private uploadAvatar: () => Promise<any> = null;
+
+  private firstNameInput = this.container.querySelector('.firstname') as HTMLInputElement;
+  private lastNameInput = this.container.querySelector('.lastname') as HTMLInputElement;
+  private bioInput = this.container.querySelector('.bio') as HTMLInputElement;
+  private userNameInput = this.container.querySelector('.username') as HTMLInputElement;
+
+  private avatarElem = document.createElement('avatar-element');
+
+  private originalValues = {
+    firstName: '',
+    lastName: '',
+    userName: '',
+    bio: ''
+  };
+
+  constructor() {
+    this.container.querySelector('.avatar-edit').addEventListener('click', () => {
+      popupAvatar.open(this.canvas, (_upload) => {
+        this.uploadAvatar = _upload;
+        this.handleChange();
+        this.avatarElem.remove();
+      });
+    });
+
+    this.avatarElem.classList.add('avatar-placeholder');
+
+    let userNameLabel = this.userNameInput.nextElementSibling as HTMLLabelElement;
+
+    this.firstNameInput.addEventListener('input', () => this.handleChange());
+    this.lastNameInput.addEventListener('input', () => this.handleChange());
+    this.bioInput.addEventListener('input', () => this.handleChange());
+    this.userNameInput.addEventListener('input', () => {
+      this.handleChange();
+      let value = this.userNameInput.value;
+
+      console.log('userNameInput:', value);
+      if(value == this.originalValues.userName) {
+        this.userNameInput.classList.remove('valid', 'error');
+        userNameLabel.innerText = 'Username (optional)';
+        return;
+      } else if(value.length < 5 || value.length > 32 || !/^[a-zA-Z0-9_]+$/.test(value)) { // does not check the last underscore
+        this.userNameInput.classList.add('error');
+        this.userNameInput.classList.remove('valid');
+        userNameLabel.innerText = 'Username is invalid';
+      } else {
+        this.userNameInput.classList.remove('error');
+        /*  */
+      }
+
+      apiManager.invokeApi('account.checkUsername', {
+        username: value
+      }).then(available => {
+        if(this.userNameInput.value != value) return;
+
+        if(available) {
+          this.userNameInput.classList.add('valid');
+          this.userNameInput.classList.remove('error');
+          userNameLabel.innerText = 'Username is available';
+        } else {
+          this.userNameInput.classList.add('error');
+          this.userNameInput.classList.remove('valid');
+          userNameLabel.innerText = 'Username is already taken';
+        }
+      }, (err) => {
+        if(this.userNameInput.value != value) return;
+
+        switch(err.type) {
+          case 'USERNAME_INVALID': {
+            this.userNameInput.classList.add('error');
+            this.userNameInput.classList.remove('valid');
+            userNameLabel.innerText = 'Username is invalid';
+            break;
+          }
+        }
+      });
+    });
+
+    this.nextBtn.addEventListener('click', () => {
+      this.nextBtn.disabled = true;
+
+      let promises: Promise<any>[] = [];
+      
+
+      promises.push(appProfileManager.updateProfile(this.firstNameInput.value, this.lastNameInput.value, this.bioInput.value).then(() => {
+        appSidebarLeft.selectTab(0);
+      }, (err) => {
+        console.error('updateProfile error:', err);
+      }));
+
+      if(this.uploadAvatar) {
+        promises.push(this.uploadAvatar().then(inputFile => {
+          appProfileManager.uploadProfilePhoto(inputFile);
+        }));
+      }
+
+      if(this.userNameInput.value != this.originalValues.userName && this.userNameInput.classList.contains('valid')) {
+        promises.push(appProfileManager.updateUsername(this.userNameInput.value));
+      }
+
+      Promise.race(promises).then(() => {
+        this.nextBtn.disabled = false;
+      }, () => {
+        this.nextBtn.disabled = false;
+      });
+    });
+
+    let scrollable = new Scrollable(this.scrollWrapper as HTMLElement, 'y');
+  }
+
+  public fillElements() {
+    let user = appUsersManager.getSelf();
+    this.firstNameInput.value = this.originalValues.firstName = user.first_name ?? '';
+    this.lastNameInput.value = this.originalValues.lastName = user.last_name ?? '';
+    this.userNameInput.value = this.originalValues.userName = user.username ?? '';
+
+    this.userNameInput.classList.remove('valid', 'error');
+    this.userNameInput.nextElementSibling.innerHTML = 'Username (optional)';
+
+    appProfileManager.getProfile(user.id).then(userFull => {
+      if(userFull.rAbout) {
+        this.bioInput.value = this.originalValues.bio = userFull.rAbout;
+      }
+    });
+
+    this.avatarElem.setAttribute('peer', '' + $rootScope.myID);
+    if(!this.avatarElem.parentElement) {
+      this.canvas.parentElement.append(this.avatarElem);
+    }
+
+    this.uploadAvatar = null;
+  }
+
+  private isChanged() {
+    return !!this.uploadAvatar 
+      || this.firstNameInput.value != this.originalValues.firstName 
+      || this.lastNameInput.value != this.originalValues.lastName 
+      || this.userNameInput.value != this.originalValues.userName 
+      || this.bioInput.value != this.originalValues.bio;
+  }
+
+  private handleChange() {
+    if(this.isChanged()) {
+      this.nextBtn.classList.add('is-visible');
+    } else {
+      this.nextBtn.classList.remove('is-visible');
+    }
+  }
+
+  onCloseAfterTimeout() {
+    this.nextBtn.classList.remove('is-visible');
+  }
+}
+
 class AppSidebarLeft {
   private sidebarEl = document.getElementById('column-left') as HTMLDivElement;
   private toolsBtn = this.sidebarEl.querySelector('.sidebar-tools-button') as HTMLButtonElement;
@@ -329,7 +544,7 @@ class AppSidebarLeft {
   private contactsBtn = this.menuEl.querySelector('.menu-contacts');
   private archivedBtn = this.menuEl.querySelector('.menu-archive');
   private savedBtn = this.menuEl.querySelector('.menu-saved');
-  private logOutBtn = this.menuEl.querySelector('.menu-logout');
+  private settingsBtn = this.menuEl.querySelector('.menu-settings');
   public archivedCount = this.archivedBtn.querySelector('.archived-count') as HTMLSpanElement;
 
   private newBtnMenu = this.sidebarEl.querySelector('#new-menu');
@@ -343,12 +558,16 @@ class AppSidebarLeft {
   public addMembersTab = new AppAddMembersTab();
   public contactsTab = new AppContactsTab();
   public newGroupTab = new AppNewGroupTab();
+  public settingsTab = new AppSettingsTab();
+  public editProfileTab = new AppEditProfileTab();
 
   private tabs: {[id: number]: SliderTab} = {
     [SLIDERITEMSIDS.newChannel]: this.newChannelTab,
     [SLIDERITEMSIDS.contacts]: this.contactsTab,
     [SLIDERITEMSIDS.addMembers]: this.addMembersTab,
     [SLIDERITEMSIDS.newGroup]: this.newGroupTab,
+    [SLIDERITEMSIDS.settings]: this.settingsTab,
+    [SLIDERITEMSIDS.editProfile]: this.editProfileTab,
   };
 
   //private log = logger('SL');
@@ -388,8 +607,9 @@ class AppSidebarLeft {
       this.contactsTab.openContacts();
     });
 
-    this.logOutBtn.addEventListener('click', (e) => {
-      apiManager.logOut();
+    this.settingsBtn.addEventListener('click', () => {
+      this.settingsTab.fillElements();
+      this.selectTab(SLIDERITEMSIDS.settings);
     });
 
     this.searchInput.addEventListener('focus', (e) => {
@@ -399,13 +619,13 @@ class AppSidebarLeft {
       void this.searchContainer.offsetWidth; // reflow
       this.searchContainer.classList.add('active');
 
-      false && this.searchInput.addEventListener('blur', (e) => {
+      /* this.searchInput.addEventListener('blur', (e) => {
         if(!this.searchInput.value) {
           this.toolsBtn.classList.add('active');
           this.backBtn.classList.remove('active');
           this.backBtn.click();
         }
-      }, {once: true});
+      }, {once: true}); */
     });
 
     this.backBtn.addEventListener('click', (e) => {
@@ -446,7 +666,7 @@ class AppSidebarLeft {
       console.log('sidebar-close-button click:', this.historyTabIDs);
       let closingID = this.historyTabIDs.pop(); // pop current
       this.onCloseTab(closingID);
-      this._selectTab(this.historyTabIDs.pop() || 0);
+      this._selectTab(this.historyTabIDs[this.historyTabIDs.length - 1] || 0);
     };
     Array.from(this.sidebarEl.querySelectorAll('.sidebar-close-button') as any as HTMLElement[]).forEach(el => {
       el.addEventListener('click', onCloseBtnClick);

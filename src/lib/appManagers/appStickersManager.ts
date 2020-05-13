@@ -43,7 +43,7 @@ export type MTStickerSetFull = {
   documents: MTDocument[]
 };
 
-class appStickersManager {
+class AppStickersManager {
   private documents: {
     [fileID: string]: MTDocument
   } = {};
@@ -69,8 +69,12 @@ class appStickersManager {
 
         this.stickerSets = sets;
       }
+
+      if(!this.stickerSets['emoji']) {
+        this.getStickerSet({id: 'emoji', access_hash: ''});
+      }
     });
-  }
+  } 
   
   public saveSticker(doc: MTDocument) {
     if(this.documents[doc.id]) return this.documents[doc.id];
@@ -99,7 +103,9 @@ class appStickersManager {
     if(this.stickerSets[set.id]) return this.stickerSets[set.id];
     
     let promise = apiManager.invokeApi('messages.getStickerSet', {
-      stickerset: {
+      stickerset: set.id == 'emoji' ? {
+        _: 'inputStickerSetAnimatedEmoji'
+      } : {
         _: 'inputStickerSetID',
         id: set.id,
         access_hash: set.access_hash
@@ -114,9 +120,15 @@ class appStickersManager {
       documents: MTDocument[]
     } = res as any;
 
-    this.saveStickerSet(stickerSet);
+    this.saveStickerSet(stickerSet, set.id);
 
     return stickerSet;
+  }
+
+  public getAnimatedEmojiSticker(emoji: string) {
+    let stickerSet = this.stickerSets.emoji;
+
+    return stickerSet.documents.find(doc => doc.attributes.find(attribute => attribute.alt == emoji));
   }
   
   public async saveStickerSet(res: {
@@ -124,9 +136,7 @@ class appStickersManager {
     set: MTStickerSet,
     packs: any[],
     documents: MTDocument[]
-  }) {
-    let id = res.set.id;
-    
+  }, id: string) {
     //console.log('stickers save set', res);
     
     this.stickerSets[id] = {
@@ -171,4 +181,6 @@ class appStickersManager {
   }
 }
 
-export default new appStickersManager();
+const appStickersManager = new AppStickersManager();
+(window as any).appStickersManager = appStickersManager;
+export default appStickersManager;

@@ -1,7 +1,6 @@
 import { $rootScope, isObject, SearchIndexManager, safeReplaceObject, copy, numberWithCommas } from "../utils";
 import { RichTextProcessor } from "../richtextprocessor";
 import appUsersManager from "./appUsersManager";
-import appPeersManager from "./appPeersManager";
 import apiManager from '../mtproto/mtprotoworker';
 import apiUpdatesManager from "./apiUpdatesManager";
 
@@ -68,46 +67,56 @@ export class AppChatsManager {
     apiChat.rTitle = apiChat.title || 'chat_title_deleted';
     apiChat.rTitle = RichTextProcessor.wrapRichText(apiChat.title, {noLinks: true, noLinebreaks: true}) || 'chat_title_deleted';
 
-    var result = this.chats[apiChat.id];
-    var titleWords = SearchIndexManager.cleanSearchText(apiChat.title || '').split(' ');
-    var firstWord = titleWords.shift();
-    var lastWord = titleWords.pop();
-    apiChat.initials = firstWord.charAt(0) + (lastWord ? lastWord.charAt(0) : firstWord.charAt(1));
+    let oldChat = this.chats[apiChat.id];
 
-    apiChat.num = (Math.abs(apiChat.id >> 1) % 8) + 1;
+    let titleWords = SearchIndexManager.cleanSearchText(apiChat.title || '', false).split(' ');
+    let firstWord = titleWords.shift();
+    let lastWord = titleWords.pop();
+    apiChat.initials = firstWord.charAt(0) + (lastWord ? lastWord.charAt(0) : firstWord.charAt(1));
 
     if(apiChat.pFlags === undefined) {
       apiChat.pFlags = {};
     }
 
     if(apiChat.pFlags.min) {
-      if(result !== undefined) {
+      if(oldChat !== undefined) {
         return;
       }
     }
 
     if(apiChat._ == 'channel' &&
         apiChat.participants_count === undefined &&
-        result !== undefined &&
-        result.participants_count) {
-      apiChat.participants_count = result.participants_count;
+        oldChat !== undefined &&
+        oldChat.participants_count) {
+      apiChat.participants_count = oldChat.participants_count;
     }
 
     if(apiChat.username) {
-      var searchUsername = SearchIndexManager.cleanUsername(apiChat.username);
+      let searchUsername = SearchIndexManager.cleanUsername(apiChat.username);
       this.usernames[searchUsername] = apiChat.id;
     }
 
-    if(result === undefined) {
-      result = this.chats[apiChat.id] = apiChat;
+    let changedPhoto = false;
+    if(oldChat === undefined) {
+      oldChat = this.chats[apiChat.id] = apiChat;
     } else {
-      safeReplaceObject(result, apiChat);
+      let oldPhoto = oldChat.photo && oldChat.photo.photo_small;
+      let newPhoto = apiChat.photo && apiChat.photo.photo_small;
+      if(JSON.stringify(oldPhoto) !== JSON.stringify(newPhoto)) {
+        changedPhoto = true;
+      }
+
+      safeReplaceObject(oldChat, apiChat);
       $rootScope.$broadcast('chat_update', apiChat.id);
     }
 
     if(this.cachedPhotoLocations[apiChat.id] !== undefined) {
       safeReplaceObject(this.cachedPhotoLocations[apiChat.id], apiChat && 
         apiChat.photo ? apiChat.photo : {empty: true});
+    }
+
+    if(changedPhoto) {
+      $rootScope.$broadcast('avatar_update', -apiChat.id);
     }
   }
 
@@ -116,10 +125,11 @@ export class AppChatsManager {
     return this.chats[id] || {id: id, deleted: true, access_hash: this.channelAccess[id]};
   }
 
-  public hasRights(id: number, action: any) {
+  public hasRights(id: number, action: 'send' | 'edit_title' | 'edit_photo' | 'invite') {
     if(!(id in this.chats)) {
       return false;
     }
+
     var chat = this.getChat(id);
     if(chat._ == 'chatForbidden' ||
         chat._ == 'channelForbidden' ||
@@ -127,22 +137,25 @@ export class AppChatsManager {
         chat.pFlags.left) {
       return false;
     }
+
     if(chat.pFlags.creator) {
       return true;
     }
 
     switch(action) {
-      case 'send':
+      case 'send': {
         if(chat._ == 'channel' &&
-            !chat.pFlags.megagroup &&
-            !chat.pFlags.editor) {
+        !chat.pFlags.megagroup &&
+        !chat.pFlags.editor) {
           return false;
         }
         break;
+      }
+        
 
       case 'edit_title':
       case 'edit_photo':
-      case 'invite':
+      case 'invite': {
         if(chat._ == 'channel') {
           if(chat.pFlags.megagroup) {
             if(!chat.pFlags.editor &&
@@ -159,7 +172,9 @@ export class AppChatsManager {
           }
         }
         break;
+      }
     }
+
     return true;
   }
 

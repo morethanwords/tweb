@@ -58,12 +58,7 @@ export class PopupAvatar {
 
       this.canvas.toBlob(blob => {
         this.blob = blob; // save blob to send after reg
-
-        // darken
-        let ctx = this.canvas.getContext('2d');
-        ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
-        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
+        this.darkenCanvas();
         this.resolve();
       }, 'image/jpeg', 1);
     });
@@ -91,6 +86,12 @@ export class PopupAvatar {
     this.onCrop = onCrop;
 
     this.input.click();
+  }
+
+  public darkenCanvas() {
+    let ctx = this.canvas.getContext('2d');
+    ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
   }
 }
 

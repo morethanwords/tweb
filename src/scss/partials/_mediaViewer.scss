@@ -25,22 +25,22 @@
     &:hover {
       color: #fff;
     }
+  }
 
-    .user-avatar {
-      width: 44px;
-      height: 44px;
-      position: absolute;
-      top: 8px;
-      left: 20px;
-    }
+  &-userpic {
+    width: 44px;
+    height: 44px;
+    position: absolute;
+    top: 8px;
+    left: 20px;
+  }
 
-    .media-viewer-name {
-      font-weight: 500;
-    }
-
-    .media-viewer-date {
-      font-size: 15px;
-    }
+  &-name {
+    font-weight: 500;
+  }
+  
+  &-date {
+    font-size: 15px;
   }
 
   &-buttons {

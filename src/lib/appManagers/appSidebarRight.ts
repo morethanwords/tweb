@@ -14,6 +14,7 @@ import appMediaViewer from "./appMediaViewer";
 import LazyLoadQueue from "../../components/lazyLoadQueue";
 import { wrapDocument, wrapAudio } from "../../components/wrappers";
 import AppSearch, { SearchGroup } from "../../components/appSearch";
+import AvatarElement from "../../components/avatar";
 
 const testScroll = false;
 
@@ -23,7 +24,7 @@ class AppSidebarRight {
   public profileContentEl = this.sidebarEl.querySelector('.profile-content') as HTMLDivElement;
   public contentContainer = this.sidebarEl.querySelector('.content-container') as HTMLDivElement;
   public profileElements = {
-    avatar: this.profileContentEl.querySelector('.profile-avatar') as HTMLDivElement,
+    avatar: this.profileContentEl.querySelector('.profile-avatar') as AvatarElement,
     name: this.profileContentEl.querySelector('.profile-name') as HTMLDivElement,
     subtitle: this.profileContentEl.querySelector('.profile-subtitle') as HTMLDivElement,
     bio: this.profileContentEl.querySelector('.profile-row-bio') as HTMLDivElement,
@@ -162,7 +163,7 @@ class AppSidebarRight {
     
     this.profileElements.notificationsCheckbox.addEventListener('change', () => {
       //let checked = this.profileElements.notificationsCheckbox.checked;
-      appImManager.mutePeer();
+      appImManager.mutePeer(this.peerID);
     });
     
     window.addEventListener('resize', this.onSidebarScroll.bind(this));
@@ -576,6 +577,8 @@ class AppSidebarRight {
     //this.log('fillProfileElements');
 
     this.contentContainer.classList.remove('loaded');
+
+    this.profileElements.avatar.setAttribute('peer', '' + peerID);
     
     window.requestAnimationFrame(() => {
       this.profileContentEl.parentElement.scrollTop = 0;
@@ -660,7 +663,7 @@ class AppSidebarRight {
     if(peerID > 0) {
       let user = appUsersManager.getUser(peerID);
       if(user.phone && peerID != appImManager.myID) {
-        setText('+' + formatPhoneNumber(user.phone).formatted, this.profileElements.phone);
+        setText(user.rPhone, this.profileElements.phone);
       }
       
       appProfileManager.getProfile(peerID, true).then(userFull => {

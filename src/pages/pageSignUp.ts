@@ -4,6 +4,7 @@ import pageIm from './pageIm';
 import apiManager from '../lib/mtproto/mtprotoworker';
 import Page from './page';
 import popupAvatar from '../components/popupAvatar';
+import appProfileManager from '../lib/appManagers/appProfileManager';
 
 let authCode: {
   'phone_number': string,
@@ -45,12 +46,7 @@ let onFirstMount = () => {
     uploadAvatar().then((inputFile: any) => {
       console.log('uploaded smthn', inputFile);
   
-      apiManager.invokeApi('photos.uploadProfilePhoto', {
-        file: inputFile
-      }).then((updateResult) => {
-        console.log('updated photo!');
-        resolve();
-      }, reject);
+      appProfileManager.uploadProfilePhoto(inputFile).then(resolve, reject);
     }, reject);
   });
 

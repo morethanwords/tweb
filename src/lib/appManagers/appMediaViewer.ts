@@ -8,13 +8,13 @@ import { findUpClassName, $rootScope, generatePathData, fillPropertyValue } from
 import appDocsManager from "./appDocsManager";
 import VideoPlayer from "../mediaPlayer";
 import { renderImageFromUrl } from "../../components/misc";
-import appProfileManager from "./appProfileManager";
+import AvatarElement from "../../components/avatar";
 
 export class AppMediaViewer {
   private overlaysDiv = document.querySelector('.overlays') as HTMLDivElement;
   private mediaViewerDiv = this.overlaysDiv.firstElementChild as HTMLDivElement;
   private author = {
-    avatarEl: this.overlaysDiv.querySelector('.user-avatar') as HTMLDivElement,
+    avatarEl: this.overlaysDiv.querySelector('.media-viewer-userpic') as AvatarElement,
     nameEl: this.overlaysDiv.querySelector('.media-viewer-name') as HTMLDivElement,
     date: this.overlaysDiv.querySelector('.media-viewer-date') as HTMLDivElement
   };
@@ -590,7 +590,7 @@ export class AppMediaViewer {
       this.content.caption.innerHTML = '';
     }
     
-    appProfileManager.putPhoto(this.author.avatarEl, message.fromID);
+    this.author.avatarEl.setAttribute('peer', '' + message.fromID);
 
     // ok set
 
@@ -629,6 +629,10 @@ export class AppMediaViewer {
           source = video.firstElementChild as HTMLSourceElement;
         }
 
+        if(media.type == 'gif') {
+          video.autoplay = true;
+        }
+
         video.dataset.ckin = 'default';
         video.dataset.overlay = '1';
         
@@ -661,9 +665,11 @@ export class AppMediaViewer {
               video.append(source);
             }
 
-            let player = new VideoPlayer(video, true);
+            if(media.type != 'gif') {
+              let player = new VideoPlayer(video, true);
+            }
           });
-        } else {
+        } else if(media.type != 'gif') {
           let player = new VideoPlayer(video, true);
         }
 

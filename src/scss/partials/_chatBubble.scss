@@ -1,3 +1,17 @@
+@keyframes bubbleSelected {
+  0% {
+    opacity: 0;
+  }
+
+  25% {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
 .bubble {
   padding-top: 5px;
   /* display: grid;
@@ -5,16 +19,23 @@
   grid-row-gap: 0px; */
   max-width: $chat-max-width;
   margin: 0 auto;
+  position: relative;
 
   &.is-selected {
     &:before {
       position: absolute;
-      width: 100%;
+      width: 200%;
       height: 100%;
-      background-color: #7ca09f;
+      background-color: rgba(0, 132, 255, .3);
       content: " ";
       display: block;
-      left: 0;
+      left: -50%;
+      top: 0;
+      animation: bubbleSelected 2s linear;
+    }
+
+    &:not(.is-group-last):before {
+      height: calc(100% + 5px);
     }
   }
 
@@ -187,7 +208,7 @@
       -webkit-user-select: none;
     }
     
-    .attachment {
+    &:not(.sticker) .attachment {
       padding-top: .5rem;
       padding-bottom: 1.5rem;
       max-width: fit-content!important;
@@ -197,6 +218,11 @@
         height: auto;
         width: auto;
       }
+    }
+
+    &.sticker .bubble__container {
+      max-width: 140px;
+      max-height: 140px;
     }
   }
   
@@ -233,7 +259,7 @@
     }
   }
   
-  &.sticker, &.round {
+  &.sticker, &.round, &.emoji-big {
     .bubble__container {
       cursor: pointer;
       background: none!important;
@@ -245,14 +271,18 @@
     img {
       object-fit: contain;
     }
-    
+
     &.is-message-empty .message {
+      background-color: rgba(0, 0, 0, .23);
+    }
+    
+    /* &.is-message-empty .message {
       display: none;
     }
     
     &.is-message-empty:hover .message {
       display: block;
-    }
+    } */
   }
 
   &.sticker {
@@ -756,8 +786,16 @@
     width: 5rem;
   }
 
-  &.is-edited .time {
-    width: 90px;
+  &.is-edited {
+    .time {
+      width: 78px !important;
+    }
+
+    &.emoji-big, &.sticker {
+      .time {
+        width: 81px !important;
+      }
+    }
   }
   
   &:not(.forwarded).hide-name, &.emoji-big {
@@ -821,7 +859,7 @@
     bottom: 0;
     width: 11px;
     height: 20px;
-    background-repeat: no-repeat repeat;
+    background-repeat: no-repeat no-repeat;
     content: '';
     background-size: 11px 20px;
     background-position-y: 1px;
@@ -1171,7 +1209,7 @@
 poll-element  {
   margin-top: -1px;
   display: block;
-  min-width: 240px;
+  min-width: 280px;
 
   .poll {
     &-title {

@@ -5,6 +5,7 @@
     position: relative;
     width: 100%;
     margin-left: 22px;
+    margin-right: 4px;
 
     input {
       background-color: rgba(112, 117, 121, .08);
@@ -86,8 +87,10 @@
     }
   }
 
-  li.active > .rp {
-    background: rgba(112, 117, 121, 0.08);
+  li.active, li.menu-open {
+    > .rp {
+      background: rgba(112, 117, 121, 0.08);
+    }
   }
 
   .pinned-delimiter {
@@ -139,7 +142,7 @@
     user-select: none;
   }
 
-  .user-avatar {
+  .dialog-avatar {
     flex: 0 0 auto;
   }
 
@@ -157,6 +160,8 @@
   }
 
   .user-title {
+    max-width: 82%;
+
     img.emoji {
       vertical-align: top;
       margin-top: 4px;
@@ -185,6 +190,7 @@
   }
 
   .user-last-message {
+    max-width: 86%;
     img.emoji {
       width: 20px;
       height: 20px;
@@ -200,8 +206,6 @@
   }
 
   .user-title, .user-last-message {
-    max-width: 86%;
-
     i {
       font-style: normal;
       color: $color-blue;
@@ -285,7 +289,7 @@
 
 // use together like class="chats-container contacts-container"
 .contacts-container, .search-group-contacts {
-  .user-avatar {
+  .dialog-avatar {
     width: 48px;
     height: 48px;
   }

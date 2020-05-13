@@ -184,12 +184,13 @@ export class AppSelectPeers {
     
     let title = appPeersManager.getPeerTitle(peerID, false, true);
 
-    let avatarDiv = document.createElement('div');
-    avatarDiv.classList.add('user-avatar', 'tgico');
-    appProfileManager.putPhoto(avatarDiv, peerID);
+    let avatarEl = document.createElement('avatar-element');
+    avatarEl.classList.add('selector-user-avatar', 'tgico');
+    avatarEl.setAttribute('dialog', '1');
+    avatarEl.setAttribute('peer', '' + peerID);
 
     div.innerHTML = title;
-    div.insertAdjacentElement('afterbegin', avatarDiv);
+    div.insertAdjacentElement('afterbegin', avatarEl);
 
     this.selectedContainer.insertBefore(div, this.input);
     this.selectedScrollable.scrollTop = this.selectedScrollable.scrollHeight;

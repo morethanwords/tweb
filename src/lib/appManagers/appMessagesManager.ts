@@ -56,7 +56,8 @@ export type Dialog = {
   peerID: number,
   pinnedIndex: number,
   pFlags: Partial<{
-    pinned: boolean
+    pinned: true,
+    unread_mark: true
   }>,
   pts: number
 }
@@ -1253,8 +1254,8 @@ export class AppMessagesManager {
         this.allDialogsLoaded[folderID] = true;
       }
 
-      if(hasPrepend && !this.newDialogsHandlePromise) {
-        this.newDialogsHandlePromise = window.setTimeout(this.handleNewDialogs.bind(this), 0);
+      if(hasPrepend) {
+        this.scheduleHandleNewDialogs();
       } else {
         $rootScope.$broadcast('dialogs_multiupdate', {});
       }
@@ -1344,7 +1345,7 @@ export class AppMessagesManager {
       topDate = savedDraft.date;
     }
 
-    if(dialog.pFlags.pinned) {
+    if(dialog.pFlags.pinned && dialog.folder_id == 0) {
       topDate = this.generateDialogPinnedDate(dialog);
       //console.log('topDate', peerID, topDate);
     }
@@ -1354,15 +1355,15 @@ export class AppMessagesManager {
 
   public pushDialogToStorage(dialog: Dialog, offsetDate?: number) {
     let dialogs = this.dialogsStorage.dialogs[dialog.folder_id] ?? (this.dialogsStorage.dialogs[dialog.folder_id] = []);
-    let pos = this.getDialogByPeerID(dialog.peerID)[1];
-    if(pos !== undefined) {
+    let pos = dialogs.findIndex(d => d.peerID == dialog.peerID);
+    if(pos !== -1) {
       dialogs.splice(pos, 1);
     }
 
     if(offsetDate &&
         !dialog.pFlags.pinned &&
         (!this.dialogsOffsetDate[dialog.folder_id] || offsetDate < this.dialogsOffsetDate[dialog.folder_id])) {
-      if(pos !== undefined) {
+      if(pos !== -1) {
         // So the dialog jumped to the last position
         return false;
       }
@@ -1424,6 +1425,81 @@ export class AppMessagesManager {
     return apiManager.invokeApi('messages.getPeerDialogs', {
       peers: peers
     }).then(this.applyConversations.bind(this));
+  }
+
+  private doFlushHistory(inputPeer: any, justClear: boolean): Promise<true> {
+    let flags = 0;
+    if(justClear) {
+      flags |= 1;
+    }
+
+    return apiManager.invokeApi('messages.deleteHistory', {
+      flags: flags,
+      peer: inputPeer,
+      max_id: 0
+    }).then((affectedHistory) => {
+      apiUpdatesManager.processUpdateMessage({
+        _: 'updateShort',
+        update: {
+          _: 'updatePts',
+          pts: affectedHistory.pts,
+          pts_count: affectedHistory.pts_count
+        }
+      });
+
+      if(!affectedHistory.offset) {
+        return true;
+      }
+
+      return this.doFlushHistory(inputPeer, justClear);
+    })
+  }
+
+  public async flushHistory(peerID: number, justClear: boolean) {
+    if(AppPeersManager.isChannel(peerID)) {
+      let promise = this.getHistory(peerID, 0, 1);
+
+      let historyResult = promise instanceof Promise ? await promise : promise;
+
+      let channelID = -peerID;
+      let maxID = appMessagesIDsManager.getMessageLocalID(historyResult.history[0] || 0);
+      return apiManager.invokeApi('channels.deleteHistory', {
+        channel: appChatsManager.getChannelInput(channelID),
+        max_id: maxID
+      }).then(() => {
+        apiUpdatesManager.processUpdateMessage({
+          _: 'updateShort',
+          update: {
+            _: 'updateChannelAvailableMessages',
+            channel_id: channelID,
+            available_min_id: maxID
+          }
+        });
+
+        return true;
+      });
+    }
+
+    return this.doFlushHistory(AppPeersManager.getInputPeerByID(peerID), justClear).then(() => {
+      delete this.historiesStorage[peerID];
+      for(let mid in this.messagesStorage) {
+        let message = this.messagesStorage[mid];
+        if(message.peerID == peerID) {
+          delete this.messagesStorage[mid];
+        }
+      }
+
+      if(justClear) {
+        $rootScope.$broadcast('dialog_flush', {peerID: peerID});
+      } else {
+        let foundDialog = this.getDialogByPeerID(peerID);
+        if(foundDialog[0]) {
+          this.dialogsStorage.dialogs[foundDialog[0].folder_id].splice(foundDialog[1], 1);
+        }
+
+        $rootScope.$broadcast('dialog_drop', {peerID: peerID});
+      }
+    });
   }
 
   public saveMessages(apiMessages: any[], options: {
@@ -1651,7 +1727,7 @@ export class AppMessagesManager {
     });
   }
 
-  public getRichReplyText(message: any) {
+  public getRichReplyText(message: any, text: string = message.message) {
     let messageText = '';
 
     if(message.media) {
@@ -1739,7 +1815,6 @@ export class AppMessagesManager {
       messageText = '<i>' + langPack[_] + suffix + '</i>';
     }
 
-    let text = message.message;
     let messageWrapped = '';
     if(text) {
       let entities = RichTextProcessor.parseEntities(text.replace(/\n/g, ' '), {noLinebreakers: true});
@@ -1752,6 +1827,69 @@ export class AppMessagesManager {
     }
 
     return messageText + messageWrapped;
+  }
+
+  public editPeerFolders(peerIDs: number[], folderID: number) {
+    apiManager.invokeApi('folders.editPeerFolders', {
+      folder_peers: peerIDs.map(peerID => {
+        return {
+          _: 'inputFolderPeer',
+          peer: AppPeersManager.getInputPeerByID(peerID),
+          folder_id: folderID
+        };
+      })
+    }).then(updates => {
+      console.log('editPeerFolders updates:', updates);
+      apiUpdatesManager.processUpdateMessage(updates); // WARNING! возможно тут нужно добавлять channelID, и вызывать апдейт для каждого канала отдельно
+    });
+  }
+
+  public toggleDialogPin(peerID: number) {
+    let dialog = this.getDialogByPeerID(peerID)[0];
+    if(!dialog) return Promise.reject();
+
+    let peer = {
+      _: 'inputDialogPeer',
+      peer: AppPeersManager.getInputPeerByID(peerID)
+    };
+
+    let flags = dialog.pFlags?.pinned ? 0 : 1;
+    return apiManager.invokeApi('messages.toggleDialogPin', {
+      flags,
+      peer
+    }).then(bool => {
+      this.handleUpdate({
+        _: 'updateDialogPinned',
+        peer: peer,
+        pFlags: {
+          pinned: flags
+        }
+      });
+    });
+  }
+
+  public markDialogUnread(peerID: number) {
+    let dialog = this.getDialogByPeerID(peerID)[0];
+    if(!dialog) return Promise.reject();
+
+    let peer = {
+      _: 'inputDialogPeer',
+      peer: AppPeersManager.getInputPeerByID(peerID)
+    };
+
+    let flags = dialog.pFlags?.unread_mark ? 0 : 1;
+    return apiManager.invokeApi('messages.markDialogUnread', {
+      flags,
+      peer
+    }).then(bool => {
+      this.handleUpdate({
+        _: 'updateDialogUnreadMark',
+        peer: peer,
+        pFlags: {
+          unread: flags
+        }
+      });
+    });
   }
 
   public migrateChecks(migrateFrom: number, migrateTo: number) {
@@ -1931,10 +2069,10 @@ export class AppMessagesManager {
     dialog.read_inbox_max_id = appMessagesIDsManager.getFullMessageID(dialog.read_inbox_max_id, channelID);
     dialog.read_outbox_max_id = appMessagesIDsManager.getFullMessageID(dialog.read_outbox_max_id, channelID);
 
-    this.generateIndexForDialog(dialog);
+    if(!dialog.hasOwnProperty('folder_id')) dialog.folder_id = 0;
     dialog.peerID = peerID;
-    if(!dialog.folder_id) dialog.folder_id = 0;
 
+    this.generateIndexForDialog(dialog);
     this.pushDialogToStorage(dialog, offsetDate);
 
     // Because we saved message without dialog present
@@ -2283,7 +2421,7 @@ export class AppMessagesManager {
     this.newDialogsHandlePromise = 0;
     
     let newMaxSeenID = 0;
-    Object.keys(this.newDialogsToHandle).forEach((peerID) => {
+    for(let peerID in this.newDialogsToHandle) {
       let dialog = this.newDialogsToHandle[peerID];
       if('reload' in dialog) {
         this.reloadConversation(+peerID);
@@ -2294,7 +2432,7 @@ export class AppMessagesManager {
           newMaxSeenID = Math.max(newMaxSeenID, dialog.top_message || 0);
         }
       }
-    });
+    }
 
     console.log('after order:', this.dialogsStorage.dialogs[0].map(d => d.peerID));
 
@@ -2304,6 +2442,12 @@ export class AppMessagesManager {
 
     $rootScope.$broadcast('dialogs_multiupdate', this.newDialogsToHandle);
     this.newDialogsToHandle = {};
+  }
+
+  public scheduleHandleNewDialogs() {
+    if(!this.newDialogsHandlePromise) {
+      this.newDialogsHandlePromise = window.setTimeout(this.handleNewDialogs.bind(this), 0);
+    }
   }
 
   public readHistory(peerID: number, maxID = 0, minID = 0): Promise<boolean> {
@@ -2486,9 +2630,7 @@ export class AppMessagesManager {
 
         if(!foundDialog.length) {
           this.newDialogsToHandle[peerID] = {reload: true}
-          if(!this.newDialogsHandlePromise) {
-            this.newDialogsHandlePromise = window.setTimeout(this.handleNewDialogs.bind(this), 0);
-          }
+          this.scheduleHandleNewDialogs();
           if(this.newUpdatesAfterReloadToHandle[peerID] === undefined) {
             this.newUpdatesAfterReloadToHandle[peerID] = [];
           }
@@ -2572,10 +2714,57 @@ export class AppMessagesManager {
         }
 
         this.newDialogsToHandle[peerID] = dialog;
-        if(!this.newDialogsHandlePromise) {
-          this.newDialogsHandlePromise = window.setTimeout(this.handleNewDialogs.bind(this), 0);
+        this.scheduleHandleNewDialogs();
+
+        break;
+      }
+
+      case 'updateDialogUnreadMark': {
+        console.log('updateDialogUnreadMark', update);
+        let peerID = AppPeersManager.getPeerID(update.peer.peer);
+        let foundDialog = this.getDialogByPeerID(peerID);
+
+        if(!foundDialog.length) {
+          this.newDialogsToHandle[peerID] = {reload: true};
+          this.scheduleHandleNewDialogs();
+        } else {
+          let dialog = foundDialog[0];
+
+          if(!update.pFlags.unread) {
+            delete dialog.pFlags.unread_mark;
+          } else {
+            dialog.pFlags.unread_mark = true;
+          }
+
+          $rootScope.$broadcast('dialogs_multiupdate', {peerID: dialog});
         }
 
+        break;
+      }
+
+      case 'updateFolderPeers': {
+        console.log('updateFolderPeers', update);
+        let peers = update.folder_peers;
+
+        this.scheduleHandleNewDialogs();
+        peers.forEach((folderPeer: any) => {
+          let {folder_id, peer} = folderPeer;
+
+          let peerID = AppPeersManager.getPeerID(peer);
+          let foundDialog = this.getDialogByPeerID(peerID);
+          if(!foundDialog.length) {
+            this.newDialogsToHandle[peerID] = {reload: true};
+          } else {
+            let dialog = foundDialog[0];
+            this.newDialogsToHandle[peerID] = dialog;
+
+            this.dialogsStorage.dialogs[dialog.folder_id].splice(foundDialog[1], 1);
+            dialog.folder_id = folder_id;
+
+            this.generateIndexForDialog(dialog);
+            this.pushDialogToStorage(dialog); // need for simultaneously updatePinnedDialogs
+          }
+        });
         break;
       }
 
@@ -2584,10 +2773,7 @@ export class AppMessagesManager {
         let peerID = AppPeersManager.getPeerID(update.peer.peer);
         let foundDialog = this.getDialogByPeerID(peerID);
 
-        if(!this.newDialogsHandlePromise) {
-          this.newDialogsHandlePromise = window.setTimeout(this.handleNewDialogs.bind(this), 0);
-        }
-
+        this.scheduleHandleNewDialogs();
         if(!foundDialog.length) {
           this.newDialogsToHandle[peerID] = {reload: true};
           break;
@@ -2597,6 +2783,7 @@ export class AppMessagesManager {
 
           if(!update.pFlags.pinned) {
             delete dialog.pFlags.pinned;
+            delete dialog.pinnedIndex;
           } else { // means set
             dialog.pFlags.pinned = true;
           }
@@ -2623,9 +2810,7 @@ export class AppMessagesManager {
               let peerID = dialog.peerID;
               if(dialog.pFlags.pinned && !newPinned[peerID]) {
                 this.newDialogsToHandle[peerID] = {reload: true};
-                if(!this.newDialogsHandlePromise) {
-                  this.newDialogsHandlePromise = window.setTimeout(this.handleNewDialogs.bind(this), 0);
-                }
+                this.scheduleHandleNewDialogs();
               }
             });
           });
@@ -2665,8 +2850,8 @@ export class AppMessagesManager {
           }
         });
 
-        if(willHandle && !this.newDialogsHandlePromise) {
-          this.newDialogsHandlePromise = window.setTimeout(this.handleNewDialogs.bind(this), 0);
+        if(willHandle) {
+          this.scheduleHandleNewDialogs();
         }
 
         break;
@@ -3119,7 +3304,7 @@ export class AppMessagesManager {
 
     if(!offsetNotFound && (
       historyStorage.count !== null && historyStorage.history.length == historyStorage.count ||
-      historyStorage.history.length >= offset + (limit || 1)
+      historyStorage.history.length >= offset + limit
       )) {
       if(backLimit) {
         backLimit = Math.min(offset, backLimit);
@@ -3134,7 +3319,7 @@ export class AppMessagesManager {
         history = historyStorage.pending.slice().concat(history);
       }
 
-      return this.wrapHistoryResult(peerID, {
+      return this.wrapHistoryResult({
         count: historyStorage.count,
         history: history,
         unreadOffset: unreadOffset,
@@ -3166,7 +3351,7 @@ export class AppMessagesManager {
           history = historyStorage.pending.slice().concat(history);
         }
 
-        return this.wrapHistoryResult(peerID, {
+        return this.wrapHistoryResult({
           count: historyStorage.count,
           history: history,
           unreadOffset: unreadOffset,
@@ -3190,7 +3375,7 @@ export class AppMessagesManager {
         history = historyStorage.pending.slice().concat(history);
       }
 
-      return this.wrapHistoryResult(peerID, {
+      return this.wrapHistoryResult({
         count: historyStorage.count,
         history: history,
         unreadOffset: unreadOffset,
@@ -3262,7 +3447,7 @@ export class AppMessagesManager {
     });
   }
 
-  public wrapHistoryResult(peerID: number, result: HistoryResult) {
+  public wrapHistoryResult(result: HistoryResult) {
     var unreadOffset = result.unreadOffset;
     if(unreadOffset) {
       var i;
@@ -3276,7 +3461,6 @@ export class AppMessagesManager {
       }
     }
     return result;
-    //return Promise.resolve(result);
   }
 
   public requestHistory(peerID: number, maxID: number, limit: number, offset = 0): Promise<any> {

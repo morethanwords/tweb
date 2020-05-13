@@ -68,7 +68,7 @@ export default class Scrollable {
   private lastBottomID = 0;
   private lastScrollDirection = 0; // true = bottom
 
-  private scrollLocked = 0;
+  public scrollLocked = 0;
 
   private setVisible(element: HTMLElement) {
     if(this.visible.has(element)) return;
@@ -367,8 +367,8 @@ export default class Scrollable {
     return !!element.parentElement;
   }
 
-  public scrollIntoView(element: HTMLElement) {
-    if(element.parentElement) {
+  public scrollIntoView(element: HTMLElement, smooth = true, fromUp = false) {
+    if(element.parentElement && !this.scrollLocked) {
       let scrollTop = this.scrollTop;
       let offsetTop = element.offsetTop;
       let clientHeight = this.container.clientHeight;
@@ -383,12 +383,30 @@ export default class Scrollable {
         offsetTop -= diff;
       //}
 
+      if(element.dataset.timeout) {
+        clearTimeout(+element.dataset.timeout);
+        element.classList.remove('is-selected');
+        void element.offsetWidth; // reflow
+      }
+      element.classList.add('is-selected');
+      element.dataset.timeout = '' + setTimeout(() => {
+        element.classList.remove('is-selected');
+        delete element.dataset.timeout;
+      }, 2000);
+
+      if(scrollTop == Math.floor(offsetTop)) {
+        return;
+      }
+
       if(this.scrollLocked) clearTimeout(this.scrollLocked);
       this.scrollLocked = setTimeout(() => {
         this.scrollLocked = 0;
         this.onScroll();
       }, 468);
-      this.container.scrollTo({behavior: 'smooth', top: offsetTop});
+      if(fromUp) {
+        this.container.scrollTo({behavior: 'auto', top: 0});
+      }
+      this.container.scrollTo({behavior: smooth ? 'smooth' : 'auto', top: offsetTop});
       //element.scrollIntoView({behavior: 'smooth', block: 'center'});
     }
   }

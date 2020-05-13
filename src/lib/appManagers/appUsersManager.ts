@@ -4,6 +4,7 @@ import appChatsManager from "./appChatsManager";
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
 import serverTimeManager from "../mtproto/serverTimeManager";
+import { formatPhoneNumber } from "../../components/misc";
 
 export type User = {
   _: 'user',
@@ -28,6 +29,7 @@ export type User = {
   pFlags: Partial<{verified: boolean, support: boolean, self: boolean, bot: boolean, min: number, deleted: boolean}>,
   rFirstName?: string,
   rFullName?: string,
+  rPhone?: string,
   sortName?: string,
   sortStatus?: number,
 };
@@ -97,6 +99,7 @@ export class AppUsersManager {
             }
   
             $rootScope.$broadcast('user_update', userID);
+            $rootScope.$broadcast('avatar_update', userID);
           } else console.warn('No user by id:', userID);
           break
   
@@ -204,10 +207,8 @@ export class AppUsersManager {
     }
 
     if(apiUser.phone) {
-      //apiUser.rPhone = $filter('phoneNumber')(apiUser.phone); // warning
+      apiUser.rPhone = '+' + formatPhoneNumber(apiUser.phone).formatted;
     }
-
-    apiUser.num = (Math.abs(userID) % 8) + 1;
 
     if(apiUser.first_name) {
       apiUser.rFirstName = RichTextProcessor.wrapRichText(apiUser.first_name, {noLinks: true, noLinebreaks: true})
@@ -222,8 +223,7 @@ export class AppUsersManager {
       this.usernames[searchUsername] = userID;
     }
 
-    //apiUser.sortName = apiUser.pFlags.deleted ? '' : SearchIndexManager.cleanSearchText(apiUser.first_name + ' ' + (apiUser.last_name || ''));
-    apiUser.sortName = apiUser.pFlags.deleted ? '' : apiUser.first_name + ' ' + (apiUser.last_name || '');
+    apiUser.sortName = apiUser.pFlags.deleted ? '' : SearchIndexManager.cleanSearchText(apiUser.first_name + ' ' + (apiUser.last_name || ''), false);
 
     var nameWords = apiUser.sortName.split(' ');
     var firstWord = nameWords.shift();
@@ -290,7 +290,7 @@ export class AppUsersManager {
       return id;
     }
 
-    return this.users[id] || {id: id, pFlags: {deleted: true}, num: 1, access_hash: this.userAccess[id]} as User;
+    return this.users[id] || {id: id, pFlags: {deleted: true}, access_hash: this.userAccess[id]} as User;
   }
 
   public getSelf() {

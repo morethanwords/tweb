@@ -38,6 +38,7 @@ $large-screen: 1680px;
 @import "partials/popups/popup";
 @import "partials/popups/editAvatar";
 @import "partials/popups/mediaAttacher";
+@import "partials/popups/peer";
 
 html, body {
   height: 100%;
@@ -259,6 +260,12 @@ input {
   }
 }
 
+#bubble-contextmenu, #dialogs-contextmenu {
+	position: fixed;
+	right: auto;
+	bottom: auto;
+}
+
 @keyframes fadeIn {
   0% {
     opacity: 0;
@@ -269,7 +276,14 @@ input {
   }
 }
 
-.user-avatar {
+hr {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid #DADCE0;
+  margin: 0 0 8px;
+}
+
+avatar-element {
   color: #fff;
   width: 54px;
   height: 54px;
@@ -689,6 +703,15 @@ input {
     z-index: 2;
     color: #fff;
   }
+
+  .avatar-placeholder {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    filter: brightness(0.7);
+  }
 }
 
 .page-signUp {
@@ -775,12 +798,23 @@ input {
     
     &.error {
       border-color: $color-error;
-      transition: .2s border-width;
-      
+
       & + label {
         color: $color-error!important;
       }
     }
+
+    &.valid {
+      border-color: #26962F;
+      
+      & + label {
+        color: #26962F !important;
+      }
+    }
+
+    /* &.error, &.valid {
+      transition: .2s border-width;
+    } */
     
     &:focus ~ .arrow-down {
       margin-top: -4px;
@@ -894,7 +928,7 @@ input {
   }
 }
 
-.input-wrapper > * ~ * {
+.input-wrapper > * + * {
   margin-top: 1.5rem;
 }
 

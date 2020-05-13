@@ -1,5 +1,5 @@
 $chat-max-width: 696px;
-$time-background: rgba(0, 0, 0, 0.35);
+$time-background: rgba(0, 0, 0, .35);
 
 #bubble-contextmenu > div {
 	padding: 0 84px 0 16px;
@@ -13,7 +13,7 @@ $time-background: rgba(0, 0, 0, 0.35);
 	-webkit-user-select: none;
 	display: flex;
 	align-items: center;
-	box-shadow: 0 1px 2px 0 rgba(16, 35, 47, 0.07);
+	box-shadow: 0 1px 2px 0 rgba(16, 35, 47, .07);
 	padding: .5rem 15px;
 	flex: 0 0 auto; /* Forces side columns to stay same width */
 	min-height: 61px;
@@ -51,13 +51,7 @@ $time-background: rgba(0, 0, 0, 0.35);
 		&:hover {
 			background-color: transparent;
 		}
-		
-		.user-avatar {
-			width: 44px;
-			height: 44px;
-			line-height: 44px;
-		}
-		
+
 		.bottom {
 			font-size: 14px;
 			line-height: 18px;
@@ -67,6 +61,12 @@ $time-background: rgba(0, 0, 0, 0.35);
 				color: $color-blue;
 			}
 		}
+	}
+
+	#im-avatar {
+		width: 44px;
+		height: 44px;
+		line-height: 44px;
 	}
 }
 
@@ -522,10 +522,12 @@ $time-background: rgba(0, 0, 0, 0.35);
 	}
 
 	&.is-channel:not(.is-chat) {
-		padding-bottom: 55px;
-
 		.bubble__container {
 			max-width: 100%;
+		}
+
+		&:not(.has-rights) {
+			padding-bottom: 55px;
 		}
 	}
 
@@ -565,12 +567,6 @@ $time-background: rgba(0, 0, 0, 0.35);
 	}
 }
 
-#bubble-contextmenu {
-	position: fixed;
-	right: auto;
-	bottom: auto;
-}
-
 .popup {
 	&.popup-delete-message {
 		.popup-header {
@@ -588,7 +584,7 @@ $time-background: rgba(0, 0, 0, 0.35);
 			background: none;
 			outline: none;
 			border: none;
-			padding: .5rem .5rem;
+			padding: .5rem;
 			text-transform: uppercase;
 			transition: .2s;
 			border-radius: $border-radius;

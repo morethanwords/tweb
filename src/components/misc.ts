@@ -329,33 +329,59 @@ let onMouseMove = (e: MouseEvent) => {
   let diffY = clientY >= rect.bottom ? clientY - rect.bottom : rect.top - clientY;
   
   if(diffX >= 100 || diffY >= 100) {
-    openedMenu.classList.remove('active');
-    openedMenu.parentElement.classList.remove('menu-open');
+    closeBtnMenu();
     //openedMenu.parentElement.click();
   }
   //console.log('mousemove', diffX, diffY);
 };
 
-let openedMenu: HTMLDivElement = null;
-export function openBtnMenu(menuElement: HTMLDivElement) {
+let onClick = (e: MouseEvent) => {
+  e.preventDefault();
+  closeBtnMenu();
+};
+
+let closeBtnMenu = () => {
   if(openedMenu) {
     openedMenu.classList.remove('active');
     openedMenu.parentElement.classList.remove('menu-open');
+    openedMenu = null;
   }
+  
+  if(openedMenuOnClose) {
+    openedMenuOnClose();
+    openedMenuOnClose = null;
+  }
+
+  window.removeEventListener('mousemove', onMouseMove);
+  window.removeEventListener('click', onClick);
+  window.removeEventListener('contextmenu', onClick);
+};
+
+let openedMenu: HTMLDivElement = null, openedMenuOnClose: () => void = null;
+export function openBtnMenu(menuElement: HTMLDivElement, onClose?: () => void) {
+  closeBtnMenu();
   
   openedMenu = menuElement;
   openedMenu.classList.add('active');
   openedMenu.parentElement.classList.add('menu-open');
   
-  window.addEventListener('click', () => {
-    if(openedMenu) {
-      openedMenu.parentElement.classList.remove('menu-open');
-      openedMenu.classList.remove('active');
-      openedMenu = null;
-    }
-    
-    window.removeEventListener('mousemove', onMouseMove);
-  }, {once: true});
+  openedMenuOnClose = onClose;
   
   window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('click', onClick, {once: true});
+  window.addEventListener('contextmenu', onClick, {once: true});
+}
+
+export function positionMenu(e: MouseEvent, elem: HTMLElement, side: 'left' | 'right' = 'left') {
+  elem.classList.remove('bottom-left', 'bottom-right');
+  elem.classList.add(side == 'left' ? 'bottom-right' : 'bottom-left');
+  
+  let {clientX, clientY} = e;
+  
+  elem.style.left = (side == 'right' ? clientX - elem.scrollWidth : clientX) + 'px';
+  if((clientY + elem.scrollHeight) > window.innerHeight) {
+    elem.style.top = (window.innerHeight - elem.scrollHeight) + 'px';
+  } else {
+    elem.style.top = clientY + 'px';
+  }
 }

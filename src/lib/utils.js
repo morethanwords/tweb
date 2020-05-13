@@ -6,30 +6,31 @@
  */
 var _logTimer = Date.now();
 export function dT () {
-  return '[' + ((Date.now() - _logTimer) / 1000).toFixed(3) + ']'
+  return '[' + ((Date.now() - _logTimer) / 1000).toFixed(3) + ']';
 }
 
-export function checkClick (e, noprevent) {
-  if (e.which == 1 && (e.ctrlKey || e.metaKey) || e.which == 2) {
-    return true
+export function checkClick(e, noprevent) {
+  if(e.which == 1 && (e.ctrlKey || e.metaKey) || e.which == 2) {
+    return true;
   }
 
-  if (!noprevent) {
-    e.preventDefault()
+  if(!noprevent) {
+    e.preventDefault();
   }
 
-  return false
+  return false;
 }
 
-export function isInDOM (element, parentNode) {
-  if (!element) {
-    return false
+export function isInDOM(element, parentNode) {
+  if(!element) {
+    return false;
   }
-  parentNode = parentNode || document.body
-  if (element == parentNode) {
-    return true
+
+  parentNode = parentNode || document.body;
+  if(element == parentNode) {
+    return true;
   }
-  return isInDOM(element.parentNode, parentNode)
+  return isInDOM(element.parentNode, parentNode);
 }
 
 export function checkDragEvent(e) {
@@ -48,17 +49,17 @@ export function checkDragEvent(e) {
 }
 
 export function cancelEvent (event) {
-  event = event || window.event
-  if (event) {
-    event = event.originalEvent || event
+  event = event || window.event;
+  if(event) {
+    event = event.originalEvent || event;
 
-    if (event.stopPropagation) event.stopPropagation()
-    if (event.preventDefault) event.preventDefault()
-    event.returnValue = false
-    event.cancelBubble = true
+    if (event.stopPropagation) event.stopPropagation();
+    if (event.preventDefault) event.preventDefault();
+    event.returnValue = false;
+    event.cancelBubble = true;
   }
 
-  return false
+  return false;
 }
 
 export function setFieldSelection (field, from, to) {
@@ -370,7 +371,8 @@ export const langPack = {
 	"messageActionChatLeave": "left the group",
 	"messageActionChatDeleteUser": "removed user",
 	"messageActionChatJoinedByLink": "joined the group",
-	"messageActionPinMessage": "pinned message",
+  "messageActionPinMessage": "pinned message",
+  "messageActionContactSignUp": "joined Telegram",
 	"messageActionChannelCreate": "Channel created",
 	"messageActionChannelEditTitle": "Channel renamed",
 	"messageActionChannelEditPhoto": "Channel photo updated",
@@ -475,23 +477,6 @@ export function isScrolledIntoView(el) {
   return isVisible;
 }
 
-/* export function isScrolledIntoView(el) {
-  var rect = el.getBoundingClientRect(), top = rect.top, height = rect.height, 
-    el = el.parentNode
-  // Check if bottom of the element is off the page
-  if (rect.bottom < 0) return false
-  // Check its within the document viewport
-  if (top > document.documentElement.clientHeight) return false
-  do {
-    rect = el.getBoundingClientRect()
-    if (top <= rect.bottom === false) return false
-    // Check if the element is out of view due to a container scrolling
-    if ((top + height) <= rect.top) return false
-    el = el.parentNode
-  } while (el != document.body)
-  return true
-}; */
-
 export function whichChild(elem/* : Node */) {
   let i = 0;
   // @ts-ignore
@@ -528,30 +513,6 @@ export function copy(obj) {
   }
   return clonedObj;
 }
-
-/* export function ripple(elem) {
-  elem.addEventListener('mousedown', function(e) {
-    let rect = this.getBoundingClientRect();
-
-    const startTime = Date.now();
-    const animationTime = 350;
-
-    let X = e.clientX - rect.left;
-    let Y = e.clientY - rect.top;
-    let rippleDiv = document.createElement("div");
-    rippleDiv.classList.add("ripple");
-    rippleDiv.setAttribute("style", "top:" + Y + "px; left:" + X + "px;");
-    this.appendChild(rippleDiv);
-
-    elem.addEventListener('mouseup', () => {
-      let elapsed = Date.now() - startTime;
-
-      setTimeout(() => {
-        rippleDiv.parentElement.removeChild(rippleDiv);
-      }, elapsed < animationTime ? animationTime - elapsed : 0);
-    }, {once: true});
-  });
-}; */
 
 export function formatBytes(bytes, decimals = 2) {
   if (bytes === 0) return '0 Bytes';
@@ -803,94 +764,97 @@ function versionCompare (ver1, ver2) {
     }
   }
 
-  function cleanSearchText (text) {
-    var hasTag = text.charAt(0) == '%'
-    text = text.replace(badCharsRe, ' ').replace(trimRe, '')
-    text = text.replace(/[^A-Za-z0-9]/g, function (ch) {
-      var latinizeCh = Config.LatinizeMap[ch]
-      return latinizeCh !== undefined ? latinizeCh : ch
-    })
-    text = text.toLowerCase()
-    if (hasTag) {
-      text = '%' + text
+  function cleanSearchText(text, latinize = true) {
+    var hasTag = text.charAt(0) == '%';
+    text = text.replace(badCharsRe, ' ').replace(trimRe, '');
+    if(latinize) {
+      text = text.replace(/[^A-Za-z0-9]/g, (ch) => {
+        var latinizeCh = Config.LatinizeMap[ch];
+        return latinizeCh !== undefined ? latinizeCh : ch;
+      });
+    }
+    
+    text = text.toLowerCase();
+    if(hasTag) {
+      text = '%' + text;
     }
 
-    return text
+    return text;
   }
 
-  function cleanUsername (username) {
-    return username && username.toLowerCase() || ''
+  function cleanUsername(username) {
+    return username && username.toLowerCase() || '';
   }
 
-  function indexObject (id, searchText, searchIndex) {
-    if (searchIndex.fullTexts[id] !== undefined) {
-      return false
+  function indexObject(id, searchText, searchIndex) {
+    if(searchIndex.fullTexts[id] !== undefined) {
+      return false;
     }
 
-    searchText = cleanSearchText(searchText)
+    searchText = cleanSearchText(searchText);
 
-    if (!searchText.length) {
-      return false
+    if(!searchText.length) {
+      return false;
     }
 
-    var shortIndexes = searchIndex.shortIndexes
+    var shortIndexes = searchIndex.shortIndexes;
 
-    searchIndex.fullTexts[id] = searchText
+    searchIndex.fullTexts[id] = searchText;
 
-    searchText.split(' ').forEach(function(searchWord) {
+    searchText.split(' ').forEach((searchWord) => {
       var len = Math.min(searchWord.length, 3),
-        wordPart, i
-      for (i = 1; i <= len; i++) {
-        wordPart = searchWord.substr(0, i)
-        if (shortIndexes[wordPart] === undefined) {
-          shortIndexes[wordPart] = [id]
+        wordPart, i;
+      for(i = 1; i <= len; i++) {
+        wordPart = searchWord.substr(0, i);
+        if(shortIndexes[wordPart] === undefined) {
+          shortIndexes[wordPart] = [id];
         } else {
-          shortIndexes[wordPart].push(id)
+          shortIndexes[wordPart].push(id);
         }
       }
-    })
+    });
   }
 
-  function search (query, searchIndex) {
-    var shortIndexes = searchIndex.shortIndexes
-    var fullTexts = searchIndex.fullTexts
+  function search(query, searchIndex) {
+    var shortIndexes = searchIndex.shortIndexes;
+    var fullTexts = searchIndex.fullTexts;
 
-    query = cleanSearchText(query)
+    query = cleanSearchText(query);
 
-    var queryWords = query.split(' ')
+    var queryWords = query.split(' ');
     var foundObjs = false,
-      newFoundObjs, i
-    var j, searchText
-    var found
+      newFoundObjs, i;
+    var j, searchText;
+    var found;
 
-    for (i = 0; i < queryWords.length; i++) {
-      newFoundObjs = shortIndexes[queryWords[i].substr(0, 3)]
-      if (!newFoundObjs) {
-        foundObjs = []
-        break
+    for(i = 0; i < queryWords.length; i++) {
+      newFoundObjs = shortIndexes[queryWords[i].substr(0, 3)];
+      if(!newFoundObjs) {
+        foundObjs = [];
+        break;
       }
-      if (foundObjs === false || foundObjs.length > newFoundObjs.length) {
-        foundObjs = newFoundObjs
+      if(foundObjs === false || foundObjs.length > newFoundObjs.length) {
+        foundObjs = newFoundObjs;
       }
     }
 
-    newFoundObjs = {}
+    newFoundObjs = {};
 
-    for (j = 0; j < foundObjs.length; j++) {
-      found = true
-      searchText = fullTexts[foundObjs[j]]
-      for (i = 0; i < queryWords.length; i++) {
-        if (searchText.indexOf(queryWords[i]) == -1) {
-          found = false
-          break
+    for(j = 0; j < foundObjs.length; j++) {
+      found = true;
+      searchText = fullTexts[foundObjs[j]];
+      for(i = 0; i < queryWords.length; i++) {
+        if(searchText.indexOf(queryWords[i]) == -1) {
+          found = false;
+          break;
         }
       }
-      if (found) {
-        newFoundObjs[foundObjs[j]] = true
+      if(found) {
+        newFoundObjs[foundObjs[j]] = true;
       }
     }
 
-    return newFoundObjs
+    return newFoundObjs;
   }
 
   let SearchIndexManager = {

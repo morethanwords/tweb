@@ -200,7 +200,7 @@
     <div class="overlays">
       <div class="media-viewer">
         <div class="media-viewer-author">
-          <div class="media-viewer-userpic user-avatar"></div>
+          <avatar-element class="media-viewer-userpic"></avatar-element>
           <div class="media-viewer-name"></div>
           <div class="media-viewer-date"></div>
         </div>
@@ -263,7 +263,6 @@
                   <div class="btn-menu-item menu-saved tgico-savedmessages rp">Saved</div>
                   <div class="btn-menu-item menu-settings tgico-settings rp">Settings</div>
                   <div class="btn-menu-item menu-help tgico-help rp">Help</div>
-                  <div class="btn-menu-item menu-logout tgico-logout rp">Log Out</div>
                 </div>
               </div>
               <div class="btn-icon tgico-back rp sidebar-back-button"></div>
@@ -364,6 +363,72 @@
             <button class="btn-primary btn-circle btn-icon rp btn-corner tgico-next"></button>
           </div>
         </div>
+        <div class="sidebar-slider-item settings-container">
+          <div class="sidebar-header">
+            <button class="btn-icon rp tgico-back sidebar-close-button"></button>
+            <div class="sidebar-header__title">Settings</div>
+            <div class="btn-icon tgico-more rp btn-menu-toggle">
+              <div class="btn-menu bottom-left">
+                <div class="btn-menu-item menu-logout tgico-logout rp">Log Out</div>
+              </div>
+            </div>
+          </div>
+          <div class="sidebar-content">
+            <div class="profile-content-wrapper">
+              <avatar-element class="profile-avatar"></avatar-element>
+              <div class="profile-name"></div>
+              <div class="profile-subtitle"></div>
+              <div class="profile-buttons">
+                <div class="profile-button menu-edit tgico-edit rp"><p>Edit Profile</p></div>
+                <div class="profile-button menu-general tgico-settings rp"><p>General Settings</p></div>
+                <div class="profile-button menu-notifications tgico-unmute rp"><p>Notifications</p></div>
+                <div class="profile-button menu-privacy tgico-lock rp"><p>Privacy and Security</p></div>
+                <div class="profile-button menu-language tgico-language rp"><p>Language</p></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sidebar-slider-item edit-profile-container">
+          <div class="sidebar-header">
+            <button class="btn-icon rp tgico-back sidebar-close-button"></button>
+            <div class="sidebar-header__title">Edit Profile</div>
+          </div>
+          <div class="sidebar-content">
+            <div class="scroll-wrapper">
+              <div class="avatar-edit">
+                <canvas class="avatar-edit-canvas"></canvas>
+                <span class="tgico tgico-cameraadd"></span>
+              </div>
+              <div class="input-wrapper">
+                <div class="input-field">
+                  <input type="text" name="name" class="firstname" autocomplete="xxDDqqOXJXC" required="">
+                  <label for="name">Name</label>
+                </div>
+                <div class="input-field">
+                  <input type="text" name="lastname" class="lastname" autocomplete="aintsofunnowzXCFF" required="">
+                  <label for="lastname">Last Name</label>
+                </div>
+                <div class="input-field">
+                  <input type="text" name="bio" class="bio" autocomplete="aintsofunnowhHQ" required="">
+                  <label for="bio">Bio (optional)</label>
+                </div>
+              </div>
+              <div class="caption">Any details such as age, occupation or city. Example:<br>23 y.o. designer from San Francisco.</div>
+              <hr/>
+              <div class="sidebar-left-h2">Username</div>
+              <div class="input-wrapper">
+                <div class="input-field">
+                  <input type="text" name="username" class="username" autocomplete="xxDDqqOXffEER" required="">
+                  <label for="username">Username (optional)</label>
+                </div>
+              </div>
+              <div class="caption">You can choose a username on Telegram. If you do, other people will be able to find you by this username and contact you without knowing your phone number.<br><br>You can use a-z, 0-9 and underscores. Minimum length is 5 characters.<br><br>This link opens a chat with you:
+                <br><a href="#">https://t.me/doge</a>
+              </div>
+            </div>
+            <button class="btn-primary btn-circle btn-icon rp btn-corner tgico-check"></button>
+          </div>
+        </div>
       </div>
     </div>
     <div class="chat-container">
@@ -371,7 +436,7 @@
       <div id="topbar" style="display: none;">
         <div class="chat-info">
           <div class="person">
-            <div class="user-avatar" id="im-avatar"></div>
+            <avatar-element id="im-avatar" dialog="1"></avatar-element>
             <div class="content">
               <div class="top">
                 <div class="user-title" id="im-title"></div>
@@ -420,6 +485,13 @@
         <div class="btn-menu-item menu-pin tgico-pin rp">Pin</div>
         <div class="btn-menu-item menu-forward tgico-forward rp">Forward</div>
         <div class="btn-menu-item menu-delete tgico-delete danger rp">Delete</div>
+      </div>
+      <div class="btn-menu" id="dialogs-contextmenu">
+        <div class="btn-menu-item menu-archive tgico-unarchive rp"></div>
+        <div class="btn-menu-item menu-pin tgico-unpin rp"></div>
+        <div class="btn-menu-item menu-mute tgico-unmute rp"></div>
+        <div class="btn-menu-item menu-unread tgico-unread rp"></div>
+        <div class="btn-menu-item menu-delete tgico-delete danger rp"></div>
       </div>
       <div id="chat-input" style="display: none;">
       <!-- <div id="chat-input"> -->
@@ -516,7 +588,7 @@
           </div>
           <div class="profile-content">
             <div class="profile-content-wrapper">
-              <div class="profile-avatar user-avatar"></div>
+              <avatar-element class="profile-avatar" dialog="1"></avatar-element>
               <div class="profile-name"></div>
               <div class="profile-subtitle"></div>
       
