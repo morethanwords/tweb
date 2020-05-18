@@ -5,7 +5,6 @@ import appDialogsManager from "../lib/appManagers/appDialogsManager";
 import appChatsManager from "../lib/appManagers/appChatsManager";
 import appUsersManager from "../lib/appManagers/appUsersManager";
 import { appPeersManager } from "../lib/services";
-import appProfileManager from "../lib/appManagers/appProfileManager";
 import appPhotosManager from "../lib/appManagers/appPhotosManager";
 
 export class AppSelectPeers {
@@ -116,15 +115,17 @@ export class AppSelectPeers {
     appMessagesManager.getConversations(this.offsetIndex, 50, 0).then(value => {
       let dialogs = value.dialogs;
       
-      this.offsetIndex = dialogs[value.dialogs.length - 1].index || 0;
+      let newOffsetIndex = dialogs[value.dialogs.length - 1].index || 0;
 
-      if(dialogs[0].peerID != this.myID) {
-        dialogs.findAndSplice(d => d.peerID == this.myID);
+      dialogs = dialogs.filter(d => d.peerID != this.myID);
+      if(!this.offsetIndex) {
         dialogs.unshift({
           peerID: this.myID,
           pFlags: {}
         } as any);
       }
+
+      this.offsetIndex = newOffsetIndex;
 
       this.renderResults(dialogs.map(dialog => dialog.peerID));
     });

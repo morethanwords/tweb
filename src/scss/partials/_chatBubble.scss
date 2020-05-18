@@ -14,36 +14,52 @@
 
 .bubble {
   padding-top: 5px;
-  /* display: grid;
-  grid-template-columns: 1fr $chat-max-width 1fr;
-  grid-row-gap: 0px; */
   max-width: $chat-max-width;
   margin: 0 auto;
   position: relative;
 
   &.is-selected {
-    &:before {
+    &:after {
       position: absolute;
-      width: 200%;
-      height: 100%;
-      background-color: rgba(0, 132, 255, .3);
-      content: " ";
-      display: block;
       left: -50%;
       top: 0;
+      height: 100%;
+      content: " ";
+      background-color: rgba(0, 132, 255, .3);
       animation: bubbleSelected 2s linear;
+      z-index: 1;
     }
 
-    &:not(.is-group-last):before {
+    &:not(.is-group-last):after {
       height: calc(100% + 5px);
     }
+  }
+
+  &.is-first-unread {
+    &:before {
+      content: "Unread messages"; 
+      height: 30px; 
+      margin-bottom: 5px; 
+      margin-left: -50%; 
+      text-align: center; 
+      color: #538BCC; 
+      line-height: 2.1; 
+      font-weight: 500; 
+      font-size: 15px; 
+      background-color: rgba(255, 255, 255, 0.95); 
+    }
+  }
+
+  &.is-selected:after, &.is-first-unread:before {
+    width: 200%;
+    display: block;
   }
 
   &.is-date {
     position: -webkit-sticky;
     position: sticky;
     top: 5px;
-    z-index: 2;
+    z-index: 3;
     pointer-events: none;
 
     &.is-sticky {
@@ -53,11 +69,6 @@
     }
   }
   
-  /* &:before, &:after {
-    content: " ";
-    width: 100%;
-  } */
-
   &__container {
     //min-width: 60px;
     min-width: 56px;
@@ -70,6 +81,7 @@
     /* font-size: 0; */
     width: max-content;
     height: fit-content;
+    z-index: 2;
 
     > .user-avatar {
       position: absolute;
@@ -559,6 +571,14 @@
 
     .emoji {
       font-size: 1.2rem;
+    }
+
+    pre, code {
+      white-space: pre-wrap;       /* css-3 */
+      white-space: -moz-pre-wrap;  /* Mozilla, since 1999 */
+      white-space: -pre-wrap;      /* Opera 4-6 */
+      white-space: -o-pre-wrap;    /* Opera 7 */
+      word-wrap: break-word;       /* Internet Explorer 5.5+ */
     }
   }
 
@@ -1204,7 +1224,62 @@
   }
 }
 
+.reply-markup {
+  position: absolute;
+  width: 100%;
 
+  &-row {
+    margin-top: 5px;
+    overflow: hidden;
+    height: 40px;
+    display: flex;
+
+    &:last-child {
+      border-bottom-left-radius: $border-radius-big;
+      border-bottom-right-radius: $border-radius-big;
+    }
+  }
+
+  &-button {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 6px;
+    background-color: rgba(0, 0, 0, 0.23);
+    z-index: 2;
+    font-size: 14px;
+    user-select: none;
+    text-align: center;
+    color: white !important;
+    outline: none;
+    border: none;
+    width: 100%;
+    cursor: pointer;
+    position: relative;
+    transition: background-color 0.35s ease;
+
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.06);
+    }
+
+    & + & {
+      margin-left: 5px;
+    }
+
+    &.is-link:before {
+      content: $tgico-next;
+      position: absolute;
+      right: 2px;
+      top: 2px;
+      display: block;
+      transform: rotate(-45deg);
+    }
+
+    /* img.emoji {
+      vertical-align: middle !important;
+    } */
+  }
+}
 
 poll-element  {
   margin-top: -1px;

@@ -14,9 +14,11 @@
   flex-direction: column;
 
   &-search-container {
-    flex: 1 1 auto;
+    flex: 0 0 auto;
+    //flex: 1 1 auto;
     position: relative;
     max-height: 132px;
+    overflow: hidden;
 
     .scrollable {
       position: relative;

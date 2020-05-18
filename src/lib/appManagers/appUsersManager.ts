@@ -228,7 +228,7 @@ export class AppUsersManager {
     var nameWords = apiUser.sortName.split(' ');
     var firstWord = nameWords.shift();
     var lastWord = nameWords.pop();
-    apiUser.initials = firstWord.charAt(0) + (lastWord ? lastWord.charAt(0) : firstWord.charAt(1));
+    apiUser.initials = firstWord.charAt(0) + (lastWord ? lastWord.charAt(0) : '');
 
     if(apiUser.status) {
       if(apiUser.status.expires) {

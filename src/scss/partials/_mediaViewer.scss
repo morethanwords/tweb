@@ -1,3 +1,7 @@
+$open-duration: .2s;
+//$open-duration: 10s;
+$move-duration: .35s;
+
 .media-viewer {
   position: fixed;
   top: 0;
@@ -20,7 +24,7 @@
     flex-direction: column;
     justify-content: center;
     color: #8b8b8b;
-    transition: .2s;
+    transition: $open-duration;
 
     &:hover {
       color: #fff;
@@ -53,7 +57,7 @@
 
     .btn-icon {
       margin: 0 .25rem;
-      transition: .2s;
+      transition: $open-duration;
 
       &:hover {
         color: #fff;
@@ -91,14 +95,6 @@
       align-items: center;
       justify-content: center;
       visibility: hidden;
-
-      &.loading {
-        img, video {
-          object-fit: cover;
-          width: 100%;
-          height: 100%;
-        }
-      }
     }
 
     img, video {
@@ -108,22 +104,11 @@
       max-width: 1280px; */
     }
 
-    img {
-      object-fit: contain;
-    }
-
-    video {
-      width: 100%;
-      height: 100%;
-      /* object-fit: cover; */
-      object-fit: contain;
-    }
-    
     .media-viewer-caption {
       flex: 1;
       text-align: center;
       color: $color-gray;
-      transition: .2s;
+      transition: $open-duration;
       max-width: 50vw;
       word-break: break-word;
       overflow: hidden;
@@ -165,7 +150,7 @@
     top: 50%;
     transform: translateY(-50%) rotate(90deg);
     opacity: 0;
-    transition: .2s opacity;
+    transition: $open-duration opacity;
     z-index: 5;
     /* box-shadow: 0 1px 2px 0 rgba(16, 35, 47, 0.07); */
   }
@@ -189,40 +174,40 @@
     transform-origin: top left;
     overflow: hidden;
     //border-radius: 0;
-    background-repeat: no-repeat;
-    background-size: cover;
-    background-position: center center;
 
     .ckin__player {
       width: 100%;
       height: 100%;
+      position: absolute;
+      left: 0;
+      top: 0;
     }
 
     img, video {
       width: 100%;
       height: 100%;
-      opacity: 1;
-      transition: .2s opacity;
       user-select: none;
-    }
-
-    &.cover {
-      align-items: center;
-
-      img, video {
-        width: auto;
-        height: auto;
-        overflow: hidden;
-        opacity: 0;
-      }
+      object-fit: cover;
     }
 
     &.active {
-      transition: .2s transform;
+      transition: $open-duration transform;
     }
 
     &.moving {
-      transition: 350ms transform ease;
+      transition: $move-duration transform ease;
     }
+  }
+
+  // возможно тут это вообще не нужно
+  &-aspecter {
+    width: 100%;
+    height: 100%;
+    transform: scale(1);
+    overflow: hidden;
+  }
+
+  &-mover.active &-aspecter {
+    transition: $open-duration all;
   }
 }

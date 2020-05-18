@@ -754,7 +754,8 @@ function versionCompare (ver1, ver2) {
 }
 
 
-  var badCharsRe = /[`~!@#$%^&*()\-_=+\[\]\\|{}'";:\/?.>,<\s]+/g,
+  //var badCharsRe = /[`~!@#$%^&*()\-_=+\[\]\\|{}'";:\/?.>,<\s]+/g,
+  var badCharsRe = /[`~!@#$%^&*()\-_=+\[\]\\|{}'";:\/?.>,<]+/g,
     trimRe = /^\s+|\s$/g
 
   function createIndex () {
@@ -766,7 +767,7 @@ function versionCompare (ver1, ver2) {
 
   function cleanSearchText(text, latinize = true) {
     var hasTag = text.charAt(0) == '%';
-    text = text.replace(badCharsRe, ' ').replace(trimRe, '');
+    text = text.replace(badCharsRe, '').replace(trimRe, '');
     if(latinize) {
       text = text.replace(/[^A-Za-z0-9]/g, (ch) => {
         var latinizeCh = Config.LatinizeMap[ch];

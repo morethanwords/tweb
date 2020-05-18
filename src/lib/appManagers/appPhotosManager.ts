@@ -184,34 +184,47 @@ export class AppPhotosManager {
       arr[164] = bytes[1];
       arr[166] = bytes[2];
     } else {
-      arr = bytes;
+      arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
     }
     
     //console.log('setAttachmentPreview', bytes, arr, div, isSticker);
     
     let blob = new Blob([arr], {type: "image/jpeg"});
+
+    /* let reader = new FileReader();
+    reader.onloadend = () => {
+      let src = reader.result;
+    };
+    reader.readAsDataURL(blob); */
     
     if(background) {
       let url = URL.createObjectURL(blob);
       let img = new Image();
       img.src = url;
-      img.onload = () => {
+      img.addEventListener('load', () => {
         element.style.backgroundImage = 'url(' + url + ')';
-      };
+      });
 
+      return element;
       //element.style.backgroundImage = 'url(' + url + ')';
     } else {
       if(element instanceof SVGSVGElement) {
         let image = element.firstElementChild as SVGImageElement || document.createElementNS("http://www.w3.org/2000/svg", "image");
         image.setAttributeNS(null, 'href', URL.createObjectURL(blob));
         element.append(image);
+
+        return image;
+      } else if(element instanceof HTMLImageElement) {
+        element.src = URL.createObjectURL(blob);
+        return element;
       } else {
-        let image = new Image();
-        image.src = URL.createObjectURL(blob);
+        let img = new Image();
+        img.style.width = '100%';
+        img.style.height = '100%';
         
-        image.style.width = '100%';
-        image.style.height = '100%';
-        element.append(image);
+        img.src = URL.createObjectURL(blob);
+        element.append(img);
+        return img;
       }
     }
   }

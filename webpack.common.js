@@ -115,6 +115,7 @@ module.exports = {
       filename: `index.html`,
       template: 'public/index_template.html',
       inject: true,
+      //inject: 'head',
       /* minify: {
         removeComments: true,
         collapseWhitespace: true,

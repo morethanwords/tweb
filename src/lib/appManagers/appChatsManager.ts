@@ -72,7 +72,7 @@ export class AppChatsManager {
     let titleWords = SearchIndexManager.cleanSearchText(apiChat.title || '', false).split(' ');
     let firstWord = titleWords.shift();
     let lastWord = titleWords.pop();
-    apiChat.initials = firstWord.charAt(0) + (lastWord ? lastWord.charAt(0) : firstWord.charAt(1));
+    apiChat.initials = firstWord.charAt(0) + (lastWord ? lastWord.charAt(0) : '');
 
     if(apiChat.pFlags === undefined) {
       apiChat.pFlags = {};

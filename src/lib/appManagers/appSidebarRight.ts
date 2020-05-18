@@ -1,4 +1,4 @@
-import { horizontalMenu, formatPhoneNumber, putPreloader, renderImageFromUrl } from "../../components/misc";
+import { horizontalMenu, putPreloader, renderImageFromUrl } from "../../components/misc";
 //import Scrollable from '../../components/scrollable';
 import Scrollable from '../../components/scrollable_new';
 import { $rootScope } from "../utils";
@@ -17,6 +17,22 @@ import AppSearch, { SearchGroup } from "../../components/appSearch";
 import AvatarElement from "../../components/avatar";
 
 const testScroll = false;
+
+let setText = (text: string, el: HTMLDivElement) => {
+  window.requestAnimationFrame(() => {
+    if(el.childElementCount > 1) {
+      el.firstElementChild.remove();
+    }
+    
+    let p = document.createElement('p');
+    p.innerHTML = text;
+    el.prepend(p);
+    
+    el.style.display = '';
+
+    //this.scroll.getScrollTopOffset();
+  });
+};
 
 class AppSidebarRight {
   public sidebarEl = document.getElementById('column-right') as HTMLDivElement;
@@ -56,7 +72,7 @@ class AppSidebarRight {
     'inputMessagesFilterUrl', 
     'inputMessagesFilterMusic'
   ];
-  public sharedMediaType: string = '';
+  public sharedMediaType: AppSidebarRight['sharedMediaTypes'][number] = '';
   private sharedMediaSelected: HTMLDivElement = null;
   
   private lazyLoadQueueSidebar = new LazyLoadQueue(5);
@@ -91,6 +107,8 @@ class AppSidebarRight {
   public privateSearch = new AppSearch(this.searchContainer.querySelector('.chats-container') as HTMLDivElement, this.searchInput, {
     messages: new SearchGroup('Private Search', 'messages')
   });
+
+  private loadMutex: Promise<any> = Promise.resolve();
   
   constructor() {
     let container = this.profileContentEl.querySelector('.content-container .tabs-container') as HTMLDivElement;
@@ -156,7 +174,7 @@ class AppSidebarRight {
       let ids = Object.keys(this.mediaDivsByIDs).map(k => +k).sort((a, b) => a - b);
       let idx = ids.findIndex(i => i == messageID);
       
-      let targets = ids.map(id => ({element: this.mediaDivsByIDs[id], mid: id}));
+      let targets = ids.map(id => ({element: this.mediaDivsByIDs[id].firstElementChild as HTMLElement, mid: id}));
       
       appMediaViewer.openMedia(message, target, false, this.sidebarEl, targets.slice(idx + 1).reverse(), targets.slice(0, idx).reverse(), true);
     });
@@ -289,12 +307,11 @@ class AppSidebarRight {
     return filtered;
   }
   
-  public performSearchResult(messages: any[], type: string) {
+  public async performSearchResult(messages: any[], type: string) {
     let peerID = this.peerID;
-
     let sharedMediaDiv: HTMLDivElement;
-    
     let elemsToAppend: HTMLElement[] = [];
+    let promises: Promise<any>[] = [];
     
     // https://core.telegram.org/type/MessagesFilter
     switch(type) {
@@ -305,22 +322,23 @@ class AppSidebarRight {
           let media = message.media.photo || message.media.document || (message.media.webpage && message.media.webpage.document);
 
           let div = document.createElement('div');
+          div.classList.add('media-item');
           //console.log(message, photo);
           
           let isPhoto = media._ == 'photo';
           
           let photo = isPhoto ? appPhotosManager.getPhoto(media.id) : null;
-          let isDownloaded = (photo && photo.downloaded) || appPhotosManager.getDocumentCachedThumb(media.id);
-          if(!isDownloaded) {
-            //this.log('inputMessagesFilterPhotoVideo', message, media, photo, div);
-            
-            let sizes = media.sizes || media.thumbs;
-            if(sizes && sizes[0].bytes) {
-              appPhotosManager.setAttachmentPreview(sizes[0].bytes, div, false, true);
-            } /* else {
-              this.log('no stripped size', message, media);
-            } */
+          let isDownloaded: boolean;
+          if(photo) {
+            isDownloaded = photo.downloaded > 0;
+          } else {
+            let cachedThumb = appPhotosManager.getDocumentCachedThumb(media.id);
+            isDownloaded = cachedThumb?.downloaded > 0;
           }
+
+          let img = new Image();
+          img.classList.add('media-image');
+          div.append(img);
           
           //this.log('inputMessagesFilterPhotoVideo', message, media);
 
@@ -349,14 +367,37 @@ class AppSidebarRight {
 
             let url = (photo && photo.url) || appPhotosManager.getDocumentCachedThumb(media.id).url;
             if(url) {
-              renderImageFromUrl(div, url);
+              renderImageFromUrl(img, url);
             }
           });
           
-          div.dataset.mid = '' + message.mid;
+          img.dataset.mid = '' + message.mid;
+
+          let sizes = media.sizes || media.thumbs;
+          if(isDownloaded || (sizes && sizes[0].bytes)) {
+            let promise = new Promise((resolve, reject) => {
+              img.addEventListener('load', () => {
+                clearTimeout(timeout);
+                resolve();
+              });
+
+              let timeout = setTimeout(() => {
+                this.log('did not loaded', img, media, isDownloaded, sizes);
+                reject();
+              }, 1e3);
+            });
+
+            promises.push(promise);
+          }
           
           if(isDownloaded) load();
-          else this.lazyLoadQueueSidebar.push({div, load});
+          else {
+            if(sizes && sizes[0].bytes) {
+              appPhotosManager.setAttachmentPreview(sizes[0].bytes, img, false, false);
+            }
+
+            this.lazyLoadQueueSidebar.push({div, load});
+          }
           
           this.lastSharedMediaDiv.append(div);
           if(this.lastSharedMediaDiv.childElementCount == 3) {
@@ -365,6 +406,7 @@ class AppSidebarRight {
             }
             
             this.lastSharedMediaDiv = document.createElement('div');
+            this.lastSharedMediaDiv.classList.add('media-row');
           }
           
           this.mediaDivsByIDs[message.mid] = div;
@@ -397,6 +439,8 @@ class AppSidebarRight {
           
           //this.log('wrapping webpage', webpage);
           
+          previewDiv.innerText = (webpage.title || webpage.description || webpage.url || webpage.display_url).slice(0, 1);
+          previewDiv.classList.add('empty');
           if(webpage.photo) {
             let load = () => appPhotosManager.preloadPhoto(webpage.photo.id, appPhotosManager.choosePhotoSize(webpage.photo, 60, 60))
             .then(() => {
@@ -405,13 +449,12 @@ class AppSidebarRight {
                 return;
               }
 
+              previewDiv.classList.remove('empty');
+
               renderImageFromUrl(previewDiv, webpage.photo.url);
             });
             
             this.lazyLoadQueueSidebar.push({div: previewDiv, load});
-          } else {
-            previewDiv.innerText = (webpage.title || webpage.description || webpage.url || webpage.display_url).slice(0, 1);
-            previewDiv.classList.add('empty');
           }
           
           let title = webpage.rTitle || '';
@@ -457,11 +500,19 @@ class AppSidebarRight {
     if(this.lastSharedMediaDiv.childElementCount && !this.scroll.contains(this.lastSharedMediaDiv)) {
       elemsToAppend.push(this.lastSharedMediaDiv);
     }
+
+    if(this.loadMutex) {
+      promises.push(this.loadMutex);
+    }
     
     if(elemsToAppend.length) {
-      //window.requestAnimationFrame(() => {
-      //elemsToAppend.forEach(el => this.scroll.append(el, false));
-      //});
+      if(promises.length) {
+        await Promise.all(promises);
+        if(this.peerID != peerID) {
+          this.log.warn('peer changed');
+          return;
+        }
+      }
 
       sharedMediaDiv.append(...elemsToAppend);
     }
@@ -521,7 +572,7 @@ class AppSidebarRight {
 
         this.usedFromHistory[type] = used;
         if(messages.length) {
-          this.performSearchResult(messages, type);
+          return this.performSearchResult(messages, type);
         }
 
         return Promise.resolve();
@@ -556,7 +607,7 @@ class AppSidebarRight {
         this.usedFromHistory[type] = history.length;
 
         if(ids.length) {
-          this.performSearchResult(this.filterMessagesByType(ids, type), type);
+          return this.performSearchResult(this.filterMessagesByType(ids, type), type);
         }
       }, (err) => {
         this.log.error('load error:', err);
@@ -567,77 +618,77 @@ class AppSidebarRight {
     
     return Promise.all(promises);
   }
-  
-  public fillProfileElements() {
-    let peerID = this.peerID = $rootScope.selectedPeerID;
+
+  public cleanup() {
     this.loadSidebarMediaPromises = {};
     this.loadedAllMedia = {};
     this.lastSharedMediaDiv = document.createElement('div');
-    
-    //this.log('fillProfileElements');
+    this.lastSharedMediaDiv.classList.add('media-row');
 
-    this.contentContainer.classList.remove('loaded');
-
-    this.profileElements.avatar.setAttribute('peer', '' + peerID);
-    
-    window.requestAnimationFrame(() => {
-      this.profileContentEl.parentElement.scrollTop = 0;
-      this.profileElements.bio.style.display = 'none';
-      this.profileElements.phone.style.display = 'none';
-      this.profileElements.username.style.display = 'none';
-      this.profileElements.notificationsRow.style.display = '';
-      this.profileElements.notificationsCheckbox.checked = true;
-      this.profileElements.notificationsStatus.innerText = 'Enabled';
-      
-      Object.keys(this.sharedMedia).forEach(key => {
-        this.sharedMedia[key].innerHTML = '';
-        
-        let parent = this.sharedMedia[key].parentElement;
-        if(!parent.querySelector('.preloader')) {
-          putPreloader(parent, true);
-        }
-      });
-      
-      this.prevTabID = -1;
-      this.scroll.setVirtualContainer(null);
-      (this.profileTabs.firstElementChild.children[1] as HTMLLIElement).click(); // set media
-
-      //this.scroll.getScrollTopOffset();
-      
-      this.loadSidebarMedia(true);
-    });
+    this.prevTabID = -1;
+    this.scroll.setVirtualContainer(null);
     
     this.mediaDivsByIDs = {};
     
     this.lazyLoadQueueSidebar.clear();
-    
-    this.urlsToRevoke.forEach(url => {
-      URL.revokeObjectURL(url);
-    });
-    this.urlsToRevoke.length = 0;
-    
+
     this.sharedMediaTypes.forEach(type => {
       this.usedFromHistory[type] = 0;
     });
-    
-    let setText = (text: string, el: HTMLDivElement) => {
-      window.requestAnimationFrame(() => {
-        if(el.childElementCount > 1) {
-          el.firstElementChild.remove();
-        }
-        
-        let p = document.createElement('p');
-        p.innerHTML = text;
-        el.prepend(p);
-        
-        el.style.display = '';
 
-        //this.scroll.getScrollTopOffset();
+    this.sharedMediaType = 'inputMessagesFilterPhotoVideo';
+  }
+
+  public cleanupHTML() {
+    this.contentContainer.classList.remove('loaded');
+
+    this.profileContentEl.parentElement.scrollTop = 0;
+    this.profileElements.bio.style.display = 'none';
+    this.profileElements.phone.style.display = 'none';
+    this.profileElements.username.style.display = 'none';
+    this.profileElements.notificationsRow.style.display = '';
+    this.profileElements.notificationsCheckbox.checked = true;
+    this.profileElements.notificationsStatus.innerText = 'Enabled';
+
+    if(this.urlsToRevoke.length) {
+      this.urlsToRevoke.forEach(url => {
+        URL.revokeObjectURL(url);
       });
-    };
-    
+      this.urlsToRevoke.length = 0;
+    }
+
+    Object.keys(this.sharedMedia).forEach(key => {
+      this.sharedMedia[key].innerHTML = '';
+      
+      if(!this.historiesStorage[this.peerID] || !this.historiesStorage[this.peerID][key]) {
+        let parent = this.sharedMedia[key].parentElement;
+        if(!parent.querySelector('.preloader')) {
+          putPreloader(parent, true);
+        }
+      }
+    });
+
+    (this.profileTabs.firstElementChild.children[1] as HTMLLIElement).click(); // set media
+  }
+
+  public setLoadMutex(promise: Promise<any>) {
+    this.loadMutex = promise;
+  }
+
+  public setPeer(peerID: number) {
+    this.peerID = peerID;
+    this.cleanup();
+  }
+  
+  public fillProfileElements() {
+    let peerID = this.peerID = $rootScope.selectedPeerID;
+
+    this.cleanupHTML();
+
+    this.profileElements.avatar.setAttribute('peer', '' + peerID);
+
     // username
-    if(peerID != appImManager.myID) {
+    if(peerID != $rootScope.myID) {
       let username = appPeersManager.getPeerUsername(peerID);
       if(username) {
         setText(appPeersManager.getPeerUsername(peerID), this.profileElements.username);
@@ -656,13 +707,12 @@ class AppSidebarRight {
     } else {
       window.requestAnimationFrame(() => {
         this.profileElements.notificationsRow.style.display = 'none';
-        //this.scroll.getScrollTopOffset();
-      })
+      });
     }
     
     if(peerID > 0) {
       let user = appUsersManager.getUser(peerID);
-      if(user.phone && peerID != appImManager.myID) {
+      if(user.phone && peerID != $rootScope.myID) {
         setText(user.rPhone, this.profileElements.phone);
       }
       
@@ -672,7 +722,7 @@ class AppSidebarRight {
           return;
         }
         
-        if(userFull.rAbout && peerID != appImManager.myID) {
+        if(userFull.rAbout && peerID != $rootScope.myID) {
           setText(userFull.rAbout, this.profileElements.bio);
         }
         
@@ -682,8 +732,6 @@ class AppSidebarRight {
           appImManager.pinnedMsgID = userFull.pinned_msg_id;
           appMessagesManager.wrapSingleMessage(userFull.pinned_msg_id);
         }
-        
-        //this.scroll.getScrollTopOffset();
       });
     } else {
       let chat = appPeersManager.getPeer(peerID);
@@ -699,13 +747,8 @@ class AppSidebarRight {
         if(chatFull.about) {
           setText(RichTextProcessor.wrapRichText(chatFull.about), this.profileElements.bio);
         }
-        
-        //this.scroll.getScrollTopOffset();
       });
     }
-    
-    //this.scroll.getScrollTopOffset();
-    //this.loadSidebarMedia();
   }
 }
 

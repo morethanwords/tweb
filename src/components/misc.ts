@@ -3,6 +3,8 @@ import Config from "../lib/config";
 
 let rippleClickID = 0;
 export function ripple(elem: HTMLElement, callback: (id: number) => Promise<boolean | void> = () => Promise.resolve(), onEnd: (id: number) => void = null) {
+  if(elem.querySelector('.c-ripple')) return;
+  
   let r = document.createElement('div');
   r.classList.add('c-ripple');
 
@@ -99,6 +101,19 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
   });
 }
 
+const toastEl = document.createElement('div');
+toastEl.classList.add('toast');
+export function toast(html: string) {
+  toastEl.innerHTML = html;
+  document.body.append(toastEl);
+
+  if(toastEl.dataset.timeout) clearTimeout(+toastEl.dataset.timeout);
+  toastEl.dataset.timeout = '' + setTimeout(() => {
+    toastEl.remove();
+    delete toastEl.dataset.timeout;
+  }, 3000);
+}
+
 let loadedURLs: {[url: string]: boolean} = {};
 let set = (elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLSourceElement, url: string) => {
   if(elem instanceof HTMLImageElement || elem instanceof HTMLSourceElement) elem.src = url;
@@ -117,10 +132,12 @@ export function renderImageFromUrl(elem: HTMLElement | HTMLImageElement | SVGIma
   } else {
     let loader = new Image();
     loader.src = url;
-    loader.onload = () => {
+    //let perf = performance.now();
+    loader.addEventListener('load', () => {
       set(elem, url);
       loadedURLs[url] = true;
-    };
+      //console.log('onload:', url, performance.now() - perf);
+    });
   }
 
   return false;
@@ -336,7 +353,7 @@ let onMouseMove = (e: MouseEvent) => {
 };
 
 let onClick = (e: MouseEvent) => {
-  e.preventDefault();
+  //e.preventDefault();
   closeBtnMenu();
 };
 

@@ -67,8 +67,11 @@ class ConfigStorage {
         value = obj[key];
         key = prefix + key;
         this.cache[key] = value;
-        //value = value instanceof Uint8Array ? Array.from(value) : JSON.stringify(value);
-        value = JSON.stringify(value);
+        value = JSON.stringify(value, (key, value) => {
+          if(key == 'downloaded' || (key == 'url' && value.indexOf('blob:') === 0)) return undefined;
+          return value;
+        });
+
         if(this.useLs) {
           try {
             //console.log('setItem', key, value);

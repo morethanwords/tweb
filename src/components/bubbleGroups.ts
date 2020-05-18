@@ -12,6 +12,8 @@ export default class BubbleGroups {
       details.group.findAndSplice(d => d == bubble);
       if(!details.group.length) {
         this.groups.findAndSplice(g => g == details.group);
+      } else {
+        this.updateGroup(details.group);
       }
     }
   }
@@ -49,7 +51,7 @@ export default class BubbleGroups {
     //console.log('addBubble', bubble, message.mid, fromID, reverse, group);
     
     this.bubblesByGroups[reverse ? 'unshift' : 'push']({timestamp, fromID, mid: message.mid, group});
-    this.updateGroup(group, reverse);
+    this.updateGroup(group);
   }
 
   setClipIfNeeded(bubble: HTMLDivElement, remove = false) {
@@ -100,7 +102,7 @@ export default class BubbleGroups {
     }
   }
   
-  updateGroup(group: HTMLDivElement[], reverse = false) {
+  updateGroup(group: HTMLDivElement[]) {
     /* if(this.updateRAFs.has(group)) {
       window.cancelAnimationFrame(this.updateRAFs.get(group));
       this.updateRAFs.delete(group);
@@ -114,8 +116,6 @@ export default class BubbleGroups {
       }
       
       let first = group[0];
-
-      //appImManager.scrollPosition.prepareFor(reverse ? 'up' : 'down');
 
       //console.log('updateGroup', group, first);
       
@@ -140,8 +140,6 @@ export default class BubbleGroups {
       last.classList.remove('is-group-first');
       last.classList.add('is-group-last');
       this.setClipIfNeeded(last);
-
-      //appImManager.scrollPosition.restore();
     //}));
   }
 

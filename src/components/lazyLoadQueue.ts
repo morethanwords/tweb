@@ -73,7 +73,7 @@ export default class LazyLoadQueue {
       this.debug && this.log('will load media', this.lockPromise, item);
 
       try {
-        if(this.lockPromise) {
+        if(this.lockPromise && false) {
           let perf = performance.now();
           await this.lockPromise;
 

@@ -171,7 +171,7 @@ export class AppMediaViewer {
       mover = this.setNewMover();
     } */
 
-    ///////this.log('setMoverToTarget', target, closing, wasActive, fromRight);
+    this.log('setMoverToTarget', target, closing, wasActive, fromRight);
 
     let realParent: HTMLDivElement;
 
@@ -200,12 +200,37 @@ export class AppMediaViewer {
       top = rect.top;
     }
 
+    let aspecter: HTMLDivElement;
+    if(target instanceof HTMLImageElement || target instanceof HTMLVideoElement) {
+      if(mover.firstElementChild && mover.firstElementChild.classList.contains('media-viewer-aspecter')) {
+        aspecter = mover.firstElementChild as HTMLDivElement;
+
+        let player = aspecter.querySelector('.ckin__player');
+        if(player) {
+          let video = player.firstElementChild as HTMLVideoElement;
+          aspecter.append(video);
+          player.remove();
+        }
+
+        if(!aspecter.style.cssText) { // всё из-за видео, элементы управления скейлятся, так бы можно было этого не делать
+          mover.classList.remove('active');
+          this.setFullAspect(aspecter, containerRect, rect);
+          void mover.offsetLeft; // reflow
+          mover.classList.add('active');
+        }
+      } else {
+        aspecter = document.createElement('div');
+        aspecter.classList.add('media-viewer-aspecter');
+        mover.prepend(aspecter);
+      }
+      
+      aspecter.style.cssText = `width: ${rect.width}px; height: ${rect.height}px; transform: scale(${containerRect.width / rect.width}, ${containerRect.height / rect.height});`;
+    }
+
     transform += `translate(${left}px,${top}px) `;
 
     mover.style.width = containerRect.width + 'px';
     mover.style.height = containerRect.height + 'px';
-
-    mover.classList.remove('cover');
 
     let scaleX = rect.width / containerRect.width;
     let scaleY = rect.height / containerRect.height;
@@ -234,19 +259,15 @@ export class AppMediaViewer {
       let video: HTMLVideoElement;
 
       if(target.tagName == 'DIV') { // means backgrounded with cover
-        //img.style.objectFit = 'cover';
         img = new Image();
         img.src = target.style.backgroundImage.slice(5, -2);
-        //mover.classList.add('cover');
-        //mover.style.backgroundImage = target.style.backgroundImage;
-      } else if(target.tagName == 'IMG' || target.tagName == 'image') {
+      } else if(target instanceof HTMLImageElement) {
         img = new Image();
-        img.src = target instanceof SVGImageElement ? target.getAttributeNS(null, 'href') : (target as HTMLImageElement).src;
-        img.style.objectFit = 'contain';
-      } else if(target.tagName == 'VIDEO') {
+        img.src = target.src;
+      } else if(target instanceof HTMLVideoElement) {
         video = document.createElement('video');
         let source = document.createElement('source');
-        source.src = target.querySelector('source').src;
+        source.src = target.querySelector('source')?.src;
         video.append(source);
       } else if(target instanceof SVGSVGElement) {
         let clipID = target.dataset.clipID;
@@ -298,12 +319,9 @@ export class AppMediaViewer {
         mover.prepend(newSvg);
       }
 
-      if(img) {
-        img.style.borderRadius = borderRadius;
-        mover.prepend(img);
-      } else if(video) {
-        video.style.borderRadius = borderRadius;
-        mover.prepend(video);
+      if(aspecter) {
+        aspecter.style.borderRadius = borderRadius;
+        aspecter.append(img || video);
       }
   
       mover.style.display = '';
@@ -330,15 +348,11 @@ export class AppMediaViewer {
         if(mover.firstElementChild) {
           (mover.firstElementChild as HTMLElement).style.borderRadius = borderRadius;
         }
-
-        if(target.tagName == 'DIV') {
-          mover.classList.add('cover');
-        }
       }, delay / 2);
 
       setTimeout(() => {
         mover.innerHTML = '';
-        mover.classList.remove('moving', 'active', 'cover');
+        mover.classList.remove('moving', 'active');
         mover.style.display = 'none';
       }, delay);
     }
@@ -346,20 +360,58 @@ export class AppMediaViewer {
     return () => {
       mover.style.transform = `translate(${containerRect.left}px,${containerRect.top}px) scale(1,1)`;
 
+      if(aspecter) {
+        this.setFullAspect(aspecter, containerRect, rect);
+      }
+
       setTimeout(() => {
         mover.style.borderRadius = '';
 
         if(mover.firstElementChild) {
           (mover.firstElementChild as HTMLElement).style.borderRadius = '';
         }
-
-        mover.classList.remove('cover');
       }, delay / 2);
+
+      mover.dataset.timeout = '' + setTimeout(() => {
+        mover.classList.remove('moving');
+
+        if(aspecter) { // всё из-за видео, элементы управления скейлятся, так бы можно было этого не делать
+          mover.classList.remove('active');
+          aspecter.style.cssText = '';
+          void mover.offsetLeft; // reflow
+        }
+
+        mover.classList.add('active');
+        delete mover.dataset.timeout;
+      }, delay);
 
       if(path) {
         this.sizeTailPath(path, containerRect, scaleX, delay, true, isOut, borderRadius);
       }
     };
+  }
+
+  private setFullAspect(aspecter: HTMLDivElement, containerRect: DOMRect, rect: DOMRect) {
+    let media = aspecter.firstElementChild;
+    let proportion: number;
+    if(media instanceof HTMLImageElement) {
+      proportion = media.naturalWidth / media.naturalHeight;
+    } else if(media instanceof HTMLVideoElement) {
+      proportion = media.videoWidth / media.videoHeight;
+    }
+
+    let {width, height} = rect;
+    if(proportion == 1) {
+      aspecter.style.cssText = '';
+    } else {
+      if(proportion > 0) {
+        width = height * proportion;
+      } else {
+        height = width * proportion;
+      }
+
+      aspecter.style.cssText = `width: ${width}px; height: ${height}px; transform: scale(${containerRect.width / width}, ${containerRect.height / height});`;
+    }
   }
 
   public sizeTailPath(path: SVGPathElement, rect: DOMRect, scaleX: number, delay: number, upscale: boolean, isOut: boolean, borderRadius: string) {
@@ -393,7 +445,12 @@ export class AppMediaViewer {
   public moveTheMover(mover: HTMLDivElement, toLeft = true) {
     let windowW = appPhotosManager.windowW;
 
+    //mover.classList.remove('active');
     mover.classList.add('moving');
+
+    if(mover.dataset.timeout) { // и это тоже всё из-за скейла видео, так бы это не нужно было
+      clearTimeout(+mover.dataset.timeout);
+    }
 
     let rect = mover.getBoundingClientRect();
 
@@ -617,30 +674,35 @@ export class AppMediaViewer {
       if(useContainerAsTarget) target = target.querySelector('img, video') || target;
 
       let afterTimeout = this.setMoverToTarget(target, false, fromRight);
+      //return; // set and don't move
       //if(wasActive) return;
-      //return;
       setTimeout(() => {
         afterTimeout();
         //return;
 
         let video = mover.querySelector('video') || document.createElement('video');
-        let source: HTMLSourceElement;
-        if(video.firstElementChild) {
-          source = video.firstElementChild as HTMLSourceElement;
-        }
+        let source = video.firstElementChild as HTMLSourceElement || document.createElement('source');
 
         if(media.type == 'gif') {
           video.autoplay = true;
         }
 
-        video.dataset.ckin = 'default';
-        video.dataset.overlay = '1';
+        let createPlayer = () => {
+          if(media.type != 'gif') {
+            video.dataset.ckin = 'default';
+            video.dataset.overlay = '1';
+
+            let player = new VideoPlayer(video, true);
+            /* player.wrapper.parentElement.append(video);
+            mover.append(player.wrapper); */
+          }
+        };
         
         if(!source || !source.src) {
           let promise = appDocsManager.downloadDoc(media);
           this.preloader.attach(mover, true, promise);
   
-          promise.then(blob => {
+          promise.then(() => {
             if(this.currentMessageID != message.mid) {
               this.log.warn('media viewer changed video');
               return;
@@ -651,36 +713,27 @@ export class AppMediaViewer {
               this.updateMediaSource(mover, url, 'source');
               this.updateMediaSource(target, url, 'source');
             } else {
-              let img = mover.firstElementChild;
-              if(img instanceof Image) {
-                mover.removeChild(img);
+              let aspecter = mover.firstElementChild;
+              let img = aspecter.firstElementChild;
+              if(img instanceof HTMLImageElement) {
+                img.remove();
               }
 
-              source = document.createElement('source');
               renderImageFromUrl(source, url);
               source.type = media.mime_type;
 
-              mover.prepend(video);
-              
-              video.append(source);
+              if(!source.parentElement) {
+                video.append(source);
+              }
+
+              if(!video.parentElement) {
+                aspecter.prepend(video);
+              }
             }
 
-            if(media.type != 'gif') {
-              let player = new VideoPlayer(video, true);
-            }
+            createPlayer();
           });
-        } else if(media.type != 'gif') {
-          let player = new VideoPlayer(video, true);
-        }
-
-        
-
-        /* wrapVideo.call(this, media, mover, message, false, this.preloader).then(() => {
-          if(this.currentMessageID != message.mid) {
-            this.log.warn('media viewer changed video');
-            return;
-          }
-        }); */
+        } else createPlayer();
       }, 0);
     } else {
       let size = appPhotosManager.setAttachmentSize(media.id, container, maxWidth, maxHeight);
@@ -688,7 +741,7 @@ export class AppMediaViewer {
       if(useContainerAsTarget) target = target.querySelector('img, video') || target;
 
       let afterTimeout = this.setMoverToTarget(target, false, fromRight);
-      //return;
+      //return; // set and don't move
       //if(wasActive) return;
       setTimeout(() => {
         afterTimeout();
@@ -709,10 +762,14 @@ export class AppMediaViewer {
             this.updateMediaSource(target, url, 'image');
             this.updateMediaSource(mover, url, 'image');
           } else {
-            let image = mover.firstElementChild as HTMLImageElement || new Image();
-            //image.src = url;
+            let aspecter = mover.firstElementChild;
+            let image = aspecter.firstElementChild as HTMLImageElement;
+            if(!image) {
+              image = new Image();
+              aspecter.append(image);
+            }
+
             renderImageFromUrl(image, url);
-            mover.prepend(image);
           }
 
           this.preloader.detach();

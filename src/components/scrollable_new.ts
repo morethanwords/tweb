@@ -367,48 +367,39 @@ export default class Scrollable {
     return !!element.parentElement;
   }
 
-  public scrollIntoView(element: HTMLElement, smooth = true, fromUp = false) {
+  public scrollIntoView(element: HTMLElement, smooth = true) {
     if(element.parentElement && !this.scrollLocked) {
-      let scrollTop = this.scrollTop;
+      let isFirstUnread = element.classList.contains('is-first-unread');
       let offsetTop = element.offsetTop;
-      let clientHeight = this.container.clientHeight;
-
-      let height = element.scrollHeight;
-
-      let diff = (clientHeight - height) / 2;
-
-      /* if(scrollTop < offsetTop) {
-        offsetTop += diff;
-      } else { */
-        offsetTop -= diff;
-      //}
-
-      if(element.dataset.timeout) {
-        clearTimeout(+element.dataset.timeout);
-        element.classList.remove('is-selected');
-        void element.offsetWidth; // reflow
-      }
-      element.classList.add('is-selected');
-      element.dataset.timeout = '' + setTimeout(() => {
-        element.classList.remove('is-selected');
-        delete element.dataset.timeout;
-      }, 2000);
-
-      if(scrollTop == Math.floor(offsetTop)) {
+      if(!smooth && isFirstUnread) {
+        this.scrollTo(offsetTop, false);
         return;
       }
 
-      if(this.scrollLocked) clearTimeout(this.scrollLocked);
-      this.scrollLocked = setTimeout(() => {
-        this.scrollLocked = 0;
-        this.onScroll();
-      }, 468);
-      if(fromUp) {
-        this.container.scrollTo({behavior: 'auto', top: 0});
-      }
-      this.container.scrollTo({behavior: smooth ? 'smooth' : 'auto', top: offsetTop});
-      //element.scrollIntoView({behavior: 'smooth', block: 'center'});
+      let clientHeight = this.container.clientHeight;
+      let height = element.scrollHeight;
+
+      offsetTop -= (clientHeight - height) / 2;
+      
+      this.scrollTo(offsetTop, smooth);
     }
+  }
+
+  public scrollTo(top: number, smooth = true) {
+    if(this.scrollLocked) return;
+
+    let scrollTop = this.scrollTop;
+    if(scrollTop == Math.floor(top)) {
+      return;
+    }
+
+    if(this.scrollLocked) clearTimeout(this.scrollLocked);
+    this.scrollLocked = setTimeout(() => {
+      this.scrollLocked = 0;
+      this.onScroll();
+    }, 468);
+
+    this.container.scrollTo({behavior: smooth ? 'smooth' : 'auto', top});
   }
 
   public removeElement(element: Element) {

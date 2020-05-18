@@ -60,9 +60,6 @@ class AppStickersManager {
         for(let id in sets) {
           let set = sets[id];
           set.documents.forEach(doc => {
-            delete doc.downloaded;
-            delete doc.url;
-
             this.saveSticker(doc);
           });
         }
@@ -78,13 +75,6 @@ class AppStickersManager {
   
   public saveSticker(doc: MTDocument) {
     if(this.documents[doc.id]) return this.documents[doc.id];
-    /* Object.keys(doc).forEach(key => {
-      if(doc[key] instanceof Uint8Array) {
-        doc[key] = Array.from(doc[key]);
-      }
-    }); */
-
-    doc.file_reference = Array.from(doc.file_reference);
 
     doc = appDocsManager.saveDoc(doc);
     this.documents[doc.id] = doc;

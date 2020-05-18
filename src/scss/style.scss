@@ -276,6 +276,37 @@ input {
   }
 }
 
+@keyframes fadeInFadeOut {
+  0% {
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: .5rem 1rem;
+  background-color: rgba(0, 0, 0, .66);
+  color: #fff;
+  font-size: 1rem;
+  border-radius: $border-radius-medium;
+  animation: fadeInFadeOut 3s linear forwards;
+}
+
 hr {
   width: 100%;
   border: none;

@@ -13,9 +13,9 @@ export class ApiUpdatesManager {
     syncPending: any,
     syncLoading: any,
 
-    seq?: any,
-    pts?: any,
-    date?: any
+    seq?: number,
+    pts?: number,
+    date?: number
   } = {
     pendingPtsUpdates: [],
     pendingSeqUpdates: {},
@@ -24,14 +24,7 @@ export class ApiUpdatesManager {
   };
 
   public channelStates: any = {};
-  public myID = 0;
   private attached = false;
-
-  constructor() {
-    apiManager.getUserID().then((id) => {
-      this.myID = id;
-    });
-  }
  
   public popPendingSeqUpdate() {
     var nextSeq = this.updatesState.seq + 1;
@@ -141,10 +134,10 @@ export class ApiUpdatesManager {
       case 'updateShortMessage':
       case 'updateShortChatMessage':
         var isOut = updateMessage.flags & 2;
-        var fromID = updateMessage.from_id || (isOut ? this.myID : updateMessage.user_id);
+        var fromID = updateMessage.from_id || (isOut ? $rootScope.myID : updateMessage.user_id);
         var toID = updateMessage.chat_id
           ? -updateMessage.chat_id
-          : (isOut ? updateMessage.user_id : this.myID);
+          : (isOut ? updateMessage.user_id : $rootScope.myID);
   
         this.processUpdate({
           _: 'updateNewMessage',
@@ -500,24 +493,31 @@ export class ApiUpdatesManager {
     $rootScope.$broadcast('apiUpdate', update);
   }
   
-  public attach() {
+  public attach(state: Pick<ApiUpdatesManager['updatesState'], 'seq' | 'pts' | 'date'>) {
     if(this.attached) return;
     
     this.attached = true;
     apiManager.setUpdatesProcessor(this.processUpdateMessage.bind(this));
-    apiManager.invokeApi('updates.getState', {}, {noErrorBox: true}).then((stateResult: any) => {
-      this.updatesState.seq = stateResult.seq;
-      this.updatesState.pts = stateResult.pts;
-      this.updatesState.date = stateResult.date;
-      setTimeout(() => {
-        this.updatesState.syncLoading = false;
-      }, 1000);
-  
-    // updatesState.seq = 1
-    // updatesState.pts = stateResult.pts - 5000
-    // updatesState.date = 1
-    // getDifference()
-    });
+
+    if(!state) {
+      apiManager.invokeApi('updates.getState', {}, {noErrorBox: true}).then((stateResult: any) => {
+        this.updatesState.seq = stateResult.seq;
+        this.updatesState.pts = stateResult.pts;
+        this.updatesState.date = stateResult.date;
+        setTimeout(() => {
+          this.updatesState.syncLoading = false;
+        }, 1000);
+    
+      // updatesState.seq = 1
+      // updatesState.pts = stateResult.pts - 5000
+      // updatesState.date = 1
+      // getDifference()
+      });
+    } else {
+      Object.assign(this.updatesState, state);
+      this.updatesState.syncLoading = false;
+      this.getDifference();
+    }
   }
 }
 

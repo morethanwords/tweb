@@ -384,8 +384,6 @@ export class AppDialogsManager {
 
   public chatsArchivedContainer = document.getElementById('chats-archived-container') as HTMLDivElement;
   public chatsContainer = document.getElementById('chats-container') as HTMLDivElement;
-  private chatsArchivedOffsetIndex = 0;
-  private chatsOffsetIndex = 0;
   private chatsPreloader: HTMLDivElement;
   //private chatsLoadCount = 0;
   //private loadDialogsPromise: Promise<any>;
@@ -544,10 +542,30 @@ export class AppDialogsManager {
       }
     });
 
-    this.loadDialogs().then(result => {
-      this.setPinnedDelimiter();
-      //appSidebarLeft.onChatsScroll();
-      this.loadDialogs(true);
+    $rootScope.$on('peer_changed', (e: CustomEvent) => {
+      let peerID = e.detail;
+
+      let lastPeerID = this.lastActiveListElement && +this.lastActiveListElement.getAttribute('data-peerID');
+      if(this.lastActiveListElement && lastPeerID != peerID) {
+        this.lastActiveListElement.classList.remove('active');
+        this.lastActiveListElement = null;
+      }
+    
+      if(lastPeerID != peerID) {
+        let dom = this.getDialogDom(peerID);
+        if(dom) {
+          this.lastActiveListElement = dom.listEl;
+          dom.listEl.classList.add('active');
+        }
+      }
+    });
+
+    appMessagesManager.loaded.then(() => {
+      this.loadDialogs().then(result => {
+        this.setPinnedDelimiter();
+        //appSidebarLeft.onChatsScroll();
+        this.loadDialogs(true);
+      });
     });
   }
 
@@ -559,30 +577,30 @@ export class AppDialogsManager {
     if(this.loadDialogsPromise/*  || 1 == 1 */) return this.loadDialogsPromise;
     
     (archived ? this.chatsArchivedContainer : this.chatsContainer).append(this.chatsPreloader);
+
+    let storage = appMessagesManager.dialogsStorage[+archived] || [];
+    let offsetIndex = 0;
     
-    //let offset = appMessagesManager.generateDialogIndex();/* appMessagesManager.dialogsNum */;
-
-    let offset = archived ? this.chatsArchivedOffsetIndex : this.chatsOffsetIndex;
-    //let offset = 0;
-
-    let scroll = archived ? this.scrollArchived : this.scroll;
+    for(let i = storage.length - 1; i >= 0; --i) {
+      let dialog = storage[i];
+      if(this.getDialogDom(dialog.peerID)) {
+        offsetIndex = dialog.index;
+        break;
+      }
+    }
+    //let offset = storage[storage.length - 1]?.index || 0;
 
     try {
       console.time('getDialogs time');
 
       let loadCount = 50/*this.chatsLoadCount */;
-      this.loadDialogsPromise = appMessagesManager.getConversations(offset, loadCount, +archived);
+      this.loadDialogsPromise = appMessagesManager.getConversations(offsetIndex, loadCount, +archived);
       
       let result = await this.loadDialogsPromise;
 
       console.timeEnd('getDialogs time');
       
       if(result && result.dialogs && result.dialogs.length) {
-        let index = result.dialogs[result.dialogs.length - 1].index;
-
-        if(archived) this.chatsArchivedOffsetIndex = index;
-        else this.chatsOffsetIndex = index;
-
         result.dialogs.forEach((dialog: any) => {
           this.addDialog(dialog);
         });
@@ -598,7 +616,7 @@ export class AppDialogsManager {
         this.archivedCount.innerText = '' + count;
       } */
 
-      this.log('getDialogs ' + loadCount + ' dialogs by offset:', offset, result, this.scroll.length);
+      this.log('getDialogs ' + loadCount + ' dialogs by offset:', offsetIndex, result, this.scroll.length, archived);
       this.scroll.onScroll();
     } catch(err) {
       this.log.error(err);
@@ -650,14 +668,14 @@ export class AppDialogsManager {
         if(onFound) onFound();
 
         let peerID = +elem.getAttribute('data-peerID');
-        let lastMsgID = +elem.dataset.mid;
+        let lastMsgID = +elem.dataset.mid || 0;
 
         if(!samePeer) {
           elem.classList.add('active');
           this.lastActiveListElement = elem;
         }
 
-        result = appImManager.setPeer(peerID, lastMsgID, true);
+        result = appImManager.setPeer(peerID, lastMsgID);
 
         if(result instanceof Promise) {
           this.lastGoodClickID = this.lastClickID;
@@ -721,7 +739,7 @@ export class AppDialogsManager {
 
   public setPinnedDelimiter() {
     let index = -1;
-    let dialogs = appMessagesManager.dialogsStorage.dialogs[0];
+    let dialogs = appMessagesManager.dialogsStorage[0];
     for(let dialog of dialogs) {
       if(dialog.pFlags?.pinned) {
         index++;
@@ -766,7 +784,7 @@ export class AppDialogsManager {
     if(lastMessage._ == 'messageEmpty') {
       dom.lastMessageSpan.innerHTML = '';
       dom.lastTimeSpan.innerHTML = '';
-      dom.listEl.removeAttribute('data-mid');
+      delete dom.listEl.dataset.mid;
       return;
     }
 
@@ -853,10 +871,10 @@ export class AppDialogsManager {
       dom.lastTimeSpan.innerHTML = timeStr;
     } else dom.lastTimeSpan.innerHTML = '';
 
-    dom.listEl.setAttribute('data-mid', lastMessage.mid);
-
     if(this.doms[peerID] || this.domsArchived[peerID]) {
       this.setUnreadMessages(dialog);
+    } else { // means search
+      dom.listEl.dataset.mid = lastMessage.mid;
     }
   }
 

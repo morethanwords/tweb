@@ -84,6 +84,10 @@ Uint8Array.prototype.toString = function() {
   return String.fromCharCode.apply(null, [...this]);
 };
 
+Uint8Array.prototype.toJSON = function() {
+  return [...this];
+};
+
 Array.prototype.forEachReverse = function<T>(callback: (value: T, index?: number, array?: Array<T>) => void) {
   let length = this.length;
   for(var i = length - 1; i >= 0; --i) {
@@ -113,7 +117,8 @@ declare global {
     hex: string;
     randomize: () => Uint8Array,
     concat: (...args: Array<Uint8Array | ArrayBuffer | number[]>) => Uint8Array,
-    toString: () => string
+    toString: () => string,
+    toJSON: () => number[],
   }
   
   interface Array<T> {

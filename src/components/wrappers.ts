@@ -15,7 +15,6 @@ import { CancellablePromise } from '../lib/polyfill';
 import { renderImageFromUrl } from './misc';
 import appMessagesManager from '../lib/appManagers/appMessagesManager';
 import { Layouter, RectPart } from './groupedLayout';
-import { Poll, PollResults } from '../lib/appManagers/appPollsManager';
 import PollElement from './poll';
 
 export type MTDocument = {
@@ -135,47 +134,43 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     }
   }
   
-  let loadVideo = () => {
-    let promise = appDocsManager.downloadDoc(doc);
-
+  let loadVideo = async() => {
     if(message.media.preloader) { // means upload
       message.media.preloader.attach(container);
     } else if(!doc.downloaded) {
       let preloader = new ProgressivePreloader(container, true);
+      let promise = appDocsManager.downloadDoc(doc);
       preloader.attach(container, true, promise);
+      await promise;
+    }
+
+    if(middleware && !middleware()) {
+      return;
+    }
+
+    console.log('loaded doc:', doc, doc.url, container);
+    
+    renderImageFromUrl(source, doc.url);
+    source.type = doc.mime_type;
+    video.append(source);
+
+    if(!withTail) {
+      if(img && container.contains(img)) {
+        container.removeChild(img);
+      }
+
+      container.append(video);
     }
     
-    return promise.then(blob => {
-      if(middleware && !middleware()) {
-        return;
-      }
-
-      //return;
-      
-      //console.log('loaded doc:', doc, doc.url, blob, container);
-      
-      renderImageFromUrl(source, doc.url);
-      source.type = doc.mime_type;
-      video.append(source);
-
-      if(!withTail) {
-        if(img && container.contains(img)) {
-          container.removeChild(img);
-        }
-
-        container.append(video);
-      }
-      
-      if(doc.type == 'gif') {
-        video.autoplay = true;
-        video.loop = true;
-      } else if(doc.type == 'round') {
-        //video.dataset.ckin = doc.type == 'round' ? 'circle' : 'default';
-        video.dataset.ckin = 'circle';
-        video.dataset.overlay = '1';
-        let player = new VideoPlayer(video/* , doc.type != 'round' */);
-      }
-    });
+    if(doc.type == 'gif') {
+      video.autoplay = true;
+      video.loop = true;
+    } else if(doc.type == 'round') {
+      //video.dataset.ckin = doc.type == 'round' ? 'circle' : 'default';
+      video.dataset.ckin = 'circle';
+      video.dataset.overlay = '1';
+      let player = new VideoPlayer(video/* , doc.type != 'round' */);
+    }
   };
 
   if(doc.size >= 20e6 && !doc.downloaded) {
@@ -826,11 +821,11 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
       if(!downloaded && (!div.firstElementChild || div.firstElementChild.tagName != 'IMG')) {
         img.style.opacity = '' + 0;
 
-        img.onload = () => {
+        img.addEventListener('load', () => {
           window.requestAnimationFrame(() => {
             img.style.opacity = '';
           });
-        };
+        });
       }
 
       if(!doc.url) {
@@ -889,8 +884,8 @@ export function wrapReply(title: string, subtitle: string, message?: any) {
       }
       
       appPhotosManager.preloadPhoto(photo, appPhotosManager.choosePhotoSize(photo, 32, 32))
-      .then(blob => {
-        renderImageFromUrl(replyMedia, photo._ == 'photo' ? photo.url : URL.createObjectURL(blob));
+      .then(() => {
+        renderImageFromUrl(replyMedia, photo._ == 'photo' ? photo.url : appPhotosManager.getDocumentCachedThumb(photo.id).url);
       });
       
       replyContent.append(replyMedia);
@@ -1003,34 +998,6 @@ export function wrapAlbum({groupID, attachmentDiv, middleware, uploading, lazyLo
         middleware
       });
     }
-
-    /* let load = () => appPhotosManager.preloadPhoto(media._ == 'photo' ? media.id : media, size)
-    .then((blob) => {
-      if(middleware && !middleware()) {
-        console.warn('peer changed');
-        return;
-      }
-
-      if(!uploading) {
-        preloader.detach();
-      }
-      
-      if(media && media.url) {
-        renderImageFromUrl(div, media.url);
-      } else {
-        let url = URL.createObjectURL(blob);
-        
-        let img = new Image();
-        img.src = url;
-        img.onload = () => {
-          div.style.backgroundImage = 'url(' + url + ')';
-        };
-      }
-      
-      //div.style.backgroundImage = 'url(' + url + ')';
-    });
-
-    load(); */
 
     // @ts-ignore
     //div.style.backgroundColor = '#' + Math.floor(Math.random() * (2 ** 24 - 1)).toString(16).padStart(6, '0');
