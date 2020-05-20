@@ -16,7 +16,7 @@
   "license": "ISC",
   "dependencies": {
     "jsbn": "^1.1.0",
-    "webpack-dev-server": "^3.10.3"
+    "webpack-dev-server": "^3.11.0"
   },
   "devDependencies": {
     "@babel/core": "^7.9.0",
@@ -42,7 +42,7 @@
     "jest": "^24.9.0",
     "leemon": "^6.2.0",
     "lottie-web": "^5.6.8",
-    "node-sass": "^4.13.1",
+    "node-sass": "^4.14.1",
     "npm": "^6.14.4",
     "on-build-webpack": "^0.1.0",
     "pako": "^1.0.11",

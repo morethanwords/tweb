@@ -54,8 +54,10 @@ div.scrollable::-webkit-scrollbar-thumb {
     position: relative;
     left: 0;
     height: 1px;
+    min-height: 1px;
     background-color: transparent;
     width: 1px;
+    min-width: 1px;
   }
 
   /* &.scrollable-x ~ .scrollbar-thumb {

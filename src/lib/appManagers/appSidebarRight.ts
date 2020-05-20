@@ -58,8 +58,6 @@ class AppSidebarRight {
     contentAudio: this.profileContentEl.querySelector('#content-audio') as HTMLDivElement,
   };
   
-  public lastSharedMediaDiv: HTMLDivElement = null;
-  
   private loadSidebarMediaPromises: {[type: string]: Promise<void>} = {};
   private loadedAllMedia: {[type: string]: boolean} = {};
   
@@ -368,7 +366,7 @@ class AppSidebarRight {
           let div = document.createElement('div');
           div.classList.add('media-item');
           //console.log(message, photo);
-          
+
           let isPhoto = media._ == 'photo';
           
           let photo = isPhoto ? appPhotosManager.getPhoto(media.id) : null;
@@ -442,16 +440,8 @@ class AppSidebarRight {
 
             this.lazyLoadQueue.push({div, load});
           }
-          
-          this.lastSharedMediaDiv.append(div);
-          if(this.lastSharedMediaDiv.childElementCount == 3) {
-            if(!this.scroll.contains(this.lastSharedMediaDiv)) {
-              elemsToAppend.push(this.lastSharedMediaDiv);
-            }
-            
-            this.lastSharedMediaDiv = document.createElement('div');
-            this.lastSharedMediaDiv.classList.add('media-row');
-          }
+
+          elemsToAppend.push(div);
           
           this.mediaDivsByIDs[message.mid] = div;
           
@@ -540,10 +530,6 @@ class AppSidebarRight {
       default:
         console.warn('death is my friend', messages);
         break;
-    }
-    
-    if(this.lastSharedMediaDiv.childElementCount && !this.scroll.contains(this.lastSharedMediaDiv)) {
-      elemsToAppend.push(this.lastSharedMediaDiv);
     }
 
     if(this.loadMutex) {
@@ -665,8 +651,6 @@ class AppSidebarRight {
   public cleanup() {
     this.loadSidebarMediaPromises = {};
     this.loadedAllMedia = {};
-    this.lastSharedMediaDiv = document.createElement('div');
-    this.lastSharedMediaDiv.classList.add('media-row');
 
     this.prevTabID = -1;
     this.mediaDivsByIDs = {};
