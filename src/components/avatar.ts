@@ -14,6 +14,7 @@ $rootScope.$on('avatar_update', (e: CustomEvent) => {
 export default class AvatarElement extends HTMLElement {
   private peerID: number;
   private isDialog = false;
+  public peerTitle: string;
 
   constructor() {
     super();
@@ -33,22 +34,23 @@ export default class AvatarElement extends HTMLElement {
   }
 
   static get observedAttributes(): string[] {
-    return ['peer', 'dialog'/* массив имён атрибутов для отслеживания их изменений */];
+    return ['peer', 'dialog', 'peer-title'/* массив имён атрибутов для отслеживания их изменений */];
   }
 
   attributeChangedCallback(name: string, oldValue: string, newValue: string) {
     // вызывается при изменении одного из перечисленных выше атрибутов
     if(name == 'peer') {
       this.peerID = +newValue;
+      this.update();
+    } else if(name == 'peer-title') {
+      this.peerTitle = newValue;
     } else if(name == 'dialog') {
       this.isDialog = !!newValue;
     }
-
-    this.update();
   }
 
   public update() {
-    appProfileManager.putPhoto(this, this.peerID, this.isDialog);
+    appProfileManager.putPhoto(this, this.peerID, this.isDialog, this.peerTitle);
   }
 
   adoptedCallback() {

@@ -362,6 +362,7 @@ export class AppMediaViewer {
 
       if(aspecter) {
         this.setFullAspect(aspecter, containerRect, rect);
+        aspecter.classList.add('disable-hover');
       }
 
       setTimeout(() => {
@@ -379,6 +380,8 @@ export class AppMediaViewer {
           mover.classList.remove('active');
           aspecter.style.cssText = '';
           void mover.offsetLeft; // reflow
+
+          aspecter.classList.remove('disable-hover');
         }
 
         mover.classList.add('active');
@@ -727,7 +730,11 @@ export class AppMediaViewer {
               }
 
               if(!video.parentElement) {
-                aspecter.prepend(video);
+                if(aspecter.classList.contains('media-viewer-aspecter')) {
+                  aspecter.prepend(video);
+                } else {
+                  mover.prepend(video);
+                }
               }
             }
 

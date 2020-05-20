@@ -50,6 +50,14 @@ div.scrollable::-webkit-scrollbar-thumb {
     -ms-overflow-style: none;
   }
 
+  &-sentinel {
+    position: relative;
+    left: 0;
+    height: 1px;
+    background-color: transparent;
+    width: 1px;
+  }
+
   /* &.scrollable-x ~ .scrollbar-thumb {
     top: auto;
     right: auto;

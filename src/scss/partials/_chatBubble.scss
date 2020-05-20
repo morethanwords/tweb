@@ -106,7 +106,7 @@
     }
   }
 
-  &.forwarded {
+  /* &.forwarded {
     .forward {
       opacity: 0;
       position: absolute;
@@ -129,6 +129,24 @@
         height: 20px;
       }
     }
+  } */
+
+  .goto-original {
+    opacity: 0;
+    position: absolute;
+    right: -46px;
+    bottom: 0;
+    width: 38px;
+    height: 38px;
+    font-size: 1.5rem;
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    color: #fff;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.16);
+    cursor: pointer;
+    transition: .2s opacity;
   }
 
   /* &.is-group-first {
@@ -161,10 +179,8 @@
     }
   }
 
-  &:hover {
-    .forward {
-      opacity: 1;
-    }
+  .goto-original {
+    opacity: 1;
   }
 
   .reply {

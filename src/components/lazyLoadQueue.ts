@@ -1,5 +1,3 @@
-import { isElementInViewport } from "../lib/utils";
-
 type LazyLoadElement = {
   div: HTMLDivElement, 
   load: () => Promise<any>, 
@@ -17,14 +15,31 @@ export default class LazyLoadQueue {
   private log = console.log.bind(console, '[LL]:');
   private debug = false;
 
-  constructor(private parallelLimit = 5) {
+  private observer: IntersectionObserver;
 
+  constructor(private parallelLimit = 5) {
+    this.observer = new IntersectionObserver(entries => {
+      for(let entry of entries) {
+        if(entry.isIntersecting) {
+          let target = entry.target as HTMLElement;
+
+          for(let item of this.lazyLoadMedia) {
+            if(item.div == target) {
+              item.wasSeen = true;
+              this.processQueue(item);
+              break;
+            }
+          }
+        }
+      }
+    });
   }
 
   public clear() {
     this.tempID--;
     this.lazyLoadMedia.length = 0;
     this.loadingMedia = 0;
+    this.observer.disconnect();
   }
 
   public length() {
@@ -45,24 +60,13 @@ export default class LazyLoadQueue {
     this.unlockResolve = null;
   }
 
-  public async processQueue(id?: number) {
+  public async processQueue(item?: LazyLoadElement) {
     if(this.parallelLimit > 0 && this.loadingMedia >= this.parallelLimit) return;
 
-    let item: LazyLoadElement;
-    let index: number;
-
-    if(id !== undefined) item = this.lazyLoadMedia.splice(id, 1)[0];
-    else {
-      item = this.lazyLoadMedia.findAndSplice(i => isElementInViewport(i.div));
-      if(!item) {
-        let length = this.lazyLoadMedia.length;
-        for(index = length - 1; index >= 0; --index) {
-          if(this.lazyLoadMedia[index].wasSeen) {
-            item = this.lazyLoadMedia.splice(index, 1)[0];
-            break;
-          }
-        }
-      }
+    if(item) {
+      this.lazyLoadMedia.findAndSplice(i => i == item);
+    } else {
+      item = this.lazyLoadMedia.findAndSplice(i => i.wasSeen);
     }
 
     if(item) {
@@ -73,17 +77,17 @@ export default class LazyLoadQueue {
       this.debug && this.log('will load media', this.lockPromise, item);
 
       try {
-        if(this.lockPromise && false) {
+        if(this.lockPromise/*  && false */) {
           let perf = performance.now();
           await this.lockPromise;
 
           this.debug && this.log('waited lock:', performance.now() - perf);
         }
         
-        await new Promise((resolve, reject) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
+        //await new Promise((resolve, reject) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
         await item.load();
       } catch(err) {
-        console.error('loadMediaQueue error:', err, item, id, index);
+        console.error('loadMediaQueue error:', err, item);
       }
 
       if(tempID == this.tempID) {
@@ -98,39 +102,14 @@ export default class LazyLoadQueue {
     }
   }
   
-  public check(id?: number) {
-    if(id !== undefined) {
-      let {div, wasSeen} = this.lazyLoadMedia[id];
-      if(!wasSeen && isElementInViewport(div)) {
-        //console.log('will load div by id:', div, div.getBoundingClientRect());
-        this.lazyLoadMedia[id].wasSeen = true;
-        this.processQueue(id);
-      }
-      
-      return;
-    }
-
-    let length = this.lazyLoadMedia.length;
-    for(let i = length - 1; i >= 0; --i) {
-      let {div, wasSeen} = this.lazyLoadMedia[i];
-      
-      if(!wasSeen && isElementInViewport(div)) {
-        //console.log('will load div:', div);
-        this.lazyLoadMedia[i].wasSeen = true;
-        this.processQueue(i);
-        //this.lazyLoadMedia.splice(i, 1);
-      }
-    }
-  }
-  
   public push(el: LazyLoadElement) {
-    let id = this.lazyLoadMedia.push(el) - 1;
+    this.lazyLoadMedia.push(el);
 
     if(el.wasSeen) {
-      this.processQueue(id);
+      this.processQueue(el);
     } else {
       el.wasSeen = false;
-      this.check(id);
+      this.observer.observe(el.div);
     }
   }
 }

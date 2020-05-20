@@ -1,4 +1,4 @@
-import { $rootScope, copy, tsNow, safeReplaceObject, dT, _, listMergeSorted, deepEqual, langPack } from "../utils";
+import { $rootScope, copy, tsNow, safeReplaceObject, dT, listMergeSorted, deepEqual, langPack } from "../utils";
 import appMessagesIDsManager from "./appMessagesIDsManager";
 import appChatsManager from "./appChatsManager";
 import appUsersManager from "./appUsersManager";
@@ -29,7 +29,10 @@ export type HistoryStorage = {
   count: number | null,
   history: number[],
   pending: number[],
-  readPromise?: any
+  
+  readPromise?: any,
+  maxOutID?: number,
+  reply_markup?: any
 };
 
 export type HistoryResult = {
@@ -189,6 +192,19 @@ export class AppMessagesManager {
         }
 
         if(messages) {
+          /* let tempID = this.tempID;
+
+          for(let message of messages) {
+            if(message.id < tempID) {
+              tempID = message.id;
+            }
+          }
+
+          if(tempID != this.tempID) {
+            console.log('Set tempID to:', tempID);
+            this.tempID = tempID;
+          } */
+
           this.saveMessages(messages);
         }
         
@@ -208,7 +224,7 @@ export class AppMessagesManager {
       }).catch(resolve);
     });
 
-    setInterval(() => this.saveState(), 10000);
+    //setInterval(() => this.saveState(), 10000);
   }
 
   public saveState() {
@@ -218,14 +234,29 @@ export class AppMessagesManager {
     
     for(let folderID in this.dialogsStorage) {
       for(let dialog of this.dialogsStorage[folderID]) {
-        let message = this.getMessage(dialog.top_message);
-        if(message._ != 'messageEmpty' && message.id > 0) {
-          messages.push(message);
+        let historyStorage = this.historiesStorage[dialog.peerID];
+        let history = [].concat(historyStorage?.pending ?? [], historyStorage?.history ?? []);
 
-          if(message.fromID != dialog.peerID) {
-            peers[message.fromID] = appPeersManager.getPeer(message.fromID);
+        dialog = copy(dialog);
+        let removeUnread = 0;
+        for(let mid of history) {
+          let message = this.getMessage(mid);
+          if(/* message._ != 'messageEmpty' &&  */message.id > 0) {
+            messages.push(message);
+  
+            if(message.fromID != dialog.peerID) {
+              peers[message.fromID] = appPeersManager.getPeer(message.fromID);
+            }
+
+            dialog.top_message = message.mid;
+
+            break;
+          } else if(message.pFlags && message.pFlags.unread) {
+            ++removeUnread;
           }
         }
+
+        if(removeUnread && dialog.unread_count) dialog.unread_count -= removeUnread; 
 
         dialogs.push(dialog);
 
@@ -2137,13 +2168,13 @@ export class AppMessagesManager {
       else message.pFlags.unread = false;
     }
 
-    if(this.historiesStorage[peerID] === undefined && !message.deleted) {
-      var historyStorage: any = {count: null, history: [], pending: []};
-      historyStorage[mid > 0 ? 'history' : 'pending'].push(mid)
+    if(this.historiesStorage[peerID] === undefined/*  && !message.deleted */) { // warning
+      let historyStorage: HistoryStorage = {count: null, history: [], pending: []};
+      historyStorage[mid > 0 ? 'history' : 'pending'].push(mid);
       if(mid < 0 && message.pFlags.unread) {
         dialog.unread_count++;
       }
-      this.historiesStorage[peerID] = historyStorage
+      this.historiesStorage[peerID] = historyStorage;
       if(this.mergeReplyKeyboard(historyStorage, message)) {
         $rootScope.$broadcast('history_reply_markup', {peerID: peerID});
       }
@@ -2154,7 +2185,7 @@ export class AppMessagesManager {
     }
   }
 
-  public mergeReplyKeyboard(historyStorage: any, message: any) {
+  public mergeReplyKeyboard(historyStorage: HistoryStorage, message: any) {
     // console.log('merge', message.mid, message.reply_markup, historyStorage.reply_markup)
     if(!message.reply_markup &&
       !message.pFlags.out &&
@@ -3204,6 +3235,7 @@ export class AppMessagesManager {
       }
         
       case 'updateServiceNotification': {
+        console.log('updateServiceNotification', update);
         var fromID = 777000;
         var peerID = fromID;
         var messageID = this.tempID--;

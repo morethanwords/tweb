@@ -32,8 +32,6 @@ export class ApiFileManager {
   } = {};
   public downloadActives: any = {};
 
-  public index = 0;
-
   private log: ReturnType<typeof logger> = logger('AFM');
 
   public downloadRequest(dcID: string | number, cb: () => Promise<unknown>, activeDelta?: number) {
@@ -45,9 +43,8 @@ export class ApiFileManager {
     var downloadPull = this.downloadPulls[dcID];
 
     let promise = new Promise((resolve, reject) => {
-      // WARNING deferred!
       downloadPull.push({cb: cb, deferred: {resolve, reject}, activeDelta: activeDelta});
-    }).catch(() => {});
+    })/* .catch(() => {}) */;
 
     setTimeout(() => {
       this.downloadCheck(dcID);
@@ -68,8 +65,6 @@ export class ApiFileManager {
     var activeDelta = data.activeDelta || 1;
 
     this.downloadActives[dcID] += activeDelta;
-
-    this.index++;
 
     data.cb()
     .then((result: any) => {
@@ -415,7 +410,7 @@ export class ApiFileManager {
                   });
                 });
               });
-            });
+            }, errorHandler);
           })(offset + limit >= size, offset, writeFileDeferred, writeFilePromise);
 
           writeFilePromise = writeFileDeferred;

@@ -165,6 +165,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     if(doc.type == 'gif') {
       video.autoplay = true;
       video.loop = true;
+      video.play();
     } else if(doc.type == 'round') {
       //video.dataset.ckin = doc.type == 'round' ? 'circle' : 'default';
       video.dataset.ckin = 'circle';
@@ -430,8 +431,9 @@ export function wrapVoiceMessage(doc: MTDocument, withTime = false): HTMLDivElem
   
   let index = 0;
   let skipped = 0;
+  let h = '';
   for(let uint8 of wave) {
-    if (index > 0 && index % 4 == 0) {
+    if(index > 0 && index % 4 == 0) {
       ++index;
       ++skipped;
       continue;
@@ -443,12 +445,13 @@ export function wrapVoiceMessage(doc: MTDocument, withTime = false): HTMLDivElem
       height = 2;
     }
     
-    svg.insertAdjacentHTML('beforeend', `
+    h += `
     <rect x="${(index - skipped) * 4}" y="${23 - height}" width="2" height="${height}" rx="1" ry="1"></rect>
-    `);
+    `;
     
     ++index;
   }
+  svg.insertAdjacentHTML('beforeend', h);
   
   let progress = div.querySelector('.audio-waveform') as HTMLDivElement;
   
@@ -772,7 +775,7 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
 
         console.timeEnd('render sticker' + doc.id);
 
-        if(div.firstElementChild && div.firstElementChild.tagName != 'CANVAS') {
+        if(div.firstElementChild && div.firstElementChild.tagName == 'IMG') {
           div.firstElementChild.remove();
         }
         

@@ -1,4 +1,4 @@
-import { logger, deferredPromise, CancellablePromise } from "../lib/polyfill";
+import { logger } from "../lib/polyfill";
 import smoothscroll from '../lib/smoothscroll';
 (window as any).__forceSmoothScrollPolyfill__ = true;
 smoothscroll.polyfill();
@@ -30,35 +30,23 @@ Array.from($0.querySelectorAll('.bubble__container')).forEach(_el => {
 export default class Scrollable {
   public container: HTMLDivElement;
 
-  public type: string;
-  public side: string;
-  public translate: string;
-  public scrollType: string;
-  public scrollSide: string;
-  public clientAxis: string;
-  public clientSize: string;
-  
-  public scrollSize = -1; // it will be scrollHeight
-  public size = 0; // it will be outerHeight of container (not scrollHeight)
-  
   public splitUp: HTMLElement;
   
   public onScrolledTop: () => void = null;
   public onScrolledBottom: () => void = null;
-  public onScrolledTopFired = false;
-  public onScrolledBottomFired = false;
 
   public onScrollMeasure: number = null;
   
   public lastScrollTop: number = 0;
-  public scrollTopOffset: number = 0;
   
   private disableHoverTimeout: number = 0;
   
   private log: ReturnType<typeof logger>;
   private debug = false;
-  
-  private measureMutex: CancellablePromise<void>;
+
+  private sentinelsObserver: IntersectionObserver;
+  private topSentinel: HTMLDivElement;
+  private bottomSentinel: HTMLDivElement;
 
   private observer: IntersectionObserver;
   private visible: Set<HTMLElement>;
@@ -86,7 +74,7 @@ export default class Scrollable {
     this.visible.delete(element);
   }
   
-  constructor(public el: HTMLElement, axis: 'y' | 'x' = 'y', public splitOffset = 300, logPrefix = '', public appendTo = el, public onScrollOffset = splitOffset, public splitCount = 15) {
+  constructor(public el: HTMLElement, axis: 'y' | 'x' = 'y', logPrefix = '', public appendTo = el, public onScrollOffset = 300, public splitCount = 15) {
     this.container = document.createElement('div');
     this.container.classList.add('scrollable');
 
@@ -161,20 +149,10 @@ export default class Scrollable {
     }
     
     this.log = logger('SCROLL' + (logPrefix ? '-' + logPrefix : ''));
-    
-    this.measureMutex = deferredPromise<void>();
-    this.measureMutex.resolve();
-    
+
     if(axis == 'x') {
       this.container.classList.add('scrollable-x');
-      this.type = 'width';
-      this.side = 'left';
-      this.translate = 'translateX';
-      this.scrollType = 'scrollWidth';
-      this.scrollSide = 'scrollLeft';
-      this.clientAxis = 'clientX';
-      this.clientSize = 'clientWidth';
-      
+
       let scrollHorizontally = (e: any) => {
         e = window.event || e;
         var delta = Math.max(-1, Math.min(1, (e.wheelDelta || -e.detail)));
@@ -193,24 +171,11 @@ export default class Scrollable {
       }
     } else if(axis == 'y') {
       this.container.classList.add('scrollable-y');
-      this.type = 'height';
-      this.side = 'top';
-      this.translate = 'translateY';
-      this.scrollType = 'scrollHeight';
-      this.scrollSide = 'scrollTop';
-      this.clientAxis = 'clientY';
-      this.clientSize = 'clientHeight';
     } else {
       throw new Error('no side for scroll');
     }
     
-    //this.container.addEventListener('mouseover', this.resize.bind(this)); // omg
-    window.addEventListener('resize', () => {
-      window.requestAnimationFrame(() => {
-        this.onScroll();
-      });
-    });
-
+    window.addEventListener('resize', () => this.onScroll());
     this.container.addEventListener('scroll', () => this.onScroll(), {passive: true, capture: true});
     
     Array.from(el.children).forEach(c => this.container.append(c));
@@ -219,12 +184,41 @@ export default class Scrollable {
     //this.onScroll();
   }
 
+  public attachSentinels(container = this.container, offset = this.onScrollOffset) {
+    if(!this.sentinelsObserver) {
+      this.topSentinel = document.createElement('div');
+      this.topSentinel.classList.add('scrollable-sentinel');
+      this.topSentinel.style.top = offset + 'px';
+      this.bottomSentinel = document.createElement('div');
+      this.bottomSentinel.classList.add('scrollable-sentinel');
+      this.bottomSentinel.style.bottom = offset + 'px';
+  
+      this.container.append(this.topSentinel, this.bottomSentinel);
+  
+      this.sentinelsObserver = new IntersectionObserver(entries => {
+        for(let entry of entries) {
+          if(entry.isIntersecting) {
+            let top = entry.target == this.topSentinel;
+            if(top) {
+              this.onScrolledTop && this.onScrolledTop();
+            } else {
+              this.onScrolledBottom && this.onScrolledBottom();
+            }
+          }
+        }
+      });
+  
+      this.sentinelsObserver.observe(this.topSentinel);
+      this.sentinelsObserver.observe(this.bottomSentinel);
+    }
+
+    container.prepend(this.topSentinel);
+    container.append(this.bottomSentinel);
+  }
+
   public setVirtualContainer(el?: HTMLElement) {
     this.splitUp = el;
-    
-    this.onScrolledBottomFired = this.onScrolledTopFired = false;
     this.lastScrollTop = 0;
-
     this.log('setVirtualContainer:', el, this);
   }
 
@@ -250,52 +244,11 @@ export default class Scrollable {
     this.disableHoverTimeout = setTimeout(() => {
       appendTo.classList.remove('disable-hover');
       this.lastScrollDirection = 0;
-      
-      if(!this.measureMutex.isFulfilled) {
-        this.measureMutex.resolve();
-      }
     }, 100);
-    
-    if(this.onScrollMeasure) return; //window.cancelAnimationFrame(this.onScrollMeasure);
+
+    if(!this.splitUp || this.onScrollMeasure) return;
     this.onScrollMeasure = window.requestAnimationFrame(() => {
-      // @ts-ignore
-      let scrollPos = this.container[this.scrollSide];
-
-      //if(this.measureMutex.isFulfilled) {
-        // @ts-ignore quick brown fix
-        this.size = this.container[this.clientSize];
-        
-        // @ts-ignore
-        let scrollSize = this.container[this.scrollType];
-        this.scrollSize = scrollSize;
-        
-        //this.measureMutex = deferredPromise<void>();
-      //}
-      
-      let scrollTop = scrollPos - this.scrollTopOffset;
-      let maxScrollTop = this.scrollSize - this.scrollTopOffset - this.size;
-
-      if(this.onScrolledBottom && !this.scrollLocked) {
-        if((maxScrollTop - scrollTop) <= this.onScrollOffset) {
-          //if(!this.onScrolledBottomFired) {
-          this.onScrolledBottomFired = true;
-          this.onScrolledBottom();
-          //}
-        } else {
-          this.onScrolledBottomFired = false;
-        }
-      }
-      
-      if(this.onScrolledTop && !this.scrollLocked) {
-        //this.log('onScrolledTop:', scrollTop, this.onScrollOffset);
-        if(scrollTop <= this.onScrollOffset) {
-          this.onScrolledTopFired = true;
-          this.onScrolledTop();
-        } else {
-          this.onScrolledTopFired = false;
-        }
-      }
-      
+      let scrollTop = this.container.scrollTop;
       if(this.lastScrollTop != scrollTop) {
         this.lastScrollDirection = this.lastScrollTop < scrollTop ? 1 : -1;
         this.lastScrollTop = scrollTop;
@@ -385,8 +338,8 @@ export default class Scrollable {
     }
   }
 
-  public scrollTo(top: number, smooth = true) {
-    if(this.scrollLocked) return;
+  public scrollTo(top: number, smooth = true, important = false) {
+    if(this.scrollLocked && !important) return;
 
     let scrollTop = this.scrollTop;
     if(scrollTop == Math.floor(top)) {

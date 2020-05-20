@@ -499,7 +499,7 @@ export class ApiUpdatesManager {
     this.attached = true;
     apiManager.setUpdatesProcessor(this.processUpdateMessage.bind(this));
 
-    if(!state) {
+    if(!state || !state.pts || !state.date || !state.seq) {
       apiManager.invokeApi('updates.getState', {}, {noErrorBox: true}).then((stateResult: any) => {
         this.updatesState.seq = stateResult.seq;
         this.updatesState.pts = stateResult.pts;

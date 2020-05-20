@@ -1,4 +1,4 @@
-import { generatePathData } from "../lib/utils";
+import { generatePathData, $rootScope } from "../lib/utils";
 
 export default class BubbleGroups {
   bubblesByGroups: Array<{timestamp: number, fromID: number, mid: number, group: HTMLDivElement[]}> = []; // map to group
@@ -22,6 +22,11 @@ export default class BubbleGroups {
     let timestamp = message.date;
     let fromID = message.fromID;
     let group: HTMLDivElement[];
+
+    // fix for saved messages forward to self
+    if(fromID == $rootScope.myID && $rootScope.selectedPeerID == $rootScope.myID && message.fwdFromID == fromID) {
+      fromID = -fromID;
+    }
     
     // try to find added
     //this.removeBubble(message.mid);
@@ -48,7 +53,7 @@ export default class BubbleGroups {
       this.groups.push(group = [bubble]);
     }
 
-    //console.log('addBubble', bubble, message.mid, fromID, reverse, group);
+    //console.log('[BUBBLE]: addBubble', bubble, message.mid, fromID, reverse, group);
     
     this.bubblesByGroups[reverse ? 'unshift' : 'push']({timestamp, fromID, mid: message.mid, group});
     this.updateGroup(group);
@@ -117,7 +122,7 @@ export default class BubbleGroups {
       
       let first = group[0];
 
-      //console.log('updateGroup', group, first);
+      //console.log('[BUBBLE]: updateGroup', group, first);
       
       if(group.length == 1) {
         first.classList.add('is-group-first', 'is-group-last');

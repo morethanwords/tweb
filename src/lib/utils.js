@@ -441,42 +441,6 @@ export function findUpTag(el, tag) {
   return null;
 }
 
-export function isElementInViewport(el) {
-  var rect   = el.getBoundingClientRect(),
-    vWidth   = window.innerWidth || document.documentElement.clientWidth,
-    vHeight  = window.innerHeight || document.documentElement.clientHeight,
-    efp      = function(x, y) { return document.elementFromPoint(x, y) };     
-
-  // Return false if it's not in the viewport
-  if(rect.right < 0 || rect.bottom < 0 
-    || rect.left > vWidth || rect.top > vHeight 
-    || !rect.width || !rect.height) {
-    return false;
-  }
-
-  let elements = [
-    efp(rect.left + 1,  rect.top + 1),
-    efp(rect.right - 1, rect.top + 1),
-    efp(rect.right - 1, rect.bottom - 1),
-    efp(rect.left + 1,  rect.bottom - 1)
-  ];
-
-  // Return true if any of its four corners are visible
-  return elements.find(e => el.contains(e) || el.parentElement == e) !== undefined;
-}
-
-export function isScrolledIntoView(el) {
-  var rect = el.getBoundingClientRect();
-  var elemTop = rect.top;
-  var elemBottom = rect.bottom;
-
-  // Only completely visible elements return true:
-  //var isVisible = (elemTop >= 0) && (elemBottom <= window.innerHeight);
-  // Partially visible elements return true:
-  var isVisible = elemTop < window.innerHeight && elemBottom >= 0;
-  return isVisible;
-}
-
 export function whichChild(elem/* : Node */) {
   let i = 0;
   // @ts-ignore
@@ -645,11 +609,11 @@ export function calcImageInBox (imageW, imageH, boxW, boxH, noZooom) {
  * @param {String} input The emoji character.
  * @returns {String} The base 16 unicode code.
  */
-/* export function emojiUnicode (input) {
-  let pairs = emojiUnicode.raw(input).split(' ').map(val => parseInt(val).toString(16));
-  if(pairs[0].length == 2) pairs[0] = '00' + pairs[0];
-  return pairs.join('-').toUpperCase();
-} */
+export function emojiUnicode(input) {
+  let pairs = emojiUnicode.raw(input).split(' ').map(val => parseInt(val).toString(16)).filter(p => p != 'fe0f');
+  if(pairs.length && pairs[0].length == 2) pairs[0] = '00' + pairs[0];
+  return pairs.join('-');
+}
 
 /**
 * emojiunicode.raw
@@ -660,7 +624,7 @@ export function calcImageInBox (imageW, imageH, boxW, boxH, noZooom) {
 * @param {String} input The emoji character.
 * @returns {String} The unicode code points.
 */
-/* emojiUnicode.raw = function (input) {
+emojiUnicode.raw = function(input) {
   if(input.length === 1) {
     return input.charCodeAt(0).toString();
   } else if(input.length > 1) {
@@ -685,74 +649,7 @@ export function calcImageInBox (imageW, imageH, boxW, boxH, noZooom) {
   }
 
   return '';
-}; */
-
-// country code regex
-const CC_REGEX = /^[a-z]{2}$/i;
-
-// offset between uppercase ascii and regional indicator symbols
-const OFFSET = 127397;
-
-/**
- * convert country code to corresponding emoji flag
- * @param {string} cc - country code string
- * @returns {string} country code emoji
- */
-export function countryCodeEmoji(cc/* : string */) {
-  if(!CC_REGEX.test(cc)) {
-    const type = typeof cc;
-    throw new TypeError(
-      `cc argument must be an ISO 3166-1 alpha-2 string, but got '${
-        type === 'string' ? cc : type
-      }' instead.`,
-    );
-  }
-
-  const chars = [...cc.toUpperCase()].map(c => c.charCodeAt(0) + OFFSET);
-  //console.log(chars);
-  return String.fromCodePoint(...chars);
-}
-
-export function unifiedCountryCodeEmoji(cc/* : string */) {
-  if(!CC_REGEX.test(cc)) {
-    const type = typeof cc;
-    throw new TypeError(
-      `cc argument must be an ISO 3166-1 alpha-2 string, but got '${
-        type === 'string' ? cc : type
-      }' instead.`,
-    );
-  }
-
-  const chars = [...cc.toUpperCase()].map(c => c.charCodeAt(0) + OFFSET);
-  return chars.map(c => c.toString(16).toUpperCase()).join('-');
-}
-
-function versionCompare (ver1, ver2) {
-  if (typeof ver1 !== 'string') {
-    ver1 = ''
-  }
-  if (typeof ver2 !== 'string') {
-    ver2 = ''
-  }
-  ver1 = ver1.replace(/^\s+|\s+$/g, '').split('.')
-  ver2 = ver2.replace(/^\s+|\s+$/g, '').split('.')
-
-  var a = Math.max(ver1.length, ver2.length), i
-
-  for (i = 0; i < a; i++) {
-    if (ver1[i] == ver2[i]) {
-      continue
-    }
-    if (ver1[i] > ver2[i]) {
-      return 1
-    } else {
-      return -1
-    }
-  }
-
-  return 0
-}
-
+};
 
   //var badCharsRe = /[`~!@#$%^&*()\-_=+\[\]\\|{}'";:\/?.>,<\s]+/g,
   var badCharsRe = /[`~!@#$%^&*()\-_=+\[\]\\|{}'";:\/?.>,<]+/g,

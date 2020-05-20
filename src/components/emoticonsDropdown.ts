@@ -39,7 +39,6 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
     }
   }, () => {
     lottieLoader.checkAnimations(false, EMOTICONSSTICKERGROUP);
-    lazyLoadQueue.check(); // for stickers or gifs
   });
 
   (tabs.firstElementChild.children[0] as HTMLLIElement).click(); // set emoji tab
@@ -66,13 +65,11 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
 
       setTimeout(() => {
         lottieLoader.checkAnimations(true, EMOTICONSSTICKERGROUP);
-        lazyLoadQueue.check();
       }, 100);
 
       /* window.requestAnimationFrame(() => {
         window.requestAnimationFrame(() => {
           lottieLoader.checkAnimations(true, EMOTICONSSTICKERGROUP);
-          lazyLoadQueue.check();
         });
       }); */
     });
@@ -106,32 +103,28 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
   };
 
   {
-    let categories = ["Smileys & Emotion", "Animals & Nature", "Food & Drink", "Travel & Places", "Activities", "Objects", /* "Symbols",  */"Flags", "Skin Tones"];
+    const categories = ["Smileys & Emotion", "Animals & Nature", "Food & Drink", "Travel & Places", "Activities", "Objects", /* "Symbols",  */"Flags", "Skin Tones"];
     let divs: {
       [category: string]: HTMLDivElement
     } = {};
 
-    let keyCategory = Config.Emoji.keyCategory;
     let sorted: {
-      [category: string]: any[]
+      [category: string]: string[]
     } = {};
 
-    for(let unified in Config.Emoji.emoji) {
-      // @ts-ignore
-      let details = Config.Emoji.emoji[unified];
-      let category = details[keyCategory];
-
-      if(category == 'Symbols') category = 'Objects';
-
-      details.unified = unified;
+    for(let emoji in Config.Emoji) {
+      let details = Config.Emoji[emoji];
+      let i = '' + details;
+      let category = categories[+i[0] - 1];
+      if(!category) continue; // maybe it's skin tones
 
       if(!sorted[category]) sorted[category] = [];
-      sorted[category][details.sort_order] = details;
+      sorted[category][+i.slice(1) || 0] = emoji;
     }
 
-    //console.log('emoticons sorted:', sorted);
+    console.log('emoticons sorted:', sorted);
 
-    Object.keys(sorted).forEach(c => sorted[c].sort((a, b) => a - b));
+    //Object.keys(sorted).forEach(c => sorted[c].sort((a, b) => a - b));
 
     categories.pop();
     delete sorted["Skin Tones"];
@@ -151,8 +144,8 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
       div.append(titleDiv, itemsDiv);
 
       let emojis = sorted[category];
-      emojis.forEach(details => {
-        let emoji = details.unified;
+      emojis.forEach(emoji => {
+        //let emoji = details.unified;
         //let emoji = (details.unified as string).split('-')
           //.reduce((prev, curr) => prev + String.fromCodePoint(parseInt(curr, 16)), '');
 
@@ -160,7 +153,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
         let kek = RichTextProcessor.wrapRichText(emoji);
 
         if(!kek.includes('emoji')) {
-          console.log(details, emoji, kek, spanEmoji, emoji.length, new TextEncoder().encode(emoji));
+          console.log(emoji, kek, spanEmoji, emoji.length, new TextEncoder().encode(emoji));
           return;
         }
 
@@ -182,7 +175,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
 
     let prevCategoryIndex = 1;
     let menu = contentEmojiDiv.nextElementSibling.firstElementChild as HTMLUListElement;
-    let emojiScroll = new Scrollable(contentEmojiDiv, 'y', 500, 'EMOJI', null);
+    let emojiScroll = new Scrollable(contentEmojiDiv, 'y', 'EMOJI', null);
     emojiScroll.container.addEventListener('scroll', (e) => {
       prevCategoryIndex = emoticonsContentOnScroll(menu, heights, prevCategoryIndex, emojiScroll.container);
     });
@@ -238,7 +231,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
     let document = appDocsManager.getDoc(fileID);
     if(document._ != 'documentEmpty') {
       appMessagesManager.sendFile(appImManager.peerID, document, {isMedia: true});
-      appImManager.chatInputC.onMessageSent(true, false);
+      appImManager.chatInputC.onMessageSent(false);
       dropdown.classList.remove('active');
       toggleEl.classList.remove('active');
     } else {
@@ -303,8 +296,6 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
       if(prepend) stickersScroll.prepend(categoryDiv);
       else stickersScroll.append(categoryDiv);
 
-      setTimeout(() => lazyLoadQueue.check(), 0);
-
       /* let scrollHeight = categoryDiv.scrollHeight;
       let prevHeight = heights[heights.length - 1] || 0;
       //console.log('scrollHeight', scrollHeight, categoryDiv, stickersDiv.childElementCount);
@@ -325,7 +316,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
         concated.forEach((el, i) => {
           heights[i] = (heights[i - 1] || 0) + el.height + (i == 0 ? paddingTop : 0);
         }); */
-        let concated = Array.from(stickersScroll.splitUp.children);
+        let concated = Array.from(stickersScroll.splitUp.children) as HTMLElement[];
         concated.forEach((el, i) => {
           heights[i] = (heights[i - 1] || 0) + el.scrollHeight + (i == 0 ? paddingTop : 0);
         });
@@ -343,9 +334,8 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
     };
 
     let prevCategoryIndex = 0;
-    let stickersScroll = new Scrollable(contentStickersDiv, 'y', 500, 'STICKERS', undefined, undefined, 2);
+    let stickersScroll = new Scrollable(contentStickersDiv, 'y', 'STICKERS', undefined, undefined, 2);
     stickersScroll.container.addEventListener('scroll', (e) => {
-      lazyLoadQueue.check();
       lottieLoader.checkAnimations();
 
       prevCategoryIndex = emoticonsContentOnScroll(menu, heights, prevCategoryIndex, stickersScroll.container, menuScroll);
@@ -440,11 +430,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
 
     masonry.addEventListener('click', onMediaClick);
 
-    let scroll = new Scrollable(contentDiv, 'y', 500, 'GIFS', null);
-
-    scroll.container.addEventListener('scroll', (e) => {
-      lazyLoadQueue.check();
-    });
+    let scroll = new Scrollable(contentDiv, 'y', 'GIFS', null);
 
     let width = 400;
     let maxSingleWidth = width - 100;

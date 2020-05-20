@@ -1,4 +1,4 @@
-import { isElementInViewport, isInDOM } from "./utils";
+import { isInDOM } from "./utils";
 import LottiePlayer, { AnimationConfigWithPath, AnimationConfigWithData, AnimationItem } from "lottie-web/build/player/lottie.d";
 
 class LottieLoader {
@@ -59,7 +59,7 @@ class LottieLoader {
           continue;
         }
 
-        if(canvas) {
+        /* if(canvas) {
           let c = container.firstElementChild as HTMLCanvasElement;
           if(!c) {
             console.warn('no canvas element for check!', container, animations[i]);
@@ -70,11 +70,11 @@ class LottieLoader {
             //console.log('lottie need resize');
             animation.resize();
           }
-        }
+        } */
   
         if(!autoplay) continue;
         
-        if(blurred || !isElementInViewport(container)) {
+        /* if(blurred || !isElementInViewport(container)) {
           if(!paused) {
             this.debug && console.log('pause animation', isElementInViewport(container), container);
             animation.pause();
@@ -84,7 +84,7 @@ class LottieLoader {
           this.debug && console.log('play animation', container);
           animation.play();
           animations[i].paused = false;
-        }
+        } */
       }
     }
   }
@@ -92,7 +92,8 @@ class LottieLoader {
   public async loadAnimation(params: /* any */AnimationConfigWithPath | AnimationConfigWithData, group = '') {
     //params.autoplay = false;
     //if(group != 'auth') {
-      params.renderer = 'canvas';
+      //params.renderer = 'canvas';
+      params.renderer = 'svg';
     //}
     
     params.rendererSettings = {
@@ -131,7 +132,7 @@ class LottieLoader {
       container: params.container as HTMLDivElement, 
       paused: !params.autoplay,
       autoplay: params.autoplay,
-      canvas: params.renderer == 'canvas'
+      canvas: false//params.renderer == 'canvas'
     });
 
     if(params.autoplay) {

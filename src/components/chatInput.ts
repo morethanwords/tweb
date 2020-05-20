@@ -471,7 +471,6 @@ export class ChatInput {
           };
         } else {
           this.emoticonsDropdown.classList.add('active');
-          this.emoticonsLazyLoadQueue.check();
         }
     
         this.toggleEmoticons.classList.add('active');
@@ -513,11 +512,7 @@ export class ChatInput {
     }, '');
   };
 
-  public onMessageSent(scrollDown = true, clearInput = true) {
-    if(scrollDown) {
-      appImManager.scroll.scrollTop = appImManager.scroll.scrollHeight;
-    }
-
+  public onMessageSent(clearInput = true) {
     let dialog = appMessagesManager.getDialogByPeerID(appImManager.peerID)[0];
     if(dialog && dialog.top_message) {
       appMessagesManager.readHistory(appImManager.peerID, dialog.top_message); // lol
@@ -556,7 +551,7 @@ export class ChatInput {
       });
     }
 
-    this.onMessageSent(!this.editMsgID);
+    this.onMessageSent();
   };
 
   public setTopInfo(title: string, subtitle: string, input?: string, message?: any) {

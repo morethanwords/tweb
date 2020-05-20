@@ -29,8 +29,6 @@ let setText = (text: string, el: HTMLDivElement) => {
     el.prepend(p);
     
     el.style.display = '';
-
-    //this.scroll.getScrollTopOffset();
   });
 };
 
@@ -66,7 +64,8 @@ class AppSidebarRight {
   private loadedAllMedia: {[type: string]: boolean} = {};
   
   public sharedMediaTypes = [
-    'inputMessagesFilterContacts', 
+    'members',
+    //'inputMessagesFilterContacts', 
     'inputMessagesFilterPhotoVideo', 
     'inputMessagesFilterDocument', 
     'inputMessagesFilterUrl', 
@@ -75,7 +74,7 @@ class AppSidebarRight {
   public sharedMediaType: AppSidebarRight['sharedMediaTypes'][number] = '';
   private sharedMediaSelected: HTMLDivElement = null;
   
-  private lazyLoadQueueSidebar = new LazyLoadQueue(5);
+  private lazyLoadQueue = new LazyLoadQueue(5);
   
   public historiesStorage: {
     [peerID: number]: {
@@ -114,15 +113,14 @@ class AppSidebarRight {
     let container = this.profileContentEl.querySelector('.content-container .tabs-container') as HTMLDivElement;
     this.profileTabs = this.profileContentEl.querySelector('.profile-tabs') as HTMLUListElement;
     
-    this.scroll = new Scrollable(this.profileContainer, 'y', 1200, 'SR', undefined, 400);
-    //this.scroll = new Scrollable(this.profileContentEl, 'y', 1200, 'SR', undefined, 400);
-    this.scroll.container.addEventListener('scroll', this.onSidebarScroll.bind(this));
+    this.scroll = new Scrollable(this.profileContainer, 'y', 'SR');
     this.scroll.onScrolledBottom = () => {
       if(this.sharedMediaSelected && this.sharedMediaSelected.childElementCount/* && false */) {
         this.log('onScrolledBottom will load media');
         this.loadSidebarMedia(true);
       }
     };
+    this.scroll.attachSentinels(undefined, 400);
     
     horizontalMenu(this.profileTabs, container, (id, tabContent) => {
       if(this.prevTabID == id) return;
@@ -130,24 +128,19 @@ class AppSidebarRight {
       this.sharedMediaType = this.sharedMediaTypes[id];
       this.sharedMediaSelected = tabContent.firstElementChild as HTMLDivElement;
 
-      if(this.profileTabs.offsetTop) {
+      if(this.prevTabID != -1 && this.profileTabs.offsetTop) {
         this.scroll.scrollTop -= this.profileTabs.offsetTop;
       }
 
-      this.log('setVirtualContainer', id, this.sharedMediaSelected, this.sharedMediaSelected.childElementCount);
-      this.scroll.setVirtualContainer(this.sharedMediaSelected);
+      /* this.log('setVirtualContainer', id, this.sharedMediaSelected, this.sharedMediaSelected.childElementCount);
+      this.scroll.setVirtualContainer(this.sharedMediaSelected); */
 
       if(this.prevTabID != -1 && !this.sharedMediaSelected.childElementCount) { // quick brown fix
-        this.contentContainer.classList.remove('loaded');
+        //this.contentContainer.classList.remove('loaded');
         this.loadSidebarMedia(true);
       }
 
       this.prevTabID = id;
-
-      this.scroll.onScroll();
-    }, () => {
-      this.onSidebarScroll.bind(this);
-      this.scroll.onScroll();
     });
     
     let sidebarCloseBtn = this.sidebarEl.querySelector('.sidebar-close-button') as HTMLButtonElement;
@@ -183,9 +176,7 @@ class AppSidebarRight {
       //let checked = this.profileElements.notificationsCheckbox.checked;
       appImManager.mutePeer(this.peerID);
     });
-    
-    window.addEventListener('resize', this.onSidebarScroll.bind(this));
-    
+
     if(testScroll) {
       let div = document.createElement('div');
       for(let i = 0; i < 500; ++i) {
@@ -209,24 +200,77 @@ class AppSidebarRight {
     this.searchContainer.classList.add('active');
     this.privateSearch.beginSearch(this.peerID);
   }
-  
-  public onSidebarScroll() {
-    this.lazyLoadQueueSidebar.check();
-  }
-  
+
   public toggleSidebar(enable?: boolean) {
     /////this.log('sidebarEl', this.sidebarEl, enable, isElementInViewport(this.sidebarEl));
     
+    let active = this.sidebarEl.classList.contains('active');
+    let willChange: boolean;
     if(enable !== undefined) {
       if(enable) {
-        setTimeout(() => this.lazyLoadQueueSidebar.check(), 200);
-        this.sidebarEl.classList.add('active');
-      } else this.sidebarEl.classList.remove('active');
-      
-      return;
+        if(!active) {
+          willChange = true;
+        }
+      } else if(active) {
+        willChange = true;
+      }
+    } else {
+      willChange = true;
     }
 
-    this.sidebarEl.classList.toggle('active');
+    if(!willChange) return Promise.resolve();
+
+    let set = () => {
+      if(enable !== undefined) {
+        if(enable) this.sidebarEl.classList.add('active');
+        else this.sidebarEl.classList.remove('active');
+      } else {
+        this.sidebarEl.classList.toggle('active');
+      }
+    };
+
+    return new Promise((resolve, reject) => {
+      let hidden: {element: HTMLDivElement, height: number}[] = [];
+      let observer = new IntersectionObserver((entries) => {
+        for(let entry of entries) {
+          let bubble = entry.target as HTMLDivElement;
+          if(!entry.isIntersecting) {
+            hidden.push({element: bubble, height: bubble.scrollHeight});
+          }
+        }
+  
+        for(let item of hidden) {
+          item.element.style.minHeight = item.height + 'px';
+          (item.element.firstElementChild as HTMLElement).style.display = 'none';
+          item.element.style.width = '1px';
+        }
+  
+        //console.log('hidden', hidden);
+        observer.disconnect();
+  
+        set();
+  
+        setTimeout(() => {
+          for(let item of hidden) {
+            item.element.style.minHeight = '';
+            item.element.style.width = '';
+            (item.element.firstElementChild as HTMLElement).style.display = '';
+          }
+
+          resolve();
+        }, 200);
+      });
+  
+      let length = Object.keys(appImManager.bubbles).length;
+      if(length) {
+        for(let i in appImManager.bubbles) {
+          observer.observe(appImManager.bubbles[i]);
+        }
+      } else {
+        set();
+        setTimeout(resolve, 200);
+      }
+    });
   }
 
   public filterMessagesByType(ids: number[], type: string) {
@@ -396,7 +440,7 @@ class AppSidebarRight {
               appPhotosManager.setAttachmentPreview(sizes[0].bytes, img, false, false);
             }
 
-            this.lazyLoadQueueSidebar.push({div, load});
+            this.lazyLoadQueue.push({div, load});
           }
           
           this.lastSharedMediaDiv.append(div);
@@ -451,10 +495,11 @@ class AppSidebarRight {
 
               previewDiv.classList.remove('empty');
 
+              previewDiv.innerText = '';
               renderImageFromUrl(previewDiv, webpage.photo.url);
             });
             
-            this.lazyLoadQueueSidebar.push({div: previewDiv, load});
+            this.lazyLoadQueue.push({div: previewDiv, load});
           }
           
           let title = webpage.rTitle || '';
@@ -493,8 +538,8 @@ class AppSidebarRight {
       }
       
       default:
-      //console.warn('death is my friend', message);
-      break;
+        console.warn('death is my friend', messages);
+        break;
     }
     
     if(this.lastSharedMediaDiv.childElementCount && !this.scroll.contains(this.lastSharedMediaDiv)) {
@@ -521,11 +566,9 @@ class AppSidebarRight {
       let parent = sharedMediaDiv.parentElement;
       if(parent.lastElementChild.classList.contains('preloader')) {
         parent.lastElementChild.remove();
-        this.contentContainer.classList.add('loaded');
+        //this.contentContainer.classList.add('loaded');
       }
     }
-    
-    this.onSidebarScroll();
   }
   
   public loadSidebarMedia(single = false) {
@@ -626,11 +669,8 @@ class AppSidebarRight {
     this.lastSharedMediaDiv.classList.add('media-row');
 
     this.prevTabID = -1;
-    this.scroll.setVirtualContainer(null);
-    
     this.mediaDivsByIDs = {};
-    
-    this.lazyLoadQueueSidebar.clear();
+    this.lazyLoadQueue.clear();
 
     this.sharedMediaTypes.forEach(type => {
       this.usedFromHistory[type] = 0;
@@ -640,9 +680,9 @@ class AppSidebarRight {
   }
 
   public cleanupHTML() {
-    this.contentContainer.classList.remove('loaded');
+    //this.contentContainer.classList.remove('loaded');
 
-    this.profileContentEl.parentElement.scrollTop = 0;
+    //this.profileContentEl.parentElement.scrollTop = 0;
     this.profileElements.bio.style.display = 'none';
     this.profileElements.phone.style.display = 'none';
     this.profileElements.username.style.display = 'none';
@@ -710,7 +750,10 @@ class AppSidebarRight {
       });
     }
     
+    let membersLi = this.profileTabs.firstElementChild.children[0] as HTMLLIElement;
     if(peerID > 0) {
+      membersLi.style.display = 'none';
+
       let user = appUsersManager.getUser(peerID);
       if(user.phone && peerID != $rootScope.myID) {
         setText(user.rPhone, this.profileElements.phone);
@@ -734,6 +777,7 @@ class AppSidebarRight {
         }
       });
     } else {
+      membersLi.style.display = appPeersManager.isBroadcast(peerID) ? 'none' : '';
       let chat = appPeersManager.getPeer(peerID);
       
       appProfileManager.getChatFull(chat.id).then((chatFull: any) => {

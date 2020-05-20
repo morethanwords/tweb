@@ -75,12 +75,12 @@
       position: relative;
       //height: 1%; // fix safari
 
-      &.loaded {
+      /* &.loaded { // warning
         .profile-tabs-content {
           position: relative;
           min-height: auto;
         }
-      }
+      } */
     }
   }
 

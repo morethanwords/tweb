@@ -118,7 +118,8 @@ class AppStickersManager {
   public getAnimatedEmojiSticker(emoji: string) {
     let stickerSet = this.stickerSets.emoji;
 
-    return stickerSet.documents.find(doc => doc.attributes.find(attribute => attribute.alt == emoji));
+    emoji = emoji.replace(/\ufe0f/g, '');
+    return stickerSet.documents.find(doc => doc.stickerEmojiRaw == emoji);
   }
   
   public async saveStickerSet(res: {

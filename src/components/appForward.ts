@@ -15,7 +15,6 @@ class AppForward {
     this.closeBtn.addEventListener('click', () => {
       this.cleanup();
       this.container.classList.remove('active');
-      appSidebarRight.onSidebarScroll();
     });
 
     this.sendBtn.addEventListener('click', () => {

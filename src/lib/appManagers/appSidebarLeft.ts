@@ -387,6 +387,9 @@ class AppEditProfileTab implements SliderTab {
 
   private avatarElem = document.createElement('avatar-element');
 
+  private profileUrlContainer = this.container.querySelector('.profile-url-container') as HTMLDivElement;
+  private profileUrlAnchor = this.profileUrlContainer.lastElementChild as HTMLAnchorElement;
+
   private originalValues = {
     firstName: '',
     lastName: '',
@@ -411,21 +414,27 @@ class AppEditProfileTab implements SliderTab {
     this.lastNameInput.addEventListener('input', () => this.handleChange());
     this.bioInput.addEventListener('input', () => this.handleChange());
     this.userNameInput.addEventListener('input', () => {
-      this.handleChange();
       let value = this.userNameInput.value;
 
       console.log('userNameInput:', value);
-      if(value == this.originalValues.userName) {
+      if(value == this.originalValues.userName || !value.length) {
         this.userNameInput.classList.remove('valid', 'error');
         userNameLabel.innerText = 'Username (optional)';
+        this.setProfileUrl();
+        this.handleChange();
         return;
-      } else if(value.length < 5 || value.length > 32 || !/^[a-zA-Z0-9_]+$/.test(value)) { // does not check the last underscore
+      } else if(!this.isUsernameValid(value)) { // does not check the last underscore
         this.userNameInput.classList.add('error');
         this.userNameInput.classList.remove('valid');
         userNameLabel.innerText = 'Username is invalid';
       } else {
-        this.userNameInput.classList.remove('error');
-        /*  */
+        this.userNameInput.classList.remove('valid', 'error');
+      }
+
+      if(this.userNameInput.classList.contains('error')) {
+        this.setProfileUrl();
+        this.handleChange();
+        return;
       }
 
       apiManager.invokeApi('account.checkUsername', {
@@ -453,6 +462,9 @@ class AppEditProfileTab implements SliderTab {
             break;
           }
         }
+      }).then(() => {
+        this.handleChange();
+        this.setProfileUrl();
       });
     });
 
@@ -509,14 +521,31 @@ class AppEditProfileTab implements SliderTab {
     }
 
     this.uploadAvatar = null;
+
+    this.setProfileUrl();
+  }
+
+  public isUsernameValid(username: string) {
+    return ((username.length >= 5 && username.length <= 32) || !username.length) && /^[a-zA-Z0-9_]*$/.test(username);
   }
 
   private isChanged() {
     return !!this.uploadAvatar 
       || this.firstNameInput.value != this.originalValues.firstName 
       || this.lastNameInput.value != this.originalValues.lastName 
-      || this.userNameInput.value != this.originalValues.userName 
+      || (this.userNameInput.value != this.originalValues.userName && !this.userNameInput.classList.contains('error')) 
       || this.bioInput.value != this.originalValues.bio;
+  }
+
+  private setProfileUrl() {
+    if(this.userNameInput.classList.contains('error') || !this.userNameInput.value.length) {
+      this.profileUrlContainer.style.display = 'none';
+    } else {
+      this.profileUrlContainer.style.display = '';
+      let url = 'https://t.me/' + this.userNameInput.value;
+      this.profileUrlAnchor.innerText = url;
+      this.profileUrlAnchor.href = url;
+    }
   }
 
   private handleChange() {
