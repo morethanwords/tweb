@@ -2,7 +2,7 @@
 import apiManager from '../mtproto/mtprotoworker';
 import { $rootScope, numberWithCommas, findUpClassName, formatNumber, placeCaretAtEnd, findUpTag, langPack, whichChild } from "../utils";
 import appUsersManager from "./appUsersManager";
-import appMessagesManager, { Dialog } from "./appMessagesManager";
+import appMessagesManager from "./appMessagesManager";
 import appPeersManager from "./appPeersManager";
 import appProfileManager from "./appProfileManager";
 import appDialogsManager from "./appDialogsManager";
@@ -38,7 +38,7 @@ appSidebarLeft; // just to include
 let testScroll = false;
 
 export class AppImManager {
-  public pageEl = document.querySelector('.page-chats') as HTMLDivElement;
+  public pageEl = document.getElementById('page-chats') as HTMLDivElement;
   public btnMute = this.pageEl.querySelector('.tool-mute') as HTMLButtonElement;
   public btnMenuMute = this.pageEl.querySelector('.menu-mute') as HTMLButtonElement;
   public avatarEl = document.getElementById('im-avatar') as AvatarElement;
@@ -754,34 +754,22 @@ export class AppImManager {
     this.log('loadMoreHistory', top);
     if(!this.peerID || testScroll || this.setPeerPromise || (top && this.getHistoryTopPromise) || (!top && this.getHistoryBottomPromise)) return;
 
-    let history = Object.keys(this.bubbles).map(id => +id).sort((a, b) => a - b);
+    // warning, если иды только отрицательные то вниз не попадёт (хотя мб и так не попадёт)
+    let history = Object.keys(this.bubbles).map(id => +id).filter(id => id > 0).sort((a, b) => a - b);
     if(!history.length) return;
-    
-    /* let history = appMessagesManager.historiesStorage[this.peerID].history;
-    let length = history.length; */
-    
-    // filter negative ids
-    let lastBadIndex = -1;
-    for(let i = 0; i < history.length; ++i) {
-      if(history[i] <= 0) lastBadIndex = i;
-      else break;
-    }
-    if(lastBadIndex != -1) {
-      history = history.slice(lastBadIndex + 1);
-    }
     
     if(top && !this.scrolledAll) {
       this.log('Will load more (up) history by id:', history[0], 'maxID:', history[history.length - 1], history);
+      /* if(history.length == 75) {
+        this.log('load more', this.scrollable.scrollHeight, this.scrollable.scrollTop, this.scrollable);
+        return;
+      } */
       /* false &&  */this.getHistory(history[0], true);
     }
 
     if(this.scrolledAllDown) return;
     
     let dialog = appMessagesManager.getDialogByPeerID(this.peerID)[0];
-    /* if(!dialog) {
-      this.log.warn('no dialog for load history');
-      return;
-    } */
     
     // if scroll down after search
     if(!top && (!dialog || history.indexOf(dialog.top_message) === -1)) {
@@ -822,14 +810,14 @@ export class AppImManager {
   }
   
   public setScroll() {
-    this.scrollable = new Scrollable(this.bubblesContainer, 'y', 'IM', this.chatInner);
+    this.scrollable = new Scrollable(this.bubblesContainer, 'y', 'IM', this.chatInner, 300);
     this.scroll = this.scrollable.container;
     
     this.bubblesContainer.append(this.goDownBtn);
     
     this.scrollable.onScrolledTop = () => this.loadMoreHistory(true);
     this.scrollable.onScrolledBottom = () => this.loadMoreHistory(false);
-    this.scrollable.attachSentinels(undefined, 300);
+    //this.scrollable.attachSentinels(undefined, 300);
 
     this.scroll.addEventListener('scroll', this.onScroll.bind(this));
     this.scroll.parentElement.classList.add('scrolled-down');
@@ -850,30 +838,7 @@ export class AppImManager {
         this.subtitleEl.innerText = appSidebarRight.profileElements.subtitle.innerText = '';
       }
 
-      Promise.all([
-        appPeersManager.isMegagroup(this.peerID) ? apiManager.invokeApi('messages.getOnlines', {
-          peer: appPeersManager.getInputPeerByID(this.peerID)
-        }) as Promise<any> : Promise.resolve(),
-        // will redirect if wrong
-        appProfileManager.getChatFull(chat.id)
-      ]).then(results => {
-        let [chatOnlines, chatInfo] = results;
-        
-        let onlines = chatOnlines ? chatOnlines.onlines : 1;
-
-        if(chatInfo._ == 'chatFull' && chatInfo.participants && chatInfo.participants.participants) {
-          let participants = chatInfo.participants.participants;
-
-          onlines = participants.reduce((acc: number, participant: any) => {
-            let user = appUsersManager.getUser(participant.user_id);
-            if(user && user.status && user.status._ == 'userStatusOnline') {
-              return acc + 1;
-            }
-
-            return acc;
-          }, 0);
-        }
-        
+      appProfileManager.getChatFull(chat.id).then((chatInfo: any) => {
         this.log('chatInfo res:', chatInfo);
         
         if(chatInfo.pinned_msg_id) { // request pinned message
@@ -884,12 +849,17 @@ export class AppImManager {
         let participants_count = chatInfo.participants_count || (chatInfo.participants && chatInfo.participants.participants && chatInfo.participants.participants.length);
         if(participants_count) {
           let subtitle = numberWithCommas(participants_count) + ' ' + (isChannel ? 'subscribers' : 'members');
-        
-          if(onlines > 1) {
-            subtitle += ', ' + numberWithCommas(onlines) + ' online';
-          }
-          
+
           this.subtitleEl.innerText = appSidebarRight.profileElements.subtitle.innerText = subtitle;
+
+          if(participants_count < 2) return;
+          appChatsManager.getOnlines(chat.id).then(onlines => {
+            if(onlines > 1) {
+              subtitle += ', ' + numberWithCommas(onlines) + ' online';
+            }
+  
+            this.subtitleEl.innerText = appSidebarRight.profileElements.subtitle.innerText = subtitle;
+          });
         }
       });
     } else if(!appUsersManager.isBot(this.peerID)) { // user
@@ -1071,7 +1041,7 @@ export class AppImManager {
         }
 
         this.scrollable.container.append(this.chatInner);
-        this.scrollable.attachSentinels();
+        //this.scrollable.attachSentinels();
         //this.scrollable.container.insertBefore(this.chatInner, this.scrollable.container.lastElementChild);
 
         this.lazyLoadQueue.unlock();
@@ -1328,34 +1298,40 @@ export class AppImManager {
 
   public renderMessagesQueue(message: any, bubble: HTMLDivElement, reverse: boolean) {
     let promises: Promise<any>[] = [];
-    (Array.from(bubble.querySelectorAll('img, image, video')) as HTMLImageElement[]).forEach(el => {
-      if(el.tagName == 'VIDEO') {
+    (Array.from(bubble.querySelectorAll('img, video')) as HTMLImageElement[]).forEach(el => {
+      if(el instanceof HTMLVideoElement) {
         let source = el.firstElementChild as HTMLSourceElement;
         if(!source || !source.src) {
           this.log.warn('no source', el, source, 'src', source.src);
           return;
-        }
-      } else if(el.complete || (!el.src && !el.getAttribute('href'))) return;
+        } else if(el.readyState >= 4) return;
+      } else if(el.complete || !el.src) return;
 
-      let src = el.src || el.getAttributeNS(null, 'href');
+      let src = el.src;
 
       let promise = new Promise((resolve, reject) => {
-        if(el.tagName == 'VIDEO') {
-          el.addEventListener('loadeddata', () => {
-            clearTimeout(timeout);
-            resolve();
-          });
+        let r: () => boolean;
+        let onLoad = () => {
+          clearTimeout(timeout);
+          resolve();
+        };
+
+        if(el instanceof HTMLVideoElement) {
+          el.addEventListener('loadeddata', onLoad);
+          r = () => el.readyState >= 4;
         } else {
-          el.addEventListener('load', () => {
-            clearTimeout(timeout);
-            resolve();
-          });
+          el.addEventListener('load', onLoad);
+          r = () => el.complete;
         }
+
+        // for safari
+        let c = () => r() ? onLoad() : window.requestAnimationFrame(c);
+        window.requestAnimationFrame(c);
 
         let timeout = setTimeout(() => {
           console.log('did not called', el, el.parentElement, el.complete, src);
           reject();
-        }, 5000);
+        }, 1500);
       });
 
       promises.push(promise);
@@ -2092,7 +2068,7 @@ export class AppImManager {
           avatarElem.setAttribute('peer-title', message.fwd_from.from_name);
         }
 
-        avatarElem.setAttribute('peer', '' + ((message.fwd_from ? message.fwdFromID : message.fromID) || 0));
+        avatarElem.setAttribute('peer', '' + ((message.fwd_from && this.peerID == this.myID ? message.fwdFromID : message.fromID) || 0));
         
         this.log('exec loadDialogPhoto', message);
 
@@ -2151,43 +2127,28 @@ export class AppImManager {
 
     console.time('appImManager render history');
 
-    let firstLoad = !!this.setPeerPromise && false;
-
-    let peerID = this.peerID;
     return new Promise<boolean>((resolve, reject) => {
       let method = (reverse ? history.shift : history.pop).bind(history);
-
-      let r = () => {
-        if(this.peerID != peerID) {
-          return reject('peer changed');
-        }
-
-        let msgID = method();
-        if(!msgID) {
-          return;
-        }
-
-        let message = appMessagesManager.getMessage(msgID);
-        this.renderMessage(message, reverse, true);
-
-        firstLoad ? window.requestAnimationFrame(r) : r();
-      };
-  
-      firstLoad ? window.requestAnimationFrame(r) : r();
 
       let realLength = this.scrollable.length;
       let previousScrollHeightMinusTop: number;
       if(realLength > 0 && reverse) {
         this.messagesQueueOnRender = () => {
-          let scrollTop = realLength ? this.scrollable.scrollTop : 0;
-          previousScrollHeightMinusTop = realLength ? this.scrollable.scrollHeight - scrollTop : 0;
+          let scrollTop = this.scrollable.scrollTop;
+          previousScrollHeightMinusTop = this.scrollable.scrollHeight - scrollTop;
 
           this.log('performHistoryResult: messagesQueueOnRender, scrollTop:', scrollTop, previousScrollHeightMinusTop);
+          this.messagesQueueOnRender = undefined;
         };
       }
 
+      while(history.length) {
+        let message = appMessagesManager.getMessage(method());
+        this.renderMessage(message, reverse, true);
+      }
+
       (this.messagesQueuePromise || Promise.resolve()).then(() => {
-        if(realLength > 0 && reverse && previousScrollHeightMinusTop !== undefined) {
+        if(previousScrollHeightMinusTop !== undefined) {
           this.log('performHistoryResult: will set scrollTop', this.scrollable.scrollHeight, previousScrollHeightMinusTop);
           this.scrollable.scrollTop = this.scrollable.scrollHeight - previousScrollHeightMinusTop;
         }

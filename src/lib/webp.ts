@@ -1,7 +1,6 @@
 import {Webp} from "webp-hero/libwebp/dist/webp.js"
-import {detectWebpSupport} from "webp-hero/dist/detect-webp-support.js"
 
-const relax = () => new Promise(resolve => requestAnimationFrame(resolve))
+const relax = () => new Promise(resolve => requestAnimationFrame(resolve));
 
 export class WebpMachineError extends Error {}
 
@@ -11,34 +10,39 @@ export class WebpMachineError extends Error {}
  * - can only decode images one-at-a-time (otherwise will throw busy error)
  */
 export class WebpMachine {
-	private readonly webp: Webp
-	private readonly webpSupport: Promise<boolean>
-	private busy = false
-	private cache: {[key: string]: string} = {}
+	private readonly webp: Webp;
+	private busy = false;
 
-	constructor({
-		webp = new Webp(),
-		webpSupport = detectWebpSupport()
-	} = {}) {
-    this.webp = webp;
+	constructor() {
+    this.webp = new Webp();
     this.webp.Module.doNotCaptureKeyboard = true;
-		this.webpSupport = webpSupport;
 	}
 
 	/**
 	 * Decode raw webp data into a png data url
 	 */
-	async decode(webpData: Uint8Array): Promise<string> {
+	decode(webpData: Uint8Array): Promise<Uint8Array> {
 		if(this.busy) throw new WebpMachineError("cannot decode when already busy");
 		this.busy = true;
 
 		try {
-			await relax();
-			const canvas = document.createElement("canvas");
-			this.webp.setCanvas(canvas);
-			this.webp.webpToSdl(webpData, webpData.length);
-			this.busy = false;
-			return canvas.toDataURL();
+			return relax().then(() => {
+				const canvas = document.createElement("canvas");
+				this.webp.setCanvas(canvas);
+				this.webp.webpToSdl(webpData, webpData.length);
+				this.busy = false;
+
+				return new Promise((resolve, reject) => {
+					canvas.toBlob(blob => {
+						let reader = new FileReader();
+						reader.onload = (event) => {
+							resolve(new Uint8Array(event.target.result as ArrayBuffer));
+						};
+						reader.onerror = reject;
+						reader.readAsArrayBuffer(blob);
+					}, 'image/png', 1);
+				});
+			});	
 		} catch(error) {
 			this.busy = false;
 			error.name = WebpMachineError.name;

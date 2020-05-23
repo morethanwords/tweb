@@ -1,4 +1,4 @@
-import {blobSafeMimeType, blobConstruct, bytesToBase64} from './bin_utils';
+import {blobConstruct} from './bin_utils';
 
 /* import 'web-streams-polyfill/ponyfill';
 // @ts-ignore
@@ -139,14 +139,6 @@ class FileManager {
     
     return fakeFileWriter;
   }
-
-  public getFileCorrectUrl(fileData: Blob | number[], mimeType: string): string {
-    var safeMimeType = blobSafeMimeType(mimeType);
-    if(fileData instanceof Blob) {
-      return URL.createObjectURL(fileData);
-    }
-    return 'data:' + safeMimeType + ';base64,' + bytesToBase64(fileData);
-  }
   
   public download(blob: Blob, mimeType: string, fileName: string) {
     if(window.navigator && navigator.msSaveBlob !== undefined) {
@@ -180,7 +172,7 @@ class FileManager {
       return;
     }
     
-    let url = this.getFileCorrectUrl(blob, mimeType);
+    let url = URL.createObjectURL(blob);
     var anchor = document.createElementNS('http://www.w3.org/1999/xhtml', 'a') as HTMLAnchorElement;
     anchor.href = url as string;
     anchor.download = fileName;

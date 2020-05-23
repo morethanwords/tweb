@@ -28,7 +28,12 @@ let sentTypeElement: HTMLParagraphElement = null;
 
 let onFirstMount = (): Promise<any> => {
   let needFrame = 0, lastLength = 0;
-  let animation: /* AnimationItem */any = undefined;
+
+  let animation: /* AnimationItem */any;
+  let idleAnimation: any;
+  
+  let mTrackingSvg: SVGSVGElement;
+  let mIdleSvg: SVGSVGElement;
 
   const CODELENGTH = authCode.type.length;
 
@@ -113,6 +118,13 @@ let onFirstMount = (): Promise<any> => {
     });
   }
 
+  let cleanup = () => {
+    setTimeout(() => {
+      if(animation) animation.destroy();
+      if(idleAnimation) idleAnimation.destroy();
+    }, 300);
+  };
+
   let submitCode = (code: string) => {
     codeInput.setAttribute('disabled', 'true');
 
@@ -135,7 +147,7 @@ let onFirstMount = (): Promise<any> => {
           });
 
           pageIm.mount();
-          if(animation) animation.destroy();
+          cleanup();
           break;
         case 'auth.authorizationSignUpRequired':
           console.log('Registration needed!');
@@ -145,7 +157,7 @@ let onFirstMount = (): Promise<any> => {
             'phone_code_hash': authCode.phone_code_hash
           });
 
-          if(animation) animation.destroy();
+          cleanup();
           break;
         default:
           codeInput.innerText = response._;
@@ -158,7 +170,7 @@ let onFirstMount = (): Promise<any> => {
         case 'SESSION_PASSWORD_NEEDED':
           console.warn('pageAuthCode: SESSION_PASSWORD_NEEDED');
           err.handled = true;
-          if(animation) animation.destroy();
+          cleanup();
           pagePassword.mount();
           break;
         case 'PHONE_CODE_EMPTY':
@@ -196,8 +208,14 @@ let onFirstMount = (): Promise<any> => {
     if(!animation) return;
     
     let frame: number;
-    if(length) frame = Math.round((length > max ? max : length) * (165 / max) + 11.33);
-    else frame = 0;
+    if(length) {
+      frame = Math.round((length > max ? max : length) * (165 / max) + 11.33);
+
+      mIdleSvg.style.display = 'none';
+      mTrackingSvg.style.display = '';
+    } else {
+      frame = 0;
+    }
     //animation.playSegments([1, 2]);
 
     let direction = needFrame > frame ? -1 : 1;
@@ -217,23 +235,51 @@ let onFirstMount = (): Promise<any> => {
     //animation.goToAndStop(length / max * );
   });
 
+  let imageDiv = page.pageEl.querySelector('.auth-image');
   return Promise.all([
     LottieLoader.loadLottie(),
+
+    fetch('assets/img/TwoFactorSetupMonkeyIdle.tgs')
+    .then(res => res.arrayBuffer())
+    .then(data => apiManager.gzipUncompress<string>(data, true))
+    .then(str => LottieLoader.loadAnimation({
+      container: imageDiv,
+      renderer: 'svg',
+      loop: true,
+      autoplay: true,
+      animationData: JSON.parse(str),
+      rendererSettings: {
+        className: 'monkey-idle'
+      }
+    }))
+    .then(_animation => {
+      idleAnimation = _animation;
+
+      mIdleSvg = imageDiv.querySelector('.monkey-idle');
+    }),
 
     fetch('assets/img/TwoFactorSetupMonkeyTracking.tgs')
     .then(res => res.arrayBuffer())
     .then(data => apiManager.gzipUncompress<string>(data, true))
     .then(str => LottieLoader.loadAnimation({
-      container: page.pageEl.querySelector('.auth-image'),
+      container: imageDiv,
       renderer: 'svg',
       loop: false,
       autoplay: false,
-      animationData: JSON.parse(str)
+      animationData: JSON.parse(str),
+      rendererSettings: {
+        className: 'monkey-tracking'
+      }
     }))
     .then(_animation => {
       animation = _animation;
       animation.setSpeed(1);
       //console.log(animation.getDuration(), animation.getDuration(true));
+
+      mTrackingSvg = imageDiv.querySelector('.monkey-tracking');
+      if(!codeInput.value.length) {
+        mTrackingSvg.style.display = 'none';
+      }
 
       animation.addEventListener('enterFrame', (e: any) => {
         //console.log('enterFrame', e, needFrame);
@@ -241,9 +287,16 @@ let onFirstMount = (): Promise<any> => {
         
         if((e.direction == 1 && currentFrame >= needFrame) ||
           (e.direction == -1 && currentFrame <= needFrame)) {
-            animation.setSpeed(1);
-            animation.pause();
-          } 
+          animation.setSpeed(1);
+          animation.pause();
+        }
+
+        if(currentFrame == 0 && needFrame == 0 && mIdleSvg) {
+          mTrackingSvg.style.display = 'none';
+          mIdleSvg.style.display = '';
+          idleAnimation.stop();
+          idleAnimation.play();
+        }
       });
     })
   ]);

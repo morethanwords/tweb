@@ -1,6 +1,6 @@
 import { AppImManager } from "../lib/appManagers/appImManager";
 import { AppMessagesManager } from "../lib/appManagers/appMessagesManager";
-import { horizontalMenu } from "./misc";
+import { horizontalMenu, renderImageFromUrl } from "./misc";
 import lottieLoader from "../lib/lottieLoader";
 //import Scrollable from "./scrollable";
 import Scrollable from "./scrollable_new";
@@ -12,7 +12,6 @@ import apiManager from '../lib/mtproto/mtprotoworker';
 //import CryptoWorker from '../lib/crypto/cryptoworker';
 import LazyLoadQueue from "./lazyLoadQueue";
 import { MTDocument, wrapSticker } from "./wrappers";
-import appWebpManager from "../lib/appManagers/appWebpManager";
 import appDocsManager from "../lib/appManagers/appDocsManager";
 import ProgressivePreloader from "./preloader";
 import Config from "../lib/config";
@@ -29,15 +28,18 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
 
   let container = pageEl.querySelector('.emoji-container .tabs-container') as HTMLDivElement;
   let tabs = pageEl.querySelector('.emoji-dropdown .emoji-tabs') as HTMLUListElement;
+  let tabID = -1;
   horizontalMenu(tabs, container, (id) => {
     lottieLoader.checkAnimations(true, EMOTICONSSTICKERGROUP);
 
-    if(id == 1 && stickersInit) {
+    tabID = id;
+  }, () => {
+    if(tabID == 1 && stickersInit) {
       stickersInit();
-    } else if(id == 2 && gifsInit) {
+    } else if(tabID == 2 && gifsInit) {
       gifsInit();
     }
-  }, () => {
+
     lottieLoader.checkAnimations(false, EMOTICONSSTICKERGROUP);
   });
 
@@ -347,15 +349,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
     stickersInit = null;
 
     Promise.all([
-      apiManager.invokeApi('messages.getRecentStickers', {flags: 0, hash: 0}).then((res) => {
-        let stickers: {
-          _: string,
-          hash: number,
-          packs: any[],
-          stickers: MTDocument[],
-          dates: number[]
-        } = res as any;
-  
+      appStickersManager.getRecentStickers().then(stickers => {
         let categoryDiv = document.createElement('div');
         categoryDiv.classList.add('sticker-category');
   
@@ -408,8 +402,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
                 reader.readAsArrayBuffer(blob);
               } else {
                 let image = new Image();
-                //image.src = URL.createObjectURL(blob);
-                appWebpManager.polyfillImage(image, blob);
+                renderImageFromUrl(image, URL.createObjectURL(blob));
     
                 li.append(image);
               }

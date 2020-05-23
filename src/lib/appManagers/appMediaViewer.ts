@@ -57,6 +57,8 @@ export class AppMediaViewer {
 
   private reverse = false; // reverse means next = higher msgid
   private needLoadMore = true;
+
+  private pageEl = document.getElementById('page-chats') as HTMLDivElement;
   
   constructor() {
     this.log = logger('AMV');
@@ -568,7 +570,7 @@ export class AppMediaViewer {
     return promise;
   }
 
-  public updateMediaSource(target: HTMLElement, url: string, tagName: 'source' | 'image') {
+  public updateMediaSource(target: HTMLElement, url: string, tagName: 'source' | 'img') {
     //if(target instanceof SVGSVGElement) {
       let el = target.querySelector(tagName) as HTMLElement;
       renderImageFromUrl(el, url);
@@ -665,16 +667,19 @@ export class AppMediaViewer {
 
     ////////this.log('wasActive:', wasActive);
 
+    if(useContainerAsTarget) {
+      target = target.querySelector('img, video') || target;
+    }
+
     let mover = this.content.mover;
 
-    let maxWidth = appPhotosManager.windowW - 16;
+    //let maxWidth = appPhotosManager.windowW - 16;
+    let maxWidth = this.pageEl.scrollWidth - 16;
     let maxHeight = appPhotosManager.windowH - 100;
     if(isVideo) {
-      let size = appPhotosManager.setAttachmentSize(media, container, maxWidth, maxHeight);
+      appPhotosManager.setAttachmentSize(media, container, maxWidth, maxHeight);
 
       ////////this.log('will wrap video', media, size);
-
-      if(useContainerAsTarget) target = target.querySelector('img, video') || target;
 
       let afterTimeout = this.setMoverToTarget(target, false, fromRight);
       //return; // set and don't move
@@ -745,8 +750,6 @@ export class AppMediaViewer {
     } else {
       let size = appPhotosManager.setAttachmentSize(media.id, container, maxWidth, maxHeight);
 
-      if(useContainerAsTarget) target = target.querySelector('img, video') || target;
-
       let afterTimeout = this.setMoverToTarget(target, false, fromRight);
       //return; // set and don't move
       //if(wasActive) return;
@@ -766,8 +769,8 @@ export class AppMediaViewer {
 
           let url = media.url;
           if(target instanceof SVGSVGElement) {
-            this.updateMediaSource(target, url, 'image');
-            this.updateMediaSource(mover, url, 'image');
+            this.updateMediaSource(target, url, 'img');
+            this.updateMediaSource(mover, url, 'img');
           } else {
             let aspecter = mover.firstElementChild;
             let image = aspecter.firstElementChild as HTMLImageElement;

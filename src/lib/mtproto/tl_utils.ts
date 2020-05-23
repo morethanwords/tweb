@@ -5,7 +5,7 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import {bigint, intToUint, bigStringInt, bytesToHex, uintToInt, isObject} from '../bin_utils';
+import {bigint, bigStringInt, bytesToHex, isObject} from '../bin_utils';
 import Schema from './schema';
 
 /// #if MTPROTO_WORKER
@@ -131,8 +131,8 @@ class TLSerialization {
     }
     var divRem = bigStringInt(sLong).divideAndRemainder(bigint(0x100000000));
   
-    this.writeInt(intToUint(divRem[1].intValue()), (field || '') + ':long[low]');
-    this.writeInt(intToUint(divRem[0].intValue()), (field || '') + ':long[high]');
+    this.writeInt(divRem[1].intValue(), (field || '') + ':long[low]');
+    this.writeInt(divRem[0].intValue(), (field || '') + ':long[high]');
   }
   
   public storeDouble(f: any, field?: string) {
@@ -250,7 +250,7 @@ class TLSerialization {
       throw new Error('No method ' + methodName + ' found');
     }
   
-    this.storeInt(intToUint(methodData.id), methodName + '[id]');
+    this.storeInt(methodData.id, methodName + '[id]');
   
     var param, type;
     var i, condType;
@@ -347,7 +347,7 @@ class TLSerialization {
     }
   
     if(!isBare) {
-      this.writeInt(intToUint(constructorData.id), field + '[' + predicate + '][id]');
+      this.writeInt(constructorData.id, field + '[' + predicate + '][id]');
     }
   
     var param, type: string;
@@ -601,7 +601,7 @@ class TLDeserialization {
     if(type.substr(0, 6) == 'Vector' || type.substr(0, 6) == 'vector') {
       if(type.charAt(0) == 'V') {
         var constructor = this.readInt(field + '[id]');
-        var constructorCmp = uintToInt(constructor);
+        var constructorCmp = constructor;
   
         if(constructorCmp == gzipPacked) { // Gzip packed
           var compressed = this.fetchBytes(field + '[packed_string]');
@@ -657,7 +657,7 @@ class TLDeserialization {
       }
     } else {
       var constructor = this.readInt(field + '[id]');
-      var constructorCmp = uintToInt(constructor);
+      var constructorCmp = constructor;
   
       if(constructorCmp == gzipPacked) { // Gzip packed
         var compressed = this.fetchBytes(field + '[packed_string]');

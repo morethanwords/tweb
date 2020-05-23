@@ -19,16 +19,18 @@ export default class LazyLoadQueue {
 
   constructor(private parallelLimit = 5) {
     this.observer = new IntersectionObserver(entries => {
+      if(this.lockPromise) return;
+
       for(let entry of entries) {
         if(entry.isIntersecting) {
           let target = entry.target as HTMLElement;
 
-          for(let item of this.lazyLoadMedia) {
-            if(item.div == target) {
-              item.wasSeen = true;
-              this.processQueue(item);
-              break;
-            }
+          // need for set element first if scrolled
+          let item = this.lazyLoadMedia.findAndSplice(i => i.div == target);
+          if(item) {
+            item.wasSeen = true;
+            this.lazyLoadMedia.unshift(item);
+            this.processQueue(item);
           }
         }
       }

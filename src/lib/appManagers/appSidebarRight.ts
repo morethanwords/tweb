@@ -111,14 +111,14 @@ class AppSidebarRight {
     let container = this.profileContentEl.querySelector('.content-container .tabs-container') as HTMLDivElement;
     this.profileTabs = this.profileContentEl.querySelector('.profile-tabs') as HTMLUListElement;
     
-    this.scroll = new Scrollable(this.profileContainer, 'y', 'SR');
+    this.scroll = new Scrollable(this.profileContainer, 'y', 'SR', undefined, 400);
     this.scroll.onScrolledBottom = () => {
       if(this.sharedMediaSelected && this.sharedMediaSelected.childElementCount/* && false */) {
         this.log('onScrolledBottom will load media');
         this.loadSidebarMedia(true);
       }
     };
-    this.scroll.attachSentinels(undefined, 400);
+    //this.scroll.attachSentinels(undefined, 400);
     
     horizontalMenu(this.profileTabs, container, (id, tabContent) => {
       if(this.prevTabID == id) return;

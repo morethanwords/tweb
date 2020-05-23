@@ -13,7 +13,7 @@ import lottieLoader from "../lib/lottieLoader";
 import { Layouter, RectPart } from "./groupedLayout";
 
 export class ChatInput {
-  public pageEl = document.querySelector('.page-chats') as HTMLDivElement;
+  public pageEl = document.getElementById('page-chats') as HTMLDivElement;
   public messageInput = document.getElementById('input-message') as HTMLDivElement/* HTMLInputElement */;
   public fileInput = document.getElementById('input-file') as HTMLInputElement;
   public inputMessageContainer = document.getElementsByClassName('input-message-container')[0] as HTMLDivElement;
@@ -463,6 +463,7 @@ export class ChatInput {
               this.emoticonsDropdown.classList.remove('active');
               this.toggleEmoticons.classList.remove('active');
               lottieLoader.checkAnimations(true, EMOTICONSSTICKERGROUP);
+              this.emoticonsLazyLoadQueue.lock();
             }, 200);
           };
 
@@ -471,6 +472,7 @@ export class ChatInput {
           };
         } else {
           this.emoticonsDropdown.classList.add('active');
+          this.emoticonsLazyLoadQueue.unlock();
         }
     
         this.toggleEmoticons.classList.add('active');

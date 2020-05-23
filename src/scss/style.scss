@@ -418,18 +418,11 @@ avatar-element {
 
 @keyframes ripple-effect {
   0% {
-    //transform: translate(-50%, -50%) scale(0);
     transform: scale(0);
   }
 
-  /* 50% {
-    opacity: 1;
-  } */
-
   to {
     transform: scale(2);
-    //transform: translate(-50%, -50%) scale(2);
-    //opacity: 0;
   }
 }
 
@@ -1062,30 +1055,6 @@ input:focus, button:focus {
   }
 }
 
-/* button {
-  position: relative;
-  overflow: hidden;
-  
-  &:hover {
-    &:before {
-      display: block;
-    }
-  }
-  
-  &:before {
-    display: none;
-    content: " ";
-    position: absolute;
-    z-index: 2;
-    background: #000;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    opacity: .08;
-  }
-} */
-
 .btn-primary {
   background: $color-blue;
   color: #fff;
@@ -1106,9 +1075,8 @@ input:focus, button:focus {
   
   svg, use {
     height: calc(100% - 20px);
-    right: 12.5px;
+    right: 15px;
     left: auto;
-    margin: 4px 0 auto;
   }
 }
 

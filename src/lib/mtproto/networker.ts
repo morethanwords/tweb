@@ -1,7 +1,7 @@
 import {isObject} from '../bin_utils';
 import {convertToUint8Array, 
   bufferConcat, nextRandomInt, bytesToHex, longToBytes,
-  bytesCmp, uintToInt, bigStringInt} from '../bin_utils';
+  bytesCmp, bigStringInt} from '../bin_utils';
 import {TLDeserialization, TLSerialization} from './tl_utils';
 import CryptoWorker from '../crypto/cryptoworker';
 import AppStorage from '../storage';
@@ -296,8 +296,7 @@ class MTPNetworker {
     var isClean = this.cleanupSent();
     //this.log('Check lp', this.longPollPending, tsNow(), this.dcID, isClean, this);
     if((this.longPollPending && Date.now() < this.longPollPending) ||
-      this.offline ||
-      NetworkerFactory.akStopped) {
+      this.offline) {
       //this.log('No lp this time');
       return false;
     }
@@ -502,7 +501,7 @@ class MTPNetworker {
 
   public performScheduledRequest() {
     // this.log('scheduled', this.dcID, this.iii)
-    if(this.offline || NetworkerFactory.akStopped) {
+    if(this.offline) {
       this.log('Cancel scheduled');
       return false;
     }
@@ -1027,7 +1026,7 @@ class MTPNetworker {
 
   public processError(rawError: {error_message: string, error_code: number}) {
     var matches = (rawError.error_message || '').match(/^([A-Z_0-9]+\b)(: (.+))?/) || [];
-    rawError.error_code = uintToInt(rawError.error_code);
+    rawError.error_code = rawError.error_code;
   
     return {
       code: !rawError.error_code || rawError.error_code <= 0 ? 500 : rawError.error_code,

@@ -51,6 +51,8 @@ class AppStickersManager {
   private stickerSets: {
     [stickerSetID: string]: MTStickerSetFull
   } = {};
+
+  private saveSetsTimeout: number;
   
   constructor() {
     AppStorage.get<{
@@ -59,17 +61,15 @@ class AppStickersManager {
       if(sets) {
         for(let id in sets) {
           let set = sets[id];
-          set.documents.forEach(doc => {
-            this.saveSticker(doc);
-          });
+          this.saveStickers(set.documents);
         }
 
         this.stickerSets = sets;
       }
 
-      if(!this.stickerSets['emoji']) {
+      //if(!this.stickerSets['emoji']) {
         this.getStickerSet({id: 'emoji', access_hash: ''});
-      }
+      //}
     });
   } 
   
@@ -80,6 +80,12 @@ class AppStickersManager {
     this.documents[doc.id] = doc;
 
     return doc;
+  }
+
+  public saveStickers(docs: MTDocument[]) {
+    docs.forEach((doc, idx) => {
+      docs[idx] = this.saveSticker(doc);
+    });
   }
   
   public getSticker(fileID: string) {
@@ -115,6 +121,20 @@ class AppStickersManager {
     return stickerSet;
   }
 
+  public async getRecentStickers() {
+    let res: {
+      _: string,
+      hash: number,
+      packs: any[],
+      stickers: MTDocument[],
+      dates: number[]
+    } = await apiManager.invokeApi('messages.getRecentStickers', {flags: 0, hash: 0});
+
+    this.saveStickers(res.stickers);
+
+    return res;
+  }
+
   public getAnimatedEmojiSticker(emoji: string) {
     let stickerSet = this.stickerSets.emoji;
 
@@ -122,7 +142,7 @@ class AppStickersManager {
     return stickerSet.documents.find(doc => doc.stickerEmojiRaw == emoji);
   }
   
-  public async saveStickerSet(res: {
+  public saveStickerSet(res: {
     _: "messages.stickerSet",
     set: MTStickerSet,
     packs: any[],
@@ -136,12 +156,18 @@ class AppStickersManager {
       documents: res.documents
     };
 
-    res.documents.forEach(this.saveSticker.bind(this));
+    this.saveStickers(res.documents);
     
     //console.log('stickers wrote', this.stickerSets);
-    await AppStorage.set({
-      stickerSets: this.stickerSets
-    });
+    if(this.saveSetsTimeout) return;
+    this.saveSetsTimeout = setTimeout(() => {
+      AppStorage.set({
+        stickerSets: this.stickerSets
+      });
+
+      this.saveSetsTimeout = 0;
+    }, 0);
+    
     
     /* AppStorage.get('stickerSets').then((sets: any) => {
       this.stickerSets = sets;
@@ -153,7 +179,9 @@ class AppStickersManager {
     let thumb = stickerSet.thumb;
     let dcID = stickerSet.thumb_dc_id;
 
-    let promise = apiFileManager.downloadSmallFile({
+    let isAnimated = stickerSet.pFlags?.animated;
+
+    let promise = apiFileManager.downloadFile(dcID, {
       _: 'inputStickerSetThumb',
       stickerset: {
         _: 'inputStickerSetID',
@@ -162,7 +190,10 @@ class AppStickersManager {
       },
       volume_id: thumb.location.volume_id,
       local_id: thumb.location.local_id
-    }, {dcID: dcID});
+    }, thumb.size, {
+      stickerType: isAnimated ? 2 : 1,
+      mimeType: isAnimated ? "application/x-tgsticker" : 'image/webp'
+    });
 
     return promise;
   }

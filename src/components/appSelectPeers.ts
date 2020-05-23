@@ -29,7 +29,7 @@ export class AppSelectPeers {
   private query = '';
   private cachedContacts: number[];
   
-  constructor(private appendTo: HTMLDivElement, private onChange?: (length: number) => void, private peerType: 'contacts' | 'dialogs' = 'dialogs') {
+  constructor(private appendTo: HTMLDivElement, private onChange?: (length: number) => void, private peerType: 'contacts' | 'dialogs' = 'dialogs', onFirstRender?: () => void) {
     this.container.classList.add('selector');
 
     let topContainer = document.createElement('div');
@@ -107,12 +107,18 @@ export class AppSelectPeers {
     this.container.append(topContainer, delimiter, this.chatsContainer);
     appendTo.append(this.container);
 
-    this.getMoreResults();
+    let getResultsPromise = this.getMoreResults() as Promise<any>;
+    if(onFirstRender) {
+      getResultsPromise.then(() => {
+        onFirstRender();
+      });
+    }
   }
 
   private getMoreDialogs() {
     // в десктопе - сначала без группы, потом архивные, потом контакты без сообщений
-    appMessagesManager.getConversations(this.offsetIndex, 50, 0).then(value => {
+    let pageCount = appPhotosManager.windowH / 72 * 1.25 | 0;
+    return appMessagesManager.getConversations(this.offsetIndex, pageCount, 0).then(value => {
       let dialogs = value.dialogs;
       
       let newOffsetIndex = dialogs[value.dialogs.length - 1].index || 0;
@@ -150,9 +156,9 @@ export class AppSelectPeers {
 
   private getMoreResults() {
     if(this.peerType == 'dialogs') {
-      this.getMoreDialogs();
+      return this.getMoreDialogs();
     } else {
-      this.getMoreContacts();
+      return this.getMoreContacts();
     }
   }
 

@@ -224,7 +224,7 @@ export class AppMessagesManager {
       }).catch(resolve);
     });
 
-    //setInterval(() => this.saveState(), 10000);
+    setInterval(() => this.saveState(), 10000);
   }
 
   public saveState() {
@@ -1166,7 +1166,7 @@ export class AppMessagesManager {
           } else {
             let doc = messageMedia.document;
             appDocsManager.saveDoc(doc);
-            inputMedia = appDocsManager.getInputByID(doc.id);
+            inputMedia = appDocsManager.getMediaInputByID(doc.id);
           }
 
           inputs.push({
@@ -3002,7 +3002,11 @@ export class AppMessagesManager {
           if(messageID > maxID) {
             continue;
           }
+          
           message = this.messagesStorage[messageID];
+          if(!message) {
+            continue;
+          }
 
           if(message.pFlags.out != isOut) {
             continue;

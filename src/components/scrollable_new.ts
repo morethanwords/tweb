@@ -56,6 +56,9 @@ export default class Scrollable {
   private lastBottomID = 0;
   private lastScrollDirection = 0; // true = bottom
 
+  private onScrolledTopFired = false;
+  private onScrolledBottomFired = false;
+
   public scrollLocked = 0;
 
   private setVisible(element: HTMLElement) {
@@ -184,37 +187,56 @@ export default class Scrollable {
     //this.onScroll();
   }
 
-  public attachSentinels(container = this.container, offset = this.onScrollOffset) {
-    if(!this.sentinelsObserver) {
-      this.topSentinel = document.createElement('div');
-      this.topSentinel.classList.add('scrollable-sentinel');
-      this.topSentinel.style.top = offset + 'px';
-      this.bottomSentinel = document.createElement('div');
-      this.bottomSentinel.classList.add('scrollable-sentinel');
-      this.bottomSentinel.style.bottom = offset + 'px';
-  
-      this.container.append(this.topSentinel, this.bottomSentinel);
-  
-      this.sentinelsObserver = new IntersectionObserver(entries => {
-        for(let entry of entries) {
-          if(entry.isIntersecting) {
-            let top = entry.target == this.topSentinel;
-            if(top) {
-              this.onScrolledTop && this.onScrolledTop();
-            } else {
-              this.onScrolledBottom && this.onScrolledBottom();
-            }
-          }
-        }
-      });
-  
-      this.sentinelsObserver.observe(this.topSentinel);
-      this.sentinelsObserver.observe(this.bottomSentinel);
-    }
+  // public attachSentinels(container = this.container, offset = this.onScrollOffset) {
+  //   if(!this.sentinelsObserver) {
+  //     this.topSentinel = document.createElement('div');
+  //     this.topSentinel.classList.add('scrollable-sentinel');
+  //     this.topSentinel.style.top = offset + 'px';
+  //     this.bottomSentinel = document.createElement('div');
+  //     this.bottomSentinel.classList.add('scrollable-sentinel');
+  //     this.bottomSentinel.style.bottom = offset + 'px';
 
-    container.prepend(this.topSentinel);
-    container.append(this.bottomSentinel);
-  }
+  //     this.container.append(this.topSentinel, this.bottomSentinel);
+
+  //     //let fire: () => void;
+
+  //     this.sentinelsObserver = new IntersectionObserver(entries => {
+  //       for(let entry of entries) {
+  //         let top = entry.target == this.topSentinel;
+  //         if(top) {
+  //           this.onScrolledTopFired = entry.isIntersecting;
+  //         } else {
+  //           this.onScrolledBottomFired = entry.isIntersecting;
+  //         }
+  //       }
+
+  //       /* this.debug &&  */this.log('Set onScrolledFires:', this.onScrolledTopFired, this.onScrolledBottomFired);
+
+  //       /* if((this.onScrolledTopFired || this.onScrolledBottomFired) && !fire) {
+  //         fire = () => window.requestAnimationFrame(() => {
+  //           if(!this.scrollLocked) {
+  //             if(this.onScrolledTopFired && this.onScrolledTop) this.onScrolledTop();
+  //             if(this.onScrolledBottomFired && this.onScrolledBottom) this.onScrolledBottom(); 
+  //           }
+
+  //           if(!this.onScrolledTopFired && !this.onScrolledBottomFired) {
+  //             fire = undefined;
+  //           } else {
+  //             fire();
+  //           }
+  //         });
+
+  //         fire();
+  //       } */
+  //     });
+
+  //     this.sentinelsObserver.observe(this.topSentinel);
+  //     this.sentinelsObserver.observe(this.bottomSentinel);
+  //   }
+
+  //   container.prepend(this.topSentinel);
+  //   container.append(this.bottomSentinel);
+  // }
 
   public setVirtualContainer(el?: HTMLElement) {
     this.splitUp = el;
@@ -231,7 +253,7 @@ export default class Scrollable {
     /* if(this.debug) {
       this.log('onScroll call', this.onScrollMeasure);
     } */
-    
+
     let appendTo = this.splitUp || this.appendTo;
     
     clearTimeout(this.disableHoverTimeout);
@@ -246,8 +268,13 @@ export default class Scrollable {
       this.lastScrollDirection = 0;
     }, 100);
 
-    if(!this.splitUp || this.onScrollMeasure) return;
+    if(this.onScrollMeasure) return;
     this.onScrollMeasure = window.requestAnimationFrame(() => {
+      this.checkForTriggers();
+
+      this.onScrollMeasure = 0;
+      if(!this.splitUp) return;
+
       let scrollTop = this.container.scrollTop;
       if(this.lastScrollTop != scrollTop) {
         this.lastScrollDirection = this.lastScrollTop < scrollTop ? 1 : -1;
@@ -255,8 +282,22 @@ export default class Scrollable {
       } else {
         this.lastScrollDirection = 0;
       }
-      this.onScrollMeasure = 0;
     });
+  }
+
+  public checkForTriggers() {
+    if(this.scrollLocked || (!this.onScrolledTop && !this.onScrolledBottom)) return;
+
+    let scrollTop = this.container.scrollTop;
+    let maxScrollTop = this.container.scrollHeight - this.container.clientHeight;
+
+    if(this.onScrolledTop && scrollTop <= this.onScrollOffset) {
+      this.onScrolledTop();
+    }
+
+    if(this.onScrolledBottom && (maxScrollTop - scrollTop) <= this.onScrollOffset) {
+      this.onScrolledBottom();
+    }
   }
 
   public reorder() {

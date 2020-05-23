@@ -34,8 +34,8 @@ div.scrollable::-webkit-scrollbar-thumb {
   left: 0px;
   bottom: 0px;
   right: 0px;
-  display: flex;
-  flex-direction: column;
+  /* display: flex;
+  flex-direction: column; */
 
   &.scrollable-x {
     overflow-x: auto;
@@ -50,7 +50,7 @@ div.scrollable::-webkit-scrollbar-thumb {
     -ms-overflow-style: none;
   }
 
-  &-sentinel {
+  /* &-sentinel {
     position: relative;
     left: 0;
     height: 1px;
@@ -58,7 +58,7 @@ div.scrollable::-webkit-scrollbar-thumb {
     background-color: transparent;
     width: 1px;
     min-width: 1px;
-  }
+  } */
 
   /* &.scrollable-x ~ .scrollbar-thumb {
     top: auto;

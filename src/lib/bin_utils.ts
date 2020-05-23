@@ -342,24 +342,6 @@ export function longFromInts(high: number, low: number) {
   return bigint(high).shiftLeft(32).add(bigint(low)).toString(10);
 }
 
-export function intToUint(val: number | string) {
-  if(typeof(val) === 'string') val = parseInt(val);
-
-  /* if(val < 0) {
-    val = val + 4294967296;
-  } */
-
-  return val;
-}
-
-export function uintToInt(val: number) {
-  /* if(val > 2147483647) {
-    val = val - 4294967296;
-  } */
-  
-  return val;
-}
-
 export function addPadding(bytes: any, blockSize: number = 16, zeroes?: boolean, full = false, prepend = false) {
   let len = bytes.byteLength || bytes.length;
   let needPadding = blockSize - (len % blockSize);

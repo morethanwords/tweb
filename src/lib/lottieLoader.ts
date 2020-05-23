@@ -96,13 +96,19 @@ class LottieLoader {
       params.renderer = 'svg';
     //}
     
-    params.rendererSettings = {
+    let rendererSettings = {
       //context: context, // the canvas context
       //preserveAspectRatio: 'xMinYMin slice', // Supports the same options as the svg element's preserveAspectRatio property
       clearCanvas: true,
       progressiveLoad: true, // Boolean, only svg renderer, loads dom elements when needed. Might speed up initialization for large number of elements.
       hideOnTransparent: true, //Boolean, only svg renderer, hides elements when opacity reaches 0 (defaults to true),
     };
+
+    if(params.rendererSettings) {
+      params.rendererSettings = Object.assign(params.rendererSettings, rendererSettings);
+    } else {
+      params.rendererSettings = rendererSettings;
+    }
 
     if(!this.lottie) {
       if(!this.loaded) this.loadLottie();

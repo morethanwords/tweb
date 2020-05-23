@@ -51,6 +51,8 @@ class IdbFileStorage {
       request.onsuccess = (event) => {
         finished = true;
         var db = request.result;
+
+        console.log('Opened IndexedDB');
   
         db.onerror = (error) => {
           this.storageIsAvailable = false;

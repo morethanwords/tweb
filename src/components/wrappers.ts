@@ -1,4 +1,4 @@
-import appPhotosManager, { MTPhoto } from '../lib/appManagers/appPhotosManager';
+import appPhotosManager from '../lib/appManagers/appPhotosManager';
 //import CryptoWorker from '../lib/crypto/cryptoworker';
 import apiManager from '../lib/mtproto/mtprotoworker';
 import LottieLoader from '../lib/lottieLoader';
@@ -8,7 +8,6 @@ import { formatBytes } from "../lib/utils";
 import ProgressivePreloader from './preloader';
 import LazyLoadQueue from './lazyLoadQueue';
 import apiFileManager from '../lib/mtproto/apiFileManager';
-import appWebpManager from '../lib/appManagers/appWebpManager';
 import VideoPlayer, { MediaProgressLine } from '../lib/mediaPlayer';
 import { RichTextProcessor } from '../lib/richtextprocessor';
 import { CancellablePromise } from '../lib/polyfill';
@@ -16,6 +15,7 @@ import { renderImageFromUrl } from './misc';
 import appMessagesManager from '../lib/appManagers/appMessagesManager';
 import { Layouter, RectPart } from './groupedLayout';
 import PollElement from './poll';
+import appWebpManager from '../lib/appManagers/appWebpManager';
 
 export type MTDocument = {
   _: 'document' | 'documentEmpty',
@@ -40,15 +40,15 @@ export type MTDocument = {
   duration?: number,
   downloaded?: boolean,
   url?: string,
-  version?: any,
 
   audioTitle?: string,
   audioPerformer?: string,
 
-  sticker?: boolean,
+  sticker?: number,
   stickerEmoji?: string,
   stickerEmojiRaw?: string,
   stickerSetInput?: any,
+  stickerThumbConverted?: true,
 
   animated?: boolean
 };
@@ -74,48 +74,39 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   middleware: () => boolean,
   lazyLoadQueue: LazyLoadQueue
 }) {
-  let img: HTMLImageElement | SVGImageElement;
-
+  let img: HTMLImageElement;
   if(withTail) {
     img = wrapMediaWithTail(doc, message, container, boxWidth, boxHeight, isOut);
-  } else if(!boxWidth && !boxHeight) { // album
-    let sizes = doc.thumbs;
-    if(!doc.downloaded && sizes && sizes[0].bytes) {
-      appPhotosManager.setAttachmentPreview(sizes[0].bytes, container, false);
-    }
-
-    img = container.firstElementChild as HTMLImageElement || new Image();
-
-    if(!container.contains(img)) {
-      container.append(img);
-    }
   } else {
-    if(!container.firstElementChild || (container.firstElementChild.tagName != 'IMG' && container.firstElementChild.tagName != 'VIDEO')) {
-      let size = appPhotosManager.setAttachmentSize(doc, container, boxWidth, boxHeight);
+    if(!boxWidth && !boxHeight) { // album
+      let sizes = doc.thumbs;
+      if(!doc.downloaded && sizes && sizes[0].bytes) {
+        appPhotosManager.setAttachmentPreview(sizes[0].bytes, container, false);
+      }
+    } else {
+      if(!container.firstElementChild || (container.firstElementChild.tagName != 'IMG' && container.firstElementChild.tagName != 'VIDEO')) {
+        appPhotosManager.setAttachmentSize(doc, container, boxWidth, boxHeight);
+      }
     }
-    
-    img = container.firstElementChild as HTMLImageElement || new Image();
-    
-    if(!container.contains(img)) {
-      container.append(img);
+
+    img = container.lastElementChild as HTMLImageElement;
+    if(!img || img.tagName != 'IMG') {
+      container.append(img = new Image());
     }
-  }
+  } 
 
   let video = document.createElement('video');
-  if(withTail) {
-    let foreignObject = document.createElementNS("http://www.w3.org/2000/svg", 'foreignObject');
-    let width = img.getAttributeNS(null, 'width');
-    let height = img.getAttributeNS(null, 'height');
-    foreignObject.setAttributeNS(null, 'width', width);
-    foreignObject.setAttributeNS(null, 'height', height);
-    video.width = +width;
-    video.height = +height;
-    foreignObject.append(video);
-    img.parentElement.append(foreignObject);
-  }
-
   let source = document.createElement('source');
   video.append(source);
+  
+  if(withTail) {
+    let foreignObject = img.parentElement;
+    video.width = +foreignObject.getAttributeNS(null, 'width');
+    video.height = +foreignObject.getAttributeNS(null, 'height');
+    foreignObject.append(video);
+  } else {
+    container.append(video);
+  }
 
   let span: HTMLSpanElement;
   if(doc.type != 'round') {
@@ -154,12 +145,8 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     source.type = doc.mime_type;
     video.append(source);
 
-    if(!withTail) {
-      if(img && container.contains(img)) {
-        container.removeChild(img);
-      }
-
-      container.append(video);
+    if(img && img.parentElement) {
+      img.remove();
     }
     
     if(doc.type == 'gif') {
@@ -593,14 +580,16 @@ export function wrapVoiceMessage(doc: MTDocument, withTime = false): HTMLDivElem
 function wrapMediaWithTail(photo: any, message: {mid: number, message: string}, container: HTMLDivElement, boxWidth: number, boxHeight: number, isOut: boolean) {
   let svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.classList.add('bubble__media-container', isOut ? 'is-out' : 'is-in');
+  
+  let foreignObject = document.createElementNS("http://www.w3.org/2000/svg", 'foreignObject');
+  
+  appPhotosManager.setAttachmentSize(photo._ == 'document' ? photo : photo.id, foreignObject, boxWidth, boxHeight);
+  
+  let width = +foreignObject.getAttributeNS(null, 'width');
+  let height = +foreignObject.getAttributeNS(null, 'height');
 
-  let image = document.createElementNS("http://www.w3.org/2000/svg", "image");
-  svg.append(image);
-  
-  let size = appPhotosManager.setAttachmentSize(photo._ == 'document' ? photo : photo.id, svg, boxWidth, boxHeight);
-  
-  let width = +svg.getAttributeNS(null, 'width');
-  let height = +svg.getAttributeNS(null, 'height');
+  svg.setAttributeNS(null, 'width', '' + width);
+  svg.setAttributeNS(null, 'height', '' + height);
 
   let clipID = 'clip' + message.mid;
   svg.dataset.clipID = clipID;
@@ -626,36 +615,38 @@ function wrapMediaWithTail(photo: any, message: {mid: number, message: string}, 
 
   defs.innerHTML = `<clipPath id="${clipID}">${clipPathHTML}</clipPath>`;
   
-  svg.prepend(defs);
-  container.appendChild(svg);
+  container.style.width = parseInt(container.style.width) - 9 + 'px';
 
-  return image;
+  svg.append(defs, foreignObject);
+  container.append(svg);
+
+  let img = foreignObject.firstElementChild as HTMLImageElement;
+  if(!img) {
+    foreignObject.append(img = new Image());
+  }
+
+  return img;
 }
 
 export function wrapPhoto(photoID: string, message: any, container: HTMLDivElement, boxWidth = 380, boxHeight = 380, withTail = true, isOut = false, lazyLoadQueue: LazyLoadQueue, middleware: () => boolean, size: MTPhotoSize = null) {
   let photo = appPhotosManager.getPhoto(photoID);
 
-  let image: SVGImageElement | HTMLImageElement;
+  let image: HTMLImageElement;
   if(withTail) {
     image = wrapMediaWithTail(photo, message, container, boxWidth, boxHeight, isOut);
-  } else if(size) { // album
-    let sizes = photo.sizes;
-    if(!photo.downloaded && sizes && sizes[0].bytes) {
-      appPhotosManager.setAttachmentPreview(sizes[0].bytes, container, false);
+  } else {
+    if(size) { // album
+      let sizes = photo.sizes;
+      if(!photo.downloaded && sizes && sizes[0].bytes) {
+        appPhotosManager.setAttachmentPreview(sizes[0].bytes, container, false);
+      }
+    } else if(boxWidth && boxHeight) { // means webpage's preview
+      size = appPhotosManager.setAttachmentSize(photoID, container, boxWidth, boxHeight, false);
     }
 
-    image = container.firstElementChild as HTMLImageElement || new Image();
-
-    if(!container.contains(image)) {
-      container.appendChild(image);
-    }
-  } else if(boxWidth && boxHeight) { // means webpage's preview
-    size = appPhotosManager.setAttachmentSize(photoID, container, boxWidth, boxHeight, false);
-    
-    image = container.firstElementChild as HTMLImageElement || new Image();
-    
-    if(!container.contains(image)) {
-      container.appendChild(image);
+    image = container.lastElementChild as HTMLImageElement;
+    if(!image || image.tagName != 'IMG') {
+      container.append(image = new Image());
     }
   }
 
@@ -694,7 +685,7 @@ export function wrapPhoto(photoID: string, message: any, container: HTMLDivEleme
 }
 
 export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: () => boolean, lazyLoadQueue?: LazyLoadQueue, group?: string, canvas?: boolean, play = false, onlyThumb = false) {
-  let stickerType = doc.mime_type == "application/x-tgsticker" ? 2 : (doc.mime_type == "image/webp" ? 1 : 0);
+  let stickerType = doc.sticker;
 
   if(stickerType == 2 && !LottieLoader.loaded) {
     LottieLoader.loadLottie();
@@ -702,8 +693,10 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
   
   if(!stickerType) {
     console.error('wrong doc for wrapSticker!', doc);
-    return Promise.resolve();
+    throw new Error('wrong doc for wrapSticker!');
   }
+
+  div.dataset.docID = doc.id;
   
   //console.log('wrap sticker', doc, div, onlyThumb);
   
@@ -713,32 +706,61 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
     //console.log('wrap sticker', thumb, div);
     
     if(thumb.bytes) {
-      apiFileManager.saveSmallFile(thumb.location, thumb.bytes);
+      let img = new Image();
+
+      if(appWebpManager.isSupported() || doc.stickerThumbConverted) {
+        renderImageFromUrl(img, appPhotosManager.getPreviewURLFromThumb(thumb, true));
+
+        div.append(img);
+      } else {
+        appWebpManager.convertToPng(thumb.bytes).then(bytes => {
+          if(middleware && !middleware()) return;
+
+          thumb.bytes = bytes;
+          doc.stickerThumbConverted = true;
+
+          if(!div.childElementCount) {
+            renderImageFromUrl(img, appPhotosManager.getPreviewURLFromThumb(thumb, true)).then(() => {
+              div.append(img);
+            });
+          }
+        });
+      }
       
-      appPhotosManager.setAttachmentPreview(thumb.bytes, div, true);
+      if(onlyThumb) {
+        return Promise.resolve();
+      }
+    } else if(!onlyThumb && stickerType == 2) {
+      let img = new Image();
+      let load = () => appDocsManager.downloadDocThumb(doc, thumb.type).then(url => {
+        if(!img.parentElement || (middleware && !middleware())) return;
+        let promise = renderImageFromUrl(img, url);
+
+        if(!downloaded) {
+          promise.then(() => {
+            div.append(img);
+          });
+        }
+      });
       
-      if(onlyThumb) return Promise.resolve();
+      let downloaded = appDocsManager.hasDownloadedThumb(doc.id, thumb.type);
+      if(downloaded) {
+        div.append(img);
+      }
+
+      lazyLoadQueue && !downloaded ? lazyLoadQueue.push({div, load}) : load();
     }
   }
-  
-  if(onlyThumb && doc.thumbs) {
+
+  if(onlyThumb && doc.thumbs) { // for sticker panel
     let thumb = doc.thumbs[0];
     
-    let load = () => apiFileManager.downloadSmallFile({
-      _: 'inputDocumentFileLocation',
-      access_hash: doc.access_hash,
-      file_reference: doc.file_reference,
-      thumb_size: thumb.type,
-      id: doc.id
-    }, {dcID: doc.dc_id}).then(blob => {
+    let load = () => appDocsManager.downloadDocThumb(doc, thumb.type).then(url => {
       let img = new Image();
-      
-      appWebpManager.polyfillImage(img, blob);
-      
-      div.append(img);
-      
-      div.dataset.docID = doc.id;
-      appStickersManager.saveSticker(doc);
+      renderImageFromUrl(img, url).then(() => {
+        if(middleware && !middleware()) return;
+        div.append(img);
+      });
     });
     
     return lazyLoadQueue ? (lazyLoadQueue.push({div, load}), Promise.resolve()) : load();
@@ -748,10 +770,8 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
   let load = () => appDocsManager.downloadDoc(doc.id).then(blob => {
     //console.log('loaded sticker:', blob, div);
     if(middleware && !middleware()) return;
-    
-    /* if(div.firstElementChild) {
-      div.firstElementChild.remove();
-    } */
+
+    //return;
     
     if(stickerType == 2) {
       const reader = new FileReader();
@@ -802,15 +822,7 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
               }, {once: true});
             }
           });
-        } /* else {
-          let canvas = div.firstElementChild as HTMLCanvasElement;
-          if(!canvas.width && !canvas.height) {
-            console.log('Need lottie resize');
-            
-            // @ts-ignore
-            animation.resize();
-          }
-        } */
+        }
         
         if(play) {
           animation.play();
@@ -831,23 +843,14 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
         });
       }
 
-      if(!doc.url) {
-        appWebpManager.polyfillImage(img, blob).then((url) => {
-          doc.url = url;
-          
-          if(div.firstElementChild && div.firstElementChild != img) {
-            div.firstElementChild.remove();
-          }
-        });
-      } else {
-        img.src = doc.url;
-      }
+      renderImageFromUrl(img, doc.url).then(() => {
+        if(div.firstElementChild && div.firstElementChild != img) {
+          div.firstElementChild.remove();
+        }
 
-      div.append(img);
+        div.append(img);
+      });
     }
-    
-    div.dataset.docID = doc.id;
-    appStickersManager.saveSticker(doc);
   });
   
   return lazyLoadQueue && (!doc.downloaded || stickerType == 2) ? (lazyLoadQueue.push({div, load, wasSeen: group == 'chat'}), Promise.resolve()) : load();

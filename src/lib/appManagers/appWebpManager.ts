@@ -1,31 +1,21 @@
-// @ts-ignore
-//import createWorker from 'offscreen-canvas/create-worker';
-
 class AppWebpManager {
-  public webpMachine: any = null;
-  public loaded: Promise<void>;
-  public busyPromise: Promise<string>;
-  public queue: {bytes: Uint8Array, img: HTMLImageElement, callback: (url: string) => void}[] = [];
-  //public worker: any;
-  public webpSupport: Promise<boolean> = null;
+  private webpMachine: any = null;
+  private loaded: Promise<void>;
+  private busyPromise: Promise<Uint8Array | void>;
+  private queue: {bytes: Uint8Array, callback: (res: Uint8Array) => void}[] = [];
+
+  private testPromise: Promise<boolean> = null;
+  public webpSupport = false;
 
   constructor() {
-    //let canvas = document.createElement('canvas');
-    //console.log('got message from worker:', canvas.toDataURL());
-    /* this.worker = createWorker(canvas, '/webp.bundle.js', (e: any) => {
-      // Messages from the worker
-      console.log('got message from worker:', e, canvas.toDataURL());
-    }); */
-
-    this.webpSupported().then(res => {
-    });
+    this.testWebpSupport();
   }
 
-  public loadWebpHero() {
+  private loadWebpHero() {
     if(this.loaded) return this.loaded;
 
     this.loaded = new Promise(async(resolve, reject) => {
-      let res = await this.webpSupported();
+      let res = await this.testWebpSupport();
 
       if(!res) {
         (window as any).webpLoaded = () => {
@@ -46,17 +36,16 @@ class AppWebpManager {
     });
   }
 
-  convert(bytes: Uint8Array): Promise<string> {
+  private convert(bytes: Uint8Array): AppWebpManager['busyPromise'] {
     return this.webpMachine.decode(bytes);
-    //return this.worker.post({message: 'webpBytes', bytes});
   }
   
-  async processQueue() {
+  private async processQueue() {
     if(this.busyPromise) return;
 
-    this.busyPromise = Promise.resolve('');
+    this.busyPromise = Promise.resolve();
 
-    let {img, bytes, callback} = this.queue.pop();
+    let {bytes, callback} = this.queue.pop();
 
     if(!this.loaded) {
       this.loadWebpHero();
@@ -65,13 +54,11 @@ class AppWebpManager {
     await this.loaded;
 
     this.busyPromise = this.convert(bytes);
-    let url = await this.busyPromise;
-    let imgTemp = new Image();
-    imgTemp.src = url;
-    imgTemp.onload = () => {
-      img.src = imgTemp.src;
-    };
-    callback(url);
+    let res = await this.busyPromise;
+
+    console.log('converted webp', res);
+
+    callback(res as Uint8Array);
 
     this.busyPromise = null;
 
@@ -80,42 +67,33 @@ class AppWebpManager {
     }
   }
 
-  webpSupported() {
-    if(this.webpSupport) return this.webpSupport;
+  public testWebpSupport() {
+    if(this.testPromise) return this.testPromise;
 
-    return this.webpSupport = new Promise((resolve, reject) => {
-      var webP = new Image();     
+    return this.testPromise = new Promise((resolve, reject) => {
+      let webP = new Image();     
       webP.src = 'data:image/webp;base64,UklGRi4AAABXRUJQVlA4TCEAAAAvAUAAEB8wAiMw' + 
         'AgSSNtse/cXjxyCCmrYNWPwmHRH9jwMA';
       webP.onload = webP.onerror = () => {
-        resolve(webP.height === 2);     
+        resolve(this.webpSupport = webP.height === 2/*  && false */);     
       };
     });
   }
 
-  async polyfillImage(img: HTMLImageElement, blob: Blob) {
-    /* console.log('polyfillImage', this);
-    return this.webpMachine.polyfillImage(image); */
+  public isSupported() {
+    return this.webpSupport;
+  }
 
-    //if(await this.webpMachine.webpSupport) {
-    if(await this.webpSupport) {
-      let url = URL.createObjectURL(blob);
-      img.src = url;
-      return url;
-    }
-
-    return new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.addEventListener('loadend', (e) => {
-        // @ts-ignore
-        let bytes = new Uint8Array(e.srcElement.result);
-        
-        this.queue.push({bytes, img, callback: resolve});
-        this.processQueue();
-      });
-      reader.readAsArrayBuffer(blob);
+  public convertToPng(bytes: Uint8Array) {
+    console.warn('convertToPng!');
+    return new Promise<Uint8Array>((resolve, reject) => {
+      // @ts-ignore
+      this.queue.push({bytes, callback: resolve});
+      this.processQueue();
     });
   }
 }
 
-export default new AppWebpManager();
+const appWebpManager = new AppWebpManager();
+(window as any).appWebpManager = appWebpManager;
+export default appWebpManager;

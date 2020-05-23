@@ -56,7 +56,6 @@ class AppForward {
     this.cleanup();
     this.msgIDs = ids;
 
-    appSidebarRight.toggleSidebar(true);
     this.container.classList.add('active');
     this.sendBtn.innerHTML = '';
     this.sendBtn.classList.add('tgico-send');
@@ -68,6 +67,9 @@ class AppForward {
       } else {
         this.sendBtn.classList.remove('is-visible');
       }
+    }, 'dialogs', () => {
+      console.log('forward rendered:', this.container.querySelector('.selector ul').childElementCount);
+      appSidebarRight.toggleSidebar(true);
     });
   }
 }

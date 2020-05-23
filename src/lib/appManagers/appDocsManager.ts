@@ -7,8 +7,9 @@ import { isObject } from '../utils';
 
 class AppDocsManager {
   private docs: {[docID: string]: MTDocument} = {};
+  private thumbs: {[docIDAndSize: string]: Promise<string>} = {};
 
-  public saveDoc(apiDoc: MTDocument/* any */, context?: any) {
+  public saveDoc(apiDoc: MTDocument, context?: any) {
     //console.log('saveDoc', apiDoc, this.docs[apiDoc.id]);
     if(this.docs[apiDoc.id]) {
       let d = this.docs[apiDoc.id];
@@ -68,8 +69,6 @@ class AppDocsManager {
           break;
 
         case 'documentAttributeSticker':
-          apiDoc.sticker = true;
-
           if(attribute.alt !== undefined) {
             apiDoc.stickerEmojiRaw = attribute.alt;
             apiDoc.stickerEmoji = RichTextProcessor.wrapRichText(apiDoc.stickerEmojiRaw, {noLinks: true, noLinebreaks: true});
@@ -83,11 +82,13 @@ class AppDocsManager {
             }
           }
 
-          if(apiDoc.thumbs && apiDoc.mime_type == 'image/webp') {
+          if(/* apiDoc.thumbs &&  */apiDoc.mime_type == 'image/webp') {
             apiDoc.type = 'sticker';
+            apiDoc.sticker = 1;
           } else if(apiDoc.mime_type == 'application/x-tgsticker') {
             apiDoc.type = 'sticker';
             apiDoc.animated = true;
+            apiDoc.sticker = 2;
           }
           break;
 
@@ -145,7 +146,7 @@ class AppDocsManager {
     return isObject(docID) ? docID : this.docs[docID];
   }
 
-  public getInputByID(docID: any) {
+  public getMediaInputByID(docID: any) {
     let doc = this.getDoc(docID);
     return {
       _: 'inputMediaDocument',
@@ -157,6 +158,18 @@ class AppDocsManager {
         file_reference: doc.file_reference
       },
       ttl_seconds: 0
+    };
+  }
+
+  public getInputByID(docID: any, thumbSize?: string) {
+    let doc = this.getDoc(docID);
+
+    return {
+      _: 'inputDocumentFileLocation',
+      id: doc.id,
+      access_hash: doc.access_hash,
+      file_reference: doc.file_reference,
+      thumb_size: thumbSize
     };
   }
   
@@ -173,42 +186,10 @@ class AppDocsManager {
     return 't_' + (doc.type || 'file') + doc.id + fileExt;
   }
   
-  public updateDocDownloaded(docID: string) {
-    var doc = this.docs[docID];
-    var inputFileLocation = {
-      _: 'inputDocumentFileLocation',
-      id: docID,
-      access_hash: doc.access_hash,
-      version: doc.version,
-      file_name: this.getFileName(doc)
-    };
-    
-    if(doc.downloaded === undefined) {
-      apiFileManager.getDownloadedFile(inputFileLocation, doc.size).then(() => {
-        doc.downloaded = true;
-      }, () => {
-        doc.downloaded = false;
-      });
-    }
-  }
-  
-  public downloadDoc(docID: string | MTDocument, toFileEntry?: any): CancellablePromise<Blob> {
-    let doc: MTDocument;
-    if(typeof(docID) === 'string') {
-      doc = this.docs[docID];
-    } else {
-      doc = docID;
-    }
+  public downloadDoc(docID: any, toFileEntry?: any): CancellablePromise<Blob> {
+    let doc = this.getDoc(docID);
 
-    var inputFileLocation = {
-      _: 'inputDocumentFileLocation',
-      id: doc.id,
-      access_hash: doc.access_hash,
-      file_reference: doc.file_reference,
-      thumb_size: '',
-      version: doc.version,
-      file_name: this.getFileName(doc)
-    };
+    let inputFileLocation = this.getInputByID(doc);
     
     if(doc._ == 'documentEmpty') {
       return Promise.reject();
@@ -217,26 +198,27 @@ class AppDocsManager {
     if(doc.downloaded && !toFileEntry) {
       if(doc.url) return Promise.resolve(null);
 
-      var cachedBlob = apiFileManager.getCachedFile(inputFileLocation);
+      let cachedBlob = apiFileManager.getCachedFile(inputFileLocation);
       if(cachedBlob) {
         return Promise.resolve(cachedBlob);
       }
     }
     
     //historyDoc.progress = {enabled: !historyDoc.downloaded, percent: 1, total: doc.size};
-    
+
     // нет смысла делать объект с выполняющимися промисами, нижняя строка и так вернёт загружающийся
-    var downloadPromise: CancellablePromise<Blob> = apiFileManager.downloadFile(doc.dc_id, inputFileLocation, doc.size, {
+    let downloadPromise: CancellablePromise<Blob> = apiFileManager.downloadFile(doc.dc_id, inputFileLocation, doc.size, {
       mimeType: doc.mime_type || 'application/octet-stream',
-      toFileEntry: toFileEntry
+      toFileEntry: toFileEntry,
+      stickerType: doc.sticker
     });
-    
+
     downloadPromise.then((blob) => {
       if(blob) {
         doc.downloaded = true;
 
-        if(/* !doc.animated ||  */doc.type && doc.type != 'sticker') {
-          doc.url = FileManager.getFileCorrectUrl(blob, doc.mime_type);
+        if(doc.type && doc.sticker != 2) {
+          doc.url = URL.createObjectURL(blob);
         }
       }
 
@@ -265,6 +247,36 @@ class AppDocsManager {
     //console.log('return downloadPromise:', downloadPromise);
     
     return downloadPromise;
+  }
+
+  public downloadDocThumb(docID: any, thumbSize: string) {
+    let doc = this.getDoc(docID);
+
+    let key = doc.id + '-' + thumbSize;
+    if(this.thumbs[key]) {
+      return this.thumbs[key];
+    }
+
+    let input = this.getInputByID(doc, thumbSize);
+
+    if(doc._ == 'documentEmpty') {
+      return Promise.reject();
+    }
+
+    let mimeType = doc.sticker ? 'image/webp' : doc.mime_type;
+    let promise = apiFileManager.downloadSmallFile(input, {
+      dcID: doc.dc_id, 
+      stickerType: doc.sticker ? 1 : undefined,
+      mimeType: mimeType
+    });
+
+    return this.thumbs[key] = promise.then((blob) => {
+      return URL.createObjectURL(blob);
+    });
+  }
+
+  public hasDownloadedThumb(docID: string, thumbSize: string) {
+    return !!this.thumbs[docID + '-' + thumbSize];
   }
   
   public async saveDocFile(docID: string) {

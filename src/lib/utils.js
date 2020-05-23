@@ -289,8 +289,10 @@ export function getSelectedText() {
 
 export const $rootScope = {
   $broadcast: (name/* : string */, detail/*? : any */) => {
-    console.log(dT(), 'Broadcasting ' + name + ' event, with args:', detail);
-    //console.trace();
+    if(name != 'user_update') {
+      console.log(dT(), 'Broadcasting ' + name + ' event, with args:', detail);
+    }
+
     let myCustomEvent = new CustomEvent(name, {detail});
     document.dispatchEvent(myCustomEvent);
   },

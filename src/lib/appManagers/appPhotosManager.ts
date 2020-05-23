@@ -176,8 +176,8 @@ export class AppPhotosManager {
       };
     });
   }
-  
-  public setAttachmentPreview(bytes: Uint8Array, element: HTMLElement | SVGSVGElement, isSticker = false, background = false) {
+
+  public getPreviewURLFromBytes(bytes: Uint8Array | number[], isSticker = false) {
     let arr: Uint8Array;
     if(!isSticker) {
       arr = AppPhotosManager.jf.concat(bytes.slice(3), AppPhotosManager.Df);
@@ -187,9 +187,7 @@ export class AppPhotosManager {
       arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
     }
     
-    //console.log('setAttachmentPreview', bytes, arr, div, isSticker);
-    
-    let blob = new Blob([arr], {type: "image/jpeg"});
+    //console.log('getPreviewURLFromBytes', bytes, arr, div, isSticker);
 
     /* let reader = new FileReader();
     reader.onloadend = () => {
@@ -197,8 +195,19 @@ export class AppPhotosManager {
     };
     reader.readAsDataURL(blob); */
     
+    let blob = new Blob([arr], {type: "image/jpeg"});
+
+    return URL.createObjectURL(blob);
+  }
+
+  public getPreviewURLFromThumb(thumb: any, isSticker = false) {
+    return thumb.url ?? (thumb.url = this.getPreviewURLFromBytes(thumb.bytes, isSticker));
+  }
+  
+  public setAttachmentPreview(bytes: Uint8Array | number[], element: HTMLElement | SVGForeignObjectElement, isSticker = false, background = false) {
+    let url = this.getPreviewURLFromBytes(bytes, isSticker);
+
     if(background) {
-      let url = URL.createObjectURL(blob);
       let img = new Image();
       img.src = url;
       img.addEventListener('load', () => {
@@ -206,30 +215,23 @@ export class AppPhotosManager {
       });
 
       return element;
-      //element.style.backgroundImage = 'url(' + url + ')';
     } else {
-      if(element instanceof SVGSVGElement) {
-        let image = element.firstElementChild as SVGImageElement || document.createElementNS("http://www.w3.org/2000/svg", "image");
-        image.setAttributeNS(null, 'href', URL.createObjectURL(blob));
-        element.append(image);
-
-        return image;
-      } else if(element instanceof HTMLImageElement) {
-        element.src = URL.createObjectURL(blob);
+      if(element instanceof HTMLImageElement) {
+        element.src = url;
         return element;
       } else {
         let img = new Image();
-        img.style.width = '100%';
-        img.style.height = '100%';
+        /* img.style.width = '100%';
+        img.style.height = '100%'; */
         
-        img.src = URL.createObjectURL(blob);
+        img.src = url;
         element.append(img);
         return img;
       }
     }
   }
   
-  public setAttachmentSize(photoID: any, element: HTMLElement | SVGSVGElement, boxWidth = 380, boxHeight = 380, isSticker = false) {
+  public setAttachmentSize(photoID: any, element: HTMLElement | SVGForeignObjectElement, boxWidth = 380, boxHeight = 380, isSticker = false) {
     let photo: /* MTDocument | MTPhoto */any = null;
     
     if(typeof(photoID) === 'string') {
@@ -243,7 +245,7 @@ export class AppPhotosManager {
     //console.log('setAttachmentSize', photo, photo.sizes[0].bytes, div);
     
     let sizes = photo.sizes || photo.thumbs;
-    if((!photo.downloaded || (isSticker && photo.animated)) && sizes && sizes[0].bytes) {
+    if(!photo.downloaded && !isSticker && sizes && sizes[0].bytes) {
       this.setAttachmentPreview(sizes[0].bytes, element, isSticker);
     }
     
@@ -258,17 +260,11 @@ export class AppPhotosManager {
     }
     
     let {w, h} = calcImageInBox(width, height, boxWidth, boxHeight);
-    if(element instanceof SVGSVGElement) {
+    if(element instanceof SVGForeignObjectElement) {
       element.setAttributeNS(null, 'width', '' + w);
       element.setAttributeNS(null, 'height', '' + h);
 
       //console.log('set dimensions to svg element:', element, w, h);
-      
-      if(element.firstElementChild) {
-        let imageSvg = element.firstElementChild as SVGImageElement;
-        imageSvg.setAttributeNS(null, 'width', '' + w);
-        imageSvg.setAttributeNS(null, 'height', '' + h);
-      }
     } else {
       element.style.width = w + 'px';
       element.style.height = h + 'px';

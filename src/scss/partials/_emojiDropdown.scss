@@ -68,7 +68,7 @@
 			.category-items {
 				display: grid;
 				grid-column-gap: 2.44px;
-				grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+				grid-template-columns: repeat(9, 1fr);
 
 				font-size: 2.25rem;
 				line-height: 2.25rem;
@@ -121,10 +121,9 @@
 
 			.category-items {
 				width: 100%;
-				display: flex;
-				align-items: center;
-				justify-content: space-between;
-				flex-wrap: wrap;
+				display: grid;
+				grid-template-columns: repeat(5, 1fr);
+				grid-column-gap: 1px;
 
 				> div {
 					width: 80px;

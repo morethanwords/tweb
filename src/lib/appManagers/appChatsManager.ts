@@ -3,6 +3,7 @@ import { RichTextProcessor } from "../richtextprocessor";
 import appUsersManager from "./appUsersManager";
 import apiManager from '../mtproto/mtprotoworker';
 import apiUpdatesManager from "./apiUpdatesManager";
+import appProfileManager from "./appProfileManager";
 
 type Channel = {
   _: 'channel',
@@ -41,6 +42,8 @@ export class AppChatsManager {
   public channelAccess: any = {};
   public megagroups: any = {};
   public cachedPhotoLocations: any = {};
+
+  public megagroupOnlines: {[id: number]: {timestamp: number, onlines: number}} = {};
 
   constructor() {
     $rootScope.$on('apiUpdate', (e: CustomEvent) => {
@@ -130,7 +133,7 @@ export class AppChatsManager {
       return false;
     }
 
-    var chat = this.getChat(id);
+    let chat = this.getChat(id);
     if(chat._ == 'chatForbidden' ||
         chat._ == 'channelForbidden' ||
         chat.pFlags.kicked ||
@@ -191,7 +194,7 @@ export class AppChatsManager {
   }
 
   public isChannel(id: number) {
-    var chat = this.chats[id];
+    let chat = this.chats[id];
     if(chat && (chat._ == 'channel' || chat._ == 'channelForbidden') || this.channelAccess[id]) {
       return true;
     }
@@ -203,7 +206,7 @@ export class AppChatsManager {
       return true;
     }
 
-    var chat = this.chats[id];
+    let chat = this.chats[id];
     if(chat && chat._ == 'channel' && chat.pFlags.megagroup) {
       return true;
     }
@@ -246,12 +249,12 @@ export class AppChatsManager {
   }
 
   public hasChat(id: number, allowMin?: any) {
-    var chat = this.chats[id]
+    let chat = this.chats[id]
     return isObject(chat) && (allowMin || !chat.pFlags.min);
   }
 
   public getChatPhoto(id: number) {
-    var chat = this.getChat(id);
+    let chat = this.getChat(id);
 
     if(this.cachedPhotoLocations[id] === undefined) {
       this.cachedPhotoLocations[id] = chat && chat.photo ? chat.photo : {empty: true};
@@ -261,7 +264,7 @@ export class AppChatsManager {
   }
 
   public getChatString(id: number) {
-    var chat = this.getChat(id);
+    let chat = this.getChat(id);
     if(this.isChannel(id)) {
       return (this.isMegagroup(id) ? 's' : 'c') + id + '_' + chat.access_hash;
     }
@@ -277,8 +280,8 @@ export class AppChatsManager {
   }
 
   public wrapForFull(id: number, fullChat: any) {
-    var chatFull = copy(fullChat);
-    var chat = this.getChat(id);
+    let chatFull = copy(fullChat);
+    let chat = this.getChat(id);
 
     if(!chatFull.participants_count) {
       chatFull.participants_count = chat.participants_count;
@@ -300,10 +303,10 @@ export class AppChatsManager {
   }
 
   public wrapParticipants(id: number, participants: any[]) {
-    var chat = this.getChat(id);
-    var myID = appUsersManager.getSelf().id;
+    let chat = this.getChat(id);
+    let myID = appUsersManager.getSelf().id;
     if(this.isChannel(id)) {
-      var isAdmin = chat.pFlags.creator || chat.pFlags.editor || chat.pFlags.moderator;
+      let isAdmin = chat.pFlags.creator || chat.pFlags.editor || chat.pFlags.moderator;
       participants.forEach((participant) => {
         participant.canLeave = myID == participant.user_id;
         participant.canKick = isAdmin && participant._ == 'channelParticipant';
@@ -312,7 +315,7 @@ export class AppChatsManager {
         participant.user = appUsersManager.getUser(participant.user_id);
       });
     } else {
-      var isAdmin = chat.pFlags.creator || chat.pFlags.admins_enabled && chat.pFlags.admin;
+      let isAdmin = chat.pFlags.creator || chat.pFlags.admins_enabled && chat.pFlags.admin;
       participants.forEach((participant) => {
         participant.canLeave = myID == participant.user_id;
         participant.canKick = !participant.canLeave && (
@@ -386,6 +389,44 @@ export class AppChatsManager {
       }).then(updates => {
         apiUpdatesManager.processUpdateMessage(updates);
       });
+    }
+  }
+
+  public async getOnlines(id: number): Promise<number> {
+    if(this.isMegagroup(id)) {
+      let timestamp = Date.now() / 1000 | 0;
+      let cached = this.megagroupOnlines[id] ?? (this.megagroupOnlines[id] = {timestamp: 0, onlines: 1});
+      if((timestamp - cached.timestamp) < 60) {
+        return cached.onlines;
+      }
+
+      let res = await apiManager.invokeApi('messages.getOnlines', {
+        peer: this.getChannelInputPeer(id)
+      });
+
+      let onlines = res.onlines ?? 1;
+      cached.timestamp = timestamp;
+      cached.onlines = onlines;
+
+      return onlines;
+    } else if(this.isBroadcast(id)) {
+      return 1;
+    }
+
+    let chatInfo = appProfileManager.getChatFull(id);
+    if(chatInfo._ == 'chatFull' && chatInfo.participants && chatInfo.participants.participants) {
+      let participants = chatInfo.participants.participants;
+
+      return participants.reduce((acc: number, participant: any) => {
+        let user = appUsersManager.getUser(participant.user_id);
+        if(user && user.status && user.status._ == 'userStatusOnline') {
+          return acc + 1;
+        }
+
+        return acc;
+      }, 0);
+    } else {
+      return 1;
     }
   }
 }

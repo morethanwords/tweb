@@ -409,12 +409,12 @@ export class AppDialogsManager {
     this.scroll = new Scrollable(this.chatsContainer, 'y', 'CL', this.chatList, 500);
     this.scroll.setVirtualContainer(this.chatList);
     this.scroll.onScrolledBottom = this.onChatsScroll.bind(this);
-    this.scroll.attachSentinels();
+    //this.scroll.attachSentinels();
 
     this.scrollArchived = new Scrollable(this.chatsArchivedContainer, 'y', 'CLA', this.chatListArchived, 500);
     this.scrollArchived.setVirtualContainer(this.chatListArchived);
     this.scrollArchived.onScrolledBottom = this.onChatsArchivedScroll.bind(this);
-    this.scroll.attachSentinels();
+    ///this.scroll.attachSentinels();
 
     this.setListClickListener(this.chatList);
     this.setListClickListener(this.chatListArchived);
@@ -828,7 +828,7 @@ export class AppDialogsManager {
       dom.lastTimeSpan.innerHTML = timeStr;
     } else dom.lastTimeSpan.innerHTML = '';
 
-    if(this.doms[peerID] || this.domsArchived[peerID]) {
+    if((this.doms[peerID] || this.domsArchived[peerID]) == dom) {
       this.setUnreadMessages(dialog);
     } else { // means search
       dom.listEl.dataset.mid = lastMessage.mid;

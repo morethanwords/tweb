@@ -205,6 +205,7 @@ $time-background: rgba(0, 0, 0, .35);
 		#attach-file {
 			&.menu-open {
 				color: $color-blue;
+				background-color: transparent;
 			}
 
 			.btn-menu {

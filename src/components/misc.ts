@@ -121,26 +121,29 @@ let set = (elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLSourceEl
   else elem.style.backgroundImage = 'url(' + url + ')';
 };
 
-export function renderImageFromUrl(elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLSourceElement, url: string) {
+export function renderImageFromUrl(elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLSourceElement, url: string): Promise<boolean> {
   if(loadedURLs[url]) {
     set(elem, url);
-    return true;
+    return Promise.resolve(true);
   }
 
   if(elem instanceof HTMLSourceElement) {
     elem.src = url;
+    return Promise.resolve(false);
   } else {
-    let loader = new Image();
-    loader.src = url;
-    //let perf = performance.now();
-    loader.addEventListener('load', () => {
-      set(elem, url);
-      loadedURLs[url] = true;
-      //console.log('onload:', url, performance.now() - perf);
+    return new Promise((resolve, reject) => {
+      let loader = new Image();
+      loader.src = url;
+      //let perf = performance.now();
+      loader.addEventListener('load', () => {
+        set(elem, url);
+        loadedURLs[url] = true;
+        //console.log('onload:', url, performance.now() - perf);
+        resolve(false);
+      });
+      loader.addEventListener('error', reject);
     });
   }
-
-  return false;
 }
 
 export function putPreloader(elem: Element, returnDiv = false) {
