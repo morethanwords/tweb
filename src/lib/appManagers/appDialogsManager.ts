@@ -649,7 +649,7 @@ export class AppDialogsManager {
         if(onFound) onFound();
 
         let peerID = +elem.getAttribute('data-peerID');
-        let lastMsgID = +elem.dataset.mid || 0;
+        let lastMsgID = +elem.dataset.mid || undefined;
 
         if(!samePeer) {
           elem.classList.add('active');

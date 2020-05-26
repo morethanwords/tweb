@@ -1376,6 +1376,14 @@ img.emoji {
   transform: translate(-50%, -50%);
 }
 
+.sticky_sentinel {
+  position: absolute;
+  left: 0;
+  right: 0; /* needs dimensions */
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .page-chats {
   /* display: grid; */
   /* grid-template-columns: 25% 50%; */

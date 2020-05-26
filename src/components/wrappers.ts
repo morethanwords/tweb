@@ -4,7 +4,7 @@ import apiManager from '../lib/mtproto/mtprotoworker';
 import LottieLoader from '../lib/lottieLoader';
 import appStickersManager from "../lib/appManagers/appStickersManager";
 import appDocsManager from "../lib/appManagers/appDocsManager";
-import { formatBytes } from "../lib/utils";
+import { formatBytes, getEmojiToneIndex } from "../lib/utils";
 import ProgressivePreloader from './preloader';
 import LazyLoadQueue from './lazyLoadQueue';
 import apiFileManager from '../lib/mtproto/apiFileManager';
@@ -108,7 +108,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     container.append(video);
   }
 
-  let span: HTMLSpanElement;
+  let span: HTMLSpanElement, spanPlay: HTMLSpanElement;
   if(doc.type != 'round') {
     span = document.createElement('span');
     span.classList.add('video-time');
@@ -117,7 +117,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     if(doc.type != 'gif') {
       span.innerText = (doc.duration + '').toHHMMSS(false);
 
-      let spanPlay = document.createElement('span');
+      spanPlay = document.createElement('span');
       spanPlay.classList.add('video-play', 'tgico-largeplay', 'btn-circle', 'position-center');
       container.append(spanPlay);
     } else {
@@ -127,11 +127,11 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   
   let loadVideo = async() => {
     if(message.media.preloader) { // means upload
-      message.media.preloader.attach(container);
+      (message.media.preloader as ProgressivePreloader).attach(container, undefined, undefined, false);
     } else if(!doc.downloaded) {
       let preloader = new ProgressivePreloader(container, true);
       let promise = appDocsManager.downloadDoc(doc);
-      preloader.attach(container, true, promise);
+      preloader.attach(container, true, promise, false);
       await promise;
     }
 
@@ -684,7 +684,16 @@ export function wrapPhoto(photoID: string, message: any, container: HTMLDivEleme
   return photo.downloaded ? load() : lazyLoadQueue.push({div: container, load: load, wasSeen: true});
 }
 
-export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: () => boolean, lazyLoadQueue?: LazyLoadQueue, group?: string, canvas?: boolean, play = false, onlyThumb = false) {
+export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, onlyThumb, emoji}: {
+  doc: MTDocument, 
+  div: HTMLDivElement, 
+  middleware?: () => boolean, 
+  lazyLoadQueue?: LazyLoadQueue, 
+  group?: string, 
+  play?: boolean, 
+  onlyThumb?: boolean,
+  emoji?: string
+}) {
   let stickerType = doc.sticker;
 
   if(stickerType == 2 && !LottieLoader.loaded) {
@@ -699,6 +708,8 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
   div.dataset.docID = doc.id;
   
   //console.log('wrap sticker', doc, div, onlyThumb);
+
+  const toneIndex = emoji ? getEmojiToneIndex(emoji) : -1;
   
   if(doc.thumbs && !div.firstElementChild && (!doc.downloaded || stickerType == 2)) {
     let thumb = doc.thumbs[0];
@@ -777,52 +788,52 @@ export function wrapSticker(doc: MTDocument, div: HTMLDivElement, middleware?: (
       const reader = new FileReader();
       
       reader.addEventListener('loadend', async(e) => {
-        console.time('decompress sticker' + doc.id);
-        console.time('render sticker' + doc.id);
+        //console.time('decompress sticker' + doc.id);
+        //console.time('render sticker' + doc.id);
         // @ts-ignore
         const text = e.srcElement.result;
         let json = await apiManager.gzipUncompress<string>(text, true);
 
-        console.timeEnd('decompress sticker' + doc.id);
-        
+        //console.timeEnd('decompress sticker' + doc.id);
+
+        console.log('sticker json:', json);
+
         let animation = await LottieLoader.loadAnimation({
           container: div,
           loop: false,
           autoplay: false,
           animationData: JSON.parse(json),
-          renderer: canvas ? 'canvas' : 'svg'
-        }, group);
+          renderer: 'svg'
+        }, group, toneIndex);
 
-        console.timeEnd('render sticker' + doc.id);
+        //console.timeEnd('render sticker' + doc.id);
 
         if(div.firstElementChild && div.firstElementChild.tagName == 'IMG') {
           div.firstElementChild.remove();
         }
         
-        if(!canvas) {
-          div.addEventListener('mouseover', (e) => {
-            let animation = LottieLoader.getAnimation(div, group);
+        div.addEventListener('mouseover', (e) => {
+          let animation = LottieLoader.getAnimation(div, group);
+          
+          if(animation) {
+            //console.log('sticker hover', animation, div);
             
-            if(animation) {
-              //console.log('sticker hover', animation, div);
-              
-              // @ts-ignore
-              animation.loop = true;
-              
-              // @ts-ignore
-              if(animation.currentFrame == animation.totalFrames - 1) {
-                animation.goToAndPlay(0, true);
-              } else {
-                animation.play();
-              }
-              
-              div.addEventListener('mouseout', () => {
-                // @ts-ignore
-                animation.loop = false;
-              }, {once: true});
+            // @ts-ignore
+            animation.loop = true;
+            
+            // @ts-ignore
+            if(animation.currentFrame == animation.totalFrames - 1) {
+              animation.goToAndPlay(0, true);
+            } else {
+              animation.play();
             }
-          });
-        }
+            
+            div.addEventListener('mouseout', () => {
+              // @ts-ignore
+              animation.loop = false;
+            }, {once: true});
+          }
+        });
         
         if(play) {
           animation.play();

@@ -12,6 +12,31 @@
   }
 }
 
+.bubbles-date-group {
+  position: relative;
+
+  /* .sticky_sentinel {
+    visibility: visible;
+    background: #000;
+  } */
+
+  .sticky_sentinel--top {
+    /* Adjust the height and top values based on your on your sticky top position.
+    e.g. make the height bigger and adjust the top so observeHeaders()'s
+    IntersectionObserver fires as soon as the bottom of the sentinel crosses the
+    top of the intersection container. */
+    height: 5px;
+    top: 0;
+  }
+
+  // .sticky_sentinel--bottom {
+  //   /* Height should match the top of the header when it's at the bottom of the
+  //   intersection container. */
+  //   height: 1px;
+  //   bottom: 0;
+  // }
+}
+
 .bubble {
   padding-top: 5px;
   max-width: $chat-max-width;
@@ -249,8 +274,8 @@
     }
 
     &.sticker .bubble__container {
-      max-width: 140px;
-      max-height: 140px;
+      max-width: 140px !important;
+      max-height: 140px !important;
     }
   }
   
@@ -319,15 +344,15 @@
     }
 
     .bubble__container {
-      max-width: 200px;
-      max-height: 200px;
+      max-width: 200px !important;
+      max-height: 200px !important;
     }
   }
 
   &.round {
     .attachment {
-      max-width: 200px;
-      max-height: 200px;
+      max-width: 200px !important;
+      max-height: 200px !important;
 
       img {
         border-radius: 50%;
@@ -378,7 +403,9 @@
         color: #fff;
         text-align: center;
       }
+    }
 
+    .download, .preloader-container {
       & ~ .video-play {
         display: none;
       }
@@ -930,6 +957,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    text-align: center;
 
     .name {
       cursor: pointer;
@@ -1313,7 +1341,6 @@ poll-element  {
 
     &-answer {
       display: flex;
-      flex-direction: row;
       position: relative;
       padding-bottom: 20px;
       padding-left: 34px;
@@ -1339,7 +1366,7 @@ poll-element  {
 
       &-selected {
         position: absolute;
-        top: 33px;
+        bottom: 3px;
         left: 26px;
         color: #fff;
         background: #50a2e9;
@@ -1379,7 +1406,7 @@ poll-element  {
       height: 35px;
       position: absolute;
       left: 17.5px;
-      top: 11px;
+      bottom: 2px;
       transition: stroke-dashoffset .34s linear, stroke-dasharray .34s linear;
       stroke-dashoffset: 0;
 	    stroke-dasharray: 0, 485.9;

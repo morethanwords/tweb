@@ -447,6 +447,7 @@ export class ChatInput {
       }
     });
 
+    let emoticonsDisplayTimeout = 0;
     this.toggleEmoticons.onmouseover = (e) => {
       clearTimeout(this.emoticonsTimeout);
       this.emoticonsTimeout = setTimeout(() => {
@@ -464,6 +465,11 @@ export class ChatInput {
               this.toggleEmoticons.classList.remove('active');
               lottieLoader.checkAnimations(true, EMOTICONSSTICKERGROUP);
               this.emoticonsLazyLoadQueue.lock();
+
+              clearTimeout(emoticonsDisplayTimeout);
+              emoticonsDisplayTimeout = setTimeout(() => {
+                this.emoticonsDropdown.style.display = 'none';
+              }, 200);
             }, 200);
           };
 
@@ -471,8 +477,11 @@ export class ChatInput {
             clearTimeout(this.emoticonsTimeout);
           };
         } else {
+          this.emoticonsDropdown.style.display = '';
+          void this.emoticonsDropdown.offsetLeft; // reflow
           this.emoticonsDropdown.classList.add('active');
           this.emoticonsLazyLoadQueue.unlock();
+          clearTimeout(emoticonsDisplayTimeout);
         }
     
         this.toggleEmoticons.classList.add('active');

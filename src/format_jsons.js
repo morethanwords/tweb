@@ -48,6 +48,7 @@ if(false) {
 {
   let categories = {
     "Smileys & Emotion": 1
+    , "People & Body": 1
     , "Animals & Nature": 2
     , "Food & Drink": 3
     , "Travel & Places": 4
@@ -58,18 +59,23 @@ if(false) {
     , "Skin Tones": 8
   };
 
+  let concatCategories = [['Objects', 'Symbols'], ['Smileys & Emotion', 'People & Body']];
+  let maxIndexes = {};
+
   let maxObjectsIndex = -1;
   formatted.forEach(e => {
-    if(e.category == 'Objects') {
-      if(e.sort_order > maxObjectsIndex) {
-        maxObjectsIndex = e.sort_order;
-      }
+    if(concatCategories.findIndex(c => c[0] == e.category) === -1) return;
+
+    if(!maxIndexes.hasOwnProperty(e.category)) maxIndexes[e.category] = 0;
+    if(e.sort_order > maxIndexes[e.category]) {
+      maxIndexes[e.category] = e.sort_order;
     }
   });
   formatted.forEach(e => {
-    if(e.category == 'Symbols') {
-      e.sort_order += maxObjectsIndex;
-    }
+    let concatDetails = concatCategories.find(c => c[1] == e.category);
+    if(!concatDetails) return;
+
+    e.sort_order += maxIndexes[concatDetails[0]];
   });
 
   formatted.forEach(e => {

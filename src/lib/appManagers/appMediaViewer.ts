@@ -582,10 +582,10 @@ export class AppMediaViewer {
   public openMedia(message: any, target?: HTMLElement, reverse = false, targetContainer?: HTMLElement, 
     prevTargets: AppMediaViewer['prevTargets'] = [], nextTargets: AppMediaViewer['prevTargets'] = [], needLoadMore = true) {
     ////////this.log('openMedia doc:', message, prevTarget, nextTarget);
-    let media = message.media.photo || message.media.document || message.media.webpage.document || message.media.webpage.photo;
+    const media = message.media.photo || message.media.document || message.media.webpage.document || message.media.webpage.photo;
     
-    let isVideo = media.mime_type == 'video/mp4';
-    let isFirstOpen = !this.peerID;
+    const isVideo = media.mime_type == 'video/mp4';
+    const isFirstOpen = !this.peerID;
 
     if(isFirstOpen) {
       this.peerID = $rootScope.selectedPeerID;
@@ -614,8 +614,8 @@ export class AppMediaViewer {
     this.buttons.prev.style.display = this.prevTargets.length ? '' : 'none';
     this.buttons.next.style.display = this.nextTargets.length ? '' : 'none';
     
-    let container = this.content.container;
-    let useContainerAsTarget = !target;
+    const container = this.content.container;
+    const useContainerAsTarget = !target;
     if(useContainerAsTarget) target = container;
 
     this.currentMessageID = message.mid;
@@ -635,13 +635,13 @@ export class AppMediaViewer {
       container.innerHTML = '';
     }
     
-    let date = new Date(media.date * 1000);
-    let months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const date = new Date(media.date * 1000);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     
-    let dateStr = months[date.getMonth()] + ' ' + date.getDate() + ' at '+ date.getHours() + ':' + ('0' + date.getMinutes()).slice(-2);
+    const dateStr = months[date.getMonth()] + ' ' + date.getDate() + ' at '+ date.getHours() + ':' + ('0' + date.getMinutes()).slice(-2);
     this.author.date.innerText = dateStr;
     
-    let name = appPeersManager.getPeerTitle(message.fromID);
+    const name = appPeersManager.getPeerTitle(message.fromID);
     this.author.nameEl.innerHTML = name;
     
     if(message.message) {
@@ -656,7 +656,7 @@ export class AppMediaViewer {
 
     // ok set
 
-    let wasActive = fromRight !== 0;
+    const wasActive = fromRight !== 0;
     if(wasActive) {
       this.moveTheMover(this.content.mover, fromRight === 1);
       this.setNewMover();
@@ -667,18 +667,19 @@ export class AppMediaViewer {
 
     ////////this.log('wasActive:', wasActive);
 
+    const mover = this.content.mover;
+
+    //const maxWidth = appPhotosManager.windowW - 16;
+    const maxWidth = this.pageEl.scrollWidth - 16;
+    const maxHeight = appPhotosManager.windowH - 100;
+    const size = appPhotosManager.setAttachmentSize(isVideo ? media : media.id, container, maxWidth, maxHeight);
+
+    // need after setAttachmentSize
     if(useContainerAsTarget) {
       target = target.querySelector('img, video') || target;
     }
 
-    let mover = this.content.mover;
-
-    //let maxWidth = appPhotosManager.windowW - 16;
-    let maxWidth = this.pageEl.scrollWidth - 16;
-    let maxHeight = appPhotosManager.windowH - 100;
     if(isVideo) {
-      appPhotosManager.setAttachmentSize(media, container, maxWidth, maxHeight);
-
       ////////this.log('will wrap video', media, size);
 
       let afterTimeout = this.setMoverToTarget(target, false, fromRight);
@@ -721,10 +722,10 @@ export class AppMediaViewer {
               this.updateMediaSource(mover, url, 'source');
               this.updateMediaSource(target, url, 'source');
             } else {
-              let aspecter = mover.firstElementChild;
-              let img = aspecter.firstElementChild;
-              if(img instanceof HTMLImageElement) {
-                img.remove();
+              let div = mover.firstElementChild.classList.contains('media-viewer-aspecter') ? mover.firstElementChild : mover;
+              let image = div.firstElementChild as HTMLImageElement;
+              if(image instanceof HTMLImageElement) {
+                image.remove();
               }
 
               renderImageFromUrl(source, url);
@@ -735,11 +736,7 @@ export class AppMediaViewer {
               }
 
               if(!video.parentElement) {
-                if(aspecter.classList.contains('media-viewer-aspecter')) {
-                  aspecter.prepend(video);
-                } else {
-                  mover.prepend(video);
-                }
+                div.prepend(video);
               }
             }
 
@@ -748,8 +745,6 @@ export class AppMediaViewer {
         } else createPlayer();
       }, 0);
     } else {
-      let size = appPhotosManager.setAttachmentSize(media.id, container, maxWidth, maxHeight);
-
       let afterTimeout = this.setMoverToTarget(target, false, fromRight);
       //return; // set and don't move
       //if(wasActive) return;
@@ -772,14 +767,17 @@ export class AppMediaViewer {
             this.updateMediaSource(target, url, 'img');
             this.updateMediaSource(mover, url, 'img');
           } else {
-            let aspecter = mover.firstElementChild;
-            let image = aspecter.firstElementChild as HTMLImageElement;
-            if(!image) {
+            let div = mover.firstElementChild.classList.contains('media-viewer-aspecter') ? mover.firstElementChild : mover;
+            let image = div.firstElementChild as HTMLImageElement;
+            if(!image || image.tagName != 'IMG') {
               image = new Image();
-              aspecter.append(image);
             }
 
-            renderImageFromUrl(image, url);
+            //this.log('will renderImageFromUrl:', image, div, target);
+
+            renderImageFromUrl(image, url).then(() => {
+              div.append(image);
+            });
           }
 
           this.preloader.detach();

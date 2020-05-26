@@ -634,17 +634,17 @@ emojiUnicode.raw = function(input) {
     for(var i = 0; i < input.length; i++) {
       // high surrogate
       if(input.charCodeAt(i) >= 0xd800 && input.charCodeAt(i) <= 0xdbff) {
-              if(input.charCodeAt(i + 1) >= 0xdc00 && input.charCodeAt(i + 1) <= 0xdfff) {
-                  // low surrogate
-                  pairs.push(
-                      (input.charCodeAt(i) - 0xd800) * 0x400
-                    + (input.charCodeAt(i + 1) - 0xdc00) + 0x10000
-                  );
-              }
-          } else if (input.charCodeAt(i) < 0xd800 || input.charCodeAt(i) > 0xdfff) {
-              // modifiers and joiners
-              pairs.push(input.charCodeAt(i))
-          }
+        if(input.charCodeAt(i + 1) >= 0xdc00 && input.charCodeAt(i + 1) <= 0xdfff) {
+          // low surrogate
+          pairs.push(
+            (input.charCodeAt(i) - 0xd800) * 0x400
+            + (input.charCodeAt(i + 1) - 0xdc00) + 0x10000
+          );
+        }
+      } else if(input.charCodeAt(i) < 0xd800 || input.charCodeAt(i) > 0xdfff) {
+        // modifiers and joiners
+        pairs.push(input.charCodeAt(i))
+      }
     }
 
     return pairs.join(' ');
@@ -652,6 +652,11 @@ emojiUnicode.raw = function(input) {
 
   return '';
 };
+
+export function getEmojiToneIndex(input) {
+  let match = input.match(/[\uDFFB-\uDFFF]/);
+  return match ? 5 - (57343 - match[0].charCodeAt(0)) : 0;
+}
 
   //var badCharsRe = /[`~!@#$%^&*()\-_=+\[\]\\|{}'";:\/?.>,<\s]+/g,
   var badCharsRe = /[`~!@#$%^&*()\-_=+\[\]\\|{}'";:\/?.>,<]+/g,

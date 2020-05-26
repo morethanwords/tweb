@@ -219,12 +219,7 @@ class AppSidebarRight {
     if(!willChange) return Promise.resolve();
 
     let set = () => {
-      if(enable !== undefined) {
-        if(enable) this.sidebarEl.classList.add('active');
-        else this.sidebarEl.classList.remove('active');
-      } else {
-        this.sidebarEl.classList.toggle('active');
-      }
+      this.sidebarEl.classList.toggle('active', enable);
     };
 
     return new Promise((resolve, reject) => {

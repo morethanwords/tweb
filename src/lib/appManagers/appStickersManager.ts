@@ -138,7 +138,7 @@ class AppStickersManager {
   public getAnimatedEmojiSticker(emoji: string) {
     let stickerSet = this.stickerSets.emoji;
 
-    emoji = emoji.replace(/\ufe0f/g, '');
+    emoji = emoji.replace(/\ufe0f/g, '').replace(/🏻|🏼|🏽|🏾|🏿/g, '');
     return stickerSet.documents.find(doc => doc.stickerEmojiRaw == emoji);
   }
   

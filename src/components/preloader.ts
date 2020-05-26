@@ -44,7 +44,7 @@ export default class ProgressivePreloader {
     }
   }
   
-  public attach(elem: Element, reset = true, promise?: CancellablePromise<any>) {
+  public attach(elem: Element, reset = true, promise?: CancellablePromise<any>, append = true) {
     if(promise) {
       this.promise = promise;
 
@@ -75,7 +75,8 @@ export default class ProgressivePreloader {
     window.requestAnimationFrame(() => {
       if(this.detached) return;
       this.detached = false;
-      elem.append(this.preloader);
+      
+      elem[append ? 'append' : 'prepend'](this.preloader);
     });
     /* let isIn = isInDOM(this.preloader);
     

@@ -128,10 +128,10 @@ export default class PollElement extends HTMLElement {
             </svg>
           </div>
           <div class="poll-answer-percents"></div>
+          <div class="poll-answer-text">${RichTextProcessor.wrapEmojiText(answer.text)}</div>
           <svg version="1.1" class="poll-line" style="display: none;" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 480 35" xml:space="preserve">
             <use href="#poll-line"></use>
           </svg>
-          <div class="poll-answer-text">${RichTextProcessor.wrapEmojiText(answer.text)}</div>
         </div>
       `;
     }).join('');

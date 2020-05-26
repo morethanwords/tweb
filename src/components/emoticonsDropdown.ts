@@ -290,7 +290,13 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
 
       docs.forEach(doc => {
         let div = document.createElement('div');
-        wrapSticker(doc, div, undefined, lazyLoadQueue, EMOTICONSSTICKERGROUP, true, false, true);
+        wrapSticker({
+          doc, 
+          div, 
+          lazyLoadQueue, 
+          group: EMOTICONSSTICKERGROUP, 
+          onlyThumb: true
+        });
 
         itemsDiv.append(div);
       });
@@ -408,7 +414,11 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
               }
             });
           } else { // as thumb will be used first sticker
-            wrapSticker(stickerSet.documents[0], li as any, undefined, undefined, EMOTICONSSTICKERGROUP); // kostil
+            wrapSticker({
+              doc: stickerSet.documents[0],
+              div: li as any, 
+              group: EMOTICONSSTICKERGROUP
+            }); // kostil
           }
   
           categoryPush(categoryDiv, stickerSet.set.title, stickerSet.documents, false);
