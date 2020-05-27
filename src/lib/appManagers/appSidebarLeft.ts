@@ -5,7 +5,7 @@ import appImManager from "./appImManager";
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
 import AppSearch, { SearchGroup } from "../../components/appSearch";
-import { horizontalMenu, putPreloader } from "../../components/misc";
+import { horizontalMenu, putPreloader, parseMenuButtonsTo } from "../../components/misc";
 import appUsersManager from "./appUsersManager";
 import Scrollable from "../../components/scrollable_new";
 import appPhotosManager from "./appPhotosManager";
@@ -273,10 +273,14 @@ class AppContactsTab implements SliderTab {
 
   public onCloseAfterTimeout() {
     this.list.innerHTML = '';
+    this.input.value = '';
   }
 
   public openContacts(query?: string) {
-    appSidebarLeft.selectTab(SLIDERITEMSIDS.contacts);
+    if(appSidebarLeft.historyTabIDs.indexOf(SLIDERITEMSIDS.contacts) === -1) {
+      appSidebarLeft.selectTab(SLIDERITEMSIDS.contacts);
+    }
+
     if(this.promise) return this.promise;
     this.scrollable.onScrolledBottom = null;
 
@@ -287,6 +291,9 @@ class AppContactsTab implements SliderTab {
         console.warn('user closed contacts before it\'s loaded');
         return;
       }
+
+      contacts = contacts.slice();
+      contacts.findAndSplice(u => u == $rootScope.myID);
 
       let sorted = contacts
       .map(userID => {
@@ -340,11 +347,7 @@ class AppSettingsTab implements SliderTab {
   } = {} as any;
 
   constructor() {
-    (Array.from(this.container.querySelector('.profile-buttons').children) as HTMLButtonElement[]).forEach(el => {
-      let name = el.className.match(/ menu-(.+?) /)[1];
-      // @ts-ignore
-      this.buttons[name] = el;
-    });
+    parseMenuButtonsTo(this.buttons, this.container.querySelector('.profile-buttons').children);
 
     $rootScope.$on('user_auth', (e: CustomEvent) => {
       this.fillElements();
@@ -569,19 +572,22 @@ class AppSidebarLeft {
   private searchInput = document.getElementById('global-search') as HTMLInputElement;
   
   private menuEl = this.toolsBtn.querySelector('.btn-menu');
-  private newGroupBtn = this.menuEl.querySelector('.menu-new-group');
-  private contactsBtn = this.menuEl.querySelector('.menu-contacts');
-  private archivedBtn = this.menuEl.querySelector('.menu-archive');
-  private savedBtn = this.menuEl.querySelector('.menu-saved');
-  private settingsBtn = this.menuEl.querySelector('.menu-settings');
-  public archivedCount = this.archivedBtn.querySelector('.archived-count') as HTMLSpanElement;
+  private buttons: {
+    newGroup: HTMLButtonElement,
+    contacts: HTMLButtonElement,
+    archived: HTMLButtonElement,
+    saved: HTMLButtonElement,
+    settings: HTMLButtonElement,
+    help: HTMLButtonElement
+  } = {} as any;
+  public archivedCount: HTMLSpanElement;
 
   private newBtnMenu = this.sidebarEl.querySelector('#new-menu');
-  private newButtons = {
-    channel: this.newBtnMenu.querySelector('.menu-channel'),
-    group: this.newBtnMenu.querySelector('.menu-group'),
-    privateChat: this.newBtnMenu.querySelector('.menu-private-chat'),
-  };
+  private newButtons: {
+    channel: HTMLButtonElement,
+    group: HTMLButtonElement,
+    privateChat: HTMLButtonElement,
+  } = {} as any;
   
   public newChannelTab = new AppNewChannelTab();
   public addMembersTab = new AppAddMembersTab();
@@ -620,7 +626,12 @@ class AppSidebarLeft {
     this.searchGroups.people.container.append(peopleContainer);
     let peopleScrollable = new Scrollable(peopleContainer, 'x');
 
-    this.savedBtn.addEventListener('click', (e) => {
+    parseMenuButtonsTo(this.buttons, this.menuEl.children);
+    parseMenuButtonsTo(this.newButtons, this.newBtnMenu.firstElementChild.children);
+
+    this.archivedCount = this.buttons.archived.querySelector('.archived-count') as HTMLSpanElement;
+
+    this.buttons.saved.addEventListener('click', (e) => {
       ///////this.log('savedbtn click');
       setTimeout(() => { // menu doesn't close if no timeout (lol)
         let dom = appDialogsManager.getDialogDom(appImManager.myID);
@@ -628,15 +639,15 @@ class AppSidebarLeft {
       }, 0);
     });
     
-    this.archivedBtn.addEventListener('click', (e) => {
+    this.buttons.archived.addEventListener('click', (e) => {
       this.selectTab(SLIDERITEMSIDS.archived);
     });
 
-    this.contactsBtn.addEventListener('click', (e) => {
+    this.buttons.contacts.addEventListener('click', (e) => {
       this.contactsTab.openContacts();
     });
 
-    this.settingsBtn.addEventListener('click', () => {
+    this.buttons.settings.addEventListener('click', () => {
       this.settingsTab.fillElements();
       this.selectTab(SLIDERITEMSIDS.settings);
     });
@@ -676,7 +687,7 @@ class AppSidebarLeft {
       this.selectTab(SLIDERITEMSIDS.newChannel);
     });
 
-    [this.newButtons.group, this.newGroupBtn].forEach(btn => {
+    [this.newButtons.group, this.buttons.newGroup].forEach(btn => {
       btn.addEventListener('click', (e) => {
         this.addMembersTab.init(0, 'chat', false, (peerIDs) => {
           this.newGroupTab.init(peerIDs);

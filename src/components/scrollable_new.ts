@@ -364,7 +364,10 @@ export default class Scrollable {
   public scrollIntoView(element: HTMLElement, smooth = true) {
     if(element.parentElement && !this.scrollLocked) {
       let isFirstUnread = element.classList.contains('is-first-unread');
+
       let offsetTop = element.getBoundingClientRect().top - this.container.getBoundingClientRect().top;
+      offsetTop = this.container.scrollTop + offsetTop;
+      
       if(!smooth && isFirstUnread) {
         this.scrollTo(offsetTop, false);
         return;
@@ -374,7 +377,7 @@ export default class Scrollable {
       let height = element.scrollHeight;
       
       let d = (clientHeight - height) / 2;
-      offsetTop = this.container.scrollTop + offsetTop - d;
+      offsetTop -= d;
       
       this.scrollTo(offsetTop, smooth);
     }

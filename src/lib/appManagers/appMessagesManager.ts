@@ -1844,42 +1844,21 @@ export class AppMessagesManager {
         case 'messageMediaDocument':
           let document = message.media.document;
 
-          let found = false;
-          for(let attribute of document.attributes) {
-            if(found) break;
-
-            switch(attribute._) {
-              case 'documentAttributeSticker':
-                messageText += RichTextProcessor.wrapRichText(attribute.alt) + '<i>Sticker</i>';
-                found = true;
-                break;
-              case 'documentAttributeFilename':
-                messageText += '<i>' + attribute.file_name + '</i>';
-                found = true;
-                break;
-              /* default:
-                console.warn('Got unknown document type!', message);
-                break; */
-            }
-          }
-
           if(document.type == 'video') {
             messageText = '<i>Video' + (message.message ? ', ' : '') + '</i>';
-            found = true;
           } else if(document.type == 'voice') {
             messageText = '<i>Voice message</i>';
-            found = true;
           } else if(document.type == 'gif') {
             messageText = '<i>GIF' + (message.message ? ', ' : '') + '</i>';
-            found = true;
           } else if(document.type == 'round') {
             messageText = '<i>Video message' + (message.message ? ', ' : '') + '</i>';
-            found = true;
+          } else if(document.type == 'sticker') {
+            messageText = (document.stickerEmoji || '') + '<i>Sticker</i>';
+          } else {
+            messageText = '<i>' + document.file_name + '</i>';
           }
 
-          if(found) {
-            break;
-          }
+          break;
 
         default:
           ///////console.warn('Got unknown message.media type!', message);
@@ -2537,6 +2516,77 @@ export class AppMessagesManager {
     }
   }
 
+  public deleteMessages(messageIDs: number[], revoke: boolean) {
+    const splitted = appMessagesIDsManager.splitMessageIDsByChannels(messageIDs);
+    const promises: Promise<any>[] = [];
+    for(const channelIDStr in splitted.msgIDs) {
+      const channelID = +channelIDStr;
+      let msgIDs = splitted.msgIDs[channelID];
+
+      let promise: Promise<any>;
+      if(channelID > 0) {
+        const channel = appChatsManager.getChat(channelID);
+        if(!channel.pFlags.creator && !(channel.pFlags.editor && channel.pFlags.megagroup)) {
+          const goodMsgIDs: number[] = [];
+          if (channel.pFlags.editor || channel.pFlags.megagroup) {
+            msgIDs.forEach((msgID, i) => {
+              const message = this.getMessage(splitted.mids[channelID][i]);
+              if(message.pFlags.out) {
+                goodMsgIDs.push(msgID);
+              }
+            });
+          }
+
+          if(!goodMsgIDs.length) {
+            return;
+          }
+
+          msgIDs = goodMsgIDs;
+        }
+
+        promise = apiManager.invokeApi('channels.deleteMessages', {
+          channel: appChatsManager.getChannelInput(channelID),
+          id: msgIDs
+        }).then((affectedMessages) => {
+          apiUpdatesManager.processUpdateMessage({
+            _: 'updateShort',
+            update: {
+              _: 'updateDeleteChannelMessages',
+              channel_id: channelID,
+              messages: msgIDs,
+              pts: affectedMessages.pts,
+              pts_count: affectedMessages.pts_count
+            }
+          });
+        });
+      } else {
+        let flags = 0;
+        if(revoke) {
+          flags |= 1;
+        }
+
+        promise = apiManager.invokeApi('messages.deleteMessages', {
+          flags: flags,
+          id: msgIDs
+        }).then((affectedMessages) => {
+          apiUpdatesManager.processUpdateMessage({
+            _: 'updateShort',
+            update: {
+              _: 'updateDeleteMessages',
+              messages: msgIDs,
+              pts: affectedMessages.pts,
+              pts_count: affectedMessages.pts_count
+            }
+          });
+        });
+      }
+
+      promises.push(promise);
+    }
+
+    return Promise.all(promises);
+  }
+
   public readHistory(peerID: number, maxID = 0, readLength = 0): Promise<boolean> {
     // console.trace('start read')
     const isChannel = appPeersManager.isChannel(peerID);
@@ -2590,7 +2640,7 @@ export class AppMessagesManager {
         index = historyStorage.history.indexOf(maxID);
       }
 
-      let readedLength = 0;
+      let readedLength = 1;
 
       if(historyStorage.history.length && maxID) {
         for(let i = index == -1 ? 0 : index, length = historyStorage.history.length; i < length; i++) {

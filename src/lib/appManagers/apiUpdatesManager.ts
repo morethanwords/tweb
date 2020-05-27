@@ -176,8 +176,8 @@ export class ApiUpdatesManager {
   
   public getDifference() {
     // console.trace(dT(), 'Get full diff')
-    let updatesState = this.updatesState;
-    if (!updatesState.syncLoading) {
+    const updatesState = this.updatesState;
+    if(!updatesState.syncLoading) {
       updatesState.syncLoading = true;
       updatesState.pendingSeqUpdates = {};
       updatesState.pendingPtsUpdates = [];
@@ -188,7 +188,7 @@ export class ApiUpdatesManager {
       updatesState.syncPending = false;
     }
   
-    apiManager.invokeApi('updates.getDifference', {
+    return apiManager.invokeApi('updates.getDifference', {
       pts: updatesState.pts, 
       date: updatesState.date, 
       qts: -1
@@ -232,7 +232,7 @@ export class ApiUpdatesManager {
         });
       });
   
-      var nextState = differenceResult.intermediate_state || differenceResult.state;
+      const nextState = differenceResult.intermediate_state || differenceResult.state;
       updatesState.seq = nextState.seq;
       updatesState.pts = nextState.pts;
       updatesState.date = nextState.date;
@@ -515,7 +515,6 @@ export class ApiUpdatesManager {
       });
     } else {
       Object.assign(this.updatesState, state);
-      this.updatesState.syncLoading = false;
       this.getDifference();
     }
   }

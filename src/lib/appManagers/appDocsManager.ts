@@ -85,10 +85,6 @@ class AppDocsManager {
           if(/* apiDoc.thumbs &&  */apiDoc.mime_type == 'image/webp') {
             apiDoc.type = 'sticker';
             apiDoc.sticker = 1;
-          } else if(apiDoc.mime_type == 'application/x-tgsticker') {
-            apiDoc.type = 'sticker';
-            apiDoc.animated = true;
-            apiDoc.sticker = 2;
           }
           break;
 
@@ -133,6 +129,12 @@ class AppDocsManager {
     
     if(!apiDoc.file_name) {
       apiDoc.file_name = '';
+    }
+
+    if(apiDoc.mime_type == 'application/x-tgsticker' && apiDoc.file_name == "AnimatedSticker.tgs") {
+      apiDoc.type = 'sticker';
+      apiDoc.animated = true;
+      apiDoc.sticker = 2;
     }
     
     if(apiDoc._ == 'documentEmpty') {

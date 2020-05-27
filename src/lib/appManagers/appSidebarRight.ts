@@ -175,7 +175,7 @@ class AppSidebarRight {
       appImManager.mutePeer(this.peerID);
     });
 
-    if(testScroll) {
+    if(testScroll && false) {
       let div = document.createElement('div');
       for(let i = 0; i < 500; ++i) {
         //div.insertAdjacentHTML('beforeend', `<div style="background-image: url(assets/img/camomile.jpg);"></div>`);
@@ -713,9 +713,8 @@ class AppSidebarRight {
         setText(appPeersManager.getPeerUsername(peerID), this.profileElements.username);
       }
       
-      let dialog: any = appMessagesManager.getDialogByPeerID(peerID);
-      if(dialog.length) {
-        dialog = dialog[0];
+      let dialog = appMessagesManager.getDialogByPeerID(peerID)[0];
+      if(dialog) {
         let muted = false;
         if(dialog.notify_settings && dialog.notify_settings.mute_until) {
           muted = new Date(dialog.notify_settings.mute_until * 1000) > new Date();

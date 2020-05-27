@@ -17,7 +17,9 @@ export default class LazyLoadQueue {
 
   private observer: IntersectionObserver;
 
-  constructor(private parallelLimit = 5) {
+  constructor(private parallelLimit = 5, withObserver = true) {
+    if(!withObserver) return;
+
     this.observer = new IntersectionObserver(entries => {
       if(this.lockPromise) return;
 
@@ -41,7 +43,10 @@ export default class LazyLoadQueue {
     this.tempID--;
     this.lazyLoadMedia.length = 0;
     this.loadingMedia = 0;
-    this.observer.disconnect();
+
+    if(this.observer) {
+      this.observer.disconnect();
+    }
   }
 
   public length() {
@@ -103,15 +108,26 @@ export default class LazyLoadQueue {
       }
     }
   }
-  
-  public push(el: LazyLoadElement) {
-    this.lazyLoadMedia.push(el);
 
+  public addElement(el: LazyLoadElement) {
     if(el.wasSeen) {
       this.processQueue(el);
     } else {
       el.wasSeen = false;
-      this.observer.observe(el.div);
+
+      if(this.observer) {
+        this.observer.observe(el.div);
+      }
     }
+  }
+  
+  public push(el: LazyLoadElement) {
+    this.lazyLoadMedia.push(el);
+    this.addElement(el);
+  }
+
+  public unshift(el: LazyLoadElement) {
+    this.lazyLoadMedia.unshift(el);
+    this.addElement(el);
   }
 }

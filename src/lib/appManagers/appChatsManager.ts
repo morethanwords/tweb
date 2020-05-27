@@ -128,12 +128,10 @@ export class AppChatsManager {
     return this.chats[id] || {id: id, deleted: true, access_hash: this.channelAccess[id]};
   }
 
-  public hasRights(id: number, action: 'send' | 'edit_title' | 'edit_photo' | 'invite') {
-    if(!(id in this.chats)) {
-      return false;
-    }
+  public hasRights(id: number, action: 'send' | 'edit_title' | 'edit_photo' | 'invite' | 'pin' | 'deleteRevoke') {
+    const chat = this.getChat(id);
+    if(!chat) return false;
 
-    let chat = this.getChat(id);
     if(chat._ == 'chatForbidden' ||
         chat._ == 'channelForbidden' ||
         chat.pFlags.kicked ||
@@ -145,24 +143,50 @@ export class AppChatsManager {
       return true;
     }
 
+    let myFlags = (chat.admin_rights || chat.banned_rights || chat.default_banned_rights)?.pFlags ?? {};
+
     switch(action) {
+      // good
       case 'send': {
         if(chat._ == 'channel' &&
-        !chat.pFlags.megagroup &&
-        !chat.pFlags.editor) {
+          !chat.pFlags.megagroup &&
+          !myFlags.post_messages) {
           return false;
         }
+
         break;
       }
-        
+
+      // good
+      case 'deleteRevoke': {
+        if(chat._ == 'channel') {
+          return !!myFlags.delete_messages;
+        } else if(!chat.pFlags.admin) {
+          return false;
+        }
+
+        break;
+      }
+
+      // good
+      case 'pin': {
+        if(chat._ == 'channel') {
+          return chat.admin_rights ? !!myFlags.pin_messages || !!myFlags.post_messages : !myFlags.pin_messages;
+        } else {
+          if(myFlags.pin_messages && !chat.pFlags.admin) {
+            return false;
+          }
+        }
+
+        break;
+      }
 
       case 'edit_title':
       case 'edit_photo':
       case 'invite': {
         if(chat._ == 'channel') {
           if(chat.pFlags.megagroup) {
-            if(!chat.pFlags.editor &&
-                !(action == 'invite' && chat.pFlags.democracy)) {
+            if(!(action == 'invite' && chat.pFlags.democracy)) {
               return false;
             }
           } else {
@@ -174,6 +198,7 @@ export class AppChatsManager {
             return false;
           }
         }
+
         break;
       }
     }
@@ -306,7 +331,7 @@ export class AppChatsManager {
     let chat = this.getChat(id);
     let myID = appUsersManager.getSelf().id;
     if(this.isChannel(id)) {
-      let isAdmin = chat.pFlags.creator || chat.pFlags.editor || chat.pFlags.moderator;
+      let isAdmin = chat.pFlags.creator;
       participants.forEach((participant) => {
         participant.canLeave = myID == participant.user_id;
         participant.canKick = isAdmin && participant._ == 'channelParticipant';

@@ -796,8 +796,6 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
 
         //console.timeEnd('decompress sticker' + doc.id);
 
-        console.log('sticker json:', json);
-
         let animation = await LottieLoader.loadAnimation({
           container: div,
           loop: false,

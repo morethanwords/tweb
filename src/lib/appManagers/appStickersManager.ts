@@ -68,7 +68,7 @@ class AppStickersManager {
       }
 
       //if(!this.stickerSets['emoji']) {
-        this.getStickerSet({id: 'emoji', access_hash: ''});
+        this.getStickerSet({id: 'emoji', access_hash: ''}, {overwrite: true});
       //}
     });
   } 
@@ -95,8 +95,10 @@ class AppStickersManager {
   public async getStickerSet(set: {
     id: string,
     access_hash: string
-  }) {
-    if(this.stickerSets[set.id]) return this.stickerSets[set.id];
+  }, params: Partial<{
+    overwrite: boolean
+  }> = {}) {
+    if(this.stickerSets[set.id] && !params.overwrite) return this.stickerSets[set.id];
     
     let promise = apiManager.invokeApi('messages.getStickerSet', {
       stickerset: set.id == 'emoji' ? {

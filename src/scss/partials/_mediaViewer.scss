@@ -74,49 +74,39 @@ $move-duration: .35s;
     max-height: 100%;
     max-width: 100%;
     overflow: hidden;
+  }
 
-    .media-viewer-stub {
-      flex: 1;
-    }
+  &-stub {
+    flex: 1;
+  }
 
-    .media-viewer-container {
-      align-self: center;
-      position: relative;
-      max-width: 100%;
-      max-height: 100%;
-      overflow: hidden;
-      flex: 1 1 auto;
-      display: flex;
-      align-items: center;
-    }
+  &-container {
+    align-self: center;
+    position: relative;
+    max-width: 100%;
+    max-height: 100%;
+    overflow: hidden;
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+  }
 
-    .media-viewer-media {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      visibility: hidden;
-    }
+  &-media {
+    visibility: hidden;
+  }
 
-    img, video {
-      max-height: calc(100vh - 100px);
-      max-width: calc(100vw - 16px);
-      /* max-height: 720px;
-      max-width: 1280px; */
-    }
+  &-caption {
+    flex: 1;
+    text-align: center;
+    color: $color-gray;
+    transition: $open-duration;
+    max-width: 50vw;
+    word-break: break-word;
+    overflow: hidden;
+    text-overflow: ellipsis;
 
-    .media-viewer-caption {
-      flex: 1;
-      text-align: center;
-      color: $color-gray;
-      transition: $open-duration;
-      max-width: 50vw;
-      word-break: break-word;
-      overflow: hidden;
-      text-overflow: ellipsis;
-
-      &:hover {
-        color: #fff;
-      }
+    &:hover {
+      color: #fff;
     }
   }
 
@@ -188,6 +178,7 @@ $move-duration: .35s;
       height: 100%;
       user-select: none;
       object-fit: cover;
+      opacity: 1;
     }
 
     &.active {
@@ -197,6 +188,13 @@ $move-duration: .35s;
     &.moving {
       transition: $move-duration transform ease;
     }
+
+    &.hiding {
+      img, video {
+        transition: $open-duration opacity;
+        opacity: 0;
+      }
+    }
   }
 
   // возможно тут это вообще не нужно
@@ -205,6 +203,7 @@ $move-duration: .35s;
     height: 100%;
     transform: scale(1);
     overflow: hidden;
+    position: absolute;
   }
 
   &-mover.active &-aspecter {

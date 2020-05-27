@@ -15,11 +15,10 @@ import lottieLoader from "../lottieLoader";
 import appMediaViewer from "./appMediaViewer";
 import appSidebarLeft from "./appSidebarLeft";
 import appChatsManager from "./appChatsManager";
-import appMessagesIDsManager from "./appMessagesIDsManager";
 import apiUpdatesManager from './apiUpdatesManager';
 import { wrapDocument, wrapPhoto, wrapVideo, wrapSticker, wrapReply, wrapAlbum, wrapPoll } from '../../components/wrappers';
 import ProgressivePreloader from '../../components/preloader';
-import { openBtnMenu, formatPhoneNumber, positionMenu, ripple } from '../../components/misc';
+import { openBtnMenu, formatPhoneNumber, positionMenu, ripple, parseMenuButtonsTo } from '../../components/misc';
 import { ChatInput } from '../../components/chatInput';
 //import Scrollable from '../../components/scrollable';
 import Scrollable from '../../components/scrollable_new';
@@ -31,6 +30,7 @@ import appStickersManager from './appStickersManager';
 import AvatarElement from '../../components/avatar';
 import appInlineBotsManager from './AppInlineBotsManager';
 import StickyIntersector from '../../components/stickyIntersector';
+import { PopupPeerButton, PopupPeer } from '../../components/popup';
 
 console.log('appImManager included!');
 
@@ -39,6 +39,172 @@ appSidebarLeft; // just to include
 let testScroll = false;
 
 const IGNOREACTIONS = ['messageActionChannelMigrateFrom'];
+
+class ChatContextMenu {
+  private element = document.getElementById('bubble-contextmenu') as HTMLDivElement;
+  private buttons: {
+    reply: HTMLButtonElement,
+    edit: HTMLButtonElement,
+    copy: HTMLButtonElement,
+    pin: HTMLButtonElement,
+    forward: HTMLButtonElement,
+    delete: HTMLButtonElement
+  } = {} as any;
+  public msgID: number;
+
+  constructor(private attachTo: HTMLElement) {
+    parseMenuButtonsTo(this.buttons, this.element.children);
+
+    attachTo.addEventListener('contextmenu', e => {
+      let bubble: HTMLDivElement = null;
+
+      try {
+        bubble = findUpClassName(e.target, 'bubble__container');
+      } catch(e) {}
+
+      if(!bubble) return;
+
+      e.preventDefault();
+      if(this.element.classList.contains('active')) {
+        return false;
+      }
+      e.cancelBubble = true;
+      
+      bubble = bubble.parentElement as HTMLDivElement; // bc container
+      
+      let msgID = +bubble.dataset.mid;
+      if(!msgID) return;
+
+      let peerID = $rootScope.selectedPeerID;
+      this.msgID = msgID;
+
+      const message = appMessagesManager.getMessage(msgID);
+
+      this.buttons.copy.style.display = message.message ? '' : 'none';
+      
+      if($rootScope.myID == peerID || (peerID < 0 && appChatsManager.hasRights(-peerID, 'pin'))) {
+        this.buttons.pin.style.display = '';
+      } else {
+        this.buttons.pin.style.display = 'none';
+      }
+      
+      this.buttons.edit.style.display = appMessagesManager.canEditMessage(msgID) ? '' : 'none';
+      
+      let side: 'left' | 'right' = bubble.classList.contains('is-in') ? 'left' : 'right';
+      positionMenu(e, this.element, side);
+      openBtnMenu(this.element);
+      
+      /////this.log('contextmenu', e, bubble, msgID, side);
+    });
+
+    this.buttons.copy.addEventListener('click', () => {
+      let message = appMessagesManager.getMessage(this.msgID);
+      
+      let str = message ? message.message : '';
+      
+      var textArea = document.createElement("textarea");
+      textArea.value = str;
+      textArea.style.position = "fixed";  //avoid scrolling to bottom
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      
+      try {
+        document.execCommand('copy');
+      } catch (err) {
+        console.error('Oops, unable to copy', err);
+      }
+      
+      document.body.removeChild(textArea);
+    });
+
+    this.buttons.delete.addEventListener('click', () => {
+      let peerID = $rootScope.selectedPeerID;
+      let firstName = appPeersManager.getPeerTitle(peerID, false, true);
+
+      let callback = (revoke: boolean) => {
+        appMessagesManager.deleteMessages([this.msgID], revoke);
+      };
+
+      let title: string, description: string, buttons: PopupPeerButton[];
+      title = 'Delete Message?';
+      description = `Are you sure you want to delete this message?`;
+
+      if(peerID == $rootScope.myID) {
+        buttons = [{
+          text: 'DELETE',
+          isDanger: true,
+          callback: () => callback(false)
+        }];
+      } else {
+        buttons = [{
+          text: 'DELETE JUST FOR ME',
+          isDanger: true,
+          callback: () => callback(false)
+        }];
+
+        if(peerID > 0) {
+          buttons.push({
+            text: 'DELETE FOR ME AND ' + firstName,
+            isDanger: true,
+            callback: () => callback(true)
+          });
+        } else if(appChatsManager.hasRights(-peerID, 'deleteRevoke')) {
+          buttons.push({
+            text: 'DELETE FOR ALL',
+            isDanger: true,
+            callback: () => callback(true)
+          });
+        }
+      }
+
+      buttons.push({
+        text: 'CANCEL',
+        isCancel: true
+      });
+
+      let popup = new PopupPeer('popup-delete-chat', {
+        peerID: peerID,
+        title: title,
+        description: description,
+        buttons: buttons
+      });
+
+      popup.show();
+    });
+    
+    this.buttons.reply.addEventListener('click', () => {
+      const message = appMessagesManager.getMessage(this.msgID);
+      const chatInputC = appImManager.chatInputC;
+      chatInputC.setTopInfo(appPeersManager.getPeerTitle(message.fromID, true), message.message, undefined, message);
+      chatInputC.replyToMsgID = this.msgID;
+      chatInputC.editMsgID = 0;
+    });
+
+    this.buttons.forward.addEventListener('click', () => {
+      appForward.init([this.msgID]);
+    });
+    
+    this.buttons.edit.addEventListener('click', () => {
+      const message = appMessagesManager.getMessage(this.msgID);
+      const chatInputC = appImManager.chatInputC;
+      chatInputC.setTopInfo('Editing', message.message, message.message, message);
+      chatInputC.replyToMsgID = 0;
+      chatInputC.editMsgID = this.msgID;
+    });
+    
+    this.buttons.pin.addEventListener('click', () => {
+      apiManager.invokeApi('messages.updatePinnedMessage', {
+        flags: 0,
+        peer: appPeersManager.getInputPeerByID($rootScope.selectedPeerID),
+        id: this.msgID
+      }).then(updates => {
+        /////this.log('pinned updates:', updates);
+        apiUpdatesManager.processUpdateMessage(updates);
+      });
+    });
+  }
+}
 
 export class AppImManager {
   public pageEl = document.getElementById('page-chats') as HTMLDivElement;
@@ -58,9 +224,8 @@ export class AppImManager {
   
   public myID = 0;
   public peerID = 0;
-  public muted = false;
-  
-  public bubbles: {[mid: number]: HTMLDivElement} = {};
+
+  public bubbles: {[mid: string]: HTMLDivElement} = {};
   public dateMessages: {[timestamp: number]: { 
     div: HTMLDivElement, 
     firstTimestamp: number, 
@@ -94,11 +259,8 @@ export class AppImManager {
   private scrolledAll: boolean;
   private scrolledAllDown: boolean;
   
-  public contextMenu = document.getElementById('bubble-contextmenu') as HTMLDivElement;
-  private contextMenuPin = this.contextMenu.querySelector('.menu-pin') as HTMLDivElement;
-  private contextMenuEdit = this.contextMenu.querySelector('.menu-edit') as HTMLDivElement;
-  private contextMenuMsgID: number;
-  
+  public contextMenu = new ChatContextMenu(this.bubblesContainer);
+
   private popupDeleteMessage: {
     popupEl?: HTMLDivElement,
     deleteBothBtn?: HTMLButtonElement,
@@ -510,123 +672,14 @@ export class AppImManager {
     };
     
     document.body.addEventListener('keydown', onKeyDown);
-    
-    this.bubblesContainer.addEventListener('contextmenu', e => {
-      let bubble: HTMLDivElement = null;
-      
-      try {
-        bubble = findUpClassName(e.target, 'bubble__container');
-      } catch(e) {}
-      
-      if(bubble) {
-        bubble = bubble.parentElement as HTMLDivElement; // bc container
 
-        e.preventDefault();
-        e.cancelBubble = true;
-        
-        let msgID = 0;
-        for(let id in this.bubbles) {
-          if(this.bubbles[id] === bubble) {
-            msgID = +id;
-            break;
-          }
-        }
-        
-        if(!msgID) return;
-        
-        if(this.myID == this.peerID || (this.peerID < 0 && !appPeersManager.isChannel(this.peerID) && !appPeersManager.isMegagroup(this.peerID))) {
-          this.contextMenuPin.style.display = '';
-        } else this.contextMenuPin.style.display = 'none';
-        
-        this.contextMenuMsgID = msgID;
-        
-        let side = bubble.classList.contains('is-in') ? 'left' : 'right';
-        
-        this.contextMenuEdit.style.display = side == 'right' ? '' : 'none';
-        
-        positionMenu(e, this.contextMenu, side as any);
-        openBtnMenu(this.contextMenu);
-        
-        /////this.log('contextmenu', e, bubble, msgID, side);
-      }
-    });
-    
-    this.contextMenu.querySelector('.menu-copy').addEventListener('click', () => {
-      let message = appMessagesManager.getMessage(this.contextMenuMsgID);
-      
-      let str = message ? message.message : '';
-      
-      var textArea = document.createElement("textarea");
-      textArea.value = str;
-      textArea.style.position = "fixed";  //avoid scrolling to bottom
-      document.body.appendChild(textArea);
-      textArea.focus();
-      textArea.select();
-      
-      try {
-        document.execCommand('copy');
-      } catch (err) {
-        console.error('Oops, unable to copy', err);
-      }
-      
-      document.body.removeChild(textArea);
-    });
-    
-    this.contextMenu.querySelector('.menu-delete').addEventListener('click', () => {
-      if(this.peerID == this.myID) {
-        this.popupDeleteMessage.deleteBothBtn.style.display = 'none';
-        this.popupDeleteMessage.deleteMeBtn.innerText = 'DELETE';
-      } else {
-        this.popupDeleteMessage.deleteBothBtn.style.display = '';
-        this.popupDeleteMessage.deleteMeBtn.innerText = 'DELETE JUST FOR ME';
-        
-        if(this.peerID > 0) {
-          let title = appPeersManager.getPeerTitle(this.peerID);
-          this.popupDeleteMessage.deleteBothBtn.innerHTML = 'DELETE FOR ME AND ' + title;
-        } else {
-          this.popupDeleteMessage.deleteBothBtn.innerText = 'DELETE FOR ALL';
-        }
-      }
-      
-      this.popupDeleteMessage.popupEl.classList.add('active');
-    });
-    
-    this.contextMenu.querySelector('.menu-reply').addEventListener('click', () => {
-      let message = appMessagesManager.getMessage(this.contextMenuMsgID);
-      this.chatInputC.setTopInfo(appPeersManager.getPeerTitle(message.fromID, true), message.message, undefined, message);
-      this.chatInputC.replyToMsgID = this.contextMenuMsgID;
-      this.chatInputC.editMsgID = 0;
-    });
-
-    this.contextMenu.querySelector('.menu-forward').addEventListener('click', () => {
-      appForward.init([this.contextMenuMsgID]);
-    });
-    
-    this.contextMenuEdit.addEventListener('click', () => {
-      let message = appMessagesManager.getMessage(this.contextMenuMsgID);
-      this.chatInputC.setTopInfo('Editing', message.message, message.message, message);
-      this.chatInputC.replyToMsgID = 0;
-      this.chatInputC.editMsgID = this.contextMenuMsgID;
-    });
-    
-    this.contextMenuPin.addEventListener('click', () => {
-      apiManager.invokeApi('messages.updatePinnedMessage', {
-        flags: 0,
-        peer: appPeersManager.getInputPeerByID(this.peerID),
-        id: this.contextMenuMsgID
-      }).then(updates => {
-        /////this.log('pinned updates:', updates);
-        apiUpdatesManager.processUpdateMessage(updates);
-      });
-    });
-    
     this.popupDeleteMessage.deleteBothBtn.addEventListener('click', () => {
-      this.deleteMessages(true);
+      appMessagesManager.deleteMessages([this.contextMenu.msgID], true);
       this.popupDeleteMessage.cancelBtn.click();
     });
     
     this.popupDeleteMessage.deleteMeBtn.addEventListener('click', () => {
-      this.deleteMessages(false);
+      appMessagesManager.deleteMessages([this.contextMenu.msgID], false);
       this.popupDeleteMessage.cancelBtn.click();
     });
     
@@ -690,41 +743,11 @@ export class AppImManager {
         } */
 
         //appMessagesManager.readMessages(readed);
-        /* false &&  */appMessagesManager.readHistory(this.peerID, max, length).catch((err: any) => {
+        /* false && */ appMessagesManager.readHistory(this.peerID, max, length).catch((err: any) => {
           this.log.error('readHistory err:', err);
           appMessagesManager.readHistory(this.peerID, max, length);
         });
       }
-    });
-  }
-  
-  public deleteMessages(revoke = false) {
-    let flags = revoke ? 1 : 0;
-    let ids = [this.contextMenuMsgID];
-    
-    apiManager.invokeApi('messages.deleteMessages', {
-      flags: flags,
-      revoke: revoke,
-      id: ids
-    }).then((affectedMessages: any) => {
-      /////this.log('deleted messages:', affectedMessages);
-      
-      apiUpdatesManager.processUpdateMessage({
-        _: 'updateShort',
-        update: {
-          _: 'updatePts',
-          pts: affectedMessages.pts,
-          pts_count: affectedMessages.pts_count
-        }
-      });
-      
-      apiUpdatesManager.processUpdateMessage({
-        _: 'updateShort',
-        update: {
-          _: 'updateDeleteMessages',
-          messages: ids
-        }
-      });
     });
   }
   
@@ -897,8 +920,7 @@ export class AppImManager {
     ////console.time('appImManager cleanup');
     this.scrolledAll = false;
     this.scrolledAllDown = false;
-    this.muted = false;
-    
+
     this.bubbles = {};
     this.dateMessages = {};
     this.bubbleGroups.cleanup();
@@ -951,15 +973,12 @@ export class AppImManager {
     const samePeer = this.peerID == peerID;
     
     if(this.setPeerPromise && samePeer) return this.setPeerPromise;
-    
-    /* if(lastMsgID) {
-      appMessagesManager.readHistory(peerID, lastMsgID); // lol
-    } */
 
     const dialog = appMessagesManager.getDialogByPeerID(peerID)[0] || null;
     const topMessage = lastMsgID <= 0 ? lastMsgID : dialog?.top_message ?? 0;
-    if(lastMsgID === undefined && dialog) {
-      if(dialog.unread_count) {
+    const isTarget = lastMsgID !== undefined;
+    if(!isTarget && dialog) {
+      if(dialog.unread_count && !samePeer) {
         lastMsgID = dialog.read_inbox_max_id;
       } else {
         lastMsgID = dialog.top_message;
@@ -971,7 +990,7 @@ export class AppImManager {
         if(dialog && lastMsgID == topMessage) {
           this.log('will scroll down', this.scroll.scrollTop, this.scroll.scrollHeight);
           this.scroll.scrollTop = this.scroll.scrollHeight;
-        } else {
+        } else if(isTarget) {
           this.scrollable.scrollIntoView(this.bubbles[lastMsgID]);
           this.highlightBubble(this.bubbles[lastMsgID]);
         }
@@ -1053,11 +1072,11 @@ export class AppImManager {
           }
           
           const fromUp = maxBubbleID > 0 && (maxBubbleID < lastMsgID || lastMsgID < 0);
-          if(!fromUp && samePeer) {
+          const forwardingUnread = dialog.read_inbox_max_id == lastMsgID;
+          if(!fromUp && (samePeer || forwardingUnread)) {
             this.scrollable.scrollTop = this.scrollable.scrollHeight;
           }
 
-          const forwardingUnread = dialog.read_inbox_max_id == lastMsgID;
           const bubble = forwardingUnread ? (this.firstUnreadBubble || this.bubbles[lastMsgID]) : this.bubbles[lastMsgID];
 
           this.scrollable.scrollIntoView(bubble, samePeer/* , fromUp */);
@@ -1074,6 +1093,12 @@ export class AppImManager {
         }
 
         this.log('scrolledAllDown:', this.scrolledAllDown);
+
+        if(!this.unreaded.length && dialog) { // lol
+          appMessagesManager.readHistory(peerID, dialog.top_message);
+        }
+
+        this.chatInner.classList.remove('disable-hover', 'is-scrolling'); // warning, performance!
 
         //console.timeEnd('appImManager setPeer');
 
@@ -1125,6 +1150,8 @@ export class AppImManager {
     this.chatInner.classList.toggle('is-channel', isChannel);
 
     this.pinnedMessageContainer.style.display = 'none';
+
+    this.btnMute.style.display = appPeersManager.isBroadcast(peerID) ? '' : 'none';
 
     window.requestAnimationFrame(() => {
       let title = '';
@@ -1642,6 +1669,8 @@ export class AppImManager {
         }
       }
     }
+
+    const isOut = our && (!message.fwd_from || this.peerID != this.myID);
     
     // media
     if(messageMedia/*  && messageMedia._ == 'messageMediaPhoto' */) {
@@ -1696,7 +1725,7 @@ export class AppImManager {
                   boxWidth: 380,
                   boxHeight: 380, 
                   withTail: doc.type != 'round', 
-                  isOut: our,
+                  isOut: isOut,
                   lazyLoadQueue: this.lazyLoadQueue,
                   middleware: null
                 });
@@ -1744,7 +1773,7 @@ export class AppImManager {
               lazyLoadQueue: this.lazyLoadQueue
             });
           } else {
-            wrapPhoto(photo.id, message, attachmentDiv, undefined, undefined, true, our, this.lazyLoadQueue, () => {
+            wrapPhoto(photo.id, message, attachmentDiv, undefined, undefined, true, isOut, this.lazyLoadQueue, () => {
               return this.peerID == peerID;
             });
           }
@@ -1800,7 +1829,8 @@ export class AppImManager {
                 lazyLoadQueue: this.lazyLoadQueue,
                 middleware: () => {
                   return this.peerID == peerID;
-                }
+                },
+                isOut
               });
               //}
             } else {
@@ -1907,7 +1937,7 @@ export class AppImManager {
                 boxWidth: 380,
                 boxHeight: 380, 
                 withTail: doc.type != 'round', 
-                isOut: our,
+                isOut: isOut,
                 lazyLoadQueue: this.lazyLoadQueue,
                 middleware: () => {
                   return this.peerID == peerID;
@@ -2097,7 +2127,7 @@ export class AppImManager {
       bubble.classList.add('hide-name');
     }
     
-    bubble.classList.add(our && (!message.fwd_from || this.peerID != this.myID) ? 'is-out' : 'is-in');
+    bubble.classList.add(isOut ? 'is-out' : 'is-in');
     if(updatePosition) {
       this.bubbleGroups.addBubble(bubble, message, reverse);
 
@@ -2151,10 +2181,16 @@ export class AppImManager {
 
       let realLength = this.scrollable.length;
       let previousScrollHeightMinusTop: number;
-      if(realLength > 0 && reverse) {
+      if(realLength > 0 && reverse) { // for safari need set when scrolling bottom too
         this.messagesQueueOnRender = () => {
           let scrollTop = this.scrollable.scrollTop;
+
           previousScrollHeightMinusTop = this.scrollable.scrollHeight - scrollTop;
+          /* if(reverse) {
+            previousScrollHeightMinusTop = this.scrollable.scrollHeight - scrollTop;
+          } else {
+            previousScrollHeightMinusTop = scrollTop;
+          } */
 
           this.log('performHistoryResult: messagesQueueOnRender, scrollTop:', scrollTop, previousScrollHeightMinusTop);
           this.messagesQueueOnRender = undefined;
@@ -2168,8 +2204,9 @@ export class AppImManager {
 
       (this.messagesQueuePromise || Promise.resolve()).then(() => {
         if(previousScrollHeightMinusTop !== undefined) {
-          this.log('performHistoryResult: will set scrollTop', this.scrollable.scrollHeight, previousScrollHeightMinusTop);
-          this.scrollable.scrollTop = this.scrollable.scrollHeight - previousScrollHeightMinusTop;
+          const newScrollTop = reverse ? this.scrollable.scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
+          this.log('performHistoryResult: will set scrollTop', this.scrollable.scrollHeight, newScrollTop, this.scrollable.container.clientHeight);
+          this.scrollable.scrollTop = newScrollTop;
         }
 
         resolve(true);
@@ -2186,7 +2223,7 @@ export class AppImManager {
     let peerID = this.peerID;
 
     //console.time('appImManager call getHistory');
-    let pageCount = this.bubblesContainer.clientHeight / 38/*  * 1.25 */ | 0;
+    let pageCount = appPhotosManager.windowH / 38/*  * 1.25 */ | 0;
     //let loadCount = Object.keys(this.bubbles).length > 0 ? 50 : pageCount;
     let realLoadCount = Object.keys(this.bubbles).length > 0 ? Math.max(40, pageCount) : pageCount;//let realLoadCount = 50;
     let loadCount = realLoadCount;
@@ -2215,7 +2252,7 @@ export class AppImManager {
     if(result instanceof Promise) {
       cached = false;
       promise = result.then((result) => {
-        this.log('getHistory result by maxID:', maxID, reverse, isBackLimit, result);
+        this.log('getHistory not cached result by maxID:', maxID, reverse, isBackLimit, result, peerID);
         
         //console.timeEnd('appImManager call getHistory');
         
@@ -2234,8 +2271,8 @@ export class AppImManager {
         return false;
       });
     } else {
-      this.log('getHistory result by maxID:', maxID, reverse, isBackLimit, result);
       cached = true;
+      this.log('getHistory cached result by maxID:', maxID, reverse, isBackLimit, result, peerID);
       promise = this.performHistoryResult(result.history || [], reverse, isBackLimit, additionMsgID);
       //return (reverse ? this.getHistoryTopPromise = promise : this.getHistoryBottomPromise = promise);
       //return this.performHistoryResult(result.history || [], reverse, isBackLimit, additionMsgID, true);
@@ -2292,7 +2329,7 @@ export class AppImManager {
     if(!dialog?.unread_count) return;
 
     let maxID = dialog.read_inbox_max_id;
-    maxID = Object.keys(this.bubbles).map(i => +i).sort((a, b) => a - b).find(i => i > maxID);
+    maxID = Object.keys(this.bubbles).filter(mid => !this.bubbles[mid].classList.contains('is-out')).map(i => +i).sort((a, b) => a - b).find(i => i > maxID);
 
     if(maxID && this.bubbles[maxID]) {
       let bubble = this.bubbles[maxID];
@@ -2313,7 +2350,7 @@ export class AppImManager {
     for(let i in this.dateMessages) {
       let dateMessage = this.dateMessages[i];
 
-      if(dateMessage.container.childElementCount == 1) { // only date div
+      if(dateMessage.container.childElementCount == 2) { // only date div + sentinel div
         dateMessage.container.remove();
         this.stickyIntersector.unobserve(dateMessage.container, dateMessage.div);
         delete this.dateMessages[i];
@@ -2324,19 +2361,11 @@ export class AppImManager {
   public setMutedState(muted = false) {
     appSidebarRight.profileElements.notificationsCheckbox.checked = !muted;
     appSidebarRight.profileElements.notificationsStatus.innerText = muted ? 'Disabled' : 'Enabled';
-    
-    let peerID = this.peerID;
-    
-    this.muted = muted;
-    if(peerID < 0) { // not human
-      let isChannel = appPeersManager.isChannel(peerID) && !appPeersManager.isMegagroup(peerID);
-      if(isChannel) {
-        this.btnMute.classList.remove('tgico-mute', 'tgico-unmute');
-        this.btnMute.classList.add(muted ? 'tgico-unmute' : 'tgico-mute');
-        this.btnMute.style.display = '';
-      } else {
-        this.btnMute.style.display = 'none';
-      }
+
+    if(appPeersManager.isBroadcast(this.peerID)) { // not human
+      this.btnMute.classList.remove('tgico-mute', 'tgico-unmute');
+      this.btnMute.classList.add(muted ? 'tgico-unmute' : 'tgico-mute');
+      this.btnMute.style.display = '';
     } else {
       this.btnMute.style.display = 'none';
     }

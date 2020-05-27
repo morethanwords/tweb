@@ -206,7 +206,7 @@ let onFirstMount = () => {
     putPreloader(this);
     //this.innerHTML = 'PLEASE WAIT...';
 
-    return;
+    //return;
 
     let phone_number = telEl.value;
     apiManager.invokeApi('auth.sendCode', {

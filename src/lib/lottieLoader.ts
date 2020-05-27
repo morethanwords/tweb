@@ -1,4 +1,4 @@
-import { isInDOM } from "./utils";
+//import { isInDOM } from "./utils";
 import LottiePlayer, { AnimationConfigWithPath, AnimationConfigWithData, AnimationItem } from "lottie-web/build/player/lottie.d";
 
 let convert = (value: number) => {
@@ -85,7 +85,7 @@ class LottieLoader {
       for(let i = length - 1; i >= 0; --i) {
         let {animation, container, paused, autoplay, canvas} = animations[i];
 
-        if(destroy && !isInDOM(container)) {
+        if(destroy && !container.parentElement/* !isInDOM(container) */) {
           this.debug && console.log('destroy animation');
           animation.destroy();
           animations.splice(i, 1);
@@ -140,7 +140,7 @@ class LottieLoader {
               k[2] = (foundReplacement[1] & 255) / 255;
             }
 
-            console.log('foundReplacement!', foundReplacement, color.toString(16), k);
+            //console.log('foundReplacement!', foundReplacement, color.toString(16), k);
             break;
         }
 

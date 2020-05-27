@@ -4,12 +4,13 @@ import appPeersManager from './appPeersManager';
 import appMessagesManager, { AppMessagesManager, Dialog } from "./appMessagesManager";
 import appUsersManager, { User } from "./appUsersManager";
 import { RichTextProcessor } from "../richtextprocessor";
-import { ripple, putPreloader, positionMenu, openBtnMenu } from "../../components/misc";
+import { ripple, putPreloader, positionMenu, openBtnMenu, parseMenuButtonsTo } from "../../components/misc";
 //import Scrollable from "../../components/scrollable";
 import Scrollable from "../../components/scrollable_new";
 import { logger } from "../polyfill";
 import appChatsManager from "./appChatsManager";
 import AvatarElement from "../../components/avatar";
+import { PopupPeerButton, PopupPeer } from "../../components/popup";
 
 type DialogDom = {
   avatarEl: AvatarElement,
@@ -25,95 +26,7 @@ type DialogDom = {
 
 let testScroll = false;
 
-class PopupElement {
-  protected element = document.createElement('div');
-  protected container = document.createElement('div');
-  protected header = document.createElement('div');
-  protected title = document.createElement('div');
 
-  constructor(className: string) {
-    this.element.classList.add('popup');
-    this.element.className = 'popup' + (className ? ' ' + className : '');
-    this.container.classList.add('popup-container', 'z-depth-1');
-
-    this.header.classList.add('popup-header');
-    this.title.classList.add('popup-title');
-
-    this.header.append(this.title);
-    this.container.append(this.header);
-    this.element.append(this.container);
-  }
-
-  public show() {
-    document.body.append(this.element);
-    void this.element.offsetWidth; // reflow
-    this.element.classList.add('active');
-  }
-
-  public destroy() {
-    this.element.classList.remove('active');
-    setTimeout(() => {
-      this.element.remove();
-    }, 1000);
-  }
-}
-
-type PopupPeerButton = {
-  text: string,
-  callback?: () => void,
-  isDanger?: true,
-  isCancel?: true
-};
-
-class PopupPeer extends PopupElement {
-  constructor(private className: string, options: Partial<{
-    peerID: number,
-    title: string,
-    description: string,
-    buttons: Array<PopupPeerButton>
-  }> = {}) {
-    super('popup-peer' + (className ? ' ' + className : ''));
-
-    let avatarEl = new AvatarElement();
-    avatarEl.setAttribute('dialog', '1');
-    avatarEl.setAttribute('peer', '' + options.peerID);
-    avatarEl.classList.add('peer-avatar');
-
-    this.title.innerText = options.title || '';
-    this.header.prepend(avatarEl);
-
-    let p = document.createElement('p');
-    p.classList.add('popup-description');
-    p.innerHTML = options.description;
-
-    let buttonsDiv = document.createElement('div');
-    buttonsDiv.classList.add('popup-buttons');
-
-    let buttons = options.buttons.map(b => {
-      let button = document.createElement('button');
-      ripple(button);
-      button.className = 'btn' + (b.isDanger ? ' danger' : '');
-      button.innerHTML =  b.text;
-
-      if(b.callback) {
-        button.addEventListener('click', () => {
-          b.callback();
-          this.destroy();
-        });
-      } else if(b.isCancel) {
-        button.addEventListener('click', () => {
-          this.destroy();
-        });
-      }
-
-      return button;
-    });
-
-    buttonsDiv.append(...buttons);
-
-    this.container.append(p, buttonsDiv);
-  }
-}
 
 class DialogsContextMenu {
   private element = document.getElementById('dialogs-contextmenu') as HTMLDivElement;
@@ -129,11 +42,7 @@ class DialogsContextMenu {
   private peerType: 'channel' | 'chat' | 'megagroup' | 'group' | 'saved';
 
   constructor(private attachTo: HTMLElement[]) {
-    (Array.from(this.element.querySelectorAll('.btn-menu-item')) as HTMLElement[]).forEach(el => {
-      let name = el.className.match(/ menu-(.+?) /)[1];
-      // @ts-ignore
-      this.buttons[name] = el;
-    });
+    parseMenuButtonsTo(this.buttons, this.element.children);
 
     const onContextMenu = (e: MouseEvent) => {
       let li: HTMLDivElement = null;
@@ -145,13 +54,9 @@ class DialogsContextMenu {
       if(!li) return;
 
       e.preventDefault();
-
       if(this.element.classList.contains('active')) {
-        /* this.element.classList.remove('active');
-        this.element.parentElement.classList.remove('menu-open'); */
         return false;
       }
-      
       e.cancelBubble = true;
 
       this.selectedID = +li.getAttribute('data-peerID');
