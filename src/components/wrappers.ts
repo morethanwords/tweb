@@ -628,7 +628,7 @@ function wrapMediaWithTail(photo: any, message: {mid: number, message: string}, 
   return img;
 }
 
-export function wrapPhoto(photoID: string, message: any, container: HTMLDivElement, boxWidth = 380, boxHeight = 380, withTail = true, isOut = false, lazyLoadQueue: LazyLoadQueue, middleware: () => boolean, size: MTPhotoSize = null) {
+export function wrapPhoto(photoID: string, message: any, container: HTMLDivElement, boxWidth = 480, boxHeight = 480, withTail = true, isOut = false, lazyLoadQueue: LazyLoadQueue, middleware: () => boolean, size: MTPhotoSize = null) {
   let photo = appPhotosManager.getPhoto(photoID);
 
   let image: HTMLImageElement;
@@ -940,7 +940,7 @@ export function wrapAlbum({groupID, attachmentDiv, middleware, uploading, lazyLo
     let m = appMessagesManager.getMessage(+mid);
     let media = m.media.photo || m.media.document;
 
-    let size: any = media._ == 'photo' ? appPhotosManager.choosePhotoSize(media, 380, 380) : {w: media.w, h: media.h};
+    let size: any = media._ == 'photo' ? appPhotosManager.choosePhotoSize(media, 480, 480) : {w: media.w, h: media.h};
     items.push({size, media, message: m});
   }
 

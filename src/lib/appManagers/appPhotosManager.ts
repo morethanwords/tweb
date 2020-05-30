@@ -231,7 +231,7 @@ export class AppPhotosManager {
     }
   }
   
-  public setAttachmentSize(photoID: any, element: HTMLElement | SVGForeignObjectElement, boxWidth = 380, boxHeight = 380, isSticker = false) {
+  public setAttachmentSize(photoID: any, element: HTMLElement | SVGForeignObjectElement, boxWidth = 480, boxHeight = 480, isSticker = false) {
     let photo: /* MTDocument | MTPhoto */any = null;
     
     if(typeof(photoID) === 'string') {

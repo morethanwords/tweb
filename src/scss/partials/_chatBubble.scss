@@ -414,8 +414,8 @@
   
   &:not(.sticker) {
     .attachment {
-      max-width: 380px;
-      max-height: 380px;
+      max-width: 480px;
+      max-height: 480px;
 
       width: max-content;
     }
@@ -491,8 +491,8 @@
       overflow: hidden;
       
       .preview {
-        max-height: 300px;
-        max-width: 380px;
+        max-height: 400px;
+        max-width: 480px;
         /* max-height: 100%;
         max-width: 100%; */
         border-radius: 4px;

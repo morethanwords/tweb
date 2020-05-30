@@ -1722,8 +1722,8 @@ export class AppImManager {
                   doc, 
                   container: attachmentDiv, 
                   message, 
-                  boxWidth: 380,
-                  boxHeight: 380, 
+                  boxWidth: 480,
+                  boxHeight: 480, 
                   withTail: doc.type != 'round', 
                   isOut: isOut,
                   lazyLoadQueue: this.lazyLoadQueue,
@@ -1793,16 +1793,7 @@ export class AppImManager {
           
           let quote = document.createElement('div');
           quote.classList.add('quote');
-          
-          let nameEl = document.createElement('a');
-          nameEl.classList.add('name');
-          
-          let titleDiv = document.createElement('div');
-          titleDiv.classList.add('title');
-          
-          let textDiv = document.createElement('div');
-          textDiv.classList.add('text');
-          
+
           let preview: HTMLDivElement = null;
           if(webpage.photo || webpage.document) {
             preview = document.createElement('div');
@@ -1820,8 +1811,8 @@ export class AppImManager {
                 doc, 
                 container: preview, 
                 message, 
-                boxWidth: 380,
-                boxHeight: 300,
+                boxWidth: 480,
+                boxHeight: 400,
                 lazyLoadQueue: this.lazyLoadQueue,
                 middleware: this.getMiddleware(),
                 isOut
@@ -1832,40 +1823,50 @@ export class AppImManager {
             }
           }
           
+          if(preview) {
+            quote.append(preview);
+          }
+          
+          let quoteTextDiv = document.createElement('div');
+          quoteTextDiv.classList.add('quote-text');
+
+          if(webpage.site_name) {
+            let nameEl = document.createElement('a');
+            nameEl.classList.add('name');
+            nameEl.setAttribute('target', '_blank');
+            nameEl.href = webpage.url || '#';
+            nameEl.innerHTML = RichTextProcessor.wrapEmojiText(webpage.site_name);
+            quoteTextDiv.append(nameEl);
+          }
+
+          if(webpage.title) {
+            let titleDiv = document.createElement('div');
+            titleDiv.classList.add('title');
+            titleDiv.innerHTML = RichTextProcessor.wrapRichText(webpage.title);
+            quoteTextDiv.append(titleDiv);
+          }
+
+          if(webpage.description) {
+            let textDiv = document.createElement('div');
+            textDiv.classList.add('text');
+            textDiv.innerHTML = RichTextProcessor.wrapRichText(webpage.description);
+            quoteTextDiv.append(textDiv);
+          }
+
+          quote.append(quoteTextDiv);
+
           if(webpage.photo && !doc) {
             bubble.classList.add('photo');
 
             const size = webpage.photo.sizes[webpage.photo.sizes.length - 1];
-            if(size.w == size.h) {
+            if(size.w == size.h && quoteTextDiv.childElementCount) {
               bubble.classList.add('is-square-photo');
             } else if(size.h > size.w) {
               bubble.classList.add('is-vertical-photo');
             }
 
-            wrapPhoto(webpage.photo.id, message, preview, 380, 300, false, null, this.lazyLoadQueue, this.getMiddleware());
+            wrapPhoto(webpage.photo.id, message, preview, 480, 400, false, null, this.lazyLoadQueue, this.getMiddleware());
           }
-          
-          if(preview) {
-            quote.append(preview);
-          }
-          
-          nameEl.setAttribute('target', '_blank');
-          nameEl.href = webpage.url || '#';
-          nameEl.innerHTML = webpage.site_name ? RichTextProcessor.wrapEmojiText(webpage.site_name) : '';
-          
-          if(webpage.description) {
-            textDiv.innerHTML = RichTextProcessor.wrapRichText(webpage.description);
-          }
-          
-          if(webpage.title) {
-            titleDiv.innerHTML = RichTextProcessor.wrapRichText(webpage.title);
-          }
-
-          let quoteTextDiv = document.createElement('div');
-          quoteTextDiv.classList.add('quote-text');
-          quoteTextDiv.append(nameEl, titleDiv, textDiv);
-
-          quote.append(quoteTextDiv);
           
           box.append(quote);
           
@@ -1929,8 +1930,8 @@ export class AppImManager {
                 doc, 
                 container: attachmentDiv, 
                 message, 
-                boxWidth: 380,
-                boxHeight: 380, 
+                boxWidth: 480,
+                boxHeight: 480, 
                 withTail: doc.type != 'round', 
                 isOut: isOut,
                 lazyLoadQueue: this.lazyLoadQueue,
