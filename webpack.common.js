@@ -1,7 +1,7 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
-let allowedIPs = ['195.66.140.39', '192.168.31.144', '127.0.0.1', '192.168.31.1', '192.168.31.192', '192.168.0.111', '192.168.0.105'];
+let allowedIPs = ['195.66.140.39', '192.168.31.144', '127.0.0.1', '192.168.31.1', '192.168.31.192', '192.168.0.111', '192.168.0.105', '192.168.0.108'];
 
 const opts = {
   MTPROTO_WORKER: true,
@@ -66,8 +66,8 @@ module.exports = {
   //entry: './src/index.ts',
   entry: {
     index: './src/index.ts',
-    webp: './src/lib/webp.ts',
-    lottie: './src/lib/lottie.ts'
+    webp: './src/lib/webp.ts'/* ,
+    lottie: './src/lib/lottie.ts' */
   },
   /* entry: {
     index: './src/index.ts',
@@ -129,7 +129,7 @@ module.exports = {
         minifyURLs: true
       }, */
       chunks: "all",
-      excludeChunks: ['npm.webp-hero', 'npm.lottie-web']
+      excludeChunks: ['npm.webp-hero'/* , 'npm.lottie-web' */]
     })
   ],
 };

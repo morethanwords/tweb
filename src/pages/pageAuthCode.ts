@@ -2,7 +2,7 @@ import pageSignIn from './pageSignIn';
 import pageSignUp from './pageSignUp';
 import pageIm from './pageIm';
 import pagePassword from './pagePassword';
-import LottieLoader from '../lib/lottieLoader';
+import LottieLoader, { RLottiePlayer } from '../lib/lottieLoader';
 //import CryptoWorker from '../lib/crypto/cryptoworker';
 //import apiManager from '../lib/mtproto/apiManager';
 import apiManager from '../lib/mtproto/mtprotoworker';
@@ -29,17 +29,16 @@ let sentTypeElement: HTMLParagraphElement = null;
 let onFirstMount = (): Promise<any> => {
   let needFrame = 0, lastLength = 0;
 
-  let animation: /* AnimationItem */any;
-  let idleAnimation: any;
-  
-  let mTrackingSvg: SVGSVGElement;
-  let mIdleSvg: SVGSVGElement;
+  let animation: RLottiePlayer;
+  let idleAnimation: RLottiePlayer;
 
   const CODELENGTH = authCode.type.length;
 
   const codeInput = page.pageEl.querySelector('#code') as HTMLInputElement;
   const codeInputLabel = codeInput.nextElementSibling as HTMLLabelElement;
   const editButton = page.pageEl.querySelector('.phone-edit') as HTMLElement;
+
+  codeInput.focus();
 
   if(EDITONSAMEPAGE) {
     let editable = false;
@@ -209,17 +208,17 @@ let onFirstMount = (): Promise<any> => {
     
     let frame: number;
     if(length) {
-      frame = Math.round((length > max ? max : length) * (165 / max) + 11.33);
+      frame = Math.round(Math.min(max, length) * (165 / max) + 11.33);
 
-      mIdleSvg.style.display = 'none';
-      mTrackingSvg.style.display = '';
+      idleAnimation.canvas.style.display = 'none';
+      animation.canvas.style.display = '';
     } else {
       frame = 0;
     }
     //animation.playSegments([1, 2]);
 
     let direction = needFrame > frame ? -1 : 1;
-    //console.log('keydown', length, frame, direction);
+    console.log('keydown', length, frame, direction);
 
     animation.setDirection(direction);
     if(needFrame != 0 && frame == 0) {
@@ -235,69 +234,64 @@ let onFirstMount = (): Promise<any> => {
     //animation.goToAndStop(length / max * );
   });
 
-  let imageDiv = page.pageEl.querySelector('.auth-image');
+  let imageDiv = page.pageEl.querySelector('.auth-image') as HTMLDivElement;
   return Promise.all([
-    LottieLoader.loadLottie(),
+    LottieLoader.loadLottieWorkers(),
 
     fetch('assets/img/TwoFactorSetupMonkeyIdle.tgs')
     .then(res => res.arrayBuffer())
     .then(data => apiManager.gzipUncompress<string>(data, true))
-    .then(str => LottieLoader.loadAnimation({
+    .then(str => LottieLoader.loadAnimationWorker({
       container: imageDiv,
-      renderer: 'svg',
       loop: true,
       autoplay: true,
       animationData: JSON.parse(str),
-      rendererSettings: {
-        className: 'monkey-idle'
-      }
+      width: 166,
+      height: 166
     }))
-    .then(_animation => {
-      idleAnimation = _animation;
-
-      mIdleSvg = imageDiv.querySelector('.monkey-idle');
+    .then(animation => {
+      idleAnimation = animation;
     }),
 
-    fetch('assets/img/TwoFactorSetupMonkeyTracking.tgs')
+    /* false &&  */fetch('assets/img/TwoFactorSetupMonkeyTracking.tgs')
     .then(res => res.arrayBuffer())
     .then(data => apiManager.gzipUncompress<string>(data, true))
-    .then(str => LottieLoader.loadAnimation({
+    .then(str => LottieLoader.loadAnimationWorker({
       container: imageDiv,
-      renderer: 'svg',
       loop: false,
       autoplay: false,
       animationData: JSON.parse(str),
-      rendererSettings: {
-        className: 'monkey-tracking'
-      }
+      width: 166,
+      height: 166
     }))
     .then(_animation => {
       animation = _animation;
-      animation.setSpeed(1);
-      //console.log(animation.getDuration(), animation.getDuration(true));
 
-      mTrackingSvg = imageDiv.querySelector('.monkey-tracking');
       if(!codeInput.value.length) {
-        mTrackingSvg.style.display = 'none';
+        animation.canvas.style.display = 'none';
       }
 
-      animation.addEventListener('enterFrame', (e: any) => {
-        //console.log('enterFrame', e, needFrame);
-        let currentFrame = Math.round(e.currentTime);
+      animation.addListener('enterFrame', currentFrame => {
+        console.log('enterFrame', currentFrame, needFrame);
+        //let currentFrame = Math.round(e.currentTime);
         
-        if((e.direction == 1 && currentFrame >= needFrame) ||
-          (e.direction == -1 && currentFrame <= needFrame)) {
+        if((animation.direction == 1 && currentFrame >= needFrame) ||
+          (animation.direction == -1 && currentFrame <= needFrame)) {
           animation.setSpeed(1);
           animation.pause();
         }
 
-        if(currentFrame == 0 && needFrame == 0 && mIdleSvg) {
-          mTrackingSvg.style.display = 'none';
-          mIdleSvg.style.display = '';
-          idleAnimation.stop();
-          idleAnimation.play();
+        if(currentFrame == 0 && needFrame == 0) {
+          animation.curFrame = 0;
+          
+          if(idleAnimation) {
+            animation.canvas.style.display = 'none';
+            idleAnimation.canvas.style.display = '';
+            idleAnimation.restart();
+          }
         }
       });
+      //console.log(animation.getDuration(), animation.getDuration(true));
     })
   ]);
 };

@@ -260,13 +260,6 @@ export class AppImManager {
   private scrolledAllDown: boolean;
   
   public contextMenu = new ChatContextMenu(this.bubblesContainer);
-
-  private popupDeleteMessage: {
-    popupEl?: HTMLDivElement,
-    deleteBothBtn?: HTMLButtonElement,
-    deleteMeBtn?: HTMLButtonElement,
-    cancelBtn?: HTMLButtonElement
-  } = {};
   
   private setPeerPromise: Promise<boolean> = null;
   
@@ -288,8 +281,11 @@ export class AppImManager {
 
   private peerChanged: boolean;
   private firstUnreadBubble: HTMLDivElement = null;
+  private attachedUnreadBubble: boolean;
 
   private stickyIntersector: StickyIntersector = null;
+
+  private cleanupID = 0;
 
   constructor() {
     /* if(!lottieLoader.loaded) {
@@ -301,12 +297,7 @@ export class AppImManager {
     this.chatInputC = new ChatInput();
     
     this.preloader = new ProgressivePreloader(null, false);
-    
-    this.popupDeleteMessage.popupEl = this.pageEl.querySelector('.popup-delete-message') as HTMLDivElement;
-    this.popupDeleteMessage.deleteBothBtn = this.popupDeleteMessage.popupEl.querySelector('.popup-delete-both') as HTMLButtonElement;
-    this.popupDeleteMessage.deleteMeBtn = this.popupDeleteMessage.popupEl.querySelector('.popup-delete-me') as HTMLButtonElement;
-    this.popupDeleteMessage.cancelBtn = this.popupDeleteMessage.popupEl.querySelector('.popup-close') as HTMLButtonElement;
-    
+
     apiManager.getUserID().then((id) => {
       this.myID = $rootScope.myID = id;
     });
@@ -657,8 +648,16 @@ export class AppImManager {
         return;
       }
       
-      if(e.key == 'Escape' && this.peerID != 0) { // hide current dialog
-        this.setPeer(0);
+      if(e.key == 'Escape') {
+        if(appMediaViewer.wholeDiv.classList.contains('active')) {
+          appMediaViewer.buttons.close.click();
+        } else if(appForward.container.classList.contains('active')) {
+          appForward.close();
+        } else if(this.chatInputC.replyElements.container.classList.contains('active')) {
+          this.chatInputC.replyElements.cancelBtn.click();
+        } else if(this.peerID != 0) { // hide current dialog
+          this.setPeer(0);
+        }
       } else if(e.key == 'Meta' || e.key == 'Control') {
         return;
       } else if(e.key == 'c' && (e.ctrlKey || e.metaKey) && target.tagName != 'INPUT') {
@@ -672,16 +671,6 @@ export class AppImManager {
     };
     
     document.body.addEventListener('keydown', onKeyDown);
-
-    this.popupDeleteMessage.deleteBothBtn.addEventListener('click', () => {
-      appMessagesManager.deleteMessages([this.contextMenu.msgID], true);
-      this.popupDeleteMessage.cancelBtn.click();
-    });
-    
-    this.popupDeleteMessage.deleteMeBtn.addEventListener('click', () => {
-      appMessagesManager.deleteMessages([this.contextMenu.msgID], false);
-      this.popupDeleteMessage.cancelBtn.click();
-    });
     
     this.goDownBtn.addEventListener('click', () => {
       let dialog = appMessagesManager.getDialogByPeerID(this.peerID)[0];
@@ -939,6 +928,7 @@ export class AppImManager {
 
     this.peerChanged = false;
     this.firstUnreadBubble = null;
+    this.attachedUnreadBubble = false;
 
     this.messagesQueue.length = 0;
     this.messagesQueuePromise = null;
@@ -953,6 +943,8 @@ export class AppImManager {
     this.unreaded.length = 0;
 
     this.loadedTopTimes = this.loadedBottomTimes = 0;
+
+    this.cleanupID++;
 
     ////console.timeEnd('appImManager cleanup');
   }
@@ -1094,7 +1086,8 @@ export class AppImManager {
 
         this.log('scrolledAllDown:', this.scrolledAllDown);
 
-        if(!this.unreaded.length && dialog) { // lol
+        //if(!this.unreaded.length && dialog) { // lol
+        if(this.scrolledAllDown && dialog) { // lol
           appMessagesManager.readHistory(peerID, dialog.top_message);
         }
 
@@ -1400,6 +1393,13 @@ export class AppImManager {
         }, 0);
       });
     }
+  }
+
+  private getMiddleware() {
+    let cleanupID = this.cleanupID;
+    return () => {
+      return this.cleanupID == cleanupID;
+    };
   }
   
   // reverse means top
@@ -1766,16 +1766,12 @@ export class AppImManager {
             wrapAlbum({
               groupID: message.grouped_id, 
               attachmentDiv,
-              middleware: () => {
-                return this.peerID == peerID;
-              },
+              middleware: this.getMiddleware(),
               isOut: our,
               lazyLoadQueue: this.lazyLoadQueue
             });
           } else {
-            wrapPhoto(photo.id, message, attachmentDiv, undefined, undefined, true, isOut, this.lazyLoadQueue, () => {
-              return this.peerID == peerID;
-            });
+            wrapPhoto(photo.id, message, attachmentDiv, undefined, undefined, true, isOut, this.lazyLoadQueue, this.getMiddleware());
           }
 
           break;
@@ -1827,9 +1823,7 @@ export class AppImManager {
                 boxWidth: 380,
                 boxHeight: 300,
                 lazyLoadQueue: this.lazyLoadQueue,
-                middleware: () => {
-                  return this.peerID == peerID;
-                },
+                middleware: this.getMiddleware(),
                 isOut
               });
               //}
@@ -1841,9 +1835,14 @@ export class AppImManager {
           if(webpage.photo && !doc) {
             bubble.classList.add('photo');
 
-            wrapPhoto(webpage.photo.id, message, preview, 380, 300, false, null, this.lazyLoadQueue, () => {
-              return this.peerID == peerID;
-            });
+            const size = webpage.photo.sizes[webpage.photo.sizes.length - 1];
+            if(size.w == size.h) {
+              bubble.classList.add('is-square-photo');
+            } else if(size.h > size.w) {
+              bubble.classList.add('is-vertical-photo');
+            }
+
+            wrapPhoto(webpage.photo.id, message, preview, 380, 300, false, null, this.lazyLoadQueue, this.getMiddleware());
           }
           
           if(preview) {
@@ -1861,8 +1860,13 @@ export class AppImManager {
           if(webpage.title) {
             titleDiv.innerHTML = RichTextProcessor.wrapRichText(webpage.title);
           }
+
+          let quoteTextDiv = document.createElement('div');
+          quoteTextDiv.classList.add('quote-text');
+          quoteTextDiv.append(nameEl, titleDiv, textDiv);
+
+          quote.append(quoteTextDiv);
           
-          quote.append(nameEl, titleDiv, textDiv);
           box.append(quote);
           
           //bubble.prepend(box);
@@ -1894,14 +1898,7 @@ export class AppImManager {
             wrapSticker({
               doc, 
               div: attachmentDiv,
-              middleware: () => {
-                if(this.peerID != peerID) {
-                  this.log.warn('peer changed, canceling sticker attach');
-                  return false;
-                }
-                
-                return true;
-              },
+              middleware: this.getMiddleware(),
               lazyLoadQueue: this.lazyLoadQueue,
               group: 'chat',
               play: !!message.pending || !multipleRender,
@@ -1923,9 +1920,7 @@ export class AppImManager {
               wrapAlbum({
                 groupID: message.grouped_id, 
                 attachmentDiv,
-                middleware: () => {
-                  return this.peerID == peerID;
-                },
+                middleware: this.getMiddleware(),
                 isOut: our,
                 lazyLoadQueue: this.lazyLoadQueue
               });
@@ -1939,9 +1934,7 @@ export class AppImManager {
                 withTail: doc.type != 'round', 
                 isOut: isOut,
                 lazyLoadQueue: this.lazyLoadQueue,
-                middleware: () => {
-                  return this.peerID == peerID;
-                }
+                middleware: this.getMiddleware()
               });
             }
             
@@ -2325,6 +2318,10 @@ export class AppImManager {
   }
 
   public setUnreadDelimiter() {
+    if(this.attachedUnreadBubble) {
+      return;
+    }
+
     let dialog = appMessagesManager.getDialogByPeerID(this.peerID)[0];
     if(!dialog?.unread_count) return;
 
@@ -2343,6 +2340,7 @@ export class AppImManager {
       }
 
       this.firstUnreadBubble = bubble;
+      this.attachedUnreadBubble = true;
     }
   }
 

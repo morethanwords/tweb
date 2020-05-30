@@ -254,7 +254,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
     stickersDiv.classList.add('stickers-categories');
     contentStickersDiv.append(stickersDiv);
 
-    stickersDiv.addEventListener('mouseover', (e) => {
+    /* stickersDiv.addEventListener('mouseover', (e) => {
       let target = e.target as HTMLElement;
 
       if(target.tagName == 'CANVAS') { // turn on sticker
@@ -269,7 +269,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
           }
         }
       }
-    });
+    }); */
 
     stickersDiv.addEventListener('click', onMediaClick);
 
@@ -397,7 +397,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
                   const text = e.srcElement.result;
                   let json = await apiManager.gzipUncompress<string>(text, true);
   
-                  let animation = await lottieLoader.loadAnimation({
+                  let animation = await lottieLoader.loadAnimationWorker({
                     container: li,
                     loop: true,
                     autoplay: false,

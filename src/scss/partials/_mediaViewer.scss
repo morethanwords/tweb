@@ -209,4 +209,52 @@ $move-duration: .35s;
   &-mover.active &-aspecter {
     transition: $open-duration all;
   }
+
+  &-whole {
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    position: fixed!important;
+    display: block;
+    z-index: 4;
+    visibility: hidden;
+    transition: visibility 0s $open-duration;
+
+    &.active {
+      visibility: visible;
+      transition-delay: 0s;
+
+      .overlays {
+        opacity: 1;
+        visibility: visible;
+        -webkit-transition: opacity $open-duration 0s, visibility 0s 0s;
+        -moz-transition: opacity $open-duration 0s, visibility 0s 0s;
+        transition: opacity $open-duration 0s, visibility 0s 0s;
+      }
+    }
+  }
+
+  &-switchers {
+    position: relative;
+    width: $large-screen;
+    height: 100%;
+    margin: 0 auto;
+  }
+}
+
+.overlays {
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  position: fixed!important;
+  background-color: rgba(0, 0, 0, .2);
+  z-index: 4;
+  //display: none;
+  opacity: 0;
+  visibility: hidden;
+  -webkit-transition: opacity $open-duration 0s, visibility 0s $open-duration;
+  -moz-transition: opacity $open-duration 0s, visibility 0s $open-duration;
+  transition: opacity $open-duration 0s, visibility 0s $open-duration;
 }

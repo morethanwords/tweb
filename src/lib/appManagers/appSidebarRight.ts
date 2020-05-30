@@ -15,6 +15,7 @@ import LazyLoadQueue from "../../components/lazyLoadQueue";
 import { wrapDocument, wrapAudio } from "../../components/wrappers";
 import AppSearch, { SearchGroup } from "../../components/appSearch";
 import AvatarElement from "../../components/avatar";
+import appForward from "../../components/appForward";
 
 const testScroll = false;
 
@@ -250,6 +251,11 @@ class AppSidebarRight {
             (item.element.firstElementChild as HTMLElement).style.display = '';
           }
 
+          if(enable == false || (this.sidebarEl.classList.contains('active') && enable == undefined)) {
+            appForward.close();
+            this.searchCloseBtn.click();
+          }
+          
           resolve();
         }, 200);
       });

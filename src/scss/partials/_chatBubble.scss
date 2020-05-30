@@ -433,10 +433,10 @@
       max-width: 451px;
       max-height: none;
 
-      > div {
+      .album-item {
         background-color: #000;
         background-size: cover;
-        background-position: center center;
+        /* background-position: center center; */
         /* flex: 1 0 auto; */
         max-width: 100%;
         cursor: pointer;
@@ -552,6 +552,38 @@
     .name, .reply-title {
       font-weight: 500 !important;
       display: inline!important;
+    }
+  }
+
+  &.is-square-photo {
+    .bubble__container {
+      width: fit-content;
+    }
+
+    .box.web {
+      .quote {
+        display: flex;
+      }
+  
+      .preview {
+        -webkit-box-ordinal-group: 3;
+        order: 2;
+        flex-shrink: 0;
+        max-width: 5rem;
+        max-height: 5rem;
+      }
+  
+      .quote-text {
+        -webkit-box-ordinal-group: 2;
+        order: 1;
+        padding-right: 1rem;
+      }
+    }
+  }
+
+  &.is-vertical-photo {
+    .bubble__container {
+      width: fit-content;
     }
   }
 
@@ -908,7 +940,7 @@
   }
 
   &:not(.sticker):not(.emoji-big) {
-    &.hide-name, &:not(.is-group-first) {
+    &.hide-name, &:not(.is-group-first), &.is-out {
       .reply {
         margin-top: 6px;
       }

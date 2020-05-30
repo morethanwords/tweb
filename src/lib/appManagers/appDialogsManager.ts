@@ -489,7 +489,7 @@ export class AppDialogsManager {
       console.time('getDialogs time');
 
       let loadCount = 50/*this.chatsLoadCount */;
-      this.loadDialogsPromise = appMessagesManager.getConversations(offsetIndex, loadCount, +archived);
+      this.loadDialogsPromise = appMessagesManager.getConversations('', offsetIndex, loadCount, +archived);
       
       let result = await this.loadDialogsPromise;
 
@@ -792,7 +792,7 @@ export class AppDialogsManager {
     return this.doms[peerID] || this.domsArchived[peerID];
   }
 
-  public addDialog(_dialog: Dialog | number, container?: HTMLUListElement, drawStatus = true, rippleEnabled = true, onlyFirstName = false) {
+  public addDialog(_dialog: Dialog | number, container?: HTMLUListElement | Scrollable, drawStatus = true, rippleEnabled = true, onlyFirstName = false) {
     let dialog: Dialog;
     
     if(typeof(_dialog) === 'number') {

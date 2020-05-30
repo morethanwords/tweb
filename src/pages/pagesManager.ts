@@ -23,12 +23,8 @@ class PagesManager {
 
       this.selectTab(id);
 
-      // это нужно чтобы ресайзнуть канвас (из-за скрытого рендера будет 0х0)
-      if(this.pageID != -1) {
-        lottieLoader.loadLottie().then(() => {
-          // @ts-ignore
-          lottieLoader.lottie.resize();
-        });
+      if(this.pageID != -1 && id > 1) {
+        lottieLoader.loadLottieWorkers();
       }
 
       this.pageID = id;

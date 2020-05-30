@@ -3,14 +3,14 @@ import pageIm from './pageIm';
 //import apiManager from '../lib/mtproto/apiManager';
 import { putPreloader } from '../components/misc';
 
-import LottieLoader from '../lib/lottieLoader';
+import LottieLoader, { RLottiePlayer } from '../lib/lottieLoader';
 //import passwordManager from '../lib/mtproto/passwordManager';
 import apiManager from '../lib/mtproto/mtprotoworker';
 import Page from './page';
 
 let onFirstMount = (): Promise<any> => {
   let needFrame = 0;
-  let animation: /* AnimationItem */any = undefined;
+  let animation: RLottiePlayer;
 
   let passwordVisible = false;
 
@@ -91,29 +91,29 @@ let onFirstMount = (): Promise<any> => {
     
   }); */
   return Promise.all([
-    LottieLoader.loadLottie(),
+    LottieLoader.loadLottieWorkers(),
 
     fetch('assets/img/TwoFactorSetupMonkeyClose.tgs')
     .then(res => res.arrayBuffer())
     .then(data => apiManager.gzipUncompress<string>(data, true))
-    .then(str => LottieLoader.loadAnimation({
+    .then(str => LottieLoader.loadAnimationWorker({
       container: page.pageEl.querySelector('.auth-image'),
-      renderer: 'svg',
       loop: false,
       autoplay: false,
-      animationData: JSON.parse(str)
+      animationData: JSON.parse(str),
+      width: 166,
+      height: 166
     }))
     .then(_animation => {
       animation = _animation;
-      animation.addEventListener('enterFrame', (e: any) => {
+      animation.addListener('enterFrame', currentFrame => {
         //console.log('enterFrame', e, needFrame);
-        let currentFrame = Math.round(e.currentTime);
-        
-        if((e.direction == 1 && currentFrame >= needFrame) ||
-          (e.direction == -1 && currentFrame <= needFrame)) {
+
+        if((animation.direction == 1 && currentFrame >= needFrame) ||
+          (animation.direction == -1 && currentFrame <= needFrame)) {
             animation.setSpeed(1);
             animation.pause();
-          } 
+        } 
       });
   
       needFrame = 49;

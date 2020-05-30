@@ -341,10 +341,10 @@ export function formatPhoneNumber(str: string) {
   return {formatted: str, country};
 }
 
-export function parseMenuButtonsTo(to: {[name: string]: HTMLButtonElement}, elements: HTMLCollection) {
+export function parseMenuButtonsTo(to: {[name: string]: HTMLElement}, elements: HTMLCollection | NodeListOf<HTMLElement>) {
   Array.from(elements).forEach(el => {
-    let name = el.className.match(/ menu-(.+?) /)[1];
-    to[name] = el as HTMLButtonElement;
+    let name = el.className.match(/(?:^|\s)menu-(.+?)(?:$|\s)/)[1];
+    to[name] = el as HTMLElement;
   });
 }
 

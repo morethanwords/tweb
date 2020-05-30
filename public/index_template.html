@@ -197,43 +197,32 @@
         <path id="poll-line" d="M4.47,5.33v13.6c0,4.97,4.03,9,9,9h458.16"/>
       </defs>
     </svg>
-    <div class="overlays">
-      <div class="media-viewer">
-        <div class="media-viewer-author">
-          <avatar-element class="media-viewer-userpic"></avatar-element>
-          <div class="media-viewer-name"></div>
-          <div class="media-viewer-date"></div>
-        </div>
-        <div class="media-viewer-buttons">
-          <div class="media-viewer-delete-button btn-icon tgico-delete rp rps"></div>
-          <div class="media-viewer-forward-button btn-icon tgico-forward rp rps"></div>
-          <div class="media-viewer-download-button btn-icon tgico-download rp rps"></div>
-          <div class="media-viewer-close-button btn-icon tgico-close rp rps"></div>
-        </div>
-        <div class="media-viewer-content">
-          <div class="media-viewer-stub"></div>
-          <div class="media-viewer-container">
-            <div class="media-viewer-switcher-left">
-              <span class="tgico-down media-viewer-prev-button"></span>
-            </div>
-            <div class="media-viewer-switcher-right">
-              <span class="tgico-down media-viewer-next-button"></span>
-            </div>
-            <div class="media-viewer-media"></div>
+    <div class="media-viewer-whole">
+      <div class="overlays">
+        <div class="media-viewer">
+          <div class="media-viewer-author">
+            <avatar-element class="media-viewer-userpic"></avatar-element>
+            <div class="media-viewer-name"></div>
+            <div class="media-viewer-date"></div>
           </div>
-          <div class="media-viewer-caption"></div>
+          <div class="media-viewer-buttons">
+            <div class="btn-icon tgico-delete menu-delete rp"></div>
+            <div class="btn-icon tgico-forward menu-forward rp"></div>
+            <div class="btn-icon tgico-download menu-download rp"></div>
+            <div class="btn-icon tgico-close menu-close rp"></div>
+          </div>
+          <div class="media-viewer-content">
+            <div class="media-viewer-stub"></div>
+            <div class="media-viewer-container">
+              <div class="media-viewer-media"></div>
+            </div>
+            <div class="media-viewer-caption"></div>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="media-viewer-mover" style="display: none;"></div>
-    <div class="popup popup-delete-message">
-      <div class="popup-container z-depth-1">
-        <div class="popup-header">Do you want to delete this message?</div>
-        <div class="popup-buttons">
-          <button class="btn popup-delete-both danger rp"></button>
-          <button class="btn popup-delete-me danger rp"></button>
-          <button class="btn popup-close rp">CANCEL</button>
-        </div>
+      <div class="media-viewer-switchers">
+        <div class="media-viewer-switcher-left menu-prev"><span class="tgico-down media-viewer-prev-button"></span></div>
+        <div class="media-viewer-switcher-right menu-next"><span class="tgico-down media-viewer-next-button"></span></div>
       </div>
     </div>
     <div class="popup popup-send-photo">

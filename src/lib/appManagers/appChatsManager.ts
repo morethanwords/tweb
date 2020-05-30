@@ -1,9 +1,10 @@
-import { $rootScope, isObject, SearchIndexManager, safeReplaceObject, copy, numberWithCommas } from "../utils";
+import { $rootScope, isObject, safeReplaceObject, copy, numberWithCommas } from "../utils";
 import { RichTextProcessor } from "../richtextprocessor";
 import appUsersManager from "./appUsersManager";
 import apiManager from '../mtproto/mtprotoworker';
 import apiUpdatesManager from "./apiUpdatesManager";
 import appProfileManager from "./appProfileManager";
+import searchIndexManager from "../searchIndexManager";
 
 type Channel = {
   _: 'channel',
@@ -72,7 +73,7 @@ export class AppChatsManager {
 
     let oldChat = this.chats[apiChat.id];
 
-    let titleWords = SearchIndexManager.cleanSearchText(apiChat.title || '', false).split(' ');
+    let titleWords = searchIndexManager.cleanSearchText(apiChat.title || '', false).split(' ');
     let firstWord = titleWords.shift();
     let lastWord = titleWords.pop();
     apiChat.initials = firstWord.charAt(0) + (lastWord ? lastWord.charAt(0) : '');
@@ -95,7 +96,7 @@ export class AppChatsManager {
     }
 
     if(apiChat.username) {
-      let searchUsername = SearchIndexManager.cleanUsername(apiChat.username);
+      let searchUsername = searchIndexManager.cleanUsername(apiChat.username);
       this.usernames[searchUsername] = apiChat.id;
     }
 
@@ -297,10 +298,10 @@ export class AppChatsManager {
   }
 
   public getChatMembersString(id: number) {
-    let chat = this.getChat(id);
+    const chat = this.getChat(id);
 
-    let isChannel = this.isChannel(id) && !this.isMegagroup(id);
-    let participants_count = chat.participants_count || chat.participants.participants.length;
+    const isChannel = this.isBroadcast(id);
+    const participants_count = chat.participants_count || chat.participants?.participants.length || 0;
     return numberWithCommas(participants_count) + ' ' + (isChannel ? 'subscribers' : 'members');
   }
 

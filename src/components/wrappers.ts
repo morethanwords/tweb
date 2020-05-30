@@ -697,7 +697,8 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
   let stickerType = doc.sticker;
 
   if(stickerType == 2 && !LottieLoader.loaded) {
-    LottieLoader.loadLottie();
+    //LottieLoader.loadLottie();
+    LottieLoader.loadLottieWorkers();
   }
   
   if(!stickerType) {
@@ -759,7 +760,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
         div.append(img);
       }
 
-      lazyLoadQueue && !downloaded ? lazyLoadQueue.push({div, load}) : load();
+      lazyLoadQueue && !downloaded ? lazyLoadQueue.push({div, load, wasSeen: group == 'chat'}) : load();
     }
   }
 
@@ -779,7 +780,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
   
   let downloaded = doc.downloaded;
   let load = () => appDocsManager.downloadDoc(doc.id).then(blob => {
-    //console.log('loaded sticker:', blob, div);
+    //console.log('loaded sticker:', doc, div);
     if(middleware && !middleware()) return;
 
     //return;
@@ -796,21 +797,26 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
 
         //console.timeEnd('decompress sticker' + doc.id);
 
-        let animation = await LottieLoader.loadAnimation({
+        /* if(doc.id == '1860749763008266301') {
+          console.log('loaded sticker:', doc, div);
+        } */
+
+        let animation = await LottieLoader.loadAnimationWorker/* loadAnimation */({
           container: div,
-          loop: false,
-          autoplay: false,
-          animationData: JSON.parse(json),
-          renderer: 'svg'
+          loop: !emoji,
+          autoplay: true,
+          animationData: JSON.parse(json)
         }, group, toneIndex);
+
+        animation.addListener('ready', () => {
+          if(div.firstElementChild && div.firstElementChild.tagName == 'IMG') {
+            div.firstElementChild.remove();
+          }
+        });
 
         //console.timeEnd('render sticker' + doc.id);
 
-        if(div.firstElementChild && div.firstElementChild.tagName == 'IMG') {
-          div.firstElementChild.remove();
-        }
-        
-        div.addEventListener('mouseover', (e) => {
+        /* div.addEventListener('mouseover', (e) => {
           let animation = LottieLoader.getAnimation(div, group);
           
           if(animation) {
@@ -833,9 +839,9 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
           }
         });
         
-        if(play) {
+        if(play && false) {
           animation.play();
-        }
+        } */
       });
       
       reader.readAsArrayBuffer(blob);
@@ -862,7 +868,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
     }
   });
   
-  return lazyLoadQueue && (!doc.downloaded || stickerType == 2) ? (lazyLoadQueue.push({div, load, wasSeen: group == 'chat'}), Promise.resolve()) : load();
+  return lazyLoadQueue && (!doc.downloaded || stickerType == 2) ? (lazyLoadQueue.push({div, load, wasSeen: group == 'chat' && stickerType != 2}), Promise.resolve()) : load();
 }
 
 export function wrapReply(title: string, subtitle: string, message?: any) {

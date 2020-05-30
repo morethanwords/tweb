@@ -4,18 +4,15 @@ let convert = (value: number) => {
 	return Math.round(Math.min(Math.max(value, 0), 1) * 255);
 };
 
-type RLottiePlayerListeners = 'enterFrame' | 'ready';
+type RLottiePlayerListeners = 'firstFrame' | 'enterFrame';
 
 export class RLottiePlayer {
   public static reqId = 0;
 
   public reqId = 0;
   public curFrame: number;
-  public frameCount: number;
-  public fps: number;
-
   public worker: QueryableWorker;
-  
+  public el: HTMLElement;
   public width: number;
   public height: number;
 
@@ -26,21 +23,13 @@ export class RLottiePlayer {
     [k in RLottiePlayerListeners]: any
   }> = {};
 
-  public el: HTMLElement;
   public canvas: HTMLCanvasElement;
   public context: CanvasRenderingContext2D;
 
-  public paused = true;
+  public paused = false;
   public direction = 1;
   public speed = 1;
   public autoplay = true;
-  public loop = true;
-
-  private frInterval: number;
-  private frThen: number;
-  private rafId: number;
-
-  private playedTimes = 0;
 
   constructor({el, width, height, worker}: {
     el: HTMLElement,
@@ -53,11 +42,6 @@ export class RLottiePlayer {
     this.width = width;
     this.height = height;
     this.worker = worker;
-
-    this.canvas = document.createElement('canvas');
-    this.canvas.width = this.width;
-    this.canvas.height = this.height;
-    this.context = this.canvas.getContext('2d');
   }
 
   public addListener(name: RLottiePlayerListeners, callback: (res?: any) => void) {
@@ -72,7 +56,7 @@ export class RLottiePlayer {
     }
   }
 
-  public sendQuery(methodName: string, ...args: any[]) {
+  private sendQuery(methodName: string, ...args: any[]) {
     this.worker.sendQuery(methodName, this.reqId, ...args);
   }
 
@@ -85,118 +69,58 @@ export class RLottiePlayer {
   }
 
   public play() {
-    if(!this.paused) return;
-
+    this.sendQuery('play');
     this.paused = false;
-    this.setMainLoop();
   }
 
   public pause() {
-    if(this.paused) return;
-
+    this.sendQuery('pause');
     this.paused = true;
-    window.cancelAnimationFrame(this.rafId);
   }
 
   public stop() {
-    this.pause();
-
-    this.curFrame = this.direction == 1 ? 0 : this.frameCount;
-    this.sendQuery('renderFrame', this.curFrame);
+    this.sendQuery('stop');
+    this.paused = true;
   }
 
   public restart() {
-    this.stop();
-    this.play();
+    this.sendQuery('restart');
   }
 
   public setSpeed(speed: number) {
-    this.speed = speed;
-
-    if(!this.paused) {
-      this.setMainLoop();
-    }
+    this.sendQuery('setSpeed', speed);
   }
 
   public setDirection(direction: number) {
     this.direction = direction;
-    
-    if(!this.paused) {
-      this.setMainLoop();
-    }
+    this.sendQuery('setDirection', direction);
   }
 
   public destroy() {
     lottieLoader.onDestroy(this.reqId);
-    this.pause();
     this.sendQuery('destroy');
   }
 
+  private attachPlayer() {
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = this.width;
+    this.canvas.height = this.height;
+
+    //this.el.appendChild(this.canvas);
+    this.context = this.canvas.getContext('2d');
+  }
+
   public renderFrame(frame: Uint8ClampedArray, frameNo: number) {
+    if(!this.listenerResults.hasOwnProperty('firstFrame')) {
+      this.attachPlayer();
+      this.el.appendChild(this.canvas);
+      
+      this.setListenerResult('firstFrame');
+    }
+
     this.context.putImageData(new ImageData(frame, this.width, this.height), 0, 0);
     this.setListenerResult('enterFrame', frameNo);
   }
-
-  private mainLoop(method: RLottiePlayer['mainLoopForwards'] | RLottiePlayer['mainLoopBackwards']) {
-    let r = () => {
-      if(this.paused) {
-        return;
-      }
-
-      const now = Date.now(), delta = now - this.frThen;
-      if(delta > this.frInterval) {
-        this.frThen = now - (delta % this.frInterval);
-        
-        const canContinue = method();
-        if(!canContinue && !this.loop && this.autoplay) {
-          this.autoplay = false;
-        }
-      }
-
-      this.rafId = window.requestAnimationFrame(r);
-    };
-
-    //this.rafId = window.requestAnimationFrame(r);
-    r();
-  }
-
-  private mainLoopForwards() {
-    this.sendQuery('renderFrame', this.curFrame++);
-    if(this.curFrame >= this.frameCount) {
-      this.playedTimes++;
-
-      if(!this.loop) return false;
-
-      this.curFrame = 0;
-    }
-
-    return true;
-  };
-  
-  private mainLoopBackwards() {
-    this.sendQuery('renderFrame', this.curFrame--);
-    if(this.curFrame < 0) {
-      this.playedTimes++;
-
-      if(!this.loop) return false;
-
-      this.curFrame = this.frameCount - 1;
-    }
-
-    return true;
-  };
-
-  public setMainLoop() {
-    window.cancelAnimationFrame(this.rafId);
-
-    this.frInterval = 1000 / this.fps / this.speed;
-    this.frThen = Date.now();
-
-    //console.trace('setMainLoop', this.frInterval, this.direction, this);
-  
-    const method = (this.direction == 1 ? this.mainLoopForwards : this.mainLoopBackwards).bind(this);
-    this.mainLoop(method);
-  };
 }
 
 class QueryableWorker {
@@ -300,10 +224,16 @@ class LottieLoader {
           if(player) {
             if(entry.isIntersecting) {
               this.visible.add(player);
-              this.checkAnimation(player, false);
+
+              if(player.paused) {
+                player.play();
+              }
             } else {
               this.visible.delete(player);
-              this.checkAnimation(player, true);
+
+              if(!player.paused) {
+                player.pause();
+              }
             }
 
             break;
@@ -317,7 +247,6 @@ class LottieLoader {
     if(this.loadPromise) return this.loadPromise;
 
     const onFrame = this.onFrame.bind(this);
-    const onPlayerLoaded = this.onPlayerLoaded.bind(this);
 
     return this.loadPromise = new Promise((resolve, reject) => {
       let remain = this.workersLimit;
@@ -328,7 +257,6 @@ class LottieLoader {
           console.log('worker #' + i + ' ready');
 
           worker.addListener('frame', onFrame);
-          worker.addListener('loaded', onPlayerLoaded);
 
           --remain;
           if(!remain) {
@@ -383,10 +311,11 @@ class LottieLoader {
     autoplay?: boolean, 
     animationData: any, 
     loop?: boolean, 
+    renderer?: string,
     width?: number,
     height?: number
   }, group = '', toneIndex = -1) {
-    params.autoplay = true;
+    //params.autoplay = false;
 
     if(toneIndex >= 1 && toneIndex <= 5) {
       this.applyReplacements(params.animationData, toneIndex);
@@ -395,6 +324,8 @@ class LottieLoader {
     if(!this.loaded) {
       await this.loadLottieWorkers();
     }
+
+    this.observer.observe(params.container);
 
     const width = params.width || parseInt(params.container.style.width);
     const height = params.height || parseInt(params.container.style.height);
@@ -425,9 +356,39 @@ class LottieLoader {
     for(const group of groups) {
       const animations = this.byGroups[group];
 
-      animations.forEach(player => {
-        this.checkAnimation(player, blurred, destroy);
+      const length = animations.length;
+      for(let i = length - 1; i >= 0; --i) {
+        const player = animations[i];
 
+        if(destroy || (!isInDOM(player.el) && player.listenerResults.hasOwnProperty('firstFrame'))) {
+          //console.log('destroy animation');
+          player.destroy();
+          continue;
+        }
+
+        if(blurred) {
+          if(!player.paused) {
+            this.debug && console.log('pause animation', player);
+            player.pause();
+          }
+        } else if(player.paused && this.visible.has(player)) {
+          this.debug && console.log('play animation', player);
+          player.play();
+        }
+
+        /* if(canvas) {
+          let c = container.firstElementChild as HTMLCanvasElement;
+          if(!c) {
+            console.warn('no canvas element for check!', container, animations[i]);
+            continue;
+          }
+          
+          if(!c.height && !c.width && isElementInViewport(container)) {
+            //console.log('lottie need resize');
+            animation.resize();
+          }
+        } */
+  
         //if(!autoplay) continue;
         
         /* if(blurred || !isElementInViewport(container)) {
@@ -441,47 +402,11 @@ class LottieLoader {
           animation.play();
           animations[i].paused = false;
         } */
-      });
-    }
-  }
-
-  public checkAnimation(player: RLottiePlayer, blurred = false, destroy = false) {
-    if(destroy || (!isInDOM(player.el) && player.listenerResults.hasOwnProperty('ready'))) {
-      //console.log('destroy animation');
-      player.destroy();
-      return;
-    }
-
-    if(blurred) {
-      if(!player.paused) {
-        this.debug && console.log('pause animation', player);
-        player.pause();
       }
-    } else if(player.paused && this.visible.has(player) && player.autoplay) {
-      this.debug && console.log('play animation', player);
-      player.play();
     }
   }
 
-  private onPlayerLoaded(reqId: number, frameCount: number, fps: number) {
-    const rlPlayer = this.players[reqId];
-    if(!rlPlayer) {
-      this.debug && console.warn('onPlayerLoaded on destroyed player:', reqId, frameCount);
-      return;
-    }
-
-    rlPlayer.el.appendChild(rlPlayer.canvas);
-    
-    rlPlayer.curFrame = rlPlayer.direction == 1 ? 0 : frameCount - 1;
-    rlPlayer.frameCount = frameCount;
-    rlPlayer.fps = fps;
-    rlPlayer.sendQuery('renderFrame', 0);
-    rlPlayer.setListenerResult('ready');
-
-    this.observer.observe(rlPlayer.el);
-  }
-
-  private onFrame(reqId: number, frameNo: number, frame: Uint8ClampedArray) {
+  private onFrame(reqId: number, frameNo: number, frame: Uint8ClampedArray, width: number, height: number) {
     const rlPlayer = this.players[reqId];
     if(!rlPlayer) {
       this.debug && console.warn('onFrame on destroyed player:', reqId, frameNo);

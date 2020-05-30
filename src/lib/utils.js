@@ -9,18 +9,6 @@ export function dT () {
   return '[' + ((Date.now() - _logTimer) / 1000).toFixed(3) + ']';
 }
 
-export function checkClick(e, noprevent) {
-  if(e.which == 1 && (e.ctrlKey || e.metaKey) || e.which == 2) {
-    return true;
-  }
-
-  if(!noprevent) {
-    e.preventDefault();
-  }
-
-  return false;
-}
-
 export function isInDOM(element, parentNode) {
   if(!element) {
     return false;
@@ -62,60 +50,6 @@ export function cancelEvent (event) {
   return false;
 }
 
-export function setFieldSelection (field, from, to) {
-  field = $(field)[0]
-  try {
-    field.focus()
-    if (from === undefined || from === false) {
-      from = field.value.length
-    }
-    if (to === undefined || to === false) {
-      to = from
-    }
-    if (field.createTextRange) {
-      var range = field.createTextRange()
-      range.collapse(true)
-      range.moveEnd('character', to)
-      range.moveStart('character', from)
-      range.select()
-    }
-    else if (field.setSelectionRange) {
-      field.setSelectionRange(from, to)
-    }
-  } catch(e) {}
-}
-
-export function getFieldSelection (field) {
-  if (field.selectionStart) {
-    return field.selectionStart
-  }
-  else if (!document.selection) {
-    return 0
-  }
-
-  var c = '\x01'
-  var sel = document.selection.createRange()
-  var txt = sel.text
-  var dup = sel.duplicate()
-  var len = 0
-
-  try {
-    dup.moveToElementText(field)
-  } catch(e) {
-    return 0
-  }
-
-  sel.text = txt + c
-  len = dup.text.indexOf(c)
-  sel.moveStart('character', -1)
-  sel.text = ''
-
-  // if (browser.msie && len == -1) {
-  //   return field.value.length
-  // }
-  return len
-}
-
 export function getRichValue (field) {
   if (!field) {
     return ''
@@ -150,42 +84,6 @@ export function placeCaretAtEnd(el) {
       textRange.collapse(false);
       textRange.select();
   }
-}
-
-export function getRichValueWithCaret (field) {
-  if (!field) {
-    return []
-  }
-  var lines = []
-  var line = []
-
-  var sel = window.getSelection ? window.getSelection() : false
-  var selNode
-  var selOffset
-  if (sel && sel.rangeCount) {
-    var range = sel.getRangeAt(0)
-    /* if (range.startContainer &&
-      range.startContainer == range.endContainer &&
-      range.startOffset == range.endOffset) { */
-      selNode = range.startContainer
-      selOffset = range.startOffset
-    //}
-  }
-
-  getRichElementValue(field, lines, line, selNode, selOffset)
-
-  if (line.length) {
-    lines.push(line.join(''))
-  }
-
-  var value = lines.join('\n')
-  var caretPos = value.indexOf('\x01')
-  if (caretPos != -1) {
-    value = value.substr(0, caretPos) + value.substr(caretPos + 1)
-  }
-  value = value.replace(/\u00A0/g, ' ')
-
-  return [value, caretPos]
 }
 
 export function getRichElementValue (node, lines, line, selNode, selOffset) {
@@ -228,50 +126,6 @@ export function getRichElementValue (node, lines, line, selNode, selOffset) {
     lines.push(line.join(''))
     line.splice(0, line.length)
   }
-}
-
-export function setRichFocus (field, selectNode, noCollapse) {
-  field.focus()
-  if (selectNode &&
-    selectNode.parentNode == field &&
-    !selectNode.nextSibling &&
-    !noCollapse) {
-    field.removeChild(selectNode)
-    selectNode = null
-  }
-  if (window.getSelection && document.createRange) {
-    var range = document.createRange()
-    if (selectNode) {
-      range.selectNode(selectNode)
-    } else {
-      range.selectNodeContents(field)
-    }
-    if (!noCollapse) {
-      range.collapse(false)
-    }
-
-    var sel = window.getSelection()
-    sel.removeAllRanges()
-    sel.addRange(range)
-  }
-  else if (document.body.createTextRange !== undefined) {
-    var textRange = document.body.createTextRange()
-    textRange.moveToElementText(selectNode || field)
-    if (!noCollapse) {
-      textRange.collapse(false)
-    }
-    textRange.select()
-  }
-}
-
-export function getSelectedText() {
-  var sel = (
-  window.getSelection && window.getSelection() ||
-  document.getSelection && document.getSelection() ||
-  document.selection && document.selection.createRange().text || ''
-    ).toString().replace(/^\s+|\s+$/g, '')
-
-  return sel
 }
 
 /* if (Config.Modes.animations &&
@@ -528,20 +382,6 @@ export function listMergeSorted (list1, list2) {
   return result
 }
 
-export function listUniqSorted (list) {
-  list = list || []
-  var resultList = []
-  var prev = false
-  for (var i = 0; i < list.length; i++) {
-    if (list[i] !== prev) {
-      resultList.push(list[i])
-    }
-    prev = list[i]
-  }
-
-  return resultList
-}
-
 // credits to https://github.com/sindresorhus/escape-string-regexp/blob/master/index.js
 export function escapeRegExp(str) {
   return str
@@ -657,119 +497,3 @@ export function getEmojiToneIndex(input) {
   let match = input.match(/[\uDFFB-\uDFFF]/);
   return match ? 5 - (57343 - match[0].charCodeAt(0)) : 0;
 }
-
-  //var badCharsRe = /[`~!@#$%^&*()\-_=+\[\]\\|{}'";:\/?.>,<\s]+/g,
-  var badCharsRe = /[`~!@#$%^&*()\-_=+\[\]\\|{}'";:\/?.>,<]+/g,
-    trimRe = /^\s+|\s$/g
-
-  function createIndex () {
-    return {
-      shortIndexes: {},
-      fullTexts: {}
-    }
-  }
-
-  function cleanSearchText(text, latinize = true) {
-    var hasTag = text.charAt(0) == '%';
-    text = text.replace(badCharsRe, '').replace(trimRe, '');
-    if(latinize) {
-      text = text.replace(/[^A-Za-z0-9]/g, (ch) => {
-        var latinizeCh = Config.LatinizeMap[ch];
-        return latinizeCh !== undefined ? latinizeCh : ch;
-      });
-    }
-    
-    text = text.toLowerCase();
-    if(hasTag) {
-      text = '%' + text;
-    }
-
-    return text;
-  }
-
-  function cleanUsername(username) {
-    return username && username.toLowerCase() || '';
-  }
-
-  function indexObject(id, searchText, searchIndex) {
-    if(searchIndex.fullTexts[id] !== undefined) {
-      return false;
-    }
-
-    searchText = cleanSearchText(searchText);
-
-    if(!searchText.length) {
-      return false;
-    }
-
-    var shortIndexes = searchIndex.shortIndexes;
-
-    searchIndex.fullTexts[id] = searchText;
-
-    searchText.split(' ').forEach((searchWord) => {
-      var len = Math.min(searchWord.length, 3),
-        wordPart, i;
-      for(i = 1; i <= len; i++) {
-        wordPart = searchWord.substr(0, i);
-        if(shortIndexes[wordPart] === undefined) {
-          shortIndexes[wordPart] = [id];
-        } else {
-          shortIndexes[wordPart].push(id);
-        }
-      }
-    });
-  }
-
-  function search(query, searchIndex) {
-    var shortIndexes = searchIndex.shortIndexes;
-    var fullTexts = searchIndex.fullTexts;
-
-    query = cleanSearchText(query);
-
-    var queryWords = query.split(' ');
-    var foundObjs = false,
-      newFoundObjs, i;
-    var j, searchText;
-    var found;
-
-    for(i = 0; i < queryWords.length; i++) {
-      newFoundObjs = shortIndexes[queryWords[i].substr(0, 3)];
-      if(!newFoundObjs) {
-        foundObjs = [];
-        break;
-      }
-      if(foundObjs === false || foundObjs.length > newFoundObjs.length) {
-        foundObjs = newFoundObjs;
-      }
-    }
-
-    newFoundObjs = {};
-
-    for(j = 0; j < foundObjs.length; j++) {
-      found = true;
-      searchText = fullTexts[foundObjs[j]];
-      for(i = 0; i < queryWords.length; i++) {
-        if(searchText.indexOf(queryWords[i]) == -1) {
-          found = false;
-          break;
-        }
-      }
-      if(found) {
-        newFoundObjs[foundObjs[j]] = true;
-      }
-    }
-
-    return newFoundObjs;
-  }
-
-  let SearchIndexManager = {
-    createIndex: createIndex,
-    indexObject: indexObject,
-    cleanSearchText: cleanSearchText,
-    cleanUsername: cleanUsername,
-    search: search
-  };
-  //window.SearchIndexManager = SearchIndexManager;
-
-  export {SearchIndexManager};
-//})(window)

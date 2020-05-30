@@ -1,5 +1,5 @@
 import Scrollable from "./scrollable_new";
-import appMessagesManager from "../lib/appManagers/appMessagesManager";
+import appMessagesManager, { Dialog } from "../lib/appManagers/appMessagesManager";
 import { $rootScope, cancelEvent, findUpTag, findUpClassName } from "../lib/utils";
 import appDialogsManager from "../lib/appManagers/appDialogsManager";
 import appChatsManager from "../lib/appManagers/appChatsManager";
@@ -24,7 +24,7 @@ export class AppSelectPeers {
   private myID = $rootScope.myID;
 
   private offsetIndex = 0;
-  private promise: Promise<number[]>;
+  private promise: Promise<any>;
 
   private query = '';
   private cachedContacts: number[];
@@ -47,6 +47,7 @@ export class AppSelectPeers {
     this.chatsContainer.classList.add('chats-container');
     this.chatsContainer.append(this.list);
     this.scrollable = new Scrollable(this.chatsContainer);
+    this.scrollable.setVirtualContainer(this.list);
 
     this.list.addEventListener('click', (e) => {
       let target = e.target as HTMLElement;
@@ -89,9 +90,11 @@ export class AppSelectPeers {
       if(this.query != value) {
         if(this.peerType == 'contacts') {
           this.cachedContacts = null;
-          this.promise = null;
+        } else {
+          this.offsetIndex = 0;
         }
 
+        this.promise = null;
         this.list.innerHTML = '';
         this.query = value;
         
@@ -115,26 +118,35 @@ export class AppSelectPeers {
     }
   }
 
-  private getMoreDialogs() {
+  private async getMoreDialogs() {
+    if(this.promise) return this.promise;
+    
     // в десктопе - сначала без группы, потом архивные, потом контакты без сообщений
-    let pageCount = appPhotosManager.windowH / 72 * 1.25 | 0;
-    return appMessagesManager.getConversations(this.offsetIndex, pageCount, 0).then(value => {
-      let dialogs = value.dialogs;
-      
-      let newOffsetIndex = dialogs[value.dialogs.length - 1].index || 0;
+    const pageCount = appPhotosManager.windowH / 72 * 1.25 | 0;
 
-      dialogs = dialogs.filter(d => d.peerID != this.myID);
-      if(!this.offsetIndex) {
-        dialogs.unshift({
-          peerID: this.myID,
-          pFlags: {}
-        } as any);
-      }
+    this.promise = appMessagesManager.getConversations(this.query, this.offsetIndex, pageCount, 0);
+    const value = await this.promise;
 
-      this.offsetIndex = newOffsetIndex;
+    let dialogs = value.dialogs as Dialog[];
+    if(!dialogs.length) {
+      return;
+    }
+    
+    const newOffsetIndex = dialogs[dialogs.length - 1].index || 0;
 
-      this.renderResults(dialogs.map(dialog => dialog.peerID));
-    });
+    dialogs = dialogs.filter(d => d.peerID != this.myID);
+    if(!this.offsetIndex) {
+      dialogs.unshift({
+        peerID: this.myID,
+        pFlags: {}
+      } as any);
+    }
+
+    this.offsetIndex = newOffsetIndex;
+
+    this.renderResults(dialogs.map(dialog => dialog.peerID));
+
+    this.promise = null;
   }
 
   private async getMoreContacts() {
@@ -148,8 +160,8 @@ export class AppSelectPeers {
     }
 
     if(this.cachedContacts.length) {
-      let pageCount = appPhotosManager.windowH / 72 * 1.25 | 0;
-      let arr = this.cachedContacts.splice(0, pageCount);
+      const pageCount = appPhotosManager.windowH / 72 * 1.25 | 0;
+      const arr = this.cachedContacts.splice(0, pageCount);
       this.renderResults(arr);
     }
   }
@@ -163,8 +175,9 @@ export class AppSelectPeers {
   }
 
   private renderResults(peerIDs: number[]) {
+    console.log('will renderResults:', peerIDs);
     peerIDs.forEach(peerID => {
-      let {dom} = appDialogsManager.addDialog(peerID, this.list, false, false);
+      const {dom} = appDialogsManager.addDialog(peerID, this.scrollable, false, false);
       dom.containerEl.insertAdjacentHTML('afterbegin', '<div class="checkbox"><label><input type="checkbox"><span></span></label></div>');
 
       let subtitle = '';
@@ -184,14 +197,14 @@ export class AppSelectPeers {
   }
 
   private add(peerID: number) {
-    let div = document.createElement('div');
+    const div = document.createElement('div');
     div.classList.add('selector-user', 'scale-in');
     div.dataset.peerID = '' + peerID;
     this.selected[peerID] = div;
     
-    let title = appPeersManager.getPeerTitle(peerID, false, true);
+    const title = appPeersManager.getPeerTitle(peerID, false, true);
 
-    let avatarEl = document.createElement('avatar-element');
+    const avatarEl = document.createElement('avatar-element');
     avatarEl.classList.add('selector-user-avatar', 'tgico');
     avatarEl.setAttribute('dialog', '1');
     avatarEl.setAttribute('peer', '' + peerID);
@@ -205,7 +218,7 @@ export class AppSelectPeers {
   }
 
   private remove(peerID: number) {
-    let div = this.selected[peerID];
+    const div = this.selected[peerID];
     div.classList.remove('scale-in');
     void div.offsetWidth;
     div.classList.add('scale-out');

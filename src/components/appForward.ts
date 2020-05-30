@@ -4,7 +4,7 @@ import { putPreloader } from "./misc";
 import { AppSelectPeers } from "./appSelectPeers";
 
 class AppForward {
-  private container = document.getElementById('forward-container') as HTMLDivElement;
+  public container = document.getElementById('forward-container') as HTMLDivElement;
   private closeBtn = this.container.querySelector('.sidebar-close-button') as HTMLButtonElement;
   private sendBtn = this.container.querySelector('.btn-circle') as HTMLButtonElement;
 
@@ -12,10 +12,7 @@ class AppForward {
   private msgIDs: number[] = [];
 
   constructor() {
-    this.closeBtn.addEventListener('click', () => {
-      this.cleanup();
-      this.container.classList.remove('active');
-    });
+    this.closeBtn.addEventListener('click', this.close.bind(this));
 
     this.sendBtn.addEventListener('click', () => {
       let peerIDs = this.selector.getSelected();
@@ -43,6 +40,11 @@ class AppForward {
         s();
       }
     });
+  }
+
+  public close() {
+    this.cleanup();
+    this.container.classList.remove('active');
   }
 
   public cleanup() {

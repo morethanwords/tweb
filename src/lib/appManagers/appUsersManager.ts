@@ -1,10 +1,11 @@
-import { SearchIndexManager, safeReplaceObject, isObject, tsNow, copy, $rootScope } from "../utils";
+import { safeReplaceObject, isObject, tsNow, copy, $rootScope } from "../utils";
 import { RichTextProcessor } from "../richtextprocessor";
 import appChatsManager from "./appChatsManager";
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
 import serverTimeManager from "../mtproto/serverTimeManager";
 import { formatPhoneNumber } from "../../components/misc";
+import searchIndexManager from "../searchIndexManager";
 
 export type User = {
   _: 'user',
@@ -39,7 +40,7 @@ export class AppUsersManager {
   public usernames: {[username: string]: number} = {};
   public userAccess: {[userID: number]: string} = {};
   public cachedPhotoLocations: any = {};
-  public contactsIndex = SearchIndexManager.createIndex();
+  public contactsIndex = searchIndexManager.createIndex();
   public contactsFillPromise: Promise<number[]>;
   public contactsList: number[];
   public myID: number;
@@ -118,14 +119,14 @@ export class AppUsersManager {
     return this.contactsFillPromise = apiManager.invokeApi('contacts.getContacts', {
       hash: 0
     }).then((result: any) => {
-      var userID;
+      let userID: number;
       this.contactsList = [];
       this.saveApiUsers(result.users);
 
       result.contacts.forEach((contact: any) => {
         userID = contact.user_id;
         this.contactsList.push(userID);
-        SearchIndexManager.indexObject(userID, this.getUserSearchText(userID), this.contactsIndex);
+        searchIndexManager.indexObject(userID, this.getUserSearchText(userID), this.contactsIndex);
       });
 
       return this.contactsList;
@@ -133,15 +134,12 @@ export class AppUsersManager {
   }
 
   public getUserSearchText(id: number) {
-    var user = this.users[id];
+    const user = this.users[id];
     if(!user) {
-      return false;
-    }
-    var serviceText = '';
-    if(user.pFlags.self) {
-      serviceText = 'user_name_saved_msgs_raw';
+      return '';
     }
 
+    const serviceText = user.pFlags.self ? 'user_name_saved_msgs_raw' : '';
     return (user.first_name || '') +
             ' ' + (user.last_name || '') +
             ' ' + (user.phone || '') +
@@ -152,7 +150,7 @@ export class AppUsersManager {
   public getContacts(query?: string) {
     return this.fillContacts().then(contactsList => {
       if(query) {
-        const results: any = SearchIndexManager.search(query, this.contactsIndex);
+        const results: any = searchIndexManager.search(query, this.contactsIndex);
         const filteredContactsList = contactsList.filter(id => !!results[id]);
 
         contactsList = filteredContactsList;
@@ -219,11 +217,11 @@ export class AppUsersManager {
     }
 
     if(apiUser.username) {
-      var searchUsername = SearchIndexManager.cleanUsername(apiUser.username);
+      var searchUsername = searchIndexManager.cleanUsername(apiUser.username);
       this.usernames[searchUsername] = userID;
     }
 
-    apiUser.sortName = apiUser.pFlags.deleted ? '' : SearchIndexManager.cleanSearchText(apiUser.first_name + ' ' + (apiUser.last_name || ''), false);
+    apiUser.sortName = apiUser.pFlags.deleted ? '' : searchIndexManager.cleanSearchText(apiUser.first_name + ' ' + (apiUser.last_name || ''), false);
 
     var nameWords = apiUser.sortName.split(' ');
     var firstWord = nameWords.shift();
@@ -544,7 +542,7 @@ export class AppUsersManager {
       if(isContact != curIsContact) {
         if(isContact) {
           this.contactsList.push(userID)
-          SearchIndexManager.indexObject(userID, this.getUserSearchText(userID), this.contactsIndex);
+          searchIndexManager.indexObject(userID, this.getUserSearchText(userID), this.contactsIndex);
         } else {
           this.contactsList.splice(curPos, 1);
         }

@@ -148,4 +148,6 @@ class AppPollsManager {
   }
 }
 
-export default new AppPollsManager();
+const appPollsManager = new AppPollsManager();
+(window as any).appPollsManager = appPollsManager;
+export default appPollsManager;

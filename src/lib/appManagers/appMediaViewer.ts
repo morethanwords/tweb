@@ -4,35 +4,27 @@ import appMessagesManager from "./appMessagesManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import { logger } from "../polyfill";
 import ProgressivePreloader from "../../components/preloader";
-import { findUpClassName, $rootScope, generatePathData, fillPropertyValue } from "../utils";
+import { findUpClassName, $rootScope, generatePathData, fillPropertyValue, cancelEvent } from "../utils";
 import appDocsManager from "./appDocsManager";
 import VideoPlayer from "../mediaPlayer";
-import { renderImageFromUrl } from "../../components/misc";
+import { renderImageFromUrl, parseMenuButtonsTo } from "../../components/misc";
 import AvatarElement from "../../components/avatar";
 import LazyLoadQueue from "../../components/lazyLoadQueue";
 import appForward from "../../components/appForward";
 
 export class AppMediaViewer {
-  private overlaysDiv = document.querySelector('.overlays') as HTMLDivElement;
-  private mediaViewerDiv = this.overlaysDiv.firstElementChild as HTMLDivElement;
+  public wholeDiv = document.querySelector('.media-viewer-whole') as HTMLDivElement;
+  private overlaysDiv = this.wholeDiv.firstElementChild as HTMLDivElement;
   private author = {
     avatarEl: this.overlaysDiv.querySelector('.media-viewer-userpic') as AvatarElement,
     nameEl: this.overlaysDiv.querySelector('.media-viewer-name') as HTMLDivElement,
     date: this.overlaysDiv.querySelector('.media-viewer-date') as HTMLDivElement
   };
-  private buttons = {
-    delete: this.overlaysDiv.querySelector('.media-viewer-delete-button') as HTMLDivElement,
-    forward: this.overlaysDiv.querySelector('.media-viewer-forward-button') as HTMLDivElement,
-    download: this.overlaysDiv.querySelector('.media-viewer-download-button') as HTMLDivElement,
-    close: this.overlaysDiv.querySelector('.media-viewer-close-button') as HTMLDivElement,
-    prev: this.overlaysDiv.querySelector('.media-viewer-switcher-left') as HTMLDivElement,
-    next: this.overlaysDiv.querySelector('.media-viewer-switcher-right') as HTMLDivElement,
-  };
-  private content = {
-    container: this.overlaysDiv.querySelector('.media-viewer-media') as HTMLDivElement,
-    caption: this.overlaysDiv.querySelector('.media-viewer-caption') as HTMLDivElement,
-    //mover: this.overlaysDiv.querySelector('.media-viewer-mover') as HTMLDivElement
-    mover: document.querySelector('.media-viewer-mover') as HTMLDivElement
+  public buttons: {[k in 'delete' | 'forward' | 'download' | 'close' | 'prev' | 'next']: HTMLElement} = {} as any;
+  private content: {[k in 'container' | 'caption' | 'mover']: HTMLDivElement} = {
+    container: this.overlaysDiv.querySelector('.media-viewer-media'),
+    caption: this.overlaysDiv.querySelector('.media-viewer-caption'),
+    mover: null
   };
   
   public currentMessageID = 0;
@@ -71,9 +63,12 @@ export class AppMediaViewer {
     this.preloader = new ProgressivePreloader();
     this.lazyLoadQueue = new LazyLoadQueue(5, false);
 
+    parseMenuButtonsTo(this.buttons, this.wholeDiv.querySelectorAll(`[class*='menu']`) as NodeListOf<HTMLElement>);
+
     this.onKeyDownBinded = this.onKeyDown.bind(this);
     
-    this.buttons.close.addEventListener('click', () => {
+    this.buttons.close.addEventListener('click', (e) => {
+      cancelEvent(e);
       //this.overlaysDiv.classList.remove('active');
       this.content.container.innerHTML = '';
       if(this.content.container.firstElementChild) {
@@ -92,10 +87,13 @@ export class AppMediaViewer {
       this.loadedAllMediaUp = this.loadedAllMediaDown = false;
       this.loadMediaPromiseUp = this.loadMediaPromiseDown = null;
 
+      appForward.close();
+
       window.removeEventListener('keydown', this.onKeyDownBinded);
     });
     
-    this.buttons.prev.addEventListener('click', () => {
+    this.buttons.prev.addEventListener('click', (e) => {
+      cancelEvent(e);
       if(this.setMoverPromise) return;
 
       let target = this.prevTargets.pop();
@@ -107,7 +105,8 @@ export class AppMediaViewer {
       }
     });
     
-    this.buttons.next.addEventListener('click', () => {
+    this.buttons.next.addEventListener('click', (e) => {
+      cancelEvent(e);
       if(this.setMoverPromise) return;
 
       let target = this.nextTargets.shift();
@@ -141,6 +140,7 @@ export class AppMediaViewer {
     });
 
     this.onClickBinded = (e: MouseEvent) => {
+      cancelEvent(e);
       let target = e.target as HTMLElement;
 
       let mover: HTMLDivElement = null;
@@ -156,9 +156,10 @@ export class AppMediaViewer {
       }
     };
 
-    this.overlaysDiv.addEventListener('click', this.onClickBinded);
-    this.content.mover.addEventListener('click', this.onClickBinded);
+    this.wholeDiv.addEventListener('click', this.onClickBinded);
+    //this.content.mover.addEventListener('click', this.onClickBinded);
     //this.content.mover.append(this.buttons.prev, this.buttons.next);
+    this.setNewMover();
   }
 
   public onKeyDown(e: KeyboardEvent) {
@@ -176,7 +177,7 @@ export class AppMediaViewer {
 
     if(!closing) {
       mover.innerHTML = '';
-      mover.append(this.buttons.prev, this.buttons.next);
+      //mover.append(this.buttons.prev, this.buttons.next);
     }
 
     let wasActive = fromRight !== 0;
@@ -357,7 +358,7 @@ export class AppMediaViewer {
             mediaElement.src = src;
           }
         });
-      } else if(mediaElement instanceof HTMLVideoElement && mediaElement.firstElementChild && (mediaElement.firstElementChild as HTMLSourceElement).src) {
+      } else if(mediaElement instanceof HTMLVideoElement && mediaElement.firstElementChild && ((mediaElement.firstElementChild as HTMLSourceElement).src || src)) {
         await new Promise((resolve, reject) => {
           mediaElement.addEventListener('loadeddata', resolve);
 
@@ -386,7 +387,7 @@ export class AppMediaViewer {
       }
 
       setTimeout(() => {
-        this.overlaysDiv.classList.remove('active');
+        this.wholeDiv.classList.remove('active');
       }, 0);
 
       setTimeout(() => {
@@ -409,6 +410,8 @@ export class AppMediaViewer {
     //await new Promise((resolve) => setTimeout(resolve, 0));
     await new Promise((resolve) => window.requestAnimationFrame(resolve));
 
+    //throw '';
+
     mover.style.transform = `translate(${containerRect.left}px,${containerRect.top}px) scale(1,1)`;
 
     if(aspecter) {
@@ -427,10 +430,12 @@ export class AppMediaViewer {
       mover.classList.remove('moving');
 
       if(aspecter) { // всё из-за видео, элементы управления скейлятся, так бы можно было этого не делать
-        mover.classList.remove('active');
-        //aspecter.style.cssText = '';
-        void mover.offsetLeft; // reflow
-
+        if(mover.querySelector('video')) {
+          mover.classList.remove('active');
+          aspecter.style.cssText = '';
+          void mover.offsetLeft; // reflow
+        }
+        
         aspecter.classList.remove('disable-hover');
       }
 
@@ -453,9 +458,9 @@ export class AppMediaViewer {
     }
 
     let {width, height} = rect;
-    if(proportion == 1) {
+    /* if(proportion == 1) {
       aspecter.style.cssText = '';
-    } else {
+    } else { */
       if(proportion > 0) {
         width = height * proportion;
       } else {
@@ -465,7 +470,7 @@ export class AppMediaViewer {
       //this.log('will set style aspecter:', `width: ${width}px; height: ${height}px; transform: scale(${containerRect.width / width}, ${containerRect.height / height});`);
 
       aspecter.style.cssText = `width: ${width}px; height: ${height}px; transform: scale(${containerRect.width / width}, ${containerRect.height / height});`;
-    }
+    //}
   }
 
   public sizeTailPath(path: SVGPathElement, rect: DOMRect, scaleX: number, delay: number, upscale: boolean, isOut: boolean, borderRadius: string) {
@@ -528,8 +533,12 @@ export class AppMediaViewer {
     let newMover = document.createElement('div');
     newMover.classList.add('media-viewer-mover');
 
-    let oldMover = this.content.mover;
-    oldMover.parentElement.append(newMover);
+    if(this.content.mover) {
+      let oldMover = this.content.mover;
+      oldMover.parentElement.append(newMover);
+    } else {
+      this.wholeDiv.append(newMover);
+    }
 
     newMover.addEventListener('click', this.onClickBinded);
 
@@ -716,7 +725,7 @@ export class AppMediaViewer {
       this.setNewMover();
     } else {
       window.addEventListener('keydown', this.onKeyDownBinded);
-      this.overlaysDiv.classList.add('active');
+      this.wholeDiv.classList.add('active');
     }
 
     ////////this.log('wasActive:', wasActive);

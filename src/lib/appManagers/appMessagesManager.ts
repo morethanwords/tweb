@@ -22,6 +22,7 @@ import apiManager from '../mtproto/mtprotoworker';
 import appWebPagesManager from "./appWebPagesManager";
 import { CancellablePromise, deferredPromise } from "../polyfill";
 import appPollsManager from "./appPollsManager";
+import searchIndexManager from '../searchIndexManager';
 
 const APITIMEOUT = 0;
 
@@ -106,6 +107,17 @@ export class AppMessagesManager {
   public newUpdatesAfterReloadToHandle: any = {};
 
   public loaded: Promise<any> = null;
+
+  private dialogsIndex = searchIndexManager.createIndex();
+  private cachedResults: {
+    query: string,
+    count: number,
+    dialogs: Dialog[]
+  } = {
+    query: '',
+    count: 0,
+    dialogs: []
+  };
 
   constructor() {
     $rootScope.$on('apiUpdate', (e: CustomEvent) => {
@@ -1226,8 +1238,32 @@ export class AppMessagesManager {
     return false;
   }
 
-  public getConversations(offsetIndex?: number, limit = 20, folderID = 0) {
+  public getConversations(query = '', offsetIndex?: number, limit = 20, folderID = 0) {
     let curDialogStorage = this.dialogsStorage[folderID] ?? (this.dialogsStorage[folderID] = []);
+
+    if(query) {
+      if(!limit || this.cachedResults.query !== query) {
+        this.cachedResults.query = query
+
+        const results = searchIndexManager.search(query, this.dialogsIndex);
+
+        this.cachedResults.dialogs = [];
+        for(const folderID in this.dialogsStorage) {
+          const dialogs = this.dialogsStorage[folderID];
+          dialogs.forEach(dialog => {
+            if(results[dialog.peerID]) {
+              this.cachedResults.dialogs.push(dialog);
+            }
+          });
+        }
+
+        this.cachedResults.count = this.cachedResults.dialogs.length;
+      }
+
+      curDialogStorage = this.cachedResults.dialogs;
+    } else {
+      this.cachedResults.query = '';
+    }
 
     let offset = 0;
     if(offsetIndex > 0) {
@@ -1238,15 +1274,15 @@ export class AppMessagesManager {
       }
     }
 
-    if(this.allDialogsLoaded[folderID] || curDialogStorage.length >= offset + limit) {
+    if(query || this.allDialogsLoaded[folderID] || curDialogStorage.length >= offset + limit) {
       return Promise.resolve({
         dialogs: curDialogStorage.slice(offset, offset + limit),
         count: curDialogStorage.length
       });
     }
 
-    return this.getTopMessages(limit, folderID).then(count => {
-      let curDialogStorage = this.dialogsStorage[folderID];
+    return this.getTopMessages(limit, folderID).then(totalCount => {
+      //const curDialogStorage = this.dialogsStorage[folderID];
 
       offset = 0;
       if(offsetIndex > 0) {
@@ -1261,7 +1297,7 @@ export class AppMessagesManager {
 
       return {
         dialogs: curDialogStorage.slice(offset, offset + limit),
-        count: count
+        count: totalCount
       };
     });
   }
@@ -1277,15 +1313,13 @@ export class AppMessagesManager {
     if(this.dialogsOffsetDate[folderID]) {
       offsetDate = this.dialogsOffsetDate[folderID] + serverTimeManager.serverTimeOffset;
       offsetIndex = this.dialogsOffsetDate[folderID] * 0x10000;
-      flags |= 1;
+      //flags |= 1; // means pinned already loaded
     }
 
-    if(folderID > 0) {
-      flags |= 1;
+    //if(folderID > 0) {
+      //flags |= 1;
       flags |= 2;
-    }
-
-    let hash = 0;
+    //}
 
     return apiManager.invokeApi('messages.getDialogs', {
       flags: flags,
@@ -1294,7 +1328,7 @@ export class AppMessagesManager {
       offset_id: appMessagesIDsManager.getMessageLocalID(offsetID),
       offset_peer: appPeersManager.getInputPeerByID(offsetPeerID),
       limit: limit,
-      hash: hash
+      hash: 0
     }, {
       timeout: APITIMEOUT
     }).then((dialogsResult: any) => {
@@ -1828,9 +1862,11 @@ export class AppMessagesManager {
     let messageText = '';
 
     if(message.media) {
-      switch(message.media._) {
+      if(message.grouped_id) {
+        messageText += '<i>Album' + (message.message ? ', ' : '') + '</i>';
+      } else switch(message.media._) {
         case 'messageMediaPhoto':
-          messageText += '<i>' + (message.grouped_id ? 'Album' : 'Photo') + (message.message ? ', ' : '') + '</i>';
+          messageText += '<i>Photo' + (message.message ? ', ' : '') + '</i>';
           break;
         case 'messageMediaGeo':
           messageText += '<i>Geolocation</i>';
@@ -1869,26 +1905,33 @@ export class AppMessagesManager {
     if(message.action) {
       let action = message.action;
 
-      console.log('message action:', action);
-
-      let suffix = '';
-      let _ = action._;
-      if(_ == "messageActionPhoneCall") {
-        _ += '.' + action.type;
-
-        let duration = action.duration;
-        if(duration) {
-          let d = [];
-
-          d.push(duration % 60 + ' s');
-          if(duration >= 60) d.push((duration / 60 | 0) + ' min');
-          //if(duration >= 3600) d.push((duration / 3600 | 0) + ' h');
-          suffix = ' (' + d.reverse().join(' ') + ')';
+      let str = '';
+      if(action.message) {
+        str = RichTextProcessor.wrapRichText(action.message, {noLinebreaks: true});
+      } else {
+        let suffix = '';
+        let _ = action._;
+        if(_ == "messageActionPhoneCall") {
+          _ += '.' + action.type;
+  
+          let duration = action.duration;
+          if(duration) {
+            let d = [];
+  
+            d.push(duration % 60 + ' s');
+            if(duration >= 60) d.push((duration / 60 | 0) + ' min');
+            //if(duration >= 3600) d.push((duration / 3600 | 0) + ' h');
+            suffix = ' (' + d.reverse().join(' ') + ')';
+          }
         }
+
+        // @ts-ignore
+        str = langPack[_] + suffix;
       }
 
-      // @ts-ignore
-      messageText = '<i>' + langPack[_] + suffix + '</i>';
+      console.log('message action:', action);
+
+      messageText = '<i>' + str + '</i>';
     }
 
     let messageWrapped = '';
@@ -2098,18 +2141,21 @@ export class AppMessagesManager {
   }
 
   public saveConversation(dialog: Dialog) {
-    var peerID = appPeersManager.getPeerID(dialog.peer);
+    const peerID = appPeersManager.getPeerID(dialog.peer);
     if(!peerID) {
       return false;
     }
-    var channelID = appPeersManager.isChannel(peerID) ? -peerID : 0;
+    const channelID = appPeersManager.isChannel(peerID) ? -peerID : 0;
+    const peerText = appPeersManager.getPeerSearchText(peerID);
+    searchIndexManager.indexObject(peerID, peerText, this.dialogsIndex);
 
+    let mid: number, message;
     if(dialog.top_message) {
-      var mid = appMessagesIDsManager.getFullMessageID(dialog.top_message, channelID);
-      var message = this.getMessage(mid);
+      mid = appMessagesIDsManager.getFullMessageID(dialog.top_message, channelID);
+      message = this.getMessage(mid);
     } else {
-      var mid = this.tempID--;
-      var message: any = {
+      mid = this.tempID--;
+      message = {
         _: 'message',
         id: mid,
         mid: mid,
@@ -2120,14 +2166,14 @@ export class AppMessagesManager {
         pFlags: {unread: false, out: true},
         date: 0,
         message: ''
-      }
+      };
       this.saveMessages([message]);
     }
 
     if(!channelID && peerID < 0) {
-      var chat = appChatsManager.getChat(-peerID)
+      const chat = appChatsManager.getChat(-peerID);
       if(chat && chat.migrated_to && chat.pFlags.deactivated) {
-        var migratedToPeer = appPeersManager.getPeerID(chat.migrated_to)
+        const migratedToPeer = appPeersManager.getPeerID(chat.migrated_to);
         this.migratedFromTo[peerID] = migratedToPeer;
         this.migratedToFrom[migratedToPeer] = peerID;
         return;
@@ -2151,7 +2197,7 @@ export class AppMessagesManager {
     }
 
     if(this.historiesStorage[peerID] === undefined/*  && !message.deleted */) { // warning
-      let historyStorage: HistoryStorage = {count: null, history: [], pending: []};
+      const historyStorage: HistoryStorage = {count: null, history: [], pending: []};
       historyStorage[mid > 0 ? 'history' : 'pending'].push(mid);
       if(mid < 0 && message.pFlags.unread) {
         dialog.unread_count++;
