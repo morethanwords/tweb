@@ -65,7 +65,8 @@ module.exports = merge(common, {
             || file.includes('.webmanifest') 
             || file.includes('.wasm')
             || file.includes('rlottie')
-            || file.includes('pako')) return;
+            || file.includes('pako')
+            || file.includes('Worker.min.js')) return;
 
           let p = path.resolve(buildDir + file);
           if(!newlyCreatedAssets[file] && ['.gz', '.js'].find(ext => file.endsWith(ext)) !== undefined) {

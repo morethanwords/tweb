@@ -101,22 +101,83 @@ $time-background: rgba(0, 0, 0, .35);
 		color: #a2acb4;
 		display: block; /* For Firefox By Ariel Flesler */
 	}
+
+	#btn-record-cancel {
+		visibility: hidden;
+		opacity: 0;
+		transition: width .1s .1s, margin-right .1s .1s, visibility 0s .1s, opacity .1s 0s;
+		padding: 0;
+	}
 	
-	.btn-circle {
+	#btn-send {
 		flex: 0 0 auto;
-		font-size: 1.5rem;
-		line-height: 1.5rem;
 		color: #9e9e9e;
-		background-color: #fff;
 		align-self: flex-end;
-		
+
 		&.tgico-send {
 			color: $color-blue;
 		}
 	}
+
+	#btn-record-cancel, #btn-send {
+		font-size: 1.5rem;
+		line-height: 1.5rem;
+		background-color: #fff;
+	}
+
+	.record-time {
+		height: 44px;
+		line-height: 44px;
+		display: none;
+
+		&:after {
+			content: " ";
+			width: 10px;
+			height: 10px;
+			background-color: #e53935;
+			border-radius: 50%;
+			margin: 0 .5rem;
+			display: inline-block;
+			animation: recordBlink 1.25s infinite;
+		}
+	}
 	
-	.os-scrollbar-handle {
-		background: rgba(0, 0, 0, 0.2);
+	&.is-recording {
+		#btn-record-cancel {
+			opacity: 1;
+			visibility: visible;
+			margin-right: .5rem;
+			transition: width .1s, margin-right .1s, visibility 0s .1s, opacity .1s .1s;
+		}
+
+		#attach-file {
+			display: none;
+		}
+
+		.record-time {
+			display: block;
+		}
+	}
+
+	&:not(.is-recording) {
+		#btn-record-cancel {
+			margin-right: 0;
+			width: 0px;
+		}
+	}
+}
+
+@keyframes recordBlink {
+	0% {
+		opacity: 1;
+	}
+
+	50% {
+		opacity: .2;
+	}
+
+	100% {
+		opacity: 1;
 	}
 }
 

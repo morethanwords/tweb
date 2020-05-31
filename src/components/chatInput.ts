@@ -11,6 +11,7 @@ import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import initEmoticonsDropdown, { EMOTICONSSTICKERGROUP } from "./emoticonsDropdown";
 import lottieLoader from "../lib/lottieLoader";
 import { Layouter, RectPart } from "./groupedLayout";
+import Recorder from '../opus-recorder/dist/recorder.min';
 
 export class ChatInput {
   public pageEl = document.getElementById('page-chats') as HTMLDivElement;
@@ -19,12 +20,15 @@ export class ChatInput {
   public inputMessageContainer = document.getElementsByClassName('input-message-container')[0] as HTMLDivElement;
   public inputScroll = new Scrollable(this.inputMessageContainer);
   public btnSend = document.getElementById('btn-send') as HTMLButtonElement;
+  public btnCancelRecord = this.btnSend.previousElementSibling as HTMLButtonElement;
   public emoticonsDropdown: HTMLDivElement = null;
   public emoticonsTimeout: number = 0;
   public toggleEmoticons: HTMLButtonElement;
   public emoticonsLazyLoadQueue: LazyLoadQueue = null;
   public lastUrl = '';
   public lastTimeType = 0;
+
+  private inputContainer = this.btnSend.parentElement as HTMLDivElement;
 
   public attachMenu: {
     container?: HTMLButtonElement,
@@ -52,6 +56,18 @@ export class ChatInput {
   public replyToMsgID = 0;
   public editMsgID = 0;
   public noWebPage = false;
+
+  private recorder = new Recorder({
+    //encoderBitRate: 32,
+    //encoderPath: "../dist/encoderWorker.min.js",
+    encoderSampleRate: 48000,
+    monitorGain: 0,
+    numberOfChannels: 1,
+    recordingGain: 1
+  });
+  private recording = false;
+  private recordCanceled = false;
+  private recordTimeEl = this.inputContainer.querySelector('.record-time') as HTMLDivElement;
 
   constructor() {
     this.toggleEmoticons = this.pageEl.querySelector('.toggle-emoticons') as HTMLButtonElement;
@@ -443,9 +459,100 @@ export class ChatInput {
 
     this.btnSend.addEventListener('click', () => {
       if(this.btnSend.classList.contains('tgico-send')) {
-        this.sendMessage();
+        if(this.recording) {
+          this.recorder.stop();
+        } else {
+          this.sendMessage();
+        }
+      } else {
+        this.recorder.start().then(() => {
+          this.recordCanceled = false;
+          this.btnSend.classList.add('tgico-send');
+          this.inputContainer.classList.add('is-recording');
+          this.recording = true;
+
+          let startTime = Date.now();
+          let r = () => {
+            if(!this.recording) return;
+
+            let diff = Date.now() - startTime;
+            let ms = diff % 1000;
+
+            let formatted = ('' + (diff / 1000)).toHHMMSS() + ',' + ('00' + Math.round(ms / 10)).slice(-2);
+
+            this.recordTimeEl.innerText = formatted;
+
+            window.requestAnimationFrame(r);
+          };
+
+          r();
+        }).catch((e: Error) => {
+          console.error('Recorder start error:', e);
+        });
       }
     });
+
+    this.btnCancelRecord.addEventListener('click', () => {
+      this.recordCanceled = true;
+      this.recorder.stop();
+    });
+
+    this.recorder.onstop = () => {
+      this.recording = false;
+      this.inputContainer.classList.remove('is-recording');
+      this.btnSend.classList.remove('tgico-send');
+    };
+
+    this.recorder.ondataavailable = (typedArray: Uint8Array) => {
+      if(this.recordCanceled) return;
+
+      const dataBlob = new Blob([typedArray], {type: 'audio/ogg'});
+      const fileName = new Date().toISOString() + ".opus";
+      console.log('Recorder data received', typedArray, dataBlob);
+
+      /* var url = URL.createObjectURL( dataBlob );
+
+      var audio = document.createElement('audio');
+      audio.controls = true;
+      audio.src = url;
+
+      var link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      link.innerHTML = link.download;
+
+      var li = document.createElement('li');
+      li.appendChild(link);
+      li.appendChild(audio);
+
+      document.body.append(li);
+
+      return; */
+
+      let peerID = appImManager.peerID;
+      appMessagesManager.sendFile(peerID, dataBlob, {
+        isVoiceMessage: true,
+        duration: 0,
+        isMedia: true
+      });
+
+      /* const url = URL.createObjectURL(dataBlob);
+      
+      var audio = document.createElement('audio');
+      audio.controls = true;
+      audio.src = url;
+
+      var link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      link.innerHTML = link.download;
+
+      var li = document.createElement('li');
+      li.appendChild(link);
+      li.appendChild(audio);
+
+      recordingslist.appendChild(li); */
+    };
 
     let emoticonsDisplayTimeout = 0;
     this.toggleEmoticons.onmouseover = (e) => {

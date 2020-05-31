@@ -597,6 +597,7 @@ export class AppMessagesManager {
     height: number,
     objectURL: string,
     isRoundMessage: boolean,
+    isVoiceMessage: boolean,
     duration: number,
     background: boolean
   }> = {}) {
@@ -661,6 +662,25 @@ export class AppMessagesManager {
       attachType = 'audio';
       apiFileName = 'audio.' + (fileType.split('/')[1] == 'ogg' ? 'ogg' : 'mp3');
       actionName = 'sendMessageUploadAudioAction';
+
+      let flags = 0;
+      if(options.isVoiceMessage) {
+        flags |= 1 << 10;
+        flags |= 1 << 2;
+      }
+
+      let attribute = {
+        _: 'documentAttributeAudio',
+        flags: flags,
+        pFlags: { // that's only for client, not going to telegram
+          voice: options.isVoiceMessage
+        }, 
+        waveform: new Uint8Array([0, 0, 0, 0, 0, 0, 128, 35, 8, 25, 34, 132, 16, 66, 8, 0, 0, 0, 0, 0, 0, 0, 96, 60, 254, 255, 255, 79, 223, 255, 63, 183, 226, 107, 255, 255, 255, 255, 191, 188, 255, 255, 246, 255, 255, 255, 255, 63, 155, 117, 135, 24, 249, 191, 167, 51, 149, 0, 0, 0, 0, 0, 0]),
+        voice: options.isVoiceMessage,
+        duration: options.duration || 0,
+      };
+
+      attributes.push(attribute);
     } else if(fileType.indexOf('video/') === 0) {
       attachType = 'video';
       apiFileName = 'video.mp4';
