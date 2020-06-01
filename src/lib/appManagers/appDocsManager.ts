@@ -1,9 +1,10 @@
 import apiFileManager from '../mtproto/apiFileManager';
 import FileManager from '../filemanager';
 import {RichTextProcessor} from '../richtextprocessor';
-import { CancellablePromise } from '../polyfill';
+import { CancellablePromise, deferredPromise } from '../polyfill';
 import { MTDocument } from '../../components/wrappers';
 import { isObject } from '../utils';
+import opusDecodeController from '../opusDecodeController';
 
 class AppDocsManager {
   private docs: {[docID: string]: MTDocument} = {};
@@ -208,34 +209,49 @@ class AppDocsManager {
     
     //historyDoc.progress = {enabled: !historyDoc.downloaded, percent: 1, total: doc.size};
 
+    let deferred = deferredPromise<Blob>();
+
+    deferred.cancel = () => {
+      downloadPromise.cancel();
+    };
+
     // нет смысла делать объект с выполняющимися промисами, нижняя строка и так вернёт загружающийся
-    let downloadPromise: CancellablePromise<Blob> = apiFileManager.downloadFile(doc.dc_id, inputFileLocation, doc.size, {
+    let downloadPromise = apiFileManager.downloadFile(doc.dc_id, inputFileLocation, doc.size, {
       mimeType: doc.mime_type || 'application/octet-stream',
       toFileEntry: toFileEntry,
       stickerType: doc.sticker
     });
-
+    
     downloadPromise.then((blob) => {
       if(blob) {
         doc.downloaded = true;
 
-        if(doc.type && doc.sticker != 2) {
+        if(doc.type == 'voice'/*  && false */) {
+          let reader = new FileReader();
+
+          reader.onloadend = (e) => {
+            let uint8 = new Uint8Array(e.target.result as ArrayBuffer);
+            //console.log('sending uint8 to decoder:', uint8);
+            opusDecodeController.decode(uint8).then(result => {
+              doc.url = result.url;
+              deferred.resolve(blob);
+            }, deferred.reject);
+          };
+
+          reader.readAsArrayBuffer(blob);
+
+          return;
+        } else if(doc.type && doc.sticker != 2) {
           doc.url = URL.createObjectURL(blob);
         }
       }
-
-      /* doc.progress.percent = 100;
-      setTimeout(() => {
-        delete doc.progress;
-      }, 0); */
-      // console.log('file save done')
-
-      return blob;
+      
+      deferred.resolve(blob);
     }, (e) => {
       console.log('document download failed', e);
       //historyDoc.progress.enabled = false;
     });
-    
+
     /* downloadPromise.notify = (progress) => {
       console.log('dl progress', progress);
       historyDoc.progress.enabled = true;
@@ -248,7 +264,7 @@ class AppDocsManager {
 
     //console.log('return downloadPromise:', downloadPromise);
     
-    return downloadPromise;
+    return deferred;
   }
 
   public downloadDocThumb(docID: any, thumbSize: string) {

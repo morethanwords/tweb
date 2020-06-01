@@ -413,8 +413,8 @@ export class ApiFileManager {
                 limit: limit
               }, {
                 dcID: dcID,
-                fileDownload: true,
-                singleInRequest: 'safari' in window
+                fileDownload: true/* ,
+                singleInRequest: 'safari' in window */
               });
             }, dcID).then((result: any) => {
               writeFilePromise.then(() => {

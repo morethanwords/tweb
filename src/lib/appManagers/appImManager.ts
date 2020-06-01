@@ -1737,11 +1737,18 @@ export class AppImManager {
             }
             
             case 'audio':
+            case 'voice':
             case 'document': {
-              let docDiv = wrapDocument(pending, false, true);
+              let doc = appDocsManager.getDoc(message.id);
+              this.log('will wrap pending doc:', doc);
+              let docDiv = wrapDocument(doc, false, true);
               
-              let icoDiv = docDiv.querySelector('.document-ico');
+              let icoDiv = docDiv.querySelector('.audio-download, .document-ico');
               preloader.attach(icoDiv, false);
+
+              if(pending.type == 'voice') {
+                bubble.classList.add('bubble-audio');
+              }
               
               bubble.classList.remove('is-message-empty');
               messageDiv.classList.add((pending.type || 'document') + '-message');

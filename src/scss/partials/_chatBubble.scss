@@ -1253,6 +1253,10 @@
     &-toggle, &-download {
       background-color: #4FAE4E;
     }
+
+    &-download:empty {
+      display: none;
+    }
   }
 
   &.photo, &.video:not(.round) {

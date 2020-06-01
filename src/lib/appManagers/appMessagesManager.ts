@@ -597,9 +597,11 @@ export class AppMessagesManager {
     height: number,
     objectURL: string,
     isRoundMessage: boolean,
-    isVoiceMessage: boolean,
     duration: number,
-    background: boolean
+    background: boolean,
+
+    isVoiceMessage: boolean,
+    waveform: Uint8Array
   }> = {}) {
     peerID = appPeersManager.getPeerMigratedTo(peerID) || peerID;
     var messageID = this.tempID--;
@@ -620,6 +622,8 @@ export class AppMessagesManager {
     let caption = options.caption || '';
 
     let date = tsNow(true) + ServerTimeManager.serverTimeOffset;
+
+    console.log('sendFile', file, fileType);
 
     if(caption) {
       let entities = options.entities || [];
@@ -667,6 +671,7 @@ export class AppMessagesManager {
       if(options.isVoiceMessage) {
         flags |= 1 << 10;
         flags |= 1 << 2;
+        attachType = 'voice';
       }
 
       let attribute = {
@@ -674,10 +679,10 @@ export class AppMessagesManager {
         flags: flags,
         pFlags: { // that's only for client, not going to telegram
           voice: options.isVoiceMessage
-        }, 
-        waveform: new Uint8Array([0, 0, 0, 0, 0, 0, 128, 35, 8, 25, 34, 132, 16, 66, 8, 0, 0, 0, 0, 0, 0, 0, 96, 60, 254, 255, 255, 79, 223, 255, 63, 183, 226, 107, 255, 255, 255, 255, 191, 188, 255, 255, 246, 255, 255, 255, 255, 63, 155, 117, 135, 24, 249, 191, 167, 51, 149, 0, 0, 0, 0, 0, 0]),
+        },
+        waveform: options.waveform,
         voice: options.isVoiceMessage,
-        duration: options.duration || 0,
+        duration: options.duration || 0
       };
 
       attributes.push(attribute);
@@ -703,7 +708,15 @@ export class AppMessagesManager {
       };
 
       attributes.push(videoAttribute);
+    } else {
+      attachType = 'document';
+      apiFileName = 'document.' + fileType.split('/')[1];
+      actionName = 'sendMessageUploadDocumentAction';
+    }
 
+    attributes.push({_: 'documentAttributeFilename', file_name: fileName || apiFileName});
+
+    if(['document', 'video', 'audio', 'voice'].indexOf(attachType) !== -1) {
       let doc: any = {
         _: 'document',
         id: '' + messageID,
@@ -719,10 +732,6 @@ export class AppMessagesManager {
       };
       
       appDocsManager.saveDoc(doc);
-    } else {
-      attachType = 'document';
-      apiFileName = 'document.' + fileType.split('/')[1];
-      actionName = 'sendMessageUploadDocumentAction';
     }
 
     console.log('AMM: sendFile', attachType, apiFileName, file.type, options);
@@ -769,8 +778,6 @@ export class AppMessagesManager {
       }
     };
 
-    attributes.push({_: 'documentAttributeFilename', file_name: media.file_name});
-
     preloader.preloader.onclick = () => {
       console.log('cancelling upload', media);
       appImManager.setTyping('sendMessageCancelAction');
@@ -786,12 +793,12 @@ export class AppMessagesManager {
       pFlags: pFlags,
       date: date,
       message: caption,
-      media: isDocument ? {
+      media: /* isDocument ? {
         _: 'messageMediaDocument',
         pFlags: {},
         flags: 1,
         document: file 
-      } : media,
+      } :  */media,
       random_id: randomIDS,
       reply_to_msg_id: replyToMsgID,
       views: asChannel && 1,

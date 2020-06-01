@@ -11,7 +11,9 @@ import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import initEmoticonsDropdown, { EMOTICONSSTICKERGROUP } from "./emoticonsDropdown";
 import lottieLoader from "../lib/lottieLoader";
 import { Layouter, RectPart } from "./groupedLayout";
-import Recorder from '../opus-recorder/dist/recorder.min';
+import Recorder from '../../public/recorder.min';
+//import Recorder from '../opus-recorder/dist/recorder.min';
+import opusDecodeController from "../lib/opusDecodeController";
 
 export class ChatInput {
   public pageEl = document.getElementById('page-chats') as HTMLDivElement;
@@ -20,7 +22,7 @@ export class ChatInput {
   public inputMessageContainer = document.getElementsByClassName('input-message-container')[0] as HTMLDivElement;
   public inputScroll = new Scrollable(this.inputMessageContainer);
   public btnSend = document.getElementById('btn-send') as HTMLButtonElement;
-  public btnCancelRecord = this.btnSend.previousElementSibling as HTMLButtonElement;
+  public btnCancelRecord = this.btnSend.parentElement.previousElementSibling as HTMLButtonElement;
   public emoticonsDropdown: HTMLDivElement = null;
   public emoticonsTimeout: number = 0;
   public toggleEmoticons: HTMLButtonElement;
@@ -28,7 +30,7 @@ export class ChatInput {
   public lastUrl = '';
   public lastTimeType = 0;
 
-  private inputContainer = this.btnSend.parentElement as HTMLDivElement;
+  private inputContainer = this.btnSend.parentElement.parentElement as HTMLDivElement;
 
   public attachMenu: {
     container?: HTMLButtonElement,
@@ -68,6 +70,8 @@ export class ChatInput {
   private recording = false;
   private recordCanceled = false;
   private recordTimeEl = this.inputContainer.querySelector('.record-time') as HTMLDivElement;
+  private recordRippleEl = this.inputContainer.querySelector('.record-ripple') as HTMLDivElement;
+  private recordStartTime = 0;
 
   constructor() {
     this.toggleEmoticons = this.pageEl.querySelector('.toggle-emoticons') as HTMLButtonElement;
@@ -470,12 +474,37 @@ export class ChatInput {
           this.btnSend.classList.add('tgico-send');
           this.inputContainer.classList.add('is-recording');
           this.recording = true;
+          opusDecodeController.setKeepAlive(true);
 
-          let startTime = Date.now();
+          this.recordStartTime = Date.now();
+
+          const sourceNode: MediaStreamAudioSourceNode = this.recorder.sourceNode;
+          const context = sourceNode.context;
+
+          const analyser = context.createAnalyser();
+          sourceNode.connect(analyser);
+          //analyser.connect(context.destination);
+          analyser.fftSize = 32;
+
+          const frequencyData = new Uint8Array(analyser.frequencyBinCount);
+          const max = frequencyData.length * 255;
+          const min = 54 / 150;
           let r = () => {
             if(!this.recording) return;
 
-            let diff = Date.now() - startTime;
+            analyser.getByteFrequencyData(frequencyData);
+
+            let sum = 0;
+            frequencyData.forEach(value => {
+              sum += value;
+            });
+            
+            let percents = Math.min(1, (sum / max) + min);
+            console.log('frequencyData', frequencyData, percents);
+
+            this.recordRippleEl.style.transform = `scale(${percents})`;
+
+            let diff = Date.now() - this.recordStartTime;
             let ms = diff % 1000;
 
             let formatted = ('' + (diff / 1000)).toHHMMSS() + ',' + ('00' + Math.round(ms / 10)).slice(-2);
@@ -495,20 +524,23 @@ export class ChatInput {
     this.btnCancelRecord.addEventListener('click', () => {
       this.recordCanceled = true;
       this.recorder.stop();
+      opusDecodeController.setKeepAlive(false);
     });
 
     this.recorder.onstop = () => {
       this.recording = false;
       this.inputContainer.classList.remove('is-recording');
       this.btnSend.classList.remove('tgico-send');
+      this.recordRippleEl.style.transform = '';
     };
 
     this.recorder.ondataavailable = (typedArray: Uint8Array) => {
       if(this.recordCanceled) return;
 
+      const duration = (Date.now() - this.recordStartTime) / 1000 | 0;
       const dataBlob = new Blob([typedArray], {type: 'audio/ogg'});
-      const fileName = new Date().toISOString() + ".opus";
-      console.log('Recorder data received', typedArray, dataBlob);
+      /* const fileName = new Date().toISOString() + ".opus";
+      console.log('Recorder data received', typedArray, dataBlob); */
 
       /* var url = URL.createObjectURL( dataBlob );
 
@@ -529,11 +561,21 @@ export class ChatInput {
 
       return; */
 
-      let peerID = appImManager.peerID;
-      appMessagesManager.sendFile(peerID, dataBlob, {
-        isVoiceMessage: true,
-        duration: 0,
-        isMedia: true
+      let perf = performance.now();
+      opusDecodeController.decode(typedArray, true).then(result => {
+        console.log('WAVEFORM!:', /* waveform,  */performance.now() - perf);
+
+        opusDecodeController.setKeepAlive(false);
+
+        let peerID = appImManager.peerID;
+        // тут objectURL ставится уже с audio/wav
+        appMessagesManager.sendFile(peerID, dataBlob, {
+          isVoiceMessage: true,
+          isMedia: true,
+          duration,
+          waveform: result.waveform,
+          objectURL: result.url
+        });
       });
 
       /* const url = URL.createObjectURL(dataBlob);

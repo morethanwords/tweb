@@ -192,7 +192,7 @@ let formatDate = (timestamp: number) => {
 
 export function wrapDocument(doc: MTDocument, withTime = false, uploading = false): HTMLDivElement {
   if(doc.type == 'voice') {
-    return wrapVoiceMessage(doc, withTime);
+    return wrapVoiceMessage(doc, uploading);
   } else if(doc.type == 'audio') {
     return wrapAudio(doc, withTime);
   }
@@ -384,8 +384,42 @@ export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
   return div;
 }
 
+// https://github.com/LonamiWebs/Telethon/blob/4393ec0b83d511b6a20d8a20334138730f084375/telethon/utils.py#L1285
+function decodeWaveform(waveform: Uint8Array | number[]) {
+  if(!(waveform instanceof Uint8Array)) {
+    waveform = new Uint8Array(waveform);
+  }
+
+  var bitCount = waveform.length * 8;
+  var valueCount = bitCount / 5 | 0;
+  if(!valueCount) {
+    return new Uint8Array([]);
+  }
+
+  var dataView = new DataView(waveform.buffer);
+  var result = new Uint8Array(valueCount);
+  for(var i = 0; i < valueCount; i++) {
+    var byteIndex = i * 5 / 8 | 0;
+    var bitShift = i * 5 % 8;
+    var value = dataView.getUint16(byteIndex, true);
+    result[i] = (value >> bitShift) & 0b00011111;
+  }
+
+  /* var byteIndex = (valueCount - 1) / 8 | 0;
+  var bitShift = (valueCount - 1) % 8;
+  if(byteIndex == waveform.length - 1) {
+    var value = waveform[byteIndex];
+  } else {
+    var value = dataView.getUint16(byteIndex, true);
+  }
+
+  console.log('decoded waveform, setting last value:', value, byteIndex, bitShift);
+  result[valueCount - 1] = (value >> bitShift) & 0b00011111; */
+  return result;
+}
+
 let lastAudioToggle: HTMLDivElement = null;
-export function wrapVoiceMessage(doc: MTDocument, withTime = false): HTMLDivElement {
+export function wrapVoiceMessage(doc: MTDocument, uploading = false): HTMLDivElement {
   let div = document.createElement('div');
   div.classList.add('audio', 'is-voice');
   
@@ -395,7 +429,7 @@ export function wrapVoiceMessage(doc: MTDocument, withTime = false): HTMLDivElem
   
   div.innerHTML = `
   <div class="audio-toggle audio-ico tgico-largeplay"></div>
-  <div class="audio-download"><div class="tgico-download"></div></div>
+  <div class="audio-download">${uploading ? '' : '<div class="tgico-download"></div>'}</div>
   <div class="audio-time">${durationStr}</div>
   `;
   
@@ -414,9 +448,66 @@ export function wrapVoiceMessage(doc: MTDocument, withTime = false): HTMLDivElem
   svg.setAttributeNS(null, 'viewBox', '0 0 190 23');
   
   div.insertBefore(svg, div.lastElementChild);
-  let wave = doc.attributes[0].waveform as Uint8Array;
+
+  const barWidth = 2;
+  const barMargin = 1;
+  const barHeightMin = 2;
+  const barHeightMax = 23;
+
+  let waveform = doc.attributes[0].waveform || [];
+  waveform = decodeWaveform(waveform.slice());
+
+  //console.log('decoded waveform:', waveform);
+
+  const normValue = Math.max(...waveform);
+  const wfSize = waveform.length ? waveform.length : 100;
+  const availW = 190;
+  const barCount = Math.min((availW / (barWidth + barMargin)) | 0, wfSize);
+
+  let maxValue = 0;
+  let maxDelta = barHeightMax - barHeightMin;
+
+  let html = '';
+  for(let i = 0, barX = 0, sumI = 0; i < wfSize; ++i) {
+    const value = waveform[i] || 0;
+    if((sumI + barCount) >= wfSize) { // draw bar
+      sumI = sumI + barCount - wfSize;
+			if(sumI < (barCount + 1) / 2) {
+				if(maxValue < value) maxValue = value;
+      }
+      
+      const bar_value = Math.max(((maxValue * maxDelta) + ((normValue + 1) / 2)) / (normValue + 1), barHeightMin);
+      
+      let h = `
+      <rect x="${barX}" y="${barHeightMax - bar_value}" width="2" height="${bar_value}" rx="1" ry="1"></rect>
+      `;
+      html += h;
+
+      /* if(barX >= activeW) {
+        p.fillRect(nameleft + barX, bottom - bar_value, barWidth, barHeightMin + bar_value, inactive);
+      } else if (barX + barWidth <= activeW) {
+        p.fillRect(nameleft + barX, bottom - bar_value, barWidth, barHeightMin + bar_value, active);
+      } else {
+        p.fillRect(nameleft + barX, bottom - bar_value, activeW - barX, barHeightMin + bar_value, active);
+        p.fillRect(nameleft + activeW, bottom - bar_value, barWidth - (activeW - barX), barHeightMin + bar_value, inactive);
+      } */
+      barX += barWidth + barMargin;
+
+      if(sumI < (barCount + 1) / 2) {
+        maxValue = 0;
+      } else {
+        maxValue = value;
+      }
+    } else {
+      if(maxValue < value) maxValue = value;
+
+      sumI += barCount;
+    }
+  }
+
+  svg.insertAdjacentHTML('beforeend', html);
   
-  let index = 0;
+  /* let index = 0;
   let skipped = 0;
   let h = '';
   for(let uint8 of wave) {
@@ -425,10 +516,11 @@ export function wrapVoiceMessage(doc: MTDocument, withTime = false): HTMLDivElem
       ++skipped;
       continue;
     }
-    let percents = uint8 / 255;
+    //let percents = uint8 / 255;
+    let percents = uint8 / 31;
     
     let height = 23 * percents;
-    if(/* !height ||  */height < 2) {
+    if(height < 2) {
       height = 2;
     }
     
@@ -438,141 +530,149 @@ export function wrapVoiceMessage(doc: MTDocument, withTime = false): HTMLDivElem
     
     ++index;
   }
-  svg.insertAdjacentHTML('beforeend', h);
+  svg.insertAdjacentHTML('beforeend', h); */
   
   let progress = div.querySelector('.audio-waveform') as HTMLDivElement;
-  
-  let onClick = () => {
-    if(!promise) {
-      if(!preloader) {
-        preloader = new ProgressivePreloader(null, true);
-      }
-      
-      promise = appDocsManager.downloadDoc(doc.id);
-      preloader.attach(downloadDiv, true, promise);
-      
-      promise.then(blob => {
-        downloadDiv.classList.remove('downloading');
-        downloadDiv.remove();
-        
-        let audio = document.createElement('audio');
-        let source = document.createElement('source');
-        source.src = doc.url;
-        source.type = doc.mime_type;
-        
-        audio.volume = 1;
-        
-        div.removeEventListener('click', onClick);
-        let toggle = div.querySelector('.audio-toggle') as HTMLDivElement;
-        
-        let interval = 0;
-        let lastIndex = 0;
-        
-        toggle.addEventListener('click', () => {
-          if(audio.paused) {
-            if(lastAudioToggle && lastAudioToggle.classList.contains('tgico-largepause')) {
-              lastAudioToggle.click();
-            }
-            
-            audio.currentTime = 0;
-            audio.play();
-            
-            lastAudioToggle = toggle;
-            
-            toggle.classList.remove('tgico-largeplay');
-            toggle.classList.add('tgico-largepause');
-            
-            (Array.from(svg.children) as HTMLElement[]).forEach(node => node.classList.remove('active'));
-            
-            interval = setInterval(() => {
-              if(lastIndex > svg.childElementCount || isNaN(audio.duration)) {
-                clearInterval(interval);
-                return;
-              }
 
-              timeDiv.innerText = String(audio.currentTime | 0).toHHMMSS(true);
-              
-              lastIndex = Math.round(audio.currentTime / audio.duration * 47);
-              
-              //svg.children[lastIndex].setAttributeNS(null, 'fill', '#000');
-              //svg.children[lastIndex].classList.add('active'); #Иногда пропускает полоски..
-              (Array.from(svg.children) as HTMLElement[]).slice(0,lastIndex+1).forEach(node => node.classList.add('active'));
-              //++lastIndex;
-              //console.log('lastIndex:', lastIndex, audio.currentTime);
-              //}, duration * 1000 / svg.childElementCount | 0/* 63 * duration / 10 */);
-            }, 20);
-          } else {
-            audio.pause();
-            toggle.classList.add('tgico-largeplay');
-            toggle.classList.remove('tgico-largepause');
-            
-            clearInterval(interval);
-          }
-        });
-        
-        audio.addEventListener('ended', () => {
-          toggle.classList.add('tgico-largeplay');
-          toggle.classList.remove('tgico-largepause');
-          clearInterval(interval);
-          (Array.from(svg.children) as HTMLElement[]).forEach(node => node.classList.remove('active'));
-          
-          timeDiv.innerText = String(audio.currentTime | 0).toHHMMSS(true);
-        });
-        
-        let mousedown = false, mousemove = false;
-        progress.addEventListener('mouseleave', (e) => {
-          if(mousedown) {
-            audio.play();
-            mousedown = false;
-          }
-          mousemove = false;
-        })
-        progress.addEventListener('mousemove', (e) => {
-          mousemove = true;
-          if(mousedown) scrub(e, audio, progress);
-        });
-        progress.addEventListener('mousedown', (e) => {
-          e.preventDefault();
-          if(!audio.paused) {
-            audio.pause();
-            scrub(e, audio, progress);
-            mousedown = true;
-          }
-        });
-        progress.addEventListener('mouseup', (e) => {
-          if (mousemove && mousedown) {
-            audio.play();
-            mousedown = false;
-          }
-        });
-        progress.addEventListener('click', (e) => {
-          if(!audio.paused) scrub(e, audio, progress);
-        });
-        
-        function scrub(e: MouseEvent, audio: HTMLAudioElement, progress: HTMLDivElement) {
-          let scrubTime = e.offsetX / 190 /* width */ * audio.duration;
-          (Array.from(svg.children) as HTMLElement[]).forEach(node => node.classList.remove('active'));
-          lastIndex = Math.round(scrubTime / audio.duration * 47);
-          
-          (Array.from(svg.children) as HTMLElement[]).slice(0,lastIndex+1).forEach(node => node.classList.add('active'));
-          audio.currentTime = scrubTime;
+  let onLoad = () => {
+    let audio = document.createElement('audio');
+    let source = document.createElement('source');
+    source.src = doc.url;
+    //source.type = doc.mime_type;
+    source.type = 'audio/wav';
+    
+    audio.volume = 1;
+    
+    let toggle = div.querySelector('.audio-toggle') as HTMLDivElement;
+    
+    let interval = 0;
+    let lastIndex = 0;
+    
+    toggle.addEventListener('click', () => {
+      if(audio.paused) {
+        if(lastAudioToggle && lastAudioToggle.classList.contains('tgico-largepause')) {
+          lastAudioToggle.click();
         }
         
-        audio.style.display = 'none';
-        audio.append(source);
-        div.append(audio);
-      });
+        audio.currentTime = 0;
+        audio.play();
+        
+        lastAudioToggle = toggle;
+        
+        toggle.classList.remove('tgico-largeplay');
+        toggle.classList.add('tgico-largepause');
+        
+        (Array.from(svg.children) as HTMLElement[]).forEach(node => node.classList.remove('active'));
+        
+        interval = setInterval(() => {
+          if(lastIndex > svg.childElementCount || isNaN(audio.duration)) {
+            clearInterval(interval);
+            return;
+          }
+
+          timeDiv.innerText = String(audio.currentTime | 0).toHHMMSS(true);
+          
+          lastIndex = Math.round(audio.currentTime / audio.duration * 47);
+          
+          //svg.children[lastIndex].setAttributeNS(null, 'fill', '#000');
+          //svg.children[lastIndex].classList.add('active'); #Иногда пропускает полоски..
+          (Array.from(svg.children) as HTMLElement[]).slice(0,lastIndex+1).forEach(node => node.classList.add('active'));
+          //++lastIndex;
+          //console.log('lastIndex:', lastIndex, audio.currentTime);
+          //}, duration * 1000 / svg.childElementCount | 0/* 63 * duration / 10 */);
+        }, 20);
+      } else {
+        audio.pause();
+        toggle.classList.add('tgico-largeplay');
+        toggle.classList.remove('tgico-largepause');
+        
+        clearInterval(interval);
+      }
+    });
+    
+    audio.addEventListener('ended', () => {
+      toggle.classList.add('tgico-largeplay');
+      toggle.classList.remove('tgico-largepause');
+      clearInterval(interval);
+      (Array.from(svg.children) as HTMLElement[]).forEach(node => node.classList.remove('active'));
       
-      downloadDiv.classList.add('downloading');
-    } else {
-      downloadDiv.classList.remove('downloading');
-      promise.cancel();
-      promise = null;
+      timeDiv.innerText = String(audio.currentTime | 0).toHHMMSS(true);
+    });
+    
+    let mousedown = false, mousemove = false;
+    progress.addEventListener('mouseleave', (e) => {
+      if(mousedown) {
+        audio.play();
+        mousedown = false;
+      }
+      mousemove = false;
+    })
+    progress.addEventListener('mousemove', (e) => {
+      mousemove = true;
+      if(mousedown) scrub(e, audio, progress);
+    });
+    progress.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      if(!audio.paused) {
+        audio.pause();
+        scrub(e, audio, progress);
+        mousedown = true;
+      }
+    });
+    progress.addEventListener('mouseup', (e) => {
+      if (mousemove && mousedown) {
+        audio.play();
+        mousedown = false;
+      }
+    });
+    progress.addEventListener('click', (e) => {
+      if(!audio.paused) scrub(e, audio, progress);
+    });
+    
+    function scrub(e: MouseEvent, audio: HTMLAudioElement, progress: HTMLDivElement) {
+      let scrubTime = e.offsetX / 190 /* width */ * audio.duration;
+      (Array.from(svg.children) as HTMLElement[]).forEach(node => node.classList.remove('active'));
+      lastIndex = Math.round(scrubTime / audio.duration * 47);
+      
+      (Array.from(svg.children) as HTMLElement[]).slice(0,lastIndex+1).forEach(node => node.classList.add('active'));
+      audio.currentTime = scrubTime;
     }
+    
+    audio.style.display = 'none';
+    audio.append(source);
+    div.append(audio);
   };
-  
-  div.addEventListener('click', onClick);
-  div.click();
+
+  if(!uploading) {
+    let onClick = () => {
+      if(!promise) {
+        if(!preloader) {
+          preloader = new ProgressivePreloader(null, true);
+        }
+        
+        promise = appDocsManager.downloadDoc(doc.id);
+        preloader.attach(downloadDiv, true, promise);
+        
+        promise.then(() => {
+          downloadDiv.classList.remove('downloading');
+          downloadDiv.remove();
+          div.removeEventListener('click', onClick);
+          onLoad();
+        });
+        
+        downloadDiv.classList.add('downloading');
+      } else {
+        downloadDiv.classList.remove('downloading');
+        promise.cancel();
+        promise = null;
+      }
+    };
+    
+    div.addEventListener('click', onClick);
+    div.click();
+  } else {
+    onLoad();
+  }
   
   return div;
 }
