@@ -3,3 +3,5 @@ coverage
 __pycache__
 dist
 .DS_Store
+stats.json
+certs

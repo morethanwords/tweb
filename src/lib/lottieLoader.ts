@@ -133,7 +133,14 @@ export class RLottiePlayer {
   }
 
   public renderFrame(frame: Uint8ClampedArray, frameNo: number) {
-    this.context.putImageData(new ImageData(frame, this.width, this.height), 0, 0);
+    try {
+      this.context.putImageData(new ImageData(frame, this.width, this.height), 0, 0);
+    } catch(err) {
+      console.error('RLottiePlayer renderFrame error:', err, frame, this.width, this.height);
+      this.autoplay = false;
+      this.stop();
+    }
+    
     this.setListenerResult('enterFrame', frameNo);
   }
 
@@ -398,6 +405,10 @@ class LottieLoader {
 
     const width = params.width || parseInt(params.container.style.width);
     const height = params.height || parseInt(params.container.style.height);
+
+    if(!width || !height) {
+      throw new Error('No size for sticker!');
+    }
 
     const player = this.initPlayer(params.container, params.animationData, width, height);
     for(let i in params) {

@@ -75,6 +75,7 @@ export class AppMessagesManager {
   public dialogsStorage: {
     [folderID: number]: Dialog[]
   } = {};
+  public pinnedMessages: {[peerID: string]: number} = {};
   public pendingByRandomID: {[randomID: string]: [number, number]} = {};
   public pendingByMessageID: any = {};
   public pendingAfterMsgs: any = {};
@@ -88,7 +89,7 @@ export class AppMessagesManager {
 
   public needSingleMessages: any = [];
   public fetchSingleMessagesTimeout = 0;
-  private fetchSingleMessagesPromise: Promise<void> = null;
+  private fetchSingleMessagesPromise: Promise<any> = null;
 
   public maxSeenID = 0;
 
@@ -1660,6 +1661,20 @@ export class AppMessagesManager {
     });
   }
 
+  public savePinnedMessage(peerID: number, mid: number) {
+    if(!mid) {
+      delete this.pinnedMessages[peerID];
+      return;
+    }
+
+    this.pinnedMessages[peerID] = mid;
+    this.wrapSingleMessage(mid);
+  }
+
+  public getPinnedMessage(peerID: number) {
+    return this.getMessage(this.pinnedMessages[peerID] || 0);
+  }
+
   public saveMessages(apiMessages: any[], options: {
     isNew?: boolean,
     isEdited?: boolean
@@ -2014,7 +2029,7 @@ export class AppMessagesManager {
     });
   }
 
-  public markDialogUnread(peerID: number) {
+  public markDialogUnread(peerID: number, read?: boolean) {
     let dialog = this.getDialogByPeerID(peerID)[0];
     if(!dialog) return Promise.reject();
 
@@ -2023,7 +2038,7 @@ export class AppMessagesManager {
       peer: appPeersManager.getInputPeerByID(peerID)
     };
 
-    let flags = dialog.pFlags?.unread_mark ? 0 : 1;
+    let flags = read || dialog.pFlags?.unread_mark ? 0 : 1;
     return apiManager.invokeApi('messages.markDialogUnread', {
       flags,
       peer
@@ -3404,6 +3419,17 @@ export class AppMessagesManager {
 
         break;
       }
+
+      case 'updateChatPinnedMessage':
+      case 'updateUserPinnedMessage': {
+        let {id} = update;
+
+        // hz nado li tut appMessagesIDsManager.getFullMessageID(update.max_id, channelID);
+        let peerID = update.user_id || -update.chat_id || -update.channel_id;
+        this.savePinnedMessage(peerID, id);
+        
+        break;
+      }
     }
   }
 
@@ -3764,10 +3790,10 @@ export class AppMessagesManager {
       return this.fetchSingleMessagesPromise;
     }
 
-    var mids = this.needSingleMessages.slice();
+    const mids = this.needSingleMessages.slice();
     this.needSingleMessages.length = 0;
 
-    var splitted = appMessagesIDsManager.splitMessageIDsByChannels(mids);
+    const splitted = appMessagesIDsManager.splitMessageIDsByChannels(mids);
     let promises: Promise<void>[] = [];
     Object.keys(splitted.msgIDs).forEach((channelID: number | string) => {
       channelID = +channelID;
@@ -3800,11 +3826,7 @@ export class AppMessagesManager {
       }));
     });
 
-    return this.fetchSingleMessagesPromise = Promise.all(promises).then(() => {
-      this.fetchSingleMessagesTimeout = 0;
-      this.fetchSingleMessagesPromise = null;
-      if(this.needSingleMessages.length) this.fetchSingleMessages();
-    }).catch(() => {
+    this.fetchSingleMessagesPromise = Promise.all(promises).finally(() => {
       this.fetchSingleMessagesTimeout = 0;
       this.fetchSingleMessagesPromise = null;
       if(this.needSingleMessages.length) this.fetchSingleMessages();
@@ -3814,19 +3836,12 @@ export class AppMessagesManager {
   public wrapSingleMessage(msgID: number) {
     if(this.messagesStorage[msgID]) {
       $rootScope.$broadcast('messages_downloaded', [msgID]);
-      return {mid: msgID, loading: false};
-    }
-
-    if(this.needSingleMessages.indexOf(msgID) == -1) {
+    } else if(this.needSingleMessages.indexOf(msgID) == -1) {
       this.needSingleMessages.push(msgID);
       if(this.fetchSingleMessagesTimeout == 0) {
         this.fetchSingleMessagesTimeout = window.setTimeout(this.fetchSingleMessages.bind(this), 10);
       }
-
-      return {mid: msgID, loading: true};
-    } 
-    
-    return {mid: msgID, loading: false};
+    }
   }
 }
 

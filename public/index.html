@@ -13,70 +13,10 @@
   <link rel="manifest" href="site.webmanifest">
   <link rel="mask-icon" href="assets/img/safari-pinned-tab.svg" color="#64a3f0">
   <meta name="msapplication-TileColor" content="#da532c">
-  <meta name="theme-color" content="#ffffff">
-
-  <style>
-    /* cyrillic */
-    @font-face {
-      font-family: 'Roboto';
-      font-style: normal;
-      font-weight: 400;
-      font-display: swap;
-      src: local('Roboto'), local('Roboto-Regular'), url(assets/fonts/KFOmCnqEu92Fr1Mu5mxKKTU1Kvnz.woff2) format('woff2');
-      unicode-range:U + 0400-045F, U + 0490-0491, U + 04B0-04B1, U + 2116
-    }
-
-    /* latin-ext */
-    @font-face {
-      font-family: 'Roboto';
-      font-style: normal;
-      font-weight: 400;
-      font-display: swap;
-      src: local('Roboto'), local('Roboto-Regular'), url(assets/fonts/KFOmCnqEu92Fr1Mu7GxKKTU1Kvnz.woff2) format('woff2');
-      unicode-range:U + 0100-024F, U + 0259, U + 1E00-1EFF, U + 2020, U + 20A0-20AB, U + 20AD-20CF, U + 2113, U + 2C60-2C7F, U + A720-A7FF
-    }
-
-    /* latin */
-    @font-face {
-      font-family: 'Roboto';
-      font-style: normal;
-      font-weight: 400;
-      font-display: swap;
-      src: local('Roboto'), local('Roboto-Regular'), url(assets/fonts/KFOmCnqEu92Fr1Mu4mxKKTU1Kg.woff2) format('woff2');
-      unicode-range:U + 0000-00FF, U + 0131, U + 0152-0153, U + 02BB-02BC, U + 02C6, U + 02DA, U + 02DC, U + 2000-206F, U + 2074, U + 20AC, U + 2122, U + 2191, U + 2193, U + 2212, U + 2215, U + FEFF, U + FFFD
-    }
-
-    /* cyrillic */
-    @font-face {
-      font-family: 'Roboto';
-      font-style: normal;
-      font-weight: 500;
-      font-display: swap;
-      src: local('Roboto Medium'), local('Roboto-Medium'), url(assets/fonts/KFOlCnqEu92Fr1MmEU9fABc4AMP6lbBP.woff2) format('woff2');
-      unicode-range:U + 0400-045F, U + 0490-0491, U + 04B0-04B1, U + 2116
-    }
-
-    /* latin-ext */
-    @font-face {
-      font-family: 'Roboto';
-      font-style: normal;
-      font-weight: 500;
-      font-display: swap;
-      src: local('Roboto Medium'), local('Roboto-Medium'), url(assets/fonts/KFOlCnqEu92Fr1MmEU9fChc4AMP6lbBP.woff2) format('woff2');
-      unicode-range:U + 0100-024F, U + 0259, U + 1E00-1EFF, U + 2020, U + 20A0-20AB, U + 20AD-20CF, U + 2113, U + 2C60-2C7F, U + A720-A7FF
-    }
-
-    /* latin */
-    @font-face {
-      font-family: 'Roboto';
-      font-style: normal;
-      font-weight: 500;
-      font-display: swap;
-      src: local('Roboto Medium'), local('Roboto-Medium'), url(assets/fonts/KFOlCnqEu92Fr1MmEU9fBBc4AMP6lQ.woff2) format('woff2');
-      unicode-range:U + 0000-00FF, U + 0131, U + 0152-0153, U + 02BB-02BC, U + 02C6, U + 02DA, U + 02DC, U + 2000-206F, U + 2074, U + 20AC, U + 2122, U + 2191, U + 2193, U + 2212, U + 2215, U + FEFF, U + FFFD
-    }
-  </style>
   <meta name="theme-color" content="#fafafa">
+    <link rel="stylesheet" href="index.css">
+    <link rel="stylesheet" href="style-desktop.css" media="only screen and (min-width: 721px)">
+    <link rel="stylesheet" href="style-mobile.css" media="only screen and (max-width: 720px)">
 </head>
 
 <body>
@@ -239,397 +179,406 @@
         </div>
       </div>
     </div>
-    <div class="chats-container sidebar sidebar-left" id="column-left">
-      <div class="sidebar-slider tabs-container">
-        <div class="sidebar-slider-item item-main">
-          <div class="sidebar-header">
-            <div class="sidebar-header__btn-container">
-              <div class="btn-icon tgico-menu btn-menu-toggle rp sidebar-tools-button active">
-                <div class="btn-menu bottom-right">
-                  <div class="btn-menu-item menu-newGroup tgico-newgroup rp">New Group</div>
-                  <div class="btn-menu-item menu-contacts tgico-user rp">Contacts</div>
-                  <div class="btn-menu-item menu-archived tgico-archive rp">Archived <span class="archived-count"></span></div>
-                  <div class="btn-menu-item menu-saved tgico-savedmessages rp">Saved</div>
-                  <div class="btn-menu-item menu-settings tgico-settings rp">Settings</div>
-                  <div class="btn-menu-item menu-help tgico-help rp">Help</div>
+    <div id="main-columns" class="tabs-container">
+      <div class="chats-container sidebar sidebar-left main-column" id="column-left">
+        <div class="sidebar-slider tabs-container">
+          <div class="sidebar-slider-item item-main">
+            <div class="sidebar-header">
+              <div class="sidebar-header__btn-container">
+                <div class="btn-icon tgico-menu btn-menu-toggle rp sidebar-tools-button active">
+                  <div class="btn-menu bottom-right">
+                    <div class="btn-menu-item menu-newGroup tgico-newgroup rp">New Group</div>
+                    <div class="btn-menu-item menu-contacts tgico-user rp">Contacts</div>
+                    <div class="btn-menu-item menu-archived tgico-archive rp">Archived <span class="archived-count"></span></div>
+                    <div class="btn-menu-item menu-saved tgico-savedmessages rp">Saved</div>
+                    <div class="btn-menu-item menu-settings tgico-settings rp">Settings</div>
+                    <div class="btn-menu-item menu-help tgico-help rp">Help</div>
+                  </div>
                 </div>
+                <div class="btn-icon tgico-back rp sidebar-back-button"></div>
               </div>
-              <div class="btn-icon tgico-back rp sidebar-back-button"></div>
-            </div>
-            <div class="input-search">
-              <input type="text" placeholder="Telegram Search" id="global-search" />
-              <span class="tgico tgico-search"></span>
-            </div>
-          </div>
-          <div class="sidebar-content">
-            <div id="chats-container">
-              <ul id="dialogs"></ul>
-            </div>
-            <div class="sidebar-search hide" id="search-container"></div>
-            <button class="btn-primary btn-circle btn-icon rp btn-corner tgico-newchat_filled btn-menu-toggle" id="new-menu">
-              <div class="btn-menu top-left">
-                <div class="btn-menu-item menu-channel tgico-newchannel rp">New Channel</div>
-                <div class="btn-menu-item menu-group tgico-newgroup rp">New Group</div>
-                <div class="btn-menu-item menu-privateChat tgico-newprivate rp">New Private Chat</div>
-              </div>
-            </button>
-          </div>
-        </div>
-        <div class="sidebar-slider-item">
-          <div class="sidebar-header">
-            <button class="btn-icon rp tgico-back sidebar-close-button"></button>
-            <div class="sidebar-header__title">Archived Chats</div>
-          </div>
-          <div class="sidebar-content">
-            <div id="chats-archived-container">
-              <ul id="dialogs-archived"></ul>
-            </div>
-          </div>
-        </div>
-        <div class="sidebar-slider-item" id="contacts-container">
-          <div class="sidebar-header">
-            <button class="btn-icon rp tgico-back sidebar-close-button"></button>
-            <div class="input-search">
-              <input type="text" placeholder="Search" id="contacts-search" autocomplete="ASKLXmQQr52" />
-              <span class="tgico tgico-search"></span>
-            </div>
-          </div>
-          <div class="sidebar-content">
-            <div>
-              <ul id="contacts" class="contacts-container"></ul>
-            </div>
-          </div>
-        </div>
-        <div class="sidebar-slider-item new-channel-container">
-          <div class="sidebar-header">
-            <button class="btn-icon rp tgico-back sidebar-close-button"></button>
-            <div class="sidebar-header__title">New Channel</div>
-          </div>
-          <div class="sidebar-content">
-            <div class="avatar-edit">
-              <canvas class="avatar-edit-canvas"></canvas>
-              <span class="tgico tgico-cameraadd"></span>
-            </div>
-            <div class="input-wrapper">
-              <div class="input-field">
-                <input type="text" name="name" class="new-channel-name" autocomplete="xxDDqqOX" required="">
-                <label for="name">Channel Name</label>
-              </div>
-              <div class="input-field">
-                <input type="text" name="description" class="new-channel-description" autocomplete="aintsofunnow" required="">
-                <label for="lastName">Description (optional)</label>
+              <div class="input-search">
+                <input type="text" placeholder="Telegram Search" id="global-search" />
+                <span class="tgico tgico-search"></span>
               </div>
             </div>
-            <div class="caption">You can provide an optional description for your channel.</div>
-            <button class="btn-primary btn-circle btn-icon rp btn-corner tgico-next"></button>
-          </div>
-        </div>
-        <div class="sidebar-slider-item addmembers-container">
-          <div class="sidebar-header">
-            <button class="btn-icon rp tgico-back sidebar-close-button"></button>
-            <div class="sidebar-header__title">Add Members</div>
-          </div>
-          <div class="sidebar-content">
-            <button class="btn-primary btn-circle btn-icon rp btn-corner tgico-next"></button>
-          </div>
-        </div>
-        <div class="sidebar-slider-item new-group-container">
-          <div class="sidebar-header">
-            <button class="btn-icon rp tgico-back sidebar-close-button"></button>
-            <div class="sidebar-header__title">New Group</div>
-          </div>
-          <div class="sidebar-content">
-            <div class="avatar-edit">
-              <canvas class="avatar-edit-canvas"></canvas>
-              <span class="tgico tgico-cameraadd"></span>
-            </div>
-            <div class="input-wrapper">
-              <div class="input-field">
-                <input type="text" name="name" class="new-group-name" autocomplete="feellikeamonster2112" required="">
-                <label for="name">Group Name</label>
+            <div class="sidebar-content">
+              <div id="chats-container">
+                <ul id="dialogs"></ul>
               </div>
+              <div class="sidebar-search hide" id="search-container"></div>
+              <button class="btn-primary btn-circle btn-icon rp btn-corner tgico-newchat_filled btn-menu-toggle" id="new-menu">
+                <div class="btn-menu top-left">
+                  <div class="btn-menu-item menu-channel tgico-newchannel rp">New Channel</div>
+                  <div class="btn-menu-item menu-group tgico-newgroup rp">New Group</div>
+                  <div class="btn-menu-item menu-privateChat tgico-newprivate rp">New Private Chat</div>
+                </div>
+              </button>
             </div>
-            <button class="btn-primary btn-circle btn-icon rp btn-corner tgico-next"></button>
           </div>
-        </div>
-        <div class="sidebar-slider-item settings-container">
-          <div class="sidebar-header">
-            <button class="btn-icon rp tgico-back sidebar-close-button"></button>
-            <div class="sidebar-header__title">Settings</div>
-            <div class="btn-icon tgico-more rp btn-menu-toggle">
-              <div class="btn-menu bottom-left">
-                <div class="btn-menu-item menu-logout tgico-logout rp">Log Out</div>
+          <div class="sidebar-slider-item">
+            <div class="sidebar-header">
+              <button class="btn-icon rp tgico-back sidebar-close-button"></button>
+              <div class="sidebar-header__title">Archived Chats</div>
+            </div>
+            <div class="sidebar-content">
+              <div id="chats-archived-container">
+                <ul id="dialogs-archived"></ul>
               </div>
             </div>
           </div>
-          <div class="sidebar-content">
-            <div class="profile-content-wrapper">
-              <avatar-element class="profile-avatar"></avatar-element>
-              <div class="profile-name"></div>
-              <div class="profile-subtitle"></div>
-              <div class="profile-buttons">
-                <div class="profile-button menu-edit tgico-edit rp"><p>Edit Profile</p></div>
-                <div class="profile-button menu-general tgico-settings rp"><p>General Settings</p></div>
-                <div class="profile-button menu-notifications tgico-unmute rp"><p>Notifications</p></div>
-                <div class="profile-button menu-privacy tgico-lock rp"><p>Privacy and Security</p></div>
-                <div class="profile-button menu-language tgico-language rp"><p>Language</p></div>
+          <div class="sidebar-slider-item" id="contacts-container">
+            <div class="sidebar-header">
+              <button class="btn-icon rp tgico-back sidebar-close-button"></button>
+              <div class="input-search">
+                <input type="text" placeholder="Search" id="contacts-search" autocomplete="ASKLXmQQr52" />
+                <span class="tgico tgico-search"></span>
+              </div>
+            </div>
+            <div class="sidebar-content">
+              <div>
+                <ul id="contacts" class="contacts-container"></ul>
               </div>
             </div>
           </div>
-        </div>
-        <div class="sidebar-slider-item edit-profile-container">
-          <div class="sidebar-header">
-            <button class="btn-icon rp tgico-back sidebar-close-button"></button>
-            <div class="sidebar-header__title">Edit Profile</div>
-          </div>
-          <div class="sidebar-content">
-            <div class="scroll-wrapper">
+          <div class="sidebar-slider-item new-channel-container">
+            <div class="sidebar-header">
+              <button class="btn-icon rp tgico-back sidebar-close-button"></button>
+              <div class="sidebar-header__title">New Channel</div>
+            </div>
+            <div class="sidebar-content">
               <div class="avatar-edit">
                 <canvas class="avatar-edit-canvas"></canvas>
                 <span class="tgico tgico-cameraadd"></span>
               </div>
               <div class="input-wrapper">
                 <div class="input-field">
-                  <input type="text" name="name" class="firstname" autocomplete="xxDDqqOXJXC" required="">
-                  <label for="name">Name</label>
+                  <input type="text" name="name" class="new-channel-name" autocomplete="xxDDqqOX" required="">
+                  <label for="name">Channel Name</label>
                 </div>
                 <div class="input-field">
-                  <input type="text" name="lastname" class="lastname" autocomplete="aintsofunnowzXCFF" required="">
-                  <label for="lastname">Last Name</label>
-                </div>
-                <div class="input-field">
-                  <input type="text" name="bio" class="bio" autocomplete="aintsofunnowhHQ" required="">
-                  <label for="bio">Bio (optional)</label>
+                  <input type="text" name="description" class="new-channel-description" autocomplete="aintsofunnow" required="">
+                  <label for="lastName">Description (optional)</label>
                 </div>
               </div>
-              <div class="caption">Any details such as age, occupation or city. Example:<br>23 y.o. designer from San Francisco.</div>
-              <hr/>
-              <div class="sidebar-left-h2">Username</div>
+              <div class="caption">You can provide an optional description for your channel.</div>
+              <button class="btn-primary btn-circle btn-icon rp btn-corner tgico-next"></button>
+            </div>
+          </div>
+          <div class="sidebar-slider-item addmembers-container">
+            <div class="sidebar-header">
+              <button class="btn-icon rp tgico-back sidebar-close-button"></button>
+              <div class="sidebar-header__title">Add Members</div>
+            </div>
+            <div class="sidebar-content">
+              <button class="btn-primary btn-circle btn-icon rp btn-corner tgico-next"></button>
+            </div>
+          </div>
+          <div class="sidebar-slider-item new-group-container">
+            <div class="sidebar-header">
+              <button class="btn-icon rp tgico-back sidebar-close-button"></button>
+              <div class="sidebar-header__title">New Group</div>
+            </div>
+            <div class="sidebar-content">
+              <div class="avatar-edit">
+                <canvas class="avatar-edit-canvas"></canvas>
+                <span class="tgico tgico-cameraadd"></span>
+              </div>
               <div class="input-wrapper">
                 <div class="input-field">
-                  <input type="text" name="username" class="username" autocomplete="xxDDqqOXffEER" required="">
-                  <label for="username">Username (optional)</label>
+                  <input type="text" name="name" class="new-group-name" autocomplete="feellikeamonster2112" required="">
+                  <label for="name">Group Name</label>
                 </div>
               </div>
-              <div class="caption">You can choose a username on Telegram. If you do, other people will be able to find you by this username and contact you without knowing your phone number.<br><br>You can use a-z, 0-9 and underscores. Minimum length is 5 characters.<br><br><div class="profile-url-container">This link opens a chat with you:
-                <br><a class="profile-url" href="#" target="_blank"></a></div>
-              </div>
+              <button class="btn-primary btn-circle btn-icon rp btn-corner tgico-next"></button>
             </div>
-            <button class="btn-primary btn-circle btn-icon rp btn-corner tgico-check"></button>
           </div>
-        </div>
-      </div>
-    </div>
-    <div class="chat-container">
-      <canvas id="chat-background-canvas"></canvas>
-      <div id="topbar" style="display: none;">
-        <div class="chat-info">
-          <div class="person">
-            <avatar-element id="im-avatar" dialog="1"></avatar-element>
-            <div class="content">
-              <div class="top">
-                <div class="user-title" id="im-title"></div>
-              </div>
-              <div class="bottom">
-                <div class="info" id="im-subtitle"></div>
+          <div class="sidebar-slider-item settings-container">
+            <div class="sidebar-header">
+              <button class="btn-icon rp tgico-back sidebar-close-button"></button>
+              <div class="sidebar-header__title">Settings</div>
+              <div class="btn-icon tgico-more rp btn-menu-toggle">
+                <div class="btn-menu bottom-left">
+                  <div class="btn-menu-item menu-logout tgico-logout rp">Log Out</div>
+                </div>
               </div>
             </div>
-            <div class="pinned-message">
-              <div class="pinned-message-border"></div>
-              <div class="pinned-message-content">
-                <div class="pinned-message-title">Pinned Message</div>
-                <div class="pinned-message-subtitle"></div>
+            <div class="sidebar-content">
+              <div class="profile-content-wrapper scrollable scrollable-y">
+                <avatar-element class="profile-avatar"></avatar-element>
+                <div class="profile-name"></div>
+                <div class="profile-subtitle"></div>
+                <div class="profile-buttons">
+                  <div class="profile-button menu-edit tgico-edit rp"><p>Edit Profile</p></div>
+                  <div class="profile-button menu-general tgico-settings rp"><p>General Settings</p></div>
+                  <div class="profile-button menu-notifications tgico-unmute rp"><p>Notifications</p></div>
+                  <div class="profile-button menu-privacy tgico-lock rp"><p>Privacy and Security</p></div>
+                  <div class="profile-button menu-language tgico-language rp"><p>Language</p></div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-        <div class="pinned-msg"></div>
-        <div class="btn-icon rp tool-mute chat-mute-button" style="display: none;"></div>
-        <div class="btn-icon rp tgico-search chat-search-button"></div>
-        <div class="btn-icon btn-menu-toggle rp tgico-more chat-more-button">
-          <div class="btn-menu bottom-left">
-            <div class="btn-menu-item menu-mute rp">Mute</div>
-            <div class="btn-menu-item menu-delete tgico-delete danger rp">Delete and Leave</div>
+          <div class="sidebar-slider-item edit-profile-container">
+            <div class="sidebar-header">
+              <button class="btn-icon rp tgico-back sidebar-close-button"></button>
+              <div class="sidebar-header__title">Edit Profile</div>
+            </div>
+            <div class="sidebar-content">
+              <div class="scroll-wrapper">
+                <div class="avatar-edit">
+                  <canvas class="avatar-edit-canvas"></canvas>
+                  <span class="tgico tgico-cameraadd"></span>
+                </div>
+                <div class="input-wrapper">
+                  <div class="input-field">
+                    <input type="text" name="name" class="firstname" autocomplete="xxDDqqOXJXC" required="">
+                    <label for="name">Name</label>
+                  </div>
+                  <div class="input-field">
+                    <input type="text" name="lastname" class="lastname" autocomplete="aintsofunnowzXCFF" required="">
+                    <label for="lastname">Last Name</label>
+                  </div>
+                  <div class="input-field">
+                    <input type="text" name="bio" class="bio" autocomplete="aintsofunnowhHQ" required="">
+                    <label for="bio">Bio (optional)</label>
+                  </div>
+                </div>
+                <div class="caption">Any details such as age, occupation or city. Example:<br>23 y.o. designer from San Francisco.</div>
+                <hr/>
+                <div class="sidebar-left-h2">Username</div>
+                <div class="input-wrapper">
+                  <div class="input-field">
+                    <input type="text" name="username" class="username" autocomplete="xxDDqqOXffEER" required="">
+                    <label for="username">Username (optional)</label>
+                  </div>
+                </div>
+                <div class="caption">You can choose a username on Telegram. If you do, other people will be able to find you by this username and contact you without knowing your phone number.<br><br>You can use a-z, 0-9 and underscores. Minimum length is 5 characters.<br><br><div class="profile-url-container">This link opens a chat with you:
+                  <br><a class="profile-url" href="#" target="_blank"></a></div>
+                </div>
+              </div>
+              <button class="btn-primary btn-circle btn-icon rp btn-corner tgico-check"></button>
+            </div>
           </div>
         </div>
+        <div class="btn-menu" id="dialogs-contextmenu">
+          <div class="btn-menu-item menu-unread tgico rp"></div>
+          <div class="btn-menu-item menu-pin tgico rp"></div>
+          <div class="btn-menu-item menu-mute tgico rp"></div>
+          <div class="btn-menu-item menu-archive tgico rp"></div>
+          <div class="btn-menu-item menu-delete tgico-delete danger rp"></div>
+        </div>
       </div>
-      <div id="bubbles" class="scrolled-down">
-        <div id="bubbles-inner"></div>
-        <div id="bubbles-go-down" class="tgico-down z-depth-1 rp" style="display: none;"></div>
-      </div>
-      <div class="btn-menu" id="bubble-contextmenu">
-        <div class="btn-menu-item menu-reply tgico-reply rp">Reply</div>
-        <div class="btn-menu-item menu-edit tgico-edit rp">Edit</div>
-        <div class="btn-menu-item menu-copy tgico-copy rp">Copy</div>
-        <div class="btn-menu-item menu-pin tgico-pin rp">Pin</div>
-        <div class="btn-menu-item menu-forward tgico-forward rp">Forward</div>
-        <div class="btn-menu-item menu-delete tgico-delete danger rp">Delete</div>
-      </div>
-      <div class="btn-menu" id="dialogs-contextmenu">
-        <div class="btn-menu-item menu-archive tgico-unarchive rp"></div>
-        <div class="btn-menu-item menu-pin tgico-unpin rp"></div>
-        <div class="btn-menu-item menu-mute tgico-unmute rp"></div>
-        <div class="btn-menu-item menu-unread tgico-unread rp"></div>
-        <div class="btn-menu-item menu-delete tgico-delete danger rp"></div>
-      </div>
-      <div id="chat-input" style="display: none;">
-      <!-- <div id="chat-input"> -->
-        <div class="emoji-dropdown">
-          <nav class="emoji-tabs menu-horizontal">
-            <ul>
-              <li class="emoji-tabs-emoji rp"><span>Emoji</span></li>
-              <li class="emoji-tabs-stickers rp"><span>Stickers</span></li>
-              <li class="emoji-tabs-gifs rp"><span>GIFs</span></li>
-            </ul>
-          </nav>
-          <div class="emoji-container">
-            <div class="tabs-container">
-              <div class="emoji-padding">
-                <div id="content-emoji"></div>
-                <nav class="menu-horizontal">
-                  <ul class="justify-start">
-                    <li class="btn-icon tgico-recent rp"></li>
-                    <li class="active btn-icon tgico-smile rp"></li>
-                    <li class="btn-icon tgico-animals rp"></li>
-                    <li class="btn-icon tgico-eats rp"></li>
-                    <li class="btn-icon tgico-car rp"></li>
-                    <li class="btn-icon tgico-sport rp"></li>
-                    <li class="btn-icon tgico-lamp rp"></li>
-                    <!-- <li class="btn-icon tgico-info rp"></li> -->
-                    <li class="btn-icon tgico-flag rp"></li>
-                  </ul>
-                </nav>
+      <div class="chat-container main-column" id="column-center">
+        <canvas id="chat-background-canvas"></canvas>
+        <div id="topbar" style="display: none;" class="sidebar-header">
+          <button class="btn-icon rp tgico-back sidebar-close-button"></button>
+          <div class="chat-info">
+            <div class="person">
+              <avatar-element id="im-avatar" dialog="1"></avatar-element>
+              <div class="content">
+                <div class="top">
+                  <div class="user-title" id="im-title"></div>
+                </div>
+                <div class="bottom">
+                  <div class="info" id="im-subtitle"></div>
+                </div>
               </div>
-              <div class="stickers-padding">
-                <div id="content-stickers"></div>
-                <div class="menu-wrapper">
+            </div>
+          </div>
+          <div class="pinned-message">
+            <div class="pinned-message-border"></div>
+            <div class="pinned-message-content">
+              <div class="pinned-message-title">Pinned Message</div>
+              <div class="pinned-message-subtitle"></div>
+            </div>
+          </div>
+          <div class="btn-icon rp chat-mute-button" style="display: none;"></div>
+          <div class="btn-icon rp tgico-search chat-search-button"></div>
+          <div class="btn-icon btn-menu-toggle rp tgico-more chat-more-button">
+            <div class="btn-menu bottom-left">
+              <div class="btn-menu-item menu-mute rp">Mute</div>
+              <div class="btn-menu-item menu-delete tgico-delete danger rp">Delete and Leave</div>
+            </div>
+          </div>
+        </div>
+        <div id="bubbles" class="scrolled-down">
+          <div id="bubbles-inner"></div>
+          <div id="bubbles-go-down" class="tgico-down z-depth-1 rp" style="display: none;"></div>
+        </div>
+        <div class="btn-menu" id="bubble-contextmenu">
+          <div class="btn-menu-item menu-reply tgico-reply rp">Reply</div>
+          <div class="btn-menu-item menu-edit tgico-edit rp">Edit</div>
+          <div class="btn-menu-item menu-copy tgico-copy rp">Copy</div>
+          <div class="btn-menu-item menu-pin tgico-pin rp">Pin</div>
+          <div class="btn-menu-item menu-forward tgico-forward rp">Forward</div>
+          <div class="btn-menu-item menu-delete tgico-delete danger rp">Delete</div>
+        </div>
+        <div id="chat-input" style="display: none;">
+        <!-- <div id="chat-input"> -->
+          <div class="emoji-dropdown">
+            <nav class="emoji-tabs menu-horizontal">
+              <ul>
+                <li class="emoji-tabs-emoji rp"><span>Emoji</span></li>
+                <li class="emoji-tabs-stickers rp"><span>Stickers</span></li>
+                <li class="emoji-tabs-gifs rp"><span>GIFs</span></li>
+              </ul>
+            </nav>
+            <div class="emoji-container">
+              <div class="tabs-container">
+                <div class="emoji-padding">
+                  <div id="content-emoji"></div>
                   <nav class="menu-horizontal">
                     <ul class="justify-start">
-                      <li class="btn-icon tgico-recent active"></li>
+                      <li class="btn-icon tgico-recent rp"></li>
+                      <li class="active btn-icon tgico-smile rp"></li>
+                      <li class="btn-icon tgico-animals rp"></li>
+                      <li class="btn-icon tgico-eats rp"></li>
+                      <li class="btn-icon tgico-car rp"></li>
+                      <li class="btn-icon tgico-sport rp"></li>
+                      <li class="btn-icon tgico-lamp rp"></li>
+                      <!-- <li class="btn-icon tgico-info rp"></li> -->
+                      <li class="btn-icon tgico-flag rp"></li>
                     </ul>
                   </nav>
                 </div>
-              </div>
-              <div class="gifs-padding">
-                <div id="content-gifs">
-                  <div class="gifs-masonry"></div>
+                <div class="stickers-padding">
+                  <div id="content-stickers"></div>
+                  <div class="menu-wrapper">
+                    <nav class="menu-horizontal">
+                      <ul class="justify-start">
+                        <li class="btn-icon tgico-recent active"></li>
+                      </ul>
+                    </nav>
+                  </div>
+                </div>
+                <div class="gifs-padding">
+                  <div id="content-gifs">
+                    <div class="gifs-masonry"></div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-        <div class="input-message">
-          <div class="reply-wrapper">
-            <button class="btn-icon rp tgico-close reply-cancel"></button>
-            <div class="reply">
-              <div class="reply-border"></div>
-              <div class="reply-content">
-                <div class="reply-title"></div>
-                <div class="reply-subtitle"></div>
+          <div class="input-message">
+            <div class="reply-wrapper">
+              <button class="btn-icon rp tgico-close reply-cancel"></button>
+              <div class="reply">
+                <div class="reply-border"></div>
+                <div class="reply-content">
+                  <div class="reply-title"></div>
+                  <div class="reply-subtitle"></div>
+                </div>
               </div>
             </div>
-          </div>
-          <div class="new-message-wrapper">
-            <button class="btn-icon rp tgico-smile toggle-emoticons"></button>
-            <!-- <textarea type="text" id="input-message" placeholder="Message" contenteditable="true"></textarea> -->
-            <div class="input-message-container">
-              <div id="input-message" contenteditable="true" data-placeholder="Message"></div>
-            </div>
-            <button class="btn-icon rp tgico-attach btn-menu-toggle" id="attach-file">
-              <div class="btn-menu top-left">
-                <div class="btn-menu-item menu-media tgico-photo rp">Photo or Video</div>
-                <div class="btn-menu-item menu-document tgico-document rp">Document</div>
-                <div class="btn-menu-item menu-poll tgico-poll rp">Poll</div>
+            <div class="new-message-wrapper">
+              <button class="btn-icon rp tgico-smile toggle-emoticons"></button>
+              <!-- <textarea type="text" id="input-message" placeholder="Message" contenteditable="true"></textarea> -->
+              <div class="input-message-container">
+                <div id="input-message" contenteditable="true" data-placeholder="Message"></div>
               </div>
-            </button>
-            <input type="file" id="input-file" style="display: none;" multiple />
+              <button class="btn-icon rp tgico-attach btn-menu-toggle" id="attach-file">
+                <div class="btn-menu top-left">
+                  <div class="btn-menu-item menu-media tgico-photo rp">Photo or Video</div>
+                  <div class="btn-menu-item menu-document tgico-document rp">Document</div>
+                  <div class="btn-menu-item menu-poll tgico-poll rp">Poll</div>
+                </div>
+              </button>
+              <div class="record-time"></div>
+              <input type="file" id="input-file" style="display: none;" multiple />
+            </div>
+          </div>
+          <button class="btn-circle z-depth-1 btn-icon tgico-delete danger" id="btn-record-cancel"></button>
+          <div class="btn-send-container">
+            <div class="record-ripple"></div>
+            <button class="btn-circle z-depth-1 btn-icon tgico-microphone2" id="btn-send"></button>
           </div>
         </div>
-        <button class="btn-circle z-depth-1 btn-icon tgico-microphone2" id="btn-send"></button>
       </div>
-    </div>
-    <div class="sidebar sidebar-right" id="column-right">
-      <div class="sidebar-content">
-        <div class="profile-container">
-          <div class="sidebar-header">
-            <button class="btn-icon rp tgico-close sidebar-close-button"></button>
-            <div class="sidebar-header__title">Info</div>
-    
-            <!-- <button class="btn-icon rp tgico-edit sidebar-edit-button"></button> -->
-    
-            <div class="btn-icon tgico-more rp"></div>
-            <!-- <div class="btn-icon tgico-more rp btn-menu-toggle">
-              <div class="btn-menu bottom-left"> -->
-                <!-- <div class="btn-menu-item menu-mute rp">Mute</div>
-                <div class="btn-menu-item menu-delete tgico-delete danger rp">Delete and Leave</div> -->
-              <!-- </div>
-            </div> -->
-          </div>
-          <div class="profile-content">
-            <div class="profile-content-wrapper">
-              <avatar-element class="profile-avatar" dialog="1"></avatar-element>
-              <div class="profile-name"></div>
-              <div class="profile-subtitle"></div>
+      <div class="sidebar sidebar-right main-column" id="column-right">
+        <div class="sidebar-content">
+          <div class="profile-container">
+            <div class="sidebar-header">
+              <button class="btn-icon rp tgico-close sidebar-close-button"></button>
+              <div class="sidebar-header__title">Info</div>
       
-              <div class="profile-row profile-row-bio tgico-info">
-                <p></p>
-                <p class="profile-row-label">Bio</p>
-              </div>
-              <div class="profile-row profile-row-username tgico-username">
-                <p></p>
-                <p class="profile-row-label">Username</p>
-              </div>
-              <div class="profile-row profile-row-phone tgico-phone">
-                <p></p>
-                <p class="profile-row-label">Phone</p>
-              </div>
-              <div class="profile-row profile-row-notifications">
-                <label>
-                  <input type="checkbox" id="profile-notifications" checked="checked">
-                  <span>Notifications</span>
-                </label>
-                <p class="profile-row-label">Enabled</p>
-              </div>
+              <!-- <button class="btn-icon rp tgico-edit sidebar-edit-button"></button> -->
+      
+              <div class="btn-icon tgico-more rp"></div>
+              <!-- <div class="btn-icon tgico-more rp btn-menu-toggle">
+                <div class="btn-menu bottom-left"> -->
+                  <!-- <div class="btn-menu-item menu-mute rp">Mute</div>
+                  <div class="btn-menu-item menu-delete tgico-delete danger rp">Delete and Leave</div> -->
+                <!-- </div>
+              </div> -->
             </div>
-            <div class="content-container">
-              <nav class="profile-tabs menu-horizontal">
-                <ul>
-                  <li class="profile-tabs-members rp" style="display: none;"><span>Members</span></li>
-                  <li class="profile-tabs-media rp"><span>Media</span></li>
-                  <li class="profile-tabs-docs rp"><span>Docs</span></li>
-                  <li class="profile-tabs-links rp"><span>Links</span></li>
-                  <li class="profile-tabs-audio rp"><span>Audio</span></li>
-                </ul>
-              </nav>
-              <div class="profile-tabs-content tabs-container">
-                <div class="content-members-container"><div id="content-members"></div></div>
-                <div class="content-media-container"><div id="content-media"></div></div>
-                <div class="content-docs-container"><div id="content-docs"></div></div>
-                <div class="content-links-container"><div id="content-links"></div></div>
-                <div class="content-audio-container"><div id="content-audio"></div></div>
+            <div class="profile-content">
+              <div class="profile-content-wrapper">
+                <avatar-element class="profile-avatar" dialog="1"></avatar-element>
+                <div class="profile-name"></div>
+                <div class="profile-subtitle"></div>
+        
+                <div class="profile-row profile-row-bio tgico-info">
+                  <p></p>
+                  <p class="profile-row-label">Bio</p>
+                </div>
+                <div class="profile-row profile-row-username tgico-username">
+                  <p></p>
+                  <p class="profile-row-label">Username</p>
+                </div>
+                <div class="profile-row profile-row-phone tgico-phone">
+                  <p></p>
+                  <p class="profile-row-label">Phone</p>
+                </div>
+                <div class="profile-row profile-row-notifications">
+                  <label>
+                    <input type="checkbox" id="profile-notifications" checked="checked">
+                    <span>Notifications</span>
+                  </label>
+                  <p class="profile-row-label">Enabled</p>
+                </div>
+              </div>
+              <div class="content-container">
+                <nav class="profile-tabs menu-horizontal">
+                  <ul>
+                    <li class="profile-tabs-members rp" style="display: none;"><span>Members</span></li>
+                    <li class="profile-tabs-media rp"><span>Media</span></li>
+                    <li class="profile-tabs-docs rp"><span>Docs</span></li>
+                    <li class="profile-tabs-links rp"><span>Links</span></li>
+                    <li class="profile-tabs-audio rp"><span>Audio</span></li>
+                  </ul>
+                </nav>
+                <div class="profile-tabs-content tabs-container">
+                  <div class="content-members-container"><div id="content-members"></div></div>
+                  <div class="content-media-container"><div id="content-media"></div></div>
+                  <div class="content-docs-container"><div id="content-docs"></div></div>
+                  <div class="content-links-container"><div id="content-links"></div></div>
+                  <div class="content-audio-container"><div id="content-audio"></div></div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-        <div class="sidebar-search chats-container" id="search-private-container">
-          <div class="sidebar-header">
-            <button class="btn-icon rp tgico-close sidebar-close-button"></button>
-            <div class="input-search">
-              <input type="text" placeholder="Search" id="private-search" />
-              <span class="tgico tgico-search"></span>
+          <div class="sidebar-search chats-container" id="search-private-container">
+            <div class="sidebar-header">
+              <button class="btn-icon rp tgico-close sidebar-close-button"></button>
+              <div class="input-search">
+                <input type="text" placeholder="Search" id="private-search" />
+                <span class="tgico tgico-search"></span>
+              </div>
             </div>
+            <div class="chats-container"></div>
           </div>
-          <div class="chats-container"></div>
-        </div>
-        <div class="sidebar-search" id="forward-container">
-          <div class="sidebar-header">
-            <button class="btn-icon rp tgico-close sidebar-close-button"></button>
-            <div class="sidebar-header__title">Forward</div>
+          <div class="sidebar-search" id="forward-container">
+            <div class="sidebar-header">
+              <button class="btn-icon rp tgico-close sidebar-close-button"></button>
+              <div class="sidebar-header__title">Forward</div>
+            </div>
+            <button class="btn-primary btn-circle btn-icon rp btn-corner tgico-send"></button>
           </div>
-          <button class="btn-primary btn-circle btn-icon rp btn-corner tgico-send"></button>
         </div>
       </div>
     </div>
   </div>
+    <script src="npm.jsbn.chunk.js"></script>
+    <script src="index.bundle.js"></script>
+    <script src="webp.bundle.js"></script>
 </html>
-<script type="text/javascript" src="npm.jsbn.chunk.js"></script><script type="text/javascript" src="vendors~index.chunk.js"></script><script type="text/javascript" src="index.bundle.js"></script><script type="text/javascript" src="webp.bundle.js"></script>

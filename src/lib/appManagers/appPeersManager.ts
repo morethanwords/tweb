@@ -101,7 +101,7 @@ const AppPeersManager = {
       return peerString.user_id
         ? peerString.user_id
         : -(peerString.channel_id || peerString.chat_id);
-    }
+    } else if(!peerString) return 0;
     let isUser = peerString.charAt(0) == 'u';
     let peerParams = peerString.substr(1).split('_');
 

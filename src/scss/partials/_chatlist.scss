@@ -14,7 +14,6 @@
       border-radius: 22px;
       box-sizing: border-box;
       padding: 0px 1.5rem 0 40px;
-      -webkit-transition: all .15s ease-out;
       transition: all .15s ease-out;
       width: 100%;
       font-size: 16px;
@@ -39,7 +38,6 @@
       font-size: 24px;
       color: $color-gray;
       opacity: .6;
-      -webkit-transition: all .15s ease-out;
       transition: all .15s ease-out;
 
       &:before {
@@ -82,7 +80,7 @@
     margin: 0px 8px 0px 7px;
     overflow: hidden;
 
-    &:hover {
+    html.no-touch &:hover {
       background: rgba(112, 117, 121, .08);
     }
   }
@@ -121,6 +119,7 @@
       //font-size: .8rem;
       font-size: .75rem;
       padding: 1px 0px 0px 0px;
+      flex: 0 0 auto;
     }
 
     .user-last-message + span:not(.tgico-pinnedchat) {
@@ -136,9 +135,6 @@
     vertical-align: middle;
     //margin: .1rem 0;
     line-height: 27px;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
     user-select: none;
   }
 
@@ -180,7 +176,7 @@
 
     &.is-verified:after {
       content: " ";
-      background: url(/assets/img/icon-verified.svg);
+      background: url(assets/img/icon-verified.svg);
       display: inline-block;
       width: 20px;
       height: 20px;
@@ -235,6 +231,7 @@
     border-radius: 12px;
     margin-top: 4px;
     margin-right: -2px;
+    flex: 0 0 auto;
   }
 
   .unread, .unread-muted {
@@ -262,7 +259,7 @@
 
   .search-group {
     width: 100%;
-    border-bottom: 1px solid #DADCE0;
+    //border-bottom: 1px solid #DADCE0;
     padding: 1rem 0 .5rem;
     margin-bottom: .5rem;
 

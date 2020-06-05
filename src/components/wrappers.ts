@@ -16,6 +16,7 @@ import appMessagesManager from '../lib/appManagers/appMessagesManager';
 import { Layouter, RectPart } from './groupedLayout';
 import PollElement from './poll';
 import appWebpManager from '../lib/appManagers/appWebpManager';
+import { mediaSizes } from '../lib/config';
 
 export type MTDocument = {
   _: 'document' | 'documentEmpty',
@@ -691,6 +692,9 @@ function wrapMediaWithTail(photo: any, message: {mid: number, message: string}, 
   svg.setAttributeNS(null, 'width', '' + width);
   svg.setAttributeNS(null, 'height', '' + height);
 
+  svg.setAttributeNS(null, 'viewBox', '0 0 ' + width + ' ' + height);
+  svg.setAttributeNS(null, 'preserveAspectRatio', 'none');
+
   let clipID = 'clip' + message.mid;
   svg.dataset.clipID = clipID;
   
@@ -728,7 +732,7 @@ function wrapMediaWithTail(photo: any, message: {mid: number, message: string}, 
   return img;
 }
 
-export function wrapPhoto(photoID: string, message: any, container: HTMLDivElement, boxWidth = 480, boxHeight = 480, withTail = true, isOut = false, lazyLoadQueue: LazyLoadQueue, middleware: () => boolean, size: MTPhotoSize = null) {
+export function wrapPhoto(photoID: string, message: any, container: HTMLDivElement, boxWidth = mediaSizes.active.regular.width, boxHeight = mediaSizes.active.regular.height, withTail = true, isOut = false, lazyLoadQueue: LazyLoadQueue, middleware: () => boolean, size: MTPhotoSize = null) {
   let photo = appPhotosManager.getPhoto(photoID);
 
   let image: HTMLImageElement;
@@ -905,7 +909,9 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
           container: div,
           loop: !emoji,
           autoplay: true,
-          animationData: JSON.parse(json)
+          animationData: JSON.parse(json),
+          width: !emoji ? 200 : 140,
+          height: !emoji ? 200 : 140
         }, group, toneIndex);
 
         animation.addListener('ready', () => {
@@ -1045,7 +1051,7 @@ export function wrapAlbum({groupID, attachmentDiv, middleware, uploading, lazyLo
   }
 
   let spacing = 2;
-  let layouter = new Layouter(items.map(i => ({w: i.size.w, h: i.size.h})), 451, 100, spacing);
+  let layouter = new Layouter(items.map(i => ({w: i.size.w, h: i.size.h})), mediaSizes.active.album.width, 100, spacing);
   let layout = layouter.layout();
   console.log('layout:', layout, items.map(i => ({w: i.size.w, h: i.size.h})));
 

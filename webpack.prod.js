@@ -1,9 +1,13 @@
+process.env.NODE_ENV = 'production';
+
 const path = require('path');
 const merge = require('webpack-merge');
 const common = require('./webpack.common.js');
 
 const CompressionPlugin = require("compression-webpack-plugin");
 const WebpackOnBuildPlugin = require('on-build-webpack');
+const TerserJSPlugin = require('terser-webpack-plugin');
+const OptimizeCSSAssetsPlugin = require('optimize-css-assets-webpack-plugin');
 const fs = require('fs');
 
 const buildDir = __dirname + '/public/';
@@ -12,6 +16,7 @@ module.exports = merge(common, {
   mode: 'production',
 
   optimization: {
+    minimizer: [new TerserJSPlugin({}), new OptimizeCSSAssetsPlugin({})],
     //runtimeChunk: 'single',
     splitChunks: {
       chunks: 'all',
@@ -66,7 +71,9 @@ module.exports = merge(common, {
             || file.includes('.wasm')
             || file.includes('rlottie')
             || file.includes('pako')
-            || file.includes('Worker.min.js')) return;
+            || file.includes('Worker.min.js')
+            || file.includes('recorder.min.js')
+            || file.includes('.hbs')) return;
 
           let p = path.resolve(buildDir + file);
           if(!newlyCreatedAssets[file] && ['.gz', '.js'].find(ext => file.endsWith(ext)) !== undefined) {

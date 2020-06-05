@@ -14,6 +14,10 @@ $move-duration: .35s;
   align-items: center;
   justify-content: center;
 
+  @include respond-to(handhelds) {
+    background: #000;
+  }
+
   &-author {
     position: absolute;
     top: 0;
@@ -26,7 +30,7 @@ $move-duration: .35s;
     color: #8b8b8b;
     transition: $open-duration;
 
-    &:hover {
+    html.no-touch &:hover {
       color: #fff;
     }
   }
@@ -37,6 +41,10 @@ $move-duration: .35s;
     position: absolute;
     top: 8px;
     left: 20px;
+
+    @include respond-to(handhelds) {
+      display: none;
+    }
   }
 
   &-name {
@@ -59,9 +67,13 @@ $move-duration: .35s;
       margin: 0 .25rem;
       transition: $open-duration;
 
-      &:hover {
+      html.no-touch &:hover {
         color: #fff;
       }
+    }
+
+    @include respond-to(handhelds) {
+      display: none;
     }
   }
 
@@ -105,12 +117,12 @@ $move-duration: .35s;
     overflow: hidden;
     text-overflow: ellipsis;
 
-    &:hover {
+    html.no-touch &:hover {
       color: #fff;
     }
   }
 
-  &-switcher-left, &-switcher-right {
+  &-switcher {
     position: absolute;
     left: 0;
     top: 0;
@@ -119,10 +131,14 @@ $move-duration: .35s;
     cursor: pointer;
     z-index: 5;
 
-    &:hover {
+    html.no-touch &:hover {
       > span {
         opacity: 1;
       }
+    }
+
+    @include respond-to(handhelds) {
+      width: 1.5rem;
     }
   }
 
@@ -225,12 +241,32 @@ $move-duration: .35s;
       visibility: visible;
       transition-delay: 0s;
 
-      .overlays {
+      .overlays, .btn-menu-toggle {
         opacity: 1;
         visibility: visible;
-        -webkit-transition: opacity $open-duration 0s, visibility 0s 0s;
-        -moz-transition: opacity $open-duration 0s, visibility 0s 0s;
         transition: opacity $open-duration 0s, visibility 0s 0s;
+      }
+    }
+
+    @include respond-to(handhelds) {
+      .menu-mobile-close {
+        position: absolute;
+        left: 20px;
+        top: 8px;
+      }
+  
+      .btn-menu-toggle {
+        position: fixed;
+        right: 8px;
+        top: 8px;
+        z-index: 5;
+        opacity: 0;
+        transition: opacity $open-duration 0s, visibility 0s $open-duration;
+  
+        &.menu-open {
+          color: #fff;
+          background-color: rgba(112, 117, 121, .2) !important;
+        }
       }
     }
   }
@@ -238,6 +274,7 @@ $move-duration: .35s;
   &-switchers {
     position: relative;
     width: $large-screen;
+    max-width: 100%;
     height: 100%;
     margin: 0 auto;
   }
@@ -254,7 +291,5 @@ $move-duration: .35s;
   //display: none;
   opacity: 0;
   visibility: hidden;
-  -webkit-transition: opacity $open-duration 0s, visibility 0s $open-duration;
-  -moz-transition: opacity $open-duration 0s, visibility 0s $open-duration;
   transition: opacity $open-duration 0s, visibility 0s $open-duration;
 }

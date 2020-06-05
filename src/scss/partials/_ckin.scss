@@ -81,8 +81,6 @@
     align-items: center;
 
     i {
-      -ms-flex-item-align: center;
-      -ms-grid-row-align: center;
       align-self: center;
     }
 
@@ -100,12 +98,10 @@
       visibility: visible;
       top: 50%;
       left: 50%;
-      -ms-transform: translate(-50%, -50%) scale(1);
-          transform: translate(-50%, -50%) scale(1);
+      transform: translate(-50%, -50%) scale(1);
       font-size: 64px;
       transition: all .2s;
-      -ms-touch-action: manipulation;
-          touch-action: manipulation;
+      touch-action: manipulation;
     }
   }
 
@@ -138,27 +134,22 @@
   position: absolute;
   background-repeat: repeat-x;
   background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAADGCAYAAAAT+OqFAAAAdklEQVQoz42QQQ7AIAgEF/T/D+kbq/RWAlnQyyazA4aoAB4FsBSA/bFjuF1EOL7VbrIrBuusmrt4ZZORfb6ehbWdnRHEIiITaEUKa5EJqUakRSaEYBJSCY2dEstQY7AuxahwXFrvZmWl2rh4JZ07z9dLtesfNj5q0FU3A5ObbwAAAABJRU5ErkJggg==);
-  -moz-transition: all .3s;
-  -webkit-transition: all .3s;
   transition: all .3s;
   pointer-events: none;
 }
 
 .default.is-playing .default__gradient-bottom {
-  -ms-transform: translateY(50px);
-      transform: translateY(50px);
+  transform: translateY(50px);
 }
 
-.default.is-playing:hover .default__gradient-bottom {
-  -ms-transform: translateY(0px);
-      transform: translateY(0px);
+html.no-touch .default.is-playing:hover .default__gradient-bottom {
+  transform: translateY(0px);
 }
 
 .default.is-playing:before {
   opacity: 0;
   visibility: hidden;
-  -ms-transform: translate(-50%, -50%) scale(1.3);
-      transform: translate(-50%, -50%) scale(1.3);
+  transform: translate(-50%, -50%) scale(1.3);
 }
 
 .default.is-playing .default__button--big {
@@ -167,13 +158,11 @@
 }
 
 .default.is-playing .default__controls {
-  -ms-transform: translateY(52px);
-      transform: translateY(52px);
+  transform: translateY(52px);
 }
 
-.default.is-playing:hover .default__controls {
-  -ms-transform: translateY(0);
-      transform: translateY(0);
+html.no-touch .default.is-playing:hover .default__controls {
+  transform: translateY(0);
 }
 
 .default {

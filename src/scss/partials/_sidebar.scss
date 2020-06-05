@@ -1,6 +1,6 @@
 .sidebar {
   background-color: #fff;
-  overflow: hidden;
+  //overflow: hidden;
 
   &-left {
     border-right: 1px solid #DADCE0;
@@ -11,11 +11,20 @@
   }
 
   &-header {
+    background-color: #fff;
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 7.5px 16px;
     min-height: 60px;
+    flex: 0 0 auto;
+    user-select: none;
+    cursor: default;
+
+    /* //position: sticky !important;
+    position: sticky !important;
+    top: 0;
+    z-index: 1; */
 
     &__title {
       flex: 1;
@@ -40,6 +49,11 @@
     overflow: hidden;
     display: flex; /* idk why but need */
     position: relative;
+    flex: 1 1 auto;
+
+    /* @include respond-to(handhelds) {
+      margin-top: 60px;
+    } */
 
     > div {
       width: 100%;

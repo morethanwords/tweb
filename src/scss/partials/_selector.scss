@@ -22,6 +22,7 @@
 
     .scrollable {
       position: relative;
+      max-height: inherit; // fix safari
     }
   }
 
@@ -53,7 +54,7 @@
     flex: 0 0 auto;
     transition: .2s all;
 
-    &:hover {
+    html.no-touch &:hover {
       background-color: #fae2e3;
       cursor: pointer;
 
@@ -79,6 +80,7 @@
       margin-right: 8px;
       overflow: hidden;
       font-size: 14px;
+      -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%);
 
       &:after {
         position: absolute;

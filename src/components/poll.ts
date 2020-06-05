@@ -1,6 +1,7 @@
 import appPollsManager, { PollResults, Poll } from "../lib/appManagers/appPollsManager";
 import { RichTextProcessor } from "../lib/richtextprocessor";
 import { findUpClassName, $rootScope } from "../lib/utils";
+import { mediaSizes } from "../lib/config";
 
 let lineTotalLength = 0;
 const tailLength = 9;
@@ -129,7 +130,7 @@ export default class PollElement extends HTMLElement {
           </div>
           <div class="poll-answer-percents"></div>
           <div class="poll-answer-text">${RichTextProcessor.wrapEmojiText(answer.text)}</div>
-          <svg version="1.1" class="poll-line" style="display: none;" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 480 35" xml:space="preserve">
+          <svg version="1.1" class="poll-line" style="display: none;" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${mediaSizes.active.regular.width} 35" xml:space="preserve">
             <use href="#poll-line"></use>
           </svg>
         </div>

@@ -8,20 +8,38 @@ $time-background: rgba(0, 0, 0, .35);
 #topbar {
 	width: 100%;
 	background-color: #fff;
-	box-sizing: border-box;
 	user-select: none;
-	-webkit-user-select: none;
-	display: flex;
-	align-items: center;
 	box-shadow: 0 1px 2px 0 rgba(16, 35, 47, .07);
-	padding: .5rem 15px;
-	flex: 0 0 auto; /* Forces side columns to stay same width */
 	min-height: 61px;
 	max-height: 61px;
 	border-bottom: 1px solid #DADCE0;
-	
-	/* & > * {
-		margin: 0 2px;
+
+	&.is-pinned-shown {
+		.pinned-message {
+			display: flex;
+		}
+		
+		@include respond-to(handhelds) {
+			margin-bottom: 60px;
+		}
+	}
+
+	@include respond-to(not-handhelds) {
+		.sidebar-close-button, .menu-search {
+			display: none;
+		}
+	}
+
+	@include respond-to(handhelds) {
+		.chat-mute-button, .chat-search-button {
+			display: none;
+		}
+	}
+
+	/* @include respond-to(handhelds) {
+		position: sticky;
+		top: 0;
+		z-index: 3;
 	} */
 
 	.chat-more-button {
@@ -47,10 +65,6 @@ $time-background: rgba(0, 0, 0, .35);
 		align-items: center;
 		cursor: pointer;
 		margin-left: 4px;
-		
-		&:hover {
-			background-color: transparent;
-		}
 
 		.bottom {
 			font-size: 14px;
@@ -76,10 +90,25 @@ $time-background: rgba(0, 0, 0, .35);
 	width: 100%;
 	max-width: $chat-max-width;
 	padding-top: .35rem;
-	padding-bottom: 21px;
 	justify-content: space-between;
 	flex: 0 0 auto; /* Forces side columns to stay same width */
 	position: relative;
+
+	@include respond-to(handhelds) {
+		padding: .35rem .5rem .5rem;
+	}
+
+	@include respond-to(not-handhelds) {
+		padding-bottom: 21px;
+	}
+
+	/* @include respond-to(handhelds) {
+		position: sticky;
+		bottom: 0;
+		z-index: 3;
+		background: inherit;
+		overflow: hidden;
+	} */
 	
 	#input-message {
 		background: none;
@@ -218,14 +247,19 @@ $time-background: rgba(0, 0, 0, .35);
 	// padding: 200px;
 	width: 100%;
 	align-items: center;
-	height: 100vh;
-	overflow: hidden;
+	//overflow: hidden;
 	flex-direction: column;
 	position: relative;
-	/* background-image: url('../../../public/assets/img/camomile.jpg'); */
-	background-image: url('../../../public/assets/img/camomile_blurred.jpg');
+	background-image: url('assets/img/camomile_blurred.jpg');
+	//background: url('assets/img/camomile_blurred.jpg') no-repeat center center;
 	background-size: cover;
 	background-position: center center;
+	//background-attachment: inherit;
+
+	/* @include respond-to(handhelds) {
+		//background: url("assets/img/camomile_blurred.jpg") no-repeat center center fixed;
+		background-attachment: fixed;
+	} */
 	
 	/* .chat-background, #chat-closed {
 		position: absolute;
@@ -284,7 +318,7 @@ $time-background: rgba(0, 0, 0, .35);
 			content: '';
 			background-size: 11px 20px;
 			right: -9px;
-			background-image: url('../../assets/img/msg-tail-left.svg');
+			background-image: url('assets/img/msg-tail-left.svg');
 			transform: scaleX(-1);
 		}
 
@@ -373,7 +407,21 @@ $time-background: rgba(0, 0, 0, .35);
 			width: 24px;
 		}
 	}
-	
+
+	@include respond-to(handhelds) {
+		.pinned-message {
+			position: absolute !important;
+			top: 100%;
+			width: 100% !important;
+			background: #fff;
+			left: 0;
+			border-top: 1px solid #ccc;
+			max-height: 100% !important;
+			height: 100%;
+			padding: 1rem;
+		}
+	}
+
 	.pinned-message, .reply {
 		cursor: pointer;
 		display: flex;
@@ -393,7 +441,7 @@ $time-background: rgba(0, 0, 0, .35);
 			}
 		}
 		
-		&:hover {
+		html.no-touch &:hover {
 			background-color: rgba(112, 117, 121, 0.08);
 		}
 		
@@ -464,6 +512,10 @@ $time-background: rgba(0, 0, 0, .35);
 			font-size: 16px;
 			vertical-align: unset;
 		}
+	}
+
+	.pinned-message {
+		display: none;
 	}
 	
 	/* #chat-closed {
@@ -547,7 +599,7 @@ $time-background: rgba(0, 0, 0, .35);
 	padding: 0 .5rem;
 
 	> .scrollable {
-		//position: unset;
+		padding: 0 .75rem;
 
 		height: auto;
 		/* position: absolute;
@@ -605,6 +657,10 @@ $time-background: rgba(0, 0, 0, .35);
 	&.is-chat {
 		.is-in .bubble__container {
 			margin-left: 3rem;
+
+			@include respond-to(handhelds) {
+				max-width: calc(100% - 3rem);
+			}
 		}
 	}
 
@@ -647,10 +703,14 @@ $time-background: rgba(0, 0, 0, .35);
 	opacity: 0;
 	transition: .2s opacity;
 	user-select: none;
-	-webkit-user-select: none;
+	z-index: 2;
 
 	&:before {
 		margin-left: .75px;
+	}
+
+	@include respond-to(handhelds) {
+		right: .5rem;
 	}
 }
 
@@ -678,7 +738,7 @@ $time-background: rgba(0, 0, 0, .35);
 			cursor: pointer;
 			color: $color-blue;
 			
-			&:hover {
+			html.no-touch &:hover {
 				background-color: rgba(112, 117, 121, 0.08);
 			}
 			

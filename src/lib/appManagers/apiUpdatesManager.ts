@@ -495,6 +495,8 @@ export class ApiUpdatesManager {
   
   public attach(state: Pick<ApiUpdatesManager['updatesState'], 'seq' | 'pts' | 'date'>) {
     if(this.attached) return;
+
+    //return;
     
     this.attached = true;
     apiManager.setUpdatesProcessor(this.processUpdateMessage.bind(this));

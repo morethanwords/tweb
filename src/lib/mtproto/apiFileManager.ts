@@ -1,6 +1,7 @@
 import { nextRandomInt } from "../bin_utils";
 
-import IdbFileStorage from "../idb";
+//import IdbFileStorage from "../idb";
+import cacheStorage from "../cacheStorage";
 import FileManager from "../filemanager";
 //import apiManager from "./apiManager";
 import apiManager from "./mtprotoworker";
@@ -31,7 +32,7 @@ export class ApiFileManager {
       activeDelta?: number
     }>
   } = {};
-  public downloadActives: any = {};
+  public downloadActives: {[dcID: string]: number} = {};
 
   private log: ReturnType<typeof logger> = logger('AFM');
 
@@ -135,8 +136,8 @@ export class ApiFileManager {
     return this.cachedDownloads[fileName] || false;
   }
 
-  public getFileStorage(): typeof IdbFileStorage {
-    return IdbFileStorage;
+  public getFileStorage(): typeof cacheStorage {
+    return cacheStorage;
   }
 
   /* public isFileExists(location: any) {
@@ -195,8 +196,10 @@ export class ApiFileManager {
 
     return this.cachedDownloadPromises[fileName] = fileStorage.getFile(fileName).then((blob) => {
       //throw '';
+      //this.log('downloadSmallFile found photo by fileName:', fileName);
       return this.cachedDownloads[fileName] = blob;
     }).catch(() => {
+      //this.log.warn('downloadSmallFile found no photo by fileName:', fileName);
       let downloadPromise = this.downloadRequest(dcID, () => {
         let inputLocation = location;
         if(!inputLocation._ || inputLocation._ == 'fileLocation') {
@@ -240,13 +243,13 @@ export class ApiFileManager {
     });
   }
 
-  public getDownloadedFile(location: any, size?: any) {
+  public getDownloadedFile(location: any) {
     var fileStorage = this.getFileStorage();
     var fileName = typeof(location) !== 'string' ? this.getFileName(location) : location;
 
     //console.log('getDownloadedFile', location, fileName);
 
-    return fileStorage.getFile(fileName, size);
+    return fileStorage.getFile(fileName);
   }
 
   /* public getIndexedKeys() {
@@ -332,12 +335,12 @@ export class ApiFileManager {
       }
     };
 
-    fileStorage.getFile(fileName, size).then(async(blob: Blob) => {
+    fileStorage.getFile(fileName).then(async(blob: Blob) => {
       //this.log('is that i wanted');
       //throw '';
 
       if(blob.size < size) {
-        this.log('downloadFile need to deleteFile 2, wrong size:', blob.size, size);
+        //this.log('downloadFile need to deleteFile 2, wrong size:', blob.size, size);
         await this.deleteFile(fileName);
         throw false;
       }
@@ -470,7 +473,7 @@ export class ApiFileManager {
   }
 
   public deleteFile(fileName: string) {
-    this.log('will delete file:', fileName);
+    //this.log('will delete file:', fileName);
 
     delete this.cachedDownloadPromises[fileName];
     delete this.cachedDownloads[fileName];

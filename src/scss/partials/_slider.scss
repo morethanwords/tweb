@@ -49,9 +49,13 @@
 .tabs-container {
   min-width: 100%;
   width: 100%;
-  display: flex;
-  /* overflow: hidden; */
-  overflow-x: hidden;
+  display: grid;
+  //grid-template-columns: 1fr;
+  grid-template-columns: 100%;
+
+  /* @include respond-to(not-handhelds) {
+    overflow-x: hidden;
+  } */
 
   &.animated {
     transition: .3s transform;
@@ -60,13 +64,21 @@
   > div {
     width: 100%;
     max-width: 100%;
-    overflow: hidden;
-    /* transition: .2s all; */
+    transition: transform .2s, filter .2s;
     display: none;
+    flex-direction: column;
+    position: relative;
+    grid-row-start: 1;
+    grid-column-start: 1;
+    background-color: #fff;
+    //z-index: 1;
+    
+    //@include respond-to(not-handhelds) {
+      overflow: hidden;
+    //}
 
     &.active {
       display: flex;
-      flex-direction: column;
     }
     
     > div:not(.scroll-padding) {

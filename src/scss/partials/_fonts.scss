@@ -57,7 +57,7 @@
   content: "\e907";
 }
 .tgico-archive:before {
-  content: "\e908";
+  content: $tgico-archive;
 }
 .tgico-attach:before {
   content: "\e909";
@@ -72,7 +72,7 @@
   content: "\e90c";
 }
 .tgico-back:before {
-  content: "\e90d";
+  content: $tgico-back;
 }
 .tgico-bots:before {
   content: "\e90e";
@@ -173,7 +173,7 @@
 .tgico-forward:before {
   content: "\e92e";
 }
-.tgico-FullScreen:before {
+.tgico-fullscreen:before {
   content: "\e92f";
 }
 .tgico-gifs:before {
@@ -237,7 +237,7 @@
   content: "\e943";
 }
 .tgico-mute:before {
-  content: "\e944";
+  content: $tgico-mute;
 }
 .tgico-muted:before {
   content: "\e945";
@@ -276,7 +276,7 @@
   content: "\e950";
 }
 .tgico-pin:before {
-  content: "\e951";
+  content: $tgico-pin;
 }
 .tgico-pinnedchat:before {
   content: "\e952";
@@ -294,7 +294,7 @@
   content: "\e956";
 }
 .tgico-readchats:before {
-  content: "\e957";
+  content: $tgico-readchats;
 }
 .tgico-recent:before {
   content: "\e958";
@@ -345,19 +345,19 @@
   content: "\e967";
 }
 .tgico-unarchive:before {
-  content: "\e968";
+  content: $tgico-unarchive;
 }
 .tgico-unlock:before {
   content: "\e969";
 }
 .tgico-unmute:before {
-  content: "\e96a";
+  content: $tgico-unmute;
 }
 .tgico-unpin:before {
-  content: "\e96b";
+  content: $tgico-unpin;
 }
 .tgico-unread:before {
-  content: "\e96c";
+  content: $tgico-unread;
 }
 .tgico-up:before {
   content: "\e96d";

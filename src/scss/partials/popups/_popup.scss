@@ -67,7 +67,7 @@
     line-height: 1;
     transition: .2s;
     
-    &:hover {
+    html.no-touch &:hover {
       color: #000;
     }
   }

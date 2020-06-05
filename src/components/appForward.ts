@@ -11,6 +11,8 @@ class AppForward {
   private selector: AppSelectPeers;
   private msgIDs: number[] = [];
 
+  private sidebarWasActive: boolean;
+
   constructor() {
     this.closeBtn.addEventListener('click', this.close.bind(this));
 
@@ -43,8 +45,10 @@ class AppForward {
   }
 
   public close() {
-    this.cleanup();
-    this.container.classList.remove('active');
+    (this.sidebarWasActive ? Promise.resolve() : appSidebarRight.toggleSidebar(false)).then(() => {
+      this.cleanup();
+      this.container.classList.remove('active');
+    });
   }
 
   public cleanup() {
@@ -71,6 +75,7 @@ class AppForward {
       }
     }, 'dialogs', () => {
       console.log('forward rendered:', this.container.querySelector('.selector ul').childElementCount);
+      this.sidebarWasActive = appSidebarRight.sidebarEl.classList.contains('active');
       appSidebarRight.toggleSidebar(true);
     });
   }

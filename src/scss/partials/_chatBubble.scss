@@ -39,9 +39,13 @@
 
 .bubble {
   padding-top: 5px;
-  max-width: $chat-max-width;
-  margin: 0 auto;
+  max-width: unquote("min(calc(100% - 48px), #{$chat-max-width})");
   position: relative;
+  z-index: 1;
+
+  @include respond-to(not-handhelds) {
+    margin: 0 auto;
+  }
 
   &.is-selected {
     &:after {
@@ -81,14 +85,13 @@
   }
 
   &.is-date {
-    position: -webkit-sticky;
     position: sticky;
     top: 5px;
-    z-index: 3;
+    //z-index: 3;
+    z-index: 2;
     pointer-events: none;
 
     &.is-sticky {
-      -webkit-transition: opacity .3s ease;
       transition: opacity .3s ease;
       opacity: 0;
     }
@@ -97,7 +100,7 @@
   &__container {
     //min-width: 60px;
     min-width: 56px;
-    max-width: 85%;
+    max-width: 100%;
     border-radius: 12px;
     box-shadow: 0 1px 2px 0 rgba(16, 35, 47, 0.15);
     position: relative;
@@ -107,6 +110,10 @@
     width: max-content;
     height: fit-content;
     z-index: 2;
+
+    @include respond-to(not-handhelds) {
+      max-width: 85%;
+    }
 
     > .user-avatar {
       position: absolute;
@@ -123,6 +130,7 @@
   &.service {
     //padding: 1rem 0;
     padding: 5px 0;
+    max-width: $chat-max-width;
 
     .bubble__container {
       /* justify-self: center; */
@@ -131,33 +139,9 @@
     }
   }
 
-  /* &.forwarded {
-    .forward {
-      opacity: 0;
-      position: absolute;
-      right: -46px;
-      bottom: 0;
-      width: 38px;
-      height: 38px;
-      font-size: 1.5rem;
-      align-items: center;
-      display: flex;
-      justify-content: center;
-      color: #fff;
-      border-radius: 50%;
-      background: rgba(0, 0, 0, 0.16);
-      cursor: pointer;
-      transition: .2s opacity;
-
-      svg {
-        width: 20px;
-        height: 20px;
-      }
-    }
-  } */
-
-  .goto-original {
-    opacity: 0;
+  &-beside-button {
+    //opacity: 0;
+    //transition: .2s opacity;
     position: absolute;
     right: -46px;
     bottom: 0;
@@ -171,7 +155,17 @@
     border-radius: 50%;
     background: rgba(0, 0, 0, 0.16);
     cursor: pointer;
-    transition: .2s opacity;
+  }
+
+  .forward {
+    svg {
+      width: 20px;
+      height: 20px;
+    }
+  }
+
+  .message strong {
+    font-weight: 500 !important;
   }
 
   /* &.is-group-first {
@@ -204,9 +198,9 @@
     }
   }
 
-  .goto-original {
+  /* .goto-original {
     opacity: 1;
-  }
+  } */
 
   .reply {
     width: auto;
@@ -235,6 +229,10 @@
       width: 0;
     }
   }
+
+  .preview-resizer {
+    display: flex;
+  }
   
   img.emoji {
     height: 18px;
@@ -258,7 +256,6 @@
       box-shadow: none;
       line-height: 1;
       user-select: none;
-      -webkit-user-select: none;
     }
     
     &:not(.sticker) .attachment {
@@ -414,8 +411,8 @@
   
   &:not(.sticker) {
     .attachment {
-      max-width: 480px;
-      max-height: 480px;
+      max-width: unquote('min(480px, 100%)');
+      max-height: unquote('min(480px, 100%)');
 
       width: max-content;
     }
@@ -430,7 +427,7 @@
 
   &.is-album {
     .attachment {
-      max-width: 451px;
+      max-width: unquote('min(451px, 100%)');
       max-height: none;
 
       .album-item {
@@ -441,6 +438,7 @@
         max-width: 100%;
         cursor: pointer;
         position: absolute;
+        overflow: hidden;
 
         img, video {
           border-radius: inherit;
@@ -491,15 +489,14 @@
       overflow: hidden;
       
       .preview {
-        max-height: 400px;
-        max-width: 480px;
+        max-height: unquote('min(400px, 100%)');
+        max-width: unquote('min(480px, 100%)');
         /* max-height: 100%;
         max-width: 100%; */
         border-radius: 4px;
         margin-bottom: 3px;
         overflow: hidden;
         user-select: none;
-        -webkit-user-select: none;
         cursor: pointer;
         position: relative;
 
@@ -522,7 +519,7 @@
         letter-spacing: -0.3px;
         display: block;
         
-        &:hover {
+        html.no-touch &:hover {
           text-decoration: underline;
         }
       }
@@ -565,16 +562,19 @@
         display: flex;
       }
   
-      .preview {
-        -webkit-box-ordinal-group: 3;
+      .preview-resizer {
         order: 2;
         flex-shrink: 0;
         max-width: 5rem;
         max-height: 5rem;
+
+        .preview {
+          max-width: unquote('min(5rem, 100%)');
+          max-height: unquote('min(5rem, 100%)');
+        }
       }
   
       .quote-text {
-        -webkit-box-ordinal-group: 2;
         order: 1;
         padding-right: 1rem;
       }
@@ -816,9 +816,6 @@
     font-size: .8rem;
     user-select: none;
     float: right;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
     user-select: none;
     height: 20px;
     line-height: 20px;
@@ -859,7 +856,6 @@
     align-items: center;
     cursor: pointer;
     user-select: none;
-    -webkit-user-select: none;
   }
 
   span.video-play {
@@ -1023,7 +1019,7 @@
     
     &:after {
       left: -8.4px;
-      background-image: url('../../assets/img/msg-tail-left.svg');
+      background-image: url('assets/img/msg-tail-left.svg');
     }
   }
     
@@ -1042,9 +1038,11 @@
   a {
     color: $color-blue;
   }
-  
-  .quote:hover, .reply:hover {
-    background-color: $light;
+
+  .quote {
+    html.no-touch &:hover {
+      background-color: $light;
+    }
   }
 
   &.is-reply {
@@ -1120,6 +1118,16 @@
   } */
 }
 
+@include respond-to(handhelds) {
+  .bubble.is-in {
+    margin-right: auto;
+  }
+
+  .bubble.is-out {
+    margin-left: auto;
+  }
+}
+
 .bubble.is-out {
   .bubble__container {
     margin-left: auto;
@@ -1141,7 +1149,7 @@
       
     &:after {
       right: -8.4px;
-      background-image: url('../../assets/img/msg-tail-right.svg');
+      background-image: url('assets/img/msg-tail-right.svg');
     }
   }
     
@@ -1154,9 +1162,11 @@
     border-top-left-radius: 0;
     border-top-right-radius: 0;
   }
-  
-  .quote:hover, .reply:hover {
-    background-color: rgba($color-green, 0.12);
+
+  .quote {
+    html.no-touch &:hover {
+      background-color: rgba($color-green, 0.12);
+    }
   }
 
   &.is-reply {
@@ -1289,7 +1299,7 @@
         background-color: #4fae4e;
       }
 
-      &-answer:hover {
+      html.no-touch &-answer:hover {
         .animation-ring {
           background-color: rgba(79, 174, 78, 0.08);
         }
@@ -1336,7 +1346,7 @@
     position: relative;
     transition: background-color 0.35s ease;
 
-    &:hover {
+    html.no-touch &:hover {
       background-color: rgba(0, 0, 0, 0.06);
     }
 
@@ -1417,7 +1427,7 @@ poll-element  {
         animation-delay: .24s;
       }
 
-      &:hover {
+      html.no-touch &:hover {
         .animation-ring {
           visibility: visible;
           transform: scale(1);

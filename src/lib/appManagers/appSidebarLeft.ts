@@ -634,7 +634,6 @@ class AppSidebarLeft {
     this.buttons.saved.addEventListener('click', (e) => {
       ///////this.log('savedbtn click');
       setTimeout(() => { // menu doesn't close if no timeout (lol)
-        let dom = appDialogsManager.getDialogDom(appImManager.myID);
         appImManager.setPeer(appImManager.myID);
       }, 0);
     });

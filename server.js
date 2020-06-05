@@ -13,8 +13,8 @@ app.get('/', (req, res) => {
 });
 
 https.createServer({
-  key: fs.readFileSync(__dirname + '/server.key'),
-  cert: fs.readFileSync(__dirname + '/server.cert')
+  key: fs.readFileSync(__dirname + '/tweb.key'),
+  cert: fs.readFileSync(__dirname + '/tweb.crt')
 }, app).listen(9001, () => {
   console.log('Listening...');
 });

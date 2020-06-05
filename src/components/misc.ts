@@ -1,8 +1,9 @@
-import { whichChild, findUpTag } from "../lib/utils";
+import { whichChild, findUpTag, cancelEvent } from "../lib/utils";
 import Config from "../lib/config";
 
 let rippleClickID = 0;
 export function ripple(elem: HTMLElement, callback: (id: number) => Promise<boolean | void> = () => Promise.resolve(), onEnd: (id: number) => void = null) {
+  return;
   if(elem.querySelector('.c-ripple')) return;
   
   let r = document.createElement('div');
@@ -10,11 +11,8 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
 
   elem.append(r);
 
-  elem.addEventListener('mousedown', (e) => {
-    if(elem.dataset.ripple == '0') {
-      return false;
-    }
-
+  let handler: () => void;
+  let drawRipple = (clientX: number, clientY: number) => {
     let startTime = Date.now();
     let span = document.createElement('span');
 
@@ -22,7 +20,7 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
 
     console.log('ripple mousedown');
 
-    let handler = () => {
+    handler = () => {
       let elapsedTime = Date.now() - startTime;
       if(elapsedTime < 700) {
         let delay = Math.max(700 - elapsedTime, 350);
@@ -41,6 +39,8 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
           if(onEnd) onEnd(clickID);
         }, 350);
       }
+
+      handler = null;
     };
 
     callback && callback(clickID);
@@ -62,8 +62,8 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
         span.classList.add('c-ripple__circle');
         let rect = r.getBoundingClientRect();
 
-        let clickX = e.clientX - rect.left;
-        let clickY = e.clientY - rect.top;
+        let clickX = clientX - rect.left;
+        let clickY = clientY - rect.top;
 
         let size: number, clickPos: number;
         if(rect.width > rect.height) {
@@ -93,11 +93,44 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
         //handler();
       });
     //});
+  };
+
+  let touchEnd = () => {
+    handler && handler();
+  };
+
+  let touchStartFired = false;
+  elem.addEventListener('touchstart', (e) => {
+    if(e.touches.length > 1) {
+      return;
+    }
     
-    window.addEventListener('mouseup', () => {
-      //console.time('appImManager: pre render start');
-      handler();
+    console.log('touchstart', e);
+    touchStartFired = true;
+
+    let {clientX, clientY} = e.touches[0];
+    drawRipple(clientX, clientY);
+    window.addEventListener('touchend', touchEnd, {once: true});
+
+    window.addEventListener('touchmove', (e) => {
+      e.cancelBubble = true;
+      e.stopPropagation();
+      handler && handler();
+      window.removeEventListener('touchend', touchEnd);
     }, {once: true});
+  });
+
+  elem.addEventListener('mousedown', (e) => {
+    if(elem.dataset.ripple == '0') {
+      return false;
+    } else if(touchStartFired) {
+      touchStartFired = false;
+      return false;
+    }
+
+    let {clientX, clientY} = e;
+    drawRipple(clientX, clientY);
+    window.addEventListener('mouseup', handler, {once: true});
   });
 }
 
@@ -167,99 +200,71 @@ export function putPreloader(elem: Element, returnDiv = false) {
   elem.innerHTML += html;
 }
 
-export function horizontalMenu(tabs: HTMLElement, content: HTMLDivElement, onClick?: (id: number, tabContent: HTMLDivElement) => void, onTransitionEnd?: () => void, transitionTime = 300) {
-  let hideTimeout: number = 0;
-  let prevTabContent: HTMLDivElement = null;
+function slideNavigation(tabContent: HTMLElement, prevTabContent: HTMLElement, toRight: boolean) {
+  if(toRight) {
+    prevTabContent.style.filter = `brightness(80%)`;
+    prevTabContent.style.transform = `translateX(-25%)`;
+    tabContent.style.transform = `translateX(100%)`;
+  } else {
+    tabContent.style.filter = `brightness(80%)`;
+    tabContent.style.transform = `translateX(-25%)`;
+    prevTabContent.style.transform = `translateX(100%)`;
+  }
   
-  let prevId = -1;
-  let children = Array.from(content.children);
-  let tabsChildren = tabs ? Array.from(tabs.firstElementChild.children) : [];
-  let activeInSlide: Set<Element> = new Set();
+  tabContent.classList.add('active');
+  void tabContent.offsetWidth; // reflow
 
-  let selectTab = async(id: number) => {
+  tabContent.style.transform = '';
+  tabContent.style.filter = '';
+}
+
+function slideTabs(tabContent: HTMLElement, prevTabContent: HTMLElement, toRight: boolean) {
+  if(toRight) {
+    tabContent.style.transform = `translateX(100%)`;
+    prevTabContent.style.transform = `translateX(-100%)`;
+  } else {
+    tabContent.style.transform = `translateX(-100%)`;
+    prevTabContent.style.transform = `translateX(100%)`;
+  }
+
+  tabContent.classList.add('active');
+  void tabContent.offsetWidth; // reflow
+
+  tabContent.style.transform = '';
+}
+
+export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?: (id: number, tabContent: HTMLDivElement) => void, onTransitionEnd?: () => void, transitionTime = 300) {
+  const hideTimeouts: {[id: number]: number} = {};
+  let prevTabContent: HTMLElement = null;
+  let prevId = -1;
+
+  const selectTab = async(id: number) => {
     if(id == prevId) return false;
 
-    let p = prevTabContent;
-
-    /* children.forEach(child => {
-      if(child != p) {
-        child.classList.remove('active');
-      }
-    }); */
-
-    let tabContent = content.children[id] as HTMLDivElement;
-    tabContent.classList.add('active');
-
-    if(!activeInSlide.has(tabContent)) {
-      activeInSlide.add(tabContent);
-    }
-
-    //content.style.marginLeft = id > 0 ? (-id * 100) + '%' : '';
-    let toRight = prevId < id;
+    const p = prevTabContent;
+    const tabContent = content.children[id] as HTMLElement;
+    const toRight = prevId < id;
     if(prevId != -1) {
-      //content.classList.remove('animated');
-      await new Promise((resolve) => window.requestAnimationFrame(() => {
-        content.style.cssText = `will-change: width, transform; width: ${activeInSlide.size * 100}%; transform: translateX(-${100 - 100 / activeInSlide.size}%);`;
-
-        content.classList.remove('animated');
-        if(toRight) {
-          content.classList.add('animated');
-        } else {
-          window.requestAnimationFrame(() => {
-            content.classList.add('animated');
-            content.style.transform = '';
-          });
-        }
-
-        resolve();
-      }));
-
-      /* content.style.cssText = `will-change: width, transform; width: ${activeInSlide.size * 100}%; transform: translateX(-${100 - 100 / activeInSlide.size}%);`;
-
-      content.classList.remove('animated');
-      if(toRight) {
-        content.classList.add('animated');
+      if(tabs) {
+        slideTabs(tabContent, prevTabContent, toRight);
       } else {
-        window.requestAnimationFrame(() => {
-          content.classList.add('animated');
-          content.style.transform = '';
-        });
-      } */
+        slideNavigation(tabContent, prevTabContent, toRight);
+      }
+    } else {
+      tabContent.classList.add('active');
     }
     
-    if(hideTimeout) clearTimeout(hideTimeout);
+    const _prevId = prevId;
+    if(hideTimeouts.hasOwnProperty(id)) clearTimeout(hideTimeouts[id]);
     if(p/*  && false */) {
-      //if(tabs) tabs.classList.add('disable-hover');
+      hideTimeouts[_prevId] = setTimeout(() => {
+        p.style.transform = '';
+        p.style.filter = '';
+        p.classList.remove('active');
 
-      if(tabs) {
-        tabsChildren.forEach((c, idx) => {
-          if(idx != prevId && idx != id) {
-            (c as HTMLElement).dataset.ripple = '0';
-          }
-        });
-      }
-
-      hideTimeout = setTimeout(() => {
-        children.forEach(child => {
-          if(child != tabContent) {
-            child.classList.remove('active');
-            activeInSlide.delete(child);
-          }
-        });
-
-        if(tabs) {
-          tabsChildren.forEach(c => {
-            delete (c as HTMLElement).dataset.ripple;
-          });
-        }
-  
-        content.classList.remove('animated');
-        content.style.cssText = '';
-    
-        hideTimeout = 0;
+        delete hideTimeouts[_prevId];
         
         if(onTransitionEnd) onTransitionEnd();
-        //if(tabs) tabs.classList.remove('disable-hover');
       }, transitionTime);
     } 
     
@@ -286,10 +291,6 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLDivElement, onCli
 
       let id = whichChild(target);
       let tabContent = content.children[id] as HTMLDivElement;
-
-      if(activeInSlide.size >= 2 && !activeInSlide.has(tabContent)) {
-        return false;
-      }
 
       if(onClick) onClick(id, tabContent);
       if(target.classList.contains('active') || id == prevId) {
@@ -343,8 +344,9 @@ export function formatPhoneNumber(str: string) {
 
 export function parseMenuButtonsTo(to: {[name: string]: HTMLElement}, elements: HTMLCollection | NodeListOf<HTMLElement>) {
   Array.from(elements).forEach(el => {
-    let name = el.className.match(/(?:^|\s)menu-(.+?)(?:$|\s)/)[1];
-    to[name] = el as HTMLElement;
+    const match = el.className.match(/(?:^|\s)menu-(.+?)(?:$|\s)/);
+    if(!match) return;
+    to[match[1]] = el as HTMLElement;
   });
 }
 
@@ -362,7 +364,7 @@ let onMouseMove = (e: MouseEvent) => {
   //console.log('mousemove', diffX, diffY);
 };
 
-let onClick = (e: MouseEvent) => {
+let onClick = (/* e: MouseEvent | TouchEvent */) => {
   //e.preventDefault();
   closeBtnMenu();
 };
@@ -379,7 +381,10 @@ let closeBtnMenu = () => {
     openedMenuOnClose = null;
   }
 
+  //document.body.classList.remove('disable-hover');
+
   window.removeEventListener('mousemove', onMouseMove);
+  window.removeEventListener('touchmove', onClick);
   window.removeEventListener('click', onClick);
   window.removeEventListener('contextmenu', onClick);
 };
@@ -391,23 +396,45 @@ export function openBtnMenu(menuElement: HTMLDivElement, onClose?: () => void) {
   openedMenu = menuElement;
   openedMenu.classList.add('active');
   openedMenu.parentElement.classList.add('menu-open');
+
+  //document.body.classList.add('disable-hover');
   
   openedMenuOnClose = onClose;
   
   window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('touchmove', onClick, {once: true});
   window.addEventListener('click', onClick, {once: true});
   window.addEventListener('contextmenu', onClick, {once: true});
 }
 
-export function positionMenu(e: MouseEvent, elem: HTMLElement, side: 'left' | 'right' = 'left') {
-  elem.classList.remove('bottom-left', 'bottom-right');
-  elem.classList.add(side == 'left' ? 'bottom-right' : 'bottom-left');
-  
+export function positionMenu(e: MouseEvent, elem: HTMLElement, side?: 'left' | 'right') {
   let {clientX, clientY} = e;
-  
-  elem.style.left = (side == 'right' ? clientX - elem.scrollWidth : clientX) + 'px';
-  if((clientY + elem.scrollHeight) > window.innerHeight) {
-    elem.style.top = (window.innerHeight - elem.scrollHeight) + 'px';
+
+  let {scrollWidth, scrollHeight} = elem;
+  let {innerWidth, innerHeight} = window;
+
+  if(side === undefined) {
+    if((clientX + scrollWidth) > innerWidth) {
+      if((clientX - scrollWidth) < 0) {
+        elem.style.left = (innerWidth - scrollWidth) + 'px';
+      } else {
+        side = 'right';
+      }
+    }
+  }
+
+  if(!side) {
+    side = 'left';
+  }
+
+  elem.classList.remove('bottom-left', 'bottom-right');
+  if(side !== undefined) {
+    elem.style.left = (side == 'right' ? clientX - scrollWidth : clientX) + 'px';
+    elem.classList.add(side == 'left' ? 'bottom-right' : 'bottom-left');
+  }
+
+  if((clientY + scrollHeight) > innerHeight) {
+    elem.style.top = (innerHeight - scrollHeight) + 'px';
   } else {
     elem.style.top = clientY + 'px';
   }

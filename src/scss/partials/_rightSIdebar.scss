@@ -1,26 +1,37 @@
 #column-right {
-  width: 0%;
   position: relative;
-  transition: .2s ease-in-out;
 
-  .sidebar-content {
-    min-width: 25vw;
+  @include respond-to(not-handhelds) {
+    width: 0%;
+    transition: .2s ease-in-out;
   
-    @media (min-width: $large-screen) {
-      min-width: calc(#{$large-screen} / 4 - 1px);
+    .sidebar-content {
+      min-width: 25vw;
+    
+      @include respond-to(wide-screens) {
+        min-width: calc(#{$large-screen} / 4 - 1px);
+      }
     }
-  }
-
-  &:not(.active) {
-    border-left-width: 0;
-  }
-
-  &.active {
-    width: 25%;
+  
+    &:not(.active) {
+      border-left-width: 0;
+    }
+  
+    &.active {
+      width: 25%;
+    }
   }
 
   .sidebar-header {
     flex: 0 0 auto;
+
+    .sidebar-close-button:before {
+      content: $tgico-back;
+
+      @include respond-to(not-handhelds) {
+        content: $tgico-close;
+      }
+    }
   }
 
   #search-private-container {
@@ -70,7 +81,9 @@
       //overflow: hidden;
       position: absolute;
       top: 100%;
-      min-height: calc(100vh - 100% - 60px);
+      //min-height: 100vh; /* Fallback for browsers that do not support Custom Properties */
+      //min-height: calc(var(--vh, 1vh) * 100);
+      min-height: calc((var(--vh, 1vh) * 100) - 100% - 60px);
       display: flex;
       flex-direction: column;
     }
@@ -171,6 +184,7 @@
     &-content {
       //min-height: 100%;
       min-height: calc(100% - 49px);
+      grid-template-rows: 100%;
       flex: 1 1 auto;
       //position: absolute; // FIX THE SAFARI!
       //position: relative;
@@ -231,7 +245,7 @@
           border-radius: 4px;
           background-color: $time-background;
           padding: 0px 6px 0px 5px;
-          z-index: 2;
+          z-index: 1;
           font-size: 12px;
           color: white;
         }

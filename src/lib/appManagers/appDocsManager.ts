@@ -221,6 +221,12 @@ class AppDocsManager {
       toFileEntry: toFileEntry,
       stickerType: doc.sticker
     });
+
+    downloadPromise.notify = (...args) => {
+      deferred.notify && deferred.notify(...args);
+    };
+
+    deferred.notify = downloadPromise.notify;
     
     downloadPromise.then((blob) => {
       if(blob) {

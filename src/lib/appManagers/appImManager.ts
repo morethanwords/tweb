@@ -18,7 +18,7 @@ import appChatsManager from "./appChatsManager";
 import apiUpdatesManager from './apiUpdatesManager';
 import { wrapDocument, wrapPhoto, wrapVideo, wrapSticker, wrapReply, wrapAlbum, wrapPoll } from '../../components/wrappers';
 import ProgressivePreloader from '../../components/preloader';
-import { openBtnMenu, formatPhoneNumber, positionMenu, ripple, parseMenuButtonsTo } from '../../components/misc';
+import { openBtnMenu, formatPhoneNumber, positionMenu, ripple, parseMenuButtonsTo, horizontalMenu } from '../../components/misc';
 import { ChatInput } from '../../components/chatInput';
 //import Scrollable from '../../components/scrollable';
 import Scrollable from '../../components/scrollable_new';
@@ -31,6 +31,7 @@ import AvatarElement from '../../components/avatar';
 import appInlineBotsManager from './AppInlineBotsManager';
 import StickyIntersector from '../../components/stickyIntersector';
 import { PopupPeerButton, PopupPeer } from '../../components/popup';
+import { mediaSizes } from '../config';
 
 console.log('appImManager included!');
 
@@ -207,20 +208,25 @@ class ChatContextMenu {
 }
 
 export class AppImManager {
-  public pageEl = document.getElementById('page-chats') as HTMLDivElement;
-  public btnMute = this.pageEl.querySelector('.tool-mute') as HTMLButtonElement;
-  public btnMenuMute = this.pageEl.querySelector('.menu-mute') as HTMLButtonElement;
+  public columnEl = document.getElementById('column-center') as HTMLDivElement;
+  public btnMute = this.columnEl.querySelector('.chat-mute-button') as HTMLButtonElement;
   public avatarEl = document.getElementById('im-avatar') as AvatarElement;
   public titleEl = document.getElementById('im-title') as HTMLDivElement;
   public subtitleEl = document.getElementById('im-subtitle') as HTMLDivElement;
   public bubblesContainer = document.getElementById('bubbles') as HTMLDivElement;
   public chatInner = document.getElementById('bubbles-inner') as HTMLDivElement;
-  public searchBtn = this.pageEl.querySelector('.chat-search-button') as HTMLButtonElement;
-  public goDownBtn = this.pageEl.querySelector('#bubbles-go-down') as HTMLButtonElement;
+  public searchBtn = this.columnEl.querySelector('.chat-search-button') as HTMLButtonElement;
+  public goDownBtn = this.columnEl.querySelector('#bubbles-go-down') as HTMLButtonElement;
   private getHistoryTopPromise: Promise<boolean>;
   private getHistoryBottomPromise: Promise<boolean>;
   
   public chatInputC: ChatInput = null;
+
+  private menuButtons: {
+    search: HTMLButtonElement
+    mute: HTMLButtonElement,
+    delete: HTMLButtonElement
+  } = {} as any;
   
   public myID = 0;
   public peerID = 0;
@@ -239,7 +245,7 @@ export class AppImManager {
   public updateStatusInterval = 0;
   
   public pinnedMsgID = 0;
-  private pinnedMessageContainer = this.pageEl.querySelector('.pinned-message') as HTMLDivElement;
+  private pinnedMessageContainer = this.columnEl.querySelector('.pinned-message') as HTMLDivElement;
   private pinnedMessageContent = this.pinnedMessageContainer.querySelector('.pinned-message-subtitle') as HTMLDivElement;
   
   public lazyLoadQueue = new LazyLoadQueue();
@@ -287,16 +293,19 @@ export class AppImManager {
 
   private cleanupID = 0;
 
+  public selectTab = horizontalMenu(null, document.getElementById('main-columns'));
+  private closeBtn = this.topbar.querySelector('.sidebar-close-button') as HTMLButtonElement;
+
   constructor() {
     /* if(!lottieLoader.loaded) {
       lottieLoader.loadLottie();
     } */
     
     this.log = logger('IM');
-    
     this.chatInputC = new ChatInput();
-    
     this.preloader = new ProgressivePreloader(null, false);
+    this.selectTab(0);
+    parseMenuButtonsTo(this.menuButtons, this.columnEl.querySelector('.chat-more-button').firstElementChild.children);
 
     apiManager.getUserID().then((id) => {
       this.myID = $rootScope.myID = id;
@@ -441,15 +450,15 @@ export class AppImManager {
     });
     
     $rootScope.$on('messages_downloaded', (e: CustomEvent) => {
-      let mids: number[] = e.detail;
+      const mids: number[] = e.detail;
       
+      const pinnedMessage = appMessagesManager.getPinnedMessage(this.peerID);
       mids.forEach(mid => {
-        if(this.pinnedMsgID == mid) {
-          let message = appMessagesManager.getMessage(mid);
+        if(pinnedMessage.mid == mid) {
           /////this.log('setting pinned message', message);
           this.pinnedMessageContainer.dataset.mid = '' + mid;
-          this.pinnedMessageContainer.style.display = '';
-          this.pinnedMessageContent.innerHTML = message.rReply;
+          this.topbar.classList.add('is-pinned-shown');
+          this.pinnedMessageContent.innerHTML = pinnedMessage.rReply;
         }
         
         this.needUpdate.forEachReverse((obj, idx) => {
@@ -496,7 +505,7 @@ export class AppImManager {
       }, {once: true});
     });
     
-    (this.pageEl.querySelector('.person') as HTMLDivElement).addEventListener('click', (e) => {
+    (this.columnEl.querySelector('.person') as HTMLDivElement).addEventListener('click', () => {
       appSidebarRight.toggleSidebar(true);
     });
     
@@ -566,7 +575,7 @@ export class AppImManager {
         //appMediaViewer.openMedia(message, target as HTMLImageElement);
       }
       
-      if(['IMG', 'DIV'].indexOf(target.tagName) === -1) target = findUpTag(target, 'DIV');
+      if(['IMG', 'DIV', "AVATAR-ELEMENT"].indexOf(target.tagName) === -1) target = findUpTag(target, 'DIV');
       
       if(target.tagName == 'DIV' || target.tagName == "AVATAR-ELEMENT") {
         if(target.classList.contains('goto-original')) {
@@ -577,8 +586,20 @@ export class AppImManager {
           ////this.log('savedFrom', peerID, msgID);
           this.setPeer(peerID, msgID);
           return;
-        } else if(target.tagName == "AVATAR-ELEMENT" || target.classList.contains('name')) {
+        } else if(target.classList.contains('forward')) {
+          const mid = +bubble.dataset.mid;
+          appForward.init([mid]);
+          return;
+        } else if(target.classList.contains('name')) {
           let peerID = +target.dataset.peerID;
+          
+          if(!isNaN(peerID)) {
+            this.setPeer(peerID);
+          }
+          
+          return;
+        } else if(target.tagName == "AVATAR-ELEMENT") {
+          let peerID = +target.getAttribute('peer');
           
           if(!isNaN(peerID)) {
             this.setPeer(peerID);
@@ -598,7 +619,7 @@ export class AppImManager {
           this.setPeer(this.peerID, originalMessageID);
         }
       } else if(target.tagName == 'IMG' && target.parentElement.tagName == "AVATAR-ELEMENT") {
-        let peerID = +target.parentElement.dataset.peerID;
+        let peerID = +target.parentElement.getAttribute('peer');
         
         if(!isNaN(peerID)) {
           this.setPeer(peerID);
@@ -607,12 +628,14 @@ export class AppImManager {
       
       //console.log('chatInner click', e);
     });
+
+    this.closeBtn.addEventListener('click', () => {
+      this.setPeer(0);
+    });
     
     this.searchBtn.addEventListener('click', (e) => {
       if(this.peerID) {
         appSidebarRight.beginSearch();
-        //appSidebarLeft.archivedCount;
-        //appSidebarLeft.beginSearch(this.peerID);
       }
     });
     
@@ -624,8 +647,9 @@ export class AppImManager {
       this.setPeer(this.peerID, mid);
     });
     
-    this.btnMenuMute.addEventListener('click', () => this.mutePeer(this.peerID));
-    this.btnMute.addEventListener('click', () => this.mutePeer(this.peerID));
+    [this.btnMute, this.menuButtons.mute].forEach(el => {
+      el.addEventListener('click', () => this.mutePeer(this.peerID));
+    });
     
     let onKeyDown = (e: KeyboardEvent) => {
       let target = e.target as HTMLElement;
@@ -850,12 +874,7 @@ export class AppImManager {
 
       appProfileManager.getChatFull(chat.id).then((chatInfo: any) => {
         this.log('chatInfo res:', chatInfo);
-        
-        if(chatInfo.pinned_msg_id) { // request pinned message
-          this.pinnedMsgID = chatInfo.pinned_msg_id;
-          appMessagesManager.wrapSingleMessage(chatInfo.pinned_msg_id);
-        }
-        
+
         let participants_count = chatInfo.participants_count || (chatInfo.participants && chatInfo.participants.participants && chatInfo.participants.participants.length);
         if(participants_count) {
           let subtitle = numberWithCommas(participants_count) + ' ' + (isChannel ? 'subscribers' : 'members');
@@ -959,6 +978,9 @@ export class AppImManager {
       this.cleanup(true);
       this.peerID = $rootScope.selectedPeerID = 0;
       $rootScope.$broadcast('peer_changed', this.peerID);
+      if(mediaSizes.isMobile) {
+        this.selectTab(0);
+      }
       return false;
     }
     
@@ -996,8 +1018,11 @@ export class AppImManager {
     // set new
     this.peerID = $rootScope.selectedPeerID = peerID;
 
-    
     this.log('setPeer peerID:', this.peerID, dialog, lastMsgID, topMessage);
+
+    if(mediaSizes.isMobile) {
+      this.selectTab(1);
+    }
 
     const isJump = lastMsgID != topMessage;
     // add last message, bc in getHistory will load < max_id
@@ -1091,6 +1116,10 @@ export class AppImManager {
           appMessagesManager.readHistory(peerID, dialog.top_message);
         }
 
+        if(dialog.pFlags?.unread_mark) {
+          appMessagesManager.markDialogUnread(peerID, true);
+        }
+
         this.chatInner.classList.remove('disable-hover', 'is-scrolling'); // warning, performance!
 
         //console.timeEnd('appImManager setPeer');
@@ -1137,14 +1166,14 @@ export class AppImManager {
 
     this.chatInput.style.display = !isChannel || hasRights ? '' : 'none';
 
+    this.topbar.classList.remove('is-pinned-shown');
     this.topbar.style.display = '';
 
     this.chatInner.classList.toggle('is-chat', appPeersManager.isAnyGroup(peerID) || peerID == this.myID);
     this.chatInner.classList.toggle('is-channel', isChannel);
 
-    this.pinnedMessageContainer.style.display = 'none';
-
     this.btnMute.style.display = appPeersManager.isBroadcast(peerID) ? '' : 'none';
+    this.menuButtons.mute.style.display = this.myID == this.peerID ? 'none' : '';
 
     window.requestAnimationFrame(() => {
       let title = '';
@@ -1496,6 +1525,19 @@ export class AppImManager {
     if(message.views) {
       bubble.classList.add('channel-post');
       time = formatNumber(message.views, 1) + ' <i class="tgico-channelviews"></i> ' + time;
+
+      if(!message.savedFrom) {
+        let forward = document.createElement('div');
+        forward.classList.add('bubble-beside-button', 'forward');
+        forward.innerHTML = `
+        <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24">
+          <defs>
+            <path d="M13.55 3.24L13.64 3.25L13.73 3.27L13.81 3.29L13.9 3.32L13.98 3.35L14.06 3.39L14.14 3.43L14.22 3.48L14.29 3.53L14.36 3.59L14.43 3.64L22.23 10.85L22.36 10.99L22.48 11.15L22.57 11.31L22.64 11.48L22.69 11.66L22.72 11.85L22.73 12.04L22.71 12.22L22.67 12.41L22.61 12.59L22.53 12.76L22.42 12.93L22.29 13.09L22.23 13.15L14.43 20.36L14.28 20.48L14.12 20.58L13.95 20.66L13.77 20.72L13.58 20.76L13.4 20.77L13.22 20.76L13.03 20.73L12.85 20.68L12.68 20.61L12.52 20.52L12.36 20.4L12.22 20.27L12.16 20.2L12.1 20.13L12.05 20.05L12.01 19.98L11.96 19.9L11.93 19.82L11.89 19.73L11.87 19.65L11.84 19.56L11.83 19.47L11.81 19.39L11.81 19.3L11.8 19.2L11.8 16.42L11 16.49L10.23 16.58L9.51 16.71L8.82 16.88L8.18 17.09L7.57 17.33L7.01 17.6L6.48 17.91L5.99 18.26L5.55 18.64L5.14 19.05L4.77 19.51L4.43 19.99L4.29 20.23L4.21 20.35L4.11 20.47L4 20.57L3.88 20.65L3.75 20.72L3.62 20.78L3.48 20.82L3.33 20.84L3.19 20.84L3.04 20.83L2.9 20.79L2.75 20.74L2.62 20.68L2.53 20.62L2.45 20.56L2.38 20.5L2.31 20.43L2.25 20.36L2.2 20.28L2.15 20.19L2.11 20.11L2.07 20.02L2.04 19.92L2.02 19.83L2.01 19.73L2 19.63L2.04 17.99L2.19 16.46L2.46 15.05L2.85 13.75L3.35 12.58L3.97 11.53L4.7 10.6L5.55 9.8L6.51 9.12L7.59 8.56L8.77 8.13L10.07 7.83L11.48 7.65L11.8 7.63L11.8 4.8L11.91 4.56L12.02 4.35L12.14 4.16L12.25 3.98L12.37 3.82L12.48 3.68L12.61 3.56L12.73 3.46L12.85 3.38L12.98 3.31L13.11 3.27L13.24 3.24L13.37 3.23L13.46 3.23L13.55 3.24Z" id="b13RmHDQtl"></path>
+          </defs>
+          <use xlink:href="#b13RmHDQtl" opacity="1" fill="#fff" fill-opacity="1"></use>
+        </svg>`;
+        bubbleContainer.append(forward);
+      }
     }
     
     if(message.edit_date) {
@@ -1722,8 +1764,8 @@ export class AppImManager {
                   doc, 
                   container: attachmentDiv, 
                   message, 
-                  boxWidth: 480,
-                  boxHeight: 480, 
+                  boxWidth: mediaSizes.active.regular.width,
+                  boxHeight: mediaSizes.active.regular.height, 
                   withTail: doc.type != 'round', 
                   isOut: isOut,
                   lazyLoadQueue: this.lazyLoadQueue,
@@ -1801,10 +1843,13 @@ export class AppImManager {
           let quote = document.createElement('div');
           quote.classList.add('quote');
 
-          let preview: HTMLDivElement = null;
+          let previewResizer: HTMLDivElement, preview: HTMLDivElement;
           if(webpage.photo || webpage.document) {
+            previewResizer = document.createElement('div');
+            previewResizer.classList.add('preview-resizer');
             preview = document.createElement('div');
             preview.classList.add('preview');
+            previewResizer.append(preview);
           }
           
           let doc: any = null;
@@ -1818,8 +1863,8 @@ export class AppImManager {
                 doc, 
                 container: preview, 
                 message, 
-                boxWidth: 480,
-                boxHeight: 400,
+                boxWidth: mediaSizes.active.webpage.width,
+                boxHeight: mediaSizes.active.webpage.height,
                 lazyLoadQueue: this.lazyLoadQueue,
                 middleware: this.getMiddleware(),
                 isOut
@@ -1830,8 +1875,8 @@ export class AppImManager {
             }
           }
           
-          if(preview) {
-            quote.append(preview);
+          if(previewResizer) {
+            quote.append(previewResizer);
           }
           
           let quoteTextDiv = document.createElement('div');
@@ -1872,7 +1917,7 @@ export class AppImManager {
               bubble.classList.add('is-vertical-photo');
             }
 
-            wrapPhoto(webpage.photo.id, message, preview, 480, 400, false, null, this.lazyLoadQueue, this.getMiddleware());
+            wrapPhoto(webpage.photo.id, message, preview, mediaSizes.active.webpage.width, mediaSizes.active.webpage.height, false, null, this.lazyLoadQueue, this.getMiddleware());
           }
           
           box.append(quote);
@@ -1937,8 +1982,8 @@ export class AppImManager {
                 doc, 
                 container: attachmentDiv, 
                 message, 
-                boxWidth: 480,
-                boxHeight: 480, 
+                boxWidth: mediaSizes.active.regular.width,
+                boxHeight: mediaSizes.active.regular.height, 
                 withTail: doc.type != 'round', 
                 isOut: isOut,
                 lazyLoadQueue: this.lazyLoadQueue,
@@ -2045,14 +2090,7 @@ export class AppImManager {
         
         if(message.savedFrom) {
           let goto = document.createElement('div');
-          goto.classList.add('goto-original', 'tgico-next');
-          /* fwd.innerHTML = `
-          <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24">
-            <defs>
-              <path d="M13.55 3.24L13.64 3.25L13.73 3.27L13.81 3.29L13.9 3.32L13.98 3.35L14.06 3.39L14.14 3.43L14.22 3.48L14.29 3.53L14.36 3.59L14.43 3.64L22.23 10.85L22.36 10.99L22.48 11.15L22.57 11.31L22.64 11.48L22.69 11.66L22.72 11.85L22.73 12.04L22.71 12.22L22.67 12.41L22.61 12.59L22.53 12.76L22.42 12.93L22.29 13.09L22.23 13.15L14.43 20.36L14.28 20.48L14.12 20.58L13.95 20.66L13.77 20.72L13.58 20.76L13.4 20.77L13.22 20.76L13.03 20.73L12.85 20.68L12.68 20.61L12.52 20.52L12.36 20.4L12.22 20.27L12.16 20.2L12.1 20.13L12.05 20.05L12.01 19.98L11.96 19.9L11.93 19.82L11.89 19.73L11.87 19.65L11.84 19.56L11.83 19.47L11.81 19.39L11.81 19.3L11.8 19.2L11.8 16.42L11 16.49L10.23 16.58L9.51 16.71L8.82 16.88L8.18 17.09L7.57 17.33L7.01 17.6L6.48 17.91L5.99 18.26L5.55 18.64L5.14 19.05L4.77 19.51L4.43 19.99L4.29 20.23L4.21 20.35L4.11 20.47L4 20.57L3.88 20.65L3.75 20.72L3.62 20.78L3.48 20.82L3.33 20.84L3.19 20.84L3.04 20.83L2.9 20.79L2.75 20.74L2.62 20.68L2.53 20.62L2.45 20.56L2.38 20.5L2.31 20.43L2.25 20.36L2.2 20.28L2.15 20.19L2.11 20.11L2.07 20.02L2.04 19.92L2.02 19.83L2.01 19.73L2 19.63L2.04 17.99L2.19 16.46L2.46 15.05L2.85 13.75L3.35 12.58L3.97 11.53L4.7 10.6L5.55 9.8L6.51 9.12L7.59 8.56L8.77 8.13L10.07 7.83L11.48 7.65L11.8 7.63L11.8 4.8L11.91 4.56L12.02 4.35L12.14 4.16L12.25 3.98L12.37 3.82L12.48 3.68L12.61 3.56L12.73 3.46L12.85 3.38L12.98 3.31L13.11 3.27L13.24 3.24L13.37 3.23L13.46 3.23L13.55 3.24Z" id="b13RmHDQtl"></path>
-            </defs>
-            <use xlink:href="#b13RmHDQtl" opacity="1" fill="#fff" fill-opacity="1"></use>
-          </svg>`; */
+          goto.classList.add('bubble-beside-button', 'goto-original', 'tgico-next');
           bubbleContainer.append(goto);
           bubble.dataset.savedFrom = message.savedFrom;
         }
@@ -2375,12 +2413,13 @@ export class AppImManager {
     } else {
       this.btnMute.style.display = 'none';
     }
-    
-    this.btnMenuMute.classList.remove('tgico-mute', 'tgico-unmute');
-    this.btnMenuMute.classList.add(muted ? 'tgico-unmute' : 'tgico-mute');
-    let rp = this.btnMenuMute.firstElementChild;
-    this.btnMenuMute.innerText = muted ? 'Unmute' : 'Mute';
-    this.btnMenuMute.appendChild(rp);
+
+    const menuButton = this.menuButtons.mute;
+    menuButton.classList.remove('tgico-mute', 'tgico-unmute');
+    menuButton.classList.add(muted ? 'tgico-unmute' : 'tgico-mute');
+    let rp = menuButton.firstElementChild;
+    menuButton.innerText = muted ? 'Unmute' : 'Mute';
+    rp && menuButton.appendChild(rp);
   }
   
   public mutePeer(peerID: number) {
@@ -2501,22 +2540,6 @@ export class AppImManager {
         }
         
         /////this.log('updateNotifySettings', peerID, notify_settings);
-        break;
-      }
-      
-      case 'updateChatPinnedMessage':
-      case 'updateUserPinnedMessage': {
-        let {id} = update;
-        
-        /////this.log('updateUserPinnedMessage', update);
-        
-        this.pinnedMsgID = id;
-        // hz nado li tut appMessagesIDsManager.getFullMessageID(update.max_id, channelID);
-        let peerID = update.user_id || -update.chat_id || -update.channel_id;
-        if(peerID == this.peerID) {
-          appMessagesManager.wrapSingleMessage(id);
-        }
-        
         break;
       }
     }

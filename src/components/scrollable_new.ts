@@ -1,5 +1,6 @@
 import { logger } from "../lib/polyfill";
 import smoothscroll from '../lib/smoothscroll';
+//import { isInDOM } from "../lib/utils";
 (window as any).__forceSmoothScrollPolyfill__ = true;
 smoothscroll.polyfill();
 /*
@@ -27,8 +28,27 @@ Array.from($0.querySelectorAll('.bubble__container')).forEach(_el => {
 });
 */
 
+/* const scrollables: Map<HTMLElement, Scrollable> = new Map();
+const scrollsIntersector = new IntersectionObserver(entries => {
+  for(let entry of entries) {
+    const scrollable = scrollables.get(entry.target as HTMLElement);
+
+    if(entry.isIntersecting) {
+      scrollable.isVisible = true;
+    } else {
+      scrollable.isVisible = false;
+
+      if(!isInDOM(entry.target)) {
+        scrollsIntersector.unobserve(scrollable.container);
+        scrollables.delete(scrollable.container);
+      }
+    }
+  }
+}); */
+
 export default class Scrollable {
   public container: HTMLDivElement;
+  public overflowContainer: HTMLElement;
 
   public splitUp: HTMLElement;
   
@@ -44,9 +64,9 @@ export default class Scrollable {
   private log: ReturnType<typeof logger>;
   private debug = false;
 
-  private sentinelsObserver: IntersectionObserver;
+  /* private sentinelsObserver: IntersectionObserver;
   private topSentinel: HTMLDivElement;
-  private bottomSentinel: HTMLDivElement;
+  private bottomSentinel: HTMLDivElement; */
 
   private observer: IntersectionObserver;
   private visible: Set<HTMLElement>;
@@ -56,10 +76,11 @@ export default class Scrollable {
   private lastBottomID = 0;
   private lastScrollDirection = 0; // true = bottom
 
-  private onScrolledTopFired = false;
-  private onScrolledBottomFired = false;
+  /* private onScrolledTopFired = false;
+  private onScrolledBottomFired = false; */
 
   public scrollLocked = 0;
+  public isVisible = false;
 
   private setVisible(element: HTMLElement) {
     if(this.visible.has(element)) return;
@@ -84,6 +105,8 @@ export default class Scrollable {
     this.visible = new Set();
     this.observer = new IntersectionObserver(entries => {
       let filtered = entries.filter(entry => entry.isIntersecting);
+
+      //return;
 
       //this.log('entries:', entries);
 
@@ -177,14 +200,26 @@ export default class Scrollable {
     } else {
       throw new Error('no side for scroll');
     }
-    
-    window.addEventListener('resize', () => this.onScroll());
-    this.container.addEventListener('scroll', () => this.onScroll(), {passive: true, capture: true});
+
+    const binded = this.onScroll.bind(this);
+
+    window.addEventListener('resize', () => {
+      this.overflowContainer = window.innerWidth <= 720 && false ? document.documentElement : this.container;
+      this.onScroll();
+    });
+    this.container.addEventListener('scroll', binded, {passive: true, capture: true});
+    //document.documentElement.addEventListener('scroll', binded, {passive: true, capture: true});
+    //window.addEventListener('scroll', binded, {passive: true, capture: true});
     
     Array.from(el.children).forEach(c => this.container.append(c));
-    
+
     el.append(this.container);
     //this.onScroll();
+
+    this.overflowContainer = window.innerWidth <= 720 && false ? document.documentElement : this.container;
+
+    /* scrollables.set(this.container, this);
+    scrollsIntersector.observe(this.container); */
   }
 
   // public attachSentinels(container = this.container, offset = this.onScrollOffset) {
@@ -250,32 +285,36 @@ export default class Scrollable {
     this.lastScrollTop = scrollTop;
     return; */
 
-    /* if(this.debug) {
-      this.log('onScroll call', this.onScrollMeasure);
-    } */
+    //if(!this.isVisible) return;
 
-    let appendTo = this.splitUp || this.appendTo;
+    //if(this.debug) {
+      //this.log('onScroll call', this.onScrollMeasure);
+    //}
+
+    //let appendTo = this.splitUp || this.appendTo;
     
     clearTimeout(this.disableHoverTimeout);
-    if(this.el != this.appendTo && this.appendTo != this.container) {
+    /* if(this.el != this.appendTo && this.appendTo != this.container) {
       if(!appendTo.classList.contains('disable-hover')) {
         appendTo.classList.add('disable-hover');
       }
-    }
+    } */
     
     this.disableHoverTimeout = setTimeout(() => {
-      appendTo.classList.remove('disable-hover');
+      //appendTo.classList.remove('disable-hover');
       this.lastScrollDirection = 0;
     }, 100);
 
     if(this.onScrollMeasure) return;
     this.onScrollMeasure = window.requestAnimationFrame(() => {
-      this.checkForTriggers();
+      //if(!this.isVisible) return;
+
+      this.checkForTriggers(this.overflowContainer);
 
       this.onScrollMeasure = 0;
       if(!this.splitUp) return;
 
-      let scrollTop = this.container.scrollTop;
+      let scrollTop = this.overflowContainer.scrollTop;
       if(this.lastScrollTop != scrollTop) {
         this.lastScrollDirection = this.lastScrollTop < scrollTop ? 1 : -1;
         this.lastScrollTop = scrollTop;
@@ -285,11 +324,13 @@ export default class Scrollable {
     });
   }
 
-  public checkForTriggers() {
+  public checkForTriggers(container: HTMLElement) {
     if(this.scrollLocked || (!this.onScrolledTop && !this.onScrolledBottom)) return;
 
-    let scrollTop = this.container.scrollTop;
-    let maxScrollTop = this.container.scrollHeight - this.container.clientHeight;
+    let scrollTop = container.scrollTop;
+    let maxScrollTop = container.scrollHeight - container.clientHeight;
+
+    //this.log('checkForTriggers:', scrollTop, maxScrollTop);
 
     if(this.onScrolledTop && scrollTop <= this.onScrollOffset) {
       this.onScrolledTop();

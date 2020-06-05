@@ -8,7 +8,7 @@ import pako from 'pako/dist/pako_inflate.min.js';
 import {str2bigInt, bpe, equalsInt, greater, 
   copy_, eGCD_, add_, rightShift_, sub_, copyInt_, isZero,
   // @ts-ignore
-  divide_, one, bigInt2str, powMod} from 'leemon';
+  divide_, one, bigInt2str, powMod} from 'leemon/es/index/';//from 'leemon';
 
 // @ts-ignore
 import {BigInteger} from 'jsbn';

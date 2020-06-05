@@ -401,7 +401,9 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
                     container: li,
                     loop: true,
                     autoplay: false,
-                    animationData: JSON.parse(json)
+                    animationData: JSON.parse(json),
+                    width: 40,
+                    height: 40
                   }, EMOTICONSSTICKERGROUP);
                 });
   

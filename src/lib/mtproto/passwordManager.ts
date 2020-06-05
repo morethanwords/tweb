@@ -3,7 +3,7 @@ import { bufferConcats, bytesToHex, bytesFromHex, bufferConcat, bytesXor } from 
 import CryptoWorker from "../crypto/cryptoworker";
 import {str2bigInt, greater, isZero,
   // @ts-ignore
-  bigInt2str, powMod, int2bigInt, mult, mod, sub, bitSize, negative, mult, add} from 'leemon';
+  bigInt2str, powMod, int2bigInt, mult, mod, sub, bitSize, negative, mult, add} from 'leemon/es/index/';
 
 export class PasswordManager {
   public getState(options: any = {}) {

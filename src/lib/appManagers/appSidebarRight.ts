@@ -16,6 +16,7 @@ import { wrapDocument, wrapAudio } from "../../components/wrappers";
 import AppSearch, { SearchGroup } from "../../components/appSearch";
 import AvatarElement from "../../components/avatar";
 import appForward from "../../components/appForward";
+import { mediaSizes } from "../config";
 
 const testScroll = false;
 
@@ -175,23 +176,6 @@ class AppSidebarRight {
       //let checked = this.profileElements.notificationsCheckbox.checked;
       appImManager.mutePeer(this.peerID);
     });
-
-    if(testScroll && false) {
-      let div = document.createElement('div');
-      for(let i = 0; i < 500; ++i) {
-        //div.insertAdjacentHTML('beforeend', `<div style="background-image: url(assets/img/camomile.jpg);"></div>`);
-        div.insertAdjacentHTML('beforeend', `<div data-id="${i / 3 | 0}">${i / 3 | 0}</div>`);
-        
-        if((i + 1) % 3 == 0) {
-          this.sharedMedia.contentMedia.append(div);
-          div = document.createElement('div');
-        }
-        
-        div.dataset.id = '' + (i / 3 | 0);
-      }
-      this.sharedMedia.contentMedia.append(div);
-      (this.profileTabs.children[1] as HTMLLIElement).click(); // set media
-    }
   }
 
   public beginSearch() {
@@ -203,7 +187,7 @@ class AppSidebarRight {
   public toggleSidebar(enable?: boolean) {
     /////this.log('sidebarEl', this.sidebarEl, enable, isElementInViewport(this.sidebarEl));
     
-    let active = this.sidebarEl.classList.contains('active');
+    const active = this.sidebarEl.classList.contains('active');
     let willChange: boolean;
     if(enable !== undefined) {
       if(enable) {
@@ -219,21 +203,26 @@ class AppSidebarRight {
 
     if(!willChange) return Promise.resolve();
 
-    let set = () => {
+    if(mediaSizes.isMobile) {
+      appImManager.selectTab(active ? 1 : 2);
+      return Promise.resolve();       
+    }
+
+    const set = () => {
       this.sidebarEl.classList.toggle('active', enable);
     };
 
     return new Promise((resolve, reject) => {
-      let hidden: {element: HTMLDivElement, height: number}[] = [];
-      let observer = new IntersectionObserver((entries) => {
-        for(let entry of entries) {
-          let bubble = entry.target as HTMLDivElement;
+      const hidden: {element: HTMLDivElement, height: number}[] = [];
+      const observer = new IntersectionObserver((entries) => {
+        for(const entry of entries) {
+          const bubble = entry.target as HTMLDivElement;
           if(!entry.isIntersecting) {
             hidden.push({element: bubble, height: bubble.scrollHeight});
           }
         }
   
-        for(let item of hidden) {
+        for(const item of hidden) {
           item.element.style.minHeight = item.height + 'px';
           (item.element.firstElementChild as HTMLElement).style.display = 'none';
           item.element.style.width = '1px';
@@ -245,24 +234,24 @@ class AppSidebarRight {
         set();
   
         setTimeout(() => {
-          for(let item of hidden) {
+          for(const item of hidden) {
             item.element.style.minHeight = '';
             item.element.style.width = '';
             (item.element.firstElementChild as HTMLElement).style.display = '';
           }
 
-          if(enable == false || (this.sidebarEl.classList.contains('active') && enable == undefined)) {
+          if(active) {
             appForward.close();
             this.searchCloseBtn.click();
           }
-          
+
           resolve();
         }, 200);
       });
   
-      let length = Object.keys(appImManager.bubbles).length;
+      const length = Object.keys(appImManager.bubbles).length;
       if(length) {
-        for(let i in appImManager.bubbles) {
+        for(const i in appImManager.bubbles) {
           observer.observe(appImManager.bubbles[i]);
         }
       } else {
@@ -693,6 +682,19 @@ class AppSidebarRight {
       }
     });
 
+    if(testScroll) {
+      for(let i = 0; i < 30; ++i) {
+        //div.insertAdjacentHTML('beforeend', `<div style="background-image: url(assets/img/camomile.jpg);"></div>`);
+        let div = document.createElement('div');
+        div.classList.add('media-item');
+        div.dataset.id = '' + (i / 3 | 0);
+        div.innerText = '' + (i / 3 | 0);
+        this.sharedMedia.contentMedia.append(div);
+      }
+      
+      (this.profileTabs.children[1] as HTMLLIElement).click(); // set media
+    }
+
     (this.profileTabs.firstElementChild.children[1] as HTMLLIElement).click(); // set media
   }
 
@@ -780,4 +782,6 @@ class AppSidebarRight {
   }
 }
 
-export default new AppSidebarRight();
+const appSidebarRight = new AppSidebarRight();
+(window as any).appSidebarRight = appSidebarRight;
+export default appSidebarRight;

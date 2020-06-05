@@ -29,11 +29,14 @@ div.scrollable::-webkit-scrollbar-thumb {
   /* transform: translateZ(0);
   -webkit-transform: translateZ(0); */
 
-  position: absolute;
-  top: 0px;
-  left: 0px;
-  bottom: 0px;
-  right: 0px;
+  //@include respond-to(not-handhelds) {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    bottom: 0px;
+    right: 0px;
+  //}
+
   /* display: flex;
   flex-direction: column; */
 

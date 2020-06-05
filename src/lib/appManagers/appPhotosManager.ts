@@ -128,28 +128,6 @@ export class AppPhotosManager {
       }
     }
     
-    /* let bestPhotoSize: MTPhotoSize = {_: 'photoSizeEmpty'};
-    let bestDiff = 0xFFFFFF;
-    
-    //console.log('choosePhotoSize', photo);
-    
-    let sizes = photo.sizes || photo.thumbs;
-    if(!sizes) return bestPhotoSize;
-    
-    sizes.forEach((photoSize: typeof bestPhotoSize) => {
-      if(!photoSize.w || !photoSize.h) return;
-      
-      let diff = Math.abs(photoSize.w * photoSize.h - width * height);
-      if(diff < bestDiff) {
-        bestPhotoSize = photoSize;
-        bestDiff = diff;
-      }
-      
-      //console.log('diff', diff, photoSize, bestPhotoSize);
-    }); */
-    
-    //console.log('choosing', photo, width, height, bestPhotoSize);
-    
     return bestPhotoSize;
   }
   
@@ -221,9 +199,7 @@ export class AppPhotosManager {
         return element;
       } else {
         let img = new Image();
-        /* img.style.width = '100%';
-        img.style.height = '100%'; */
-        
+
         img.src = url;
         element.append(img);
         return img;
@@ -231,7 +207,7 @@ export class AppPhotosManager {
     }
   }
   
-  public setAttachmentSize(photoID: any, element: HTMLElement | SVGForeignObjectElement, boxWidth = 480, boxHeight = 480, isSticker = false) {
+  public setAttachmentSize(photoID: any, element: HTMLElement | SVGForeignObjectElement, boxWidth: number, boxHeight: number, isSticker = false) {
     let photo: /* MTDocument | MTPhoto */any = null;
     
     if(typeof(photoID) === 'string') {

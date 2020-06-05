@@ -1,5 +1,5 @@
 #column-left {
-  display: flex;
+  //display: flex;
   flex-direction: column;
 
   #chats-container {
@@ -130,13 +130,20 @@
       bottom: calc(100% + 10px);
     }
 
-    &:hover {
-      .btn-corner {
+    .btn-corner {
+      &.menu-open:before {
+        content: $tgico-close;
+      }
+
+      @include respond-to(handhelds) {
         transform: translateY(0px);
-        
-        &.menu-open:before {
-          content: $tgico-close;
-        }
+        position: fixed !important;
+      }
+    }
+
+    @include respond-to(not-handhelds) {
+      html.no-touch &:hover .btn-corner {
+        transform: translateY(0px);
       }
     }
   }
@@ -203,7 +210,7 @@
       border-radius: 0.625rem;
       margin: 0px 0.5rem 0px 0.4375rem;
 
-      &:hover {
+      html.no-touch &:hover {
         background: rgba(112, 117, 121, 0.08);
         cursor: pointer;
       }

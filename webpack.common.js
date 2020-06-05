@@ -1,7 +1,15 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const MediaQueryPlugin = require('media-query-plugin');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const postcssPresetEnv = require('postcss-preset-env');
+const fs = require('fs');
 
-let allowedIPs = ['195.66.140.39', '192.168.31.144', '127.0.0.1', '192.168.31.1', '192.168.31.192', '192.168.0.111', '192.168.0.105', '192.168.0.108'];
+const allowedIPs = ['195.66.140.39', '192.168.31.144', '127.0.0.1', '192.168.31.1', '192.168.31.192'];
+
+const devMode = process.env.NODE_ENV !== 'production';
+
+console.log('DEVMODE:', devMode);
 
 const opts = {
   MTPROTO_WORKER: true,
@@ -14,6 +22,35 @@ module.exports = {
   module: {
     rules: [
       {
+        test: /\.scss$/,
+        use: [
+          devMode ? 'style-loader' : MiniCssExtractPlugin.loader,/* {
+            loader: MiniCssExtractPlugin.loader,
+            options: {
+              hmr: devMode,
+              reloadAll: true,
+            }
+          }, */
+          'css-loader?url=false',
+          devMode ? undefined : MediaQueryPlugin.loader,
+          {
+            loader: 'postcss-loader',
+            options: {
+              ident: 'postcss',
+              plugins: [
+                postcssPresetEnv(),
+              ]
+            }
+          },
+          {
+            loader: 'sass-loader',
+            options: {
+              sourceMap: devMode
+            }
+          }
+        ].filter(l => !!l)
+      },
+      /* {
         test: /\.s[ac]ss$/i,
         use: [
           // Creates `style` nodes from JS strings
@@ -35,7 +72,7 @@ module.exports = {
       {
         test: /\.css$/i,
         use: ['style-loader', 'css-loader'],
-      },
+      }, */
       {
         test: /\.ts?$/,
         use: [
@@ -44,7 +81,7 @@ module.exports = {
         ],
         exclude: /node_modules/,
       },
-      {
+      /* {
         test: /\.(woff2?|ttf|otf|eot|svg|jpg)$/,
         exclude: /node_modules/,
         loader: 'file-loader',
@@ -53,11 +90,18 @@ module.exports = {
           publicPath: 'assets/',
           name: '[folder]/[name].[ext]'
         }
-      },
+      }, */
       {
         test: /\.worker\.(js|ts)$/,
         use: { loader: 'worker-loader' }
       },
+
+      {
+        test: /\.hbs$/,
+        use: [
+          'handlebars-loader'
+        ]
+      }
     ],
   },
   resolve: {
@@ -86,10 +130,19 @@ module.exports = {
     watchContentBase: true,
     compress: true,
     http2: true,
+    https: {
+      key: fs.readFileSync(__dirname + '/certs/server-key.pem', 'utf8'),
+      cert: fs.readFileSync(__dirname + '/certs/server-cert.pem', 'utf8')
+    },
+    allowedHosts: [
+      'tweb.enko.club'
+    ],
     host: '0.0.0.0',
-    port: 9000,
+    public: 'tweb.enko.club',
+    //host: '192.168.0.105', // '0.0.0.0'
+    //host: 'tweb.enko.club', // '0.0.0.0'
+    port: 443,
     overlay: true,
-    useLocalIp: true,
     before: function(app, server, compiler) {
       app.use((req, res, next) => {
         let IP = '';
@@ -99,7 +152,7 @@ module.exports = {
           IP = req.connection.remoteAddress.split(':').pop();
         }
       
-        if(!allowedIPs.includes(IP)) {
+        if(!allowedIPs.includes(IP) && !/^192\.168\.\d{1,3}\.\d{1,3}$/.test(IP)) {
           console.log('Bad IP connecting: ' + IP, req.url);
           res.status(404).send('Nothing interesting here.');
         } else {
@@ -107,14 +160,16 @@ module.exports = {
           next();
         }
       });
-    }
+    },
+    sockHost: 'tweb.enko.club',
   },
-
   plugins: [
     new HtmlWebpackPlugin({
       filename: `index.html`,
-      template: 'public/index_template.html',
-      inject: true,
+      //template: 'public/index_template.html',
+      template: 'src/index.hbs',
+      //inject: true, 
+      inject: false, 
       //inject: 'head',
       /* minify: {
         removeComments: true,
@@ -130,6 +185,23 @@ module.exports = {
       }, */
       chunks: "all",
       excludeChunks: ['npm.webp-hero'/* , 'npm.lottie-web' */]
-    })
+    }),
+    
+    new MiniCssExtractPlugin({
+      // Options similar to the same options in webpackOptions.output
+      // both options are optional
+      filename: '[name].css',
+      chunkFilename: '[id].css',
+    }),
+
+    new MediaQueryPlugin({
+      include: [
+        'style'
+      ],
+      queries: {
+        'only screen and (max-width: 720px)': 'mobile',
+        'only screen and (min-width: 721px)': 'desktop',
+      }
+    }),
   ],
 };

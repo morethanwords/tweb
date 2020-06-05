@@ -20,7 +20,8 @@ export class AppMediaViewer {
     nameEl: this.overlaysDiv.querySelector('.media-viewer-name') as HTMLDivElement,
     date: this.overlaysDiv.querySelector('.media-viewer-date') as HTMLDivElement
   };
-  public buttons: {[k in 'delete' | 'forward' | 'download' | 'close' | 'prev' | 'next']: HTMLElement} = {} as any;
+  public buttons: {[k in 'delete' | 'forward' | 'download' | 'close' | 'prev' | 'next' | 
+    'menu-delete' | 'menu-forward' | 'menu-download' | 'mobile-close']: HTMLElement} = {} as any;
   private content: {[k in 'container' | 'caption' | 'mover']: HTMLDivElement} = {
     container: this.overlaysDiv.querySelector('.media-viewer-media'),
     caption: this.overlaysDiv.querySelector('.media-viewer-caption'),
@@ -36,8 +37,8 @@ export class AppMediaViewer {
     mid: number
   }[] = [];
   private nextTargets: AppMediaViewer['prevTargets'] = [];
-  private targetContainer: HTMLElement = null;
-  private loadMore: () => void = null;
+  //private targetContainer: HTMLElement = null;
+  //private loadMore: () => void = null;
 
   public log: ReturnType<typeof logger>; 
   public onKeyDownBinded: any;
@@ -66,14 +67,14 @@ export class AppMediaViewer {
     parseMenuButtonsTo(this.buttons, this.wholeDiv.querySelectorAll(`[class*='menu']`) as NodeListOf<HTMLElement>);
 
     this.onKeyDownBinded = this.onKeyDown.bind(this);
-    
-    this.buttons.close.addEventListener('click', (e) => {
+
+    const close = (e: MouseEvent) => {
       cancelEvent(e);
       //this.overlaysDiv.classList.remove('active');
       this.content.container.innerHTML = '';
-      if(this.content.container.firstElementChild) {
+      /* if(this.content.container.firstElementChild) {
         URL.revokeObjectURL((this.content.container.firstElementChild as HTMLImageElement).src);
-      }
+      } */
 
       this.peerID = 0;
       this.currentMessageID = 0;
@@ -86,10 +87,19 @@ export class AppMediaViewer {
       this.nextTargets = [];
       this.loadedAllMediaUp = this.loadedAllMediaDown = false;
       this.loadMediaPromiseUp = this.loadMediaPromiseDown = null;
+      this.setMoverPromise = null;
 
-      appForward.close();
+      if(appForward.container.classList.contains('active')) {
+        setTimeout(() => {
+          appForward.close();
+        }, 200);
+      }
 
       window.removeEventListener('keydown', this.onKeyDownBinded);
+    };
+    
+    [this.buttons.close, this.buttons["mobile-close"]].forEach(el => {
+      el.addEventListener('click', close);
     });
     
     this.buttons.prev.addEventListener('click', (e) => {
@@ -117,8 +127,8 @@ export class AppMediaViewer {
         this.buttons.next.style.display = 'none';
       }
     });
-
-    this.buttons.download.addEventListener('click', () => {
+    
+    const download = () => {
       let message = appMessagesManager.getMessage(this.currentMessageID);
       if(message.media.photo) {
         appPhotosManager.downloadPhoto(message.media.photo.id);
@@ -133,10 +143,18 @@ export class AppMediaViewer {
           appDocsManager.saveDocFile(document.id);
         }
       }
+    };
+
+    [this.buttons.download, this.buttons["menu-download"]].forEach(el => {
+      el.addEventListener('click', download);
     });
 
-    this.buttons.forward.addEventListener('click', () => {
+    const forward = () => {
       appForward.init([this.currentMessageID]);
+    };
+
+    [this.buttons.forward, this.buttons["menu-forward"]].forEach(el => {
+      el.addEventListener('click', forward);
     });
 
     this.onClickBinded = (e: MouseEvent) => {
@@ -637,7 +655,7 @@ export class AppMediaViewer {
     } */
   }
   
-  public openMedia(message: any, target?: HTMLElement, reverse = false, targetContainer?: HTMLElement, 
+  public async openMedia(message: any, target?: HTMLElement, reverse = false, targetContainer?: HTMLElement, 
     prevTargets: AppMediaViewer['prevTargets'] = [], nextTargets: AppMediaViewer['prevTargets'] = [], needLoadMore = true) {
     if(this.setMoverPromise) return this.setMoverPromise;
     this.log('openMedia doc:', message);
@@ -648,12 +666,17 @@ export class AppMediaViewer {
 
     if(isFirstOpen) {
       this.peerID = $rootScope.selectedPeerID;
-      this.targetContainer = targetContainer;
+      //this.targetContainer = targetContainer;
       this.prevTargets = prevTargets;
       this.nextTargets = nextTargets;
       this.reverse = reverse;
       this.needLoadMore = needLoadMore;
       //this.loadMore = loadMore;
+
+      if(appForward.container.classList.contains('active')) {
+        appForward.close();
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
     }
 
     /* if(this.nextTargets.length < 10 && this.loadMore) {

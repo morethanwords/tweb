@@ -1,5 +1,6 @@
 import {blobConstruct, bytesToBase64, blobSafeMimeType, dataUrlToBlob} from './bin_utils';
 import FileManager from './filemanager';
+import { logger } from './polyfill';
 
 class IdbFileStorage {
   public dbName = 'cachedFiles';
@@ -7,40 +8,40 @@ class IdbFileStorage {
   public dbVersion = 2;
   public openDbPromise: Promise<IDBDatabase>;
   public storageIsAvailable = true;
-  public storeBlobsAvailable = true;
   public name = 'IndexedDB';
 
+  private log: ReturnType<typeof logger> = logger('IDB');
+
   constructor() {
-    this.openDatabase();
+    this.openDatabase(true);
   }
 
   public isAvailable() {
     return this.storageIsAvailable;
   }
 
-  public openDatabase(): Promise<IDBDatabase> {
-    if(this.openDbPromise) {
+  public openDatabase(createNew = false): Promise<IDBDatabase> {
+    if(this.openDbPromise && !createNew) {
       return this.openDbPromise;
     }
 
-    var createObjectStore: any;
+    const createObjectStore = (db: IDBDatabase) => {
+      db.createObjectStore(this.dbStoreName);
+    };
+
     try {
       var request = indexedDB.open(this.dbName, this.dbVersion);
-
-      createObjectStore = (db: any) => {
-        db.createObjectStore(this.dbStoreName);
-      };
 
       if(!request) {
         throw new Error();
       }
     } catch(error) {
-      console.error('error opening db', error.message)
+      this.log.error('error opening db', error.message)
       this.storageIsAvailable = false;
       return Promise.reject(error);
     }
 
-    var finished = false;
+    let finished = false;
     setTimeout(() => {
       if(!finished) {
         request.onerror({type: 'IDB_CREATE_TIMEOUT'} as Event);
@@ -50,15 +51,38 @@ class IdbFileStorage {
     return this.openDbPromise = new Promise<IDBDatabase>((resolve, reject) => {
       request.onsuccess = (event) => {
         finished = true;
-        var db = request.result;
+        const db = request.result;
+        let calledNew = false;
 
-        console.log('Opened IndexedDB');
+        this.log('Opened');
   
         db.onerror = (error) => {
           this.storageIsAvailable = false;
-          console.error('Error creating/accessing IndexedDB database', error);
+          this.log.error('Error creating/accessing IndexedDB database', error);
           reject(error);
-        }
+        };
+
+        db.onclose = (e) => {
+          this.log.error('closed:', e);
+          !calledNew && this.openDatabase();
+        };
+
+        db.onabort = (e) => {
+          this.log.error('abort:', e);
+          const transaction = e.target as IDBTransaction;
+          
+          this.openDatabase(calledNew = true);
+
+          if(transaction.onerror) {
+            transaction.onerror(e);
+          }
+
+          db.close();
+        };
+
+        db.onversionchange = (e) => {
+          this.log.error('onversionchange, lol?');
+        };
   
         resolve(db);
       };
@@ -66,16 +90,16 @@ class IdbFileStorage {
       request.onerror = (event) => {
         finished = true;
         this.storageIsAvailable = false;
-        console.error('Error creating/accessing IndexedDB database', event);
+        this.log.error('Error creating/accessing IndexedDB database', event);
         reject(event);
       };
   
       request.onupgradeneeded = (event) => {
         finished = true;
-        console.warn('performing idb upgrade from', event.oldVersion, 'to', event.newVersion);
+        this.log.warn('performing idb upgrade from', event.oldVersion, 'to', event.newVersion);
   
         // @ts-ignore
-        var db = event.target.result;
+        var db = event.target.result as IDBDatabase;
         if(event.oldVersion == 1) {
           db.deleteObjectStore(this.dbStoreName);
         }
@@ -86,61 +110,95 @@ class IdbFileStorage {
   }
 
   public deleteFile(fileName: string): Promise<void> {
+    //return Promise.resolve();
     return this.openDatabase().then((db) => {
       try {
+        this.log('Delete file: `' + fileName + '`');
         var objectStore = db.transaction([this.dbStoreName], 'readwrite')
           .objectStore(this.dbStoreName);
 
-        console.log('Delete file: `' + fileName + '`');
         var request = objectStore.delete(fileName);
       } catch(error) {
         return Promise.reject(error);
       }
 
       return new Promise((resolve, reject) => {
-        request.onsuccess = function(event) {
-          console.log('deleted file', event);
+        const timeout = setTimeout(() => {
+          this.log.error('deleteFile request not finished!', fileName, request);
           resolve();
+        }, 3000);
+
+        request.onsuccess = (event) => {
+          this.log('deleted file', event);
+          resolve();
+          clearTimeout(timeout);
         };
   
-        request.onerror = function(error) {
+        request.onerror = (error) => {
           reject(error);
+          clearTimeout(timeout);
         };
       });
     });
   }
 
-  public saveFile(fileName: string, blob: any): Promise<Blob> {
+  public saveFile(fileName: string, blob: Blob | Uint8Array): Promise<Blob> {
+    return Promise.resolve(blobConstruct([blob]));
     return this.openDatabase().then((db) => {
-      if(!this.storeBlobsAvailable) {
-        return this.saveFileBase64(db, fileName, blob);
+      if(!(blob instanceof Blob)) {
+        blob = blobConstruct([blob]) as Blob;
       }
 
-      if(!(blob instanceof Blob)) {
-        blob = blobConstruct([blob]);
-      }
+      this.log('saveFile:', fileName, blob);
+
+      const handleError = (error: Error) => {
+        this.log.error('saveFile transaction error:', fileName, blob, db, error, error && error.name);
+        if((!error || error.name === 'InvalidStateError')/*  && false */) {
+          setTimeout(() => {
+            this.saveFile(fileName, blob);
+          }, 2e3);
+        } else {
+          //console.error('IndexedDB saveFile transaction error:', error, error && error.name);
+        }
+      };
 
       try {
-        var objectStore = db.transaction([this.dbStoreName], 'readwrite')
-          .objectStore(this.dbStoreName);
+        const transaction = db.transaction([this.dbStoreName], 'readwrite');
+        transaction.onerror = (e) => {
+          handleError(transaction.error);
+        };
+        transaction.oncomplete = (e) => {
+          this.log('saveFile transaction complete:', fileName);
+        };
+
+        /* transaction.addEventListener('abort', (e) => {
+          //handleError();
+          this.log.error('IndexedDB: saveFile transaction abort!', transaction.error);
+        }); */
+
+        const objectStore = transaction.objectStore(this.dbStoreName);
         var request = objectStore.put(blob, fileName);
       } catch(error) {
-        if(this.storeBlobsAvailable) {
-          this.storeBlobsAvailable = false;
-          return this.saveFileBase64(db, fileName, blob);
-        }
-
-        this.storageIsAvailable = false;
-        return Promise.reject(error);
+        handleError(error);
+        return blob;
+        
+        /* this.storageIsAvailable = false;
+        throw error; */
       }
 
       return new Promise((resolve, reject) => {
-        request.onsuccess = function(event) {
-          resolve(blob);
+        const timeout = setTimeout(() => {
+          this.log.error('saveFile request not finished', fileName, request);
+        }, 3000);
+
+        request.onsuccess = (event) => {
+          resolve(blob as Blob);
+          clearTimeout(timeout);
         };
   
-        request.onerror = function(error) {
+        request.onerror = (error) => {
           reject(error);
+          clearTimeout(timeout);
         };
       });
     });
@@ -210,16 +268,32 @@ class IdbFileStorage {
     return blob.size || blob.byteLength || blob.length;
   }
 
-  public getFile(fileName: string, size?: any): Promise<Blob> {
+  public getFile(fileName: string): Promise<Blob> {
+    //return Promise.reject();
     return this.openDatabase().then((db) => {
-      var objectStore = db.transaction([this.dbStoreName], 'readonly')
-        .objectStore(this.dbStoreName);
-      var request = objectStore.get(fileName);
+      this.log('getFile pre:', fileName);
+
+      try {
+        const transaction = db.transaction([this.dbStoreName], 'readonly');
+        transaction.onabort = (e) => {
+          this.log.error('getFile transaction onabort?', e);
+        };
+        const objectStore = transaction.objectStore(this.dbStoreName);
+        var request = objectStore.get(fileName);
+        
+        //this.log.log('IDB getFile:', fileName, request);
+      } catch(err) {
+        this.log.error('getFile error:', err, fileName, request, request.error);
+      }
 
       return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          this.log.error('getFile request not finished!', fileName, request);
+          reject();
+        }, 3000);
+
         request.onsuccess = function(event) {
-          // @ts-ignore
-          var result = event.target.result;
+          const result = request.result;
           if(result === undefined) {
             reject();
           } else if(typeof result === 'string' &&
@@ -228,9 +302,14 @@ class IdbFileStorage {
           } else {
             resolve(result);
           }
+
+          clearTimeout(timeout);
         }
   
-        request.onerror = reject;
+        request.onerror = () => {
+          clearTimeout(timeout);
+          reject();
+        };
       });
     });
   }
@@ -285,7 +364,5 @@ class IdbFileStorage {
 }
 
 const idbFileStorage = new IdbFileStorage(); 
-
-//(window as any).IdbFileStorage = idbFileStorage;
-
+(window as any).IdbFileStorage = idbFileStorage;
 export default idbFileStorage;
