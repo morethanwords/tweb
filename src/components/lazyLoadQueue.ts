@@ -13,7 +13,7 @@ export default class LazyLoadQueue {
   private unlockResolve: () => void = null;
 
   private log = console.log.bind(console, '[LL]:');
-  private debug = false;
+  private debug = true;
 
   private observer: IntersectionObserver;
 

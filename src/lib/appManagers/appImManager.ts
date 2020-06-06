@@ -15,7 +15,6 @@ import lottieLoader from "../lottieLoader";
 import appMediaViewer from "./appMediaViewer";
 import appSidebarLeft from "./appSidebarLeft";
 import appChatsManager from "./appChatsManager";
-import apiUpdatesManager from './apiUpdatesManager';
 import { wrapDocument, wrapPhoto, wrapVideo, wrapSticker, wrapReply, wrapAlbum, wrapPoll } from '../../components/wrappers';
 import ProgressivePreloader from '../../components/preloader';
 import { openBtnMenu, formatPhoneNumber, positionMenu, ripple, parseMenuButtonsTo, horizontalMenu } from '../../components/misc';
@@ -31,13 +30,13 @@ import AvatarElement from '../../components/avatar';
 import appInlineBotsManager from './AppInlineBotsManager';
 import StickyIntersector from '../../components/stickyIntersector';
 import { PopupPeerButton, PopupPeer } from '../../components/popup';
-import { mediaSizes } from '../config';
+import { mediaSizes, touchSupport } from '../config';
 
-console.log('appImManager included!');
+console.log('appImManager included33!');
 
 appSidebarLeft; // just to include
 
-let testScroll = false;
+const testScroll = true;
 
 const IGNOREACTIONS = ['messageActionChannelMigrateFrom'];
 
@@ -195,14 +194,7 @@ class ChatContextMenu {
     });
     
     this.buttons.pin.addEventListener('click', () => {
-      apiManager.invokeApi('messages.updatePinnedMessage', {
-        flags: 0,
-        peer: appPeersManager.getInputPeerByID($rootScope.selectedPeerID),
-        id: this.msgID
-      }).then(updates => {
-        /////this.log('pinned updates:', updates);
-        apiUpdatesManager.processUpdateMessage(updates);
-      });
+      appMessagesManager.updatePinnedMessage($rootScope.selectedPeerID, this.msgID);
     });
   }
 }
@@ -765,6 +757,7 @@ export class AppImManager {
 
   public setPinnedMessage(message: any) {
     /////this.log('setting pinned message', message);
+    return;
     this.pinnedMessageContainer.dataset.mid = '' + message.mid;
     this.topbar.classList.add('is-pinned-shown');
     this.pinnedMessageContent.innerHTML = message.rReply;
@@ -826,16 +819,18 @@ export class AppImManager {
     this.onScrollRAF = window.requestAnimationFrame(() => {
       lottieLoader.checkAnimations(false, 'chat');
 
-      if(this.isScrollingTimeout) {
-        clearTimeout(this.isScrollingTimeout);
-      } else if(!this.chatInner.classList.contains('is-scrolling')) {
-        this.chatInner.classList.add('is-scrolling');
+      if(!touchSupport) {
+        if(this.isScrollingTimeout) {
+          clearTimeout(this.isScrollingTimeout);
+        } else if(!this.chatInner.classList.contains('is-scrolling')) {
+          this.chatInner.classList.add('is-scrolling');
+        }
+  
+        this.isScrollingTimeout = setTimeout(() => {
+          this.chatInner.classList.remove('is-scrolling');
+          this.isScrollingTimeout = 0;
+        }, 300);
       }
-
-      this.isScrollingTimeout = setTimeout(() => {
-        this.chatInner.classList.remove('is-scrolling');
-        this.isScrollingTimeout = 0;
-      }, 300);
       
       if(this.scroll.scrollHeight - Math.round(this.scroll.scrollTop + this.scroll.offsetHeight) <= 1/* <= 5 */) {
         this.scroll.parentElement.classList.add('scrolled-down');
@@ -861,6 +856,27 @@ export class AppImManager {
 
     this.scroll.addEventListener('scroll', this.onScroll.bind(this));
     this.scroll.parentElement.classList.add('scrolled-down');
+
+    if(touchSupport) {
+      this.scroll.addEventListener('touchmove', () => {
+        if(this.isScrollingTimeout) {
+          clearTimeout(this.isScrollingTimeout);
+        } else if(!this.chatInner.classList.contains('is-scrolling')) {
+          this.chatInner.classList.add('is-scrolling');
+        }
+
+        this.scroll.addEventListener('touchend', () => {
+          if(this.isScrollingTimeout) {
+            clearTimeout(this.isScrollingTimeout);
+          }
+
+          this.isScrollingTimeout = setTimeout(() => {
+            this.chatInner.classList.remove('is-scrolling');
+            this.isScrollingTimeout = 0;
+          }, 300);
+        }, {passive: true})
+      }, {passive: true});
+    }
   }
   
   public setPeerStatus(needClear = false) {
@@ -1026,10 +1042,6 @@ export class AppImManager {
 
     this.log('setPeer peerID:', this.peerID, dialog, lastMsgID, topMessage);
 
-    if(mediaSizes.isMobile) {
-      this.selectTab(1);
-    }
-
     const isJump = lastMsgID != topMessage;
     // add last message, bc in getHistory will load < max_id
     const additionMsgID = isJump ? 0 : topMessage;
@@ -1066,6 +1078,10 @@ export class AppImManager {
       //oldChatInner.remove();
       !samePeer && this.finishPeerChange();
       this.preloader.attach(this.bubblesContainer);
+
+      if(mediaSizes.isMobile) {
+        this.selectTab(1);
+      }
     }
 
     //console.timeEnd('appImManager setPeer pre promise');
@@ -1082,6 +1098,10 @@ export class AppImManager {
           const pinned = appMessagesManager.getPinnedMessage(peerID);
           if(pinned && !pinned.deleted) {
             this.setPinnedMessage(pinned);
+          }
+
+          if(mediaSizes.isMobile) {
+            this.selectTab(1);
           }
         } else {
           this.preloader.detach();

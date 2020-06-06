@@ -1,9 +1,9 @@
 import { whichChild, findUpTag, cancelEvent } from "../lib/utils";
-import Config from "../lib/config";
+import Config, { touchSupport } from "../lib/config";
 
 let rippleClickID = 0;
 export function ripple(elem: HTMLElement, callback: (id: number) => Promise<boolean | void> = () => Promise.resolve(), onEnd: (id: number) => void = null) {
-  return;
+  //return;
   if(elem.querySelector('.c-ripple')) return;
   
   let r = document.createElement('div');
@@ -95,30 +95,32 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
     //});
   };
 
-  let touchEnd = () => {
-    handler && handler();
-  };
-
   let touchStartFired = false;
-  elem.addEventListener('touchstart', (e) => {
-    if(e.touches.length > 1) {
-      return;
-    }
-    
-    console.log('touchstart', e);
-    touchStartFired = true;
-
-    let {clientX, clientY} = e.touches[0];
-    drawRipple(clientX, clientY);
-    window.addEventListener('touchend', touchEnd, {once: true});
-
-    window.addEventListener('touchmove', (e) => {
-      e.cancelBubble = true;
-      e.stopPropagation();
+  if(touchSupport) {
+    let touchEnd = () => {
       handler && handler();
-      window.removeEventListener('touchend', touchEnd);
-    }, {once: true});
-  });
+    };
+  
+    elem.addEventListener('touchstart', (e) => {
+      if(e.touches.length > 1) {
+        return;
+      }
+      
+      console.log('touchstart', e);
+      touchStartFired = true;
+  
+      let {clientX, clientY} = e.touches[0];
+      drawRipple(clientX, clientY);
+      window.addEventListener('touchend', touchEnd, {once: true});
+  
+      window.addEventListener('touchmove', (e) => {
+        e.cancelBubble = true;
+        e.stopPropagation();
+        handler && handler();
+        window.removeEventListener('touchend', touchEnd);
+      }, {once: true});
+    }, {passive: true});
+  }
 
   elem.addEventListener('mousedown', (e) => {
     if(elem.dataset.ripple == '0') {

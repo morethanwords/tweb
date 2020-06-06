@@ -1678,6 +1678,17 @@ export class AppMessagesManager {
   public getPinnedMessage(peerID: number) {
     return this.getMessage(this.pinnedMessages[peerID] || 0);
   }
+  
+  public updatePinnedMessage(peerID: number, msgID: number) {
+    apiManager.invokeApi('messages.updatePinnedMessage', {
+      flags: 0,
+      peer: appPeersManager.getInputPeerByID(peerID),
+      id: msgID
+    }).then(updates => {
+      /////console.log('pinned updates:', updates);
+      apiUpdatesManager.processUpdateMessage(updates);
+    });
+  }
 
   public saveMessages(apiMessages: any[], options: {
     isNew?: boolean,

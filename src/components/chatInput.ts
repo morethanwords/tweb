@@ -59,14 +59,7 @@ export class ChatInput {
   public editMsgID = 0;
   public noWebPage = false;
 
-  private recorder = new Recorder({
-    //encoderBitRate: 32,
-    //encoderPath: "../dist/encoderWorker.min.js",
-    encoderSampleRate: 48000,
-    monitorGain: 0,
-    numberOfChannels: 1,
-    recordingGain: 1
-  });
+  private recorder: any;
   private recording = false;
   private recordCanceled = false;
   private recordTimeEl = this.inputContainer.querySelector('.record-time') as HTMLDivElement;
@@ -91,6 +84,21 @@ export class ChatInput {
     this.replyElements.cancelBtn = this.replyElements.container.querySelector('.reply-cancel') as HTMLButtonElement;
     this.replyElements.titleEl = this.replyElements.container.querySelector('.reply-title') as HTMLDivElement;
     this.replyElements.subtitleEl = this.replyElements.container.querySelector('.reply-subtitle') as HTMLDivElement;
+
+    try {
+      this.recorder = new Recorder({
+        //encoderBitRate: 32,
+        //encoderPath: "../dist/encoderWorker.min.js",
+        encoderSampleRate: 48000,
+        monitorGain: 0,
+        numberOfChannels: 1,
+        recordingGain: 1
+      });
+    } catch(err) {
+      this.btnSend.classList.remove('tgico-microphone2');
+      this.btnSend.classList.add('tgico-send');
+      console.error('Recorder constructor error:', err);
+    }
 
     this.messageInput.addEventListener('keydown', (e: KeyboardEvent) => {
       if(e.key == 'Enter') {
@@ -144,13 +152,17 @@ export class ChatInput {
   
       if(!value.trim() && !this.serializeNodes(Array.from(this.messageInput.childNodes)).trim()) {
         this.messageInput.innerHTML = '';
-        this.btnSend.classList.remove('tgico-send');
-        this.btnSend.classList.add('tgico-microphone2');
+        if(this.recorder) {
+          this.btnSend.classList.remove('tgico-send');
+          this.btnSend.classList.add('tgico-microphone2');
+        }
   
         appMessagesManager.setTyping('sendMessageCancelAction');
-      } else if(!this.btnSend.classList.contains('tgico-send')) {
-        this.btnSend.classList.add('tgico-send');
-        this.btnSend.classList.remove('tgico-microphone2');
+      } else if(!this.btnSend.classList.contains('tgico-send') || !this.recorder) {
+        if(this.recorder) {
+          this.btnSend.classList.add('tgico-send');
+          this.btnSend.classList.remove('tgico-microphone2');
+        }
   
         let time = Date.now();
         if(time - this.lastTimeType >= 6000) {
@@ -462,7 +474,7 @@ export class ChatInput {
     });
 
     this.btnSend.addEventListener('click', () => {
-      if(this.btnSend.classList.contains('tgico-send')) {
+      if(this.btnSend.classList.contains('tgico-send') || !this.recorder) {
         if(this.recording) {
           this.recorder.stop();
         } else {
@@ -527,74 +539,76 @@ export class ChatInput {
       opusDecodeController.setKeepAlive(false);
     });
 
-    this.recorder.onstop = () => {
-      this.recording = false;
-      this.inputContainer.classList.remove('is-recording');
-      this.btnSend.classList.remove('tgico-send');
-      this.recordRippleEl.style.transform = '';
-    };
-
-    this.recorder.ondataavailable = (typedArray: Uint8Array) => {
-      if(this.recordCanceled) return;
-
-      const duration = (Date.now() - this.recordStartTime) / 1000 | 0;
-      const dataBlob = new Blob([typedArray], {type: 'audio/ogg'});
-      /* const fileName = new Date().toISOString() + ".opus";
-      console.log('Recorder data received', typedArray, dataBlob); */
-
-      /* var url = URL.createObjectURL( dataBlob );
-
-      var audio = document.createElement('audio');
-      audio.controls = true;
-      audio.src = url;
-
-      var link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      link.innerHTML = link.download;
-
-      var li = document.createElement('li');
-      li.appendChild(link);
-      li.appendChild(audio);
-
-      document.body.append(li);
-
-      return; */
-
-      let perf = performance.now();
-      opusDecodeController.decode(typedArray, true).then(result => {
-        console.log('WAVEFORM!:', /* waveform,  */performance.now() - perf);
-
-        opusDecodeController.setKeepAlive(false);
-
-        let peerID = appImManager.peerID;
-        // тут objectURL ставится уже с audio/wav
-        appMessagesManager.sendFile(peerID, dataBlob, {
-          isVoiceMessage: true,
-          isMedia: true,
-          duration,
-          waveform: result.waveform,
-          objectURL: result.url
+    if(this.recorder) {
+      this.recorder.onstop = () => {
+        this.recording = false;
+        this.inputContainer.classList.remove('is-recording');
+        this.btnSend.classList.remove('tgico-send');
+        this.recordRippleEl.style.transform = '';
+      };
+  
+      this.recorder.ondataavailable = (typedArray: Uint8Array) => {
+        if(this.recordCanceled) return;
+  
+        const duration = (Date.now() - this.recordStartTime) / 1000 | 0;
+        const dataBlob = new Blob([typedArray], {type: 'audio/ogg'});
+        /* const fileName = new Date().toISOString() + ".opus";
+        console.log('Recorder data received', typedArray, dataBlob); */
+  
+        /* var url = URL.createObjectURL( dataBlob );
+  
+        var audio = document.createElement('audio');
+        audio.controls = true;
+        audio.src = url;
+  
+        var link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        link.innerHTML = link.download;
+  
+        var li = document.createElement('li');
+        li.appendChild(link);
+        li.appendChild(audio);
+  
+        document.body.append(li);
+  
+        return; */
+  
+        let perf = performance.now();
+        opusDecodeController.decode(typedArray, true).then(result => {
+          console.log('WAVEFORM!:', /* waveform,  */performance.now() - perf);
+  
+          opusDecodeController.setKeepAlive(false);
+  
+          let peerID = appImManager.peerID;
+          // тут objectURL ставится уже с audio/wav
+          appMessagesManager.sendFile(peerID, dataBlob, {
+            isVoiceMessage: true,
+            isMedia: true,
+            duration,
+            waveform: result.waveform,
+            objectURL: result.url
+          });
         });
-      });
-
-      /* const url = URL.createObjectURL(dataBlob);
-      
-      var audio = document.createElement('audio');
-      audio.controls = true;
-      audio.src = url;
-
-      var link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      link.innerHTML = link.download;
-
-      var li = document.createElement('li');
-      li.appendChild(link);
-      li.appendChild(audio);
-
-      recordingslist.appendChild(li); */
-    };
+  
+        /* const url = URL.createObjectURL(dataBlob);
+        
+        var audio = document.createElement('audio');
+        audio.controls = true;
+        audio.src = url;
+  
+        var link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        link.innerHTML = link.download;
+  
+        var li = document.createElement('li');
+        li.appendChild(link);
+        li.appendChild(audio);
+  
+        recordingslist.appendChild(li); */
+      };
+    }
 
     let emoticonsDisplayTimeout = 0;
     this.toggleEmoticons.onmouseover = (e) => {
@@ -650,8 +664,11 @@ export class ChatInput {
         } else {
           this.editMsgID = 0;
           this.messageInput.innerHTML = '';
-          this.btnSend.classList.remove('tgico-send');
-          this.btnSend.classList.add('tgico-microphone2');
+
+          if(this.recorder) {
+            this.btnSend.classList.remove('tgico-send');
+            this.btnSend.classList.add('tgico-microphone2');
+          }
         }
       }
 
@@ -686,8 +703,11 @@ export class ChatInput {
       this.replyElements.container.classList.remove('active');
       this.willSendWebPage = null;
       this.messageInput.innerText = '';
-      this.btnSend.classList.remove('tgico-send');
-      this.btnSend.classList.add('tgico-microphone2');
+
+      if(this.recorder) {
+        this.btnSend.classList.remove('tgico-send');
+        this.btnSend.classList.add('tgico-microphone2');
+      }
     }
   }
 

@@ -146,9 +146,9 @@ export default class Socket extends MTTransport {
 
     this.ws = new WebSocket(this.url, 'binary');
     this.ws.binaryType = 'arraybuffer';
-    this.ws.onopen = this.handleOpen;
-    this.ws.onclose = this.handleClose;
-    this.ws.onmessage = this.handleMessage;
+    this.ws.addEventListener('open', this.handleOpen);
+    this.ws.addEventListener('close', this.handleClose);
+    this.ws.addEventListener('message', this.handleMessage);
   };
   
   handleOpen = () => {

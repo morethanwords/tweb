@@ -291,6 +291,8 @@ export class AppDialogsManager {
 
   private contextMenu = new DialogsContextMenu([this.chatList, this.chatListArchived]);
 
+  private debug = false;
+
   constructor() {
     this.chatsPreloader = putPreloader(null, true);
     
@@ -493,7 +495,7 @@ export class AppDialogsManager {
         else this.loadedAll = true;
       }
 
-      this.log('getDialogs ' + loadCount + ' dialogs by offset:', offsetIndex, result, this.scroll.length, archived);
+      this.debug && this.log('getDialogs ' + loadCount + ' dialogs by offset:', offsetIndex, result, this.scroll.length, archived);
       this.scroll.onScroll();
     } catch(err) {
       this.log.error(err);
@@ -585,7 +587,7 @@ export class AppDialogsManager {
 
     (dialog.folder_id == 1 ? this.scrollArchived : this.scroll).reorder();
 
-    this.log('setDialogPosition:', dialog, dom, pos);
+    this.debug && this.log('setDialogPosition:', dialog, dom, pos);
   }
 
   public setPinnedDelimiter() {

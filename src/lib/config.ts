@@ -89,12 +89,16 @@ class MediaSizes {
 
 export const mediaSizes = new MediaSizes();
 
+// @ts-ignore
+export const touchSupport = ('ontouchstart' in window) || (window.DocumentTouch && document instanceof DocumentTouch);
+
 const Config = {
   Emoji,
   LatinizeMap,
   TLD,
   Countries,
-  MediaSizes: mediaSizes
+  MediaSizes: mediaSizes,
+  touchSupport
 };
 (window as any).Config = Config;
 export default Config;

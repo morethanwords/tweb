@@ -90,10 +90,11 @@
     //z-index: 3;
     z-index: 2;
     pointer-events: none;
+    transition: opacity .3s ease;
+    opacity: 0.99999; // for safari
 
     &.is-sticky {
-      transition: opacity .3s ease;
-      opacity: 0;
+      opacity: 0.00001; // for safari
     }
   }
   

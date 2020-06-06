@@ -17,9 +17,13 @@ export default class Page {
 
     if(!this.installed) {
       if(this.onFirstMount) {
-        let res = this.onFirstMount(...args);
-        if(res instanceof Promise) {
-          await res;
+        try {
+          const res = this.onFirstMount(...args);
+          if(res instanceof Promise) {
+            await res;
+          }
+        } catch(err) {
+          console.error('PAGE MOUNT ERROR:', err);
         }
       }
       

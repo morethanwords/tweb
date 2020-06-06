@@ -211,6 +211,10 @@ input {
   caret-color: $button-primary-background;
 }
 
+input, textarea {
+	-webkit-appearance: none;
+} 
+
 .subtitle {
   /* font-weight: 500; */
   color: #707579;

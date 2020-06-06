@@ -599,6 +599,7 @@ $time-background: rgba(0, 0, 0, .35);
 	overflow: hidden;
 	position: relative;
 	padding: 0 .5rem;
+	-webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%); // fix safari overflow
 
 	> .scrollable {
 		padding: 0 .75rem;
@@ -683,7 +684,7 @@ $time-background: rgba(0, 0, 0, .35);
 	}
 
 	&.is-scrolling .is-sticky {
-		opacity: 1;
+		opacity: 0.99999; // 0.99999 сделано для сафари, т.к. без этого будет прыжок при скролле в самом низу или верху
 	}
 }
 
