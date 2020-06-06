@@ -92,7 +92,8 @@ export class ChatInput {
         encoderSampleRate: 48000,
         monitorGain: 0,
         numberOfChannels: 1,
-        recordingGain: 1
+        recordingGain: 1,
+        reuseWorker: true
       });
     } catch(err) {
       this.btnSend.classList.remove('tgico-microphone2');

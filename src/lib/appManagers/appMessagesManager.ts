@@ -23,7 +23,7 @@ import appPollsManager from "./appPollsManager";
 import searchIndexManager from '../searchIndexManager';
 import { MTDocument, MTPhotoSize } from "../../types";
 
-console.trace('include');
+//console.trace('include');
 
 const APITIMEOUT = 0;
 
@@ -238,10 +238,10 @@ export class AppMessagesManager {
         apiUpdatesManager.attach(updates ?? null);
   
         resolve();
-      }).catch(resolve);
+      }).catch(resolve).finally(() => {
+        setInterval(() => this.saveState(), 10000);
+      });
     });
-
-    setInterval(() => this.saveState(), 10000);
   }
 
   public saveState() {
@@ -1986,7 +1986,7 @@ export class AppMessagesManager {
         str = langPack[_] + suffix;
       }
 
-      console.log('message action:', action);
+      //console.log('message action:', action);
 
       messageText = '<i>' + str + '</i>';
     }

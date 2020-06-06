@@ -777,7 +777,9 @@ export class AppMediaViewer {
         let video = mover.querySelector('video') || document.createElement('video');
         let source = video.firstElementChild as HTMLSourceElement || document.createElement('source');
 
+        video.setAttribute('playsinline', '');
         if(media.type == 'gif') {
+          video.muted = true;
           video.autoplay = true;
           video.loop = true;
         }

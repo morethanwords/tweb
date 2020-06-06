@@ -19,7 +19,7 @@ class AppWebpManager {
 
       if(!res) {
         (window as any).webpLoaded = () => {
-          console.log('webpHero loaded');
+          //console.log('webpHero loaded');
           this.webpMachine = new (window as any).WebpMachine();
           resolve();
         };
@@ -56,7 +56,7 @@ class AppWebpManager {
     this.busyPromise = this.convert(bytes);
     let res = await this.busyPromise;
 
-    console.log('converted webp', res);
+    //console.log('converted webp', res);
 
     callback(res as Uint8Array);
 
@@ -85,7 +85,7 @@ class AppWebpManager {
   }
 
   public convertToPng(bytes: Uint8Array) {
-    console.warn('convertToPng!');
+    //console.warn('convertToPng!');
     return new Promise<Uint8Array>((resolve, reject) => {
       // @ts-ignore
       this.queue.push({bytes, callback: resolve});

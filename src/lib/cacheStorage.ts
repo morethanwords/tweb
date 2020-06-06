@@ -1,12 +1,12 @@
-import {blobConstruct, bytesToBase64, blobSafeMimeType, dataUrlToBlob} from './bin_utils';
+import {blobConstruct} from './bin_utils';
 import FileManager from './filemanager';
-import { logger } from './polyfill';
+//import { logger } from './polyfill';
 
 class CacheStorageController {
   public dbName = 'cachedFiles';
   public openDbPromise: Promise<Cache>;
 
-  private log: ReturnType<typeof logger> = logger('CS');
+  //private log: ReturnType<typeof logger> = logger('CS');
 
   constructor() {
     this.openDatabase();

@@ -92,13 +92,16 @@ export const mediaSizes = new MediaSizes();
 // @ts-ignore
 export const touchSupport = ('ontouchstart' in window) || (window.DocumentTouch && document instanceof DocumentTouch);
 
+export const isApple = navigator.userAgent.search(/OS X|iPhone|iPad|iOS/i) != -1;
+
 const Config = {
   Emoji,
   LatinizeMap,
   TLD,
   Countries,
   MediaSizes: mediaSizes,
-  touchSupport
+  touchSupport,
+  isApple
 };
 (window as any).Config = Config;
 export default Config;

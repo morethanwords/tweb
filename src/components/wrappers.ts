@@ -2,12 +2,10 @@ import appPhotosManager from '../lib/appManagers/appPhotosManager';
 //import CryptoWorker from '../lib/crypto/cryptoworker';
 import apiManager from '../lib/mtproto/mtprotoworker';
 import LottieLoader from '../lib/lottieLoader';
-import appStickersManager from "../lib/appManagers/appStickersManager";
 import appDocsManager from "../lib/appManagers/appDocsManager";
 import { formatBytes, getEmojiToneIndex } from "../lib/utils";
 import ProgressivePreloader from './preloader';
 import LazyLoadQueue from './lazyLoadQueue';
-import apiFileManager from '../lib/mtproto/apiFileManager';
 import VideoPlayer, { MediaProgressLine } from '../lib/mediaPlayer';
 import { RichTextProcessor } from '../lib/richtextprocessor';
 import { CancellablePromise } from '../lib/polyfill';
@@ -30,6 +28,10 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   middleware: () => boolean,
   lazyLoadQueue: LazyLoadQueue
 }) {
+  if(doc.type == 'video') {
+    return wrapPhoto(doc, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware);
+  }
+
   let img: HTMLImageElement;
   if(withTail) {
     img = wrapMediaWithTail(doc, message, container, boxWidth, boxHeight, isOut);
@@ -49,7 +51,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     if(!img || img.tagName != 'IMG') {
       container.append(img = new Image());
     }
-  } 
+  }
 
   let video = document.createElement('video');
   let source = document.createElement('source');
@@ -95,17 +97,19 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       return;
     }
 
-    console.log('loaded doc:', doc, doc.url, container);
+    //console.log('loaded doc:', doc, doc.url, container);
     
     renderImageFromUrl(source, doc.url);
     source.type = doc.mime_type;
     video.append(source);
+    video.setAttribute('playsinline', '');
 
     if(img && img.parentElement) {
       img.remove();
     }
     
     if(doc.type == 'gif') {
+      video.muted = true;
       video.autoplay = true;
       video.loop = true;
       video.play();
@@ -687,7 +691,7 @@ function wrapMediaWithTail(photo: any, message: {mid: number, message: string}, 
   return img;
 }
 
-export function wrapPhoto(photoID: string, message: any, container: HTMLDivElement, boxWidth = mediaSizes.active.regular.width, boxHeight = mediaSizes.active.regular.height, withTail = true, isOut = false, lazyLoadQueue: LazyLoadQueue, middleware: () => boolean, size: MTPhotoSize = null) {
+export function wrapPhoto(photoID: any, message: any, container: HTMLDivElement, boxWidth = mediaSizes.active.regular.width, boxHeight = mediaSizes.active.regular.height, withTail = true, isOut = false, lazyLoadQueue: LazyLoadQueue, middleware: () => boolean, size: MTPhotoSize = null) {
   let photo = appPhotosManager.getPhoto(photoID);
 
   let image: HTMLImageElement;
@@ -734,7 +738,7 @@ export function wrapPhoto(photoID: string, message: any, container: HTMLDivEleme
     return promise.then(() => {
       if(middleware && !middleware()) return;
 
-      renderImageFromUrl(image || container, photo.url);
+      renderImageFromUrl(image || container, photo._ == 'photo' ? photo.url : appPhotosManager.getDocumentCachedThumb(photo.id).url);
     });
   };
   
@@ -865,8 +869,8 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
           loop: !emoji,
           autoplay: true,
           animationData: JSON.parse(json),
-          width: !emoji ? 200 : 140,
-          height: !emoji ? 200 : 140
+          width: !emoji ? 200 : undefined,
+          height: !emoji ? 200 : undefined
         }, group, toneIndex);
 
         animation.addListener('ready', () => {
@@ -932,31 +936,34 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
   return lazyLoadQueue && (!doc.downloaded || stickerType == 2) ? (lazyLoadQueue.push({div, load, wasSeen: group == 'chat' && stickerType != 2}), Promise.resolve()) : load();
 }
 
-export function wrapReply(title: string, subtitle: string, message?: any) {
-  let div = document.createElement('div');
-  div.classList.add('reply');
+export function wrapReply(title: string, subtitle: string, message?: any, isPinned?: boolean) {
+  const prefix = isPinned ? 'pinned-message' : 'reply';
+  const div = document.createElement('div');
+  div.classList.add(prefix);
   
-  let replyBorder = document.createElement('div');
-  replyBorder.classList.add('reply-border');
+  const replyBorder = document.createElement('div');
+  replyBorder.classList.add(prefix + '-border');
   
-  let replyContent = document.createElement('div');
-  replyContent.classList.add('reply-content');
+  const replyContent = document.createElement('div');
+  replyContent.classList.add(prefix + '-content');
   
-  let replyTitle = document.createElement('div');
-  replyTitle.classList.add('reply-title');
+  const replyTitle = document.createElement('div');
+  replyTitle.classList.add(prefix + '-title');
   
-  let replySubtitle = document.createElement('div');
-  replySubtitle.classList.add('reply-subtitle');
+  const replySubtitle = document.createElement('div');
+  replySubtitle.classList.add(prefix + '-subtitle');
   
   replyTitle.innerHTML = title ? RichTextProcessor.wrapEmojiText(title) : '';
   
-  let media = message && message.media;
+  const media = message && message.media;
   if(media) {
     replySubtitle.innerHTML = message.rReply;
+
+    console.log('wrap reply', media);
     
     if(media.photo || (media.document && ['video'].indexOf(media.document.type) !== -1)) {
       let replyMedia = document.createElement('div');
-      replyMedia.classList.add('reply-media');
+      replyMedia.classList.add(prefix + '-media');
       
       let photo = media.photo || media.document;
       
@@ -971,7 +978,7 @@ export function wrapReply(title: string, subtitle: string, message?: any) {
       });
       
       replyContent.append(replyMedia);
-      div.classList.add('is-reply-media');
+      div.classList.add('is-media');
     }
   } else {
     replySubtitle.innerHTML = subtitle ? RichTextProcessor.wrapEmojiText(subtitle) : '';

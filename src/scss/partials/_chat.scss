@@ -437,7 +437,7 @@ $time-background: rgba(0, 0, 0, .35);
 		position: relative;
 		/* padding: .25rem; */
 
-		&.is-reply-media {
+		&.is-media {
 			.pinned-message-content, .reply-content {
 				padding-left: 40px;
 			}

@@ -1,10 +1,19 @@
 import { isInDOM } from "./utils";
+import { isApple } from "./config";
 
 let convert = (value: number) => {
 	return Math.round(Math.min(Math.max(value, 0), 1) * 255);
 };
 
 type RLottiePlayerListeners = 'enterFrame' | 'ready';
+type RLottieOptions = {
+  container: HTMLElement, 
+  autoplay?: boolean, 
+  animationData: any, 
+  loop?: boolean, 
+  width?: number,
+  height?: number
+};
 
 export class RLottiePlayer {
   public static reqId = 0;
@@ -16,8 +25,8 @@ export class RLottiePlayer {
 
   public worker: QueryableWorker;
   
-  public width: number;
-  public height: number;
+  private width = 0;
+  private height = 0;
 
   public listeners: Partial<{
     [k in RLottiePlayerListeners]: (res: any) => void
@@ -40,21 +49,38 @@ export class RLottiePlayer {
   private frThen: number;
   private rafId: number;
 
-  private playedTimes = 0;
+  //private playedTimes = 0;
 
-  constructor({el, width, height, worker}: {
+  constructor({el, worker, options}: {
     el: HTMLElement,
-    width: number,
-    height: number,
-    worker: QueryableWorker
+    worker: QueryableWorker,
+    options: RLottieOptions
   }) {
     this.reqId = ++RLottiePlayer['reqId'];
     this.el = el;
-    this.width = width;
-    this.height = height;
     this.worker = worker;
 
+    for(let i in options) {
+      if(this.hasOwnProperty(i)) {
+        // @ts-ignore
+        this[i] = options[i];
+      }
+    }
+
+    //console.log("RLottiePlayer width:", this.width, this.height, options);
+
+    if(window.devicePixelRatio > 1) {
+      if(isApple) {
+        this.width *= window.devicePixelRatio;
+        this.height *= window.devicePixelRatio;
+      } else {
+        this.width *= (window.devicePixelRatio - 1.5);
+        this.height *= (window.devicePixelRatio - 1.5);
+      }
+    }
+
     this.canvas = document.createElement('canvas');
+    this.canvas.classList.add('rlottie');
     this.canvas.width = this.width;
     this.canvas.height = this.height;
     this.context = this.canvas.getContext('2d');
@@ -134,11 +160,11 @@ export class RLottiePlayer {
 
   public renderFrame(frame: Uint8ClampedArray, frameNo: number) {
     try {
-      this.context.putImageData(new ImageData(frame, this.width, this.height), 0, 0);
+      this.context.putImageData(new ImageData(frame, this.width, this.height), 0, 0/* , 0, 0, this.canvas.width, this.canvas.height */);
     } catch(err) {
       console.error('RLottiePlayer renderFrame error:', err, frame, this.width, this.height);
       this.autoplay = false;
-      this.stop();
+      this.pause();
     }
     
     this.setListenerResult('enterFrame', frameNo);
@@ -170,7 +196,7 @@ export class RLottiePlayer {
   private mainLoopForwards() {
     this.sendQuery('renderFrame', this.curFrame++);
     if(this.curFrame >= this.frameCount) {
-      this.playedTimes++;
+      //this.playedTimes++;
 
       if(!this.loop) return false;
 
@@ -183,7 +209,7 @@ export class RLottiePlayer {
   private mainLoopBackwards() {
     this.sendQuery('renderFrame', this.curFrame--);
     if(this.curFrame < 0) {
-      this.playedTimes++;
+      //this.playedTimes++;
 
       if(!this.loop) return false;
 
@@ -385,14 +411,7 @@ class LottieLoader {
     }
   }
 
-  public async loadAnimationWorker(params: {
-    container: HTMLElement, 
-    autoplay?: boolean, 
-    animationData: any, 
-    loop?: boolean, 
-    width?: number,
-    height?: number
-  }, group = '', toneIndex = -1) {
+  public async loadAnimationWorker(params: RLottieOptions, group = '', toneIndex = -1) {
     params.autoplay = true;
 
     if(toneIndex >= 1 && toneIndex <= 5) {
@@ -403,21 +422,16 @@ class LottieLoader {
       await this.loadLottieWorkers();
     }
 
-    const width = params.width || parseInt(params.container.style.width);
-    const height = params.height || parseInt(params.container.style.height);
+    if(!params.width || !params.height) {
+      params.width = parseInt(params.container.style.width);
+      params.height = parseInt(params.container.style.height);
+    }
 
-    if(!width || !height) {
+    if(!params.width || !params.height) {
       throw new Error('No size for sticker!');
     }
 
-    const player = this.initPlayer(params.container, params.animationData, width, height);
-    for(let i in params) {
-      // @ts-ignore
-      if(player.hasOwnProperty(i)) {
-        // @ts-ignore
-        player[i] = params[i];
-      }
-    }
+    const player = this.initPlayer(params.container, params);
 
     (this.byGroups[group] ?? (this.byGroups[group] = [])).push(player);
 
@@ -425,7 +439,7 @@ class LottieLoader {
   }
 
   public checkAnimations(blurred?: boolean, group?: string, destroy = false) {
-    const groups = group && false ? [group] : Object.keys(this.byGroups);
+    const groups = group /* && false */ ? [group] : Object.keys(this.byGroups);
 
     if(group && !this.byGroups[group]) {
       console.warn('no animation group:', group);
@@ -438,20 +452,6 @@ class LottieLoader {
 
       animations.forEach(player => {
         this.checkAnimation(player, blurred, destroy);
-
-        //if(!autoplay) continue;
-        
-        /* if(blurred || !isElementInViewport(container)) {
-          if(!paused) {
-            this.debug && console.log('pause animation', isElementInViewport(container), container);
-            animation.pause();
-            animations[i].paused = true;
-          }
-        } else if(paused) {
-          this.debug && console.log('play animation', container);
-          animation.play();
-          animations[i].paused = false;
-        } */
       });
     }
   }
@@ -523,12 +523,11 @@ class LottieLoader {
     this.workers.length = 0;
   }
 
-  private initPlayer(el: HTMLElement, json: any, width: number, height: number) {
+  private initPlayer(el: HTMLElement, options: RLottieOptions) {
     const rlPlayer = new RLottiePlayer({
       el, 
-      width, 
-      height,
-      worker: this.workers[this.curWorkerNum++]
+      worker: this.workers[this.curWorkerNum++],
+      options
     });
 
     this.players[rlPlayer.reqId] = rlPlayer;
@@ -536,7 +535,7 @@ class LottieLoader {
       this.curWorkerNum = 0;
     }
 
-    rlPlayer.loadFromData(json);
+    rlPlayer.loadFromData(options.animationData);
 
     return rlPlayer;
   }

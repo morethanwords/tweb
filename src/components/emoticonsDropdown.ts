@@ -345,7 +345,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
     let prevCategoryIndex = 0;
     let stickersScroll = new Scrollable(contentStickersDiv, 'y', 'STICKERS', undefined, undefined, 2);
     stickersScroll.container.addEventListener('scroll', (e) => {
-      lottieLoader.checkAnimations();
+      lottieLoader.checkAnimations(false, EMOTICONSSTICKERGROUP);
 
       prevCategoryIndex = emoticonsContentOnScroll(menu, heights, prevCategoryIndex, stickersScroll.container, menuScroll);
     });

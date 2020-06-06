@@ -5,6 +5,7 @@ import { dT, $rootScope, tsNow } from "../utils";
 import appPeersManager from "./appPeersManager";
 import appUsersManager from "./appUsersManager";
 import appChatsManager from "./appChatsManager";
+import { logger, LogLevels } from '../polyfill';
 
 export class ApiUpdatesManager {
   public updatesState: {
@@ -25,6 +26,8 @@ export class ApiUpdatesManager {
 
   public channelStates: any = {};
   private attached = false;
+
+  private log = logger('UPDATES', LogLevels.error);
  
   public popPendingSeqUpdate() {
     var nextSeq = this.updatesState.seq + 1;
@@ -67,7 +70,7 @@ export class ApiUpdatesManager {
     curState.pendingPtsUpdates.sort((a: any, b: any) => {
       return a.pts - b.pts;
     });
-    // console.log(dT(), 'pop update', channelID, curState.pendingPtsUpdates)
+    // this.log(dT(), 'pop update', channelID, curState.pendingPtsUpdates)
   
     var curPts = curState.pts;
     var goodPts = false;
@@ -86,7 +89,7 @@ export class ApiUpdatesManager {
       return false;
     }
   
-    console.log(dT(), 'pop pending pts updates', goodPts, curState.pendingPtsUpdates.slice(0, goodIndex + 1));
+    this.log(dT(), 'pop pending pts updates', goodPts, curState.pendingPtsUpdates.slice(0, goodIndex + 1));
   
     curState.pts = goodPts;
     for(i = 0; i <= goodIndex; i++) {
@@ -170,12 +173,12 @@ export class ApiUpdatesManager {
         break;
   
       default:
-        console.warn(dT(), 'Unknown update message', updateMessage);
+        this.log.warn(dT(), 'Unknown update message', updateMessage);
     }
   }
   
   public getDifference() {
-    // console.trace(dT(), 'Get full diff')
+    // this.trace(dT(), 'Get full diff')
     const updatesState = this.updatesState;
     if(!updatesState.syncLoading) {
       updatesState.syncLoading = true;
@@ -196,7 +199,7 @@ export class ApiUpdatesManager {
       timeout: 0x7fffffff
     }).then((differenceResult: any) => {
       if(differenceResult._ == 'updates.differenceEmpty') {
-        console.log(dT(), 'apply empty diff', differenceResult.seq);
+        this.log(dT(), 'apply empty diff', differenceResult.seq);
         updatesState.date = differenceResult.date;
         updatesState.seq = differenceResult.seq;
         updatesState.syncLoading = false;
@@ -208,7 +211,7 @@ export class ApiUpdatesManager {
       appChatsManager.saveApiChats(differenceResult.chats);
   
       // Should be first because of updateMessageID
-      // console.log(dT(), 'applying', differenceResult.other_updates.length, 'other updates')
+      // this.log(dT(), 'applying', differenceResult.other_updates.length, 'other updates')
   
       differenceResult.other_updates.forEach((update: any) => {
         switch(update._) {
@@ -222,7 +225,7 @@ export class ApiUpdatesManager {
         this.saveUpdate(update);
       });
   
-      // console.log(dT(), 'applying', differenceResult.new_messages.length, 'new messages')
+      // this.log(dT(), 'applying', differenceResult.new_messages.length, 'new messages')
       differenceResult.new_messages.forEach((apiMessage: any) => {
         this.saveUpdate({
           _: 'updateNewMessage',
@@ -237,12 +240,12 @@ export class ApiUpdatesManager {
       updatesState.pts = nextState.pts;
       updatesState.date = nextState.date;
   
-      // console.log(dT(), 'apply diff', updatesState.seq, updatesState.pts)
+      // this.log(dT(), 'apply diff', updatesState.seq, updatesState.pts)
   
       if(differenceResult._ == 'updates.differenceSlice') {
         this.getDifference();
       } else {
-        // console.log(dT(), 'finished get diff')
+        // this.log(dT(), 'finished get diff')
         $rootScope.$broadcast('stateSynchronized');
         updatesState.syncLoading = false;
       }
@@ -261,25 +264,25 @@ export class ApiUpdatesManager {
       clearTimeout(channelState.syncPending.timeout);
       channelState.syncPending = false;
     }
-    // console.log(dT(), 'Get channel diff', appChatsManager.getChat(channelID), channelState.pts)
+    // this.log(dT(), 'Get channel diff', appChatsManager.getChat(channelID), channelState.pts)
     apiManager.invokeApi('updates.getChannelDifference', {
       channel: appChatsManager.getChannelInput(channelID),
       filter: {_: 'channelMessagesFilterEmpty'},
       pts: channelState.pts,
       limit: 30
     }, {timeout: 0x7fffffff}).then((differenceResult: any) => {
-      // console.log(dT(), 'channel diff result', differenceResult)
+      // this.log(dT(), 'channel diff result', differenceResult)
       channelState.pts = differenceResult.pts;
   
       if (differenceResult._ == 'updates.channelDifferenceEmpty') {
-        console.log(dT(), 'apply channel empty diff', differenceResult);
+        this.log(dT(), 'apply channel empty diff', differenceResult);
         channelState.syncLoading = false;
         $rootScope.$broadcast('stateSynchronized');
         return false;
       }
   
       if(differenceResult._ == 'updates.channelDifferenceTooLong') {
-        console.log(dT(), 'channel diff too long', differenceResult);
+        this.log(dT(), 'channel diff too long', differenceResult);
         channelState.syncLoading = false;
         delete this.channelStates[channelID];
         this.saveUpdate({_: 'updateChannelReload', channel_id: channelID});
@@ -290,12 +293,12 @@ export class ApiUpdatesManager {
       appChatsManager.saveApiChats(differenceResult.chats);
   
       // Should be first because of updateMessageID
-      console.log(dT(), 'applying', differenceResult.other_updates.length, 'channel other updates')
+      this.log(dT(), 'applying', differenceResult.other_updates.length, 'channel other updates')
       differenceResult.other_updates.forEach((update: any) => {
         this.saveUpdate(update);
       });
   
-      console.log(dT(), 'applying', differenceResult.new_messages.length, 'channel new messages')
+      this.log(dT(), 'applying', differenceResult.new_messages.length, 'channel new messages')
       differenceResult.new_messages.forEach((apiMessage: any) => {
         this.saveUpdate({
           _: 'updateNewChannelMessage',
@@ -305,13 +308,13 @@ export class ApiUpdatesManager {
         });
       });
   
-      console.log(dT(), 'apply channel diff', channelState.pts);
+      this.log(dT(), 'apply channel diff', channelState.pts);
   
       if(differenceResult._ == 'updates.channelDifference' &&
         !differenceResult.pFlags['final']) {
         this.getChannelDifference(channelID);
       } else {
-        console.log(dT(), 'finished channel get diff');
+        this.log(dT(), 'finished channel get diff');
         $rootScope.$broadcast('stateSynchronized');
         channelState.syncLoading = false;
       }

@@ -741,6 +741,11 @@ export class AppDialogsManager {
   public setUnreadMessages(dialog: Dialog) {
     let dom = this.getDialogDom(dialog.peerID);
 
+    if(!dom) {
+      this.log.error('setUnreadMessages no dom!', dialog);
+      return;
+    }
+
     let lastMessage = appMessagesManager.getMessage(dialog.top_message);
     if(lastMessage._ != 'messageEmpty' && !lastMessage.deleted && 
       lastMessage.from_id == $rootScope.myID && lastMessage.peerID != $rootScope.myID && 

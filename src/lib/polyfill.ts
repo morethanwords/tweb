@@ -4,25 +4,30 @@ import {SecureRandom} from 'jsbn';
 
 export const secureRandom = new SecureRandom();
 
-export function logger(prefix: string) {
+export enum LogLevels {
+  log = 1,
+  warn = 2,
+  error = 4
+};
+export function logger(prefix: string, level = LogLevels.log | LogLevels.warn | LogLevels.error) {
   function Log(...args: any[]) {
-    return console.log(dT(), '[' + prefix + ']:', ...args);
+    return level & LogLevels.log && console.log(dT(), '[' + prefix + ']:', ...args);
   }
   
   Log.warn = function(...args: any[]) {
-    return console.warn(dT(), '[' + prefix + ']:', ...args);
+    return level & LogLevels.warn && console.warn(dT(), '[' + prefix + ']:', ...args);
   };
   
   Log.info = function(...args: any[]) {
-    return console.info(dT(), '[' + prefix + ']:', ...args);
+    return level & LogLevels.log && console.info(dT(), '[' + prefix + ']:', ...args);
   };
   
   Log.error = function(...args: any[]) {
-    return console.error(dT(), '[' + prefix + ']:', ...args);
+    return level & LogLevels.error && console.error(dT(), '[' + prefix + ']:', ...args);
   };
   
   Log.trace = function(...args: any[]) {
-    return console.trace(dT(), '[' + prefix + ']:', ...args);
+    return level & LogLevels.log && console.trace(dT(), '[' + prefix + ']:', ...args);
   }
   
   return Log;

@@ -61,7 +61,7 @@ export default class ProgressivePreloader {
       promise.notify = (details: {done: number, total: number}) => {
         if(tempID != this.tempID) return;
 
-        console.log('preloader download', promise, details);
+        //console.log('preloader download', promise, details);
         let percents = details.done / details.total * 100;
         this.setProgress(percents);
       };
@@ -116,7 +116,7 @@ export default class ProgressivePreloader {
     }
     
     let totalLength = this.circle.getTotalLength();
-    console.log('setProgress', (percents / 100 * totalLength));
+    //console.log('setProgress', (percents / 100 * totalLength));
     this.circle.style.strokeDasharray = '' + Math.max(5, percents / 100 * totalLength) + ', 200';
   }
 }

@@ -1,6 +1,6 @@
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
-import { $rootScope, numberWithCommas, findUpClassName, formatNumber, placeCaretAtEnd, findUpTag, langPack, whichChild } from "../utils";
+import { $rootScope, numberWithCommas, findUpClassName, formatNumber, placeCaretAtEnd, findUpTag, langPack, whichChild, cancelEvent } from "../utils";
 import appUsersManager from "./appUsersManager";
 import appMessagesManager, { Dialog } from "./appMessagesManager";
 import appPeersManager from "./appPeersManager";
@@ -36,7 +36,7 @@ console.log('appImManager included33!');
 
 appSidebarLeft; // just to include
 
-const testScroll = true;
+const testScroll = false;
 
 const IGNOREACTIONS = ['messageActionChannelMigrateFrom'];
 
@@ -237,8 +237,7 @@ export class AppImManager {
   public updateStatusInterval = 0;
   
   public pinnedMsgID = 0;
-  private pinnedMessageContainer = this.columnEl.querySelector('.pinned-message') as HTMLDivElement;
-  private pinnedMessageContent = this.pinnedMessageContainer.querySelector('.pinned-message-subtitle') as HTMLDivElement;
+  private pinnedMessageContainer: HTMLDivElement = null;
   
   public lazyLoadQueue = new LazyLoadQueue();
   
@@ -496,8 +495,17 @@ export class AppImManager {
       }, {once: true});
     });
     
-    (this.columnEl.querySelector('.person') as HTMLDivElement).addEventListener('click', () => {
-      appSidebarRight.toggleSidebar(true);
+    this.topbar.addEventListener('click', (e) => {
+      const pinned = findUpClassName(e.target, 'pinned-message');
+      if(pinned) {
+        e.preventDefault();
+        e.cancelBubble = true;
+        
+        let mid = +pinned.dataset.mid;
+        this.setPeer(this.peerID, mid);
+      } else {
+        appSidebarRight.toggleSidebar(true);
+      }
     });
     
     this.bubblesContainer.addEventListener('click', (e) => {
@@ -630,14 +638,6 @@ export class AppImManager {
       }
     });
     
-    this.pinnedMessageContainer.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.cancelBubble = true;
-      
-      let mid = +this.pinnedMessageContainer.getAttribute('data-mid');
-      this.setPeer(this.peerID, mid);
-    });
-    
     [this.btnMute, this.menuButtons.mute].forEach(el => {
       el.addEventListener('click', () => this.mutePeer(this.peerID));
     });
@@ -757,10 +757,21 @@ export class AppImManager {
 
   public setPinnedMessage(message: any) {
     /////this.log('setting pinned message', message);
-    return;
-    this.pinnedMessageContainer.dataset.mid = '' + message.mid;
+    //return;
+    const scrollTop = this.scrollable.container.scrollTop;
+    const newPinned = wrapReply('Pinned Message', message.message, message, true);
+    newPinned.dataset.mid = '' + message.mid;
+
+    this.topbar.insertBefore(newPinned, this.btnMute);
     this.topbar.classList.add('is-pinned-shown');
-    this.pinnedMessageContent.innerHTML = message.rReply;
+
+    if(this.pinnedMessageContainer) {
+      this.pinnedMessageContainer.remove();
+    }
+    
+    this.pinnedMessageContainer = newPinned;
+    //this.pinnedMessageContent.innerHTML = message.rReply;
+    this.scrollable.scrollTop = scrollTop + 60;
   }
   
   public updateStatus() {
@@ -784,7 +795,7 @@ export class AppImManager {
   }
 
   public loadMoreHistory(top: boolean) {
-    this.log('loadMoreHistory', top);
+    //this.log('loadMoreHistory', top);
     if(!this.peerID || testScroll || this.setPeerPromise || (top && this.getHistoryTopPromise) || (!top && this.getHistoryBottomPromise)) return;
 
     // warning, если иды только отрицательные то вниз не попадёт (хотя мб и так не попадёт)
@@ -811,13 +822,13 @@ export class AppImManager {
     }
   }
   
-  public onScroll() {
+  public onScroll(e: Event) {
     if(this.onScrollRAF) window.cancelAnimationFrame(this.onScrollRAF);
 
     //if(this.scrollable.scrollLocked) return;
 
     this.onScrollRAF = window.requestAnimationFrame(() => {
-      lottieLoader.checkAnimations(false, 'chat');
+      //lottieLoader.checkAnimations(false, 'chat');
 
       if(!touchSupport) {
         if(this.isScrollingTimeout) {
@@ -1076,7 +1087,11 @@ export class AppImManager {
     if(!cached) {
       this.scrollable.container.innerHTML = '';
       //oldChatInner.remove();
-      !samePeer && this.finishPeerChange();
+
+      if(!samePeer) {
+        this.finishPeerChange();
+      }
+
       this.preloader.attach(this.bubblesContainer);
 
       if(mediaSizes.isMobile) {
@@ -1093,11 +1108,9 @@ export class AppImManager {
         if(cached) {
           this.scrollable.container.innerHTML = '';
           //oldChatInner.remove();
-          !samePeer && this.finishPeerChange();
-          
-          const pinned = appMessagesManager.getPinnedMessage(peerID);
-          if(pinned && !pinned.deleted) {
-            this.setPinnedMessage(pinned);
+
+          if(!samePeer) {
+            this.finishPeerChange();
           }
 
           if(mediaSizes.isMobile) {
@@ -1206,6 +1219,14 @@ export class AppImManager {
     this.btnMute.style.display = appPeersManager.isBroadcast(peerID) ? '' : 'none';
     this.menuButtons.mute.style.display = this.myID == this.peerID ? 'none' : '';
 
+    const pinned = appMessagesManager.getPinnedMessage(peerID);
+    if(pinned && !pinned.deleted) {
+      this.setPinnedMessage(pinned);
+    } else if(this.pinnedMessageContainer) {
+      this.pinnedMessageContainer.remove();
+      this.pinnedMessageContainer = null;
+    }
+
     window.requestAnimationFrame(() => {
       let title = '';
       if(this.peerID == this.myID) title = 'Saved Messages';
@@ -1258,7 +1279,7 @@ export class AppImManager {
       //bubble.remove();
     });
     
-    lottieLoader.checkAnimations();
+    lottieLoader.checkAnimations(false, 'chat');
     this.deleteEmptyDateGroups();
   }
   
@@ -1366,7 +1387,7 @@ export class AppImManager {
       if(el instanceof HTMLVideoElement) {
         let source = el.firstElementChild as HTMLSourceElement;
         if(!source || !source.src) {
-          this.log.warn('no source', el, source, 'src', source.src);
+          //this.log.warn('no source', el, source, 'src', source.src);
           return;
         } else if(el.readyState >= 4) return;
       } else if(el.complete || !el.src) return;
@@ -1381,8 +1402,8 @@ export class AppImManager {
         };
 
         if(el instanceof HTMLVideoElement) {
-          el.addEventListener('loadeddata', onLoad);
-          r = () => el.readyState >= 4;
+          el.addEventListener('canplay', onLoad);
+          r = () => el.readyState >= 1;
         } else {
           el.addEventListener('load', onLoad);
           r = () => el.complete;
@@ -1393,8 +1414,9 @@ export class AppImManager {
         window.requestAnimationFrame(c);
 
         let timeout = setTimeout(() => {
-          console.log('did not called', el, el.parentElement, el.complete, src);
-          reject();
+          // @ts-ignore
+          this.log.error('did not called', el, el.parentElement, el.complete, el.readyState, src);
+          resolve();
         }, 1500);
       });
 
@@ -2242,6 +2264,8 @@ export class AppImManager {
           let scrollTop = this.scrollable.scrollTop;
 
           previousScrollHeightMinusTop = this.scrollable.scrollHeight - scrollTop;
+          //this.chatInner.style.height = '100%';
+          //previousScrollHeightMinusTop = 0;
           /* if(reverse) {
             previousScrollHeightMinusTop = this.scrollable.scrollHeight - scrollTop;
           } else {
@@ -2262,7 +2286,11 @@ export class AppImManager {
         if(previousScrollHeightMinusTop !== undefined) {
           const newScrollTop = reverse ? this.scrollable.scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
           this.log('performHistoryResult: will set scrollTop', this.scrollable.scrollHeight, newScrollTop, this.scrollable.container.clientHeight);
+
+          // touchSupport for safari iOS
+          touchSupport && (this.scrollable.container.style.overflow = 'hidden');
           this.scrollable.scrollTop = newScrollTop;
+          touchSupport && (this.scrollable.container.style.overflow = '');
         }
 
         resolve(true);
