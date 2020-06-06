@@ -2,9 +2,9 @@ import apiFileManager from '../mtproto/apiFileManager';
 import FileManager from '../filemanager';
 import {RichTextProcessor} from '../richtextprocessor';
 import { CancellablePromise, deferredPromise } from '../polyfill';
-import { MTDocument } from '../../components/wrappers';
 import { isObject } from '../utils';
 import opusDecodeController from '../opusDecodeController';
+import { MTDocument } from '../../types';
 
 class AppDocsManager {
   private docs: {[docID: string]: MTDocument} = {};

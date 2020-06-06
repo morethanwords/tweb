@@ -11,10 +11,11 @@ import appStickersManager, { MTStickerSet } from "../lib/appManagers/appStickers
 import apiManager from '../lib/mtproto/mtprotoworker';
 //import CryptoWorker from '../lib/crypto/cryptoworker';
 import LazyLoadQueue from "./lazyLoadQueue";
-import { MTDocument, wrapSticker } from "./wrappers";
+import { wrapSticker } from "./wrappers";
 import appDocsManager from "../lib/appManagers/appDocsManager";
 import ProgressivePreloader from "./preloader";
 import Config from "../lib/config";
+import { MTDocument } from "../types";
 
 export const EMOTICONSSTICKERGROUP = 'emoticons-dropdown';
 

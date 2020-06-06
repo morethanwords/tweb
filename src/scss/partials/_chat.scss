@@ -20,7 +20,9 @@ $time-background: rgba(0, 0, 0, .35);
 		}
 		
 		@include respond-to(handhelds) {
-			margin-bottom: 60px;
+			& + #bubbles {
+				margin-top: 60px;
+			}
 		}
 	}
 

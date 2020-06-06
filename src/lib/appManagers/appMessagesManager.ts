@@ -13,8 +13,6 @@ import appPeersManager from "./appPeersManager";
 import ServerTimeManager from "../mtproto/serverTimeManager";
 import apiFileManager from "../mtproto/apiFileManager";
 import appDocsManager from "./appDocsManager";
-import appImManager from "./appImManager";
-import { MTDocument, MTPhotoSize } from "../../components/wrappers";
 import ProgressivePreloader from "../../components/preloader";
 import serverTimeManager from "../mtproto/serverTimeManager";
 //import apiManager from '../mtproto/apiManager';
@@ -23,6 +21,9 @@ import appWebPagesManager from "./appWebPagesManager";
 import { CancellablePromise, deferredPromise } from "../polyfill";
 import appPollsManager from "./appPollsManager";
 import searchIndexManager from '../searchIndexManager';
+import { MTDocument, MTPhotoSize } from "../../types";
+
+console.trace('include');
 
 const APITIMEOUT = 0;
 
@@ -178,7 +179,10 @@ export class AppMessagesManager {
         });
       }
     });
+  }
 
+  public loadSavedState() {
+    if(this.loaded) return this.loaded;
     this.loaded = new Promise((resolve, reject) => {
       AppStorage.get<{
         dialogs: Dialog[],
@@ -781,7 +785,7 @@ export class AppMessagesManager {
 
     preloader.preloader.onclick = () => {
       console.log('cancelling upload', media);
-      appImManager.setTyping('sendMessageCancelAction');
+      this.setTyping('sendMessageCancelAction');
       media.progress.cancel();
     };
 
@@ -820,7 +824,7 @@ export class AppMessagesManager {
       uploadPromise: ReturnType<typeof apiFileManager.uploadFile> = null;
 
     let invoke = (flags: number, inputMedia: any) => {
-      appImManager.setTyping('sendMessageCancelAction');
+      this.setTyping('sendMessageCancelAction');
 
       return apiManager.invokeApi('messages.sendMedia', {
         flags: flags,
@@ -915,7 +919,7 @@ export class AppMessagesManager {
             console.log('upload progress', progress);
             media.progress.done = progress.done;
             media.progress.percent = Math.max(1, Math.floor(100 * progress.done / progress.total));
-            appImManager.setTyping({_: actionName, progress: media.progress.percent | 0});
+            this.setTyping({_: actionName, progress: media.progress.percent | 0});
             preloader.setProgress(media.progress.percent); // lol, nice
             $rootScope.$broadcast('history_update', {peerID: peerID});
           };
@@ -1078,7 +1082,7 @@ export class AppMessagesManager {
 
       preloader.preloader.onclick = () => {
         console.log('cancelling upload', media);
-        appImManager.setTyping('sendMessageCancelAction');
+        this.setTyping('sendMessageCancelAction');
         media.progress.cancel();
       };
 
@@ -1127,7 +1131,7 @@ export class AppMessagesManager {
 
     let inputPeer = appPeersManager.getInputPeerByID(peerID);
     let invoke = (multiMedia: any[]) => {
-      appImManager.setTyping('sendMessageCancelAction');
+      this.setTyping('sendMessageCancelAction');
 
       return apiManager.invokeApi('messages.sendMultiMedia', {
         flags: flags,
@@ -1161,7 +1165,7 @@ export class AppMessagesManager {
       uploadPromise.notify = (progress: {done: number, total: number}) => {
         console.log('upload progress', progress);
         media.progress.percent = Math.max(1, Math.floor(100 * progress.done / progress.total));
-        appImManager.setTyping({_: actionName, progress: media.progress.percent | 0});
+        this.setTyping({_: actionName, progress: media.progress.percent | 0});
         preloader.setProgress(media.progress.percent); // lol, nice
         $rootScope.$broadcast('history_update', {peerID: peerID});
       };
@@ -3842,6 +3846,20 @@ export class AppMessagesManager {
         this.fetchSingleMessagesTimeout = window.setTimeout(this.fetchSingleMessages.bind(this), 10);
       }
     }
+  }
+
+  public setTyping(action: any): Promise<boolean> {
+    if(!$rootScope.myID) return Promise.resolve(false);
+    
+    if(typeof(action) == 'string') {
+      action = {_: action};
+    }
+    
+    let input = appPeersManager.getInputPeerByID($rootScope.myID);
+    return apiManager.invokeApi('messages.setTyping', {
+      peer: input,
+      action: action
+    }) as Promise<boolean>;
   }
 }
 

@@ -4,7 +4,7 @@ import { $rootScope, cancelEvent, findUpTag, findUpClassName } from "../lib/util
 import appDialogsManager from "../lib/appManagers/appDialogsManager";
 import appChatsManager from "../lib/appManagers/appChatsManager";
 import appUsersManager from "../lib/appManagers/appUsersManager";
-import { appPeersManager } from "../lib/services";
+import appPeersManager from "../lib/appManagers/appPeersManager";
 import appPhotosManager from "../lib/appManagers/appPhotosManager";
 
 export class AppSelectPeers {

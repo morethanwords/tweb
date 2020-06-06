@@ -17,28 +17,29 @@ import AppSidebarLeft from './appManagers/appSidebarLeft';
 import AppMediaViewer from './appManagers/appMediaViewer';
 //import AppSharedMediaManager from './appManagers/appSharedMediaManager';
 
-export const appUsersManager = AppUsersManager;
-export const appChatsManager = AppChatsManager;
-export const appMessagesIDsManager = AppMessagesIDsManager;
-export const apiUpdatesManager = ApiUpdatesManager;
-export const appPhotosManager = AppPhotosManager;
-export const appMessagesManager = AppMessagesManager;
-export const appProfileManager = AppProfileManager;
-export const appImManager = AppImManager;
-export const appPeersManager = AppPeersManager;
-export const appStickersManager = AppStickersManager;
-export const appDocsManager = AppDocsManager;
+const appUsersManager = AppUsersManager;
+const appChatsManager = AppChatsManager;
+const appMessagesIDsManager = AppMessagesIDsManager;
+const apiUpdatesManager = ApiUpdatesManager;
+const appPhotosManager = AppPhotosManager;
+const appMessagesManager = AppMessagesManager;
+const appProfileManager = AppProfileManager;
+const appImManager = AppImManager;
+const appPeersManager = AppPeersManager;
+const appStickersManager = AppStickersManager;
+const appDocsManager = AppDocsManager;
 //export const appSharedMediaManager = AppSharedMediaManager;
-export const appSidebarRight = AppSidebarRight;
-export const appSidebarLeft = AppSidebarLeft;
-export const appMediaViewer = AppMediaViewer;
-export const appDialogsManager = AppDialogsManager;
+const appSidebarRight = AppSidebarRight;
+const appSidebarLeft = AppSidebarLeft;
+const appMediaViewer = AppMediaViewer;
+const appDialogsManager = AppDialogsManager;
 
 (window as any).Services = {
   appUsersManager,
   appChatsManager,
   apiUpdatesManager,
   appMessagesManager,
+  appMessagesIDsManager,
   appPeersManager,
   appProfileManager,
   appPhotosManager,

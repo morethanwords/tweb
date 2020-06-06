@@ -455,10 +455,9 @@ export class AppImManager {
       const pinnedMessage = appMessagesManager.getPinnedMessage(this.peerID);
       mids.forEach(mid => {
         if(pinnedMessage.mid == mid) {
-          /////this.log('setting pinned message', message);
-          this.pinnedMessageContainer.dataset.mid = '' + mid;
-          this.topbar.classList.add('is-pinned-shown');
-          this.pinnedMessageContent.innerHTML = pinnedMessage.rReply;
+          (this.messagesQueuePromise || Promise.resolve()).then(() => {
+            this.setPinnedMessage(pinnedMessage);
+          });
         }
         
         this.needUpdate.forEachReverse((obj, idx) => {
@@ -762,6 +761,13 @@ export class AppImManager {
         });
       }
     });
+  }
+
+  public setPinnedMessage(message: any) {
+    /////this.log('setting pinned message', message);
+    this.pinnedMessageContainer.dataset.mid = '' + message.mid;
+    this.topbar.classList.add('is-pinned-shown');
+    this.pinnedMessageContent.innerHTML = message.rReply;
   }
   
   public updateStatus() {
@@ -1072,6 +1078,11 @@ export class AppImManager {
           this.scrollable.container.innerHTML = '';
           //oldChatInner.remove();
           !samePeer && this.finishPeerChange();
+          
+          const pinned = appMessagesManager.getPinnedMessage(peerID);
+          if(pinned && !pinned.deleted) {
+            this.setPinnedMessage(pinned);
+          }
         } else {
           this.preloader.detach();
         }
@@ -1189,20 +1200,6 @@ export class AppImManager {
     appSidebarRight.fillProfileElements();
 
     $rootScope.$broadcast('peer_changed', this.peerID);
-  }
-  
-  public setTyping(action: any): Promise<boolean> {
-    if(!this.peerID) return Promise.resolve(false);
-    
-    if(typeof(action) == 'string') {
-      action = {_: action};
-    }
-    
-    let input = appPeersManager.getInputPeerByID(this.peerID);
-    return apiManager.invokeApi('messages.setTyping', {
-      peer: input,
-      action: action
-    }) as Promise<boolean>;
   }
   
   public updateUnreadByDialog(dialog: Dialog) {

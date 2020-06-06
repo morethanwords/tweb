@@ -4,16 +4,16 @@ import pageIm from './pageIm';
 import apiManager from '../lib/mtproto/mtprotoworker';
 import Page from './page';
 import popupAvatar from '../components/popupAvatar';
-import appProfileManager from '../lib/appManagers/appProfileManager';
 
 let authCode: {
   'phone_number': string,
   'phone_code_hash': string
 } = null;
 
-let onFirstMount = () => {
+let onFirstMount = () => import('../lib/appManagers/appProfileManager').then(imported => {
   const pageElement = page.pageEl;
   const avatarPreview = pageElement.querySelector('#canvas-avatar') as HTMLCanvasElement;
+  const appProfileManager = imported.default;
 
   let uploadAvatar: () => Promise<any>;
   pageElement.querySelector('.auth-image').addEventListener('click', () => {
@@ -114,7 +114,7 @@ let onFirstMount = () => {
       }
     });
   });
-};
+});
 
 const page = new Page('page-signUp', true, onFirstMount, (_authCode: typeof authCode) => {
   authCode = _authCode;

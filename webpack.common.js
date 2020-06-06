@@ -6,8 +6,8 @@ const postcssPresetEnv = require('postcss-preset-env');
 const fs = require('fs');
 
 const allowedIPs = ['195.66.140.39', '192.168.31.144', '127.0.0.1', '192.168.31.1', '192.168.31.192'];
-
 const devMode = process.env.NODE_ENV !== 'production';
+const useLocal = false;
 
 console.log('DEVMODE:', devMode);
 
@@ -130,15 +130,15 @@ module.exports = {
     watchContentBase: true,
     compress: true,
     http2: true,
-    https: {
+    https: useLocal ? undefined : {
       key: fs.readFileSync(__dirname + '/certs/server-key.pem', 'utf8'),
       cert: fs.readFileSync(__dirname + '/certs/server-cert.pem', 'utf8')
     },
-    allowedHosts: [
+    allowedHosts: useLocal ? undefined : [
       'tweb.enko.club'
     ],
     host: '0.0.0.0',
-    public: 'tweb.enko.club',
+    public: useLocal ? undefined : 'tweb.enko.club',
     //host: '192.168.0.105', // '0.0.0.0'
     //host: 'tweb.enko.club', // '0.0.0.0'
     port: 443,
@@ -161,7 +161,7 @@ module.exports = {
         }
       });
     },
-    sockHost: 'tweb.enko.club',
+    sockHost: useLocal ? undefined : 'tweb.enko.club',
   },
   plugins: [
     new HtmlWebpackPlugin({

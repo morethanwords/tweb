@@ -756,11 +756,6 @@ class AppSidebarRight {
         }
         
         //this.log('userFull', userFull);
-        
-        if(userFull.pinned_msg_id) { // request pinned message
-          appImManager.pinnedMsgID = userFull.pinned_msg_id;
-          appMessagesManager.wrapSingleMessage(userFull.pinned_msg_id);
-        }
       });
     } else {
       membersLi.style.display = appPeersManager.isBroadcast(peerID) ? 'none' : '';

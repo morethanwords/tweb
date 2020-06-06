@@ -2,10 +2,10 @@ import appUsersManager from "./appUsersManager";
 import { calcImageInBox, isObject } from "../utils";
 import fileManager from '../filemanager';
 import { bytesFromHex } from "../bin_utils";
-import { MTPhotoSize } from "../../components/wrappers";
 import apiFileManager from "../mtproto/apiFileManager";
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
+import { MTPhotoSize } from "../../types";
 
 export type MTPhoto = {
   _: 'photo' | 'photoEmpty' | string,

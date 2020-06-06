@@ -442,7 +442,7 @@ export class AppDialogsManager {
       }
     });
 
-    /* false &&  */appMessagesManager.loaded.then(() => {
+    /* false &&  */appMessagesManager.loadSavedState().then(() => {
       this.loadDialogs().then(result => {
         this.setPinnedDelimiter();
         //appSidebarLeft.onChatsScroll();

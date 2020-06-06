@@ -147,7 +147,7 @@ export class ChatInput {
         this.btnSend.classList.remove('tgico-send');
         this.btnSend.classList.add('tgico-microphone2');
   
-        appImManager.setTyping('sendMessageCancelAction');
+        appMessagesManager.setTyping('sendMessageCancelAction');
       } else if(!this.btnSend.classList.contains('tgico-send')) {
         this.btnSend.classList.add('tgico-send');
         this.btnSend.classList.remove('tgico-microphone2');
@@ -155,7 +155,7 @@ export class ChatInput {
         let time = Date.now();
         if(time - this.lastTimeType >= 6000) {
           this.lastTimeType = time;
-          appImManager.setTyping('sendMessageTypingAction');
+          appMessagesManager.setTyping('sendMessageTypingAction');
         }
       }
     });

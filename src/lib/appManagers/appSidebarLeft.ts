@@ -9,7 +9,7 @@ import { horizontalMenu, putPreloader, parseMenuButtonsTo } from "../../componen
 import appUsersManager from "./appUsersManager";
 import Scrollable from "../../components/scrollable_new";
 import appPhotosManager from "./appPhotosManager";
-import { appPeersManager } from "../services";
+import appPeersManager from "../appManagers/appPeersManager";
 import popupAvatar from "../../components/popupAvatar";
 import appChatsManager from "./appChatsManager";
 import { AppSelectPeers } from "../../components/appSelectPeers";
