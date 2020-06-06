@@ -183,7 +183,7 @@ export class AppMessagesManager {
 
   public loadSavedState() {
     if(this.loaded) return this.loaded;
-    this.loaded = new Promise((resolve, reject) => {
+    return this.loaded = new Promise((resolve, reject) => {
       AppStorage.get<{
         dialogs: Dialog[],
         allDialogsLoaded: AppMessagesManager['allDialogsLoaded'], 

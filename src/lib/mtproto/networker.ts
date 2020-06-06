@@ -14,6 +14,7 @@ import Socket from './transports/websocket';
 import HTTP from './transports/http';
 import { logger } from '../polyfill';
 import { Modes, App } from './mtproto_config';
+import { InvokeApiOptions } from '../../types';
 
 //console.error('networker included!', new Error().stack);
 
@@ -90,14 +91,12 @@ class MTPNetworker {
   private log: ReturnType<typeof logger>;
 
   constructor(private dcID: number, private authKey: number[], private authKeyID: Uint8Array,
-    private serverSalt: number[], private options: any = {}) {
+    private serverSalt: number[], private options: InvokeApiOptions = {}) {
     this.authKeyUint8 = convertToUint8Array(this.authKey);
     //this.authKeyID = sha1BytesSync(this.authKey).slice(-8);
 
     this.upload = this.options.fileUpload || this.options.fileDownload || false;
-
     this.log = logger('NET-' + dcID + (this.upload ? '-U' : ''));
-
     this.log('constructor'/* , this.authKey, this.authKeyID, this.serverSalt */);
 
     this.updateSession();
@@ -111,7 +110,7 @@ class MTPNetworker {
     this.transport = dcConfigurator.chooseServer(this.dcID, this.upload);
 
     if(this.transport instanceof HTTP) {
-      /* this.longPollInt =  */window.setInterval(this.checkLongPoll.bind(this), 10000);
+      /* this.longPollInt =  */setInterval(this.checkLongPoll.bind(this), 10000);
       this.checkLongPoll();
     } else {
       (this.transport as Socket).networker = this;
@@ -204,24 +203,7 @@ class MTPNetworker {
     return this.pushMessage(message, options);
   }
 
-  public wrapApiCall(method: string, params: any = {}, options: {
-    dcID?: number,
-    timeout?: number,
-    noErrorBox?: boolean,
-    fileUpload?: boolean,
-    ignoreErrors?: boolean,
-    fileDownload?: boolean,
-    createNetworker?: boolean,
-    singleInRequest?: boolean,
-    startMaxLength?: number,
-
-    afterMessageID?: string,
-    resultType?: boolean,
-    
-    waitTime?: number,
-    stopTime?: number,
-    rawError?: any
-  } = {}) {
+  public wrapApiCall(method: string, params: any = {}, options: InvokeApiOptions = {}) {
     let serializer = new TLSerialization(options);
   
     if(!this.connectionInited) { // this will call once for each new session
@@ -293,7 +275,7 @@ class MTPNetworker {
   }
 
   public checkLongPoll() {
-    var isClean = this.cleanupSent();
+    const isClean = this.cleanupSent();
     //this.log('Check lp', this.longPollPending, tsNow(), this.dcID, isClean, this);
     if((this.longPollPending && Date.now() < this.longPollPending) ||
       this.offline) {
@@ -301,18 +283,17 @@ class MTPNetworker {
       return false;
     }
 
-    var self = this;
     AppStorage.get<number>('dc').then((baseDcID: number) => {
       if(isClean && (
-          baseDcID != self.dcID ||
-          self.upload ||
-          (self.sleepAfter && Date.now() > self.sleepAfter)
+          baseDcID != this.dcID ||
+          this.upload ||
+          (this.sleepAfter && Date.now() > this.sleepAfter)
         )) {
-        //console.warn(dT(), 'Send long-poll for DC is delayed', self.dcID, self.sleepAfter);
+        //console.warn(dT(), 'Send long-poll for DC is delayed', this.dcID, this.sleepAfter);
         return;
       }
 
-      self.sendLongPoll();
+      this.sendLongPoll();
     });
   }
 
@@ -963,7 +944,7 @@ class MTPNetworker {
     clearTimeout(this.nextReqTimeout);
     this.nextReqTimeout = 0;
     if(delay > 0) {
-      this.nextReqTimeout = window.setTimeout(this.performScheduledRequest.bind(this), delay || 0);
+      this.nextReqTimeout = setTimeout(this.performScheduledRequest.bind(this), delay || 0);
     } else {
       setTimeout(this.performScheduledRequest.bind(this), 0);
     }
@@ -984,26 +965,25 @@ class MTPNetworker {
   }
 
   public cleanupSent() {
-    var self = this;
-    var notEmpty = false;
+    let notEmpty = false;
     // this.log('clean start', this.dcID/*, this.sentMessages*/)
     Object.keys(this.sentMessages).forEach((msgID) => {
-      let message = this.sentMessages[msgID];
+      const message = this.sentMessages[msgID];
     
       // this.log('clean iter', msgID, message)
-      if(message.notContentRelated && self.pendingMessages[msgID] === undefined) {
+      if(message.notContentRelated && this.pendingMessages[msgID] === undefined) {
         // this.log('clean notContentRelated', msgID)
-        delete self.sentMessages[msgID];
+        delete this.sentMessages[msgID];
       } else if(message.container) {
-        for(var i = 0; i < message.inner.length; i++) {
-          if(self.sentMessages[message.inner[i]] !== undefined) {
-            // this.log('clean failed, found', msgID, message.inner[i], self.sentMessages[message.inner[i]].seq_no)
+        for(let i = 0; i < message.inner.length; i++) {
+          if(this.sentMessages[message.inner[i]] !== undefined) {
+            // this.log('clean failed, found', msgID, message.inner[i], this.sentMessages[message.inner[i]].seq_no)
             notEmpty = true;
             return;
           }
         }
         // this.log('clean container', msgID)
-        delete self.sentMessages[msgID];
+        delete this.sentMessages[msgID];
       } else {
         notEmpty = true;
       }

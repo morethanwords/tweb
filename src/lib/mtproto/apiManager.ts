@@ -13,6 +13,7 @@ import passwordManager from './passwordManager';
 
 /// #if !MTPROTO_WORKER
 import { $rootScope } from '../utils';
+import { InvokeApiOptions } from '../../types';
 /// #endif
 
 //console.error('apiManager included!');
@@ -133,10 +134,10 @@ export class ApiManager {
   }
   
   // mtpGetNetworker
-  public async getNetworker(dcID: number, options: any = {}): Promise<MTPNetworker> {
-    let upload = (options.fileUpload || options.fileDownload) 
+  public async getNetworker(dcID: number, options: InvokeApiOptions): Promise<MTPNetworker> {
+    const upload = (options.fileUpload || options.fileDownload) 
       && (dcConfigurator.chooseServer(dcID, true) instanceof HTTP || Modes.multipleConnections);
-    let cache = upload ? this.cachedUploadNetworkers : this.cachedNetworkers;
+    const cache = upload ? this.cachedUploadNetworkers : this.cachedNetworkers;
     
     if(!dcID) {
       throw new Error('get Networker without dcID');
@@ -146,72 +147,61 @@ export class ApiManager {
       return cache[dcID];
     }
     
-    let getKey = dcID + '-' + +upload;
+    const getKey = dcID + '-' + +upload;
     if(this.gettingNetworkers[getKey]) {
       return this.gettingNetworkers[getKey];
     }
+
+    const ak = 'dc' + dcID + '_auth_key';
+    const akID = 'dc' + dcID + '_auth_keyID';
+    const ss = 'dc' + dcID + '_server_salt';
     
-    return this.gettingNetworkers[getKey] = new Promise(async(resolve, reject) => {
-      var ak = 'dc' + dcID + '_auth_key';
-      var akID = 'dc' + dcID + '_auth_keyID';
-      var ss = 'dc' + dcID + '_server_salt';
-      
-      let result = await AppStorage.get<string[]/* |boolean[] */>([ak, akID, ss]);
-      
-      let [authKeyHex, authKeyIDHex, serverSaltHex] = result;
-      if(authKeyHex && !authKeyIDHex && serverSaltHex) {
+    return this.gettingNetworkers[getKey] = AppStorage.get<string[]/* |boolean[] */>([ak, akID, ss])
+    .then(async([authKeyHex, authKeyIDHex, serverSaltHex]) => {
+      /* if(authKeyHex && !authKeyIDHex && serverSaltHex) {
         this.log.warn('Updating to new version (+akID)');
         await AppStorage.remove(ak, akID, ss);
         authKeyHex = serverSaltHex = '';
-      }
+      } */
       
+      let networker: MTPNetworker;
       if(authKeyHex && authKeyHex.length == 512) {
         if(!serverSaltHex || serverSaltHex.length != 16) {
           serverSaltHex = 'AAAAAAAAAAAAAAAA';
         }
         
-        var authKey = bytesFromHex(authKeyHex);
-        var authKeyID = new Uint8Array(bytesFromHex(authKeyIDHex));
-        var serverSalt = bytesFromHex(serverSaltHex);
+        const authKey = bytesFromHex(authKeyHex);
+        const authKeyID = new Uint8Array(bytesFromHex(authKeyIDHex));
+        const serverSalt = bytesFromHex(serverSaltHex);
         
-        resolve(cache[dcID] = networkerFactory.getNetworker(dcID, authKey, authKeyID, serverSalt, options));
-      } else try {
-        let auth = await authorizer.auth(dcID);
-        
-        let storeObj = {
-          [ak]: bytesToHex(auth.authKey),
-          [akID]: auth.authKeyID.hex,
-          [ss]: bytesToHex(auth.serverSalt)
-        };
-        
-        AppStorage.set(storeObj);
-        
-        resolve(cache[dcID] = networkerFactory.getNetworker(dcID, auth.authKey, auth.authKeyID, auth.serverSalt, options));
-      } catch(error) {
-        this.log('Get networker error', error, error.stack);
-        reject(error);
+        networker = networkerFactory.getNetworker(dcID, authKey, authKeyID, serverSalt, options);
+      } else {
+        try { // if no saved state
+          const auth = await authorizer.auth(dcID);
+  
+          const storeObj = {
+            [ak]: bytesToHex(auth.authKey),
+            [akID]: auth.authKeyID.hex,
+            [ss]: bytesToHex(auth.serverSalt)
+          };
+          
+          AppStorage.set(storeObj);
+          
+          networker = networkerFactory.getNetworker(dcID, auth.authKey, auth.authKeyID, auth.serverSalt, options);
+        } catch(error) {
+          this.log('Get networker error', error, error.stack);
+          delete this.gettingNetworkers[getKey];
+          throw error;
+        }
       }
 
       delete this.gettingNetworkers[getKey];
+      return cache[dcID] = networker;
     });
   }
   
   // mtpInvokeApi
-  public invokeApi(method: string, params: any = {}, options: Partial<{
-    dcID: number,
-    timeout: number,
-    noErrorBox: boolean,
-    fileUpload: boolean,
-    ignoreErrors: boolean,
-    fileDownload: boolean,
-    createNetworker: boolean,
-    singleInRequest: boolean,
-    startMaxLength: number,
-    
-    waitTime: number,
-    stopTime: number,
-    rawError: any
-  }> = {}) {
+  public invokeApi(method: string, params: any = {}, options: InvokeApiOptions = {}) {
     ///////this.log('Invoke api', method, params, options);
     
     return new Promise((resolve, reject) => {
@@ -343,7 +333,6 @@ export class ApiManager {
   public checkPassword(value: string): Promise<any> {
     return passwordManager.getState()
     .then(state => {
-      console.log(state);
       return passwordManager.check(state, value);
     });
   }

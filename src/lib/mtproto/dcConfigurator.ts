@@ -3,19 +3,11 @@ import MTTransport from './transports/transport';
 import HTTP from './transports/http';
 import { Modes } from './mtproto_config';
 
+type TransportTypes = 'websocket' | 'https' | 'http';
 type Servers = {
-  [transport: string]: {
-    [dcID: number]: MTTransport
+  [transportType in TransportTypes]: {
+    [dcID: number]: MTTransport[]
   }
-  /* websocket: {
-    [dcID: number]: Socket
-  },
-  https: {
-    [dcID: number]: HTTPTransport
-  },
-  http: {
-    [dcID: number]: HTTPTransport
-  } */
 };
 
 export class DcConfigurator {
@@ -47,41 +39,50 @@ export class DcConfigurator {
     http: {}
   };
 
-  public chooseServer(dcID: number, upload?: boolean, transport = 'websocket') {
-    let servers = upload && (transport != 'websocket' || Modes.multipleConnections) 
-      ? this.chosenUploadServers[transport] 
-      : this.chosenServers[transport];
+  public chooseServer(dcID: number, upload?: boolean, transportType: TransportTypes = 'websocket') {
+    const servers = upload && (transportType != 'websocket' || Modes.multipleConnections) 
+      ? this.chosenUploadServers[transportType] 
+      : this.chosenServers[transportType];
 
     if(!(dcID in servers)) {
-      let chosenServer = '';
+      servers[dcID] = [];
+    }
 
-      if(transport == 'websocket') {
-        let subdomain = this.sslSubdomains[dcID - 1];
-        let path = Modes.test ? 'apiws_test' : 'apiws';
-        chosenServer = 'wss://' + subdomain + '.web.telegram.org/' + path;
-        return servers[dcID] = new Socket(dcID, chosenServer);
-      }
-  
-      if(Modes.ssl || !Modes.http || transport == 'https') {
-        let subdomain = this.sslSubdomains[dcID - 1] + (upload ? '-1' : '');
-        let path = Modes.test ? 'apiw_test1' : 'apiw1';
-        chosenServer = 'https://' + subdomain + '.web.telegram.org/' + path;
-        return servers[dcID] = new HTTP(dcID, chosenServer);
-      }
-  
-      for(let dcOption of this.dcOptions) {
-        if(dcOption.id == dcID) {
-          chosenServer = 'http://' + dcOption.host + (dcOption.port != 80 ? ':' + dcOption.port : '') + '/apiw1';
-          return servers[dcID] = new HTTP(dcID, chosenServer);
+    const transports = servers[dcID];
+
+    if(!transports.length || (upload && transports.length < 1)) {
+      let transport: MTTransport;
+
+      if(transportType == 'websocket') {
+        const subdomain = this.sslSubdomains[dcID - 1];
+        const path = Modes.test ? 'apiws_test' : 'apiws';
+        const chosenServer = 'wss://' + subdomain + '.web.telegram.org/' + path;
+        transport = new Socket(dcID, chosenServer);
+      } else if(Modes.ssl || !Modes.http || transportType == 'https') {
+        const subdomain = this.sslSubdomains[dcID - 1] + (upload ? '-1' : '');
+        const path = Modes.test ? 'apiw_test1' : 'apiw1';
+        const chosenServer = 'https://' + subdomain + '.web.telegram.org/' + path;
+        transport = new HTTP(dcID, chosenServer);
+      } else {
+        for(let dcOption of this.dcOptions) {
+          if(dcOption.id == dcID) {
+            const chosenServer = 'http://' + dcOption.host + (dcOption.port != 80 ? ':' + dcOption.port : '') + '/apiw1';
+            transport = new HTTP(dcID, chosenServer);
+            break;
+          }
         }
       }
-
-      console.error('No chosenServer!', dcID);
-
-      return null;
+  
+      if(!transport) {
+        console.error('No chosenServer!', dcID);
+        return null;
+      }
+      
+      transports.push(transport);
+      return transport;
     }
   
-    return servers[dcID];
+    return transports[0];
   }
 }
 

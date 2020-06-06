@@ -6,6 +6,8 @@ import {str2bigInt, greater, isZero,
   bigInt2str, powMod, int2bigInt, mult, mod, sub, bitSize, negative, mult, add} from 'leemon/es/index/';
 
 export class PasswordManager {
+  private log = (...args: any[]) => {};
+  
   public getState(options: any = {}) {
     return apiManager.invokeApi('account.getPassword', {}, options).then((result) => {
       return result
@@ -89,19 +91,19 @@ export class PasswordManager {
     let buffer = bufferConcats(client_salt, passwordBuffer, client_salt);
 
     return CryptoWorker.sha256Hash(buffer).then((buffer: any) => {
-      console.log('encoded 1', bytesToHex(new Uint8Array(buffer)));
+      this.log('encoded 1', bytesToHex(new Uint8Array(buffer)));
 
       buffer = bufferConcats(server_salt, buffer, server_salt);
       return CryptoWorker.sha256Hash(buffer).then((buffer: any) => {
 
-        console.log('encoded 2', buffer, bytesToHex(new Uint8Array(buffer)));
+        this.log('encoded 2', buffer, bytesToHex(new Uint8Array(buffer)));
 
         return CryptoWorker.pbkdf2(new Uint8Array(buffer), client_salt, 100000).then((hash: any) => {
-          console.log('encoded 3', hash, bytesToHex(new Uint8Array(hash)));
+          this.log('encoded 3', hash, bytesToHex(new Uint8Array(hash)));
 
           hash = bufferConcats(server_salt, hash, server_salt);
           return CryptoWorker.sha256Hash(hash).then((buffer: any) => {
-            console.log('got password hash:', buffer, bytesToHex(new Uint8Array(buffer)));
+            this.log('got password hash:', buffer, bytesToHex(new Uint8Array(buffer)));
 
             return buffer;
           });
@@ -117,8 +119,8 @@ export class PasswordManager {
     let B = str2bigInt(bytesToHex(state.srp_B), 16);
     let g = int2bigInt(algo.g, 32, 256);
 
-    console.log('p', bigInt2str(p, 16));
-    console.log('B', bigInt2str(B, 16));
+    this.log('p', bigInt2str(p, 16));
+    this.log('B', bigInt2str(B, 16));
 
     /* if(B.compareTo(BigInteger.ZERO) < 0) {
       console.error('srp_B < 0')
@@ -144,7 +146,7 @@ export class PasswordManager {
       new Uint8Array(algo.salt2)) as ArrayBuffer;
     let x = str2bigInt(bytesToHex(new Uint8Array(pw_hash)), 16);
 
-    console.warn('computed pw_hash:', pw_hash, x, bytesToHex(new Uint8Array(pw_hash)));
+    this.log('computed pw_hash:', pw_hash, x, bytesToHex(new Uint8Array(pw_hash)));
 
 
     var padArray = function(arr: any[], len: number, fill = 0) {
@@ -155,25 +157,25 @@ export class PasswordManager {
     let gForHash = padArray(bytesFromHex(bigInt2str(g, 16)), 256); // like uint8array
     let b_for_hash = padArray(bytesFromHex(bigInt2str(B, 16)), 256);
 
-    console.log(bytesToHex(pForHash));
-    console.log(bytesToHex(gForHash));
-    console.log(bytesToHex(b_for_hash));
+    this.log(bytesToHex(pForHash));
+    this.log(bytesToHex(gForHash));
+    this.log(bytesToHex(b_for_hash));
 
     let g_x = powMod(g, x, p);
 
-    console.log('g_x', bigInt2str(g_x, 16));
+    this.log('g_x', bigInt2str(g_x, 16));
 
     let k: any = await CryptoWorker.sha256Hash(bufferConcat(pForHash, gForHash));
     k = str2bigInt(bytesToHex(new Uint8Array(k)), 16);
 
-    console.log('k', bigInt2str(k, 16));
+    this.log('k', bigInt2str(k, 16));
 
     // kg_x = (k * g_x) % p
     let kg_x = mod(mult(k, g_x), p);
 
     // good
 
-    console.log('kg_x', bigInt2str(kg_x, 16));
+    this.log('kg_x', bigInt2str(kg_x, 16));
 
     let is_good_mod_exp_first = (modexp: any, prime: any) => {
       let diff = sub(prime, modexp);
@@ -217,12 +219,12 @@ export class PasswordManager {
 
     let {a, a_for_hash, u} = await generate_and_check_random();
 
-    console.log('a', bigInt2str(a, 16));
-    console.log('a_for_hash', bytesToHex(a_for_hash));
-    console.log('u', bigInt2str(u, 16));
+    this.log('a', bigInt2str(a, 16));
+    this.log('a_for_hash', bytesToHex(a_for_hash));
+    this.log('u', bigInt2str(u, 16));
 
     // g_b = (B - kg_x) % p
-    console.log('B - kg_x', bigInt2str(sub(B, kg_x), 16));
+    this.log('B - kg_x', bigInt2str(sub(B, kg_x), 16));
     //let g_b = mod(sub(B, kg_x), p);
     /* let g_b = sub(B, kg_x);
     if(negative(g_b)) g_b = add(g_b, p);
@@ -231,15 +233,15 @@ export class PasswordManager {
     if(!negative(sub(B, kg_x))) g_b = sub(mod(B, p), kg_x);
     else g_b = mod(sub(B, kg_x), p); */
     /* let lol = trim(sub(B, kg_x), 10);
-    console.log('llalala', bigInt2str(lol, 16)); */
+    this.log('llalala', bigInt2str(lol, 16)); */
     let g_b;
     if(!greater(B, kg_x)) {
-      console.log('negative');
+      this.log('negative');
       g_b = add(B, p);
     } else g_b = B;
     g_b = mod(sub(g_b, kg_x), p);
     //g_b = mod(g_b, p);
-    //console.log('g_b', bigInt2str(g_b, 16));
+    //this.log('g_b', bigInt2str(g_b, 16));
 
     /* if(!is_good_mod_exp_first(g_b, p))
       throw new Error('bad g_b'); */
@@ -277,7 +279,7 @@ export class PasswordManager {
     };
 
 
-    console.log('out', bytesToHex(out.A), bytesToHex(out.M1));
+    this.log('out', bytesToHex(out.A), bytesToHex(out.M1));
     return out;
     
     /* console.log(gForHash, pForHash, bForHash); */

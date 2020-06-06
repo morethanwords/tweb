@@ -29,22 +29,22 @@ export class ApiFileManager {
         resolve: (...args: any[]) => void,
         reject: (...args: any[]) => void
       },
-      activeDelta?: number
+      activeDelta: number
     }>
   } = {};
   public downloadActives: {[dcID: string]: number} = {};
 
   private log: ReturnType<typeof logger> = logger('AFM');
 
-  public downloadRequest(dcID: string | number, cb: () => Promise<unknown>, activeDelta?: number) {
+  public downloadRequest(dcID: string | number, cb: () => Promise<unknown>, activeDelta: number) {
     if(this.downloadPulls[dcID] === undefined) {
       this.downloadPulls[dcID] = [];
       this.downloadActives[dcID] = 0;
     }
 
-    var downloadPull = this.downloadPulls[dcID];
+    const downloadPull = this.downloadPulls[dcID];
 
-    let promise = new Promise((resolve, reject) => {
+    const promise = new Promise((resolve, reject) => {
       downloadPull.push({cb: cb, deferred: {resolve, reject}, activeDelta: activeDelta});
     })/* .catch(() => {}) */;
 
@@ -56,15 +56,16 @@ export class ApiFileManager {
   }
 
   public downloadCheck(dcID: string | number) {
-    var downloadPull = this.downloadPulls[dcID];
-    var downloadLimit = dcID == 'upload' ? 11 : 5;
+    const downloadPull = this.downloadPulls[dcID];
+    //const downloadLimit = dcID == 'upload' ? 11 : 5;
+    const downloadLimit = 24;
 
     if(this.downloadActives[dcID] >= downloadLimit || !downloadPull || !downloadPull.length) {
       return false;
     }
 
-    var data = downloadPull.shift();
-    var activeDelta = data.activeDelta || 1;
+    const data = downloadPull.shift();
+    const activeDelta = data.activeDelta || 1;
 
     this.downloadActives[dcID] += activeDelta;
 
@@ -122,8 +123,8 @@ export class ApiFileManager {
   }
 
   public getTempFileName(file: any) {
-    var size = file.size || -1;
-    var random = nextRandomInt(0xFFFFFFFF);
+    const size = file.size || -1;
+    const random = nextRandomInt(0xFFFFFFFF);
     return '_temp' + random + '_' + size;
   }
 
@@ -131,12 +132,12 @@ export class ApiFileManager {
     if(!location) {
       return false;
     }
-    var fileName = this.getFileName(location);
+    const fileName = this.getFileName(location);
 
     return this.cachedDownloads[fileName] || false;
   }
 
-  public getFileStorage(): typeof cacheStorage {
+  public getFileStorage() {
     return cacheStorage;
   }
 
@@ -419,7 +420,7 @@ export class ApiFileManager {
                 fileDownload: true/* ,
                 singleInRequest: 'safari' in window */
               });
-            }, dcID).then((result: any) => {
+            }, 2).then((result: any) => {
               writeFilePromise.then(() => {
                 if(canceled) {
                   return Promise.resolve();
