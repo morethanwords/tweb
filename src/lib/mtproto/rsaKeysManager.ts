@@ -113,7 +113,7 @@ export class RSAKeysManager {
     })).then(() => {
       this.prepared = true;
 
-      console.log('[MT] Prepared keys');
+      //console.log('[MT] Prepared keys');
       this.preparePromise = null;
     });
   }
@@ -130,7 +130,7 @@ export class RSAKeysManager {
         fingerprintHex = new Array(16 - fingerprintHex.length).fill('0').join('') + fingerprintHex;
       }
 
-      console.log(fingerprintHex, this.publicKeysParsed);
+      //console.log(fingerprintHex, this.publicKeysParsed);
       if(foundKey = this.publicKeysParsed[fingerprintHex]) {
         return Object.assign({
           fingerprint: fingerprints[i]

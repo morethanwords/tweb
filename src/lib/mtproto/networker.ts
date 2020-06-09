@@ -12,7 +12,7 @@ import NetworkerFactory from './networkerFactory';
 import dcConfigurator from './dcConfigurator';
 import Socket from './transports/websocket';
 import HTTP from './transports/http';
-import { logger } from '../polyfill';
+import { logger, LogLevels } from '../polyfill';
 import { Modes, App } from './mtproto_config';
 import { InvokeApiOptions } from '../../types';
 
@@ -79,8 +79,6 @@ class MTPNetworker {
 
   private onOnlineCb = this.checkConnection.bind(this);
 
-  private debug = false;
-
   private lastResendReq: {
     req_msg_id: string,
     resend_msg_ids: Array<string>
@@ -98,6 +96,11 @@ class MTPNetworker {
     this.upload = this.options.fileUpload || this.options.fileDownload || false;
     this.log = logger('NET-' + dcID + (this.upload ? '-U' : ''));
     this.log('constructor'/* , this.authKey, this.authKeyID, this.serverSalt */);
+
+    /* // Test resend after bad_server_salt
+    if(this.dcID == 1 && this.upload) {
+      this.serverSalt[0] = 0;
+    } */
 
     this.updateSession();
 
@@ -268,7 +271,7 @@ class MTPNetworker {
     if(Modes.debug/*  || true */) {
       this.log('Api call', method, message, params, options);
     } else {
-      //////this.log('Api call', method);
+      this.log('Api call', method, params, options);
     }
   
     return this.pushMessage(message, options);
@@ -344,28 +347,28 @@ class MTPNetworker {
   }
 
   public pushResend(messageID: string, delay = 0) {
-    var value = delay ? Date.now() + delay : 0;
-    var sentMessage = this.sentMessages[messageID];
+    const value = delay ? Date.now() + delay : 0;
+    const sentMessage = this.sentMessages[messageID];
     if(sentMessage.container) {
-      for(var i = 0; i < sentMessage.inner.length; i++) {
+      for(let i = 0, length = sentMessage.inner.length; i < length; i++) {
         this.pendingMessages[sentMessage.inner[i]] = value;
       }
     } else {
       this.pendingMessages[messageID] = value;
     }
   
-    // this.log('Resend due', messageID, this.pendingMessages)
+    this.log('Resend due', messageID, this.pendingMessages);
   
     this.scheduleRequest(delay);
   }
 
   public async getMsgKey(dataWithPadding: ArrayBuffer, isOut: boolean) {
-    var authKey = this.authKeyUint8;
-    var x = isOut ? 0 : 8
-    var msgKeyLargePlain = bufferConcat(authKey.subarray(88 + x, 88 + x + 32), dataWithPadding);
+    const authKey = this.authKeyUint8;
+    const x = isOut ? 0 : 8
+    const msgKeyLargePlain = bufferConcat(authKey.subarray(88 + x, 88 + x + 32), dataWithPadding);
 
-    let msgKeyLarge = await CryptoWorker.sha256Hash(msgKeyLargePlain);
-    var msgKey = new Uint8Array(msgKeyLarge).subarray(8, 24);
+    const msgKeyLarge = await CryptoWorker.sha256Hash(msgKeyLargePlain);
+    const msgKey = new Uint8Array(msgKeyLarge).subarray(8, 24);
     return msgKey;
   };
 
@@ -513,7 +516,7 @@ class MTPNetworker {
       /* for(var i = 0; i < this.pendingResends.length; i++) {
         resendMsgIDs.push(this.pendingResends[i]);
       } */
-      // this.log('resendReq messages', resendMsgIDs)
+      this.log('resendReq messages', resendMsgIDs);
       this.wrapMtpMessage({
         _: 'msg_resend_req',
         msg_ids: resendMsgIDs
@@ -729,7 +732,7 @@ class MTPNetworker {
   public sendEncryptedRequest(message: any, options: any = {}) {
     var self = this;
 
-    this.debug && this.log('Send encrypted', message, options, this.authKeyID);
+    this.log.debug('Send encrypted', message, options, this.authKeyID);
     // console.trace()
     var data = new TLSerialization({
       startMaxLength: message.body.length + 2048
@@ -740,7 +743,7 @@ class MTPNetworker {
   
     data.storeLong(message.msg_id, 'message_id');
     data.storeInt(message.seq_no, 'seq_no');
-  
+    
     data.storeInt(message.body.length, 'message_data_length');
     data.storeRawBytes(message.body, 'message_data');
   
@@ -756,7 +759,7 @@ class MTPNetworker {
     // this.log('auth_key_id', bytesToHex(self.authKeyID))
   
     return this.getEncryptedMessage(dataWithPadding).then((encryptedResult) => {
-      this.debug && this.log('Got encrypted out message', encryptedResult);
+      this.log.debug('Got encrypted out message', encryptedResult);
 
       let request = new TLSerialization({
         startMaxLength: encryptedResult.bytes.byteLength + 256
@@ -796,7 +799,7 @@ class MTPNetworker {
   }
 
   public parseResponse(responseBuffer: Uint8Array) {
-    this.debug && this.log('Start parsing response'/* , responseBuffer */);
+    this.log.debug('Start parsing response'/* , responseBuffer */);
 
     let self = this;
     let deserializer = new TLDeserialization(responseBuffer);
@@ -1016,6 +1019,18 @@ class MTPNetworker {
     };
   }
 
+  /**
+   * только для сокета, возможно это будет неправильно работать, но в тесте сработало правильно
+   */
+  public resend() {
+    for(let id in this.sentMessages) {
+      const msg = this.sentMessages[id];
+      if(msg.body) {
+        this.pushResend(id);
+      }
+    }
+  }
+
   public processMessage(message: any, messageID: string, sessionID: Uint8Array | number[]) {
     var msgidInt = parseInt(messageID/* .toString(10) */.substr(0, -10), 10);
     if(msgidInt % 2) {
@@ -1023,7 +1038,7 @@ class MTPNetworker {
       return;
     }
 
-    this.debug && this.log('process message', message, messageID, sessionID);
+    this.log.debug('process message', message, messageID, sessionID);
 
     switch(message._) {
       case 'msg_container':
@@ -1040,10 +1055,20 @@ class MTPNetworker {
           this.log(message.bad_msg_id, message.bad_msg_seqno);
           throw new Error('[MT] Bad server salt for invalid message');
         }
-  
+
         this.applyServerSalt(message.new_server_salt);
         this.pushResend(message.bad_msg_id);
         this.ackMessage(messageID);
+        
+        /* // simulate disconnect
+        try {
+          this.log('networker state:', this);
+          // @ts-ignore
+          this.transport.ws.close(1000);
+        } catch(err) {
+          this.log.error('transport', this.transport, err);
+        } */
+
         break;
   
       case 'bad_msg_notification':
@@ -1084,7 +1109,7 @@ class MTPNetworker {
       case 'new_session_created':
         this.ackMessage(messageID);
 
-        this.log('new_session_created in my head');
+        this.log.debug('new_session_created', message);
         //this.updateSession();
   
         this.processMessageAck(message.first_msg_id);
@@ -1150,7 +1175,7 @@ class MTPNetworker {
           } else {
             if(deferred) {
               if(Modes.debug) {
-                this.debug && this.log('Rpc response', message.result);
+                this.log.debug('Rpc response', message.result);
               } else {
                 var dRes = message.result._;
                 if(!dRes) {
@@ -1160,7 +1185,7 @@ class MTPNetworker {
                     dRes = message.result;
                   }
                 }
-                this.debug && this.log('Rpc response', dRes, sentMessage);
+                this.log.debug('Rpc response', dRes, sentMessage);
               }
 
               sentMessage.deferred.resolve(message.result);
@@ -1179,7 +1204,7 @@ class MTPNetworker {
       default:
         this.ackMessage(messageID);
 
-        this.debug && this.log('Update', message);
+        this.log.debug('Update', message);
         
         if(NetworkerFactory.updatesProcessor !== null) {
           NetworkerFactory.updatesProcessor(message, true);

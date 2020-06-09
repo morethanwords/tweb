@@ -5,7 +5,7 @@ import {CTR} from '@cryptography/aes';
 //import abridgetPacketCodec from './abridged';
 import intermediatePacketCodec from './intermediate';
 import {MTPNetworker} from '../networker';
-import { logger } from '../../polyfill';
+import { logger, LogLevels } from '../../polyfill';
 import { bytesFromWordss } from '../../bin_utils';
 import { Codec } from './codec';
 
@@ -108,9 +108,14 @@ export class Obfuscation {
 }
 
 export default class Socket extends MTTransport {
-  ws: WebSocket | undefined;
+  ws: WebSocket;
 
-  pending: Array<{resolve?: any, reject?: any, body?: Uint8Array}> = [];
+  pending: Array<Partial<{
+    resolve: any, 
+    reject: any, 
+    body: Uint8Array, 
+    bodySent: boolean
+  }>> = [];
   
   connected = false;
   
@@ -122,14 +127,12 @@ export default class Socket extends MTTransport {
 
   log: ReturnType<typeof logger>;
 
-  debug = false;
-
   codec = intermediatePacketCodec;
 
   constructor(dcID: number, url: string) {
     super(dcID, url);
 
-    this.log = logger(`WS-${dcID}`);
+    this.log = logger(`WS-${dcID}`, LogLevels.log | LogLevels.error);
 
     this.log('constructor');
 
@@ -142,7 +145,7 @@ export default class Socket extends MTTransport {
       this.ws.removeEventListener('close', this.handleClose);
       this.ws.removeEventListener('message', this.handleMessage);
       this.ws.close(1000);
-    } 
+    }
 
     this.ws = new WebSocket(this.url, 'binary');
     this.ws.binaryType = 'arraybuffer';
@@ -161,20 +164,34 @@ export default class Socket extends MTTransport {
   };
     
   handleClose = (event: CloseEvent) => {
-    this.log('closed', event);
+    this.log('closed', event, this.pending);
     this.connected = false;
 
-    this.pending.length = 0;
-    if(this.networker) {
+    //this.pending.length = 0;
+    /* if(this.networker) {
+      this.networker.resend();
       this.networker.cleanupSent();
-    }
+    } */
 
     this.log('trying to reconnect...');
     this.connect();
+
+    for(let pending of this.pending) {
+      if(pending.bodySent) {
+        pending.bodySent = false;
+      }
+    }
+
+    if(this.networker) {
+      this.ws.addEventListener('open', () => {
+        this.networker.resend();
+        this.networker.cleanupSent();
+      }, {once: true});
+    }
   };
 
   handleMessage = (event: MessageEvent) => {
-    this.debug && this.log('<-', 'handleMessage', event);
+    this.log.debug('<-', 'handleMessage', event);
 
     let data = this.obfuscation.decode(new Uint8Array(event.data));
     data = this.codec.readPacket(data);
@@ -182,9 +199,9 @@ export default class Socket extends MTTransport {
     if(this.networker) { // authenticated!
       //this.pending = this.pending.filter(p => p.body); // clear pending
 
-      this.debug && this.log('redirecting to networker');
+      this.log.debug('redirecting to networker');
       return this.networker.parseResponse(data).then(response => {
-        this.debug && this.log('redirecting to networker response:', response);
+        this.log.debug('redirecting to networker response:', response);
         this.networker.processMessage(response.response, response.messageID, response.sessionID);
       });
     }
@@ -192,14 +209,14 @@ export default class Socket extends MTTransport {
     //console.log('got hex:', data.hex);
     let pending = this.pending.shift();
     if(!pending) {
-      return this.log('no pending for res:', data.hex);
+      return this.log.debug('no pending for res:', data.hex);
     }
 
     pending.resolve(data);
   };
 
   send = (body: Uint8Array) => {
-    this.debug && this.log('-> body length to pending:', body.length);
+    this.log.debug('-> body length to pending:', body.length);
 
     if(this.networker) {
       this.pending.push({body});
@@ -221,26 +238,28 @@ export default class Socket extends MTTransport {
       return;
     }
 
-    let length = this.pending.length;
+    //this.log.error('Pending length:', this.pending.length);
+    const length = this.pending.length;
     for(let i = length - 1; i >= 0; --i) {
-      let pending = this.pending[i];
-      let {body} = pending;
-      if(body) {
-        let toEncode = this.codec.encodePacket(body);
+      const pending = this.pending[i];
+      const {body, bodySent} = pending;
+      if(body && !bodySent) {
+        const toEncode = this.codec.encodePacket(body);
 
-        //console.log('send before obf:', /* body.hex, nonce.hex, */ toEncode.hex);
-        let enc = this.obfuscation.encode(toEncode);
-        //console.log('send after obf:', enc.hex);
+        //this.log('send before obf:', /* body.hex, nonce.hex, */ toEncode.hex);
+        const enc = this.obfuscation.encode(toEncode);
+        //this.log('send after obf:', enc.hex);
 
-        this.debug && this.log('-> body length to send:', enc.length);
-
+        this.log.debug('-> body length to send:', enc.length);
         this.ws.send(enc);
-
+        
         if(!pending.resolve) { // remove if no response needed
           this.pending.splice(i, 1);
+        } else {
+          pending.bodySent = true;
         }
 
-        delete pending.body;
+        //delete pending.body;
       }
     }
   }
