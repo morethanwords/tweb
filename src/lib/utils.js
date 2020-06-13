@@ -143,9 +143,9 @@ export function getRichElementValue (node, lines, line, selNode, selOffset) {
 
 export const $rootScope = {
   $broadcast: (name/* : string */, detail/*? : any */) => {
-    if(name != 'user_update') {
+    /* if(name != 'user_update') {
       console.log(dT(), 'Broadcasting ' + name + ' event, with args:', detail);
-    }
+    } */
 
     let myCustomEvent = new CustomEvent(name, {detail});
     document.dispatchEvent(myCustomEvent);
@@ -263,9 +263,9 @@ export function safeReplaceObject (wasObject, newObject) {
     }
   }
   for (var key in newObject) {
-    if (newObject.hasOwnProperty(key)) {
+    //if (newObject.hasOwnProperty(key)) { // useless
       wasObject[key] = newObject[key]
-    }
+    //}
   }
 }
 

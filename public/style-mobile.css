@@ -1,1 +1,30 @@
-@media only screen and (max-width:720px){#topbar.is-pinned-shown{margin-bottom:60px}}@media only screen and (max-width:720px){#chat-input{padding:.35rem .5rem .5rem}}@media only screen and (max-width:720px){.chat-container .pinned-message{position:absolute!important;top:100%;width:100%!important;background:#fff;left:0;border-top:1px solid #ccc;max-height:100%!important;height:100%;padding:1rem}}@media only screen and (max-width:720px){#bubbles-go-down{right:.5rem}}@media only screen and (max-width:720px){#column-left .item-main .sidebar-content .btn-corner{transform:translateY(0);position:fixed!important}}@media only screen and (max-width:720px){.page-chats .main-column{width:100%}.page-chats .main-column:not(.active){display:none}}
+@media only screen and (max-width: 720px){.chats-container .input-search{margin-left:16px}}
+@media only screen and (max-width: 720px){.chats-container li{padding-bottom:0px}}
+@media only screen and (max-width: 720px){.chats-container li>.rp{padding:9px 0 0 0;margin:0px 11.5px 0px 9px;overflow:hidden}}
+@media only screen and (max-width: 720px){#topbar.is-pinned-shown:not(.hide-pinned)+#bubbles{margin-top:52px}}
+@media only screen and (max-width: 720px){#topbar .chat-mute-button,#topbar .chat-search-button{display:none}}
+@media only screen and (max-width: 720px){#topbar .person{margin-left:10px}}
+@media only screen and (max-width: 720px){#chat-input .chat-input-container{padding:.35rem .5rem .5rem}}
+@media only screen and (max-width: 720px){.chat-container .input-message{min-height:46px;padding:0.5px .5rem}}
+@media only screen and (max-width: 720px){.chat-container .pinned-message{position:absolute !important;top:100%;width:100% !important;background:#fff;left:0;max-height:100% !important;height:52px;padding:1rem}}
+@media only screen and (max-width: 720px){.chat-container .pinned-message-title,.chat-container .pinned-message-subtitle,.chat-container .reply-title,.chat-container .reply-subtitle{line-height:13px}}
+@media only screen and (max-width: 720px){#bubbles-inner.is-chat .is-in .bubble__container{max-width:calc(100% - 3rem)}}
+@media only screen and (max-width: 720px){#bubbles-go-down{width:2.875rem;height:2.875rem}}
+@media only screen and (max-width: 720px){#bubbles-go-down{right:.5rem}}
+@media only screen and (max-width: 720px){.bubble.is-in{margin-right:auto}.bubble.is-out{margin-left:auto}}
+@media only screen and (max-width: 720px){.sidebar-header{padding:7.5px 8px}}
+@media only screen and (max-width: 720px){#column-left .item-main .sidebar-content .btn-corner{transform:translateY(0px);position:fixed !important}}
+@media only screen and (max-width: 720px){#column-left .item-main .sidebar-content .btn-menu-toggle{width:54px;height:54px;bottom:14px;right:14px}}
+@media only screen and (max-width: 720px){.profile-row{padding-left:71px}}
+@media only screen and (max-width: 720px){.profile-row:before{left:15px}}
+@media only screen and (max-width: 720px){.profile-row-label{line-height:1.6}}
+@media only screen and (max-width: 720px){.profile-avatar{margin:0 auto 10px;width:100px;height:100px}}
+@media only screen and (max-width: 720px){.profile-tabs-content #content-media{padding:7.5px 7.5px 7.5px 6.5px}}
+@media only screen and (max-width: 720px){.media-viewer{background:#000}}
+@media only screen and (max-width: 720px){.media-viewer-userpic{display:none}}
+@media only screen and (max-width: 720px){.media-viewer-buttons{display:none}}
+@media only screen and (max-width: 720px){.media-viewer-switcher{width:1.5rem}}
+@media only screen and (max-width: 720px){.media-viewer-whole .menu-mobile-close{position:absolute;left:20px;top:8px}.media-viewer-whole .btn-menu-toggle{position:fixed;right:8px;top:8px;z-index:5;opacity:0;transition:opacity .2s 0s,visibility 0s .2s}.media-viewer-whole .btn-menu-toggle.menu-open{color:#fff;background-color:rgba(112,117,121,0.2) !important}}
+@media only screen and (max-width: 720px){.popup-stickers .sticker-set-stickers{grid-template-columns:repeat(4, 1fr)}}
+@media only screen and (max-width: 720px){.page-chats .main-column{width:100%}.page-chats .main-column:not(.active){display:none}}
+@media only screen and (max-width: 720px){.btn-circle{height:46px;width:46px}}

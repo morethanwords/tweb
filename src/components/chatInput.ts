@@ -9,11 +9,13 @@ import { getRichValue, calcImageInBox } from "../lib/utils";
 import { wrapDocument, wrapReply } from "./wrappers";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import initEmoticonsDropdown, { EMOTICONSSTICKERGROUP } from "./emoticonsDropdown";
-import lottieLoader from "../lib/lottieLoader";
 import { Layouter, RectPart } from "./groupedLayout";
 import Recorder from '../../public/recorder.min';
 //import Recorder from '../opus-recorder/dist/recorder.min';
 import opusDecodeController from "../lib/opusDecodeController";
+import { touchSupport } from "../lib/config";
+import animationIntersector from "./animationIntersector";
+import appDocsManager from "../lib/appManagers/appDocsManager";
 
 export class ChatInput {
   public pageEl = document.getElementById('page-chats') as HTMLDivElement;
@@ -31,6 +33,7 @@ export class ChatInput {
   public lastTimeType = 0;
 
   private inputContainer = this.btnSend.parentElement.parentElement as HTMLDivElement;
+  private chatInput = this.inputContainer.parentElement as HTMLDivElement;
 
   public attachMenu: {
     container?: HTMLButtonElement,
@@ -65,6 +68,10 @@ export class ChatInput {
   private recordTimeEl = this.inputContainer.querySelector('.record-time') as HTMLDivElement;
   private recordRippleEl = this.inputContainer.querySelector('.record-ripple') as HTMLDivElement;
   private recordStartTime = 0;
+
+  private scrollTop = 0;
+  private scrollOffsetTop = 0;
+  private scrollDiff = 0;
 
   constructor() {
     this.toggleEmoticons = this.pageEl.querySelector('.toggle-emoticons') as HTMLButtonElement;
@@ -116,6 +123,17 @@ export class ChatInput {
         this.sendMessage();
       }
     });
+
+    if(touchSupport) {
+      this.messageInput.addEventListener('touchend', (e) => {
+        this.saveScroll();
+        toggleEmoticons(false);
+      });
+
+      window.addEventListener('resize', () => {
+        this.restoreScroll();
+      });
+    }
 
     this.messageInput.addEventListener('input', (e) => {
       //console.log('messageInput input', this.messageInput.innerText, this.serializeNodes(Array.from(this.messageInput.childNodes)));
@@ -485,7 +503,7 @@ export class ChatInput {
         this.recorder.start().then(() => {
           this.recordCanceled = false;
           this.btnSend.classList.add('tgico-send');
-          this.inputContainer.classList.add('is-recording');
+          this.chatInput.classList.add('is-recording');
           this.recording = true;
           opusDecodeController.setKeepAlive(true);
 
@@ -513,7 +531,7 @@ export class ChatInput {
             });
             
             let percents = Math.min(1, (sum / max) + min);
-            console.log('frequencyData', frequencyData, percents);
+            //console.log('frequencyData', frequencyData, percents);
 
             this.recordRippleEl.style.transform = `scale(${percents})`;
 
@@ -534,16 +552,16 @@ export class ChatInput {
       }
     });
 
-    this.btnCancelRecord.addEventListener('click', () => {
-      this.recordCanceled = true;
-      this.recorder.stop();
-      opusDecodeController.setKeepAlive(false);
-    });
-
     if(this.recorder) {
+      this.btnCancelRecord.addEventListener('click', () => {
+        this.recordCanceled = true;
+        this.recorder.stop();
+        opusDecodeController.setKeepAlive(false);
+      });
+
       this.recorder.onstop = () => {
         this.recording = false;
-        this.inputContainer.classList.remove('is-recording');
+        this.chatInput.classList.remove('is-recording');
         this.btnSend.classList.remove('tgico-send');
         this.recordRippleEl.style.transform = '';
       };
@@ -588,8 +606,11 @@ export class ChatInput {
             isMedia: true,
             duration,
             waveform: result.waveform,
-            objectURL: result.url
+            objectURL: result.url,
+            replyToMsgID: this.replyToMsgID
           });
+
+          this.onMessageSent(false, true);
         });
   
         /* const url = URL.createObjectURL(dataBlob);
@@ -612,9 +633,54 @@ export class ChatInput {
     }
 
     let emoticonsDisplayTimeout = 0;
-    this.toggleEmoticons.onmouseover = (e) => {
-      clearTimeout(this.emoticonsTimeout);
-      this.emoticonsTimeout = setTimeout(() => {
+    const toggleEmoticons = async(enable?: boolean) => {
+      if(!this.emoticonsDropdown) return;
+
+      if(touchSupport) {
+        const willBeActive = (!!this.emoticonsDropdown.style.display && enable === undefined) || enable;
+        this.toggleEmoticons.classList.toggle('flip-icon', willBeActive);
+        if(willBeActive) {
+          this.saveScroll();
+          // @ts-ignore
+          document.activeElement.blur();
+          await new Promise((resolve) => {
+            setTimeout(resolve, 100);
+          });
+        }
+      } else {
+        this.toggleEmoticons.classList.toggle('active', enable);
+      }
+      
+      if((this.emoticonsDropdown.style.display && enable === undefined) || enable) {
+        this.emoticonsDropdown.style.display = '';
+        void this.emoticonsDropdown.offsetLeft; // reflow
+        this.emoticonsDropdown.classList.add('active');
+        this.emoticonsLazyLoadQueue.unlock();
+        clearTimeout(emoticonsDisplayTimeout);
+
+        /* if(touchSupport) {
+          this.restoreScroll();
+        } */
+      } else {
+        this.emoticonsDropdown.classList.remove('active');
+        animationIntersector.checkAnimations(true, EMOTICONSSTICKERGROUP);
+        this.emoticonsLazyLoadQueue.lock();
+
+        clearTimeout(emoticonsDisplayTimeout);
+        emoticonsDisplayTimeout = setTimeout(() => {
+          this.emoticonsDropdown.style.display = 'none';
+        }, touchSupport ? 0 : 200);
+
+        /* if(touchSupport) {
+          this.restoreScroll();
+        } */
+      }
+  
+      animationIntersector.checkAnimations(false, EMOTICONSSTICKERGROUP);
+    };
+
+    if(touchSupport) {
+      this.toggleEmoticons.addEventListener('click', () => {
         if(!this.emoticonsDropdown) {
           let res = initEmoticonsDropdown(this.pageEl, appImManager, 
             appMessagesManager, this.messageInput, this.toggleEmoticons, this.btnSend);
@@ -622,37 +688,38 @@ export class ChatInput {
           this.emoticonsDropdown = res.dropdown;
           this.emoticonsLazyLoadQueue = res.lazyLoadQueue;
 
-          this.toggleEmoticons.onmouseout = this.emoticonsDropdown.onmouseout = (e) => {
-            clearTimeout(this.emoticonsTimeout);
-            this.emoticonsTimeout = setTimeout(() => {
-              this.emoticonsDropdown.classList.remove('active');
-              this.toggleEmoticons.classList.remove('active');
-              lottieLoader.checkAnimations(true, EMOTICONSSTICKERGROUP);
-              this.emoticonsLazyLoadQueue.lock();
-
-              clearTimeout(emoticonsDisplayTimeout);
-              emoticonsDisplayTimeout = setTimeout(() => {
-                this.emoticonsDropdown.style.display = 'none';
-              }, 200);
-            }, 200);
-          };
-
-          this.emoticonsDropdown.onmouseover = (e) => {
-            clearTimeout(this.emoticonsTimeout);
-          };
+          toggleEmoticons(true);
         } else {
-          this.emoticonsDropdown.style.display = '';
-          void this.emoticonsDropdown.offsetLeft; // reflow
-          this.emoticonsDropdown.classList.add('active');
-          this.emoticonsLazyLoadQueue.unlock();
-          clearTimeout(emoticonsDisplayTimeout);
+          toggleEmoticons();
         }
-    
-        this.toggleEmoticons.classList.add('active');
+      });
+    } else {
+      this.toggleEmoticons.onmouseover = (e) => {
+        clearTimeout(this.emoticonsTimeout);
+        //this.emoticonsTimeout = setTimeout(() => {
+          if(!this.emoticonsDropdown) {
+            let res = initEmoticonsDropdown(this.pageEl, appImManager, 
+              appMessagesManager, this.messageInput, this.toggleEmoticons, this.btnSend);
+            
+            this.emoticonsDropdown = res.dropdown;
+            this.emoticonsLazyLoadQueue = res.lazyLoadQueue;
+  
+            this.toggleEmoticons.onmouseout = this.emoticonsDropdown.onmouseout = (e) => {
+              clearTimeout(this.emoticonsTimeout);
+              this.emoticonsTimeout = setTimeout(() => {
+                toggleEmoticons();
+              }, 200);
+            };
+  
+            this.emoticonsDropdown.onmouseover = (e) => {
+              clearTimeout(this.emoticonsTimeout);
+            };
+          }
 
-        lottieLoader.checkAnimations(false, EMOTICONSSTICKERGROUP);
-      }, 0/* 200 */);
-    };
+          toggleEmoticons(true);
+        //}, 0/* 200 */);
+      };
+    }
 
     this.replyElements.cancelBtn.addEventListener('click', () => {
       this.replyElements.container.classList.remove('active');
@@ -690,7 +757,7 @@ export class ChatInput {
     }, '');
   };
 
-  public onMessageSent(clearInput = true) {
+  public onMessageSent(clearInput = true, clearReply?: boolean) {
     let dialog = appMessagesManager.getDialogByPeerID(appImManager.peerID)[0];
     if(dialog && dialog.top_message) {
       appMessagesManager.readHistory(appImManager.peerID, dialog.top_message); // lol
@@ -699,9 +766,7 @@ export class ChatInput {
     if(clearInput) {
       this.lastUrl = '';
       this.editMsgID = 0;
-      this.replyToMsgID = 0;
       this.noWebPage = false;
-      this.replyElements.container.classList.remove('active');
       this.willSendWebPage = null;
       this.messageInput.innerText = '';
 
@@ -709,6 +774,11 @@ export class ChatInput {
         this.btnSend.classList.remove('tgico-send');
         this.btnSend.classList.add('tgico-microphone2');
       }
+    }
+
+    if(clearReply || clearInput) {
+      this.replyToMsgID = 0;
+      this.replyElements.container.classList.remove('active');
     }
   }
 
@@ -733,7 +803,18 @@ export class ChatInput {
     }
 
     this.onMessageSent();
-  };
+  }
+
+  public sendMessageWithDocument(document: any) {
+    document = appDocsManager.getDoc(document);
+    if(document._ != 'documentEmpty') {
+      appMessagesManager.sendFile(appImManager.peerID, document, {isMedia: true, replyToMsgID: this.replyToMsgID});
+      this.onMessageSent(false, true);
+      return true;
+    }
+    
+    return false;
+  }
 
   public setTopInfo(title: string, subtitle: string, input?: string, message?: any) {
     //appImManager.scrollPosition.prepareFor('down');
@@ -754,5 +835,32 @@ export class ChatInput {
     }
 
     //appImManager.scrollPosition.restore();
+  }
+
+  public saveScroll() {
+    this.scrollTop = appImManager.scrollable.container.scrollTop;
+    this.scrollOffsetTop = this.chatInput.offsetTop;
+  }
+
+  public restoreScroll() {
+    if(this.chatInput.style.display) return;
+    //console.log('input resize', offsetTop, this.chatInput.offsetTop);
+    let newOffsetTop = this.chatInput.offsetTop;
+    let container = appImManager.scrollable.container;
+    let scrollTop = container.scrollTop;
+    let clientHeight = container.clientHeight;
+    let maxScrollTop = container.scrollHeight;
+
+    if(newOffsetTop < this.scrollOffsetTop) {
+      this.scrollDiff = this.scrollOffsetTop - newOffsetTop;
+      container.scrollTop += this.scrollDiff;
+    } else if(scrollTop != this.scrollTop) {
+      let endDiff = maxScrollTop - (scrollTop + clientHeight);
+      if(endDiff < this.scrollDiff/*  && false */) {
+        //container.scrollTop -= endDiff;
+      } else {
+        container.scrollTop -= this.scrollDiff;
+      }
+    }
   }
 }

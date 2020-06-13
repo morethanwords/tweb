@@ -1,3 +1,5 @@
+$bubble-margin: .25rem;
+
 @keyframes bubbleSelected {
   0% {
     opacity: 0;
@@ -25,7 +27,7 @@
     e.g. make the height bigger and adjust the top so observeHeaders()'s
     IntersectionObserver fires as soon as the bottom of the sentinel crosses the
     top of the intersection container. */
-    height: 5px;
+    height: $bubble-margin;
     top: 0;
   }
 
@@ -38,7 +40,7 @@
 }
 
 .bubble {
-  padding-top: 5px;
+  padding-top: $bubble-margin;
   max-width: unquote("min(calc(100% - 48px), #{$chat-max-width})");
   position: relative;
   z-index: 1;
@@ -60,7 +62,7 @@
     }
 
     &:not(.is-group-last):after {
-      height: calc(100% + 5px);
+      height: calc(100% + $bubble-margin);
     }
   }
 
@@ -68,7 +70,7 @@
     &:before {
       content: "Unread messages"; 
       height: 30px; 
-      margin-bottom: 5px; 
+      margin-bottom: $bubble-margin; 
       margin-left: -50%; 
       text-align: center; 
       color: #538BCC; 
@@ -86,15 +88,30 @@
 
   &.is-date {
     position: sticky;
-    top: 5px;
+    top: $bubble-margin;
     //z-index: 3;
     z-index: 2;
-    pointer-events: none;
     transition: opacity .3s ease;
     opacity: 0.99999; // for safari
 
     &.is-sticky {
       opacity: 0.00001; // for safari
+
+      #bubbles-inner:not(.is-scrolling) & {
+        //transition-delay: 1.35s;
+
+        .bubble__container {
+          cursor: default;
+        }
+      }
+
+      /* #bubbles-inner.is-scrolling & {
+        transition-delay: 0;
+      } */
+    }
+
+    .bubble__container {
+      cursor: pointer;
     }
   }
   
@@ -130,7 +147,7 @@
   
   &.service {
     //padding: 1rem 0;
-    padding: 5px 0;
+    padding: $bubble-margin 0;
     max-width: $chat-max-width;
 
     .bubble__container {
@@ -174,7 +191,7 @@
   } */
 
   &.is-group-last {
-    padding-bottom: 5px;
+    padding-bottom: $bubble-margin;
   }
 
   &:not(.forwarded) {
@@ -459,7 +476,7 @@
     //}
   //}
   
-  &.round.video {
+  &.round {
     .attachment {
       max-height: 200px;
       max-width: 200px;
@@ -955,15 +972,21 @@
     background-position-y: 1px;
   }
 
-  &.photo, &.video:not(.round) {
+  &.photo, &.video {
     &.is-message-empty.is-group-last {
-      &.is-group-last .bubble__container:after {
+      .bubble__container:after {
         display: none;
       }
+    }
+  }
 
-      .attachment {
-        overflow: visible;
-      }
+  &.is-message-empty.is-group-last.with-media-tail {
+    .bubble__container:after {
+      display: none;
+    }
+
+    .attachment {
+      overflow: visible;
     }
   }
 
@@ -1078,14 +1101,22 @@
     }
   }
 
-  &.photo, &.video:not(.round) {
-    &.is-message-empty.is-group-last {
+  &.is-message-empty.is-group-last {
+    &:not(.with-media-tail) {
+      &.photo, &.video {
+        .bubble__container {
+          border-bottom-left-radius: 6px;
+        }
+      }
+    }
+
+    &.with-media-tail {
       .attachment {
         border-bottom-left-radius: 0;
+      }
 
-        .bubble__media-container {
-          margin-left: -9px;
-        }
+      .bubble__media-container {
+        margin-left: -9px;
       }
     }
   }
@@ -1270,14 +1301,22 @@
     }
   }
 
-  &.photo, &.video:not(.round) {
-    &.is-message-empty.is-group-last {
+  &.is-message-empty.is-group-last {
+    &:not(.with-media-tail) {
+      &.photo, &.video {
+        .bubble__container {
+          border-bottom-right-radius: 6px;
+        }
+      }
+    }
+
+    &.with-media-tail {
       .attachment {
         border-bottom-right-radius: 0;
+      }
 
-        .bubble__media-container {
-          margin-right: -9px;
-        }
+      .bubble__media-container {
+        margin-right: -9px;
       }
     }
   }

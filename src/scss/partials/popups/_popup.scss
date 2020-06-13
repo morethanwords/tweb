@@ -12,8 +12,6 @@
   box-shadow: none;
   opacity: 0;
   visibility: hidden;
-  -webkit-transition: opacity 0.3s 0s, visibility 0s 0.3s;
-  -moz-transition: opacity 0.3s 0s, visibility 0s 0.3s;
   transition: opacity 0.3s 0s, visibility 0s 0.3s;
   overflow: auto;
   /* text-align: center; */
@@ -24,17 +22,17 @@
   &.active {
     opacity: 1;
     visibility: visible;
-    -webkit-transition: opacity 0.3s 0s, visibility 0s 0s;
-    -moz-transition: opacity 0.3s 0s, visibility 0s 0s;
     transition: opacity 0.3s 0s, visibility 0s 0s;
+    z-index: 4;
 
     .popup-container {
-      -webkit-transform: translateY(0);
-      -moz-transform: translateY(0);
-      -ms-transform: translateY(0);
-      -o-transform: translateY(0);
       transform: translateY(0);
+
+      &.is-max-lines {
+        margin-top: 38px;
+      }
     }
+    
   }
 
   &-container {
@@ -43,18 +41,9 @@
     border-radius: $border-radius-medium;
     background-color: #fff;
     padding: 1rem;
-    -webkit-transform: translateY(-40px);
-    -moz-transform: translateY(-40px);
-    -ms-transform: translateY(-40px);
-    -o-transform: translateY(-40px);
     transform: translateY(-40px);
     backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-    -webkit-transition-property: -webkit-transform;
-    -moz-transition-property: -moz-transform;
     transition-property: transform;
-    -webkit-transition-duration: 0.3s;
-    -moz-transition-duration: 0.3s;
     transition-duration: 0.3s;
   }
 
@@ -77,4 +66,33 @@
     margin-bottom: 2rem;
     align-items: center;
   }
+
+  &-buttons {
+		display: flex;
+		flex-direction: column;
+		justify-content: flex-end;
+		align-items: flex-end;
+		
+		button {
+			background: none;
+			outline: none;
+      border: none;
+      font-weight: 500;
+			padding: .5rem;
+			text-transform: uppercase;
+			transition: .2s;
+			border-radius: $border-radius;
+			cursor: pointer;
+      color: $color-blue;
+      position: relative;
+			
+			html.no-touch &:hover {
+				background-color: rgba(112, 117, 121, 0.08);
+			}
+			
+			& + button {
+				margin-top: .5rem;
+			}
+		}
+	}
 }

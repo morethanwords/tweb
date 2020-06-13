@@ -9,7 +9,7 @@
       min-width: 25vw;
     
       @include respond-to(wide-screens) {
-        min-width: calc(#{$large-screen} / 4 - 1px);
+        min-width: calc(#{$large-screen} / 4 - 1px) !important;
       }
     }
   
@@ -72,7 +72,11 @@
       flex: 1 1 auto;
       display: flex;
       flex-direction: column;
-      margin-bottom: 36px;
+      margin-bottom: 13px;
+
+      @include respond-to(not-handhelds) {
+        margin-top: 15px;
+      }
     }
 
     .content-container {
@@ -93,12 +97,13 @@
     > .scrollable {
       display: flex;
       flex-direction: column;
+      transform: none;
     }
   }
 
   &-name {
     text-align: center;
-    font-size: 24px;
+    font-size: 20px;
     line-height: 1.4;
     font-weight: 500;
 
@@ -113,6 +118,7 @@
     color: $color-gray;
     font-size: 14px;
     margin-bottom: 2px;
+    margin-top: 1px;
 
     &.online {
       color: $color-blue;
@@ -127,8 +133,13 @@
     padding-right: 12px;
     //font-size: 15px;
     position: relative;
-    margin-top: 31px;
+    margin-top: 27px;
+    margin-bottom: 1px;
     line-height: 1.4;
+    
+    @include respond-to(handhelds) {
+      padding-left: 71px;
+    }
     
     &:before {
       position: absolute;
@@ -136,6 +147,10 @@
       /* top: 0; */
       font-size: 24px;
       color: $color-gray;
+
+      @include respond-to(handhelds) {
+        left: 15px;
+      }
     }
 
     p {
@@ -154,10 +169,15 @@
     &-label {
       color: #707579 !important;
       font-size: 14px !important;
+      line-height: 1.6;
+
+      @include respond-to(handhelds) {
+        line-height: 1.6;
+      }
     }
 
     &-notifications {
-      margin-top: 29px;
+      margin-top: 26px;
       line-height: 1.3;
     }
   }
@@ -165,8 +185,14 @@
   &-avatar {
     width: 120px;
     height: 120px;
-    margin: 1px auto 21px;
-    font-size: 4rem !important;
+    margin: 1px auto 10px;
+    font-size: 2.5rem !important;
+
+    @include respond-to(handhelds) {
+      margin: 0 auto 10px;
+      width: 100px;
+      height: 100px;
+    }
 
     &.tgico-avatar_deletedaccount {
       font-size: 6rem;
@@ -227,6 +253,10 @@
         grid-template-columns: repeat(3,1fr);
         grid-auto-rows: 1fr;
         grid-gap: 3.5px;
+  
+        @include respond-to(handhelds) {
+          padding: 7.5px 7.5px 7.5px 6.5px;
+        }
   
         .media-item {
           height: 0;
@@ -447,6 +477,78 @@
             }
           }
         }
+      }
+    }
+  }
+}
+
+#stickers-container {
+  .sticker-sets {
+    display: flex;
+    flex-direction: column;
+    margin-top: 16px;
+  }
+
+  .sticker-set {
+    display: flex;
+    flex-direction: column;
+    height: 140px;
+    cursor: pointer;
+
+    &-name {
+      font-weight: 500;
+    }
+
+    &-count {
+      font-size: 14px;
+      color: #707579;  
+    }
+
+    &-header {
+      display: flex;
+      padding-left: 16px;
+      padding-bottom: 12px;
+      justify-content: space-between;
+  
+    }
+
+    &-button {
+      height: 30px;
+      padding-left: 12px;
+      padding-right: 13px;
+      margin-right: 16px;
+      font-size: 15px;
+      border-radius: 16px;
+      font-weight: 400;
+      width: 52px;
+      //width: auto; //68 - Added //52 - Add
+      transition: width 0.2s;
+
+      &.gray {
+        background: #F1F3F4;
+        color: #707579;
+        width: 68px;
+      }
+    }
+
+    &-stickers {
+      display: flex;
+      justify-content: space-around;
+    }
+
+    &-sticker {
+      width: 68px;
+      height: 68px;
+      //padding: 0 5px;  
+
+      &:hover {
+        border-radius: 12px;
+        background-color: rgba(112, 117, 121, 0.08);
+      }
+
+      img {
+        max-width: 100%;
+        max-height: 100%;
       }
     }
   }

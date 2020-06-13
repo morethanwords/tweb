@@ -119,8 +119,8 @@ let onFirstMount = (): Promise<any> => {
 
   let cleanup = () => {
     setTimeout(() => {
-      if(animation) animation.destroy();
-      if(idleAnimation) idleAnimation.destroy();
+      if(animation) animation.remove();
+      if(idleAnimation) idleAnimation.remove();
     }, 300);
   };
 

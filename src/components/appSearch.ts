@@ -7,6 +7,7 @@ import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import { escapeRegExp } from "../lib/utils";
 import { formatPhoneNumber } from "./misc";
 import appChatsManager from "../lib/appManagers/appChatsManager";
+import SearchInput from "./searchInput";
 
 export class SearchGroup {
   container: HTMLDivElement;
@@ -17,12 +18,16 @@ export class SearchGroup {
     this.list = document.createElement('ul');
     this.container = document.createElement('div');
     if(className) this.container.className = className;
-    this.nameEl = document.createElement('div');
-    this.nameEl.classList.add('search-group__name');
-    this.nameEl.innerText = name;
-
+    
+    if(name) {
+      this.nameEl = document.createElement('div');
+      this.nameEl.classList.add('search-group__name');
+      this.nameEl.innerText = name;
+      this.container.append(this.nameEl);
+    }
+    
     this.container.classList.add('search-group', 'search-group-' + type);
-    this.container.append(this.nameEl, this.list);
+    this.container.append(this.list);
     this.container.style.display = 'none';
 
     if(clickable) {
@@ -60,24 +65,27 @@ export default class AppSearch {
 
   private scrollable: Scrollable;
 
-  constructor(public container: HTMLDivElement, public searchInput: HTMLInputElement, public searchGroups: {[group: string]: SearchGroup}) {
+  constructor(public container: HTMLElement, public searchInput: SearchInput, public searchGroups: {[group: string]: SearchGroup}, public onSearch?: (count: number) => void) {
     this.scrollable = new Scrollable(this.container);
     this.listsContainer = this.scrollable.container;
     for(let i in this.searchGroups) {
       this.listsContainer.append(this.searchGroups[i].container);
     }
 
-    this.searchInput.addEventListener('input', (e) => {
-      let value = this.searchInput.value;
-      if(!value.trim()) {
+    if(this.searchGroups['messages']) {
+      this.scrollable.setVirtualContainer(this.searchGroups['messages'].list);
+    }
+
+    this.searchInput.onChange = (value) => {
+      /* if(!value.trim()) {
         //this.peerID = 0;
         return;
-      }
+      } */
       
       this.query = value;
       this.reset(false);
       this.searchMore();
-    });
+    };
 
     this.scrollable.onScrolledBottom = () => {
       if(!this.query.trim()) return;
@@ -115,15 +123,18 @@ export default class AppSearch {
       this.peerID = peerID;
     }
     
-    this.searchInput.focus();
+    this.searchInput.input.focus();
   }
   
-  private searchMore() {
+  public searchMore() {
     if(this.searchPromise) return this.searchPromise;
     
     let query = this.query;
     
-    if(!query.trim()) return;
+    if(!query.trim()) {
+      this.onSearch && this.onSearch(0);
+      return;
+    }
     
     if(this.loadedCount != 0 && this.loadedCount >= this.foundCount) {
       return Promise.resolve();
@@ -194,7 +205,7 @@ export default class AppSearch {
         return;
       }
       
-      /////////this.log('input search result:', this.peerID, query, null, maxID, 20, res);
+      //console.log('input search result:', this.peerID, query, null, maxID, 20, res);
       
       let {count, history, next_rate} = res;
       
@@ -219,7 +230,7 @@ export default class AppSearch {
           } as any;
         }
         
-        let {dialog, dom} = appDialogsManager.addDialog(originalDialog, searchGroup.list, false);
+        let {dialog, dom} = appDialogsManager.addDialog(originalDialog, this.scrollable/* searchGroup.list */, false);
         appDialogsManager.setLastMessage(dialog, message, dom, query);
       });
       
@@ -229,6 +240,7 @@ export default class AppSearch {
       
       if(!this.foundCount) {
         this.foundCount = count;
+        this.onSearch && this.onSearch(this.foundCount);
       }
     }).catch(err => {
       console.error('search error', err);

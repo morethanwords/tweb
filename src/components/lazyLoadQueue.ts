@@ -1,3 +1,5 @@
+import { logger, LogLevels } from "../lib/polyfill";
+
 type LazyLoadElement = {
   div: HTMLDivElement, 
   load: () => Promise<any>, 
@@ -12,23 +14,25 @@ export default class LazyLoadQueue {
   private lockPromise: Promise<void> = null;
   private unlockResolve: () => void = null;
 
-  private log = console.log.bind(console, '[LL]:');
-  private debug = false;
+  private log = logger('LL', LogLevels.error);
 
+  // Observer will call entry only 1 time per element
   private observer: IntersectionObserver;
 
-  constructor(private parallelLimit = 5, withObserver = true) {
-    if(!withObserver) return;
+  constructor(private parallelLimit = 5, noObserver = false) {
+    if(noObserver) return;
 
     this.observer = new IntersectionObserver(entries => {
       if(this.lockPromise) return;
 
-      for(let entry of entries) {
+      for(const entry of entries) {
         if(entry.isIntersecting) {
-          let target = entry.target as HTMLElement;
+          const target = entry.target as HTMLElement;
+
+          this.log('isIntersecting', target);
 
           // need for set element first if scrolled
-          let item = this.lazyLoadMedia.findAndSplice(i => i.div == target);
+          const item = this.lazyLoadMedia.findAndSplice(i => i.div == target);
           if(item) {
             item.wasSeen = true;
             this.lazyLoadMedia.unshift(item);
@@ -81,27 +85,27 @@ export default class LazyLoadQueue {
 
       let tempID = this.tempID;
 
-      this.debug && this.log('will load media', this.lockPromise, item);
+      this.log('will load media', this.lockPromise, item);
 
       try {
         if(this.lockPromise/*  && false */) {
           let perf = performance.now();
           await this.lockPromise;
 
-          this.debug && this.log('waited lock:', performance.now() - perf);
+          this.log('waited lock:', performance.now() - perf);
         }
         
         //await new Promise((resolve, reject) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
         await item.load();
       } catch(err) {
-        console.error('loadMediaQueue error:', err, item);
+        this.log.error('loadMediaQueue error:', err, item);
       }
 
       if(tempID == this.tempID) {
         this.loadingMedia--;
       }
 
-      this.debug && this.log('loaded media');
+      this.log('loaded media', item);
 
       if(this.lazyLoadMedia.length) {
         this.processQueue();

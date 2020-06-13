@@ -4,6 +4,9 @@ export class MediaProgressLine {
   private seek: HTMLInputElement;
 
   private duration = 0;
+  private mousedown = false;
+  private stopAndScrubTimeout = 0;
+  private progressRAF = 0;
 
   constructor(private media: HTMLAudioElement | HTMLVideoElement) {
     this.container = document.createElement('div');
@@ -23,81 +26,119 @@ export class MediaProgressLine {
     this.setSeekMax();
     this.setListeners();
 
+    if(!media.paused || media.currentTime > 0) {
+      this.onPlay();
+    }
+
     this.container.append(this.filled, seek);
   }
 
+  onLoadedData = () => {
+    this.duration = this.media.duration;
+    this.seek.setAttribute('max', '' + this.duration * 1000);
+  };
+
+  onEnded = () => {
+    this.setProgress();
+  };
+
+  onPlay = () => {
+    let r = () => {
+      this.setProgress();
+
+      this.progressRAF = this.media.paused ? 0 : window.requestAnimationFrame(r);
+    };
+
+    if(this.progressRAF) {
+      window.cancelAnimationFrame(this.progressRAF);
+    }
+
+    this.progressRAF = window.requestAnimationFrame(r);
+  };
+
+  onMouseMove = (e: MouseEvent) => {
+    this.mousedown && this.scrub(e);
+  };
+
+  onMouseDown = (e: MouseEvent) => {
+    this.media.pause();
+    this.scrub(e);
+
+    //Таймер для того, чтобы стопать видео, если зажал мышку и не отпустил клик
+    if(this.stopAndScrubTimeout) { // возможно лишнее
+      clearTimeout(this.stopAndScrubTimeout);
+    }
+
+    this.stopAndScrubTimeout = setTimeout(() => {
+      !this.media.paused && this.media.pause();
+      this.stopAndScrubTimeout = 0;
+    }, 150);
+
+    this.mousedown = true;
+  };
+
+  onMouseUp = (e: MouseEvent) => {
+    if(this.stopAndScrubTimeout) {
+      clearTimeout(this.stopAndScrubTimeout);
+      this.stopAndScrubTimeout = 0;
+    }
+
+    this.media.paused && this.media.play();
+    this.mousedown = false;
+  };
+
   private setSeekMax() {
-    let seek = this.seek;
     this.duration = this.media.duration;
     if(this.duration > 0) {
-      seek.setAttribute('max', '' + this.duration * 1000);
+      this.onLoadedData();
     } else {
-      this.media.addEventListener('loadeddata', () => {
-        this.duration = this.media.duration;
-        seek.setAttribute('max', '' + this.duration * 1000);
-      });
+      this.media.addEventListener('loadeddata', this.onLoadedData);
     }
   }
 
   private setProgress() {
-    let currentTime = this.media.currentTime;
+    const currentTime = this.media.currentTime;
 
-    let scaleX = (currentTime / this.duration);
+    const scaleX = (currentTime / this.duration);
     this.filled.style.transform = 'scaleX(' + scaleX + ')';
     this.seek.value = '' + currentTime * 1000;
   }
 
   private setListeners() {
-    let mousedown = false;
-    let stopAndScrubTimeout = 0;
+    this.media.addEventListener('ended', this.onEnded);
+    this.media.addEventListener('play', this.onPlay);
 
-    this.media.addEventListener('ended', () => {
-      this.setProgress();
-    });
-
-    this.media.addEventListener('play', () => {
-      let r = () => {
-        this.setProgress();
-        !this.media.paused && window.requestAnimationFrame(r);
-      };
-
-      window.requestAnimationFrame(r);
-    });
-
-    this.container.addEventListener('mousemove', (e) => {
-      mousedown && this.scrub(e);
-    });
-
-    this.container.addEventListener('mousedown', (e) => {
-      this.scrub(e);
-      //Таймер для того, чтобы стопать видео, если зажал мышку и не отпустил клик
-      stopAndScrubTimeout = setTimeout(() => {
-        !this.media.paused && this.media.pause();
-        stopAndScrubTimeout = 0;
-      }, 150);
-
-      mousedown = true;
-    });
-
-    this.container.addEventListener('mouseup', () => {
-      if(stopAndScrubTimeout) {
-        clearTimeout(stopAndScrubTimeout);
-      }
-
-      this.media.paused && this.media.play();
-      mousedown = false;
-    });
+    this.container.addEventListener('mousemove', this.onMouseMove);
+    this.container.addEventListener('mousedown', this.onMouseDown);
+    this.container.addEventListener('mouseup', this.onMouseUp);
   }
 
   private scrub(e: MouseEvent) {
-    let scrubTime = e.offsetX / this.container.offsetWidth * this.duration;
+    const scrubTime = e.offsetX / this.container.offsetWidth * this.duration;
     this.media.currentTime = scrubTime;
     let scaleX = scrubTime / this.duration;
   
-    if(scaleX > 1) scaleX = 1;
-    if(scaleX < 0) scaleX = 0;
+    scaleX = Math.max(0, Math.min(1, scaleX));
   
     this.filled.style.transform = 'scaleX(' + scaleX + ')';
+  }
+
+  public removeListeners() {
+    this.media.removeEventListener('loadeddata', this.onLoadedData);
+    this.media.removeEventListener('ended', this.onEnded);
+    this.media.removeEventListener('play', this.onPlay);
+
+    this.container.removeEventListener('mousemove', this.onMouseMove);
+    this.container.removeEventListener('mousedown', this.onMouseDown);
+    this.container.removeEventListener('mouseup', this.onMouseUp);
+
+    if(this.stopAndScrubTimeout) {
+      clearTimeout(this.stopAndScrubTimeout);
+    }
+
+    if(this.progressRAF) {
+      window.cancelAnimationFrame(this.progressRAF);
+    }
   }
 }
 

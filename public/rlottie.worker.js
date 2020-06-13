@@ -14,9 +14,27 @@ function RLottieItem(reqId, jsString, width, height, fps) {
   this.dead = false;
 
   this.init(jsString, width, height);
-  this.render(0);
-  
+  //this.render(0);
+
+  /* console.time('render');
+  for(let i = 0; i < this.frameCount; ++i) {
+    this.render(i);
+  }
+  console.timeEnd('render'); */
   reply('loaded', this.reqId, this.frameCount, this.fps);
+
+  /* for(;;) {
+    for(let i = 0; i < this.frameCount; ++i) {
+      this.render(i);
+    }
+  } */
+
+  /*
+  for(;;) {
+    for(let i = 0; i < items[1].frameCount; ++i) {
+      items[1].render(i);
+    }
+  } */
 }
 
 RLottieItem.prototype.init = function(jsString) {
@@ -49,7 +67,7 @@ RLottieItem.prototype.init = function(jsString) {
   }
 };
 
-RLottieItem.prototype.render = function(frameNo) {
+RLottieItem.prototype.render = function(frameNo, clamped) {
   if(this.dead) return;
   //return;
 
@@ -60,18 +78,31 @@ RLottieItem.prototype.render = function(frameNo) {
   try {
     RLottieWorker.Api.render(this.handle, frameNo);
     //this.dead = true;
-    //this.pause();
     //return;
 
     var bufferPointer = RLottieWorker.Api.buffer(this.handle);
-    var data = new Uint8ClampedArray(Module.HEAP8.buffer, bufferPointer, this.width * this.height * 4);
-  
-    var buffer = new Uint8ClampedArray(data);
-    reply('frame', this.reqId, frameNo, buffer);
+    //console.log('bufferPointer:', bufferPointer, Module.HEAP8.length);
+    //var data = new Uint8ClampedArray(Module.HEAP8.buffer, bufferPointer, this.width * this.height * 4);
+    var data = Module.HEAPU8.subarray(bufferPointer, bufferPointer + (this.width * this.height * 4));
+
+    if(!clamped) {
+      clamped = new Uint8ClampedArray(data);
+    } else {
+      clamped.set(data);
+    }
+    //console.log('bufferPointer', data);
+
+    //void new Uint8Array(data).buffer;
+
+    //var buffer = new Uint8ClampedArray(data);
+    //reply('frame', this.reqId, frameNo, new Uint8Array(data).buffer);
+    //console.log('render frame:', this.reqId, frameNo, clamped);
+    reply('frame', this.reqId, frameNo, clamped);
+
+    //this.dead = true;
   } catch(e) {
     console.error('Render error:', e);
     this.dead = true;
-    this.pause();
   }
 };
 
@@ -160,8 +191,9 @@ var queryableFunctions = {
     items[reqId].destroy();
     delete items[reqId];
   },
-  renderFrame: function(reqId, frameNo) {
-    items[reqId].render(frameNo);
+  renderFrame: function(reqId, frameNo, clamped) {
+    //console.log('worker renderFrame', reqId, frameNo, clamped);
+    items[reqId].render(frameNo, clamped);
   }
   /* renderFrames: function(reqId, jsString, width, height) {
     try {
@@ -180,23 +212,57 @@ function defaultReply(message) {
   // do something
 }
 
+/**
+ * Returns true when run in WebKit derived browsers.
+ * This is used as a workaround for a memory leak in Safari caused by using Transferable objects to
+ * transfer data between WebWorkers and the main thread.
+ * https://github.com/mapbox/mapbox-gl-js/issues/8771
+ *
+ * This should be removed once the underlying Safari issue is fixed.
+ *
+ * @private
+ * @param scope {WindowOrWorkerGlobalScope} Since this function is used both on the main thread and WebWorker context,
+ *      let the calling scope pass in the global scope object.
+ * @returns {boolean}
+ */
+var _isSafari = null;
+function isSafari(scope) {
+  if(_isSafari == null) {
+    var userAgent = scope.navigator ? scope.navigator.userAgent : null;
+    _isSafari = !!scope.safari ||
+    !!(userAgent && (/\b(iPad|iPhone|iPod)\b/.test(userAgent) || (!!userAgent.match('Safari') && !userAgent.match('Chrome'))));
+  }
+  return _isSafari;
+}
+
 function reply() {
   if(arguments.length < 1) { 
     throw new TypeError('reply - not enough arguments'); 
   }
 
-  var transfer = [], args = Array.prototype.slice.call(arguments, 1);
-  for(var i = 0; i < args.length; i++) {
-    if(args[i] instanceof ArrayBuffer) {
-      transfer.push(args[i]);
+  //if(arguments[0] == 'frame') return;
+
+  var args = Array.prototype.slice.call(arguments, 1);
+  if(isSafari(self)) {
+    postMessage({ 'queryMethodListener': arguments[0], 'queryMethodArguments': args });
+  } else {
+    var transfer = [];
+    for(var i = 0; i < args.length; i++) {
+      if(args[i] instanceof ArrayBuffer) {
+        transfer.push(args[i]);
+      }
+  
+      if(args[i].buffer && args[i].buffer instanceof ArrayBuffer) {
+        transfer.push(args[i].buffer);
+        //args[i] = args[i].buffer;
+      }
     }
 
-    if(args[i].buffer && args[i].buffer instanceof ArrayBuffer) {
-      transfer.push(args[i].buffer);
-    }
+    postMessage({ 'queryMethodListener': arguments[0], 'queryMethodArguments': args }, transfer);
   }
 
-  postMessage({ 'queryMethodListener': arguments[0], 'queryMethodArguments': args }, transfer);
+  //postMessage({ 'queryMethodListener': arguments[0], 'queryMethodArguments': Array.prototype.slice.call(arguments, 1) });
+  //console.error(transfer, args);
 }
 
 onmessage = function(oEvent) {

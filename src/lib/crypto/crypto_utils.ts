@@ -72,7 +72,7 @@ export function aesDecryptSync(bytes: Uint8Array, keyBytes: Uint8Array, ivBytes:
 }
 
 export function rsaEncrypt(publicKey: {modulus: string, exponent: string}, bytes: any): number[] {
-  console.log(dT(), 'RSA encrypt start', publicKey, bytes);
+  //console.log(dT(), 'RSA encrypt start', publicKey, bytes);
 
   bytes = addPadding(bytes, 255);
 
@@ -83,7 +83,7 @@ export function rsaEncrypt(publicKey: {modulus: string, exponent: string}, bytes
   var encryptedBigInt = powMod(X, E, N);
   var encryptedBytes = bytesFromHex(bigInt2str(encryptedBigInt, 16));
 
-  console.log(dT(), 'RSA encrypt finish');
+  //console.log(dT(), 'RSA encrypt finish');
 
   return encryptedBytes;
 }
@@ -135,17 +135,17 @@ export function pqPrimeFactorization(pqBytes: any) {
   var what = new BigInteger(pqBytes);
   var result: any = false;
 
-  console.log(dT(), 'PQ start', pqBytes, what.toString(16), what.bitLength())
+  //console.log(dT(), 'PQ start', pqBytes, what.toString(16), what.bitLength())
 
   try {
-    console.time('PQ leemon');
+    //console.time('PQ leemon');
     result = pqPrimeLeemon(str2bigInt(what.toString(16), 16, Math.ceil(64 / bpe) + 1));
-    console.timeEnd('PQ leemon');
+    //console.timeEnd('PQ leemon');
   } catch (e) {
     console.error('Pq leemon Exception', e);
   }
 
-  console.log(dT(), 'PQ finish');
+  //console.log(dT(), 'PQ finish');
 
   return result;
 }

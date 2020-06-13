@@ -16,7 +16,7 @@ module.exports = merge(common, {
   mode: 'production',
 
   optimization: {
-    minimizer: [new TerserJSPlugin({}), new OptimizeCSSAssetsPlugin({})],
+    //minimizer: [new TerserJSPlugin({}), new OptimizeCSSAssetsPlugin({})],
     //runtimeChunk: 'single',
     splitChunks: {
       chunks: 'all',

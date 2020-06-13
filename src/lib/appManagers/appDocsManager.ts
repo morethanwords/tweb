@@ -9,6 +9,7 @@ import { MTDocument } from '../../types';
 class AppDocsManager {
   private docs: {[docID: string]: MTDocument} = {};
   private thumbs: {[docIDAndSize: string]: Promise<string>} = {};
+  private downloadPromises: {[docID: string]: CancellablePromise<Blob>} = {};
 
   public saveDoc(apiDoc: MTDocument, context?: any) {
     //console.log('saveDoc', apiDoc, this.docs[apiDoc.id]);
@@ -190,33 +191,35 @@ class AppDocsManager {
   }
   
   public downloadDoc(docID: any, toFileEntry?: any): CancellablePromise<Blob> {
-    let doc = this.getDoc(docID);
+    const doc = this.getDoc(docID);
 
-    let inputFileLocation = this.getInputByID(doc);
-    
     if(doc._ == 'documentEmpty') {
       return Promise.reject();
     }
     
+    const inputFileLocation = this.getInputByID(doc);
     if(doc.downloaded && !toFileEntry) {
       if(doc.url) return Promise.resolve(null);
 
-      let cachedBlob = apiFileManager.getCachedFile(inputFileLocation);
+      const cachedBlob = apiFileManager.getCachedFile(inputFileLocation);
       if(cachedBlob) {
         return Promise.resolve(cachedBlob);
       }
     }
+
+    if(this.downloadPromises[doc.id]) {
+      return this.downloadPromises[doc.id];
+    }
     
     //historyDoc.progress = {enabled: !historyDoc.downloaded, percent: 1, total: doc.size};
 
-    let deferred = deferredPromise<Blob>();
-
+    const deferred = deferredPromise<Blob>();
     deferred.cancel = () => {
       downloadPromise.cancel();
     };
 
     // нет смысла делать объект с выполняющимися промисами, нижняя строка и так вернёт загружающийся
-    let downloadPromise = apiFileManager.downloadFile(doc.dc_id, inputFileLocation, doc.size, {
+    const downloadPromise = apiFileManager.downloadFile(doc.dc_id, inputFileLocation, doc.size, {
       mimeType: doc.mime_type || 'application/octet-stream',
       toFileEntry: toFileEntry,
       stickerType: doc.sticker
@@ -232,7 +235,7 @@ class AppDocsManager {
       if(blob) {
         doc.downloaded = true;
 
-        if(doc.type == 'voice'/*  && false */) {
+        if(doc.type == 'voice' && !opusDecodeController.isPlaySupported()/*  && false */) {
           let reader = new FileReader();
 
           reader.onloadend = (e) => {
@@ -255,6 +258,7 @@ class AppDocsManager {
       deferred.resolve(blob);
     }, (e) => {
       console.log('document download failed', e);
+      deferred.reject(e);
       //historyDoc.progress.enabled = false;
     });
 
@@ -270,7 +274,7 @@ class AppDocsManager {
 
     //console.log('return downloadPromise:', downloadPromise);
     
-    return deferred;
+    return this.downloadPromises[doc.id] = deferred;
   }
 
   public downloadDocThumb(docID: any, thumbSize: string) {

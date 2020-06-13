@@ -21,7 +21,8 @@
     text-align: center;
     flex: 1;
     user-select: none;
-    font-size: 1rem;
+    // font-size: 1rem;
+    font-size: 14px;
     font-weight: 500;
 
     &.active {
@@ -57,13 +58,14 @@
     overflow-x: hidden;
   } */
 
-  &.animated {
-    transition: .3s transform;
-  }
+  // &.animated {
+  //   transition: .3s transform;
+  // }
   
   > div {
     width: 100%;
     max-width: 100%;
+    //transition: transform .42s, filter .42s;
     transition: transform .2s, filter .2s;
     display: none;
     flex-direction: column;

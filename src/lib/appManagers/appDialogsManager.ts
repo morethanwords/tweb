@@ -10,7 +10,7 @@ import Scrollable from "../../components/scrollable_new";
 import { logger } from "../polyfill";
 import appChatsManager from "./appChatsManager";
 import AvatarElement from "../../components/avatar";
-import { PopupPeerButton, PopupPeer } from "../../components/popup";
+import { PopupButton, PopupPeer } from "../../components/popup";
 
 type DialogDom = {
   avatarEl: AvatarElement,
@@ -173,7 +173,7 @@ class DialogsContextMenu {
         appMessagesManager.flushHistory(this.selectedID, justClear);
       };
 
-      let title: string, description: string, buttons: PopupPeerButton[];
+      let title: string, description: string, buttons: PopupButton[];
       switch(this.peerType) {
         case 'channel': {
           title = 'Leave Channel?';
@@ -475,14 +475,14 @@ export class AppDialogsManager {
     //let offset = storage[storage.length - 1]?.index || 0;
 
     try {
-      console.time('getDialogs time');
+      //console.time('getDialogs time');
 
       let loadCount = 50/*this.chatsLoadCount */;
       this.loadDialogsPromise = appMessagesManager.getConversations('', offsetIndex, loadCount, +archived);
       
       let result = await this.loadDialogsPromise;
 
-      console.timeEnd('getDialogs time');
+      //console.timeEnd('getDialogs time');
       
       if(result && result.dialogs && result.dialogs.length) {
         result.dialogs.forEach((dialog: any) => {
@@ -508,7 +508,7 @@ export class AppDialogsManager {
   public onChatsScroll() {
     if(this.loadedAll || this.loadDialogsPromise) return;
 
-    console.log('onChatsScroll');
+    this.log('onChatsScroll');
     
     this.loadDialogs();
   }
@@ -523,7 +523,7 @@ export class AppDialogsManager {
     list.addEventListener('click', (e: Event) => {
       cancelEvent(e);
 
-      console.log('dialogs click list');
+      this.log('dialogs click list');
       let target = e.target as HTMLElement;
       let elem = target.classList.contains('rp') ? target : findUpClassName(target, 'rp');
 

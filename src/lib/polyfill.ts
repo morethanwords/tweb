@@ -7,9 +7,15 @@ export const secureRandom = new SecureRandom();
 export enum LogLevels {
   log = 1,
   warn = 2,
-  error = 4
+  error = 4,
+  debug = 8
 };
 export function logger(prefix: string, level = LogLevels.log | LogLevels.warn | LogLevels.error) {
+  // @ts-ignore
+  if(process.env.NODE_ENV == 'production') {
+    level = LogLevels.error;
+  }
+
   function Log(...args: any[]) {
     return level & LogLevels.log && console.log(dT(), '[' + prefix + ']:', ...args);
   }
@@ -28,7 +34,11 @@ export function logger(prefix: string, level = LogLevels.log | LogLevels.warn | 
   
   Log.trace = function(...args: any[]) {
     return level & LogLevels.log && console.trace(dT(), '[' + prefix + ']:', ...args);
-  }
+  };
+
+  Log.debug = function(...args: any[]) {
+    return level & LogLevels.debug && console.debug(dT(), '[' + prefix + ']:', ...args);
+  };
   
   return Log;
 };

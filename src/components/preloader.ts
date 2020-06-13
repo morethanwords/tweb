@@ -7,6 +7,7 @@ export default class ProgressivePreloader {
   private promise: CancellablePromise<any> = null;
   private tempID = 0;
   private detached = true;
+
   constructor(elem?: Element, private cancelable = true) {
     this.preloader = document.createElement('div');
     this.preloader.classList.add('preloader-container');
@@ -50,13 +51,14 @@ export default class ProgressivePreloader {
 
       let tempID = --this.tempID;
       let onEnd = () => {
+        promise.notify = null;
+
         if(tempID == this.tempID) {
           this.detach();
+          this.promise = promise = null;
         }
-
-        promise.notify = null;
       };
-      promise.then(onEnd, onEnd);
+      promise.finally(onEnd);
 
       promise.notify = (details: {done: number, total: number}) => {
         if(tempID != this.tempID) return;
@@ -78,17 +80,6 @@ export default class ProgressivePreloader {
       
       elem[append ? 'append' : 'prepend'](this.preloader);
     });
-    /* let isIn = isInDOM(this.preloader);
-    
-    if(isIn && this.progress != this.defaultProgress) {
-      this.setProgress(this.defaultProgress);
-    }
-    
-    elem.append(this.preloader);
-    
-    if(!isIn && this.progress != this.defaultProgress) {
-      this.setProgress(this.defaultProgress);
-    } */
   }
   
   public detach() {

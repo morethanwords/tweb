@@ -24,7 +24,7 @@ div.scrollable::-webkit-scrollbar-thumb {
   overflow-x: hidden;
   max-height: 100%;
   //position: relative;
-
+  transform: translateZ(0);
   //will-change: transform;
   /* transform: translateZ(0);
   -webkit-transform: translateZ(0); */

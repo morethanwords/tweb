@@ -138,27 +138,6 @@ class ConfigStorage {
 
 const configStorage = new ConfigStorage();
 
-/* private cache: {[key: string]: any} = {};
-private request: Promise<Cache>;
-private cacheURL: string;
-constructor(cacheName: string) {
-  this.request = new Promise((resolve, reject) => {
-    let promise = caches.open(cacheName);
-    promise.then(cache => {
-      cache.keys().then(requests => {
-        if(!requests.length) {
-          return cache.put(this.cacheURL = '/session/' + Date.now(), new Response('{}'));
-        } else {
-          this.cacheURL = requests[0].url;
-          return cache.match(requests[0]).then(response => response.json()).then(j => this.cache = j);
-        }
-      }).then(() => {
-        resolve(promise);
-      });
-    })
-  });
-} */
-
 class AppStorage {
   private isWebWorker: boolean;
   private taskID = 0;

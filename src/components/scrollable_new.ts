@@ -1,4 +1,4 @@
-import { logger } from "../lib/polyfill";
+import { logger, LogLevels } from "../lib/polyfill";
 import smoothscroll from '../lib/smoothscroll';
 //import { isInDOM } from "../lib/utils";
 (window as any).__forceSmoothScrollPolyfill__ = true;
@@ -62,7 +62,6 @@ export default class Scrollable {
   private disableHoverTimeout: number = 0;
   
   private log: ReturnType<typeof logger>;
-  private debug = false;
 
   /* private sentinelsObserver: IntersectionObserver;
   private topSentinel: HTMLDivElement;
@@ -85,7 +84,7 @@ export default class Scrollable {
   private setVisible(element: HTMLElement) {
     if(this.visible.has(element)) return;
 
-    this.debug && this.log('setVisible id:', element.dataset.virtual);
+    this.log.debug('setVisible id:', element.dataset.virtual);
     (element.firstElementChild as HTMLElement).style.display = '';
     this.visible.add(element);
   }
@@ -93,7 +92,7 @@ export default class Scrollable {
   private setHidden(element: HTMLElement) {
     if(!this.visible.has(element)) return;
 
-    this.debug && this.log('setHidden id:', element.dataset.virtual);
+    this.log.debug('setHidden id:', element.dataset.virtual);
     (element.firstElementChild as HTMLElement).style.display = 'none';
     this.visible.delete(element);
   }
@@ -116,7 +115,7 @@ export default class Scrollable {
         if(entry.isIntersecting) {
           this.setVisible(target);
 
-          this.debug && this.log('intersection entry:', entry, this.lastTopID, this.lastBottomID);
+          this.log.debug('intersection entry:', entry, this.lastTopID, this.lastBottomID);
         } else {
           let id = +target.dataset.virtual;
           let isTop = entry.boundingClientRect.top < 0;
@@ -158,7 +157,7 @@ export default class Scrollable {
         }
       }
 
-      this.debug && this.log('entries:', entries, filtered, this.lastScrollDirection, this.lastTopID, this.lastBottomID);
+      this.log.debug('entries:', entries, filtered, this.lastScrollDirection, this.lastTopID, this.lastBottomID);
 
       let minVisibleID = this.lastTopID - this.splitCount;
       let maxVisibleID = this.lastBottomID + this.splitCount;
@@ -174,7 +173,7 @@ export default class Scrollable {
       this.appendTo = this.container;
     }
     
-    this.log = logger('SCROLL' + (logPrefix ? '-' + logPrefix : ''));
+    this.log = logger('SCROLL' + (logPrefix ? '-' + logPrefix : ''), LogLevels.error);
 
     if(axis == 'x') {
       this.container.classList.add('scrollable-x');
@@ -292,20 +291,30 @@ export default class Scrollable {
     //}
 
     //let appendTo = this.splitUp || this.appendTo;
+
+    // this.log('onScroll:', this.container.scrollTop);
+    // if(this.container.scrollTop <= 0) {
+    //   /* touchSupport &&  */(this.container.style.overflow = 'hidden');
+    //   this.scrollTop = 0;
+    //   /* touchSupport &&  */(this.container.style.overflow = '');
+    // }
     
-    clearTimeout(this.disableHoverTimeout);
+    if(this.splitUp) {
+      clearTimeout(this.disableHoverTimeout);
+
+      this.disableHoverTimeout = setTimeout(() => {
+        //appendTo.classList.remove('disable-hover');
+        this.lastScrollDirection = 0;
+      }, 100);
+    }
+    
     /* if(this.el != this.appendTo && this.appendTo != this.container) {
       if(!appendTo.classList.contains('disable-hover')) {
         appendTo.classList.add('disable-hover');
       }
     } */
-    
-    this.disableHoverTimeout = setTimeout(() => {
-      //appendTo.classList.remove('disable-hover');
-      this.lastScrollDirection = 0;
-    }, 100);
 
-    if(this.onScrollMeasure) return;
+    if(this.onScrollMeasure || ((this.scrollLocked || (!this.onScrolledTop && !this.onScrolledBottom)) && !this.splitUp)) return;
     this.onScrollMeasure = window.requestAnimationFrame(() => {
       //if(!this.isVisible) return;
 
@@ -361,12 +370,12 @@ export default class Scrollable {
   public prepareElement(element: HTMLElement, append = true) {
     element.dataset.virtual = '' + (append ? this.virtualTempIDBottom++ : this.virtualTempIDTop--);
 
-    this.debug && this.log('prepareElement: prepared');
+    this.log.debug('prepareElement: prepared');
     
     window.requestAnimationFrame(() => {
       let {scrollHeight/* , scrollWidth */} = element;
 
-      this.debug && this.log('prepareElement: first rAF');
+      this.log.debug('prepareElement: first rAF');
 
       window.requestAnimationFrame(() => {
         //element.style.height = scrollHeight + 'px';

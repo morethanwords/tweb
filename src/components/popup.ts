@@ -7,7 +7,7 @@ export class PopupElement {
   protected header = document.createElement('div');
   protected title = document.createElement('div');
 
-  constructor(className: string) {
+  constructor(className: string, buttons?: Array<PopupButton>) {
     this.element.classList.add('popup');
     this.element.className = 'popup' + (className ? ' ' + className : '');
     this.container.classList.add('popup-container', 'z-depth-1');
@@ -17,6 +17,35 @@ export class PopupElement {
 
     this.header.append(this.title);
     this.container.append(this.header);
+
+    if(buttons && buttons.length) {
+      const buttonsDiv = document.createElement('div');
+      buttonsDiv.classList.add('popup-buttons');
+  
+      const buttonsElements = buttons.map(b => {
+        const button = document.createElement('button');
+        button.className = 'btn' + (b.isDanger ? ' danger' : '');
+        button.innerHTML =  b.text;
+        ripple(button);
+  
+        if(b.callback) {
+          button.addEventListener('click', () => {
+            b.callback();
+            this.destroy();
+          }, {once: true});
+        } else if(b.isCancel) {
+          button.addEventListener('click', () => {
+            this.destroy();
+          }, {once: true});
+        }
+  
+        return button;
+      });
+  
+      buttonsDiv.append(...buttonsElements);
+      this.container.append(buttonsDiv);
+    }
+
     this.element.append(this.container);
   }
 
@@ -34,7 +63,7 @@ export class PopupElement {
   }
 }
 
-export type PopupPeerButton = {
+export type PopupButton = {
   text: string,
   callback?: () => void,
   isDanger?: true,
@@ -46,9 +75,9 @@ export class PopupPeer extends PopupElement {
     peerID: number,
     title: string,
     description: string,
-    buttons: Array<PopupPeerButton>
+    buttons: Array<PopupButton>
   }> = {}) {
-    super('popup-peer' + (className ? ' ' + className : ''));
+    super('popup-peer' + (className ? ' ' + className : ''), options.buttons);
 
     let avatarEl = new AvatarElement();
     avatarEl.setAttribute('dialog', '1');
@@ -62,31 +91,6 @@ export class PopupPeer extends PopupElement {
     p.classList.add('popup-description');
     p.innerHTML = options.description;
 
-    let buttonsDiv = document.createElement('div');
-    buttonsDiv.classList.add('popup-buttons');
-
-    let buttons = options.buttons.map(b => {
-      let button = document.createElement('button');
-      ripple(button);
-      button.className = 'btn' + (b.isDanger ? ' danger' : '');
-      button.innerHTML =  b.text;
-
-      if(b.callback) {
-        button.addEventListener('click', () => {
-          b.callback();
-          this.destroy();
-        });
-      } else if(b.isCancel) {
-        button.addEventListener('click', () => {
-          this.destroy();
-        });
-      }
-
-      return button;
-    });
-
-    buttonsDiv.append(...buttons);
-
-    this.container.append(p, buttonsDiv);
+    this.container.insertBefore(p, this.header.nextElementSibling);
   }
 }

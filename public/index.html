@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <title>Telegram Web</title>
   <meta name="description" content="">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1">
 
   <link rel="apple-touch-icon" sizes="180x180" href="assets/img/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/img/favicon-32x32.png">
@@ -25,7 +25,7 @@
   <![endif]-->
   
   <div class="whole" id="auth-pages" style="display: none;">
-    <div class="tabs-container auth-pages__container">
+    <div class="tabs-container auth-pages__container" data-slider="tabs">
       <div class="page-sign">
         <div class="container center-align">
           <div class="auth-image">
@@ -74,7 +74,7 @@
           <p class="subtitle sent-type"></p>
           <div class="input-wrapper">
             <div class="input-field">
-              <input type="text" name="code" id="code" autocomplete="off" required />
+              <input type="number" name="code" id="code" autocomplete="off" required />
               <label for="code">Code</label>
             </div>
           </div>
@@ -141,6 +141,7 @@
       <div class="overlays">
         <div class="media-viewer">
           <div class="media-viewer-author">
+            <div class="btn-icon tgico-close only-handhelds menu-mobile-close rp"></div>
             <avatar-element class="media-viewer-userpic"></avatar-element>
             <div class="media-viewer-name"></div>
             <div class="media-viewer-date"></div>
@@ -160,9 +161,16 @@
           </div>
         </div>
       </div>
+      <div class="btn-icon tgico-more rp btn-menu-toggle only-handhelds">
+        <div class="btn-menu bottom-left">
+          <div class="btn-menu-item menu-menu-forward tgico-forward rp">Forward</div>
+          <div class="btn-menu-item menu-menu-download tgico-download rp">Download</div>
+          <div class="btn-menu-item menu-menu-delete danger tgico-delete rp">Delete</div>
+        </div>
+      </div>
       <div class="media-viewer-switchers">
-        <div class="media-viewer-switcher-left menu-prev"><span class="tgico-down media-viewer-prev-button"></span></div>
-        <div class="media-viewer-switcher-right menu-next"><span class="tgico-down media-viewer-next-button"></span></div>
+        <div class="media-viewer-switcher media-viewer-switcher-left menu-prev"><span class="tgico-down media-viewer-prev-button"></span></div>
+        <div class="media-viewer-switcher media-viewer-switcher-right menu-next"><span class="tgico-down media-viewer-next-button"></span></div>
       </div>
     </div>
     <div class="popup popup-send-photo">
@@ -197,15 +205,9 @@
                 </div>
                 <div class="btn-icon tgico-back rp sidebar-back-button"></div>
               </div>
-              <div class="input-search">
-                <input type="text" placeholder="Telegram Search" id="global-search" />
-                <span class="tgico tgico-search"></span>
-              </div>
             </div>
             <div class="sidebar-content">
-              <div id="chats-container">
-                <ul id="dialogs"></ul>
-              </div>
+              <div id="chats-container"><ul id="dialogs"></ul></div>
               <div class="sidebar-search hide" id="search-container"></div>
               <button class="btn-primary btn-circle btn-icon rp btn-corner tgico-newchat_filled btn-menu-toggle" id="new-menu">
                 <div class="btn-menu top-left">
@@ -230,10 +232,6 @@
           <div class="sidebar-slider-item" id="contacts-container">
             <div class="sidebar-header">
               <button class="btn-icon rp tgico-back sidebar-close-button"></button>
-              <div class="input-search">
-                <input type="text" placeholder="Search" id="contacts-search" autocomplete="ASKLXmQQr52" />
-                <span class="tgico tgico-search"></span>
-              </div>
             </div>
             <div class="sidebar-content">
               <div>
@@ -385,17 +383,11 @@
               </div>
             </div>
           </div>
-          <div class="pinned-message">
-            <div class="pinned-message-border"></div>
-            <div class="pinned-message-content">
-              <div class="pinned-message-title">Pinned Message</div>
-              <div class="pinned-message-subtitle"></div>
-            </div>
-          </div>
           <div class="btn-icon rp chat-mute-button" style="display: none;"></div>
           <div class="btn-icon rp tgico-search chat-search-button"></div>
           <div class="btn-icon btn-menu-toggle rp tgico-more chat-more-button">
             <div class="btn-menu bottom-left">
+              <div class="btn-menu-item menu-search tgico-search rp">Search</div>
               <div class="btn-menu-item menu-mute rp">Mute</div>
               <div class="btn-menu-item menu-delete tgico-delete danger rp">Delete and Leave</div>
             </div>
@@ -414,21 +406,47 @@
           <div class="btn-menu-item menu-delete tgico-delete danger rp">Delete</div>
         </div>
         <div id="chat-input" style="display: none;">
-        <!-- <div id="chat-input"> -->
-          <div class="emoji-dropdown">
-            <nav class="emoji-tabs menu-horizontal">
-              <ul>
-                <li class="emoji-tabs-emoji rp"><span>Emoji</span></li>
-                <li class="emoji-tabs-stickers rp"><span>Stickers</span></li>
-                <li class="emoji-tabs-gifs rp"><span>GIFs</span></li>
-              </ul>
-            </nav>
+          <div class="chat-input-container">
+            <div class="input-message">
+              <div class="reply-wrapper">
+                <button class="btn-icon rp tgico-close reply-cancel"></button>
+                <div class="reply">
+                  <div class="reply-border"></div>
+                  <div class="reply-content">
+                    <div class="reply-title"></div>
+                    <div class="reply-subtitle"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="new-message-wrapper">
+                <button class="btn-icon rp tgico toggle-emoticons"></button>
+                <!-- <textarea type="text" id="input-message" placeholder="Message" contenteditable="true"></textarea> -->
+                <div class="input-message-container">
+                  <div id="input-message" contenteditable="true" data-placeholder="Message"></div>
+                </div>
+                <button class="btn-icon rp tgico-attach btn-menu-toggle" id="attach-file">
+                  <div class="btn-menu top-left">
+                    <div class="btn-menu-item menu-media tgico-photo rp">Photo or Video</div>
+                    <div class="btn-menu-item menu-document tgico-document rp">Document</div>
+                    <div class="btn-menu-item menu-poll tgico-poll rp">Poll</div>
+                  </div>
+                </button>
+                <div class="record-time"></div>
+                <input type="file" id="input-file" style="display: none;" multiple />
+              </div>
+            </div>
+            <button class="btn-circle z-depth-1 btn-icon tgico-delete danger" id="btn-record-cancel"></button>
+            <div class="btn-send-container">
+              <div class="record-ripple"></div>
+              <button class="btn-circle z-depth-1 btn-icon tgico-microphone2" id="btn-send"></button>
+            </div>
+          </div>
+          <div class="emoji-dropdown" style="display: none;">
             <div class="emoji-container">
               <div class="tabs-container">
                 <div class="emoji-padding">
-                  <div id="content-emoji"></div>
                   <nav class="menu-horizontal">
-                    <ul class="justify-start">
+                    <ul>
                       <li class="btn-icon tgico-recent rp"></li>
                       <li class="active btn-icon tgico-smile rp"></li>
                       <li class="btn-icon tgico-animals rp"></li>
@@ -440,9 +458,9 @@
                       <li class="btn-icon tgico-flag rp"></li>
                     </ul>
                   </nav>
+                  <div class="emoticons-content" id="content-emoji"></div>
                 </div>
                 <div class="stickers-padding">
-                  <div id="content-stickers"></div>
                   <div class="menu-wrapper">
                     <nav class="menu-horizontal">
                       <ul class="justify-start">
@@ -450,55 +468,32 @@
                       </ul>
                     </nav>
                   </div>
+                  <div class="emoticons-content" id="content-stickers"></div>
                 </div>
                 <div class="gifs-padding">
-                  <div id="content-gifs">
+                  <div class="emoticons-content" id="content-gifs">
                     <div class="gifs-masonry"></div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-          <div class="input-message">
-            <div class="reply-wrapper">
-              <button class="btn-icon rp tgico-close reply-cancel"></button>
-              <div class="reply">
-                <div class="reply-border"></div>
-                <div class="reply-content">
-                  <div class="reply-title"></div>
-                  <div class="reply-subtitle"></div>
-                </div>
-              </div>
-            </div>
-            <div class="new-message-wrapper">
-              <button class="btn-icon rp tgico-smile toggle-emoticons"></button>
-              <!-- <textarea type="text" id="input-message" placeholder="Message" contenteditable="true"></textarea> -->
-              <div class="input-message-container">
-                <div id="input-message" contenteditable="true" data-placeholder="Message"></div>
-              </div>
-              <button class="btn-icon rp tgico-attach btn-menu-toggle" id="attach-file">
-                <div class="btn-menu top-left">
-                  <div class="btn-menu-item menu-media tgico-photo rp">Photo or Video</div>
-                  <div class="btn-menu-item menu-document tgico-document rp">Document</div>
-                  <div class="btn-menu-item menu-poll tgico-poll rp">Poll</div>
-                </div>
-              </button>
-              <div class="record-time"></div>
-              <input type="file" id="input-file" style="display: none;" multiple />
-            </div>
-          </div>
-          <button class="btn-circle z-depth-1 btn-icon tgico-delete danger" id="btn-record-cancel"></button>
-          <div class="btn-send-container">
-            <div class="record-ripple"></div>
-            <button class="btn-circle z-depth-1 btn-icon tgico-microphone2" id="btn-send"></button>
+            <nav class="emoji-tabs menu-horizontal no-stripe">
+              <ul>
+                <li class="emoji-tabs-search justify-self-start btn-icon tgico-search rp" data-tab="-1"></li>
+                <li class="emoji-tabs-emoji btn-icon tgico-smile rp" data-tab="0"></li>
+                <li class="emoji-tabs-stickers btn-icon tgico-stickers rp" data-tab="1"></li>
+                <li class="emoji-tabs-gifs btn-icon tgico-gifs rp" data-tab="2"></li>
+                <li class="emoji-tabs-delete justify-self-end btn-icon tgico-deleteleft rp" data-tab="-1"></li>
+              </ul>
+            </nav>
           </div>
         </div>
       </div>
       <div class="sidebar sidebar-right main-column" id="column-right">
-        <div class="sidebar-content">
-          <div class="profile-container">
+        <div class="sidebar-content sidebar-slider tabs-container">
+          <div class="sidebar-slider-item profile-container">
             <div class="sidebar-header">
-              <button class="btn-icon rp tgico-close sidebar-close-button"></button>
+              <button class="btn-icon rp tgico sidebar-close-button"></button>
               <div class="sidebar-header__title">Info</div>
       
               <!-- <button class="btn-icon rp tgico-edit sidebar-edit-button"></button> -->
@@ -557,22 +552,24 @@
               </div>
             </div>
           </div>
-          <div class="sidebar-search chats-container" id="search-private-container">
+          <div class="sidebar-slider-item sidebar-search chats-container" id="search-private-container">
             <div class="sidebar-header">
               <button class="btn-icon rp tgico-close sidebar-close-button"></button>
-              <div class="input-search">
-                <input type="text" placeholder="Search" id="private-search" />
-                <span class="tgico tgico-search"></span>
-              </div>
             </div>
             <div class="chats-container"></div>
           </div>
-          <div class="sidebar-search" id="forward-container">
+          <div class="sidebar-slider-item sidebar-search" id="forward-container">
             <div class="sidebar-header">
               <button class="btn-icon rp tgico-close sidebar-close-button"></button>
               <div class="sidebar-header__title">Forward</div>
             </div>
             <button class="btn-primary btn-circle btn-icon rp btn-corner tgico-send"></button>
+          </div>
+          <div class="sidebar-slider-item sidebar-search chats-container" id="stickers-container">
+            <div class="sidebar-header">
+              <button class="btn-icon rp tgico-close sidebar-close-button"></button>
+            </div>
+            <div class="sidebar-content"><div class="sticker-sets"></div></div>
           </div>
         </div>
       </div>

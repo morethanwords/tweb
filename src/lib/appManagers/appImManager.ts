@@ -10,12 +10,11 @@ import { RichTextProcessor } from "../richtextprocessor";
 import appPhotosManager from "./appPhotosManager";
 import appSidebarRight from './appSidebarRight';
 
-import { logger } from "../polyfill";
-import lottieLoader from "../lottieLoader";
+import { logger, LogLevels } from "../polyfill";
 import appMediaViewer from "./appMediaViewer";
 import appSidebarLeft from "./appSidebarLeft";
 import appChatsManager from "./appChatsManager";
-import { wrapDocument, wrapPhoto, wrapVideo, wrapSticker, wrapReply, wrapAlbum, wrapPoll } from '../../components/wrappers';
+import { wrapDocument, wrapPhoto, wrapVideo, wrapSticker, wrapReply, wrapAlbum, wrapPoll, formatDate } from '../../components/wrappers';
 import ProgressivePreloader from '../../components/preloader';
 import { openBtnMenu, formatPhoneNumber, positionMenu, ripple, parseMenuButtonsTo, horizontalMenu } from '../../components/misc';
 import { ChatInput } from '../../components/chatInput';
@@ -29,8 +28,14 @@ import appStickersManager from './appStickersManager';
 import AvatarElement from '../../components/avatar';
 import appInlineBotsManager from './AppInlineBotsManager';
 import StickyIntersector from '../../components/stickyIntersector';
-import { PopupPeerButton, PopupPeer } from '../../components/popup';
-import { mediaSizes, touchSupport } from '../config';
+import { PopupButton, PopupPeer } from '../../components/popup';
+import { mediaSizes, touchSupport, isAndroid, isApple } from '../config';
+import animationIntersector from '../../components/animationIntersector';
+import PopupStickers from '../../components/popupStickers';
+import SearchInput from '../../components/searchInput';
+import AppSearch, { SearchGroup } from '../../components/appSearch';
+import PopupDatePicker from '../../components/popupDatepicker';
+import appAudio from '../../components/appAudio';
 
 console.log('appImManager included33!');
 
@@ -126,7 +131,7 @@ class ChatContextMenu {
         appMessagesManager.deleteMessages([this.msgID], revoke);
       };
 
-      let title: string, description: string, buttons: PopupPeerButton[];
+      let title: string, description: string, buttons: PopupButton[];
       title = 'Delete Message?';
       description = `Are you sure you want to delete this message?`;
 
@@ -199,6 +204,258 @@ class ChatContextMenu {
   }
 }
 
+class ChatSearch {
+  private element: HTMLElement;
+  private backBtn: HTMLElement;
+  private searchInput: SearchInput;
+
+  private results: HTMLElement;
+
+  private footer: HTMLElement;
+  private dateBtn: HTMLElement;
+  private foundCountEl: HTMLElement;
+  private controls: HTMLElement;
+  private downBtn: HTMLElement;
+  private upBtn: HTMLElement;
+
+  private appSearch: AppSearch;
+  private searchGroup: SearchGroup;
+
+  private foundCount = 0;
+  private selectedIndex = 0;
+  private setPeerPromise: Promise<any>;
+
+  constructor() {
+    this.element = document.createElement('div');
+    this.element.classList.add('sidebar-header', 'chat-search', 'chats-container');
+
+    this.backBtn = document.createElement('button');
+    this.backBtn.classList.add('btn-icon', 'tgico-back', 'sidebar-close-button');
+    ripple(this.backBtn);
+    
+    this.backBtn.addEventListener('click', () => {
+      appImManager.topbar.classList.remove('hide-pinned');
+      this.element.remove();
+      this.searchInput.remove();
+      this.results.remove();
+      this.footer.remove();
+      this.footer.removeEventListener('click', this.onFooterClick);
+      this.dateBtn.removeEventListener('click', this.onDateClick);
+      this.upBtn.removeEventListener('click', this.onUpClick);
+      this.downBtn.removeEventListener('click', this.onDownClick);
+      this.searchGroup.list.removeEventListener('click', this.onResultsClick);
+      appImManager.bubblesContainer.classList.remove('search-results-active');
+    }, {once: true});
+
+    this.searchInput = new SearchInput('Search');
+    
+    // Results
+    this.results = document.createElement('div');
+    this.results.classList.add('chat-search-results', 'chats-container');
+
+    this.searchGroup = new SearchGroup('', 'messages', undefined, '', false);
+    this.searchGroup.list.addEventListener('click', this.onResultsClick);
+
+    this.appSearch = new AppSearch(this.results, this.searchInput, {
+      messages: this.searchGroup
+    }, (count) => {
+      this.foundCount = count;
+
+      if(!this.foundCount) {
+        this.foundCountEl.innerText = this.searchInput.value ? 'No results' : '';
+        this.results.classList.remove('active');
+        appImManager.bubblesContainer.classList.remove('search-results-active');
+        this.upBtn.setAttribute('disabled', 'true');
+        this.downBtn.setAttribute('disabled', 'true');
+      } else {
+        this.selectResult(this.searchGroup.list.children[0] as HTMLElement);
+      }
+    });
+    this.appSearch.beginSearch($rootScope.selectedPeerID);
+
+    //appImManager.topbar.parentElement.insertBefore(this.results, appImManager.bubblesContainer);
+    appImManager.bubblesContainer.append(this.results);
+
+    // Footer
+    this.footer = document.createElement('div');
+    this.footer.classList.add('chat-search-footer');
+
+    this.footer.addEventListener('click', this.onFooterClick);
+    ripple(this.footer);
+
+    this.foundCountEl = document.createElement('span');
+    this.foundCountEl.classList.add('chat-search-count');
+
+    this.dateBtn = document.createElement('button');
+    this.dateBtn.classList.add('btn-icon', 'tgico-calendar');
+
+    this.controls = document.createElement('div');
+    this.controls.classList.add('chat-search-controls');
+
+    this.upBtn = document.createElement('button');
+    this.upBtn.classList.add('btn-icon', 'tgico-up');
+    this.downBtn = document.createElement('button');
+    this.downBtn.classList.add('btn-icon', 'tgico-down');
+
+    this.upBtn.setAttribute('disabled', 'true');
+    this.downBtn.setAttribute('disabled', 'true');
+
+    this.dateBtn.addEventListener('click', this.onDateClick);
+    this.upBtn.addEventListener('click', this.onUpClick);
+    this.downBtn.addEventListener('click', this.onDownClick);
+    this.controls.append(this.upBtn, this.downBtn);
+
+    this.footer.append(this.foundCountEl, this.dateBtn, this.controls);
+    
+    appImManager.topbar.parentElement.insertBefore(this.footer, appImManager.chatInput);
+
+    // Append container
+    this.element.append(this.backBtn, this.searchInput.container);
+
+    appImManager.topbar.classList.add('hide-pinned');
+    appImManager.topbar.parentElement.append(this.element);
+
+    this.searchInput.input.focus();
+  }
+
+  onDateClick = (e: MouseEvent) => {
+    cancelEvent(e);
+    new PopupDatePicker(new Date(), appImManager.onDatePick).show();
+  };
+
+  selectResult = (elem: HTMLElement) => {
+    if(this.setPeerPromise) return this.setPeerPromise;
+
+    const peerID = +elem.getAttribute('data-peerID');
+    const lastMsgID = +elem.dataset.mid || undefined;
+
+    const index = whichChild(elem);
+
+    if(index == (this.foundCount - 1)) {
+      this.upBtn.setAttribute('disabled', 'true');
+    } else {
+      this.upBtn.removeAttribute('disabled');
+    }
+
+    if(!index) {
+      this.downBtn.setAttribute('disabled', 'true');
+    } else {
+      this.downBtn.removeAttribute('disabled');
+    }
+
+    this.results.classList.remove('active');
+    appImManager.bubblesContainer.classList.remove('search-results-active');
+
+    const res = appImManager.setPeer(peerID, lastMsgID);
+    this.setPeerPromise = (res instanceof Promise ? res : Promise.resolve(res)).then(() => {
+      this.selectedIndex = index;
+      this.foundCountEl.innerText = `${index + 1} of ${this.foundCount}`;
+
+      const renderedCount = this.searchGroup.list.childElementCount;
+      if(this.selectedIndex >= (renderedCount - 6)) {
+        this.appSearch.searchMore();
+      }
+    }).finally(() => {
+      this.setPeerPromise = null;
+    });
+  };
+
+  onResultsClick = (e: MouseEvent) => {
+    const target = findUpTag(e.target, 'LI');
+    if(target) {
+      this.selectResult(target);
+    }
+  };
+
+  onFooterClick = (e: MouseEvent) => {
+    appImManager.bubblesContainer.classList.toggle('search-results-active');
+    this.results.classList.toggle('active');
+  };
+
+  onUpClick = (e: MouseEvent) => {
+    cancelEvent(e);
+    this.selectResult(this.searchGroup.list.children[this.selectedIndex + 1] as HTMLElement);
+  };
+
+  onDownClick = (e: MouseEvent) => {
+    cancelEvent(e);
+    this.selectResult(this.searchGroup.list.children[this.selectedIndex - 1] as HTMLElement);
+  };
+}
+
+class ChatAudio {
+  public container: HTMLElement;
+  private toggle: HTMLElement;
+  private title: HTMLElement;
+  private subtitle: HTMLElement;
+  private close: HTMLElement;
+
+  constructor() {
+    this.container = document.createElement('div');
+    this.container.classList.add('pinned-audio', 'pinned-container');
+    this.container.style.display = 'none';
+
+    this.toggle = document.createElement('div');
+    this.toggle.classList.add('pinned-audio-ico', 'tgico');
+    
+    this.title = document.createElement('div');
+    this.title.classList.add('pinned-audio-title');
+
+    this.subtitle = document.createElement('div');
+    this.subtitle.classList.add('pinned-audio-subtitle');
+
+    this.close = document.createElement('button');
+    this.close.classList.add('pinned-audio-close', 'btn-icon', 'tgico-close');
+
+    this.container.append(this.toggle, this.title, this.subtitle, this.close);
+
+    this.close.addEventListener('click', (e) => {
+      cancelEvent(e);
+      this.container.style.display = 'none';
+      this.container.parentElement.classList.remove('is-audio-shown');
+      if(this.toggle.classList.contains('flip-icon')) {
+        appAudio.toggle();
+      }
+    });
+
+    this.toggle.addEventListener('click', (e) => {
+      cancelEvent(e);
+      appAudio.toggle();
+    });
+
+    $rootScope.$on('audio_play', (e: CustomEvent) => {
+      const {doc, mid} = e.detail;
+
+      let title: string, subtitle: string;
+      if(doc.type == 'voice') {
+        const message = appMessagesManager.getMessage(mid);
+        title = appPeersManager.getPeerTitle(message.fromID, false, true);
+        //subtitle = 'Voice message';
+        subtitle = formatDate(message.date, false, false);
+      } else {
+        title = doc.audioTitle || doc.file_name;
+        subtitle = doc.audioPerformer ? RichTextProcessor.wrapPlainText(doc.audioPerformer) : 'Unknown Artist';
+      }
+
+      this.title.innerHTML = title;
+      this.subtitle.innerHTML = subtitle;
+      this.toggle.classList.add('flip-icon');
+      
+      this.container.dataset.mid = '' + mid;
+      if(this.container.style.display) {
+        const scrollTop = appImManager.scrollable.scrollTop;
+        this.container.style.display = '';
+        this.container.parentElement.classList.add('is-audio-shown');
+        appImManager.scrollable.scrollTop = scrollTop;
+      }
+    });
+
+    $rootScope.$on('audio_pause', () => {
+      this.toggle.classList.remove('flip-icon');
+    });
+  }
+}
+
 export class AppImManager {
   public columnEl = document.getElementById('column-center') as HTMLDivElement;
   public btnMute = this.columnEl.querySelector('.chat-mute-button') as HTMLButtonElement;
@@ -212,7 +469,8 @@ export class AppImManager {
   private getHistoryTopPromise: Promise<boolean>;
   private getHistoryBottomPromise: Promise<boolean>;
   
-  public chatInputC: ChatInput = null;
+  public chatInputC: ChatInput;
+  public chatAudio: ChatAudio;
 
   private menuButtons: {
     search: HTMLButtonElement
@@ -251,8 +509,9 @@ export class AppImManager {
   private typingTimeouts: {[peerID: number]: number} = {};
   private typingUsers: {[userID: number]: number} = {} // to peerID
   
-  private topbar = document.getElementById('topbar') as HTMLDivElement;
-  private chatInput = document.getElementById('chat-input') as HTMLDivElement;
+  public topbar = document.getElementById('topbar') as HTMLDivElement;
+  public chatInput = document.getElementById('chat-input') as HTMLDivElement;
+  public chatInfo = this.columnEl.querySelector('.chat-info') as HTMLDivElement;
   private scrolledAll: boolean;
   private scrolledAllDown: boolean;
   
@@ -288,15 +547,14 @@ export class AppImManager {
   private closeBtn = this.topbar.querySelector('.sidebar-close-button') as HTMLButtonElement;
 
   constructor() {
-    /* if(!lottieLoader.loaded) {
-      lottieLoader.loadLottie();
-    } */
-    
-    this.log = logger('IM');
+    this.log = logger('IM', LogLevels.log | LogLevels.error | LogLevels.warn | LogLevels.debug);
     this.chatInputC = new ChatInput();
     this.preloader = new ProgressivePreloader(null, false);
     this.selectTab(0);
     parseMenuButtonsTo(this.menuButtons, this.columnEl.querySelector('.chat-more-button').firstElementChild.children);
+    
+    this.chatAudio = new ChatAudio();
+    this.topbar.insertBefore(this.chatAudio.container, this.chatInfo.nextElementSibling);
 
     apiManager.getUserID().then((id) => {
       this.myID = $rootScope.myID = id;
@@ -480,14 +738,14 @@ export class AppImManager {
     });
     
     window.addEventListener('blur', () => {
-      lottieLoader.checkAnimations(true);
+      animationIntersector.checkAnimations(true);
       
       this.offline = true;
       this.updateStatus();
       clearInterval(this.updateStatusInterval);
       
       window.addEventListener('focus', () => {
-        lottieLoader.checkAnimations(false);
+        animationIntersector.checkAnimations(false);
         
         this.offline = false;
         this.updateStatus();
@@ -496,13 +754,14 @@ export class AppImManager {
     });
     
     this.topbar.addEventListener('click', (e) => {
-      const pinned = findUpClassName(e.target, 'pinned-message');
+      const pinned = findUpClassName(e.target, 'pinned-container');
       if(pinned) {
-        e.preventDefault();
-        e.cancelBubble = true;
+        cancelEvent(e);
         
-        let mid = +pinned.dataset.mid;
-        this.setPeer(this.peerID, mid);
+        const mid = +pinned.dataset.mid;
+        const message = appMessagesManager.getMessage(mid);
+
+        this.setPeer(message.peerID, mid);
       } else {
         appSidebarRight.toggleSidebar(true);
       }
@@ -516,6 +775,22 @@ export class AppImManager {
       } catch(err) {}
       
       if(!bubble) return;
+
+      if(bubble.classList.contains('is-date') && findUpClassName(target, 'bubble__container')) {
+        if(bubble.classList.contains('is-sticky') && !this.chatInner.classList.contains('is-scrolling')) {
+          return;
+        }
+
+        for(let timestamp in this.dateMessages) {
+          let d = this.dateMessages[timestamp];
+          if(d.div == bubble) {
+            new PopupDatePicker(new Date(+timestamp), this.onDatePick).show();
+            break;
+          }
+        }
+
+        return;
+      }
 
       let contactDiv = findUpClassName(target, 'contact');
       if(contactDiv) {
@@ -533,8 +808,20 @@ export class AppImManager {
         return;
       }
 
+      if(bubble.classList.contains('sticker') && target.parentElement.classList.contains('attachment')) {
+        const messageID = +bubble.dataset.mid;
+        const message = appMessagesManager.getMessage(messageID);
+
+        const doc = message.media?.document;
+
+        if(doc?.stickerSetInput) {
+          new PopupStickers(doc.stickerSetInput).show();
+        }
+
+        return;
+      }
+
       if((target.tagName == 'IMG' && !target.classList.contains('emoji') && target.parentElement.tagName != "AVATAR-ELEMENT") 
-        || target.tagName == 'image' 
         || target.classList.contains('album-item')
         || (target.tagName == 'VIDEO' && !bubble.classList.contains('round'))) {
         let messageID = +findUpClassName(target, 'album-item')?.dataset.mid || +bubble.dataset.mid;
@@ -554,7 +841,15 @@ export class AppImManager {
         }).sort((a, b) => a - b);
 
         ids.forEach(id => {
-          let elements = this.bubbles[id].querySelectorAll('.album-item img, .album-item video, .preview img, .preview video, .bubble__media-container') as NodeListOf<HTMLElement>;
+          let withTail = this.bubbles[id].classList.contains('with-media-tail');
+          let str = '.album-item img, .album-item video, .preview img, .preview video, ';
+          if(withTail) {
+            str += '.bubble__media-container';
+          } else {
+            str += '.attachment img, .attachment video';
+          }
+
+          let elements = this.bubbles[id].querySelectorAll(str) as NodeListOf<HTMLElement>;
           Array.from(elements).forEach((element: HTMLElement) => {
             let albumItem = findUpClassName(element, 'album-item');
             targets.push({
@@ -628,18 +923,29 @@ export class AppImManager {
       //console.log('chatInner click', e);
     });
 
-    this.closeBtn.addEventListener('click', () => {
+    this.closeBtn.addEventListener('click', (e) => {
+      cancelEvent(e);
       this.setPeer(0);
     });
     
     this.searchBtn.addEventListener('click', (e) => {
+      cancelEvent(e);
       if(this.peerID) {
         appSidebarRight.beginSearch();
       }
     });
+
+    this.btnMute.addEventListener('click', (e) => {
+      cancelEvent(e);
+      this.mutePeer(this.peerID);
+    });
     
-    [this.btnMute, this.menuButtons.mute].forEach(el => {
-      el.addEventListener('click', () => this.mutePeer(this.peerID));
+    this.menuButtons.mute.addEventListener('click', () => {
+      this.mutePeer(this.peerID);
+    });
+
+    this.menuButtons.search.addEventListener('click', () => {
+      new ChatSearch();
     });
     
     let onKeyDown = (e: KeyboardEvent) => {
@@ -675,7 +981,7 @@ export class AppImManager {
         }
       } else if(e.key == 'Meta' || e.key == 'Control') {
         return;
-      } else if(e.key == 'c' && (e.ctrlKey || e.metaKey) && target.tagName != 'INPUT') {
+      } else if(e.code == "KeyC" && (e.ctrlKey || e.metaKey) && target.tagName != 'INPUT') {
         return;
       }
       
@@ -755,12 +1061,32 @@ export class AppImManager {
     });
   }
 
+  onDatePick = (timestamp: number) => {
+    const peerID = this.peerID;
+    appMessagesManager.requestHistory(peerID, 0, 2, -1, timestamp).then(history => {
+      if(!history?.messages?.length) {
+        this.log.error('no history!');
+        return;
+      } else if(this.peerID != peerID) {
+        return;
+      }
+
+      appImManager.setPeer(this.peerID, history.messages[0].mid);
+      //console.log('got history date:', history);
+    });
+  };
+
   public setPinnedMessage(message: any) {
     /////this.log('setting pinned message', message);
     //return;
     const scrollTop = this.scrollable.container.scrollTop;
     const newPinned = wrapReply('Pinned Message', message.message, message, true);
     newPinned.dataset.mid = '' + message.mid;
+    newPinned.classList.add('pinned-container');
+
+    const close = document.createElement('button');
+    close.classList.add('pinned-message-close', 'btn-icon', 'tgico-close');
+    newPinned.append(close);
 
     this.topbar.insertBefore(newPinned, this.btnMute);
     this.topbar.classList.add('is-pinned-shown');
@@ -840,7 +1166,7 @@ export class AppImManager {
         this.isScrollingTimeout = setTimeout(() => {
           this.chatInner.classList.remove('is-scrolling');
           this.isScrollingTimeout = 0;
-        }, 300);
+        }, 1350);
       }
       
       if(this.scroll.scrollHeight - Math.round(this.scroll.scrollTop + this.scroll.offsetHeight) <= 1/* <= 5 */) {
@@ -884,8 +1210,8 @@ export class AppImManager {
           this.isScrollingTimeout = setTimeout(() => {
             this.chatInner.classList.remove('is-scrolling');
             this.isScrollingTimeout = 0;
-          }, 300);
-        }, {passive: true})
+          }, 1350);
+        }, {passive: true, once: true})
       }, {passive: true});
     }
   }
@@ -910,7 +1236,7 @@ export class AppImManager {
 
         let participants_count = chatInfo.participants_count || (chatInfo.participants && chatInfo.participants.participants && chatInfo.participants.participants.length);
         if(participants_count) {
-          let subtitle = numberWithCommas(participants_count) + ' ' + (isChannel ? 'subscribers' : 'members');
+          let subtitle = numberWithCommas(participants_count) + ' ' + (isChannel ? 'followers' : 'members');
 
           this.subtitleEl.innerText = appSidebarRight.profileElements.subtitle.innerText = subtitle;
 
@@ -984,8 +1310,6 @@ export class AppImManager {
 
     this.messagesQueue.length = 0;
     this.messagesQueuePromise = null;
-
-    lottieLoader.checkAnimations(false, 'chat', true);
 
     this.getHistoryTopPromise = this.getHistoryBottomPromise = undefined;
 
@@ -1101,6 +1425,7 @@ export class AppImManager {
 
     //console.timeEnd('appImManager setPeer pre promise');
     
+    animationIntersector.lockGroup('chat');
     this.setPeerPromise = Promise.all([
       promise.then(() => {
         ////this.log('setPeer removing preloader');
@@ -1121,6 +1446,9 @@ export class AppImManager {
         }
 
         this.scrollable.container.append(this.chatInner);
+        animationIntersector.unlockGroup('chat');
+
+        animationIntersector.checkAnimations(false, 'chat', true);
         //this.scrollable.attachSentinels();
         //this.scrollable.container.insertBefore(this.chatInner, this.scrollable.container.lastElementChild);
 
@@ -1279,7 +1607,7 @@ export class AppImManager {
       //bubble.remove();
     });
     
-    lottieLoader.checkAnimations(false, 'chat');
+    animationIntersector.checkAnimations(false, 'chat');
     this.deleteEmptyDateGroups();
   }
   
@@ -1327,32 +1655,33 @@ export class AppImManager {
   }
 
   public getDateContainerByMessage(message: any, reverse: boolean) {
-    let date = new Date(message.date * 1000);
-    let justDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    let dateTimestamp = justDate.getTime();
+    const date = new Date(message.date * 1000);
+    date.setHours(0, 0, 0);
+    const dateTimestamp = date.getTime();
     if(!(dateTimestamp in this.dateMessages)) {
       let str = '';
       
-      let today = new Date();
-      today.setHours(0);
-      today.setMinutes(0);
-      today.setSeconds(0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
       
-      if(today < date) {
+      if(today.getTime() == date.getTime()) {
         str = 'Today';
       } else {
         const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-        str = justDate.getFullYear() == new Date().getFullYear() ? 
-        months[justDate.getMonth()] + ' ' + justDate.getDate() : 
-        justDate.toISOString().split('T')[0].split('-').reverse().join('.');
+
+        str = months[date.getMonth()] + ' ' + date.getDate();
+
+        if(date.getFullYear() != today.getFullYear()) {
+          str += ', ' + date.getFullYear();
+        }
       }
       
-      let div = document.createElement('div');
+      const div = document.createElement('div');
       div.className = 'bubble service is-date';
       div.innerHTML = `<div class="bubble__container"><div class="service-msg">${str}</div></div>`;
       ////////this.log('need to render date message', dateTimestamp, str);
 
-      let container = document.createElement('div');
+      const container = document.createElement('div');
       container.className = 'bubbles-date-group';
       
       this.dateMessages[dateTimestamp] = {
@@ -1362,15 +1691,9 @@ export class AppImManager {
       };
 
       container.append(div);
-      //this.scrollable.prepareElement(div, false);
 
       if(reverse) {
-        //let scrollTopPrevious = this.scrollable.scrollTop;
         this.scrollable.prepend(container, false);
-
-        /* if(!scrollTopPrevious) {
-          this.scrollable.scrollTop += container.scrollHeight;
-        } */
       } else {
         this.scrollable.append(container, false);
       }
@@ -1472,7 +1795,7 @@ export class AppImManager {
   
   // reverse means top
   public renderMessage(message: any, reverse = false, multipleRender = false, bubble: HTMLDivElement = null, updatePosition = true) {
-    this.log('message to render:', message);
+    this.log.debug('message to render:', message);
     //return;
     if(message.deleted) return;
     else if(message.grouped_id) { // will render only last album's message
@@ -1787,7 +2110,9 @@ export class AppImManager {
             case 'photo': {
               //if(pending.size < 5e6) {
                 this.log('will wrap pending photo:', pending, message, appPhotosManager.getPhoto(message.id));
-                wrapPhoto(message.id, message, attachmentDiv, undefined, undefined, true, true, this.lazyLoadQueue, null);
+                const tailSupported = !isAndroid;
+                if(tailSupported) bubble.classList.add('with-media-tail');
+                wrapPhoto(message.id, message, attachmentDiv, undefined, undefined, tailSupported, true, this.lazyLoadQueue, null);
 
                 bubble.classList.add('hide-name', 'photo');
               //}
@@ -1799,13 +2124,15 @@ export class AppImManager {
               //if(pending.size < 5e6) {
                 let doc = appDocsManager.getDoc(message.id);
                 this.log('will wrap pending video:', pending, message, doc);
+                const tailSupported = !isAndroid && !isApple && doc.type != 'round';
+                if(tailSupported) bubble.classList.add('with-media-tail');
                 wrapVideo({
                   doc, 
                   container: attachmentDiv, 
                   message, 
                   boxWidth: mediaSizes.active.regular.width,
                   boxHeight: mediaSizes.active.regular.height, 
-                  withTail: doc.type != 'round', 
+                  withTail: tailSupported, 
                   isOut: isOut,
                   lazyLoadQueue: this.lazyLoadQueue,
                   middleware: null
@@ -1822,7 +2149,7 @@ export class AppImManager {
             case 'document': {
               let doc = appDocsManager.getDoc(message.id);
               this.log('will wrap pending doc:', doc);
-              let docDiv = wrapDocument(doc, false, true);
+              let docDiv = wrapDocument(doc, false, true, message.id);
               
               let icoDiv = docDiv.querySelector('.audio-download, .document-ico');
               preloader.attach(icoDiv, false);
@@ -1848,6 +2175,8 @@ export class AppImManager {
           ////////this.log('messageMediaPhoto', photo);
           
           bubble.classList.add('hide-name', 'photo');
+          const tailSupported = !isAndroid;
+          if(tailSupported) bubble.classList.add('with-media-tail');
           if(message.grouped_id) {
             bubble.classList.add('is-album');
 
@@ -1859,7 +2188,7 @@ export class AppImManager {
               lazyLoadQueue: this.lazyLoadQueue
             });
           } else {
-            wrapPhoto(photo.id, message, attachmentDiv, undefined, undefined, true, isOut, this.lazyLoadQueue, this.getMiddleware());
+            wrapPhoto(photo.id, message, attachmentDiv, undefined, undefined, tailSupported, isOut, this.lazyLoadQueue, this.getMiddleware());
           }
 
           break;
@@ -1993,19 +2322,18 @@ export class AppImManager {
               middleware: this.getMiddleware(),
               lazyLoadQueue: this.lazyLoadQueue,
               group: 'chat',
-              play: !!message.pending || !multipleRender,
-              emoji: bubble.classList.contains('emoji-big') ? messageMessage : undefined
+              //play: !!message.pending || !multipleRender,
+              play: true,
+              loop: true,
+              emoji: bubble.classList.contains('emoji-big') ? messageMessage : undefined,
+              withThumb: true
             });
 
             break;
           } else if(doc.type == 'video' || doc.type == 'gif' || doc.type == 'round'/*  && doc.size <= 20e6 */) {
             //this.log('never get free 2', doc);
             
-            if(doc.type == 'round') {
-              bubble.classList.add('round');
-            }
-            
-            bubble.classList.add('hide-name', 'video');
+            bubble.classList.add('hide-name', doc.type == 'round' ? 'round' : 'video');
             if(message.grouped_id) {
               bubble.classList.add('is-album');
   
@@ -2017,13 +2345,15 @@ export class AppImManager {
                 lazyLoadQueue: this.lazyLoadQueue
               });
             } else {
+              const tailSupported = !isAndroid && !isApple && doc.type != 'round';
+              if(tailSupported) bubble.classList.add('with-media-tail');
               wrapVideo({
                 doc, 
                 container: attachmentDiv, 
                 message, 
                 boxWidth: mediaSizes.active.regular.width,
                 boxHeight: mediaSizes.active.regular.height, 
-                withTail: doc.type != 'round', 
+                withTail: tailSupported, 
                 isOut: isOut,
                 lazyLoadQueue: this.lazyLoadQueue,
                 middleware: this.getMiddleware()
@@ -2032,7 +2362,7 @@ export class AppImManager {
             
             break;
           } else if(doc.mime_type == 'audio/ogg') {
-            let docDiv = wrapDocument(doc);
+            let docDiv = wrapDocument(doc, false, false, message.mid);
             
             bubble.classList.remove('is-message-empty');
             
@@ -2042,7 +2372,7 @@ export class AppImManager {
             
             break;
           } else {
-            let docDiv = wrapDocument(doc);
+            let docDiv = wrapDocument(doc, false, false, message.mid);
             
             bubble.classList.remove('is-message-empty');
             messageDiv.append(docDiv);
@@ -2107,6 +2437,14 @@ export class AppImManager {
       if(!processingWebPage) {
         bubbleContainer.append(attachmentDiv);
       }
+
+      /* if(bubble.classList.contains('is-message-empty') && (bubble.classList.contains('photo') || bubble.classList.contains('video'))) {
+        bubble.classList.add('no-tail');
+
+        if(!bubble.classList.contains('with-media-tail')) {
+          bubble.classList.add('use-border-radius');
+        }
+      } */
     }
     
     if((this.peerID < 0 && !our) || message.fwd_from || message.reply_to_mid) { // chat
@@ -2252,7 +2590,7 @@ export class AppImManager {
       }
     }
 
-    console.time('appImManager render history');
+    //console.time('appImManager render history');
 
     return new Promise<boolean>((resolve, reject) => {
       let method = (reverse ? history.shift : history.pop).bind(history);
@@ -2296,7 +2634,7 @@ export class AppImManager {
         resolve(true);
       }, reject);
     }).then(() => {
-      console.timeEnd('appImManager render history');
+      //console.timeEnd('appImManager render history');
 
       return true;
     });

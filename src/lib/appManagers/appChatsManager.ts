@@ -302,7 +302,7 @@ export class AppChatsManager {
 
     const isChannel = this.isBroadcast(id);
     const participants_count = chat.participants_count || chat.participants?.participants.length || 0;
-    return numberWithCommas(participants_count) + ' ' + (isChannel ? 'subscribers' : 'members');
+    return numberWithCommas(participants_count) + ' ' + (isChannel ? 'followers' : 'members');
   }
 
   public wrapForFull(id: number, fullChat: any) {

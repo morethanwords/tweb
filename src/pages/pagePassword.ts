@@ -69,7 +69,7 @@ let onFirstMount = (): Promise<any> => {
           });
   
           pageIm.mount();
-          if(animation) animation.destroy();
+          if(animation) animation.remove();
           break;
         default:
           btnNext.removeAttribute('disabled');

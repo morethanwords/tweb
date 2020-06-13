@@ -4,13 +4,18 @@
   .input-search {
     position: relative;
     width: 100%;
+    //Vozmojno nado budet vernut margin-left: 22px;, tak kak eto vrode v levom bare tak po verstke, a v pravom bare dlya mobili nado 16, gde stiker seti 
     margin-left: 22px;
     margin-right: 4px;
+
+    @include respond-to(handhelds) {
+      margin-left: 16px;
+    }
 
     input {
       background-color: rgba(112, 117, 121, .08);
       border: 2px solid transparent;
-      height: 44px;
+      height: 40px;
       border-radius: 22px;
       box-sizing: border-box;
       padding: 0px 1.5rem 0 40px;
@@ -44,6 +49,16 @@
         vertical-align: middle;
       }
     }
+
+    .tgico-close {
+      left: auto;
+      right: 0px;
+    }
+
+    //input.is-empty ~ .tgico-close {
+    input:placeholder-shown ~ .tgico-close {
+      display: none;
+    }
   }
 
   ul {
@@ -62,6 +77,10 @@
     padding-bottom: 4px;
     //overflow: hidden;
     background-color: #fff;
+
+    @include respond-to(handhelds) {
+      padding-bottom: 0px;
+    }
   }
 
   li > .rp {
@@ -79,6 +98,18 @@
     padding: 9px 8.5px;
     margin: 0px 8px 0px 7px;
     overflow: hidden;
+
+    @media not all and (min-resolution:.001dpcm)
+    { @supports (-webkit-appearance:none) {
+        margin-right: 3px;
+      }
+    }
+
+    @include respond-to(handhelds) {
+      padding: 9px 0 0 0;
+      margin: 0px 11.5px 0px 9px;
+      overflow: hidden;
+    }
 
     html.no-touch &:hover {
       background: rgba(112, 117, 121, .08);

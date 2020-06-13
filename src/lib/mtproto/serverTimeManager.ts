@@ -15,9 +15,7 @@ export class ServerTimeManager {
   };
 
   constructor() {
-    this.midnightOffseted.setHours(0);
-    this.midnightOffseted.setMinutes(0);
-    this.midnightOffseted.setSeconds(0);
+    this.midnightOffseted.setHours(0, 0, 0, 0);
 
     AppStorage.get<number>('server_time_offset').then((to) => {
       if(to) {

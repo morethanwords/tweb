@@ -192,7 +192,7 @@
   content: "\e934";
 }
 .tgico-keyboard:before {
-  content: "\e935";
+  content: $tgico-keyboard;
 }
 .tgico-lamp:before {
   content: "\e936";
@@ -201,7 +201,7 @@
   content: "\e937";
 }
 .tgico-largepause:before {
-  content: "\e938";
+  content: $tgico-largepause;
 }
 .tgico-largeplay:before {
   content: $tgico-largeplay;
@@ -330,7 +330,7 @@
   content: "\e962";
 }
 .tgico-smile:before {
-  content: "\e963";
+  content: $tgico-smile;
 }
 .tgico-sport:before {
   content: "\e964";

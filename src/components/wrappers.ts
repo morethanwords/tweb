@@ -6,7 +6,7 @@ import appDocsManager from "../lib/appManagers/appDocsManager";
 import { formatBytes, getEmojiToneIndex } from "../lib/utils";
 import ProgressivePreloader from './preloader';
 import LazyLoadQueue from './lazyLoadQueue';
-import VideoPlayer, { MediaProgressLine } from '../lib/mediaPlayer';
+import VideoPlayer from '../lib/mediaPlayer';
 import { RichTextProcessor } from '../lib/richtextprocessor';
 import { CancellablePromise } from '../lib/polyfill';
 import { renderImageFromUrl } from './misc';
@@ -16,6 +16,8 @@ import PollElement from './poll';
 import appWebpManager from '../lib/appManagers/appWebpManager';
 import { mediaSizes } from '../lib/config';
 import { MTDocument, MTPhotoSize } from '../types';
+import animationIntersector from './animationIntersector';
+import AudioElement from './audio';
 
 export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue}: {
   doc: MTDocument, 
@@ -56,6 +58,13 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   let video = document.createElement('video');
   let source = document.createElement('source');
   video.append(source);
+
+  if(doc.type == 'gif') {
+    video.addEventListener('loadeddata', () => {
+      video.pause();
+      animationIntersector.addAnimation(video, 'chat');
+    }, {once: true});
+  }
   
   if(withTail) {
     let foreignObject = img.parentElement;
@@ -110,9 +119,9 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     
     if(doc.type == 'gif') {
       video.muted = true;
-      video.autoplay = true;
       video.loop = true;
-      video.play();
+      //video.play();
+      video.autoplay = true;
     } else if(doc.type == 'round') {
       //video.dataset.ckin = doc.type == 'round' ? 'circle' : 'default';
       video.dataset.ckin = 'circle';
@@ -139,22 +148,27 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     return;
   }
   
-  return doc.downloaded ? loadVideo() : lazyLoadQueue.push({div: container, load: loadVideo, wasSeen: true});
+  return doc.downloaded ? loadVideo() : lazyLoadQueue.push({div: container, load: loadVideo/* , wasSeen: true */});
 }
 
-let formatDate = (timestamp: number) => {
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+export const formatDate = (timestamp: number, monthShort = false, withYear = true) => {
+  const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'Octomber', 'November', 'December'];
   const date = new Date(timestamp * 1000);
   
-  return months[date.getMonth()] + ' ' + date.getDate() + ', ' + date.getFullYear() 
-  + ' at ' + date.getHours() + ':' + ('0' + date.getMinutes()).slice(-2);
+  let month = months[date.getMonth()];
+  if(monthShort) month = month.slice(0, 3);
+
+  let str = month + ' ' + date.getDate();
+  if(withYear) {
+    str += ', ' + date.getFullYear();
+  }
+  
+  return str + ' at ' + date.getHours() + ':' + ('0' + date.getMinutes()).slice(-2);
 };
 
-export function wrapDocument(doc: MTDocument, withTime = false, uploading = false): HTMLDivElement {
-  if(doc.type == 'voice') {
-    return wrapVoiceMessage(doc, uploading);
-  } else if(doc.type == 'audio') {
-    return wrapAudio(doc, withTime);
+export function wrapDocument(doc: MTDocument, withTime = false, uploading = false, mid?: number): HTMLElement {
+  if(doc.type == 'audio' || doc.type == 'voice') {
+    return wrapAudio(doc, withTime, mid);
   }
 
   let extSplitted = doc.file_name ? doc.file_name.split('.') : '';
@@ -221,420 +235,12 @@ export function wrapDocument(doc: MTDocument, withTime = false, uploading = fals
   return docDiv;
 }
 
-export function wrapAudio(doc: MTDocument, withTime = false): HTMLDivElement {
-  let div = document.createElement('div');
-  div.classList.add('audio');
-  
-  console.log('wrapAudio doc:', doc);
-  
-  let durationStr = String(doc.duration | 0).toHHMMSS(true);
-  let title = doc.audioTitle || doc.file_name;
-  let subtitle = doc.audioPerformer ? RichTextProcessor.wrapPlainText(doc.audioPerformer) : '';
-  /* let durationStr = '3:24';
-  let title = 'Million Telegrams';
-  let subtitle = 'Best Artist'; */
-
-  if(withTime) {
-    subtitle += (subtitle ? ' · ' : '') + formatDate(doc.date);
-  } else if(!subtitle) {
-    subtitle = 'Unknown Artist';
-  }
-  
-  div.innerHTML = `
-  <div class="audio-download"><div class="tgico-download"></div></div>
-  <div class="audio-toggle audio-ico tgico-largeplay"></div>
-  <div class="audio-details">
-    <div class="audio-title">${title}</div>
-    <div class="audio-subtitle">${subtitle}</div>
-    <div class="audio-time">${durationStr}</div>
-  </div>
-  `;
-
-  /* if(!subtitle) {
-    div.classList.add('audio-no-subtitle');
-  } */
-  
-  //////console.log('wrapping audio', doc, doc.attributes[0].waveform);
-  
-  let timeDiv = div.lastElementChild as HTMLDivElement;
-  
-  let downloadDiv = div.querySelector('.audio-download') as HTMLDivElement;
-  let preloader: ProgressivePreloader;
-  let promise: CancellablePromise<Blob>;
-  let progress: MediaProgressLine;
-
-  let onClick = () => {
-    if(!promise) {
-      if(!preloader) {
-        preloader = new ProgressivePreloader(null, true);
-      }
-      
-      promise = appDocsManager.downloadDoc(doc.id);
-      preloader.attach(downloadDiv, true, promise);
-      
-      promise.then(blob => {
-        downloadDiv.classList.remove('downloading');
-        downloadDiv.remove();
-        
-        let audio = document.createElement('audio');
-        let source = document.createElement('source');
-        source.src = doc.url;
-        source.type = doc.mime_type;
-        
-        audio.volume = 1;
-
-        progress = new MediaProgressLine(audio);
-        
-        div.removeEventListener('click', onClick);
-        let toggle = div.querySelector('.audio-toggle') as HTMLDivElement;
-        let subtitle = div.querySelector('.audio-subtitle') as HTMLDivElement;
-        let launched = false;
-
-        toggle.addEventListener('click', () => {
-          if(!launched) {
-            div.classList.add('audio-show-progress');
-            launched = true;
-          }
-
-          subtitle.innerHTML = '';
-          subtitle.append(progress.container);
-
-          if(audio.paused) {
-            if(lastAudioToggle && lastAudioToggle.classList.contains('tgico-largepause')) {
-              lastAudioToggle.click();
-            }
-            
-            audio.currentTime = 0;
-            audio.play();
-            
-            lastAudioToggle = toggle;
-            
-            toggle.classList.remove('tgico-largeplay');
-            toggle.classList.add('tgico-largepause');
-          } else {
-            audio.pause();
-            toggle.classList.add('tgico-largeplay');
-            toggle.classList.remove('tgico-largepause');
-          }
-        });
-        
-        audio.addEventListener('ended', () => {
-          toggle.classList.add('tgico-largeplay');
-          toggle.classList.remove('tgico-largepause');
-
-          timeDiv.innerText = String(audio.currentTime | 0).toHHMMSS(true);
-        });
-        
-        audio.style.display = 'none';
-        audio.append(source);
-        div.append(audio);
-      });
-      
-      downloadDiv.classList.add('downloading');
-    } else {
-      downloadDiv.classList.remove('downloading');
-      promise.cancel();
-      promise = null;
-    }
-  };
-  
-  div.addEventListener('click', onClick);
-  div.click();
-  
-  return div;
-}
-
-// https://github.com/LonamiWebs/Telethon/blob/4393ec0b83d511b6a20d8a20334138730f084375/telethon/utils.py#L1285
-function decodeWaveform(waveform: Uint8Array | number[]) {
-  if(!(waveform instanceof Uint8Array)) {
-    waveform = new Uint8Array(waveform);
-  }
-
-  var bitCount = waveform.length * 8;
-  var valueCount = bitCount / 5 | 0;
-  if(!valueCount) {
-    return new Uint8Array([]);
-  }
-
-  var dataView = new DataView(waveform.buffer);
-  var result = new Uint8Array(valueCount);
-  for(var i = 0; i < valueCount; i++) {
-    var byteIndex = i * 5 / 8 | 0;
-    var bitShift = i * 5 % 8;
-    var value = dataView.getUint16(byteIndex, true);
-    result[i] = (value >> bitShift) & 0b00011111;
-  }
-
-  /* var byteIndex = (valueCount - 1) / 8 | 0;
-  var bitShift = (valueCount - 1) % 8;
-  if(byteIndex == waveform.length - 1) {
-    var value = waveform[byteIndex];
-  } else {
-    var value = dataView.getUint16(byteIndex, true);
-  }
-
-  console.log('decoded waveform, setting last value:', value, byteIndex, bitShift);
-  result[valueCount - 1] = (value >> bitShift) & 0b00011111; */
-  return result;
-}
-
-let lastAudioToggle: HTMLDivElement = null;
-export function wrapVoiceMessage(doc: MTDocument, uploading = false): HTMLDivElement {
-  let div = document.createElement('div');
-  div.classList.add('audio', 'is-voice');
-  
-  let duration = doc.duration;
-  
-  let durationStr = String(duration | 0).toHHMMSS(true);
-  
-  div.innerHTML = `
-  <div class="audio-toggle audio-ico tgico-largeplay"></div>
-  <div class="audio-download">${uploading ? '' : '<div class="tgico-download"></div>'}</div>
-  <div class="audio-time">${durationStr}</div>
-  `;
-  
-  //////console.log('wrapping audio', doc, doc.attributes[0].waveform);
-  
-  let timeDiv = div.lastElementChild as HTMLDivElement;
-  
-  let downloadDiv = div.querySelector('.audio-download') as HTMLDivElement;
-  let preloader: ProgressivePreloader;
-  let promise: CancellablePromise<Blob>;
-  
-  let svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.classList.add('audio-waveform');
-  svg.setAttributeNS(null, 'width', '190');
-  svg.setAttributeNS(null, 'height', '23');
-  svg.setAttributeNS(null, 'viewBox', '0 0 190 23');
-  
-  div.insertBefore(svg, div.lastElementChild);
-
-  const barWidth = 2;
-  const barMargin = 1;
-  const barHeightMin = 2;
-  const barHeightMax = 23;
-
-  let waveform = doc.attributes[0].waveform || [];
-  waveform = decodeWaveform(waveform.slice());
-
-  //console.log('decoded waveform:', waveform);
-
-  const normValue = Math.max(...waveform);
-  const wfSize = waveform.length ? waveform.length : 100;
-  const availW = 190;
-  const barCount = Math.min((availW / (barWidth + barMargin)) | 0, wfSize);
-
-  let maxValue = 0;
-  let maxDelta = barHeightMax - barHeightMin;
-
-  let html = '';
-  for(let i = 0, barX = 0, sumI = 0; i < wfSize; ++i) {
-    const value = waveform[i] || 0;
-    if((sumI + barCount) >= wfSize) { // draw bar
-      sumI = sumI + barCount - wfSize;
-			if(sumI < (barCount + 1) / 2) {
-				if(maxValue < value) maxValue = value;
-      }
-      
-      const bar_value = Math.max(((maxValue * maxDelta) + ((normValue + 1) / 2)) / (normValue + 1), barHeightMin);
-      
-      let h = `
-      <rect x="${barX}" y="${barHeightMax - bar_value}" width="2" height="${bar_value}" rx="1" ry="1"></rect>
-      `;
-      html += h;
-
-      /* if(barX >= activeW) {
-        p.fillRect(nameleft + barX, bottom - bar_value, barWidth, barHeightMin + bar_value, inactive);
-      } else if (barX + barWidth <= activeW) {
-        p.fillRect(nameleft + barX, bottom - bar_value, barWidth, barHeightMin + bar_value, active);
-      } else {
-        p.fillRect(nameleft + barX, bottom - bar_value, activeW - barX, barHeightMin + bar_value, active);
-        p.fillRect(nameleft + activeW, bottom - bar_value, barWidth - (activeW - barX), barHeightMin + bar_value, inactive);
-      } */
-      barX += barWidth + barMargin;
-
-      if(sumI < (barCount + 1) / 2) {
-        maxValue = 0;
-      } else {
-        maxValue = value;
-      }
-    } else {
-      if(maxValue < value) maxValue = value;
-
-      sumI += barCount;
-    }
-  }
-
-  svg.insertAdjacentHTML('beforeend', html);
-  
-  /* let index = 0;
-  let skipped = 0;
-  let h = '';
-  for(let uint8 of wave) {
-    if(index > 0 && index % 4 == 0) {
-      ++index;
-      ++skipped;
-      continue;
-    }
-    //let percents = uint8 / 255;
-    let percents = uint8 / 31;
-    
-    let height = 23 * percents;
-    if(height < 2) {
-      height = 2;
-    }
-    
-    h += `
-    <rect x="${(index - skipped) * 4}" y="${23 - height}" width="2" height="${height}" rx="1" ry="1"></rect>
-    `;
-    
-    ++index;
-  }
-  svg.insertAdjacentHTML('beforeend', h); */
-  
-  let progress = div.querySelector('.audio-waveform') as HTMLDivElement;
-
-  let onLoad = () => {
-    let audio = document.createElement('audio');
-    let source = document.createElement('source');
-    source.src = doc.url;
-    //source.type = doc.mime_type;
-    source.type = 'audio/wav';
-    
-    audio.volume = 1;
-    
-    let toggle = div.querySelector('.audio-toggle') as HTMLDivElement;
-    
-    let interval = 0;
-    let lastIndex = 0;
-    
-    toggle.addEventListener('click', () => {
-      if(audio.paused) {
-        if(lastAudioToggle && lastAudioToggle.classList.contains('tgico-largepause')) {
-          lastAudioToggle.click();
-        }
-        
-        audio.currentTime = 0;
-        audio.play();
-        
-        lastAudioToggle = toggle;
-        
-        toggle.classList.remove('tgico-largeplay');
-        toggle.classList.add('tgico-largepause');
-        
-        (Array.from(svg.children) as HTMLElement[]).forEach(node => node.classList.remove('active'));
-        
-        interval = setInterval(() => {
-          if(lastIndex > svg.childElementCount || isNaN(audio.duration)) {
-            clearInterval(interval);
-            return;
-          }
-
-          timeDiv.innerText = String(audio.currentTime | 0).toHHMMSS(true);
-          
-          lastIndex = Math.round(audio.currentTime / audio.duration * 47);
-          
-          //svg.children[lastIndex].setAttributeNS(null, 'fill', '#000');
-          //svg.children[lastIndex].classList.add('active'); #Иногда пропускает полоски..
-          (Array.from(svg.children) as HTMLElement[]).slice(0,lastIndex+1).forEach(node => node.classList.add('active'));
-          //++lastIndex;
-          //console.log('lastIndex:', lastIndex, audio.currentTime);
-          //}, duration * 1000 / svg.childElementCount | 0/* 63 * duration / 10 */);
-        }, 20);
-      } else {
-        audio.pause();
-        toggle.classList.add('tgico-largeplay');
-        toggle.classList.remove('tgico-largepause');
-        
-        clearInterval(interval);
-      }
-    });
-    
-    audio.addEventListener('ended', () => {
-      toggle.classList.add('tgico-largeplay');
-      toggle.classList.remove('tgico-largepause');
-      clearInterval(interval);
-      (Array.from(svg.children) as HTMLElement[]).forEach(node => node.classList.remove('active'));
-      
-      timeDiv.innerText = String(audio.currentTime | 0).toHHMMSS(true);
-    });
-    
-    let mousedown = false, mousemove = false;
-    progress.addEventListener('mouseleave', (e) => {
-      if(mousedown) {
-        audio.play();
-        mousedown = false;
-      }
-      mousemove = false;
-    })
-    progress.addEventListener('mousemove', (e) => {
-      mousemove = true;
-      if(mousedown) scrub(e, audio, progress);
-    });
-    progress.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      if(!audio.paused) {
-        audio.pause();
-        scrub(e, audio, progress);
-        mousedown = true;
-      }
-    });
-    progress.addEventListener('mouseup', (e) => {
-      if (mousemove && mousedown) {
-        audio.play();
-        mousedown = false;
-      }
-    });
-    progress.addEventListener('click', (e) => {
-      if(!audio.paused) scrub(e, audio, progress);
-    });
-    
-    function scrub(e: MouseEvent, audio: HTMLAudioElement, progress: HTMLDivElement) {
-      let scrubTime = e.offsetX / 190 /* width */ * audio.duration;
-      (Array.from(svg.children) as HTMLElement[]).forEach(node => node.classList.remove('active'));
-      lastIndex = Math.round(scrubTime / audio.duration * 47);
-      
-      (Array.from(svg.children) as HTMLElement[]).slice(0,lastIndex+1).forEach(node => node.classList.add('active'));
-      audio.currentTime = scrubTime;
-    }
-    
-    audio.style.display = 'none';
-    audio.append(source);
-    div.append(audio);
-  };
-
-  if(!uploading) {
-    let onClick = () => {
-      if(!promise) {
-        if(!preloader) {
-          preloader = new ProgressivePreloader(null, true);
-        }
-        
-        promise = appDocsManager.downloadDoc(doc.id);
-        preloader.attach(downloadDiv, true, promise);
-        
-        promise.then(() => {
-          downloadDiv.classList.remove('downloading');
-          downloadDiv.remove();
-          div.removeEventListener('click', onClick);
-          onLoad();
-        });
-        
-        downloadDiv.classList.add('downloading');
-      } else {
-        downloadDiv.classList.remove('downloading');
-        promise.cancel();
-        promise = null;
-      }
-    };
-    
-    div.addEventListener('click', onClick);
-    div.click();
-  } else {
-    onLoad();
-  }
-  
-  return div;
+export function wrapAudio(doc: MTDocument, withTime = false, mid?: number): HTMLElement {
+  let elem = new AudioElement();
+  elem.setAttribute('doc-id', doc.id);
+  elem.setAttribute('with-time', '' + +withTime);
+  elem.setAttribute('message-id', '' + mid);
+  return elem;
 }
 
 function wrapMediaWithTail(photo: any, message: {mid: number, message: string}, container: HTMLDivElement, boxWidth: number, boxHeight: number, isOut: boolean) {
@@ -679,6 +285,7 @@ function wrapMediaWithTail(photo: any, message: {mid: number, message: string}, 
   defs.innerHTML = `<clipPath id="${clipID}">${clipPathHTML}</clipPath>`;
   
   container.style.width = parseInt(container.style.width) - 9 + 'px';
+  container.classList.add('with-tail');
 
   svg.append(defs, foreignObject);
   container.append(svg);
@@ -747,7 +354,7 @@ export function wrapPhoto(photoID: any, message: any, container: HTMLDivElement,
   return photo.downloaded ? load() : lazyLoadQueue.push({div: container, load: load, wasSeen: true});
 }
 
-export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, onlyThumb, emoji}: {
+export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, onlyThumb, emoji, width, height, withThumb, loop}: {
   doc: MTDocument, 
   div: HTMLDivElement, 
   middleware?: () => boolean, 
@@ -755,9 +362,21 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
   group?: string, 
   play?: boolean, 
   onlyThumb?: boolean,
-  emoji?: string
+  emoji?: string,
+  width?: number,
+  height?: number,
+  withThumb?: boolean,
+  loop?: boolean
 }) {
   let stickerType = doc.sticker;
+
+  if(!width) {
+    width = !emoji ? 200 : undefined;
+  }
+
+  if(!height) {
+    height = !emoji ? 200 : undefined;
+  }
 
   if(stickerType == 2 && !LottieLoader.loaded) {
     //LottieLoader.loadLottie();
@@ -805,7 +424,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
       if(onlyThumb) {
         return Promise.resolve();
       }
-    } else if(!onlyThumb && stickerType == 2) {
+    } else if(!onlyThumb && stickerType == 2 && withThumb && toneIndex <= 0) {
       let img = new Image();
       let load = () => appDocsManager.downloadDocThumb(doc, thumb.type).then(url => {
         if(!img.parentElement || (middleware && !middleware())) return;
@@ -866,47 +485,32 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
 
         let animation = await LottieLoader.loadAnimationWorker/* loadAnimation */({
           container: div,
-          loop: !emoji,
-          autoplay: true,
+          loop: loop && !emoji,
+          autoplay: play,
           animationData: JSON.parse(json),
-          width: !emoji ? 200 : undefined,
-          height: !emoji ? 200 : undefined
+          width,
+          height
         }, group, toneIndex);
 
-        animation.addListener('ready', () => {
+        animation.addListener('firstFrame', () => {
           if(div.firstElementChild && div.firstElementChild.tagName == 'IMG') {
             div.firstElementChild.remove();
+          } else {
+            animation.canvas.classList.add('fade-in');
           }
-        });
+        }, true);
+
+        if(emoji) {
+          div.addEventListener('click', () => {
+            let animation = LottieLoader.getAnimation(div);
+
+            if(animation.paused) {
+              animation.restart();
+            }
+          });
+        }
 
         //console.timeEnd('render sticker' + doc.id);
-
-        /* div.addEventListener('mouseover', (e) => {
-          let animation = LottieLoader.getAnimation(div, group);
-          
-          if(animation) {
-            //console.log('sticker hover', animation, div);
-            
-            // @ts-ignore
-            animation.loop = true;
-            
-            // @ts-ignore
-            if(animation.currentFrame == animation.totalFrames - 1) {
-              animation.goToAndPlay(0, true);
-            } else {
-              animation.play();
-            }
-            
-            div.addEventListener('mouseout', () => {
-              // @ts-ignore
-              animation.loop = false;
-            }, {once: true});
-          }
-        });
-        
-        if(play && false) {
-          animation.play();
-        } */
       });
       
       reader.readAsArrayBuffer(blob);
@@ -914,7 +518,8 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
       let img = new Image();
 
       if(!downloaded && (!div.firstElementChild || div.firstElementChild.tagName != 'IMG')) {
-        img.style.opacity = '' + 0;
+        img.classList.add('fade-in-transition');
+        img.style.opacity = '0';
 
         img.addEventListener('load', () => {
           window.requestAnimationFrame(() => {
@@ -959,7 +564,7 @@ export function wrapReply(title: string, subtitle: string, message?: any, isPinn
   if(media) {
     replySubtitle.innerHTML = message.rReply;
 
-    console.log('wrap reply', media);
+    //console.log('wrap reply', media);
     
     if(media.photo || (media.document && ['video'].indexOf(media.document.type) !== -1)) {
       let replyMedia = document.createElement('div');
@@ -1015,7 +620,7 @@ export function wrapAlbum({groupID, attachmentDiv, middleware, uploading, lazyLo
   let spacing = 2;
   let layouter = new Layouter(items.map(i => ({w: i.size.w, h: i.size.h})), mediaSizes.active.album.width, 100, spacing);
   let layout = layouter.layout();
-  console.log('layout:', layout, items.map(i => ({w: i.size.w, h: i.size.h})));
+  //console.log('layout:', layout, items.map(i => ({w: i.size.w, h: i.size.h})));
 
   /* let borderRadius = window.getComputedStyle(realParent).getPropertyValue('border-radius');
   let brSplitted = fillPropertyValue(borderRadius); */
@@ -1096,7 +701,7 @@ export function wrapAlbum({groupID, attachmentDiv, middleware, uploading, lazyLo
 }
 
 export function wrapPoll(pollID: string, mid: number) {
-  let elem = new PollElement();
+  const elem = new PollElement();
   elem.setAttribute('poll-id', pollID);
   elem.setAttribute('message-id', '' + mid);
   return elem;

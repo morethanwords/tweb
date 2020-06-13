@@ -16,6 +16,8 @@ import appDocsManager from "../lib/appManagers/appDocsManager";
 import ProgressivePreloader from "./preloader";
 import Config from "../lib/config";
 import { MTDocument } from "../types";
+import animationIntersector from "./animationIntersector";
+import appSidebarRight from "../lib/appManagers/appSidebarRight";
 
 export const EMOTICONSSTICKERGROUP = 'emoticons-dropdown';
 
@@ -23,15 +25,23 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
   appImManager: AppImManager, appMessagesManager: AppMessagesManager, 
   messageInput: HTMLDivElement, toggleEl: HTMLButtonElement, btnSend: HTMLButtonElement) => {
   let dropdown = pageEl.querySelector('.emoji-dropdown') as HTMLDivElement;
+  
+  dropdown.style.display = '';
+  void dropdown.offsetLeft; // reflow
   dropdown.classList.add('active'); // need
 
   let lazyLoadQueue = new LazyLoadQueue(5);
+
+  const searchButton = dropdown.querySelector('.emoji-tabs-search');
+  searchButton.addEventListener('click', () => {
+    appSidebarRight.stickersTab.init();
+  });
 
   let container = pageEl.querySelector('.emoji-container .tabs-container') as HTMLDivElement;
   let tabs = pageEl.querySelector('.emoji-dropdown .emoji-tabs') as HTMLUListElement;
   let tabID = -1;
   horizontalMenu(tabs, container, (id) => {
-    lottieLoader.checkAnimations(true, EMOTICONSSTICKERGROUP);
+    animationIntersector.checkAnimations(true, EMOTICONSSTICKERGROUP);
 
     tabID = id;
   }, () => {
@@ -41,11 +51,10 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
       gifsInit();
     }
 
-    lottieLoader.checkAnimations(false, EMOTICONSSTICKERGROUP);
+    animationIntersector.checkAnimations(false, EMOTICONSSTICKERGROUP);
   });
 
-  (tabs.firstElementChild.children[0] as HTMLLIElement).click(); // set emoji tab
-  (tabs.lastElementChild as HTMLSpanElement).style.cssText = 'width: 44.1719px; transform: translateX(88.5781px);'; // мы снова встретились))))))
+  (tabs.firstElementChild.children[1] as HTMLLIElement).click(); // set emoji tab
 
   let emoticonsMenuOnClick = (menu: HTMLUListElement, heights: number[], scroll: Scrollable, menuScroll?: Scrollable) => {
     menu.addEventListener('click', function(e) {
@@ -67,7 +76,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
       scroll.container.scrollTop = y;
 
       setTimeout(() => {
-        lottieLoader.checkAnimations(true, EMOTICONSSTICKERGROUP);
+        animationIntersector.checkAnimations(true, EMOTICONSSTICKERGROUP);
       }, 100);
 
       /* window.requestAnimationFrame(() => {
@@ -177,7 +186,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
     let heights: number[] = [0];
 
     let prevCategoryIndex = 1;
-    let menu = contentEmojiDiv.nextElementSibling.firstElementChild as HTMLUListElement;
+    let menu = contentEmojiDiv.previousElementSibling.firstElementChild as HTMLUListElement;
     let emojiScroll = new Scrollable(contentEmojiDiv, 'y', 'EMOJI', null);
     emojiScroll.container.addEventListener('scroll', (e) => {
       prevCategoryIndex = emoticonsContentOnScroll(menu, heights, prevCategoryIndex, emojiScroll.container);
@@ -231,10 +240,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
     target = findUpTag(target, 'DIV');
     
     let fileID = target.dataset.docID;
-    let document = appDocsManager.getDoc(fileID);
-    if(document._ != 'documentEmpty') {
-      appMessagesManager.sendFile(appImManager.peerID, document, {isMedia: true});
-      appImManager.chatInputC.onMessageSent(false);
+    if(appImManager.chatInputC.sendMessageWithDocument(fileID)) {
       dropdown.classList.remove('active');
       toggleEl.classList.remove('active');
     } else {
@@ -246,7 +252,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
     let contentStickersDiv = document.getElementById('content-stickers') as HTMLDivElement;
     //let stickersDiv = contentStickersDiv.querySelector('.os-content') as HTMLDivElement;
 
-    let menuWrapper = contentStickersDiv.nextElementSibling as HTMLDivElement;
+    let menuWrapper = contentStickersDiv.previousElementSibling as HTMLDivElement;
     let menu = menuWrapper.firstElementChild.firstElementChild as HTMLUListElement;
 
     let menuScroll = new Scrollable(menuWrapper, 'x');
@@ -345,7 +351,7 @@ const initEmoticonsDropdown = (pageEl: HTMLDivElement,
     let prevCategoryIndex = 0;
     let stickersScroll = new Scrollable(contentStickersDiv, 'y', 'STICKERS', undefined, undefined, 2);
     stickersScroll.container.addEventListener('scroll', (e) => {
-      lottieLoader.checkAnimations(false, EMOTICONSSTICKERGROUP);
+      animationIntersector.checkAnimations(false, EMOTICONSSTICKERGROUP);
 
       prevCategoryIndex = emoticonsContentOnScroll(menu, heights, prevCategoryIndex, stickersScroll.container, menuScroll);
     });

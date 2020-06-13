@@ -1,18 +1,20 @@
-import { isInDOM } from "./utils";
-import { isApple } from "./config";
+import { isApple, mediaSizes, isSafari } from "./config";
+import { logger, LogLevels } from "./polyfill";
+import animationIntersector from "../components/animationIntersector";
 
 let convert = (value: number) => {
 	return Math.round(Math.min(Math.max(value, 0), 1) * 255);
 };
 
-type RLottiePlayerListeners = 'enterFrame' | 'ready';
+type RLottiePlayerListeners = 'enterFrame' | 'ready' | 'firstFrame' | 'cached';
 type RLottieOptions = {
   container: HTMLElement, 
   autoplay?: boolean, 
   animationData: any, 
   loop?: boolean, 
   width?: number,
-  height?: number
+  height?: number,
+  group?: string
 };
 
 export class RLottiePlayer {
@@ -25,11 +27,11 @@ export class RLottiePlayer {
 
   public worker: QueryableWorker;
   
-  private width = 0;
-  private height = 0;
+  public width = 0;
+  public height = 0;
 
   public listeners: Partial<{
-    [k in RLottiePlayerListeners]: (res: any) => void
+    [k in RLottiePlayerListeners]: Array<{callback: (res: any) => void, once?: true}>
   }> = {};
   public listenerResults: Partial<{
     [k in RLottiePlayerListeners]: any
@@ -40,16 +42,29 @@ export class RLottiePlayer {
   public context: CanvasRenderingContext2D;
 
   public paused = true;
+  //public paused = false;
   public direction = 1;
   public speed = 1;
   public autoplay = true;
   public loop = true;
+  public group = '';
 
   private frInterval: number;
   private frThen: number;
   private rafId: number;
 
+  //private caching = false;
+  //private removed = false;
+
+  private frames: {[frameNo: string]: Uint8ClampedArray} = {};
+  public imageData: ImageData;
+  public clamped: Uint8ClampedArray;
+  public cachingDelta = 0;
+
   //private playedTimes = 0;
+
+  private currentMethod: RLottiePlayer['mainLoopForwards'] | RLottiePlayer['mainLoopBackwards'];
+  private frameListener: () => void;
 
   constructor({el, worker, options}: {
     el: HTMLElement,
@@ -66,39 +81,84 @@ export class RLottiePlayer {
         this[i] = options[i];
       }
     }
-
-    //console.log("RLottiePlayer width:", this.width, this.height, options);
-
-    if(window.devicePixelRatio > 1) {
-      if(isApple) {
-        this.width *= window.devicePixelRatio;
-        this.height *= window.devicePixelRatio;
-      } else {
-        this.width *= (window.devicePixelRatio - 1.5);
-        this.height *= (window.devicePixelRatio - 1.5);
+    
+    //this.cachingEnabled = true;//this.width < 100 && this.height < 100;
+    if(window.devicePixelRatio > 1 && this.width > 100 && this.height > 100) {
+      if(isApple || !mediaSizes.isMobile) {
+        /* this.width = Math.round(this.width * (window.devicePixelRatio - 1));
+        this.height = Math.round(this.height * (window.devicePixelRatio - 1)); */
+        this.width = Math.round(this.width * window.devicePixelRatio);
+        this.height = Math.round(this.height * window.devicePixelRatio);
+      } else if(window.devicePixelRatio > 2.5) {
+        this.width = Math.round(this.width * (window.devicePixelRatio - 1.5));
+        this.height = Math.round(this.height * (window.devicePixelRatio - 1.5));
       }
     }
 
+    // проверка на размер уже после скейлинга, сделано для попапа и сайдбарfа, где стикеры 80х80 и 68х68, туда нужно 75%
+    if(isApple && this.width > 100 && this.height > 100) {
+      this.cachingDelta = 2; //2 // 50%
+    } else if(this.width < 100 && this.height < 100) {
+      this.cachingDelta = Infinity; // 100%
+    } else {
+      this.cachingDelta = 4; // 75%
+    }
+
+    // if(isApple) {
+    //   this.cachingDelta = 0; //2 // 50%
+    // }
+
+    /* this.width *= 0.8;
+    this.height *= 0.8; */
+    
+    //console.log("RLottiePlayer width:", this.width, this.height, options);
     this.canvas = document.createElement('canvas');
     this.canvas.classList.add('rlottie');
     this.canvas.width = this.width;
     this.canvas.height = this.height;
     this.context = this.canvas.getContext('2d');
+
+    this.clamped = new Uint8ClampedArray(this.width * this.height * 4);
+    this.imageData = new ImageData(this.width, this.height);
   }
 
-  public addListener(name: RLottiePlayerListeners, callback: (res?: any) => void) {
-    if(this.listenerResults.hasOwnProperty(name)) return Promise.resolve(this.listenerResults[name]);
-    this.listeners[name] = callback;
+  public clearCache() {
+    this.frames = {};
+  }
+
+  public addListener(name: RLottiePlayerListeners, callback: (res?: any) => void, once?: true) {
+    (this.listeners[name] ?? (this.listeners[name] = [])).push({callback, once});
+
+    if(this.listenerResults.hasOwnProperty(name)) {
+      callback(this.listenerResults[name]);
+
+      if(once) {
+        this.removeListener(name, callback);
+      }
+    }
+  }
+
+  public removeListener(name: RLottiePlayerListeners, callback: (res?: any) => void) {
+    if(this.listeners[name]) {
+      this.listeners[name].findAndSplice(l => l.callback == callback);
+    }
   }
 
   public setListenerResult(name: RLottiePlayerListeners, value?: any) {
     this.listenerResults[name] = value;
     if(this.listeners[name]) {
-      this.listeners[name](value);
+      this.listeners[name].forEach(listener => {
+        listener.callback(value);
+
+        if(listener.once) {
+          this.removeListener(name, listener.callback);
+        }
+      });
     }
   }
 
   public sendQuery(methodName: string, ...args: any[]) {
+    //console.trace('RLottie sendQuery:', methodName);
     this.worker.sendQuery(methodName, this.reqId, ...args);
   }
 
@@ -113,6 +173,8 @@ export class RLottiePlayer {
   public play() {
     if(!this.paused) return;
 
+    //console.log('RLOTTIE PLAY' + this.reqId);
+
     this.paused = false;
     this.setMainLoop();
   }
@@ -121,18 +183,22 @@ export class RLottiePlayer {
     if(this.paused) return;
 
     this.paused = true;
-    window.cancelAnimationFrame(this.rafId);
+    clearTimeout(this.rafId);
+    //window.cancelAnimationFrame(this.rafId);
   }
 
-  public stop() {
+  public stop(renderFirstFrame = true) {
     this.pause();
 
     this.curFrame = this.direction == 1 ? 0 : this.frameCount;
-    this.sendQuery('renderFrame', this.curFrame);
+    if(renderFirstFrame) {
+      this.requestFrame(this.curFrame);
+      //this.sendQuery('renderFrame', this.curFrame);
+    }
   }
 
   public restart() {
-    this.stop();
+    this.stop(false);
     this.play();
   }
 
@@ -152,84 +218,194 @@ export class RLottiePlayer {
     }
   }
 
-  public destroy() {
+  public remove() {
+    //alert('remove');
     lottieLoader.onDestroy(this.reqId);
     this.pause();
     this.sendQuery('destroy');
+    //this.removed = true;
   }
 
-  public renderFrame(frame: Uint8ClampedArray, frameNo: number) {
+  public renderFrame2(frame: Uint8ClampedArray, frameNo: number) {
+    /* this.setListenerResult('enterFrame', frameNo);
+    return; */
+
     try {
-      this.context.putImageData(new ImageData(frame, this.width, this.height), 0, 0/* , 0, 0, this.canvas.width, this.canvas.height */);
+      this.imageData.data.set(frame);
+
+      //this.context.putImageData(new ImageData(frame, this.width, this.height), 0, 0);
+      this.context.putImageData(this.imageData, 0, 0);
     } catch(err) {
-      console.error('RLottiePlayer renderFrame error:', err, frame, this.width, this.height);
+      console.error('RLottiePlayer renderFrame error:', err/* , frame */, this.width, this.height);
       this.autoplay = false;
       this.pause();
+      return;
     }
     
+    //console.log('set result enterFrame', frameNo);
     this.setListenerResult('enterFrame', frameNo);
   }
 
-  private mainLoop(method: RLottiePlayer['mainLoopForwards'] | RLottiePlayer['mainLoopBackwards']) {
-    let r = () => {
-      if(this.paused) {
-        return;
+  public renderFrame(frame: Uint8ClampedArray, frameNo: number) {
+    //console.log('renderFrame', frameNo, this);
+    if(this.cachingDelta && (frameNo % this.cachingDelta || !frameNo) && !this.frames[frameNo]) {
+      this.frames[frameNo] = new Uint8ClampedArray(frame);//frame;
+    }
+
+    /* if(!this.listenerResults.hasOwnProperty('cached')) {
+      this.setListenerResult('enterFrame', frameNo);
+      if(frameNo == (this.frameCount - 1)) {
+        this.setListenerResult('cached');
       }
 
+      return;
+    } */
+
+    if(this.frInterval) {
       const now = Date.now(), delta = now - this.frThen;
-      if(delta > this.frInterval) {
-        this.frThen = now - (delta % this.frInterval);
-        
-        const canContinue = method();
-        if(!canContinue && !this.loop && this.autoplay) {
-          this.autoplay = false;
-        }
+      //console.log(`renderFrame delta${this.reqId}:`, this, delta, this.frInterval);
+
+      if(delta < 0) {
+        if(this.rafId) clearTimeout(this.rafId);
+        return this.rafId = setTimeout(() => {
+          this.renderFrame2(frame, frameNo);
+        }, this.frInterval > -delta ? -delta % this.frInterval : this.frInterval);
+        //await new Promise((resolve) => setTimeout(resolve, -delta % this.frInterval));
       }
+    }
 
-      this.rafId = window.requestAnimationFrame(r);
-    };
+    this.renderFrame2(frame, frameNo);
+  }
 
-    //this.rafId = window.requestAnimationFrame(r);
-    r();
+  public requestFrame(frameNo: number) {
+    if(this.frames[frameNo]) {
+      this.renderFrame(this.frames[frameNo], frameNo);
+    } else if(isSafari) {
+      this.sendQuery('renderFrame', frameNo);
+    } else {
+      this.sendQuery('renderFrame', frameNo, this.clamped);
+    }
   }
 
   private mainLoopForwards() {
-    this.sendQuery('renderFrame', this.curFrame++);
+    this.requestFrame(this.curFrame++);
     if(this.curFrame >= this.frameCount) {
       //this.playedTimes++;
 
-      if(!this.loop) return false;
+      if(!this.loop) {
+        this.pause();
+        return false;
+      }
 
       this.curFrame = 0;
     }
 
     return true;
-  };
+  }
   
   private mainLoopBackwards() {
-    this.sendQuery('renderFrame', this.curFrame--);
+    this.requestFrame(this.curFrame--);
     if(this.curFrame < 0) {
       //this.playedTimes++;
 
-      if(!this.loop) return false;
+      if(!this.loop) {
+        this.pause();
+        return false;
+      }
 
       this.curFrame = this.frameCount - 1;
     }
 
     return true;
-  };
+  }
 
   public setMainLoop() {
-    window.cancelAnimationFrame(this.rafId);
+    //window.cancelAnimationFrame(this.rafId);
+    clearTimeout(this.rafId);
 
     this.frInterval = 1000 / this.fps / this.speed;
-    this.frThen = Date.now();
+    this.frThen = Date.now() - this.frInterval;
 
-    //console.trace('setMainLoop', this.frInterval, this.direction, this);
-  
+    //console.trace('setMainLoop', this.frInterval, this.direction, this, JSON.stringify(this.listenerResults), this.listenerResults);
+
     const method = (this.direction == 1 ? this.mainLoopForwards : this.mainLoopBackwards).bind(this);
-    this.mainLoop(method);
-  };
+    this.currentMethod = method;
+    //this.frameListener && this.removeListener('enterFrame', this.frameListener);
+
+    //setTimeout(() => {
+      //this.addListener('enterFrame', this.frameListener);
+    //}, 0);
+
+    if(this.frameListener && this.listenerResults.hasOwnProperty('enterFrame')) {
+      this.frameListener();
+    }
+  
+    //this.mainLoop(method);
+    //this.r(method);
+    //method();
+  }
+
+  public async onLoad(frameCount: number, fps: number) {
+    this.curFrame = this.direction == 1 ? 0 : frameCount - 1;
+    this.frameCount = frameCount;
+    this.fps = fps;
+    this.frInterval = 1000 / this.fps / this.speed;
+    this.frThen = Date.now() - this.frInterval;
+    //this.sendQuery('renderFrame', 0);
+    
+    // Кешировать сразу не получится, рендер стикера (тайгер) занимает 519мс, 
+    // если рендерить 75% с получением каждого кадра из воркера, будет 475мс, т.е. при 100% было бы 593мс, потеря на передаче 84мс. 
+
+    /* console.time('cache' + this.reqId);
+    for(let i = 0; i < frameCount; ++i) {
+      //if(this.removed) return;
+      
+      if(i % 4) {
+        await new Promise((resolve) => {
+          delete this.listenerResults.enterFrame;
+          this.addListener('enterFrame', resolve, true);
+          this.requestFrame(i);
+        });  
+      }
+    }
+    
+    console.timeEnd('cache' + this.reqId); */
+    //console.log('cached');
+    //return;
+
+    this.requestFrame(0);
+    this.setListenerResult('ready');
+    this.addListener('enterFrame', () => {
+      this.setListenerResult('firstFrame');
+
+      this.el.appendChild(this.canvas);
+
+      //console.log('enterFrame firstFrame');
+ 
+      //let lastTime = this.frThen;
+      this.frameListener = () => {
+        if(this.paused) {
+          return;
+        }
+
+        const time = Date.now();
+        //console.log(`enterFrame handle${this.reqId}`, time, (time - lastTime), this.frInterval);
+        /* if(Math.round(time - lastTime + this.frInterval * 0.25) < Math.round(this.frInterval)) {
+          return;
+        } */
+
+        //lastTime = time;
+
+        this.frThen = time + this.frInterval;
+        const canContinue = this.currentMethod();
+        if(!canContinue && !this.loop && this.autoplay) {
+          this.autoplay = false;
+        }
+      };
+
+      this.addListener('enterFrame', this.frameListener);
+    }, true);
+  }
 }
 
 class QueryableWorker {
@@ -243,14 +419,20 @@ class QueryableWorker {
     }
 
     this.worker.onmessage = (event) => {
+      //return;
+      //console.log('worker onmessage', event.data);
       if(event.data instanceof Object &&
         event.data.hasOwnProperty('queryMethodListener') &&
         event.data.hasOwnProperty('queryMethodArguments')) {
-        this.listeners[event.data.queryMethodListener].apply(this, event.data.queryMethodArguments);
+        /* if(event.data.queryMethodListener == 'frame') {
+          return;
+        } */
+
+        this.listeners[event.data.queryMethodListener](...event.data.queryMethodArguments);
       } else {
         this.defaultListener.call(this, event.data);
       }
-    }
+    };
   }
 
   public postMessage(message: any) {
@@ -270,10 +452,29 @@ class QueryableWorker {
   }
 
   public sendQuery(queryMethod: string, ...args: any[]) {
-    this.worker.postMessage({
-      'queryMethod': queryMethod,
-      'queryMethodArguments': args
-    });
+    var args = Array.prototype.slice.call(arguments, 1);
+    if(isSafari) {
+      this.worker.postMessage({
+        'queryMethod': queryMethod,
+        'queryMethodArguments': args
+      });
+    } else {
+      var transfer = [];
+      for(var i = 0; i < args.length; i++) {
+        if(args[i] instanceof ArrayBuffer) {
+          transfer.push(args[i]);
+        }
+  
+        if(args[i].buffer && args[i].buffer instanceof ArrayBuffer) {
+          transfer.push(args[i].buffer);
+        }
+      }
+  
+      this.worker.postMessage({
+        'queryMethod': queryMethod,
+        'queryMethodArguments': args
+      }, transfer);
+    }
   }
 }
 
@@ -313,37 +514,20 @@ class LottieLoader {
 
   private workersLimit = 4;
   private players: {[reqId: number]: RLottiePlayer} = {};
-  private byGroups: {[group: string]: RLottiePlayer[]} = {};
 
   private workers: QueryableWorker[] = [];
   private curWorkerNum = 0;
 
-  private observer: IntersectionObserver;
-  private visible: Set<RLottiePlayer> = new Set();
+  private log = logger('LOTTIE', LogLevels.error);
 
-  private debug = true;
-
-  constructor() {
-    this.observer = new IntersectionObserver((entries) => {
-      for(const entry of entries) {
-        const target = entry.target;
-
-        for(const group in this.byGroups) {
-          const player = this.byGroups[group].find(p => p.el == target);
-          if(player) {
-            if(entry.isIntersecting) {
-              this.visible.add(player);
-              this.checkAnimation(player, false);
-            } else {
-              this.visible.delete(player);
-              this.checkAnimation(player, true);
-            }
-
-            break;
-          }
-        }
+  public getAnimation(element: HTMLElement) {
+    for(let i in this.players) {
+      if(this.players[i].el == element) {
+        return this.players[i];
       }
-    });
+    }
+
+    return null;
   }
 
   public loadLottieWorkers() {
@@ -358,14 +542,14 @@ class LottieLoader {
         const worker = this.workers[i] = new QueryableWorker('rlottie.worker.js');
 
         worker.addListener('ready', () => {
-          console.log('worker #' + i + ' ready');
+          this.log('worker #' + i + ' ready');
 
           worker.addListener('frame', onFrame);
           worker.addListener('loaded', onPlayerLoaded);
 
           --remain;
           if(!remain) {
-            console.log('workers ready');
+            this.log('workers ready');
             resolve();
             this.loaded = true;
           }
@@ -412,7 +596,7 @@ class LottieLoader {
   }
 
   public async loadAnimationWorker(params: RLottieOptions, group = '', toneIndex = -1) {
-    params.autoplay = true;
+    //params.autoplay = true;
 
     if(toneIndex >= 1 && toneIndex <= 5) {
       this.applyReplacements(params.animationData, toneIndex);
@@ -431,95 +615,49 @@ class LottieLoader {
       throw new Error('No size for sticker!');
     }
 
-    const player = this.initPlayer(params.container, params);
+    params.group = group;
 
-    (this.byGroups[group] ?? (this.byGroups[group] = [])).push(player);
+    const player = this.initPlayer(params.container, params);
+    animationIntersector.addAnimation(player, group);
 
     return player;
-  }
-
-  public checkAnimations(blurred?: boolean, group?: string, destroy = false) {
-    const groups = group /* && false */ ? [group] : Object.keys(this.byGroups);
-
-    if(group && !this.byGroups[group]) {
-      console.warn('no animation group:', group);
-      this.byGroups[group] = [];
-      //return;
-    }
-
-    for(const group of groups) {
-      const animations = this.byGroups[group];
-
-      animations.forEach(player => {
-        this.checkAnimation(player, blurred, destroy);
-      });
-    }
-  }
-
-  public checkAnimation(player: RLottiePlayer, blurred = false, destroy = false) {
-    if(destroy || (!isInDOM(player.el) && player.listenerResults.hasOwnProperty('ready'))) {
-      //console.log('destroy animation');
-      player.destroy();
-      return;
-    }
-
-    if(blurred) {
-      if(!player.paused) {
-        this.debug && console.log('pause animation', player);
-        player.pause();
-      }
-    } else if(player.paused && this.visible.has(player) && player.autoplay) {
-      this.debug && console.log('play animation', player);
-      player.play();
-    }
   }
 
   private onPlayerLoaded(reqId: number, frameCount: number, fps: number) {
     const rlPlayer = this.players[reqId];
     if(!rlPlayer) {
-      this.debug && console.warn('onPlayerLoaded on destroyed player:', reqId, frameCount);
+      this.log.warn('onPlayerLoaded on destroyed player:', reqId, frameCount);
       return;
     }
 
-    rlPlayer.el.appendChild(rlPlayer.canvas);
-    
-    rlPlayer.curFrame = rlPlayer.direction == 1 ? 0 : frameCount - 1;
-    rlPlayer.frameCount = frameCount;
-    rlPlayer.fps = fps;
-    rlPlayer.sendQuery('renderFrame', 0);
-    rlPlayer.setListenerResult('ready');
-
-    this.observer.observe(rlPlayer.el);
+    rlPlayer.onLoad(frameCount, fps);
+    //rlPlayer.addListener('firstFrame', () => {
+      //animationIntersector.addAnimation(player, group);
+    //}, true);
   }
 
   private onFrame(reqId: number, frameNo: number, frame: Uint8ClampedArray) {
     const rlPlayer = this.players[reqId];
     if(!rlPlayer) {
-      this.debug && console.warn('onFrame on destroyed player:', reqId, frameNo);
+      this.log.warn('onFrame on destroyed player:', reqId, frameNo);
       return;
     }
 
+    rlPlayer.clamped = frame;
     rlPlayer.renderFrame(frame, frameNo);
   }
 
   public onDestroy(reqId: number) {
-    let player = this.players[reqId];
-    for(let group in this.byGroups) {
-      this.byGroups[group].findAndSplice(p => p == player);
-    }
-
-    delete this.players[player.reqId];
-    this.observer.unobserve(player.el);
-    this.visible.delete(player);
+    delete this.players[reqId];
   }
 
   public destroyWorkers() {
     this.workers.forEach((worker, idx) => {
       worker.terminate();
-      console.log('worker #' + idx + ' terminated');
+      this.log('worker #' + idx + ' terminated');
     });
 
-    console.log('workers destroyed');
+    this.log('workers destroyed');
     this.workers.length = 0;
   }
 

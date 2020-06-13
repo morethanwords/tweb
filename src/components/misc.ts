@@ -18,7 +18,7 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
 
     let clickID = rippleClickID++;
 
-    console.log('ripple mousedown');
+    console.log('ripple drawRipple');
 
     handler = () => {
       let elapsedTime = Date.now() - startTime;
@@ -102,7 +102,8 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
     };
   
     elem.addEventListener('touchstart', (e) => {
-      if(e.touches.length > 1) {
+      console.log('ripple touchstart', e);
+      if(e.touches.length > 1 || ((e.target as HTMLElement).tagName == 'BUTTON' && e.target != elem)) {
         return;
       }
       
@@ -120,20 +121,20 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
         window.removeEventListener('touchend', touchEnd);
       }, {once: true});
     }, {passive: true});
+  } else {
+    elem.addEventListener('mousedown', (e) => {
+      if(elem.dataset.ripple == '0') {
+        return false;
+      } else if(touchStartFired) {
+        touchStartFired = false;
+        return false;
+      }
+  
+      let {clientX, clientY} = e;
+      drawRipple(clientX, clientY);
+      window.addEventListener('mouseup', handler, {once: true});
+    });
   }
-
-  elem.addEventListener('mousedown', (e) => {
-    if(elem.dataset.ripple == '0') {
-      return false;
-    } else if(touchStartFired) {
-      touchStartFired = false;
-      return false;
-    }
-
-    let {clientX, clientY} = e;
-    drawRipple(clientX, clientY);
-    window.addEventListener('mouseup', handler, {once: true});
-  });
 }
 
 const toastEl = document.createElement('div');
@@ -203,6 +204,15 @@ export function putPreloader(elem: Element, returnDiv = false) {
 }
 
 function slideNavigation(tabContent: HTMLElement, prevTabContent: HTMLElement, toRight: boolean) {
+  /* if(toRight) {
+    //prevTabContent.style.filter = `brightness(80%)`;
+    prevTabContent.style.transform = `translateX(-25%)`;
+    tabContent.style.transform = `translateX(20%)`;
+  } else {
+    //tabContent.style.filter = `brightness(80%)`;
+    tabContent.style.transform = `translateX(-25%)`;
+    prevTabContent.style.transform = `translateX(20%)`;
+  } */
   if(toRight) {
     prevTabContent.style.filter = `brightness(80%)`;
     prevTabContent.style.transform = `translateX(-25%)`;
@@ -243,11 +253,13 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?
   const selectTab = async(id: number) => {
     if(id == prevId) return false;
 
+    //console.log('selectTab id:', id);
+
     const p = prevTabContent;
     const tabContent = content.children[id] as HTMLElement;
     const toRight = prevId < id;
     if(prevId != -1) {
-      if(tabs) {
+      if(tabs || content.dataset.slider == 'tabs') {
         slideTabs(tabContent, prevTabContent, toRight);
       } else {
         slideNavigation(tabContent, prevTabContent, toRight);
@@ -267,7 +279,7 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?
         delete hideTimeouts[_prevId];
         
         if(onTransitionEnd) onTransitionEnd();
-      }, transitionTime);
+      }, /* 420 */transitionTime);
     } 
     
     prevId = id;
@@ -275,10 +287,13 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?
   };
 
   if(tabs) {
-    let activeStripe = document.createElement('span');
-    activeStripe.classList.add('menu-horizontal__stripe');
-
-    tabs.append(activeStripe);
+    let activeStripe: HTMLSpanElement;
+    if(!tabs.classList.contains('no-stripe')) {
+      activeStripe = document.createElement('span');
+      activeStripe.classList.add('menu-horizontal__stripe');
+  
+      tabs.append(activeStripe);
+    }
 
     tabs.addEventListener('click', function(e) {
       let target = e.target as HTMLLIElement;
@@ -291,22 +306,33 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?
       
       if(!target) return false;
 
-      let id = whichChild(target);
-      let tabContent = content.children[id] as HTMLDivElement;
+      let id: number;
+      if(target.dataset.tab) {
+        id = +target.dataset.tab;
+        if(id == -1) {
+          return false;
+        }
+      } else {
+        id = whichChild(target);
+      }
+
+      const tabContent = content.children[id] as HTMLDivElement;
 
       if(onClick) onClick(id, tabContent);
       if(target.classList.contains('active') || id == prevId) {
         return false;
       }
       
-      let prev = tabs.querySelector('li.active') as HTMLLIElement;
+      const prev = tabs.querySelector('li.active') as HTMLLIElement;
       prev && prev.classList.remove('active');
 
-      let tabsRect = tabs.getBoundingClientRect();
-      let textRect = target.firstElementChild.getBoundingClientRect();
-      activeStripe.style.cssText = `width: ${textRect.width + (2 * 2)}px; transform: translateX(${textRect.left - tabsRect.left}px);`;
-      //activeStripe.style.transform = `scaleX(${textRect.width}) translateX(${(textRect.left - tabsRect.left) / textRect.width + 0.5}px)`;
-      console.log('tabs click:', tabsRect, textRect);
+      if(activeStripe) {
+        const tabsRect = tabs.getBoundingClientRect();
+        const textRect = target.firstElementChild.getBoundingClientRect();
+        activeStripe.style.cssText = `width: ${textRect.width + (2 * 2)}px; transform: translateX(${textRect.left - tabsRect.left}px);`;
+        //activeStripe.style.transform = `scaleX(${textRect.width}) translateX(${(textRect.left - tabsRect.left) / textRect.width + 0.5}px)`;
+        //console.log('tabs click:', tabsRect, textRect);
+      }
 
       target.classList.add('active');
       selectTab(id);

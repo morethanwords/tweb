@@ -16,6 +16,14 @@ export class OpusDecodeController {
   private sampleRate = 48000;
   private tasks: Array<Task> = [];
   private keepAlive = false;
+  private isPlaySupportedResult: boolean;
+
+  public isPlaySupported() {
+    if(this.isPlaySupportedResult !== undefined) return this.isPlaySupportedResult;
+
+    const audio = document.createElement('audio');
+    return this.isPlaySupportedResult = !!(audio.canPlayType && audio.canPlayType('audio/ogg;').replace(/no/, ''));
+  }
 
   public loadWavWorker() {
     if(this.wavWorker) return;

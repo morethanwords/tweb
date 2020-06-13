@@ -43,6 +43,18 @@ export type MTStickerSetFull = {
   documents: MTDocument[]
 };
 
+export type MTStickerSetCovered = {
+  _: 'stickerSetCovered',
+  set: MTStickerSet,
+  cover: MTDocument
+};
+
+export type MTStickerSetMultiCovered = {
+  _: 'stickerSetMultiCovered',
+  set: MTStickerSet,
+  covers: MTDocument[]
+};
+
 class AppStickersManager {
   private documents: {
     [fileID: string]: MTDocument
@@ -53,6 +65,19 @@ class AppStickersManager {
   } = {};
 
   private saveSetsTimeout: number;
+
+  private hashes: Partial<{
+    featured: Partial<{hash: number, result: (MTStickerSetCovered | MTStickerSetMultiCovered)[]}>,
+    search: {
+      [query: string]: Partial<{
+        hash: number, 
+        result: (MTStickerSetCovered | MTStickerSetMultiCovered)[]
+      }>
+    }
+  }> = {
+    featured: {},
+    search: {}
+  };
   
   constructor() {
     AppStorage.get<{
@@ -71,7 +96,7 @@ class AppStickersManager {
         this.getStickerSet({id: 'emoji', access_hash: ''}, {overwrite: true});
       //}
     });
-  } 
+  }
   
   public saveSticker(doc: MTDocument) {
     if(this.documents[doc.id]) return this.documents[doc.id];
@@ -98,16 +123,10 @@ class AppStickersManager {
   }, params: Partial<{
     overwrite: boolean
   }> = {}) {
-    if(this.stickerSets[set.id] && !params.overwrite) return this.stickerSets[set.id];
+    if(this.stickerSets[set.id] && !params.overwrite && this.stickerSets[set.id].documents?.length) return this.stickerSets[set.id];
     
     let promise = apiManager.invokeApi('messages.getStickerSet', {
-      stickerset: set.id == 'emoji' ? {
-        _: 'inputStickerSetAnimatedEmoji'
-      } : {
-        _: 'inputStickerSetID',
-        id: set.id,
-        access_hash: set.access_hash
-      }
+      stickerset: this.getStickerSetInput(set)
     });
     
     let res = await promise;
@@ -145,51 +164,55 @@ class AppStickersManager {
   }
   
   public saveStickerSet(res: {
-    _: "messages.stickerSet",
+    //_: "messages.stickerSet",
     set: MTStickerSet,
     packs: any[],
     documents: MTDocument[]
   }, id: string) {
-    //console.log('stickers save set', res);
-    
-    this.stickerSets[id] = {
+    //console.log('stickers save set', res);w
+
+    const newSet = {
       set: res.set,
       packs: res.packs,
       documents: res.documents
     };
+    
+    if(this.stickerSets[id]) {
+      Object.assign(this.stickerSets[id], newSet);
+    } else {
+      this.stickerSets[id] = newSet;
+    }
 
     this.saveStickers(res.documents);
     
     //console.log('stickers wrote', this.stickerSets);
     if(this.saveSetsTimeout) return;
     this.saveSetsTimeout = setTimeout(() => {
+      const savedSets: {[id: string]: MTStickerSetFull} = {};
+      for(const id in this.stickerSets) {
+        const set = this.stickerSets[id];
+        if(set.set.installed_date) {
+          savedSets[id] = set;
+        }
+      }
+
       AppStorage.set({
-        stickerSets: this.stickerSets
+        stickerSets: savedSets
       });
 
       this.saveSetsTimeout = 0;
-    }, 0);
-    
-    
-    /* AppStorage.get('stickerSets').then((sets: any) => {
-      this.stickerSets = sets;
-      console.log('stickers got', this.stickerSets);
-    }); */
+    }, 100);
   }
 
   public getStickerSetThumb(stickerSet: MTStickerSet) {
-    let thumb = stickerSet.thumb;
-    let dcID = stickerSet.thumb_dc_id;
+    const thumb = stickerSet.thumb;
+    const dcID = stickerSet.thumb_dc_id;
 
-    let isAnimated = stickerSet.pFlags?.animated;
+    const isAnimated = stickerSet.pFlags?.animated;
 
-    let promise = apiFileManager.downloadFile(dcID, {
+    const promise = apiFileManager.downloadFile(dcID, {
       _: 'inputStickerSetThumb',
-      stickerset: {
-        _: 'inputStickerSetID',
-        id: stickerSet.id,
-        access_hash: stickerSet.access_hash
-      },
+      stickerset: this.getStickerSetInput(stickerSet),
       volume_id: thumb.location.volume_id,
       local_id: thumb.location.local_id
     }, thumb.size, {
@@ -198,6 +221,105 @@ class AppStickersManager {
     });
 
     return promise;
+  }
+
+  public getStickerSetInput(set: {id: string, access_hash: string}) {
+    return set.id == 'emoji' ? {
+      _: 'inputStickerSetAnimatedEmoji'
+    } : {
+      _: 'inputStickerSetID',
+      id: set.id,
+      access_hash: set.access_hash
+    };
+  }
+
+  public async getFeaturedStickers() {
+    const res = (await apiManager.invokeApi('messages.getFeaturedStickers', {
+      hash: this.hashes.featured?.hash || 0
+    })) as {
+      _: 'messages.featuredStickers',
+      unread: string[],
+      count: number,
+      hash: number,
+      sets: (MTStickerSetMultiCovered | MTStickerSetCovered)[]
+    } | {
+      _: 'messages.featuredStickersNotModified',
+      count: number
+    };
+    
+    const hashed = this.hashes.featured ?? (this.hashes.featured = {});
+    if(res._ != 'messages.featuredStickersNotModified') {
+      hashed.hash = res.hash;
+      hashed.result = res.sets;
+    }
+
+    hashed.result.forEach(covered => {
+      this.saveStickerSet({set: covered.set, documents: [], packs: []}, covered.set.id);
+    });
+
+    return hashed.result;
+  }
+
+  public async toggleStickerSet(set: MTStickerSet) {
+    if(set.installed_date) {
+      const res = await apiManager.invokeApi('messages.uninstallStickerSet', {
+        stickerset: this.getStickerSetInput(set)
+      });
+
+      if(res) {
+        delete set.installed_date;
+        return true;
+      }
+    } else {
+      const res = await apiManager.invokeApi('messages.installStickerSet', {
+        stickerset: this.getStickerSetInput(set),
+        archived: false
+      });
+
+      if(res) {
+        set.installed_date = Date.now() / 1000 | 0;
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  public async searchStickerSets(query: string, excludeFeatured = true) {
+    const flags = excludeFeatured ? 1 : 0;
+    const res = await apiManager.invokeApi('messages.searchStickerSets', {
+      flags,
+      exclude_featured: excludeFeatured,
+      q: query,
+      hash: this.hashes.search[query]?.hash || 0
+    }) as {
+      _: 'messages.foundStickerSets',
+      hash: number,
+      sets: Array<MTStickerSetCovered | MTStickerSetMultiCovered>
+    } | {
+      _: 'messages.foundStickerSetsNotModified'
+    };
+
+    const hashed = this.hashes.search[query] ?? (this.hashes.search[query] = {});
+    if(res._ != 'messages.foundStickerSetsNotModified') {
+      hashed.hash = res.hash;
+      hashed.result = res.sets;
+    }
+
+    hashed.result.forEach(covered => {
+      this.saveStickerSet({set: covered.set, documents: [], packs: []}, covered.set.id);
+    });
+
+    const foundSaved: MTStickerSetCovered[] = [];
+    for(let id in this.stickerSets) {
+      const {set} = this.stickerSets[id];
+
+      if(set.title.toLowerCase().includes(query.toLowerCase()) && !hashed.result.find(c => c.set.id == set.id)) {
+        foundSaved.push({_: 'stickerSetCovered', set, cover: null});
+      }
+    }
+
+    return hashed.result.concat(foundSaved);
   }
 
   public async cleanup() { // if logout
