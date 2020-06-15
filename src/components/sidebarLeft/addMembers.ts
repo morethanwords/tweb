@@ -13,11 +13,16 @@ export default class AppAddMembersTab implements SliderTab {
   private peerType: 'channel' | 'chat';
   private peerID: number; // always positive
   private takeOut: (peerIDs: number[]) => void
+  private skippable: boolean;
 
   constructor() {
     this.nextBtn.addEventListener('click', () => {
-      let peerIDs = this.selector.getSelected();
-      
+      if(this.skippable) {
+        this.backBtn.click();
+        return;
+      }
+
+      const peerIDs = this.selector.getSelected();
       if(peerIDs.length) {
         if(this.takeOut) {
           this.takeOut(peerIDs);
@@ -43,13 +48,14 @@ export default class AppAddMembersTab implements SliderTab {
     }
   }
 
-  public init(id: number, type: 'channel' | 'chat', skipable: boolean, takeOut?: AppAddMembersTab['takeOut']) {
+  public init(id: number, type: 'channel' | 'chat', skippable: boolean, takeOut?: AppAddMembersTab['takeOut']) {
     this.peerID = Math.abs(id);
     this.peerType = type;
     this.takeOut = takeOut;
+    this.skippable = skippable;
 
     this.onCloseAfterTimeout();
-    this.selector = new AppSelectPeers(this.contentDiv, skipable ? null : (length) => {
+    this.selector = new AppSelectPeers(this.contentDiv, skippable ? null : (length) => {
       if(length) {
         this.nextBtn.classList.add('is-visible');
       } else {
@@ -60,7 +66,7 @@ export default class AppAddMembersTab implements SliderTab {
     this.nextBtn.innerHTML = '';
     this.nextBtn.disabled = false;
     this.nextBtn.classList.add('tgico-next');
-    if(skipable) {
+    if(skippable) {
       this.nextBtn.classList.add('is-visible');
     } else {
       this.nextBtn.classList.remove('is-visible');

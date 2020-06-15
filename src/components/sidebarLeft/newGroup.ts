@@ -13,7 +13,7 @@ export default class AppNewGroupTab implements SliderTab {
   private canvas = this.container.querySelector('.avatar-edit-canvas') as HTMLCanvasElement;
   private groupNameInput = this.container.querySelector('.new-group-name') as HTMLInputElement;
   private nextBtn = this.container.querySelector('.btn-corner') as HTMLButtonElement;
-  private searchGroup = new SearchGroup('', 'contacts', true, 'new-group-members disable-hover', false);
+  private searchGroup = new SearchGroup(' ', 'contacts', true, 'new-group-members disable-hover', false);
   private uploadAvatar: () => Promise<any> = null;
   private userIDs: number[];
   
@@ -25,16 +25,12 @@ export default class AppNewGroupTab implements SliderTab {
     });
 
     this.groupNameInput.addEventListener('input', () => {
-      let value = this.groupNameInput.value;
-      if(value.length) {
-        this.nextBtn.classList.add('is-visible');
-      } else {
-        this.nextBtn.classList.remove('is-visible');
-      }
+      const value = this.groupNameInput.value;
+      this.nextBtn.classList.toggle('is-visible', !!value.length);
     });
 
     this.nextBtn.addEventListener('click', () => {
-      let title = this.groupNameInput.value;
+      const title = this.groupNameInput.value;
 
       this.nextBtn.disabled = true;
       appChatsManager.createChat(title, this.userIDs).then((chatID) => {
@@ -48,11 +44,11 @@ export default class AppNewGroupTab implements SliderTab {
       });
     });
 
-    let chatsContainer = document.createElement('div');
+    const chatsContainer = document.createElement('div');
     chatsContainer.classList.add('chats-container');
     chatsContainer.append(this.searchGroup.container);
 
-    let scrollable = new Scrollable(chatsContainer);
+    const scrollable = new Scrollable(chatsContainer);
 
     this.contentDiv.append(chatsContainer);
   }
@@ -64,12 +60,13 @@ export default class AppNewGroupTab implements SliderTab {
   public onCloseAfterTimeout() {
     this.searchGroup.clear();
 
-    let ctx = this.canvas.getContext('2d');
+    const ctx = this.canvas.getContext('2d');
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
     this.uploadAvatar = null;
     this.groupNameInput.value = '';
     this.nextBtn.disabled = false;
+    this.searchGroup.clear();
   }
 
   public init(userIDs: number[]) {
