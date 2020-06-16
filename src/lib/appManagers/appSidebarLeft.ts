@@ -210,5 +210,8 @@ export class AppSidebarLeft extends SidebarSlider {
 }
 
 const appSidebarLeft = new AppSidebarLeft();
-(window as any).appSidebarLeft = appSidebarLeft;
+// @ts-ignore
+if(process.env.NODE_ENV != 'production') {
+  (window as any).appSidebarLeft = appSidebarLeft;
+}
 export default appSidebarLeft;

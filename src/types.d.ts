@@ -13,7 +13,7 @@ export type MTDocument = {
   attributes: any[],
   
   thumb?: MTPhotoSize,
-  type?: string,
+  type?: 'gif' | 'sticker' | 'audio' | 'voice' | 'video' | 'round' | 'photo',
   h?: number,
   w?: number,
   file_name?: string,
@@ -31,7 +31,8 @@ export type MTDocument = {
   stickerSetInput?: any,
   stickerThumbConverted?: true,
 
-  animated?: boolean
+  animated?: boolean,
+  supportsStreaming?: boolean
 };
 
 export type MTPhotoSize = {

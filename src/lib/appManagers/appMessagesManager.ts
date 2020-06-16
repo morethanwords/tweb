@@ -225,6 +225,13 @@ export class AppMessagesManager {
           } */
 
           this.saveMessages(messages);
+
+          // FIX FILE_REFERENCE_EXPIRED KOSTIL'1999
+          for(let message of messages) {
+            if(message.media) {
+              this.wrapSingleMessage(message.mid, true);
+            }
+          }
         }
         
         if(allDialogsLoaded) {
@@ -233,6 +240,8 @@ export class AppMessagesManager {
 
         if(dialogs) {
           dialogs.forEachReverse(dialog => {
+            // @ts-ignore
+            //dialog.refetchTopMessage = true;
             this.saveConversation(dialog);
           });
         }
@@ -1239,6 +1248,230 @@ export class AppMessagesManager {
 
     uploaded = true;
     invoke(inputs);
+  }
+
+  public sendOther(peerID: number, inputMedia: any, options: Partial<{
+    replyToMsgID: number,
+    viaBotID: number,
+    reply_markup: any,
+    clearDraft: boolean,
+    queryID: number
+    resultID: number
+  }> = {}) {
+    peerID = appPeersManager.getPeerMigratedTo(peerID) || peerID;
+
+    const messageID = this.tempID--;
+    const randomID = [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)];
+    const randomIDS = bigint(randomID[0]).shiftLeft(32).add(bigint(randomID[1])).toString();
+    const historyStorage = this.historiesStorage[peerID] ?? (this.historiesStorage[peerID] = {count: null, history: [], pending: []});
+    const replyToMsgID = options.replyToMsgID;
+    const isChannel = appPeersManager.isChannel(peerID);
+    const isMegagroup = isChannel && appPeersManager.isMegagroup(peerID);
+    const asChannel = isChannel && !isMegagroup ? true : false;
+
+    let fromID = appUsersManager.getSelf().id;
+    let media;
+    switch(inputMedia._) {
+      case 'inputMediaPoll': {
+        inputMedia.poll.id = messageID;
+        appPollsManager.savePoll(inputMedia.poll, {
+          _: 'pollResults',
+          flags: 4,
+          total_voters: 0,
+          pFlags: {},
+        });
+
+        const {poll, results} = appPollsManager.getPoll('' + messageID);
+        media = {
+          _: 'messageMediaPoll',
+          poll,
+          results
+        };
+
+        break;
+      }
+      /* case 'inputMediaPhoto':
+        media = {
+          _: 'messageMediaPhoto',
+          photo: appPhotosManager.getPhoto(inputMedia.id.id),
+          caption: inputMedia.caption || ''
+        };
+        break;
+
+      case 'inputMediaDocument':
+        var doc = appDocsManager.getDoc(inputMedia.id.id);
+        if(doc.sticker && doc.stickerSetInput) {
+          appStickersManager.pushPopularSticker(doc.id);
+        }
+        media = {
+          _: 'messageMediaDocument',
+          'document': doc,
+          caption: inputMedia.caption || ''
+        };
+        break;
+
+      case 'inputMediaContact':
+        media = {
+          _: 'messageMediaContact',
+          phone_number: inputMedia.phone_number,
+          first_name: inputMedia.first_name,
+          last_name: inputMedia.last_name,
+          user_id: 0
+        };
+        break;
+
+      case 'inputMediaGeoPoint':
+        media = {
+          _: 'messageMediaGeo',
+          geo: {
+            _: 'geoPoint',
+            'lat': inputMedia.geo_point['lat'],
+            'long': inputMedia.geo_point['long']
+          }
+        };
+        break;
+
+      case 'inputMediaVenue':
+        media = {
+          _: 'messageMediaVenue',
+          geo: {
+            _: 'geoPoint',
+            'lat': inputMedia.geo_point['lat'],
+            'long': inputMedia.geo_point['long']
+          },
+          title: inputMedia.title,
+          address: inputMedia.address,
+          provider: inputMedia.provider,
+          venue_id: inputMedia.venue_id
+        };
+        break;
+
+      case 'messageMediaPending':
+        media = inputMedia;
+        break; */
+    }
+
+    let flags = 0;
+    let pFlags: any = {};
+    if(peerID != fromID) {
+      flags |= 2;
+      pFlags.out = true;
+      if(!appUsersManager.isBot(peerID)) {
+        flags |= 1;
+        pFlags.unread = true;
+      }
+    }
+    if(replyToMsgID) {
+      flags |= 8;
+    }
+    if(asChannel) {
+      fromID = 0;
+      pFlags.post = true;
+    } else {
+      flags |= 256;
+    }
+
+    const message: any = {
+      _: 'message',
+      id: messageID,
+      from_id: fromID,
+      to_id: appPeersManager.getOutputPeer(peerID),
+      flags: flags,
+      pFlags: pFlags,
+      date: tsNow(true) + ServerTimeManager.serverTimeOffset,
+      message: '',
+      media: media,
+      random_id: randomIDS,
+      reply_to_msg_id: replyToMsgID,
+      via_bot_id: options.viaBotID,
+      reply_markup: options.reply_markup,
+      views: asChannel && 1,
+      pending: true,
+    };
+
+    let toggleError = (on: boolean) => {
+      /* const historyMessage = this.messagesForHistory[messageID];
+      if (on) {
+        message.error = true
+        if (historyMessage) {
+          historyMessage.error = true
+        }
+      } else {
+        delete message.error
+        if (historyMessage) {
+          delete historyMessage.error
+        }
+      } */
+      $rootScope.$broadcast('messages_pending');
+    };
+
+    message.send = () => {
+      let flags = 0;
+      if(replyToMsgID) {
+        flags |= 1;
+      }
+      if(asChannel) {
+        flags |= 16;
+      }
+      if(options.clearDraft) {
+        flags |= 128;
+      }
+
+      const sentRequestOptions: any = {};
+      if(this.pendingAfterMsgs[peerID]) {
+        sentRequestOptions.afterMessageID = this.pendingAfterMsgs[peerID].messageID;
+      }
+
+      let apiPromise: Promise<any>;
+      if(options.viaBotID) {
+        apiPromise = apiManager.invokeApi('messages.sendInlineBotResult', {
+          flags: flags,
+          peer: appPeersManager.getInputPeerByID(peerID),
+          random_id: randomID,
+          reply_to_msg_id: appMessagesIDsManager.getMessageLocalID(replyToMsgID),
+          query_id: options.queryID,
+          id: options.resultID
+        }, sentRequestOptions);
+      } else {
+        apiPromise = apiManager.invokeApi('messages.sendMedia', {
+          flags: flags,
+          peer: appPeersManager.getInputPeerByID(peerID),
+          media: inputMedia,
+          random_id: randomID,
+          reply_to_msg_id: appMessagesIDsManager.getMessageLocalID(replyToMsgID)
+        }, sentRequestOptions);
+      }
+      apiPromise.then((updates) => {
+        if(updates.updates) {
+          updates.updates.forEach((update: any) => {
+            if(update._ == 'updateDraftMessage') {
+              update.local = true
+            }
+          });
+        }
+
+        apiUpdatesManager.processUpdateMessage(updates);
+      }, (error) => {
+        toggleError(true);
+      }).finally(() => {
+        if(this.pendingAfterMsgs[peerID] === sentRequestOptions) {
+          delete this.pendingAfterMsgs[peerID];
+        }
+      });
+      this.pendingAfterMsgs[peerID] = sentRequestOptions;
+    }
+
+    this.saveMessages([message]);
+    historyStorage.pending.unshift(messageID);
+    $rootScope.$broadcast('history_append', {peerID: peerID, messageID: messageID, my: true});
+
+    setTimeout(message.send, 0);
+
+    /* if(options.clearDraft) {
+      DraftsManager.clearDraft(peerID)
+    } */
+
+    this.pendingByRandomID[randomIDS] = [peerID, messageID];
   }
 
   public cancelPendingMessage(randomID: string) {
@@ -3849,8 +4082,8 @@ export class AppMessagesManager {
     });
   }
 
-  public wrapSingleMessage(msgID: number) {
-    if(this.messagesStorage[msgID]) {
+  public wrapSingleMessage(msgID: number, overwrite = false) {
+    if(this.messagesStorage[msgID] && !overwrite) {
       $rootScope.$broadcast('messages_downloaded', [msgID]);
     } else if(this.needSingleMessages.indexOf(msgID) == -1) {
       this.needSingleMessages.push(msgID);

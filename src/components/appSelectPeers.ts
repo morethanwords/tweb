@@ -98,7 +98,7 @@ export class AppSelectPeers {
         this.list.innerHTML = '';
         this.query = value;
         
-        console.log('selectPeers input:', this.query);
+        //console.log('selectPeers input:', this.query);
         this.getMoreResults();
       }
     });
@@ -135,7 +135,7 @@ export class AppSelectPeers {
     const newOffsetIndex = dialogs[dialogs.length - 1].index || 0;
 
     dialogs = dialogs.filter(d => d.peerID != this.myID);
-    if(!this.offsetIndex) {
+    if(!this.offsetIndex && !this.query) {
       dialogs.unshift({
         peerID: this.myID,
         pFlags: {}
@@ -175,7 +175,7 @@ export class AppSelectPeers {
   }
 
   private renderResults(peerIDs: number[]) {
-    console.log('will renderResults:', peerIDs);
+    //console.log('will renderResults:', peerIDs);
     peerIDs.forEach(peerID => {
       const {dom} = appDialogsManager.addDialog(peerID, this.scrollable, false, false);
       dom.containerEl.insertAdjacentHTML('afterbegin', '<div class="checkbox"><label><input type="checkbox"><span></span></label></div>');

@@ -770,7 +770,7 @@ export class AppDialogsManager {
       //dom.unreadMessagesSpan.innerText = '' + (dialog.unread_count ? formatNumber(dialog.unread_count, 1) : ' ');
       dom.unreadMessagesSpan.innerText = '' + (dialog.unread_count || ' ');
       //dom.unreadMessagesSpan.classList.remove('tgico-pinnedchat');
-      dom.unreadMessagesSpan.classList.add(new Date(dialog.notify_settings.mute_until * 1000) > new Date() ? 
+      dom.unreadMessagesSpan.classList.add(new Date(dialog.notify_settings?.mute_until * 1000) > new Date() ? 
       'unread-muted' : 'unread');
     } else if(dialog.pFlags.pinned && dialog.folder_id == 0) {
       dom.unreadMessagesSpan.classList.remove('unread', 'unread-muted');
@@ -796,7 +796,7 @@ export class AppDialogsManager {
     return this.doms[peerID] || this.domsArchived[peerID];
   }
 
-  public addDialog(_dialog: Dialog | number, container?: HTMLUListElement | Scrollable, drawStatus = true, rippleEnabled = true, onlyFirstName = false) {
+  public addDialog(_dialog: Dialog | number, container?: HTMLUListElement | Scrollable, drawStatus = true, rippleEnabled = true, onlyFirstName = false, meAsSaved = true) {
     let dialog: Dialog;
     
     if(typeof(_dialog) === 'number') {
@@ -820,7 +820,7 @@ export class AppDialogsManager {
     let title = appPeersManager.getPeerTitle(peerID, false, onlyFirstName);
 
     let avatarEl = new AvatarElement();
-    avatarEl.setAttribute('dialog', '1');
+    avatarEl.setAttribute('dialog', meAsSaved ? '1' : '0');
     avatarEl.setAttribute('peer', '' + peerID);
     avatarEl.classList.add('dialog-avatar');
 
@@ -860,7 +860,7 @@ export class AppDialogsManager {
       }
     }
 
-    if(peerID == $rootScope.myID) {
+    if(peerID == $rootScope.myID && meAsSaved) {
       title = onlyFirstName ? 'Saved' : 'Saved Messages';
     } 
 

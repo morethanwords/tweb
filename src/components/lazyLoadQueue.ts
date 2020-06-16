@@ -8,8 +8,7 @@ type LazyLoadElement = {
 
 export default class LazyLoadQueue {
   private lazyLoadMedia: Array<LazyLoadElement> = [];
-  private loadingMedia = 0;
-  private tempID = 0;
+  private inProcess: Array<LazyLoadElement> = [];
 
   private lockPromise: Promise<void> = null;
   private unlockResolve: () => void = null;
@@ -25,28 +24,32 @@ export default class LazyLoadQueue {
     this.observer = new IntersectionObserver(entries => {
       if(this.lockPromise) return;
 
-      for(const entry of entries) {
-        if(entry.isIntersecting) {
-          const target = entry.target as HTMLElement;
+      const intersecting = entries.filter(entry => entry.isIntersecting);
+      intersecting.forEachReverse(entry => {
+        const target = entry.target as HTMLElement;
 
-          this.log('isIntersecting', target);
+        this.log('isIntersecting', target);
 
-          // need for set element first if scrolled
-          const item = this.lazyLoadMedia.findAndSplice(i => i.div == target);
-          if(item) {
-            item.wasSeen = true;
-            this.lazyLoadMedia.unshift(item);
-            this.processQueue(item);
-          }
+        // need for set element first if scrolled
+        const item = this.lazyLoadMedia.findAndSplice(i => i.div == target);
+        if(item) {
+          item.wasSeen = true;
+          this.lazyLoadMedia.unshift(item);
+          //this.processQueue(item);
         }
+      });
+
+      if(intersecting.length) {
+        this.processQueue();
       }
     });
   }
 
   public clear() {
-    this.tempID--;
     this.lazyLoadMedia.length = 0;
-    this.loadingMedia = 0;
+    for(let item of this.inProcess) {
+      this.lazyLoadMedia.push(item);
+    }
 
     if(this.observer) {
       this.observer.disconnect();
@@ -54,7 +57,7 @@ export default class LazyLoadQueue {
   }
 
   public length() {
-    return this.lazyLoadMedia.length + this.loadingMedia;
+    return this.lazyLoadMedia.length + this.inProcess.length;
   }
 
   public lock() {
@@ -72,7 +75,7 @@ export default class LazyLoadQueue {
   }
 
   public async processQueue(item?: LazyLoadElement) {
-    if(this.parallelLimit > 0 && this.loadingMedia >= this.parallelLimit) return;
+    if(this.parallelLimit > 0 && this.inProcess.length >= this.parallelLimit) return;
 
     if(item) {
       this.lazyLoadMedia.findAndSplice(i => i == item);
@@ -81,9 +84,7 @@ export default class LazyLoadQueue {
     }
 
     if(item) {
-      this.loadingMedia++;
-
-      let tempID = this.tempID;
+      this.inProcess.push(item);
 
       this.log('will load media', this.lockPromise, item);
 
@@ -95,15 +96,14 @@ export default class LazyLoadQueue {
           this.log('waited lock:', performance.now() - perf);
         }
         
+        //await new Promise((resolve) => setTimeout(resolve, 2e3));
         //await new Promise((resolve, reject) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
         await item.load();
       } catch(err) {
         this.log.error('loadMediaQueue error:', err, item);
       }
 
-      if(tempID == this.tempID) {
-        this.loadingMedia--;
-      }
+      this.inProcess.findAndSplice(i => i == item);
 
       this.log('loaded media', item);
 

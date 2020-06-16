@@ -19,9 +19,12 @@ import appForward from "../../components/appForward";
 import { mediaSizes } from "../config";
 import SidebarSlider, { SliderTab } from "../../components/slider";
 import appStickersManager, { MTStickerSet, MTStickerSetCovered, MTStickerSetMultiCovered } from "./appStickersManager";
-import animationIntersector, { AnimationItem } from "../../components/animationIntersector";
+import animationIntersector from "../../components/animationIntersector";
 import PopupStickers from "../../components/popupStickers";
 import SearchInput from "../../components/searchInput";
+import appPollsManager from "./appPollsManager";
+import { roundPercents } from "../../components/poll";
+import appDialogsManager from "./appDialogsManager";
 
 const testScroll = false;
 
@@ -53,7 +56,7 @@ class AppStickersTab implements SliderTab {
     this.scrollable = new Scrollable(this.contentDiv, 'y', 'STICKERS-SEARCH', undefined, undefined, 2);
     this.scrollable.setVirtualContainer(this.setsDiv);
 
-    this.lazyLoadQueue = new LazyLoadQueue(5);
+    this.lazyLoadQueue = new LazyLoadQueue();
 
     this.searchInput = new SearchInput('Search Stickers', (value) => {
       this.search(value);
@@ -262,13 +265,137 @@ class AppStickersTab implements SliderTab {
   }
 }
 
+class AppPollResultsTab implements SliderTab {
+  private container = document.getElementById('poll-results-container') as HTMLDivElement;
+  private contentDiv = this.container.querySelector('.sidebar-content') as HTMLDivElement;
+  private resultsDiv = this.contentDiv.firstElementChild as HTMLDivElement;
+  private scrollable: Scrollable;
+
+  private pollID: string;
+  private mid: number;
+
+  constructor() {
+    this.scrollable = new Scrollable(this.contentDiv, 'y', 'POLL-RESULTS', undefined, undefined, 2);
+  }
+
+  public cleanup() {
+    this.resultsDiv.innerHTML = '';
+    this.pollID = '';
+    this.mid = 0;
+  }
+
+  public onCloseAfterTimeout() {
+    this.cleanup();
+  }
+
+  public init(pollID: string, mid: number) {
+    if(this.pollID == pollID && this.mid == mid) return;
+    
+    this.cleanup();
+
+    this.pollID = pollID;
+    this.mid = mid;
+
+    appSidebarRight.selectTab(AppSidebarRight.SLIDERITEMSIDS.pollResults);
+
+    const poll = appPollsManager.getPoll(pollID);
+
+    const title = document.createElement('h3');
+    title.innerHTML = poll.poll.rQuestion;
+
+    const percents = poll.results.results.map(v => v.voters / poll.results.total_voters * 100);
+    roundPercents(percents);
+
+    const fragment = document.createDocumentFragment();
+    poll.results.results.forEach((result, idx) => {
+      if(!result.voters) return;
+
+      const hr = document.createElement('hr');
+
+      const answer = poll.poll.answers[idx];
+
+      // Head
+      const answerEl = document.createElement('div');
+      answerEl.classList.add('poll-results-answer');
+
+      const answerTitle = document.createElement('div');
+      answerTitle.innerHTML = RichTextProcessor.wrapEmojiText(answer.text);
+
+      const answerPercents = document.createElement('div');
+      answerPercents.innerText = Math.round(percents[idx]) + '%';
+
+      answerEl.append(answerTitle, answerPercents);
+
+      // Humans
+      const list = document.createElement('ul');
+      list.classList.add('poll-results-voters');
+
+      appDialogsManager.setListClickListener(list);
+
+      list.style.minHeight = Math.min(result.voters, 4) * 50 + 'px';
+
+      fragment.append(hr, answerEl, list);
+
+      let offset: string, limit = 4, loading = false, left = result.voters - 4;
+      const load = () => {
+        if(loading) return;
+        loading = true;
+
+        appPollsManager.getVotes(mid, answer.option, offset, limit).then(votesList => {
+          votesList.votes.forEach(vote => {
+            const {dom} = appDialogsManager.addDialog(vote.user_id, list, false, false, undefined, false);
+            dom.lastMessageSpan.parentElement.remove();
+          });
+
+          if(offset) {
+            left -= votesList.votes.length;
+            (showMore.lastElementChild as HTMLElement).innerText = `Show ${Math.min(20, left)} more voter${left > 1 ? 's' : ''}`;
+          }
+          
+          offset = votesList.next_offset;
+          limit = 20;
+
+          if(!left || !votesList.votes.length) {
+            showMore.remove();
+          }
+        }).finally(() => {
+          loading = false;
+        });
+      };
+
+      load();
+
+      if(left <= 0) return;
+
+      const showMore = document.createElement('div');
+      showMore.classList.add('poll-results-more');
+      showMore.addEventListener('click', load);
+
+      showMore.innerHTML = `<div class="tgico-down"></div><div>Show ${Math.min(20, left)} more voter${left > 1 ? 's' : ''}</div>`;
+      ripple(showMore);
+
+      fragment.append(showMore);
+    });
+
+    this.resultsDiv.append(title, fragment);
+
+    appSidebarRight.toggleSidebar(true).then(() => {
+      /* appPollsManager.getVotes(mid).then(votes => {
+        console.log('gOt VotEs', votes);
+      }); */
+    });
+  }
+}
+
 const stickersTab = new AppStickersTab();
+const pollResultsTab = new AppPollResultsTab();
 
 export class AppSidebarRight extends SidebarSlider {
   public static SLIDERITEMSIDS = {
     search: 1,
     forward: 2,
-    stickers: 3
+    stickers: 3,
+    pollResults: 4,
   };
 
   public profileContainer: HTMLDivElement;
@@ -303,7 +430,7 @@ export class AppSidebarRight extends SidebarSlider {
   public sharedMediaType: AppSidebarRight['sharedMediaTypes'][number] = '';
   private sharedMediaSelected: HTMLDivElement = null;
   
-  private lazyLoadQueue = new LazyLoadQueue(5);
+  private lazyLoadQueue = new LazyLoadQueue();
   
   public historiesStorage: {
     [peerID: number]: {
@@ -337,15 +464,18 @@ export class AppSidebarRight extends SidebarSlider {
   private loadMutex: Promise<any> = Promise.resolve();
 
   public stickersTab: AppStickersTab;
+  public pollResultsTab: AppPollResultsTab;
 
   constructor() {
     super(document.getElementById('column-right') as HTMLElement, {
       [AppSidebarRight.SLIDERITEMSIDS.stickers]: stickersTab,
+      [AppSidebarRight.SLIDERITEMSIDS.pollResults]: pollResultsTab,
     });
 
-    this._selectTab(3);
+    //this._selectTab(3);
 
     this.stickersTab = stickersTab;
+    this.pollResultsTab = pollResultsTab;
 
     this.profileContainer = this.sidebarEl.querySelector('.profile-container');
     this.profileContentEl = this.sidebarEl.querySelector('.profile-content');
@@ -609,49 +739,45 @@ export class AppSidebarRight extends SidebarSlider {
   }
   
   public async performSearchResult(messages: any[], type: string) {
-    let peerID = this.peerID;
+    const peerID = this.peerID;
+    const elemsToAppend: HTMLElement[] = [];
+    const promises: Promise<any>[] = [];
     let sharedMediaDiv: HTMLDivElement;
-    let elemsToAppend: HTMLElement[] = [];
-    let promises: Promise<any>[] = [];
     
     // https://core.telegram.org/type/MessagesFilter
     switch(type) {
       case 'inputMessagesFilterPhotoVideo': {
         sharedMediaDiv = this.sharedMedia.contentMedia;
         
-        for(let message of messages) {
-          let media = message.media.photo || message.media.document || (message.media.webpage && message.media.webpage.document);
+        for(const message of messages) {
+          const media = message.media.photo || message.media.document || (message.media.webpage && message.media.webpage.document);
 
-          let div = document.createElement('div');
+          const div = document.createElement('div');
           div.classList.add('media-item');
           //console.log(message, photo);
 
-          let isPhoto = media._ == 'photo';
+          const isPhoto = media._ == 'photo';
           
-          let photo = isPhoto ? appPhotosManager.getPhoto(media.id) : null;
+          const photo = isPhoto ? appPhotosManager.getPhoto(media.id) : null;
           let isDownloaded: boolean;
           if(photo) {
             isDownloaded = photo.downloaded > 0;
           } else {
-            let cachedThumb = appPhotosManager.getDocumentCachedThumb(media.id);
+            const cachedThumb = appPhotosManager.getDocumentCachedThumb(media.id);
             isDownloaded = cachedThumb?.downloaded > 0;
           }
-
-          let img = new Image();
-          img.classList.add('media-image');
-          div.append(img);
           
           //this.log('inputMessagesFilterPhotoVideo', message, media);
 
           if(!isPhoto) {
-            let span = document.createElement('span');
+            const span = document.createElement('span');
             span.classList.add('video-time');
             div.append(span);
 
             if(media.type != 'gif') {
               span.innerText = (media.duration + '').toHHMMSS(false);
 
-              /* let spanPlay = document.createElement('span');
+              /* const spanPlay = document.createElement('span');
               spanPlay.classList.add('video-play', 'tgico-largeplay', 'btn-circle', 'position-center');
               div.append(spanPlay); */
             } else {
@@ -659,31 +785,54 @@ export class AppSidebarRight extends SidebarSlider {
             }
           }
           
-          let load = () => appPhotosManager.preloadPhoto(isPhoto ? media.id : media, appPhotosManager.choosePhotoSize(media, 200, 200))
+          const load = () => appPhotosManager.preloadPhoto(isPhoto ? media.id : media, appPhotosManager.choosePhotoSize(media, 200, 200))
           .then(() => {
             if($rootScope.selectedPeerID != peerID) {
               this.log.warn('peer changed');
               return;
             }
 
-            let url = (photo && photo.url) || appPhotosManager.getDocumentCachedThumb(media.id).url;
+            const url = (photo && photo.url) || appPhotosManager.getDocumentCachedThumb(media.id).url;
             if(url) {
-              renderImageFromUrl(img, url);
+              //if(needBlur) return;
+              const p = renderImageFromUrl(img, url);
+              
+              if(needBlur) {
+                p.then(() => {
+                  //void img.offsetLeft; // reflow
+                  img.style.opacity = '';
+                });
+              }
             }
           });
           
-          img.dataset.mid = '' + message.mid;
+          let thumb: HTMLImageElement;
+          const sizes = media.sizes || media.thumbs;
+          const willHaveThumb = !isDownloaded && sizes && sizes[0].bytes;
+          if(willHaveThumb) {
+            thumb = new Image();
+            thumb.classList.add('media-image', 'thumbnail');
+            thumb.dataset.mid = '' + message.mid;
+            appPhotosManager.setAttachmentPreview(sizes[0].bytes, thumb, false, false);
+            div.append(thumb);
+          }
 
-          let sizes = media.sizes || media.thumbs;
-          if(isDownloaded || (sizes && sizes[0].bytes)) {
-            let promise = new Promise((resolve, reject) => {
-              img.addEventListener('load', () => {
+          const needBlur = !isDownloaded || !willHaveThumb;
+          const img = new Image();
+          img.dataset.mid = '' + message.mid;
+          img.classList.add('media-image');
+          if(needBlur) img.style.opacity = '0';
+          div.append(img);
+
+          if(isDownloaded || willHaveThumb) {
+            const promise = new Promise((resolve, reject) => {
+              (thumb || img).addEventListener('load', () => {
                 clearTimeout(timeout);
                 resolve();
               });
 
-              let timeout = setTimeout(() => {
-                this.log('did not loaded', img, media, isDownloaded, sizes);
+              const timeout = setTimeout(() => {
+                this.log('did not loaded', thumb, media, isDownloaded, sizes);
                 reject();
               }, 1e3);
             });
@@ -692,19 +841,10 @@ export class AppSidebarRight extends SidebarSlider {
           }
           
           if(isDownloaded) load();
-          else {
-            if(sizes && sizes[0].bytes) {
-              appPhotosManager.setAttachmentPreview(sizes[0].bytes, img, false, false);
-            }
-
-            this.lazyLoadQueue.push({div, load});
-          }
+          else this.lazyLoadQueue.push({div, load});
 
           elemsToAppend.push(div);
-          
           this.mediaDivsByIDs[message.mid] = div;
-          
-          //sharedMediaDiv.append(div);
         }
         
         break;
@@ -1047,5 +1187,8 @@ export class AppSidebarRight extends SidebarSlider {
 }
 
 const appSidebarRight = new AppSidebarRight();
-(window as any).appSidebarRight = appSidebarRight;
+// @ts-ignore
+if(process.env.NODE_ENV != 'production') {
+  (window as any).appSidebarRight = appSidebarRight;
+}
 export default appSidebarRight;

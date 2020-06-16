@@ -30,9 +30,6 @@
       max-width: 420px;
       max-height: 420px;
       width: 420px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
       padding: 0;
     }
   
@@ -47,21 +44,9 @@
       flex: 0 0 auto;
       margin-top: 5px;
     }
-
-    &-body {
-      flex: 1 1 auto;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-  }
-  
-  .scrollable {
-    position: relative;
   }
 
   .sticker-set {
-
     margin-bottom: 8px;
 
     &-stickers {    

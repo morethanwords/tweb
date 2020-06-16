@@ -158,6 +158,7 @@ class AppStickersManager {
 
   public getAnimatedEmojiSticker(emoji: string) {
     let stickerSet = this.stickerSets.emoji;
+    if(!stickerSet || !stickerSet.documents) return undefined;
 
     emoji = emoji.replace(/\ufe0f/g, '').replace(/🏻|🏼|🏽|🏾|🏿/g, '');
     return stickerSet.documents.find(doc => doc.stickerEmojiRaw == emoji);
@@ -191,7 +192,7 @@ class AppStickersManager {
       const savedSets: {[id: string]: MTStickerSetFull} = {};
       for(const id in this.stickerSets) {
         const set = this.stickerSets[id];
-        if(set.set.installed_date) {
+        if(set.set.installed_date || id == 'emoji') {
           savedSets[id] = set;
         }
       }
@@ -328,5 +329,8 @@ class AppStickersManager {
 }
 
 const appStickersManager = new AppStickersManager();
-(window as any).appStickersManager = appStickersManager;
+// @ts-ignore
+if(process.env.NODE_ENV != 'production') {
+  (window as any).appStickersManager = appStickersManager;
+}
 export default appStickersManager;

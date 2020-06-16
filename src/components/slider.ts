@@ -14,7 +14,7 @@ export default class SidebarSlider {
     this._selectTab(0);
 
     let onCloseBtnClick = () => {
-      console.log('sidebar-close-button click:', this.historyTabIDs);
+      //console.log('sidebar-close-button click:', this.historyTabIDs);
       let closingID = this.historyTabIDs.pop(); // pop current
       this.onCloseTab(closingID);
       this._selectTab(this.historyTabIDs[this.historyTabIDs.length - 1] || 0);
@@ -25,6 +25,10 @@ export default class SidebarSlider {
   }
 
   public selectTab(id: number) {
+    if(this.historyTabIDs[this.historyTabIDs.length - 1] == id) {
+      return;
+    }
+    
     this.historyTabIDs.push(id);
     this._selectTab(id);
   }

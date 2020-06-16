@@ -50,7 +50,7 @@ export class AppPhotosManager {
   }
   
   public savePhoto(photo: MTPhoto, context?: any) {
-    if(this.photos[photo.id]) return this.photos[photo.id];
+    if(this.photos[photo.id]) return Object.assign(this.photos[photo.id], photo);
 
     /* if(context) {
       Object.assign(photo, context);

@@ -38,5 +38,8 @@ class PagesManager {
 }
 
 const pagesManager = new PagesManager();
-(window as any).pagesManager = pagesManager;
+// @ts-ignore
+if(process.env.NODE_ENV != 'production') {
+  (window as any).pagesManager = pagesManager;
+}
 export default pagesManager;

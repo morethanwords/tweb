@@ -4,6 +4,8 @@ import appPeersManager from './appPeersManager';
 import apiManager from "../mtproto/mtprotoworker";
 import apiUpdatesManager from "./apiUpdatesManager";
 import { $rootScope } from "../utils";
+import { logger, LogLevels } from "../polyfill";
+import appUsersManager, { User } from "./appUsersManager";
 
 export type PollAnswer = {
   _: 'pollAnswer',
@@ -29,7 +31,7 @@ export type PollResult = {
   option: Uint8Array,
   voters: number,
 
-  pFlags?: Partial<{chosen: true}>
+  pFlags?: Partial<{chosen: true, correct: true}>
 };
 
 export type PollResults = {
@@ -63,12 +65,14 @@ export type Poll = {
   }>,
   rQuestion?: string,
   rReply?: string,
-  chosenIndex?: number
+  chosenIndexes?: number[]
 };
 
 class AppPollsManager {
-  private polls: {[id: string]: Poll} = {};
-  private results: {[id: string]: PollResults} = {};
+  public polls: {[id: string]: Poll} = {};
+  public results: {[id: string]: PollResults} = {};
+
+  private log = logger('POLLS', LogLevels.error);
 
   constructor() {
     $rootScope.$on('apiUpdate', (e: CustomEvent) => {
@@ -81,9 +85,9 @@ class AppPollsManager {
   public handleUpdate(update: any) {
     switch(update._) {
       case 'updateMessagePoll': { // when someone voted, we too
-        console.log('updateMessagePoll:', update);
+        this.log('updateMessagePoll:', update);
 
-        let poll: Poll = this.polls[update.poll_id] || update.poll;
+        let poll: Poll = /* this.polls[update.poll_id] ||  */update.poll;
         if(!poll) {
           break;
         }
@@ -99,9 +103,9 @@ class AppPollsManager {
   }
 
   public savePoll(poll: Poll, results: PollResults) {
-    let id = poll.id;
+    const id = poll.id;
     if(this.polls[id]) {
-      poll = this.polls[id];
+      poll = Object.assign(this.polls[id], poll);
       this.saveResults(poll, results);
       return poll;
     }
@@ -110,13 +114,22 @@ class AppPollsManager {
 
     poll.rQuestion = RichTextProcessor.wrapEmojiText(poll.question);
     poll.rReply = RichTextProcessor.wrapEmojiText('📊') + ' ' + (poll.rQuestion || 'poll');
+    poll.chosenIndexes = [];
     this.saveResults(poll, results);
     return poll;
   }
 
   public saveResults(poll: Poll, results: PollResults) {
     this.results[poll.id] = results;
-    poll.chosenIndex = (results && results.results && results.results.findIndex(answer => answer.pFlags?.chosen)) ?? -1;
+
+    poll.chosenIndexes.length = 0;
+    if(results?.results?.length) {
+      results.results.forEach((answer, idx) => {
+        if(answer.pFlags?.chosen) {
+          poll.chosenIndexes.push(idx);
+        }
+      });
+    }
   }
 
   public getPoll(pollID: string): {poll: Poll, results: PollResults} {
@@ -127,27 +140,86 @@ class AppPollsManager {
   }
 
   public sendVote(mid: number, optionIDs: number[]) {
-    let message = appMessagesManager.getMessage(mid);
-    let poll: Poll = message.media.poll;
+    const message = appMessagesManager.getMessage(mid);
+    const poll: Poll = message.media.poll;
 
-    let options: Uint8Array[] = optionIDs.map(index => {
+    const options: Uint8Array[] = optionIDs.map(index => {
       return poll.answers[index].option;
     });
     
-    let inputPeer = appPeersManager.getInputPeerByID(message.peerID);
-    let messageID = message.id;
+    const inputPeer = appPeersManager.getInputPeerByID(message.peerID);
+    const messageID = message.id;
 
     return apiManager.invokeApi('messages.sendVote', {
       peer: inputPeer,
       msg_id: messageID,
       options
     }).then(updates => {
-      console.log('appPollsManager sendVote updates:', updates);
+      this.log('sendVote updates:', updates);
       apiUpdatesManager.processUpdateMessage(updates);
+    });
+  }
+
+  public getResults(mid: number) {
+    const message = appMessagesManager.getMessage(mid);
+    const inputPeer = appPeersManager.getInputPeerByID(message.peerID);
+    const messageID = message.id;
+
+    return apiManager.invokeApi('messages.getPollResults', {
+      peer: inputPeer,
+      msg_id: messageID
+    }).then(updates => {
+      apiUpdatesManager.processUpdateMessage(updates);
+      this.log('getResults updates:', updates);
+    });
+  }
+
+  public getVotes(mid: number, option?: Uint8Array, offset?: string, limit = 20) {
+    const message = appMessagesManager.getMessage(mid);
+    const inputPeer = appPeersManager.getInputPeerByID(message.peerID);
+    const messageID = message.id;
+
+    let flags = 0;
+    if(option) {
+      flags |= 1 << 0;
+    }
+
+    if(offset) {
+      flags |= 1 << 1;
+    }
+
+    return apiManager.invokeApi('messages.getPollVotes', {
+      flags,
+      peer: inputPeer,
+      id: messageID,
+      option,
+      offset,
+      limit
+    }).then((votesList: {
+      _: 'messages.votesList',
+      flags: number,
+      count: number,
+      next_offset: string,
+      pFlags: {},
+      users: User[],
+      votes: {
+        _: 'messageUserVoteInputOption',
+        date: number,
+        user_id: number
+      }[]
+    }) => {
+      this.log('getPollVotes messages:', votesList);
+
+      appUsersManager.saveApiUsers(votesList.users);
+
+      return votesList;
     });
   }
 }
 
 const appPollsManager = new AppPollsManager();
-(window as any).appPollsManager = appPollsManager;
+// @ts-ignore
+if(process.env.NODE_ENV != 'production') {
+  (window as any).appPollsManager = appPollsManager;
+}
 export default appPollsManager;

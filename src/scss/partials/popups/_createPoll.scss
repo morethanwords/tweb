@@ -1,0 +1,33 @@
+.popup-create-poll {
+  $parent: ".popup";
+
+  #{$parent} {
+    &-container {
+      max-height: 468px;
+    }
+  }
+
+  .input-field {
+    .btn-icon {
+      position: absolute;
+      right: .5rem;
+      top: 50%;
+      z-index: 1;
+      transform: translateY(-50%);
+      opacity: 1;
+      transition: opacity .2s ease;
+    }
+
+    &:not(.is-filled), &:first-child:last-child {
+      .btn-icon {
+        pointer-events: none;
+        opacity: 0;
+      }
+    }
+    /* &:last-child:not(:nth-child(10)) {
+      .btn-icon {
+        display: none;
+      }
+    } */
+  }
+}

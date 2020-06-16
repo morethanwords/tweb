@@ -4,17 +4,15 @@ import { RichTextProcessor } from "../lib/richtextprocessor";
 import Scrollable from "./scrollable_new";
 import { wrapSticker } from "./wrappers";
 import LazyLoadQueue from "./lazyLoadQueue";
-import { putPreloader, ripple } from "./misc";
+import { putPreloader } from "./misc";
 import animationIntersector from "./animationIntersector";
 import { findUpClassName } from "../lib/utils";
-import appDocsManager from "../lib/appManagers/appDocsManager";
 import appImManager from "../lib/appManagers/appImManager";
 
 export default class PopupStickers extends PopupElement {
   private stickersFooter: HTMLElement;
   private stickersDiv: HTMLElement;
   private h6: HTMLElement;
-  private closeBtn: HTMLElement;
 
   private set: MTStickerSet;
 
@@ -23,30 +21,23 @@ export default class PopupStickers extends PopupElement {
     id: string,
     access_hash: string
   }) {
-    super('popup-stickers');
+    super('popup-stickers', null, {closable: true, body: true});
 
     this.h6 = document.createElement('h6');
     this.h6.innerText = 'Loading...';
 
-    const popupBody = document.createElement('div');
-    popupBody.classList.add('popup-body');
+    this.header.append(this.h6);
 
-    this.closeBtn = document.createElement('span');
-    this.closeBtn.classList.add('btn-icon', 'popup-close', 'tgico-close');
-    this.header.append(this.closeBtn, this.h6);
-
-    this.closeBtn.addEventListener('click', () => {
-      this.destroy();
+    this.onClose = () => {
       animationIntersector.checkAnimations(false);
       this.stickersFooter.removeEventListener('click', this.onFooterClick);
       this.stickersDiv.removeEventListener('click', this.onStickersClick);
       this.element.removeEventListener('click', onOverlayClick);
+    };
 
-      setTimeout(() => {
-        animationIntersector.checkAnimations(undefined, 'STICKERS-POPUP');
-      }, 1001);
-    }, {once: true});
-    ripple(this.closeBtn);
+    this.onCloseAfterTimeout = () => {
+      animationIntersector.checkAnimations(undefined, 'STICKERS-POPUP');
+    };
 
     const onOverlayClick = (e: MouseEvent) => {
       if(!findUpClassName(e.target, 'popup-container')) {
@@ -71,12 +62,9 @@ export default class PopupStickers extends PopupElement {
 
     this.stickersFooter.innerText = 'Loading...';
 
-    popupBody.append(div);
-    this.container.append(popupBody);
-
-    const scrollable = new Scrollable(popupBody, 'y', undefined);
-
-    popupBody.append(this.stickersFooter);
+    this.body.append(div);
+    const scrollable = new Scrollable(this.body, 'y', undefined);
+    this.body.append(this.stickersFooter);
     
     // const editButton = document.createElement('button');
     // editButton.classList.add('btn-primary');
@@ -111,11 +99,6 @@ export default class PopupStickers extends PopupElement {
   private loadStickerSet() {
     return appStickersManager.getStickerSet(this.stickerSetInput).then(set => {
       //console.log('PopupStickers loadStickerSet got set:', set);
-      //JOPA SGORELA SUKA, kak zdes mojet bit false esli u menya etot nabor dobavlen i otobrajaetsya v telege ???
-      //koroche sut v tom, chto esli ti dobavil nabor a potom ctrl + f5 , i najimaesh na popup stikera v chate, to ono dumaet chto nabora net, potomu chto installed_date kakogoto huya false, i ego pravda tam net.
-      //razberis brat.. a tak vrode vse rabotaet namana. ya gavnokoder i gavnoverstker
-      //testiroval na stikere v dialoge viti (zeleniy dinozavr) http://i.piccy.info/i9/71cbc718bedb6d8a33da9bff775d8316/1591669743/204119/1382638/Snymok_ekrana_2020_06_09_v_05_28_25.jpg
-      //console.log('hasOwnProperty got set installed_date ????', set.set.hasOwnProperty('installed_date'));
 
       this.set = set.set;
 

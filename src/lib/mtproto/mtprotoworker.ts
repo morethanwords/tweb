@@ -152,5 +152,8 @@ class ApiManagerProxy extends CryptoWorkerMethods {
 }
 
 const apiManagerProxy = new ApiManagerProxy();
-(window as any).apiManagerProxy = apiManagerProxy;
+// @ts-ignore
+if(process.env.NODE_ENV != 'production') {
+  (window as any).apiManagerProxy = apiManagerProxy;
+}
 export default apiManagerProxy;

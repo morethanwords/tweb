@@ -173,7 +173,7 @@
         <div class="media-viewer-switcher media-viewer-switcher-right menu-next"><span class="tgico-down media-viewer-next-button"></span></div>
       </div>
     </div>
-    <div class="popup popup-send-photo">
+    <div class="popup popup-send-photo popup-new-media">
       <div class="popup-container z-depth-1">
         <div class="popup-header">
           <span class="btn-icon popup-close tgico-close"></span>
@@ -329,16 +329,16 @@
                 </div>
                 <div class="input-wrapper">
                   <div class="input-field">
-                    <input type="text" name="name" class="firstname" autocomplete="xxDDqqOXJXC" required="">
-                    <label for="name">Name</label>
+                    <input type="text" name="name" class="firstname" autocomplete="xxDDqqOXJXC" id="settings-name" required="">
+                    <label for="settings-name">Name</label>
                   </div>
                   <div class="input-field">
-                    <input type="text" name="lastname" class="lastname" autocomplete="aintsofunnowzXCFF" required="">
-                    <label for="lastname">Last Name</label>
+                    <input type="text" name="lastname" class="lastname" autocomplete="aintsofunnowzXCFF" id="settings-lastname" required="">
+                    <label for="settings-lastname">Last Name</label>
                   </div>
                   <div class="input-field">
-                    <input type="text" name="bio" class="bio" autocomplete="aintsofunnowhHQ" required="">
-                    <label for="bio">Bio (optional)</label>
+                    <input type="text" name="bio" class="bio" autocomplete="aintsofunnowhHQ" id="settings-bio" required="">
+                    <label for="settings-bio">Bio (optional)</label>
                   </div>
                 </div>
                 <div class="caption">Any details such as age, occupation or city. Example:<br>23 y.o. designer from San Francisco.</div>
@@ -346,8 +346,8 @@
                 <div class="sidebar-left-h2">Username</div>
                 <div class="input-wrapper">
                   <div class="input-field">
-                    <input type="text" name="username" class="username" autocomplete="xxDDqqOXffEER" required="">
-                    <label for="username">Username (optional)</label>
+                    <input type="text" name="username" class="username" autocomplete="xxDDqqOXffEER" id="settings-username" required="">
+                    <label for="settings-username">Username (optional)</label>
                   </div>
                 </div>
                 <div class="caption">You can choose a username on Telegram. If you do, other people will be able to find you by this username and contact you without knowing your phone number.<br><br>You can use a-z, 0-9 and underscores. Minimum length is 5 characters.<br><br><div class="profile-url-container">This link opens a chat with you:
@@ -419,7 +419,7 @@
                 </div>
               </div>
               <div class="new-message-wrapper">
-                <button class="btn-icon rp tgico toggle-emoticons"></button>
+                <button class="btn-icon rp tgico toggle-emoticons" id="toggle-emoticons"></button>
                 <!-- <textarea type="text" id="input-message" placeholder="Message" contenteditable="true"></textarea> -->
                 <div class="input-message-container">
                   <div id="input-message" contenteditable="true" data-placeholder="Message"></div>
@@ -441,7 +441,7 @@
               <button class="btn-circle z-depth-1 btn-icon tgico-microphone2" id="btn-send"></button>
             </div>
           </div>
-          <div class="emoji-dropdown" style="display: none;">
+          <div class="emoji-dropdown" id="emoji-dropdown" style="display: none;">
             <div class="emoji-container">
               <div class="tabs-container">
                 <div class="emoji-padding">
@@ -571,11 +571,19 @@
             </div>
             <div class="sidebar-content"><div class="sticker-sets"></div></div>
           </div>
+          <div class="sidebar-slider-item chats-container" id="poll-results-container">
+            <div class="sidebar-header">
+              <button class="btn-icon rp tgico-close sidebar-close-button"></button>
+              <div class="sidebar-header__title">Results</div>
+            </div>
+            <div class="sidebar-content"><div class="poll-results"></div></div>
+          </div>
         </div>
       </div>
     </div>
   </div>
     <script src="npm.jsbn.chunk.js"></script>
+    <script src="npm.mp4box.chunk.js"></script>
     <script src="index.bundle.js"></script>
     <script src="webp.bundle.js"></script>
 </html>

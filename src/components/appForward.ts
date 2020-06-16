@@ -74,7 +74,7 @@ class AppForward {
         this.sendBtn.classList.remove('is-visible');
       }
     }, 'dialogs', () => {
-      console.log('forward rendered:', this.container.querySelector('.selector ul').childElementCount);
+      //console.log('forward rendered:', this.container.querySelector('.selector ul').childElementCount);
       this.sidebarWasActive = appSidebarRight.sidebarEl.classList.contains('active');
       appSidebarRight.toggleSidebar(true);
     });

@@ -6,9 +6,6 @@
       // max-width: 300px;
       // max-height: 424px;
       min-width: 300px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
       padding: 12px 14px;  
     }
 
@@ -22,12 +19,6 @@
     &-title {
       font-weight: 500;
       font-size: 20px;  
-    }
-
-    &-body {
-      flex: 1 1 auto;
-      display: flex;
-      flex-direction: column;
     }
 
     &-buttons {

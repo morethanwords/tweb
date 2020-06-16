@@ -55,6 +55,7 @@ $large-screen: 1680px;
 @import "partials/popups/peer";
 @import "partials/popups/stickers";
 @import "partials/popups/datePicker";
+@import "partials/popups/createPoll";
 
 @import "partials/pages/pages";
 @import "partials/pages/authCode";
@@ -396,6 +397,7 @@ input, textarea {
   font-size: 1rem;
   border-radius: $border-radius-medium;
   animation: fadeInFadeOut 3s linear forwards;
+  z-index: 5;
 }
 
 hr {

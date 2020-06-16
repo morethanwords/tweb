@@ -482,6 +482,7 @@ class LottieLoader {
   public loadPromise: Promise<void>;
   public loaded = false;
 
+  // https://github.com/telegramdesktop/tdesktop/blob/35e575c2d7b56446be95561e4565628859fb53d3/Telegram/SourceFiles/chat_helpers/stickers_emoji_pack.cpp#L65
   private static COLORREPLACEMENTS = [
     [
       [0xf77e41, 0xca907a],
@@ -509,6 +510,13 @@ class LottieLoader {
 			[0xffb139, 0x925a34],
 			[0xffd140, 0xa16e46],
 			[0xffdf79, 0xac7a52],
+    ],
+
+    [
+			[0xf77e41, 0x291c12],
+			[0xffb139, 0x472a22],
+			[0xffd140, 0x573b30],
+			[0xffdf79, 0x68493c],
     ]
   ];
 
@@ -559,7 +567,7 @@ class LottieLoader {
   }
 
   private applyReplacements(object: any, toneIndex: number) {
-    const replacements = LottieLoader.COLORREPLACEMENTS[toneIndex - 2];
+    const replacements = LottieLoader.COLORREPLACEMENTS[Math.max(toneIndex - 1, 0)];
 
     const iterateIt = (it: any) => {
       for(let smth of it) {
@@ -680,5 +688,8 @@ class LottieLoader {
 }
 
 const lottieLoader = new LottieLoader();
-(window as any).LottieLoader = lottieLoader;
+// @ts-ignore
+if(process.env.NODE_ENV != 'production') {
+  (window as any).lottieLoader = lottieLoader;
+}
 export default lottieLoader;

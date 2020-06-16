@@ -6,8 +6,14 @@ export class PopupElement {
   protected container = document.createElement('div');
   protected header = document.createElement('div');
   protected title = document.createElement('div');
+  protected closeBtn: HTMLElement;
+  protected confirmBtn: HTMLElement;
+  protected body: HTMLElement;
 
-  constructor(className: string, buttons?: Array<PopupButton>) {
+  protected onClose: () => void;
+  protected onCloseAfterTimeout: () => void;
+
+  constructor(className: string, buttons?: Array<PopupButton>, options: Partial<{closable: boolean, withConfirm: string, body: boolean}> = {}) {
     this.element.classList.add('popup');
     this.element.className = 'popup' + (className ? ' ' + className : '');
     this.container.classList.add('popup-container', 'z-depth-1');
@@ -16,7 +22,32 @@ export class PopupElement {
     this.title.classList.add('popup-title');
 
     this.header.append(this.title);
+
+    if(options.closable) {
+      this.closeBtn = document.createElement('span');
+      this.closeBtn.classList.add('btn-icon', 'popup-close', 'tgico-close');
+      ripple(this.closeBtn);
+      this.header.prepend(this.closeBtn);
+
+      this.closeBtn.addEventListener('click', () => {
+        this.destroy();
+      }, {once: true});
+    }
+
+    if(options.withConfirm) {
+      this.confirmBtn = document.createElement('button');
+      this.confirmBtn.classList.add('btn-primary');
+      this.confirmBtn.innerText = options.withConfirm;
+      this.header.append(this.confirmBtn);
+      ripple(this.confirmBtn);
+    }
+
     this.container.append(this.header);
+    if(options.body) {
+      this.body = document.createElement('div');
+      this.body.classList.add('popup-body');
+      this.container.append(this.body);
+    }
 
     if(buttons && buttons.length) {
       const buttonsDiv = document.createElement('div');
@@ -56,9 +87,11 @@ export class PopupElement {
   }
 
   public destroy() {
+    this.onClose && this.onClose();
     this.element.classList.remove('active');
     setTimeout(() => {
       this.element.remove();
+      this.onCloseAfterTimeout && this.onCloseAfterTimeout();
     }, 1000);
   }
 }

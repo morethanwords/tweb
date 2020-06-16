@@ -118,12 +118,10 @@ function wrapVoiceMessage(doc: MTDocument, audioEl: AudioElement) {
       rects.slice(0, lastIndex + 1).forEach(node => node.classList.add('active'));
     }
 
-    audioEl.addAudioListener('playing', () => {
-      //rects.forEach(node => node.classList.remove('active'));
-      
+    let start = () => {
       clearInterval(interval);
       interval = setInterval(() => {
-        if(lastIndex > svg.childElementCount || isNaN(audio.duration)) {
+        if(lastIndex > svg.childElementCount || isNaN(audio.duration) || audio.paused) {
           clearInterval(interval);
           return;
         }
@@ -137,6 +135,15 @@ function wrapVoiceMessage(doc: MTDocument, audioEl: AudioElement) {
         //console.log('lastIndex:', lastIndex, audio.currentTime);
         //}, duration * 1000 / svg.childElementCount | 0/* 63 * duration / 10 */);
       }, 20);
+    };
+
+    if(!audio.paused) {
+      start();
+    }
+
+    audioEl.addAudioListener('playing', () => {
+      //rects.forEach(node => node.classList.remove('active'));
+      start();
     });
 
     audioEl.addAudioListener('pause', () => {

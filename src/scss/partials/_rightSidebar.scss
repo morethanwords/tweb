@@ -264,7 +264,7 @@
           overflow: hidden;
           position: relative;
           cursor: pointer;
-          background-color: #000;
+          //background-color: #000;
         }
 
         .video-time {
@@ -286,8 +286,13 @@
           top: 0;
           width: 100%;
           height: 100%;
-          -o-object-fit: cover;
           object-fit: cover;
+          opacity: 1;
+          transition: opacity .2s ease;
+
+          &.thumbnail {
+            filter: blur(7px);
+          }
         }
 
         /* span.video-play {
@@ -549,6 +554,93 @@
       img {
         max-width: 100%;
         max-height: 100%;
+      }
+    }
+  }
+}
+
+#poll-results-container {
+  .poll-results {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    width: 100%;
+  
+    &-answer {
+      color: #707579;
+      padding: 0 16px 8px 16px;
+      margin: 0;
+      padding-bottom: 8px;
+      font-weight: 500;
+      justify-content: space-between;
+      display: flex;
+      font-size: 15px;
+      user-select: none;
+
+      @include respond-to(not-handhelds) {
+        padding: 0 24px 8px 24px;
+      }
+    }
+
+    &-more {
+      padding-top: 13px;
+      padding-bottom: 13px;
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+
+      @include respond-to(not-handhelds) {
+        padding-left: 8px;
+      }
+
+      .tgico-down {
+        float: left;
+        padding-right: 32px;
+        padding-left: 16.5px;
+        font-size: 24px;
+        color: #707579;
+      }
+    }
+
+    h3 {
+      padding: 0 16px;
+      margin-top: 15px;
+      font-size: 20px;
+      margin-bottom: 16px;
+
+      @include respond-to(not-handhelds) {
+        padding: 0 24px;
+      }
+    }
+  
+    hr {
+      margin-bottom: 15px;
+      margin-top: 7px;
+    }
+  
+    avatar-element {
+      width: 32px;
+      height: 32px;
+    }
+  
+    .user-caption {
+      padding: 6px 28px;
+    }
+
+    .user-title {
+      font-weight: normal;
+    }
+  
+    li {
+      padding-bottom: 2px;
+
+      > .rp {
+        padding: 8px 5px;
+        height: 48px;
+
+        @include respond-to(not-handhelds) {
+          padding: 8px 13px;
+        }
       }
     }
   }

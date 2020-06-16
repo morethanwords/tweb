@@ -1,11 +1,10 @@
-.popup-send-photo {
+.popup-new-media {
   $parent: ".popup";
 
   #{$parent} {
     &-container {
       width: 420px;
       max-width: 420px;
-      overflow: hidden;
       /* padding: 12px 20px 50px; */
       padding: 12px 20px 32.5px;
 
@@ -50,6 +49,7 @@
     }
 
     &-header {
+      flex-wrap: wrap;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 9px;
@@ -124,6 +124,7 @@
   }
 
   .input-field {
+    width: 100%;
     margin-top: 1rem;
 
     &::placeholder {

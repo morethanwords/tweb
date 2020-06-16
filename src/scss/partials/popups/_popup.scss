@@ -45,6 +45,9 @@
     backface-visibility: hidden;
     transition-property: transform;
     transition-duration: 0.3s;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
 
   &-close {
@@ -65,6 +68,17 @@
     display: flex;
     margin-bottom: 2rem;
     align-items: center;
+  }
+
+  &-body {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    .scrollable {
+      position: relative;
+    }
   }
 
   &-buttons {

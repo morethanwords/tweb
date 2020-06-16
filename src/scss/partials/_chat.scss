@@ -16,7 +16,7 @@ $time-background: rgba(0, 0, 0, .35);
 	// border-bottom: 1px solid #DADCE0;
 
 	@include respond-to(handhelds) {
-		&.is-audio-shown, &.is-pinned.shown {
+		&.is-audio-shown, &.is-pinned-shown {
 			& + #bubbles {
 				margin-top: 52px;
 			}
@@ -946,5 +946,58 @@ $time-background: rgba(0, 0, 0, .35);
 
 	.tgico-up {
 		margin-right: 2px;
+	}
+}
+
+.quiz-hint {
+	position: absolute;
+	left: 0;
+	display: flex;
+	width: 100%;
+	justify-content: center;
+	z-index: 5;
+	top: 10px;
+	align-items: center;
+	transform: translateY(calc(-100% - 10px));
+	transition: transform .2s ease;
+
+	&.active {
+		transform: translateY(0);
+	}
+
+	.container {
+		background: rgba(0, 0, 0, .7);
+    text-align: center;
+    width: auto;
+    padding: 12px 18px 12px 48px;
+    min-height: 48px;
+    border-radius: 12px;
+    line-height: 1.5;
+    color: white;
+    font-size: 15px;
+    max-width: 400px;
+    overflow: hidden;
+		text-align: left;
+		position: relative;
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+
+		.text {
+			word-break: break-word;
+		}
+		
+		&:before {
+			content: $tgico-info2;
+			position: absolute;
+			left: 12px;
+			font-size: 1.5rem;
+			top: 12px;
+		}
+
+		a {
+			color: white;
+			border-bottom: 1px solid white;
+		}
 	}
 }

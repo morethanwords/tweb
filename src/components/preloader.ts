@@ -58,9 +58,14 @@ export default class ProgressivePreloader {
           this.promise = promise = null;
         }
       };
+      //promise.catch(onEnd);
       promise.finally(onEnd);
 
       promise.notify = (details: {done: number, total: number}) => {
+        /* if(details.done >= details.total) {
+          onEnd();
+        } */
+
         if(tempID != this.tempID) return;
 
         //console.log('preloader download', promise, details);

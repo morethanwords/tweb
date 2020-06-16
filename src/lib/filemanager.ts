@@ -78,8 +78,8 @@ class FileManager {
     });
   } */
   
-  public write(fileWriter: any, bytes: any): Promise<void> {
-    if(bytes.file) {
+  public write(fileWriter: any, bytes: Uint8Array | Blob | {file: any}): Promise<void> {
+    if('file' in bytes) {
       return bytes.file((file: any) => {
         return fileWriter.write(file);
       });
@@ -115,9 +115,9 @@ class FileManager {
   }
   
   public getFakeFileWriter(mimeType: string, saveFileCallback: any) {
-    var blobParts: Array<Blob> = [];
+    var blobParts: Array<Uint8Array> = [];
     var fakeFileWriter = {
-      write: async(blob: Blob) => {
+      write: async(blob: Uint8Array) => {
         if(!this.blobSupported) {
           throw false;
         }

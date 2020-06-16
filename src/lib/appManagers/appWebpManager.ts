@@ -95,5 +95,8 @@ class AppWebpManager {
 }
 
 const appWebpManager = new AppWebpManager();
-(window as any).appWebpManager = appWebpManager;
+// @ts-ignore
+if(process.env.NODE_ENV != 'production') {
+  (window as any).appWebpManager = appWebpManager;
+}
 export default appWebpManager;

@@ -195,6 +195,11 @@ $move-duration: .35s;
       user-select: none;
       object-fit: cover;
       opacity: 1;
+
+      //&.thumbnail {
+        position: absolute;
+        //z-index: -1;
+      //}
     }
 
     &.active {
@@ -218,7 +223,7 @@ $move-duration: .35s;
     width: 100%;
     height: 100%;
     transform: scale(1);
-    overflow: hidden;
+    //overflow: hidden; // WARNING
     position: absolute;
   }
 

@@ -18,6 +18,7 @@ import { mediaSizes } from '../lib/config';
 import { MTDocument, MTPhotoSize } from '../types';
 import animationIntersector from './animationIntersector';
 import AudioElement from './audio';
+import MP4Source from '../lib/MP4Sourcee';
 
 export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue}: {
   doc: MTDocument, 
@@ -30,6 +31,23 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   middleware: () => boolean,
   lazyLoadQueue: LazyLoadQueue
 }) {
+  let span: HTMLSpanElement, spanPlay: HTMLSpanElement;
+  if(doc.type != 'round') {
+    span = document.createElement('span');
+    span.classList.add('video-time');
+    container.append(span);
+
+    if(doc.type != 'gif') {
+      span.innerText = (doc.duration + '').toHHMMSS(false);
+
+      spanPlay = document.createElement('span');
+      spanPlay.classList.add('video-play', 'tgico-largeplay', 'btn-circle', 'position-center');
+      container.append(spanPlay);
+    } else {
+      span.innerText = 'GIF';
+    }
+  }
+
   if(doc.type == 'video') {
     return wrapPhoto(doc, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware);
   }
@@ -55,19 +73,16 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     }
   }
 
-  let video = document.createElement('video');
-  let source = document.createElement('source');
-  video.append(source);
-
-  if(doc.type == 'gif') {
-    video.addEventListener('loadeddata', () => {
-      video.pause();
-      animationIntersector.addAnimation(video, 'chat');
-    }, {once: true});
+  if(img) {
+    img.classList.add('thumbnail');
   }
+
+  const video = document.createElement('video');
+  const source = document.createElement('source');
+  video.append(source);
   
   if(withTail) {
-    let foreignObject = img.parentElement;
+    const foreignObject = img.parentElement;
     video.width = +foreignObject.getAttributeNS(null, 'width');
     video.height = +foreignObject.getAttributeNS(null, 'height');
     foreignObject.append(video);
@@ -75,31 +90,26 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     container.append(video);
   }
 
-  let span: HTMLSpanElement, spanPlay: HTMLSpanElement;
-  if(doc.type != 'round') {
-    span = document.createElement('span');
-    span.classList.add('video-time');
-    container.append(span);
-
-    if(doc.type != 'gif') {
-      span.innerText = (doc.duration + '').toHHMMSS(false);
-
-      spanPlay = document.createElement('span');
-      spanPlay.classList.add('video-play', 'tgico-largeplay', 'btn-circle', 'position-center');
-      container.append(spanPlay);
-    } else {
-      span.innerText = 'GIF';
-    }
-  }
-  
   let loadVideo = async() => {
+    let url: string;
     if(message.media.preloader) { // means upload
       (message.media.preloader as ProgressivePreloader).attach(container, undefined, undefined, false);
     } else if(!doc.downloaded) {
-      let preloader = new ProgressivePreloader(container, true);
-      let promise = appDocsManager.downloadDoc(doc);
-      preloader.attach(container, true, promise, false);
-      await promise;
+      const promise = appDocsManager.downloadVideo(doc.id);
+      
+      //if(!doc.supportsStreaming) {
+        const preloader = new ProgressivePreloader(container, true);
+        preloader.attach(container, true, promise, false);
+      //}
+      
+      const mp4Source: MP4Source = await (promise as Promise<MP4Source>);
+      if(mp4Source instanceof MP4Source) {
+        url = mp4Source.getURL();
+      }
+    }
+
+    if(!url) {
+      url = doc.url;
     }
 
     if(middleware && !middleware()) {
@@ -107,17 +117,30 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     }
 
     //console.log('loaded doc:', doc, doc.url, container);
+
+    if(doc.type == 'gif'/*  || true */) {
+      video.addEventListener('canplay', () => {
+        if(img && img.parentElement) {
+          img.remove();
+        }
+
+        /* if(!video.paused) {
+          video.pause();
+        } */
+        animationIntersector.addAnimation(video, 'chat');
+      }, {once: true});
+    }
     
-    renderImageFromUrl(source, doc.url);
+    renderImageFromUrl(source, url);
     source.type = doc.mime_type;
     video.append(source);
     video.setAttribute('playsinline', '');
 
-    if(img && img.parentElement) {
-      img.remove();
-    }
+    /* if(!container.parentElement) {
+      container.append(video);
+    } */
     
-    if(doc.type == 'gif') {
+    if(doc.type == 'gif'/*  || true */) {
       video.muted = true;
       video.loop = true;
       //video.play();
@@ -130,7 +153,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     }
   };
 
-  if(doc.size >= 20e6 && !doc.downloaded) {
+  /* if(doc.size >= 20e6 && !doc.downloaded) {
     let downloadDiv = document.createElement('div');
     downloadDiv.classList.add('download');
 
@@ -146,9 +169,10 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     container.prepend(downloadDiv);
 
     return;
-  }
+  } */
   
-  return doc.downloaded ? loadVideo() : lazyLoadQueue.push({div: container, load: loadVideo/* , wasSeen: true */});
+  //return;
+  return doc.downloaded/*  && false */ ? loadVideo() : lazyLoadQueue.push({div: container, load: loadVideo/* , wasSeen: true */});
 }
 
 export const formatDate = (timestamp: number, monthShort = false, withYear = true) => {
@@ -402,7 +426,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
     if(thumb.bytes) {
       let img = new Image();
 
-      if(appWebpManager.isSupported() || doc.stickerThumbConverted) {
+      if((appWebpManager.isSupported() || doc.stickerThumbConverted)/*  && false */) {
         renderImageFromUrl(img, appPhotosManager.getPreviewURLFromThumb(thumb, true));
 
         div.append(img);
@@ -415,7 +439,9 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
 
           if(!div.childElementCount) {
             renderImageFromUrl(img, appPhotosManager.getPreviewURLFromThumb(thumb, true)).then(() => {
-              div.append(img);
+              if(!div.childElementCount) {
+                div.append(img);
+              }
             });
           }
         });
@@ -427,12 +453,14 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
     } else if(!onlyThumb && stickerType == 2 && withThumb && toneIndex <= 0) {
       let img = new Image();
       let load = () => appDocsManager.downloadDocThumb(doc, thumb.type).then(url => {
-        if(!img.parentElement || (middleware && !middleware())) return;
+        if(div.childElementCount || (middleware && !middleware())) return;
         let promise = renderImageFromUrl(img, url);
 
         if(!downloaded) {
           promise.then(() => {
-            div.append(img);
+            if(!div.childElementCount) {
+              div.append(img);
+            }
           });
         }
       });

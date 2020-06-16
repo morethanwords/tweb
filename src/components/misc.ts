@@ -18,7 +18,7 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
 
     let clickID = rippleClickID++;
 
-    console.log('ripple drawRipple');
+    //console.log('ripple drawRipple');
 
     handler = () => {
       let elapsedTime = Date.now() - startTime;
@@ -328,8 +328,11 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?
 
       if(activeStripe) {
         const tabsRect = tabs.getBoundingClientRect();
-        const textRect = target.firstElementChild.getBoundingClientRect();
-        activeStripe.style.cssText = `width: ${textRect.width + (2 * 2)}px; transform: translateX(${textRect.left - tabsRect.left}px);`;
+        const targetRect = target.getBoundingClientRect();
+        const width = 50;
+        activeStripe.style.cssText = `width: ${width}px; transform: translateX(${targetRect.left - tabsRect.left + ((targetRect.width - width) / 2)}px);`;
+        /* const textRect = target.firstElementChild.getBoundingClientRect();
+        activeStripe.style.cssText = `width: ${textRect.width + (2 * 2)}px; transform: translateX(${textRect.left - tabsRect.left}px);`; */
         //activeStripe.style.transform = `scaleX(${textRect.width}) translateX(${(textRect.left - tabsRect.left) / textRect.width + 0.5}px)`;
         //console.log('tabs click:', tabsRect, textRect);
       }
@@ -362,9 +365,9 @@ export function formatPhoneNumber(str: string) {
       }
     });
     
-    if(country.pattern) {
+    /* if(country.pattern) {
       str = str.slice(0, country.pattern.length);
-    }
+    } */
   }
   
   return {formatted: str, country};

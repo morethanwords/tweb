@@ -52,6 +52,14 @@ class AppAudio {
     appDocsManager.downloadDoc(doc.id).then(() => {
       this.container.append(audio);
       source.src = doc.url;
+    }, () => {
+      if(this.nextMid == mid) {
+        this.loadSiblingsAudio(doc.type as 'voice' | 'audio', mid).then(() => {
+          if(this.nextMid && this.audios[this.nextMid]) {
+            this.audios[this.nextMid].play();
+          }
+        })
+      }
     });
 
     return this.audios[mid] = audio;
@@ -74,7 +82,7 @@ class AppAudio {
     const message = appMessagesManager.getMessage(mid);
     this.prevMid = this.nextMid = 0;
 
-    appMessagesManager.getSearch(message.peerID, '', {
+    return appMessagesManager.getSearch(message.peerID, '', {
       _: type == 'audio' ? 'inputMessagesFilterMusic' : 'inputMessagesFilterVoice'
     }, mid, 3, 0, 2).then(value => {
       if(this.playingAudio != audio) {

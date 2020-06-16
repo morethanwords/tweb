@@ -1,5 +1,4 @@
 import Scrollable from "./scrollable_new";
-import LazyLoadQueue from "./lazyLoadQueue";
 import { RichTextProcessor } from "../lib/richtextprocessor";
 //import apiManager from "../lib/mtproto/apiManager";
 import apiManager from "../lib/mtproto/mtprotoworker";
@@ -8,14 +7,14 @@ import appImManager from "../lib/appManagers/appImManager";
 import { getRichValue, calcImageInBox } from "../lib/utils";
 import { wrapDocument, wrapReply } from "./wrappers";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
-import initEmoticonsDropdown, { EMOTICONSSTICKERGROUP } from "./emoticonsDropdown";
 import { Layouter, RectPart } from "./groupedLayout";
 import Recorder from '../../public/recorder.min';
 //import Recorder from '../opus-recorder/dist/recorder.min';
 import opusDecodeController from "../lib/opusDecodeController";
 import { touchSupport } from "../lib/config";
-import animationIntersector from "./animationIntersector";
 import appDocsManager from "../lib/appManagers/appDocsManager";
+import emoticonsDropdown from "./emoticonsDropdown";
+import PopupCreatePoll from "./popupCreatePoll";
 
 export class ChatInput {
   public pageEl = document.getElementById('page-chats') as HTMLDivElement;
@@ -25,10 +24,6 @@ export class ChatInput {
   public inputScroll = new Scrollable(this.inputMessageContainer);
   public btnSend = document.getElementById('btn-send') as HTMLButtonElement;
   public btnCancelRecord = this.btnSend.parentElement.previousElementSibling as HTMLButtonElement;
-  public emoticonsDropdown: HTMLDivElement = null;
-  public emoticonsTimeout: number = 0;
-  public toggleEmoticons: HTMLButtonElement;
-  public emoticonsLazyLoadQueue: LazyLoadQueue = null;
   public lastUrl = '';
   public lastTimeType = 0;
 
@@ -74,8 +69,6 @@ export class ChatInput {
   private scrollDiff = 0;
 
   constructor() {
-    this.toggleEmoticons = this.pageEl.querySelector('.toggle-emoticons') as HTMLButtonElement;
-
     this.attachMenu.container = document.getElementById('attach-file') as HTMLButtonElement;
     this.attachMenu.media = this.attachMenu.container.querySelector('.menu-media') as HTMLDivElement;
     this.attachMenu.document = this.attachMenu.container.querySelector('.menu-document') as HTMLDivElement;
@@ -109,7 +102,7 @@ export class ChatInput {
     }
 
     this.messageInput.addEventListener('keydown', (e: KeyboardEvent) => {
-      if(e.key == 'Enter') {
+      if(e.key == 'Enter' && !touchSupport) {
         /* if(e.ctrlKey || e.metaKey) {
           this.messageInput.innerHTML += '<br>';
           placeCaretAtEnd(this.message)
@@ -127,7 +120,7 @@ export class ChatInput {
     if(touchSupport) {
       this.messageInput.addEventListener('touchend', (e) => {
         this.saveScroll();
-        toggleEmoticons(false);
+        emoticonsDropdown.toggle(false);
       });
 
       window.addEventListener('resize', () => {
@@ -423,6 +416,10 @@ export class ChatInput {
       this.fileInput.click();
     });
 
+    this.attachMenu.poll.addEventListener('click', () => {
+      new PopupCreatePoll().show();
+    });
+
     document.addEventListener('paste', (event) => {
       if(!appImManager.peerID || this.attachMediaPopUp.container.classList.contains('active')) {
         return;
@@ -629,95 +626,6 @@ export class ChatInput {
         li.appendChild(audio);
   
         recordingslist.appendChild(li); */
-      };
-    }
-
-    let emoticonsDisplayTimeout = 0;
-    const toggleEmoticons = async(enable?: boolean) => {
-      if(!this.emoticonsDropdown) return;
-
-      if(touchSupport) {
-        const willBeActive = (!!this.emoticonsDropdown.style.display && enable === undefined) || enable;
-        this.toggleEmoticons.classList.toggle('flip-icon', willBeActive);
-        if(willBeActive) {
-          this.saveScroll();
-          // @ts-ignore
-          document.activeElement.blur();
-          await new Promise((resolve) => {
-            setTimeout(resolve, 100);
-          });
-        }
-      } else {
-        this.toggleEmoticons.classList.toggle('active', enable);
-      }
-      
-      if((this.emoticonsDropdown.style.display && enable === undefined) || enable) {
-        this.emoticonsDropdown.style.display = '';
-        void this.emoticonsDropdown.offsetLeft; // reflow
-        this.emoticonsDropdown.classList.add('active');
-        this.emoticonsLazyLoadQueue.unlock();
-        clearTimeout(emoticonsDisplayTimeout);
-
-        /* if(touchSupport) {
-          this.restoreScroll();
-        } */
-      } else {
-        this.emoticonsDropdown.classList.remove('active');
-        animationIntersector.checkAnimations(true, EMOTICONSSTICKERGROUP);
-        this.emoticonsLazyLoadQueue.lock();
-
-        clearTimeout(emoticonsDisplayTimeout);
-        emoticonsDisplayTimeout = setTimeout(() => {
-          this.emoticonsDropdown.style.display = 'none';
-        }, touchSupport ? 0 : 200);
-
-        /* if(touchSupport) {
-          this.restoreScroll();
-        } */
-      }
-  
-      animationIntersector.checkAnimations(false, EMOTICONSSTICKERGROUP);
-    };
-
-    if(touchSupport) {
-      this.toggleEmoticons.addEventListener('click', () => {
-        if(!this.emoticonsDropdown) {
-          let res = initEmoticonsDropdown(this.pageEl, appImManager, 
-            appMessagesManager, this.messageInput, this.toggleEmoticons, this.btnSend);
-          
-          this.emoticonsDropdown = res.dropdown;
-          this.emoticonsLazyLoadQueue = res.lazyLoadQueue;
-
-          toggleEmoticons(true);
-        } else {
-          toggleEmoticons();
-        }
-      });
-    } else {
-      this.toggleEmoticons.onmouseover = (e) => {
-        clearTimeout(this.emoticonsTimeout);
-        //this.emoticonsTimeout = setTimeout(() => {
-          if(!this.emoticonsDropdown) {
-            let res = initEmoticonsDropdown(this.pageEl, appImManager, 
-              appMessagesManager, this.messageInput, this.toggleEmoticons, this.btnSend);
-            
-            this.emoticonsDropdown = res.dropdown;
-            this.emoticonsLazyLoadQueue = res.lazyLoadQueue;
-  
-            this.toggleEmoticons.onmouseout = this.emoticonsDropdown.onmouseout = (e) => {
-              clearTimeout(this.emoticonsTimeout);
-              this.emoticonsTimeout = setTimeout(() => {
-                toggleEmoticons();
-              }, 200);
-            };
-  
-            this.emoticonsDropdown.onmouseover = (e) => {
-              clearTimeout(this.emoticonsTimeout);
-            };
-          }
-
-          toggleEmoticons(true);
-        //}, 0/* 200 */);
       };
     }
 

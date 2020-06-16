@@ -12,7 +12,7 @@ export enum LogLevels {
 };
 export function logger(prefix: string, level = LogLevels.log | LogLevels.warn | LogLevels.error) {
   // @ts-ignore
-  if(process.env.NODE_ENV == 'production') {
+  if(process.env.NODE_ENV == 'production'/*  || true */) {
     level = LogLevels.error;
   }
 

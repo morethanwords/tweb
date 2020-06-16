@@ -42,7 +42,7 @@
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
   position: relative;
   font-size: 0;
-  overflow: hidden;
+  //overflow: hidden;
   //border-radius: 5px;
   cursor: pointer;
 
@@ -180,6 +180,14 @@ html.no-touch .default.is-playing:hover .default__controls {
       border-radius: 4px;
       height: 5px;
       transform: scaleX(0);
+    }
+
+    &__loaded {
+      background: rgba(255, 255, 255, 0.38);
+      position: absolute;
+      width: calc(100% - 16px);
+      left: 0;
+      top: 0;
     }
   }
 }

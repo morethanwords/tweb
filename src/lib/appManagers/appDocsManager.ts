@@ -5,11 +5,16 @@ import { CancellablePromise, deferredPromise } from '../polyfill';
 import { isObject } from '../utils';
 import opusDecodeController from '../opusDecodeController';
 import { MTDocument } from '../../types';
+import MP4Source from '../MP4Sourcee';
+import { bufferConcat } from '../bin_utils';
 
 class AppDocsManager {
   private docs: {[docID: string]: MTDocument} = {};
   private thumbs: {[docIDAndSize: string]: Promise<string>} = {};
   private downloadPromises: {[docID: string]: CancellablePromise<Blob>} = {};
+
+  private videoChunks: {[docID: string]: CancellablePromise<ArrayBuffer>[]} = {};
+  private videoChunksQueue: {[docID: string]: {offset: number}[]} = {};
 
   public saveDoc(apiDoc: MTDocument, context?: any) {
     //console.log('saveDoc', apiDoc, this.docs[apiDoc.id]);
@@ -23,7 +28,8 @@ class AppDocsManager {
         }
       }
 
-      return context ? Object.assign(d, context) : d;
+      return Object.assign(d, apiDoc, context);
+      //return context ? Object.assign(d, context) : d;
     }
     
     if(context) {
@@ -56,13 +62,14 @@ class AppDocsManager {
           apiDoc.duration = attribute.duration;
           apiDoc.audioTitle = attribute.title;
           apiDoc.audioPerformer = attribute.performer;
-          apiDoc.type = attribute.pFlags.voice ? 'voice' : 'audio';
+          apiDoc.type = attribute.pFlags.voice && apiDoc.mime_type == "audio/ogg" ? 'voice' : 'audio';
           break;
 
         case 'documentAttributeVideo':
           apiDoc.duration = attribute.duration;
           apiDoc.w = attribute.w;
           apiDoc.h = attribute.h;
+          apiDoc.supportsStreaming = attribute.pFlags?.supports_streaming && apiDoc.size > 524288 && typeof(MediaSource) !== 'undefined';
           if(apiDoc.thumbs && attribute.pFlags.round_message) {
             apiDoc.type = 'round';
           } else /* if(apiDoc.thumbs) */ {
@@ -189,7 +196,110 @@ class AppDocsManager {
 
     return 't_' + (doc.type || 'file') + doc.id + fileExt;
   }
-  
+
+  private createMP4Stream(doc: MTDocument) {
+    const limitPart = 524288;
+    const chunks = this.videoChunks[doc.id];
+    const queue = this.videoChunksQueue[doc.id];
+
+    let mp4Source = new MP4Source({duration: doc.duration, video: {expected_size: doc.size}}, (offset: number, end: number) => {
+      const chunkStart = offset - (offset % limitPart);
+
+      const sorted: typeof queue = [];
+      const lower: typeof queue = [];
+      for(let i = 0; i < queue.length; ++i) {
+        if(queue[i].offset >= chunkStart) {
+          sorted.push(queue[i]);
+        } else {
+          lower.push(queue[i]);
+        }
+      }
+      sorted.sort((a, b) => a.offset - b.offset).concat(lower).forEach((q, i) => {
+        queue[i] = q;
+      });
+
+      const index1 = offset / limitPart | 0;
+      const index2 = end / limitPart | 0;
+      
+      const p = chunks.slice(index1, index2 + 1);
+
+      //console.log('MP4Source getBuffer:', offset, end, index1, index2, doc.size, JSON.stringify(queue));
+
+      if(offset % limitPart == 0) {
+        return p[0];
+      } else {
+        return Promise.all(p).then(buffers => {
+          const buffer = buffers.length > 1 ? bufferConcat(buffers[0], buffers[1]) : buffers[0];
+          const start = (offset % limitPart);
+          const _end = start + (end - offset);
+
+          const sliced = buffer.slice(start, _end);
+          //console.log('slice buffer:', sliced);
+          return sliced;
+        });
+      }
+    });
+
+    return mp4Source;
+  }
+
+  private mp4Stream(doc: MTDocument, deferred: CancellablePromise<Blob>) {
+    const limitPart = 524288;
+    const promises = this.videoChunks[doc.id] ?? (this.videoChunks[doc.id] = []);
+    if(!promises.length) {
+      for(let offset = 0; offset < doc.size; offset += limitPart) {
+        const deferred = deferredPromise<ArrayBuffer>();
+        promises.push(deferred);
+      }
+    }
+
+    let good = false;
+    return async(bytes: Uint8Array, offset: number, queue: {offset: number}[]) => {
+      if(!deferred.isFulfilled && !deferred.isRejected/*  && offset == 0 */) {
+        this.videoChunksQueue[doc.id] = queue;
+        console.log('stream:', doc, doc.url, deferred);
+        //doc.url = mp4Source.getURL();
+        //deferred.resolve(mp4Source);
+        deferred.resolve();
+        good = true;
+      } else if(!good) {
+        //mp4Source.stop();
+        //mp4Source = null;
+        promises.length = 0;
+        return;
+      }
+      
+      const index = offset % limitPart == 0 ? offset / limitPart : promises.length - 1;
+      promises[index].resolve(bytes.slice().buffer);
+      //console.log('i wont believe in you', doc, bytes, offset, promises, bytes.length, bytes.buffer.byteLength, bytes.slice().buffer);
+      //console.log('i wont believe in you', bytes, doc, bytes.length, offset);
+    };
+  }
+
+  public downloadVideo(docID: string): CancellablePromise<MP4Source | Blob> {
+    const promise = this.downloadDoc(docID);
+
+    const doc = this.getDoc(docID);
+    if(!doc.supportsStreaming || doc.url) {
+      return promise;
+    }
+
+    const deferred = deferredPromise<Blob>();
+    deferred.cancel = () => {
+      promise.cancel();
+    };
+
+    promise.notify = (...args) => {
+      deferred.notify && deferred.notify(...args);
+    };
+
+    promise.then(() => {
+      deferred.resolve(this.createMP4Stream(doc));
+    });
+
+    return deferred;
+  }
+
   public downloadDoc(docID: any, toFileEntry?: any): CancellablePromise<Blob> {
     const doc = this.getDoc(docID);
 
@@ -218,18 +328,21 @@ class AppDocsManager {
       downloadPromise.cancel();
     };
 
+    const processPart = doc.supportsStreaming ? this.mp4Stream(doc, deferred) : undefined;
+
     // нет смысла делать объект с выполняющимися промисами, нижняя строка и так вернёт загружающийся
     const downloadPromise = apiFileManager.downloadFile(doc.dc_id, inputFileLocation, doc.size, {
       mimeType: doc.mime_type || 'application/octet-stream',
       toFileEntry: toFileEntry,
-      stickerType: doc.sticker
+      stickerType: doc.sticker,
+      processPart
     });
 
     downloadPromise.notify = (...args) => {
       deferred.notify && deferred.notify(...args);
     };
 
-    deferred.notify = downloadPromise.notify;
+    //deferred.notify = downloadPromise.notify;
     
     downloadPromise.then((blob) => {
       if(blob) {
@@ -244,13 +357,20 @@ class AppDocsManager {
             opusDecodeController.decode(uint8).then(result => {
               doc.url = result.url;
               deferred.resolve(blob);
-            }, deferred.reject);
+            }, (err) => {
+              delete doc.downloaded;
+              deferred.reject(err);
+            });
           };
 
           reader.readAsArrayBuffer(blob);
 
           return;
         } else if(doc.type && doc.sticker != 2) {
+          /* if(processPart) {
+            console.log('stream after:', doc, doc.url, deferred);
+          } */
+
           doc.url = URL.createObjectURL(blob);
         }
       }
@@ -260,6 +380,8 @@ class AppDocsManager {
       console.log('document download failed', e);
       deferred.reject(e);
       //historyDoc.progress.enabled = false;
+    }).finally(() => {
+      deferred.notify = downloadPromise.notify = deferred.cancel = downloadPromise.cancel = null;
     });
 
     /* downloadPromise.notify = (progress) => {
@@ -336,4 +458,9 @@ class AppDocsManager {
   }
 }
 
-export default new AppDocsManager();
+const appDocsManager = new AppDocsManager();
+// @ts-ignore
+if(process.env.NODE_ENV != 'production') {
+  (window as any).appDocsManager = appDocsManager;
+}
+export default appDocsManager;

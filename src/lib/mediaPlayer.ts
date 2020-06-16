@@ -1,6 +1,7 @@
 export class MediaProgressLine {
   public container: HTMLDivElement;
   private filled: HTMLDivElement;
+  private filledLoad: HTMLDivElement;
   private seek: HTMLInputElement;
 
   private duration = 0;
@@ -8,12 +9,20 @@ export class MediaProgressLine {
   private stopAndScrubTimeout = 0;
   private progressRAF = 0;
 
-  constructor(private media: HTMLAudioElement | HTMLVideoElement) {
+  public onSeek: (time: number) => void;
+
+  constructor(private media: HTMLAudioElement | HTMLVideoElement, streamable = false) {
     this.container = document.createElement('div');
     this.container.classList.add('media-progress');
 
     this.filled = document.createElement('div');
     this.filled.classList.add('media-progress__filled');
+
+    if(streamable) {
+      this.filledLoad = document.createElement('div');
+      this.filledLoad.classList.add('media-progress__filled', 'media-progress__loaded');
+      this.container.append(this.filledLoad);
+    }
 
     let seek = this.seek = document.createElement('input');
     seek.classList.add('media-progress__seek');
@@ -87,6 +96,10 @@ export class MediaProgressLine {
     this.mousedown = false;
   };
 
+  public setLoadProgress(percents: number) {
+    this.filledLoad.style.transform = 'scaleX(' + percents + ')';
+  }
+
   private setSeekMax() {
     this.duration = this.media.duration;
     if(this.duration > 0) {
@@ -116,10 +129,13 @@ export class MediaProgressLine {
   private scrub(e: MouseEvent) {
     const scrubTime = e.offsetX / this.container.offsetWidth * this.duration;
     this.media.currentTime = scrubTime;
+
+    if(this.onSeek) {
+      this.onSeek(scrubTime);
+    }
+
     let scaleX = scrubTime / this.duration;
-  
     scaleX = Math.max(0, Math.min(1, scaleX));
-  
     this.filled.style.transform = 'scaleX(' + scaleX + ')';
   }
 
@@ -131,6 +147,8 @@ export class MediaProgressLine {
     this.container.removeEventListener('mousemove', this.onMouseMove);
     this.container.removeEventListener('mousedown', this.onMouseDown);
     this.container.removeEventListener('mouseup', this.onMouseUp);
+
+    this.onSeek = null;
 
     if(this.stopAndScrubTimeout) {
       clearTimeout(this.stopAndScrubTimeout);
@@ -144,10 +162,10 @@ export class MediaProgressLine {
 
 export default class VideoPlayer {
   public wrapper: HTMLDivElement;
+  public progress: MediaProgressLine;
   private skin: string;
-  private progress: MediaProgressLine;
 
-  constructor(public video: HTMLVideoElement, play = false) {
+  constructor(public video: HTMLVideoElement, play = false, streamable = false) {
     this.wrapper = document.createElement('div');
     this.wrapper.classList.add('ckin__player');
 
@@ -160,7 +178,7 @@ export default class VideoPlayer {
 
     if(this.skin == 'default') {
       let controls = this.wrapper.querySelector('.default__controls.ckin__controls') as HTMLDivElement;
-      this.progress = new MediaProgressLine(video);
+      this.progress = new MediaProgressLine(video, streamable);
       controls.prepend(this.progress.container);
     }
 

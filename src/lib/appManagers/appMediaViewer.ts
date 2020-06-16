@@ -11,6 +11,8 @@ import { renderImageFromUrl, parseMenuButtonsTo } from "../../components/misc";
 import AvatarElement from "../../components/avatar";
 import LazyLoadQueue from "../../components/lazyLoadQueue";
 import appForward from "../../components/appForward";
+import { isSafari } from "../config";
+import MP4Source from "../MP4Sourcee";
 
 export class AppMediaViewer {
   public wholeDiv = document.querySelector('.media-viewer-whole') as HTMLDivElement;
@@ -62,7 +64,7 @@ export class AppMediaViewer {
   constructor() {
     this.log = logger('AMV');
     this.preloader = new ProgressivePreloader();
-    this.lazyLoadQueue = new LazyLoadQueue(5, false);
+    this.lazyLoadQueue = new LazyLoadQueue(undefined, true);
 
     parseMenuButtonsTo(this.buttons, this.wholeDiv.querySelectorAll(`[class*='menu']`) as NodeListOf<HTMLElement>);
 
@@ -325,6 +327,12 @@ export class AppMediaViewer {
         newSvg.insertAdjacentHTML('beforeend', target.firstElementChild.outerHTML.replace(clipID, newClipID));
         newSvg.insertAdjacentHTML('beforeend', target.lastElementChild.outerHTML.replace(clipID, newClipID));
 
+        // FIX STREAM
+        let source = newSvg.querySelector('source');
+        if(source) {
+          source.removeAttribute('src');
+        }
+
         // теперь надо выставить новую позицию для хвостика
         let defs = newSvg.firstElementChild;
         let use = defs.firstElementChild.firstElementChild as SVGUseElement;
@@ -376,7 +384,7 @@ export class AppMediaViewer {
             mediaElement.src = src;
           }
         });
-      } else if(mediaElement instanceof HTMLVideoElement && mediaElement.firstElementChild && ((mediaElement.firstElementChild as HTMLSourceElement).src || src)) {
+      }/*  else if(mediaElement instanceof HTMLVideoElement && mediaElement.firstElementChild && ((mediaElement.firstElementChild as HTMLSourceElement).src || src)) {
         await new Promise((resolve, reject) => {
           mediaElement.addEventListener('loadeddata', resolve);
 
@@ -384,7 +392,7 @@ export class AppMediaViewer {
             (mediaElement.firstElementChild as HTMLSourceElement).src = src;
           }
         });
-      }
+      } */
   
       mover.style.display = '';
 
@@ -769,13 +777,21 @@ export class AppMediaViewer {
     if(isVideo) {
       ////////this.log('will wrap video', media, size);
 
+      /* let source = target.querySelector('source');
+      if(source && source.src) {
+        source.src = '';
+      } */
+
       setMoverPromise = this.setMoverToTarget(target, false, fromRight).then(() => {
       //return; // set and don't move
       //if(wasActive) return;
         //return;
 
-        let video = mover.querySelector('video') || document.createElement('video');
-        let source = video.firstElementChild as HTMLSourceElement || document.createElement('source');
+        const div = mover.firstElementChild && mover.firstElementChild.classList.contains('media-viewer-aspecter') ? mover.firstElementChild : mover;
+        const video = mover.querySelector('video') || document.createElement('video');
+        const source = video.firstElementChild as HTMLSourceElement || document.createElement('source');
+
+        source.removeAttribute('src');
 
         video.setAttribute('playsinline', '');
         if(media.type == 'gif') {
@@ -784,54 +800,128 @@ export class AppMediaViewer {
           video.loop = true;
         }
 
-        let createPlayer = () => {
+        if(!source.parentElement) {
+          video.append(source);
+        }
+
+        const createPlayer = (streamable = false) => {
           if(media.type != 'gif') {
             video.dataset.ckin = 'default';
             video.dataset.overlay = '1';
 
-            let player = new VideoPlayer(video, true);
+            if(!video.parentElement) {
+              div.append(video);
+            }
+
+            const player = new VideoPlayer(video, true, streamable);
+            return player;
             /* player.wrapper.parentElement.append(video);
             mover.append(player.wrapper); */
-          } else {
+          }/*  else {
             video.play();
-          }
+          } */
         };
         
-        if(!source || !source.src) {
-          let load = () => {
-            let promise = appDocsManager.downloadDoc(media);
-            this.preloader.attach(mover, true, promise);
-    
-            promise.then(() => {
+        if(!source.src || (media.url && media.url != source.src)) {
+          const load = () => {
+            const promise = appDocsManager.downloadVideo(media.id);
+
+            const streamable = media.supportsStreaming && !media.url;
+            //if(!streamable) {
+              this.preloader.attach(mover, true, promise);
+            //}
+            
+            let player: VideoPlayer;
+            
+            let offset = 0;
+            let loadedParts: {[offset: number]: true} = {};
+            
+            let preloaderNotify = promise.notify;
+            let promiseNotify = (details: {offset: number, total: number, done: number}) => {
+              if(player) {
+                //player.progress.setLoadProgress(details.done / details.total);
+                setLoadProgress();
+              }
+
+              loadedParts[details.offset] = true;
+              preloaderNotify(details);
+            };
+            if(streamable) {
+              promise.notify = promiseNotify;
+            }
+
+            let setLoadProgress = () => {
+              let rounded = offset - (offset % 524288);
+
+              let downloadedAfter = 0;
+              for(let i in loadedParts) {
+                let o = +i;
+                if(o >= rounded) {
+                  downloadedAfter += 524288;
+                }
+              }
+
+              if(offset > rounded) {
+                downloadedAfter -= offset % 524288;
+              }
+
+              player.progress.setLoadProgress(Math.min(1, downloadedAfter / media.size + rounded / media.size));
+            };
+
+            promise.then(async(mp4Source: any) => {
               if(this.currentMessageID != message.mid) {
                 this.log.warn('media viewer changed video');
                 return;
               }
+
+              const isStream = mp4Source instanceof MP4Source;
+              if(isStream) {
+                promise.notify = promiseNotify;
+              }
   
-              let url = media.url;
-              if(target instanceof SVGSVGElement) {
-                this.updateMediaSource(mover, url, 'source');
-                this.updateMediaSource(target, url, 'source');
-              } else {
-                let div = mover.firstElementChild && mover.firstElementChild.classList.contains('media-viewer-aspecter') ? mover.firstElementChild : mover;
-                let image = div.firstElementChild as HTMLImageElement;
-                if(image instanceof HTMLImageElement) {
-                  image.remove();
+              const url = isStream ? mp4Source.getURL() : media.url;
+              if(target instanceof SVGSVGElement && (video.parentElement || !isSafari)) { // if video exists
+                if(!video.parentElement) {
+                  div.firstElementChild.lastElementChild.append(video);
                 }
-  
+                
+                this.updateMediaSource(mover, url, 'source');
+                //this.updateMediaSource(target, url, 'source');
+              } else {
+                //const promise = new Promise((resolve) => video.addEventListener('loadeddata', resolve, {once: true}));
                 renderImageFromUrl(source, url);
                 source.type = media.mime_type;
-  
-                if(!source.parentElement) {
-                  video.append(source);
+
+                //await promise;
+                const first = div.firstElementChild as HTMLImageElement;
+                if(!(first instanceof HTMLVideoElement)) {
+                  first.remove();
                 }
-  
+
                 if(!video.parentElement) {
                   div.prepend(video);
                 }
               }
+
+              // я хз что это такое, видео появляются просто чёрными и не включаются без этого кода снизу
+              source.remove();
+              window.requestAnimationFrame(() => {
+                window.requestAnimationFrame(() => {
+                  //parent.append(video);
+                  video.append(source);
+                });
+              });
   
-              createPlayer();
+              player = createPlayer(streamable);
+              if(player && mp4Source instanceof MP4Source) {
+                player.progress.onSeek = (time) => {
+                  //this.log('seek', time);
+                  offset = mp4Source.seek(time);
+                  setLoadProgress();
+                };
+
+                this.log('lol');
+              }
             });
 
             return promise;

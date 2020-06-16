@@ -1,3 +1,6 @@
+import { isSafari } from "./config";
+import { logger, LogLevels } from "./polyfill";
+
 type Result = {
   bytes: Uint8Array, 
   waveform?: Uint8Array
@@ -7,7 +10,8 @@ type Task = {
   pages: Uint8Array,
   withWaveform: boolean,
   waveform?: Uint8Array,
-  callback: {resolve: (result: Result) => void, reject: (err: Error) => void}
+  callback: {resolve: (result: Result) => void, reject: (err: any) => void},
+  timeout: number
 };
 
 export class OpusDecodeController {
@@ -17,12 +21,13 @@ export class OpusDecodeController {
   private tasks: Array<Task> = [];
   private keepAlive = false;
   private isPlaySupportedResult: boolean;
+  private log = logger('OPUS', LogLevels.error);
 
   public isPlaySupported() {
     if(this.isPlaySupportedResult !== undefined) return this.isPlaySupportedResult;
 
     const audio = document.createElement('audio');
-    return this.isPlaySupportedResult = !!(audio.canPlayType && audio.canPlayType('audio/ogg;').replace(/no/, ''));
+    return this.isPlaySupportedResult = !!(audio.canPlayType && audio.canPlayType('audio/ogg;').replace(/no/, ''))/*  && false */;
   }
 
   public loadWavWorker() {
@@ -32,6 +37,7 @@ export class OpusDecodeController {
     this.wavWorker.addEventListener('message', (e) => {
       const data = e.data;
 
+      this.log('[WAV] got message:', data);
       if(data && data.page) {
         const bytes = data.page;
         this.onTaskEnd(this.tasks.shift(), bytes);
@@ -46,17 +52,20 @@ export class OpusDecodeController {
     this.worker.addEventListener('message', (e) => {
       const data = e.data;
       
+      this.log('[DECODER] got message', data);
       if(data.type == 'done') {
+        //this.log('[DECODER] send done to wav');
         this.wavWorker.postMessage({command: 'done'});
 
         if(data.waveform) {
           this.tasks[0].waveform = data.waveform;
         }
       } else { // e.data contains decoded buffers as float32 values
+        //this.log('[DECODER] send encode to wav');
         this.wavWorker.postMessage({
           command: 'encode',
           buffers: e.data
-        }, data.map((typedArray: Uint8Array) => typedArray.buffer));
+        }, isSafari ? undefined : data.map((typedArray: Uint8Array) => typedArray.buffer));
       }
     });
   }
@@ -71,8 +80,13 @@ export class OpusDecodeController {
     }
   }
 
-  public onTaskEnd(task: Task, result: Uint8Array) {
-    task.callback.resolve({bytes: result, waveform: task.waveform});
+  public onTaskEnd(task: Task, result?: Uint8Array) {
+    if(!result) {
+      task.callback.reject('timeout');
+    } else {
+      clearTimeout(task.timeout);
+      task.callback.resolve({bytes: result, waveform: task.waveform});
+    }
 
     if(this.tasks.length) {
       this.executeNewTask(this.tasks[0]);
@@ -81,14 +95,18 @@ export class OpusDecodeController {
     this.terminateWorkers();
   }
 
-  public terminateWorkers() {
-    if(this.keepAlive || this.tasks.length) return;
+  public terminateWorkers(kill = false) {
+    if((this.keepAlive || this.tasks.length) && !kill) return;
 
-    this.worker.terminate();
-    this.worker = null;
-
-    this.wavWorker.terminate();
-    this.wavWorker = null;
+    if(this.worker) {
+      this.worker.terminate();
+      this.worker = null;
+    }
+    
+    if(this.wavWorker) {
+      this.wavWorker.terminate();
+      this.wavWorker = null;
+    }
   }
 
   public executeNewTask(task: Task) {
@@ -106,12 +124,25 @@ export class OpusDecodeController {
 
     //console.log('sending command to worker:', task);
     //setTimeout(() => {
+      this.log('[DECODER] send decode');
       this.worker.postMessage({
         command: 'decode',
         pages: task.pages,
         waveform: task.withWaveform
-      }, [task.pages.buffer]);
+      }, isSafari ? undefined : [task.pages.buffer]);
     //}, 1e3);
+
+    task.timeout = setTimeout(() => {
+      this.log.error('decode timeout'/* , task */);
+
+      this.terminateWorkers(true);
+      if(this.tasks.length) {
+        this.loadWorker();
+        this.loadWavWorker();
+      }
+
+      this.onTaskEnd(this.tasks.shift());
+    }, 2e3);
   }
 
   public pushDecodeTask(pages: Uint8Array, withWaveform: boolean) {
@@ -119,7 +150,8 @@ export class OpusDecodeController {
       const task = {
         pages,
         withWaveform,
-        callback: {resolve, reject}
+        callback: {resolve, reject},
+        timeout: 0
       };
 
       this.loadWorker();
@@ -139,4 +171,9 @@ export class OpusDecodeController {
   }
 }
 
-export default new OpusDecodeController();
+const opusDecodeController = new OpusDecodeController();
+// @ts-ignore
+if(process.env.NODE_ENV != 'production') {
+  (window as any).opusDecodeController = opusDecodeController;
+}
+export default opusDecodeController;

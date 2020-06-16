@@ -45,7 +45,7 @@ export default class AvatarElement extends HTMLElement {
     } else if(name == 'peer-title') {
       this.peerTitle = newValue;
     } else if(name == 'dialog') {
-      this.isDialog = !!newValue;
+      this.isDialog = !!+newValue;
     }
   }
 

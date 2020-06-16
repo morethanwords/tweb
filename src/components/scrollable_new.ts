@@ -1,5 +1,6 @@
 import { logger, LogLevels } from "../lib/polyfill";
 import smoothscroll from '../lib/smoothscroll';
+import { touchSupport, isSafari } from "../lib/config";
 //import { isInDOM } from "../lib/utils";
 (window as any).__forceSmoothScrollPolyfill__ = true;
 smoothscroll.polyfill();
@@ -103,22 +104,22 @@ export default class Scrollable {
 
     this.visible = new Set();
     this.observer = new IntersectionObserver(entries => {
-      let filtered = entries.filter(entry => entry.isIntersecting);
+      const filtered = entries.filter(entry => entry.isIntersecting);
 
       //return;
 
       //this.log('entries:', entries);
 
       entries.forEach(entry => {
-        let target = entry.target as HTMLElement;
+        const target = entry.target as HTMLElement;
 
         if(entry.isIntersecting) {
           this.setVisible(target);
 
           this.log.debug('intersection entry:', entry, this.lastTopID, this.lastBottomID);
         } else {
-          let id = +target.dataset.virtual;
-          let isTop = entry.boundingClientRect.top < 0;
+          const id = +target.dataset.virtual;
+          const isTop = entry.boundingClientRect.top < 0;
           
           if(isTop) {
             this.lastTopID = id + 1;
@@ -159,10 +160,10 @@ export default class Scrollable {
 
       this.log.debug('entries:', entries, filtered, this.lastScrollDirection, this.lastTopID, this.lastBottomID);
 
-      let minVisibleID = this.lastTopID - this.splitCount;
-      let maxVisibleID = this.lastBottomID + this.splitCount;
-      for(let target of this.visible) {
-        let id = +target.dataset.virtual;
+      const minVisibleID = this.lastTopID - this.splitCount;
+      const maxVisibleID = this.lastBottomID + this.splitCount;
+      for(const target of this.visible) {
+        const id = +target.dataset.virtual;
         if(id < minVisibleID || id > maxVisibleID) {
           this.setHidden(target);
         }
@@ -178,9 +179,9 @@ export default class Scrollable {
     if(axis == 'x') {
       this.container.classList.add('scrollable-x');
 
-      let scrollHorizontally = (e: any) => {
+      const scrollHorizontally = (e: any) => {
         e = window.event || e;
-        var delta = Math.max(-1, Math.min(1, (e.wheelDelta || -e.detail)));
+        const delta = Math.max(-1, Math.min(1, (e.wheelDelta || -e.detail)));
         this.container.scrollLeft -= (delta * 20);
         e.preventDefault();
       };
@@ -216,6 +217,27 @@ export default class Scrollable {
     //this.onScroll();
 
     this.overflowContainer = window.innerWidth <= 720 && false ? document.documentElement : this.container;
+
+    if(touchSupport && isSafari) {
+      let allowUp: boolean, allowDown: boolean, slideBeginY: number;
+      this.container.addEventListener('touchstart', (event) => {
+        allowUp = this.container.scrollTop > 0;
+        allowDown = (this.container.scrollTop < this.container.scrollHeight - this.container.clientHeight);
+        // @ts-ignore
+        slideBeginY = event.pageY;
+      });
+      
+      this.container.addEventListener('touchmove', (event: any) => {
+        var up = (event.pageY > slideBeginY);
+        var down = (event.pageY < slideBeginY);
+        slideBeginY = event.pageY;
+        if((up && allowUp) || (down && allowDown)) {
+          event.stopPropagation();
+        } else {
+          event.preventDefault();
+        }
+      });
+    }
 
     /* scrollables.set(this.container, this);
     scrollsIntersector.observe(this.container); */
@@ -323,7 +345,7 @@ export default class Scrollable {
       this.onScrollMeasure = 0;
       if(!this.splitUp) return;
 
-      let scrollTop = this.overflowContainer.scrollTop;
+      const scrollTop = this.overflowContainer.scrollTop;
       if(this.lastScrollTop != scrollTop) {
         this.lastScrollDirection = this.lastScrollTop < scrollTop ? 1 : -1;
         this.lastScrollTop = scrollTop;
@@ -336,8 +358,8 @@ export default class Scrollable {
   public checkForTriggers(container: HTMLElement) {
     if(this.scrollLocked || (!this.onScrolledTop && !this.onScrolledBottom)) return;
 
-    let scrollTop = container.scrollTop;
-    let maxScrollTop = container.scrollHeight - container.clientHeight;
+    const scrollTop = container.scrollTop;
+    const maxScrollTop = container.scrollHeight - container.clientHeight;
 
     //this.log('checkForTriggers:', scrollTop, maxScrollTop);
 
@@ -359,7 +381,7 @@ export default class Scrollable {
   public updateElement(element: HTMLElement) {
     element.style.minHeight = '';
     window.requestAnimationFrame(() => {
-      let height = element.scrollHeight;
+      const height = element.scrollHeight;
       
       window.requestAnimationFrame(() => {
         element.style.minHeight = height + 'px';
@@ -368,12 +390,13 @@ export default class Scrollable {
   }
 
   public prepareElement(element: HTMLElement, append = true) {
+    //return;
     element.dataset.virtual = '' + (append ? this.virtualTempIDBottom++ : this.virtualTempIDTop--);
 
     this.log.debug('prepareElement: prepared');
     
     window.requestAnimationFrame(() => {
-      let {scrollHeight/* , scrollWidth */} = element;
+      const {scrollHeight/* , scrollWidth */} = element;
 
       this.log.debug('prepareElement: first rAF');
 
@@ -413,7 +436,7 @@ export default class Scrollable {
 
   public scrollIntoView(element: HTMLElement, smooth = true) {
     if(element.parentElement && !this.scrollLocked) {
-      let isFirstUnread = element.classList.contains('is-first-unread');
+      const isFirstUnread = element.classList.contains('is-first-unread');
 
       let offsetTop = element.getBoundingClientRect().top - this.container.getBoundingClientRect().top;
       offsetTop = this.container.scrollTop + offsetTop;
@@ -423,10 +446,10 @@ export default class Scrollable {
         return;
       }
 
-      let clientHeight = this.container.clientHeight;
-      let height = element.scrollHeight;
+      const clientHeight = this.container.clientHeight;
+      const height = element.scrollHeight;
       
-      let d = (clientHeight - height) / 2;
+      const d = (clientHeight - height) / 2;
       offsetTop -= d;
       
       this.scrollTo(offsetTop, smooth);
@@ -436,7 +459,7 @@ export default class Scrollable {
   public scrollTo(top: number, smooth = true, important = false) {
     if(this.scrollLocked && !important) return;
 
-    let scrollTop = this.scrollTop;
+    const scrollTop = this.scrollTop;
     if(scrollTop == Math.floor(top)) {
       return;
     }

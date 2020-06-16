@@ -54,7 +54,7 @@ function fillTransfer(transfer, obj) {
 }
 
 function reply() {
-  if(isSafari(self)) {
+  if(isSafari(self)/*  || true */) {
     ctx.postMessage(...arguments);
   } else {
     var transfer = new Set();

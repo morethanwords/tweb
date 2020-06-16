@@ -1,13 +1,17 @@
 @media only screen and (max-width: 720px){.chats-container .input-search{margin-left:16px}}
 @media only screen and (max-width: 720px){.chats-container li{padding-bottom:0px}}
 @media only screen and (max-width: 720px){.chats-container li>.rp{padding:9px 0 0 0;margin:0px 11.5px 0px 9px;overflow:hidden}}
-@media only screen and (max-width: 720px){#topbar.is-pinned-shown:not(.hide-pinned)+#bubbles{margin-top:52px}}
+@media only screen and (max-width: 720px){#topbar.is-audio-shown+#bubbles,#topbar.is-pinned-shown+#bubbles{margin-top:52px}#topbar.is-pinned-shown:not(.hide-pinned):not(.is-audio-shown) .pinned-message{display:flex}}
 @media only screen and (max-width: 720px){#topbar .chat-mute-button,#topbar .chat-search-button{display:none}}
 @media only screen and (max-width: 720px){#topbar .person{margin-left:10px}}
 @media only screen and (max-width: 720px){#chat-input .chat-input-container{padding:.35rem .5rem .5rem}}
 @media only screen and (max-width: 720px){.chat-container .input-message{min-height:46px;padding:0.5px .5rem}}
 @media only screen and (max-width: 720px){.chat-container .pinned-message{position:absolute !important;top:100%;width:100% !important;background:#fff;left:0;max-height:100% !important;height:52px;padding:1rem}}
 @media only screen and (max-width: 720px){.chat-container .pinned-message-title,.chat-container .pinned-message-subtitle,.chat-container .reply-title,.chat-container .reply-subtitle{line-height:13px}}
+@media only screen and (max-width: 720px){.chat-container .pinned-container{box-shadow:0px 1px 3px 0px rgba(0,0,0,0.15)}.chat-container .pinned-container:before{width:100%;content:" ";height:52px;left:0;top:0;position:absolute;box-shadow:inset 0px 1px 2px 0px rgba(0,0,0,0.15)}}
+@media only screen and (max-width: 720px){.chat-container .pinned-container .pinned-message-close.tgico-close,.chat-container .pinned-container .pinned-audio-close.tgico-close,.chat-container .pinned-container .pinned-audio-ico.tgico-close{font-size:1.4rem;right:9px;visibility:visible}}
+@media only screen and (max-width: 720px){.chat-container .pinned-audio{height:52px;padding-left:58px;background:#fff;width:100%;position:absolute;left:0;top:100%}}
+@media only screen and (max-width: 720px){.chat-container .pinned-audio-ico{margin-left:20px}}
 @media only screen and (max-width: 720px){#bubbles-inner.is-chat .is-in .bubble__container{max-width:calc(100% - 3rem)}}
 @media only screen and (max-width: 720px){#bubbles-go-down{width:2.875rem;height:2.875rem}}
 @media only screen and (max-width: 720px){#bubbles-go-down{right:.5rem}}
