@@ -39,7 +39,7 @@ let onFirstMount = () => {
   //const countries: Country[] = _countries.default.filter(c => c.emoji);
   const countries: Country[] = Config.Countries.filter(c => c.emoji).sort((a, b) => a.name.localeCompare(b.name));
 
-  let lastCountrySelected = '';
+  let lastCountrySelected: Country = null;
 
   var selectCountryCode = page.pageEl.querySelector('input[name="countryCode"]')! as HTMLInputElement;
   var parent = selectCountryCode.parentElement;
@@ -108,11 +108,15 @@ let onFirstMount = () => {
         let phoneCode = target.querySelector<HTMLElement>('.phone-code').innerText;
 
         selectCountryCode.value = countryName;
-        lastCountrySelected = countryName;
+        lastCountrySelected = countries.find(c => c.name == countryName);
         
         telEl.value = phoneCode;
         setTimeout(() => telEl.focus(), 0);
-        console.log('clicked', e, countryName, phoneCode);
+        //console.log('clicked', e, countryName, phoneCode);
+      });
+    } else {
+      countries.forEach((c) => {
+        c.li.forEach(li => li.style.display = '');
       });
     }
 
@@ -136,15 +140,16 @@ let onFirstMount = () => {
       if(good) matches.push(c);
     });
 
-    if(matches.length == 1 && matches[0].li.length == 1) {
+    // Код ниже автоматически выберет страну если она осталась одна при поиске
+    /* if(matches.length == 1 && matches[0].li.length == 1) {
       if(matches[0].name == lastCountrySelected) return false;
-      console.log('clicking', matches[0]);
+      //console.log('clicking', matches[0]);
 
       var clickEvent = document.createEvent('MouseEvents');
       clickEvent.initEvent('mousedown', true, true);
       matches[0].li[0].dispatchEvent(clickEvent);
       return false;
-    } else if(matches.length == 0) {
+    } else  */if(matches.length == 0) {
       countries.forEach((c) => {
         c.li.forEach(li => li.style.display = '');
       });
@@ -162,21 +167,25 @@ let onFirstMount = () => {
   let sortedCountries = countries.slice().sort((a, b) => b.phoneCode.length - a.phoneCode.length);
 
   let telEl = page.pageEl.querySelector('input[name="phone"]') as HTMLInputElement;
+  const telLabel = telEl.nextElementSibling as HTMLLabelElement;
   telEl.addEventListener('input', function(this: typeof telEl, e) {
     this.classList.remove('error');
+
+    telLabel.innerText = 'Phone Number';
 
     let {formatted, country} = formatPhoneNumber(this.value);
     this.value = formatted ? '+' + formatted : '';
 
-    console.log(formatted, country);
+    //console.log(formatted, country);
 
     let countryName = country ? country.name : ''/* 'Unknown' */;
-    if(countryName != selectCountryCode.value) {
+    if(countryName != selectCountryCode.value && (!lastCountrySelected || !country || lastCountrySelected.phoneCode != country.phoneCode)) {
       selectCountryCode.value = countryName;
-      lastCountrySelected = countryName;
+      lastCountrySelected = country;
     }
 
-    if(country && (this.value.length - 1) >= (country.pattern ? country.pattern.length : 9)) {
+    //if(country && (this.value.length - 1) >= (country.pattern ? country.pattern.length : 9)) {
+    if(country || (this.value.length - 1) > 1) {
       btnNext.style.visibility = '';
     } else {
       btnNext.style.visibility = 'hidden';
@@ -184,7 +193,7 @@ let onFirstMount = () => {
   });
 
   telEl.addEventListener('keypress', function(this: typeof telEl, e) {
-    if(this.value.length >= 9 && e.key == 'Enter') {
+    if(!btnNext.style.visibility &&/* this.value.length >= 9 && */ e.key == 'Enter') {
       return btnNext.click();
     } else if(/\D/.test(e.key)) {
       e.preventDefault();
@@ -229,6 +238,7 @@ let onFirstMount = () => {
       this.innerText = 'NEXT';
       switch(err.type) {
         case 'PHONE_NUMBER_INVALID':
+          telLabel.innerText = 'Phone Number Invalid';
           telEl.classList.add('error');
           break;
         default:
@@ -252,12 +262,12 @@ let onFirstMount = () => {
       if(country) {
         if(!selectCountryCode.value.length && !telEl.value.length) {
           selectCountryCode.value = country.name;
-          lastCountrySelected = country.name;
+          lastCountrySelected = country;
           telEl.value = '+' + country.phoneCode.split(' and ').shift();
         }
       }
   
-      return console.log('woohoo', nearestDcResult, country);
+      //console.log('woohoo', nearestDcResult, country);
     })//.catch(tryAgain);
   };
 
