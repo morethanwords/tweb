@@ -134,6 +134,10 @@
         margin: 0px 9px 0px 8px;
         padding: 12px 8.5px;
 
+        @include respond-to(handhelds) {
+          margin: 0;
+        }
+
         @media not all and (min-resolution:.001dpcm)
         { @supports (-webkit-appearance:none) {
             margin-right: 4px;

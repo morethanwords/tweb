@@ -241,6 +241,10 @@ export default class PollElement extends HTMLElement {
       this.classList.add('is-quiz');
 
       if(poll.close_period && poll.close_date) {
+        const timeLeftDiv = document.createElement('div');
+        timeLeftDiv.classList.add('poll-time');
+        this.descDiv.append(timeLeftDiv);
+
         const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         //svg.setAttributeNS(null, 'viewBox', '0 0 15 15');
         svg.classList.add('poll-quiz-timer');
@@ -248,30 +252,52 @@ export default class PollElement extends HTMLElement {
         this.quizTimer = svg;
   
         const strokeWidth = 2;
-        const radius = (15 / 2) - (strokeWidth * 2);
+        const radius = 7;
         const circumference = 2 * Math.PI * radius;
   
         const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
         circle.classList.add('poll-quiz-timer-circle');
-        circle.setAttributeNS(null, 'cx', '15');
-        circle.setAttributeNS(null, 'cy', '15');
+        circle.setAttributeNS(null, 'cx', '16');
+        circle.setAttributeNS(null, 'cy', '16');
         circle.setAttributeNS(null, 'r', '' + radius);
+        circle.setAttributeNS(null, 'stroke-width', '' + strokeWidth);
   
         svg.append(circle);
-  
         this.descDiv.append(svg);
-
+        
         const period = poll.close_period * 1000;
         const closeTime = (poll.close_date - serverTimeManager.serverTimeOffset) * 1000;
+
+        // let time = Date.now();
+        // let percents = (closeTime - time) / period;
+
+        // timeLeftDiv.innerHTML = String((closeTime - time) / 1000 + 1 | 0).toHHMMSS();
+
+        // // @ts-ignore
+        // circle.style.strokeDashoffset = circumference + percents * circumference;
+        // circle.style.strokeDasharray = ${circumference} ${circumference};
+
         this.quizInterval = setInterval(() => {
           const time = Date.now();
-          
-          const totalLength = circle.getTotalLength();
           const percents = (closeTime - time) / period;
-          circle.style.strokeDasharray = '' + (percents * totalLength) + ', ' + circumference;
+          const timeLeft = (closeTime - time) / 1000 + 1 | 0;
+          timeLeftDiv.innerHTML = String(timeLeft).toHHMMSS();
+          
+          if (timeLeft <= 5) {
+            timeLeftDiv.style.color = '#ee545c';
+            circle.style.stroke = '#ee545c';
+          }
+          //timeLeftDiv.style.visibility = 'visible';
+
+          // @ts-ignore
+          circle.style.strokeDashoffset = circumference + percents * circumference;
+          circle.style.strokeDasharray = `${circumference} ${circumference}`;
 
           if(time >= closeTime) {
             clearInterval(this.quizInterval);
+            timeLeftDiv.innerHTML = '';
+            // @ts-ignore
+            circle.style.strokeDashoffset = circumference;
             this.quizInterval = 0;
 
             // нужно запросить апдейт чтобы опрос обновился
@@ -487,7 +513,7 @@ export default class PollElement extends HTMLElement {
        * все приложения накладывают аватарку первую на вторую, а в макете зато вторая на первую, ЛОЛ!
        */
       results.recent_voters/* .slice().reverse() */.forEach((userID, idx) => {
-        const style = idx == 0 ? '' : `style="transform: translateX(-${idx * 5}px);"`;
+        const style = idx == 0 ? '' : `style="transform: translateX(-${idx * 3}px);"`;
         html += `<avatar-element dialog="0" peer="${userID}" ${style}></avatar-element>`;
       });
       this.avatarsDiv.innerHTML = html;

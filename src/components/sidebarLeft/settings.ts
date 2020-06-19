@@ -16,6 +16,7 @@ export default class AppSettingsTab implements SliderTab {
 
   private buttons: {
     edit: HTMLButtonElement,
+    folders: HTMLButtonElement,
     general: HTMLButtonElement,
     notifications: HTMLButtonElement,
     privacy: HTMLButtonElement,
@@ -34,8 +35,12 @@ export default class AppSettingsTab implements SliderTab {
     });
 
     this.buttons.edit.addEventListener('click', () => {
-      appSidebarLeft.selectTab(AppSidebarLeft.SLIDERITEMSIDS.editProfile);
       appSidebarLeft.editProfileTab.fillElements();
+      appSidebarLeft.selectTab(AppSidebarLeft.SLIDERITEMSIDS.editProfile);
+    });
+
+    this.buttons.folders.addEventListener('click', () => {
+      appSidebarLeft.selectTab(AppSidebarLeft.SLIDERITEMSIDS.chatFolders);
     });
   }
 

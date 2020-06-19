@@ -5,6 +5,7 @@ let rippleClickID = 0;
 export function ripple(elem: HTMLElement, callback: (id: number) => Promise<boolean | void> = () => Promise.resolve(), onEnd: (id: number) => void = null) {
   //return;
   if(elem.querySelector('.c-ripple')) return;
+  elem.classList.add('rp');
   
   let r = document.createElement('div');
   r.classList.add('c-ripple');
@@ -250,13 +251,28 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?
   let prevTabContent: HTMLElement = null;
   let prevId = -1;
 
-  const selectTab = async(id: number) => {
+  const selectTab = (id: number) => {
     if(id == prevId) return false;
 
     //console.log('selectTab id:', id);
 
     const p = prevTabContent;
     const tabContent = content.children[id] as HTMLElement;
+
+    if(content.dataset.slider == 'none') {
+      if(p) {
+        p.classList.remove('active');  
+      }
+
+      tabContent.classList.add('active');
+
+      prevId = id;
+      prevTabContent = tabContent;
+
+      if(onTransitionEnd) onTransitionEnd();
+      return;
+    }
+
     const toRight = prevId < id;
     if(prevId != -1) {
       if(tabs || content.dataset.slider == 'tabs') {

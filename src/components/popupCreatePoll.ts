@@ -29,17 +29,20 @@ export default class PopupCreatePoll extends PopupElement {
 
     this.title.innerText = 'New Poll';
 
-    const questionField = InputField('Ask a question', 'Ask a question', 'question');
+    const questionField = InputField('Ask a Question', 'Ask a Question', 'question');
     this.questionInput = questionField.firstElementChild as HTMLInputElement;
 
     this.header.append(questionField);
 
+    const hr = document.createElement('hr');
     const d = document.createElement('div');
+    d.classList.add('caption');
     d.innerText = 'Options';
 
     this.questions = document.createElement('div');
     this.questions.classList.add('poll-create-questions');
 
+    this.body.parentElement.insertBefore(hr, this.body);
     this.body.append(d, this.questions);
 
     this.confirmBtn.addEventListener('click', this.onSubmitClick);

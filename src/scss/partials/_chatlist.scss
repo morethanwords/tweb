@@ -84,7 +84,7 @@
 
   li {
     //padding: 0 0 2px 0;
-    padding-bottom: 4px;
+    //padding-bottom: 4px;  - DO MAKETA JS3
     //overflow: hidden;
     background-color: #fff;
 
@@ -106,7 +106,7 @@
     position: relative;
     cursor: pointer;
     padding: 9px 8.5px;
-    margin: 0px 8px 0px 7px;
+    margin: 0px 8px 0px 8px;
     overflow: hidden;
 
     @media not all and (min-resolution:.001dpcm)
@@ -116,8 +116,9 @@
     }
 
     @include respond-to(handhelds) {
-      padding: 9px 0 0 0;
-      margin: 0px 11.5px 0px 9px;
+      padding: 9px 12px 0 9px;
+      border-radius: 0;
+      margin: 0;
       overflow: hidden;
     }
 
@@ -189,8 +190,8 @@
     overflow: hidden;
     color: $color-gray;
     flex: 1 1 auto;
-    padding: 1px 3.5px 1px 9px;
-
+    //padding: 1px 3.5px 1px 9px; - DO MAKETA JS3
+    padding: 1px 8.5px 1px 9px; // JS3
     p:last-child {
       margin-top: -3px;
     }

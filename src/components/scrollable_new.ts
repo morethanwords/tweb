@@ -82,6 +82,8 @@ export default class Scrollable {
   public scrollLocked = 0;
   public isVisible = false;
 
+  private reorderTimeout: number;
+
   private setVisible(element: HTMLElement) {
     if(this.visible.has(element)) return;
 
@@ -373,9 +375,15 @@ export default class Scrollable {
   }
 
   public reorder() {
-    (Array.from(this.splitUp.children) as HTMLElement[]).forEach((el, idx) => {
-      el.dataset.virtual = '' + idx;
-    });
+    if(!this.splitUp || this.reorderTimeout) return;
+
+    this.reorderTimeout = setTimeout(() => {
+      this.reorderTimeout = 0;
+
+      (Array.from(this.splitUp.children) as HTMLElement[]).forEach((el, idx) => {
+        el.dataset.virtual = '' + idx;
+      });
+    }, 0);
   }
 
   public updateElement(element: HTMLElement) {

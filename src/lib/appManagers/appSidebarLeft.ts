@@ -1,5 +1,5 @@
 //import { logger } from "../polyfill";
-import appDialogsManager from "./appDialogsManager";
+import appDialogsManager, { AppArchivedTab, archivedTab } from "./appDialogsManager";
 import { $rootScope } from "../utils";
 import appImManager from "./appImManager";
 import AppSearch, { SearchGroup } from "../../components/appSearch";
@@ -14,6 +14,9 @@ import AppContactsTab from "../../components/sidebarLeft/contacts";
 import AppNewGroupTab from "../../components/sidebarLeft/newGroup";
 import AppSettingsTab from "../../components/sidebarLeft/settings";
 import AppEditProfileTab from "../../components/sidebarLeft/editProfile";
+import AppChatFoldersTab from "../../components/sidebarLeft/chatFolders";
+import AppEditFolderTab from "../../components/sidebarLeft/editFolder";
+import AppIncludedChatsTab from "../../components/sidebarLeft/includedChats";
 import SidebarSlider from "../../components/slider";
 import SearchInput from "../../components/searchInput";
 
@@ -25,6 +28,9 @@ const contactsTab = new AppContactsTab();
 const newGroupTab = new AppNewGroupTab();
 const settingsTab = new AppSettingsTab();
 const editProfileTab = new AppEditProfileTab();
+const chatFoldersTab = new AppChatFoldersTab();
+const editFolderTab = new AppEditFolderTab();
+const includedChatsTab = new AppIncludedChatsTab();
 
 export class AppSidebarLeft extends SidebarSlider {
   public static SLIDERITEMSIDS = {
@@ -35,6 +41,9 @@ export class AppSidebarLeft extends SidebarSlider {
     newGroup: 5,
     settings: 6,
     editProfile: 7,
+    chatFolders: 8,
+    editFolder: 9,
+    includedChats: 10,
   };
 
   private toolsBtn: HTMLButtonElement;
@@ -61,17 +70,21 @@ export class AppSidebarLeft extends SidebarSlider {
     privateChat: HTMLButtonElement,
   } = {} as any;
 
+  public archivedTab: AppArchivedTab;
   public newChannelTab: AppNewChannelTab;
   public addMembersTab: AppAddMembersTab;
   public contactsTab: AppContactsTab;
   public newGroupTab: AppNewGroupTab;
   public settingsTab: AppSettingsTab;
   public editProfileTab: AppEditProfileTab;
+  public chatFoldersTab: AppChatFoldersTab;
+  public editFolderTab: AppEditFolderTab;
+  public includedChatsTab: AppIncludedChatsTab;
 
   //private log = logger('SL');
 
   private searchGroups = {
-    contacts: new SearchGroup('Contacts and Chats', 'contacts'),
+    contacts: new SearchGroup('Chats', 'contacts'),
     globalContacts: new SearchGroup('Global Search', 'contacts'),
     messages: new SearchGroup('Global Search', 'messages'),
     people: new SearchGroup('People', 'contacts', false, 'search-group-people'),
@@ -81,13 +94,16 @@ export class AppSidebarLeft extends SidebarSlider {
 
   constructor() {
     super(document.getElementById('column-left') as HTMLDivElement, {
-      //[AppSidebarLeft.SLIDERITEMSIDS.archived]: ,
+      [AppSidebarLeft.SLIDERITEMSIDS.archived]: archivedTab,
       [AppSidebarLeft.SLIDERITEMSIDS.newChannel]: newChannelTab,
       [AppSidebarLeft.SLIDERITEMSIDS.contacts]: contactsTab,
       [AppSidebarLeft.SLIDERITEMSIDS.addMembers]: addMembersTab,
       [AppSidebarLeft.SLIDERITEMSIDS.newGroup]: newGroupTab,
       [AppSidebarLeft.SLIDERITEMSIDS.settings]: settingsTab,
       [AppSidebarLeft.SLIDERITEMSIDS.editProfile]: editProfileTab,
+      [AppSidebarLeft.SLIDERITEMSIDS.chatFolders]: chatFoldersTab,
+      [AppSidebarLeft.SLIDERITEMSIDS.editFolder]: editFolderTab,
+      [AppSidebarLeft.SLIDERITEMSIDS.includedChats]: includedChatsTab,
     });
 
     this.searchInput = new SearchInput('Telegram Search');
@@ -97,12 +113,16 @@ export class AppSidebarLeft extends SidebarSlider {
     this.backBtn = this.sidebarEl.querySelector('.sidebar-back-button') as HTMLButtonElement;
     this.searchContainer = this.sidebarEl.querySelector('#search-container') as HTMLDivElement;
 
+    this.archivedTab = archivedTab;
     this.newChannelTab = newChannelTab;
     this.addMembersTab = addMembersTab;
     this.contactsTab = contactsTab;
     this.newGroupTab = newGroupTab;
     this.settingsTab = settingsTab;
     this.editProfileTab = editProfileTab;
+    this.chatFoldersTab = chatFoldersTab;
+    this.editFolderTab = editFolderTab;
+    this.includedChatsTab = includedChatsTab;
 
     this.menuEl = this.toolsBtn.querySelector('.btn-menu');
     this.newBtnMenu = this.sidebarEl.querySelector('#new-menu');
@@ -157,7 +177,7 @@ export class AppSidebarLeft extends SidebarSlider {
     });
 
     this.backBtn.addEventListener('click', (e) => {
-      appDialogsManager.chatsArchivedContainer.classList.remove('active');
+      //appDialogsManager.chatsArchivedContainer.classList.remove('active');
       this.toolsBtn.classList.add('active');
       this.backBtn.classList.remove('active');
       this.searchContainer.classList.remove('active');

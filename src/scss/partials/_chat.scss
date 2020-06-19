@@ -3,13 +3,17 @@ $time-background: rgba(0, 0, 0, .35);
 
 #bubble-contextmenu > div {
 	padding: 0 84px 0 16px;
+
+	@include respond-to(handhelds) {
+		padding: 0 60px 0 16px;
+	}
 }
 
 #topbar {
 	width: 100%;
 	background-color: #fff;
 	user-select: none;
-	box-shadow: 0px 1px 5px -1px rgba(0,0,0,0.18);
+	box-shadow: 0px 1px 5px -1px rgba(0,0,0,0.21);
 	z-index: 1;
 	min-height: 56px;
 	max-height: 56px;
@@ -62,6 +66,10 @@ $time-background: rgba(0, 0, 0, .35);
 		.btn-menu {
 			top: calc(100% + 7px);
 		}
+		
+		@include respond-to(handhelds) {
+			margin-left: 0;
+		}
 	}
 	
 	.chat-info {
@@ -73,7 +81,11 @@ $time-background: rgba(0, 0, 0, .35);
 		// padding-left: 17px;
 		// line-height: 1.6;
 		padding-left: 10px;
-		line-height: 1.3;
+		//line-height: 1.3;
+
+    @include respond-to(handhelds) {
+			max-width: 208px;
+    }
 	}
 	
 	.person {
@@ -88,7 +100,7 @@ $time-background: rgba(0, 0, 0, .35);
 
 		.bottom {
 			font-size: 14px;
-			line-height: 18px;
+			//line-height: 18px;
 			color: #707579;
 			
 			.online {
@@ -127,7 +139,7 @@ $time-background: rgba(0, 0, 0, .35);
 
 
 	@include respond-to(handhelds) {
-		padding: .35rem .5rem .5rem;
+		padding: 0 .5rem .5rem;
 	}
 
 	@include respond-to(not-handhelds) {
@@ -214,7 +226,7 @@ $time-background: rgba(0, 0, 0, .35);
 			height: 10px;
 			background-color: #e53935;
 			border-radius: 50%;
-			margin: 0 .5rem;
+			margin: 0 9px;
 			display: inline-block;
 			animation: recordBlink 1.25s infinite;
 		}
@@ -231,13 +243,20 @@ $time-background: rgba(0, 0, 0, .35);
 		left: -48px;
 		transition: transform .03s, visibility .1s;
 		visibility: hidden;
+
+    @include respond-to(handhelds) {
+			width: 300px;
+			height: 300px;
+			top: -124px;
+			left: -124px;
+    }
 	}
 	
 	&.is-recording {
 		#btn-record-cancel {
 			opacity: 1;
 			visibility: visible;
-			margin-right: .5rem;
+			margin-right: 9px;
 			transition: width .1s, margin-right .1s, visibility 0s .1s, opacity .1s .1s;
 		}
 
@@ -279,12 +298,22 @@ $time-background: rgba(0, 0, 0, .35);
 
 #im-title {
 	cursor: pointer;
-	margin-top: -2px;
 	font-size: 18px;
+  line-height: 24px;
+
+	@include respond-to(handhelds) {
+		text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+	}
 
 	span.emoji {
 		vertical-align: inherit;
 	}
+}
+
+.info#im-subtitle {
+	margin-top: -2px;
 }
 
 .chat-container {
@@ -471,6 +500,14 @@ $time-background: rgba(0, 0, 0, .35);
 			// height: 100%;
 			height: 52px;
 			padding: 1rem;
+
+			&-subtitle {
+				line-height: 13px !important;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+				overflow: hidden;
+				max-width: 280px;
+			}
 		}
 	}
 
@@ -530,9 +567,9 @@ $time-background: rgba(0, 0, 0, .35);
 			white-space: nowrap;
 			text-overflow: ellipsis;
 
-			@include respond-to(handhelds) {
-				line-height: 13px;
-			}
+			// @include respond-to(handhelds) {
+			// 	line-height: 13px;
+			// }
 		}
 		
 		&-subtitle {
@@ -765,6 +802,9 @@ $time-background: rgba(0, 0, 0, .35);
 		//flex-direction: unset;
 		display: block;
 
+		@include respond-to(handhelds) {
+			padding: 0 .5rem;
+		}
 
 		/* display: flex;
 		flex-direction: column;
@@ -814,10 +854,12 @@ $time-background: rgba(0, 0, 0, .35);
 
 	&.is-chat {
 		.is-in .bubble__container {
-			margin-left: 3rem;
+			margin-left: 45px;
+			//margin-left: 3rem; #DO JS3
 
 			@include respond-to(handhelds) {
 				max-width: calc(100% - 3rem);
+				margin-left: 45px;
 			}
 		}
 	}
@@ -899,7 +941,7 @@ $time-background: rgba(0, 0, 0, .35);
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		box-shadow: 0px -1px 5px -1px rgba(0,0,0,0.18);
+		box-shadow: 0px -1px 5px -1px rgba(0,0,0,0.21);
 
 		.chat-search-count {
 			margin-left: 8px;
@@ -956,7 +998,7 @@ $time-background: rgba(0, 0, 0, .35);
 	width: 100%;
 	justify-content: center;
 	z-index: 5;
-	top: 10px;
+	top: 8px;
 	align-items: center;
 	transform: translateY(calc(-100% - 10px));
 	transition: transform .2s ease;
@@ -969,7 +1011,7 @@ $time-background: rgba(0, 0, 0, .35);
 		background: rgba(0, 0, 0, .7);
     text-align: center;
     width: auto;
-    padding: 12px 18px 12px 48px;
+    padding: 10px 18px 12px 50px;
     min-height: 48px;
     border-radius: 12px;
     line-height: 1.5;
@@ -990,7 +1032,7 @@ $time-background: rgba(0, 0, 0, .35);
 		&:before {
 			content: $tgico-info2;
 			position: absolute;
-			left: 12px;
+			left: 15px;
 			font-size: 1.5rem;
 			top: 12px;
 		}

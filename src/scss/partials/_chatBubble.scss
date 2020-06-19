@@ -49,6 +49,10 @@ $bubble-margin: .25rem;
     margin: 0 auto;
   }
 
+  @include respond-to(handhelds) {
+    max-width: unquote("min(calc(100% - 46px), #{$chat-max-width})");
+  }
+
   &.is-selected {
     &:after {
       position: absolute;
@@ -67,6 +71,10 @@ $bubble-margin: .25rem;
   }
 
   &.is-first-unread {
+    @include respond-to(handhelds) {
+      max-width: unset;
+    }
+
     &:before {
       content: "Unread messages"; 
       height: 30px; 
@@ -135,13 +143,18 @@ $bubble-margin: .25rem;
 
     > .user-avatar {
       position: absolute;
-      left: -3rem;
+      left: -45px;
+      //left: -3rem; # DO JS3
       width: 40px;
       height: 40px;
       line-height: 40px;
       bottom: 0;
       font-size: 1rem;
       cursor: pointer;
+
+      // @include respond-to(handhelds) {
+      //   left: -45px;
+      // }
     }
   }
   
@@ -630,6 +643,11 @@ $bubble-margin: .25rem;
         top: 0;
         margin-bottom: 0;
 
+        @include respond-to(handhelds) {
+          padding: 8px 6px 8px 8px;
+          max-width: 94px;
+        }
+
         .reply-content {
           margin-top: 0;
         }
@@ -1088,6 +1106,10 @@ $bubble-margin: .25rem;
       .reply {
         left: calc(100% + 10px);
         background-color: #fff;
+
+        @include respond-to(handhelds) {
+          left: calc(100% + 1px);
+        }
       }
     }
   }
@@ -1443,7 +1465,8 @@ $bubble-margin: .25rem;
 poll-element {
   margin-top: -1px;
   display: block;
-  min-width: 280px;
+  //min-width: 280px;
+  min-width: 330px;
 
   &:not(.is-closed):not(.is-voted) .poll-answer {
     cursor: pointer;
@@ -1458,6 +1481,7 @@ poll-element {
     &-desc {
       font-size: 14px;
       color: #707579;
+      margin-top: 2px;
       margin-bottom: 7px;
       user-select: none;
       display: flex;
@@ -1466,8 +1490,9 @@ poll-element {
 
     &-hint {
       position: absolute;
-      right: 0;
       font-size: 1.5rem;
+      top: -4px;
+      right: 2px;
       color: #50a2e9;
       cursor: pointer;
       transform: scale(1);
@@ -1485,18 +1510,19 @@ poll-element {
 
     &-avatars {
       display: flex;
-      margin-left: 1rem;
+      margin-left: 18px;
     }
 
     &-answer {
       display: flex;
       position: relative;
       padding-bottom: 20px;
-      padding-left: 34px;
+      padding-left: 28px;
+      margin-top: 1px;
 
       &-text {
-        margin-top: 7px;
-        margin-left: 14px;
+        margin-top: 6px;
+        margin-left: 12px;
         user-select: none;
       }
 
@@ -1507,8 +1533,9 @@ poll-element {
         opacity: 0;
         font-weight: 500;
         margin-top: 7px;
+        font-size: 14px;
         transition: .34s opacity;
-        margin-left: -3px;
+        margin-left: -9px;
         text-align: right;
         width: 40px;
         user-select: none;
@@ -1517,7 +1544,7 @@ poll-element {
       &-selected {
         position: absolute;
         bottom: 1px;
-        left: 22px;
+        left: 15px;
         color: #fff;
         background: #50a2e9;
         border-radius: 50%;
@@ -1577,12 +1604,13 @@ poll-element {
       color: #707579;
       font-size: 14px;
       user-select: none;
+      padding-top: 1px;
     }
 
     &-line {
       height: 35px;
       position: absolute;
-      left: 17.5px;
+      left: 10px;
       bottom: 2px;
       transition: stroke-dashoffset .34s linear, stroke-dasharray .34s linear;
       stroke-dashoffset: 0;
@@ -1623,12 +1651,23 @@ poll-element {
     }
 
     &-quiz-timer {
-      width: 30px;
-      height: 30px;
-      stroke: #DF3F40;
+      width: 32px;
+      height: 32px;
+      stroke: #a3adb6;
+      transform: rotate(270deg);
+      top: -7px;
       fill: none;
       position: absolute;
-      right: 0;
+      right: -2px;
+      stroke-linecap: round;
+    }
+
+    &-time {
+      font-size: 12px;
+      font-weight: 500;
+      position: absolute;
+      right: 27px;
+      color: #a3adb6;
     }
   }
 
@@ -1641,7 +1680,7 @@ poll-element {
 
         .poll-answer-selected {
           background: #DF3F40;
-          line-height: 16px;
+          //line-height: 16px;
 
           &:before {
             content: $tgico-close;
@@ -1660,8 +1699,8 @@ poll-element {
   }
 
   avatar-element {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     border: 1px solid #fff;
     line-height: 20px;
     font-size: 10px;
@@ -1680,10 +1719,9 @@ poll-element {
     align-items: center;
     width: 34px;
     height: 34px;
-    margin-left: 5px;
     position: absolute;
-    left: 0;
-    top: 0;
+    left: -1px;
+    top: -1px;
     transform: scale(1);
     transition: .1s transform;
 
@@ -1693,9 +1731,9 @@ poll-element {
       left: 50%;
       top: 50%;
       transform: translate(-50%, -50%);
-      width: 16px;
-      height: 16px;
-      font-size: 16px;
+      width: 20px;
+      height: 20px;
+      font-size: 20px;
       line-height: 16px;
       animation: none;
       transition: opacity .2s ease;
@@ -1727,7 +1765,7 @@ poll-element {
       stroke-dashoffset: 0;
       stroke-opacity: 1;
       stroke-width: 2;
-      stroke: #8d969c;
+      stroke: #dadbdc;
       fill: transparent;
     }
   }

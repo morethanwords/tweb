@@ -41,8 +41,8 @@ export class AppUsersManager {
   public userAccess: {[userID: number]: string} = {};
   public cachedPhotoLocations: any = {};
   public contactsIndex = searchIndexManager.createIndex();
-  public contactsFillPromise: Promise<number[]>;
-  public contactsList: number[];
+  public contactsFillPromise: Promise<Set<number>>;
+  public contactsList: Set<number> = new Set();
   public myID: number;
 
   constructor() {
@@ -119,18 +119,19 @@ export class AppUsersManager {
     return this.contactsFillPromise = apiManager.invokeApi('contacts.getContacts', {
       hash: 0
     }).then((result: any) => {
-      let userID: number;
-      this.contactsList = [];
       this.saveApiUsers(result.users);
 
       result.contacts.forEach((contact: any) => {
-        userID = contact.user_id;
-        this.contactsList.push(userID);
-        searchIndexManager.indexObject(userID, this.getUserSearchText(userID), this.contactsIndex);
+        this.pushContact(contact.user_id);
       });
 
       return this.contactsList;
     });
+  }
+
+  public pushContact(userID: number) {
+    this.contactsList.add(userID);
+    searchIndexManager.indexObject(userID, this.getUserSearchText(userID), this.contactsIndex);
   }
 
   public getUserSearchText(id: number) {
@@ -148,10 +149,11 @@ export class AppUsersManager {
   }
 
   public getContacts(query?: string) {
-    return this.fillContacts().then(contactsList => {
+    return this.fillContacts().then(_contactsList => {
+      let contactsList = [..._contactsList];
       if(query) {
         const results: any = searchIndexManager.search(query, this.contactsIndex);
-        const filteredContactsList = contactsList.filter(id => !!results[id]);
+        const filteredContactsList = [...contactsList].filter(id => !!results[id]);
 
         contactsList = filteredContactsList;
       }
@@ -300,13 +302,13 @@ export class AppUsersManager {
       return 'bot';
     }
 
-    let user = this.getUser(userID);
-    if(!user || !user.status) {
+    const user = this.getUser(userID);
+    if(!user) {
       return '';
     }
     
     let str = '';
-    switch(user.status._) {
+    switch(user.status?._) {
       case 'userStatusRecently': {
         str = 'last seen recently';
         break;
@@ -325,19 +327,19 @@ export class AppUsersManager {
       case 'userStatusOffline': {
         str = 'last seen ';
       
-        let date = user.status.was_online;
-        let now = Date.now() / 1000;
+        const date = user.status.was_online;
+        const now = Date.now() / 1000;
         
         if((now - date) < 60) {
           str += ' just now';
         } else if((now - date) < 3600) {
-          let c = (now - date) / 60 | 0;
+          const c = (now - date) / 60 | 0;
           str += c + ' ' + (c == 1 ? 'minute' : 'minutes') + ' ago';
         } else if(now - date < 86400) {
-          let c = (now - date) / 3600 | 0;
+          const c = (now - date) / 3600 | 0;
           str += c + ' ' + (c == 1 ? 'hour' : 'hours') + ' ago';
         } else {
-          let d = new Date(date * 1000);
+          const d = new Date(date * 1000);
           str += ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + ' at ' + 
           ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
         }
@@ -347,6 +349,11 @@ export class AppUsersManager {
 
       case 'userStatusOnline': {
         str = 'online';
+        break;
+      }
+
+      default: {
+        str = 'last seen a long time ago';
         break;
       }
     }

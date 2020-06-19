@@ -120,6 +120,10 @@
     margin-bottom: 2px;
     margin-top: 1px;
 
+    @include respond-to(handhelds) {
+      margin-top: 3px;
+    }
+
     &.online {
       color: $color-blue;
     }
@@ -639,7 +643,7 @@
         height: 48px;
 
         @include respond-to(not-handhelds) {
-          padding: 8px 13px;
+          padding: 8px 12px;
         }
       }
     }

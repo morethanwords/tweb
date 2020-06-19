@@ -368,7 +368,7 @@ class AppPollResultsTab implements SliderTab {
       if(left <= 0) return;
 
       const showMore = document.createElement('div');
-      showMore.classList.add('poll-results-more');
+      showMore.classList.add('poll-results-more', 'show-more');
       showMore.addEventListener('click', load);
 
       showMore.innerHTML = `<div class="tgico-down"></div><div>Show ${Math.min(20, left)} more voter${left > 1 ? 's' : ''}</div>`;

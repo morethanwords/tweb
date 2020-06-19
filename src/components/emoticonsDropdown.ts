@@ -320,8 +320,8 @@ class StickersTab implements EmoticonsTab {
                     loop: true,
                     autoplay: false,
                     animationData: JSON.parse(json),
-                    width: 40,
-                    height: 40
+                    width: 32,
+                    height: 32
                   }, EMOTICONSSTICKERGROUP);
                 });
   

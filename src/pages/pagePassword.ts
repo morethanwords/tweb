@@ -91,20 +91,13 @@ let onFirstMount = (): Promise<any> => {
     
   }); */
   return Promise.all([
-    LottieLoader.loadLottieWorkers(),
-
-    fetch('assets/img/TwoFactorSetupMonkeyClose.tgs')
-    .then(res => res.arrayBuffer())
-    .then(data => apiManager.gzipUncompress<string>(data, true))
-    .then(str => LottieLoader.loadAnimationWorker({
+    LottieLoader.loadAnimationFromURL({
       container: page.pageEl.querySelector('.auth-image'),
       loop: false,
       autoplay: false,
-      animationData: JSON.parse(str),
       width: 166,
       height: 166
-    }))
-    .then(_animation => {
+    }, 'assets/img/TwoFactorSetupMonkeyClose.tgs').then(_animation => {
       animation = _animation;
       animation.addListener('enterFrame', currentFrame => {
         //console.log('enterFrame', e, needFrame);

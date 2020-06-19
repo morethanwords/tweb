@@ -4,10 +4,12 @@
   #{$parent} {
     &-container {
       max-height: 468px;
+      padding: 0;
     }
   }
 
   .input-field {
+    margin-top: 25px;
     .btn-icon {
       position: absolute;
       right: .5rem;
@@ -29,5 +31,19 @@
         display: none;
       }
     } */
+  }
+
+  .caption {    
+    color: #707579;
+    font-weight: 500;
+    padding: 16px 24px 0;
+  }
+
+  .poll-create-questions {
+    padding: 0px 20px 32.5px;
+  }
+
+  hr {
+    border-bottom: 1px solid #edeff1;
   }
 }

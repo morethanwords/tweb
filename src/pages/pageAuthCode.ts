@@ -236,35 +236,23 @@ let onFirstMount = (): Promise<any> => {
 
   let imageDiv = page.pageEl.querySelector('.auth-image') as HTMLDivElement;
   return Promise.all([
-    LottieLoader.loadLottieWorkers(),
-
-    fetch('assets/img/TwoFactorSetupMonkeyIdle.tgs')
-    .then(res => res.arrayBuffer())
-    .then(data => apiManager.gzipUncompress<string>(data, true))
-    .then(str => LottieLoader.loadAnimationWorker({
+    LottieLoader.loadAnimationFromURL({
       container: imageDiv,
       loop: true,
       autoplay: true,
-      animationData: JSON.parse(str),
       width: 166,
       height: 166
-    }))
-    .then(animation => {
+    }, 'assets/img/TwoFactorSetupMonkeyIdle.tgs').then(animation => {
       idleAnimation = animation;
     }),
 
-    /* false &&  */fetch('assets/img/TwoFactorSetupMonkeyTracking.tgs')
-    .then(res => res.arrayBuffer())
-    .then(data => apiManager.gzipUncompress<string>(data, true))
-    .then(str => LottieLoader.loadAnimationWorker({
+    LottieLoader.loadAnimationFromURL({
       container: imageDiv,
       loop: false,
       autoplay: false,
-      animationData: JSON.parse(str),
       width: 166,
       height: 166
-    }))
-    .then(_animation => {
+    }, 'assets/img/TwoFactorSetupMonkeyTracking.tgs').then(_animation => {
       animation = _animation;
 
       if(!codeInput.value.length) {
@@ -272,7 +260,7 @@ let onFirstMount = (): Promise<any> => {
       }
 
       animation.addListener('enterFrame', currentFrame => {
-        console.log('enterFrame', currentFrame, needFrame);
+        //console.log('enterFrame', currentFrame, needFrame);
         //let currentFrame = Math.round(e.currentTime);
         
         if((animation.direction == 1 && currentFrame >= needFrame) ||

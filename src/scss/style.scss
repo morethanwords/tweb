@@ -347,6 +347,11 @@ input, textarea {
     &.danger:before {
       color: $color-error;
     }
+  
+    @include respond-to(handhelds) {
+      padding: 0 30px 0 16px;
+      height: 50px;
+    }
   }
 }
 
@@ -475,6 +480,7 @@ avatar-element {
 
 .rp {
   position: relative;
+  user-select: none;
 }
 
 /**
@@ -853,6 +859,7 @@ avatar-element {
       padding: 0 5px;
       left: .75rem;
       font-size: 0.75rem!important;
+      color: #666;
       opacity: 1;
     }
   }
@@ -1384,6 +1391,26 @@ img.emoji {
 .fade-in-transition {
   opacity: 1;
   transition: opacity .2s ease;
+}
+
+.show-more {
+  padding-top: 13px;
+  padding-bottom: 13px;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+
+  @include respond-to(not-handhelds) {
+    padding-left: 8px;
+  }
+
+  .tgico-down {
+    float: left;
+    padding-right: 32px;
+    padding-left: 16px;
+    font-size: 24px;
+    color: #707579;
+  }
 }
 
 /* .fade-in-end {

@@ -210,7 +210,21 @@
               </div>
             </div>
             <div class="sidebar-content">
-              <div id="chats-container"><ul id="dialogs"></ul></div>
+              <div id="chats-container">
+                <div class="folders-tabs-scrollable">
+                  <nav class="menu-horizontal" style="display: none;" id="folders-tabs">
+                    <ul>
+                      <li class="rp"><span>All</span></li>
+                    </ul>
+                  </nav>
+                </div>
+                {{!-- <div class="tabs-container" id="folders-container" data-slider="none"> --}}
+                <div class="tabs-container" id="folders-container">
+                  <div>
+                    <ul id="dialogs"></ul>
+                  </div>
+                </div>
+              </div>
               <div class="sidebar-search hide" id="search-container"></div>
               <button class="btn-primary btn-circle btn-icon rp btn-corner tgico-newchat_filled btn-menu-toggle" id="new-menu">
                 <div class="btn-menu top-left">
@@ -311,6 +325,7 @@
                 <div class="profile-subtitle"></div>
                 <div class="profile-buttons">
                   <div class="profile-button menu-edit tgico-edit rp"><p>Edit Profile</p></div>
+                  <div class="profile-button menu-folders tgico-folder rp"><p>Chat Folders</p></div>
                   <div class="profile-button menu-general tgico-settings rp"><p>General Settings</p></div>
                   <div class="profile-button menu-notifications tgico-unmute rp"><p>Notifications</p></div>
                   <div class="profile-button menu-privacy tgico-lock rp"><p>Privacy and Security</p></div>
@@ -358,6 +373,81 @@
                 </div>
               </div>
               <button class="btn-primary btn-circle btn-icon rp btn-corner tgico-check"></button>
+            </div>
+          </div>
+          <div class="sidebar-slider-item chat-folders-container">
+            <div class="sidebar-header">
+              <button class="btn-icon rp tgico-back sidebar-close-button"></button>
+              <div class="sidebar-header__title">Chat Folders</div>
+            </div>
+            <div class="sidebar-content">
+              <div class="chat-folders scrollable scrollable-y">
+                <div class="sticker-container"></div>
+                <div class="caption">Create folders for different groups of chats<br>and quickly switch between them.</div>
+                <button class="btn-primary btn-create-folder rp">
+                  <div class="tgico-add"></div>
+                  Create Folder
+                </button>
+                <hr/>
+                <div class="folders-container folders-my">
+                  <div class="sidebar-left-h2">Folders</div>
+                </div>
+                <hr/>
+                <div class="folders-container folders-suggested" style="display: none;">
+                  <div class="sidebar-left-h2">Recommended folders</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="sidebar-slider-item edit-folder-container">
+            <div class="sidebar-header">
+              <button class="btn-icon rp tgico-back sidebar-close-button"></button>
+              <div class="sidebar-header__title"></div>
+              <div class="btn-icon tgico-check1 btn-confirm rp hide"></div>
+              <div class="btn-icon btn-menu-toggle rp tgico-more hide">
+                <div class="btn-menu bottom-left">
+                  <div class="btn-menu-item menu-delete tgico-delete danger rp">Delete Folder</div>
+                </div>
+              </div>
+            </div>
+            <div class="sidebar-content">
+              <div class="edit-folder scrollable scrollable-y">
+                <div class="sticker-container"></div>
+                <div class="caption">Choose chats and types of chats that will<br>appear and never appear in this folder.</div>
+                <div class="input-wrapper">
+                  <div class="input-field">
+                    <input type="text" name="folder-name" class="folder-name" autocomplete="aintCCZsofunnowhHQ" id="folder-name" required="">
+                    <label for="folder-name">Folder Name</label>
+                  </div>
+                </div>
+                <div class="folder-list folder-list-included">
+                  <div class="sidebar-left-h2">Included chats</div>
+                  <div class="folder-categories">
+                    <div class="folder-category-button blue tgico-add rp"><p>Add Chats</p></div>
+                    <div class="folder-category-button menu-contacts tgico-group"><p>Contacts</p></div>
+                    <div class="folder-category-button menu-non_contacts tgico-noncontacts"><p>Non-Contacts</p></div>
+                    <div class="folder-category-button menu-groups tgico-group"><p>Groups</p></div>
+                    <div class="folder-category-button menu-broadcasts tgico-channel"><p>Channels</p></div>
+                    <div class="folder-category-button menu-bots tgico-bots"><p>Bots</p></div>
+                  </div>
+                </div>
+                <div class="folder-list folder-list-excluded">
+                  <div class="sidebar-left-h2">Excluded chats</div>
+                  <div class="folder-categories">
+                    <div class="folder-category-button blue tgico-minus rp"><p>Remove Chats</p></div>
+                    <div class="folder-category-button menu-exclude_muted tgico-mute"><p>Muted</p></div>
+                    <div class="folder-category-button menu-exclude_archived tgico-archive"><p>Archived</p></div>
+                    <div class="folder-category-button menu-exclude_read tgico-readchats"><p>Read</p></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="sidebar-slider-item included-chats-container">
+            <div class="sidebar-header">
+              <button class="btn-icon rp tgico-back sidebar-close-button"></button>
+              <div class="sidebar-header__title"></div>
+              <div class="btn-icon tgico-check1 btn-confirm rp" style="display: none;"></div>
             </div>
           </div>
         </div>

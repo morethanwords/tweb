@@ -25,8 +25,12 @@
     &__title {
       flex: 1;
       font-weight: 500;
-      padding-left: 23px;
+      padding-left: 22px;
       font-size: 20px;
+
+      @include respond-to(handhelds) {
+        padding-left: 24px;
+      }
     }
 
     .btn-icon + .btn-icon {

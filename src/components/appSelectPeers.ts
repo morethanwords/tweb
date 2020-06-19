@@ -1,6 +1,6 @@
 import Scrollable from "./scrollable_new";
 import appMessagesManager, { Dialog } from "../lib/appManagers/appMessagesManager";
-import { $rootScope, cancelEvent, findUpTag, findUpClassName } from "../lib/utils";
+import { $rootScope, cancelEvent, findUpClassName, findUpTag, findUpAttribute } from "../lib/utils";
 import appDialogsManager from "../lib/appManagers/appDialogsManager";
 import appChatsManager from "../lib/appManagers/appChatsManager";
 import appUsersManager from "../lib/appManagers/appUsersManager";
@@ -9,15 +9,16 @@ import appPhotosManager from "../lib/appManagers/appPhotosManager";
 
 export class AppSelectPeers {
   public container = document.createElement('div');
-  private list = document.createElement('ul');
-  private chatsContainer = document.createElement('div');
-  private scrollable: Scrollable;
-  private selectedScrollable: Scrollable;
+  public list = document.createElement('ul');
+  public chatsContainer = document.createElement('div');
+  public scrollable: Scrollable;
+  public selectedScrollable: Scrollable;
   
-  private selectedContainer = document.createElement('div');
-  private input = document.createElement('input');
+  public selectedContainer = document.createElement('div');
+  public input = document.createElement('input');
   
-  private selected: {[peerID: number]: HTMLDivElement} = {};
+  //public selected: {[peerID: number]: HTMLElement} = {};
+  public selected = new Set<any>();
 
   public freezed = false;
 
@@ -29,8 +30,12 @@ export class AppSelectPeers {
   private query = '';
   private cachedContacts: number[];
   
-  constructor(private appendTo: HTMLDivElement, private onChange?: (length: number) => void, private peerType: 'contacts' | 'dialogs' = 'dialogs', onFirstRender?: () => void) {
+  constructor(private appendTo: HTMLElement, private onChange?: (length: number) => void, private peerType: 'contacts' | 'dialogs' = 'dialogs', onFirstRender?: () => void, private renderResultsFunc?: (peerIDs: number[]) => void) {
     this.container.classList.add('selector');
+
+    if(!this.renderResultsFunc) {
+      this.renderResultsFunc = this.renderResults;
+    }
 
     let topContainer = document.createElement('div');
     topContainer.classList.add('selector-search-container');
@@ -49,27 +54,23 @@ export class AppSelectPeers {
     this.scrollable = new Scrollable(this.chatsContainer);
     this.scrollable.setVirtualContainer(this.list);
 
-    this.list.addEventListener('click', (e) => {
-      let target = e.target as HTMLElement;
+    this.chatsContainer.addEventListener('click', (e) => {
+      const target = findUpAttribute(e.target, 'data-peerID') as HTMLElement;
       cancelEvent(e);
 
+      if(!target) return;
       if(this.freezed) return;
 
-      if(target.tagName != 'LI') {
-        target = findUpTag(target, 'LI');
-      }
-
-      if(!target) return;
-
-      let peerID = +target.getAttribute('data-peerID');
+      let key: any = target.getAttribute('data-peerID');
+      key = +key || key;
       target.classList.toggle('active');
-      if(peerID in this.selected) {
-        this.remove(peerID);
+      if(this.selected.has(key)) {
+        this.remove(key);
       } else {
-        this.add(peerID);
+        this.add(key);
       }
 
-      let checkbox = target.querySelector('input') as HTMLInputElement;
+      const checkbox = target.querySelector('input') as HTMLInputElement;
       checkbox.checked = !checkbox.checked;
     });
 
@@ -80,9 +81,13 @@ export class AppSelectPeers {
 
       if(!target) return;
 
-      let peerID = target.dataset.peerID;
-      let li = this.list.querySelector('[data-peerid="' + peerID + '"]') as HTMLElement;
-      li.click();
+      const peerID = target.dataset.key;
+      const li = this.chatsContainer.querySelector('[data-peerid="' + peerID + '"]') as HTMLElement;
+      if(!li) {
+        this.remove(+peerID || peerID);
+      } else {
+        li.click();
+      }
     });
 
     this.input.addEventListener('input', () => {
@@ -110,12 +115,15 @@ export class AppSelectPeers {
     this.container.append(topContainer, delimiter, this.chatsContainer);
     appendTo.append(this.container);
 
-    let getResultsPromise = this.getMoreResults() as Promise<any>;
-    if(onFirstRender) {
-      getResultsPromise.then(() => {
-        onFirstRender();
-      });
-    }
+    // WARNING TIMEOUT
+    setTimeout(() => {
+      let getResultsPromise = this.getMoreResults() as Promise<any>;
+      if(onFirstRender) {
+        getResultsPromise.then(() => {
+          onFirstRender();
+        });
+      }
+    }, 0);
   }
 
   private async getMoreDialogs() {
@@ -144,7 +152,7 @@ export class AppSelectPeers {
 
     this.offsetIndex = newOffsetIndex;
 
-    this.renderResults(dialogs.map(dialog => dialog.peerID));
+    this.renderResultsFunc(dialogs.map(dialog => dialog.peerID));
 
     this.promise = null;
   }
@@ -162,7 +170,7 @@ export class AppSelectPeers {
     if(this.cachedContacts.length) {
       const pageCount = appPhotosManager.windowH / 72 * 1.25 | 0;
       const arr = this.cachedContacts.splice(0, pageCount);
-      this.renderResults(arr);
+      this.renderResultsFunc(arr);
     }
   }
 
@@ -178,7 +186,10 @@ export class AppSelectPeers {
     //console.log('will renderResults:', peerIDs);
     peerIDs.forEach(peerID => {
       const {dom} = appDialogsManager.addDialog(peerID, this.scrollable, false, false);
-      dom.containerEl.insertAdjacentHTML('afterbegin', '<div class="checkbox"><label><input type="checkbox"><span></span></label></div>');
+
+      const selected = this.selected.has(peerID);
+      dom.containerEl.insertAdjacentHTML('afterbegin', `<div class="checkbox"><label><input type="checkbox" ${selected ? 'checked' : ''}><span></span></label></div>`);
+      if(selected) dom.listEl.classList.add('active');
 
       let subtitle = '';
       if(peerID < 0) {
@@ -196,40 +207,53 @@ export class AppSelectPeers {
     });
   }
 
-  private add(peerID: number) {
+  public add(peerID: any, title?: string) {
+    console.trace('add');
     const div = document.createElement('div');
     div.classList.add('selector-user', 'scale-in');
-    div.dataset.peerID = '' + peerID;
-    this.selected[peerID] = div;
-    
-    const title = appPeersManager.getPeerTitle(peerID, false, true);
 
     const avatarEl = document.createElement('avatar-element');
     avatarEl.classList.add('selector-user-avatar', 'tgico');
     avatarEl.setAttribute('dialog', '1');
-    avatarEl.setAttribute('peer', '' + peerID);
 
-    div.innerHTML = title;
+    div.dataset.key = '' + peerID;
+    this.selected.add(peerID);
+    if(typeof(peerID) === 'number') {
+      if(title === undefined) {
+        title = peerID == $rootScope.myID ? 'Saved' : appPeersManager.getPeerTitle(peerID, false, true);
+      }
+
+      avatarEl.setAttribute('peer', '' + peerID);
+    }
+
+    if(title) {
+      div.innerHTML = title;
+    }
+
     div.insertAdjacentElement('afterbegin', avatarEl);
 
     this.selectedContainer.insertBefore(div, this.input);
-    this.selectedScrollable.scrollTop = this.selectedScrollable.scrollHeight;
-    this.onChange && this.onChange(Object.keys(this.selected).length);
+    //this.selectedScrollable.scrollTop = this.selectedScrollable.scrollHeight;
+    this.selectedScrollable.scrollTo(this.selectedScrollable.scrollHeight, true, true);
+    this.onChange && this.onChange(this.selected.size);
+
+    return div;
   }
 
-  private remove(peerID: number) {
-    const div = this.selected[peerID];
+  public remove(key: any) {
+    //const div = this.selected[peerID];
+    const div = this.selectedContainer.querySelector(`[data-key="${key}"]`) as HTMLElement;
     div.classList.remove('scale-in');
     void div.offsetWidth;
     div.classList.add('scale-out');
     div.addEventListener('animationend', () => {
-      delete this.selected[peerID];
+      this.selected.delete(key);
       div.remove();
-      this.onChange && this.onChange(Object.keys(this.selected).length);
+      this.onChange && this.onChange(this.selected.size);
     }, {once: true});
   }
 
   public getSelected() {
-    return Object.keys(this.selected).map(p => +p);
+    return [...this.selected];
   }
 }

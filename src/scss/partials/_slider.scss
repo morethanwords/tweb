@@ -12,6 +12,7 @@
     align-items: center;
     position: relative;
     z-index: 2;
+    flex-direction: row;
   }
   
   li {
@@ -24,6 +25,7 @@
     // font-size: 1rem;
     font-size: 14px;
     font-weight: 500;
+    position: relative;
 
     &.active {
       color: $color-blue;

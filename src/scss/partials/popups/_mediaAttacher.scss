@@ -53,6 +53,7 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 9px;
+      padding: 12px 20px 15px;
   
       .btn-primary {
         width: 79px;
@@ -125,14 +126,14 @@
 
   .input-field {
     width: 100%;
-    margin-top: 1rem;
+    margin-top: 25px;
 
     &::placeholder {
       color: #a2acb4;
     }
 
     input {
-      height: 54px;
+      //height: 54px;
       font-size: 1rem;
       padding: 0 15px;
       border-radius: $border-radius-medium;
@@ -147,4 +148,8 @@
       opacity: 0;
     }
   }
+}
+
+.popup-create-poll.popup-new-media .btn-primary {
+  width: 94px;
 }

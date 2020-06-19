@@ -1,16 +1,20 @@
 import { horizontalMenu } from "./misc";
 
 export interface SliderTab {
+  onOpen?: () => void,
+  onOpenAfterTimeout?: () => void,
   onClose?: () => void,
   onCloseAfterTimeout?: () => void
 }
+
+const TRANSITIONTIME = 420;
 
 export default class SidebarSlider {
   protected _selectTab: (id: number) => void;
   public historyTabIDs: number[] = [];
 
   constructor(public sidebarEl: HTMLElement, public tabs: {[id: number]: SliderTab}) {
-    this._selectTab = horizontalMenu(null, this.sidebarEl.querySelector('.sidebar-slider') as HTMLDivElement, null, null, 420);
+    this._selectTab = horizontalMenu(null, this.sidebarEl.querySelector('.sidebar-slider') as HTMLDivElement, null, null, TRANSITIONTIME);
     this._selectTab(0);
 
     let onCloseBtnClick = () => {
@@ -28,6 +32,20 @@ export default class SidebarSlider {
     if(this.historyTabIDs[this.historyTabIDs.length - 1] == id) {
       return;
     }
+
+    const tab = this.tabs[id];
+    if(tab) {
+      if(tab.onOpen) {
+        tab.onOpen();
+      }
+  
+      if(tab.onOpenAfterTimeout) {
+        setTimeout(() => {
+          tab.onOpenAfterTimeout();
+        }, TRANSITIONTIME);
+      }
+    }
+    
     
     this.historyTabIDs.push(id);
     this._selectTab(id);
@@ -41,14 +59,14 @@ export default class SidebarSlider {
   public onCloseTab(id: number) {
     let tab = this.tabs[id];
     if(tab) {
-      if('onClose' in tab) {
+      if(tab.onClose) {
         tab.onClose();
       }
 
-      if('onCloseAfterTimeout' in tab) {
+      if(tab.onCloseAfterTimeout) {
         setTimeout(() => {
           tab.onCloseAfterTimeout();
-        }, 420);
+        }, TRANSITIONTIME);
       }
     }
   }

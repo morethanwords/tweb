@@ -67,14 +67,489 @@ export type Dialog = {
   pts: number
 }
 
+class DialogsStorage {
+  public dialogs: {[peerID: string]: Dialog} = {};
+  public byFolders: {[folderID: number]: Dialog[]} = {};
+
+  public allDialogsLoaded: {[folder_id: number]: boolean} = {};
+  public dialogsOffsetDate: {[folder_id: number]: number} = {};
+  public pinnedIndexes: {[folder_id: number]: number} = {
+    0: 0,
+    1: 0
+  };
+  public dialogsNum = 0;
+
+  public getFolder(id: number) {
+    if(id <= 1) {
+      return this.byFolders[id] ?? (this.byFolders[id] = []);
+    }
+
+    const dialogs: {dialog: Dialog, index: number}[] = [];
+    const filter = appMessagesManager.filtersStorage.filters[id];
+
+    for(const peerID in this.dialogs) {
+      const dialog = this.dialogs[peerID];
+      if(appMessagesManager.filtersStorage.testDialogForFilter(dialog, filter)) {
+        let index: number;
+
+        const pinnedIndex = filter.pinned_peers.indexOf(dialog.peerID);
+        if(pinnedIndex !== -1) {
+          index = this.generateDialogIndex(this.generateDialogPinnedDateByIndex(filter.pinned_peers.length - 1 - pinnedIndex));
+        } else if(dialog.pFlags?.pinned) {
+          index = this.generateIndexForDialog(dialog, true);
+        } else {
+          index = dialog.index;
+        }
+
+        dialogs.push({dialog, index});
+      }
+    }
+
+    dialogs.sort((a, b) => b.index - a.index);
+    return dialogs.map(d => d.dialog);
+  }
+
+  public getDialog(peerID: number, folderID?: number): [Dialog, number] | [] {
+    const folders: Dialog[][] = [];
+
+    if(folderID === undefined) {
+      const dialogs = this.byFolders;
+      for(const folderID in dialogs) {
+        folders.push(dialogs[folderID]);
+      }
+    } else {
+      folders.push(this.getFolder(folderID));
+    }
+
+    for(let folder of folders) {
+      const index = folder.findIndex(dialog => dialog.peerID == peerID);
+      if(index !== -1) {
+        return [folder[index], index];
+      }
+    }
+
+    return [];
+  }
+
+  /*
+  var date = Date.now() / 1000 | 0;
+  var m = date * 0x10000;
+
+  var k = (date + 1) * 0x10000;
+  k - m;
+  65536
+  */
+  public generateDialogIndex(date?: number) {
+    if(date === undefined) {
+      date = tsNow(true) + serverTimeManager.serverTimeOffset;
+    }
+
+    return (date * 0x10000) + ((++this.dialogsNum) & 0xFFFF);
+  }
+
+  public generateIndexForDialog(dialog: Dialog, justReturn = false) {
+    const channelID = appPeersManager.isChannel(dialog.peerID) ? -dialog.peerID : 0;
+    const mid = appMessagesIDsManager.getFullMessageID(dialog.top_message, channelID);
+    const message = appMessagesManager.getMessage(mid);
+
+    let topDate = message.date;
+    if(channelID) {
+      const channel = appChatsManager.getChat(channelID);
+      if(!topDate || channel.date && channel.date > topDate) {
+        topDate = channel.date;
+      }
+    }
+
+    const savedDraft: any = {};// DraftsManager.saveDraft(peerID, dialog.draft); // warning
+    if(savedDraft && savedDraft.date > topDate) {
+      topDate = savedDraft.date;
+    }
+
+    if(dialog.pFlags.pinned && !justReturn) {
+      topDate = this.generateDialogPinnedDate(dialog);
+      //this.log('topDate', peerID, topDate);
+    }
+
+    const index = this.generateDialogIndex(topDate);
+    if(justReturn) return index;
+    dialog.index = index;
+  }
+
+  public generateDialogPinnedDateByIndex(pinnedIndex: number) {
+    return 0x7fffff00 + (pinnedIndex & 0xff);
+  }
+
+  public generateDialogPinnedDate(dialog?: Dialog) {
+    const folderID = dialog.folder_id;
+    let pinnedIndex: number;
+    
+    if(dialog) {
+      if(dialog.hasOwnProperty('pinnedIndex')) {
+        pinnedIndex = dialog.pinnedIndex;
+      } else {
+        dialog.pinnedIndex = pinnedIndex = this.pinnedIndexes[folderID]++;
+      }
+    } else {
+      pinnedIndex = this.pinnedIndexes[folderID]++;
+    }
+
+    if(pinnedIndex > this.pinnedIndexes[folderID]) {
+      this.pinnedIndexes[folderID] = pinnedIndex;
+    }
+
+    return this.generateDialogPinnedDateByIndex(pinnedIndex);
+  }
+
+  public pushDialog(dialog: Dialog, offsetDate?: number) {
+    const dialogs = this.getFolder(dialog.folder_id);
+    const pos = dialogs.findIndex(d => d.peerID == dialog.peerID);
+    if(pos !== -1) {
+      dialogs.splice(pos, 1);
+    }
+
+    //if(!this.dialogs[dialog.peerID]) {
+      this.dialogs[dialog.peerID] = dialog;
+    //}
+
+    if(offsetDate &&
+      !dialog.pFlags.pinned &&
+      (!this.dialogsOffsetDate[dialog.folder_id] || offsetDate < this.dialogsOffsetDate[dialog.folder_id])) {
+      if(pos !== -1) {
+        // So the dialog jumped to the last position
+        return false;
+      }
+      this.dialogsOffsetDate[dialog.folder_id] = offsetDate;
+    }
+
+    const index = dialog.index;
+    const len = dialogs.length;
+    if(!len || index < dialogs[len - 1].index) {
+      dialogs.push(dialog);
+    } else if(index >= dialogs[0].index) {
+      dialogs.unshift(dialog);
+    } else {
+      for(let i = 0; i < len; i++) {
+        if(index > dialogs[i].index) {
+          dialogs.splice(i, 0, dialog);
+          break;
+        }
+      }
+    }
+  }
+
+  public dropDialog(peerID: number): [Dialog, number] | [] {
+    const foundDialog = this.getDialog(peerID);
+    if(foundDialog[0]) {
+      this.byFolders[foundDialog[0].folder_id].splice(foundDialog[1], 1);
+      delete this.dialogs[peerID];
+    }
+
+    return foundDialog;
+  }
+}
+
+export type DialogFilter = {
+  _: 'dialogFilter',
+  flags: number,
+  pFlags: Partial<{
+    contacts: true,
+    non_contacts: true,
+    groups: true,
+    broadcasts: true,
+    bots: true,
+    exclude_muted: true,
+    exclude_read: true,
+    exclude_archived: true
+  }>,
+  id: number,
+  title: string,
+  emoticon?: string,
+  pinned_peers: number[],
+  include_peers: number[],
+  exclude_peers: number[]
+};
+class FiltersStorage {
+  public filters: {[filterID: string]: DialogFilter} = {};
+
+  constructor() {
+    $rootScope.$on('apiUpdate', (e: CustomEvent) => {
+      this.handleUpdate(e.detail);
+    });
+  }
+
+  public handleUpdate(update: any) {
+    switch(update._) {
+      case 'updateDialogFilter': {
+        console.log('updateDialogFilter', update);
+        if(update.filter) {
+          this.saveDialogFilter(update.filter);
+        } else if(this.filters[update.id]) { // Папка удалена
+          //this.getDialogFilters(true);
+          $rootScope.$broadcast('filter_delete', this.filters[update.id]);
+          delete this.filters[update.id];
+        }
+
+        break;
+      }
+    }
+  }
+
+  public testDialogForFilter(dialog: Dialog, filter: DialogFilter) {
+    // exclude_peers
+    for(const peerID of filter.exclude_peers) {
+      if(peerID == dialog.peerID) {
+        return false;
+      }
+    }
+
+    // include_peers
+    for(const peerID of filter.include_peers) {
+      if(peerID == dialog.peerID) {
+        return true;
+      }
+    }
+
+    const pFlags = filter.pFlags;
+
+    // exclude_archived
+    if(pFlags.exclude_archived && dialog.folder_id == 1) {
+      return false;
+    }
+
+    // exclude_read
+    if(pFlags.exclude_read && !dialog.unread_count) {
+      return false;
+    }
+
+    // exclude_muted
+    if(pFlags.exclude_muted) {
+      const isMuted = (dialog.notify_settings?.mute_until * 1000) > Date.now();
+      if(isMuted) {
+        return false;
+      }
+    }
+
+    const peerID = dialog.peerID;
+    if(peerID < 0) {
+      // broadcasts
+      if(pFlags.broadcasts && appPeersManager.isBroadcast(peerID)) {
+        return true;
+      }
+
+      // groups
+      if(pFlags.groups && appPeersManager.isAnyGroup(peerID)) {
+        return true;
+      }
+    } else {
+      // bots
+      if(appPeersManager.isBot(peerID)) {
+        return !!pFlags.bots;
+      }
+      
+      // non_contacts
+      if(pFlags.non_contacts && !appUsersManager.contactsList.has(peerID)) {
+        return true;
+      }
+
+      // contacts
+      if(pFlags.contacts && appUsersManager.contactsList.has(peerID)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /* public processDialog(dialog: Dialog) {
+    for(const filterID in this.filters) {
+      const filter = this.filters[filterID];
+      const good = this.testDialogForFilter(dialog, filter);
+
+      const folder = appMessagesManager.dialogsStorage.getFolder(+filterID);
+      if(good) {
+        folder.push(dialog);
+      }
+
+      console.log('processDialog:', dialog, filter, good);
+    }
+  } */
+
+  /* public initFilters() {
+    return Promise.all([
+      appUsersManager.getContacts(),
+
+      this.getDialogFilters(),
+
+      appMessagesManager.getConversations('', 0, 20, 0),
+      appMessagesManager.getConversations('', 0, 20, 1)
+    ]).then(() => {
+      const dialogs = appMessagesManager.dialogsStorage.dialogs;
+      for(const peerID in dialogs) {
+        const dialog = dialogs[peerID];
+        this.processDialog(dialog);
+      }
+
+      this.inited = true;
+    });
+  } */
+
+  public toggleDialogPin(peerID: number, filterID: number) {
+    const filter = this.filters[filterID];
+
+    const wasPinned = filter.pinned_peers.findAndSplice(p => p == peerID);
+    if(!wasPinned) {
+      filter.pinned_peers.unshift(peerID);
+    }
+    
+    return this.updateDialogFilter(filter);
+  }
+
+  public createDialogFilter(filter: DialogFilter) {
+    let maxID = Math.max(1, ...Object.keys(this.filters).map(i => +i));
+    filter = copy(filter);
+    filter.id = maxID + 1;
+    return this.updateDialogFilter(filter);
+  }
+
+  public updateDialogFilter(filter: DialogFilter, remove = false) {
+    const flags = remove ? 0 : 1;
+
+    if(!remove) {
+      filter.flags = 0;
+      const f: {[k: string]: number} = {
+        contacts: 0,
+        non_contacts: 1,
+        groups: 2,
+        broadcasts: 3,
+        bots: 4,
+        exclude_muted: 11,
+        exclude_read: 12,
+        exclude_archived: 13
+      };
+
+      for(const key in f) {
+        // @ts-ignore
+        if(filter.pFlags[key]) {
+          filter.flags |= 1 << f[key];
+        }
+      }
+
+      if(filter.emoticon) {
+        filter.flags |= 1 << 25;
+      }
+    }
+
+    return apiManager.invokeApi('messages.updateDialogFilter', {
+      flags,
+      id: filter.id,
+      filter: remove ? undefined : this.getOutputDialogFilter(filter)
+    }).then((bool: boolean) => { // возможно нужна проверка и откат, если результат не ТРУ
+      console.log('updateDialogFilter bool:', bool);
+
+      if(bool) {
+        /* if(!this.filters[filter.id]) {
+          this.saveDialogFilter(filter);
+        }
+
+        $rootScope.$broadcast('filter_update', filter); */
+
+        this.handleUpdate({
+          _: 'updateDialogFilter',
+          id: filter.id,
+          filter: remove ? undefined : filter
+        });
+      }
+
+      return bool;
+    });
+  }
+
+  public getOutputDialogFilter(filter: DialogFilter) {
+    const c = copy(filter);
+    ['pinned_peers', 'exclude_peers', 'include_peers'].forEach(key => {
+      c[key] = c[key].map((peerID: number) => appPeersManager.getInputPeerByID(peerID));
+    });
+
+    return c;
+  }
+
+  public async getDialogFilters(overwrite = false) {
+    if(Object.keys(this.filters).length && !overwrite) {
+      // УБРАТЬ НА ПРОДЕ!!!!!!!!!!!!
+      for(const folderID in this.filters) {
+        const filter = this.filters[folderID];
+        if(typeof(filter.pinned_peers[0]) !== 'number') filter.pinned_peers = filter.pinned_peers.map(peer => appPeersManager.getPeerID(peer));
+        if(typeof(filter.exclude_peers[0]) !== 'number') filter.exclude_peers = filter.exclude_peers.map(peer => appPeersManager.getPeerID(peer));
+        if(typeof(filter.include_peers[0]) !== 'number') filter.include_peers = filter.include_peers.map(peer => appPeersManager.getPeerID(peer));
+      }
+      return this.filters;
+    }
+
+    const filters = await (apiManager.invokeApi('messages.getDialogFilters') as Promise<DialogFilter[]>);
+    for(const filter of filters) {
+      this.saveDialogFilter(filter, false);
+    }
+
+    console.log(this.filters);
+    return this.filters;
+  }
+
+  public saveDialogFilter(filter: DialogFilter, update = true) {
+    ['pinned_peers', 'exclude_peers', 'include_peers'].forEach(key => {
+      // @ts-ignore
+      filter[key] = filter[key].map((peer: any) => appPeersManager.getPeerID(peer));
+    });
+
+    /* if(this.filters[filter.id]) {
+      // ну давай же найдём различия теперь, раз они сами не хотят приходить
+      const oldFilter = this.filters[filter.id];
+
+      const updateDialogs: {[peerID: number]: Dialog} = {};
+
+      const pinnedChanged = !deepEqual(oldFilter.pinned_peers, filter.pinned_peers);
+      if(pinnedChanged) {
+        for(const peerID of oldFilter.pinned_peers) {
+          updateDialogs[peerID] = appMessagesManager.getDialogByPeerID(peerID)[0];
+        }
+
+        for(const peerID of filter.pinned_peers) {
+          updateDialogs[peerID] = appMessagesManager.getDialogByPeerID(peerID)[0];
+        }
+      }
+
+      // это и так отфильтрует
+      //const excludeChanged = !deepEqual(oldFilter.exclude_peers, filter.exclude_peers);
+
+      const includeChanged = !deepEqual(oldFilter.include_peers, filter.include_peers);
+      if(includeChanged) {
+        for(const peerID of filter.include_peers) {
+          updateDialogs[peerID] = appMessagesManager.getDialogByPeerID(peerID)[0];
+        }
+      }
+
+      Object.assign(this.filters[filter.id], filter);
+      if(pinnedChanged) {
+        $rootScope.$broadcast('filter_pinned_order', {id: filter.id, order: filter.pinned_peers});
+      }
+
+      $rootScope.$broadcast('dialogs_multiupdate', updateDialogs);
+    } */if(this.filters[filter.id]) {
+      Object.assign(this.filters[filter.id], filter);
+    } else {
+      this.filters[filter.id] = filter;
+    }
+
+    if(update) {
+      $rootScope.$broadcast('filter_update', filter);
+    }
+  }
+}
+
 export class AppMessagesManager {
   public messagesStorage: any = {};
   public groupedMessagesStorage: {[groupID: string]: any} = {}; // will be used for albums
   public historiesStorage: {
     [peerID: string]: HistoryStorage
-  } = {};
-  public dialogsStorage: {
-    [folderID: number]: Dialog[]
   } = {};
   public pinnedMessages: {[peerID: string]: number} = {};
   public pendingByRandomID: {[randomID: string]: [number, number]} = {};
@@ -93,11 +568,6 @@ export class AppMessagesManager {
   private fetchSingleMessagesPromise: Promise<any> = null;
 
   public maxSeenID = 0;
-
-  public allDialogsLoaded: {[folder_id: number]: boolean} = {};
-  public dialogsOffsetDate: {[folder_id: number]: number} = {};
-  public pinnedIndex = 0;
-  public dialogsNum = 0;
 
   public migratedFromTo: {[peerID: number]: number} = {};
   public migratedToFrom: {[peerID: number]: number} = {};
@@ -121,15 +591,14 @@ export class AppMessagesManager {
     dialogs: []
   };
 
-  private log = logger('MESSAGES', LogLevels.error);
+  private log = logger('MESSAGES'/* , LogLevels.error */);
+
+  public dialogsStorage = new DialogsStorage();
+  public filtersStorage = new FiltersStorage();
 
   constructor() {
     $rootScope.$on('apiUpdate', (e: CustomEvent) => {
-      let update: any = e.detail;
-      // if(update._ != 'updateUserStatus') {
-      //   this.log('on apiUpdate', update)
-      // }
-      this.handleUpdate(update);
+      this.handleUpdate(e.detail);
     });
 
     $rootScope.$on('webpage_updated', (e: CustomEvent) => {
@@ -169,10 +638,10 @@ export class AppMessagesManager {
         }
 
         if(!dialog.pFlags.pinned) {
-          dialog.index = this.generateDialogIndex(topDate);
+          dialog.index = this.dialogsStorage.generateDialogIndex(topDate);
         }
 
-        this.pushDialogToStorage(dialog);
+        this.dialogsStorage.pushDialog(dialog);
 
         $rootScope.$broadcast('dialog_draft', {
           peerID: peerID,
@@ -188,12 +657,14 @@ export class AppMessagesManager {
     return this.loaded = new Promise((resolve, reject) => {
       AppStorage.get<{
         dialogs: Dialog[],
-        allDialogsLoaded: AppMessagesManager['allDialogsLoaded'], 
+        allDialogsLoaded: DialogsStorage['allDialogsLoaded'], 
         peers: any[],
         messages: any[],
+        contactsList: number[],
         updates: any,
+        filters: FiltersStorage['filters'],
         maxSeenMsgID: number
-      }>('state').then(({dialogs, allDialogsLoaded, peers, messages, maxSeenMsgID, updates}) => {
+      }>('state').then(({dialogs, allDialogsLoaded, peers, messages, contactsList, maxSeenMsgID, updates, filters}) => {
         this.log('state res', dialogs, messages);
 
         if(maxSeenMsgID && !appMessagesIDsManager.getMessageIDInfo(maxSeenMsgID)[1]) {
@@ -208,6 +679,13 @@ export class AppMessagesManager {
             if(+peerID < 0) appChatsManager.saveApiChat(peer);
             else appUsersManager.saveApiUser(peer);
           }
+        }
+
+        if(contactsList && Array.isArray(contactsList) && contactsList.length) {
+          contactsList.forEach(userID => {
+            appUsersManager.pushContact(userID);
+          });
+          appUsersManager.contactsFillPromise = Promise.resolve(appUsersManager.contactsList);
         }
 
         if(messages) {
@@ -235,7 +713,11 @@ export class AppMessagesManager {
         }
         
         if(allDialogsLoaded) {
-          this.allDialogsLoaded = allDialogsLoaded;
+          this.dialogsStorage.allDialogsLoaded = allDialogsLoaded;
+        }
+
+        if(filters) {
+          this.filtersStorage.filters = filters;
         }
 
         if(dialogs) {
@@ -256,55 +738,65 @@ export class AppMessagesManager {
   }
 
   public saveState() {
-    let messages: any[] = [];
-    let dialogs: Dialog[] = [];
-    let peers: {[peerID: number]: any} = {};
+    const messages: any[] = [];
+    const dialogs: Dialog[] = [];
+    const peers: {[peerID: number]: any} = {};
     
-    for(let folderID in this.dialogsStorage) {
-      for(let dialog of this.dialogsStorage[folderID]) {
-        let historyStorage = this.historiesStorage[dialog.peerID];
-        let history = [].concat(historyStorage?.pending ?? [], historyStorage?.history ?? []);
+    for(const peerID in this.dialogsStorage.dialogs) {
+      let dialog = this.dialogsStorage.dialogs[peerID];
+      const historyStorage = this.historiesStorage[dialog.peerID];
+      const history = [].concat(historyStorage?.pending ?? [], historyStorage?.history ?? []);
 
-        dialog = copy(dialog);
-        let removeUnread = 0;
-        for(let mid of history) {
-          let message = this.getMessage(mid);
-          if(/* message._ != 'messageEmpty' &&  */message.id > 0) {
-            messages.push(message);
+      dialog = copy(dialog);
+      let removeUnread = 0;
+      for(const mid of history) {
+        const message = this.getMessage(mid);
+        if(/* message._ != 'messageEmpty' &&  */message.id > 0) {
+          messages.push(message);
   
-            if(message.fromID != dialog.peerID) {
-              peers[message.fromID] = appPeersManager.getPeer(message.fromID);
-            }
-
-            dialog.top_message = message.mid;
-
-            break;
-          } else if(message.pFlags && message.pFlags.unread) {
-            ++removeUnread;
+          if(message.fromID != dialog.peerID) {
+            peers[message.fromID] = appPeersManager.getPeer(message.fromID);
           }
+
+          dialog.top_message = message.mid;
+
+          break;
+        } else if(message.pFlags && message.pFlags.unread) {
+          ++removeUnread;
         }
-
-        if(removeUnread && dialog.unread_count) dialog.unread_count -= removeUnread; 
-
-        dialogs.push(dialog);
-
-        peers[dialog.peerID] = appPeersManager.getPeer(dialog.peerID);
       }
+
+      if(removeUnread && dialog.unread_count) dialog.unread_count -= removeUnread; 
+
+      dialogs.push(dialog);
+
+      peers[dialog.peerID] = appPeersManager.getPeer(dialog.peerID);
     }
 
-    let us = apiUpdatesManager.updatesState;
-    let updates = {
+    const us = apiUpdatesManager.updatesState;
+    const updates = {
       seq: us.seq,
       pts: us.pts,
       date: us.date
     };
 
+    const contactsList = [...appUsersManager.contactsList];
+    for(const userID of contactsList) {
+      if(!peers[userID]) {
+        peers[userID] = appUsersManager.getUser(userID);
+      }
+    }
+
+    const filters = this.filtersStorage.filters;
+
     AppStorage.set({
       state: {
         dialogs, 
         messages, 
-        allDialogsLoaded: this.allDialogsLoaded, 
+        allDialogsLoaded: this.dialogsStorage.allDialogsLoaded, 
         peers, 
+        contactsList,
+        filters,
         updates,
         maxSeenMsgID: this.maxSeenID
       }
@@ -1506,7 +1998,8 @@ export class AppMessagesManager {
   }
 
   public getConversations(query = '', offsetIndex?: number, limit = 20, folderID = 0) {
-    let curDialogStorage = this.dialogsStorage[folderID] ?? (this.dialogsStorage[folderID] = []);
+    const realFolderID = folderID > 1 ? 0 : folderID;
+    let curDialogStorage = this.dialogsStorage.getFolder(folderID);
 
     if(query) {
       if(!limit || this.cachedResults.query !== query) {
@@ -1515,13 +2008,19 @@ export class AppMessagesManager {
         const results = searchIndexManager.search(query, this.dialogsIndex);
 
         this.cachedResults.dialogs = [];
-        for(const folderID in this.dialogsStorage) {
+        /* for(const folderID in this.dialogsStorage) {
           const dialogs = this.dialogsStorage[folderID];
           dialogs.forEach(dialog => {
             if(results[dialog.peerID]) {
               this.cachedResults.dialogs.push(dialog);
             }
           });
+        } */
+        for(const peerID in this.dialogsStorage.dialogs) {
+          const dialog = this.dialogsStorage.dialogs[peerID];
+          if(results[dialog.peerID]) {
+            this.cachedResults.dialogs.push(dialog);
+          }
         }
 
         this.cachedResults.count = this.cachedResults.dialogs.length;
@@ -1541,14 +2040,14 @@ export class AppMessagesManager {
       }
     }
 
-    if(query || this.allDialogsLoaded[folderID] || curDialogStorage.length >= offset + limit) {
+    if(query || this.dialogsStorage.allDialogsLoaded[realFolderID] || curDialogStorage.length >= offset + limit) {
       return Promise.resolve({
         dialogs: curDialogStorage.slice(offset, offset + limit),
-        count: curDialogStorage.length
+        count: this.dialogsStorage.allDialogsLoaded[realFolderID] ? curDialogStorage.length : null
       });
     }
 
-    return this.getTopMessages(limit, folderID).then(totalCount => {
+    return this.getTopMessages(limit, realFolderID).then(totalCount => {
       //const curDialogStorage = this.dialogsStorage[folderID];
 
       offset = 0;
@@ -1570,16 +2069,16 @@ export class AppMessagesManager {
   }
 
   public getTopMessages(limit: number, folderID: number): Promise<number> {
-    const dialogs = this.dialogsStorage[folderID];
+    const dialogs = this.dialogsStorage.getFolder(folderID);
     let offsetID = 0;
     let offsetDate = 0;
     let offsetPeerID = 0;
     let offsetIndex = 0;
     let flags = 0;
 
-    if(this.dialogsOffsetDate[folderID]) {
-      offsetDate = this.dialogsOffsetDate[folderID] + serverTimeManager.serverTimeOffset;
-      offsetIndex = this.dialogsOffsetDate[folderID] * 0x10000;
+    if(this.dialogsStorage.dialogsOffsetDate[folderID]) {
+      offsetDate = this.dialogsStorage.dialogsOffsetDate[folderID] + serverTimeManager.serverTimeOffset;
+      offsetIndex = this.dialogsStorage.dialogsOffsetDate[folderID] * 0x10000;
       //flags |= 1; // means pinned already loaded
     }
 
@@ -1648,7 +2147,7 @@ export class AppMessagesManager {
       if(!dialogsResult.dialogs.length ||
         !dialogsResult.count ||
         dialogs.length >= dialogsResult.count) {
-        this.allDialogsLoaded[folderID] = true;
+        this.dialogsStorage.allDialogsLoaded[folderID] = true;
       }
 
       if(hasPrepend) {
@@ -1709,81 +2208,6 @@ export class AppMessagesManager {
     return Promise.all(promises);
   }
 
-  /*
-  var date = Date.now() / 1000 | 0;
-  var m = date * 0x10000;
-
-  var k = (date + 1) * 0x10000;
-  k - m;
-  65536
-  */
-  public generateDialogIndex(date?: any) {
-    if(date === undefined) {
-      date = tsNow(true) + serverTimeManager.serverTimeOffset;
-    }
-
-    return (date * 0x10000) + ((++this.dialogsNum) & 0xFFFF);
-  }
-
-  public generateIndexForDialog(dialog: Dialog) {
-    const channelID = appPeersManager.isChannel(dialog.peerID) ? -dialog.peerID : 0;
-    const mid = appMessagesIDsManager.getFullMessageID(dialog.top_message, channelID);
-    const message = this.getMessage(mid);
-
-    let topDate = message.date;
-    if(channelID) {
-      const channel = appChatsManager.getChat(channelID);
-      if(!topDate || channel.date && channel.date > topDate) {
-        topDate = channel.date;
-      }
-    }
-
-    const savedDraft: any = {};// DraftsManager.saveDraft(peerID, dialog.draft); // warning
-    if(savedDraft && savedDraft.date > topDate) {
-      topDate = savedDraft.date;
-    }
-
-    if(dialog.pFlags.pinned && dialog.folder_id == 0) {
-      topDate = this.generateDialogPinnedDate(dialog);
-      //this.log('topDate', peerID, topDate);
-    }
-
-    dialog.index = this.generateDialogIndex(topDate);
-  }
-
-  public pushDialogToStorage(dialog: Dialog, offsetDate?: number) {
-    let dialogs = this.dialogsStorage[dialog.folder_id] ?? (this.dialogsStorage[dialog.folder_id] = []);
-    let pos = dialogs.findIndex(d => d.peerID == dialog.peerID);
-    if(pos !== -1) {
-      dialogs.splice(pos, 1);
-    }
-
-    if(offsetDate &&
-      !dialog.pFlags.pinned &&
-      (!this.dialogsOffsetDate[dialog.folder_id] || offsetDate < this.dialogsOffsetDate[dialog.folder_id])) {
-      if(pos !== -1) {
-        // So the dialog jumped to the last position
-        return false;
-      }
-      this.dialogsOffsetDate[dialog.folder_id] = offsetDate;
-    }
-
-    let index = dialog.index;
-    let len = dialogs.length;
-    if(!len || index < dialogs[len - 1].index) {
-      dialogs.push(dialog);
-    } else if(index >= dialogs[0].index) {
-      dialogs.unshift(dialog);
-    } else {
-      for(let i = 0; i < len; i++) {
-        if(index > dialogs[i].index) {
-          dialogs.splice(i, 0, dialog);
-          break;
-        }
-      }
-    }
-  }
-
   public getMessage(messageID: number) {
     return this.messagesStorage[messageID] || {
       _: 'messageEmpty',
@@ -1804,15 +2228,7 @@ export class AppMessagesManager {
   }
 
   public getDialogByPeerID(peerID: number): [Dialog, number] | [] {
-    let dialogs = this.dialogsStorage;
-    for(let folderID in dialogs) {
-      let index = dialogs[folderID].findIndex(dialog => dialog.peerID == peerID);
-      if(index !== -1) {
-        return [dialogs[folderID][index], index];
-      }
-    }
-
-    return [];
+    return this.dialogsStorage.getDialog(peerID);
   }
 
   public reloadConversation(peerID: number | number[]) {
@@ -1890,10 +2306,7 @@ export class AppMessagesManager {
       if(justClear) {
         $rootScope.$broadcast('dialog_flush', {peerID: peerID});
       } else {
-        let foundDialog = this.getDialogByPeerID(peerID);
-        if(foundDialog[0]) {
-          this.dialogsStorage[foundDialog[0].folder_id].splice(foundDialog[1], 1);
-        }
+        this.dialogsStorage.dropDialog(peerID);
 
         $rootScope.$broadcast('dialog_drop', {peerID: peerID});
       }
@@ -2255,27 +2668,34 @@ export class AppMessagesManager {
     });
   }
 
-  public toggleDialogPin(peerID: number) {
-    let dialog = this.getDialogByPeerID(peerID)[0];
+  public toggleDialogPin(peerID: number, filterID?: number) {
+    if(filterID > 1) {
+      this.filtersStorage.toggleDialogPin(peerID, filterID);
+      return;
+    }
+
+    const dialog = this.getDialogByPeerID(peerID)[0];
     if(!dialog) return Promise.reject();
 
-    let peer = {
+    const peer = {
       _: 'inputDialogPeer',
       peer: appPeersManager.getInputPeerByID(peerID)
     };
 
-    let flags = dialog.pFlags?.pinned ? 0 : 1;
+    const flags = dialog.pFlags?.pinned ? 0 : 1;
     return apiManager.invokeApi('messages.toggleDialogPin', {
       flags,
       peer
     }).then(bool => {
-      this.handleUpdate({
-        _: 'updateDialogPinned',
-        peer: peer,
-        pFlags: {
-          pinned: flags
-        }
-      });
+      if(bool) {
+        this.handleUpdate({
+          _: 'updateDialogPinned',
+          peer: peer,
+          pFlags: {
+            pinned: flags
+          }
+        });
+      }
     });
   }
 
@@ -2293,13 +2713,15 @@ export class AppMessagesManager {
       flags,
       peer
     }).then(bool => {
-      this.handleUpdate({
-        _: 'updateDialogUnreadMark',
-        peer: peer,
-        pFlags: {
-          unread: flags
-        }
-      });
+      if(bool) {
+        this.handleUpdate({
+          _: 'updateDialogUnreadMark',
+          peer: peer,
+          pFlags: {
+            unread: flags
+          }
+        });
+      }
     });
   }
 
@@ -2307,7 +2729,7 @@ export class AppMessagesManager {
     if(!this.migratedFromTo[migrateFrom] &&
       !this.migratedToFrom[migrateTo] &&
       appChatsManager.hasChat(-migrateTo)) {
-      var fromChat = appChatsManager.getChat(-migrateFrom);
+      const fromChat = appChatsManager.getChat(-migrateFrom);
       if(fromChat &&
         fromChat.migrated_to &&
         fromChat.migrated_to.channel_id == -migrateTo) {
@@ -2315,10 +2737,9 @@ export class AppMessagesManager {
           this.migratedToFrom[migrateTo] = migrateFrom;
 
         setTimeout(() => {
-          var foundDialog = this.getDialogByPeerID(migrateFrom);
-          if(foundDialog.length) {
-            this.dialogsStorage[foundDialog[0].folder_id].splice(foundDialog[1], 1);
-            $rootScope.$broadcast('dialog_drop', {peerID: migrateFrom, dialog: foundDialog[0]});
+          const dropped = this.dialogsStorage.dropDialog(migrateFrom);
+          if(dropped.length) {
+            $rootScope.$broadcast('dialog_drop', {peerID: migrateFrom, dialog: dropped[0]});
           }
 
           $rootScope.$broadcast('dialog_migrate', {migrateFrom: migrateFrom, migrateTo: migrateTo});
@@ -2410,10 +2831,9 @@ export class AppMessagesManager {
           hasUpdated = true;
         }
       } else {
-        const foundDialog = this.getDialogByPeerID(peerID);
-        if(foundDialog.length) {
-          this.dialogsStorage[foundDialog[0].folder_id].splice(foundDialog[1], 1);
-          $rootScope.$broadcast('dialog_drop', {peerID: peerID, dialog: foundDialog[0]});
+        const dropped = this.dialogsStorage.dropDialog(peerID);
+        if(dropped.length) {
+          $rootScope.$broadcast('dialog_drop', {peerID: peerID, dialog: dropped[0]});
         }
       }
 
@@ -2479,8 +2899,8 @@ export class AppMessagesManager {
     if(!dialog.hasOwnProperty('folder_id')) dialog.folder_id = 0;
     dialog.peerID = peerID;
 
-    this.generateIndexForDialog(dialog);
-    this.pushDialogToStorage(dialog, message.date);
+    this.dialogsStorage.generateIndexForDialog(dialog);
+    this.dialogsStorage.pushDialog(dialog, message.date);
 
     // Because we saved message without dialog present
     if(message.mid > 0) {
@@ -2503,6 +2923,10 @@ export class AppMessagesManager {
     if(channelID && dialog.pts) {
       apiUpdatesManager.addChannelState(channelID, dialog.pts);
     }
+
+    //if(this.filtersStorage.inited) {
+      //this.filtersStorage.processDialog(dialog);
+    //}
   }
 
   public mergeReplyKeyboard(historyStorage: HistoryStorage, message: any) {
@@ -2790,47 +3214,27 @@ export class AppMessagesManager {
       return Promise.reject(error);
     });
   }
-  
-  public generateDialogPinnedDate(dialog?: Dialog) {
-    let pinnedIndex: number;
-    
-    if(dialog) {
-      if(dialog.hasOwnProperty('pinnedIndex')) {
-        pinnedIndex = dialog.pinnedIndex;
-      } else {
-        dialog.pinnedIndex = pinnedIndex = this.pinnedIndex++;
-      }
-    } else {
-      pinnedIndex = this.pinnedIndex++;
-    }
 
-    if(pinnedIndex > this.pinnedIndex) {
-      this.pinnedIndex = pinnedIndex;
-    }
-
-    return 0x7fffff00 + (pinnedIndex & 0xff);
-  }
-
-  public handleNewMessages() {
+  handleNewMessages = () => {
     clearTimeout(this.newMessagesHandlePromise);
     this.newMessagesHandlePromise = 0;
 
     $rootScope.$broadcast('history_multiappend', this.newMessagesToHandle);
     this.newMessagesToHandle = {};
-  }
+  };
 
-  public handleNewDialogs() {
+  handleNewDialogs = () => {
     clearTimeout(this.newDialogsHandlePromise);
     this.newDialogsHandlePromise = 0;
     
     let newMaxSeenID = 0;
-    for(let peerID in this.newDialogsToHandle) {
-      let dialog = this.newDialogsToHandle[peerID];
+    for(const peerID in this.newDialogsToHandle) {
+      const dialog = this.newDialogsToHandle[peerID];
       if('reload' in dialog) {
         this.reloadConversation(+peerID);
         delete this.newDialogsToHandle[peerID];
       } else {
-        this.pushDialogToStorage(dialog);
+        this.dialogsStorage.pushDialog(dialog);
         if(!appPeersManager.isChannel(+peerID)) {
           newMaxSeenID = Math.max(newMaxSeenID, dialog.top_message || 0);
         }
@@ -2845,11 +3249,11 @@ export class AppMessagesManager {
 
     $rootScope.$broadcast('dialogs_multiupdate', this.newDialogsToHandle);
     this.newDialogsToHandle = {};
-  }
+  };
 
   public scheduleHandleNewDialogs() {
     if(!this.newDialogsHandlePromise) {
-      this.newDialogsHandlePromise = window.setTimeout(this.handleNewDialogs.bind(this), 0);
+      this.newDialogsHandlePromise = window.setTimeout(this.handleNewDialogs, 0);
     }
   }
 
@@ -3171,7 +3575,7 @@ export class AppMessagesManager {
 
           this.newMessagesToHandle[peerID].push(message.mid);
           if(!this.newMessagesHandlePromise) {
-            this.newMessagesHandlePromise = window.setTimeout(this.handleNewMessages.bind(this), 0);
+            this.newMessagesHandlePromise = window.setTimeout(this.handleNewMessages, 0);
           }
         }
 
@@ -3182,7 +3586,7 @@ export class AppMessagesManager {
           dialog.unread_count++;
         }
         if(!dialog.pFlags.pinned || !dialog.index) {
-          dialog.index = this.generateDialogIndex(message.date);
+          dialog.index = this.dialogsStorage.generateDialogIndex(message.date);
         }
 
         this.newDialogsToHandle[peerID] = dialog;
@@ -3214,27 +3618,31 @@ export class AppMessagesManager {
         break;
       }
 
-      case 'updateFolderPeers': {
+      case 'updateFolderPeers': { // only 0 and 1 folders
         this.log('updateFolderPeers', update);
-        let peers = update.folder_peers;
+        const peers = update.folder_peers;
 
         this.scheduleHandleNewDialogs();
         peers.forEach((folderPeer: any) => {
-          let {folder_id, peer} = folderPeer;
+          const {folder_id, peer} = folderPeer;
 
-          let peerID = appPeersManager.getPeerID(peer);
-          let foundDialog = this.getDialogByPeerID(peerID);
-          if(!foundDialog.length) {
+          const peerID = appPeersManager.getPeerID(peer);
+          const dropped = this.dialogsStorage.dropDialog(peerID);
+          if(!dropped.length) {
             this.newDialogsToHandle[peerID] = {reload: true};
           } else {
-            let dialog = foundDialog[0];
+            const dialog = dropped[0];
             this.newDialogsToHandle[peerID] = dialog;
 
-            this.dialogsStorage[dialog.folder_id].splice(foundDialog[1], 1);
+            if(dialog.pFlags?.pinned) {
+              delete dialog.pinnedIndex;
+              delete dialog.pFlags.pinned;
+            }
+
             dialog.folder_id = folder_id;
 
-            this.generateIndexForDialog(dialog);
-            this.pushDialogToStorage(dialog); // need for simultaneously updatePinnedDialogs
+            this.dialogsStorage.generateIndexForDialog(dialog);
+            this.dialogsStorage.pushDialog(dialog); // need for simultaneously updatePinnedDialogs
           }
         });
         break;
@@ -3242,15 +3650,24 @@ export class AppMessagesManager {
 
       case 'updateDialogPinned': {
         this.log('updateDialogPinned', update);
-        let peerID = appPeersManager.getPeerID(update.peer.peer);
-        let foundDialog = this.getDialogByPeerID(peerID);
+        const peerID = appPeersManager.getPeerID(update.peer.peer);
+        const foundDialog = this.getDialogByPeerID(peerID);
+
+        // этот код внизу никогда не сработает, в папках за пиннед отвечает updateDialogFilter
+        /* if(update.folder_id > 1) {
+          const filter = this.filtersStorage.filters[update.folder_id];
+          if(update.pFlags.pinned) {
+            filter.pinned_peers.unshift(peerID);
+          } else {
+            filter.pinned_peers.findAndSplice(p => p == peerID);
+          }
+        } */
 
         this.scheduleHandleNewDialogs();
         if(!foundDialog.length) {
           this.newDialogsToHandle[peerID] = {reload: true};
-          break;
         } else {
-          let dialog = foundDialog[0];
+          const dialog = foundDialog[0];
           this.newDialogsToHandle[peerID] = dialog;
 
           if(!update.pFlags.pinned) {
@@ -3260,17 +3677,21 @@ export class AppMessagesManager {
             dialog.pFlags.pinned = true;
           }
 
-          this.generateIndexForDialog(dialog);
+          this.dialogsStorage.generateIndexForDialog(dialog);
         } 
 
         break;
       }
 
       case 'updatePinnedDialogs': {
+        const folderID = update.folder_id ?? 0;
+
         this.log('updatePinnedDialogs', update);
-        let newPinned: {[peerID: number]: true} = {};
+        const newPinned: {[peerID: number]: true} = {};
         if(!update.order) {
-          apiManager.invokeApi('messages.getPinnedDialogs', {}).then((dialogsResult: any) => {
+          apiManager.invokeApi('messages.getPinnedDialogs', {
+            folder_id: folderID
+          }).then((dialogsResult: any) => {
             dialogsResult.dialogs.reverse();
             this.applyConversations(dialogsResult);
 
@@ -3278,44 +3699,45 @@ export class AppMessagesManager {
               newPinned[dialog.peerID] = true;
             });
 
-            this.dialogsStorage[0].forEach((dialog: any) => {
-              let peerID = dialog.peerID;
+            this.dialogsStorage.getFolder(folderID).forEach((dialog: any) => {
+              const peerID = dialog.peerID;
               if(dialog.pFlags.pinned && !newPinned[peerID]) {
                 this.newDialogsToHandle[peerID] = {reload: true};
                 this.scheduleHandleNewDialogs();
               }
             });
           });
+
           break;
         }
 
         //this.log('before order:', this.dialogsStorage[0].map(d => d.peerID));
 
-        this.pinnedIndex = 0;
+        this.dialogsStorage.pinnedIndexes[folderID] = 0;
         let willHandle = false;
         update.order.reverse(); // index must be higher
         update.order.forEach((peer: any) => {
-          let peerID = appPeersManager.getPeerID(peer.peer);
+          const peerID = appPeersManager.getPeerID(peer.peer);
           newPinned[peerID] = true;
 
-          let foundDialog = this.getDialogByPeerID(peerID);
+          const foundDialog = this.getDialogByPeerID(peerID);
           if(!foundDialog.length) {
             this.newDialogsToHandle[peerID] = {reload: true};
             willHandle = true;
             return;
           }
 
-          let dialog = foundDialog[0];
+          const dialog = foundDialog[0];
           delete dialog.pinnedIndex;
           dialog.pFlags.pinned = true;
-          this.generateIndexForDialog(dialog);
+          this.dialogsStorage.generateIndexForDialog(dialog);
 
           this.newDialogsToHandle[peerID] = dialog;
           willHandle = true;
         });
         
-        this.dialogsStorage[0].forEach(dialog => {
-          let peerID = dialog.peerID;
+        this.dialogsStorage.getFolder(folderID).forEach(dialog => {
+          const peerID = dialog.peerID;
           if(dialog.pFlags.pinned && !newPinned[peerID]) {
             this.newDialogsToHandle[peerID] = {reload: true};
             willHandle = true;
@@ -3569,16 +3991,16 @@ export class AppMessagesManager {
       }
 
       case 'updateChannel': {
-        var channelID: number = update.channel_id;
-        var peerID = -channelID;
-        var channel = appChatsManager.getChat(channelID);
+        const channelID: number = update.channel_id;
+        const peerID = -channelID;
+        const channel = appChatsManager.getChat(channelID);
 
-        var needDialog = channel._ == 'channel' && (!channel.pFlags.left && !channel.pFlags.kicked);
-        var foundDialog = this.getDialogByPeerID(peerID);
-        var hasDialog = foundDialog.length > 0;
+        const needDialog = channel._ == 'channel' && (!channel.pFlags.left && !channel.pFlags.kicked);
+        const foundDialog = this.getDialogByPeerID(peerID);
+        const hasDialog = foundDialog.length > 0;
 
-        var canViewHistory = channel._ == 'channel' && (channel.username || !channel.pFlags.left && !channel.pFlags.kicked) && true || false;
-        var hasHistory = this.historiesStorage[peerID] !== undefined;
+        const canViewHistory = channel._ == 'channel' && (channel.username || !channel.pFlags.left && !channel.pFlags.kicked) && true || false;
+        const hasHistory = this.historiesStorage[peerID] !== undefined;
 
         if(canViewHistory != hasHistory) {
           delete this.historiesStorage[peerID];
@@ -3590,7 +4012,8 @@ export class AppMessagesManager {
             this.reloadConversation(-channelID);
           } else {
             if(foundDialog[0]) {
-              this.dialogsStorage[foundDialog[0].folder_id].splice(foundDialog[1], 1);
+              this.dialogsStorage.dropDialog(peerID);
+              //this.dialogsStorage[foundDialog[0].folder_id].splice(foundDialog[1], 1);
               $rootScope.$broadcast('dialog_drop', {peerID: peerID, dialog: foundDialog[0]});
             }
           }
@@ -3600,12 +4023,10 @@ export class AppMessagesManager {
       }
 
       case 'updateChannelReload': {
-        let channelID: number = update.channel_id;
-        let peerID = -channelID;
-        let foundDialog = this.getDialogByPeerID(peerID);
-        if(foundDialog[0]) {
-          this.dialogsStorage[foundDialog[0].folder_id].splice(foundDialog[1], 1);
-        }
+        const channelID: number = update.channel_id;
+        const peerID = -channelID;
+
+        this.dialogsStorage.dropDialog(peerID);
 
         delete this.historiesStorage[peerID];
         this.reloadConversation(-channelID).then(() => {
@@ -4108,4 +4529,5 @@ export class AppMessagesManager {
   }
 }
 
-export default new AppMessagesManager();
+const appMessagesManager = new AppMessagesManager();
+export default appMessagesManager;

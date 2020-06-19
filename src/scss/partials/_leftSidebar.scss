@@ -6,6 +6,24 @@
     max-height: 100%;
     overflow: hidden;
     position: relative;
+
+    .folders-tabs-scrollable {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+
+      .scrollable {
+        position: relative;
+      }
+    }
+
+    .menu-horizontal {
+      background: #fff;
+
+      ul {
+        justify-content: space-between
+      }
+    }
   }
 
   .sidebar-slider {
@@ -46,6 +64,12 @@
         }
       }
     }
+
+    .btn-menu {
+      @include respond-to(handhelds) {
+        margin-top: -4px;
+      }
+    }
   }
 
   .sidebar-tools-button .btn-menu {
@@ -64,6 +88,11 @@
       justify-self: flex-end;
       position: absolute;
       right: 16px;
+
+      @include respond-to(handhelds) {
+        font-size: 14px;
+        font-weight: 600;
+      }
     }
 
     .archived-count:empty {
@@ -219,6 +248,13 @@
       border-radius: 0.625rem;
       margin: 0px 0.5rem 0px 0.4375rem;
 
+      @include respond-to(handhelds) {
+        padding: 0.75rem 0.625rem;
+        height: 48px;
+        margin: 0 0 2px 0;
+        border-radius: 0;
+      }
+
       html.no-touch &:hover {
         background: rgba(112, 117, 121, 0.08);
         cursor: pointer;
@@ -240,6 +276,10 @@
     &-buttons {
       margin-top: .9375rem;
       width: 100%;
+
+      @include respond-to(handhelds) {
+        margin-top: 0.6875rem;
+      }
     }
   }
 }
@@ -265,5 +305,192 @@
 
   .scroll-wrapper {
     width: 100%;
+  }
+}
+
+.chat-folders-container, .edit-folder-container {
+  user-select: none;
+
+  .sticker-container {
+    width: 86px;
+    height: 86px;
+    margin: 1px auto 32px;
+    flex: 0 0 auto;
+  }
+
+  .caption {
+    text-align: center;
+    color: #707579;
+    font-size: 14px;
+    line-height: 1.3;
+  }
+
+  .sidebar-left-h2 {
+    color: #707579;
+    font-size: 15px;
+    padding-top: 7px;
+    padding-bottom: 15px;
+    font-weight: 500;
+  }
+}
+
+.chat-folders-container {
+  .btn-primary {
+    width: 160px;
+    height: 40px;
+    align-items: center;
+    margin: 15px auto 24px;
+    border-radius: 30px;
+    padding: 0 12px;
+    display: flex;
+  }
+
+  .tgico-add:before {
+    content: "\e903";
+    font-size: 24px;
+    margin-right: 6px;
+  }
+
+  .folders-container {
+    padding: 0 16px;
+  }
+
+  .category {
+    padding: 7px 0 11px 0;
+    display: flex;
+    padding-bottom: 11px;
+    justify-content: space-between;
+    cursor: pointer;
+    position: relative;
+
+    p:last-child {
+      color: #707579;
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    .btn-primary {
+      height: 30px;
+      font-size: 15px;
+      width: 52px;
+      transition: width 0.2s;
+      margin: 5px 0 0 0;
+    }
+  }
+}
+
+.edit-folder-container {
+  .caption {
+    margin-bottom: 18px;
+  }
+
+  @include respond-to(handhelds) {
+    .input-wrapper {
+        width: 328px;
+    }
+
+    .input-field input {
+      height: 50px;
+    }
+  }
+
+  .sidebar-left-h2 {
+    padding: 21px 0 8px 16px;
+  }
+
+  .input-wrapper {
+    margin-bottom: 10px;
+  }
+}
+
+.folder-list {
+  li {
+    padding-bottom: 2px;
+
+    .rp {
+      padding: 8px 3px !important;
+      height: 48px !important;
+    }
+  }
+
+  avatar-element {
+    height: 32px;
+    width: 32px;
+  }
+
+  .user-caption {
+    padding: 6px 28px;
+  }  
+
+  p span {
+    font-weight: normal;
+  }
+}
+
+.folder-categories {
+  width: 100%;
+}
+
+.folder-category-button {
+  display: flex;
+  font-size: 1.5rem;
+  padding: 13px 16px 10px 16px;
+
+  p {
+    user-select: none;
+    margin-left: 32px;
+    font-size: 16px;
+  }
+
+  &.blue, &.blue:before {
+    color: #50a2e9;
+  }
+
+  &:first-child {
+    cursor: pointer;
+  }
+
+  &:before {
+    color: #797d82;
+  }
+}
+
+.sidebar-header .tgico-check1 {
+  color: #50a2e9;
+}
+
+.included-chats-container {
+  .sidebar-left-h2 {
+    color: #707579;
+    font-size: 15px;
+    font-weight: 500;
+    padding: 6px 0 8px 16px;
+  }
+
+  ul {
+    li > .rp {
+      margin: 0 !important;
+      padding: 7px 12px !important;
+      height: 62px;
+    }
+
+    .dialog-avatar {
+      width: 46px;
+      height: 46px;
+    }
+
+    span.user-title {
+      font-weight: 500;
+    }
+
+    .user-caption {
+      padding: 0px 0px 0 14px;
+      margin-top: -2px;
+    }
+
+    span.user-last-message {
+      font-size: 15px;
+      margin-top: -1px;
+    }
   }
 }

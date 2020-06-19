@@ -27,7 +27,7 @@ export default class AppContactsTab implements SliderTab {
     this.container.firstElementChild.append(this.searchInput.container);
 
     // preload contacts
-    appUsersManager.getContacts();
+    // appUsersManager.getContacts();
   }
 
   // need to clear, and left 1 page for smooth slide
@@ -49,7 +49,7 @@ export default class AppContactsTab implements SliderTab {
     if(this.promise) return this.promise;
     this.scrollable.onScrolledBottom = null;
 
-    this.promise = appUsersManager.getContacts(query).then(contacts => {
+    this.promise = appUsersManager.getContacts(query).then(_contacts => {
       this.promise = null;
 
       if(appSidebarLeft.historyTabIDs[appSidebarLeft.historyTabIDs.length - 1] != AppSidebarLeft.SLIDERITEMSIDS.contacts) {
@@ -57,7 +57,7 @@ export default class AppContactsTab implements SliderTab {
         return;
       }
 
-      contacts = contacts.slice();
+      const contacts = [..._contacts];
       contacts.findAndSplice(u => u == $rootScope.myID);
 
       let sorted = contacts

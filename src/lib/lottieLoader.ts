@@ -1,6 +1,7 @@
 import { isApple, mediaSizes, isSafari } from "./config";
 import { logger, LogLevels } from "./polyfill";
 import animationIntersector from "../components/animationIntersector";
+import apiManager from "./mtproto/mtprotoworker";
 
 let convert = (value: number) => {
 	return Math.round(Math.min(Math.max(value, 0), 1) * 255);
@@ -603,6 +604,19 @@ class LottieLoader {
     }
   }
 
+  public loadAnimationFromURL(params: Omit<RLottieOptions, 'animationData'>, url: string) {
+    if(!this.loaded) {
+      this.loadLottieWorkers();
+    }
+    
+    return fetch(url)
+    .then(res => res.arrayBuffer())
+    .then(data => apiManager.gzipUncompress<string>(data, true))
+    .then(str => {
+      return this.loadAnimationWorker(Object.assign(params, {animationData: JSON.parse(str)}));
+    });
+  }
+
   public async loadAnimationWorker(params: RLottieOptions, group = '', toneIndex = -1) {
     //params.autoplay = true;
 
@@ -638,6 +652,7 @@ class LottieLoader {
       return;
     }
 
+    this.log.debug('onPlayerLoaded');
     rlPlayer.onLoad(frameCount, fps);
     //rlPlayer.addListener('firstFrame', () => {
       //animationIntersector.addAnimation(player, group);
