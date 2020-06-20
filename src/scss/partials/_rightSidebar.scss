@@ -294,7 +294,7 @@
           opacity: 1;
           transition: opacity .2s ease;
 
-          &.thumbnail {
+          html:not(.is-mac) &.thumbnail {
             filter: blur(7px);
           }
         }

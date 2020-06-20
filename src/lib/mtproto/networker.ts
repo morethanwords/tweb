@@ -321,6 +321,7 @@ class MTPNetworker {
     });
   }
 
+  // тут можно сделать таймаут и выводить дисконнект
   public pushMessage(message: {
     msg_id: string,
     seq_no: number,

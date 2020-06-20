@@ -111,8 +111,10 @@ export default class ProgressivePreloader {
       return;
     }
     
-    let totalLength = this.circle.getTotalLength();
-    //console.log('setProgress', (percents / 100 * totalLength));
-    this.circle.style.strokeDasharray = '' + Math.max(5, percents / 100 * totalLength) + ', 200';
+    try {
+      let totalLength = this.circle.getTotalLength();
+      //console.log('setProgress', (percents / 100 * totalLength));
+      this.circle.style.strokeDasharray = '' + Math.max(5, percents / 100 * totalLength) + ', 200';
+    } catch(err) {}
   }
 }

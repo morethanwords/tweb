@@ -55,7 +55,7 @@ export class Obfuscation {
     this.encNew = new CTR(encKey, encIv);
     this.decNew = new CTR(decKey, decIv);
 
-    initPayload.set(intermediatePacketCodec.obfuscateTag, 56);
+    initPayload.set(codec.obfuscateTag, 56);
     const encrypted = this.encode(initPayload);
 
     initPayload.set(encrypted.slice(56, 64), 56);
@@ -132,10 +132,8 @@ export default class Socket extends MTTransport {
   constructor(dcID: number, url: string) {
     super(dcID, url);
 
-    this.log = logger(`WS-${dcID}`, LogLevels.log | LogLevels.error);
-
+    this.log = logger(`WS-${dcID}`, LogLevels.log/*  | LogLevels.error | LogLevels.debug */);
     this.log('constructor');
-
     this.connect();
   }
   
@@ -157,10 +155,14 @@ export default class Socket extends MTTransport {
   handleOpen = () => {
     this.log('opened');
 
+    this.log.debug('sending init packet');
     this.ws.send(this.obfuscation.init(this.codec));
-    this.connected = true;
 
-    this.releasePending();
+    //setTimeout(() => {
+      this.connected = true;
+
+      this.releasePending();
+    //}, 3e3);
   };
     
   handleClose = (event: CloseEvent) => {
@@ -217,6 +219,8 @@ export default class Socket extends MTTransport {
 
   send = (body: Uint8Array) => {
     this.log.debug('-> body length to pending:', body.length);
+
+    //return;
 
     if(this.networker) {
       this.pending.push({body});

@@ -420,8 +420,8 @@ export class AppSidebarRight extends SidebarSlider {
   private loadedAllMedia: {[type: string]: boolean} = {};
   
   public sharedMediaTypes = [
-    'members',
-    //'inputMessagesFilterContacts', 
+    //'members',
+    'inputMessagesFilterContacts', 
     'inputMessagesFilterPhotoVideo', 
     'inputMessagesFilterDocument', 
     'inputMessagesFilterUrl', 
@@ -1145,9 +1145,9 @@ export class AppSidebarRight extends SidebarSlider {
       });
     }
     
-    let membersLi = this.profileTabs.firstElementChild.children[0] as HTMLLIElement;
+    //let membersLi = this.profileTabs.firstElementChild.children[0] as HTMLLIElement;
     if(peerID > 0) {
-      membersLi.style.display = 'none';
+      //membersLi.style.display = 'none';
 
       let user = appUsersManager.getUser(peerID);
       if(user.phone && peerID != $rootScope.myID) {
@@ -1167,7 +1167,7 @@ export class AppSidebarRight extends SidebarSlider {
         //this.log('userFull', userFull);
       });
     } else {
-      membersLi.style.display = appPeersManager.isBroadcast(peerID) ? 'none' : '';
+      //membersLi.style.display = appPeersManager.isBroadcast(peerID) ? 'none' : '';
       let chat = appPeersManager.getPeer(peerID);
       
       appProfileManager.getChatFull(chat.id).then((chatFull: any) => {

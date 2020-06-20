@@ -84,13 +84,13 @@ var markdownEntities = {
   '__': 'messageEntityItalic'
 } 
 function getEmojiSpritesheetCoords(emojiCode) {
-  let emojiInfo = emojiData[emojiCode.replace(/\ufe0f/g, '')];
+  let emojiInfo = emojiData[emojiCode/* .replace(/\ufe0f/g, '') */];
   if(emojiInfo === undefined) {
     //console.error('no emoji by code:', emojiCode, emojiCode && emojiCode.length, new TextEncoder().encode(emojiCode), emojiUnicode(emojiCode));
     return null;
   }
 
-  return emojiUnicode(emojiCode);
+  return emojiUnicode(emojiCode).replace(/(-fe0f|fe0f)/g, '');
 }
 function parseEntities(text, options = {}) {
   var match;

@@ -7,6 +7,7 @@ import LottieLoader, { RLottiePlayer } from '../lib/lottieLoader';
 //import passwordManager from '../lib/mtproto/passwordManager';
 import apiManager from '../lib/mtproto/mtprotoworker';
 import Page from './page';
+import { mediaSizes } from '../lib/config';
 
 let onFirstMount = (): Promise<any> => {
   let needFrame = 0;
@@ -30,21 +31,23 @@ let onFirstMount = (): Promise<any> => {
   };
 
   toggleVisible.addEventListener('click', function(this, e) {
-    if(!passwordVisible) {
+    passwordVisible = !passwordVisible;
+
+    if(passwordVisible) {
       this.classList.add('tgico-eye2');
       passwordInput.setAttribute('type', 'text');
-      animation.setDirection(-1);
-      needFrame = 0;
+      animation.setDirection(1);
+      animation.curFrame = 0;
+      needFrame = 16;
       animation.play();
     } else {
       this.classList.remove('tgico-eye2');
       passwordInput.setAttribute('type', 'password');
-      animation.setDirection(1);
-      needFrame = 49;
+      animation.setDirection(-1);
+      animation.curFrame = 16;
+      needFrame = 0;
       animation.play();
     }
-
-    passwordVisible = !passwordVisible;
   });
 
   btnNext.addEventListener('click', function(this, e) {
@@ -90,14 +93,18 @@ let onFirstMount = (): Promise<any> => {
   /* passwordInput.addEventListener('input', function(this, e) {
     
   }); */
+  const size = mediaSizes.isMobile ? 100 : 166;
   return Promise.all([
     LottieLoader.loadAnimationFromURL({
       container: page.pageEl.querySelector('.auth-image'),
       loop: false,
       autoplay: false,
-      width: 166,
-      height: 166
-    }, 'assets/img/TwoFactorSetupMonkeyClose.tgs').then(_animation => {
+      width: size,
+      height: size,
+      noCache: true
+    //}, 'assets/img/TwoFactorSetupMonkeyClose.tgs').then(_animation => {
+    }, 'assets/img/TwoFactorSetupMonkeyPeek.tgs').then(_animation => {
+      //return;
       animation = _animation;
       animation.addListener('enterFrame', currentFrame => {
         //console.log('enterFrame', e, needFrame);
@@ -110,7 +117,7 @@ let onFirstMount = (): Promise<any> => {
       });
   
       needFrame = 49;
-      animation.play();
+      //animation.play();
     })
   ]);
 };

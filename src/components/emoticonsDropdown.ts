@@ -3,7 +3,7 @@ import { horizontalMenu, renderImageFromUrl, putPreloader } from "./misc";
 import lottieLoader from "../lib/lottieLoader";
 //import Scrollable from "./scrollable";
 import Scrollable from "./scrollable_new";
-import { findUpTag, whichChild, calcImageInBox } from "../lib/utils";
+import { findUpTag, whichChild, calcImageInBox, emojiUnicode } from "../lib/utils";
 import { RichTextProcessor } from "../lib/richtextprocessor";
 import appStickersManager, { MTStickerSet } from "../lib/appManagers/appStickersManager";
 //import apiManager from '../lib/mtproto/apiManager';
@@ -16,6 +16,7 @@ import Config, { touchSupport } from "../lib/config";
 import { MTDocument } from "../types";
 import animationIntersector from "./animationIntersector";
 import appSidebarRight from "../lib/appManagers/appSidebarRight";
+import appStateManager from "../lib/appManagers/appStateManager";
 
 export const EMOTICONSSTICKERGROUP = 'emoticons-dropdown';
 
@@ -27,6 +28,12 @@ interface EmoticonsTab {
 class EmojiTab implements EmoticonsTab {
   public content: HTMLElement;
 
+  private recent: string[] = [];
+  private recentItemsDiv: HTMLElement;
+
+  private heights: number[] = [];
+  private scroll: Scrollable;
+
   init() {
     this.content = document.getElementById('content-emoji') as HTMLDivElement;
 
@@ -37,7 +44,9 @@ class EmojiTab implements EmoticonsTab {
 
     const sorted: {
       [category: string]: string[]
-    } = {};
+    } = {
+      'Recent': []
+    };
 
     for(const emoji in Config.Emoji) {
       const details = Config.Emoji[emoji];
@@ -72,46 +81,48 @@ class EmojiTab implements EmoticonsTab {
 
       const emojis = sorted[category];
       emojis.forEach(emoji => {
-        //const emoji = details.unified;
-        //const emoji = (details.unified as string).split('-')
-          //.reduce((prev, curr) => prev + String.fromCodePoint(parseInt(curr, 16)), '');
+        /* if(emojiUnicode(emoji) == '1f481-200d-2642') {
+          console.log('append emoji', emoji, emojiUnicode(emoji));
+        } */
 
-        const spanEmoji = document.createElement('span');
-        const kek = RichTextProcessor.wrapRichText(emoji);
+        this.appendEmoji(emoji/* .replace(/[\ufe0f\u2640\u2642\u2695]/g, '') */, itemsDiv);
 
-        if(!kek.includes('emoji')) {
-          console.log(emoji, kek, spanEmoji, emoji.length, new TextEncoder().encode(emoji));
-          return;
-        }
-
-        //console.log(kek);
-
-        spanEmoji.innerHTML = kek;
-
-        //spanEmoji = spanEmoji.firstElementChild as HTMLSpanElement;
-        //spanEmoji.setAttribute('emoji', emoji);
-        itemsDiv.appendChild(spanEmoji);
+        /* if(category == 'Smileys & Emotion') {
+          console.log('appended emoji', emoji, itemsDiv.children[itemsDiv.childElementCount - 1].innerHTML, emojiUnicode(emoji));
+        } */
       });
 
       divs[category] = div;
     }
     //console.timeEnd('emojiParse');
 
-    const heights: number[] = [0];
-
-    let prevCategoryIndex = 1;
+    let prevCategoryIndex = 0;
     const menu = this.content.previousElementSibling.firstElementChild as HTMLUListElement;
-    const emojiScroll = new Scrollable(this.content, 'y', 'EMOJI', null);
+    const emojiScroll = this.scroll = new Scrollable(this.content, 'y', 'EMOJI', null);
     emojiScroll.container.addEventListener('scroll', (e) => {
-      prevCategoryIndex = EmoticonsDropdown.contentOnScroll(menu, heights, prevCategoryIndex, emojiScroll.container);
+      prevCategoryIndex = EmoticonsDropdown.contentOnScroll(menu, this.heights, prevCategoryIndex, emojiScroll.container);
     });
     //emojiScroll.setVirtualContainer(emojiScroll.container);
 
     const preloader = putPreloader(this.content, true);
 
-    setTimeout(() => {
+    Promise.all([
+      new Promise((resolve) => setTimeout(resolve, 200)),
+
+      appStateManager.getState().then(state => {
+        if(Array.isArray(state.recentEmoji)) {
+          this.recent = state.recentEmoji;
+        }
+      })
+    ]).then(() => {
       preloader.remove();
 
+      this.recentItemsDiv = divs['Recent'].querySelector('.category-items');
+      for(const emoji of this.recent) {
+        this.appendEmoji(emoji, this.recentItemsDiv);
+      }
+
+      categories.unshift('Recent');
       categories.map(category => {
         const div = divs[category];
   
@@ -123,27 +134,86 @@ class EmojiTab implements EmoticonsTab {
         return div;
       }).forEach(div => {
         //console.log('emoji heights push: ', (heights[heights.length - 1] || 0) + div.scrollHeight, div, div.scrollHeight);
-        heights.push((heights[heights.length - 1] || 0) + div.scrollHeight);
+        this.heights.push((this.heights[this.heights.length - 1] || 0) + div.scrollHeight);
       });
-    }, 200);
+    });
 
     this.content.addEventListener('click', this.onContentClick);
-    EmoticonsDropdown.menuOnClick(menu, heights, emojiScroll);
+    EmoticonsDropdown.menuOnClick(menu, this.heights, emojiScroll);
     this.init = null;
   }
 
+  private appendEmoji(emoji: string, container: HTMLElement, prepend = false) {
+    //const emoji = details.unified;
+    //const emoji = (details.unified as string).split('-')
+    //.reduce((prev, curr) => prev + String.fromCodePoint(parseInt(curr, 16)), '');
+
+    const spanEmoji = document.createElement('span');
+    const kek = RichTextProcessor.wrapEmojiText(emoji);
+  
+    /* if(!kek.includes('emoji')) {
+      console.log(emoji, kek, spanEmoji, emoji.length, new TextEncoder().encode(emoji), emojiUnicode(emoji));
+      return;
+    } */
+  
+    //console.log(kek);
+  
+    spanEmoji.innerHTML = kek;
+  
+    //spanEmoji = spanEmoji.firstElementChild as HTMLSpanElement;
+    //spanEmoji.setAttribute('emoji', emoji);
+    if(prepend) container.prepend(spanEmoji);
+    else container.appendChild(spanEmoji);
+  }
+
+  private getEmojiFromElement(element: HTMLElement) {
+    if(element.tagName == 'SPAN' && !element.classList.contains('emoji')) {
+      element = element.firstElementChild as HTMLElement;
+    }
+    
+    return element.getAttribute('alt') || element.innerText;
+  }
+
   onContentClick = (e: MouseEvent) => {
-    let target = e.target as any;
+    let target = e.target as HTMLElement;
     //if(target.tagName != 'SPAN') return;
 
     if(target.tagName == 'SPAN' && !target.classList.contains('emoji')) {
-      target = target.firstElementChild;
+      target = target.firstElementChild as HTMLElement;
     } else if(target.tagName == 'DIV') return;
 
     //console.log('contentEmoji div', target);
 
     appImManager.chatInputC.messageInput.innerHTML += target.outerHTML;
 
+    // Recent
+    const emoji = this.getEmojiFromElement(target);
+    (Array.from(this.recentItemsDiv.children) as HTMLElement[]).forEach((el, idx) => {
+      const _emoji = this.getEmojiFromElement(el);
+      if(emoji == _emoji) {
+        el.remove();
+      }
+    });
+    const scrollHeight = this.recentItemsDiv.scrollHeight;
+    this.appendEmoji(emoji, this.recentItemsDiv, true);
+
+    // нужно поставить новые размеры для скролла
+    if(this.recentItemsDiv.scrollHeight != scrollHeight) {
+      this.heights.length = 0;
+      (Array.from(this.scroll.container.children) as HTMLElement[]).forEach(div => {
+        this.heights.push((this.heights[this.heights.length - 1] || 0) + div.scrollHeight);
+      });
+    }
+
+    this.recent.findAndSplice(e => e == emoji);
+    this.recent.unshift(emoji);
+    if(this.recent.length > 36) {
+      this.recent.length = 36;
+    }
+
+    appStateManager.pushToState('recentEmoji', this.recent);
+
+    // Append to input
     const event = new Event('input', {bubbles: true, cancelable: true});
     appImManager.chatInputC.messageInput.dispatchEvent(event);
   };
@@ -685,6 +755,7 @@ class EmoticonsDropdown {
     if(appImManager.chatInputC.sendMessageWithDocument(fileID)) {
       /* dropdown.classList.remove('active');
       toggleEl.classList.remove('active'); */
+      emoticonsDropdown.toggle(false);
     } else {
       console.warn('got no doc by id:', fileID);
     }

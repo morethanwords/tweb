@@ -5,3 +5,4 @@ dist
 .DS_Store
 stats.json
 certs
+src/rlottie.github.io

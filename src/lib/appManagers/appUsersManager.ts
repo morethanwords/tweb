@@ -6,6 +6,8 @@ import apiManager from '../mtproto/mtprotoworker';
 import serverTimeManager from "../mtproto/serverTimeManager";
 import { formatPhoneNumber } from "../../components/misc";
 import searchIndexManager from "../searchIndexManager";
+import appPeersManager from "./appPeersManager";
+import appStateManager from "./appStateManager";
 
 export type User = {
   _: 'user',
@@ -44,6 +46,8 @@ export class AppUsersManager {
   public contactsFillPromise: Promise<Set<number>>;
   public contactsList: Set<number> = new Set();
   public myID: number;
+
+  public getPeersPromise: Promise<number[]>;
 
   constructor() {
     apiManager.getUserID().then((id) => {
@@ -510,19 +514,39 @@ export class AppUsersManager {
     });
   }
 
-  public getTopPeers() {
-    return apiManager.invokeApi('contacts.getTopPeers', {
-      flags: 1,
-      correspondents: true,
-      offset: 0,
-      limit: 30,
-      hash: 0,
-    }).then((peers: any) => {
-      //console.log(peers);
-      this.saveApiUsers(peers.users);
-      appChatsManager.saveApiChats(peers.chats);
+  public getTopPeers(): Promise<number[]> {
+    if(this.getPeersPromise) return this.getPeersPromise;
 
-      return peers.categories;
+    return this.getPeersPromise = appStateManager.getState().then((state) => {
+      if(state?.topPeers?.length) {
+        return state.topPeers;
+      }
+
+      return apiManager.invokeApi('contacts.getTopPeers', {
+        flags: 1,
+        correspondents: true,
+        offset: 0,
+        limit: 30,
+        hash: 0,
+      }).then((result: any) => {
+        //console.log(result);
+        this.saveApiUsers(result.users);
+        appChatsManager.saveApiChats(result.chats);
+  
+        const peerIDs = result.categories[0].peers.map((topPeer: {
+          _: 'topPeer',
+          peer: any,
+          rating: number
+        }) => {
+          const peerID = appPeersManager.getPeerID(topPeer.peer);
+          appStateManager.pushPeer(peerID);
+          return peerID;
+        });
+  
+        appStateManager.pushToState('topPeers', peerIDs);
+  
+        return peerIDs;
+      });
     });
   }
 

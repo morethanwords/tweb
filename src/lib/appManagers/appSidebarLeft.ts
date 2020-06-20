@@ -1,6 +1,6 @@
 //import { logger } from "../polyfill";
 import appDialogsManager, { AppArchivedTab, archivedTab } from "./appDialogsManager";
-import { $rootScope } from "../utils";
+import { $rootScope, findUpTag, findUpClassName } from "../utils";
 import appImManager from "./appImManager";
 import AppSearch, { SearchGroup } from "../../components/appSearch";
 import { parseMenuButtonsTo } from "../../components/misc";
@@ -19,6 +19,8 @@ import AppEditFolderTab from "../../components/sidebarLeft/editFolder";
 import AppIncludedChatsTab from "../../components/sidebarLeft/includedChats";
 import SidebarSlider from "../../components/slider";
 import SearchInput from "../../components/searchInput";
+import appStateManager from "./appStateManager";
+import appChatsManager from "./appChatsManager";
 
 AvatarElement;
 
@@ -92,6 +94,11 @@ export class AppSidebarLeft extends SidebarSlider {
   };
   private globalSearch: AppSearch;
 
+  // peerIDs
+  private recentSearch: number[] = [];
+  private recentSearchLoaded = false;
+  private recentSearchClearBtn: HTMLElement;
+
   constructor() {
     super(document.getElementById('column-left') as HTMLDivElement, {
       [AppSidebarLeft.SLIDERITEMSIDS.archived]: archivedTab,
@@ -127,7 +134,41 @@ export class AppSidebarLeft extends SidebarSlider {
     this.menuEl = this.toolsBtn.querySelector('.btn-menu');
     this.newBtnMenu = this.sidebarEl.querySelector('#new-menu');
 
-    this.globalSearch = new AppSearch(this.searchContainer, this.searchInput, this.searchGroups);
+    this.globalSearch = new AppSearch(this.searchContainer, this.searchInput, this.searchGroups, (count) => {
+      if(!count && !this.searchInput.value.trim()) {
+        this.globalSearch.reset();
+        this.searchGroups.people.setActive();
+        this.renderRecentSearch();
+      }
+    });
+    this.searchContainer.addEventListener('click', (e) => {
+      const target = findUpTag(e.target, 'LI') as HTMLElement;
+      if(!target) {
+        return;
+      }
+
+      const searchGroup = findUpClassName(target, 'search-group');
+      if(!searchGroup || searchGroup.classList.contains('search-group-recent') || searchGroup.classList.contains('search-group-people')) {
+        return;
+      }
+
+      const peerID = +target.getAttribute('data-peerID');
+      if(this.recentSearch[0] != peerID) {
+        this.recentSearch.findAndSplice(p => p == peerID);
+        this.recentSearch.unshift(peerID);
+        if(this.recentSearch.length > 20) {
+          this.recentSearch.length = 20;
+        }
+
+        this.renderRecentSearch();
+        appStateManager.pushToState('recentSearch', this.recentSearch);
+        for(const peerID of this.recentSearch) {
+          appStateManager.pushPeer(peerID);
+        }
+
+        clearRecentSearchBtn.style.display = '';
+      }
+    }, {capture: true});
 
     let peopleContainer = document.createElement('div');
     peopleContainer.classList.add('search-group-scrollable');
@@ -160,12 +201,19 @@ export class AppSidebarLeft extends SidebarSlider {
       this.selectTab(AppSidebarLeft.SLIDERITEMSIDS.settings);
     });
 
+    let firstTime = true;
     this.searchInput.input.addEventListener('focus', (e) => {
       this.toolsBtn.classList.remove('active');
       this.backBtn.classList.add('active');
       this.searchContainer.classList.remove('hide');
       void this.searchContainer.offsetWidth; // reflow
       this.searchContainer.classList.add('active');
+
+      if(firstTime) {
+        this.searchGroups.people.setActive();
+        this.renderRecentSearch();
+        firstTime = false;
+      }
 
       /* this.searchInput.addEventListener('blur', (e) => {
         if(!this.searchInput.value) {
@@ -181,13 +229,11 @@ export class AppSidebarLeft extends SidebarSlider {
       this.toolsBtn.classList.add('active');
       this.backBtn.classList.remove('active');
       this.searchContainer.classList.remove('active');
+      firstTime = true;
 
       setTimeout(() => {
         this.searchContainer.classList.add('hide');
         this.globalSearch.reset();
-
-        this.searchGroups.people.setActive();
-        //this.searchGroups.recent.setActive();
       }, 150);
     });
 
@@ -207,24 +253,44 @@ export class AppSidebarLeft extends SidebarSlider {
       this.archivedCount.innerText = '' + e.detail.count;
     });
 
-    appUsersManager.getTopPeers().then(categories => {
+    appUsersManager.getTopPeers().then(peers => {
       //console.log('got top categories:', categories);
-
-      let category = categories[0];
-      if(!category || !category.peers) {
-        return;
-      }
-      
-      category.peers.forEach((topPeer: {
-        _: 'topPeer',
-        peer: any,
-        rating: number
-      }) => {
-        let peerID = appPeersManager.getPeerID(topPeer.peer);
+      peers.forEach((peerID) => {
         let {dialog, dom} = appDialogsManager.addDialog(peerID, this.searchGroups.people.list, false, true, true);
-
+  
         this.searchGroups.people.setActive();
       });
+    });
+
+    this.renderRecentSearch();
+    const clearRecentSearchBtn = this.recentSearchClearBtn = document.createElement('button');
+    clearRecentSearchBtn.classList.add('btn-icon', 'tgico-close');
+    this.searchGroups.recent.nameEl.append(clearRecentSearchBtn);
+    clearRecentSearchBtn.addEventListener('click', () => {
+      this.recentSearch = [];
+      appStateManager.pushToState('recentSearch', this.recentSearch);
+      this.renderRecentSearch();
+      clearRecentSearchBtn.style.display = 'none';
+    });
+  }
+
+  public renderRecentSearch() {
+    appStateManager.getState().then(state => {
+      if(state && !this.recentSearchLoaded && Array.isArray(state.recentSearch)) {
+        this.recentSearch = state.recentSearch;
+        this.recentSearchLoaded = true;
+      }
+
+      this.searchGroups.recent.list.innerHTML = '';
+      this.recentSearchClearBtn.style.display = this.recentSearch.length ? '' : 'none';
+
+      this.recentSearch.slice(0, 20).forEach(peerID => {
+        let {dialog, dom} = appDialogsManager.addDialog(peerID, this.searchGroups.recent.list, false, true, false, true);
+
+        dom.lastMessageSpan.innerText = peerID > 0 ? appUsersManager.getUserStatusString(peerID) : appChatsManager.getChatMembersString(peerID);
+      });
+
+      this.searchGroups.recent.setActive();
     });
   }
 }

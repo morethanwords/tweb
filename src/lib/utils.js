@@ -143,9 +143,9 @@ export function getRichElementValue (node, lines, line, selNode, selOffset) {
 
 export const $rootScope = {
   $broadcast: (name/* : string */, detail/*? : any */) => {
-    /* if(name != 'user_update') {
+    if(name != 'user_update') {
       console.log(dT(), 'Broadcasting ' + name + ' event, with args:', detail);
-    } */
+    }
 
     let myCustomEvent = new CustomEvent(name, {detail});
     document.dispatchEvent(myCustomEvent);
@@ -463,7 +463,7 @@ export function calcImageInBox (imageW, imageH, boxW, boxH, noZooom) {
  * @returns {String} The base 16 unicode code.
  */
 export function emojiUnicode(input) {
-  let pairs = emojiUnicode.raw(input).split(' ').map(val => parseInt(val).toString(16)).filter(p => p != 'fe0f');
+  let pairs = emojiUnicode.raw(input).split(' ').map(val => parseInt(val).toString(16))/* .filter(p => p != 'fe0f') */;
   if(pairs.length && pairs[0].length == 2) pairs[0] = '00' + pairs[0];
   return pairs.join('-');
 }

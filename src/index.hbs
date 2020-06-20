@@ -77,7 +77,7 @@
           <p class="subtitle sent-type"></p>
           <div class="input-wrapper">
             <div class="input-field">
-              <input type="number" name="code" id="code" autocomplete="off" required />
+              <input type="tel" name="code" id="code" autocomplete="off" required />
               <label for="code">Code</label>
             </div>
           </div>
@@ -214,7 +214,7 @@
                 <div class="folders-tabs-scrollable">
                   <nav class="menu-horizontal" style="display: none;" id="folders-tabs">
                     <ul>
-                      <li class="rp"><span>All</span></li>
+                      <li class="rp"><span>All</span><span class="unread-count"></span></li>
                     </ul>
                   </nav>
                 </div>
@@ -268,12 +268,12 @@
               </div>
               <div class="input-wrapper">
                 <div class="input-field">
-                  <input type="text" name="name" class="new-channel-name" autocomplete="xxDDqqOX" required="">
-                  <label for="name">Channel Name</label>
+                  <input type="text" name="name" class="new-channel-name" id="new-channel-name" autocomplete="xxDDqqOX" required="">
+                  <label for="new-channel-name">Channel Name</label>
                 </div>
                 <div class="input-field">
-                  <input type="text" name="description" class="new-channel-description" autocomplete="aintsofunnow" required="">
-                  <label for="lastName">Description (optional)</label>
+                  <input type="text" name="description" class="new-channel-description" id="new-channel-description" autocomplete="aintsofunnow" required="">
+                  <label for="new-channel-description">Description (optional)</label>
                 </div>
               </div>
               <div class="caption">You can provide an optional description for your channel.</div>
@@ -301,8 +301,8 @@
               </div>
               <div class="input-wrapper">
                 <div class="input-field">
-                  <input type="text" name="name" class="new-group-name" autocomplete="feellikeamonster2112" required="">
-                  <label for="name">Group Name</label>
+                  <input type="text" name="name" class="new-group-name" id="new-group-name" autocomplete="feellikeamonster2112" required="">
+                  <label for="new-group-name">Group Name</label>
                 </div>
               </div>
               <button class="btn-primary btn-circle btn-icon rp btn-corner tgico-next"></button>

@@ -208,7 +208,7 @@ export class AppSelectPeers {
   }
 
   public add(peerID: any, title?: string) {
-    console.trace('add');
+    //console.trace('add');
     const div = document.createElement('div');
     div.classList.add('selector-user', 'scale-in');
 

@@ -202,6 +202,11 @@ h4 {
   //margin: 1.5rem 0 1rem 0;
   margin: 22px 0 14px;
   line-height: 110%;
+
+  @include respond-to(handhelds) {
+    font-size: 20px;
+    margin: 2px 0 8px;
+  }
 }
 
 input {
@@ -766,7 +771,7 @@ avatar-element {
     height: 0;
     width: 0;
     
-    border: solid #bdbdbd;
+    border: solid #707579;
     border-radius: 1px;
     border-width: 0 2px 2px 0;
     display: inline-block;
@@ -805,6 +810,10 @@ avatar-element {
     transition: .2s border-color;
     position: relative;
     z-index: 1;
+
+    @include respond-to(handhelds) {
+      height: 50px;
+    }
     /* font-weight: 500; */
 
     /* &:hover {
@@ -869,9 +878,13 @@ avatar-element {
   margin: 1.25rem 0;
   display: block;
   text-align: left;
-  padding: 0 19px;
+  padding: 0 18px;
   /* font-weight: 500; */
   position: relative;
+
+  @include respond-to(handhelds) {
+    margin-bottom: 27px;
+  }
 }
 
 [type="checkbox"] {
@@ -1036,6 +1049,11 @@ input:focus, button:focus {
   width: 166px;
   height: 166px;
   margin: 0 auto 18px;
+  
+  @include respond-to(handhelds) {
+    width: 120px;
+    height: 120px;
+  }
 }
 
 /* .phone-wrapper {
@@ -1052,6 +1070,10 @@ input:focus, button:focus {
   transition: .2s;
   cursor: pointer;
   font-size: 1.5rem;
+  
+  @include respond-to(handhelds) {
+    margin-top: -14px;
+  }
   
   html.no-touch &:hover {
     opacity: 1;

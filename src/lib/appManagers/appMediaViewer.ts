@@ -475,13 +475,14 @@ export class AppMediaViewer {
   }
 
   private setFullAspect(aspecter: HTMLDivElement, containerRect: DOMRect, rect: DOMRect) {
-    let media = aspecter.firstElementChild;
+    /* let media = aspecter.firstElementChild;
     let proportion: number;
     if(media instanceof HTMLImageElement) {
       proportion = media.naturalWidth / media.naturalHeight;
     } else if(media instanceof HTMLVideoElement) {
       proportion = media.videoWidth / media.videoHeight;
-    }
+    } */
+    const proportion = containerRect.width / containerRect.height;
 
     let {width, height} = rect;
     /* if(proportion == 1) {

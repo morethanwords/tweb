@@ -90,7 +90,7 @@ if(false) {
   formatted.forEach(e => {
     let {unified, name, short_names, category, sheet_x, sheet_y, sort_order} = e;
 
-    let emoji = unified.replace(/-FE0F/gi, '').split('-')
+    let emoji = unified/* .replace(/-FE0F/gi, '') */.split('-')
     .reduce((prev, curr) => prev + String.fromCodePoint(parseInt(curr, 16)), '');
     
     let c = categories[category] === undefined ? 9 : categories[category];

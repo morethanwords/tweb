@@ -31,7 +31,10 @@ export default class AppSettingsTab implements SliderTab {
     });
 
     this.logOutBtn.addEventListener('click', (e) => {
-      apiManager.logOut();
+      apiManager.logOut().finally(() => {
+        localStorage.clear();
+        location.reload();
+      });
     });
 
     this.buttons.edit.addEventListener('click', () => {

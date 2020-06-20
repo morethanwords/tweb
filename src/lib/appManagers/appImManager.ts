@@ -678,6 +678,12 @@ export class AppImManager {
           }
         }
 
+        if(['audio', 'voice'].includes(message.media?.document?.type)) {
+          const audio = bubble.querySelector('audio-element');
+          audio.setAttribute('doc-id', message.media.document.id);
+          audio.setAttribute('message-id', '' + mid);
+        }
+
         bubble.classList.remove('is-sending');
         bubble.classList.add('is-sent');
         bubble.dataset.mid = mid;
@@ -1404,12 +1410,12 @@ export class AppImManager {
     
     if(samePeer) {
       if(this.bubbles[lastMsgID]) {
-        if(dialog && lastMsgID == topMessage) {
-          this.log('will scroll down', this.scroll.scrollTop, this.scroll.scrollHeight);
-          this.scroll.scrollTop = this.scroll.scrollHeight;
-        } else if(isTarget) {
+        if(isTarget) {
           this.scrollable.scrollIntoView(this.bubbles[lastMsgID]);
           this.highlightBubble(this.bubbles[lastMsgID]);
+        } else if(dialog && lastMsgID == topMessage) {
+          this.log('will scroll down', this.scroll.scrollTop, this.scroll.scrollHeight);
+          this.scroll.scrollTop = this.scroll.scrollHeight;
         }
         
         return true;
@@ -1503,14 +1509,15 @@ export class AppImManager {
 
         this.lazyLoadQueue.unlock();
 
-        if(dialog && lastMsgID && lastMsgID != topMessage && (this.bubbles[lastMsgID] || this.firstUnreadBubble)) {
+        //if(dialog && lastMsgID && lastMsgID != topMessage && (this.bubbles[lastMsgID] || this.firstUnreadBubble)) {
+        if(dialog && (isTarget || (lastMsgID != topMessage)) && (this.bubbles[lastMsgID] || this.firstUnreadBubble)) {
           if(this.scrollable.scrollLocked) {
             clearTimeout(this.scrollable.scrollLocked);
             this.scrollable.scrollLocked = 0;
           }
           
           const fromUp = maxBubbleID > 0 && (maxBubbleID < lastMsgID || lastMsgID < 0);
-          const forwardingUnread = dialog.read_inbox_max_id == lastMsgID;
+          const forwardingUnread = dialog.read_inbox_max_id == lastMsgID && !isTarget;
           if(!fromUp && (samePeer || forwardingUnread)) {
             this.scrollable.scrollTop = this.scrollable.scrollHeight;
           }
@@ -2209,9 +2216,14 @@ export class AppImManager {
               let doc = appDocsManager.getDoc(message.id);
               this.log('will wrap pending doc:', doc);
               let docDiv = wrapDocument(doc, false, true, message.id);
-              
-              let icoDiv = docDiv.querySelector('.audio-download, .document-ico');
-              preloader.attach(icoDiv, false);
+
+              if(doc.type == 'audio' || doc.type == 'voice') {
+                // @ts-ignore
+                docDiv.preloader = preloader;
+              } else {
+                let icoDiv = docDiv.querySelector('.audio-download, .document-ico');
+                preloader.attach(icoDiv, false);
+              }
 
               if(pending.type == 'voice') {
                 bubble.classList.add('bubble-audio');
@@ -2735,7 +2747,10 @@ export class AppImManager {
       promise = result.then((result) => {
         this.log('getHistory not cached result by maxID:', maxID, reverse, isBackLimit, result, peerID);
         
-        if(justLoad) return true;
+        if(justLoad) {
+          this.scrollable.onScroll(); // нужно делать из-за ранней прогрузки
+          return true;
+        }
         //console.timeEnd('appImManager call getHistory');
         
         if(this.peerID != peerID) {

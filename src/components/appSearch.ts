@@ -50,9 +50,10 @@ export class SearchGroup {
 
 export default class AppSearch {
   private minMsgID = 0;
-  private loadedCount = 0;
-  private foundCount = 0;
+  private loadedCount = -1;
+  private foundCount = -1;
   private offsetRate = 0;
+  private loadedContacts = false;
 
   private searchPromise: Promise<void> = null;
   private searchTimeout: number = 0;
@@ -107,9 +108,10 @@ export default class AppSearch {
     }
 
     this.minMsgID = 0;
-    this.loadedCount = 0;
-    this.foundCount = 0;
+    this.loadedCount = -1;
+    this.foundCount = -1;
     this.offsetRate = 0;
+    this.loadedContacts = false;
 
     for(let i in this.searchGroups) {
       this.searchGroups[i].clear();
@@ -129,24 +131,26 @@ export default class AppSearch {
   public searchMore() {
     if(this.searchPromise) return this.searchPromise;
     
-    let query = this.query;
+    const query = this.query;
     
     if(!query.trim()) {
       this.onSearch && this.onSearch(0);
       return;
     }
     
-    if(this.loadedCount != 0 && this.loadedCount >= this.foundCount) {
+    if(this.foundCount != -1 && this.loadedCount >= this.foundCount) {
       return Promise.resolve();
     }
     
-    let maxID = appMessagesIDsManager.getMessageIDInfo(this.minMsgID)[0];
+    const maxID = appMessagesIDsManager.getMessageIDInfo(this.minMsgID)[0] || 0;
 
-    if(!this.peerID && !maxID) {
+    if(!this.peerID && !maxID && !this.loadedContacts) {
       appUsersManager.searchContacts(query, 20).then((contacts: any) => {
         if(this.searchInput.value != query) {
           return;
         }
+
+        this.loadedContacts = true;
 
         ///////this.log('input search contacts result:', contacts);
 
@@ -205,19 +209,19 @@ export default class AppSearch {
         return;
       }
       
-      //console.log('input search result:', this.peerID, query, null, maxID, 20, res);
+      console.log('input search result:', this.peerID, query, null, maxID, 20, res);
       
-      let {count, history, next_rate} = res;
+      const {count, history, next_rate} = res;
       
       if(history[0] == this.minMsgID) {
         history.shift();
       }
       
-      let searchGroup = this.searchGroups['messages'];
+      const searchGroup = this.searchGroups['messages'];
       searchGroup.setActive();
 
       history.forEach((msgID: number) => {
-        let message = appMessagesManager.getMessage(msgID);
+        const message = appMessagesManager.getMessage(msgID);
         let originalDialog = appMessagesManager.getDialogByPeerID(message.peerID)[0];
         
         if(!originalDialog) {
@@ -230,15 +234,18 @@ export default class AppSearch {
           } as any;
         }
         
-        let {dialog, dom} = appDialogsManager.addDialog(originalDialog, this.scrollable/* searchGroup.list */, false);
+        const {dialog, dom} = appDialogsManager.addDialog(originalDialog, this.scrollable/* searchGroup.list */, false);
         appDialogsManager.setLastMessage(dialog, message, dom, query);
       });
       
       this.minMsgID = history[history.length - 1];
       this.offsetRate = next_rate;
       this.loadedCount += history.length;
+      if(this.loadedCount == -1) {
+        this.loadedCount = 0;
+      }
       
-      if(!this.foundCount) {
+      if(this.foundCount == -1) {
         this.foundCount = count;
         this.onSearch && this.onSearch(this.foundCount);
       }

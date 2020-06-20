@@ -29,7 +29,7 @@ export default class MP4Source {
   private loading = false;
   private url: string;
 
-  private log = logger('MP4', LogLevels.error);
+  private log = logger('MP4'/* , LogLevels.error */);
 
   //public onLoadBuffer: (offset: number)
 

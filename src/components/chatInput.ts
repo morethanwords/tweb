@@ -151,7 +151,7 @@ export class ChatInput {
           }).then((webpage: any) => {
             appWebPagesManager.saveWebPage(webpage);
             if(this.lastUrl != url) return;
-            console.log('got webpage: ', webpage);
+            //console.log('got webpage: ', webpage);
 
             this.setTopInfo(webpage.site_name || webpage.title, webpage.description || webpage.url);
 
@@ -235,7 +235,7 @@ export class ChatInput {
       return new Promise<HTMLDivElement>((resolve, reject) => {
         let params: SendFileParams = {};
         params.file = file;
-        console.log('selected file:', file, typeof(file), willAttach);
+        //console.log('selected file:', file, typeof(file), willAttach);
         let itemDiv = document.createElement('div');
         switch(willAttach.type) {
           case 'media': {
@@ -249,6 +249,8 @@ export class ChatInput {
               source.src = params.objectURL = URL.createObjectURL(file);
               video.autoplay = false;
               video.controls = false;
+              video.muted = true;
+              video.setAttribute('playsinline', '');
   
               video.onloadeddata = () => {
                 params.width = video.videoWidth;
@@ -282,6 +284,8 @@ export class ChatInput {
               size: file.size,
               type: file.type.indexOf('image/') !== -1 ? 'photo' : 'doc'
             } as any, false, true);
+
+            params.objectURL = URL.createObjectURL(file);
 
             itemDiv.append(docDiv);
             resolve(itemDiv);
@@ -364,7 +368,7 @@ export class ChatInput {
               this.attachMediaPopUp.mediaContainer.append(div);
             }
 
-            console.log('chatInput album layout:', layout);
+            //console.log('chatInput album layout:', layout);
           } else {
             let params = willAttach.sendFileDetails[0];
             let div = results[0];
@@ -407,11 +411,13 @@ export class ChatInput {
     }, false);
 
     this.attachMenu.media.addEventListener('click', () => {
+      this.fileInput.setAttribute('accept', 'image/*, video/*');
       willAttach.type = 'media';
       this.fileInput.click();
     });
 
     this.attachMenu.document.addEventListener('click', () => {
+      this.fileInput.removeAttribute('accept');
       willAttach.type = 'document';
       this.fileInput.click();
     });
@@ -451,7 +457,7 @@ export class ChatInput {
       let caption = this.attachMediaPopUp.captionInput.value;
       willAttach.isMedia = willAttach.type == 'media';
 
-      console.log('will send files with options:', willAttach);
+      //console.log('will send files with options:', willAttach);
 
       let peerID = appImManager.peerID;
 
@@ -471,7 +477,8 @@ export class ChatInput {
   
         let promises = willAttach.sendFileDetails.map(params => {
           let promise = appMessagesManager.sendFile(peerID, params.file, Object.assign({
-            isMedia: willAttach.isMedia, 
+            //isMedia: willAttach.isMedia, 
+            isMedia: true, 
             caption,
             replyToMsgID: this.replyToMsgID
           }, params));

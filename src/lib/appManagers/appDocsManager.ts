@@ -294,7 +294,11 @@ class AppDocsManager {
     };
 
     promise.then(() => {
-      deferred.resolve(this.createMP4Stream(doc));
+      if(doc.url) { // может быть уже загружен из кэша
+        deferred.resolve();
+      } else {
+        deferred.resolve(this.createMP4Stream(doc));
+      }
     });
 
     return deferred;

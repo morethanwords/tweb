@@ -15,7 +15,8 @@ type RLottieOptions = {
   loop?: boolean, 
   width?: number,
   height?: number,
-  group?: string
+  group?: string,
+  noCache?: true
 };
 
 export class RLottiePlayer {
@@ -96,13 +97,15 @@ export class RLottiePlayer {
       }
     }
 
-    // проверка на размер уже после скейлинга, сделано для попапа и сайдбарfа, где стикеры 80х80 и 68х68, туда нужно 75%
-    if(isApple && this.width > 100 && this.height > 100) {
-      this.cachingDelta = 2; //2 // 50%
-    } else if(this.width < 100 && this.height < 100) {
-      this.cachingDelta = Infinity; // 100%
-    } else {
-      this.cachingDelta = 4; // 75%
+    if(!options.noCache) {
+      // проверка на размер уже после скейлинга, сделано для попапа и сайдбарfа, где стикеры 80х80 и 68х68, туда нужно 75%
+      if(isApple && this.width > 100 && this.height > 100) {
+        this.cachingDelta = 2; //2 // 50%
+      } else if(this.width < 100 && this.height < 100) {
+        this.cachingDelta = Infinity; // 100%
+      } else {
+        this.cachingDelta = 4; // 75%
+      }
     }
 
     // if(isApple) {
@@ -284,6 +287,10 @@ export class RLottiePlayer {
     } else if(isSafari) {
       this.sendQuery('renderFrame', frameNo);
     } else {
+      if(!this.clamped.length) { // fix detached
+        this.clamped = new Uint8ClampedArray(this.width * this.height * 4);
+      }
+      
       this.sendQuery('renderFrame', frameNo, this.clamped);
     }
   }
@@ -471,6 +478,7 @@ class QueryableWorker {
         }
       }
   
+      //console.log('transfer', transfer);
       this.worker.postMessage({
         'queryMethod': queryMethod,
         'queryMethodArguments': args

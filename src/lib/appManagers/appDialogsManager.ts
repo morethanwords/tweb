@@ -12,6 +12,7 @@ import appChatsManager from "./appChatsManager";
 import AvatarElement from "../../components/avatar";
 import { PopupButton, PopupPeer } from "../../components/popup";
 import { SliderTab } from "../../components/slider";
+import appStateManager from "./appStateManager";
 
 type DialogDom = {
   avatarEl: AvatarElement,
@@ -330,7 +331,7 @@ export class AppDialogsManager {
   public chatsContainer = document.getElementById('chats-container') as HTMLDivElement;
   private chatsPreloader: HTMLDivElement;
 
-  public loadDialogsPromise: ReturnType<AppMessagesManager["getConversations"]>;
+  public loadDialogsPromise: Promise<any>;
   public loadedAll = false;
 
   public scroll: Scrollable = null;
@@ -351,15 +352,21 @@ export class AppDialogsManager {
   };
   private filtersRendered: {
     [filterID: string]: {
-      menu: HTMLElement, container: HTMLElement
+      menu: HTMLElement, 
+      container: HTMLElement,
+      unread: HTMLElement
     }
   } = {};
+  private showFiltersTimeout: number;
+  private allUnreadCount: HTMLElement;
 
   private accumulateArchivedTimeout: number;
 
   constructor() {
     this.chatList.addEventListener('contextmenu', this.contextMenu.onContextMenu);
     this.chatsPreloader = putPreloader(null, true);
+
+    this.allUnreadCount = this.folders.menu.querySelector('.unread-count');
     
     if(USEPINNEDDELIMITER) {
       this.pinnedDelimiter = document.createElement('div');
@@ -423,6 +430,7 @@ export class AppDialogsManager {
       this.setDialogPosition(dialog);
 
       this.setPinnedDelimiter();
+      this.setFiltersUnreadCount();
     });
 
     $rootScope.$on('dialog_flush', (e: CustomEvent) => {
@@ -431,6 +439,7 @@ export class AppDialogsManager {
       if(dialog) {
         this.setLastMessage(dialog);
         this.validateForFilter();
+        this.setFiltersUnreadCount();
       }
     });
 
@@ -444,6 +453,7 @@ export class AppDialogsManager {
 
       this.setPinnedDelimiter();
       this.validateForFilter();
+      this.setFiltersUnreadCount();
     });
 
     $rootScope.$on('dialog_drop', (e: CustomEvent) => {
@@ -455,6 +465,8 @@ export class AppDialogsManager {
         delete this.doms[peerID];
         this.scroll.reorder();
       }
+
+      this.setFiltersUnreadCount();
     });
 
     $rootScope.$on('dialog_unread', (e: CustomEvent) => {
@@ -472,6 +484,7 @@ export class AppDialogsManager {
         }
 
         this.validateForFilter();
+        this.setFiltersUnreadCount();
       }
     });
 
@@ -505,6 +518,7 @@ export class AppDialogsManager {
           const dialog = folder[i];
           this.updateDialog(dialog);
         }
+        this.setFiltersUnreadCount();
       }
     });
 
@@ -549,6 +563,7 @@ export class AppDialogsManager {
 
       if(this.filterID == id) return;
 
+      this.chatLists[id].innerHTML = '';
       this.scroll.setVirtualContainer(this.chatLists[id]);
       this.filterID = id;
       this.onTabChange();
@@ -563,7 +578,7 @@ export class AppDialogsManager {
     //selectTab(0);
     (this.folders.menu.firstElementChild.firstElementChild as HTMLElement).click();
 
-    /* false &&  */appMessagesManager.loadSavedState().then(() => {
+    /* false &&  */appStateManager.loadSavedState().then(() => {
       return appMessagesManager.filtersStorage.getDialogFilters();
     }).then(filters => {
       for(const filterID in filters) {
@@ -601,6 +616,26 @@ export class AppDialogsManager {
     this.loadDialogs(this.filterID);
   };
 
+  public setFilterUnreadCount(filterID: number, folder?: Dialog[]) {
+    const unreadSpan = filterID == 0 ? this.allUnreadCount : this.filtersRendered[filterID]?.unread;
+    if(!unreadSpan) {
+      return;
+    }
+
+    folder = folder || appMessagesManager.dialogsStorage.getFolder(filterID);
+    const sum = folder.reduce((acc, dialog) => acc + +!!dialog.unread_count, 0);
+    
+    unreadSpan.innerText = sum ? '' + sum : '';
+  }
+
+  public setFiltersUnreadCount() {
+    for(const filterID in this.filtersRendered) {
+      this.setFilterUnreadCount(+filterID);
+    }
+
+    this.setFilterUnreadCount(0);
+  }
+
   /**
    * Удалит неподходящие чаты из списка, но не добавит их(!)
    */
@@ -635,7 +670,9 @@ export class AppDialogsManager {
     const li = document.createElement('li');
     const span = document.createElement('span');
     span.innerHTML = RichTextProcessor.wrapEmojiText(filter.title);
-    li.append(span);
+    const unreadSpan = document.createElement('span');
+    unreadSpan.classList.add('unread-count');
+    li.append(span, unreadSpan);
     ripple(li);
   
     this.folders.menu.firstElementChild.append(li);
@@ -650,13 +687,18 @@ export class AppDialogsManager {
     this.setListClickListener(ul);
     ul.addEventListener('contextmenu', this.contextMenu.onContextMenu);
 
-    setTimeout(() => {
-      this.folders.menu.style.display = '';
-    }, 0);
+    if(!this.showFiltersTimeout) {
+      this.showFiltersTimeout = setTimeout(() => {
+        this.showFiltersTimeout = 0;
+        this.folders.menu.style.display = '';
+        this.setFiltersUnreadCount();
+      }, 0);
+    }
 
     this.filtersRendered[filter.id] = {
       menu: li,
-      container: div
+      container: div,
+      unread: unreadSpan
     };
   }
 
@@ -688,9 +730,14 @@ export class AppDialogsManager {
       //console.time('getDialogs time');
 
       const loadCount = 50/*this.chatsLoadCount */;
-      this.loadDialogsPromise = appMessagesManager.getConversations('', offsetIndex, loadCount, folderID);
+
+      const getConversationPromise = (this.filterID > 1 ? appUsersManager.getContacts() as Promise<any> : Promise.resolve()).then(() => {
+        return appMessagesManager.getConversations('', offsetIndex, loadCount, folderID);
+      });
+
+      this.loadDialogsPromise = getConversationPromise;
       
-      const result = await this.loadDialogsPromise;
+      const result = await getConversationPromise;
 
       //console.timeEnd('getDialogs time');
       
@@ -1169,6 +1216,11 @@ export class AppDialogsManager {
       this.scroll.append(li);
 
       this.doms[dialog.peerID] = dom;
+
+      if($rootScope.selectedPeerID == peerID) {
+        li.classList.add('active');
+        this.lastActiveListElement = li;
+      }
 
       /* if(container) {
         container.append(li);

@@ -143,6 +143,8 @@ export default class AppChatFoldersTab implements SliderTab {
         delete this.filtersRendered[filter.id]
       }
     });
+
+    this.getSuggestedFilters();
   }
 
   private getSuggestedFilters() {

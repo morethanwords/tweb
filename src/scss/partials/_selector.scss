@@ -24,6 +24,10 @@
       position: relative;
       max-height: inherit; // fix safari
     }
+
+    avatar-element:before {
+      font-size: 18px;
+    }
   }
 
   &-search {

@@ -2,12 +2,27 @@
   max-width: 720px; // 360 + 360 / 2
   overflow: hidden;
 
+  .btn-primary {
+    @include respond-to(handhelds) {
+      height: 50px;
+    }
+  }
+
   .subtitle {
     margin: 0;
+    @include respond-to(handhelds) {
+      font-size: 14px;
+    }
   }
 
   .input-wrapper {
     margin-top: 49px;
+
+    @include respond-to(handhelds) {
+      margin-top: 41px;
+      width: 100%;
+      padding: 0 16px;
+    }
   }
 
   .tabs-container {
@@ -50,6 +65,18 @@
       height: auto;
     } */
   }
+
+  .page-password {
+    .input-wrapper {
+      @include respond-to(handhelds) {
+        margin-top: 31px;
+      }
+
+      .btn-primary {
+        margin-top: 1rem;
+      }
+    }
+  }
 }
 
 .page-sign, .page-signUp {
@@ -85,6 +112,15 @@
   }
 }
 
+.page-signQR {
+  .auth-image {
+    @include respond-to(handhelds) {
+      width: 166px;
+      height: 166px;
+    }
+  }
+}
+
 /* .page-signQR {
   .auth-image {
     position: relative;
@@ -106,5 +142,16 @@
   .auth-image {
     margin-top: 10px;
     margin-bottom: 14px;
+
+    @include respond-to(handhelds) {
+      margin-bottom: 24px;
+    }
+
+  }
+
+  #signUp {
+    @include respond-to(handhelds) {
+      margin-top: 100px;
+    }
   }
 }

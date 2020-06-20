@@ -8,6 +8,7 @@ import LottieLoader, { RLottiePlayer } from '../lib/lottieLoader';
 import apiManager from '../lib/mtproto/mtprotoworker';
 import Page from './page';
 import { App } from '../lib/mtproto/mtproto_config';
+import { mediaSizes } from '../lib/config';
 
 let authCode: {
   _: string, // 'auth.sentCode'
@@ -235,13 +236,14 @@ let onFirstMount = (): Promise<any> => {
   });
 
   let imageDiv = page.pageEl.querySelector('.auth-image') as HTMLDivElement;
+  const size = mediaSizes.isMobile ? 100 : 166;
   return Promise.all([
     LottieLoader.loadAnimationFromURL({
       container: imageDiv,
       loop: true,
       autoplay: true,
-      width: 166,
-      height: 166
+      width: size,
+      height: size
     }, 'assets/img/TwoFactorSetupMonkeyIdle.tgs').then(animation => {
       idleAnimation = animation;
     }),
@@ -250,8 +252,8 @@ let onFirstMount = (): Promise<any> => {
       container: imageDiv,
       loop: false,
       autoplay: false,
-      width: 166,
-      height: 166
+      width: size,
+      height: size
     }, 'assets/img/TwoFactorSetupMonkeyTracking.tgs').then(_animation => {
       animation = _animation;
 

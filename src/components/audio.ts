@@ -271,6 +271,7 @@ function wrapAudio(doc: MTDocument, audioEl: AudioElement) {
 
 export default class AudioElement extends HTMLElement {
   public audio: HTMLAudioElement;
+  public preloader: ProgressivePreloader;
 
   private attachedHandlers: {[name: string]: any[]} = {};
   private onTypeDisconnect: () => void;
@@ -303,7 +304,7 @@ export default class AudioElement extends HTMLElement {
     const audioTimeDiv = this.querySelector('.audio-time') as HTMLDivElement;
     audioTimeDiv.innerHTML = durationStr;
 
-    let preloader: ProgressivePreloader;
+    let preloader: ProgressivePreloader = this.preloader;
     let promise: CancellablePromise<Blob>;
 
     const onLoad = () => {
@@ -377,7 +378,8 @@ export default class AudioElement extends HTMLElement {
       this.addEventListener('click', onClick);
       this.click();
     } else {
-      onLoad();
+      this.preloader.attach(this.querySelector('.audio-download'), false);
+      //onLoad();
     }
   }
 
@@ -402,6 +404,8 @@ export default class AudioElement extends HTMLElement {
       
       delete this.attachedHandlers[name];
     }
+
+    this.preloader = null;
   }
 
   static get observedAttributes(): string[] {
