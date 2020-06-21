@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Decode Example</title>
+  <style type="text/css">
+    ul { list-style: none; }
+    li { margin: 1em; }
+    audio { display: block; }
+  </style>
+</head>
+
+<body>
+  <h1>Decoder Example</h1>
+  <p>Choose either a file from disk, or a file from a server.</p>
+  <p>File is decoded to pcm buffers and then played back as Riff</p>
+
+  <h2>Options</h2>
+
+  <div>
+    <label>Decoder output sample rate</label>
+    <input id="sampleRate" type="number" value="48000" />
+  </div>
+
+  <div>
+    <label>Wave file bit depth</label>
+    <input id="bitDepth" type="number" value="16" />
+  </div>
+
+  <h2>Commands</h2>
+  <input type="file" id="fileInput"/>
+  <button type="button" id="remoteButton">Load using XMLHttpRequest</button>
+
+  <h2>Recordings</h2>
+  <ul id="recordingslist"></ul>
+
+  <script>
+    function decodeOgg(arrayBuffer){
+
+      var typedArray = new Uint8Array(arrayBuffer);
+      var decoderWorker = new Worker('../dist-unminified/decoderWorker.js');
+      var wavWorker = new Worker('../dist-unminified/waveWorker.js');
+      var desiredSampleRate = parseInt(sampleRate.value,10);
+
+      decoderWorker.postMessage({ 
+        command:'init',
+        decoderSampleRate: desiredSampleRate,
+        outputBufferSampleRate: desiredSampleRate
+      });
+
+      wavWorker.postMessage({ 
+        command:'init',
+        wavBitDepth: parseInt(bitDepth.value,10),
+        wavSampleRate: desiredSampleRate
+      });
+
+      decoderWorker.onmessage = function(e){
+        var data = e.data;
+        // null means decoder is finished
+        if(!data || data.type == 'done') {
+          console.log('waveform:', data && data.waveform);
+          wavWorker.postMessage({ command: 'done' });
+        } else { // e.data contains decoded buffers as float32 values
+          //console.log('got data from decoder', data);
+          wavWorker.postMessage({
+            command: 'encode',
+            buffers: e.data
+          }, e.data.map(function(typedArray){
+            return typedArray.buffer;
+          }));
+        }
+      };
+
+      wavWorker.onmessage = function(e){
+        var data = e.data;
+        // null signifies that no more data is expected and worker is closed. 
+        if (data && data.page) {
+          var fileName = new Date().toISOString() + ".wav";
+          var dataBlob = new Blob( [ data.page ], { type: "audio/wav" } );
+          var url = URL.createObjectURL( dataBlob );
+
+          var audio = document.createElement('audio');
+          audio.controls = true;
+          audio.src = URL.createObjectURL( dataBlob );
+
+          var link = document.createElement('a');
+          link.href = url;
+          link.download = fileName;
+          link.innerHTML = link.download;
+
+          var li = document.createElement('li');
+          li.appendChild(link);
+          li.appendChild(audio);
+
+          recordingslist.appendChild(li);
+        }
+      };
+
+      decoderWorker.postMessage({
+        command: 'decode',
+        pages: typedArray,
+        waveform: true
+      }, [typedArray.buffer] );
+    };
+
+    fileInput.onchange = function(e){
+      var fileReader = new FileReader();
+
+      fileReader.onload = function() {
+        decodeOgg(this.result);
+      };
+
+      fileReader.readAsArrayBuffer( e.target.files[0] );
+    };
+
+    remoteButton.onclick = function(){
+      var xhr = new XMLHttpRequest();
+      //xhr.open("GET", "./mono.opus", true);
+      xhr.open("GET", "./macOS_audio.oga", true);
+      xhr.responseType = "arraybuffer";
+
+      xhr.onload = function(e) {
+        decodeOgg(this.response);
+      };
+
+      xhr.send();
+    };
+
+  </script>
+</body>
+</html>

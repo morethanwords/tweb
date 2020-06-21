@@ -9,7 +9,7 @@ app.use(compression());
 app.use(express.static('public'));
 
 app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/public/index.html');
+  res.sendFile(__dirname + '/public3/index.html');
 });
 
 https.createServer({

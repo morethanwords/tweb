@@ -110,6 +110,7 @@ module.exports = {
   //entry: './src/index.ts',
   entry: {
     index: './src/index.ts',
+    //mp4: './src/lib/MP4Source.ts',
     webp: './src/lib/webp.ts'/* ,
     lottie: './src/lib/lottie.ts' */
   },
@@ -171,7 +172,7 @@ module.exports = {
       //inject: true, 
       inject: false, 
       //inject: 'head',
-      /* minify: {
+      minify: {
         removeComments: true,
         collapseWhitespace: true,
         removeRedundantAttributes: true,
@@ -182,9 +183,9 @@ module.exports = {
         minifyJS: true,
         minifyCSS: true,
         minifyURLs: true
-      }, */
+      },
       chunks: "all",
-      excludeChunks: ['npm.webp-hero'/* , 'npm.lottie-web' */]
+      excludeChunks: ['npm.webp-hero'/* , 'mp4' *//* , 'npm.lottie-web' */]
     }),
     
     new MiniCssExtractPlugin({
