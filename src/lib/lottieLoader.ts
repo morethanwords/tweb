@@ -16,7 +16,8 @@ type RLottieOptions = {
   width?: number,
   height?: number,
   group?: string,
-  noCache?: true
+  noCache?: true,
+  needUpscale?: true
 };
 
 export class RLottiePlayer {
@@ -83,17 +84,23 @@ export class RLottiePlayer {
         this[i] = options[i];
       }
     }
-    
-    //this.cachingEnabled = true;//this.width < 100 && this.height < 100;
-    if(window.devicePixelRatio > 1 && this.width > 100 && this.height > 100) {
-      if(isApple || !mediaSizes.isMobile) {
-        /* this.width = Math.round(this.width * (window.devicePixelRatio - 1));
-        this.height = Math.round(this.height * (window.devicePixelRatio - 1)); */
-        this.width = Math.round(this.width * window.devicePixelRatio);
-        this.height = Math.round(this.height * window.devicePixelRatio);
-      } else if(window.devicePixelRatio > 2.5) {
-        this.width = Math.round(this.width * (window.devicePixelRatio - 1.5));
-        this.height = Math.round(this.height * (window.devicePixelRatio - 1.5));
+
+    const pixelRatio = window.devicePixelRatio;
+    if(pixelRatio > 1) {
+      //this.cachingEnabled = true;//this.width < 100 && this.height < 100;
+      if(options.needUpscale) {
+        this.width = Math.round(this.width * pixelRatio);
+        this.height = Math.round(this.height * pixelRatio);
+      } else if(pixelRatio > 1 && this.width > 100 && this.height > 100) {
+        if(isApple || !mediaSizes.isMobile) {
+          /* this.width = Math.round(this.width * (pixelRatio - 1));
+          this.height = Math.round(this.height * (pixelRatio - 1)); */
+          this.width = Math.round(this.width * pixelRatio);
+          this.height = Math.round(this.height * pixelRatio);
+        } else if(pixelRatio > 2.5) {
+          this.width = Math.round(this.width * (pixelRatio - 1.5));
+          this.height = Math.round(this.height * (pixelRatio - 1.5));
+        }
       }
     }
 
@@ -623,7 +630,7 @@ class LottieLoader {
     .then(res => res.arrayBuffer())
     .then(data => apiManager.gzipUncompress<string>(data, true))
     .then(str => {
-      return this.loadAnimationWorker(Object.assign(params, {animationData: JSON.parse(str)}));
+      return this.loadAnimationWorker(Object.assign(params, {animationData: JSON.parse(str), needUpscale: true}));
     });
   }
 
