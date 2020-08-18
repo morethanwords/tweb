@@ -85,8 +85,9 @@ ctx.onmessage = function(e) {
   }
 
   switch(e.data.task) {
-    case 'unzip':
-      return cryptoWorker.gzipUncompress.apply(cryptoWorker, e.data.args).then(result => {
+    case 'computeSRP':
+    case 'gzipUncompress':
+      return cryptoWorker[e.data.task].apply(cryptoWorker, e.data.args).then(result => {
         //ctx.postMessage({taskID: taskID, result: result});
         reply({taskID: taskID, result: result});
       });

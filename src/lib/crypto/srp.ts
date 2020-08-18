@@ -5,6 +5,7 @@ import {str2bigInt, isZero,
   bigInt2str, powMod, int2bigInt, mult, mod, sub, bitSize, negative, add, greater} from 'leemon';
 
 import {logger, LogLevels} from '../logger';
+import { AccountPassword } from "../../types";
 
 const log = logger('SRP', LogLevels.error);
 
@@ -31,27 +32,7 @@ export async function makePasswordHash(password: string, client_salt: Uint8Array
   return buffer;
 }
 
-type Algo = {
-  salt1: Uint8Array,
-  salt2: Uint8Array,
-  p: Uint8Array,
-  g: number
-};
-
-export async function computeCheck(password: string, state: {
-  _?: 'accont.password',
-  flags?: number,
-  pFlags?: Partial<{
-    has_recovery: true,
-    has_password: true
-  }>,
-  current_algo: Algo,
-  new_algo?: Algo,
-  new_secure_algo?: Algo,
-  srp_B: Uint8Array,
-  srp_id: string,
-  secure_random: Uint8Array
-}) {
+export async function computeSRP(password: string, state: AccountPassword) {
   //console.log('computeCheck:', password, state);
 
   let algo = state.current_algo;

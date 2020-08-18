@@ -145,10 +145,6 @@ class ApiManagerProxy extends CryptoWorkerMethods {
   public logOut(): Promise<void> {
     return this.performTaskWorker('logOut');
   }
-
-  public checkPassword(value: string): Promise<any> {
-    return this.performTaskWorker('checkPassword', value);
-  }
 }
 
 const apiManagerProxy = new ApiManagerProxy();

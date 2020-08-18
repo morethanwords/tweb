@@ -8,6 +8,8 @@ import LottieLoader, { RLottiePlayer } from '../lib/lottieLoader';
 import apiManager from '../lib/mtproto/mtprotoworker';
 import Page from './page';
 import { mediaSizes } from '../lib/config';
+import passwordManager from '../lib/mtproto/passwordManager';
+import { AccountPassword } from '../types';
 
 let onFirstMount = (): Promise<any> => {
   let needFrame = 0;
@@ -17,8 +19,16 @@ let onFirstMount = (): Promise<any> => {
 
   const btnNext = page.pageEl.querySelector('button') as HTMLButtonElement;
   const passwordInput = document.getElementById('password') as HTMLInputElement;
-  //const passwordInputLabel = passwordInput.nextElementSibling as HTMLLabelElement;
+  const passwordInputLabel = passwordInput.nextElementSibling as HTMLLabelElement;
   const toggleVisible = page.pageEl.querySelector('.toggle-visible') as HTMLSpanElement;
+
+  let getState = () => {
+    return passwordManager.getState().then(_state => {
+      state = _state;
+
+      passwordInputLabel.innerText = state.hint ?? 'Password';
+    });
+  };
 
   let handleError = (err: any) => {
     btnNext.removeAttribute('disabled');
@@ -28,6 +38,8 @@ let onFirstMount = (): Promise<any> => {
         btnNext.innerText = err.type;
         break;
     }
+
+    getState();
   };
 
   toggleVisible.addEventListener('click', function(this, e) {
@@ -50,6 +62,8 @@ let onFirstMount = (): Promise<any> => {
     }
   });
 
+  let state: AccountPassword;
+  
   btnNext.addEventListener('click', function(this, e) {
     if(!passwordInput.value.length) {
       passwordInput.classList.add('error');
@@ -62,7 +76,7 @@ let onFirstMount = (): Promise<any> => {
     this.textContent = 'PLEASE WAIT...';
     putPreloader(this);
 
-    apiManager.checkPassword(value).then((response: any) => {
+    passwordManager.check(value, state).then((response: any) => {
       //console.log('passwordManager response:', response);
         
       switch(response._) {
@@ -118,7 +132,9 @@ let onFirstMount = (): Promise<any> => {
   
       needFrame = 49;
       //animation.play();
-    })
+    }),
+
+    getState()
   ]);
 };
 

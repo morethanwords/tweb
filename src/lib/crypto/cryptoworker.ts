@@ -38,8 +38,12 @@ class CryptoWorker extends CryptoWorkerMethods {
           'rsa-encrypt': utils.rsaEncrypt,
           'factorize': utils.pqPrimeFactorization,
           'mod-pow': utils.bytesModPow,
-          'unzip': utils.gzipUncompress
+          'gzipUncompress': utils.gzipUncompress,
         });
+      }),
+
+      import('./srp').then(srp => {
+        this.utils.computeSRP = srp.computeSRP;
       })/* ,
 
       import('../bin_utils').then(utils => {

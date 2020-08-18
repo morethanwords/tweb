@@ -1,8 +1,9 @@
-import apiManager from "./apiManager";
-import { computeCheck } from "../crypto/srp";
+import apiManager from './mtprotoworker';
+import { AccountPassword } from '../../types';
+//import { computeCheck } from "../crypto/srp";
 
 export class PasswordManager {
-  public getState(options: any = {}) {
+  public getState(options: any = {}): Promise<AccountPassword> {
     return apiManager.invokeApi('account.getPassword', {}, options).then((result) => {
       return result;
     });
@@ -55,8 +56,8 @@ export class PasswordManager {
     });
   } */
 
-  public check(state: any, password: string, options: any = {}) {
-    return computeCheck(password, state).then((inputCheckPassword) => {
+  public check(password: string, state: AccountPassword, options: any = {}) {
+    return apiManager.computeSRP(password, state).then((inputCheckPassword) => {
       return apiManager.invokeApi('auth.checkPassword', {
         password: inputCheckPassword
       }, options);

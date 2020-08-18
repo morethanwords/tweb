@@ -63,3 +63,28 @@ export type InvokeApiOptions = Partial<{
   stopTime: number,
   rawError: any
 }>;
+
+type Algo = {
+  salt1: Uint8Array,
+  salt2: Uint8Array,
+  p: Uint8Array,
+  g: number
+};
+
+export type AccountPassword = {
+  _?: 'accont.password',
+  flags?: number,
+  pFlags?: Partial<{
+    has_recovery: true,
+    has_secure_values: true,
+    has_password: true
+  }>,
+  current_algo: Algo,
+  new_algo?: Algo,
+  new_secure_algo?: Algo,
+  hint?: string,
+  email_unconfirmed_pattern?: string,
+  srp_B?: Uint8Array,
+  srp_id?: string,
+  secure_random: Uint8Array,
+};

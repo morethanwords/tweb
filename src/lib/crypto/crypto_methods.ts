@@ -41,6 +41,10 @@ export default abstract class CryptoWorkerMethods {
   }
 
   public gzipUncompress<T>(bytes: ArrayBuffer, toString?: boolean) {
-    return this.performTaskWorker<T>('unzip', bytes, toString);
+    return this.performTaskWorker<T>('gzipUncompress', bytes, toString);
+  }
+
+  public computeSRP(password: string, state: any) {
+    return this.performTaskWorker('computeSRP', password, state);
   }
 }

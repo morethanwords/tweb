@@ -9,7 +9,6 @@ import {App, Modes} from './mtproto_config';
 import dcConfigurator from './dcConfigurator';
 import HTTP from './transports/http';
 import { logger } from '../logger';
-import passwordManager from './passwordManager';
 
 /// #if !MTPROTO_WORKER
 import { $rootScope } from '../utils';
@@ -327,13 +326,6 @@ export class ApiManager {
     return AppStorage.get<any>('user_auth').then((auth) => {
       this.telegramMeNotify(auth && auth.id > 0 || false);
       return auth.id || 0;
-    });
-  }
-
-  public checkPassword(value: string): Promise<any> {
-    return passwordManager.getState()
-    .then(state => {
-      return passwordManager.check(state, value);
     });
   }
 }

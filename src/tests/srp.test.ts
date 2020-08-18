@@ -1,5 +1,5 @@
 import { salt1, salt2, g, p, srp_id, secure_random, srp_B, password, A, M1, passwordHashed } from '../mock/srp';
-import { computeCheck, makePasswordHash } from '../lib/crypto/srp';
+import { computeSRP, makePasswordHash } from '../lib/crypto/srp';
 
 test('2FA hash', async() => {
   const bytes = await makePasswordHash(password, salt1, salt2);
@@ -7,7 +7,7 @@ test('2FA hash', async() => {
 });
 
 test('2FA whole (with negative)', async() => {
-  return await computeCheck(password, {
+  return await computeSRP(password, {
     current_algo: {
       salt1, 
       salt2,

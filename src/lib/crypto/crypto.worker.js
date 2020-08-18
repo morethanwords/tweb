@@ -15,7 +15,7 @@ ctx.onmessage = function(e) {
     result = null;
 
   switch(e.data.task) {
-    case 'unzip':
+    case 'gzipUncompress':
       result = gzipUncompress.apply(null, e.data.args);
       break;
 
