@@ -258,10 +258,6 @@ class DialogsContextMenu {
       li.classList.remove('menu-open');
     });
   };
-  
-  attachListener(element: HTMLElement) {
-    attachContextMenuListener(element, this.onContextMenu);
-  }
 }
 
 export class AppArchivedTab implements SliderTab {
@@ -278,8 +274,7 @@ export class AppArchivedTab implements SliderTab {
     this.scroll.onScrolledBottom = appDialogsManager.onChatsScroll;
     ///this.scroll.attachSentinels();
 
-    appDialogsManager.setListClickListener(this.chatList);
-    this.chatList.addEventListener('contextmenu', appDialogsManager.contextMenu.onContextMenu);
+    appDialogsManager.setListClickListener(this.chatList, null, true);
 
     window.addEventListener('resize', () => {
       setTimeout(appDialogsManager.onChatsScroll, 0);
@@ -369,7 +364,6 @@ export class AppDialogsManager {
   private accumulateArchivedTimeout: number;
 
   constructor() {
-    this.contextMenu.attachListener(this.chatList);
     this.chatsPreloader = putPreloader(null, true);
 
     this.allUnreadCount = this.folders.menu.querySelector('.unread-count');
@@ -409,7 +403,7 @@ export class AppDialogsManager {
       });
     }
 
-    this.setListClickListener(this.chatList);
+    this.setListClickListener(this.chatList, null, true);
 
     if(testScroll) {
       let i = 0;
@@ -715,8 +709,7 @@ export class AppDialogsManager {
     this.folders.container.append(div);
 
     this.chatLists[filter.id] = ul;
-    this.setListClickListener(ul);
-    ul.addEventListener('contextmenu', this.contextMenu.onContextMenu);
+    this.setListClickListener(ul, null, true);
 
     if(!this.showFiltersTimeout) {
       this.showFiltersTimeout = setTimeout(() => {
@@ -798,7 +791,7 @@ export class AppDialogsManager {
     this.loadDialogs(this.filterID);
   }
 
-  public setListClickListener(list: HTMLUListElement, onFound?: () => void) {
+  public setListClickListener(list: HTMLUListElement, onFound?: () => void, withContext = false) {
     list.addEventListener('click', (e: Event) => {
       cancelEvent(e);
 
@@ -841,6 +834,10 @@ export class AppDialogsManager {
         result = appImManager.setPeer(0);
       }
     }, {capture: true});
+
+    if(withContext) {
+      attachContextMenuListener(list, this.contextMenu.onContextMenu);
+    }
   }
 
   public setDialogPosition(dialog: Dialog, pos?: number) {

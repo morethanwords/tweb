@@ -8,7 +8,7 @@ import pako from 'pako/dist/pako_inflate.min.js';
 import {str2bigInt, bpe, equalsInt, greater, 
   copy_, eGCD_, add_, rightShift_, sub_, copyInt_, isZero,
   // @ts-ignore
-  divide_, one, bigInt2str, powMod} from 'leemon/es/index/';//from 'leemon';
+  divide_, one, bigInt2str, powMod} from 'leemon';//from 'leemon';
 
 // @ts-ignore
 import {BigInteger} from 'jsbn';
@@ -36,13 +36,13 @@ export function sha1HashSync(bytes: number[] | ArrayBuffer | Uint8Array) {
   return new Uint8Array(hashBytes);
 }
 
-export function sha256HashSync(bytes: Uint8Array | ArrayBuffer) {
+export function sha256HashSync(bytes: Uint8Array | ArrayBuffer | string) {
   //console.log(dT(), 'SHA-256 hash start');
 
-  let words = bytesToWordss(bytes);
+  let words = typeof(bytes) === 'string' ? bytes : bytesToWordss(bytes);
   let hash = sha256(words);
 
-  //console.log(dT(), 'SHA-256 hash finish');
+  //console.log(dT(), 'SHA-256 hash finish', hash);
 
   return bytesFromWordss(hash);
 }

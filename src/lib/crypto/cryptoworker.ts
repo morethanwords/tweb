@@ -46,6 +46,8 @@ class CryptoWorker extends CryptoWorkerMethods {
         this.utils.unzip = utils.gzipUncompress;
       }) */
     ]);
+
+    return;
     /// #else
     if(window.Worker) {
       import('./crypto.worker.js').then((worker: any) => {

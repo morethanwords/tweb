@@ -1,8 +1,0 @@
-[submodule "opus"]
-	path = opus
-	url = https://gitlab.xiph.org/xiph/opus.git
-	branch = master
-[submodule "speexdsp"]
-	path = speexdsp
-	url = https://gitlab.xiph.org/xiph/speexdsp.git
-  branch = SpeexDSP-1.2.0

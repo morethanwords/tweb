@@ -1,3 +1,0 @@
-[submodule "src/opus-recorder"]
-	path = src/opus-recorder
-	url = https://github.com/morethanwords/opus-recorder.git
