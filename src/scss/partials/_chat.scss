@@ -61,8 +61,6 @@ $time-background: rgba(0, 0, 0, .35);
 	} */
 
 	.chat-more-button {
-		margin-left: 8px;
-
 		.btn-menu {
 			top: calc(100% + 7px);
 
@@ -78,6 +76,19 @@ $time-background: rgba(0, 0, 0, .35);
 	
 	.chat-info {
 		flex-grow: 1;
+	}
+
+	.chat-join {
+		width: auto;
+		padding: 0 22.185px;
+		height: 36px;
+		font-weight: 400;
+		font-size: 0.875rem;
+		margin-right: .5rem;
+
+		&:not(.hide) + .chat-mute-button {
+			display: none;
+		}
 	}
 	
 	.content {

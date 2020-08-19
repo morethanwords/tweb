@@ -77,8 +77,12 @@ class DialogsContextMenu {
     this.buttons.delete.addEventListener('click', () => {
       let firstName = appPeersManager.getPeerTitle(this.selectedID, false, true);
 
-      let callback = (justClear: boolean) => {
+      let callbackFlush = (justClear: boolean) => {
         appMessagesManager.flushHistory(this.selectedID, justClear);
+      };
+
+      let callbackLeave = () => {
+        appChatsManager.leaveChannel(-this.selectedID);
       };
 
       let title: string, description: string, buttons: PopupButton[];
@@ -89,7 +93,7 @@ class DialogsContextMenu {
           buttons = [{
             text: 'LEAVE ' + firstName,
             isDanger: true,
-            callback: () => callback(true)
+            callback: callbackLeave
           }];
 
           break;
@@ -101,7 +105,7 @@ class DialogsContextMenu {
           buttons = [{
             text: 'LEAVE ' + firstName,
             isDanger: true,
-            callback: () => callback(true)
+            callback: callbackLeave
           }];
 
           break;
@@ -113,11 +117,11 @@ class DialogsContextMenu {
           buttons = [{
             text: 'DELETE FOR ME AND ' + firstName,
             isDanger: true,
-            callback: () => callback(false)
+            callback: () => callbackFlush(false)
           }, {
             text: 'DELETE JUST FOR ME',
             isDanger: true,
-            callback: () => callback(true)
+            callback: () => callbackFlush(true)
           }];
 
           break;
@@ -129,7 +133,7 @@ class DialogsContextMenu {
           buttons = [{
             text: 'DELETE SAVED MESSAGES',
             isDanger: true,
-            callback: () => callback(false)
+            callback: () => callbackFlush(false)
           }];
 
           break;
@@ -141,7 +145,7 @@ class DialogsContextMenu {
           buttons = [{
             text: 'DELETE AND LEAVE ' + firstName,
             isDanger: true,
-            callback: () => callback(true)
+            callback: () => callbackFlush(true)
           }];
 
           break;

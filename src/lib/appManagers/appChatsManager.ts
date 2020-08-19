@@ -6,7 +6,7 @@ import apiUpdatesManager from "./apiUpdatesManager";
 import appProfileManager from "./appProfileManager";
 import searchIndexManager from "../searchIndexManager";
 
-type Channel = {
+export type Channel = {
   _: 'channel',
   flags: number,
   pFlags: Partial<{
@@ -37,8 +37,28 @@ type Channel = {
   participants_count: number
 };
 
+export type Chat = {
+  _: 'chat',
+  flags: number,
+  pFlags: Partial<{
+    creator: true,
+    kicked: true,
+    left: true,
+    deactivated: true
+  }>,
+  id: number,
+  title: string,
+  photo: any,
+  participants_count: number,
+  date: number,
+  version: number,
+  migrated_to?: any,
+  admin_rights?: any,
+  default_banned_rights?: any
+};
+
 export class AppChatsManager {
-  public chats: {[id: number]: Channel | any} = {};
+  public chats: {[id: number]: Channel | Chat | any} = {};
   public usernames: any = {};
   public channelAccess: any = {};
   public megagroups: any = {};
@@ -49,10 +69,11 @@ export class AppChatsManager {
   constructor() {
     $rootScope.$on('apiUpdate', (e: CustomEvent) => {
       // console.log('on apiUpdate', update)
-      let update = e.detail;
+      const update = e.detail;
       switch(update._) {
         case 'updateChannel':
-          var channelID = update.channel_id;
+          const channelID = update.channel_id;
+          console.log('updateChannel:', update);
           $rootScope.$broadcast('channel_settings', {channelID: channelID});
           break;
       }
@@ -126,12 +147,12 @@ export class AppChatsManager {
 
   public getChat(id: number) {
     if(id < 0) id = -id;
-    return this.chats[id] || {id: id, deleted: true, access_hash: this.channelAccess[id]};
+    return this.chats[id] || {_: 'chatEmpty', id: id, deleted: true, access_hash: this.channelAccess[id]};
   }
 
   public hasRights(id: number, action: 'send' | 'edit_title' | 'edit_photo' | 'invite' | 'pin' | 'deleteRevoke') {
     const chat = this.getChat(id);
-    if(!chat) return false;
+    if(chat._ == 'chatEmpty') return false;
 
     if(chat._ == 'chatForbidden' ||
         chat._ == 'channelForbidden' ||
@@ -220,6 +241,7 @@ export class AppChatsManager {
   }
 
   public isChannel(id: number) {
+    if(id < 0) id = -id;
     let chat = this.chats[id];
     if(chat && (chat._ == 'channel' || chat._ == 'channelForbidden') || this.channelAccess[id]) {
       return true;
@@ -248,6 +270,7 @@ export class AppChatsManager {
       return {_: 'inputChannelEmpty'};
     }
 
+    if(id < 0) id = -id;
     return {
       _: 'inputChannel',
       channel_id: id,
@@ -454,6 +477,28 @@ export class AppChatsManager {
     } else {
       return 1;
     }
+  }
+
+  onChatUpdated = (chatID: number, updates: any) => {
+    apiUpdatesManager.processUpdateMessage(updates);
+    if(updates &&
+        updates.updates &&
+        updates.updates.length &&
+        this.isChannel(chatID)) {
+      appProfileManager.invalidateChannelParticipants(chatID);
+    }
+  }
+
+  public leaveChannel(id: number) {
+    return apiManager.invokeApi('channels.leaveChannel', {
+      channel: this.getChannelInput(id)
+    }).then(this.onChatUpdated.bind(this, id));
+  }
+
+  public joinChannel(id: number) {
+    return apiManager.invokeApi('channels.joinChannel', {
+      channel: this.getChannelInput(id)
+    }).then(this.onChatUpdated.bind(this, id));
   }
 }
 

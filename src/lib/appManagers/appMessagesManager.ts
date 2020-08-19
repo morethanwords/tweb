@@ -2500,7 +2500,7 @@ export class AppMessagesManager {
         }
 
         // @ts-ignore
-        str = langPack[_] + suffix;
+        str = (langPack[_] || action._) + suffix;
       }
 
       //this.log('message action:', action);

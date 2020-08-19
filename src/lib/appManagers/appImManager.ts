@@ -13,7 +13,7 @@ import appSidebarRight from './appSidebarRight';
 import { logger, LogLevels } from "../logger";
 import appMediaViewer from "./appMediaViewer";
 import appSidebarLeft from "./appSidebarLeft";
-import appChatsManager from "./appChatsManager";
+import appChatsManager, { Channel, Chat } from "./appChatsManager";
 import { wrapDocument, wrapPhoto, wrapVideo, wrapSticker, wrapReply, wrapAlbum, wrapPoll, formatDate } from '../../components/wrappers';
 import ProgressivePreloader from '../../components/preloader';
 import { openBtnMenu, formatPhoneNumber, positionMenu, ripple, parseMenuButtonsTo, horizontalMenu, attachContextMenuListener } from '../../components/misc';
@@ -461,6 +461,7 @@ class ChatAudio {
 
 export class AppImManager {
   public columnEl = document.getElementById('column-center') as HTMLDivElement;
+  public btnJoin = this.columnEl.querySelector('.chat-join') as HTMLButtonElement;
   public btnMute = this.columnEl.querySelector('.chat-mute-button') as HTMLButtonElement;
   public avatarEl = document.getElementById('im-avatar') as AvatarElement;
   public titleEl = document.getElementById('im-title') as HTMLDivElement;
@@ -623,6 +624,15 @@ export class AppImManager {
       let peerID: number = e.detail.peerID;
       if(this.peerID == peerID) {
         this.deleteMessagesByIDs(Object.keys(this.bubbles).map(m => +m));
+      }
+    });
+
+    $rootScope.$on('chat_update', (e: CustomEvent) => {
+      const peerID: number = e.detail;
+      if(this.peerID == -peerID) {
+        const chat = appChatsManager.getChat(peerID) as Channel | Chat;
+        
+        this.btnJoin.classList.toggle('hide', !chat?.pFlags?.left);
       }
     });
     
@@ -959,6 +969,15 @@ export class AppImManager {
       cancelEvent(e);
       this.mutePeer(this.peerID);
     });
+
+    this.btnJoin.addEventListener('click', (e) => {
+      cancelEvent(e);
+
+      this.btnJoin.setAttribute('disabled', 'true');
+      appChatsManager.joinChannel(-this.peerID).finally(() => {
+        this.btnJoin.removeAttribute('disabled');
+      });
+    });
     
     this.menuButtons.mute.addEventListener('click', (e) => {
       this.mutePeer(this.peerID);
@@ -1042,6 +1061,10 @@ export class AppImManager {
     });
 
     this.unreadedObserver = new IntersectionObserver((entries) => {
+      if(this.offline) {
+        return;
+      }
+
       let readed: number[] = [];
     
       entries.forEach(entry => {
@@ -1118,7 +1141,7 @@ export class AppImManager {
     }, {once: true});
     newPinned.append(close);
 
-    this.topbar.insertBefore(newPinned, this.btnMute);
+    this.topbar.insertBefore(newPinned, this.btnJoin);
     this.topbar.classList.add('is-pinned-shown');
 
     if(this.pinnedMessageContainer) {
@@ -1588,6 +1611,7 @@ export class AppImManager {
 
     this.avatarEl.setAttribute('peer', '' + this.peerID);
 
+    const isAnyGroup = appPeersManager.isAnyGroup(peerID);
     const isChannel = appPeersManager.isChannel(peerID);
     const hasRights = isChannel && appChatsManager.hasRights(-peerID, 'send');
     this.chatInner.classList.toggle('has-rights', hasRights);
@@ -1597,10 +1621,12 @@ export class AppImManager {
     this.topbar.classList.remove('is-pinned-shown');
     this.topbar.style.display = '';
 
-    this.chatInner.classList.toggle('is-chat', appPeersManager.isAnyGroup(peerID) || peerID == this.myID);
+    this.chatInner.classList.toggle('is-chat', isAnyGroup || peerID == this.myID);
     this.chatInner.classList.toggle('is-channel', isChannel);
 
-    this.btnMute.style.display = appPeersManager.isBroadcast(peerID) ? '' : 'none';
+    this.btnMute.classList.toggle('hide', !appPeersManager.isBroadcast(peerID));
+    this.btnJoin.classList.toggle('hide', !appChatsManager.getChat(-this.peerID)?.pFlags?.left);
+    
     this.menuButtons.mute.style.display = this.myID == this.peerID ? 'none' : '';
 
     const pinned = appMessagesManager.getPinnedMessage(peerID);
