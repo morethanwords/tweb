@@ -160,6 +160,7 @@ export default class PollElement extends HTMLElement {
   private chosingIndexes: number[] = [];
 
   private sendVotePromise: Promise<void>;
+  private sentVote = false;
 
   constructor() {
     super();
@@ -406,6 +407,13 @@ export default class PollElement extends HTMLElement {
           toggleHint.classList.remove('active');
         });
       });
+
+      if(this.sentVote) {
+        const correctResult = results.results.find(r => r.pFlags.correct);
+        if(correctResult && !correctResult.pFlags.chosen) {
+          toggleHint.click();
+        }
+      }
     }
   }
 
@@ -445,12 +453,15 @@ export default class PollElement extends HTMLElement {
     });
     
     this.classList.add('disable-hover');
+    this.sentVote = true;
     return this.sendVotePromise = appPollsManager.sendVote(this.mid, indexes).then(() => {
       targets.forEach(target => {
         target.classList.remove('is-voting');
       });
 
       this.classList.remove('disable-hover');
+    }).catch(() => {
+      this.sentVote = false;
     }).finally(() => {
       this.sendVotePromise = null;
     });
