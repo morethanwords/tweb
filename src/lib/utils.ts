@@ -9,7 +9,7 @@ export function dT () {
   return '[' + ((Date.now() - _logTimer) / 1000).toFixed(3) + ']';
 }
 
-export function isInDOM(element, parentNode) {
+export function isInDOM(element: Element, parentNode?: HTMLElement): boolean {
   if(!element) {
     return false;
   }
@@ -18,27 +18,28 @@ export function isInDOM(element, parentNode) {
   if(element == parentNode) {
     return true;
   }
-  return isInDOM(element.parentNode, parentNode);
+  return isInDOM(element.parentNode as HTMLElement, parentNode);
 }
 
-export function checkDragEvent(e) {
-  if (!e || e.target && (e.target.tagName == 'IMG' || e.target.tagName == 'A')) return false
-  if (e.dataTransfer && e.dataTransfer.types) {
-    for (var i = 0; i < e.dataTransfer.types.length; i++) {
-      if (e.dataTransfer.types[i] == 'Files') {
-        return true
+export function checkDragEvent(e: any) {
+  if(!e || e.target && (e.target.tagName == 'IMG' || e.target.tagName == 'A')) return false
+  if(e.dataTransfer && e.dataTransfer.types) {
+    for(var i = 0; i < e.dataTransfer.types.length; i++) {
+      if(e.dataTransfer.types[i] == 'Files') {
+        return true;
       }
     }
   } else {
-    return true
+    return true;
   }
 
-  return false
+  return false;
 }
 
-export function cancelEvent (event) {
+export function cancelEvent (event: Event) {
   event = event || window.event;
   if(event) {
+    // @ts-ignore
     event = event.originalEvent || event;
 
     try {
@@ -52,45 +53,46 @@ export function cancelEvent (event) {
   return false;
 }
 
-export function getRichValue (field) {
-  if (!field) {
-    return ''
+export function getRichValue(field: any) {
+  if(!field) {
+    return '';
   }
-  var lines = []
-  var line = []
+  var lines: string[] = [];
+  var line: string[] = [];
 
-  getRichElementValue(field, lines, line)
+  getRichElementValue(field, lines, line);
   if (line.length) {
-    lines.push(line.join(''))
+    lines.push(line.join(''));
   }
 
-  var value = lines.join('\n')
-  value = value.replace(/\u00A0/g, ' ')
+  var value = lines.join('\n');
+  value = value.replace(/\u00A0/g, ' ');
 
-  return value
+  return value;
 }
 
-export function placeCaretAtEnd(el) {
+export function placeCaretAtEnd(el: HTMLElement) {
   el.focus();
-  if (typeof window.getSelection != "undefined"
-          && typeof document.createRange != "undefined") {
-      var range = document.createRange();
-      range.selectNodeContents(el);
-      range.collapse(false);
-      var sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(range);
-  } else if (typeof document.body.createTextRange != "undefined") {
-      var textRange = document.body.createTextRange();
-      textRange.moveToElementText(el);
-      textRange.collapse(false);
-      textRange.select();
+  if(typeof window.getSelection != "undefined" && typeof document.createRange != "undefined") {
+    var range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(false);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    // @ts-ignore
+  } else if(typeof document.body.createTextRange != "undefined") {
+    // @ts-ignore
+    var textRange = document.body.createTextRange();
+    textRange.moveToElementText(el);
+    textRange.collapse(false);
+    textRange.select();
   }
 }
 
-export function getRichElementValue (node, lines, line, selNode, selOffset) {
-  if (node.nodeType == 3) { // TEXT
-    if (selNode === node) {
+export function getRichElementValue(node: any, lines: string[], line: string[], selNode?: Node, selOffset?: number) {
+  if(node.nodeType == 3) { // TEXT
+    if(selNode === node) {
       var value = node.nodeValue
       line.push(value.substr(0, selOffset) + '\x01' + value.substr(selOffset))
     } else {
@@ -104,29 +106,32 @@ export function getRichElementValue (node, lines, line, selNode, selOffset) {
   var isSelected = (selNode === node)
   var isBlock = node.tagName == 'DIV' || node.tagName == 'P'
   var curChild
-  if (isBlock && line.length || node.tagName == 'BR') {
+  if(isBlock && line.length || node.tagName == 'BR') {
     lines.push(line.join(''))
     line.splice(0, line.length)
-  }
-  else if (node.tagName == 'IMG') {
-    if (node.alt) {
-      line.push(node.alt)
+  } else if(node.tagName == 'IMG') {
+    if(node.alt) {
+      line.push(node.alt);
     }
   }
-  if (isSelected && !selOffset) {
-    line.push('\x01')
+
+  if(isSelected && !selOffset) {
+    line.push('\x01');
   }
-  var curChild = node.firstChild
-  while (curChild) {
-    getRichElementValue(curChild, lines, line, selNode, selOffset)
-    curChild = curChild.nextSibling
+
+  var curChild = node.firstChild;
+  while(curChild) {
+    getRichElementValue(curChild, lines, line, selNode, selOffset);
+    curChild = curChild.nextSibling;
   }
-  if (isSelected && selOffset) {
-    line.push('\x01')
+
+  if(isSelected && selOffset) {
+    line.push('\x01');
   }
-  if (isBlock && line.length) {
-    lines.push(line.join(''))
-    line.splice(0, line.length)
+
+  if(isBlock && line.length) {
+    lines.push(line.join(''));
+    line.splice(0, line.length);
   }
 }
 
@@ -144,7 +149,7 @@ export function getRichElementValue (node, lines, line, selNode, selOffset) {
 } */
 
 export const $rootScope = {
-  $broadcast: (name/* : string */, detail/*? : any */) => {
+  $broadcast: (name: string, detail?: any) => {
     if(name != 'user_update') {
       console.debug(dT(), 'Broadcasting ' + name + ' event, with args:', detail);
     }
@@ -152,7 +157,7 @@ export const $rootScope = {
     let myCustomEvent = new CustomEvent(name, {detail});
     document.dispatchEvent(myCustomEvent);
   },
-  $on: (name/* : string */, callback/* : any */) => {
+  $on: (name: string, callback: any) => {
     document.addEventListener(name, callback);
   },
 
@@ -165,7 +170,7 @@ export const $rootScope = {
 
 // generate a path's arc data parameter
 // http://www.w3.org/TR/SVG/paths.html#PathDataEllipticalArcCommands
-var arcParameter = function(rx, ry, xAxisRotation, largeArcFlag, sweepFlag, x, y) {
+var arcParameter = function(rx: number, ry: number, xAxisRotation: number, largeArcFlag: number, sweepFlag: number, x: number, y: number) {
   return [rx, ',', ry, ' ',
           xAxisRotation, ' ',
           largeArcFlag, ',',
@@ -173,7 +178,7 @@ var arcParameter = function(rx, ry, xAxisRotation, largeArcFlag, sweepFlag, x, y
           x, ',', y ].join('');
 };
 
-export function generatePathData( x, y, width, height, tl, tr, br, bl ) {
+export function generatePathData(x: number, y: number, width: number, height: number, tl: number, tr: number, br: number, bl: number) {
   var data = [];
 
   // start point in top-middle of the rectangle
@@ -243,41 +248,37 @@ export const langPack = {
 	"messageActionPhoneCall.out_missed": "Cancelled Call",
 };
 
-export const _ = (str/* : string */) => {
-  str = str.replace('_raw', '');
-
-  return langPack[str] ? langPack[str] : str;
-};
-
-export function isObject(object) {
+export function isObject(object: any) {
   return typeof(object) === 'object' && object !== null;
 }
 
-export function tsNow (seconds) {
+export function tsNow(seconds?: boolean) {
   var t = +new Date();
   return seconds ? Math.floor(t / 1000) : t;
 }
 
-export function safeReplaceObject (wasObject, newObject) {
-  for (var key in wasObject) {
-    if (!newObject.hasOwnProperty(key) && key.charAt(0) != '$') {
-      delete wasObject[key]
+export function safeReplaceObject(wasObject: any, newObject: any) {
+  for(var key in wasObject) {
+    if(!newObject.hasOwnProperty(key) && key.charAt(0) != '$') {
+      delete wasObject[key];
     }
   }
-  for (var key in newObject) {
+
+  for(var key in newObject) {
     //if (newObject.hasOwnProperty(key)) { // useless
-      wasObject[key] = newObject[key]
+      wasObject[key] = newObject[key];
     //}
   }
 }
 
-export function numberWithCommas(x) {
+export function numberWithCommas(x: number) {
   var parts = x.toString().split(".");
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   return parts.join(".");
 }
 
-export function findUpClassName(el, className) {
+//export function findUpClassName<T>(el: any, className: string): T;
+export function findUpClassName(el: any, className: string): HTMLElement {
   if(el.classList.contains(className)) return el; // 03.02.2020
 
   while(el.parentElement) {
@@ -288,7 +289,7 @@ export function findUpClassName(el, className) {
   return null;
 }
 
-export function findUpTag(el, tag) {
+export function findUpTag(el: any, tag: string): HTMLElement {
   if(el.tagName == tag) return el; // 03.02.2020
 
   while(el.parentElement) {
@@ -299,7 +300,7 @@ export function findUpTag(el, tag) {
   return null;
 }
 
-export function findUpAttribute(el, attribute) {
+export function findUpAttribute(el: any, attribute: string): HTMLElement {
   if(el.getAttribute(attribute) != null) return el; // 03.02.2020
 
   while(el.parentElement) {
@@ -310,14 +311,14 @@ export function findUpAttribute(el, attribute) {
   return null;
 }
 
-export function whichChild(elem/* : Node */) {
+export function whichChild(elem: Node) {
   let i = 0;
   // @ts-ignore
   while((elem = elem.previousElementSibling) != null) ++i;
   return i;
 };
 
-export function copy(obj) {
+export function copy(obj: any) {
   //in case of premitives
   if(obj===null || typeof obj !== "object"){
     return obj;
@@ -330,7 +331,7 @@ export function copy(obj) {
  
   //handle Array
   if(Array.isArray(obj)){
-    var clonedArr = [];
+    var clonedArr: any = [];
     obj.forEach(function(element){
       clonedArr.push(copy(element))
     });
@@ -347,7 +348,7 @@ export function copy(obj) {
   return clonedObj;
 }
 
-export function formatBytes(bytes, decimals = 2) {
+export function formatBytes(bytes: number, decimals = 2) {
   if (bytes === 0) return '0 Bytes';
 
   const k = 1024;
@@ -359,7 +360,7 @@ export function formatBytes(bytes, decimals = 2) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
-export function formatNumber(bytes, decimals = 2) {
+export function formatNumber(bytes: number, decimals = 2) {
   if(bytes === 0) return '0';
 
   const k = 1000;
@@ -371,7 +372,7 @@ export function formatNumber(bytes, decimals = 2) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + sizes[i];
 }
 
-export function deepEqual(x, y) {
+export function deepEqual(x: any, y: any): boolean {
   const ok = Object.keys, tx = typeof x, ty = typeof y;
   return x && y && tx === 'object' && tx === ty ? (
     ok(x).length === ok(y).length &&
@@ -379,40 +380,40 @@ export function deepEqual(x, y) {
   ) : (x === y);
 }
 
-export function listMergeSorted (list1, list2) {
-  list1 = list1 || []
-  list2 = list2 || []
+export function listMergeSorted(list1: any, list2: any) {
+  list1 = list1 || [];
+  list2 = list2 || [];
 
   var result = copy(list1);
 
-  var minID = list1.length ? list1[list1.length - 1] : 0xFFFFFFFF
+  var minID = list1.length ? list1[list1.length - 1] : 0xFFFFFFFF;
   for (var i = 0; i < list2.length; i++) {
     if (list2[i] < minID) {
-      result.push(list2[i])
+      result.push(list2[i]);
     }
   }
 
-  return result
+  return result;
 }
 
 // credits to https://github.com/sindresorhus/escape-string-regexp/blob/master/index.js
-export function escapeRegExp(str) {
+export function escapeRegExp(str: string) {
   return str
     .replace(/[|\\{}()[\]^$+*?.]/g, '\\$&')
     .replace(/-/g, '\\x2d');
 }
 
-export function encodeEntities (value) {
-  return value.replace(/&/g, '&amp;').replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function (value) {
-    var hi = value.charCodeAt(0)
-    var low = value.charCodeAt(1)
-    return '&#' + (((hi - 0xD800) * 0x400) + (low - 0xDC00) + 0x10000) + ';'
-  }).replace(/([^\#-~| |!])/g, function (value) { // non-alphanumeric
-    return '&#' + value.charCodeAt(0) + ';'
-  }).replace(/</g, '&lt;').replace(/>/g, '&gt;')
+export function encodeEntities(value: string) {
+  return value.replace(/&/g, '&amp;').replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, (value) => {
+    var hi = value.charCodeAt(0);
+    var low = value.charCodeAt(1);
+    return '&#' + (((hi - 0xD800) * 0x400) + (low - 0xDC00) + 0x10000) + ';';
+  }).replace(/([^\#-~| |!])/g, (value) => { // non-alphanumeric
+    return '&#' + value.charCodeAt(0) + ';';
+  }).replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-export function fillPropertyValue(str) {
+export function fillPropertyValue(str: string) {
   let splitted = str.split(' ');
   if(splitted.length != 4) {
     if(!splitted[0]) splitted[0] = '0px';
@@ -424,21 +425,21 @@ export function fillPropertyValue(str) {
   return splitted;
 }
 
-export function calcImageInBox (imageW, imageH, boxW, boxH, noZooom) {
+export function calcImageInBox (imageW: number, imageH: number, boxW: number, boxH: number, noZoom?: boolean) {
   if(imageW < boxW && imageH < boxH) {
     return {w: imageW, h: imageH};
   }
 
-  var boxedImageW = boxW
-  var boxedImageH = boxH
+  var boxedImageW = boxW;
+  var boxedImageH = boxH;
 
   if((imageW / imageH) > (boxW / boxH)) {
-    boxedImageH = parseInt(imageH * boxW / imageW)
+    boxedImageH = (imageH * boxW / imageW) | 0;
   } else {
-    boxedImageW = parseInt(imageW * boxH / imageH)
+    boxedImageW = (imageW * boxH / imageH) | 0;
     if(boxedImageW > boxW) {
-      boxedImageH = parseInt(boxedImageH * boxW / boxedImageW)
-      boxedImageW = boxW
+      boxedImageH = (boxedImageH * boxW / boxedImageW) | 0;
+      boxedImageW = boxW;
     }
   }
 
@@ -447,12 +448,12 @@ export function calcImageInBox (imageW, imageH, boxW, boxH, noZooom) {
   //   imageH = Math.floor(imageH / 2)
   // }
 
-  if(noZooom && boxedImageW >= imageW && boxedImageH >= imageH) {
-    boxedImageW = imageW
-    boxedImageH = imageH
+  if(noZoom && boxedImageW >= imageW && boxedImageH >= imageH) {
+    boxedImageW = imageW;
+    boxedImageH = imageH;
   }
 
-  return {w: boxedImageW, h: boxedImageH}
+  return {w: boxedImageW, h: boxedImageH};
 }
 
 /**
@@ -464,7 +465,7 @@ export function calcImageInBox (imageW, imageH, boxW, boxH, noZooom) {
  * @param {String} input The emoji character.
  * @returns {String} The base 16 unicode code.
  */
-export function emojiUnicode(input) {
+export function emojiUnicode(input: string) {
   let pairs = emojiUnicode.raw(input).split(' ').map(val => parseInt(val).toString(16))/* .filter(p => p != 'fe0f') */;
   if(pairs.length && pairs[0].length == 2) pairs[0] = '00' + pairs[0];
   return pairs.join('-');
@@ -479,7 +480,7 @@ export function emojiUnicode(input) {
 * @param {String} input The emoji character.
 * @returns {String} The unicode code points.
 */
-emojiUnicode.raw = function(input) {
+emojiUnicode.raw = function(input: string) {
   if(input.length === 1) {
     return input.charCodeAt(0).toString();
   } else if(input.length > 1) {
@@ -506,7 +507,7 @@ emojiUnicode.raw = function(input) {
   return '';
 };
 
-export function getEmojiToneIndex(input) {
+export function getEmojiToneIndex(input: string) {
   let match = input.match(/[\uDFFB-\uDFFF]/);
   return match ? 5 - (57343 - match[0].charCodeAt(0)) : 0;
 }

@@ -62,7 +62,7 @@ class ChatContextMenu {
     parseMenuButtonsTo(this.buttons, this.element.children);
 
     attachContextMenuListener(attachTo, (e) => {
-      let bubble: HTMLDivElement = null;
+      let bubble: HTMLElement = null;
 
       try {
         bubble = findUpClassName(e.target, 'bubble__container');
@@ -784,7 +784,7 @@ export class AppImManager {
     });
     
     this.topbar.addEventListener('click', (e) => {
-      const pinned = findUpClassName(e.target, 'pinned-container');
+      const pinned: HTMLElement = findUpClassName(e.target, 'pinned-container');
       if(pinned) {
         cancelEvent(e);
         
@@ -799,7 +799,7 @@ export class AppImManager {
     
     this.bubblesContainer.addEventListener('click', (e) => {
       let target = e.target as HTMLElement;
-      let bubble: HTMLDivElement = null;
+      let bubble: HTMLElement = null;
       try {
         bubble = findUpClassName(target, 'bubble');
       } catch(err) {}
@@ -822,7 +822,7 @@ export class AppImManager {
         return;
       }
 
-      let contactDiv = findUpClassName(target, 'contact');
+      let contactDiv: HTMLElement = findUpClassName(target, 'contact');
       if(contactDiv) {
         this.setPeer(+contactDiv.dataset.peerID);
         return;

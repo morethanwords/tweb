@@ -169,7 +169,7 @@ class DialogsContextMenu {
   }
 
   onContextMenu = (e: MouseEvent | Touch) => {
-    let li: HTMLDivElement = null;
+    let li: HTMLElement = null;
     
     try {
       li = findUpTag(e.target, 'LI');

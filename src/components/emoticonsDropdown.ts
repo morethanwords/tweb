@@ -817,7 +817,7 @@ class EmoticonsDropdown {
 
   public static menuOnClick = (menu: HTMLUListElement, heights: number[], scroll: Scrollable, menuScroll?: Scrollable) => {
     menu.addEventListener('click', function(e) {
-      let target = e.target as HTMLLIElement;
+      let target = e.target as HTMLElement;
       target = findUpTag(target, 'LI');
 
       if(!target) {
@@ -880,7 +880,7 @@ class EmoticonsDropdown {
   };
 
   public static onMediaClick = (e: MouseEvent) => {
-    let target = e.target as HTMLDivElement;
+    let target = e.target as HTMLElement;
     target = findUpTag(target, 'DIV');
 
     if(!target) return;

@@ -164,7 +164,7 @@ export class AppMediaViewer {
       if(target.tagName == 'A') return;
       cancelEvent(e);
 
-      let mover: HTMLDivElement = null;
+      let mover: HTMLElement = null;
       ['media-viewer-mover', 'media-viewer-buttons', 'media-viewer-author'].find(s => {
         try {
           mover = findUpClassName(target, s);
@@ -213,7 +213,7 @@ export class AppMediaViewer {
 
     this.log('setMoverToTarget', target, closing, wasActive, fromRight);
 
-    let realParent: HTMLDivElement;
+    let realParent: HTMLElement;
 
     let rect: DOMRect;
     if(target) {
@@ -221,7 +221,7 @@ export class AppMediaViewer {
         realParent = findUpClassName(target, 'attachment');
         rect = realParent.getBoundingClientRect();
       } else {
-        realParent = target.parentElement as HTMLDivElement;
+        realParent = target.parentElement as HTMLElement;
         rect = target.getBoundingClientRect();
       }
     }
@@ -358,7 +358,7 @@ export class AppMediaViewer {
 
           // код ниже нужен только чтобы скрыть моргание до момента как сработает таймаут
           let d: string;
-          let br = borderRadius.split(' ').map(v => parseInt(v));
+          let br: [number, number, number, number] = borderRadius.split(' ').map(v => parseInt(v)) as any;
           if(isOut) d = generatePathData(0, 0, width - 9 / scaleX, height, ...br);
           else d = generatePathData(9 / scaleX, 0, width - 9 / scaleX, height, ...br);
           path.setAttributeNS(null, 'd', d);
@@ -515,7 +515,7 @@ export class AppMediaViewer {
       if(progress > 1) progress = 1;
       if(upscale) progress = 1 - progress;
 
-      let _br = br.map(v => v * progress);
+      let _br: [number, number, number, number] = br.map(v => v * progress) as any;
 
       let d: string;
       if(isOut) d = generatePathData(0, 0, width - (9 / scaleX * progress), height, ..._br);
