@@ -222,7 +222,7 @@ export function generatePathData(x: number, y: number, width: number, height: nu
   return data.join(' ');
 };
 
-export const langPack = {
+export const langPack: {[actionType: string]: string} = {
   "messageActionChatCreate": "created the group",
 	"messageActionChatEditTitle": "changed group name",
 	"messageActionChatEditPhoto": "changed group photo",
@@ -240,7 +240,9 @@ export const langPack = {
 	"messageActionChannelEditTitle": "Channel renamed",
 	"messageActionChannelEditPhoto": "Channel photo updated",
   "messageActionChannelDeletePhoto": "Channel photo removed",
-  "messageActionHistoryClear": "History cleared",
+  "messageActionHistoryClear": "",//"History cleared",
+
+  "messageActionChannelMigrateFrom": "",
 
   "messageActionPhoneCall.in_ok": "Incoming Call",
 	"messageActionPhoneCall.out_ok": "Outgoing Call",
@@ -309,6 +311,12 @@ export function findUpAttribute(el: any, attribute: string): HTMLElement {
       return el;
   }
   return null;
+}
+
+export function getObjectKeysAndSort(object: any, sort: 'asc' | 'desc' = 'asc') {
+  const ids = Object.keys(object).map(i => +i);
+  if(sort == 'asc') return ids.sort((a, b) => a - b);
+  else return ids.sort((a, b) => b - a);
 }
 
 export function whichChild(elem: Node) {

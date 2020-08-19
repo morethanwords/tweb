@@ -2389,7 +2389,7 @@ export class AppMessagesManager {
             break;
 
           case 'messageActionHistoryClear':
-            apiMessage.deleted = true;
+            //apiMessage.deleted = true;
             apiMessage.clear_history = true;
             apiMessage.pFlags.out = false;
             apiMessage.pFlags.unread = false;
@@ -2505,7 +2505,7 @@ export class AppMessagesManager {
 
       //this.log('message action:', action);
 
-      messageText = '<i>' + str + '</i>';
+      messageText = str ? '<i>' + str + '</i>' : '';
     }
 
     let messageWrapped = '';

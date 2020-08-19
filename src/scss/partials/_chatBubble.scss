@@ -301,7 +301,7 @@ $bubble-margin: .25rem;
     &:not(.sticker) .attachment {
       padding-top: .5rem;
       padding-bottom: 1.5rem;
-      max-width: fit-content!important;
+      //max-width: fit-content!important;
       max-height: fit-content!important;
       
       span.emoji {

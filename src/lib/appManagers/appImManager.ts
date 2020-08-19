@@ -1,6 +1,6 @@
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
-import { $rootScope, numberWithCommas, findUpClassName, formatNumber, placeCaretAtEnd, findUpTag, langPack, whichChild, cancelEvent } from "../utils";
+import { $rootScope, numberWithCommas, findUpClassName, formatNumber, placeCaretAtEnd, findUpTag, langPack, whichChild, cancelEvent, getObjectKeysAndSort } from "../utils";
 import appUsersManager from "./appUsersManager";
 import appMessagesManager, { Dialog } from "./appMessagesManager";
 import appPeersManager from "./appPeersManager";
@@ -43,8 +43,6 @@ import appPollsManager from './appPollsManager';
 appSidebarLeft; // just to include
 
 const testScroll = false;
-
-const IGNOREACTIONS = ['messageActionChannelMigrateFrom'];
 
 class ChatContextMenu {
   private element = document.getElementById('bubble-contextmenu') as HTMLDivElement;
@@ -671,7 +669,7 @@ export class AppImManager {
         // set new mids to album items for mediaViewer
         if(message.grouped_id) {
           let items = bubble.querySelectorAll('.album-item');
-          let groupIDs = Object.keys(appMessagesManager.groupedMessagesStorage[message.grouped_id]).map(i => +i).sort((a, b) => a - b);
+          let groupIDs = getObjectKeysAndSort(appMessagesManager.groupedMessagesStorage[message.grouped_id]);
           (Array.from(items) as HTMLElement[]).forEach((item, idx) => {
             item.dataset.mid = '' + groupIDs[idx];
           });
@@ -1392,6 +1390,13 @@ export class AppImManager {
 
     ////console.timeEnd('appImManager cleanup');
   }
+
+  private findMountedBubbleByMsgID(mid: number) {
+    return this.bubbles[getObjectKeysAndSort(this.bubbles).find(id => {
+      if(id < mid) return false;
+      return !!this.bubbles[id]?.parentElement;
+    })];
+  }
   
   public setPeer(peerID: number, lastMsgID?: number) {
     //console.time('appImManager setPeer');
@@ -1434,8 +1439,9 @@ export class AppImManager {
     if(samePeer) {
       if(this.bubbles[lastMsgID]) {
         if(isTarget) {
-          this.scrollable.scrollIntoView(this.bubbles[lastMsgID]);
-          this.highlightBubble(this.bubbles[lastMsgID]);
+          const bubble = this.findMountedBubbleByMsgID(lastMsgID);
+          this.scrollable.scrollIntoView(bubble);
+          this.highlightBubble(bubble);
         } else if(dialog && lastMsgID == topMessage) {
           this.log('will scroll down', this.scroll.scrollTop, this.scroll.scrollHeight);
           this.scroll.scrollTop = this.scroll.scrollHeight;
@@ -1545,7 +1551,10 @@ export class AppImManager {
             this.scrollable.scrollTop = this.scrollable.scrollHeight;
           }
 
-          const bubble = forwardingUnread ? (this.firstUnreadBubble || this.bubbles[lastMsgID]) : this.bubbles[lastMsgID];
+          let bubble: HTMLElement = forwardingUnread ? (this.firstUnreadBubble || this.bubbles[lastMsgID]) : this.bubbles[lastMsgID];
+          if(!bubble?.parentElement) {
+            bubble = this.findMountedBubbleByMsgID(lastMsgID);
+          }
 
           this.scrollable.scrollIntoView(bubble, samePeer/* , fromUp */);
           if(!forwardingUnread) {
@@ -1722,7 +1731,7 @@ export class AppImManager {
     }
   }
 
-  public highlightBubble(element: HTMLDivElement) {
+  public highlightBubble(element: HTMLElement) {
     if(element.dataset.timeout) {
       clearTimeout(+element.dataset.timeout);
       element.classList.remove('is-selected');
@@ -1933,7 +1942,7 @@ export class AppImManager {
     if(message._ == 'messageService') {
       let action = message.action;
       let _ = action._;
-      if(IGNOREACTIONS.indexOf(_) !== -1) {
+      if(langPack.hasOwnProperty(_) && !langPack[_]) {
         return bubble;
       }
 
@@ -2823,7 +2832,7 @@ export class AppImManager {
 
       let ids: number[];
       if((reverse && this.loadedTopTimes > 2) || (!reverse && this.loadedBottomTimes > 2)) {
-        ids = Object.keys(this.bubbles).map(i => +i).sort((a, b) => a - b);
+        ids = getObjectKeysAndSort(this.bubbles);
       }
 
       //let removeCount = loadCount / 2;

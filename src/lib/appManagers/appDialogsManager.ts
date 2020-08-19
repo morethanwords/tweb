@@ -929,7 +929,7 @@ export class AppDialogsManager {
       }
     }
 
-    if(lastMessage._ == 'messageEmpty') {
+    if(lastMessage._ == 'messageEmpty' || (lastMessage._ == 'messageService' && !lastMessage.rReply)) {
       dom.lastMessageSpan.innerHTML = '';
       dom.lastTimeSpan.innerHTML = '';
       delete dom.listEl.dataset.mid;
