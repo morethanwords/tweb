@@ -160,8 +160,9 @@ export class AppMediaViewer {
     });
 
     this.onClickBinded = (e: MouseEvent) => {
-      cancelEvent(e);
       let target = e.target as HTMLElement;
+      if(target.tagName == 'A') return;
+      cancelEvent(e);
 
       let mover: HTMLDivElement = null;
       ['media-viewer-mover', 'media-viewer-buttons', 'media-viewer-author'].find(s => {

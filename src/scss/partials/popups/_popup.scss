@@ -16,8 +16,8 @@
   overflow: auto;
   /* text-align: center; */
   display: flex;
-  align-items: center;
-  justify-content: center;
+  /* align-items: center;
+  justify-content: center; */
 
   &.active {
     opacity: 1;
@@ -27,12 +27,7 @@
 
     .popup-container {
       transform: translateY(0);
-
-      &.is-max-lines {
-        margin-top: 38px;
-      }
     }
-    
   }
 
   &-container {
@@ -48,6 +43,11 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    margin: auto;
+  }
+
+  &-centerer {
+    margin: auto;
   }
 
   &-close {

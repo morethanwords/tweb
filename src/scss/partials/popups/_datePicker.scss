@@ -6,7 +6,15 @@
       // max-width: 300px;
       // max-height: 424px;
       min-width: 300px;
-      padding: 12px 14px;  
+      width: 300px;
+      padding: 12px 14px;
+
+      @media (min-height: 470px) {
+        &.is-max-lines {
+          top: 19px;
+          //left: 8px;
+        }
+      }
     }
 
     &-header {

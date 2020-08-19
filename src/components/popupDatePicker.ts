@@ -58,6 +58,11 @@ export default class PopupDatePicker extends PopupElement {
     popupBody.append(this.controlsDiv, this.monthsContainer);
     this.container.append(popupBody);
 
+    const popupCenterer = document.createElement('div');
+    popupCenterer.classList.add('popup-centerer');
+    popupCenterer.append(this.container);
+    this.element.append(popupCenterer);
+
     //const passed = (initDate.getTime() - (initDate.getTimezoneOffset() * 60000)) % 86400000;
     //this.selectedDate = this.maxDate = new Date(initDate.getTime() - passed);
     initDate.setHours(0, 0, 0, 0);
