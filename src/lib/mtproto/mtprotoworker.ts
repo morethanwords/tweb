@@ -1,6 +1,7 @@
 import {dT, isObject, $rootScope} from '../utils';
 import AppStorage from '../storage';
 import CryptoWorkerMethods from '../crypto/crypto_methods';
+import runtime from 'serviceworker-webpack-plugin/lib/runtime';
 
 type Task = {
   taskID: number,
@@ -8,8 +9,15 @@ type Task = {
   args: any[]
 };
 
+/* let pending: any[] = [];
+function resendPending() {
+  if(navigator.serviceWorker.controller) {
+    for(let i = 0; i < pending.length; i++) navigator.serviceWorker.controller.postMessage(pending[i]);
+    pending = [];
+  }
+} */
+
 class ApiManagerProxy extends CryptoWorkerMethods {
-  private webWorker: Worker | boolean = false;
   private taskID = 0;
   private awaiting: {
     [id: number]: {
@@ -27,8 +35,49 @@ class ApiManagerProxy extends CryptoWorkerMethods {
     super();
     console.log(dT(), 'ApiManagerProxy constructor');
 
-    if(window.Worker) {
-      import('./mtproto.worker.js').then((worker: any) => {
+    /**
+     * Service worker
+     */
+    runtime.register({ scope: '/' });
+
+    navigator.serviceWorker.ready.then((registration) => {
+      console.info(dT(), 'ApiManagerProxy set SW');
+      this.releasePending();
+    });
+
+    navigator.serviceWorker.oncontrollerchange = () => {
+      console.error('oncontrollerchange');
+      this.releasePending();
+
+      navigator.serviceWorker.controller.addEventListener('error', (e) => {
+        console.error('controller error:', e);
+      });
+    };
+
+    /**
+     * Message resolver
+     */
+    navigator.serviceWorker.addEventListener('message', (e) => {
+      if(!isObject(e.data)) {
+        return;
+      }
+      
+      if(e.data.useLs) {
+        // @ts-ignore
+        AppStorage[e.data.task](...e.data.args).then(res => {
+          navigator.serviceWorker.controller.postMessage({useLs: true, taskID: e.data.taskID, args: res});
+        });
+      } else if(e.data.update) {
+        if(this.updatesProcessor) {
+          this.updatesProcessor(e.data.update.obj, e.data.update.bool);
+        }
+      } else {
+        this.finalizeTask(e.data.taskID, e.data.result, e.data.error);
+      }
+    });
+
+    /* if(window.Worker) {
+      import('./mtproto_service.js').then((worker: any) => {
         var tmpWorker = new worker.default();
         tmpWorker.onmessage = (e: any) => {
           if(!this.webWorker) {
@@ -60,7 +109,7 @@ class ApiManagerProxy extends CryptoWorkerMethods {
           this.webWorker = false;
         };
       });
-    }
+    } */
   }
 
   private finalizeTask(taskID: number, result: any, error: any) {
@@ -93,9 +142,9 @@ class ApiManagerProxy extends CryptoWorkerMethods {
   }
 
   private releasePending() {
-    if(this.webWorker) {
+    if(navigator.serviceWorker.controller) {
       this.pending.forEach(pending => {
-        (this.webWorker as Worker).postMessage(pending);
+        navigator.serviceWorker.controller.postMessage(pending);
       });
 
       this.pending.length = 0;

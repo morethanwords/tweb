@@ -142,6 +142,8 @@ class AppStorage {
   private isWebWorker: boolean;
   private taskID = 0;
   private tasks: {[taskID: number]: (result: any) => void} = {};
+  //private log = (...args: any[]) => console.log('[SW LS]', ...args);
+  private log = (...args: any[]) => {};
 
   constructor() {
     if(Modes.test) {
@@ -149,7 +151,8 @@ class AppStorage {
     }
 
     // @ts-ignore
-    this.isWebWorker = typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope;
+    //this.isWebWorker = typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope;
+    this.isWebWorker = typeof ServiceWorkerGlobalScope !== 'undefined' && self instanceof ServiceWorkerGlobalScope;
   }
 
   public setPrefix(newPrefix: string) {
@@ -161,6 +164,13 @@ class AppStorage {
   }
 
   public finishTask(taskID: number, result: any) {
+    this.log('finishTask:', taskID, result, Object.keys(this.tasks));
+
+    if(!this.tasks.hasOwnProperty(taskID)) {
+      this.log('no such task:', taskID, result);
+      return;
+    }
+
     this.tasks[taskID](result);
     delete this.tasks[taskID];
   }
@@ -168,10 +178,25 @@ class AppStorage {
   private proxy<T>(methodName: string, ..._args: any[]) {
     return new Promise<T>((resolve, reject) => {
       if(this.isWebWorker) {
-        this.tasks[this.taskID] = resolve;
+        const taskID = this.taskID++;
+
+        this.tasks[taskID] = resolve;
+
+        (self as any as ServiceWorkerGlobalScope)
+        .clients
+        .matchAll({ includeUncontrolled: false, type: 'window' })
+        .then((listeners) => {
+          if(!listeners.length) {
+            //console.trace('no listeners?', self, listeners);
+            return;
+          }
+
+          this.log('will proxy', {useLs: true, task: methodName, taskID, args: _args});
+          listeners[0].postMessage({useLs: true, task: methodName, taskID, args: _args});
+        });
+
         // @ts-ignore
-        self.postMessage({useLs: true, task: methodName, taskID: this.taskID, args: _args});
-        this.taskID++;
+        //self.postMessage({useLs: true, task: methodName, taskID: this.taskID, args: _args});
       } else {
         let args = Array.prototype.slice.call(_args);
         args.push((result: T) => {

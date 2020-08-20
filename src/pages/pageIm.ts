@@ -29,7 +29,7 @@ let onFirstMount = () => {
     //(Array.from(document.getElementsByClassName('rp')) as HTMLElement[]).forEach(el => ripple(el));
   
     Array.from(document.getElementsByClassName('btn-menu-toggle')).forEach((el) => {
-      el.addEventListener('click', (e) => {
+      (el as HTMLElement).addEventListener('click', (e) => {
         //console.log('click pageIm');
         if(!el.classList.contains('btn-menu-toggle')) return false;
   

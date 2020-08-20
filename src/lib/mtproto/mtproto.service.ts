@@ -7,8 +7,7 @@ import AppStorage from '../storage';
 import cryptoWorker from "../crypto/cryptoworker";
 import networkerFactory from "./networkerFactory";
 
-//const ctx: Worker = self as any;
-const ctx = self;
+const ctx = self as any as ServiceWorkerGlobalScope;
 
 //console.error('INCLUDE !!!', new Error().stack);
 
@@ -25,8 +24,8 @@ const ctx = self;
  *      let the calling scope pass in the global scope object.
  * @returns {boolean}
  */
-var _isSafari = null;
-function isSafari(scope) {
+var _isSafari: boolean = null;
+function isSafari(scope: any) {
   if(_isSafari == null) {
     var userAgent = scope.navigator ? scope.navigator.userAgent : null;
     _isSafari = !!scope.safari ||
@@ -35,11 +34,11 @@ function isSafari(scope) {
   return _isSafari;
 }
 
-function isObject(object) {
+function isObject(object: any) {
   return typeof(object) === 'object' && object !== null;
 }
 
-function fillTransfer(transfer, obj) {
+function fillTransfer(transfer: any, obj: any) {
   if(!obj) return;
   
   if(obj instanceof ArrayBuffer) {
@@ -57,10 +56,14 @@ function fillTransfer(transfer, obj) {
   }
 }
 
-function reply() {
+/**
+ * Respond to request
+ */
+function respond(client: Client | ServiceWorker | MessagePort, ...args: any[]) {
   // отключил для всего потому что не успел пофиксить transfer detached
   //if(isSafari(self)/*  || true */) {
-    ctx.postMessage(...arguments);
+    // @ts-ignore
+    client.postMessage(...args);
   /* } else {
     var transfer = new Set();
     fillTransfer(transfer, arguments);
@@ -72,12 +75,24 @@ function reply() {
 }
 
 networkerFactory.setUpdatesProcessor((obj, bool) => {
+  //console.log('updatesss');
   //ctx.postMessage({update: {obj, bool}});
-  reply({update: {obj, bool}});
+  //respond({update: {obj, bool}});
+
+  ctx.clients.matchAll({ includeUncontrolled: false, type: 'window' }).then((listeners) => {
+    if(!listeners.length) {
+      //console.trace('no listeners?', self, listeners);
+      return;
+    }
+
+    listeners[0].postMessage({update: {obj, bool}});
+  });
 });
 
-ctx.onmessage = function(e) {
-  var taskID = e.data.taskID;
+ctx.addEventListener('message', async(e) => {
+  const taskID = e.data.taskID;
+
+  console.log('[SW] Got message:', taskID, e, e.data);
 
   if(e.data.useLs) {
     AppStorage.finishTask(e.data.taskID, e.data.args);
@@ -87,36 +102,52 @@ ctx.onmessage = function(e) {
   switch(e.data.task) {
     case 'computeSRP':
     case 'gzipUncompress':
+      // @ts-ignore
       return cryptoWorker[e.data.task].apply(cryptoWorker, e.data.args).then(result => {
-        //ctx.postMessage({taskID: taskID, result: result});
-        reply({taskID: taskID, result: result});
+        respond(e.source, {taskID: taskID, result: result});
       });
 
     default: {
       try {
+        // @ts-ignore
         let result = apiManager[e.data.task].apply(apiManager, e.data.args);
+
         if(result instanceof Promise) {
-          result.then(result => {
-            //console.log(e.data.task + ' result:', result, taskID);
-            reply({taskID: taskID, result: result});
-            //ctx.postMessage({taskID: taskID, result: result});
-          }).catch(err => {
-            //console.error(e.data.task + ' err:', err, taskID);
-            //ctx.postMessage({taskID: taskID, error: err});
-            reply({taskID: taskID, error: err});
-          });
-        } else {
-          //ctx.postMessage({taskID: taskID, result: result});
-          reply({taskID: taskID, result: result});
+          result = await result;
         }
+
+        respond(e.source, {taskID: taskID, result: result});
       } catch(err) {
-        reply({taskID: taskID, error: err});
-        //ctx.postMessage({taskID: taskID, error: err});
+        respond(e.source, {taskID: taskID, error: err});
       }
 
       //throw new Error('Unknown task: ' + e.data.task);
     }
   }
-}
+});
 
-ctx.postMessage('ready');
+/**
+ * Service Worker Installation
+ */
+ctx.addEventListener('install', (event: ExtendableEvent) => {
+  //console.log('service worker is installing');
+
+  /* initCache();
+
+  event.waitUntil(
+    initNetwork(),
+  ); */
+  event.waitUntil(ctx.skipWaiting()); // Activate worker immediately
+});
+
+/**
+ * Service Worker Activation
+ */
+ctx.addEventListener('activate', (event) => {
+  //console.log('service worker activating', ctx);
+
+  /* if (!ctx.cache) initCache();
+  if (!ctx.network) initNetwork(); */
+
+  event.waitUntil(ctx.clients.claim());
+});

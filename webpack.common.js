@@ -3,6 +3,7 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MediaQueryPlugin = require('media-query-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const postcssPresetEnv = require('postcss-preset-env');
+const ServiceWorkerWebpackPlugin = require('serviceworker-webpack-plugin');
 const fs = require('fs');
 
 const allowedIPs = ['195.66.140.39', '192.168.31.144', '127.0.0.1', '192.168.31.1', '192.168.31.192', '176.100.18.181'];
@@ -165,6 +166,11 @@ module.exports = {
     sockHost: useLocal ? undefined : 'tweb.enko.club',
   },
   plugins: [
+    new ServiceWorkerWebpackPlugin({
+      entry: path.join(__dirname, 'src/lib/mtproto/mtproto.service.ts'),
+      filename: 'sw.js',
+      excludes: ['**/*'],
+    }),
     new HtmlWebpackPlugin({
       filename: `index.html`,
       //template: 'public/index_template.html',
