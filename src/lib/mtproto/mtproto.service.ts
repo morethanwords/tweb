@@ -6,6 +6,7 @@ import apiManager from "./apiManager";
 import AppStorage from '../storage';
 import cryptoWorker from "../crypto/cryptoworker";
 import networkerFactory from "./networkerFactory";
+import apiFileManager from './apiFileManager';
 
 const ctx = self as any as ServiceWorkerGlobalScope;
 
@@ -85,14 +86,16 @@ networkerFactory.setUpdatesProcessor((obj, bool) => {
       return;
     }
 
-    listeners[0].postMessage({update: {obj, bool}});
+    listeners.forEach(listener => {
+      listener.postMessage({update: {obj, bool}});
+    });
   });
 });
 
 ctx.addEventListener('message', async(e) => {
   const taskID = e.data.taskID;
 
-  console.log('[SW] Got message:', taskID, e, e.data);
+  //console.log('[SW] Got message:', taskID, e, e.data);
 
   if(e.data.useLs) {
     AppStorage.finishTask(e.data.taskID, e.data.args);
@@ -106,6 +109,24 @@ ctx.addEventListener('message', async(e) => {
       return cryptoWorker[e.data.task].apply(cryptoWorker, e.data.args).then(result => {
         respond(e.source, {taskID: taskID, result: result});
       });
+
+    case 'downloadFile': {
+      /* // @ts-ignore
+      return apiFileManager.downloadFile(...e.data.args); */
+
+      try {
+        // @ts-ignore
+        let result = apiFileManager[e.data.task].apply(apiFileManager, e.data.args);
+
+        if(result instanceof Promise) {
+          result = await result;
+        }
+
+        respond(e.source, {taskID: taskID, result: result});
+      } catch(err) {
+        respond(e.source, {taskID: taskID, error: err});
+      }
+    }
 
     default: {
       try {
@@ -150,4 +171,105 @@ ctx.addEventListener('activate', (event) => {
   if (!ctx.network) initNetwork(); */
 
   event.waitUntil(ctx.clients.claim());
+});
+
+function timeout(delay: number): Promise<Response> {
+  return new Promise(((resolve) => {
+    setTimeout(() => {
+      resolve(new Response('', {
+        status: 408,
+        statusText: 'Request timed out.',
+      }));
+    }, delay);
+  }));
+}
+
+/**
+ * Fetch requests
+ */
+ctx.addEventListener('fetch', (event: FetchEvent): void => {
+  const [, url, scope, fileName] = /http[:s]+\/\/.*?(\/(.*?)(?:$|\/(.*)$))/.exec(event.request.url) || [];
+
+  //console.log('[SW] fetch:', event, event.request, url, scope, fileName);
+
+  switch(scope) {
+    case 'thumb':
+    case 'document':
+    case 'photo': {
+      const info = JSON.parse(decodeURIComponent(fileName));
+
+      //console.log('[SW] fetch cachedDownloadPromises:', info/* apiFileManager.cachedDownloadPromises, apiFileManager.cachedDownloadPromises.hasOwnProperty(fileName) */);
+
+      const promise = apiFileManager.downloadFile(info).then(b => new Response(b));
+      event.respondWith(promise);
+
+      break;
+    }
+
+    case 'upload': {
+      if(event.request.method == 'POST') {
+        event.respondWith(event.request.blob().then(blob => {
+          return apiFileManager.uploadFile(blob).then(v => new Response(JSON.stringify(v), {headers: {'Content-Type': 'application/json'}}));
+        }));
+      }
+
+      break;
+    }
+
+    /* default: {
+      
+      break;
+    }
+    case 'documents':
+    case 'photos':
+    case 'profiles':
+      // direct download
+      if (event.request.method === 'POST') {
+        event.respondWith(// download(url, 'unknown file.txt', getFilePartRequest));
+          event.request.text()
+            .then((text) => {
+              const [, filename] = text.split('=');
+              return download(url, filename ? filename.toString() : 'unknown file', getFilePartRequest);
+            }),
+        );
+
+      // inline
+      } else {
+        event.respondWith(
+          ctx.cache.match(url).then((cached) => {
+            if (cached) return cached;
+
+            return Promise.race([
+              timeout(45 * 1000), // safari fix
+              new Promise<Response>((resolve) => {
+                fetchRequest(url, resolve, getFilePartRequest, ctx.cache, fileProgress);
+              }),
+            ]);
+          }),
+        );
+      }
+      break;
+
+    case 'stream': {
+      const [offset, end] = parseRange(event.request.headers.get('Range') || '');
+
+      log('stream', url, offset, end);
+
+      event.respondWith(new Promise((resolve) => {
+        fetchStreamRequest(url, offset, end, resolve, getFilePartRequest);
+      }));
+      break;
+    }
+
+    case 'stripped':
+    case 'cached': {
+      const bytes = getThumb(url) || null;
+      event.respondWith(new Response(bytes, { headers: { 'Content-Type': 'image/jpg' } }));
+      break;
+    }
+
+    default:
+      if (url && url.endsWith('.tgs')) event.respondWith(fetchTGS(url));
+      else event.respondWith(fetch(event.request.url)); */
+  }
 });

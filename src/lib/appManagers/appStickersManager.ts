@@ -1,10 +1,9 @@
 import AppStorage from '../storage';
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
-import apiFileManager from '../mtproto/apiFileManager';
 import appDocsManager from './appDocsManager';
-import { MTDocument } from '../../types';
-import { $rootScope } from '../utils';
+import { MTDocument, inputStickerSetThumb } from '../../types';
+import { $rootScope, getFileURL } from '../utils';
 
 export type MTStickerSet = {
   _: 'stickerSet',
@@ -224,17 +223,17 @@ class AppStickersManager {
 
     const isAnimated = stickerSet.pFlags?.animated;
 
-    const promise = apiFileManager.downloadFile(dcID, {
+    const input: inputStickerSetThumb = {
       _: 'inputStickerSetThumb',
       stickerset: this.getStickerSetInput(stickerSet),
       volume_id: thumb.location.volume_id,
       local_id: thumb.location.local_id
-    }, thumb.size, {
-      stickerType: isAnimated ? 2 : 1,
-      mimeType: isAnimated ? "application/x-tgsticker" : 'image/webp'
-    });
+    };
 
-    return promise;
+    const url = getFileURL('document', {dcID, location: input, size: thumb.size, mimeType: isAnimated ? "application/x-tgsticker" : 'image/webp'});
+    return fetch(url).then(res => res.blob());
+
+    //return promise;
   }
 
   public getStickerSetInput(set: {id: string, access_hash: string}) {

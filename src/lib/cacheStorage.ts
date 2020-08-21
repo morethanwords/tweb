@@ -95,8 +95,8 @@ class CacheStorageController {
 }
 
 const cacheStorage = new CacheStorageController(); 
-// @ts-ignore
+/* // @ts-ignore
 if(process.env.NODE_ENV != 'production') {
   (window as any).cacheStorage = cacheStorage;
-}
+} */
 export default cacheStorage;

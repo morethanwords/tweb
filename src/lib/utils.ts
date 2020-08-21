@@ -4,6 +4,9 @@
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
+
+import { InputFileLocation, FileLocation } from "../types";
+
 var _logTimer = Date.now();
 export function dT () {
   return '[' + ((Date.now() - _logTimer) / 1000).toFixed(3) + ']';
@@ -518,4 +521,18 @@ emojiUnicode.raw = function(input: string) {
 export function getEmojiToneIndex(input: string) {
   let match = input.match(/[\uDFFB-\uDFFF]/);
   return match ? 5 - (57343 - match[0].charCodeAt(0)) : 0;
+}
+
+export function getFileURL(type: 'photo' | 'thumb' | 'document', options: {
+  dcID: number,
+  location: InputFileLocation | FileLocation,
+  size?: number,
+  mimeType?: string
+}) {
+  //console.log('getFileURL', location);
+  //const perf = performance.now();
+  const encoded = encodeURIComponent(JSON.stringify(options));
+  //console.log('getFileURL encode:', performance.now() - perf, encoded);
+
+  return '/' + type + '/' + encoded;
 }

@@ -71,6 +71,7 @@ class AppWebpManager {
     if(this.testPromise) return this.testPromise;
 
     return this.testPromise = new Promise((resolve, reject) => {
+      return resolve(this.webpSupport = true);
       let webP = new Image();     
       webP.src = 'data:image/webp;base64,UklGRi4AAABXRUJQVlA4TCEAAAAvAUAAEB8wAiMw' + 
         'AgSSNtse/cXjxyCCmrYNWPwmHRH9jwMA';
@@ -95,8 +96,8 @@ class AppWebpManager {
 }
 
 const appWebpManager = new AppWebpManager();
-// @ts-ignore
+/* // @ts-ignore
 if(process.env.NODE_ENV != 'production') {
   (window as any).appWebpManager = appWebpManager;
-}
+} */
 export default appWebpManager;

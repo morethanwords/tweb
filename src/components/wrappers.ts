@@ -18,7 +18,6 @@ import { mediaSizes } from '../lib/config';
 import { MTDocument, MTPhotoSize } from '../types';
 import animationIntersector from './animationIntersector';
 import AudioElement from './audio';
-import MP4Source from '../lib/MP4Source';
 
 export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue}: {
   doc: MTDocument, 
@@ -90,26 +89,18 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     container.append(video);
   }
 
-  let loadVideo = async() => {
-    let url: string;
+  const loadVideo = async() => {
     if(message.media.preloader) { // means upload
       (message.media.preloader as ProgressivePreloader).attach(container, undefined, undefined, false);
     } else if(!doc.downloaded) {
-      const promise = appDocsManager.downloadVideo(doc.id);
+      const promise = appDocsManager.downloadDoc(doc.id);
       
       //if(!doc.supportsStreaming) {
         const preloader = new ProgressivePreloader(container, true);
         preloader.attach(container, true, promise, false);
       //}
-      
-      const mp4Source: MP4Source = await (promise as Promise<MP4Source>);
-      if(mp4Source instanceof MP4Source) {
-        url = mp4Source.getURL();
-      }
-    }
 
-    if(!url) {
-      url = doc.url;
+      await promise;
     }
 
     if(middleware && !middleware()) {
@@ -131,7 +122,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       }, {once: true});
     }
     
-    renderImageFromUrl(source, url);
+    renderImageFromUrl(source, doc.url);
     source.type = doc.mime_type;
     video.append(source);
     video.setAttribute('playsinline', '');

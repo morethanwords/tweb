@@ -826,7 +826,7 @@ export class AppMediaViewer {
         
         if(!source.src || (media.url && media.url != source.src)) {
           const load = () => {
-            const promise = appDocsManager.downloadVideo(media.id);
+            const promise = appDocsManager.downloadDoc(media.id);
 
             const streamable = media.supportsStreaming && !media.url;
             //if(!streamable) {

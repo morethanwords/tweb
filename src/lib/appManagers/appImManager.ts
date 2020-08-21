@@ -549,7 +549,7 @@ export class AppImManager {
   private closeBtn = this.topbar.querySelector('.sidebar-close-button') as HTMLButtonElement;
 
   constructor() {
-    this.log = logger('IM', LogLevels.log | LogLevels.error | LogLevels.warn | LogLevels.debug);
+    this.log = logger('IM', /* LogLevels.log | LogLevels.warn | LogLevels.debug | */ LogLevels.error);
     this.chatInputC = new ChatInput();
     this.preloader = new ProgressivePreloader(null, false);
     this.selectTab(0);
@@ -2641,7 +2641,7 @@ export class AppImManager {
 
         avatarElem.setAttribute('peer', '' + ((message.fwd_from && this.peerID == this.myID ? message.fwdFromID : message.fromID) || 0));
         
-        this.log('exec loadDialogPhoto', message);
+        //this.log('exec loadDialogPhoto', message);
 
         bubbleContainer.append(avatarElem);
       }

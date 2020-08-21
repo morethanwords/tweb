@@ -41,7 +41,7 @@ export type MTPhotoSize = {
   h?: number,
   size?: number,
   type?: string, // i, m, x, y, w by asc
-  location?: any,
+  location?: FileLocation,
   bytes?: Uint8Array // if type == 'i'
 };
 
@@ -88,3 +88,45 @@ export type AccountPassword = {
   srp_id?: string,
   secure_random: Uint8Array,
 };
+
+export type FileLocation = {
+  _: 'fileLocationToBeDeprecated',
+  volume_id: string,
+  local_id: number
+};
+
+export type inputFileLocation = {
+  _: 'inputFileLocation',
+  volume_id: string,
+  local_id: number,
+  secret: string,
+  file_reference: Uint8Array | number[]
+};
+
+export type inputDocumentFileLocation = {
+  _: 'inputDocumentFileLocation',
+  id: string,
+  access_hash: string,
+  file_reference: Uint8Array | number[],
+  thumb_size: string
+};
+
+export type inputPhotoFileLocation = Omit<inputDocumentFileLocation, '_'> & {_: 'inputPhotoFileLocation'};
+
+export type inputPeerPhotoFileLocation = {
+  _: 'inputPeerPhotoFileLocation',
+  flags: number,
+  big?: true,
+  peer: any,
+  volume_id: string,
+  local_id: number
+};
+
+export type inputStickerSetThumb = {
+  _: 'inputStickerSetThumb',
+  stickerset: any,
+  volume_id: string,
+  local_id: number
+};
+
+export type InputFileLocation = inputFileLocation | inputDocumentFileLocation | inputPhotoFileLocation | inputPeerPhotoFileLocation | inputStickerSetThumb;

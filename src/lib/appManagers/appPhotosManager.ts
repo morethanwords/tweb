@@ -1,11 +1,10 @@
 import appUsersManager from "./appUsersManager";
-import { calcImageInBox, isObject } from "../utils";
+import { calcImageInBox, isObject, getFileURL } from "../utils";
 import fileManager from '../filemanager';
 import { bytesFromHex } from "../bin_utils";
-import apiFileManager from "../mtproto/apiFileManager";
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
-import { MTPhotoSize } from "../../types";
+import { MTPhotoSize, inputPhotoFileLocation, inputDocumentFileLocation, InputFileLocation, FileLocation } from "../../types";
 
 export type MTPhoto = {
   _: 'photo' | 'photoEmpty' | string,
@@ -250,17 +249,17 @@ export class AppPhotosManager {
   }
   
   public preloadPhoto(photoID: any, photoSize?: MTPhotoSize): Promise<Blob | void> {
-    let photo = this.getPhoto(photoID);
+    const photo = this.getPhoto(photoID);
     
     if(!photoSize) {
-      let fullWidth = this.windowW;
-      let fullHeight = this.windowH;
+      const fullWidth = this.windowW;
+      const fullHeight = this.windowH;
       
       photoSize = this.choosePhotoSize(photo, fullWidth, fullHeight);
     }
 
-    let isDocument = photo._ == 'document';
-    let cacheContext = isDocument ? (this.documentThumbsCache[photo.id] ?? (this.documentThumbsCache[photo.id] = {downloaded: -1, url: ''})) : photo;
+    const isDocument = photo._ == 'document';
+    const cacheContext = isDocument ? (this.documentThumbsCache[photo.id] ?? (this.documentThumbsCache[photo.id] = {downloaded: -1, url: ''})) : photo;
 
     if(cacheContext.downloaded >= photoSize.size && cacheContext.url) {
       return Promise.resolve();
@@ -273,7 +272,7 @@ export class AppPhotosManager {
     
     // maybe it's a thumb
     let isPhoto = photoSize.size && photo.access_hash && photo.file_reference;
-    let location = isPhoto ? {
+    let location: inputPhotoFileLocation | inputDocumentFileLocation | FileLocation = isPhoto ? {
       _: isDocument ? 'inputDocumentFileLocation' : 'inputPhotoFileLocation',
       id: photo.id,
       access_hash: photo.access_hash,
@@ -281,19 +280,20 @@ export class AppPhotosManager {
       thumb_size: photoSize.type
     } : photoSize.location;
 
+    const url = getFileURL('photo', {dcID: photo.dc_id, location, size: isPhoto ? photoSize.size : undefined});
     let promise: Promise<Blob>;
     if(isPhoto/*  && photoSize.size >= 1e6 */) {
-      //console.log('Photos downloadFile exec', photo);
-      promise = apiFileManager.downloadFile(photo.dc_id, location, photoSize.size);
+      promise = fetch(url).then(res => res.blob());
     } else {
       //console.log('Photos downloadSmallFile exec', photo, location);
-      promise = apiFileManager.downloadSmallFile(location);
+      promise = fetch(url).then(res => res.blob());
     }
 
     promise.then(blob => {
       if(!cacheContext.downloaded || cacheContext.downloaded < blob.size) {
         cacheContext.downloaded = blob.size;
-        cacheContext.url = URL.createObjectURL(blob);
+        //cacheContext.url = URL.createObjectURL(blob);
+        cacheContext.url = url;
 
         //console.log('wrote photo:', photo, photoSize, cacheContext, blob);
       }
@@ -333,7 +333,7 @@ export class AppPhotosManager {
     var fullWidth = this.windowW;
     var fullHeight = this.windowH;
     var fullPhotoSize = this.choosePhotoSize(photo, fullWidth, fullHeight);
-    var inputFileLocation = {
+    var inputFileLocation: inputDocumentFileLocation | inputPhotoFileLocation = {
       // @ts-ignore
       _: photo._ == 'document' ? 'inputDocumentFileLocation' : 'inputPhotoFileLocation',
       id: photo.id,
@@ -346,7 +346,7 @@ export class AppPhotosManager {
       let writer = fileManager.chooseSaveFile(fileName, ext, mimeType, fullPhotoSize.size);
       writer.ready.then(() => {
         console.log('ready');
-        apiFileManager.downloadFile(photo.dc_id, inputFileLocation, fullPhotoSize.size, {
+        apiManager.downloadFile(photo.dc_id, inputFileLocation, fullPhotoSize.size, {
           mimeType: mimeType,
           toFileEntry: writer
         }).then(() => {
@@ -360,12 +360,12 @@ export class AppPhotosManager {
     } catch(err) {
       console.error('err', err);
       
-      var cachedBlob = apiFileManager.getCachedFile(inputFileLocation)
+      /* var cachedBlob = apiFileManager.getCachedFile(inputFileLocation)
       if (cachedBlob) {
         return fileManager.download(cachedBlob, mimeType, fileName);
-      }
+      } */
       
-      apiFileManager.downloadFile(photo.dc_id, inputFileLocation, fullPhotoSize.size, {mimeType: mimeType})
+      apiManager.downloadFile(photo.dc_id, inputFileLocation, fullPhotoSize.size, {mimeType: mimeType})
       .then((blob: Blob) => {
         fileManager.download(blob, mimeType, fileName);
       }, (e: any) => {

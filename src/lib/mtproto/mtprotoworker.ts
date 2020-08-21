@@ -2,6 +2,7 @@ import {dT, isObject, $rootScope} from '../utils';
 import AppStorage from '../storage';
 import CryptoWorkerMethods from '../crypto/crypto_methods';
 import runtime from 'serviceworker-webpack-plugin/lib/runtime';
+import { InputFileLocation, FileLocation } from '../../types';
 
 type Task = {
   taskID: number,
@@ -45,14 +46,14 @@ class ApiManagerProxy extends CryptoWorkerMethods {
       this.releasePending();
     });
 
-    navigator.serviceWorker.oncontrollerchange = () => {
-      console.error('oncontrollerchange');
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      console.warn(dT(), 'ApiManagerProxy controllerchange');
       this.releasePending();
 
       navigator.serviceWorker.controller.addEventListener('error', (e) => {
         console.error('controller error:', e);
       });
-    };
+    });
 
     /**
      * Message resolver
@@ -75,41 +76,6 @@ class ApiManagerProxy extends CryptoWorkerMethods {
         this.finalizeTask(e.data.taskID, e.data.result, e.data.error);
       }
     });
-
-    /* if(window.Worker) {
-      import('./mtproto_service.js').then((worker: any) => {
-        var tmpWorker = new worker.default();
-        tmpWorker.onmessage = (e: any) => {
-          if(!this.webWorker) {
-            this.webWorker = tmpWorker;
-            console.info(dT(), 'ApiManagerProxy set webWorker');
-            this.releasePending();
-          }
-
-          if(!isObject(e.data)) {
-            return;
-          }
-          
-          if(e.data.useLs) {
-            // @ts-ignore
-            AppStorage[e.data.task](...e.data.args).then(res => {
-              (this.webWorker as Worker).postMessage({useLs: true, taskID: e.data.taskID, args: res});
-            });
-          } else if(e.data.update) {
-            if(this.updatesProcessor) {
-              this.updatesProcessor(e.data.update.obj, e.data.update.bool);
-            }
-          } else {
-            this.finalizeTask(e.data.taskID, e.data.result, e.data.error);
-          }
-        };
-
-        tmpWorker.onerror = (error: any) => {
-          console.error('ApiManagerProxy error', error);
-          this.webWorker = false;
-        };
-      });
-    } */
   }
 
   private finalizeTask(taskID: number, result: any, error: any) {
@@ -127,13 +93,12 @@ class ApiManagerProxy extends CryptoWorkerMethods {
     return new Promise<T>((resolve, reject) => {
       this.awaiting[this.taskID] = {resolve, reject, taskName: task};
   
-      let params = {
+      const params = {
         task,
         taskID: this.taskID,
         args
       };
 
-      //(this.webWorker as Worker).postMessage(params);
       this.pending.push(params);
       this.releasePending();
   
@@ -193,6 +158,15 @@ class ApiManagerProxy extends CryptoWorkerMethods {
 
   public logOut(): Promise<void> {
     return this.performTaskWorker('logOut');
+  }
+
+  public downloadFile(dcID: number, location: InputFileLocation | FileLocation, size: number = 0, options: Partial<{
+    mimeType: string,
+    toFileEntry: any,
+    limitPart: number,
+    stickerType: number
+  }> = {}): Promise<Blob> {
+    return this.performTaskWorker('downloadFile', dcID, location, size, options);
   }
 }
 

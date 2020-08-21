@@ -1,13 +1,12 @@
-import { nextRandomInt } from "../bin_utils";
+import { nextRandomInt, getFileNameByLocation } from "../bin_utils";
 
-//import IdbFileStorage from "../idb";
 import cacheStorage from "../cacheStorage";
 import FileManager from "../filemanager";
-//import apiManager from "./apiManager";
-import apiManager from "./mtprotoworker";
+import apiManager from "./apiManager";
 import { deferredPromise, CancellablePromise } from "../polyfill";
 import appWebpManager from "../appManagers/appWebpManager";
 import { logger } from "../logger";
+import { InputFileLocation, FileLocation } from "../../types";
 
 type Delayed = {
   offset: number, 
@@ -15,19 +14,14 @@ type Delayed = {
   writeFileDeferred: CancellablePromise<unknown>
 };
 
+type DownloadOptions = Partial<{
+  
+}>;
+
 export class ApiFileManager {
-  public cachedSavePromises: {
+  public cachedDownloadPromises: {
     [fileName: string]: Promise<Blob>
   } = {};
-  public cachedDownloadPromises: {
-    [fileName: string]: any
-  } = {};
-  public cachedDownloads: {
-    [fileName: string]: Blob
-  } = {};
-
-  /* public indexedKeys: Set<string> = new Set();
-  private keysLoaded = false; */
 
   public downloadPulls: {
     [x: string]: Array<{
@@ -95,194 +89,26 @@ export class ApiFileManager {
     });
   }
 
-  public getFileName(location: any, options?: Partial<{
-    stickerType: number
-  }>) {
-    switch(location._) {
-      case 'inputDocumentFileLocation': {
-        let fileName = (location.file_name as string || '').split('.');
-        let ext = fileName[fileName.length - 1] || '';
-
-        if(options?.stickerType == 1 && !appWebpManager.isSupported()) {
-          ext += '.png'
-        }
-
-        let thumbPart = location.thumb_size ? '_' + location.thumb_size : '';
-        return (fileName[0] ? fileName[0] + '_' : '') + location.id + thumbPart + (ext ? '.' + ext : ext);
-      }
-
-      default: {
-        if(!location.volume_id && !location.file_reference) {
-          this.log.trace('Empty location', location);
-        }
-
-        let ext = 'jpg';
-        if(options?.stickerType == 1 && !appWebpManager.isSupported()) {
-          ext += '.png'
-        }
-
-        if(location.volume_id) {
-          return location.volume_id + '_' + location.local_id + '.' + ext;
-        } else {
-          return location.id + '_' + location.access_hash + '.' + ext;
-        }
-      }
-    }
-  }
-
-  public getTempFileName(file: any) {
-    const size = file.size || -1;
-    const random = nextRandomInt(0xFFFFFFFF);
-    return '_temp' + random + '_' + size;
-  }
-
-  public getCachedFile(location: any) {
-    if(!location) {
-      return false;
-    }
-    const fileName = this.getFileName(location);
-
-    return this.cachedDownloads[fileName] || false;
-  }
-
   public getFileStorage() {
     return cacheStorage;
   }
 
-  /* public isFileExists(location: any) {
-    var fileName = this.getFileName(location);
-
-    return this.cachedDownloads[fileName] || this.indexedKeys.has(fileName);
-    //return this.cachedDownloads[fileName] || this.indexedKeys.has(fileName) ? Promise.resolve(true) : this.getFileStorage().isFileExists(fileName);
-  } */
-
-  public saveSmallFile(location: any, bytes: Uint8Array) {
-    var fileName = this.getFileName(location);
-
-    if(!this.cachedSavePromises[fileName]) {
-      this.cachedSavePromises[fileName] = this.getFileStorage().saveFile(fileName, bytes).then((blob: any) => {
-        return this.cachedDownloads[fileName] = blob;
-      }, (error: any) => {
-        delete this.cachedSavePromises[fileName];
-      });
-    }
-    return this.cachedSavePromises[fileName];
-  }
-
-  public downloadSmallFile(location: any, options: Partial<{
-    mimeType: string,
-    dcID: number,
-    stickerType: number
-  }> = {}): Promise<Blob> {
+  public downloadFile(options: {
+    dcID: number, 
+    location: InputFileLocation | FileLocation, 
+    size: number,
+    mimeType?: string,
+    toFileEntry?: any,
+    limitPart?: number,
+    stickerType?: number,
+    processPart?: (bytes: Uint8Array, offset: number, queue: Delayed[]) => Promise<any>
+  }): CancellablePromise<Blob> {
     if(!FileManager.isAvailable()) {
       return Promise.reject({type: 'BROWSER_BLOB_NOT_SUPPORTED'});
     }
 
-    /* if(!this.keysLoaded) {
-      this.getIndexedKeys();
-    } */
-
-    //this.log('downloadSmallFile', location, options);
-
-    let processSticker = false;
-    if(options.stickerType == 1 && !appWebpManager.isSupported()) {
-      processSticker = true;
-      options.mimeType = 'image/png';
-    }
-
-    let dcID = options.dcID || location.dc_id;
-    let mimeType = options.mimeType || 'image/jpeg';
-    let fileName = this.getFileName(location, options);
-    let cachedPromise = this.cachedSavePromises[fileName] || this.cachedDownloadPromises[fileName];
-
-    //this.log('downloadSmallFile!', location, options, fileName, cachedPromise);
-
-    if(cachedPromise) {
-      return cachedPromise;
-    }
-
-    let fileStorage = this.getFileStorage();
-
-    return this.cachedDownloadPromises[fileName] = fileStorage.getFile(fileName).then((blob) => {
-      //throw '';
-      //this.log('downloadSmallFile found photo by fileName:', fileName);
-      return this.cachedDownloads[fileName] = blob;
-    }).catch(() => {
-      //this.log.warn('downloadSmallFile found no photo by fileName:', fileName);
-      let downloadPromise = this.downloadRequest(dcID, () => {
-        let inputLocation = location;
-        if(!inputLocation._ || inputLocation._ == 'fileLocation') {
-          inputLocation = Object.assign({}, location, {_: 'inputFileLocation'});
-        }
-
-        let params = {
-          flags: 0,
-          location: inputLocation,
-          offset: 0,
-          limit: 1024 * 1024
-        };
-
-        //this.log('next small promise', params);
-        return apiManager.invokeApi('upload.getFile', params, {
-          dcID: dcID,
-          fileDownload: true,
-          noErrorBox: true
-        });
-      }, dcID);
-
-      let processDownloaded = (bytes: Uint8Array) => {
-        //this.log('processDownloaded', location, bytes);
-
-        if(processSticker) {
-          return appWebpManager.convertToPng(bytes);
-        }
-
-        return Promise.resolve(bytes);
-      };
-
-      return fileStorage.getFileWriter(fileName, mimeType).then(fileWriter => {
-        return downloadPromise.then((result: any) => {
-          return processDownloaded(result.bytes).then((proccessedResult) => {
-            return FileManager.write(fileWriter, proccessedResult).then(() => {
-              return this.cachedDownloads[fileName] = fileWriter.finalize();
-            });
-          });
-        });
-      });
-    });
-  }
-
-  public getDownloadedFile(location: any) {
-    var fileStorage = this.getFileStorage();
-    var fileName = typeof(location) !== 'string' ? this.getFileName(location) : location;
-
-    //console.log('getDownloadedFile', location, fileName);
-
-    return fileStorage.getFile(fileName);
-  }
-
-  /* public getIndexedKeys() {
-    this.keysLoaded = true;
-    this.getFileStorage().getAllKeys().then(keys => {
-      this.indexedKeys.clear();
-      this.indexedKeys = new Set(keys);
-    });
-  } */
-
-  public downloadFile(dcID: number, location: any, size: number, options: Partial<{
-    mimeType: string,
-    toFileEntry: any,
-    limitPart: number,
-    stickerType: number,
-    processPart: (bytes: Uint8Array, offset: number, queue: Delayed[]) => Promise<any>
-  }> = {}): CancellablePromise<Blob> {
-    if(!FileManager.isAvailable()) {
-      return Promise.reject({type: 'BROWSER_BLOB_NOT_SUPPORTED'});
-    }
-
-    /* if(!this.keysLoaded) {
-      this.getIndexedKeys();
-    } */
+    let size = options.size ?? 0;
+    let {dcID, location} = options;
 
     let processSticker = false;
     if(options.stickerType == 1 && !appWebpManager.isSupported()) {
@@ -295,12 +121,12 @@ export class ApiFileManager {
     }
 
     // this.log('Dload file', dcID, location, size)
-    const fileName = this.getFileName(location, options);
+    const fileName = getFileNameByLocation(location);
     const toFileEntry = options.toFileEntry || null;
-    const cachedPromise = this.cachedSavePromises[fileName] || this.cachedDownloadPromises[fileName];
+    const cachedPromise = this.cachedDownloadPromises[fileName];
     const fileStorage = this.getFileStorage();
 
-    //this.log('downloadFile', fileStorage.name, fileName, fileName.length, location, arguments);
+    //this.log('downloadFile', fileName, fileName.length, location, arguments);
 
     if(cachedPromise) {
       if(toFileEntry) {
@@ -317,9 +143,9 @@ export class ApiFileManager {
             this.log('downloadFile need to deleteFile, wrong size:', blob.size, size);
 
             return this.deleteFile(fileName).then(() => {
-              return this.downloadFile(dcID, location, size, options);
+              return this.downloadFile(options);
             }).catch(() => {
-              return this.downloadFile(dcID, location, size, options);
+              return this.downloadFile(options);
             });
           } else {
             return blob;
@@ -346,7 +172,7 @@ export class ApiFileManager {
     };
 
     fileStorage.getFile(fileName).then(async(blob: Blob) => {
-      //this.log('is that i wanted');
+      //this.log('maybe cached', fileName);
       //throw '';
 
       if(blob.size < size) {
@@ -358,10 +184,10 @@ export class ApiFileManager {
       if(toFileEntry) {
         FileManager.copy(blob, toFileEntry).then(deferred.resolve, errorHandler);
       } else {
-        deferred.resolve(this.cachedDownloads[fileName] = blob);
+        deferred.resolve(blob);
       }
     }).catch(() => {
-      //this.log('not i wanted');
+      //this.log('not cached', fileName);
       //var fileWriterPromise = toFileEntry ? FileManager.getFileWriter(toFileEntry) : fileStorage.getFileWriter(fileName, mimeType);
       const fileWriterPromise = toFileEntry ? Promise.resolve(toFileEntry) : fileStorage.getFileWriter(fileName, mimeType);
 
@@ -374,6 +200,10 @@ export class ApiFileManager {
           writeFileDeferred: CancellablePromise<unknown>;
         const maxRequests = options.processPart ? 5 : 5;
 
+        if(!size) {
+          size = limit;
+        }
+
         if(fileWriter.length) {
           startOffset = fileWriter.length;
           
@@ -381,7 +211,7 @@ export class ApiFileManager {
             if(toFileEntry) {
               deferred.resolve();
             } else {
-              deferred.resolve(this.cachedDownloads[fileName] = fileWriter.finalize());
+              deferred.resolve(fileWriter.finalize());
             }
 
             return;
@@ -475,7 +305,7 @@ export class ApiFileManager {
               if(toFileEntry) {
                 deferred.resolve();
               } else {
-                deferred.resolve(this.cachedDownloads[fileName] = fileWriter.finalize());
+                deferred.resolve(fileWriter.finalize());
               }
             }
           } catch(err) {
@@ -511,11 +341,7 @@ export class ApiFileManager {
 
   public deleteFile(fileName: string) {
     //this.log('will delete file:', fileName);
-
     delete this.cachedDownloadPromises[fileName];
-    delete this.cachedDownloads[fileName];
-    delete this.cachedSavePromises[fileName];
-
     return this.getFileStorage().deleteFile(fileName);
   }
 
@@ -638,4 +464,9 @@ export class ApiFileManager {
   }
 }
 
-export default new ApiFileManager();
+const apiFileManager = new ApiFileManager();
+// @ts-ignore
+if(process.env.NODE_ENV != 'production') {
+  (self as any).apiFileManager = apiFileManager;
+}
+export default apiFileManager;

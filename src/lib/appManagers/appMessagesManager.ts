@@ -11,7 +11,6 @@ import appPhotosManager from "./appPhotosManager";
 import AppStorage from '../storage';
 import appPeersManager from "./appPeersManager";
 import ServerTimeManager from "../mtproto/serverTimeManager";
-import apiFileManager from "../mtproto/apiFileManager";
 import appDocsManager from "./appDocsManager";
 import ProgressivePreloader from "../../components/preloader";
 import serverTimeManager from "../mtproto/serverTimeManager";
@@ -22,7 +21,8 @@ import { CancellablePromise, deferredPromise } from "../polyfill";
 import appPollsManager from "./appPollsManager";
 import searchIndexManager from '../searchIndexManager';
 import { MTDocument, MTPhotoSize } from "../../types";
-import { logger } from "../logger";
+import { logger, LogLevels } from "../logger";
+import type {ApiFileManager} from '../mtproto/apiFileManager';
 
 //console.trace('include');
 
@@ -595,7 +595,7 @@ export class AppMessagesManager {
     dialogs: []
   };
 
-  private log = logger('MESSAGES'/* , LogLevels.error */);
+  private log = logger('MESSAGES', LogLevels.error);
 
   public dialogsStorage = new DialogsStorage();
   public filtersStorage = new FiltersStorage();
@@ -1179,7 +1179,7 @@ export class AppMessagesManager {
     };
 
     var uploaded = false,
-      uploadPromise: ReturnType<typeof apiFileManager.uploadFile> = null;
+      uploadPromise: ReturnType<ApiFileManager['uploadFile']> = null;
 
     let invoke = (flags: number, inputMedia: any) => {
       this.setTyping('sendMessageCancelAction');
@@ -1241,7 +1241,11 @@ export class AppMessagesManager {
         this.sendFilePromise.then(() => {
           if(!uploaded || message.error) {
             uploaded = false;
-            uploadPromise = apiFileManager.uploadFile(file);
+            //uploadPromise = apiFileManager.uploadFile(file);
+            uploadPromise = fetch('/upload', {
+              method: 'POST',
+              body: file
+            }).then(res => res.json());
           }
   
           uploadPromise && uploadPromise.then((inputFile) => {
@@ -1485,7 +1489,7 @@ export class AppMessagesManager {
     };
 
     let uploaded = false,
-      uploadPromise: ReturnType<typeof apiFileManager.uploadFile> = null;
+      uploadPromise: ReturnType<ApiFileManager['uploadFile']> = null;
 
     let inputPeer = appPeersManager.getInputPeerByID(peerID);
     let invoke = (multiMedia: any[]) => {
@@ -1517,7 +1521,11 @@ export class AppMessagesManager {
 
       if(!uploaded || message.error) {
         uploaded = false;
-        uploadPromise = apiFileManager.uploadFile(file);
+        //uploadPromise = apiFileManager.uploadFile(file);
+        uploadPromise = fetch('/upload', {
+          method: 'POST',
+          body: file
+        }).then(res => res.json());
       }
 
       uploadPromise.notify = (progress: {done: number, total: number}) => {
