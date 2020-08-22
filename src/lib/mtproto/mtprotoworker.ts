@@ -1,22 +1,15 @@
-import {dT, isObject, $rootScope} from '../utils';
+import {isObject, $rootScope} from '../utils';
 import AppStorage from '../storage';
 import CryptoWorkerMethods from '../crypto/crypto_methods';
 import runtime from 'serviceworker-webpack-plugin/lib/runtime';
 import { InputFileLocation, FileLocation } from '../../types';
+import { logger } from '../logger';
 
 type Task = {
   taskID: number,
   task: string,
   args: any[]
 };
-
-/* let pending: any[] = [];
-function resendPending() {
-  if(navigator.serviceWorker.controller) {
-    for(let i = 0; i < pending.length; i++) navigator.serviceWorker.controller.postMessage(pending[i]);
-    pending = [];
-  }
-} */
 
 class ApiManagerProxy extends CryptoWorkerMethods {
   private taskID = 0;
@@ -28,30 +21,37 @@ class ApiManagerProxy extends CryptoWorkerMethods {
     }
   } = {} as any;
   private pending: Array<Task> = [];
-  private debug = false;
 
   public updatesProcessor: (obj: any, bool: boolean) => void = null;
 
+  private log = logger('API-PROXY');
+
   constructor() {
     super();
-    console.log(dT(), 'ApiManagerProxy constructor');
+    this.log('constructor');
 
     /**
      * Service worker
      */
-    runtime.register({ scope: '/' });
+    (runtime.register({ scope: '/' }) as Promise<ServiceWorkerRegistration>).then(registration => {
+      
+    }, (err) => {
+      this.log.error('SW registration failed!', err);
+    });
 
     navigator.serviceWorker.ready.then((registration) => {
-      console.info(dT(), 'ApiManagerProxy set SW');
+      this.log('set SW');
       this.releasePending();
+
+      //registration.update();
     });
 
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      console.warn(dT(), 'ApiManagerProxy controllerchange');
+      this.log.warn('controllerchange');
       this.releasePending();
 
       navigator.serviceWorker.controller.addEventListener('error', (e) => {
-        console.error('controller error:', e);
+        this.log.error('controller error:', e);
       });
     });
 
@@ -72,6 +72,8 @@ class ApiManagerProxy extends CryptoWorkerMethods {
         if(this.updatesProcessor) {
           this.updatesProcessor(e.data.update.obj, e.data.update.bool);
         }
+      } else if(e.data.progress) {
+        $rootScope.$broadcast('download_progress', e.data.progress);
       } else {
         this.finalizeTask(e.data.taskID, e.data.result, e.data.error);
       }
@@ -81,14 +83,14 @@ class ApiManagerProxy extends CryptoWorkerMethods {
   private finalizeTask(taskID: number, result: any, error: any) {
     let deferred = this.awaiting[taskID];
     if(deferred !== undefined) {
-      this.debug && console.log(dT(), 'ApiManagerProxy done', deferred.taskName, result, error);
+      this.log.debug('done', deferred.taskName, result, error);
       result === undefined ? deferred.reject(error) : deferred.resolve(result);
       delete this.awaiting[taskID];
     }
   }
 
   public performTaskWorker<T>(task: string, ...args: any[]) {
-    this.debug && console.log(dT(), 'ApiManagerProxy start', task, args);
+    this.log.debug('start', task, args);
 
     return new Promise<T>((resolve, reject) => {
       this.awaiting[this.taskID] = {resolve, reject, taskName: task};
@@ -167,6 +169,10 @@ class ApiManagerProxy extends CryptoWorkerMethods {
     stickerType: number
   }> = {}): Promise<Blob> {
     return this.performTaskWorker('downloadFile', dcID, location, size, options);
+  }
+
+  public cancelDownload(fileName: string) {
+    return this.performTaskWorker('cancelDownload', fileName);
   }
 }
 

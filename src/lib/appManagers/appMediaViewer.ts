@@ -12,7 +12,6 @@ import AvatarElement from "../../components/avatar";
 import LazyLoadQueue from "../../components/lazyLoadQueue";
 import appForward from "../../components/appForward";
 import { isSafari, mediaSizes } from "../config";
-import MP4Source from "../MP4Source";
 
 export class AppMediaViewer {
   public wholeDiv = document.querySelector('.media-viewer-whole') as HTMLDivElement;
@@ -806,7 +805,7 @@ export class AppMediaViewer {
           video.append(source);
         }
 
-        const createPlayer = (streamable = false) => {
+        const createPlayer = () => {
           if(media.type != 'gif') {
             video.dataset.ckin = 'default';
             video.dataset.overlay = '1';
@@ -815,7 +814,7 @@ export class AppMediaViewer {
               div.append(video);
             }
 
-            const player = new VideoPlayer(video, true, streamable);
+            const player = new VideoPlayer(video, true, media.supportsStreaming);
             return player;
             /* player.wrapper.parentElement.append(video);
             mover.append(player.wrapper); */
@@ -827,61 +826,20 @@ export class AppMediaViewer {
         if(!source.src || (media.url && media.url != source.src)) {
           const load = () => {
             const promise = appDocsManager.downloadDoc(media.id);
-
-            const streamable = media.supportsStreaming && !media.url;
+            
             //if(!streamable) {
               this.preloader.attach(mover, true, promise);
             //}
             
             let player: VideoPlayer;
-            
-            let offset = 0;
-            let loadedParts: {[offset: number]: true} = {};
-            
-            let preloaderNotify = promise.notify;
-            let promiseNotify = (details: {offset: number, total: number, done: number}) => {
-              if(player) {
-                //player.progress.setLoadProgress(details.done / details.total);
-                setLoadProgress();
-              }
 
-              loadedParts[details.offset] = true;
-              preloaderNotify(details);
-            };
-            if(streamable) {
-              promise.notify = promiseNotify;
-            }
-
-            let setLoadProgress = () => {
-              let rounded = offset - (offset % 524288);
-
-              let downloadedAfter = 0;
-              for(let i in loadedParts) {
-                let o = +i;
-                if(o >= rounded) {
-                  downloadedAfter += 524288;
-                }
-              }
-
-              if(offset > rounded) {
-                downloadedAfter -= offset % 524288;
-              }
-
-              player.progress.setLoadProgress(Math.min(1, downloadedAfter / media.size + rounded / media.size));
-            };
-
-            promise.then(async(mp4Source: any) => {
+            promise.then(async() => {
               if(this.currentMessageID != message.mid) {
                 this.log.warn('media viewer changed video');
                 return;
               }
 
-              const isStream = mp4Source instanceof MP4Source;
-              if(isStream) {
-                promise.notify = promiseNotify;
-              }
-  
-              const url = isStream ? mp4Source.getURL() : media.url;
+              const url = media.url;
               if(target instanceof SVGSVGElement && (video.parentElement || !isSafari)) { // if video exists
                 if(!video.parentElement) {
                   div.firstElementChild.lastElementChild.append(video);
@@ -914,16 +872,7 @@ export class AppMediaViewer {
                 });
               });
   
-              player = createPlayer(streamable);
-              if(player && mp4Source instanceof MP4Source) {
-                player.progress.onSeek = (time) => {
-                  //this.log('seek', time);
-                  offset = mp4Source.seek(time);
-                  setLoadProgress();
-                };
-
-                this.log('lol');
-              }
+              player = createPlayer();
             });
 
             return promise;

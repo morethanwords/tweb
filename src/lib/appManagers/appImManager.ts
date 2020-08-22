@@ -768,16 +768,17 @@ export class AppImManager {
     window.addEventListener('blur', () => {
       animationIntersector.checkAnimations(true);
       
-      this.offline = true;
+      this.offline = $rootScope.idle.isIDLE = true;
       this.updateStatus();
       clearInterval(this.updateStatusInterval);
       
       window.addEventListener('focus', () => {
-        animationIntersector.checkAnimations(false);
-        
-        this.offline = false;
+        this.offline = $rootScope.idle.isIDLE = false;
         this.updateStatus();
         this.updateStatusInterval = window.setInterval(() => this.updateStatus(), 50e3);
+
+        // в обратном порядке
+        animationIntersector.checkAnimations(false);
       }, {once: true});
     });
     

@@ -1,15 +1,16 @@
-import FileManager from '../filemanager';
 import {RichTextProcessor} from '../richtextprocessor';
 import { CancellablePromise, deferredPromise } from '../polyfill';
 import { isObject, getFileURL } from '../utils';
 import opusDecodeController from '../opusDecodeController';
 import { MTDocument, inputDocumentFileLocation } from '../../types';
+import { getFileNameByLocation } from '../bin_utils';
+import appDownloadManager, { Download } from './appDownloadManager';
 
 class AppDocsManager {
   private docs: {[docID: string]: MTDocument} = {};
   private thumbs: {[docIDAndSize: string]: Promise<string>} = {};
   private downloadPromises: {[docID: string]: CancellablePromise<Blob>} = {};
-
+  
   public saveDoc(apiDoc: MTDocument, context?: any) {
     //console.log('saveDoc', apiDoc, this.docs[apiDoc.id]);
     if(this.docs[apiDoc.id]) {
@@ -47,13 +48,17 @@ class AppDocsManager {
           apiDoc.audioTitle = attribute.title;
           apiDoc.audioPerformer = attribute.performer;
           apiDoc.type = attribute.pFlags.voice && apiDoc.mime_type == "audio/ogg" ? 'voice' : 'audio';
+
+          if(apiDoc.type == 'audio') {
+            apiDoc.supportsStreaming = true;
+          }
           break;
 
         case 'documentAttributeVideo':
           apiDoc.duration = attribute.duration;
           apiDoc.w = attribute.w;
           apiDoc.h = attribute.h;
-          apiDoc.supportsStreaming = attribute.pFlags?.supports_streaming && apiDoc.size > 524288 && typeof(MediaSource) !== 'undefined';
+          apiDoc.supportsStreaming = attribute.pFlags?.supports_streaming/*  && apiDoc.size > 524288 */;
           if(apiDoc.thumbs && attribute.pFlags.round_message) {
             apiDoc.type = 'round';
           } else /* if(apiDoc.thumbs) */ {
@@ -134,6 +139,10 @@ class AppDocsManager {
       apiDoc.size = 0;
     }
 
+    if(!apiDoc.url) {
+      apiDoc.url = this.getFileURLByDoc(apiDoc);
+    }
+
     return apiDoc;
   }
   
@@ -181,9 +190,21 @@ class AppDocsManager {
     return 't_' + (doc.type || 'file') + doc.id + fileExt;
   }
 
-  public getFileURLByDoc(doc: MTDocument) {
+  public getFileURLByDoc(doc: MTDocument, download = false) {
     const inputFileLocation = this.getInputByID(doc);
-    return getFileURL('document', {dcID: doc.dc_id, location: inputFileLocation, size: doc.size, mimeType: doc.mime_type || 'application/octet-stream'});
+    const type = download ? 'download' : (doc.supportsStreaming ? 'stream' : 'document');
+
+    return getFileURL(type, {
+      dcID: doc.dc_id, 
+      location: inputFileLocation, 
+      size: doc.size, 
+      mimeType: doc.mime_type || 'application/octet-stream',
+      fileName: doc.file_name
+    });
+  }
+
+  public getInputFileName(doc: MTDocument) {
+    return getFileNameByLocation(this.getInputByID(doc));
   }
 
   public downloadDoc(docID: string | MTDocument, toFileEntry?: any): CancellablePromise<Blob> {
@@ -252,6 +273,56 @@ class AppDocsManager {
     return this.downloadPromises[doc.id] = deferred;
   }
 
+  public downloadDocNew(docID: string | MTDocument, toFileEntry?: any): Download {
+    const doc = this.getDoc(docID);
+
+    if(doc._ == 'documentEmpty') {
+      throw new Error('Document empty!');
+    }
+
+    const fileName = this.getInputFileName(doc);
+
+    let download = appDownloadManager.getDownload(fileName);
+    if(download) {
+      return download;
+    }
+
+    download = appDownloadManager.download(fileName, doc.url);
+    //const _download: Download = {...download};
+
+    //_download.promise = _download.promise.then(async(blob) => {
+    download.promise = download.promise.then(async(blob) => {
+      if(blob) {
+        doc.downloaded = true;
+
+        if(doc.type == 'voice' && !opusDecodeController.isPlaySupported()) {
+          let reader = new FileReader();
+
+          await new Promise((resolve, reject) => {
+            reader.onloadend = (e) => {
+              let uint8 = new Uint8Array(e.target.result as ArrayBuffer);
+              //console.log('sending uint8 to decoder:', uint8);
+              opusDecodeController.decode(uint8).then(result => {
+                doc.url = result.url;
+                resolve();
+              }, (err) => {
+                delete doc.downloaded;
+                reject(err);
+              });
+            };
+  
+            reader.readAsArrayBuffer(blob);
+          });
+        }
+      }
+
+      return blob;
+    });
+
+    //return this.downloadPromisesNew[doc.id] = _download;
+    return download;
+  }
+
   public downloadDocThumb(docID: any, thumbSize: string) {
     let doc = this.getDoc(docID);
 
@@ -273,33 +344,12 @@ class AppDocsManager {
   public hasDownloadedThumb(docID: string, thumbSize: string) {
     return !!this.thumbs[docID + '-' + thumbSize];
   }
-  
-  public async saveDocFile(docID: string) {
-    var doc = this.docs[docID];
-    var fileName = this.getFileName(doc);
-    var ext = (fileName.split('.', 2) || [])[1] || '';
 
-    try {
-      let writer = FileManager.chooseSaveFile(fileName, ext, doc.mime_type, doc.size);
-      await writer.ready;
+  public saveDocFile(doc: MTDocument) {
+    const url = this.getFileURLByDoc(doc, true);
+    const fileName = this.getInputFileName(doc);
 
-      let promise = this.downloadDoc(docID, writer);
-      promise.then(() => {
-        writer.close();
-        console.log('saved doc', doc);
-      });
-
-      //console.log('got promise from downloadDoc', promise);
-  
-      return {promise};
-    } catch(err) {
-      let promise = this.downloadDoc(docID);
-      promise.then((blob) => {
-        FileManager.download(blob, doc.mime_type, fileName)
-      });
-
-      return {promise};
-    }
+    return appDownloadManager.downloadToDisc(fileName, url);
   }
 }
 

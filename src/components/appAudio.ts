@@ -48,11 +48,8 @@ class AppAudio {
 
     audio.addEventListener('pause', this.onPause);
     audio.addEventListener('ended', this.onEnded);
-
-    appDocsManager.downloadDoc(doc.id).then(() => {
-      this.container.append(audio);
-      source.src = doc.url;
-    }, () => {
+    
+    const onError = (e: Event) => {
       if(this.nextMid == mid) {
         this.loadSiblingsAudio(doc.type as 'voice' | 'audio', mid).then(() => {
           if(this.nextMid && this.audios[this.nextMid]) {
@@ -60,7 +57,16 @@ class AppAudio {
           }
         })
       }
-    });
+    };
+
+    audio.addEventListener('error', onError);
+
+    const downloadPromise: Promise<any> = !doc.supportsStreaming ? appDocsManager.downloadDocNew(doc.id).promise : Promise.resolve();
+
+    downloadPromise.then(() => {
+      this.container.append(audio);
+      source.src = doc.url;
+    }, onError);
 
     return this.audios[mid] = audio;
   }

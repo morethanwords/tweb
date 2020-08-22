@@ -184,10 +184,8 @@ html.no-touch .default.is-playing:hover .default__controls {
 
     &__loaded {
       background: rgba(255, 255, 255, 0.38);
-      position: absolute;
-      width: calc(100% - 16px);
-      left: 0;
-      top: 0;
+      left: 11px;
+      width: calc(100% - 11px);
     }
   }
 }
@@ -272,6 +270,13 @@ video::-webkit-media-controls-enclosure {
     width: 100%;
     cursor: pointer;
     margin: 0;
+  }
+
+  &__loaded {
+    position: absolute;
+    left: 12px;
+    top: 0;
+    width: calc(100% - 12px);
   }
 }
 

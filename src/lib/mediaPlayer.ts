@@ -11,7 +11,7 @@ export class MediaProgressLine {
 
   public onSeek: (time: number) => void;
 
-  constructor(private media: HTMLAudioElement | HTMLVideoElement, streamable = false) {
+  constructor(private media: HTMLAudioElement | HTMLVideoElement, private streamable = false) {
     this.container = document.createElement('div');
     this.container.classList.add('media-progress');
 
@@ -22,6 +22,7 @@ export class MediaProgressLine {
       this.filledLoad = document.createElement('div');
       this.filledLoad.classList.add('media-progress__filled', 'media-progress__loaded');
       this.container.append(this.filledLoad);
+      //this.setLoadProgress();
     }
 
     let seek = this.seek = document.createElement('input');
@@ -62,6 +63,10 @@ export class MediaProgressLine {
       window.cancelAnimationFrame(this.progressRAF);
     }
 
+    if(this.streamable) {
+      this.setLoadProgress();
+    }
+
     this.progressRAF = window.requestAnimationFrame(r);
   };
 
@@ -96,7 +101,29 @@ export class MediaProgressLine {
     this.mousedown = false;
   };
 
-  public setLoadProgress(percents: number) {
+  onProgress = (e: Event) => {
+    this.setLoadProgress();
+  };
+
+  private setLoadProgress() {
+    const buf = this.media.buffered;
+    const numRanges = buf.length;
+
+    const currentTime = this.media.currentTime;
+    let nearestStart = 0, end = 0;
+    for(let i = 0; i < numRanges; ++i) {
+      const start = buf.start(i);
+      if(currentTime >= start && start >= nearestStart) {
+        nearestStart = start;
+        end = buf.end(i);
+      }
+
+      //console.log('onProgress range:', i, buf.start(i), buf.end(i), this.media);
+    }
+
+    //console.log('onProgress correct range:', nearestStart, end, this.media);
+
+    const percents = this.media.duration ? end / this.media.duration : 0;
     this.filledLoad.style.transform = 'scaleX(' + percents + ')';
   }
 
@@ -120,6 +147,7 @@ export class MediaProgressLine {
   private setListeners() {
     this.media.addEventListener('ended', this.onEnded);
     this.media.addEventListener('play', this.onPlay);
+    this.streamable && this.media.addEventListener('progress', this.onProgress);
 
     this.container.addEventListener('mousemove', this.onMouseMove);
     this.container.addEventListener('mousedown', this.onMouseDown);
@@ -143,6 +171,7 @@ export class MediaProgressLine {
     this.media.removeEventListener('loadeddata', this.onLoadedData);
     this.media.removeEventListener('ended', this.onEnded);
     this.media.removeEventListener('play', this.onPlay);
+    this.streamable && this.media.removeEventListener('progress', this.onProgress);
 
     this.container.removeEventListener('mousemove', this.onMouseMove);
     this.container.removeEventListener('mousedown', this.onMouseDown);

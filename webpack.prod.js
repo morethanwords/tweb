@@ -73,8 +73,7 @@ module.exports = merge(common, {
             || file.includes('pako')
             || file.includes('Worker.min.js')
             || file.includes('recorder.min.js')
-            || file.includes('.hbs')
-            || file.includes('mp4box')) return;
+            || file.includes('.hbs')) return;
 
           let p = path.resolve(buildDir + file);
           if(!newlyCreatedAssets[file] && ['.gz', '.js'].find(ext => file.endsWith(ext)) !== undefined) {

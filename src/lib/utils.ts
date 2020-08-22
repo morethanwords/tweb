@@ -151,8 +151,18 @@ export function getRichElementValue(node: any, lines: string[], line: string[], 
   }
 } */
 
+type BroadcastKeys = 'download_progress' | 'user_update' | 'user_auth' | 'peer_changed' | 
+  'filter_delete' | 'filter_update' | 'message_edit' | 'dialog_draft' | 'messages_pending' |
+  'history_append' | 'history_update' | 'dialogs_multiupdate' | 'dialog_unread' | 'dialog_flush' |
+  'dialog_drop' | 'dialog_migrate' | 'dialog_top' | 'history_reply_markup' | 'history_multiappend' | 
+  'messages_read' | 'history_delete' | 'history_forbidden' | 'history_reload' | 'message_views' | 
+  'message_sent' | 'history_request' | 'messages_downloaded' | 'contacts_update' | 'avatar_update' |
+  'stickers_installed' | 'stickers_deleted' | 'chat_full_update' | 'peer_pinned_message' | 
+  'poll_update' | 'dialogs_archived_unread' | 'audio_play' | 'audio_pause' | 'chat_update' | 
+  'apiUpdate' | 'stateSynchronized' | 'channel_settings' | 'webpage_updated' | 'draft_updated';
+
 export const $rootScope = {
-  $broadcast: (name: string, detail?: any) => {
+  $broadcast: (name: BroadcastKeys, detail?: any) => {
     if(name != 'user_update') {
       console.debug(dT(), 'Broadcasting ' + name + ' event, with args:', detail);
     }
@@ -160,8 +170,13 @@ export const $rootScope = {
     let myCustomEvent = new CustomEvent(name, {detail});
     document.dispatchEvent(myCustomEvent);
   },
-  $on: (name: string, callback: any) => {
+  $on: (name: BroadcastKeys, callback: (e: CustomEvent) => any) => {
+    // @ts-ignore
     document.addEventListener(name, callback);
+  },
+  $off: (name: BroadcastKeys, callback: (e: CustomEvent) => any) => {
+    // @ts-ignore
+    document.removeEventListener(name, callback);
   },
 
   selectedPeerID: 0,
@@ -523,11 +538,12 @@ export function getEmojiToneIndex(input: string) {
   return match ? 5 - (57343 - match[0].charCodeAt(0)) : 0;
 }
 
-export function getFileURL(type: 'photo' | 'thumb' | 'document', options: {
+export function getFileURL(type: 'photo' | 'thumb' | 'document' | 'stream' | 'download', options: {
   dcID: number,
   location: InputFileLocation | FileLocation,
   size?: number,
-  mimeType?: string
+  mimeType?: string,
+  fileName?: string
 }) {
   //console.log('getFileURL', location);
   //const perf = performance.now();

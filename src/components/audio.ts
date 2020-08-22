@@ -1,12 +1,12 @@
 import appDocsManager from "../lib/appManagers/appDocsManager";
 import { RichTextProcessor } from "../lib/richtextprocessor";
 import { formatDate } from "./wrappers";
-import ProgressivePreloader from "./preloader";
-import { CancellablePromise } from "../lib/polyfill";
+import ProgressivePreloader from "./preloader_new";
 import { MediaProgressLine } from "../lib/mediaPlayer";
 import appAudio from "./appAudio";
 import { MTDocument } from "../types";
 import { mediaSizes } from "../lib/config";
+import { Download } from "../lib/appManagers/appDownloadManager";
 
 // https://github.com/LonamiWebs/Telethon/blob/4393ec0b83d511b6a20d8a20334138730f084375/telethon/utils.py#L1285
 export function decodeWaveform(waveform: Uint8Array | number[]) {
@@ -233,7 +233,7 @@ function wrapAudio(doc: MTDocument, audioEl: AudioElement) {
     const subtitleDiv = audioEl.querySelector('.audio-subtitle') as HTMLDivElement;
     let launched = false;
 
-    let progressLine = new MediaProgressLine(audioEl.audio);
+    let progressLine = new MediaProgressLine(audioEl.audio, doc.supportsStreaming);
 
     audioEl.addAudioListener('ended', () => {
       audioEl.classList.remove('audio-show-progress');
@@ -295,18 +295,22 @@ export default class AudioElement extends HTMLElement {
 
     const durationStr = String(doc.duration | 0).toHHMMSS(true);
 
-    this.innerHTML = `
-    <div class="audio-toggle audio-ico tgico-largeplay"></div>
-    <div class="audio-download">${uploading ? '' : '<div class="tgico-download"></div>'}</div>`;
+    this.innerHTML = `<div class="audio-toggle audio-ico tgico-largeplay"></div>`;
+
+    const downloadDiv = document.createElement('div');
+    downloadDiv.classList.add('audio-download');
+    if(!uploading && doc.type != 'audio') {
+      downloadDiv.innerHTML = '<div class="tgico-download"></div>';
+    }
+
+    if(doc.type != 'audio' && !uploading) {
+      this.append(downloadDiv);
+    }
 
     const onTypeLoad = doc.type == 'voice' ? wrapVoiceMessage(doc, this) : wrapAudio(doc, this);
-
-    const downloadDiv = this.querySelector('.audio-download') as HTMLDivElement;
+    
     const audioTimeDiv = this.querySelector('.audio-time') as HTMLDivElement;
     audioTimeDiv.innerHTML = durationStr;
-
-    let preloader: ProgressivePreloader = this.preloader;
-    let promise: CancellablePromise<Blob>;
 
     const onLoad = () => {
       const audio = this.audio = appAudio.addAudio(doc, mid);
@@ -351,35 +355,64 @@ export default class AudioElement extends HTMLElement {
     };
 
     if(!uploading) {
-      const onClick = () => {
-        if(!promise) {
-          if(!preloader) {
-            preloader = new ProgressivePreloader(null, true);
+      let preloader: ProgressivePreloader = this.preloader;
+
+      if(doc.type == 'voice') {
+        let download: Download;
+
+        const onClick = () => {
+          if(!download) {
+            if(!preloader) {
+              preloader = new ProgressivePreloader(null, true);
+            }
+            
+            download = appDocsManager.downloadDocNew(doc.id);
+            preloader.attach(downloadDiv, true, appDocsManager.getInputFileName(doc));
+            
+            download.promise.then(() => {
+              downloadDiv.remove();
+              this.removeEventListener('click', onClick);
+              onLoad();
+            }).catch(err => {
+              if(err.name === 'AbortError') {
+                download = null;
+              }
+            }).finally(() => {
+              downloadDiv.classList.remove('downloading');
+            });
+            
+            downloadDiv.classList.add('downloading');
+          } else {
+            download.controller.abort();
           }
-          
-          promise = appDocsManager.downloadDoc(doc.id);
-          preloader.attach(downloadDiv, true, promise);
-          
-          promise.then(() => {
-            preloader = null;
-            downloadDiv.classList.remove('downloading');
-            downloadDiv.remove();
-            this.removeEventListener('click', onClick);
-            onLoad();
-          });
-          
-          downloadDiv.classList.add('downloading');
-        } else {
-          downloadDiv.classList.remove('downloading');
-          promise.cancel();
-          promise = null;
-        }
-      };
+        };
+    
+        this.addEventListener('click', onClick);
+        this.click();
+      } else {
+        const r = () => {
+          onLoad();
+
+          if(!preloader) {
+            preloader = new ProgressivePreloader(null, false);
+          }
   
-      this.addEventListener('click', onClick);
-      this.click();
+          preloader.attach(downloadDiv);
+          this.append(downloadDiv);
+  
+          new Promise((resolve) => {
+            if(this.audio.readyState >= 2) resolve();
+            else this.addAudioListener('canplay', resolve);
+          }).then(() => {
+            downloadDiv.remove();
+            this.audio.play();
+          });
+        };
+        
+        this.addEventListener('click', r, {once: true});
+      }
     } else {
-      this.preloader.attach(this.querySelector('.audio-download'), false);
+      this.preloader.attach(downloadDiv, false);
       //onLoad();
     }
   }

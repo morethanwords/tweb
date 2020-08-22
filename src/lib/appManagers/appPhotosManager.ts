@@ -1,10 +1,10 @@
 import appUsersManager from "./appUsersManager";
 import { calcImageInBox, isObject, getFileURL } from "../utils";
-import fileManager from '../filemanager';
-import { bytesFromHex } from "../bin_utils";
+import { bytesFromHex, getFileNameByLocation } from "../bin_utils";
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
-import { MTPhotoSize, inputPhotoFileLocation, inputDocumentFileLocation, InputFileLocation, FileLocation } from "../../types";
+import { MTPhotoSize, inputPhotoFileLocation, inputDocumentFileLocation, FileLocation } from "../../types";
+import appDownloadManager from "./appDownloadManager";
 
 export type MTPhoto = {
   _: 'photo' | 'photoEmpty' | string,
@@ -58,38 +58,6 @@ export class AppPhotosManager {
     if(!photo.id) {
       console.warn('no apiPhoto.id', photo);
     } else this.photos[photo.id] = photo as any;
-    
-    /* if(!('sizes' in photo)) return;
-    
-    photo.sizes.forEach((photoSize: any) => {
-      if(photoSize._ == 'photoCachedSize') {
-        apiFileManager.saveSmallFile(photoSize.location, photoSize.bytes);
-        
-        console.log('clearing photo cached size', photo);
-        
-        // Memory
-        photoSize.size = photoSize.bytes.length;
-        delete photoSize.bytes;
-        photoSize._ = 'photoSize';
-      }
-    }); */
-
-    /* if(!photo.downloaded) {
-      photo.downloaded = apiFileManager.isFileExists({
-        _: 'inputPhotoFileLocation',
-        id: photo.id,
-        access_hash: photo.access_hash,
-        file_reference: photo.file_reference
-      });
-      // apiFileManager.isFileExists({
-      //   _: 'inputPhotoFileLocation',
-      //   id: photo.id,
-      //   access_hash: photo.access_hash,
-      //   file_reference: photo.file_reference
-      // }).then(downloaded => {
-      //   photo.downloaded = downloaded;
-      // });
-    } */
 
     return photo;
   }
@@ -326,52 +294,22 @@ export class AppPhotosManager {
   }
 
   public downloadPhoto(photoID: string) {
-    var photo = this.photos[photoID];
-    var ext = 'jpg';
-    var mimeType = 'image/jpeg';
-    var fileName = 'photo' + photoID + '.' + ext;
-    var fullWidth = this.windowW;
-    var fullHeight = this.windowH;
-    var fullPhotoSize = this.choosePhotoSize(photo, fullWidth, fullHeight);
-    var inputFileLocation: inputDocumentFileLocation | inputPhotoFileLocation = {
-      // @ts-ignore
+    const photo = this.photos[photoID];
+    const fullWidth = this.windowW;
+    const fullHeight = this.windowH;
+    const fullPhotoSize = this.choosePhotoSize(photo, fullWidth, fullHeight);
+    const location: inputDocumentFileLocation | inputPhotoFileLocation = {
       _: photo._ == 'document' ? 'inputDocumentFileLocation' : 'inputPhotoFileLocation',
       id: photo.id,
       access_hash: photo.access_hash,
       file_reference: photo.file_reference,
       thumb_size: fullPhotoSize.type
     };
+
+    const url = getFileURL('download', {dcID: photo.dc_id, location, size: fullPhotoSize.size, fileName: 'photo' + photo.id + '.jpg'});
+    const fileName = getFileNameByLocation(location);
     
-    try { // photo.dc_id, location, photoSize.size
-      let writer = fileManager.chooseSaveFile(fileName, ext, mimeType, fullPhotoSize.size);
-      writer.ready.then(() => {
-        console.log('ready');
-        apiManager.downloadFile(photo.dc_id, inputFileLocation, fullPhotoSize.size, {
-          mimeType: mimeType,
-          toFileEntry: writer
-        }).then(() => {
-          writer.close();
-          //writer.abort();
-          console.log('file save done', fileName, ext, mimeType, writer);
-        }, (e: any) => {
-          console.log('photo download failed', e);
-        });
-      });
-    } catch(err) {
-      console.error('err', err);
-      
-      /* var cachedBlob = apiFileManager.getCachedFile(inputFileLocation)
-      if (cachedBlob) {
-        return fileManager.download(cachedBlob, mimeType, fileName);
-      } */
-      
-      apiManager.downloadFile(photo.dc_id, inputFileLocation, fullPhotoSize.size, {mimeType: mimeType})
-      .then((blob: Blob) => {
-        fileManager.download(blob, mimeType, fileName);
-      }, (e: any) => {
-        console.log('photo download failed', e);
-      });
-    }
+    appDownloadManager.downloadToDisc(fileName, url);
   }
 }
 

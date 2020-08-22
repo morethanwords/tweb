@@ -89,6 +89,17 @@ export type AccountPassword = {
   secure_random: Uint8Array,
 };
 
+export type storageFileType = 'storage.fileUnknown' | 'storage.filePartial' | 'storage.fileJpeg' | 
+  'storage.fileGif' | 'storage.filePng' | 'storage.filePdf' | 'storage.fileMp3' | 'storage.fileMov' | 
+  'storage.fileMp4' | 'storage.fileWebp';
+
+export type UploadFile = {
+  _: 'upload.file',
+  type: storageFileType,
+  mtime: number,
+  bytes: Uint8Array
+};
+
 export type FileLocation = {
   _: 'fileLocationToBeDeprecated',
   volume_id: string,

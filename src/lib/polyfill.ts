@@ -1,4 +1,4 @@
-import { bytesToHex, bytesFromHex, dT, bufferConcats } from "./bin_utils";
+import { bytesToHex, bytesFromHex, bufferConcats } from "./bin_utils";
 // @ts-ignore
 import {SecureRandom} from 'jsbn';
 
@@ -77,16 +77,16 @@ Array.prototype.findAndSplice = function<T>(verify: (value: T, index?: number, a
 };
 
 String.prototype.toHHMMSS = function(leadZero = false) {
-  let sec_num = parseInt(this + '', 10);
-  let hours: any = Math.floor(sec_num / 3600);
+  const sec_num = parseInt(this + '', 10);
+  const hours = Math.floor(sec_num / 3600);
   let minutes: any = Math.floor((sec_num - (hours * 3600)) / 60);
   let seconds: any = sec_num - (hours * 3600) - (minutes * 60);
   
-  if(hours   < 10) hours   = "0" + hours;
+  if(hours) leadZero = true;
   if(minutes < 10) minutes = leadZero ? "0" + minutes : minutes;
   if(seconds < 10) seconds = "0" + seconds;
-  return minutes + ':' + seconds;
-}
+  return (hours ? /* ('0' + hours).slice(-2) */hours + ':' : '') + minutes + ':' + seconds;
+};
 
 declare global {
   interface Uint8Array {

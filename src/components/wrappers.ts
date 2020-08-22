@@ -5,6 +5,7 @@ import LottieLoader from '../lib/lottieLoader';
 import appDocsManager from "../lib/appManagers/appDocsManager";
 import { formatBytes, getEmojiToneIndex } from "../lib/utils";
 import ProgressivePreloader from './preloader';
+import ProgressivePreloaderNew from './preloader_new';
 import LazyLoadQueue from './lazyLoadQueue';
 import VideoPlayer from '../lib/mediaPlayer';
 import { RichTextProcessor } from '../lib/richtextprocessor';
@@ -18,6 +19,7 @@ import { mediaSizes } from '../lib/config';
 import { MTDocument, MTPhotoSize } from '../types';
 import animationIntersector from './animationIntersector';
 import AudioElement from './audio';
+import { Download } from '../lib/appManagers/appDownloadManager';
 
 export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue}: {
   doc: MTDocument, 
@@ -93,14 +95,14 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     if(message.media.preloader) { // means upload
       (message.media.preloader as ProgressivePreloader).attach(container, undefined, undefined, false);
     } else if(!doc.downloaded) {
-      const promise = appDocsManager.downloadDoc(doc.id);
+      /* const promise = appDocsManager.downloadDoc(doc.id);
       
       //if(!doc.supportsStreaming) {
         const preloader = new ProgressivePreloader(container, true);
         preloader.attach(container, true, promise, false);
       //}
 
-      await promise;
+      await promise; */
     }
 
     if(middleware && !middleware()) {
@@ -215,34 +217,35 @@ export function wrapDocument(doc: MTDocument, withTime = false, uploading = fals
   
   if(!uploading) {
     let downloadDiv = docDiv.querySelector('.document-download') as HTMLDivElement;
-    let preloader: ProgressivePreloader;
-    let promise: CancellablePromise<Blob>;
+    let preloader: ProgressivePreloaderNew;
+    let download: Download;
     
     docDiv.addEventListener('click', () => {
-      if(!promise) {
+      if(!download) {
         if(downloadDiv.classList.contains('downloading')) {
           return; // means not ready yet
         }
         
         if(!preloader) {
-          preloader = new ProgressivePreloader(null, true);
+          preloader = new ProgressivePreloaderNew(null, true);
         }
+
+        download = appDocsManager.saveDocFile(doc);
+        preloader.attach(downloadDiv, true, appDocsManager.getInputFileName(doc));
         
-        appDocsManager.saveDocFile(doc.id).then(res => {
-          promise = res.promise;
-          
-          preloader.attach(downloadDiv, true, promise);
-          
-          promise.then(() => {
-            downloadDiv.classList.remove('downloading');
-            downloadDiv.remove();
-          });
-        })
+        download.promise.then(() => {
+          downloadDiv.remove();
+        }).catch(err => {
+          if(err.name === 'AbortError') {
+            download = null;
+          }
+        }).finally(() => {
+          downloadDiv.classList.remove('downloading');
+        });
         
         downloadDiv.classList.add('downloading');
       } else {
-        downloadDiv.classList.remove('downloading');
-        promise = null;
+        download.controller.abort();
       }
     });
   }
@@ -480,7 +483,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
   }
   
   let downloaded = doc.downloaded;
-  let load = () => appDocsManager.downloadDoc(doc.id).then(blob => {
+  let load = () => appDocsManager.downloadDocNew(doc.id).promise.then(blob => {
     //console.log('loaded sticker:', doc, div);
     if(middleware && !middleware()) return;
 

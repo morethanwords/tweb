@@ -1,4 +1,4 @@
-import { isInDOM } from "../lib/utils";
+import { isInDOM, $rootScope } from "../lib/utils";
 import { RLottiePlayer } from "../lib/lottieLoader";
 
 export interface AnimationItem {
@@ -18,6 +18,8 @@ export class AnimationIntersector {
 
   constructor() {
     this.observer = new IntersectionObserver((entries) => {
+      if($rootScope.idle.isIDLE) return;
+
       for(const entry of entries) {
         const target = entry.target;
 
@@ -72,6 +74,8 @@ export class AnimationIntersector {
   }
 
   public checkAnimations(blurred?: boolean, group?: string, destroy = false) {
+    if($rootScope.idle.isIDLE) return;
+    
     const groups = group /* && false */ ? [group] : Object.keys(this.byGroups);
 
     if(group && !this.byGroups[group]) {

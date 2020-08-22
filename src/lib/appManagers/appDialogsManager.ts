@@ -924,7 +924,7 @@ export class AppDialogsManager {
       dom = this.getDialogDom(dialog.peerID);
 
       if(!dom) {
-        this.log.error('no dom for dialog:', dialog, lastMessage, dom, highlightWord);
+        //this.log.error('no dom for dialog:', dialog, lastMessage, dom, highlightWord);
         return;
       }
     }
@@ -1034,7 +1034,7 @@ export class AppDialogsManager {
     }
 
     if(!dom) {
-      this.log.error('setUnreadMessages no dom!', dialog);
+      //this.log.error('setUnreadMessages no dom!', dialog);
       return;
     }
 
