@@ -4,9 +4,9 @@ import cacheStorage from "../cacheStorage";
 import FileManager from "../filemanager";
 import apiManager from "./apiManager";
 import { deferredPromise, CancellablePromise } from "../polyfill";
-import appWebpManager from "../appManagers/appWebpManager";
 import { logger } from "../logger";
 import { InputFileLocation, FileLocation, UploadFile } from "../../types";
+import { isSafari } from "../../helpers/userAgent";
 
 type Delayed = {
   offset: number, 
@@ -21,7 +21,6 @@ export type DownloadOptions = {
   fileName?: string,
   mimeType?: string,
   limitPart?: number,
-  stickerType?: number,
   processPart?: (bytes: Uint8Array, offset?: number, queue?: Delayed[]) => Promise<any>
 };
 
@@ -41,6 +40,8 @@ export class ApiFileManager {
     }>
   } = {};
   public downloadActives: {[dcID: string]: number} = {};
+
+  public webpConvertPromises: {[fileName: string]: CancellablePromise<Uint8Array>} = {};
 
   private log: ReturnType<typeof logger> = logger('AFM');
 
@@ -151,14 +152,10 @@ export class ApiFileManager {
     let size = options.size ?? 0;
     let {dcID, location} = options;
 
-    let processSticker = false;
-    if(options.stickerType == 1 && !appWebpManager.isSupported()) {
-      if(size > 524288) {
-        delete options.stickerType;
-      } else {
-        processSticker = true;
-        options.mimeType = 'image/png';
-      }
+    let processWebp = false;
+    if(options.mimeType == 'image/webp' && isSafari) {
+      processWebp = true;
+      options.mimeType = 'image/png';
     }
 
     // this.log('Dload file', dcID, location, size)
@@ -172,7 +169,7 @@ export class ApiFileManager {
       if(options.processPart) {
         return cachedPromise.then((blob) => {
           return this.convertBlobToBytes(blob).then(bytes => {
-            options.processPart(bytes)
+            options.processPart(bytes);
             return blob;
           });
         });
@@ -204,13 +201,13 @@ export class ApiFileManager {
 
     let canceled = false;
     let resolved = false;
-    let cacheFileWriter: any;
+    let cacheFileWriter: ReturnType<typeof FileManager['getFakeFileWriter']>;
     let errorHandler = (error: any) => {
       deferred.reject(error);
       errorHandler = () => {};
 
       if(cacheFileWriter && (!error || error.type != 'DOWNLOAD_CANCELED')) {
-        cacheFileWriter.truncate(0);
+        cacheFileWriter.truncate();
       }
     };
 
@@ -269,8 +266,22 @@ export class ApiFileManager {
             await options.processPart(bytes, offset, delayed);
           }
           
-          if(processSticker) {
-            return appWebpManager.convertToPng(bytes);
+          if(processWebp) {
+            const convertPromise = deferredPromise<Uint8Array>();
+
+            (self as any as ServiceWorkerGlobalScope)
+            .clients
+            .matchAll({includeUncontrolled: false, type: 'window'})
+            .then((listeners) => {
+              if(!listeners.length) {
+                return;
+              }
+
+              listeners[0].postMessage({type: 'convertWebp', payload: {fileName, bytes}});
+            });
+
+            return await (this.webpConvertPromises[fileName] = convertPromise);
+            //return appWebpManager.convertToPng(bytes);
           }
   
           return bytes;

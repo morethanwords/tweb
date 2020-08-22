@@ -136,14 +136,14 @@ class ConfigStorage {
   }
 }
 
-const configStorage = new ConfigStorage();
-
 class AppStorage {
-  private isWebWorker: boolean;
+  private isWorker: boolean;
   private taskID = 0;
   private tasks: {[taskID: number]: (result: any) => void} = {};
   //private log = (...args: any[]) => console.log('[SW LS]', ...args);
   private log = (...args: any[]) => {};
+
+  private configStorage: ConfigStorage;
 
   constructor() {
     if(Modes.test) {
@@ -152,15 +152,23 @@ class AppStorage {
 
     // @ts-ignore
     //this.isWebWorker = typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope;
-    this.isWebWorker = typeof ServiceWorkerGlobalScope !== 'undefined' && self instanceof ServiceWorkerGlobalScope;
+    this.isWorker = typeof ServiceWorkerGlobalScope !== 'undefined' && self instanceof ServiceWorkerGlobalScope;
+
+    if(!this.isWorker) {
+      this.configStorage = new ConfigStorage();
+    }
   }
 
   public setPrefix(newPrefix: string) {
-    configStorage.keyPrefix = newPrefix;
+    if(this.configStorage) {
+      this.configStorage.keyPrefix = newPrefix;
+    }
   }
 
   public noPrefix() {
-    configStorage.noPrefix = true;
+    if(this.configStorage) {
+      this.configStorage.noPrefix = true;
+    }
   }
 
   public finishTask(taskID: number, result: any) {
@@ -175,9 +183,9 @@ class AppStorage {
     delete this.tasks[taskID];
   }
 
-  private proxy<T>(methodName: string, ..._args: any[]) {
+  private proxy<T>(methodName: 'set' | 'get' | 'remove' | 'clear', ..._args: any[]) {
     return new Promise<T>((resolve, reject) => {
-      if(this.isWebWorker) {
+      if(this.isWorker) {
         const taskID = this.taskID++;
 
         this.tasks[taskID] = resolve;
@@ -203,8 +211,7 @@ class AppStorage {
           resolve(result);
         });
 
-        // @ts-ignore
-        configStorage[methodName].apply(configStorage, args);
+        this.configStorage[methodName].apply(this.configStorage, args as any);
       }
     });
   }

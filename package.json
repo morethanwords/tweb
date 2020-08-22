@@ -38,6 +38,7 @@
     "compression-webpack-plugin": "^3.1.0",
     "css-loader": "^3.5.3",
     "express": "^4.17.1",
+    "fast-png": "^5.0.2",
     "fastdom": "^1.0.9",
     "file-loader": "^4.3.0",
     "handlebars": "^4.7.6",

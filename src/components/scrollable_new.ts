@@ -1,5 +1,5 @@
 import { logger, LogLevels } from "../lib/logger";
-import smoothscroll from '../lib/smoothscroll';
+import smoothscroll from '../vendor/smoothscroll';
 import { touchSupport, isSafari } from "../lib/config";
 //import { isInDOM } from "../lib/utils";
 (window as any).__forceSmoothScrollPolyfill__ = true;

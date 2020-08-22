@@ -9,6 +9,7 @@ import networkerFactory from "./networkerFactory";
 import apiFileManager, { DownloadOptions } from './apiFileManager';
 import { getFileNameByLocation } from '../bin_utils';
 import { logger, LogLevels } from '../logger';
+import { isSafari } from '../../helpers/userAgent';
 
 const log = logger('SW'/* , LogLevels.error */);
 
@@ -16,34 +17,11 @@ const ctx = self as any as ServiceWorkerGlobalScope;
 
 //console.error('INCLUDE !!!', new Error().stack);
 
-/**
- * Returns true when run in WebKit derived browsers.
- * This is used as a workaround for a memory leak in Safari caused by using Transferable objects to
- * transfer data between WebWorkers and the main thread.
- * https://github.com/mapbox/mapbox-gl-js/issues/8771
- *
- * This should be removed once the underlying Safari issue is fixed.
- *
- * @private
- * @param scope {WindowOrWorkerGlobalScope} Since this function is used both on the main thread and WebWorker context,
- *      let the calling scope pass in the global scope object.
- * @returns {boolean}
- */
-var _isSafari: boolean = null;
-function isSafari(scope: any) {
-  if(_isSafari == null) {
-    var userAgent = scope.navigator ? scope.navigator.userAgent : null;
-    _isSafari = !!scope.safari ||
-    !!(userAgent && (/\b(iPad|iPhone|iPod)\b/.test(userAgent) || (!!userAgent.match('Safari') && !userAgent.match('Chrome'))));
-  }
-  return _isSafari;
-}
-
 function isObject(object: any) {
   return typeof(object) === 'object' && object !== null;
 }
 
-function fillTransfer(transfer: any, obj: any) {
+/* function fillTransfer(transfer: any, obj: any) {
   if(!obj) return;
   
   if(obj instanceof ArrayBuffer) {
@@ -59,7 +37,7 @@ function fillTransfer(transfer: any, obj: any) {
       fillTransfer(transfer, value);
     });
   }
-}
+} */
 
 /**
  * Respond to request
@@ -83,7 +61,7 @@ function respond(client: Client | ServiceWorker | MessagePort, ...args: any[]) {
  * Broadcast Notification
  */
 function notify(...args: any[]) {
-  ctx.clients.matchAll({ includeUncontrolled: false, type: 'window' }).then((listeners) => {
+  ctx.clients.matchAll({includeUncontrolled: false, type: 'window'}).then((listeners) => {
     if(!listeners.length) {
       //console.trace('no listeners?', self, listeners);
       return;
@@ -108,6 +86,13 @@ ctx.addEventListener('message', async(e) => {
   if(e.data.useLs) {
     AppStorage.finishTask(e.data.taskID, e.data.args);
     return;
+  } else if(e.data.type == 'convertWebp') {
+    const {fileName, bytes} = e.data.payload;
+    const deferred = apiFileManager.webpConvertPromises[fileName];
+    if(deferred) {
+      deferred.resolve(bytes);
+      delete apiFileManager.webpConvertPromises[fileName];
+    }
   }
 
   switch(e.data.task) {
@@ -288,7 +273,7 @@ ctx.addEventListener('fetch', (event: FetchEvent): void => {
 
           if(info.mimeType) headers['Content-Type'] = info.mimeType;
 
-          if(isSafari(ctx)) {
+          if(isSafari) {
             ab = ab.slice(offset - alignedOffset, end - alignedOffset + 1);
             headers['Content-Range'] = `bytes ${offset}-${offset + ab.byteLength - 1}/${info.size || '*'}`;
             headers['Content-Length'] = `${ab.byteLength}`;

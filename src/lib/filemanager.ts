@@ -1,6 +1,6 @@
 import {blobConstruct} from './bin_utils';
 
-class FileManager {
+export class FileManager {
   public blobSupported = true;
   
   constructor() {
@@ -13,22 +13,6 @@ class FileManager {
   
   public isAvailable() {
     return this.blobSupported;
-  }
-
-  public copy(fromFileEntry: any, toFileEntry: any) {
-    return this.write(toFileEntry, fromFileEntry).then(() => {
-      console.log('copy success');
-      return toFileEntry;
-    }, (error: any) => {
-      console.error('copy error 1:', error);
-      try {
-        toFileEntry.truncate(0);
-      } catch(e) {
-        console.error('copy error', e);
-      }
-      
-      return Promise.reject(error);
-    });
   }
   
   public write(fileWriter: ReturnType<FileManager['getFakeFileWriter']>, bytes: Uint8Array | Blob | {file: any}): Promise<void> {

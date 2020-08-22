@@ -51,29 +51,6 @@ module.exports = {
           }
         ].filter(l => !!l)
       },
-      /* {
-        test: /\.s[ac]ss$/i,
-        use: [
-          // Creates `style` nodes from JS strings
-          'style-loader',
-          // Translates CSS into CommonJS
-          'css-loader',
-          // Compiles Sass to CSS
-          {
-            loader: 'resolve-url-loader'
-          },
-          {
-            loader: 'sass-loader',
-            options: {
-              sourceMap: true
-            }
-          },
-        ],
-      },
-      {
-        test: /\.css$/i,
-        use: ['style-loader', 'css-loader'],
-      }, */
       {
         test: /\.ts?$/,
         use: [
@@ -82,21 +59,6 @@ module.exports = {
         ],
         exclude: /node_modules/,
       },
-      /* {
-        test: /\.(woff2?|ttf|otf|eot|svg|jpg)$/,
-        exclude: /node_modules/,
-        loader: 'file-loader',
-        options: {
-          outputPath: 'assets/',
-          publicPath: 'assets/',
-          name: '[folder]/[name].[ext]'
-        }
-      }, */
-      {
-        test: /\.worker\.(js|ts)$/,
-        use: { loader: 'worker-loader' }
-      },
-
       {
         test: /\.hbs$/,
         use: [
@@ -105,28 +67,23 @@ module.exports = {
       }
     ],
   },
+  
   resolve: {
-    extensions: [ '.ts', '.js' ],
+    extensions: ['.ts', '.js'],
   },
-  //entry: './src/index.ts',
-  entry: {
-    index: './src/index.ts',
-    //mp4: './src/lib/MP4Source.ts',
-    webp: './src/lib/webp.ts'/* ,
-    lottie: './src/lib/lottie.ts' */
-  },
+
+  entry: './src/index.ts',
   /* entry: {
-    index: './src/index.ts',
-    'lottie-web': ['lottie-web']
-    //lottieLoader: './src/lib/lottieLoader.ts'
+    index: './src/index.ts'
   }, */
   //devtool: 'inline-source-map',
+
   output: {
     path: path.resolve(__dirname, 'public'),
-    //filename: 'bundle.js',
     filename: "[name].bundle.js",
     chunkFilename: "[name].chunk.js"
   },
+
   devServer: {
     contentBase: path.join(__dirname, 'public'),
     watchContentBase: true,
@@ -165,19 +122,19 @@ module.exports = {
     },
     sockHost: useLocal ? undefined : 'tweb.enko.club',
   },
+
   plugins: [
     new ServiceWorkerWebpackPlugin({
       entry: path.join(__dirname, 'src/lib/mtproto/mtproto.service.ts'),
       filename: 'sw.js',
       excludes: ['**/*'],
     }),
+
     new HtmlWebpackPlugin({
       filename: `index.html`,
       //template: 'public/index_template.html',
       template: 'src/index.hbs',
-      //inject: true, 
-      inject: false, 
-      //inject: 'head',
+      inject: false, // true, 'head'
       minify: {
         removeComments: true,
         collapseWhitespace: true,
@@ -191,7 +148,7 @@ module.exports = {
         minifyURLs: true
       },
       chunks: "all",
-      excludeChunks: ['npm.webp-hero'/* , 'mp4' *//* , 'npm.lottie-web' */]
+      excludeChunks: []
     }),
     
     new MiniCssExtractPlugin({

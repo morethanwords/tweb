@@ -2,8 +2,8 @@ import {isObject, $rootScope} from '../utils';
 import AppStorage from '../storage';
 import CryptoWorkerMethods from '../crypto/crypto_methods';
 import runtime from 'serviceworker-webpack-plugin/lib/runtime';
-import { InputFileLocation, FileLocation } from '../../types';
 import { logger } from '../logger';
+import { webpWorkerController } from '../webp/webpWorkerController';
 
 type Task = {
   taskID: number,
@@ -74,6 +74,8 @@ class ApiManagerProxy extends CryptoWorkerMethods {
         }
       } else if(e.data.progress) {
         $rootScope.$broadcast('download_progress', e.data.progress);
+      } else if(e.data.type == 'convertWebp') {
+        webpWorkerController.postMessage(e.data);
       } else {
         this.finalizeTask(e.data.taskID, e.data.result, e.data.error);
       }
@@ -160,15 +162,6 @@ class ApiManagerProxy extends CryptoWorkerMethods {
 
   public logOut(): Promise<void> {
     return this.performTaskWorker('logOut');
-  }
-
-  public downloadFile(dcID: number, location: InputFileLocation | FileLocation, size: number = 0, options: Partial<{
-    mimeType: string,
-    toFileEntry: any,
-    limitPart: number,
-    stickerType: number
-  }> = {}): Promise<Blob> {
-    return this.performTaskWorker('downloadFile', dcID, location, size, options);
   }
 
   public cancelDownload(fileName: string) {

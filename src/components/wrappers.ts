@@ -9,17 +9,16 @@ import ProgressivePreloaderNew from './preloader_new';
 import LazyLoadQueue from './lazyLoadQueue';
 import VideoPlayer from '../lib/mediaPlayer';
 import { RichTextProcessor } from '../lib/richtextprocessor';
-import { CancellablePromise } from '../lib/polyfill';
 import { renderImageFromUrl } from './misc';
 import appMessagesManager from '../lib/appManagers/appMessagesManager';
 import { Layouter, RectPart } from './groupedLayout';
 import PollElement from './poll';
-import appWebpManager from '../lib/appManagers/appWebpManager';
-import { mediaSizes } from '../lib/config';
+import { mediaSizes, isSafari } from '../lib/config';
 import { MTDocument, MTPhotoSize } from '../types';
 import animationIntersector from './animationIntersector';
 import AudioElement from './audio';
 import { Download } from '../lib/appManagers/appDownloadManager';
+import { webpWorkerController } from '../lib/webp/webpWorkerController';
 
 export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue}: {
   doc: MTDocument, 
@@ -420,12 +419,12 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
     if(thumb.bytes) {
       let img = new Image();
 
-      if((appWebpManager.isSupported() || doc.stickerThumbConverted)/*  && false */) {
+      if((!isSafari || doc.stickerThumbConverted)/*  && false */) {
         renderImageFromUrl(img, appPhotosManager.getPreviewURLFromThumb(thumb, true));
 
         div.append(img);
       } else {
-        appWebpManager.convertToPng(thumb.bytes).then(bytes => {
+        webpWorkerController.convert(doc.id, thumb.bytes).then(bytes => {
           if(middleware && !middleware()) return;
 
           thumb.bytes = bytes;
