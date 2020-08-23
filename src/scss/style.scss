@@ -1033,6 +1033,15 @@ avatar-element {
   display: flex;
   flex-direction: column;
   flex-wrap: wrap;
+  transition: opacity .2s ease-out, transform .2s ease-out;
+  transform: scale(.95);
+  transform-origin: top center;
+  opacity: 0;
+
+  &.active {
+    transform: scale(1);
+    opacity: 1;
+  }
   
   ul {
     margin: .5rem 0;

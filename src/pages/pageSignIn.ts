@@ -45,7 +45,7 @@ let onFirstMount = () => {
   var parent = selectCountryCode.parentElement;
 
   var wrapper = document.createElement('div');
-  wrapper.classList.add('select-wrapper', 'z-depth-3');
+  wrapper.classList.add('select-wrapper', 'z-depth-3', 'hide');
 
   var list = document.createElement('ul');
   wrapper.appendChild(list);
@@ -59,71 +59,90 @@ let onFirstMount = () => {
     pageSignQR.mount();
   });
 
-  selectCountryCode.addEventListener('focus', function(this: typeof selectCountryCode, e) {
-    /* this.removeAttribute('readonly'); */
-    if(!initedSelect) {
-      countries.forEach((c) => {
-        initedSelect = true;
+  let initSelect = () => {
+    initSelect = null;
+
+    countries.forEach((c) => {
+      initedSelect = true;
+
+      /* let unified = unifiedCountryCodeEmoji(c.code);
+      let emoji = unified.split('-').reduce((prev, curr) => prev + String.fromCodePoint(parseInt(curr, 16)), ''); */
+      //let emoji = countryCodeEmoji(c.code);
+      let emoji = c.emoji;
+
+      let liArr: Array<HTMLLIElement> = [];
+      c.phoneCode.split(' and ').forEach((phoneCode: string) => {
+        let li = document.createElement('li');
+        var spanEmoji = document.createElement('span');
+        /* spanEmoji.innerHTML = countryCodeEmoji(c.code); */
+        //spanEmoji.classList.add('emoji-outer', 'emoji-sizer');
+        //spanEmoji.innerHTML = `<span class="emoji-inner" style="background: url(${sheetUrl}${sheetNo}.png);background-position:${xPos}% ${yPos}%;background-size:${sizeX}% ${sizeY}%" data-codepoints="${unified}"></span>`;
+        
+        
+
+        let kek = RichTextProcessor.wrapRichText(emoji);
+        //console.log(c.name, emoji, kek, spanEmoji.innerHTML);
+
+        li.appendChild(spanEmoji);
+        spanEmoji.outerHTML = kek;
   
-        /* let unified = unifiedCountryCodeEmoji(c.code);
-        let emoji = unified.split('-').reduce((prev, curr) => prev + String.fromCodePoint(parseInt(curr, 16)), ''); */
-        //let emoji = countryCodeEmoji(c.code);
-        let emoji = c.emoji;
+        li.append(c.name);
 
-        let liArr: Array<HTMLLIElement> = [];
-        c.phoneCode.split(' and ').forEach((phoneCode: string) => {
-          let li = document.createElement('li');
-          var spanEmoji = document.createElement('span');
-          /* spanEmoji.innerHTML = countryCodeEmoji(c.code); */
-          //spanEmoji.classList.add('emoji-outer', 'emoji-sizer');
-          //spanEmoji.innerHTML = `<span class="emoji-inner" style="background: url(${sheetUrl}${sheetNo}.png);background-position:${xPos}% ${yPos}%;background-size:${sizeX}% ${sizeY}%" data-codepoints="${unified}"></span>`;
-          
-          
+        var span = document.createElement('span');
+        span.classList.add('phone-code');
+        span.innerText = '+' + phoneCode;
+        li.appendChild(span);
 
-          let kek = RichTextProcessor.wrapRichText(emoji);
-          //console.log(c.name, emoji, kek, spanEmoji.innerHTML);
+        liArr.push(li);
+        list.append(li);
+      });
 
-          li.appendChild(spanEmoji);
-          spanEmoji.outerHTML = kek;
+      c.li = liArr;
+    });
     
-          li.append(c.name);
-
-          var span = document.createElement('span');
-          span.classList.add('phone-code');
-          span.innerText = '+' + phoneCode;
-          li.appendChild(span);
-
-          liArr.push(li);
-          list.append(li);
-        });
-
-        c.li = liArr;
-      });
+    list.addEventListener('mousedown', function(e) {
+      let target = e.target as HTMLElement;
+      if(target.tagName != 'LI') target = findUpTag(target, 'LI');
       
-      list.addEventListener('mousedown', function(e) {
-        let target = e.target as HTMLElement;
-        if(target.tagName != 'LI') target = findUpTag(target, 'LI');
-        
-        let countryName = target.childNodes[1].textContent;//target.innerText.split('\n').shift();
-        let phoneCode = target.querySelector<HTMLElement>('.phone-code').innerText;
+      let countryName = target.childNodes[1].textContent;//target.innerText.split('\n').shift();
+      let phoneCode = target.querySelector<HTMLElement>('.phone-code').innerText;
 
-        selectCountryCode.value = countryName;
-        lastCountrySelected = countries.find(c => c.name == countryName);
-        
-        telEl.value = phoneCode;
-        setTimeout(() => telEl.focus(), 0);
-        //console.log('clicked', e, countryName, phoneCode);
-      });
+      selectCountryCode.value = countryName;
+      lastCountrySelected = countries.find(c => c.name == countryName);
+      
+      telEl.value = phoneCode;
+      setTimeout(() => telEl.focus(), 0);
+      //console.log('clicked', e, countryName, phoneCode);
+    });
+
+    parent.appendChild(wrapper);
+  };
+  
+  initSelect();
+
+  let hideTimeout: number;
+
+  selectCountryCode.addEventListener('focus', function(this: typeof selectCountryCode, e) {
+    if(initSelect) {
+      initSelect();
     } else {
       countries.forEach((c) => {
         c.li.forEach(li => li.style.display = '');
       });
     }
 
-    parent.appendChild(wrapper);
-  }/* , {once: true} */);
+    clearTimeout(hideTimeout);
+
+    wrapper.classList.remove('hide');
+    void wrapper.offsetWidth; // reflow
+    wrapper.classList.add('active');
+  });
   selectCountryCode.addEventListener('blur', function(this: typeof selectCountryCode, e) {
-    parent.removeChild(wrapper);
+    wrapper.classList.remove('active');
+    hideTimeout = setTimeout(() => {
+      wrapper.classList.add('hide');
+    }, 200);
+    
     e.cancelBubble = true;
   }, {capture: true});
 
