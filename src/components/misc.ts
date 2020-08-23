@@ -165,29 +165,29 @@ let set = (elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLSourceEl
   else elem.style.backgroundImage = 'url(' + url + ')';
 };
 
-export function renderImageFromUrl(elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLSourceElement, url: string): Promise<boolean> {
+export async function renderImageFromUrl(elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLSourceElement, url: string): Promise<boolean> {
   if(loadedURLs[url]) {
     set(elem, url);
-    return Promise.resolve(true);
+  } else {
+    if(elem instanceof HTMLSourceElement) {
+      elem.src = url;
+    } else {
+      await new Promise((resolve, reject) => {
+        let loader = new Image();
+        loader.src = url;
+        //let perf = performance.now();
+        loader.addEventListener('load', () => {
+          set(elem, url);
+          loadedURLs[url] = true;
+          //console.log('onload:', url, performance.now() - perf);
+          resolve(false);
+        });
+        loader.addEventListener('error', reject);
+      });
+    }
   }
 
-  if(elem instanceof HTMLSourceElement) {
-    elem.src = url;
-    return Promise.resolve(false);
-  } else {
-    return new Promise((resolve, reject) => {
-      let loader = new Image();
-      loader.src = url;
-      //let perf = performance.now();
-      loader.addEventListener('load', () => {
-        set(elem, url);
-        loadedURLs[url] = true;
-        //console.log('onload:', url, performance.now() - perf);
-        resolve(false);
-      });
-      loader.addEventListener('error', reject);
-    });
-  }
+  return !!loadedURLs[url];
 }
 
 export function putPreloader(elem: Element, returnDiv = false) {

@@ -355,34 +355,27 @@ class StickersTab implements EmoticonsTab {
     //console.log('got stickerSet', stickerSet, li);
     
     if(stickerSet.set.thumb) {
-      appStickersManager.getStickerSetThumb(stickerSet.set).then((blob) => {
-        //console.log('setting thumb', stickerSet, blob);
-        if(stickerSet.set.pFlags.animated) { // means animated
-          const reader = new FileReader();
+      const thumbURL = appStickersManager.getStickerSetThumbURL(stickerSet.set);
 
-          reader.addEventListener('loadend', async(e) => {
-            // @ts-ignore
-            const text = e.srcElement.result;
-            let json = await apiManager.gzipUncompress<string>(text, true);
-
-            let animation = await lottieLoader.loadAnimationWorker({
-              container: li,
-              loop: true,
-              autoplay: false,
-              animationData: JSON.parse(json),
-              width: 32,
-              height: 32
-            }, EMOTICONSSTICKERGROUP);
-          });
-
-          reader.readAsArrayBuffer(blob);
-        } else {
-          let image = new Image();
-          renderImageFromUrl(image, URL.createObjectURL(blob));
-
+      if(stickerSet.set.pFlags.animated) {
+        fetch(thumbURL)
+        .then(res => res.json())
+        .then(json => {
+          lottieLoader.loadAnimationWorker({
+            container: li,
+            loop: true,
+            autoplay: false,
+            animationData: json,
+            width: 32,
+            height: 32
+          }, EMOTICONSSTICKERGROUP);
+        });
+      } else {
+        const image = new Image();
+        renderImageFromUrl(image, thumbURL).then(() => {
           li.append(image);
-        }
-      });
+        })
+      }
     } else { // as thumb will be used first sticker
       wrapSticker({
         doc: stickerSet.documents[0],

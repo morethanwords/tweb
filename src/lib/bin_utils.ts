@@ -134,15 +134,15 @@ export function dataUrlToBlob(url: string) {
   return blob;
 }
 
-export function blobConstruct(blobParts: any, mimeType: string = '') {
-  var blob;
-  var safeMimeType = blobSafeMimeType(mimeType);
+export function blobConstruct(blobParts: any, mimeType: string = ''): Blob {
+  let blob;
+  const safeMimeType = blobSafeMimeType(mimeType);
   try {
     blob = new Blob(blobParts, {type: safeMimeType});
   } catch(e) {
     // @ts-ignore
-    var bb = new BlobBuilder;
-    blobParts.forEach(function(blobPart: any) {
+    let bb = new BlobBuilder;
+    blobParts.forEach((blobPart: any) => {
       bb.append(blobPart);
     });
     blob = bb.getBlob(safeMimeType);
@@ -163,6 +163,7 @@ export function blobSafeMimeType(mimeType: string) {
     'audio/ogg',
     'audio/mpeg',
     'audio/mp4',
+    'application/json'
   ].indexOf(mimeType) === -1) {
     return 'application/octet-stream';
   }

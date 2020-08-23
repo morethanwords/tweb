@@ -4,7 +4,7 @@ import { isObject, getFileURL } from '../utils';
 import opusDecodeController from '../opusDecodeController';
 import { MTDocument, inputDocumentFileLocation } from '../../types';
 import { getFileNameByLocation } from '../bin_utils';
-import appDownloadManager, { Download } from './appDownloadManager';
+import appDownloadManager, { Download, ResponseMethod } from './appDownloadManager';
 
 class AppDocsManager {
   private docs: {[docID: string]: MTDocument} = {};
@@ -273,7 +273,7 @@ class AppDocsManager {
     return this.downloadPromises[doc.id] = deferred;
   }
 
-  public downloadDocNew(docID: string | MTDocument, toFileEntry?: any): Download {
+  public downloadDocNew(docID: string | MTDocument/* , method: ResponseMethod = 'blob' */): Download {
     const doc = this.getDoc(docID);
 
     if(doc._ == 'documentEmpty') {
@@ -287,39 +287,39 @@ class AppDocsManager {
       return download;
     }
 
-    download = appDownloadManager.download(fileName, doc.url);
-    //const _download: Download = {...download};
+    download = appDownloadManager.download(fileName, doc.url/* , method */);
 
-    //_download.promise = _download.promise.then(async(blob) => {
-    download.promise = download.promise.then(async(blob) => {
-      if(blob) {
-        doc.downloaded = true;
-
-        if(doc.type == 'voice' && !opusDecodeController.isPlaySupported()) {
-          let reader = new FileReader();
-
-          await new Promise((resolve, reject) => {
-            reader.onloadend = (e) => {
-              let uint8 = new Uint8Array(e.target.result as ArrayBuffer);
-              //console.log('sending uint8 to decoder:', uint8);
-              opusDecodeController.decode(uint8).then(result => {
-                doc.url = result.url;
-                resolve();
-              }, (err) => {
-                delete doc.downloaded;
-                reject(err);
-              });
-            };
-  
-            reader.readAsArrayBuffer(blob);
-          });
-        }
-      }
-
-      return blob;
+    const originalPromise = download.promise;
+    originalPromise.then(() => {
+      doc.downloaded = true;
     });
 
-    //return this.downloadPromisesNew[doc.id] = _download;
+    if(doc.type == 'voice' && !opusDecodeController.isPlaySupported()) {
+      download.promise = originalPromise.then(async(blob) => {
+        let reader = new FileReader();
+  
+        await new Promise((resolve, reject) => {
+          reader.onloadend = (e) => {
+            let uint8 = new Uint8Array(e.target.result as ArrayBuffer);
+            //console.log('sending uint8 to decoder:', uint8);
+            opusDecodeController.decode(uint8).then(result => {
+              doc.url = result.url;
+              resolve();
+            }, (err) => {
+              delete doc.downloaded;
+              reject(err);
+            });
+          };
+    
+          reader.readAsArrayBuffer(blob);
+        });
+  
+        return blob;
+        //return originalPromise;
+        //return new Response(blob);
+      });
+    }
+
     return download;
   }
 

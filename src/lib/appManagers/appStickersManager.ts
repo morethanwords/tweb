@@ -217,7 +217,7 @@ class AppStickersManager {
     }, 100);
   }
 
-  public getStickerSetThumb(stickerSet: MTStickerSet) {
+  public getStickerSetThumbURL(stickerSet: MTStickerSet) {
     const thumb = stickerSet.thumb;
     const dcID = stickerSet.thumb_dc_id;
 
@@ -231,7 +231,7 @@ class AppStickersManager {
     };
 
     const url = getFileURL('document', {dcID, location: input, size: thumb.size, mimeType: isAnimated ? "application/x-tgsticker" : 'image/webp'});
-    return fetch(url).then(res => res.blob());
+    return url;
 
     //return promise;
   }

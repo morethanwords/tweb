@@ -4,9 +4,10 @@ import cacheStorage from "../cacheStorage";
 import FileManager from "../filemanager";
 import apiManager from "./apiManager";
 import { deferredPromise, CancellablePromise } from "../polyfill";
-import { logger } from "../logger";
+import { logger, LogLevels } from "../logger";
 import { InputFileLocation, FileLocation, UploadFile } from "../../types";
 import { isSafari } from "../../helpers/userAgent";
+import cryptoWorker from "../crypto/cryptoworker";
 
 type Delayed = {
   offset: number, 
@@ -43,7 +44,7 @@ export class ApiFileManager {
 
   public webpConvertPromises: {[fileName: string]: CancellablePromise<Uint8Array>} = {};
 
-  private log: ReturnType<typeof logger> = logger('AFM');
+  private log: ReturnType<typeof logger> = logger('AFM', LogLevels.error);
 
   public downloadRequest(dcID: 'upload', cb: () => Promise<void>, activeDelta: number): Promise<void>;
   public downloadRequest(dcID: number, cb: () => Promise<UploadFile>, activeDelta: number): Promise<UploadFile>;
@@ -144,6 +145,29 @@ export class ApiFileManager {
     return bytes * 1024;
   }
 
+  uncompressTGS = (bytes: Uint8Array, fileName: string) => {
+    //this.log('uncompressTGS', bytes, bytes.slice().buffer);
+    // slice нужен потому что в uint8array - 5053 length, в arraybuffer - 5084
+    return cryptoWorker.gzipUncompress<string>(bytes.slice().buffer, true);
+  };
+
+  convertWebp = (bytes: Uint8Array, fileName: string) => {
+    const convertPromise = deferredPromise<Uint8Array>();
+
+    (self as any as ServiceWorkerGlobalScope)
+    .clients
+    .matchAll({includeUncontrolled: false, type: 'window'})
+    .then((listeners) => {
+      if(!listeners.length) {
+        return;
+      }
+
+      listeners[0].postMessage({type: 'convertWebp', payload: {fileName, bytes}});
+    });
+
+    return this.webpConvertPromises[fileName] = convertPromise;
+  };
+
   public downloadFile(options: DownloadOptions): CancellablePromise<Blob> {
     if(!FileManager.isAvailable()) {
       return Promise.reject({type: 'BROWSER_BLOB_NOT_SUPPORTED'});
@@ -152,18 +176,21 @@ export class ApiFileManager {
     let size = options.size ?? 0;
     let {dcID, location} = options;
 
-    let processWebp = false;
+    let process: ApiFileManager['uncompressTGS'] | ApiFileManager['convertWebp'];
+
     if(options.mimeType == 'image/webp' && isSafari) {
-      processWebp = true;
+      process = this.convertWebp;
       options.mimeType = 'image/png';
+    } else if(options.mimeType == 'application/x-tgsticker') {
+      process = this.uncompressTGS;
+      options.mimeType = 'application/json';
     }
 
-    // this.log('Dload file', dcID, location, size)
     const fileName = getFileNameByLocation(location);
     const cachedPromise = this.cachedDownloadPromises[fileName];
     const fileStorage = this.getFileStorage();
 
-    //this.log('downloadFile', fileName, fileName.length, location, arguments);
+    //this.log('downloadFile', fileName, size, location, options.mimeType, process);
 
     if(cachedPromise) {
       if(options.processPart) {
@@ -266,22 +293,11 @@ export class ApiFileManager {
             await options.processPart(bytes, offset, delayed);
           }
           
-          if(processWebp) {
-            const convertPromise = deferredPromise<Uint8Array>();
-
-            (self as any as ServiceWorkerGlobalScope)
-            .clients
-            .matchAll({includeUncontrolled: false, type: 'window'})
-            .then((listeners) => {
-              if(!listeners.length) {
-                return;
-              }
-
-              listeners[0].postMessage({type: 'convertWebp', payload: {fileName, bytes}});
-            });
-
-            return await (this.webpConvertPromises[fileName] = convertPromise);
-            //return appWebpManager.convertToPng(bytes);
+          if(process) {
+            //const perf = performance.now();
+            const processed = await process(bytes, fileName);
+            //this.log('downloadFile process downloaded time', performance.now() - perf, mimeType, process);
+            return processed;
           }
   
           return bytes;
@@ -318,12 +334,12 @@ export class ApiFileManager {
               superpuper();
             }
 
-            //////////////////////////////////////////
+            //done += limit;
+            done += result.bytes.byteLength;
+
             const processedResult = await processDownloaded(result.bytes, offset);
             checkCancel();
 
-            //done += limit;
-            done += processedResult.byteLength;
             const isFinal = offset + limit >= size;
             //if(!isFinal) {
               ////this.log('deferred notify 2:', {done: offset + limit, total: size}, deferred);

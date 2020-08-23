@@ -11,7 +11,7 @@ import { getFileNameByLocation } from '../bin_utils';
 import { logger, LogLevels } from '../logger';
 import { isSafari } from '../../helpers/userAgent';
 
-const log = logger('SW'/* , LogLevels.error */);
+const log = logger('SW', LogLevels.error);
 
 const ctx = self as any as ServiceWorkerGlobalScope;
 

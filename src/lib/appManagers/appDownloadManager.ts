@@ -1,7 +1,14 @@
 import { $rootScope } from "../utils";
 import apiManager from "../mtproto/mtprotoworker";
 
-export type Download = {promise: Promise<Blob>, controller: AbortController};
+export type ResponseMethodBlob = 'blob';
+export type ResponseMethodJson = 'json';
+export type ResponseMethod = ResponseMethodBlob | ResponseMethodJson;
+
+export type DownloadBlob = {promise: Promise<Blob>, controller: AbortController};
+export type DownloadJson = {promise: Promise<any>, controller: AbortController};
+export type Download = DownloadBlob/*  | DownloadJson */;
+
 export type Progress = {done: number, fileName: string, total: number, offset: number};
 export type ProgressCallback = (details: Progress) => void;
 
@@ -22,12 +29,14 @@ export class AppDownloadManager {
     });
   }
 
-  public download(fileName: string, url: string) {
+  public download(fileName: string, url: string, responseMethod?: ResponseMethodBlob): DownloadBlob;
+  public download(fileName: string, url: string, responseMethod?: ResponseMethodJson): DownloadJson;
+  public download(fileName: string, url: string, responseMethod: ResponseMethod = 'blob'): Download {
     if(this.downloads.hasOwnProperty(fileName)) return this.downloads[fileName];
 
     const controller = new AbortController();
     const promise = fetch(url, {signal: controller.signal})
-    .then(res => res.blob())
+    .then(res => res[responseMethod]())
     .catch(err => { // Только потому что event.request.signal не работает в SW, либо я кривой?
       if(err.name === 'AbortError') {
         //console.log('Fetch aborted');
