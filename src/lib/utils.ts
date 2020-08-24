@@ -538,7 +538,8 @@ export function getEmojiToneIndex(input: string) {
   return match ? 5 - (57343 - match[0].charCodeAt(0)) : 0;
 }
 
-export function getFileURL(type: 'photo' | 'thumb' | 'document' | 'stream' | 'download', options: {
+export type FileURLType = 'photo' | 'thumb' | 'document' | 'stream' | 'download';
+export function getFileURL(type: FileURLType, options: {
   dcID: number,
   location: InputFileLocation | FileLocation,
   size?: number,

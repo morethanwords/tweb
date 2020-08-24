@@ -3,8 +3,7 @@ import Scrollable from "./scrollable_new";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import { $rootScope } from "../lib/utils";
 import { Poll } from "../lib/appManagers/appPollsManager";
-import { nextRandomInt, bigint } from "../lib/bin_utils";
-import { toast } from "./misc";
+import { toast } from "./toast";
 
 const InputField = (placeholder: string, label: string, name: string) => {
   const div = document.createElement('div');

@@ -2,8 +2,8 @@ import appMessagesManager from "./appMessagesManager";
 import apiManagerProxy from "../mtproto/mtprotoworker";
 import appPeersManager from "../appManagers/appPeersManager";
 import appMessagesIDsManager from "./appMessagesIDsManager";
-import { toast } from "../../components/misc";
 import { RichTextProcessor } from "../richtextprocessor";
+import { toast } from "../../components/toast";
 
 export class AppInlineBotsManager {
   /* private inlineResults: any = {};

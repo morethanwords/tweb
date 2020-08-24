@@ -1576,7 +1576,7 @@ export class AppMessagesManager {
           } else {
             let doc = messageMedia.document;
             appDocsManager.saveDoc(doc);
-            inputMedia = appDocsManager.getMediaInputByID(doc.id);
+            inputMedia = appDocsManager.getMediaInput(doc);
           }
 
           inputs.push({

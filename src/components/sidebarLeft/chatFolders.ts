@@ -4,9 +4,9 @@ import apiManager from "../../lib/mtproto/mtprotoworker";
 import appMessagesManager, { DialogFilter } from "../../lib/appManagers/appMessagesManager";
 import { RichTextProcessor } from "../../lib/richtextprocessor";
 import appPeersManager from "../../lib/appManagers/appPeersManager";
-import { ripple } from "../misc";
 import { $rootScope, cancelEvent } from "../../lib/utils";
 import appSidebarLeft from "../../lib/appManagers/appSidebarLeft";
+import { ripple } from "../ripple";
 
 type DialogFilterSuggested = {
   _: 'dialogFilterSuggested',

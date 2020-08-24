@@ -1,5 +1,5 @@
 import AvatarElement from "./avatar";
-import { ripple } from "./misc";
+import { ripple } from "./ripple";
 
 export class PopupElement {
   protected element = document.createElement('div');

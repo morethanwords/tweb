@@ -1,4 +1,4 @@
-import { horizontalMenu, putPreloader, renderImageFromUrl, ripple } from "../../components/misc";
+import { putPreloader, renderImageFromUrl } from "../../components/misc";
 //import Scrollable from '../../components/scrollable';
 import Scrollable from '../../components/scrollable_new';
 import { $rootScope, findUpClassName } from "../utils";
@@ -25,6 +25,8 @@ import SearchInput from "../../components/searchInput";
 import appPollsManager from "./appPollsManager";
 import { roundPercents } from "../../components/poll";
 import appDialogsManager from "./appDialogsManager";
+import { ripple } from "../../components/ripple";
+import { horizontalMenu } from "../../components/horizontalMenu";
 
 const testScroll = false;
 

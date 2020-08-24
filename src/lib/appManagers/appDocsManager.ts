@@ -1,14 +1,14 @@
 import {RichTextProcessor} from '../richtextprocessor';
 import { CancellablePromise, deferredPromise } from '../polyfill';
-import { isObject, getFileURL } from '../utils';
+import { isObject, getFileURL, FileURLType } from '../utils';
 import opusDecodeController from '../opusDecodeController';
-import { MTDocument, inputDocumentFileLocation } from '../../types';
+import { MTDocument, inputDocumentFileLocation, MTPhotoSize } from '../../types';
 import { getFileNameByLocation } from '../bin_utils';
 import appDownloadManager, { Download, ResponseMethod } from './appDownloadManager';
+import appPhotosManager from './appPhotosManager';
 
 class AppDocsManager {
   private docs: {[docID: string]: MTDocument} = {};
-  private thumbs: {[docIDAndSize: string]: Promise<string>} = {};
   private downloadPromises: {[docID: string]: CancellablePromise<Blob>} = {};
   
   public saveDoc(apiDoc: MTDocument, context?: any) {
@@ -49,16 +49,16 @@ class AppDocsManager {
           apiDoc.audioPerformer = attribute.performer;
           apiDoc.type = attribute.pFlags.voice && apiDoc.mime_type == "audio/ogg" ? 'voice' : 'audio';
 
-          if(apiDoc.type == 'audio') {
+          /* if(apiDoc.type == 'audio') {
             apiDoc.supportsStreaming = true;
-          }
+          } */
           break;
 
         case 'documentAttributeVideo':
           apiDoc.duration = attribute.duration;
           apiDoc.w = attribute.w;
           apiDoc.h = attribute.h;
-          apiDoc.supportsStreaming = attribute.pFlags?.supports_streaming/*  && apiDoc.size > 524288 */;
+          //apiDoc.supportsStreaming = attribute.pFlags?.supports_streaming/*  && apiDoc.size > 524288 */;
           if(apiDoc.thumbs && attribute.pFlags.round_message) {
             apiDoc.type = 'round';
           } else /* if(apiDoc.thumbs) */ {
@@ -124,6 +124,10 @@ class AppDocsManager {
           break;
       }
     }
+
+    if((apiDoc.type == 'gif' && apiDoc.size > 8e6) || apiDoc.type == 'audio' || apiDoc.type == 'video') {
+      apiDoc.supportsStreaming = true;
+    }
     
     if(!apiDoc.file_name) {
       apiDoc.file_name = '';
@@ -140,7 +144,7 @@ class AppDocsManager {
     }
 
     if(!apiDoc.url) {
-      apiDoc.url = this.getFileURLByDoc(apiDoc);
+      apiDoc.url = this.getFileURL(apiDoc);
     }
 
     return apiDoc;
@@ -150,8 +154,7 @@ class AppDocsManager {
     return isObject(docID) && typeof(docID) !== 'string' ? docID : this.docs[docID as string];
   }
 
-  public getMediaInputByID(docID: any) {
-    let doc = this.getDoc(docID);
+  public getMediaInput(doc: MTDocument) {
     return {
       _: 'inputMediaDocument',
       flags: 0,
@@ -165,9 +168,7 @@ class AppDocsManager {
     };
   }
 
-  public getInputByID(docID: any, thumbSize?: string): inputDocumentFileLocation {
-    let doc = this.getDoc(docID);
-
+  public getInput(doc: MTDocument, thumbSize?: string): inputDocumentFileLocation {
     return {
       _: 'inputDocumentFileLocation',
       id: doc.id,
@@ -176,35 +177,55 @@ class AppDocsManager {
       thumb_size: thumbSize
     };
   }
-  
-  public getFileName(doc: MTDocument) {
-    if(doc.file_name) {
-      return doc.file_name;
+
+  public getFileURL(doc: MTDocument, download = false, thumb?: MTPhotoSize) {
+    const inputFileLocation = this.getInput(doc, thumb?.type);
+
+    let type: FileURLType;
+    if(download) {
+      type = 'download';
+    } else if(thumb) {
+      type = 'thumb';
+    } else if(doc.supportsStreaming) {
+      type = 'stream';
+    } else {
+      type = 'document';
     }
 
-    var fileExt = '.' + doc.mime_type.split('/')[1];
-    if(fileExt == '.octet-stream') {
-      fileExt = '';
+    let mimeType: string;
+    if(thumb) {
+      mimeType = doc.sticker ? 'image/webp' : 'image/jpeg'/* doc.mime_type */;
+    } else {
+      mimeType = doc.mime_type || 'application/octet-stream';
     }
-
-    return 't_' + (doc.type || 'file') + doc.id + fileExt;
-  }
-
-  public getFileURLByDoc(doc: MTDocument, download = false) {
-    const inputFileLocation = this.getInputByID(doc);
-    const type = download ? 'download' : (doc.supportsStreaming ? 'stream' : 'document');
 
     return getFileURL(type, {
       dcID: doc.dc_id, 
       location: inputFileLocation, 
-      size: doc.size, 
-      mimeType: doc.mime_type || 'application/octet-stream',
+      size: thumb ? thumb.size : doc.size, 
+      mimeType: mimeType,
       fileName: doc.file_name
     });
   }
 
-  public getInputFileName(doc: MTDocument) {
-    return getFileNameByLocation(this.getInputByID(doc));
+  public getThumbURL(doc: MTDocument, useBytes = true) {
+    if(doc.thumbs?.length) {
+      if(doc.thumbs[0].bytes && useBytes) {
+        return appPhotosManager.getPreviewURLFromBytes(doc.thumbs[0].bytes, !!doc.sticker);  
+      }
+
+      const thumb = doc.thumbs.find(t => !t.bytes);
+      if(thumb) {
+        const url = appDocsManager.getFileURL(doc, false, thumb);
+        return url;
+      }
+    }
+
+    return '';
+  }
+
+  public getInputFileName(doc: MTDocument, thumbSize?: string) {
+    return getFileNameByLocation(this.getInput(doc, thumbSize), {fileName: doc.file_name});
   }
 
   public downloadDoc(docID: string | MTDocument, toFileEntry?: any): CancellablePromise<Blob> {
@@ -229,11 +250,7 @@ class AppDocsManager {
     
     const deferred = deferredPromise<Blob>();
 
-    /* if(doc.supportsStreaming) {
-      doc.url = '/stream/' + '';
-    } */
-    
-    const url = this.getFileURLByDoc(doc);
+    const url = this.getFileURL(doc);
     fetch(url).then(res => res.blob())
     /* downloadPromise */.then((blob) => {
       if(blob) {
@@ -323,30 +340,8 @@ class AppDocsManager {
     return download;
   }
 
-  public downloadDocThumb(docID: any, thumbSize: string) {
-    let doc = this.getDoc(docID);
-
-    let key = doc.id + '-' + thumbSize;
-    if(this.thumbs[key]) {
-      return this.thumbs[key];
-    }
-
-    let input = this.getInputByID(doc, thumbSize);
-
-    if(doc._ == 'documentEmpty') {
-      return Promise.reject();
-    }
-
-    const url = getFileURL('thumb', {dcID: doc.dc_id, location: input, mimeType: doc.sticker ? 'image/webp' : doc.mime_type});
-    return this.thumbs[key] = Promise.resolve(url);
-  }
-
-  public hasDownloadedThumb(docID: string, thumbSize: string) {
-    return !!this.thumbs[docID + '-' + thumbSize];
-  }
-
   public saveDocFile(doc: MTDocument) {
-    const url = this.getFileURLByDoc(doc, true);
+    const url = this.getFileURL(doc, true);
     const fileName = this.getInputFileName(doc);
 
     return appDownloadManager.downloadToDisc(fileName, url);

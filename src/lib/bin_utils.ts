@@ -386,7 +386,7 @@ export function nextRandomInt(maxValue: number) {
 export function getFileNameByLocation(location: InputFileLocation | FileLocation, options?: Partial<{
   fileName: string
 }>) {
-  const fileName = (options?.fileName || '').split('.');
+  const fileName = '';//(options?.fileName || '').split('.');
   const ext = fileName[fileName.length - 1] || '';
 
   switch(location._) {

@@ -1,22 +1,23 @@
 import appImManager from "../lib/appManagers/appImManager";
-import { horizontalMenu, renderImageFromUrl, putPreloader } from "./misc";
+import { renderImageFromUrl, putPreloader } from "./misc";
 import lottieLoader from "../lib/lottieLoader";
 //import Scrollable from "./scrollable";
 import Scrollable from "./scrollable_new";
-import { findUpTag, whichChild, calcImageInBox, emojiUnicode, $rootScope } from "../lib/utils";
+import { findUpTag, whichChild, calcImageInBox, emojiUnicode, $rootScope, cancelEvent, findUpClassName } from "../lib/utils";
 import { RichTextProcessor } from "../lib/richtextprocessor";
 import appStickersManager, { MTStickerSet } from "../lib/appManagers/appStickersManager";
 //import apiManager from '../lib/mtproto/apiManager';
 import apiManager from '../lib/mtproto/mtprotoworker';
 import LazyLoadQueue from "./lazyLoadQueue";
-import { wrapSticker } from "./wrappers";
+import { wrapSticker, wrapVideo } from "./wrappers";
 import appDocsManager from "../lib/appManagers/appDocsManager";
-import ProgressivePreloader from "./preloader";
+import ProgressivePreloader from "./preloader_new";
 import Config, { touchSupport } from "../lib/config";
 import { MTDocument } from "../types";
 import animationIntersector from "./animationIntersector";
 import appSidebarRight from "../lib/appManagers/appSidebarRight";
 import appStateManager from "../lib/appManagers/appStateManager";
+import { horizontalMenu } from "./horizontalMenu";
 
 export const EMOTICONSSTICKERGROUP = 'emoticons-dropdown';
 
@@ -150,7 +151,7 @@ class EmojiTab implements EmoticonsTab {
 
     const spanEmoji = document.createElement('span');
     const kek = RichTextProcessor.wrapEmojiText(emoji);
-  
+
     /* if(!kek.includes('emoji')) {
       console.log(emoji, kek, spanEmoji, emoji.length, new TextEncoder().encode(emoji), emojiUnicode(emoji));
       return;
@@ -159,6 +160,10 @@ class EmojiTab implements EmoticonsTab {
     //console.log(kek);
   
     spanEmoji.innerHTML = kek;
+
+    if(spanEmoji.firstElementChild) {
+      (spanEmoji.firstElementChild as HTMLImageElement).setAttribute('loading', 'lazy');
+    }
   
     //spanEmoji = spanEmoji.firstElementChild as HTMLSpanElement;
     //spanEmoji.setAttribute('emoji', emoji);
@@ -561,10 +566,10 @@ class GifsTab implements EmoticonsTab {
       preloader.remove();
 
       for(let i = 0, length = res.gifs.length; i < length;) {
-        let gif = res.gifs[i];
+        const doc = res.gifs[i];
 
-        let gifWidth = gif.w;
-        let gifHeight = gif.h;
+        let gifWidth = doc.w;
+        let gifHeight = doc.h;
         if(gifHeight < height) {
           gifWidth = height / gifHeight * gifWidth;
           gifHeight = height;
@@ -588,28 +593,103 @@ class GifsTab implements EmoticonsTab {
         //console.log('gif:', gif, w, h);
 
         let div = document.createElement('div');
+        div.classList.add('gif', 'fade-in-transition');
         div.style.width = w + 'px';
+        div.style.opacity = '0';
         //div.style.height = h + 'px';
-        div.dataset.docID = gif.id;
+        div.dataset.docID = doc.id;
 
         masonry.append(div);
 
-        let preloader = new ProgressivePreloader(div);
-        EmoticonsDropdown.lazyLoadQueue.push({
+        //let preloader = new ProgressivePreloader(div);
+
+        const posterURL = appDocsManager.getThumbURL(doc, false);
+        let img: HTMLImageElement;
+        if(posterURL) {
+          img = new Image();
+          img.src = posterURL;
+        }
+
+        let mouseOut = false;
+        const onMouseOver = (e: MouseEvent) => {
+          //console.log('onMouseOver', doc.id);
+          //cancelEvent(e);
+          mouseOut = false;
+
+          wrapVideo({
+            doc,
+            container: div,
+            //lazyLoadQueue: EmoticonsDropdown.lazyLoadQueue,
+            //group: EMOTICONSSTICKERGROUP,
+            noInfo: true,
+          });
+
+          const video = div.querySelector('video');
+          video.addEventListener('loadeddata', () => {
+            div.style.opacity = '';
+            if(!mouseOut) {
+              img && img.remove();
+            } else {
+              div.innerHTML = '';
+              div.append(img);
+            }
+          }, {once: true});
+        };
+
+        ((posterURL ? renderImageFromUrl(img, posterURL) : Promise.resolve()) as Promise<any>).then(() => {
+          if(img) {
+            div.append(img);
+            div.style.opacity = '';
+          }
+
+          div.addEventListener('mouseover', onMouseOver, {once: true});
+          div.addEventListener('mouseout', (e) => {
+            const toElement = (e as any).toElement as Element;
+            //console.log('onMouseOut', doc.id, e);
+            if(findUpClassName(toElement, 'gif') == div) {
+              return;
+            }
+
+            //cancelEvent(e);
+
+            mouseOut = true;
+
+            div.innerHTML = '';
+            div.append(img);
+            div.addEventListener('mouseover', onMouseOver, {once: true});
+          });
+        });
+
+        /* wrapVideo({
+          doc,
+          container: div,
+          lazyLoadQueue: EmoticonsDropdown.lazyLoadQueue,
+          group: EMOTICONSSTICKERGROUP,
+          noInfo: true,
+        }); */
+
+        /* EmoticonsDropdown.lazyLoadQueue.push({
           div, 
           load: () => {
-            let promise = appDocsManager.downloadDoc(gif);
-            preloader.attach(div, true, promise);
-    
-            promise.then(blob => {
+            const download = appDocsManager.downloadDocNew(doc);
+            
+            let thumbSize: string, posterURL: string;
+            if(doc.thumbs?.length) {
+              thumbSize = doc.thumbs[0].type;
+              posterURL = appDocsManager.getThumbURL(doc, thumbSize);
+            }
+            
+            preloader.attach(div, true, appDocsManager.getInputFileName(doc, thumbSize));
+            
+            download.promise.then(blob => {
               preloader.detach();
 
-              div.innerHTML = `<video autoplay="true" muted="true" loop="true" src="${gif.url}" type="video/mp4"></video>`;
+              div.innerHTML = `<video autoplay="true" muted="true" loop="true" src="${doc.url}" poster="${posterURL}" type="${doc.mime_type}"></video>`;
             });
 
-            return promise;
+            return download.promise;
           }
-        });
+        }); */
       }
     });
 
@@ -661,6 +741,11 @@ class EmoticonsDropdown {
         //this.displayTimeout = setTimeout(() => {
           if(firstTime) {
             this.toggleEl.onmouseout = this.element.onmouseout = (e) => {
+              const toElement = (e as any).toElement as Element;
+              if(findUpClassName(toElement, 'emoji-dropdown')) {
+                return;
+              }
+
               clearTimeout(this.displayTimeout);
               this.displayTimeout = setTimeout(() => {
                 this.toggle();

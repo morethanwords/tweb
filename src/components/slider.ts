@@ -1,4 +1,4 @@
-import { horizontalMenu } from "./misc";
+import { horizontalMenu } from "./horizontalMenu";
 
 export interface SliderTab {
   onOpen?: () => void,

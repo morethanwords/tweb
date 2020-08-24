@@ -328,19 +328,22 @@
 			display: flex;
 			flex-wrap: wrap;
 
-			> div {
+			> .gif {
 				flex: 1 0 auto;
 				max-width: 100%;
 				height: 100px;
 				margin: 2.5px;
 				cursor: pointer;
-				background: #000;
+				//background: #000;
 				position: relative;
 
-				video {
+				video, img {
 					object-fit: cover;
 					width: 100%;
 					height: 100%;
+					position: absolute;
+					left: 0;
+					top: 0;
 				}
 			}
 		}

@@ -311,9 +311,7 @@ export class AppMediaViewer {
         src = target.src;
       } else if(target instanceof HTMLVideoElement) {
         let video = mediaElement = document.createElement('video');
-        let source = document.createElement('source');
-        src = target.querySelector('source')?.src;
-        video.append(source);
+        video.src = target?.src;
       } else if(target instanceof SVGSVGElement) {
         let clipID = target.dataset.clipID;
         let newClipID = clipID + '-mv';
@@ -326,12 +324,6 @@ export class AppMediaViewer {
 
         newSvg.insertAdjacentHTML('beforeend', target.firstElementChild.outerHTML.replace(clipID, newClipID));
         newSvg.insertAdjacentHTML('beforeend', target.lastElementChild.outerHTML.replace(clipID, newClipID));
-
-        // FIX STREAM
-        let source = newSvg.querySelector('source');
-        if(source) {
-          source.removeAttribute('src');
-        }
 
         // теперь надо выставить новую позицию для хвостика
         let defs = newSvg.firstElementChild;
@@ -655,7 +647,7 @@ export class AppMediaViewer {
     return promise;
   }
 
-  public updateMediaSource(target: HTMLElement, url: string, tagName: 'source' | 'img') {
+  public updateMediaSource(target: HTMLElement, url: string, tagName: 'video' | 'img') {
     //if(target instanceof SVGSVGElement) {
       let el = target.querySelector(tagName) as HTMLElement;
       renderImageFromUrl(el, url);
@@ -778,11 +770,6 @@ export class AppMediaViewer {
     if(isVideo) {
       ////////this.log('will wrap video', media, size);
 
-      /* let source = target.querySelector('source');
-      if(source && source.src) {
-        source.src = '';
-      } */
-
       setMoverPromise = this.setMoverToTarget(target, false, fromRight).then(() => {
       //return; // set and don't move
       //if(wasActive) return;
@@ -790,19 +777,13 @@ export class AppMediaViewer {
 
         const div = mover.firstElementChild && mover.firstElementChild.classList.contains('media-viewer-aspecter') ? mover.firstElementChild : mover;
         const video = mover.querySelector('video') || document.createElement('video');
-        const source = video.firstElementChild as HTMLSourceElement || document.createElement('source');
-
-        source.removeAttribute('src');
+        video.src = '';
 
         video.setAttribute('playsinline', '');
         if(media.type == 'gif') {
           video.muted = true;
           video.autoplay = true;
           video.loop = true;
-        }
-
-        if(!source.parentElement) {
-          video.append(source);
         }
 
         const createPlayer = () => {
@@ -823,7 +804,7 @@ export class AppMediaViewer {
           } */
         };
         
-        if(!source.src || (media.url && media.url != source.src)) {
+        if(!video.src || (media.url && media.url != video.src)) {
           const load = () => {
             const promise = appDocsManager.downloadDoc(media.id);
             
@@ -845,12 +826,11 @@ export class AppMediaViewer {
                   div.firstElementChild.lastElementChild.append(video);
                 }
                 
-                this.updateMediaSource(mover, url, 'source');
+                this.updateMediaSource(mover, url, 'video');
                 //this.updateMediaSource(target, url, 'source');
               } else {
                 //const promise = new Promise((resolve) => video.addEventListener('loadeddata', resolve, {once: true}));
-                renderImageFromUrl(source, url);
-                source.type = media.mime_type;
+                renderImageFromUrl(video, url);
 
                 //await promise;
                 const first = div.firstElementChild as HTMLImageElement;
@@ -864,13 +844,13 @@ export class AppMediaViewer {
               }
 
               // я хз что это такое, видео появляются просто чёрными и не включаются без этого кода снизу
-              source.remove();
+              /* source.remove();
               window.requestAnimationFrame(() => {
                 window.requestAnimationFrame(() => {
                   //parent.append(video);
                   video.append(source);
                 });
-              });
+              }); */
   
               player = createPlayer();
             });

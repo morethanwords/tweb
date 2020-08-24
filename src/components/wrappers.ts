@@ -18,78 +18,92 @@ import AudioElement from './audio';
 import { Download } from '../lib/appManagers/appDownloadManager';
 import { webpWorkerController } from '../lib/webp/webpWorkerController';
 
-export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue}: {
+export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group}: {
   doc: MTDocument, 
-  container: HTMLDivElement, 
-  message: any, 
-  boxWidth: number, 
-  boxHeight: number, 
+  container?: HTMLDivElement, 
+  message?: any, 
+  boxWidth?: number, 
+  boxHeight?: number, 
   withTail?: boolean, 
   isOut?: boolean,
-  middleware: () => boolean,
-  lazyLoadQueue: LazyLoadQueue
+  middleware?: () => boolean,
+  lazyLoadQueue?: LazyLoadQueue,
+  noInfo?: true,
+  group?: string,
 }) {
-  let span: HTMLSpanElement, spanPlay: HTMLSpanElement;
-  if(doc.type != 'round') {
-    span = document.createElement('span');
-    span.classList.add('video-time');
-    container.append(span);
-
-    if(doc.type != 'gif') {
-      span.innerText = (doc.duration + '').toHHMMSS(false);
-
-      spanPlay = document.createElement('span');
-      spanPlay.classList.add('video-play', 'tgico-largeplay', 'btn-circle', 'position-center');
-      container.append(spanPlay);
-    } else {
-      span.innerText = 'GIF';
-    }
-  }
-
-  if(doc.type == 'video') {
-    return wrapPhoto(doc, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware);
-  }
-
-  let img: HTMLImageElement;
-  if(withTail) {
-    img = wrapMediaWithTail(doc, message, container, boxWidth, boxHeight, isOut);
-  } else {
-    if(!boxWidth && !boxHeight) { // album
-      let sizes = doc.thumbs;
-      if(!doc.downloaded && sizes && sizes[0].bytes) {
-        appPhotosManager.setAttachmentPreview(sizes[0].bytes, container, false);
-      }
-    } else {
-      if(!container.firstElementChild || (container.firstElementChild.tagName != 'IMG' && container.firstElementChild.tagName != 'VIDEO')) {
-        appPhotosManager.setAttachmentSize(doc, container, boxWidth, boxHeight);
+  if(!noInfo) {
+    if(doc.type != 'round') {
+      let span: HTMLSpanElement, spanPlay: HTMLSpanElement;
+  
+      span = document.createElement('span');
+      span.classList.add('video-time');
+      container.append(span);
+  
+      if(doc.type != 'gif') {
+        span.innerText = (doc.duration + '').toHHMMSS(false);
+  
+        spanPlay = document.createElement('span');
+        spanPlay.classList.add('video-play', 'tgico-largeplay', 'btn-circle', 'position-center');
+        container.append(spanPlay);
+      } else {
+        span.innerText = 'GIF';
       }
     }
-
-    img = container.lastElementChild as HTMLImageElement;
-    if(!img || img.tagName != 'IMG') {
-      container.append(img = new Image());
-    }
-  }
-
-  if(img) {
-    img.classList.add('thumbnail');
   }
 
   const video = document.createElement('video');
-  const source = document.createElement('source');
-  video.append(source);
   
-  if(withTail) {
-    const foreignObject = img.parentElement;
-    video.width = +foreignObject.getAttributeNS(null, 'width');
-    video.height = +foreignObject.getAttributeNS(null, 'height');
-    foreignObject.append(video);
-  } else {
+  let img: HTMLImageElement;
+  if(message) {
+    if(doc.type == 'video') {
+      return wrapPhoto(doc, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware);
+    }
+
+    if(withTail) {
+      img = wrapMediaWithTail(doc, message, container, boxWidth, boxHeight, isOut);
+    } else {
+      if(!boxWidth && !boxHeight) { // album
+        let sizes = doc.thumbs;
+        if(!doc.downloaded && sizes && sizes[0].bytes) {
+          appPhotosManager.setAttachmentPreview(sizes[0].bytes, container, false);
+        }
+      } else {
+        if(!container.firstElementChild || (container.firstElementChild.tagName != 'IMG' && container.firstElementChild.tagName != 'VIDEO')) {
+          appPhotosManager.setAttachmentSize(doc, container, boxWidth, boxHeight);
+        }
+      }
+  
+      img = container.lastElementChild as HTMLImageElement;
+      if(!img || img.tagName != 'IMG') {
+        container.append(img = new Image());
+      }
+    }
+  
+    if(img) {
+      img.classList.add('thumbnail');
+    }
+
+    if(withTail) {
+      const foreignObject = img.parentElement;
+      video.width = +foreignObject.getAttributeNS(null, 'width');
+      video.height = +foreignObject.getAttributeNS(null, 'height');
+      foreignObject.append(video);
+    }
+  }
+
+  if(!img?.parentElement) {
+    const posterURL = appDocsManager.getThumbURL(doc, false);
+    if(posterURL) {
+      video.poster = posterURL;
+    }
+  }
+
+  if(!video.parentElement && container) {
     container.append(video);
   }
 
   const loadVideo = async() => {
-    if(message.media.preloader) { // means upload
+    if(message?.media?.preloader) { // means upload
       (message.media.preloader as ProgressivePreloader).attach(container, undefined, undefined, false);
     } else if(!doc.downloaded) {
       /* const promise = appDocsManager.downloadDoc(doc.id);
@@ -117,13 +131,13 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
         /* if(!video.paused) {
           video.pause();
         } */
-        animationIntersector.addAnimation(video, 'chat');
+        if(group) {
+          animationIntersector.addAnimation(video, group);
+        }
       }, {once: true});
     }
     
-    renderImageFromUrl(source, doc.url);
-    source.type = doc.mime_type;
-    video.append(source);
+    renderImageFromUrl(video, doc.url);
     video.setAttribute('playsinline', '');
 
     /* if(!container.parentElement) {
@@ -160,9 +174,9 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
 
     return;
   } */
-  
-  //return;
-  return doc.downloaded/*  && false */ ? loadVideo() : lazyLoadQueue.push({div: container, load: loadVideo/* , wasSeen: true */});
+
+  doc.downloaded || !lazyLoadQueue/*  && false */ ? loadVideo() : lazyLoadQueue.push({div: container, load: loadVideo/* , wasSeen: true */});
+  return video;
 }
 
 export const formatDate = (timestamp: number, monthShort = false, withYear = true) => {
@@ -445,14 +459,14 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
     } else if(!onlyThumb && stickerType == 2 && withThumb && toneIndex <= 0) {
       img = new Image();
       
-      const load = () => appDocsManager.downloadDocThumb(doc, thumb.type).then(url => {
+      const load = () => {
         if(div.childElementCount || (middleware && !middleware())) return;
-        const promise = renderImageFromUrl(img, url);
+        const promise = renderImageFromUrl(img, appDocsManager.getFileURL(doc, false, thumb));
 
         //if(!downloaded) {
           promise.then(afterRender);
         //}
-      });
+      };
       
       /* let downloaded = appDocsManager.hasDownloadedThumb(doc.id, thumb.type);
       if(downloaded) {
@@ -467,13 +481,13 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
   if(onlyThumb && doc.thumbs) { // for sticker panel
     let thumb = doc.thumbs[0];
     
-    let load = () => appDocsManager.downloadDocThumb(doc, thumb.type).then(url => {
+    let load = () => {
       let img = new Image();
-      renderImageFromUrl(img, url).then(() => {
+      return renderImageFromUrl(img, appDocsManager.getFileURL(doc, false, thumb)).then(() => {
         if(middleware && !middleware()) return;
         div.append(img);
       });
-    });
+    };
     
     return lazyLoadQueue ? (lazyLoadQueue.push({div, load}), Promise.resolve()) : load();
   }

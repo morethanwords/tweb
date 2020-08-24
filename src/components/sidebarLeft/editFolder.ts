@@ -1,10 +1,12 @@
 import { SliderTab } from "../slider";
 import appSidebarLeft, { AppSidebarLeft } from "../../lib/appManagers/appSidebarLeft";
 import lottieLoader, { RLottiePlayer } from "../../lib/lottieLoader";
-import appMessagesManager, { DialogFilter, Dialog } from "../../lib/appManagers/appMessagesManager";
-import { parseMenuButtonsTo, ripple, toast } from "../misc";
+import appMessagesManager, { DialogFilter } from "../../lib/appManagers/appMessagesManager";
+import { parseMenuButtonsTo } from "../misc";
 import appDialogsManager from "../../lib/appManagers/appDialogsManager";
 import { copy, deepEqual } from "../../lib/utils";
+import { toast } from "../toast";
+import { ripple } from "../ripple";
 
 export default class AppEditFolderTab implements SliderTab {
   public container: HTMLElement;

@@ -16,7 +16,7 @@ import appSidebarLeft from "./appSidebarLeft";
 import appChatsManager, { Channel, Chat } from "./appChatsManager";
 import { wrapDocument, wrapPhoto, wrapVideo, wrapSticker, wrapReply, wrapAlbum, wrapPoll, formatDate } from '../../components/wrappers';
 import ProgressivePreloader from '../../components/preloader';
-import { openBtnMenu, formatPhoneNumber, positionMenu, ripple, parseMenuButtonsTo, horizontalMenu, attachContextMenuListener } from '../../components/misc';
+import { openBtnMenu, formatPhoneNumber, positionMenu, parseMenuButtonsTo, attachContextMenuListener } from '../../components/misc';
 import { ChatInput } from '../../components/chatInput';
 //import Scrollable from '../../components/scrollable';
 import Scrollable from '../../components/scrollable_new';
@@ -37,12 +37,16 @@ import AppSearch, { SearchGroup } from '../../components/appSearch';
 import PopupDatePicker from '../../components/popupDatepicker';
 import appAudio from '../../components/appAudio';
 import appPollsManager from './appPollsManager';
+import { ripple } from '../../components/ripple';
+import { horizontalMenu } from '../../components/horizontalMenu';
 
 //console.log('appImManager included33!');
 
 appSidebarLeft; // just to include
 
 const testScroll = false;
+
+const ANIMATIONGROUP = 'chat';
 
 class ChatContextMenu {
   private element = document.getElementById('bubble-contextmenu') as HTMLDivElement;
@@ -1511,7 +1515,7 @@ export class AppImManager {
 
     //console.timeEnd('appImManager setPeer pre promise');
     
-    animationIntersector.lockGroup('chat');
+    animationIntersector.lockGroup(ANIMATIONGROUP);
     this.setPeerPromise = Promise.all([
       promise.then(() => {
         ////this.log('setPeer removing preloader');
@@ -1532,8 +1536,8 @@ export class AppImManager {
         }
 
         this.scrollable.container.append(this.chatInner);
-        animationIntersector.unlockGroup('chat');
-        animationIntersector.checkAnimations(false, 'chat'/* , true */);
+        animationIntersector.unlockGroup(ANIMATIONGROUP);
+        animationIntersector.checkAnimations(false, ANIMATIONGROUP/* , true */);
         //this.scrollable.attachSentinels();
         //this.scrollable.container.insertBefore(this.chatInner, this.scrollable.container.lastElementChild);
 
@@ -1699,7 +1703,7 @@ export class AppImManager {
       //bubble.remove();
     });
     
-    animationIntersector.checkAnimations(false, 'chat');
+    animationIntersector.checkAnimations(false, ANIMATIONGROUP);
     this.deleteEmptyDateGroups();
   }
   
@@ -1805,14 +1809,11 @@ export class AppImManager {
     let promises: Promise<any>[] = [];
     (Array.from(bubble.querySelectorAll('img, video')) as HTMLImageElement[]).forEach(el => {
       if(el instanceof HTMLVideoElement) {
-        let source = el.firstElementChild as HTMLSourceElement;
-        if(!source || !source.src) {
+        if(!el.src) {
           //this.log.warn('no source', el, source, 'src', source.src);
           return;
         } else if(el.readyState >= 4) return;
       } else if(el.complete || !el.src) return;
-
-      let src = el.src;
 
       let promise = new Promise((resolve, reject) => {
         let r: () => boolean;
@@ -2046,7 +2047,7 @@ export class AppImManager {
     
     let messageMedia = message.media;
 
-    if(totalEntities) {
+    if(totalEntities && !messageMedia) {
       let emojiEntities = totalEntities.filter((e: any) => e._ == 'messageEntityEmoji');
       let strLength = messageMessage.length;
       let emojiStrLength = emojiEntities.reduce((acc: number, curr: any) => acc + curr.length, 0);
@@ -2237,7 +2238,8 @@ export class AppImManager {
                   withTail: tailSupported, 
                   isOut: isOut,
                   lazyLoadQueue: this.lazyLoadQueue,
-                  middleware: null
+                  middleware: null,
+                  group: ANIMATIONGROUP
                 });
 
                 preloader.attach(attachmentDiv, false);
@@ -2342,7 +2344,8 @@ export class AppImManager {
                 boxHeight: mediaSizes.active.webpage.height,
                 lazyLoadQueue: this.lazyLoadQueue,
                 middleware: this.getMiddleware(),
-                isOut
+                isOut,
+                group: ANIMATIONGROUP
               });
               //}
             } else {
@@ -2428,7 +2431,7 @@ export class AppImManager {
               div: attachmentDiv,
               middleware: this.getMiddleware(),
               lazyLoadQueue: this.lazyLoadQueue,
-              group: 'chat',
+              group: ANIMATIONGROUP,
               //play: !!message.pending || !multipleRender,
               play: true,
               loop: true,
@@ -2463,7 +2466,8 @@ export class AppImManager {
                 withTail: tailSupported, 
                 isOut: isOut,
                 lazyLoadQueue: this.lazyLoadQueue,
-                middleware: this.getMiddleware()
+                middleware: this.getMiddleware(),
+                group: ANIMATIONGROUP
               });
             }
             

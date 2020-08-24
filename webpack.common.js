@@ -6,7 +6,7 @@ const postcssPresetEnv = require('postcss-preset-env');
 const ServiceWorkerWebpackPlugin = require('serviceworker-webpack-plugin');
 const fs = require('fs');
 
-const allowedIPs = ['195.66.140.39', '192.168.31.144', '127.0.0.1', '192.168.31.1', '192.168.31.192', '176.100.18.181'];
+const allowedIPs = ['195.66.140.39', '192.168.31.144', '127.0.0.1', '192.168.31.1', '192.168.31.192', '176.100.18.181', '46.219.250.22'];
 const devMode = process.env.NODE_ENV !== 'production';
 const useLocal = false;
 
@@ -115,7 +115,10 @@ module.exports = {
           console.log('Bad IP connecting: ' + IP, req.url);
           res.status(404).send('Nothing interesting here.');
         } else {
-          console.log(req.url, IP);
+          if(req.url.indexOf('/assets/') !== 0) {
+            console.log(req.url, IP);
+          }
+
           next();
         }
       });

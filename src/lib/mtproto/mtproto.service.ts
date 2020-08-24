@@ -178,6 +178,23 @@ function timeout(delay: number): Promise<Response> {
   }));
 }
 
+function responseForSafariFirstRange(range: [number, number], mimeType: string, size: number): Response {
+  if(range[0] === 0 && range[1] === 1) {
+    return new Response(new Uint8Array(2).buffer, {
+      status: 206,
+      statusText: 'Partial Content',
+      headers: {
+        'Accept-Ranges': 'bytes',
+        'Content-Range': `bytes 0-1/${size || '*'}`,
+        'Content-Length': '2',
+        'Content-Type': mimeType || 'video/mp4',
+      },
+    });
+  }
+
+  return null;
+}
+
 ctx.addEventListener('error', (error) => {
   log.error('error:', error);
 });
@@ -196,7 +213,17 @@ ctx.addEventListener('fetch', (event: FetchEvent): void => {
     case 'document':
     case 'photo': {
       const info: DownloadOptions = JSON.parse(decodeURIComponent(params));
-      const fileName = getFileNameByLocation(info.location);
+
+      const rangeHeader = event.request.headers.get('Range');
+      if(rangeHeader && info.mimeType && info.size) { // maybe safari
+        const range = parseRange(event.request.headers.get('Range'));
+        const possibleResponse = responseForSafariFirstRange(range, info.mimeType, info.size);
+        if(possibleResponse) {
+          return event.respondWith(possibleResponse);
+        }
+      }
+
+      const fileName = getFileNameByLocation(info.location, {fileName: info.fileName});
 
       /* event.request.signal.addEventListener('abort', (e) => {
         console.log('[SW] user aborted request:', fileName);
@@ -221,7 +248,20 @@ ctx.addEventListener('fetch', (event: FetchEvent): void => {
       
       log.debug('[fetch] file:', /* info, */fileName);
 
-      const promise = cancellablePromise.then(b => new Response(b));
+      const promise = cancellablePromise.then(b => {
+        const responseInit: ResponseInit = {};
+
+        if(rangeHeader) {
+          responseInit.headers = {
+            'Accept-Ranges': 'bytes',
+            'Content-Range': `bytes 0-${info.size - 1}/${info.size || '*'}`,
+            'Content-Length': `${info.size}`,
+          }
+        }
+
+        return new Response(b, responseInit);
+      });
+
       event.respondWith(Promise.race([
         timeout(45 * 1000), 
         promise
@@ -231,61 +271,55 @@ ctx.addEventListener('fetch', (event: FetchEvent): void => {
     }
 
     case 'stream': {
-      const [offset, end] = parseRange(event.request.headers.get('Range'));
+      const range = parseRange(event.request.headers.get('Range'));
+      const [offset, end] = range;
 
       const info: DownloadOptions = JSON.parse(decodeURIComponent(params));
       //const fileName = getFileNameByLocation(info.location);
 
       log.debug('[stream]', url, offset, end);
 
-      event.respondWith(new Promise((resolve, reject) => {
-        // safari workaround
-        if(offset === 0 && end === 1) {
-          resolve(new Response(new Uint8Array(2).buffer, {
-            status: 206,
-            statusText: 'Partial Content',
-            headers: {
-              'Accept-Ranges': 'bytes',
-              'Content-Range': `bytes 0-1/${info.size || '*'}`,
-              'Content-Length': '2',
-              'Content-Type': info.mimeType || 'video/mp4',
-            },
-          }));
-
-          return;
-        }
-
-        const limit = end && end < STREAM_CHUNK_UPPER_LIMIT ? alignLimit(end - offset + 1) : STREAM_CHUNK_UPPER_LIMIT;
-        const alignedOffset = alignOffset(offset, limit);
-
-        //log.debug('[stream] requestFilePart:', info.dcID, info.location, alignedOffset, limit);
-
-        apiFileManager.requestFilePart(info.dcID, info.location, alignedOffset, limit).then(result => {
-          let ab = result.bytes;
-
-          //log.debug('[stream] requestFilePart result:', result);
-
-          const headers: Record<string, string> = {
-            'Accept-Ranges': 'bytes',
-            'Content-Range': `bytes ${alignedOffset}-${alignedOffset + ab.byteLength - 1}/${info.size || '*'}`,
-            'Content-Length': `${ab.byteLength}`,
-          };
-
-          if(info.mimeType) headers['Content-Type'] = info.mimeType;
-
-          if(isSafari) {
-            ab = ab.slice(offset - alignedOffset, end - alignedOffset + 1);
-            headers['Content-Range'] = `bytes ${offset}-${offset + ab.byteLength - 1}/${info.size || '*'}`;
-            headers['Content-Length'] = `${ab.byteLength}`;
+      event.respondWith(Promise.race([
+        timeout(45 * 1000),
+        new Promise<Response>((resolve, reject) => {
+          // safari workaround
+          const possibleResponse = responseForSafariFirstRange(range, info.mimeType, info.size);
+          if(possibleResponse) {
+            return resolve(possibleResponse);
           }
 
-          resolve(new Response(ab, {
-            status: 206,
-            statusText: 'Partial Content',
-            headers,
-          }));
-        });
-      }));
+          const limit = end && end < STREAM_CHUNK_UPPER_LIMIT ? alignLimit(end - offset + 1) : STREAM_CHUNK_UPPER_LIMIT;
+          const alignedOffset = alignOffset(offset, limit);
+
+          //log.debug('[stream] requestFilePart:', info.dcID, info.location, alignedOffset, limit);
+
+          apiFileManager.requestFilePart(info.dcID, info.location, alignedOffset, limit).then(result => {
+            let ab = result.bytes;
+
+            //log.debug('[stream] requestFilePart result:', result);
+
+            const headers: Record<string, string> = {
+              'Accept-Ranges': 'bytes',
+              'Content-Range': `bytes ${alignedOffset}-${alignedOffset + ab.byteLength - 1}/${info.size || '*'}`,
+              'Content-Length': `${ab.byteLength}`,
+            };
+
+            if(info.mimeType) headers['Content-Type'] = info.mimeType;
+
+            if(isSafari) {
+              ab = ab.slice(offset - alignedOffset, end - alignedOffset + 1);
+              headers['Content-Range'] = `bytes ${offset}-${offset + ab.byteLength - 1}/${info.size || '*'}`;
+              headers['Content-Length'] = `${ab.byteLength}`;
+            }
+
+            resolve(new Response(ab, {
+              status: 206,
+              statusText: 'Partial Content',
+              headers,
+            }));
+          });
+        })
+      ]));
       break;
     }
 

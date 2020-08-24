@@ -1,7 +1,7 @@
 import Page from "./page";
 import { whichChild } from "../lib/utils";
-import { horizontalMenu } from "../components/misc";
 import lottieLoader from "../lib/lottieLoader";
+import { horizontalMenu } from "../components/horizontalMenu";
 
 class PagesManager {
   private pageID = -1;

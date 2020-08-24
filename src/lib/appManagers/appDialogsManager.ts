@@ -1,10 +1,10 @@
-import { findUpClassName, $rootScope, escapeRegExp, whichChild, findUpTag, cancelEvent, formatNumber } from "../utils";
+import { findUpClassName, $rootScope, escapeRegExp, whichChild, findUpTag, cancelEvent } from "../utils";
 import appImManager, { AppImManager } from "./appImManager";
 import appPeersManager from './appPeersManager';
 import appMessagesManager, { AppMessagesManager, Dialog, DialogFilter } from "./appMessagesManager";
 import appUsersManager, { User } from "./appUsersManager";
 import { RichTextProcessor } from "../richtextprocessor";
-import { ripple, putPreloader, positionMenu, openBtnMenu, parseMenuButtonsTo, horizontalMenu, attachContextMenuListener } from "../../components/misc";
+import { putPreloader, positionMenu, openBtnMenu, parseMenuButtonsTo, attachContextMenuListener } from "../../components/misc";
 //import Scrollable from "../../components/scrollable";
 import Scrollable from "../../components/scrollable_new";
 import { logger, LogLevels } from "../logger";
@@ -14,6 +14,8 @@ import { PopupButton, PopupPeer } from "../../components/popup";
 import { SliderTab } from "../../components/slider";
 import appStateManager from "./appStateManager";
 import { touchSupport, isSafari } from "../config";
+import { horizontalMenu } from "../../components/horizontalMenu";
+import { ripple } from "../../components/ripple";
 
 type DialogDom = {
   avatarEl: AvatarElement,

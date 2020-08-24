@@ -71,7 +71,7 @@ export class ApiFileManager {
     const downloadPull = this.downloadPulls[dcID];
     //const downloadLimit = dcID == 'upload' ? 11 : 5;
     //const downloadLimit = 24;
-    const downloadLimit = dcID == 'upload' ? 11 : 50;
+    const downloadLimit = dcID == 'upload' ? 11 : 48;
 
     if(this.downloadActives[dcID] >= downloadLimit || !downloadPull || !downloadPull.length) {
       return false;
@@ -115,7 +115,8 @@ export class ApiFileManager {
   }
 
   public requestFilePart(dcID: number, location: InputFileLocation | FileLocation, offset: number, limit: number, checkCancel?: () => void) {
-    const delta = limit / 1024 / 256;
+    //const delta = limit / 1024 / 256;
+    const delta = limit / 1024 / 128;
     return this.downloadRequest(dcID, async() => {
       checkCancel && checkCancel();
 
@@ -138,9 +139,10 @@ export class ApiFileManager {
   private getLimitPart(size: number): number {
     let bytes: number;
 
-    if(size < 1e6 || !size) bytes = 512;
+    bytes = 512;
+    /* if(size < 1e6 || !size) bytes = 512;
     else if(size < 3e6) bytes = 256;
-    else bytes = 128;
+    else bytes = 128; */
 
     return bytes * 1024;
   }
@@ -186,11 +188,11 @@ export class ApiFileManager {
       options.mimeType = 'application/json';
     }
 
-    const fileName = getFileNameByLocation(location);
+    const fileName = getFileNameByLocation(location, {fileName: options.fileName});
     const cachedPromise = this.cachedDownloadPromises[fileName];
     const fileStorage = this.getFileStorage();
 
-    //this.log('downloadFile', fileName, size, location, options.mimeType, process);
+    this.log('downloadFile', fileName, size, location, options.mimeType, process);
 
     if(cachedPromise) {
       if(options.processPart) {
@@ -267,7 +269,7 @@ export class ApiFileManager {
         let startOffset = 0;
         let writeFilePromise: CancellablePromise<unknown> = Promise.resolve(),
           writeFileDeferred: CancellablePromise<unknown>;
-        const maxRequests = options.processPart ? 5 : 10;
+        const maxRequests = options.processPart ? 5 : 5;
 
         /* if(fileWriter.length) {
           startOffset = fileWriter.length;
@@ -334,22 +336,26 @@ export class ApiFileManager {
               superpuper();
             }
 
-            //done += limit;
-            done += result.bytes.byteLength;
+            this.log('downloadFile requestFilePart result:', fileName, result);
+            const isFinal = offset + limit >= size || !result.bytes.byteLength;
+            if(result.bytes.byteLength) {
+              //done += limit;
+              done += result.bytes.byteLength;
 
-            const processedResult = await processDownloaded(result.bytes, offset);
-            checkCancel();
+              const processedResult = await processDownloaded(result.bytes, offset);
+              checkCancel();
 
-            const isFinal = offset + limit >= size;
-            //if(!isFinal) {
-              ////this.log('deferred notify 2:', {done: offset + limit, total: size}, deferred);
-              deferred.notify({done, offset, total: size});
-            //}
+              //if(!isFinal) {
+                ////this.log('deferred notify 2:', {done: offset + limit, total: size}, deferred);
+                deferred.notify({done, offset, total: size});
+              //}
 
-            await writeFilePromise;
-            checkCancel();
+              await writeFilePromise;
+              checkCancel();
 
-            await FileManager.write(fileWriter, processedResult);
+              await FileManager.write(fileWriter, processedResult);
+            }
+
             writeFileDeferred.resolve();
 
             if(isFinal) {
