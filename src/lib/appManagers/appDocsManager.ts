@@ -4,7 +4,7 @@ import { isObject, getFileURL, FileURLType } from '../utils';
 import opusDecodeController from '../opusDecodeController';
 import { MTDocument, inputDocumentFileLocation, MTPhotoSize } from '../../types';
 import { getFileNameByLocation } from '../bin_utils';
-import appDownloadManager, { Download, ResponseMethod } from './appDownloadManager';
+import appDownloadManager, { Download, ResponseMethod, DownloadBlob } from './appDownloadManager';
 import appPhotosManager from './appPhotosManager';
 
 class AppDocsManager {
@@ -60,7 +60,7 @@ class AppDocsManager {
           apiDoc.w = attribute.w;
           apiDoc.h = attribute.h;
           //apiDoc.supportsStreaming = attribute.pFlags?.supports_streaming/*  && apiDoc.size > 524288 */;
-          if(apiDoc.thumbs && attribute.pFlags.round_message) {
+          if(/* apiDoc.thumbs &&  */attribute.pFlags.round_message) {
             apiDoc.type = 'round';
           } else /* if(apiDoc.thumbs) */ {
             apiDoc.type = 'video';
@@ -93,7 +93,7 @@ class AppDocsManager {
           break;
 
         case 'documentAttributeAnimated':
-          if((apiDoc.mime_type == 'image/gif' || apiDoc.mime_type == 'video/mp4') && apiDoc.thumbs) {
+          if((apiDoc.mime_type == 'image/gif' || apiDoc.mime_type == 'video/mp4')/*  && apiDoc.thumbs */) {
             apiDoc.type = 'gif';
           }
 
@@ -211,14 +211,19 @@ class AppDocsManager {
 
   public getThumbURL(doc: MTDocument, useBytes = true) {
     if(doc.thumbs?.length) {
-      if(doc.thumbs[0].bytes && useBytes) {
-        return appPhotosManager.getPreviewURLFromBytes(doc.thumbs[0].bytes, !!doc.sticker);  
+      let thumb: MTPhotoSize;
+      if(!useBytes) {
+        thumb = doc.thumbs.find(t => !t.bytes);
+      }
+      
+      if(!thumb) {
+        thumb = doc.thumbs[0];
       }
 
-      const thumb = doc.thumbs.find(t => !t.bytes);
-      if(thumb) {
-        const url = this.getFileURL(doc, false, thumb);
-        return url;
+      if(thumb.bytes) {
+        return appPhotosManager.getPreviewURLFromBytes(doc.thumbs[0].bytes, !!doc.sticker);  
+      } else {
+        return this.getFileURL(doc, false, thumb);
       }
     }
 
@@ -291,7 +296,7 @@ class AppDocsManager {
     return this.downloadPromises[doc.id] = deferred;
   }
 
-  public downloadDocNew(docID: string | MTDocument/* , method: ResponseMethod = 'blob' */): Download {
+  public downloadDocNew(docID: string | MTDocument/* , method: ResponseMethod = 'blob' */): DownloadBlob {
     const doc = this.getDoc(docID);
 
     if(doc._ == 'documentEmpty') {
@@ -300,16 +305,20 @@ class AppDocsManager {
 
     const fileName = this.getInputFileName(doc);
 
-    let download = appDownloadManager.getDownload(fileName);
+    let download: DownloadBlob = appDownloadManager.getDownload(fileName);
     if(download) {
       return download;
     }
 
-    download = appDownloadManager.download(doc.url, fileName, /*method*/);
+    download = appDownloadManager.download(doc.url, fileName/* , method */);
 
     const originalPromise = download;
-    originalPromise.then(() => {
+    originalPromise.then((blob) => {
       doc.downloaded = true;
+
+      if(!doc.supportsStreaming) {
+        doc.url = URL.createObjectURL(blob);
+      }
     });
 
     if(doc.type == 'voice' && !opusDecodeController.isPlaySupported()) {

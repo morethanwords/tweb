@@ -1,7 +1,7 @@
 import {isObject, $rootScope} from '../utils';
 import AppStorage from '../storage';
 import CryptoWorkerMethods from '../crypto/crypto_methods';
-import runtime from 'serviceworker-webpack-plugin/lib/runtime';
+//import runtime from 'serviceworker-webpack-plugin/lib/runtime';
 import { logger } from '../logger';
 import { webpWorkerController } from '../webp/webpWorkerController';
 
@@ -33,7 +33,8 @@ class ApiManagerProxy extends CryptoWorkerMethods {
     /**
      * Service worker
      */
-    (runtime.register({ scope: '/' }) as Promise<ServiceWorkerRegistration>).then(registration => {
+    //(runtime.register({ scope: './' }) as Promise<ServiceWorkerRegistration>).then(registration => {
+    navigator.serviceWorker.register('./sw.js', {scope: './'}).then(registration => {
       
     }, (err) => {
       this.log.error('SW registration failed!', err);

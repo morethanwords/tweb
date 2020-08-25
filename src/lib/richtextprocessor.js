@@ -8,7 +8,7 @@ var EmojiHelper = {
 };
 
 var emojiData = Config.Emoji;
-var emojiSupported = navigator.userAgent.search(/OS X|iPhone|iPad|iOS/i) != -1/*  && false */,
+var emojiSupported = navigator.userAgent.search(/OS X|iPhone|iPad|iOS/i) != -1/*  && false *//*  || true */,
   emojiCode;
 
 // added * to (?:[©®\\u2122\\u265f]\\ufe0f) and removed \\ufe0f from end

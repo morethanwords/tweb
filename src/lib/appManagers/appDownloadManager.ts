@@ -40,7 +40,7 @@ export class AppDownloadManager {
 
   public download(url: string, fileName: string, responseMethod?: ResponseMethodBlob): DownloadBlob;
   public download(url: string, fileName: string, responseMethod?: ResponseMethodJson): DownloadJson;
-  public download(url: string, fileName: string, responseMethod: ResponseMethod = 'blob'): Download {
+  public download(url: string, fileName: string, responseMethod: ResponseMethod = 'blob'): DownloadBlob {
     if(this.downloads.hasOwnProperty(fileName)) return this.downloads[fileName];
 
     const deferred = deferredPromise<Blob>();

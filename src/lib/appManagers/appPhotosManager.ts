@@ -1,12 +1,12 @@
 import { calcImageInBox, isObject, getFileURL } from "../utils";
 import { bytesFromHex, getFileNameByLocation } from "../bin_utils";
-import { MTPhotoSize, inputPhotoFileLocation, inputDocumentFileLocation, FileLocation } from "../../types";
+import { MTPhotoSize, inputPhotoFileLocation, inputDocumentFileLocation, FileLocation, MTDocument } from "../../types";
 import appDownloadManager, { Download } from "./appDownloadManager";
 import { deferredPromise, CancellablePromise } from "../polyfill";
 import { isSafari } from "../../helpers/userAgent";
 
 export type MTPhoto = {
-  _: 'photo' | 'photoEmpty' | string,
+  _: 'photo' | 'photoEmpty',
   pFlags: any,
   flags: number,
   id: string,
@@ -61,7 +61,7 @@ export class AppPhotosManager {
     return photo;
   }
   
-  public choosePhotoSize(photo: any, width = 0, height = 0) {
+  public choosePhotoSize(photo: MTPhoto | MTDocument, width = 0, height = 0) {
     //if(Config.Navigator.retina) {
     if(window.devicePixelRatio > 1) {
       width *= 2;
@@ -80,14 +80,14 @@ export class AppPhotosManager {
     d	crop	1280x1280 */
 
     let bestPhotoSize: MTPhotoSize = {_: 'photoSizeEmpty'};
-    let sizes = (photo.sizes || photo.thumbs) as typeof bestPhotoSize[];
+    const sizes = ((photo as MTPhoto).sizes || (photo as MTDocument).thumbs) as typeof bestPhotoSize[];
     if(sizes) {
-      for(let photoSize of sizes) {
+      for(const photoSize of sizes) {
         if(!photoSize.w || !photoSize.h) continue;
   
         bestPhotoSize = photoSize;
   
-        let {w, h} = calcImageInBox(photoSize.w, photoSize.h, width, height);
+        const {w, h} = calcImageInBox(photoSize.w, photoSize.h, width, height);
         if(w == width || h == height) {
           break;
         }
@@ -142,7 +142,7 @@ export class AppPhotosManager {
     return URL.createObjectURL(blob);
   }
 
-  public getPreviewURLFromThumb(thumb: any, isSticker = false) {
+  public getPreviewURLFromThumb(thumb: MTPhotoSize, isSticker = false) {
     return thumb.url ?? (thumb.url = this.getPreviewURLFromBytes(thumb.bytes, isSticker));
   }
   
@@ -171,21 +171,12 @@ export class AppPhotosManager {
     }
   }
   
-  public setAttachmentSize(photoID: any, element: HTMLElement | SVGForeignObjectElement, boxWidth: number, boxHeight: number, isSticker = false) {
-    let photo: /* MTDocument | MTPhoto */any = null;
-    
-    if(typeof(photoID) === 'string') {
-      photo = this.photos[photoID];
-      if(!photo) return {_: 'photoEmpty'};
-    } else {
-      photo = photoID;
-    }
-    
+  public setAttachmentSize(photo: MTPhoto | MTDocument, element: HTMLElement | SVGForeignObjectElement, boxWidth: number, boxHeight: number, isSticker = false, dontRenderPreview = false) {
     let photoSize = this.choosePhotoSize(photo, boxWidth, boxHeight);
     //console.log('setAttachmentSize', photo, photo.sizes[0].bytes, div);
     
-    let sizes = photo.sizes || photo.thumbs;
-    if(!photo.downloaded && !isSticker && sizes && sizes[0].bytes) {
+    let sizes = (photo as MTPhoto).sizes || (photo as MTDocument).thumbs;
+    if((!photo.downloaded || (photo as MTDocument).type == 'video' || (photo as MTDocument).type == 'gif') && !isSticker && sizes && sizes[0].bytes && !dontRenderPreview) {
       this.setAttachmentPreview(sizes[0].bytes, element, isSticker);
     }
     
@@ -213,7 +204,7 @@ export class AppPhotosManager {
     return photoSize;
   }
 
-  public getPhotoURL(photo: MTPhoto, photoSize: MTPhotoSize) {
+  public getPhotoURL(photo: MTPhoto | MTDocument, photoSize: MTPhotoSize) {
     const isDocument = photo._ == 'document';
 
     if(!photoSize || photoSize._ == 'photoSizeEmpty') {
@@ -285,8 +276,7 @@ export class AppPhotosManager {
     return isObject(photoID) ? photoID : this.photos[photoID];
   }
 
-  public getInputByID(photoID: any) {
-    let photo = this.getPhoto(photoID);
+  public getInput(photo: MTPhoto) {
     return {
       _: 'inputMediaPhoto',
       flags: 0,
@@ -300,8 +290,7 @@ export class AppPhotosManager {
     };
   }
 
-  public savePhotoFile(photoID: string) {
-    const photo = this.photos[photoID];
+  public savePhotoFile(photo: MTPhoto | MTDocument) {
     const fullWidth = this.windowW;
     const fullHeight = this.windowH;
     const fullPhotoSize = this.choosePhotoSize(photo, fullWidth, fullHeight);

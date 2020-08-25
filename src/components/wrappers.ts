@@ -1,4 +1,4 @@
-import appPhotosManager from '../lib/appManagers/appPhotosManager';
+import appPhotosManager, { MTPhoto } from '../lib/appManagers/appPhotosManager';
 import LottieLoader from '../lib/lottieLoader';
 import appDocsManager from "../lib/appManagers/appDocsManager";
 import { formatBytes, getEmojiToneIndex } from "../lib/utils";
@@ -14,7 +14,7 @@ import { mediaSizes, isSafari } from '../lib/config';
 import { MTDocument, MTPhotoSize } from '../types';
 import animationIntersector from './animationIntersector';
 import AudioElement from './audio';
-import appDownloadManager, { Download } from '../lib/appManagers/appDownloadManager';
+import appDownloadManager, { Download, Progress, DownloadBlob } from '../lib/appManagers/appDownloadManager';
 import { webpWorkerController } from '../lib/webp/webpWorkerController';
 
 export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group}: {
@@ -50,6 +50,10 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     }
   }
 
+  if(doc.mime_type == 'image/gif') {
+    return wrapPhoto(doc, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware);
+  }
+
   const video = document.createElement('video');
   
   let img: HTMLImageElement;
@@ -61,19 +65,16 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     if(withTail) {
       img = wrapMediaWithTail(doc, message, container, boxWidth, boxHeight, isOut);
     } else {
-      if(!boxWidth && !boxHeight) { // album
-        let sizes = doc.thumbs;
-        if(!doc.downloaded && sizes && sizes[0].bytes) {
-          appPhotosManager.setAttachmentPreview(sizes[0].bytes, container, false);
-        }
-      } else {
-        if(!container.firstElementChild || (container.firstElementChild.tagName != 'IMG' && container.firstElementChild.tagName != 'VIDEO')) {
-          appPhotosManager.setAttachmentSize(doc, container, boxWidth, boxHeight);
-        }
+      if(boxWidth && boxHeight) { // !album
+        appPhotosManager.setAttachmentSize(doc, container, boxWidth, boxHeight, false, true);
+      }
+
+      if(doc.thumbs && doc.thumbs[0]?.bytes) {
+        appPhotosManager.setAttachmentPreview(doc.thumbs[0].bytes, container, false);
       }
   
       img = container.lastElementChild as HTMLImageElement;
-      if(!img || img.tagName != 'IMG') {
+      if(img?.tagName != 'IMG') {
         container.append(img = new Image());
       }
     }
@@ -102,17 +103,26 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   }
 
   const loadVideo = async() => {
-    if(message?.media?.preloader) { // means upload
-      (message.media.preloader as ProgressivePreloader).attach(container, undefined, undefined, false);
-    } else if(!doc.downloaded) {
-      /* const promise = appDocsManager.downloadDoc(doc.id);
-      
-      //if(!doc.supportsStreaming) {
-        const preloader = new ProgressivePreloader(container, true);
-        preloader.attach(container, true, promise, false);
-      //}
+    if(middleware && !middleware()) {
+      return;
+    }
 
-      await promise; */
+    let preloader: ProgressivePreloader;
+    if(message?.media?.preloader) { // means upload
+      preloader = message.media.preloader as ProgressivePreloader;
+      preloader.attach(container, undefined, undefined, true);
+    } else if(!doc.downloaded && !doc.supportsStreaming) {
+      const promise = appDocsManager.downloadDocNew(doc);
+      preloader = new ProgressivePreloader(container, true);
+      preloader.attach(container, true, promise, true);
+
+      /* video.addEventListener('canplay', () => {
+        if(preloader) {
+          preloader.detach();
+        }
+      }, {once: true}); */
+
+      await promise;
     }
 
     if(middleware && !middleware()) {
@@ -121,21 +131,21 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
 
     //console.log('loaded doc:', doc, doc.url, container);
 
-    if(doc.type == 'gif'/*  || true */) {
+    //if(doc.type == 'gif'/*  || true */) {
       video.addEventListener('canplay', () => {
-        if(img && img.parentElement) {
+        if(img?.parentElement) {
           img.remove();
         }
 
         /* if(!video.paused) {
           video.pause();
         } */
-        if(group) {
+        if(doc.type == 'gif' && group) {
           animationIntersector.addAnimation(video, group);
         }
       }, {once: true});
-    }
-    
+    //}
+
     renderImageFromUrl(video, doc.url);
     video.setAttribute('playsinline', '');
 
@@ -149,10 +159,9 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       //video.play();
       video.autoplay = true;
     } else if(doc.type == 'round') {
-      //video.dataset.ckin = doc.type == 'round' ? 'circle' : 'default';
       video.dataset.ckin = 'circle';
       video.dataset.overlay = '1';
-      let player = new VideoPlayer(video/* , doc.type != 'round' */);
+      new VideoPlayer(video);
     }
   };
 
@@ -174,7 +183,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     return;
   } */
 
-  doc.downloaded || !lazyLoadQueue/*  && false */ ? loadVideo() : lazyLoadQueue.push({div: container, load: loadVideo/* , wasSeen: true */});
+  /* doc.downloaded ||  */!lazyLoadQueue/*  && false */ ? loadVideo() : lazyLoadQueue.push({div: container, load: loadVideo/* , wasSeen: true */});
   return video;
 }
 
@@ -228,7 +237,7 @@ export function wrapDocument(doc: MTDocument, withTime = false, uploading = fals
   if(!uploading) {
     let downloadDiv = docDiv.querySelector('.document-download') as HTMLDivElement;
     let preloader: ProgressivePreloader;
-    let download: Download;
+    let download: DownloadBlob;
     
     docDiv.addEventListener('click', () => {
       if(!download) {
@@ -271,16 +280,16 @@ export function wrapAudio(doc: MTDocument, withTime = false, mid?: number): HTML
   return elem;
 }
 
-function wrapMediaWithTail(photo: any, message: {mid: number, message: string}, container: HTMLDivElement, boxWidth: number, boxHeight: number, isOut: boolean) {
-  let svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+function wrapMediaWithTail(photo: MTPhoto | MTDocument, message: {mid: number, message: string}, container: HTMLDivElement, boxWidth: number, boxHeight: number, isOut: boolean) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.classList.add('bubble__media-container', isOut ? 'is-out' : 'is-in');
   
-  let foreignObject = document.createElementNS("http://www.w3.org/2000/svg", 'foreignObject');
+  const foreignObject = document.createElementNS("http://www.w3.org/2000/svg", 'foreignObject');
   
-  appPhotosManager.setAttachmentSize(photo._ == 'document' ? photo : photo.id, foreignObject, boxWidth, boxHeight);
+  appPhotosManager.setAttachmentSize(photo, foreignObject, boxWidth, boxHeight/* , false, true */);
   
-  let width = +foreignObject.getAttributeNS(null, 'width');
-  let height = +foreignObject.getAttributeNS(null, 'height');
+  const width = +foreignObject.getAttributeNS(null, 'width');
+  const height = +foreignObject.getAttributeNS(null, 'height');
 
   svg.setAttributeNS(null, 'width', '' + width);
   svg.setAttributeNS(null, 'height', '' + height);
@@ -288,10 +297,10 @@ function wrapMediaWithTail(photo: any, message: {mid: number, message: string}, 
   svg.setAttributeNS(null, 'viewBox', '0 0 ' + width + ' ' + height);
   svg.setAttributeNS(null, 'preserveAspectRatio', 'none');
 
-  let clipID = 'clip' + message.mid;
+  const clipID = 'clip' + message.mid;
   svg.dataset.clipID = clipID;
   
-  let defs = document.createElementNS("http://www.w3.org/2000/svg", 'defs');
+  const defs = document.createElementNS("http://www.w3.org/2000/svg", 'defs');
   let clipPathHTML: string = '';
   
   if(message.message) {
@@ -326,20 +335,20 @@ function wrapMediaWithTail(photo: any, message: {mid: number, message: string}, 
   return img;
 }
 
-export function wrapPhoto(photoID: any, message: any, container: HTMLDivElement, boxWidth = mediaSizes.active.regular.width, boxHeight = mediaSizes.active.regular.height, withTail = true, isOut = false, lazyLoadQueue: LazyLoadQueue, middleware: () => boolean, size: MTPhotoSize = null) {
-  const photo = appPhotosManager.getPhoto(photoID);
-
+export function wrapPhoto(photo: MTPhoto | MTDocument, message: any, container: HTMLDivElement, boxWidth = mediaSizes.active.regular.width, boxHeight = mediaSizes.active.regular.height, withTail = true, isOut = false, lazyLoadQueue: LazyLoadQueue, middleware: () => boolean, size: MTPhotoSize = null) {
   let image: HTMLImageElement;
   if(withTail) {
     image = wrapMediaWithTail(photo, message, container, boxWidth, boxHeight, isOut);
   } else {
-    if(size) { // album
-      let sizes = photo.sizes;
-      if(!photo.downloaded && sizes && sizes[0].bytes) {
-        appPhotosManager.setAttachmentPreview(sizes[0].bytes, container, false);
+    if(boxWidth && boxHeight) { // !album
+      size = appPhotosManager.setAttachmentSize(photo, container, boxWidth, boxHeight, false, true);
+    }
+
+    if(photo._ == 'document' || !photo.downloaded) {
+      const thumbs = (photo as MTPhoto).sizes || (photo as MTDocument).thumbs;
+      if(thumbs && thumbs[0]?.bytes) {
+        appPhotosManager.setAttachmentPreview(thumbs[0].bytes, container, false);
       }
-    } else if(boxWidth && boxHeight) { // means webpage's preview
-      size = appPhotosManager.setAttachmentSize(photo, container, boxWidth, boxHeight, false);
     }
 
     image = container.lastElementChild as HTMLImageElement;
@@ -360,7 +369,7 @@ export function wrapPhoto(photoID: any, message: any, container: HTMLDivElement,
   }
 
   const load = () => {
-    const promise = appPhotosManager.preloadPhoto(photoID, size);
+    const promise = photo._ == 'document' && photo.animated ? appDocsManager.downloadDocNew(photo) : appPhotosManager.preloadPhoto(photo, size);
 
     if(preloader) {
       preloader.attach(container, true, promise);
@@ -378,7 +387,7 @@ export function wrapPhoto(photoID: any, message: any, container: HTMLDivElement,
     return promise.then(() => {
       if(middleware && !middleware()) return;
 
-      renderImageFromUrl(image || container, cacheContext.url);
+      renderImageFromUrl(image || container, cacheContext.url || photo.url);
     });
   };
 
@@ -697,7 +706,7 @@ export function wrapAlbum({groupID, attachmentDiv, middleware, uploading, lazyLo
 
     if(media._ == 'photo') {
       wrapPhoto(
-        media.id,
+        media,
         message,
         div,
         0,

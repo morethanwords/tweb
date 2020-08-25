@@ -71,5 +71,6 @@
     "./src/lib/*.js",
     "./src/*.js",
     "*.js",
+    "public3"
   ]
 }

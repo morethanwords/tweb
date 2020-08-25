@@ -132,7 +132,7 @@ export class AppMediaViewer {
     const download = (e: MouseEvent) => {
       let message = appMessagesManager.getMessage(this.currentMessageID);
       if(message.media.photo) {
-        appPhotosManager.savePhotoFile(message.media.photo.id);
+        appPhotosManager.savePhotoFile(message.media.photo);
       } else {
         let document: any = null;
 
@@ -759,7 +759,7 @@ export class AppMediaViewer {
     //const maxWidth = appPhotosManager.windowW - 16;
     const maxWidth = mediaSizes.isMobile ? this.pageEl.scrollWidth : this.pageEl.scrollWidth - 16;
     const maxHeight = appPhotosManager.windowH - 100;
-    const size = appPhotosManager.setAttachmentSize(isVideo ? media : media.id, container, maxWidth, maxHeight);
+    const size = appPhotosManager.setAttachmentSize(media, container, maxWidth, maxHeight);
 
     // need after setAttachmentSize
     /* if(useContainerAsTarget) {

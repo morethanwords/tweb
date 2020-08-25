@@ -2215,7 +2215,7 @@ export class AppImManager {
                 this.log('will wrap pending photo:', pending, message, appPhotosManager.getPhoto(message.id));
                 const tailSupported = !isAndroid;
                 if(tailSupported) bubble.classList.add('with-media-tail');
-                wrapPhoto(message.id, message, attachmentDiv, undefined, undefined, tailSupported, true, this.lazyLoadQueue, null);
+                wrapPhoto(appPhotosManager.getPhoto(message.id), message, attachmentDiv, undefined, undefined, tailSupported, true, this.lazyLoadQueue, null);
 
                 bubble.classList.add('hide-name', 'photo');
               //}
@@ -2304,7 +2304,7 @@ export class AppImManager {
             }
           }
 
-          wrapPhoto(photo.id, message, attachmentDiv, undefined, undefined, tailSupported, isOut, this.lazyLoadQueue, this.getMiddleware());
+          wrapPhoto(photo, message, attachmentDiv, undefined, undefined, tailSupported, isOut, this.lazyLoadQueue, this.getMiddleware());
 
           break;
         }
@@ -2401,7 +2401,7 @@ export class AppImManager {
               bubble.classList.add('is-vertical-photo');
             }
 
-            wrapPhoto(webpage.photo.id, message, preview, mediaSizes.active.webpage.width, mediaSizes.active.webpage.height, false, null, this.lazyLoadQueue, this.getMiddleware());
+            wrapPhoto(webpage.photo, message, preview, mediaSizes.active.webpage.width, mediaSizes.active.webpage.height, false, null, this.lazyLoadQueue, this.getMiddleware());
           }
           
           box.append(quote);
@@ -2566,6 +2566,8 @@ export class AppImManager {
     
     if((this.peerID < 0 && !our) || message.fwd_from || message.reply_to_mid) { // chat
       let title = appPeersManager.getPeerTitle(message.fwdFromID || message.fromID);
+
+      const isForwardFromChannel = !message.fromID && message.fwd_from;
       
       let isHidden = message.fwd_from && !message.fwd_from.from_id && !message.fwd_from.channel_id;
       if(isHidden) {
@@ -2594,7 +2596,7 @@ export class AppImManager {
           nameDiv.classList.add('name');
           nameDiv.dataset.peerID = message.fwdFromID;
 
-          if(this.peerID == this.myID) {
+          if(this.peerID == this.myID || isForwardFromChannel) {
             nameDiv.style.color = appPeersManager.getPeerColorByID(message.fwdFromID, false);
             nameDiv.innerHTML = title;
           } else {
@@ -2650,7 +2652,7 @@ export class AppImManager {
           avatarElem.setAttribute('peer-title', message.fwd_from.from_name);
         }
 
-        avatarElem.setAttribute('peer', '' + ((message.fwd_from && this.peerID == this.myID ? message.fwdFromID : message.fromID) || 0));
+        avatarElem.setAttribute('peer', '' + (((message.fwd_from && this.peerID == this.myID) || isForwardFromChannel ? message.fwdFromID : message.fromID) || 0));
         avatarElem.update();
         
         //this.log('exec loadDialogPhoto', message);

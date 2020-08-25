@@ -50,7 +50,7 @@ export default class ProgressivePreloader {
   }
 
   public attach(elem: Element, reset = true, promise?: CancellablePromise<any>, append = true) {
-    if(promise) {
+    if(promise/*  && false */) {
       this.promise = promise;
 
       const tempID = --this.tempID;
@@ -99,14 +99,14 @@ export default class ProgressivePreloader {
     this.detached = true;
     
     if(this.preloader.parentElement) {
-      window.requestAnimationFrame(() => {
+      /* setTimeout(() =>  */window.requestAnimationFrame(() => {
         if(!this.detached) return;
         this.detached = true;
 
         if(this.preloader.parentElement) {
-          this.preloader.parentElement.removeChild(this.preloader);
+          this.preloader.remove();
         }
-      });
+      })/* , 5e3) */;
     }
   }
   

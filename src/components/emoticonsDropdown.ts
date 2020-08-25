@@ -625,13 +625,15 @@ class GifsTab implements EmoticonsTab {
           });
 
           const video = div.querySelector('video');
-          video.addEventListener('loadeddata', () => {
+          video.addEventListener('canplay', () => {
             div.style.opacity = '';
             if(!mouseOut) {
-              img && img.remove();
+              img && img.classList.add('hide');
             } else {
-              div.innerHTML = '';
-              div.append(img);
+              img && img.classList.remove('hide');
+              if(div.lastElementChild != img) {
+                div.lastElementChild.remove();
+              }
             }
           }, {once: true});
         };
@@ -654,9 +656,20 @@ class GifsTab implements EmoticonsTab {
 
             mouseOut = true;
 
-            div.innerHTML = '';
-            div.append(img);
-            div.addEventListener('mouseover', onMouseOver, {once: true});
+            const cb = () => {
+              if(div.lastElementChild != img) {
+                div.lastElementChild.remove();
+              }
+
+              div.addEventListener('mouseover', onMouseOver, {once: true});
+            };
+
+            img && img.classList.remove('hide');
+            /* window.requestAnimationFrame(() => {
+              window.requestAnimationFrame();
+            }); */
+            if(img) window.requestAnimationFrame(() => window.requestAnimationFrame(cb));
+            else cb();
           });
         };
 

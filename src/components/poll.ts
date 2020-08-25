@@ -173,7 +173,7 @@ export default class PollElement extends HTMLElement {
 
     if(!lineTotalLength) {
       lineTotalLength = (document.getElementById('poll-line') as any as SVGPathElement).getTotalLength();
-      console.log('line total length:', lineTotalLength);
+      //console.log('line total length:', lineTotalLength);
     }
 
     this.pollID = this.getAttribute('poll-id');
@@ -182,7 +182,7 @@ export default class PollElement extends HTMLElement {
 
     connectedPolls.push({id: this.pollID, element: this});
 
-    console.log('pollElement poll:', poll, results);
+    //console.log('pollElement poll:', poll, results);
 
     let desc = '';
     if(poll.pFlags) {

@@ -1572,7 +1572,7 @@ export class AppMessagesManager {
           if(messageMedia.photo) {
             let photo = messageMedia.photo;
             appPhotosManager.savePhoto(photo);
-            inputMedia = appPhotosManager.getInputByID(photo.id);
+            inputMedia = appPhotosManager.getInput(photo);
           } else {
             let doc = messageMedia.document;
             appDocsManager.saveDoc(doc);
