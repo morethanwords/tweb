@@ -1,12 +1,16 @@
 import { $rootScope } from "../utils";
 import apiManager from "../mtproto/mtprotoworker";
+import { deferredPromise, CancellablePromise } from "../polyfill";
 
 export type ResponseMethodBlob = 'blob';
 export type ResponseMethodJson = 'json';
 export type ResponseMethod = ResponseMethodBlob | ResponseMethodJson;
 
-export type DownloadBlob = {promise: Promise<Blob>, controller: AbortController};
-export type DownloadJson = {promise: Promise<any>, controller: AbortController};
+/* export type DownloadBlob = {promise: Promise<Blob>, controller: AbortController};
+export type DownloadJson = {promise: Promise<any>, controller: AbortController}; */
+export type DownloadBlob = CancellablePromise<Blob>;
+export type DownloadJson = CancellablePromise<any>;
+//export type Download = DownloadBlob/*  | DownloadJson */;
 export type Download = DownloadBlob/*  | DownloadJson */;
 
 export type Progress = {done: number, fileName: string, total: number, offset: number};
@@ -26,17 +30,25 @@ export class AppDownloadManager {
       if(callbacks) {
         callbacks.forEach(callback => callback(details));
       }
+
+      const download = this.downloads[details.fileName];
+      if(download) {
+        download.notifyAll(details);
+      }
     });
   }
 
-  public download(fileName: string, url: string, responseMethod?: ResponseMethodBlob): DownloadBlob;
-  public download(fileName: string, url: string, responseMethod?: ResponseMethodJson): DownloadJson;
-  public download(fileName: string, url: string, responseMethod: ResponseMethod = 'blob'): Download {
+  public download(url: string, fileName: string, responseMethod?: ResponseMethodBlob): DownloadBlob;
+  public download(url: string, fileName: string, responseMethod?: ResponseMethodJson): DownloadJson;
+  public download(url: string, fileName: string, responseMethod: ResponseMethod = 'blob'): Download {
     if(this.downloads.hasOwnProperty(fileName)) return this.downloads[fileName];
+
+    const deferred = deferredPromise<Blob>();
 
     const controller = new AbortController();
     const promise = fetch(url, {signal: controller.signal})
     .then(res => res[responseMethod]())
+    .then(res => deferred.resolve(res))
     .catch(err => { // Только потому что event.request.signal не работает в SW, либо я кривой?
       if(err.name === 'AbortError') {
         //console.log('Fetch aborted');
@@ -48,6 +60,7 @@ export class AppDownloadManager {
         //console.error('Uh oh, an error!', err);
       }
       
+      deferred.reject(err);
       throw err;
     });
 
@@ -57,7 +70,13 @@ export class AppDownloadManager {
       delete this.progressCallbacks[fileName];
     });
 
-    return this.downloads[fileName] = {promise, controller};
+    deferred.cancel = () => {
+      controller.abort();
+      deferred.cancel = () => {};
+    };
+
+    //return this.downloads[fileName] = {promise, controller};
+    return this.downloads[fileName] = deferred;
   }
 
   public getDownload(fileName: string) {
@@ -73,10 +92,12 @@ export class AppDownloadManager {
     }
   }
 
-  private createDownloadAnchor(url: string, onRemove?: () => void) {
+  private createDownloadAnchor(url: string, fileName: string, onRemove?: () => void) {
     const a = document.createElement('a');
     a.href = url;
-  
+    a.download = fileName;
+    a.target = '_blank';
+    
     a.style.position = 'absolute';
     a.style.top = '1px';
     a.style.left = '1px';
@@ -108,11 +129,11 @@ export class AppDownloadManager {
     return this.download(fileName, url);
   } */
 
-  public downloadToDisc(fileName: string, url: string) {
-    const download = this.download(fileName, url);
-    download.promise.then(blob => {
+  public downloadToDisc(fileName: string, url: string, discFileName: string) {
+    const download = this.download(url, fileName);
+    download/* .promise */.then(blob => {
       const objectURL = URL.createObjectURL(blob);
-      this.createDownloadAnchor(objectURL, () => {
+      this.createDownloadAnchor(objectURL, discFileName, () => {
         URL.revokeObjectURL(objectURL);
       });
     });

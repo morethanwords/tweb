@@ -11,7 +11,7 @@ import apiManager from '../lib/mtproto/mtprotoworker';
 import LazyLoadQueue from "./lazyLoadQueue";
 import { wrapSticker, wrapVideo } from "./wrappers";
 import appDocsManager from "../lib/appManagers/appDocsManager";
-import ProgressivePreloader from "./preloader_new";
+import ProgressivePreloader from "./preloader";
 import Config, { touchSupport } from "../lib/config";
 import { MTDocument } from "../types";
 import animationIntersector from "./animationIntersector";
@@ -377,9 +377,9 @@ class StickersTab implements EmoticonsTab {
         });
       } else {
         const image = new Image();
-        renderImageFromUrl(image, thumbURL).then(() => {
+        renderImageFromUrl(image, thumbURL, () => {
           li.append(image);
-        })
+        });
       }
     } else { // as thumb will be used first sticker
       wrapSticker({
@@ -636,7 +636,7 @@ class GifsTab implements EmoticonsTab {
           }, {once: true});
         };
 
-        ((posterURL ? renderImageFromUrl(img, posterURL) : Promise.resolve()) as Promise<any>).then(() => {
+        const afterRender = () => {
           if(img) {
             div.append(img);
             div.style.opacity = '';
@@ -658,7 +658,9 @@ class GifsTab implements EmoticonsTab {
             div.append(img);
             div.addEventListener('mouseover', onMouseOver, {once: true});
           });
-        });
+        };
+
+        (posterURL ? renderImageFromUrl(img, posterURL, afterRender) : afterRender());
 
         /* wrapVideo({
           doc,
@@ -742,7 +744,7 @@ class EmoticonsDropdown {
           if(firstTime) {
             this.toggleEl.onmouseout = this.element.onmouseout = (e) => {
               const toElement = (e as any).toElement as Element;
-              if(findUpClassName(toElement, 'emoji-dropdown')) {
+              if(toElement && findUpClassName(toElement, 'emoji-dropdown')) {
                 return;
               }
 

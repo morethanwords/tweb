@@ -14,16 +14,21 @@ class AppDocsManager {
   public saveDoc(apiDoc: MTDocument, context?: any) {
     //console.log('saveDoc', apiDoc, this.docs[apiDoc.id]);
     if(this.docs[apiDoc.id]) {
-      let d = this.docs[apiDoc.id];
+      const d = this.docs[apiDoc.id];
 
       if(apiDoc.thumbs) {
         if(!d.thumbs) d.thumbs = apiDoc.thumbs;
-        else if(apiDoc.thumbs[0].bytes && !d.thumbs[0].bytes) {
+        /* else if(apiDoc.thumbs[0].bytes && !d.thumbs[0].bytes) {
           d.thumbs.unshift(apiDoc.thumbs[0]);
-        }
+        } else if(d.thumbs[0].url) { // fix for converted thumb in safari
+          apiDoc.thumbs[0] = d.thumbs[0];
+        } */
       }
 
-      return Object.assign(d, apiDoc, context);
+      d.file_reference = apiDoc.file_reference;
+      return d;
+
+      //return Object.assign(d, apiDoc, context);
       //return context ? Object.assign(d, context) : d;
     }
     
@@ -32,10 +37,6 @@ class AppDocsManager {
     }
 
     this.docs[apiDoc.id] = apiDoc;
-    
-    if(apiDoc.thumb && apiDoc.thumb._ == 'photoSizeEmpty') {
-      delete apiDoc.thumb;
-    }
     
     apiDoc.attributes.forEach((attribute: any) => {
       switch(attribute._) {
@@ -216,7 +217,7 @@ class AppDocsManager {
 
       const thumb = doc.thumbs.find(t => !t.bytes);
       if(thumb) {
-        const url = appDocsManager.getFileURL(doc, false, thumb);
+        const url = this.getFileURL(doc, false, thumb);
         return url;
       }
     }
@@ -304,15 +305,15 @@ class AppDocsManager {
       return download;
     }
 
-    download = appDownloadManager.download(fileName, doc.url/* , method */);
+    download = appDownloadManager.download(doc.url, fileName, /*method*/);
 
-    const originalPromise = download.promise;
+    const originalPromise = download;
     originalPromise.then(() => {
       doc.downloaded = true;
     });
 
     if(doc.type == 'voice' && !opusDecodeController.isPlaySupported()) {
-      download.promise = originalPromise.then(async(blob) => {
+      download = originalPromise.then(async(blob) => {
         let reader = new FileReader();
   
         await new Promise((resolve, reject) => {
@@ -344,7 +345,7 @@ class AppDocsManager {
     const url = this.getFileURL(doc, true);
     const fileName = this.getInputFileName(doc);
 
-    return appDownloadManager.downloadToDisc(fileName, url);
+    return appDownloadManager.downloadToDisc(fileName, url, doc.file_name);
   }
 }
 

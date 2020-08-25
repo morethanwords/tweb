@@ -12,7 +12,6 @@ export type MTDocument = {
   dc_id: number,
   attributes: any[],
   
-  thumb?: MTPhotoSize,
   type?: 'gif' | 'sticker' | 'audio' | 'voice' | 'video' | 'round' | 'photo',
   h?: number,
   w?: number,
@@ -42,7 +41,9 @@ export type MTPhotoSize = {
   size?: number,
   type?: string, // i, m, x, y, w by asc
   location?: FileLocation,
-  bytes?: Uint8Array // if type == 'i'
+  bytes?: Uint8Array, // if type == 'i',
+
+  url?: string
 };
 
 export type InvokeApiOptions = Partial<{

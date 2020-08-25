@@ -797,14 +797,12 @@ export class AppSidebarRight extends SidebarSlider {
             const url = (photo && photo.url) || appPhotosManager.getDocumentCachedThumb(media.id).url;
             if(url) {
               //if(needBlur) return;
-              const p = renderImageFromUrl(img, url);
               
-              if(needBlur) {
-                p.then(() => {
-                  //void img.offsetLeft; // reflow
-                  img.style.opacity = '';
-                });
-              }
+              const needBlurCallback = needBlur ? () => {
+                //void img.offsetLeft; // reflow
+                img.style.opacity = '';
+              } : undefined;
+              renderImageFromUrl(img, url, needBlurCallback);
             }
           });
           

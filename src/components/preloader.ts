@@ -1,12 +1,14 @@
-import { isInDOM } from "../lib/utils";
+import { isInDOM, cancelEvent } from "../lib/utils";
 import { CancellablePromise } from "../lib/polyfill";
 
 export default class ProgressivePreloader {
-  public preloader: HTMLDivElement = null;
-  private circle: SVGCircleElement = null;
-  private promise: CancellablePromise<any> = null;
+  public preloader: HTMLDivElement;
+  private circle: SVGCircleElement;
+  
   private tempID = 0;
   private detached = true;
+
+  private promise: CancellablePromise<any> = null;
 
   constructor(elem?: Element, private cancelable = true) {
     this.preloader = document.createElement('div');
@@ -36,7 +38,9 @@ export default class ProgressivePreloader {
     }
 
     if(this.cancelable) {
-      this.preloader.addEventListener('click', () => {
+      this.preloader.addEventListener('click', (e) => {
+        cancelEvent(e);
+
         if(this.promise && this.promise.cancel) {
           this.promise.cancel();
           this.detach();
@@ -44,13 +48,14 @@ export default class ProgressivePreloader {
       });
     }
   }
-  
+
   public attach(elem: Element, reset = true, promise?: CancellablePromise<any>, append = true) {
     if(promise) {
       this.promise = promise;
 
-      let tempID = --this.tempID;
-      let onEnd = () => {
+      const tempID = --this.tempID;
+
+      const onEnd = () => {
         promise.notify = null;
 
         if(tempID == this.tempID) {
@@ -58,37 +63,41 @@ export default class ProgressivePreloader {
           this.promise = promise = null;
         }
       };
+      
       //promise.catch(onEnd);
       promise.finally(onEnd);
 
-      promise.notify = (details: {done: number, total: number}) => {
-        /* if(details.done >= details.total) {
-          onEnd();
-        } */
-
-        if(tempID != this.tempID) return;
-
-        //console.log('preloader download', promise, details);
-        let percents = details.done / details.total * 100;
-        this.setProgress(percents);
-      };
+      if(promise.addNotifyListener) {
+        promise.addNotifyListener((details: {done: number, total: number}) => {
+          /* if(details.done >= details.total) {
+            onEnd();
+          } */
+  
+          if(tempID != this.tempID) return;
+  
+          //console.log('preloader download', promise, details);
+          const percents = details.done / details.total * 100;
+          this.setProgress(percents);
+        });
+      }
     }
 
-    if(this.cancelable && reset) {
-      this.setProgress(0);
-    }
-    
     this.detached = false;
     window.requestAnimationFrame(() => {
       if(this.detached) return;
       this.detached = false;
-      
+
       elem[append ? 'append' : 'prepend'](this.preloader);
+
+      if(this.cancelable && reset) {
+        this.setProgress(0);
+      }
     });
   }
   
   public detach() {
     this.detached = true;
+    
     if(this.preloader.parentElement) {
       window.requestAnimationFrame(() => {
         if(!this.detached) return;
@@ -112,7 +121,7 @@ export default class ProgressivePreloader {
     }
     
     try {
-      let totalLength = this.circle.getTotalLength();
+      const totalLength = this.circle.getTotalLength();
       //console.log('setProgress', (percents / 100 * totalLength));
       this.circle.style.strokeDasharray = '' + Math.max(5, percents / 100 * totalLength) + ', 200';
     } catch(err) {}

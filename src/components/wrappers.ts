@@ -3,11 +3,10 @@ import LottieLoader from '../lib/lottieLoader';
 import appDocsManager from "../lib/appManagers/appDocsManager";
 import { formatBytes, getEmojiToneIndex } from "../lib/utils";
 import ProgressivePreloader from './preloader';
-import ProgressivePreloaderNew from './preloader_new';
 import LazyLoadQueue from './lazyLoadQueue';
 import VideoPlayer from '../lib/mediaPlayer';
 import { RichTextProcessor } from '../lib/richtextprocessor';
-import { renderImageFromUrl } from './misc';
+import { renderImageFromUrl, loadedURLs } from './misc';
 import appMessagesManager from '../lib/appManagers/appMessagesManager';
 import { Layouter, RectPart } from './groupedLayout';
 import PollElement from './poll';
@@ -15,7 +14,7 @@ import { mediaSizes, isSafari } from '../lib/config';
 import { MTDocument, MTPhotoSize } from '../types';
 import animationIntersector from './animationIntersector';
 import AudioElement from './audio';
-import { Download } from '../lib/appManagers/appDownloadManager';
+import appDownloadManager, { Download } from '../lib/appManagers/appDownloadManager';
 import { webpWorkerController } from '../lib/webp/webpWorkerController';
 
 export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group}: {
@@ -228,7 +227,7 @@ export function wrapDocument(doc: MTDocument, withTime = false, uploading = fals
   
   if(!uploading) {
     let downloadDiv = docDiv.querySelector('.document-download') as HTMLDivElement;
-    let preloader: ProgressivePreloaderNew;
+    let preloader: ProgressivePreloader;
     let download: Download;
     
     docDiv.addEventListener('click', () => {
@@ -238,13 +237,13 @@ export function wrapDocument(doc: MTDocument, withTime = false, uploading = fals
         }
         
         if(!preloader) {
-          preloader = new ProgressivePreloaderNew(null, true);
+          preloader = new ProgressivePreloader(null, true);
         }
 
         download = appDocsManager.saveDocFile(doc);
-        preloader.attach(downloadDiv, true, appDocsManager.getInputFileName(doc));
+        preloader.attach(downloadDiv, true, download);
         
-        download.promise.then(() => {
+        download.then(() => {
           downloadDiv.remove();
         }).catch(err => {
           if(err.name === 'AbortError') {
@@ -256,7 +255,7 @@ export function wrapDocument(doc: MTDocument, withTime = false, uploading = fals
         
         downloadDiv.classList.add('downloading');
       } else {
-        download.controller.abort();
+        download.cancel();
       }
     });
   }
@@ -328,7 +327,7 @@ function wrapMediaWithTail(photo: any, message: {mid: number, message: string}, 
 }
 
 export function wrapPhoto(photoID: any, message: any, container: HTMLDivElement, boxWidth = mediaSizes.active.regular.width, boxHeight = mediaSizes.active.regular.height, withTail = true, isOut = false, lazyLoadQueue: LazyLoadQueue, middleware: () => boolean, size: MTPhotoSize = null) {
-  let photo = appPhotosManager.getPhoto(photoID);
+  const photo = appPhotosManager.getPhoto(photoID);
 
   let image: HTMLImageElement;
   if(withTail) {
@@ -351,36 +350,39 @@ export function wrapPhoto(photoID: any, message: any, container: HTMLDivElement,
 
   //console.log('wrapPhoto downloaded:', photo, photo.downloaded, container);
 
-  // так нельзя делать, потому что может быть загружен неправильный размер картинки
-  /* if(photo.downloaded && photo.url) {
-    renderImageFromUrl(image, photo.url);
-    return;
-  } */
+  const cacheContext = appPhotosManager.getCacheContext(photo);
 
   let preloader: ProgressivePreloader;
   if(message.media.preloader) { // means upload
     message.media.preloader.attach(container);
-  } else if(!photo.downloaded) {
+  } else if(!cacheContext.downloaded) {
     preloader = new ProgressivePreloader(container, false);
   }
 
-  let load = () => {
-    let promise = appPhotosManager.preloadPhoto(photoID, size);
-    
+  const load = () => {
+    const promise = appPhotosManager.preloadPhoto(photoID, size);
+
     if(preloader) {
       preloader.attach(container, true, promise);
     }
     
+    /* const url = appPhotosManager.getPhotoURL(photoID, size);
+    return renderImageFromUrl(image || container, url).then(() => {
+      photo.downloaded = true;
+    }); */
+    
+    /* if(preloader) {
+      preloader.attach(container, true, promise);
+    } */
+    
     return promise.then(() => {
       if(middleware && !middleware()) return;
 
-      renderImageFromUrl(image || container, photo._ == 'photo' ? photo.url : appPhotosManager.getDocumentCachedThumb(photo.id).url);
+      renderImageFromUrl(image || container, cacheContext.url);
     });
   };
-  
-  /////////console.log('wrapPhoto', load, container, image);
-  
-  return photo.downloaded ? load() : lazyLoadQueue.push({div: container, load: load, wasSeen: true});
+
+  return cacheContext.downloaded ? load() : lazyLoadQueue.push({div: container, load: load, wasSeen: true});
 }
 
 export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, onlyThumb, emoji, width, height, withThumb, loop}: {
@@ -439,7 +441,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
       img = new Image();
 
       if((!isSafari || doc.stickerThumbConverted)/*  && false */) {
-        renderImageFromUrl(img, appPhotosManager.getPreviewURLFromThumb(thumb, true)).then(afterRender);
+        renderImageFromUrl(img, appPhotosManager.getPreviewURLFromThumb(thumb, true), afterRender);
       } else {
         webpWorkerController.convert(doc.id, thumb.bytes).then(bytes => {
           if(middleware && !middleware()) return;
@@ -448,7 +450,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
           doc.stickerThumbConverted = true;
 
           if(!div.childElementCount) {
-            renderImageFromUrl(img, appPhotosManager.getPreviewURLFromThumb(thumb, true)).then(afterRender);
+            renderImageFromUrl(img, appPhotosManager.getPreviewURLFromThumb(thumb, true), afterRender);
           }
         });
       }
@@ -461,11 +463,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
       
       const load = () => {
         if(div.childElementCount || (middleware && !middleware())) return;
-        const promise = renderImageFromUrl(img, appDocsManager.getFileURL(doc, false, thumb));
-
-        //if(!downloaded) {
-          promise.then(afterRender);
-        //}
+        renderImageFromUrl(img, appDocsManager.getFileURL(doc, false, thumb), afterRender);
       };
       
       /* let downloaded = appDocsManager.hasDownloadedThumb(doc.id, thumb.type);
@@ -483,10 +481,12 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
     
     let load = () => {
       let img = new Image();
-      return renderImageFromUrl(img, appDocsManager.getFileURL(doc, false, thumb)).then(() => {
+      renderImageFromUrl(img, appDocsManager.getFileURL(doc, false, thumb), () => {
         if(middleware && !middleware()) return;
         div.append(img);
       });
+
+      return Promise.resolve();
     };
     
     return lazyLoadQueue ? (lazyLoadQueue.push({div, load}), Promise.resolve()) : load();
@@ -504,10 +504,13 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
       //console.time('download sticker' + doc.id);
 
       //appDocsManager.downloadDocNew(doc.id).promise.then(res => res.json()).then(async(json) => {
-      fetch(doc.url).then(res => res.json()).then(async(json) => {
+      //fetch(doc.url).then(res => res.json()).then(async(json) => {
+      appDownloadManager.download(doc.url, appDocsManager.getInputFileName(doc), 'json').then(async(json) => {
         //console.timeEnd('download sticker' + doc.id);
         //console.log('loaded sticker:', doc, div);
         if(middleware && !middleware()) return;
+
+        //await new Promise((resolve) => setTimeout(resolve, 5e3));
 
         let animation = await LottieLoader.loadAnimationWorker/* loadAnimation */({
           container: div,
@@ -554,7 +557,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
         });
       }
 
-      renderImageFromUrl(img, doc.url).then(() => {
+      renderImageFromUrl(img, doc.url, () => {
         if(div.firstElementChild && div.firstElementChild != img) {
           div.firstElementChild.remove();
         }

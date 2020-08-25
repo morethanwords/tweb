@@ -12,4 +12,4 @@ export const isAndroid = navigator.userAgent.toLowerCase().indexOf('android') !=
  */
 const ctx = typeof(window) !== 'undefined' ? window : self;
 
-export const isSafari = !!('safari' in ctx) || !!(userAgent && (/\b(iPad|iPhone|iPod)\b/.test(userAgent) || (!!userAgent.match('Safari') && !userAgent.match('Chrome'))));
+export const isSafari = !!('safari' in ctx) || !!(userAgent && (/\b(iPad|iPhone|iPod)\b/.test(userAgent) || (!!userAgent.match('Safari') && !userAgent.match('Chrome'))))/*  || true */;

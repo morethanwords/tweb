@@ -40,6 +40,10 @@ export class WebpWorkerController {
   }
 
   convert(fileName: string, bytes: Uint8Array) {
+    if(this.convertPromises.hasOwnProperty(fileName)) {
+      return this.convertPromises[fileName];
+    }
+    
     const convertPromise = deferredPromise<Uint8Array>();
 
     fileName = 'main-' + fileName;

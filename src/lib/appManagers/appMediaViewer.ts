@@ -132,7 +132,7 @@ export class AppMediaViewer {
     const download = (e: MouseEvent) => {
       let message = appMessagesManager.getMessage(this.currentMessageID);
       if(message.media.photo) {
-        appPhotosManager.downloadPhoto(message.media.photo.id);
+        appPhotosManager.savePhotoFile(message.media.photo.id);
       } else {
         let document: any = null;
 
@@ -895,7 +895,7 @@ export class AppMediaViewer {
   
               //this.log('will renderImageFromUrl:', image, div, target);
   
-              renderImageFromUrl(image, url).then(() => {
+              renderImageFromUrl(image, url, () => {
                 div.append(image);
               });
             }

@@ -61,7 +61,7 @@ class AppAudio {
 
     audio.addEventListener('error', onError);
 
-    const downloadPromise: Promise<any> = !doc.supportsStreaming ? appDocsManager.downloadDocNew(doc.id).promise : Promise.resolve();
+    const downloadPromise: Promise<any> = !doc.supportsStreaming ? appDocsManager.downloadDocNew(doc.id) : Promise.resolve();
 
     downloadPromise.then(() => {
       this.container.append(audio);

@@ -1,10 +1,9 @@
-import appUsersManager from "./appUsersManager";
 import { calcImageInBox, isObject, getFileURL } from "../utils";
 import { bytesFromHex, getFileNameByLocation } from "../bin_utils";
-//import apiManager from '../mtproto/apiManager';
-import apiManager from '../mtproto/mtprotoworker';
 import { MTPhotoSize, inputPhotoFileLocation, inputDocumentFileLocation, FileLocation } from "../../types";
-import appDownloadManager from "./appDownloadManager";
+import appDownloadManager, { Download } from "./appDownloadManager";
+import { deferredPromise, CancellablePromise } from "../polyfill";
+import { isSafari } from "../../helpers/userAgent";
 
 export type MTPhoto = {
   _: 'photo' | 'photoEmpty' | string,
@@ -98,7 +97,7 @@ export class AppPhotosManager {
     return bestPhotoSize;
   }
   
-  public getUserPhotos(userID: number, maxID: number, limit: number) {
+  /* public getUserPhotos(userID: number, maxID: number, limit: number) {
     var inputUser = appUsersManager.getUserInput(userID);
     return apiManager.invokeApi('photos.getUserPhotos', {
       user_id: inputUser,
@@ -120,7 +119,7 @@ export class AppPhotosManager {
         photos: photoIDs
       };
     });
-  }
+  } */
 
   public getPreviewURLFromBytes(bytes: Uint8Array | number[], isSticker = false) {
     let arr: Uint8Array;
@@ -131,17 +130,15 @@ export class AppPhotosManager {
     } else {
       arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
     }
-    
-    //console.log('getPreviewURLFromBytes', bytes, arr, div, isSticker);
 
-    /* let reader = new FileReader();
-    reader.onloadend = () => {
-      let src = reader.result;
-    };
-    reader.readAsDataURL(blob); */
-    
-    let blob = new Blob([arr], {type: "image/jpeg"});
+    let mimeType: string;
+    if(isSticker) {
+      mimeType = isSafari ? 'image/png' : 'image/webp';
+    } else {
+      mimeType = 'image/jpeg';
+    }
 
+    const blob = new Blob([arr], {type: mimeType});
     return URL.createObjectURL(blob);
   }
 
@@ -215,32 +212,18 @@ export class AppPhotosManager {
     
     return photoSize;
   }
-  
-  public preloadPhoto(photoID: any, photoSize?: MTPhotoSize): Promise<Blob | void> {
-    const photo = this.getPhoto(photoID);
-    
-    if(!photoSize) {
-      const fullWidth = this.windowW;
-      const fullHeight = this.windowH;
-      
-      photoSize = this.choosePhotoSize(photo, fullWidth, fullHeight);
-    }
 
+  public getPhotoURL(photo: MTPhoto, photoSize: MTPhotoSize) {
     const isDocument = photo._ == 'document';
-    const cacheContext = isDocument ? (this.documentThumbsCache[photo.id] ?? (this.documentThumbsCache[photo.id] = {downloaded: -1, url: ''})) : photo;
-
-    if(cacheContext.downloaded >= photoSize.size && cacheContext.url) {
-      return Promise.resolve();
-    }
 
     if(!photoSize || photoSize._ == 'photoSizeEmpty') {
       //console.error('no photoSize by photo:', photo);
-      return Promise.reject('no photoSize');
+      throw new Error('photoSizeEmpty!');
     }
     
     // maybe it's a thumb
-    let isPhoto = photoSize.size && photo.access_hash && photo.file_reference;
-    let location: inputPhotoFileLocation | inputDocumentFileLocation | FileLocation = isPhoto ? {
+    const isPhoto = photoSize.size && photo.access_hash && photo.file_reference;
+    const location: inputPhotoFileLocation | inputDocumentFileLocation | FileLocation = isPhoto ? {
       _: isDocument ? 'inputDocumentFileLocation' : 'inputPhotoFileLocation',
       id: photo.id,
       access_hash: photo.access_hash,
@@ -248,30 +231,54 @@ export class AppPhotosManager {
       thumb_size: photoSize.type
     } : photoSize.location;
 
-    const url = getFileURL('photo', {dcID: photo.dc_id, location, size: isPhoto ? photoSize.size : undefined});
-    let promise: Promise<Blob>;
-    if(isPhoto/*  && photoSize.size >= 1e6 */) {
-      promise = fetch(url).then(res => res.blob());
-    } else {
-      //console.log('Photos downloadSmallFile exec', photo, location);
-      promise = fetch(url).then(res => res.blob());
+    return {url: getFileURL('photo', {dcID: photo.dc_id, location, size: isPhoto ? photoSize.size : undefined}), location};
+  }
+  
+  public preloadPhoto(photoID: any, photoSize?: MTPhotoSize): CancellablePromise<Blob> {
+    const photo = this.getPhoto(photoID);
+
+    if(!photoSize) {
+      const fullWidth = this.windowW;
+      const fullHeight = this.windowH;
+      
+      photoSize = this.choosePhotoSize(photo, fullWidth, fullHeight);
     }
 
-    promise.then(blob => {
+    const cacheContext = this.getCacheContext(photo);
+    if(cacheContext.downloaded >= photoSize.size && cacheContext.url) {
+      return Promise.resolve() as any;
+    }
+    
+    const {url, location} = this.getPhotoURL(photo, photoSize);
+    const fileName = getFileNameByLocation(location);
+
+    let download = appDownloadManager.getDownload(fileName);
+    if(download) {
+      return download;
+    }
+
+    download = appDownloadManager.download(url, fileName);
+    download.then(blob => {
       if(!cacheContext.downloaded || cacheContext.downloaded < blob.size) {
         cacheContext.downloaded = blob.size;
-        //cacheContext.url = URL.createObjectURL(blob);
-        cacheContext.url = url;
+        cacheContext.url = URL.createObjectURL(blob);
 
         //console.log('wrote photo:', photo, photoSize, cacheContext, blob);
       }
+
+      return blob;
     });
 
-    return promise;
+    return download;
+    //return fetch(url).then(res => res.blob());
+  }
+
+  public getCacheContext(photo: any) {
+    return photo._ == 'document' ? this.getDocumentCachedThumb(photo.id) : photo;
   }
 
   public getDocumentCachedThumb(docID: string) {
-    return this.documentThumbsCache[docID];
+    return this.documentThumbsCache[docID] ?? (this.documentThumbsCache[docID] = {downloaded: 0, url: ''});
   }
   
   public getPhoto(photoID: any): MTPhoto {
@@ -293,7 +300,7 @@ export class AppPhotosManager {
     };
   }
 
-  public downloadPhoto(photoID: string) {
+  public savePhotoFile(photoID: string) {
     const photo = this.photos[photoID];
     const fullWidth = this.windowW;
     const fullHeight = this.windowH;
@@ -309,7 +316,7 @@ export class AppPhotosManager {
     const url = getFileURL('download', {dcID: photo.dc_id, location, size: fullPhotoSize.size, fileName: 'photo' + photo.id + '.jpg'});
     const fileName = getFileNameByLocation(location);
     
-    appDownloadManager.downloadToDisc(fileName, url);
+    appDownloadManager.downloadToDisc(fileName, url, 'photo' + photo.id + '.jpg');
   }
 }
 

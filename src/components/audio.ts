@@ -1,7 +1,7 @@
 import appDocsManager from "../lib/appManagers/appDocsManager";
 import { RichTextProcessor } from "../lib/richtextprocessor";
 import { formatDate } from "./wrappers";
-import ProgressivePreloader from "./preloader_new";
+import ProgressivePreloader from "./preloader";
 import { MediaProgressLine } from "../lib/mediaPlayer";
 import appAudio from "./appAudio";
 import { MTDocument } from "../types";
@@ -367,9 +367,9 @@ export default class AudioElement extends HTMLElement {
             }
             
             download = appDocsManager.downloadDocNew(doc.id);
-            preloader.attach(downloadDiv, true, appDocsManager.getInputFileName(doc));
+            preloader.attach(downloadDiv, true, download);
             
-            download.promise.then(() => {
+            download.then(() => {
               downloadDiv.remove();
               this.removeEventListener('click', onClick);
               onLoad();
@@ -383,7 +383,7 @@ export default class AudioElement extends HTMLElement {
             
             downloadDiv.classList.add('downloading');
           } else {
-            download.controller.abort();
+            download.cancel();
           }
         };
     

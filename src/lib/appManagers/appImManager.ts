@@ -553,7 +553,7 @@ export class AppImManager {
   private closeBtn = this.topbar.querySelector('.sidebar-close-button') as HTMLButtonElement;
 
   constructor() {
-    this.log = logger('IM', /* LogLevels.log | LogLevels.warn | LogLevels.debug | */ LogLevels.error);
+    this.log = logger('IM', LogLevels.log | LogLevels.warn | LogLevels.debug | LogLevels.error);
     this.chatInputC = new ChatInput();
     this.preloader = new ProgressivePreloader(null, false);
     this.selectTab(0);
@@ -1624,6 +1624,7 @@ export class AppImManager {
     this.peerChanged = true;
 
     this.avatarEl.setAttribute('peer', '' + this.peerID);
+    this.avatarEl.update();
 
     const isAnyGroup = appPeersManager.isAnyGroup(peerID);
     const isChannel = appPeersManager.isChannel(peerID);
@@ -1822,8 +1823,7 @@ export class AppImManager {
           resolve();
 
           // lol
-          el.removeEventListener('canplay', onLoad);
-          el.removeEventListener('load', onLoad);
+          el.removeEventListener(el instanceof HTMLVideoElement ? 'canplay' : 'load', onLoad);
         };
 
         if(el instanceof HTMLVideoElement) {
@@ -2286,19 +2286,25 @@ export class AppImManager {
           bubble.classList.add('hide-name', 'photo');
           const tailSupported = !isAndroid;
           if(tailSupported) bubble.classList.add('with-media-tail');
+
           if(message.grouped_id) {
             bubble.classList.add('is-album');
 
-            wrapAlbum({
-              groupID: message.grouped_id, 
-              attachmentDiv,
-              middleware: this.getMiddleware(),
-              isOut: our,
-              lazyLoadQueue: this.lazyLoadQueue
-            });
-          } else {
-            wrapPhoto(photo.id, message, attachmentDiv, undefined, undefined, tailSupported, isOut, this.lazyLoadQueue, this.getMiddleware());
+            let storage = appMessagesManager.groupedMessagesStorage[message.grouped_id];
+            if(Object.keys(storage).length != 1) {
+              wrapAlbum({
+                groupID: message.grouped_id, 
+                attachmentDiv,
+                middleware: this.getMiddleware(),
+                isOut: our,
+                lazyLoadQueue: this.lazyLoadQueue
+              });
+
+              break;
+            }
           }
+
+          wrapPhoto(photo.id, message, attachmentDiv, undefined, undefined, tailSupported, isOut, this.lazyLoadQueue, this.getMiddleware());
 
           break;
         }
@@ -2645,6 +2651,7 @@ export class AppImManager {
         }
 
         avatarElem.setAttribute('peer', '' + ((message.fwd_from && this.peerID == this.myID ? message.fwdFromID : message.fromID) || 0));
+        avatarElem.update();
         
         //this.log('exec loadDialogPhoto', message);
 

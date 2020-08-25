@@ -38,8 +38,13 @@ export default class AvatarElement extends HTMLElement {
   }
 
   attributeChangedCallback(name: string, oldValue: string, newValue: string) {
+    //console.log('avatar changed attribute:', name, oldValue, newValue);
     // вызывается при изменении одного из перечисленных выше атрибутов
     if(name == 'peer') {
+      if(this.peerID == +newValue) {
+        return;
+      }
+      
       this.peerID = +newValue;
       this.update();
     } else if(name == 'peer-title') {

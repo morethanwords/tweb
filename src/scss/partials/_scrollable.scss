@@ -114,7 +114,12 @@ div.scrollable::-webkit-scrollbar-thumb {
 // BROWSER SCROLL
 div.scrollable-y::-webkit-scrollbar {
   width: .375rem;
+  opacity: 0; // for safari
   //height: 200px;
+}
+
+div.scrollable:hover::-webkit-scrollbar {
+  opacity: 1; // for safari
 }
 
 /* div.scrollable-y::-webkit-scrollbar-thumb {

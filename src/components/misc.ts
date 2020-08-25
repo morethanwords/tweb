@@ -1,36 +1,40 @@
 import Config, { touchSupport, isApple, mediaSizes } from "../lib/config";
 
-let loadedURLs: {[url: string]: boolean} = {};
-let set = (elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLVideoElement, url: string) => {
+export const loadedURLs: {[url: string]: boolean} = {};
+const set = (elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLVideoElement, url: string) => {
   if(elem instanceof HTMLImageElement || elem instanceof HTMLVideoElement) elem.src = url;
   else if(elem instanceof SVGImageElement) elem.setAttributeNS(null, 'href', url);
   else elem.style.backgroundImage = 'url(' + url + ')';
 };
 
-export async function renderImageFromUrl(elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLVideoElement, url: string): Promise<boolean> {
-  if(loadedURLs[url]) {
+// проблема функции в том, что она не подходит для ссылок, пригодна только для blob'ов, потому что обычным ссылкам нужен 'load' каждый раз.
+export function renderImageFromUrl(elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLVideoElement, url: string, callback?: (err?: Event) => void): boolean {
+  if((loadedURLs[url]/*  && false */) || elem instanceof HTMLVideoElement) {
     set(elem, url);
+    callback && callback();
+    return true;
   } else {
-    if(elem instanceof HTMLVideoElement) {
-      set(elem, url);
-    } else {
-      await new Promise((resolve, reject) => {
-        let loader = new Image();
-        loader.src = url;
-        //let perf = performance.now();
-        loader.addEventListener('load', () => {
-          set(elem, url);
-          loadedURLs[url] = true;
-          //console.log('onload:', url, performance.now() - perf);
-          resolve(false);
-        });
-        loader.addEventListener('error', reject);
-      });
-    }
-    
-  }
+    const isImage = elem instanceof HTMLImageElement;
+    const loader = isImage ? elem as HTMLImageElement : new Image();
+    //const loader = new Image();
+    loader.src = url;
+    //let perf = performance.now();
+    loader.addEventListener('load', () => {
+      if(!isImage) {
+        set(elem, url);
+      }
 
-  return !!loadedURLs[url];
+      loadedURLs[url] = true;
+      //console.log('onload:', url, performance.now() - perf);
+      callback && callback();
+    });
+
+    if(callback) {
+      loader.addEventListener('error', callback);
+    }
+
+    return false;
+  }
 }
 
 export function putPreloader(elem: Element, returnDiv = false) {
