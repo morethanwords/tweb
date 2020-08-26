@@ -194,16 +194,16 @@ export class AppMediaViewer {
   }
 
   public async setMoverToTarget(target: HTMLElement, closing = false, fromRight = 0) {
-    let mover = this.content.mover;
+    const mover = this.content.mover;
 
     if(!closing) {
       mover.innerHTML = '';
       //mover.append(this.buttons.prev, this.buttons.next);
     }
 
-    let wasActive = fromRight !== 0;
+    const wasActive = fromRight !== 0;
 
-    let delay = wasActive ? 350 : 200;
+    const delay = wasActive ? 350 : 200;
     //let delay = wasActive ? 350 : 10000;
 
     /* if(wasActive) {
@@ -226,7 +226,7 @@ export class AppMediaViewer {
       }
     }
 
-    let containerRect = this.content.container.getBoundingClientRect();
+    const containerRect = this.content.container.getBoundingClientRect();
     
     let transform = '';
     let left: number;
@@ -245,9 +245,9 @@ export class AppMediaViewer {
       if(mover.firstElementChild && mover.firstElementChild.classList.contains('media-viewer-aspecter')) {
         aspecter = mover.firstElementChild as HTMLDivElement;
 
-        let player = aspecter.querySelector('.ckin__player');
+        const player = aspecter.querySelector('.ckin__player');
         if(player) {
-          let video = player.firstElementChild as HTMLVideoElement;
+          const video = player.firstElementChild as HTMLVideoElement;
           aspecter.append(video);
           player.remove();
         }
@@ -272,14 +272,14 @@ export class AppMediaViewer {
     mover.style.width = containerRect.width + 'px';
     mover.style.height = containerRect.height + 'px';
 
-    let scaleX = rect.width / containerRect.width;
-    let scaleY = rect.height / containerRect.height;
+    const scaleX = rect.width / containerRect.width;
+    const scaleY = rect.height / containerRect.height;
     if(!wasActive) {
       transform += `scale(${scaleX},${scaleY}) `;
     }
 
     let borderRadius = window.getComputedStyle(realParent).getPropertyValue('border-radius');
-    let brSplitted = fillPropertyValue(borderRadius) as string[];
+    const brSplitted = fillPropertyValue(borderRadius) as string[];
     borderRadius = brSplitted.map(r => (parseInt(r) / scaleX) + 'px').join(' ');
     if(!wasActive) {
       mover.style.borderRadius = borderRadius;
@@ -292,7 +292,7 @@ export class AppMediaViewer {
     } */
 
     let path: SVGPathElement;
-    let isOut = target.classList.contains('is-out');
+    const isOut = target.classList.contains('is-out');
 
     if(!closing) {
       let mediaElement: HTMLImageElement | HTMLVideoElement;
@@ -311,15 +311,15 @@ export class AppMediaViewer {
         mediaElement = new Image();
         src = target.src;
       } else if(target instanceof HTMLVideoElement) {
-        let video = mediaElement = document.createElement('video');
+        const video = mediaElement = document.createElement('video');
         video.src = target?.src;
       } else if(target instanceof SVGSVGElement) {
-        let clipID = target.dataset.clipID;
-        let newClipID = clipID + '-mv';
+        const clipID = target.dataset.clipID;
+        const newClipID = clipID + '-mv';
 
-        let {width, height} = containerRect;
+        const {width, height} = containerRect;
 
-        let newSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        const newSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         newSvg.setAttributeNS(null, 'width', '' + width);
         newSvg.setAttributeNS(null, 'height', '' + height);
 
@@ -327,8 +327,8 @@ export class AppMediaViewer {
         newSvg.insertAdjacentHTML('beforeend', target.lastElementChild.outerHTML.replace(clipID, newClipID));
 
         // теперь надо выставить новую позицию для хвостика
-        let defs = newSvg.firstElementChild;
-        let use = defs.firstElementChild.firstElementChild as SVGUseElement;
+        const defs = newSvg.firstElementChild;
+        const use = defs.firstElementChild.firstElementChild as SVGUseElement;
         if(use instanceof SVGUseElement) {
           let transform = use.getAttributeNS(null, 'transform');
           transform = transform.replace(/translate\((.+?), (.+?)\) scale\((.+?), (.+?)\)/, (match, x, y, sX, sY) => {
@@ -350,13 +350,13 @@ export class AppMediaViewer {
 
           // код ниже нужен только чтобы скрыть моргание до момента как сработает таймаут
           let d: string;
-          let br: [number, number, number, number] = borderRadius.split(' ').map(v => parseInt(v)) as any;
+          const br: [number, number, number, number] = borderRadius.split(' ').map(v => parseInt(v)) as any;
           if(isOut) d = generatePathData(0, 0, width - 9 / scaleX, height, ...br);
           else d = generatePathData(9 / scaleX, 0, width - 9 / scaleX, height, ...br);
           path.setAttributeNS(null, 'd', d);
         }
 
-        let foreignObject = newSvg.lastElementChild;
+        const foreignObject = newSvg.lastElementChild;
         foreignObject.setAttributeNS(null, 'width', '' + containerRect.width);
         foreignObject.setAttributeNS(null, 'height', '' + containerRect.height);
         
@@ -494,20 +494,20 @@ export class AppMediaViewer {
   }
 
   public sizeTailPath(path: SVGPathElement, rect: DOMRect, scaleX: number, delay: number, upscale: boolean, isOut: boolean, borderRadius: string) {
-    let start = Date.now();
-    let {width, height} = rect;
+    const start = Date.now();
+    const {width, height} = rect;
     delay = delay / 2;
 
-    let br = borderRadius.split(' ').map(v => parseInt(v));
+    const br = borderRadius.split(' ').map(v => parseInt(v));
 
-    let step = () => {
-      let diff = Date.now() - start;
+    const step = () => {
+      const diff = Date.now() - start;
 
       let progress = diff / delay;
       if(progress > 1) progress = 1;
       if(upscale) progress = 1 - progress;
 
-      let _br: [number, number, number, number] = br.map(v => v * progress) as any;
+      const _br: [number, number, number, number] = br.map(v => v * progress) as any;
 
       let d: string;
       if(isOut) d = generatePathData(0, 0, width - (9 / scaleX * progress), height, ..._br);
@@ -522,7 +522,7 @@ export class AppMediaViewer {
   }
 
   public moveTheMover(mover: HTMLDivElement, toLeft = true) {
-    let windowW = appPhotosManager.windowW;
+    const windowW = appPhotosManager.windowW;
 
     //mover.classList.remove('active');
     mover.classList.add('moving');
@@ -531,9 +531,9 @@ export class AppMediaViewer {
       clearTimeout(+mover.dataset.timeout);
     }
 
-    let rect = mover.getBoundingClientRect();
+    const rect = mover.getBoundingClientRect();
 
-    let newTransform = mover.style.transform.replace(/translate\((.+?),/, (match, p1) => {
+    const newTransform = mover.style.transform.replace(/translate\((.+?),/, (match, p1) => {
       /////////this.log('replace func', match, p1);
       let x = +p1.slice(0, -2);
       x = toLeft ? -rect.width : windowW;
@@ -550,11 +550,11 @@ export class AppMediaViewer {
   }
 
   public setNewMover() {
-    let newMover = document.createElement('div');
+    const newMover = document.createElement('div');
     newMover.classList.add('media-viewer-mover');
 
     if(this.content.mover) {
-      let oldMover = this.content.mover;
+      const oldMover = this.content.mover;
       oldMover.parentElement.append(newMover);
     } else {
       this.wholeDiv.append(newMover);
@@ -565,12 +565,12 @@ export class AppMediaViewer {
     return this.content.mover = newMover;
   }
 
-  public isElementVisible(container: HTMLElement, target: HTMLElement) {
-    let rect = container.getBoundingClientRect();
-    let targetRect = target.getBoundingClientRect();
+  /* public isElementVisible(container: HTMLElement, target: HTMLElement) {
+    const rect = container.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
 
     return targetRect.bottom > rect.top && targetRect.top < rect.bottom;
-  }
+  } */
 
   // нет смысла делать проверку для reverse и loadMediaPromise
   public loadMoreMedia(older = true) {
@@ -582,8 +582,8 @@ export class AppMediaViewer {
     if(older && this.loadMediaPromiseDown) return this.loadMediaPromiseDown;
     else if(!older && this.loadMediaPromiseUp) return this.loadMediaPromiseUp;
 
-    let loadCount = 50;
-    let backLimit = older ? 0 : loadCount;
+    const loadCount = 50;
+    const backLimit = older ? 0 : loadCount;
     let maxID = this.currentMessageID;
   
     let anchor: {element: HTMLElement, mid: number};
@@ -596,9 +596,9 @@ export class AppMediaViewer {
     if(anchor) maxID = anchor.mid;
     if(!older) maxID += 1;
 
-    let peerID = this.peerID;
+    const peerID = this.peerID;
 
-    let promise = appMessagesManager.getSearch(peerID, '', 
+    const promise = appMessagesManager.getSearch(peerID, '', 
       {_: 'inputMessagesFilterPhotoVideo'}, maxID, loadCount/* older ? loadCount : 0 */, 0, backLimit).then(value => {
       if(this.peerID != peerID) {
         this.log.warn('peer changed');
@@ -617,15 +617,15 @@ export class AppMediaViewer {
         //}
       }
 
-      let method = older ? value.history.forEach : value.history.forEachReverse;
+      const method = older ? value.history.forEach : value.history.forEachReverse;
       method.call(value.history, mid => {
-        let message = appMessagesManager.getMessage(mid);
-        let media = message.media;
+        const message = appMessagesManager.getMessage(mid);
+        const media = message.media;
 
         if(!media || !(media.photo || media.document || (media.webpage && media.webpage.document))) return;
         if(media._ == 'document' && media.type != 'video') return;
 
-        let t = {element: null as HTMLElement, mid: mid};
+        const t = {element: null as HTMLElement, mid: mid};
         if(older) {
           if(this.reverse) this.prevTargets.unshift(t);
           else this.nextTargets.push(t);
@@ -650,7 +650,7 @@ export class AppMediaViewer {
 
   public updateMediaSource(target: HTMLElement, url: string, tagName: 'video' | 'img') {
     //if(target instanceof SVGSVGElement) {
-      let el = target.querySelector(tagName) as HTMLElement;
+      const el = target.querySelector(tagName) as HTMLElement;
       renderImageFromUrl(el, url);
     /* } else {
 
@@ -800,13 +800,8 @@ export class AppMediaViewer {
             appAudio.pause();
             appAudio.willBePlayedAudio = null;
 
-            const player = new VideoPlayer(video, true, media.supportsStreaming);
-            return player;
-            /* player.wrapper.parentElement.append(video);
-            mover.append(player.wrapper); */
-          }/*  else {
-            video.play();
-          } */
+            new VideoPlayer(video, true, media.supportsStreaming);
+          }
         };
         
         if(!video.src || (media.url && media.url != video.src)) {
@@ -816,8 +811,6 @@ export class AppMediaViewer {
             //if(!streamable) {
               this.preloader.attach(mover, true, promise);
             //}
-            
-            let player: VideoPlayer;
 
             promise.then(async() => {
               if(this.currentMessageID != message.mid) {
@@ -857,7 +850,7 @@ export class AppMediaViewer {
                 });
               }); */
   
-              player = createPlayer();
+              createPlayer();
             });
 
             return promise;

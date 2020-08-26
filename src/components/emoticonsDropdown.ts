@@ -556,7 +556,7 @@ class GifsTab implements EmoticonsTab {
       preloader.remove();
       res.gifs.forEach((doc, idx) => {
         res.gifs[idx] = appDocsManager.saveDoc(doc);
-        masonry.add(doc, EMOTICONSSTICKERGROUP, EmoticonsDropdown.lazyLoadQueue);
+        masonry.add(res.gifs[idx], EMOTICONSSTICKERGROUP, EmoticonsDropdown.lazyLoadQueue);
       });
     });
 
