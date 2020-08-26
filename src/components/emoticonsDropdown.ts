@@ -18,6 +18,7 @@ import animationIntersector from "./animationIntersector";
 import appSidebarRight from "../lib/appManagers/appSidebarRight";
 import appStateManager from "../lib/appManagers/appStateManager";
 import { horizontalMenu } from "./horizontalMenu";
+import GifsMasonry from "./gifsMasonry";
 
 export const EMOTICONSSTICKERGROUP = 'emoticons-dropdown';
 
@@ -329,7 +330,7 @@ class StickersTab implements EmoticonsTab {
       loop: false, */
       lazyLoadQueue: EmoticonsDropdown.lazyLoadQueue, 
       group: EMOTICONSSTICKERGROUP, 
-      onlyThumb: true
+      onlyThumb: doc.sticker == 2
     });
 
     return div;
@@ -535,17 +536,12 @@ class GifsTab implements EmoticonsTab {
 
   init() {
     this.content = document.getElementById('content-gifs');
-    const masonry = this.content.firstElementChild as HTMLDivElement;
+    const gifsContainer = this.content.firstElementChild as HTMLDivElement;
+    gifsContainer.addEventListener('click', EmoticonsDropdown.onMediaClick);
 
-    masonry.addEventListener('click', EmoticonsDropdown.onMediaClick);
-
+    const masonry = new GifsMasonry(gifsContainer);
     const scroll = new Scrollable(this.content, 'y', 'GIFS', null);
-
     const preloader = putPreloader(this.content, true);
-
-    const width = 400;
-    const maxSingleWidth = width - 100;
-    const height = 100;
 
     apiManager.invokeApi('messages.getSavedGifs', {hash: 0}).then((_res) => {
       let res = _res as {
@@ -557,155 +553,11 @@ class GifsTab implements EmoticonsTab {
 
       //let line: MTDocument[] = [];
 
-      let wastedWidth = 0;
-
-      res.gifs.forEach((gif, idx) => {
-        res.gifs[idx] = appDocsManager.saveDoc(gif);
-      });
-
       preloader.remove();
-
-      for(let i = 0, length = res.gifs.length; i < length;) {
-        const doc = res.gifs[i];
-
-        let gifWidth = doc.w;
-        let gifHeight = doc.h;
-        if(gifHeight < height) {
-          gifWidth = height / gifHeight * gifWidth;
-          gifHeight = height;
-        }
-
-        let willUseWidth = Math.min(maxSingleWidth, width - wastedWidth, gifWidth);
-        let {w, h} = calcImageInBox(gifWidth, gifHeight, willUseWidth, height);
-
-        /* wastedWidth += w;
-
-        if(wastedWidth == width || h < height) {
-          wastedWidth = 0;
-          console.log('completed line', i, line);
-          line = [];
-          continue;
-        }
-
-        line.push(gif); */
-        ++i;
-
-        //console.log('gif:', gif, w, h);
-
-        let div = document.createElement('div');
-        div.classList.add('gif', 'fade-in-transition');
-        div.style.width = w + 'px';
-        div.style.opacity = '0';
-        //div.style.height = h + 'px';
-        div.dataset.docID = doc.id;
-
-        masonry.append(div);
-
-        //let preloader = new ProgressivePreloader(div);
-
-        const posterURL = appDocsManager.getThumbURL(doc, false);
-        let img: HTMLImageElement;
-        if(posterURL) {
-          img = new Image();
-          img.src = posterURL;
-        }
-
-        let mouseOut = false;
-        const onMouseOver = (e: MouseEvent) => {
-          //console.log('onMouseOver', doc.id);
-          //cancelEvent(e);
-          mouseOut = false;
-
-          wrapVideo({
-            doc,
-            container: div,
-            //lazyLoadQueue: EmoticonsDropdown.lazyLoadQueue,
-            //group: EMOTICONSSTICKERGROUP,
-            noInfo: true,
-          });
-
-          const video = div.querySelector('video');
-          video.addEventListener('canplay', () => {
-            div.style.opacity = '';
-            if(!mouseOut) {
-              img && img.classList.add('hide');
-            } else {
-              img && img.classList.remove('hide');
-              if(div.lastElementChild != img) {
-                div.lastElementChild.remove();
-              }
-            }
-          }, {once: true});
-        };
-
-        const afterRender = () => {
-          if(img) {
-            div.append(img);
-            div.style.opacity = '';
-          }
-
-          div.addEventListener('mouseover', onMouseOver, {once: true});
-          div.addEventListener('mouseout', (e) => {
-            const toElement = (e as any).toElement as Element;
-            //console.log('onMouseOut', doc.id, e);
-            if(findUpClassName(toElement, 'gif') == div) {
-              return;
-            }
-
-            //cancelEvent(e);
-
-            mouseOut = true;
-
-            const cb = () => {
-              if(div.lastElementChild != img) {
-                div.lastElementChild.remove();
-              }
-
-              div.addEventListener('mouseover', onMouseOver, {once: true});
-            };
-
-            img && img.classList.remove('hide');
-            /* window.requestAnimationFrame(() => {
-              window.requestAnimationFrame();
-            }); */
-            if(img) window.requestAnimationFrame(() => window.requestAnimationFrame(cb));
-            else cb();
-          });
-        };
-
-        (posterURL ? renderImageFromUrl(img, posterURL, afterRender) : afterRender());
-
-        /* wrapVideo({
-          doc,
-          container: div,
-          lazyLoadQueue: EmoticonsDropdown.lazyLoadQueue,
-          group: EMOTICONSSTICKERGROUP,
-          noInfo: true,
-        }); */
-
-        /* EmoticonsDropdown.lazyLoadQueue.push({
-          div, 
-          load: () => {
-            const download = appDocsManager.downloadDocNew(doc);
-            
-            let thumbSize: string, posterURL: string;
-            if(doc.thumbs?.length) {
-              thumbSize = doc.thumbs[0].type;
-              posterURL = appDocsManager.getThumbURL(doc, thumbSize);
-            }
-            
-            preloader.attach(div, true, appDocsManager.getInputFileName(doc, thumbSize));
-            
-            download.promise.then(blob => {
-              preloader.detach();
-
-              div.innerHTML = `<video autoplay="true" muted="true" loop="true" src="${doc.url}" poster="${posterURL}" type="${doc.mime_type}"></video>`;
-            });
-
-            return download.promise;
-          }
-        }); */
-      }
+      res.gifs.forEach((doc, idx) => {
+        res.gifs[idx] = appDocsManager.saveDoc(doc);
+        masonry.add(doc, EMOTICONSSTICKERGROUP, EmoticonsDropdown.lazyLoadQueue);
+      });
     });
 
     this.init = null;
@@ -797,7 +649,7 @@ class EmoticonsDropdown {
       animationIntersector.checkAnimations(true, EMOTICONSSTICKERGROUP);
 
       this.tabID = id;
-      this.searchButton.classList.toggle('hide', this.tabID != 1);
+      this.searchButton.classList.toggle('hide', this.tabID == 0);
       this.deleteBtn.classList.toggle('hide', this.tabID != 0);
     }, () => {
       const tab = this.tabs[this.tabID];
@@ -811,7 +663,11 @@ class EmoticonsDropdown {
 
     this.searchButton = this.element.querySelector('.emoji-tabs-search');
     this.searchButton.addEventListener('click', () => {
-      appSidebarRight.stickersTab.init();
+      if(this.tabID == 1) {
+        appSidebarRight.stickersTab.init();
+      } else {
+        appSidebarRight.gifsTab.init();
+      }
     });
 
     this.deleteBtn = this.element.querySelector('.emoji-tabs-delete');

@@ -4,11 +4,99 @@ import appPeersManager from "../appManagers/appPeersManager";
 import appMessagesIDsManager from "./appMessagesIDsManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import { toast } from "../../components/toast";
+import appUsersManager, { User } from "./appUsersManager";
+import appPhotosManager, { MTPhoto } from "./appPhotosManager";
+import { MTDocument } from "../../types";
+import appDocsManager from "./appDocsManager";
+
+type botInlineResult = {
+  _: 'botInlineResult',
+  flags: number,
+  id: string,
+  type: string,
+  title?: string,
+  description?: string,
+  url?: string,
+  thumb: any,
+  content: any,
+  send_message: any
+};
+type botInlineMediaResult = {
+  _: 'botInlineMediaResult',
+  flags: number,
+  id: string,
+  type: string,
+  photo?: MTPhoto,
+  document?: MTDocument,
+  title?: string,
+  description?: string,
+  send_message: any
+};
+type BotInlineResult = (botInlineResult | botInlineMediaResult) & Partial<{
+  qID: string,
+  botID: number,
+  rTitle: string,
+  rDescription: string,
+  initials: string
+}>;
 
 export class AppInlineBotsManager {
-  /* private inlineResults: any = {};
+  private inlineResults: {[qID: string]: BotInlineResult} = {};
+
+  public getInlineResults(peerID: number, botID: number, query = '', offset = '', geo?: any) {
+    return apiManagerProxy.invokeApi('messages.getInlineBotResults', {
+      flags: 0 | (geo ? 1 : 0),
+      bot: appUsersManager.getUserInput(botID),
+      peer: appPeersManager.getInputPeerByID(peerID),
+      query: query,
+      geo_point: geo && {_: 'inputGeoPoint', lat: geo['lat'], long: geo['long']},
+      offset
+    }, {timeout: 1, stopTime: -1, noErrorBox: true}).then((botResults: {
+      _: 'messages.botResults',
+      flags: number,
+      pFlags: Partial<{gallery: true}>,
+      query_id: string,
+      next_offset?: string,
+      switch_pm?: any,
+      results: BotInlineResult[],
+      cache_time: number,
+      users: User[]
+    }) => {
+      const queryID = botResults.query_id;
+      /* delete botResults._;
+      delete botResults.flags;
+      delete botResults.query_id; */
+      
+      if(botResults.switch_pm) {
+        botResults.switch_pm.rText = RichTextProcessor.wrapRichText(botResults.switch_pm.text, {noLinebreaks: true, noLinks: true});
+      }
+      
+      botResults.results.forEach((result: BotInlineResult) => {
+        const qID = queryID + '_' + result.id;
+        result.qID = qID;
+        result.botID = botID;
+        
+        result.rTitle = RichTextProcessor.wrapRichText(result.title, {noLinebreaks: true, noLinks: true});
+        result.rDescription = RichTextProcessor.wrapRichText(result.description, {noLinebreaks: true, noLinks: true});
+        result.initials = ((result as botInlineResult).url || result.title || result.type || '').substr(0, 1);
+
+        if(result._ == 'botInlineMediaResult') {
+          if(result.document) {
+            result.document = appDocsManager.saveDoc(result.document);
+          }
+          if(result.photo) {
+            result.photo = appPhotosManager.savePhoto(result.photo);
+          }
+        }
+        
+        this.inlineResults[qID] = result;
+      });
+
+      return botResults;
+    });
+  }
   
-  function getPopularBots () {
+  /* function getPopularBots () {
     return Storage.get('inline_bots_popular').then(function (bots) {
       var result = []
       var i, len
@@ -88,46 +176,6 @@ export class AppInlineBotsManager {
       }, function (error) {
         error.handled = true
         return $q.reject(error)
-      })
-    }
-    
-    function getInlineResults (peerID, botID, query, geo, offset) {
-      return MtpApiManager.invokeApi('messages.getInlineBotResults', {
-        flags: 0 | (geo ? 1 : 0),
-        bot: AppUsersManager.getUserInput(botID),
-        peer: AppPeersManager.getInputPeerByID(peerID),
-        query: query,
-        geo_point: geo && {_: 'inputGeoPoint', lat: geo['lat'], long: geo['long']},
-        offset: offset
-      }, {timeout: 1, stopTime: -1, noErrorBox: true}).then(function (botResults) {
-        var queryID = botResults.query_id
-        delete botResults._
-        delete botResults.flags
-        delete botResults.query_id
-        
-        if (botResults.switch_pm) {
-          botResults.switch_pm.rText = RichTextProcessor.wrapRichText(botResults.switch_pm.text, {noLinebreaks: true, noLinks: true})
-        }
-        
-        angular.forEach(botResults.results, function (result) {
-          var qID = queryID + '_' + result.id
-          result.qID = qID
-          result.botID = botID
-          
-          result.rTitle = RichTextProcessor.wrapRichText(result.title, {noLinebreaks: true, noLinks: true})
-          result.rDescription = RichTextProcessor.wrapRichText(result.description, {noLinebreaks: true, noLinks: true})
-          result.initials = (result.url || result.title || result.type || '').substr(0, 1)
-          
-          if (result.document) {
-            AppDocsManager.saveDoc(result.document)
-          }
-          if (result.photo) {
-            AppPhotosManager.savePhoto(result.photo)
-          }
-          
-          inlineResults[qID] = result
-        })
-        return botResults
       })
     }
     

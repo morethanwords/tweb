@@ -5,12 +5,13 @@
   "main": "index.js",
   "scripts": {
     "start": "webpack-dev-server --config webpack.dev.js",
-    "start-production": "webpack-dev-server --config webpack.prod.js",
+    "start:production": "webpack-dev-server --config webpack.prod.js",
     "serve": "npm run build; node server.js",
     "build": "webpack --config webpack.prod.js",
+    "build:dev": "webpack --config webpack.dev.js",
     "test": "jest --config=jest.config.js",
     "profile": "webpack --profile --json > stats.json --config webpack.prod.js",
-    "profile-dev": "webpack --profile --json > stats.json --config webpack.dev.js"
+    "profile:dev": "webpack --profile --json > stats.json --config webpack.dev.js"
   },
   "author": "",
   "license": "ISC",

@@ -78,7 +78,7 @@ networkerFactory.setUpdatesProcessor((obj, bool) => {
   notify({update: {obj, bool}});
 });
 
-ctx.addEventListener('message', async(e) => {
+const onMessage = async(e: ExtendableMessageEvent) => {
   const taskID = e.data.taskID;
 
   log.debug('got message:', taskID, e, e.data);
@@ -139,7 +139,9 @@ ctx.addEventListener('message', async(e) => {
       //throw new Error('Unknown task: ' + e.data.task);
     }
   }
-});
+};
+
+ctx.onmessage = onMessage;
 
 /**
  * Service Worker Installation
@@ -195,14 +197,11 @@ function responseForSafariFirstRange(range: [number, number], mimeType: string, 
   return null;
 }
 
-ctx.addEventListener('error', (error) => {
+ctx.onerror = (error) => {
   log.error('error:', error);
-});
+};
 
-/**
- * Fetch requests
- */
-ctx.addEventListener('fetch', (event: FetchEvent): void => {
+const onFetch = (event: FetchEvent): void => {
   const [, url, scope, params] = /http[:s]+\/\/.*?(\/(.*?)(?:$|\/(.*)$))/.exec(event.request.url) || [];
 
   log.debug('[fetch]:', event);
@@ -440,11 +439,19 @@ ctx.addEventListener('fetch', (event: FetchEvent): void => {
       if (url && url.endsWith('.tgs')) event.respondWith(fetchTGS(url));
       else event.respondWith(fetch(event.request.url)); */
   }
-});
+};
+
+/**
+ * Fetch requests
+ */
+//ctx.addEventListener('fetch', );
+ctx.onfetch = onFetch;
 
 const DOWNLOAD_CHUNK_LIMIT = 512 * 1024;
-const STREAM_CHUNK_UPPER_LIMIT = 256 * 1024;
-const SMALLEST_CHUNK_LIMIT = 256 * 4;
+//const STREAM_CHUNK_UPPER_LIMIT = 256 * 1024;
+//const SMALLEST_CHUNK_LIMIT = 256 * 4;
+const STREAM_CHUNK_UPPER_LIMIT = 1024 * 1024;
+const SMALLEST_CHUNK_LIMIT = 1024 * 4;
 
 function parseRange(header: string): [number, number] {
   if(!header) return [0, 0];
@@ -461,4 +468,10 @@ function alignOffset(offset: number, base = SMALLEST_CHUNK_LIMIT) {
 
 function alignLimit(limit: number) {
   return 2 ** Math.ceil(Math.log(limit) / Math.log(2));
+}
+
+// @ts-ignore
+if(process.env.NODE_ENV != 'production') {
+  (ctx as any).onMessage = onMessage;
+  (ctx as any).onFetch = onFetch;
 }

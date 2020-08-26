@@ -133,6 +133,19 @@ export class AppUsersManager {
     });
   }
 
+  public async resolveUsername(username: string) {
+    if(this.usernames[username]) {
+      return this.users[this.usernames[username]];
+    }
+
+    return await apiManager.invokeApi('contacts.resolveUsername', {username}).then(resolvedPeer => {
+      this.saveApiUser(resolvedPeer.users[0]);
+      appChatsManager.saveApiChats(resolvedPeer.chats);
+
+      return this.users[this.usernames[username]];
+    });
+  }
+
   public pushContact(userID: number) {
     this.contactsList.add(userID);
     searchIndexManager.indexObject(userID, this.getUserSearchText(userID), this.contactsIndex);
@@ -183,9 +196,9 @@ export class AppUsersManager {
     });
   }
 
-  public resolveUsername(username: string) {
+  /* public resolveUsername(username: string) {
     return this.usernames[username] || 0;
-  }
+  } */
 
   public saveApiUsers(apiUsers: any[]) {
     apiUsers.forEach((user) => this.saveApiUser(user));

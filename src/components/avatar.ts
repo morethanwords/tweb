@@ -6,7 +6,7 @@ $rootScope.$on('avatar_update', (e: CustomEvent) => {
 
   appProfileManager.removeFromAvatarsCache(peerID);
   (Array.from(document.querySelectorAll('avatar-element[peer="' + peerID + '"]')) as AvatarElement[]).forEach(elem => {
-    console.log('updating avatar:', elem);
+    //console.log('updating avatar:', elem);
     elem.update();
   });
 }); 

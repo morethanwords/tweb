@@ -9,6 +9,7 @@ export type MTDocument = {
   mime_type: string,
   size: number,
   thumbs: MTPhotoSize[],
+  video_thumbs?: MTVideoSize[],
   dc_id: number,
   attributes: any[],
   
@@ -45,6 +46,8 @@ export type MTPhotoSize = {
 
   url?: string
 };
+
+export type MTVideoSize = Omit<MTPhotoSize, '_'> & {_: 'videoSize'};
 
 export type InvokeApiOptions = Partial<{
   dcID: number,

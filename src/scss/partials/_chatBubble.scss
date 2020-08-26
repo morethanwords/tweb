@@ -878,7 +878,7 @@ $bubble-margin: .25rem;
         padding: 0;
         display: flex;
         align-items: center;
-        width: auto;
+        width: auto !important;
 
         .inner {
           margin-bottom: 0;
@@ -910,7 +910,7 @@ $bubble-margin: .25rem;
       i {
         font-size: 1.15rem;
         margin-right: .4rem;
-        margin-left: .1rem;
+        /* margin-left: .1rem; */
       }
 
       i.edited {
@@ -960,7 +960,8 @@ $bubble-margin: .25rem;
 
     &.emoji-big, &.sticker {
       .time {
-        width: 81px !important;
+        /* width: 81px !important; */
+        min-width: unset;
       }
     }
   }
@@ -1167,7 +1168,8 @@ $bubble-margin: .25rem;
   
   .time {
     color: #a3adb6;
-    width: 36px;
+    /* width: 36px; */
+    padding-left: 36px;
     
     .inner {
       padding: 0 7px 0 5px;

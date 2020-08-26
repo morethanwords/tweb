@@ -446,7 +446,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
       }
     };
     
-    if(thumb.bytes) {
+    if(thumb.bytes || thumb.url) {
       img = new Image();
 
       if((!isSafari || doc.stickerThumbConverted)/*  && false */) {
