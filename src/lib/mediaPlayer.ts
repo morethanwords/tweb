@@ -1,9 +1,11 @@
+import { cancelEvent } from "./utils";
+
 export class ProgressLine {
   public container: HTMLDivElement;
   protected filled: HTMLDivElement;
   protected seek: HTMLInputElement;
 
-  protected duration = 100;
+  protected duration = 1;
   protected mousedown = false;
 
   private events: Partial<{
@@ -13,21 +15,25 @@ export class ProgressLine {
     onScrub: (scrubTime: number) => void
   }> = {};
 
-  constructor() {
+  constructor(initialValue = 0) {
     this.container = document.createElement('div');
-    this.container.classList.add('media-progress');
+    this.container.classList.add('progress-line');
 
     this.filled = document.createElement('div');
-    this.filled.classList.add('media-progress__filled');
+    this.filled.classList.add('progress-line__filled');
 
     const seek = this.seek = document.createElement('input');
-    seek.classList.add('media-progress__seek');
-    seek.value = '0';
+    seek.classList.add('progress-line__seek');
+    seek.value = '' + initialValue;
     seek.setAttribute('min', '0');
-    seek.setAttribute('max', '0');
+    //seek.setAttribute('max', '0');
     seek.type = 'range';
     seek.step = '0.1';
     seek.max = '' + (this.duration * 1000);
+
+    if(initialValue > 0) {
+      this.setProgress(initialValue);
+    }
 
     //this.setListeners();
 
@@ -45,28 +51,37 @@ export class ProgressLine {
   onMouseDown = (e: MouseEvent) => {
     this.scrub(e);
     this.mousedown = true;
-    this.events?.onMouseDown(e);
+    this.events?.onMouseDown && this.events.onMouseDown(e);
   };
 
   onMouseUp = (e: MouseEvent) => {
     this.mousedown = false;
-    this.events?.onMouseUp(e);
+    this.events?.onMouseUp && this.events.onMouseUp(e);
   };
 
-  protected setListeners() {
+  public setListeners() {
     this.container.addEventListener('mousemove', this.onMouseMove);
     this.container.addEventListener('mousedown', this.onMouseDown);
     this.container.addEventListener('mouseup', this.onMouseUp);
   }
 
-  protected scrub(e: MouseEvent) {
-    const scrubTime = e.offsetX / this.container.offsetWidth * this.duration;
+  public setProgress(scrubTime: number) {
+    this.setFilled(scrubTime);
+    this.seek.value = '' + (scrubTime * 1000);
+  }
 
+  public setFilled(scrubTime: number) {
     let scaleX = scrubTime / this.duration;
     scaleX = Math.max(0, Math.min(1, scaleX));
     this.filled.style.transform = 'scaleX(' + scaleX + ')';
+  }
 
-    //this.events?.onScrub(scrubTime);
+  protected scrub(e: MouseEvent) {
+    const scrubTime = e.offsetX / this.container.offsetWidth * this.duration;
+
+    this.setFilled(scrubTime);
+
+    this.events?.onScrub && this.events.onScrub(scrubTime);
     return scrubTime;
   }
 
@@ -90,7 +105,7 @@ export class MediaProgressLine extends ProgressLine {
 
     if(streamable) {
       this.filledLoad = document.createElement('div');
-      this.filledLoad.classList.add('media-progress__filled', 'media-progress__loaded');
+      this.filledLoad.classList.add('progress-line__filled', 'progress-line__loaded');
       this.container.prepend(this.filledLoad);
       //this.setLoadProgress();
     }
@@ -197,15 +212,13 @@ export class MediaProgressLine extends ProgressLine {
     }
   }
 
-  protected setProgress() {
+  public setProgress() {
     const currentTime = this.media.currentTime;
 
-    const scaleX = (currentTime / this.duration);
-    this.filled.style.transform = 'scaleX(' + scaleX + ')';
-    this.seek.value = '' + currentTime * 1000;
+    super.setProgress(currentTime);
   }
 
-  protected setListeners() {
+  public setListeners() {
     super.setListeners();
     this.media.addEventListener('ended', this.onEnded);
     this.media.addEventListener('play', this.onPlay);
@@ -230,6 +243,7 @@ export class MediaProgressLine extends ProgressLine {
   }
 }
 
+let lastVolume = 1, muted = !lastVolume;
 export default class VideoPlayer {
   public wrapper: HTMLDivElement;
   public progress: MediaProgressLine;
@@ -274,7 +288,66 @@ export default class VideoPlayer {
       var timeElapsed = player.querySelector('#time-elapsed');
       var timeDuration = player.querySelector('#time-duration') as HTMLElement;
       timeDuration.innerHTML = String(video.duration | 0).toHHMMSS();
-  
+
+      const volumeDiv = document.createElement('div');
+      volumeDiv.classList.add('player-volume');
+
+      volumeDiv.innerHTML = `
+      <svg class="player-volume__icon" focusable="false" viewBox="0 0 24 24" aria-hidden="true"></svg>
+      `;
+      const volumeSvg = volumeDiv.firstElementChild as SVGSVGElement;
+
+      volumeSvg.addEventListener('click', (e) => {
+        cancelEvent(e);
+
+        if(!lastVolume) {
+          muted = true;
+          lastVolume = 1;
+        }
+
+        const realVolume = !muted ? 0 : lastVolume;
+        setVolume(realVolume);
+        volumeProgress.setProgress(realVolume);
+        muted = !muted;
+      });
+
+      const setVolume = (volume: number) => {
+        let d: string;
+        if(volume > .5) {
+          d = `M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z`;
+        } else if(!volume) {
+          d = `M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z`;
+        } else if(volume > 0 && volume < .25) {
+          d = `M7 9v6h4l5 5V4l-5 5H7z`;
+        } else {
+          d = `M18.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z`;
+        }
+
+        try {
+          volumeSvg.innerHTML = `<path d="${d}"></path>`;
+        } catch(err) {}
+
+        video.volume = volume;
+      };
+
+      const fakeVolume = muted ? 0 : lastVolume;
+      video.volume = fakeVolume;
+      setVolume(fakeVolume);
+
+      const volumeProgress = new ProgressLine(muted ? 0 : fakeVolume);
+      volumeProgress.setListeners();
+      volumeProgress.setHandlers({
+        onScrub: currentTime => {
+          const value = Math.max(Math.min(currentTime, 1), 0);
+          console.log('scrub', currentTime, value);
+          setVolume(lastVolume = value);
+        }
+      });
+      volumeDiv.append(volumeProgress.container);
+
+      const leftControls = player.querySelector('.left-controls');
+      leftControls.insertBefore(volumeDiv, timeElapsed.parentElement);
+
       Array.from(toggle).forEach((button) => {
         return button.addEventListener('click', () => {
           this.togglePlay();
@@ -402,9 +475,8 @@ export default class VideoPlayer {
 
   private buildControls() {
     const skin = this.skin;
-    const html: string[] = [];
     if(skin === 'default') {
-      html.push(`
+      return `
       <button class="${skin}__button--big toggle tgico-largeplay" title="Toggle Play"></button>
       <div class="${skin}__gradient-bottom ckin__controls"></div>
       <div class="${skin}__controls ckin__controls">
@@ -421,14 +493,14 @@ export default class VideoPlayer {
             <button class="${skin}__button fullscreen tgico-fullscreen" title="Full Screen"></button>
           </div>
         </div>
-      </div>`);
+      </div>`;
     } else if(skin === 'circle') {
-      html.push('<svg class="progress-ring" width="200px" height="200px">',
-        '<circle class="progress-ring__circle" stroke="white" stroke-opacity="0.3" stroke-width="3.5" cx="100" cy="100" r="93" fill="transparent" transform="rotate(-90, 100, 100)"/>',
-        '</svg>');
+      return `
+      <svg class="progress-ring" width="200px" height="200px">
+        <circle class="progress-ring__circle" stroke="white" stroke-opacity="0.3" stroke-width="3.5" cx="100" cy="100" r="93" fill="transparent" transform="rotate(-90, 100, 100)"/>
+      </svg>
+      `;
     }
-  
-    return html.join('');
   }
 
   public updateButton(toggle: NodeListOf<HTMLElement>) {

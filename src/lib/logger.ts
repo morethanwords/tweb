@@ -16,7 +16,7 @@ export function logger(prefix: string, level = LogLevels.log | LogLevels.warn | 
     level = LogLevels.error;
   }
 
-  level = LogLevels.log | LogLevels.warn | LogLevels.error | LogLevels.debug
+  //level = LogLevels.log | LogLevels.warn | LogLevels.error | LogLevels.debug
 
   function Log(...args: any[]) {
     return level & LogLevels.log && console.log(dT(), '[' + prefix + ']:', ...args);
@@ -38,13 +38,13 @@ export function logger(prefix: string, level = LogLevels.log | LogLevels.warn | 
     return level & LogLevels.log && console.trace(dT(), '[' + prefix + ']:', ...args);
   };
 
-  Log.debug = function(...args: any[]) {
-    return level & LogLevels.debug && console.log(dT(), '[' + prefix + ']:', ...args);
-  };
-
   /* Log.debug = function(...args: any[]) {
-    return level & LogLevels.debug && console.debug(dT(), '[' + prefix + ']:', ...args);
+    return level & LogLevels.debug && console.log(dT(), '[' + prefix + ']:', ...args);
   }; */
+
+  Log.debug = function(...args: any[]) {
+    return level & LogLevels.debug && console.debug(dT(), '[' + prefix + ']:', ...args);
+  };
   
   return Log;
 };

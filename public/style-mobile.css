@@ -36,7 +36,7 @@
 @media only screen and (max-width: 720px){.bubble .message.audio-message .audio{height:59px;padding-left:47px}}
 @media only screen and (max-width: 720px){.bubble .message.audio-message .audio-details{margin-top:-1px}}
 @media only screen and (max-width: 720px){.bubble .message.audio-message .audio-ico{margin-top:1px;margin-left:2px}}
-@media only screen and (max-width: 720px){.bubble .message.audio-message .media-progress{width:unset}}
+@media only screen and (max-width: 720px){.bubble .message.audio-message .progress-line{width:unset}}
 @media only screen and (max-width: 720px){.bubble .message.document-message .document{padding-left:44px}}
 @media only screen and (max-width: 720px){.bubble.is-in.is-reply.emoji-big .reply,.bubble.is-in.is-reply.sticker .reply{left:calc(100% + 1px)}}
 @media only screen and (max-width: 720px){.bubble.is-in{margin-right:auto}.bubble.is-out{margin-left:auto}}

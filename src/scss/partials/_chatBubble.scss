@@ -754,7 +754,7 @@ $bubble-margin: .25rem;
       }
     }
 
-    .media-progress {
+    .progress-line {
       /* width: calc(100% + 50px); */
       width: 191px;
       margin: 9px 0 9px;
@@ -1202,7 +1202,7 @@ $bubble-margin: .25rem;
   }
 
   .message.audio-message {
-    .media-progress {
+    .progress-line {
       &__seek {
         background: rgba(193, 207, 220, 0.39);
       }
