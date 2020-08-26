@@ -2,6 +2,7 @@ import { isApple, mediaSizes, isSafari } from "./config";
 import { logger, LogLevels } from "./logger";
 import animationIntersector from "../components/animationIntersector";
 import apiManager from "./mtproto/mtprotoworker";
+import { copy } from "./utils";
 
 let convert = (value: number) => {
 	return Math.round(Math.min(Math.max(value, 0), 1) * 255);
@@ -638,6 +639,7 @@ class LottieLoader {
     //params.autoplay = true;
 
     if(toneIndex >= 1 && toneIndex <= 5) {
+      params.animationData = copy(params.animationData);
       this.applyReplacements(params.animationData, toneIndex);
     }
 
