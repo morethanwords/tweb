@@ -7,6 +7,8 @@ import appSidebarRight, { AppSidebarRight } from "../../lib/appManagers/appSideb
 import appUsersManager, { User } from "../../lib/appManagers/appUsersManager";
 import appInlineBotsManager, { AppInlineBotsManager } from "../../lib/appManagers/AppInlineBotsManager";
 import GifsMasonry from "../gifsMasonry";
+import { findUpClassName } from "../../lib/utils";
+import appImManager from "../../lib/appManagers/appImManager";
 
 const ANIMATIONGROUP = 'GIFS-SEARCH';
 
@@ -39,12 +41,26 @@ export default class AppGifsTab implements SliderTab {
       this.reset();
       this.search(value);
     });
-    
-    this.scrollable.onScrolledBottom = () => {
-      this.search(this.searchInput.value, false);
-    };
+
+    this.gifsDiv.addEventListener('click', this.onGifsClick);
 
     this.backBtn.parentElement.append(this.searchInput.container);
+  }
+
+  onGifsClick = (e: MouseEvent) => {
+    const target = findUpClassName(e.target, 'gif');
+    if(!target) return;
+
+    const fileID = target.dataset.docID;
+    if(appImManager.chatInputC.sendMessageWithDocument(fileID)) {
+      //this.closeBtn.click();
+    } else {
+      console.warn('got no doc by id:', fileID);
+    }
+  };
+
+  public onClose() {
+    this.scrollable.onScrolledBottom = () => {};
   }
 
   public onCloseAfterTimeout() {
@@ -67,6 +83,10 @@ export default class AppGifsTab implements SliderTab {
       //this.renderFeatured();
       this.search('', true);
       this.reset();
+
+      this.scrollable.onScrolledBottom = () => {
+        this.search(this.searchInput.value, false);
+      };
     });
   }
 
