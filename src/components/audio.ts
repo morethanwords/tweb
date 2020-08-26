@@ -393,6 +393,8 @@ export default class AudioElement extends HTMLElement {
         const r = () => {
           onLoad();
 
+          appAudio.willBePlayed(this.audio); // prepare for loading audio
+
           if(!preloader) {
             preloader = new ProgressivePreloader(null, false);
           }
@@ -405,7 +407,14 @@ export default class AudioElement extends HTMLElement {
             else this.addAudioListener('canplay', resolve);
           }).then(() => {
             downloadDiv.remove();
-            this.audio.play();
+
+            //setTimeout(() => {
+              // release loaded audio
+              if(appAudio.willBePlayedAudio == this.audio) {
+                this.audio.play();
+                appAudio.willBePlayedAudio = null;
+              }
+            //}, 10e3);
           });
         };
         

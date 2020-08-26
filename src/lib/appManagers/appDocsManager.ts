@@ -105,8 +105,6 @@ class AppDocsManager {
     if(!apiDoc.mime_type) {
       switch(apiDoc.type) {
         case 'gif':
-          apiDoc.mime_type = 'video/mp4';
-          break;
         case 'video':
         case 'round':
           apiDoc.mime_type = 'video/mp4';

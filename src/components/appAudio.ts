@@ -8,6 +8,8 @@ class AppAudio {
   private container: HTMLElement;
   private audios: {[mid: string]: HTMLAudioElement} = {};
   private playingAudio: HTMLAudioElement;
+  
+  public willBePlayedAudio: HTMLAudioElement;
 
   private prevMid: number;
   private nextMid: number;
@@ -109,7 +111,7 @@ class AppAudio {
         this.addAudio(message.media.document, mid);
       });
       
-      console.log('loadSiblingsAudio', audio, type, mid, value, this.prevMid, this.nextMid);
+      //console.log('loadSiblingsAudio', audio, type, mid, value, this.prevMid, this.nextMid);
     });
   }
   
@@ -121,6 +123,15 @@ class AppAudio {
     } else {
       this.playingAudio.pause();
     }
+  }
+
+  public pause() {
+    if(!this.playingAudio || this.playingAudio.paused) return;
+    this.playingAudio.pause();
+  }
+
+  public willBePlayed(audio: HTMLAudioElement) {
+    this.willBePlayedAudio = audio;
   }
 }
 

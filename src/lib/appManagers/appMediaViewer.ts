@@ -12,6 +12,7 @@ import AvatarElement from "../../components/avatar";
 import LazyLoadQueue from "../../components/lazyLoadQueue";
 import appForward from "../../components/appForward";
 import { isSafari, mediaSizes } from "../config";
+import appAudio from "../../components/appAudio";
 
 export class AppMediaViewer {
   public wholeDiv = document.querySelector('.media-viewer-whole') as HTMLDivElement;
@@ -794,6 +795,10 @@ export class AppMediaViewer {
             if(!video.parentElement) {
               div.append(video);
             }
+
+            // fix for simultaneous play
+            appAudio.pause();
+            appAudio.willBePlayedAudio = null;
 
             const player = new VideoPlayer(video, true, media.supportsStreaming);
             return player;
