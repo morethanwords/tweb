@@ -123,6 +123,11 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       }, {once: true}); */
 
       await promise;
+    } else if(doc.supportsStreaming) {
+      preloader = new ProgressivePreloader(container, false);
+      video.addEventListener('canplay', () => {
+        preloader.detach();
+      }, {once: true});
     }
 
     if(middleware && !middleware()) {

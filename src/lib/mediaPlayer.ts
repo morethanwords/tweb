@@ -1,46 +1,132 @@
-export class MediaProgressLine {
+export class ProgressLine {
   public container: HTMLDivElement;
-  private filled: HTMLDivElement;
-  private filledLoad: HTMLDivElement;
-  private seek: HTMLInputElement;
+  protected filled: HTMLDivElement;
+  protected seek: HTMLInputElement;
 
-  private duration = 0;
-  private mousedown = false;
-  private stopAndScrubTimeout = 0;
-  private progressRAF = 0;
+  protected duration = 100;
+  protected mousedown = false;
 
-  public onSeek: (time: number) => void;
+  private events: Partial<{
+    //onMouseMove: ProgressLine['onMouseMove'],
+    onMouseDown: ProgressLine['onMouseDown'],
+    onMouseUp: ProgressLine['onMouseUp'],
+    onScrub: (scrubTime: number) => void
+  }> = {};
 
-  constructor(private media: HTMLAudioElement | HTMLVideoElement, private streamable = false) {
+  constructor() {
     this.container = document.createElement('div');
     this.container.classList.add('media-progress');
 
     this.filled = document.createElement('div');
     this.filled.classList.add('media-progress__filled');
 
-    if(streamable) {
-      this.filledLoad = document.createElement('div');
-      this.filledLoad.classList.add('media-progress__filled', 'media-progress__loaded');
-      this.container.append(this.filledLoad);
-      //this.setLoadProgress();
-    }
-
-    let seek = this.seek = document.createElement('input');
+    const seek = this.seek = document.createElement('input');
     seek.classList.add('media-progress__seek');
     seek.value = '0';
     seek.setAttribute('min', '0');
     seek.setAttribute('max', '0');
     seek.type = 'range';
     seek.step = '0.1';
+    seek.max = '' + (this.duration * 1000);
 
-    this.setSeekMax();
-    this.setListeners();
+    //this.setListeners();
+
+    this.container.append(this.filled, seek);
+  }
+
+  public setHandlers(events: ProgressLine['events']) {
+    this.events = events;
+  }
+
+  onMouseMove = (e: MouseEvent) => {
+    this.mousedown && this.scrub(e);
+  };
+
+  onMouseDown = (e: MouseEvent) => {
+    this.scrub(e);
+    this.mousedown = true;
+    this.events?.onMouseDown(e);
+  };
+
+  onMouseUp = (e: MouseEvent) => {
+    this.mousedown = false;
+    this.events?.onMouseUp(e);
+  };
+
+  protected setListeners() {
+    this.container.addEventListener('mousemove', this.onMouseMove);
+    this.container.addEventListener('mousedown', this.onMouseDown);
+    this.container.addEventListener('mouseup', this.onMouseUp);
+  }
+
+  protected scrub(e: MouseEvent) {
+    const scrubTime = e.offsetX / this.container.offsetWidth * this.duration;
+
+    let scaleX = scrubTime / this.duration;
+    scaleX = Math.max(0, Math.min(1, scaleX));
+    this.filled.style.transform = 'scaleX(' + scaleX + ')';
+
+    //this.events?.onScrub(scrubTime);
+    return scrubTime;
+  }
+
+  public removeListeners() {
+    this.container.removeEventListener('mousemove', this.onMouseMove);
+    this.container.removeEventListener('mousedown', this.onMouseDown);
+    this.container.removeEventListener('mouseup', this.onMouseUp);
+
+    this.events = {};
+  }
+}
+
+export class MediaProgressLine extends ProgressLine {
+  private filledLoad: HTMLDivElement;
+  
+  private stopAndScrubTimeout = 0;
+  private progressRAF = 0;
+
+  constructor(private media: HTMLAudioElement | HTMLVideoElement, private streamable = false) {
+    super();
+
+    if(streamable) {
+      this.filledLoad = document.createElement('div');
+      this.filledLoad.classList.add('media-progress__filled', 'media-progress__loaded');
+      this.container.prepend(this.filledLoad);
+      //this.setLoadProgress();
+    }
 
     if(!media.paused || media.currentTime > 0) {
       this.onPlay();
     }
 
-    this.container.append(this.filled, seek);
+    this.setSeekMax();
+    this.setListeners();
+    this.setHandlers({
+      onMouseDown: (e: MouseEvent) => {
+        //super.onMouseDown(e);
+    
+        //Таймер для того, чтобы стопать видео, если зажал мышку и не отпустил клик
+        if(this.stopAndScrubTimeout) { // возможно лишнее
+          clearTimeout(this.stopAndScrubTimeout);
+        }
+    
+        this.stopAndScrubTimeout = setTimeout(() => {
+          !this.media.paused && this.media.pause();
+          this.stopAndScrubTimeout = 0;
+        }, 150);
+      },
+
+      onMouseUp: (e: MouseEvent) => {
+        //super.onMouseUp(e);
+    
+        if(this.stopAndScrubTimeout) {
+          clearTimeout(this.stopAndScrubTimeout);
+          this.stopAndScrubTimeout = 0;
+        }
+    
+        this.media.paused && this.media.play();
+      }
+    })
   }
 
   onLoadedData = () => {
@@ -70,42 +156,17 @@ export class MediaProgressLine {
     this.progressRAF = window.requestAnimationFrame(r);
   };
 
-  onMouseMove = (e: MouseEvent) => {
-    this.mousedown && this.scrub(e);
-  };
-
-  onMouseDown = (e: MouseEvent) => {
-    this.media.pause();
-    this.scrub(e);
-
-    //Таймер для того, чтобы стопать видео, если зажал мышку и не отпустил клик
-    if(this.stopAndScrubTimeout) { // возможно лишнее
-      clearTimeout(this.stopAndScrubTimeout);
-    }
-
-    this.stopAndScrubTimeout = setTimeout(() => {
-      !this.media.paused && this.media.pause();
-      this.stopAndScrubTimeout = 0;
-    }, 150);
-
-    this.mousedown = true;
-  };
-
-  onMouseUp = (e: MouseEvent) => {
-    if(this.stopAndScrubTimeout) {
-      clearTimeout(this.stopAndScrubTimeout);
-      this.stopAndScrubTimeout = 0;
-    }
-
-    this.media.paused && this.media.play();
-    this.mousedown = false;
-  };
-
   onProgress = (e: Event) => {
     this.setLoadProgress();
   };
 
-  private setLoadProgress() {
+  protected scrub(e: MouseEvent) {
+    const scrubTime = super.scrub(e);
+    this.media.currentTime = scrubTime;
+    return scrubTime;
+  };
+
+  protected setLoadProgress() {
     const buf = this.media.buffered;
     const numRanges = buf.length;
 
@@ -127,7 +188,7 @@ export class MediaProgressLine {
     this.filledLoad.style.transform = 'scaleX(' + percents + ')';
   }
 
-  private setSeekMax() {
+  protected setSeekMax() {
     this.duration = this.media.duration;
     if(this.duration > 0) {
       this.onLoadedData();
@@ -136,7 +197,7 @@ export class MediaProgressLine {
     }
   }
 
-  private setProgress() {
+  protected setProgress() {
     const currentTime = this.media.currentTime;
 
     const scaleX = (currentTime / this.duration);
@@ -144,40 +205,20 @@ export class MediaProgressLine {
     this.seek.value = '' + currentTime * 1000;
   }
 
-  private setListeners() {
+  protected setListeners() {
+    super.setListeners();
     this.media.addEventListener('ended', this.onEnded);
     this.media.addEventListener('play', this.onPlay);
     this.streamable && this.media.addEventListener('progress', this.onProgress);
-
-    this.container.addEventListener('mousemove', this.onMouseMove);
-    this.container.addEventListener('mousedown', this.onMouseDown);
-    this.container.addEventListener('mouseup', this.onMouseUp);
-  }
-
-  private scrub(e: MouseEvent) {
-    const scrubTime = e.offsetX / this.container.offsetWidth * this.duration;
-    this.media.currentTime = scrubTime;
-
-    if(this.onSeek) {
-      this.onSeek(scrubTime);
-    }
-
-    let scaleX = scrubTime / this.duration;
-    scaleX = Math.max(0, Math.min(1, scaleX));
-    this.filled.style.transform = 'scaleX(' + scaleX + ')';
   }
 
   public removeListeners() {
+    super.removeListeners();
+
     this.media.removeEventListener('loadeddata', this.onLoadedData);
     this.media.removeEventListener('ended', this.onEnded);
     this.media.removeEventListener('play', this.onPlay);
     this.streamable && this.media.removeEventListener('progress', this.onProgress);
-
-    this.container.removeEventListener('mousemove', this.onMouseMove);
-    this.container.removeEventListener('mousedown', this.onMouseDown);
-    this.container.removeEventListener('mouseup', this.onMouseUp);
-
-    this.onSeek = null;
 
     if(this.stopAndScrubTimeout) {
       clearTimeout(this.stopAndScrubTimeout);
@@ -217,21 +258,19 @@ export default class VideoPlayer {
   }
 
   private stylePlayer() {
-    let player = this.wrapper;
-    let video = this.video;
+    const {wrapper: player, video, skin} = this;
 
-    let skin = this.skin;
     player.classList.add(skin);
   
-    let html = this.buildControls();
+    const html = this.buildControls();
     player.insertAdjacentHTML('beforeend', html);
     let updateInterval = 0;
     let elapsed = 0;
     let prevTime = 0;
   
     if(skin === 'default') {
-      var toggle = player.querySelectorAll('.toggle') as NodeListOf<HTMLElement>;
-      var fullScreenButton = player.querySelector('.fullscreen') as HTMLElement;
+      const toggle = player.querySelectorAll('.toggle') as NodeListOf<HTMLElement>;
+      const fullScreenButton = player.querySelector('.fullscreen') as HTMLElement;
       var timeElapsed = player.querySelector('#time-elapsed');
       var timeDuration = player.querySelector('#time-duration') as HTMLElement;
       timeDuration.innerHTML = String(video.duration | 0).toHHMMSS();
@@ -263,23 +302,20 @@ export default class VideoPlayer {
         return this.toggleFullScreen(fullScreenButton);
       });
 
-      let b = () => this.onFullScreen();
       'webkitfullscreenchange mozfullscreenchange fullscreenchange MSFullscreenChange'.split(' ').forEach(eventName => {
-        player.addEventListener(eventName, b, false);
+        player.addEventListener(eventName, this.onFullScreen, false);
       });
-    }
-  
-    if(skin === 'circle') {
-      let wrapper = document.createElement('div');
+    } else if(skin === 'circle') {
+      const wrapper = document.createElement('div');
       wrapper.classList.add('circle-time-left');
       video.parentNode.insertBefore(wrapper, video);
       wrapper.innerHTML = '<div class="circle-time"></div><div class="iconVolume tgico-nosound"></div>';
   
       var circle = player.querySelector('.progress-ring__circle') as SVGCircleElement;
-      var radius = circle.r.baseVal.value;
+      const radius = circle.r.baseVal.value;
       var circumference = 2 * Math.PI * radius;
       var timeDuration = player.querySelector('.circle-time') as HTMLElement;
-      var iconVolume = player.querySelector('.iconVolume') as HTMLDivElement;
+      const iconVolume = player.querySelector('.iconVolume') as HTMLDivElement;
       circle.style.strokeDasharray = circumference + ' ' + circumference;
       circle.style.strokeDashoffset = '' + circumference;
       circle.addEventListener('click', () => {
@@ -295,7 +331,7 @@ export default class VideoPlayer {
             prevTime = video.currentTime;
           }
 
-          let offset = circumference - elapsed / video.duration * circumference;
+          const offset = circumference - elapsed / video.duration * circumference;
           circle.style.strokeDashoffset = '' + offset;
           if(video.paused) clearInterval(updateInterval);
         }, 20);
@@ -339,8 +375,7 @@ export default class VideoPlayer {
   }
 
   private handleProgress(timeDuration: HTMLElement, circumference: number, circle: SVGCircleElement, updateInterval: number) {
-    let video = this.video;
-    let skin = this.skin;
+    const {video, skin} = this;
 
     clearInterval(updateInterval);
     let elapsed = 0;
@@ -352,12 +387,13 @@ export default class VideoPlayer {
           elapsed = video.currentTime; // Update if getCurrentTime was changed
           prevTime = video.currentTime;
         }
-        let offset = circumference - elapsed / video.duration * circumference;
+        
+        const offset = circumference - elapsed / video.duration * circumference;
         circle.style.strokeDashoffset = '' + offset;
         if(video.paused) clearInterval(updateInterval);
       }, 20);
 
-      let timeLeft = String((video.duration - video.currentTime) | 0).toHHMMSS();
+      const timeLeft = String((video.duration - video.currentTime) | 0).toHHMMSS();
       if(timeLeft != '0') timeDuration.innerHTML = timeLeft;
 
       return updateInterval;
@@ -365,22 +401,27 @@ export default class VideoPlayer {
   }
 
   private buildControls() {
-    let skin = this.skin;
-    let html = [];
+    const skin = this.skin;
+    const html: string[] = [];
     if(skin === 'default') {
-      html.push('<button class="' + skin + '__button--big toggle tgico-largeplay" title="Toggle Play"></button>');
-      html.push('<div class="' + skin + '__gradient-bottom ckin__controls"></div>');
-      html.push('<div class="' + skin + '__controls ckin__controls">');
-      html.push('<div class="bottom-controls">',
-        '<div class="left-controls"><button class="' + skin + '__button toggle tgico-play" title="Toggle Video"></button>',
-        '<div class="time">',
-        '<time id="time-elapsed">0:00</time>',
-        '<span> / </span>',
-        '<time id="time-duration">0:00</time>',
-        '</div>',
-        '</div>',
-        '<div class="right-controls"><button class="' + skin + '__button fullscreen tgico-fullscreen" title="Full Screen"></button></div></div>');
-      html.push('</div>');
+      html.push(`
+      <button class="${skin}__button--big toggle tgico-largeplay" title="Toggle Play"></button>
+      <div class="${skin}__gradient-bottom ckin__controls"></div>
+      <div class="${skin}__controls ckin__controls">
+        <div class="bottom-controls">
+          <div class="left-controls">
+            <button class="${skin}__button toggle tgico-play" title="Toggle Video"></button>
+            <div class="time">
+              <time id="time-elapsed">0:00</time>
+              <span> / </span>
+              <time id="time-duration">0:00</time>
+            </div>
+          </div>
+          <div class="right-controls">
+            <button class="${skin}__button fullscreen tgico-fullscreen" title="Full Screen"></button>
+          </div>
+        </div>
+      </div>`);
     } else if(skin === 'circle') {
       html.push('<svg class="progress-ring" width="200px" height="200px">',
         '<circle class="progress-ring__circle" stroke="white" stroke-opacity="0.3" stroke-width="3.5" cx="100" cy="100" r="93" fill="transparent" transform="rotate(-90, 100, 100)"/>',
@@ -391,7 +432,7 @@ export default class VideoPlayer {
   }
 
   public updateButton(toggle: NodeListOf<HTMLElement>) {
-    let icon = this.video.paused ? 'tgico-play' : 'tgico-pause';
+    const icon = this.video.paused ? 'tgico-play' : 'tgico-pause';
     Array.from(toggle).forEach((button) => {
       button.classList.remove('tgico-play', 'tgico-pause');
       button.classList.add(icon);
@@ -452,12 +493,12 @@ export default class VideoPlayer {
     }
   }
   
-  public onFullScreen() {
+  onFullScreen = () => {
     // @ts-ignore
-    let isFullscreenNow = document.webkitFullscreenElement !== null;
+    const isFullscreenNow = document.webkitFullscreenElement !== null;
     if(!isFullscreenNow) {
       this.wrapper.classList.remove('ckin__fullscreen');
     } else {
     }
-  }
+  };
 }

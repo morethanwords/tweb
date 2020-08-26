@@ -81,10 +81,14 @@ class ApiManagerProxy extends CryptoWorkerMethods {
         this.finalizeTask(e.data.taskID, e.data.result, e.data.error);
       }
     });
+
+    navigator.serviceWorker.addEventListener('messageerror', (e) => {
+      this.log.error('SW messageerror:', e);
+    });
   }
 
   private finalizeTask(taskID: number, result: any, error: any) {
-    let deferred = this.awaiting[taskID];
+    const deferred = this.awaiting[taskID];
     if(deferred !== undefined) {
       this.log.debug('done', deferred.taskName, result, error);
       result === undefined ? deferred.reject(error) : deferred.resolve(result);
@@ -113,10 +117,12 @@ class ApiManagerProxy extends CryptoWorkerMethods {
 
   private releasePending() {
     if(navigator.serviceWorker.controller) {
+      this.log.debug('releasing tasks, length:', this.pending.length);
       this.pending.forEach(pending => {
         navigator.serviceWorker.controller.postMessage(pending);
       });
-
+      
+      this.log.debug('released tasks');
       this.pending.length = 0;
     }
   }
