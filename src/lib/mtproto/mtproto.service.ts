@@ -262,24 +262,26 @@ const onFetch = (event: FetchEvent): void => {
         };
         
         log.debug('[fetch] file:', /* info, */fileName);
-  
-        const promise = cancellablePromise.then(b => {
-          const responseInit: ResponseInit = {};
-  
-          if(rangeHeader) {
-            responseInit.headers = {
-              'Accept-Ranges': 'bytes',
-              'Content-Range': `bytes 0-${info.size - 1}/${info.size || '*'}`,
-              'Content-Length': `${info.size}`,
-            }
-          }
-  
-          return new Response(b, responseInit);
-        });
-  
+
         event.respondWith(Promise.race([
           timeout(45 * 1000), 
-          promise
+          new Promise<Response>((resolve) => { // пробую это чтобы проверить, не сдохнет ли воркер
+            cancellablePromise.then(b => {
+              const responseInit: ResponseInit = {};
+      
+              if(rangeHeader) {
+                responseInit.headers = {
+                  'Accept-Ranges': 'bytes',
+                  'Content-Range': `bytes 0-${info.size - 1}/${info.size || '*'}`,
+                  'Content-Length': `${info.size}`,
+                }
+              }
+      
+              resolve(new Response(b, responseInit));
+            }).catch(err => {
+
+            });
+          })
         ]));
   
         break;
@@ -332,7 +334,7 @@ const onFetch = (event: FetchEvent): void => {
                 statusText: 'Partial Content',
                 headers,
               }));
-            });
+            }).catch(err => {});
           })
         ]));
         break;
