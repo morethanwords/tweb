@@ -145,77 +145,6 @@ const onMessage = async(e: ExtendableMessageEvent) => {
   }
 };
 
-/**
- * Service Worker Installation
- */
-ctx.addEventListener('install', (event: ExtendableEvent) => {
-  log('installing');
-
-  /* initCache();
-
-  event.waitUntil(
-    initNetwork(),
-  ); */
-  event.waitUntil(ctx.skipWaiting()); // Activate worker immediately
-});
-
-/**
- * Service Worker Activation
- */
-ctx.addEventListener('activate', (event) => {
-  log('activating', ctx);
-
-  /* if (!ctx.cache) initCache();
-  if (!ctx.network) initNetwork(); */
-
-  event.waitUntil(ctx.clients.claim());
-});
-
-function timeout(delay: number): Promise<Response> {
-  return new Promise(((resolve) => {
-    setTimeout(() => {
-      resolve(new Response('', {
-        status: 408,
-        statusText: 'Request timed out.',
-      }));
-    }, delay);
-  }));
-}
-
-function responseForSafariFirstRange(range: [number, number], mimeType: string, size: number): Response {
-  if(range[0] === 0 && range[1] === 1) {
-    return new Response(new Uint8Array(2).buffer, {
-      status: 206,
-      statusText: 'Partial Content',
-      headers: {
-        'Accept-Ranges': 'bytes',
-        'Content-Range': `bytes 0-1/${size || '*'}`,
-        'Content-Length': '2',
-        'Content-Type': mimeType || 'video/mp4',
-      },
-    });
-  }
-
-  return null;
-}
-
-ctx.onerror = (error) => {
-  log.error('error:', error);
-};
-
-ctx.onunhandledrejection = (error) => {
-  log.error('onunhandledrejection:', error);
-};
-
-const onChangeState = () => {
-  ctx.onmessage = onMessage;
-  ctx.onfetch = onFetch;
-};
-
-onChangeState();
-
-ctx.onoffline = ctx.ononline = onChangeState;
-
 const onFetch = (event: FetchEvent): void => {
   try {
     const [, url, scope, params] = /http[:s]+\/\/.*?(\/(.*?)(?:$|\/(.*)$))/.exec(event.request.url) || [];
@@ -464,6 +393,77 @@ const onFetch = (event: FetchEvent): void => {
     }));
   }
 };
+
+const onChangeState = () => {
+  ctx.onmessage = onMessage;
+  ctx.onfetch = onFetch;
+};
+
+/**
+ * Service Worker Installation
+ */
+ctx.addEventListener('install', (event: ExtendableEvent) => {
+  log('installing');
+
+  /* initCache();
+
+  event.waitUntil(
+    initNetwork(),
+  ); */
+  event.waitUntil(ctx.skipWaiting()); // Activate worker immediately
+});
+
+/**
+ * Service Worker Activation
+ */
+ctx.addEventListener('activate', (event) => {
+  log('activating', ctx);
+
+  /* if (!ctx.cache) initCache();
+  if (!ctx.network) initNetwork(); */
+
+  event.waitUntil(ctx.clients.claim());
+});
+
+function timeout(delay: number): Promise<Response> {
+  return new Promise(((resolve) => {
+    setTimeout(() => {
+      resolve(new Response('', {
+        status: 408,
+        statusText: 'Request timed out.',
+      }));
+    }, delay);
+  }));
+}
+
+function responseForSafariFirstRange(range: [number, number], mimeType: string, size: number): Response {
+  if(range[0] === 0 && range[1] === 1) {
+    return new Response(new Uint8Array(2).buffer, {
+      status: 206,
+      statusText: 'Partial Content',
+      headers: {
+        'Accept-Ranges': 'bytes',
+        'Content-Range': `bytes 0-1/${size || '*'}`,
+        'Content-Length': '2',
+        'Content-Type': mimeType || 'video/mp4',
+      },
+    });
+  }
+
+  return null;
+}
+
+ctx.onerror = (error) => {
+  log.error('error:', error);
+};
+
+ctx.onunhandledrejection = (error) => {
+  log.error('onunhandledrejection:', error);
+};
+
+ctx.onoffline = ctx.ononline = onChangeState;
+
+onChangeState();
 
 const DOWNLOAD_CHUNK_LIMIT = 512 * 1024;
 
