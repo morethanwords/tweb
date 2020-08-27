@@ -13,6 +13,11 @@ import LazyLoadQueue from "../../components/lazyLoadQueue";
 import appForward from "../../components/appForward";
 import { isSafari, mediaSizes } from "../config";
 import appAudio from "../../components/appAudio";
+import { deferredPromise } from "../polyfill";
+import { MTDocument } from "../../types";
+
+// TODO: масштабирование картинок (не SVG) при ресайзе, и правильный возврат на исходную позицию
+// TODO: картинки "обрезаются" если возвращаются или появляются с места, где есть их перекрытие (топбар, поле ввода)
 
 export class AppMediaViewer {
   public wholeDiv = document.querySelector('.media-viewer-whole') as HTMLDivElement;
@@ -32,6 +37,7 @@ export class AppMediaViewer {
   
   public currentMessageID = 0;
   private preloader: ProgressivePreloader = null;
+  private preloaderStreamable: ProgressivePreloader = null;
 
   private lastTarget: HTMLElement = null;
   private prevTargets: {
@@ -43,8 +49,6 @@ export class AppMediaViewer {
   //private loadMore: () => void = null;
 
   public log: ReturnType<typeof logger>; 
-  public onKeyDownBinded: any;
-  public onClickBinded: any;
 
   private peerID = 0;
   private loadMediaPromiseUp: Promise<void> = null;
@@ -58,17 +62,20 @@ export class AppMediaViewer {
   private pageEl = document.getElementById('page-chats') as HTMLDivElement;
 
   private setMoverPromise: Promise<void>;
+  private setMoverAnimationPromise: Promise<void>;
 
   private lazyLoadQueue: LazyLoadQueue;
   
   constructor() {
     this.log = logger('AMV');
     this.preloader = new ProgressivePreloader();
+
+    this.preloaderStreamable = new ProgressivePreloader(undefined, false);
+    this.preloaderStreamable.preloader.classList.add('preloader-streamable');
+
     this.lazyLoadQueue = new LazyLoadQueue(undefined, true);
 
     parseMenuButtonsTo(this.buttons, this.wholeDiv.querySelectorAll(`[class*='menu']`) as NodeListOf<HTMLElement>);
-
-    this.onKeyDownBinded = this.onKeyDown.bind(this);
 
     const close = (e: MouseEvent) => {
       cancelEvent(e);
@@ -97,10 +104,10 @@ export class AppMediaViewer {
         }, 200);
       }
 
-      window.removeEventListener('keydown', this.onKeyDownBinded);
+      window.removeEventListener('keydown', this.onKeyDown);
     };
     
-    [this.buttons.close, this.buttons["mobile-close"]].forEach(el => {
+    [this.buttons.close, this.buttons["mobile-close"], this.preloaderStreamable.preloader].forEach(el => {
       el.addEventListener('click', close);
     });
     
@@ -130,25 +137,8 @@ export class AppMediaViewer {
       }
     });
     
-    const download = (e: MouseEvent) => {
-      let message = appMessagesManager.getMessage(this.currentMessageID);
-      if(message.media.photo) {
-        appPhotosManager.savePhotoFile(message.media.photo);
-      } else {
-        let document: any = null;
-
-        if(message.media.webpage) document = message.media.webpage.document;
-        else document = message.media.document;
-
-        if(document) {
-          console.log('will save document:', document);
-          appDocsManager.saveDocFile(document.id);
-        }
-      }
-    };
-
     [this.buttons.download, this.buttons["menu-download"]].forEach(el => {
-      el.addEventListener('click', download);
+      el.addEventListener('click', this.onClickDownload);
     });
 
     const forward = (e: MouseEvent) => {
@@ -159,31 +149,50 @@ export class AppMediaViewer {
       el.addEventListener('click', forward);
     });
 
-    this.onClickBinded = (e: MouseEvent) => {
-      let target = e.target as HTMLElement;
-      if(target.tagName == 'A') return;
-      cancelEvent(e);
-
-      let mover: HTMLElement = null;
-      ['media-viewer-mover', 'media-viewer-buttons', 'media-viewer-author'].find(s => {
-        try {
-          mover = findUpClassName(target, s);
-          if(mover) return true;
-        } catch(err) {return false;}
-      });
-
-      if(/* target == this.mediaViewerDiv */!mover || target.tagName == 'IMG' || target.tagName == 'image') {
-        this.buttons.close.click();
-      }
-    };
-
-    this.wholeDiv.addEventListener('click', this.onClickBinded);
+    this.wholeDiv.addEventListener('click', this.onClick);
     //this.content.mover.addEventListener('click', this.onClickBinded);
     //this.content.mover.append(this.buttons.prev, this.buttons.next);
     this.setNewMover();
   }
 
-  public onKeyDown(e: KeyboardEvent) {
+  onClickDownload = (e: MouseEvent) => {
+    const message = appMessagesManager.getMessage(this.currentMessageID);
+    if(message.media.photo) {
+      appPhotosManager.savePhotoFile(message.media.photo);
+    } else {
+      let document: MTDocument = null;
+
+      if(message.media.webpage) document = message.media.webpage.document;
+      else document = message.media.document;
+
+      if(document) {
+        //console.log('will save document:', document);
+        appDocsManager.saveDocFile(document);
+      }
+    }
+  };
+
+  onClick = (e: MouseEvent) => {
+    if(this.setMoverAnimationPromise) return;
+
+    const target = e.target as HTMLElement;
+    if(target.tagName == 'A') return;
+    cancelEvent(e);
+
+    let mover: HTMLElement = null;
+    ['media-viewer-mover', 'media-viewer-buttons', 'media-viewer-author'].find(s => {
+      try {
+        mover = findUpClassName(target, s);
+        if(mover) return true;
+      } catch(err) {return false;}
+    });
+
+    if(/* target == this.mediaViewerDiv */!mover || target.tagName == 'IMG' || target.tagName == 'image') {
+      this.buttons.close.click();
+    }
+  };
+
+  onKeyDown = (e: KeyboardEvent) => {
     //this.log('onKeyDown', e);
     
     if(e.key == 'ArrowRight') {
@@ -191,15 +200,17 @@ export class AppMediaViewer {
     } else if(e.key == 'ArrowLeft') {
       this.buttons.prev.click();
     }
-  }
+  };
 
-  public async setMoverToTarget(target: HTMLElement, closing = false, fromRight = 0) {
+  private async setMoverToTarget(target: HTMLElement, closing = false, fromRight = 0) {
     const mover = this.content.mover;
 
     if(!closing) {
       mover.innerHTML = '';
       //mover.append(this.buttons.prev, this.buttons.next);
     }
+    
+    this.removeCenterFromMover(mover);
 
     const wasActive = fromRight !== 0;
 
@@ -240,6 +251,17 @@ export class AppMediaViewer {
       top = rect.top;
     }
 
+    transform += `translate(${left}px,${top}px) `;
+
+    /* if(wasActive) {
+      left = fromRight === 1 ? appPhotosManager.windowW / 2 : -(containerRect.width + appPhotosManager.windowW / 2);
+      transform += `translate(${left}px,-50%) `;
+    } else {
+      left = rect.left - (appPhotosManager.windowW / 2);
+      top = rect.top - (appPhotosManager.windowH / 2);
+      transform += `translate(${left}px,${top}px) `;
+    } */
+
     let aspecter: HTMLDivElement;
     if(target instanceof HTMLImageElement || target instanceof HTMLVideoElement) {
       if(mover.firstElementChild && mover.firstElementChild.classList.contains('media-viewer-aspecter')) {
@@ -260,14 +282,12 @@ export class AppMediaViewer {
         }
       } else {
         aspecter = document.createElement('div');
-        aspecter.classList.add('media-viewer-aspecter', 'disable-hover');
+        aspecter.classList.add('media-viewer-aspecter'/* , 'disable-hover' */);
         mover.prepend(aspecter);
       }
       
       aspecter.style.cssText = `width: ${rect.width}px; height: ${rect.height}px; transform: scale(${containerRect.width / rect.width}, ${containerRect.height / rect.height});`;
     }
-
-    transform += `translate(${left}px,${top}px) `;
 
     mover.style.width = containerRect.width + 'px';
     mover.style.height = containerRect.height + 'px';
@@ -293,6 +313,13 @@ export class AppMediaViewer {
 
     let path: SVGPathElement;
     const isOut = target.classList.contains('is-out');
+
+    const deferred = this.setMoverAnimationPromise = deferredPromise<void>();
+    const ret = {onAnimationEnd: deferred};
+
+    this.setMoverAnimationPromise.then(() => {
+      this.setMoverAnimationPromise = null;
+    });
 
     if(!closing) {
       let mediaElement: HTMLImageElement | HTMLVideoElement;
@@ -322,6 +349,10 @@ export class AppMediaViewer {
         const newSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         newSvg.setAttributeNS(null, 'width', '' + width);
         newSvg.setAttributeNS(null, 'height', '' + height);
+
+        // нижние два свойства для масштабирования
+        newSvg.setAttributeNS(null, 'viewBox', `0 0 ${width} ${height}`);
+        newSvg.setAttributeNS(null, 'preserveAspectRatio', 'xMidYMid meet');
 
         newSvg.insertAdjacentHTML('beforeend', target.firstElementChild.outerHTML.replace(clipID, newClipID));
         newSvg.insertAdjacentHTML('beforeend', target.lastElementChild.outerHTML.replace(clipID, newClipID));
@@ -393,6 +424,11 @@ export class AppMediaViewer {
         mover.classList.add(wasActive ? 'moving' : 'active');
       });
     } else {
+      /* if(mover.classList.contains('center')) {
+        mover.classList.remove('center');
+        void mover.offsetLeft; // reflow
+      } */
+      
       if(target instanceof SVGSVGElement) {
         path = mover.querySelector('path');
 
@@ -421,17 +457,21 @@ export class AppMediaViewer {
         mover.innerHTML = '';
         mover.classList.remove('moving', 'active', 'hiding');
         mover.style.display = 'none';
+
+        deferred.resolve();
       }, delay);
 
-      return;
+      return ret;
     }
 
     //await new Promise((resolve) => setTimeout(resolve, 0));
     await new Promise((resolve) => window.requestAnimationFrame(resolve));
 
+    // чтобы проверить установленную позицию - раскомментировать
     //throw '';
 
     mover.style.transform = `translate(${containerRect.left}px,${containerRect.top}px) scale(1,1)`;
+    //mover.style.transform = `translate(-50%,-50%) scale(1,1)`;
 
     if(aspecter) {
       this.setFullAspect(aspecter, containerRect, rect);
@@ -449,22 +489,33 @@ export class AppMediaViewer {
       mover.classList.remove('moving');
 
       if(aspecter) { // всё из-за видео, элементы управления скейлятся, так бы можно было этого не делать
-        if(mover.querySelector('video')) {
+        if(mover.querySelector('video') || true) {
           mover.classList.remove('active');
           aspecter.style.cssText = '';
           void mover.offsetLeft; // reflow
         }
         
-        aspecter.classList.remove('disable-hover');
+        //aspecter.classList.remove('disable-hover');
       }
 
+      // эти строки нужны для установки центральной позиции, в случае ресайза это будет нужно
+      mover.classList.add('center', 'no-transition');
+      /* mover.style.left = mover.style.top = '50%';
+      mover.style.transform = 'translate(-50%, -50%)';
+      void mover.offsetLeft; // reflow */
+
+      // это уже нужно для будущих анимаций
       mover.classList.add('active');
       delete mover.dataset.timeout;
+
+      deferred.resolve();
     }, delay);
 
     if(path) {
       this.sizeTailPath(path, containerRect, scaleX, delay, true, isOut, borderRadius);
     }
+
+    return ret;
   }
 
   private setFullAspect(aspecter: HTMLDivElement, containerRect: DOMRect, rect: DOMRect) {
@@ -493,7 +544,7 @@ export class AppMediaViewer {
     //}
   }
 
-  public sizeTailPath(path: SVGPathElement, rect: DOMRect, scaleX: number, delay: number, upscale: boolean, isOut: boolean, borderRadius: string) {
+  private sizeTailPath(path: SVGPathElement, rect: DOMRect, scaleX: number, delay: number, upscale: boolean, isOut: boolean, borderRadius: string) {
     const start = Date.now();
     const {width, height} = rect;
     delay = delay / 2;
@@ -521,8 +572,20 @@ export class AppMediaViewer {
     step();
   }
 
-  public moveTheMover(mover: HTMLDivElement, toLeft = true) {
+  private removeCenterFromMover(mover: HTMLDivElement) {
+    if(mover.classList.contains('center')) {
+      const rect = mover.getBoundingClientRect();
+      mover.style.transform = `translate(${rect.left}px,${rect.top}px)`;
+      mover.classList.remove('center');
+      void mover.offsetLeft; // reflow
+      mover.classList.remove('no-transition');
+    }
+  }
+
+  private moveTheMover(mover: HTMLDivElement, toLeft = true) {
     const windowW = appPhotosManager.windowW;
+
+    this.removeCenterFromMover(mover);
 
     //mover.classList.remove('active');
     mover.classList.add('moving');
@@ -534,9 +597,8 @@ export class AppMediaViewer {
     const rect = mover.getBoundingClientRect();
 
     const newTransform = mover.style.transform.replace(/translate\((.+?),/, (match, p1) => {
-      /////////this.log('replace func', match, p1);
-      let x = +p1.slice(0, -2);
-      x = toLeft ? -rect.width : windowW;
+      const x = toLeft ? -rect.width : windowW;
+      //const x = toLeft ? -(rect.right + (rect.width / 2)) : windowW / 2;
 
       return match.replace(p1, x + 'px');
     });
@@ -549,7 +611,7 @@ export class AppMediaViewer {
     }, 350);
   }
 
-  public setNewMover() {
+  private setNewMover() {
     const newMover = document.createElement('div');
     newMover.classList.add('media-viewer-mover');
 
@@ -559,8 +621,6 @@ export class AppMediaViewer {
     } else {
       this.wholeDiv.append(newMover);
     }
-
-    newMover.addEventListener('click', this.onClickBinded);
 
     return this.content.mover = newMover;
   }
@@ -573,7 +633,7 @@ export class AppMediaViewer {
   } */
 
   // нет смысла делать проверку для reverse и loadMediaPromise
-  public loadMoreMedia(older = true) {
+  private loadMoreMedia(older = true) {
     //if(!older && this.reverse) return;
 
     if(older && this.loadedAllMediaDown) return;
@@ -648,7 +708,7 @@ export class AppMediaViewer {
     return promise;
   }
 
-  public updateMediaSource(target: HTMLElement, url: string, tagName: 'video' | 'img') {
+  private updateMediaSource(target: HTMLElement, url: string, tagName: 'video' | 'img') {
     //if(target instanceof SVGSVGElement) {
       const el = target.querySelector(tagName) as HTMLElement;
       renderImageFromUrl(el, url);
@@ -737,8 +797,7 @@ export class AppMediaViewer {
     }
     
     let oldAvatar = this.author.avatarEl;
-    // @ts-ignore
-    this.author.avatarEl = this.author.avatarEl.cloneNode();
+    this.author.avatarEl = (this.author.avatarEl.cloneNode() as AvatarElement);
     this.author.avatarEl.setAttribute('peer', '' + message.fromID);
     oldAvatar.parentElement.replaceChild(this.author.avatarEl, oldAvatar);
 
@@ -749,7 +808,7 @@ export class AppMediaViewer {
       this.moveTheMover(this.content.mover, fromRight === 1);
       this.setNewMover();
     } else {
-      window.addEventListener('keydown', this.onKeyDownBinded);
+      window.addEventListener('keydown', this.onKeyDown);
       this.wholeDiv.classList.add('active');
     }
 
@@ -767,18 +826,20 @@ export class AppMediaViewer {
       target = target.querySelector('img, video') || target;
     } */
 
+    const preloader = media.supportsStreaming ? this.preloaderStreamable : this.preloader;
+
     let setMoverPromise: Promise<void>;
     if(isVideo) {
       ////////this.log('will wrap video', media, size);
 
-      setMoverPromise = this.setMoverToTarget(target, false, fromRight).then(() => {
+      setMoverPromise = this.setMoverToTarget(target, false, fromRight).then(({onAnimationEnd}) => {
       //return; // set and don't move
       //if(wasActive) return;
         //return;
 
         const div = mover.firstElementChild && mover.firstElementChild.classList.contains('media-viewer-aspecter') ? mover.firstElementChild : mover;
         const video = mover.querySelector('video') || document.createElement('video');
-        video.src = '';
+        //video.src = '';
 
         video.setAttribute('playsinline', '');
         if(media.type == 'gif') {
@@ -787,58 +848,104 @@ export class AppMediaViewer {
           video.loop = true;
         }
 
+        if(!video.parentElement) {
+          div.append(video);
+        }
+
+        const canPlayThrough = new Promise((resolve) => {
+          video.addEventListener('canplaythrough', resolve, {once: true});
+        });
+
         const createPlayer = () => {
           if(media.type != 'gif') {
             video.dataset.ckin = 'default';
             video.dataset.overlay = '1';
 
-            if(!video.parentElement) {
-              div.append(video);
-            }
-
             // fix for simultaneous play
             appAudio.pause();
             appAudio.willBePlayedAudio = null;
-
-            new VideoPlayer(video, true, media.supportsStreaming);
+            
+            Promise.all([canPlayThrough, onAnimationEnd]).then(() => {
+              const player = new VideoPlayer(video, true, media.supportsStreaming);
+              /* div.append(video);
+              mover.append(player.wrapper); */
+            });
           }
         };
-        
-        if(!video.src || (media.url && media.url != video.src)) {
-          const load = () => {
-            const promise = appDocsManager.downloadDoc(media.id);
-            
-            //if(!streamable) {
-              this.preloader.attach(mover, true, promise);
-            //}
 
-            promise.then(async() => {
+        if(media.supportsStreaming) {
+          onAnimationEnd.then(() => {
+            if(video.readyState < video.HAVE_FUTURE_DATA) {
+              preloader.attach(mover, true);
+            }
+
+            /* canPlayThrough.then(() => {
+              preloader.detach();
+            }); */
+          });
+
+          const attachCanPlay = () => {
+            video.addEventListener('canplay', () => {
+              //this.log('video waited and progress loaded');
+              preloader.detach();
+              video.parentElement.classList.remove('is-buffering');
+            }, {once: true});
+          };
+
+          video.addEventListener('waiting', (e) => {
+            const loading = video.networkState === video.NETWORK_LOADING;
+            const isntEnoughData = video.readyState < video.HAVE_FUTURE_DATA;
+
+            //this.log('video waiting for progress', loading, isntEnoughData);
+            if(loading && isntEnoughData) {
+              attachCanPlay();
+
+              preloader.attach(mover, true);
+
+              // поставлю класс для плеера, чтобы убрать большую иконку пока прелоадер на месте
+              video.parentElement.classList.add('is-buffering');
+            }
+          });
+
+          attachCanPlay();
+        }
+        
+        //if(!video.src || media.url != video.src) {
+          const load = () => {
+            const promise = media.supportsStreaming ? Promise.resolve() : appDocsManager.downloadDocNew(media);
+            
+            if(!media.supportsStreaming) {
+              onAnimationEnd.then(() => {
+                preloader.attach(mover, true, promise);
+              });
+            }
+
+            (promise as Promise<any>).then(async() => {
               if(this.currentMessageID != message.mid) {
                 this.log.warn('media viewer changed video');
                 return;
               }
 
               const url = media.url;
-              if(target instanceof SVGSVGElement && (video.parentElement || !isSafari)) { // if video exists
-                if(!video.parentElement) {
+              if(target instanceof SVGSVGElement/*  && (video.parentElement || !isSafari) */) { // if video exists
+                //if(!video.parentElement) {
                   div.firstElementChild.lastElementChild.append(video);
-                }
+                //}
                 
                 this.updateMediaSource(mover, url, 'video');
-                //this.updateMediaSource(target, url, 'source');
               } else {
                 //const promise = new Promise((resolve) => video.addEventListener('loadeddata', resolve, {once: true}));
                 renderImageFromUrl(video, url);
 
                 //await promise;
-                const first = div.firstElementChild as HTMLImageElement;
+                /* const first = div.firstElementChild as HTMLImageElement;
                 if(!(first instanceof HTMLVideoElement) && first) {
                   first.remove();
                 }
 
                 if(!video.parentElement) {
                   div.prepend(video);
-                }
+                } */
               }
 
               // я хз что это такое, видео появляются просто чёрными и не включаются без этого кода снизу
@@ -861,17 +968,19 @@ export class AppMediaViewer {
             load,
             wasSeen: true
           });
-        } else createPlayer();
+        //} else createPlayer();
       });
     } else {
-      setMoverPromise = this.setMoverToTarget(target, false, fromRight).then(() => {
+      setMoverPromise = this.setMoverToTarget(target, false, fromRight).then(({onAnimationEnd}) => {
       //return; // set and don't move
       //if(wasActive) return;
         //return;
         
         let load = () => {
           let cancellablePromise = appPhotosManager.preloadPhoto(media.id, size);
-          this.preloader.attach(mover, true, cancellablePromise);
+          onAnimationEnd.then(() => {
+            this.preloader.attach(mover, true, cancellablePromise);
+          });
           cancellablePromise.then(() => {
             if(this.currentMessageID != message.mid) {
               this.log.warn('media viewer changed photo');
@@ -914,7 +1023,9 @@ export class AppMediaViewer {
       });
     }
 
-    return this.setMoverPromise = setMoverPromise.then(() => {
+    return this.setMoverPromise = setMoverPromise.catch(() => {
+      this.setMoverAnimationPromise = null;
+    }).finally(() => {
       this.setMoverPromise = null;
     });
   }

@@ -16,13 +16,16 @@ $lightgrey: #dadce0;
 
 $light: rgba($color-gray, 0.08);
 
-$small-screen: 720px;
+//$small-screen: 720px;
+$small-screen: 896px;
+//$small-screen: 900px;
 $large-screen: 1680px;
 //$large-screen: 16800px;
 
 @mixin respond-to($media) {
   @if $media == handhelds {
     @media only screen and (max-width: $small-screen) { @content; }
+    //@media only screen and (orientation: landscape) and (max-device-width: 896px) { @content; } // iPhone 11 Pro Max
   }
   @else if $media == medium-screens {
     @media only screen and (min-width: $small-screen + 1) and (max-width: $large-screen) { @content; }
@@ -49,6 +52,7 @@ $large-screen: 1680px;
 @import "partials/slider";
 @import "partials/selector";
 @import "partials/gifsMasonry";
+@import "partials/preloader";
 
 @import "partials/popups/popup";
 @import "partials/popups/editAvatar";
@@ -1185,136 +1189,6 @@ input:focus, button:focus {
 
   &:not(.btn-primary).menu-open {
     background-color: rgba(112, 117, 121, 0.08);
-  }
-}
-
-.preloader {
-  &-circular {
-    animation: rotate 2s linear infinite;
-    height: 100%;
-    transform-origin: center center;
-    /* width: 100%; */
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    margin: auto;
-  }
-
-  &-path {
-    stroke-dasharray: 1, 200;
-    stroke-dashoffset: 0;
-    animation: dash 1.5s ease-in-out infinite/* , color 6s ease-in-out infinite */;
-    stroke-linecap: round;
-    stroke: white;
-    stroke-width: 3;
-  }
-
-  &-container {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    margin: auto;
-    width: 50px;
-    height: 50px;
-    /* cursor: pointer; */
-  }
-}
-
-.preloader-container {
-  .you-spin-me-round {
-    width: 100%;
-    height: 100%;
-    animation: rotate 2s linear infinite;
-  }
-
-  .preloader-circular {
-    animation: none;
-    cursor: pointer;
-    background-color: rgba(0, 0, 0, .7);
-    border-radius: 50%;
-    width: 100%;
-    height: 100%;
-  }
-
-  .preloader-path-new {
-    stroke-dasharray: 5, 200;
-    stroke-dashoffset: 0;
-    transition: stroke-dasharray 400ms ease-in-out;
-    stroke-linecap: round;
-    stroke: white;
-    stroke-width: 1.5;
-  }
-
-  &.preloader-swing {
-    cursor: default;
-
-    .preloader-circular {
-      cursor: default;
-    }
-
-    .preloader-path-new {
-      stroke-dasharray: 1, 200;
-      stroke-dashoffset: 0;
-      animation: dashNew 1.5s ease-in-out infinite/* , color 6s ease-in-out infinite */;
-    }
-  }
-
-  .preloader-close {
-    cursor: pointer;
-    position: absolute;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    right: 0;
-    margin: auto;
-    color: #fff;
-    stroke: #fff;
-    width: 34%;
-    height: 34%;
-
-    html.no-touch &:hover {
-      background: none;
-    }
-  }
-}
-
-@keyframes rotate {
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes dash {
-  0% {
-    stroke-dasharray: 1, 200;
-    stroke-dashoffset: 0;
-  }
-  50% {
-    stroke-dasharray: 89, 200;
-    stroke-dashoffset: -35px;
-  }
-  100% {
-    stroke-dasharray: 89, 200;
-    stroke-dashoffset: -124px;
-  }
-}
-
-@keyframes dashNew {
-  0% {
-    stroke-dasharray: 1, 200;
-    stroke-dashoffset: 0;
-  }
-  50% {
-    stroke-dasharray: 89, 200;
-    stroke-dashoffset: -35px;
-  }
-  100% {
-    stroke-dasharray: 89, 200;
-    stroke-dashoffset: -286%;
   }
 }
 

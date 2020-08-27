@@ -77,7 +77,8 @@ class MediaSizes {
 
   private handleResize() {
     const innerWidth = window.innerWidth;
-    this.isMobile = innerWidth <= 720;
+    //this.isMobile = innerWidth <= 720;
+    this.isMobile = innerWidth <= 896;
     this.active = this.isMobile ? this.sizes.handhelds : this.sizes.desktop;
 
     /* if(this.isMobile) {

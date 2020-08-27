@@ -1,3 +1,5 @@
+$slider-time: .25s;
+
 .menu-horizontal {
   color: $color-gray;
   border-bottom: 1px solid $lightgrey;
@@ -27,14 +29,24 @@
     font-weight: 500;
     position: relative;
     border-top-left-radius: 6px;
-	  border-top-right-radius: 6px;
+    border-top-right-radius: 6px;
+    
+    > span {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+    }
 
     &.active {
       color: $color-blue;
+
+      i {
+        opacity: 1;
+      }
     }
   }
 
-  &__stripe {
+  /* &__stripe {
     position: absolute;
     background: $color-blue;
     left: 0;
@@ -51,6 +63,26 @@
 
     @include respond-to(handhelds) {
       display: none;
+    }
+  } */
+
+  i {
+    position: absolute;
+    bottom: calc(-.625rem - 2px);
+    left: 0;
+    opacity: 0;
+    background-color: $color-blue;
+    height: .1875rem;
+    width: 100%;
+    border-radius: .1875rem .1875rem 0 0;
+    pointer-events: none;
+    padding-right: .5rem;
+    margin-left: -.25rem;
+    box-sizing: content-box;
+    transform-origin: left;
+
+    &.animate {
+      transition: transform $slider-time;
     }
   }
 }
@@ -74,7 +106,7 @@
     width: 100%;
     max-width: 100%;
     //transition: transform .42s, filter .42s;
-    transition: transform .2s, filter .2s;
+    transition: transform $slider-time, filter $slider-time;
     display: none;
     flex-direction: column;
     position: relative;
@@ -97,5 +129,9 @@
       /* overflow: hidden; */
       position: relative;
     }
+  }
+
+  &[data-slider="tabs"] {
+    transition: transform $slider-time;
   }
 }

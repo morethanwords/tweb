@@ -1,4 +1,4 @@
-import { cancelEvent } from "./utils";
+import { cancelEvent, whichChild } from "./utils";
 
 export class ProgressLine {
   public container: HTMLDivElement;
@@ -179,7 +179,7 @@ export class MediaProgressLine extends ProgressLine {
     const scrubTime = super.scrub(e);
     this.media.currentTime = scrubTime;
     return scrubTime;
-  };
+  }
 
   protected setLoadProgress() {
     const buf = this.media.buffered;
@@ -248,6 +248,9 @@ export default class VideoPlayer {
   public wrapper: HTMLDivElement;
   public progress: MediaProgressLine;
   private skin: string;
+
+  /* private videoParent: HTMLElement;
+  private videoWhichChild: number; */
 
   constructor(public video: HTMLVideoElement, play = false, streamable = false) {
     this.wrapper = document.createElement('div');
@@ -353,10 +356,18 @@ export default class VideoPlayer {
           this.togglePlay();
         });
       });
-  
+
       video.addEventListener('click', () => {
         this.togglePlay();
       });
+  
+      /* player.addEventListener('click', (e) => {
+        if(e.target != player) {
+          return;
+        }
+
+        this.togglePlay();
+      }); */
   
       video.addEventListener('play', () => {
         this.updateButton(toggle);
@@ -513,11 +524,21 @@ export default class VideoPlayer {
   
   public toggleFullScreen(fullScreenButton: HTMLElement) {
     // alternative standard method
-    let player = this.wrapper;
-
+    const player = this.wrapper;
+    
     // @ts-ignore
     if(!document.fullscreenElement && !document.mozFullScreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
       player.classList.add('ckin__fullscreen');
+
+      /* const videoParent = this.video.parentElement;
+      const videoWhichChild = whichChild(this.video);
+      const needVideoRemount = videoParent != player;
+
+      if(needVideoRemount) {
+        this.videoParent = videoParent;
+        this.videoWhichChild = videoWhichChild;
+        player.prepend(this.video);
+      } */
   
       if(player.requestFullscreen) {
         player.requestFullscreen();
@@ -540,6 +561,18 @@ export default class VideoPlayer {
       fullScreenButton.setAttribute('title', 'Exit Full Screen');
     } else {
       player.classList.remove('ckin__fullscreen');
+
+      /* if(this.videoParent) {
+        const {videoWhichChild, videoParent} = this;
+        if(!videoWhichChild) {
+          videoParent.prepend(this.video);
+        } else {
+          videoParent.insertBefore(this.video, videoParent.children[videoWhichChild]);
+        }
+
+        this.videoParent = null;
+        this.videoWhichChild = -1;
+      } */
   
       // @ts-ignore
       if(document.cancelFullScreen) {

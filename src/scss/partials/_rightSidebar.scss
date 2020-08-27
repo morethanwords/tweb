@@ -191,6 +191,7 @@
     height: 120px;
     margin: 1px auto 10px;
     font-size: 2.5rem !important;
+    flex: 0 0 auto;
 
     @include respond-to(handhelds) {
       margin: 0 auto 10px;
@@ -210,6 +211,11 @@
     top: 0;
     z-index: 2;
     background-color: #fff;
+
+    i {
+      padding-right: 1.5rem !important;
+	    margin-left: -.75rem !important;
+    }
 
     &-content {
       //min-height: 100%;

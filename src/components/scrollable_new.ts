@@ -1,6 +1,6 @@
 import { logger, LogLevels } from "../lib/logger";
 import smoothscroll from '../vendor/smoothscroll';
-import { touchSupport, isSafari } from "../lib/config";
+import { touchSupport, isSafari, mediaSizes } from "../lib/config";
 //import { isInDOM } from "../lib/utils";
 (window as any).__forceSmoothScrollPolyfill__ = true;
 smoothscroll.polyfill();
@@ -207,7 +207,7 @@ export default class Scrollable {
     const binded = this.onScroll.bind(this);
 
     window.addEventListener('resize', () => {
-      this.overflowContainer = window.innerWidth <= 720 && false ? document.documentElement : this.container;
+      this.overflowContainer = mediaSizes.isMobile && false ? document.documentElement : this.container;
       this.onScroll();
     });
     this.container.addEventListener('scroll', binded, {passive: true, capture: true});
@@ -221,7 +221,7 @@ export default class Scrollable {
     }
     //this.onScroll();
 
-    this.overflowContainer = window.innerWidth <= 720 && false ? document.documentElement : this.container;
+    this.overflowContainer = mediaSizes.isMobile && false ? document.documentElement : this.container;
 
     /* scrollables.set(this.container, this);
     scrollsIntersector.observe(this.container); */
@@ -342,8 +342,13 @@ export default class Scrollable {
   public checkForTriggers(container: HTMLElement) {
     if(this.scrollLocked || (!this.onScrolledTop && !this.onScrolledBottom)) return;
 
-    const scrollTop = container.scrollTop;
-    const maxScrollTop = container.scrollHeight - container.clientHeight;
+    const scrollHeight = container.scrollHeight;
+    if(!scrollHeight) { // незачем вызывать триггеры если блок пустой или не виден
+      return;
+    }
+
+    const {clientHeight, scrollTop} = container;
+    const maxScrollTop = scrollHeight - clientHeight;
 
     //this.log('checkForTriggers:', scrollTop, maxScrollTop);
 

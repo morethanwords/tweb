@@ -11,7 +11,7 @@ class PagesManager {
 
   constructor() {
     this.pagesDiv = document.getElementById('auth-pages') as HTMLDivElement;
-    this.selectTab = horizontalMenu(null, this.pagesDiv.firstElementChild as HTMLDivElement, null, null, 420);
+    this.selectTab = horizontalMenu(null, this.pagesDiv.firstElementChild as HTMLDivElement, null, null);
   }
 
   public setPage(page: Page) {

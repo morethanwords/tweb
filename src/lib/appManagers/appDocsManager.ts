@@ -232,68 +232,6 @@ class AppDocsManager {
     return getFileNameByLocation(this.getInput(doc, thumbSize), {fileName: doc.file_name});
   }
 
-  public downloadDoc(docID: string | MTDocument, toFileEntry?: any): CancellablePromise<Blob> {
-    const doc = this.getDoc(docID);
-
-    if(doc._ == 'documentEmpty') {
-      return Promise.reject();
-    }
-    
-    if(doc.downloaded && !toFileEntry) {
-      if(doc.url) return Promise.resolve(null);
-
-      /* const cachedBlob = apiFileManager.getCachedFile(inputFileLocation);
-      if(cachedBlob) {
-        return Promise.resolve(cachedBlob);
-      } */
-    }
-
-    if(this.downloadPromises[doc.id]) {
-      return this.downloadPromises[doc.id];
-    }
-    
-    const deferred = deferredPromise<Blob>();
-
-    const url = this.getFileURL(doc);
-    fetch(url).then(res => res.blob())
-    /* downloadPromise */.then((blob) => {
-      if(blob) {
-        doc.downloaded = true;
-
-        if(doc.type == 'voice' && !opusDecodeController.isPlaySupported()/*  && false */) {
-          let reader = new FileReader();
-
-          reader.onloadend = (e) => {
-            let uint8 = new Uint8Array(e.target.result as ArrayBuffer);
-            //console.log('sending uint8 to decoder:', uint8);
-            opusDecodeController.decode(uint8).then(result => {
-              doc.url = result.url;
-              deferred.resolve(blob);
-            }, (err) => {
-              delete doc.downloaded;
-              deferred.reject(err);
-            });
-          };
-
-          reader.readAsArrayBuffer(blob);
-
-          return;
-        } else if(doc.type && doc.sticker != 2) {
-          doc.url = url;
-        }
-      }
-      
-      deferred.resolve(blob);
-    }, (e) => {
-      console.log('document download failed', e);
-      deferred.reject(e);
-    }).finally(() => {
-      //deferred.notify = downloadPromise.notify = deferred.cancel = downloadPromise.cancel = null;
-    });
-
-    return this.downloadPromises[doc.id] = deferred;
-  }
-
   public downloadDocNew(docID: string | MTDocument/* , method: ResponseMethod = 'blob' */): DownloadBlob {
     const doc = this.getDoc(docID);
 

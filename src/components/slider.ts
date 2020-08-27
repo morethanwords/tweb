@@ -7,7 +7,7 @@ export interface SliderTab {
   onCloseAfterTimeout?: () => void
 }
 
-const TRANSITIONTIME = 420;
+const TRANSITIONTIME = 250;
 
 export default class SidebarSlider {
   protected _selectTab: (id: number) => void;

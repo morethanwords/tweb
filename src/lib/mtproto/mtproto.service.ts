@@ -257,12 +257,15 @@ const onFetch = (event: FetchEvent): void => {
                 headers['Content-Range'] = `bytes ${offset}-${offset + ab.byteLength - 1}/${info.size || '*'}`;
                 headers['Content-Length'] = `${ab.byteLength}`;
               }
-  
-              resolve(new Response(ab, {
-                status: 206,
-                statusText: 'Partial Content',
-                headers,
-              }));
+
+              // simulate slow connection
+              //setTimeout(() => {
+                resolve(new Response(ab, {
+                  status: 206,
+                  statusText: 'Partial Content',
+                  headers,
+                }));
+              //}, 2.5e3);
             }).catch(err => {});
           })
         ]));

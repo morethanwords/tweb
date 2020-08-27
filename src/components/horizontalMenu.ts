@@ -42,7 +42,7 @@ function slideTabs(tabContent: HTMLElement, prevTabContent: HTMLElement, toRight
   tabContent.style.transform = '';
 }
 
-export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?: (id: number, tabContent: HTMLDivElement) => void, onTransitionEnd?: () => void, transitionTime = 300) {
+export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?: (id: number, tabContent: HTMLDivElement) => void, onTransitionEnd?: () => void, transitionTime = 250) {
   const hideTimeouts: {[id: number]: number} = {};
   let prevTabContent: HTMLElement = null;
   let prevId = -1;
@@ -99,13 +99,7 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?
   };
 
   if(tabs) {
-    let activeStripe: HTMLSpanElement;
-    if(!tabs.classList.contains('no-stripe')) {
-      activeStripe = document.createElement('span');
-      activeStripe.classList.add('menu-horizontal__stripe');
-  
-      tabs.append(activeStripe);
-    }
+    const useStripe = !tabs.classList.contains('no-stripe');
 
     const tagName = 'LI';//tabs.firstElementChild.tagName;
     tabs.addEventListener('click', function(e) {
@@ -139,16 +133,28 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?
       const prev = tabs.querySelector(tagName.toLowerCase() + '.active') as HTMLElement;
       prev && prev.classList.remove('active');
 
-      if(activeStripe) {
-        const tabsRect = tabs.getBoundingClientRect();
-        const targetRect = target.getBoundingClientRect();
-        const width = 50;
-        activeStripe.style.cssText = `width: ${width}px; transform: translateX(${targetRect.left - tabsRect.left + ((targetRect.width - width) / 2)}px);`;
-        /* const textRect = target.firstElementChild.getBoundingClientRect();
-        activeStripe.style.cssText = `width: ${textRect.width + (2 * 2)}px; transform: translateX(${textRect.left - tabsRect.left}px);`; */
-        //activeStripe.style.transform = `scaleX(${textRect.width}) translateX(${(textRect.left - tabsRect.left) / textRect.width + 0.5}px)`;
-        //console.log('tabs click:', tabsRect, textRect);
+      // stripe from ZINCHUK
+      if(useStripe && prevId != -1) {
+        const indicator = target.querySelector('i')!;
+        const currentIndicator = target.parentElement.children[prevId].querySelector('i')!;
+  
+        currentIndicator.classList.remove('animate');
+        indicator.classList.remove('animate');
+  
+        // We move and resize our indicator so it repeats the position and size of the previous one.
+        const shiftLeft = currentIndicator.parentElement.parentElement.offsetLeft - indicator.parentElement.parentElement.offsetLeft;
+        const scaleFactor = currentIndicator.clientWidth / indicator.clientWidth;
+        indicator.style.transform = `translate3d(${shiftLeft}px, 0, 0) scale3d(${scaleFactor}, 1, 1)`;
+
+        console.log(`translate3d(${shiftLeft}px, 0, 0) scale3d(${scaleFactor}, 1, 1)`);
+  
+        requestAnimationFrame(() => {
+          // Now we remove the transform to let it animate to its own position and size.
+          indicator.classList.add('animate');
+          indicator.style.transform = 'none';
+        });
       }
+      // stripe END
 
       target.classList.add('active');
       selectTab(id);

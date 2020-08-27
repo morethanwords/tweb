@@ -703,7 +703,9 @@ export class AppDialogsManager {
     span.innerHTML = RichTextProcessor.wrapEmojiText(filter.title);
     const unreadSpan = document.createElement('span');
     unreadSpan.classList.add('unread-count');
-    li.append(span, unreadSpan);
+    const i = document.createElement('i');
+    span.append(unreadSpan, i);
+    li.append(span);
     ripple(li);
   
     this.folders.menu.firstElementChild.append(li);

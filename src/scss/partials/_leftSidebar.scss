@@ -20,9 +20,21 @@
       }
 
       li {
-        padding: 9px 16px 7px 16px;
+        height: 43px;
+        padding: 0 16px;
         display: flex;
         justify-content: center;
+        align-items: center;
+
+        > span:first-child {
+          overflow: visible;
+
+          i {
+            bottom: calc(-.625rem - -2px);
+            padding-right: 1rem !important;
+	          margin-left: -.5rem !important;
+          }
+        }
       }
 
       &__stripe {
@@ -38,7 +50,6 @@
       font-weight: 500;
       color: white;
       line-height: 22px;
-      margin-top: 3px;
       min-width: 20px;
       padding: 0 6px;
 
