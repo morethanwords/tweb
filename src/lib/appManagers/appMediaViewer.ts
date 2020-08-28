@@ -70,8 +70,7 @@ export class AppMediaViewer {
     this.log = logger('AMV');
     this.preloader = new ProgressivePreloader();
 
-    this.preloaderStreamable = new ProgressivePreloader(undefined, false);
-    this.preloaderStreamable.preloader.classList.add('preloader-streamable');
+    this.preloaderStreamable = new ProgressivePreloader(undefined, false, true);
 
     this.lazyLoadQueue = new LazyLoadQueue(undefined, true);
 

@@ -34,7 +34,7 @@ export class FileManager {
     }
   }
 
-  public getFakeFileWriter(mimeType: string, saveFileCallback: (blob: Blob) => Promise<Blob>) {
+  public getFakeFileWriter(mimeType: string, saveFileCallback?: (blob: Blob) => Promise<Blob>) {
     const blobParts: Array<Uint8Array | string> = [];
     const fakeFileWriter = {
       write: async(part: Uint8Array | string) => {
@@ -47,9 +47,10 @@ export class FileManager {
       truncate: () => {
         blobParts.length = 0;
       },
-      finalize: () => {
+      finalize: (saveToStorage = true) => {
         const blob = blobConstruct(blobParts, mimeType);
-        if(saveFileCallback) {
+
+        if(saveToStorage && saveFileCallback) {
           saveFileCallback(blob);
         }
         

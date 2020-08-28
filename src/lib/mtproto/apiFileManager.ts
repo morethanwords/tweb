@@ -8,7 +8,7 @@ import { logger, LogLevels } from "../logger";
 import { InputFileLocation, FileLocation, UploadFile } from "../../types";
 import { isSafari } from "../../helpers/userAgent";
 import cryptoWorker from "../crypto/cryptoworker";
-import { notifySomeone } from "../../helpers/context";
+import { notifySomeone, notifyAll } from "../../helpers/context";
 
 type Delayed = {
   offset: number, 
@@ -25,6 +25,8 @@ export type DownloadOptions = {
   limitPart?: number,
   processPart?: (bytes: Uint8Array, offset?: number, queue?: Delayed[]) => Promise<any>
 };
+
+const MAX_FILE_SAVE_SIZE = 20e6;
 
 export class ApiFileManager {
   public cachedDownloadPromises: {
@@ -334,13 +336,13 @@ export class ApiFileManager {
               //done += limit;
               done += result.bytes.byteLength;
 
-              const processedResult = await processDownloaded(result.bytes, offset);
-              checkCancel();
-
               //if(!isFinal) {
                 ////this.log('deferred notify 2:', {done: offset + limit, total: size}, deferred);
                 deferred.notify({done, offset, total: size});
               //}
+
+              const processedResult = await processDownloaded(result.bytes, offset);
+              checkCancel();
 
               await writeFilePromise;
               checkCancel();
@@ -356,7 +358,7 @@ export class ApiFileManager {
               if(options.processPart) {
                 deferred.resolve();
               } else {
-                deferred.resolve(fileWriter.finalize());
+                deferred.resolve(fileWriter.finalize(size < MAX_FILE_SAVE_SIZE));
               }
             }
           } catch(err) {
@@ -382,6 +384,10 @@ export class ApiFileManager {
         delete this.cachedDownloadPromises[fileName];
         errorHandler({type: 'DOWNLOAD_CANCELED'});
       }
+    };
+
+    deferred.notify = (progress: {done: number, total: number, offset: number}) => {
+      notifyAll({progress: {fileName, ...progress}});
     };
 
     this.cachedDownloadPromises[fileName] = deferred;

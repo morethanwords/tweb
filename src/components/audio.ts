@@ -390,35 +390,39 @@ export default class AudioElement extends HTMLElement {
         this.addEventListener('click', onClick);
         this.click();
       } else {
-        const r = () => {
+        if(appAudio.audioExists(mid)) { // чтобы показать прогресс, если аудио уже было скачано
           onLoad();
-
-          appAudio.willBePlayed(this.audio); // prepare for loading audio
-
-          if(!preloader) {
-            preloader = new ProgressivePreloader(null, false);
-          }
+        } else {
+          const r = () => {
+            onLoad();
   
-          preloader.attach(downloadDiv);
-          this.append(downloadDiv);
+            appAudio.willBePlayed(this.audio); // prepare for loading audio
   
-          new Promise((resolve) => {
-            if(this.audio.readyState >= 2) resolve();
-            else this.addAudioListener('canplay', resolve);
-          }).then(() => {
-            downloadDiv.remove();
-
-            //setTimeout(() => {
-              // release loaded audio
-              if(appAudio.willBePlayedAudio == this.audio) {
-                this.audio.play();
-                appAudio.willBePlayedAudio = null;
-              }
-            //}, 10e3);
-          });
-        };
-        
-        this.addEventListener('click', r, {once: true});
+            if(!preloader) {
+              preloader = new ProgressivePreloader(null, false);
+            }
+    
+            preloader.attach(downloadDiv);
+            this.append(downloadDiv);
+    
+            new Promise((resolve) => {
+              if(this.audio.readyState >= 2) resolve();
+              else this.addAudioListener('canplay', resolve);
+            }).then(() => {
+              downloadDiv.remove();
+  
+              //setTimeout(() => {
+                // release loaded audio
+                if(appAudio.willBePlayedAudio == this.audio) {
+                  this.audio.play();
+                  appAudio.willBePlayedAudio = null;
+                }
+              //}, 10e3);
+            });
+          };
+  
+          this.addEventListener('click', r, {once: true});
+        }
       }
     } else {
       this.preloader.attach(downloadDiv, false);

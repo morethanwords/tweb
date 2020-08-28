@@ -10,14 +10,18 @@ export default class ProgressivePreloader {
 
   private promise: CancellablePromise<any> = null;
 
-  constructor(elem?: Element, private cancelable = true) {
+  constructor(elem?: Element, private cancelable = true, streamable = false) {
     this.preloader = document.createElement('div');
     this.preloader.classList.add('preloader-container');
+
+    if(streamable) {
+      this.preloader.classList.add('preloader-streamable');
+    }
     
     this.preloader.innerHTML = `
     <div class="you-spin-me-round">
     <svg xmlns="http://www.w3.org/2000/svg" class="preloader-circular" viewBox="25 25 50 50">
-    <circle class="preloader-path-new" cx="50" cy="50" r="23" fill="none" stroke-miterlimit="10"/>
+    <circle class="preloader-path-new" cx="50" cy="50" r="${streamable ? 19 : 23}" fill="none" stroke-miterlimit="10"/>
     </svg>
     </div>`;
     
@@ -97,6 +101,8 @@ export default class ProgressivePreloader {
   
   public detach() {
     this.detached = true;
+
+    //return;
     
     if(this.preloader.parentElement) {
       /* setTimeout(() =>  */window.requestAnimationFrame(() => {

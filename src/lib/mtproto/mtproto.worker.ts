@@ -1,12 +1,12 @@
 // just to include
-import {secureRandom} from '../polyfill';
+import {secureRandom, CancellablePromise} from '../polyfill';
 secureRandom;
 
 import apiManager from "./apiManager";
 import AppStorage from '../storage';
 import cryptoWorker from "../crypto/cryptoworker";
 import networkerFactory from "./networkerFactory";
-import apiFileManager from './apiFileManager';
+import apiFileManager, { ApiFileManager } from './apiFileManager';
 import { logger, LogLevels } from '../logger';
 import type { ServiceWorkerTask, ServiceWorkerTaskResponse } from './mtproto.service';
 
@@ -112,6 +112,9 @@ ctx.addEventListener('message', async(e) => {
           let result = apiFileManager[task.task].apply(apiFileManager, task.args);
   
           if(result instanceof Promise) {
+            /* (result as ReturnType<ApiFileManager['downloadFile']>).notify = (progress: {done: number, total: number, offset: number}) => {
+              notify({progress: {fileName, ...progress}});
+            }; */
             result = await result;
           }
   

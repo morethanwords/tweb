@@ -4,7 +4,7 @@ export const isWorker = isWebWorker || isServiceWorker;
 
 // в SW может быть сразу две переменных TRUE, поэтому проверяю по последней
 
-const notifyServiceWorker = (...args: any[]) => {
+const notifyServiceWorker = (all: boolean, ...args: any[]) => {
   (self as any as ServiceWorkerGlobalScope)
   .clients
   .matchAll({ includeUncontrolled: false, type: 'window' })
@@ -14,8 +14,10 @@ const notifyServiceWorker = (...args: any[]) => {
       return;
     }
 
-    // @ts-ignore
-    listeners[0].postMessage(...args);
+    listeners.slice(all ? 0 : -1).forEach(listener => {
+      // @ts-ignore
+      listener.postMessage(...args);
+    });
   });
 };
 
@@ -26,4 +28,5 @@ const notifyWorker = (...args: any[]) => {
 
 const empty = () => {};
 
-export const notifySomeone = isServiceWorker ? notifyServiceWorker : (isWebWorker ? notifyWorker : empty);
+export const notifySomeone = isServiceWorker ? notifyServiceWorker.bind(null, false) : (isWebWorker ? notifyWorker : empty);
+export const notifyAll = isServiceWorker ? notifyServiceWorker.bind(null, true) : (isWebWorker ? notifyWorker : empty);

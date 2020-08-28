@@ -96,6 +96,11 @@
       cursor: pointer !important;
     }
 
+    circle {
+      stroke-width: 2.5 !important;
+      animation: dashNewStreamable 1.5s ease-in-out infinite !important;
+    }
+
     &:after {
       content: "";
       position: absolute;
@@ -143,5 +148,20 @@
   100% {
     stroke-dasharray: 89, 200;
     stroke-dashoffset: -286%;
+  }
+}
+
+@keyframes dashNewStreamable {
+  0% {
+    stroke-dasharray: 1, 200;
+    stroke-dashoffset: 0;
+  }
+  50% {
+    stroke-dasharray: 89, 200;
+    stroke-dashoffset: -35px;
+  }
+  100% {
+    stroke-dasharray: 89, 200;
+    stroke-dashoffset: -237%;
   }
 }

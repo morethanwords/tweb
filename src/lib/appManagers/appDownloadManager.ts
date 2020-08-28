@@ -58,10 +58,18 @@ export class AppDownloadManager {
     //console.log('Will download file:', fileName, url);
 
     deferred.cancel = () => {
+      const error = new Error('Download canceled');
+      error.name = 'AbortError';
+      
+      apiManager.cancelDownload(fileName);
+      delete this.downloads[fileName];
+      delete this.progress[fileName];
+      delete this.progressCallbacks[fileName];
+
+      deferred.reject(error);
       deferred.cancel = () => {};
     };
 
-    //return this.downloads[fileName] = {promise, controller};
     return this.downloads[fileName] = deferred;
   }
 

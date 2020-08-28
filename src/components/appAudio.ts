@@ -4,6 +4,8 @@ import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import appDocsManager from "../lib/appManagers/appDocsManager";
 import opusDecodeController from "../lib/opusDecodeController";
 
+// TODO: если удалить сообщение, и при этом аудио будет играть - оно не остановится, и можно будет по нему перейти вникуда
+
 class AppAudio {
   private container: HTMLElement;
   private audios: {[mid: string]: HTMLAudioElement} = {};
@@ -132,6 +134,10 @@ class AppAudio {
 
   public willBePlayed(audio: HTMLAudioElement) {
     this.willBePlayedAudio = audio;
+  }
+
+  public audioExists(mid: number) {
+    return !!this.audios[mid];
   }
 }
 
