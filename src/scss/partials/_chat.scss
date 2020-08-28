@@ -1,5 +1,7 @@
 $chat-max-width: 696px;
 $time-background: rgba(0, 0, 0, .35);
+$handhelds-margin: 5.5625rem;
+$beside-button-margin: 2.875rem;
 
 #bubble-contextmenu > div {
 	padding: 0 84px 0 16px;
@@ -161,14 +163,13 @@ $time-background: rgba(0, 0, 0, .35);
 		align-items: center;
 		justify-content: space-between;
 
+		@include respond-to(handhelds) {
+			padding: 0 .5rem .5rem;
+		}
 
-	@include respond-to(handhelds) {
-		padding: 0 .5rem .5rem;
-	}
-
-	@include respond-to(not-handhelds) {
-		padding-bottom: 21px;
-	}
+		@include respond-to(not-handhelds) {
+			padding-bottom: 21px;
+		}
 	}
 
 	/* @include respond-to(handhelds) {
@@ -883,15 +884,20 @@ $time-background: rgba(0, 0, 0, .35);
 			//margin-left: 3rem; #DO JS3
 
 			@include respond-to(handhelds) {
-				max-width: calc(100% - 3rem);
-				margin-left: 45px;
+				max-width: calc(100% - #{$handhelds-margin});
 			}
 		}
 	}
 
 	&.is-channel:not(.is-chat) {
-		.bubble__container {
-			max-width: 100%;
+		.bubble {
+			&__container {
+				max-width: 100%;
+			}
+
+			&.with-beside-button .bubble__container {
+				max-width: calc(100% - #{$beside-button-margin}) !important;
+			}
 		}
 
 		&:not(.has-rights) {

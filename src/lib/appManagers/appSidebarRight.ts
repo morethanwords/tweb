@@ -464,6 +464,7 @@ export class AppSidebarRight extends SidebarSlider {
           
           let thumb: HTMLImageElement;
           const sizes = media.sizes || media.thumbs;
+          
           const willHaveThumb = !isDownloaded && sizes && sizes[0].bytes;
           if(willHaveThumb) {
             thumb = new Image();
@@ -495,9 +496,11 @@ export class AppSidebarRight extends SidebarSlider {
 
             promises.push(promise);
           }
-          
-          if(isDownloaded) load();
-          else this.lazyLoadQueue.push({div, load});
+
+          if(sizes?.length) {
+            if(isDownloaded) load();
+            else this.lazyLoadQueue.push({div, load});
+          }
 
           elemsToAppend.push(div);
           this.mediaDivsByIDs[message.mid] = div;

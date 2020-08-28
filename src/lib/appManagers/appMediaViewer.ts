@@ -11,13 +11,61 @@ import { renderImageFromUrl, parseMenuButtonsTo } from "../../components/misc";
 import AvatarElement from "../../components/avatar";
 import LazyLoadQueue from "../../components/lazyLoadQueue";
 import appForward from "../../components/appForward";
-import { isSafari, mediaSizes } from "../config";
+import { isSafari, mediaSizes, touchSupport } from "../config";
 import appAudio from "../../components/appAudio";
 import { deferredPromise } from "../polyfill";
 import { MTDocument } from "../../types";
 
 // TODO: масштабирование картинок (не SVG) при ресайзе, и правильный возврат на исходную позицию
 // TODO: картинки "обрезаются" если возвращаются или появляются с места, где есть их перекрытие (топбар, поле ввода)
+
+class SwipeHandler {
+  private xDown: number;
+  private yDown: number;
+
+  constructor(element: HTMLElement, private onSwipe: (xDiff: number, yDiff: number) => boolean) {
+    element.addEventListener('touchstart', this.handleTouchStart, false);
+    element.addEventListener('touchmove', this.handleTouchMove, false);
+  }
+
+  handleTouchStart = (evt: TouchEvent) => {
+    const firstTouch = evt.touches[0];
+    this.xDown = firstTouch.clientX;
+    this.yDown = firstTouch.clientY;
+  };
+
+  handleTouchMove = (evt: TouchEvent) => {
+    if(this.xDown == null || this.yDown == null) {
+      return;
+    }
+
+    const xUp = evt.touches[0].clientX;
+    const yUp = evt.touches[0].clientY;
+
+    const xDiff = this.xDown - xUp;
+    const yDiff = this.yDown - yUp;
+
+    // if(Math.abs(xDiff) > Math.abs(yDiff)) { /*most significant*/
+    //   if(xDiff > 0) { /* left swipe */ 
+
+    //   } else { /* right swipe */
+
+    //   }                       
+    // } else {
+    //   if(yDiff > 0) { /* up swipe */ 
+        
+    //   } else { /* down swipe */
+        
+    //   }
+    // }
+
+    /* reset values */
+    if(this.onSwipe(xDiff, yDiff)) {
+      this.xDown = null;
+      this.yDown = null;
+    }
+  };
+}
 
 export class AppMediaViewer {
   public wholeDiv = document.querySelector('.media-viewer-whole') as HTMLDivElement;
@@ -65,6 +113,8 @@ export class AppMediaViewer {
   private setMoverAnimationPromise: Promise<void>;
 
   private lazyLoadQueue: LazyLoadQueue;
+
+  private highlightSwitchersTimeout: number;
   
   constructor() {
     this.log = logger('AMV');
@@ -152,6 +202,33 @@ export class AppMediaViewer {
     //this.content.mover.addEventListener('click', this.onClickBinded);
     //this.content.mover.append(this.buttons.prev, this.buttons.next);
     this.setNewMover();
+
+    if(touchSupport) {
+      const swipeHandler = new SwipeHandler(this.wholeDiv, (xDiff, yDiff) => {
+        //console.log(xDiff, yDiff);
+
+        const percents = Math.abs(xDiff) / appPhotosManager.windowW;
+        if(percents > .2 || xDiff > 125) {
+          //console.log('will swipe', xDiff);
+
+          if(xDiff < 0) {
+            this.buttons.prev.click();
+          } else {
+            this.buttons.next.click();
+          }
+
+          return true;
+        }
+
+        const percentsY = Math.abs(yDiff) / appPhotosManager.windowH;
+        if(percentsY > .2 || yDiff > 125) {
+          this.buttons.close.click();
+          return true;
+        }
+
+        return false;
+      });
+    }
   }
 
   onClickDownload = (e: MouseEvent) => {
@@ -177,6 +254,21 @@ export class AppMediaViewer {
     const target = e.target as HTMLElement;
     if(target.tagName == 'A') return;
     cancelEvent(e);
+
+    if(touchSupport) {
+      if(this.highlightSwitchersTimeout) {
+        clearTimeout(this.highlightSwitchersTimeout);
+      } else {
+        this.wholeDiv.classList.add('highlight-switchers');
+      }
+
+      this.highlightSwitchersTimeout = setTimeout(() => {
+        this.wholeDiv.classList.remove('highlight-switchers');
+        this.highlightSwitchersTimeout = 0;
+      }, 3e3);
+      
+      return;
+    }
 
     let mover: HTMLElement = null;
     ['media-viewer-mover', 'media-viewer-buttons', 'media-viewer-author'].find(s => {

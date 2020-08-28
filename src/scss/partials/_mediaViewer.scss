@@ -127,44 +127,57 @@ $move-duration: .35s;
     left: 0;
     top: 60px;
     width: 7rem;
-    height: 100%;
+    height: calc(100% - 120px);
     cursor: pointer;
     z-index: 5;
 
-    html.no-touch &:hover {
-      > span {
-        opacity: 1;
+    html.no-touch & {
+      height: calc(100% - 60px);
+
+      &:hover {
+        > span {
+          opacity: 1;
+        }
       }
     }
 
     @include respond-to(handhelds) {
       width: 4rem;
     }
-  }
 
-  &-switcher-right {
-    left: auto;
-    right: 0;
+    &-right {
+      left: auto;
+      right: 0;
+    }
   }
 
   &-prev-button, &-next-button {
     cursor: pointer;
     position: absolute;
     color: #fff;
-    font-size: 3rem;
-    left: 2rem;
+    font-size: 2rem;
+    left: 1rem;
     top: 50%;
     transform: translateY(-50%) rotate(90deg);
     opacity: 0;
     transition: $open-duration opacity;
     z-index: 5;
     /* box-shadow: 0 1px 2px 0 rgba(16, 35, 47, 0.07); */
+
+    @include respond-to(not-handhelds) {
+      font-size: 3rem;
+      left: 2rem;
+    }
   }
 
   &-next-button {
     left: auto;
-    right: 2rem;
+    right: 1rem;
     transform: translateY(-50%) rotate(-90deg);
+
+    @include respond-to(not-handhelds) {
+      right: 2rem;
+    }
   }
 
   &-mover {
@@ -296,6 +309,12 @@ $move-duration: .35s;
           color: #fff;
           background-color: rgba(112, 117, 121, .2) !important;
         }
+      }
+    }
+
+    &.highlight-switchers {
+      .media-viewer-switcher > span {
+        opacity: 1;
       }
     }
   }

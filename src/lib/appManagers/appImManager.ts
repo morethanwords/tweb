@@ -2003,6 +2003,7 @@ export class AppImManager {
           <use xlink:href="#b13RmHDQtl" opacity="1" fill="#fff" fill-opacity="1"></use>
         </svg>`;
         bubbleContainer.append(forward);
+        bubble.classList.add('with-beside-button');
       }
     }
     
@@ -2589,6 +2590,7 @@ export class AppImManager {
           goto.classList.add('bubble-beside-button', 'goto-original', 'tgico-next');
           bubbleContainer.append(goto);
           bubble.dataset.savedFrom = message.savedFrom;
+          bubble.classList.add('with-beside-button');
         }
         
         if(!bubble.classList.contains('sticker')) {

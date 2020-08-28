@@ -45,12 +45,12 @@ $bubble-margin: .25rem;
   position: relative;
   z-index: 1;
 
-  @include respond-to(not-handhelds) {
+  //@include respond-to(not-handhelds) {
     margin: 0 auto;
-  }
+  //}
 
   @include respond-to(handhelds) {
-    max-width: unquote("min(calc(100% - 46px), #{$chat-max-width})");
+    max-width: unquote("min(100%, #{$chat-max-width - 16px})");
 
     html.is-mac & {
       -webkit-user-select: none;
@@ -146,6 +146,10 @@ $bubble-margin: .25rem;
       max-width: 85%;
     }
 
+    @include respond-to(handhelds) {
+      max-width: calc(100% - #{$handhelds-margin});
+    }
+
     > .user-avatar {
       position: absolute;
       left: -45px;
@@ -162,6 +166,12 @@ $bubble-margin: .25rem;
       // }
     }
   }
+
+  /* &.with-beside-button &__container {
+    @include respond-to(handhelds) {
+      max-width: calc(100% - #{$handhelds-margin}) !important;
+    }
+  } */
   
   &.service {
     //padding: 1rem 0;
@@ -1231,7 +1241,7 @@ $bubble-margin: .25rem;
   } */
 }
 
-@include respond-to(handhelds) {
+/* @include respond-to(handhelds) {
   .bubble.is-in {
     margin-right: auto;
   }
@@ -1239,7 +1249,7 @@ $bubble-margin: .25rem;
   .bubble.is-out {
     margin-left: auto;
   }
-}
+} */
 
 .bubble.is-out {
   .bubble__container {
@@ -1450,7 +1460,7 @@ $bubble-margin: .25rem;
     pointer-events: none;
   }
 
-  .media-progress {
+  .progress-line {
     &__loaded {
       background-color: #90e18d !important;
     }
