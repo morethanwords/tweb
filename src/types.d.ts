@@ -151,3 +151,15 @@ export type WorkerTaskTemplate = {
   id: number,
   payload: any
 };
+
+export type inputFile = {
+  _: 'inputFile',
+  parts: number,
+  id: [number, number],
+  name: string,
+  md5_checksum: string
+};
+
+export type inputFileBig = Omit<inputFile, 'md5_checksum' | '_'> & {_: 'inputFileBig'};
+
+export type InputFile = inputFile | inputFileBig;

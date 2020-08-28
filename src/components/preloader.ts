@@ -53,37 +53,41 @@ export default class ProgressivePreloader {
     }
   }
 
+  public attachPromise(promise: CancellablePromise<any>) {
+    this.promise = promise;
+
+    const tempID = --this.tempID;
+
+    const onEnd = () => {
+      promise.notify = null;
+
+      if(tempID == this.tempID) {
+        this.detach();
+        this.promise = promise = null;
+      }
+    };
+    
+    //promise.catch(onEnd);
+    promise.finally(onEnd);
+
+    if(promise.addNotifyListener) {
+      promise.addNotifyListener((details: {done: number, total: number}) => {
+        /* if(details.done >= details.total) {
+          onEnd();
+        } */
+
+        if(tempID != this.tempID) return;
+
+        //console.log('preloader download', promise, details);
+        const percents = details.done / details.total * 100;
+        this.setProgress(percents);
+      });
+    }
+  }
+
   public attach(elem: Element, reset = true, promise?: CancellablePromise<any>, append = true) {
     if(promise/*  && false */) {
-      this.promise = promise;
-
-      const tempID = --this.tempID;
-
-      const onEnd = () => {
-        promise.notify = null;
-
-        if(tempID == this.tempID) {
-          this.detach();
-          this.promise = promise = null;
-        }
-      };
-      
-      //promise.catch(onEnd);
-      promise.finally(onEnd);
-
-      if(promise.addNotifyListener) {
-        promise.addNotifyListener((details: {done: number, total: number}) => {
-          /* if(details.done >= details.total) {
-            onEnd();
-          } */
-  
-          if(tempID != this.tempID) return;
-  
-          //console.log('preloader download', promise, details);
-          const percents = details.done / details.total * 100;
-          this.setProgress(percents);
-        });
-      }
+      this.attachPromise(promise);
     }
 
     this.detached = false;

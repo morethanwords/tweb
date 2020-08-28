@@ -219,6 +219,10 @@ class ApiManagerProxy extends CryptoWorkerMethods {
   public downloadFile(options: DownloadOptions) {
     return this.performTaskWorker('downloadFile', options);
   }
+
+  public uploadFile(options: {file: Blob | File, fileName: string}) {
+    return this.performTaskWorker('uploadFile', options);
+  }
 }
 
 const apiManagerProxy = new ApiManagerProxy();

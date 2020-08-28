@@ -23,6 +23,7 @@ import searchIndexManager from '../searchIndexManager';
 import { MTDocument, MTPhotoSize } from "../../types";
 import { logger, LogLevels } from "../logger";
 import type {ApiFileManager} from '../mtproto/apiFileManager';
+import appDownloadManager from "./appDownloadManager";
 
 //console.trace('include');
 
@@ -1121,9 +1122,9 @@ export class AppMessagesManager {
       flags |= 256;
     }
 
-    let preloader = new ProgressivePreloader(null, true);
+    const preloader = new ProgressivePreloader(null, true);
 
-    var media = {
+    const media = {
       _: 'messageMediaPending',
       type: attachType,
       file_name: fileName || apiFileName,
@@ -1132,22 +1133,10 @@ export class AppMessagesManager {
       preloader: preloader,
       w: options.width,
       h: options.height,
-      url: options.objectURL,
-      progress: {
-        percent: 1, 
-        total: file.size,
-        done: 0,
-        cancel: () => {}
-      }
+      url: options.objectURL
     };
 
-    preloader.preloader.onclick = () => {
-      this.log('cancelling upload', media);
-      this.setTyping('sendMessageCancelAction');
-      media.progress.cancel();
-    };
-
-    var message: any = {
+    const message: any = {
       _: 'message',
       id: messageID,
       from_id: fromID,
@@ -1168,7 +1157,7 @@ export class AppMessagesManager {
       pending: true
     };
 
-    var toggleError = (on: boolean) => {
+    const toggleError = (on: boolean) => {
       if(on) {
         message.error = true;
       } else {
@@ -1178,10 +1167,10 @@ export class AppMessagesManager {
       $rootScope.$broadcast('messages_pending');
     };
 
-    var uploaded = false,
+    let uploaded = false,
       uploadPromise: ReturnType<ApiFileManager['uploadFile']> = null;
 
-    let invoke = (flags: number, inputMedia: any) => {
+    const invoke = (flags: number, inputMedia: any) => {
       this.setTyping('sendMessageCancelAction');
 
       return apiManager.invokeApi('messages.sendMedia', {
@@ -1221,9 +1210,9 @@ export class AppMessagesManager {
       flags |= 128; // clear_draft
 
       if(isDocument) {
-        let {id, access_hash, file_reference} = file as MTDocument;
+        const {id, access_hash, file_reference} = file as MTDocument;
 
-        let inputMedia = {
+        const inputMedia = {
           _: 'inputMediaDocument',
           flags: 0,
           id: {
@@ -1236,16 +1225,13 @@ export class AppMessagesManager {
         
         invoke(flags, inputMedia);
       } else if(file instanceof File || file instanceof Blob) {
-        let deferred = deferredPromise<void>();
+        const deferred = deferredPromise<void>();
 
         this.sendFilePromise.then(() => {
           if(!uploaded || message.error) {
             uploaded = false;
-            //uploadPromise = apiFileManager.uploadFile(file);
-            uploadPromise = fetch('/upload', {
-              method: 'POST',
-              body: file
-            }).then(res => res.json());
+            uploadPromise = appDownloadManager.upload(file);
+            preloader.attachPromise(uploadPromise);
           }
   
           uploadPromise && uploadPromise.then((inputFile) => {
@@ -1277,28 +1263,23 @@ export class AppMessagesManager {
             toggleError(true);
           });
   
-          uploadPromise.notify = (progress: {done: number, total: number}) => {
+          uploadPromise.addNotifyListener((progress: {done: number, total: number}) => {
             this.log('upload progress', progress);
-            media.progress.done = progress.done;
-            media.progress.percent = Math.max(1, Math.floor(100 * progress.done / progress.total));
-            this.setTyping({_: actionName, progress: media.progress.percent | 0});
-            preloader.setProgress(media.progress.percent); // lol, nice
-            $rootScope.$broadcast('history_update', {peerID: peerID});
-          };
-  
-          media.progress.cancel = () => {
-            if(!uploaded) {
-              deferred.resolve();
-              uploadPromise.cancel();
-              this.cancelPendingMessage(randomIDS);
-            }
-          };
-  
-          // @ts-ignore
-          uploadPromise['finally'](() => {
-            deferred.resolve();
-            preloader.detach();
+            const percents = Math.max(1, Math.floor(100 * progress.done / progress.total));
+            this.setTyping({_: actionName, progress: percents | 0});
           });
+
+          uploadPromise.catch(err => {
+            if(err.name === 'AbortError' && !uploaded) {
+              this.log('cancelling upload', media);
+
+              deferred.resolve();
+              this.cancelPendingMessage(randomIDS);
+              this.setTyping('sendMessageCancelAction');
+            }
+          });
+
+          uploadPromise.finally(deferred.resolve);
         });
 
         this.sendFilePromise = deferred;
@@ -1382,12 +1363,6 @@ export class AppMessagesManager {
         _: 'messageMediaPending',
         type: 'album',
         preloader: preloader,
-        progress: {
-          percent: 1, 
-          total: file.size,
-          done: 0,
-          cancel: () => {}
-        },
         document: undefined as any,
         photo: undefined as any
       };
@@ -1441,12 +1416,6 @@ export class AppMessagesManager {
         appPhotosManager.savePhoto(photo);
         media.photo = photo;
       }
-
-      preloader.preloader.onclick = () => {
-        this.log('cancelling upload', media);
-        this.setTyping('sendMessageCancelAction');
-        media.progress.cancel();
-      };
 
       let message = {
         _: 'message',
@@ -1509,35 +1478,51 @@ export class AppMessagesManager {
 
     let inputs: any[] = [];
     for(let i = 0, length = files.length; i < length; ++i) {
-      let file = files[i];
-      let message = messages[i];
-      let media = message.media;
-      let preloader = media.preloader;
-      let actionName = file.type.indexOf('video/') === 0 ? 'sendMessageUploadVideoAction' : 'sendMessageUploadPhotoAction';
-      let deferred = deferredPromise<void>();
+      const file = files[i];
+      const message = messages[i];
+      const media = message.media;
+      const preloader = media.preloader;
+      const actionName = file.type.indexOf('video/') === 0 ? 'sendMessageUploadVideoAction' : 'sendMessageUploadPhotoAction';
+      const deferred = deferredPromise<void>();
+      let canceled = false;
+
+      let apiFileName: string;
+      if(file.type.indexOf('video/') === 0) {
+        apiFileName = 'video.mp4';
+      } else {
+        apiFileName = 'photo.' + file.type.split('/')[1];
+      }
 
       await this.sendFilePromise;
       this.sendFilePromise = deferred;
 
       if(!uploaded || message.error) {
         uploaded = false;
-        //uploadPromise = apiFileManager.uploadFile(file);
-        uploadPromise = fetch('/upload', {
-          method: 'POST',
-          body: file
-        }).then(res => res.json());
+        uploadPromise = appDownloadManager.upload(file);
+        preloader.attachPromise(uploadPromise);
       }
 
-      uploadPromise.notify = (progress: {done: number, total: number}) => {
+      uploadPromise.addNotifyListener((progress: {done: number, total: number}) => {
         this.log('upload progress', progress);
-        media.progress.percent = Math.max(1, Math.floor(100 * progress.done / progress.total));
-        this.setTyping({_: actionName, progress: media.progress.percent | 0});
-        preloader.setProgress(media.progress.percent); // lol, nice
-        $rootScope.$broadcast('history_update', {peerID: peerID});
-      };
+        const percents = Math.max(1, Math.floor(100 * progress.done / progress.total));
+        this.setTyping({_: actionName, progress: percents | 0});
+      });
+
+      uploadPromise.catch(err => {
+        if(err.name === 'AbortError' && !uploaded) {
+          this.log('cancelling upload item', media);
+          canceled = true;
+        }
+      });
 
       await uploadPromise.then((inputFile) => {
         this.log('appMessagesManager: sendAlbum file uploaded:', inputFile);
+
+        if(canceled) {
+          return;
+        }
+
+        inputFile.name = apiFileName;
 
         let inputMedia: any;
         let details = options.sendFileDetails[i];
@@ -1568,6 +1553,10 @@ export class AppMessagesManager {
           peer: inputPeer,
           media: inputMedia
         }).then(messageMedia => {
+          if(canceled) {
+            return;
+          }
+          
           let inputMedia: any;
           if(messageMedia.photo) {
             let photo = messageMedia.photo;
@@ -1598,7 +1587,6 @@ export class AppMessagesManager {
 
       this.log('appMessagesManager: sendAlbum uploadPromise.finally!');
       deferred.resolve();
-      preloader.detach();
     }
 
     uploaded = true;

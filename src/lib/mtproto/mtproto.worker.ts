@@ -106,6 +106,7 @@ ctx.addEventListener('message', async(e) => {
         });
   
       case 'cancelDownload':
+      case 'uploadFile':
       case 'downloadFile': {
         try {
           // @ts-ignore

@@ -5,7 +5,7 @@ import FileManager from "../filemanager";
 import apiManager from "./apiManager";
 import { deferredPromise, CancellablePromise } from "../polyfill";
 import { logger, LogLevels } from "../logger";
-import { InputFileLocation, FileLocation, UploadFile } from "../../types";
+import { InputFileLocation, FileLocation, UploadFile, InputFile } from "../../types";
 import { isSafari } from "../../helpers/userAgent";
 import cryptoWorker from "../crypto/cryptoworker";
 import { notifySomeone, notifyAll } from "../../helpers/context";
@@ -31,6 +31,10 @@ const MAX_FILE_SAVE_SIZE = 20e6;
 export class ApiFileManager {
   public cachedDownloadPromises: {
     [fileName: string]: CancellablePromise<Blob>
+  } = {};
+
+  public uploadPromises: {
+    [fileName: string]: CancellablePromise<InputFile>
   } = {};
 
   public downloadPulls: {
@@ -108,8 +112,8 @@ export class ApiFileManager {
   }
 
   public cancelDownload(fileName: string) {
-    const promise = this.cachedDownloadPromises[fileName];
-    if(promise) {
+    const promise = this.cachedDownloadPromises[fileName] || this.uploadPromises[fileName];
+    if(promise && !promise.isRejected && !promise.isFulfilled) {
       promise.cancel();
       return true;
     }
@@ -401,10 +405,11 @@ export class ApiFileManager {
     return this.getFileStorage().deleteFile(fileName);
   }
 
-  public uploadFile(file: Blob | File) {
-    var fileSize = file.size,
-      isBigFile = fileSize >= 10485760,
-      canceled = false,
+  public uploadFile({file, fileName}: {file: Blob | File, fileName: string}) {
+    const fileSize = file.size, 
+      isBigFile = fileSize >= 10485760;
+
+    let canceled = false,
       resolved = false,
       doneParts = 0,
       partSize = 262144, // 256 Kb
@@ -418,27 +423,27 @@ export class ApiFileManager {
       activeDelta = 1;
     }
 
-    var totalParts = Math.ceil(fileSize / partSize);
+    const totalParts = Math.ceil(fileSize / partSize);
+    const fileID: [number, number] = [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)];
 
-    var fileID = [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)];
+    let _part = 0;
 
-    var _part = 0,
-      resultInputFile = {
-        _: isBigFile ? 'inputFileBig' : 'inputFile',
-        id: fileID,
-        parts: totalParts,
-        name: file instanceof File ? file.name : '',
-        md5_checksum: ''
+    const resultInputFile: InputFile = {
+      _: isBigFile ? 'inputFileBig' : 'inputFile',
+      id: fileID,
+      parts: totalParts,
+      name: fileName,
+      md5_checksum: ''
     };
 
-    let deferredHelper: {
+    const deferredHelper: {
       resolve?: (input: typeof resultInputFile) => void,
       reject?: (error: any) => void,
       notify?: (details: {done: number, total: number}) => void
     } = {
       notify: (details: {done: number, total: number}) => {}
     };
-    let deferred: CancellablePromise<typeof resultInputFile> = new Promise((resolve, reject) => {
+    const deferred: CancellablePromise<typeof resultInputFile> = new Promise((resolve, reject) => {
       if(totalParts > 3000) {
         return reject({type: 'FILE_TOO_BIG'});
       }
@@ -459,13 +464,13 @@ export class ApiFileManager {
       errorHandler = () => {};
     };
 
-    let method = isBigFile ? 'upload.saveBigFilePart' : 'upload.saveFilePart';
+    const method = isBigFile ? 'upload.saveBigFilePart' : 'upload.saveFilePart';
     for(let offset = 0; offset < fileSize; offset += partSize) {
-      let part = _part++; // 0, 1
+      const part = _part++; // 0, 1
       this.downloadRequest('upload', () => {
         return new Promise<void>((uploadResolve, uploadReject) => {
-          var reader = new FileReader();
-          var blob = file.slice(offset, offset + partSize);
+          const reader = new FileReader();
+          const blob = file.slice(offset, offset + partSize);
   
           reader.onloadend = (e) => {
             if(canceled) {
@@ -475,6 +480,7 @@ export class ApiFileManager {
             
             if(e.target.readyState != FileReader.DONE) {
               this.log.error('wrong readyState!');
+              uploadReject();
               return;
             }
 
@@ -494,18 +500,19 @@ export class ApiFileManager {
               uploadResolve();
 
               //////this.log('Progress', doneParts * partSize / fileSize);
+
+              deferred.notify({done: doneParts * partSize, total: fileSize});
+
               if(doneParts >= totalParts) {
                 deferred.resolve(resultInputFile);
                 resolved = true;
-              } else {
-                deferred.notify({done: doneParts * partSize, total: fileSize});
               }
             }, errorHandler);
           };
   
           reader.readAsArrayBuffer(blob);
         });
-      }, activeDelta);
+      }, activeDelta).catch(errorHandler);
     }
 
     deferred.cancel = () => {
@@ -516,7 +523,15 @@ export class ApiFileManager {
       }
     };
 
-    return deferred;
+    deferred.notify = (progress: {done: number, total: number}) => {
+      notifyAll({progress: {fileName, ...progress}});
+    };
+
+    deferred.finally(() => {
+      delete this.uploadPromises[fileName];
+    });
+
+    return this.uploadPromises[fileName] = deferred;
   }
 }
 

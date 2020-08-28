@@ -303,7 +303,7 @@ export default class AudioElement extends HTMLElement {
       downloadDiv.innerHTML = '<div class="tgico-download"></div>';
     }
 
-    if(doc.type != 'audio' && !uploading) {
+    if(doc.type != 'audio' || uploading) {
       this.append(downloadDiv);
     }
 

@@ -39,6 +39,7 @@ import appAudio from '../../components/appAudio';
 import appPollsManager from './appPollsManager';
 import { ripple } from '../../components/ripple';
 import { horizontalMenu } from '../../components/horizontalMenu';
+import AudioElement from '../../components/audio';
 
 //console.log('appImManager included33!');
 
@@ -2251,15 +2252,14 @@ export class AppImManager {
             case 'audio':
             case 'voice':
             case 'document': {
-              let doc = appDocsManager.getDoc(message.id);
+              const doc = appDocsManager.getDoc(message.id);
               this.log('will wrap pending doc:', doc);
-              let docDiv = wrapDocument(doc, false, true, message.id);
+              const docDiv = wrapDocument(doc, false, true, message.id);
 
               if(doc.type == 'audio' || doc.type == 'voice') {
-                // @ts-ignore
-                docDiv.preloader = preloader;
+                (docDiv as AudioElement).preloader = preloader;
               } else {
-                let icoDiv = docDiv.querySelector('.audio-download, .document-ico');
+                const icoDiv = docDiv.querySelector('.audio-download, .document-ico');
                 preloader.attach(icoDiv, false);
               }
 

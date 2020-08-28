@@ -3,6 +3,7 @@ import apiManager from "../mtproto/mtprotoworker";
 import { deferredPromise, CancellablePromise } from "../polyfill";
 import type { DownloadOptions } from "../mtproto/apiFileManager";
 import { getFileNameByLocation } from "../bin_utils";
+import { InputFile } from "../../types";
 
 export type ResponseMethodBlob = 'blob';
 export type ResponseMethodJson = 'json';
@@ -23,6 +24,8 @@ export class AppDownloadManager {
   private progress: {[fileName: string]: Progress} = {};
   private progressCallbacks: {[fileName: string]: Array<ProgressCallback>} = {};
 
+  private uploadID = 0;
+
   constructor() {
     $rootScope.$on('download_progress', (e) => {
       const details = e.detail as {done: number, fileName: string, total: number, offset: number};
@@ -40,37 +43,54 @@ export class AppDownloadManager {
     });
   }
 
-  public download(options: DownloadOptions, responseMethod?: ResponseMethodBlob): DownloadBlob;
-  public download(options: DownloadOptions, responseMethod?: ResponseMethodJson): DownloadJson;
-  public download(options: DownloadOptions, responseMethod: ResponseMethod = 'blob'): DownloadBlob {
-    const fileName = getFileNameByLocation(options.location, {fileName: options.fileName});
-
-    if(this.downloads.hasOwnProperty(fileName)) return this.downloads[fileName];
-
+  private getNewDeferred(fileName: string) {
     const deferred = deferredPromise<Blob>();
-
-    apiManager.downloadFile(options)
-    .then(deferred.resolve, deferred.reject)
-    .finally(() => {
-      delete this.progressCallbacks[fileName];
-    });
-
-    //console.log('Will download file:', fileName, url);
 
     deferred.cancel = () => {
       const error = new Error('Download canceled');
       error.name = 'AbortError';
       
       apiManager.cancelDownload(fileName);
-      delete this.downloads[fileName];
-      delete this.progress[fileName];
-      delete this.progressCallbacks[fileName];
+      this.clearDownload(fileName);
 
       deferred.reject(error);
       deferred.cancel = () => {};
     };
 
+    deferred.finally(() => {
+      delete this.progress[fileName];
+      delete this.progressCallbacks[fileName];
+    });
+
     return this.downloads[fileName] = deferred;
+  }
+
+  private clearDownload(fileName: string) {
+    delete this.downloads[fileName];
+  }
+
+  public download(options: DownloadOptions): DownloadBlob {
+    const fileName = getFileNameByLocation(options.location, {fileName: options.fileName});
+    if(this.downloads.hasOwnProperty(fileName)) return this.downloads[fileName];
+
+    const deferred = this.getNewDeferred(fileName);
+    apiManager.downloadFile(options).then(deferred.resolve, deferred.reject);
+
+    //console.log('Will download file:', fileName, url);
+    return deferred;
+  }
+
+  public upload(file: File | Blob) {
+    const fileName = /* (file as File).name ||  */'upload-' + this.uploadID++;
+    
+    const deferred = this.getNewDeferred(fileName);
+    apiManager.uploadFile({file, fileName}).then(deferred.resolve, deferred.reject);
+
+    deferred.finally(() => {
+      this.clearDownload(fileName);
+    });
+
+    return deferred as any as CancellablePromise<InputFile>;
   }
 
   public getDownload(fileName: string) {

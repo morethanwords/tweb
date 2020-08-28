@@ -59,7 +59,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   
   let img: HTMLImageElement;
   if(message) {
-    if(doc.type == 'video') {
+    if(doc.type == 'video' && doc.thumbs?.length) {
       return wrapPhoto(doc, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware);
     }
 
@@ -390,7 +390,7 @@ export function wrapPhoto(photo: MTPhoto | MTDocument, message: any, container: 
     });
   };
 
-  return cacheContext.downloaded ? load() : lazyLoadQueue.push({div: container, load: load, wasSeen: true});
+  return cacheContext.downloaded || !lazyLoadQueue ? load() : lazyLoadQueue.push({div: container, load: load, wasSeen: true});
 }
 
 export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, onlyThumb, emoji, width, height, withThumb, loop}: {
