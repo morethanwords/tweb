@@ -1,4 +1,5 @@
 import resizeableImage from "../lib/cropper";
+import appDownloadManager from "../lib/appManagers/appDownloadManager";
 
 export class PopupAvatar {
   private container = document.getElementById('popup-avatar');
@@ -76,11 +77,7 @@ export class PopupAvatar {
 
   private resolve() {
     this.onCrop(() => {
-      //return apiFileManager.uploadFile(this.blob);
-      return fetch('/upload', {
-        method: 'POST',
-        body: this.blob
-      }).then(res => res.json());
+      return appDownloadManager.upload(this.blob);
     });
   }
 

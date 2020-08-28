@@ -1,4 +1,5 @@
 import { cancelEvent, whichChild } from "./utils";
+import { touchSupport } from "./config";
 
 export class ProgressLine {
   public container: HTMLDivElement;
@@ -369,7 +370,9 @@ export default class VideoPlayer {
       });
 
       video.addEventListener('click', () => {
-        this.togglePlay();
+        if(!touchSupport) {
+          this.togglePlay();
+        }
       });
   
       /* player.addEventListener('click', (e) => {

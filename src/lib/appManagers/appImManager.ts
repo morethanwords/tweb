@@ -2610,7 +2610,7 @@ export class AppImManager {
       } else {
         if(message.reply_to_mid) {
           let originalMessage = appMessagesManager.getMessage(message.reply_to_mid);
-          let originalPeerTitle = appPeersManager.getPeerTitle(originalMessage.fromID, true) || '';
+          let originalPeerTitle = appPeersManager.getPeerTitle(originalMessage.fromID || originalMessage.fwdFromID, true) || '';
           
           /////////this.log('message to render reply', originalMessage, originalPeerTitle, bubble, message);
           
