@@ -1,23 +1,21 @@
 import {RichTextProcessor} from '../richtextprocessor';
-import { CancellablePromise, deferredPromise } from '../polyfill';
 import { isObject, getFileURL, FileURLType } from '../utils';
 import opusDecodeController from '../opusDecodeController';
 import { MTDocument, inputDocumentFileLocation, MTPhotoSize } from '../../types';
 import { getFileNameByLocation } from '../bin_utils';
-import appDownloadManager, { Download, ResponseMethod, DownloadBlob } from './appDownloadManager';
+import appDownloadManager, { DownloadBlob } from './appDownloadManager';
 import appPhotosManager from './appPhotosManager';
 
 class AppDocsManager {
   private docs: {[docID: string]: MTDocument} = {};
-  private downloadPromises: {[docID: string]: CancellablePromise<Blob>} = {};
-  
-  public saveDoc(apiDoc: MTDocument, context?: any) {
-    //console.log('saveDoc', apiDoc, this.docs[apiDoc.id]);
-    if(this.docs[apiDoc.id]) {
-      const d = this.docs[apiDoc.id];
 
-      if(apiDoc.thumbs) {
-        if(!d.thumbs) d.thumbs = apiDoc.thumbs;
+  public saveDoc(doc: MTDocument, context?: any) {
+    //console.log('saveDoc', apiDoc, this.docs[apiDoc.id]);
+    if(this.docs[doc.id]) {
+      const d = this.docs[doc.id];
+
+      if(doc.thumbs) {
+        if(!d.thumbs) d.thumbs = doc.thumbs;
         /* else if(apiDoc.thumbs[0].bytes && !d.thumbs[0].bytes) {
           d.thumbs.unshift(apiDoc.thumbs[0]);
         } else if(d.thumbs[0].url) { // fix for converted thumb in safari
@@ -25,7 +23,7 @@ class AppDocsManager {
         } */
       }
 
-      d.file_reference = apiDoc.file_reference;
+      d.file_reference = doc.file_reference;
       return d;
 
       //return Object.assign(d, apiDoc, context);
@@ -33,22 +31,22 @@ class AppDocsManager {
     }
     
     if(context) {
-      Object.assign(apiDoc, context);
+      Object.assign(doc, context);
     }
 
-    this.docs[apiDoc.id] = apiDoc;
+    this.docs[doc.id] = doc;
     
-    apiDoc.attributes.forEach((attribute: any) => {
+    doc.attributes.forEach((attribute: any) => {
       switch(attribute._) {
         case 'documentAttributeFilename':
-          apiDoc.file_name = RichTextProcessor.wrapPlainText(attribute.file_name);
+          doc.file_name = RichTextProcessor.wrapPlainText(attribute.file_name);
           break;
 
         case 'documentAttributeAudio':
-          apiDoc.duration = attribute.duration;
-          apiDoc.audioTitle = attribute.title;
-          apiDoc.audioPerformer = attribute.performer;
-          apiDoc.type = attribute.pFlags.voice && apiDoc.mime_type == "audio/ogg" ? 'voice' : 'audio';
+          doc.duration = attribute.duration;
+          doc.audioTitle = attribute.title;
+          doc.audioPerformer = attribute.performer;
+          doc.type = attribute.pFlags.voice && doc.mime_type == "audio/ogg" ? 'voice' : 'audio';
 
           /* if(apiDoc.type == 'audio') {
             apiDoc.supportsStreaming = true;
@@ -56,97 +54,98 @@ class AppDocsManager {
           break;
 
         case 'documentAttributeVideo':
-          apiDoc.duration = attribute.duration;
-          apiDoc.w = attribute.w;
-          apiDoc.h = attribute.h;
+          doc.duration = attribute.duration;
+          doc.w = attribute.w;
+          doc.h = attribute.h;
           //apiDoc.supportsStreaming = attribute.pFlags?.supports_streaming/*  && apiDoc.size > 524288 */;
           if(/* apiDoc.thumbs &&  */attribute.pFlags.round_message) {
-            apiDoc.type = 'round';
+            doc.type = 'round';
           } else /* if(apiDoc.thumbs) */ {
-            apiDoc.type = 'video';
+            doc.type = 'video';
           }
           break;
 
         case 'documentAttributeSticker':
           if(attribute.alt !== undefined) {
-            apiDoc.stickerEmojiRaw = attribute.alt;
-            apiDoc.stickerEmoji = RichTextProcessor.wrapRichText(apiDoc.stickerEmojiRaw, {noLinks: true, noLinebreaks: true});
+            doc.stickerEmojiRaw = attribute.alt;
+            doc.stickerEmoji = RichTextProcessor.wrapRichText(doc.stickerEmojiRaw, {noLinks: true, noLinebreaks: true});
           }
 
           if(attribute.stickerset) {
             if(attribute.stickerset._ == 'inputStickerSetEmpty') {
               delete attribute.stickerset;
             } else if(attribute.stickerset._ == 'inputStickerSetID') {
-              apiDoc.stickerSetInput = attribute.stickerset;
+              doc.stickerSetInput = attribute.stickerset;
             }
           }
 
-          if(/* apiDoc.thumbs &&  */apiDoc.mime_type == 'image/webp') {
-            apiDoc.type = 'sticker';
-            apiDoc.sticker = 1;
+          if(/* apiDoc.thumbs &&  */doc.mime_type == 'image/webp') {
+            doc.type = 'sticker';
+            doc.sticker = 1;
           }
           break;
 
         case 'documentAttributeImageSize':
-          apiDoc.w = attribute.w;
-          apiDoc.h = attribute.h;
+          doc.w = attribute.w;
+          doc.h = attribute.h;
           break;
 
         case 'documentAttributeAnimated':
-          if((apiDoc.mime_type == 'image/gif' || apiDoc.mime_type == 'video/mp4')/*  && apiDoc.thumbs */) {
-            apiDoc.type = 'gif';
+          if((doc.mime_type == 'image/gif' || doc.mime_type == 'video/mp4')/*  && apiDoc.thumbs */) {
+            doc.type = 'gif';
           }
 
-          apiDoc.animated = true;
+          doc.animated = true;
           break;
       }
     });
     
-    if(!apiDoc.mime_type) {
-      switch(apiDoc.type) {
+    if(!doc.mime_type) {
+      switch(doc.type) {
         case 'gif':
         case 'video':
         case 'round':
-          apiDoc.mime_type = 'video/mp4';
+          doc.mime_type = 'video/mp4';
           break;
         case 'sticker':
-          apiDoc.mime_type = 'image/webp';
+          doc.mime_type = 'image/webp';
           break;
         case 'audio':
-          apiDoc.mime_type = 'audio/mpeg';
+          doc.mime_type = 'audio/mpeg';
           break;
         case 'voice':
-          apiDoc.mime_type = 'audio/ogg';
+          doc.mime_type = 'audio/ogg';
           break;
         default:
-          apiDoc.mime_type = 'application/octet-stream';
+          doc.mime_type = 'application/octet-stream';
           break;
       }
     }
 
-    if((apiDoc.type == 'gif' && apiDoc.size > 8e6) || apiDoc.type == 'audio' || apiDoc.type == 'video') {
-      apiDoc.supportsStreaming = true;
+    if((doc.type == 'gif' && doc.size > 8e6) || doc.type == 'audio' || doc.type == 'video') {
+      doc.supportsStreaming = true;
+      doc.url = this.getFileURL(doc);
     }
     
-    if(!apiDoc.file_name) {
-      apiDoc.file_name = '';
+    if(!doc.file_name) {
+      doc.file_name = '';
     }
 
-    if(apiDoc.mime_type == 'application/x-tgsticker' && apiDoc.file_name == "AnimatedSticker.tgs") {
-      apiDoc.type = 'sticker';
-      apiDoc.animated = true;
-      apiDoc.sticker = 2;
+    if(doc.mime_type == 'application/x-tgsticker' && doc.file_name == "AnimatedSticker.tgs") {
+      doc.type = 'sticker';
+      doc.animated = true;
+      doc.sticker = 2;
     }
     
-    if(apiDoc._ == 'documentEmpty') {
-      apiDoc.size = 0;
+    if(doc._ == 'documentEmpty') {
+      doc.size = 0;
     }
 
-    if(!apiDoc.url) {
-      apiDoc.url = this.getFileURL(apiDoc);
-    }
+    /* if(!doc.url) {
+      doc.url = this.getFileURL(doc);
+    } */
 
-    return apiDoc;
+    return doc;
   }
   
   public getDoc(docID: string | MTDocument): MTDocument {
@@ -177,9 +176,26 @@ class AppDocsManager {
     };
   }
 
-  public getFileURL(doc: MTDocument, download = false, thumb?: MTPhotoSize) {
+  public getFileDownloadOptions(doc: MTDocument, thumb?: MTPhotoSize) {
     const inputFileLocation = this.getInput(doc, thumb?.type);
 
+    let mimeType: string;
+    if(thumb) {
+      mimeType = doc.sticker ? 'image/webp' : 'image/jpeg'/* doc.mime_type */;
+    } else {
+      mimeType = doc.mime_type || 'application/octet-stream';
+    }
+
+    return {
+      dcID: doc.dc_id, 
+      location: inputFileLocation, 
+      size: thumb ? thumb.size : doc.size, 
+      mimeType: mimeType,
+      fileName: doc.file_name
+    };
+  }
+
+  public getFileURL(doc: MTDocument, download = false, thumb?: MTPhotoSize) {
     let type: FileURLType;
     if(download) {
       type = 'download';
@@ -191,23 +207,25 @@ class AppDocsManager {
       type = 'document';
     }
 
-    let mimeType: string;
-    if(thumb) {
-      mimeType = doc.sticker ? 'image/webp' : 'image/jpeg'/* doc.mime_type */;
-    } else {
-      mimeType = doc.mime_type || 'application/octet-stream';
-    }
-
-    return getFileURL(type, {
-      dcID: doc.dc_id, 
-      location: inputFileLocation, 
-      size: thumb ? thumb.size : doc.size, 
-      mimeType: mimeType,
-      fileName: doc.file_name
-    });
+    return getFileURL(type, this.getFileDownloadOptions(doc, thumb));
   }
 
-  public getThumbURL(doc: MTDocument, useBytes = true) {
+  public getThumbURL(doc: MTDocument, thumb: MTPhotoSize) {
+    let promise: Promise<any> = Promise.resolve();
+
+    if(!thumb.url) {
+      if(thumb.bytes) {
+        thumb.url = appPhotosManager.getPreviewURLFromBytes(thumb.bytes, !!doc.sticker);
+      } else {
+        //return this.getFileURL(doc, false, thumb);
+        promise = this.downloadDocNew(doc, thumb);
+      }
+    }
+
+    return {thumb, promise};
+  }
+
+  public getThumb(doc: MTDocument, useBytes = true) {
     if(doc.thumbs?.length) {
       let thumb: MTPhotoSize;
       if(!useBytes) {
@@ -218,43 +236,43 @@ class AppDocsManager {
         thumb = doc.thumbs[0];
       }
 
-      if(thumb.bytes) {
-        return appPhotosManager.getPreviewURLFromBytes(doc.thumbs[0].bytes, !!doc.sticker);  
-      } else {
-        return this.getFileURL(doc, false, thumb);
-      }
+      return this.getThumbURL(doc, thumb);
     }
 
-    return '';
+    return null;
   }
 
   public getInputFileName(doc: MTDocument, thumbSize?: string) {
     return getFileNameByLocation(this.getInput(doc, thumbSize), {fileName: doc.file_name});
   }
 
-  public downloadDocNew(docID: string | MTDocument/* , method: ResponseMethod = 'blob' */): DownloadBlob {
+  public downloadDocNew(docID: string | MTDocument, thumb?: MTPhotoSize): DownloadBlob {
     const doc = this.getDoc(docID);
 
     if(doc._ == 'documentEmpty') {
       throw new Error('Document empty!');
     }
 
-    const fileName = this.getInputFileName(doc);
+    const fileName = this.getInputFileName(doc, thumb?.type);
 
     let download: DownloadBlob = appDownloadManager.getDownload(fileName);
     if(download) {
       return download;
     }
 
-    download = appDownloadManager.download(doc.url, fileName/* , method */);
+    const downloadOptions = this.getFileDownloadOptions(doc, thumb);
+    download = appDownloadManager.download(downloadOptions);
 
     const originalPromise = download;
     originalPromise.then((blob) => {
-      doc.downloaded = true;
-
-      if(!doc.supportsStreaming) {
+      if(thumb) {
+        thumb.url = URL.createObjectURL(blob);
+        return;
+      } else if(!doc.supportsStreaming) {
         doc.url = URL.createObjectURL(blob);
       }
+
+      doc.downloaded = true;
     });
 
     if(doc.type == 'voice' && !opusDecodeController.isPlaySupported()) {
@@ -278,8 +296,6 @@ class AppDocsManager {
         });
   
         return blob;
-        //return originalPromise;
-        //return new Response(blob);
       });
     }
 
@@ -287,10 +303,8 @@ class AppDocsManager {
   }
 
   public saveDocFile(doc: MTDocument) {
-    const url = this.getFileURL(doc, true);
-    const fileName = this.getInputFileName(doc);
-
-    return appDownloadManager.downloadToDisc(fileName, url, doc.file_name);
+    const options = this.getFileDownloadOptions(doc);
+    return appDownloadManager.downloadToDisc(options, doc.file_name);
   }
 }
 

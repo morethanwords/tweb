@@ -1,5 +1,6 @@
 import WebpWorker from 'worker-loader!./webp.worker';
 import { CancellablePromise, deferredPromise } from '../polyfill';
+import apiManagerProxy from '../mtproto/mtprotoworker';
 
 export type WebpConvertTask = {
   type: 'convertWebp', 
@@ -21,11 +22,11 @@ export class WebpWorkerController {
       if(payload.fileName.indexOf('main-') === 0) {
         const promise = this.convertPromises[payload.fileName];
         if(promise) {
-          promise.resolve(payload.bytes);
+          payload.bytes ? promise.resolve(payload.bytes) : promise.reject();
           delete this.convertPromises[payload.fileName];
         }
       } else {
-        navigator.serviceWorker.controller.postMessage(e.data);
+        apiManagerProxy.postMessage(e.data);
       }
     });
   }
@@ -40,13 +41,13 @@ export class WebpWorkerController {
   }
 
   convert(fileName: string, bytes: Uint8Array) {
+    fileName = 'main-' + fileName;
+
     if(this.convertPromises.hasOwnProperty(fileName)) {
       return this.convertPromises[fileName];
     }
     
     const convertPromise = deferredPromise<Uint8Array>();
-
-    fileName = 'main-' + fileName;
 
     this.postMessage({type: 'convertWebp', payload: {fileName, bytes}});
 
@@ -54,4 +55,9 @@ export class WebpWorkerController {
   }
 }
 
-export const webpWorkerController = new WebpWorkerController();
+const webpWorkerController = new WebpWorkerController();
+// @ts-ignore
+if(process.env.NODE_ENV != 'production') {
+  (window as any).webpWorkerController = webpWorkerController;
+}
+export default webpWorkerController;

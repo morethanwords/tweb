@@ -1,9 +1,11 @@
 import {isObject, $rootScope} from '../utils';
 import AppStorage from '../storage';
 import CryptoWorkerMethods from '../crypto/crypto_methods';
-//import runtime from 'serviceworker-webpack-plugin/lib/runtime';
 import { logger } from '../logger';
-import { webpWorkerController } from '../webp/webpWorkerController';
+import webpWorkerController from '../webp/webpWorkerController';
+import MTProtoWorker from 'worker-loader!./mtproto.worker';
+import type { DownloadOptions } from './apiFileManager';
+import type { ServiceWorkerTask, ServiceWorkerTaskResponse } from './mtproto.service';
 
 type Task = {
   taskID: number,
@@ -11,7 +13,12 @@ type Task = {
   args: any[]
 };
 
+const USEWORKERASWORKER = true;
+
 class ApiManagerProxy extends CryptoWorkerMethods {
+  public worker: Worker;
+  public postMessage: (...args: any[]) => void;
+
   private taskID = 0;
   private awaiting: {
     [id: number]: {
@@ -30,10 +37,11 @@ class ApiManagerProxy extends CryptoWorkerMethods {
     super();
     this.log('constructor');
 
-    /**
-     * Service worker
-     */
-    //(runtime.register({ scope: './' }) as Promise<ServiceWorkerRegistration>).then(registration => {
+    this.registerServiceWorker();
+    this.registerWorker();
+  }
+
+  private registerServiceWorker() {
     navigator.serviceWorker.register('./sw.js', {scope: './'}).then(registration => {
       
     }, (err) => {
@@ -43,6 +51,10 @@ class ApiManagerProxy extends CryptoWorkerMethods {
     navigator.serviceWorker.ready.then((registration) => {
       this.log('set SW');
       this.releasePending();
+
+      if(!USEWORKERASWORKER) {
+        this.postMessage = navigator.serviceWorker.controller.postMessage.bind(navigator.serviceWorker.controller);
+      }
 
       //registration.update();
     });
@@ -60,30 +72,59 @@ class ApiManagerProxy extends CryptoWorkerMethods {
      * Message resolver
      */
     navigator.serviceWorker.addEventListener('message', (e) => {
-      if(!isObject(e.data)) {
+      const task: ServiceWorkerTask = e.data;
+      if(!isObject(task)) {
         return;
       }
       
-      if(e.data.useLs) {
-        // @ts-ignore
-        AppStorage[e.data.task](...e.data.args).then(res => {
-          navigator.serviceWorker.controller.postMessage({useLs: true, taskID: e.data.taskID, args: res});
-        });
-      } else if(e.data.update) {
-        if(this.updatesProcessor) {
-          this.updatesProcessor(e.data.update.obj, e.data.update.bool);
-        }
-      } else if(e.data.progress) {
-        $rootScope.$broadcast('download_progress', e.data.progress);
-      } else if(e.data.type == 'convertWebp') {
-        webpWorkerController.postMessage(e.data);
-      } else {
-        this.finalizeTask(e.data.taskID, e.data.result, e.data.error);
-      }
+      this.postMessage(task);
     });
 
     navigator.serviceWorker.addEventListener('messageerror', (e) => {
       this.log.error('SW messageerror:', e);
+    });
+  }
+
+  private registerWorker() {
+    const worker = new MTProtoWorker();
+    worker.addEventListener('message', (e) => {
+      if(!this.worker) {
+        this.worker = worker;
+        this.log('set webWorker');
+
+        if(USEWORKERASWORKER) {
+          this.postMessage = this.worker.postMessage.bind(this.worker);
+        }
+
+        this.releasePending();
+      }
+
+      //this.log('got message from worker:', e.data);
+
+      const task = e.data;
+
+      if(!isObject(task)) {
+        return;
+      }
+      
+      if(task.useLs) {
+        // @ts-ignore
+        AppStorage[task.task](...task.args).then(res => {
+          this.postMessage({useLs: true, taskID: task.taskID, args: res});
+        });
+      } else if(task.update) {
+        if(this.updatesProcessor) {
+          this.updatesProcessor(task.update.obj, task.update.bool);
+        }
+      } else if(task.progress) {
+        $rootScope.$broadcast('download_progress', task.progress);
+      } else if(task.type == 'convertWebp') {
+        webpWorkerController.postMessage(task);
+      } else if((task as ServiceWorkerTaskResponse).type == 'requestFilePart') {
+        navigator.serviceWorker.controller.postMessage(task);
+      } else {
+        this.finalizeTask(task.taskID, task.result, task.error);
+      }
     });
   }
 
@@ -116,10 +157,10 @@ class ApiManagerProxy extends CryptoWorkerMethods {
   }
 
   private releasePending() {
-    if(navigator.serviceWorker.controller) {
+    if(this.postMessage) {
       this.log.debug('releasing tasks, length:', this.pending.length);
       this.pending.forEach(pending => {
-        navigator.serviceWorker.controller.postMessage(pending);
+        this.postMessage(pending);
       });
       
       this.log.debug('released tasks');
@@ -173,6 +214,10 @@ class ApiManagerProxy extends CryptoWorkerMethods {
 
   public cancelDownload(fileName: string) {
     return this.performTaskWorker('cancelDownload', fileName);
+  }
+
+  public downloadFile(options: DownloadOptions) {
+    return this.performTaskWorker('downloadFile', options);
   }
 }
 

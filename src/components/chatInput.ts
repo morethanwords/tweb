@@ -1,6 +1,5 @@
 import Scrollable from "./scrollable_new";
 import { RichTextProcessor } from "../lib/richtextprocessor";
-//import apiManager from "../lib/mtproto/apiManager";
 import apiManager from "../lib/mtproto/mtprotoworker";
 import appWebPagesManager from "../lib/appManagers/appWebPagesManager";
 import appImManager from "../lib/appManagers/appImManager";

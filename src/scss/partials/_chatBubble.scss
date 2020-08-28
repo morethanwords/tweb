@@ -1211,6 +1211,10 @@ $bubble-margin: .25rem;
         background-color: #0089ff;
       }
 
+      &__loaded {
+        background-color: #cacaca;
+      }
+
       input::-webkit-slider-thumb { 
         background: #63a2e3; 
         border: none;
@@ -1355,7 +1359,8 @@ $bubble-margin: .25rem;
   }
 
   &.is-edited .time {
-    width: 85px;
+    /* width: 85px; */
+    width: 90px !important;
   }
 
   .document-ico:after {
@@ -1443,6 +1448,12 @@ $bubble-margin: .25rem;
 
   &.is-sending poll-element {
     pointer-events: none;
+  }
+
+  .media-progress {
+    &__loaded {
+      background-color: #90e18d !important;
+    }
   }
 }
 

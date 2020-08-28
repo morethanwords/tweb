@@ -49,11 +49,18 @@ export default class GifsMasonry {
 
     //let preloader = new ProgressivePreloader(div);
 
-    const posterURL = appDocsManager.getThumbURL(doc, false);
+    const gotThumb = appDocsManager.getThumb(doc, false);
+
+    const willBeAPoster = !!gotThumb;
     let img: HTMLImageElement;
-    if(posterURL) {
+    if(willBeAPoster) {
       img = new Image();
-      img.src = posterURL;
+
+      if(!gotThumb.thumb.url) {
+        gotThumb.promise.then(() => {
+          img.src = gotThumb.thumb.url;
+        });
+      }
     }
 
     let mouseOut = false;
@@ -124,6 +131,6 @@ export default class GifsMasonry {
       }
     };
 
-    (posterURL ? renderImageFromUrl(img, posterURL, afterRender) : afterRender());
+    (gotThumb?.thumb?.url ? renderImageFromUrl(img, gotThumb.thumb.url, afterRender) : afterRender());
   }
 }

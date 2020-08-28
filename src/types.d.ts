@@ -145,3 +145,9 @@ export type inputStickerSetThumb = {
 };
 
 export type InputFileLocation = inputFileLocation | inputDocumentFileLocation | inputPhotoFileLocation | inputPeerPhotoFileLocation | inputStickerSetThumb;
+
+export type WorkerTaskTemplate = {
+  type: string,
+  id: number,
+  payload: any
+};

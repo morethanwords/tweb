@@ -1,4 +1,5 @@
 import { Modes } from './mtproto/mtproto_config';
+import { notifySomeone, isWorker } from '../helpers/context';
 
 class ConfigStorage {
   public keyPrefix = '';
@@ -137,7 +138,6 @@ class ConfigStorage {
 }
 
 class AppStorage {
-  private isWorker: boolean;
   private taskID = 0;
   private tasks: {[taskID: number]: (result: any) => void} = {};
   //private log = (...args: any[]) => console.log('[SW LS]', ...args);
@@ -150,11 +150,7 @@ class AppStorage {
       this.setPrefix('t_');
     }
 
-    // @ts-ignore
-    //this.isWebWorker = typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope;
-    this.isWorker = typeof ServiceWorkerGlobalScope !== 'undefined' && self instanceof ServiceWorkerGlobalScope;
-
-    if(!this.isWorker) {
+    if(!isWorker) {
       this.configStorage = new ConfigStorage();
     }
   }
@@ -185,26 +181,13 @@ class AppStorage {
 
   private proxy<T>(methodName: 'set' | 'get' | 'remove' | 'clear', ..._args: any[]) {
     return new Promise<T>((resolve, reject) => {
-      if(this.isWorker) {
+      if(isWorker) {
         const taskID = this.taskID++;
 
         this.tasks[taskID] = resolve;
+        const task = {useLs: true, task: methodName, taskID, args: _args};
 
-        (self as any as ServiceWorkerGlobalScope)
-        .clients
-        .matchAll({ includeUncontrolled: false, type: 'window' })
-        .then((listeners) => {
-          if(!listeners.length) {
-            //console.trace('no listeners?', self, listeners);
-            return;
-          }
-
-          this.log('will proxy', {useLs: true, task: methodName, taskID, args: _args});
-          listeners[0].postMessage({useLs: true, task: methodName, taskID, args: _args});
-        });
-
-        // @ts-ignore
-        //self.postMessage({useLs: true, task: methodName, taskID: this.taskID, args: _args});
+        notifySomeone(task);
       } else {
         let args = Array.prototype.slice.call(_args);
         args.push((result: T) => {

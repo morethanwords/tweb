@@ -64,9 +64,7 @@ module.exports = merge(common, {
         files.forEach(file => {
           //console.log('to unlink 1:', file);
 
-          if(file.includes('mitm.') 
-            || file.includes('sw.js') 
-            || file.includes('.xml') 
+          if(file.includes('.xml') 
             || file.includes('.webmanifest') 
             || file.includes('.wasm')
             || file.includes('rlottie')

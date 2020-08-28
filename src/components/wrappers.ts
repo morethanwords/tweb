@@ -6,7 +6,7 @@ import ProgressivePreloader from './preloader';
 import LazyLoadQueue from './lazyLoadQueue';
 import VideoPlayer from '../lib/mediaPlayer';
 import { RichTextProcessor } from '../lib/richtextprocessor';
-import { renderImageFromUrl, loadedURLs } from './misc';
+import { renderImageFromUrl } from './misc';
 import appMessagesManager from '../lib/appManagers/appMessagesManager';
 import { Layouter, RectPart } from './groupedLayout';
 import PollElement from './poll';
@@ -14,8 +14,9 @@ import { mediaSizes, isSafari } from '../lib/config';
 import { MTDocument, MTPhotoSize } from '../types';
 import animationIntersector from './animationIntersector';
 import AudioElement from './audio';
-import appDownloadManager, { Download, Progress, DownloadBlob } from '../lib/appManagers/appDownloadManager';
-import { webpWorkerController } from '../lib/webp/webpWorkerController';
+import { DownloadBlob } from '../lib/appManagers/appDownloadManager';
+import webpWorkerController from '../lib/webp/webpWorkerController';
+import { readBlobAsText } from '../helpers/blob';
 
 export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group}: {
   doc: MTDocument, 
@@ -92,9 +93,11 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   }
 
   if(!img?.parentElement) {
-    const posterURL = appDocsManager.getThumbURL(doc, false);
-    if(posterURL) {
-      video.poster = posterURL;
+    const gotThumb = appDocsManager.getThumb(doc, false);
+    if(gotThumb) {
+      gotThumb.promise.then(() => {
+        video.poster = gotThumb.thumb.url;
+      });
     }
   }
 
@@ -379,16 +382,7 @@ export function wrapPhoto(photo: MTPhoto | MTDocument, message: any, container: 
     if(preloader) {
       preloader.attach(container, true, promise);
     }
-    
-    /* const url = appPhotosManager.getPhotoURL(photoID, size);
-    return renderImageFromUrl(image || container, url).then(() => {
-      photo.downloaded = true;
-    }); */
-    
-    /* if(preloader) {
-      preloader.attach(container, true, promise);
-    } */
-    
+
     return promise.then(() => {
       if(middleware && !middleware()) return;
 
@@ -413,7 +407,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
   withThumb?: boolean,
   loop?: boolean
 }) {
-  let stickerType = doc.sticker;
+  const stickerType = doc.sticker;
 
   if(!width) {
     width = !emoji ? 200 : undefined;
@@ -439,8 +433,8 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
 
   const toneIndex = emoji ? getEmojiToneIndex(emoji) : -1;
   
-  if(doc.thumbs && !div.firstElementChild && (!doc.downloaded || stickerType == 2)) {
-    let thumb = doc.thumbs[0];
+  if(doc.thumbs?.length && !div.firstElementChild && (!doc.downloaded || stickerType == 2 || onlyThumb) && toneIndex <= 0) {
+    const thumb = doc.thumbs[0];
     
     //console.log('wrap sticker', thumb, div);
 
@@ -454,56 +448,50 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
     if(thumb.bytes || thumb.url) {
       img = new Image();
 
-      if((!isSafari || doc.stickerThumbConverted)/*  && false */) {
+      if((!isSafari || doc.stickerThumbConverted || thumb.url)/*  && false */) {
         renderImageFromUrl(img, appPhotosManager.getPreviewURLFromThumb(thumb, true), afterRender);
       } else {
         webpWorkerController.convert(doc.id, thumb.bytes).then(bytes => {
-          if(middleware && !middleware()) return;
-
           thumb.bytes = bytes;
           doc.stickerThumbConverted = true;
+          
+          if(middleware && !middleware()) return;
 
           if(!div.childElementCount) {
             renderImageFromUrl(img, appPhotosManager.getPreviewURLFromThumb(thumb, true), afterRender);
           }
-        });
+        }).catch(() => {});
       }
-      
-      if(onlyThumb) {
-        return Promise.resolve();
-      }
-    } else if(!onlyThumb && stickerType == 2 && withThumb && toneIndex <= 0) {
+    } else if(stickerType == 2 && (withThumb || onlyThumb)) {
       img = new Image();
-      
+
       const load = () => {
         if(div.childElementCount || (middleware && !middleware())) return;
-        renderImageFromUrl(img, appDocsManager.getFileURL(doc, false, thumb), afterRender);
+
+        const r = () => {
+          if(div.childElementCount || (middleware && !middleware())) return;
+          renderImageFromUrl(img, thumb.url, afterRender);
+        };
+  
+        if(thumb.url) {
+          r();
+          return Promise.resolve();
+        } else {
+          return appDocsManager.getThumbURL(doc, thumb).promise.then(r);
+        }
       };
       
-      /* let downloaded = appDocsManager.hasDownloadedThumb(doc.id, thumb.type);
-      if(downloaded) {
-        div.append(img);
-      } */
-
-      //lazyLoadQueue && !downloaded ? lazyLoadQueue.push({div, load, wasSeen: group == 'chat'}) : load();
-      load();
+      if(lazyLoadQueue && onlyThumb) {
+        lazyLoadQueue.push({div, load});
+        return Promise.resolve();
+      } else {
+        load();
+      }
     }
   }
 
-  if(onlyThumb && doc.thumbs) { // for sticker panel
-    let thumb = doc.thumbs[0];
-    
-    let load = () => {
-      let img = new Image();
-      renderImageFromUrl(img, appDocsManager.getFileURL(doc, false, thumb), () => {
-        if(middleware && !middleware()) return;
-        div.append(img);
-      });
-
-      return Promise.resolve();
-    };
-    
-    return lazyLoadQueue ? (lazyLoadQueue.push({div, load}), Promise.resolve()) : load();
+  if(onlyThumb) { // for sticker panel
+    return Promise.resolve();
   }
   
   let downloaded = doc.downloaded;
@@ -519,12 +507,13 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
 
       //appDocsManager.downloadDocNew(doc.id).promise.then(res => res.json()).then(async(json) => {
       //fetch(doc.url).then(res => res.json()).then(async(json) => {
-      appDownloadManager.download(doc.url, appDocsManager.getInputFileName(doc), 'json').then(async(json) => {
+      appDocsManager.downloadDocNew(doc.id)
+      .then(readBlobAsText)
+      .then(JSON.parse)
+      .then(async(json) => {
         //console.timeEnd('download sticker' + doc.id);
-        //console.log('loaded sticker:', doc, div);
+        //console.log('loaded sticker:', doc, div, blob);
         if(middleware && !middleware()) return;
-
-        //await new Promise((resolve) => setTimeout(resolve, 5e3));
 
         let animation = await LottieLoader.loadAnimationWorker/* loadAnimation */({
           container: div,
@@ -534,7 +523,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
           width,
           height
         }, group, toneIndex);
-
+  
         animation.addListener('firstFrame', () => {
           if(div.firstElementChild && div.firstElementChild.tagName == 'IMG') {
             div.firstElementChild.remove();
@@ -542,16 +531,17 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
             animation.canvas.classList.add('fade-in');
           }
         }, true);
-
+  
         if(emoji) {
           div.addEventListener('click', () => {
             let animation = LottieLoader.getAnimation(div);
-
+  
             if(animation.paused) {
               animation.restart();
             }
           });
         }
+        //await new Promise((resolve) => setTimeout(resolve, 5e3));
       });
 
       //console.timeEnd('render sticker' + doc.id);
@@ -571,13 +561,22 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
         });
       }
 
-      renderImageFromUrl(img, doc.url, () => {
-        if(div.firstElementChild && div.firstElementChild != img) {
-          div.firstElementChild.remove();
-        }
+      const r = () => {
+        if(middleware && !middleware()) return;
 
-        div.append(img);
-      });
+        renderImageFromUrl(img, doc.url, () => {
+          if(div.firstElementChild && div.firstElementChild != img) {
+            div.firstElementChild.remove();
+          }
+  
+          div.append(img);
+        });
+      };
+
+      if(doc.url) r();
+      else {
+        appDocsManager.downloadDocNew(doc).then(r);
+      }
     }
   }; 
   

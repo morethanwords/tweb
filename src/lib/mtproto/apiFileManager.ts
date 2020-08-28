@@ -8,6 +8,7 @@ import { logger, LogLevels } from "../logger";
 import { InputFileLocation, FileLocation, UploadFile } from "../../types";
 import { isSafari } from "../../helpers/userAgent";
 import cryptoWorker from "../crypto/cryptoworker";
+import { notifySomeone } from "../../helpers/context";
 
 type Delayed = {
   offset: number, 
@@ -18,7 +19,7 @@ type Delayed = {
 export type DownloadOptions = {
   dcID: number, 
   location: InputFileLocation | FileLocation, 
-  size: number,
+  size?: number,
   fileName?: string,
   mimeType?: string,
   limitPart?: number,
@@ -156,17 +157,8 @@ export class ApiFileManager {
   convertWebp = (bytes: Uint8Array, fileName: string) => {
     const convertPromise = deferredPromise<Uint8Array>();
 
-    (self as any as ServiceWorkerGlobalScope)
-    .clients
-    .matchAll({includeUncontrolled: false, type: 'window'})
-    .then((listeners) => {
-      if(!listeners.length) {
-        return;
-      }
-
-      listeners[0].postMessage({type: 'convertWebp', payload: {fileName, bytes}});
-    });
-
+    const task = {type: 'convertWebp', payload: {fileName, bytes}};
+    notifySomeone(task);
     return this.webpConvertPromises[fileName] = convertPromise;
   };
 

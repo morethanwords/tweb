@@ -1,148 +1,38 @@
-// just to include
-import {secureRandom} from '../polyfill';
-secureRandom;
-
-import apiManager from "./apiManager";
-import AppStorage from '../storage';
-import cryptoWorker from "../crypto/cryptoworker";
-import networkerFactory from "./networkerFactory";
-import apiFileManager, { DownloadOptions } from './apiFileManager';
-import { getFileNameByLocation } from '../bin_utils';
-import { logger, LogLevels } from '../logger';
 import { isSafari } from '../../helpers/userAgent';
+import { logger, LogLevels } from '../logger';
+import type { DownloadOptions } from './apiFileManager';
+import type { InputFileLocation, FileLocation, UploadFile, WorkerTaskTemplate } from '../../types';
+import { deferredPromise, CancellablePromise } from '../polyfill';
+import { notifySomeone } from '../../helpers/context';
 
 const log = logger('SW', LogLevels.error);
-
 const ctx = self as any as ServiceWorkerGlobalScope;
 
-//console.error('INCLUDE !!!', new Error().stack);
+const deferredPromises: {[taskID: number]: CancellablePromise<any>} = {};
 
-/* function isObject(object: any) {
-  return typeof(object) === 'object' && object !== null;
-} */
+ctx.addEventListener('message', (e) => {
+  const task = e.data as ServiceWorkerTaskResponse;
+  const promise = deferredPromises[task.id];
 
-/* function fillTransfer(transfer: any, obj: any) {
-  if(!obj) return;
-  
-  if(obj instanceof ArrayBuffer) {
-    transfer.add(obj);
-  } else if(obj.buffer && obj.buffer instanceof ArrayBuffer) {
-    transfer.add(obj.buffer);
-  } else if(isObject(obj)) {
-    for(var i in obj) {
-      fillTransfer(transfer, obj[i]);
-    }
-  } else if(Array.isArray(obj)) {
-    obj.forEach(value => {
-      fillTransfer(transfer, value);
-    });
+  if(task.payload) {
+    promise.resolve(task.payload);
+  } else {
+    promise.reject();
   }
-} */
 
-/**
- * Respond to request
- */
-function respond(client: Client | ServiceWorker | MessagePort, ...args: any[]) {
-  // отключил для всего потому что не успел пофиксить transfer detached
-  //if(isSafari(self)/*  || true */) {
-    // @ts-ignore
-    client.postMessage(...args);
-  /* } else {
-    var transfer = new Set();
-    fillTransfer(transfer, arguments);
-    
-    //console.log('reply', transfer, [...transfer]);
-    ctx.postMessage(...arguments, [...transfer]);
-    //console.log('reply', transfer, [...transfer]);
-  } */
-}
-
-/**
- * Broadcast Notification
- */
-function notify(...args: any[]) {
-  ctx.clients.matchAll({includeUncontrolled: false, type: 'window'}).then((listeners) => {
-    if(!listeners.length) {
-      //console.trace('no listeners?', self, listeners);
-      return;
-    }
-
-    listeners.forEach(listener => {
-      // @ts-ignore
-      listener.postMessage(...args);
-    });
-  });
-}
-
-networkerFactory.setUpdatesProcessor((obj, bool) => {
-  notify({update: {obj, bool}});
+  delete deferredPromises[task.id];
 });
 
-const onMessage = async(e: ExtendableMessageEvent) => {
-  try {
-    const taskID = e.data.taskID;
+let taskID = 0;
 
-    log.debug('got message:', taskID, e, e.data);
-  
-    if(e.data.useLs) {
-      AppStorage.finishTask(e.data.taskID, e.data.args);
-      return;
-    } else if(e.data.type == 'convertWebp') {
-      const {fileName, bytes} = e.data.payload;
-      const deferred = apiFileManager.webpConvertPromises[fileName];
-      if(deferred) {
-        deferred.resolve(bytes);
-        delete apiFileManager.webpConvertPromises[fileName];
-      }
-    }
-  
-    switch(e.data.task) {
-      case 'computeSRP':
-      case 'gzipUncompress':
-        // @ts-ignore
-        return cryptoWorker[e.data.task].apply(cryptoWorker, e.data.args).then(result => {
-          respond(e.source, {taskID: taskID, result: result});
-        });
-  
-      case 'cancelDownload':
-      case 'downloadFile': {
-        /* // @ts-ignore
-        return apiFileManager.downloadFile(...e.data.args); */
-  
-        try {
-          // @ts-ignore
-          let result = apiFileManager[e.data.task].apply(apiFileManager, e.data.args);
-  
-          if(result instanceof Promise) {
-            result = await result;
-          }
-  
-          respond(e.source, {taskID: taskID, result: result});
-        } catch(err) {
-          respond(e.source, {taskID: taskID, error: err});
-        }
-      }
-  
-      default: {
-        try {
-          // @ts-ignore
-          let result = apiManager[e.data.task].apply(apiManager, e.data.args);
-  
-          if(result instanceof Promise) {
-            result = await result;
-          }
-  
-          respond(e.source, {taskID: taskID, result: result});
-        } catch(err) {
-          respond(e.source, {taskID: taskID, error: err});
-        }
-  
-        //throw new Error('Unknown task: ' + e.data.task);
-      }
-    }
-  } catch(err) {
+export interface ServiceWorkerTask extends WorkerTaskTemplate {
+  type: 'requestFilePart',
+  payload: [number, InputFileLocation | FileLocation, number, number]
+};
 
-  }
+export interface ServiceWorkerTaskResponse extends WorkerTaskTemplate {
+  type: 'requestFilePart',
+  payload: UploadFile
 };
 
 const onFetch = (event: FetchEvent): void => {
@@ -152,70 +42,6 @@ const onFetch = (event: FetchEvent): void => {
     log.debug('[fetch]:', event);
   
     switch(scope) {
-      case 'download':
-      case 'thumb':
-      case 'document':
-      case 'photo': {
-        const info: DownloadOptions = JSON.parse(decodeURIComponent(params));
-  
-        const rangeHeader = event.request.headers.get('Range');
-        if(rangeHeader && info.mimeType && info.size) { // maybe safari
-          const range = parseRange(event.request.headers.get('Range'));
-          const possibleResponse = responseForSafariFirstRange(range, info.mimeType, info.size);
-          if(possibleResponse) {
-            return event.respondWith(possibleResponse);
-          }
-        }
-  
-        const fileName = getFileNameByLocation(info.location, {fileName: info.fileName});
-  
-        /* event.request.signal.addEventListener('abort', (e) => {
-          console.log('[SW] user aborted request:', fileName);
-          cancellablePromise.cancel();
-        });
-  
-        event.request.signal.onabort = (e) => {
-          console.log('[SW] user aborted request:', fileName);
-          cancellablePromise.cancel();
-        };
-  
-        if(fileName == '5452060085729624717') {
-          setInterval(() => {
-            console.log('[SW] request status:', fileName, event.request.signal.aborted);
-          }, 1000);
-        } */
-  
-        const cancellablePromise = apiFileManager.downloadFile(info);
-        cancellablePromise.notify = (progress: {done: number, total: number, offset: number}) => {
-          notify({progress: {fileName, ...progress}});
-        };
-        
-        log.debug('[fetch] file:', /* info, */fileName);
-
-        event.respondWith(Promise.race([
-          timeout(45 * 1000), 
-          new Promise<Response>((resolve) => { // пробую это чтобы проверить, не сдохнет ли воркер
-            cancellablePromise.then(b => {
-              const responseInit: ResponseInit = {};
-      
-              if(rangeHeader) {
-                responseInit.headers = {
-                  'Accept-Ranges': 'bytes',
-                  'Content-Range': `bytes 0-${info.size - 1}/${info.size || '*'}`,
-                  'Content-Length': `${info.size}`,
-                }
-              }
-      
-              resolve(new Response(b, responseInit));
-            }).catch(err => {
-
-            });
-          })
-        ]));
-  
-        break;
-      }
-  
       case 'stream': {
         const range = parseRange(event.request.headers.get('Range'));
         const [offset, end] = range;
@@ -227,6 +53,7 @@ const onFetch = (event: FetchEvent): void => {
   
         event.respondWith(Promise.race([
           timeout(45 * 1000),
+
           new Promise<Response>((resolve, reject) => {
             // safari workaround
             const possibleResponse = responseForSafariFirstRange(range, info.mimeType, info.size);
@@ -237,11 +64,19 @@ const onFetch = (event: FetchEvent): void => {
             const limit = end && end < STREAM_CHUNK_UPPER_LIMIT ? alignLimit(end - offset + 1) : STREAM_CHUNK_UPPER_LIMIT;
             const alignedOffset = alignOffset(offset, limit);
   
-            //log.debug('[stream] requestFilePart:', info.dcID, info.location, alignedOffset, limit);
-  
-            apiFileManager.requestFilePart(info.dcID, info.location, alignedOffset, limit).then(result => {
+            log.debug('[stream] requestFilePart:', info.dcID, info.location, alignedOffset, limit);
+
+            const task: ServiceWorkerTask = {
+              type: 'requestFilePart',
+              id: taskID++,
+              payload: [info.dcID, info.location, alignedOffset, limit]
+            };
+
+            
+            const deferred = deferredPromises[task.id] = deferredPromise<UploadFile>();
+            deferred.then(result => {
               let ab = result.bytes;
-  
+              
               //log.debug('[stream] requestFilePart result:', result);
   
               const headers: Record<string, string> = {
@@ -267,127 +102,12 @@ const onFetch = (event: FetchEvent): void => {
                 }));
               //}, 2.5e3);
             }).catch(err => {});
+
+            notifySomeone(task);
           })
         ]));
         break;
       }
-  
-      /* case 'download': {
-        const info: DownloadOptions = JSON.parse(decodeURIComponent(params));
-  
-        const promise = new Promise<Response>((resolve) => {
-          const headers: Record<string, string> = {
-            'Content-Disposition': `attachment; filename="${info.fileName}"`,
-          };
-  
-          if(info.size) headers['Content-Length'] = info.size.toString();
-          if(info.mimeType) headers['Content-Type'] = info.mimeType;
-  
-          log('[download] file:', info);
-  
-          const stream = new ReadableStream({
-            start(controller: ReadableStreamDefaultController) {
-              const limitPart = DOWNLOAD_CHUNK_LIMIT;
-  
-              apiFileManager.downloadFile({
-                ...info,
-                limitPart,
-                processPart: (bytes, offset) => {
-                  log('[download] file processPart:', bytes, offset);
-  
-                  controller.enqueue(new Uint8Array(bytes));
-  
-                  const isFinal = offset + limitPart >= info.size;
-                  if(isFinal) {
-                    controller.close();
-                  }
-  
-                  return Promise.resolve();
-                }
-              }).catch(err => {
-                log.error('[download] error:', err);
-                controller.error(err);
-              });
-            },
-  
-            cancel() {
-              log.error('[download] file canceled:', info);
-            }
-          });
-  
-          resolve(new Response(stream, {headers}));
-        });
-  
-        event.respondWith(promise);
-  
-        break;
-      } */
-  
-      case 'upload': {
-        if(event.request.method == 'POST') {
-          event.respondWith(event.request.blob().then(blob => {
-            return apiFileManager.uploadFile(blob).then(v => new Response(JSON.stringify(v), {headers: {'Content-Type': 'application/json'}}));
-          }));
-        }
-  
-        break;
-      }
-  
-      /* default: {
-        
-        break;
-      }
-      case 'documents':
-      case 'photos':
-      case 'profiles':
-        // direct download
-        if (event.request.method === 'POST') {
-          event.respondWith(// download(url, 'unknown file.txt', getFilePartRequest));
-            event.request.text()
-              .then((text) => {
-                const [, filename] = text.split('=');
-                return download(url, filename ? filename.toString() : 'unknown file', getFilePartRequest);
-              }),
-          );
-  
-        // inline
-        } else {
-          event.respondWith(
-            ctx.cache.match(url).then((cached) => {
-              if (cached) return cached;
-  
-              return Promise.race([
-                timeout(45 * 1000), // safari fix
-                new Promise<Response>((resolve) => {
-                  fetchRequest(url, resolve, getFilePartRequest, ctx.cache, fileProgress);
-                }),
-              ]);
-            }),
-          );
-        }
-        break;
-  
-      case 'stream': {
-        const [offset, end] = parseRange(event.request.headers.get('Range') || '');
-  
-        log('stream', url, offset, end);
-  
-        event.respondWith(new Promise((resolve) => {
-          fetchStreamRequest(url, offset, end, resolve, getFilePartRequest);
-        }));
-        break;
-      }
-  
-      case 'stripped':
-      case 'cached': {
-        const bytes = getThumb(url) || null;
-        event.respondWith(new Response(bytes, { headers: { 'Content-Type': 'image/jpg' } }));
-        break;
-      }
-  
-      default:
-        if (url && url.endsWith('.tgs')) event.respondWith(fetchTGS(url));
-        else event.respondWith(fetch(event.request.url)); */
     }
   } catch(err) {
     event.respondWith(new Response('', {
@@ -398,7 +118,6 @@ const onFetch = (event: FetchEvent): void => {
 };
 
 const onChangeState = () => {
-  ctx.onmessage = onMessage;
   ctx.onfetch = onFetch;
 };
 
@@ -496,6 +215,5 @@ function alignLimit(limit: number) {
 
 // @ts-ignore
 if(process.env.NODE_ENV != 'production') {
-  (ctx as any).onMessage = onMessage;
   (ctx as any).onFetch = onFetch;
 }

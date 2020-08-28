@@ -6,7 +6,6 @@ import Config from '../lib/config';
 import { findUpTag } from "../lib/utils";
 import pageAuthCode from "./pageAuthCode";
 import pageSignQR from './pageSignQR';
-//import apiManager from "../lib/mtproto/apiManager";
 import apiManager from "../lib/mtproto/mtprotoworker";
 import Page from "./page";
 import { App, Modes } from "../lib/mtproto/mtproto_config";

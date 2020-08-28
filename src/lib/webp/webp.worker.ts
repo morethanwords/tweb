@@ -3,30 +3,37 @@ import type { WebpConvertTask } from './webpWorkerController';
 
 const ctx = self as any as DedicatedWorkerGlobalScope;
 const tasks: WebpConvertTask[] = [];
-let isProcessing = false;
+//let isProcessing = false;
 
 function finishTask() {
-  isProcessing = false;
+  //isProcessing = false;
   processTasks();
 }
 
 function processTasks() {
-  if(isProcessing) return;
+  //if(isProcessing) return;
 
   const task = tasks.shift();
   if(!task) return;
 
-  isProcessing = true;
+  //isProcessing = true;
 
   switch(task.type) {
     case 'convertWebp': {
       const {fileName, bytes} = task.payload;
 
+      let convertedBytes: Uint8Array;
+      try {
+        convertedBytes = webp2png(bytes).bytes;
+      } catch(err) {
+        console.error('Convert webp2png error:', err, 'payload:', task.payload);
+      }
+      
       ctx.postMessage({
         type: 'convertWebp', 
         payload: {
           fileName, 
-          bytes: webp2png(bytes).bytes
+          bytes: convertedBytes
         }
       });
 
@@ -42,6 +49,12 @@ function processTasks() {
 
 function scheduleTask(task: WebpConvertTask) {
   tasks.push(task);
+  /* if(task.payload.fileName.indexOf('main-') === 0) {
+    tasks.push(task);
+  } else {
+    tasks.unshift(task);
+  } */
+  
   processTasks();
 }
 

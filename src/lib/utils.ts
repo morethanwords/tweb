@@ -5,7 +5,7 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import { InputFileLocation, FileLocation } from "../types";
+import type { DownloadOptions } from "./mtproto/apiFileManager";
 
 var _logTimer = Date.now();
 export function dT () {
@@ -539,13 +539,7 @@ export function getEmojiToneIndex(input: string) {
 }
 
 export type FileURLType = 'photo' | 'thumb' | 'document' | 'stream' | 'download';
-export function getFileURL(type: FileURLType, options: {
-  dcID: number,
-  location: InputFileLocation | FileLocation,
-  size?: number,
-  mimeType?: string,
-  fileName?: string
-}) {
+export function getFileURL(type: FileURLType, options: DownloadOptions) {
   //console.log('getFileURL', location);
   //const perf = performance.now();
   const encoded = encodeURIComponent(JSON.stringify(options));

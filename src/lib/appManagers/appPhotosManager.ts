@@ -1,8 +1,8 @@
-import { calcImageInBox, isObject, getFileURL } from "../utils";
+import { calcImageInBox, isObject } from "../utils";
 import { bytesFromHex, getFileNameByLocation } from "../bin_utils";
 import { MTPhotoSize, inputPhotoFileLocation, inputDocumentFileLocation, FileLocation, MTDocument } from "../../types";
-import appDownloadManager, { Download } from "./appDownloadManager";
-import { deferredPromise, CancellablePromise } from "../polyfill";
+import appDownloadManager from "./appDownloadManager";
+import { CancellablePromise } from "../polyfill";
 import { isSafari } from "../../helpers/userAgent";
 
 export type MTPhoto = {
@@ -203,8 +203,8 @@ export class AppPhotosManager {
     
     return photoSize;
   }
-
-  public getPhotoURL(photo: MTPhoto | MTDocument, photoSize: MTPhotoSize) {
+  
+  public getPhotoDownloadOptions(photo: MTPhoto | MTDocument, photoSize: MTPhotoSize) {
     const isDocument = photo._ == 'document';
 
     if(!photoSize || photoSize._ == 'photoSizeEmpty') {
@@ -222,8 +222,14 @@ export class AppPhotosManager {
       thumb_size: photoSize.type
     } : photoSize.location;
 
-    return {url: getFileURL('photo', {dcID: photo.dc_id, location, size: isPhoto ? photoSize.size : undefined}), location};
+    return {dcID: photo.dc_id, location, size: isPhoto ? photoSize.size : undefined};
   }
+
+  /* public getPhotoURL(photo: MTPhoto | MTDocument, photoSize: MTPhotoSize) {
+    const downloadOptions = this.getPhotoDownloadOptions(photo, photoSize);
+
+    return {url: getFileURL('photo', downloadOptions), location: downloadOptions.location};
+  } */
   
   public preloadPhoto(photoID: any, photoSize?: MTPhotoSize): CancellablePromise<Blob> {
     const photo = this.getPhoto(photoID);
@@ -240,15 +246,15 @@ export class AppPhotosManager {
       return Promise.resolve() as any;
     }
     
-    const {url, location} = this.getPhotoURL(photo, photoSize);
-    const fileName = getFileNameByLocation(location);
+    const downloadOptions = this.getPhotoDownloadOptions(photo, photoSize);
+    const fileName = getFileNameByLocation(downloadOptions.location);
 
     let download = appDownloadManager.getDownload(fileName);
     if(download) {
       return download;
     }
 
-    download = appDownloadManager.download(url, fileName);
+    download = appDownloadManager.download(downloadOptions);
     download.then(blob => {
       if(!cacheContext.downloaded || cacheContext.downloaded < blob.size) {
         cacheContext.downloaded = blob.size;
@@ -261,7 +267,6 @@ export class AppPhotosManager {
     });
 
     return download;
-    //return fetch(url).then(res => res.blob());
   }
 
   public getCacheContext(photo: any) {
@@ -302,10 +307,12 @@ export class AppPhotosManager {
       thumb_size: fullPhotoSize.type
     };
 
-    const url = getFileURL('download', {dcID: photo.dc_id, location, size: fullPhotoSize.size, fileName: 'photo' + photo.id + '.jpg'});
-    const fileName = getFileNameByLocation(location);
-    
-    appDownloadManager.downloadToDisc(fileName, url, 'photo' + photo.id + '.jpg');
+    appDownloadManager.downloadToDisc({
+      dcID: photo.dc_id, 
+      location, 
+      size: fullPhotoSize.size, 
+      fileName: 'photo' + photo.id + '.jpg'
+    }, 'photo' + photo.id + '.jpg');
   }
 }
 

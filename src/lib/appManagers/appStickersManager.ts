@@ -3,7 +3,7 @@ import AppStorage from '../storage';
 import apiManager from '../mtproto/mtprotoworker';
 import appDocsManager from './appDocsManager';
 import { MTDocument, inputStickerSetThumb } from '../../types';
-import { $rootScope, getFileURL } from '../utils';
+import { $rootScope } from '../utils';
 
 export type MTStickerSet = {
   _: 'stickerSet',
@@ -217,7 +217,7 @@ class AppStickersManager {
     }, 100);
   }
 
-  public getStickerSetThumbURL(stickerSet: MTStickerSet) {
+  public getStickerSetThumbDownloadOptions(stickerSet: MTStickerSet) {
     const thumb = stickerSet.thumb;
     const dcID = stickerSet.thumb_dc_id;
 
@@ -230,11 +230,27 @@ class AppStickersManager {
       local_id: thumb.location.local_id
     };
 
-    const url = getFileURL('document', {dcID, location: input, size: thumb.size, mimeType: isAnimated ? "application/x-tgsticker" : 'image/webp'});
+    return {dcID, location: input, size: thumb.size, mimeType: isAnimated ? "application/x-tgsticker" : 'image/webp'};
+  }
+
+  /* public getStickerSetThumbURL(stickerSet: MTStickerSet) {
+    const thumb = stickerSet.thumb;
+    const dcID = stickerSet.thumb_dc_id;
+
+    const isAnimated = stickerSet.pFlags?.animated;
+
+    const input: inputStickerSetThumb = {
+      _: 'inputStickerSetThumb',
+      stickerset: this.getStickerSetInput(stickerSet),
+      volume_id: thumb.location.volume_id,
+      local_id: thumb.location.local_id
+    };
+
+    const url = getFileURL('document', this.getStickerSetThumbDownloadOptions(stickerSet));
     return url;
 
     //return promise;
-  }
+  } */
 
   public getStickerSetInput(set: {id: string, access_hash: string}) {
     return set.id == 'emoji' ? {

@@ -1,6 +1,8 @@
 import { $rootScope } from "../utils";
 import apiManager from "../mtproto/mtprotoworker";
 import { deferredPromise, CancellablePromise } from "../polyfill";
+import type { DownloadOptions } from "../mtproto/apiFileManager";
+import { getFileNameByLocation } from "../bin_utils";
 
 export type ResponseMethodBlob = 'blob';
 export type ResponseMethodJson = 'json';
@@ -38,40 +40,24 @@ export class AppDownloadManager {
     });
   }
 
-  public download(url: string, fileName: string, responseMethod?: ResponseMethodBlob): DownloadBlob;
-  public download(url: string, fileName: string, responseMethod?: ResponseMethodJson): DownloadJson;
-  public download(url: string, fileName: string, responseMethod: ResponseMethod = 'blob'): DownloadBlob {
+  public download(options: DownloadOptions, responseMethod?: ResponseMethodBlob): DownloadBlob;
+  public download(options: DownloadOptions, responseMethod?: ResponseMethodJson): DownloadJson;
+  public download(options: DownloadOptions, responseMethod: ResponseMethod = 'blob'): DownloadBlob {
+    const fileName = getFileNameByLocation(options.location, {fileName: options.fileName});
+
     if(this.downloads.hasOwnProperty(fileName)) return this.downloads[fileName];
 
     const deferred = deferredPromise<Blob>();
 
-    const controller = new AbortController();
-    const promise = fetch(url, {signal: controller.signal})
-    .then(res => res[responseMethod]())
-    .then(res => deferred.resolve(res))
-    .catch(err => { // Только потому что event.request.signal не работает в SW, либо я кривой?
-      if(err.name === 'AbortError') {
-        //console.log('Fetch aborted');
-        apiManager.cancelDownload(fileName);
-        delete this.downloads[fileName];
-        delete this.progress[fileName];
-        delete this.progressCallbacks[fileName];
-      } else {
-        //console.error('Uh oh, an error!', err);
-      }
-      
-      deferred.reject(err);
-      throw err;
+    apiManager.downloadFile(options)
+    .then(deferred.resolve, deferred.reject)
+    .finally(() => {
+      delete this.progressCallbacks[fileName];
     });
 
     //console.log('Will download file:', fileName, url);
 
-    promise.finally(() => {
-      delete this.progressCallbacks[fileName];
-    });
-
     deferred.cancel = () => {
-      controller.abort();
       deferred.cancel = () => {};
     };
 
@@ -129,8 +115,8 @@ export class AppDownloadManager {
     return this.download(fileName, url);
   } */
 
-  public downloadToDisc(fileName: string, url: string, discFileName: string) {
-    const download = this.download(url, fileName);
+  public downloadToDisc(options: DownloadOptions, discFileName: string) {
+    const download = this.download(options);
     download/* .promise */.then(blob => {
       const objectURL = URL.createObjectURL(blob);
       this.createDownloadAnchor(objectURL, discFileName, () => {
