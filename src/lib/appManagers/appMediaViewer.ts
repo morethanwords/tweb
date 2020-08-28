@@ -15,6 +15,7 @@ import { isSafari, mediaSizes, touchSupport } from "../config";
 import appAudio from "../../components/appAudio";
 import { deferredPromise } from "../polyfill";
 import { MTDocument } from "../../types";
+import idbFileStorage from "../idb";
 
 // TODO: масштабирование картинок (не SVG) при ресайзе, и правильный возврат на исходную позицию
 // TODO: картинки "обрезаются" если возвращаются или появляются с места, где есть их перекрытие (топбар, поле ввода)
