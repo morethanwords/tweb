@@ -1465,6 +1465,12 @@ $bubble-margin: .25rem;
       background-color: #90e18d !important;
     }
   }
+
+  .bubble-beside-button {
+    right: auto;
+    left: -46px;
+    transform: scaleX(-1);
+  }
 }
 
 .reply-markup {
