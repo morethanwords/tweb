@@ -1,7 +1,7 @@
 import appPhotosManager, { MTPhoto } from '../lib/appManagers/appPhotosManager';
 import LottieLoader from '../lib/lottieLoader';
 import appDocsManager from "../lib/appManagers/appDocsManager";
-import { formatBytes, getEmojiToneIndex } from "../lib/utils";
+import { formatBytes, getEmojiToneIndex, isInDOM } from "../lib/utils";
 import ProgressivePreloader from './preloader';
 import LazyLoadQueue from './lazyLoadQueue';
 import VideoPlayer from '../lib/mediaPlayer';
@@ -17,6 +17,7 @@ import AudioElement from './audio';
 import { DownloadBlob } from '../lib/appManagers/appDownloadManager';
 import webpWorkerController from '../lib/webp/webpWorkerController';
 import { readBlobAsText } from '../helpers/blob';
+import appMediaPlaybackController from './appMediaPlaybackController';
 
 export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group}: {
   doc: MTDocument, 
@@ -55,7 +56,72 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     return wrapPhoto(doc, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware);
   }
 
+  /* const video = doc.type == 'round' ? appMediaPlaybackController.addMedia(doc, message.mid) as HTMLVideoElement : document.createElement('video');
+  if(video.parentElement) {
+    video.remove();
+  } */
+
   const video = document.createElement('video');
+  if(doc.type == 'round') {
+    video.muted = true;
+    const globalVideo = appMediaPlaybackController.addMedia(doc, message.mid);
+
+    video.addEventListener('canplay', () => {
+      if(globalVideo.currentTime > 0) {
+        video.currentTime = globalVideo.currentTime;
+      }
+  
+      if(!globalVideo.paused) {
+        // с закоментированными настройками - хром выключал видео при скролле, для этого нужно было включить видео - выйти из диалога, зайти заново и проскроллить вверх
+        /* video.autoplay = true;
+        video.loop = false; */
+        video.play();
+      }
+    }, {once: true});
+
+    const clear = () => {
+      //console.log('clearing video');
+
+      globalVideo.removeEventListener('timeupdate', onTimeUpdate);
+      globalVideo.removeEventListener('play', onGlobalPlay);
+      globalVideo.removeEventListener('pause', onGlobalPause);
+      video.removeEventListener('play', onVideoPlay);
+      video.removeEventListener('pause', onVideoPause);
+    };
+
+    const onTimeUpdate = () => {
+      if(!isInDOM(video)) {
+        clear();
+      }
+    };
+
+    const onGlobalPlay = () => {
+      video.play();
+    };
+
+    const onGlobalPause = () => {
+      video.pause();
+    };
+
+    const onVideoPlay = () => {
+      globalVideo.play();
+    };
+
+    const onVideoPause = () => {
+      //console.log('video pause event');
+      if(isInDOM(video)) {
+        globalVideo.pause();
+      } else {
+        clear();
+      }
+    };
+
+    globalVideo.addEventListener('timeupdate', onTimeUpdate);
+    globalVideo.addEventListener('play', onGlobalPlay);
+    globalVideo.addEventListener('pause', onGlobalPause);
+    video.addEventListener('play', onVideoPlay);
+    video.addEventListener('pause', onVideoPause);
+  }
   
   let img: HTMLImageElement;
   if(message) {
@@ -154,7 +220,10 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       }, {once: true});
     //}
 
-    renderImageFromUrl(video, doc.url);
+    //if(doc.type != 'round') {
+      renderImageFromUrl(video, doc.url);
+    //}
+
     video.setAttribute('playsinline', '');
 
     /* if(!container.parentElement) {

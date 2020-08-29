@@ -35,7 +35,7 @@ import PopupStickers from '../../components/popupStickers';
 import SearchInput from '../../components/searchInput';
 import AppSearch, { SearchGroup } from '../../components/appSearch';
 import PopupDatePicker from '../../components/popupDatepicker';
-import appAudio from '../../components/appAudio';
+import appMediaPlaybackController from '../../components/appMediaPlaybackController';
 import appPollsManager from './appPollsManager';
 import { ripple } from '../../components/ripple';
 import { horizontalMenu } from '../../components/horizontalMenu';
@@ -420,20 +420,20 @@ class ChatAudio {
       this.container.style.display = 'none';
       this.container.parentElement.classList.remove('is-audio-shown');
       if(this.toggle.classList.contains('flip-icon')) {
-        appAudio.toggle();
+        appMediaPlaybackController.toggle();
       }
     });
 
     this.toggle.addEventListener('click', (e) => {
       cancelEvent(e);
-      appAudio.toggle();
+      appMediaPlaybackController.toggle();
     });
 
     $rootScope.$on('audio_play', (e: CustomEvent) => {
       const {doc, mid} = e.detail;
 
       let title: string, subtitle: string;
-      if(doc.type == 'voice') {
+      if(doc.type == 'voice' || doc.type == 'round') {
         const message = appMessagesManager.getMessage(mid);
         title = appPeersManager.getPeerTitle(message.fromID, false, true);
         //subtitle = 'Voice message';

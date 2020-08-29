@@ -3,7 +3,7 @@ import { RichTextProcessor } from "../lib/richtextprocessor";
 import { formatDate } from "./wrappers";
 import ProgressivePreloader from "./preloader";
 import { MediaProgressLine } from "../lib/mediaPlayer";
-import appAudio from "./appAudio";
+import appMediaPlaybackController from "./appMediaPlaybackController";
 import { MTDocument } from "../types";
 import { mediaSizes } from "../lib/config";
 import { Download } from "../lib/appManagers/appDownloadManager";
@@ -313,7 +313,7 @@ export default class AudioElement extends HTMLElement {
     audioTimeDiv.innerHTML = durationStr;
 
     const onLoad = () => {
-      const audio = this.audio = appAudio.addAudio(doc, mid);
+      const audio = this.audio = appMediaPlaybackController.addMedia(doc, mid);
 
       this.onTypeDisconnect = onTypeLoad();
       
@@ -390,13 +390,13 @@ export default class AudioElement extends HTMLElement {
         this.addEventListener('click', onClick);
         this.click();
       } else {
-        if(appAudio.audioExists(mid)) { // чтобы показать прогресс, если аудио уже было скачано
+        if(appMediaPlaybackController.mediaExists(mid)) { // чтобы показать прогресс, если аудио уже было скачано
           onLoad();
         } else {
           const r = () => {
             onLoad();
   
-            appAudio.willBePlayed(this.audio); // prepare for loading audio
+            appMediaPlaybackController.willBePlayed(this.audio); // prepare for loading audio
   
             if(!preloader) {
               preloader = new ProgressivePreloader(null, false);
@@ -413,9 +413,9 @@ export default class AudioElement extends HTMLElement {
   
               //setTimeout(() => {
                 // release loaded audio
-                if(appAudio.willBePlayedAudio == this.audio) {
+                if(appMediaPlaybackController.willBePlayedMedia == this.audio) {
                   this.audio.play();
-                  appAudio.willBePlayedAudio = null;
+                  appMediaPlaybackController.willBePlayedMedia = null;
                 }
               //}, 10e3);
             });

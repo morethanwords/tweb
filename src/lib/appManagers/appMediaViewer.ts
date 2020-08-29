@@ -12,10 +12,9 @@ import AvatarElement from "../../components/avatar";
 import LazyLoadQueue from "../../components/lazyLoadQueue";
 import appForward from "../../components/appForward";
 import { isSafari, mediaSizes, touchSupport } from "../config";
-import appAudio from "../../components/appAudio";
 import { deferredPromise } from "../polyfill";
 import { MTDocument } from "../../types";
-import idbFileStorage from "../idb";
+import appMediaPlaybackController from "../../components/appMediaPlaybackController";
 
 // TODO: масштабирование картинок (не SVG) при ресайзе, и правильный возврат на исходную позицию
 // TODO: картинки "обрезаются" если возвращаются или появляются с места, где есть их перекрытие (топбар, поле ввода)
@@ -954,8 +953,8 @@ export class AppMediaViewer {
             video.dataset.overlay = '1';
 
             // fix for simultaneous play
-            appAudio.pause();
-            appAudio.willBePlayedAudio = null;
+            appMediaPlaybackController.pause();
+            appMediaPlaybackController.willBePlayedMedia = null;
             
             Promise.all([canPlayThrough, onAnimationEnd]).then(() => {
               const player = new VideoPlayer(video, true, media.supportsStreaming);

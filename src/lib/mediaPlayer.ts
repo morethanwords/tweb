@@ -1,4 +1,4 @@
-import { cancelEvent, whichChild } from "./utils";
+import { cancelEvent } from "./utils";
 import { touchSupport } from "./config";
 
 export class ProgressLine {
@@ -7,7 +7,7 @@ export class ProgressLine {
   protected seek: HTMLInputElement;
 
   protected duration = 1;
-  protected mousedown = false;
+  public mousedown = false;
 
   private events: Partial<{
     //onMouseMove: ProgressLine['onMouseMove'],
@@ -343,7 +343,9 @@ export default class VideoPlayer {
           volumeSvg.innerHTML = `<path d="${d}"></path>`;
         } catch(err) {}
 
-        volumeProgress.setProgress(video.muted ? 0 : volume);
+        if(!volumeProgress.mousedown) {
+          volumeProgress.setProgress(video.muted ? 0 : volume);
+        }
       };
       
       // не вызовется повторно если на 1 установить 1
@@ -439,6 +441,14 @@ export default class VideoPlayer {
         iconVolume.style.display = '';
       });
     }
+
+    video.addEventListener('play', () => {
+      this.wrapper.classList.add('is-playing');
+    });
+
+    video.addEventListener('pause', () => {
+      this.wrapper.classList.remove('is-playing');
+    });
   
     if(video.duration > 0) {
       timeDuration.innerHTML = String(Math.round(video.duration)).toHHMMSS();
@@ -469,7 +479,7 @@ export default class VideoPlayer {
     }
   
     this.video[this.video.paused ? 'play' : 'pause']();
-    this.video.paused ? this.wrapper.classList.remove('is-playing') : this.wrapper.classList.add('is-playing');
+    //this.wrapper.classList.toggle('is-playing', !this.video.paused);
   }
 
   private handleProgress(timeDuration: HTMLElement, circumference: number, circle: SVGCircleElement, updateInterval: number) {

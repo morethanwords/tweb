@@ -2896,7 +2896,7 @@ export class AppMessagesManager {
         var neededContents: {
           [type: string]: boolean
         } = {},
-          neededDocType: string | boolean;
+          neededDocTypes: string[] = [];
         var neededLimit = limit || 20;
         var message;
 
@@ -2908,32 +2908,36 @@ export class AppMessagesManager {
           case 'inputMessagesFilterPhotoVideo':
             neededContents['messageMediaPhoto'] = true;
             neededContents['messageMediaDocument'] = true;
-            neededDocType = 'video';
+            neededDocTypes.push('video');
             break;
 
           case 'inputMessagesFilterVideo':
             neededContents['messageMediaDocument'] = true;
-            neededDocType = 'video';
+            neededDocTypes.push('video');
             break;
 
           case 'inputMessagesFilterDocument':
             neededContents['messageMediaDocument'] = true;
-            neededDocType = false;
             break;
 
           case 'inputMessagesFilterVoice':
             neededContents['messageMediaDocument'] = true;
-            neededDocType = 'voice';
+            neededDocTypes.push('voice');
+            break;
+
+          case 'inputMessagesFilterRoundVoice':
+            neededContents['messageMediaDocument'] = true;
+            neededDocTypes.push('round', 'voice');
             break;
 
           case 'inputMessagesFilterRoundVideo':
             neededContents['messageMediaDocument'] = true;
-            neededDocType = 'round';
+            neededDocTypes.push('round');
             break;
 
           case 'inputMessagesFilterMusic':
             neededContents['messageMediaDocument'] = true;
-            neededDocType = 'audio';
+            neededDocTypes.push('audio');
             break;
 
           case 'inputMessagesFilterUrl':
@@ -2955,9 +2959,9 @@ export class AppMessagesManager {
         for(let i = 0; i < historyStorage.history.length; i++) {
           message = this.messagesStorage[historyStorage.history[i]];
           if(message.media && neededContents[message.media._]) {
-            if(neededDocType !== undefined &&
+            if(neededDocTypes.length &&
                 message.media._ == 'messageMediaDocument' &&
-                message.media.document.type != neededDocType) {
+                !neededDocTypes.includes(message.media.document.type)) {
               continue;
             }
 
