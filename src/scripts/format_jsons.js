@@ -92,6 +92,8 @@ if(false) {
 
     let emoji = unified/* .replace(/-FE0F/gi, '') */.split('-')
     .reduce((prev, curr) => prev + String.fromCodePoint(parseInt(curr, 16)), '');
+
+    //emoji = emoji.replace(/\ufe0f/g, '');
     
     let c = categories[category] === undefined ? 9 : categories[category];
     //obj[emoji] = '' + c + sort_order;
