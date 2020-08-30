@@ -183,6 +183,11 @@ export default class Scrollable {
       if(!touchSupport) {
         const scrollHorizontally = (e: any) => {
           e = window.event || e;
+          if(e.which == 1) {
+            // maybe horizontal scroll is natively supports, works on macbook
+            return;
+          }
+
           const delta = Math.max(-1, Math.min(1, (e.wheelDelta || -e.detail)));
           this.container.scrollLeft -= (delta * 20);
           e.preventDefault();
