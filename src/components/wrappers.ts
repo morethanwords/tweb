@@ -414,7 +414,7 @@ function wrapMediaWithTail(photo: MTPhoto | MTDocument, message: {mid: number, m
   return img;
 }
 
-export function wrapPhoto(photo: MTPhoto | MTDocument, message: any, container: HTMLDivElement, boxWidth = mediaSizes.active.regular.width, boxHeight = mediaSizes.active.regular.height, withTail = true, isOut = false, lazyLoadQueue: LazyLoadQueue, middleware: () => boolean, size: MTPhotoSize = null) {
+export function wrapPhoto(photo: MTPhoto | MTDocument, message: any, container: HTMLDivElement, boxWidth = mediaSizes.active.regular.width, boxHeight = mediaSizes.active.regular.height, withTail: boolean, isOut: boolean, lazyLoadQueue: LazyLoadQueue, middleware: () => boolean, size: MTPhotoSize = null) {
   let image: HTMLImageElement;
   if(withTail) {
     image = wrapMediaWithTail(photo, message, container, boxWidth, boxHeight, isOut);

@@ -247,7 +247,7 @@ let onFirstMount = () => {
       }
       //lang_code: navigator.language || 'en'
     }).then((code: any) => {
-      console.log('got code', code);
+      //console.log('got code', code);
 
       pageAuthCode.mount(Object.assign(code, {phone_number: phone_number}));
     }).catch(err => {

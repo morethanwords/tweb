@@ -108,6 +108,12 @@ export default class AppEditFolderTab implements SliderTab {
         if(bool) {
           this.closeBtn.click();
         }
+      }).catch(err => {
+        if(err.type == 'DIALOG_FILTERS_TOO_MUCH') {
+          toast('Sorry, you can\'t create more folders.');
+        } else {
+          console.error('updateDialogFilter error:', err);
+        }
       }).finally(() => {
         this.confirmBtn.removeAttribute('disabled');
       });

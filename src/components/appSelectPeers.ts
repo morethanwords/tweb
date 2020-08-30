@@ -24,13 +24,16 @@ export class AppSelectPeers {
 
   private myID = $rootScope.myID;
 
+  private folderID = 0;
   private offsetIndex = 0;
   private promise: Promise<any>;
 
   private query = '';
   private cachedContacts: number[];
+
+  private loadedWhat: Partial<{[k in 'dialogs' | 'archived' | 'contacts']: true}> = {};
   
-  constructor(private appendTo: HTMLElement, private onChange?: (length: number) => void, private peerType: 'contacts' | 'dialogs' = 'dialogs', onFirstRender?: () => void, private renderResultsFunc?: (peerIDs: number[]) => void) {
+  constructor(private appendTo: HTMLElement, private onChange?: (length: number) => void, private peerType: 'contacts' | 'dialogs' | 'both' = 'dialogs', onFirstRender?: () => void, private renderResultsFunc?: (peerIDs: number[]) => void) {
     this.container.classList.add('selector');
 
     if(!this.renderResultsFunc) {
@@ -93,15 +96,25 @@ export class AppSelectPeers {
     this.input.addEventListener('input', () => {
       let value = this.input.value;
       if(this.query != value) {
-        if(this.peerType == 'contacts') {
+        if(this.peerType == 'contacts' || this.peerType == 'both') {
+          delete this.loadedWhat.contacts;
           this.cachedContacts = null;
-        } else {
+        }
+        
+        if(this.peerType == 'dialogs' || this.peerType == 'both') {
+          delete this.loadedWhat.dialogs;
+          delete this.loadedWhat.archived;
+          this.folderID = 0;
           this.offsetIndex = 0;
         }
 
         this.promise = null;
         this.list.innerHTML = '';
         this.query = value;
+
+        if(this.query && 'saved messages'.includes(this.query.toLowerCase())) {
+          this.renderResultsFunc([$rootScope.myID]);
+        }
         
         //console.log('selectPeers input:', this.query);
         this.getMoreResults();
@@ -126,39 +139,61 @@ export class AppSelectPeers {
     }, 0);
   }
 
-  private async getMoreDialogs() {
+  private async getMoreDialogs(): Promise<any> {
     if(this.promise) return this.promise;
+
+    if(this.loadedWhat.dialogs && this.loadedWhat.archived) {
+      return;
+    }
     
     // в десктопе - сначала без группы, потом архивные, потом контакты без сообщений
     const pageCount = appPhotosManager.windowH / 72 * 1.25 | 0;
 
-    this.promise = appMessagesManager.getConversations(this.query, this.offsetIndex, pageCount, 0);
+    this.promise = appMessagesManager.getConversations(this.query, this.offsetIndex, pageCount, this.folderID);
     const value = await this.promise;
 
     let dialogs = value.dialogs as Dialog[];
-    if(!dialogs.length) {
-      return;
+    if(dialogs.length) {
+      const newOffsetIndex = dialogs[dialogs.length - 1].index || 0;
+
+      dialogs = dialogs.filter(d => d.peerID != this.myID);
+      if(!this.offsetIndex && this.folderID == 0 && !this.query) {
+        dialogs.unshift({
+          peerID: this.myID,
+          pFlags: {}
+        } as any);
+      }
+
+      this.offsetIndex = newOffsetIndex;
+
+      this.renderResultsFunc(dialogs.map(dialog => dialog.peerID));
+    } else {
+      if(!this.loadedWhat.dialogs) {
+        this.loadedWhat.dialogs = true;
+        this.offsetIndex = 0;
+        this.folderID = 1;
+
+        this.promise = null;
+        return this.getMoreDialogs();
+      } else {
+        this.loadedWhat.archived = true;
+
+        if(!this.loadedWhat.contacts && this.peerType == 'both') {
+          this.promise = null;
+          return this.getMoreContacts();
+        }
+      }
     }
-    
-    const newOffsetIndex = dialogs[dialogs.length - 1].index || 0;
-
-    dialogs = dialogs.filter(d => d.peerID != this.myID);
-    if(!this.offsetIndex && !this.query) {
-      dialogs.unshift({
-        peerID: this.myID,
-        pFlags: {}
-      } as any);
-    }
-
-    this.offsetIndex = newOffsetIndex;
-
-    this.renderResultsFunc(dialogs.map(dialog => dialog.peerID));
 
     this.promise = null;
   }
 
   private async getMoreContacts() {
     if(this.promise) return this.promise;
+
+    if(this.loadedWhat.contacts) {
+      return;
+    }
 
     if(!this.cachedContacts) {
       this.promise = appUsersManager.getContacts(this.query);
@@ -171,15 +206,26 @@ export class AppSelectPeers {
       const pageCount = appPhotosManager.windowH / 72 * 1.25 | 0;
       const arr = this.cachedContacts.splice(0, pageCount);
       this.renderResultsFunc(arr);
+    } else {
+      this.loadedWhat.contacts = true;
     }
   }
 
   private getMoreResults() {
-    if(this.peerType == 'dialogs') {
-      return this.getMoreDialogs();
-    } else {
-      return this.getMoreContacts();
+    const promises: Promise<any>[] = [];
+    if(this.peerType == 'dialogs' || this.peerType == 'both') {
+      promises.push(this.getMoreDialogs());
+
+      if(!this.loadedWhat.archived) {
+        return Promise.all(promises);
+      }
     }
+    
+    if(this.peerType == 'contacts' || this.peerType == 'both') {
+      promises.push(this.getMoreContacts());
+    }
+
+    return Promise.all(promises);
   }
 
   private renderResults(peerIDs: number[]) {

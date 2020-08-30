@@ -7,6 +7,8 @@ import Scrollable from "../scrollable_new";
 import appUsersManager from "../../lib/appManagers/appUsersManager";
 import { $rootScope } from "../../lib/utils";
 
+// TODO: аватарка не поменяется в этой вкладке после изменения почему-то (если поставить в другом клиенте, и потом тут проверить, для этого ещё вышел в чатлист)
+
 export default class AppEditProfileTab implements SliderTab {
   private container = document.querySelector('.edit-profile-container') as HTMLDivElement;
   private scrollWrapper = this.container.querySelector('.scroll-wrapper') as HTMLDivElement;

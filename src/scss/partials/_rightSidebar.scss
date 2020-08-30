@@ -238,6 +238,10 @@
       > div {
         //height: 100%;
         position: relative;
+
+        /* > div:not(:empty) + .content-empty {
+          display: none;
+        } */
       }
   
       /* > div > div:not(.scroll-padding) {

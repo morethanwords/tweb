@@ -151,17 +151,6 @@ export function getRichElementValue(node: any, lines: string[], line: string[], 
   }
 } */
 
-type BroadcastKeys = 'download_progress' | 'user_update' | 'user_auth' | 'peer_changed' | 
-  'filter_delete' | 'filter_update' | 'message_edit' | 'dialog_draft' | 'messages_pending' |
-  'history_append' | 'history_update' | 'dialogs_multiupdate' | 'dialog_unread' | 'dialog_flush' |
-  'dialog_drop' | 'dialog_migrate' | 'dialog_top' | 'history_reply_markup' | 'history_multiappend' | 
-  'messages_read' | 'history_delete' | 'history_forbidden' | 'history_reload' | 'message_views' | 
-  'message_sent' | 'history_request' | 'messages_downloaded' | 'contacts_update' | 'avatar_update' |
-  'stickers_installed' | 'stickers_deleted' | 'chat_full_update' | 'peer_pinned_message' | 
-  'poll_update' | 'dialogs_archived_unread' | 'audio_play' | 'audio_pause' | 'chat_update' | 
-  'apiUpdate' | 'stateSynchronized' | 'channel_settings' | 'webpage_updated' | 'draft_updated' | 
-  'dialog_notify_settings';
-
 type BroadcastEvents = {
   'download_progress': any,
   'user_update': any,
@@ -222,7 +211,7 @@ export const $rootScope = {
     // @ts-ignore
     document.addEventListener(name, callback);
   },
-  $off: (name: BroadcastKeys, callback: (e: CustomEvent) => any) => {
+  $off: <T extends keyof BroadcastEvents>(name: T, callback: (e: Omit<CustomEvent, 'detail'> & {detail: BroadcastEvents[T]}) => any) => {
     // @ts-ignore
     document.removeEventListener(name, callback);
   },

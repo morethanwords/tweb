@@ -73,7 +73,7 @@ class AppForward {
       } else {
         this.sendBtn.classList.remove('is-visible');
       }
-    }, 'dialogs', () => {
+    }, 'both', () => {
       //console.log('forward rendered:', this.container.querySelector('.selector ul').childElementCount);
       this.sidebarWasActive = appSidebarRight.sidebarEl.classList.contains('active');
       appSidebarRight.toggleSidebar(true);

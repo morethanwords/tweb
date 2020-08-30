@@ -7,6 +7,7 @@ import appPeersManager from "../../lib/appManagers/appPeersManager";
 import { $rootScope, cancelEvent } from "../../lib/utils";
 import appSidebarLeft from "../../lib/appManagers/appSidebarLeft";
 import { ripple } from "../ripple";
+import { toast } from "../toast";
 
 type DialogFilterSuggested = {
   _: 'dialogFilterSuggested',
@@ -98,7 +99,11 @@ export default class AppChatFoldersTab implements SliderTab {
     this.createFolderBtn = this.container.querySelector('.btn-create-folder');
 
     this.createFolderBtn.addEventListener('click', () => {
-      appSidebarLeft.editFolderTab.open();
+      if(Object.keys(this.filtersRendered).length >= 10) {
+        toast('Sorry, you can\'t create more folders.');
+      } else {
+        appSidebarLeft.editFolderTab.open();
+      }
     });
 
     lottieLoader.loadAnimationFromURL({
@@ -162,6 +167,12 @@ export default class AppChatFoldersTab implements SliderTab {
 
         button.addEventListener('click', (e) => {
           cancelEvent(e);
+
+          if(Object.keys(this.filtersRendered).length >= 10) {
+            toast('Sorry, you can\'t create more folders.');
+            return;
+          }
+
           button.setAttribute('disabled', 'true');
 
           appMessagesManager.filtersStorage.createDialogFilter(filter.filter).then(bool => {

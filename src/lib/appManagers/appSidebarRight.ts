@@ -1,7 +1,7 @@
 import { putPreloader, renderImageFromUrl } from "../../components/misc";
 //import Scrollable from '../../components/scrollable';
 import Scrollable from '../../components/scrollable_new';
-import { $rootScope, findUpClassName } from "../utils";
+import { $rootScope } from "../utils";
 import appMessagesManager from "./appMessagesManager";
 import appPhotosManager from "./appPhotosManager";
 import appPeersManager from "./appPeersManager";
@@ -12,12 +12,12 @@ import { logger, LogLevels } from "../logger";
 import appImManager from "./appImManager";
 import appMediaViewer from "./appMediaViewer";
 import LazyLoadQueue from "../../components/lazyLoadQueue";
-import { wrapDocument, wrapAudio, wrapSticker } from "../../components/wrappers";
+import { wrapDocument, wrapAudio } from "../../components/wrappers";
 import AppSearch, { SearchGroup } from "../../components/appSearch";
 import AvatarElement from "../../components/avatar";
 import appForward from "../../components/appForward";
 import { mediaSizes } from "../config";
-import SidebarSlider, { SliderTab } from "../../components/slider";
+import SidebarSlider from "../../components/slider";
 import SearchInput from "../../components/searchInput";
 import { horizontalMenu } from "../../components/horizontalMenu";
 import AppStickersTab from "../../components/sidebarRight/stickers";
@@ -54,6 +54,9 @@ const contentToSharedMap: {[contentType in ContentType]: SharedMediaType} = {
   contentLinks: 'inputMessagesFilterUrl',
   contentAudio: 'inputMessagesFilterMusic'
 };
+
+// TODO: отправленное сообщение с картинкой, или же новое полученное апдейтом сообщение не отобразится в медии
+// TODO: по-хорошему, нужно просто сделать апдейты для всего сайдбара
 
 export class AppSidebarRight extends SidebarSlider {
   public static SLIDERITEMSIDS = {
@@ -633,7 +636,7 @@ export class AppSidebarRight extends SidebarSlider {
 
       //this.contentContainer.classList.add('loaded');
 
-      if(!messages.length) {
+      if(!messages.length && !sharedMediaDiv.childElementCount) {
         const div = document.createElement('div');
         div.innerText = 'Nothing interesting here yet...';
         div.classList.add('position-center', 'text-center', 'content-empty', 'no-select');
