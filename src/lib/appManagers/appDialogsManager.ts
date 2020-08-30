@@ -30,7 +30,7 @@ type DialogDom = {
 };
 
 const testScroll = false;
-const USEPINNEDDELIMITER = false;
+//const USEPINNEDDELIMITER = false;
 
 class DialogsContextMenu {
   private element = document.getElementById('dialogs-contextmenu') as HTMLDivElement;
@@ -321,11 +321,7 @@ export class AppDialogsManager {
   public _chatList = document.getElementById('dialogs') as HTMLUListElement;
   public chatList = this._chatList;
   
-  public pinnedDelimiter: HTMLDivElement;
-  /* public chatsHidden: Scrollable["hiddenElements"];
-  public chatsVisible: Scrollable["visibleElements"];
-  public chatsArchivedHidden: Scrollable["hiddenElements"];
-  public chatsArchivedVisible: Scrollable["visibleElements"]; */
+  //public pinnedDelimiter: HTMLDivElement;
   
   public doms: {[peerID: number]: DialogDom} = {};
   public lastActiveListElement: HTMLElement = null;
@@ -374,11 +370,11 @@ export class AppDialogsManager {
 
     this.allUnreadCount = this.folders.menu.querySelector('.unread-count');
     
-    if(USEPINNEDDELIMITER) {
+    /* if(USEPINNEDDELIMITER) {
       this.pinnedDelimiter = document.createElement('div');
       this.pinnedDelimiter.classList.add('pinned-delimiter');
       this.pinnedDelimiter.appendChild(document.createElement('span'));
-    }
+    } */
 
     this.folders.menuScrollContainer = this.folders.menu.parentElement;
 
@@ -459,7 +455,7 @@ export class AppDialogsManager {
       this.setLastMessage(dialog);
       this.setDialogPosition(dialog);
 
-      this.setPinnedDelimiter();
+      //this.setPinnedDelimiter();
       this.setFiltersUnreadCount();
     });
 
@@ -481,7 +477,7 @@ export class AppDialogsManager {
         this.updateDialog(dialog);
       }
 
-      this.setPinnedDelimiter();
+      //this.setPinnedDelimiter();
       this.validateForFilter();
       this.setFiltersUnreadCount();
     });
@@ -618,7 +614,7 @@ export class AppDialogsManager {
 
       return this.loadDialogs(this.filterID);
     }).then(result => {
-      this.setPinnedDelimiter();
+      //this.setPinnedDelimiter();
       //appSidebarLeft.onChatsScroll();
       this.loadDialogs(1);
     });
@@ -671,7 +667,8 @@ export class AppDialogsManager {
    * Удалит неподходящие чаты из списка, но не добавит их(!)
    */
   public validateForFilter() {
-    if(this.filterID == 0) return;
+    // !WARNING, возможно это было зачем-то, но комментарий исправил архивирование
+    //if(this.filterID == 0) return;
 
     const folder = appMessagesManager.dialogsStorage.getFolder(this.filterID);
     let affected = false;
@@ -882,7 +879,7 @@ export class AppDialogsManager {
     this.log.debug('setDialogPosition:', dialog, dom, pos);
   }
 
-  public setPinnedDelimiter() {
+  /* public setPinnedDelimiter() {
     if(!USEPINNEDDELIMITER) return;
 
     let index = -1;
@@ -916,7 +913,7 @@ export class AppDialogsManager {
     modifying.forEach(elem => {
       this.scroll.updateElement(elem);
     });
-  }
+  } */
 
   public setLastMessage(dialog: any, lastMessage?: any, dom?: DialogDom, highlightWord?: string) {
     if(!lastMessage) {
