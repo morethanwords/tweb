@@ -1303,25 +1303,6 @@ img.emoji {
   user-select: text;
 }
 
-.justify-start {
-  justify-content: flex-start!important;
-}
-
-.justify-self-start {
-  justify-self: flex-start!important;
-}
-
-.justify-self-end {
-  justify-self: flex-end!important;
-}
-
-.position-center {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-}
-
 .sticky_sentinel {
   position: absolute;
   left: 0;
@@ -1481,6 +1462,10 @@ img.emoji {
   &:before {
     color: #707579 !important;
   }
+}
+
+.content-empty {
+  color: #707579;
 }
 
 // *:not(input):not(textarea) {

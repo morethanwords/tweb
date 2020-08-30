@@ -88,6 +88,25 @@ Utility Classes
   user-select: none;
 }
 
-.center-align {
+.center-align, .text-center {
   text-align: center;
+}
+
+.justify-start {
+  justify-content: flex-start!important;
+}
+
+.justify-self-start {
+  justify-self: flex-start!important;
+}
+
+.justify-self-end {
+  justify-self: flex-end!important;
+}
+
+.position-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
 }

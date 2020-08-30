@@ -44,6 +44,17 @@ const stickersTab = new AppStickersTab();
 const pollResultsTab = new AppPollResultsTab();
 const gifsTab = new AppGifsTab();
 
+type ContentType = 'contentMembers' | 'contentMedia' | 'contentDocuments' | 'contentLinks' | 'contentAudio';
+type SharedMediaType = 'inputMessagesFilterContacts' | 'inputMessagesFilterPhotoVideo' | 'inputMessagesFilterDocument' | 'inputMessagesFilterUrl' | 'inputMessagesFilterMusic';
+
+const contentToSharedMap: {[contentType in ContentType]: SharedMediaType} = {
+  contentMembers: 'inputMessagesFilterContacts',
+  contentMedia: 'inputMessagesFilterPhotoVideo',
+  contentDocuments: 'inputMessagesFilterDocument',
+  contentLinks: 'inputMessagesFilterUrl',
+  contentAudio: 'inputMessagesFilterMusic'
+};
+
 export class AppSidebarRight extends SidebarSlider {
   public static SLIDERITEMSIDS = {
     search: 1,
@@ -68,13 +79,13 @@ export class AppSidebarRight extends SidebarSlider {
     notificationsStatus: HTMLParagraphElement
   } = {} as any;
   public sharedMedia: {
-    [type: string]: HTMLDivElement
-  } = {};
+    [t in ContentType]: HTMLDivElement
+  } = {} as any;
   
   private loadSidebarMediaPromises: {[type: string]: Promise<void>} = {};
   private loadedAllMedia: {[type: string]: boolean} = {};
   
-  public sharedMediaTypes = [
+  public sharedMediaTypes: SharedMediaType[] = [
     //'members',
     'inputMessagesFilterContacts', 
     'inputMessagesFilterPhotoVideo', 
@@ -82,19 +93,19 @@ export class AppSidebarRight extends SidebarSlider {
     'inputMessagesFilterUrl', 
     'inputMessagesFilterMusic'
   ];
-  public sharedMediaType: AppSidebarRight['sharedMediaTypes'][number] = '';
+  public sharedMediaType: SharedMediaType = 'inputMessagesFilterPhotoVideo';
   private sharedMediaSelected: HTMLDivElement = null;
   
   private lazyLoadQueue = new LazyLoadQueue();
   
   public historiesStorage: {
-    [peerID: number]: {
-      [type: string]: number[]
-    }
+    [peerID: number]: Partial<{
+      [type in SharedMediaType]: number[]
+    }>
   } = {};
-  public usedFromHistory: {
-    [type: string]: number
-  } = {};
+  public usedFromHistory: Partial<{
+    [type in SharedMediaType]: number
+  }> = {};
   
   private log = logger('SR', LogLevels.error);
   
@@ -197,6 +208,8 @@ export class AppSidebarRight extends SidebarSlider {
       }
 
       this.prevTabID = id;
+    }, () => {
+      this.scroll.onScroll();
     });
     
     let sidebarCloseBtn = this.sidebarEl.querySelector('.sidebar-close-button') as HTMLButtonElement;
@@ -401,6 +414,12 @@ export class AppSidebarRight extends SidebarSlider {
     const elemsToAppend: HTMLElement[] = [];
     const promises: Promise<any>[] = [];
     let sharedMediaDiv: HTMLDivElement;
+
+    /* for(let contentType in contentToSharedMap) {
+      if(contentToSharedMap[contentType as ContentType] == type) {
+        sharedMediaDiv = this.sharedMedia[contentType as ContentType];
+      }
+    } */
     
     // https://core.telegram.org/type/MessagesFilter
     switch(type) {
@@ -607,10 +626,19 @@ export class AppSidebarRight extends SidebarSlider {
     }
     
     if(sharedMediaDiv) {
-      let parent = sharedMediaDiv.parentElement;
-      if(parent.lastElementChild.classList.contains('preloader')) {
-        parent.lastElementChild.remove();
-        //this.contentContainer.classList.add('loaded');
+      const parent = sharedMediaDiv.parentElement;
+      Array.from(parent.children).slice(1).forEach(child => {
+        child.remove();
+      });
+
+      //this.contentContainer.classList.add('loaded');
+
+      if(!messages.length) {
+        const div = document.createElement('div');
+        div.innerText = 'Nothing interesting here yet...';
+        div.classList.add('position-center', 'text-center', 'content-empty', 'no-select');
+
+        parent.append(div);
       }
     }
   }
@@ -622,20 +650,20 @@ export class AppSidebarRight extends SidebarSlider {
     
     this.log('loadSidebarMedia', single, this.peerID, this.loadSidebarMediaPromises);
     
-    let peerID = this.peerID;
+    const peerID = this.peerID;
     
     let typesToLoad = single ? [this.sharedMediaType] : this.sharedMediaTypes;
     typesToLoad = typesToLoad.filter(type => !this.loadedAllMedia[type]);
     if(!typesToLoad.length) return;
 
-    let loadCount = (appPhotosManager.windowH / 130 | 0) * 3; // that's good for all types
+    const loadCount = (appPhotosManager.windowH / 130 | 0) * 3; // that's good for all types
     
-    let historyStorage = this.historiesStorage[peerID] ?? (this.historiesStorage[peerID] = {});
+    const historyStorage = this.historiesStorage[peerID] ?? (this.historiesStorage[peerID] = {});
 
-    let promises = typesToLoad.map(type => {
+    const promises = typesToLoad.map(type => {
       if(this.loadSidebarMediaPromises[type]) return this.loadSidebarMediaPromises[type];
       
-      let history = historyStorage[type] ?? (historyStorage[type] = []);
+      const history = historyStorage[type] ?? (historyStorage[type] = []);
 
       // render from cache
       if(history.length && this.usedFromHistory[type] < history.length) {
@@ -658,9 +686,9 @@ export class AppSidebarRight extends SidebarSlider {
         }
 
         this.usedFromHistory[type] = used;
-        if(messages.length) {
+        //if(messages.length) {
           return this.performSearchResult(messages, type);
-        }
+        //}
 
         return Promise.resolve();
       }
@@ -693,9 +721,9 @@ export class AppSidebarRight extends SidebarSlider {
 
         this.usedFromHistory[type] = history.length;
 
-        if(ids.length) {
+        //if(ids.length) {
           return this.performSearchResult(this.filterMessagesByType(ids, type), type);
-        }
+        //}
       }, (err) => {
         this.log.error('load error:', err);
       }).then(() => {
@@ -739,13 +767,19 @@ export class AppSidebarRight extends SidebarSlider {
       this.urlsToRevoke.length = 0;
     }
 
-    Object.keys(this.sharedMedia).forEach(key => {
+    (Object.keys(this.sharedMedia) as ContentType[]).forEach(key => {
       this.sharedMedia[key].innerHTML = '';
       
-      if(!this.historiesStorage[this.peerID] || !this.historiesStorage[this.peerID][key]) {
-        let parent = this.sharedMedia[key].parentElement;
+      const inputFilter = contentToSharedMap[key];
+      if(!this.historiesStorage[this.peerID] || !this.historiesStorage[this.peerID][inputFilter]) {
+        const parent = this.sharedMedia[key].parentElement;
         if(!parent.querySelector('.preloader')) {
           putPreloader(parent, true);
+        }
+
+        const empty = parent.querySelector('.content-empty');
+        if(empty) {
+          empty.remove();
         }
       }
     });
