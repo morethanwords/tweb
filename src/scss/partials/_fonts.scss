@@ -264,7 +264,7 @@
   content: "\e94c";
 }
 .tgico-pause:before {
-  content: "\e94d";
+  content: $tgico-pause;
 }
 .tgico-permissions:before {
   content: "\e94e";
@@ -282,7 +282,7 @@
   content: "\e952";
 }
 .tgico-play:before {
-  content: "\e953";
+  content: $tgico-play;
 }
 .tgico-poll:before {
   content: "\e954";

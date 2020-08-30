@@ -159,6 +159,10 @@
     pointer-events: none;
   }
 
+  .toggle:before {
+    content: $tgico-play;
+  }
+
   &.is-playing {
     .default__gradient-bottom {
       transform: translateY(50px);
@@ -187,6 +191,12 @@
 
     .default__controls {
       transform: translateY(52px);
+    }
+
+    .toggle {
+      &:before {
+        content: $tgico-pause;
+      }
     }
   }
 

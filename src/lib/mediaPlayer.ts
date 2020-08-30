@@ -281,6 +281,8 @@ export default class VideoPlayer {
           video.autoplay = true;
           video.play();
         }
+      }).finally(() => { // due to autoplay, play will not call
+        this.wrapper.classList.toggle('is-playing', !this.video.paused);
       });
       //(this.wrapper.querySelector('.toggle') as HTMLButtonElement).click();
     }
@@ -388,12 +390,10 @@ export default class VideoPlayer {
         this.togglePlay();
       }); */
   
-      video.addEventListener('play', () => {
-        this.updateButton(toggle);
-      });
+      /* video.addEventListener('play', () => {
+      }); */
 
       video.addEventListener('pause', () => {
-        this.updateButton(toggle);
         clearInterval(updateInterval);
       });
   
@@ -515,12 +515,12 @@ export default class VideoPlayer {
     const skin = this.skin;
     if(skin === 'default') {
       return `
-      <button class="${skin}__button--big toggle tgico-largeplay" title="Toggle Play"></button>
+      <button class="${skin}__button--big toggle tgico" title="Toggle Play"></button>
       <div class="${skin}__gradient-bottom ckin__controls"></div>
       <div class="${skin}__controls ckin__controls">
         <div class="bottom-controls">
           <div class="left-controls">
-            <button class="${skin}__button toggle tgico-play" title="Toggle Video"></button>
+            <button class="${skin}__button toggle tgico" title="Toggle Video"></button>
             <div class="time">
               <time id="time-elapsed">0:00</time>
               <span> / </span>
@@ -539,14 +539,6 @@ export default class VideoPlayer {
       </svg>
       `;
     }
-  }
-
-  public updateButton(toggle: NodeListOf<HTMLElement>) {
-    const icon = this.video.paused ? 'tgico-play' : 'tgico-pause';
-    Array.from(toggle).forEach((button) => {
-      button.classList.remove('tgico-play', 'tgico-pause');
-      button.classList.add(icon);
-    });
   }
   
   public toggleFullScreen(fullScreenButton: HTMLElement) {
