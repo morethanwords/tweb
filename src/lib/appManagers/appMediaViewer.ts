@@ -296,6 +296,10 @@ export class AppMediaViewer {
   private async setMoverToTarget(target: HTMLElement, closing = false, fromRight = 0) {
     const mover = this.content.mover;
 
+    if(!target) {
+      target = this.content.container;
+    }
+
     if(!closing) {
       mover.innerHTML = '';
       //mover.append(this.buttons.prev, this.buttons.next);

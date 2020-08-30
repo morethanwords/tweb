@@ -2402,7 +2402,7 @@ export class AppImManager {
               bubble.classList.add('is-vertical-photo');
             }
 
-            wrapPhoto(webpage.photo, message, preview, mediaSizes.active.webpage.width, mediaSizes.active.webpage.height, false, null, this.lazyLoadQueue, this.getMiddleware());
+            wrapPhoto(webpage.photo, message, preview, mediaSizes.active.webpage.width, mediaSizes.active.webpage.height, false, isOut, this.lazyLoadQueue, this.getMiddleware());
           }
           
           box.append(quote);
@@ -3054,6 +3054,7 @@ export class AppImManager {
         let dialog = appMessagesManager.getDialogByPeerID(peerID)[0];
         if(dialog) {
           dialog.notify_settings = notify_settings;
+          $rootScope.$broadcast('dialog_notify_settings', peerID);
         }
         
         if(peerID == this.peerID) {

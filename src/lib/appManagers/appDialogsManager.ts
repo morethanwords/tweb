@@ -514,6 +514,13 @@ export class AppDialogsManager {
       }
     });
 
+    $rootScope.$on('dialog_notify_settings', e => {
+      const dialog = appMessagesManager.getDialogByPeerID(e.detail)[0];
+      if(dialog) {
+        this.setUnreadMessages(dialog); // возможно это не нужно, но нужно менять is-muted
+      }
+    });
+
     $rootScope.$on('peer_changed', (e: CustomEvent) => {
       let peerID = e.detail;
 
@@ -1039,6 +1046,10 @@ export class AppDialogsManager {
       return;
     }
 
+    const isMuted = (dialog.notify_settings?.mute_until * 1000) > Date.now();
+
+    dom.listEl.classList.toggle('is-muted', isMuted);
+
     const lastMessage = appMessagesManager.getMessage(dialog.top_message);
     if(lastMessage._ != 'messageEmpty' && !lastMessage.deleted && 
       lastMessage.from_id == $rootScope.myID && lastMessage.peerID != $rootScope.myID && 
@@ -1071,8 +1082,7 @@ export class AppDialogsManager {
     if(dialog.unread_count || dialog.pFlags.unread_mark) {
       //dom.unreadMessagesSpan.innerText = '' + (dialog.unread_count ? formatNumber(dialog.unread_count, 1) : ' ');
       dom.unreadMessagesSpan.innerText = '' + (dialog.unread_count || ' ');
-      dom.unreadMessagesSpan.classList.add((dialog.notify_settings?.mute_until * 1000) > Date.now() ? 
-      'unread-muted' : 'unread');
+      dom.unreadMessagesSpan.classList.add(isMuted ? 'unread-muted' : 'unread');
     } else if(isPinned) {
       dom.unreadMessagesSpan.classList.remove('unread', 'unread-muted');
       dom.unreadMessagesSpan.classList.add('tgico-pinnedchat');
@@ -1152,27 +1162,32 @@ export class AppDialogsManager {
     let titleSpan = document.createElement('span');
     titleSpan.classList.add('user-title');
 
-    // в других случаях иконка верификации не нужна (а первый - это главные чатлисты)
-    if(!container) {
-      if(peerID < 0) {
-        let chat = appChatsManager.getChat(-peerID);
-        if(chat && chat.pFlags && chat.pFlags.verified) {
-          titleSpan.classList.add('is-verified');
-        }
-      } else {
-        let user = appUsersManager.getUser(peerID);
-        if(user && user.pFlags && user.pFlags.verified) {
-          titleSpan.classList.add('is-verified');
-        }
-      }
-    }
-
     if(peerID == $rootScope.myID && meAsSaved) {
       title = onlyFirstName ? 'Saved' : 'Saved Messages';
     } 
 
     titleSpan.innerHTML = title;
     //p.classList.add('')
+
+    // в других случаях иконка верификации не нужна (а первый - это главные чатлисты)
+    if(!container) {
+      let peer: any;
+
+      if(peerID < 0) {
+        titleSpan.classList.add('tgico');
+        
+        peer = appChatsManager.getChat(-peerID);
+      } else {
+        peer = appUsersManager.getUser(peerID);
+      }
+
+      if(peer?.pFlags?.verified) {
+        titleSpan.classList.add('is-verified');
+        const i = document.createElement('i');
+        i.classList.add('verified-icon');
+        titleSpan.append(i);
+      }
+    }
     
     let span = document.createElement('span');
     span.classList.add('user-last-message');

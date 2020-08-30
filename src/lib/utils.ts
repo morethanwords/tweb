@@ -159,10 +159,58 @@ type BroadcastKeys = 'download_progress' | 'user_update' | 'user_auth' | 'peer_c
   'message_sent' | 'history_request' | 'messages_downloaded' | 'contacts_update' | 'avatar_update' |
   'stickers_installed' | 'stickers_deleted' | 'chat_full_update' | 'peer_pinned_message' | 
   'poll_update' | 'dialogs_archived_unread' | 'audio_play' | 'audio_pause' | 'chat_update' | 
-  'apiUpdate' | 'stateSynchronized' | 'channel_settings' | 'webpage_updated' | 'draft_updated';
+  'apiUpdate' | 'stateSynchronized' | 'channel_settings' | 'webpage_updated' | 'draft_updated' | 
+  'dialog_notify_settings';
+
+type BroadcastEvents = {
+  'download_progress': any,
+  'user_update': any,
+  'user_auth': any,
+  'peer_changed': any,
+  'filter_delete': any,
+  'filter_update': any,
+  'message_edit': any,
+  'dialog_draft': any,
+  'messages_pending': any,
+  'history_append': any,
+  'history_update': any,
+  'dialogs_multiupdate': any,
+  'dialog_unread': any,
+  'dialog_flush': any,
+  'dialog_drop': any,
+  'dialog_migrate': any,
+  'dialog_top': any,
+  'history_reply_markup': any,
+  'history_multiappend': any,
+  'messages_read': any,
+  'history_delete': any,
+  'history_forbidden': any,
+  'history_reload': any,
+  'message_views': any,
+  'message_sent': any,
+  'history_request': any,
+  'messages_downloaded': any,
+  'contacts_update': any,
+  'avatar_update': any,
+  'stickers_installed': any,
+  'stickers_deleted': any,
+  'chat_full_update': any,
+  'peer_pinned_message': any,
+  'poll_update': any,
+  'dialogs_archived_unread': any,
+  'audio_play': any,
+  'audio_pause': any,
+  'chat_update': any,
+  'apiUpdate': any,
+  'stateSynchronized': any,
+  'channel_settings': any,
+  'webpage_updated': any,
+  'draft_updated': any,
+  'dialog_notify_settings': number,
+};
 
 export const $rootScope = {
-  $broadcast: (name: BroadcastKeys, detail?: any) => {
+  $broadcast: <T extends keyof BroadcastEvents>(name: T, detail?: BroadcastEvents[T]) => {
     if(name != 'user_update') {
       console.debug(dT(), 'Broadcasting ' + name + ' event, with args:', detail);
     }
@@ -170,7 +218,7 @@ export const $rootScope = {
     let myCustomEvent = new CustomEvent(name, {detail});
     document.dispatchEvent(myCustomEvent);
   },
-  $on: (name: BroadcastKeys, callback: (e: CustomEvent) => any) => {
+  $on: <T extends keyof BroadcastEvents>(name: T, callback: (e: Omit<CustomEvent, 'detail'> & {detail: BroadcastEvents[T]}) => any) => {
     // @ts-ignore
     document.addEventListener(name, callback);
   },

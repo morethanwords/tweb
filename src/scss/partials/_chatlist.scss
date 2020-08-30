@@ -100,6 +100,21 @@
     @include respond-to(handhelds) {
       padding-bottom: 0px;
     }
+
+    &.is-muted {
+      .user-title {
+        &:after {
+          content: $tgico-nosound;
+          color: #707579;
+          font-size: 1.125rem;
+          line-height: 27px;
+          vertical-align: middle;
+          margin-left: .125rem;
+          display: inline-block;
+          height: 29px;
+        }
+      }
+    }
   }
 
   li > .rp {
@@ -225,14 +240,14 @@
       margin-top: -1.5px;
     }
 
-    &.is-verified:after {
+    i.verified-icon {
       content: " ";
       background: url(assets/img/icon-verified.svg);
       display: inline-block;
       width: 20px;
       height: 20px;
       vertical-align: text-bottom;
-      margin-left: 2px;
+      margin-left: .125rem;
     }
   }
 
