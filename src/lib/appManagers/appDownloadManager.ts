@@ -80,9 +80,27 @@ export class AppDownloadManager {
     return deferred;
   }
 
-  public upload(file: File | Blob) {
-    const fileName = /* (file as File).name ||  */'upload-' + this.uploadID++;
-    
+  public upload(file: File | Blob, fileName?: string) {
+    if(!fileName) {
+      const mimeType = file?.type;
+      if(mimeType) { // the same like apiFileName in appMessagesManager for upload!
+        const ext = this.uploadID++ + '.' + mimeType.split('/')[1];
+  
+        if(['image/jpeg', 'image/png', 'image/bmp'].indexOf(mimeType) >= 0) {
+          fileName = 'photo' + ext;
+        } else if(mimeType.indexOf('audio/') === 0 || ['video/ogg'].indexOf(mimeType) >= 0) {
+          fileName = 'audio' + ext;
+        } else if(mimeType.indexOf('video/') === 0) {
+          fileName = 'video' + ext;
+        } else {
+          fileName = 'document' + ext;
+        }
+        
+      } else {
+        fileName = 'upload-' + this.uploadID++;
+      }
+    }
+
     const deferred = this.getNewDeferred(fileName);
     apiManager.uploadFile({file, fileName}).then(deferred.resolve, deferred.reject);
 
