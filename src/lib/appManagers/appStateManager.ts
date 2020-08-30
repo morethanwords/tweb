@@ -8,12 +8,28 @@ import apiUpdatesManager from './apiUpdatesManager';
 import { copy } from '../utils';
 import { logger } from '../logger';
 
+const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
+
+type State = Partial<{
+  dialogs: Dialog[],
+  allDialogsLoaded: DialogsStorage['allDialogsLoaded'], 
+  peers: {[peerID: string]: any},
+  messages: any[],
+  contactsList: number[],
+  updates: any,
+  filters: FiltersStorage['filters'],
+  maxSeenMsgID: number,
+  stateCreatedTime: number,
+  recentEmoji: string[],
+  topPeers: number[],
+  recentSearch: number[]
+}>
+
 export class AppStateManager {
   public loaded: Promise<any>;
   private log = logger('STATE'/* , LogLevels.error */);
 
-  private state: any = {};
-  private peers: {[peerID: number]: any} = {};
+  private state: State = {};
 
   constructor() {
     this.loadSavedState();
@@ -22,20 +38,21 @@ export class AppStateManager {
   public loadSavedState() {
     if(this.loaded) return this.loaded;
     return this.loaded = new Promise((resolve, reject) => {
-      AppStorage.get<{
-        dialogs: Dialog[],
-        allDialogsLoaded: DialogsStorage['allDialogsLoaded'], 
-        peers: any[],
-        messages: any[],
-        contactsList: number[],
-        updates: any,
-        filters: FiltersStorage['filters'],
-        maxSeenMsgID: number
-      }>('state').then((state) => {
+      AppStorage.get<State>('state').then((state) => {
+        const time = Date.now();
+        if((state?.stateCreatedTime ?? 0) + REFRESH_EVERY < time) {
+          this.log('will refresh state', state.stateCreatedTime, time);
+          state = {};
+        }
+
         const {dialogs, allDialogsLoaded, peers, messages, contactsList, maxSeenMsgID, updates, filters} = state;
         
         this.state = state || {};
         this.state.peers = peers || {};
+
+        if(!this.state.hasOwnProperty('stateCreatedTime')) {
+          this.state.stateCreatedTime = Date.now();
+        }
 
         this.log('state res', dialogs, messages);
 
@@ -116,7 +133,7 @@ export class AppStateManager {
   public saveState() {
     const messages: any[] = [];
     const dialogs: Dialog[] = [];
-    const peers: {[peerID: number]: any} = this.peers;
+    const peers = this.state.peers;
     
     for(const folderID in appMessagesManager.dialogsStorage.byFolders) {
       const folder = appMessagesManager.dialogsStorage.getFolder(+folderID);
@@ -185,12 +202,12 @@ export class AppStateManager {
     });
   }
 
-  public pushToState(key: string, value: any) {
+  public pushToState<T extends keyof State>(key: T, value: State[T]) {
     this.state[key] = value;
   }
 
   public pushPeer(peerID: number) {
-    this.peers[peerID] = appPeersManager.getPeer(peerID);
+    this.state.peers[peerID] = appPeersManager.getPeer(peerID);
   }
 }
 
