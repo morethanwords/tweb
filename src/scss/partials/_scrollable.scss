@@ -147,3 +147,7 @@ div.scrollable:hover::-webkit-scrollbar-thumb {
 ::-webkit-scrollbar-corner {
   background-color: transparent;
 }
+
+div.scrollable-x::-webkit-scrollbar {
+  display: none; // for safari iOS
+}
