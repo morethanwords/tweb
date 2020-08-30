@@ -62,8 +62,10 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   } */
 
   const video = document.createElement('video');
+  video.muted = true;
+  video.setAttribute('playsinline', '');
   if(doc.type == 'round') {
-    video.muted = true;
+    //video.muted = true;
     const globalVideo = appMediaPlaybackController.addMedia(doc, message.mid);
 
     video.addEventListener('canplay', () => {
@@ -121,6 +123,8 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     globalVideo.addEventListener('pause', onGlobalPause);
     video.addEventListener('play', onVideoPlay);
     video.addEventListener('pause', onVideoPause);
+  } else {
+    video.autoplay = true; // для safari
   }
   
   let img: HTMLImageElement;
@@ -224,12 +228,10 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       renderImageFromUrl(video, doc.url);
     //}
 
-    video.setAttribute('playsinline', '');
-
     /* if(!container.parentElement) {
       container.append(video);
     } */
-    
+
     if(doc.type == 'gif'/*  || true */) {
       video.muted = true;
       video.loop = true;

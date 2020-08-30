@@ -923,16 +923,26 @@ export class AppMediaViewer {
     if(isVideo) {
       ////////this.log('will wrap video', media, size);
 
+      // потому что для safari нужно создать элемент из event'а
+      const video = document.createElement('video');
+
       setMoverPromise = this.setMoverToTarget(target, false, fromRight).then(({onAnimationEnd}) => {
       //return; // set and don't move
       //if(wasActive) return;
         //return;
 
         const div = mover.firstElementChild && mover.firstElementChild.classList.contains('media-viewer-aspecter') ? mover.firstElementChild : mover;
-        const video = mover.querySelector('video') || document.createElement('video');
+        //const video = mover.querySelector('video') || document.createElement('video');
+
+        const moverVideo = mover.querySelector('video');
+        if(moverVideo) {
+          moverVideo.remove();
+        }
+
         //video.src = '';
 
         video.setAttribute('playsinline', '');
+        video.autoplay = true;
         if(media.type == 'gif') {
           video.muted = true;
           video.autoplay = true;

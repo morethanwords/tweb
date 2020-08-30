@@ -1,5 +1,6 @@
 import { cancelEvent } from "./utils";
 import { touchSupport } from "./config";
+import appMediaPlaybackController from "../components/appMediaPlaybackController";
 
 export class ProgressLine {
   public container: HTMLDivElement;
@@ -183,6 +184,7 @@ export class MediaProgressLine extends ProgressLine {
   }
 
   protected setLoadProgress() {
+    if(appMediaPlaybackController.isSafariBuffering(this.media)) return;
     const buf = this.media.buffered;
     const numRanges = buf.length;
 
@@ -214,6 +216,7 @@ export class MediaProgressLine extends ProgressLine {
   }
 
   public setProgress() {
+    if(appMediaPlaybackController.isSafariBuffering(this.media)) return;
     const currentTime = this.media.currentTime;
 
     super.setProgress(currentTime);
@@ -270,7 +273,7 @@ export default class VideoPlayer {
       controls.prepend(this.progress.container);
     }
 
-    if(play && video.paused) {
+    if(play/*  && video.paused */) {
       const promise = video.play();
       promise.catch((err: Error) => {
         if(err.name == 'NotAllowedError') {

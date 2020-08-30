@@ -5,7 +5,7 @@ import type { InputFileLocation, FileLocation, UploadFile, WorkerTaskTemplate } 
 import { deferredPromise, CancellablePromise } from '../polyfill';
 import { notifySomeone } from '../../helpers/context';
 
-const log = logger('SW', LogLevels.error);
+const log = logger('SW', LogLevels.error/*  | LogLevels.debug | LogLevels.log */);
 const ctx = self as any as ServiceWorkerGlobalScope;
 
 const deferredPromises: {[taskID: number]: CancellablePromise<any>} = {};
@@ -44,10 +44,18 @@ const onFetch = (event: FetchEvent): void => {
     switch(scope) {
       case 'stream': {
         const range = parseRange(event.request.headers.get('Range'));
-        const [offset, end] = range;
+        let [offset, end] = range;
   
         const info: DownloadOptions = JSON.parse(decodeURIComponent(params));
         //const fileName = getFileNameByLocation(info.location);
+
+        const limitPart = STREAM_CHUNK_UPPER_LIMIT;
+
+        /* if(info.size > limitPart && isSafari && offset == limitPart) {
+          //end = info.size - 1;
+          //offset = info.size - 1 - limitPart;
+          offset = info.size - (info.size % limitPart);
+        } */
   
         log.debug('[stream]', url, offset, end);
   
@@ -61,10 +69,10 @@ const onFetch = (event: FetchEvent): void => {
               return resolve(possibleResponse);
             }
   
-            const limit = end && end < STREAM_CHUNK_UPPER_LIMIT ? alignLimit(end - offset + 1) : STREAM_CHUNK_UPPER_LIMIT;
+            const limit = end && end < limitPart ? alignLimit(end - offset + 1) : limitPart;
             const alignedOffset = alignOffset(offset, limit);
   
-            log.debug('[stream] requestFilePart:', info.dcID, info.location, alignedOffset, limit);
+            log.debug('[stream] requestFilePart:', /* info.dcID, info.location, */ alignedOffset, limit);
 
             const task: ServiceWorkerTask = {
               type: 'requestFilePart',
@@ -77,7 +85,7 @@ const onFetch = (event: FetchEvent): void => {
             deferred.then(result => {
               let ab = result.bytes;
               
-              //log.debug('[stream] requestFilePart result:', result);
+              log.debug('[stream] requestFilePart result:', result);
   
               const headers: Record<string, string> = {
                 'Accept-Ranges': 'bytes',

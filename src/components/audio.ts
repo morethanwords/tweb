@@ -5,8 +5,9 @@ import ProgressivePreloader from "./preloader";
 import { MediaProgressLine } from "../lib/mediaPlayer";
 import appMediaPlaybackController from "./appMediaPlaybackController";
 import { MTDocument } from "../types";
-import { mediaSizes } from "../lib/config";
+import { mediaSizes, isSafari } from "../lib/config";
 import { Download } from "../lib/appManagers/appDownloadManager";
+import { deferredPromise, CancellablePromise } from "../lib/polyfill";
 
 // https://github.com/LonamiWebs/Telethon/blob/4393ec0b83d511b6a20d8a20334138730f084375/telethon/utils.py#L1285
 export function decodeWaveform(waveform: Uint8Array | number[]) {
@@ -312,8 +313,8 @@ export default class AudioElement extends HTMLElement {
     const audioTimeDiv = this.querySelector('.audio-time') as HTMLDivElement;
     audioTimeDiv.innerHTML = durationStr;
 
-    const onLoad = () => {
-      const audio = this.audio = appMediaPlaybackController.addMedia(doc, mid);
+    const onLoad = (autoload = true) => {
+      const audio = this.audio = appMediaPlaybackController.addMedia(doc, mid, autoload);
 
       this.onTypeDisconnect = onTypeLoad();
       
@@ -333,7 +334,7 @@ export default class AudioElement extends HTMLElement {
       }
 
       toggle.addEventListener('click', () => {
-        if(audio.paused) audio.play();
+        if(audio.paused) audio.play().catch(() => {});
         else audio.pause();
       });
       
@@ -343,6 +344,7 @@ export default class AudioElement extends HTMLElement {
       });
 
       this.addAudioListener('timeupdate', () => {
+        if(appMediaPlaybackController.isSafariBuffering(audio)) return;
         audioTimeDiv.innerText = String(audio.currentTime | 0).toHHMMSS(true) + ' / ' + durationStr;
       });
 
@@ -390,16 +392,24 @@ export default class AudioElement extends HTMLElement {
         this.addEventListener('click', onClick);
         this.click();
       } else {
-        if(appMediaPlaybackController.mediaExists(mid)) { // чтобы показать прогресс, если аудио уже было скачано
-          onLoad();
-        } else {
+        onLoad(false);
+
+        //if(appMediaPlaybackController.mediaExists(mid)) { // чтобы показать прогресс, если аудио уже было скачано
+          //onLoad();
+        //} else {
           const r = () => {
-            onLoad();
+            //onLoad();
+            appMediaPlaybackController.resolveWaitingForLoadMedia(mid);
   
             appMediaPlaybackController.willBePlayed(this.audio); // prepare for loading audio
   
             if(!preloader) {
               preloader = new ProgressivePreloader(null, false);
+            }
+
+            if(isSafari) {
+              this.audio.autoplay = true;
+              this.audio.play().catch(() => {});
             }
     
             preloader.attach(downloadDiv);
@@ -422,7 +432,7 @@ export default class AudioElement extends HTMLElement {
           };
   
           this.addEventListener('click', r, {once: true});
-        }
+        //}
       }
     } else {
       this.preloader.attach(downloadDiv, false);

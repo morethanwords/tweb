@@ -223,7 +223,7 @@ export class AppSidebarRight extends SidebarSlider {
       let ids = Object.keys(this.mediaDivsByIDs).map(k => +k).sort((a, b) => a - b);
       let idx = ids.findIndex(i => i == messageID);
       
-      let targets = ids.map(id => ({element: this.mediaDivsByIDs[id].firstElementChild as HTMLElement, mid: id}));
+      let targets = ids.map(id => ({element: this.mediaDivsByIDs[id]/* .firstElementChild */ as HTMLElement, mid: id}));
       
       appMediaViewer.openMedia(message, target, false, this.sidebarEl, targets.slice(idx + 1).reverse(), targets.slice(0, idx).reverse(), true);
     });

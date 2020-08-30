@@ -124,11 +124,14 @@ class AppDocsManager {
 
     if((doc.type == 'gif' && doc.size > 8e6) || doc.type == 'audio' || doc.type == 'video') {
       doc.supportsStreaming = true;
-
+      
       if(!doc.url) {
         doc.url = this.getFileURL(doc);
       }
     }
+
+    // for testing purposes
+    //doc.supportsStreaming = false;
     
     if(!doc.file_name) {
       doc.file_name = '';

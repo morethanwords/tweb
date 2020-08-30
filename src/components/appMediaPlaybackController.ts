@@ -2,8 +2,14 @@ import { MTDocument } from "../types";
 import { $rootScope } from "../lib/utils";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import appDocsManager from "../lib/appManagers/appDocsManager";
+import { isSafari } from "../lib/config";
+import { CancellablePromise, deferredPromise } from "../lib/polyfill";
 
 // TODO: если удалить сообщение, и при этом аудио будет играть - оно не остановится, и можно будет по нему перейти вникуда
+
+// TODO: Safari: проверить стрим, включить его и сразу попробовать включить видео или другую песню
+// TODO: Safari: попробовать замаскировать подгрузку последнего чанка
+// TODO: Safari: пофиксить момент, когда заканчивается песня и пытаешься включить её заново - прогресс сразу в конце
 
 type HTMLMediaElement = HTMLAudioElement | HTMLVideoElement;
 
@@ -13,6 +19,8 @@ class AppMediaPlaybackController {
   private container: HTMLElement;
   private media: {[mid: string]: HTMLMediaElement} = {};
   private playingMedia: HTMLMediaElement;
+
+  private waitingMediaForLoad: {[mid: string]: CancellablePromise<void>} = {};
   
   public willBePlayedMedia: HTMLMediaElement;
 
@@ -26,16 +34,21 @@ class AppMediaPlaybackController {
     document.body.append(this.container);
   }
 
-  public addMedia(doc: MTDocument, mid: number): HTMLMediaElement {
+  public addMedia(doc: MTDocument, mid: number, autoload = true): HTMLMediaElement {
     if(this.media[mid]) return this.media[mid];
 
     const media = document.createElement(doc.type == 'round' ? 'video' : 'audio');
     //const source = document.createElement('source');
     //source.type = doc.type == 'voice' && !opusDecodeController.isPlaySupported() ? 'audio/wav' : doc.mime_type;
+
+    media.dataset.mid = '' + mid;
+    media.dataset.type = doc.type;
     
-    media.autoplay = false;
+    //media.autoplay = true;
     media.volume = 1;
     //media.append(source);
+
+    this.container.append(media);
 
     media.addEventListener('playing', () => {
       if(this.playingMedia != media) {
@@ -68,18 +81,76 @@ class AppMediaPlaybackController {
 
     media.addEventListener('error', onError);
 
+    const deferred = deferredPromise<void>();
+    if(autoload) {
+      deferred.resolve();
+    } else {
+      this.waitingMediaForLoad[mid] = deferred;
+    }
+
+    // если что - загрузит voice или round заранее, так правильнее
     const downloadPromise: Promise<any> = !doc.supportsStreaming ? appDocsManager.downloadDocNew(doc.id) : Promise.resolve();
+    Promise.all([deferred, downloadPromise]).then(() => {
+      //media.autoplay = true;
+      //console.log('will set media url:', media, doc, doc.type, doc.url);
 
-    downloadPromise.then(() => {
-      //if(doc.type != 'round') {
-        this.container.append(media);
-      //}
+      if(doc.type == 'audio' && doc.supportsStreaming && isSafari) {
+        this.handleSafariStreamable(media);
+      }
 
-      //source.src = doc.url;
       media.src = doc.url;
     }, onError);
-
+    
     return this.media[mid] = media;
+  }
+
+  // safari подгрузит последний чанк и песня включится,
+  // при этом этот чанк нельзя руками отдать из SW, потому что браузер тогда теряется
+  private handleSafariStreamable(media: HTMLMediaElement) {
+    media.addEventListener('play', () => {
+      /* if(media.readyState == 4) { // https://developer.mozilla.org/ru/docs/Web/API/XMLHttpRequest/readyState
+        return;
+      } */
+
+      //media.volume = 0;
+      const currentTime = media.currentTime;
+      //this.setSafariBuffering(media, true);
+
+      media.addEventListener('progress', () => {
+        media.currentTime = media.duration - 1;
+
+        media.addEventListener('progress', () => {
+          media.currentTime = currentTime;
+          //media.volume = 1;
+          //this.setSafariBuffering(media, false);
+
+          if(!media.paused) {
+            media.play()/* .catch(() => {}) */;
+          }
+        }, {once: true});
+      }, {once: true});
+    }/* , {once: true} */);
+  }
+
+  public resolveWaitingForLoadMedia(mid: number) {
+    const promise = this.waitingMediaForLoad[mid];
+    if(promise) {
+      promise.resolve();
+      delete this.waitingMediaForLoad[mid];
+    }
+  }
+  
+  /**
+   * Only for audio
+   */
+  public isSafariBuffering(media: HTMLMediaElement) {
+    /// @ts-ignore
+    return !!media.safariBuffering;
+  }
+
+  private setSafariBuffering(media: HTMLMediaElement, value: boolean) {
+    // @ts-ignore
+    media.safariBuffering = value;
   }
 
   onPause = (e: Event) => {
@@ -89,8 +160,20 @@ class AppMediaPlaybackController {
   onEnded = (e: Event) => {
     this.onPause(e);
 
+    //console.log('on media end');
+
     if(this.nextMid) {
-      this.media[this.nextMid].play();
+      const media = this.media[this.nextMid];
+
+      /* if(isSafari) {
+        media.autoplay = true;
+      } */
+
+      this.resolveWaitingForLoadMedia(this.nextMid);
+
+      setTimeout(() => {
+        media.play()//.catch(() => {});
+      }, 0);
     }
   };
 
@@ -106,7 +189,7 @@ class AppMediaPlaybackController {
       if(this.playingMedia != media) {
         return;
       }
-
+ 
       for(let m of value.history) {
         if(m > mid) {
           this.nextMid = m;
@@ -118,7 +201,7 @@ class AppMediaPlaybackController {
 
       [this.prevMid, this.nextMid].filter(Boolean).forEach(mid => {
         const message = appMessagesManager.getMessage(mid);
-        this.addMedia(message.media.document, mid);
+        this.addMedia(message.media.document, mid, false);
       });
       
       //console.log('loadSiblingsAudio', audio, type, mid, value, this.prevMid, this.nextMid);
@@ -142,10 +225,6 @@ class AppMediaPlaybackController {
 
   public willBePlayed(media: HTMLMediaElement) {
     this.willBePlayedMedia = media;
-  }
-
-  public mediaExists(mid: number) {
-    return !!this.media[mid];
   }
 }
 

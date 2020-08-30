@@ -6,7 +6,7 @@ const postcssPresetEnv = require('postcss-preset-env');
 const ServiceWorkerWebpackPlugin = require('serviceworker-webpack-plugin');
 const fs = require('fs');
 
-const allowedIPs = ['195.66.140.39', '192.168.31.144', '127.0.0.1', '192.168.31.1', '192.168.31.192', '176.100.18.181', '46.219.250.22', '193.42.119.184'];
+const allowedIPs = ['195.66.140.39', '192.168.31.144', '127.0.0.1', '192.168.31.1', '192.168.31.192', '176.100.18.181', '46.219.250.22', '193.42.119.184', '46.133.168.67'];
 const devMode = process.env.NODE_ENV !== 'production';
 const useLocal = false;
 
@@ -110,8 +110,9 @@ module.exports = {
         } else {
           IP = req.connection.remoteAddress.split(':').pop();
         }
-      
-        if(!allowedIPs.includes(IP) && !/^192\.168\.\d{1,3}\.\d{1,3}$/.test(IP)) {
+
+        // last is ODESSA
+        if(!allowedIPs.includes(IP) && !/^192\.168\.\d{1,3}\.\d{1,3}$/.test(IP) && !/^88\.155\.57\.\d{1,3}$/.test(IP)) {
           console.log('Bad IP connecting: ' + IP, req.url);
           res.status(404).send('Nothing interesting here.');
         } else {
