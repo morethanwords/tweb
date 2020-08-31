@@ -108,9 +108,9 @@ export class AppUsersManager {
           } else console.warn('No user by id:', userID);
           break
   
-        case 'updateContactLink':
+        /* case 'updateContactLink':
           this.onContactUpdated(update.user_id, update.my_link._ == 'contactLinkContact');
-          break;
+          break; */
       }
     });
   }
@@ -382,6 +382,19 @@ export class AppUsersManager {
     return this.users[id] && this.users[id].pFlags.bot;
   }
 
+  public isContact(id: number) {
+    return this.contactsList.has(id);
+  }
+  
+  public isRegularUser(id: number) {
+    const user = this.users[id];
+    return user && !this.isBot(id) && !user.pFlags.deleted && !user.pFlags.support;
+  }
+
+  public isNonContactUser(id: number) {
+    return this.isRegularUser(id) && !this.isContact(id) && id != $rootScope.myID;
+  }
+
   public hasUser(id: number, allowMin?: boolean) {
     var user = this.users[id];
     return isObject(user) && (allowMin || !user.pFlags.min);
@@ -512,7 +525,7 @@ export class AppUsersManager {
     })
   } */
 
-  public deleteContacts(userIDs: number[]) {
+  /* public deleteContacts(userIDs: number[]) {
     var ids: any[] = [];
     userIDs.forEach((userID) => {
       ids.push(this.getUserInput(userID));
@@ -525,7 +538,7 @@ export class AppUsersManager {
         this.onContactUpdated(userID, false);
       });
     });
-  }
+  } */
 
   public getTopPeers(): Promise<number[]> {
     if(this.getPeersPromise) return this.getPeersPromise;
@@ -576,7 +589,7 @@ export class AppUsersManager {
     });
   }
 
-  public onContactUpdated(userID: number, isContact: boolean) {
+  /* public onContactUpdated(userID: number, isContact: boolean) {
     userID = parseInt('' + userID);
 
     if(Array.isArray(this.contactsList)) {
@@ -594,7 +607,7 @@ export class AppUsersManager {
         $rootScope.$broadcast('contacts_update', userID);
       }
     }
-  }
+  } */
 
   public setUserStatus(userID: number, offline: boolean) {
     if(this.isBot(userID)) {

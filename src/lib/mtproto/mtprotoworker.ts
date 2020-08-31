@@ -6,6 +6,7 @@ import webpWorkerController from '../webp/webpWorkerController';
 import MTProtoWorker from 'worker-loader!./mtproto.worker';
 import type { DownloadOptions } from './apiFileManager';
 import type { ServiceWorkerTask, ServiceWorkerTaskResponse } from './mtproto.service';
+import { isServiceWorkerSupported } from '../config';
 
 type Task = {
   taskID: number,
@@ -42,6 +43,8 @@ class ApiManagerProxy extends CryptoWorkerMethods {
   }
 
   private registerServiceWorker() {
+    if(!isServiceWorkerSupported) return;
+
     navigator.serviceWorker.register('./sw.js', {scope: './'}).then(registration => {
       
     }, (err) => {

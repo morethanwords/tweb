@@ -96,6 +96,8 @@ export const mediaSizes = new MediaSizes();
 // @ts-ignore
 export const touchSupport = ('ontouchstart' in window) || (window.DocumentTouch && document instanceof DocumentTouch);
 
+export const isServiceWorkerSupported = 'serviceWorker' in navigator;
+
 const Config = {
   Emoji,
   LatinizeMap,

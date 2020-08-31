@@ -411,6 +411,15 @@
           min-height: 60px;
         }
 
+        @include respond-to(handhelds) {
+          .preloader-container {
+            width: 40px;
+            height: 40px;
+            top: 9px;
+            left: 2px;
+          }
+        }
+
         .audio {
           padding-bottom: 26px;
           padding-left: 61px;

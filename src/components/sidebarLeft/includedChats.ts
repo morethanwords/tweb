@@ -155,7 +155,7 @@ export default class AppIncludedChatsTab implements SliderTab {
 
     const selectedPeers = (this.type == 'included' ? filter.include_peers : filter.exclude_peers).slice();
 
-    this.selector = new AppSelectPeers(this.container, this.onSelectChange, 'dialogs', null, this.renderResults);
+    this.selector = new AppSelectPeers(this.container, this.onSelectChange, ['dialogs'], null, this.renderResults);
     this.selector.selected = new Set(selectedPeers);
     this.selector.input.placeholder = 'Search';
 

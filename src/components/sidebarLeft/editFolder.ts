@@ -8,6 +8,8 @@ import { copy, deepEqual } from "../../lib/utils";
 import { toast } from "../toast";
 import { ripple } from "../ripple";
 
+const MAX_FOLDER_NAME_LENGTH = 12;
+
 export default class AppEditFolderTab implements SliderTab {
   public container: HTMLElement;
   private closeBtn: HTMLElement;
@@ -120,6 +122,11 @@ export default class AppEditFolderTab implements SliderTab {
     });
     
     this.nameInput.addEventListener('input', () => {
+      if(this.nameInput.value.length > MAX_FOLDER_NAME_LENGTH) {
+        this.nameInput.value = this.nameInput.value.slice(0, MAX_FOLDER_NAME_LENGTH);
+        return;
+      }
+
       this.filter.title = this.nameInput.value;
       this.nameInput.classList.remove('error');
 

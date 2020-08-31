@@ -5,6 +5,7 @@ import { MTDocument, inputDocumentFileLocation, MTPhotoSize } from '../../types'
 import { getFileNameByLocation } from '../bin_utils';
 import appDownloadManager, { DownloadBlob } from './appDownloadManager';
 import appPhotosManager from './appPhotosManager';
+import { isServiceWorkerSupported } from '../config';
 
 class AppDocsManager {
   private docs: {[docID: string]: MTDocument} = {};
@@ -122,11 +123,13 @@ class AppDocsManager {
       }
     }
 
-    if((doc.type == 'gif' && doc.size > 8e6) || doc.type == 'audio' || doc.type == 'video') {
-      doc.supportsStreaming = true;
-      
-      if(!doc.url) {
-        doc.url = this.getFileURL(doc);
+    if(isServiceWorkerSupported) {
+      if((doc.type == 'gif' && doc.size > 8e6) || doc.type == 'audio' || doc.type == 'video') {
+        doc.supportsStreaming = true;
+        
+        if(!doc.url) {
+          doc.url = this.getFileURL(doc);
+        }
       }
     }
 

@@ -1,12 +1,17 @@
 import Scrollable from "./scrollable_new";
 import appMessagesManager, { Dialog } from "../lib/appManagers/appMessagesManager";
-import { $rootScope, cancelEvent, findUpClassName, findUpTag, findUpAttribute } from "../lib/utils";
+import { $rootScope, cancelEvent, findUpClassName, findUpAttribute } from "../lib/utils";
 import appDialogsManager from "../lib/appManagers/appDialogsManager";
 import appChatsManager from "../lib/appManagers/appChatsManager";
 import appUsersManager from "../lib/appManagers/appUsersManager";
 import appPeersManager from "../lib/appManagers/appPeersManager";
 import appPhotosManager from "../lib/appManagers/appPhotosManager";
 
+type PeerType = 'contacts' | 'dialogs';
+
+// TODO: правильная сортировка для addMembers, т.е. для peerType: 'contacts', потому что там идут сначала контакты - потом неконтакты, а должно всё сортироваться по имени
+
+let loadedAllDialogs = false;
 export class AppSelectPeers {
   public container = document.createElement('div');
   public list = document.createElement('ul');
@@ -22,8 +27,6 @@ export class AppSelectPeers {
 
   public freezed = false;
 
-  private myID = $rootScope.myID;
-
   private folderID = 0;
   private offsetIndex = 0;
   private promise: Promise<any>;
@@ -33,7 +36,7 @@ export class AppSelectPeers {
 
   private loadedWhat: Partial<{[k in 'dialogs' | 'archived' | 'contacts']: true}> = {};
   
-  constructor(private appendTo: HTMLElement, private onChange?: (length: number) => void, private peerType: 'contacts' | 'dialogs' | 'both' = 'dialogs', onFirstRender?: () => void, private renderResultsFunc?: (peerIDs: number[]) => void) {
+  constructor(private appendTo: HTMLElement, private onChange?: (length: number) => void, private peerType: PeerType[] = ['dialogs'], onFirstRender?: () => void, private renderResultsFunc?: (peerIDs: number[]) => void) {
     this.container.classList.add('selector');
 
     if(!this.renderResultsFunc) {
@@ -44,7 +47,7 @@ export class AppSelectPeers {
     topContainer.classList.add('selector-search-container');
 
     this.selectedContainer.classList.add('selector-search');
-    this.input.placeholder = peerType == 'contacts' ? 'Add People...' : 'Select chat';
+    this.input.placeholder = !peerType.includes('dialogs') ? 'Add People...' : 'Select chat';
     this.input.type = 'text';
     this.selectedContainer.append(this.input);
     topContainer.append(this.selectedContainer);
@@ -94,27 +97,23 @@ export class AppSelectPeers {
     });
 
     this.input.addEventListener('input', () => {
-      let value = this.input.value;
+      const value = this.input.value;
       if(this.query != value) {
-        if(this.peerType == 'contacts' || this.peerType == 'both') {
+        if(this.peerType.includes('contacts')) {
           delete this.loadedWhat.contacts;
           this.cachedContacts = null;
         }
         
-        if(this.peerType == 'dialogs' || this.peerType == 'both') {
+        //if(this.peerType.includes('dialogs')) {
           delete this.loadedWhat.dialogs;
           delete this.loadedWhat.archived;
           this.folderID = 0;
           this.offsetIndex = 0;
-        }
+        //}
 
         this.promise = null;
         this.list.innerHTML = '';
         this.query = value;
-
-        if(this.query && 'saved messages'.includes(this.query.toLowerCase())) {
-          this.renderResultsFunc([$rootScope.myID]);
-        }
         
         //console.log('selectPeers input:', this.query);
         this.getMoreResults();
@@ -151,15 +150,20 @@ export class AppSelectPeers {
 
     this.promise = appMessagesManager.getConversations(this.query, this.offsetIndex, pageCount, this.folderID);
     const value = await this.promise;
+    this.promise = null;
 
     let dialogs = value.dialogs as Dialog[];
     if(dialogs.length) {
       const newOffsetIndex = dialogs[dialogs.length - 1].index || 0;
 
-      dialogs = dialogs.filter(d => d.peerID != this.myID);
-      if(!this.offsetIndex && this.folderID == 0 && !this.query) {
+      dialogs = dialogs.slice();
+      dialogs.findAndSplice(d => d.peerID == $rootScope.myID); // no my account
+
+      if(!this.offsetIndex && this.folderID == 0 && 
+        (!this.query || 'saved messages'.includes(this.query.toLowerCase())) && 
+        this.peerType.includes('dialogs')) {
         dialogs.unshift({
-          peerID: this.myID,
+          peerID: $rootScope.myID,
           pFlags: {}
         } as any);
       }
@@ -173,19 +177,15 @@ export class AppSelectPeers {
         this.offsetIndex = 0;
         this.folderID = 1;
 
-        this.promise = null;
         return this.getMoreDialogs();
       } else {
         this.loadedWhat.archived = true;
 
-        if(!this.loadedWhat.contacts && this.peerType == 'both') {
-          this.promise = null;
+        if(!this.loadedWhat.contacts && this.peerType.includes('contacts')) {
           return this.getMoreContacts();
         }
       }
     }
-
-    this.promise = null;
   }
 
   private async getMoreContacts() {
@@ -196,9 +196,16 @@ export class AppSelectPeers {
     }
 
     if(!this.cachedContacts) {
+      /* const promises: Promise<any>[] = [appUsersManager.getContacts(this.query)];
+      if(!this.peerType.includes('dialogs')) {
+        promises.push(appMessagesManager.getConversationsAll());
+      }
+
+      this.promise = Promise.all(promises);
+      this.cachedContacts = (await this.promise)[0].slice(); */
       this.promise = appUsersManager.getContacts(this.query);
       this.cachedContacts = (await this.promise).slice();
-      this.cachedContacts.findAndSplice(userID => userID == this.myID); // no my account
+      this.cachedContacts.findAndSplice(userID => userID == $rootScope.myID); // no my account
       this.promise = null;
     }
 
@@ -206,14 +213,26 @@ export class AppSelectPeers {
       const pageCount = appPhotosManager.windowH / 72 * 1.25 | 0;
       const arr = this.cachedContacts.splice(0, pageCount);
       this.renderResultsFunc(arr);
-    } else {
+    } 
+    
+    if(!this.cachedContacts.length) {
       this.loadedWhat.contacts = true;
+
+      // need to load non-contacts
+      if(!this.peerType.includes('dialogs')) {
+        return this.getMoreDialogs();
+      }
     }
   }
 
   private getMoreResults() {
     const promises: Promise<any>[] = [];
-    if(this.peerType == 'dialogs' || this.peerType == 'both') {
+
+    if(!loadedAllDialogs) {
+      promises.push(appMessagesManager.getConversationsAll());
+    }
+
+    if((this.peerType.includes('dialogs') || this.loadedWhat.contacts) && !this.loadedWhat.archived) { // to load non-contacts
       promises.push(this.getMoreDialogs());
 
       if(!this.loadedWhat.archived) {
@@ -221,7 +240,7 @@ export class AppSelectPeers {
       }
     }
     
-    if(this.peerType == 'contacts' || this.peerType == 'both') {
+    if(this.peerType.includes('contacts') && !this.loadedWhat.contacts) {
       promises.push(this.getMoreContacts());
     }
 
@@ -230,6 +249,14 @@ export class AppSelectPeers {
 
   private renderResults(peerIDs: number[]) {
     //console.log('will renderResults:', peerIDs);
+
+    // оставим только неконтакты с диалогов
+    if(!this.peerType.includes('dialogs') && this.loadedWhat.contacts) {
+      peerIDs = peerIDs.filter(peerID => {
+        return appUsersManager.isNonContactUser(peerID);
+      });
+    }
+
     peerIDs.forEach(peerID => {
       const {dom} = appDialogsManager.addDialog(peerID, this.scrollable, false, false);
 
@@ -240,7 +267,7 @@ export class AppSelectPeers {
       let subtitle = '';
       if(peerID < 0) {
         subtitle = appChatsManager.getChatMembersString(-peerID);
-      } else if(peerID == this.myID) {
+      } else if(peerID == $rootScope.myID) {
         subtitle = 'chat with yourself';
       } else {
         subtitle = appUsersManager.getUserStatusString(peerID);

@@ -375,6 +375,10 @@ export function getObjectKeysAndSort(object: any, sort: 'asc' | 'desc' = 'asc') 
 }
 
 export function whichChild(elem: Node) {
+  if(!elem.parentNode) {
+    return -1;
+  }
+  
   let i = 0;
   // @ts-ignore
   while((elem = elem.previousElementSibling) != null) ++i;
@@ -532,4 +536,22 @@ export function getFileURL(type: FileURLType, options: DownloadOptions) {
   //console.log('getFileURL encode:', performance.now() - perf, encoded);
 
   return '/' + type + '/' + encoded;
+}
+
+export function positionElementByIndex(element: HTMLElement, container: HTMLElement, pos: number) {
+  const prevPos = whichChild(element);
+
+  if(prevPos == pos) {
+    return false;
+  } else if(prevPos != -1 && prevPos < pos) { // was higher
+    pos += 1;
+  }
+
+  if(container.childElementCount > pos) {
+    container.insertBefore(element, container.children[pos]);
+  } else {
+    container.append(element);
+  }
+
+  return true;
 }

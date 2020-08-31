@@ -176,7 +176,7 @@ export class AppPhotosManager {
     //console.log('setAttachmentSize', photo, photo.sizes[0].bytes, div);
     
     let sizes = (photo as MTPhoto).sizes || (photo as MTDocument).thumbs;
-    if((!photo.downloaded || (photo as MTDocument).type == 'video' || (photo as MTDocument).type == 'gif') && !isSticker && sizes && sizes[0].bytes && !dontRenderPreview) {
+    if((!photo.downloaded || (photo as MTDocument).type == 'video' || (photo as MTDocument).type == 'gif') && !isSticker && sizes?.length && sizes[0].bytes && !dontRenderPreview) {
       this.setAttachmentPreview(sizes[0].bytes, element, isSticker);
     }
     

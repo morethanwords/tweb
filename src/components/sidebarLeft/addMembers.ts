@@ -56,21 +56,13 @@ export default class AppAddMembersTab implements SliderTab {
 
     this.onCloseAfterTimeout();
     this.selector = new AppSelectPeers(this.contentDiv, skippable ? null : (length) => {
-      if(length) {
-        this.nextBtn.classList.add('is-visible');
-      } else {
-        this.nextBtn.classList.remove('is-visible');
-      }
-    }, 'contacts');
+      this.nextBtn.classList.toggle('is-visible', !!length);
+    }, ['contacts']);
 
     this.nextBtn.innerHTML = '';
     this.nextBtn.disabled = false;
     this.nextBtn.classList.add('tgico-next');
-    if(skippable) {
-      this.nextBtn.classList.add('is-visible');
-    } else {
-      this.nextBtn.classList.remove('is-visible');
-    }
+    this.nextBtn.classList.toggle('is-visible', skippable);
 
     appSidebarLeft.selectTab(AppSidebarLeft.SLIDERITEMSIDS.addMembers);
   }

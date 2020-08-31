@@ -767,6 +767,21 @@ avatar-element {
 		max-width: 100%;
 		text-overflow: ellipsis;
   }
+
+
+  @include respond-to(handhelds) {
+    &-download {
+      /* background: transparent; */
+      margin-left: 2px;
+      margin-top: 1px;
+    }
+
+    &.is-voice {
+      .audio-download {
+        margin: 0;
+      }
+    }
+  }
 }
 
 .avatar-edit {
@@ -1444,15 +1459,6 @@ img.emoji {
 // 		left: 2px;
 // 	}
 // }
-
-.profile-content #content-audio .preloader-container {
-	@include respond-to(handhelds) {
-		width: 40px;
-		height: 40px;
-		top: 10px;
-		left: 3px;
-	}
-}
 
 .btn-disabled {
   pointer-events: none !important;

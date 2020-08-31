@@ -23,7 +23,7 @@ type State = Partial<{
   recentEmoji: string[],
   topPeers: number[],
   recentSearch: number[]
-}>
+}>;
 
 export class AppStateManager {
   public loaded: Promise<any>;
@@ -42,7 +42,11 @@ export class AppStateManager {
         const time = Date.now();
         if((state?.stateCreatedTime ?? 0) + REFRESH_EVERY < time) {
           this.log('will refresh state', state.stateCreatedTime, time);
-          state = {};
+          (['dialogs', 'allDialogsLoaded', 'messages', 'contactsList', 'stateCreatedTime',
+          'updates', 'maxSeenMsgID', 'filters', 'topPeers'] as any as Array<keyof State>).forEach(key => {
+            delete state[key];
+          });
+          //state = {};
         }
 
         const {dialogs, allDialogsLoaded, peers, messages, contactsList, maxSeenMsgID, updates, filters} = state;
@@ -212,4 +216,8 @@ export class AppStateManager {
 }
 
 const appStateManager = new AppStateManager();
+// @ts-ignore
+if(process.env.NODE_ENV != 'production') {
+  (window as any).appStateManager = appStateManager;
+}
 export default appStateManager;

@@ -818,7 +818,7 @@ export class AppMediaViewer {
     this.log('openMedia doc:', message);
     const media = message.media.photo || message.media.document || message.media.webpage.document || message.media.webpage.photo;
     
-    const isVideo = media.mime_type == 'video/mp4';
+    const isVideo = (media as MTDocument).type == 'video';
     const isFirstOpen = !this.peerID;
 
     if(isFirstOpen) {

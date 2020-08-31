@@ -813,6 +813,13 @@ $bubble-margin: .25rem;
     .time {
       width: unset;
     }
+
+    /* @include respond-to(handhelds) {
+      .preloader-container .you-spin-me-round {
+        margin-top: 1px;
+        margin-left: 2px;
+      }
+    } */
   }
 
   .message.contact-message  {

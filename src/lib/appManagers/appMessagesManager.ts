@@ -255,10 +255,13 @@ export type DialogFilter = {
   emoticon?: string,
   pinned_peers: number[],
   include_peers: number[],
-  exclude_peers: number[]
+  exclude_peers: number[],
+
+  orderIndex?: number
 };
 export class FiltersStorage {
   public filters: {[filterID: string]: DialogFilter} = {};
+  public orderIndex = 0;
 
   constructor() {
     $rootScope.$on('apiUpdate', (e: CustomEvent) => {
@@ -269,7 +272,7 @@ export class FiltersStorage {
   public handleUpdate(update: any) {
     switch(update._) {
       case 'updateDialogFilter': {
-        console.log('updateDialogFilter', update);
+        //console.log('updateDialogFilter', update);
         if(update.filter) {
           this.saveDialogFilter(update.filter);
         } else if(this.filters[update.id]) { // Папка удалена
@@ -433,7 +436,7 @@ export class FiltersStorage {
       id: filter.id,
       filter: remove ? undefined : this.getOutputDialogFilter(filter)
     }).then((bool: boolean) => { // возможно нужна проверка и откат, если результат не ТРУ
-      console.log('updateDialogFilter bool:', bool);
+      //console.log('updateDialogFilter bool:', bool);
 
       if(bool) {
         /* if(!this.filters[filter.id]) {
@@ -543,8 +546,20 @@ export class FiltersStorage {
       this.filters[filter.id] = filter;
     }
 
+    this.setOrderIndex(filter);
+
     if(update) {
       $rootScope.$broadcast('filter_update', filter);
+    }
+  }
+
+  public setOrderIndex(filter: DialogFilter) {
+    if(filter.hasOwnProperty('orderIndex')) {
+      if(filter.orderIndex > this.orderIndex) {
+        this.orderIndex = filter.orderIndex;
+      }
+    } else {
+      filter.orderIndex = this.orderIndex++;
     }
   }
 }
@@ -1846,6 +1861,25 @@ export class AppMessagesManager {
     }
 
     return false;
+  }
+
+  public async getConversationsAll(query = '') {
+    const limit = 100, outDialogs: Dialog[] = [];
+    for(let folderID = 0; folderID < 2; ++folderID) {
+      let offsetIndex = 0;
+      for(;;) {
+        const {dialogs} = await appMessagesManager.getConversations(query, offsetIndex, limit, folderID);
+  
+        if(dialogs.length) {
+          outDialogs.push(...dialogs);
+          offsetIndex = dialogs[dialogs.length - 1].index || 0;
+        } else {
+          break;
+        }
+      }
+    }
+
+    return outDialogs;
   }
 
   public getConversations(query = '', offsetIndex?: number, limit = 20, folderID = 0) {

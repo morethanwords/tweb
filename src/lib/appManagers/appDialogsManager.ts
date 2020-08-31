@@ -1,4 +1,4 @@
-import { findUpClassName, $rootScope, escapeRegExp, whichChild, findUpTag, cancelEvent } from "../utils";
+import { findUpClassName, $rootScope, escapeRegExp, whichChild, findUpTag, cancelEvent, positionElementByIndex } from "../utils";
 import appImManager, { AppImManager } from "./appImManager";
 import appPeersManager from './appPeersManager';
 import appMessagesManager, { AppMessagesManager, Dialog, DialogFilter } from "./appMessagesManager";
@@ -357,7 +357,8 @@ export class AppDialogsManager {
     [filterID: string]: {
       menu: HTMLElement, 
       container: HTMLElement,
-      unread: HTMLElement
+      unread: HTMLElement,
+      title: HTMLElement
     }
   } = {};
   private showFiltersTimeout: number;
@@ -407,7 +408,7 @@ export class AppDialogsManager {
 
     this.setListClickListener(this.chatList, null, true);
 
-    if(testScroll) {
+    /* if(testScroll) {
       let i = 0;
       let add = () => {
         let li = document.createElement('li');
@@ -421,7 +422,7 @@ export class AppDialogsManager {
         add();
       }
       (window as any).addElement = add;
-    }
+    } */
 
     $rootScope.$on('user_update', (e: CustomEvent) => {
       let userID = e.detail;
@@ -543,6 +544,7 @@ export class AppDialogsManager {
       const filter: DialogFilter = e.detail;
       if(!this.filtersRendered[filter.id]) {
         this.addFilter(filter);
+        return;
       } else if(filter.id == this.filterID) { // это нет тут смысла вызывать, так как будет dialogs_multiupdate
         //this.validateForFilter();
         const folder = appMessagesManager.dialogsStorage.getFolder(filter.id);
@@ -553,6 +555,9 @@ export class AppDialogsManager {
         }
         this.setFiltersUnreadCount();
       }
+
+      const elements = this.filtersRendered[filter.id];
+      elements.title.innerHTML = RichTextProcessor.wrapEmojiText(filter.title);
     });
 
     $rootScope.$on('filter_delete', (e: CustomEvent) => {
@@ -704,21 +709,25 @@ export class AppDialogsManager {
 
     const li = document.createElement('li');
     const span = document.createElement('span');
-    span.innerHTML = RichTextProcessor.wrapEmojiText(filter.title);
+    const titleSpan = document.createElement('span');
+    titleSpan.innerHTML = RichTextProcessor.wrapEmojiText(filter.title);
     const unreadSpan = document.createElement('span');
     unreadSpan.classList.add('unread-count');
     const i = document.createElement('i');
-    span.append(unreadSpan, i);
+    span.append(titleSpan, unreadSpan, i);
     li.append(span);
     ripple(li);
-  
-    this.folders.menu.firstElementChild.append(li);
+
+    const containerToAppend = this.folders.menu.firstElementChild as HTMLUListElement;
+    positionElementByIndex(li, containerToAppend, filter.orderIndex + 1); // because 0 is All
+    //containerToAppend.append(li);
 
     const ul = document.createElement('ul');
     const div = document.createElement('div');
     div.append(ul);
     div.dataset.filterID = '' + filter.id;
-    this.folders.container.append(div);
+    //this.folders.container.append(div);
+    positionElementByIndex(div, this.folders.container, filter.orderIndex + 1); // because 0 is All
 
     this.chatLists[filter.id] = ul;
     this.setListClickListener(ul, null, true);
@@ -734,7 +743,8 @@ export class AppDialogsManager {
     this.filtersRendered[filter.id] = {
       menu: li,
       container: div,
-      unread: unreadSpan
+      unread: unreadSpan,
+      title: titleSpan
     };
   }
 
@@ -749,6 +759,8 @@ export class AppDialogsManager {
       const container = this.chatList.parentElement;
       container.append(this.chatsPreloader);
     }
+
+    //return;
 
     const storage = appMessagesManager.dialogsStorage.getFolder(folderID);
     let offsetIndex = 0;
@@ -862,28 +874,11 @@ export class AppDialogsManager {
       pos = appMessagesManager.dialogsStorage.getDialog(dialog.peerID, this.filterID)[1];
     }
 
-    let prevPos = whichChild(dom.listEl);
+    if(positionElementByIndex(dom.listEl, this.chatList, pos)) {
+      this.scroll.reorder();
 
-    /* let wrongFolder = (dialog.folder_id == 1 && this.chatList == dom.listEl.parentElement) || (dialog.folder_id == 0 && this.chatListArchived == dom.listEl.parentElement);
-    let wrongFolder = false;
-    if(wrongFolder) prevPos = 0xFFFF; */
-
-    if(prevPos == pos) {
-      return;
-    } else if(prevPos < pos) { // was higher
-      pos += 1;
+      this.log.debug('setDialogPosition:', dialog, dom, pos);
     }
-    
-    const chatList = this.chatList;
-    if(chatList.childElementCount > pos) {
-      chatList.insertBefore(dom.listEl, chatList.children[pos]);
-    } else {
-      chatList.append(dom.listEl);
-    }
-
-    this.scroll.reorder();
-
-    this.log.debug('setDialogPosition:', dialog, dom, pos);
   }
 
   /* public setPinnedDelimiter() {
