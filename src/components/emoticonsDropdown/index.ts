@@ -236,7 +236,7 @@ export class EmoticonsDropdown {
     const stickyIntersector = new StickyIntersector(scroll.container, (stuck, target) => {
       //console.log('sticky scrollTOp', stuck, target, scroll.container.scrollTop);
 
-      if(jumpedTo == scroll.container.scrollTop) {
+      if(Math.abs(jumpedTo - scroll.container.scrollTop) <= 1) {
         return;
       } else {
         jumpedTo = -1;
