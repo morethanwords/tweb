@@ -9,6 +9,7 @@ import appImManager from "../../lib/appManagers/appImManager";
 import Scrollable from "../scrollable_new";
 import EmojiTab from "./tabs/emoji";
 import StickersTab from "./tabs/stickers";
+import StickyIntersector from "../stickyIntersector";
 
 export const EMOTICONSSTICKERGROUP = 'emoticons-dropdown';
 
@@ -16,6 +17,8 @@ export interface EmoticonsTab {
   init: () => void,
   onCloseAfterTimeout?: () => void
 }
+
+const test = false;
 
 export class EmoticonsDropdown {
   public static lazyLoadQueue = new LazyLoadQueue();
@@ -57,6 +60,7 @@ export class EmoticonsDropdown {
         //this.displayTimeout = setTimeout(() => {
           if(firstTime) {
             this.toggleEl.onmouseout = this.element.onmouseout = (e) => {
+              if(test) return;
               const toElement = (e as any).toElement as Element;
               if(toElement && findUpClassName(toElement, 'emoji-dropdown')) {
                 return;
@@ -213,8 +217,48 @@ export class EmoticonsDropdown {
     //animationIntersector.checkAnimations(false, EMOTICONSSTICKERGROUP);
   };
 
-  public static menuOnClick = (menu: HTMLUListElement, heights: number[], scroll: Scrollable, menuScroll?: Scrollable) => {
-    menu.addEventListener('click', function(e) {
+  public static menuOnClick = (menu: HTMLUListElement, scroll: Scrollable, menuScroll?: Scrollable) => {
+    let prevId = 0;
+    let jumpedTo = -1;
+
+    const setActive = (id: number) => {
+      if(id == prevId) {
+        return false;
+      }
+
+      menu.children[prevId].classList.remove('active');
+      menu.children[id].classList.add('active');
+      prevId = id;
+
+      return true;
+    };
+
+    const stickyIntersector = new StickyIntersector(scroll.container, (stuck, target) => {
+      //console.log('sticky scrollTOp', stuck, target, scroll.container.scrollTop);
+
+      if(jumpedTo == scroll.container.scrollTop) {
+        return;
+      } else {
+        jumpedTo = -1;
+      }
+
+      const which = whichChild(target);
+      if(!stuck && which) { // * due to stickyIntersector
+        return;
+      }
+
+      setActive(which);
+
+      if(menuScroll) {
+        if(which < menu.childElementCount - 4) {
+          menuScroll.container.scrollLeft = (which - 3) * 47;
+        } else {
+          menuScroll.container.scrollLeft = which * 47;
+        }
+      }
+    });
+
+    menu.addEventListener('click', (e) => {
       let target = e.target as HTMLElement;
       target = findUpTag(target, 'LI');
 
@@ -222,59 +266,21 @@ export class EmoticonsDropdown {
         return;
       }
 
-      let index = whichChild(target);
-      let y = heights[index - 1/* 2 */] || 0; // 10 == padding .scrollable
+      const which = whichChild(target);
 
-      //console.log('emoticonsMenuOnClick', index, heights, target);
-
-      /* if(menuScroll) {
-        menuScroll.container.scrollLeft = target.scrollWidth * index;
+      if(!setActive(which)) {
+        return;
       }
-      console.log('emoticonsMenuOnClick', menu.getBoundingClientRect(), target.getBoundingClientRect());
- */
-      /* scroll.onAddedBottom = () => { // привет, костыль, давно не виделись!
-        scroll.container.scrollTop = y;
-        scroll.onAddedBottom = () => {};
-      }; */
-      scroll.container.scrollTop = y;
 
-      /* setTimeout(() => {
-        animationIntersector.checkAnimations(true, EMOTICONSSTICKERGROUP);
-      }, 100); */
+      const element = (scroll.splitUp || scroll.container).children[which] as HTMLElement;
+      const offsetTop = element.offsetTop + 1; // * due to stickyIntersector
 
-      /* window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => {
-          lottieLoader.checkAnimations(true, EMOTICONSSTICKERGROUP);
-        });
-      }); */
+      scroll.container.scrollTop = jumpedTo = offsetTop;
+
+      //console.log('set scrollTop:', offsetTop);
     });
-  };
 
-  public static contentOnScroll = (menu: HTMLUListElement, heights: number[], prevCategoryIndex: number, scroll: HTMLElement, menuScroll?: Scrollable) => {
-    let y = Math.round(scroll.scrollTop);
-
-    //console.log(heights, y);
-
-    for(let i = 0; i < heights.length; ++i) {
-      let height = heights[i];
-      if(y < height) {
-        menu.children[prevCategoryIndex].classList.remove('active');
-        prevCategoryIndex = i/*  + 1 */;
-        menu.children[prevCategoryIndex].classList.add('active');
-
-        if(menuScroll) {
-          if(i < heights.length - 4) {
-            menuScroll.container.scrollLeft = (i - 3) * 47;
-          } else {
-            menuScroll.container.scrollLeft = i * 47;
-          }
-        }
-
-        break;
-      }
-    }
-
-    return prevCategoryIndex;
+    return stickyIntersector;
   };
 
   public static onMediaClick = (e: MouseEvent) => {

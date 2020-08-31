@@ -5,6 +5,7 @@ import { putPreloader } from "../../misc";
 import appStateManager from "../../../lib/appManagers/appStateManager";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import appImManager from "../../../lib/appManagers/appImManager";
+import StickyIntersector from "../../stickyIntersector";
 
 export default class EmojiTab implements EmoticonsTab {
   public content: HTMLElement;
@@ -12,8 +13,8 @@ export default class EmojiTab implements EmoticonsTab {
   private recent: string[] = [];
   private recentItemsDiv: HTMLElement;
 
-  private heights: number[] = [];
   private scroll: Scrollable;
+  private stickyIntersector: StickyIntersector;
 
   init() {
     this.content = document.getElementById('content-emoji') as HTMLDivElement;
@@ -77,12 +78,9 @@ export default class EmojiTab implements EmoticonsTab {
     }
     //console.timeEnd('emojiParse');
 
-    let prevCategoryIndex = 0;
     const menu = this.content.previousElementSibling.firstElementChild as HTMLUListElement;
     const emojiScroll = this.scroll = new Scrollable(this.content, 'y', 'EMOJI', null);
-    emojiScroll.container.addEventListener('scroll', (e) => {
-      prevCategoryIndex = EmoticonsDropdown.contentOnScroll(menu, this.heights, prevCategoryIndex, emojiScroll.container);
-    });
+
     //emojiScroll.setVirtualContainer(emojiScroll.container);
 
     const preloader = putPreloader(this.content, true);
@@ -112,15 +110,13 @@ export default class EmojiTab implements EmoticonsTab {
         }
   
         emojiScroll.append(div);
+        this.stickyIntersector.observeStickyHeaderChanges(div);
         return div;
-      }).forEach(div => {
-        //console.log('emoji heights push: ', (heights[heights.length - 1] || 0) + div.scrollHeight, div, div.scrollHeight);
-        this.heights.push((this.heights[this.heights.length - 1] || 0) + div.scrollHeight);
       });
     });
 
     this.content.addEventListener('click', this.onContentClick);
-    EmoticonsDropdown.menuOnClick(menu, this.heights, emojiScroll);
+    this.stickyIntersector = EmoticonsDropdown.menuOnClick(menu, emojiScroll);
     this.init = null;
   }
 
@@ -181,14 +177,6 @@ export default class EmojiTab implements EmoticonsTab {
     });
     const scrollHeight = this.recentItemsDiv.scrollHeight;
     this.appendEmoji(emoji, this.recentItemsDiv, true);
-
-    // нужно поставить новые размеры для скролла
-    if(this.recentItemsDiv.scrollHeight != scrollHeight) {
-      this.heights.length = 0;
-      (Array.from(this.scroll.container.children) as HTMLElement[]).forEach(div => {
-        this.heights.push((this.heights[this.heights.length - 1] || 0) + div.scrollHeight);
-      });
-    }
 
     this.recent.findAndSplice(e => e == emoji);
     this.recent.unshift(emoji);

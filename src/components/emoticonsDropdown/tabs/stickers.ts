@@ -2,7 +2,7 @@ import { EmoticonsTab, EMOTICONSSTICKERGROUP, EmoticonsDropdown } from "..";
 import { MTDocument } from "../../../types";
 import Scrollable from "../../scrollable_new";
 import { wrapSticker } from "../../wrappers";
-import appStickersManager, { MTStickerSet } from "../../../lib/appManagers/appStickersManager";
+import appStickersManager, { MTStickerSet, MTStickerSetFull } from "../../../lib/appManagers/appStickersManager";
 import appDownloadManager from "../../../lib/appManagers/appDownloadManager";
 import { readBlobAsText } from "../../../helpers/blob";
 import lottieLoader from "../../../lib/lottieLoader";
@@ -10,6 +10,7 @@ import { renderImageFromUrl, putPreloader } from "../../misc";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import { $rootScope } from "../../../lib/utils";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
+import StickyIntersector from "../../stickyIntersector";
 
 export default class StickersTab implements EmoticonsTab {
   public content: HTMLElement;
@@ -22,15 +23,17 @@ export default class StickersTab implements EmoticonsTab {
   private recentDiv: HTMLElement;
   private recentStickers: MTDocument[] = [];
 
-  private heights: number[] = [];
-  private heightRAF = 0;
   private scroll: Scrollable;
 
   private menu: HTMLUListElement;
   
   private mounted = false;
 
-  categoryPush(categoryDiv: HTMLElement, categoryTitle: string, docs: MTDocument[], prepend?: boolean) {
+  private queueCategoryPush: {element: HTMLElement, prepend: boolean}[] = [];
+
+  private stickyIntersector: StickyIntersector;
+
+  categoryPush(categoryDiv: HTMLElement, categoryTitle: string, promise: Promise<MTDocument[]>, prepend?: boolean) {
     //if((docs.length % 5) != 0) categoryDiv.classList.add('not-full');
 
     const itemsDiv = document.createElement('div');
@@ -42,62 +45,29 @@ export default class StickersTab implements EmoticonsTab {
 
     categoryDiv.append(titleDiv, itemsDiv);
 
-    docs.forEach(doc => {
-      itemsDiv.append(this.renderSticker(doc));
-    });
+    this.stickyIntersector.observeStickyHeaderChanges(categoryDiv);
 
-    if(prepend) {
-      if(this.recentDiv.parentElement) {
-        this.scroll.prepend(categoryDiv);
-        this.scroll.prepend(this.recentDiv);
-      } else {
-        this.scroll.prepend(categoryDiv);
-      }
-    } else this.scroll.append(categoryDiv);
+    this.queueCategoryPush.push({element: categoryDiv, prepend});
 
-    /* let scrollHeight = categoryDiv.scrollHeight;
-    let prevHeight = heights[heights.length - 1] || 0;
-    //console.log('scrollHeight', scrollHeight, categoryDiv, stickersDiv.childElementCount);
-    if(prepend && heights.length) {// all stickers loaded faster than recent
-      heights.forEach((h, i) => heights[i] += scrollHeight);
-
-      return heights.unshift(scrollHeight) - 1;
-    } */
-
-    this.setNewHeights();
-    
-    /* Array.from(stickersDiv.children).forEach((div, i) => {
-      heights[i] = (heights[i - 1] || 0) + div.scrollHeight;
-    }); */
-
-    //this.scroll.onScroll();
-
-    //return heights.push(prevHeight + scrollHeight) - 1;
-  }
-
-  setNewHeights() {
-    if(this.heightRAF) return;
-    //if(this.heightRAF) window.cancelAnimationFrame(this.heightRAF);
-    this.heightRAF = window.requestAnimationFrame(() => {
-      this.heightRAF = 0;
-
-      const heights = this.heights;
-
-      let paddingTop = parseInt(window.getComputedStyle(this.scroll.container).getPropertyValue('padding-top')) || 0;
-
-      heights.length = 0;
-      /* let concated = this.scroll.hiddenElements.up.concat(this.scroll.visibleElements, this.scroll.hiddenElements.down);
-      concated.forEach((el, i) => {
-        heights[i] = (heights[i - 1] || 0) + el.height + (i == 0 ? paddingTop : 0);
-      }); */
-      let concated = Array.from(this.scroll.splitUp.children) as HTMLElement[];
-      concated.forEach((el, i) => {
-        heights[i] = (heights[i - 1] || 0) + el.scrollHeight + (i == 0 ? paddingTop : 0);
+    promise.then(documents => {
+      documents.forEach(doc => {
+        itemsDiv.append(this.renderSticker(doc));
       });
 
-      this.scroll.reorder();
+      if(this.queueCategoryPush.length) {
+        this.queueCategoryPush.forEach(({element, prepend}) => {
+          if(prepend) {
+            if(this.recentDiv.parentElement) {
+              this.scroll.prepend(element);
+              this.scroll.prepend(this.recentDiv);
+            } else {
+              this.scroll.prepend(element);
+            }
+          } else this.scroll.append(element);
+        });
 
-      //console.log('stickers concated', concated, heights);
+        this.queueCategoryPush.length = 0;
+      }
     });
   }
 
@@ -138,7 +108,9 @@ export default class StickersTab implements EmoticonsTab {
 
     //stickersScroll.append(categoryDiv);
 
-    const stickerSet = await appStickersManager.getStickerSet(set);
+    const promise = appStickersManager.getStickerSet(set);
+    this.categoryPush(categoryDiv, RichTextProcessor.wrapEmojiText(set.title), promise.then(stickerSet => stickerSet.documents), prepend);
+    const stickerSet = await promise;
 
     //console.log('got stickerSet', stickerSet, li);
     
@@ -175,8 +147,6 @@ export default class StickersTab implements EmoticonsTab {
         group: EMOTICONSSTICKERGROUP
       }); // kostil
     }
-
-    this.categoryPush(categoryDiv, RichTextProcessor.wrapEmojiText(stickerSet.set.title), stickerSet.documents, prepend);
   }
 
   init() {
@@ -227,33 +197,16 @@ export default class StickersTab implements EmoticonsTab {
         const elements = this.stickerSets[set.id];
         elements.stickers.remove();
         elements.tab.remove();
-        this.setNewHeights();
         delete this.stickerSets[set.id];
       }
     });
 
     stickersDiv.addEventListener('click', EmoticonsDropdown.onMediaClick);
 
-    let prevCategoryIndex = 0;
     this.scroll = new Scrollable(this.content, 'y', 'STICKERS', undefined, undefined, 2);
-    this.scroll.container.addEventListener('scroll', (e) => {
-      //animationIntersector.checkAnimations(false, EMOTICONSSTICKERGROUP);
-
-      if(this.heights[1] == 0) {
-        this.setNewHeights();
-      }
-
-      prevCategoryIndex = EmoticonsDropdown.contentOnScroll(this.menu, this.heights, prevCategoryIndex, this.scroll.container, menuScroll);
-    });
     this.scroll.setVirtualContainer(stickersDiv);
 
-    this.menu.addEventListener('click', () => {
-      if(this.heights[1] == 0) {
-        this.setNewHeights();
-      }
-    });
-
-    EmoticonsDropdown.menuOnClick(this.menu, this.heights, this.scroll, menuScroll);
+    this.stickyIntersector = EmoticonsDropdown.menuOnClick(this.menu, this.scroll, menuScroll);
 
     const preloader = putPreloader(this.content, true);
 
@@ -269,7 +222,7 @@ export default class StickersTab implements EmoticonsTab {
         };
 
         preloader.remove();
-        this.categoryPush(this.recentDiv, 'Recent', this.recentStickers, true);
+        this.categoryPush(this.recentDiv, 'Recent', Promise.resolve(this.recentStickers), true);
       }),
 
       apiManager.invokeApi('messages.getAllStickers', {hash: 0}).then(async(res) => {
@@ -308,8 +261,6 @@ export default class StickersTab implements EmoticonsTab {
     if(items.childElementCount > 20) {
       (Array.from(items.children) as HTMLElement[]).slice(20).forEach(el => el.remove());
     }
-
-    this.setNewHeights();
   }
 
   onClose() {

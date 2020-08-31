@@ -3,7 +3,7 @@ import { RichTextProcessor } from "../lib/richtextprocessor";
 import apiManager from "../lib/mtproto/mtprotoworker";
 import appWebPagesManager from "../lib/appManagers/appWebPagesManager";
 import appImManager from "../lib/appManagers/appImManager";
-import { getRichValue, calcImageInBox } from "../lib/utils";
+import { getRichValue, calcImageInBox, cancelEvent } from "../lib/utils";
 import { wrapDocument, wrapReply } from "./wrappers";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import { Layouter, RectPart } from "./groupedLayout";
@@ -495,7 +495,9 @@ export class ChatInput {
       this.onMessageSent();
     });
 
-    this.btnSend.addEventListener('click', () => {
+    const onBtnSendClick = (e: Event) => {
+      cancelEvent(e);
+      
       if(this.btnSend.classList.contains('tgico-send') || !this.recorder) {
         if(this.recording) {
           this.recorder.stop();
@@ -553,7 +555,10 @@ export class ChatInput {
           console.error('Recorder start error:', e);
         });
       }
-    });
+    };
+
+    this.btnSend.addEventListener('touchend', onBtnSendClick);
+    this.btnSend.addEventListener('click', onBtnSendClick);
 
     if(this.recorder) {
       this.btnCancelRecord.addEventListener('click', () => {

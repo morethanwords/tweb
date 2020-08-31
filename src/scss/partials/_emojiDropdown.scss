@@ -79,6 +79,13 @@
 			padding: 12px 6px 6px 6px;
 			width: 100%;
 		}
+
+		.sticky_sentinel {
+			&--top {
+				top: 0;
+				height: 1px;
+			}
+		}
 		
 		.emoji-category {
 			//padding-top: 1px;
