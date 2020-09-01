@@ -2796,7 +2796,7 @@ export class AppImManager {
     if(result instanceof Promise) {
       cached = false;
       promise = result.then((result) => {
-        this.log('getHistory not cached result by maxID:', maxID, reverse, isBackLimit, result, peerID);
+        this.log('getHistory not cached result by maxID:', maxID, reverse, isBackLimit, result, peerID, justLoad);
         
         if(justLoad) {
           this.scrollable.onScroll(); // нужно делать из-за ранней прогрузки
@@ -2821,7 +2821,7 @@ export class AppImManager {
       return null;
     } else {
       cached = true;
-      this.log('getHistory cached result by maxID:', maxID, reverse, isBackLimit, result, peerID);
+      this.log('getHistory cached result by maxID:', maxID, reverse, isBackLimit, result, peerID, justLoad);
       promise = this.performHistoryResult(result.history || [], reverse, isBackLimit, additionMsgID);
       //return (reverse ? this.getHistoryTopPromise = promise : this.getHistoryBottomPromise = promise);
       //return this.performHistoryResult(result.history || [], reverse, isBackLimit, additionMsgID, true);

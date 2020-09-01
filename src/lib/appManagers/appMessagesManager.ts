@@ -4166,7 +4166,7 @@ export class AppMessagesManager {
         }
       }
 
-      var history = historyStorage.history.slice(offset, offset + limit);
+      let history = historyStorage.history.slice(backLimit ? Math.max(offset - backLimit, 0) : offset, offset + limit);
       if(!maxID && historyStorage.pending.length) {
         history = historyStorage.pending.slice().concat(history);
       }
