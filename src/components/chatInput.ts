@@ -561,11 +561,14 @@ export class ChatInput {
     this.btnSend.addEventListener('click', onBtnSendClick);
 
     if(this.recorder) {
-      this.btnCancelRecord.addEventListener('click', () => {
+      const onCancelRecordClick = (e: Event) => {
+        cancelEvent(e);
         this.recordCanceled = true;
         this.recorder.stop();
         opusDecodeController.setKeepAlive(false);
-      });
+      };
+      this.btnCancelRecord.addEventListener('touchend', onCancelRecordClick);
+      this.btnCancelRecord.addEventListener('click', onCancelRecordClick);
 
       this.recorder.onstop = () => {
         this.recording = false;
@@ -603,7 +606,7 @@ export class ChatInput {
   
         let perf = performance.now();
         opusDecodeController.decode(typedArray, true).then(result => {
-          console.log('WAVEFORM!:', /* waveform,  */performance.now() - perf);
+          //console.log('WAVEFORM!:', /* waveform,  */performance.now() - perf);
   
           opusDecodeController.setKeepAlive(false);
   

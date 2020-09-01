@@ -8,6 +8,41 @@ let countries = require('fs').readFileSync('./countries.dat').toString();
 
 let formatted = emoji.filter(e => e.has_img_apple);
 
+function encodeEmoji(emojiText) {
+  const codepoints = toCodePoints(removeVS16s(emojiText)).join('-');
+  return codepoints;
+}
+
+const vs16RegExp = /\uFE0F/g;
+// avoid using a string literal like '\u200D' here because minifiers expand it inline
+const zeroWidthJoiner = String.fromCharCode(0x200d);
+
+const removeVS16s = (rawEmoji) => (rawEmoji.indexOf(zeroWidthJoiner) < 0 ? rawEmoji.replace(vs16RegExp, '') : rawEmoji);
+
+function toCodePoints(unicodeSurrogates) {
+  const points = [];
+  let char = 0;
+  let previous = 0;
+  let i = 0;
+  while(i < unicodeSurrogates.length) {
+    char = unicodeSurrogates.charCodeAt(i++);
+    if(previous) {
+      points.push((0x10000 + ((previous - 0xd800) << 10) + (char - 0xdc00)).toString(16));
+      previous = 0;
+    } else if (char > 0xd800 && char <= 0xdbff) {
+      previous = char;
+    } else {
+      points.push(char.toString(16));
+    }
+  }
+
+  if(points.length && points[0].length == 2) {
+    points[0] = '00' + points[0];
+  }
+
+  return points;
+}
+
 /* formatted = formatted.map(e => {
   let {unified, name, short_names, category, sheet_x, sheet_y} = e;
   
@@ -87,13 +122,28 @@ if(false) {
   });
 
   let obj = {};
-  formatted.forEach(e => {
+  if(false/*  || true */) formatted.forEach(e => {
     let {unified, name, short_names, category, sheet_x, sheet_y, sort_order} = e;
 
     let emoji = unified/* .replace(/-FE0F/gi, '') */.split('-')
     .reduce((prev, curr) => prev + String.fromCodePoint(parseInt(curr, 16)), '');
 
-    //emoji = emoji.replace(/\ufe0f/g, '');
+    //emoji = emoji.replace(/[\ufe0f\u200d]/g, '');
+    
+    let c = categories[category] === undefined ? 9 : categories[category];
+    //obj[emoji] = '' + c + sort_order;
+    //obj[emoji] = +('' + (c * 1000 + sort_order)).replace(/0+/g, '0').replace(/^(\d)0(\d)/g, '$1$2');
+    obj[emoji] = e.sort_order !== undefined ? +('' + c + sort_order) : 0;
+  });
+
+  if(true) formatted.forEach(e => {
+    let {unified, name, short_names, category, sheet_x, sheet_y, sort_order} = e;
+
+    let emoji = unified.split('-')
+    .reduce((prev, curr) => prev + String.fromCodePoint(parseInt(curr, 16)), '');
+
+    emoji = encodeEmoji(emoji);
+    //emoji = emoji.replace(/(-fe0f|fe0f)/g, '');
     
     let c = categories[category] === undefined ? 9 : categories[category];
     //obj[emoji] = '' + c + sort_order;

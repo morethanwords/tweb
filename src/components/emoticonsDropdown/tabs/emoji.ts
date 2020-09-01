@@ -67,7 +67,9 @@ export default class EmojiTab implements EmoticonsTab {
           console.log('append emoji', emoji, emojiUnicode(emoji));
         } */
 
-        this.appendEmoji(emoji/* .replace(/[\ufe0f\u2640\u2642\u2695]/g, '') */, itemsDiv);
+        emoji = emoji.split('-').reduce((prev, curr) => prev + String.fromCodePoint(parseInt(curr, 16)), '');
+
+        this.appendEmoji(emoji/* .replace(/[\ufe0f\u2640\u2642\u2695]/g, '') */, itemsDiv, false, false);
 
         /* if(category == 'Smileys & Emotion') {
           console.log('appended emoji', emoji, itemsDiv.children[itemsDiv.childElementCount - 1].innerHTML, emojiUnicode(emoji));
@@ -120,13 +122,26 @@ export default class EmojiTab implements EmoticonsTab {
     this.init = null;
   }
 
-  private appendEmoji(emoji: string, container: HTMLElement, prepend = false) {
+  private appendEmoji(emoji: string, container: HTMLElement, prepend = false, unified = false) {
     //const emoji = details.unified;
     //const emoji = (details.unified as string).split('-')
     //.reduce((prev, curr) => prev + String.fromCodePoint(parseInt(curr, 16)), '');
 
     const spanEmoji = document.createElement('span');
-    const kek = RichTextProcessor.wrapEmojiText(emoji);
+
+    let kek: string;
+    if(unified) {
+      kek = RichTextProcessor.wrapRichText('_', {
+        entities: [{
+          _: 'messageEntityEmoji',
+          offset: 0,
+          length: emoji.split('-').length,
+          unicode: emoji
+        }]
+      });
+    } else {
+      kek = RichTextProcessor.wrapEmojiText(emoji);
+    }
 
     /* if(!kek.includes('emoji')) {
       console.log(emoji, kek, spanEmoji, emoji.length, new TextEncoder().encode(emoji), emojiUnicode(emoji));

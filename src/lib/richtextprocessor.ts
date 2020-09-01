@@ -86,7 +86,19 @@ var markdownEntities = {
 };
 
 function getEmojiSpritesheetCoords(emojiCode: string) {
-  return encodeEmoji(emojiCode).replace(/(-fe0f|fe0f)/g, '');
+  let unified = encodeEmoji(emojiCode)/* .replace(/(-fe0f|fe0f)/g, '') */;
+
+  if(unified == '1f441-200d-1f5e8') {
+    unified = '1f441-fe0f-200d-1f5e8-fe0f';
+  }
+
+  if(!emojiData.hasOwnProperty(unified)/*  && !emojiData.hasOwnProperty(unified.replace(/(-fe0f|fe0f)/g, '')) */) {
+  //if(!emojiData.hasOwnProperty(emojiCode) && !emojiData.hasOwnProperty(emojiCode.replace(/[\ufe0f\u200d]/g, ''))) {
+    //console.error('lol', unified);
+    return null;
+  }
+
+  return unified.replace(/(-fe0f|fe0f)/g, '');
 }
 function parseEntities(text: string, options = {}) {
   var match;

@@ -212,7 +212,8 @@
     align-items: center;
 
     @include respond-to(handhelds) {
-      margin-right: .75rem;
+      //margin: -3px .75rem 0 2px;
+      margin: -3px 2px 0 2px;
     }
     
     &__icon {
@@ -221,6 +222,11 @@
       height: 24px;
       margin-right: 8px;
       cursor: pointer;
+
+      @include respond-to(handhelds) {
+        width: 20px;
+        height: 20px;
+      }
     }
 
     .progress-line {

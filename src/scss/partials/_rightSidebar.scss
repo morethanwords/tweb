@@ -419,12 +419,21 @@
           min-height: 60px;
         }
 
-        @include respond-to(handhelds) {
-          .preloader-container {
+        .preloader-container {
+          .preloader-circular {
+            background-color: rgba(0, 0, 0, 0.35);
+          }
+
+          @include respond-to(handhelds) {
             width: 40px;
             height: 40px;
             top: 9px;
             left: 2px;
+          }
+
+          @include respond-to(not-handhelds) {
+            width: 38px;
+            height: 38px;
           }
         }
 
@@ -460,6 +469,11 @@
             border-radius: 50%;
             background-color: #50a2e9;
             align-items: center;
+
+            @include respond-to(not-handhelds) {
+              width: 48px;
+              height: 48px;
+            }
           }
 
           &-toggle, &-download {

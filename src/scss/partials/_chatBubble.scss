@@ -1103,6 +1103,11 @@ $bubble-margin: .25rem;
 
 .bubble-audio .time {
   width: unset !important;
+  padding-left: 14px !important;
+
+  @include respond-to(handhelds) {
+    padding-left: 0px !important;
+  }
 }
 
 .bubble.is-in {
