@@ -23,6 +23,7 @@ export default class AppGifsTab implements SliderTab {
   private lazyLoadQueue: LazyLoadQueue;
 
   private nextOffset = '';
+  private loadedAll = false;
 
   private gifBotPeerID: number;
   private masonry: GifsMasonry;
@@ -73,6 +74,7 @@ export default class AppGifsTab implements SliderTab {
   private reset() {
     this.searchPromise = null;
     this.nextOffset = '';
+    this.loadedAll = false;
     this.lazyLoadQueue.clear();
   }
 
@@ -91,7 +93,7 @@ export default class AppGifsTab implements SliderTab {
   }
 
   public async search(query: string, newSearch = true) {
-    if(this.searchPromise) return;
+    if(this.searchPromise || this.loadedAll) return;
 
     if(!this.gifBotPeerID) {
       this.gifBotPeerID = (await appUsersManager.resolveUsername('gif')).id;
@@ -111,11 +113,15 @@ export default class AppGifsTab implements SliderTab {
         this.gifsDiv.innerHTML = '';
       }
 
-      results.forEach((result) => {
-        if(result._ === 'botInlineMediaResult' && result.document) {
-          this.masonry.add(result.document, ANIMATIONGROUP, this.lazyLoadQueue);
-        }
-      });
+      if(results.length) {
+        results.forEach((result) => {
+          if(result._ === 'botInlineMediaResult' && result.document) {
+            this.masonry.add(result.document, ANIMATIONGROUP, this.lazyLoadQueue);
+          }
+        });
+      } else {
+        this.loadedAll = true;
+      }
 
       this.scrollable.onScroll();
     } catch (err) {
