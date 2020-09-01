@@ -326,7 +326,7 @@ export class AppInlineBotsManager {
         toast(RichTextProcessor.wrapRichText(callbackAnswer.message, {noLinks: true, noLinebreaks: true}));
       }
       
-      console.log('callbackButtonClick callbackAnswer:', callbackAnswer);
+      //console.log('callbackButtonClick callbackAnswer:', callbackAnswer);
     });
   }
       

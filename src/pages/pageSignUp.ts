@@ -38,13 +38,13 @@ let onFirstMount = () => import('../lib/appManagers/appProfileManager').then(imp
 
   let sendAvatar = () => new Promise((resolve, reject) => {
     if(!uploadAvatar) {
-      console.log('User has not selected avatar');
+      //console.log('User has not selected avatar');
       return resolve();
     }
 
-    console.log('invoking uploadFile...');
+    //console.log('invoking uploadFile...');
     uploadAvatar().then((inputFile: any) => {
-      console.log('uploaded smthn', inputFile);
+      //console.log('uploaded smthn', inputFile);
   
       appProfileManager.uploadProfilePhoto(inputFile).then(resolve, reject);
     }, reject);
@@ -75,14 +75,14 @@ let onFirstMount = () => import('../lib/appManagers/appProfileManager').then(imp
       'last_name': lastName
     };
 
-    console.log('invoking auth.signUp with params:', params);
+    //console.log('invoking auth.signUp with params:', params);
 
     this.textContent = 'PLEASE WAIT...';
     putPreloader(this);
 
     apiManager.invokeApi('auth.signUp', params)
     .then((response: any) => {
-      console.log('auth.signUp response:', response);
+      //console.log('auth.signUp response:', response);
       
       switch(response._) {
         case 'auth.authorization': // success

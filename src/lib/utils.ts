@@ -200,9 +200,9 @@ type BroadcastEvents = {
 
 export const $rootScope = {
   $broadcast: <T extends keyof BroadcastEvents>(name: T, detail?: BroadcastEvents[T]) => {
-    if(name != 'user_update') {
+    /* if(name != 'user_update') {
       console.debug(dT(), 'Broadcasting ' + name + ' event, with args:', detail);
-    }
+    } */
 
     let myCustomEvent = new CustomEvent(name, {detail});
     document.dispatchEvent(myCustomEvent);

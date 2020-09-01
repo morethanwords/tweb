@@ -1,5 +1,5 @@
 import AppStorage from '../storage';
-import { nextRandomInt, longFromInts, dT } from '../bin_utils';
+import { nextRandomInt, longFromInts } from '../bin_utils';
 
 export class TimeManager {
   private lastMessageID = [0, 0];
@@ -41,7 +41,7 @@ export class TimeManager {
 
     this.lastMessageID = [0, 0];
     this.timeOffset = newTimeOffset;
-    console.log(dT(), 'Apply server time', serverTime, localTime, newTimeOffset, changed);
+    //console.log(dT(), 'Apply server time', serverTime, localTime, newTimeOffset, changed);
 
     return changed;
   }

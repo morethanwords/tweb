@@ -348,7 +348,7 @@ export default class VideoPlayer {
         onScrub: currentTime => {
           const value = Math.max(Math.min(currentTime, 1), 0);
 
-          console.log('volume scrub:', currentTime, value);
+          //console.log('volume scrub:', currentTime, value);
 
           video.muted = false;
           video.volume = value;

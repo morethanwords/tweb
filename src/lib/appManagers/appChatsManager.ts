@@ -73,7 +73,7 @@ export class AppChatsManager {
       switch(update._) {
         case 'updateChannel':
           const channelID = update.channel_id;
-          console.log('updateChannel:', update);
+          //console.log('updateChannel:', update);
           $rootScope.$broadcast('channel_settings', {channelID: channelID});
           break;
       }

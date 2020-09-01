@@ -75,7 +75,7 @@ export class Layouter {
   }
 
   private layoutThree(): ReturnType<Layouter['layout']> {
-    console.log('layoutThree:', this);
+    //console.log('layoutThree:', this);
     if(this.proportions[0] == 'n') {
       return this.layoutThreeLeftAndOther();
     }

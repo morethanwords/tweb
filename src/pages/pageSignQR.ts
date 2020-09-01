@@ -168,7 +168,7 @@ let cachedPromise: Promise<() => Promise<void>>;
 const page = new Page('page-signQR', true, () => {
   return cachedPromise;
 }, () => {
-  console.log('onMount');
+  //console.log('onMount');
   if(!cachedPromise) cachedPromise = onFirstMount();
   cachedPromise.then(func => {
     func();

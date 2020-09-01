@@ -52,7 +52,7 @@ export default class AppEditProfileTab implements SliderTab {
     this.userNameInput.addEventListener('input', () => {
       let value = this.userNameInput.value;
 
-      console.log('userNameInput:', value);
+      //console.log('userNameInput:', value);
       if(value == this.originalValues.userName || !value.length) {
         this.userNameInput.classList.remove('valid', 'error');
         userNameLabel.innerText = 'Username (optional)';
