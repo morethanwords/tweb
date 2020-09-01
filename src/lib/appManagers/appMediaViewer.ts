@@ -18,6 +18,7 @@ import appMediaPlaybackController from "../../components/appMediaPlaybackControl
 
 // TODO: масштабирование картинок (не SVG) при ресайзе, и правильный возврат на исходную позицию
 // TODO: картинки "обрезаются" если возвращаются или появляются с места, где есть их перекрытие (топбар, поле ввода)
+// TODO: видео в мобильной вёрстке, если показываются элементы управления: если свайпнуть в сторону, то элементы вернутся на место, т.е. прыгнут - это не ок, надо бы замаскировать
 
 class SwipeHandler {
   private xDown: number;
@@ -205,6 +206,9 @@ export class AppMediaViewer {
 
     if(touchSupport) {
       const swipeHandler = new SwipeHandler(this.wholeDiv, (xDiff, yDiff) => {
+        if(VideoPlayer.isFullScreen()) {
+          return;
+        }
         //console.log(xDiff, yDiff);
 
         const percents = Math.abs(xDiff) / appPhotosManager.windowW;
@@ -358,7 +362,7 @@ export class AppMediaViewer {
     } */
 
     let aspecter: HTMLDivElement;
-    if(target instanceof HTMLImageElement || target instanceof HTMLVideoElement) {
+    if(target instanceof HTMLImageElement || target instanceof HTMLVideoElement || target.tagName == 'DIV') {
       if(mover.firstElementChild && mover.firstElementChild.classList.contains('media-viewer-aspecter')) {
         aspecter = mover.firstElementChild as HTMLDivElement;
 
@@ -491,18 +495,29 @@ export class AppMediaViewer {
 
       if(aspecter) {
         aspecter.style.borderRadius = borderRadius;
-        aspecter.append(mediaElement);
+
+        if(mediaElement) {
+          aspecter.append(mediaElement);
+        }
       }
 
       mediaElement = mover.querySelector('video, img');
-      if(mediaElement instanceof HTMLImageElement && src) {
-        await new Promise((resolve, reject) => {
-          mediaElement.addEventListener('load', resolve);
+      if(mediaElement instanceof HTMLImageElement) {
+        mediaElement.classList.add('thumbnail');
+        if(!aspecter) {
+          mediaElement.style.width = containerRect.width + 'px';
+          mediaElement.style.height = containerRect.height + 'px';
+        }
 
-          if(src) {
-            mediaElement.src = src;
-          }
-        });
+        if(src) {
+          await new Promise((resolve, reject) => {
+            mediaElement.addEventListener('load', resolve);
+  
+            if(src) {
+              mediaElement.src = src;
+            }
+          });
+        }
       }/*  else if(mediaElement instanceof HTMLVideoElement && mediaElement.firstElementChild && ((mediaElement.firstElementChild as HTMLSourceElement).src || src)) {
         await new Promise((resolve, reject) => {
           mediaElement.addEventListener('loadeddata', resolve);
@@ -551,7 +566,7 @@ export class AppMediaViewer {
       setTimeout(() => {
         mover.innerHTML = '';
         mover.classList.remove('moving', 'active', 'hiding');
-        mover.style.display = 'none';
+        mover.style.cssText = 'display: none;';
 
         deferred.resolve();
       }, delay);
@@ -669,7 +684,8 @@ export class AppMediaViewer {
 
   private removeCenterFromMover(mover: HTMLDivElement) {
     if(mover.classList.contains('center')) {
-      const rect = mover.getBoundingClientRect();
+      //const rect = mover.getBoundingClientRect();
+      const rect = this.content.container.getBoundingClientRect();
       mover.style.transform = `translate(${rect.left}px,${rect.top}px)`;
       mover.classList.remove('center');
       void mover.offsetLeft; // reflow
@@ -818,7 +834,7 @@ export class AppMediaViewer {
     this.log('openMedia doc:', message);
     const media = message.media.photo || message.media.document || message.media.webpage.document || message.media.webpage.photo;
     
-    const isVideo = (media as MTDocument).type == 'video';
+    const isVideo = (media as MTDocument).type == 'video' || (media as MTDocument).type == 'gif';
     const isFirstOpen = !this.peerID;
 
     if(isFirstOpen) {
@@ -946,7 +962,11 @@ export class AppMediaViewer {
         //video.src = '';
 
         video.setAttribute('playsinline', '');
-        video.autoplay = true;
+
+        if(isSafari) {
+          video.autoplay = true;
+        }
+
         if(media.type == 'gif') {
           video.muted = true;
           video.autoplay = true;
@@ -958,7 +978,7 @@ export class AppMediaViewer {
         }
 
         const canPlayThrough = new Promise((resolve) => {
-          video.addEventListener('canplaythrough', resolve, {once: true});
+          video.addEventListener('canplay', resolve, {once: true});
         });
 
         const createPlayer = () => {
@@ -1039,29 +1059,9 @@ export class AppMediaViewer {
                 
                 this.updateMediaSource(mover, url, 'video');
               } else {
-                //const promise = new Promise((resolve) => video.addEventListener('loadeddata', resolve, {once: true}));
                 renderImageFromUrl(video, url);
-
-                //await promise;
-                /* const first = div.firstElementChild as HTMLImageElement;
-                if(!(first instanceof HTMLVideoElement) && first) {
-                  first.remove();
-                }
-
-                if(!video.parentElement) {
-                  div.prepend(video);
-                } */
               }
 
-              // я хз что это такое, видео появляются просто чёрными и не включаются без этого кода снизу
-              /* source.remove();
-              window.requestAnimationFrame(() => {
-                window.requestAnimationFrame(() => {
-                  //parent.append(video);
-                  video.append(source);
-                });
-              }); */
-  
               createPlayer();
             });
 
@@ -1081,8 +1081,8 @@ export class AppMediaViewer {
       //if(wasActive) return;
         //return;
         
-        let load = () => {
-          let cancellablePromise = appPhotosManager.preloadPhoto(media.id, size);
+        const load = () => {
+          const cancellablePromise = appPhotosManager.preloadPhoto(media.id, size);
           onAnimationEnd.then(() => {
             this.preloader.attach(mover, true, cancellablePromise);
           });
@@ -1094,12 +1094,19 @@ export class AppMediaViewer {
             
             ///////this.log('indochina', blob);
   
-            let url = media.url;
+            const url = media.url;
             if(target instanceof SVGSVGElement) {
               this.updateMediaSource(target, url, 'img');
               this.updateMediaSource(mover, url, 'img');
+
+              /* const imgs = mover.querySelectorAll('img');
+              if(imgs && imgs.length) {
+                imgs.forEach(img => {
+                  img.classList.remove('thumbnail'); // может здесь это вообще не нужно
+                });
+              } */
             } else {
-              let div = mover.firstElementChild && mover.firstElementChild.classList.contains('media-viewer-aspecter') ? mover.firstElementChild : mover;
+              const div = mover.firstElementChild && mover.firstElementChild.classList.contains('media-viewer-aspecter') ? mover.firstElementChild : mover;
               let image = div.firstElementChild as HTMLImageElement;
               if(!image || image.tagName != 'IMG') {
                 image = new Image();
@@ -1108,6 +1115,7 @@ export class AppMediaViewer {
               //this.log('will renderImageFromUrl:', image, div, target);
   
               renderImageFromUrl(image, url, () => {
+                image.classList.remove('thumbnail'); // может здесь это вообще не нужно
                 div.append(image);
               });
             }

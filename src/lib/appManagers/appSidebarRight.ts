@@ -226,20 +226,24 @@ export class AppSidebarRight extends SidebarSlider {
     });
     
     this.sharedMedia.contentMedia.addEventListener('click', (e) => {
-      let target = e.target as HTMLDivElement;
+      const target = e.target as HTMLDivElement;
       
-      let messageID = +target.dataset.mid;
+      const messageID = +target.dataset.mid;
       if(!messageID) {
         this.log.warn('no messageID by click on target:', target);
         return;
       }
       
-      let message = appMessagesManager.getMessage(messageID);
+      const message = appMessagesManager.getMessage(messageID);
       
-      let ids = Object.keys(this.mediaDivsByIDs).map(k => +k).sort((a, b) => a - b);
-      let idx = ids.findIndex(i => i == messageID);
+      const ids = Object.keys(this.mediaDivsByIDs).map(k => +k).sort((a, b) => a - b);
+      const idx = ids.findIndex(i => i == messageID);
       
-      let targets = ids.map(id => ({element: this.mediaDivsByIDs[id]/* .firstElementChild */ as HTMLElement, mid: id}));
+      const targets = ids.map(id => {
+        const element = this.mediaDivsByIDs[id] as HTMLElement;
+        //element = element.querySelector('img') || element;
+        return {element, mid: id};
+      });
       
       appMediaViewer.openMedia(message, target, false, this.sidebarEl, targets.slice(idx + 1).reverse(), targets.slice(0, idx).reverse(), true);
     });

@@ -2,6 +2,8 @@ import { cancelEvent } from "./utils";
 import { touchSupport } from "./config";
 import appMediaPlaybackController from "../components/appMediaPlaybackController";
 
+type SUPEREVENT = MouseEvent | TouchEvent;
+
 export class ProgressLine {
   public container: HTMLDivElement;
   protected filled: HTMLDivElement;
@@ -46,17 +48,17 @@ export class ProgressLine {
     this.events = events;
   }
 
-  onMouseMove = (e: MouseEvent) => {
+  onMouseMove = (e: SUPEREVENT) => {
     this.mousedown && this.scrub(e);
   };
 
-  onMouseDown = (e: MouseEvent) => {
+  onMouseDown = (e: SUPEREVENT) => {
     this.scrub(e);
     this.mousedown = true;
     this.events?.onMouseDown && this.events.onMouseDown(e);
   };
 
-  onMouseUp = (e: MouseEvent) => {
+  onMouseUp = (e: SUPEREVENT) => {
     this.mousedown = false;
     this.events?.onMouseUp && this.events.onMouseUp(e);
   };
@@ -65,6 +67,12 @@ export class ProgressLine {
     this.container.addEventListener('mousemove', this.onMouseMove);
     this.container.addEventListener('mousedown', this.onMouseDown);
     this.container.addEventListener('mouseup', this.onMouseUp);
+
+    if(touchSupport) {
+      this.container.addEventListener('touchmove', this.onMouseMove);
+      this.container.addEventListener('touchstart', this.onMouseDown);
+      this.container.addEventListener('touchend', this.onMouseUp);
+    }
   }
 
   public setProgress(scrubTime: number) {
@@ -78,8 +86,16 @@ export class ProgressLine {
     this.filled.style.transform = 'scaleX(' + scaleX + ')';
   }
 
-  protected scrub(e: MouseEvent) {
-    const scrubTime = e.offsetX / this.container.offsetWidth * this.duration;
+  protected scrub(e: SUPEREVENT) {
+    let offsetX: number;
+    if(e instanceof TouchEvent) {
+      const rect = (e.target as HTMLElement).getBoundingClientRect();
+      offsetX = e.targetTouches[0].pageX - rect.left;
+    } else {
+      offsetX = e.offsetX;
+    }
+
+    const scrubTime = offsetX / this.container.offsetWidth * this.duration;
 
     this.setFilled(scrubTime);
 
@@ -91,6 +107,12 @@ export class ProgressLine {
     this.container.removeEventListener('mousemove', this.onMouseMove);
     this.container.removeEventListener('mousedown', this.onMouseDown);
     this.container.removeEventListener('mouseup', this.onMouseUp);
+
+    if(touchSupport) {
+      this.container.removeEventListener('touchmove', this.onMouseMove);
+      this.container.removeEventListener('touchstart', this.onMouseDown);
+      this.container.removeEventListener('touchend', this.onMouseUp);
+    }
 
     this.events = {};
   }
@@ -119,7 +141,7 @@ export class MediaProgressLine extends ProgressLine {
     this.setSeekMax();
     this.setListeners();
     this.setHandlers({
-      onMouseDown: (e: MouseEvent) => {
+      onMouseDown: (e: SUPEREVENT) => {
         //super.onMouseDown(e);
     
         //Таймер для того, чтобы стопать видео, если зажал мышку и не отпустил клик
@@ -133,7 +155,7 @@ export class MediaProgressLine extends ProgressLine {
         }, 150);
       },
 
-      onMouseUp: (e: MouseEvent) => {
+      onMouseUp: (e: SUPEREVENT) => {
         //super.onMouseUp(e);
     
         if(this.stopAndScrubTimeout) {
@@ -379,8 +401,41 @@ export default class VideoPlayer {
       video.addEventListener('click', () => {
         if(!touchSupport) {
           this.togglePlay();
+          return;
         }
       });
+
+      if(touchSupport) {
+        let showControlsTimeout = 0;
+
+        const t = () => {
+          showControlsTimeout = setTimeout(() => {
+            showControlsTimeout = 0;
+            player.classList.remove('show-controls');
+          }, 3e3);
+        };
+
+        player.addEventListener('click', () => {
+          if(showControlsTimeout) {
+            clearTimeout(showControlsTimeout);
+          } else {
+            player.classList.add('show-controls');
+          }
+  
+          t();
+        });
+
+        player.addEventListener('touchstart', () => {
+          player.classList.add('show-controls');
+          clearTimeout(showControlsTimeout);
+        });
+
+        player.addEventListener('touchend', () => {
+          if(player.classList.contains('is-playing')) {
+            t();
+          }
+        });
+      }
   
       /* player.addEventListener('click', (e) => {
         if(e.target != player) {
@@ -398,6 +453,10 @@ export default class VideoPlayer {
       });
   
       video.addEventListener('dblclick', () => {
+        if(touchSupport) {
+          return;
+        }
+
         return this.toggleFullScreen(fullScreenButton);
       })
 
@@ -540,13 +599,17 @@ export default class VideoPlayer {
       `;
     }
   }
+
+  public static isFullScreen(): boolean {
+    // @ts-ignore
+    return !!(document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+  }
   
   public toggleFullScreen(fullScreenButton: HTMLElement) {
     // alternative standard method
     const player = this.wrapper;
     
-    // @ts-ignore
-    if(!document.fullscreenElement && !document.mozFullScreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
+    if(!VideoPlayer.isFullScreen()) {
       player.classList.add('ckin__fullscreen');
 
       /* const videoParent = this.video.parentElement;

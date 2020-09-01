@@ -196,8 +196,18 @@ $move-duration: .35s;
     overflow: hidden;
     //border-radius: 0;
 
-    max-width: 100%;
-    max-height: 100%;
+    // эти значения должны быть такими же, как при установке maxWidth и maxHeight в openMedia!
+    //max-width: 100%;
+    max-width: calc(100% - 16px);
+    //max-height: 100%;
+    max-height: calc(100% - 100px);
+
+    // эти значения должны быть такими же, как при установке maxWidth и maxHeight в openMedia!
+    @include respond-to(handhelds) {
+      overflow: visible;
+      //max-height: 100% !important;
+      max-width: 100% !important;
+    }
 
     .ckin__player {
       width: 100%;
@@ -215,8 +225,11 @@ $move-duration: .35s;
     img, video {
       width: 100%;
       height: 100%;
+      max-width: 100%;
+      max-height: 100%;
       user-select: none;
       object-fit: cover;
+      //object-fit: contain;
       opacity: 1;
 
       //&.thumbnail {
@@ -245,6 +258,55 @@ $move-duration: .35s;
       left: 50% !important;
       top: 50% !important;
       transform: translate(-50%, -50%) !important;
+
+      @include respond-to(handhelds) {
+        width: 100% !important;
+        height: 100% !important;
+        //height: calc(100% - 100px) !important;
+        /* height: calc(100% - 50px) !important;
+        top: calc(50% + 25px) !important;
+        
+        img, video {
+          margin-top: -25px;
+        } */
+
+        /* img, video {
+          max-height: calc(100% - 100px);
+        } */
+
+        .ckin__player:not(.ckin__fullscreen) {
+          .default__controls {
+            bottom: -50px;
+          }
+
+          .default__gradient-bottom {
+            bottom: -50px;
+          }
+        }
+      }
+
+      /* @include respond-to(handhelds) {
+        &.moving {
+          .ckin__player {
+            .default__controls, .default__gradient-bottom {
+              display: none;
+            }
+          }
+        }
+      } */
+
+      img:not(.thumbnail), video {
+        height: auto;
+        width: auto;
+        object-fit: contain;
+        //max-height: calc(100% - 100px);
+      }
+
+      img.thumbnail {
+        width: auto;
+        object-fit: contain;
+        //height: auto;
+      }
     }
 
     &.hiding {
@@ -262,6 +324,10 @@ $move-duration: .35s;
     transform: scale(1);
     //overflow: hidden; // WARNING
     position: absolute;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   &-mover.active &-aspecter {
@@ -283,7 +349,7 @@ $move-duration: .35s;
       visibility: visible;
       transition-delay: 0s;
 
-      .overlays, .btn-menu-toggle {
+      .overlays, > .btn-icon {
         opacity: 1;
         visibility: visible;
         transition: opacity $open-duration 0s, visibility 0s 0s;
@@ -292,18 +358,19 @@ $move-duration: .35s;
 
     @include respond-to(handhelds) {
       .menu-mobile-close {
-        position: absolute;
         left: 20px;
-        top: 8px;
       }
-  
-      .btn-menu-toggle {
-        position: fixed;
-        right: 8px;
+
+      > .btn-icon {
         top: 8px;
+        position: fixed;
         z-index: 5;
         opacity: 0;
         transition: opacity $open-duration 0s, visibility 0s $open-duration;
+      }
+  
+      .btn-menu-toggle {
+        right: 8px;
   
         &.menu-open {
           color: #fff;
