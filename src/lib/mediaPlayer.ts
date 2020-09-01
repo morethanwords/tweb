@@ -88,11 +88,11 @@ export class ProgressLine {
 
   protected scrub(e: SUPEREVENT) {
     let offsetX: number;
-    if(e instanceof TouchEvent) {
+    if(e instanceof MouseEvent) {
+      offsetX = e.offsetX;
+    } else { // touch
       const rect = (e.target as HTMLElement).getBoundingClientRect();
       offsetX = e.targetTouches[0].pageX - rect.left;
-    } else {
-      offsetX = e.offsetX;
     }
 
     const scrubTime = offsetX / this.container.offsetWidth * this.duration;
