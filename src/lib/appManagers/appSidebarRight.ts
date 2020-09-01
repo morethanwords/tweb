@@ -619,16 +619,16 @@ export class AppSidebarRight extends SidebarSlider {
     if(this.loadMutex) {
       promises.push(this.loadMutex);
     }
+
+    if(promises.length) {
+      await Promise.all(promises);
+      if(this.peerID != peerID) {
+        this.log.warn('peer changed');
+        return;
+      }
+    }
     
     if(elemsToAppend.length) {
-      if(promises.length) {
-        await Promise.all(promises);
-        if(this.peerID != peerID) {
-          this.log.warn('peer changed');
-          return;
-        }
-      }
-
       sharedMediaDiv.append(...elemsToAppend);
     }
     

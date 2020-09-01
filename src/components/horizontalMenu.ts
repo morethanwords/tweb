@@ -146,7 +146,7 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?
         const scaleFactor = currentIndicator.clientWidth / indicator.clientWidth;
         indicator.style.transform = `translate3d(${shiftLeft}px, 0, 0) scale3d(${scaleFactor}, 1, 1)`;
 
-        console.log(`translate3d(${shiftLeft}px, 0, 0) scale3d(${scaleFactor}, 1, 1)`);
+        //console.log(`translate3d(${shiftLeft}px, 0, 0) scale3d(${scaleFactor}, 1, 1)`);
   
         requestAnimationFrame(() => {
           // Now we remove the transform to let it animate to its own position and size.
