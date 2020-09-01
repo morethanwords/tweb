@@ -1,6 +1,7 @@
 import { cancelEvent } from "./utils";
 import { touchSupport } from "./config";
 import appMediaPlaybackController from "../components/appMediaPlaybackController";
+import { isAppleMobile } from "../helpers/userAgent";
 
 type SUPEREVENT = MouseEvent | TouchEvent;
 
@@ -347,6 +348,8 @@ export default class VideoPlayer {
         onScrub: currentTime => {
           const value = Math.max(Math.min(currentTime, 1), 0);
 
+          console.log('volume scrub:', currentTime, value);
+
           video.muted = false;
           video.volume = value;
         }
@@ -608,6 +611,14 @@ export default class VideoPlayer {
   public toggleFullScreen(fullScreenButton: HTMLElement) {
     // alternative standard method
     const player = this.wrapper;
+
+    // * https://caniuse.com/#feat=fullscreen
+    if(isAppleMobile) {
+      const video = this.video as any;
+      video.webkitEnterFullscreen();
+      video.enterFullscreen();
+      return;
+    }
     
     if(!VideoPlayer.isFullScreen()) {
       player.classList.add('ckin__fullscreen');

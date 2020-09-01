@@ -10,6 +10,7 @@ import Page from './page';
 import { mediaSizes } from '../lib/config';
 import passwordManager from '../lib/mtproto/passwordManager';
 import { AccountPassword } from '../types';
+import { cancelEvent } from '../lib/utils';
 
 let onFirstMount = (): Promise<any> => {
   let needFrame = 0;
@@ -42,25 +43,28 @@ let onFirstMount = (): Promise<any> => {
     getState();
   };
 
-  toggleVisible.addEventListener('click', function(this, e) {
+  const onVisibilityClick = function(this: typeof toggleVisible, e: Event) {
+    cancelEvent(e);
     passwordVisible = !passwordVisible;
 
+    this.classList.toggle('tgico-eye2', passwordVisible);
     if(passwordVisible) {
-      this.classList.add('tgico-eye2');
       passwordInput.setAttribute('type', 'text');
       animation.setDirection(1);
       animation.curFrame = 0;
       needFrame = 16;
       animation.play();
     } else {
-      this.classList.remove('tgico-eye2');
       passwordInput.setAttribute('type', 'password');
       animation.setDirection(-1);
       animation.curFrame = 16;
       needFrame = 0;
       animation.play();
     }
-  });
+  };
+
+  toggleVisible.addEventListener('click', onVisibilityClick);
+  toggleVisible.addEventListener('touchend', onVisibilityClick);
 
   let state: AccountPassword;
   

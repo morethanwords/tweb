@@ -227,6 +227,11 @@
       margin: 0;
       width: 50px;
 
+      // https://stackoverflow.com/a/4816050
+      html.is-ios & {
+        display: none;
+      }
+
       &__filled {
         background: #fff;
       }

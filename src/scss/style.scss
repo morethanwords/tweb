@@ -132,6 +132,10 @@ html, body {
   width: 100%;
   -webkit-font-smoothing: antialiased;
 
+  @include respond-to(handhelds) {
+    height: calc(var(--vh, 1vh) * 100);
+  }
+
   /* @include respond-to(handhelds) {
     //overflow-y: auto;
     height: 100%;

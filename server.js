@@ -8,7 +8,7 @@ const app = express();
 const thirdTour = process.argv[2] == 3;
 
 const publicFolderName = thirdTour ? 'public3' : 'public';
-const port = thirdTour ? 8443 : 443;
+const port = thirdTour ? 8443 : 8443;
 
 app.use(compression());
 app.use(express.static(publicFolderName));

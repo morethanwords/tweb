@@ -106,6 +106,11 @@
     font-size: 20px;
     line-height: 1.4;
     font-weight: 500;
+    text-overflow: ellipsis;
+	  overflow: hidden;
+    word-break: break-word;
+    max-width: 340px;
+    margin: 0 auto;
 
     span.emoji {
       vertical-align: inherit;
@@ -161,6 +166,9 @@
       color: #000;
       margin: 0;
       font-size: 1rem;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      word-break: break-word;
     }
 
     &-bio {

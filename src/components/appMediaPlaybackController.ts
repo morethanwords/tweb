@@ -41,6 +41,10 @@ class AppMediaPlaybackController {
     //const source = document.createElement('source');
     //source.type = doc.type == 'voice' && !opusDecodeController.isPlaySupported() ? 'audio/wav' : doc.mime_type;
 
+    if(doc.type == 'round') {
+      media.setAttribute('playsinline', '');
+    }
+
     media.dataset.mid = '' + mid;
     media.dataset.type = doc.type;
     

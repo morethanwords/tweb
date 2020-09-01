@@ -30,6 +30,12 @@ class SwipeHandler {
   }
 
   handleTouchStart = (evt: TouchEvent) => {
+    // * Fix for seek input
+    if((evt.target as HTMLElement).tagName == 'INPUT') {
+      this.xDown = this.yDown = null;
+      return;
+    }
+
     const firstTouch = evt.touches[0];
     this.xDown = firstTouch.clientX;
     this.yDown = firstTouch.clientY;

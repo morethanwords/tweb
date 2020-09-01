@@ -12,4 +12,9 @@ export const isAndroid = navigator.userAgent.toLowerCase().indexOf('android') !=
  */
 const ctx = typeof(window) !== 'undefined' ? window : self;
 
+// https://stackoverflow.com/a/58065241
+export const isAppleMobile = (/iPad|iPhone|iPod/.test(navigator.platform) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) &&
+  !ctx.MSStream;
+
 export const isSafari = !!('safari' in ctx) || !!(userAgent && (/\b(iPad|iPhone|iPod)\b/.test(userAgent) || (!!userAgent.match('Safari') && !userAgent.match('Chrome'))))/*  || true */;
