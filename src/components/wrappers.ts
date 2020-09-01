@@ -578,7 +578,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
 
       //appDocsManager.downloadDocNew(doc.id).promise.then(res => res.json()).then(async(json) => {
       //fetch(doc.url).then(res => res.json()).then(async(json) => {
-      appDocsManager.downloadDocNew(doc.id)
+      await appDocsManager.downloadDocNew(doc.id)
       .then(readBlobAsText)
       .then(JSON.parse)
       .then(async(json) => {

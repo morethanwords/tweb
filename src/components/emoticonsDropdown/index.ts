@@ -40,6 +40,18 @@ export class EmoticonsDropdown {
   public toggleEl: HTMLElement;
   private displayTimeout: number;
 
+  public events: {
+    onClose: Array<() => void>,
+    onCloseAfter: Array<() => void>,
+    onOpen: Array<() => void>,
+    onOpenAfter: Array<() => void>
+  } = {
+    onClose: [],
+    onCloseAfter: [],
+    onOpen: [],
+    onOpenAfter: []
+  };
+
   constructor() {
     this.element = document.getElementById('emoji-dropdown') as HTMLDivElement;
 
@@ -174,26 +186,30 @@ export class EmoticonsDropdown {
     }
     
     if((this.element.style.display && enable === undefined) || enable) {
-      this.element.style.display = '';
-      void this.element.offsetLeft; // reflow
-      this.element.classList.add('active');
+      this.events.onOpen.forEach(cb => cb());
 
       EmoticonsDropdown.lazyLoadQueue.lockIntersection();
       //EmoticonsDropdown.lazyLoadQueue.unlock();
       animationIntersector.lockIntersectionGroup(EMOTICONSSTICKERGROUP);
 
+      this.element.style.display = '';
+      void this.element.offsetLeft; // reflow
+      this.element.classList.add('active');
+
       clearTimeout(this.displayTimeout);
       this.displayTimeout = setTimeout(() => {
         animationIntersector.unlockIntersectionGroup(EMOTICONSSTICKERGROUP);
         EmoticonsDropdown.lazyLoadQueue.unlockIntersection();
+
+        this.events.onOpenAfter.forEach(cb => cb());
       }, touchSupport ? 0 : 200);
 
       /* if(touchSupport) {
         this.restoreScroll();
       } */
     } else {
-      this.element.classList.remove('active');
-      
+      this.events.onClose.forEach(cb => cb());
+
       EmoticonsDropdown.lazyLoadQueue.lockIntersection();
       //EmoticonsDropdown.lazyLoadQueue.lock();
 
@@ -201,14 +217,17 @@ export class EmoticonsDropdown {
       animationIntersector.lockIntersectionGroup(EMOTICONSSTICKERGROUP);
       animationIntersector.checkAnimations(true, EMOTICONSSTICKERGROUP);
 
+      this.element.classList.remove('active');
+
       clearTimeout(this.displayTimeout);
       this.displayTimeout = setTimeout(() => {
         this.element.style.display = 'none';
 
         // теперь можно убрать visible, чтобы они не включились после фокуса
         animationIntersector.unlockIntersectionGroup(EMOTICONSSTICKERGROUP);
-
         EmoticonsDropdown.lazyLoadQueue.unlockIntersection();
+
+        this.events.onCloseAfter.forEach(cb => cb());
       }, touchSupport ? 0 : 200);
 
       /* if(touchSupport) {
@@ -291,7 +310,9 @@ export class EmoticonsDropdown {
 
     if(!target) return;
     
-    let fileID = target.dataset.docID;
+    const fileID = target.dataset.docID;
+    if(!fileID) return;
+
     if(appImManager.chatInputC.sendMessageWithDocument(fileID)) {
       /* dropdown.classList.remove('active');
       toggleEl.classList.remove('active'); */

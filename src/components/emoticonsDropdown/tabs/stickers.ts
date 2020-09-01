@@ -1,4 +1,4 @@
-import { EmoticonsTab, EMOTICONSSTICKERGROUP, EmoticonsDropdown } from "..";
+import emoticonsDropdown, { EmoticonsTab, EMOTICONSSTICKERGROUP, EmoticonsDropdown } from "..";
 import { MTDocument } from "../../../types";
 import Scrollable from "../../scrollable_new";
 import { wrapSticker } from "../../wrappers";
@@ -11,6 +11,8 @@ import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import { $rootScope } from "../../../lib/utils";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
 import StickyIntersector from "../../stickyIntersector";
+import appDocsManager from "../../../lib/appManagers/appDocsManager";
+import animationIntersector from "../../animationIntersector";
 
 export default class StickersTab implements EmoticonsTab {
   public content: HTMLElement;
@@ -32,6 +34,9 @@ export default class StickersTab implements EmoticonsTab {
   private queueCategoryPush: {element: HTMLElement, prepend: boolean}[] = [];
 
   private stickyIntersector: StickyIntersector;
+
+  private animatedDivs: Set<HTMLDivElement> = new Set();
+  private animatedIntersector: IntersectionObserver;
 
   categoryPush(categoryDiv: HTMLElement, categoryTitle: string, promise: Promise<MTDocument[]>, prepend?: boolean) {
     //if((docs.length % 5) != 0) categoryDiv.classList.add('not-full');
@@ -71,8 +76,16 @@ export default class StickersTab implements EmoticonsTab {
     });
   }
 
-  renderSticker(doc: MTDocument) {
-    const div = document.createElement('div');
+  renderSticker(doc: MTDocument, div?: HTMLDivElement) {
+    if(!div) {
+      div = document.createElement('div');
+
+      if(doc.sticker == 2) {
+        this.animatedDivs.add(div);
+        this.animatedIntersector.observe(div);
+      }
+    } 
+
     wrapSticker({
       doc, 
       div,
@@ -242,6 +255,101 @@ export default class StickersTab implements EmoticonsTab {
       this.mounted = true;
     });
 
+    const checkAnimationDiv = (div: HTMLDivElement) => {
+      const players = animationIntersector.getAnimations(div);
+      players.forEach(player => {
+        if(!visible.has(div)) {
+          animationIntersector.checkAnimation(player, true, true);
+        } else {
+          animationIntersector.checkAnimation(player, false);
+        }
+      });
+    };
+
+    const processInvisibleDiv = (div: HTMLDivElement) => {
+      visible.delete(div);
+      //console.log('STICKER INvisible:', target, docID);
+
+      const docID = div.dataset.docID;
+      const doc = appDocsManager.getDoc(docID);
+
+      checkAnimationDiv(div);
+
+      div.innerHTML = '';
+      this.renderSticker(doc, div);
+    };
+
+    let locked = false;
+    const visible: Set<HTMLDivElement> = new Set();
+    this.animatedIntersector = new IntersectionObserver((entries) => {
+      if(locked) {
+        return;
+      }
+
+      entries.forEach(entry => {
+        const {target, isIntersecting} = entry;
+
+        const div = target as HTMLDivElement;
+        const docID = div.dataset.docID;
+        const doc = appDocsManager.getDoc(docID);
+        if(isIntersecting) {
+          //console.log('STICKER visible:', target, docID);
+          if(visible.has(div)) {
+            return;
+          }
+
+          visible.add(div);
+          
+          wrapSticker({
+            doc, 
+            div,
+            width: 80,
+            height: 80,
+            lazyLoadQueue: null, 
+            group: EMOTICONSSTICKERGROUP, 
+            onlyThumb: false,
+            play: true,
+            loop: true
+          }).then(() => {
+            checkAnimationDiv(div);
+          });
+        } else {
+          processInvisibleDiv(div);
+        }
+      });
+
+      //animationIntersector.checkAnimations(true, EMOTICONSSTICKERGROUP, false);
+    });
+    
+    emoticonsDropdown.events.onClose.push(() => {
+      locked = true;
+    });
+
+    emoticonsDropdown.events.onCloseAfter.push(() => {
+      const divs = [...visible];
+
+      for(const div of divs) {
+        processInvisibleDiv(div);
+      }
+    });
+
+    emoticonsDropdown.events.onOpenAfter.push(() => {
+      locked = false;
+
+      // refresh
+      this.animatedIntersector.disconnect();
+      const divs = [...this.animatedDivs];
+      for(const div of divs) {
+        this.animatedIntersector.observe(div);
+      }
+    });
+
+    /* setInterval(() => {
+      // @ts-ignore
+      console.log('STICKERS RENDERED IN PANEL:', Object.values(lottieLoader.players).filter(p => p.width == 80).length);
+    }, .25e3); */
+    
+
     this.init = null;
   }
 
@@ -255,7 +363,7 @@ export default class StickersTab implements EmoticonsTab {
       div = this.renderSticker(doc);
     }
 
-    const items = this.recentDiv.lastElementChild;
+    const items = this.recentDiv.querySelector('.category-items');
     items.prepend(div);
 
     if(items.childElementCount > 20) {

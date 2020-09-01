@@ -50,16 +50,17 @@ export class AnimationIntersector {
     });
   }
 
-  public getAnimation(element: HTMLElement) {
-    for(let group in this.byGroups) {
-      for(let player of this.byGroups[group]) {
+  public getAnimations(element: HTMLElement) {
+    const found: AnimationItem[] = [];
+    for(const group in this.byGroups) {
+      for(const player of this.byGroups[group]) {
         if(player.el == element) {
-          return player;
+          found.push(player);
         }
       }
     }
 
-    return null;
+    return found;
   }
 
   public addAnimation(animation: RLottiePlayer | HTMLVideoElement, group = '') {

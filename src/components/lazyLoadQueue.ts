@@ -24,7 +24,7 @@ export default class LazyLoadQueue {
     if(noObserver) return;
 
     this.observer = new IntersectionObserver(entries => {
-      if(this.lockPromise) return;
+      if(this.lockPromise || this.intersectionLocked) return;
 
       const intersecting = entries.filter(entry => entry.isIntersecting);
       intersecting.forEachReverse(entry => {
