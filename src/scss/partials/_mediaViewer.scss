@@ -238,6 +238,13 @@ $move-duration: .35s;
       //}
     }
 
+    // !SAFARI
+    svg {
+      img, video {
+        position: unset;
+      }
+    }
+
     &.active {
       transition: $open-duration transform;
     }

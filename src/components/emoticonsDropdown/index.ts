@@ -61,6 +61,8 @@ export class EmoticonsDropdown {
           if(firstTime) {
             this.toggleEl.onmouseout = this.element.onmouseout = (e) => {
               if(test) return;
+              if(!this.element.classList.contains('active')) return;
+
               const toElement = (e as any).toElement as Element;
               if(toElement && findUpClassName(toElement, 'emoji-dropdown')) {
                 return;
@@ -68,7 +70,7 @@ export class EmoticonsDropdown {
 
               clearTimeout(this.displayTimeout);
               this.displayTimeout = setTimeout(() => {
-                this.toggle();
+                this.toggle(false);
               }, 200);
             };
   

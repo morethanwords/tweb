@@ -57,6 +57,7 @@
 .profile {
   &-content {
     /* flex: 1 1 auto; */
+    flex: 0 0 auto;
     display: flex;
     flex-direction: column;
     /* height: 100%; */
@@ -199,7 +200,7 @@
     height: 120px;
     margin: 1px auto 10px;
     font-size: 2.5rem !important;
-    flex: 0 0 auto;
+    //flex: 0 0 auto;
 
     @include respond-to(handhelds) {
       margin: 0 auto 10px;
@@ -210,6 +211,10 @@
     &.tgico-avatar_deletedaccount {
       font-size: 6rem;
     }
+  }
+
+  &-name, &-subtitle, &-row, &-avatar {
+    flex: 0 0 auto;
   }
 
   &-tabs {

@@ -1105,12 +1105,14 @@ export class AppMediaViewer {
               this.updateMediaSource(target, url, 'img');
               this.updateMediaSource(mover, url, 'img');
 
-              /* const imgs = mover.querySelectorAll('img');
-              if(imgs && imgs.length) {
-                imgs.forEach(img => {
-                  img.classList.remove('thumbnail'); // может здесь это вообще не нужно
-                });
-              } */
+              if(mediaSizes.isMobile) {
+                const imgs = mover.querySelectorAll('img');
+                if(imgs && imgs.length) {
+                  imgs.forEach(img => {
+                    img.classList.remove('thumbnail'); // может здесь это вообще не нужно
+                  });
+                }
+              }
             } else {
               const div = mover.firstElementChild && mover.firstElementChild.classList.contains('media-viewer-aspecter') ? mover.firstElementChild : mover;
               let image = div.firstElementChild as HTMLImageElement;
@@ -1121,7 +1123,10 @@ export class AppMediaViewer {
               //this.log('will renderImageFromUrl:', image, div, target);
   
               renderImageFromUrl(image, url, () => {
-                image.classList.remove('thumbnail'); // может здесь это вообще не нужно
+                if(mediaSizes.isMobile) {
+                  image.classList.remove('thumbnail'); // может здесь это вообще не нужно
+                }
+
                 div.append(image);
               });
             }
