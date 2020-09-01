@@ -718,35 +718,35 @@ export function wrapAlbum({groupID, attachmentDiv, middleware, uploading, lazyLo
   uploading?: boolean,
   isOut: boolean
 }) {
-  let items: {size: MTPhotoSize, media: any, message: any}[] = [];
+  const items: {size: MTPhotoSize, media: any, message: any}[] = [];
 
-  // higher msgID will be the last in album
-  let storage = appMessagesManager.groupedMessagesStorage[groupID];
-  for(let mid in storage) {
-    let m = appMessagesManager.getMessage(+mid);
-    let media = m.media.photo || m.media.document;
+  // !higher msgID will be the FIRST in album
+  const storage = Object.keys(appMessagesManager.groupedMessagesStorage[groupID]).map(id => +id).sort((a, b) => a - b);
+  for(const mid of storage) {
+    const m = appMessagesManager.getMessage(mid);
+    const media = m.media.photo || m.media.document;
 
-    let size: any = media._ == 'photo' ? appPhotosManager.choosePhotoSize(media, 480, 480) : {w: media.w, h: media.h};
+    const size: any = media._ == 'photo' ? appPhotosManager.choosePhotoSize(media, 480, 480) : {w: media.w, h: media.h};
     items.push({size, media, message: m});
   }
 
-  let spacing = 2;
-  let layouter = new Layouter(items.map(i => ({w: i.size.w, h: i.size.h})), mediaSizes.active.album.width, 100, spacing);
-  let layout = layouter.layout();
+  const spacing = 2;
+  const layouter = new Layouter(items.map(i => ({w: i.size.w, h: i.size.h})), mediaSizes.active.album.width, 100, spacing);
+  const layout = layouter.layout();
   //console.log('layout:', layout, items.map(i => ({w: i.size.w, h: i.size.h})));
 
   /* let borderRadius = window.getComputedStyle(realParent).getPropertyValue('border-radius');
   let brSplitted = fillPropertyValue(borderRadius); */
 
-  for(let {geometry, sides} of layout) {
-    let item = items.shift();
+  for(const {geometry, sides} of layout) {
+    const item = items.shift();
     if(!item) {
       console.error('no item for layout!');
       continue;
     }
 
-    let {size, media, message} = item;
-    let div = document.createElement('div');
+    const {size, media, message} = item;
+    const div = document.createElement('div');
     div.classList.add('album-item');
     div.dataset.mid = message.mid;
 

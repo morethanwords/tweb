@@ -893,6 +893,8 @@ export class AppImManager {
           });
         });
 
+        targets.sort((a, b) => a.mid - b.mid);
+
         let idx = targets.findIndex(t => t.mid == messageID);
 
         this.log('open mediaViewer single with ids:', ids, idx, targets);
