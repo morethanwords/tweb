@@ -9,8 +9,8 @@ import apiManager from '../lib/mtproto/mtprotoworker';
 import Page from './page';
 import { mediaSizes } from '../lib/config';
 import passwordManager from '../lib/mtproto/passwordManager';
-import { AccountPassword } from '../types';
 import { cancelEvent } from '../lib/utils';
+import { AccountPassword } from '../layer';
 
 let onFirstMount = (): Promise<any> => {
   let needFrame = 0;

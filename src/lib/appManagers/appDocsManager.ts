@@ -1,30 +1,40 @@
 import {RichTextProcessor} from '../richtextprocessor';
 import { isObject, getFileURL, FileURLType } from '../utils';
 import opusDecodeController from '../opusDecodeController';
-import { MTDocument, inputDocumentFileLocation, MTPhotoSize } from '../../types';
 import { getFileNameByLocation } from '../bin_utils';
 import appDownloadManager, { DownloadBlob } from './appDownloadManager';
 import appPhotosManager from './appPhotosManager';
 import { isServiceWorkerSupported } from '../config';
+import { InputFileLocation, Document, PhotoSize } from '../../layer';
+
+export type MyDocument = Document.document;
 
 class AppDocsManager {
-  private docs: {[docID: string]: MTDocument} = {};
+  private docs: {[docID: string]: MyDocument} = {};
 
-  public saveDoc(doc: MTDocument, context?: any) {
+  public saveDoc(doc: Document, context?: any): MyDocument {
+    if(doc._ == 'documentEmpty') {
+      return undefined;
+    }
+    
     //console.log('saveDoc', apiDoc, this.docs[apiDoc.id]);
     if(this.docs[doc.id]) {
       const d = this.docs[doc.id];
 
-      if(doc.thumbs) {
-        if(!d.thumbs) d.thumbs = doc.thumbs;
-        /* else if(apiDoc.thumbs[0].bytes && !d.thumbs[0].bytes) {
-          d.thumbs.unshift(apiDoc.thumbs[0]);
-        } else if(d.thumbs[0].url) { // fix for converted thumb in safari
-          apiDoc.thumbs[0] = d.thumbs[0];
-        } */
-      }
+      //if(doc._ != 'documentEmpty' && doc._ == d._) {
+        if(doc.thumbs) {
+          if(!d.thumbs) d.thumbs = doc.thumbs;
+          /* else if(apiDoc.thumbs[0].bytes && !d.thumbs[0].bytes) {
+            d.thumbs.unshift(apiDoc.thumbs[0]);
+          } else if(d.thumbs[0].url) { // fix for converted thumb in safari
+            apiDoc.thumbs[0] = d.thumbs[0];
+          } */
+        }
+  
+        d.file_reference = doc.file_reference;
+      //}
 
-      d.file_reference = doc.file_reference;
+      
       return d;
 
       //return Object.assign(d, apiDoc, context);
@@ -37,7 +47,7 @@ class AppDocsManager {
 
     this.docs[doc.id] = doc;
     
-    doc.attributes.forEach((attribute: any) => {
+    doc.attributes.forEach(attribute => {
       switch(attribute._) {
         case 'documentAttributeFilename':
           doc.file_name = RichTextProcessor.wrapPlainText(attribute.file_name);
@@ -145,10 +155,6 @@ class AppDocsManager {
       doc.animated = true;
       doc.sticker = 2;
     }
-    
-    if(doc._ == 'documentEmpty') {
-      doc.size = 0;
-    }
 
     /* if(!doc.url) {
       doc.url = this.getFileURL(doc);
@@ -157,11 +163,11 @@ class AppDocsManager {
     return doc;
   }
   
-  public getDoc(docID: string | MTDocument): MTDocument {
-    return isObject(docID) && typeof(docID) !== 'string' ? docID : this.docs[docID as string];
+  public getDoc(docID: string | MyDocument): MyDocument {
+    return isObject(docID) && typeof(docID) !== 'string' ? docID as any : this.docs[docID as string] as any;
   }
 
-  public getMediaInput(doc: MTDocument) {
+  public getMediaInput(doc: MyDocument) {
     return {
       _: 'inputMediaDocument',
       flags: 0,
@@ -175,7 +181,7 @@ class AppDocsManager {
     };
   }
 
-  public getInput(doc: MTDocument, thumbSize?: string): inputDocumentFileLocation {
+  public getInput(doc: MyDocument, thumbSize?: string): InputFileLocation.inputDocumentFileLocation {
     return {
       _: 'inputDocumentFileLocation',
       id: doc.id,
@@ -185,7 +191,7 @@ class AppDocsManager {
     };
   }
 
-  public getFileDownloadOptions(doc: MTDocument, thumb?: MTPhotoSize) {
+  public getFileDownloadOptions(doc: MyDocument, thumb?: PhotoSize.photoSize) {
     const inputFileLocation = this.getInput(doc, thumb?.type);
 
     let mimeType: string;
@@ -204,7 +210,7 @@ class AppDocsManager {
     };
   }
 
-  public getFileURL(doc: MTDocument, download = false, thumb?: MTPhotoSize) {
+  public getFileURL(doc: MyDocument, download = false, thumb?: PhotoSize.photoSize) {
     let type: FileURLType;
     if(download) {
       type = 'download';
@@ -219,11 +225,11 @@ class AppDocsManager {
     return getFileURL(type, this.getFileDownloadOptions(doc, thumb));
   }
 
-  public getThumbURL(doc: MTDocument, thumb: MTPhotoSize) {
+  public getThumbURL(doc: MyDocument, thumb: PhotoSize.photoSize | PhotoSize.photoCachedSize | PhotoSize.photoStrippedSize) {
     let promise: Promise<any> = Promise.resolve();
 
     if(!thumb.url) {
-      if(thumb.bytes) {
+      if('bytes' in thumb) {
         thumb.url = appPhotosManager.getPreviewURLFromBytes(thumb.bytes, !!doc.sticker);
       } else {
         //return this.getFileURL(doc, false, thumb);
@@ -234,34 +240,28 @@ class AppDocsManager {
     return {thumb, promise};
   }
 
-  public getThumb(doc: MTDocument, useBytes = true) {
+  public getThumb(doc: MyDocument, useBytes = true) {
     if(doc.thumbs?.length) {
-      let thumb: MTPhotoSize;
+      let thumb: PhotoSize;
       if(!useBytes) {
-        thumb = doc.thumbs.find(t => !t.bytes);
+        thumb = doc.thumbs.find(t => !('bytes' in t));
       }
       
       if(!thumb) {
         thumb = doc.thumbs[0];
       }
 
-      return this.getThumbURL(doc, thumb);
+      return this.getThumbURL(doc, thumb as any);
     }
 
     return null;
   }
 
-  public getInputFileName(doc: MTDocument, thumbSize?: string) {
+  public getInputFileName(doc: MyDocument, thumbSize?: string) {
     return getFileNameByLocation(this.getInput(doc, thumbSize), {fileName: doc.file_name});
   }
 
-  public downloadDocNew(docID: string | MTDocument, thumb?: MTPhotoSize): DownloadBlob {
-    const doc = this.getDoc(docID);
-
-    if(doc._ == 'documentEmpty') {
-      throw new Error('Document empty!');
-    }
-
+  public downloadDocNew(doc: MyDocument, thumb?: PhotoSize.photoSize): DownloadBlob {
     const fileName = this.getInputFileName(doc, thumb?.type);
 
     let download: DownloadBlob = appDownloadManager.getDownload(fileName);
@@ -311,7 +311,7 @@ class AppDocsManager {
     return download;
   }
 
-  public saveDocFile(doc: MTDocument) {
+  public saveDocFile(doc: MyDocument) {
     const options = this.getFileDownloadOptions(doc);
     return appDownloadManager.downloadToDisc(options, doc.file_name);
   }

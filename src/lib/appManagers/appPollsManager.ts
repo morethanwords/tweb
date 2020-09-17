@@ -5,7 +5,7 @@ import apiManager from "../mtproto/mtprotoworker";
 import apiUpdatesManager from "./apiUpdatesManager";
 import { $rootScope } from "../utils";
 import { logger, LogLevels } from "../logger";
-import appUsersManager, { User } from "./appUsersManager";
+import appUsersManager from "./appUsersManager";
 
 export type PollAnswer = {
   _: 'pollAnswer',
@@ -195,19 +195,7 @@ class AppPollsManager {
       option,
       offset,
       limit
-    }).then((votesList: {
-      _: 'messages.votesList',
-      flags: number,
-      count: number,
-      next_offset: string,
-      pFlags: {},
-      users: User[],
-      votes: {
-        _: 'messageUserVoteInputOption',
-        date: number,
-        user_id: number
-      }[]
-    }) => {
+    }).then((votesList) => {
       this.log('getPollVotes messages:', votesList);
 
       appUsersManager.saveApiUsers(votesList.users);

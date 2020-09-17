@@ -7,7 +7,7 @@
 
 // @ts-ignore
 import {BigInteger, SecureRandom} from 'jsbn';
-import { InputFileLocation, FileLocation } from '../types';
+import { InputFileLocation, FileLocation } from '../layer';
 
 /// #if !MTPROTO_WORKER
 // @ts-ignore

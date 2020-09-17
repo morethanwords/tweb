@@ -1,7 +1,7 @@
-import { findUpClassName, $rootScope, escapeRegExp, whichChild, findUpTag, cancelEvent, positionElementByIndex } from "../utils";
+import { findUpClassName, $rootScope, escapeRegExp, findUpTag, cancelEvent, positionElementByIndex } from "../utils";
 import appImManager, { AppImManager } from "./appImManager";
 import appPeersManager from './appPeersManager';
-import appMessagesManager, { AppMessagesManager, Dialog, DialogFilter } from "./appMessagesManager";
+import appMessagesManager, { Dialog, MyDialogFilter as DialogFilter } from "./appMessagesManager";
 import appUsersManager, { User } from "./appUsersManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import { putPreloader, positionMenu, openBtnMenu, parseMenuButtonsTo, attachContextMenuListener } from "../../components/misc";
@@ -1168,9 +1168,10 @@ export class AppDialogsManager {
     if(!container) {
       let peer: any;
 
+      // for muted icon
+      titleSpan.classList.add('tgico');
+
       if(peerID < 0) {
-        titleSpan.classList.add('tgico');
-        
         peer = appChatsManager.getChat(-peerID);
       } else {
         peer = appUsersManager.getUser(peerID);

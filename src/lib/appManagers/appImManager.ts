@@ -40,6 +40,7 @@ import appPollsManager from './appPollsManager';
 import { ripple } from '../../components/ripple';
 import { horizontalMenu } from '../../components/horizontalMenu';
 import AudioElement from '../../components/audio';
+import { InputNotifyPeer, InputPeerNotifySettings } from '../../layer';
 
 //console.log('appImManager included33!');
 
@@ -650,14 +651,14 @@ export class AppImManager {
       if(message.media) {
         if(message.media.photo) {
           const photo = appPhotosManager.getPhoto(tempID);
-          if(photo) {
+          //if(photo._ != 'photoEmpty') {
             const newPhoto = message.media.photo;
             newPhoto.downloaded = photo.downloaded;
             newPhoto.url = photo.url;
-          }
+          //}
         } else if(message.media.document) {
           const doc = appDocsManager.getDoc(tempID);
-          if(doc && doc.type && doc.type != 'sticker') {
+          if(/* doc._ != 'documentEmpty' &&  */doc.type && doc.type != 'sticker') {
             const newDoc = message.media.document;
             newDoc.downloaded = doc.downloaded;
             newDoc.url = doc.url;
@@ -2216,10 +2217,12 @@ export class AppImManager {
 
             case 'photo': {
               //if(pending.size < 5e6) {
-                this.log('will wrap pending photo:', pending, message, appPhotosManager.getPhoto(message.id));
+                const photo = appPhotosManager.getPhoto(message.id);
+                //if(photo._ == 'photoEmpty') break;
+                this.log('will wrap pending photo:', pending, message, photo);
                 const tailSupported = !isAndroid;
                 if(tailSupported) bubble.classList.add('with-media-tail');
-                wrapPhoto(appPhotosManager.getPhoto(message.id), message, attachmentDiv, undefined, undefined, tailSupported, true, this.lazyLoadQueue, null);
+                wrapPhoto(photo, message, attachmentDiv, undefined, undefined, tailSupported, true, this.lazyLoadQueue, null);
 
                 bubble.classList.add('hide-name', 'photo');
               //}
@@ -2230,6 +2233,7 @@ export class AppImManager {
             case 'video': {
               //if(pending.size < 5e6) {
                 let doc = appDocsManager.getDoc(message.id);
+                //if(doc._ == 'documentEmpty') break;
                 this.log('will wrap pending video:', pending, message, doc);
                 const tailSupported = !isAndroid && !isApple && doc.type != 'round';
                 if(tailSupported) bubble.classList.add('with-media-tail');
@@ -2256,6 +2260,7 @@ export class AppImManager {
             case 'voice':
             case 'document': {
               const doc = appDocsManager.getDoc(message.id);
+              //if(doc._ == 'documentEmpty') break;
               this.log('will wrap pending doc:', doc);
               const docDiv = wrapDocument(doc, false, true, message.id);
 
@@ -2948,12 +2953,12 @@ export class AppImManager {
   
   public mutePeer(peerID: number) {
     let inputPeer = appPeersManager.getInputPeerByID(peerID);
-    let inputNotifyPeer = {
+    let inputNotifyPeer: InputNotifyPeer.inputNotifyPeer = {
       _: 'inputNotifyPeer',
       peer: inputPeer
     };
     
-    let settings = {
+    let settings: InputPeerNotifySettings = {
       _: 'inputPeerNotifySettings',
       flags: 0,
       mute_until: 0

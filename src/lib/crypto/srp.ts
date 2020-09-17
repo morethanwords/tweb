@@ -5,7 +5,7 @@ import {str2bigInt, isZero,
   bigInt2str, powMod, int2bigInt, mult, mod, sub, bitSize, negative, add, greater} from 'leemon';
 
 import {logger, LogLevels} from '../logger';
-import { AccountPassword } from "../../types";
+import { AccountPassword, PasswordKdfAlgo } from "../../layer";
 
 const log = logger('SRP', LogLevels.error);
 
@@ -35,7 +35,7 @@ export async function makePasswordHash(password: string, client_salt: Uint8Array
 export async function computeSRP(password: string, state: AccountPassword) {
   //console.log('computeCheck:', password, state);
 
-  let algo = state.current_algo;
+  let algo = state.current_algo as PasswordKdfAlgo.passwordKdfAlgoSHA256SHA256PBKDF2HMACSHA512iter100000SHA256ModPow;
 
   let p = str2bigInt(bytesToHex(algo.p), 16);
   let B = str2bigInt(bytesToHex(state.srp_B), 16);
@@ -109,7 +109,7 @@ export async function computeSRP(password: string, state: AccountPassword) {
     return true;
   };
 
-  var flipper = (arr: Uint8Array) => {
+  var flipper = (arr: Uint8Array | number[]) => {
     let out = new Uint8Array(arr.length);
     for(let i = 0; i < arr.length; i += 4) {
       out[i] = arr[i + 3];

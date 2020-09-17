@@ -6,6 +6,7 @@ import appSidebarLeft from "../../lib/appManagers/appSidebarLeft";
 import Scrollable from "../scrollable_new";
 import appUsersManager from "../../lib/appManagers/appUsersManager";
 import { $rootScope } from "../../lib/utils";
+import { InputFile } from "../../layer";
 
 // TODO: аватарка не поменяется в этой вкладке после изменения почему-то (если поставить в другом клиенте, и потом тут проверить, для этого ещё вышел в чатлист)
 
@@ -14,7 +15,7 @@ export default class AppEditProfileTab implements SliderTab {
   private scrollWrapper = this.container.querySelector('.scroll-wrapper') as HTMLDivElement;
   private nextBtn = this.container.querySelector('.btn-corner') as HTMLButtonElement;
   private canvas = this.container.querySelector('.avatar-edit-canvas') as HTMLCanvasElement;
-  private uploadAvatar: () => Promise<any> = null;
+  private uploadAvatar: () => Promise<InputFile> = null;
 
   private firstNameInput = this.container.querySelector('.firstname') as HTMLInputElement;
   private lastNameInput = this.container.querySelector('.lastname') as HTMLInputElement;

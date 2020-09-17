@@ -1,4 +1,5 @@
 import { convertToArrayBuffer, convertToByteArray } from "../bin_utils";
+import { InputCheckPasswordSRP } from "../../layer";
 
 export default abstract class CryptoWorkerMethods {
   abstract performTaskWorker<T>(task: string, ...args: any[]): Promise<T>;
@@ -44,7 +45,7 @@ export default abstract class CryptoWorkerMethods {
     return this.performTaskWorker<T>('gzipUncompress', bytes, toString);
   }
 
-  public computeSRP(password: string, state: any) {
+  public computeSRP(password: string, state: any): Promise<InputCheckPasswordSRP> {
     return this.performTaskWorker('computeSRP', password, state);
   }
 }

@@ -7,6 +7,7 @@ import MTProtoWorker from 'worker-loader!./mtproto.worker';
 import type { DownloadOptions } from './apiFileManager';
 import type { ServiceWorkerTask, ServiceWorkerTaskResponse } from './mtproto.service';
 import { isServiceWorkerSupported } from '../config';
+import { MethodDeclMap } from '../../layer';
 
 type Task = {
   taskID: number,
@@ -175,7 +176,7 @@ class ApiManagerProxy extends CryptoWorkerMethods {
     this.updatesProcessor = callback;
   }
 
-  public invokeApi(method: string, params: any = {}, options: {
+  public invokeApi<T extends keyof MethodDeclMap>(method: T, params: MethodDeclMap[T]['req'] = {}, options: {
     dcID?: number,
     timeout?: number,
     noErrorBox?: boolean,
@@ -189,7 +190,7 @@ class ApiManagerProxy extends CryptoWorkerMethods {
     waitTime?: number,
     stopTime?: number,
     rawError?: any
-  } = {}): Promise<any> {
+  } = {}): Promise<MethodDeclMap[T]['res']> {
     //console.log('will invokeApi:', method, params, options);
     return this.performTaskWorker('invokeApi', method, params, options);
   }

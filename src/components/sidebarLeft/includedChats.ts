@@ -4,8 +4,8 @@ import appSidebarLeft, { AppSidebarLeft } from "../../lib/appManagers/appSidebar
 import appDialogsManager from "../../lib/appManagers/appDialogsManager";
 import appPeersManager from "../../lib/appManagers/appPeersManager";
 import appUsersManager from "../../lib/appManagers/appUsersManager";
-import { $rootScope, copy, deepEqual } from "../../lib/utils";
-import { DialogFilter } from "../../lib/appManagers/appMessagesManager";
+import { $rootScope, copy } from "../../lib/utils";
+import { MyDialogFilter as DialogFilter } from "../../lib/appManagers/appMessagesManager";
 
 export default class AppIncludedChatsTab implements SliderTab {
   public container: HTMLElement;

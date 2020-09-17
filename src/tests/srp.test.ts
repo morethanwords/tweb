@@ -8,7 +8,9 @@ test('2FA hash', async() => {
 
 test('2FA whole (with negative)', async() => {
   return await computeSRP(password, {
+    _: 'account.password',
     current_algo: {
+      _: 'passwordKdfAlgoSHA256SHA256PBKDF2HMACSHA512iter100000SHA256ModPow',
       salt1, 
       salt2,
       p,
@@ -16,7 +18,10 @@ test('2FA whole (with negative)', async() => {
     },
     srp_id,
     srp_B,
-    secure_random
+    secure_random,
+    
+    new_algo: null,
+    new_secure_algo: null
   }).then(res => {
     expect(res.srp_id).toEqual(srp_id);
     expect(res.A).toEqual(A);

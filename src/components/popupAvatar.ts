@@ -15,7 +15,7 @@ export class PopupAvatar {
     removeHandlers: () => {}
   };
 
-  private onCrop: (upload: () => Promise<any>) => void;
+  private onCrop: (upload: () => ReturnType<typeof appDownloadManager.upload>) => void;
 
   constructor() {
     this.container.style.display = ''; // need for no blink
@@ -81,7 +81,7 @@ export class PopupAvatar {
     });
   }
 
-  public open(postCanvas: HTMLCanvasElement, onCrop: (upload: () => Promise<any>) => void) {
+  public open(postCanvas: HTMLCanvasElement, onCrop: PopupAvatar['onCrop']) {
     this.canvas = postCanvas;
     this.onCrop = onCrop;
 

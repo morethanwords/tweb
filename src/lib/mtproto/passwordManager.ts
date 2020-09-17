@@ -1,5 +1,5 @@
 import apiManager from './mtprotoworker';
-import { AccountPassword } from '../../types';
+import { AccountPassword } from '../../layer';
 //import { computeCheck } from "../crypto/srp";
 
 export class PasswordManager {

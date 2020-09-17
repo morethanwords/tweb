@@ -8,8 +8,9 @@ import { formatPhoneNumber } from "../../components/misc";
 import searchIndexManager from "../searchIndexManager";
 import appPeersManager from "./appPeersManager";
 import appStateManager from "./appStateManager";
+import { InputUser, User as MTUser } from "../../layer";
 
-export type User = {
+/* export type User = {
   _: 'user',
   access_hash: string,
   first_name: string,
@@ -35,7 +36,16 @@ export type User = {
   rPhone?: string,
   sortName?: string,
   sortStatus?: number,
-};
+}; */
+export interface User extends MTUser.user {
+  initials?: string,
+  num?: number,
+  rFirstName?: string,
+  rFullName?: string,
+  rPhone?: string,
+  sortName?: string,
+  sortStatus?: number,
+}
 
 export class AppUsersManager {
   public users: {[userID: number]: User} = {};
@@ -73,11 +83,11 @@ export class AppUsersManager {
           if(user) {
             user.status = update.status;
             if(user.status) {
-              if(user.status.expires) {
+              if('expires' in user.status) {
                 user.status.expires -= serverTimeManager.serverTimeOffset;
               }
 
-              if(user.status.was_online) {
+              if('was_online' in user.status) {
                 user.status.was_online -= serverTimeManager.serverTimeOffset;
               }
             }
@@ -284,12 +294,13 @@ export class AppUsersManager {
 
   public getUserStatusForSort(status: User['status']) {
     if(status) {
-      var expires = status.expires || status.was_online;
+      const expires = status._ == 'userStatusOnline' ? status.expires : (status._ == 'userStatusOffline' ? status.was_online : 0);
       if(expires) {
         return expires;
       }
-      var timeNow = tsNow(true);
-      switch (status._) {
+
+      const timeNow = tsNow(true);
+      switch(status._) {
         case 'userStatusRecently':
           return timeNow - 86400 * 3;
         case 'userStatusLastWeek':
@@ -411,12 +422,12 @@ export class AppUsersManager {
   }
 
   public getUserString(id: number) {
-    var user = this.getUser(id);
+    const user = this.getUser(id);
     return 'u' + id + (user.access_hash ? '_' + user.access_hash : '');
   }
 
-  public getUserInput(id: number) {
-    var user = this.getUser(id);
+  public getUserInput(id: number): InputUser {
+    const user = this.getUser(id);
     if(user.pFlags && user.pFlags.self) {
       return {_: 'inputUserSelf'};
     }
@@ -424,21 +435,20 @@ export class AppUsersManager {
     return {
       _: 'inputUser',
       user_id: id,
-      access_hash: user.access_hash || 0
+      access_hash: user.access_hash
     };
   }
 
   public updateUsersStatuses() {
-    var timestampNow = tsNow(true);
-    for(let i in this.users) {
-      let user = this.users[i];
+    const timestampNow = tsNow(true);
+    for(const i in this.users) {
+      const user = this.users[i];
 
       if(user.status &&
         user.status._ == 'userStatusOnline' &&
         user.status.expires < timestampNow) {
 
-        user.status = user.status.wasStatus || {_: 'userStatusOffline', was_online: user.status.expires};
-        delete user.status.wasStatus;
+        user.status = {_: 'userStatusOffline', was_online: user.status.expires};
         $rootScope.$broadcast('user_update', user.id);
       }
     }
@@ -449,22 +459,18 @@ export class AppUsersManager {
       return;
     }
 
-    var user = this.getUser(id);
+    const user = this.getUser(id);
     if(user &&
       user.status &&
       user.status._ != 'userStatusOnline' &&
-      user.status._ != 'userStatusEmpty') {
-      var wasStatus;
-      if(user.status._ != 'userStatusOffline') {
-        delete user.status.wasStatus
-        wasStatus = copy(user.status);
-      }
+      user.status._ != 'userStatusEmpty' &&
+      !user.pFlags.support) {
 
       user.status = {
         _: 'userStatusOnline',
-        expires: tsNow(true) + 60,
-        wasStatus: wasStatus
+        expires: tsNow(true) + 60
       };
+      
       user.sortStatus = this.getUserStatusForSort(user.status);
       $rootScope.$broadcast('user_update', id);
     }
@@ -554,20 +560,23 @@ export class AppUsersManager {
         offset: 0,
         limit: 30,
         hash: 0,
-      }).then((result: any) => {
-        //console.log(result);
-        this.saveApiUsers(result.users);
-        appChatsManager.saveApiChats(result.chats);
-  
-        const peerIDs = result.categories[0].peers.map((topPeer: {
-          _: 'topPeer',
-          peer: any,
-          rating: number
-        }) => {
-          const peerID = appPeersManager.getPeerID(topPeer.peer);
-          appStateManager.pushPeer(peerID);
-          return peerID;
-        });
+      }).then((result) => {
+        let peerIDs: number[];
+        if(result._ == 'contacts.topPeers') {
+          //console.log(result);
+          this.saveApiUsers(result.users);
+          appChatsManager.saveApiChats(result.chats);
+    
+          peerIDs = result.categories[0].peers.map((topPeer: {
+            _: 'topPeer',
+            peer: any,
+            rating: number
+          }) => {
+            const peerID = appPeersManager.getPeerID(topPeer.peer);
+            appStateManager.pushPeer(peerID);
+            return peerID;
+          });
+        }
   
         appStateManager.pushToState('topPeers', peerIDs);
   

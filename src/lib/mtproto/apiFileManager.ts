@@ -5,10 +5,10 @@ import FileManager from "../filemanager";
 import apiManager from "./apiManager";
 import { deferredPromise, CancellablePromise } from "../polyfill";
 import { logger, LogLevels } from "../logger";
-import { InputFileLocation, FileLocation, UploadFile, InputFile } from "../../types";
 import { isSafari } from "../../helpers/userAgent";
 import cryptoWorker from "../crypto/cryptoworker";
 import { notifySomeone, notifyAll } from "../../helpers/context";
+import { InputFileLocation, FileLocation, InputFile, UploadFile } from "../../layer";
 
 type Delayed = {
   offset: number, 
@@ -26,6 +26,8 @@ export type DownloadOptions = {
   processPart?: (bytes: Uint8Array, offset?: number, queue?: Delayed[]) => Promise<any>
 };
 
+type MyUploadFile = UploadFile.uploadFile;
+
 const MAX_FILE_SAVE_SIZE = 20e6;
 
 export class ApiFileManager {
@@ -39,7 +41,7 @@ export class ApiFileManager {
 
   public downloadPulls: {
     [x: string]: Array<{
-      cb: () => Promise<UploadFile | void>,
+      cb: () => Promise<MyUploadFile | void>,
       deferred: {
         resolve: (...args: any[]) => void,
         reject: (...args: any[]) => void
@@ -54,8 +56,8 @@ export class ApiFileManager {
   private log: ReturnType<typeof logger> = logger('AFM', LogLevels.error);
 
   public downloadRequest(dcID: 'upload', cb: () => Promise<void>, activeDelta: number): Promise<void>;
-  public downloadRequest(dcID: number, cb: () => Promise<UploadFile>, activeDelta: number): Promise<UploadFile>;
-  public downloadRequest(dcID: number | string, cb: () => Promise<UploadFile | void>, activeDelta: number) {
+  public downloadRequest(dcID: number, cb: () => Promise<MyUploadFile>, activeDelta: number): Promise<MyUploadFile>;
+  public downloadRequest(dcID: number | string, cb: () => Promise<MyUploadFile | void>, activeDelta: number) {
     if(this.downloadPulls[dcID] === undefined) {
       this.downloadPulls[dcID] = [];
       this.downloadActives[dcID] = 0;
@@ -63,7 +65,7 @@ export class ApiFileManager {
 
     const downloadPull = this.downloadPulls[dcID];
 
-    const promise = new Promise<UploadFile | void>((resolve, reject) => {
+    const promise = new Promise<MyUploadFile | void>((resolve, reject) => {
       downloadPull.push({cb, deferred: {resolve, reject}, activeDelta});
     });
 
@@ -135,7 +137,7 @@ export class ApiFileManager {
         dcID,
         fileDownload: true/* ,
         singleInRequest: 'safari' in window */
-      }) as Promise<UploadFile>;
+      }) as Promise<MyUploadFile>;
     }, delta);
   }
 
@@ -330,22 +332,24 @@ export class ApiFileManager {
           try {
             const result = await this.requestFilePart(dcID, location, offset, limit, checkCancel);
 
+            const bytes: Uint8Array = result.bytes as any;
+
             if(delayed.length) {
               superpuper();
             }
 
             this.log('downloadFile requestFilePart result:', fileName, result);
-            const isFinal = offset + limit >= size || !result.bytes.byteLength;
-            if(result.bytes.byteLength) {
+            const isFinal = offset + limit >= size || !bytes.byteLength;
+            if(bytes.byteLength) {
               //done += limit;
-              done += result.bytes.byteLength;
+              done += bytes.byteLength;
 
               //if(!isFinal) {
                 ////this.log('deferred notify 2:', {done: offset + limit, total: size}, deferred);
                 deferred.notify({done, offset, total: size});
               //}
 
-              const processedResult = await processDownloaded(result.bytes, offset);
+              const processedResult = await processDownloaded(bytes, offset);
               checkCancel();
 
               await writeFilePromise;
@@ -430,7 +434,7 @@ export class ApiFileManager {
 
     const resultInputFile: InputFile = {
       _: isBigFile ? 'inputFileBig' : 'inputFile',
-      id: fileID,
+      id: fileID as any,
       parts: totalParts,
       name: fileName,
       md5_checksum: ''

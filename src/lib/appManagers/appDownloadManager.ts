@@ -3,7 +3,7 @@ import apiManager from "../mtproto/mtprotoworker";
 import { deferredPromise, CancellablePromise } from "../polyfill";
 import type { DownloadOptions } from "../mtproto/apiFileManager";
 import { getFileNameByLocation } from "../bin_utils";
-import { InputFile } from "../../types";
+import { InputFile } from "../../layer";
 
 export type ResponseMethodBlob = 'blob';
 export type ResponseMethodJson = 'json';

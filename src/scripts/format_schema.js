@@ -1,4 +1,4 @@
-let json = require('./schema');
+let json = require('./in/schema');
 
 let top = {};
 /* ['MTProto', 'API'].forEach(key => {
@@ -65,4 +65,4 @@ top = json;
 
 //console.log(out);
 
-require('fs').writeFileSync('./schema_pretty.json', JSON.stringify(top/* , null, '\t' */));
+require('fs').writeFileSync('./out/schema.json', JSON.stringify(top/* , null, '\t' */));

@@ -1,6 +1,6 @@
-import appPhotosManager, { MTPhoto } from '../lib/appManagers/appPhotosManager';
+import appPhotosManager, {MyPhoto} from '../lib/appManagers/appPhotosManager';
 import LottieLoader from '../lib/lottieLoader';
-import appDocsManager from "../lib/appManagers/appDocsManager";
+import appDocsManager, { MyDocument } from "../lib/appManagers/appDocsManager";
 import { formatBytes, getEmojiToneIndex, isInDOM } from "../lib/utils";
 import ProgressivePreloader from './preloader';
 import LazyLoadQueue from './lazyLoadQueue';
@@ -11,16 +11,16 @@ import appMessagesManager from '../lib/appManagers/appMessagesManager';
 import { Layouter, RectPart } from './groupedLayout';
 import PollElement from './poll';
 import { mediaSizes, isSafari } from '../lib/config';
-import { MTDocument, MTPhotoSize } from '../types';
 import animationIntersector from './animationIntersector';
 import AudioElement from './audio';
 import { DownloadBlob } from '../lib/appManagers/appDownloadManager';
 import webpWorkerController from '../lib/webp/webpWorkerController';
 import { readBlobAsText } from '../helpers/blob';
 import appMediaPlaybackController from './appMediaPlaybackController';
+import { PhotoSize } from '../layer';
 
 export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group}: {
-  doc: MTDocument, 
+  doc: MyDocument, 
   container?: HTMLDivElement, 
   message?: any, 
   boxWidth?: number, 
@@ -140,7 +140,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
         appPhotosManager.setAttachmentSize(doc, container, boxWidth, boxHeight, false, true);
       }
 
-      if(doc.thumbs && doc.thumbs[0]?.bytes) {
+      if(doc.thumbs?.length && 'bytes' in doc.thumbs[0]) {
         appPhotosManager.setAttachmentPreview(doc.thumbs[0].bytes, container, false);
       }
   
@@ -281,7 +281,7 @@ export const formatDate = (timestamp: number, monthShort = false, withYear = tru
   return str + ' at ' + date.getHours() + ':' + ('0' + date.getMinutes()).slice(-2);
 };
 
-export function wrapDocument(doc: MTDocument, withTime = false, uploading = false, mid?: number): HTMLElement {
+export function wrapDocument(doc: MyDocument, withTime = false, uploading = false, mid?: number): HTMLElement {
   if(doc.type == 'audio' || doc.type == 'voice') {
     return wrapAudio(doc, withTime, mid);
   }
@@ -351,7 +351,7 @@ export function wrapDocument(doc: MTDocument, withTime = false, uploading = fals
   return docDiv;
 }
 
-export function wrapAudio(doc: MTDocument, withTime = false, mid?: number): HTMLElement {
+export function wrapAudio(doc: MyDocument, withTime = false, mid?: number): HTMLElement {
   let elem = new AudioElement();
   elem.setAttribute('doc-id', doc.id);
   elem.setAttribute('with-time', '' + +withTime);
@@ -359,7 +359,7 @@ export function wrapAudio(doc: MTDocument, withTime = false, mid?: number): HTML
   return elem;
 }
 
-function wrapMediaWithTail(photo: MTPhoto | MTDocument, message: {mid: number, message: string}, container: HTMLDivElement, boxWidth: number, boxHeight: number, isOut: boolean) {
+function wrapMediaWithTail(photo: MyPhoto | MyDocument, message: {mid: number, message: string}, container: HTMLDivElement, boxWidth: number, boxHeight: number, isOut: boolean) {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.classList.add('bubble__media-container', isOut ? 'is-out' : 'is-in');
   
@@ -414,7 +414,7 @@ function wrapMediaWithTail(photo: MTPhoto | MTDocument, message: {mid: number, m
   return img;
 }
 
-export function wrapPhoto(photo: MTPhoto | MTDocument, message: any, container: HTMLDivElement, boxWidth = mediaSizes.active.regular.width, boxHeight = mediaSizes.active.regular.height, withTail: boolean, isOut: boolean, lazyLoadQueue: LazyLoadQueue, middleware: () => boolean, size: MTPhotoSize = null) {
+export function wrapPhoto(photo: MyPhoto | MyDocument, message: any, container: HTMLDivElement, boxWidth = mediaSizes.active.regular.width, boxHeight = mediaSizes.active.regular.height, withTail: boolean, isOut: boolean, lazyLoadQueue: LazyLoadQueue, middleware: () => boolean, size: PhotoSize = null) {
   let image: HTMLImageElement;
   if(withTail) {
     image = wrapMediaWithTail(photo, message, container, boxWidth, boxHeight, isOut);
@@ -424,8 +424,8 @@ export function wrapPhoto(photo: MTPhoto | MTDocument, message: any, container: 
     }
 
     if(photo._ == 'document' || !photo.downloaded) {
-      const thumbs = (photo as MTPhoto).sizes || (photo as MTDocument).thumbs;
-      if(thumbs && thumbs[0]?.bytes) {
+      const thumbs = (photo as MyPhoto).sizes || (photo as MyDocument).thumbs;
+      if(thumbs?.length && 'bytes' in thumbs[0]) {
         appPhotosManager.setAttachmentPreview(thumbs[0].bytes, container, false);
       }
     }
@@ -465,7 +465,7 @@ export function wrapPhoto(photo: MTPhoto | MTDocument, message: any, container: 
 }
 
 export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, onlyThumb, emoji, width, height, withThumb, loop}: {
-  doc: MTDocument, 
+  doc: MyDocument, 
   div: HTMLDivElement, 
   middleware?: () => boolean, 
   lazyLoadQueue?: LazyLoadQueue, 
@@ -504,7 +504,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
 
   const toneIndex = emoji ? getEmojiToneIndex(emoji) : -1;
   
-  if(doc.thumbs?.length && !div.firstElementChild && (!doc.downloaded || stickerType == 2 || onlyThumb) && toneIndex <= 0) {
+  if(doc.thumbs?.length && !div.firstElementChild && (!doc.downloaded || stickerType == 2 || onlyThumb) && toneIndex <= 0/*  && doc.thumbs[0]._ != 'photoSizeEmpty' */) {
     const thumb = doc.thumbs[0];
     
     //console.log('wrap sticker', thumb, div);
@@ -515,16 +515,19 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
         div.append(img);
       }
     };
-    
-    if(thumb.bytes || thumb.url) {
+
+    if('url' in thumb) {
+      img = new Image();
+      renderImageFromUrl(img, thumb.url, afterRender);
+    } else if('bytes' in thumb) {
       img = new Image();
 
-      if((!isSafari || doc.stickerThumbConverted || thumb.url)/*  && false */) {
+      if((!isSafari || doc.pFlags.stickerThumbConverted || thumb.url)/*  && false */) {
         renderImageFromUrl(img, appPhotosManager.getPreviewURLFromThumb(thumb, true), afterRender);
       } else {
-        webpWorkerController.convert(doc.id, thumb.bytes).then(bytes => {
+        webpWorkerController.convert(doc.id, thumb.bytes as Uint8Array).then(bytes => {
           thumb.bytes = bytes;
-          doc.stickerThumbConverted = true;
+          doc.pFlags.stickerThumbConverted = true;
           
           if(middleware && !middleware()) return;
 
@@ -578,7 +581,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
 
       //appDocsManager.downloadDocNew(doc.id).promise.then(res => res.json()).then(async(json) => {
       //fetch(doc.url).then(res => res.json()).then(async(json) => {
-      await appDocsManager.downloadDocNew(doc.id)
+      await appDocsManager.downloadDocNew(doc)
       .then(readBlobAsText)
       .then(JSON.parse)
       .then(async(json) => {
@@ -718,7 +721,7 @@ export function wrapAlbum({groupID, attachmentDiv, middleware, uploading, lazyLo
   uploading?: boolean,
   isOut: boolean
 }) {
-  const items: {size: MTPhotoSize, media: any, message: any}[] = [];
+  const items: {size: PhotoSize.photoSize, media: any, message: any}[] = [];
 
   // !higher msgID will be the FIRST in album
   const storage = Object.keys(appMessagesManager.groupedMessagesStorage[groupID]).map(id => +id).sort((a, b) => a - b);

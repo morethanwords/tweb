@@ -63,6 +63,7 @@
   },
   "exclude": [
     "node_modules",
+    "./public/recorder.min.js",
     "public",
     "coverage",
     "./public/*.js",

@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "webpack-dev-server --config webpack.dev.js",
+    "start": "node --max-old-space-size=8192 node_modules/webpack-dev-server/bin/webpack-dev-server.js --config webpack.dev.js",
     "start:production": "webpack-dev-server --config webpack.prod.js",
     "serve": "npm run build; node server.js",
     "build": "webpack --config webpack.prod.js",

@@ -1,7 +1,6 @@
-import { MTDocument } from "../types";
 import { $rootScope } from "../lib/utils";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
-import appDocsManager from "../lib/appManagers/appDocsManager";
+import appDocsManager, {MyDocument} from "../lib/appManagers/appDocsManager";
 import { isSafari } from "../lib/config";
 import { CancellablePromise, deferredPromise } from "../lib/polyfill";
 
@@ -34,7 +33,7 @@ class AppMediaPlaybackController {
     document.body.append(this.container);
   }
 
-  public addMedia(doc: MTDocument, mid: number, autoload = true): HTMLMediaElement {
+  public addMedia(doc: MyDocument, mid: number, autoload = true): HTMLMediaElement {
     if(this.media[mid]) return this.media[mid];
 
     const media = document.createElement(doc.type == 'round' ? 'video' : 'audio');
@@ -93,7 +92,7 @@ class AppMediaPlaybackController {
     }
 
     // если что - загрузит voice или round заранее, так правильнее
-    const downloadPromise: Promise<any> = !doc.supportsStreaming ? appDocsManager.downloadDocNew(doc.id) : Promise.resolve();
+    const downloadPromise: Promise<any> = !doc.supportsStreaming ? appDocsManager.downloadDocNew(doc) : Promise.resolve();
     Promise.all([deferred, downloadPromise]).then(() => {
       //media.autoplay = true;
       //console.log('will set media url:', media, doc, doc.type, doc.url);

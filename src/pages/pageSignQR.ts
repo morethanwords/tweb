@@ -7,48 +7,7 @@ import pageSignIn from './pageSignIn';
 import { App } from '../lib/mtproto/mtproto_config';
 import { bytesToBase64, bytesCmp } from '../lib/bin_utils';
 import serverTimeManager from '../lib/mtproto/serverTimeManager';
-import { User } from '../lib/appManagers/appUsersManager';
-
-/* interface Authorization {
-  _: 'authorization',
-  flags: number,
-  pFlags: Partial<{current: true, official_app: true, password_pending: true}>,
-  hash: number[],
-  device_model: string,
-  platform: string,
-  system_version: string,
-  api_id: number,
-  app_name: string,
-  app_version: string,
-  date_created: number,
-  date_active: number,
-  ip: string,
-  country: string,
-  region: string
-}; */
-
-interface AuthAuthorization {
-  flags: number,
-  pFlags: Partial<{tmp_sessions: number}>,
-  user: User
-}
-
-interface LoginToken {
-  _: 'auth.loginToken',
-  expires: number,
-  token: Uint8Array
-};
-
-interface LoginTokenMigrateTo {
-  _: 'auth.loginTokenMigrateTo',
-  dc_id: number,
-  token: Uint8Array
-};
-
-interface LoginTokenSuccess {
-  _: 'auth.loginTokenSuccess',
-  authorization: AuthAuthorization
-};
+import { AuthAuthorization, AuthLoginToken } from '../layer';
 
 let onFirstMount = async() => {
   const pageElement = page.pageEl;
@@ -71,7 +30,7 @@ let onFirstMount = async() => {
   }, {once: true});
   
   let options: {dcID?: number, ignoreErrors: true} = {ignoreErrors: true};
-  let prevToken: Uint8Array;
+  let prevToken: Uint8Array | number[];
 
   return async() => {
     stop = false;
@@ -82,7 +41,7 @@ let onFirstMount = async() => {
       }
   
       try {
-        let loginToken: LoginToken | LoginTokenMigrateTo | LoginTokenSuccess = await apiManager.invokeApi('auth.exportLoginToken', {
+        let loginToken = await apiManager.invokeApi('auth.exportLoginToken', {
           api_id: App.id,
           api_hash: App.hash,
           except_ids: []
@@ -97,11 +56,11 @@ let onFirstMount = async() => {
           
           loginToken = await apiManager.invokeApi('auth.importLoginToken', {
             token: loginToken.token
-          }, options) as LoginToken;
+          }, options) as AuthLoginToken.authLoginToken;
         }
   
         if(loginToken._ == 'auth.loginTokenSuccess') {
-          let authorization = loginToken.authorization;
+          const authorization = loginToken.authorization as any as AuthAuthorization.authAuthorization;
           apiManager.setUserAuth({
             id: authorization.user.id
           });

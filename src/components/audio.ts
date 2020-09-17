@@ -1,13 +1,12 @@
-import appDocsManager from "../lib/appManagers/appDocsManager";
+import appDocsManager, {MyDocument} from "../lib/appManagers/appDocsManager";
 import { RichTextProcessor } from "../lib/richtextprocessor";
 import { formatDate } from "./wrappers";
 import ProgressivePreloader from "./preloader";
 import { MediaProgressLine } from "../lib/mediaPlayer";
 import appMediaPlaybackController from "./appMediaPlaybackController";
-import { MTDocument } from "../types";
+import { DocumentAttribute } from "../layer";
 import { mediaSizes, isSafari } from "../lib/config";
 import { Download } from "../lib/appManagers/appDownloadManager";
-import { deferredPromise, CancellablePromise } from "../lib/polyfill";
 
 // https://github.com/LonamiWebs/Telethon/blob/4393ec0b83d511b6a20d8a20334138730f084375/telethon/utils.py#L1285
 export function decodeWaveform(waveform: Uint8Array | number[]) {
@@ -43,7 +42,7 @@ export function decodeWaveform(waveform: Uint8Array | number[]) {
   return result;
 }
 
-function wrapVoiceMessage(doc: MTDocument, audioEl: AudioElement) {
+function wrapVoiceMessage(doc: MyDocument, audioEl: AudioElement) {
   audioEl.classList.add('is-voice');
 
   const barWidth = 2;
@@ -62,7 +61,7 @@ function wrapVoiceMessage(doc: MTDocument, audioEl: AudioElement) {
   timeDiv.classList.add('audio-time');
   audioEl.append(svg, timeDiv);
 
-  let waveform = doc.attributes[0].waveform || [];
+  let waveform = (doc.attributes.find(attribute => attribute._ == 'documentAttributeAudio') as DocumentAttribute.documentAttributeAudio).waveform || [];
   waveform = decodeWaveform(waveform.slice());
 
   //console.log('decoded waveform:', waveform);
@@ -209,7 +208,7 @@ function wrapVoiceMessage(doc: MTDocument, audioEl: AudioElement) {
   return onLoad;
 }
 
-function wrapAudio(doc: MTDocument, audioEl: AudioElement) {
+function wrapAudio(doc: MyDocument, audioEl: AudioElement) {
   const withTime = !!+audioEl.getAttribute('with-time');
 
   const title = doc.audioTitle || doc.file_name;
@@ -368,7 +367,7 @@ export default class AudioElement extends HTMLElement {
               preloader = new ProgressivePreloader(null, true);
             }
             
-            download = appDocsManager.downloadDocNew(doc.id);
+            download = appDocsManager.downloadDocNew(doc);
             preloader.attach(downloadDiv, true, download);
             
             download.then(() => {

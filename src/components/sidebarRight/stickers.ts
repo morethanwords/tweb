@@ -4,12 +4,13 @@ import Scrollable from "../scrollable_new";
 import LazyLoadQueue from "../lazyLoadQueue";
 import { findUpClassName } from "../../lib/utils";
 import appImManager from "../../lib/appManagers/appImManager";
-import appStickersManager, { MTStickerSet, MTStickerSetCovered, MTStickerSetMultiCovered } from "../../lib/appManagers/appStickersManager";
+import appStickersManager from "../../lib/appManagers/appStickersManager";
 import PopupStickers from "../popupStickers";
 import animationIntersector from "../animationIntersector";
 import { RichTextProcessor } from "../../lib/richtextprocessor";
 import { wrapSticker } from "../wrappers";
 import appSidebarRight, { AppSidebarRight } from "../../lib/appManagers/appSidebarRight";
+import { StickerSet, StickerSetCovered, Document } from "../../layer";
 
 export default class AppStickersTab implements SliderTab {
   private container = document.getElementById('stickers-container') as HTMLDivElement;
@@ -80,7 +81,7 @@ export default class AppStickersTab implements SliderTab {
     animationIntersector.checkAnimations(undefined, 'STICKERS-SEARCH');
   }
 
-  public renderSet(set: MTStickerSet) {
+  public renderSet(set: StickerSet.stickerSet) {
     //console.log('renderSet:', set);
     const div = document.createElement('div');
     div.classList.add('sticker-set');
@@ -124,8 +125,13 @@ export default class AppStickersTab implements SliderTab {
       
       for(let i = 0; i < count; ++i) {
         const div = stickersDiv.children[i] as HTMLDivElement;
+        const doc = set.documents[i];
+        if(doc._ == 'documentEmpty') {
+          continue;
+        }
+
         wrapSticker({
-          doc: set.documents[i], 
+          doc, 
           div, 
           lazyLoadQueue: this.lazyLoadQueue, 
           group: 'STICKERS-SEARCH', 
@@ -194,7 +200,7 @@ export default class AppStickersTab implements SliderTab {
     });
   }
 
-  private filterRendered(query: string, coveredSets: (MTStickerSetCovered | MTStickerSetMultiCovered)[]) {
+  private filterRendered(query: string, coveredSets: StickerSetCovered[]) {
     coveredSets = coveredSets.slice();
 
     const children = Array.from(this.setsDiv.children) as HTMLElement[];

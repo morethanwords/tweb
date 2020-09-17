@@ -26,7 +26,7 @@ type State = Partial<{
 }>;
 
 export class AppStateManager {
-  public loaded: Promise<any>;
+  public loaded: Promise<State>;
   private log = logger('STATE'/* , LogLevels.error */);
 
   private state: State = {};

@@ -1,0 +1,44 @@
+[{
+  "predicate": "document",
+  "params": [
+    {"name": "thumbs", "type": "Array<PhotoSize.photoSize | PhotoSize.photoCachedSize | PhotoSize.photoStrippedSize>"},
+    {"name": "type", "type": "'gif' | 'sticker' | 'audio' | 'voice' | 'video' | 'round' | 'photo'"},
+    {"name": "h", "type": "number"},
+    {"name": "w", "type": "number"},
+    {"name": "file_name", "type": "string"},
+    {"name": "file", "type": "File"},
+    {"name": "duration", "type": "number"},
+    {"name": "downloaded", "type": "boolean"},
+    {"name": "url", "type": "string"},
+    {"name": "audioTitle", "type": "string"},
+    {"name": "audioPerformer", "type": "string"},
+    {"name": "sticker", "type": "number"},
+    {"name": "stickerEmoji", "type": "string"},
+    {"name": "stickerEmojiRaw", "type": "string"},
+    {"name": "stickerSetInput", "type": "InputStickerSet.inputStickerSetID"},
+    {"name": "stickerThumbConverted", "type": "true"},
+    {"name": "animated", "type": "boolean"},
+    {"name": "supportsStreaming", "type": "boolean"}
+  ]
+}, {
+  "predicate": "photo",
+  "params": [
+    {"name": "downloaded", "type": "boolean | number"},
+    {"name": "url", "type": "string"}
+  ]
+}, {
+  "predicate": "photoSize",
+  "params": [
+    {"name": "url", "type": "string"}
+  ]
+}, {
+  "predicate": "photoCachedSize",
+  "params": [
+    {"name": "url", "type": "string"}
+  ]
+}, {
+  "predicate": "photoStrippedSize",
+  "params": [
+    {"name": "url", "type": "string"}
+  ]
+}]

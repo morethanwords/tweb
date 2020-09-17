@@ -9,6 +9,7 @@ import networkerFactory from "./networkerFactory";
 import apiFileManager, { ApiFileManager } from './apiFileManager';
 import { logger, LogLevels } from '../logger';
 import type { ServiceWorkerTask, ServiceWorkerTaskResponse } from './mtproto.service';
+import { UploadFile } from '../../layer';
 
 const log = logger('DW', LogLevels.error);
 

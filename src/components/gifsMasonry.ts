@@ -1,6 +1,5 @@
-import { MTDocument } from "../types";
 import { calcImageInBox, findUpClassName } from "../lib/utils";
-import appDocsManager from "../lib/appManagers/appDocsManager";
+import appDocsManager, {MyDocument} from "../lib/appManagers/appDocsManager";
 import { wrapVideo } from "./wrappers";
 import { renderImageFromUrl } from "./misc";
 import LazyLoadQueue from "./lazyLoadQueue";
@@ -14,7 +13,7 @@ export default class GifsMasonry {
     
   }
 
-  public add(doc: MTDocument, group: string, lazyLoadQueue?: LazyLoadQueue) {
+  public add(doc: MyDocument, group: string, lazyLoadQueue?: LazyLoadQueue) {
     let gifWidth = doc.w;
     let gifHeight = doc.h;
     if(gifHeight < height) {

@@ -1,19 +1,14 @@
 import { SliderTab } from "../slider";
 import lottieLoader, { RLottiePlayer } from "../../lib/lottieLoader";
 import apiManager from "../../lib/mtproto/mtprotoworker";
-import appMessagesManager, { DialogFilter } from "../../lib/appManagers/appMessagesManager";
+import appMessagesManager, { MyDialogFilter } from "../../lib/appManagers/appMessagesManager";
 import { RichTextProcessor } from "../../lib/richtextprocessor";
 import appPeersManager from "../../lib/appManagers/appPeersManager";
 import { $rootScope, cancelEvent } from "../../lib/utils";
 import appSidebarLeft from "../../lib/appManagers/appSidebarLeft";
 import { ripple } from "../ripple";
 import { toast } from "../toast";
-
-type DialogFilterSuggested = {
-  _: 'dialogFilterSuggested',
-  filter: DialogFilter,
-  description: string
-};
+import { DialogFilterSuggested, DialogFilter } from "../../layer";
 
 export default class AppChatFoldersTab implements SliderTab {
   public container: HTMLElement;
@@ -25,8 +20,8 @@ export default class AppChatFoldersTab implements SliderTab {
 
   private filtersRendered: {[filterID: number]: HTMLElement} = {};
 
-  private renderFolder(dialogFilter: DialogFilterSuggested | DialogFilter, container?: HTMLElement, div: HTMLElement = document.createElement('div')) {
-    let filter: DialogFilter;
+  private renderFolder(dialogFilter: DialogFilterSuggested | DialogFilter | MyDialogFilter, container?: HTMLElement, div: HTMLElement = document.createElement('div')) {
+    let filter: DialogFilter | MyDialogFilter;
     let description = '';
     let d: string[] = [];
     if(dialogFilter._ == 'dialogFilterSuggested') {
@@ -157,7 +152,7 @@ export default class AppChatFoldersTab implements SliderTab {
       this.suggestedContainer.style.display = suggestedFilters.length ? '' : 'none';
       Array.from(this.suggestedContainer.children).slice(1).forEach(el => el.remove());
 
-      (suggestedFilters as DialogFilterSuggested[]).forEach(filter => {
+      suggestedFilters.forEach(filter => {
         const div = this.renderFolder(filter);
         const button = document.createElement('button');
         button.classList.add('btn-primary');
@@ -175,7 +170,7 @@ export default class AppChatFoldersTab implements SliderTab {
 
           button.setAttribute('disabled', 'true');
 
-          appMessagesManager.filtersStorage.createDialogFilter(filter.filter).then(bool => {
+          appMessagesManager.filtersStorage.createDialogFilter(filter.filter as any).then(bool => {
             if(bool) {
               div.remove();
             }

@@ -1,7 +1,7 @@
-let emoji = require('./emoji_pretty.json');
+let emoji = require('./in/emoji_pretty.json');
 //let countries = require('./countries_pretty.json');
 
-let countries = require('fs').readFileSync('./countries.dat').toString();
+let countries = require('fs').readFileSync('./in/countries.dat').toString();
 //console.log(countries);
 
 //console.log(emoji, countries);
@@ -77,7 +77,7 @@ if(false) {
     };
   });
   
-  require('fs').writeFileSync('./emoji.json', JSON.stringify(obj));
+  require('fs').writeFileSync('./out/emoji.json', JSON.stringify(obj));
 }
 
 {
@@ -153,7 +153,7 @@ if(false) {
 
   console.log(obj);
   
-  require('fs').writeFileSync('./emoji.json', JSON.stringify(obj));
+  require('fs').writeFileSync('./out/emoji.json', JSON.stringify(obj));
 }
 
 /* {
@@ -203,5 +203,5 @@ if(false) {
     //console.log(item);
   });
   
-  require('fs').writeFileSync('./countries.json', JSON.stringify(arr));
+  require('fs').writeFileSync('./out/countries.json', JSON.stringify(arr));
 }

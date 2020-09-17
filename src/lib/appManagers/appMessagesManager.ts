@@ -11,7 +11,7 @@ import appPhotosManager from "./appPhotosManager";
 import AppStorage from '../storage';
 import appPeersManager from "./appPeersManager";
 import ServerTimeManager from "../mtproto/serverTimeManager";
-import appDocsManager from "./appDocsManager";
+import appDocsManager, {MyDocument} from "./appDocsManager";
 import ProgressivePreloader from "../../components/preloader";
 import serverTimeManager from "../mtproto/serverTimeManager";
 //import apiManager from '../mtproto/apiManager';
@@ -20,10 +20,11 @@ import appWebPagesManager from "./appWebPagesManager";
 import { CancellablePromise, deferredPromise } from "../polyfill";
 import appPollsManager from "./appPollsManager";
 import searchIndexManager from '../searchIndexManager';
-import { MTDocument, MTPhotoSize } from "../../types";
+import { Modify } from "../../types";
 import { logger, LogLevels } from "../logger";
 import type {ApiFileManager} from '../mtproto/apiFileManager';
 import appDownloadManager from "./appDownloadManager";
+import { DialogFilter, InputDialogPeer, InputMessage, MethodDeclMap, MessagesFilter, PhotoSize } from "../../layer";
 
 //console.trace('include');
 
@@ -237,30 +238,15 @@ export class DialogsStorage {
   }
 }
 
-export type DialogFilter = {
-  _: 'dialogFilter',
-  flags: number,
-  pFlags: Partial<{
-    contacts: true,
-    non_contacts: true,
-    groups: true,
-    broadcasts: true,
-    bots: true,
-    exclude_muted: true,
-    exclude_read: true,
-    exclude_archived: true
-  }>,
-  id: number,
-  title: string,
-  emoticon?: string,
+export type MyDialogFilter = Modify<DialogFilter, {
   pinned_peers: number[],
   include_peers: number[],
   exclude_peers: number[],
-
   orderIndex?: number
-};
+}>;
+
 export class FiltersStorage {
-  public filters: {[filterID: string]: DialogFilter} = {};
+  public filters: {[filterID: string]: MyDialogFilter} = {};
   public orderIndex = 0;
 
   constructor() {
@@ -286,7 +272,7 @@ export class FiltersStorage {
     }
   }
 
-  public testDialogForFilter(dialog: Dialog, filter: DialogFilter) {
+  public testDialogForFilter(dialog: Dialog, filter: MyDialogFilter) {
     // exclude_peers
     for(const peerID of filter.exclude_peers) {
       if(peerID == dialog.peerID) {
@@ -352,39 +338,6 @@ export class FiltersStorage {
     return false;
   }
 
-  /* public processDialog(dialog: Dialog) {
-    for(const filterID in this.filters) {
-      const filter = this.filters[filterID];
-      const good = this.testDialogForFilter(dialog, filter);
-
-      const folder = appMessagesManager.dialogsStorage.getFolder(+filterID);
-      if(good) {
-        folder.push(dialog);
-      }
-
-      console.log('processDialog:', dialog, filter, good);
-    }
-  } */
-
-  /* public initFilters() {
-    return Promise.all([
-      appUsersManager.getContacts(),
-
-      this.getDialogFilters(),
-
-      appMessagesManager.getConversations('', 0, 20, 0),
-      appMessagesManager.getConversations('', 0, 20, 1)
-    ]).then(() => {
-      const dialogs = appMessagesManager.dialogsStorage.dialogs;
-      for(const peerID in dialogs) {
-        const dialog = dialogs[peerID];
-        this.processDialog(dialog);
-      }
-
-      this.inited = true;
-    });
-  } */
-
   public toggleDialogPin(peerID: number, filterID: number) {
     const filter = this.filters[filterID];
 
@@ -396,14 +349,14 @@ export class FiltersStorage {
     return this.updateDialogFilter(filter);
   }
 
-  public createDialogFilter(filter: DialogFilter) {
+  public createDialogFilter(filter: MyDialogFilter) {
     let maxID = Math.max(1, ...Object.keys(this.filters).map(i => +i));
     filter = copy(filter);
     filter.id = maxID + 1;
     return this.updateDialogFilter(filter);
   }
 
-  public updateDialogFilter(filter: DialogFilter, remove = false) {
+  public updateDialogFilter(filter: MyDialogFilter, remove = false) {
     const flags = remove ? 0 : 1;
 
     if(!remove) {
@@ -456,8 +409,8 @@ export class FiltersStorage {
     });
   }
 
-  public getOutputDialogFilter(filter: DialogFilter) {
-    const c: DialogFilter = copy(filter);
+  public getOutputDialogFilter(filter: MyDialogFilter) {
+    const c: MyDialogFilter = copy(filter);
     ['pinned_peers', 'exclude_peers', 'include_peers'].forEach(key => {
       // @ts-ignore
       c[key] = c[key].map((peerID: number) => appPeersManager.getInputPeerByID(peerID));
@@ -469,31 +422,24 @@ export class FiltersStorage {
       }
     });
 
-    return c;
+    return c as any as DialogFilter;
   }
 
   public async getDialogFilters(overwrite = false) {
     if(Object.keys(this.filters).length && !overwrite) {
-      /* // УБРАТЬ НА ПРОДЕ!!!!!!!!!!!!
-      for(const folderID in this.filters) {
-        const filter = this.filters[folderID];
-        if(typeof(filter.pinned_peers[0]) !== 'number') filter.pinned_peers = filter.pinned_peers.map(peer => appPeersManager.getPeerID(peer));
-        if(typeof(filter.exclude_peers[0]) !== 'number') filter.exclude_peers = filter.exclude_peers.map(peer => appPeersManager.getPeerID(peer));
-        if(typeof(filter.include_peers[0]) !== 'number') filter.include_peers = filter.include_peers.map(peer => appPeersManager.getPeerID(peer));
-      } */
       return this.filters;
     }
 
-    const filters = await (apiManager.invokeApi('messages.getDialogFilters') as Promise<DialogFilter[]>);
+    const filters = await apiManager.invokeApi('messages.getDialogFilters');
     for(const filter of filters) {
-      this.saveDialogFilter(filter, false);
+      this.saveDialogFilter(filter as any as MyDialogFilter, false);
     }
 
     //console.log(this.filters);
     return this.filters;
   }
 
-  public saveDialogFilter(filter: DialogFilter, update = true) {
+  public saveDialogFilter(filter: MyDialogFilter, update = true) {
     ['pinned_peers', 'exclude_peers', 'include_peers'].forEach(key => {
       // @ts-ignore
       filter[key] = filter[key].map((peer: any) => appPeersManager.getPeerID(peer));
@@ -507,40 +453,7 @@ export class FiltersStorage {
     
     filter.include_peers = filter.pinned_peers.concat(filter.include_peers);
 
-    /* if(this.filters[filter.id]) {
-      // ну давай же найдём различия теперь, раз они сами не хотят приходить
-      const oldFilter = this.filters[filter.id];
-
-      const updateDialogs: {[peerID: number]: Dialog} = {};
-
-      const pinnedChanged = !deepEqual(oldFilter.pinned_peers, filter.pinned_peers);
-      if(pinnedChanged) {
-        for(const peerID of oldFilter.pinned_peers) {
-          updateDialogs[peerID] = appMessagesManager.getDialogByPeerID(peerID)[0];
-        }
-
-        for(const peerID of filter.pinned_peers) {
-          updateDialogs[peerID] = appMessagesManager.getDialogByPeerID(peerID)[0];
-        }
-      }
-
-      // это и так отфильтрует
-      //const excludeChanged = !deepEqual(oldFilter.exclude_peers, filter.exclude_peers);
-
-      const includeChanged = !deepEqual(oldFilter.include_peers, filter.include_peers);
-      if(includeChanged) {
-        for(const peerID of filter.include_peers) {
-          updateDialogs[peerID] = appMessagesManager.getDialogByPeerID(peerID)[0];
-        }
-      }
-
-      Object.assign(this.filters[filter.id], filter);
-      if(pinnedChanged) {
-        $rootScope.$broadcast('filter_pinned_order', {id: filter.id, order: filter.pinned_peers});
-      }
-
-      $rootScope.$broadcast('dialogs_multiupdate', updateDialogs);
-    } */if(this.filters[filter.id]) {
+    if(this.filters[filter.id]) {
       Object.assign(this.filters[filter.id], filter);
     } else {
       this.filters[filter.id] = filter;
@@ -553,7 +466,7 @@ export class FiltersStorage {
     }
   }
 
-  public setOrderIndex(filter: DialogFilter) {
+  public setOrderIndex(filter: MyDialogFilter) {
     if(filter.hasOwnProperty('orderIndex')) {
       if(filter.orderIndex > this.orderIndex) {
         this.orderIndex = filter.orderIndex;
@@ -734,7 +647,7 @@ export class AppMessagesManager {
       message: text,
       media: message.media,
       entities: this.getInputEntities(entities),
-      no_webpage: noWebPage,
+      no_webpage: noWebPage || undefined,
     }).then((updates) => {
       apiUpdatesManager.processUpdateMessage(updates);
     }, (error) => {
@@ -753,8 +666,8 @@ export class AppMessagesManager {
     entities: any[],
     replyToMsgID: number,
     viaBotID: number,
-    queryID: number,
-    resultID: number,
+    queryID: string,
+    resultID: string,
     noWebPage: boolean,
     reply_markup: any,
     clearDraft: boolean,
@@ -877,7 +790,7 @@ export class AppMessagesManager {
         apiPromise = apiManager.invokeApi('messages.sendInlineBotResult', {
           flags: flags,
           peer: appPeersManager.getInputPeerByID(peerID),
-          random_id: randomID,
+          random_id: randomID as any,
           reply_to_msg_id: appMessagesIDsManager.getMessageLocalID(replyToMsgID),
           query_id: options.queryID,
           id: options.resultID
@@ -889,10 +802,10 @@ export class AppMessagesManager {
 
         apiPromise = apiManager.invokeApi('messages.sendMessage', {
           flags: flags,
-          no_webpage: noWebPage,
+          no_webpage: noWebPage || undefined,
           peer: appPeersManager.getInputPeerByID(peerID),
           message: text,
-          random_id: randomID,
+          random_id: randomID as any,
           reply_to_msg_id: appMessagesIDsManager.getMessageLocalID(replyToMsgID),
           entities: sendEntites
         }, sentRequestOptions);
@@ -967,7 +880,7 @@ export class AppMessagesManager {
     this.pendingByRandomID[randomIDS] = [peerID, messageID];
   }
 
-  public sendFile(peerID: number, file: File | Blob | MTDocument, options: Partial<{
+  public sendFile(peerID: number, file: File | Blob | MyDocument, options: Partial<{
     isMedia: boolean,
     replyToMsgID: number,
     caption: string,
@@ -1033,7 +946,7 @@ export class AppMessagesManager {
           h: options.height,
           type: 'm',
           size: file.size
-        } as MTPhotoSize],
+        } as PhotoSize],
         w: options.width,
         h: options.height,
         downloaded: file.size,
@@ -1190,12 +1103,12 @@ export class AppMessagesManager {
 
       return apiManager.invokeApi('messages.sendMedia', {
         flags: flags,
-        background: options.background,
+        background: options.background || undefined,
         clear_draft: true,
         peer: appPeersManager.getInputPeerByID(peerID),
         media: inputMedia,
         message: caption,
-        random_id: randomID,
+        random_id: randomID as any,
         reply_to_msg_id: appMessagesIDsManager.getMessageLocalID(replyToMsgID)
       }).then((updates) => {
         apiUpdatesManager.processUpdateMessage(updates);
@@ -1225,7 +1138,7 @@ export class AppMessagesManager {
       flags |= 128; // clear_draft
 
       if(isDocument) {
-        const {id, access_hash, file_reference} = file as MTDocument;
+        const {id, access_hash, file_reference} = file as MyDocument;
 
         const inputMedia = {
           _: 'inputMediaDocument',
@@ -1421,7 +1334,7 @@ export class AppMessagesManager {
             h: details.height,
             type: 'm',
             size: file.size
-          } as MTPhotoSize],
+          } as PhotoSize],
           w: details.width,
           h: details.height,
           downloaded: file.size,
@@ -1573,13 +1486,11 @@ export class AppMessagesManager {
           }
           
           let inputMedia: any;
-          if(messageMedia.photo) {
-            let photo = messageMedia.photo;
-            appPhotosManager.savePhoto(photo);
+          if(messageMedia._ == 'messageMediaPhoto') {
+            const photo = appPhotosManager.savePhoto(messageMedia.photo);
             inputMedia = appPhotosManager.getInput(photo);
-          } else {
-            let doc = messageMedia.document;
-            appDocsManager.saveDoc(doc);
+          } else if(messageMedia._ == 'messageMediaDocument') {
+            const doc = appDocsManager.saveDoc(messageMedia.document);
             inputMedia = appDocsManager.getMediaInput(doc);
           }
 
@@ -1613,8 +1524,8 @@ export class AppMessagesManager {
     viaBotID: number,
     reply_markup: any,
     clearDraft: boolean,
-    queryID: number
-    resultID: number
+    queryID: string
+    resultID: string
   }> = {}) {
     peerID = appPeersManager.getPeerMigratedTo(peerID) || peerID;
 
@@ -1785,7 +1696,7 @@ export class AppMessagesManager {
         apiPromise = apiManager.invokeApi('messages.sendInlineBotResult', {
           flags: flags,
           peer: appPeersManager.getInputPeerByID(peerID),
-          random_id: randomID,
+          random_id: randomID as any,
           reply_to_msg_id: appMessagesIDsManager.getMessageLocalID(replyToMsgID),
           query_id: options.queryID,
           id: options.resultID
@@ -1795,8 +1706,9 @@ export class AppMessagesManager {
           flags: flags,
           peer: appPeersManager.getInputPeerByID(peerID),
           media: inputMedia,
-          random_id: randomID,
-          reply_to_msg_id: appMessagesIDsManager.getMessageLocalID(replyToMsgID)
+          random_id: randomID as any,
+          reply_to_msg_id: appMessagesIDsManager.getMessageLocalID(replyToMsgID),
+          message: ''
         }, sentRequestOptions);
       }
       apiPromise.then((updates) => {
@@ -2076,7 +1988,7 @@ export class AppMessagesManager {
         flags: flags,
         from_peer: appPeersManager.getInputPeerByID(-channelID),
         id: msgIDs,
-        random_id: randomIDs,
+        random_id: randomIDs as any,
         to_peer: appPeersManager.getInputPeerByID(peerID)
       }, sentRequestOptions).then((updates) => {
         apiUpdatesManager.processUpdateMessage(updates);
@@ -2127,7 +2039,7 @@ export class AppMessagesManager {
     if(this.reloadConversationsPromise) return this.reloadConversationsPromise;
     return this.reloadConversationsPromise = new Promise((resolve, reject) => {
       setTimeout(() => {
-        let peers = this.reloadConversationsPeers.map(peerID => appPeersManager.getInputPeerByID(peerID));
+        const peers = this.reloadConversationsPeers.map(peerID => appPeersManager.getInputDialogPeerByID(peerID));
         this.reloadConversationsPeers.length = 0;
 
         apiManager.invokeApi('messages.getPeerDialogs', {peers}).then((result) => {
@@ -2576,10 +2488,7 @@ export class AppMessagesManager {
     const dialog = this.getDialogByPeerID(peerID)[0];
     if(!dialog) return Promise.reject();
 
-    const peer = {
-      _: 'inputDialogPeer',
-      peer: appPeersManager.getInputPeerByID(peerID)
-    };
+    const peer = appPeersManager.getInputDialogPeerByID(peerID);
 
     const flags = dialog.pFlags?.pinned ? 0 : 1;
     return apiManager.invokeApi('messages.toggleDialogPin', {
@@ -2599,15 +2508,12 @@ export class AppMessagesManager {
   }
 
   public markDialogUnread(peerID: number, read?: boolean) {
-    let dialog = this.getDialogByPeerID(peerID)[0];
+    const dialog = this.getDialogByPeerID(peerID)[0];
     if(!dialog) return Promise.reject();
 
-    let peer = {
-      _: 'inputDialogPeer',
-      peer: appPeersManager.getInputPeerByID(peerID)
-    };
+    const peer = appPeersManager.getInputDialogPeerByID(peerID);
 
-    let flags = read || dialog.pFlags?.unread_mark ? 0 : 1;
+    const flags = read || dialog.pFlags?.unread_mark ? 0 : 1;
     return apiManager.invokeApi('messages.markDialogUnread', {
       flags,
       peer
@@ -3040,14 +2946,15 @@ export class AppMessagesManager {
         flags: 0,
         peer: appPeersManager.getInputPeerByID(peerID),
         q: query || '',
-        filter: inputFilter || {_: 'inputMessagesFilterEmpty'},
+        filter: (inputFilter || {_: 'inputMessagesFilterEmpty'}) as any as MessagesFilter,
         min_date: 0,
         max_date: 0,
         limit: limit,
         offset_id: appMessagesIDsManager.getMessageLocalID(maxID) || 0,
         add_offset: backLimit ? -backLimit : 0,
         max_id: 0,
-        min_id: 0
+        min_id: 0,
+        hash: 0
       }, {
         timeout: APITIMEOUT,
         noErrorBox: true
@@ -3065,6 +2972,7 @@ export class AppMessagesManager {
       }
 
       apiPromise = apiManager.invokeApi('messages.searchGlobal', {
+        flags: 0,
         q: query,
         offset_rate: offsetRate,
         offset_peer: appPeersManager.getInputPeerByID(offsetPeerID),
@@ -4370,14 +4278,14 @@ export class AppMessagesManager {
     Object.keys(splitted.msgIDs).forEach((channelID: number | string) => {
       channelID = +channelID;
 
-      let msgIDs = splitted.msgIDs[channelID].map((msgID: number) => {
+      const msgIDs: InputMessage[] = splitted.msgIDs[channelID].map((msgID: number) => {
         return {
           _: 'inputMessageID',
           id: msgID
         };
       });
 
-      var promise;
+      let promise: Promise<MethodDeclMap['channels.getMessages']['res'] | MethodDeclMap['messages.getMessages']['res']>;
       if(channelID > 0) {
         promise = apiManager.invokeApi('channels.getMessages', {
           channel: appChatsManager.getChannelInput(channelID),
@@ -4389,10 +4297,12 @@ export class AppMessagesManager {
         });
       }
 
-      promises.push(promise.then((getMessagesResult: any) => {
-        appUsersManager.saveApiUsers(getMessagesResult.users);
-        appChatsManager.saveApiChats(getMessagesResult.chats);
-        this.saveMessages(getMessagesResult.messages);
+      promises.push(promise.then(getMessagesResult => {
+        if(getMessagesResult._ != 'messages.messagesNotModified') {
+          appUsersManager.saveApiUsers(getMessagesResult.users);
+          appChatsManager.saveApiChats(getMessagesResult.chats);
+          this.saveMessages(getMessagesResult.messages);
+        }
 
         $rootScope.$broadcast('messages_downloaded', splitted.mids[+channelID]);
       }));

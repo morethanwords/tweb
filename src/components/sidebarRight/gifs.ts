@@ -9,6 +9,7 @@ import appInlineBotsManager, { AppInlineBotsManager } from "../../lib/appManager
 import GifsMasonry from "../gifsMasonry";
 import { findUpClassName } from "../../lib/utils";
 import appImManager from "../../lib/appManagers/appImManager";
+import type { MyDocument } from "../../lib/appManagers/appDocsManager";
 
 const ANIMATIONGROUP = 'GIFS-SEARCH';
 
@@ -116,7 +117,7 @@ export default class AppGifsTab implements SliderTab {
       if(results.length) {
         results.forEach((result) => {
           if(result._ === 'botInlineMediaResult' && result.document) {
-            this.masonry.add(result.document, ANIMATIONGROUP, this.lazyLoadQueue);
+            this.masonry.add(result.document as MyDocument, ANIMATIONGROUP, this.lazyLoadQueue);
           }
         });
       } else {

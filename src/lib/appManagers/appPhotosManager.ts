@@ -1,29 +1,16 @@
 import { calcImageInBox, isObject } from "../utils";
 import { bytesFromHex, getFileNameByLocation } from "../bin_utils";
-import { MTPhotoSize, inputPhotoFileLocation, inputDocumentFileLocation, FileLocation, MTDocument } from "../../types";
 import appDownloadManager from "./appDownloadManager";
 import { CancellablePromise } from "../polyfill";
 import { isSafari } from "../../helpers/userAgent";
+import { FileLocation, InputFileLocation, Photo, PhotoSize } from "../../layer";
+import { MyDocument } from "./appDocsManager";
 
-export type MTPhoto = {
-  _: 'photo' | 'photoEmpty',
-  pFlags: any,
-  flags: number,
-  id: string,
-  access_hash: string,
-  file_reference: Uint8Array,
-  date: number,
-  sizes: Array<MTPhotoSize>,
-  dc_id: number,
-  user_id: number,
-
-  downloaded?: boolean | number,
-  url?: string
-};
+export type MyPhoto = Photo.photo;
 
 export class AppPhotosManager {
   private photos: {
-    [id: string]: MTPhoto
+    [id: string]: MyPhoto
   } = {};
   private documentThumbsCache: {
     [docID: string]: {
@@ -47,7 +34,9 @@ export class AppPhotosManager {
     this.windowH = document.body.scrollHeight;
   }
   
-  public savePhoto(photo: MTPhoto, context?: any) {
+  public savePhoto(photo: Photo, context?: any) {
+    if(photo._ == 'photoEmpty') return undefined;
+
     if(this.photos[photo.id]) return Object.assign(this.photos[photo.id], photo);
 
     /* if(context) {
@@ -56,12 +45,12 @@ export class AppPhotosManager {
     
     if(!photo.id) {
       console.warn('no apiPhoto.id', photo);
-    } else this.photos[photo.id] = photo as any;
+    } else this.photos[photo.id] = photo;
 
     return photo;
   }
   
-  public choosePhotoSize(photo: MTPhoto | MTDocument, width = 0, height = 0) {
+  public choosePhotoSize(photo: MyPhoto | MyDocument, width = 0, height = 0) {
     //if(Config.Navigator.retina) {
     if(window.devicePixelRatio > 1) {
       width *= 2;
@@ -79,11 +68,11 @@ export class AppPhotosManager {
     c	crop	640x640
     d	crop	1280x1280 */
 
-    let bestPhotoSize: MTPhotoSize = {_: 'photoSizeEmpty'};
-    const sizes = ((photo as MTPhoto).sizes || (photo as MTDocument).thumbs) as typeof bestPhotoSize[];
+    let bestPhotoSize: PhotoSize = {_: 'photoSizeEmpty', type: ''};
+    const sizes = ((photo as MyPhoto).sizes || (photo as MyDocument).thumbs) as PhotoSize[];
     if(sizes) {
       for(const photoSize of sizes) {
-        if(!photoSize.w || !photoSize.h) continue;
+        if(!('w' in photoSize) && !('h' in photoSize)) continue;
   
         bestPhotoSize = photoSize;
   
@@ -142,7 +131,7 @@ export class AppPhotosManager {
     return URL.createObjectURL(blob);
   }
 
-  public getPreviewURLFromThumb(thumb: MTPhotoSize, isSticker = false) {
+  public getPreviewURLFromThumb(thumb: PhotoSize.photoCachedSize | PhotoSize.photoStrippedSize, isSticker = false) {
     return thumb.url ?? (thumb.url = this.getPreviewURLFromBytes(thumb.bytes, isSticker));
   }
   
@@ -171,14 +160,18 @@ export class AppPhotosManager {
     }
   }
   
-  public setAttachmentSize(photo: MTPhoto | MTDocument, element: HTMLElement | SVGForeignObjectElement, boxWidth: number, boxHeight: number, isSticker = false, dontRenderPreview = false) {
-    let photoSize = this.choosePhotoSize(photo, boxWidth, boxHeight);
+  public setAttachmentSize(photo: MyPhoto | MyDocument, element: HTMLElement | SVGForeignObjectElement, boxWidth: number, boxHeight: number, isSticker = false, dontRenderPreview = false) {
+    const photoSize = this.choosePhotoSize(photo, boxWidth, boxHeight);
     //console.log('setAttachmentSize', photo, photo.sizes[0].bytes, div);
     
-    let sizes = (photo as MTPhoto).sizes || (photo as MTDocument).thumbs;
-    if((!photo.downloaded || (photo as MTDocument).type == 'video' || (photo as MTDocument).type == 'gif') && !isSticker && sizes?.length && sizes[0].bytes && !dontRenderPreview) {
-      this.setAttachmentPreview(sizes[0].bytes, element, isSticker);
+    const sizes = (photo as MyPhoto).sizes || (photo as MyDocument).thumbs;
+    const thumb = sizes?.length ? sizes[0] : null;
+    if(thumb && ('bytes' in thumb)) {
+      if((!photo.downloaded || (photo as MyDocument).type == 'video' || (photo as MyDocument).type == 'gif') && !isSticker && !dontRenderPreview) {
+        this.setAttachmentPreview(thumb.bytes, element, isSticker);
+      }
     }
+    
     
     let width: number;
     let height: number;
@@ -186,11 +179,11 @@ export class AppPhotosManager {
       width = photo.w || 512;
       height = photo.h || 512;
     } else {
-      width = photoSize.w || 100;
-      height = photoSize.h || 100;
+      width = 'w' in photoSize ? photoSize.w : 100;
+      height = 'h' in photoSize ? photoSize.h : 100;
     }
     
-    let {w, h} = calcImageInBox(width, height, boxWidth, boxHeight);
+    const {w, h} = calcImageInBox(width, height, boxWidth, boxHeight);
     if(element instanceof SVGForeignObjectElement) {
       element.setAttributeNS(null, 'width', '' + w);
       element.setAttributeNS(null, 'height', '' + h);
@@ -204,8 +197,8 @@ export class AppPhotosManager {
     return photoSize;
   }
   
-  public getPhotoDownloadOptions(photo: MTPhoto | MTDocument, photoSize: MTPhotoSize) {
-    const isDocument = photo._ == 'document';
+  public getPhotoDownloadOptions(photo: MyPhoto | MyDocument, photoSize: PhotoSize) {
+    const isMyDocument = photo._ == 'document';
 
     if(!photoSize || photoSize._ == 'photoSizeEmpty') {
       //console.error('no photoSize by photo:', photo);
@@ -213,26 +206,31 @@ export class AppPhotosManager {
     }
     
     // maybe it's a thumb
-    const isPhoto = photoSize.size && photo.access_hash && photo.file_reference;
-    const location: inputPhotoFileLocation | inputDocumentFileLocation | FileLocation = isPhoto ? {
-      _: isDocument ? 'inputDocumentFileLocation' : 'inputPhotoFileLocation',
+    const isPhoto = photoSize._ == 'photoSize' && photo.access_hash && photo.file_reference;
+    const location: InputFileLocation.inputPhotoFileLocation | InputFileLocation.inputDocumentFileLocation | FileLocation = isPhoto ? {
+      _: isMyDocument ? 'inputDocumentFileLocation' : 'inputPhotoFileLocation',
       id: photo.id,
       access_hash: photo.access_hash,
       file_reference: photo.file_reference,
       thumb_size: photoSize.type
-    } : photoSize.location;
+    } : (photoSize as PhotoSize.photoSize).location;
 
-    return {dcID: photo.dc_id, location, size: isPhoto ? photoSize.size : undefined};
+    return {dcID: photo.dc_id, location, size: isPhoto ? (photoSize as PhotoSize.photoSize).size : undefined};
   }
 
-  /* public getPhotoURL(photo: MTPhoto | MTDocument, photoSize: MTPhotoSize) {
+  /* public getPhotoURL(photo: MTPhoto | MTMyDocument, photoSize: MTPhotoSize) {
     const downloadOptions = this.getPhotoDownloadOptions(photo, photoSize);
 
     return {url: getFileURL('photo', downloadOptions), location: downloadOptions.location};
   } */
   
-  public preloadPhoto(photoID: any, photoSize?: MTPhotoSize): CancellablePromise<Blob> {
+  public preloadPhoto(photoID: any, photoSize?: PhotoSize): CancellablePromise<Blob> {
     const photo = this.getPhoto(photoID);
+
+    // @ts-ignore
+    if(photo._ == 'photoEmpty') {
+      throw new Error('preloadPhoto photoEmpty!');
+    }
 
     if(!photoSize) {
       const fullWidth = this.windowW;
@@ -242,7 +240,7 @@ export class AppPhotosManager {
     }
 
     const cacheContext = this.getCacheContext(photo);
-    if(cacheContext.downloaded >= photoSize.size && cacheContext.url) {
+    if(cacheContext.downloaded >= ('size' in photoSize ? photoSize.size : 0) && cacheContext.url) {
       return Promise.resolve() as any;
     }
     
@@ -277,11 +275,11 @@ export class AppPhotosManager {
     return this.documentThumbsCache[docID] ?? (this.documentThumbsCache[docID] = {downloaded: 0, url: ''});
   }
   
-  public getPhoto(photoID: any): MTPhoto {
+  public getPhoto(photoID: any): MyPhoto {
     return isObject(photoID) ? photoID : this.photos[photoID];
   }
 
-  public getInput(photo: MTPhoto) {
+  public getInput(photo: MyPhoto) {
     return {
       _: 'inputMediaPhoto',
       flags: 0,
@@ -295,11 +293,13 @@ export class AppPhotosManager {
     };
   }
 
-  public savePhotoFile(photo: MTPhoto | MTDocument) {
-    const fullWidth = this.windowW;
-    const fullHeight = this.windowH;
-    const fullPhotoSize = this.choosePhotoSize(photo, fullWidth, fullHeight);
-    const location: inputDocumentFileLocation | inputPhotoFileLocation = {
+  public savePhotoFile(photo: MyPhoto | MyDocument) {
+    const fullPhotoSize = this.choosePhotoSize(photo, 0xFFFF, 0xFFFF);
+    if(fullPhotoSize._ != 'photoSize') {
+      return;
+    }
+
+    const location: InputFileLocation.inputDocumentFileLocation | InputFileLocation.inputPhotoFileLocation = {
       _: photo._ == 'document' ? 'inputDocumentFileLocation' : 'inputPhotoFileLocation',
       id: photo.id,
       access_hash: photo.access_hash,

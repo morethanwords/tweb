@@ -6,6 +6,7 @@ import appPeersManager from "./appPeersManager";
 import appUsersManager from "./appUsersManager";
 import appChatsManager from "./appChatsManager";
 import { logger, LogLevels } from '../logger';
+import { Updates, UpdatesState } from '../../layer';
 
 export class ApiUpdatesManager {
   public updatesState: {
@@ -192,12 +193,13 @@ export class ApiUpdatesManager {
     }
   
     return apiManager.invokeApi('updates.getDifference', {
+      flags: 0,
       pts: updatesState.pts, 
       date: updatesState.date, 
       qts: -1
     }, {
       timeout: 0x7fffffff
-    }).then((differenceResult: any) => {
+    }).then((differenceResult) => {
       if(differenceResult._ == 'updates.differenceEmpty') {
         this.log('apply empty diff', differenceResult.seq);
         updatesState.date = differenceResult.date;
@@ -206,39 +208,45 @@ export class ApiUpdatesManager {
         $rootScope.$broadcast('stateSynchronized');
         return false;
       }
-  
-      appUsersManager.saveApiUsers(differenceResult.users);
-      appChatsManager.saveApiChats(differenceResult.chats);
-  
-      // Should be first because of updateMessageID
-      // this.log('applying', differenceResult.other_updates.length, 'other updates')
-  
-      differenceResult.other_updates.forEach((update: any) => {
-        switch(update._) {
-          case 'updateChannelTooLong':
-          case 'updateNewChannelMessage':
-          case 'updateEditChannelMessage':
-            this.processUpdate(update);
-            return;
-        }
-        
-        this.saveUpdate(update);
-      });
-  
-      // this.log('applying', differenceResult.new_messages.length, 'new messages')
-      differenceResult.new_messages.forEach((apiMessage: any) => {
-        this.saveUpdate({
-          _: 'updateNewMessage',
-          message: apiMessage,
-          pts: updatesState.pts,
-          pts_count: 0
+
+      if(differenceResult._ != 'updates.differenceTooLong') {
+        appUsersManager.saveApiUsers(differenceResult.users);
+        appChatsManager.saveApiChats(differenceResult.chats);
+
+        // Should be first because of updateMessageID
+        // this.log('applying', differenceResult.other_updates.length, 'other updates')
+    
+        differenceResult.other_updates.forEach((update: any) => {
+          switch(update._) {
+            case 'updateChannelTooLong':
+            case 'updateNewChannelMessage':
+            case 'updateEditChannelMessage':
+              this.processUpdate(update);
+              return;
+          }
+          
+          this.saveUpdate(update);
         });
-      });
-  
-      const nextState = differenceResult.intermediate_state || differenceResult.state;
-      updatesState.seq = nextState.seq;
-      updatesState.pts = nextState.pts;
-      updatesState.date = nextState.date;
+
+        // this.log('applying', differenceResult.new_messages.length, 'new messages')
+        differenceResult.new_messages.forEach((apiMessage: any) => {
+          this.saveUpdate({
+            _: 'updateNewMessage',
+            message: apiMessage,
+            pts: updatesState.pts,
+            pts_count: 0
+          });
+        });
+
+        const nextState = differenceResult._ == 'updates.difference' ? differenceResult.state : differenceResult.intermediate_state;
+        updatesState.seq = nextState.seq;
+        updatesState.pts = nextState.pts;
+        updatesState.date = nextState.date;
+      } else {
+        updatesState.pts = differenceResult.pts;
+        delete updatesState.seq;
+        delete updatesState.date;
+      }
   
       // this.log('apply diff', updatesState.seq, updatesState.pts)
   
@@ -254,27 +262,29 @@ export class ApiUpdatesManager {
     });
   }
 
-  public getChannelDifference(channelID: any) {
-    var channelState = this.getChannelState(channelID);
+  public getChannelDifference(channelID: number) {
+    const channelState = this.getChannelState(channelID);
     if(!channelState.syncLoading) {
       channelState.syncLoading = true;
       channelState.pendingPtsUpdates = [];
     }
+
     if(channelState.syncPending) {
       clearTimeout(channelState.syncPending.timeout);
       channelState.syncPending = false;
     }
+
     // this.log('Get channel diff', appChatsManager.getChat(channelID), channelState.pts)
     apiManager.invokeApi('updates.getChannelDifference', {
       channel: appChatsManager.getChannelInput(channelID),
       filter: {_: 'channelMessagesFilterEmpty'},
       pts: channelState.pts,
       limit: 30
-    }, {timeout: 0x7fffffff}).then((differenceResult: any) => {
+    }, {timeout: 0x7fffffff}).then((differenceResult) => {
       // this.log('channel diff result', differenceResult)
-      channelState.pts = differenceResult.pts;
+      channelState.pts = 'pts' in differenceResult ? differenceResult.pts : undefined;
   
-      if (differenceResult._ == 'updates.channelDifferenceEmpty') {
+      if(differenceResult._ == 'updates.channelDifferenceEmpty') {
         this.log('apply channel empty diff', differenceResult);
         channelState.syncLoading = false;
         $rootScope.$broadcast('stateSynchronized');
@@ -327,6 +337,7 @@ export class ApiUpdatesManager {
     if(!pts) {
       throw new Error('Add channel state without pts ' + channelID);
     }
+
     if(!(channelID in this.channelStates)) {
       this.channelStates[channelID] = {
         pts: pts,
@@ -334,8 +345,10 @@ export class ApiUpdatesManager {
         syncPending: false,
         syncLoading: false
       };
+
       return true;
     }
+
     return false;
   }
   
@@ -343,6 +356,7 @@ export class ApiUpdatesManager {
     if(this.channelStates[channelID] === undefined) {
       this.addChannelState(channelID, pts);
     }
+
     return this.channelStates[channelID];
   }
 

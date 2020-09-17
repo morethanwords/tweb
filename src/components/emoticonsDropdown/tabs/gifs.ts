@@ -3,8 +3,7 @@ import GifsMasonry from "../../gifsMasonry";
 import Scrollable from "../../scrollable_new";
 import { putPreloader } from "../../misc";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
-import { MTDocument } from "../../../types";
-import appDocsManager from "../../../lib/appManagers/appDocsManager";
+import appDocsManager, {MyDocument} from "../../../lib/appManagers/appDocsManager";
 
 export default class GifsTab implements EmoticonsTab {
   public content: HTMLElement;
@@ -18,21 +17,20 @@ export default class GifsTab implements EmoticonsTab {
     const scroll = new Scrollable(this.content, 'y', 'GIFS', null);
     const preloader = putPreloader(this.content, true);
 
-    apiManager.invokeApi('messages.getSavedGifs', {hash: 0}).then((_res) => {
-      let res = _res as {
-        _: 'messages.savedGifs',
-        gifs: MTDocument[],
-        hash: number
-      };
+    apiManager.invokeApi('messages.getSavedGifs', {hash: 0}).then((res) => {
       //console.log('getSavedGifs res:', res);
+
+      if(res._ == 'messages.savedGifs') {
+        res.gifs.forEach((doc, idx) => {
+          res.gifs[idx] = doc = appDocsManager.saveDoc(doc);
+          //if(doc._ == 'documentEmpty') return;
+          masonry.add(doc as MyDocument, EMOTICONSSTICKERGROUP, EmoticonsDropdown.lazyLoadQueue);
+        });
+      }
 
       //let line: MTDocument[] = [];
 
       preloader.remove();
-      res.gifs.forEach((doc, idx) => {
-        res.gifs[idx] = appDocsManager.saveDoc(doc);
-        masonry.add(res.gifs[idx], EMOTICONSSTICKERGROUP, EmoticonsDropdown.lazyLoadQueue);
-      });
     });
 
     this.init = null;

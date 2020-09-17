@@ -4,41 +4,10 @@ import appPeersManager from "../appManagers/appPeersManager";
 import appMessagesIDsManager from "./appMessagesIDsManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import { toast } from "../../components/toast";
-import appUsersManager, { User } from "./appUsersManager";
-import appPhotosManager, { MTPhoto } from "./appPhotosManager";
-import { MTDocument } from "../../types";
+import appUsersManager from "./appUsersManager";
+import appPhotosManager from "./appPhotosManager";
 import appDocsManager from "./appDocsManager";
-
-type botInlineResult = {
-  _: 'botInlineResult',
-  flags: number,
-  id: string,
-  type: string,
-  title?: string,
-  description?: string,
-  url?: string,
-  thumb: any,
-  content: any,
-  send_message: any
-};
-type botInlineMediaResult = {
-  _: 'botInlineMediaResult',
-  flags: number,
-  id: string,
-  type: string,
-  photo?: MTPhoto,
-  document?: MTDocument,
-  title?: string,
-  description?: string,
-  send_message: any
-};
-type BotInlineResult = (botInlineResult | botInlineMediaResult) & Partial<{
-  qID: string,
-  botID: number,
-  rTitle: string,
-  rDescription: string,
-  initials: string
-}>;
+import { BotInlineResult } from "../../layer";
 
 export class AppInlineBotsManager {
   private inlineResults: {[qID: string]: BotInlineResult} = {};
@@ -51,39 +20,30 @@ export class AppInlineBotsManager {
       query: query,
       geo_point: geo && {_: 'inputGeoPoint', lat: geo['lat'], long: geo['long']},
       offset
-    }, {timeout: 1, stopTime: -1, noErrorBox: true}).then((botResults: {
-      _: 'messages.botResults',
-      flags: number,
-      pFlags: Partial<{gallery: true}>,
-      query_id: string,
-      next_offset?: string,
-      switch_pm?: any,
-      results: BotInlineResult[],
-      cache_time: number,
-      users: User[]
-    }) => {
+    }, {timeout: 1, stopTime: -1, noErrorBox: true}).then(botResults => {
       const queryID = botResults.query_id;
       /* delete botResults._;
       delete botResults.flags;
       delete botResults.query_id; */
       
-      if(botResults.switch_pm) {
+      /* if(botResults.switch_pm) {
         botResults.switch_pm.rText = RichTextProcessor.wrapRichText(botResults.switch_pm.text, {noLinebreaks: true, noLinks: true});
-      }
+      } */
       
-      botResults.results.forEach((result: BotInlineResult) => {
+      botResults.results.forEach(result => {
         const qID = queryID + '_' + result.id;
-        result.qID = qID;
+        /* result.qID = qID;
         result.botID = botID;
         
         result.rTitle = RichTextProcessor.wrapRichText(result.title, {noLinebreaks: true, noLinks: true});
         result.rDescription = RichTextProcessor.wrapRichText(result.description, {noLinebreaks: true, noLinks: true});
-        result.initials = ((result as botInlineResult).url || result.title || result.type || '').substr(0, 1);
+        result.initials = ((result as botInlineResult).url || result.title || result.type || '').substr(0, 1); */
 
         if(result._ == 'botInlineMediaResult') {
           if(result.document) {
             result.document = appDocsManager.saveDoc(result.document);
           }
+          
           if(result.photo) {
             result.photo = appPhotosManager.savePhoto(result.photo);
           }
@@ -321,7 +281,7 @@ export class AppInlineBotsManager {
       peer: appPeersManager.getInputPeerByID(peerID),
       msg_id: appMessagesIDsManager.getMessageLocalID(mid),
       data: button.data
-    }, {timeout: 1, stopTime: -1, noErrorBox: true}).then((callbackAnswer: any) => {
+    }, {timeout: 1, stopTime: -1, noErrorBox: true}).then((callbackAnswer) => {
       if(typeof callbackAnswer.message === 'string' && callbackAnswer.message.length) {
         toast(RichTextProcessor.wrapRichText(callbackAnswer.message, {noLinks: true, noLinebreaks: true}));
       }

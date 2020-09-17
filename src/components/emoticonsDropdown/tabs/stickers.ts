@@ -1,8 +1,8 @@
 import emoticonsDropdown, { EmoticonsTab, EMOTICONSSTICKERGROUP, EmoticonsDropdown } from "..";
-import { MTDocument } from "../../../types";
+import { StickerSet } from "../../../layer";
 import Scrollable from "../../scrollable_new";
 import { wrapSticker } from "../../wrappers";
-import appStickersManager, { MTStickerSet, MTStickerSetFull } from "../../../lib/appManagers/appStickersManager";
+import appStickersManager from "../../../lib/appManagers/appStickersManager";
 import appDownloadManager from "../../../lib/appManagers/appDownloadManager";
 import { readBlobAsText } from "../../../helpers/blob";
 import lottieLoader from "../../../lib/lottieLoader";
@@ -11,7 +11,7 @@ import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import { $rootScope } from "../../../lib/utils";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
 import StickyIntersector from "../../stickyIntersector";
-import appDocsManager from "../../../lib/appManagers/appDocsManager";
+import appDocsManager, {MyDocument} from "../../../lib/appManagers/appDocsManager";
 import animationIntersector from "../../animationIntersector";
 
 export default class StickersTab implements EmoticonsTab {
@@ -23,7 +23,7 @@ export default class StickersTab implements EmoticonsTab {
   }} = {};
 
   private recentDiv: HTMLElement;
-  private recentStickers: MTDocument[] = [];
+  private recentStickers: MyDocument[] = [];
 
   private scroll: Scrollable;
 
@@ -38,7 +38,7 @@ export default class StickersTab implements EmoticonsTab {
   private animatedDivs: Set<HTMLDivElement> = new Set();
   private animatedIntersector: IntersectionObserver;
 
-  categoryPush(categoryDiv: HTMLElement, categoryTitle: string, promise: Promise<MTDocument[]>, prepend?: boolean) {
+  categoryPush(categoryDiv: HTMLElement, categoryTitle: string, promise: Promise<MyDocument[]>, prepend?: boolean) {
     //if((docs.length % 5) != 0) categoryDiv.classList.add('not-full');
 
     const itemsDiv = document.createElement('div');
@@ -56,6 +56,7 @@ export default class StickersTab implements EmoticonsTab {
 
     promise.then(documents => {
       documents.forEach(doc => {
+        //if(doc._ == 'documentEmpty') return;
         itemsDiv.append(this.renderSticker(doc));
       });
 
@@ -76,7 +77,7 @@ export default class StickersTab implements EmoticonsTab {
     });
   }
 
-  renderSticker(doc: MTDocument, div?: HTMLDivElement) {
+  renderSticker(doc: MyDocument, div?: HTMLDivElement) {
     if(!div) {
       div = document.createElement('div');
 
@@ -101,7 +102,7 @@ export default class StickersTab implements EmoticonsTab {
     return div;
   }
 
-  async renderStickerSet(set: MTStickerSet, prepend = false) {
+  async renderStickerSet(set: StickerSet.stickerSet, prepend = false) {
     const categoryDiv = document.createElement('div');
     categoryDiv.classList.add('sticker-category');
 
@@ -122,7 +123,7 @@ export default class StickersTab implements EmoticonsTab {
     //stickersScroll.append(categoryDiv);
 
     const promise = appStickersManager.getStickerSet(set);
-    this.categoryPush(categoryDiv, RichTextProcessor.wrapEmojiText(set.title), promise.then(stickerSet => stickerSet.documents), prepend);
+    this.categoryPush(categoryDiv, RichTextProcessor.wrapEmojiText(set.title), promise.then(stickerSet => stickerSet.documents as MyDocument[]), prepend);
     const stickerSet = await promise;
 
     //console.log('got stickerSet', stickerSet, li);
@@ -153,7 +154,7 @@ export default class StickersTab implements EmoticonsTab {
           });
         });
       }
-    } else { // as thumb will be used first sticker
+    } else if(stickerSet.documents[0]._ != 'documentEmpty') { // as thumb will be used first sticker
       wrapSticker({
         doc: stickerSet.documents[0],
         div: li as any, 
@@ -196,7 +197,7 @@ export default class StickersTab implements EmoticonsTab {
     }); */
 
     $rootScope.$on('stickers_installed', (e: CustomEvent) => {
-      const set: MTStickerSet = e.detail;
+      const set: StickerSet.stickerSet = e.detail;
       
       if(!this.stickerSets[set.id] && this.mounted) {
         this.renderStickerSet(set, true);
@@ -204,7 +205,7 @@ export default class StickersTab implements EmoticonsTab {
     });
 
     $rootScope.$on('stickers_deleted', (e: CustomEvent) => {
-      const set: MTStickerSet = e.detail;
+      const set: StickerSet.stickerSet = e.detail;
       
       if(this.stickerSets[set.id] && this.mounted) {
         const elements = this.stickerSets[set.id];
@@ -225,7 +226,7 @@ export default class StickersTab implements EmoticonsTab {
 
     Promise.all([
       appStickersManager.getRecentStickers().then(stickers => {
-        this.recentStickers = stickers.stickers.slice(0, 20);
+        this.recentStickers = stickers.stickers.slice(0, 20) as MyDocument[];
   
         //stickersScroll.prepend(categoryDiv);
 
@@ -242,7 +243,7 @@ export default class StickersTab implements EmoticonsTab {
         let stickers: {
           _: 'messages.allStickers',
           hash: number,
-          sets: Array<MTStickerSet>
+          sets: Array<StickerSet.stickerSet>
         } = res as any;
 
         preloader.remove();
@@ -353,7 +354,7 @@ export default class StickersTab implements EmoticonsTab {
     this.init = null;
   }
 
-  pushRecentSticker(doc: MTDocument) {
+  pushRecentSticker(doc: MyDocument) {
     if(!this.recentDiv.parentElement) {
       return;
     }

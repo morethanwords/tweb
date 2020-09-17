@@ -1,5 +1,5 @@
 import { PopupElement } from "./popup";
-import appStickersManager, { MTStickerSet } from "../lib/appManagers/appStickersManager";
+import appStickersManager from "../lib/appManagers/appStickersManager";
 import { RichTextProcessor } from "../lib/richtextprocessor";
 import Scrollable from "./scrollable_new";
 import { wrapSticker } from "./wrappers";
@@ -8,13 +8,14 @@ import { putPreloader } from "./misc";
 import animationIntersector from "./animationIntersector";
 import { findUpClassName } from "../lib/utils";
 import appImManager from "../lib/appManagers/appImManager";
+import { StickerSet } from "../layer";
 
 export default class PopupStickers extends PopupElement {
   private stickersFooter: HTMLElement;
   private stickersDiv: HTMLElement;
   private h6: HTMLElement;
 
-  private set: MTStickerSet;
+  private set: StickerSet.stickerSet;
 
   constructor(private stickerSetInput: {
     //_: 'inputStickerSetID',
@@ -118,6 +119,10 @@ export default class PopupStickers extends PopupElement {
       
       this.stickersDiv.innerHTML = '';
       for(let doc of set.documents) {
+        if(doc._ == 'documentEmpty') {
+          continue;
+        }
+        
         const div = document.createElement('div');
         div.classList.add('sticker-set-sticker');
         

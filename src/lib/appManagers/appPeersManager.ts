@@ -2,6 +2,7 @@ import appUsersManager from "./appUsersManager";
 import appChatsManager from "./appChatsManager";
 import { isObject } from "../utils";
 import { RichTextProcessor } from "../richtextprocessor";
+import { InputPeer, InputDialogPeer } from "../../layer";
 
 // https://github.com/eelcohn/Telegram-API/wiki/Calculating-color-for-a-Telegram-user-on-IRC
 /*
@@ -161,13 +162,13 @@ const AppPeersManager = {
     }
   },
 
-  getInputPeerByID: (peerID: number) => {
+  getInputPeerByID: (peerID: number): InputPeer => {
     if(!peerID) {
       return {_: 'inputPeerEmpty'};
     }
 
     if(peerID < 0) {
-      let chatID = -peerID;
+      const chatID = -peerID;
       if(!appChatsManager.isChannel(chatID)) {
         return appChatsManager.getChatInputPeer(chatID);
       } else {
@@ -178,13 +179,20 @@ const AppPeersManager = {
     return {
       _: 'inputPeerUser',
       user_id: peerID,
-      access_hash: appUsersManager.getUser(peerID).access_hash || 0
+      access_hash: appUsersManager.getUser(peerID).access_hash
     };
   },
 
+  getInputDialogPeerByID: (peerID: number): InputDialogPeer => {
+    return {
+      _: 'inputDialogPeer',
+      peer: AppPeersManager.getInputPeerByID(peerID)
+    }
+  },
+
   getPeerColorByID: (peerID: number, pic = true) => {
-    let idx = DialogColorsMap[(peerID < 0 ? -peerID : peerID) % 7];
-    let color = (pic ? DialogColors : DialogColorsFg)[idx];
+    const idx = DialogColorsMap[(peerID < 0 ? -peerID : peerID) % 7];
+    const color = (pic ? DialogColors : DialogColorsFg)[idx];
     return color;
   },
 
@@ -193,7 +201,7 @@ const AppPeersManager = {
     if(peerID > 0) {
       text = '%pu ' + appUsersManager.getUserSearchText(peerID);
     } else if(peerID < 0) {
-      let chat = appChatsManager.getChat(-peerID);
+      const chat = appChatsManager.getChat(-peerID);
       text = '%pg ' + (chat.title || '');
     }
     return text;

@@ -5,6 +5,7 @@ import apiManager from '../mtproto/mtprotoworker';
 import apiUpdatesManager from "./apiUpdatesManager";
 import appProfileManager from "./appProfileManager";
 import searchIndexManager from "../searchIndexManager";
+import { InputPeer, InputChannel, Updates, InputChatPhoto } from "../../layer";
 
 export type Channel = {
   _: 'channel',
@@ -265,11 +266,7 @@ export class AppChatsManager {
     return this.isChannel(id) && !this.isMegagroup(id);
   }
 
-  public getChannelInput(id: number) {
-    if(!id) {
-      return {_: 'inputChannelEmpty'};
-    }
-
+  public getChannelInput(id: number): InputChannel {
     if(id < 0) id = -id;
     return {
       _: 'inputChannel',
@@ -278,18 +275,14 @@ export class AppChatsManager {
     };
   }
 
-  public getChatInputPeer(id: number) {
+  public getChatInputPeer(id: number): InputPeer.inputPeerChat {
     return {
       _: 'inputPeerChat',
       chat_id: id
     };
   }
 
-  public getChannelInputPeer(id: number) {
-    if(!id) {
-      return {_: 'inputPeerEmpty'};
-    }
-
+  public getChannelInputPeer(id: number): InputPeer.inputPeerChannel {
     return {
       _: 'inputPeerChannel',
       channel_id: id,
@@ -380,7 +373,7 @@ export class AppChatsManager {
     return participants;
   }
 
-  public createChannel(title: string, about: String): Promise<number> {
+  public createChannel(title: string, about: string): Promise<number> {
     return apiManager.invokeApi('channels.createChannel', {
       flags: 1,
       broadcast: true,
@@ -412,21 +405,21 @@ export class AppChatsManager {
     }).then(updates => {
       apiUpdatesManager.processUpdateMessage(updates);
 
-      return updates.chats[0].id;
+      return (updates as any as Updates.updates).chats[0].id;
     });
   }
 
   public editPhoto(id: number, inputFile: any) {
-    let isChannel = this.isChannel(id);
+    const isChannel = this.isChannel(id);
 
-    let inputChatPhoto = {
+    const inputChatPhoto: InputChatPhoto.inputChatUploadedPhoto = {
       _: 'inputChatUploadedPhoto', 
       file: inputFile
     };
 
     if(isChannel) {
       return apiManager.invokeApi('channels.editPhoto', {
-        channel: this.getChannelInputPeer(id),
+        channel: this.getChannelInput(id),
         photo: inputChatPhoto
       }).then(updates => {
         apiUpdatesManager.processUpdateMessage(updates);

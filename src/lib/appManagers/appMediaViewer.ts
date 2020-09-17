@@ -5,7 +5,7 @@ import { RichTextProcessor } from "../richtextprocessor";
 import { logger } from "../logger";
 import ProgressivePreloader from "../../components/preloader";
 import { findUpClassName, $rootScope, generatePathData, fillPropertyValue, cancelEvent } from "../utils";
-import appDocsManager from "./appDocsManager";
+import appDocsManager, {MyDocument} from "./appDocsManager";
 import VideoPlayer from "../mediaPlayer";
 import { renderImageFromUrl, parseMenuButtonsTo } from "../../components/misc";
 import AvatarElement from "../../components/avatar";
@@ -13,7 +13,6 @@ import LazyLoadQueue from "../../components/lazyLoadQueue";
 import appForward from "../../components/appForward";
 import { isSafari, mediaSizes, touchSupport } from "../config";
 import { deferredPromise } from "../polyfill";
-import { MTDocument } from "../../types";
 import appMediaPlaybackController from "../../components/appMediaPlaybackController";
 
 // TODO: масштабирование картинок (не SVG) при ресайзе, и правильный возврат на исходную позицию
@@ -246,7 +245,7 @@ export class AppMediaViewer {
     if(message.media.photo) {
       appPhotosManager.savePhotoFile(message.media.photo);
     } else {
-      let document: MTDocument = null;
+      let document: MyDocument = null;
 
       if(message.media.webpage) document = message.media.webpage.document;
       else document = message.media.document;
@@ -840,7 +839,7 @@ export class AppMediaViewer {
     this.log('openMedia doc:', message);
     const media = message.media.photo || message.media.document || message.media.webpage.document || message.media.webpage.photo;
     
-    const isVideo = (media as MTDocument).type == 'video' || (media as MTDocument).type == 'gif';
+    const isVideo = (media as MyDocument).type == 'video' || (media as MyDocument).type == 'gif';
     const isFirstOpen = !this.peerID;
 
     if(isFirstOpen) {

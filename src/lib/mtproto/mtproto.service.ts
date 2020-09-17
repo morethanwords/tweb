@@ -1,9 +1,10 @@
 import { isSafari } from '../../helpers/userAgent';
 import { logger, LogLevels } from '../logger';
 import type { DownloadOptions } from './apiFileManager';
-import type { InputFileLocation, FileLocation, UploadFile, WorkerTaskTemplate } from '../../types';
+import type { WorkerTaskTemplate } from '../../types';
 import { deferredPromise, CancellablePromise } from '../polyfill';
 import { notifySomeone } from '../../helpers/context';
+import { InputFileLocation, FileLocation, UploadFile } from '../../layer';
 
 const log = logger('SW', LogLevels.error/*  | LogLevels.debug | LogLevels.log */);
 const ctx = self as any as ServiceWorkerGlobalScope;
@@ -32,7 +33,7 @@ export interface ServiceWorkerTask extends WorkerTaskTemplate {
 
 export interface ServiceWorkerTaskResponse extends WorkerTaskTemplate {
   type: 'requestFilePart',
-  payload: UploadFile
+  payload: UploadFile.uploadFile
 };
 
 const onFetch = (event: FetchEvent): void => {
@@ -81,9 +82,9 @@ const onFetch = (event: FetchEvent): void => {
             };
 
             
-            const deferred = deferredPromises[task.id] = deferredPromise<UploadFile>();
+            const deferred = deferredPromises[task.id] = deferredPromise<UploadFile.uploadFile>();
             deferred.then(result => {
-              let ab = result.bytes;
+              let ab = result.bytes as Uint8Array;
               
               log.debug('[stream] requestFilePart result:', result);
   
