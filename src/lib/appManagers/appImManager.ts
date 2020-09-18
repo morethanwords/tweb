@@ -14,10 +14,10 @@ import { logger, LogLevels } from "../logger";
 import appMediaViewer from "./appMediaViewer";
 import appSidebarLeft from "./appSidebarLeft";
 import appChatsManager, { Channel, Chat } from "./appChatsManager";
-import { wrapDocument, wrapPhoto, wrapVideo, wrapSticker, wrapReply, wrapAlbum, wrapPoll, formatDate } from '../../components/wrappers';
+import { wrapDocument, wrapPhoto, wrapVideo, wrapSticker, wrapReply, wrapAlbum, wrapPoll } from '../../components/wrappers';
 import ProgressivePreloader from '../../components/preloader';
-import { openBtnMenu, formatPhoneNumber, positionMenu, parseMenuButtonsTo, attachContextMenuListener } from '../../components/misc';
-import { ChatInput } from '../../components/chatInput';
+import { formatPhoneNumber, parseMenuButtonsTo } from '../../components/misc';
+import { ChatInput } from '../../components/chat/input';
 //import Scrollable from '../../components/scrollable';
 import Scrollable from '../../components/scrollable_new';
 import BubbleGroups from '../../components/bubbleGroups';
@@ -28,19 +28,18 @@ import appStickersManager from './appStickersManager';
 import AvatarElement from '../../components/avatar';
 import appInlineBotsManager from './AppInlineBotsManager';
 import StickyIntersector from '../../components/stickyIntersector';
-import { PopupButton, PopupPeer } from '../../components/popup';
 import { mediaSizes, touchSupport, isAndroid, isApple } from '../config';
 import animationIntersector from '../../components/animationIntersector';
 import PopupStickers from '../../components/popupStickers';
-import SearchInput from '../../components/searchInput';
-import AppSearch, { SearchGroup } from '../../components/appSearch';
 import PopupDatePicker from '../../components/popupDatepicker';
-import appMediaPlaybackController from '../../components/appMediaPlaybackController';
 import appPollsManager from './appPollsManager';
 import { ripple } from '../../components/ripple';
 import { horizontalMenu } from '../../components/horizontalMenu';
 import AudioElement from '../../components/audio';
 import { InputNotifyPeer, InputPeerNotifySettings } from '../../layer';
+import { ChatAudio } from '../../components/chat/audio';
+import { ChatContextMenu } from '../../components/chat/contextMenu';
+import { ChatSearch } from '../../components/chat/search';
 
 //console.log('appImManager included33!');
 
@@ -49,419 +48,6 @@ appSidebarLeft; // just to include
 const testScroll = false;
 
 const ANIMATIONGROUP = 'chat';
-
-class ChatContextMenu {
-  private element = document.getElementById('bubble-contextmenu') as HTMLDivElement;
-  private buttons: {
-    reply: HTMLButtonElement,
-    edit: HTMLButtonElement,
-    copy: HTMLButtonElement,
-    pin: HTMLButtonElement,
-    forward: HTMLButtonElement,
-    delete: HTMLButtonElement
-  } = {} as any;
-  public msgID: number;
-
-  constructor(private attachTo: HTMLElement) {
-    parseMenuButtonsTo(this.buttons, this.element.children);
-
-    attachContextMenuListener(attachTo, (e) => {
-      let bubble: HTMLElement = null;
-
-      try {
-        bubble = findUpClassName(e.target, 'bubble__container');
-      } catch(e) {}
-
-      if(!bubble) return;
-
-      if(e instanceof MouseEvent) e.preventDefault();
-      if(this.element.classList.contains('active')) {
-        return false;
-      }
-      if(e instanceof MouseEvent) e.cancelBubble = true;
-      
-      bubble = bubble.parentElement as HTMLDivElement; // bc container
-      
-      let msgID = +bubble.dataset.mid;
-      if(!msgID) return;
-
-      let peerID = $rootScope.selectedPeerID;
-      this.msgID = msgID;
-
-      const message = appMessagesManager.getMessage(msgID);
-
-      this.buttons.copy.style.display = message.message ? '' : 'none';
-      
-      if($rootScope.myID == peerID || (peerID < 0 && appChatsManager.hasRights(-peerID, 'pin'))) {
-        this.buttons.pin.style.display = '';
-      } else {
-        this.buttons.pin.style.display = 'none';
-      }
-      
-      this.buttons.edit.style.display = appMessagesManager.canEditMessage(msgID) ? '' : 'none';
-      
-      let side: 'left' | 'right' = bubble.classList.contains('is-in') ? 'left' : 'right';
-      positionMenu(e, this.element, side);
-      openBtnMenu(this.element);
-      
-      /////this.log('contextmenu', e, bubble, msgID, side);
-    });
-
-    this.buttons.copy.addEventListener('click', () => {
-      let message = appMessagesManager.getMessage(this.msgID);
-      
-      let str = message ? message.message : '';
-      
-      var textArea = document.createElement("textarea");
-      textArea.value = str;
-      textArea.style.position = "fixed";  //avoid scrolling to bottom
-      document.body.appendChild(textArea);
-      textArea.focus();
-      textArea.select();
-      
-      try {
-        document.execCommand('copy');
-      } catch (err) {
-        console.error('Oops, unable to copy', err);
-      }
-      
-      document.body.removeChild(textArea);
-    });
-
-    this.buttons.delete.addEventListener('click', () => {
-      let peerID = $rootScope.selectedPeerID;
-      let firstName = appPeersManager.getPeerTitle(peerID, false, true);
-
-      let callback = (revoke: boolean) => {
-        appMessagesManager.deleteMessages([this.msgID], revoke);
-      };
-
-      let title: string, description: string, buttons: PopupButton[];
-      title = 'Delete Message?';
-      description = `Are you sure you want to delete this message?`;
-
-      if(peerID == $rootScope.myID) {
-        buttons = [{
-          text: 'DELETE',
-          isDanger: true,
-          callback: () => callback(false)
-        }];
-      } else {
-        buttons = [{
-          text: 'DELETE JUST FOR ME',
-          isDanger: true,
-          callback: () => callback(false)
-        }];
-
-        if(peerID > 0) {
-          buttons.push({
-            text: 'DELETE FOR ME AND ' + firstName,
-            isDanger: true,
-            callback: () => callback(true)
-          });
-        } else if(appChatsManager.hasRights(-peerID, 'deleteRevoke')) {
-          buttons.push({
-            text: 'DELETE FOR ALL',
-            isDanger: true,
-            callback: () => callback(true)
-          });
-        }
-      }
-
-      buttons.push({
-        text: 'CANCEL',
-        isCancel: true
-      });
-
-      let popup = new PopupPeer('popup-delete-chat', {
-        peerID: peerID,
-        title: title,
-        description: description,
-        buttons: buttons
-      });
-
-      popup.show();
-    });
-    
-    this.buttons.reply.addEventListener('click', () => {
-      const message = appMessagesManager.getMessage(this.msgID);
-      const chatInputC = appImManager.chatInputC;
-      chatInputC.setTopInfo(appPeersManager.getPeerTitle(message.fromID, true), message.message, undefined, message);
-      chatInputC.replyToMsgID = this.msgID;
-      chatInputC.editMsgID = 0;
-    });
-
-    this.buttons.forward.addEventListener('click', () => {
-      appForward.init([this.msgID]);
-    });
-    
-    this.buttons.edit.addEventListener('click', () => {
-      const message = appMessagesManager.getMessage(this.msgID);
-      const chatInputC = appImManager.chatInputC;
-      chatInputC.setTopInfo('Editing', message.message, message.message, message);
-      chatInputC.replyToMsgID = 0;
-      chatInputC.editMsgID = this.msgID;
-    });
-    
-    this.buttons.pin.addEventListener('click', () => {
-      appMessagesManager.updatePinnedMessage($rootScope.selectedPeerID, this.msgID);
-    });
-  }
-}
-
-class ChatSearch {
-  private element: HTMLElement;
-  private backBtn: HTMLElement;
-  private searchInput: SearchInput;
-
-  private results: HTMLElement;
-
-  private footer: HTMLElement;
-  private dateBtn: HTMLElement;
-  private foundCountEl: HTMLElement;
-  private controls: HTMLElement;
-  private downBtn: HTMLElement;
-  private upBtn: HTMLElement;
-
-  private appSearch: AppSearch;
-  private searchGroup: SearchGroup;
-
-  private foundCount = 0;
-  private selectedIndex = 0;
-  private setPeerPromise: Promise<any>;
-
-  constructor() {
-    this.element = document.createElement('div');
-    this.element.classList.add('sidebar-header', 'chat-search', 'chats-container');
-
-    this.backBtn = document.createElement('button');
-    this.backBtn.classList.add('btn-icon', 'tgico-back', 'sidebar-close-button');
-    ripple(this.backBtn);
-    
-    this.backBtn.addEventListener('click', () => {
-      appImManager.topbar.classList.remove('hide-pinned');
-      this.element.remove();
-      this.searchInput.remove();
-      this.results.remove();
-      this.footer.remove();
-      this.footer.removeEventListener('click', this.onFooterClick);
-      this.dateBtn.removeEventListener('click', this.onDateClick);
-      this.upBtn.removeEventListener('click', this.onUpClick);
-      this.downBtn.removeEventListener('click', this.onDownClick);
-      this.searchGroup.list.removeEventListener('click', this.onResultsClick);
-      appImManager.bubblesContainer.classList.remove('search-results-active');
-    }, {once: true});
-
-    this.searchInput = new SearchInput('Search');
-    
-    // Results
-    this.results = document.createElement('div');
-    this.results.classList.add('chat-search-results', 'chats-container');
-
-    this.searchGroup = new SearchGroup('', 'messages', undefined, '', false);
-    this.searchGroup.list.addEventListener('click', this.onResultsClick);
-
-    this.appSearch = new AppSearch(this.results, this.searchInput, {
-      messages: this.searchGroup
-    }, (count) => {
-      this.foundCount = count;
-
-      if(!this.foundCount) {
-        this.foundCountEl.innerText = this.searchInput.value ? 'No results' : '';
-        this.results.classList.remove('active');
-        appImManager.bubblesContainer.classList.remove('search-results-active');
-        this.upBtn.setAttribute('disabled', 'true');
-        this.downBtn.setAttribute('disabled', 'true');
-      } else {
-        this.selectResult(this.searchGroup.list.children[0] as HTMLElement);
-      }
-    });
-    this.appSearch.beginSearch($rootScope.selectedPeerID);
-
-    //appImManager.topbar.parentElement.insertBefore(this.results, appImManager.bubblesContainer);
-    appImManager.bubblesContainer.append(this.results);
-
-    // Footer
-    this.footer = document.createElement('div');
-    this.footer.classList.add('chat-search-footer');
-
-    this.footer.addEventListener('click', this.onFooterClick);
-    ripple(this.footer);
-
-    this.foundCountEl = document.createElement('span');
-    this.foundCountEl.classList.add('chat-search-count');
-
-    this.dateBtn = document.createElement('button');
-    this.dateBtn.classList.add('btn-icon', 'tgico-calendar');
-
-    this.controls = document.createElement('div');
-    this.controls.classList.add('chat-search-controls');
-
-    this.upBtn = document.createElement('button');
-    this.upBtn.classList.add('btn-icon', 'tgico-up');
-    this.downBtn = document.createElement('button');
-    this.downBtn.classList.add('btn-icon', 'tgico-down');
-
-    this.upBtn.setAttribute('disabled', 'true');
-    this.downBtn.setAttribute('disabled', 'true');
-
-    this.dateBtn.addEventListener('click', this.onDateClick);
-    this.upBtn.addEventListener('click', this.onUpClick);
-    this.downBtn.addEventListener('click', this.onDownClick);
-    this.controls.append(this.upBtn, this.downBtn);
-
-    this.footer.append(this.foundCountEl, this.dateBtn, this.controls);
-    
-    appImManager.topbar.parentElement.insertBefore(this.footer, appImManager.chatInput);
-
-    // Append container
-    this.element.append(this.backBtn, this.searchInput.container);
-
-    appImManager.topbar.classList.add('hide-pinned');
-    appImManager.topbar.parentElement.append(this.element);
-
-    this.searchInput.input.focus();
-  }
-
-  onDateClick = (e: MouseEvent) => {
-    cancelEvent(e);
-    new PopupDatePicker(new Date(), appImManager.onDatePick).show();
-  };
-
-  selectResult = (elem: HTMLElement) => {
-    if(this.setPeerPromise) return this.setPeerPromise;
-
-    const peerID = +elem.getAttribute('data-peerID');
-    const lastMsgID = +elem.dataset.mid || undefined;
-
-    const index = whichChild(elem);
-
-    if(index == (this.foundCount - 1)) {
-      this.upBtn.setAttribute('disabled', 'true');
-    } else {
-      this.upBtn.removeAttribute('disabled');
-    }
-
-    if(!index) {
-      this.downBtn.setAttribute('disabled', 'true');
-    } else {
-      this.downBtn.removeAttribute('disabled');
-    }
-
-    this.results.classList.remove('active');
-    appImManager.bubblesContainer.classList.remove('search-results-active');
-
-    const res = appImManager.setPeer(peerID, lastMsgID);
-    this.setPeerPromise = (res instanceof Promise ? res : Promise.resolve(res)).then(() => {
-      this.selectedIndex = index;
-      this.foundCountEl.innerText = `${index + 1} of ${this.foundCount}`;
-
-      const renderedCount = this.searchGroup.list.childElementCount;
-      if(this.selectedIndex >= (renderedCount - 6)) {
-        this.appSearch.searchMore();
-      }
-    }).finally(() => {
-      this.setPeerPromise = null;
-    });
-  };
-
-  onResultsClick = (e: MouseEvent) => {
-    const target = findUpTag(e.target, 'LI');
-    if(target) {
-      this.selectResult(target);
-    }
-  };
-
-  onFooterClick = (e: MouseEvent) => {
-    if(this.foundCount) {
-      appImManager.bubblesContainer.classList.toggle('search-results-active');
-      this.results.classList.toggle('active');
-    }
-  };
-
-  onUpClick = (e: MouseEvent) => {
-    cancelEvent(e);
-    this.selectResult(this.searchGroup.list.children[this.selectedIndex + 1] as HTMLElement);
-  };
-
-  onDownClick = (e: MouseEvent) => {
-    cancelEvent(e);
-    this.selectResult(this.searchGroup.list.children[this.selectedIndex - 1] as HTMLElement);
-  };
-}
-
-class ChatAudio {
-  public container: HTMLElement;
-  private toggle: HTMLElement;
-  private title: HTMLElement;
-  private subtitle: HTMLElement;
-  private close: HTMLElement;
-
-  constructor() {
-    this.container = document.createElement('div');
-    this.container.classList.add('pinned-audio', 'pinned-container');
-    this.container.style.display = 'none';
-
-    this.toggle = document.createElement('div');
-    this.toggle.classList.add('pinned-audio-ico', 'tgico');
-    
-    this.title = document.createElement('div');
-    this.title.classList.add('pinned-audio-title');
-
-    this.subtitle = document.createElement('div');
-    this.subtitle.classList.add('pinned-audio-subtitle');
-
-    this.close = document.createElement('button');
-    this.close.classList.add('pinned-audio-close', 'btn-icon', 'tgico-close');
-
-    this.container.append(this.toggle, this.title, this.subtitle, this.close);
-
-    this.close.addEventListener('click', (e) => {
-      cancelEvent(e);
-      this.container.style.display = 'none';
-      this.container.parentElement.classList.remove('is-audio-shown');
-      if(this.toggle.classList.contains('flip-icon')) {
-        appMediaPlaybackController.toggle();
-      }
-    });
-
-    this.toggle.addEventListener('click', (e) => {
-      cancelEvent(e);
-      appMediaPlaybackController.toggle();
-    });
-
-    $rootScope.$on('audio_play', (e: CustomEvent) => {
-      const {doc, mid} = e.detail;
-
-      let title: string, subtitle: string;
-      if(doc.type == 'voice' || doc.type == 'round') {
-        const message = appMessagesManager.getMessage(mid);
-        title = appPeersManager.getPeerTitle(message.fromID, false, true);
-        //subtitle = 'Voice message';
-        subtitle = formatDate(message.date, false, false);
-      } else {
-        title = doc.audioTitle || doc.file_name;
-        subtitle = doc.audioPerformer ? RichTextProcessor.wrapPlainText(doc.audioPerformer) : 'Unknown Artist';
-      }
-
-      this.title.innerHTML = title;
-      this.subtitle.innerHTML = subtitle;
-      this.toggle.classList.add('flip-icon');
-      
-      this.container.dataset.mid = '' + mid;
-      if(this.container.style.display) {
-        const scrollTop = appImManager.scrollable.scrollTop;
-        this.container.style.display = '';
-        this.container.parentElement.classList.add('is-audio-shown');
-        appImManager.scrollable.scrollTop = scrollTop;
-      }
-    });
-
-    $rootScope.$on('audio_pause', () => {
-      this.toggle.classList.remove('flip-icon');
-    });
-  }
-}
 
 export class AppImManager {
   public columnEl = document.getElementById('column-center') as HTMLDivElement;
@@ -651,14 +237,14 @@ export class AppImManager {
       if(message.media) {
         if(message.media.photo) {
           const photo = appPhotosManager.getPhoto(tempID);
-          //if(photo._ != 'photoEmpty') {
+          if(/* photo._ != 'photoEmpty' */photo) {
             const newPhoto = message.media.photo;
             newPhoto.downloaded = photo.downloaded;
             newPhoto.url = photo.url;
-          //}
+          }
         } else if(message.media.document) {
           const doc = appDocsManager.getDoc(tempID);
-          if(/* doc._ != 'documentEmpty' &&  */doc.type && doc.type != 'sticker') {
+          if(/* doc._ != 'documentEmpty' &&  */doc?.type && doc.type != 'sticker') {
             const newDoc = message.media.document;
             newDoc.downloaded = doc.downloaded;
             newDoc.url = doc.url;
@@ -1223,7 +809,7 @@ export class AppImManager {
           this.chatInner.classList.add('is-scrolling');
         }
   
-        this.isScrollingTimeout = setTimeout(() => {
+        this.isScrollingTimeout = window.setTimeout(() => {
           this.chatInner.classList.remove('is-scrolling');
           this.isScrollingTimeout = 0;
         }, 1350);
@@ -1283,7 +869,7 @@ export class AppImManager {
           clearTimeout(this.isScrollingTimeout);
         }
 
-        this.isScrollingTimeout = setTimeout(() => {
+        this.isScrollingTimeout = window.setTimeout(() => {
           this.chatInner.classList.remove('is-scrolling');
           this.isScrollingTimeout = 0;
         }, 1350);
@@ -3035,7 +2621,7 @@ export class AppImManager {
           }
         }
         
-        this.typingTimeouts[peerID] = setTimeout(() => {
+        this.typingTimeouts[peerID] = window.setTimeout(() => {
           this.typingTimeouts[peerID] = 0;
           delete this.typingUsers[update.user_id];
           

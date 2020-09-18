@@ -1,19 +1,19 @@
-import Scrollable from "./scrollable_new";
-import { RichTextProcessor } from "../lib/richtextprocessor";
-import apiManager from "../lib/mtproto/mtprotoworker";
-import appWebPagesManager from "../lib/appManagers/appWebPagesManager";
-import appImManager from "../lib/appManagers/appImManager";
-import { getRichValue, calcImageInBox, cancelEvent } from "../lib/utils";
-import { wrapDocument, wrapReply } from "./wrappers";
-import appMessagesManager from "../lib/appManagers/appMessagesManager";
-import { Layouter, RectPart } from "./groupedLayout";
-import Recorder from '../../public/recorder.min';
+import Scrollable from "../scrollable_new";
+import { RichTextProcessor } from "../../lib/richtextprocessor";
+import apiManager from "../../lib/mtproto/mtprotoworker";
+import appWebPagesManager from "../../lib/appManagers/appWebPagesManager";
+import appImManager from "../../lib/appManagers/appImManager";
+import { getRichValue, calcImageInBox, cancelEvent } from "../../lib/utils";
+import { wrapDocument, wrapReply } from "../wrappers";
+import appMessagesManager from "../../lib/appManagers/appMessagesManager";
+import { Layouter, RectPart } from "../groupedLayout";
+import Recorder from '../../../public/recorder.min';
 //import Recorder from '../opus-recorder/dist/recorder.min';
-import opusDecodeController from "../lib/opusDecodeController";
-import { touchSupport } from "../lib/config";
-import appDocsManager from "../lib/appManagers/appDocsManager";
-import emoticonsDropdown from "./emoticonsDropdown";
-import PopupCreatePoll from "./popupCreatePoll";
+import opusDecodeController from "../../lib/opusDecodeController";
+import { touchSupport } from "../../lib/config";
+import appDocsManager from "../../lib/appManagers/appDocsManager";
+import emoticonsDropdown from "../emoticonsDropdown";
+import PopupCreatePoll from "../popupCreatePoll";
 
 export class ChatInput {
   public pageEl = document.getElementById('page-chats') as HTMLDivElement;
@@ -729,7 +729,7 @@ export class ChatInput {
 
   public sendMessageWithDocument(document: any) {
     document = appDocsManager.getDoc(document);
-    if(document._ != 'documentEmpty') {
+    if(document && document._ != 'documentEmpty') {
       appMessagesManager.sendFile(appImManager.peerID, document, {isMedia: true, replyToMsgID: this.replyToMsgID});
       this.onMessageSent(false, true);
 

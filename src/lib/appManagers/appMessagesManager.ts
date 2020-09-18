@@ -24,9 +24,10 @@ import { Modify } from "../../types";
 import { logger, LogLevels } from "../logger";
 import type {ApiFileManager} from '../mtproto/apiFileManager';
 import appDownloadManager from "./appDownloadManager";
-import { DialogFilter, InputDialogPeer, InputMessage, MethodDeclMap, MessagesFilter, PhotoSize } from "../../layer";
+import { DialogFilter, InputDialogPeer, InputMessage, MethodDeclMap, MessagesFilter, PhotoSize, DocumentAttribute, Dialog as MTDialog, MessagesDialogs, MessagesPeerDialogs } from "../../layer";
 
 //console.trace('include');
+// TODO: если удалить сообщение в непрогруженном диалоге, то при обновлении, из-за стейта, последнего сообщения в чатлисте не будет
 
 const APITIMEOUT = 0;
 
@@ -47,27 +48,7 @@ export type HistoryResult = {
   unreadSkip: boolean
 };
 
-export type Dialog = {
-  _: 'dialog',
-  top_message: number,
-  read_inbox_max_id: number,
-  read_outbox_max_id: number,
-  peer: any,
-  notify_settings: any,
-  folder_id: number,
-  flags: number,
-  draft: any,
-  unread_count: number,
-  unread_mentions_count: number,
-
-  index: number,
-  peerID: number,
-  pFlags: Partial<{
-    pinned: true,
-    unread_mark: true
-  }>,
-  pts: number
-}
+export type Dialog = MTDialog.dialog;
 
 export class DialogsStorage {
   public dialogs: {[peerID: string]: Dialog} = {};
@@ -487,7 +468,7 @@ export class AppMessagesManager {
   public pendingByRandomID: {[randomID: string]: [number, number]} = {};
   public pendingByMessageID: any = {};
   public pendingAfterMsgs: any = {};
-  public pendingTopMsgs: any = {};
+  public pendingTopMsgs: {[peerID: string]: number} = {};
   public sendFilePromise: CancellablePromise<void> = Promise.resolve();
   public tempID = -1;
   public tempFinalizeCallbacks: any = {};
@@ -1009,7 +990,7 @@ export class AppMessagesManager {
     attributes.push({_: 'documentAttributeFilename', file_name: fileName || apiFileName});
 
     if(['document', 'video', 'audio', 'voice'].indexOf(attachType) !== -1 && !isDocument) {
-      let doc: any = {
+      let doc: MyDocument = {
         _: 'document',
         id: '' + messageID,
         duration: options.duration,
@@ -1021,7 +1002,7 @@ export class AppMessagesManager {
         mime_type: fileType,
         url: options.objectURL || '',
         size: file.size
-      };
+      } as any;
       
       appDocsManager.saveDoc(doc);
     }
@@ -1297,21 +1278,18 @@ export class AppMessagesManager {
 
       if(file.type.indexOf('video/') === 0) {
         let flags = 1;
-        let videoAttribute = {
+        let videoAttribute: DocumentAttribute.documentAttributeVideo = {
           _: 'documentAttributeVideo',
           flags: flags,
           pFlags: { // that's only for client, not going to telegram
-            supports_streaming: true,
-            round_message: false
-          }, 
-          round_message: false,
-          supports_streaming: true,
+            supports_streaming: true
+          },
           duration: details.duration,
           w: details.width,
           h: details.height
         };
 
-        let doc: any = {
+        let doc: MyDocument = {
           _: 'document',
           id: '' + messageID,
           attributes: [videoAttribute],
@@ -1320,7 +1298,7 @@ export class AppMessagesManager {
           mime_type: file.type,
           url: details.objectURL || '',
           size: file.size
-        };
+        } as any;
         
         appDocsManager.saveDoc(doc);
         media.document = doc;
@@ -1894,8 +1872,10 @@ export class AppMessagesManager {
       hash: 0
     }, {
       timeout: APITIMEOUT
-    }).then((dialogsResult: any) => {
+    }).then((dialogsResult) => {
       ///////this.log('messages.getDialogs result:', dialogsResult);
+
+      if(dialogsResult._ == 'messages.dialogsNotModified') return null;
 
       if(!offsetDate) {
         telegramMeWebService.setAuthorized(true);
@@ -1905,21 +1885,31 @@ export class AppMessagesManager {
       appChatsManager.saveApiChats(dialogsResult.chats);
       this.saveMessages(dialogsResult.messages);
 
-      var maxSeenIdIncremented = offsetDate ? true : false;
-      var hasPrepend = false;
-      let length = dialogsResult.dialogs.length;
-      let noIDsDialogs: any = {};
-      for(let i = length - 1; i >= 0; --i) {
-        let dialog = dialogsResult.dialogs[i];
+      let maxSeenIdIncremented = offsetDate ? true : false;
+      let hasPrepend = false;
+      let noIDsDialogs: {[peerID: number]: Dialog} = {};
+      (dialogsResult.dialogs as Dialog[]).forEachReverse(dialog => {
+        //const d = Object.assign({}, dialog);
+        // ! нужно передавать folderID, так как по папке != 0 нет свойства folder_id
+        this.saveConversation(dialog, folderID);
 
-        this.saveConversation(dialog);
+        /* if(dialog.peerID == 239602833) {
+          this.log.error('lun bot', folderID, d);
+        } */
+
         if(offsetIndex && dialog.index > offsetIndex) {
           this.newDialogsToHandle[dialog.peerID] = dialog;
           hasPrepend = true;
         }
 
+        // ! это может случиться, если запрос идёт не по папке 0, а по 1. почему-то read'ов нет
+        // ! в итоге, чтобы получить 1 диалог, делается первый запрос по папке 0, потом запрос для архивных по папке 1, и потом ещё перезагрузка архивного диалога
         if(!dialog.read_inbox_max_id && !dialog.read_outbox_max_id) {
           noIDsDialogs[dialog.peerID] = dialog;
+
+          /* if(dialog.peerID == 239602833) {
+            this.log.error('lun bot', folderID);
+          } */
         }
 
         if(!maxSeenIdIncremented &&
@@ -1927,7 +1917,7 @@ export class AppMessagesManager {
           this.incrementMaxSeenID(dialog.top_message);
           maxSeenIdIncremented = true;
         }
-      }
+      });
 
       if(Object.keys(noIDsDialogs).length) {
         //setTimeout(() => { // test bad situation
@@ -1941,9 +1931,11 @@ export class AppMessagesManager {
         //}, 10e3);
       }
 
+      const count = (dialogsResult as MessagesDialogs.messagesDialogsSlice).count;
+
       if(!dialogsResult.dialogs.length ||
-        !dialogsResult.count ||
-        dialogs.length >= dialogsResult.count) {
+        !count ||
+        dialogs.length >= count) {
         this.dialogsStorage.allDialogsLoaded[folderID] = true;
       }
 
@@ -1953,7 +1945,7 @@ export class AppMessagesManager {
         $rootScope.$broadcast('dialogs_multiupdate', {});
       }
 
-      return dialogsResult.count;
+      return count;
     });
   }
 
@@ -2115,11 +2107,11 @@ export class AppMessagesManager {
       }
 
       if(justClear) {
-        $rootScope.$broadcast('dialog_flush', {peerID: peerID});
+        $rootScope.$broadcast('dialog_flush', {peerID});
       } else {
         this.dialogsStorage.dropDialog(peerID);
 
-        $rootScope.$broadcast('dialog_drop', {peerID: peerID});
+        $rootScope.$broadcast('dialog_drop', {peerID});
       }
     });
   }
@@ -2598,7 +2590,9 @@ export class AppMessagesManager {
     return true;
   }
 
-  public applyConversations(dialogsResult: any) {
+  public applyConversations(dialogsResult: MessagesPeerDialogs.messagesPeerDialogs) {
+    // * В эту функцию попадут только те диалоги, в которых есть read_inbox_max_id и read_outbox_max_id, в отличие от тех, что будут в getTopMessages
+
     appUsersManager.saveApiUsers(dialogsResult.users);
     appChatsManager.saveApiChats(dialogsResult.chats);
     this.saveMessages(dialogsResult.messages);
@@ -2607,27 +2601,33 @@ export class AppMessagesManager {
 
     const updatedDialogs: {[peerID: number]: Dialog} = {};
     let hasUpdated = false;
-    dialogsResult.dialogs.forEach((dialog: any) => {
+    (dialogsResult.dialogs as Dialog[]).forEach((dialog) => {
       const peerID = appPeersManager.getPeerID(dialog.peer);
       let topMessage = dialog.top_message;
-      const topPendingMesage = this.pendingTopMsgs[peerID];
-      if(topPendingMesage) {
-        if(!topMessage || this.getMessage(topPendingMesage).date > this.getMessage(topMessage).date) {
-          dialog.top_message = topMessage = topPendingMesage;
+      const topPendingMessage = this.pendingTopMsgs[peerID];
+      if(topPendingMessage) {
+        if(!topMessage || this.getMessage(topPendingMessage).date > this.getMessage(topMessage).date) {
+          dialog.top_message = topMessage = topPendingMessage;
         }
       }
+
+      /* const d = Object.assign({}, dialog);
+      if(peerID == 239602833) {
+        this.log.error('applyConversation lun', dialog, d);
+      } */
 
       if(topMessage) {
         const wasDialogBefore = this.getDialogByPeerID(peerID)[0];
 
         // here need to just replace, not FULL replace dialog! WARNING
-        if(wasDialogBefore && wasDialogBefore.pFlags && wasDialogBefore.pFlags.pinned) {
+        /* if(wasDialogBefore?.pFlags?.pinned && !dialog?.pFlags?.pinned) {
+          this.log.error('here need to just replace, not FULL replace dialog! WARNING', wasDialogBefore, dialog);
           if(!dialog.pFlags) dialog.pFlags = {};
           dialog.pFlags.pinned = true;
-        }
+        } */
 
         this.saveConversation(dialog);
-
+        
         if(wasDialogBefore) {
           $rootScope.$broadcast('dialog_top', dialog);
         } else {
@@ -2656,11 +2656,16 @@ export class AppMessagesManager {
     }
   }
 
-  public saveConversation(dialog: Dialog) {
+  public saveConversation(dialog: Dialog, folderID = 0) {
     const peerID = appPeersManager.getPeerID(dialog.peer);
     if(!peerID) {
       return false;
     }
+
+    if(dialog._ != 'dialog'/*  || peerID == 239602833 */) {
+      console.error('saveConversation not regular dialog', dialog, Object.assign({}, dialog));
+    }
+    
     const channelID = appPeersManager.isChannel(peerID) ? -peerID : 0;
     const peerText = appPeersManager.getPeerSearchText(peerID);
     searchIndexManager.indexObject(peerID, peerText, this.dialogsIndex);
@@ -2700,7 +2705,14 @@ export class AppMessagesManager {
     dialog.read_inbox_max_id = appMessagesIDsManager.getFullMessageID(dialog.read_inbox_max_id, channelID);
     dialog.read_outbox_max_id = appMessagesIDsManager.getFullMessageID(dialog.read_outbox_max_id, channelID);
 
-    if(!dialog.hasOwnProperty('folder_id')) dialog.folder_id = 0;
+    if(!dialog.hasOwnProperty('folder_id')) {
+      if(dialog._ == 'dialog') {
+        dialog.folder_id = folderID;
+      }/*  else if(dialog._ == 'dialogFolder') {
+        dialog.folder_id = dialog.folder.id;
+      } */
+    }
+
     dialog.peerID = peerID;
 
     this.dialogsStorage.generateIndexForDialog(dialog);
@@ -3057,7 +3069,7 @@ export class AppMessagesManager {
       this.incrementMaxSeenID(newMaxSeenID);
     }
 
-    $rootScope.$broadcast('dialogs_multiupdate', this.newDialogsToHandle);
+    $rootScope.$broadcast('dialogs_multiupdate', this.newDialogsToHandle as any);
     this.newDialogsToHandle = {};
   };
 
@@ -3502,7 +3514,7 @@ export class AppMessagesManager {
         if(!update.order) {
           apiManager.invokeApi('messages.getPinnedDialogs', {
             folder_id: folderID
-          }).then((dialogsResult: any) => {
+          }).then((dialogsResult) => {
             dialogsResult.dialogs.reverse();
             this.applyConversations(dialogsResult);
 
@@ -3750,8 +3762,9 @@ export class AppMessagesManager {
           }
         }
 
-        Object.keys(historiesUpdated).forEach(peerID => {
-          let updatedData = historiesUpdated[+peerID];
+        Object.keys(historiesUpdated).forEach(_peerID => {
+          const peerID = +_peerID;
+          let updatedData = historiesUpdated[peerID];
           let historyStorage = this.historiesStorage[peerID];
           if(historyStorage !== undefined) {
             let newHistory: number[] = [];
@@ -3778,22 +3791,22 @@ export class AppMessagesManager {
             }
             historyStorage.pending = newPending;
 
-            $rootScope.$broadcast('history_delete', {peerID: peerID, msgs: updatedData.msgs});
+            $rootScope.$broadcast('history_delete', {peerID, msgs: updatedData.msgs});
           }
 
-          let foundDialog = this.getDialogByPeerID(+peerID)[0];
+          let foundDialog = this.getDialogByPeerID(peerID)[0];
           if(foundDialog) {
             if(updatedData.unread) {
               foundDialog.unread_count -= updatedData.unread;
 
               $rootScope.$broadcast('dialog_unread', {
-                peerID: peerID,
+                peerID,
                 count: foundDialog.unread_count
               });
             }
 
             if(updatedData.msgs[foundDialog.top_message]) {
-              this.reloadConversation(+peerID);
+              this.reloadConversation(peerID);
             }
           }
         });

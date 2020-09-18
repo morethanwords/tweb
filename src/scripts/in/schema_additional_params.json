@@ -41,4 +41,17 @@
   "params": [
     {"name": "url", "type": "string"}
   ]
+}, {
+  "predicate": "dialog",
+  "params": [
+    {"name": "index", "type": "number"},
+    {"name": "peerID", "type": "number"}
+  ]
+}, {
+  "predicate": "dialogFolder",
+  "params": [
+    {"name": "index", "type": "number"},
+    {"name": "peerID", "type": "number"},
+    {"name": "folder_id", "type": "number"}
+  ]
 }]

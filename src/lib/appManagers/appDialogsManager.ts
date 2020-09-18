@@ -733,7 +733,7 @@ export class AppDialogsManager {
     this.setListClickListener(ul, null, true);
 
     if(!this.showFiltersTimeout) {
-      this.showFiltersTimeout = setTimeout(() => {
+      this.showFiltersTimeout = window.setTimeout(() => {
         this.showFiltersTimeout = 0;
         this.folders.menuScrollContainer.classList.remove('hide');
         this.setFiltersUnreadCount();
@@ -1086,7 +1086,7 @@ export class AppDialogsManager {
 
   public accumulateArchivedUnread() {
     if(this.accumulateArchivedTimeout) return;
-    this.accumulateArchivedTimeout = setTimeout(() => {
+    this.accumulateArchivedTimeout = window.setTimeout(() => {
       this.accumulateArchivedTimeout = 0;
       const dialogs = appMessagesManager.dialogsStorage.getFolder(1);
       const sum = dialogs.reduce((acc, dialog) => acc + dialog.unread_count, 0);

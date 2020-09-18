@@ -416,7 +416,7 @@ export class AppSidebarRight extends SidebarSlider {
     return filtered;
   }
   
-  public async performSearchResult(messages: any[], type: string) {
+  public async performSearchResult(messages: any[], type: SharedMediaType) {
     const peerID = this.peerID;
     const elemsToAppend: HTMLElement[] = [];
     const promises: Promise<any>[] = [];

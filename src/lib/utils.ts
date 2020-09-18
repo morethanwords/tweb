@@ -1,3 +1,4 @@
+import { Dialog } from "./appManagers/appMessagesManager";
 /*!
  * Webogram v0.7.0 - messaging web application for MTProto
  * https://github.com/zhukov/webogram
@@ -156,29 +157,36 @@ type BroadcastEvents = {
   'user_update': any,
   'user_auth': any,
   'peer_changed': any,
+
   'filter_delete': any,
   'filter_update': any,
-  'message_edit': any,
+  
   'dialog_draft': any,
-  'messages_pending': any,
+  'dialog_unread': {peerID: number, count?: number},
+  'dialog_flush': {peerID: number},
+  'dialog_drop': {peerID: number, dialog?: Dialog},
+  'dialog_migrate': any,
+  'dialog_top': Dialog,
+  'dialog_notify_settings': number,
+  'dialogs_multiupdate': {[peerID: string]: Dialog},
+  'dialogs_archived_unread': any,
+  
   'history_append': any,
   'history_update': any,
-  'dialogs_multiupdate': any,
-  'dialog_unread': any,
-  'dialog_flush': any,
-  'dialog_drop': any,
-  'dialog_migrate': any,
-  'dialog_top': any,
   'history_reply_markup': any,
   'history_multiappend': any,
-  'messages_read': any,
-  'history_delete': any,
-  'history_forbidden': any,
-  'history_reload': any,
+  'history_delete': {peerID: number, msgs: {[mid: number]: true}},
+  'history_forbidden': number,
+  'history_reload': number,
+  'history_request': any,
+  
+  'message_edit': any,
   'message_views': any,
   'message_sent': any,
-  'history_request': any,
+  'messages_pending': void,
+  'messages_read': any,
   'messages_downloaded': any,
+
   'contacts_update': any,
   'avatar_update': any,
   'stickers_installed': any,
@@ -186,7 +194,6 @@ type BroadcastEvents = {
   'chat_full_update': any,
   'peer_pinned_message': any,
   'poll_update': any,
-  'dialogs_archived_unread': any,
   'audio_play': any,
   'audio_pause': any,
   'chat_update': any,
@@ -195,7 +202,6 @@ type BroadcastEvents = {
   'channel_settings': any,
   'webpage_updated': any,
   'draft_updated': any,
-  'dialog_notify_settings': number,
 };
 
 export const $rootScope = {

@@ -1076,7 +1076,9 @@ export namespace Dialog {
 		notify_settings: PeerNotifySettings,
 		pts?: number,
 		draft?: DraftMessage,
-		folder_id?: number
+		folder_id?: number,
+		index?: number,
+		peerID?: number
 	};
 
 	export type dialogFolder = {
@@ -1091,7 +1093,10 @@ export namespace Dialog {
 		unread_muted_peers_count: number,
 		unread_unmuted_peers_count: number,
 		unread_muted_messages_count: number,
-		unread_unmuted_messages_count: number
+		unread_unmuted_messages_count: number,
+		index?: number,
+		peerID?: number,
+		folder_id?: number
 	};
 }
 

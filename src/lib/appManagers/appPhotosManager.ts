@@ -228,7 +228,7 @@ export class AppPhotosManager {
     const photo = this.getPhoto(photoID);
 
     // @ts-ignore
-    if(photo._ == 'photoEmpty') {
+    if(!photo || photo._ == 'photoEmpty') {
       throw new Error('preloadPhoto photoEmpty!');
     }
 
