@@ -16,6 +16,7 @@ import { InvokeApiOptions } from '../../types';
 /// #endif
 
 //console.error('apiManager included!');
+// TODO: если запрос словил флуд, нужно сохранять его параметры и возвращать тот же промис на новый такой же запрос, например - загрузка истории
 
 export class ApiManager {
   public cachedNetworkers: {[x: number]: MTPNetworker} = {};
@@ -290,7 +291,7 @@ export class ApiManager {
             
             setTimeout(() => {
               performRequest(cachedNetworker);
-            }, (waitTime + 5) * 1000); // 03.02.2020
+            }, waitTime/* (waitTime + 5) */ * 1000); // 03.02.2020
           } else if(!options.rawError && (error.code == 500 || error.type == 'MSG_WAIT_FAILED')) {
             var now = Date.now();
             if(options.stopTime) {

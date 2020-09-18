@@ -2355,7 +2355,14 @@ export class AppImManager {
     });
   }
 
-  // reverse means scroll up
+  /**
+   * Load and render history
+   * @param maxID max message id
+   * @param reverse 'true' means up
+   * @param isBackLimit is search
+   * @param additionMsgID for the last message
+   * @param justLoad do not render
+   */
   public getHistory(maxID = 0, reverse = false, isBackLimit = false, additionMsgID = 0, justLoad = false): {cached: boolean, promise: Promise<boolean>} {
     const peerID = this.peerID;
 
@@ -2390,14 +2397,14 @@ export class AppImManager {
       cached = false;
       promise = result.then((result) => {
         this.log('getHistory not cached result by maxID:', maxID, reverse, isBackLimit, result, peerID, justLoad);
-        
+
         if(justLoad) {
           this.scrollable.onScroll(); // нужно делать из-за ранней прогрузки
           return true;
         }
         //console.timeEnd('appImManager call getHistory');
         
-        if(this.peerID != peerID) {
+        if(this.peerID != peerID || (this.getHistoryTopPromise != promise && this.getHistoryBottomPromise != promise)) {
           this.log.warn('peer changed');
           ////console.timeEnd('render history total');
           return Promise.reject();
@@ -2453,12 +2460,17 @@ export class AppImManager {
           //ids = ids.slice(removeCount * 2);
           ids = ids.slice(safeCount);
           this.scrolledAllDown = false;
+
+          this.log('getHistory: slice bottom messages:', ids.length, loadCount);
+          this.getHistoryBottomPromise = undefined; // !WARNING, это нужно для обратной загрузки истории, если запрос словил флуд
         } else {
           //ids = ids.slice(0, removeCount);
           //ids = ids.slice(0, ids.length - (removeCount * 2));
           ids = ids.slice(0, ids.length - safeCount);
           this.scrolledAll = false;
-          this.log('getHistory: slice bottom: to:', ids.length, loadCount);
+
+          this.log('getHistory: slice up messages:', ids.length, loadCount);
+          this.getHistoryTopPromise = undefined; // !WARNING, это нужно для обратной загрузки истории, если запрос словил флуд
         }
 
         this.log('getHistory: will slice ids:', ids, reverse);

@@ -1871,7 +1871,8 @@ export class AppMessagesManager {
       limit: limit,
       hash: 0
     }, {
-      timeout: APITIMEOUT
+      //timeout: APITIMEOUT,
+      noErrorBox: true
     }).then((dialogsResult) => {
       ///////this.log('messages.getDialogs result:', dialogsResult);
 
@@ -2968,7 +2969,7 @@ export class AppMessagesManager {
         min_id: 0,
         hash: 0
       }, {
-        timeout: APITIMEOUT,
+        //timeout: APITIMEOUT,
         noErrorBox: true
       });
     } else {
@@ -2991,7 +2992,7 @@ export class AppMessagesManager {
         offset_id: appMessagesIDsManager.getMessageLocalID(offsetID),
         limit: limit || 20
       }, {
-        timeout: APITIMEOUT,
+        //timeout: APITIMEOUT,
         noErrorBox: true
       });
     }
@@ -4195,7 +4196,7 @@ export class AppMessagesManager {
       min_id: 0,
       hash: 0
     }, {
-      timeout: APITIMEOUT,
+      //timeout: APITIMEOUT,
       noErrorBox: true
     }).then((historyResult: any) => {
       this.log('requestHistory result:', historyResult, maxID, limit, offset);
