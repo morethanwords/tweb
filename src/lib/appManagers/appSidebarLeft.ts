@@ -249,7 +249,7 @@ export class AppSidebarLeft extends SidebarSlider {
       });
     });
 
-    $rootScope.$on('dialogs_archived_unread', (e: CustomEvent) => {
+    $rootScope.$on('dialogs_archived_unread', (e) => {
       this.archivedCount.innerText = '' + e.detail.count;
     });
 

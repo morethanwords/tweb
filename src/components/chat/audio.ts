@@ -46,7 +46,7 @@ export class ChatAudio {
       appMediaPlaybackController.toggle();
     });
 
-    $rootScope.$on('audio_play', (e: CustomEvent) => {
+    $rootScope.$on('audio_play', (e) => {
       const {doc, mid} = e.detail;
 
       let title: string, subtitle: string;

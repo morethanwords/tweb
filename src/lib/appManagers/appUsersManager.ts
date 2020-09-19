@@ -64,7 +64,7 @@ export class AppUsersManager {
       this.myID = id;
     });
 
-    $rootScope.$on('user_auth', (e: CustomEvent) => {
+    $rootScope.$on('user_auth', (e) => {
       let userAuth = e.detail;
       this.myID = userAuth ? userAuth.id : 0;
     });
@@ -73,7 +73,7 @@ export class AppUsersManager {
 
     $rootScope.$on('stateSynchronized', this.updateUsersStatuses.bind(this));
 
-    $rootScope.$on('apiUpdate', (e: CustomEvent) => {
+    $rootScope.$on('apiUpdate', (e) => {
       let update = e.detail;
       //console.log('on apiUpdate', update);
       switch(update._) {

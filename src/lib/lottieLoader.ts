@@ -279,7 +279,7 @@ export class RLottiePlayer {
 
       if(delta < 0) {
         if(this.rafId) clearTimeout(this.rafId);
-        return this.rafId = setTimeout(() => {
+        return this.rafId = window.setTimeout(() => {
           this.renderFrame2(frame, frameNo);
         }, this.frInterval > -delta ? -delta % this.frInterval : this.frInterval);
         //await new Promise((resolve) => setTimeout(resolve, -delta % this.frInterval));

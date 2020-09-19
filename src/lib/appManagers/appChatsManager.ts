@@ -68,7 +68,7 @@ export class AppChatsManager {
   public megagroupOnlines: {[id: number]: {timestamp: number, onlines: number}} = {};
 
   constructor() {
-    $rootScope.$on('apiUpdate', (e: CustomEvent) => {
+    $rootScope.$on('apiUpdate', (e) => {
       // console.log('on apiUpdate', update)
       const update = e.detail;
       switch(update._) {

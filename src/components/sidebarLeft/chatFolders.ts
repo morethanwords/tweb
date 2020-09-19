@@ -118,8 +118,8 @@ export default class AppChatFoldersTab implements SliderTab {
       }
     });
 
-    $rootScope.$on('filter_update', (e: CustomEvent) => {
-      const filter: DialogFilter = e.detail;
+    $rootScope.$on('filter_update', (e) => {
+      const filter = e.detail;
       if(this.filtersRendered.hasOwnProperty(filter.id)) {
         this.renderFolder(filter, null, this.filtersRendered[filter.id]);
       } else {
@@ -129,8 +129,8 @@ export default class AppChatFoldersTab implements SliderTab {
       this.getSuggestedFilters();
     });
 
-    $rootScope.$on('filter_delete', (e: CustomEvent) => {
-      const filter: DialogFilter = e.detail;
+    $rootScope.$on('filter_delete', (e) => {
+      const filter = e.detail;
       if(this.filtersRendered.hasOwnProperty(filter.id)) {
         /* for(const suggested of this.suggestedFilters) {
           if(deepEqual(suggested.filter, filter)) {

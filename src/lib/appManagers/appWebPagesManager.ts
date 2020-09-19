@@ -1,4 +1,4 @@
-import { $rootScope, safeReplaceObject, copy } from "../utils";
+import { $rootScope, safeReplaceObject } from "../utils";
 import appPhotosManager from "./appPhotosManager";
 import appDocsManager from "./appDocsManager";
 import { RichTextProcessor } from "../richtextprocessor";
@@ -8,7 +8,7 @@ class AppWebPagesManager {
   pendingWebPages: any = {};
   
   constructor() {
-    $rootScope.$on('apiUpdate', (e: CustomEvent) => {
+    $rootScope.$on('apiUpdate', (e) => {
       let update = e.detail;
 
       switch(update._) {
@@ -91,9 +91,9 @@ class AppWebPagesManager {
     }
     
     if(!messageID && this.pendingWebPages[apiWebPage.id] !== undefined) {
-      var msgs = [];
+      const msgs: number[] = [];
       for(let msgID in this.pendingWebPages[apiWebPage.id]) {
-        msgs.push(msgID);
+        msgs.push(+msgID);
       }
 
       $rootScope.$broadcast('webpage_updated', {

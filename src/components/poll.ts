@@ -63,7 +63,7 @@ export const roundPercents = (percents: number[]) => {
 };
 
 const connectedPolls: {id: string, element: PollElement}[] = [];
-$rootScope.$on('poll_update', (e: CustomEvent) => {
+$rootScope.$on('poll_update', (e) => {
   const {poll, results} = e.detail as {poll: Poll, results: PollResults};
 
   //console.log('poll_update', poll, results);
@@ -123,7 +123,7 @@ const setQuizHint = (solution: string, solution_entities: any[], onHide: () => v
 
   prevQuizHint = element;
   prevQuizHintOnHide = onHide;
-  prevQuizHintTimeout = setTimeout(() => {
+  prevQuizHintTimeout = window.setTimeout(() => {
     hideQuizHint(element, onHide, prevQuizHintTimeout);
   }, touchSupport ? 5000 : 7000);
 };
@@ -280,7 +280,7 @@ export default class PollElement extends HTMLElement {
         // circle.style.strokeDashoffset = circumference + percents * circumference;
         // circle.style.strokeDasharray = ${circumference} ${circumference};
 
-        this.quizInterval = setInterval(() => {
+        this.quizInterval = window.setInterval(() => {
           const time = Date.now();
           const percents = (closeTime - time) / period;
           const timeLeft = (closeTime - time) / 1000 + 1 | 0;

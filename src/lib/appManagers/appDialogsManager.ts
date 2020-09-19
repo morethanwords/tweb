@@ -424,7 +424,7 @@ export class AppDialogsManager {
       (window as any).addElement = add;
     } */
 
-    $rootScope.$on('user_update', (e: CustomEvent) => {
+    $rootScope.$on('user_update', (e) => {
       let userID = e.detail;
 
       let user = appUsersManager.getUser(userID);
@@ -450,7 +450,7 @@ export class AppDialogsManager {
       }
     });
 
-    $rootScope.$on('dialog_top', (e: CustomEvent) => {
+    $rootScope.$on('dialog_top', (e) => {
       let dialog: any = e.detail;
 
       this.setLastMessage(dialog);
@@ -460,7 +460,7 @@ export class AppDialogsManager {
       this.setFiltersUnreadCount();
     });
 
-    $rootScope.$on('dialog_flush', (e: CustomEvent) => {
+    $rootScope.$on('dialog_flush', (e) => {
       let peerID: number = e.detail.peerID;
       let dialog = appMessagesManager.getDialogByPeerID(peerID)[0];
       if(dialog) {
@@ -470,7 +470,7 @@ export class AppDialogsManager {
       }
     });
 
-    $rootScope.$on('dialogs_multiupdate', (e: CustomEvent) => {
+    $rootScope.$on('dialogs_multiupdate', (e) => {
       const dialogs = e.detail;
 
       for(const id in dialogs) {
@@ -483,7 +483,7 @@ export class AppDialogsManager {
       this.setFiltersUnreadCount();
     });
 
-    $rootScope.$on('dialog_drop', (e: CustomEvent) => {
+    $rootScope.$on('dialog_drop', (e) => {
       let {peerID, dialog} = e.detail;
 
       let dom = this.getDialogDom(peerID);
@@ -496,11 +496,8 @@ export class AppDialogsManager {
       this.setFiltersUnreadCount();
     });
 
-    $rootScope.$on('dialog_unread', (e: CustomEvent) => {
-      let info: {
-        peerID: number,
-        count: number
-      } = e.detail;
+    $rootScope.$on('dialog_unread', (e) => {
+      let info = e.detail;
 
       let dialog = appMessagesManager.getDialogByPeerID(info.peerID)[0];
       if(dialog) {
@@ -522,7 +519,7 @@ export class AppDialogsManager {
       }
     });
 
-    $rootScope.$on('peer_changed', (e: CustomEvent) => {
+    $rootScope.$on('peer_changed', (e) => {
       let peerID = e.detail;
 
       let lastPeerID = this.lastActiveListElement && +this.lastActiveListElement.getAttribute('data-peerID');
@@ -540,7 +537,7 @@ export class AppDialogsManager {
       }
     });
 
-    $rootScope.$on('filter_update', (e: CustomEvent) => {
+    $rootScope.$on('filter_update', (e) => {
       const filter: DialogFilter = e.detail;
       if(!this.filtersRendered[filter.id]) {
         this.addFilter(filter);
@@ -560,7 +557,7 @@ export class AppDialogsManager {
       elements.title.innerHTML = RichTextProcessor.wrapEmojiText(filter.title);
     });
 
-    $rootScope.$on('filter_delete', (e: CustomEvent) => {
+    $rootScope.$on('filter_delete', (e) => {
       const filter: DialogFilter = e.detail;
       const elements = this.filtersRendered[filter.id];
       if(!elements) return;
@@ -580,7 +577,7 @@ export class AppDialogsManager {
       }
     });
 
-    /* $rootScope.$on('filter_pinned_order', (e: CustomEvent) => {
+    /* $rootScope.$on('filter_pinned_order', (e) => {
       const {order, id} = e.detail as {order: number[], id: number};
       if(this.prevTabID != id) {
         return;

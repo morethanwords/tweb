@@ -1,4 +1,7 @@
-import { Dialog } from "./appManagers/appMessagesManager";
+import type { StickerSet } from "../layer";
+import type { MyDocument } from "./appManagers/appDocsManager";
+import type { Poll, PollResults } from "./appManagers/appPollsManager";
+import type { AppMessagesManager, Dialog, MyDialogFilter } from "./appManagers/appMessagesManager";
 /*!
  * Webogram v0.7.0 - messaging web application for MTProto
  * https://github.com/zhukov/webogram
@@ -153,55 +156,58 @@ export function getRichElementValue(node: any, lines: string[], line: string[], 
 } */
 
 type BroadcastEvents = {
-  'download_progress': any,
-  'user_update': any,
-  'user_auth': any,
-  'peer_changed': any,
+  'user_update': number,
+  'user_auth': {dcID?: number, id: number},
+  'peer_changed': number,
 
-  'filter_delete': any,
-  'filter_update': any,
+  'filter_delete': MyDialogFilter,
+  'filter_update': MyDialogFilter,
   
-  'dialog_draft': any,
+  'dialog_draft': {peerID: number, draft: any, index: number},
   'dialog_unread': {peerID: number, count?: number},
   'dialog_flush': {peerID: number},
   'dialog_drop': {peerID: number, dialog?: Dialog},
-  'dialog_migrate': any,
+  'dialog_migrate': {migrateFrom: number, migrateTo: number},
   'dialog_top': Dialog,
   'dialog_notify_settings': number,
   'dialogs_multiupdate': {[peerID: string]: Dialog},
-  'dialogs_archived_unread': any,
+  'dialogs_archived_unread': {count: number},
   
-  'history_append': any,
-  'history_update': any,
-  'history_reply_markup': any,
-  'history_multiappend': any,
+  'history_append': {peerID: number, messageID: number, my?: boolean},
+  'history_update': {peerID: number, mid: number},
+  'history_reply_markup': {peerID: number},
+  'history_multiappend': AppMessagesManager['newMessagesToHandle'],
   'history_delete': {peerID: number, msgs: {[mid: number]: true}},
   'history_forbidden': number,
   'history_reload': number,
-  'history_request': any,
+  'history_request': void,
   
-  'message_edit': any,
-  'message_views': any,
-  'message_sent': any,
+  'message_edit': {peerID: number, id: number, mid: number, justMedia: boolean},
+  'message_views': {mid: number, views: number},
+  'message_sent': {tempID: number, mid: number},
   'messages_pending': void,
-  'messages_read': any,
-  'messages_downloaded': any,
+  'messages_read': void,
+  'messages_downloaded': number[],
 
-  'contacts_update': any,
-  'avatar_update': any,
-  'stickers_installed': any,
-  'stickers_deleted': any,
-  'chat_full_update': any,
-  'peer_pinned_message': any,
-  'poll_update': any,
-  'audio_play': any,
-  'audio_pause': any,
-  'chat_update': any,
+  'stickers_installed': StickerSet.stickerSet,
+  'stickers_deleted': StickerSet.stickerSet,
+
+  'audio_play': {doc: MyDocument, mid: number},
+  'audio_pause': void,
+
+  //'contacts_update': any,
+  'avatar_update': number,
+  'chat_full_update': number,
+  'peer_pinned_message': number,
+  'poll_update': {poll: Poll, results: PollResults},
+  'chat_update': number,
+  'stateSynchronized': void,
+  'channel_settings': {channelID: number},
+  'webpage_updated': {id: string, msgs: number[]},
+
   'apiUpdate': any,
-  'stateSynchronized': any,
-  'channel_settings': any,
-  'webpage_updated': any,
-  'draft_updated': any,
+  'download_progress': any,
+  //'draft_updated': any,
 };
 
 export const $rootScope = {

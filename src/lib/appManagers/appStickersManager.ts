@@ -42,7 +42,7 @@ class AppStickersManager {
       //}
     });
 
-    $rootScope.$on('apiUpdate', (e: CustomEvent) => {
+    $rootScope.$on('apiUpdate', (e) => {
       const update = e.detail;
       
       switch(update._) {
@@ -121,7 +121,7 @@ class AppStickersManager {
     
     //console.log('stickers wrote', this.stickerSets);
     if(this.saveSetsTimeout) return;
-    this.saveSetsTimeout = setTimeout(() => {
+    this.saveSetsTimeout = window.setTimeout(() => {
       const savedSets: {[id: string]: MessagesStickerSet} = {};
       for(const id in this.stickerSets) {
         const set = this.stickerSets[id];

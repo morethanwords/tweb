@@ -1,4 +1,4 @@
-import { $rootScope, copy, tsNow, safeReplaceObject, dT, listMergeSorted, deepEqual, langPack } from "../utils";
+import { $rootScope, copy, tsNow, safeReplaceObject, listMergeSorted, deepEqual, langPack } from "../utils";
 import appMessagesIDsManager from "./appMessagesIDsManager";
 import appChatsManager from "./appChatsManager";
 import appUsersManager from "./appUsersManager";
@@ -231,7 +231,7 @@ export class FiltersStorage {
   public orderIndex = 0;
 
   constructor() {
-    $rootScope.$on('apiUpdate', (e: CustomEvent) => {
+    $rootScope.$on('apiUpdate', (e) => {
       this.handleUpdate(e.detail);
     });
   }
@@ -476,7 +476,7 @@ export class AppMessagesManager {
   public lastSearchFilter: any = {};
   public lastSearchResults: any = [];
 
-  public needSingleMessages: any = [];
+  public needSingleMessages: number[] = [];
   public fetchSingleMessagesTimeout = 0;
   private fetchSingleMessagesPromise: Promise<any> = null;
 
@@ -486,7 +486,7 @@ export class AppMessagesManager {
   public migratedToFrom: {[peerID: number]: number} = {};
 
   public newMessagesHandlePromise = 0;
-  public newMessagesToHandle: any = {};
+  public newMessagesToHandle: {[peerID: string]: number[]} = {};
   public newDialogsHandlePromise = 0;
   public newDialogsToHandle: {[peerID: string]: {reload: true} | Dialog} = {};
   public newUpdatesAfterReloadToHandle: any = {};
@@ -511,11 +511,11 @@ export class AppMessagesManager {
   public filtersStorage = new FiltersStorage();
 
   constructor() {
-    $rootScope.$on('apiUpdate', (e: CustomEvent) => {
+    $rootScope.$on('apiUpdate', (e) => {
       this.handleUpdate(e.detail);
     });
 
-    $rootScope.$on('webpage_updated', (e: CustomEvent) => {
+    $rootScope.$on('webpage_updated', (e) => {
       let eventData = e.detail;
       eventData.msgs.forEach((msgID: number) => {
         let message = this.getMessage(msgID);
@@ -529,7 +529,7 @@ export class AppMessagesManager {
       });
     });
 
-    $rootScope.$on('draft_updated', (e: CustomEvent) => {
+    /* $rootScope.$on('draft_updated', (e) => {
       let eventData = e.detail;;
       var peerID = eventData.peerID;
       var draft = eventData.draft;
@@ -558,12 +558,12 @@ export class AppMessagesManager {
         this.dialogsStorage.pushDialog(dialog);
 
         $rootScope.$broadcast('dialog_draft', {
-          peerID: peerID,
-          draft: draft,
+          peerID,
+          draft,
           index: dialog.index
         });
       }
-    });
+    }); */
   }
 
   
@@ -847,7 +847,7 @@ export class AppMessagesManager {
 
     this.saveMessages([message]);
     historyStorage.pending.unshift(messageID);
-    $rootScope.$broadcast('history_append', {peerID: peerID, messageID: messageID, my: true});
+    $rootScope.$broadcast('history_append', {peerID, messageID, my: true});
 
     setTimeout(() => message.send(), 0);
     // setTimeout(function () {
@@ -1216,7 +1216,7 @@ export class AppMessagesManager {
 
     this.saveMessages([message]);
     historyStorage.pending.unshift(messageID);
-    $rootScope.$broadcast('history_append', {peerID: peerID, messageID: messageID, my: true});
+    $rootScope.$broadcast('history_append', {peerID, messageID, my: true});
 
     setTimeout(message.send.bind(this), 0);
 
@@ -1370,7 +1370,7 @@ export class AppMessagesManager {
       return message;
     });
 
-    $rootScope.$broadcast('history_append', {peerID: peerID, messageID: messages[messages.length - 1].id, my: true});
+    $rootScope.$broadcast('history_append', {peerID, messageID: messages[messages.length - 1].id, my: true});
 
     let toggleError = (message: any, on: boolean) => {
       if(on) {
@@ -1730,7 +1730,7 @@ export class AppMessagesManager {
 
     this.saveMessages([message]);
     historyStorage.pending.unshift(messageID);
-    $rootScope.$broadcast('history_append', {peerID: peerID, messageID: messageID, my: true});
+    $rootScope.$broadcast('history_append', {peerID, messageID, my: true});
 
     setTimeout(message.send, 0);
 
@@ -1876,20 +1876,25 @@ export class AppMessagesManager {
       //flags |= 1; // means pinned already loaded
     }
 
+    /* if(this.dialogsStorage.dialogsOffsetDate[0]) {
+      flags |= 1; // means pinned already loaded
+    } */
+
     //if(folderID > 0) {
       //flags |= 1;
       flags |= 2;
     //}
 
     // ! ВНИМАНИЕ: ОЧЕНЬ СЛОЖНАЯ ЛОГИКА:
-    // ! если делать запрос сначала по папке 0, потом по папке 1, по индексу 0 в массиве будет один и тот же диалог, при условии что он закреплён в обеих папках, ЛОЛ???
+    // ! если делать запрос сначала по папке 0, потом по папке 1, по индексу 0 в массиве будет один и тот же диалог, с dialog.pFlags.pinned, ЛОЛ???
+    // ! т.е., с запросом folder_id: 1, и exclude_pinned: 0, в результате будут ещё и закреплённые с папки 0
     return apiManager.invokeApi('messages.getDialogs', {
-      flags: flags,
+      flags,
       folder_id: folderID,
       offset_date: offsetDate,
       offset_id: appMessagesIDsManager.getMessageLocalID(offsetID),
       offset_peer: appPeersManager.getInputPeerByID(offsetPeerID),
-      limit: limit,
+      limit,
       hash: 0
     }, {
       //timeout: APITIMEOUT,
@@ -1897,7 +1902,7 @@ export class AppMessagesManager {
     }).then((dialogsResult) => {
       if(dialogsResult._ == 'messages.dialogsNotModified') return null;
 
-      //this.log.error('messages.getDialogs result:', {...dialogsResult.dialogs[0]});
+      //this.log.error('messages.getDialogs result:', dialogsResult.dialogs, {...dialogsResult.dialogs[0]});
 
       if(!offsetDate) {
         telegramMeWebService.setAuthorized(true);
@@ -1909,7 +1914,7 @@ export class AppMessagesManager {
 
       let maxSeenIdIncremented = offsetDate ? true : false;
       let hasPrepend = false;
-      let noIDsDialogs: {[peerID: number]: Dialog} = {};
+      const noIDsDialogs: {[peerID: number]: Dialog} = {};
       (dialogsResult.dialogs as Dialog[]).forEachReverse(dialog => {
         //const d = Object.assign({}, dialog);
         // ! нужно передавать folderID, так как по папке != 0 нет свойства folder_id
@@ -2561,7 +2566,7 @@ export class AppMessagesManager {
             $rootScope.$broadcast('dialog_drop', {peerID: migrateFrom, dialog: dropped[0]});
           }
 
-          $rootScope.$broadcast('dialog_migrate', {migrateFrom: migrateFrom, migrateTo: migrateTo});
+          $rootScope.$broadcast('dialog_migrate', {migrateFrom, migrateTo});
         }, 100);
       }
     }
@@ -2756,7 +2761,7 @@ export class AppMessagesManager {
       }
       this.historiesStorage[peerID] = historyStorage;
       if(this.mergeReplyKeyboard(historyStorage, message)) {
-        $rootScope.$broadcast('history_reply_markup', {peerID: peerID});
+        $rootScope.$broadcast('history_reply_markup', {peerID});
       }
     }
 
@@ -3209,7 +3214,7 @@ export class AppMessagesManager {
       apiPromise = apiManager.invokeApi('messages.readHistory', {
         peer: appPeersManager.getInputPeerByID(peerID),
         max_id: maxID
-      }).then((affectedMessages: any) => {
+      }).then((affectedMessages) => {
         apiUpdatesManager.processUpdateMessage({
           _: 'updateShort',
           update: {
@@ -3299,7 +3304,7 @@ export class AppMessagesManager {
       } else {
         apiManager.invokeApi('messages.readMessageContents', {
           id: msgIDs
-        }).then((affectedMessages: any) => {
+        }).then((affectedMessages) => {
           apiUpdatesManager.processUpdateMessage({
             _: 'updateShort',
             update: {
@@ -3385,7 +3390,7 @@ export class AppMessagesManager {
         var topMsgID = history[0];
         history.unshift(message.mid);
         if(message.mid > 0 && message.mid < topMsgID) {
-          history.sort((a: any, b: any) => {
+          history.sort((a, b) => {
             return b - a;
           });
         }
@@ -3396,7 +3401,7 @@ export class AppMessagesManager {
         }
 
         if(this.mergeReplyKeyboard(historyStorage, message)) {
-          $rootScope.$broadcast('history_reply_markup', {peerID: peerID});
+          $rootScope.$broadcast('history_reply_markup', {peerID});
         }
 
         if(!message.pFlags.out && message.from_id) {
@@ -3408,7 +3413,7 @@ export class AppMessagesManager {
 
         if(randomID) {
           if(pendingMessage = this.finalizePendingMessage(randomID, message)) {
-            $rootScope.$broadcast('history_update', {peerID: peerID, mid: message.mid});
+            $rootScope.$broadcast('history_update', {peerID, mid: message.mid});
           }
 
           delete this.pendingByMessageID[message.mid];
@@ -3542,11 +3547,11 @@ export class AppMessagesManager {
             dialogsResult.dialogs.reverse();
             this.applyConversations(dialogsResult);
 
-            dialogsResult.dialogs.forEach((dialog: any) => {
+            dialogsResult.dialogs.forEach((dialog) => {
               newPinned[dialog.peerID] = true;
             });
 
-            this.dialogsStorage.getFolder(folderID).forEach((dialog: any) => {
+            this.dialogsStorage.getFolder(folderID).forEach((dialog) => {
               const peerID = dialog.peerID;
               if(dialog.pFlags.pinned && !newPinned[peerID]) {
                 this.newDialogsToHandle[peerID] = {reload: true};
@@ -3626,7 +3631,7 @@ export class AppMessagesManager {
           });
 
           if(isTopMessage) {
-            var updatedDialogs: any = {};
+            var updatedDialogs: {[peerID: number]: Dialog} = {};
             updatedDialogs[peerID] = dialog;
             $rootScope.$broadcast('dialogs_multiupdate', updatedDialogs);
           }
@@ -3889,10 +3894,7 @@ export class AppMessagesManager {
         let message = this.getMessage(mid);
         if(message && message.views && message.views < views) {
           message.views = views;
-          $rootScope.$broadcast('message_views', {
-            mid: mid,
-            views: views
-          });
+          $rootScope.$broadcast('message_views', {mid, views});
         }
         break;
       }
@@ -3987,7 +3989,7 @@ export class AppMessagesManager {
 
   public finalizePendingMessageCallbacks(tempID: number, mid: number) {
     var callbacks = this.tempFinalizeCallbacks[tempID];
-    this.log.warn(dT(), callbacks, tempID);
+    this.log.warn(callbacks, tempID);
     if(callbacks !== undefined) {
       callbacks.forEach((callback: any) => {
         callback(mid);
@@ -4003,9 +4005,9 @@ export class AppMessagesManager {
       return false;
     }
 
-    AppStorage.set({
-      max_seen_msg: maxID
-    });
+    this.maxSeenID = maxID;
+
+    AppStorage.set({max_seen_msg: maxID});
 
     apiManager.invokeApi('messages.receivedMessages', {
       max_id: maxID
@@ -4149,7 +4151,7 @@ export class AppMessagesManager {
       historyStorage.history.splice(offset, historyStorage.history.length - offset);
       historyResult.messages.forEach((message: any) => {
         if(this.mergeReplyKeyboard(historyStorage, message)) {
-          $rootScope.$broadcast('history_reply_markup', {peerID: peerID});
+          $rootScope.$broadcast('history_reply_markup', {peerID});
         }
 
         historyStorage.history.push(message.mid);

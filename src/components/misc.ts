@@ -155,6 +155,19 @@ let closeBtnMenu = () => {
   window.removeEventListener('contextmenu', onClick);
 };
 
+window.addEventListener('resize', () => {
+  if(openedMenu) {
+    closeBtnMenu();
+  }
+  
+  /* if(openedMenu && (openedMenu.style.top || openedMenu.style.left)) {
+    const rect = openedMenu.getBoundingClientRect();
+    const {innerWidth, innerHeight} = window;
+
+    console.log(innerWidth, innerHeight, rect);
+  } */
+});
+
 let openedMenu: HTMLDivElement = null, openedMenuOnClose: () => void = null;
 export function openBtnMenu(menuElement: HTMLDivElement, onClose?: () => void) {
   closeBtnMenu();
@@ -248,7 +261,7 @@ export function attachContextMenuListener(element: HTMLElement, callback: (e: To
         }
       }; */
 
-      timeout = setTimeout(() => {
+      timeout = window.setTimeout(() => {
         callback(e.touches[0]);
         onCancel();
 

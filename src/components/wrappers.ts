@@ -18,6 +18,7 @@ import webpWorkerController from '../lib/webp/webpWorkerController';
 import { readBlobAsText } from '../helpers/blob';
 import appMediaPlaybackController from './appMediaPlaybackController';
 import { PhotoSize } from '../layer';
+import { deferredPromise } from '../lib/polyfill';
 
 export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group}: {
   doc: MyDocument, 
@@ -595,12 +596,12 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
 
       //appDocsManager.downloadDocNew(doc.id).promise.then(res => res.json()).then(async(json) => {
       //fetch(doc.url).then(res => res.json()).then(async(json) => {
-      await appDocsManager.downloadDocNew(doc)
+      /* return */ await appDocsManager.downloadDocNew(doc)
       .then(readBlobAsText)
       .then(JSON.parse)
       .then(async(json) => {
         //console.timeEnd('download sticker' + doc.id);
-        //console.log('loaded sticker:', doc, div, blob);
+        //console.log('loaded sticker:', doc, div/* , blob */);
         if(middleware && !middleware()) return;
 
         let animation = await LottieLoader.loadAnimationWorker/* loadAnimation */({
@@ -611,6 +612,8 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
           width,
           height
         }, group, toneIndex);
+
+        //const deferred = deferredPromise<void>();
   
         animation.addListener('firstFrame', () => {
           if(div.firstElementChild && div.firstElementChild.tagName == 'IMG') {
@@ -618,6 +621,8 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
           } else {
             animation.canvas.classList.add('fade-in');
           }
+
+          //deferred.resolve();
         }, true);
   
         if(emoji) {
@@ -629,6 +634,8 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
             }
           });
         }
+
+        //return deferred;
         //await new Promise((resolve) => setTimeout(resolve, 5e3));
       });
 

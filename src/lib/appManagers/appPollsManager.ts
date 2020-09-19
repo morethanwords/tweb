@@ -75,7 +75,7 @@ class AppPollsManager {
   private log = logger('POLLS', LogLevels.error);
 
   constructor() {
-    $rootScope.$on('apiUpdate', (e: CustomEvent) => {
+    $rootScope.$on('apiUpdate', (e) => {
       let update = e.detail;
       
       this.handleUpdate(update);

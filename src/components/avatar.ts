@@ -1,7 +1,7 @@
 import appProfileManager from "../lib/appManagers/appProfileManager";
 import { $rootScope } from "../lib/utils";
 
-$rootScope.$on('avatar_update', (e: CustomEvent) => {
+$rootScope.$on('avatar_update', (e) => {
   let peerID = e.detail;
 
   appProfileManager.removeFromAvatarsCache(peerID);

@@ -26,7 +26,7 @@ export default class AppSettingsTab implements SliderTab {
   constructor() {
     parseMenuButtonsTo(this.buttons, this.container.querySelector('.profile-buttons').children);
 
-    $rootScope.$on('user_auth', (e: CustomEvent) => {
+    $rootScope.$on('user_auth', (e) => {
       this.fillElements();
     });
 

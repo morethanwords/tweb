@@ -81,7 +81,7 @@ export class EmoticonsDropdown {
               }
 
               clearTimeout(this.displayTimeout);
-              this.displayTimeout = setTimeout(() => {
+              this.displayTimeout = window.setTimeout(() => {
                 this.toggle(false);
               }, 200);
             };
@@ -188,7 +188,7 @@ export class EmoticonsDropdown {
     if((this.element.style.display && enable === undefined) || enable) {
       this.events.onOpen.forEach(cb => cb());
 
-      EmoticonsDropdown.lazyLoadQueue.lockIntersection();
+      EmoticonsDropdown.lazyLoadQueue.lock();
       //EmoticonsDropdown.lazyLoadQueue.unlock();
       animationIntersector.lockIntersectionGroup(EMOTICONSSTICKERGROUP);
 
@@ -197,9 +197,10 @@ export class EmoticonsDropdown {
       this.element.classList.add('active');
 
       clearTimeout(this.displayTimeout);
-      this.displayTimeout = setTimeout(() => {
+      this.displayTimeout = window.setTimeout(() => {
         animationIntersector.unlockIntersectionGroup(EMOTICONSSTICKERGROUP);
-        EmoticonsDropdown.lazyLoadQueue.unlockIntersection();
+        EmoticonsDropdown.lazyLoadQueue.unlock();
+        EmoticonsDropdown.lazyLoadQueue.refresh();
 
         this.events.onOpenAfter.forEach(cb => cb());
       }, touchSupport ? 0 : 200);
@@ -210,7 +211,7 @@ export class EmoticonsDropdown {
     } else {
       this.events.onClose.forEach(cb => cb());
 
-      EmoticonsDropdown.lazyLoadQueue.lockIntersection();
+      EmoticonsDropdown.lazyLoadQueue.lock();
       //EmoticonsDropdown.lazyLoadQueue.lock();
 
       // нужно залочить группу и выключить стикеры
@@ -220,12 +221,13 @@ export class EmoticonsDropdown {
       this.element.classList.remove('active');
 
       clearTimeout(this.displayTimeout);
-      this.displayTimeout = setTimeout(() => {
+      this.displayTimeout = window.setTimeout(() => {
         this.element.style.display = 'none';
 
         // теперь можно убрать visible, чтобы они не включились после фокуса
         animationIntersector.unlockIntersectionGroup(EMOTICONSSTICKERGROUP);
-        EmoticonsDropdown.lazyLoadQueue.unlockIntersection();
+        EmoticonsDropdown.lazyLoadQueue.unlock();
+        EmoticonsDropdown.lazyLoadQueue.refresh();
 
         this.events.onCloseAfter.forEach(cb => cb());
       }, touchSupport ? 0 : 200);

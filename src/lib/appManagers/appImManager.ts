@@ -154,13 +154,13 @@ export class AppImManager {
       this.myID = $rootScope.myID = id;
     });
 
-    $rootScope.$on('user_auth', (e: CustomEvent) => {
+    $rootScope.$on('user_auth', (e) => {
       let userAuth = e.detail;
       this.myID = $rootScope.myID = userAuth ? userAuth.id : 0;
     });
     
     // will call when message is sent (only 1)
-    $rootScope.$on('history_append', (e: CustomEvent) => {
+    $rootScope.$on('history_append', (e) => {
       let details = e.detail;
 
       if(!this.scrolledAllDown) {
@@ -171,7 +171,7 @@ export class AppImManager {
     });
     
     // will call when sent for update pos
-    $rootScope.$on('history_update', (e: CustomEvent) => {
+    $rootScope.$on('history_update', (e) => {
       let details = e.detail;
       
       if(details.mid && details.peerID == this.peerID) {
@@ -192,7 +192,7 @@ export class AppImManager {
       }
     });
     
-    $rootScope.$on('history_multiappend', (e: CustomEvent) => {
+    $rootScope.$on('history_multiappend', (e) => {
       let msgIDsByPeer = e.detail;
       if(!(this.peerID in msgIDsByPeer)) return;
       
@@ -201,23 +201,20 @@ export class AppImManager {
       this.renderNewMessagesByIDs(msgIDs);
     });
     
-    $rootScope.$on('history_delete', (e: CustomEvent) => {
-      let detail: {
-        peerID: string,
-        msgs: {[x: number]: boolean}
-      } = e.detail;
+    $rootScope.$on('history_delete', (e) => {
+      let detail = e.detail;
       
       this.deleteMessagesByIDs(Object.keys(detail.msgs).map(s => +s));
     });
 
-    $rootScope.$on('dialog_flush', (e: CustomEvent) => {
+    $rootScope.$on('dialog_flush', (e) => {
       let peerID: number = e.detail.peerID;
       if(this.peerID == peerID) {
         this.deleteMessagesByIDs(Object.keys(this.bubbles).map(m => +m));
       }
     });
 
-    $rootScope.$on('chat_update', (e: CustomEvent) => {
+    $rootScope.$on('chat_update', (e) => {
       const peerID: number = e.detail;
       if(this.peerID == -peerID) {
         const chat = appChatsManager.getChat(peerID) as Channel | Chat;
@@ -227,7 +224,7 @@ export class AppImManager {
     });
     
     // Calls when message successfully sent and we have an ID
-    $rootScope.$on('message_sent', (e: CustomEvent) => {
+    $rootScope.$on('message_sent', (e) => {
       const {tempID, mid} = e.detail;
       
       this.log('message_sent', e.detail);
@@ -236,14 +233,14 @@ export class AppImManager {
       const message = appMessagesManager.getMessage(mid);
       if(message.media) {
         if(message.media.photo) {
-          const photo = appPhotosManager.getPhoto(tempID);
+          const photo = appPhotosManager.getPhoto('' + tempID);
           if(/* photo._ != 'photoEmpty' */photo) {
             const newPhoto = message.media.photo;
             newPhoto.downloaded = photo.downloaded;
             newPhoto.url = photo.url;
           }
         } else if(message.media.document) {
-          const doc = appDocsManager.getDoc(tempID);
+          const doc = appDocsManager.getDoc('' + tempID);
           if(/* doc._ != 'documentEmpty' &&  */doc?.type && doc.type != 'sticker') {
             const newDoc = message.media.document;
             newDoc.downloaded = doc.downloaded;
@@ -272,7 +269,7 @@ export class AppImManager {
           const pollElement = bubble.querySelector('poll-element');
           if(pollElement) {
             pollElement.setAttribute('poll-id', newPoll.id);
-            pollElement.setAttribute('message-id', mid);
+            pollElement.setAttribute('message-id', '' + mid);
             delete appPollsManager.polls[tempID];
             delete appPollsManager.results[tempID];
           }
@@ -286,7 +283,7 @@ export class AppImManager {
 
         bubble.classList.remove('is-sending');
         bubble.classList.add('is-sent');
-        bubble.dataset.mid = mid;
+        bubble.dataset.mid = '' + mid;
 
         this.bubbleGroups.removeBubble(bubble, tempID);
         
@@ -301,7 +298,7 @@ export class AppImManager {
       }
     });
     
-    $rootScope.$on('message_edit', (e: CustomEvent) => {
+    $rootScope.$on('message_edit', (e) => {
       let {peerID, mid, id, justMedia} = e.detail;
       
       if(peerID != this.peerID) return;
@@ -318,7 +315,7 @@ export class AppImManager {
       this.renderMessage(message, true, false, bubble, false);
     });
     
-    $rootScope.$on('messages_downloaded', (e: CustomEvent) => {
+    $rootScope.$on('messages_downloaded', (e) => {
       const mids: number[] = e.detail;
       
       const pinnedMessage = appMessagesManager.getPinnedMessage(this.peerID);
@@ -351,7 +348,7 @@ export class AppImManager {
       });
     });
     
-    $rootScope.$on('apiUpdate', (e: CustomEvent) => {
+    $rootScope.$on('apiUpdate', (e) => {
       let update = e.detail;
       
       this.handleUpdate(update);

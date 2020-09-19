@@ -13,6 +13,7 @@ import apiManager from "../../../lib/mtproto/mtprotoworker";
 import StickyIntersector from "../../stickyIntersector";
 import appDocsManager, {MyDocument} from "../../../lib/appManagers/appDocsManager";
 import animationIntersector from "../../animationIntersector";
+import LazyLoadQueue, { LazyLoadQueueRepeat } from "../../lazyLoadQueue";
 
 export default class StickersTab implements EmoticonsTab {
   public content: HTMLElement;
@@ -36,7 +37,7 @@ export default class StickersTab implements EmoticonsTab {
   private stickyIntersector: StickyIntersector;
 
   private animatedDivs: Set<HTMLDivElement> = new Set();
-  private animatedIntersector: IntersectionObserver;
+  private lazyLoadQueue: LazyLoadQueueRepeat;
 
   categoryPush(categoryDiv: HTMLElement, categoryTitle: string, promise: Promise<MyDocument[]>, prepend?: boolean) {
     //if((docs.length % 5) != 0) categoryDiv.classList.add('not-full');
@@ -83,7 +84,11 @@ export default class StickersTab implements EmoticonsTab {
 
       if(doc.sticker == 2) {
         this.animatedDivs.add(div);
-        this.animatedIntersector.observe(div);
+
+        this.lazyLoadQueue.observe({
+          div, 
+          load: this.processVisibleDiv
+        });
       }
     } 
 
@@ -163,6 +168,58 @@ export default class StickersTab implements EmoticonsTab {
     }
   }
 
+  checkAnimationContainer = (div: HTMLElement, visible: boolean) => {
+    //console.error('checkAnimationContainer', div, visible);
+    const players = animationIntersector.getAnimations(div);
+    players.forEach(player => {
+      if(!visible) {
+        animationIntersector.checkAnimation(player, true, true);
+      } else {
+        animationIntersector.checkAnimation(player, false);
+      }
+    });
+  };
+
+  processVisibleDiv = (div: HTMLElement) => {
+    const docID = div.dataset.docID;
+    const doc = appDocsManager.getDoc(docID);
+
+    const promise = wrapSticker({
+      doc, 
+      div: div as HTMLDivElement,
+      width: 80,
+      height: 80,
+      lazyLoadQueue: null, 
+      group: EMOTICONSSTICKERGROUP, 
+      onlyThumb: false,
+      play: true,
+      loop: true
+    });
+
+    promise.then(() => {
+      //clearTimeout(timeout);
+      this.checkAnimationContainer(div, this.lazyLoadQueue.intersector.isVisible(div));
+    });
+
+    /* let timeout = window.setTimeout(() => {
+      console.error('processVisibleDiv timeout', div, doc);
+    }, 1e3); */
+
+    return promise;
+  };
+
+  processInvisibleDiv = (div: HTMLElement) => {
+    const docID = div.dataset.docID;
+    const doc = appDocsManager.getDoc(docID);
+
+    //console.log('STICKER INvisible:', /* div,  */docID);
+
+    this.checkAnimationContainer(div, false);
+
+    div.innerHTML = '';
+    this.renderSticker(doc, div as HTMLDivElement);
+  };
+
   init() {
     this.content = document.getElementById('content-stickers');
     //let stickersDiv = contentStickersDiv.querySelector('.os-content') as HTMLDivElement;
@@ -196,7 +253,7 @@ export default class StickersTab implements EmoticonsTab {
       }
     }); */
 
-    $rootScope.$on('stickers_installed', (e: CustomEvent) => {
+    $rootScope.$on('stickers_installed', (e) => {
       const set: StickerSet.stickerSet = e.detail;
       
       if(!this.stickerSets[set.id] && this.mounted) {
@@ -204,7 +261,7 @@ export default class StickersTab implements EmoticonsTab {
       }
     });
 
-    $rootScope.$on('stickers_deleted', (e: CustomEvent) => {
+    $rootScope.$on('stickers_deleted', (e) => {
       const set: StickerSet.stickerSet = e.detail;
       
       if(this.stickerSets[set.id] && this.mounted) {
@@ -256,98 +313,59 @@ export default class StickersTab implements EmoticonsTab {
       this.mounted = true;
     });
 
-    const checkAnimationDiv = (div: HTMLDivElement) => {
-      const players = animationIntersector.getAnimations(div);
-      players.forEach(player => {
-        if(!visible.has(div)) {
-          animationIntersector.checkAnimation(player, true, true);
-        } else {
-          animationIntersector.checkAnimation(player, false);
-        }
-      });
-    };
-
-    const processInvisibleDiv = (div: HTMLDivElement) => {
-      visible.delete(div);
-      //console.log('STICKER INvisible:', target, docID);
-
-      const docID = div.dataset.docID;
-      const doc = appDocsManager.getDoc(docID);
-
-      checkAnimationDiv(div);
-
-      div.innerHTML = '';
-      this.renderSticker(doc, div);
-    };
-
-    let locked = false;
-    const visible: Set<HTMLDivElement> = new Set();
-    this.animatedIntersector = new IntersectionObserver((entries) => {
-      if(locked) {
-        return;
+    this.lazyLoadQueue = new LazyLoadQueueRepeat(undefined, (target, visible) => {
+      if(!visible) {
+        this.processInvisibleDiv(target as HTMLDivElement);
       }
-
-      entries.forEach(entry => {
-        const {target, isIntersecting} = entry;
-
-        const div = target as HTMLDivElement;
-        const docID = div.dataset.docID;
-        const doc = appDocsManager.getDoc(docID);
-        if(isIntersecting) {
-          //console.log('STICKER visible:', target, docID);
-          if(visible.has(div)) {
-            return;
-          }
-
-          visible.add(div);
-          
-          wrapSticker({
-            doc, 
-            div,
-            width: 80,
-            height: 80,
-            lazyLoadQueue: null, 
-            group: EMOTICONSSTICKERGROUP, 
-            onlyThumb: false,
-            play: true,
-            loop: true
-          }).then(() => {
-            checkAnimationDiv(div);
-          });
-        } else {
-          processInvisibleDiv(div);
-        }
-      });
-
-      //animationIntersector.checkAnimations(true, EMOTICONSSTICKERGROUP, false);
     });
-    
+
+    /* let closed = true;
     emoticonsDropdown.events.onClose.push(() => {
-      locked = true;
+      closed = false;
+      this.lazyLoadQueue.lock();
     });
 
     emoticonsDropdown.events.onCloseAfter.push(() => {
-      const divs = [...visible];
+      const divs = this.lazyLoadQueue.intersector.getVisible();
 
       for(const div of divs) {
-        processInvisibleDiv(div);
+        this.processInvisibleDiv(div);
       }
+
+      closed = true;
     });
 
     emoticonsDropdown.events.onOpenAfter.push(() => {
-      locked = false;
-
-      // refresh
-      this.animatedIntersector.disconnect();
-      const divs = [...this.animatedDivs];
-      for(const div of divs) {
-        this.animatedIntersector.observe(div);
+      if(closed) {
+        this.lazyLoadQueue.unlockAndRefresh();
+        closed = false;
+      } else {
+        this.lazyLoadQueue.unlock();
       }
+    }); */
+    emoticonsDropdown.events.onClose.push(() => {
+      this.lazyLoadQueue.lock();
+    });
+
+    emoticonsDropdown.events.onCloseAfter.push(() => {
+      const divs = this.lazyLoadQueue.intersector.getVisible();
+
+      for(const div of divs) {
+        this.processInvisibleDiv(div);
+      }
+
+      this.lazyLoadQueue.intersector.clearVisible();
+    });
+
+    emoticonsDropdown.events.onOpenAfter.push(() => {
+      this.lazyLoadQueue.unlockAndRefresh();
     });
 
     /* setInterval(() => {
       // @ts-ignore
-      console.log('STICKERS RENDERED IN PANEL:', Object.values(lottieLoader.players).filter(p => p.width == 80).length);
+      const players = Object.values(lottieLoader.players).filter(p => p.width == 80);
+      
+      console.log('STICKERS RENDERED IN PANEL:', players.length, players.filter(p => !p.paused).length, this.lazyLoadQueue.intersector.getVisible().length);
     }, .25e3); */
     
 

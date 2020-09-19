@@ -9,7 +9,7 @@ import appDocsManager, {MyDocument} from "./appDocsManager";
 import VideoPlayer from "../mediaPlayer";
 import { renderImageFromUrl, parseMenuButtonsTo } from "../../components/misc";
 import AvatarElement from "../../components/avatar";
-import LazyLoadQueue from "../../components/lazyLoadQueue";
+import LazyLoadQueue, { LazyLoadQueueBase } from "../../components/lazyLoadQueue";
 import appForward from "../../components/appForward";
 import { isSafari, mediaSizes, touchSupport } from "../config";
 import { deferredPromise } from "../polyfill";
@@ -118,7 +118,7 @@ export class AppMediaViewer {
   private setMoverPromise: Promise<void>;
   private setMoverAnimationPromise: Promise<void>;
 
-  private lazyLoadQueue: LazyLoadQueue;
+  private lazyLoadQueue: LazyLoadQueueBase;
 
   private highlightSwitchersTimeout: number;
   
@@ -128,7 +128,7 @@ export class AppMediaViewer {
 
     this.preloaderStreamable = new ProgressivePreloader(undefined, false, true);
 
-    this.lazyLoadQueue = new LazyLoadQueue(undefined, true);
+    this.lazyLoadQueue = new LazyLoadQueueBase();
 
     parseMenuButtonsTo(this.buttons, this.wholeDiv.querySelectorAll(`[class*='menu']`) as NodeListOf<HTMLElement>);
 
@@ -271,7 +271,7 @@ export class AppMediaViewer {
         this.wholeDiv.classList.add('highlight-switchers');
       }
 
-      this.highlightSwitchersTimeout = setTimeout(() => {
+      this.highlightSwitchersTimeout = window.setTimeout(() => {
         this.wholeDiv.classList.remove('highlight-switchers');
         this.highlightSwitchersTimeout = 0;
       }, 3e3);
@@ -1075,8 +1075,7 @@ export class AppMediaViewer {
 
           this.lazyLoadQueue.unshift({
             div: null,
-            load,
-            wasSeen: true
+            load
           });
         //} else createPlayer();
       });
@@ -1140,8 +1139,7 @@ export class AppMediaViewer {
 
         this.lazyLoadQueue.unshift({
           div: null,
-          load,
-          wasSeen: true
+          load
         });
       });
     }
