@@ -1881,6 +1881,8 @@ export class AppMessagesManager {
       flags |= 2;
     //}
 
+    // ! ВНИМАНИЕ: ОЧЕНЬ СЛОЖНАЯ ЛОГИКА:
+    // ! если делать запрос сначала по папке 0, потом по папке 1, по индексу 0 в массиве будет один и тот же диалог, при условии что он закреплён в обеих папках, ЛОЛ???
     return apiManager.invokeApi('messages.getDialogs', {
       flags: flags,
       folder_id: folderID,
@@ -1893,9 +1895,9 @@ export class AppMessagesManager {
       //timeout: APITIMEOUT,
       noErrorBox: true
     }).then((dialogsResult) => {
-      ///////this.log('messages.getDialogs result:', dialogsResult);
-
       if(dialogsResult._ == 'messages.dialogsNotModified') return null;
+
+      //this.log.error('messages.getDialogs result:', {...dialogsResult.dialogs[0]});
 
       if(!offsetDate) {
         telegramMeWebService.setAuthorized(true);
@@ -1913,7 +1915,7 @@ export class AppMessagesManager {
         // ! нужно передавать folderID, так как по папке != 0 нет свойства folder_id
         this.saveConversation(dialog, folderID);
 
-        /* if(dialog.peerID == 239602833) {
+        /* if(dialog.peerID == -1213511294) {
           this.log.error('lun bot', folderID, d);
         } */
 
@@ -1927,7 +1929,7 @@ export class AppMessagesManager {
         if(!dialog.read_inbox_max_id && !dialog.read_outbox_max_id) {
           noIDsDialogs[dialog.peerID] = dialog;
 
-          /* if(dialog.peerID == 239602833) {
+          /* if(dialog.peerID == -1213511294) {
             this.log.error('lun bot', folderID);
           } */
         }
@@ -2727,7 +2729,9 @@ export class AppMessagesManager {
 
     if(!dialog.hasOwnProperty('folder_id')) {
       if(dialog._ == 'dialog') {
-        dialog.folder_id = folderID;
+        // ! СЛОЖНО ! СМОТРИ В getTopMessages
+        const wasDialogBefore = this.getDialogByPeerID(peerID)[0];
+        dialog.folder_id = wasDialogBefore ? wasDialogBefore.folder_id : folderID;
       }/*  else if(dialog._ == 'dialogFolder') {
         dialog.folder_id = dialog.folder.id;
       } */
