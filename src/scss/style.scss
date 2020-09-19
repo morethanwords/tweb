@@ -628,9 +628,19 @@ avatar-element {
       background: #000;
       border-radius: $border-radius;
 
+      .document-thumb {
+        object-fit: cover;
+        width: 100%;
+        height: 100%;
+      }
+
       &:after {
         display: none;
       }
+    }
+
+    .document-download {
+      background-color: rgba(0, 0, 0, .15);
     }
   }
   

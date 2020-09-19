@@ -9,6 +9,8 @@ import { InputFileLocation, Document, PhotoSize } from '../../layer';
 
 export type MyDocument = Document.document;
 
+// TODO: если залить картинку файлом, а потом перезайти в диалог - превьюшка заново скачается
+
 class AppDocsManager {
   private docs: {[docID: string]: MyDocument} = {};
 
@@ -97,6 +99,7 @@ class AppDocsManager {
           break;
 
         case 'documentAttributeImageSize':
+          doc.type = 'photo';
           doc.w = attribute.w;
           doc.h = attribute.h;
           break;

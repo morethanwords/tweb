@@ -292,13 +292,26 @@ export function wrapDocument(doc: MyDocument, withTime = false, uploading = fals
 
   let docDiv = document.createElement('div');
   docDiv.classList.add('document', `ext-${ext}`);
-  
-  let ext2 = ext;
+
+  const icoDiv = document.createElement('div');
+  icoDiv.classList.add('document-ico');
+
   if(doc.type == 'photo') {
     docDiv.classList.add('photo');
-    ext2 = `<img src="${URL.createObjectURL(doc.file)}">`;
+
+    if(uploading) {
+      icoDiv.innerHTML = `<img src="${doc.url}">`;
+    } else {
+      wrapPhoto(doc, null, icoDiv, 54, 54, false, null, null, null);
+      icoDiv.style.width = icoDiv.style.height = '';
+    }
+
+    const img = icoDiv.querySelector('img');
+    if(img) img.classList.add('document-thumb');
+  } else {
+    icoDiv.innerText = ext;
   }
-  
+
   let fileName = doc.file_name || 'Unknown.file';
   let size = formatBytes(doc.size);
   
@@ -307,12 +320,13 @@ export function wrapDocument(doc: MyDocument, withTime = false, uploading = fals
   }
   
   docDiv.innerHTML = `
-  <div class="document-ico">${ext2}</div>
   ${!uploading ? `<div class="document-download"><div class="tgico-download"></div></div>` : ''}
   <div class="document-name">${fileName}</div>
   <div class="document-size">${size}</div>
   `;
-  
+
+  docDiv.prepend(icoDiv);
+
   if(!uploading) {
     let downloadDiv = docDiv.querySelector('.document-download') as HTMLDivElement;
     let preloader: ProgressivePreloader;
@@ -441,7 +455,7 @@ export function wrapPhoto(photo: MyPhoto | MyDocument, message: any, container: 
   const cacheContext = appPhotosManager.getCacheContext(photo);
 
   let preloader: ProgressivePreloader;
-  if(message.media.preloader) { // means upload
+  if(message?.media?.preloader) { // means upload
     message.media.preloader.attach(container);
   } else if(!cacheContext.downloaded) {
     preloader = new ProgressivePreloader(container, false);

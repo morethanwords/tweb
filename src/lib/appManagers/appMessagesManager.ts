@@ -6,7 +6,7 @@ import { RichTextProcessor } from "../richtextprocessor";
 import { nextRandomInt, bigint } from "../bin_utils";
 import { telegramMeWebService } from "../mtproto/mtproto";
 import apiUpdatesManager from "./apiUpdatesManager";
-import appPhotosManager from "./appPhotosManager";
+import appPhotosManager, { MyPhoto } from "./appPhotosManager";
 
 import AppStorage from '../storage';
 import appPeersManager from "./appPeersManager";
@@ -903,7 +903,9 @@ export class AppMessagesManager {
       caption = RichTextProcessor.parseMarkdown(caption, entities);
     }
 
-    const attributes: any[] = [];
+    const attributes: DocumentAttribute[] = [];
+
+    const isPhoto = ['image/jpeg', 'image/png', 'image/bmp'].indexOf(fileType) >= 0;
 
     let actionName = '';
     if(!options.isMedia) {
@@ -913,26 +915,27 @@ export class AppMessagesManager {
     } else if(isDocument) { // maybe it's a sticker or gif
       attachType = 'document';
       apiFileName = '';
-    } else if(['image/jpeg', 'image/png', 'image/bmp'].indexOf(fileType) >= 0) {
+    } else if(isPhoto) {
       attachType = 'photo';
       apiFileName = 'photo.' + fileType.split('/')[1];
       actionName = 'sendMessageUploadPhotoAction';
 
-      let photo: any = {
+      let photo: MyPhoto = {
         _: 'photo',
         id: '' + messageID,
         sizes: [{
           _: 'photoSize',
           w: options.width,
           h: options.height,
-          type: 'm',
+          type: 'full',
+          location: null,
           size: file.size
-        } as PhotoSize],
+        }],
         w: options.width,
         h: options.height,
         downloaded: file.size,
         url: options.objectURL || ''
-      };
+      } as any;
       
       appPhotosManager.savePhoto(photo);
     } else if(fileType.indexOf('audio/') === 0 || ['video/ogg'].indexOf(fileType) >= 0) {
@@ -947,14 +950,13 @@ export class AppMessagesManager {
         attachType = 'voice';
       }
 
-      let attribute = {
+      let attribute: DocumentAttribute.documentAttributeAudio = {
         _: 'documentAttributeAudio',
         flags: flags,
         pFlags: { // that's only for client, not going to telegram
-          voice: options.isVoiceMessage
+          voice: options.isVoiceMessage || undefined
         },
         waveform: options.waveform,
-        voice: options.isVoiceMessage,
         duration: options.duration || 0
       };
 
@@ -966,15 +968,13 @@ export class AppMessagesManager {
 
       let flags = 1;
       if(options.isRoundMessage) flags |= 2;
-      let videoAttribute = {
+      let videoAttribute: DocumentAttribute.documentAttributeVideo = {
         _: 'documentAttributeVideo',
         flags: flags,
         pFlags: { // that's only for client, not going to telegram
           supports_streaming: true,
-          round_message: options.isRoundMessage
+          round_message: options.isRoundMessage || undefined
         }, 
-        round_message: options.isRoundMessage,
-        supports_streaming: true,
         duration: options.duration,
         w: options.width,
         h: options.height
@@ -990,19 +990,38 @@ export class AppMessagesManager {
     attributes.push({_: 'documentAttributeFilename', file_name: fileName || apiFileName});
 
     if(['document', 'video', 'audio', 'voice'].indexOf(attachType) !== -1 && !isDocument) {
-      let doc: MyDocument = {
+      const thumbs: PhotoSize[] = [];
+      const doc: MyDocument = {
         _: 'document',
         id: '' + messageID,
         duration: options.duration,
-        attributes: attributes,
+        attributes,
         w: options.width,
         h: options.height,
         downloaded: file.size,
-        thumbs: [],
+        thumbs,
         mime_type: fileType,
         url: options.objectURL || '',
         size: file.size
       } as any;
+
+      if(isPhoto) {
+        attributes.push({
+          _: 'documentAttributeImageSize',
+          w: options.width,
+          h: options.height
+        });
+
+        thumbs.push({
+          _: 'photoSize',
+          w: options.width,
+          h: options.height,
+          type: 'full',
+          location: null,
+          size: file.size,
+          url: options.objectURL
+        });
+      }
       
       appDocsManager.saveDoc(doc);
     }

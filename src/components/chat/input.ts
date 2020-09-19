@@ -277,17 +277,36 @@ export class ChatInput {
           }
   
           case 'document': {
+            const isPhoto = file.type.indexOf('image/') !== -1;
+            params.objectURL = URL.createObjectURL(file);
             let docDiv = wrapDocument({
               file: file,
               file_name: file.name || '',
               size: file.size,
-              type: file.type.indexOf('image/') !== -1 ? 'photo' : 'doc'
+              type: isPhoto ? 'photo' : 'doc',
+              url: params.objectURL
             } as any, false, true);
 
-            params.objectURL = URL.createObjectURL(file);
+            const finish = () => {
+              itemDiv.append(docDiv);
+              resolve(itemDiv);
+            };
 
-            itemDiv.append(docDiv);
-            resolve(itemDiv);
+            if(isPhoto) {
+              let img = new Image();
+              img.src = params.objectURL;
+              img.onload = () => {
+                params.width = img.naturalWidth;
+                params.height = img.naturalHeight;
+  
+                finish();
+              };
+
+              img.onerror = finish;
+            } else {
+              finish();
+            }
+
             break;
           }
         }

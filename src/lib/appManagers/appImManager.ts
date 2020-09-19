@@ -420,14 +420,14 @@ export class AppImManager {
       }
 
       //this.log('chatInner click:', target);
-      if(target.tagName == 'SPAN') {
-        let video = (target.parentElement.querySelector('video') as HTMLElement);
+      const isVideoComponentElement = target.tagName == 'SPAN';
+      /* if(isVideoComponentElement) {
+        const video = target.parentElement.querySelector('video') as HTMLElement;
         if(video) {
           video.click(); // hot-fix for time and play button
+          return;
         }
-        
-        return;
-      }
+      } */
 
       if(bubble.classList.contains('sticker') && target.parentElement.classList.contains('attachment')) {
         const messageID = +bubble.dataset.mid;
@@ -442,8 +442,9 @@ export class AppImManager {
         return;
       }
 
-      if((target.tagName == 'IMG' && !target.classList.contains('emoji') && target.parentElement.tagName != "AVATAR-ELEMENT") 
+      if((target.tagName == 'IMG' && !target.classList.contains('emoji') && target.parentElement.tagName != "AVATAR-ELEMENT" && !target.classList.contains('document-thumb')) 
         || target.classList.contains('album-item')
+        || isVideoComponentElement
         || (target.tagName == 'VIDEO' && !bubble.classList.contains('round'))) {
         let messageID = +findUpClassName(target, 'album-item')?.dataset.mid || +bubble.dataset.mid;
         let message = appMessagesManager.getMessage(messageID);
@@ -486,10 +487,16 @@ export class AppImManager {
 
         this.log('open mediaViewer single with ids:', ids, idx, targets);
 
+        if(!targets[idx]) {
+          this.log('no target for media viewer!', target);
+          return;
+        }
+
         appMediaViewer.openMedia(message, targets[idx].element, true, 
           this.scroll.parentElement, targets.slice(0, idx), targets.slice(idx + 1)/* , !message.grouped_id */);
         
         //appMediaViewer.openMedia(message, target as HTMLImageElement);
+        return;
       }
       
       if(['IMG', 'DIV', "AVATAR-ELEMENT"].indexOf(target.tagName) === -1) target = findUpTag(target, 'DIV');
