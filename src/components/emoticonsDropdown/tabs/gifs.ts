@@ -13,8 +13,8 @@ export default class GifsTab implements EmoticonsTab {
     const gifsContainer = this.content.firstElementChild as HTMLDivElement;
     gifsContainer.addEventListener('click', EmoticonsDropdown.onMediaClick);
 
-    const masonry = new GifsMasonry(gifsContainer);
     const scroll = new Scrollable(this.content, 'y', 'GIFS', null);
+    const masonry = new GifsMasonry(gifsContainer, EMOTICONSSTICKERGROUP, scroll);
     const preloader = putPreloader(this.content, true);
 
     apiManager.invokeApi('messages.getSavedGifs', {hash: 0}).then((res) => {
@@ -24,7 +24,7 @@ export default class GifsTab implements EmoticonsTab {
         res.gifs.forEach((doc, idx) => {
           res.gifs[idx] = doc = appDocsManager.saveDoc(doc);
           //if(doc._ == 'documentEmpty') return;
-          masonry.add(doc as MyDocument, EMOTICONSSTICKERGROUP, EmoticonsDropdown.lazyLoadQueue);
+          //masonry.add(doc as MyDocument);
         });
       }
 

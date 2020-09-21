@@ -1073,10 +1073,7 @@ export class AppMediaViewer {
             return promise;
           };
 
-          this.lazyLoadQueue.unshift({
-            div: null,
-            load
-          });
+          this.lazyLoadQueue.unshift({load});
         //} else createPlayer();
       });
     } else {
@@ -1137,10 +1134,7 @@ export class AppMediaViewer {
           return cancellablePromise;
         };
 
-        this.lazyLoadQueue.unshift({
-          div: null,
-          load
-        });
+        this.lazyLoadQueue.unshift({load});
       });
     }
 

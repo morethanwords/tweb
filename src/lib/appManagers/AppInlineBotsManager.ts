@@ -20,7 +20,7 @@ export class AppInlineBotsManager {
       query: query,
       geo_point: geo && {_: 'inputGeoPoint', lat: geo['lat'], long: geo['long']},
       offset
-    }, {timeout: 1, stopTime: -1, noErrorBox: true}).then(botResults => {
+    }, {/* timeout: 1,  */stopTime: -1, noErrorBox: true}).then(botResults => {
       const queryID = botResults.query_id;
       /* delete botResults._;
       delete botResults.flags;

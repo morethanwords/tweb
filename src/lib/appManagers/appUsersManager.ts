@@ -179,7 +179,7 @@ export class AppUsersManager {
     return this.fillContacts().then(_contactsList => {
       let contactsList = [..._contactsList];
       if(query) {
-        const results: any = searchIndexManager.search(query, this.contactsIndex);
+        const results = searchIndexManager.search(query, this.contactsIndex);
         const filteredContactsList = [...contactsList].filter(id => !!results[id]);
 
         contactsList = filteredContactsList;
@@ -589,7 +589,7 @@ export class AppUsersManager {
     return apiManager.invokeApi('contacts.search', {
       q: query,
       limit
-    }).then((peers: any) => {
+    }).then((peers) => {
       //console.log(peers);
       this.saveApiUsers(peers.users);
       appChatsManager.saveApiChats(peers.chats);

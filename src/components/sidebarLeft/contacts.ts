@@ -7,6 +7,8 @@ import appSidebarLeft, { AppSidebarLeft } from "../../lib/appManagers/appSidebar
 import { $rootScope } from "../../lib/utils";
 import SearchInput from "../searchInput";
 
+// TODO: поиск по людям глобальный, если не нашло в контактах никого
+
 export default class AppContactsTab implements SliderTab {
   private container = document.getElementById('contacts-container');
   private list = this.container.querySelector('#contacts') as HTMLUListElement;
@@ -58,7 +60,13 @@ export default class AppContactsTab implements SliderTab {
       }
 
       const contacts = [..._contacts];
-      contacts.findAndSplice(u => u == $rootScope.myID);
+
+      if(!query) {
+        contacts.findAndSplice(u => u == $rootScope.myID);
+      }
+      /* if(query && 'saved messages'.includes(query.toLowerCase())) {
+        contacts.unshift($rootScope.myID);
+      } */
 
       let sorted = contacts
       .map(userID => {

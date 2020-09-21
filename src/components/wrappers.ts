@@ -210,6 +210,8 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
 
     //console.log('loaded doc:', doc, doc.url, container);
 
+    const deferred = deferredPromise<void>();
+
     //if(doc.type == 'gif'/*  || true */) {
       video.addEventListener('canplay', () => {
         if(img?.parentElement) {
@@ -222,8 +224,15 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
         if(doc.type == 'gif' && group) {
           animationIntersector.addAnimation(video, group);
         }
+
+        // test lazyLoadQueue
+        //setTimeout(() => {
+          deferred.resolve();
+        //}, 5000);
       }, {once: true});
     //}
+
+    video.addEventListener('error', deferred.reject);
 
     //if(doc.type != 'round') {
       renderImageFromUrl(video, doc.url);
@@ -243,6 +252,8 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       video.dataset.overlay = '1';
       new VideoPlayer(video);
     }
+
+    return deferred;
   };
 
   /* if(doc.size >= 20e6 && !doc.downloaded) {
@@ -263,8 +274,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     return;
   } */
 
-  /* doc.downloaded ||  */!lazyLoadQueue/*  && false */ ? loadVideo() : lazyLoadQueue.push({div: container, load: loadVideo/* , wasSeen: true */});
-  return video;
+  return /* doc.downloaded ||  */!lazyLoadQueue/*  && false */ ? loadVideo() : (lazyLoadQueue.push({div: container, load: loadVideo/* , wasSeen: true */}), Promise.resolve());
 }
 
 export const formatDate = (timestamp: number, monthShort = false, withYear = true) => {
@@ -476,7 +486,7 @@ export function wrapPhoto(photo: MyPhoto | MyDocument, message: any, container: 
     });
   };
 
-  return cacheContext.downloaded || !lazyLoadQueue ? load() : lazyLoadQueue.push({div: container, load: load, wasSeen: true});
+  return cacheContext.downloaded || !lazyLoadQueue ? load() : (lazyLoadQueue.push({div: container, load: load, wasSeen: true}), Promise.resolve());
 }
 
 export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, onlyThumb, emoji, width, height, withThumb, loop}: {

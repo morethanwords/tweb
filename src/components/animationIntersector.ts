@@ -100,6 +100,12 @@ export class AnimationIntersector {
     if((destroy || (!isInDOM(el) && !this.lockedGroups[group]))/*  && false */) {
       //console.log('destroy animation');
       animation.remove();
+
+      if(animation instanceof HTMLVideoElement) {
+        animation.src = '';
+        animation.load();
+      }
+
       for(const group in this.byGroups) {
         this.byGroups[group].findAndSplice(p => p == player);
       }

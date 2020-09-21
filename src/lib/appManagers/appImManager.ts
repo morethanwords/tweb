@@ -801,7 +801,8 @@ export class AppImManager {
   public onScroll(e: Event) {
     if(this.onScrollRAF) window.cancelAnimationFrame(this.onScrollRAF);
 
-    //if(this.scrollable.scrollLocked) return;
+    // * В таком случае, кнопка не будет моргать если чат в самом низу, и правильно отработает случай написания нового сообщения и проскролла вниз
+    if(this.scrollable.scrollLocked && this.scrolledDown) return;
 
     this.onScrollRAF = window.requestAnimationFrame(() => {
       //lottieLoader.checkAnimations(false, 'chat');

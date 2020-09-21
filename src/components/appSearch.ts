@@ -4,10 +4,11 @@ import appMessagesIDsManager from "../lib/appManagers/appMessagesIDsManager";
 import appUsersManager from "../lib/appManagers/appUsersManager";
 import appPeersManager from '../lib/appManagers/appPeersManager';
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
-import { escapeRegExp } from "../lib/utils";
+import { $rootScope, escapeRegExp } from "../lib/utils";
 import { formatPhoneNumber } from "./misc";
 import appChatsManager from "../lib/appManagers/appChatsManager";
 import SearchInput from "./searchInput";
+import { Peer } from "../layer";
 
 export class SearchGroup {
   container: HTMLDivElement;
@@ -48,6 +49,11 @@ export class SearchGroup {
   }
 }
 
+/**
+ * * Saved будет использована только для вывода одного элемента - избранное
+ */
+type SearchGroupType = 'saved' | 'contacts' | 'globalContacts' | 'messages' | string;
+
 export default class AppSearch {
   private minMsgID = 0;
   private loadedCount = -1;
@@ -66,15 +72,15 @@ export default class AppSearch {
 
   private scrollable: Scrollable;
 
-  constructor(public container: HTMLElement, public searchInput: SearchInput, public searchGroups: {[group: string]: SearchGroup}, public onSearch?: (count: number) => void) {
+  constructor(public container: HTMLElement, public searchInput: SearchInput, public searchGroups: {[group in SearchGroupType]: SearchGroup}, public onSearch?: (count: number) => void) {
     this.scrollable = new Scrollable(this.container);
     this.listsContainer = this.scrollable.container as HTMLDivElement;
     for(let i in this.searchGroups) {
-      this.listsContainer.append(this.searchGroups[i].container);
+      this.listsContainer.append(this.searchGroups[i as SearchGroupType].container);
     }
 
-    if(this.searchGroups['messages']) {
-      this.scrollable.setVirtualContainer(this.searchGroups['messages'].list);
+    if(this.searchGroups.messages) {
+      this.scrollable.setVirtualContainer(this.searchGroups.messages.list);
     }
 
     this.searchInput.onChange = (value) => {
@@ -92,7 +98,7 @@ export default class AppSearch {
       if(!this.query.trim()) return;
     
       if(!this.searchTimeout) {
-        this.searchTimeout = setTimeout(() => {
+        this.searchTimeout = window.setTimeout(() => {
           this.searchMore();
           this.searchTimeout = 0;
         }, 0);
@@ -114,7 +120,7 @@ export default class AppSearch {
     this.loadedContacts = false;
 
     for(let i in this.searchGroups) {
-      this.searchGroups[i].clear();
+      this.searchGroups[i as SearchGroupType].clear();
     }
     
     this.searchPromise = null;
@@ -126,6 +132,13 @@ export default class AppSearch {
     }
     
     this.searchInput.input.focus();
+  }
+
+  private renderSaved() {
+    const group = this.searchGroups.contacts;
+    let {dialog, dom} = appDialogsManager.addDialog($rootScope.myID, group.list, false);
+    dom.lastMessageSpan.innerHTML = 'chat with yourself';
+    group.setActive();
   }
   
   public searchMore() {
@@ -145,18 +158,40 @@ export default class AppSearch {
     const maxID = appMessagesIDsManager.getMessageIDInfo(this.minMsgID)[0] || 0;
 
     if(!this.peerID && !maxID && !this.loadedContacts) {
-      appUsersManager.searchContacts(query, 20).then((contacts: any) => {
+      let renderedSaved = false;
+      if('saved messages'.includes(query.toLowerCase()) 
+        || appUsersManager.getUser($rootScope.myID).sortName.includes(query.toLowerCase())/*  && this.searchGroups.hasOwnProperty('saved') */) {
+        this.renderSaved();
+        renderedSaved = true;
+      }
+
+      appUsersManager.searchContacts(query, 20).then((contacts) => {
         if(this.searchInput.value != query) {
           return;
         }
 
         this.loadedContacts = true;
 
-        ///////this.log('input search contacts result:', contacts);
+        // set saved message as first peer to render
+        const peer = contacts.my_results.findAndSplice(p => (p as Peer.peerUser).user_id == $rootScope.myID);
+        if(peer) {
+          contacts.my_results.unshift(peer);
+        }
 
-        let setResults = (results: any, group: SearchGroup, showMembersCount = false) => {
-          results.forEach((inputPeer: any) => {
+        //console.log('input search contacts result:', contacts);
+
+        let setResults = (results: Peer[], group: SearchGroup, showMembersCount = false) => {
+          results.forEach((inputPeer) => {
             let peerID = appPeersManager.getPeerID(inputPeer);
+
+            if(peerID == $rootScope.myID) {
+              if(!renderedSaved) {
+                this.renderSaved();
+              }
+
+              return;
+            }
+
             let peer = appPeersManager.getPeer(peerID);
             let originalDialog = appMessagesManager.getDialogByPeerID(peerID)[0];
 
@@ -194,7 +229,11 @@ export default class AppSearch {
           });
 
           if(results.length) group.setActive();
-          else group.clear();
+          else if(renderedSaved) { // удалить все пункты снизу
+            Array.from(group.list.children).slice(1).forEach(c => c.remove());
+          } else {
+            group.clear();
+          }
         };
 
         setResults(contacts.my_results, this.searchGroups.contacts, true);
@@ -209,7 +248,7 @@ export default class AppSearch {
         return;
       }
       
-      console.log('input search result:', this.peerID, query, null, maxID, 20, res);
+      //console.log('input search result:', this.peerID, query, null, maxID, 20, res);
       
       const {count, history, next_rate} = res;
       
@@ -217,7 +256,7 @@ export default class AppSearch {
         history.shift();
       }
       
-      const searchGroup = this.searchGroups['messages'];
+      const searchGroup = this.searchGroups.messages;
       searchGroup.setActive();
 
       history.forEach((msgID: number) => {

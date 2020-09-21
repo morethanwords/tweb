@@ -21,7 +21,6 @@ export default class AppGifsTab implements SliderTab {
   private searchInput: SearchInput;
   private gifsDiv = this.contentDiv.firstElementChild as HTMLDivElement;
   private scrollable: Scrollable;
-  private lazyLoadQueue: LazyLoadQueue;
 
   private nextOffset = '';
   private loadedAll = false;
@@ -35,9 +34,7 @@ export default class AppGifsTab implements SliderTab {
     this.scrollable = new Scrollable(this.contentDiv, 'y', ANIMATIONGROUP, undefined, undefined, 2);
     this.scrollable.setVirtualContainer(this.gifsDiv);
     
-    this.masonry = new GifsMasonry(this.gifsDiv);
-
-    this.lazyLoadQueue = new LazyLoadQueue();
+    this.masonry = new GifsMasonry(this.gifsDiv, ANIMATIONGROUP, this.scrollable);
 
     this.searchInput = new SearchInput('Search GIFs', (value) => {
       this.reset();
@@ -76,7 +73,7 @@ export default class AppGifsTab implements SliderTab {
     this.searchPromise = null;
     this.nextOffset = '';
     this.loadedAll = false;
-    this.lazyLoadQueue.clear();
+    this.masonry.lazyLoadQueue.clear();
   }
 
   public init() {
@@ -117,7 +114,7 @@ export default class AppGifsTab implements SliderTab {
       if(results.length) {
         results.forEach((result) => {
           if(result._ === 'botInlineMediaResult' && result.document) {
-            this.masonry.add(result.document as MyDocument, ANIMATIONGROUP, this.lazyLoadQueue);
+            this.masonry.add(result.document as MyDocument);
           }
         });
       } else {
@@ -125,7 +122,8 @@ export default class AppGifsTab implements SliderTab {
       }
 
       this.scrollable.onScroll();
-    } catch (err) {
+    } catch(err) {
+      this.searchPromise = null;
       throw new Error(JSON.stringify(err));
     }
   }

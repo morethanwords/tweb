@@ -1,6 +1,7 @@
 import { logger, LogLevels } from "../lib/logger";
 import smoothscroll from '../vendor/smoothscroll';
 import { touchSupport, isSafari, mediaSizes } from "../lib/config";
+import { CancellablePromise, deferredPromise } from "../lib/polyfill";
 //import { isInDOM } from "../lib/utils";
 (window as any).__forceSmoothScrollPolyfill__ = true;
 smoothscroll.polyfill();
@@ -80,6 +81,7 @@ export default class Scrollable {
   private onScrolledBottomFired = false; */
 
   public scrollLocked = 0;
+  public scrollLockedPromise: CancellablePromise<void> = Promise.resolve();
   public isVisible = false;
 
   private reorderTimeout: number;
@@ -209,13 +211,11 @@ export default class Scrollable {
       throw new Error('no side for scroll');
     }
 
-    const binded = this.onScroll.bind(this);
-
     window.addEventListener('resize', () => {
       this.overflowContainer = mediaSizes.isMobile && false ? document.documentElement : this.container;
       this.onScroll();
     });
-    this.container.addEventListener('scroll', binded, {passive: true, capture: true});
+    this.container.addEventListener('scroll', this.onScroll, {passive: true, capture: true});
     //document.documentElement.addEventListener('scroll', binded, {passive: true, capture: true});
     //window.addEventListener('scroll', binded, {passive: true, capture: true});
     
@@ -289,7 +289,7 @@ export default class Scrollable {
     this.log('setVirtualContainer:', el, this);
   }
 
-  public onScroll() {
+  public onScroll = () => {
     /* let scrollTop = this.scrollTop;
     this.lastScrollDirection = this.lastScrollTop < scrollTop;
     this.lastScrollTop = scrollTop;
@@ -313,7 +313,7 @@ export default class Scrollable {
     if(this.splitUp) {
       clearTimeout(this.disableHoverTimeout);
 
-      this.disableHoverTimeout = setTimeout(() => {
+      this.disableHoverTimeout = window.setTimeout(() => {
         //appendTo.classList.remove('disable-hover');
         this.lastScrollDirection = 0;
       }, 100);
@@ -342,7 +342,7 @@ export default class Scrollable {
         this.lastScrollDirection = 0;
       }
     });
-  }
+  };
 
   public checkForTriggers(container: HTMLElement) {
     if(this.scrollLocked || (!this.onScrolledTop && !this.onScrolledBottom)) return;
@@ -369,7 +369,7 @@ export default class Scrollable {
   public reorder() {
     if(!this.splitUp || this.reorderTimeout) return;
 
-    this.reorderTimeout = setTimeout(() => {
+    this.reorderTimeout = window.setTimeout(() => {
       this.reorderTimeout = 0;
 
       (Array.from(this.splitUp.children) as HTMLElement[]).forEach((el, idx) => {
@@ -466,9 +466,15 @@ export default class Scrollable {
     }
 
     if(this.scrollLocked) clearTimeout(this.scrollLocked);
-    this.scrollLocked = setTimeout(() => {
+    else {
+      this.scrollLockedPromise = deferredPromise<void>();
+    }
+
+    this.scrollLocked = window.setTimeout(() => {
       this.scrollLocked = 0;
-      this.onScroll();
+      this.scrollLockedPromise.resolve();
+      //this.onScroll();
+      this.container.dispatchEvent(new CustomEvent('scroll'));
     }, 468);
 
     this.container.scrollTo({behavior: smooth ? 'smooth' : 'auto', top});

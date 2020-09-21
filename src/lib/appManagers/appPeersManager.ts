@@ -97,13 +97,11 @@ export class AppPeersManager {
       : appChatsManager.getChat(-peerID)
   }
 
-  public getPeerID(peerString: any): number {
+  public getPeerID(peerString: any/* Peer | number | string */): number {
     if(typeof(peerString) === 'number') return peerString;
-    else if(isObject(peerString)) {
-      return peerString.user_id
-        ? peerString.user_id
-        : -(peerString.channel_id || peerString.chat_id);
-    } else if(!peerString) return 0;
+    else if(isObject(peerString)) return peerString.user_id ? peerString.user_id : -(peerString.channel_id || peerString.chat_id);
+    else if(!peerString) return 0;
+    
     const isUser = peerString.charAt(0) == 'u';
     const peerParams = peerString.substr(1).split('_');
 

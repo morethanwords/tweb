@@ -2,16 +2,19 @@ import { logger, LogLevels } from "../lib/logger";
 import VisibilityIntersector, { OnVisibilityChange } from "./visibilityIntersector";
 
 type LazyLoadElementBase = {
-  div: HTMLDivElement, 
-  load: (target?: HTMLDivElement) => Promise<any>
+  load: () => Promise<any>
 };
 
-type LazyLoadElement = LazyLoadElementBase & {
-  wasSeen?: boolean
+type LazyLoadElement = Omit<LazyLoadElementBase, 'load'> & {
+  load: (target?: HTMLElement) => Promise<any>,
+  div: HTMLElement
+  wasSeen?: boolean,
 };
+
+const PARALLEL_LIMIT = 5;
 
 export class LazyLoadQueueBase {
-  protected lazyLoadMedia: Array<LazyLoadElementBase> = [];
+  protected queue: Array<LazyLoadElementBase> = [];
   protected inProcess: Set<LazyLoadElementBase> = new Set();
 
   protected lockPromise: Promise<void> = null;
@@ -19,13 +22,13 @@ export class LazyLoadQueueBase {
 
   protected log = logger('LL', LogLevels.error);
 
-  constructor(protected parallelLimit = 5) {
+  constructor(protected parallelLimit = PARALLEL_LIMIT) {
   }
 
   public clear() {
     this.inProcess.clear(); // ацтеки забьются, будет плохо
 
-    this.lazyLoadMedia.length = 0;
+    this.queue.length = 0;
     // unreachable code
     /* for(let item of this.inProcess) { 
       this.lazyLoadMedia.push(item);
@@ -34,34 +37,40 @@ export class LazyLoadQueueBase {
 
   public lock() {
     if(this.lockPromise) return;
+
+    const perf = performance.now();
     this.lockPromise = new Promise((resolve, reject) => {
       this.unlockResolve = resolve;
+    });
+
+    this.lockPromise.then(() => {
+      this.log('was locked for:', performance.now() - perf);
     });
   }
 
   public unlock() {
     if(!this.unlockResolve) return;
-    this.lockPromise = null;
+
     this.unlockResolve();
-    this.unlockResolve = null;
+    this.unlockResolve = this.lockPromise = null;
+
+    this.processQueue();
   }
 
   public async processItem(item: LazyLoadElementBase) {
+    if(this.lockPromise) {
+      return;
+    }
+
     this.inProcess.add(item);
 
     this.log('will load media', this.lockPromise, item);
 
     try {
-      if(this.lockPromise/*  && false */) {
-        const perf = performance.now();
-        await this.lockPromise;
-
-        this.log('waited lock:', performance.now() - perf);
-      }
-      
       //await new Promise((resolve) => setTimeout(resolve, 2e3));
       //await new Promise((resolve, reject) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
-      await item.load(item.div);
+      //await item.load(item.div);
+      await this.loadItem(item);
     } catch(err) {
       this.log.error('loadMediaQueue error:', err/* , item */);
     }
@@ -70,25 +79,28 @@ export class LazyLoadQueueBase {
 
     this.log('loaded media', item);
 
-    if(this.lazyLoadMedia.length) {
-      this.processQueue();
-    }
+    this.processQueue();
+  }
+
+  protected loadItem(item: LazyLoadElementBase) {
+    return item.load();
   }
 
   protected getItem() {
-    return this.lazyLoadMedia.shift();
+    return this.queue.shift();
   }
 
-  protected addElement(el: LazyLoadElementBase) {
-    this.processQueue(el);
+  protected addElement(method: 'push' | 'unshift', el: LazyLoadElementBase) {
+    this.queue[method](el);
+    this.processQueue();
   }
 
   public async processQueue(item?: LazyLoadElementBase) {
-    if(this.parallelLimit > 0 && this.inProcess.size >= this.parallelLimit) return;
+    if(!this.queue.length || this.lockPromise || (this.parallelLimit > 0 && this.inProcess.size >= this.parallelLimit)) return;
 
     do {
       if(item) {
-        this.lazyLoadMedia.findAndSplice(i => i == item);
+        this.queue.findAndSplice(i => i == item);
       } else {
         item = this.getItem();
       }
@@ -100,25 +112,26 @@ export class LazyLoadQueueBase {
       }
 
       item = null;
-    } while(this.inProcess.size < this.parallelLimit && this.lazyLoadMedia.length);
+    } while(this.inProcess.size < this.parallelLimit && this.queue.length);
   }
 
   public push(el: LazyLoadElementBase) {
-    this.lazyLoadMedia.push(el);
-    this.addElement(el);
+    this.addElement('push', el);
   }
 
   public unshift(el: LazyLoadElementBase) {
-    this.lazyLoadMedia.unshift(el);
-    this.addElement(el);
+    this.addElement('unshift', el);
   }
 }
 
 export class LazyLoadQueueIntersector extends LazyLoadQueueBase {
+  protected queue: Array<LazyLoadElement> = [];
+  protected inProcess: Set<LazyLoadElement> = new Set();
+
   public intersector: VisibilityIntersector;
   protected intersectorTimeout: number;
 
-  constructor(protected parallelLimit = 5) {
+  constructor(protected parallelLimit = PARALLEL_LIMIT) {
     super(parallelLimit);
   }
 
@@ -146,58 +159,32 @@ export class LazyLoadQueueIntersector extends LazyLoadQueueBase {
     this.intersector.refresh();
   }
 
+  protected loadItem(item: LazyLoadElement) {
+    return item.load(item.div);
+  }
+
+  protected addElement(method: 'push' | 'unshift', el: LazyLoadElement) {
+    const item = this.queue.find(i => i.div == el.div);
+    if(item) {
+      return false;
+    } else {
+      for(const item of this.inProcess) {
+        if(item.div == el.div) {
+          return false;
+        }
+      }
+    }
+
+    this.queue[method](el);
+    return true;
+  }
+
   protected setProcessQueueTimeout() {
     if(!this.intersectorTimeout) {
       this.intersectorTimeout = window.setTimeout(() => {
         this.intersectorTimeout = 0;
         this.processQueue();
       }, 0);
-    }
-  }
-}
-
-export default class LazyLoadQueue extends LazyLoadQueueIntersector {
-  protected lazyLoadMedia: Array<LazyLoadElement> = [];
-  protected inProcess: Set<LazyLoadElement> = new Set();
-
-  constructor(protected parallelLimit = 5) {
-    super(parallelLimit);
-
-    this.intersector = new VisibilityIntersector(this.onVisibilityChange);
-  }
-
-  private onVisibilityChange = (target: HTMLElement, visible: boolean) => {
-    if(visible) {
-      this.log('isIntersecting', target);
-
-      // need for set element first if scrolled
-      const item = this.lazyLoadMedia.findAndSplice(i => i.div == target);
-      if(item) {
-        item.wasSeen = true;
-        this.lazyLoadMedia.unshift(item);
-        //this.processQueue(item);
-      }
-
-      this.setProcessQueueTimeout();
-    }
-  };
-
-  protected getItem() {
-    return this.lazyLoadMedia.findAndSplice(item => item.wasSeen);
-  }
-
-  public async processItem(item: LazyLoadElement) {
-    await super.processItem(item);
-    this.intersector.unobserve(item.div);
-  }
-
-  protected addElement(el: LazyLoadElement) {
-    //super.addElement(el);
-    if(el.wasSeen) {
-      super.processQueue(el);
-    } else {
-      el.wasSeen = false;
-      this.intersector.observe(el.div);
     }
   }
 
@@ -210,23 +197,76 @@ export default class LazyLoadQueue extends LazyLoadQueueIntersector {
   }
 }
 
-export class LazyLoadQueueRepeat extends LazyLoadQueueIntersector {
-  private _lazyLoadMedia: Map<HTMLElement, LazyLoadElementBase> = new Map();
+export default class LazyLoadQueue extends LazyLoadQueueIntersector {
+  constructor(protected parallelLimit = PARALLEL_LIMIT) {
+    super(parallelLimit);
 
-  constructor(protected parallelLimit = 5, protected onVisibilityChange?: OnVisibilityChange) {
+    this.intersector = new VisibilityIntersector(this.onVisibilityChange);
+  }
+
+  private onVisibilityChange = (target: HTMLElement, visible: boolean) => {
+    if(visible) {
+      this.log('isIntersecting', target);
+
+      // need for set element first if scrolled
+      const item = this.queue.findAndSplice(i => i.div == target);
+      if(item) {
+        item.wasSeen = true;
+        this.queue.unshift(item);
+        //this.processQueue(item);
+      }
+
+      this.setProcessQueueTimeout();
+    }
+  };
+
+  protected getItem() {
+    return this.queue.findAndSplice(item => item.wasSeen);
+  }
+
+  public async processItem(item: LazyLoadElement) {
+    await super.processItem(item);
+    this.intersector.unobserve(item.div);
+  }
+
+  protected addElement(method: 'push' | 'unshift', el: LazyLoadElement) {
+    const inserted = super.addElement(method, el);
+
+    if(!inserted) return false;
+
+    this.intersector.observe(el.div);
+    if(el.wasSeen) {
+      this.processQueue(el);
+    } else if(!el.hasOwnProperty('wasSeen')) {
+      el.wasSeen = false;
+    }
+    
+    return true;
+  }
+}
+
+export class LazyLoadQueueRepeat extends LazyLoadQueueIntersector {
+  private _queue: Map<HTMLElement, LazyLoadElement> = new Map();
+
+  constructor(protected parallelLimit = PARALLEL_LIMIT, protected onVisibilityChange?: OnVisibilityChange) {
     super(parallelLimit);
 
     this.intersector = new VisibilityIntersector((target, visible) => {
       if(visible) {
-        const item = this.lazyLoadMedia.findAndSplice(i => i.div == target);
-        this.lazyLoadMedia.unshift(item || this._lazyLoadMedia.get(target));
+        const item = this.queue.findAndSplice(i => i.div == target);
+        this.queue.unshift(item || this._queue.get(target));
       } else {
-        this.lazyLoadMedia.findAndSplice(i => i.div == target);
+        this.queue.findAndSplice(i => i.div == target);
       }
   
       this.onVisibilityChange && this.onVisibilityChange(target, visible);
       this.setProcessQueueTimeout();
     });
+  }
+
+  public clear() {
+    super.clear();
+    this._queue.clear();
   }
 
   /* public async processItem(item: LazyLoadElement) {
@@ -238,8 +278,28 @@ export class LazyLoadQueueRepeat extends LazyLoadQueueIntersector {
     }
   } */
 
-  public observe(el: LazyLoadElementBase) {
-    this._lazyLoadMedia.set(el.div, el);
+  public observe(el: LazyLoadElement) {
+    this._queue.set(el.div, el);
     this.intersector.observe(el.div);
+  }
+}
+
+export class LazyLoadQueueRepeat2 extends LazyLoadQueueIntersector {
+  constructor(protected parallelLimit = PARALLEL_LIMIT, protected onVisibilityChange?: OnVisibilityChange) {
+    super(parallelLimit);
+
+    this.intersector = new VisibilityIntersector((target, visible) => {
+      const item = this.queue.findAndSplice(i => i.div == target);
+      if(visible && item) {
+        this.queue.unshift(item);
+      }
+  
+      this.onVisibilityChange && this.onVisibilityChange(target, visible);
+      this.setProcessQueueTimeout();
+    });
+  }
+
+  public observe(el: HTMLElement) {
+    this.intersector.observe(el);
   }
 }

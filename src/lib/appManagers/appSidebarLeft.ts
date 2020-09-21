@@ -86,6 +86,7 @@ export class AppSidebarLeft extends SidebarSlider {
   //private log = logger('SL');
 
   private searchGroups = {
+    //saved: new SearchGroup('', 'contacts'),
     contacts: new SearchGroup('Chats', 'contacts'),
     globalContacts: new SearchGroup('Global Search', 'contacts'),
     messages: new SearchGroup('Global Search', 'messages'),
