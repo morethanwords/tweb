@@ -7,21 +7,23 @@ export interface SliderTab {
   onCloseAfterTimeout?: () => void
 }
 
-const TRANSITIONTIME = 250;
+const TRANSITION_TIME = 250;
 
 export default class SidebarSlider {
   protected _selectTab: (id: number) => void;
   public historyTabIDs: number[] = [];
 
-  constructor(public sidebarEl: HTMLElement, public tabs: {[id: number]: SliderTab}) {
-    this._selectTab = horizontalMenu(null, this.sidebarEl.querySelector('.sidebar-slider') as HTMLDivElement, null, null, TRANSITIONTIME);
-    this._selectTab(0);
+  constructor(public sidebarEl: HTMLElement, public tabs: {[id: number]: SliderTab}, canHideFirst = false) {
+    this._selectTab = horizontalMenu(null, this.sidebarEl.querySelector('.sidebar-slider') as HTMLDivElement, null, null, TRANSITION_TIME);
+    if(!canHideFirst) {
+      this._selectTab(0);
+    }
 
     let onCloseBtnClick = () => {
       //console.log('sidebar-close-button click:', this.historyTabIDs);
       let closingID = this.historyTabIDs.pop(); // pop current
       this.onCloseTab(closingID);
-      this._selectTab(this.historyTabIDs[this.historyTabIDs.length - 1] || 0);
+      this._selectTab(this.historyTabIDs[this.historyTabIDs.length - 1] ?? (canHideFirst ? -1 : 0));
     };
     Array.from(this.sidebarEl.querySelectorAll('.sidebar-close-button') as any as HTMLElement[]).forEach(el => {
       el.addEventListener('click', onCloseBtnClick);
@@ -30,7 +32,7 @@ export default class SidebarSlider {
 
   public selectTab(id: number) {
     if(this.historyTabIDs[this.historyTabIDs.length - 1] == id) {
-      return;
+      return false;
     }
 
     const tab = this.tabs[id];
@@ -42,13 +44,13 @@ export default class SidebarSlider {
       if(tab.onOpenAfterTimeout) {
         setTimeout(() => {
           tab.onOpenAfterTimeout();
-        }, TRANSITIONTIME);
+        }, TRANSITION_TIME);
       }
     }
     
-    
     this.historyTabIDs.push(id);
     this._selectTab(id);
+    return true;
   }
 
   public removeTabFromHistory(id: number) {
@@ -66,7 +68,7 @@ export default class SidebarSlider {
       if(tab.onCloseAfterTimeout) {
         setTimeout(() => {
           tab.onCloseAfterTimeout();
-        }, TRANSITIONTIME);
+        }, TRANSITION_TIME);
       }
     }
   }

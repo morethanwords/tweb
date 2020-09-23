@@ -8,7 +8,7 @@ import appProfileManager from "./appProfileManager";
 import appDialogsManager from "./appDialogsManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import appPhotosManager from "./appPhotosManager";
-import appSidebarRight from './appSidebarRight';
+import appSidebarRight, { AppSidebarRight } from './appSidebarRight';
 
 import { logger, LogLevels } from "../logger";
 import appMediaViewer from "./appMediaViewer";
@@ -23,7 +23,6 @@ import Scrollable from '../../components/scrollable_new';
 import BubbleGroups from '../../components/bubbleGroups';
 import LazyLoadQueue from '../../components/lazyLoadQueue';
 import appDocsManager from './appDocsManager';
-import appForward from '../../components/appForward';
 import appStickersManager from './appStickersManager';
 import AvatarElement from '../../components/avatar';
 import appInlineBotsManager from './AppInlineBotsManager';
@@ -511,7 +510,7 @@ export class AppImManager {
           return;
         } else if(target.classList.contains('forward')) {
           const mid = +bubble.dataset.mid;
-          appForward.init([mid]);
+          appSidebarRight.forwardTab.open([mid]);
           return;
         } else if(target.classList.contains('name')) {
           let peerID = +target.dataset.peerID;
@@ -560,7 +559,7 @@ export class AppImManager {
     this.searchBtn.addEventListener('click', (e) => {
       cancelEvent(e);
       if(this.peerID) {
-        appSidebarRight.beginSearch();
+        appSidebarRight.searchTab.open(this.peerID);
       }
     });
 
@@ -610,8 +609,8 @@ export class AppImManager {
       if(e.key == 'Escape') {
         if(appMediaViewer.wholeDiv.classList.contains('active')) {
           appMediaViewer.buttons.close.click();
-        } else if(appForward.container.classList.contains('active')) {
-          appForward.close();
+        } else if(appSidebarRight.historyTabIDs.slice(-1)[0] == AppSidebarRight.SLIDERITEMSIDS.forward) {
+          appSidebarRight.forwardTab.closeBtn.click();
         } else if(this.chatInputC.replyElements.container.classList.contains('active')) {
           this.chatInputC.replyElements.cancelBtn.click();
         } else if(this.peerID != 0) { // hide current dialog
@@ -885,16 +884,18 @@ export class AppImManager {
   public setPeerStatus(needClear = false) {
     if(!this.myID) return;
 
+    const profileElements = appSidebarRight.sharedMediaTab.profileElements;
+
     if(this.peerID < 0) { // not human
       let chat = appPeersManager.getPeer(this.peerID);
       let isChannel = appPeersManager.isChannel(this.peerID) && !appPeersManager.isMegagroup(this.peerID);
       
       this.subtitleEl.classList.remove('online');
-      appSidebarRight.profileElements.subtitle.classList.remove('online');
+      profileElements.subtitle.classList.remove('online');
       ///////this.log('setPeerStatus', chat);
 
       if(needClear) {
-        this.subtitleEl.innerText = appSidebarRight.profileElements.subtitle.innerText = '';
+        this.subtitleEl.innerText = profileElements.subtitle.innerText = '';
       }
 
       appProfileManager.getChatFull(chat.id).then((chatInfo: any) => {
@@ -904,7 +905,7 @@ export class AppImManager {
         if(participants_count) {
           let subtitle = numberWithCommas(participants_count) + ' ' + (isChannel ? 'followers' : 'members');
 
-          this.subtitleEl.innerText = appSidebarRight.profileElements.subtitle.innerText = subtitle;
+          this.subtitleEl.innerText = profileElements.subtitle.innerText = subtitle;
 
           if(participants_count < 2) return;
           appChatsManager.getOnlines(chat.id).then(onlines => {
@@ -912,7 +913,7 @@ export class AppImManager {
               subtitle += ', ' + numberWithCommas(onlines) + ' online';
             }
   
-            this.subtitleEl.innerText = appSidebarRight.profileElements.subtitle.innerText = subtitle;
+            this.subtitleEl.innerText = profileElements.subtitle.innerText = subtitle;
           });
         }
       });
@@ -920,16 +921,16 @@ export class AppImManager {
       let user = appUsersManager.getUser(this.peerID);
       
       if(this.myID == this.peerID) {
-        this.subtitleEl.innerText = appSidebarRight.profileElements.subtitle.innerText = '';
+        this.subtitleEl.innerText = profileElements.subtitle.innerText = '';
       } else if(user && user.status) {
         let subtitle = appUsersManager.getUserStatusString(user.id);
 
         if(subtitle == 'online') {
           this.subtitleEl.classList.add('online');
-          appSidebarRight.profileElements.subtitle.classList.add('online');
+          profileElements.subtitle.classList.add('online');
         }
         
-        appSidebarRight.profileElements.subtitle.innerText = subtitle;
+        profileElements.subtitle.innerText = subtitle;
         
         if(this.typingUsers[this.peerID] == this.peerID) {
           this.subtitleEl.innerText = 'typing...';
@@ -939,13 +940,13 @@ export class AppImManager {
 
           if(subtitle != 'online') {
             this.subtitleEl.classList.remove('online');
-            appSidebarRight.profileElements.subtitle.classList.remove('online');
+            profileElements.subtitle.classList.remove('online');
           }
         }
       }
     } else {
       this.subtitleEl.innerText = 'bot';
-      appSidebarRight.profileElements.subtitle.innerText = 'bot';
+      profileElements.subtitle.innerText = 'bot';
     }
   }
   
@@ -1050,8 +1051,8 @@ export class AppImManager {
         
         return true;
       }
-    } else {
-      appSidebarRight.searchCloseBtn.click();
+    } else if(appSidebarRight.historyTabIDs[appSidebarRight.historyTabIDs.length - 1] == AppSidebarRight.SLIDERITEMSIDS.search) {
+      appSidebarRight.searchTab.closeBtn?.click();
     }
 
     // set new
@@ -1088,7 +1089,7 @@ export class AppImManager {
     const {promise, cached} = this.getHistory(lastMsgID, true, isJump, additionMsgID);
 
     if(!samePeer) {
-      appSidebarRight.setPeer(this.peerID);
+      appSidebarRight.sharedMediaTab.setPeer(this.peerID);
     } else {
       this.peerChanged = true;
     }
@@ -1207,8 +1208,8 @@ export class AppImManager {
       //appSidebarRight.setLoadMutex(this.setPeerPromise);
     //}
 
-    appSidebarRight.setLoadMutex(this.setPeerPromise);
-    appSidebarRight.loadSidebarMedia(true);
+    appSidebarRight.sharedMediaTab.setLoadMutex(this.setPeerPromise);
+    appSidebarRight.sharedMediaTab.loadSidebarMedia(true);
 
     return this.setPeerPromise;
   }
@@ -1252,14 +1253,14 @@ export class AppImManager {
       let title = '';
       if(this.peerID == this.myID) title = 'Saved Messages';
       else title = appPeersManager.getPeerTitle(this.peerID);
-      this.titleEl.innerHTML = appSidebarRight.profileElements.name.innerHTML = title;
+      this.titleEl.innerHTML = appSidebarRight.sharedMediaTab.profileElements.name.innerHTML = title;
 
       this.goDownBtn.classList.remove('hide');
 
       this.setPeerStatus(true);
     });
 
-    appSidebarRight.fillProfileElements();
+    appSidebarRight.sharedMediaTab.fillProfileElements();
 
     $rootScope.$broadcast('peer_changed', this.peerID);
   }
@@ -2536,8 +2537,8 @@ export class AppImManager {
   }
   
   public setMutedState(muted = false) {
-    appSidebarRight.profileElements.notificationsCheckbox.checked = !muted;
-    appSidebarRight.profileElements.notificationsStatus.innerText = muted ? 'Disabled' : 'Enabled';
+    appSidebarRight.sharedMediaTab.profileElements.notificationsCheckbox.checked = !muted;
+    appSidebarRight.sharedMediaTab.profileElements.notificationsStatus.innerText = muted ? 'Disabled' : 'Enabled';
 
     if(appPeersManager.isBroadcast(this.peerID)) { // not human
       this.btnMute.classList.remove('tgico-mute', 'tgico-unmute');

@@ -16,7 +16,7 @@ export function dT () {
   return '[' + ((Date.now() - _logTimer) / 1000).toFixed(3) + ']';
 }
 
-export function isInDOM(element: Element, parentNode?: HTMLElement): boolean {
+/* export function isInDOM(element: Element, parentNode?: HTMLElement): boolean {
   if(!element) {
     return false;
   }
@@ -26,6 +26,9 @@ export function isInDOM(element: Element, parentNode?: HTMLElement): boolean {
     return true;
   }
   return isInDOM(element.parentNode as HTMLElement, parentNode);
+} */
+export function isInDOM(element: Element): boolean {
+  return element?.isConnected;
 }
 
 export function checkDragEvent(e: any) {

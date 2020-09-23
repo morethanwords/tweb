@@ -1,25 +1,11 @@
 import { findUpTag, whichChild } from "../lib/utils";
 
-function slideNavigation(tabContent: HTMLElement, prevTabContent: HTMLElement, toRight: boolean) {
-  /* if(toRight) {
-    //prevTabContent.style.filter = `brightness(80%)`;
-    prevTabContent.style.transform = `translateX(-25%)`;
-    tabContent.style.transform = `translateX(20%)`;
-  } else {
-    //tabContent.style.filter = `brightness(80%)`;
-    tabContent.style.transform = `translateX(-25%)`;
-    prevTabContent.style.transform = `translateX(20%)`;
-  } */
-  const width = prevTabContent.getBoundingClientRect().width;
-  if(toRight) {
-    prevTabContent.style.filter = `brightness(80%)`;
-    prevTabContent.style.transform = `translate3d(${-width * .25}px, 0, 0)`;
-    tabContent.style.transform = `translate3d(${width}px, 0, 0)`;
-  } else {
-    tabContent.style.filter = `brightness(80%)`;
-    tabContent.style.transform = `translate3d(${-width * .25}px, 0, 0)`;
-    prevTabContent.style.transform = `translate3d(${width}px, 0, 0)`;
-  }
+function slideNavigation(tabContent: HTMLElement, prevTabContent: HTMLElement, width: number, toRight: boolean) {
+  const elements = [tabContent, prevTabContent];
+  if(toRight) elements.reverse();
+  elements[0].style.filter = `brightness(80%)`;
+  elements[0].style.transform = `translate3d(${-width * .25}px, 0, 0)`;
+  elements[1].style.transform = `translate3d(${width}px, 0, 0)`;
   
   tabContent.classList.add('active');
   void tabContent.offsetWidth; // reflow
@@ -28,15 +14,11 @@ function slideNavigation(tabContent: HTMLElement, prevTabContent: HTMLElement, t
   tabContent.style.filter = '';
 }
 
-function slideTabs(tabContent: HTMLElement, prevTabContent: HTMLElement, toRight: boolean) {
-  const width = prevTabContent.getBoundingClientRect().width;
-  if(toRight) {
-    tabContent.style.transform = `translate3d(${width}px, 0, 0)`;
-    prevTabContent.style.transform = `translate3d(${-width}px, 0, 0)`;
-  } else {
-    tabContent.style.transform = `translate3d(${-width}px, 0, 0)`;
-    prevTabContent.style.transform = `translate3d(${width}px, 0, 0)`;
-  }
+function slideTabs(tabContent: HTMLElement, prevTabContent: HTMLElement, width: number, toRight: boolean) {
+  const elements = [tabContent, prevTabContent];
+  if(toRight) elements.reverse();
+  elements[0].style.transform = `translate3d(${-width}px, 0, 0)`;
+  elements[1].style.transform = `translate3d(${width}px, 0, 0)`;
 
   tabContent.classList.add('active');
   void tabContent.offsetWidth; // reflow
@@ -72,11 +54,15 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?
     }
 
     const toRight = prevId < id;
-    if(prevId != -1) {
+    if(!tabContent) {
+      //prevTabContent.classList.remove('active');
+    } else if(prevId != -1) {
+      const width = prevTabContent.getBoundingClientRect().width;
+
       if(tabs || content.dataset.slider == 'tabs') {
-        slideTabs(tabContent, prevTabContent, toRight);
+        slideTabs(tabContent, prevTabContent, width, toRight);
       } else {
-        slideNavigation(tabContent, prevTabContent, toRight);
+        slideNavigation(tabContent, prevTabContent, width, toRight);
       }
     } else {
       tabContent.classList.add('active');

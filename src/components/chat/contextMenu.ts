@@ -2,8 +2,8 @@ import appChatsManager from "../../lib/appManagers/appChatsManager";
 import appImManager from "../../lib/appManagers/appImManager";
 import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import appPeersManager from "../../lib/appManagers/appPeersManager";
+import appSidebarRight from "../../lib/appManagers/appSidebarRight";
 import { findUpClassName, $rootScope } from "../../lib/utils";
-import appForward from "../appForward";
 import { parseMenuButtonsTo, attachContextMenuListener, positionMenu, openBtnMenu } from "../misc";
 import { PopupButton, PopupPeer } from "../popup";
 
@@ -149,7 +149,7 @@ export class ChatContextMenu {
     });
 
     this.buttons.forward.addEventListener('click', () => {
-      appForward.init([this.msgID]);
+      appSidebarRight.forwardTab.open([this.msgID]);
     });
     
     this.buttons.edit.addEventListener('click', () => {

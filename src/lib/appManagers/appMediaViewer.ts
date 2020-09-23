@@ -10,12 +10,12 @@ import VideoPlayer from "../mediaPlayer";
 import { renderImageFromUrl, parseMenuButtonsTo } from "../../components/misc";
 import AvatarElement from "../../components/avatar";
 import { LazyLoadQueueBase } from "../../components/lazyLoadQueue";
-import appForward from "../../components/appForward";
 import { touchSupport } from "../config";
 import appMediaPlaybackController from "../../components/appMediaPlaybackController";
 import { deferredPromise } from "../../helpers/cancellablePromise";
 import mediaSizes from "../../helpers/mediaSizes";
 import { isSafari } from "../../helpers/userAgent";
+import appSidebarRight, { AppSidebarRight } from "./appSidebarRight";
 
 // TODO: масштабирование картинок (не SVG) при ресайзе, и правильный возврат на исходную позицию
 // TODO: картинки "обрезаются" если возвращаются или появляются с места, где есть их перекрытие (топбар, поле ввода)
@@ -155,9 +155,9 @@ export class AppMediaViewer {
       this.loadMediaPromiseUp = this.loadMediaPromiseDown = null;
       this.setMoverPromise = null;
 
-      if(appForward.container.classList.contains('active')) {
+      if(appSidebarRight.historyTabIDs.slice(-1)[0] == AppSidebarRight.SLIDERITEMSIDS.forward) {
         setTimeout(() => {
-          appForward.close();
+          appSidebarRight.forwardTab.closeBtn.click();
         }, 200);
       }
 
@@ -199,7 +199,7 @@ export class AppMediaViewer {
     });
 
     const forward = (e: MouseEvent) => {
-      appForward.init([this.currentMessageID]);
+      appSidebarRight.forwardTab.open([this.currentMessageID]);
     };
 
     [this.buttons.forward, this.buttons["menu-forward"]].forEach(el => {
@@ -853,8 +853,8 @@ export class AppMediaViewer {
       this.needLoadMore = needLoadMore;
       //this.loadMore = loadMore;
 
-      if(appForward.container.classList.contains('active')) {
-        appForward.close();
+      if(appSidebarRight.historyTabIDs.slice(-1)[0] == AppSidebarRight.SLIDERITEMSIDS.forward) {
+        appSidebarRight.forwardTab.closeBtn.click();
         await new Promise((resolve) => setTimeout(resolve, 200));
       }
     }

@@ -1,20 +1,32 @@
-import appSidebarRight from "../lib/appManagers/appSidebarRight";
-import appMessagesManager from "../lib/appManagers/appMessagesManager";
-import { putPreloader } from "./misc";
-import { AppSelectPeers } from "./appSelectPeers";
+import appSidebarRight, { AppSidebarRight } from "../../lib/appManagers/appSidebarRight";
+import appMessagesManager from "../../lib/appManagers/appMessagesManager";
+import { putPreloader } from "../misc";
+import { AppSelectPeers } from "../appSelectPeers";
+import { SliderTab } from "../slider";
 
-class AppForward {
-  public container = document.getElementById('forward-container') as HTMLDivElement;
-  private closeBtn = this.container.querySelector('.sidebar-close-button') as HTMLButtonElement;
-  private sendBtn = this.container.querySelector('.btn-circle') as HTMLButtonElement;
+export default class AppForwardTab implements SliderTab {
+  public container: HTMLElement;
+  public closeBtn: HTMLElement;
+  private sendBtn: HTMLButtonElement;
 
   private selector: AppSelectPeers;
   private msgIDs: number[] = [];
 
-  private sidebarWasActive: boolean;
+  onCloseAfterTimeout() {
+    this.cleanup();
+  }
 
-  constructor() {
-    this.closeBtn.addEventListener('click', this.close.bind(this));
+  public cleanup() {
+    if(this.selector) {
+      this.selector.container.remove();
+      this.selector = null;
+    }
+  }
+
+  public init() {
+    this.container = document.getElementById('forward-container') as HTMLDivElement;
+    this.closeBtn = this.container.querySelector('.sidebar-close-button') as HTMLButtonElement;
+    this.sendBtn = this.container.querySelector('.btn-circle') as HTMLButtonElement;
 
     this.sendBtn.addEventListener('click', () => {
       let peerIDs = this.selector.getSelected();
@@ -44,25 +56,15 @@ class AppForward {
     });
   }
 
-  public close() {
-    (this.sidebarWasActive ? Promise.resolve() : appSidebarRight.toggleSidebar(false)).then(() => {
-      this.cleanup();
-      this.container.classList.remove('active');
-    });
-  }
-
-  public cleanup() {
-    if(this.selector) {
-      this.selector.container.remove();
-      this.selector = null;
+  public open(ids: number[]) {
+    if(this.init) {
+      this.init();
+      this.init = null;
     }
-  }
 
-  public init(ids: number[]) {
     this.cleanup();
     this.msgIDs = ids;
 
-    this.container.classList.add('active');
     this.sendBtn.innerHTML = '';
     this.sendBtn.classList.add('tgico-send');
     this.sendBtn.disabled = false;
@@ -75,10 +77,8 @@ class AppForward {
       }
     }, ['dialogs', 'contacts'], () => {
       //console.log('forward rendered:', this.container.querySelector('.selector ul').childElementCount);
-      this.sidebarWasActive = appSidebarRight.sidebarEl.classList.contains('active');
+      appSidebarRight.selectTab(AppSidebarRight.SLIDERITEMSIDS.forward);
       appSidebarRight.toggleSidebar(true);
     });
   }
 }
-
-export default new AppForward();

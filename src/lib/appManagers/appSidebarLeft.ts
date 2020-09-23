@@ -114,6 +114,8 @@ export class AppSidebarLeft extends SidebarSlider {
       [AppSidebarLeft.SLIDERITEMSIDS.includedChats]: includedChatsTab,
     });
 
+    //this._selectTab(0); // make first tab as default
+
     this.searchInput = new SearchInput('Telegram Search');
     this.sidebarEl.querySelector('.item-main .sidebar-header').append(this.searchInput.container);
 
