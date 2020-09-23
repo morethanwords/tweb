@@ -25,17 +25,23 @@
     }
 
     input {
+      --border-width: 1px;
       background-color: rgba(112, 117, 121, .08);
-      border: 2px solid transparent;
       height: 40px;
       border-radius: 22px;
+      border: var(--border-width) solid transparent;
       box-sizing: border-box;
-      padding: 0px 1.5rem 0 40px;
-      transition: all .15s ease-out;
+      padding: 0px calc(1.5rem - var(--border-width)) 0 calc(42px - var(--border-width));
+      transition: background-color .15s ease-in-out, border-color .15s ease-in-out;
       width: 100%;
       font-size: 16px;
 
+      &:hover {
+        border-color: var(--color-gray);
+      }
+
       &:focus {
+        --border-width: 2px;
         background-color: rgba(112, 117, 121, 0);
         border: 2px solid $button-primary-background;
 
@@ -86,9 +92,9 @@
     -webkit-user-select: none; /* disable selection/Copy of UIWebView */
     -webkit-touch-callout: none; /* disable the IOS popup when long-press on a link */
 
-    html.is-mac & {
+    /* html.is-mac & {
       transform: translateZ(0);
-    }
+    } */
   }
 
   li {
@@ -130,13 +136,11 @@
     position: relative;
     cursor: pointer;
     padding: 9px 8.5px;
-    margin: 0px 8px 0px 8px;
+    margin: 0 8px;
     overflow: hidden;
 
-    @media not all and (min-resolution:.001dpcm)
-    { @supports (-webkit-appearance:none) {
-        margin-right: 3px;
-      }
+    html.is-safari & {
+      margin-right: 3px;
     }
 
     @include respond-to(handhelds) {

@@ -24,3 +24,7 @@ export type WorkerTaskTemplate = {
 };
 
 export type Modify<T, R> = Omit<T, keyof R> & R;
+
+//export type Parameters<T> = T extends (... args: infer T) => any ? T : never; 
+
+export type ArgumentTypes<F extends Function> = F extends (...args: infer A) => any ? A : never;

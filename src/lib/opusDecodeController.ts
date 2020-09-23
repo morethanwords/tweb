@@ -1,4 +1,4 @@
-import { isSafari } from "./config";
+import { isSafari } from "../helpers/userAgent";
 import { logger, LogLevels } from "./logger";
 
 type Result = {
@@ -132,7 +132,7 @@ export class OpusDecodeController {
       }, isSafari ? undefined : [task.pages.buffer]);
     //}, 1e3);
 
-    task.timeout = setTimeout(() => {
+    task.timeout = window.setTimeout(() => {
       this.log.error('decode timeout'/* , task */);
 
       this.terminateWorkers(true);

@@ -1,15 +1,14 @@
 // just to include
-import {secureRandom, CancellablePromise} from '../polyfill';
+import {secureRandom} from '../polyfill';
 secureRandom;
 
 import apiManager from "./apiManager";
 import AppStorage from '../storage';
 import cryptoWorker from "../crypto/cryptoworker";
 import networkerFactory from "./networkerFactory";
-import apiFileManager, { ApiFileManager } from './apiFileManager';
+import apiFileManager from './apiFileManager';
 import { logger, LogLevels } from '../logger';
 import type { ServiceWorkerTask, ServiceWorkerTaskResponse } from './mtproto.service';
-import { UploadFile } from '../../layer';
 
 const log = logger('DW', LogLevels.error);
 

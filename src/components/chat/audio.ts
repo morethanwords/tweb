@@ -34,10 +34,15 @@ export class ChatAudio {
 
     this.close.addEventListener('click', (e) => {
       cancelEvent(e);
+      const scrollTop = appImManager.scrollable.scrollTop;
       this.container.style.display = 'none';
-      this.container.parentElement.classList.remove('is-audio-shown');
+      appImManager.topbar.classList.remove('is-audio-shown');
       if(this.toggle.classList.contains('flip-icon')) {
         appMediaPlaybackController.toggle();
+      }
+
+      if(!appImManager.topbar.classList.contains('is-pinned-shown')) {
+        appImManager.scrollable.scrollTop = scrollTop - height;
       }
     });
 
@@ -45,6 +50,8 @@ export class ChatAudio {
       cancelEvent(e);
       appMediaPlaybackController.toggle();
     });
+
+    const height = 52;
 
     $rootScope.$on('audio_play', (e) => {
       const {doc, mid} = e.detail;
@@ -68,8 +75,11 @@ export class ChatAudio {
       if(this.container.style.display) {
         const scrollTop = appImManager.scrollable.scrollTop;
         this.container.style.display = '';
-        this.container.parentElement.classList.add('is-audio-shown');
-        appImManager.scrollable.scrollTop = scrollTop;
+        appImManager.topbar.classList.add('is-audio-shown');
+
+        if(!appImManager.topbar.classList.contains('is-pinned-shown')) {
+          appImManager.scrollable.scrollTop = scrollTop + height;
+        }
       }
     });
 

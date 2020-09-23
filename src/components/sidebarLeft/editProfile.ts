@@ -134,7 +134,7 @@ export default class AppEditProfileTab implements SliderTab {
       });
     });
 
-    let scrollable = new Scrollable(this.scrollWrapper as HTMLElement, 'y');
+    let scrollable = new Scrollable(this.scrollWrapper as HTMLElement);
   }
 
   public fillElements() {

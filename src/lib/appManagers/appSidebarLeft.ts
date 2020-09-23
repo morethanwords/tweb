@@ -1,11 +1,11 @@
 //import { logger } from "../polyfill";
 import appDialogsManager, { AppArchivedTab, archivedTab } from "./appDialogsManager";
-import { $rootScope, findUpTag, findUpClassName } from "../utils";
+import { $rootScope, findUpTag, findUpClassName, formatNumber } from "../utils";
 import appImManager from "./appImManager";
 import AppSearch, { SearchGroup } from "../../components/appSearch";
 import { parseMenuButtonsTo } from "../../components/misc";
 import appUsersManager from "./appUsersManager";
-import Scrollable from "../../components/scrollable_new";
+import Scrollable, { ScrollableX } from "../../components/scrollable_new";
 import appPeersManager from "../appManagers/appPeersManager";
 import AvatarElement from "../../components/avatar";
 import AppNewChannelTab from "../../components/sidebarLeft/newChannel";
@@ -175,7 +175,7 @@ export class AppSidebarLeft extends SidebarSlider {
     peopleContainer.classList.add('search-group-scrollable');
     peopleContainer.append(this.searchGroups.people.list);
     this.searchGroups.people.container.append(peopleContainer);
-    let peopleScrollable = new Scrollable(peopleContainer, 'x');
+    let peopleScrollable = new ScrollableX(peopleContainer);
 
     parseMenuButtonsTo(this.buttons, this.menuEl.children);
     parseMenuButtonsTo(this.newButtons, this.newBtnMenu.firstElementChild.children);
@@ -251,7 +251,7 @@ export class AppSidebarLeft extends SidebarSlider {
     });
 
     $rootScope.$on('dialogs_archived_unread', (e) => {
-      this.archivedCount.innerText = '' + e.detail.count;
+      this.archivedCount.innerText = '' + formatNumber(e.detail.count, 1);
     });
 
     appUsersManager.getTopPeers().then(peers => {

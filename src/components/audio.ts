@@ -5,8 +5,9 @@ import ProgressivePreloader from "./preloader";
 import { MediaProgressLine } from "../lib/mediaPlayer";
 import appMediaPlaybackController from "./appMediaPlaybackController";
 import { DocumentAttribute } from "../layer";
-import { mediaSizes, isSafari } from "../lib/config";
 import { Download } from "../lib/appManagers/appDownloadManager";
+import mediaSizes from "../helpers/mediaSizes";
+import { isSafari } from "../helpers/userAgent";
 
 // https://github.com/LonamiWebs/Telethon/blob/4393ec0b83d511b6a20d8a20334138730f084375/telethon/utils.py#L1285
 export function decodeWaveform(waveform: Uint8Array | number[]) {
@@ -121,7 +122,7 @@ function wrapVoiceMessage(doc: MyDocument, audioEl: AudioElement) {
 
     let start = () => {
       clearInterval(interval);
-      interval = setInterval(() => {
+      interval = window.setInterval(() => {
         if(lastIndex > svg.childElementCount || isNaN(audio.duration) || audio.paused) {
           clearInterval(interval);
           return;

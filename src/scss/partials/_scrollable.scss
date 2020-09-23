@@ -1,9 +1,9 @@
-div.scrollable::-webkit-scrollbar {
+.scrollable::-webkit-scrollbar {
   width: 0;
   height: 0;
 }
 
-div.scrollable::-webkit-scrollbar-thumb {
+.scrollable::-webkit-scrollbar-thumb {
   width: 0;
   height: 0;
 }
@@ -52,6 +52,10 @@ div.scrollable::-webkit-scrollbar-thumb {
     overflow-y: overlay;
     scrollbar-width: none;
     -ms-overflow-style: none;
+
+    html.is-safari & {
+      overflow-y: scroll;
+    }
   }
 
   /* &-sentinel {
@@ -112,13 +116,13 @@ div.scrollable::-webkit-scrollbar-thumb {
 
 
 // BROWSER SCROLL
-div.scrollable-y::-webkit-scrollbar {
+.scrollable-y::-webkit-scrollbar {
   width: .375rem;
   opacity: 0; // for safari
   //height: 200px;
 }
 
-div.scrollable:hover::-webkit-scrollbar {
+.scrollable:hover::-webkit-scrollbar {
   opacity: 1; // for safari
 }
 
@@ -132,7 +136,7 @@ div.scrollable:hover::-webkit-scrollbar {
   transition: .2s ease-in-out;
 }
 
-div.scrollable:hover::-webkit-scrollbar-thumb {
+.scrollable:hover::-webkit-scrollbar-thumb {
   height: 200px;
   border-radius: $border-radius-medium;
   background-color: rgba(0, 0, 0, 0.2);
@@ -148,6 +152,6 @@ div.scrollable:hover::-webkit-scrollbar-thumb {
   background-color: transparent;
 }
 
-div.scrollable-x::-webkit-scrollbar {
+.scrollable-x::-webkit-scrollbar {
   display: none; // for safari iOS
 }

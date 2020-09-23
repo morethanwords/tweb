@@ -10,7 +10,6 @@ import { renderImageFromUrl } from './misc';
 import appMessagesManager from '../lib/appManagers/appMessagesManager';
 import { Layouter, RectPart } from './groupedLayout';
 import PollElement from './poll';
-import { mediaSizes, isSafari } from '../lib/config';
 import animationIntersector from './animationIntersector';
 import AudioElement from './audio';
 import { DownloadBlob } from '../lib/appManagers/appDownloadManager';
@@ -18,7 +17,9 @@ import webpWorkerController from '../lib/webp/webpWorkerController';
 import { readBlobAsText } from '../helpers/blob';
 import appMediaPlaybackController from './appMediaPlaybackController';
 import { PhotoSize } from '../layer';
-import { deferredPromise } from '../lib/polyfill';
+import { deferredPromise } from '../helpers/cancellablePromise';
+import mediaSizes from '../helpers/mediaSizes';
+import { isSafari } from '../helpers/userAgent';
 
 export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group}: {
   doc: MyDocument, 
@@ -704,6 +705,14 @@ export function wrapReply(title: string, subtitle: string, message?: any, isPinn
   
   const replySubtitle = document.createElement('div');
   replySubtitle.classList.add(prefix + '-subtitle');
+
+  if(title.length > 150) {
+    title = title.substr(0, 140) + '...';
+  }
+
+  if(subtitle.length > 150) {
+    subtitle = subtitle.substr(0, 140) + '...';
+  }
   
   replyTitle.innerHTML = title ? RichTextProcessor.wrapEmojiText(title) : '';
   

@@ -17,7 +17,7 @@ export default class AppPollResultsTab implements SliderTab {
   private mid: number;
 
   constructor() {
-    this.scrollable = new Scrollable(this.contentDiv, 'y', 'POLL-RESULTS', undefined, undefined, 2);
+    this.scrollable = new Scrollable(this.contentDiv, 'POLL-RESULTS', undefined, undefined, 2);
   }
 
   public cleanup() {

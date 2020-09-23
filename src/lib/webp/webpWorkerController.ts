@@ -1,5 +1,5 @@
 import WebpWorker from 'worker-loader!./webp.worker';
-import { CancellablePromise, deferredPromise } from '../polyfill';
+import { CancellablePromise, deferredPromise } from '../../helpers/cancellablePromise';
 import apiManagerProxy from '../mtproto/mtprotoworker';
 
 export type WebpConvertTask = {

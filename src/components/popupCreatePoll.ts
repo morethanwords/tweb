@@ -46,7 +46,7 @@ export default class PopupCreatePoll extends PopupElement {
 
     this.confirmBtn.addEventListener('click', this.onSubmitClick);
 
-    this.scrollable = new Scrollable(this.body, 'y', undefined);
+    this.scrollable = new Scrollable(this.body);
     this.appendMoreField();
   }
 
@@ -131,6 +131,6 @@ export default class PopupCreatePoll extends PopupElement {
 
     this.questions.append(questionField);
 
-    this.scrollable.scrollTo(this.scrollable.scrollHeight, true, true);
+    this.scrollable.scrollTo(this.scrollable.scrollHeight, 'top', true, true);
   }
 }

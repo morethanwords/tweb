@@ -1,0 +1,79 @@
+.rp {
+  position: relative;
+  user-select: none;
+}
+
+.rp-overflow, .btn-menu-toggle.rp, .menu-horizontal li.rp/* , html.is-safari .c-ripple */ {
+  .c-ripple {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border-radius: inherit;
+
+    &__circle {
+      overflow: hidden;
+    }
+  }
+}
+
+/**
+ * Utility: Ripple
+ * --------------------------------------------------
+ */
+.c-ripple {
+  //display: none !important;
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+
+  // ! with these rules ripple lags
+  /* width: 100%;
+  height: 100%; */
+  //overflow: hidden;
+  /* background: transparent;
+  border-radius: inherit; */
+
+  html.is-safari &:not(:empty) {
+    -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%); // fix safari overflow
+    border-radius: inherit;
+  }
+
+  &__circle {
+    background-color: rgba(0, 0, 0, .08);
+    display: block;
+    position: absolute;
+    transform: scale(0);
+    border-radius: 50%;
+    animation: ripple-effect .7s forwards;
+    transition: .35s opacity;
+    //overflow: hidden;
+
+    @include respond-to(handhelds) {
+      animation-duration: .2s;
+      transition-duration: .1s;
+      border-radius: 15%;
+    }
+  }
+
+  &.is-square .c-ripple__circle, .btn-menu & .c-ripple__circle {
+    animation-duration: .2s;
+    transition-duration: .1s;
+    border-radius: 15%;
+  }
+
+  &__circle.hiding, &__square.hiding {
+    opacity: 0;
+  }
+}
+
+@keyframes ripple-effect {
+  0% {
+    transform: scale(0);
+  }
+
+  to {
+    transform: scale(2);
+  }
+}

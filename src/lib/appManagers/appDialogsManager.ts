@@ -6,16 +6,17 @@ import appUsersManager, { User } from "./appUsersManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import { putPreloader, positionMenu, openBtnMenu, parseMenuButtonsTo, attachContextMenuListener } from "../../components/misc";
 //import Scrollable from "../../components/scrollable";
-import Scrollable from "../../components/scrollable_new";
+import Scrollable, { ScrollableX } from "../../components/scrollable_new";
 import { logger, LogLevels } from "../logger";
 import appChatsManager from "./appChatsManager";
 import AvatarElement from "../../components/avatar";
 import { PopupButton, PopupPeer } from "../../components/popup";
 import { SliderTab } from "../../components/slider";
 import appStateManager from "./appStateManager";
-import { touchSupport, isSafari } from "../config";
+import { touchSupport } from "../config";
 import { horizontalMenu } from "../../components/horizontalMenu";
 import { ripple } from "../../components/ripple";
+import { isSafari } from "../../helpers/userAgent";
 
 type DialogDom = {
   avatarEl: AvatarElement,
@@ -275,7 +276,7 @@ export class AppArchivedTab implements SliderTab {
   public wasFilterID: number;
 
   init() {
-    this.scroll = new Scrollable(this.container, 'y', 'CLA', this.chatList, 500);
+    this.scroll = new Scrollable(this.container, 'CLA', this.chatList, 500);
     this.scroll.setVirtualContainer(this.chatList);
     this.scroll.onScrolledBottom = appDialogsManager.onChatsScroll;
     ///this.scroll.attachSentinels();
@@ -379,7 +380,7 @@ export class AppDialogsManager {
 
     this.folders.menuScrollContainer = this.folders.menu.parentElement;
 
-    this.scroll = this._scroll = new Scrollable(this.chatsContainer, 'y', 'CL', this.chatList, 500);
+    this.scroll = this._scroll = new Scrollable(this.chatsContainer, 'CL', this.chatList, 500);
     this.scroll.onScrolledBottom = this.onChatsScroll;
     this.scroll.setVirtualContainer(this.chatList);
     //this.scroll.attachSentinels();
@@ -588,12 +589,14 @@ export class AppDialogsManager {
       }
     }); */
 
-    new Scrollable(this.folders.menuScrollContainer, 'x');
+    const foldersScrollable = new ScrollableX(this.folders.menuScrollContainer);
     this.chatsContainer.prepend(this.folders.menuScrollContainer);
     const selectTab = horizontalMenu(this.folders.menu, this.folders.container, (id, tabContent) => {
       /* if(id != 0) {
         id += 1;
       } */
+
+      foldersScrollable.scrollIntoView(this.folders.menu.firstElementChild.children[id] as HTMLElement, true, 250);
 
       id = +tabContent.dataset.filterID || 0;
 

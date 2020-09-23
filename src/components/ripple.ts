@@ -1,4 +1,5 @@
 import { touchSupport } from "../lib/config";
+import { findUpClassName } from "../lib/utils";
 
 let rippleClickID = 0;
 export function ripple(elem: HTMLElement, callback: (id: number) => Promise<boolean | void> = () => Promise.resolve(), onEnd: (id: number) => void = null) {
@@ -28,6 +29,7 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
     //console.log('ripple drawRipple');
 
     handler = () => {
+      //return;
       let elapsedTime = Date.now() - startTime;
       if(elapsedTime < duration) {
         let delay = Math.max(duration - elapsedTime, duration / 2);
@@ -66,8 +68,8 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
       } */
 
       window.requestAnimationFrame(() => {
-        span.classList.add('c-ripple__circle');
         let rect = r.getBoundingClientRect();
+        span.classList.add('c-ripple__circle');
 
         let clickX = clientX - rect.left;
         let clickY = clientY - rect.top;
@@ -110,7 +112,7 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
   
     elem.addEventListener('touchstart', (e) => {
       //console.log('ripple touchstart', e);
-      if(e.touches.length > 1 || ((e.target as HTMLElement).tagName == 'BUTTON' && e.target != elem)) {
+      if(e.touches.length > 1 || ((e.target as HTMLElement).tagName == 'BUTTON' && e.target != elem) || findUpClassName(e.target as HTMLElement, 'c-ripple') != r) {
         return;
       }
       
@@ -130,7 +132,9 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
     }, {passive: true});
   } else {
     elem.addEventListener('mousedown', (e) => {
-      if(elem.dataset.ripple == '0') {
+      //console.log('ripple mousedown', e, e.target, findUpClassName(e.target as HTMLElement, 'c-ripple') == r);
+
+      if(elem.dataset.ripple == '0' || findUpClassName(e.target as HTMLElement, 'c-ripple') != r) {
         return false;
       } else if(touchStartFired) {
         touchStartFired = false;

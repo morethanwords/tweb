@@ -1,4 +1,3 @@
-import {dT} from '../bin_utils';
 import CryptoWorkerMethods from './crypto_methods';
 
 type Task = {
@@ -24,7 +23,7 @@ class CryptoWorker extends CryptoWorkerMethods {
 
   constructor() {
     super();
-    console.log(dT(), 'CW constructor');
+    console.log('CW constructor');
 
     /// #if MTPROTO_WORKER
     Promise.all([
@@ -60,7 +59,7 @@ class CryptoWorker extends CryptoWorkerMethods {
         tmpWorker.onmessage = (e: any) => {
           if(!this.webWorker) {
             this.webWorker = tmpWorker;
-            console.info(dT(), 'CW set webWorker');
+            console.info('CW set webWorker');
             this.releasePending();
           } else {
             this.finalizeTask(e.data.taskID, e.data.result);
@@ -76,17 +75,19 @@ class CryptoWorker extends CryptoWorkerMethods {
     /// #endif
   }
 
+  /// #if !MTPROTO_WORKER
   private finalizeTask(taskID: number, result: any) {
     let deferred = this.awaiting[taskID];
     if(deferred !== undefined) {
-      this.debug && console.log(dT(), 'CW done', deferred.taskName, result);
+      this.debug && console.log('CW done', deferred.taskName, result);
       deferred.resolve(result);
       delete this.awaiting[taskID];
     }
   }
+  /// #endif
 
   public performTaskWorker<T>(task: string, ...args: any[]) {
-    this.debug && console.log(dT(), 'CW start', task, args);
+    this.debug && console.log('CW start', task, args);
 
     /// #if MTPROTO_WORKER
     return Promise.resolve<T>(this.utils[task](...args));
@@ -109,6 +110,7 @@ class CryptoWorker extends CryptoWorkerMethods {
     /// #endif
   }
 
+  /// #if !MTPROTO_WORKER
   private releasePending() {
     if(this.webWorker) {
       this.pending.forEach(pending => {
@@ -118,6 +120,7 @@ class CryptoWorker extends CryptoWorkerMethods {
       this.pending.length = 0;
     }
   }
+  /// #endif
 }
 
 const cryptoWorker = new CryptoWorker();

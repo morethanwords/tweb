@@ -1,4 +1,6 @@
-import Config, { touchSupport, isApple, mediaSizes } from "../lib/config";
+import mediaSizes from "../helpers/mediaSizes";
+import { isApple } from "../helpers/userAgent";
+import Config, { touchSupport } from "../lib/config";
 
 export const loadedURLs: {[url: string]: boolean} = {};
 const set = (elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLVideoElement, url: string) => {

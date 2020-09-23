@@ -22,7 +22,7 @@
   {{/ each }}
 </head>
 
-<body>
+<body class="animation-level-2">
   <!--[if IE]>
     <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="https://browsehappy.com/">upgrade your browser</a> to improve your experience and security.</p>
   <![endif]-->
@@ -212,7 +212,7 @@
             <div class="sidebar-content">
               <div id="chats-container">
                 <div class="folders-tabs-scrollable hide">
-                  <nav class="menu-horizontal no-stripe" id="folders-tabs">
+                  <nav class="menu-horizontal" id="folders-tabs">
                     <ul>
                       <li class="rp"><span>All<span class="unread-count"></span><i></i></span></li>
                     </ul>
@@ -237,7 +237,7 @@
           </div>
           <div class="sidebar-slider-item">
             <div class="sidebar-header">
-              <button class="btn-icon rp tgico-back sidebar-close-button"></button>
+              <button class="btn-icon tgico-back sidebar-close-button"></button>
               <div class="sidebar-header__title">Archived Chats</div>
             </div>
             <div class="sidebar-content">
@@ -248,7 +248,7 @@
           </div>
           <div class="sidebar-slider-item" id="contacts-container">
             <div class="sidebar-header">
-              <button class="btn-icon rp tgico-back sidebar-close-button"></button>
+              <button class="btn-icon tgico-back sidebar-close-button"></button>
             </div>
             <div class="sidebar-content">
               <div>
@@ -258,7 +258,7 @@
           </div>
           <div class="sidebar-slider-item new-channel-container">
             <div class="sidebar-header">
-              <button class="btn-icon rp tgico-back sidebar-close-button"></button>
+              <button class="btn-icon tgico-back sidebar-close-button"></button>
               <div class="sidebar-header__title">New Channel</div>
             </div>
             <div class="sidebar-content">
@@ -282,7 +282,7 @@
           </div>
           <div class="sidebar-slider-item addmembers-container">
             <div class="sidebar-header">
-              <button class="btn-icon rp tgico-back sidebar-close-button"></button>
+              <button class="btn-icon tgico-back sidebar-close-button"></button>
               <div class="sidebar-header__title">Add Members</div>
             </div>
             <div class="sidebar-content">
@@ -291,7 +291,7 @@
           </div>
           <div class="sidebar-slider-item new-group-container">
             <div class="sidebar-header">
-              <button class="btn-icon rp tgico-back sidebar-close-button"></button>
+              <button class="btn-icon tgico-back sidebar-close-button"></button>
               <div class="sidebar-header__title">New Group</div>
             </div>
             <div class="sidebar-content">
@@ -310,7 +310,7 @@
           </div>
           <div class="sidebar-slider-item settings-container">
             <div class="sidebar-header">
-              <button class="btn-icon rp tgico-back sidebar-close-button"></button>
+              <button class="btn-icon tgico-back sidebar-close-button"></button>
               <div class="sidebar-header__title">Settings</div>
               <div class="btn-icon tgico-more rp btn-menu-toggle">
                 <div class="btn-menu bottom-left">
@@ -336,7 +336,7 @@
           </div>
           <div class="sidebar-slider-item edit-profile-container">
             <div class="sidebar-header">
-              <button class="btn-icon rp tgico-back sidebar-close-button"></button>
+              <button class="btn-icon tgico-back sidebar-close-button"></button>
               <div class="sidebar-header__title">Edit Profile</div>
             </div>
             <div class="sidebar-content">
@@ -377,7 +377,7 @@
           </div>
           <div class="sidebar-slider-item chat-folders-container">
             <div class="sidebar-header">
-              <button class="btn-icon rp tgico-back sidebar-close-button"></button>
+              <button class="btn-icon tgico-back sidebar-close-button"></button>
               <div class="sidebar-header__title">Chat Folders</div>
             </div>
             <div class="sidebar-content">
@@ -401,7 +401,7 @@
           </div>
           <div class="sidebar-slider-item edit-folder-container">
             <div class="sidebar-header">
-              <button class="btn-icon rp tgico-back sidebar-close-button"></button>
+              <button class="btn-icon tgico-back sidebar-close-button"></button>
               <div class="sidebar-header__title"></div>
               <div class="btn-icon tgico-check1 btn-confirm rp hide"></div>
               <div class="btn-icon btn-menu-toggle rp tgico-more hide">
@@ -445,7 +445,7 @@
           </div>
           <div class="sidebar-slider-item included-chats-container">
             <div class="sidebar-header">
-              <button class="btn-icon rp tgico-back sidebar-close-button"></button>
+              <button class="btn-icon tgico-back sidebar-close-button"></button>
               <div class="sidebar-header__title"></div>
               <div class="btn-icon tgico-check1 btn-confirm rp" style="display: none;"></div>
             </div>
@@ -460,9 +460,10 @@
         </div>
       </div>
       <div class="chat-container main-column" id="column-center">
-        <canvas id="chat-background-canvas"></canvas>
+        {{!-- <canvas id="chat-background-canvas"></canvas> --}}
+        <div class="chat-background"></div>
         <div id="topbar" style="display: none;" class="sidebar-header">
-          <button class="btn-icon rp tgico-back sidebar-close-button"></button>
+          <button class="btn-icon tgico-back sidebar-close-button"></button>
           <div class="chat-info">
             <div class="person">
               <avatar-element id="im-avatar" dialog="1"></avatar-element>
@@ -476,21 +477,23 @@
               </div>
             </div>
           </div>
-          <button class="btn-primary rp chat-join hide">SUBSCRIBE</button>
-          <div class="btn-icon rp chat-mute-button hide"></div>
-          <div class="btn-icon rp tgico-search chat-search-button"></div>
-          <div class="btn-icon btn-menu-toggle rp tgico-more chat-more-button">
-            <div class="btn-menu bottom-left">
-              <div class="btn-menu-item menu-search tgico-search rp">Search</div>
-              <div class="btn-menu-item menu-mute rp">Mute</div>
-              <div class="btn-menu-item menu-delete tgico-delete danger rp btn-disabled">Delete and Leave</div>
+          <div class="chat-utils">
+            <button class="btn-primary rp chat-join hide">SUBSCRIBE</button>
+            <div class="btn-icon rp chat-mute-button hide"></div>
+            <div class="btn-icon rp tgico-search chat-search-button"></div>
+            <div class="btn-icon btn-menu-toggle rp tgico-more chat-more-button">
+              <div class="btn-menu bottom-left">
+                <div class="btn-menu-item menu-search tgico-search rp">Search</div>
+                <div class="btn-menu-item menu-mute rp">Mute</div>
+                <div class="btn-menu-item menu-delete tgico-delete danger rp btn-disabled">Delete and Leave</div>
+              </div>
             </div>
           </div>
         </div>
         <div id="bubbles" class="scrolled-down">
           <div id="bubbles-inner"></div>
-          <div id="bubbles-go-down" class="tgico-down z-depth-1 rp" style="display: none;"></div>
         </div>
+        <div id="bubbles-go-down" class="tgico-down btn-corner z-depth-1 rp hide"></div>
         <div class="btn-menu" id="bubble-contextmenu">
           <div class="btn-menu-item menu-reply tgico-reply rp">Reply</div>
           <div class="btn-menu-item menu-edit tgico-edit rp">Edit</div>
@@ -587,7 +590,7 @@
         <div class="sidebar-content sidebar-slider tabs-container">
           <div class="sidebar-slider-item profile-container">
             <div class="sidebar-header">
-              <button class="btn-icon rp tgico sidebar-close-button"></button>
+              <button class="btn-icon tgico sidebar-close-button"></button>
               <div class="sidebar-header__title">Info</div>
       
               <!-- <button class="btn-icon rp tgico-edit sidebar-edit-button"></button> -->
@@ -648,33 +651,33 @@
           </div>
           <div class="sidebar-slider-item sidebar-search chats-container" id="search-private-container">
             <div class="sidebar-header">
-              <button class="btn-icon rp tgico-close sidebar-close-button"></button>
+              <button class="btn-icon tgico-close sidebar-close-button"></button>
             </div>
             <div class="chats-container"></div>
           </div>
           <div class="sidebar-slider-item sidebar-search" id="forward-container">
             <div class="sidebar-header">
-              <button class="btn-icon rp tgico-close sidebar-close-button"></button>
+              <button class="btn-icon tgico-close sidebar-close-button"></button>
               <div class="sidebar-header__title">Forward</div>
             </div>
             <button class="btn-primary btn-circle btn-icon rp btn-corner tgico-send"></button>
           </div>
           <div class="sidebar-slider-item sidebar-search chats-container" id="stickers-container">
             <div class="sidebar-header">
-              <button class="btn-icon rp tgico-close sidebar-close-button"></button>
+              <button class="btn-icon tgico-close sidebar-close-button"></button>
             </div>
             <div class="sidebar-content"><div class="sticker-sets"></div></div>
           </div>
           <div class="sidebar-slider-item chats-container" id="poll-results-container">
             <div class="sidebar-header">
-              <button class="btn-icon rp tgico-close sidebar-close-button"></button>
+              <button class="btn-icon tgico-close sidebar-close-button"></button>
               <div class="sidebar-header__title">Results</div>
             </div>
             <div class="sidebar-content"><div class="poll-results"></div></div>
           </div>
           <div class="sidebar-slider-item sidebar-search chats-container" id="search-gifs-container">
             <div class="sidebar-header">
-              <button class="btn-icon rp tgico-close sidebar-close-button"></button>
+              <button class="btn-icon tgico-close sidebar-close-button"></button>
             </div>
             <div class="sidebar-content"><div class="gifs-masonry"></div></div>
           </div>

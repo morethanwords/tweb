@@ -8,7 +8,7 @@ import LottieLoader, { RLottiePlayer } from '../lib/lottieLoader';
 import apiManager from '../lib/mtproto/mtprotoworker';
 import Page from './page';
 import { App } from '../lib/mtproto/mtproto_config';
-import { mediaSizes } from '../lib/config';
+import mediaSizes from '../helpers/mediaSizes';
 
 let authCode: {
   _: string, // 'auth.sentCode'

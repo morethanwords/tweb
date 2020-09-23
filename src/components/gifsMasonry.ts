@@ -3,9 +3,9 @@ import appDocsManager, {MyDocument} from "../lib/appManagers/appDocsManager";
 import { wrapVideo } from "./wrappers";
 import { renderImageFromUrl } from "./misc";
 import { LazyLoadQueueRepeat2 } from "./lazyLoadQueue";
-import { CancellablePromise, deferredPromise } from "../lib/polyfill";
 import animationIntersector from "./animationIntersector";
 import Scrollable from "./scrollable_new";
+import { CancellablePromise, deferredPromise } from "../helpers/cancellablePromise";
 
 const width = 400;
 const maxSingleWidth = width - 100;

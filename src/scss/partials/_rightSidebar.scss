@@ -1,25 +1,37 @@
 #column-right {
   position: relative;
 
+  @include respond-to(only-small-screens) {
+    box-shadow: 0 0.25rem 0.5rem 0.1rem hsla(0, 0%, 44.7%, .25);
+  }
+
   @include respond-to(not-handhelds) {
-    width: 0%;
-    transition: .2s ease-in-out;
+    width: var(--right-column-width);
+    transition: transform var(--layer-transition);
+    position: absolute;
+    right: 0;
+    z-index: 3;
+    transform: translate3d(var(--right-column-width), 0, 0);
   
     .sidebar-content {
-      min-width: 25vw;
-    
-      @include respond-to(wide-screens) {
-        min-width: calc(#{$large-screen} / 4 - 1px) !important;
-      }
+      min-width: var(--right-column-width);
     }
   
-    &:not(.active) {
+    /* &:not(.active) {
       border-left-width: 0;
-    }
+    } */
   
-    &.active {
-      width: 25%;
+    body.is-right-column-shown & {
+      transform: translate3d(0, 0, 0);
     }
+
+    body.animation-level-0 & {
+			transition: none;
+		}
+  }
+
+  @include respond-to(medium-screens) {
+    border-left: 1px solid #DADCE0;
   }
 
   .sidebar-header {
@@ -98,7 +110,7 @@
     > .scrollable {
       display: flex;
       flex-direction: column;
-      transform: none;
+      //transform: none;
     }
   }
 
@@ -300,7 +312,7 @@
           top: 4px;
           height: 18px;
           border-radius: 4px;
-          background-color: $time-background;
+          background-color: var(--message-time-background);
           padding: 0px 6px 0px 5px;
           z-index: 1;
           font-size: 12px;
@@ -323,7 +335,7 @@
         }
 
         /* span.video-play {
-          background-color: $time-background;
+          background-color: var(--message-time-background);
           color: #fff;
           text-align: center;
           font-size: 34px;

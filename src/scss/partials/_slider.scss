@@ -22,7 +22,9 @@ $slider-time: .25s;
     padding: .75rem 1rem;
     cursor: pointer;
     text-align: center;
-    flex: 1;
+    flex: 1 1 auto;
+    //flex: 0 0 auto;
+    //overflow: hidden;
     user-select: none;
     // font-size: 1rem;
     font-size: 14px;
@@ -30,6 +32,15 @@ $slider-time: .25s;
     position: relative;
     border-top-left-radius: 6px;
     border-top-right-radius: 6px;
+
+    html.no-touch & {
+      background-color: transparent;
+      transition: background-color .15s ease-in-out;
+
+      &:hover {
+        background-color: rgba(112, 117, 121, .08);
+      }
+    }
     
     > span {
       position: relative;
@@ -80,6 +91,7 @@ $slider-time: .25s;
     margin-left: -.25rem;
     box-sizing: content-box;
     transform-origin: left;
+    z-index: 1;
 
     &.animate {
       transition: transform $slider-time;

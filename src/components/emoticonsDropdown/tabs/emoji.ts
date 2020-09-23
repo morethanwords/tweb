@@ -81,7 +81,7 @@ export default class EmojiTab implements EmoticonsTab {
     //console.timeEnd('emojiParse');
 
     const menu = this.content.previousElementSibling.firstElementChild as HTMLUListElement;
-    const emojiScroll = this.scroll = new Scrollable(this.content, 'y', 'EMOJI', null);
+    const emojiScroll = this.scroll = new Scrollable(this.content, 'EMOJI', null);
 
     //emojiScroll.setVirtualContainer(emojiScroll.container);
 

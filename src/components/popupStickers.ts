@@ -64,7 +64,7 @@ export default class PopupStickers extends PopupElement {
     this.stickersFooter.innerText = 'Loading...';
 
     this.body.append(div);
-    const scrollable = new Scrollable(this.body, 'y', undefined);
+    const scrollable = new Scrollable(this.body);
     this.body.append(this.stickersFooter);
     
     // const editButton = document.createElement('button');

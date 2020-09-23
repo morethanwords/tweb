@@ -1,11 +1,12 @@
 import appPollsManager, { PollResults, Poll } from "../lib/appManagers/appPollsManager";
 import { RichTextProcessor } from "../lib/richtextprocessor";
 import { findUpClassName, $rootScope, cancelEvent } from "../lib/utils";
-import { mediaSizes, touchSupport } from "../lib/config";
+import { touchSupport } from "../lib/config";
 import appSidebarRight from "../lib/appManagers/appSidebarRight";
 import appImManager from "../lib/appManagers/appImManager";
 import serverTimeManager from "../lib/mtproto/serverTimeManager";
 import { ripple } from "./ripple";
+import mediaSizes from "../helpers/mediaSizes";
 
 let lineTotalLength = 0;
 const tailLength = 9;

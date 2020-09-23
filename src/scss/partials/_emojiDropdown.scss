@@ -10,7 +10,7 @@
 	
 	@include respond-to(not-handhelds) {
 		position: absolute !important;
-		left: 0;
+		left: 1rem;
 		bottom: calc(85px);
 		width: 420px !important;
 		height: 420px;
@@ -25,6 +25,11 @@
 			transition: all 0.2s ease-in;
 			transform: scale(1);
 		}
+	}
+
+	@include respond-to(handhelds) {
+		width: calc(100% + 1rem);
+		margin-left: -.5rem;
 	}
 	
 	> .menu-horizontal {

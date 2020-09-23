@@ -17,7 +17,7 @@ import serverTimeManager from "../mtproto/serverTimeManager";
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
 import appWebPagesManager from "./appWebPagesManager";
-import { CancellablePromise, deferredPromise } from "../polyfill";
+import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
 import appPollsManager from "./appPollsManager";
 import searchIndexManager from '../searchIndexManager';
 import { Modify } from "../../types";
@@ -2471,6 +2471,10 @@ export class AppMessagesManager {
 
     let messageWrapped = '';
     if(text) {
+      if(text.length > 40) {
+        text = text.substr(0, 35) + '...';
+      }
+
       let entities = RichTextProcessor.parseEntities(text.replace(/\n/g, ' '), {noLinebreakers: true});
 
       messageWrapped = RichTextProcessor.wrapRichText(text, {

@@ -27,12 +27,7 @@
 
   .tabs-container {
     height: 100%;
-    transform: translateX(0);
     width: 100%;
-
-    &.animated {
-      transition: .42s transform;
-    }
 
     > div {
       /* justify-content: center; */

@@ -1,8 +1,10 @@
-import { isApple, mediaSizes, isSafari } from "./config";
 import { logger, LogLevels } from "./logger";
 import animationIntersector from "../components/animationIntersector";
 import apiManager from "./mtproto/mtprotoworker";
 import { copy } from "./utils";
+import EventListenerBase from "../helpers/eventListenerBase";
+import mediaSizes from "../helpers/mediaSizes";
+import { isApple, isSafari } from "../helpers/userAgent";
 
 let convert = (value: number) => {
 	return Math.round(Math.min(Math.max(value, 0), 1) * 255);
@@ -21,7 +23,12 @@ type RLottieOptions = {
   needUpscale?: true
 };
 
-export class RLottiePlayer {
+export class RLottiePlayer extends EventListenerBase<{
+  enterFrame: (frameNo: number) => void,
+  ready: () => void,
+  firstFrame: () => void,
+  cached: () => void
+}> {
   public static reqId = 0;
 
   public reqId = 0;
@@ -33,13 +40,6 @@ export class RLottiePlayer {
   
   public width = 0;
   public height = 0;
-
-  public listeners: Partial<{
-    [k in RLottiePlayerListeners]: Array<{callback: (res: any) => void, once?: true}>
-  }> = {};
-  public listenerResults: Partial<{
-    [k in RLottiePlayerListeners]: any
-  }> = {};
 
   public el: HTMLElement;
   public canvas: HTMLCanvasElement;
@@ -75,6 +75,8 @@ export class RLottiePlayer {
     worker: QueryableWorker,
     options: RLottieOptions
   }) {
+    super(true);
+
     this.reqId = ++RLottiePlayer['reqId'];
     this.el = el;
     this.worker = worker;
@@ -136,37 +138,6 @@ export class RLottiePlayer {
 
   public clearCache() {
     this.frames = {};
-  }
-
-  public addListener(name: RLottiePlayerListeners, callback: (res?: any) => void, once?: true) {
-    (this.listeners[name] ?? (this.listeners[name] = [])).push({callback, once});
-
-    if(this.listenerResults.hasOwnProperty(name)) {
-      callback(this.listenerResults[name]);
-
-      if(once) {
-        this.removeListener(name, callback);
-      }
-    }
-  }
-
-  public removeListener(name: RLottiePlayerListeners, callback: (res?: any) => void) {
-    if(this.listeners[name]) {
-      this.listeners[name].findAndSplice(l => l.callback == callback);
-    }
-  }
-
-  public setListenerResult(name: RLottiePlayerListeners, value?: any) {
-    this.listenerResults[name] = value;
-    if(this.listeners[name]) {
-      this.listeners[name].forEach(listener => {
-        listener.callback(value);
-
-        if(listener.once) {
-          this.removeListener(name, listener.callback);
-        }
-      });
-    }
   }
 
   public sendQuery(methodName: string, ...args: any[]) {
@@ -424,11 +395,12 @@ export class RLottiePlayer {
   }
 }
 
-class QueryableWorker {
+class QueryableWorker extends EventListenerBase<any> {
   private worker: Worker;
-  private listeners: {[name: string]: (...args: any[]) => void} = {};
 
   constructor(url: string, private defaultListener: (data: any) => void = () => {}, onError?: (error: any) => void) {
+    super();
+
     this.worker = new Worker(url);
     if(onError) {
       this.worker.onerror = onError;
@@ -444,7 +416,7 @@ class QueryableWorker {
           return;
         } */
 
-        this.listeners[event.data.queryMethodListener](...event.data.queryMethodArguments);
+        this.setListenerResult(event.data.queryMethodListener, ...event.data.queryMethodArguments);
       } else {
         this.defaultListener.call(this, event.data);
       }
@@ -457,14 +429,6 @@ class QueryableWorker {
 
   public terminate() {
     this.worker.terminate();
-  }
-
-  public addListener(name: string, listener: (...args: any[]) => void) {
-    this.listeners[name] = listener;
-  }
-
-  public removeListener(name: string) {
-    delete this.listeners[name];
   }
 
   public sendQuery(queryMethod: string, ...args: any[]) {

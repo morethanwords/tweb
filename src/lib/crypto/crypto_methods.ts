@@ -1,5 +1,5 @@
 import { convertToArrayBuffer, convertToByteArray } from "../bin_utils";
-import { InputCheckPasswordSRP } from "../../layer";
+import type { InputCheckPasswordSRP } from "../../layer";
 
 export default abstract class CryptoWorkerMethods {
   abstract performTaskWorker<T>(task: string, ...args: any[]): Promise<T>;

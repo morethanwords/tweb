@@ -10,14 +10,15 @@ function slideNavigation(tabContent: HTMLElement, prevTabContent: HTMLElement, t
     tabContent.style.transform = `translateX(-25%)`;
     prevTabContent.style.transform = `translateX(20%)`;
   } */
+  const width = prevTabContent.getBoundingClientRect().width;
   if(toRight) {
     prevTabContent.style.filter = `brightness(80%)`;
-    prevTabContent.style.transform = `translateX(-25%)`;
-    tabContent.style.transform = `translateX(100%)`;
+    prevTabContent.style.transform = `translate3d(${-width * .25}px, 0, 0)`;
+    tabContent.style.transform = `translate3d(${width}px, 0, 0)`;
   } else {
     tabContent.style.filter = `brightness(80%)`;
-    tabContent.style.transform = `translateX(-25%)`;
-    prevTabContent.style.transform = `translateX(100%)`;
+    tabContent.style.transform = `translate3d(${-width * .25}px, 0, 0)`;
+    prevTabContent.style.transform = `translate3d(${width}px, 0, 0)`;
   }
   
   tabContent.classList.add('active');
@@ -28,12 +29,13 @@ function slideNavigation(tabContent: HTMLElement, prevTabContent: HTMLElement, t
 }
 
 function slideTabs(tabContent: HTMLElement, prevTabContent: HTMLElement, toRight: boolean) {
+  const width = prevTabContent.getBoundingClientRect().width;
   if(toRight) {
-    tabContent.style.transform = `translateX(100%)`;
-    prevTabContent.style.transform = `translateX(-100%)`;
+    tabContent.style.transform = `translate3d(${width}px, 0, 0)`;
+    prevTabContent.style.transform = `translate3d(${-width}px, 0, 0)`;
   } else {
-    tabContent.style.transform = `translateX(-100%)`;
-    prevTabContent.style.transform = `translateX(100%)`;
+    tabContent.style.transform = `translate3d(${-width}px, 0, 0)`;
+    prevTabContent.style.transform = `translate3d(${width}px, 0, 0)`;
   }
 
   tabContent.classList.add('active');
@@ -83,7 +85,7 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?
     const _prevId = prevId;
     if(hideTimeouts.hasOwnProperty(id)) clearTimeout(hideTimeouts[id]);
     if(p/*  && false */) {
-      hideTimeouts[_prevId] = setTimeout(() => {
+      hideTimeouts[_prevId] = window.setTimeout(() => {
         p.style.transform = '';
         p.style.filter = '';
         p.classList.remove('active');

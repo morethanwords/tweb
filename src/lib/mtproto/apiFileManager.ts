@@ -3,12 +3,12 @@ import { nextRandomInt, getFileNameByLocation } from "../bin_utils";
 import cacheStorage from "../cacheStorage";
 import FileManager from "../filemanager";
 import apiManager from "./apiManager";
-import { deferredPromise, CancellablePromise } from "../polyfill";
 import { logger, LogLevels } from "../logger";
 import { isSafari } from "../../helpers/userAgent";
 import cryptoWorker from "../crypto/cryptoworker";
 import { notifySomeone, notifyAll } from "../../helpers/context";
 import { InputFileLocation, FileLocation, InputFile, UploadFile } from "../../layer";
+import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
 
 type Delayed = {
   offset: number, 

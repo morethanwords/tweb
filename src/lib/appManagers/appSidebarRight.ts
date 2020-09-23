@@ -16,15 +16,18 @@ import { wrapDocument, wrapAudio } from "../../components/wrappers";
 import AppSearch, { SearchGroup } from "../../components/appSearch";
 import AvatarElement from "../../components/avatar";
 import appForward from "../../components/appForward";
-import { mediaSizes } from "../config";
 import SidebarSlider from "../../components/slider";
 import SearchInput from "../../components/searchInput";
 import { horizontalMenu } from "../../components/horizontalMenu";
 import AppStickersTab from "../../components/sidebarRight/stickers";
 import AppPollResultsTab from "../../components/sidebarRight/pollResults";
 import AppGifsTab from "../../components/sidebarRight/gifs";
+import mediaSizes, { ScreenSize } from "../../helpers/mediaSizes";
+import { isSafari } from "../../helpers/userAgent";
 
 const testScroll = false;
+
+const COLUMN_ACTIVE_CLASSNAME = 'is-right-column-shown';
 
 let setText = (text: string, el: HTMLDivElement) => {
   window.requestAnimationFrame(() => {
@@ -183,7 +186,7 @@ export class AppSidebarRight extends SidebarSlider {
     let container = this.profileContentEl.querySelector('.content-container .tabs-container') as HTMLDivElement;
     this.profileTabs = this.profileContentEl.querySelector('.profile-tabs');
     
-    this.scroll = new Scrollable(this.profileContainer, 'y', 'SR', undefined, 400);
+    this.scroll = new Scrollable(this.profileContainer, 'SR', undefined, 400);
     this.scroll.onScrolledBottom = () => {
       if(this.sharedMediaSelected && this.sharedMediaSelected.childElementCount/* && false */) {
         this.log('onScrolledBottom will load media');
@@ -194,6 +197,10 @@ export class AppSidebarRight extends SidebarSlider {
     
     horizontalMenu(this.profileTabs, container, (id, tabContent) => {
       if(this.prevTabID == id) return;
+
+      if(this.prevTabID != -1) {
+        this.onTransitionStart();
+      }
       
       this.sharedMediaType = this.sharedMediaTypes[id];
       this.sharedMediaSelected = tabContent.firstElementChild as HTMLDivElement;
@@ -213,6 +220,7 @@ export class AppSidebarRight extends SidebarSlider {
       this.prevTabID = id;
     }, () => {
       this.scroll.onScroll();
+      this.onTransitionEnd();
     });
     
     let sidebarCloseBtn = this.sidebarEl.querySelector('.sidebar-close-button') as HTMLButtonElement;
@@ -252,7 +260,30 @@ export class AppSidebarRight extends SidebarSlider {
       //let checked = this.profileElements.notificationsCheckbox.checked;
       appImManager.mutePeer(this.peerID);
     });
+
+    mediaSizes.addListener('changeScreen', (from, to) => {
+      if(from !== undefined && to == ScreenSize.medium) {
+        this.toggleSidebar(false);
+      }
+    });
   }
+
+  private onTransitionStart = () => {
+    // Jolly Cobra's // Workaround for scrollable content flickering during animation.
+    const container = this.scroll.container;
+    if(container.style.overflowY !== 'hidden') {
+      const scrollBarWidth = container.offsetWidth - container.clientWidth;
+      container.style.overflowY = 'hidden';
+      container.style.paddingRight = `${scrollBarWidth}px`;
+    }
+  };
+
+  private onTransitionEnd = () => {
+    // Jolly Cobra's // Workaround for scrollable content flickering during animation.
+    const container = this.scroll.container;
+    container.style.overflowY = '';
+    container.style.paddingRight = '0';
+  };
 
   public beginSearch() {
     this.toggleSidebar(true);
@@ -263,7 +294,7 @@ export class AppSidebarRight extends SidebarSlider {
   public toggleSidebar(enable?: boolean) {
     /////this.log('sidebarEl', this.sidebarEl, enable, isElementInViewport(this.sidebarEl));
     
-    const active = this.sidebarEl.classList.contains('active');
+    const active = document.body.classList.contains(COLUMN_ACTIVE_CLASSNAME);
     let willChange: boolean;
     if(enable !== undefined) {
       if(enable) {
@@ -286,8 +317,14 @@ export class AppSidebarRight extends SidebarSlider {
     }
 
     const set = () => {
-      this.sidebarEl.classList.toggle('active', enable);
+      document.body.classList.toggle(COLUMN_ACTIVE_CLASSNAME, enable);
     };
+
+    set();
+    return new Promise(resolve => {
+      setTimeout(resolve, 200);
+    });
+    //return Promise.resolve();
 
     return new Promise((resolve, reject) => {
       const hidden: {element: HTMLDivElement, height: number}[] = [];
@@ -483,6 +520,12 @@ export class AppSidebarRight extends SidebarSlider {
               const needBlurCallback = needBlur ? () => {
                 //void img.offsetLeft; // reflow
                 img.style.opacity = '';
+
+                if(thumb) {
+                  window.setTimeout(() => {
+                    thumb.remove();
+                  }, 200);
+                }
               } : undefined;
               renderImageFromUrl(img, url, needBlurCallback);
             }
@@ -515,7 +558,7 @@ export class AppSidebarRight extends SidebarSlider {
               });
 
               const timeout = setTimeout(() => {
-                this.log('did not loaded', thumb, media, isDownloaded, sizes);
+                this.log('didn\'t load', thumb, media, isDownloaded, sizes);
                 reject();
               }, 1e3);
             });
@@ -780,8 +823,10 @@ export class AppSidebarRight extends SidebarSlider {
       const inputFilter = contentToSharedMap[key];
       if(!this.historiesStorage[this.peerID] || !this.historiesStorage[this.peerID][inputFilter]) {
         const parent = this.sharedMedia[key].parentElement;
-        if(!parent.querySelector('.preloader')) {
-          putPreloader(parent, true);
+        if(!testScroll) {
+          if(!parent.querySelector('.preloader')) {
+            putPreloader(parent, true);
+          }
         }
 
         const empty = parent.querySelector('.content-empty');
@@ -792,16 +837,14 @@ export class AppSidebarRight extends SidebarSlider {
     });
 
     if(testScroll) {
-      for(let i = 0; i < 30; ++i) {
-        //div.insertAdjacentHTML('beforeend', `<div style="background-image: url(assets/img/camomile.jpg);"></div>`);
+      for(let i = 0; i < 1500; ++i) {
         let div = document.createElement('div');
+        div.insertAdjacentHTML('beforeend', `<img class="media-image" src="assets/img/camomile.jpg">`);
         div.classList.add('media-item');
         div.dataset.id = '' + (i / 3 | 0);
-        div.innerText = '' + (i / 3 | 0);
+        //div.innerText = '' + (i / 3 | 0);
         this.sharedMedia.contentMedia.append(div);
       }
-      
-      (this.profileTabs.children[1] as HTMLLIElement).click(); // set media
     }
 
     (this.profileTabs.firstElementChild.children[1] as HTMLLIElement).click(); // set media

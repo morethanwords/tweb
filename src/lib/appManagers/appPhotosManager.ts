@@ -1,10 +1,10 @@
 import { calcImageInBox, isObject } from "../utils";
 import { bytesFromHex, getFileNameByLocation } from "../bin_utils";
 import appDownloadManager from "./appDownloadManager";
-import { CancellablePromise } from "../polyfill";
 import { isSafari } from "../../helpers/userAgent";
 import { FileLocation, InputFileLocation, Photo, PhotoSize } from "../../layer";
 import { MyDocument } from "./appDocsManager";
+import { CancellablePromise } from "../../helpers/cancellablePromise";
 
 export type MyPhoto = Photo.photo;
 

@@ -41,22 +41,9 @@ $bubble-margin: .25rem;
 
 .bubble {
   padding-top: $bubble-margin;
-  max-width: unquote("min(calc(100% - 48px), #{$chat-max-width})");
   position: relative;
   z-index: 1;
-
-  //@include respond-to(not-handhelds) {
-    margin: 0 auto;
-  //}
-
-  @include respond-to(handhelds) {
-    max-width: unquote("min(100%, #{$chat-max-width - 16px})");
-
-    html.is-mac & {
-      -webkit-user-select: none;
-      -webkit-touch-callout: none;
-    }
-  }
+  margin: 0 auto;
 
   &.is-selected {
     &:after {
@@ -147,7 +134,7 @@ $bubble-margin: .25rem;
     }
 
     @include respond-to(handhelds) {
-      max-width: calc(100% - #{$handhelds-margin});
+      max-width: calc(100% - var(--message-handhelds-margin));
     }
 
     > .user-avatar {
@@ -169,14 +156,14 @@ $bubble-margin: .25rem;
 
   /* &.with-beside-button &__container {
     @include respond-to(handhelds) {
-      max-width: calc(100% - #{$handhelds-margin}) !important;
+      max-width: calc(100% - var(--message-handhelds-margin)) !important;
     }
   } */
   
   &.service {
     //padding: 1rem 0;
     padding: $bubble-margin 0;
-    max-width: $chat-max-width;
+    max-width: var(--messages-container-width);
 
     .bubble__container {
       /* justify-self: center; */
@@ -445,7 +432,7 @@ $bubble-margin: .25rem;
       align-items: center;
 
       span {
-        background-color: $time-background;
+        background-color: var(--message-time-background);
         font-size: 23px;
         color: #fff;
         text-align: center;
@@ -886,7 +873,7 @@ $bubble-margin: .25rem;
       bottom: .1rem;
       right: .2rem;
       border-radius: 12px;
-      background-color: $time-background;
+      background-color: var(--message-time-background);
       padding: 0 .2rem;
       z-index: 2;
       
@@ -942,7 +929,7 @@ $bubble-margin: .25rem;
     top: 3px;
     left: 3px;
     border-radius: 12px;
-    background-color: $time-background;
+    background-color: var(--message-time-background);
     padding: 0px 6px 0px 6px;
     z-index: 2;
     font-size: 12px;
@@ -954,7 +941,7 @@ $bubble-margin: .25rem;
   }
 
   span.video-play {
-    background-color: $time-background;
+    background-color: var(--message-time-background);
     color: #fff;
     text-align: center;
     font-size: 34px;
@@ -1481,7 +1468,7 @@ $bubble-margin: .25rem;
   .bubble-beside-button {
     right: auto;
     left: -46px;
-    transform: scaleX(-1);
+    //transform: scaleX(-1);
   }
 }
 

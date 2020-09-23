@@ -84,7 +84,10 @@
       margin-right: 8px;
       overflow: hidden;
       font-size: 14px;
-      -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%);
+      
+      html.is-safari & {
+        -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%); // fix safari overflow
+      }
 
       &:after {
         position: absolute;
@@ -142,10 +145,8 @@
           margin: 0;
         }
 
-        @media not all and (min-resolution:.001dpcm)
-        { @supports (-webkit-appearance:none) {
-            margin-right: 4px;
-          }
+        html.is-safari & {
+          margin-right: 4px;
         }
       }
     }

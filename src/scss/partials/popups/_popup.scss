@@ -26,7 +26,7 @@
     z-index: 4;
 
     .popup-container {
-      transform: translateY(0);
+      transform: translate3d(0, 0, 0);
     }
   }
 
@@ -36,7 +36,7 @@
     border-radius: $border-radius-medium;
     background-color: #fff;
     padding: 1rem;
-    transform: translateY(-40px);
+    transform: translate3d(0, -40px, 0);
     backface-visibility: hidden;
     transition-property: transform;
     transition-duration: 0.3s;

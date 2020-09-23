@@ -6,7 +6,7 @@ import { horizontalMenu } from "../horizontalMenu";
 import animationIntersector from "../animationIntersector";
 import appSidebarRight from "../../lib/appManagers/appSidebarRight";
 import appImManager from "../../lib/appManagers/appImManager";
-import Scrollable from "../scrollable_new";
+import Scrollable, { ScrollableX } from "../scrollable_new";
 import EmojiTab from "./tabs/emoji";
 import StickersTab from "./tabs/stickers";
 import StickyIntersector from "../stickyIntersector";
@@ -240,7 +240,7 @@ export class EmoticonsDropdown {
     //animationIntersector.checkAnimations(false, EMOTICONSSTICKERGROUP);
   };
 
-  public static menuOnClick = (menu: HTMLUListElement, scroll: Scrollable, menuScroll?: Scrollable) => {
+  public static menuOnClick = (menu: HTMLUListElement, scroll: Scrollable, menuScroll?: ScrollableX) => {
     let prevId = 0;
     let jumpedTo = -1;
 

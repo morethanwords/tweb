@@ -1,0 +1,155 @@
+.document {
+  padding-left: 4.5rem;
+  height: 70px;
+
+  &-ico {
+    background-color: $color-blue;
+    border-radius: 5px;
+    line-height: 10px;
+
+    &:after {
+      content: "";
+      display: block;
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 1.125rem;
+      height: 1.125rem;
+      border-bottom-left-radius: .25rem;
+      border-left: .5625rem solid rgba(0, 0, 0, .25);
+      border-bottom: .5625rem solid rgba(0, 0, 0, .25);
+      border-top: .5625rem solid #fff;
+      border-right: .5625rem solid #fff;
+    }
+  }
+  
+  &-ico, &-download {
+    font-weight: 500;
+    letter-spacing: 1px;
+    font-size: 1.1rem;
+    background-size: contain;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &-download {
+    background-color: $color-blue;
+    border-radius: 8px;
+  }
+
+  &.ext-zip {
+    .document-ico, .document-download {
+      background-color: #FB8C00;
+    }
+  }
+
+  &.ext-pdf {
+    .document-ico, .document-download {
+      background-color: #DF3F40;
+    }
+  }
+
+  &.ext-apk {
+    .document-ico, .document-download {
+      background-color: #43A047;
+    }
+  }
+
+  &:not(.photo) {
+    .document-ico {
+      padding-top: 1.5rem;
+      //background-image: url('../assets/img/doc-in.svg');
+    }
+  }
+
+  &.photo {
+    .document-ico {
+      background: #000;
+      border-radius: $border-radius;
+
+      .document-thumb {
+        object-fit: cover;
+        width: 100%;
+        height: 100%;
+      }
+
+      &:after {
+        display: none;
+      }
+    }
+
+    .document-download {
+      background-color: rgba(0, 0, 0, .15);
+    }
+  }
+  
+  &-name {
+    white-space: nowrap;
+    font-weight: 500;
+    line-height: 1.3;
+  }
+  
+  &-size {
+    white-space: nowrap;
+    color: $color-gray;
+    font-size: 14px;
+    padding-right: 32px;
+    line-height: 1.3;
+  }
+}
+
+.document, .audio {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+
+  &-ico, &-download {
+    position: absolute;
+    left: 0;
+    width: 54px;
+    height: 54px;
+    color: #fff;
+    display: flex;
+    justify-content: center;
+
+    
+    &.tgico-largeplay:before {
+      margin-right: -1px;
+    }
+
+    @include respond-to(handhelds) {
+      height: 36px;
+      width: 36px;
+    }
+  }
+
+  &-download {
+    z-index: 1;
+    align-items: center;
+    font-size: 24px;
+    cursor: pointer;
+    
+    .tgico-download {
+      transform: scale(1);
+      transition: .2s scale;
+    }
+
+    &.downloading {
+      .tgico-download {
+        transform: scale(0);
+      }
+    }
+  }
+
+  .preloader-container {
+    width: 42px;
+    height: 42px;
+
+    @include respond-to(handhelds) {
+      width: 30px;
+      height: 30px;
+    }
+  }
+}

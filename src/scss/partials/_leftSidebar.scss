@@ -1,6 +1,21 @@
 #column-left {
   //display: flex;
   flex-direction: column;
+  flex: 1;
+  min-width: 18rem;
+  // ! -.5 because of border-left and border-right on whole page
+  max-width: calc(#{$large-screen} / 4);
+
+  @include respond-to(before-medium-screens) {
+    flex: 2;
+  }
+
+  // ! WARNING, ОЧЕНЬ КРУТОЙ КОСТЫЛЬ - ФИКС ЧЁРНОЙ РАМКИ У КАРТИНОК С ХВОСТИКОМ
+  html.is-safari & {
+    @include respond-to(large-screens) {
+      max-width: calc(#{$large-screen} / 4 - 1.25px);
+    }
+  }
 
   .folders-tabs-scrollable {
     z-index: 1;
@@ -21,12 +36,14 @@
 
       li {
         height: 43px;
-        padding: 0 16px;
+        padding: 0 1rem;
         display: flex;
         justify-content: center;
         align-items: center;
+        flex: 0 0 auto;
+        min-width: 3rem;
 
-        > span:first-child {
+        > span {
           overflow: visible;
 
           i {
@@ -83,13 +100,13 @@
     width: 39.75px;
     height: 39px;
 
-    > * {
+    > .btn-icon {
       visibility: hidden;
       opacity: 0;
       position: absolute;
       left: 0;
       top: 0;
-      transition: .2s opacity;
+      transition: .2s opacity, .15s background-color;
       z-index: 2;
 
       &:before {
@@ -250,7 +267,7 @@
 }
 
 #search-container {
-  transition: 150ms ease-in-out opacity,150ms ease-in-out transform;
+  transition: .15s ease-in-out opacity, .15s ease-in-out transform;
   transform: scale(1.1, 1.1);
   opacity: 0;
   display: flex;
@@ -323,6 +340,7 @@
       line-height: 1.4;
       border-radius: 0.625rem;
       margin: 0px 0.5rem 0px 0.4375rem;
+      overflow: hidden;
 
       @include respond-to(handhelds) {
         padding: 0.75rem 0.625rem;
@@ -448,6 +466,7 @@
     cursor: pointer;
     position: relative;
     margin-bottom: 10px;
+    overflow: hidden;
 
     @include respond-to(handhelds) {
      padding: 7px 16px 11px 16px;
@@ -493,7 +512,7 @@
     padding: 21px 24px 8px 24px;
 
     @include respond-to(handhelds) {
-        width: 100%;
+      width: 100%;
       padding: 21px 16px 8px 16px;
     }
   }
@@ -558,6 +577,7 @@
   display: flex;
   font-size: 1.5rem;
   padding: 13px 24px 10px 24px;
+  overflow: hidden;
 
   @include respond-to(handhelds) {
     padding: 13px 16px 10px 16px;
@@ -657,17 +677,10 @@
 }
 
 .search-group-recent {
-
   .search-group__name {
     display: flex;
     justify-content: space-between;
     align-items: center;
-  }
-
-  li {
-    @include respond-to(handhelds) {
-      padding-top: 0;
-    }
   }
 
   .btn-icon {
@@ -676,52 +689,46 @@
     //}
   }
 
-  .user-caption {
-    @include respond-to(handhelds) {
+  @include respond-to(handhelds) {
+    li {
+      padding-top: 0;
+    }
+
+    .user-caption {
       margin-top: -2px;
     }
-  }
 
-  p span.user-title {
-    @include respond-to(handhelds) {
+    p span.user-title {
       font-weight: 500;
     }
-  }
 
-  .dialog-avatar {
-    @include respond-to(handhelds) {
+    .dialog-avatar {
       width: 46px;
       height: 46px;
     }
-  }
 
-  li > .rp {
-    @include respond-to(handhelds) {
+    li > .rp {
       height: 62px;
     }
   }
 }
 
-.search-group-recent.search-group.search-group-contacts ul {
-  @include respond-to(handhelds) {
+@include respond-to(handhelds) {
+  .search-group-recent.search-group.search-group-contacts ul {
     margin-top: -2px;
   }
-}
 
-.search-group.search-group-contacts ul, .search-group.search-group-messages ul {
-  @include respond-to(handhelds) {
+  .search-group.search-group-contacts ul, .search-group.search-group-messages ul {
     margin-top: 7px;
   }
-}
 
-.search-group.search-group-messages {
-  @include respond-to(handhelds) {
+  .search-group.search-group-messages {
     margin-top: -6px;
   }
 }
 
-.search-group-recent.search-group.search-group-contacts {
-  @include respond-to(not-handhelds) {
+@include respond-to(not-handhelds) {
+  .search-group-recent.search-group.search-group-contacts {
     padding: 0px 0 7px;
   }
 }

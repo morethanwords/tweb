@@ -1,10 +1,10 @@
 import { logger, LogLevels } from "../lib/logger";
-import smoothscroll from '../vendor/smoothscroll';
-import { touchSupport, isSafari, mediaSizes } from "../lib/config";
-import { CancellablePromise, deferredPromise } from "../lib/polyfill";
+import smoothscroll, { SCROLL_TIME, SmoothScrollToOptions } from '../vendor/smoothscroll';
+import { touchSupport } from "../lib/config";
+//import { CancellablePromise, deferredPromise } from "../lib/polyfill";
 //import { isInDOM } from "../lib/utils";
 (window as any).__forceSmoothScrollPolyfill__ = true;
-smoothscroll.polyfill();
+smoothscroll();
 /*
 var el = $0;
 var height = 0;
@@ -48,10 +48,88 @@ const scrollsIntersector = new IntersectionObserver(entries => {
   }
 }); */
 
-export default class Scrollable {
-  //public container: HTMLDivElement;
-  public overflowContainer: HTMLElement;
+export class ScrollableBase {
+  protected log: ReturnType<typeof logger>;
 
+  protected onScroll: () => void;
+  public getScrollValue: () => number;
+
+  public scrollLocked = 0;
+
+  constructor(public el: HTMLElement, logPrefix = '', public appendTo = el, public container: HTMLElement = document.createElement('div')) {
+    this.container.classList.add('scrollable');
+
+    if(!appendTo) {
+      this.appendTo = this.container;
+    }
+    
+    this.log = logger('SCROLL' + (logPrefix ? '-' + logPrefix : ''), LogLevels.error);
+
+    if(el) {
+      Array.from(el.children).forEach(c => this.container.append(c));
+
+      el.append(this.container);
+    }
+    //this.onScroll();
+  }
+
+  protected setListeners() {
+    window.addEventListener('resize', this.onScroll);
+    this.container.addEventListener('scroll', this.onScroll, {passive: true, capture: true});
+  }
+
+  public prepend(element: HTMLElement) {
+    this.appendTo.prepend(element);
+  }
+  
+  public append(element: HTMLElement) {
+    this.appendTo.append(element);
+  }
+
+  public contains(element: Element) {
+    return !!element.parentElement;
+  }
+
+  public removeElement(element: Element) {
+    element.remove();
+  }
+
+  public scrollTo(value: number, side: 'top' | 'left', smooth = true, important = false, scrollTime = SCROLL_TIME) {
+    if(this.scrollLocked && !important) return;
+
+    const scrollValue = this.getScrollValue();
+    if(scrollValue == Math.floor(value)) {
+      return;
+    }
+
+    if(this.scrollLocked) clearTimeout(this.scrollLocked);
+    /* else {
+      this.scrollLockedPromise = deferredPromise<void>();
+    } */
+
+    this.scrollLocked = window.setTimeout(() => {
+      this.scrollLocked = 0;
+      //this.scrollLockedPromise.resolve();
+      //this.onScroll();
+      this.container.dispatchEvent(new CustomEvent('scroll'));
+    }, scrollTime);
+
+    const options: SmoothScrollToOptions = {
+      behavior: smooth ? 'smooth' : 'auto',
+      scrollTime
+    };
+
+    options[side] = value;
+
+    this.container.scrollTo(options as any);
+  }
+
+  get length() {
+    return this.appendTo.childElementCount;
+  }
+}
+
+export default class Scrollable extends ScrollableBase {
   public splitUp: HTMLElement;
   
   public onScrolledTop: () => void = null;
@@ -63,8 +141,6 @@ export default class Scrollable {
   
   private disableHoverTimeout: number = 0;
   
-  private log: ReturnType<typeof logger>;
-
   /* private sentinelsObserver: IntersectionObserver;
   private topSentinel: HTMLDivElement;
   private bottomSentinel: HTMLDivElement; */
@@ -80,8 +156,7 @@ export default class Scrollable {
   /* private onScrolledTopFired = false;
   private onScrolledBottomFired = false; */
 
-  public scrollLocked = 0;
-  public scrollLockedPromise: CancellablePromise<void> = Promise.resolve();
+  //public scrollLockedPromise: CancellablePromise<void> = Promise.resolve();
   public isVisible = false;
 
   private reorderTimeout: number;
@@ -102,8 +177,8 @@ export default class Scrollable {
     this.visible.delete(element);
   }
   
-  constructor(public el: HTMLElement, axis: 'y' | 'x' = 'y', logPrefix = '', public appendTo = el, public onScrollOffset = 300, public splitCount = 15, public container: HTMLElement = document.createElement('div')) {
-    this.container.classList.add('scrollable');
+  constructor(el: HTMLElement, logPrefix = '', appendTo = el, public onScrollOffset = 300, public splitCount = 15, container: HTMLElement = document.createElement('div')) {
+    super(el, logPrefix, appendTo, container);
 
     this.visible = new Set();
     this.observer = new IntersectionObserver(entries => {
@@ -173,63 +248,11 @@ export default class Scrollable {
       }
     });
 
-    if(!appendTo) {
-      this.appendTo = this.container;
-    }
-    
-    this.log = logger('SCROLL' + (logPrefix ? '-' + logPrefix : ''), LogLevels.error);
+    this.container.classList.add('scrollable-y');
 
-    if(axis == 'x') {
-      this.container.classList.add('scrollable-x');
-
-      if(!touchSupport) {
-        const scrollHorizontally = (e: any) => {
-          e = window.event || e;
-          if(e.which == 1) {
-            // maybe horizontal scroll is natively supports, works on macbook
-            return;
-          }
-
-          const delta = Math.max(-1, Math.min(1, (e.wheelDelta || -e.detail)));
-          this.container.scrollLeft -= (delta * 20);
-          e.preventDefault();
-        };
-        if(this.container.addEventListener) {
-          // IE9, Chrome, Safari, Opera
-          this.container.addEventListener("mousewheel", scrollHorizontally, false);
-          // Firefox
-          this.container.addEventListener("DOMMouseScroll", scrollHorizontally, false);
-        } else {
-          // IE 6/7/8
-          // @ts-ignore
-          this.container.attachEvent("onmousewheel", scrollHorizontally);
-        }
-      }
-    } else if(axis == 'y') {
-      this.container.classList.add('scrollable-y');
-    } else {
-      throw new Error('no side for scroll');
-    }
-
-    window.addEventListener('resize', () => {
-      this.overflowContainer = mediaSizes.isMobile && false ? document.documentElement : this.container;
-      this.onScroll();
-    });
-    this.container.addEventListener('scroll', this.onScroll, {passive: true, capture: true});
-    //document.documentElement.addEventListener('scroll', binded, {passive: true, capture: true});
-    //window.addEventListener('scroll', binded, {passive: true, capture: true});
-    
-    if(el) {
-      Array.from(el.children).forEach(c => this.container.append(c));
-
-      el.append(this.container);
-    }
     //this.onScroll();
 
-    this.overflowContainer = mediaSizes.isMobile && false ? document.documentElement : this.container;
-
-    /* scrollables.set(this.container, this);
-    scrollsIntersector.observe(this.container); */
+    this.setListeners();
   }
 
   // public attachSentinels(container = this.container, offset = this.onScrollOffset) {
@@ -329,12 +352,12 @@ export default class Scrollable {
     this.onScrollMeasure = window.requestAnimationFrame(() => {
       //if(!this.isVisible) return;
 
-      this.checkForTriggers(this.overflowContainer);
+      this.checkForTriggers();
 
       this.onScrollMeasure = 0;
       if(!this.splitUp) return;
 
-      const scrollTop = this.overflowContainer.scrollTop;
+      const scrollTop = this.scrollTop;
       if(this.lastScrollTop != scrollTop) {
         this.lastScrollDirection = this.lastScrollTop < scrollTop ? 1 : -1;
         this.lastScrollTop = scrollTop;
@@ -344,9 +367,10 @@ export default class Scrollable {
     });
   };
 
-  public checkForTriggers(container: HTMLElement) {
+  public checkForTriggers() {
     if(this.scrollLocked || (!this.onScrolledTop && !this.onScrolledBottom)) return;
 
+    const container = this.container;
     const scrollHeight = container.scrollHeight;
     if(!scrollHeight) { // незачем вызывать триггеры если блок пустой или не виден
       return;
@@ -439,11 +463,11 @@ export default class Scrollable {
     if(element.parentElement && !this.scrollLocked) {
       const isFirstUnread = element.classList.contains('is-first-unread');
 
-      let offsetTop = element.getBoundingClientRect().top - this.container.getBoundingClientRect().top;
-      offsetTop = this.container.scrollTop + offsetTop;
+      let offset = element.getBoundingClientRect().top - this.container.getBoundingClientRect().top;
+      offset = this.scrollTop + offset;
       
       if(!smooth && isFirstUnread) {
-        this.scrollTo(offsetTop, false);
+        this.scrollTo(offset, 'top', false);
         return;
       }
 
@@ -451,38 +475,19 @@ export default class Scrollable {
       const height = element.scrollHeight;
       
       const d = (clientHeight - height) / 2;
-      offsetTop -= d;
+      offset -= d;
       
-      this.scrollTo(offsetTop, smooth);
+      this.scrollTo(offset, 'top', smooth);
     }
-  }
-
-  public scrollTo(top: number, smooth = true, important = false) {
-    if(this.scrollLocked && !important) return;
-
-    const scrollTop = this.scrollTop;
-    if(scrollTop == Math.floor(top)) {
-      return;
-    }
-
-    if(this.scrollLocked) clearTimeout(this.scrollLocked);
-    else {
-      this.scrollLockedPromise = deferredPromise<void>();
-    }
-
-    this.scrollLocked = window.setTimeout(() => {
-      this.scrollLocked = 0;
-      this.scrollLockedPromise.resolve();
-      //this.onScroll();
-      this.container.dispatchEvent(new CustomEvent('scroll'));
-    }, 468);
-
-    this.container.scrollTo({behavior: smooth ? 'smooth' : 'auto', top});
   }
 
   public removeElement(element: Element) {
     element.remove();
   }
+
+  public getScrollValue = () => {
+    return this.scrollTop;
+  };
 
   set scrollTop(y: number) {
     this.container.scrollTop = y;
@@ -496,8 +501,57 @@ export default class Scrollable {
   get scrollHeight() {
     return this.container.scrollHeight;
   }
+}
 
-  get length() {
-    return this.appendTo.childElementCount;
+export class ScrollableX extends ScrollableBase {
+  constructor(public el: HTMLElement, logPrefix = '', public appendTo = el, public onScrollOffset = 300, public splitCount = 15, public container: HTMLElement = document.createElement('div')) {
+    super(el, logPrefix, appendTo, container);
+
+    this.container.classList.add('scrollable-x');
+
+    if(!touchSupport) {
+      const scrollHorizontally = (e: any) => {
+        e = window.event || e;
+        if(e.which == 1) {
+          // maybe horizontal scroll is natively supports, works on macbook
+          return;
+        }
+
+        const delta = Math.max(-1, Math.min(1, (e.wheelDelta || -e.detail)));
+        this.container.scrollLeft -= (delta * 20);
+        e.preventDefault();
+      };
+      if(this.container.addEventListener) {
+        // IE9, Chrome, Safari, Opera
+        this.container.addEventListener("mousewheel", scrollHorizontally, false);
+        // Firefox
+        this.container.addEventListener("DOMMouseScroll", scrollHorizontally, false);
+      } else {
+        // IE 6/7/8
+        // @ts-ignore
+        this.container.attachEvent("onmousewheel", scrollHorizontally);
+      }
+    }
+
+    this.setListeners();
   }
+
+  public scrollIntoView(element: HTMLElement, smooth = true, scrollTime?: number) {
+    if(element.parentElement && !this.scrollLocked) {
+      let offset = element.getBoundingClientRect().left - this.container.getBoundingClientRect().left;
+      offset = this.getScrollValue() + offset;
+
+      const clientWidth = this.container.clientWidth;
+      const width = element.scrollWidth;
+      
+      const d = (clientWidth - width) / 2;
+      offset -= d;
+      
+      this.scrollTo(offset, 'left', smooth, undefined, scrollTime);
+    }
+  }
+
+  public getScrollValue = () => {
+    return this.container.scrollLeft;
+  };
 }

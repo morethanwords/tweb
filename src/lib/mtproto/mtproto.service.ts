@@ -2,9 +2,9 @@ import { isSafari } from '../../helpers/userAgent';
 import { logger, LogLevels } from '../logger';
 import type { DownloadOptions } from './apiFileManager';
 import type { WorkerTaskTemplate } from '../../types';
-import { deferredPromise, CancellablePromise } from '../polyfill';
 import { notifySomeone } from '../../helpers/context';
-import { InputFileLocation, FileLocation, UploadFile } from '../../layer';
+import type { InputFileLocation, FileLocation, UploadFile } from '../../layer';
+import { CancellablePromise, deferredPromise } from '../../helpers/cancellablePromise';
 
 const log = logger('SW', LogLevels.error/*  | LogLevels.debug | LogLevels.log */);
 const ctx = self as any as ServiceWorkerGlobalScope;

@@ -1,6 +1,6 @@
 import emoticonsDropdown, { EmoticonsTab, EMOTICONSSTICKERGROUP, EmoticonsDropdown } from "..";
 import { StickerSet } from "../../../layer";
-import Scrollable from "../../scrollable_new";
+import Scrollable, { ScrollableX } from "../../scrollable_new";
 import { wrapSticker } from "../../wrappers";
 import appStickersManager from "../../../lib/appManagers/appStickersManager";
 import appDownloadManager from "../../../lib/appManagers/appDownloadManager";
@@ -230,7 +230,7 @@ export default class StickersTab implements EmoticonsTab {
     let menuWrapper = this.content.previousElementSibling as HTMLDivElement;
     this.menu = menuWrapper.firstElementChild.firstElementChild as HTMLUListElement;
 
-    let menuScroll = new Scrollable(menuWrapper, 'x');
+    let menuScroll = new ScrollableX(menuWrapper);
 
     let stickersDiv = document.createElement('div');
     stickersDiv.classList.add('stickers-categories');
@@ -274,7 +274,7 @@ export default class StickersTab implements EmoticonsTab {
 
     stickersDiv.addEventListener('click', EmoticonsDropdown.onMediaClick);
 
-    this.scroll = new Scrollable(this.content, 'y', 'STICKERS', undefined, undefined, 2);
+    this.scroll = new Scrollable(this.content, 'STICKERS', undefined, undefined, 2);
     this.scroll.setVirtualContainer(stickersDiv);
 
     this.stickyIntersector = EmoticonsDropdown.menuOnClick(this.menu, this.scroll, menuScroll);

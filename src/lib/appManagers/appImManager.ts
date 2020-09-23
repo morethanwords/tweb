@@ -28,7 +28,7 @@ import appStickersManager from './appStickersManager';
 import AvatarElement from '../../components/avatar';
 import appInlineBotsManager from './AppInlineBotsManager';
 import StickyIntersector from '../../components/stickyIntersector';
-import { mediaSizes, touchSupport, isAndroid, isApple } from '../config';
+import { touchSupport } from '../config';
 import animationIntersector from '../../components/animationIntersector';
 import PopupStickers from '../../components/popupStickers';
 import PopupDatePicker from '../../components/popupDatepicker';
@@ -40,6 +40,8 @@ import { InputNotifyPeer, InputPeerNotifySettings } from '../../layer';
 import { ChatAudio } from '../../components/chat/audio';
 import { ChatContextMenu } from '../../components/chat/contextMenu';
 import { ChatSearch } from '../../components/chat/search';
+import mediaSizes from '../../helpers/mediaSizes';
+import { isAndroid, isApple } from '../../helpers/userAgent';
 
 //console.log('appImManager included33!');
 
@@ -148,7 +150,7 @@ export class AppImManager {
     parseMenuButtonsTo(this.menuButtons, this.columnEl.querySelector('.chat-more-button').firstElementChild.children);
     
     this.chatAudio = new ChatAudio();
-    this.topbar.insertBefore(this.chatAudio.container, this.chatInfo.nextElementSibling);
+    this.chatInfo.nextElementSibling.prepend(this.chatAudio.container);
 
     apiManager.getUserID().then((id) => {
       this.myID = $rootScope.myID = id;
@@ -738,7 +740,7 @@ export class AppImManager {
     }, {once: true});
     newPinned.append(close);
 
-    this.topbar.insertBefore(newPinned, this.btnJoin);
+    this.btnJoin.parentElement.insertBefore(newPinned, this.btnJoin);
     this.topbar.classList.add('is-pinned-shown');
 
     if(this.pinnedMessageContainer) {
@@ -833,7 +835,7 @@ export class AppImManager {
   }
   
   public setScroll() {
-    this.scrollable = new Scrollable(this.bubblesContainer, 'y', 'IM', this.chatInner, 300);
+    this.scrollable = new Scrollable(this.bubblesContainer, 'IM', this.chatInner, 300);
 
     /* const getScrollOffset = () => {
       //return Math.round(Math.max(300, appPhotosManager.windowH / 1.5));
@@ -846,8 +848,6 @@ export class AppImManager {
 
     this.scrollable = new Scrollable(this.bubblesContainer, 'y', 'IM', this.chatInner, getScrollOffset()); */
     this.scroll = this.scrollable.container;
-    
-    this.bubblesContainer.append(this.goDownBtn);
     
     this.scrollable.onScrolledTop = () => this.loadMoreHistory(true);
     this.scrollable.onScrolledBottom = () => this.loadMoreHistory(false);
@@ -1004,7 +1004,8 @@ export class AppImManager {
     ////console.time('appImManager: pre render start');
     if(peerID == 0) {
       appSidebarRight.toggleSidebar(false);
-      this.topbar.style.display = this.chatInput.style.display = this.goDownBtn.style.display = 'none';
+      this.topbar.style.display = this.chatInput.style.display = 'none';
+      this.goDownBtn.classList.add('hide');
       this.cleanup(true);
       this.peerID = $rootScope.selectedPeerID = 0;
       $rootScope.$broadcast('peer_changed', this.peerID);
@@ -1253,7 +1254,7 @@ export class AppImManager {
       else title = appPeersManager.getPeerTitle(this.peerID);
       this.titleEl.innerHTML = appSidebarRight.profileElements.name.innerHTML = title;
 
-      this.goDownBtn.style.display = '';
+      this.goDownBtn.classList.remove('hide');
 
       this.setPeerStatus(true);
     });
@@ -1320,10 +1321,10 @@ export class AppImManager {
     
     //if(scrolledDown) this.scrollable.scrollTop = this.scrollable.scrollHeight;
     if(this.messagesQueuePromise && scrolledDown) {
-      this.scrollable.scrollTo(this.scrollable.scrollHeight - 1, false, true);
+      this.scrollable.scrollTo(this.scrollable.scrollHeight - 1, 'top', false, true);
       this.messagesQueuePromise.then(() => {
         this.log('messagesQueuePromise after:', this.chatInner.childElementCount, this.scrollable.scrollHeight);
-        this.scrollable.scrollTo(this.scrollable.scrollHeight, true, true);
+        this.scrollable.scrollTo(this.scrollable.scrollHeight, 'top', true, true);
 
         setTimeout(() => {
           this.log('messagesQueuePromise afterafter:', this.chatInner.childElementCount, this.scrollable.scrollHeight);
@@ -1974,17 +1975,17 @@ export class AppImManager {
             quoteTextDiv.append(nameEl);
           }
 
-          if(webpage.title) {
+          if(webpage.rTitle) {
             let titleDiv = document.createElement('div');
             titleDiv.classList.add('title');
-            titleDiv.innerHTML = RichTextProcessor.wrapRichText(webpage.title);
+            titleDiv.innerHTML = webpage.rTitle;
             quoteTextDiv.append(titleDiv);
           }
 
-          if(webpage.description) {
+          if(webpage.rDescription) {
             let textDiv = document.createElement('div');
             textDiv.classList.add('text');
-            textDiv.innerHTML = RichTextProcessor.wrapRichText(webpage.description);
+            textDiv.innerHTML = webpage.rDescription;
             quoteTextDiv.append(textDiv);
           }
 

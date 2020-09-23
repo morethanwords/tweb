@@ -1,0 +1,82 @@
+.audio {
+  position: relative;
+  padding-left: 67px;
+  min-height: 58px;
+  max-width: 244px;
+  overflow: visible!important;
+
+  @include respond-to(handhelds) {
+    padding-left: 45px;
+  }
+
+  &-toggle, &-download {
+    border-radius: 50%;
+    background-color: $color-blue;
+    font-size: 2.3rem;
+    align-items: center;
+
+    @include respond-to(handhelds) {
+      font-size: 24px !important;
+    }
+  }
+
+  &-download {
+    z-index: 2;
+  }
+
+  &-waveform {
+    height: 23px;
+
+    //overflow: visible!important;
+
+    rect {
+      //overflow: visible!important;
+      fill: #CBCBCB;
+
+      &.active {
+        fill: $color-blue;
+      }
+    }
+  }
+
+  &-title {
+    font-size: 1rem;
+    color: #000;
+    user-select: none;
+  }
+
+  &-time, &-subtitle {
+    font-size: 14px;
+    color: $color-gray;
+    margin-top: 3px;
+    margin-left: -1px;
+    user-select: none;
+
+    @include respond-to(handhelds) {
+      margin-top: 1px;
+      font-size: 12px;
+    }
+  }
+
+  &-title, &:not(.audio-show-progress) &-subtitle {
+    white-space: nowrap;
+		overflow: hidden;
+		max-width: 100%;
+		text-overflow: ellipsis;
+  }
+
+
+  @include respond-to(handhelds) {
+    &-download {
+      /* background: transparent; */
+      margin-left: 2px;
+      margin-top: 1px;
+    }
+
+    &.is-voice {
+      .audio-download {
+        margin: 0;
+      }
+    }
+  }
+}

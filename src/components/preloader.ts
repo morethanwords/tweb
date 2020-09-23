@@ -1,5 +1,5 @@
 import { isInDOM, cancelEvent } from "../lib/utils";
-import { CancellablePromise } from "../lib/polyfill";
+import { CancellablePromise } from "../helpers/cancellablePromise";
 
 export default class ProgressivePreloader {
   public preloader: HTMLDivElement;

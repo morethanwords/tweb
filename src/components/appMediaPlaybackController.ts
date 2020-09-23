@@ -1,8 +1,8 @@
 import { $rootScope } from "../lib/utils";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import appDocsManager, {MyDocument} from "../lib/appManagers/appDocsManager";
-import { isSafari } from "../lib/config";
-import { CancellablePromise, deferredPromise } from "../lib/polyfill";
+import { CancellablePromise, deferredPromise } from "../helpers/cancellablePromise";
+import { isSafari } from "../helpers/userAgent";
 
 // TODO: если удалить сообщение, и при этом аудио будет играть - оно не остановится, и можно будет по нему перейти вникуда
 

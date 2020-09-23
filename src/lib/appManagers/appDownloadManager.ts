@@ -1,6 +1,6 @@
 import { $rootScope } from "../utils";
 import apiManager from "../mtproto/mtprotoworker";
-import { deferredPromise, CancellablePromise } from "../polyfill";
+import { deferredPromise, CancellablePromise } from "../../helpers/cancellablePromise";
 import type { DownloadOptions } from "../mtproto/apiFileManager";
 import { getFileNameByLocation } from "../bin_utils";
 import { InputFile } from "../../layer";

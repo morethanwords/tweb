@@ -9,11 +9,13 @@ import appDocsManager, {MyDocument} from "./appDocsManager";
 import VideoPlayer from "../mediaPlayer";
 import { renderImageFromUrl, parseMenuButtonsTo } from "../../components/misc";
 import AvatarElement from "../../components/avatar";
-import LazyLoadQueue, { LazyLoadQueueBase } from "../../components/lazyLoadQueue";
+import { LazyLoadQueueBase } from "../../components/lazyLoadQueue";
 import appForward from "../../components/appForward";
-import { isSafari, mediaSizes, touchSupport } from "../config";
-import { deferredPromise } from "../polyfill";
+import { touchSupport } from "../config";
 import appMediaPlaybackController from "../../components/appMediaPlaybackController";
+import { deferredPromise } from "../../helpers/cancellablePromise";
+import mediaSizes from "../../helpers/mediaSizes";
+import { isSafari } from "../../helpers/userAgent";
 
 // TODO: масштабирование картинок (не SVG) при ресайзе, и правильный возврат на исходную позицию
 // TODO: картинки "обрезаются" если возвращаются или появляются с места, где есть их перекрытие (топбар, поле ввода)
@@ -355,7 +357,7 @@ export class AppMediaViewer {
       top = rect.top;
     }
 
-    transform += `translate(${left}px,${top}px) `;
+    transform += `translate3d(${left}px,${top}px,0) `;
 
     /* if(wasActive) {
       left = fromRight === 1 ? appPhotosManager.windowW / 2 : -(containerRect.width + appPhotosManager.windowW / 2);
@@ -585,7 +587,7 @@ export class AppMediaViewer {
     // чтобы проверить установленную позицию - раскомментировать
     //throw '';
 
-    mover.style.transform = `translate(${containerRect.left}px,${containerRect.top}px) scale(1,1)`;
+    mover.style.transform = `translate3d(${containerRect.left}px,${containerRect.top}px,0) scale(1,1)`;
     //mover.style.transform = `translate(-50%,-50%) scale(1,1)`;
 
     if(aspecter) {
@@ -691,7 +693,7 @@ export class AppMediaViewer {
     if(mover.classList.contains('center')) {
       //const rect = mover.getBoundingClientRect();
       const rect = this.content.container.getBoundingClientRect();
-      mover.style.transform = `translate(${rect.left}px,${rect.top}px)`;
+      mover.style.transform = `translate3d(${rect.left}px,${rect.top}px,0)`;
       mover.classList.remove('center');
       void mover.offsetLeft; // reflow
       mover.classList.remove('no-transition');
@@ -712,7 +714,7 @@ export class AppMediaViewer {
 
     const rect = mover.getBoundingClientRect();
 
-    const newTransform = mover.style.transform.replace(/translate\((.+?),/, (match, p1) => {
+    const newTransform = mover.style.transform.replace(/translate3d\((.+?),/, (match, p1) => {
       const x = toLeft ? -rect.width : windowW;
       //const x = toLeft ? -(rect.right + (rect.width / 2)) : windowW / 2;
 

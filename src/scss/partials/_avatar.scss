@@ -1,0 +1,59 @@
+avatar-element {
+  color: #fff;
+  width: 54px;
+  height: 54px;
+  line-height: 54px;
+  border-radius: 50%;
+  background-color: $color-blue;
+  text-align: center;
+  font-size: 1.25em;
+  /* overflow: hidden; */
+  position: relative;
+  user-select: none;
+  
+  @include respond-to(handhelds) {
+    font-size: 14px;
+  }
+  
+  /* kostil */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  img {
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    user-select: none;
+
+    &.fade-in {
+      animation: fadeIn .2s ease forwards;
+    }
+  }
+  
+  &[class*=" tgico-"] {
+    line-height: 52px;
+    font-size: 28px;
+  }
+  
+  path {
+    fill: white;
+  }
+  
+  &.is-online:after {
+    position: absolute;
+    content: " ";
+    display: block;
+    border-radius: 50%;
+    border: 2px solid white;
+    background-color: #0ac630;
+    left: 74%;
+    top: 73%;
+    width: 14px;
+    height: 14px;
+  }
+
+  &.tgico-avatar_deletedaccount {
+    font-size: 3rem;
+  }
+}

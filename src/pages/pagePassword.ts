@@ -7,10 +7,10 @@ import LottieLoader, { RLottiePlayer } from '../lib/lottieLoader';
 //import passwordManager from '../lib/mtproto/passwordManager';
 import apiManager from '../lib/mtproto/mtprotoworker';
 import Page from './page';
-import { mediaSizes } from '../lib/config';
 import passwordManager from '../lib/mtproto/passwordManager';
 import { cancelEvent } from '../lib/utils';
 import { AccountPassword } from '../layer';
+import mediaSizes from '../helpers/mediaSizes';
 
 let onFirstMount = (): Promise<any> => {
   let needFrame = 0;
