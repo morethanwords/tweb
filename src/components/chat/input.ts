@@ -14,6 +14,7 @@ import { touchSupport } from "../../lib/config";
 import appDocsManager from "../../lib/appManagers/appDocsManager";
 import emoticonsDropdown from "../emoticonsDropdown";
 import PopupCreatePoll from "../popupCreatePoll";
+import { toast } from "../toast";
 
 export class ChatInput {
   public pageEl = document.getElementById('page-chats') as HTMLDivElement;
@@ -95,10 +96,10 @@ export class ChatInput {
         reuseWorker: true
       });
     } catch(err) {
-      this.btnSend.classList.remove('tgico-microphone2');
-      this.btnSend.classList.add('tgico-send');
       console.error('Recorder constructor error:', err);
     }
+
+    this.updateSendBtn();
 
     this.messageInput.addEventListener('keydown', (e: KeyboardEvent) => {
       if(e.key == 'Enter' && !touchSupport) {
@@ -130,14 +131,14 @@ export class ChatInput {
     this.messageInput.addEventListener('input', (e) => {
       //console.log('messageInput input', this.messageInput.innerText, this.serializeNodes(Array.from(this.messageInput.childNodes)));
   
-      let value = this.messageInput.innerText;
+      const value = this.messageInput.innerText;
   
-      let entities = RichTextProcessor.parseEntities(value);
+      const entities = RichTextProcessor.parseEntities(value);
       //console.log('messageInput entities', entities);
   
-      let entityUrl = entities.find(e => e._ == 'messageEntityUrl');
+      const entityUrl = entities.find(e => e._ == 'messageEntityUrl');
       if(entityUrl) { // need to get webpage
-        let url = value.slice(entityUrl.offset, entityUrl.offset + entityUrl.length);
+        const url = value.slice(entityUrl.offset, entityUrl.offset + entityUrl.length);
   
         //console.log('messageInput url:', url);
   
@@ -147,40 +148,35 @@ export class ChatInput {
           apiManager.invokeApi('messages.getWebPage', {
             url: url,
             hash: 0
-          }).then((webpage: any) => {
-            appWebPagesManager.saveWebPage(webpage);
-            if(this.lastUrl != url) return;
-            //console.log('got webpage: ', webpage);
-
-            this.setTopInfo(webpage.site_name || webpage.title, webpage.description || webpage.url);
-
-            this.replyToMsgID = 0;
-            this.noWebPage = false;
-            this.willSendWebPage = webpage;
+          }).then((webpage) => {
+            webpage = appWebPagesManager.saveWebPage(webpage);
+            if(webpage._  == 'webPage') {
+              if(this.lastUrl != url) return;
+              //console.log('got webpage: ', webpage);
+  
+              this.setTopInfo(webpage.site_name || webpage.title, webpage.description || webpage.url);
+  
+              this.replyToMsgID = 0;
+              this.noWebPage = false;
+              this.willSendWebPage = webpage;
+            }
           });
         }
       }
   
       if(!value.trim() && !this.serializeNodes(Array.from(this.messageInput.childNodes)).trim()) {
         this.messageInput.innerHTML = '';
-        if(this.recorder) {
-          this.btnSend.classList.remove('tgico-send');
-          this.btnSend.classList.add('tgico-microphone2');
-        }
-  
+
         appMessagesManager.setTyping('sendMessageCancelAction');
-      } else if(!this.btnSend.classList.contains('tgico-send') || !this.recorder) {
-        if(this.recorder) {
-          this.btnSend.classList.add('tgico-send');
-          this.btnSend.classList.remove('tgico-microphone2');
-        }
-  
-        let time = Date.now();
+      } else {
+        const time = Date.now();
         if(time - this.lastTimeType >= 6000) {
           this.lastTimeType = time;
           appMessagesManager.setTyping('sendMessageTypingAction');
         }
       }
+
+      this.updateSendBtn();
     });
 
     if(!RichTextProcessor.emojiSupported) {
@@ -517,7 +513,7 @@ export class ChatInput {
     const onBtnSendClick = (e: Event) => {
       cancelEvent(e);
       
-      if(this.btnSend.classList.contains('tgico-send') || !this.recorder) {
+      if(!this.recorder || this.recording || !this.isInputEmpty()) {
         if(this.recording) {
           this.recorder.stop();
         } else {
@@ -526,9 +522,9 @@ export class ChatInput {
       } else {
         this.recorder.start().then(() => {
           this.recordCanceled = false;
-          this.btnSend.classList.add('tgico-send');
-          this.chatInput.classList.add('is-recording');
+          this.chatInput.classList.add('is-recording', 'is-locked');
           this.recording = true;
+          this.updateSendBtn();
           opusDecodeController.setKeepAlive(true);
 
           this.recordStartTime = Date.now();
@@ -571,7 +567,22 @@ export class ChatInput {
 
           r();
         }).catch((e: Error) => {
-          console.error('Recorder start error:', e);
+          switch(e.name as string) {
+            case 'NotAllowedError': {
+              toast('Please allow access to your microphone');
+              break;
+            }
+
+            case 'NotReadableError': {
+              toast(e.message);
+              break;
+            }
+
+            default:
+              console.error('Recorder start error:', e, e.name, e.message);
+              toast(e.message);
+              break;
+          }
         });
       }
     };
@@ -591,8 +602,8 @@ export class ChatInput {
 
       this.recorder.onstop = () => {
         this.recording = false;
-        this.chatInput.classList.remove('is-recording');
-        this.btnSend.classList.remove('tgico-send');
+        this.chatInput.classList.remove('is-recording', 'is-locked');
+        this.updateSendBtn();
         this.recordRippleEl.style.transform = '';
       };
   
@@ -674,16 +685,29 @@ export class ChatInput {
           this.editMsgID = 0;
           this.messageInput.innerHTML = '';
 
-          if(this.recorder) {
-            this.btnSend.classList.remove('tgico-send');
-            this.btnSend.classList.add('tgico-microphone2');
-          }
+          this.updateSendBtn();
         }
       }
 
       this.noWebPage = true;
       this.willSendWebPage = null;
     });
+  }
+
+  private isInputEmpty() {
+    let value = this.messageInput.innerText;
+  
+    return !value.trim() && !this.serializeNodes(Array.from(this.messageInput.childNodes)).trim();
+  }
+
+  public updateSendBtn() {
+    let icon: 'send' | 'record';
+
+    if(!this.recorder || this.recording || !this.isInputEmpty()) icon = 'send';
+    else icon = 'record';
+
+    this.btnSend.classList.toggle('send', icon == 'send');
+    this.btnSend.classList.toggle('record', icon == 'record');
   }
   
   public serializeNodes(nodes: Node[]): string {
@@ -711,10 +735,7 @@ export class ChatInput {
       this.willSendWebPage = null;
       this.messageInput.innerText = '';
 
-      if(this.recorder) {
-        this.btnSend.classList.remove('tgico-send');
-        this.btnSend.classList.add('tgico-microphone2');
-      }
+      this.updateSendBtn();
     }
 
     if(clearReply || clearInput) {
@@ -776,8 +797,7 @@ export class ChatInput {
     if(input !== undefined) {
       this.messageInput.innerHTML = input ? RichTextProcessor.wrapRichText(input) : '';
 
-      this.btnSend.classList.remove('tgico-microphone2');
-      this.btnSend.classList.add('tgico-send');
+      this.updateSendBtn();
     }
 
     //appImManager.scrollPosition.restore();

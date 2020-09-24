@@ -99,6 +99,7 @@
 			cursor: pointer;
       color: $color-blue;
       position: relative;
+      overflow: hidden;
 			
 			html.no-touch &:hover {
 				background-color: rgba(112, 117, 121, 0.08);

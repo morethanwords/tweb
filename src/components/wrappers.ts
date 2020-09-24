@@ -20,6 +20,7 @@ import { PhotoSize } from '../layer';
 import { deferredPromise } from '../helpers/cancellablePromise';
 import mediaSizes from '../helpers/mediaSizes';
 import { isSafari } from '../helpers/userAgent';
+import { months } from '../helpers/date';
 
 export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group}: {
   doc: MyDocument, 
@@ -279,7 +280,6 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
 }
 
 export const formatDate = (timestamp: number, monthShort = false, withYear = true) => {
-  const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'Octomber', 'November', 'December'];
   const date = new Date(timestamp * 1000);
   
   let month = months[date.getMonth()];

@@ -80,7 +80,7 @@ export class AppSidebarRight extends SidebarSlider {
 
   public toggleSidebar(enable?: boolean) {
     /////this.log('sidebarEl', this.sidebarEl, enable, isElementInViewport(this.sidebarEl));
-    
+
     const active = document.body.classList.contains(COLUMN_ACTIVE_CLASSNAME);
     let willChange: boolean;
     if(enable !== undefined) {
@@ -107,17 +107,13 @@ export class AppSidebarRight extends SidebarSlider {
       return Promise.resolve();       
     }
 
-    const set = () => {
-      document.body.classList.toggle(COLUMN_ACTIVE_CLASSNAME, enable);
-    };
-
-    set();
+    document.body.classList.toggle(COLUMN_ACTIVE_CLASSNAME, enable);
     return new Promise(resolve => {
       setTimeout(resolve, 200);
     });
     //return Promise.resolve();
 
-    return new Promise((resolve, reject) => {
+    /* return new Promise((resolve, reject) => {
       const hidden: {element: HTMLDivElement, height: number}[] = [];
       const observer = new IntersectionObserver((entries) => {
         for(const entry of entries) {
@@ -145,11 +141,6 @@ export class AppSidebarRight extends SidebarSlider {
             (item.element.firstElementChild as HTMLElement).style.display = '';
           }
 
-          /* if(active) {
-            appForward.close();
-            this.searchCloseBtn.click();
-          } */
-
           resolve();
         }, 200);
       });
@@ -163,7 +154,7 @@ export class AppSidebarRight extends SidebarSlider {
         set();
         setTimeout(resolve, 200);
       }
-    });
+    }); */
   }
 }
 

@@ -80,7 +80,7 @@ class MediaSizes extends EventListenerBase<{
       }
     }
 
-    if(this.activeScreen != activeScreen) {
+    if(this.activeScreen != activeScreen && this.activeScreen !== undefined) {
       //console.log('changeScreen', this.activeScreen, activeScreen);
       this.setListenerResult('changeScreen', this.activeScreen, activeScreen);
     }
@@ -102,4 +102,7 @@ class MediaSizes extends EventListenerBase<{
 }
 
 const mediaSizes = new MediaSizes();
+if(process.env.NODE_ENV != 'production') {
+  (window as any).mediaSizes = mediaSizes;
+}
 export default mediaSizes;

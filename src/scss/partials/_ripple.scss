@@ -50,21 +50,28 @@
     transition: .35s opacity;
     //overflow: hidden;
 
-    @include respond-to(handhelds) {
+    .btn-menu &, .c-ripple.is-square & {
       animation-duration: .2s;
       transition-duration: .1s;
-      border-radius: 15%;
+      //border-radius: 15%;
     }
-  }
 
-  &.is-square .c-ripple__circle, .btn-menu & .c-ripple__circle {
-    animation-duration: .2s;
-    transition-duration: .1s;
-    border-radius: 15%;
+    /* @include respond-to(handhelds) {
+      animation-duration: .2s;
+      transition-duration: .1s;
+      //border-radius: 15%;
+    } */
   }
 
   &__circle.hiding, &__square.hiding {
     opacity: 0;
+  }
+}
+
+@include respond-to(handhelds) {
+  .chats-container ul li > .rp .c-ripple__circle {
+    animation-duration: .2s;
+    transition-duration: .1s;
   }
 }
 

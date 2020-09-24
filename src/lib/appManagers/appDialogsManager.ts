@@ -17,6 +17,7 @@ import { touchSupport } from "../config";
 import { horizontalMenu } from "../../components/horizontalMenu";
 import { ripple } from "../../components/ripple";
 import { isSafari } from "../../helpers/userAgent";
+import { formatDateAccordingToToday, getWeekNumber } from "../../helpers/date";
 
 type DialogDom = {
   avatarEl: AvatarElement,
@@ -197,7 +198,7 @@ class DialogsContextMenu {
       const button = this.buttons.archive;
       const condition = dialog.folder_id == 1;
       button.classList.toggle('flip-icon', condition);
-      button.innerText = condition ? 'Unarchive' : 'Archive';
+      (button.firstElementChild as HTMLElement).innerText = condition ? 'Unarchive' : 'Archive';
       this.buttons.archive.style.display = '';
     } else {
       this.buttons.archive.style.display = 'none';
@@ -209,7 +210,7 @@ class DialogsContextMenu {
       //const condition = !!dialog.pFlags?.pinned;
       const condition = this.filterID > 1 ? appMessagesManager.filtersStorage.filters[this.filterID].pinned_peers.includes(dialog.peerID) : !!dialog.pFlags?.pinned;
       button.classList.toggle('flip-icon', condition);
-      button.innerText = condition ? 'Unpin' : 'Pin';
+      (button.firstElementChild as HTMLElement).innerText = condition ? 'Unpin' : 'Pin';
     }
 
     // mute button
@@ -217,7 +218,7 @@ class DialogsContextMenu {
       const button = this.buttons.mute;
       const condition = dialog.notify_settings && dialog.notify_settings.mute_until > (Date.now() / 1000 | 0);
       button.classList.toggle('flip-icon', condition);
-      button.innerText = condition ? 'Unmute' : 'Mute';
+      (button.firstElementChild as HTMLElement).innerText = condition ? 'Unmute' : 'Mute';
       this.buttons.mute.style.display = '';
     } else {
       this.buttons.mute.style.display = 'none';
@@ -228,7 +229,7 @@ class DialogsContextMenu {
       const button = this.buttons.unread;
       const condition = !!(dialog.pFlags?.unread_mark || dialog.unread_count);
       button.classList.toggle('flip-icon', condition);
-      button.innerText = condition ? 'Mark as Read' : 'Mark as Unread';
+      (button.firstElementChild as HTMLElement).innerText = condition ? 'Mark as Read' : 'Mark as Unread';
     }
 
     /* // clear history button
@@ -257,7 +258,7 @@ class DialogsContextMenu {
       //deleteButtonText = 'Delete chat';
       this.peerType = this.selectedID == $rootScope.myID ? 'saved' : 'chat';
     }
-    this.buttons.delete.innerText = deleteButtonText;
+    (this.buttons.delete.firstElementChild as HTMLElement).innerText = deleteButtonText;
 
     li.classList.add('menu-open');
     positionMenu(e, this.element);
@@ -1001,25 +1002,7 @@ export class AppDialogsManager {
     }
 
     if(!lastMessage.deleted) {
-      let timeStr = '';
-      let timestamp = lastMessage.date;
-      let now = Date.now() / 1000;
-      let time = new Date(lastMessage.date * 1000);
-  
-      if((now - timestamp) < 86400) { // if < 1 day
-        timeStr = ('0' + time.getHours()).slice(-2) + 
-          ':' + ('0' + time.getMinutes()).slice(-2);
-      } else if((now - timestamp) < (86400 * 7)) { // week
-        let date = new Date(timestamp * 1000);
-        timeStr = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()];
-      } else {
-        let months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  
-        timeStr = months[time.getMonth()] + 
-          ' ' + ('0' + time.getDate()).slice(-2);
-      }
-  
-      dom.lastTimeSpan.innerHTML = timeStr;
+      dom.lastTimeSpan.innerHTML = formatDateAccordingToToday(new Date(lastMessage.date * 1000));
     } else dom.lastTimeSpan.innerHTML = '';
 
     if(this.doms[peerID] == dom) {

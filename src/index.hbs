@@ -452,11 +452,11 @@
           </div>
         </div>
         <div class="btn-menu" id="dialogs-contextmenu">
-          <div class="btn-menu-item menu-unread tgico rp"></div>
-          <div class="btn-menu-item menu-pin tgico rp"></div>
-          <div class="btn-menu-item menu-mute tgico rp"></div>
-          <div class="btn-menu-item menu-archive tgico rp"></div>
-          <div class="btn-menu-item menu-delete tgico-delete danger rp"></div>
+          <div class="btn-menu-item menu-unread tgico rp"><div></div></div>
+          <div class="btn-menu-item menu-pin tgico rp"><div></div></div>
+          <div class="btn-menu-item menu-mute tgico rp"><div></div></div>
+          <div class="btn-menu-item menu-archive tgico rp"><div></div></div>
+          <div class="btn-menu-item menu-delete tgico-delete danger rp"><div></div></div>
         </div>
       </div>
       <div class="chat-container main-column" id="column-center">
@@ -492,8 +492,8 @@
         </div>
         <div id="bubbles" class="scrolled-down">
           <div id="bubbles-inner"></div>
+          <div id="bubbles-go-down" class="tgico-down btn-corner z-depth-1 rp hide"></div>
         </div>
-        <div id="bubbles-go-down" class="tgico-down btn-corner z-depth-1 rp hide"></div>
         <div class="btn-menu" id="bubble-contextmenu">
           <div class="btn-menu-item menu-reply tgico-reply rp">Reply</div>
           <div class="btn-menu-item menu-edit tgico-edit rp">Edit</div>
@@ -535,7 +535,10 @@
             <button class="btn-circle z-depth-1 btn-icon tgico-delete danger" id="btn-record-cancel"></button>
             <div class="btn-send-container">
               <div class="record-ripple"></div>
-              <button class="btn-circle z-depth-1 btn-icon tgico-microphone2" id="btn-send"></button>
+              <button class="btn-circle rp z-depth-1 btn-icon" id="btn-send">
+                <span class="tgico tgico-send"></span>
+                <span class="tgico tgico-microphone2"></span>
+              </button>
             </div>
           </div>
           <div class="emoji-dropdown" id="emoji-dropdown" style="display: none;">

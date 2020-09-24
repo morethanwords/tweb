@@ -101,6 +101,8 @@ class AppWebPagesManager {
         msgs: msgs
       });
     }
+
+    return apiWebPage;
   }
 
   public getWebPage(id: string) {

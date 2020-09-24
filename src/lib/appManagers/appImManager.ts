@@ -40,7 +40,7 @@ import { ChatAudio } from '../../components/chat/audio';
 import { ChatContextMenu } from '../../components/chat/contextMenu';
 import { ChatSearch } from '../../components/chat/search';
 import mediaSizes from '../../helpers/mediaSizes';
-import { isAndroid, isApple } from '../../helpers/userAgent';
+import { isAndroid, isApple, isSafari } from '../../helpers/userAgent';
 
 //console.log('appImManager included33!');
 
@@ -847,6 +847,8 @@ export class AppImManager {
 
     this.scrollable = new Scrollable(this.bubblesContainer, 'y', 'IM', this.chatInner, getScrollOffset()); */
     this.scroll = this.scrollable.container;
+
+    this.bubblesContainer.append(this.goDownBtn);
     
     this.scrollable.onScrolledTop = () => this.loadMoreHistory(true);
     this.scrollable.onScrolledBottom = () => this.loadMoreHistory(false);
@@ -1045,7 +1047,7 @@ export class AppImManager {
           this.scrollable.scrollIntoView(bubble);
           this.highlightBubble(bubble);
         } else if(dialog && lastMsgID == topMessage) {
-          this.log('will scroll down', this.scroll.scrollTop, this.scroll.scrollHeight);
+          //this.log('will scroll down', this.scroll.scrollTop, this.scroll.scrollHeight);
           this.scroll.scrollTop = this.scroll.scrollHeight;
         }
         
@@ -1225,6 +1227,7 @@ export class AppImManager {
 
     const isAnyGroup = appPeersManager.isAnyGroup(peerID);
     const isChannel = appPeersManager.isChannel(peerID);
+    const isBroadcast = appPeersManager.isBroadcast(peerID);
     const hasRights = isChannel && appChatsManager.hasRights(-peerID, 'send');
     this.chatInner.classList.toggle('has-rights', hasRights);
 
@@ -1232,11 +1235,12 @@ export class AppImManager {
 
     this.topbar.classList.remove('is-pinned-shown');
     this.topbar.style.display = '';
-
+    
     this.chatInner.classList.toggle('is-chat', isAnyGroup || peerID == this.myID);
     this.chatInner.classList.toggle('is-channel', isChannel);
+    this.goDownBtn.classList.toggle('is-broadcast', isBroadcast);
 
-    this.btnMute.classList.toggle('hide', !appPeersManager.isBroadcast(peerID));
+    this.btnMute.classList.toggle('hide', !isBroadcast);
     this.btnJoin.classList.toggle('hide', !appChatsManager.getChat(-this.peerID)?.pFlags?.left);
     
     this.menuButtons.mute.style.display = this.myID == this.peerID ? 'none' : '';
@@ -1324,12 +1328,12 @@ export class AppImManager {
     if(this.messagesQueuePromise && scrolledDown) {
       this.scrollable.scrollTo(this.scrollable.scrollHeight - 1, 'top', false, true);
       this.messagesQueuePromise.then(() => {
-        this.log('messagesQueuePromise after:', this.chatInner.childElementCount, this.scrollable.scrollHeight);
+        //this.log('messagesQueuePromise after:', this.chatInner.childElementCount, this.scrollable.scrollHeight);
         this.scrollable.scrollTo(this.scrollable.scrollHeight, 'top', true, true);
 
-        setTimeout(() => {
+        /* setTimeout(() => {
           this.log('messagesQueuePromise afterafter:', this.chatInner.childElementCount, this.scrollable.scrollHeight);
-        }, 10);
+        }, 10); */
       });
     }
   }
@@ -1404,6 +1408,8 @@ export class AppImManager {
     else dateMessage.container.append(bubble);
     return; */
 
+    //this.log('renderMessagesQueue');
+
     let promises: Promise<any>[] = [];
     (Array.from(bubble.querySelectorAll('img, video')) as HTMLImageElement[]).forEach(el => {
       if(el instanceof HTMLVideoElement) {
@@ -1450,12 +1456,12 @@ export class AppImManager {
     if(!this.messagesQueuePromise) {
       this.messagesQueuePromise = new Promise((resolve, reject) => {
         setTimeout(() => {
-          let chatInner = this.chatInner;
-          let queue = this.messagesQueue.slice();
+          const chatInner = this.chatInner;
+          const queue = this.messagesQueue.slice();
           this.messagesQueue.length = 0;
 
-          let promises = queue.reduce((acc, {promises}) => acc.concat(promises), []);
-          //console.log('promises to call', promises, queue);
+          const promises = queue.reduce((acc, {promises}) => acc.concat(promises), []);
+          //this.log('promises to call', promises, queue);
           Promise.all(promises).then(() => {
             if(this.chatInner != chatInner) {
               //this.log.warn('chatInner changed!', this.chatInner, chatInner);
@@ -1467,13 +1473,11 @@ export class AppImManager {
             }
 
             queue.forEach(({message, bubble, reverse}) => {
-              let dateMessage = this.getDateContainerByMessage(message, reverse);
+              const dateMessage = this.getDateContainerByMessage(message, reverse);
               if(reverse) {
                 dateMessage.container.insertBefore(bubble, dateMessage.div.nextSibling);
-                //this.scrollable.prepareElement(bubble, false);
               } else {
                 dateMessage.container.append(bubble);
-                //this.scrollable.prepareElement(bubble, true);
               }
             });
 
@@ -2315,24 +2319,26 @@ export class AppImManager {
     //console.time('appImManager render history');
 
     return new Promise<boolean>((resolve, reject) => {
-      let method = (reverse ? history.shift : history.pop).bind(history);
+      //await new Promise((resolve) => setTimeout(resolve, 1e3));
 
-      let realLength = this.scrollable.length;
+      //this.log('performHistoryResult: will render some messages:', history.length);
+
+      const method = (reverse ? history.shift : history.pop).bind(history);
+
+      const realLength = this.scrollable.length;
       let previousScrollHeightMinusTop: number;
-      if(realLength > 0 && reverse) { // for safari need set when scrolling bottom too
+      if(realLength > 0 && (reverse || isSafari)) { // for safari need set when scrolling bottom too
         this.messagesQueueOnRender = () => {
-          let scrollTop = this.scrollable.scrollTop;
+          const {scrollTop, scrollHeight} = this.scrollable;
 
-          previousScrollHeightMinusTop = this.scrollable.scrollHeight - scrollTop;
-          //this.chatInner.style.height = '100%';
-          //previousScrollHeightMinusTop = 0;
+          previousScrollHeightMinusTop = reverse ? scrollHeight - scrollTop : scrollTop;
           /* if(reverse) {
             previousScrollHeightMinusTop = this.scrollable.scrollHeight - scrollTop;
           } else {
             previousScrollHeightMinusTop = scrollTop;
           } */
 
-          this.log('performHistoryResult: messagesQueueOnRender, scrollTop:', scrollTop, previousScrollHeightMinusTop);
+          //this.log('performHistoryResult: messagesQueueOnRender, scrollTop:', scrollTop, scrollHeight, previousScrollHeightMinusTop);
           this.messagesQueueOnRender = undefined;
         };
       }
@@ -2342,15 +2348,20 @@ export class AppImManager {
         this.renderMessage(message, reverse, true);
       }
 
-      (this.messagesQueuePromise || Promise.resolve()).then(() => {
+      (this.messagesQueuePromise || Promise.resolve())
+      //.then(() => new Promise(resolve => setTimeout(resolve, 100)))
+      .then(() => {
         if(previousScrollHeightMinusTop !== undefined) {
           const newScrollTop = reverse ? this.scrollable.scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
-          this.log('performHistoryResult: will set scrollTop', this.scrollable.scrollHeight, newScrollTop, this.scrollable.container.clientHeight);
+          //this.log('performHistoryResult: will set scrollTop', this.scrollable.scrollHeight, newScrollTop, this.scrollable.container.clientHeight);
 
           // touchSupport for safari iOS
           touchSupport && isApple && (this.scrollable.container.style.overflow = 'hidden');
           this.scrollable.scrollTop = newScrollTop;
+          //this.scrollable.scrollTop = this.scrollable.scrollHeight;
           touchSupport && isApple && (this.scrollable.container.style.overflow = '');
+
+          //this.log('performHistoryResult: have set up scrollTop:', newScrollTop, this.scrollable.scrollTop);
         }
 
         resolve(true);
@@ -2460,7 +2471,7 @@ export class AppImManager {
 
       //let removeCount = loadCount / 2;
       const safeCount = realLoadCount * 2; // cause i've been runningrunningrunning all day
-      this.log('getHistory: slice loadedTimes:', reverse, pageCount, this.loadedTopTimes, this.loadedBottomTimes, ids && ids.length, safeCount);
+      this.log('getHistory: slice loadedTimes:', reverse, pageCount, this.loadedTopTimes, this.loadedBottomTimes, ids?.length, safeCount);
       if(ids && ids.length > safeCount) {
         if(reverse) {
           //ids = ids.slice(-removeCount);

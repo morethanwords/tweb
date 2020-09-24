@@ -298,8 +298,18 @@
 	#btn-send {
 		color: #9e9e9e;
 
-		&.tgico-send {
+		> .tgico {
+			position: absolute;
+			animation: hide-icon .4s forwards ease-in-out;
+		}
+
+		&.send {
 			color: $color-blue;
+		}
+
+		&.send .tgico-send, 
+		&.record .tgico-microphone2 {
+			animation: grow-icon .4s forwards ease-in-out;
 		}
 	}
 
@@ -345,6 +355,14 @@
 			left: -124px;
     }
 	}
+
+	&.is-locked {
+		pointer-events: none;
+
+		.btn-icon {
+			color: #c6cbce;
+		}
+	}
 	
 	&.is-recording {
 		#btn-record-cancel {
@@ -352,6 +370,11 @@
 			visibility: visible;
 			margin-right: 9px;
 			transition: width .1s, margin-right .1s, visibility 0s .1s, opacity .1s .1s;
+		}
+
+		// unlock
+		#btn-send, #btn-record-cancel {
+			pointer-events: all;
 		}
 
 		#attach-file {
@@ -568,13 +591,12 @@
 		
 		.btn-icon {
 			display: block;
-			transition: .2s color;
+			transition: .2s color, background-color .2s;
 			flex: 0 0 auto;
-
 			font-size: 24px;
 			line-height: 24px;
-			padding: 10px 7px 9px 7.5px;
 			color: #8d969c;
+			margin-bottom: 1px;
 			
 			&.active {
 				color: $color-blue;
@@ -887,12 +909,25 @@
 	height: 100%;
 	max-height: 100%;
 	flex: 1 1 auto; /* Lets middle column shrink/grow to available width */
-	overflow: hidden;
+	//overflow: hidden;
 	position: relative;
 
 	html.is-safari & {
     -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%); // fix safari overflow
-  }
+	}
+	
+	// ! WARNING, НЕЛЬЗЯ СТАВИТЬ ТРАНСФОРМ КРОМЕ TRANSLATEZ(0) НА БЛОК С OVERFLOW, ОН БУДЕТ ПРЫГАТЬ ВВЕРХ ПРИ ВКЛЮЧЕННОМ ПРАВИЛЕ И ЭТО НЕ ИСПРАВИТЬ JS'ОМ!
+	@include respond-to(medium-screens) {
+		transition: transform var(--layer-transition);
+
+		body.is-right-column-shown & {
+			transform: translate3d(calc(var(--right-column-width) / -2), 0, 0);
+		}
+
+		body.animation-level-0 & {
+			transition: none;
+		}
+	}
 
 	> .scrollable {
 		height: auto;
@@ -908,46 +943,26 @@
 		/* display: flex;
 		flex-direction: column;
 		justify-content: flex-end; */
-
 		// * scrollbar takes some width, don't need to set padding for iOS
 		html.is-safari:not(.is-ios) & {
 			padding-left: 6px;
 		}
-
-		@include respond-to(medium-screens) {
-			transition: transform var(--layer-transition);
-	
-			body.is-right-column-shown & {
-				transform: translate3d(calc(var(--right-column-width) / -2), 0, 0);
-			}
-
-			body.animation-level-0 & {
-				transition: none;
-			}
-		}
-	}
-
-	> .preloader-container {
-		@include respond-to(medium-screens) {
-			transition: transform var(--layer-transition);
-	
-			body.is-right-column-shown & {
-				transform: translate3d(calc(var(--right-column-width) / -2), 0, 0);
-			}
-	
-			body.animation-level-0 & {
-				transition: none;
-			}
-		}
 	}
 	
 	&:not(.scrolled-down):not(.search-results-active) {
-		-webkit-mask-image: -webkit-linear-gradient(bottom, transparent, #000 20px);
-		mask-image: linear-gradient(0deg, transparent 0, #000 20px);
+		> .scrollable {
+			-webkit-mask-image: -webkit-linear-gradient(bottom, transparent, #000 20px);
+			mask-image: linear-gradient(0deg, transparent 0, #000 20px);
+		}
 
-		& + #bubbles-go-down {
+		> #bubbles-go-down {
+			cursor: pointer;
 			--translateY: 0;
 			opacity: 1;
+
+			/* &.is-broadcast {
+				--translateY: 79px !important;
+			} */
 		}
 	}
 	
@@ -987,7 +1002,7 @@
 	}
 
 	@include respond-to(handhelds) {
-    padding: 0 .5rem;
+    padding: 0 .75rem 0 .5rem;
 
     html.is-mac & {
       -webkit-user-select: none;
@@ -1045,16 +1060,15 @@
 	align-items: center;
 	justify-content: center;
 	right: 17.5px;
-	//bottom: 17.5px;
-	bottom: 96.5px;
-	cursor: pointer;
+	bottom: 17.5px;
+	cursor: default;
 	opacity: 0;
 	user-select: none;
 	z-index: 2;
 	transition: var(--btn-corner-transition), opacity .2s;
+	overflow: hidden;
 
   @include respond-to(handhelds) {
-		bottom: 75.5px;
 		right: .5rem;
 		width: 2.875rem;
 		height: 2.875rem;
@@ -1068,9 +1082,13 @@
 		transition: transform var(--layer-transition), opacity .2s;
 
 		body.is-right-column-shown & {
-			transform: translate3d(calc(var(--right-column-width) * -1), var(--translateY), 0);
+			transform: translate3d(calc(var(--right-column-width) * -.5), var(--translateY), 0);
 		}
 	}
+
+	/* &.is-broadcast {
+		--translateY: 99px !important;
+	} */
 }
 
 .popup {
@@ -1154,11 +1172,11 @@
 	z-index: 5;
 	top: 8px;
 	align-items: center;
-	transform: translateY(calc(-100% - 10px));
+	transform: translate3d(0, calc(-100% - 10px), 0);
 	transition: transform .2s ease;
 
 	&.active {
-		transform: translateY(0);
+		transform: translate3d(0, 0, 0);
 	}
 
 	.container {

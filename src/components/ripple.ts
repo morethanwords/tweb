@@ -1,3 +1,4 @@
+import mediaSizes from "../helpers/mediaSizes";
 import { touchSupport } from "../lib/config";
 import { findUpClassName } from "../lib/utils";
 
@@ -15,20 +16,22 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
     r.classList.add('is-square');
   }
 
-  const duration = isSquare ? 200 : 700;
-
   elem.append(r);
 
   let handler: () => void;
-  let drawRipple = (clientX: number, clientY: number) => {
-    let startTime = Date.now();
-    let span = document.createElement('span');
+  let animationEndPromise: Promise<any>;
+  const drawRipple = (clientX: number, clientY: number) => {
+    const startTime = Date.now();
+    const span = document.createElement('span');
 
-    let clickID = rippleClickID++;
+    const clickID = rippleClickID++;
 
     //console.log('ripple drawRipple');
 
+    let duration: number;
+
     handler = () => {
+      //const duration = isSquare || mediaSizes.isMobile ? 200 : 700;
       //return;
       let elapsedTime = Date.now() - startTime;
       if(elapsedTime < duration) {
@@ -96,8 +99,16 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
         span.style.width = span.style.height = size + 'px';
         span.style.left = x + 'px';
         span.style.top = y + 'px';
-  
+
+        
+        animationEndPromise = new Promise((resolve) => {
+          span.addEventListener('animationend', resolve, {once: true});
+        });
+        
         r.append(span);
+
+        duration = +window.getComputedStyle(span).getPropertyValue('animation-duration').replace('s', '') * 1000;
+
         //r.classList.add('active');
         //handler();
       });
@@ -121,12 +132,12 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
   
       let {clientX, clientY} = e.touches[0];
       drawRipple(clientX, clientY);
-      window.addEventListener('touchend', touchEnd, {once: true});
+      elem.addEventListener('touchend', touchEnd, {once: true});
   
       window.addEventListener('touchmove', (e) => {
         e.cancelBubble = true;
         e.stopPropagation();
-        handler && handler();
+        touchEnd();
         window.removeEventListener('touchend', touchEnd);
       }, {once: true});
     }, {passive: true});

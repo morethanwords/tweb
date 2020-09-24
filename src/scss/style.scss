@@ -54,9 +54,9 @@ $large-screen: 1680px;
 :root {
   --color-gray: #c4c9cc;
   --layer-transition: .2s ease-in-out;
-  --btn-corner-transition: transform .2s cubic-bezier(.34, 1.56, .64, 1);
   //--layer-transition: .3s cubic-bezier(.33, 1, .68, 1);
   //--layer-transition: none;
+  --btn-corner-transition: transform .2s cubic-bezier(.34, 1.56, .64, 1);
   --message-handhelds-margin: 5.5625rem;
   --message-beside-button-margin: 2.875rem;
   --message-time-background: rgba(0, 0, 0, .35);
@@ -1102,6 +1102,34 @@ img.emoji {
 
 .content-empty {
   color: #707579;
+}
+
+@keyframes grow-icon {
+  0% {
+    transform: scale(.5);
+    opacity: .8;
+  }
+
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes hide-icon {
+  from {
+    transform: scale(1);
+    opacity: .4;
+  }
+
+  to {
+    transform: scale(.5);
+    opacity: 0;
+  }
 }
 
 // *:not(input):not(textarea) {
