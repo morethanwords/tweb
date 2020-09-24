@@ -56,6 +56,7 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
       }
 
       handler = null;
+      touchStartFired = false;
     };
     //});
 
@@ -126,6 +127,7 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
     //});
   };
 
+  // TODO: rename this variable
   let touchStartFired = false;
   if(touchSupport) {
     let touchEnd = () => {
@@ -134,7 +136,10 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
   
     elem.addEventListener('touchstart', (e) => {
       //console.log('ripple touchstart', e);
-      if(e.touches.length > 1 || ((e.target as HTMLElement).tagName == 'BUTTON' && e.target != elem) || findUpClassName(e.target as HTMLElement, 'c-ripple') != r) {
+      if(e.touches.length > 1 
+        || touchStartFired 
+        || ((e.target as HTMLElement).tagName == 'BUTTON' && e.target != elem) 
+        || findUpClassName(e.target as HTMLElement, 'c-ripple') != r) {
         return;
       }
       
@@ -149,7 +154,7 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
         e.cancelBubble = true;
         e.stopPropagation();
         touchEnd();
-        window.removeEventListener('touchend', touchEnd);
+        elem.removeEventListener('touchend', touchEnd);
       }, {once: true});
     }, {passive: true});
   } else {
