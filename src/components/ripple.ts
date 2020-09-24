@@ -1,4 +1,3 @@
-import mediaSizes from "../helpers/mediaSizes";
 import { touchSupport } from "../lib/config";
 import { findUpClassName } from "../lib/utils";
 
@@ -19,18 +18,22 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
   elem.append(r);
 
   let handler: () => void;
-  let animationEndPromise: Promise<any>;
+  //let animationEndPromise: Promise<number>;
   const drawRipple = (clientX: number, clientY: number) => {
     const startTime = Date.now();
     const span = document.createElement('span');
 
     const clickID = rippleClickID++;
-
+    
     //console.log('ripple drawRipple');
-
-    let duration: number;
+    
+    const duration = +window.getComputedStyle(r).getPropertyValue('--ripple-duration').replace('s', '') * 1000;
+    //console.log('ripple duration', duration);
 
     handler = () => {
+    //handler = () => animationEndPromise.then((duration) => {
+      //console.log('ripple animation was:', duration);
+
       //const duration = isSquare || mediaSizes.isMobile ? 200 : 700;
       //return;
       let elapsedTime = Date.now() - startTime;
@@ -54,6 +57,7 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
 
       handler = null;
     };
+    //});
 
     callback && callback(clickID);
 
@@ -100,14 +104,21 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
         span.style.left = x + 'px';
         span.style.top = y + 'px';
 
+        // нижний код выполняется с задержкой
+        /* animationEndPromise = new Promise((resolve) => {
+          span.addEventListener('animationend', () => {
+            // 713 -> 700
+            resolve(((Date.now() - startTime) / 100 | 0) * 100);
+          }, {once: true});
+        }); */
         
-        animationEndPromise = new Promise((resolve) => {
-          span.addEventListener('animationend', resolve, {once: true});
-        });
-        
+        // нижний код не всегда включает анимацию ПРИ КЛИКЕ НА ТАЧПАД БЕЗ ТАПТИК ЭНЖИНА
+        /* span.style.display = 'none';
         r.append(span);
-
         duration = +window.getComputedStyle(span).getPropertyValue('animation-duration').replace('s', '') * 1000;
+        span.style.display = ''; */
+
+        r.append(span);
 
         //r.classList.add('active');
         //handler();

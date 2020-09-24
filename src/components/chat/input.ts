@@ -16,6 +16,8 @@ import emoticonsDropdown from "../emoticonsDropdown";
 import PopupCreatePoll from "../popupCreatePoll";
 import { toast } from "../toast";
 
+const RECORD_MIN_TIME = 500;
+
 export class ChatInput {
   public pageEl = document.getElementById('page-chats') as HTMLDivElement;
   public messageInput = document.getElementById('input-message') as HTMLDivElement/* HTMLInputElement */;
@@ -515,14 +517,20 @@ export class ChatInput {
       
       if(!this.recorder || this.recording || !this.isInputEmpty()) {
         if(this.recording) {
-          this.recorder.stop();
+          if((Date.now() - this.recordStartTime) < RECORD_MIN_TIME) {
+            this.btnCancelRecord.click();
+          } else {
+            this.recorder.stop();
+          }
         } else {
           this.sendMessage();
         }
       } else {
+        this.chatInput.classList.add('is-locked');
         this.recorder.start().then(() => {
           this.recordCanceled = false;
-          this.chatInput.classList.add('is-recording', 'is-locked');
+          
+          this.chatInput.classList.add('is-recording');
           this.recording = true;
           this.updateSendBtn();
           opusDecodeController.setKeepAlive(true);
@@ -583,6 +591,8 @@ export class ChatInput {
               toast(e.message);
               break;
           }
+
+          this.chatInput.classList.remove('is-recording', 'is-locked');
         });
       }
     };

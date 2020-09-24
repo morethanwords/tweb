@@ -362,6 +362,10 @@
 		.btn-icon {
 			color: #c6cbce;
 		}
+
+		&:not(.is-recording) #btn-send {
+			color: #c6cbce;
+		}
 	}
 	
 	&.is-recording {

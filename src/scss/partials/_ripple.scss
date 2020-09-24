@@ -21,6 +21,7 @@
  * --------------------------------------------------
  */
 .c-ripple {
+  --ripple-duration: .7s;
   //display: none !important;
   position: absolute;
   top: 0;
@@ -51,6 +52,7 @@
     //overflow: hidden;
 
     .btn-menu &, .c-ripple.is-square & {
+      animation-name: ripple-effect-handhelds;
       animation-duration: .2s;
       transition-duration: .1s;
       //border-radius: 15%;
@@ -63,21 +65,42 @@
     } */
   }
 
+  .btn-menu &, &.is-square {
+    --ripple-duration: .2s;
+  }
+
   &__circle.hiding, &__square.hiding {
     opacity: 0;
   }
 }
 
 @include respond-to(handhelds) {
-  .chats-container ul li > .rp .c-ripple__circle {
-    animation-duration: .2s;
-    transition-duration: .1s;
+  .chats-container ul li > .rp {
+    .c-ripple {
+      --ripple-duration: .2s;
+
+      &__circle {
+        animation-duration: .2s;
+        transition-duration: .1s;
+        animation-name: ripple-effect-handhelds;
+      }
+    }
   }
 }
 
 @keyframes ripple-effect {
   0% {
     transform: scale(0);
+  }
+
+  to {
+    transform: scale(2);
+  }
+}
+
+@keyframes ripple-effect-handhelds {
+  0% {
+    transform: scale(.85);
   }
 
   to {
