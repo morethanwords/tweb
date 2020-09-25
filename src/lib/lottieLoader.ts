@@ -5,6 +5,7 @@ import { copy } from "./utils";
 import EventListenerBase from "../helpers/eventListenerBase";
 import mediaSizes from "../helpers/mediaSizes";
 import { isApple, isSafari } from "../helpers/userAgent";
+import RLottieWorker from 'worker-loader!./rlottie/rlottie.worker';
 
 let convert = (value: number) => {
 	return Math.round(Math.min(Math.max(value, 0), 1) * 255);
@@ -14,7 +15,7 @@ type RLottiePlayerListeners = 'enterFrame' | 'ready' | 'firstFrame' | 'cached';
 type RLottieOptions = {
   container: HTMLElement, 
   autoplay?: boolean, 
-  animationData: any, 
+  animationData: string, 
   loop?: boolean, 
   width?: number,
   height?: number,
@@ -396,12 +397,9 @@ export class RLottiePlayer extends EventListenerBase<{
 }
 
 class QueryableWorker extends EventListenerBase<any> {
-  private worker: Worker;
-
-  constructor(url: string, private defaultListener: (data: any) => void = () => {}, onError?: (error: any) => void) {
+  constructor(private worker: Worker, private defaultListener: (data: any) => void = () => {}, onError?: (error: any) => void) {
     super();
 
-    this.worker = new Worker(url);
     if(onError) {
       this.worker.onerror = onError;
     }
@@ -530,7 +528,7 @@ class LottieLoader {
     return this.loadPromise = new Promise((resolve, reject) => {
       let remain = this.workersLimit;
       for(let i = 0; i < this.workersLimit; ++i) {
-        const worker = this.workers[i] = new QueryableWorker('rlottie.worker.js');
+        const worker = this.workers[i] = new QueryableWorker(new RLottieWorker());
 
         worker.addListener('ready', () => {
           this.log('worker #' + i + ' ready');
@@ -595,7 +593,7 @@ class LottieLoader {
     .then(res => res.arrayBuffer())
     .then(data => apiManager.gzipUncompress<string>(data, true))
     .then(str => {
-      return this.loadAnimationWorker(Object.assign(params, {animationData: JSON.parse(str), needUpscale: true}));
+      return this.loadAnimationWorker(Object.assign(params, {animationData: str/* JSON.parse(str) */, needUpscale: true}));
     });
   }
 
@@ -603,8 +601,12 @@ class LottieLoader {
     //params.autoplay = true;
 
     if(toneIndex >= 1 && toneIndex <= 5) {
-      params.animationData = copy(params.animationData);
-      this.applyReplacements(params.animationData, toneIndex);
+      /* params.animationData = copy(params.animationData);
+      this.applyReplacements(params.animationData, toneIndex); */
+
+      const newAnimationData = JSON.parse(params.animationData);
+      this.applyReplacements(newAnimationData, toneIndex);
+      params.animationData = JSON.stringify(newAnimationData);
     }
 
     if(!this.loaded) {

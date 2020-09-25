@@ -140,7 +140,7 @@ export default class StickersTab implements EmoticonsTab {
       if(stickerSet.set.pFlags.animated) {
         promise
         .then(readBlobAsText)
-        .then(JSON.parse)
+        //.then(JSON.parse)
         .then(json => {
           lottieLoader.loadAnimationWorker({
             container: li,

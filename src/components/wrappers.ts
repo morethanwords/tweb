@@ -609,7 +609,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
       //fetch(doc.url).then(res => res.json()).then(async(json) => {
       /* return */ await appDocsManager.downloadDocNew(doc)
       .then(readBlobAsText)
-      .then(JSON.parse)
+      //.then(JSON.parse)
       .then(async(json) => {
         //console.timeEnd('download sticker' + doc.id);
         //console.log('loaded sticker:', doc, div/* , blob */);
