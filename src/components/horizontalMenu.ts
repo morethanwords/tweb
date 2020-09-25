@@ -31,7 +31,7 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?
   let prevTabContent: HTMLElement = null;
   let prevId = -1;
 
-  const selectTab = (id: number) => {
+  const selectTab = (id: number, animate = true) => {
     if(id == prevId) return false;
 
     //console.log('selectTab id:', id);
@@ -39,7 +39,8 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?
     const p = prevTabContent;
     const tabContent = content.children[id] as HTMLElement;
 
-    if(content.dataset.slider == 'none') {
+    // * means animation isn't needed
+    if(content.dataset.slider == 'none' || !animate) {
       if(p) {
         p.classList.remove('active');  
       }
@@ -53,6 +54,10 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?
       return;
     }
 
+    if(prevTabContent) {
+      prevTabContent.classList.remove('to');
+    }
+
     const toRight = prevId < id;
     if(!tabContent) {
       //prevTabContent.classList.remove('active');
@@ -64,6 +69,8 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?
       } else {
         slideNavigation(tabContent, prevTabContent, width, toRight);
       }
+
+      tabContent.classList.add('to');
     } else {
       tabContent.classList.add('active');
     }
@@ -75,6 +82,10 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?
         p.style.transform = '';
         p.style.filter = '';
         p.classList.remove('active');
+
+        if(tabContent) {
+          tabContent.classList.remove('to');
+        }
 
         delete hideTimeouts[_prevId];
         

@@ -797,16 +797,18 @@ $bubble-margin: .25rem;
       margin-right: -2px;
     }
 
-    .time {
-      width: unset;
-    }
-
     /* @include respond-to(handhelds) {
       .preloader-container .you-spin-me-round {
         margin-top: 1px;
         margin-left: 2px;
       }
     } */
+  }
+
+  .bubble__container .message.audio-message {
+    .time {
+      width: unset !important;
+    }
   }
 
   .message.contact-message  {

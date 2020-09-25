@@ -61,6 +61,26 @@
       display: flex;
     }
   }
+
+  @include respond-to(floating-left-sidebar) {
+    .main-column {
+      height: calc(var(--vh, 1vh) * 100) !important;
+    }
+  }
+
+  /* @include respond-to(until-floating-left-sidebar) {
+    .main-column {
+      display: flex !important;
+
+      &.active {
+        z-index: 3;
+      }
+
+      &.to {
+        z-index: 4;
+      }
+    }
+  } */
   
   .preloader {
     width: 50px;

@@ -1,10 +1,11 @@
 import EventListenerBase from "./eventListenerBase";
 
-type Size = {width: number, height: number};
+type Size = Partial<{width: number, height: number}>;
 type Sizes = {
   regular: Size,
   webpage: Size,
-  album: Size
+  album: Size,
+  esgSticker: Size
 };
 
 export enum ScreenSize {
@@ -13,7 +14,7 @@ export enum ScreenSize {
   large
 }
 
-const MOBILE_SIZE = 896;
+const MOBILE_SIZE = 600;
 const MEDIUM_SIZE = 1275;
 const LARGE_SIZE = 1680;
 
@@ -21,7 +22,7 @@ class MediaSizes extends EventListenerBase<{
   changeScreen: (from: ScreenSize, to: ScreenSize) => void
 }> {
   private screenSizes: {key: ScreenSize, value: number}[] = [
-    {key: ScreenSize.mobile, value: MOBILE_SIZE - 1},
+    {key: ScreenSize.mobile, value: MOBILE_SIZE},
     {key: ScreenSize.medium, value: MEDIUM_SIZE},
     {key: ScreenSize.large, value: LARGE_SIZE}
   ];
@@ -39,7 +40,8 @@ class MediaSizes extends EventListenerBase<{
       album: {
         width: 293,
         height: 0
-      }
+      },
+      esgSticker: {}
     },
     desktop: {
       regular: {
@@ -53,7 +55,8 @@ class MediaSizes extends EventListenerBase<{
       album: {
         width: 451,
         height: 0
-      }
+      },
+      esgSticker: {}
     }
   };
 
@@ -80,16 +83,23 @@ class MediaSizes extends EventListenerBase<{
       }
     }
 
-    if(this.activeScreen != activeScreen && this.activeScreen !== undefined) {
-      //console.log('changeScreen', this.activeScreen, activeScreen);
-      this.setListenerResult('changeScreen', this.activeScreen, activeScreen);
-    }
-
+    const wasScreen = this.activeScreen;
     this.activeScreen = activeScreen;
-
     this.isMobile = this.activeScreen == ScreenSize.mobile;
-    
     this.active = this.isMobile ? this.sizes.handhelds : this.sizes.desktop;
+
+    //console.time('esg');
+    const computedStyle = window.getComputedStyle(document.documentElement);
+    this.active.esgSticker.width = parseFloat(computedStyle.getPropertyValue('--esg-sticker-size'));
+    //console.timeEnd('esg');
+
+    if(wasScreen != activeScreen) {
+      //console.log('changeScreen', this.activeScreen, activeScreen);
+
+      if(wasScreen !== undefined) {
+        this.setListenerResult('changeScreen', this.activeScreen, activeScreen);
+      }
+    }
 
     /* if(this.isMobile) {
       for(let i in this.active) {

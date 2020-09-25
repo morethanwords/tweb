@@ -6,6 +6,30 @@
   // ! -.5 because of border-left and border-right on whole page
   max-width: calc(#{$large-screen} / 4);
 
+  @include respond-to(handhelds) {
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  @include respond-to(floating-left-sidebar) {
+    display: flex;
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: calc(var(--vh, 1vh) * 100);
+    width: 26.5rem;
+    transform: translate3d(-5rem, 0, 0);
+    transition: transform var(--layer-transition);
+
+    body.is-left-column-shown & {
+      transform: translateZ(0);
+    }
+  }
+
+  @include respond-to(no-floating-left-sidebar) {
+    display: flex;
+  }
+
   @include respond-to(before-medium-screens) {
     flex: 2;
   }
@@ -244,17 +268,14 @@
       }
 
       @include respond-to(handhelds) {
-        transform: translateY(0px);
-        position: fixed !important;
-      }
-    }
-
-    .btn-menu-toggle {
-      @include respond-to(handhelds) {
         width: 54px;
         height: 54px;
         bottom: 14px;
         right: 14px;
+
+        transform: translateY(0px);
+        position: fixed !important;
+        z-index: 1;
       }
     }
 

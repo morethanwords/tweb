@@ -34,7 +34,7 @@
 		border-left: 1px solid #DADCE0;
 		border-right: 1px solid #DADCE0;
 
-		.sidebar-close-button, .menu-search {
+		.menu-search {
 			display: none;
 		}
 
@@ -42,6 +42,12 @@
 			.pinned-message {
 				display: flex;
 			}
+		}
+	}
+
+	@include respond-to(no-floating-left-sidebar) {
+		.sidebar-close-button {
+			display: none;
 		}
 	}
 
@@ -203,11 +209,22 @@
 #chat-input {
 	display: flex;
 	width: 100%;
-	max-width: var(--messages-container-width);
-	padding: .25rem 1rem 0;
+	max-width: 100%;
+	padding-top: .25rem;
 	flex-direction: column;
 	flex: 0 0 auto; /* Forces side columns to stay same width */
 	position: relative;
+	//overflow: hidden;
+
+	/* // * for no ESG top
+	flex: 1 1 auto;
+	height: calc(100% - 56px); */
+
+	@include respond-to(esg-top) {
+		/* flex: 0 0 auto;
+		height: auto; */
+		max-width: var(--messages-container-width);
+	}
 
 	@include respond-to(medium-screens) {
 		width: calc(100% - var(--right-column-width));
@@ -222,21 +239,23 @@
 		}
 	}
 
-	@include respond-to(handhelds) {
-		padding-left: .5rem;
-		padding-right: .5rem;
-	}
-
 	.chat-input-container {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
+		max-width: var(--messages-container-width);
+		margin: 0 auto;
+		width: 100%;
+		padding: 0 .5rem;
+		flex: 0 0 auto;
 
 		@include respond-to(handhelds) {
 			padding-bottom: .5rem;
 		}
 
 		@include respond-to(not-handhelds) {
+			padding-left: 1rem;
+			padding-right: 1rem;
 			padding-bottom: 21px;
 		}
 	}
@@ -311,6 +330,10 @@
 		&.record .tgico-microphone2 {
 			animation: grow-icon .4s forwards ease-in-out;
 		}
+	}
+
+	.btn-icon {
+		transition: .2s color, background-color .2s;
 	}
 
 	#btn-record-cancel, #btn-send {
@@ -451,6 +474,24 @@
 	flex-direction: column;
 	position: relative;
 	flex: 3;
+
+	@include respond-to(floating-left-sidebar) {
+		position: fixed;
+		left: 0;
+		top: 0;
+		bottom: 0;
+		right: 0;
+		transform: translateZ(0);
+		transition: transform var(--layer-transition);
+
+		body.is-left-column-shown & {
+			transform: translate3d(26.5rem, 0, 0);
+
+			.sidebar-close-button {
+				transform: rotate(180deg);
+			}
+		}
+	}
 
 	.chat-background {
 		overflow: hidden;
@@ -595,7 +636,6 @@
 		
 		.btn-icon {
 			display: block;
-			transition: .2s color, background-color .2s;
 			flex: 0 0 auto;
 			font-size: 24px;
 			line-height: 24px;
@@ -619,7 +659,7 @@
 			position: absolute !important;
 			top: 100%;
 			width: 100% !important;
-			background: #fff;
+			background: #fff !important;
 			left: 0;
 			// border-top: 1px solid #ccc;
 			max-height: 100% !important;
@@ -916,9 +956,9 @@
 	//overflow: hidden;
 	position: relative;
 
-	html.is-safari & {
+	/* html.is-safari & > .scrollable {
     -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%); // fix safari overflow
-	}
+	} */
 	
 	// ! WARNING, НЕЛЬЗЯ СТАВИТЬ ТРАНСФОРМ КРОМЕ TRANSLATEZ(0) НА БЛОК С OVERFLOW, ОН БУДЕТ ПРЫГАТЬ ВВЕРХ ПРИ ВКЛЮЧЕННОМ ПРАВИЛЕ И ЭТО НЕ ИСПРАВИТЬ JS'ОМ!
 	@include respond-to(medium-screens) {
@@ -1117,7 +1157,8 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		box-shadow: 0px -1px 5px -1px rgba(0,0,0,0.21);
+		box-shadow: 0px -1px 5px -1px rgba(0, 0, 0, .21);
+		overflow: hidden;
 
 		.chat-search-count {
 			margin-left: 8px;

@@ -89,10 +89,10 @@
       flex: 1 1 auto;
       display: flex;
       flex-direction: column;
-      margin-bottom: 13px;
+      padding-bottom: 13px;
 
       @include respond-to(not-handhelds) {
-        margin-top: 15px;
+        padding-top: 15px;
       }
     }
 
@@ -267,6 +267,7 @@
       > div {
         //height: 100%;
         position: relative;
+        min-height: 150px;
 
         /* > div:not(:empty) + .content-empty {
           display: none;
@@ -301,15 +302,6 @@
           padding: 7.5px 7.5px 7.5px 6.5px;
         }
   
-        .media-item {
-          height: 0;
-          padding-bottom: 100%;
-          overflow: hidden;
-          position: relative;
-          cursor: pointer;
-          //background-color: #000;
-        }
-
         .video-time {
           position: absolute;
           left: 5px;
@@ -323,13 +315,7 @@
           color: white;
         }
 
-        .media-image {
-          position: absolute;
-          left: 0;
-          top: 0;
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
+        .grid-item-media {
           opacity: 1;
           transition: opacity .2s ease;
 

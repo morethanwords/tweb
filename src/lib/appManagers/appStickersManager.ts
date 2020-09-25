@@ -1,12 +1,11 @@
-import AppStorage from '../storage';
-//import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
 import appDocsManager from './appDocsManager';
 import { $rootScope } from '../utils';
 import { StickerSet, InputStickerSet, StickerSetCovered, MessagesRecentStickers, Document, InputFileLocation, MessagesStickerSet, PhotoSize } from '../../layer';
 import { Modify } from '../../types';
+import appStateManager from './appStateManager';
 
-class AppStickersManager {
+export class AppStickersManager {
   private stickerSets: {
     [stickerSetID: string]: MessagesStickerSet
   } = {};
@@ -27,14 +26,14 @@ class AppStickersManager {
   };
   
   constructor() {
-    AppStorage.get<AppStickersManager['stickerSets']>('stickerSets').then((sets) => {
-      if(sets) {
-        for(let id in sets) {
-          let set = sets[id];
+    appStateManager.getState().then(({stickerSets}) => {
+      if(stickerSets) {
+        for(let id in stickerSets) {
+          let set = stickerSets[id];
           this.saveStickers(set.documents);
         }
 
-        this.stickerSets = sets;
+        this.stickerSets = stickerSets;
       }
 
       //if(!this.stickerSets['emoji']) {
@@ -130,9 +129,8 @@ class AppStickersManager {
         }
       }
 
-      AppStorage.set({
-        stickerSets: savedSets
-      });
+      appStateManager.pushToState('stickerSets', savedSets);
+      appStateManager.saveState();
 
       this.saveSetsTimeout = 0;
     }, 100);
@@ -258,14 +256,9 @@ class AppStickersManager {
 
     return hashed.result.concat(foundSaved);
   }
-
-  public async cleanup() { // if logout
-    await AppStorage.remove('stickerSets');
-  }
 }
 
 const appStickersManager = new AppStickersManager();
-// @ts-ignore
 if(process.env.NODE_ENV != 'production') {
   (window as any).appStickersManager = appStickersManager;
 }

@@ -1,7 +1,6 @@
 import { logger, LogLevels } from "./logger";
 import animationIntersector from "../components/animationIntersector";
 import apiManager from "./mtproto/mtprotoworker";
-import { copy } from "./utils";
 import EventListenerBase from "../helpers/eventListenerBase";
 import mediaSizes from "../helpers/mediaSizes";
 import { isApple, isSafari } from "../helpers/userAgent";
@@ -21,7 +20,8 @@ type RLottieOptions = {
   height?: number,
   group?: string,
   noCache?: true,
-  needUpscale?: true
+  needUpscale?: true,
+  skipRatio?: number
 };
 
 export class RLottiePlayer extends EventListenerBase<{
@@ -36,6 +36,7 @@ export class RLottiePlayer extends EventListenerBase<{
   public curFrame: number;
   public frameCount: number;
   public fps: number;
+  public skipDelta: number;
 
   public worker: QueryableWorker;
   
@@ -89,6 +90,16 @@ export class RLottiePlayer extends EventListenerBase<{
       }
     }
 
+    // Skip ratio
+    let skipRatio: number;
+    if(options.skipRatio !== undefined) skipRatio = options.skipRatio;
+    else if(mediaSizes.isMobile && this.width < 100 && this.height < 100) {
+      skipRatio = 0.5;
+    }
+
+    this.skipDelta = skipRatio !== undefined ? 1 / skipRatio | 0 : 1;
+
+    // Pixel ratio
     const pixelRatio = window.devicePixelRatio;
     if(pixelRatio > 1) {
       //this.cachingEnabled = true;//this.width < 100 && this.height < 100;
@@ -108,8 +119,9 @@ export class RLottiePlayer extends EventListenerBase<{
       }
     }
 
+    // Cache frames params
     if(!options.noCache) {
-      // проверка на размер уже после скейлинга, сделано для попапа и сайдбарfа, где стикеры 80х80 и 68х68, туда нужно 75%
+      // проверка на размер уже после скейлинга, сделано для попапа и сайдбара, где стикеры 80х80 и 68х68, туда нужно 75%
       if(isApple && this.width > 100 && this.height > 100) {
         this.cachingDelta = 2; //2 // 50%
       } else if(this.width < 100 && this.height < 100) {
@@ -146,12 +158,8 @@ export class RLottiePlayer extends EventListenerBase<{
     this.worker.sendQuery(methodName, this.reqId, ...args);
   }
 
-  public loadFromData(json: any) {
-    this.sendQuery('loadFromData', json, this.width, this.height, {
-      paused: this.paused,
-      direction: this.direction,
-      speed: this.speed
-    });
+  public loadFromData(jsonString: string) {
+    this.sendQuery('loadFromData', jsonString, this.width, this.height);
   }
 
   public play() {
@@ -276,7 +284,10 @@ export class RLottiePlayer extends EventListenerBase<{
   }
 
   private mainLoopForwards() {
-    this.requestFrame(this.curFrame++);
+    const frame = this.curFrame;
+    this.curFrame += this.skipDelta;
+
+    this.requestFrame(frame);
     if(this.curFrame >= this.frameCount) {
       //this.playedTimes++;
 
@@ -292,7 +303,10 @@ export class RLottiePlayer extends EventListenerBase<{
   }
   
   private mainLoopBackwards() {
-    this.requestFrame(this.curFrame--);
+    const frame = this.curFrame;
+    this.curFrame -= this.skipDelta;
+
+    this.requestFrame(frame);
     if(this.curFrame < 0) {
       //this.playedTimes++;
 
@@ -311,7 +325,7 @@ export class RLottiePlayer extends EventListenerBase<{
     //window.cancelAnimationFrame(this.rafId);
     clearTimeout(this.rafId);
 
-    this.frInterval = 1000 / this.fps / this.speed;
+    this.frInterval = 1000 / this.fps / this.speed * this.skipDelta;
     this.frThen = Date.now() - this.frInterval;
 
     //console.trace('setMainLoop', this.frInterval, this.direction, this, JSON.stringify(this.listenerResults), this.listenerResults);
@@ -337,7 +351,7 @@ export class RLottiePlayer extends EventListenerBase<{
     this.curFrame = this.direction == 1 ? 0 : frameCount - 1;
     this.frameCount = frameCount;
     this.fps = fps;
-    this.frInterval = 1000 / this.fps / this.speed;
+    this.frInterval = 1000 / this.fps / this.speed * this.skipDelta;
     this.frThen = Date.now() - this.frInterval;
     //this.sendQuery('renderFrame', 0);
     
@@ -522,9 +536,6 @@ class LottieLoader {
 
     if(this.loadPromise) return this.loadPromise;
 
-    const onFrame = this.onFrame.bind(this);
-    const onPlayerLoaded = this.onPlayerLoaded.bind(this);
-
     return this.loadPromise = new Promise((resolve, reject) => {
       let remain = this.workersLimit;
       for(let i = 0; i < this.workersLimit; ++i) {
@@ -533,8 +544,9 @@ class LottieLoader {
         worker.addListener('ready', () => {
           this.log('worker #' + i + ' ready');
 
-          worker.addListener('frame', onFrame);
-          worker.addListener('loaded', onPlayerLoaded);
+          worker.addListener('frame', this.onFrame);
+          worker.addListener('loaded', this.onPlayerLoaded);
+          worker.addListener('error', this.onPlayerError);
 
           --remain;
           if(!remain) {
@@ -630,7 +642,7 @@ class LottieLoader {
     return player;
   }
 
-  private onPlayerLoaded(reqId: number, frameCount: number, fps: number) {
+  private onPlayerLoaded = (reqId: number, frameCount: number, fps: number) => {
     const rlPlayer = this.players[reqId];
     if(!rlPlayer) {
       this.log.warn('onPlayerLoaded on destroyed player:', reqId, frameCount);
@@ -642,9 +654,9 @@ class LottieLoader {
     //rlPlayer.addListener('firstFrame', () => {
       //animationIntersector.addAnimation(player, group);
     //}, true);
-  }
+  };
 
-  private onFrame(reqId: number, frameNo: number, frame: Uint8ClampedArray) {
+  private onFrame = (reqId: number, frameNo: number, frame: Uint8ClampedArray) => {
     const rlPlayer = this.players[reqId];
     if(!rlPlayer) {
       this.log.warn('onFrame on destroyed player:', reqId, frameNo);
@@ -653,7 +665,18 @@ class LottieLoader {
 
     rlPlayer.clamped = frame;
     rlPlayer.renderFrame(frame, frameNo);
-  }
+  };
+
+  private onPlayerError = (reqId: number, error: Error) => {
+    const rlPlayer = this.players[reqId];
+    if(rlPlayer) {
+      // ! will need refactoring later, this is not the best way to remove the animation
+      const animations = animationIntersector.getAnimations(rlPlayer.el);
+      animations.forEach(animation => {
+        animationIntersector.checkAnimation(animation, true, true);
+      });
+    }
+  };
 
   public onDestroy(reqId: number) {
     delete this.players[reqId];

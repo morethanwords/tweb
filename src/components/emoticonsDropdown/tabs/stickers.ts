@@ -13,7 +13,8 @@ import apiManager from "../../../lib/mtproto/mtprotoworker";
 import StickyIntersector from "../../stickyIntersector";
 import appDocsManager, {MyDocument} from "../../../lib/appManagers/appDocsManager";
 import animationIntersector from "../../animationIntersector";
-import LazyLoadQueue, { LazyLoadQueueRepeat } from "../../lazyLoadQueue";
+import { LazyLoadQueueRepeat } from "../../lazyLoadQueue";
+import mediaSizes from "../../../helpers/mediaSizes";
 
 export default class StickersTab implements EmoticonsTab {
   public content: HTMLElement;
@@ -81,6 +82,7 @@ export default class StickersTab implements EmoticonsTab {
   renderSticker(doc: MyDocument, div?: HTMLDivElement) {
     if(!div) {
       div = document.createElement('div');
+      div.classList.add('grid-item');
 
       if(doc.sticker == 2) {
         this.animatedDivs.add(div);
@@ -92,13 +94,10 @@ export default class StickersTab implements EmoticonsTab {
       }
     } 
 
+    // * This will wrap only a thumb
     wrapSticker({
       doc, 
       div,
-      /* width: 80,
-      height: 80,
-      play: false,
-      loop: false, */
       lazyLoadQueue: EmoticonsDropdown.lazyLoadQueue, 
       group: EMOTICONSSTICKERGROUP, 
       onlyThumb: doc.sticker == 2
@@ -183,12 +182,14 @@ export default class StickersTab implements EmoticonsTab {
   processVisibleDiv = (div: HTMLElement) => {
     const docID = div.dataset.docID;
     const doc = appDocsManager.getDoc(docID);
+    
+    const size = mediaSizes.active.esgSticker.width;
 
     const promise = wrapSticker({
       doc, 
       div: div as HTMLDivElement,
-      width: 80,
-      height: 80,
+      width: size,
+      height: size,
       lazyLoadQueue: null, 
       group: EMOTICONSSTICKERGROUP, 
       onlyThumb: false,

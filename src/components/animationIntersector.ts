@@ -63,6 +63,24 @@ export class AnimationIntersector {
     return found;
   }
 
+  public removeAnimation(player: AnimationItem) {
+    //console.log('destroy animation');
+    const {el, animation} = player;
+    animation.remove();
+
+    if(animation instanceof HTMLVideoElement) {
+      animation.src = '';
+      animation.load();
+    }
+
+    for(const group in this.byGroups) {
+      this.byGroups[group].findAndSplice(p => p == player);
+    }
+  
+    this.observer.unobserve(el);
+    this.visible.delete(player);
+  }
+
   public addAnimation(animation: RLottiePlayer | HTMLVideoElement, group = '') {
     const player = {
       el: animation instanceof RLottiePlayer ? animation.el : animation, 
@@ -98,20 +116,7 @@ export class AnimationIntersector {
     const {el, animation, group} = player;
     //return;
     if((destroy || (!isInDOM(el) && !this.lockedGroups[group]))/*  && false */) {
-      //console.log('destroy animation');
-      animation.remove();
-
-      if(animation instanceof HTMLVideoElement) {
-        animation.src = '';
-        animation.load();
-      }
-
-      for(const group in this.byGroups) {
-        this.byGroups[group].findAndSplice(p => p == player);
-      }
-  
-      this.observer.unobserve(el);
-      this.visible.delete(player);
+      this.removeAnimation(player);
       return;
     }
 
@@ -161,7 +166,6 @@ export class AnimationIntersector {
 }
 
 const animationIntersector = new AnimationIntersector();
-// @ts-ignore
 if(process.env.NODE_ENV == 'development') {
   (window as any).animationIntersector = animationIntersector;
 }

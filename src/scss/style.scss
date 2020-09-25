@@ -17,11 +17,13 @@ $lightgrey: #dadce0;
 $light: rgba($color-gray, 0.08);
 
 //$small-screen: 720px;
-$small-screen: 896px;
+$small-screen: 600px;
 //$small-screen: 900px;
 $medium-screen: 1275px;
 $large-screen: 1680px;
 //$large-screen: 16800px;
+
+$floating-left-sidebar: 925px;
 
 @mixin respond-to($media) {
   @if $media == handhelds {
@@ -49,6 +51,20 @@ $large-screen: 1680px;
   @else if $media == not-handhelds {
     @media only screen and (min-width: $small-screen + 1) { @content; }
   }
+
+  @else if $media == floating-left-sidebar {
+    @media only screen and (min-width: $small-screen + 1) and (max-width: $floating-left-sidebar) { @content; }
+  }
+  @else if $media == until-floating-left-sidebar {
+    @media only screen and (max-width: $floating-left-sidebar) { @content; }
+  }
+  @else if $media == no-floating-left-sidebar {
+    @media only screen and (min-width: $floating-left-sidebar + 1) { @content; }
+  }
+
+  @else if $media == esg-top { // topbar + chat input + margin bottom + height of ESG 
+    @media only screen and (min-height: 570px) and (min-width: $small-screen + 1) { @content; }
+  }
 }
 
 :root {
@@ -61,9 +77,11 @@ $large-screen: 1680px;
   --message-beside-button-margin: 2.875rem;
   --message-time-background: rgba(0, 0, 0, .35);
   --messages-container-width: 728px;
+  --esg-sticker-size: 80px;
 
   @include respond-to(handhelds) {
     --right-column-width: 100vw;
+    --esg-sticker-size: 68px;
   }
 
   @include respond-to(not-handhelds) {
@@ -173,9 +191,9 @@ html, body {
   width: 100%;
   -webkit-font-smoothing: antialiased;
 
-  @include respond-to(handhelds) {
+  //@include respond-to(handhelds) {
     height: calc(var(--vh, 1vh) * 100);
-  }
+  //}
 
   /* @include respond-to(handhelds) {
     //overflow-y: auto;
@@ -228,8 +246,8 @@ input, textarea, button, select, a, div {
   //}
 }
 
-.disable-hover,
-.disable-hover * {
+.disable-hover/* ,
+.disable-hover * */ {
   pointer-events: none !important;
 }
 
@@ -676,16 +694,12 @@ hr {
     display: inline-block;
     height: 25px;
     line-height: 25px;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
     user-select: none;
     
     &:before, &:after {
       content: '';
       left: 0;
       position: absolute;
-      -webkit-transition: border .25s, background-color .25s, width .20s .1s, height .20s .1s, top .20s .1s, left .20s .1s;
       transition: border .25s, background-color .25s, width .20s .1s, height .20s .1s, top .20s .1s, left .20s .1s;
     }
     
@@ -711,9 +725,7 @@ hr {
     border: 2px solid transparent;
     left: 6px;
     top: 10px;
-    -webkit-transform: rotateZ(45deg);
     transform: rotateZ(45deg);
-    -webkit-transform-origin: 100% 100%;
     transform-origin: 100% 100%;
   }
   
@@ -726,9 +738,7 @@ hr {
     border-left: 2px solid transparent;
     border-right: 2px solid #fff;
     border-bottom: 2px solid #fff;
-    -webkit-transform: rotateZ(45deg);
     transform: rotateZ(45deg);
-    -webkit-transform-origin: 100% 100%;
     transform-origin: 100% 100%;
   }
   
@@ -1129,6 +1139,25 @@ img.emoji {
   to {
     transform: scale(.5);
     opacity: 0;
+  }
+}
+
+.grid-item {
+  height: 0;
+	padding-bottom: 100%;
+	overflow: hidden;
+	position: relative;
+  cursor: pointer;
+  user-select: none;
+  
+  &-media {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    -o-object-fit: cover;
+    object-fit: cover;
   }
 }
 

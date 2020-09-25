@@ -32,6 +32,7 @@ export class RLottieItem {
       worker.Api.resize(this.handle, this.width, this.height);
     } catch(e) {
       console.error('init RLottieItem error:', e);
+      reply('error', this.reqId, e);
     }
   }
 
@@ -60,6 +61,7 @@ export class RLottieItem {
     } catch(e) {
       console.error('Render error:', e);
       this.dead = true;
+      reply('error', this.reqId, e);
     }
   }
 
@@ -96,8 +98,8 @@ Module.onRuntimeInitialized = function() {
   worker.init();
 };
 
-var items: {[reqId: string]: RLottieItem} = {};
-var queryableFunctions = {
+const items: {[reqId: string]: RLottieItem} = {};
+const queryableFunctions = {
   loadFromData: function(reqId: number, jsString: string, width: number, height: number) {
     try {
       // ! WARNING, с этой проверкой не все стикеры работают, например - ДУРКА
@@ -108,14 +110,19 @@ var queryableFunctions = {
       const match = jsString.match(/"fr":\s*?(\d+?),/);
       const frameRate = +match?.[1] || DEFAULT_FPS;
 
-      console.log('Rendering sticker:', reqId, frameRate, 'now rendered:', Object.keys(items).length);
+      //console.log('Rendering sticker:', reqId, frameRate, 'now rendered:', Object.keys(items).length);
 
       items[reqId] = new RLottieItem(reqId, jsString, width, height, frameRate);
     } catch(e) {
       console.error('Invalid file for sticker:', jsString);
+      reply('error', reqId, e);
     }
   },
   destroy: function(reqId: number) {
+    if(!items.hasOwnProperty(reqId)) {
+      return;
+    }
+
     items[reqId].destroy();
     delete items[reqId];
   },
@@ -143,10 +150,10 @@ function defaultReply(message: any) {
  *      let the calling scope pass in the global scope object.
  * @returns {boolean}
  */
-var _isSafari: boolean = null;
+let _isSafari: boolean = null;
 function isSafari(scope: any) {
   if(_isSafari == null) {
-    var userAgent = scope.navigator ? scope.navigator.userAgent : null;
+    const userAgent = scope.navigator ? scope.navigator.userAgent : null;
     _isSafari = !!scope.safari ||
     !!(userAgent && (/\b(iPad|iPhone|iPod)\b/.test(userAgent) || (!!userAgent.match('Safari') && !userAgent.match('Chrome'))));
   }

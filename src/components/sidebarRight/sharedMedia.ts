@@ -324,7 +324,7 @@ export default class AppSharedMediaTab implements SliderTab {
           const media = message.media.photo || message.media.document || (message.media.webpage && message.media.webpage.document);
 
           const div = document.createElement('div');
-          div.classList.add('media-item');
+          div.classList.add('grid-item');
           //console.log(message, photo);
 
           const isPhoto = media._ == 'photo';
@@ -387,7 +387,7 @@ export default class AppSharedMediaTab implements SliderTab {
           const willHaveThumb = !isDownloaded && sizes && sizes[0].bytes;
           if(willHaveThumb) {
             thumb = new Image();
-            thumb.classList.add('media-image', 'thumbnail');
+            thumb.classList.add('grid-item-media', 'thumbnail');
             thumb.dataset.mid = '' + message.mid;
             appPhotosManager.setAttachmentPreview(sizes[0].bytes, thumb, false, false);
             div.append(thumb);
@@ -396,7 +396,7 @@ export default class AppSharedMediaTab implements SliderTab {
           const needBlur = !isDownloaded || !willHaveThumb;
           const img = new Image();
           img.dataset.mid = '' + message.mid;
-          img.classList.add('media-image');
+          img.classList.add('grid-item-media');
           if(needBlur) img.style.opacity = '0';
           div.append(img);
 
@@ -690,7 +690,7 @@ export default class AppSharedMediaTab implements SliderTab {
       for(let i = 0; i < 1500; ++i) {
         let div = document.createElement('div');
         div.insertAdjacentHTML('beforeend', `<img class="media-image" src="assets/img/camomile.jpg">`);
-        div.classList.add('media-item');
+        div.classList.add('grid-item');
         div.dataset.id = '' + (i / 3 | 0);
         //div.innerText = '' + (i / 3 | 0);
         this.sharedMedia.contentMedia.append(div);

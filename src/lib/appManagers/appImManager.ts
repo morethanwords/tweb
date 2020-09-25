@@ -8,7 +8,7 @@ import appProfileManager from "./appProfileManager";
 import appDialogsManager from "./appDialogsManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import appPhotosManager from "./appPhotosManager";
-import appSidebarRight, { AppSidebarRight } from './appSidebarRight';
+import appSidebarRight, { AppSidebarRight, RIGHT_COLUMN_ACTIVE_CLASSNAME } from './appSidebarRight';
 
 import { logger, LogLevels } from "../logger";
 import appMediaViewer from "./appMediaViewer";
@@ -46,9 +46,11 @@ import { isAndroid, isApple, isSafari } from '../../helpers/userAgent';
 
 appSidebarLeft; // just to include
 
-const testScroll = false;
+const TEST_SCROLL = false;
 
-const ANIMATIONGROUP = 'chat';
+const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
+
+const ANIMATION_GROUP = 'chat';
 
 export class AppImManager {
   public columnEl = document.getElementById('column-center') as HTMLDivElement;
@@ -138,14 +140,20 @@ export class AppImManager {
 
   private cleanupID = 0;
 
-  public selectTab = horizontalMenu(null, document.getElementById('main-columns'));
+  private mainColumns: HTMLElement;
+  public _selectTab: ReturnType<typeof horizontalMenu>;
   private closeBtn = this.topbar.querySelector('.sidebar-close-button') as HTMLButtonElement;
+  public hideRightSidebar = false;
 
   constructor() {
     this.log = logger('IM', LogLevels.log | LogLevels.warn | LogLevels.debug | LogLevels.error);
     this.chatInputC = new ChatInput();
     this.preloader = new ProgressivePreloader(null, false);
+
+    this.mainColumns = document.getElementById('main-columns');
+    this._selectTab = horizontalMenu(null, this.mainColumns);
     this.selectTab(0);
+
     parseMenuButtonsTo(this.menuButtons, this.columnEl.querySelector('.chat-more-button').firstElementChild.children);
     
     this.chatAudio = new ChatAudio();
@@ -553,7 +561,19 @@ export class AppImManager {
 
     this.closeBtn.addEventListener('click', (e) => {
       cancelEvent(e);
-      this.setPeer(0);
+
+      if(mediaSizes.isMobile) {
+        this.setPeer(0);
+      } else {
+        const isNowOpen = document.body.classList.toggle(LEFT_COLUMN_ACTIVE_CLASSNAME);
+
+        if(isNowOpen && document.body.classList.contains(RIGHT_COLUMN_ACTIVE_CLASSNAME)) {
+          appSidebarRight.toggleSidebar(false, false);
+          this.hideRightSidebar = isNowOpen;
+        } else if(this.hideRightSidebar) {
+          appSidebarRight.toggleSidebar(true);
+        }
+      }
     });
     
     this.searchBtn.addEventListener('click', (e) => {
@@ -702,6 +722,12 @@ export class AppImManager {
     });
   }
 
+  public selectTab(id: number) {
+    document.body.classList.toggle(LEFT_COLUMN_ACTIVE_CLASSNAME, id == 0);
+
+    this._selectTab(id, mediaSizes.isMobile);
+  }
+
   onDatePick = (timestamp: number) => {
     const peerID = this.peerID;
     appMessagesManager.requestHistory(peerID, 0, 2, -1, timestamp).then(history => {
@@ -773,7 +799,7 @@ export class AppImManager {
 
   public loadMoreHistory(top: boolean, justLoad = false) {
     //this.log('loadMoreHistory', top);
-    if(!this.peerID || testScroll || this.setPeerPromise || (top && this.getHistoryTopPromise) || (!top && this.getHistoryBottomPromise)) return;
+    if(!this.peerID || TEST_SCROLL || this.setPeerPromise || (top && this.getHistoryTopPromise) || (!top && this.getHistoryBottomPromise)) return;
 
     // warning, если иды только отрицательные то вниз не попадёт (хотя мб и так не попадёт)
     let history = Object.keys(this.bubbles).map(id => +id).filter(id => id > 0).sort((a, b) => a - b);
@@ -1000,6 +1026,10 @@ export class AppImManager {
       return !!this.bubbles[id]?.parentElement;
     })];
   }
+
+  /* public selectTab() {
+
+  } */
   
   public setPeer(peerID: number, lastMsgID?: number) {
     //console.time('appImManager setPeer');
@@ -1012,10 +1042,17 @@ export class AppImManager {
       this.cleanup(true);
       this.peerID = $rootScope.selectedPeerID = 0;
       $rootScope.$broadcast('peer_changed', this.peerID);
-      if(mediaSizes.isMobile) {
-        this.selectTab(0);
-      }
+
+      this.selectTab(0);
+      
+      document.body.classList.add(LEFT_COLUMN_ACTIVE_CLASSNAME);
       return false;
+    }
+
+    document.body.classList.remove(LEFT_COLUMN_ACTIVE_CLASSNAME);
+    if(this.hideRightSidebar) {
+      appSidebarRight.toggleSidebar(true);
+      this.hideRightSidebar = false;
     }
     
     const samePeer = this.peerID == peerID;
@@ -1107,14 +1144,12 @@ export class AppImManager {
 
       this.preloader.attach(this.bubblesContainer);
 
-      if(mediaSizes.isMobile) {
-        this.selectTab(1);
-      }
+      this.selectTab(1);
     }
 
     //console.timeEnd('appImManager setPeer pre promise');
     
-    animationIntersector.lockGroup(ANIMATIONGROUP);
+    animationIntersector.lockGroup(ANIMATION_GROUP);
     this.setPeerPromise = Promise.all([
       promise.then(() => {
         ////this.log('setPeer removing preloader');
@@ -1127,16 +1162,14 @@ export class AppImManager {
             this.finishPeerChange();
           }
 
-          if(mediaSizes.isMobile) {
-            this.selectTab(1);
-          }
+          this.selectTab(1);
         } else {
           this.preloader.detach();
         }
 
         this.scrollable.container.append(this.chatInner);
-        animationIntersector.unlockGroup(ANIMATIONGROUP);
-        animationIntersector.checkAnimations(false, ANIMATIONGROUP/* , true */);
+        animationIntersector.unlockGroup(ANIMATION_GROUP);
+        animationIntersector.checkAnimations(false, ANIMATION_GROUP/* , true */);
         //this.scrollable.attachSentinels();
         //this.scrollable.container.insertBefore(this.chatInner, this.scrollable.container.lastElementChild);
 
@@ -1305,7 +1338,7 @@ export class AppImManager {
       //bubble.remove();
     });
     
-    animationIntersector.checkAnimations(false, ANIMATIONGROUP);
+    animationIntersector.checkAnimations(false, ANIMATION_GROUP);
     this.deleteEmptyDateGroups();
   }
   
@@ -1844,7 +1877,7 @@ export class AppImManager {
                   isOut: isOut,
                   lazyLoadQueue: this.lazyLoadQueue,
                   middleware: null,
-                  group: ANIMATIONGROUP
+                  group: ANIMATION_GROUP
                 });
 
                 preloader.attach(attachmentDiv, false);
@@ -1956,7 +1989,7 @@ export class AppImManager {
                 lazyLoadQueue: this.lazyLoadQueue,
                 middleware: this.getMiddleware(),
                 isOut,
-                group: ANIMATIONGROUP
+                group: ANIMATION_GROUP
               });
               //}
             } else {
@@ -2042,7 +2075,7 @@ export class AppImManager {
               div: attachmentDiv,
               middleware: this.getMiddleware(),
               lazyLoadQueue: this.lazyLoadQueue,
-              group: ANIMATIONGROUP,
+              group: ANIMATION_GROUP,
               //play: !!message.pending || !multipleRender,
               play: true,
               loop: true,
@@ -2078,7 +2111,7 @@ export class AppImManager {
                 isOut: isOut,
                 lazyLoadQueue: this.lazyLoadQueue,
                 middleware: this.getMiddleware(),
-                group: ANIMATIONGROUP
+                group: ANIMATION_GROUP
               });
             }
             
@@ -2390,7 +2423,7 @@ export class AppImManager {
     const realLoadCount = Object.keys(this.bubbles).length > 0 ? Math.max(40, pageCount) : pageCount;//const realLoadCount = 50;
     let loadCount = realLoadCount;
     
-    if(testScroll) {
+    if(TEST_SCROLL) {
       //loadCount = 1;
       if(Object.keys(this.bubbles).length > 0)
       return {cached: false, promise: Promise.resolve(true)};

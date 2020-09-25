@@ -2471,8 +2471,9 @@ export class AppMessagesManager {
 
     let messageWrapped = '';
     if(text) {
-      if(text.length > 40) {
-        text = text.substr(0, 35) + '...';
+      // * 80 for chatlist in landscape orientation
+      if(text.length > 80) {
+        text = text.substr(0, 75) + '...';
       }
 
       let entities = RichTextProcessor.parseEntities(text.replace(/\n/g, ' '), {noLinebreakers: true});

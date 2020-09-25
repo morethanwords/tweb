@@ -8,7 +8,7 @@ import AppPrivateSearchTab from "../../components/sidebarRight/search";
 import AppSharedMediaTab from "../../components/sidebarRight/sharedMedia";
 import AppForwardTab from "../../components/sidebarRight/forward";
 
-const COLUMN_ACTIVE_CLASSNAME = 'is-right-column-shown';
+export const RIGHT_COLUMN_ACTIVE_CLASSNAME = 'is-right-column-shown';
 
 const sharedMediaTab = new AppSharedMediaTab();
 const searchTab = new AppPrivateSearchTab();
@@ -54,7 +54,7 @@ export class AppSidebarRight extends SidebarSlider {
     this.gifsTab = gifsTab;
 
     mediaSizes.addListener('changeScreen', (from, to) => {
-      if(from !== undefined && to == ScreenSize.medium) {
+      if(from !== undefined && to == ScreenSize.medium && from !== ScreenSize.mobile) {
         this.toggleSidebar(false);
       }
     });
@@ -78,10 +78,10 @@ export class AppSidebarRight extends SidebarSlider {
     return res;
   } */
 
-  public toggleSidebar(enable?: boolean) {
+  public toggleSidebar(enable?: boolean, saveStatus = true) {
     /////this.log('sidebarEl', this.sidebarEl, enable, isElementInViewport(this.sidebarEl));
 
-    const active = document.body.classList.contains(COLUMN_ACTIVE_CLASSNAME);
+    const active = document.body.classList.contains(RIGHT_COLUMN_ACTIVE_CLASSNAME);
     let willChange: boolean;
     if(enable !== undefined) {
       if(enable) {
@@ -97,19 +97,25 @@ export class AppSidebarRight extends SidebarSlider {
 
     if(!willChange) return Promise.resolve();
 
+    if(saveStatus) {
+      appImManager.hideRightSidebar = false;
+    }
+
     if(!active && !this.historyTabIDs.length) {
       this.selectTab(AppSidebarRight.SLIDERITEMSIDS.sharedMedia);
     }
 
+    document.body.classList.toggle(RIGHT_COLUMN_ACTIVE_CLASSNAME, enable);
     //console.log('sidebar selectTab', enable, willChange);
     if(mediaSizes.isMobile) {
-      appImManager.selectTab(active ? 1 : 2);
-      return Promise.resolve();       
+      appImManager._selectTab(active ? 1 : 2);
+      return new Promise(resolve => {
+        setTimeout(resolve, 250); // delay of slider animation
+      });    
     }
 
-    document.body.classList.toggle(COLUMN_ACTIVE_CLASSNAME, enable);
     return new Promise(resolve => {
-      setTimeout(resolve, 200);
+      setTimeout(resolve, 200); // delay for third column open
     });
     //return Promise.resolve();
 

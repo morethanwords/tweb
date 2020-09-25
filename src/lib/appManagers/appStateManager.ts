@@ -7,6 +7,7 @@ import appUsersManager from './appUsersManager';
 import apiUpdatesManager from './apiUpdatesManager';
 import { copy } from '../utils';
 import { logger } from '../logger';
+import type { AppStickersManager } from './appStickersManager';
 
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
 
@@ -22,14 +23,18 @@ type State = Partial<{
   stateCreatedTime: number,
   recentEmoji: string[],
   topPeers: number[],
-  recentSearch: number[]
+  recentSearch: number[],
+  stickerSets: AppStickersManager['stickerSets']
 }>;
+
+const REFRESH_KEYS = ['dialogs', 'allDialogsLoaded', 'messages', 'contactsList', 'stateCreatedTime',
+  'updates', 'maxSeenMsgID', 'filters', 'topPeers'] as any as Array<keyof State>;
 
 export class AppStateManager {
   public loaded: Promise<State>;
   private log = logger('STATE'/* , LogLevels.error */);
 
-  private state: State = {};
+  private state: State;
 
   constructor() {
     this.loadSavedState();
@@ -37,13 +42,12 @@ export class AppStateManager {
 
   public loadSavedState() {
     if(this.loaded) return this.loaded;
-    return this.loaded = new Promise((resolve, reject) => {
+    return this.loaded = new Promise((resolve) => {
       AppStorage.get<State>('state').then((state) => {
         const time = Date.now();
         if((state?.stateCreatedTime ?? 0) + REFRESH_EVERY < time) {
           this.log('will refresh state', state.stateCreatedTime, time);
-          (['dialogs', 'allDialogsLoaded', 'messages', 'contactsList', 'stateCreatedTime',
-          'updates', 'maxSeenMsgID', 'filters', 'topPeers'] as any as Array<keyof State>).forEach(key => {
+          REFRESH_KEYS.forEach(key => {
             delete state[key];
           });
           //state = {};
@@ -131,10 +135,12 @@ export class AppStateManager {
   }
 
   public getState() {
-    return this.loadSavedState();
+    return this.state === undefined ? this.loadSavedState() : Promise.resolve(this.state);
   }
 
   public saveState() {
+    if(this.state === undefined) return;
+
     const messages: any[] = [];
     const dialogs: Dialog[] = [];
     const peers = this.state.peers;

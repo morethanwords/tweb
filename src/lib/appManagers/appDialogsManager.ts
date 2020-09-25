@@ -618,7 +618,7 @@ export class AppDialogsManager {
     //selectTab(0);
     (this.folders.menu.firstElementChild.firstElementChild as HTMLElement).click();
 
-    /* false &&  */appStateManager.loadSavedState().then(() => {
+    /* false &&  */appStateManager.getState().then(() => {
       return appMessagesManager.filtersStorage.getDialogFilters();
     }).then(filters => {
       for(const filterID in filters) {
