@@ -1,4 +1,4 @@
-import { safeReplaceObject, isObject, tsNow, copy, $rootScope } from "../utils";
+import { safeReplaceObject, isObject, tsNow, copy, $rootScope, getAbbreviation } from "../utils";
 import { RichTextProcessor } from "../richtextprocessor";
 import appChatsManager from "./appChatsManager";
 //import apiManager from '../mtproto/apiManager';
@@ -237,9 +237,10 @@ export class AppUsersManager {
       apiUser.rPhone = '+' + formatPhoneNumber(apiUser.phone).formatted;
     }
 
+    const fullName = apiUser.first_name + ' ' + (apiUser.last_name || '');
     if(apiUser.first_name) {
       apiUser.rFirstName = RichTextProcessor.wrapRichText(apiUser.first_name, {noLinks: true, noLinebreaks: true})
-      apiUser.rFullName = apiUser.last_name ? RichTextProcessor.wrapRichText(apiUser.first_name + ' ' + (apiUser.last_name || ''), {noLinks: true, noLinebreaks: true}) : apiUser.rFirstName;
+      apiUser.rFullName = apiUser.last_name ? RichTextProcessor.wrapRichText(fullName, {noLinks: true, noLinebreaks: true}) : apiUser.rFirstName;
     } else {
       apiUser.rFirstName = RichTextProcessor.wrapRichText(apiUser.last_name, {noLinks: true, noLinebreaks: true}) || apiUser.rPhone || 'user_first_name_deleted';
       apiUser.rFullName = RichTextProcessor.wrapRichText(apiUser.last_name, {noLinks: true, noLinebreaks: true}) || apiUser.rPhone || 'user_name_deleted';
@@ -250,12 +251,9 @@ export class AppUsersManager {
       this.usernames[searchUsername] = userID;
     }
 
-    apiUser.sortName = apiUser.pFlags.deleted ? '' : searchIndexManager.cleanSearchText(apiUser.first_name + ' ' + (apiUser.last_name || ''), false);
+    apiUser.sortName = apiUser.pFlags.deleted ? '' : searchIndexManager.cleanSearchText(fullName, false);
 
-    var nameWords = apiUser.sortName.split(' ');
-    var firstWord = nameWords.shift();
-    var lastWord = nameWords.pop();
-    apiUser.initials = firstWord.charAt(0) + (lastWord ? lastWord.charAt(0) : '');
+    apiUser.initials = getAbbreviation(fullName);
 
     if(apiUser.status) {
       if(apiUser.status.expires) {

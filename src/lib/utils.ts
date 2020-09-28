@@ -10,6 +10,7 @@ import type { AppMessagesManager, Dialog, MyDialogFilter } from "./appManagers/a
  */
 
 import type { DownloadOptions } from "./mtproto/apiFileManager";
+import { RichTextProcessor } from "./richtextprocessor";
 
 var _logTimer = Date.now();
 export function dT () {
@@ -327,6 +328,28 @@ export function isObject(object: any) {
 export function tsNow(seconds?: boolean) {
   var t = +new Date();
   return seconds ? Math.floor(t / 1000) : t;
+}
+
+const el = document.createElement('span');
+export function getAbbreviation(str: string) {
+  const wrapped = RichTextProcessor.wrapEmojiText(str);
+  el.innerHTML = wrapped;
+
+  const childNodes = el.childNodes;
+  let first = '', last = '';
+
+  const firstNode = childNodes[0];
+  if('length' in firstNode) first = (firstNode as any).textContent.charAt(0).toUpperCase(); 
+  else first = (firstNode as HTMLElement).outerHTML;
+
+  if(str.indexOf(' ') !== -1) {
+    const lastNode = childNodes[childNodes.length - 1];
+    if(lastNode == firstNode) last = lastNode.textContent.split(' ').pop().charAt(0).toUpperCase();
+    else if('length' in lastNode) last = (lastNode as any).textContent.charAt(0).toUpperCase(); 
+    else last = (lastNode as HTMLElement).outerHTML;
+  }
+
+  return first + last;
 }
 
 export function safeReplaceObject(wasObject: any, newObject: any) {

@@ -1,4 +1,4 @@
-import { $rootScope, isObject, safeReplaceObject, copy, numberWithCommas } from "../utils";
+import { $rootScope, isObject, safeReplaceObject, copy, numberWithCommas, getAbbreviation } from "../utils";
 import { RichTextProcessor } from "../richtextprocessor";
 import appUsersManager from "./appUsersManager";
 import apiManager from '../mtproto/mtprotoworker';
@@ -95,10 +95,7 @@ export class AppChatsManager {
 
     let oldChat = this.chats[apiChat.id];
 
-    let titleWords = searchIndexManager.cleanSearchText(apiChat.title || '', false).split(' ');
-    let firstWord = titleWords.shift();
-    let lastWord = titleWords.pop();
-    apiChat.initials = firstWord.charAt(0) + (lastWord ? lastWord.charAt(0) : '');
+    apiChat.initials = getAbbreviation(apiChat.title);
 
     if(apiChat.pFlags === undefined) {
       apiChat.pFlags = {};

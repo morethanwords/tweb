@@ -2292,8 +2292,8 @@ export class AppImManager {
         let avatarElem = new AvatarElement();
         avatarElem.classList.add('user-avatar');
 
-        if(!message.fromID && message.fwd_from && message.fwd_from.from_name) {
-          avatarElem.setAttribute('peer-title', message.fwd_from.from_name);
+        if(!message.fwdFromID && message.fwd_from && message.fwd_from.from_name) {
+          avatarElem.setAttribute('peer-title', /* '🔥 FF 🔥' */message.fwd_from.from_name);
         }
 
         avatarElem.setAttribute('peer', '' + (((message.fwd_from && this.peerID == this.myID) || isForwardFromChannel ? message.fwdFromID : message.fromID) || 0));

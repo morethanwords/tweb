@@ -5,7 +5,7 @@ import appPeersManager from './appPeersManager';
 import appChatsManager from './appChatsManager';
 import appUsersManager from './appUsersManager';
 import apiUpdatesManager from './apiUpdatesManager';
-import { copy } from '../utils';
+import { $rootScope, copy } from '../utils';
 import { logger } from '../logger';
 import type { AppStickersManager } from './appStickersManager';
 import { App } from '../mtproto/mtproto_config';
@@ -41,12 +41,16 @@ export class AppStateManager {
 
   constructor() {
     this.loadSavedState();
+
+    $rootScope.$on('user_auth', (e) => {
+      apiUpdatesManager.attach(null);
+    });
   }
 
   public loadSavedState() {
     if(this.loaded) return this.loaded;
     return this.loaded = new Promise((resolve) => {
-      AppStorage.get<State>('state').then((state) => {
+      AppStorage.get<[State, {id: number}]>('state', 'user_auth').then(([state, auth]) => {
         const time = Date.now();
         if(state) {
           if(state?.version != STATE_VERSION) {
@@ -128,7 +132,9 @@ export class AppStateManager {
           });
         }
 
-        apiUpdatesManager.attach(updates ?? null);
+        if(auth?.id) {
+          apiUpdatesManager.attach(updates ?? null);
+        }
   
         resolve(state);
       }).catch(resolve).finally(() => {
@@ -223,6 +229,8 @@ export class AppStateManager {
     this.state.peers[peerID] = appPeersManager.getPeer(peerID);
   }
 }
+
+//console.trace('appStateManager include');
 
 const appStateManager = new AppStateManager();
 // @ts-ignore
