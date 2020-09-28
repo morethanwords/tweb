@@ -1,11 +1,12 @@
 import {RichTextProcessor} from '../richtextprocessor';
-import { isObject, getFileURL, FileURLType } from '../utils';
+import { isObject, getFileURL, FileURLType, safeReplaceArrayInObject } from '../utils';
 import opusDecodeController from '../opusDecodeController';
 import { getFileNameByLocation } from '../bin_utils';
 import appDownloadManager, { DownloadBlob } from './appDownloadManager';
 import appPhotosManager from './appPhotosManager';
 import { isServiceWorkerSupported } from '../config';
 import { InputFileLocation, Document, PhotoSize } from '../../layer';
+import referenceDatabase, { ReferenceContext } from '../mtproto/referenceDatabase';
 
 export type MyDocument = Document.document;
 
@@ -14,37 +15,34 @@ export type MyDocument = Document.document;
 class AppDocsManager {
   private docs: {[docID: string]: MyDocument} = {};
 
-  public saveDoc(doc: Document, context?: any): MyDocument {
+  public saveDoc(doc: Document, context?: ReferenceContext): MyDocument {
     if(doc._ == 'documentEmpty') {
       return undefined;
     }
+
+    const oldDoc = this.docs[doc.id];
+
+    safeReplaceArrayInObject('file_reference', oldDoc, doc);
+    referenceDatabase.saveContext(doc.file_reference, context);
     
     //console.log('saveDoc', apiDoc, this.docs[apiDoc.id]);
-    if(this.docs[doc.id]) {
-      const d = this.docs[doc.id];
-
+    if(oldDoc) {
       //if(doc._ != 'documentEmpty' && doc._ == d._) {
         if(doc.thumbs) {
-          if(!d.thumbs) d.thumbs = doc.thumbs;
+          if(!oldDoc.thumbs) oldDoc.thumbs = doc.thumbs;
           /* else if(apiDoc.thumbs[0].bytes && !d.thumbs[0].bytes) {
             d.thumbs.unshift(apiDoc.thumbs[0]);
           } else if(d.thumbs[0].url) { // fix for converted thumb in safari
             apiDoc.thumbs[0] = d.thumbs[0];
           } */
         }
-  
-        d.file_reference = doc.file_reference;
+
       //}
 
-      
-      return d;
+      return oldDoc;
 
       //return Object.assign(d, apiDoc, context);
       //return context ? Object.assign(d, context) : d;
-    }
-    
-    if(context) {
-      Object.assign(doc, context);
     }
 
     this.docs[doc.id] = doc;

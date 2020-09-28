@@ -249,14 +249,23 @@
 		padding: 0 .5rem;
 		flex: 0 0 auto;
 
-		@include respond-to(handhelds) {
-			padding-bottom: .5rem;
-		}
-
 		@include respond-to(not-handhelds) {
 			padding-left: 1rem;
 			padding-right: 1rem;
 			padding-bottom: 21px;
+		}
+
+		@include respond-to(handhelds) {
+			padding-bottom: .5rem;
+		}
+
+		@include respond-to(esg-bottom) {
+			padding-bottom: .5rem;
+
+			.btn-circle {
+				height: 46px;
+				width: 46px;
+			}
 		}
 	}
 
@@ -313,7 +322,7 @@
 		align-self: flex-end;
 		z-index: 2;
 	}
-	
+
 	#btn-send {
 		color: #9e9e9e;
 
@@ -551,11 +560,15 @@
 		position: relative;
 		z-index: 3;
 
-
     @include respond-to(handhelds) {
 			min-height: 46px;
 			padding: .5px .5rem;
-    }
+		}
+		
+		@include respond-to(esg-bottom) {
+			min-height: 46px;
+			padding: .5px .5rem;
+		}
 		
 		&:after {
 			content: '';
@@ -697,7 +710,7 @@
 		}
 		
 		html.no-touch &:hover {
-			background-color: rgba(112, 117, 121, 0.08);
+			background-color: var(--color-gray-hover);
 		}
 		
 		&-border {

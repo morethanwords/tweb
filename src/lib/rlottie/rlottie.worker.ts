@@ -1,7 +1,7 @@
 importScripts('rlottie-wasm.js');
 //import Module, { allocate, intArrayFromString } from './rlottie-wasm';
 
-const _Module = Module as any;
+const _Module = (self as any).Module as any;
 
 const DEFAULT_FPS = 60;
 
@@ -11,13 +11,23 @@ export class RLottieItem {
   private frameCount = 0;
 
   private dead = false;
+  //private context: OffscreenCanvasRenderingContext2D;
 
-  constructor(private reqId: number, jsString: string, private width: number, private height: number, private fps: number) {
+  constructor(private reqId: number, jsString: string, private width: number, private height: number, private fps: number/* , private canvas: OffscreenCanvas */) {
     this.fps = Math.max(1, Math.min(60, fps || DEFAULT_FPS));
+
+    //this.context = canvas.getContext('2d');
 
     this.init(jsString);
 
     reply('loaded', this.reqId, this.frameCount, this.fps);
+
+    /* let frame = 0;
+    setInterval(() => {
+      if(frame >= this.frameCount) frame = 0;
+      let _frame = frame++;
+      this.render(_frame, null);
+    }, 1000 / this.fps); */
   }
 
   private init(jsString: string) {
@@ -56,6 +66,8 @@ export class RLottieItem {
       } else {
         clamped.set(data);
       }
+
+      //this.context.putImageData(new ImageData(clamped, this.width, this.height), 0, 0);
   
       reply('frame', this.reqId, frameNo, clamped);
     } catch(e) {
@@ -94,13 +106,13 @@ class RLottieWorker {
 
 const worker = new RLottieWorker();
 
-Module.onRuntimeInitialized = function() {
+_Module.onRuntimeInitialized = function() {
   worker.init();
 };
 
 const items: {[reqId: string]: RLottieItem} = {};
 const queryableFunctions = {
-  loadFromData: function(reqId: number, jsString: string, width: number, height: number) {
+  loadFromData: function(reqId: number, jsString: string, width: number, height: number/* , canvas: OffscreenCanvas */) {
     try {
       // ! WARNING, с этой проверкой не все стикеры работают, например - ДУРКА
       /* if(!/"tgs":\s*?1./.test(jsString)) {
@@ -112,7 +124,7 @@ const queryableFunctions = {
 
       //console.log('Rendering sticker:', reqId, frameRate, 'now rendered:', Object.keys(items).length);
 
-      items[reqId] = new RLottieItem(reqId, jsString, width, height, frameRate);
+      items[reqId] = new RLottieItem(reqId, jsString, width, height, frameRate/* , canvas */);
     } catch(e) {
       console.error('Invalid file for sticker:', jsString);
       reply('error', reqId, e);

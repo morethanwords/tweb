@@ -24,10 +24,12 @@ import { Modify } from "../../types";
 import { logger, LogLevels } from "../logger";
 import type {ApiFileManager} from '../mtproto/apiFileManager';
 import appDownloadManager from "./appDownloadManager";
-import { DialogFilter, InputDialogPeer, InputMessage, MethodDeclMap, MessagesFilter, PhotoSize, DocumentAttribute, Dialog as MTDialog, MessagesDialogs, MessagesPeerDialogs } from "../../layer";
+import { DialogFilter, Message, InputMessage, MethodDeclMap, MessagesFilter, PhotoSize, DocumentAttribute, Dialog as MTDialog, MessagesDialogs, MessagesPeerDialogs, MessagesMessages, MessageMedia } from "../../layer";
+import referenceDatabase, { ReferenceContext } from "../mtproto/referenceDatabase";
 
 //console.trace('include');
 // TODO: если удалить сообщение в непрогруженном диалоге, то при обновлении, из-за стейта, последнего сообщения в чатлисте не будет
+// TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
 
 const APITIMEOUT = 0;
 
@@ -135,7 +137,7 @@ export class DialogsStorage {
     const mid = appMessagesIDsManager.getFullMessageID(dialog.top_message, channelID);
     const message = appMessagesManager.getMessage(mid);
 
-    let topDate = message.date;
+    let topDate = (message as Message.message).date || Date.now() / 1000;
     if(channelID) {
       const channel = appChatsManager.getChat(channelID);
       if(!topDate || channel.date && channel.date > topDate) {
@@ -458,8 +460,10 @@ export class FiltersStorage {
   }
 }
 
+type MyMessage = Message.message | Message.messageService;
+
 export class AppMessagesManager {
-  public messagesStorage: any = {};
+  public messagesStorage: {[mid: string]: any} = {};
   public groupedMessagesStorage: {[groupID: string]: any} = {}; // will be used for albums
   public historiesStorage: {
     [peerID: string]: HistoryStorage
@@ -477,8 +481,7 @@ export class AppMessagesManager {
   public lastSearchResults: any = [];
 
   public needSingleMessages: number[] = [];
-  public fetchSingleMessagesTimeout = 0;
-  private fetchSingleMessagesPromise: Promise<any> = null;
+  private fetchSingleMessagesPromise: Promise<void> = null;
 
   public maxSeenID = 0;
 
@@ -517,9 +520,9 @@ export class AppMessagesManager {
 
     $rootScope.$on('webpage_updated', (e) => {
       let eventData = e.detail;
-      eventData.msgs.forEach((msgID: number) => {
-        let message = this.getMessage(msgID);
-        message.webpage = appWebPagesManager.getWebPage(eventData.id); // warning
+      eventData.msgs.forEach((msgID) => {
+        let message = this.getMessage(msgID) as Message.message;
+        (message.media as MessageMedia.messageMediaWebPage).webpage = appWebPagesManager.getWebPage(eventData.id); // warning
         $rootScope.$broadcast('message_edit', {
           peerID: this.getMessagePeer(message),
           id: message.id,
@@ -626,6 +629,7 @@ export class AppMessagesManager {
       peer: appPeersManager.getInputPeerByID(peerID),
       id: appMessagesIDsManager.getMessageLocalID(messageID),
       message: text,
+      // @ts-ignore
       media: message.media,
       entities: this.getInputEntities(entities),
       no_webpage: noWebPage || undefined,
@@ -2024,9 +2028,10 @@ export class AppMessagesManager {
     return Promise.all(promises);
   }
 
-  public getMessage(messageID: number) {
+  public getMessage(messageID: number)/* : Message */ {
     return this.messagesStorage[messageID] || {
       _: 'messageEmpty',
+      id: messageID,
       deleted: true,
       pFlags: {out: false, unread: false}
     };
@@ -2245,9 +2250,9 @@ export class AppMessagesManager {
         apiMessage.viaBotID = apiMessage.via_bot_id;
       }
 
-      const mediaContext = {
-        user_id: apiMessage.fromID,
-        date: apiMessage.date
+      const mediaContext: ReferenceContext = {
+        type: 'message',
+        messageID: mid
       };
 
       if(apiMessage.media) {
@@ -2638,7 +2643,8 @@ export class AppMessagesManager {
       let topMessage = dialog.top_message;
       const topPendingMessage = this.pendingTopMsgs[peerID];
       if(topPendingMessage) {
-        if(!topMessage || this.getMessage(topPendingMessage).date > this.getMessage(topMessage).date) {
+        if(!topMessage 
+          || (this.getMessage(topPendingMessage) as MyMessage).date > (this.getMessage(topMessage) as MyMessage).date) {
           dialog.top_message = topMessage = topPendingMessage;
         }
       }
@@ -3764,10 +3770,20 @@ export class AppMessagesManager {
 
         for(let i = 0; i < update.messages.length; i++) {
           let messageID = appMessagesIDsManager.getFullMessageID(update.messages[i], channelID);
-          let message = this.messagesStorage[messageID];
+          let message: MyMessage = this.messagesStorage[messageID];
           if(message) {
             let peerID = this.getMessagePeer(message);
             let history = historiesUpdated[peerID] || (historiesUpdated[peerID] = {count: 0, unread: 0, msgs: {}});
+
+            if((message as Message.message).media) {
+              // @ts-ignore
+              let c = message.media.webpage || message.media;
+              const smth = c.photo || c.document;
+
+              if(smth.file_reference) {
+                referenceDatabase.deleteContext(smth.file_reference, {type: 'message', messageID});
+              }
+            }
 
             if(!message.pFlags.out && message.pFlags.unread) {
               history.unread++;
@@ -4228,29 +4244,34 @@ export class AppMessagesManager {
     }, {
       //timeout: APITIMEOUT,
       noErrorBox: true
-    }).then((historyResult: any) => {
+    }).then((historyResult) => {
       this.log('requestHistory result:', historyResult, maxID, limit, offset);
+
+      if(historyResult._ == 'messages.messagesNotModified') {
+        return historyResult;
+      }
 
       appUsersManager.saveApiUsers(historyResult.users);
       appChatsManager.saveApiChats(historyResult.chats);
       this.saveMessages(historyResult.messages);
 
       if(isChannel) {
-        apiUpdatesManager.addChannelState(-peerID, historyResult.pts);
+        apiUpdatesManager.addChannelState(-peerID, (historyResult as MessagesMessages.messagesChannelMessages).pts);
       }
 
       let length = historyResult.messages.length;
       if(length && historyResult.messages[length - 1].deleted) {
         historyResult.messages.splice(length - 1, 1);
         length--;
-        historyResult.count--;
+        (historyResult as MessagesMessages.messagesMessagesSlice).count--;
       }
 
       // will load more history if last message is album grouped (because it can be not last item)
       const historyStorage = this.historiesStorage[peerID];
       // historyResult.messages: desc sorted
-      if(length && historyResult.messages[length - 1].grouped_id && (historyStorage.history.length + historyResult.messages.length) < historyResult.count) {
-        return this.requestHistory(peerID, historyResult.messages[length - 1].mid, 10, 0).then((_historyResult: any) => {
+      if(length && (historyResult.messages[length - 1] as Message.message).grouped_id 
+        && (historyStorage.history.length + historyResult.messages.length) < (historyResult as MessagesMessages.messagesMessagesSlice).count) {
+        return this.requestHistory(peerID, (historyResult.messages[length - 1] as Message.message).mid, 10, 0).then((_historyResult) => {
           return historyResult;
         });
       }
@@ -4314,59 +4335,62 @@ export class AppMessagesManager {
       return this.fetchSingleMessagesPromise;
     }
 
-    const mids = this.needSingleMessages.slice();
-    this.needSingleMessages.length = 0;
-
-    const splitted = appMessagesIDsManager.splitMessageIDsByChannels(mids);
-    let promises: Promise<void>[] = [];
-    Object.keys(splitted.msgIDs).forEach((channelID: number | string) => {
-      channelID = +channelID;
-
-      const msgIDs: InputMessage[] = splitted.msgIDs[channelID].map((msgID: number) => {
-        return {
-          _: 'inputMessageID',
-          id: msgID
-        };
-      });
-
-      let promise: Promise<MethodDeclMap['channels.getMessages']['res'] | MethodDeclMap['messages.getMessages']['res']>;
-      if(channelID > 0) {
-        promise = apiManager.invokeApi('channels.getMessages', {
-          channel: appChatsManager.getChannelInput(channelID),
-          id: msgIDs
+    return this.fetchSingleMessagesPromise = new Promise((resolve) => {
+      setTimeout(() => {
+        const mids = this.needSingleMessages.slice();
+        this.needSingleMessages.length = 0;
+    
+        const splitted = appMessagesIDsManager.splitMessageIDsByChannels(mids);
+        let promises: Promise<void>[] = [];
+        Object.keys(splitted.msgIDs).forEach((channelID: number | string) => {
+          channelID = +channelID;
+    
+          const msgIDs: InputMessage[] = splitted.msgIDs[channelID].map((msgID: number) => {
+            return {
+              _: 'inputMessageID',
+              id: msgID
+            };
+          });
+    
+          let promise: Promise<MethodDeclMap['channels.getMessages']['res'] | MethodDeclMap['messages.getMessages']['res']>;
+          if(channelID > 0) {
+            promise = apiManager.invokeApi('channels.getMessages', {
+              channel: appChatsManager.getChannelInput(channelID),
+              id: msgIDs
+            });
+          } else {
+            promise = apiManager.invokeApi('messages.getMessages', {
+              id: msgIDs
+            });
+          }
+    
+          promises.push(promise.then(getMessagesResult => {
+            if(getMessagesResult._ != 'messages.messagesNotModified') {
+              appUsersManager.saveApiUsers(getMessagesResult.users);
+              appChatsManager.saveApiChats(getMessagesResult.chats);
+              this.saveMessages(getMessagesResult.messages);
+            }
+    
+            $rootScope.$broadcast('messages_downloaded', splitted.mids[+channelID]);
+          }));
         });
-      } else {
-        promise = apiManager.invokeApi('messages.getMessages', {
-          id: msgIDs
+
+        Promise.all(promises).finally(() => {
+          this.fetchSingleMessagesPromise = null;
+          if(this.needSingleMessages.length) this.fetchSingleMessages();
+          resolve();
         });
-      }
-
-      promises.push(promise.then(getMessagesResult => {
-        if(getMessagesResult._ != 'messages.messagesNotModified') {
-          appUsersManager.saveApiUsers(getMessagesResult.users);
-          appChatsManager.saveApiChats(getMessagesResult.chats);
-          this.saveMessages(getMessagesResult.messages);
-        }
-
-        $rootScope.$broadcast('messages_downloaded', splitted.mids[+channelID]);
-      }));
-    });
-
-    this.fetchSingleMessagesPromise = Promise.all(promises).finally(() => {
-      this.fetchSingleMessagesTimeout = 0;
-      this.fetchSingleMessagesPromise = null;
-      if(this.needSingleMessages.length) this.fetchSingleMessages();
+      }, 0);
     });
   }
 
-  public wrapSingleMessage(msgID: number, overwrite = false) {
+  public wrapSingleMessage(msgID: number, overwrite = false): Promise<void> {
     if(this.messagesStorage[msgID] && !overwrite) {
       $rootScope.$broadcast('messages_downloaded', [msgID]);
+      return Promise.resolve();
     } else if(this.needSingleMessages.indexOf(msgID) == -1) {
       this.needSingleMessages.push(msgID);
-      if(this.fetchSingleMessagesTimeout == 0) {
-        this.fetchSingleMessagesTimeout = window.setTimeout(this.fetchSingleMessages.bind(this), 10);
-      }
+      return this.fetchSingleMessages();
     }
   }
 

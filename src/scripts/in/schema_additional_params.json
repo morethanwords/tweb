@@ -54,4 +54,30 @@
     {"name": "peerID", "type": "number"},
     {"name": "folder_id", "type": "number"}
   ]
+}, {
+  "predicate": "message",
+  "params": [
+    {"name": "mid", "type": "number"},
+    {"name": "deleted", "type": "boolean"},
+    {"name": "peerID", "type": "number"},
+    {"name": "fromID", "type": "number"},
+    {"name": "grouped_id", "type": "string"},
+    {"name": "canBeEdited", "type": "boolean"},
+    {"name": "unread", "type": "true"}
+  ]
+}, {
+  "predicate": "messageService",
+  "params": [
+    {"name": "mid", "type": "number"},
+    {"name": "deleted", "type": "boolean"},
+    {"name": "peerID", "type": "number"},
+    {"name": "fromID", "type": "number"},
+    {"name": "canBeEdited", "type": "boolean"},
+    {"name": "unread", "type": "true"}
+  ]
+}, {
+  "predicate": "messageEmpty",
+  "params": [
+    {"name": "deleted", "type": "boolean"}
+  ]
 }]

@@ -26,7 +26,7 @@
 
     input {
       --border-width: 1px;
-      background-color: rgba(112, 117, 121, .08);
+      background-color: var(--color-gray-hover);
       height: 40px;
       border-radius: 22px;
       border: var(--border-width) solid transparent;
@@ -42,7 +42,7 @@
 
       &:focus {
         --border-width: 2px;
-        background-color: rgba(112, 117, 121, 0);
+        background-color: transparent;
         border: 2px solid $button-primary-background;
 
         & + .tgico {
@@ -151,13 +151,19 @@
     }
 
     html.no-touch &:hover {
-      background: rgba(112, 117, 121, .08);
+      background: var(--color-gray-hover);
     }
   }
 
-  li.active, li.menu-open {
+  li.menu-open {
     > .rp {
-      background: rgba(112, 117, 121, 0.08);
+      background: var(--color-gray-hover);
+    }
+  }
+
+  @include respond-to(not-handhelds) {
+    li.active > .rp {
+      background: var(--color-gray-hover);
     }
   }
 

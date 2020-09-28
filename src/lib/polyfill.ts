@@ -25,12 +25,13 @@ Uint8Array.prototype.concat = function(...args: Array<Uint8Array | ArrayBuffer |
   return bufferConcats(this, ...args);
 };
 
-Uint8Array.prototype.toString = function() {
+/* Uint8Array.prototype.toString = function() {
   return String.fromCharCode.apply(null, [...this]);
-};
+}; */
 
 Uint8Array.prototype.toJSON = function() {
-  return [...this];
+  //return [...this];
+  return {type: 'bytes', value: [...this]};
 };
 
 Array.prototype.forEachReverse = function<T>(callback: (value: T, index?: number, array?: Array<T>) => void) {
@@ -62,8 +63,9 @@ declare global {
     hex: string;
     randomize: () => Uint8Array,
     concat: (...args: Array<Uint8Array | ArrayBuffer | number[]>) => Uint8Array,
-    toString: () => string,
-    toJSON: () => number[],
+    //toString: () => string,
+    //toJSON: () => number[],
+    toJSON: () => {type: 'bytes', value: number[]},
   }
   
   interface Array<T> {

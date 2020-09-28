@@ -1,5 +1,6 @@
 import { Modes } from './mtproto/mtproto_config';
 import { notifySomeone, isWorker } from '../helpers/context';
+import { parse, stringify } from '../helpers/json';
 
 class ConfigStorage {
   public keyPrefix = '';
@@ -16,24 +17,24 @@ class ConfigStorage {
     return this.keyPrefix;
   }
 
-  get(keys: any, callback: any) {
+  get(keys: string | string[], callback: any) {
     var single = false;
     if(!Array.isArray(keys)) {
       keys = Array.prototype.slice.call(arguments);
       callback = keys.pop();
       single = keys.length == 1;
     }
-    var result = [],
-      value;
+    var result = [];
     var allFound = true;
-    var prefix = this.storageGetPrefix(),
-      i, key;
+    var prefix = this.storageGetPrefix();
 
-    for(i = 0; i < keys.length; i++) {
-      key = keys[i] = prefix + keys[i];
-      if(key.substr(0, 3) != 'xt_' && this.cache[key] !== undefined) {
+    for(let key of keys) {
+      key = prefix + key;
+
+      if(this.cache.hasOwnProperty(key)) {
         result.push(this.cache[key]);
       } else if(this.useLs) {
+        let value: any;
         try {
           value = localStorage.getItem(key);
         } catch(e) {
@@ -41,7 +42,7 @@ class ConfigStorage {
         }
 
         try {
-          value = (value === undefined || value === null) ? false : JSON.parse(value);
+          value = (value === undefined || value === null) ? false : parse(value);
         } catch(e) {
           value = false;
         }
@@ -68,10 +69,7 @@ class ConfigStorage {
         value = obj[key];
         key = prefix + key;
         this.cache[key] = value;
-        value = JSON.stringify(value, (key, value) => {
-          if(key == 'downloaded' || (key == 'url' && value.indexOf('blob:') === 0)) return undefined;
-          return value;
-        });
+        value = stringify(value);
 
         if(this.useLs) {
           try {

@@ -10,7 +10,7 @@ import animationIntersector from "../animationIntersector";
 import { RichTextProcessor } from "../../lib/richtextprocessor";
 import { wrapSticker } from "../wrappers";
 import appSidebarRight, { AppSidebarRight } from "../../lib/appManagers/appSidebarRight";
-import { StickerSet, StickerSetCovered, Document } from "../../layer";
+import { StickerSet, StickerSetCovered } from "../../layer";
 
 export default class AppStickersTab implements SliderTab {
   private container = document.getElementById('stickers-container') as HTMLDivElement;

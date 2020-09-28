@@ -147,7 +147,8 @@ export default class StickersTab implements EmoticonsTab {
             autoplay: false,
             animationData: json,
             width: 32,
-            height: 32
+            height: 32,
+            needUpscale: true
           }, EMOTICONSSTICKERGROUP);
         });
       } else {

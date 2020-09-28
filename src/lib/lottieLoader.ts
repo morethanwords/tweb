@@ -3,7 +3,7 @@ import animationIntersector from "../components/animationIntersector";
 import apiManager from "./mtproto/mtprotoworker";
 import EventListenerBase from "../helpers/eventListenerBase";
 import mediaSizes from "../helpers/mediaSizes";
-import { isApple, isSafari } from "../helpers/userAgent";
+import { isAndroid, isApple, isAppleMobile, isSafari } from "../helpers/userAgent";
 import RLottieWorker from 'worker-loader!./rlottie/rlottie.worker';
 
 let convert = (value: number) => {
@@ -93,7 +93,7 @@ export class RLottiePlayer extends EventListenerBase<{
     // Skip ratio
     let skipRatio: number;
     if(options.skipRatio !== undefined) skipRatio = options.skipRatio;
-    else if(mediaSizes.isMobile && this.width < 100 && this.height < 100) {
+    else if((isAndroid || isAppleMobile) && this.width < 100 && this.height < 100) {
       skipRatio = 0.5;
     }
 
@@ -106,15 +106,20 @@ export class RLottiePlayer extends EventListenerBase<{
       if(options.needUpscale) {
         this.width = Math.round(this.width * pixelRatio);
         this.height = Math.round(this.height * pixelRatio);
-      } else if(pixelRatio > 1 && this.width > 100 && this.height > 100) {
-        if(isApple || !mediaSizes.isMobile) {
-          /* this.width = Math.round(this.width * (pixelRatio - 1));
-          this.height = Math.round(this.height * (pixelRatio - 1)); */
-          this.width = Math.round(this.width * pixelRatio);
-          this.height = Math.round(this.height * pixelRatio);
-        } else if(pixelRatio > 2.5) {
-          this.width = Math.round(this.width * (pixelRatio - 1.5));
-          this.height = Math.round(this.height * (pixelRatio - 1.5));
+      } else if(pixelRatio > 1) {
+        if(this.width > 100 && this.height > 100) {
+          if(isApple || !mediaSizes.isMobile) {
+            /* this.width = Math.round(this.width * (pixelRatio - 1));
+            this.height = Math.round(this.height * (pixelRatio - 1)); */
+            this.width = Math.round(this.width * pixelRatio);
+            this.height = Math.round(this.height * pixelRatio);
+          } else if(pixelRatio > 2.5) {
+            this.width = Math.round(this.width * (pixelRatio - 1.5));
+            this.height = Math.round(this.height * (pixelRatio - 1.5));
+          }
+        } else {
+          this.width = Math.round(this.width * Math.max(1.5, pixelRatio - 1.5));
+          this.height = Math.round(this.height * Math.max(1.5, pixelRatio - 1.5));
         }
       }
     }
@@ -159,11 +164,13 @@ export class RLottiePlayer extends EventListenerBase<{
   }
 
   public loadFromData(jsonString: string) {
-    this.sendQuery('loadFromData', jsonString, this.width, this.height);
+    this.sendQuery('loadFromData', jsonString, this.width, this.height/* , this.canvas.transferControlToOffscreen() */);
   }
 
   public play() {
     if(!this.paused) return;
+
+    //return;
 
     //console.log('RLOTTIE PLAY' + this.reqId);
 
@@ -373,7 +380,9 @@ export class RLottiePlayer extends EventListenerBase<{
     
     console.timeEnd('cache' + this.reqId); */
     //console.log('cached');
-    //return;
+    /* this.el.innerHTML = '';
+    this.el.append(this.canvas);
+    return; */
 
     this.requestFrame(0);
     this.setListenerResult('ready');
@@ -444,29 +453,29 @@ class QueryableWorker extends EventListenerBase<any> {
   }
 
   public sendQuery(queryMethod: string, ...args: any[]) {
-    var args = Array.prototype.slice.call(arguments, 1);
     if(isSafari) {
       this.worker.postMessage({
         'queryMethod': queryMethod,
         'queryMethodArguments': args
       });
     } else {
-      var transfer = [];
-      for(var i = 0; i < args.length; i++) {
-        if(args[i] instanceof ArrayBuffer) {
-          transfer.push(args[i]);
+      //const transfer: (ArrayBuffer | OffscreenCanvas)[] = [];
+      const transfer: ArrayBuffer[] = [];
+      args.forEach(arg => {
+        if(arg instanceof ArrayBuffer) {
+          transfer.push(arg);
         }
   
-        if(args[i].buffer && args[i].buffer instanceof ArrayBuffer) {
-          transfer.push(args[i].buffer);
+        if(arg.buffer && arg.buffer instanceof ArrayBuffer) {
+          transfer.push(arg.buffer);
         }
-      }
+      });
   
       //console.log('transfer', transfer);
       this.worker.postMessage({
         'queryMethod': queryMethod,
         'queryMethodArguments': args
-      }, transfer);
+      }, transfer as PostMessageOptions);
     }
   }
 }

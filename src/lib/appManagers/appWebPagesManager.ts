@@ -2,6 +2,7 @@ import { $rootScope, safeReplaceObject } from "../utils";
 import appPhotosManager from "./appPhotosManager";
 import appDocsManager from "./appDocsManager";
 import { RichTextProcessor } from "../richtextprocessor";
+import { ReferenceContext } from "../mtproto/referenceDatabase";
 
 class AppWebPagesManager {
   webpages: any = {};
@@ -19,7 +20,7 @@ class AppWebPagesManager {
     });
   }
   
-  public saveWebPage(apiWebPage: any, messageID?: number, mediaContext?: any) {
+  public saveWebPage(apiWebPage: any, messageID?: number, mediaContext?: ReferenceContext) {
     if(apiWebPage.photo && apiWebPage.photo._ === 'photo') {
       //appPhotosManager.savePhoto(apiWebPage.photo, mediaContext);
       apiWebPage.photo = appPhotosManager.savePhoto(apiWebPage.photo, mediaContext);

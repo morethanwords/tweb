@@ -1,12 +1,16 @@
-import { calcImageInBox, isObject } from "../utils";
+import { calcImageInBox, isObject, safeReplaceArrayInObject } from "../utils";
 import { bytesFromHex, getFileNameByLocation } from "../bin_utils";
 import appDownloadManager from "./appDownloadManager";
 import { isSafari } from "../../helpers/userAgent";
 import { FileLocation, InputFileLocation, Photo, PhotoSize } from "../../layer";
 import { MyDocument } from "./appDocsManager";
 import { CancellablePromise } from "../../helpers/cancellablePromise";
+import referenceDatabase, { ReferenceContext } from "../mtproto/referenceDatabase";
 
 export type MyPhoto = Photo.photo;
+
+// TIMES = 2 DUE TO SIDEBAR AND CHAT
+//let TEST_FILE_REFERENCE = "5440692274120994569", TEST_FILE_REFERENCE_TIMES = 2;
 
 export class AppPhotosManager {
   private photos: {
@@ -34,20 +38,28 @@ export class AppPhotosManager {
     this.windowH = document.body.scrollHeight;
   }
   
-  public savePhoto(photo: Photo, context?: any) {
+  public savePhoto(photo: Photo, context?: ReferenceContext) {
     if(photo._ == 'photoEmpty') return undefined;
 
-    if(this.photos[photo.id]) return Object.assign(this.photos[photo.id], photo);
+    /* if(photo.id == TEST_FILE_REFERENCE) {
+      console.warn('Testing FILE_REFERENCE_EXPIRED');
+      const bytes = [2, 67, 175, 43, 190, 0, 0, 20, 62, 95, 111, 33, 45, 99, 220, 116, 218, 11, 167, 127, 213, 18, 127, 32, 243, 202, 117, 80, 30];
+      //photo.file_reference = new Uint8Array(bytes);
+      photo.file_reference = bytes;
+      if(!--TEST_FILE_REFERENCE_TIMES) {
+        TEST_FILE_REFERENCE = '';
+      }
+    } */
 
-    /* if(context) {
-      Object.assign(photo, context);
-    } */ // warning
-    
-    if(!photo.id) {
-      console.warn('no apiPhoto.id', photo);
-    } else this.photos[photo.id] = photo;
+    const oldPhoto = this.photos[photo.id];
+    safeReplaceArrayInObject('file_reference', oldPhoto, photo);
+    referenceDatabase.saveContext(photo.file_reference, context);
 
-    return photo;
+    if(oldPhoto) {
+      return Object.assign(oldPhoto, photo);
+    }
+
+    return this.photos[photo.id] = photo;
   }
   
   public choosePhotoSize(photo: MyPhoto | MyDocument, width = 0, height = 0) {

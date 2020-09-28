@@ -232,6 +232,7 @@ export class ApiFileManager {
     let resolved = false;
     let cacheFileWriter: ReturnType<typeof FileManager['getFakeFileWriter']>;
     let errorHandler = (error: any) => {
+      delete this.cachedDownloadPromises[fileName];
       deferred.reject(error);
       errorHandler = () => {};
 

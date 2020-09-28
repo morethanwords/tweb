@@ -1,6 +1,7 @@
 // @ts-check
-const schema = require('./in/schema.json');
-const additional = require('./in/schema_additional_params.json');
+const schema = require(__dirname + '/in/schema.json');
+const additional = require(__dirname + '/in/schema_additional_params.json');
+const replace = require(__dirname + '/in/schema_replace_types.json');
 
 const mtproto = schema.API;
 
@@ -10,6 +11,12 @@ for(const constructor of additional) {
   });
 
   const realConstructor = mtproto.constructors.find(c => c.predicate == constructor.predicate);
+  /* constructor.params.forEach(param => {
+    const index = realConstructor.params.findIndex(_param => _param.predicate == param.predicate);
+    if(index !== -1) {
+      realConstructor.params.splice(index, 1);
+    }
+  }); */
   realConstructor.params.splice(realConstructor.params.length, 0, ...constructor.params);
 }
 
@@ -80,7 +87,7 @@ const processParamType = (type) => {
       return 'string';
 
     case 'bytes':
-      return 'Uint8Array | number[]';
+      return 'Uint8Array';
 
     case 'string':
       return 'string';
@@ -103,6 +110,10 @@ const processParams = (params, object = {}, parseBooleanFlags = true) => {
 
     if(type.includes('?') || name == 'flags') {
       name += '?';
+    }
+
+    if(replace[name]) {
+      type = replace[name];
     }
 
     const processed = processParamType(type);
@@ -238,4 +249,5 @@ for(const method in methodsMap) {
 }
 out += `}\n\n`;
 
-require('fs').writeFileSync('./out/layer.d.ts', out);
+const path = process.argv[2];
+require('fs').writeFileSync((path || __dirname + '/out/') + 'layer.d.ts', out);

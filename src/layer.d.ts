@@ -223,7 +223,7 @@ export namespace InputMedia {
 		description: string,
 		photo?: InputWebDocument,
 		invoice: Invoice,
-		payload: Uint8Array | number[],
+		payload: Uint8Array,
 		provider: string,
 		provider_data: DataJSON,
 		start_param: string
@@ -243,7 +243,7 @@ export namespace InputMedia {
 		_: 'inputMediaPoll',
 		flags?: number,
 		poll: Poll,
-		correct_answers?: Array<Uint8Array | number[]>,
+		correct_answers?: Array<Uint8Array>,
 		solution?: string,
 		solution_entities?: Array<MessageEntity>
 	};
@@ -770,7 +770,8 @@ export type Message = Message.messageEmpty | Message.message | Message.messageSe
 export namespace Message {
   export type messageEmpty = {
 		_: 'messageEmpty',
-		id: number
+		id: number,
+		deleted?: boolean
 	};
 
 	export type message = {
@@ -785,6 +786,7 @@ export namespace Message {
 			from_scheduled?: true,
 			legacy?: true,
 			edit_hide?: true,
+			unread?: true,
 		}>,
 		id: number,
 		from_id?: number,
@@ -801,7 +803,12 @@ export namespace Message {
 		edit_date?: number,
 		post_author?: string,
 		grouped_id?: string,
-		restriction_reason?: Array<RestrictionReason>
+		restriction_reason?: Array<RestrictionReason>,
+		mid?: number,
+		deleted?: boolean,
+		peerID?: number,
+		fromID?: number,
+		canBeEdited?: boolean
 	};
 
 	export type messageService = {
@@ -814,13 +821,19 @@ export namespace Message {
 			silent?: true,
 			post?: true,
 			legacy?: true,
+			unread?: true,
 		}>,
 		id: number,
 		from_id?: number,
 		to_id: Peer,
 		reply_to_msg_id?: number,
 		date: number,
-		action: MessageAction
+		action: MessageAction,
+		mid?: number,
+		deleted?: boolean,
+		peerID?: number,
+		fromID?: number,
+		canBeEdited?: boolean
 	};
 }
 
@@ -1001,7 +1014,7 @@ export namespace MessageAction {
 		flags?: number,
 		currency: string,
 		total_amount: string,
-		payload: Uint8Array | number[],
+		payload: Uint8Array,
 		info?: PaymentRequestedInfo,
 		shipping_option_id?: string,
 		charge: PaymentCharge
@@ -1155,14 +1168,14 @@ export namespace PhotoSize {
 		location: FileLocation,
 		w: number,
 		h: number,
-		bytes: Uint8Array | number[],
+		bytes: Uint8Array,
 		url?: string
 	};
 
 	export type photoStrippedSize = {
 		_: 'photoStrippedSize',
 		type: string,
-		bytes: Uint8Array | number[],
+		bytes: Uint8Array,
 		url?: string
 	};
 }
@@ -1230,7 +1243,7 @@ export namespace AuthExportedAuthorization {
   export type authExportedAuthorization = {
 		_: 'auth.exportedAuthorization',
 		id: number,
-		bytes: Uint8Array | number[]
+		bytes: Uint8Array
 	};
 }
 
@@ -2003,7 +2016,7 @@ export namespace Update {
 		peer: Peer,
 		msg_id: number,
 		chat_instance: string,
-		data?: Uint8Array | number[],
+		data?: Uint8Array,
 		game_short_name?: string
 	};
 
@@ -2021,7 +2034,7 @@ export namespace Update {
 		user_id: number,
 		msg_id: InputBotInlineMessageID,
 		chat_instance: string,
-		data?: Uint8Array | number[],
+		data?: Uint8Array,
 		game_short_name?: string
 	};
 
@@ -2094,7 +2107,7 @@ export namespace Update {
 		_: 'updateBotShippingQuery',
 		query_id: string,
 		user_id: number,
-		payload: Uint8Array | number[],
+		payload: Uint8Array,
 		shipping_address: PostAddress
 	};
 
@@ -2103,7 +2116,7 @@ export namespace Update {
 		flags?: number,
 		query_id: string,
 		user_id: number,
-		payload: Uint8Array | number[],
+		payload: Uint8Array,
 		info?: PaymentRequestedInfo,
 		shipping_option_id?: string,
 		currency: string,
@@ -2230,7 +2243,7 @@ export namespace Update {
 		_: 'updateMessagePollVote',
 		poll_id: string,
 		user_id: number,
-		options: Array<Uint8Array | number[]>
+		options: Array<Uint8Array>
 	};
 
 	export type updateDialogFilter = {
@@ -2440,15 +2453,15 @@ export namespace UploadFile {
 		_: 'upload.file',
 		type: StorageFileType,
 		mtime: number,
-		bytes: Uint8Array | number[]
+		bytes: Uint8Array
 	};
 
 	export type uploadFileCdnRedirect = {
 		_: 'upload.fileCdnRedirect',
 		dc_id: number,
-		file_token: Uint8Array | number[],
-		encryption_key: Uint8Array | number[],
-		encryption_iv: Uint8Array | number[],
+		file_token: Uint8Array,
+		encryption_key: Uint8Array,
+		encryption_iv: Uint8Array,
 		file_hashes: Array<FileHash>
 	};
 }
@@ -2472,7 +2485,7 @@ export namespace DcOption {
 		id: number,
 		ip_address: string,
 		port: number,
-		secret?: Uint8Array | number[]
+		secret?: Uint8Array
 	};
 }
 
@@ -2619,7 +2632,7 @@ export namespace EncryptedChat {
 		date: number,
 		admin_id: number,
 		participant_id: number,
-		g_a: Uint8Array | number[]
+		g_a: Uint8Array
 	};
 
 	export type encryptedChat = {
@@ -2629,7 +2642,7 @@ export namespace EncryptedChat {
 		date: number,
 		admin_id: number,
 		participant_id: number,
-		g_a_or_b: Uint8Array | number[],
+		g_a_or_b: Uint8Array,
 		key_fingerprint: string
 	};
 
@@ -2715,7 +2728,7 @@ export namespace EncryptedMessage {
 		random_id: string,
 		chat_id: number,
 		date: number,
-		bytes: Uint8Array | number[],
+		bytes: Uint8Array,
 		file: EncryptedFile
 	};
 
@@ -2724,7 +2737,7 @@ export namespace EncryptedMessage {
 		random_id: string,
 		chat_id: number,
 		date: number,
-		bytes: Uint8Array | number[]
+		bytes: Uint8Array
 	};
 }
 
@@ -2736,15 +2749,15 @@ export type MessagesDhConfig = MessagesDhConfig.messagesDhConfigNotModified | Me
 export namespace MessagesDhConfig {
   export type messagesDhConfigNotModified = {
 		_: 'messages.dhConfigNotModified',
-		random: Uint8Array | number[]
+		random: Uint8Array
 	};
 
 	export type messagesDhConfig = {
 		_: 'messages.dhConfig',
 		g: number,
-		p: Uint8Array | number[],
+		p: Uint8Array,
 		version: number,
-		random: Uint8Array | number[]
+		random: Uint8Array
 	};
 }
 
@@ -3183,7 +3196,7 @@ export namespace DocumentAttribute {
 		duration: number,
 		title?: string,
 		performer?: string,
-		waveform?: Uint8Array | number[]
+		waveform?: Uint8Array
 	};
 
 	export type documentAttributeFilename = {
@@ -3359,13 +3372,13 @@ export namespace AccountPassword {
 			has_password?: true,
 		}>,
 		current_algo?: PasswordKdfAlgo,
-		srp_B?: Uint8Array | number[],
+		srp_B?: Uint8Array,
 		srp_id?: string,
 		hint?: string,
 		email_unconfirmed_pattern?: string,
 		new_algo: PasswordKdfAlgo,
 		new_secure_algo: SecurePasswordKdfAlgo,
-		secure_random: Uint8Array | number[]
+		secure_random: Uint8Array
 	};
 }
 
@@ -3393,7 +3406,7 @@ export namespace AccountPasswordInputSettings {
 		_: 'account.passwordInputSettings',
 		flags?: number,
 		new_algo?: PasswordKdfAlgo,
-		new_password_hash?: Uint8Array | number[],
+		new_password_hash?: Uint8Array,
 		hint?: string,
 		email?: string,
 		new_secure_settings?: SecureSecretSettings
@@ -3587,7 +3600,7 @@ export namespace KeyboardButton {
 	export type keyboardButtonCallback = {
 		_: 'keyboardButtonCallback',
 		text: string,
-		data: Uint8Array | number[]
+		data: Uint8Array
 	};
 
 	export type keyboardButtonRequestPhone = {
@@ -5307,7 +5320,7 @@ export namespace UploadWebFile {
 		mime_type: string,
 		file_type: StorageFileType,
 		mtime: number,
-		bytes: Uint8Array | number[]
+		bytes: Uint8Array
 	};
 }
 
@@ -5414,7 +5427,7 @@ export namespace InputPaymentCredentials {
   export type inputPaymentCredentialsSaved = {
 		_: 'inputPaymentCredentialsSaved',
 		id: string,
-		tmp_password: Uint8Array | number[]
+		tmp_password: Uint8Array
 	};
 
 	export type inputPaymentCredentials = {
@@ -5446,7 +5459,7 @@ export type AccountTmpPassword = AccountTmpPassword.accountTmpPassword;
 export namespace AccountTmpPassword {
   export type accountTmpPassword = {
 		_: 'account.tmpPassword',
-		tmp_password: Uint8Array | number[],
+		tmp_password: Uint8Array,
 		valid_until: number
 	};
 }
@@ -5530,7 +5543,7 @@ export namespace PhoneCall {
 		date: number,
 		admin_id: number,
 		participant_id: number,
-		g_a_hash: Uint8Array | number[],
+		g_a_hash: Uint8Array,
 		protocol: PhoneCallProtocol
 	};
 
@@ -5545,7 +5558,7 @@ export namespace PhoneCall {
 		date: number,
 		admin_id: number,
 		participant_id: number,
-		g_b: Uint8Array | number[],
+		g_b: Uint8Array,
 		protocol: PhoneCallProtocol
 	};
 
@@ -5560,7 +5573,7 @@ export namespace PhoneCall {
 		date: number,
 		admin_id: number,
 		participant_id: number,
-		g_a_or_b: Uint8Array | number[],
+		g_a_or_b: Uint8Array,
 		key_fingerprint: string,
 		protocol: PhoneCallProtocol,
 		connections: Array<PhoneConnection>,
@@ -5593,7 +5606,7 @@ export namespace PhoneConnection {
 		ip: string,
 		ipv6: string,
 		port: number,
-		peer_tag: Uint8Array | number[]
+		peer_tag: Uint8Array
 	};
 }
 
@@ -5637,12 +5650,12 @@ export type UploadCdnFile = UploadCdnFile.uploadCdnFileReuploadNeeded | UploadCd
 export namespace UploadCdnFile {
   export type uploadCdnFileReuploadNeeded = {
 		_: 'upload.cdnFileReuploadNeeded',
-		request_token: Uint8Array | number[]
+		request_token: Uint8Array
 	};
 
 	export type uploadCdnFile = {
 		_: 'upload.cdnFile',
-		bytes: Uint8Array | number[]
+		bytes: Uint8Array
 	};
 }
 
@@ -6132,7 +6145,7 @@ export namespace FileHash {
 		_: 'fileHash',
 		offset: number,
 		limit: number,
-		hash: Uint8Array | number[]
+		hash: Uint8Array
 	};
 }
 
@@ -6178,8 +6191,8 @@ export namespace InputSecureFile {
 		id: string,
 		parts: number,
 		md5_checksum: string,
-		file_hash: Uint8Array | number[],
-		secret: Uint8Array | number[]
+		file_hash: Uint8Array,
+		secret: Uint8Array
 	};
 
 	export type inputSecureFile = {
@@ -6206,8 +6219,8 @@ export namespace SecureFile {
 		size: number,
 		dc_id: number,
 		date: number,
-		file_hash: Uint8Array | number[],
-		secret: Uint8Array | number[]
+		file_hash: Uint8Array,
+		secret: Uint8Array
 	};
 }
 
@@ -6219,9 +6232,9 @@ export type SecureData = SecureData.secureData;
 export namespace SecureData {
   export type secureData = {
 		_: 'secureData',
-		data: Uint8Array | number[],
-		data_hash: Uint8Array | number[],
-		secret: Uint8Array | number[]
+		data: Uint8Array,
+		data_hash: Uint8Array,
+		secret: Uint8Array
 	};
 }
 
@@ -6318,7 +6331,7 @@ export namespace SecureValue {
 		translation?: Array<SecureFile>,
 		files?: Array<SecureFile>,
 		plain_data?: SecurePlainData,
-		hash: Uint8Array | number[]
+		hash: Uint8Array
 	};
 }
 
@@ -6351,7 +6364,7 @@ export namespace SecureValueHash {
   export type secureValueHash = {
 		_: 'secureValueHash',
 		type: SecureValueType,
-		hash: Uint8Array | number[]
+		hash: Uint8Array
 	};
 }
 
@@ -6364,7 +6377,7 @@ export namespace SecureValueError {
   export type secureValueErrorData = {
 		_: 'secureValueErrorData',
 		type: SecureValueType,
-		data_hash: Uint8Array | number[],
+		data_hash: Uint8Array,
 		field: string,
 		text: string
 	};
@@ -6372,56 +6385,56 @@ export namespace SecureValueError {
 	export type secureValueErrorFrontSide = {
 		_: 'secureValueErrorFrontSide',
 		type: SecureValueType,
-		file_hash: Uint8Array | number[],
+		file_hash: Uint8Array,
 		text: string
 	};
 
 	export type secureValueErrorReverseSide = {
 		_: 'secureValueErrorReverseSide',
 		type: SecureValueType,
-		file_hash: Uint8Array | number[],
+		file_hash: Uint8Array,
 		text: string
 	};
 
 	export type secureValueErrorSelfie = {
 		_: 'secureValueErrorSelfie',
 		type: SecureValueType,
-		file_hash: Uint8Array | number[],
+		file_hash: Uint8Array,
 		text: string
 	};
 
 	export type secureValueErrorFile = {
 		_: 'secureValueErrorFile',
 		type: SecureValueType,
-		file_hash: Uint8Array | number[],
+		file_hash: Uint8Array,
 		text: string
 	};
 
 	export type secureValueErrorFiles = {
 		_: 'secureValueErrorFiles',
 		type: SecureValueType,
-		file_hash: Array<Uint8Array | number[]>,
+		file_hash: Array<Uint8Array>,
 		text: string
 	};
 
 	export type secureValueError = {
 		_: 'secureValueError',
 		type: SecureValueType,
-		hash: Uint8Array | number[],
+		hash: Uint8Array,
 		text: string
 	};
 
 	export type secureValueErrorTranslationFile = {
 		_: 'secureValueErrorTranslationFile',
 		type: SecureValueType,
-		file_hash: Uint8Array | number[],
+		file_hash: Uint8Array,
 		text: string
 	};
 
 	export type secureValueErrorTranslationFiles = {
 		_: 'secureValueErrorTranslationFiles',
 		type: SecureValueType,
-		file_hash: Array<Uint8Array | number[]>,
+		file_hash: Array<Uint8Array>,
 		text: string
 	};
 }
@@ -6434,9 +6447,9 @@ export type SecureCredentialsEncrypted = SecureCredentialsEncrypted.secureCreden
 export namespace SecureCredentialsEncrypted {
   export type secureCredentialsEncrypted = {
 		_: 'secureCredentialsEncrypted',
-		data: Uint8Array | number[],
-		hash: Uint8Array | number[],
-		secret: Uint8Array | number[]
+		data: Uint8Array,
+		hash: Uint8Array,
+		secret: Uint8Array
 	};
 }
 
@@ -6530,10 +6543,10 @@ export namespace PasswordKdfAlgo {
 
 	export type passwordKdfAlgoSHA256SHA256PBKDF2HMACSHA512iter100000SHA256ModPow = {
 		_: 'passwordKdfAlgoSHA256SHA256PBKDF2HMACSHA512iter100000SHA256ModPow',
-		salt1: Uint8Array | number[],
-		salt2: Uint8Array | number[],
+		salt1: Uint8Array,
+		salt2: Uint8Array,
 		g: number,
-		p: Uint8Array | number[]
+		p: Uint8Array
 	};
 }
 
@@ -6549,12 +6562,12 @@ export namespace SecurePasswordKdfAlgo {
 
 	export type securePasswordKdfAlgoPBKDF2HMACSHA512iter100000 = {
 		_: 'securePasswordKdfAlgoPBKDF2HMACSHA512iter100000',
-		salt: Uint8Array | number[]
+		salt: Uint8Array
 	};
 
 	export type securePasswordKdfAlgoSHA512 = {
 		_: 'securePasswordKdfAlgoSHA512',
-		salt: Uint8Array | number[]
+		salt: Uint8Array
 	};
 }
 
@@ -6567,7 +6580,7 @@ export namespace SecureSecretSettings {
   export type secureSecretSettings = {
 		_: 'secureSecretSettings',
 		secure_algo: SecurePasswordKdfAlgo,
-		secure_secret: Uint8Array | number[],
+		secure_secret: Uint8Array,
 		secure_secret_id: string
 	};
 }
@@ -6585,8 +6598,8 @@ export namespace InputCheckPasswordSRP {
 	export type inputCheckPasswordSRP = {
 		_: 'inputCheckPasswordSRP',
 		srp_id: string,
-		A: Uint8Array | number[],
-		M1: Uint8Array | number[]
+		A: Uint8Array,
+		M1: Uint8Array
 	};
 }
 
@@ -6858,7 +6871,7 @@ export namespace PollAnswer {
   export type pollAnswer = {
 		_: 'pollAnswer',
 		text: string,
-		option: Uint8Array | number[]
+		option: Uint8Array
 	};
 }
 
@@ -6898,7 +6911,7 @@ export namespace PollAnswerVoters {
 			chosen?: true,
 			correct?: true,
 		}>,
-		option: Uint8Array | number[],
+		option: Uint8Array,
 		voters: number
 	};
 }
@@ -7385,13 +7398,13 @@ export namespace AuthLoginToken {
   export type authLoginToken = {
 		_: 'auth.loginToken',
 		expires: number,
-		token: Uint8Array | number[]
+		token: Uint8Array
 	};
 
 	export type authLoginTokenMigrateTo = {
 		_: 'auth.loginTokenMigrateTo',
 		dc_id: number,
-		token: Uint8Array | number[]
+		token: Uint8Array
 	};
 
 	export type authLoginTokenSuccess = {
@@ -7515,7 +7528,7 @@ export namespace MessageUserVote {
   export type messageUserVote = {
 		_: 'messageUserVote',
 		user_id: number,
-		option: Uint8Array | number[],
+		option: Uint8Array,
 		date: number
 	};
 
@@ -7528,7 +7541,7 @@ export namespace MessageUserVote {
 	export type messageUserVoteMultiple = {
 		_: 'messageUserVoteMultiple',
 		user_id: number,
-		options: Array<Uint8Array | number[]>,
+		options: Array<Uint8Array>,
 		date: number
 	};
 }
@@ -8645,14 +8658,14 @@ export type AuthExportAuthorization = {
 
 export type AuthImportAuthorization = {
 	id: number,
-	bytes: Uint8Array | number[]
+	bytes: Uint8Array
 };
 
 export type AuthBindTempAuthKey = {
 	perm_auth_key_id: string,
 	nonce: string,
 	expires_at: number,
-	encrypted_message: Uint8Array | number[]
+	encrypted_message: Uint8Array
 };
 
 export type AuthImportBotAuthorization = {
@@ -8695,11 +8708,11 @@ export type AuthExportLoginToken = {
 };
 
 export type AuthImportLoginToken = {
-	token: Uint8Array | number[]
+	token: Uint8Array
 };
 
 export type AuthAcceptLoginToken = {
-	token: Uint8Array | number[]
+	token: Uint8Array
 };
 
 export type AccountRegisterDevice = {
@@ -8708,7 +8721,7 @@ export type AccountRegisterDevice = {
 	token_type: number,
 	token: string,
 	app_sandbox: boolean,
-	secret: Uint8Array | number[],
+	secret: Uint8Array,
 	other_uids: Array<number>
 };
 
@@ -9314,12 +9327,12 @@ export type MessagesGetDhConfig = {
 export type MessagesRequestEncryption = {
 	user_id: InputUser,
 	random_id: number,
-	g_a: Uint8Array | number[]
+	g_a: Uint8Array
 };
 
 export type MessagesAcceptEncryption = {
 	peer: InputEncryptedChat,
-	g_b: Uint8Array | number[],
+	g_b: Uint8Array,
 	key_fingerprint: string
 };
 
@@ -9340,20 +9353,20 @@ export type MessagesReadEncryptedHistory = {
 export type MessagesSendEncrypted = {
 	peer: InputEncryptedChat,
 	random_id: string,
-	data: Uint8Array | number[]
+	data: Uint8Array
 };
 
 export type MessagesSendEncryptedFile = {
 	peer: InputEncryptedChat,
 	random_id: string,
-	data: Uint8Array | number[],
+	data: Uint8Array,
 	file: InputEncryptedFile
 };
 
 export type MessagesSendEncryptedService = {
 	peer: InputEncryptedChat,
 	random_id: string,
-	data: Uint8Array | number[]
+	data: Uint8Array
 };
 
 export type MessagesReceivedQueue = {
@@ -9448,7 +9461,7 @@ export type MessagesReorderStickerSets = {
 };
 
 export type MessagesGetDocumentByHash = {
-	sha256: Uint8Array | number[],
+	sha256: Uint8Array,
 	size: number,
 	mime_type: string
 };
@@ -9533,7 +9546,7 @@ export type MessagesGetBotCallbackAnswer = {
 	game?: true,
 	peer: InputPeer,
 	msg_id: number,
-	data?: Uint8Array | number[]
+	data?: Uint8Array
 };
 
 export type MessagesSetBotCallbackAnswer = {
@@ -9769,7 +9782,7 @@ export type MessagesUpdatePinnedMessage = {
 export type MessagesSendVote = {
 	peer: InputPeer,
 	msg_id: number,
-	options: Array<Uint8Array | number[]>
+	options: Array<Uint8Array>
 };
 
 export type MessagesGetPollResults = {
@@ -9862,7 +9875,7 @@ export type MessagesGetPollVotes = {
 	flags?: number,
 	peer: InputPeer,
 	id: number,
-	option?: Uint8Array | number[],
+	option?: Uint8Array,
 	offset?: string,
 	limit: number
 };
@@ -9942,7 +9955,7 @@ export type PhotosGetUserPhotos = {
 export type UploadSaveFilePart = {
 	file_id: string,
 	file_part: number,
-	bytes: Uint8Array | number[]
+	bytes: Uint8Array
 };
 
 export type UploadGetFile = {
@@ -9958,7 +9971,7 @@ export type UploadSaveBigFilePart = {
 	file_id: string,
 	file_part: number,
 	file_total_parts: number,
-	bytes: Uint8Array | number[]
+	bytes: Uint8Array
 };
 
 export type UploadGetWebFile = {
@@ -9968,18 +9981,18 @@ export type UploadGetWebFile = {
 };
 
 export type UploadGetCdnFile = {
-	file_token: Uint8Array | number[],
+	file_token: Uint8Array,
 	offset: number,
 	limit: number
 };
 
 export type UploadReuploadCdnFile = {
-	file_token: Uint8Array | number[],
-	request_token: Uint8Array | number[]
+	file_token: Uint8Array,
+	request_token: Uint8Array
 };
 
 export type UploadGetCdnFileHashes = {
-	file_token: Uint8Array | number[],
+	file_token: Uint8Array,
 	offset: number
 };
 
@@ -10350,19 +10363,19 @@ export type PhoneRequestCall = {
 	video?: true,
 	user_id: InputUser,
 	random_id: number,
-	g_a_hash: Uint8Array | number[],
+	g_a_hash: Uint8Array,
 	protocol: PhoneCallProtocol
 };
 
 export type PhoneAcceptCall = {
 	peer: InputPhoneCall,
-	g_b: Uint8Array | number[],
+	g_b: Uint8Array,
 	protocol: PhoneCallProtocol
 };
 
 export type PhoneConfirmCall = {
 	peer: InputPhoneCall,
-	g_a: Uint8Array | number[],
+	g_a: Uint8Array,
 	key_fingerprint: string,
 	protocol: PhoneCallProtocol
 };

@@ -10,6 +10,7 @@ import { BigInteger } from "jsbn";
 import CryptoWorker from "../crypto/cryptoworker";
 
 import { logger, LogLevels } from "../logger";
+//import { bigInt2str, greater, int2bigInt, one, powMod, str2bigInt, sub } from "../../vendor/leemon";
 
 /* let fNewNonce: any = bytesFromHex('8761970c24cb2329b5b2459752c502f3057cb7e8dbab200e526e8767fdc73b3c').reverse();
 let fNonce: any = bytesFromHex('b597720d11faa5914ef485c529cde414').reverse();
@@ -42,8 +43,8 @@ type AuthOptions = {
   
   b?: number[],
   g?: number,
-  gA?: number,
-  dhPrime?: number,
+  gA?: Uint8Array,
+  dhPrime?: Uint8Array,
   
   tmpAesKey?: Uint8Array,
   tmpAesIv?: Uint8Array,
@@ -64,7 +65,7 @@ export class Authorizer {
   private log: ReturnType<typeof logger>;
   
   constructor() {
-    this.log = logger(`AUTHORIZER`/* , LogLevels.error | LogLevels.log */);
+    this.log = logger(`AUTHORIZER`, LogLevels.error | LogLevels.log);
   }
   
   public mtpSendPlainRequest(dcID: number, requestArray: Uint8Array) {
@@ -365,8 +366,8 @@ export class Authorizer {
     timeManager.applyServerTime(auth.serverTime, auth.localTime);
   }
   
-  public mtpVerifyDhParams(g: number, dhPrime: any, gA: any) {
-    this.log('Verifying DH params');
+  public mtpVerifyDhParams(g: number, dhPrime: Uint8Array, gA: Uint8Array) {
+    this.log('Verifying DH params', g, dhPrime, gA);
     var dhPrimeHex = bytesToHex(dhPrime);
     if(g != 3 || dhPrimeHex !== 'c71caeb9c6b1c9048e6c522f70f13f73980d40238e3e21c14934d037563d930f48198a0aa7c14058229493d22530f4dbfa336f6e0ac925139543aed44cce7c3720fd51f69458705ac68cd4fe6b6b13abdc9746512969328454f18faf8c595f642477fe96bb2a941d5bcd1d4ac8cc49880708fa9b378e3c4f3a9060bee67cf9a4a4a695811051907e162753b56b0f6b410dba74d8a84b2a14b3144e0ef1284754fd17ed950d5965b4b9dd46582db1178d169c6bc465b0d6ff9ca3928fef5b9ae4e418fc15e83ebea0f87fa9ff5eed70050ded2849f47bf959d956850ce929851f0d8115f635b105ee2e4e15d04b2454bf6f4fadf034b10403119cd8e3b92fcc5b') {
       // The verified value is from https://core.telegram.org/mtproto/security_guidelines
@@ -375,13 +376,20 @@ export class Authorizer {
     this.log('dhPrime cmp OK');
     
     var gABigInt = new BigInteger(bytesToHex(gA), 16);
+    //const _gABigInt = str2bigInt(bytesToHex(gA), 16);
     var dhPrimeBigInt = new BigInteger(dhPrimeHex, 16);
+    //const _dhPrimeBigInt = str2bigInt(dhPrimeHex, 16);
     
+    //this.log('gABigInt.compareTo(BigInteger.ONE) <= 0', gABigInt.compareTo(BigInteger.ONE), BigInteger.ONE.compareTo(BigInteger.ONE), greater(_gABigInt, one));
     if(gABigInt.compareTo(BigInteger.ONE) <= 0) {
+    //if(!greater(_gABigInt, one)) {
       throw new Error('[MT] DH params are not verified: gA <= 1');
     }
-    
+      
+    /* this.log('gABigInt.compareTo(dhPrimeBigInt.subtract(BigInteger.ONE)) >= 0', gABigInt.compareTo(dhPrimeBigInt.subtract(BigInteger.ONE)),
+      greater(gABigInt, sub(_dhPrimeBigInt, one))); */
     if(gABigInt.compareTo(dhPrimeBigInt.subtract(BigInteger.ONE)) >= 0) {
+    //if(greater(gABigInt, sub(_dhPrimeBigInt, one))) {
       throw new Error('[MT] DH params are not verified: gA >= dhPrime - 1');
     }
     this.log('1 < gA < dhPrime-1 OK');
@@ -389,8 +397,13 @@ export class Authorizer {
     
     var two = new BigInteger(/* null */'');
     two.fromInt(2);
+    //const _two = int2bigInt(2, 10, 0);
+    //this.log('_two:', bigInt2str(_two, 16), two.toString(16));
     var twoPow = two.pow(2048 - 64);
+    //const _twoPow = powMod(_two, int2bigInt(2048 - 64, 10, 0), null);
+    //this.log('twoPow:', twoPow.toString(16), bigInt2str(_twoPow, 16));
     
+   // this.log('gABigInt.compareTo(twoPow) < 0');
     if(gABigInt.compareTo(twoPow) < 0) {
       throw new Error('[MT] DH params are not verified: gA < 2^{2048-64}');
     }

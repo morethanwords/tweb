@@ -62,7 +62,7 @@ function wrapVoiceMessage(doc: MyDocument, audioEl: AudioElement) {
   timeDiv.classList.add('audio-time');
   audioEl.append(svg, timeDiv);
 
-  let waveform = (doc.attributes.find(attribute => attribute._ == 'documentAttributeAudio') as DocumentAttribute.documentAttributeAudio).waveform || [];
+  let waveform = (doc.attributes.find(attribute => attribute._ == 'documentAttributeAudio') as DocumentAttribute.documentAttributeAudio).waveform || new Uint8Array([]);
   waveform = decodeWaveform(waveform.slice());
 
   //console.log('decoded waveform:', waveform);

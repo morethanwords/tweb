@@ -563,7 +563,8 @@ export class AppImManager {
       cancelEvent(e);
 
       if(mediaSizes.isMobile) {
-        this.setPeer(0);
+        //this.setPeer(0);
+        this.selectTab(0);
       } else {
         const isNowOpen = document.body.classList.toggle(LEFT_COLUMN_ACTIVE_CLASSNAME);
 
@@ -1056,6 +1057,10 @@ export class AppImManager {
     }
     
     const samePeer = this.peerID == peerID;
+
+    if(samePeer) { // fix for returning back
+      this.selectTab(1);
+    }
     
     if(this.setPeerPromise && samePeer) return this.setPeerPromise;
 

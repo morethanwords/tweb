@@ -1,8 +1,7 @@
 import { bufferConcats, bytesToHex, bytesFromHex, bufferConcat, bytesXor } from "../bin_utils";
 import CryptoWorker from "../crypto/cryptoworker";
 import {str2bigInt, isZero,
-  // @ts-ignore
-  bigInt2str, powMod, int2bigInt, mult, mod, sub, bitSize, negative, add, greater} from 'leemon';
+  bigInt2str, powMod, int2bigInt, mult, mod, sub, bitSize, negative, add, greater} from '../../vendor/leemon';
 
 import {logger, LogLevels} from '../logger';
 import { AccountPassword, PasswordKdfAlgo } from "../../layer";
@@ -41,8 +40,8 @@ export async function computeSRP(password: string, state: AccountPassword) {
   let B = str2bigInt(bytesToHex(state.srp_B), 16);
   let g = int2bigInt(algo.g, 32, 256);
 
-  log('p', bigInt2str(p, 16));
-  log('B', bigInt2str(B, 16));
+  //log('p', bigInt2str(p, 16));
+  //log('B', bigInt2str(B, 16));
 
   /* if(B.compareTo(BigInteger.ZERO) < 0) {
     console.error('srp_B < 0')
@@ -67,7 +66,7 @@ export async function computeSRP(password: string, state: AccountPassword) {
   let pw_hash = await makePasswordHash(password, new Uint8Array(algo.salt1), new Uint8Array(algo.salt2));
   let x = str2bigInt(bytesToHex(new Uint8Array(pw_hash)), 16);
 
-  log('computed pw_hash:', pw_hash, x, bytesToHex(new Uint8Array(pw_hash)));
+  //log('computed pw_hash:', pw_hash, x, bytesToHex(new Uint8Array(pw_hash)));
 
   var padArray = function(arr: any[], len: number, fill = 0) {
     return Array(len).fill(fill).concat(arr).slice(-len);
@@ -77,25 +76,25 @@ export async function computeSRP(password: string, state: AccountPassword) {
   let gForHash = padArray(bytesFromHex(bigInt2str(g, 16)), 256); // like uint8array
   let b_for_hash = padArray(bytesFromHex(bigInt2str(B, 16)), 256);
 
-  log(bytesToHex(pForHash));
+  /* log(bytesToHex(pForHash));
   log(bytesToHex(gForHash));
-  log(bytesToHex(b_for_hash));
+  log(bytesToHex(b_for_hash)); */
 
   let g_x = powMod(g, x, p);
 
-  log('g_x', bigInt2str(g_x, 16));
+  //log('g_x', bigInt2str(g_x, 16));
 
   let k: any = await CryptoWorker.sha256Hash(bufferConcat(pForHash, gForHash));
   k = str2bigInt(bytesToHex(new Uint8Array(k)), 16);
 
-  log('k', bigInt2str(k, 16));
+  //log('k', bigInt2str(k, 16));
 
   // kg_x = (k * g_x) % p
   let kg_x = mod(mult(k, g_x), p);
 
   // good
 
-  log('kg_x', bigInt2str(kg_x, 16));
+  //log('kg_x', bigInt2str(kg_x, 16));
 
   let is_good_mod_exp_first = (modexp: any, prime: any) => {
     let diff = sub(prime, modexp);
@@ -128,10 +127,10 @@ export async function computeSRP(password: string, state: AccountPassword) {
 
       //console.log('ITERATION');
 
-      log('g a p', bigInt2str(g, 16), bigInt2str(a, 16), bigInt2str(p, 16));
+      //log('g a p', bigInt2str(g, 16), bigInt2str(a, 16), bigInt2str(p, 16));
 
       const A = powMod(g, a, p);
-      log('A MODPOW', bigInt2str(A, 16));
+      //log('A MODPOW', bigInt2str(A, 16));
       if(is_good_mod_exp_first(A, p)) {
         const a_for_hash = bytesFromHex(bigInt2str(A, 16));
 
@@ -147,9 +146,9 @@ export async function computeSRP(password: string, state: AccountPassword) {
 
   let {a, a_for_hash, u} = await generate_and_check_random();
 
-  log('a', bigInt2str(a, 16));
+  /* log('a', bigInt2str(a, 16));
   log('a_for_hash', bytesToHex(a_for_hash));
-  log('u', bigInt2str(u, 16));
+  log('u', bigInt2str(u, 16)); */
 
   // g_b = (B - kg_x) % p
   /* log('B - kg_x', bigInt2str(sub(B, kg_x), 16));
@@ -158,26 +157,26 @@ export async function computeSRP(password: string, state: AccountPassword) {
 
   let g_b;
   if(!greater(B, kg_x)) {
-    log('negative');
+    //log('negative');
     g_b = add(B, p);
   } else g_b = B;
   g_b = mod(sub(g_b, kg_x), p);
   /* let g_b = sub(B, kg_x);
   if(negative(g_b)) g_b = add(g_b, p); */
   
-  log('g_b', bigInt2str(g_b, 16));
+  //log('g_b', bigInt2str(g_b, 16));
 
   /* if(!is_good_mod_exp_first(g_b, p))
     throw new Error('bad g_b'); */
 
   let ux = mult(u, x);
-  log('u and x multiply', bigInt2str(u, 16), bigInt2str(x, 16), bigInt2str(ux, 16));
+  //log('u and x multiply', bigInt2str(u, 16), bigInt2str(x, 16), bigInt2str(ux, 16));
   let a_ux = add(a, ux);
   let S = powMod(g_b, a_ux, p);
 
   let K = await CryptoWorker.sha256Hash(padArray(bytesFromHex(bigInt2str(S, 16)), 256));
 
-  log('K', bytesToHex(K), new Uint32Array(new Uint8Array(K).buffer));
+  //log('K', bytesToHex(K), new Uint32Array(new Uint8Array(K).buffer));
 
   let h1 = await CryptoWorker.sha256Hash(pForHash);
   let h2 = await CryptoWorker.sha256Hash(gForHash);
@@ -201,7 +200,7 @@ export async function computeSRP(password: string, state: AccountPassword) {
   };
 
 
-  log('out', bytesToHex(out.A), bytesToHex(out.M1));
+  //log('out', bytesToHex(out.A), bytesToHex(out.M1));
   return out;
   
   /* console.log(gForHash, pForHash, bForHash); */

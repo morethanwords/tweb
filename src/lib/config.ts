@@ -1,4 +1,3 @@
-import EventListenerBase from '../helpers/eventListenerBase';
 import mediaSizes from '../helpers/mediaSizes';
 /*!
  * Webogram v0.7.0 - messaging web application for MTProto

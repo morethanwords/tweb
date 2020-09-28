@@ -1,6 +1,6 @@
 import {isObject} from '../bin_utils';
 import {convertToUint8Array, 
-  bufferConcat, nextRandomInt, bytesToHex, longToBytes,
+  bufferConcat, nextRandomInt, bytesToHex,
   bytesCmp, bigStringInt} from '../bin_utils';
 import {TLDeserialization, TLSerialization} from './tl_utils';
 import CryptoWorker from '../crypto/cryptoworker';
@@ -15,6 +15,7 @@ import HTTP from './transports/http';
 import { logger, LogLevels } from '../logger';
 import { Modes, App } from './mtproto_config';
 import { InvokeApiOptions } from '../../types';
+import { longToBytes } from '../crypto/crypto_utils';
 
 //console.error('networker included!', new Error().stack);
 
@@ -948,7 +949,7 @@ class MTPNetworker {
     clearTimeout(this.nextReqTimeout);
     this.nextReqTimeout = 0;
     if(delay > 0) {
-      this.nextReqTimeout = setTimeout(this.performScheduledRequest.bind(this), delay || 0);
+      this.nextReqTimeout = self.setTimeout(this.performScheduledRequest.bind(this), delay || 0);
     } else {
       setTimeout(this.performScheduledRequest.bind(this), 0);
     }

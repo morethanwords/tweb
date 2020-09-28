@@ -65,10 +65,15 @@ $floating-left-sidebar: 925px;
   @else if $media == esg-top { // topbar + chat input + margin bottom + height of ESG 
     @media only screen and (min-height: 570px) and (min-width: $small-screen + 1) { @content; }
   }
+
+  @else if $media == esg-bottom {
+    @media only screen and (max-height: 569px) { @content; }
+  }
 }
 
 :root {
   --color-gray: #c4c9cc;
+  --color-gray-hover: rgba(112, 117, 121, .08);
   --layer-transition: .2s ease-in-out;
   //--layer-transition: .3s cubic-bezier(.33, 1, .68, 1);
   //--layer-transition: none;
@@ -315,7 +320,7 @@ input, textarea {
   }
   
   html.no-touch &:hover {
-    background-color: rgba(112, 117, 121, .08);
+    background-color: var(--color-gray-hover);
   }
 }
 
@@ -798,7 +803,7 @@ hr {
     grid-template-columns: calc(26px + 2rem) 1fr 50px;
     
     html.no-touch &:hover {
-      background-color: rgba(112, 117, 121, .08);
+      background-color: var(--color-gray-hover);
     }
   }
   
@@ -920,7 +925,7 @@ input:focus, button:focus {
   pointer-events: all !important;
 
   &:not(.btn-primary).menu-open {
-    background-color: rgba(112, 117, 121, 0.08);
+    background-color: var(--color-gray-hover);
   }
 }
 

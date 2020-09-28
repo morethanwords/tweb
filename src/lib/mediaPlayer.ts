@@ -150,7 +150,7 @@ export class MediaProgressLine extends ProgressLine {
           clearTimeout(this.stopAndScrubTimeout);
         }
     
-        this.stopAndScrubTimeout = setTimeout(() => {
+        this.stopAndScrubTimeout = window.setTimeout(() => {
           !this.media.paused && this.media.pause();
           this.stopAndScrubTimeout = 0;
         }, 150);
@@ -412,7 +412,7 @@ export default class VideoPlayer {
         let showControlsTimeout = 0;
 
         const t = () => {
-          showControlsTimeout = setTimeout(() => {
+          showControlsTimeout = window.setTimeout(() => {
             showControlsTimeout = 0;
             player.classList.remove('show-controls');
           }, 3e3);
@@ -489,7 +489,7 @@ export default class VideoPlayer {
   
       video.addEventListener('play', () => {
         iconVolume.style.display = 'none';
-        updateInterval = setInterval(() => {
+        updateInterval = window.setInterval(() => {
           //elapsed += 0.02; // Increase with timer interval
           if(video.currentTime != prevTime) {
             elapsed = video.currentTime; // Update if getCurrentTime was changed
@@ -555,7 +555,7 @@ export default class VideoPlayer {
     let prevTime = 0;
 
     if(skin === 'circle') {
-      updateInterval = setInterval(() => {
+      updateInterval = window.setInterval(() => {
         if(video.currentTime != prevTime) {
           elapsed = video.currentTime; // Update if getCurrentTime was changed
           prevTime = video.currentTime;

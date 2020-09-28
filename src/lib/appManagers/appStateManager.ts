@@ -8,8 +8,10 @@ import apiUpdatesManager from './apiUpdatesManager';
 import { copy } from '../utils';
 import { logger } from '../logger';
 import type { AppStickersManager } from './appStickersManager';
+import { App } from '../mtproto/mtproto_config';
 
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
+const STATE_VERSION = App.version;
 
 type State = Partial<{
   dialogs: Dialog[],
@@ -24,7 +26,8 @@ type State = Partial<{
   recentEmoji: string[],
   topPeers: number[],
   recentSearch: number[],
-  stickerSets: AppStickersManager['stickerSets']
+  stickerSets: AppStickersManager['stickerSets'],
+  version: typeof STATE_VERSION
 }>;
 
 const REFRESH_KEYS = ['dialogs', 'allDialogsLoaded', 'messages', 'contactsList', 'stateCreatedTime',
@@ -45,19 +48,26 @@ export class AppStateManager {
     return this.loaded = new Promise((resolve) => {
       AppStorage.get<State>('state').then((state) => {
         const time = Date.now();
-        if((state?.stateCreatedTime ?? 0) + REFRESH_EVERY < time) {
-          this.log('will refresh state', state.stateCreatedTime, time);
-          REFRESH_KEYS.forEach(key => {
-            delete state[key];
-          });
-          //state = {};
+        if(state) {
+          if(state?.version != STATE_VERSION) {
+            state = {};
+          } else if((state?.stateCreatedTime ?? 0) + REFRESH_EVERY < time) {
+            this.log('will refresh state', state.stateCreatedTime, time);
+            REFRESH_KEYS.forEach(key => {
+              delete state[key];
+            });
+            //state = {};
+          }
         }
-
+        
+        // will not throw error because state can be `FALSE`
         const {dialogs, allDialogsLoaded, peers, messages, contactsList, maxSeenMsgID, updates, filters} = state;
         
         this.state = state || {};
         this.state.peers = peers || {};
+        this.state.version = STATE_VERSION;
 
+        // ??= doesn't compiles
         if(!this.state.hasOwnProperty('stateCreatedTime')) {
           this.state.stateCreatedTime = Date.now();
         }
@@ -100,13 +110,6 @@ export class AppStateManager {
           } */
 
           appMessagesManager.saveMessages(messages);
-
-          // FIX FILE_REFERENCE_EXPIRED KOSTIL'1999
-          for(let message of messages) {
-            if(message.media) {
-              appMessagesManager.wrapSingleMessage(message.mid, true);
-            }
-          }
         }
         
         if(allDialogsLoaded) {

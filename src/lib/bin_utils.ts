@@ -5,6 +5,8 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
+import {str2bigInt, divInt_, int2bigInt, bigInt2str, bigInt2bytes} from '../vendor/leemon';
+
 // @ts-ignore
 import {BigInteger, SecureRandom} from 'jsbn';
 import type { InputFileLocation, FileLocation } from '../layer';
@@ -22,11 +24,6 @@ export function gzipUncompress(bytes: ArrayBuffer, toString?: boolean): string |
   return result;
 }
 /// #endif
-
-var _logTimer = Date.now();
-export function dT () {
-  return '[' + ((Date.now() - _logTimer) / 1000).toFixed(3) + ']'
-}
 
 export function isObject(object: any) {
   return typeof(object) === 'object' && object !== null;
@@ -294,24 +291,6 @@ export function bufferConcats(...args: any[]) {
   return tmp/* .buffer */;
 }
 
-export function longToInts(sLong: string) {
-  var divRem = bigStringInt(sLong).divideAndRemainder(bigint(0x100000000));
-
-  return [divRem[0].intValue(), divRem[1].intValue()];
-}
-
-export function bytesFromWords(wordArray: {words: number[] | Uint8Array | Uint32Array, sigBytes: number}) {
-  var words = wordArray.words;
-  var sigBytes = wordArray.sigBytes;
-  var bytes = [];
-
-  for(var i = 0; i < sigBytes; i++) {
-    bytes.push((words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff);
-  }
-
-  return bytes;
-}
-
 export function bytesFromWordss(input: Uint32Array) {
   var o = [];
   for(var i = 0; i < input.length * 4; i++) {
@@ -334,10 +313,6 @@ export function bytesToWordss(input: ArrayBuffer | Uint8Array) {
   }
 
   return new Uint32Array(words);
-}
-
-export function longToBytes(sLong: string) {
-  return bytesFromWords({words: longToInts(sLong), sigBytes: 8}).reverse();
 }
 
 export function longFromInts(high: number, low: number) {

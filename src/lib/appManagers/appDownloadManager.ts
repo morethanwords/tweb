@@ -4,6 +4,8 @@ import { deferredPromise, CancellablePromise } from "../../helpers/cancellablePr
 import type { DownloadOptions } from "../mtproto/apiFileManager";
 import { getFileNameByLocation } from "../bin_utils";
 import { InputFile } from "../../layer";
+import referenceDatabase, {ReferenceBytes} from "../mtproto/referenceDatabase";
+import appMessagesManager from "./appMessagesManager";
 
 export type ResponseMethodBlob = 'blob';
 export type ResponseMethodJson = 'json';
@@ -74,7 +76,44 @@ export class AppDownloadManager {
     if(this.downloads.hasOwnProperty(fileName)) return this.downloads[fileName];
 
     const deferred = this.getNewDeferred(fileName);
-    apiManager.downloadFile(options).then(deferred.resolve, deferred.reject);
+
+    const onError = (err: any) => {
+      switch(err.type) {
+        case 'FILE_REFERENCE_EXPIRED': {
+          // @ts-ignore
+          const bytes: ReferenceBytes = options?.location?.file_reference;
+          if(bytes) {
+            const context = referenceDatabase.getContext(bytes);
+            switch(context?.type) {
+              case 'message': {
+                return appMessagesManager.wrapSingleMessage(context.messageID, true).then(() => {
+                  //console.log('FILE_REFERENCE_EXPIRED: got message', context, options, appMessagesManager.getMessage(context.messageID).media);
+                  return tryDownload();
+                });
+              }
+
+              default: {
+                console.warn('FILE_REFERENCE_EXPIRED: not implemented context', context);
+              }
+            }
+          } else {
+            console.warn('FILE_REFERENCE_EXPIRED: no context for bytes:', bytes);
+          }
+
+          break;
+        }
+
+        default:
+          deferred.reject(err);
+          break;
+      }
+    };
+
+    const tryDownload = (): Promise<unknown> => {
+      return apiManager.downloadFile(options).then(deferred.resolve, onError);
+    };
+
+    tryDownload();
 
     //console.log('Will download file:', fileName, url);
     return deferred;

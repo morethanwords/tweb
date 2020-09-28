@@ -6,7 +6,6 @@ import appPeersManager from "./appPeersManager";
 import appUsersManager from "./appUsersManager";
 import appChatsManager from "./appChatsManager";
 import { logger, LogLevels } from '../logger';
-import { Updates, UpdatesState } from '../../layer';
 
 export class ApiUpdatesManager {
   public updatesState: {
@@ -63,7 +62,7 @@ export class ApiUpdatesManager {
     return true;
   }
 
-  public popPendingPtsUpdate(channelID: any) {
+  public popPendingPtsUpdate(channelID: number) {
     var curState = channelID ? this.getChannelState(channelID) : this.updatesState;
     if(!curState.pendingPtsUpdates.length) {
       return false;
@@ -216,7 +215,7 @@ export class ApiUpdatesManager {
         // Should be first because of updateMessageID
         // this.log('applying', differenceResult.other_updates.length, 'other updates')
     
-        differenceResult.other_updates.forEach((update: any) => {
+        differenceResult.other_updates.forEach((update) => {
           switch(update._) {
             case 'updateChannelTooLong':
             case 'updateNewChannelMessage':
@@ -229,7 +228,7 @@ export class ApiUpdatesManager {
         });
 
         // this.log('applying', differenceResult.new_messages.length, 'new messages')
-        differenceResult.new_messages.forEach((apiMessage: any) => {
+        differenceResult.new_messages.forEach((apiMessage) => {
           this.saveUpdate({
             _: 'updateNewMessage',
             message: apiMessage,
@@ -303,13 +302,13 @@ export class ApiUpdatesManager {
       appChatsManager.saveApiChats(differenceResult.chats);
   
       // Should be first because of updateMessageID
-      this.log('applying', differenceResult.other_updates.length, 'channel other updates')
-      differenceResult.other_updates.forEach((update: any) => {
+      this.log('applying', differenceResult.other_updates.length, 'channel other updates');
+      differenceResult.other_updates.forEach((update) => {
         this.saveUpdate(update);
       });
   
-      this.log('applying', differenceResult.new_messages.length, 'channel new messages')
-      differenceResult.new_messages.forEach((apiMessage: any) => {
+      this.log('applying', differenceResult.new_messages.length, 'channel new messages');
+      differenceResult.new_messages.forEach((apiMessage) => {
         this.saveUpdate({
           _: 'updateNewChannelMessage',
           message: apiMessage,
@@ -519,7 +518,7 @@ export class ApiUpdatesManager {
     apiManager.setUpdatesProcessor(this.processUpdateMessage.bind(this));
 
     if(!state || !state.pts || !state.date || !state.seq) {
-      apiManager.invokeApi('updates.getState', {}, {noErrorBox: true}).then((stateResult: any) => {
+      apiManager.invokeApi('updates.getState', {}, {noErrorBox: true}).then((stateResult) => {
         this.updatesState.seq = stateResult.seq;
         this.updatesState.pts = stateResult.pts;
         this.updatesState.date = stateResult.date;

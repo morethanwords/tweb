@@ -188,7 +188,7 @@
 				}
 				
 				html.no-touch &:hover {
-					background-color: rgba(112, 117, 121, .08);
+					background-color: var(--color-gray-hover);
 				}
 			}
 		}
@@ -226,7 +226,7 @@
 			> .grid-item {
 				html.no-touch &:hover {
 					border-radius: 12px;
-					background-color: rgba(112, 117, 121, .08);
+					background-color: var(--color-gray-hover);
 				}
 				
 				/* &:nth-child(5n+5) {
@@ -243,6 +243,7 @@
 
 				> img {
 					animation: fadeIn .2s ease forwards;
+					object-fit: contain;
 				}
 			}
 		}
@@ -310,7 +311,7 @@
 			
 			&.active {
 				&:not(.tgico-recent) {
-					background-color: rgba(112, 117, 121, .08);
+					background-color: var(--color-gray-hover);
 				}
 			}
 			

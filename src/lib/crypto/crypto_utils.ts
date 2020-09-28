@@ -7,17 +7,32 @@ import pako from 'pako/dist/pako_inflate.min.js';
 
 import {str2bigInt, bpe, equalsInt, greater, 
   copy_, eGCD_, add_, rightShift_, sub_, copyInt_, isZero,
-  // @ts-ignore
-  divide_, one, bigInt2str, powMod} from 'leemon';//from 'leemon';
+  divide_, one, bigInt2str, powMod, bigInt2bytes} from '../../vendor/leemon';//from 'leemon';
 
 // @ts-ignore
 import {BigInteger} from 'jsbn';
 
-import { addPadding, bytesToHex, bytesFromHex, nextRandomInt, bytesFromBigInt, dT, bytesFromWords, bytesToWordss, bytesFromWordss } from '../bin_utils';
+import { addPadding, bytesToHex, bytesFromHex, nextRandomInt, bytesFromBigInt, bytesToWordss, bytesFromWordss } from '../bin_utils';
 
-export function bytesFromLeemonBigInt(bigInt: BigInteger) {
-  var str = bigInt2str(bigInt, 16);
-  return bytesFromHex(str);
+export function longToBytes(sLong: string) {
+  /* let perf = performance.now();
+  for(let i = 0; i < 1000000; ++i) {
+    bytesFromWords({words: longToInts(sLong), sigBytes: 8}).reverse();
+  }
+  console.log('longToBytes JSBN', sLong, performance.now() - perf);
+  
+  //const bytes = bytesFromWords({words: longToInts(sLong), sigBytes: 8}).reverse();
+  
+  perf = performance.now();
+  for(let i = 0; i < 1000000; ++i) {
+    bigInt2bytes(str2bigInt(sLong, 10));
+  }
+  console.log('longToBytes LEEMON', sLong, performance.now() - perf); */
+
+  const bytes = bigInt2bytes(str2bigInt(sLong, 10), false);
+  //console.log('longToBytes', bytes, b);
+  
+  return bytes;
 }
 
 export function sha1HashSync(bytes: number[] | ArrayBuffer | Uint8Array) {
@@ -225,7 +240,7 @@ export function pqPrimeLeemon(what: any) {
 
   // console.log(dT(), 'done', bigInt2str(what, 10), bigInt2str(P, 10), bigInt2str(Q, 10))
 
-  return [bytesFromLeemonBigInt(P), bytesFromLeemonBigInt(Q), it];
+  return [bigInt2bytes(P), bigInt2bytes(Q), it];
 }
 
 export function bytesModPow(x: any, y: any, m: any) {
