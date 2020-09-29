@@ -1,5 +1,6 @@
 import { isSafari } from "../helpers/userAgent";
 import { logger, LogLevels } from "./logger";
+import { MOUNT_CLASS_TO } from "./mtproto/mtproto_config";
 
 type Result = {
   bytes: Uint8Array, 
@@ -172,8 +173,5 @@ export class OpusDecodeController {
 }
 
 const opusDecodeController = new OpusDecodeController();
-// @ts-ignore
-if(process.env.NODE_ENV != 'production') {
-  (window as any).opusDecodeController = opusDecodeController;
-}
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.opusDecodeController = opusDecodeController);
 export default opusDecodeController;

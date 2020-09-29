@@ -7,6 +7,7 @@ import mediaSizes, { ScreenSize } from "../../helpers/mediaSizes";
 import AppPrivateSearchTab from "../../components/sidebarRight/search";
 import AppSharedMediaTab from "../../components/sidebarRight/sharedMedia";
 import AppForwardTab from "../../components/sidebarRight/forward";
+import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
 
 export const RIGHT_COLUMN_ACTIVE_CLASSNAME = 'is-right-column-shown';
 
@@ -165,8 +166,5 @@ export class AppSidebarRight extends SidebarSlider {
 }
 
 const appSidebarRight = new AppSidebarRight();
-// @ts-ignore
-if(process.env.NODE_ENV != 'production') {
-  (window as any).appSidebarRight = appSidebarRight;
-}
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appSidebarRight = appSidebarRight);
 export default appSidebarRight;

@@ -1,6 +1,7 @@
 import WebpWorker from 'worker-loader!./webp.worker';
 import { CancellablePromise, deferredPromise } from '../../helpers/cancellablePromise';
 import apiManagerProxy from '../mtproto/mtprotoworker';
+import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
 
 export type WebpConvertTask = {
   type: 'convertWebp', 
@@ -56,8 +57,5 @@ export class WebpWorkerController {
 }
 
 const webpWorkerController = new WebpWorkerController();
-// @ts-ignore
-if(process.env.NODE_ENV != 'production') {
-  (window as any).webpWorkerController = webpWorkerController;
-}
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.webpWorkerController = webpWorkerController);
 export default webpWorkerController;

@@ -10,6 +10,7 @@ import Scrollable, { ScrollableX } from "../scrollable_new";
 import EmojiTab from "./tabs/emoji";
 import StickersTab from "./tabs/stickers";
 import StickyIntersector from "../stickyIntersector";
+import { MOUNT_CLASS_TO } from "../../lib/mtproto/mtproto_config";
 
 export const EMOTICONSSTICKERGROUP = 'emoticons-dropdown';
 
@@ -326,8 +327,5 @@ export class EmoticonsDropdown {
 }
 
 const emoticonsDropdown = new EmoticonsDropdown();
-// @ts-ignore
-if(process.env.NODE_ENV != 'production') {
-  (window as any).emoticonsDropdown = emoticonsDropdown;
-}
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.emoticonsDropdown = emoticonsDropdown);
 export default emoticonsDropdown;

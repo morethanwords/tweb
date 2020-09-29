@@ -13,3 +13,6 @@ export const Modes = {
   ssl: true, // location.search.indexOf('ssl=1') > 0 || location.protocol == 'https:' && location.search.indexOf('ssl=0') == -1,
   multipleConnections: true
 };
+
+export const DEBUG = process.env.NODE_ENV != 'production';
+export const MOUNT_CLASS_TO: any = DEBUG ? typeof(window) !== 'undefined' ? window : self : null;

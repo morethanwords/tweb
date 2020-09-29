@@ -121,17 +121,9 @@ class ConfigStorage {
     }
   }
 
-  clear(callback: any) {
-    if(this.useLs) {
-      try {
-        localStorage.clear();
-      } catch (e) {
-        this.useLs = false;
-      }
-    }
-
-    this.cache = {};
-    callback();
+  clear() {
+    localStorage.clear();
+    location.reload();
   }
 }
 
@@ -210,8 +202,8 @@ class AppStorage {
     return this.proxy<T>('remove', ...args);
   }
 
-  public clear<T>(...args: any[]) {
-    return this.proxy<T>('clear', ...args);
+  public clear() {
+    return this.proxy('clear');
   }
 }
 

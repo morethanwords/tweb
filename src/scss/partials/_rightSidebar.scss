@@ -434,8 +434,8 @@
           @include respond-to(handhelds) {
             width: 40px;
             height: 40px;
-            top: 9px;
-            left: 2px;
+            top: 2px;
+            left: -12px;
           }
 
           @include respond-to(not-handhelds) {
@@ -466,10 +466,6 @@
           &-ico {
             width: 48px;
             height: 48px;
-
-            &.tgico-largeplay:before {
-              margin-right: -1px;
-            }
           }
 
           &-download {
@@ -483,8 +479,16 @@
             }
           }
 
-          &-toggle, &-download {
-            font-size: 1.9rem;
+          .part {
+            height: 112px;
+            width: 112px;
+            position: absolute;
+            background-color: white;
+
+            @include respond-to(handhelds) {
+              width: 100px;
+              height: 100px;
+            }
           }
 
           &-title {

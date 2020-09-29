@@ -6,6 +6,7 @@ import apiUpdatesManager from "./apiUpdatesManager";
 import { $rootScope } from "../utils";
 import { logger, LogLevels } from "../logger";
 import appUsersManager from "./appUsersManager";
+import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
 
 export type PollAnswer = {
   _: 'pollAnswer',
@@ -206,8 +207,5 @@ class AppPollsManager {
 }
 
 const appPollsManager = new AppPollsManager();
-// @ts-ignore
-if(process.env.NODE_ENV != 'production') {
-  (window as any).appPollsManager = appPollsManager;
-}
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appPollsManager = appPollsManager);
 export default appPollsManager;

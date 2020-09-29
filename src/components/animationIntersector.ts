@@ -1,5 +1,6 @@
 import { isInDOM, $rootScope } from "../lib/utils";
 import { RLottiePlayer } from "../lib/lottieLoader";
+import { MOUNT_CLASS_TO } from "../lib/mtproto/mtproto_config";
 
 export interface AnimationItem {
   el: HTMLElement,
@@ -166,7 +167,7 @@ export class AnimationIntersector {
 }
 
 const animationIntersector = new AnimationIntersector();
-if(process.env.NODE_ENV == 'development') {
-  (window as any).animationIntersector = animationIntersector;
+if(MOUNT_CLASS_TO) {
+  MOUNT_CLASS_TO.animationIntersector = animationIntersector;
 }
 export default animationIntersector;

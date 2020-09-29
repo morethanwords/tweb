@@ -4,6 +4,7 @@ import { $rootScope } from '../utils';
 import { StickerSet, InputStickerSet, StickerSetCovered, MessagesRecentStickers, Document, InputFileLocation, MessagesStickerSet, PhotoSize } from '../../layer';
 import { Modify } from '../../types';
 import appStateManager from './appStateManager';
+import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
 
 export class AppStickersManager {
   private stickerSets: {
@@ -259,7 +260,5 @@ export class AppStickersManager {
 }
 
 const appStickersManager = new AppStickersManager();
-if(process.env.NODE_ENV != 'production') {
-  (window as any).appStickersManager = appStickersManager;
-}
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appStickersManager = appStickersManager);
 export default appStickersManager;

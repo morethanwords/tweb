@@ -742,7 +742,7 @@ $bubble-margin: .25rem;
       }
 
       &-ico {
-        font-size: 2.15rem;
+        font-size: 0;
         
         @include respond-to(handhelds) {
           margin-top: 1px;
@@ -791,11 +791,6 @@ $bubble-margin: .25rem;
         overflow: visible;
       } */
     //}
-
-    .tgico-largeplay:before {
-      content: $tgico-largeplay;
-      margin-right: -2px;
-    }
 
     /* @include respond-to(handhelds) {
       .preloader-container .you-spin-me-round {
@@ -949,6 +944,10 @@ $bubble-margin: .25rem;
     font-size: 34px;
     line-height: 60px;
     cursor: pointer;
+
+    @include respond-to(handhelds) {
+      line-height: unset;
+    }
   }
 
   &.is-edited.channel-post .time {

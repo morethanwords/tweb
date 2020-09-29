@@ -21,6 +21,7 @@ import SidebarSlider from "../../components/slider";
 import SearchInput from "../../components/searchInput";
 import appStateManager from "./appStateManager";
 import appChatsManager from "./appChatsManager";
+import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
 
 AvatarElement;
 
@@ -301,8 +302,5 @@ export class AppSidebarLeft extends SidebarSlider {
 }
 
 const appSidebarLeft = new AppSidebarLeft();
-// @ts-ignore
-if(process.env.NODE_ENV != 'production') {
-  (window as any).appSidebarLeft = appSidebarLeft;
-}
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appSidebarLeft = appSidebarLeft);
 export default appSidebarLeft;

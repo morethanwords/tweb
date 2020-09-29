@@ -18,6 +18,17 @@ import { InvokeApiOptions } from '../../types';
 //console.error('apiManager included!');
 // TODO: если запрос словил флуд, нужно сохранять его параметры и возвращать тот же промис на новый такой же запрос, например - загрузка истории
 
+export type ApiError = Partial<{
+  code: number,
+  type: string,
+  description: string,
+  originalError: any,
+  stack: string,
+  handled: boolean,
+  input: string,
+  message: ApiError
+}>;
+
 export class ApiManager {
   public cachedNetworkers: {[x: number]: MTPNetworker} = {};
   public cachedUploadNetworkers: {[x: number]: MTPNetworker} = {};
@@ -87,50 +98,15 @@ export class ApiManager {
     }
     
     return Promise.all(logoutPromises).then(() => {
-      AppStorage.remove('dc', 'user_auth', 'stickerSets');
-      this.baseDcID = 0;
-      this.telegramMeNotify(false);
-      this.mtpClearStorage();
     }, (error) => {
-      storageKeys.push('dc', 'user_auth', 'stickerSets');
-      AppStorage.remove(storageKeys);
-      this.baseDcID = 0;
       error.handled = true;
+    }).finally(() => {
+      this.baseDcID = 0;
       this.telegramMeNotify(false);
-      this.mtpClearStorage();
+      AppStorage.clear();
     })/* .then(() => {
       location.pathname = '/';
     }) */;
-  }
-  
-  public mtpClearStorage() {
-    var saveKeys = ['user_auth', 't_user_auth', 'dc', 't_dc'];
-    
-    for(var dcID = 1; dcID <= 5; dcID++) {
-      saveKeys.push('dc' + dcID + '_auth_key');
-      saveKeys.push('dc' + dcID + '_auth_keyID');
-      saveKeys.push('dc' + dcID + '_server_salt'); // new
-      saveKeys.push('t_dc' + dcID + '_auth_key');
-      saveKeys.push('t_dc' + dcID + '_auth_keyID');
-      saveKeys.push('t_dc' + dcID + '_server_salt'); // new
-    }
-    
-    AppStorage.noPrefix();
-    AppStorage.get<string[]|boolean[]>(saveKeys).then((values) => {
-      AppStorage.clear().then(() => {
-        var restoreObj: any = {};
-        
-        saveKeys.forEach((key, i) => {
-          var value = values[i];
-          if(value !== false && value !== undefined) {
-            restoreObj[key] = value;
-          }
-        });
-        
-        AppStorage.noPrefix();
-        return AppStorage.set(restoreObj);
-      });
-    });
   }
   
   // mtpGetNetworker
@@ -205,14 +181,19 @@ export class ApiManager {
     ///////this.log('Invoke api', method, params, options);
     
     return new Promise((resolve, reject) => {
-      let rejectPromise = (error: any) => {
+      let rejectPromise = (error: ApiError) => {
         if(!error) {
           error = {type: 'ERROR_EMPTY'};
-        } else if (!isObject(error)) {
+        } else if(!isObject(error)) {
           error = {message: error};
         }
         
         reject(error);
+
+        if(error.code == 401 && error.type == 'SESSION_REVOKED') {
+          this.logOut();
+        }
+
         if(options.ignoreErrors) {
           return;
         }
@@ -245,8 +226,11 @@ export class ApiManager {
       var performRequest = (networker: MTPNetworker) => {
         return (cachedNetworker = networker)
         .wrapApiCall(method, params, options)
-        .then(resolve, (error: any) => {
-          this.log.error('Error', error.code, error.type, this.baseDcID, dcID);
+        .then(resolve, (error: ApiError) => {
+          //if(!options.ignoreErrors) {
+          if(error.type != 'FILE_REFERENCE_EXPIRED') {
+            this.log.error('Error', error.code, error.type, this.baseDcID, dcID);
+          }
           
           if(error.code == 401 && this.baseDcID == dcID) {
             AppStorage.remove('dc', 'user_auth');
@@ -270,7 +254,7 @@ export class ApiManager {
               (cachedNetworker = networker).wrapApiCall(method, params, options).then(resolve, rejectPromise);
             }, rejectPromise);
           } else if(error.code == 303) {
-            var newDcID = error.type.match(/^(PHONE_MIGRATE_|NETWORK_MIGRATE_|USER_MIGRATE_)(\d+)/)[2];
+            var newDcID = +error.type.match(/^(PHONE_MIGRATE_|NETWORK_MIGRATE_|USER_MIGRATE_)(\d+)/)[2];
             if(newDcID != dcID) {
               if(options.dcID) {
                 options.dcID = newDcID;
@@ -283,7 +267,7 @@ export class ApiManager {
               }, rejectPromise);
             }
           } else if(!options.rawError && error.code == 420) {
-            var waitTime = error.type.match(/^FLOOD_WAIT_(\d+)/)[1] || 10;
+            var waitTime = +error.type.match(/^FLOOD_WAIT_(\d+)/)[1] || 10;
             
             if(waitTime > (options.timeout !== undefined ? options.timeout : 60)) {
               return rejectPromise(error);

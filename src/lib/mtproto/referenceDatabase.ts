@@ -1,5 +1,6 @@
 import { Photo } from "../../layer";
 import { deepEqual } from "../utils";
+import { MOUNT_CLASS_TO } from "./mtproto_config";
 
 export type ReferenceContext = ReferenceContext.referenceContextProfilePhoto | ReferenceContext.referenceContextMessage;
 export namespace ReferenceContext {
@@ -66,7 +67,5 @@ class ReferenceDatabase {
 }
 
 const referenceDatabase = new ReferenceDatabase();
-if(process.env.NODE_ENV != 'production') {
-  (window as any).referenceDatabase = referenceDatabase;
-}
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.referenceDatabase = referenceDatabase);
 export default referenceDatabase;

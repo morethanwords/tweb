@@ -1,3 +1,4 @@
+import { MOUNT_CLASS_TO } from "../lib/mtproto/mtproto_config";
 import EventListenerBase from "./eventListenerBase";
 
 type Size = Partial<{width: number, height: number}>;
@@ -112,7 +113,5 @@ class MediaSizes extends EventListenerBase<{
 }
 
 const mediaSizes = new MediaSizes();
-if(process.env.NODE_ENV != 'production') {
-  (window as any).mediaSizes = mediaSizes;
-}
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.mediaSizes = mediaSizes);
 export default mediaSizes;

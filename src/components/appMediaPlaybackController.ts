@@ -3,6 +3,7 @@ import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import appDocsManager, {MyDocument} from "../lib/appManagers/appDocsManager";
 import { CancellablePromise, deferredPromise } from "../helpers/cancellablePromise";
 import { isSafari } from "../helpers/userAgent";
+import { MOUNT_CLASS_TO } from "../lib/mtproto/mtproto_config";
 
 // TODO: если удалить сообщение, и при этом аудио будет играть - оно не остановится, и можно будет по нему перейти вникуда
 
@@ -232,8 +233,5 @@ class AppMediaPlaybackController {
 }
 
 const appMediaPlaybackController = new AppMediaPlaybackController();
-// @ts-ignore
-if(process.env.NODE_ENV != 'production') {
-  (window as any).appMediaPlaybackController = appMediaPlaybackController;
-}
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appMediaPlaybackController = appMediaPlaybackController);
 export default appMediaPlaybackController;

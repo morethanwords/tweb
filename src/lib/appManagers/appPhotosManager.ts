@@ -52,8 +52,10 @@ export class AppPhotosManager {
     } */
 
     const oldPhoto = this.photos[photo.id];
-    safeReplaceArrayInObject('file_reference', oldPhoto, photo);
-    referenceDatabase.saveContext(photo.file_reference, context);
+    if(photo.file_reference) { // * because we can have a new object w/o the file_reference while sending
+      safeReplaceArrayInObject('file_reference', oldPhoto, photo);
+      referenceDatabase.saveContext(photo.file_reference, context);
+    }
 
     if(oldPhoto) {
       return Object.assign(oldPhoto, photo);

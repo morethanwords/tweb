@@ -9,6 +9,7 @@ import cryptoWorker from "../crypto/cryptoworker";
 import { notifySomeone, notifyAll } from "../../helpers/context";
 import { InputFileLocation, FileLocation, InputFile, UploadFile } from "../../layer";
 import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
+import { MOUNT_CLASS_TO } from "./mtproto_config";
 
 type Delayed = {
   offset: number, 
@@ -541,8 +542,5 @@ export class ApiFileManager {
 }
 
 const apiFileManager = new ApiFileManager();
-// @ts-ignore
-if(process.env.NODE_ENV != 'production') {
-  (self as any).apiFileManager = apiFileManager;
-}
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.apiFileManager = apiFileManager);
 export default apiFileManager;

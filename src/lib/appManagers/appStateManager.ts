@@ -8,7 +8,7 @@ import apiUpdatesManager from './apiUpdatesManager';
 import { $rootScope, copy } from '../utils';
 import { logger } from '../logger';
 import type { AppStickersManager } from './appStickersManager';
-import { App } from '../mtproto/mtproto_config';
+import { App, MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
 
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
 const STATE_VERSION = App.version;
@@ -233,8 +233,5 @@ export class AppStateManager {
 //console.trace('appStateManager include');
 
 const appStateManager = new AppStateManager();
-// @ts-ignore
-if(process.env.NODE_ENV != 'production') {
-  (window as any).appStateManager = appStateManager;
-}
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appStateManager = appStateManager);
 export default appStateManager;

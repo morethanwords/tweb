@@ -222,7 +222,4 @@ function alignLimit(limit: number) {
   return 2 ** Math.ceil(Math.log(limit) / Math.log(2));
 }
 
-// @ts-ignore
-if(process.env.NODE_ENV != 'production') {
-  (ctx as any).onFetch = onFetch;
-}
+//MOUNT_CLASS_TO && (MOUNT_CLASS_TO.onFetch = onFetch);

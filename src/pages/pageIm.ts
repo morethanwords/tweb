@@ -2,6 +2,7 @@ import { openBtnMenu/* , ripple */ } from "../components/misc";
 //import {stackBlurImage} from '../lib/StackBlur';
 import Page from "./page";
 import { cancelEvent } from "../lib/utils";
+import { DEBUG } from "../lib/mtproto/mtproto_config";
 
 let onFirstMount = () => {
   //return;
@@ -21,8 +22,7 @@ let onFirstMount = () => {
     alert('navigator.mediaDevices.getUserMedia:' + typeof(navigator.mediaDevices?.getUserMedia));
     alert('global.WebAssembly:' + typeof(WebAssembly)); */
   
-    // @ts-ignore
-    if(process.env.NODE_ENV != 'production') {
+    if(DEBUG) {
       import('../lib/services');
     }
   

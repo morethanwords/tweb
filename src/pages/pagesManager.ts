@@ -2,6 +2,7 @@ import Page from "./page";
 import { whichChild } from "../lib/utils";
 import lottieLoader from "../lib/lottieLoader";
 import { horizontalMenu } from "../components/horizontalMenu";
+import { MOUNT_CLASS_TO } from "../lib/mtproto/mtproto_config";
 
 class PagesManager {
   private pageID = -1;
@@ -38,8 +39,5 @@ class PagesManager {
 }
 
 const pagesManager = new PagesManager();
-// @ts-ignore
-if(process.env.NODE_ENV != 'production') {
-  (window as any).pagesManager = pagesManager;
-}
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.pagesManager = pagesManager);
 export default pagesManager;

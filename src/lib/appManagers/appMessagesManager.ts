@@ -3780,7 +3780,7 @@ export class AppMessagesManager {
               let c = message.media.webpage || message.media;
               const smth = c.photo || c.document;
 
-              if(smth.file_reference) {
+              if(smth?.file_reference) {
                 referenceDatabase.deleteContext(smth.file_reference, {type: 'message', messageID});
               }
             }

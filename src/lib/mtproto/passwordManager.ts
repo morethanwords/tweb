@@ -1,5 +1,6 @@
 import apiManager from './mtprotoworker';
 import { AccountPassword } from '../../layer';
+import { MOUNT_CLASS_TO } from './mtproto_config';
 //import { computeCheck } from "../crypto/srp";
 
 export class PasswordManager {
@@ -76,8 +77,5 @@ export class PasswordManager {
 }
 
 const passwordManager = new PasswordManager();
-// @ts-ignore
-if(process.env.NODE_ENV != 'production') {
-  (self as any).passwordManager = passwordManager;
-}
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.passwordManager = passwordManager);
 export default passwordManager;

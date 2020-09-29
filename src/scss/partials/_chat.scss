@@ -322,7 +322,7 @@
 		align-self: flex-end;
 		z-index: 2;
 	}
-
+	
 	#btn-send {
 		color: #9e9e9e;
 
@@ -563,7 +563,7 @@
     @include respond-to(handhelds) {
 			min-height: 46px;
 			padding: .5px .5rem;
-		}
+    }
 		
 		@include respond-to(esg-bottom) {
 			min-height: 46px;

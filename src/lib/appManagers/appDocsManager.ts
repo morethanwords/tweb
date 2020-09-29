@@ -7,6 +7,7 @@ import appPhotosManager from './appPhotosManager';
 import { isServiceWorkerSupported } from '../config';
 import { InputFileLocation, Document, PhotoSize } from '../../layer';
 import referenceDatabase, { ReferenceContext } from '../mtproto/referenceDatabase';
+import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
 
 export type MyDocument = Document.document;
 
@@ -22,8 +23,10 @@ class AppDocsManager {
 
     const oldDoc = this.docs[doc.id];
 
-    safeReplaceArrayInObject('file_reference', oldDoc, doc);
-    referenceDatabase.saveContext(doc.file_reference, context);
+    if(doc.file_reference) { // * because we can have a new object w/o the file_reference while sending
+      safeReplaceArrayInObject('file_reference', oldDoc, doc);
+      referenceDatabase.saveContext(doc.file_reference, context);
+    }
     
     //console.log('saveDoc', apiDoc, this.docs[apiDoc.id]);
     if(oldDoc) {
@@ -319,8 +322,5 @@ class AppDocsManager {
 }
 
 const appDocsManager = new AppDocsManager();
-// @ts-ignore
-if(process.env.NODE_ENV != 'production') {
-  (window as any).appDocsManager = appDocsManager;
-}
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appDocsManager = appDocsManager);
 export default appDocsManager;

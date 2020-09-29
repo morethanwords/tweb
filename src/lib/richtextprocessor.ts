@@ -3,6 +3,7 @@ import Config from './config';
 
 import emojiRegExp from '../emoji/regex';
 import { encodeEmoji } from '../emoji';
+import { MOUNT_CLASS_TO } from './mtproto/mtproto_config';
 
 var EmojiHelper = {
   emojiMap: (code: string) => { return code; },
@@ -778,10 +779,7 @@ let RichTextProcessor = {
   emojiSupported: emojiSupported
 };
 
-// @ts-ignore
-if(process.env.NODE_ENV != 'production') {
-  (window as any).RichTextProcessor = RichTextProcessor;
-}
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.RichTextProcessor = RichTextProcessor);
 
 export {RichTextProcessor};
 

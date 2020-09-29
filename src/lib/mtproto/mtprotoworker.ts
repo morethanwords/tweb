@@ -8,6 +8,7 @@ import type { DownloadOptions } from './apiFileManager';
 import type { ServiceWorkerTask, ServiceWorkerTaskResponse } from './mtproto.service';
 import { isServiceWorkerSupported } from '../config';
 import { MethodDeclMap } from '../../layer';
+import { MOUNT_CLASS_TO } from './mtproto_config';
 
 type Task = {
   taskID: number,
@@ -230,8 +231,5 @@ class ApiManagerProxy extends CryptoWorkerMethods {
 }
 
 const apiManagerProxy = new ApiManagerProxy();
-// @ts-ignore
-if(process.env.NODE_ENV != 'production') {
-  (window as any).apiManagerProxy = apiManagerProxy;
-}
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.apiManagerProxy = apiManagerProxy);
 export default apiManagerProxy;

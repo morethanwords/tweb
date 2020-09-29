@@ -41,6 +41,7 @@ import { ChatContextMenu } from '../../components/chat/contextMenu';
 import { ChatSearch } from '../../components/chat/search';
 import mediaSizes from '../../helpers/mediaSizes';
 import { isAndroid, isApple, isSafari } from '../../helpers/userAgent';
+import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
 
 //console.log('appImManager included33!');
 
@@ -2731,8 +2732,5 @@ export class AppImManager {
 }
 
 const appImManager = new AppImManager();
-// @ts-ignore
-if(process.env.NODE_ENV != 'production') {
-  (window as any).appImManager = appImManager;
-}
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appImManager = appImManager);
 export default appImManager;

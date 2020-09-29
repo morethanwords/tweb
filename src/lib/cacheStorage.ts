@@ -1,5 +1,6 @@
 import {blobConstruct} from './bin_utils';
 import FileManager from './filemanager';
+import { MOUNT_CLASS_TO } from './mtproto/mtproto_config';
 //import { logger } from './polyfill';
 
 class CacheStorageController {
@@ -95,8 +96,5 @@ class CacheStorageController {
 }
 
 const cacheStorage = new CacheStorageController(); 
-/* // @ts-ignore
-if(process.env.NODE_ENV != 'production') {
-  (window as any).cacheStorage = cacheStorage;
-} */
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.cacheStorage = cacheStorage);
 export default cacheStorage;

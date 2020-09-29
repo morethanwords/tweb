@@ -5,6 +5,7 @@ import EventListenerBase from "../helpers/eventListenerBase";
 import mediaSizes from "../helpers/mediaSizes";
 import { isAndroid, isApple, isAppleMobile, isSafari } from "../helpers/userAgent";
 import RLottieWorker from 'worker-loader!./rlottie/rlottie.worker';
+import { MOUNT_CLASS_TO } from "./mtproto/mtproto_config";
 
 let convert = (value: number) => {
 	return Math.round(Math.min(Math.max(value, 0), 1) * 255);
@@ -720,8 +721,5 @@ class LottieLoader {
 }
 
 const lottieLoader = new LottieLoader();
-// @ts-ignore
-if(process.env.NODE_ENV != 'production') {
-  (window as any).lottieLoader = lottieLoader;
-}
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.lottieLoader = lottieLoader);
 export default lottieLoader;

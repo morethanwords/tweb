@@ -37,7 +37,6 @@ export function decodeWaveform(waveform: Uint8Array | number[]) {
   } else {
     var value = dataView.getUint16(byteIndex, true);
   }
-
   console.log('decoded waveform, setting last value:', value, byteIndex, bitShift);
   result[valueCount - 1] = (value >> bitShift) & 0b00011111; */
   return result;
@@ -296,7 +295,10 @@ export default class AudioElement extends HTMLElement {
 
     const durationStr = String(doc.duration | 0).toHHMMSS(true);
 
-    this.innerHTML = `<div class="audio-toggle audio-ico tgico-largeplay"></div>`;
+    this.innerHTML = `<div class="audio-toggle audio-ico tgico-largeplay">    
+                         <div class="part one" x="0" y="0" fill="#fff"></div>
+                         <div class="part two" x="0" y="0" fill="#fff"></div>
+                      </div>`;
 
     const downloadDiv = document.createElement('div');
     downloadDiv.classList.add('audio-download');
@@ -323,7 +325,7 @@ export default class AudioElement extends HTMLElement {
       const onPlaying = () => {
         audioTimeDiv.innerText = String(audio.currentTime | 0).toHHMMSS(true) + ' / ' + durationStr;
         if(!audio.paused) {
-          toggle.classList.remove('tgico-largeplay');
+          //toggle.classList.remove('tgico-largeplay');
           toggle.classList.add('tgico-largepause');
         }
       };
@@ -339,7 +341,7 @@ export default class AudioElement extends HTMLElement {
       });
       
       this.addAudioListener('ended', () => {
-        toggle.classList.add('tgico-largeplay');
+        //toggle.classList.add('tgico-largeplay');
         toggle.classList.remove('tgico-largepause');
       });
 
@@ -349,7 +351,7 @@ export default class AudioElement extends HTMLElement {
       });
 
       this.addAudioListener('pause', () => {
-        toggle.classList.add('tgico-largeplay');
+        //toggle.classList.add('tgico-largeplay');
         toggle.classList.remove('tgico-largepause');
       });
 
