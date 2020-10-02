@@ -4,18 +4,19 @@ import appMessagesManager from "./appMessagesManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import { logger } from "../logger";
 import ProgressivePreloader from "../../components/preloader";
-import { findUpClassName, $rootScope, generatePathData, fillPropertyValue, cancelEvent } from "../utils";
+import { findUpClassName, generatePathData, fillPropertyValue, cancelEvent } from "../utils";
 import appDocsManager, {MyDocument} from "./appDocsManager";
 import VideoPlayer from "../mediaPlayer";
 import { renderImageFromUrl, parseMenuButtonsTo } from "../../components/misc";
 import AvatarElement from "../../components/avatar";
 import { LazyLoadQueueBase } from "../../components/lazyLoadQueue";
-import { touchSupport } from "../config";
 import appMediaPlaybackController from "../../components/appMediaPlaybackController";
 import { deferredPromise } from "../../helpers/cancellablePromise";
 import mediaSizes from "../../helpers/mediaSizes";
 import { isSafari } from "../../helpers/userAgent";
 import appSidebarRight, { AppSidebarRight } from "./appSidebarRight";
+import $rootScope from "../rootScope";
+import { isTouchSupported } from "../../helpers/touchSupport";
 
 // TODO: масштабирование картинок (не SVG) при ресайзе, и правильный возврат на исходную позицию
 // TODO: картинки "обрезаются" если возвращаются или появляются с места, где есть их перекрытие (топбар, поле ввода)
@@ -211,7 +212,7 @@ export class AppMediaViewer {
     //this.content.mover.append(this.buttons.prev, this.buttons.next);
     this.setNewMover();
 
-    if(touchSupport) {
+    if(isTouchSupported) {
       const swipeHandler = new SwipeHandler(this.wholeDiv, (xDiff, yDiff) => {
         if(VideoPlayer.isFullScreen()) {
           return;
@@ -266,7 +267,7 @@ export class AppMediaViewer {
     if(target.tagName == 'A') return;
     cancelEvent(e);
 
-    if(touchSupport) {
+    if(isTouchSupported) {
       if(this.highlightSwitchersTimeout) {
         clearTimeout(this.highlightSwitchersTimeout);
       } else {

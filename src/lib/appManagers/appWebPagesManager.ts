@@ -1,8 +1,9 @@
-import { $rootScope, safeReplaceObject } from "../utils";
+import { safeReplaceObject } from "../utils";
 import appPhotosManager from "./appPhotosManager";
 import appDocsManager from "./appDocsManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import { ReferenceContext } from "../mtproto/referenceDatabase";
+import $rootScope from "../rootScope";
 
 class AppWebPagesManager {
   webpages: any = {};

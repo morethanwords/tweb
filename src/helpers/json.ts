@@ -1,4 +1,5 @@
-export function parse(text: string) {
+// TOO SLOW
+/* export function parse(text: string) {
   let arr: number[] = [], performedValue: any = null;
   return JSON.parse(text, (key, value) => {
     //console.log(key, value);
@@ -19,7 +20,7 @@ export function parse(text: string) {
 
     return value;
   });
-}
+} */
 // parse('{"file_reference": {"type": "bytes", "value": [1,2,3]}, "file_reference2": {"type": "bytes", "value": [3,2,1]}}');
 // -> {file_reference: Uint8Array}
 

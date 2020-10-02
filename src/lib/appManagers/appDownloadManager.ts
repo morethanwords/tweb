@@ -1,4 +1,4 @@
-import { $rootScope } from "../utils";
+import $rootScope from "../rootScope";
 import apiManager from "../mtproto/mtprotoworker";
 import { deferredPromise, CancellablePromise } from "../../helpers/cancellablePromise";
 import type { DownloadOptions } from "../mtproto/apiFileManager";

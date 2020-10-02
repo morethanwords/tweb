@@ -1,6 +1,6 @@
 import apiManager from '../mtproto/mtprotoworker';
 import appDocsManager from './appDocsManager';
-import { $rootScope } from '../utils';
+import $rootScope from '../rootScope';
 import { StickerSet, InputStickerSet, StickerSetCovered, MessagesRecentStickers, Document, InputFileLocation, MessagesStickerSet, PhotoSize } from '../../layer';
 import { Modify } from '../../types';
 import appStateManager from './appStateManager';

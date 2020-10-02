@@ -138,7 +138,7 @@ let onFirstMount = () => {
   });
   selectCountryCode.addEventListener('blur', function(this: typeof selectCountryCode, e) {
     wrapper.classList.remove('active');
-    hideTimeout = setTimeout(() => {
+    hideTimeout = window.setTimeout(() => {
       wrapper.classList.add('hide');
     }, 200);
     

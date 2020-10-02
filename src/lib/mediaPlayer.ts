@@ -1,7 +1,7 @@
 import { cancelEvent } from "./utils";
-import { touchSupport } from "./config";
 import appMediaPlaybackController from "../components/appMediaPlaybackController";
 import { isAppleMobile } from "../helpers/userAgent";
+import { isTouchSupported } from "../helpers/touchSupport";
 
 type SUPEREVENT = MouseEvent | TouchEvent;
 
@@ -69,7 +69,7 @@ export class ProgressLine {
     this.container.addEventListener('mousedown', this.onMouseDown);
     this.container.addEventListener('mouseup', this.onMouseUp);
 
-    if(touchSupport) {
+    if(isTouchSupported) {
       this.container.addEventListener('touchmove', this.onMouseMove);
       this.container.addEventListener('touchstart', this.onMouseDown);
       this.container.addEventListener('touchend', this.onMouseUp);
@@ -109,7 +109,7 @@ export class ProgressLine {
     this.container.removeEventListener('mousedown', this.onMouseDown);
     this.container.removeEventListener('mouseup', this.onMouseUp);
 
-    if(touchSupport) {
+    if(isTouchSupported) {
       this.container.removeEventListener('touchmove', this.onMouseMove);
       this.container.removeEventListener('touchstart', this.onMouseDown);
       this.container.removeEventListener('touchend', this.onMouseUp);
@@ -402,13 +402,13 @@ export default class VideoPlayer {
       });
 
       video.addEventListener('click', () => {
-        if(!touchSupport) {
+        if(!isTouchSupported) {
           this.togglePlay();
           return;
         }
       });
 
-      if(touchSupport) {
+      if(isTouchSupported) {
         let showControlsTimeout = 0;
 
         const t = () => {
@@ -456,7 +456,7 @@ export default class VideoPlayer {
       });
   
       video.addEventListener('dblclick', () => {
-        if(touchSupport) {
+        if(isTouchSupported) {
           return;
         }
 

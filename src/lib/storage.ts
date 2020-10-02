@@ -1,6 +1,6 @@
 import { Modes } from './mtproto/mtproto_config';
 import { notifySomeone, isWorker } from '../helpers/context';
-import { parse, stringify } from '../helpers/json';
+import { stringify } from '../helpers/json';
 
 class ConfigStorage {
   public keyPrefix = '';
@@ -41,11 +41,14 @@ class ConfigStorage {
           this.useLs = false;
         }
 
+        // const str = `[get] ${keys.join(', ')}`;
+        // console.time(str);
         try {
-          value = (value === undefined || value === null) ? false : parse(value);
+          value = (value === undefined || value === null) ? false : JSON.parse(value);
         } catch(e) {
           value = false;
         }
+        //console.timeEnd(str);
         result.push(this.cache[key] = value);
       } else {
         allFound = false;

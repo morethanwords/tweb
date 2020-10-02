@@ -1,4 +1,4 @@
-import { findUpClassName, $rootScope, escapeRegExp, findUpTag, cancelEvent, positionElementByIndex } from "../utils";
+import { findUpClassName, escapeRegExp, findUpTag, cancelEvent, positionElementByIndex } from "../utils";
 import appImManager, { AppImManager } from "./appImManager";
 import appPeersManager from './appPeersManager';
 import appMessagesManager, { Dialog, MyDialogFilter as DialogFilter } from "./appMessagesManager";
@@ -13,11 +13,12 @@ import AvatarElement from "../../components/avatar";
 import { PopupButton, PopupPeer } from "../../components/popup";
 import { SliderTab } from "../../components/slider";
 import appStateManager from "./appStateManager";
-import { touchSupport } from "../config";
 import { horizontalMenu } from "../../components/horizontalMenu";
 import { ripple } from "../../components/ripple";
 import { isSafari } from "../../helpers/userAgent";
-import { formatDateAccordingToToday, getWeekNumber } from "../../helpers/date";
+import { formatDateAccordingToToday } from "../../helpers/date";
+import $rootScope from "../rootScope";
+import { isTouchSupported } from "../../helpers/touchSupport";
 
 type DialogDom = {
   avatarEl: AvatarElement,
@@ -386,7 +387,7 @@ export class AppDialogsManager {
     this.scroll.setVirtualContainer(this.chatList);
     //this.scroll.attachSentinels();
 
-    if(touchSupport && isSafari) {
+    if(isTouchSupported && isSafari) {
       let allowUp: boolean, allowDown: boolean, slideBeginY: number;
       const container = this.scroll.container;
       container.addEventListener('touchstart', (event) => {
@@ -981,8 +982,8 @@ export class AppDialogsManager {
       }
   
       /* if(lastMessage.from_id == auth.id) { // You:  */
-      if(peer._ != 'peerUser' && peerID != -lastMessage.from_id) {
-        let sender = appUsersManager.getUser(lastMessage.from_id);
+      if(peer._ != 'peerUser' && peerID != lastMessage.fromID) {
+        let sender = appUsersManager.getUser(lastMessage.fromID);
         if(sender && sender.id) {
           let senderBold = document.createElement('b');
 
@@ -1030,7 +1031,7 @@ export class AppDialogsManager {
 
     const lastMessage = appMessagesManager.getMessage(dialog.top_message);
     if(lastMessage._ != 'messageEmpty' && !lastMessage.deleted && 
-      lastMessage.from_id == $rootScope.myID && lastMessage.peerID != $rootScope.myID && 
+      lastMessage.fromID == $rootScope.myID && lastMessage.peerID != $rootScope.myID && 
       dialog.read_outbox_max_id) { // maybe comment, 06.20.2020
       const outgoing = (lastMessage.pFlags && lastMessage.pFlags.unread)
         /*  && dialog.read_outbox_max_id != 0 */; // maybe uncomment, 31.01.2020

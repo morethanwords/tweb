@@ -47,6 +47,8 @@ class CacheStorageController {
   public getFile(fileName: string) {
     //return Promise.reject();
 
+    // const str = `get fileName: ${fileName}`;
+    // console.time(str);
     return this.timeoutOperation(async(cache) => {
       const response = await cache.match('/' + fileName);
 
@@ -55,7 +57,11 @@ class CacheStorageController {
         throw 'No response???';
       }
    
-      return response.blob();
+      const promise = response.blob();
+      // promise.then(() => {
+      //   console.timeEnd(str);
+      // });
+      return promise;
     });
   }
 

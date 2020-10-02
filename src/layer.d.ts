@@ -125,7 +125,7 @@ export namespace InputFile {
 /**
  * @link https://core.telegram.org/type/InputMedia
  */
-export type InputMedia = InputMedia.inputMediaEmpty | InputMedia.inputMediaUploadedPhoto | InputMedia.inputMediaPhoto | InputMedia.inputMediaGeoPoint | InputMedia.inputMediaContact | InputMedia.inputMediaUploadedDocument | InputMedia.inputMediaDocument | InputMedia.inputMediaVenue | InputMedia.inputMediaGifExternal | InputMedia.inputMediaPhotoExternal | InputMedia.inputMediaDocumentExternal | InputMedia.inputMediaGame | InputMedia.inputMediaInvoice | InputMedia.inputMediaGeoLive | InputMedia.inputMediaPoll | InputMedia.inputMediaDice;
+export type InputMedia = InputMedia.inputMediaEmpty | InputMedia.inputMediaUploadedPhoto | InputMedia.inputMediaPhoto | InputMedia.inputMediaGeoPoint | InputMedia.inputMediaContact | InputMedia.inputMediaUploadedDocument | InputMedia.inputMediaDocument | InputMedia.inputMediaVenue | InputMedia.inputMediaPhotoExternal | InputMedia.inputMediaDocumentExternal | InputMedia.inputMediaGame | InputMedia.inputMediaInvoice | InputMedia.inputMediaGeoLive | InputMedia.inputMediaPoll | InputMedia.inputMediaDice;
 
 export namespace InputMedia {
   export type inputMediaEmpty = {
@@ -165,6 +165,7 @@ export namespace InputMedia {
 		flags?: number,
 		pFlags?: Partial<{
 			nosound_video?: true,
+			force_file?: true,
 		}>,
 		file: InputFile,
 		thumb?: InputFile,
@@ -189,12 +190,6 @@ export namespace InputMedia {
 		provider: string,
 		venue_id: string,
 		venue_type: string
-	};
-
-	export type inputMediaGifExternal = {
-		_: 'inputMediaGifExternal',
-		url: string,
-		q: string
 	};
 
 	export type inputMediaPhotoExternal = {
@@ -266,7 +261,10 @@ export namespace InputChatPhoto {
 
 	export type inputChatUploadedPhoto = {
 		_: 'inputChatUploadedPhoto',
-		file: InputFile
+		flags?: number,
+		file?: InputFile,
+		video?: InputFile,
+		video_start_ts?: number
 	};
 
 	export type inputChatPhoto = {
@@ -482,6 +480,7 @@ export namespace User {
 			bot_inline_geo?: true,
 			support?: true,
 			scam?: true,
+			apply_min_photo?: true,
 		}>,
 		id: number,
 		access_hash?: string,
@@ -510,6 +509,10 @@ export namespace UserProfilePhoto {
 
 	export type userProfilePhoto = {
 		_: 'userProfilePhoto',
+		flags?: number,
+		pFlags?: Partial<{
+			has_video?: true,
+		}>,
 		photo_id: string,
 		photo_small: FileLocation,
 		photo_big: FileLocation,
@@ -664,9 +667,10 @@ export namespace ChatFull {
 			can_set_username?: true,
 			can_set_stickers?: true,
 			hidden_prehistory?: true,
-			can_view_stats?: true,
 			can_set_location?: true,
 			has_scheduled?: true,
+			can_view_stats?: true,
+			blocked?: true,
 		}>,
 		id: number,
 		about: string,
@@ -756,6 +760,10 @@ export namespace ChatPhoto {
 
 	export type chatPhoto = {
 		_: 'chatPhoto',
+		flags?: number,
+		pFlags?: Partial<{
+			has_video?: true,
+		}>,
 		photo_small: FileLocation,
 		photo_big: FileLocation,
 		dc_id: number
@@ -789,17 +797,19 @@ export namespace Message {
 			unread?: true,
 		}>,
 		id: number,
-		from_id?: number,
-		to_id: Peer,
+		from_id?: Peer,
+		peer_id: Peer,
 		fwd_from?: MessageFwdHeader,
 		via_bot_id?: number,
-		reply_to_msg_id?: number,
+		reply_to?: MessageReplyHeader,
 		date: number,
 		message: string,
 		media?: MessageMedia,
 		reply_markup?: ReplyMarkup,
 		entities?: Array<MessageEntity>,
 		views?: number,
+		forwards?: number,
+		replies?: MessageReplies,
 		edit_date?: number,
 		post_author?: string,
 		grouped_id?: string,
@@ -824,9 +834,9 @@ export namespace Message {
 			unread?: true,
 		}>,
 		id: number,
-		from_id?: number,
-		to_id: Peer,
-		reply_to_msg_id?: number,
+		from_id?: Peer,
+		peer_id: Peer,
+		reply_to?: MessageReplyHeader,
 		date: number,
 		action: MessageAction,
 		mid?: number,
@@ -1135,6 +1145,7 @@ export namespace Photo {
 		file_reference: Uint8Array | number[],
 		date: number,
 		sizes: Array<PhotoSize>,
+		video_sizes?: Array<VideoSize>,
 		dc_id: number,
 		downloaded?: boolean | number,
 		url?: string
@@ -1144,7 +1155,7 @@ export namespace Photo {
 /**
  * @link https://core.telegram.org/type/PhotoSize
  */
-export type PhotoSize = PhotoSize.photoSizeEmpty | PhotoSize.photoSize | PhotoSize.photoCachedSize | PhotoSize.photoStrippedSize;
+export type PhotoSize = PhotoSize.photoSizeEmpty | PhotoSize.photoSize | PhotoSize.photoCachedSize | PhotoSize.photoStrippedSize | PhotoSize.photoSizeProgressive;
 
 export namespace PhotoSize {
   export type photoSizeEmpty = {
@@ -1177,6 +1188,15 @@ export namespace PhotoSize {
 		type: string,
 		bytes: Uint8Array,
 		url?: string
+	};
+
+	export type photoSizeProgressive = {
+		_: 'photoSizeProgressive',
+		type: string,
+		location: FileLocation,
+		w: number,
+		h: number,
+		sizes: Array<number>
 	};
 }
 
@@ -1319,7 +1339,9 @@ export namespace PeerSettings {
 			share_contact?: true,
 			need_contacts_exception?: true,
 			report_geo?: true,
-		}>
+			autoarchived?: true,
+		}>,
+		geo_distance?: number
 	};
 }
 
@@ -1407,6 +1429,7 @@ export namespace UserFull {
 			phone_calls_private?: true,
 			can_pin_message?: true,
 			has_scheduled?: true,
+			video_calls_available?: true,
 		}>,
 		user: User,
 		about?: string,
@@ -1443,19 +1466,6 @@ export namespace ImportedContact {
 		_: 'importedContact',
 		user_id: number,
 		client_id: string
-	};
-}
-
-/**
- * @link https://core.telegram.org/type/ContactBlocked
- */
-export type ContactBlocked = ContactBlocked.contactBlocked;
-
-export namespace ContactBlocked {
-  export type contactBlocked = {
-		_: 'contactBlocked',
-		user_id: number,
-		date: number
 	};
 }
 
@@ -1513,14 +1523,16 @@ export type ContactsBlocked = ContactsBlocked.contactsBlocked | ContactsBlocked.
 export namespace ContactsBlocked {
   export type contactsBlocked = {
 		_: 'contacts.blocked',
-		blocked: Array<ContactBlocked>,
+		blocked: Array<PeerBlocked>,
+		chats: Array<Chat>,
 		users: Array<User>
 	};
 
 	export type contactsBlockedSlice = {
 		_: 'contacts.blockedSlice',
 		count: number,
-		blocked: Array<ContactBlocked>,
+		blocked: Array<PeerBlocked>,
+		chats: Array<Chat>,
 		users: Array<User>
 	};
 }
@@ -1723,7 +1735,7 @@ export namespace MessagesFilter {
 /**
  * @link https://core.telegram.org/type/Update
  */
-export type Update = Update.updateNewMessage | Update.updateMessageID | Update.updateDeleteMessages | Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChatParticipants | Update.updateUserStatus | Update.updateUserName | Update.updateUserPhoto | Update.updateNewEncryptedMessage | Update.updateEncryptedChatTyping | Update.updateEncryption | Update.updateEncryptedMessagesRead | Update.updateChatParticipantAdd | Update.updateChatParticipantDelete | Update.updateDcOptions | Update.updateUserBlocked | Update.updateNotifySettings | Update.updateServiceNotification | Update.updatePrivacy | Update.updateUserPhone | Update.updateReadHistoryInbox | Update.updateReadHistoryOutbox | Update.updateWebPage | Update.updateReadMessagesContents | Update.updateChannelTooLong | Update.updateChannel | Update.updateNewChannelMessage | Update.updateReadChannelInbox | Update.updateDeleteChannelMessages | Update.updateChannelMessageViews | Update.updateChatParticipantAdmin | Update.updateNewStickerSet | Update.updateStickerSetsOrder | Update.updateStickerSets | Update.updateSavedGifs | Update.updateBotInlineQuery | Update.updateBotInlineSend | Update.updateEditChannelMessage | Update.updateChannelPinnedMessage | Update.updateBotCallbackQuery | Update.updateEditMessage | Update.updateInlineBotCallbackQuery | Update.updateReadChannelOutbox | Update.updateDraftMessage | Update.updateReadFeaturedStickers | Update.updateRecentStickers | Update.updateConfig | Update.updatePtsChanged | Update.updateChannelWebPage | Update.updateDialogPinned | Update.updatePinnedDialogs | Update.updateBotWebhookJSON | Update.updateBotWebhookJSONQuery | Update.updateBotShippingQuery | Update.updateBotPrecheckoutQuery | Update.updatePhoneCall | Update.updateLangPackTooLong | Update.updateLangPack | Update.updateFavedStickers | Update.updateChannelReadMessagesContents | Update.updateContactsReset | Update.updateChannelAvailableMessages | Update.updateDialogUnreadMark | Update.updateUserPinnedMessage | Update.updateChatPinnedMessage | Update.updateMessagePoll | Update.updateChatDefaultBannedRights | Update.updateFolderPeers | Update.updatePeerSettings | Update.updatePeerLocated | Update.updateNewScheduledMessage | Update.updateDeleteScheduledMessages | Update.updateTheme | Update.updateGeoLiveViewed | Update.updateLoginToken | Update.updateMessagePollVote | Update.updateDialogFilter | Update.updateDialogFilterOrder | Update.updateDialogFilters;
+export type Update = Update.updateNewMessage | Update.updateMessageID | Update.updateDeleteMessages | Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChatParticipants | Update.updateUserStatus | Update.updateUserName | Update.updateUserPhoto | Update.updateNewEncryptedMessage | Update.updateEncryptedChatTyping | Update.updateEncryption | Update.updateEncryptedMessagesRead | Update.updateChatParticipantAdd | Update.updateChatParticipantDelete | Update.updateDcOptions | Update.updateNotifySettings | Update.updateServiceNotification | Update.updatePrivacy | Update.updateUserPhone | Update.updateReadHistoryInbox | Update.updateReadHistoryOutbox | Update.updateWebPage | Update.updateReadMessagesContents | Update.updateChannelTooLong | Update.updateChannel | Update.updateNewChannelMessage | Update.updateReadChannelInbox | Update.updateDeleteChannelMessages | Update.updateChannelMessageViews | Update.updateChatParticipantAdmin | Update.updateNewStickerSet | Update.updateStickerSetsOrder | Update.updateStickerSets | Update.updateSavedGifs | Update.updateBotInlineQuery | Update.updateBotInlineSend | Update.updateEditChannelMessage | Update.updateChannelPinnedMessage | Update.updateBotCallbackQuery | Update.updateEditMessage | Update.updateInlineBotCallbackQuery | Update.updateReadChannelOutbox | Update.updateDraftMessage | Update.updateReadFeaturedStickers | Update.updateRecentStickers | Update.updateConfig | Update.updatePtsChanged | Update.updateChannelWebPage | Update.updateDialogPinned | Update.updatePinnedDialogs | Update.updateBotWebhookJSON | Update.updateBotWebhookJSONQuery | Update.updateBotShippingQuery | Update.updateBotPrecheckoutQuery | Update.updatePhoneCall | Update.updateLangPackTooLong | Update.updateLangPack | Update.updateFavedStickers | Update.updateChannelReadMessagesContents | Update.updateContactsReset | Update.updateChannelAvailableMessages | Update.updateDialogUnreadMark | Update.updateUserPinnedMessage | Update.updateChatPinnedMessage | Update.updateMessagePoll | Update.updateChatDefaultBannedRights | Update.updateFolderPeers | Update.updatePeerSettings | Update.updatePeerLocated | Update.updateNewScheduledMessage | Update.updateDeleteScheduledMessages | Update.updateTheme | Update.updateGeoLiveViewed | Update.updateLoginToken | Update.updateMessagePollVote | Update.updateDialogFilter | Update.updateDialogFilterOrder | Update.updateDialogFilters | Update.updatePhoneCallSignalingData | Update.updateChannelParticipant | Update.updateChannelMessageForwards | Update.updateReadChannelDiscussionInbox | Update.updateReadChannelDiscussionOutbox | Update.updatePeerBlocked | Update.updateChannelUserTyping;
 
 export namespace Update {
   export type updateNewMessage = {
@@ -1829,12 +1841,6 @@ export namespace Update {
 	export type updateDcOptions = {
 		_: 'updateDcOptions',
 		dc_options: Array<DcOption>
-	};
-
-	export type updateUserBlocked = {
-		_: 'updateUserBlocked',
-		user_id: number,
-		blocked: boolean
 	};
 
 	export type updateNotifySettings = {
@@ -2261,6 +2267,62 @@ export namespace Update {
 	export type updateDialogFilters = {
 		_: 'updateDialogFilters'
 	};
+
+	export type updatePhoneCallSignalingData = {
+		_: 'updatePhoneCallSignalingData',
+		phone_call_id: string,
+		data: Uint8Array
+	};
+
+	export type updateChannelParticipant = {
+		_: 'updateChannelParticipant',
+		flags?: number,
+		channel_id: number,
+		date: number,
+		user_id: number,
+		prev_participant?: ChannelParticipant,
+		new_participant?: ChannelParticipant,
+		qts: number
+	};
+
+	export type updateChannelMessageForwards = {
+		_: 'updateChannelMessageForwards',
+		channel_id: number,
+		id: number,
+		forwards: number
+	};
+
+	export type updateReadChannelDiscussionInbox = {
+		_: 'updateReadChannelDiscussionInbox',
+		flags?: number,
+		channel_id: number,
+		top_msg_id: number,
+		read_max_id: number,
+		broadcast_id?: number,
+		broadcast_post?: number
+	};
+
+	export type updateReadChannelDiscussionOutbox = {
+		_: 'updateReadChannelDiscussionOutbox',
+		channel_id: number,
+		top_msg_id: number,
+		read_max_id: number
+	};
+
+	export type updatePeerBlocked = {
+		_: 'updatePeerBlocked',
+		peer_id: Peer,
+		blocked: boolean
+	};
+
+	export type updateChannelUserTyping = {
+		_: 'updateChannelUserTyping',
+		flags?: number,
+		channel_id: number,
+		top_msg_id?: number,
+		user_id: number,
+		action: SendMessageAction
+	};
 }
 
 /**
@@ -2344,7 +2406,7 @@ export namespace Updates {
 		date: number,
 		fwd_from?: MessageFwdHeader,
 		via_bot_id?: number,
-		reply_to_msg_id?: number,
+		reply_to?: MessageReplyHeader,
 		entities?: Array<MessageEntity>
 	};
 
@@ -2366,7 +2428,7 @@ export namespace Updates {
 		date: number,
 		fwd_from?: MessageFwdHeader,
 		via_bot_id?: number,
-		reply_to_msg_id?: number,
+		reply_to?: MessageReplyHeader,
 		entities?: Array<MessageEntity>
 	};
 
@@ -2627,6 +2689,8 @@ export namespace EncryptedChat {
 
 	export type encryptedChatRequested = {
 		_: 'encryptedChatRequested',
+		flags?: number,
+		folder_id?: number,
 		id: number,
 		access_hash: string,
 		date: number,
@@ -2818,6 +2882,7 @@ export namespace Document {
 		mime_type: string,
 		size: number,
 		thumbs?: Array<PhotoSize.photoSize | PhotoSize.photoCachedSize | PhotoSize.photoStrippedSize>,
+		video_thumbs?: Array<VideoSize>,
 		dc_id: number,
 		attributes: Array<DocumentAttribute>,
 		type?: 'gif' | 'sticker' | 'audio' | 'voice' | 'video' | 'round' | 'photo',
@@ -3457,7 +3522,7 @@ export namespace ExportedChatInvite {
 /**
  * @link https://core.telegram.org/type/ChatInvite
  */
-export type ChatInvite = ChatInvite.chatInviteAlready | ChatInvite.chatInvite;
+export type ChatInvite = ChatInvite.chatInviteAlready | ChatInvite.chatInvite | ChatInvite.chatInvitePeek;
 
 export namespace ChatInvite {
   export type chatInviteAlready = {
@@ -3478,6 +3543,12 @@ export namespace ChatInvite {
 		photo: Photo,
 		participants_count: number,
 		participants?: Array<User>
+	};
+
+	export type chatInvitePeek = {
+		_: 'chatInvitePeek',
+		chat: Chat,
+		expires: number
 	};
 }
 
@@ -3599,6 +3670,10 @@ export namespace KeyboardButton {
 
 	export type keyboardButtonCallback = {
 		_: 'keyboardButtonCallback',
+		flags?: number,
+		pFlags?: Partial<{
+			requires_password?: true,
+		}>,
 		text: string,
 		data: Uint8Array
 	};
@@ -3977,6 +4052,7 @@ export namespace ChannelParticipant {
 		_: 'channelParticipantCreator',
 		flags?: number,
 		user_id: number,
+		admin_rights: ChatAdminRights,
 		rank?: string
 	};
 
@@ -4094,43 +4170,6 @@ export namespace HelpTermsOfService {
 		text: string,
 		entities: Array<MessageEntity>,
 		min_age_confirm?: number
-	};
-}
-
-/**
- * @link https://core.telegram.org/type/FoundGif
- */
-export type FoundGif = FoundGif.foundGif | FoundGif.foundGifCached;
-
-export namespace FoundGif {
-  export type foundGif = {
-		_: 'foundGif',
-		url: string,
-		thumb_url: string,
-		content_url: string,
-		content_type: string,
-		w: number,
-		h: number
-	};
-
-	export type foundGifCached = {
-		_: 'foundGifCached',
-		url: string,
-		photo: Photo,
-		document: Document
-	};
-}
-
-/**
- * @link https://core.telegram.org/type/messages.FoundGifs
- */
-export type MessagesFoundGifs = MessagesFoundGifs.messagesFoundGifs;
-
-export namespace MessagesFoundGifs {
-  export type messagesFoundGifs = {
-		_: 'messages.foundGifs',
-		next_offset: number,
-		results: Array<FoundGif>
 	};
 }
 
@@ -4390,10 +4429,9 @@ export namespace MessageFwdHeader {
   export type messageFwdHeader = {
 		_: 'messageFwdHeader',
 		flags?: number,
-		from_id?: number,
+		from_id?: Peer,
 		from_name?: string,
 		date: number,
-		channel_id?: number,
 		channel_post?: number,
 		post_author?: string,
 		saved_from_peer?: Peer,
@@ -5567,6 +5605,7 @@ export namespace PhoneCall {
 		flags?: number,
 		pFlags?: Partial<{
 			p2p_allowed?: true,
+			video?: true,
 		}>,
 		id: string,
 		access_hash: string,
@@ -5597,7 +5636,7 @@ export namespace PhoneCall {
 /**
  * @link https://core.telegram.org/type/PhoneConnection
  */
-export type PhoneConnection = PhoneConnection.phoneConnection;
+export type PhoneConnection = PhoneConnection.phoneConnection | PhoneConnection.phoneConnectionWebrtc;
 
 export namespace PhoneConnection {
   export type phoneConnection = {
@@ -5607,6 +5646,21 @@ export namespace PhoneConnection {
 		ipv6: string,
 		port: number,
 		peer_tag: Uint8Array
+	};
+
+	export type phoneConnectionWebrtc = {
+		_: 'phoneConnectionWebrtc',
+		flags?: number,
+		pFlags?: Partial<{
+			turn?: true,
+			stun?: true,
+		}>,
+		id: string,
+		ip: string,
+		ipv6: string,
+		port: number,
+		username: string,
+		password: string
 	};
 }
 
@@ -6978,6 +7032,7 @@ export namespace ChatAdminRights {
 			invite_users?: true,
 			pin_messages?: true,
 			add_admins?: true,
+			anonymous?: true,
 		}>
 	};
 }
@@ -7758,6 +7813,266 @@ export namespace HelpPromoData {
 	};
 }
 
+/**
+ * @link https://core.telegram.org/type/VideoSize
+ */
+export type VideoSize = VideoSize.videoSize;
+
+export namespace VideoSize {
+  export type videoSize = {
+		_: 'videoSize',
+		flags?: number,
+		type: string,
+		location: FileLocation,
+		w: number,
+		h: number,
+		size: number,
+		video_start_ts?: number
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/StatsGroupTopPoster
+ */
+export type StatsGroupTopPoster = StatsGroupTopPoster.statsGroupTopPoster;
+
+export namespace StatsGroupTopPoster {
+  export type statsGroupTopPoster = {
+		_: 'statsGroupTopPoster',
+		user_id: number,
+		messages: number,
+		avg_chars: number
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/StatsGroupTopAdmin
+ */
+export type StatsGroupTopAdmin = StatsGroupTopAdmin.statsGroupTopAdmin;
+
+export namespace StatsGroupTopAdmin {
+  export type statsGroupTopAdmin = {
+		_: 'statsGroupTopAdmin',
+		user_id: number,
+		deleted: number,
+		kicked: number,
+		banned: number
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/StatsGroupTopInviter
+ */
+export type StatsGroupTopInviter = StatsGroupTopInviter.statsGroupTopInviter;
+
+export namespace StatsGroupTopInviter {
+  export type statsGroupTopInviter = {
+		_: 'statsGroupTopInviter',
+		user_id: number,
+		invitations: number
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/stats.MegagroupStats
+ */
+export type StatsMegagroupStats = StatsMegagroupStats.statsMegagroupStats;
+
+export namespace StatsMegagroupStats {
+  export type statsMegagroupStats = {
+		_: 'stats.megagroupStats',
+		period: StatsDateRangeDays,
+		members: StatsAbsValueAndPrev,
+		messages: StatsAbsValueAndPrev,
+		viewers: StatsAbsValueAndPrev,
+		posters: StatsAbsValueAndPrev,
+		growth_graph: StatsGraph,
+		members_graph: StatsGraph,
+		new_members_by_source_graph: StatsGraph,
+		languages_graph: StatsGraph,
+		messages_graph: StatsGraph,
+		actions_graph: StatsGraph,
+		top_hours_graph: StatsGraph,
+		weekdays_graph: StatsGraph,
+		top_posters: Array<StatsGroupTopPoster>,
+		top_admins: Array<StatsGroupTopAdmin>,
+		top_inviters: Array<StatsGroupTopInviter>,
+		users: Array<User>
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/GlobalPrivacySettings
+ */
+export type GlobalPrivacySettings = GlobalPrivacySettings.globalPrivacySettings;
+
+export namespace GlobalPrivacySettings {
+  export type globalPrivacySettings = {
+		_: 'globalPrivacySettings',
+		flags?: number,
+		archive_and_mute_new_noncontact_peers?: boolean
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/help.CountryCode
+ */
+export type HelpCountryCode = HelpCountryCode.helpCountryCode;
+
+export namespace HelpCountryCode {
+  export type helpCountryCode = {
+		_: 'help.countryCode',
+		flags?: number,
+		country_code: string,
+		prefixes?: Array<string>,
+		patterns?: Array<string>
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/help.Country
+ */
+export type HelpCountry = HelpCountry.helpCountry;
+
+export namespace HelpCountry {
+  export type helpCountry = {
+		_: 'help.country',
+		flags?: number,
+		pFlags?: Partial<{
+			hidden?: true,
+		}>,
+		iso2: string,
+		default_name: string,
+		name?: string,
+		country_codes: Array<HelpCountryCode>
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/help.CountriesList
+ */
+export type HelpCountriesList = HelpCountriesList.helpCountriesListNotModified | HelpCountriesList.helpCountriesList;
+
+export namespace HelpCountriesList {
+  export type helpCountriesListNotModified = {
+		_: 'help.countriesListNotModified'
+	};
+
+	export type helpCountriesList = {
+		_: 'help.countriesList',
+		countries: Array<HelpCountry>,
+		hash: number
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/MessageViews
+ */
+export type MessageViews = MessageViews.messageViews;
+
+export namespace MessageViews {
+  export type messageViews = {
+		_: 'messageViews',
+		flags?: number,
+		views?: number,
+		forwards?: number,
+		replies?: MessageReplies
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/messages.MessageViews
+ */
+export type MessagesMessageViews = MessagesMessageViews.messagesMessageViews;
+
+export namespace MessagesMessageViews {
+  export type messagesMessageViews = {
+		_: 'messages.messageViews',
+		views: Array<MessageViews>,
+		chats: Array<Chat>,
+		users: Array<User>
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/stats.MessageStats
+ */
+export type StatsMessageStats = StatsMessageStats.statsMessageStats;
+
+export namespace StatsMessageStats {
+  export type statsMessageStats = {
+		_: 'stats.messageStats',
+		views_graph: StatsGraph
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/messages.DiscussionMessage
+ */
+export type MessagesDiscussionMessage = MessagesDiscussionMessage.messagesDiscussionMessage;
+
+export namespace MessagesDiscussionMessage {
+  export type messagesDiscussionMessage = {
+		_: 'messages.discussionMessage',
+		flags?: number,
+		messages: Array<Message>,
+		max_id?: number,
+		read_inbox_max_id?: number,
+		read_outbox_max_id?: number,
+		chats: Array<Chat>,
+		users: Array<User>
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/MessageReplyHeader
+ */
+export type MessageReplyHeader = MessageReplyHeader.messageReplyHeader;
+
+export namespace MessageReplyHeader {
+  export type messageReplyHeader = {
+		_: 'messageReplyHeader',
+		flags?: number,
+		reply_to_msg_id: number,
+		reply_to_peer_id?: Peer,
+		reply_to_top_id?: number
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/MessageReplies
+ */
+export type MessageReplies = MessageReplies.messageReplies;
+
+export namespace MessageReplies {
+  export type messageReplies = {
+		_: 'messageReplies',
+		flags?: number,
+		pFlags?: Partial<{
+			comments?: true,
+		}>,
+		replies: number,
+		replies_pts: number,
+		recent_repliers?: Array<Peer>,
+		channel_id?: number,
+		max_id?: number,
+		read_max_id?: number
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/PeerBlocked
+ */
+export type PeerBlocked = PeerBlocked.peerBlocked;
+
+export namespace PeerBlocked {
+  export type peerBlocked = {
+		_: 'peerBlocked',
+		peer_id: Peer,
+		date: number
+	};
+}
+
 export interface ConstructorDeclMap {
 	'error': Error.error,
 	'inputPeerEmpty': InputPeer.inputPeerEmpty,
@@ -7782,7 +8097,6 @@ export interface ConstructorDeclMap {
 	'inputMediaUploadedDocument': InputMedia.inputMediaUploadedDocument,
 	'inputMediaDocument': InputMedia.inputMediaDocument,
 	'inputMediaVenue': InputMedia.inputMediaVenue,
-	'inputMediaGifExternal': InputMedia.inputMediaGifExternal,
 	'inputMediaPhotoExternal': InputMedia.inputMediaPhotoExternal,
 	'inputMediaDocumentExternal': InputMedia.inputMediaDocumentExternal,
 	'inputMediaGame': InputMedia.inputMediaGame,
@@ -7890,6 +8204,7 @@ export interface ConstructorDeclMap {
 	'photoSize': PhotoSize.photoSize,
 	'photoCachedSize': PhotoSize.photoCachedSize,
 	'photoStrippedSize': PhotoSize.photoStrippedSize,
+	'photoSizeProgressive': PhotoSize.photoSizeProgressive,
 	'geoPointEmpty': GeoPoint.geoPointEmpty,
 	'geoPoint': GeoPoint.geoPoint,
 	'auth.sentCode': AuthSentCode.authSentCode,
@@ -7915,7 +8230,6 @@ export interface ConstructorDeclMap {
 	'userFull': UserFull.userFull,
 	'contact': Contact.contact,
 	'importedContact': ImportedContact.importedContact,
-	'contactBlocked': ContactBlocked.contactBlocked,
 	'contactStatus': ContactStatus.contactStatus,
 	'contacts.contactsNotModified': ContactsContacts.contactsContactsNotModified,
 	'contacts.contacts': ContactsContacts.contactsContacts,
@@ -7965,7 +8279,6 @@ export interface ConstructorDeclMap {
 	'updateChatParticipantAdd': Update.updateChatParticipantAdd,
 	'updateChatParticipantDelete': Update.updateChatParticipantDelete,
 	'updateDcOptions': Update.updateDcOptions,
-	'updateUserBlocked': Update.updateUserBlocked,
 	'updateNotifySettings': Update.updateNotifySettings,
 	'updateServiceNotification': Update.updateServiceNotification,
 	'updatePrivacy': Update.updatePrivacy,
@@ -8029,6 +8342,13 @@ export interface ConstructorDeclMap {
 	'updateDialogFilter': Update.updateDialogFilter,
 	'updateDialogFilterOrder': Update.updateDialogFilterOrder,
 	'updateDialogFilters': Update.updateDialogFilters,
+	'updatePhoneCallSignalingData': Update.updatePhoneCallSignalingData,
+	'updateChannelParticipant': Update.updateChannelParticipant,
+	'updateChannelMessageForwards': Update.updateChannelMessageForwards,
+	'updateReadChannelDiscussionInbox': Update.updateReadChannelDiscussionInbox,
+	'updateReadChannelDiscussionOutbox': Update.updateReadChannelDiscussionOutbox,
+	'updatePeerBlocked': Update.updatePeerBlocked,
+	'updateChannelUserTyping': Update.updateChannelUserTyping,
 	'updates.state': UpdatesState.updatesState,
 	'updates.differenceEmpty': UpdatesDifference.updatesDifferenceEmpty,
 	'updates.difference': UpdatesDifference.updatesDifference,
@@ -8155,6 +8475,7 @@ export interface ConstructorDeclMap {
 	'chatInviteExported': ExportedChatInvite.chatInviteExported,
 	'chatInviteAlready': ChatInvite.chatInviteAlready,
 	'chatInvite': ChatInvite.chatInvite,
+	'chatInvitePeek': ChatInvite.chatInvitePeek,
 	'inputStickerSetEmpty': InputStickerSet.inputStickerSetEmpty,
 	'inputStickerSetID': InputStickerSet.inputStickerSetID,
 	'inputStickerSetShortName': InputStickerSet.inputStickerSetShortName,
@@ -8225,9 +8546,6 @@ export interface ConstructorDeclMap {
 	'channels.channelParticipantsNotModified': ChannelsChannelParticipants.channelsChannelParticipantsNotModified,
 	'channels.channelParticipant': ChannelsChannelParticipant.channelsChannelParticipant,
 	'help.termsOfService': HelpTermsOfService.helpTermsOfService,
-	'foundGif': FoundGif.foundGif,
-	'foundGifCached': FoundGif.foundGifCached,
-	'messages.foundGifs': MessagesFoundGifs.messagesFoundGifs,
 	'messages.savedGifsNotModified': MessagesSavedGifs.messagesSavedGifsNotModified,
 	'messages.savedGifs': MessagesSavedGifs.messagesSavedGifs,
 	'inputBotInlineMessageMediaAuto': InputBotInlineMessage.inputBotInlineMessageMediaAuto,
@@ -8377,6 +8695,7 @@ export interface ConstructorDeclMap {
 	'phoneCall': PhoneCall.phoneCall,
 	'phoneCallDiscarded': PhoneCall.phoneCallDiscarded,
 	'phoneConnection': PhoneConnection.phoneConnection,
+	'phoneConnectionWebrtc': PhoneConnection.phoneConnectionWebrtc,
 	'phoneCallProtocol': PhoneCallProtocol.phoneCallProtocol,
 	'phone.phoneCall': PhonePhoneCall.phonePhoneCall,
 	'upload.cdnFileReuploadNeeded': UploadCdnFile.uploadCdnFileReuploadNeeded,
@@ -8579,6 +8898,23 @@ export interface ConstructorDeclMap {
 	'stats.broadcastStats': StatsBroadcastStats.statsBroadcastStats,
 	'help.promoDataEmpty': HelpPromoData.helpPromoDataEmpty,
 	'help.promoData': HelpPromoData.helpPromoData,
+	'videoSize': VideoSize.videoSize,
+	'statsGroupTopPoster': StatsGroupTopPoster.statsGroupTopPoster,
+	'statsGroupTopAdmin': StatsGroupTopAdmin.statsGroupTopAdmin,
+	'statsGroupTopInviter': StatsGroupTopInviter.statsGroupTopInviter,
+	'stats.megagroupStats': StatsMegagroupStats.statsMegagroupStats,
+	'globalPrivacySettings': GlobalPrivacySettings.globalPrivacySettings,
+	'help.countryCode': HelpCountryCode.helpCountryCode,
+	'help.country': HelpCountry.helpCountry,
+	'help.countriesListNotModified': HelpCountriesList.helpCountriesListNotModified,
+	'help.countriesList': HelpCountriesList.helpCountriesList,
+	'messageViews': MessageViews.messageViews,
+	'messages.messageViews': MessagesMessageViews.messagesMessageViews,
+	'stats.messageStats': StatsMessageStats.statsMessageStats,
+	'messages.discussionMessage': MessagesDiscussionMessage.messagesDiscussionMessage,
+	'messageReplyHeader': MessageReplyHeader.messageReplyHeader,
+	'messageReplies': MessageReplies.messageReplies,
+	'peerBlocked': PeerBlocked.peerBlocked,
 }
 
 export type InvokeAfterMsg = {
@@ -9047,6 +9383,14 @@ export type AccountGetMultiWallPapers = {
 	wallpapers: Array<InputWallPaper>
 };
 
+export type AccountGetGlobalPrivacySettings = {
+
+};
+
+export type AccountSetGlobalPrivacySettings = {
+	settings: GlobalPrivacySettings
+};
+
 export type UsersGetUsers = {
 	id: Array<InputUser>
 };
@@ -9085,11 +9429,11 @@ export type ContactsDeleteByPhones = {
 };
 
 export type ContactsBlock = {
-	id: InputUser
+	id: InputPeer
 };
 
 export type ContactsUnblock = {
-	id: InputUser
+	id: InputPeer
 };
 
 export type ContactsGetBlocked = {
@@ -9158,6 +9502,14 @@ export type ContactsGetLocated = {
 	self_expires?: number
 };
 
+export type ContactsBlockFromReplies = {
+	flags?: number,
+	delete_message?: true,
+	delete_history?: true,
+	report_spam?: true,
+	msg_id: number
+};
+
 export type MessagesGetMessages = {
 	id: Array<InputMessage>
 };
@@ -9189,6 +9541,7 @@ export type MessagesSearch = {
 	peer: InputPeer,
 	q: string,
 	from_id?: InputUser,
+	top_msg_id?: number,
 	filter: MessagesFilter,
 	min_date: number,
 	max_date: number,
@@ -9224,7 +9577,9 @@ export type MessagesReceivedMessages = {
 };
 
 export type MessagesSetTyping = {
+	flags?: number,
 	peer: InputPeer,
+	top_msg_id?: number,
 	action: SendMessageAction
 };
 
@@ -9263,7 +9618,6 @@ export type MessagesForwardMessages = {
 	silent?: true,
 	background?: true,
 	with_my_score?: true,
-	grouped?: true,
 	from_peer: InputPeer,
 	id: Array<number>,
 	random_id: Array<string>,
@@ -9351,12 +9705,16 @@ export type MessagesReadEncryptedHistory = {
 };
 
 export type MessagesSendEncrypted = {
+	flags?: number,
+	silent?: true,
 	peer: InputEncryptedChat,
 	random_id: string,
 	data: Uint8Array
 };
 
 export type MessagesSendEncryptedFile = {
+	flags?: number,
+	silent?: true,
 	peer: InputEncryptedChat,
 	random_id: string,
 	data: Uint8Array,
@@ -9448,6 +9806,9 @@ export type MessagesSearchGlobal = {
 	flags?: number,
 	folder_id?: number,
 	q: string,
+	filter: MessagesFilter,
+	min_date: number,
+	max_date: number,
 	offset_rate: number,
 	offset_peer: InputPeer,
 	offset_id: number,
@@ -9464,11 +9825,6 @@ export type MessagesGetDocumentByHash = {
 	sha256: Uint8Array,
 	size: number,
 	mime_type: string
-};
-
-export type MessagesSearchGifs = {
-	q: string,
-	offset: number
 };
 
 export type MessagesGetSavedGifs = {
@@ -9546,7 +9902,8 @@ export type MessagesGetBotCallbackAnswer = {
 	game?: true,
 	peer: InputPeer,
 	msg_id: number,
-	data?: Uint8Array
+	data?: Uint8Array,
+	password?: InputCheckPasswordSRP
 };
 
 export type MessagesSetBotCallbackAnswer = {
@@ -9912,6 +10269,29 @@ export type MessagesGetOldFeaturedStickers = {
 	hash: number
 };
 
+export type MessagesGetReplies = {
+	peer: InputPeer,
+	msg_id: number,
+	offset_id: number,
+	offset_date: number,
+	add_offset: number,
+	limit: number,
+	max_id: number,
+	min_id: number,
+	hash: number
+};
+
+export type MessagesGetDiscussionMessage = {
+	peer: InputPeer,
+	msg_id: number
+};
+
+export type MessagesReadDiscussion = {
+	peer: InputPeer,
+	msg_id: number,
+	read_max_id: number
+};
+
 export type UpdatesGetState = {
 
 };
@@ -9938,7 +10318,10 @@ export type PhotosUpdateProfilePhoto = {
 };
 
 export type PhotosUploadProfilePhoto = {
-	file: InputFile
+	flags?: number,
+	file?: InputFile,
+	video?: InputFile,
+	video_start_ts?: number
 };
 
 export type PhotosDeletePhotos = {
@@ -10084,6 +10467,15 @@ export type HelpHidePromoData = {
 	peer: InputPeer
 };
 
+export type HelpDismissSuggestion = {
+	suggestion: string
+};
+
+export type HelpGetCountriesList = {
+	lang_code: string,
+	hash: number
+};
+
 export type ChannelsReadHistory = {
 	channel: InputChannel,
 	max_id: number
@@ -10186,9 +10578,11 @@ export type ChannelsDeleteChannel = {
 };
 
 export type ChannelsExportMessageLink = {
+	flags?: number,
+	grouped?: true,
+	thread?: true,
 	channel: InputChannel,
-	id: number,
-	grouped: boolean
+	id: number
 };
 
 export type ChannelsToggleSignatures = {
@@ -10406,6 +10800,11 @@ export type PhoneSaveCallDebug = {
 	debug: DataJSON
 };
 
+export type PhoneSendSignalingData = {
+	peer: InputPhoneCall,
+	data: Uint8Array
+};
+
 export type LangpackGetLangPack = {
 	lang_pack: string,
 	lang_code: string
@@ -10450,6 +10849,28 @@ export type StatsLoadAsyncGraph = {
 	flags?: number,
 	token: string,
 	x?: string
+};
+
+export type StatsGetMegagroupStats = {
+	flags?: number,
+	dark?: true,
+	channel: InputChannel
+};
+
+export type StatsGetMessagePublicForwards = {
+	channel: InputChannel,
+	msg_id: number,
+	offset_rate: number,
+	offset_peer: InputPeer,
+	offset_id: number,
+	limit: number
+};
+
+export type StatsGetMessageStats = {
+	flags?: number,
+	dark?: true,
+	channel: InputChannel,
+	msg_id: number
 };
 
 export interface MethodDeclMap {
@@ -10543,6 +10964,8 @@ export interface MethodDeclMap {
 	'account.setContentSettings': {req: AccountSetContentSettings, res: boolean},
 	'account.getContentSettings': {req: AccountGetContentSettings, res: AccountContentSettings},
 	'account.getMultiWallPapers': {req: AccountGetMultiWallPapers, res: Array<WallPaper>},
+	'account.getGlobalPrivacySettings': {req: AccountGetGlobalPrivacySettings, res: GlobalPrivacySettings},
+	'account.setGlobalPrivacySettings': {req: AccountSetGlobalPrivacySettings, res: GlobalPrivacySettings},
 	'users.getUsers': {req: UsersGetUsers, res: Array<User>},
 	'users.getFullUser': {req: UsersGetFullUser, res: UserFull},
 	'users.setSecureValueErrors': {req: UsersSetSecureValueErrors, res: boolean},
@@ -10565,6 +10988,7 @@ export interface MethodDeclMap {
 	'contacts.addContact': {req: ContactsAddContact, res: Updates},
 	'contacts.acceptContact': {req: ContactsAcceptContact, res: Updates},
 	'contacts.getLocated': {req: ContactsGetLocated, res: Updates},
+	'contacts.blockFromReplies': {req: ContactsBlockFromReplies, res: Updates},
 	'messages.getMessages': {req: MessagesGetMessages, res: MessagesMessages},
 	'messages.getDialogs': {req: MessagesGetDialogs, res: MessagesDialogs},
 	'messages.getHistory': {req: MessagesGetHistory, res: MessagesMessages},
@@ -10609,13 +11033,12 @@ export interface MethodDeclMap {
 	'messages.installStickerSet': {req: MessagesInstallStickerSet, res: MessagesStickerSetInstallResult},
 	'messages.uninstallStickerSet': {req: MessagesUninstallStickerSet, res: boolean},
 	'messages.startBot': {req: MessagesStartBot, res: Updates},
-	'messages.getMessagesViews': {req: MessagesGetMessagesViews, res: Array<number>},
+	'messages.getMessagesViews': {req: MessagesGetMessagesViews, res: MessagesMessageViews},
 	'messages.editChatAdmin': {req: MessagesEditChatAdmin, res: boolean},
 	'messages.migrateChat': {req: MessagesMigrateChat, res: Updates},
 	'messages.searchGlobal': {req: MessagesSearchGlobal, res: MessagesMessages},
 	'messages.reorderStickerSets': {req: MessagesReorderStickerSets, res: boolean},
 	'messages.getDocumentByHash': {req: MessagesGetDocumentByHash, res: Document},
-	'messages.searchGifs': {req: MessagesSearchGifs, res: MessagesFoundGifs},
 	'messages.getSavedGifs': {req: MessagesGetSavedGifs, res: MessagesSavedGifs},
 	'messages.saveGif': {req: MessagesSaveGif, res: boolean},
 	'messages.getInlineBotResults': {req: MessagesGetInlineBotResults, res: MessagesBotResults},
@@ -10689,10 +11112,13 @@ export interface MethodDeclMap {
 	'messages.updateDialogFilter': {req: MessagesUpdateDialogFilter, res: boolean},
 	'messages.updateDialogFiltersOrder': {req: MessagesUpdateDialogFiltersOrder, res: boolean},
 	'messages.getOldFeaturedStickers': {req: MessagesGetOldFeaturedStickers, res: MessagesFeaturedStickers},
+	'messages.getReplies': {req: MessagesGetReplies, res: MessagesMessages},
+	'messages.getDiscussionMessage': {req: MessagesGetDiscussionMessage, res: MessagesDiscussionMessage},
+	'messages.readDiscussion': {req: MessagesReadDiscussion, res: boolean},
 	'updates.getState': {req: UpdatesGetState, res: UpdatesState},
 	'updates.getDifference': {req: UpdatesGetDifference, res: UpdatesDifference},
 	'updates.getChannelDifference': {req: UpdatesGetChannelDifference, res: UpdatesChannelDifference},
-	'photos.updateProfilePhoto': {req: PhotosUpdateProfilePhoto, res: UserProfilePhoto},
+	'photos.updateProfilePhoto': {req: PhotosUpdateProfilePhoto, res: PhotosPhoto},
 	'photos.uploadProfilePhoto': {req: PhotosUploadProfilePhoto, res: PhotosPhoto},
 	'photos.deletePhotos': {req: PhotosDeletePhotos, res: Array<string>},
 	'photos.getUserPhotos': {req: PhotosGetUserPhotos, res: PhotosPhotos},
@@ -10724,6 +11150,8 @@ export interface MethodDeclMap {
 	'help.editUserInfo': {req: HelpEditUserInfo, res: HelpUserInfo},
 	'help.getPromoData': {req: HelpGetPromoData, res: HelpPromoData},
 	'help.hidePromoData': {req: HelpHidePromoData, res: boolean},
+	'help.dismissSuggestion': {req: HelpDismissSuggestion, res: boolean},
+	'help.getCountriesList': {req: HelpGetCountriesList, res: HelpCountriesList},
 	'channels.readHistory': {req: ChannelsReadHistory, res: boolean},
 	'channels.deleteMessages': {req: ChannelsDeleteMessages, res: MessagesAffectedMessages},
 	'channels.deleteUserHistory': {req: ChannelsDeleteUserHistory, res: MessagesAffectedHistory},
@@ -10782,6 +11210,7 @@ export interface MethodDeclMap {
 	'phone.discardCall': {req: PhoneDiscardCall, res: Updates},
 	'phone.setCallRating': {req: PhoneSetCallRating, res: Updates},
 	'phone.saveCallDebug': {req: PhoneSaveCallDebug, res: boolean},
+	'phone.sendSignalingData': {req: PhoneSendSignalingData, res: boolean},
 	'langpack.getLangPack': {req: LangpackGetLangPack, res: LangPackDifference},
 	'langpack.getStrings': {req: LangpackGetStrings, res: Array<LangPackString>},
 	'langpack.getDifference': {req: LangpackGetDifference, res: LangPackDifference},
@@ -10791,5 +11220,8 @@ export interface MethodDeclMap {
 	'folders.deleteFolder': {req: FoldersDeleteFolder, res: Updates},
 	'stats.getBroadcastStats': {req: StatsGetBroadcastStats, res: StatsBroadcastStats},
 	'stats.loadAsyncGraph': {req: StatsLoadAsyncGraph, res: StatsGraph},
+	'stats.getMegagroupStats': {req: StatsGetMegagroupStats, res: StatsMegagroupStats},
+	'stats.getMessagePublicForwards': {req: StatsGetMessagePublicForwards, res: MessagesMessages},
+	'stats.getMessageStats': {req: StatsGetMessageStats, res: StatsMessageStats},
 }
 

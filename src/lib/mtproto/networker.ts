@@ -10,12 +10,17 @@ import Schema from './schema';
 import timeManager from './timeManager';
 import NetworkerFactory from './networkerFactory';
 import dcConfigurator from './dcConfigurator';
-import Socket from './transports/websocket';
-import HTTP from './transports/http';
 import { logger, LogLevels } from '../logger';
 import { Modes, App } from './mtproto_config';
 import { InvokeApiOptions } from '../../types';
 import { longToBytes } from '../crypto/crypto_utils';
+import MTTransport from './transports/transport';
+
+/// #if MTPROTO_HTTP
+import type HTTP from './transports/http';
+/// #else
+import type Socket from './transports/websocket';
+/// #endif
 
 //console.error('networker included!', new Error().stack);
 
@@ -61,31 +66,29 @@ class MTPNetworker {
   private pendingResends: Array<string> = [];
   private connectionInited = false;
 
+  /// #if MTPROTO_HTTP
   //private longPollInt: number;
   private longPollPending = 0;
+  private nextReqTimeout: number;
+  private nextReq: number = 0;
+  private checkConnectionTimeout: number;
+  private checkConnectionPeriod = 0;
+  private onOnlineCb = this.checkConnection.bind(this);
+  private sleepAfter = 0;
+  /// #endif
 
   private seqNo: number = 0;
   private prevSessionID: Array<number> = [];
   private sessionID: Array<number> = [];
 
-  private sleepAfter = 0;
-
   private offline = false;
-
-  private checkConnectionTimeout: number;
-  private checkConnectionPeriod = 0;
-  
-  private nextReqTimeout: number;
-  private nextReq: number = 0;
-
-  private onOnlineCb = this.checkConnection.bind(this);
 
   private lastResendReq: {
     req_msg_id: string,
     resend_msg_ids: Array<string>
   } | null = null;
 
-  private transport: Socket | HTTP;
+  private transport: MTTransport;
 
   private log: ReturnType<typeof logger>;
 
@@ -113,12 +116,15 @@ class MTPNetworker {
 
     this.transport = dcConfigurator.chooseServer(this.dcID, this.upload);
 
-    if(this.transport instanceof HTTP) {
+    /// #if MTPROTO_HTTP
+    //if(this.transport instanceof HTTP) {
       /* this.longPollInt =  */setInterval(this.checkLongPoll.bind(this), 10000);
       this.checkLongPoll();
-    } else {
+    /// #else
+    //} else {
       (this.transport as Socket).networker = this;
-    }
+    //}
+    /// #endif
   }
 
   public updateSession() {
@@ -126,7 +132,6 @@ class MTPNetworker {
     this.prevSessionID = this.sessionID;
     this.sessionID = new Array(8);
     this.sessionID = [...new Uint8Array(this.sessionID.length).randomize()];
-    //MTProto.secureRandom.nextBytes(this.sessionID);
   }
 
   public updateSentMessage(sentMessageID: any) {
@@ -278,6 +283,7 @@ class MTPNetworker {
     return this.pushMessage(message, options);
   }
 
+  /// #if MTPROTO_HTTP
   public checkLongPoll() {
     const isClean = this.cleanupSent();
     //this.log('Check lp', this.longPollPending, tsNow(), this.dcID, isClean, this);
@@ -321,6 +327,7 @@ class MTPNetworker {
       this.log('Long-poll failed', error);
     });
   }
+  /// #endif
 
   // тут можно сделать таймаут и выводить дисконнект
   public pushMessage(message: {
@@ -407,6 +414,7 @@ class MTPNetworker {
     });
   }
 
+  /// #if MTPROTO_HTTP
   public checkConnection(event: Event | string) {
     /* $rootScope.offlineConnecting = true */
   
@@ -442,6 +450,7 @@ class MTPNetworker {
       }, 1000); */
     });
   }
+  /// #endif
 
   public toggleOffline(enabled: boolean) {
     // this.log('toggle ', enabled, this.dcID, this.iii)
@@ -453,11 +462,13 @@ class MTPNetworker {
     /* $rootScope.offline = enabled;
     $rootScope.offlineConnecting = false; */
 
-    if(!(this.transport instanceof HTTP)) {
+    /// #if !MTPROTO_HTTP
+    //if(!(this.transport instanceof HTTP)) {
       this.log('toggle ', enabled, this.dcID);
       return;
-    }
+    //}
   
+    /// #else
     if(this.offline) {
       clearTimeout(this.nextReqTimeout);
       this.nextReqTimeout = 0;
@@ -483,6 +494,7 @@ class MTPNetworker {
       clearTimeout(this.checkConnectionTimeout);
       this.checkConnectionTimeout = 0;
     }
+    /// #endif
   }
 
   public performScheduledRequest() {
@@ -582,7 +594,8 @@ class MTPNetworker {
       }
     }
   
-    if(hasApiCall && !hasHttpWait && this.transport instanceof HTTP) {
+    /// #if MTPROTO_HTTP
+    if(hasApiCall && !hasHttpWait/*  && this.transport instanceof HTTP */) {
       var serializer = new TLSerialization({mtproto: true});
       serializer.storeMethod('http_wait', {
         max_delay: 500,
@@ -596,6 +609,7 @@ class MTPNetworker {
         body: serializer.getBytes()
       });
     }
+    /// #endif
   
     if(!messages.length) {
       // this.log('no scheduled messages')
@@ -653,56 +667,59 @@ class MTPNetworker {
 
     let promise = this.sendEncryptedRequest(message);
     
-    if(!(this.transport instanceof HTTP)) {
+    /// #if !MTPROTO_HTTP
+    //if(!(this.transport instanceof HTTP)) {
       if(noResponseMsgs.length) this.log.error('noResponseMsgs length!', noResponseMsgs);
-    } else promise.then((result) => {
-      self.toggleOffline(false);
-      // this.log('parse for', message)
-      self.parseResponse(result).then((response) => {
-        if(Modes.debug) {
-          this.log('Server response', self.dcID, response);
+    //} else {
+    /// #else
+      promise.then((result) => {
+        self.toggleOffline(false);
+        // this.log('parse for', message)
+        self.parseResponse(result).then((response) => {
+          if(Modes.debug) {
+            this.log('Server response', self.dcID, response);
+          }
+    
+          self.processMessage(response.response, response.messageID, response.sessionID);
+    
+          noResponseMsgs.forEach((msgID) => {
+            if(self.sentMessages[msgID]) {
+              var deferred = self.sentMessages[msgID].deferred;
+              delete self.sentMessages[msgID];
+              deferred.resolve();
+            }
+          });
+  
+          self.checkLongPoll();
+    
+          this.checkConnectionPeriod = Math.max(1.1, Math.sqrt(this.checkConnectionPeriod));
+        });
+      }, (error) => {
+        this.log.error('Encrypted request failed', error, message);
+    
+        if(message.container) {
+          message.inner.forEach((msgID: string) => {
+            self.pendingMessages[msgID] = 0;
+          });
+  
+          delete self.sentMessages[message.msg_id];
+        } else {
+          self.pendingMessages[message.msg_id] = 0;
         }
-  
-        self.processMessage(response.response, response.messageID, response.sessionID);
-  
+    
         noResponseMsgs.forEach((msgID) => {
           if(self.sentMessages[msgID]) {
             var deferred = self.sentMessages[msgID].deferred;
             delete self.sentMessages[msgID];
-            deferred.resolve();
+            delete self.pendingMessages[msgID];
+            deferred.reject();
           }
-        });
-  
-        if(self.transport instanceof HTTP) {
-          self.checkLongPoll();
-  
-          this.checkConnectionPeriod = Math.max(1.1, Math.sqrt(this.checkConnectionPeriod));
-        }
+        })
+    
+        self.toggleOffline(true);
       });
-    }, (error) => {
-      this.log.error('Encrypted request failed', error, message);
-  
-      if(message.container) {
-        message.inner.forEach((msgID: string) => {
-          self.pendingMessages[msgID] = 0;
-        });
-
-        delete self.sentMessages[message.msg_id];
-      } else {
-        self.pendingMessages[message.msg_id] = 0;
-      }
-  
-      noResponseMsgs.forEach((msgID) => {
-        if(self.sentMessages[msgID]) {
-          var deferred = self.sentMessages[msgID].deferred;
-          delete self.sentMessages[msgID];
-          delete self.pendingMessages[msgID];
-          deferred.reject();
-        }
-      })
-  
-      self.toggleOffline(true);
-    });
+    //}
+    /// #endif 
   
     if(lengthOverflow || singlesCount > 1) {
       this.scheduleRequest();
@@ -780,7 +797,9 @@ class MTPNetworker {
       };
 
       let promise = this.transport.send(requestData);
-      if(!(this.transport instanceof HTTP)) return promise;
+      /// #if !MTPROTO_HTTP
+      /* if(!(this.transport instanceof HTTP)) */ return promise;
+      /// #else
 
       return promise.then((result) => {
         if(!result || !result.byteLength) {
@@ -797,6 +816,7 @@ class MTPNetworker {
         }
         return Promise.reject(error);
       });
+      /// #endif
     });
   }
 
@@ -925,10 +945,9 @@ class MTPNetworker {
   }
 
   public scheduleRequest(delay = 0) {
-    if(!(this.transport instanceof HTTP)) { // if socket
-      return this.performScheduledRequest();
-    }
-
+    /// #if !MTPROTO_HTTP
+    return this.performScheduledRequest();
+    /// #else
     if(this.offline/*  && this.transport instanceof HTTP */) {
       this.checkConnection('forced schedule');
     }
@@ -955,6 +974,7 @@ class MTPNetworker {
     }
   
     this.nextReq = nextReq;
+    /// #endif
   }
 
   public ackMessage(msgID: string) {

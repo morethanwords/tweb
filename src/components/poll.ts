@@ -1,12 +1,13 @@
 import appPollsManager, { PollResults, Poll } from "../lib/appManagers/appPollsManager";
 import { RichTextProcessor } from "../lib/richtextprocessor";
-import { findUpClassName, $rootScope, cancelEvent } from "../lib/utils";
-import { touchSupport } from "../lib/config";
+import { findUpClassName, cancelEvent } from "../lib/utils";
 import appSidebarRight from "../lib/appManagers/appSidebarRight";
 import appImManager from "../lib/appManagers/appImManager";
 import serverTimeManager from "../lib/mtproto/serverTimeManager";
 import { ripple } from "./ripple";
 import mediaSizes from "../helpers/mediaSizes";
+import $rootScope from "../lib/rootScope";
+import { isTouchSupported } from "../helpers/touchSupport";
 
 let lineTotalLength = 0;
 const tailLength = 9;
@@ -126,7 +127,7 @@ const setQuizHint = (solution: string, solution_entities: any[], onHide: () => v
   prevQuizHintOnHide = onHide;
   prevQuizHintTimeout = window.setTimeout(() => {
     hideQuizHint(element, onHide, prevQuizHintTimeout);
-  }, touchSupport ? 5000 : 7000);
+  }, isTouchSupported ? 5000 : 7000);
 };
 
 export default class PollElement extends HTMLElement {

@@ -1,14 +1,11 @@
-import AppStorage from '../storage';
-import appMessagesManager, { Dialog, DialogsStorage, FiltersStorage } from './appMessagesManager';
-import appMessagesIDsManager from './appMessagesIDsManager';
-import appPeersManager from './appPeersManager';
-import appChatsManager from './appChatsManager';
-import appUsersManager from './appUsersManager';
-import apiUpdatesManager from './apiUpdatesManager';
-import { $rootScope, copy } from '../utils';
-import { logger } from '../logger';
+import type { Dialog, DialogsStorage, FiltersStorage } from './appMessagesManager';
 import type { AppStickersManager } from './appStickersManager';
+import type { AppPeersManager } from './appPeersManager';
 import { App, MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
+import EventListenerBase from '../../helpers/eventListenerBase';
+import $rootScope from '../rootScope';
+import AppStorage from '../storage';
+import { logger } from '../logger';
 
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
 const STATE_VERSION = App.version;
@@ -16,7 +13,7 @@ const STATE_VERSION = App.version;
 type State = Partial<{
   dialogs: Dialog[],
   allDialogsLoaded: DialogsStorage['allDialogsLoaded'], 
-  peers: {[peerID: string]: any},
+  peers: {[peerID: string]: ReturnType<AppPeersManager['getPeer']>},
   messages: any[],
   contactsList: number[],
   updates: any,
@@ -33,22 +30,22 @@ type State = Partial<{
 const REFRESH_KEYS = ['dialogs', 'allDialogsLoaded', 'messages', 'contactsList', 'stateCreatedTime',
   'updates', 'maxSeenMsgID', 'filters', 'topPeers'] as any as Array<keyof State>;
 
-export class AppStateManager {
+export class AppStateManager extends EventListenerBase<{
+  save: (state: State) => void
+}> {
   public loaded: Promise<State>;
   private log = logger('STATE'/* , LogLevels.error */);
 
   private state: State;
 
   constructor() {
+    super();
     this.loadSavedState();
-
-    $rootScope.$on('user_auth', (e) => {
-      apiUpdatesManager.attach(null);
-    });
   }
 
   public loadSavedState() {
     if(this.loaded) return this.loaded;
+    console.time('load state');
     return this.loaded = new Promise((resolve) => {
       AppStorage.get<[State, {id: number}]>('state', 'user_auth').then(([state, auth]) => {
         const time = Date.now();
@@ -65,77 +62,26 @@ export class AppStateManager {
         }
         
         // will not throw error because state can be `FALSE`
-        const {dialogs, allDialogsLoaded, peers, messages, contactsList, maxSeenMsgID, updates, filters} = state;
+        const {peers, updates} = state;
         
         this.state = state || {};
         this.state.peers = peers || {};
         this.state.version = STATE_VERSION;
-
+        
         // ??= doesn't compiles
         if(!this.state.hasOwnProperty('stateCreatedTime')) {
           this.state.stateCreatedTime = Date.now();
         }
 
-        this.log('state res', dialogs, messages);
-
-        if(maxSeenMsgID && !appMessagesIDsManager.getMessageIDInfo(maxSeenMsgID)[1]) {
-          appMessagesManager.maxSeenID = maxSeenMsgID;
-        }
-
+        this.log('state res', state);
+        
         //return resolve();
 
-        if(peers) {
-          for(let peerID in peers) {
-            let peer = peers[peerID];
-            if(+peerID < 0) appChatsManager.saveApiChat(peer);
-            else appUsersManager.saveApiUser(peer);
-          }
-        }
-
-        if(contactsList && Array.isArray(contactsList) && contactsList.length) {
-          contactsList.forEach(userID => {
-            appUsersManager.pushContact(userID);
-          });
-          appUsersManager.contactsFillPromise = Promise.resolve(appUsersManager.contactsList);
-        }
-
-        if(messages) {
-          /* let tempID = this.tempID;
-
-          for(let message of messages) {
-            if(message.id < tempID) {
-              tempID = message.id;
-            }
-          }
-
-          if(tempID != this.tempID) {
-            this.log('Set tempID to:', tempID);
-            this.tempID = tempID;
-          } */
-
-          appMessagesManager.saveMessages(messages);
+        if(auth?.id) {
+          $rootScope.$broadcast('user_auth', {id: auth.id});
         }
         
-        if(allDialogsLoaded) {
-          appMessagesManager.dialogsStorage.allDialogsLoaded = allDialogsLoaded;
-        }
-
-        if(filters) {
-          for(const filterID in filters) {
-            appMessagesManager.filtersStorage.saveDialogFilter(filters[filterID], false);
-          }
-        }
-
-        if(dialogs) {
-          dialogs.forEachReverse(dialog => {
-            appMessagesManager.saveConversation(dialog);
-          });
-        }
-
-        if(auth?.id) {
-          apiUpdatesManager.attach(updates ?? null);
-        }
-  
+        console.timeEnd('load state');
         resolve(state);
       }).catch(resolve).finally(() => {
         setInterval(() => this.saveState(), 10000);
@@ -150,74 +96,12 @@ export class AppStateManager {
   public saveState() {
     if(this.state === undefined) return;
 
-    const messages: any[] = [];
-    const dialogs: Dialog[] = [];
-    const peers = this.state.peers;
-    
-    for(const folderID in appMessagesManager.dialogsStorage.byFolders) {
-      const folder = appMessagesManager.dialogsStorage.getFolder(+folderID);
+    this.setListenerResult('save', this.state);
 
-      for(let dialog of folder) {
-        const historyStorage = appMessagesManager.historiesStorage[dialog.peerID];
-        const history = [].concat(historyStorage?.pending ?? [], historyStorage?.history ?? []);
-  
-        dialog = copy(dialog);
-        let removeUnread = 0;
-        for(const mid of history) {
-          const message = appMessagesManager.getMessage(mid);
-          if(/* message._ != 'messageEmpty' &&  */message.id > 0) {
-            messages.push(message);
-    
-            if(message.fromID != dialog.peerID) {
-              peers[message.fromID] = appPeersManager.getPeer(message.fromID);
-            }
-  
-            dialog.top_message = message.mid;
-  
-            break;
-          } else if(message.pFlags && message.pFlags.unread) {
-            ++removeUnread;
-          }
-        }
-  
-        if(removeUnread && dialog.unread_count) dialog.unread_count -= removeUnread; 
-  
-        dialogs.push(dialog);
-  
-        peers[dialog.peerID] = appPeersManager.getPeer(dialog.peerID);
-      }
-    }
-    
-
-    const us = apiUpdatesManager.updatesState;
-    const updates = {
-      seq: us.seq,
-      pts: us.pts,
-      date: us.date
-    };
-
-    const contactsList = [...appUsersManager.contactsList];
-    for(const userID of contactsList) {
-      if(!peers[userID]) {
-        peers[userID] = appUsersManager.getUser(userID);
-      }
-    }
-
-    const filters = appMessagesManager.filtersStorage.filters;
     //const pinnedOrders = appMessagesManager.dialogsStorage.pinnedOrders;
 
     AppStorage.set({
-      state: Object.assign({}, this.state, {
-        dialogs, 
-        messages, 
-        allDialogsLoaded: appMessagesManager.dialogsStorage.allDialogsLoaded, 
-        peers, 
-        contactsList,
-        filters,
-        //pinnedOrders,
-        updates,
-        maxSeenMsgID: appMessagesManager.maxSeenID
-      })
+      state: this.state
     });
   }
 
@@ -225,8 +109,9 @@ export class AppStateManager {
     this.state[key] = value;
   }
 
-  public pushPeer(peerID: number) {
-    this.state.peers[peerID] = appPeersManager.getPeer(peerID);
+  public setPeer(peerID: number, peer: any) {
+    if(this.state.peers.hasOwnProperty(peerID)) return;
+    this.state.peers[peerID] = peer;
   }
 }
 

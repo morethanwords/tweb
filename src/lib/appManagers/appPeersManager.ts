@@ -3,6 +3,7 @@ import appChatsManager from "./appChatsManager";
 import { isObject } from "../utils";
 import { RichTextProcessor } from "../richtextprocessor";
 import { InputPeer, InputDialogPeer, Peer } from "../../layer";
+import appStateManager from "./appStateManager";
 
 // https://github.com/eelcohn/Telegram-API/wiki/Calculating-color-for-a-Telegram-user-on-IRC
 /*
@@ -21,6 +22,20 @@ const DialogColors = ['#e17076', '#7bc862', '#e5ca77', '#65AADD', '#a695e7', '#e
 const DialogColorsMap = [0, 7, 4, 1, 6, 3, 5];
 
 export class AppPeersManager {
+  constructor() {
+    appStateManager.getState().then((state) => {
+      for(let peerID in state.peers) {
+        let peer = state.peers[peerID];
+        this.savePeerInstance(+peerID, peer);
+      }
+    });
+  }
+
+  public savePeerInstance(peerID: number, instance: any) {
+    if(+peerID < 0) appChatsManager.saveApiChat(instance);
+    else appUsersManager.saveApiUser(instance);
+  }
+
   public getPeerPhoto(peerID: number) {
     return peerID > 0
       ? appUsersManager.getUserPhoto(peerID)

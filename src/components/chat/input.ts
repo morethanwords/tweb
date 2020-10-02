@@ -10,11 +10,11 @@ import { Layouter, RectPart } from "../groupedLayout";
 import Recorder from '../../../public/recorder.min';
 //import Recorder from '../opus-recorder/dist/recorder.min';
 import opusDecodeController from "../../lib/opusDecodeController";
-import { touchSupport } from "../../lib/config";
 import appDocsManager from "../../lib/appManagers/appDocsManager";
 import emoticonsDropdown from "../emoticonsDropdown";
 import PopupCreatePoll from "../popupCreatePoll";
 import { toast } from "../toast";
+import { isTouchSupported } from "../../helpers/touchSupport";
 
 const RECORD_MIN_TIME = 500;
 
@@ -104,7 +104,7 @@ export class ChatInput {
     this.updateSendBtn();
 
     this.messageInput.addEventListener('keydown', (e: KeyboardEvent) => {
-      if(e.key == 'Enter' && !touchSupport) {
+      if(e.key == 'Enter' && !isTouchSupported) {
         /* if(e.ctrlKey || e.metaKey) {
           this.messageInput.innerHTML += '<br>';
           placeCaretAtEnd(this.message)
@@ -119,7 +119,7 @@ export class ChatInput {
       }
     });
 
-    if(touchSupport) {
+    if(isTouchSupported) {
       this.messageInput.addEventListener('touchend', (e) => {
         this.saveScroll();
         emoticonsDropdown.toggle(false);

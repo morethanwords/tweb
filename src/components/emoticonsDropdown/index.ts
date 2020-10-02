@@ -1,6 +1,5 @@
 import LazyLoadQueue from "../lazyLoadQueue";
 import GifsTab from "./tabs/gifs";
-import { touchSupport } from "../../lib/config";
 import { findUpClassName, findUpTag, whichChild } from "../../lib/utils";
 import { horizontalMenu } from "../horizontalMenu";
 import animationIntersector from "../animationIntersector";
@@ -11,6 +10,7 @@ import EmojiTab from "./tabs/emoji";
 import StickersTab from "./tabs/stickers";
 import StickyIntersector from "../stickyIntersector";
 import { MOUNT_CLASS_TO } from "../../lib/mtproto/mtproto_config";
+import { isTouchSupported } from "../../helpers/touchSupport";
 
 export const EMOTICONSSTICKERGROUP = 'emoticons-dropdown';
 
@@ -58,7 +58,7 @@ export class EmoticonsDropdown {
 
     let firstTime = true;
     this.toggleEl = document.getElementById('toggle-emoticons');
-    if(touchSupport) {
+    if(isTouchSupported) {
       this.toggleEl.addEventListener('click', () => {
         if(firstTime) {
           firstTime = false;
@@ -172,7 +172,7 @@ export class EmoticonsDropdown {
       }
     }
 
-    if(touchSupport) {
+    if(isTouchSupported) {
       this.toggleEl.classList.toggle('flip-icon', willBeActive);
       if(willBeActive) {
         appImManager.chatInputC.saveScroll();
@@ -204,7 +204,7 @@ export class EmoticonsDropdown {
         EmoticonsDropdown.lazyLoadQueue.refresh();
 
         this.events.onOpenAfter.forEach(cb => cb());
-      }, touchSupport ? 0 : 200);
+      }, isTouchSupported ? 0 : 200);
 
       /* if(touchSupport) {
         this.restoreScroll();
@@ -231,7 +231,7 @@ export class EmoticonsDropdown {
         EmoticonsDropdown.lazyLoadQueue.refresh();
 
         this.events.onCloseAfter.forEach(cb => cb());
-      }, touchSupport ? 0 : 200);
+      }, isTouchSupported ? 0 : 200);
 
       /* if(touchSupport) {
         this.restoreScroll();

@@ -1,5 +1,5 @@
 import appProfileManager from "../lib/appManagers/appProfileManager";
-import { $rootScope } from "../lib/utils";
+import $rootScope from "../lib/rootScope";
 
 $rootScope.$on('avatar_update', (e) => {
   let peerID = e.detail;

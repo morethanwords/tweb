@@ -7,7 +7,7 @@ import appProfileManager from "../../lib/appManagers/appProfileManager";
 import appUsersManager from "../../lib/appManagers/appUsersManager";
 import { logger, LogLevels } from "../../lib/logger";
 import { RichTextProcessor } from "../../lib/richtextprocessor";
-import { $rootScope } from "../../lib/utils";
+import $rootScope from "../../lib/rootScope";
 import AvatarElement from "../avatar";
 import { horizontalMenu } from "../horizontalMenu";
 import LazyLoadQueue from "../lazyLoadQueue";
@@ -32,11 +32,11 @@ let setText = (text: string, el: HTMLDivElement) => {
   });
 };
 
-type ContentType = 'contentMembers' | 'contentMedia' | 'contentDocuments' | 'contentLinks' | 'contentAudio';
-type SharedMediaType = 'inputMessagesFilterContacts' | 'inputMessagesFilterPhotoVideo' | 'inputMessagesFilterDocument' | 'inputMessagesFilterUrl' | 'inputMessagesFilterMusic';
+type ContentType = /* 'contentMembers' |  */'contentMedia' | 'contentDocuments' | 'contentLinks' | 'contentAudio';
+type SharedMediaType = /* 'inputMessagesFilterContacts' |  */'inputMessagesFilterEmpty' | 'inputMessagesFilterPhotoVideo' | 'inputMessagesFilterDocument' | 'inputMessagesFilterUrl' | 'inputMessagesFilterMusic';
 
 const contentToSharedMap: {[contentType in ContentType]: SharedMediaType} = {
-  contentMembers: 'inputMessagesFilterContacts',
+  //contentMembers: 'inputMessagesFilterContacts',
   contentMedia: 'inputMessagesFilterPhotoVideo',
   contentDocuments: 'inputMessagesFilterDocument',
   contentLinks: 'inputMessagesFilterUrl',
@@ -74,7 +74,8 @@ export default class AppSharedMediaTab implements SliderTab {
   
   public sharedMediaTypes: SharedMediaType[] = [
     //'members',
-    'inputMessagesFilterContacts', 
+    'inputMessagesFilterEmpty',
+    //'inputMessagesFilterContacts', 
     'inputMessagesFilterPhotoVideo', 
     'inputMessagesFilterDocument', 
     'inputMessagesFilterUrl', 
@@ -128,7 +129,7 @@ export default class AppSharedMediaTab implements SliderTab {
     };
 
     this.sharedMedia = {
-      contentMembers: this.profileContentEl.querySelector('#content-members'),
+      //contentMembers: this.profileContentEl.querySelector('#content-members'),
       contentMedia: this.profileContentEl.querySelector('#content-media'),
       contentDocuments: this.profileContentEl.querySelector('#content-docs'),
       contentLinks: this.profileContentEl.querySelector('#content-links'),

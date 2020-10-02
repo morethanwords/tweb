@@ -1,4 +1,4 @@
-import { $rootScope } from "../lib/utils";
+import $rootScope from "../lib/rootScope";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import appDocsManager, {MyDocument} from "../lib/appManagers/appDocsManager";
 import { CancellablePromise, deferredPromise } from "../helpers/cancellablePromise";

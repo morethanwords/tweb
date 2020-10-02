@@ -1,3 +1,18 @@
+export type UserAuth = {
+  dcID: number,
+  id: number
+};
+
+/*
+
+  IMPORTANT NOTICE
+  ================
+
+  Do not publish your Webogram fork with my app credentials (below), or your application may be blocked.
+  You can get your own api_id, api_hash at https://my.telegram.org, see manual at https://core.telegram.org/api/obtaining_api_id.
+
+*/
+
 export const App = {
   id: 1025907,
   hash: '452b0359b988148995f22ff0f4229750',

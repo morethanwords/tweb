@@ -1,5 +1,6 @@
 import appImManager from "../../lib/appManagers/appImManager";
-import { $rootScope, cancelEvent, whichChild, findUpTag } from "../../lib/utils";
+import $rootScope from "../../lib/rootScope";
+import { cancelEvent, whichChild, findUpTag } from "../../lib/utils";
 import AppSearch, { SearchGroup } from "../appSearch";
 import PopupDatePicker from "../popupDatepicker";
 import { ripple } from "../ripple";

@@ -1,4 +1,4 @@
-import { safeReplaceObject, isObject, tsNow, copy, $rootScope, getAbbreviation } from "../utils";
+import { safeReplaceObject, isObject, tsNow, getAbbreviation } from "../utils";
 import { RichTextProcessor } from "../richtextprocessor";
 import appChatsManager from "./appChatsManager";
 //import apiManager from '../mtproto/apiManager';
@@ -9,6 +9,7 @@ import searchIndexManager from "../searchIndexManager";
 import appPeersManager from "./appPeersManager";
 import appStateManager from "./appStateManager";
 import { InputUser, User as MTUser } from "../../layer";
+import $rootScope from "../rootScope";
 
 /* export type User = {
   _: 'user',
@@ -55,20 +56,10 @@ export class AppUsersManager {
   public contactsIndex = searchIndexManager.createIndex();
   public contactsFillPromise: Promise<Set<number>>;
   public contactsList: Set<number> = new Set();
-  public myID: number;
 
   public getPeersPromise: Promise<number[]>;
 
   constructor() {
-    apiManager.getUserID().then((id) => {
-      this.myID = id;
-    });
-
-    $rootScope.$on('user_auth', (e) => {
-      let userAuth = e.detail;
-      this.myID = userAuth ? userAuth.id : 0;
-    });
-
     setInterval(this.updateUsersStatuses.bind(this), 60000);
 
     $rootScope.$on('stateSynchronized', this.updateUsersStatuses.bind(this));
@@ -121,6 +112,23 @@ export class AppUsersManager {
         /* case 'updateContactLink':
           this.onContactUpdated(update.user_id, update.my_link._ == 'contactLinkContact');
           break; */
+      }
+    });
+
+    appStateManager.addListener('save', () => {
+      const contactsList = [...this.contactsList];
+      for(const userID of contactsList) {
+        appStateManager.setPeer(userID, this.getUser(userID));
+      }
+    });
+
+    appStateManager.getState().then((state) => {
+      const contactsList = state.contactsList;
+      if(contactsList && Array.isArray(contactsList) && contactsList.length) {
+        contactsList.forEach(userID => {
+          this.pushContact(userID);
+        });
+        this.contactsFillPromise = Promise.resolve(this.contactsList);
       }
     });
   }
@@ -320,7 +328,7 @@ export class AppUsersManager {
   }
 
   public getSelf() {
-    return this.getUser(this.myID);
+    return this.getUser($rootScope.myID);
   }
 
   public getUserStatusString(userID: number) {
@@ -565,13 +573,9 @@ export class AppUsersManager {
           this.saveApiUsers(result.users);
           appChatsManager.saveApiChats(result.chats);
     
-          peerIDs = result.categories[0].peers.map((topPeer: {
-            _: 'topPeer',
-            peer: any,
-            rating: number
-          }) => {
+          peerIDs = result.categories[0].peers.map((topPeer) => {
             const peerID = appPeersManager.getPeerID(topPeer.peer);
-            appStateManager.pushPeer(peerID);
+            appStateManager.setPeer(peerID, this.getUser(peerID));
             return peerID;
           });
         }

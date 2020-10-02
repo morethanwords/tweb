@@ -7,10 +7,10 @@ import AppStorage from '../storage';
 import cryptoWorker from "../crypto/cryptoworker";
 import networkerFactory from "./networkerFactory";
 import apiFileManager from './apiFileManager';
-import { logger, LogLevels } from '../logger';
+//import { logger, LogLevels } from '../logger';
 import type { ServiceWorkerTask, ServiceWorkerTaskResponse } from './mtproto.service';
 
-const log = logger('DW', LogLevels.error);
+//const log = logger('DW', LogLevels.error);
 
 const ctx = self as any as DedicatedWorkerGlobalScope;
 
@@ -62,7 +62,7 @@ ctx.addEventListener('message', async(e) => {
     const task = e.data;
     const taskID = task.taskID;
 
-    log.debug('got message:', taskID, task);
+    //log.debug('got message:', taskID, task);
 
     //debugger;
   

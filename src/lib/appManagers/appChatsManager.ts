@@ -1,4 +1,4 @@
-import { $rootScope, isObject, safeReplaceObject, copy, numberWithCommas, getAbbreviation } from "../utils";
+import { isObject, safeReplaceObject, copy, numberWithCommas, getAbbreviation } from "../utils";
 import { RichTextProcessor } from "../richtextprocessor";
 import appUsersManager from "./appUsersManager";
 import apiManager from '../mtproto/mtprotoworker';
@@ -6,6 +6,7 @@ import apiUpdatesManager from "./apiUpdatesManager";
 import appProfileManager from "./appProfileManager";
 import searchIndexManager from "../searchIndexManager";
 import { InputPeer, InputChannel, Updates, InputChatPhoto } from "../../layer";
+import $rootScope from "../rootScope";
 
 export type Channel = {
   _: 'channel',

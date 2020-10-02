@@ -1,12 +1,11 @@
 //import { logger } from "../polyfill";
 import appDialogsManager, { AppArchivedTab, archivedTab } from "./appDialogsManager";
-import { $rootScope, findUpTag, findUpClassName, formatNumber } from "../utils";
+import { findUpTag, findUpClassName, formatNumber } from "../utils";
 import appImManager from "./appImManager";
 import AppSearch, { SearchGroup } from "../../components/appSearch";
 import { parseMenuButtonsTo } from "../../components/misc";
 import appUsersManager from "./appUsersManager";
-import Scrollable, { ScrollableX } from "../../components/scrollable_new";
-import appPeersManager from "../appManagers/appPeersManager";
+import { ScrollableX } from "../../components/scrollable_new";
 import AvatarElement from "../../components/avatar";
 import AppNewChannelTab from "../../components/sidebarLeft/newChannel";
 import AppAddMembersTab from "../../components/sidebarLeft/addMembers";
@@ -22,6 +21,8 @@ import SearchInput from "../../components/searchInput";
 import appStateManager from "./appStateManager";
 import appChatsManager from "./appChatsManager";
 import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
+import $rootScope from "../rootScope";
+import appPeersManager from "./appPeersManager";
 
 AvatarElement;
 
@@ -167,7 +168,7 @@ export class AppSidebarLeft extends SidebarSlider {
         this.renderRecentSearch();
         appStateManager.pushToState('recentSearch', this.recentSearch);
         for(const peerID of this.recentSearch) {
-          appStateManager.pushPeer(peerID);
+          appStateManager.setPeer(peerID, appPeersManager.getPeer(peerID));
         }
 
         clearRecentSearchBtn.style.display = '';

@@ -5,7 +5,7 @@ import appProfileManager from "../../lib/appManagers/appProfileManager";
 import appSidebarLeft from "../../lib/appManagers/appSidebarLeft";
 import Scrollable from "../scrollable_new";
 import appUsersManager from "../../lib/appManagers/appUsersManager";
-import { $rootScope } from "../../lib/utils";
+import $rootScope from "../../lib/rootScope";
 import { InputFile } from "../../layer";
 
 // TODO: аватарка не поменяется в этой вкладке после изменения почему-то (если поставить в другом клиенте, и потом тут проверить, для этого ещё вышел в чатлист)

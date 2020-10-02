@@ -3,15 +3,18 @@ import AppStorage from '../storage';
 import { MTPNetworker } from './networker';
 import { bytesFromHex, bytesToHex, isObject } from '../bin_utils';
 import networkerFactory from './networkerFactory';
-import { telegramMeWebService } from './mtproto';
+//import { telegramMeWebService } from './mtproto';
 import authorizer from './authorizer';
 import {App, Modes} from './mtproto_config';
 import dcConfigurator from './dcConfigurator';
-import HTTP from './transports/http';
 import { logger } from '../logger';
 
+/// #if MTPROTO_HTTP
+import HTTP from './transports/http';
+/// #endif
+
 /// #if !MTPROTO_WORKER
-import { $rootScope } from '../utils';
+import $rootScope from '../rootScope';
 import { InvokeApiOptions } from '../../types';
 /// #endif
 
@@ -53,7 +56,7 @@ export class ApiManager {
   public telegramMeNotify(newValue: boolean) {
     if(this.telegramMeNotified !== newValue) {
       this.telegramMeNotified = newValue;
-      telegramMeWebService.setAuthorized(this.telegramMeNotified);
+      //telegramMeWebService.setAuthorized(this.telegramMeNotified);
     }
   }
   
@@ -111,8 +114,17 @@ export class ApiManager {
   
   // mtpGetNetworker
   public async getNetworker(dcID: number, options: InvokeApiOptions): Promise<MTPNetworker> {
+    const transport = dcConfigurator.chooseServer(dcID, true);
+    
+    /// #if MTPROTO_HTTP
+    // @ts-ignore
     const upload = (options.fileUpload || options.fileDownload) 
-      && (dcConfigurator.chooseServer(dcID, true) instanceof HTTP || Modes.multipleConnections);
+      && (transport instanceof HTTP || Modes.multipleConnections);
+    /// #else 
+    // @ts-ignore
+    const upload = (options.fileUpload || options.fileDownload) && Modes.multipleConnections;
+    /// #endif
+
     const cache = upload ? this.cachedUploadNetworkers : this.cachedNetworkers;
     
     if(!dcID) {
@@ -303,14 +315,6 @@ export class ApiManager {
           this.getNetworker(this.baseDcID = dcID = baseDcID || App.baseDcID, options).then(performRequest, rejectPromise);
         });
       }
-    });
-  }
-  
-  // mtpGetUserID
-  public getUserID(): Promise<number> {
-    return AppStorage.get<any>('user_auth').then((auth) => {
-      this.telegramMeNotify(auth && auth.id > 0 || false);
-      return auth.id || 0;
     });
   }
 }

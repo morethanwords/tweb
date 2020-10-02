@@ -1,6 +1,7 @@
 import mediaSizes from "../helpers/mediaSizes";
+import { isTouchSupported } from "../helpers/touchSupport";
 import { isApple } from "../helpers/userAgent";
-import Config, { touchSupport } from "../lib/config";
+import Config from "../lib/config";
 
 export const loadedURLs: {[url: string]: boolean} = {};
 const set = (elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLVideoElement, url: string) => {
@@ -144,7 +145,7 @@ let closeBtnMenu = () => {
 
   //document.body.classList.remove('disable-hover');
 
-  if(touchSupport) {
+  if(isTouchSupported) {
     window.removeEventListener('touchmove', onClick);
     //window.removeEventListener('touchstart', onClick);
   } else {
@@ -182,7 +183,7 @@ export function openBtnMenu(menuElement: HTMLDivElement, onClose?: () => void) {
   
   openedMenuOnClose = onClose;
 
-  if(touchSupport) {
+  if(isTouchSupported) {
     window.addEventListener('touchmove', onClick, {once: true});
     //window.addEventListener('touchstart', onClick);
   } else {
@@ -233,7 +234,7 @@ export function positionMenu({clientX, clientY}: {clientX: number, clientY: numb
 }
 
 export function attachContextMenuListener(element: HTMLElement, callback: (e: Touch | MouseEvent) => void) {
-  if(isApple && touchSupport) {
+  if(isApple && isTouchSupported) {
     let timeout: number;
 
     const onCancel = () => {

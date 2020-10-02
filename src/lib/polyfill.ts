@@ -30,8 +30,8 @@ Uint8Array.prototype.concat = function(...args: Array<Uint8Array | ArrayBuffer |
 }; */
 
 Uint8Array.prototype.toJSON = function() {
-  //return [...this];
-  return {type: 'bytes', value: [...this]};
+  return [...this];
+  //return {type: 'bytes', value: [...this]};
 };
 
 Array.prototype.forEachReverse = function<T>(callback: (value: T, index?: number, array?: Array<T>) => void) {
@@ -64,8 +64,8 @@ declare global {
     randomize: () => Uint8Array,
     concat: (...args: Array<Uint8Array | ArrayBuffer | number[]>) => Uint8Array,
     //toString: () => string,
-    //toJSON: () => number[],
-    toJSON: () => {type: 'bytes', value: number[]},
+    toJSON: () => number[],
+    //toJSON: () => {type: 'bytes', value: number[]},
   }
   
   interface Array<T> {

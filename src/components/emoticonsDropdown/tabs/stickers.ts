@@ -8,7 +8,7 @@ import { readBlobAsText } from "../../../helpers/blob";
 import lottieLoader from "../../../lib/lottieLoader";
 import { renderImageFromUrl, putPreloader } from "../../misc";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
-import { $rootScope } from "../../../lib/utils";
+import $rootScope from "../../../lib/rootScope";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
 import StickyIntersector from "../../stickyIntersector";
 import appDocsManager, {MyDocument} from "../../../lib/appManagers/appDocsManager";

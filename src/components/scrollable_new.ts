@@ -1,6 +1,6 @@
+import { isTouchSupported } from "../helpers/touchSupport";
 import { logger, LogLevels } from "../lib/logger";
 import smoothscroll, { SCROLL_TIME, SmoothScrollToOptions } from '../vendor/smoothscroll';
-import { touchSupport } from "../lib/config";
 //import { CancellablePromise, deferredPromise } from "../lib/polyfill";
 //import { isInDOM } from "../lib/utils";
 (window as any).__forceSmoothScrollPolyfill__ = true;
@@ -509,7 +509,7 @@ export class ScrollableX extends ScrollableBase {
 
     this.container.classList.add('scrollable-x');
 
-    if(!touchSupport) {
+    if(!isTouchSupported) {
       const scrollHorizontally = (e: any) => {
         e = window.event || e;
         if(e.which == 1) {

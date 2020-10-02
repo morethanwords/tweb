@@ -1,11 +1,13 @@
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
 //import networkerFactory from '../mtproto/networkerFactory';
-import { $rootScope, tsNow } from "../utils";
+import { tsNow } from "../utils";
 import appPeersManager from "./appPeersManager";
 import appUsersManager from "./appUsersManager";
 import appChatsManager from "./appChatsManager";
 import { logger, LogLevels } from '../logger';
+import $rootScope from '../rootScope';
+import appStateManager from './appStateManager';
 
 export class ApiUpdatesManager {
   public updatesState: {
@@ -27,7 +29,18 @@ export class ApiUpdatesManager {
   public channelStates: any = {};
   private attached = false;
 
-  private log = logger('UPDATES', LogLevels.error);
+  private log = logger('UPDATES'/* , LogLevels.error */);
+
+  constructor() {
+    appStateManager.addListener('save', () => {
+      const us = this.updatesState;
+      appStateManager.pushToState('updates', {
+        seq: us.seq,
+        pts: us.pts,
+        date: us.date
+      });
+    });
+  }
  
   public popPendingSeqUpdate() {
     var nextSeq = this.updatesState.seq + 1;
@@ -135,12 +148,13 @@ export class ApiUpdatesManager {
         break;
   
       case 'updateShortMessage':
-      case 'updateShortChatMessage':
-        var isOut = updateMessage.flags & 2;
-        var fromID = updateMessage.from_id || (isOut ? $rootScope.myID : updateMessage.user_id);
-        var toID = updateMessage.chat_id
+      case 'updateShortChatMessage': {
+        this.log('updateShortMessage | updateShortChatMessage', {...updateMessage});
+        const isOut = updateMessage.pFlags.out;
+        const fromID = updateMessage.from_id || (isOut ? $rootScope.myID : updateMessage.user_id);
+        const toID = updateMessage.chat_id
           ? -updateMessage.chat_id
-          : (isOut ? updateMessage.user_id : $rootScope.myID);
+          : (updateMessage.user_id || $rootScope.myID);
   
         this.processUpdate({
           _: 'updateNewMessage',
@@ -149,8 +163,8 @@ export class ApiUpdatesManager {
             flags: updateMessage.flags,
             pFlags: updateMessage.pFlags,
             id: updateMessage.id,
-            from_id: fromID,
-            to_id: appPeersManager.getOutputPeer(toID),
+            from_id: appPeersManager.getOutputPeer(fromID),
+            peer_id: appPeersManager.getOutputPeer(toID),
             date: updateMessage.date,
             message: updateMessage.message,
             fwd_from: updateMessage.fwd_from,
@@ -161,6 +175,7 @@ export class ApiUpdatesManager {
           pts_count: updateMessage.pts_count
         }, processOpts);
         break;
+      }
   
       case 'updatesCombined':
       case 'updates':
@@ -364,7 +379,7 @@ export class ApiUpdatesManager {
     switch(update._) {
       case 'updateNewChannelMessage':
       case 'updateEditChannelMessage':
-        channelID = -appPeersManager.getPeerID(update.message.to_id);
+        channelID = -appPeersManager.getPeerID(update.message.peer_id);
         break;
       case 'updateDeleteChannelMessages':
         channelID = update.channel_id;
@@ -399,11 +414,11 @@ export class ApiUpdatesManager {
         update._ == 'updateNewChannelMessage' ||
         update._ == 'updateEditChannelMessage') {
       var message = update.message;
-      var toPeerID = appPeersManager.getPeerID(message.to_id);
+      var toPeerID = appPeersManager.getPeerID(message.peer_id);
       var fwdHeader = message.fwd_from || {};
       var reason: any = false;
-      if(message.from_id && !appUsersManager.hasUser(message.from_id, message.pFlags.post/* || channelID*/) && (reason = 'author') ||
-          fwdHeader.from_id && !appUsersManager.hasUser(fwdHeader.from_id, !!fwdHeader.channel_id) && (reason = 'fwdAuthor') ||
+      if(message.from_id && !appUsersManager.hasUser(appPeersManager.getPeerID(message.from_id), message.pFlags.post/* || channelID*/) && (reason = 'author') ||
+          fwdHeader.from_id && !appUsersManager.hasUser(appPeersManager.getPeerID(fwdHeader.from_id), !!fwdHeader.channel_id) && (reason = 'fwdAuthor') ||
           fwdHeader.channel_id && !appChatsManager.hasChat(fwdHeader.channel_id, true) && (reason = 'fwdChannel') ||
           toPeerID > 0 && !appUsersManager.hasUser(toPeerID) && (reason = 'toPeer User') ||
           toPeerID < 0 && !appChatsManager.hasChat(-toPeerID) && (reason = 'toPeer Chat')) {
@@ -509,32 +524,37 @@ export class ApiUpdatesManager {
     $rootScope.$broadcast('apiUpdate', update);
   }
   
-  public attach(state: Pick<ApiUpdatesManager['updatesState'], 'seq' | 'pts' | 'date'>) {
+  public attach() {
     if(this.attached) return;
 
     //return;
     
     this.attached = true;
-    apiManager.setUpdatesProcessor(this.processUpdateMessage.bind(this));
 
-    if(!state || !state.pts || !state.date || !state.seq) {
-      apiManager.invokeApi('updates.getState', {}, {noErrorBox: true}).then((stateResult) => {
-        this.updatesState.seq = stateResult.seq;
-        this.updatesState.pts = stateResult.pts;
-        this.updatesState.date = stateResult.date;
-        setTimeout(() => {
-          this.updatesState.syncLoading = false;
-        }, 1000);
-    
-      // updatesState.seq = 1
-      // updatesState.pts = stateResult.pts - 5000
-      // updatesState.date = 1
-      // getDifference()
-      });
-    } else {
-      Object.assign(this.updatesState, state);
-      this.getDifference();
-    }
+    appStateManager.getState().then(_state => {
+      const state = _state.updates;
+
+      apiManager.setUpdatesProcessor(this.processUpdateMessage.bind(this));
+
+      if(!state || !state.pts || !state.date || !state.seq) {
+        apiManager.invokeApi('updates.getState', {}, {noErrorBox: true}).then((stateResult) => {
+          this.updatesState.seq = stateResult.seq;
+          this.updatesState.pts = stateResult.pts;
+          this.updatesState.date = stateResult.date;
+          setTimeout(() => {
+            this.updatesState.syncLoading = false;
+          }, 1000);
+      
+        // updatesState.seq = 1
+        // updatesState.pts = stateResult.pts - 5000
+        // updatesState.date = 1
+        // getDifference()
+        });
+      } else {
+        Object.assign(this.updatesState, state);
+        this.getDifference();
+      }
+    });
   }
 }
 

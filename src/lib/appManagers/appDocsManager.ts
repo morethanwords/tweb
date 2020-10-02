@@ -4,7 +4,6 @@ import opusDecodeController from '../opusDecodeController';
 import { getFileNameByLocation } from '../bin_utils';
 import appDownloadManager, { DownloadBlob } from './appDownloadManager';
 import appPhotosManager from './appPhotosManager';
-import { isServiceWorkerSupported } from '../config';
 import { InputFileLocation, Document, PhotoSize } from '../../layer';
 import referenceDatabase, { ReferenceContext } from '../mtproto/referenceDatabase';
 import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
@@ -137,7 +136,7 @@ class AppDocsManager {
       }
     }
 
-    if(isServiceWorkerSupported) {
+    if('serviceWorker' in navigator) {
       if((doc.type == 'gif' && doc.size > 8e6) || doc.type == 'audio' || doc.type == 'video') {
         doc.supportsStreaming = true;
         

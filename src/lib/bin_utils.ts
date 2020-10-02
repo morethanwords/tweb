@@ -1,11 +1,4 @@
-/*!
- * Webogram v0.7.0 - messaging web application for MTProto
- * https://github.com/zhukov/webogram
- * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
- * https://github.com/zhukov/webogram/blob/master/LICENSE
- */
-
-import {str2bigInt, divInt_, int2bigInt, bigInt2str, bigInt2bytes} from '../vendor/leemon';
+//import {str2bigInt, divInt_, int2bigInt, bigInt2str, bigInt2bytes} from '../vendor/leemon';
 
 // @ts-ignore
 import {BigInteger, SecureRandom} from 'jsbn';

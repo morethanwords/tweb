@@ -4,11 +4,12 @@ import appMessagesIDsManager from "../lib/appManagers/appMessagesIDsManager";
 import appUsersManager from "../lib/appManagers/appUsersManager";
 import appPeersManager from '../lib/appManagers/appPeersManager';
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
-import { $rootScope, escapeRegExp } from "../lib/utils";
+import { escapeRegExp } from "../lib/utils";
 import { formatPhoneNumber } from "./misc";
 import appChatsManager from "../lib/appManagers/appChatsManager";
 import SearchInput from "./searchInput";
 import { Peer } from "../layer";
+import $rootScope from "../lib/rootScope";
 
 export class SearchGroup {
   container: HTMLDivElement;
@@ -269,7 +270,7 @@ export default class AppSearch {
           originalDialog = {
             peerID: message.peerID,
             pFlags: {},
-            peer: message.to_id
+            peer: message.peer_id
           } as any;
         }
         

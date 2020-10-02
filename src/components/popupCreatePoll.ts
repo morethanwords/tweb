@@ -1,7 +1,7 @@
 import { PopupElement } from "./popup";
 import Scrollable from "./scrollable_new";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
-import { $rootScope } from "../lib/utils";
+import $rootScope from "../lib/rootScope";
 import { Poll } from "../lib/appManagers/appPollsManager";
 import { toast } from "./toast";
 

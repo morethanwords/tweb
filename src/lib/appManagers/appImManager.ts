@@ -1,6 +1,6 @@
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
-import { $rootScope, numberWithCommas, findUpClassName, formatNumber, placeCaretAtEnd, findUpTag, langPack, whichChild, cancelEvent, getObjectKeysAndSort } from "../utils";
+import { numberWithCommas, findUpClassName, formatNumber, placeCaretAtEnd, findUpTag, langPack, whichChild, cancelEvent, getObjectKeysAndSort } from "../utils";
 import appUsersManager from "./appUsersManager";
 import appMessagesManager, { Dialog } from "./appMessagesManager";
 import appPeersManager from "./appPeersManager";
@@ -27,7 +27,6 @@ import appStickersManager from './appStickersManager';
 import AvatarElement from '../../components/avatar';
 import appInlineBotsManager from './AppInlineBotsManager';
 import StickyIntersector from '../../components/stickyIntersector';
-import { touchSupport } from '../config';
 import animationIntersector from '../../components/animationIntersector';
 import PopupStickers from '../../components/popupStickers';
 import PopupDatePicker from '../../components/popupDatepicker';
@@ -42,6 +41,9 @@ import { ChatSearch } from '../../components/chat/search';
 import mediaSizes from '../../helpers/mediaSizes';
 import { isAndroid, isApple, isSafari } from '../../helpers/userAgent';
 import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
+import $rootScope from '../rootScope';
+import { isTouchSupported } from '../../helpers/touchSupport';
+import apiUpdatesManager from './apiUpdatesManager';
 
 //console.log('appImManager included33!');
 
@@ -76,7 +78,6 @@ export class AppImManager {
     delete: HTMLButtonElement
   } = {} as any;
   
-  public myID = 0;
   public peerID = 0;
 
   public bubbles: {[mid: string]: HTMLDivElement} = {};
@@ -146,7 +147,13 @@ export class AppImManager {
   private closeBtn = this.topbar.querySelector('.sidebar-close-button') as HTMLButtonElement;
   public hideRightSidebar = false;
 
+  get myID() {
+    return $rootScope.myID;
+  }
+
   constructor() {
+    apiUpdatesManager.attach();
+    
     this.log = logger('IM', LogLevels.log | LogLevels.warn | LogLevels.debug | LogLevels.error);
     this.chatInputC = new ChatInput();
     this.preloader = new ProgressivePreloader(null, false);
@@ -160,15 +167,6 @@ export class AppImManager {
     this.chatAudio = new ChatAudio();
     this.chatInfo.nextElementSibling.prepend(this.chatAudio.container);
 
-    apiManager.getUserID().then((id) => {
-      this.myID = $rootScope.myID = id;
-    });
-
-    $rootScope.$on('user_auth', (e) => {
-      let userAuth = e.detail;
-      this.myID = $rootScope.myID = userAuth ? userAuth.id : 0;
-    });
-    
     // will call when message is sent (only 1)
     $rootScope.$on('history_append', (e) => {
       let details = e.detail;
@@ -619,7 +617,7 @@ export class AppImManager {
           this.chatInputC.attachMediaPopUp.captionInput.focus();
         }
         
-        if(e.key == 'Enter' && !touchSupport) {
+        if(e.key == 'Enter' && !isTouchSupported) {
           this.chatInputC.attachMediaPopUp.sendBtn.click();
         } else if(e.key == 'Escape') {
           this.chatInputC.attachMediaPopUp.container.classList.remove('active');
@@ -836,7 +834,7 @@ export class AppImManager {
     this.onScrollRAF = window.requestAnimationFrame(() => {
       //lottieLoader.checkAnimations(false, 'chat');
 
-      if(!touchSupport) {
+      if(!isTouchSupported) {
         if(this.isScrollingTimeout) {
           clearTimeout(this.isScrollingTimeout);
         } else if(!this.chatInner.classList.contains('is-scrolling')) {
@@ -885,7 +883,7 @@ export class AppImManager {
     this.scroll.addEventListener('scroll', this.onScroll.bind(this));
     this.scroll.parentElement.classList.add('scrolled-down');
 
-    if(touchSupport) {
+    if(isTouchSupported) {
       this.scroll.addEventListener('touchmove', () => {
         if(this.isScrollingTimeout) {
           clearTimeout(this.isScrollingTimeout);
@@ -2395,10 +2393,10 @@ export class AppImManager {
           //this.log('performHistoryResult: will set scrollTop', this.scrollable.scrollHeight, newScrollTop, this.scrollable.container.clientHeight);
 
           // touchSupport for safari iOS
-          touchSupport && isApple && (this.scrollable.container.style.overflow = 'hidden');
+          isTouchSupported && isApple && (this.scrollable.container.style.overflow = 'hidden');
           this.scrollable.scrollTop = newScrollTop;
           //this.scrollable.scrollTop = this.scrollable.scrollHeight;
-          touchSupport && isApple && (this.scrollable.container.style.overflow = '');
+          isTouchSupported && isApple && (this.scrollable.container.style.overflow = '');
 
           //this.log('performHistoryResult: have set up scrollTop:', newScrollTop, this.scrollable.scrollTop);
         }

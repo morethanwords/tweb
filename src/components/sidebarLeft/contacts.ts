@@ -4,7 +4,7 @@ import appDialogsManager from "../../lib/appManagers/appDialogsManager";
 import appUsersManager from "../../lib/appManagers/appUsersManager";
 import appPhotosManager from "../../lib/appManagers/appPhotosManager";
 import appSidebarLeft, { AppSidebarLeft } from "../../lib/appManagers/appSidebarLeft";
-import { $rootScope } from "../../lib/utils";
+import $rootScope from "../../lib/rootScope";
 import SearchInput from "../searchInput";
 
 // TODO: поиск по людям глобальный, если не нашло в контактах никого

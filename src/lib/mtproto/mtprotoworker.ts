@@ -1,4 +1,4 @@
-import {isObject, $rootScope} from '../utils';
+import {isObject} from '../utils';
 import AppStorage from '../storage';
 import CryptoWorkerMethods from '../crypto/crypto_methods';
 import { logger } from '../logger';
@@ -6,9 +6,9 @@ import webpWorkerController from '../webp/webpWorkerController';
 import MTProtoWorker from 'worker-loader!./mtproto.worker';
 import type { DownloadOptions } from './apiFileManager';
 import type { ServiceWorkerTask, ServiceWorkerTaskResponse } from './mtproto.service';
-import { isServiceWorkerSupported } from '../config';
 import { MethodDeclMap } from '../../layer';
 import { MOUNT_CLASS_TO } from './mtproto_config';
+import $rootScope from '../rootScope';
 
 type Task = {
   taskID: number,
@@ -45,7 +45,7 @@ class ApiManagerProxy extends CryptoWorkerMethods {
   }
 
   private registerServiceWorker() {
-    if(!isServiceWorkerSupported) return;
+    if(!('serviceWorker' in navigator)) return;
 
     navigator.serviceWorker.register('./sw.js', {scope: './'}).then(registration => {
       
@@ -207,10 +207,6 @@ class ApiManagerProxy extends CryptoWorkerMethods {
 
   public getNetworker(dc_id: number) {
     return this.performTaskWorker('getNetworker', dc_id);
-  }
-
-  public getUserID(): Promise<number> {
-    return this.performTaskWorker('getUserID');
   }
 
   public logOut(): Promise<void> {

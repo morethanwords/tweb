@@ -1,11 +1,12 @@
 import Scrollable from "./scrollable_new";
 import appMessagesManager, { Dialog } from "../lib/appManagers/appMessagesManager";
-import { $rootScope, cancelEvent, findUpClassName, findUpAttribute } from "../lib/utils";
+import { cancelEvent, findUpClassName, findUpAttribute } from "../lib/utils";
 import appDialogsManager from "../lib/appManagers/appDialogsManager";
 import appChatsManager from "../lib/appManagers/appChatsManager";
 import appUsersManager from "../lib/appManagers/appUsersManager";
 import appPeersManager from "../lib/appManagers/appPeersManager";
 import appPhotosManager from "../lib/appManagers/appPhotosManager";
+import $rootScope from "../lib/rootScope";
 
 type PeerType = 'contacts' | 'dialogs';
 

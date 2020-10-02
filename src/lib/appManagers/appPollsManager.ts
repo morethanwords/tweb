@@ -3,7 +3,7 @@ import appMessagesManager from './appMessagesManager';
 import appPeersManager from './appPeersManager';
 import apiManager from "../mtproto/mtprotoworker";
 import apiUpdatesManager from "./apiUpdatesManager";
-import { $rootScope } from "../utils";
+import $rootScope from "../rootScope";
 import { logger, LogLevels } from "../logger";
 import appUsersManager from "./appUsersManager";
 import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";

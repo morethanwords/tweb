@@ -4,11 +4,12 @@ import apiManager from "../../lib/mtproto/mtprotoworker";
 import appMessagesManager, { MyDialogFilter } from "../../lib/appManagers/appMessagesManager";
 import { RichTextProcessor } from "../../lib/richtextprocessor";
 import appPeersManager from "../../lib/appManagers/appPeersManager";
-import { $rootScope, cancelEvent } from "../../lib/utils";
+import { cancelEvent } from "../../lib/utils";
 import appSidebarLeft from "../../lib/appManagers/appSidebarLeft";
 import { ripple } from "../ripple";
 import { toast } from "../toast";
 import { DialogFilterSuggested, DialogFilter } from "../../layer";
+import $rootScope from "../../lib/rootScope";
 
 export default class AppChatFoldersTab implements SliderTab {
   public container: HTMLElement;

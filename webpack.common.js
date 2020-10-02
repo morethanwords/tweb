@@ -14,6 +14,7 @@ console.log('DEVMODE:', devMode);
 
 const opts = {
   MTPROTO_WORKER: true,
+  MTPROTO_HTTP: false,
   version: 3,
   "ifdef-verbose": true,       // add this for verbose output
   "ifdef-triple-slash": true   // add this to use double slash comment instead of default triple slash

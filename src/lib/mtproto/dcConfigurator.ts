@@ -1,9 +1,15 @@
-import Socket from './transports/websocket';
 import MTTransport from './transports/transport';
-import HTTP from './transports/http';
 import { Modes } from './mtproto_config';
 
-type TransportTypes = 'websocket' | 'https' | 'http';
+/// #if !MTPROTO_HTTP
+import Socket from './transports/websocket';
+// @ts-ignore
+type TransportTypes = 'websocket';
+/// #else 
+import HTTP from './transports/http';
+// @ts-ignore
+type TransportTypes = 'https' | 'http';
+/// #endif
 type Servers = {
   [transportType in TransportTypes]: {
     [dcID: number]: MTTransport[]
@@ -27,17 +33,30 @@ export class DcConfigurator {
       {id: 5, host: '149.154.171.5',   port: 80}
     ];
 
+  /// #if !MTPROTO_HTTP
   private chosenServers: Servers = {
-    websocket: {},
+    websocket: {}
+  };
+
+  private chosenUploadServers: Servers = {
+    websocket: {}
+  };
+
+  /// #else
+  // @ts-ignore
+  private chosenServers: Servers = {
+    // @ts-ignore
     https: {},
     http: {}
   };
 
+  // @ts-ignore
   private chosenUploadServers: Servers = {
-    websocket: {},
+    // @ts-ignore
     https: {},
     http: {}
   };
+  /// #endif
 
   public chooseServer(dcID: number, upload?: boolean, transportType: TransportTypes = 'websocket') {
     const servers = upload && (transportType != 'websocket' || Modes.multipleConnections) 
@@ -53,12 +72,16 @@ export class DcConfigurator {
     if(!transports.length || (upload && transports.length < 1)) {
       let transport: MTTransport;
 
-      if(transportType == 'websocket') {
+      /// #if !MTPROTO_HTTP
+      //if(transportType == 'websocket') {
         const subdomain = this.sslSubdomains[dcID - 1];
         const path = Modes.test ? 'apiws_test' : 'apiws';
         const chosenServer = 'wss://' + subdomain + '.web.telegram.org/' + path;
         transport = new Socket(dcID, chosenServer);
-      } else if(Modes.ssl || !Modes.http || transportType == 'https') {
+      //} else 
+      /// #else
+      // @ts-ignore
+      if(Modes.ssl || !Modes.http || transportType == 'https') {
         const subdomain = this.sslSubdomains[dcID - 1] + (upload ? '-1' : '');
         const path = Modes.test ? 'apiw_test1' : 'apiw1';
         const chosenServer = 'https://' + subdomain + '.web.telegram.org/' + path;
@@ -72,6 +95,7 @@ export class DcConfigurator {
           }
         }
       }
+      /// #endif
   
       if(!transport) {
         console.error('No chosenServer!', dcID);
