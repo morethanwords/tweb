@@ -10,6 +10,8 @@ import { findUpClassName } from "../lib/utils";
 import appImManager from "../lib/appManagers/appImManager";
 import { StickerSet } from "../layer";
 
+const ANIMATION_GROUP = 'STICKERS-POPUP';
+
 export default class PopupStickers extends PopupElement {
   private stickersFooter: HTMLElement;
   private stickersDiv: HTMLElement;
@@ -30,6 +32,7 @@ export default class PopupStickers extends PopupElement {
     this.header.append(this.h6);
 
     this.onClose = () => {
+      animationIntersector.setOnlyOnePlayableGroup('');
       animationIntersector.checkAnimations(false);
       this.stickersFooter.removeEventListener('click', this.onFooterClick);
       this.stickersDiv.removeEventListener('click', this.onStickersClick);
@@ -37,7 +40,7 @@ export default class PopupStickers extends PopupElement {
     };
 
     this.onCloseAfterTimeout = () => {
-      animationIntersector.checkAnimations(undefined, 'STICKERS-POPUP');
+      animationIntersector.checkAnimations(undefined, ANIMATION_GROUP);
     };
 
     const onOverlayClick = (e: MouseEvent) => {
@@ -104,6 +107,7 @@ export default class PopupStickers extends PopupElement {
       this.set = set.set;
 
       animationIntersector.checkAnimations(true);
+      animationIntersector.setOnlyOnePlayableGroup(ANIMATION_GROUP);
 
       this.h6.innerHTML = RichTextProcessor.wrapEmojiText(set.set.title);
       !set.set.installed_date ? this.stickersFooter.classList.add('add') : this.stickersFooter.classList.remove('add');
@@ -130,7 +134,7 @@ export default class PopupStickers extends PopupElement {
           doc, 
           div, 
           lazyLoadQueue, 
-          group: 'STICKERS-POPUP', 
+          group: ANIMATION_GROUP, 
           play: true,
           loop: true,
           width: 80,

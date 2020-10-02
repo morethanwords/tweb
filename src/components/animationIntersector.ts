@@ -14,6 +14,7 @@ export class AnimationIntersector {
 
   private byGroups: {[group: string]: AnimationItem[]} = {};
   private lockedGroups: {[group: string]: true} = {};
+  private onlyOnePlayableGroup: string = '';
   
   private intersectionLockedGroups: {[group: string]: true} = {};
 
@@ -101,7 +102,7 @@ export class AnimationIntersector {
     if(group && !this.byGroups[group]) {
       //console.warn('no animation group:', group);
       this.byGroups[group] = [];
-      //return;
+      return;
     }
 
     for(const group of groups) {
@@ -126,10 +127,14 @@ export class AnimationIntersector {
         //console.warn('pause animation:', animation);
         animation.pause();
       }
-    } else if(animation.paused && this.visible.has(player) && animation.autoplay) {
+    } else if(animation.paused && this.visible.has(player) && animation.autoplay && (!this.onlyOnePlayableGroup || this.onlyOnePlayableGroup == group)) {
       //console.warn('play animation:', animation);
       animation.play();
     }
+  }
+
+  public setOnlyOnePlayableGroup(group: string) {
+    this.onlyOnePlayableGroup = group;
   }
 
   public lockGroup(group: string) {

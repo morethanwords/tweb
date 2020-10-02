@@ -13,7 +13,7 @@ function dT() {
 }
 
 export function logger(prefix: string, level = LogLevels.log | LogLevels.warn | LogLevels.error) {
-  if(process.env.NODE_ENV == 'development'/*  || true */) {
+  if(process.env.NODE_ENV != 'development'/*  || true */) {
     level = LogLevels.error;
   }
 
