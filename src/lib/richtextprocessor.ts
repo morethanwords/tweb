@@ -271,7 +271,7 @@ function parseMarkdown(text: string, entities: any[], noTrim?: any) {
   }
   return newText
 }
-function mergeEntities (currentEntities: any[], newEntities: any[], fromApi: any) {
+function mergeEntities(currentEntities: any[], newEntities: any[], fromApi: any) {
   var totalEntities = newEntities.slice();
   var i;
   var len = currentEntities.length;
@@ -337,14 +337,26 @@ function mergeEntities (currentEntities: any[], newEntities: any[], fromApi: any
   // console.log('merge', currentEntities, newEntities, totalEntities)
   return totalEntities;
 }
-function wrapRichNestedText (text: string, nested: any, options: any) {
-  if (nested === undefined) {
-    return encodeEntities(text)
+function wrapRichNestedText(text: string, nested: any, options: any) {
+  if(nested === undefined) {
+    return encodeEntities(text);
   }
-  options.hasNested = true
-  return wrapRichText(text, {entities: nested, nested: true})
+
+  options.hasNested = true;
+  return wrapRichText(text, {entities: nested, nested: true});
 }
-function wrapRichText (text: string, options: any = {}) {
+function wrapRichText(text: string, options: Partial<{
+  entities: any,
+  contextSite: string,
+  highlightUsername: string,
+  noLinks: boolean,
+  noLinebreaks: boolean,
+  noCommands: boolean,
+  fromBot: boolean,
+  noTextFormat: boolean,
+  nested?: boolean,
+  contextHashtag?: string
+}> = {}) {
   if(!text || !text.length) {
     return ''
   }
@@ -713,7 +725,7 @@ function wrapEmojiText(text: string) {
   let entities = parseEntities(text).filter(e => e._ == 'messageEntityEmoji');
   return wrapRichText(text, {entities});
 }
-function wrapUrl(url: string, unsafe: any): string {
+function wrapUrl(url: string, unsafe: number | boolean): string {
   if(!url.match(/^https?:\/\//i)) {
     url = 'http://' + url;
   }
@@ -765,18 +777,23 @@ function wrapUrl(url: string, unsafe: any): string {
   return url;
 }
 
+function matchUrl(text: string) {
+  return text.match(urlRegExp);
+}
+
 let RichTextProcessor = {
-  wrapRichText: wrapRichText,
-  wrapPlainText: wrapPlainText,
-  wrapDraftText: wrapDraftText,
-  wrapUrl: wrapUrl,
-  wrapEmojiText: wrapEmojiText,
-  parseEntities: parseEntities,
-  parseMarkdown: parseMarkdown,
-  parseEmojis: parseEmojis,
-  mergeEntities: mergeEntities,
-  getEmojiSpritesheetCoords: getEmojiSpritesheetCoords,
-  emojiSupported: emojiSupported
+  wrapRichText,
+  wrapPlainText,
+  wrapDraftText,
+  wrapUrl,
+  wrapEmojiText,
+  parseEntities,
+  parseMarkdown,
+  parseEmojis,
+  mergeEntities,
+  getEmojiSpritesheetCoords,
+  emojiSupported,
+  matchUrl
 };
 
 MOUNT_CLASS_TO && (MOUNT_CLASS_TO.RichTextProcessor = RichTextProcessor);

@@ -168,7 +168,7 @@ export class ApiUpdatesManager {
             date: updateMessage.date,
             message: updateMessage.message,
             fwd_from: updateMessage.fwd_from,
-            reply_to_msg_id: updateMessage.reply_to_msg_id,
+            reply_to: updateMessage.reply_to,
             entities: updateMessage.entities
           },
           pts: updateMessage.pts,

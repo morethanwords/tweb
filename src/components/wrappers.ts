@@ -308,7 +308,7 @@ export function wrapDocument(doc: MyDocument, withTime = false, uploading = fals
   const icoDiv = document.createElement('div');
   icoDiv.classList.add('document-ico');
 
-  if(doc.type == 'photo') {
+  if(doc.thumbs?.length || uploading) {
     docDiv.classList.add('photo');
 
     if(uploading) {

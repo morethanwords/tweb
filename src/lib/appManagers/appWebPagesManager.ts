@@ -1,4 +1,4 @@
-import { safeReplaceObject } from "../utils";
+import { limitSymbols, safeReplaceObject } from "../utils";
 import appPhotosManager from "./appPhotosManager";
 import appDocsManager from "./appDocsManager";
 import { RichTextProcessor } from "../richtextprocessor";
@@ -59,10 +59,7 @@ class AppWebPagesManager {
     }
 
     // delete apiWebPage.description
-    var shortDescriptionText = (apiWebPage.description || '');
-    if(shortDescriptionText.length > 180) {
-      shortDescriptionText = shortDescriptionText.substr(0, 150).replace(/(\n|\s)+$/, '') + '...';
-    }
+    var shortDescriptionText = limitSymbols(apiWebPage.description || '', 150, 180);
     apiWebPage.rDescription = RichTextProcessor.wrapRichText(shortDescriptionText, {
       contextSite: siteName || 'external',
       contextHashtag: contextHashtag

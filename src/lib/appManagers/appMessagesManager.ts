@@ -1,4 +1,4 @@
-import { copy, tsNow, safeReplaceObject, listMergeSorted, deepEqual, langPack, getObjectKeysAndSort } from "../utils";
+import { copy, tsNow, safeReplaceObject, listMergeSorted, deepEqual, langPack, getObjectKeysAndSort, limitSymbols } from "../utils";
 import appMessagesIDsManager from "./appMessagesIDsManager";
 import appChatsManager from "./appChatsManager";
 import appUsersManager from "./appUsersManager";
@@ -822,7 +822,7 @@ export class AppMessagesManager {
       date: tsNow(true) + serverTimeManager.serverTimeOffset,
       message: text,
       random_id: randomIDS,
-      reply_to_msg_id: replyToMsgID,
+      reply_to: {reply_to_msg_id: replyToMsgID},
       via_bot_id: options.viaBotID,
       reply_markup: options.reply_markup,
       entities: entities,
@@ -1184,7 +1184,7 @@ export class AppMessagesManager {
         document: file 
       } : media,
       random_id: randomIDS,
-      reply_to_msg_id: replyToMsgID,
+      reply_to: {reply_to_msg_id: replyToMsgID},
       views: asChannel && 1,
       pending: true
     };
@@ -1459,7 +1459,7 @@ export class AppMessagesManager {
         media: media,
         random_id: randomIDS,
         randomID: randomID,
-        reply_to_msg_id: replyToMsgID,
+        reply_to: {reply_to_msg_id: replyToMsgID},
         views: asChannel && 1,
         pending: true,
         error: false
@@ -1752,7 +1752,7 @@ export class AppMessagesManager {
       message: '',
       media: media,
       random_id: randomIDS,
-      reply_to_msg_id: replyToMsgID,
+      reply_to: {reply_to_msg_id: replyToMsgID},
       via_bot_id: options.viaBotID,
       reply_markup: options.reply_markup,
       views: asChannel && 1,
@@ -2132,7 +2132,8 @@ export class AppMessagesManager {
     return this.messagesStorage[messageID] || {
       _: 'messageEmpty',
       id: messageID,
-      deleted: true
+      deleted: true,
+      pFlags: {}
     };
   }
 
@@ -2308,8 +2309,8 @@ export class AppMessagesManager {
       }
       // this.log(dT(), 'msg unread', mid, apiMessage.pFlags.out, dialog && dialog[apiMessage.pFlags.out ? 'read_outbox_max_id' : 'read_inbox_max_id'])
 
-      if(apiMessage.reply_to_msg_id) {
-        apiMessage.reply_to_mid = appMessagesIDsManager.getFullMessageID(apiMessage.reply_to_msg_id, channelID);
+      if(apiMessage.reply_to && apiMessage.reply_to.reply_to_msg_id) {
+        apiMessage.reply_to_mid = appMessagesIDsManager.getFullMessageID(apiMessage.reply_to.reply_to_msg_id, channelID);
       }
 
       apiMessage.date -= serverTimeManager.serverTimeOffset;
@@ -2575,14 +2576,12 @@ export class AppMessagesManager {
     let messageWrapped = '';
     if(text) {
       // * 80 for chatlist in landscape orientation
-      if(text.length > 80) {
-        text = text.substr(0, 75) + '...';
-      }
+      text = limitSymbols(text, 75, 80);
 
       let entities = RichTextProcessor.parseEntities(text.replace(/\n/g, ' '), {noLinebreakers: true});
 
       messageWrapped = RichTextProcessor.wrapRichText(text, {
-        noLinebreakers: true, 
+        noLinebreaks: true, 
         entities: entities, 
         noTextFormat: true
       });
@@ -2827,6 +2826,10 @@ export class AppMessagesManager {
       this.saveMessages([message]);
     }
 
+    if(!message?.pFlags) {
+      this.log.error('saveConversation no message:', dialog, message);
+    }
+
     if(!channelID && peerID < 0) {
       const chat = appChatsManager.getChat(-peerID);
       if(chat && chat.migrated_to && chat.pFlags.deactivated) {
@@ -2886,7 +2889,7 @@ export class AppMessagesManager {
   public mergeReplyKeyboard(historyStorage: HistoryStorage, message: any) {
     // this.log('merge', message.mid, message.reply_markup, historyStorage.reply_markup)
     if(!message.reply_markup &&
-      !message.pFlags.out &&
+      !message.pFlags?.out &&
       !message.action) {
       return false;
     }
@@ -2966,10 +2969,10 @@ export class AppMessagesManager {
     history: number[]
   }> {
     //peerID = peerID ? parseInt(peerID) : 0;
-    var foundMsgs: number[] = [];
-    var useSearchCache = !query;
-    var newSearchFilter = {peer: peerID, filter: inputFilter};
-    var sameSearchCache = useSearchCache && deepEqual(this.lastSearchFilter, newSearchFilter);
+    const foundMsgs: number[] = [];
+    const useSearchCache = !query;
+    const newSearchFilter = {peer: peerID, filter: inputFilter};
+    const sameSearchCache = useSearchCache && deepEqual(this.lastSearchFilter, newSearchFilter);
 
     if(useSearchCache && !sameSearchCache) {
       // this.log.warn(dT(), 'new search filter', lastSearchFilter, newSearchFilter)
@@ -2987,7 +2990,6 @@ export class AppMessagesManager {
           [messageMediaType: string]: boolean
         } = {},
           neededDocTypes: string[] = [];
-        var message;
 
         switch(inputFilter._) {
           case 'inputMessagesFilterPhotos':
@@ -3033,9 +3035,9 @@ export class AppMessagesManager {
             neededContents['url'] = true;
             break;
 
-          case 'inputMessagesFilterMyMentions':
+          /* case 'inputMessagesFilterMyMentions':
             neededContents['mentioned'] = true;
-            break;
+            break; */
 
           default:
             return Promise.resolve({
@@ -3045,8 +3047,12 @@ export class AppMessagesManager {
             });
         }
 
-        for(let i = 0; i < historyStorage.history.length; i++) {
-          message = this.messagesStorage[historyStorage.history[i]];
+        for(let i = 0, length = historyStorage.history.length; i < length; i++) {
+          const message = this.messagesStorage[historyStorage.history[i]];
+
+          //|| (neededContents['mentioned'] && message.totalEntities.find((e: any) => e._ == 'messageEntityMention'));
+
+          let found = false;
           if(message.media && neededContents[message.media._]) {
             if(neededDocTypes.length &&
                 message.media._ == 'messageMediaDocument' &&
@@ -3054,6 +3060,12 @@ export class AppMessagesManager {
               continue;
             }
 
+            found = true;
+          } else if(neededContents['url'] && message.message && RichTextProcessor.matchUrl(message.message)) {
+            found = true;
+          }
+
+          if(found) {
             foundMsgs.push(message.mid);
             if(foundMsgs.length >= limit) {
               break;
@@ -3078,15 +3090,20 @@ export class AppMessagesManager {
     }
 
     if(foundMsgs.length) {
-      if(useSearchCache) {
-        this.lastSearchResults = listMergeSorted(this.lastSearchResults, foundMsgs)
+      if(foundMsgs.length < limit) {
+        maxID = foundMsgs[foundMsgs.length - 1];
+        limit = limit - foundMsgs.length;
+      } else {
+        if(useSearchCache) {
+          this.lastSearchResults = listMergeSorted(this.lastSearchResults, foundMsgs)
+        }
+  
+        return Promise.resolve({
+          count: 0,
+          next_rate: 0,
+          history: foundMsgs
+        });
       }
-
-      return Promise.resolve({
-        count: 0,
-        next_rate: 0,
-        history: foundMsgs
-      });
     }
 
     let apiPromise: Promise<any>;
@@ -3141,15 +3158,14 @@ export class AppMessagesManager {
       appChatsManager.saveApiChats(searchResult.chats);
       this.saveMessages(searchResult.messages);
 
-      ///////////this.log('messages.search result:', searchResult);
+      this.log('messages.search result:', inputFilter, searchResult);
 
-      var foundCount: number = searchResult.count || searchResult.messages.length;
+      const foundCount: number = searchResult.count || (foundMsgs.length + searchResult.messages.length);
 
-      foundMsgs = [];
       searchResult.messages.forEach((message: any) => {
-        var peerID = this.getMessagePeer(message);
+        const peerID = this.getMessagePeer(message);
         if(peerID < 0) {
-          var chat = appChatsManager.getChat(-peerID);
+          const chat = appChatsManager.getChat(-peerID);
           if(chat.migrated_to) {
             this.migrateChecks(peerID, -chat.migrated_to.channel_id);
           }
@@ -3413,7 +3429,7 @@ export class AppMessagesManager {
   }
 
   public handleUpdate(update: any) {
-    this.log('AMM: handleUpdate:', update._);
+    this.log.debug('AMM: handleUpdate:', update._);
     switch(update._) {
       case 'updateMessageID': {
         var randomID = update.random_id;

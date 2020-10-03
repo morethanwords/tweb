@@ -8,6 +8,7 @@ import appUsersManager from "../../lib/appManagers/appUsersManager";
 import { logger, LogLevels } from "../../lib/logger";
 import { RichTextProcessor } from "../../lib/richtextprocessor";
 import $rootScope from "../../lib/rootScope";
+import { getAbbreviation, limitSymbols } from "../../lib/utils";
 import AvatarElement from "../avatar";
 import { horizontalMenu } from "../horizontalMenu";
 import LazyLoadQueue from "../lazyLoadQueue";
@@ -108,7 +109,7 @@ export default class AppSharedMediaTab implements SliderTab {
 
   private loadMutex: Promise<any> = Promise.resolve();
 
-  private log = logger('SM', LogLevels.error);
+  private log = logger('SM'/* , LogLevels.error */);
 
   public init() {
     this.container = document.getElementById('shared-media-container');
@@ -226,11 +227,16 @@ export default class AppSharedMediaTab implements SliderTab {
     container.style.paddingRight = '0';
   };
 
-  public filterMessagesByType(ids: number[], type: string) {
+  public filterMessagesByType(ids: number[], type: SharedMediaType) {
     let messages: any[] = [];
-    for(let mid of ids) {
-      let message = appMessagesManager.getMessage(mid);
-      if(message.media) messages.push(message);
+
+    if(type != 'inputMessagesFilterUrl') {
+      for(let mid of ids) {
+        let message = appMessagesManager.getMessage(mid);
+        if(message.media) messages.push(message);
+      }
+    } else {
+      messages = ids.slice().map(mid => appMessagesManager.getMessage(mid));
     }
 
     let filtered: any[] = [];
@@ -257,7 +263,7 @@ export default class AppSharedMediaTab implements SliderTab {
 
       case 'inputMessagesFilterDocument': {
         for(let message of messages) {
-          if(!message.media.document || message.media.document.type == 'voice' || message.media.document.type == 'audio') {
+          if(!message.media.document || ['voice', 'audio', 'gif'].includes(message.media.document.type)) {
             continue;
           }
           
@@ -274,12 +280,11 @@ export default class AppSharedMediaTab implements SliderTab {
       }
 
       case 'inputMessagesFilterUrl': {
+        this.log('inputMessagesFilterUrl', messages);
         for(let message of messages) {
-          if(!message.media.webpage || message.media.webpage._ == 'webPageEmpty') {
-            continue;
-          }
-          
-          filtered.push(message);
+          //if((message.media.webpage && message.media.webpage._ != 'webPageEmpty')) {
+            filtered.push(message);
+          //}
         }
         
         break;
@@ -443,15 +448,63 @@ export default class AppSharedMediaTab implements SliderTab {
         sharedMediaDiv = this.sharedMedia.contentLinks;
         
         for(let message of messages) {
-          let webpage = message.media.webpage;
+          let webpage: any;
+
+          if(message.media?.webpage && message.media.webpage._ != 'webPageEmpty') {
+            webpage = message.media.webpage;
+          } else {
+            const entity = message.totalEntities.find((e: any) => e._ == 'messageEntityUrl' || e._ == 'messageEntityTextUrl');
+            let url: string, display_url: string, sliced: string;
+
+            if(!entity) {
+              this.log.error('NO ENTITY:', message);
+              const match = RichTextProcessor.matchUrl(message.message);
+              if(!match) {
+                this.log.error('NO ENTITY AND NO MATCH:', message);
+              }
+
+              url = match[0];
+            } else {
+              sliced = message.message.slice(entity.offset, entity.offset + entity.length);
+            }
+
+            if(entity?._ == 'messageEntityTextUrl') {
+              url = entity.url;
+              //display_url = sliced;
+            } else {
+              url = url || sliced;
+            }
+
+            display_url = url;
+
+            const same = message.message == url;
+            if(!url.match(/^(ftp|http|https):\/\//)) {
+              display_url = 'https://' + url;
+              url = url.includes('@') ? url : 'https://' + url;
+            }
+
+            display_url = new URL(display_url).hostname;
+
+            webpage = {
+              url,
+              display_url
+            };
+
+            if(!same) {
+              webpage.description = message.message;
+              webpage.rDescription = RichTextProcessor.wrapRichText(limitSymbols(message.message, 150, 180));
+            }
+          }
+
           let div = document.createElement('div');
+          div.dataset.mid = '' + message.mid;
           
           let previewDiv = document.createElement('div');
           previewDiv.classList.add('preview');
           
           //this.log('wrapping webpage', webpage);
           
-          previewDiv.innerText = (webpage.title || webpage.description || webpage.url || webpage.display_url).slice(0, 1);
+          previewDiv.innerHTML = getAbbreviation(webpage.title || webpage.display_url || webpage.description || webpage.url, true);
           previewDiv.classList.add('empty');
           if(webpage.photo) {
             let load = () => appPhotosManager.preloadPhoto(webpage.photo.id, appPhotosManager.choosePhotoSize(webpage.photo, 60, 60))
@@ -476,7 +529,11 @@ export default class AppSharedMediaTab implements SliderTab {
           
           if(!title) {
             //title = new URL(webpage.url).hostname;
-            title = webpage.display_url.split('/', 1)[0];
+            title = RichTextProcessor.wrapPlainText(webpage.display_url.split('/', 1)[0]);
+          }
+
+          if(webpage.description?.includes('Еще в начале')) {
+            this.log.error('FROM THE START', webpage);
           }
           
           div.append(previewDiv);
@@ -566,6 +623,8 @@ export default class AppSharedMediaTab implements SliderTab {
       
       const history = historyStorage[type] ?? (historyStorage[type] = []);
 
+      const logStr = `loadSidebarMedia [${type}]: `;
+
       // render from cache
       if(history.length && this.usedFromHistory[type] < history.length) {
         let messages: any[] = [];
@@ -573,7 +632,7 @@ export default class AppSharedMediaTab implements SliderTab {
 
         do {
           let ids = history.slice(used, used + loadCount);
-          this.log('loadSidebarMedia: will render from cache', used, history, ids, loadCount);
+          this.log(logStr + 'will render from cache', used, history, ids, loadCount);
           used += ids.length;
 
           messages.push(...this.filterMessagesByType(ids, type));
@@ -597,19 +656,14 @@ export default class AppSharedMediaTab implements SliderTab {
       // заливать новую картинку сюда только после полной отправки!
       let maxID = history[history.length - 1] || 0;
       
-      let ids = !maxID && appMessagesManager.historiesStorage[peerID] 
-      ? appMessagesManager.historiesStorage[peerID].history.slice() : [];
-      
-      maxID = !maxID && ids.length ? ids[ids.length - 1] : maxID;
-      this.log('loadSidebarMedia: search house of glass pre', type, ids, maxID);
+      this.log(logStr + 'search house of glass pre', type, maxID);
       
       //let loadCount = history.length ? 50 : 15;
       return this.loadSidebarMediaPromises[type] = appMessagesManager.getSearch(peerID, '', {_: type}, maxID, loadCount)
       .then(value => {
-        ids = ids.concat(value.history);
-        history.push(...ids);
+        history.push(...value.history);
         
-        this.log('loadSidebarMedia: search house of glass', type, value, ids);
+        this.log(logStr + 'search house of glass', type, value);
 
         if($rootScope.selectedPeerID != peerID) {
           this.log.warn('peer changed');
@@ -617,22 +671,25 @@ export default class AppSharedMediaTab implements SliderTab {
         }
         
         if(value.history.length < loadCount) {
+          this.log(logStr + 'loaded all media', value, loadCount);
           this.loadedAllMedia[type] = true;
         }
 
         this.usedFromHistory[type] = history.length;
 
-        //if(ids.length) {
-          return this.performSearchResult(this.filterMessagesByType(ids, type), type);
+        //if(value.history.length) {
+          return this.performSearchResult(this.filterMessagesByType(value.history, type), type);
         //}
-      }, (err) => {
+      }).catch(err => {
         this.log.error('load error:', err);
-      }).then(() => {
+      }).finally(() => {
         this.loadSidebarMediaPromises[type] = null;
       });
     });
     
-    return Promise.all(promises);
+    return Promise.all(promises).catch(err => {
+      this.log.error('Load error all promises:', err);
+    });
   }
 
   public cleanup() {

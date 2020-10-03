@@ -235,7 +235,7 @@ export function tsNow(seconds?: boolean) {
 }
 
 const el = document.createElement('span');
-export function getAbbreviation(str: string) {
+export function getAbbreviation(str: string, onlyFirst = false) {
   const wrapped = RichTextProcessor.wrapEmojiText(str);
   el.innerHTML = wrapped;
 
@@ -245,6 +245,8 @@ export function getAbbreviation(str: string) {
   const firstNode = childNodes[0];
   if('length' in firstNode) first = (firstNode as any).textContent.charAt(0).toUpperCase(); 
   else first = (firstNode as HTMLElement).outerHTML;
+
+  if(onlyFirst) return first;
 
   if(str.indexOf(' ') !== -1) {
     const lastNode = childNodes[childNodes.length - 1];
@@ -290,6 +292,14 @@ export function safeReplaceArrayInObject<K>(key: K, wasObject: any, newObject: a
     /* wasObject[key].set(newObject[key]); */
     newObject[key] = wasObject[key];
   }
+}
+
+export function limitSymbols(str: string, length: number, limitFrom = length + 10) {
+  if(str.length > limitFrom) {
+    str = str.slice(0, length).replace(/(\n|\s)+$/, '') + '...';
+  }
+
+  return str;
 }
 
 export function numberWithCommas(x: number) {

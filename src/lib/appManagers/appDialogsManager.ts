@@ -969,7 +969,7 @@ export class AppDialogsManager {
           }
     
         let messageWrapped = RichTextProcessor.wrapRichText(messageText, {
-          noLinebreakers: true, 
+          noLinebreaks: true, 
           entities: entities, 
           noTextFormat: true
         });
@@ -995,7 +995,7 @@ export class AppDialogsManager {
           }
 
           //senderBold.innerText = str + ': ';
-          senderBold.innerHTML = RichTextProcessor.wrapRichText(str, {noLinebreakers: true}) + ': ';
+          senderBold.innerHTML = RichTextProcessor.wrapRichText(str, {noLinebreaks: true}) + ': ';
           //console.log(sender, senderBold.innerText);
           dom.lastMessageSpan.prepend(senderBold);
         } //////// else console.log('no sender', lastMessage, peerID);

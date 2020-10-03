@@ -204,7 +204,9 @@ class TLSerialization {
 
     var len = bytes.length;
     if((bits % 32) || (len * 8) != bits) {
-      throw new Error('Invalid bits: ' + bits + ', ' + bytes.length);
+      const error = new Error('Invalid bits: ' + bits + ', ' + bytes.length);
+      console.error(error, bytes, field);
+      throw error;
     }
   
     this.debug && console.log('>>>', bytesToHex(bytes), (field || '') + ':int' + bits);

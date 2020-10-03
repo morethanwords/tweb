@@ -1,7 +1,7 @@
 import type { Dialog, DialogsStorage, FiltersStorage } from './appMessagesManager';
 import type { AppStickersManager } from './appStickersManager';
 import type { AppPeersManager } from './appPeersManager';
-import { App, MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
+import { App, MOUNT_CLASS_TO, UserAuth } from '../mtproto/mtproto_config';
 import EventListenerBase from '../../helpers/eventListenerBase';
 import $rootScope from '../rootScope';
 import AppStorage from '../storage';
@@ -45,14 +45,14 @@ export class AppStateManager extends EventListenerBase<{
 
   public loadSavedState() {
     if(this.loaded) return this.loaded;
-    console.time('load state');
+    //console.time('load state');
     return this.loaded = new Promise((resolve) => {
-      AppStorage.get<[State, {id: number}]>('state', 'user_auth').then(([state, auth]) => {
+      AppStorage.get<[State, UserAuth]>('state', 'user_auth').then(([state, auth]) => {
         const time = Date.now();
         if(state) {
-          if(state?.version != STATE_VERSION) {
+          if(state.version != STATE_VERSION) {
             state = {};
-          } else if((state?.stateCreatedTime ?? 0) + REFRESH_EVERY < time) {
+          } else if((state.stateCreatedTime || 0) + REFRESH_EVERY < time) {
             this.log('will refresh state', state.stateCreatedTime, time);
             REFRESH_KEYS.forEach(key => {
               delete state[key];
@@ -62,7 +62,7 @@ export class AppStateManager extends EventListenerBase<{
         }
         
         // will not throw error because state can be `FALSE`
-        const {peers, updates} = state;
+        const {peers} = state;
         
         this.state = state || {};
         this.state.peers = peers || {};
@@ -81,7 +81,7 @@ export class AppStateManager extends EventListenerBase<{
           $rootScope.$broadcast('user_auth', {id: auth.id});
         }
         
-        console.timeEnd('load state');
+        //console.timeEnd('load state');
         resolve(state);
       }).catch(resolve).finally(() => {
         setInterval(() => this.saveState(), 10000);
