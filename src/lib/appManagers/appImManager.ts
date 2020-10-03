@@ -153,7 +153,7 @@ export class AppImManager {
 
   constructor() {
     apiUpdatesManager.attach();
-    
+
     this.log = logger('IM', LogLevels.log | LogLevels.warn | LogLevels.debug | LogLevels.error);
     this.chatInputC = new ChatInput();
     this.preloader = new ProgressivePreloader(null, false);
@@ -679,7 +679,7 @@ export class AppImManager {
     });
 
     this.unreadedObserver = new IntersectionObserver((entries) => {
-      if(this.offline) {
+      if(this.offline) { // ! but you can scroll the page without triggering 'focus', need something now
         return;
       }
 
@@ -714,9 +714,9 @@ export class AppImManager {
         } */
 
         //appMessagesManager.readMessages(readed);
-        /* false && */ appMessagesManager.readHistory(this.peerID, max, length).catch((err: any) => {
+        /* false && */ appMessagesManager.readHistory(this.peerID, max).catch((err: any) => {
           this.log.error('readHistory err:', err);
-          appMessagesManager.readHistory(this.peerID, max, length);
+          appMessagesManager.readHistory(this.peerID, max);
         });
       }
     });

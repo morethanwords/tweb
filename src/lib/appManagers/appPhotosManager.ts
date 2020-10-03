@@ -57,6 +57,13 @@ export class AppPhotosManager {
       referenceDatabase.saveContext(photo.file_reference, context);
     }
 
+    if(photo.sizes?.length) {
+      const size = photo.sizes[photo.sizes.length - 1];
+      if(size._ == 'photoSizeProgressive') {
+        size.size = size.sizes[size.sizes.length - 1];
+      }
+    }
+
     if(oldPhoto) {
       return Object.assign(oldPhoto, photo);
     }
@@ -220,7 +227,7 @@ export class AppPhotosManager {
     }
     
     // maybe it's a thumb
-    const isPhoto = photoSize._ == 'photoSize' && photo.access_hash && photo.file_reference;
+    const isPhoto = (photoSize._ == 'photoSize' || photoSize._ == 'photoSizeProgressive') && photo.access_hash && photo.file_reference;
     const location: InputFileLocation.inputPhotoFileLocation | InputFileLocation.inputDocumentFileLocation | FileLocation = isPhoto ? {
       _: isMyDocument ? 'inputDocumentFileLocation' : 'inputPhotoFileLocation',
       id: photo.id,
@@ -309,7 +316,7 @@ export class AppPhotosManager {
 
   public savePhotoFile(photo: MyPhoto | MyDocument) {
     const fullPhotoSize = this.choosePhotoSize(photo, 0xFFFF, 0xFFFF);
-    if(fullPhotoSize._ != 'photoSize') {
+    if(!(fullPhotoSize._ == 'photoSize' || fullPhotoSize._ == 'photoSizeProgressive')) {
       return;
     }
 

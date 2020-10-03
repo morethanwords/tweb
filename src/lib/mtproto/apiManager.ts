@@ -241,7 +241,7 @@ export class ApiManager {
         .then(resolve, (error: ApiError) => {
           //if(!options.ignoreErrors) {
           if(error.type != 'FILE_REFERENCE_EXPIRED') {
-            this.log.error('Error', error.code, error.type, this.baseDcID, dcID);
+            this.log.error('Error', error.code, error.type, this.baseDcID, dcID, method, params);
           }
           
           if(error.code == 401 && this.baseDcID == dcID) {

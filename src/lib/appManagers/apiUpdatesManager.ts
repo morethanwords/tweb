@@ -129,7 +129,7 @@ export class ApiUpdatesManager {
     }
   }
 
-  public processUpdateMessage(updateMessage: any) {
+  processUpdateMessage = (updateMessage: any) => {
     // return forceGetDifference()
     var processOpts = {
       date: updateMessage.date,
@@ -190,7 +190,7 @@ export class ApiUpdatesManager {
       default:
         this.log.warn('Unknown update message', updateMessage);
     }
-  }
+  };
   
   public getDifference() {
     // this.trace('Get full diff')
@@ -534,7 +534,7 @@ export class ApiUpdatesManager {
     appStateManager.getState().then(_state => {
       const state = _state.updates;
 
-      apiManager.setUpdatesProcessor(this.processUpdateMessage.bind(this));
+      apiManager.setUpdatesProcessor(this.processUpdateMessage);
 
       if(!state || !state.pts || !state.date || !state.seq) {
         apiManager.invokeApi('updates.getState', {}, {noErrorBox: true}).then((stateResult) => {

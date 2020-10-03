@@ -42,6 +42,12 @@
     {"name": "url", "type": "string"}
   ]
 }, {
+  "predicate": "photoSizeProgressive",
+  "params": [
+    {"name": "url", "type": "string"},
+    {"name": "size", "type": "number"}
+  ]
+}, {
   "predicate": "dialog",
   "params": [
     {"name": "index", "type": "number"},

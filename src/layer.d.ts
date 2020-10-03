@@ -1196,7 +1196,9 @@ export namespace PhotoSize {
 		location: FileLocation,
 		w: number,
 		h: number,
-		sizes: Array<number>
+		sizes: Array<number>,
+		url?: string,
+		size?: number
 	};
 }
 
