@@ -234,7 +234,15 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       }, {once: true});
     //}
 
-    video.addEventListener('error', deferred.reject);
+    video.addEventListener('error', (e) => {
+      deferred.resolve();
+      /* console.error('video error', e, video.src);
+      if(video.src) { // if wasn't cleaned
+        deferred.reject(e);
+      } else {
+        deferred.resolve();
+      } */
+    });
 
     //if(doc.type != 'round') {
       renderImageFromUrl(video, doc.url);

@@ -34,6 +34,10 @@
     border-left: 1px solid #DADCE0;
   }
 
+  body.is-forward-active & {
+    z-index: 4;
+  }
+
   .sidebar-header {
     flex: 0 0 auto;
 
@@ -315,12 +319,16 @@
           color: white;
         }
 
-        .grid-item-media {
-          opacity: 1;
-          transition: opacity .2s ease;
+        .grid-item {
+          overflow: hidden;
 
-          html:not(.is-mac) &.thumbnail {
-            filter: blur(7px);
+          &-media {
+            opacity: 1;
+            transition: opacity .2s ease;
+  
+            html:not(.is-mac) &.thumbnail {
+              filter: blur(7px);
+            }
           }
         }
 

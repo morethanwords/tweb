@@ -15,10 +15,10 @@ ctx.addEventListener('message', (e) => {
   const task = e.data as ServiceWorkerTaskResponse;
   const promise = deferredPromises[task.id];
 
-  if(task.payload) {
-    promise.resolve(task.payload);
+  if(task.error) {
+    promise.reject(task.error);
   } else {
-    promise.reject();
+    promise.resolve(task.payload);
   }
 
   delete deferredPromises[task.id];
@@ -33,7 +33,8 @@ export interface ServiceWorkerTask extends WorkerTaskTemplate {
 
 export interface ServiceWorkerTaskResponse extends WorkerTaskTemplate {
   type: 'requestFilePart',
-  payload: UploadFile.uploadFile
+  payload?: UploadFile.uploadFile,
+  originalPayload?: ServiceWorkerTask['payload']
 };
 
 const onFetch = (event: FetchEvent): void => {

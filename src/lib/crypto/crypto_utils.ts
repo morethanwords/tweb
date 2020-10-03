@@ -29,7 +29,7 @@ export function longToBytes(sLong: string) {
   }
   console.log('longToBytes LEEMON', sLong, performance.now() - perf); */
 
-  const bytes = bigInt2bytes(str2bigInt(sLong, 10), false);
+  const bytes = addPadding(bigInt2bytes(str2bigInt(sLong, 10), false), 8, true, false, false);
   //console.log('longToBytes', bytes, b);
   
   return bytes;

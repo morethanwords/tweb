@@ -1,3 +1,5 @@
+import type { ApiError } from "./lib/mtproto/apiManager";
+
 export type InvokeApiOptions = Partial<{
   dcID: number,
   timeout: number,
@@ -20,7 +22,8 @@ export type InvokeApiOptions = Partial<{
 export type WorkerTaskTemplate = {
   type: string,
   id: number,
-  payload: any
+  payload?: any,
+  error?: ApiError
 };
 
 export type Modify<T, R> = Omit<T, keyof R> & R;

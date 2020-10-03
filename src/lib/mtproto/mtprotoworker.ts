@@ -9,6 +9,8 @@ import type { ServiceWorkerTask, ServiceWorkerTaskResponse } from './mtproto.ser
 import { MethodDeclMap } from '../../layer';
 import { MOUNT_CLASS_TO } from './mtproto_config';
 import $rootScope from '../rootScope';
+import referenceDatabase from './referenceDatabase';
+import { ApiError } from './apiManager';
 
 type Task = {
   taskID: number,
@@ -126,7 +128,31 @@ class ApiManagerProxy extends CryptoWorkerMethods {
       } else if(task.type == 'convertWebp') {
         webpWorkerController.postMessage(task);
       } else if((task as ServiceWorkerTaskResponse).type == 'requestFilePart') {
-        navigator.serviceWorker.controller.postMessage(task);
+        const _task = task as ServiceWorkerTaskResponse;
+        
+        if(_task.error) {
+          const onError = (error: ApiError) => {
+            if(error?.type == 'FILE_REFERENCE_EXPIRED') {
+              // @ts-ignore
+              const bytes = _task.originalPayload[1].file_reference;
+              referenceDatabase.refreshReference(bytes).then(() => {
+                const newTask: ServiceWorkerTask = {
+                  type: _task.type,
+                  id: _task.id,
+                  payload: _task.originalPayload
+                };
+  
+                this.postMessage(newTask);
+              }).catch(onError);
+            } else {
+              navigator.serviceWorker.controller.postMessage(task);
+            }
+          };
+
+          onError(_task.error);
+        } else {
+          navigator.serviceWorker.controller.postMessage(task);
+        }
       } else {
         this.finalizeTask(task.taskID, task.result, task.error);
       }
@@ -137,7 +163,7 @@ class ApiManagerProxy extends CryptoWorkerMethods {
     const deferred = this.awaiting[taskID];
     if(deferred !== undefined) {
       this.log.debug('done', deferred.taskName, result, error);
-      result === undefined ? deferred.reject(error) : deferred.resolve(result);
+      error ? deferred.reject(error) : deferred.resolve(result);
       delete this.awaiting[taskID];
     }
   }

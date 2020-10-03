@@ -82,15 +82,15 @@ ctx.addEventListener('message', async(e) => {
       const task = e.data as ServiceWorkerTask;
       const responseTask: ServiceWorkerTaskResponse = {
         type: task.type,
-        id: task.id,
-        payload: null
+        id: task.id
       };
 
       try {
         const res = await apiFileManager.requestFilePart(...task.payload);
         responseTask.payload = res;
       } catch(err) {
-
+        responseTask.originalPayload = task.payload;
+        responseTask.error = err;
       }
 
       respond(responseTask);

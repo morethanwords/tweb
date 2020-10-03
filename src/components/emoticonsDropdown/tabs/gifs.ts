@@ -1,4 +1,4 @@
-import { EmoticonsDropdown, EmoticonsTab, EMOTICONSSTICKERGROUP } from "..";
+import emoticonsDropdown, { EmoticonsDropdown, EmoticonsTab, EMOTICONSSTICKERGROUP } from "..";
 import GifsMasonry from "../../gifsMasonry";
 import Scrollable from "../../scrollable_new";
 import { putPreloader } from "../../misc";
@@ -24,14 +24,14 @@ export default class GifsTab implements EmoticonsTab {
         res.gifs.forEach((doc, idx) => {
           res.gifs[idx] = doc = appDocsManager.saveDoc(doc);
           //if(doc._ == 'documentEmpty') return;
-          //masonry.add(doc as MyDocument);
+          masonry.add(doc as MyDocument);
         });
       }
 
-      //let line: MTDocument[] = [];
-
       preloader.remove();
     });
+
+    emoticonsDropdown.addLazyLoadQueueRepeat(masonry.lazyLoadQueue, masonry.processInvisibleDiv);
 
     this.init = null;
   }

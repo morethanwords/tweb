@@ -6,6 +6,8 @@ import { Modify } from '../../types';
 import appStateManager from './appStateManager';
 import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
 
+// TODO: если пак будет сохранён и потом обновлён, то недостающие стикеры не подгрузит
+
 export class AppStickersManager {
   private stickerSets: {
     [stickerSetID: string]: MessagesStickerSet

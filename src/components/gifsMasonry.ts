@@ -24,14 +24,14 @@ export default class GifsMasonry {
       }
     });
 
-    setInterval(() => {
+    /* setInterval(() => {
       // @ts-ignore
       const players = animationIntersector.byGroups[group];
 
       if(players) {
         console.log(`GIFS RENDERED IN ${group}:`, players.length, players.filter(p => !p.animation.paused).length, this.lazyLoadQueue.intersector.getVisible().length);
       }
-    }, .25e3);
+    }, .25e3); */
 
     let timeout = 0;
     // memory leak
@@ -51,11 +51,13 @@ export default class GifsMasonry {
     });
   }
 
-  private processVisibleDiv = (div: HTMLElement) => {
+  processVisibleDiv = (div: HTMLElement) => {
     const video = div.querySelector('video');
     if(video) {
       return;
     }
+
+    //console.log('processVisibleDiv');
 
     const load = () => {
       const docID = div.dataset.docID;
@@ -110,7 +112,7 @@ export default class GifsMasonry {
     this.lazyLoadQueue.push({div, load});
   };
 
-  private processInvisibleDiv = async(div: HTMLElement) => {
+  processInvisibleDiv = async(div: HTMLElement) => {
     return this.scrollPromise.then(async() => {
       //return;
 

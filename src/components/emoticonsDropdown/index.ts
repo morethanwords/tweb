@@ -1,4 +1,4 @@
-import LazyLoadQueue from "../lazyLoadQueue";
+import LazyLoadQueue, { LazyLoadQueueIntersector } from "../lazyLoadQueue";
 import GifsTab from "./tabs/gifs";
 import { findUpClassName, findUpTag, whichChild } from "../../lib/utils";
 import { horizontalMenu } from "../horizontalMenu";
@@ -324,6 +324,26 @@ export class EmoticonsDropdown {
       console.warn('got no doc by id:', fileID);
     }
   };
+
+  public addLazyLoadQueueRepeat(lazyLoadQueue: LazyLoadQueueIntersector, processInvisibleDiv: (div: HTMLElement) => void) {
+    this.events.onClose.push(() => {
+      lazyLoadQueue.lock();
+    });
+
+    this.events.onCloseAfter.push(() => {
+      const divs = lazyLoadQueue.intersector.getVisible();
+
+      for(const div of divs) {
+        processInvisibleDiv(div);
+      }
+
+      lazyLoadQueue.intersector.clearVisible();
+    });
+
+    this.events.onOpenAfter.push(() => {
+      lazyLoadQueue.unlockAndRefresh();
+    });
+  }
 }
 
 const emoticonsDropdown = new EmoticonsDropdown();

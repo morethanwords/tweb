@@ -1,3 +1,4 @@
+import appMessagesManager from "../appManagers/appMessagesManager";
 import { Photo } from "../../layer";
 import { deepEqual } from "../utils";
 import { MOUNT_CLASS_TO } from "./mtproto_config";
@@ -56,6 +57,34 @@ class ReferenceDatabase {
 
     return false;
   }
+
+  public refreshReference(reference: ReferenceBytes): Promise<void> {
+    const context = this.getContext(reference);
+    switch(context?.type) {
+      case 'message': {
+        return appMessagesManager.wrapSingleMessage(context.messageID, true);
+        // .then(() => {
+        //   console.log('FILE_REFERENCE_EXPIRED: got message', context, options, appMessagesManager.getMessage(context.messageID).media);
+        // });
+      }
+
+      default: {
+        console.warn('FILE_REFERENCE_EXPIRED: not implemented context', context);
+        return Promise.reject();
+      }
+    }
+  }
+
+  /* handleReferenceError = (reference: ReferenceBytes, error: ApiError) => {
+    switch(error.type) {
+      case 'FILE_REFERENCE_EXPIRED': {
+        return this.refreshReference(reference);
+      }
+
+      default:
+        return Promise.reject(error);
+    }
+  }; */
 
   /* public replaceReference(oldReference: ReferenceBytes, newReference: ReferenceBytes) {
     const contexts = this.contexts.get(oldReference);

@@ -13,6 +13,7 @@ export default class AppForwardTab implements SliderTab {
   private msgIDs: number[] = [];
 
   onCloseAfterTimeout() {
+    document.body.classList.remove('is-forward-active');
     this.cleanup();
   }
 
@@ -79,6 +80,7 @@ export default class AppForwardTab implements SliderTab {
       //console.log('forward rendered:', this.container.querySelector('.selector ul').childElementCount);
       appSidebarRight.selectTab(AppSidebarRight.SLIDERITEMSIDS.forward);
       appSidebarRight.toggleSidebar(true);
+      document.body.classList.add('is-forward-active');
     });
   }
 }

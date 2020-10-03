@@ -321,23 +321,7 @@ export default class StickersTab implements EmoticonsTab {
       }
     });
 
-    emoticonsDropdown.events.onClose.push(() => {
-      this.lazyLoadQueue.lock();
-    });
-
-    emoticonsDropdown.events.onCloseAfter.push(() => {
-      const divs = this.lazyLoadQueue.intersector.getVisible();
-
-      for(const div of divs) {
-        this.processInvisibleDiv(div);
-      }
-
-      this.lazyLoadQueue.intersector.clearVisible();
-    });
-
-    emoticonsDropdown.events.onOpenAfter.push(() => {
-      this.lazyLoadQueue.unlockAndRefresh();
-    });
+    emoticonsDropdown.addLazyLoadQueueRepeat(this.lazyLoadQueue, this.processInvisibleDiv);
 
     /* setInterval(() => {
       // @ts-ignore
