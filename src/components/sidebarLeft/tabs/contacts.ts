@@ -1,23 +1,26 @@
-import { SliderTab } from "../slider";
-import Scrollable from "../scrollable_new";
-import appDialogsManager from "../../lib/appManagers/appDialogsManager";
-import appUsersManager from "../../lib/appManagers/appUsersManager";
-import appPhotosManager from "../../lib/appManagers/appPhotosManager";
-import appSidebarLeft, { AppSidebarLeft } from "../../lib/appManagers/appSidebarLeft";
-import $rootScope from "../../lib/rootScope";
-import SearchInput from "../searchInput";
+import { SliderTab } from "../../slider";
+import Scrollable from "../../scrollable";
+import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
+import appUsersManager from "../../../lib/appManagers/appUsersManager";
+import appPhotosManager from "../../../lib/appManagers/appPhotosManager";
+import appSidebarLeft, { AppSidebarLeft } from "..";
+import $rootScope from "../../../lib/rootScope";
+import SearchInput from "../../searchInput";
 
 // TODO: поиск по людям глобальный, если не нашло в контактах никого
 
 export default class AppContactsTab implements SliderTab {
-  private container = document.getElementById('contacts-container');
-  private list = this.container.querySelector('#contacts') as HTMLUListElement;
+  private container: HTMLElement;
+  private list: HTMLUListElement;
   private scrollable: Scrollable;
   private promise: Promise<void>;
 
   private searchInput: SearchInput;
 
-  constructor() {
+  init() {
+    this.container = document.getElementById('contacts-container');
+    this.list = this.container.querySelector('#contacts');
+
     appDialogsManager.setListClickListener(this.list);
     this.scrollable = new Scrollable(this.list.parentElement);
 
@@ -44,6 +47,11 @@ export default class AppContactsTab implements SliderTab {
   }
 
   public openContacts(query?: string) {
+    if(this.init) {
+      this.init();
+      this.init = null;
+    }
+
     if(appSidebarLeft.historyTabIDs.indexOf(AppSidebarLeft.SLIDERITEMSIDS.contacts) === -1) {
       appSidebarLeft.selectTab(AppSidebarLeft.SLIDERITEMSIDS.contacts);
     }

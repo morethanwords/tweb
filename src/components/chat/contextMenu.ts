@@ -2,7 +2,7 @@ import appChatsManager from "../../lib/appManagers/appChatsManager";
 import appImManager from "../../lib/appManagers/appImManager";
 import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import appPeersManager from "../../lib/appManagers/appPeersManager";
-import appSidebarRight from "../../lib/appManagers/appSidebarRight";
+import appSidebarRight from "../sidebarRight";
 import $rootScope from "../../lib/rootScope";
 import { findUpClassName } from "../../lib/utils";
 import { parseMenuButtonsTo, attachContextMenuListener, positionMenu, openBtnMenu } from "../misc";

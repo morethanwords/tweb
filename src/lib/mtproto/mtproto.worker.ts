@@ -124,6 +124,13 @@ ctx.addEventListener('message', async(e) => {
           respond({taskID: taskID, error: err});
         }
       }
+
+      case 'getNetworker': {
+        // @ts-ignore
+        apiManager[task.task].apply(apiManager, task.args);
+        respond({taskID: taskID, result: null});
+        break;
+      }
   
       default: {
         try {
@@ -147,4 +154,5 @@ ctx.addEventListener('message', async(e) => {
   }
 });
 
+//console.log('[WORKER] Will send ready', Date.now() / 1000);
 ctx.postMessage('ready');

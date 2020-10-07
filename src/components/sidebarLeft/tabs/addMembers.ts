@@ -1,8 +1,8 @@
-import { SliderTab } from "../slider";
-import { AppSelectPeers } from "../appSelectPeers";
-import { putPreloader } from "../misc";
-import appChatsManager from "../../lib/appManagers/appChatsManager";
-import appSidebarLeft, { AppSidebarLeft } from "../../lib/appManagers/appSidebarLeft";
+import { SliderTab } from "../../slider";
+import { AppSelectPeers } from "../../appSelectPeers";
+import { putPreloader } from "../../misc";
+import appChatsManager from "../../../lib/appManagers/appChatsManager";
+import appSidebarLeft, { AppSidebarLeft } from "..";
 
 export default class AppAddMembersTab implements SliderTab {
   private container = document.querySelector('.addmembers-container') as HTMLDivElement;

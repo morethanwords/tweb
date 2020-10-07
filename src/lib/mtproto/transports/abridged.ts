@@ -6,7 +6,7 @@ class AbridgedPacketCodec implements Codec {
   public obfuscateTag = new Uint8Array([this.tag, this.tag, this.tag, this.tag]);
 
   public encodePacket(data: Uint8Array) {
-    let len = data.byteLength >> 2;
+    const len = data.byteLength >> 2;
     let header: Uint8Array;
     if(len < 127) {
       header = new Uint8Array([len]);

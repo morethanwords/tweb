@@ -1,8 +1,8 @@
-import appSidebarRight, { AppSidebarRight } from "../../lib/appManagers/appSidebarRight";
-import appMessagesManager from "../../lib/appManagers/appMessagesManager";
-import { putPreloader } from "../misc";
-import { AppSelectPeers } from "../appSelectPeers";
-import { SliderTab } from "../slider";
+import appSidebarRight, { AppSidebarRight } from "..";
+import appMessagesManager from "../../../lib/appManagers/appMessagesManager";
+import { putPreloader } from "../../misc";
+import { AppSelectPeers } from "../../appSelectPeers";
+import { SliderTab } from "../../slider";
 
 export default class AppForwardTab implements SliderTab {
   public container: HTMLElement;

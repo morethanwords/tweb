@@ -1,7 +1,7 @@
-import { SliderTab } from "../slider";
-import popupAvatar from "../popupAvatar";
-import appChatsManager from "../../lib/appManagers/appChatsManager";
-import appSidebarLeft, { AppSidebarLeft } from "../../lib/appManagers/appSidebarLeft";
+import { SliderTab } from "../../slider";
+import popupAvatar from "../../popupAvatar";
+import appChatsManager from "../../../lib/appManagers/appChatsManager";
+import appSidebarLeft, { AppSidebarLeft } from "..";
 
 export default class AppNewChannelTab implements SliderTab {
   private container = document.querySelector('.new-channel-container') as HTMLDivElement;

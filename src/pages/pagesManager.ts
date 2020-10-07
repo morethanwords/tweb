@@ -6,13 +6,18 @@ import { MOUNT_CLASS_TO } from "../lib/mtproto/mtproto_config";
 
 class PagesManager {
   private pageID = -1;
+  private page: Page;
 
   private selectTab: ReturnType<typeof horizontalMenu>;
   public pagesDiv: HTMLDivElement;
 
   constructor() {
     this.pagesDiv = document.getElementById('auth-pages') as HTMLDivElement;
-    this.selectTab = horizontalMenu(null, this.pagesDiv.firstElementChild as HTMLDivElement, null, null);
+    this.selectTab = horizontalMenu(null, this.pagesDiv.firstElementChild as HTMLDivElement, null, () => {
+      if(this.page.onShown) {
+        this.page.onShown();
+      }
+    });
   }
 
   public setPage(page: Page) {
@@ -35,6 +40,8 @@ class PagesManager {
 
       this.pageID = -1;
     }
+
+    this.page = page;
   }
 }
 

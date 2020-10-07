@@ -1,5 +1,5 @@
 import { EmoticonsTab, EmoticonsDropdown } from "..";
-import Scrollable from "../../scrollable_new";
+import Scrollable from "../../scrollable";
 import Config from "../../../lib/config";
 import { putPreloader } from "../../misc";
 import appStateManager from "../../../lib/appManagers/appStateManager";

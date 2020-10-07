@@ -1,15 +1,15 @@
-import { SliderTab } from "../slider";
-import SearchInput from "../searchInput";
-import Scrollable from "../scrollable_new";
-import LazyLoadQueue from "../lazyLoadQueue";
-import animationIntersector from "../animationIntersector";
-import appSidebarRight, { AppSidebarRight } from "../../lib/appManagers/appSidebarRight";
-import appUsersManager, { User } from "../../lib/appManagers/appUsersManager";
-import appInlineBotsManager, { AppInlineBotsManager } from "../../lib/appManagers/AppInlineBotsManager";
-import GifsMasonry from "../gifsMasonry";
-import { findUpClassName } from "../../lib/utils";
-import appImManager from "../../lib/appManagers/appImManager";
-import type { MyDocument } from "../../lib/appManagers/appDocsManager";
+import { SliderTab } from "../../slider";
+import SearchInput from "../../searchInput";
+import Scrollable from "../../scrollable";
+import animationIntersector from "../../animationIntersector";
+import appSidebarRight, { AppSidebarRight } from "..";
+import appUsersManager from "../../../lib/appManagers/appUsersManager";
+import appInlineBotsManager, { AppInlineBotsManager } from "../../../lib/appManagers/AppInlineBotsManager";
+import GifsMasonry from "../../gifsMasonry";
+import { findUpClassName } from "../../../lib/utils";
+import appImManager from "../../../lib/appManagers/appImManager";
+import type { MyDocument } from "../../../lib/appManagers/appDocsManager";
+import mediaSizes from "../../../helpers/mediaSizes";
 
 const ANIMATIONGROUP = 'GIFS-SEARCH';
 
@@ -52,7 +52,9 @@ export default class AppGifsTab implements SliderTab {
 
     const fileID = target.dataset.docID;
     if(appImManager.chatInputC.sendMessageWithDocument(fileID)) {
-      //this.closeBtn.click();
+      if(mediaSizes.isMobile) {
+        this.backBtn.click();
+      }
     } else {
       console.warn('got no doc by id:', fileID);
     }

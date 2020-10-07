@@ -25,7 +25,7 @@ type AuthOptions = {
   nonce: Uint8Array,
   
   serverNonce?: Uint8Array,
-  pq?: any,
+  pq?: Uint8Array,
   fingerprints?: string[],
   publicKey?: {
     modulus: string,

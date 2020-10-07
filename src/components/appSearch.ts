@@ -1,5 +1,5 @@
 import appDialogsManager from "../lib/appManagers/appDialogsManager";
-import Scrollable from "./scrollable_new";
+import Scrollable from "./scrollable";
 import appMessagesIDsManager from "../lib/appManagers/appMessagesIDsManager";
 import appUsersManager from "../lib/appManagers/appUsersManager";
 import appPeersManager from '../lib/appManagers/appPeersManager';

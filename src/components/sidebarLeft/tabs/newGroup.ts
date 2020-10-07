@@ -1,11 +1,11 @@
-import { SliderTab } from "../slider";
-import { SearchGroup } from "../appSearch";
-import popupAvatar from "../popupAvatar";
-import appChatsManager from "../../lib/appManagers/appChatsManager";
-import appSidebarLeft, { AppSidebarLeft } from "../../lib/appManagers/appSidebarLeft";
-import Scrollable from "../scrollable_new";
-import appDialogsManager from "../../lib/appManagers/appDialogsManager";
-import appUsersManager from "../../lib/appManagers/appUsersManager";
+import { SliderTab } from "../../slider";
+import { SearchGroup } from "../../appSearch";
+import popupAvatar from "../../popupAvatar";
+import appChatsManager from "../../../lib/appManagers/appChatsManager";
+import appSidebarLeft, { AppSidebarLeft } from "..";
+import Scrollable from "../../scrollable";
+import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
+import appUsersManager from "../../../lib/appManagers/appUsersManager";
 
 export default class AppNewGroupTab implements SliderTab {
   private container = document.querySelector('.new-group-container') as HTMLDivElement;

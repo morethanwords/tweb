@@ -10,13 +10,16 @@ const allowedIPs = ['195.66.140.39', '192.168.31.144', '127.0.0.1', '192.168.31.
 const devMode = process.env.NODE_ENV !== 'production';
 const useLocal = false;
 
-console.log('DEVMODE:', devMode);
+if(devMode) {
+  console.log('DEVMODE IS ON!');
+}
 
 const opts = {
   MTPROTO_WORKER: true,
   MTPROTO_HTTP: false,
+  DEBUG: devMode,
   version: 3,
-  "ifdef-verbose": true,       // add this for verbose output
+  "ifdef-verbose": devMode,    // add this for verbose output
   "ifdef-triple-slash": true   // add this to use double slash comment instead of default triple slash
 };
 

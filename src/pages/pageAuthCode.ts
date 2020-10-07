@@ -26,6 +26,7 @@ const EDITONSAMEPAGE = false;
 
 let headerElement: HTMLHeadElement = null;
 let sentTypeElement: HTMLParagraphElement = null;
+let codeInput: HTMLInputElement;
 
 let onFirstMount = (): Promise<any> => {
   let needFrame = 0, lastLength = 0;
@@ -35,11 +36,9 @@ let onFirstMount = (): Promise<any> => {
 
   const CODELENGTH = authCode.type.length;
 
-  const codeInput = page.pageEl.querySelector('#code') as HTMLInputElement;
+  codeInput = page.pageEl.querySelector('#code') as HTMLInputElement;
   const codeInputLabel = codeInput.nextElementSibling as HTMLLabelElement;
   const editButton = page.pageEl.querySelector('.phone-edit') as HTMLElement;
-
-  codeInput.focus();
 
   if(EDITONSAMEPAGE) {
     let editable = false;
@@ -311,6 +310,8 @@ const page = new Page('page-authCode', true, onFirstMount, (_authCode: typeof au
       sentTypeElement.innerHTML = `Please check everything<br>for a code (type: ${authCode.type._})`;
       break;
   }
+}, () => {
+  codeInput.focus();
 });
 
 export default page;

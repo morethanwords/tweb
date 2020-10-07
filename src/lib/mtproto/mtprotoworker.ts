@@ -11,6 +11,7 @@ import { MOUNT_CLASS_TO } from './mtproto_config';
 import $rootScope from '../rootScope';
 import referenceDatabase from './referenceDatabase';
 import { ApiError } from './apiManager';
+import { InvokeApiOptions } from '../../types';
 
 type Task = {
   taskID: number,
@@ -136,6 +137,8 @@ class ApiManagerProxy extends CryptoWorkerMethods {
               // @ts-ignore
               const bytes = _task.originalPayload[1].file_reference;
               referenceDatabase.refreshReference(bytes).then(() => {
+                // @ts-ignore
+                _task.originalPayload[1].file_reference = referenceDatabase.getReferenceByLink(bytes);
                 const newTask: ServiceWorkerTask = {
                   type: _task.type,
                   id: _task.id,
@@ -231,8 +234,8 @@ class ApiManagerProxy extends CryptoWorkerMethods {
     return this.performTaskWorker('setUserAuth', userAuth);
   }
 
-  public getNetworker(dc_id: number) {
-    return this.performTaskWorker('getNetworker', dc_id);
+  public getNetworker(dc_id: number, options?: InvokeApiOptions) {
+    return this.performTaskWorker('getNetworker', dc_id, options);
   }
 
   public logOut(): Promise<void> {

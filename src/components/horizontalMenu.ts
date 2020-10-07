@@ -28,6 +28,7 @@ function slideTabs(tabContent: HTMLElement, prevTabContent: HTMLElement, width: 
 
 export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?: (id: number, tabContent: HTMLDivElement) => void, onTransitionEnd?: () => void, transitionTime = 250) {
   const hideTimeouts: {[id: number]: number} = {};
+  //const deferred: (() => void)[] = [];
   let transitionEndTimeout: number;
   let prevTabContent: HTMLElement = null;
   let prevId = -1;
@@ -102,6 +103,14 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?
     
     prevId = id;
     prevTabContent = tabContent;
+
+    /* if(p) {
+      return new Promise((resolve) => {
+        deferred.push(resolve);
+      });
+    } else {
+      return Promise.resolve();
+    } */
   };
 
   if(tabs) {

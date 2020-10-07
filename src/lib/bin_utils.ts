@@ -30,7 +30,7 @@ export function bigStringInt(strNum: string) {
   return new BigInteger(strNum, 10);
 }
 
-export function bytesToHex(bytes: any) {
+export function bytesToHex(bytes: ArrayLike<number>) {
   bytes = bytes || [];
   var arr = [];
   for(var i = 0; i < bytes.length; i++) {
@@ -92,7 +92,7 @@ export function uint6ToBase64(nUint6: number) {
             : 65
 }
 
-export function base64ToBlob(base64str: string, mimeType: string) {
+/* export function base64ToBlob(base64str: string, mimeType: string) {
   var sliceSize = 1024;
   var byteCharacters = atob(base64str);
   var bytesLength = byteCharacters.length;
@@ -122,7 +122,7 @@ export function dataUrlToBlob(url: string) {
   var blob = base64ToBlob(base64str, mimeType);
   // console.timeEnd(name)
   return blob;
-}
+} */
 
 export function blobConstruct(blobParts: any, mimeType: string = ''): Blob {
   let blob;
@@ -209,7 +209,7 @@ export function bytesFromBigInt(bigInt: BigInteger, len?: number) {
   return bytes;
 }
 
-export function bytesToArrayBuffer(b: Iterable<number>) {
+export function bytesToArrayBuffer(b: number[]) {
   return (new Uint8Array(b)).buffer;
 }
 
@@ -225,26 +225,12 @@ export function convertToArrayBuffer(bytes: any | ArrayBuffer | Uint8Array) {
   return bytesToArrayBuffer(bytes);
 }
 
-export function convertToUint8Array(bytes: any) {
-  if(bytes.buffer !== undefined) {
-    return bytes;
+export function convertToUint8Array(bytes: Uint8Array | number[]): Uint8Array {
+  if((bytes as Uint8Array).buffer !== undefined) {
+    return bytes as Uint8Array;
   }
 
   return new Uint8Array(bytes);
-}
-
-export function convertToByteArray(bytes: any) {
-  if(Array.isArray(bytes)) {
-    return bytes;
-  }
-
-  bytes = convertToUint8Array(bytes);
-  var newBytes = [];
-  for(var i = 0, len = bytes.length; i < len; i++) {
-    newBytes.push(bytes[i]);
-  }
-
-  return newBytes;
 }
 
 export function bytesFromArrayBuffer(buffer: ArrayBuffer) {
@@ -327,18 +313,9 @@ export function addPadding(bytes: any, blockSize: number = 16, zeroes?: boolean,
     }
 
     if(bytes instanceof ArrayBuffer) {
-      bytes = prepend ? bufferConcat(padding, bytes) : bufferConcat(bytes, padding);
+      bytes = (prepend ? bufferConcats(padding, bytes) : bufferConcats(bytes, padding)).buffer;
     } else if(bytes instanceof Uint8Array) {
-      let _bytes = new Uint8Array(bytes.length + padding.length);
-      if(prepend) {
-        _bytes.set(padding);
-        _bytes.set(bytes, padding.length);
-      } else {
-        _bytes.set(bytes);
-        _bytes.set(padding, bytes.length);
-      }
-      
-      bytes = _bytes;
+      bytes = prepend ? bufferConcats(padding, bytes) : bufferConcats(bytes, padding);
     } else {
       bytes = prepend ? padding.concat(bytes) : bytes.concat(padding);
     }

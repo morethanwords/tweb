@@ -1,4 +1,4 @@
-import Scrollable from "../scrollable_new";
+import Scrollable from "../scrollable";
 import { RichTextProcessor } from "../../lib/richtextprocessor";
 import apiManager from "../../lib/mtproto/mtprotoworker";
 import appWebPagesManager from "../../lib/appManagers/appWebPagesManager";
@@ -276,7 +276,10 @@ export class ChatInput {
   
           case 'document': {
             const isPhoto = file.type.indexOf('image/') !== -1;
-            params.objectURL = URL.createObjectURL(file);
+            if(isPhoto) {
+              params.objectURL = URL.createObjectURL(file);
+            }
+
             let docDiv = wrapDocument({
               file: file,
               file_name: file.name || '',
@@ -784,7 +787,7 @@ export class ChatInput {
       this.onMessageSent(false, true);
 
       if(document.type == 'sticker') {
-        emoticonsDropdown.stickersTab.pushRecentSticker(document);
+        emoticonsDropdown.stickersTab?.pushRecentSticker(document);
       }
 
       return true;

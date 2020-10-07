@@ -4,7 +4,7 @@ export default class Page {
   public pageEl: HTMLDivElement;
   private installed = false;
 
-  constructor(className: string, public isAuthPage: boolean, private onFirstMount?: (...args: any[]) => Promise<any> | void, private onMount?: (...args: any[]) => void) {
+  constructor(className: string, public isAuthPage: boolean, private onFirstMount?: (...args: any[]) => Promise<any> | void, private onMount?: (...args: any[]) => void, public onShown?: () => void) {
     this.pageEl = document.body.getElementsByClassName(className)[0] as HTMLDivElement;
   }
 

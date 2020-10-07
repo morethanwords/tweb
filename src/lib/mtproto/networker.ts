@@ -24,11 +24,21 @@ import type Socket from './transports/websocket';
 
 //console.error('networker included!', new Error().stack);
 
-type Message = {
+type MessageOptions = InvokeApiOptions & Partial<{
+  noResponse: true,
+  longPoll: true,
+  
+  notContentRelated: true,
+  noSchedule: true,
+  messageID: string,
+}>;
+
+type Message = InvokeApiOptions & MessageOptions & {
   msg_id: string,
   seq_no: number,
   body?: Uint8Array | number[],
   isAPI?: boolean,
+  // only these four are important
 
   acked?: boolean,
 
@@ -40,14 +50,16 @@ type Message = {
   container?: boolean,
   inner?: string[],
 
-  notContentRelated?: boolean,
-  noSchedule?: boolean,
+  // below - options
+
+  notContentRelated?: true,
+  noSchedule?: true,
 
   resultType?: string,
 
-  singleInRequest?: boolean,
-  longPoll?: boolean,
-  noResponse?: boolean, // only with http (http_wait for longPoll)
+  singleInRequest?: true,
+  longPoll?: true,
+  noResponse?: true, // only with http (http_wait for longPoll)
 };
 
 class MTPNetworker {
@@ -75,13 +87,12 @@ class MTPNetworker {
   private checkConnectionPeriod = 0;
   private onOnlineCb = this.checkConnection.bind(this);
   private sleepAfter = 0;
+  private offline = false;
   /// #endif
 
   private seqNo: number = 0;
   private prevSessionID: Array<number> = [];
   private sessionID: Array<number> = [];
-
-  private offline = false;
 
   private lastResendReq: {
     req_msg_id: string,
@@ -97,8 +108,10 @@ class MTPNetworker {
     this.authKeyUint8 = convertToUint8Array(this.authKey);
     //this.authKeyID = sha1BytesSync(this.authKey).slice(-8);
 
-    this.upload = this.options.fileUpload || this.options.fileDownload || false;
-    this.log = logger('NET-' + dcID + (this.upload ? '-U' : ''));
+    //console.trace('Create', dcID, options);
+
+    this.upload = this.options.fileUpload || this.options.fileDownload;
+    this.log = logger('NET-' + dcID + (this.upload ? '-U' : ''), this.upload && this.dcID == 2 ? LogLevels.debug | LogLevels.warn | LogLevels.log | LogLevels.error : LogLevels.error);
     this.log('constructor'/* , this.authKey, this.authKeyID, this.serverSalt */);
 
     /* // Test resend after bad_server_salt
@@ -130,20 +143,18 @@ class MTPNetworker {
   public updateSession() {
     this.seqNo = 0;
     this.prevSessionID = this.sessionID;
-    this.sessionID = new Array(8);
-    this.sessionID = [...new Uint8Array(this.sessionID.length).randomize()];
+    this.sessionID = [...new Uint8Array(8).randomize()];
   }
 
-  public updateSentMessage(sentMessageID: any) {
-    var sentMessage = this.sentMessages[sentMessageID];
+  public updateSentMessage(sentMessageID: string) {
+    const sentMessage = this.sentMessages[sentMessageID];
     if(!sentMessage) {
       return false;
     }
-    var self = this;
     if(sentMessage.container) {
-      var newInner: any = [];
-      sentMessage.inner.forEach((innerSentMessageID: any) => {
-        var innerSentMessage = self.updateSentMessage(innerSentMessageID);
+      const newInner: string[] = [];
+      sentMessage.inner.forEach((innerSentMessageID) => {
+        const innerSentMessage = this.updateSentMessage(innerSentMessageID);
         if(innerSentMessage) {
           newInner.push(innerSentMessage.msg_id);
         }
@@ -157,13 +168,13 @@ class MTPNetworker {
       sentMessage.container
     );
     this.sentMessages[sentMessage.msg_id] = sentMessage;
-    delete self.sentMessages[sentMessageID];
+    delete this.sentMessages[sentMessageID];
   
     return sentMessage;
   }
 
   public generateSeqNo(notContentRelated?: boolean) {
-    var seqNo = this.seqNo * 2;
+    let seqNo = this.seqNo * 2;
   
     if(!notContentRelated) {
       seqNo++;
@@ -173,14 +184,14 @@ class MTPNetworker {
     return seqNo;
   }
 
-  public wrapMtpCall(method: string, params: any = {}, options: any = {}) {
-    var serializer = new TLSerialization({mtproto: true});
+  public wrapMtpCall(method: string, params: any = {}, options: MessageOptions = {}) {
+    const serializer = new TLSerialization({mtproto: true});
   
     serializer.storeMethod(method, params);
   
-    var messageID = timeManager.generateID();
-    var seqNo = this.generateSeqNo();
-    var message = {
+    const messageID = timeManager.generateID();
+    const seqNo = this.generateSeqNo();
+    const message = {
       msg_id: messageID,
       seq_no: seqNo,
       body: serializer.getBytes()
@@ -193,13 +204,13 @@ class MTPNetworker {
     return this.pushMessage(message, options);
   }
   
-  public wrapMtpMessage(object: any = {}, options: any = {}) {
-    var serializer = new TLSerialization({mtproto: true});
+  public wrapMtpMessage(object: any = {}, options: MessageOptions = {}) {
+    const serializer = new TLSerialization({mtproto: true});
     serializer.storeObject(object, 'Object');
   
-    var messageID = timeManager.generateID();
-    var seqNo = this.generateSeqNo(options.notContentRelated);
-    var message = {
+    const messageID = timeManager.generateID();
+    const seqNo = this.generateSeqNo(options.notContentRelated);
+    const message = {
       msg_id: messageID,
       seq_no: seqNo,
       body: serializer.getBytes()
@@ -327,6 +338,80 @@ class MTPNetworker {
       this.log('Long-poll failed', error);
     });
   }
+
+  public checkConnection(event: Event | string) {
+    /* $rootScope.offlineConnecting = true */
+  
+    this.log('Check connection', event);
+    clearTimeout(this.checkConnectionTimeout);
+    this.checkConnectionTimeout = 0;
+  
+    var serializer = new TLSerialization({mtproto: true});
+    var pingID = [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)];
+  
+    serializer.storeMethod('ping', {
+      ping_id: pingID
+    });
+  
+    var pingMessage = {
+      msg_id: timeManager.generateID(),
+      seq_no: this.generateSeqNo(true),
+      body: serializer.getBytes()
+    };
+  
+    var self = this;
+    this.sendEncryptedRequest(pingMessage, {
+      timeout: 15000
+    }).then((result) => {
+      /* delete $rootScope.offlineConnecting */
+      self.toggleOffline(false);
+    }, () => {
+      this.log('Delay ', self.checkConnectionPeriod * 1000);
+      self.checkConnectionTimeout = setTimeout(self.checkConnection.bind(self), self.checkConnectionPeriod * 1000 | 0);
+      self.checkConnectionPeriod = Math.min(60, self.checkConnectionPeriod * 1.5);
+      /* setTimeout(function() {
+        delete $rootScope.offlineConnecting
+      }, 1000); */
+    });
+  }
+
+  public toggleOffline(enabled: boolean) {
+    // this.log('toggle ', enabled, this.dcID, this.iii)
+    if(this.offline !== undefined && this.offline == enabled) {
+      return false;
+    }
+  
+    this.offline = enabled;
+    /* $rootScope.offline = enabled;
+    $rootScope.offlineConnecting = false; */
+
+    if(this.offline) {
+      clearTimeout(this.nextReqTimeout);
+      this.nextReqTimeout = 0;
+      this.nextReq = 0;
+  
+      if(this.checkConnectionPeriod < 1.5) {
+        this.checkConnectionPeriod = 0;
+      }
+  
+      this.checkConnectionTimeout = setTimeout(this.checkConnection.bind(this), this.checkConnectionPeriod * 1000 | 0);
+      this.checkConnectionPeriod = Math.min(30, (1 + this.checkConnectionPeriod) * 1.5);
+  
+      document.body.addEventListener('online', this.onOnlineCb, false);
+      document.body.addEventListener('focus', this.onOnlineCb, false);
+    } else {
+      this.checkLongPoll();
+
+      this.scheduleRequest();
+  
+      document.body.removeEventListener('online', this.onOnlineCb);
+      document.body.removeEventListener('focus', this.onOnlineCb);
+
+      clearTimeout(this.checkConnectionTimeout);
+      this.checkConnectionTimeout = 0;
+    }
+    
+  }
   /// #endif
 
   // тут можно сделать таймаут и выводить дисконнект
@@ -335,7 +420,7 @@ class MTPNetworker {
     seq_no: number,
     body: Uint8Array | number[],
     isAPI?: boolean
-  }, options: any = {}) {
+  }, options: MessageOptions = {}) {
     return new Promise((resolve, reject) => {
       this.sentMessages[message.msg_id] = Object.assign(message, options, {
         deferred: {resolve, reject}
@@ -414,102 +499,21 @@ class MTPNetworker {
     });
   }
 
-  /// #if MTPROTO_HTTP
-  public checkConnection(event: Event | string) {
-    /* $rootScope.offlineConnecting = true */
-  
-    this.log('Check connection', event);
-    clearTimeout(this.checkConnectionTimeout);
-    this.checkConnectionTimeout = 0;
-  
-    var serializer = new TLSerialization({mtproto: true});
-    var pingID = [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)];
-  
-    serializer.storeMethod('ping', {
-      ping_id: pingID
-    });
-  
-    var pingMessage = {
-      msg_id: timeManager.generateID(),
-      seq_no: this.generateSeqNo(true),
-      body: serializer.getBytes()
-    };
-  
-    var self = this;
-    this.sendEncryptedRequest(pingMessage, {
-      timeout: 15000
-    }).then((result) => {
-      /* delete $rootScope.offlineConnecting */
-      self.toggleOffline(false);
-    }, () => {
-      this.log('Delay ', self.checkConnectionPeriod * 1000);
-      self.checkConnectionTimeout = setTimeout(self.checkConnection.bind(self), self.checkConnectionPeriod * 1000 | 0);
-      self.checkConnectionPeriod = Math.min(60, self.checkConnectionPeriod * 1.5);
-      /* setTimeout(function() {
-        delete $rootScope.offlineConnecting
-      }, 1000); */
-    });
-  }
-  /// #endif
-
-  public toggleOffline(enabled: boolean) {
-    // this.log('toggle ', enabled, this.dcID, this.iii)
-    if(this.offline !== undefined && this.offline == enabled) {
-      return false;
-    }
-  
-    this.offline = enabled;
-    /* $rootScope.offline = enabled;
-    $rootScope.offlineConnecting = false; */
-
-    /// #if !MTPROTO_HTTP
-    //if(!(this.transport instanceof HTTP)) {
-      this.log('toggle ', enabled, this.dcID);
-      return;
-    //}
-  
-    /// #else
-    if(this.offline) {
-      clearTimeout(this.nextReqTimeout);
-      this.nextReqTimeout = 0;
-      this.nextReq = 0;
-  
-      if(this.checkConnectionPeriod < 1.5) {
-        this.checkConnectionPeriod = 0;
-      }
-  
-      this.checkConnectionTimeout = setTimeout(this.checkConnection.bind(this), this.checkConnectionPeriod * 1000 | 0);
-      this.checkConnectionPeriod = Math.min(30, (1 + this.checkConnectionPeriod) * 1.5);
-  
-      document.body.addEventListener('online', this.onOnlineCb, false);
-      document.body.addEventListener('focus', this.onOnlineCb, false);
-    } else {
-      this.checkLongPoll();
-
-      this.scheduleRequest();
-  
-      document.body.removeEventListener('online', this.onOnlineCb);
-      document.body.removeEventListener('focus', this.onOnlineCb);
-
-      clearTimeout(this.checkConnectionTimeout);
-      this.checkConnectionTimeout = 0;
-    }
-    /// #endif
-  }
-
   public performScheduledRequest() {
     // this.log('scheduled', this.dcID, this.iii)
+
+    /// #if MTPROTO_HTTP
     if(this.offline) {
       this.log('Cancel scheduled');
       return false;
     }
 
     this.nextReq = 0;
+    /// #endif
+
     if(this.pendingAcks.length) {
-      var ackMsgIDs: Array<string> = this.pendingAcks.slice();
-      /* for(var i = 0; i < this.pendingAcks.length; i++) {
-        ackMsgIDs.push(this.pendingAcks[i]);
-      } */
+      const ackMsgIDs: Array<string> = this.pendingAcks.slice();
+
       // this.log('acking messages', ackMsgIDs)
       this.wrapMtpMessage({
         _: 'msgs_ack',
@@ -521,15 +525,13 @@ class MTPNetworker {
     }
   
     if(this.pendingResends.length) {
-      var resendMsgIDs: Array<string> = this.pendingResends.slice();
-      var resendOpts = {
+      const resendMsgIDs: Array<string> = this.pendingResends.slice();
+      const resendOpts: MessageOptions = {
         noSchedule: true,
         notContentRelated: true,
         messageID: '' // will set in wrapMtpMessage->pushMessage
       };
-      /* for(var i = 0; i < this.pendingResends.length; i++) {
-        resendMsgIDs.push(this.pendingResends[i]);
-      } */
+
       this.log('resendReq messages', resendMsgIDs);
       this.wrapMtpMessage({
         _: 'msg_resend_req',
@@ -542,8 +544,9 @@ class MTPNetworker {
       };
     }
   
-    var messages: Message[] = [],
-      message: Message;
+    var message: MTPNetworker['sentMessages'][keyof MTPNetworker['sentMessages']];
+    var messages: typeof message[] = [];
+      
     var messagesByteLen = 0;
     var currentTime = Date.now();
     var hasApiCall = false;
@@ -748,15 +751,15 @@ class MTPNetworker {
     });
   }
 
-  public sendEncryptedRequest(message: any, options: any = {}) {
-    var self = this;
+  public sendEncryptedRequest(message: Message, options: any = {}) {
+    const self = this;
 
     this.log.debug('Send encrypted', message, options, this.authKeyID);
     // console.trace()
-    var data = new TLSerialization({
+    const data = new TLSerialization({
       startMaxLength: message.body.length + 2048
     });
-  
+
     data.storeIntBytes(this.serverSalt, 64, 'salt');
     data.storeIntBytes(this.sessionID, 64, 'session_id');
   
@@ -766,37 +769,44 @@ class MTPNetworker {
     data.storeInt(message.body.length, 'message_data_length');
     data.storeRawBytes(message.body, 'message_data');
   
-    var dataBuffer = data.getBuffer();
+    const dataBuffer = data.getBuffer();
   
-    var paddingLength = (16 - (data.offset % 16)) + 16 * (1 + nextRandomInt(5));
-    var padding = new Array(paddingLength);
-    padding = [...new Uint8Array(padding.length).randomize()];
+    const paddingLength = (16 - (data.offset % 16)) + 16 * (1 + nextRandomInt(5));
+    const padding = [...new Uint8Array(paddingLength).randomize()];
     //MTProto.secureRandom.nextBytes(padding);
-  
-    var dataWithPadding = bufferConcat(dataBuffer, padding);
+
+    const dataWithPadding = bufferConcat(dataBuffer, padding);
     // this.log('Adding padding', dataBuffer, padding, dataWithPadding)
     // this.log('auth_key_id', bytesToHex(self.authKeyID))
+
+    /* if(message.fileUpload) {
+      this.log('Send encrypted: body length:', (message.body as ArrayBuffer).byteLength, paddingLength, dataWithPadding);
+    } */
   
     return this.getEncryptedMessage(dataWithPadding).then((encryptedResult) => {
       this.log.debug('Got encrypted out message', encryptedResult);
 
-      let request = new TLSerialization({
-        startMaxLength: encryptedResult.bytes.byteLength + 256
+      const request = new TLSerialization({
+        startMaxLength: encryptedResult.bytes.length + 256
       });
       request.storeIntBytes(self.authKeyID, 64, 'auth_key_id');
       request.storeIntBytes(encryptedResult.msgKey, 128, 'msg_key');
       request.storeRawBytes(encryptedResult.bytes, 'encrypted_data');
   
       //var requestData = xhrSendBuffer ? request.getBuffer() : request.getBytes(true) as Uint8Array;
-      let requestData = request.getBytes(true);
+      const requestData = request.getBytes(true);
 
-      let baseError = {
+      const baseError = {
         code: 406,
         type: 'NETWORK_BAD_RESPONSE',
         transport: this.transport
       };
 
-      let promise = this.transport.send(requestData);
+      if(message.fileUpload) {
+        this.log('Send encrypted: requestData length:', requestData.length, requestData.length % 16, paddingLength % 16, paddingLength, data.offset);
+      }
+
+      const promise = this.transport.send(requestData);
       /// #if !MTPROTO_HTTP
       /* if(!(this.transport instanceof HTTP)) */ return promise;
       /// #else
@@ -946,6 +956,9 @@ class MTPNetworker {
 
   public scheduleRequest(delay = 0) {
     /// #if !MTPROTO_HTTP
+    /* clearTimeout(this.nextReqTimeout);
+    this.nextReqTimeout = self.setTimeout(this.performScheduledRequest.bind(this), delay || 0);
+    return; */
     return this.performScheduledRequest();
     /// #else
     if(this.offline/*  && this.transport instanceof HTTP */) {
@@ -1053,6 +1066,26 @@ class MTPNetworker {
     }
   }
 
+  public requestMessageStatus() {
+    const ids: string[] = [];
+    for(const id in this.sentMessages) {
+      const message = this.sentMessages[id];
+      if(message.isAPI && message.fileUpload) {
+        ids.push(message.msg_id);
+      }
+    }
+
+    this.wrapMtpMessage({
+      _: 'msgs_state_req',
+      msg_ids: ids
+    }, {
+      notContentRelated: true
+    }).then(res => {
+      this.log('status', res);
+    });
+  }
+
+  // * https://core.telegram.org/mtproto/service_messages_about_messages#notice-of-ignored-error-message
   public processMessage(message: any, messageID: string, sessionID: Uint8Array | number[]) {
     var msgidInt = parseInt(messageID/* .toString(10) */.substr(0, -10), 10);
     if(msgidInt % 2) {

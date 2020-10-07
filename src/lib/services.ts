@@ -12,8 +12,8 @@ import AppImManager from './appManagers/appImManager';
 import AppPeersManager from './appManagers/appPeersManager';
 import AppStickersManager from './appManagers/appStickersManager';
 import AppDocsManager from './appManagers/appDocsManager';
-import AppSidebarRight from './appManagers/appSidebarRight';
-import AppSidebarLeft from './appManagers/appSidebarLeft';
+import AppSidebarRight from '../components/sidebarRight';
+import AppSidebarLeft from '../components/sidebarLeft';
 import AppMediaViewer from './appManagers/appMediaViewer';
 //import AppSharedMediaManager from './appManagers/appSharedMediaManager';
 

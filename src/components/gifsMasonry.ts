@@ -4,7 +4,7 @@ import { wrapVideo } from "./wrappers";
 import { renderImageFromUrl } from "./misc";
 import { LazyLoadQueueRepeat2 } from "./lazyLoadQueue";
 import animationIntersector from "./animationIntersector";
-import Scrollable from "./scrollable_new";
+import Scrollable from "./scrollable";
 import { CancellablePromise, deferredPromise } from "../helpers/cancellablePromise";
 
 const width = 400;

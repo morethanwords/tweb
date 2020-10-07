@@ -6,6 +6,7 @@ import { getFileNameByLocation } from "../bin_utils";
 import { InputFile } from "../../layer";
 import referenceDatabase, {ReferenceBytes} from "../mtproto/referenceDatabase";
 import type { ApiError } from "../mtproto/apiManager";
+import cacheStorage from "../cacheStorage";
 
 export type ResponseMethodBlob = 'blob';
 export type ResponseMethodJson = 'json';
@@ -97,7 +98,16 @@ export class AppDownloadManager {
     };
 
     const tryDownload = (): Promise<unknown> => {
-      return apiManager.downloadFile(options).then(deferred.resolve, onError);
+      if(!apiManager.worker) {
+        return cacheStorage.getFile(fileName).then((blob) => {
+          if(blob.size < options.size) throw 'wrong size';
+          else deferred.resolve(blob);
+        }).catch(() => {
+          return apiManager.downloadFile(options).then(deferred.resolve, onError);
+        });
+      } else {
+        return apiManager.downloadFile(options).then(deferred.resolve, onError);
+      }
     };
 
     tryDownload();

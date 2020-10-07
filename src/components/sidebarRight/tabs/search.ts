@@ -1,7 +1,7 @@
-import appSidebarRight, { AppSidebarRight } from "../../lib/appManagers/appSidebarRight";
-import AppSearch, { SearchGroup } from "../appSearch";
-import SearchInput from "../searchInput";
-import { SliderTab } from "../slider";
+import appSidebarRight, { AppSidebarRight } from "..";
+import AppSearch, { SearchGroup } from "../../appSearch";
+import SearchInput from "../../searchInput";
+import { SliderTab } from "../../slider";
 
 export default class AppPrivateSearchTab implements SliderTab {
   public container: HTMLElement;

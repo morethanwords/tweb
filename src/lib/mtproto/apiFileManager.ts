@@ -81,7 +81,7 @@ export class ApiFileManager {
     const downloadPull = this.downloadPulls[dcID];
     //const downloadLimit = dcID == 'upload' ? 11 : 5;
     //const downloadLimit = 24;
-    const downloadLimit = dcID == 'upload' ? 11 : 48;
+    const downloadLimit = dcID == 'upload' ? 48 : 48;
 
     if(this.downloadActives[dcID] >= downloadLimit || !downloadPull || !downloadPull.length) {
       return false;
@@ -134,7 +134,7 @@ export class ApiFileManager {
         location,
         offset,
         limit
-      }, {
+      } as any, {
         dcID,
         fileDownload: true/* ,
         singleInRequest: 'safari' in window */
@@ -421,7 +421,10 @@ export class ApiFileManager {
       partSize = 262144, // 256 Kb
       activeDelta = 2;
 
-    if(fileSize > 67108864) {
+    if(fileSize > (524288 * 3000)) {
+      partSize = 1024 * 1024;
+      activeDelta = 8;
+    } else if(fileSize > 67108864) {
       partSize = 524288;
       activeDelta = 4;
     } else if(fileSize < 102400) {
@@ -471,54 +474,70 @@ export class ApiFileManager {
     };
 
     const method = isBigFile ? 'upload.saveBigFilePart' : 'upload.saveFilePart';
-    for(let offset = 0; offset < fileSize; offset += partSize) {
-      const part = _part++; // 0, 1
-      this.downloadRequest('upload', () => {
-        return new Promise<void>((uploadResolve, uploadReject) => {
-          const reader = new FileReader();
-          const blob = file.slice(offset, offset + partSize);
-  
-          reader.onloadend = (e) => {
-            if(canceled) {
-              uploadReject();
-              return;
-            }
-            
-            if(e.target.readyState != FileReader.DONE) {
-              this.log.error('wrong readyState!');
-              uploadReject();
-              return;
-            }
 
-            //////this.log('Starting to upload file, isBig:', isBigFile, fileID, part, e.target.result);
-
-            apiManager.invokeApi(method, {
-              file_id: fileID,
-              file_part: part,
-              file_total_parts: totalParts,
-              bytes: e.target.result
-            }, {
-              startMaxLength: partSize + 256,
-              fileUpload: true,
-              singleInRequest: true
-            }).then((result) => {
-              doneParts++;
-              uploadResolve();
-
-              //////this.log('Progress', doneParts * partSize / fileSize);
-
-              deferred.notify({done: doneParts * partSize, total: fileSize});
-
-              if(doneParts >= totalParts) {
-                deferred.resolve(resultInputFile);
-                resolved = true;
+    const self = this;
+    function* generator() {
+      for(let offset = 0; offset < fileSize; offset += partSize) {
+        const part = _part++; // 0, 1
+        yield self.downloadRequest('upload', () => {
+          return new Promise<void>((uploadResolve, uploadReject) => {
+            const reader = new FileReader();
+            const blob = file.slice(offset, offset + partSize);
+    
+            reader.onloadend = (e) => {
+              if(canceled) {
+                uploadReject();
+                return;
               }
-            }, errorHandler);
-          };
+              
+              if(e.target.readyState != FileReader.DONE) {
+                self.log.error('wrong readyState!');
+                uploadReject();
+                return;
+              }
   
-          reader.readAsArrayBuffer(blob);
-        });
-      }, activeDelta).catch(errorHandler);
+              //////this.log('Starting to upload file, isBig:', isBigFile, fileID, part, e.target.result);
+  
+              apiManager.invokeApi(method, {
+                file_id: fileID,
+                file_part: part,
+                file_total_parts: totalParts,
+                bytes: e.target.result/* new Uint8Array(e.target.result as ArrayBuffer) */
+              } as any, {
+                //startMaxLength: partSize + 256,
+                fileUpload: true,
+                //singleInRequest: true
+              }).then((result) => {
+                doneParts++;
+                uploadResolve();
+  
+                //////this.log('Progress', doneParts * partSize / fileSize);
+  
+                deferred.notify({done: doneParts * partSize, total: fileSize});
+  
+                if(doneParts >= totalParts) {
+                  deferred.resolve(resultInputFile);
+                  resolved = true;
+                }
+              }, errorHandler);
+            };
+    
+            reader.readAsArrayBuffer(blob);
+          });
+        }, activeDelta).catch(errorHandler);
+      }
+    }
+
+    const it = generator();
+    const process = () => {
+      if(canceled) return;
+      const r = it.next();
+      if(r.done || canceled) return;
+      (r.value as Promise<void>).then(process);
+    };
+
+    for(let i = 0; i < 10; ++i) {
+      process();
     }
 
     deferred.cancel = () => {

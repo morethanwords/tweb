@@ -1,14 +1,12 @@
-import { openBtnMenu/* , ripple */ } from "../components/misc";
 //import {stackBlurImage} from '../lib/StackBlur';
 import Page from "./page";
-import { cancelEvent } from "../lib/utils";
 import { DEBUG } from "../lib/mtproto/mtproto_config";
 
 let onFirstMount = () => {
   //return;
 
-  const promise = import('../lib/appManagers/appImManager');
-  promise.finally(() => {
+  const promise = import('../lib/appManagers/appDialogsManager');
+  promise.finally(async() => {
     //alert('pageIm!');
 
     //AudioContext && global.navigator && global.navigator.mediaDevices && global.navigator.mediaDevices.getUserMedia && global.WebAssembly;
@@ -27,7 +25,8 @@ let onFirstMount = () => {
     }
   
     //(Array.from(document.getElementsByClassName('rp')) as HTMLElement[]).forEach(el => ripple(el));
-  
+
+    const misc = await import("../components/misc");
     Array.from(document.getElementsByClassName('btn-menu-toggle')).forEach((el) => {
       (el as HTMLElement).addEventListener('click', (e) => {
         //console.log('click pageIm');
@@ -42,7 +41,7 @@ let onFirstMount = () => {
           el.classList.remove('menu-open');
           openedMenu.classList.remove('active');
         } else {
-          openBtnMenu(openedMenu);
+          misc.openBtnMenu(openedMenu);
         }
       });
     });

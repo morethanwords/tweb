@@ -1,16 +1,16 @@
-import { SliderTab } from "../slider";
-import SearchInput from "../searchInput";
-import Scrollable from "../scrollable_new";
-import LazyLoadQueue from "../lazyLoadQueue";
-import { findUpClassName } from "../../lib/utils";
-import appImManager from "../../lib/appManagers/appImManager";
-import appStickersManager from "../../lib/appManagers/appStickersManager";
-import PopupStickers from "../popupStickers";
-import animationIntersector from "../animationIntersector";
-import { RichTextProcessor } from "../../lib/richtextprocessor";
-import { wrapSticker } from "../wrappers";
-import appSidebarRight, { AppSidebarRight } from "../../lib/appManagers/appSidebarRight";
-import { StickerSet, StickerSetCovered } from "../../layer";
+import { SliderTab } from "../../slider";
+import SearchInput from "../../searchInput";
+import Scrollable from "../../scrollable";
+import LazyLoadQueue from "../../lazyLoadQueue";
+import { findUpClassName } from "../../../lib/utils";
+import appImManager from "../../../lib/appManagers/appImManager";
+import appStickersManager from "../../../lib/appManagers/appStickersManager";
+import PopupStickers from "../../popupStickers";
+import animationIntersector from "../../animationIntersector";
+import { RichTextProcessor } from "../../../lib/richtextprocessor";
+import { wrapSticker } from "../../wrappers";
+import appSidebarRight, { AppSidebarRight } from "..";
+import { StickerSet, StickerSetCovered } from "../../../layer";
 
 export default class AppStickersTab implements SliderTab {
   private container = document.getElementById('stickers-container') as HTMLDivElement;

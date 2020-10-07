@@ -1,13 +1,13 @@
-import appImManager from "./appImManager";
-import SidebarSlider from "../../components/slider";
-import AppStickersTab from "../../components/sidebarRight/stickers";
-import AppPollResultsTab from "../../components/sidebarRight/pollResults";
-import AppGifsTab from "../../components/sidebarRight/gifs";
+import appImManager from "../../lib/appManagers/appImManager";
+import SidebarSlider from "../slider";
+import AppStickersTab from "./tabs/stickers";
+import AppPollResultsTab from "./tabs/pollResults";
+import AppGifsTab from "./tabs/gifs";
 import mediaSizes, { ScreenSize } from "../../helpers/mediaSizes";
-import AppPrivateSearchTab from "../../components/sidebarRight/search";
-import AppSharedMediaTab from "../../components/sidebarRight/sharedMedia";
-import AppForwardTab from "../../components/sidebarRight/forward";
-import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
+import AppPrivateSearchTab from "./tabs/search";
+import AppSharedMediaTab from "./tabs/sharedMedia";
+import AppForwardTab from "./tabs/forward";
+import { MOUNT_CLASS_TO } from "../../lib/mtproto/mtproto_config";
 
 export const RIGHT_COLUMN_ACTIVE_CLASSNAME = 'is-right-column-shown';
 

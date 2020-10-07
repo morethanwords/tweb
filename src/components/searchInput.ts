@@ -40,7 +40,7 @@ export default class SearchInput {
     if(value != this.prevValue) {
       this.prevValue = value;
       clearTimeout(this.timeout);
-      this.timeout = setTimeout(() => {
+      this.timeout = window.setTimeout(() => {
         this.onChange(value);
       }, 200);
     }

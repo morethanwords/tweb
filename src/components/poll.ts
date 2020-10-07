@@ -1,7 +1,7 @@
 import appPollsManager, { PollResults, Poll } from "../lib/appManagers/appPollsManager";
 import { RichTextProcessor } from "../lib/richtextprocessor";
 import { findUpClassName, cancelEvent } from "../lib/utils";
-import appSidebarRight from "../lib/appManagers/appSidebarRight";
+import appSidebarRight from "./sidebarRight";
 import appImManager from "../lib/appManagers/appImManager";
 import serverTimeManager from "../lib/mtproto/serverTimeManager";
 import { ripple } from "./ripple";

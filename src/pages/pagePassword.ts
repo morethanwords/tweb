@@ -12,6 +12,8 @@ import { cancelEvent } from '../lib/utils';
 import { AccountPassword } from '../layer';
 import mediaSizes from '../helpers/mediaSizes';
 
+let passwordInput: HTMLInputElement;
+
 let onFirstMount = (): Promise<any> => {
   let needFrame = 0;
   let animation: RLottiePlayer;
@@ -19,7 +21,7 @@ let onFirstMount = (): Promise<any> => {
   let passwordVisible = false;
 
   const btnNext = page.pageEl.querySelector('button') as HTMLButtonElement;
-  const passwordInput = document.getElementById('password') as HTMLInputElement;
+  passwordInput = document.getElementById('password') as HTMLInputElement;
   const passwordInputLabel = passwordInput.nextElementSibling as HTMLLabelElement;
   const toggleVisible = page.pageEl.querySelector('.toggle-visible') as HTMLSpanElement;
 
@@ -142,6 +144,8 @@ let onFirstMount = (): Promise<any> => {
   ]);
 };
 
-const page = new Page('page-password', true, onFirstMount);
+const page = new Page('page-password', true, onFirstMount, null, () => {
+  passwordInput.focus();
+});
 
 export default page;

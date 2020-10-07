@@ -14,7 +14,7 @@ import appMediaPlaybackController from "../../components/appMediaPlaybackControl
 import { deferredPromise } from "../../helpers/cancellablePromise";
 import mediaSizes from "../../helpers/mediaSizes";
 import { isSafari } from "../../helpers/userAgent";
-import appSidebarRight, { AppSidebarRight } from "./appSidebarRight";
+import appSidebarRight, { AppSidebarRight } from "../../components/sidebarRight";
 import $rootScope from "../rootScope";
 import { isTouchSupported } from "../../helpers/touchSupport";
 
@@ -137,6 +137,7 @@ export class AppMediaViewer {
 
     const close = (e: MouseEvent) => {
       cancelEvent(e);
+      if(this.setMoverAnimationPromise) return;
       //this.overlaysDiv.classList.remove('active');
       this.content.container.innerHTML = '';
       /* if(this.content.container.firstElementChild) {
@@ -393,7 +394,7 @@ export class AppMediaViewer {
         mover.prepend(aspecter);
       }
       
-      aspecter.style.cssText = `width: ${rect.width}px; height: ${rect.height}px; transform: scale(${containerRect.width / rect.width}, ${containerRect.height / rect.height});`;
+      aspecter.style.cssText = `width: ${rect.width}px; height: ${rect.height}px; transform: scale3d(${containerRect.width / rect.width}, ${containerRect.height / rect.height}, 1);`;
     }
 
     mover.style.width = containerRect.width + 'px';
@@ -402,7 +403,7 @@ export class AppMediaViewer {
     const scaleX = rect.width / containerRect.width;
     const scaleY = rect.height / containerRect.height;
     if(!wasActive) {
-      transform += `scale(${scaleX},${scaleY}) `;
+      transform += `scale3d(${scaleX},${scaleY},1) `;
     }
 
     let borderRadius = window.getComputedStyle(realParent).getPropertyValue('border-radius');
@@ -411,6 +412,7 @@ export class AppMediaViewer {
     if(!wasActive) {
       mover.style.borderRadius = borderRadius;
     }
+    //let borderRadius = '0px 0px 0px 0px';
 
     mover.style.transform = transform;
 
@@ -583,17 +585,23 @@ export class AppMediaViewer {
     }
 
     //await new Promise((resolve) => setTimeout(resolve, 0));
-    await new Promise((resolve) => window.requestAnimationFrame(resolve));
+    //await new Promise((resolve) => window.requestAnimationFrame(resolve));
+    // * одного RAF'а недостаточно, иногда анимация с одним не срабатывает (преимущественно на мобильных)
+    await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
 
     // чтобы проверить установленную позицию - раскомментировать
     //throw '';
 
-    mover.style.transform = `translate3d(${containerRect.left}px,${containerRect.top}px,0) scale(1,1)`;
+    //await new Promise((resolve) => setTimeout(resolve, 5e3));
+
+    mover.style.transform = `translate3d(${containerRect.left}px,${containerRect.top}px,0) scale3d(1,1,1)`;
     //mover.style.transform = `translate(-50%,-50%) scale(1,1)`;
 
     if(aspecter) {
       this.setFullAspect(aspecter, containerRect, rect);
     }
+
+    //throw '';
 
     setTimeout(() => {
       mover.style.borderRadius = '';
@@ -658,7 +666,7 @@ export class AppMediaViewer {
 
       //this.log('will set style aspecter:', `width: ${width}px; height: ${height}px; transform: scale(${containerRect.width / width}, ${containerRect.height / height});`);
 
-      aspecter.style.cssText = `width: ${width}px; height: ${height}px; transform: scale(${containerRect.width / width}, ${containerRect.height / height});`;
+      aspecter.style.cssText = `width: ${width}px; height: ${height}px; transform: scale3d(${containerRect.width / width}, ${containerRect.height / height}, 1);`;
     //}
   }
 

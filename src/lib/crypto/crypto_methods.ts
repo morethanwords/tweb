@@ -1,5 +1,6 @@
-import { convertToArrayBuffer, convertToByteArray } from "../bin_utils";
+import { convertToArrayBuffer } from "../bin_utils";
 import type { InputCheckPasswordSRP } from "../../layer";
+import type { aesEncryptSync } from "./crypto_utils";
 
 export default abstract class CryptoWorkerMethods {
   abstract performTaskWorker<T>(task: string, ...args: any[]): Promise<T>;
@@ -17,7 +18,7 @@ export default abstract class CryptoWorkerMethods {
   }
 
   public aesEncrypt(bytes: any, keyBytes: any, ivBytes: any) {
-    return this.performTaskWorker<ArrayBuffer>('aes-encrypt', convertToArrayBuffer(bytes), 
+    return this.performTaskWorker<ReturnType<typeof aesEncryptSync>>('aes-encrypt', convertToArrayBuffer(bytes), 
       convertToArrayBuffer(keyBytes), convertToArrayBuffer(ivBytes));
   }
 
@@ -31,10 +32,8 @@ export default abstract class CryptoWorkerMethods {
     return this.performTaskWorker<number[]>('rsa-encrypt', publicKey, bytes);
   }
 
-  public factorize(bytes: any) {
-    bytes = convertToByteArray(bytes);
-
-    return this.performTaskWorker<[number[], number[], number]>('factorize', bytes);
+  public factorize(bytes: Uint8Array) {
+    return this.performTaskWorker<[number[], number[], number]>('factorize', [...bytes]);
   }
 
   public modPow(x: any, y: any, m: any) {

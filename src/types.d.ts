@@ -2,17 +2,17 @@ import type { ApiError } from "./lib/mtproto/apiManager";
 
 export type InvokeApiOptions = Partial<{
   dcID: number,
-  timeout: number,
-  noErrorBox: boolean,
-  fileUpload: boolean,
-  ignoreErrors: boolean,
-  fileDownload: boolean,
-  createNetworker: boolean,
-  singleInRequest: boolean,
+  floodMaxTimeout: number,
+  noErrorBox: true,
+  fileUpload: true,
+  ignoreErrors: true,
+  fileDownload: true,
+  createNetworker: true,
+  singleInRequest: true,
   startMaxLength: number,
 
   afterMessageID: string,
-  resultType: boolean,
+  resultType: string,
   
   waitTime: number,
   stopTime: number,

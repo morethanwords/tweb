@@ -1,6 +1,6 @@
 import emoticonsDropdown, { EmoticonsTab, EMOTICONSSTICKERGROUP, EmoticonsDropdown } from "..";
 import { StickerSet } from "../../../layer";
-import Scrollable, { ScrollableX } from "../../scrollable_new";
+import Scrollable, { ScrollableX } from "../../scrollable";
 import { wrapSticker } from "../../wrappers";
 import appStickersManager from "../../../lib/appManagers/appStickersManager";
 import appDownloadManager from "../../../lib/appManagers/appDownloadManager";

@@ -1,5 +1,5 @@
 import { PopupElement } from "./popup";
-import Scrollable from "./scrollable_new";
+import Scrollable from "./scrollable";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import $rootScope from "../lib/rootScope";
 import { Poll } from "../lib/appManagers/appPollsManager";

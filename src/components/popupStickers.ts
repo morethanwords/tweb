@@ -1,7 +1,7 @@
 import { PopupElement } from "./popup";
 import appStickersManager from "../lib/appManagers/appStickersManager";
 import { RichTextProcessor } from "../lib/richtextprocessor";
-import Scrollable from "./scrollable_new";
+import Scrollable from "./scrollable";
 import { wrapSticker } from "./wrappers";
 import LazyLoadQueue from "./lazyLoadQueue";
 import { putPreloader } from "./misc";

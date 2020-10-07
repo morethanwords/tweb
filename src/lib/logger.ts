@@ -7,9 +7,9 @@ export enum LogLevels {
   debug = 8
 };
 
-var _logTimer = Date.now();
+const _logTimer = Date.now();
 function dT() {
-  return '[' + ((Date.now() - _logTimer) / 1000).toFixed(3) + ']'
+  return '[' + ((Date.now() - _logTimer) / 1000).toFixed(3) + ']';
 }
 
 export function logger(prefix: string, level = LogLevels.log | LogLevels.warn | LogLevels.error) {
@@ -19,32 +19,34 @@ export function logger(prefix: string, level = LogLevels.log | LogLevels.warn | 
 
   //level = LogLevels.log | LogLevels.warn | LogLevels.error | LogLevels.debug
 
+  prefix = '[' + prefix + ']:';
+
   function Log(...args: any[]) {
-    return level & LogLevels.log && console.log(dT(), '[' + prefix + ']:', ...args);
+    return level & LogLevels.log && console.log(dT(), prefix, ...args);
   }
   
   Log.warn = function(...args: any[]) {
-    return level & LogLevels.warn && console.warn(dT(), '[' + prefix + ']:', ...args);
+    return level & LogLevels.warn && console.warn(dT(), prefix, ...args);
   };
   
   Log.info = function(...args: any[]) {
-    return level & LogLevels.log && console.info(dT(), '[' + prefix + ']:', ...args);
+    return level & LogLevels.log && console.info(dT(), prefix, ...args);
   };
   
   Log.error = function(...args: any[]) {
-    return level & LogLevels.error && console.error(dT(), '[' + prefix + ']:', ...args);
+    return level & LogLevels.error && console.error(dT(), prefix, ...args);
   };
   
   Log.trace = function(...args: any[]) {
-    return level & LogLevels.log && console.trace(dT(), '[' + prefix + ']:', ...args);
+    return level & LogLevels.log && console.trace(dT(), prefix, ...args);
   };
 
   /* Log.debug = function(...args: any[]) {
-    return level & LogLevels.debug && console.log(dT(), '[' + prefix + ']:', ...args);
+    return level & LogLevels.debug && console.log(dT(), prefix, ...args);
   }; */
 
   Log.debug = function(...args: any[]) {
-    return level & LogLevels.debug && console.debug(dT(), '[' + prefix + ']:', ...args);
+    return level & LogLevels.debug && console.debug(dT(), prefix, ...args);
   };
   
   return Log;

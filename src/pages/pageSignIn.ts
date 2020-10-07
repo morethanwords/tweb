@@ -1,5 +1,5 @@
 import { putPreloader, formatPhoneNumber } from "../components/misc";
-import Scrollable from '../components/scrollable_new';
+import Scrollable from '../components/scrollable';
 import {RichTextProcessor} from '../lib/richtextprocessor';
 import Config from '../lib/config';
 
@@ -268,11 +268,24 @@ let onFirstMount = () => {
   });
 
   let tryAgain = () => {
-    apiManager.invokeApi('help.getNearestDc').then((nearestDcResult: any) => {
+    apiManager.invokeApi('help.getNearestDc').then((nearestDcResult) => {
+      const dcs = [1, 2, 3, 4, 5];
+      //dcs.splice(nearestDcResult.this_dc - 1, 1);
+
+      let promise: Promise<any>;
       if(nearestDcResult.nearest_dc != nearestDcResult.this_dc) {
         //MTProto.apiManager.baseDcID = nearestDcResult.nearest_dc;
-        apiManager.getNetworker(nearestDcResult.nearest_dc);
+
+        promise = apiManager.getNetworker(nearestDcResult.nearest_dc).then(() => {
+
+        });
       }
+
+      (promise || Promise.resolve()).then(() => {
+        dcs.forEach(dcID => {
+          apiManager.getNetworker(dcID, {fileDownload: true});
+        });
+      });
       
       return nearestDcResult;
     }).then((nearestDcResult: any) => {

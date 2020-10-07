@@ -1,4 +1,4 @@
-import Scrollable from "./scrollable_new";
+import Scrollable from "./scrollable";
 import appMessagesManager, { Dialog } from "../lib/appManagers/appMessagesManager";
 import { cancelEvent, findUpClassName, findUpAttribute } from "../lib/utils";
 import appDialogsManager from "../lib/appManagers/appDialogsManager";
@@ -139,6 +139,14 @@ export class AppSelectPeers {
     }, 0);
   }
 
+  private renderSaved() {
+    if(!this.offsetIndex && this.folderID == 0 && 
+      (!this.query || 'saved messages'.includes(this.query.toLowerCase())) && 
+      this.peerType.includes('dialogs')) {
+      this.renderResultsFunc([$rootScope.myID]);
+    }
+  }
+
   private async getMoreDialogs(): Promise<any> {
     if(this.promise) return this.promise;
 
@@ -160,20 +168,15 @@ export class AppSelectPeers {
       dialogs = dialogs.slice();
       dialogs.findAndSplice(d => d.peerID == $rootScope.myID); // no my account
 
-      if(!this.offsetIndex && this.folderID == 0 && 
-        (!this.query || 'saved messages'.includes(this.query.toLowerCase())) && 
-        this.peerType.includes('dialogs')) {
-        dialogs.unshift({
-          peerID: $rootScope.myID,
-          pFlags: {}
-        } as any);
-      }
+      this.renderSaved();
 
       this.offsetIndex = newOffsetIndex;
 
       this.renderResultsFunc(dialogs.map(dialog => dialog.peerID));
     } else {
       if(!this.loadedWhat.dialogs) {
+        this.renderSaved();
+
         this.loadedWhat.dialogs = true;
         this.offsetIndex = 0;
         this.folderID = 1;

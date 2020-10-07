@@ -1,28 +1,29 @@
 //import { logger } from "../polyfill";
-import appDialogsManager, { AppArchivedTab, archivedTab } from "./appDialogsManager";
-import { findUpTag, findUpClassName, formatNumber } from "../utils";
-import appImManager from "./appImManager";
-import AppSearch, { SearchGroup } from "../../components/appSearch";
-import { parseMenuButtonsTo } from "../../components/misc";
-import appUsersManager from "./appUsersManager";
-import { ScrollableX } from "../../components/scrollable_new";
-import AvatarElement from "../../components/avatar";
-import AppNewChannelTab from "../../components/sidebarLeft/newChannel";
-import AppAddMembersTab from "../../components/sidebarLeft/addMembers";
-import AppContactsTab from "../../components/sidebarLeft/contacts";
-import AppNewGroupTab from "../../components/sidebarLeft/newGroup";
-import AppSettingsTab from "../../components/sidebarLeft/settings";
-import AppEditProfileTab from "../../components/sidebarLeft/editProfile";
-import AppChatFoldersTab from "../../components/sidebarLeft/chatFolders";
-import AppEditFolderTab from "../../components/sidebarLeft/editFolder";
-import AppIncludedChatsTab from "../../components/sidebarLeft/includedChats";
-import SidebarSlider from "../../components/slider";
-import SearchInput from "../../components/searchInput";
-import appStateManager from "./appStateManager";
-import appChatsManager from "./appChatsManager";
-import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
-import $rootScope from "../rootScope";
-import appPeersManager from "./appPeersManager";
+import appDialogsManager from "../../lib/appManagers/appDialogsManager";
+import { findUpTag, findUpClassName, formatNumber } from "../../lib/utils";
+import appImManager from "../../lib/appManagers/appImManager";
+import AppSearch, { SearchGroup } from "../appSearch";
+import { parseMenuButtonsTo } from "../misc";
+import appUsersManager from "../../lib/appManagers/appUsersManager";
+import { ScrollableX } from "../scrollable";
+import AvatarElement from "../avatar";
+import AppNewChannelTab from "./tabs/newChannel";
+import AppAddMembersTab from "./tabs/addMembers";
+import AppContactsTab from "./tabs/contacts";
+import AppNewGroupTab from "./tabs/newGroup";
+import AppSettingsTab from "./tabs/settings";
+import AppEditProfileTab from "./tabs/editProfile";
+import AppChatFoldersTab from "./tabs/chatFolders";
+import AppEditFolderTab from "./tabs/editFolder";
+import AppIncludedChatsTab from "./tabs/includedChats";
+import SidebarSlider from "../slider";
+import SearchInput from "../searchInput";
+import appStateManager from "../../lib/appManagers/appStateManager";
+import appChatsManager from "../../lib/appManagers/appChatsManager";
+import { MOUNT_CLASS_TO } from "../../lib/mtproto/mtproto_config";
+import $rootScope from "../../lib/rootScope";
+import appPeersManager from "../../lib/appManagers/appPeersManager";
+import AppArchivedTab from "./tabs/archivedTab";
 
 AvatarElement;
 
@@ -35,6 +36,7 @@ const editProfileTab = new AppEditProfileTab();
 const chatFoldersTab = new AppChatFoldersTab();
 const editFolderTab = new AppEditFolderTab();
 const includedChatsTab = new AppIncludedChatsTab();
+const archivedTab = new AppArchivedTab();
 
 export class AppSidebarLeft extends SidebarSlider {
   public static SLIDERITEMSIDS = {
@@ -87,14 +89,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
   //private log = logger('SL');
 
-  private searchGroups = {
-    //saved: new SearchGroup('', 'contacts'),
-    contacts: new SearchGroup('Chats', 'contacts'),
-    globalContacts: new SearchGroup('Global Search', 'contacts'),
-    messages: new SearchGroup('Global Search', 'messages'),
-    people: new SearchGroup('People', 'contacts', false, 'search-group-people'),
-    recent: new SearchGroup('Recent', 'contacts', false, 'search-group-recent')
-  };
+  private searchGroups: {[k in 'contacts' | 'globalContacts' | 'messages' | 'people' | 'recent']: SearchGroup} = {} as any;
   private globalSearch: AppSearch;
 
   // peerIDs
@@ -139,47 +134,117 @@ export class AppSidebarLeft extends SidebarSlider {
     this.menuEl = this.toolsBtn.querySelector('.btn-menu');
     this.newBtnMenu = this.sidebarEl.querySelector('#new-menu');
 
-    this.globalSearch = new AppSearch(this.searchContainer, this.searchInput, this.searchGroups, (count) => {
-      if(!count && !this.searchInput.value.trim()) {
-        this.globalSearch.reset();
-        this.searchGroups.people.setActive();
-        this.renderRecentSearch();
-      }
-    });
-    this.searchContainer.addEventListener('click', (e) => {
-      const target = findUpTag(e.target, 'LI') as HTMLElement;
-      if(!target) {
-        return;
-      }
+    this.searchInput.input.addEventListener('focus', () => {
+      this.searchGroups = {
+        //saved: new SearchGroup('', 'contacts'),
+        contacts: new SearchGroup('Chats', 'contacts'),
+        globalContacts: new SearchGroup('Global Search', 'contacts'),
+        messages: new SearchGroup('Global Search', 'messages'),
+        people: new SearchGroup('People', 'contacts', false, 'search-group-people'),
+        recent: new SearchGroup('Recent', 'contacts', false, 'search-group-recent')
+      };
 
-      const searchGroup = findUpClassName(target, 'search-group');
-      if(!searchGroup || searchGroup.classList.contains('search-group-recent') || searchGroup.classList.contains('search-group-people')) {
-        return;
-      }
+      this.globalSearch = new AppSearch(this.searchContainer, this.searchInput, this.searchGroups, (count) => {
+        if(!count && !this.searchInput.value.trim()) {
+          this.globalSearch.reset();
+          this.searchGroups.people.setActive();
+          this.renderRecentSearch();
+        }
+      });
+      this.searchContainer.addEventListener('click', (e) => {
+        const target = findUpTag(e.target, 'LI') as HTMLElement;
+        if(!target) {
+          return;
+        }
+  
+        const searchGroup = findUpClassName(target, 'search-group');
+        if(!searchGroup || searchGroup.classList.contains('search-group-recent') || searchGroup.classList.contains('search-group-people')) {
+          return;
+        }
+  
+        const peerID = +target.getAttribute('data-peerID');
+        if(this.recentSearch[0] != peerID) {
+          this.recentSearch.findAndSplice(p => p == peerID);
+          this.recentSearch.unshift(peerID);
+          if(this.recentSearch.length > 20) {
+            this.recentSearch.length = 20;
+          }
+  
+          this.renderRecentSearch();
+          appStateManager.pushToState('recentSearch', this.recentSearch);
+          for(const peerID of this.recentSearch) {
+            appStateManager.setPeer(peerID, appPeersManager.getPeer(peerID));
+          }
+  
+          clearRecentSearchBtn.style.display = '';
+        }
+      }, {capture: true});
 
-      const peerID = +target.getAttribute('data-peerID');
-      if(this.recentSearch[0] != peerID) {
-        this.recentSearch.findAndSplice(p => p == peerID);
-        this.recentSearch.unshift(peerID);
-        if(this.recentSearch.length > 20) {
-          this.recentSearch.length = 20;
+      let peopleContainer = document.createElement('div');
+      peopleContainer.classList.add('search-group-scrollable');
+      peopleContainer.append(this.searchGroups.people.list);
+      this.searchGroups.people.container.append(peopleContainer);
+      let peopleScrollable = new ScrollableX(peopleContainer);
+
+      appUsersManager.getTopPeers().then(peers => {
+        //console.log('got top categories:', categories);
+        peers.forEach((peerID) => {
+          let {dialog, dom} = appDialogsManager.addDialog(peerID, this.searchGroups.people.list, false, true, true);
+    
+          this.searchGroups.people.setActive();
+        });
+      });
+
+      const onFocus = () => {
+        this.toolsBtn.classList.remove('active');
+        this.backBtn.classList.add('active');
+        this.searchContainer.classList.remove('hide');
+        void this.searchContainer.offsetWidth; // reflow
+        this.searchContainer.classList.add('active');
+
+        if(firstTime) {
+          this.searchGroups.people.setActive();
+          this.renderRecentSearch();
+          firstTime = false;
         }
 
-        this.renderRecentSearch();
+        /* this.searchInput.addEventListener('blur', (e) => {
+          if(!this.searchInput.value) {
+            this.toolsBtn.classList.add('active');
+            this.backBtn.classList.remove('active');
+            this.backBtn.click();
+          }
+        }, {once: true}); */
+      };
+
+      let firstTime = true;
+      this.searchInput.input.addEventListener('focus', onFocus);
+      onFocus();
+
+      this.backBtn.addEventListener('click', (e) => {
+        //appDialogsManager.chatsArchivedContainer.classList.remove('active');
+        this.toolsBtn.classList.add('active');
+        this.backBtn.classList.remove('active');
+        this.searchContainer.classList.remove('active');
+        firstTime = true;
+
+        setTimeout(() => {
+          this.searchContainer.classList.add('hide');
+          this.globalSearch.reset();
+        }, 150);
+      });
+
+      this.renderRecentSearch();
+      const clearRecentSearchBtn = this.recentSearchClearBtn = document.createElement('button');
+      clearRecentSearchBtn.classList.add('btn-icon', 'tgico-close');
+      this.searchGroups.recent.nameEl.append(clearRecentSearchBtn);
+      clearRecentSearchBtn.addEventListener('click', () => {
+        this.recentSearch = [];
         appStateManager.pushToState('recentSearch', this.recentSearch);
-        for(const peerID of this.recentSearch) {
-          appStateManager.setPeer(peerID, appPeersManager.getPeer(peerID));
-        }
-
-        clearRecentSearchBtn.style.display = '';
-      }
-    }, {capture: true});
-
-    let peopleContainer = document.createElement('div');
-    peopleContainer.classList.add('search-group-scrollable');
-    peopleContainer.append(this.searchGroups.people.list);
-    this.searchGroups.people.container.append(peopleContainer);
-    let peopleScrollable = new ScrollableX(peopleContainer);
+        this.renderRecentSearch(false);
+        clearRecentSearchBtn.style.display = 'none';
+      });
+    }, {once: true});
 
     parseMenuButtonsTo(this.buttons, this.menuEl.children);
     parseMenuButtonsTo(this.newButtons, this.newBtnMenu.firstElementChild.children);
@@ -206,42 +271,6 @@ export class AppSidebarLeft extends SidebarSlider {
       this.selectTab(AppSidebarLeft.SLIDERITEMSIDS.settings);
     });
 
-    let firstTime = true;
-    this.searchInput.input.addEventListener('focus', (e) => {
-      this.toolsBtn.classList.remove('active');
-      this.backBtn.classList.add('active');
-      this.searchContainer.classList.remove('hide');
-      void this.searchContainer.offsetWidth; // reflow
-      this.searchContainer.classList.add('active');
-
-      if(firstTime) {
-        this.searchGroups.people.setActive();
-        this.renderRecentSearch();
-        firstTime = false;
-      }
-
-      /* this.searchInput.addEventListener('blur', (e) => {
-        if(!this.searchInput.value) {
-          this.toolsBtn.classList.add('active');
-          this.backBtn.classList.remove('active');
-          this.backBtn.click();
-        }
-      }, {once: true}); */
-    });
-
-    this.backBtn.addEventListener('click', (e) => {
-      //appDialogsManager.chatsArchivedContainer.classList.remove('active');
-      this.toolsBtn.classList.add('active');
-      this.backBtn.classList.remove('active');
-      this.searchContainer.classList.remove('active');
-      firstTime = true;
-
-      setTimeout(() => {
-        this.searchContainer.classList.add('hide');
-        this.globalSearch.reset();
-      }, 150);
-    });
-
     this.newButtons.channel.addEventListener('click', (e) => {
       this.selectTab(AppSidebarLeft.SLIDERITEMSIDS.newChannel);
     });
@@ -258,25 +287,7 @@ export class AppSidebarLeft extends SidebarSlider {
       this.archivedCount.innerText = '' + formatNumber(e.detail.count, 1);
     });
 
-    appUsersManager.getTopPeers().then(peers => {
-      //console.log('got top categories:', categories);
-      peers.forEach((peerID) => {
-        let {dialog, dom} = appDialogsManager.addDialog(peerID, this.searchGroups.people.list, false, true, true);
-  
-        this.searchGroups.people.setActive();
-      });
-    });
-
-    this.renderRecentSearch();
-    const clearRecentSearchBtn = this.recentSearchClearBtn = document.createElement('button');
-    clearRecentSearchBtn.classList.add('btn-icon', 'tgico-close');
-    this.searchGroups.recent.nameEl.append(clearRecentSearchBtn);
-    clearRecentSearchBtn.addEventListener('click', () => {
-      this.recentSearch = [];
-      appStateManager.pushToState('recentSearch', this.recentSearch);
-      this.renderRecentSearch(false);
-      clearRecentSearchBtn.style.display = 'none';
-    });
+    appUsersManager.getTopPeers();
   }
 
   public renderRecentSearch(setActive = true) {

@@ -47,7 +47,11 @@ export default class ProgressivePreloader {
 
         if(this.promise && this.promise.cancel) {
           this.promise.cancel();
-          this.detach();
+          
+          this.setProgress(0);
+          setTimeout(() => {
+            this.detach();
+          }, 100);
         }
       });
     }

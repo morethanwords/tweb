@@ -1,11 +1,11 @@
-import { SliderTab } from "../slider";
-import Scrollable from "../scrollable_new";
-import appSidebarRight, { AppSidebarRight } from "../../lib/appManagers/appSidebarRight";
-import appPollsManager from "../../lib/appManagers/appPollsManager";
-import { roundPercents } from "../poll";
-import { RichTextProcessor } from "../../lib/richtextprocessor";
-import appDialogsManager from "../../lib/appManagers/appDialogsManager";
-import { ripple } from "../ripple";
+import { SliderTab } from "../../slider";
+import Scrollable from "../../scrollable";
+import appSidebarRight, { AppSidebarRight } from "..";
+import appPollsManager from "../../../lib/appManagers/appPollsManager";
+import { roundPercents } from "../../poll";
+import { RichTextProcessor } from "../../../lib/richtextprocessor";
+import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
+import { ripple } from "../../ripple";
 
 export default class AppPollResultsTab implements SliderTab {
   private container = document.getElementById('poll-results-container') as HTMLDivElement;

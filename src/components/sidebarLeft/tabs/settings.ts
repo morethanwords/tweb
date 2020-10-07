@@ -1,10 +1,10 @@
-import { SliderTab } from "../slider";
-import AvatarElement from "../avatar";
-import { parseMenuButtonsTo } from "../misc";
+import { SliderTab } from "../../slider";
+import AvatarElement from "../../avatar";
+import { parseMenuButtonsTo } from "../../misc";
 //import $rootScope from "../../lib/rootScope";
-import apiManager from "../../lib/mtproto/mtprotoworker";
-import appSidebarLeft, { AppSidebarLeft } from "../../lib/appManagers/appSidebarLeft";
-import appUsersManager from "../../lib/appManagers/appUsersManager";
+import apiManager from "../../../lib/mtproto/mtprotoworker";
+import appSidebarLeft, { AppSidebarLeft } from "..";
+import appUsersManager from "../../../lib/appManagers/appUsersManager";
 
 export default class AppSettingsTab implements SliderTab {
   private container = document.querySelector('.settings-container') as HTMLDivElement;

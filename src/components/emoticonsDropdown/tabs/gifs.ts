@@ -1,6 +1,6 @@
 import emoticonsDropdown, { EmoticonsDropdown, EmoticonsTab, EMOTICONSSTICKERGROUP } from "..";
 import GifsMasonry from "../../gifsMasonry";
-import Scrollable from "../../scrollable_new";
+import Scrollable from "../../scrollable";
 import { putPreloader } from "../../misc";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
 import appDocsManager, {MyDocument} from "../../../lib/appManagers/appDocsManager";

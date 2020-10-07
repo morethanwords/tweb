@@ -1,4 +1,4 @@
-import {bigint, bigStringInt, bytesToHex, isObject} from '../bin_utils';
+import {bigint, bigStringInt, bytesCmp, bytesToHex, isObject} from '../bin_utils';
 import Schema from './schema';
 
 /// #if MTPROTO_WORKER
@@ -26,7 +26,7 @@ class TLSerialization {
   public intView: Int32Array;
   public byteView: Uint8Array;
 
-  constructor(options: any = {}) {
+  constructor(options: Partial<{startMaxLength: number, mtproto: true}> = {}) {
     this.maxLength = options.startMaxLength || 2048 // 2Kb
     this.mtproto = options.mtproto || false;
     this.createBuffer();
@@ -75,14 +75,17 @@ class TLSerialization {
       return;
     }
   
-    ///console.trace('Increase buffer', this.offset, needBytes, this.maxLength);
+    //console.log('Increase buffer start', this.offset, needBytes, this.maxLength, this.byteView.slice(0, 32));
     this.maxLength = Math.ceil(Math.max(this.maxLength * 2, this.offset + needBytes + 16) / 4) * 4;
-    var previousBuffer = this.buffer;
-    var previousArray = new Int32Array(previousBuffer);
-  
+    const previousBuffer = this.buffer;
+    //const previousByteView = this.byteView;
+    const previousArray = new Int32Array(previousBuffer);
+    
     this.createBuffer();
-  
+    
     new Int32Array(this.buffer).set(previousArray);
+    /* console.log('Increase buffer end', this.offset, needBytes, this.maxLength, this.byteView.slice(0, 32), 
+      bytesCmp(previousByteView, this.byteView.slice(0, previousByteView.length))); */
   }
 
   public writeInt(i: number, field: string) {
@@ -168,17 +171,17 @@ class TLSerialization {
     }
   }
   
-  public storeBytes(bytes: any, field?: string) {
+  public storeBytes(bytes: ArrayBuffer | Uint8Array | number[], field?: string) {
     if(bytes instanceof ArrayBuffer) {
       bytes = new Uint8Array(bytes);
     } else if(bytes === undefined) {
       bytes = [];
     }
-    this.debug && console.log('>>>', bytesToHex(bytes), (field || '') + ':bytes');
+    this.debug && console.log('>>>', bytesToHex(bytes as number[]), (field || '') + ':bytes');
   
     // if uint8array were json.stringified, then will be: {'0': 123, '1': 123}
-    var len = bytes.byteLength || bytes.length;
-    this.checkLength(len + 8)
+    var len = (bytes as ArrayBuffer).byteLength || (bytes as Uint8Array).length;
+    this.checkLength(len + 8);
     if(len <= 253) {
       this.byteView[this.offset++] = len;
     } else {
@@ -188,7 +191,7 @@ class TLSerialization {
       this.byteView[this.offset++] = (len & 0xFF0000) >> 16;
     }
   
-    this.byteView.set(bytes, this.offset);
+    this.byteView.set(bytes as Uint8Array, this.offset);
     this.offset += len;
   
     // Padding
@@ -216,7 +219,7 @@ class TLSerialization {
     this.offset += len;
   }
   
-  public storeRawBytes(bytes: any, field?: string) {
+  public storeRawBytes(bytes: ArrayLike<number>, field?: string) {
     if(bytes instanceof ArrayBuffer) {
       bytes = new Uint8Array(bytes);
     }
@@ -385,7 +388,7 @@ class TLDeserialization {
   public mtproto: boolean = false;
   private debug: boolean;
 
-  constructor(buffer: ArrayBuffer | Uint8Array, options: any = {}) {
+  constructor(buffer: ArrayBuffer | Uint8Array, options: Partial<{override: any, mtproto: true, debug: true}> = {}) {
     //buffer = addPadding(buffer, 4, true); // fix 21.01.2020 for wss
     if(buffer instanceof ArrayBuffer) {
       this.buffer = buffer;
