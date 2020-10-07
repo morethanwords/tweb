@@ -12,7 +12,7 @@ type PeerType = 'contacts' | 'dialogs';
 
 // TODO: правильная сортировка для addMembers, т.е. для peerType: 'contacts', потому что там идут сначала контакты - потом неконтакты, а должно всё сортироваться по имени
 
-let loadedAllDialogs = false;
+let loadedAllDialogs = false, loadAllDialogsPromise: Promise<any>;
 export class AppSelectPeers {
   public container = document.createElement('div');
   public list = document.createElement('ul');
@@ -141,7 +141,9 @@ export class AppSelectPeers {
 
   private renderSaved() {
     if(!this.offsetIndex && this.folderID == 0 && 
-      (!this.query || 'saved messages'.includes(this.query.toLowerCase())) && 
+      (!this.query 
+        || 'saved messages'.includes(this.query.toLowerCase()) 
+        || appUsersManager.getUser($rootScope.myID).sortName.includes(this.query.toLowerCase())) && 
       this.peerType.includes('dialogs')) {
       this.renderResultsFunc([$rootScope.myID]);
     }
@@ -223,7 +225,7 @@ export class AppSelectPeers {
       const pageCount = appPhotosManager.windowH / 72 * 1.25 | 0;
       const arr = this.cachedContacts.splice(0, pageCount);
       this.renderResultsFunc(arr);
-    } 
+    }
     
     if(!this.cachedContacts.length) {
       this.loadedWhat.contacts = true;
@@ -235,26 +237,46 @@ export class AppSelectPeers {
     }
   }
 
+  checkForTriggers = () => {
+    this.scrollable.checkForTriggers();
+  };
+
   private getMoreResults() {
-    const promises: Promise<any>[] = [];
+    const get = () => {
+      const promises: Promise<any>[] = [];
 
-    if(!loadedAllDialogs) {
-      promises.push(appMessagesManager.getConversationsAll());
-    }
+      if(!loadedAllDialogs && !loadAllDialogsPromise) {
+        loadAllDialogsPromise = appMessagesManager.getConversationsAll()
+        .then(() => {
+          loadedAllDialogs = true;
+        }, () => {
+          loadAllDialogsPromise = null;
+        });
 
-    if((this.peerType.includes('dialogs') || this.loadedWhat.contacts) && !this.loadedWhat.archived) { // to load non-contacts
-      promises.push(this.getMoreDialogs());
-
-      if(!this.loadedWhat.archived) {
-        return Promise.all(promises);
+        promises.push(loadAllDialogsPromise);
       }
-    }
+  
+      if((this.peerType.includes('dialogs') || this.loadedWhat.contacts) && !this.loadedWhat.archived) { // to load non-contacts
+        promises.push(this.getMoreDialogs());
+  
+        if(!this.loadedWhat.archived) {
+          return promises;
+        }
+      }
+      
+      if(this.peerType.includes('contacts') && !this.loadedWhat.contacts) {
+        promises.push(this.getMoreContacts());
+      }
+  
+      return promises;
+    };
     
-    if(this.peerType.includes('contacts') && !this.loadedWhat.contacts) {
-      promises.push(this.getMoreContacts());
+    const promises = get();
+    const promise = Promise.all(promises);
+    if(promises.length) {
+      promise.then(this.checkForTriggers);
     }
-
-    return Promise.all(promises);
+    return promise
   }
 
   private renderResults(peerIDs: number[]) {

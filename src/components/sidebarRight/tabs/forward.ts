@@ -79,7 +79,11 @@ export default class AppForwardTab implements SliderTab {
     }, ['dialogs', 'contacts'], () => {
       //console.log('forward rendered:', this.container.querySelector('.selector ul').childElementCount);
       appSidebarRight.selectTab(AppSidebarRight.SLIDERITEMSIDS.forward);
-      appSidebarRight.toggleSidebar(true);
+      appSidebarRight.toggleSidebar(true).then(() => {
+        if(this.selector) {
+          this.selector.checkForTriggers();
+        }
+      });
       document.body.classList.add('is-forward-active');
     }, null, 'send');
   }

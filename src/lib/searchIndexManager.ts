@@ -1,13 +1,22 @@
 import Config from './config';
 
+export type SearchIndex = {
+  fullTexts: {
+    [peerID: string]: string
+  }/* ,
+  shortIndexes: {
+    [shortStr: string]: number[]
+  } */
+};
+
 class SearchIndexManager {
   public static badCharsRe = /[`~!@#$%^&*()\-_=+\[\]\\|{}'";:\/?.>,<]+/g;
   public static trimRe = /^\s+|\s$/g;
 
-  public createIndex() {
+  public createIndex(): SearchIndex {
     return {
-      shortIndexes: {},
-      fullTexts: {}
+      fullTexts: {}/* ,
+      shortIndexes: {} */
     };
   }
 
@@ -33,21 +42,19 @@ class SearchIndexManager {
     return username && username.toLowerCase() || '';
   }
 
-  public indexObject(id: number, searchText: string, searchIndex: any) {
-    if(searchIndex.fullTexts[id] !== undefined) {
+  public indexObject(id: number, searchText: string, searchIndex: SearchIndex) {
+    if(searchIndex.fullTexts.hasOwnProperty(id)) {
       return false;
     }
 
     searchText = this.cleanSearchText(searchText);
-
     if(!searchText.length) {
       return false;
     }
 
-    const shortIndexes = searchIndex.shortIndexes;
-
     searchIndex.fullTexts[id] = searchText;
-
+    
+    /* const shortIndexes = searchIndex.shortIndexes;
     searchText.split(' ').forEach((searchWord) => {
       let len = Math.min(searchWord.length, 3),
         wordPart, i;
@@ -59,39 +66,52 @@ class SearchIndexManager {
           shortIndexes[wordPart].push(id);
         }
       }
-    });
+    }); */
   }
 
-  public search(query: string, searchIndex: any) {
-    const shortIndexes = searchIndex.shortIndexes;
+  public search(query: string, searchIndex: SearchIndex) {
     const fullTexts = searchIndex.fullTexts;
+    //const shortIndexes = searchIndex.shortIndexes;
 
     query = this.cleanSearchText(query);
 
+    const newFoundObjs: {[peerID: string]: true} = {};
     const queryWords = query.split(' ');
-    let foundObjs: any = false,
-      newFoundObjs: any, i: number;
-    let j: number, searchText: string;
-    let found: boolean;
+    for(const peerID in fullTexts) {
+      const fullText = fullTexts[peerID];
 
-    for(i = 0; i < queryWords.length; i++) {
-      newFoundObjs = shortIndexes[queryWords[i].substr(0, 3)];
-      if(!newFoundObjs) {
-        foundObjs = [];
+      let found = true;
+      for(const word of queryWords) {
+        if(fullText.indexOf(word) === -1) {
+          found = false;
+          break;
+        }
+      }
+
+      if(found) {
+        newFoundObjs[peerID] = true;
+      }
+    }
+    
+
+    /* const queryWords = query.split(' ');
+    let foundArr: number[];
+    for(let i = 0; i < queryWords.length; i++) {
+      const newFound = shortIndexes[queryWords[i].substr(0, 3)];
+      if(!newFound) {
+        foundArr = [];
         break;
       }
       
-      if(foundObjs === false || foundObjs.length > newFoundObjs.length) {
-        foundObjs = newFoundObjs;
+      if(foundArr === undefined || foundArr.length > newFound.length) {
+        foundArr = newFound;
       }
     }
 
-    newFoundObjs = {};
-
-    for(j = 0; j < foundObjs.length; j++) {
-      found = true;
-      searchText = fullTexts[foundObjs[j]];
-      for(i = 0; i < queryWords.length; i++) {
+    for(let j = 0; j < foundArr.length; j++) {
+      let found = true;
+      let searchText = fullTexts[foundArr[j]];
+      for(let i = 0; i < queryWords.length; i++) {
         if(searchText.indexOf(queryWords[i]) == -1) {
           found = false;
           break;
@@ -99,9 +119,9 @@ class SearchIndexManager {
       }
 
       if(found) {
-        newFoundObjs[foundObjs[j]] = true;
+        newFoundObjs[foundArr[j]] = true;
       }
-    }
+    } */
 
     return newFoundObjs;
   }

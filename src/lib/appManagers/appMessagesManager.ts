@@ -516,11 +516,13 @@ export class AppMessagesManager {
   private cachedResults: {
     query: string,
     count: number,
-    dialogs: Dialog[]
+    dialogs: Dialog[],
+    folderID: number
   } = {
     query: '',
     count: 0,
-    dialogs: []
+    dialogs: [],
+    folderID: 0
   };
 
   private log = logger('MESSAGES'/* , LogLevels.error */);
@@ -1900,26 +1902,22 @@ export class AppMessagesManager {
     let curDialogStorage = this.dialogsStorage.getFolder(folderID);
 
     if(query) {
-      if(!limit || this.cachedResults.query !== query) {
-        this.cachedResults.query = query
+      if(!limit || this.cachedResults.query !== query || this.cachedResults.folderID != folderID) {
+        this.cachedResults.query = query;
+        this.cachedResults.folderID = folderID;
 
         const results = searchIndexManager.search(query, this.dialogsIndex);
 
         this.cachedResults.dialogs = [];
-        /* for(const folderID in this.dialogsStorage) {
-          const dialogs = this.dialogsStorage[folderID];
-          dialogs.forEach(dialog => {
-            if(results[dialog.peerID]) {
-              this.cachedResults.dialogs.push(dialog);
-            }
-          });
-        } */
+
         for(const peerID in this.dialogsStorage.dialogs) {
           const dialog = this.dialogsStorage.dialogs[peerID];
-          if(results[dialog.peerID]) {
+          if(results[dialog.peerID] && dialog.folder_id == folderID) {
             this.cachedResults.dialogs.push(dialog);
           }
         }
+
+        this.cachedResults.dialogs.sort((d1, d2) => d2.index - d1.index);
 
         this.cachedResults.count = this.cachedResults.dialogs.length;
       }
