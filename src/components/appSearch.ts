@@ -280,10 +280,11 @@ export default class AppSearch {
       
       this.minMsgID = history[history.length - 1];
       this.offsetRate = next_rate;
-      this.loadedCount += history.length;
+      
       if(this.loadedCount == -1) {
         this.loadedCount = 0;
       }
+      this.loadedCount += history.length;
       
       if(this.foundCount == -1) {
         this.foundCount = count;
