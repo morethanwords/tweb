@@ -81,6 +81,6 @@ export default class AppForwardTab implements SliderTab {
       appSidebarRight.selectTab(AppSidebarRight.SLIDERITEMSIDS.forward);
       appSidebarRight.toggleSidebar(true);
       document.body.classList.add('is-forward-active');
-    });
+    }, null, 'send');
   }
 }

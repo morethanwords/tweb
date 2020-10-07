@@ -17,6 +17,7 @@ if(devMode) {
 const opts = {
   MTPROTO_WORKER: true,
   MTPROTO_HTTP: false,
+  MTPROTO_HTTP_UPLOAD: true,
   DEBUG: devMode,
   version: 3,
   "ifdef-verbose": devMode,    // add this for verbose output

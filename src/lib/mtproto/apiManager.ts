@@ -1,20 +1,16 @@
 import AppStorage from '../storage';
 
-import { MTPNetworker } from './networker';
+import MTPNetworker from './networker';
 import { bytesFromHex, bytesToHex, isObject } from '../bin_utils';
 import networkerFactory from './networkerFactory';
 //import { telegramMeWebService } from './mtproto';
 import authorizer from './authorizer';
 import {App, Modes, MOUNT_CLASS_TO} from './mtproto_config';
-import dcConfigurator from './dcConfigurator';
+import dcConfigurator, { ConnectionType, TransportType } from './dcConfigurator';
 import { logger } from '../logger';
 import type { InvokeApiOptions } from '../../types';
 import type { MethodDeclMap } from '../../layer';
 import { CancellablePromise, deferredPromise } from '../../helpers/cancellablePromise';
-
-/// #if MTPROTO_HTTP
-import HTTP from './transports/http';
-/// #endif
 
 /// #if !MTPROTO_WORKER
 import $rootScope from '../rootScope';
@@ -35,8 +31,14 @@ export type ApiError = Partial<{
 }>;
 
 export class ApiManager {
-  public cachedNetworkers: {[x: number]: MTPNetworker} = {};
-  public cachedUploadNetworkers: {[x: number]: MTPNetworker} = {};
+  public cachedNetworkers: {
+    [transportType in TransportType]: {
+      [connectionType in ConnectionType]: {
+        [dcID: number]: MTPNetworker
+      }
+    }
+  } = {} as any;
+  
   public cachedExportPromise: {[x: number]: Promise<unknown>} = {};
   private gettingNetworkers: {[dcIDAndType: string]: Promise<MTPNetworker>} = {};
   public baseDcID = 0;
@@ -115,27 +117,30 @@ export class ApiManager {
   }
   
   // mtpGetNetworker
-  public async getNetworker(dcID: number, options: InvokeApiOptions = {}): Promise<MTPNetworker> {
-    /// #if MTPROTO_HTTP
-    // @ts-ignore
-    const upload = (options.fileUpload || options.fileDownload);
-    /// #else 
-    // @ts-ignore
-    const upload = (options.fileUpload || options.fileDownload) && Modes.multipleConnections;
-    /// #endif
-    
-    const transport = dcConfigurator.chooseServer(dcID, upload);
-    const cache = upload ? this.cachedUploadNetworkers : this.cachedNetworkers;
-    
+  public getNetworker(dcID: number, options: InvokeApiOptions = {}): Promise<MTPNetworker> {
     if(!dcID) {
       throw new Error('get Networker without dcID');
     }
+
+    const connectionType: ConnectionType = options.fileDownload ? 'download' : (options.fileUpload ? 'upload' : 'client');
+    const transportType: TransportType = connectionType == 'upload' ? 'https' : 'websocket';
+    const transport = dcConfigurator.chooseServer(dcID, connectionType, transportType);
+    
+    if(!this.cachedNetworkers.hasOwnProperty(transportType)) {
+      this.cachedNetworkers[transportType] = {
+        client: {},
+        download: {},
+        upload: {}
+      };
+    }
+
+    const cache = this.cachedNetworkers[transportType][connectionType];
     
     if(cache[dcID] !== undefined) {
-      return cache[dcID];
+      return Promise.resolve(cache[dcID]);
     }
     
-    const getKey = dcID + '-' + +upload;
+    const getKey = [dcID, transportType, connectionType].join('-');
     if(this.gettingNetworkers[getKey]) {
       return this.gettingNetworkers[getKey];
     }
@@ -146,12 +151,6 @@ export class ApiManager {
     
     return this.gettingNetworkers[getKey] = AppStorage.get<string[]/* |boolean[] */>([ak, akID, ss])
     .then(async([authKeyHex, authKeyIDHex, serverSaltHex]) => {
-      /* if(authKeyHex && !authKeyIDHex && serverSaltHex) {
-        this.log.warn('Updating to new version (+akID)');
-        await AppStorage.remove(ak, akID, ss);
-        authKeyHex = serverSaltHex = '';
-      } */
-      
       let networker: MTPNetworker;
       if(authKeyHex && authKeyHex.length == 512) {
         if(!serverSaltHex || serverSaltHex.length != 16) {
@@ -162,7 +161,7 @@ export class ApiManager {
         const authKeyID = new Uint8Array(bytesFromHex(authKeyIDHex));
         const serverSalt = bytesFromHex(serverSaltHex);
         
-        networker = networkerFactory.getNetworker(dcID, authKey, authKeyID, serverSalt, options);
+        networker = networkerFactory.getNetworker(dcID, authKey, authKeyID, serverSalt, transport, options);
       } else {
         try { // if no saved state
           const auth = await authorizer.auth(dcID);
@@ -175,7 +174,7 @@ export class ApiManager {
           
           AppStorage.set(storeObj);
           
-          networker = networkerFactory.getNetworker(dcID, auth.authKey, auth.authKeyID, auth.serverSalt, options);
+          networker = networkerFactory.getNetworker(dcID, auth.authKey, auth.authKeyID, auth.serverSalt, transport, options);
         } catch(error) {
           this.log('Get networker error', error, error.stack);
           delete this.gettingNetworkers[getKey];

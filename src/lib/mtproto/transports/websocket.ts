@@ -2,7 +2,7 @@ import MTTransport from './transport';
 
 //import abridgetPacketCodec from './abridged';
 import intermediatePacketCodec from './intermediate';
-import {MTPNetworker} from '../networker';
+import MTPNetworker from '../networker';
 import { logger, LogLevels } from '../../logger';
 import Obfuscation from './obfuscation';
 

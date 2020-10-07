@@ -59,6 +59,8 @@ export type Chat = {
   default_banned_rights?: any
 };
 
+export type ChatRights = 'send' | 'edit_title' | 'edit_photo' | 'invite' | 'pin' | 'deleteRevoke';
+
 export class AppChatsManager {
   public chats: {[id: number]: Channel | Chat | any} = {};
   public usernames: any = {};
@@ -149,7 +151,7 @@ export class AppChatsManager {
     return this.chats[id] || {_: 'chatEmpty', id: id, deleted: true, access_hash: this.channelAccess[id]};
   }
 
-  public hasRights(id: number, action: 'send' | 'edit_title' | 'edit_photo' | 'invite' | 'pin' | 'deleteRevoke') {
+  public hasRights(id: number, action: ChatRights) {
     const chat = this.getChat(id);
     if(chat._ == 'chatEmpty') return false;
 

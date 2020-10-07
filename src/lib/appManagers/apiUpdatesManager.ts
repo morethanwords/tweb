@@ -29,7 +29,7 @@ export class ApiUpdatesManager {
   public channelStates: any = {};
   private attached = false;
 
-  private log = logger('UPDATES'/* , LogLevels.error */);
+  private log = logger('UPDATES', LogLevels.error);
 
   constructor() {
     appStateManager.addListener('save', () => {

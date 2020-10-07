@@ -2,7 +2,7 @@ import Scrollable from "./scrollable";
 import appMessagesManager, { Dialog } from "../lib/appManagers/appMessagesManager";
 import { cancelEvent, findUpClassName, findUpAttribute } from "../lib/utils";
 import appDialogsManager from "../lib/appManagers/appDialogsManager";
-import appChatsManager from "../lib/appManagers/appChatsManager";
+import appChatsManager, { ChatRights } from "../lib/appManagers/appChatsManager";
 import appUsersManager from "../lib/appManagers/appUsersManager";
 import appPeersManager from "../lib/appManagers/appPeersManager";
 import appPhotosManager from "../lib/appManagers/appPhotosManager";
@@ -37,7 +37,7 @@ export class AppSelectPeers {
 
   private loadedWhat: Partial<{[k in 'dialogs' | 'archived' | 'contacts']: true}> = {};
   
-  constructor(private appendTo: HTMLElement, private onChange?: (length: number) => void, private peerType: PeerType[] = ['dialogs'], onFirstRender?: () => void, private renderResultsFunc?: (peerIDs: number[]) => void) {
+  constructor(private appendTo: HTMLElement, private onChange?: (length: number) => void, private peerType: PeerType[] = ['dialogs'], onFirstRender?: () => void, private renderResultsFunc?: (peerIDs: number[]) => void, private chatRightsAction?: ChatRights) {
     this.container.classList.add('selector');
 
     if(!this.renderResultsFunc) {
@@ -167,6 +167,12 @@ export class AppSelectPeers {
 
       dialogs = dialogs.slice();
       dialogs.findAndSplice(d => d.peerID == $rootScope.myID); // no my account
+
+      if(this.chatRightsAction) {
+        dialogs = dialogs.filter(d => {
+          return d.peerID > 0 || appChatsManager.hasRights(-d.peerID, this.chatRightsAction);
+        });
+      }
 
       this.renderSaved();
 

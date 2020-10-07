@@ -1,5 +1,6 @@
-import { MTPNetworker } from "./networker";
+import MTPNetworker from "./networker";
 import { InvokeApiOptions } from "../../types";
+import MTTransport from "./transports/transport";
 
 export class NetworkerFactory {
   public updatesProcessor: (obj: any, bool: boolean) => void = null;
@@ -8,9 +9,9 @@ export class NetworkerFactory {
     this.updatesProcessor = callback;
   }
 
-  public getNetworker(dcID: number, authKey: number[], authKeyID: Uint8Array, serverSalt: number[], options: InvokeApiOptions) {
+  public getNetworker(dcID: number, authKey: number[], authKeyID: Uint8Array, serverSalt: number[], transport: MTTransport, options: InvokeApiOptions) {
     //console.log('NetworkerFactory: creating new instance of MTPNetworker:', dcID, options);
-    return new MTPNetworker(dcID, authKey, authKeyID, serverSalt, options);
+    return new MTPNetworker(dcID, authKey, authKeyID, serverSalt, transport, options);
   }
 }
 
