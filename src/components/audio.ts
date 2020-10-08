@@ -8,6 +8,19 @@ import { DocumentAttribute } from "../layer";
 import { Download } from "../lib/appManagers/appDownloadManager";
 import mediaSizes from "../helpers/mediaSizes";
 import { isSafari } from "../helpers/userAgent";
+import appMessagesManager from "../lib/appManagers/appMessagesManager";
+import $rootScope from "../lib/rootScope";
+
+$rootScope.$on('messages_media_read', e => {
+  const mids = e.detail;
+
+  mids.forEach(mid => {
+    (Array.from(document.querySelectorAll('audio-element[message-id="' + mid + '"]')) as AudioElement[]).forEach(elem => {
+      //console.log('updating avatar:', elem);
+      elem.classList.remove('is-unread');
+    });
+  });
+});
 
 // https://github.com/LonamiWebs/Telethon/blob/4393ec0b83d511b6a20d8a20334138730f084375/telethon/utils.py#L1285
 export function decodeWaveform(waveform: Uint8Array | number[]) {
@@ -42,8 +55,15 @@ export function decodeWaveform(waveform: Uint8Array | number[]) {
   return result;
 }
 
-function wrapVoiceMessage(doc: MyDocument, audioEl: AudioElement) {
+function wrapVoiceMessage(doc: MyDocument, audioEl: AudioElement, mid: number) {
   audioEl.classList.add('is-voice');
+
+  const message = appMessagesManager.getMessage(mid);
+  const isOut = message.fromID == $rootScope.myID && message.peerID != $rootScope.myID;
+  let isUnread = message && message.pFlags.media_unread;
+  if(isUnread) {
+    audioEl.classList.add('is-unread');
+  }
 
   const barWidth = 2;
   const barMargin = mediaSizes.isMobile ? 2 : 1;
@@ -143,6 +163,12 @@ function wrapVoiceMessage(doc: MyDocument, audioEl: AudioElement) {
     }
 
     audioEl.addAudioListener('playing', () => {
+      if(isUnread && !isOut && audioEl.classList.contains('is-unread')) {
+        audioEl.classList.remove('is-unread');
+        appMessagesManager.readMessages([mid]);
+        isUnread = false;
+      }
+
       //rects.forEach(node => node.classList.remove('active'));
       start();
     });
@@ -310,7 +336,7 @@ export default class AudioElement extends HTMLElement {
       this.append(downloadDiv);
     }
 
-    const onTypeLoad = doc.type == 'voice' ? wrapVoiceMessage(doc, this) : wrapAudio(doc, this);
+    const onTypeLoad = doc.type == 'voice' ? wrapVoiceMessage(doc, this, mid) : wrapAudio(doc, this);
     
     const audioTimeDiv = this.querySelector('.audio-time') as HTMLDivElement;
     audioTimeDiv.innerHTML = durationStr;

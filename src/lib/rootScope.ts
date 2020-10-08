@@ -37,6 +37,7 @@ type BroadcastEvents = {
   'messages_pending': void,
   'messages_read': void,
   'messages_downloaded': number[],
+  'messages_media_read': number[],
 
   'stickers_installed': StickerSet.stickerSet,
   'stickers_deleted': StickerSet.stickerSet,

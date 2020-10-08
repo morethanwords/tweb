@@ -347,7 +347,7 @@
       //overflow: visible!important;
       fill: #CBCBCB;
 
-      &.active {
+      &.active, .audio.is-unread & {
         fill: $color-blue;
       }
     }
@@ -390,6 +390,20 @@
     &.is-voice {
       .audio-download {
         margin: 0;
+      }
+    }
+  }
+
+  &.is-voice.is-unread {
+    .audio-time {
+      &:after {
+        content: " ";
+        width: .5rem;
+        height: .5rem;
+        background-color: $color-blue;
+        border-radius: 50%;
+        margin-left: .375rem;
+        display: inline-block;
       }
     }
   }

@@ -3389,10 +3389,10 @@ export class AppMessagesManager {
   }
 
   public readMessages(messageIDs: number[]) {
-    var splitted = appMessagesIDsManager.splitMessageIDsByChannels(messageIDs);
+    const splitted = appMessagesIDsManager.splitMessageIDsByChannels(messageIDs);
     Object.keys(splitted.msgIDs).forEach((channelID: number | string) => {
       channelID = +channelID;
-      let msgIDs = splitted.msgIDs[channelID];
+      const msgIDs = splitted.msgIDs[channelID];
 
       if(channelID > 0) {
         apiManager.invokeApi('channels.readMessageContents', {
@@ -3821,8 +3821,8 @@ export class AppMessagesManager {
       }
 
       case 'updateChannelReadMessagesContents': {
-        var channelID: number = update.channel_id;
-        var newMessages: any[] = [];
+        const channelID: number = update.channel_id;
+        const newMessages: number[] = [];
         update.messages.forEach((msgID: number) => {
           newMessages.push(appMessagesIDsManager.getFullMessageID(msgID, channelID));
         });
@@ -3830,16 +3830,15 @@ export class AppMessagesManager {
       }
 
       case 'updateReadMessagesContents': {
-        var messages: any[] = update.messages;
-        var len = messages.length;
-        var i;
-        var messageID: number, message;
-        for(i = 0; i < len; i++) {
-          messageID = messages[i];
-          if(message = this.messagesStorage[messageID]) {
+        const messages: number[] = update.messages;
+        for(const messageID of messages) {
+          const message = this.messagesStorage[messageID];
+          if(message) {
             delete message.pFlags.media_unread;
           }
         }
+
+        $rootScope.$broadcast('messages_media_read', messages);
         break;
       }
 

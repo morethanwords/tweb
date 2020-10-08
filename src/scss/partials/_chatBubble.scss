@@ -1400,6 +1400,17 @@ $bubble-margin: .25rem;
     &-download:empty {
       display: none;
     }
+
+    &.is-unread {
+      rect {
+        //fill: #68AB5A;
+        fill: #B8DDA9;
+      }
+      
+      .audio-time:after {
+        background-color: #68AB5A;
+      }
+    }
   }
 
   &.is-message-empty.is-group-last {
