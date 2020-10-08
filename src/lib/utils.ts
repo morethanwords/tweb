@@ -287,7 +287,7 @@ export function safeReplaceArrayInObject<K>(key: K, wasObject: any, newObject: a
     wasObject[key].length = newObject[key].length;
     (newObject[key] as any[]).forEach((v, i) => {
       wasObject[key][i] = v;
-    })
+    });
 
     /* wasObject[key].set(newObject[key]); */
     newObject[key] = wasObject[key];

@@ -60,7 +60,30 @@ export default class AppIncludedChatsTab implements SliderTab {
         }
       }
 
+      if(this.type == 'included') {
+        this.filter.pinned_peers = this.filter.pinned_peers.filter(peerID => {
+          return peers.includes(peerID); // * because I have pinned peer in include_peers too
+          /* const index = peers.indexOf(peerID);
+          if(index !== -1) {
+            peers.splice(index, 1);
+            return true;
+          } else {
+            return false;
+          } */
+        });
+      } else {
+        this.filter.pinned_peers = this.filter.pinned_peers.filter(peerID => {
+          return !peers.includes(peerID);
+        });
+      }
+
+      const other = this.type == 'included' ? 'exclude_peers' : 'include_peers';
+      this.filter[other] = this.filter[other].filter(peerID => {
+        return !peers.includes(peerID);
+      });
+      
       this.filter[this.type == 'included' ? 'include_peers' : 'exclude_peers'] = peers;
+      //this.filter.pinned_peers = this.filter.pinned_peers.filter(peerID => this.filter.include_peers.includes(peerID));
 
       appSidebarLeft.editFolderTab.setFilter(this.filter, false);
       this.closeBtn.click();
@@ -72,10 +95,10 @@ export default class AppIncludedChatsTab implements SliderTab {
   }
 
   renderResults = (peerIDs: number[]) => {
-    const other = this.type == 'included' ? this.filter.exclude_peers : this.filter.include_peers;
+    //const other = this.type == 'included' ? this.filter.exclude_peers : this.filter.include_peers;
 
     peerIDs.forEach(peerID => {
-      if(other.includes(peerID)) return;
+      //if(other.includes(peerID)) return;
 
       const {dom} = appDialogsManager.addDialog(peerID, this.selector.scrollable, false, false);
 

@@ -49,7 +49,7 @@ class ReferenceDatabase {
   }
 
   public getContexts(reference: ReferenceBytes): [ReferenceContexts, ReferenceBytes] {
-    const contexts = this.contexts.get(reference) || (reference = this.getReferenceByLink(reference), this.contexts.get(reference));
+    const contexts = this.contexts.get(reference) || (reference = this.getReferenceByLink(reference) || reference, this.contexts.get(reference));
     return [contexts, reference];
   }
 
@@ -82,7 +82,7 @@ class ReferenceDatabase {
       case 'message': {
         return appMessagesManager.wrapSingleMessage(context.messageID, true);
         // .then(() => {
-        //   console.log('FILE_REFERENCE_EXPIRED: got message', context, options, appMessagesManager.getMessage(context.messageID).media);
+        //   console.log('FILE_REFERENCE_EXPIRED: got message', context, appMessagesManager.getMessage((context as ReferenceContext.referenceContextMessage).messageID).media, reference);
         // });
       }
 

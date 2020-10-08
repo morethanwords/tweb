@@ -85,6 +85,9 @@ export class AppDownloadManager {
           const bytes: ReferenceBytes = options?.location?.file_reference;
           if(bytes) {
             referenceDatabase.refreshReference(bytes).then(tryDownload);
+            /* referenceDatabase.refreshReference(bytes).then(() => {
+              console.log('FILE_REFERENCE_EXPIRED: refreshed reference', bytes);
+            }); */
             break;
           } else {
             console.warn('FILE_REFERENCE_EXPIRED: no context for bytes:', bytes);

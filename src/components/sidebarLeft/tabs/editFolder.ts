@@ -62,7 +62,7 @@ export default class AppEditFolderTab implements SliderTab {
 
     lottieLoader.loadAnimationFromURL({
       container: this.stickerContainer,
-      loop: true,
+      loop: false,
       autoplay: true,
       width: 86,
       height: 86
@@ -88,9 +88,7 @@ export default class AppEditFolderTab implements SliderTab {
       }
 
       let include = (Array.from(includedFlagsContainer.children) as HTMLElement[]).slice(1).reduce((acc, el) => acc + +!el.style.display, 0);
-      if(this.include_peers.lastElementChild.tagName == 'UL') {
-        include += this.include_peers.lastElementChild.childElementCount;
-      }
+      include += this.filter.include_peers.length;
       
       if(!include) {
         toast('Please choose at least one chat for this folder.');
