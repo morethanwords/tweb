@@ -1054,6 +1054,7 @@ export class AppMessagesManager {
         flags |= 1 << 10;
         flags |= 1 << 2;
         attachType = 'voice';
+        pFlags.media_unread = true;
       }
 
       let attribute: DocumentAttribute.documentAttributeAudio = {

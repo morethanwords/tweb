@@ -1,24 +1,24 @@
-import { findUpClassName, escapeRegExp, cancelEvent, positionElementByIndex } from "../utils";
-import appImManager, { AppImManager } from "./appImManager";
-import appPeersManager from './appPeersManager';
-import appMessagesManager, { Dialog, MyDialogFilter as DialogFilter } from "./appMessagesManager";
-import appUsersManager, { User } from "./appUsersManager";
-import { RichTextProcessor } from "../richtextprocessor";
-import { putPreloader, attachContextMenuListener } from "../../components/misc";
+import AvatarElement from "../../components/avatar";
+import DialogsContextMenu from "../../components/dialogsContextMenu";
+import { horizontalMenu } from "../../components/horizontalMenu";
+import { attachContextMenuListener, putPreloader } from "../../components/misc";
+import { ripple } from "../../components/ripple";
 //import Scrollable from "../../components/scrollable";
 import Scrollable, { ScrollableX } from "../../components/scrollable";
-import { logger, LogLevels } from "../logger";
-import appChatsManager from "./appChatsManager";
-import AvatarElement from "../../components/avatar";
-import appStateManager from "./appStateManager";
-import { horizontalMenu } from "../../components/horizontalMenu";
-import { ripple } from "../../components/ripple";
-import { isSafari } from "../../helpers/userAgent";
-import { formatDateAccordingToToday } from "../../helpers/date";
-import $rootScope from "../rootScope";
-import { isTouchSupported } from "../../helpers/touchSupport";
-import DialogsContextMenu from "../../components/dialogsContextMenu";
 import appSidebarLeft from "../../components/sidebarLeft";
+import { formatDateAccordingToToday } from "../../helpers/date";
+import { isTouchSupported } from "../../helpers/touchSupport";
+import { isSafari } from "../../helpers/userAgent";
+import { logger, LogLevels } from "../logger";
+import { RichTextProcessor } from "../richtextprocessor";
+import $rootScope from "../rootScope";
+import { cancelEvent, escapeRegExp, findUpClassName, positionElementByIndex } from "../utils";
+import appChatsManager from "./appChatsManager";
+import appImManager, { AppImManager } from "./appImManager";
+import appMessagesManager, { Dialog, MyDialogFilter as DialogFilter } from "./appMessagesManager";
+import appPeersManager from './appPeersManager';
+import appStateManager from "./appStateManager";
+import appUsersManager, { User } from "./appUsersManager";
 
 type DialogDom = {
   avatarEl: AvatarElement,
@@ -742,8 +742,8 @@ export class AppDialogsManager {
 
     const lastMessage = appMessagesManager.getMessage(dialog.top_message);
     if(lastMessage._ != 'messageEmpty' && !lastMessage.deleted && 
-      lastMessage.fromID == $rootScope.myID && lastMessage.peerID != $rootScope.myID && 
-      dialog.read_outbox_max_id) { // maybe comment, 06.20.2020
+      lastMessage.fromID == $rootScope.myID && lastMessage.peerID != $rootScope.myID/*  && 
+      dialog.read_outbox_max_id */) { // maybe comment, 06.20.2020
       const outgoing = (lastMessage.pFlags && lastMessage.pFlags.unread)
         /*  && dialog.read_outbox_max_id != 0 */; // maybe uncomment, 31.01.2020
     

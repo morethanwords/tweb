@@ -2,11 +2,11 @@ import appChatsManager from "../../lib/appManagers/appChatsManager";
 import appImManager from "../../lib/appManagers/appImManager";
 import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import appPeersManager from "../../lib/appManagers/appPeersManager";
-import appSidebarRight from "../sidebarRight";
 import $rootScope from "../../lib/rootScope";
 import { findUpClassName } from "../../lib/utils";
-import { parseMenuButtonsTo, attachContextMenuListener, positionMenu, openBtnMenu } from "../misc";
+import { attachContextMenuListener, openBtnMenu, parseMenuButtonsTo, positionMenu } from "../misc";
 import { PopupButton, PopupPeer } from "../popup";
+import appSidebarRight from "../sidebarRight";
 
 export class ChatContextMenu {
   private element = document.getElementById('bubble-contextmenu') as HTMLDivElement;
@@ -50,13 +50,10 @@ export class ChatContextMenu {
 
       this.buttons.copy.style.display = message.message ? '' : 'none';
       
-      if($rootScope.myID == peerID || (peerID < 0 && appChatsManager.hasRights(-peerID, 'pin'))) {
-        this.buttons.pin.style.display = '';
-      } else {
-        this.buttons.pin.style.display = 'none';
-      }
-      
+      this.buttons.pin.classList.toggle('hide', peerID < 0 && !appChatsManager.hasRights(-peerID, 'pin'));
       this.buttons.edit.style.display = appMessagesManager.canEditMessage(msgID) ? '' : 'none';
+      this.buttons.reply.classList.toggle('hide', peerID < 0 && !appChatsManager.hasRights(-peerID, 'send'));
+      this.buttons.delete.classList.toggle('hide', peerID < 0 && appPeersManager.isBroadcast(peerID) && !appChatsManager.hasRights(-peerID, 'deleteRevoke'));
       
       let side: 'left' | 'right' = bubble.classList.contains('is-in') ? 'left' : 'right';
       positionMenu(e, this.element, side);

@@ -1,12 +1,12 @@
-import { isObject, safeReplaceObject, copy, numberWithCommas, getAbbreviation } from "../utils";
-import { RichTextProcessor } from "../richtextprocessor";
-import appUsersManager from "./appUsersManager";
+import { InputChannel, InputChatPhoto, InputPeer, Updates } from "../../layer";
 import apiManager from '../mtproto/mtprotoworker';
+import { RichTextProcessor } from "../richtextprocessor";
+import $rootScope from "../rootScope";
+import searchIndexManager from "../searchIndexManager";
+import { copy, getAbbreviation, isObject, numberWithCommas, safeReplaceObject } from "../utils";
 import apiUpdatesManager from "./apiUpdatesManager";
 import appProfileManager from "./appProfileManager";
-import searchIndexManager from "../searchIndexManager";
-import { InputPeer, InputChannel, Updates, InputChatPhoto } from "../../layer";
-import $rootScope from "../rootScope";
+import appUsersManager from "./appUsersManager";
 
 export type Channel = {
   _: 'channel',
@@ -194,7 +194,7 @@ export class AppChatsManager {
       // good
       case 'pin': {
         if(chat._ == 'channel') {
-          return chat.admin_rights ? !!myFlags.pin_messages || !!myFlags.post_messages : !myFlags.pin_messages;
+          return chat.admin_rights ? !!myFlags.pin_messages || !!myFlags.post_messages : !!myFlags.pin_messages;
         } else {
           if(myFlags.pin_messages && !chat.pFlags.admin) {
             return false;
