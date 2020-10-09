@@ -171,8 +171,8 @@ window.addEventListener('resize', () => {
   } */
 });
 
-let openedMenu: HTMLDivElement = null, openedMenuOnClose: () => void = null;
-export function openBtnMenu(menuElement: HTMLDivElement, onClose?: () => void) {
+let openedMenu: HTMLElement = null, openedMenuOnClose: () => void = null;
+export function openBtnMenu(menuElement: HTMLElement, onClose?: () => void) {
   closeBtnMenu();
   
   openedMenu = menuElement;

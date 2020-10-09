@@ -1,29 +1,27 @@
-import appMessagesManager from "./appMessagesManager";
-import apiManagerProxy from "../mtproto/mtprotoworker";
-import appPeersManager from "../appManagers/appPeersManager";
-import appMessagesIDsManager from "./appMessagesIDsManager";
-import { RichTextProcessor } from "../richtextprocessor";
 import { toast } from "../../components/toast";
-import appUsersManager from "./appUsersManager";
-import appPhotosManager from "./appPhotosManager";
-import appDocsManager from "./appDocsManager";
 import { BotInlineResult } from "../../layer";
+import appPeersManager from "../appManagers/appPeersManager";
+import apiManagerProxy from "../mtproto/mtprotoworker";
+import { RichTextProcessor } from "../richtextprocessor";
+import appDocsManager from "./appDocsManager";
+import appMessagesIDsManager from "./appMessagesIDsManager";
+import appMessagesManager from "./appMessagesManager";
+import appPhotosManager from "./appPhotosManager";
+import appUsersManager from "./appUsersManager";
 
 export class AppInlineBotsManager {
   private inlineResults: {[qID: string]: BotInlineResult} = {};
 
   public getInlineResults(peerID: number, botID: number, query = '', offset = '', geo?: any) {
     return apiManagerProxy.invokeApi('messages.getInlineBotResults', {
-      flags: 0 | (geo ? 1 : 0),
       bot: appUsersManager.getUserInput(botID),
       peer: appPeersManager.getInputPeerByID(peerID),
       query: query,
-      geo_point: geo && {_: 'inputGeoPoint', lat: geo['lat'], long: geo['long']},
+      geo_point: (geo && {_: 'inputGeoPoint', lat: geo['lat'], long: geo['long']}) || undefined,
       offset
     }, {/* timeout: 1,  */stopTime: -1, noErrorBox: true}).then(botResults => {
       const queryID = botResults.query_id;
       /* delete botResults._;
-      delete botResults.flags;
       delete botResults.query_id; */
       
       /* if(botResults.switch_pm) {

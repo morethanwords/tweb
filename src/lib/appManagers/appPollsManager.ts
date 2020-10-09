@@ -1,12 +1,13 @@
+import { logger, LogLevels } from "../logger";
+import apiManager from "../mtproto/mtprotoworker";
+import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
 import { RichTextProcessor } from "../richtextprocessor";
+import $rootScope from "../rootScope";
+import { copy } from "../utils";
+import apiUpdatesManager from "./apiUpdatesManager";
 import appMessagesManager from './appMessagesManager';
 import appPeersManager from './appPeersManager';
-import apiManager from "../mtproto/mtprotoworker";
-import apiUpdatesManager from "./apiUpdatesManager";
-import $rootScope from "../rootScope";
-import { logger, LogLevels } from "../logger";
 import appUsersManager from "./appUsersManager";
-import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
 
 export type PollAnswer = {
   _: 'pollAnswer',
@@ -51,7 +52,6 @@ export type PollResults = {
 
 export type Poll = {
   _: 'poll',
-  flags: number,
   question: string,
   id: string,
   answers: Array<PollAnswer>,
@@ -140,6 +140,13 @@ class AppPollsManager {
     };
   }
 
+  public getInputMediaPoll(poll: Poll) {
+    return {
+      _: 'inputMediaPoll',
+      poll
+    };
+  }
+
   public sendVote(mid: number, optionIDs: number[]) {
     const message = appMessagesManager.getMessage(mid);
     const poll: Poll = message.media.poll;
@@ -202,6 +209,23 @@ class AppPollsManager {
       appUsersManager.saveApiUsers(votesList.users);
 
       return votesList;
+    });
+  }
+
+  public stopPoll(mid: number) {
+    const message = appMessagesManager.getMessage(mid);
+    const poll: Poll = message.media.poll;
+    
+    if(poll.pFlags.closed) return Promise.resolve();
+
+    const newPoll = copy(poll);
+    newPoll.pFlags.closed = true;
+    return appMessagesManager.editMessage(mid, undefined, {
+      newMedia: this.getInputMediaPoll(newPoll)
+    }).then(() => {
+      //console.log('stopped poll');
+    }, err => {
+      this.log.error('stopPoll error:', err);
     });
   }
 }

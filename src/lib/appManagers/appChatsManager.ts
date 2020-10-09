@@ -59,7 +59,7 @@ export type Chat = {
   default_banned_rights?: any
 };
 
-export type ChatRights = 'send' | 'edit_title' | 'edit_photo' | 'invite' | 'pin' | 'deleteRevoke';
+export type ChatRights = 'send' | 'edit_title' | 'edit_photo' | 'invite' | 'pin' | 'deleteRevoke' | 'delete';
 
 export class AppChatsManager {
   public chats: {[id: number]: Channel | Chat | any} = {};

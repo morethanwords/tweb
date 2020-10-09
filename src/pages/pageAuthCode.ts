@@ -1,14 +1,14 @@
-import pageSignIn from './pageSignIn';
-import pageSignUp from './pageSignUp';
-import pageIm from './pageIm';
-import pagePassword from './pagePassword';
+import mediaSizes from '../helpers/mediaSizes';
 import LottieLoader, { RLottiePlayer } from '../lib/lottieLoader';
 //import CryptoWorker from '../lib/crypto/cryptoworker';
 //import apiManager from '../lib/mtproto/apiManager';
 import apiManager from '../lib/mtproto/mtprotoworker';
-import Page from './page';
 import { App } from '../lib/mtproto/mtproto_config';
-import mediaSizes from '../helpers/mediaSizes';
+import Page from './page';
+import pageIm from './pageIm';
+import pagePassword from './pagePassword';
+import pageSignIn from './pageSignIn';
+import pageSignUp from './pageSignUp';
 
 let authCode: {
   _: string, // 'auth.sentCode'
@@ -53,13 +53,11 @@ let onFirstMount = (): Promise<any> => {
       codeInput.setAttribute('disabled', 'true');
 
       changePhonePromise = apiManager.invokeApi('auth.sendCode', {
-        /* flags: 0, */
         phone_number: phone_number,
         api_id: App.id,
         api_hash: App.hash,
         settings: {
-          _: 'codeSettings', // that's how we sending Type
-          flags: 0
+          _: 'codeSettings' // that's how we sending Type
         }
         /* lang_code: navigator.language || 'en' */
       }).then((code: any) => {

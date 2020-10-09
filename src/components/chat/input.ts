@@ -1,20 +1,20 @@
-import Scrollable from "../scrollable";
-import { RichTextProcessor } from "../../lib/richtextprocessor";
-import apiManager from "../../lib/mtproto/mtprotoworker";
-import appWebPagesManager from "../../lib/appManagers/appWebPagesManager";
-import appImManager from "../../lib/appManagers/appImManager";
-import { getRichValue, calcImageInBox, cancelEvent } from "../../lib/utils";
-import { wrapDocument, wrapReply } from "../wrappers";
-import appMessagesManager from "../../lib/appManagers/appMessagesManager";
-import { Layouter, RectPart } from "../groupedLayout";
 import Recorder from '../../../public/recorder.min';
+import { isTouchSupported } from "../../helpers/touchSupport";
+import appDocsManager from "../../lib/appManagers/appDocsManager";
+import appImManager from "../../lib/appManagers/appImManager";
+import appMessagesManager from "../../lib/appManagers/appMessagesManager";
+import appWebPagesManager from "../../lib/appManagers/appWebPagesManager";
+import apiManager from "../../lib/mtproto/mtprotoworker";
 //import Recorder from '../opus-recorder/dist/recorder.min';
 import opusDecodeController from "../../lib/opusDecodeController";
-import appDocsManager from "../../lib/appManagers/appDocsManager";
+import { RichTextProcessor } from "../../lib/richtextprocessor";
+import { calcImageInBox, cancelEvent, getRichValue } from "../../lib/utils";
 import emoticonsDropdown from "../emoticonsDropdown";
+import { Layouter, RectPart } from "../groupedLayout";
 import PopupCreatePoll from "../popupCreatePoll";
+import Scrollable from "../scrollable";
 import { toast } from "../toast";
-import { isTouchSupported } from "../../helpers/touchSupport";
+import { wrapDocument, wrapReply } from "../wrappers";
 
 const RECORD_MIN_TIME = 500;
 
@@ -57,7 +57,7 @@ export class ChatInput {
   public willSendWebPage: any = null;
   public replyToMsgID = 0;
   public editMsgID = 0;
-  public noWebPage = false;
+  public noWebPage: true;
 
   private recorder: any;
   private recording = false;
@@ -159,7 +159,7 @@ export class ChatInput {
               this.setTopInfo(webpage.site_name || webpage.title, webpage.description || webpage.url);
   
               this.replyToMsgID = 0;
-              this.noWebPage = false;
+              delete this.noWebPage;
               this.willSendWebPage = webpage;
             }
           });
@@ -744,7 +744,7 @@ export class ChatInput {
     if(clearInput) {
       this.lastUrl = '';
       this.editMsgID = 0;
-      this.noWebPage = false;
+      delete this.noWebPage;
       this.willSendWebPage = null;
       this.messageInput.innerText = '';
 

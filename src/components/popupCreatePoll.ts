@@ -1,8 +1,8 @@
+import appMessagesManager from "../lib/appManagers/appMessagesManager";
+import appPollsManager, { Poll } from "../lib/appManagers/appPollsManager";
+import $rootScope from "../lib/rootScope";
 import { PopupElement } from "./popup";
 import Scrollable from "./scrollable";
-import appMessagesManager from "../lib/appManagers/appMessagesManager";
-import $rootScope from "../lib/rootScope";
-import { Poll } from "../lib/appManagers/appPollsManager";
 import { toast } from "./toast";
 
 const InputField = (placeholder: string, label: string, name: string) => {
@@ -74,25 +74,21 @@ export default class PopupCreatePoll extends PopupElement {
     //const randomID = [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)];
     //const randomIDS = bigint(randomID[0]).shiftLeft(32).add(bigint(randomID[1])).toString();
 
-    const poll: Partial<Poll> = {};
-    poll._ = 'poll';
+    const poll: Poll = {
+      _: 'poll',
+      question,
+      answers: answers.map((value, idx) => {
+        return {
+          _: 'pollAnswer',
+          text: value,
+          option: new Uint8Array([idx])
+        };
+      }),
+      id: undefined
+    };
     //poll.id = randomIDS;
-    poll.flags = 0;
-    poll.question = question;
 
-    poll.answers = answers.map((value, idx) => {
-      return {
-        _: 'pollAnswer',
-        text: value,
-        option: new Uint8Array([idx])
-      };
-    });
-
-    appMessagesManager.sendOther($rootScope.selectedPeerID, {
-      _: 'inputMediaPoll',
-      flags: 0,
-      poll
-    });
+    appMessagesManager.sendOther($rootScope.selectedPeerID, appPollsManager.getInputMediaPoll(poll));
   };
 
   onInput = (e: Event) => {

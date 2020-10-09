@@ -1,12 +1,9 @@
-import {bigint, bigStringInt, bytesCmp, bytesToHex, isObject} from '../bin_utils';
-import Schema from './schema';
-
+import { bigint, bigStringInt, bytesToHex, isObject } from '../bin_utils';
 /// #if MTPROTO_WORKER
 // @ts-ignore
-import {gzipUncompress} from '../crypto/crypto_utils';
-/// #else
-// @ts-ignore
-import {gzipUncompress} from '../bin_utils';
+import { gzipUncompress } from '../crypto/crypto_utils';
+import Schema, { MTProtoConstructor } from './schema';
+
 /// #endif
 
 const boolFalse = +Schema.API.constructors.find(c => c.predicate == 'boolFalse').id >>> 0;
@@ -91,13 +88,16 @@ class TLSerialization {
   public writeInt(i: number, field: string) {
     this.debug && console.log('>>>', i.toString(16), i, field);
   
+    const offset = this.offset / 4;
     this.checkLength(4);
-    this.intView[this.offset / 4] = i;
+    this.intView[offset] = i;
     this.offset += 4;
+
+    return offset;
   }
   
   public storeInt(i: number, field?: string) {
-    this.writeInt(i, (field || '') + ':int');
+    return this.writeInt(i, (field || '') + ':int');
   }
   
   public storeBool(i: boolean, field?: string) {
@@ -234,42 +234,51 @@ class TLSerialization {
   }
   
   public storeMethod(methodName: string, params: any) {
-    var schema = this.mtproto ? Schema.MTProto : Schema.API;
-    var methodData: any = false,
-      i;
-  
-    for(i = 0; i < schema.methods.length; i++) {
-      if(schema.methods[i].method == methodName) {
-        methodData = schema.methods[i];
-        break;
-      }
-    }
+    const schema = this.mtproto ? Schema.MTProto : Schema.API;
+    const methodData = schema.methods.find(m => m.method == methodName);
+
     if(!methodData) {
       throw new Error('No method ' + methodName + ' found');
     }
   
     this.storeInt(methodData.id, methodName + '[id]');
-  
-    var param, type;
-    var i, condType;
-    var fieldBit;
-    var len = methodData.params.length;
+
+    const pFlags = params.pFlags;
+    const flagsOffsets: {[paramName: string]: number} = {};
     //console.log('storeMethod', len, methodData);
-    for(i = 0; i < len; i++) {
-      param = methodData.params[i];
-      type = param.type;
+    for(const param of methodData.params) {
+      let type = param.type;
+
       if(type.indexOf('?') !== -1) {
-        condType = type.split('?');
-        fieldBit = condType[0].split('.');
-        if(!(params[fieldBit[0]] & (1 << fieldBit[1]))) {
-          continue;
+        const condType = type.split('?');
+        const fieldBit = condType[0].split('.');
+
+        if(!(params[fieldBit[0]] & (1 << +fieldBit[1]))) {
+          if((condType[1] === 'true' && pFlags && pFlags[param.name]) || params[param.name] !== undefined) {
+            //console.log('storeMethod autocompleting', methodName, param.name, params[param.name], type);
+            params[fieldBit[0]] |= 1 << +fieldBit[1];
+          } else {
+            continue;
+          }
         }
+        
+        //console.log('storeMethod', methodName, fieldBit, params[fieldBit[0]], params, param, condType, !!(params[fieldBit[0]] & (1 << +fieldBit[1])));
         type = condType[1];
       }
-  
-      this.storeObject(params[param.name], type, methodName + '[' + param.name + ']');
+      
+      //console.log('storeMethod', methodName, param.name, params[param.name], type);
+      const result = this.storeObject(params[param.name], type, methodName + '[' + param.name + ']');
+
+      if(type == '#') {
+        params[param.name] = params[param.name] || 0;
+        flagsOffsets[param.name] = result as number;
+      }
     }
-  
+
+    for(let paramName in flagsOffsets) {
+      this.intView[flagsOffsets[paramName]] = params[paramName];
+    }
+
     return methodData.type;
   }
   
@@ -277,6 +286,7 @@ class TLSerialization {
     //console.log('storeObject', obj, type, field, this.offset, this.getBytes(true).hex);
     switch(type) {
       case '#':
+        obj = obj || 0;
       case 'int':
         return this.storeInt(obj, field);
       case 'long':
@@ -321,21 +331,15 @@ class TLSerialization {
       throw new Error('Invalid object for type ' + type);
     }
   
-    var schema = this.mtproto ? Schema.MTProto : Schema.API;
-    var predicate = obj['_'];
-    var isBare = false;
-    var constructorData: any = false;
+    const schema = this.mtproto ? Schema.MTProto : Schema.API;
+    const predicate = obj['_'];
+    let isBare = false;
+    const constructorData: MTProtoConstructor = schema.constructors.find(c => c.predicate == predicate);
   
     if(isBare = (type.charAt(0) == '%')) {
       type = type.substr(1);
     }
-  
-    for(i = 0; i < schema.constructors.length; i++) {
-      if(schema.constructors[i].predicate == predicate) {
-        constructorData = schema.constructors[i];
-        break;
-      }
-    }
+
     if(!constructorData) {
       throw new Error('No predicate ' + predicate + ' found');
     }
@@ -347,29 +351,43 @@ class TLSerialization {
     if(!isBare) {
       this.writeInt(constructorData.id, field + '[' + predicate + '][id]');
     }
-  
-    var param, type: string;
-    var condType;
-    var fieldBit;
-    var len = constructorData.params.length;
+
+    const pFlags = obj.pFlags;
+    const flagsOffsets: {[paramName: string]: number} = {};
     //console.log('storeObject', len, constructorData);
-    for(i = 0; i < len; i++) {
-      param = constructorData.params[i];
-      type = param.type;
+    for(const param of constructorData.params) {
+      let type = param.type;
 
       //console.log('storeObject', param, type);
       if(type.indexOf('?') !== -1) {
-        condType = type.split('?');
-        fieldBit = condType[0].split('.');
+        const condType = type.split('?');
+        const fieldBit = condType[0].split('.');
+
         //console.log('storeObject fieldBit', fieldBit, obj[fieldBit[0]]);
+
         if(!(obj[fieldBit[0]] & (1 << +fieldBit[1]))) {
-          continue;
+          if((condType[1] === 'true' && pFlags && pFlags[param.name]) || obj[param.name] !== undefined) {
+            //console.log('storeObject autocompleting', param.name, obj[param.name], type);
+            obj[fieldBit[0]] |= 1 << +fieldBit[1];
+          } else {
+            continue;
+          }
         }
+
         type = condType[1];
       }
       //console.log('storeObject', param, type);
   
-      this.storeObject(obj[param.name], type, field + '[' + predicate + '][' + param.name + ']');
+      const result = this.storeObject(obj[param.name], type, field + '[' + predicate + '][' + param.name + ']');
+
+      if(type == '#') {
+        obj[param.name] = obj[param.name] || 0;
+        flagsOffsets[param.name] = result as number;
+      }
+    }
+
+    for(let paramName in flagsOffsets) {
+      this.intView[flagsOffsets[paramName]] = obj[paramName];
     }
   
     return constructorData.type;
@@ -767,4 +785,5 @@ class TLDeserialization {
   }
 }
 
-export {TLDeserialization, TLSerialization};
+export { TLDeserialization, TLSerialization };
+

@@ -1,12 +1,12 @@
-import { SliderTab } from "../../slider";
 import appSidebarLeft, { AppSidebarLeft } from "..";
-import lottieLoader, { RLottiePlayer } from "../../../lib/lottieLoader";
-import appMessagesManager, { MyDialogFilter as DialogFilter } from "../../../lib/appManagers/appMessagesManager";
-import { parseMenuButtonsTo } from "../../misc";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
+import appMessagesManager, { MyDialogFilter as DialogFilter } from "../../../lib/appManagers/appMessagesManager";
+import lottieLoader, { RLottiePlayer } from "../../../lib/lottieLoader";
 import { copy, deepEqual } from "../../../lib/utils";
-import { toast } from "../../toast";
+import { parseMenuButtonsTo } from "../../misc";
 import { ripple } from "../../ripple";
+import { SliderTab } from "../../slider";
+import { toast } from "../../toast";
 
 const MAX_FOLDER_NAME_LENGTH = 12;
 
@@ -243,7 +243,6 @@ export default class AppEditFolderTab implements SliderTab {
     if(filter === undefined) {
       this.setFilter({
         _: 'dialogFilter',
-        flags: 0,
         id: 0,
         title: '',
         pFlags: {},

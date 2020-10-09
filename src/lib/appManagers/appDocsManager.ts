@@ -1,12 +1,12 @@
-import {RichTextProcessor} from '../richtextprocessor';
-import { isObject, getFileURL, FileURLType, safeReplaceArrayInObject } from '../utils';
-import opusDecodeController from '../opusDecodeController';
+import { Document, InputFileLocation, PhotoSize } from '../../layer';
 import { getFileNameByLocation } from '../bin_utils';
+import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
+import referenceDatabase, { ReferenceContext } from '../mtproto/referenceDatabase';
+import opusDecodeController from '../opusDecodeController';
+import { RichTextProcessor } from '../richtextprocessor';
+import { FileURLType, getFileURL, isObject, safeReplaceArrayInObject } from '../utils';
 import appDownloadManager, { DownloadBlob } from './appDownloadManager';
 import appPhotosManager from './appPhotosManager';
-import { InputFileLocation, Document, PhotoSize } from '../../layer';
-import referenceDatabase, { ReferenceContext } from '../mtproto/referenceDatabase';
-import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
 
 export type MyDocument = Document.document;
 
@@ -173,7 +173,6 @@ class AppDocsManager {
   public getMediaInput(doc: MyDocument) {
     return {
       _: 'inputMediaDocument',
-      flags: 0,
       id: {
         _: 'inputDocument',
         id: doc.id,

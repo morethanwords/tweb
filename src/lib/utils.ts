@@ -359,15 +359,15 @@ export function whichChild(elem: Node) {
   return i;
 };
 
-export function copy(obj: any) {
+export function copy<T>(obj: T): T {
   //in case of premitives
-  if(obj===null || typeof obj !== "object"){
+  if(obj === null || typeof(obj) !== "object") {
     return obj;
   }
  
   //date objects should be 
-  if(obj instanceof Date){
-    return new Date(obj.getTime());
+  if(obj instanceof Date) {
+    return new Date(obj.getTime()) as any;
   }
  
   //handle Array
@@ -380,6 +380,7 @@ export function copy(obj: any) {
   }
  
   //lastly, handle objects
+  // @ts-ignore
   let clonedObj = new obj.constructor();
   for(var prop in obj){
     if(obj.hasOwnProperty(prop)){

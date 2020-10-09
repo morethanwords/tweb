@@ -1,11 +1,11 @@
-import { calcImageInBox, isObject, safeReplaceArrayInObject } from "../utils";
-import { bytesFromHex, getFileNameByLocation } from "../bin_utils";
-import appDownloadManager from "./appDownloadManager";
+import { CancellablePromise } from "../../helpers/cancellablePromise";
 import { isSafari } from "../../helpers/userAgent";
 import { FileLocation, InputFileLocation, Photo, PhotoSize } from "../../layer";
-import { MyDocument } from "./appDocsManager";
-import { CancellablePromise } from "../../helpers/cancellablePromise";
+import { bytesFromHex, getFileNameByLocation } from "../bin_utils";
 import referenceDatabase, { ReferenceContext } from "../mtproto/referenceDatabase";
+import { calcImageInBox, isObject, safeReplaceArrayInObject } from "../utils";
+import { MyDocument } from "./appDocsManager";
+import appDownloadManager from "./appDownloadManager";
 
 export type MyPhoto = Photo.photo;
 
@@ -303,7 +303,6 @@ export class AppPhotosManager {
   public getInput(photo: MyPhoto) {
     return {
       _: 'inputMediaPhoto',
-      flags: 0,
       id: {
         _: 'inputPhoto',
         id: photo.id,

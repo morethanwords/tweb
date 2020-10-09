@@ -1,13 +1,13 @@
 //import apiManager from '../mtproto/apiManager';
+import { logger, LogLevels } from '../logger';
 import apiManager from '../mtproto/mtprotoworker';
+import $rootScope from '../rootScope';
 //import networkerFactory from '../mtproto/networkerFactory';
 import { tsNow } from "../utils";
-import appPeersManager from "./appPeersManager";
-import appUsersManager from "./appUsersManager";
 import appChatsManager from "./appChatsManager";
-import { logger, LogLevels } from '../logger';
-import $rootScope from '../rootScope';
+import appPeersManager from "./appPeersManager";
 import appStateManager from './appStateManager';
+import appUsersManager from "./appUsersManager";
 
 export class ApiUpdatesManager {
   public updatesState: {
@@ -160,7 +160,6 @@ export class ApiUpdatesManager {
           _: 'updateNewMessage',
           message: {
             _: 'message',
-            flags: updateMessage.flags,
             pFlags: updateMessage.pFlags,
             id: updateMessage.id,
             from_id: appPeersManager.getOutputPeer(fromID),
@@ -207,7 +206,6 @@ export class ApiUpdatesManager {
     }
   
     return apiManager.invokeApi('updates.getDifference', {
-      flags: 0,
       pts: updatesState.pts, 
       date: updatesState.date, 
       qts: -1

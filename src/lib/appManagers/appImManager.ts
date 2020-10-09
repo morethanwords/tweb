@@ -1,49 +1,49 @@
 //import apiManager from '../mtproto/apiManager';
-import apiManager from '../mtproto/mtprotoworker';
-import { numberWithCommas, findUpClassName, formatNumber, placeCaretAtEnd, findUpTag, langPack, whichChild, cancelEvent, getObjectKeysAndSort } from "../utils";
-import appUsersManager from "./appUsersManager";
-import appMessagesManager, { Dialog } from "./appMessagesManager";
-import appPeersManager from "./appPeersManager";
-import appProfileManager from "./appProfileManager";
-import appDialogsManager from "./appDialogsManager";
-import { RichTextProcessor } from "../richtextprocessor";
-import appPhotosManager from "./appPhotosManager";
-import appSidebarRight, { AppSidebarRight, RIGHT_COLUMN_ACTIVE_CLASSNAME } from '../../components/sidebarRight';
-
-import { logger, LogLevels } from "../logger";
-import appMediaViewer from "./appMediaViewer";
-import appSidebarLeft from "../../components/sidebarLeft";
-import appChatsManager, { Channel, Chat } from "./appChatsManager";
-import { wrapDocument, wrapPhoto, wrapVideo, wrapSticker, wrapReply, wrapAlbum, wrapPoll } from '../../components/wrappers';
-import ProgressivePreloader from '../../components/preloader';
-import { formatPhoneNumber, parseMenuButtonsTo } from '../../components/misc';
-import { ChatInput } from '../../components/chat/input';
-//import Scrollable from '../../components/scrollable';
-import Scrollable from '../../components/scrollable';
-import BubbleGroups from '../../components/bubbleGroups';
-import LazyLoadQueue from '../../components/lazyLoadQueue';
-import appDocsManager from './appDocsManager';
-import appStickersManager from './appStickersManager';
-import AvatarElement from '../../components/avatar';
-import appInlineBotsManager from './AppInlineBotsManager';
-import StickyIntersector from '../../components/stickyIntersector';
 import animationIntersector from '../../components/animationIntersector';
-import PopupStickers from '../../components/popupStickers';
-import PopupDatePicker from '../../components/popupDatepicker';
-import appPollsManager from './appPollsManager';
-import { ripple } from '../../components/ripple';
-import { horizontalMenu } from '../../components/horizontalMenu';
 import AudioElement from '../../components/audio';
-import { InputNotifyPeer, InputPeerNotifySettings } from '../../layer';
+import AvatarElement from '../../components/avatar';
+import BubbleGroups from '../../components/bubbleGroups';
 import { ChatAudio } from '../../components/chat/audio';
 import { ChatContextMenu } from '../../components/chat/contextMenu';
+import { ChatInput } from '../../components/chat/input';
 import { ChatSearch } from '../../components/chat/search';
+import { horizontalMenu } from '../../components/horizontalMenu';
+import LazyLoadQueue from '../../components/lazyLoadQueue';
+import { formatPhoneNumber, parseMenuButtonsTo } from '../../components/misc';
+import PopupDatePicker from '../../components/popupDatepicker';
+import PopupStickers from '../../components/popupStickers';
+import ProgressivePreloader from '../../components/preloader';
+import { ripple } from '../../components/ripple';
+//import Scrollable from '../../components/scrollable';
+import Scrollable from '../../components/scrollable';
+import appSidebarLeft from "../../components/sidebarLeft";
+import appSidebarRight, { AppSidebarRight, RIGHT_COLUMN_ACTIVE_CLASSNAME } from '../../components/sidebarRight';
+import StickyIntersector from '../../components/stickyIntersector';
+import { wrapAlbum, wrapDocument, wrapPhoto, wrapPoll, wrapReply, wrapSticker, wrapVideo } from '../../components/wrappers';
 import mediaSizes from '../../helpers/mediaSizes';
-import { isAndroid, isApple, isSafari } from '../../helpers/userAgent';
-import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
-import $rootScope from '../rootScope';
 import { isTouchSupported } from '../../helpers/touchSupport';
+import { isAndroid, isApple, isSafari } from '../../helpers/userAgent';
+import { InputNotifyPeer, InputPeerNotifySettings } from '../../layer';
+import { logger, LogLevels } from "../logger";
+import apiManager from '../mtproto/mtprotoworker';
+import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
+import { RichTextProcessor } from "../richtextprocessor";
+import $rootScope from '../rootScope';
+import { cancelEvent, findUpClassName, findUpTag, formatNumber, getObjectKeysAndSort, langPack, numberWithCommas, placeCaretAtEnd, whichChild } from "../utils";
 import apiUpdatesManager from './apiUpdatesManager';
+import appChatsManager, { Channel, Chat } from "./appChatsManager";
+import appDialogsManager from "./appDialogsManager";
+import appDocsManager from './appDocsManager';
+import appInlineBotsManager from './AppInlineBotsManager';
+import appMediaViewer from "./appMediaViewer";
+import appMessagesManager, { Dialog } from "./appMessagesManager";
+import appPeersManager from "./appPeersManager";
+import appPhotosManager from "./appPhotosManager";
+import appPollsManager from './appPollsManager';
+import appProfileManager from "./appProfileManager";
+import appStickersManager from './appStickersManager';
+import appUsersManager from "./appUsersManager";
+
 
 //console.log('appImManager included33!');
 
@@ -2612,9 +2612,7 @@ export class AppImManager {
     };
     
     let settings: InputPeerNotifySettings = {
-      _: 'inputPeerNotifySettings',
-      flags: 0,
-      mute_until: 0
+      _: 'inputPeerNotifySettings'
     };
 
     let dialog = appMessagesManager.getDialogByPeerID(peerID)[0];
@@ -2624,10 +2622,7 @@ export class AppImManager {
     }
     
     if(!muted) {
-      settings.flags |= 1 << 2;
       settings.mute_until = 2147483647;
-    } else {
-      settings.flags |= 2;
     }
     
     apiManager.invokeApi('account.updateNotifySettings', {
@@ -2640,7 +2635,6 @@ export class AppImManager {
     /* return apiManager.invokeApi('account.getNotifySettings', {
       peer: inputNotifyPeer
     }).then((settings: any) => {
-      settings.flags |= 2 << 1;
       settings.mute_until = 2000000000; // 2147483646
       
       return apiManager.invokeApi('account.updateNotifySettings', {

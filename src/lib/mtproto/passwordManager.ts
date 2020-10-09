@@ -1,5 +1,5 @@
-import apiManager from './mtprotoworker';
 import { AccountPassword } from '../../layer';
+import apiManager from './mtprotoworker';
 import { MOUNT_CLASS_TO } from './mtproto_config';
 //import { computeCheck } from "../crypto/srp";
 
@@ -16,7 +16,6 @@ export class PasswordManager {
     var params: any = {
       new_settings: {
         _: 'account.passwordInputSettings',
-        flags: 0,
         hint: settings.hint || ''
       }
     };
@@ -35,17 +34,14 @@ export class PasswordManager {
       secureRandom.nextBytes(saltRandom);
       newHashPromise = this.makePasswordHash(newSalt, settings.new_password);
       params.new_settings.new_salt = newSalt;
-      params.new_settings.flags |= 1;
     } else {
       if(typeof settings.new_password === 'string') {
-        params.new_settings.flags |= 1;
         params.new_settings.new_salt = [];
       }
       newHashPromise = Promise.resolve([]);
     }
 
     if(typeof settings.email === 'string') {
-      params.new_settings.flags |= 2;
       params.new_settings.email = settings.email || '';
     }
 

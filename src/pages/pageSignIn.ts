@@ -1,14 +1,14 @@
-import { putPreloader, formatPhoneNumber } from "../components/misc";
+import { formatPhoneNumber, putPreloader } from "../components/misc";
 import Scrollable from '../components/scrollable';
-import {RichTextProcessor} from '../lib/richtextprocessor';
 import Config from '../lib/config';
-
+import apiManager from "../lib/mtproto/mtprotoworker";
+import { App, Modes } from "../lib/mtproto/mtproto_config";
+import { RichTextProcessor } from '../lib/richtextprocessor';
 import { findUpTag } from "../lib/utils";
+import Page from "./page";
 import pageAuthCode from "./pageAuthCode";
 import pageSignQR from './pageSignQR';
-import apiManager from "../lib/mtproto/mtprotoworker";
-import Page from "./page";
-import { App, Modes } from "../lib/mtproto/mtproto_config";
+
 
 type Country = {
   name: string,
@@ -237,13 +237,11 @@ let onFirstMount = () => {
 
     let phone_number = telEl.value;
     apiManager.invokeApi('auth.sendCode', {
-      //flags: 0,
       phone_number: phone_number,
       api_id: App.id,
       api_hash: App.hash,
       settings: {
-        _: 'codeSettings', // that's how we sending Type
-        flags: 0
+        _: 'codeSettings' // that's how we sending Type
       }
       //lang_code: navigator.language || 'en'
     }).then((code: any) => {

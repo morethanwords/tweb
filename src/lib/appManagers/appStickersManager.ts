@@ -1,10 +1,10 @@
-import apiManager from '../mtproto/mtprotoworker';
-import appDocsManager from './appDocsManager';
-import $rootScope from '../rootScope';
-import { StickerSet, InputStickerSet, StickerSetCovered, MessagesRecentStickers, Document, InputFileLocation, MessagesStickerSet, PhotoSize } from '../../layer';
+import { Document, InputFileLocation, InputStickerSet, MessagesRecentStickers, MessagesStickerSet, PhotoSize, StickerSet, StickerSetCovered } from '../../layer';
 import { Modify } from '../../types';
-import appStateManager from './appStateManager';
+import apiManager from '../mtproto/mtprotoworker';
 import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
+import $rootScope from '../rootScope';
+import appDocsManager from './appDocsManager';
+import appStateManager from './appStateManager';
 
 // TODO: если пак будет сохранён и потом обновлён, то недостающие стикеры не подгрузит
 
@@ -86,7 +86,7 @@ export class AppStickersManager {
   public async getRecentStickers(): Promise<Modify<MessagesRecentStickers.messagesRecentStickers, {
     stickers: Document[]
   }>> {
-    const res = await apiManager.invokeApi('messages.getRecentStickers', {flags: 0, hash: 0}) as MessagesRecentStickers.messagesRecentStickers;
+    const res = await apiManager.invokeApi('messages.getRecentStickers') as MessagesRecentStickers.messagesRecentStickers;
 
     if(res._ == 'messages.recentStickers') {
       this.saveStickers(res.stickers);
