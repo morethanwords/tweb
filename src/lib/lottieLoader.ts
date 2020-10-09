@@ -1,10 +1,10 @@
-import { logger, LogLevels } from "./logger";
+import RLottieWorker from 'worker-loader!./rlottie/rlottie.worker';
 import animationIntersector from "../components/animationIntersector";
-import apiManager from "./mtproto/mtprotoworker";
 import EventListenerBase from "../helpers/eventListenerBase";
 import mediaSizes from "../helpers/mediaSizes";
 import { isAndroid, isApple, isAppleMobile, isSafari } from "../helpers/userAgent";
-import RLottieWorker from 'worker-loader!./rlottie/rlottie.worker';
+import { logger, LogLevels } from "./logger";
+import apiManager from "./mtproto/mtprotoworker";
 import { MOUNT_CLASS_TO } from "./mtproto/mtproto_config";
 
 let convert = (value: number) => {
@@ -94,7 +94,7 @@ export class RLottiePlayer extends EventListenerBase<{
     // Skip ratio
     let skipRatio: number;
     if(options.skipRatio !== undefined) skipRatio = options.skipRatio;
-    else if((isAndroid || isAppleMobile) && this.width < 100 && this.height < 100) {
+    else if((isAndroid || isAppleMobile || (isApple && !isSafari)) && this.width < 100 && this.height < 100) {
       skipRatio = 0.5;
     }
 
