@@ -1,20 +1,20 @@
-import emoticonsDropdown, { EmoticonsTab, EMOTICONSSTICKERGROUP, EmoticonsDropdown } from "..";
-import { StickerSet } from "../../../layer";
-import Scrollable, { ScrollableX } from "../../scrollable";
-import { wrapSticker } from "../../wrappers";
-import appStickersManager from "../../../lib/appManagers/appStickersManager";
-import appDownloadManager from "../../../lib/appManagers/appDownloadManager";
+import emoticonsDropdown, { EmoticonsDropdown, EMOTICONSSTICKERGROUP, EmoticonsTab } from "..";
 import { readBlobAsText } from "../../../helpers/blob";
+import mediaSizes from "../../../helpers/mediaSizes";
+import { StickerSet } from "../../../layer";
+import appDocsManager, { MyDocument } from "../../../lib/appManagers/appDocsManager";
+import appDownloadManager from "../../../lib/appManagers/appDownloadManager";
+import appStickersManager from "../../../lib/appManagers/appStickersManager";
 import lottieLoader from "../../../lib/lottieLoader";
-import { renderImageFromUrl, putPreloader } from "../../misc";
+import apiManager from "../../../lib/mtproto/mtprotoworker";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import $rootScope from "../../../lib/rootScope";
-import apiManager from "../../../lib/mtproto/mtprotoworker";
-import StickyIntersector from "../../stickyIntersector";
-import appDocsManager, {MyDocument} from "../../../lib/appManagers/appDocsManager";
 import animationIntersector from "../../animationIntersector";
 import { LazyLoadQueueRepeat } from "../../lazyLoadQueue";
-import mediaSizes from "../../../helpers/mediaSizes";
+import { putPreloader, renderImageFromUrl } from "../../misc";
+import Scrollable, { ScrollableX } from "../../scrollable";
+import StickyIntersector from "../../stickyIntersector";
+import { wrapSticker } from "../../wrappers";
 
 export default class StickersTab implements EmoticonsTab {
   public content: HTMLElement;
@@ -29,7 +29,7 @@ export default class StickersTab implements EmoticonsTab {
 
   private scroll: Scrollable;
 
-  private menu: HTMLUListElement;
+  private menu: HTMLElement;
   
   private mounted = false;
 
@@ -110,18 +110,18 @@ export default class StickersTab implements EmoticonsTab {
     const categoryDiv = document.createElement('div');
     categoryDiv.classList.add('sticker-category');
 
-    const li = document.createElement('li');
-    li.classList.add('btn-icon');
+    const button = document.createElement('button');
+    button.classList.add('btn-icon', 'menu-horizontal-div-item');
 
     this.stickerSets[set.id] = {
       stickers: categoryDiv,
-      tab: li
+      tab: button
     };
 
     if(prepend) {
-      this.menu.insertBefore(li, this.menu.firstElementChild.nextSibling);
+      this.menu.insertBefore(button, this.menu.firstElementChild.nextSibling);
     } else {
-      this.menu.append(li);
+      this.menu.append(button);
     }
 
     //stickersScroll.append(categoryDiv);
@@ -142,7 +142,7 @@ export default class StickersTab implements EmoticonsTab {
         //.then(JSON.parse)
         .then(json => {
           lottieLoader.loadAnimationWorker({
-            container: li,
+            container: button,
             loop: true,
             autoplay: false,
             animationData: json,
@@ -155,14 +155,14 @@ export default class StickersTab implements EmoticonsTab {
         const image = new Image();
         promise.then(blob => {
           renderImageFromUrl(image, URL.createObjectURL(blob), () => {
-            li.append(image);
+            button.append(image);
           });
         });
       }
     } else if(stickerSet.documents[0]._ != 'documentEmpty') { // as thumb will be used first sticker
       wrapSticker({
         doc: stickerSet.documents[0],
-        div: li as any, 
+        div: button as any, 
         group: EMOTICONSSTICKERGROUP
       }); // kostil
     }
@@ -230,7 +230,7 @@ export default class StickersTab implements EmoticonsTab {
     this.recentDiv.classList.add('sticker-category');
 
     let menuWrapper = this.content.previousElementSibling as HTMLDivElement;
-    this.menu = menuWrapper.firstElementChild.firstElementChild as HTMLUListElement;
+    this.menu = menuWrapper.firstElementChild as HTMLUListElement;
 
     let menuScroll = new ScrollableX(menuWrapper);
 

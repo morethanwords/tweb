@@ -1,4 +1,4 @@
-import { InputChannel, InputChatPhoto, InputPeer, Updates } from "../../layer";
+import { ChatBannedRights, InputChannel, InputChatPhoto, InputPeer, Updates } from "../../layer";
 import apiManager from '../mtproto/mtprotoworker';
 import { RichTextProcessor } from "../richtextprocessor";
 import $rootScope from "../rootScope";
@@ -151,7 +151,7 @@ export class AppChatsManager {
     return this.chats[id] || {_: 'chatEmpty', id: id, deleted: true, access_hash: this.channelAccess[id]};
   }
 
-  public hasRights(id: number, action: ChatRights) {
+  public hasRights(id: number, action: ChatRights, flag?: keyof ChatBannedRights['pFlags']) {
     const chat = this.getChat(id);
     if(chat._ == 'chatEmpty') return false;
 
@@ -171,10 +171,14 @@ export class AppChatsManager {
     switch(action) {
       // good
       case 'send': {
-        if(chat._ == 'channel' &&
-          !chat.pFlags.megagroup &&
-          !myFlags.post_messages) {
+        if(flag && myFlags[flag]) {
           return false;
+        }
+
+        if(chat._ == 'channel') {
+          if((!chat.pFlags.megagroup && !myFlags.post_messages)) {
+            return false;
+          }
         }
 
         break;

@@ -1,13 +1,14 @@
 import type { StickerSet } from "../layer";
 import type { MyDocument } from "./appManagers/appDocsManager";
-import type { Poll, PollResults } from "./appManagers/appPollsManager";
 import type { AppMessagesManager, Dialog, MyDialogFilter } from "./appManagers/appMessagesManager";
+import type { Poll, PollResults } from "./appManagers/appPollsManager";
 import { MOUNT_CLASS_TO } from "./mtproto/mtproto_config";
 
 type BroadcastEvents = {
   'user_update': number,
   'user_auth': {dcID?: number, id: number},
   'peer_changed': number,
+  'peer_pinned_message': number,
 
   'filter_delete': MyDialogFilter,
   'filter_update': MyDialogFilter,
@@ -48,7 +49,6 @@ type BroadcastEvents = {
   //'contacts_update': any,
   'avatar_update': number,
   'chat_full_update': number,
-  'peer_pinned_message': number,
   'poll_update': {poll: Poll, results: PollResults},
   'chat_update': number,
   'stateSynchronized': void,

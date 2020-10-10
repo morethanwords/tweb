@@ -116,7 +116,7 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?
   if(tabs) {
     const useStripe = !tabs.classList.contains('no-stripe');
 
-    const tagName = 'LI';//tabs.firstElementChild.tagName;
+    const tagName = tabs.classList.contains('menu-horizontal-div') ? 'BUTTON' : 'LI';//tabs.firstElementChild.tagName;
     tabs.addEventListener('click', function(e) {
       let target = e.target as HTMLElement;
       

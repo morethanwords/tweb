@@ -1,10 +1,10 @@
-import { EmoticonsTab, EmoticonsDropdown } from "..";
-import Scrollable from "../../scrollable";
-import Config from "../../../lib/config";
-import { putPreloader } from "../../misc";
-import appStateManager from "../../../lib/appManagers/appStateManager";
-import { RichTextProcessor } from "../../../lib/richtextprocessor";
+import { EmoticonsDropdown, EmoticonsTab } from "..";
 import appImManager from "../../../lib/appManagers/appImManager";
+import appStateManager from "../../../lib/appManagers/appStateManager";
+import Config from "../../../lib/config";
+import { RichTextProcessor } from "../../../lib/richtextprocessor";
+import { putPreloader } from "../../misc";
+import Scrollable from "../../scrollable";
 import StickyIntersector from "../../stickyIntersector";
 
 export default class EmojiTab implements EmoticonsTab {
@@ -80,7 +80,7 @@ export default class EmojiTab implements EmoticonsTab {
     }
     //console.timeEnd('emojiParse');
 
-    const menu = this.content.previousElementSibling.firstElementChild as HTMLUListElement;
+    const menu = this.content.previousElementSibling as HTMLElement;
     const emojiScroll = this.scroll = new Scrollable(this.content, 'EMOJI', null);
 
     //emojiScroll.setVirtualContainer(emojiScroll.container);

@@ -1,5 +1,6 @@
 import Recorder from '../../../public/recorder.min';
 import { isTouchSupported } from "../../helpers/touchSupport";
+import appChatsManager from '../../lib/appManagers/appChatsManager';
 import appDocsManager from "../../lib/appManagers/appDocsManager";
 import appImManager from "../../lib/appManagers/appImManager";
 import appMessagesManager from "../../lib/appManagers/appMessagesManager";
@@ -8,15 +9,19 @@ import apiManager from "../../lib/mtproto/mtprotoworker";
 //import Recorder from '../opus-recorder/dist/recorder.min';
 import opusDecodeController from "../../lib/opusDecodeController";
 import { RichTextProcessor } from "../../lib/richtextprocessor";
+import $rootScope from '../../lib/rootScope';
 import { calcImageInBox, cancelEvent, getRichValue } from "../../lib/utils";
+import ButtonMenu, { ButtonMenuItemOptions } from '../buttonMenu';
 import emoticonsDropdown from "../emoticonsDropdown";
 import { Layouter, RectPart } from "../groupedLayout";
 import PopupCreatePoll from "../popupCreatePoll";
+import { ripple } from '../ripple';
 import Scrollable from "../scrollable";
 import { toast } from "../toast";
 import { wrapDocument, wrapReply } from "../wrappers";
 
 const RECORD_MIN_TIME = 500;
+const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
 
 export class ChatInput {
   public pageEl = document.getElementById('page-chats') as HTMLDivElement;
@@ -32,12 +37,8 @@ export class ChatInput {
   private inputContainer = this.btnSend.parentElement.parentElement as HTMLDivElement;
   private chatInput = this.inputContainer.parentElement as HTMLDivElement;
 
-  public attachMenu: {
-    container?: HTMLButtonElement,
-    media?: HTMLDivElement,
-    document?: HTMLDivElement,
-    poll?: HTMLDivElement
-  } = {};
+  public attachMenu: HTMLButtonElement;
+  private attachMenuButtons: (ButtonMenuItemOptions & {verify: (peerID: number) => boolean})[];
 
   public attachMediaPopUp: {
     container?: HTMLDivElement,
@@ -71,10 +72,49 @@ export class ChatInput {
   private scrollDiff = 0;
 
   constructor() {
-    this.attachMenu.container = document.getElementById('attach-file') as HTMLButtonElement;
-    this.attachMenu.media = this.attachMenu.container.querySelector('.menu-media') as HTMLDivElement;
-    this.attachMenu.document = this.attachMenu.container.querySelector('.menu-document') as HTMLDivElement;
-    this.attachMenu.poll = this.attachMenu.container.querySelector('.menu-poll') as HTMLDivElement;
+    this.attachMenu = document.getElementById('attach-file') as HTMLButtonElement;
+
+    this.attachMenuButtons = [{
+      icon: 'photo',
+      text: 'Photo or Video',
+      onClick: () => {
+        this.fileInput.setAttribute('accept', 'image/*, video/*');
+        willAttach.type = 'media';
+        this.fileInput.click();
+      },
+      verify: (peerID: number) => peerID > 0 || appChatsManager.hasRights(peerID, 'send', 'send_media')
+    }, {
+      icon: 'document',
+      text: 'Document',
+      onClick: () => {
+        this.fileInput.removeAttribute('accept');
+        willAttach.type = 'document';
+        this.fileInput.click();
+      },
+      verify: (peerID: number) => peerID > 0 || appChatsManager.hasRights(peerID, 'send', 'send_media')
+    }, {
+      icon: 'poll',
+      text: 'Poll',
+      onClick: () => {
+        new PopupCreatePoll().show();
+      },
+      verify: (peerID: number) => peerID < 0 && appChatsManager.hasRights(peerID, 'send', 'send_polls')
+    }];
+
+    /* this.attachMenu.addEventListener('mousedown', (e) => {
+      const hidden = this.attachMenu.querySelectorAll('.hide');
+      if(hidden.length == this.attachMenuButtons.length) {
+        toast(POSTING_MEDIA_NOT_ALLOWED);
+        cancelEvent(e);
+        return false;
+      }
+    }, {passive: false, capture: true}); */
+
+    const attachBtnMenu = ButtonMenu(this.attachMenuButtons);
+    attachBtnMenu.classList.add('top-left');
+    this.attachMenu.append(attachBtnMenu);
+
+    ripple(this.attachMenu);
 
     this.attachMediaPopUp.container = this.pageEl.querySelector('.popup-send-photo') as HTMLDivElement;
     this.attachMediaPopUp.titleEl = this.attachMediaPopUp.container.querySelector('.popup-title') as HTMLDivElement;
@@ -102,6 +142,19 @@ export class ChatInput {
     }
 
     this.updateSendBtn();
+
+    $rootScope.$on('peer_changed', (e) => {
+      const peerID = e.detail;
+      
+      const visible = this.attachMenuButtons.filter(button => {
+        const good = button.verify(peerID);
+        button.element.classList.toggle('hide', !good);
+        return good;
+      });
+      
+      this.attachMenu.toggleAttribute('disabled', !visible.length);
+      this.updateSendBtn();
+    });
 
     this.messageInput.addEventListener('keydown', (e: KeyboardEvent) => {
       if(e.key == 'Enter' && !isTouchSupported) {
@@ -429,24 +482,9 @@ export class ChatInput {
       attachFiles(Array.from(files));
     }, false);
 
-    this.attachMenu.media.addEventListener('click', () => {
-      this.fileInput.setAttribute('accept', 'image/*, video/*');
-      willAttach.type = 'media';
-      this.fileInput.click();
-    });
-
-    this.attachMenu.document.addEventListener('click', () => {
-      this.fileInput.removeAttribute('accept');
-      willAttach.type = 'document';
-      this.fileInput.click();
-    });
-
-    this.attachMenu.poll.addEventListener('click', () => {
-      new PopupCreatePoll().show();
-    });
-
     document.addEventListener('paste', (event) => {
-      if(!appImManager.peerID || this.attachMediaPopUp.container.classList.contains('active')) {
+      const peerID = $rootScope.selectedPeerID;
+      if(!peerID || this.attachMediaPopUp.container.classList.contains('active') || (peerID < 0 && !appChatsManager.hasRights(peerID, 'send', 'send_media'))) {
         return;
       }
 
@@ -529,6 +567,11 @@ export class ChatInput {
           this.sendMessage();
         }
       } else {
+        if($rootScope.selectedPeerID < 0 && !appChatsManager.hasRights($rootScope.selectedPeerID, 'send', 'send_media')) {
+          toast(POSTING_MEDIA_NOT_ALLOWED);
+          return;
+        }
+
         this.chatInput.classList.add('is-locked');
         this.recorder.start().then(() => {
           this.recordCanceled = false;

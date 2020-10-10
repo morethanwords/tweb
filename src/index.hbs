@@ -513,13 +513,7 @@
                 <div class="input-message-container">
                   <div id="input-message" contenteditable="true" data-placeholder="Message"></div>
                 </div>
-                <button class="btn-icon rp tgico-attach btn-menu-toggle" id="attach-file">
-                  <div class="btn-menu top-left">
-                    <div class="btn-menu-item menu-media tgico-photo rp">Photo or Video</div>
-                    <div class="btn-menu-item menu-document tgico-document rp">Document</div>
-                    <div class="btn-menu-item menu-poll tgico-poll rp">Poll</div>
-                  </div>
-                </button>
+                <button class="btn-icon tgico-attach btn-menu-toggle" id="attach-file"></button>
                 <div class="record-time"></div>
                 <input type="file" id="input-file" style="display: none;" multiple />
               </div>
@@ -537,27 +531,23 @@
             <div class="emoji-container">
               <div class="tabs-container">
                 <div class="emoji-padding">
-                  <nav class="menu-horizontal">
-                    <ul>
-                      <li class="active btn-icon tgico-recent rp"></li>
-                      <li class="btn-icon tgico-smile rp"></li>
-                      <li class="btn-icon tgico-animals rp"></li>
-                      <li class="btn-icon tgico-eats rp"></li>
-                      <li class="btn-icon tgico-car rp"></li>
-                      <li class="btn-icon tgico-sport rp"></li>
-                      <li class="btn-icon tgico-lamp rp"></li>
-                      <!-- <li class="btn-icon tgico-info rp"></li> -->
-                      <li class="btn-icon tgico-flag rp"></li>
-                    </ul>
+                  <nav class="menu-horizontal-div no-stripe">
+                    <button class="menu-horizontal-div-item active btn-icon tgico-recent rp"></button>
+                    <button class="menu-horizontal-div-item btn-icon tgico-smile rp"></button>
+                    <button class="menu-horizontal-div-item btn-icon tgico-animals rp"></button>
+                    <button class="menu-horizontal-div-item btn-icon tgico-eats rp"></button>
+                    <button class="menu-horizontal-div-item btn-icon tgico-car rp"></button>
+                    <button class="menu-horizontal-div-item btn-icon tgico-sport rp"></button>
+                    <button class="menu-horizontal-div-item btn-icon tgico-lamp rp"></button>
+                    <!-- <button class="menu-horizontal-div-item btn-icon tgico-info rp"></button> -->
+                    <button class="menu-horizontal-div-item btn-icon tgico-flag rp"></button>
                   </nav>
                   <div class="emoticons-content" id="content-emoji"></div>
                 </div>
                 <div class="stickers-padding">
                   <div class="menu-wrapper">
-                    <nav class="menu-horizontal">
-                      <ul class="justify-start">
-                        <li class="btn-icon tgico-recent active"></li>
-                      </ul>
+                    <nav class="menu-horizontal-div no-stripe justify-start">
+                      <button class="menu-horizontal-div-item btn-icon tgico-recent active"></button>
                     </nav>
                   </div>
                   <div class="emoticons-content" id="content-stickers"></div>
@@ -569,15 +559,13 @@
                 </div>
               </div>
             </div>
-            <nav class="emoji-tabs menu-horizontal no-stripe">
-              <ul>
-                <li class="emoji-tabs-search justify-self-start btn-icon tgico-search rp" data-tab="-1"></li>
-                <li class="emoji-tabs-emoji btn-icon tgico-smile rp" data-tab="0"></li>
-                <li class="emoji-tabs-stickers btn-icon tgico-stickers rp" data-tab="1"></li>
-                <li class="emoji-tabs-gifs btn-icon tgico-gifs rp" data-tab="2"></li>
-                <li class="emoji-tabs-delete justify-self-end btn-icon tgico-deleteleft rp" data-tab="-1"></li>
-              </ul>
-            </nav>
+            <div class="emoji-tabs menu-horizontal-div no-stripe">
+              <button class="menu-horizontal-div-item emoji-tabs-search justify-self-start btn-icon tgico-search rp" data-tab="-1"></button>
+              <button class="menu-horizontal-div-item emoji-tabs-emoji btn-icon tgico-smile rp" data-tab="0"></button>
+              <button class="menu-horizontal-div-item emoji-tabs-stickers btn-icon tgico-stickers rp" data-tab="1"></button>
+              <button class="menu-horizontal-div-item emoji-tabs-gifs btn-icon tgico-gifs rp" data-tab="2"></button>
+              <button class="menu-horizontal-div-item emoji-tabs-delete justify-self-end btn-icon tgico-deleteleft rp" data-tab="-1"></button>
+            </div>
           </div>
         </div>
       </div>

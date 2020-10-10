@@ -179,7 +179,9 @@ export default class PopupCreatePoll extends PopupElement {
     };
     //poll.id = randomIDS;
 
-    const inputMediaPoll = appPollsManager.getInputMediaPoll(poll, this.correctAnswers, this.quizSolutionInput ? this.quizSolutionInput.value : undefined);
+    const inputMediaPoll = appPollsManager.getInputMediaPoll(poll, this.correctAnswers, this.quizSolutionInput.value || undefined);
+
+    //console.log('Will try to create poll:', inputMediaPoll);
 
     appMessagesManager.sendOther($rootScope.selectedPeerID, inputMediaPoll);
   };

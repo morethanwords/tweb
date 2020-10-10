@@ -342,7 +342,7 @@
 	}
 
 	.btn-icon {
-		transition: .2s color, background-color .2s;
+		transition: .2s color, background-color .2s, .2s opacity;
 	}
 
 	#btn-record-cancel, #btn-send {

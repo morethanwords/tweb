@@ -302,7 +302,7 @@ input, textarea {
   font-size: 1.5rem;
   line-height: 1.5rem;
   border-radius: 50%;
-  transition: background-color .15s ease-in-out;
+  transition: background-color .15s ease-in-out, opacity .15s ease-in-out;
   color: $color-gray;
   cursor: pointer;
   background-color: transparent;
@@ -322,6 +322,11 @@ input, textarea {
   
   html.no-touch &:hover {
     background-color: var(--color-gray-hover);
+  }
+
+  &:disabled {
+    pointer-events: none !important;
+    opacity: .25;
   }
 }
 

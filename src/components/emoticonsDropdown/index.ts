@@ -1,16 +1,18 @@
-import LazyLoadQueue, { LazyLoadQueueIntersector } from "../lazyLoadQueue";
-import GifsTab from "./tabs/gifs";
-import { findUpClassName, findUpTag, whichChild } from "../../lib/utils";
-import { horizontalMenu } from "../horizontalMenu";
-import animationIntersector from "../animationIntersector";
-import appSidebarRight from "../sidebarRight";
-import appImManager from "../../lib/appManagers/appImManager";
-import Scrollable, { ScrollableX } from "../scrollable";
-import EmojiTab from "./tabs/emoji";
-import StickersTab from "./tabs/stickers";
-import StickyIntersector from "../stickyIntersector";
-import { MOUNT_CLASS_TO } from "../../lib/mtproto/mtproto_config";
 import { isTouchSupported } from "../../helpers/touchSupport";
+import appChatsManager from "../../lib/appManagers/appChatsManager";
+import appImManager from "../../lib/appManagers/appImManager";
+import { MOUNT_CLASS_TO } from "../../lib/mtproto/mtproto_config";
+import $rootScope from "../../lib/rootScope";
+import { findUpClassName, findUpTag, whichChild } from "../../lib/utils";
+import animationIntersector from "../animationIntersector";
+import { horizontalMenu } from "../horizontalMenu";
+import LazyLoadQueue, { LazyLoadQueueIntersector } from "../lazyLoadQueue";
+import Scrollable, { ScrollableX } from "../scrollable";
+import appSidebarRight from "../sidebarRight";
+import StickyIntersector from "../stickyIntersector";
+import EmojiTab from "./tabs/emoji";
+import GifsTab from "./tabs/gifs";
+import StickersTab from "./tabs/stickers";
 
 export const EMOTICONSSTICKERGROUP = 'emoticons-dropdown';
 
@@ -52,6 +54,8 @@ export class EmoticonsDropdown {
     onOpen: [],
     onOpenAfter: []
   };
+
+  private selectTab: ReturnType<typeof horizontalMenu>;
 
   constructor() {
     this.element = document.getElementById('emoji-dropdown') as HTMLDivElement;
@@ -113,13 +117,7 @@ export class EmoticonsDropdown {
 
     this.container = this.element.querySelector('.emoji-container .tabs-container') as HTMLDivElement;
     this.tabsEl = this.element.querySelector('.emoji-tabs') as HTMLUListElement;
-    horizontalMenu(this.tabsEl, this.container, (id) => {
-      animationIntersector.checkAnimations(true, EMOTICONSSTICKERGROUP);
-
-      this.tabID = id;
-      this.searchButton.classList.toggle('hide', this.tabID == 0);
-      this.deleteBtn.classList.toggle('hide', this.tabID != 0);
-    }, () => {
+    this.selectTab = horizontalMenu(this.tabsEl, this.container, this.onSelectTabClick, () => {
       const tab = this.tabs[this.tabID];
       if(tab.init) {
         tab.init();
@@ -156,9 +154,44 @@ export class EmoticonsDropdown {
       //appSidebarRight.stickersTab.init();
     });
 
-    (this.tabsEl.firstElementChild.children[1] as HTMLLIElement).click(); // set emoji tab
+    (this.tabsEl.children[1] as HTMLLIElement).click(); // set emoji tab
     this.tabs[0].init(); // onTransitionEnd не вызовется, т.к. это первая открытая вкладка
+
+    $rootScope.$on('peer_changed', this.checkRights);
+    this.checkRights();
   }
+
+  private onSelectTabClick = (id: number) => {
+    if(this.tabID == id) {
+      return;
+    }
+    
+    animationIntersector.checkAnimations(true, EMOTICONSSTICKERGROUP);
+
+    this.tabID = id;
+    this.searchButton.classList.toggle('hide', this.tabID == 0);
+    this.deleteBtn.classList.toggle('hide', this.tabID != 0);
+  };
+
+  public checkRights = () => {
+    const peerID = $rootScope.selectedPeerID;
+    const children = this.tabsEl.children;
+    const tabsElements = Array.from(children) as HTMLElement[];
+
+    const canSendStickers = peerID > 0 || appChatsManager.hasRights(peerID, 'send', 'send_stickers');
+    tabsElements[2].toggleAttribute('disabled', !canSendStickers);
+
+    const canSendGifs = peerID > 0 || appChatsManager.hasRights(peerID, 'send', 'send_gifs');
+    tabsElements[3].toggleAttribute('disabled', !canSendGifs);
+
+    const active = this.tabsEl.querySelector('.active');
+    if(active && whichChild(active) != 1 && (!canSendStickers || !canSendGifs)) {
+      this.selectTab(0);
+      this.onSelectTabClick(0);
+      active.classList.remove('active');
+      children[1].classList.add('active');
+    }
+  };
 
   public toggle = async(enable?: boolean) => {
     //if(!this.element) return;
@@ -241,7 +274,7 @@ export class EmoticonsDropdown {
     //animationIntersector.checkAnimations(false, EMOTICONSSTICKERGROUP);
   };
 
-  public static menuOnClick = (menu: HTMLUListElement, scroll: Scrollable, menuScroll?: ScrollableX) => {
+  public static menuOnClick = (menu: HTMLElement, scroll: Scrollable, menuScroll?: ScrollableX) => {
     let prevId = 0;
     let jumpedTo = -1;
 
@@ -284,7 +317,7 @@ export class EmoticonsDropdown {
 
     menu.addEventListener('click', (e) => {
       let target = e.target as HTMLElement;
-      target = findUpTag(target, 'LI');
+      target = findUpClassName(target, 'menu-horizontal-div-item');
 
       if(!target) {
         return;
