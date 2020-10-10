@@ -29,93 +29,103 @@
   
   <div class="whole" id="auth-pages" style="display: none;">
     <div class="tabs-container auth-pages__container" data-slider="tabs">
-      <div class="page-sign scrollable scrollable-y">
+      <div class="page-sign">
         <div class="container center-align">
-          <div class="auth-image">
-            <svg class="sign-logo" xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
-              <use href="#logo" />
-            </svg>
-          </div>
-          <h4>Sign in to Telegram</h4>
-          <p class="subtitle">Please confirm your country and<br> enter your phone number.</p>
-          <div class="input-wrapper">
-            <div class="input-field input-select">
-              <input type="text" name="countryCode" id="countryCode" autocomplete="rrRandomRR" required />
-              <label for="countryCode">Country</label>
-              <span class="arrow arrow-down"></span>
+          <div class="scrollable scrollable-y">
+            <div class="auth-image">
+              <svg class="sign-logo" xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
+                <use href="#logo" />
+              </svg>
             </div>
-            <div class="input-field">
-              <input type="tel" name="phone" id="phone" autocomplete="rr55RandomRR55" required />
-              <label for="phone">Phone Number</label>
-            </div>
-            <label class="checkbox-field">
-              <input type="checkbox" id="keepSigned" checked="checked">
-              <span>Keep me signed in</span>
-            </label>
-            <button class="btn-primary rp" style="visibility: hidden;">NEXT</button>
-            <div class="qr"><a href="#" class="a-qr">Quick log in using QR code</a></div>
-          </div>
-        </div>
-      </div>
-      <div class="page-signQR scrollable scrollable-y">
-        <div class="container center-align">
-          <div class="auth-image">
-            <canvas id="qr-code"></canvas>
-          </div>
-          <h4>Scan from mobile Telegram</h4>
-          <p class="qr-description">1. Open Telegram on your phone<br>2. Go to settings > Devices > Scan QR<br>3. Scan this image to Log in</p>
-          <div class="qr"><a href="#" class="a-qr">Or log in using your phone number</a></div>
-        </div>
-      </div>
-      <div class="page-authCode scrollable scrollable-y">
-        <div class="container center-align">
-          <div class="auth-image"></div>
-          <div class="phone-wrapper">
-            <h4 class="phone"></h4>
-            <span class="phone-edit tgico-edit"></span>
-          </div>
-          <p class="subtitle sent-type"></p>
-          <div class="input-wrapper">
-            <div class="input-field">
-              <input type="tel" name="code" id="code" autocomplete="off" required />
-              <label for="code">Code</label>
+            <h4>Sign in to Telegram</h4>
+            <p class="subtitle">Please confirm your country and<br> enter your phone number.</p>
+            <div class="input-wrapper">
+              <div class="input-field input-select">
+                <input type="text" name="countryCode" id="countryCode" autocomplete="rrRandomRR" required />
+                <label for="countryCode">Country</label>
+                <span class="arrow arrow-down"></span>
+              </div>
+              <div class="input-field">
+                <input type="tel" name="phone" id="phone" autocomplete="rr55RandomRR55" required />
+                <label for="phone">Phone Number</label>
+              </div>
+              <label class="checkbox-field">
+                <input type="checkbox" id="keepSigned" checked="checked">
+                <span>Keep me signed in</span>
+              </label>
+              <button class="btn-primary rp" style="visibility: hidden;">NEXT</button>
+              <div class="qr"><a href="#" class="a-qr">Quick log in using QR code</a></div>
             </div>
           </div>
         </div>
       </div>
-      <div class="page-password scrollable scrollable-y">
+      <div class="page-signQR">
         <div class="container center-align">
-          <div class="auth-image"></div>
-          <h4 class="phone">Enter a password</h4>
-          <p class="subtitle">Your account is protected with<br>an additional password</p>
-          <div class="input-wrapper">
-            <div class="input-field">
-              <input type="password" name="password" id="password" autocomplete="off" required />
-              <label for="password">Password</label>
-              <span class="toggle-visible tgico-eye1"></span>
+          <div class="scrollable scrollable-y">
+            <div class="auth-image">
+              <canvas id="qr-code"></canvas>
             </div>
-            <button class="btn-primary rp">NEXT</button>
+            <h4>Scan from mobile Telegram</h4>
+            <p class="qr-description">1. Open Telegram on your phone<br>2. Go to settings > Devices > Scan QR<br>3. Scan this image to Log in</p>
+            <div class="qr"><a href="#" class="a-qr">Or log in using your phone number</a></div>
           </div>
         </div>
       </div>
-      <div class="page-signUp scrollable scrollable-y">
+      <div class="page-authCode">
         <div class="container center-align">
-          <div class="auth-image avatar-edit">
-            <canvas class="avatar-edit-canvas" id="canvas-avatar"></canvas>
-            <span class="tgico tgico-cameraadd"></span>
+          <div class="scrollable scrollable-y">
+            <div class="auth-image"></div>
+            <div class="phone-wrapper">
+              <h4 class="phone"></h4>
+              <span class="phone-edit tgico-edit"></span>
+            </div>
+            <p class="subtitle sent-type"></p>
+            <div class="input-wrapper">
+              <div class="input-field">
+                <input type="tel" name="code" id="code" autocomplete="off" required />
+                <label for="code">Code</label>
+              </div>
+            </div>
           </div>
-          <h4 class="fullName">Your Name</h4>
-          <p class="subtitle">Enter your name and add<br>a profile picture</p>
-          <div class="input-wrapper">
-            <div class="input-field">
-              <input type="text" name="name" id="name" autocomplete="off" required />
-              <label for="name">Name</label>
+        </div>
+      </div>
+      <div class="page-password">
+        <div class="container center-align">
+          <div class="scrollable scrollable-y">
+            <div class="auth-image"></div>
+            <h4 class="phone">Enter a password</h4>
+            <p class="subtitle">Your account is protected with<br>an additional password</p>
+            <div class="input-wrapper">
+              <div class="input-field">
+                <input type="password" name="password" id="password" autocomplete="off" required />
+                <label for="password">Password</label>
+                <span class="toggle-visible tgico-eye1"></span>
+              </div>
+              <button class="btn-primary rp">NEXT</button>
             </div>
-            <div class="input-field">
-              <input type="text" name="lastName" id="lastName" autocomplete="off" required />
-              <label for="lastName">Last Name (optional)</label>
+          </div>
+        </div>
+      </div>
+      <div class="page-signUp">
+        <div class="container center-align">
+          <div class="scrollable scrollable-y">
+            <div class="auth-image avatar-edit">
+              <canvas class="avatar-edit-canvas" id="canvas-avatar"></canvas>
+              <span class="tgico tgico-cameraadd"></span>
             </div>
-            <button class="btn-primary rp" id="signUp">START MESSAGING</button>
+            <h4 class="fullName">Your Name</h4>
+            <p class="subtitle">Enter your name and add<br>a profile picture</p>
+            <div class="input-wrapper">
+              <div class="input-field">
+                <input type="text" name="name" id="name" autocomplete="off" required />
+                <label for="name">Name</label>
+              </div>
+              <div class="input-field">
+                <input type="text" name="lastName" id="lastName" autocomplete="off" required />
+                <label for="lastName">Last Name (optional)</label>
+              </div>
+              <button class="btn-primary rp" id="signUp">START MESSAGING</button>
+            </div>
           </div>
         </div>
       </div>

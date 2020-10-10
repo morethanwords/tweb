@@ -1,16 +1,16 @@
-import pageIm from './pageIm';
 //import CryptoWorker from '../lib/crypto/cryptoworker';
 //import apiManager from '../lib/mtproto/apiManager';
 import { putPreloader } from '../components/misc';
-
+import mediaSizes from '../helpers/mediaSizes';
+import { AccountPassword } from '../layer';
 import LottieLoader, { RLottiePlayer } from '../lib/lottieLoader';
 //import passwordManager from '../lib/mtproto/passwordManager';
 import apiManager from '../lib/mtproto/mtprotoworker';
-import Page from './page';
 import passwordManager from '../lib/mtproto/passwordManager';
 import { cancelEvent } from '../lib/utils';
-import { AccountPassword } from '../layer';
-import mediaSizes from '../helpers/mediaSizes';
+import Page from './page';
+import pageIm from './pageIm';
+
 
 let passwordInput: HTMLInputElement;
 
@@ -82,7 +82,7 @@ let onFirstMount = (): Promise<any> => {
     this.textContent = 'PLEASE WAIT...';
     putPreloader(this);
 
-    passwordManager.check(value, state).then((response: any) => {
+    passwordManager.check(value, state).then((response) => {
       //console.log('passwordManager response:', response);
         
       switch(response._) {
