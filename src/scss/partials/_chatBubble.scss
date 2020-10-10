@@ -1649,7 +1649,7 @@ poll-element {
         font-size: 14px;
         line-height: 1.4;
         opacity: 0;
-        animation: fadeIn .1s ease forwards;
+        animation: fade-in-opacity .1s ease forwards;
         animation-direction: reverse;
         animation-delay: .24s;
         text-align: center;

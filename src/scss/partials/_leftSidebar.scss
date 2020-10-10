@@ -273,31 +273,25 @@
         bottom: 14px;
         right: 14px;
 
-        transform: translateY(0px);
         position: fixed !important;
         z-index: 1;
+
+        &:not(.is-hidden) {
+          transform: translateZ(0px);
+        }
       }
     }
 
     @include respond-to(not-handhelds) {
-      html.no-touch &:hover .btn-corner {
-        transform: translateY(0px);
+      html.no-touch &:hover .btn-corner:not(.is-hidden) {
+        transform: translateZ(0px);
       }
     }
   }
 }
 
 #search-container {
-  transition: .15s ease-in-out opacity, .15s ease-in-out transform;
-  transform: scale(1.1, 1.1);
-  opacity: 0;
   display: flex;
-
-  &.active {
-    transform: scale(1, 1);
-    transform-origin: center;
-    opacity: 1;
-  }
 }
 
 .new-channel-container, .new-group-container, .edit-profile-container {

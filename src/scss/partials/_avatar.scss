@@ -27,7 +27,7 @@ avatar-element {
     user-select: none;
 
     &.fade-in {
-      animation: fadeIn .2s ease forwards;
+      animation: fade-in-opacity .2s ease forwards;
     }
   }
   

@@ -1,29 +1,30 @@
 //import { logger } from "../polyfill";
-import appDialogsManager from "../../lib/appManagers/appDialogsManager";
-import { findUpTag, findUpClassName, formatNumber } from "../../lib/utils";
-import appImManager from "../../lib/appManagers/appImManager";
-import AppSearch, { SearchGroup } from "../appSearch";
-import { parseMenuButtonsTo } from "../misc";
-import appUsersManager from "../../lib/appManagers/appUsersManager";
-import { ScrollableX } from "../scrollable";
-import AvatarElement from "../avatar";
-import AppNewChannelTab from "./tabs/newChannel";
-import AppAddMembersTab from "./tabs/addMembers";
-import AppContactsTab from "./tabs/contacts";
-import AppNewGroupTab from "./tabs/newGroup";
-import AppSettingsTab from "./tabs/settings";
-import AppEditProfileTab from "./tabs/editProfile";
-import AppChatFoldersTab from "./tabs/chatFolders";
-import AppEditFolderTab from "./tabs/editFolder";
-import AppIncludedChatsTab from "./tabs/includedChats";
-import SidebarSlider from "../slider";
-import SearchInput from "../searchInput";
-import appStateManager from "../../lib/appManagers/appStateManager";
 import appChatsManager from "../../lib/appManagers/appChatsManager";
+import appDialogsManager from "../../lib/appManagers/appDialogsManager";
+import appImManager from "../../lib/appManagers/appImManager";
+import appPeersManager from "../../lib/appManagers/appPeersManager";
+import appStateManager from "../../lib/appManagers/appStateManager";
+import appUsersManager from "../../lib/appManagers/appUsersManager";
 import { MOUNT_CLASS_TO } from "../../lib/mtproto/mtproto_config";
 import $rootScope from "../../lib/rootScope";
-import appPeersManager from "../../lib/appManagers/appPeersManager";
+import { findUpClassName, findUpTag, formatNumber } from "../../lib/utils";
+import AppSearch, { SearchGroup } from "../appSearch";
+import AvatarElement from "../avatar";
+import { parseMenuButtonsTo } from "../misc";
+import { ScrollableX } from "../scrollable";
+import SearchInput from "../searchInput";
+import SidebarSlider from "../slider";
+import Transition from "../transition";
+import AppAddMembersTab from "./tabs/addMembers";
 import AppArchivedTab from "./tabs/archivedTab";
+import AppChatFoldersTab from "./tabs/chatFolders";
+import AppContactsTab from "./tabs/contacts";
+import AppEditFolderTab from "./tabs/editFolder";
+import AppEditProfileTab from "./tabs/editProfile";
+import AppIncludedChatsTab from "./tabs/includedChats";
+import AppNewChannelTab from "./tabs/newChannel";
+import AppNewGroupTab from "./tabs/newGroup";
+import AppSettingsTab from "./tabs/settings";
 
 AvatarElement;
 
@@ -37,6 +38,30 @@ const chatFoldersTab = new AppChatFoldersTab();
 const editFolderTab = new AppEditFolderTab();
 const includedChatsTab = new AppIncludedChatsTab();
 const archivedTab = new AppArchivedTab();
+
+/* const Transition = (container: HTMLElement, duration: number, from: HTMLElement, to: HTMLElement) => {
+  if(to.classList.contains('active')) return Promise.resolve();
+  
+  container.classList.add('animating');
+
+  const backwards = whichChild(to) < whichChild(from);
+
+  if(backwards) {
+    container.classList.add('backwards');
+  }
+
+  from.classList.add('from');
+  to.classList.add('to');
+
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      from.classList.remove('from', 'active');
+      container.classList.remove('animating', 'backwards');
+      to.classList.replace('to', 'active');
+      resolve();
+    }, duration);
+  });
+}; */
 
 export class AppSidebarLeft extends SidebarSlider {
   public static SLIDERITEMSIDS = {
@@ -195,12 +220,28 @@ export class AppSidebarLeft extends SidebarSlider {
         });
       });
 
+      let hideNewBtnMenuTimeout: number;
+      //const transition = Transition.bind(null, this.searchContainer.parentElement, 150);
+      const transition = Transition(this.searchContainer.parentElement, 'zoom-fade', 150, (id) => {
+        if(hideNewBtnMenuTimeout) clearTimeout(hideNewBtnMenuTimeout);
+
+        if(id == 0) {
+          this.globalSearch.reset();
+          hideNewBtnMenuTimeout = window.setTimeout(() => {
+            hideNewBtnMenuTimeout = 0;
+            this.newBtnMenu.classList.remove('is-hidden');
+          }, 150);
+        }
+      });
+
+      transition(0);
+
       const onFocus = () => {
         this.toolsBtn.classList.remove('active');
         this.backBtn.classList.add('active');
-        this.searchContainer.classList.remove('hide');
-        void this.searchContainer.offsetWidth; // reflow
-        this.searchContainer.classList.add('active');
+        this.newBtnMenu.classList.add('is-hidden');
+
+        transition(1);
 
         if(firstTime) {
           this.searchGroups.people.setActive();
@@ -225,13 +266,9 @@ export class AppSidebarLeft extends SidebarSlider {
         //appDialogsManager.chatsArchivedContainer.classList.remove('active');
         this.toolsBtn.classList.add('active');
         this.backBtn.classList.remove('active');
-        this.searchContainer.classList.remove('active');
         firstTime = true;
 
-        setTimeout(() => {
-          this.searchContainer.classList.add('hide');
-          this.globalSearch.reset();
-        }, 150);
+        transition(0);
       });
 
       this.renderRecentSearch();
