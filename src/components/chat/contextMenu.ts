@@ -2,7 +2,7 @@ import appChatsManager from "../../lib/appManagers/appChatsManager";
 import appImManager from "../../lib/appManagers/appImManager";
 import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import appPeersManager from "../../lib/appManagers/appPeersManager";
-import appPollsManager from "../../lib/appManagers/appPollsManager";
+import appPollsManager, { Poll } from "../../lib/appManagers/appPollsManager";
 import $rootScope from "../../lib/rootScope";
 import { findUpClassName } from "../../lib/utils";
 import ButtonMenu, { ButtonMenuItemOptions } from "../buttonMenu";
@@ -67,7 +67,7 @@ export class ChatContextMenu {
       icon: 'edit',
       text: 'Edit',
       onClick: this.onEditClick,
-      verify: (peerID: number, msgID: number) => appMessagesManager.canEditMessage(msgID)
+      verify: (peerID: number, msgID: number) => appMessagesManager.canEditMessage(msgID, 'text')
     }, {
       icon: 'copy',
       text: 'Copy',
@@ -84,8 +84,8 @@ export class ChatContextMenu {
       onClick: this.onRetractVote,
       verify: (peerID: number, msgID) => {
         const message = appMessagesManager.getMessage(msgID);
-        const poll = message.media?.poll;
-        return poll && !poll.pFlags.closed;
+        const poll = message.media?.poll as Poll;
+        return poll && poll.chosenIndexes.length && !poll.pFlags.closed && !poll.pFlags.quiz;
       } 
     }, {
       icon: 'lock',
@@ -94,7 +94,7 @@ export class ChatContextMenu {
       verify: (peerID: number, msgID) => {
         const message = appMessagesManager.getMessage(msgID);
         const poll = message.media?.poll;
-        return appMessagesManager.canEditMessage(msgID) && message.fromID == $rootScope.myID && message.fwd_from === undefined && poll && !poll.pFlags.closed;
+        return appMessagesManager.canEditMessage(msgID, 'poll') && poll && !poll.pFlags.closed;
       } 
     }, {
       icon: 'forward',

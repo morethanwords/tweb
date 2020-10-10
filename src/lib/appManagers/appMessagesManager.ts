@@ -667,9 +667,9 @@ export class AppMessagesManager {
     noWebPage: true,
     newMedia: any
   }> = {}) {
-    if(!this.canEditMessage(messageID)) {
+    /* if(!this.canEditMessage(messageID)) {
       return Promise.reject({type: 'MESSAGE_EDIT_FORBIDDEN'});
-    }
+    } */
 
     if(messageID < 0) {
       if(this.tempFinalizeCallbacks[messageID] === undefined) {
@@ -2397,8 +2397,6 @@ export class AppMessagesManager {
         apiMessage.totalEntities = RichTextProcessor.mergeEntities(myEntities, apiEntities, !apiMessage.pending);
       }
 
-      apiMessage.canBeEdited = this.canMessageBeEdited(apiMessage);
-
       if(!options.isEdited) {
         this.messagesStorage[mid] = apiMessage;
         (this.messagesStorageByPeerID[peerID] ?? (this.messagesStorageByPeerID[peerID] = {}))[mid] = apiMessage;
@@ -2588,14 +2586,17 @@ export class AppMessagesManager {
     }
   }
 
-  public canMessageBeEdited(message: any) {
+  public canMessageBeEdited(message: any, kind: 'text' | 'poll') {
     const goodMedias = [
       'messageMediaPhoto',
       'messageMediaDocument',
       'messageMediaWebPage',
-      'messageMediaPending',
-      'messageMediaPoll'
+      'messageMediaPending'
     ];
+
+    if(kind == 'poll') {
+      goodMedias.push('messageMediaPoll');
+    }
 
     if(message._ != 'message' ||
         message.deleted ||
@@ -2615,13 +2616,13 @@ export class AppMessagesManager {
     return true;
   }
 
-  public canEditMessage(messageID: number) {
+  public canEditMessage(messageID: number, kind: 'text' | 'poll' = 'text') {
     if(!this.messagesStorage[messageID]) {
       return false;
     }
 
     const message = this.messagesStorage[messageID];
-    if(!message || !message.canBeEdited) {
+    if(!message || !this.canMessageBeEdited(message, kind)) {
       return false;
     }
 

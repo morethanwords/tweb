@@ -1,3 +1,4 @@
+import { InputMedia } from "../../layer";
 import { logger, LogLevels } from "../logger";
 import apiManager from "../mtproto/mtprotoworker";
 import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
@@ -140,10 +141,19 @@ class AppPollsManager {
     };
   }
 
-  public getInputMediaPoll(poll: Poll) {
+  public getInputMediaPoll(poll: Poll, correctAnswers?: Uint8Array[], solution?: string): InputMedia.inputMediaPoll {
+    let solution_entities: any[];
+    if(solution) {
+      solution_entities = [];
+      solution = RichTextProcessor.parseMarkdown(solution, solution_entities);
+    }
+
     return {
       _: 'inputMediaPoll',
-      poll
+      poll,
+      correct_answers: correctAnswers,
+      solution,
+      solution_entities
     };
   }
 
