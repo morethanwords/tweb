@@ -1,22 +1,23 @@
-import appPeersManager from "./appPeersManager";
-import appPhotosManager from "./appPhotosManager";
-import appMessagesManager from "./appMessagesManager";
-import { RichTextProcessor } from "../richtextprocessor";
-import { logger } from "../logger";
-import ProgressivePreloader from "../../components/preloader";
-import { findUpClassName, generatePathData, fillPropertyValue, cancelEvent } from "../utils";
-import appDocsManager, {MyDocument} from "./appDocsManager";
-import VideoPlayer from "../mediaPlayer";
-import { renderImageFromUrl, parseMenuButtonsTo } from "../../components/misc";
+import appMediaPlaybackController from "../../components/appMediaPlaybackController";
 import AvatarElement from "../../components/avatar";
 import { LazyLoadQueueBase } from "../../components/lazyLoadQueue";
-import appMediaPlaybackController from "../../components/appMediaPlaybackController";
+import { parseMenuButtonsTo, renderImageFromUrl } from "../../components/misc";
+import ProgressivePreloader from "../../components/preloader";
+import appSidebarRight, { AppSidebarRight } from "../../components/sidebarRight";
 import { deferredPromise } from "../../helpers/cancellablePromise";
 import mediaSizes from "../../helpers/mediaSizes";
-import { isSafari } from "../../helpers/userAgent";
-import appSidebarRight, { AppSidebarRight } from "../../components/sidebarRight";
-import $rootScope from "../rootScope";
 import { isTouchSupported } from "../../helpers/touchSupport";
+import { isSafari } from "../../helpers/userAgent";
+import { logger } from "../logger";
+import VideoPlayer from "../mediaPlayer";
+import { RichTextProcessor } from "../richtextprocessor";
+import $rootScope from "../rootScope";
+import { cancelEvent, fillPropertyValue, findUpClassName, generatePathData } from "../utils";
+import appDocsManager, { MyDocument } from "./appDocsManager";
+import appImManager from "./appImManager";
+import appMessagesManager from "./appMessagesManager";
+import appPeersManager from "./appPeersManager";
+import appPhotosManager from "./appPhotosManager";
 
 // TODO: масштабирование картинок (не SVG) при ресайзе, и правильный возврат на исходную позицию
 // TODO: картинки "обрезаются" если возвращаются или появляются с места, где есть их перекрытие (топбар, поле ввода)
@@ -77,16 +78,17 @@ class SwipeHandler {
 }
 
 export class AppMediaViewer {
-  public wholeDiv = document.querySelector('.media-viewer-whole') as HTMLDivElement;
-  private overlaysDiv = this.wholeDiv.firstElementChild as HTMLDivElement;
+  public wholeDiv = document.querySelector('.media-viewer-whole') as HTMLElement;
+  private overlaysDiv = this.wholeDiv.firstElementChild as HTMLElement;
   private author = {
+    container: this.overlaysDiv.querySelector('.media-viewer-author') as HTMLElement,
     avatarEl: this.overlaysDiv.querySelector('.media-viewer-userpic') as AvatarElement,
-    nameEl: this.overlaysDiv.querySelector('.media-viewer-name') as HTMLDivElement,
-    date: this.overlaysDiv.querySelector('.media-viewer-date') as HTMLDivElement
+    nameEl: this.overlaysDiv.querySelector('.media-viewer-name') as HTMLElement,
+    date: this.overlaysDiv.querySelector('.media-viewer-date') as HTMLElement
   };
   public buttons: {[k in 'delete' | 'forward' | 'download' | 'close' | 'prev' | 'next' | 
     'menu-delete' | 'menu-forward' | 'menu-download' | 'mobile-close']: HTMLElement} = {} as any;
-  private content: {[k in 'container' | 'caption' | 'mover']: HTMLDivElement} = {
+  private content: {[k in 'container' | 'caption' | 'mover']: HTMLElement} = {
     container: this.overlaysDiv.querySelector('.media-viewer-media'),
     caption: this.overlaysDiv.querySelector('.media-viewer-caption'),
     mover: null
@@ -134,40 +136,9 @@ export class AppMediaViewer {
     this.lazyLoadQueue = new LazyLoadQueueBase();
 
     parseMenuButtonsTo(this.buttons, this.wholeDiv.querySelectorAll(`[class*='menu']`) as NodeListOf<HTMLElement>);
-
-    const close = (e: MouseEvent) => {
-      cancelEvent(e);
-      if(this.setMoverAnimationPromise) return;
-      //this.overlaysDiv.classList.remove('active');
-      this.content.container.innerHTML = '';
-      /* if(this.content.container.firstElementChild) {
-        URL.revokeObjectURL((this.content.container.firstElementChild as HTMLImageElement).src);
-      } */
-
-      this.peerID = 0;
-      this.currentMessageID = 0;
-      this.lazyLoadQueue.clear();
-
-      this.setMoverToTarget(this.lastTarget, true);
-
-      this.lastTarget = null;
-      this.prevTargets = [];
-      this.nextTargets = [];
-      this.loadedAllMediaUp = this.loadedAllMediaDown = false;
-      this.loadMediaPromiseUp = this.loadMediaPromiseDown = null;
-      this.setMoverPromise = null;
-
-      if(appSidebarRight.historyTabIDs.slice(-1)[0] == AppSidebarRight.SLIDERITEMSIDS.forward) {
-        setTimeout(() => {
-          appSidebarRight.forwardTab.closeBtn.click();
-        }, 200);
-      }
-
-      window.removeEventListener('keydown', this.onKeyDown);
-    };
     
     [this.buttons.close, this.buttons["mobile-close"], this.preloaderStreamable.preloader].forEach(el => {
-      el.addEventListener('click', close);
+      el.addEventListener('click', this.close);
     });
     
     this.buttons.prev.addEventListener('click', (e) => {
@@ -208,6 +179,8 @@ export class AppMediaViewer {
       el.addEventListener('click', forward);
     });
 
+    this.author.container.addEventListener('click', this.onAuthorClick);
+
     this.wholeDiv.addEventListener('click', this.onClick);
     //this.content.mover.addEventListener('click', this.onClickBinded);
     //this.content.mover.append(this.buttons.prev, this.buttons.next);
@@ -243,6 +216,50 @@ export class AppMediaViewer {
       });
     }
   }
+
+  close = (e?: MouseEvent) => {
+    if(e) {
+      cancelEvent(e);
+    }
+
+    if(this.setMoverAnimationPromise) return;
+    //this.overlaysDiv.classList.remove('active');
+    this.content.container.innerHTML = '';
+    /* if(this.content.container.firstElementChild) {
+      URL.revokeObjectURL((this.content.container.firstElementChild as HTMLImageElement).src);
+    } */
+
+    this.peerID = 0;
+    this.currentMessageID = 0;
+    this.lazyLoadQueue.clear();
+
+    const promise = this.setMoverToTarget(this.lastTarget, true).then(({onAnimationEnd}) => onAnimationEnd);
+
+    this.lastTarget = null;
+    this.prevTargets = [];
+    this.nextTargets = [];
+    this.loadedAllMediaUp = this.loadedAllMediaDown = false;
+    this.loadMediaPromiseUp = this.loadMediaPromiseDown = null;
+    this.setMoverPromise = null;
+
+    if(appSidebarRight.historyTabIDs.slice(-1)[0] == AppSidebarRight.SLIDERITEMSIDS.forward) {
+      promise.then(() => {
+        appSidebarRight.forwardTab.closeBtn.click();
+      });
+    }
+
+    window.removeEventListener('keydown', this.onKeyDown);
+
+    return promise;
+  };
+
+  onAuthorClick = (e: MouseEvent) => {
+    const mid = this.currentMessageID;
+    this.close(e).then(() => {
+      const message = appMessagesManager.getMessage(mid);
+      appImManager.setPeer(message.peerID, mid);
+    });
+  };
 
   onClickDownload = (e: MouseEvent) => {
     const message = appMessagesManager.getMessage(this.currentMessageID);
@@ -698,7 +715,7 @@ export class AppMediaViewer {
     step();
   }
 
-  private removeCenterFromMover(mover: HTMLDivElement) {
+  private removeCenterFromMover(mover: HTMLElement) {
     if(mover.classList.contains('center')) {
       //const rect = mover.getBoundingClientRect();
       const rect = this.content.container.getBoundingClientRect();
@@ -709,7 +726,7 @@ export class AppMediaViewer {
     }
   }
 
-  private moveTheMover(mover: HTMLDivElement, toLeft = true) {
+  private moveTheMover(mover: HTMLElement, toLeft = true) {
     const windowW = appPhotosManager.windowW;
 
     this.removeCenterFromMover(mover);

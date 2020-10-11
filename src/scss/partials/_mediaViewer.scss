@@ -22,13 +22,14 @@ $move-duration: .35s;
     position: absolute;
     top: 0;
     left: 0;
-    height: 60px;
-    padding: 8px 8px 8px 80px;
+    height: 3.75rem;
+    padding: .5rem .5rem .5rem 5rem;
     display: flex;
     flex-direction: column;
     justify-content: center;
     color: #8b8b8b;
     transition: $open-duration;
+    cursor: pointer;
 
     html.no-touch &:hover {
       color: #fff;
@@ -36,11 +37,11 @@ $move-duration: .35s;
   }
 
   &-userpic {
-    width: 44px;
-    height: 44px;
+    width: 2.75rem;
+    height: 2.75rem;
     position: absolute;
-    top: 8px;
-    left: 20px;
+    top: .5rem;
+    left: 1.25rem;
 
     @include respond-to(handhelds) {
       display: none;
@@ -61,7 +62,7 @@ $move-duration: .35s;
     right: 0;
     display: flex;
     flex-flow: row nowrap;
-    padding: 8px;
+    padding: .5rem;
 
     .btn-icon {
       margin: 0 .25rem;
@@ -125,14 +126,14 @@ $move-duration: .35s;
   &-switcher {
     position: absolute;
     left: 0;
-    top: 60px;
+    top: 3.75rem;
     width: 7rem;
-    height: calc(100% - 120px);
+    height: calc(100% - 7.5rem);
     cursor: pointer;
     z-index: 5;
 
     html.no-touch & {
-      height: calc(100% - 60px);
+      height: calc(100% - 3.75rem);
 
       &:hover {
         > span {

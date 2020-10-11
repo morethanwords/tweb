@@ -3971,7 +3971,7 @@ export class AppMessagesManager {
         break;
       }
 
-      case 'updateChannelPinnedMessage':
+      // 'updateChannelPinnedMessage' will be handled by appProfileManager
       case 'updateChatPinnedMessage':
       case 'updateUserPinnedMessage': {
         // hz nado li tut appMessagesIDsManager.getFullMessageID(update.max_id, channelID);
