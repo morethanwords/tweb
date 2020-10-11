@@ -1,7 +1,7 @@
 import appSidebarRight, { AppSidebarRight } from "..";
 import appMessagesManager from "../../../lib/appManagers/appMessagesManager";
-import { putPreloader } from "../../misc";
 import { AppSelectPeers } from "../../appSelectPeers";
+import { putPreloader } from "../../misc";
 import { SliderTab } from "../../slider";
 
 export default class AppForwardTab implements SliderTab {
@@ -22,6 +22,11 @@ export default class AppForwardTab implements SliderTab {
       this.selector.container.remove();
       this.selector = null;
     }
+
+    this.sendBtn.innerHTML = '';
+    this.sendBtn.classList.add('tgico-send');
+    this.sendBtn.classList.remove('is-visible');
+    this.sendBtn.disabled = false;
   }
 
   public init() {
@@ -66,16 +71,8 @@ export default class AppForwardTab implements SliderTab {
     this.cleanup();
     this.msgIDs = ids;
 
-    this.sendBtn.innerHTML = '';
-    this.sendBtn.classList.add('tgico-send');
-    this.sendBtn.disabled = false;
-
     this.selector = new AppSelectPeers(this.container, (length) => {
-      if(length) {
-        this.sendBtn.classList.add('is-visible');
-      } else {
-        this.sendBtn.classList.remove('is-visible');
-      }
+      this.sendBtn.classList.toggle('is-visible', !!length);
     }, ['dialogs', 'contacts'], () => {
       //console.log('forward rendered:', this.container.querySelector('.selector ul').childElementCount);
       appSidebarRight.selectTab(AppSidebarRight.SLIDERITEMSIDS.forward);
