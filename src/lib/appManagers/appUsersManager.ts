@@ -1,15 +1,15 @@
-import { safeReplaceObject, isObject, tsNow, getAbbreviation } from "../utils";
-import { RichTextProcessor } from "../richtextprocessor";
-import appChatsManager from "./appChatsManager";
+import { formatPhoneNumber } from "../../components/misc";
+import { InputUser, Update, User as MTUser } from "../../layer";
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
 import serverTimeManager from "../mtproto/serverTimeManager";
-import { formatPhoneNumber } from "../../components/misc";
+import { RichTextProcessor } from "../richtextprocessor";
+import $rootScope from "../rootScope";
 import searchIndexManager from "../searchIndexManager";
+import { getAbbreviation, isObject, safeReplaceObject, tsNow } from "../utils";
+import appChatsManager from "./appChatsManager";
 import appPeersManager from "./appPeersManager";
 import appStateManager from "./appStateManager";
-import { InputUser, User as MTUser } from "../../layer";
-import $rootScope from "../rootScope";
 
 /* export type User = {
   _: 'user',
@@ -65,12 +65,12 @@ export class AppUsersManager {
     $rootScope.$on('stateSynchronized', this.updateUsersStatuses.bind(this));
 
     $rootScope.$on('apiUpdate', (e) => {
-      let update = e.detail;
+      const update = e.detail as Update;
       //console.log('on apiUpdate', update);
       switch(update._) {
         case 'updateUserStatus':
-          var userID = update.user_id;
-          var user = this.users[userID];
+          const userID = update.user_id;
+          const user = this.users[userID];
           if(user) {
             user.status = update.status;
             if(user.status) {
@@ -88,9 +88,9 @@ export class AppUsersManager {
           } //////else console.warn('No user by id:', userID);
           break;
   
-        case 'updateUserPhoto':
-          var userID = update.user_id;
-          var user = this.users[userID];
+        case 'updateUserPhoto': {
+          const userID = update.user_id;
+          const user = this.users[userID];
           if(user) {
             this.forceUserOnline(userID);
             if(!user.photo) {
@@ -107,7 +107,10 @@ export class AppUsersManager {
             $rootScope.$broadcast('user_update', userID);
             $rootScope.$broadcast('avatar_update', userID);
           } else console.warn('No user by id:', userID);
-          break
+
+          break;
+        }
+          
   
         /* case 'updateContactLink':
           this.onContactUpdated(update.user_id, update.my_link._ == 'contactLinkContact');
@@ -470,7 +473,8 @@ export class AppUsersManager {
       user.status &&
       user.status._ != 'userStatusOnline' &&
       user.status._ != 'userStatusEmpty' &&
-      !user.pFlags.support) {
+      !user.pFlags.support &&
+      !user.pFlags.deleted) {
 
       user.status = {
         _: 'userStatusOnline',

@@ -23,7 +23,7 @@ import { wrapAlbum, wrapDocument, wrapPhoto, wrapPoll, wrapReply, wrapSticker, w
 import mediaSizes from '../../helpers/mediaSizes';
 import { isTouchSupported } from '../../helpers/touchSupport';
 import { isAndroid, isApple, isSafari } from '../../helpers/userAgent';
-import { InputNotifyPeer, InputPeerNotifySettings } from '../../layer';
+import { InputNotifyPeer, InputPeerNotifySettings, NotifyPeer, Update } from '../../layer';
 import { logger, LogLevels } from "../logger";
 import apiManager from '../mtproto/mtprotoworker';
 import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
@@ -910,7 +910,7 @@ export class AppImManager {
   }
   
   public setPeerStatus(needClear = false) {
-    if(!this.myID) return;
+    if(!this.myID || !this.peerID) return;
 
     const profileElements = appSidebarRight.sharedMediaTab.profileElements;
 
@@ -950,7 +950,7 @@ export class AppImManager {
       
       if(this.myID == this.peerID) {
         this.subtitleEl.innerText = profileElements.subtitle.innerText = '';
-      } else if(user && user.status) {
+      } else if(user) {
         let subtitle = appUsersManager.getUserStatusString(user.id);
 
         if(subtitle == 'online') {
@@ -2629,7 +2629,19 @@ export class AppImManager {
       peer: inputNotifyPeer,
       settings: settings
     }).then(bool => {
-      this.handleUpdate({_: 'updateNotifySettings', peer: inputNotifyPeer, notify_settings: settings});
+      if(bool) {
+        this.handleUpdate({
+          _: 'updateNotifySettings', 
+          peer: {
+            _: 'notifyPeer',
+            peer: appPeersManager.getOutputPeer(peerID)
+          }, 
+          notify_settings: { // ! WOW, IT WORKS !
+            ...settings,
+            _: 'peerNotifySettings',
+          }
+        });
+      }
     });
     
     /* return apiManager.invokeApi('account.getNotifySettings', {
@@ -2649,7 +2661,7 @@ export class AppImManager {
     
   }
   
-  public handleUpdate(update: any) {
+  public handleUpdate(update: Update) {
     switch(update._) {
       case 'updateUserTyping':
       case 'updateChatUserTyping': {
@@ -2661,8 +2673,10 @@ export class AppImManager {
         this.typingUsers[update.user_id] = peerID;
         
         if(!appUsersManager.hasUser(update.user_id)) {
-          if(update.chat_id && appChatsManager.hasChat(update.chat_id) && !appChatsManager.isChannel(update.chat_id)) {
-            appProfileManager.getChatFull(update.chat_id);
+          if(update._ == 'updateChatUserTyping') {
+            if(update.chat_id && appChatsManager.hasChat(update.chat_id) && !appChatsManager.isChannel(update.chat_id)) {
+              appProfileManager.getChatFull(update.chat_id);
+            }
           }
           
           //return;
@@ -2698,21 +2712,18 @@ export class AppImManager {
       }
       
       case 'updateNotifySettings': {
-        let {peer, notify_settings} = update;
+        const {peer, notify_settings} = update;
         
-        // peer was NotifyPeer
-        peer = peer.peer;
+        const peerID = appPeersManager.getPeerID((peer as NotifyPeer.notifyPeer).peer);
         
-        let peerID = appPeersManager.getPeerID(peer);
-        
-        let dialog = appMessagesManager.getDialogByPeerID(peerID)[0];
+        const dialog = appMessagesManager.getDialogByPeerID(peerID)[0];
         if(dialog) {
           dialog.notify_settings = notify_settings;
           $rootScope.$broadcast('dialog_notify_settings', peerID);
         }
         
         if(peerID == this.peerID) {
-          let muted = notify_settings.mute_until ? new Date(notify_settings.mute_until * 1000) > new Date() : false;
+          const muted = notify_settings.mute_until ? new Date(notify_settings.mute_until * 1000) > new Date() : false;
           this.setMutedState(muted);
         }
         

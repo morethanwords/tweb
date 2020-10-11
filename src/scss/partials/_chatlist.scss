@@ -118,7 +118,12 @@
           margin-left: .125rem;
           display: inline-block;
           height: 29px;
+          animation: fade-in-opacity .2s ease forwards;
         }
+      }
+
+      &.backwards .user-title:after {
+        animation: fade-in-backwards-opacity .2s ease forwards;
       }
     }
   }
@@ -299,7 +304,7 @@
     }
   }
 
-  .unread, .unread-muted, .tgico-pinnedchat {
+  .unread, .tgico-pinnedchat {
     height: 24px;
     text-align: center;
     line-height: 24px;
@@ -310,10 +315,11 @@
     flex: 0 0 auto;
   }
 
-  .unread, .unread-muted {
+  .unread {
     min-width: 24px;
     padding: 0 8px;
     font-weight: 500;
+    transition: .2s background-color;
   }
 
   .tgico-pinnedchat {
@@ -321,15 +327,15 @@
     font-size: 1.5rem;
   }
 
-  .unread:empty, .unread-muted:empty {
+  .unread:empty {
     visibility: hidden;
   }
 
-  .unread {
+  .unread, li.is-muted.backwards .unread {
     background: $color-green;
   }
 
-  .unread-muted, .tgico-pinnedchat {
+  li.is-muted .unread, .tgico-pinnedchat {
     background: #c5c9cc;
   }
 

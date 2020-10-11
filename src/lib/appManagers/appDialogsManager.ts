@@ -29,7 +29,8 @@ type DialogDom = {
   unreadMessagesSpan: HTMLSpanElement,
   lastMessageSpan: HTMLSpanElement,
   containerEl: HTMLDivElement,
-  listEl: HTMLLIElement
+  listEl: HTMLLIElement,
+  muteAnimationTimeout?: number
 };
 
 const testScroll = false;
@@ -143,16 +144,14 @@ export class AppDialogsManager {
     } */
 
     $rootScope.$on('user_update', (e) => {
-      let userID = e.detail;
-
-      let user = appUsersManager.getUser(userID);
-
-      let dialog = appMessagesManager.getDialogByPeerID(user.id)[0];
+      const userID = e.detail;
+      const user = appUsersManager.getUser(userID);
+      const dialog = appMessagesManager.getDialogByPeerID(user.id)[0];
       //console.log('updating user:', user, dialog);
 
       if(dialog && !appUsersManager.isBot(dialog.peerID) && dialog.peerID != $rootScope.myID) {
-        let online = user.status && user.status._ == 'userStatusOnline';
-        let dom = this.getDialogDom(dialog.peerID);
+        const online = user.status?._ == 'userStatusOnline';
+        const dom = this.getDialogDom(dialog.peerID);
 
         if(dom) {
           dom.avatarEl.classList.toggle('is-online', online);
@@ -737,8 +736,18 @@ export class AppDialogsManager {
     }
 
     const isMuted = (dialog.notify_settings?.mute_until * 1000) > Date.now();
+    const wasMuted = dom.listEl.classList.contains('is-muted');
+    if(!isMuted && wasMuted) {
+      dom.listEl.classList.add('backwards');
 
-    dom.listEl.classList.toggle('is-muted', isMuted);
+      if(dom.muteAnimationTimeout) clearTimeout(dom.muteAnimationTimeout);
+      dom.muteAnimationTimeout = window.setTimeout(() => {
+        delete dom.muteAnimationTimeout;
+        dom.listEl.classList.remove('backwards', 'is-muted');
+      }, 200);
+    } else {
+      dom.listEl.classList.toggle('is-muted', isMuted);
+    }
 
     const lastMessage = appMessagesManager.getMessage(dialog.top_message);
     if(lastMessage._ != 'messageEmpty' && !lastMessage.deleted && 
@@ -772,9 +781,9 @@ export class AppDialogsManager {
     if(dialog.unread_count || dialog.pFlags.unread_mark) {
       //dom.unreadMessagesSpan.innerText = '' + (dialog.unread_count ? formatNumber(dialog.unread_count, 1) : ' ');
       dom.unreadMessagesSpan.innerText = '' + (dialog.unread_count || ' ');
-      dom.unreadMessagesSpan.classList.add(isMuted ? 'unread-muted' : 'unread');
+      dom.unreadMessagesSpan.classList.add('unread');
     } else if(isPinned) {
-      dom.unreadMessagesSpan.classList.remove('unread', 'unread-muted');
+      dom.unreadMessagesSpan.classList.remove('unread');
       dom.unreadMessagesSpan.classList.add('tgico-pinnedchat');
     }
   }

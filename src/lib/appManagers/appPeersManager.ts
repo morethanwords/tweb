@@ -1,9 +1,9 @@
-import appUsersManager from "./appUsersManager";
-import appChatsManager from "./appChatsManager";
-import { isObject } from "../utils";
+import { DialogPeer, InputDialogPeer, InputPeer, Peer } from "../../layer";
 import { RichTextProcessor } from "../richtextprocessor";
-import { InputPeer, InputDialogPeer, Peer } from "../../layer";
+import { isObject } from "../utils";
+import appChatsManager from "./appChatsManager";
 import appStateManager from "./appStateManager";
+import appUsersManager from "./appUsersManager";
 
 // https://github.com/eelcohn/Telegram-API/wiki/Calculating-color-for-a-Telegram-user-on-IRC
 /*
@@ -66,7 +66,7 @@ export class AppPeersManager {
       if(peer.first_name) title += peer.first_name;
       if(peer.last_name) title += ' ' + peer.last_name;
   
-      if(!title) title = peer.pFlags.deleted ? 'Deleted account' : peer.username;
+      if(!title) title = peer.pFlags.deleted ? 'Deleted Account' : peer.username;
       else title = title.trim();
     } else {
       title = peer.title;
@@ -121,6 +121,13 @@ export class AppPeersManager {
     const peerParams = peerString.substr(1).split('_');
 
     return isUser ? peerParams[0] : -peerParams[0] || 0;
+  }
+
+  public getDialogPeer(peerID: number): DialogPeer {
+    return {
+      _: 'dialogPeer',
+      peer: this.getOutputPeer(peerID)
+    };
   }
 
   public isChannel(peerID: number): boolean {

@@ -1,4 +1,4 @@
-import type { StickerSet } from "../layer";
+import type { StickerSet, Update } from "../layer";
 import type { MyDocument } from "./appManagers/appDocsManager";
 import type { AppMessagesManager, Dialog, MyDialogFilter } from "./appManagers/appMessagesManager";
 import type { Poll, PollResults } from "./appManagers/appPollsManager";
@@ -55,7 +55,7 @@ type BroadcastEvents = {
   'channel_settings': {channelID: number},
   'webpage_updated': {id: string, msgs: number[]},
 
-  'apiUpdate': any,
+  'apiUpdate': Update,
   'download_progress': any,
   //'draft_updated': any,
 };
