@@ -11,6 +11,8 @@ import appChatsManager from "./appChatsManager";
 import appPeersManager from "./appPeersManager";
 import appStateManager from "./appStateManager";
 
+// TODO: updateUserBlocked
+
 /* export type User = {
   _: 'user',
   access_hash: string,
@@ -110,7 +112,17 @@ export class AppUsersManager {
 
           break;
         }
-          
+        
+        /* // @ts-ignore
+        case 'updateUserBlocked': {
+          const id = (update as any).user_id;
+          const blocked: boolean = (update as any).blocked;
+
+          const user = this.getUser(id);
+          if(user) {
+          }
+          break;
+        } */
   
         /* case 'updateContactLink':
           this.onContactUpdated(update.user_id, update.my_link._ == 'contactLinkContact');
@@ -418,6 +430,11 @@ export class AppUsersManager {
   public hasUser(id: number, allowMin?: boolean) {
     var user = this.users[id];
     return isObject(user) && (allowMin || !user.pFlags.min);
+  }
+
+  public canSendToUser(id: number) {
+    const user = this.getUser(id);
+    return !user.pFlags.deleted;
   }
 
   public getUserPhoto(id: number) {

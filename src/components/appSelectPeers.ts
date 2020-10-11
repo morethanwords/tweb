@@ -1,12 +1,12 @@
-import Scrollable from "./scrollable";
-import appMessagesManager, { Dialog } from "../lib/appManagers/appMessagesManager";
-import { cancelEvent, findUpClassName, findUpAttribute } from "../lib/utils";
-import appDialogsManager from "../lib/appManagers/appDialogsManager";
 import appChatsManager, { ChatRights } from "../lib/appManagers/appChatsManager";
-import appUsersManager from "../lib/appManagers/appUsersManager";
+import appDialogsManager from "../lib/appManagers/appDialogsManager";
+import appMessagesManager, { Dialog } from "../lib/appManagers/appMessagesManager";
 import appPeersManager from "../lib/appManagers/appPeersManager";
 import appPhotosManager from "../lib/appManagers/appPhotosManager";
+import appUsersManager from "../lib/appManagers/appUsersManager";
 import $rootScope from "../lib/rootScope";
+import { cancelEvent, findUpAttribute, findUpClassName } from "../lib/utils";
+import Scrollable from "./scrollable";
 
 type PeerType = 'contacts' | 'dialogs';
 
@@ -172,7 +172,7 @@ export class AppSelectPeers {
 
       if(this.chatRightsAction) {
         dialogs = dialogs.filter(d => {
-          return d.peerID > 0 || appChatsManager.hasRights(-d.peerID, this.chatRightsAction);
+          return (d.peerID > 0 && (this.chatRightsAction != 'send' || appUsersManager.canSendToUser(d.peerID))) || appChatsManager.hasRights(-d.peerID, this.chatRightsAction);
         });
       }
 

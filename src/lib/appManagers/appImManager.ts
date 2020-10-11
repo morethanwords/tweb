@@ -1260,7 +1260,7 @@ export class AppImManager {
     const hasRights = isChannel && appChatsManager.hasRights(-peerID, 'send');
     this.chatInner.classList.toggle('has-rights', hasRights);
 
-    const canWrite = (!isChannel || hasRights) && (peerID < 0 || !appUsersManager.getUser(peerID).pFlags.deleted);
+    const canWrite = (!isChannel || hasRights) && (peerID < 0 || appUsersManager.canSendToUser(peerID));
     this.chatInput.style.display = canWrite ? '' : 'none';
 
     this.chatInner.classList.toggle('is-chat-input-hidden', !canWrite);

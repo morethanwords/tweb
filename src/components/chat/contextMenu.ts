@@ -11,8 +11,11 @@ import { PopupButton, PopupPeer } from "../popup";
 import appSidebarRight from "../sidebarRight";
 
 export class ChatContextMenu {
-  private buttons: (ButtonMenuItemOptions & {verify: (peerID: number, msgID: number) => boolean})[];
+  private buttons: (ButtonMenuItemOptions & {verify: (peerID: number, msgID: number, target: HTMLElement) => boolean})[];
   private element: HTMLElement;
+
+  private target: HTMLElement;
+  public peerID: number;
   public msgID: number;
 
   constructor(private attachTo: HTMLElement) {
@@ -41,17 +44,21 @@ export class ChatContextMenu {
       const msgID = +bubble.dataset.mid;
       if(!msgID) return;
 
-      const peerID = $rootScope.selectedPeerID;
+      this.peerID = $rootScope.selectedPeerID;
       this.msgID = msgID;
+      this.target = e.target as HTMLElement;
 
       this.buttons.forEach(button => {
-        const good = button.verify(peerID, msgID);
+        const good = button.verify(this.peerID, this.msgID, this.target);
         button.element.classList.toggle('hide', !good);
       });
 
       const side: 'left' | 'right' = bubble.classList.contains('is-in') ? 'left' : 'right';
       positionMenu(e, this.element, side);
-      openBtnMenu(this.element);
+      openBtnMenu(this.element, () => {
+        this.peerID = this.msgID = 0;
+        this.target = null;
+      });
       
       /////this.log('contextmenu', e, bubble, msgID, side);
     });
@@ -175,7 +182,14 @@ export class ChatContextMenu {
   };
 
   private onForwardClick = () => {
-    appSidebarRight.forwardTab.open([this.msgID]);
+    let msgID: number;
+
+    const albumItem = findUpClassName(this.target, 'album-item');
+    if(albumItem) {
+      msgID = +albumItem.dataset.mid;
+    }
+    
+    appSidebarRight.forwardTab.open([msgID]);
   };
 
   private onDeleteClick = () => {

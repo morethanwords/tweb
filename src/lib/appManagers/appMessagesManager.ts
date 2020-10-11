@@ -1,7 +1,7 @@
 import ProgressivePreloader from "../../components/preloader";
 import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
 import { Dialog as MTDialog, DialogFilter, DialogPeer, DocumentAttribute, InputMessage, Message, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, PhotoSize, Update } from "../../layer";
-import { Modify } from "../../types";
+import { InvokeApiOptions, Modify } from "../../types";
 import { bigint, nextRandomInt } from "../bin_utils";
 import { logger } from "../logger";
 import type { ApiFileManager } from '../mtproto/apiFileManager';
@@ -1997,38 +1997,29 @@ export class AppMessagesManager {
   }
 
   public forwardMessages(peerID: number, mids: number[], options: Partial<{
-    withMyScore: boolean
+    withMyScore: true
   }> = {}) {
     peerID = appPeersManager.getPeerMigratedTo(peerID) || peerID;
     mids = mids.sort((a, b) => a - b);
 
-    var flags = 0;
-    if(options.withMyScore) {
-      flags |= 256;
-    }
+    const splitted = appMessagesIDsManager.splitMessageIDsByChannels(mids);
+    const promises: Promise<void>[] = [];
 
-    let splitted = appMessagesIDsManager.splitMessageIDsByChannels(mids);
-    let promises: any[] = [];
+    for(const channelID in splitted.msgIDs) {
+      const msgIDs = splitted.msgIDs[channelID];
+      const randomIDs: [number, number][] = msgIDs.map(() => [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)]);
 
-    for(let channelID in splitted.msgIDs) {
-      let msgIDs = splitted.msgIDs[channelID];
-      let len = msgIDs.length;
-      let randomIDs = [];
-      for(let i = 0; i < len; i++) {
-        randomIDs.push([nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)]);
-      }
-
-      let sentRequestOptions: any = {};
+      const sentRequestOptions: InvokeApiOptions = {};
       if(this.pendingAfterMsgs[peerID]) {
         sentRequestOptions.afterMessageID = this.pendingAfterMsgs[peerID].messageID;
       }
 
-      let promise = apiManager.invokeApi('messages.forwardMessages', {
-        flags: flags,
+      const promise = apiManager.invokeApi('messages.forwardMessages', {
         from_peer: appPeersManager.getInputPeerByID(-channelID),
         id: msgIDs,
         random_id: randomIDs as any,
-        to_peer: appPeersManager.getInputPeerByID(peerID)
+        to_peer: appPeersManager.getInputPeerByID(peerID),
+        with_my_score: options.withMyScore
       }, sentRequestOptions).then((updates) => {
         apiUpdatesManager.processUpdateMessage(updates);
       }, () => {}).then(() => {
