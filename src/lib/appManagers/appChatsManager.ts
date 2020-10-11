@@ -1,4 +1,4 @@
-import { ChatBannedRights, InputChannel, InputChatPhoto, InputPeer, Updates } from "../../layer";
+import { ChatAdminRights, ChatBannedRights, InputChannel, InputChatPhoto, InputPeer, Updates } from "../../layer";
 import apiManager from '../mtproto/mtprotoworker';
 import { RichTextProcessor } from "../richtextprocessor";
 import $rootScope from "../rootScope";
@@ -166,17 +166,19 @@ export class AppChatsManager {
       return true;
     }
 
-    let myFlags = (chat.admin_rights || chat.banned_rights || chat.default_banned_rights)?.pFlags ?? {};
+    const rights = chat.admin_rights || chat.banned_rights || chat.default_banned_rights;
+    let myFlags: {[flag in keyof ChatBannedRights['pFlags'] | keyof ChatAdminRights['pFlags']]: true};
+    if(rights) myFlags = rights.pFlags;
 
     switch(action) {
       // good
       case 'send': {
-        if(flag && myFlags[flag]) {
+        if(flag && myFlags && myFlags[flag]) {
           return false;
         }
 
         if(chat._ == 'channel') {
-          if((!chat.pFlags.megagroup && !myFlags.post_messages)) {
+          if((!chat.pFlags.megagroup && !myFlags?.post_messages)) {
             return false;
           }
         }
@@ -187,7 +189,7 @@ export class AppChatsManager {
       // good
       case 'deleteRevoke': {
         if(chat._ == 'channel') {
-          return !!myFlags.delete_messages;
+          return !!myFlags?.delete_messages;
         } else if(!chat.pFlags.admin) {
           return false;
         }
@@ -198,9 +200,9 @@ export class AppChatsManager {
       // good
       case 'pin': {
         if(chat._ == 'channel') {
-          return chat.admin_rights ? !!myFlags.pin_messages || !!myFlags.post_messages : !!myFlags.pin_messages;
+          return chat.admin_rights ? !!myFlags.pin_messages || !!myFlags.post_messages : myFlags && !myFlags.pin_messages;
         } else {
-          if(myFlags.pin_messages && !chat.pFlags.admin) {
+          if(myFlags?.pin_messages && !chat.pFlags.admin) {
             return false;
           }
         }

@@ -2162,11 +2162,19 @@ export class AppMessagesManager {
   public savePinnedMessage(peerID: number, mid: number) {
     if(!mid) {
       delete this.pinnedMessages[peerID];
-      return;
+    } else {
+      this.pinnedMessages[peerID] = mid;
+
+      if(!this.messagesStorage.hasOwnProperty(mid)) {
+        this.wrapSingleMessage(mid).then(() => {
+          $rootScope.$broadcast('peer_pinned_message', peerID);
+        });
+
+        return;
+      }
     }
 
-    this.pinnedMessages[peerID] = mid;
-    this.wrapSingleMessage(mid);
+    $rootScope.$broadcast('peer_pinned_message', peerID);
   }
 
   public getPinnedMessage(peerID: number) {

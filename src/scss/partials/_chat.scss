@@ -17,13 +17,13 @@
 	// border-bottom: 1px solid #DADCE0;
 
 	@include respond-to(handhelds) {
-		&.is-audio-shown, &.is-pinned-shown:not(.hide-pinned) {
+		&.is-pinned-audio-shown, &.is-pinned-message-shown:not(.hide-pinned) {
 			& + #bubbles {
 				margin-top: 52px;
 			}
 		}
 
-		&.is-pinned-shown:not(.hide-pinned):not(.is-audio-shown) {
+		&.is-pinned-message-shown:not(.hide-pinned):not(.is-pinned-audio-shown) {
 			.pinned-message {
 				display: flex;
 			}
@@ -38,7 +38,7 @@
 			display: none;
 		}
 
-		&.is-pinned-shown:not(.hide-pinned) {
+		&.is-pinned-message-shown:not(.hide-pinned) {
 			.pinned-message {
 				display: flex;
 			}
@@ -102,18 +102,18 @@
 	}
 
 	@include respond-to(medium-screens) {
-		&.is-pinned-shown {
+		&.is-pinned-message-shown {
 			body.is-right-column-shown & {
 				.chat-info {
 					max-width: calc(100% - var(--right-column-width) * 1.75);
 				}
 			}
-		}
 
-		&.is-pinned-shown.is-audio-shown {
-			body.is-right-column-shown & {
-				.chat-info {
-					max-width: calc(100% - var(--right-column-width) * 2.25);
+			&.is-pinned-audio-shown {
+				body.is-right-column-shown & {
+					.chat-info {
+						max-width: calc(100% - var(--right-column-width) * 2.25);
+					}
 				}
 			}
 		}
@@ -792,6 +792,7 @@
 
 	.pinned-container {
 		flex: 0 0 auto;
+		overflow: visible;
 
 		@include respond-to(handhelds) {
 			box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.15);
@@ -808,21 +809,22 @@
 			}
 		}
 
-		.pinned-message-close, .pinned-audio-close, .pinned-audio-ico {
+		&-close, .pinned-audio-ico {
 			font-size: 1.5rem;
 			position: absolute;
 			display: flex;
 			justify-content: center;
 			right: 0;
+		}
 
-			&.tgico-close {
-				visibility: hidden;
+		&-close {
+			visibility: hidden;
+			//left: -3rem;
 
-				@include respond-to(handhelds) {
-					font-size: 1.4rem;
-					right: 9px;
-					visibility: visible;
-				}
+			@include respond-to(handhelds) {
+				font-size: 1.4rem;
+				right: 9px;
+				visibility: visible;
 			}
 		}
 	}

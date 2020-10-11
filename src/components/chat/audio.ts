@@ -1,65 +1,43 @@
-import appImManager from "../../lib/appManagers/appImManager";
 import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import appPeersManager from "../../lib/appManagers/appPeersManager";
 import { RichTextProcessor } from "../../lib/richtextprocessor";
 import $rootScope from "../../lib/rootScope";
 import { cancelEvent } from "../../lib/utils";
 import appMediaPlaybackController from "../appMediaPlaybackController";
+import DivAndCaption from "../divAndCaption";
 import { formatDate } from "../wrappers";
+import PinnedContainer from "./pinnedContainer";
 
-export class ChatAudio {
-  public container: HTMLElement;
-  private toggle: HTMLElement;
-  private title: HTMLElement;
-  private subtitle: HTMLElement;
-  private close: HTMLElement;
+export class ChatAudio extends PinnedContainer {
+  private toggleEl: HTMLElement;
 
   constructor() {
-    this.container = document.createElement('div');
-    this.container.classList.add('pinned-audio', 'pinned-container');
-    this.container.style.display = 'none';
-
-    this.toggle = document.createElement('div');
-    this.toggle.classList.add('pinned-audio-ico', 'tgico');
-    
-    this.title = document.createElement('div');
-    this.title.classList.add('pinned-audio-title');
-
-    this.subtitle = document.createElement('div');
-    this.subtitle.classList.add('pinned-audio-subtitle');
-
-    this.close = document.createElement('button');
-    this.close.classList.add('pinned-audio-close', 'btn-icon', 'tgico-close');
-
-    this.container.append(this.toggle, this.title, this.subtitle, this.close);
-
-    this.close.addEventListener('click', (e) => {
-      cancelEvent(e);
-      const scrollTop = appImManager.scrollable.scrollTop;
-      this.container.style.display = 'none';
-      appImManager.topbar.classList.remove('is-audio-shown');
-      if(this.toggle.classList.contains('flip-icon')) {
+    super('audio', new DivAndCaption('pinned-audio', (title: string, subtitle: string) => {
+      this.divAndCaption.title.innerHTML = title;
+      this.divAndCaption.subtitle.innerHTML = subtitle;
+    }), () => {
+      if(this.toggleEl.classList.contains('flip-icon')) {
         appMediaPlaybackController.toggle();
-      }
-
-      if(!appImManager.topbar.classList.contains('is-pinned-shown')) {
-        appImManager.scrollable.scrollTop = scrollTop - height;
       }
     });
 
-    this.toggle.addEventListener('click', (e) => {
+    this.divAndCaption.border.remove();
+
+    this.toggleEl = document.createElement('div');
+    this.toggleEl.classList.add('pinned-audio-ico', 'tgico');
+    this.toggleEl.addEventListener('click', (e) => {
       cancelEvent(e);
       appMediaPlaybackController.toggle();
     });
 
-    const height = 52;
+    this.divAndCaption.container.prepend(this.toggleEl);
 
     $rootScope.$on('audio_play', (e) => {
       const {doc, mid} = e.detail;
 
       let title: string, subtitle: string;
+      const message = appMessagesManager.getMessage(mid);
       if(doc.type == 'voice' || doc.type == 'round') {
-        const message = appMessagesManager.getMessage(mid);
         title = appPeersManager.getPeerTitle(message.fromID, false, true);
         //subtitle = 'Voice message';
         subtitle = formatDate(message.date, false, false);
@@ -68,24 +46,13 @@ export class ChatAudio {
         subtitle = doc.audioPerformer ? RichTextProcessor.wrapPlainText(doc.audioPerformer) : 'Unknown Artist';
       }
 
-      this.title.innerHTML = title;
-      this.subtitle.innerHTML = subtitle;
-      this.toggle.classList.add('flip-icon');
-      
-      this.container.dataset.mid = '' + mid;
-      if(this.container.style.display) {
-        const scrollTop = appImManager.scrollable.scrollTop;
-        this.container.style.display = '';
-        appImManager.topbar.classList.add('is-audio-shown');
-
-        if(!appImManager.topbar.classList.contains('is-pinned-shown')) {
-          appImManager.scrollable.scrollTop = scrollTop + height;
-        }
-      }
+      this.fill(title, subtitle, message);
+      this.toggleEl.classList.add('flip-icon');
+      this.toggle(false);
     });
 
     $rootScope.$on('audio_pause', () => {
-      this.toggle.classList.remove('flip-icon');
+      this.toggleEl.classList.remove('flip-icon');
     });
   }
 }

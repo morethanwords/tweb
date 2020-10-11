@@ -1,26 +1,26 @@
-import appPhotosManager, {MyPhoto} from '../lib/appManagers/appPhotosManager';
-import LottieLoader from '../lib/lottieLoader';
-import appDocsManager, { MyDocument } from "../lib/appManagers/appDocsManager";
-import { formatBytes, getEmojiToneIndex, isInDOM } from "../lib/utils";
-import ProgressivePreloader from './preloader';
-import LazyLoadQueue from './lazyLoadQueue';
-import VideoPlayer from '../lib/mediaPlayer';
-import { RichTextProcessor } from '../lib/richtextprocessor';
-import { renderImageFromUrl } from './misc';
-import appMessagesManager from '../lib/appManagers/appMessagesManager';
-import { Layouter, RectPart } from './groupedLayout';
-import PollElement from './poll';
-import animationIntersector from './animationIntersector';
-import AudioElement from './audio';
-import { DownloadBlob } from '../lib/appManagers/appDownloadManager';
-import webpWorkerController from '../lib/webp/webpWorkerController';
 import { readBlobAsText } from '../helpers/blob';
-import appMediaPlaybackController from './appMediaPlaybackController';
-import { PhotoSize } from '../layer';
 import { deferredPromise } from '../helpers/cancellablePromise';
+import { months } from '../helpers/date';
 import mediaSizes from '../helpers/mediaSizes';
 import { isSafari } from '../helpers/userAgent';
-import { months } from '../helpers/date';
+import { PhotoSize } from '../layer';
+import appDocsManager, { MyDocument } from "../lib/appManagers/appDocsManager";
+import { DownloadBlob } from '../lib/appManagers/appDownloadManager';
+import appMessagesManager from '../lib/appManagers/appMessagesManager';
+import appPhotosManager, { MyPhoto } from '../lib/appManagers/appPhotosManager';
+import LottieLoader from '../lib/lottieLoader';
+import VideoPlayer from '../lib/mediaPlayer';
+import { formatBytes, getEmojiToneIndex, isInDOM } from "../lib/utils";
+import webpWorkerController from '../lib/webp/webpWorkerController';
+import animationIntersector from './animationIntersector';
+import appMediaPlaybackController from './appMediaPlaybackController';
+import AudioElement from './audio';
+import ReplyContainer from './chat/replyContainer';
+import { Layouter, RectPart } from './groupedLayout';
+import LazyLoadQueue from './lazyLoadQueue';
+import { renderImageFromUrl } from './misc';
+import PollElement from './poll';
+import ProgressivePreloader from './preloader';
 
 export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group}: {
   doc: MyDocument, 
@@ -697,68 +697,11 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
   return lazyLoadQueue && (!doc.downloaded || stickerType == 2) ? (lazyLoadQueue.push({div, load, wasSeen: group == 'chat' && stickerType != 2}), Promise.resolve()) : load();
 }
 
-export function wrapReply(title: string, subtitle: string, message?: any, isPinned?: boolean) {
-  const prefix = isPinned ? 'pinned-message' : 'reply';
-  const div = document.createElement('div');
-  div.classList.add(prefix);
-  
-  const replyBorder = document.createElement('div');
-  replyBorder.classList.add(prefix + '-border');
-  
-  const replyContent = document.createElement('div');
-  replyContent.classList.add(prefix + '-content');
-  
-  const replyTitle = document.createElement('div');
-  replyTitle.classList.add(prefix + '-title');
-  
-  const replySubtitle = document.createElement('div');
-  replySubtitle.classList.add(prefix + '-subtitle');
-
-  if(title.length > 150) {
-    title = title.substr(0, 140) + '...';
-  }
-
-  if(subtitle.length > 150) {
-    subtitle = subtitle.substr(0, 140) + '...';
-  }
-  
-  replyTitle.innerHTML = title ? RichTextProcessor.wrapEmojiText(title) : '';
-  
-  const media = message && message.media;
-  if(media) {
-    replySubtitle.innerHTML = message.rReply;
-
-    //console.log('wrap reply', media);
-    
-    if(media.photo || (media.document && ['video'].indexOf(media.document.type) !== -1)) {
-      let replyMedia = document.createElement('div');
-      replyMedia.classList.add(prefix + '-media');
-      
-      let photo = media.photo || media.document;
-      
-      let sizes = photo.sizes || photo.thumbs;
-      if(sizes && sizes[0].bytes) {
-        appPhotosManager.setAttachmentPreview(sizes[0].bytes, replyMedia, false, true);
-      }
-      
-      appPhotosManager.preloadPhoto(photo, appPhotosManager.choosePhotoSize(photo, 32, 32))
-      .then(() => {
-        renderImageFromUrl(replyMedia, photo._ == 'photo' ? photo.url : appPhotosManager.getDocumentCachedThumb(photo.id).url);
-      });
-      
-      replyContent.append(replyMedia);
-      div.classList.add('is-media');
-    }
-  } else {
-    replySubtitle.innerHTML = subtitle ? RichTextProcessor.wrapEmojiText(subtitle) : '';
-  }
-  
-  replyContent.append(replyTitle, replySubtitle);
-  div.append(replyBorder, replyContent);
-  
+export function wrapReply(title: string, subtitle: string, message?: any) {
+  const replyContainer = new ReplyContainer('reply');
+  replyContainer.fill(title, subtitle, message);
   /////////console.log('wrapReply', title, subtitle, media);
-  
-  return div;
+  return replyContainer.container;
 }
 
 export function wrapAlbum({groupID, attachmentDiv, middleware, uploading, lazyLoadQueue, isOut}: {

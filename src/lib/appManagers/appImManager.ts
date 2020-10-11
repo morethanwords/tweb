@@ -6,6 +6,8 @@ import BubbleGroups from '../../components/bubbleGroups';
 import { ChatAudio } from '../../components/chat/audio';
 import { ChatContextMenu } from '../../components/chat/contextMenu';
 import { ChatInput } from '../../components/chat/input';
+import PinnedContainer from '../../components/chat/pinnedContainer';
+import ReplyContainer from '../../components/chat/replyContainer';
 import { ChatSearch } from '../../components/chat/search';
 import { horizontalMenu } from '../../components/horizontalMenu';
 import LazyLoadQueue from '../../components/lazyLoadQueue';
@@ -94,7 +96,7 @@ export class AppImManager {
   public updateStatusInterval = 0;
   
   public pinnedMsgID = 0;
-  private pinnedMessageContainer: HTMLDivElement = null;
+  private pinnedMessageContainer: PinnedContainer = null;
   
   public lazyLoadQueue = new LazyLoadQueue();
   
@@ -165,7 +167,10 @@ export class AppImManager {
     parseMenuButtonsTo(this.menuButtons, this.columnEl.querySelector('.chat-more-button').firstElementChild.children);
     
     this.chatAudio = new ChatAudio();
-    this.chatInfo.nextElementSibling.prepend(this.chatAudio.container);
+    this.chatInfo.nextElementSibling.prepend(this.chatAudio.divAndCaption.container);
+
+    this.pinnedMessageContainer = new PinnedContainer('message', new ReplyContainer('pinned-message'));
+    this.btnJoin.parentElement.insertBefore(this.pinnedMessageContainer.divAndCaption.container, this.btnJoin);
 
     // will call when message is sent (only 1)
     $rootScope.$on('history_append', (e) => {
@@ -323,17 +328,20 @@ export class AppImManager {
       this.renderMessage(message, true, false, bubble, false);
     });
     
+    $rootScope.$on('peer_pinned_message', (e) => {
+      const peerID = e.detail;
+
+      if(peerID == this.peerID) {
+        (this.messagesQueuePromise || Promise.resolve()).then(() => {
+          this.setPinnedMessage();
+        });
+      }
+    });
+
     $rootScope.$on('messages_downloaded', (e) => {
       const mids: number[] = e.detail;
       
-      const pinnedMessage = appMessagesManager.getPinnedMessage(this.peerID);
       mids.forEach(mid => {
-        if(pinnedMessage.mid == mid) {
-          (this.messagesQueuePromise || Promise.resolve()).then(() => {
-            this.setPinnedMessage(pinnedMessage);
-          });
-        }
-        
         /* const promise = (this.scrollable.scrollLocked && this.scrollable.scrollLockedPromise) || Promise.resolve();
         promise.then(() => {
 
@@ -747,38 +755,18 @@ export class AppImManager {
     });
   };
 
-  public setPinnedMessage(message: any) {
+  public setPinnedMessage() {
     /////this.log('setting pinned message', message);
     //return;
-    const height = 52;
-    const scrollTop = this.scrollable.container.scrollTop;
-    const newPinned = wrapReply('Pinned Message', message.message, message, true);
-    newPinned.dataset.mid = '' + message.mid;
-    newPinned.classList.add('pinned-container');
-
-    const close = document.createElement('button');
-    close.classList.add('pinned-message-close', 'btn-icon', 'tgico-close');
-    close.addEventListener('click', (e) => {
-      cancelEvent(e);
-      const scrollTop = this.scrollable.scrollTop;
-      newPinned.remove();
-      this.topbar.classList.remove('is-pinned-shown');
-
-      this.pinnedMessageContainer = null;
-      this.scrollable.scrollTop = scrollTop - height;
-    }, {once: true});
-    newPinned.append(close);
-
-    this.btnJoin.parentElement.insertBefore(newPinned, this.btnJoin);
-    this.topbar.classList.add('is-pinned-shown');
-
-    if(this.pinnedMessageContainer) {
-      this.pinnedMessageContainer.remove();
+    const message = appMessagesManager.getPinnedMessage(this.peerID);
+    if(message && !message.deleted) {
+      this.pinnedMessageContainer.fill('Pinned Message', message.message, message);
+      this.pinnedMessageContainer.toggle(false);
+      this.pinnedMsgID = message.mid;
+    } else if(this.pinnedMsgID) {
+      this.pinnedMsgID = 0;
+      this.pinnedMessageContainer.toggle(true);
     }
-    
-    this.pinnedMessageContainer = newPinned;
-    //this.pinnedMessageContent.innerHTML = message.rReply;
-    this.scrollable.scrollTop = scrollTop + height;
   }
   
   public updateStatus() {
@@ -851,7 +839,7 @@ export class AppImManager {
         }, 1350);
       }
       
-      if(this.scroll.scrollHeight - Math.round(this.scroll.scrollTop + this.scroll.offsetHeight) <= 1/* <= 5 */) {
+      if(this.scrollable.isScrolledDown) {
         this.scroll.parentElement.classList.add('scrolled-down');
         this.scrolledDown = true;
       } else if(this.scroll.parentElement.classList.contains('scrolled-down')) {
@@ -1289,13 +1277,7 @@ export class AppImManager {
     
     this.menuButtons.mute.style.display = this.myID == this.peerID ? 'none' : '';
 
-    const pinned = appMessagesManager.getPinnedMessage(peerID);
-    if(pinned && !pinned.deleted) {
-      this.setPinnedMessage(pinned);
-    } else if(this.pinnedMessageContainer) {
-      this.pinnedMessageContainer.remove();
-      this.pinnedMessageContainer = null;
-    }
+    this.setPinnedMessage();
 
     window.requestAnimationFrame(() => {
       let title = '';
@@ -1370,9 +1352,13 @@ export class AppImManager {
     
     //if(scrolledDown) this.scrollable.scrollTop = this.scrollable.scrollHeight;
     if(this.messagesQueuePromise && scrolledDown) {
-      this.scrollable.scrollTo(this.scrollable.scrollHeight - 1, 'top', false, true);
+      if(this.scrollable.isScrolledDown && !this.scrollable.scrollLocked) {
+        //this.log('renderNewMessagesByIDs: messagesQueuePromise before will set prev max');
+        this.scrollable.scrollTo(this.scrollable.scrollHeight - 1, 'top', false, true);
+      }
+      
       this.messagesQueuePromise.then(() => {
-        //this.log('messagesQueuePromise after:', this.chatInner.childElementCount, this.scrollable.scrollHeight);
+        //this.log('renderNewMessagesByIDs: messagesQueuePromise after', this.scrollable.isScrolledDown);
         this.scrollable.scrollTo(this.scrollable.scrollHeight, 'top', true, true);
 
         /* setTimeout(() => {

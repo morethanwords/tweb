@@ -77,7 +77,15 @@ export class ChatContextMenu {
       icon: 'pin',
       text: 'Pin',
       onClick: this.onPinClick,
-      verify: (peerID: number) => peerID == $rootScope.myID || (peerID < 0 && appChatsManager.hasRights(-peerID, 'pin'))
+      verify: (peerID: number, msgID: number) => {
+        const message = appMessagesManager.getMessage(msgID);
+        return message._ != 'messageService' && appImManager.pinnedMsgID != msgID && (peerID == $rootScope.myID || (peerID < 0 && appChatsManager.hasRights(-peerID, 'pin')));
+      }
+    }, {
+      icon: 'unpin',
+      text: 'Unpin',
+      onClick: this.onUnpinClick,
+      verify: (peerID: number, msgID: number) => appImManager.pinnedMsgID == msgID && (peerID == $rootScope.myID || (peerID < 0 && appChatsManager.hasRights(-peerID, 'pin')))
     }, {
       icon: 'revote',
       text: 'Revote',
@@ -152,6 +160,10 @@ export class ChatContextMenu {
 
   private onPinClick = () => {
     appMessagesManager.updatePinnedMessage($rootScope.selectedPeerID, this.msgID);
+  };
+
+  private onUnpinClick = () => {
+    appMessagesManager.updatePinnedMessage($rootScope.selectedPeerID, 0);
   };
 
   private onRetractVote = () => {

@@ -104,17 +104,22 @@ export class ScrollableBase {
       return;
     }
 
-    if(this.scrollLocked) clearTimeout(this.scrollLocked);
-    else {
-      this.scrollLockedPromise = deferredPromise<void>();
-    }
-
-    this.scrollLocked = window.setTimeout(() => {
-      this.scrollLocked = 0;
+    const wasLocked = !!this.scrollLocked;
+    if(wasLocked) clearTimeout(this.scrollLocked);
+    if(smooth) {
+      if(!wasLocked) {
+        this.scrollLockedPromise = deferredPromise<void>();
+      }
+  
+      this.scrollLocked = window.setTimeout(() => {
+        this.scrollLocked = 0;
+        this.scrollLockedPromise.resolve();
+        //this.onScroll();
+        this.container.dispatchEvent(new CustomEvent('scroll'));
+      }, scrollTime);
+    } else if(wasLocked) {
       this.scrollLockedPromise.resolve();
-      //this.onScroll();
-      this.container.dispatchEvent(new CustomEvent('scroll'));
-    }, scrollTime);
+    }
 
     const options: SmoothScrollToOptions = {
       behavior: smooth ? 'smooth' : 'auto',
@@ -124,6 +129,10 @@ export class ScrollableBase {
     options[side] = value;
 
     this.container.scrollTo(options as any);
+
+    if(!smooth) {
+      this.container.dispatchEvent(new CustomEvent('scroll'));
+    }
   }
 
   get length() {
@@ -489,6 +498,10 @@ export default class Scrollable extends ScrollableBase {
   public getScrollValue = () => {
     return this.scrollTop;
   };
+
+  get isScrolledDown() {
+    return this.scrollHeight - Math.round(this.scrollTop + this.container.offsetHeight) <= 1;
+  }
 
   set scrollTop(y: number) {
     this.container.scrollTop = y;
