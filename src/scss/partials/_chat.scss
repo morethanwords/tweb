@@ -1088,10 +1088,10 @@
 				max-width: calc(100% - var(--message-beside-button-margin)) !important;
 			}
 		}
+	}
 
-		&:not(.has-rights) {
-			padding-bottom: 55px;
-		}
+	&.is-chat-input-hidden {
+		padding-bottom: 55px;
 	}
 
 	&:not(.is-channel), &.is-chat {

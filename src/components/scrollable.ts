@@ -1,3 +1,4 @@
+import { CancellablePromise, deferredPromise } from "../helpers/cancellablePromise";
 import { isTouchSupported } from "../helpers/touchSupport";
 import { logger, LogLevels } from "../lib/logger";
 import smoothscroll, { SCROLL_TIME, SmoothScrollToOptions } from '../vendor/smoothscroll';
@@ -55,6 +56,7 @@ export class ScrollableBase {
   public getScrollValue: () => number;
 
   public scrollLocked = 0;
+  public scrollLockedPromise: CancellablePromise<void> = Promise.resolve();
 
   constructor(public el: HTMLElement, logPrefix = '', public appendTo = el, public container: HTMLElement = document.createElement('div')) {
     this.container.classList.add('scrollable');
@@ -103,13 +105,13 @@ export class ScrollableBase {
     }
 
     if(this.scrollLocked) clearTimeout(this.scrollLocked);
-    /* else {
+    else {
       this.scrollLockedPromise = deferredPromise<void>();
-    } */
+    }
 
     this.scrollLocked = window.setTimeout(() => {
       this.scrollLocked = 0;
-      //this.scrollLockedPromise.resolve();
+      this.scrollLockedPromise.resolve();
       //this.onScroll();
       this.container.dispatchEvent(new CustomEvent('scroll'));
     }, scrollTime);
@@ -156,7 +158,6 @@ export default class Scrollable extends ScrollableBase {
   /* private onScrolledTopFired = false;
   private onScrolledBottomFired = false; */
 
-  //public scrollLockedPromise: CancellablePromise<void> = Promise.resolve();
   public isVisible = false;
 
   private reorderTimeout: number;

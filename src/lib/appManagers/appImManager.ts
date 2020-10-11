@@ -334,6 +334,10 @@ export class AppImManager {
           });
         }
         
+        /* const promise = (this.scrollable.scrollLocked && this.scrollable.scrollLockedPromise) || Promise.resolve();
+        promise.then(() => {
+
+        }); */
         this.needUpdate.forEachReverse((obj, idx) => {
           if(obj.replyMid == mid) {
             let {mid, replyMid} = this.needUpdate.splice(idx, 1)[0];
@@ -1268,7 +1272,10 @@ export class AppImManager {
     const hasRights = isChannel && appChatsManager.hasRights(-peerID, 'send');
     this.chatInner.classList.toggle('has-rights', hasRights);
 
-    this.chatInput.style.display = !isChannel || hasRights ? '' : 'none';
+    const canWrite = (!isChannel || hasRights) && (peerID < 0 || !appUsersManager.getUser(peerID).pFlags.deleted);
+    this.chatInput.style.display = canWrite ? '' : 'none';
+
+    this.chatInner.classList.toggle('is-chat-input-hidden', !canWrite);
 
     this.topbar.classList.remove('is-pinned-shown');
     this.topbar.style.display = '';
@@ -1498,6 +1505,12 @@ export class AppImManager {
           this.messagesQueue.length = 0;
 
           const promises = queue.reduce((acc, {promises}) => acc.concat(promises), []);
+
+          // * это нужно для того, чтобы если захочет подгрузить reply или какое-либо сообщение, то скролл не прервался
+          if(this.scrollable.scrollLocked) {
+            promises.push(this.scrollable.scrollLockedPromise);
+          }
+
           //this.log('promises to call', promises, queue);
           Promise.all(promises).then(() => {
             if(this.chatInner != chatInner) {
@@ -1566,7 +1579,11 @@ export class AppImManager {
       bubble.appendChild(bubbleContainer);
       this.bubbles[+message.mid] = bubble;
     } else {
-      bubble.className = 'bubble';
+      const save = ['is-selected'];
+      const wasClassNames = bubble.className.split(' ');
+      const classNames = ['bubble'].concat(save.filter(c => wasClassNames.includes(c)));
+      bubble.className = classNames.join(' ');
+
       bubbleContainer = bubble.firstElementChild as HTMLDivElement;
       bubbleContainer.innerHTML = '';
       bubbleContainer.style.marginBottom = '';
