@@ -1,15 +1,15 @@
-import { nextRandomInt, getFileNameByLocation } from "../bin_utils";
-
-import cacheStorage from "../cacheStorage";
-import FileManager from "../filemanager";
-import apiManager from "./apiManager";
-import { logger, LogLevels } from "../logger";
-import { isSafari } from "../../helpers/userAgent";
-import cryptoWorker from "../crypto/cryptoworker";
-import { notifySomeone, notifyAll } from "../../helpers/context";
-import { InputFileLocation, FileLocation, InputFile, UploadFile } from "../../layer";
 import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
+import { notifyAll, notifySomeone } from "../../helpers/context";
+import { isSafari } from "../../helpers/userAgent";
+import { FileLocation, InputFile, InputFileLocation, UploadFile } from "../../layer";
+import { getFileNameByLocation, nextRandomInt } from "../bin_utils";
+import cacheStorage from "../cacheStorage";
+import cryptoWorker from "../crypto/cryptoworker";
+import FileManager from "../filemanager";
+import { logger, LogLevels } from "../logger";
+import apiManager from "./apiManager";
 import { MOUNT_CLASS_TO } from "./mtproto_config";
+
 
 type Delayed = {
   offset: number, 
@@ -421,10 +421,10 @@ export class ApiFileManager {
       partSize = 262144, // 256 Kb
       activeDelta = 2;
 
-    if(fileSize > (524288 * 3000)) {
+    /* if(fileSize > (524288 * 3000)) {
       partSize = 1024 * 1024;
       activeDelta = 8;
-    } else if(fileSize > 67108864) {
+    } else  */if(fileSize > 67108864) {
       partSize = 524288;
       activeDelta = 4;
     } else if(fileSize < 102400) {
@@ -453,7 +453,7 @@ export class ApiFileManager {
       notify: (details: {done: number, total: number}) => {}
     };
     const deferred: CancellablePromise<typeof resultInputFile> = new Promise((resolve, reject) => {
-      if(totalParts > 3000) {
+      if(totalParts > 4000) {
         return reject({type: 'FILE_TOO_BIG'});
       }
 
@@ -462,7 +462,7 @@ export class ApiFileManager {
     });
     Object.assign(deferred, deferredHelper);
 
-    if(totalParts > 3000) {
+    if(totalParts > 4000) {
       return deferred;
     }
     

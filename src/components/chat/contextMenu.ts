@@ -69,7 +69,7 @@ export class ChatContextMenu {
       icon: 'reply',
       text: 'Reply',
       onClick: this.onReplyClick,
-      verify: (peerID: number) => peerID > 0 || appChatsManager.hasRights(-peerID, 'send')
+      verify: (peerID: number, msgID: number) => (peerID > 0 || appChatsManager.hasRights(-peerID, 'send')) && msgID > 0
     }, {
       icon: 'edit',
       text: 'Edit',
@@ -86,7 +86,7 @@ export class ChatContextMenu {
       onClick: this.onPinClick,
       verify: (peerID: number, msgID: number) => {
         const message = appMessagesManager.getMessage(msgID);
-        return message._ != 'messageService' && appImManager.pinnedMsgID != msgID && (peerID == $rootScope.myID || (peerID < 0 && appChatsManager.hasRights(-peerID, 'pin')));
+        return msgID > 0 && message._ != 'messageService' && appImManager.pinnedMsgID != msgID && (peerID == $rootScope.myID || (peerID < 0 && appChatsManager.hasRights(-peerID, 'pin')));
       }
     }, {
       icon: 'unpin',
@@ -109,13 +109,13 @@ export class ChatContextMenu {
       verify: (peerID: number, msgID) => {
         const message = appMessagesManager.getMessage(msgID);
         const poll = message.media?.poll;
-        return appMessagesManager.canEditMessage(msgID, 'poll') && poll && !poll.pFlags.closed;
+        return appMessagesManager.canEditMessage(msgID, 'poll') && poll && !poll.pFlags.closed && msgID > 0;
       } 
     }, {
       icon: 'forward',
       text: 'Forward',
       onClick: this.onForwardClick,
-      verify: () => true
+      verify: (peerID: number, msgID: number) => msgID > 0
     }, {
       icon: 'delete danger',
       text: 'Delete',

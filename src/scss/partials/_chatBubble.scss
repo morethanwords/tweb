@@ -1384,7 +1384,7 @@ $bubble-margin: .25rem;
         fill: #B8DDA9;
 
         &.active {
-          fill: #68AB5A;
+          fill: #68AB5A !important;
         }
       }
     }
