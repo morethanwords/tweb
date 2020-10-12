@@ -316,17 +316,9 @@ export class AppImManager {
       let {peerID, mid, id, justMedia} = e.detail;
       
       if(peerID != this.peerID) return;
-      let message = appMessagesManager.getMessage(mid);
-      
-      let bubble = this.bubbles[mid];
-      if(!bubble && message.grouped_id) {
-        let a = this.getAlbumBubble(message.grouped_id);
-        bubble = a.bubble;
-        message = a.message;
-      }
-      if(!bubble) return;
-      
-      this.renderMessage(message, true, false, bubble, false);
+      const mounted = this.getMountedBubble(mid);
+      if(!mounted) return;
+      this.renderMessage(mounted.message, true, false, mounted.bubble, false);
     });
     
     $rootScope.$on('peer_pinned_message', (e) => {
@@ -1002,7 +994,20 @@ export class AppImManager {
     ////console.timeEnd('appImManager cleanup');
   }
 
-  private findMountedBubbleByMsgID(mid: number) {
+  public getMountedBubble(mid: number) {
+    let message = appMessagesManager.getMessage(mid);
+
+    let bubble = this.bubbles[mid];
+    if(!bubble && message.grouped_id) {
+      const a = this.getAlbumBubble(message.grouped_id);
+      if(a) return a;
+    }
+    if(!bubble) return;
+
+    return {bubble, message};
+  }
+
+  private findNextMountedBubbleByMsgID(mid: number) {
     return this.bubbles[getObjectKeysAndSort(this.bubbles).find(id => {
       if(id < mid) return false;
       return !!this.bubbles[id]?.parentElement;
@@ -1064,11 +1069,11 @@ export class AppImManager {
     }
     
     if(samePeer) {
-      if(this.bubbles[lastMsgID]) {
+      const mounted = this.getMountedBubble(lastMsgID);
+      if(mounted) {
         if(isTarget) {
-          const bubble = this.findMountedBubbleByMsgID(lastMsgID);
-          this.scrollable.scrollIntoView(bubble);
-          this.highlightBubble(bubble);
+          this.scrollable.scrollIntoView(mounted.bubble);
+          this.highlightBubble(mounted.bubble);
         } else if(dialog && lastMsgID == topMessage) {
           //this.log('will scroll down', this.scroll.scrollTop, this.scroll.scrollHeight);
           this.scroll.scrollTop = this.scroll.scrollHeight;
@@ -1176,7 +1181,7 @@ export class AppImManager {
 
           let bubble: HTMLElement = forwardingUnread ? (this.firstUnreadBubble || this.bubbles[lastMsgID]) : this.bubbles[lastMsgID];
           if(!bubble?.parentElement) {
-            bubble = this.findMountedBubbleByMsgID(lastMsgID);
+            bubble = this.findNextMountedBubbleByMsgID(lastMsgID);
           }
 
           this.scrollable.scrollIntoView(bubble, samePeer/* , fromUp */);
