@@ -78,6 +78,7 @@ const $rootScope = {
     document.removeEventListener(name, callback);
   },
 
+  overlayIsActive: false,
   selectedPeerID: 0,
   myID: 0,
   idle: {

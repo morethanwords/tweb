@@ -1,9 +1,9 @@
-import {putPreloader} from '../components/misc';
-import pageIm from './pageIm';
+import { putPreloader } from '../components/misc';
+import PopupAvatar from '../components/popupAvatar';
 //import apiManager from '../lib/mtproto/apiManager';
 import apiManager from '../lib/mtproto/mtprotoworker';
 import Page from './page';
-import popupAvatar from '../components/popupAvatar';
+import pageIm from './pageIm';
 
 let authCode: {
   'phone_number': string,
@@ -17,7 +17,7 @@ let onFirstMount = () => import('../lib/appManagers/appProfileManager').then(imp
 
   let uploadAvatar: () => Promise<any>;
   pageElement.querySelector('.auth-image').addEventListener('click', () => {
-    popupAvatar.open(avatarPreview, (_uploadAvatar) => {
+    new PopupAvatar().open(avatarPreview, (_uploadAvatar) => {
       uploadAvatar = _uploadAvatar;
     });
   });

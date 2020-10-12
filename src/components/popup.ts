@@ -1,3 +1,5 @@
+import $rootScope from "../lib/rootScope";
+import { cancelEvent } from "../lib/utils";
 import AvatarElement from "./avatar";
 import { ripple } from "./ripple";
 
@@ -12,6 +14,7 @@ export class PopupElement {
 
   protected onClose: () => void;
   protected onCloseAfterTimeout: () => void;
+  protected onEscape: () => boolean = () => true;
 
   constructor(className: string, buttons?: Array<PopupButton>, options: Partial<{closable: boolean, withConfirm: string, body: boolean}> = {}) {
     this.element.classList.add('popup');
@@ -26,13 +29,13 @@ export class PopupElement {
     if(options.closable) {
       this.closeBtn = document.createElement('span');
       this.closeBtn.classList.add('btn-icon', 'popup-close', 'tgico-close');
-      ripple(this.closeBtn);
+      //ripple(this.closeBtn);
       this.header.prepend(this.closeBtn);
 
-      this.closeBtn.addEventListener('click', () => {
-        this.destroy();
-      }, {once: true});
+      this.closeBtn.addEventListener('click', this.destroy, {once: true});
     }
+
+    window.addEventListener('keydown', this._onKeyDown, {capture: true});
 
     if(options.withConfirm) {
       this.confirmBtn = document.createElement('button');
@@ -80,20 +83,33 @@ export class PopupElement {
     this.element.append(this.container);
   }
 
+  private _onKeyDown = (e: KeyboardEvent) => {
+    if(e.key == 'Escape' && this.onEscape()) {
+      cancelEvent(e);
+      this.destroy();
+    }
+  };
+
   public show() {
     document.body.append(this.element);
     void this.element.offsetWidth; // reflow
     this.element.classList.add('active');
+    $rootScope.overlayIsActive = true;
   }
 
-  public destroy() {
+  public destroy = () => {
     this.onClose && this.onClose();
     this.element.classList.remove('active');
+
+    window.removeEventListener('keydown', this._onKeyDown, {capture: true});
+    if(this.closeBtn) this.closeBtn.removeEventListener('click', this.destroy);
+    $rootScope.overlayIsActive = false;
+
     setTimeout(() => {
       this.element.remove();
       this.onCloseAfterTimeout && this.onCloseAfterTimeout();
     }, 1000);
-  }
+  };
 }
 
 export type PopupButton = {

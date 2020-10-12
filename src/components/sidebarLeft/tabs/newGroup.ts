@@ -1,11 +1,11 @@
-import { SliderTab } from "../../slider";
-import { SearchGroup } from "../../appSearch";
-import popupAvatar from "../../popupAvatar";
-import appChatsManager from "../../../lib/appManagers/appChatsManager";
 import appSidebarLeft, { AppSidebarLeft } from "..";
-import Scrollable from "../../scrollable";
+import appChatsManager from "../../../lib/appManagers/appChatsManager";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
+import { SearchGroup } from "../../appSearch";
+import PopupAvatar from "../../popupAvatar";
+import Scrollable from "../../scrollable";
+import { SliderTab } from "../../slider";
 
 export default class AppNewGroupTab implements SliderTab {
   private container = document.querySelector('.new-group-container') as HTMLDivElement;
@@ -19,7 +19,7 @@ export default class AppNewGroupTab implements SliderTab {
   
   constructor() {
     this.container.querySelector('.avatar-edit').addEventListener('click', () => {
-      popupAvatar.open(this.canvas, (_upload) => {
+      new PopupAvatar().open(this.canvas, (_upload) => {
         this.uploadAvatar = _upload;
       });
     });

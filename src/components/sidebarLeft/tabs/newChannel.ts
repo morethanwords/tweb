@@ -1,7 +1,7 @@
-import { SliderTab } from "../../slider";
-import popupAvatar from "../../popupAvatar";
-import appChatsManager from "../../../lib/appManagers/appChatsManager";
 import appSidebarLeft, { AppSidebarLeft } from "..";
+import appChatsManager from "../../../lib/appManagers/appChatsManager";
+import PopupAvatar from "../../popupAvatar";
+import { SliderTab } from "../../slider";
 
 export default class AppNewChannelTab implements SliderTab {
   private container = document.querySelector('.new-channel-container') as HTMLDivElement;
@@ -14,7 +14,7 @@ export default class AppNewChannelTab implements SliderTab {
 
   constructor() {
     this.container.querySelector('.avatar-edit').addEventListener('click', () => {
-      popupAvatar.open(this.canvas, (_upload) => {
+      new PopupAvatar().open(this.canvas, (_upload) => {
         this.uploadAvatar = _upload;
       });
     });

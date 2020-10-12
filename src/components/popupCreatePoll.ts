@@ -4,22 +4,11 @@ import appPollsManager, { Poll } from "../lib/appManagers/appPollsManager";
 import $rootScope from "../lib/rootScope";
 import { findUpTag, whichChild } from "../lib/utils";
 import CheckboxField from "./checkbox";
+import InputField from "./inputField";
 import { PopupElement } from "./popup";
 import RadioField from "./radioField";
 import Scrollable from "./scrollable";
 import { toast } from "./toast";
-
-const InputField = (placeholder: string, label: string, name: string) => {
-  const div = document.createElement('div');
-  div.classList.add('input-field');
-
-  div.innerHTML = `
-  <input type="text" name="${name}" id="input-${name}" placeholder="${placeholder}" autocomplete="off" required="">
-  <label for="input-${name}">${label}</label>
-  `;
-
-  return div;
-};
 
 export default class PopupCreatePoll extends PopupElement {
   private questionInput: HTMLInputElement;
@@ -119,6 +108,19 @@ export default class PopupCreatePoll extends PopupElement {
 
     this.scrollable = new Scrollable(this.body);
     this.appendMoreField();
+
+    this.onEscape = () => {
+      return !this.getFilledAnswers().length;
+    };
+  }
+
+  private getFilledAnswers() {
+    const answers = Array.from(this.questions.children).map((el, idx) => {
+      const input = el.querySelector('input[type="text"]') as HTMLInputElement;
+      return input.value;
+    }).filter(v => !!v.trim());
+
+    return answers;
   }
 
   onSubmitClick = (e: MouseEvent) => {
@@ -134,10 +136,7 @@ export default class PopupCreatePoll extends PopupElement {
       return;
     }
 
-    const answers = Array.from(this.questions.children).map((el, idx) => {
-      const input = el.querySelector('input[type="text"]') as HTMLInputElement;
-      return input.value;
-    }).filter(v => !!v.trim());
+    const answers = this.getFilledAnswers();
 
     if(answers.length < 2) {
       toast('Please enter at least two options.');

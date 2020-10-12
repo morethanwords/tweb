@@ -45,8 +45,15 @@ export class ChatContextMenu {
       if(!msgID) return;
 
       this.peerID = $rootScope.selectedPeerID;
-      this.msgID = msgID;
+      //this.msgID = msgID;
       this.target = e.target as HTMLElement;
+
+      const albumItem = findUpClassName(this.target, 'album-item');
+      if(albumItem) {
+        this.msgID = +albumItem.dataset.mid;
+      } else {
+        this.msgID = msgID;
+      }
 
       this.buttons.forEach(button => {
         const good = button.verify(this.peerID, this.msgID, this.target);
@@ -145,13 +152,13 @@ export class ChatContextMenu {
   };
 
   private onCopyClick = () => {
-    let message = appMessagesManager.getMessage(this.msgID);
+    const message = appMessagesManager.getMessage(this.msgID);
     
-    let str = message ? message.message : '';
+    const str = message ? message.message : '';
     
-    var textArea = document.createElement("textarea");
+    const textArea = document.createElement('textarea');
     textArea.value = str;
-    textArea.style.position = "fixed";  //avoid scrolling to bottom
+    textArea.style.position = 'fixed';  //avoid scrolling to bottom
     document.body.appendChild(textArea);
     textArea.focus();
     textArea.select();
@@ -182,22 +189,16 @@ export class ChatContextMenu {
   };
 
   private onForwardClick = () => {
-    let msgID: number;
-
-    const albumItem = findUpClassName(this.target, 'album-item');
-    if(albumItem) {
-      msgID = +albumItem.dataset.mid;
-    }
-    
-    appSidebarRight.forwardTab.open([msgID]);
+    appSidebarRight.forwardTab.open([this.msgID]);
   };
 
   private onDeleteClick = () => {
-    let peerID = $rootScope.selectedPeerID;
-    let firstName = appPeersManager.getPeerTitle(peerID, false, true);
+    const peerID = $rootScope.selectedPeerID;
+    const firstName = appPeersManager.getPeerTitle(peerID, false, true);
 
-    let callback = (revoke: boolean) => {
-      appMessagesManager.deleteMessages([this.msgID], revoke);
+    const msgID = this.msgID;
+    const callback = (revoke: boolean) => {
+      appMessagesManager.deleteMessages([msgID], revoke);
     };
 
     let title: string, description: string, buttons: PopupButton[];
@@ -237,7 +238,7 @@ export class ChatContextMenu {
       isCancel: true
     });
 
-    let popup = new PopupPeer('popup-delete-chat', {
+    const popup = new PopupPeer('popup-delete-chat', {
       peerID: peerID,
       title: title,
       description: description,

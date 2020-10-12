@@ -1,12 +1,12 @@
-import { SliderTab } from "../../slider";
-import popupAvatar from "../../popupAvatar";
-import apiManager from "../../../lib/mtproto/mtprotoworker";
-import appProfileManager from "../../../lib/appManagers/appProfileManager";
 import appSidebarLeft from "..";
-import Scrollable from "../../scrollable";
-import appUsersManager from "../../../lib/appManagers/appUsersManager";
-import $rootScope from "../../../lib/rootScope";
 import { InputFile } from "../../../layer";
+import appProfileManager from "../../../lib/appManagers/appProfileManager";
+import appUsersManager from "../../../lib/appManagers/appUsersManager";
+import apiManager from "../../../lib/mtproto/mtprotoworker";
+import $rootScope from "../../../lib/rootScope";
+import PopupAvatar from "../../popupAvatar";
+import Scrollable from "../../scrollable";
+import { SliderTab } from "../../slider";
 
 // TODO: аватарка не поменяется в этой вкладке после изменения почему-то (если поставить в другом клиенте, и потом тут проверить, для этого ещё вышел в чатлист)
 
@@ -36,7 +36,7 @@ export default class AppEditProfileTab implements SliderTab {
 
   constructor() {
     this.container.querySelector('.avatar-edit').addEventListener('click', () => {
-      popupAvatar.open(this.canvas, (_upload) => {
+      new PopupAvatar().open(this.canvas, (_upload) => {
         this.uploadAvatar = _upload;
         this.handleChange();
         this.avatarElem.remove();

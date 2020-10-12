@@ -1,11 +1,14 @@
-import resizeableImage from "../lib/cropper";
 import appDownloadManager from "../lib/appManagers/appDownloadManager";
+import resizeableImage from "../lib/cropper";
+import { PopupElement } from "./popup";
+import { ripple } from "./ripple";
 
-export class PopupAvatar {
-  private container = document.getElementById('popup-avatar');
-  private input = this.container.querySelector('input') as HTMLInputElement;
-  private cropContainer = this.container.querySelector('.crop') as HTMLDivElement;
-  private closeBtn = this.container.querySelector('.popup-close') as HTMLButtonElement;
+export default class PopupAvatar extends PopupElement {
+  private cropContainer: HTMLElement;
+  private input: HTMLInputElement;
+  private btnSubmit: HTMLElement;
+  private h6: HTMLElement;
+
   private image = new Image();
 
   private canvas: HTMLCanvasElement;
@@ -18,18 +21,31 @@ export class PopupAvatar {
   private onCrop: (upload: () => ReturnType<typeof appDownloadManager.upload>) => void;
 
   constructor() {
-    this.container.style.display = ''; // need for no blink
+    super('popup-avatar', null, {closable: true});
+
+    this.h6 = document.createElement('h6');
+    this.h6.innerText = 'Drag to Reposition';
+
+    this.closeBtn.classList.remove('btn-icon');
+
+    this.header.append(this.h6);
+
+    this.cropContainer = document.createElement('div');
+    this.cropContainer.classList.add('crop');
     this.cropContainer.append(this.image);
 
+    this.input = document.createElement('input');
+    this.input.type = 'file';
+    this.input.style.display = 'none';
     this.input.addEventListener('change', (e: any) => {
-      var file = e.target.files[0];
+      const file = e.target.files[0];
       if(!file) {
         return;
       }
   
-      var reader = new FileReader();
+      const reader = new FileReader();
       reader.onload = (e) => {
-        var contents = e.target.result as string;
+        const contents = e.target.result as string;
         
         this.image = new Image();
         this.cropContainer.append(this.image);
@@ -39,9 +55,7 @@ export class PopupAvatar {
           /* let {w, h} = calcImageInBox(this.image.naturalWidth, this.image.naturalHeight, 460, 554);
           cropContainer.style.width = w + 'px';
           cropContainer.style.height = h + 'px'; */
-          this.container.classList.remove('hide');
-          void this.container.offsetWidth; // reflow
-          this.container.classList.add('active');
+          this.show();
   
           this.cropper = resizeableImage(this.image, this.canvas);
           this.input.value = '';
@@ -51,8 +65,10 @@ export class PopupAvatar {
       reader.readAsDataURL(file);
     }, false);
 
-    // apply
-    this.container.querySelector('.btn-crop').addEventListener('click', () => {
+    this.btnSubmit = document.createElement('button');
+    this.btnSubmit.className = 'btn-primary btn-circle btn-crop btn-icon tgico-check z-depth-1';
+    ripple(this.btnSubmit);
+    this.btnSubmit.addEventListener('click', () => {
       this.cropper.crop();
       this.closeBtn.click();
 
@@ -63,16 +79,14 @@ export class PopupAvatar {
       }, 'image/jpeg', 1);
     });
 
-    this.closeBtn.addEventListener('click', () => {
-      setTimeout(() => {
-        this.cropper.removeHandlers();
-        if(this.image) {
-          this.image.remove();
-        }
+    this.container.append(this.cropContainer, this.btnSubmit, this.input);
 
-        this.container.classList.add('hide');
-      }, 200);
-    });
+    this.onCloseAfterTimeout = () => {
+      this.cropper.removeHandlers();
+      if(this.image) {
+        this.image.remove();
+      }
+    };
   }
 
   private resolve() {
@@ -94,5 +108,3 @@ export class PopupAvatar {
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
   }
 }
-
-export default new PopupAvatar();

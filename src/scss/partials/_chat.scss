@@ -681,10 +681,7 @@
 			padding: 1rem;
 
 			&-subtitle {
-				line-height: 13px !important;
-				text-overflow: ellipsis;
-				white-space: nowrap;
-				overflow: hidden;
+				line-height: 1 !important;
 				max-width: 280px;
 			}
 		}
@@ -714,7 +711,7 @@
 		}
 		
 		&-border {
-			height: 32px;
+			height: 2rem;
 			border-radius: 1px;
 			min-width: 2px;
 			background: $color-blue;
@@ -727,7 +724,7 @@
 			overflow: hidden;
 			pointer-events: none;
 			position: relative;
-			height: 32px;
+			height: 2rem;
 			display: flex;
 			flex-direction: column;
 			justify-content: space-between;
@@ -752,14 +749,13 @@
 		}
 		
 		&-subtitle {
-			white-space: nowrap;
 			color: #111;
 		}
 
 		&-media {
-			height: 32px;
-			width: 32px;
-			border-radius: 8px;
+			height: 2rem;
+			width: 2rem;
+			border-radius: .5rem;
 			overflow: hidden;
 			position: absolute;
 			left: 0;
@@ -775,13 +771,13 @@
 		}
 
 		img.emoji {
-			height: 16px;
-			width: 16px;
+			height: 1rem;
+			width: 1rem;
 			vertical-align: top;
 		}
 
 		span.emoji {
-			font-size: 16px;
+			font-size: 1rem;
 			vertical-align: unset;
 		}
 	}
