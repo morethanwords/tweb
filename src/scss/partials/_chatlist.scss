@@ -43,7 +43,7 @@
       &:focus {
         --border-width: 2px;
         background-color: transparent;
-        border: 2px solid $button-primary-background;
+        border-color: $button-primary-background;
 
         & + .tgico {
           color: $button-primary-background;

@@ -10,6 +10,10 @@ import RadioField from "./radioField";
 import Scrollable from "./scrollable";
 import { toast } from "./toast";
 
+const MAX_LENGTH_QUESTION = 255;
+const MAX_LENGTH_OPTION = 100;
+const MAX_LENGTH_SOLUTION = 200;
+
 export default class PopupCreatePoll extends PopupElement {
   private questionInput: HTMLInputElement;
   private questions: HTMLElement;
@@ -28,7 +32,7 @@ export default class PopupCreatePoll extends PopupElement {
 
     this.title.innerText = 'New Poll';
 
-    const questionField = InputField('Ask a Question', 'Ask a Question', 'question');
+    const questionField = InputField('Ask a Question', 'Ask a Question', 'question', MAX_LENGTH_QUESTION);
     this.questionInput = questionField.firstElementChild as HTMLInputElement;
 
     this.header.append(questionField);
@@ -89,7 +93,7 @@ export default class PopupCreatePoll extends PopupElement {
     const quizSolutionContainer = document.createElement('div');
     quizSolutionContainer.classList.add('poll-create-questions');
 
-    const quizSolutionField = InputField('Add a Comment (Optional)', 'Add a Comment (Optional)', 'solution');
+    const quizSolutionField = InputField('Add a Comment (Optional)', 'Add a Comment (Optional)', 'solution', MAX_LENGTH_SOLUTION);
     this.quizSolutionInput = quizSolutionField.firstElementChild as HTMLInputElement;
 
     const quizSolutionSubtitle = document.createElement('div');
@@ -124,10 +128,15 @@ export default class PopupCreatePoll extends PopupElement {
   }
 
   onSubmitClick = (e: MouseEvent) => {
-    const question = this.questionInput.value;
+    const question = this.questionInput.value.trim();
 
-    if(!question.trim()) {
+    if(!question) {
       toast('Please enter a question.');
+      return;
+    }
+
+    if(question.length > MAX_LENGTH_QUESTION) {
+      toast('Question is too long.');
       return;
     }
 
@@ -140,6 +149,18 @@ export default class PopupCreatePoll extends PopupElement {
 
     if(answers.length < 2) {
       toast('Please enter at least two options.');
+      return;
+    }
+
+    const tooLongOption = answers.find(a => a.length > MAX_LENGTH_OPTION);
+    if(tooLongOption) {
+      toast('Option is too long.');
+      return;
+    }
+
+    const quizSolution = this.quizSolutionInput.value.trim() || undefined;
+    if(quizSolution.length > MAX_LENGTH_SOLUTION) {
+      toast('Explanation is too long.');
       return;
     }
 
@@ -178,7 +199,7 @@ export default class PopupCreatePoll extends PopupElement {
     };
     //poll.id = randomIDS;
 
-    const inputMediaPoll = appPollsManager.getInputMediaPoll(poll, this.correctAnswers, this.quizSolutionInput.value || undefined);
+    const inputMediaPoll = appPollsManager.getInputMediaPoll(poll, this.correctAnswers, quizSolution);
 
     //console.log('Will try to create poll:', inputMediaPoll);
 
@@ -214,7 +235,7 @@ export default class PopupCreatePoll extends PopupElement {
   private appendMoreField() {
     const tempID = this.tempID++;
     const idx = this.questions.childElementCount + 1;
-    const questionField = InputField('Add an Option', 'Option ' + idx, 'question-' + tempID);
+    const questionField = InputField('Add an Option', 'Option ' + idx, 'question-' + tempID, MAX_LENGTH_OPTION);
     (questionField.firstElementChild as HTMLInputElement).addEventListener('input', this.onInput);
 
     const radioField = RadioField('', 'question');

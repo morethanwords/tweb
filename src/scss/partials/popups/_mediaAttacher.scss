@@ -135,12 +135,7 @@
     input {
       //height: 54px;
       font-size: 1rem;
-      padding: 0 15px;
       border-radius: $border-radius-medium;
-
-      &:focus {
-        padding: 0 14.5px;
-      }
     }
 
     label {

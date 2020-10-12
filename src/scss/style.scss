@@ -626,9 +626,11 @@ hr {
   }
   
   input {
-    border: 1px solid #DADCE0;
+    --border-width: 1px;
+    border: var(--border-width) solid #DADCE0;
     border-radius: $border-radius-medium;
-    padding: 0 1rem;
+    //padding: 0 1rem;
+    padding: 0 calc(1rem - var(--border-width));
     box-sizing: border-box;
     width: 100%;
     height: 54px;
@@ -637,7 +639,7 @@ hr {
     z-index: 1;
 
     html.no-touch & {
-      &:hover {
+      &:hover:not(:focus):not(.error):not(.valid) {
         border-color: var(--color-gray);
       }
     }
@@ -652,9 +654,9 @@ hr {
     } */
     
     &:focus {
-      border-color: $button-primary-background !important;
-      border-width: 2px;
-      padding: 0 calc(1rem - 1px);
+      --border-width: 2px;
+      border-color: $button-primary-background;
+      //padding: 0 calc(1rem - 1px);
     }
     
     &:disabled {
