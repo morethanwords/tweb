@@ -159,7 +159,7 @@ class AppPollsManager {
     };
   }
 
-  public sendVote(mid: number, optionIDs: number[]) {
+  public sendVote(mid: number, optionIDs: number[]): Promise<void> {
     const message = appMessagesManager.getMessage(mid);
     const poll: Poll = message.media.poll;
 
@@ -169,6 +169,13 @@ class AppPollsManager {
     
     const inputPeer = appPeersManager.getInputPeerByID(message.peerID);
     const messageID = message.id;
+
+    if(mid < 0) {
+      return appMessagesManager.invokeAfterMessageIsSent(mid, 'sendVote', (mid) => {
+        this.log('invoke sendVote callback');
+        return this.sendVote(mid, optionIDs);
+      });
+    }
 
     return apiManager.invokeApi('messages.sendVote', {
       peer: inputPeer,

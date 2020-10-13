@@ -1,13 +1,13 @@
-import appPollsManager, { PollResults, Poll } from "../lib/appManagers/appPollsManager";
-import { RichTextProcessor } from "../lib/richtextprocessor";
-import { findUpClassName, cancelEvent } from "../lib/utils";
-import appSidebarRight from "./sidebarRight";
-import appImManager from "../lib/appManagers/appImManager";
-import serverTimeManager from "../lib/mtproto/serverTimeManager";
-import { ripple } from "./ripple";
 import mediaSizes from "../helpers/mediaSizes";
-import $rootScope from "../lib/rootScope";
 import { isTouchSupported } from "../helpers/touchSupport";
+import appImManager from "../lib/appManagers/appImManager";
+import appPollsManager, { Poll, PollResults } from "../lib/appManagers/appPollsManager";
+import serverTimeManager from "../lib/mtproto/serverTimeManager";
+import { RichTextProcessor } from "../lib/richtextprocessor";
+import $rootScope from "../lib/rootScope";
+import { cancelEvent, findUpClassName } from "../lib/utils";
+import { ripple } from "./ripple";
+import appSidebarRight from "./sidebarRight";
 
 let lineTotalLength = 0;
 const tailLength = 9;
@@ -380,10 +380,16 @@ export default class PollElement extends HTMLElement {
 
   attributeChangedCallback(name: string, oldValue: string, newValue: string) {
     // вызывается при изменении одного из перечисленных выше атрибутов
+    console.log('Poll: attributeChangedCallback', name, oldValue, newValue, this.isConnected);
     if(name == 'poll-id') {
       this.pollID = newValue;
     } else if(name == 'message-id') {
       this.mid = +newValue;
+    }
+
+    if(this.mid > 0 && oldValue !== undefined && +oldValue < 0) {
+      this.disconnectedCallback();
+      connectedPolls.push({id: this.pollID, element: this});
     }
   }
 

@@ -464,7 +464,14 @@ export class AppMessagesManager {
   public pendingTopMsgs: {[peerID: string]: number} = {};
   public sendFilePromise: CancellablePromise<void> = Promise.resolve();
   public tempID = -1;
-  public tempFinalizeCallbacks: any = {};
+  public tempFinalizeCallbacks: {
+    [mid: string]: {
+      [callbackName: string]: Partial<{
+        deferred: CancellablePromise<void>, 
+        callback: (mid: number) => Promise<any>
+      }>
+    }
+  } = {};
 
   public lastSearchFilter: any = {};
   public lastSearchResults: any = [];
@@ -663,27 +670,28 @@ export class AppMessagesManager {
     return sendEntites;
   }
 
+  public invokeAfterMessageIsSent(messageID: number, callbackName: string, callback: (mid: number) => Promise<any>) {
+    const finalize = this.tempFinalizeCallbacks[messageID] ?? (this.tempFinalizeCallbacks[messageID] = {});
+    const obj = finalize[callbackName] ?? (finalize[callbackName] = {deferred: deferredPromise<void>()});
+
+    obj.callback = callback;
+
+    return obj.deferred;
+  }
+
   public editMessage(messageID: number, text: string, options: Partial<{
     noWebPage: true,
     newMedia: any
-  }> = {}) {
+  }> = {}): Promise<void> {
     /* if(!this.canEditMessage(messageID)) {
       return Promise.reject({type: 'MESSAGE_EDIT_FORBIDDEN'});
     } */
 
     if(messageID < 0) {
-      if(this.tempFinalizeCallbacks[messageID] === undefined) {
-        this.tempFinalizeCallbacks[messageID] = {}
-      }
-
-      const promise = new Promise((resolve, reject) => {
-        this.tempFinalizeCallbacks[messageID].edit = (mid: number) => {
-          this.log('invoke callback', mid)
-          this.editMessage(mid, text).then(resolve, reject);
-        }
+      return this.invokeAfterMessageIsSent(messageID, 'edit', (mid) => {
+        this.log('invoke editMessage callback', mid);
+        return this.editMessage(mid, text, options);
       });
-
-      return promise;
     }
 
     let entities: any[];
@@ -4010,12 +4018,15 @@ export class AppMessagesManager {
   }
 
   public finalizePendingMessageCallbacks(tempID: number, mid: number) {
-    var callbacks = this.tempFinalizeCallbacks[tempID];
+    const callbacks = this.tempFinalizeCallbacks[tempID];
     this.log.warn(callbacks, tempID);
     if(callbacks !== undefined) {
-      callbacks.forEach((callback: any) => {
-        callback(mid);
-      });
+      for(const name in callbacks) {
+        const {deferred, callback} = callbacks[name];
+        this.log(`finalizePendingMessageCallbacks: will invoke ${name} callback`);
+        callback(mid).then(deferred.resolve, deferred.reject);
+      }
+
       delete this.tempFinalizeCallbacks[tempID];
     }
 
