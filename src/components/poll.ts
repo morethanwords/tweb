@@ -380,7 +380,7 @@ export default class PollElement extends HTMLElement {
 
   attributeChangedCallback(name: string, oldValue: string, newValue: string) {
     // вызывается при изменении одного из перечисленных выше атрибутов
-    console.log('Poll: attributeChangedCallback', name, oldValue, newValue, this.isConnected);
+    // console.log('Poll: attributeChangedCallback', name, oldValue, newValue, this.isConnected);
     if(name == 'poll-id') {
       this.pollID = newValue;
     } else if(name == 'message-id') {

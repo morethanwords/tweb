@@ -30,17 +30,20 @@ export default class ReplyContainer extends DivAndCaption<(title: string, subtit
         //console.log('wrap reply', media);
         
         if(media.photo || (media.document && ['video'].indexOf(media.document.type) !== -1)) {
-          let replyMedia = document.createElement('div');
+          const replyMedia = document.createElement('div');
           replyMedia.classList.add(this.className + '-media');
 
-          let photo = media.photo || media.document;
-          
-          let sizes = photo.sizes || photo.thumbs;
-          if(sizes && sizes[0].bytes) {
-            appPhotosManager.setAttachmentPreview(sizes[0].bytes, replyMedia, false, true);
+          const photo = media.photo || media.document;
+
+          if(photo._ == 'document' || !photo.downloaded) {
+            const sizes = photo.sizes || photo.thumbs;
+            if(sizes && sizes[0].bytes) {
+              appPhotosManager.setAttachmentPreview(sizes[0].bytes, replyMedia, false, true);
+            }
           }
-          
-          appPhotosManager.preloadPhoto(photo, appPhotosManager.choosePhotoSize(photo, 32, 32))
+
+          const size = appPhotosManager.choosePhotoSize(photo, 32, 32/* mediaSizes.active.regular.width, mediaSizes.active.regular.height */);
+          appPhotosManager.preloadPhoto(photo, size)
           .then(() => {
             renderImageFromUrl(replyMedia, photo._ == 'photo' ? photo.url : appPhotosManager.getDocumentCachedThumb(photo.id).url);
           });
