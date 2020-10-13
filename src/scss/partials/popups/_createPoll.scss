@@ -4,7 +4,7 @@
   #{$parent} {
     &-container {
       //max-height: 468px;
-      max-height: 640px;
+      max-height: unquote('min(640px, 100%)');
       padding: 0;
     }
   }
@@ -46,6 +46,10 @@
 
   .poll-create-questions {
     padding: 0px 1.25rem 2.03125rem;
+
+    .input-field input {
+      padding-right: 3.25rem;
+    }
   }
 
   .poll-create-settings {

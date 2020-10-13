@@ -159,7 +159,7 @@ export default class PopupCreatePoll extends PopupElement {
     }
 
     const quizSolution = this.quizSolutionInput.value.trim() || undefined;
-    if(quizSolution.length > MAX_LENGTH_SOLUTION) {
+    if(quizSolution?.length > MAX_LENGTH_SOLUTION) {
       toast('Explanation is too long.');
       return;
     }

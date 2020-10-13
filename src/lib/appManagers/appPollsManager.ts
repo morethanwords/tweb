@@ -1,5 +1,5 @@
 import { InputMedia } from "../../layer";
-import { logger, LogLevels } from "../logger";
+import { logger } from "../logger";
 import apiManager from "../mtproto/mtprotoworker";
 import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
 import { RichTextProcessor } from "../richtextprocessor";
@@ -74,7 +74,7 @@ class AppPollsManager {
   public polls: {[id: string]: Poll} = {};
   public results: {[id: string]: PollResults} = {};
 
-  private log = logger('POLLS', LogLevels.error);
+  private log = logger('POLLS'/* , LogLevels.error */);
 
   constructor() {
     $rootScope.$on('apiUpdate', (e) => {
@@ -89,7 +89,7 @@ class AppPollsManager {
       case 'updateMessagePoll': { // when someone voted, we too
         this.log('updateMessagePoll:', update);
 
-        let poll: Poll = /* this.polls[update.poll_id] ||  */update.poll;
+        let poll: Poll = update.poll || this.polls[update.poll_id];
         if(!poll) {
           break;
         }
@@ -124,13 +124,15 @@ class AppPollsManager {
   public saveResults(poll: Poll, results: PollResults) {
     this.results[poll.id] = results;
 
-    poll.chosenIndexes.length = 0;
-    if(results?.results?.length) {
-      results.results.forEach((answer, idx) => {
-        if(answer.pFlags?.chosen) {
-          poll.chosenIndexes.push(idx);
-        }
-      });
+    if(!results.pFlags.min) { // ! https://core.telegram.org/constructor/pollResults - min
+      poll.chosenIndexes.length = 0;
+      if(results?.results?.length) {
+        results.results.forEach((answer, idx) => {
+          if(answer.pFlags?.chosen) {
+            poll.chosenIndexes.push(idx);
+          }
+        });
+      }
     }
   }
 
