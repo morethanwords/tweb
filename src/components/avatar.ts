@@ -1,7 +1,8 @@
+import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import appProfileManager from "../lib/appManagers/appProfileManager";
 import $rootScope from "../lib/rootScope";
 import { cancelEvent } from "../lib/utils";
-import { AppMediaViewerAvatar } from "./appMediaViewer";
+import AppMediaViewer, { AppMediaViewerAvatar } from "./appMediaViewer";
 
 $rootScope.$on('avatar_update', (e) => {
   let peerID = e.detail;
@@ -30,17 +31,60 @@ export default class AvatarElement extends HTMLElement {
     this.isDialog = !!this.getAttribute('dialog');
     if(this.getAttribute('clickable') === '') {
       this.setAttribute('clickable', 'set');
-      this.addEventListener('click', (e) => {
+      let loading = false;
+      this.addEventListener('click', async(e) => {
         cancelEvent(e);
+        if(loading) return;
         //console.log('avatar clicked');
         const peerID = this.peerID;
-        appProfileManager.getFullPhoto(this.peerID).then(photo => {
-          if(this.peerID != peerID) return;
-          if(photo) {
+        loading = true;
+
+        const photo = await appProfileManager.getFullPhoto(this.peerID);
+        if(this.peerID != peerID || !photo) {
+          loading = false;
+          return;
+        }
+
+        if(peerID < 0) {
+          const maxID = Number.MAX_SAFE_INTEGER;
+          const inputFilter = 'inputMessagesFilterChatPhotos';
+          const mid = await appMessagesManager.getSearch(peerID, '', {_: inputFilter}, maxID, 2, 0, 1).then(value => {
+            //console.log(lol);
+            // ! by descend
+            return value.history[0];
+          });
+
+          if(mid) {
+            // ! гений в деле, костылируем (но это гениально)
+            let message = appMessagesManager.getMessage(mid);
+            const messagePhoto = message.action.photo;
+            if(messagePhoto.id != photo.id) {
+              message = {
+                _: 'message',
+                mid: maxID,
+                media: {
+                  _: 'messageMediaPhoto',
+                  photo: photo
+                },
+                fromID: peerID
+              };
+
+              appMessagesManager.messagesStorage[maxID] = message;
+            }
+
             const good = Array.from(this.querySelectorAll('img')).find(img => !img.classList.contains('emoji'));
-            new AppMediaViewerAvatar().openMedia(peerID, good ? this : null);
+            new AppMediaViewer(inputFilter).openMedia(message, good ? this : null);
+            loading = false;
+            return;
           }
-        });
+        }
+
+        if(photo) {
+          const good = Array.from(this.querySelectorAll('img')).find(img => !img.classList.contains('emoji'));
+          new AppMediaViewerAvatar(peerID).openMedia(photo.id, good ? this : null);
+        }
+
+        loading = false;
       });
     }
   }

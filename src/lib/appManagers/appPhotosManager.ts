@@ -1,12 +1,14 @@
 import { CancellablePromise } from "../../helpers/cancellablePromise";
 import { isSafari } from "../../helpers/userAgent";
-import { FileLocation, InputFileLocation, Photo, PhotoSize } from "../../layer";
+import { FileLocation, InputFileLocation, Photo, PhotoSize, PhotosPhotos } from "../../layer";
 import { bytesFromHex, getFileNameByLocation } from "../bin_utils";
 import { DownloadOptions } from "../mtproto/apiFileManager";
+import apiManager from "../mtproto/mtprotoworker";
 import referenceDatabase, { ReferenceContext } from "../mtproto/referenceDatabase";
 import { calcImageInBox, isObject, safeReplaceArrayInObject } from "../utils";
 import { MyDocument } from "./appDocsManager";
 import appDownloadManager from "./appDownloadManager";
+import appUsersManager from "./appUsersManager";
 
 export type MyPhoto = Photo.photo;
 
@@ -108,29 +110,27 @@ export class AppPhotosManager {
     return bestPhotoSize;
   }
   
-  /* public getUserPhotos(userID: number, maxID: number, limit: number) {
-    var inputUser = appUsersManager.getUserInput(userID);
+  public getUserPhotos(userID: number, maxID: string = '0', limit: number = 20) {
+    const inputUser = appUsersManager.getUserInput(userID);
     return apiManager.invokeApi('photos.getUserPhotos', {
       user_id: inputUser,
       offset: 0,
-      limit: limit || 20,
-      max_id: maxID || 0
-    }).then((photosResult: any) => {
+      limit: limit,
+      max_id: maxID
+    }).then((photosResult) => {
       appUsersManager.saveApiUsers(photosResult.users);
-      var photoIDs = [];
-      var context = {user_id: userID};
-      for(var i = 0; i < photosResult.photos.length; i++) {
-        //this.savePhoto(photosResult.photos[i], context);
-        photosResult.photos[i] = this.savePhoto(photosResult.photos[i], context);
-        photoIDs.push(photosResult.photos[i].id);
-      }
+      const photoIDs: string[] = [];
+      photosResult.photos.forEach((photo, idx) => {
+        photosResult.photos[idx] = this.savePhoto(photo, {type: 'profilePhoto', peerID: userID});
+        photoIDs.push(photo.id);
+      });
       
       return {
-        count: photosResult.count || photosResult.photos.length,
+        count: (photosResult as PhotosPhotos.photosPhotosSlice).count || photosResult.photos.length,
         photos: photoIDs
       };
     });
-  } */
+  }
 
   public getPreviewURLFromBytes(bytes: Uint8Array | number[], isSticker = false) {
     let arr: Uint8Array;

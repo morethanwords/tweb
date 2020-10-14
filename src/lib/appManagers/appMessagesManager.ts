@@ -448,7 +448,8 @@ type MyInputMessagesFilter = 'inputMessagesFilterEmpty'
   | 'inputMessagesFilterRoundVideo' 
   | 'inputMessagesFilterMusic' 
   | 'inputMessagesFilterUrl' 
-  | 'inputMessagesFilterMyMentions';
+  | 'inputMessagesFilterMyMentions'
+  | 'inputMessagesFilterChatPhotos';
 
 export class AppMessagesManager {
   public messagesStorage: {[mid: string]: any} = {};
@@ -2314,13 +2315,14 @@ export class AppMessagesManager {
       }
 
       if(apiMessage.action) {
-        let migrateFrom;
-        let migrateTo;
+        let migrateFrom: number;
+        let migrateTo: number;
         switch(apiMessage.action._) {
+          //case 'messageActionChannelEditPhoto':
           case 'messageActionChatEditPhoto':
             apiMessage.action.photo = appPhotosManager.savePhoto(apiMessage.action.photo, mediaContext);
             //appPhotosManager.savePhoto(apiMessage.action.photo, mediaContext);
-            if(isBroadcast) {
+            if(isBroadcast) { // ! messageActionChannelEditPhoto не существует в принципе, это используется для перевода.
               apiMessage.action._ = 'messageActionChannelEditPhoto';
             }
             break;
@@ -2947,6 +2949,10 @@ export class AppMessagesManager {
             neededContents['url'] = true;
             break;
 
+          case 'inputMessagesFilterChatPhotos':
+            neededContents['avatar'] = true;
+            break;
+
           /* case 'inputMessagesFilterMyMentions':
             neededContents['mentioned'] = true;
             break; */
@@ -2974,6 +2980,8 @@ export class AppMessagesManager {
 
             found = true;
           } else if(neededContents['url'] && message.message && RichTextProcessor.matchUrl(message.message)) {
+            found = true;
+          } else if(neededContents['avatar'] && message.action && ['messageActionChannelEditPhoto', 'messageActionChatEditPhoto'].includes(message.action._)) {
             found = true;
           }
 
@@ -4402,6 +4410,8 @@ export class AppMessagesManager {
     } else if(this.needSingleMessages.indexOf(msgID) == -1) {
       this.needSingleMessages.push(msgID);
       return this.fetchSingleMessages();
+    } else if(this.fetchSingleMessagesPromise) {
+      return this.fetchSingleMessagesPromise;
     }
   }
 
