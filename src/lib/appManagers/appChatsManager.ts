@@ -1,4 +1,4 @@
-import { ChatAdminRights, ChatBannedRights, InputChannel, InputChatPhoto, InputPeer, Updates } from "../../layer";
+import { ChatAdminRights, ChatBannedRights, ChatFull, ChatParticipants, InputChannel, InputChatPhoto, InputPeer, Updates } from "../../layer";
 import apiManager from '../mtproto/mtprotoworker';
 import { RichTextProcessor } from "../richtextprocessor";
 import $rootScope from "../rootScope";
@@ -442,17 +442,17 @@ export class AppChatsManager {
 
   public async getOnlines(id: number): Promise<number> {
     if(this.isMegagroup(id)) {
-      let timestamp = Date.now() / 1000 | 0;
-      let cached = this.megagroupOnlines[id] ?? (this.megagroupOnlines[id] = {timestamp: 0, onlines: 1});
+      const timestamp = Date.now() / 1000 | 0;
+      const cached = this.megagroupOnlines[id] ?? (this.megagroupOnlines[id] = {timestamp: 0, onlines: 1});
       if((timestamp - cached.timestamp) < 60) {
         return cached.onlines;
       }
 
-      let res = await apiManager.invokeApi('messages.getOnlines', {
+      const res = await apiManager.invokeApi('messages.getOnlines', {
         peer: this.getChannelInputPeer(id)
       });
 
-      let onlines = res.onlines ?? 1;
+      const onlines = res.onlines ?? 1;
       cached.timestamp = timestamp;
       cached.onlines = onlines;
 
@@ -461,12 +461,13 @@ export class AppChatsManager {
       return 1;
     }
 
-    let chatInfo = appProfileManager.getChatFull(id);
-    if(chatInfo._ == 'chatFull' && chatInfo.participants && chatInfo.participants.participants) {
-      let participants = chatInfo.participants.participants;
+    const chatInfo = await appProfileManager.getChatFull(id);
+    const _participants = (chatInfo as ChatFull.chatFull).participants as ChatParticipants.chatParticipants;
+    if(_participants && _participants.participants) {
+      const participants = _participants.participants;
 
-      return participants.reduce((acc: number, participant: any) => {
-        let user = appUsersManager.getUser(participant.user_id);
+      return participants.reduce((acc: number, participant) => {
+        const user = appUsersManager.getUser(participant.user_id);
         if(user && user.status && user.status._ == 'userStatusOnline') {
           return acc + 1;
         }

@@ -1,6 +1,6 @@
 import { ripple } from "./ripple";
 
-export type ButtonMenuItemOptions = {icon: string, text: string, onClick: () => void, element?: HTMLElement};
+export type ButtonMenuItemOptions = {icon: string, text: string, onClick: (e: MouseEvent) => void, element?: HTMLElement};
 
 const ButtonMenuItem = (options: ButtonMenuItemOptions) => {
   if(options.element) return options.element;

@@ -1441,7 +1441,8 @@ export namespace UserFull {
 		bot_info?: BotInfo,
 		pinned_msg_id?: number,
 		common_chats_count: number,
-		folder_id?: number
+		folder_id?: number,
+		rAbout?: string
 	};
 }
 

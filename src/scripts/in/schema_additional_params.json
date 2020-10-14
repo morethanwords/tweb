@@ -86,4 +86,9 @@
   "params": [
     {"name": "deleted", "type": "boolean"}
   ]
+}, {
+  "predicate": "userFull",
+  "params": [
+    {"name": "rAbout", "type": "string"}
+  ]
 }]

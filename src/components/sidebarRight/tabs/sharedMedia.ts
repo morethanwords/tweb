@@ -1,21 +1,21 @@
 import appImManager from "../../../lib/appManagers/appImManager";
-import appMediaViewer from "../../../lib/appManagers/appMediaViewer";
 import appMessagesManager from "../../../lib/appManagers/appMessagesManager";
 import appPeersManager from "../../../lib/appManagers/appPeersManager";
 import appPhotosManager from "../../../lib/appManagers/appPhotosManager";
 import appProfileManager from "../../../lib/appManagers/appProfileManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
-import { logger, LogLevels } from "../../../lib/logger";
+import { logger } from "../../../lib/logger";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import $rootScope from "../../../lib/rootScope";
 import { getAbbreviation, limitSymbols } from "../../../lib/utils";
+import AppMediaViewer from "../../appMediaViewer";
 import AvatarElement from "../../avatar";
 import { horizontalMenu } from "../../horizontalMenu";
 import LazyLoadQueue from "../../lazyLoadQueue";
-import { renderImageFromUrl, putPreloader } from "../../misc";
+import { putPreloader, renderImageFromUrl } from "../../misc";
 import Scrollable from "../../scrollable";
 import { SliderTab } from "../../slider";
-import { wrapDocument, wrapAudio } from "../../wrappers";
+import { wrapAudio, wrapDocument } from "../../wrappers";
 
 const testScroll = false;
 
@@ -197,7 +197,7 @@ export default class AppSharedMediaTab implements SliderTab {
         return {element, mid: id};
       });
       
-      appMediaViewer.openMedia(message, target, false, this.container, targets.slice(idx + 1).reverse(), targets.slice(0, idx).reverse(), true);
+      new AppMediaViewer().openMedia(message, target, false, targets.slice(idx + 1).reverse(), targets.slice(0, idx).reverse(), true);
     });
     
     this.profileElements.notificationsCheckbox.addEventListener('change', () => {
@@ -819,7 +819,7 @@ export default class AppSharedMediaTab implements SliderTab {
       //membersLi.style.display = appPeersManager.isBroadcast(peerID) ? 'none' : '';
       let chat = appPeersManager.getPeer(peerID);
       
-      appProfileManager.getChatFull(chat.id).then((chatFull: any) => {
+      appProfileManager.getChatFull(chat.id).then((chatFull) => {
         if(this.peerID != peerID) {
           this.log.warn('peer changed');
           return;

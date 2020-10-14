@@ -1,5 +1,6 @@
 //import apiManager from '../mtproto/apiManager';
 import animationIntersector from '../../components/animationIntersector';
+import AppMediaViewer from "../../components/appMediaViewer";
 import AudioElement from '../../components/audio';
 import AvatarElement from '../../components/avatar';
 import BubbleGroups from '../../components/bubbleGroups';
@@ -38,7 +39,6 @@ import appChatsManager, { Channel, Chat } from "./appChatsManager";
 import appDialogsManager from "./appDialogsManager";
 import appDocsManager from './appDocsManager';
 import appInlineBotsManager from './AppInlineBotsManager';
-import appMediaViewer from "./appMediaViewer";
 import appMessagesManager, { Dialog } from "./appMessagesManager";
 import appPeersManager from "./appPeersManager";
 import appPhotosManager from "./appPhotosManager";
@@ -502,8 +502,8 @@ export class AppImManager {
           return;
         }
 
-        appMediaViewer.openMedia(message, targets[idx].element, true, 
-          this.scroll.parentElement, targets.slice(0, idx), targets.slice(idx + 1)/* , !message.grouped_id */);
+        new AppMediaViewer().openMedia(message, targets[idx].element, true, 
+          targets.slice(0, idx), targets.slice(idx + 1)/* , !message.grouped_id */);
         
         //appMediaViewer.openMedia(message, target as HTMLImageElement);
         return;
@@ -620,9 +620,9 @@ export class AppImManager {
       //this.log('onkeydown', e);
 
       if(e.key == 'Escape') {
-        if(appMediaViewer.wholeDiv.classList.contains('active')) {
-          appMediaViewer.buttons.close.click();
-        } else if(appSidebarRight.historyTabIDs.slice(-1)[0] == AppSidebarRight.SLIDERITEMSIDS.forward) {
+        /* if(AppMediaViewer.wholeDiv.classList.contains('active')) {
+          AppMediaViewer.buttons.close.click();
+        } else */ if(appSidebarRight.historyTabIDs.slice(-1)[0] == AppSidebarRight.SLIDERITEMSIDS.forward) {
           appSidebarRight.forwardTab.closeBtn.click();
         } else if(this.chatInputC.replyElements.container.classList.contains('active')) {
           this.chatInputC.replyElements.cancelBtn.click();

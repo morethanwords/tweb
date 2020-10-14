@@ -1,154 +1,164 @@
-import appMediaPlaybackController from "../../components/appMediaPlaybackController";
-import AvatarElement from "../../components/avatar";
-import { LazyLoadQueueBase } from "../../components/lazyLoadQueue";
-import { parseMenuButtonsTo, renderImageFromUrl } from "../../components/misc";
-import ProgressivePreloader from "../../components/preloader";
-import appSidebarRight, { AppSidebarRight } from "../../components/sidebarRight";
-import { deferredPromise } from "../../helpers/cancellablePromise";
-import mediaSizes from "../../helpers/mediaSizes";
-import { isTouchSupported } from "../../helpers/touchSupport";
-import { isSafari } from "../../helpers/userAgent";
-import { logger } from "../logger";
-import VideoPlayer from "../mediaPlayer";
-import { RichTextProcessor } from "../richtextprocessor";
-import $rootScope from "../rootScope";
-import { cancelEvent, fillPropertyValue, findUpClassName, generatePathData } from "../utils";
-import appDocsManager, { MyDocument } from "./appDocsManager";
-import appImManager from "./appImManager";
-import appMessagesManager from "./appMessagesManager";
-import appPeersManager from "./appPeersManager";
-import appPhotosManager from "./appPhotosManager";
+import { deferredPromise } from "../helpers/cancellablePromise";
+import mediaSizes from "../helpers/mediaSizes";
+import { isTouchSupported } from "../helpers/touchSupport";
+import { isSafari } from "../helpers/userAgent";
+import appDocsManager, { MyDocument } from "../lib/appManagers/appDocsManager";
+import appImManager from "../lib/appManagers/appImManager";
+import appMessagesManager from "../lib/appManagers/appMessagesManager";
+import appPeersManager from "../lib/appManagers/appPeersManager";
+import appPhotosManager from "../lib/appManagers/appPhotosManager";
+import appProfileManager from "../lib/appManagers/appProfileManager";
+import { logger } from "../lib/logger";
+import VideoPlayer from "../lib/mediaPlayer";
+import { RichTextProcessor } from "../lib/richtextprocessor";
+import $rootScope from "../lib/rootScope";
+import { cancelEvent, fillPropertyValue, findUpClassName, generatePathData } from "../lib/utils";
+import appMediaPlaybackController from "./appMediaPlaybackController";
+import AvatarElement from "./avatar";
+import ButtonIcon from "./buttonIcon";
+import { ButtonMenuItemOptions } from "./buttonMenu";
+import ButtonMenuToggle from "./buttonMenuToggle";
+import { LazyLoadQueueBase } from "./lazyLoadQueue";
+import { renderImageFromUrl } from "./misc";
+import ProgressivePreloader from "./preloader";
+import appSidebarRight, { AppSidebarRight } from "./sidebarRight";
+import SwipeHandler from "./swipeHandler";
 
 // TODO: масштабирование картинок (не SVG) при ресайзе, и правильный возврат на исходную позицию
 // TODO: картинки "обрезаются" если возвращаются или появляются с места, где есть их перекрытие (топбар, поле ввода)
 // TODO: видео в мобильной вёрстке, если показываются элементы управления: если свайпнуть в сторону, то элементы вернутся на место, т.е. прыгнут - это не ок, надо бы замаскировать
 
-class SwipeHandler {
-  private xDown: number;
-  private yDown: number;
+const MEDIA_VIEWER_CLASSNAME = 'media-viewer';
 
-  constructor(element: HTMLElement, private onSwipe: (xDiff: number, yDiff: number) => boolean) {
-    element.addEventListener('touchstart', this.handleTouchStart, false);
-    element.addEventListener('touchmove', this.handleTouchMove, false);
-  }
-
-  handleTouchStart = (evt: TouchEvent) => {
-    // * Fix for seek input
-    if((evt.target as HTMLElement).tagName == 'INPUT') {
-      this.xDown = this.yDown = null;
-      return;
-    }
-
-    const firstTouch = evt.touches[0];
-    this.xDown = firstTouch.clientX;
-    this.yDown = firstTouch.clientY;
-  };
-
-  handleTouchMove = (evt: TouchEvent) => {
-    if(this.xDown == null || this.yDown == null) {
-      return;
-    }
-
-    const xUp = evt.touches[0].clientX;
-    const yUp = evt.touches[0].clientY;
-
-    const xDiff = this.xDown - xUp;
-    const yDiff = this.yDown - yUp;
-
-    // if(Math.abs(xDiff) > Math.abs(yDiff)) { /*most significant*/
-    //   if(xDiff > 0) { /* left swipe */ 
-
-    //   } else { /* right swipe */
-
-    //   }                       
-    // } else {
-    //   if(yDiff > 0) { /* up swipe */ 
-        
-    //   } else { /* down swipe */
-        
-    //   }
-    // }
-
-    /* reset values */
-    if(this.onSwipe(xDiff, yDiff)) {
-      this.xDown = null;
-      this.yDown = null;
-    }
-  };
-}
-
-export class AppMediaViewer {
-  public wholeDiv = document.querySelector('.media-viewer-whole') as HTMLElement;
-  private overlaysDiv = this.wholeDiv.firstElementChild as HTMLElement;
-  private author = {
-    container: this.overlaysDiv.querySelector('.media-viewer-author') as HTMLElement,
-    avatarEl: this.overlaysDiv.querySelector('.media-viewer-userpic') as AvatarElement,
-    nameEl: this.overlaysDiv.querySelector('.media-viewer-name') as HTMLElement,
-    date: this.overlaysDiv.querySelector('.media-viewer-date') as HTMLElement
-  };
-  public buttons: {[k in 'delete' | 'forward' | 'download' | 'close' | 'prev' | 'next' | 
-    'menu-delete' | 'menu-forward' | 'menu-download' | 'mobile-close']: HTMLElement} = {} as any;
-  private content: {[k in 'container' | 'caption' | 'mover']: HTMLElement} = {
-    container: this.overlaysDiv.querySelector('.media-viewer-media'),
-    caption: this.overlaysDiv.querySelector('.media-viewer-caption'),
-    mover: null
-  };
+class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType extends string, TargetType extends object> {
+  public wholeDiv: HTMLElement;
+  protected overlaysDiv: HTMLElement;
+  protected author: {[k in 'container' | 'avatarEl' | 'nameEl' | 'date']: HTMLElement} = {} as any;
+  protected content: {[k in 'main' | 'container' | 'media' | 'mover' | ContentAdditionType]: HTMLElement} = {} as any;
+  public buttons: {[k in 'download' | 'close' | 'prev' | 'next' | 'mobile-close' | ButtonsAdditionType]: HTMLElement} = {} as any;
   
-  public currentMessageID = 0;
-  private preloader: ProgressivePreloader = null;
-  private preloaderStreamable: ProgressivePreloader = null;
+  protected tempID = 0;
+  protected preloader: ProgressivePreloader = null;
+  protected preloaderStreamable: ProgressivePreloader = null;
 
-  private lastTarget: HTMLElement = null;
-  private prevTargets: {
-    element: HTMLElement,
-    mid: number
-  }[] = [];
-  private nextTargets: AppMediaViewer['prevTargets'] = [];
-  //private targetContainer: HTMLElement = null;
-  //private loadMore: () => void = null;
+  protected lastTarget: HTMLElement = null;
+  protected prevTargets: TargetType[] = [];
+  protected nextTargets: TargetType[] = [];
+  //protected targetContainer: HTMLElement = null;
+  //protected loadMore: () => void = null;
 
   public log: ReturnType<typeof logger>; 
 
-  private peerID = 0;
-  private loadMediaPromiseUp: Promise<void> = null;
-  private loadMediaPromiseDown: Promise<void> = null;
-  private loadedAllMediaUp = false;
-  private loadedAllMediaDown = false;
+  protected peerID = 0;
+  protected loadMediaPromiseUp: Promise<void> = null;
+  protected loadMediaPromiseDown: Promise<void> = null;
+  protected loadedAllMediaUp = false;
+  protected loadedAllMediaDown = false;
 
-  private reverse = false; // reverse means next = higher msgid
-  private needLoadMore = true;
+  protected reverse = false; // reverse means next = higher msgid
+  protected needLoadMore = true;
 
-  private pageEl = document.getElementById('page-chats') as HTMLDivElement;
+  protected pageEl = document.getElementById('page-chats') as HTMLDivElement;
 
-  private setMoverPromise: Promise<void>;
-  private setMoverAnimationPromise: Promise<void>;
+  protected setMoverPromise: Promise<void>;
+  protected setMoverAnimationPromise: Promise<void>;
 
-  private lazyLoadQueue: LazyLoadQueueBase;
+  protected lazyLoadQueue: LazyLoadQueueBase;
 
-  private highlightSwitchersTimeout: number;
+  protected highlightSwitchersTimeout: number;
+
+  protected onDownloadClick: (e: MouseEvent) => void;
+  protected onPrevClick: (target: TargetType) => void;
+  protected onNextClick: (target: TargetType) => void;
+  protected loadMoreMedia: (older: boolean) => Promise<void>;
   
-  constructor() {
+  constructor(topButtons: Array<keyof AppMediaViewerBase<ContentAdditionType, ButtonsAdditionType, TargetType>['buttons']>) {
     this.log = logger('AMV');
     this.preloader = new ProgressivePreloader();
-
     this.preloaderStreamable = new ProgressivePreloader(undefined, false, true);
-
     this.lazyLoadQueue = new LazyLoadQueueBase();
 
-    parseMenuButtonsTo(this.buttons, this.wholeDiv.querySelectorAll(`[class*='menu']`) as NodeListOf<HTMLElement>);
-    
-    [this.buttons.close, this.buttons["mobile-close"], this.preloaderStreamable.preloader].forEach(el => {
-      el.addEventListener('click', this.close);
+    this.wholeDiv = document.createElement('div');
+    this.wholeDiv.classList.add(MEDIA_VIEWER_CLASSNAME + '-whole');
+
+    this.overlaysDiv = document.createElement('div');
+    this.overlaysDiv.classList.add('overlays');
+
+    const mainDiv = document.createElement('div');
+    mainDiv.classList.add(MEDIA_VIEWER_CLASSNAME);
+
+    // * author
+    this.author.container = document.createElement('div');
+    this.author.container.classList.add(MEDIA_VIEWER_CLASSNAME + '-author', 'no-select');
+
+    this.author.avatarEl = new AvatarElement();
+    this.author.avatarEl.classList.add(MEDIA_VIEWER_CLASSNAME + '-userpic');
+
+    this.author.nameEl = document.createElement('div');
+    this.author.nameEl.classList.add(MEDIA_VIEWER_CLASSNAME + '-name');
+
+    this.author.date = document.createElement('div');
+    this.author.date.classList.add(MEDIA_VIEWER_CLASSNAME + '-date');
+
+    this.author.container.append(this.author.avatarEl, this.author.nameEl, this.author.date);
+
+    // * buttons
+    const buttonsDiv = document.createElement('div');
+    buttonsDiv.classList.add(MEDIA_VIEWER_CLASSNAME + '-buttons');
+
+    topButtons.concat(['download', 'close']).forEach(name => {
+      const button = ButtonIcon(name);
+      this.buttons[name] = button;
+      buttonsDiv.append(button);
     });
+
+    // * content
+    this.content.main = document.createElement('div');
+    this.content.main.classList.add(MEDIA_VIEWER_CLASSNAME + '-content');
+
+    this.content.container = document.createElement('div');
+    this.content.container.classList.add(MEDIA_VIEWER_CLASSNAME + '-container');
+
+    this.content.media = document.createElement('div');
+    this.content.media.classList.add(MEDIA_VIEWER_CLASSNAME + '-media');
+
+    this.content.container.append(this.content.media);
+
+    this.content.main.append(this.content.container);
+    mainDiv.append(this.author.container, buttonsDiv, this.content.main);
+    this.overlaysDiv.append(mainDiv);
+    // * overlays end
+
+    this.buttons["mobile-close"] = ButtonIcon('close', {onlyMobile: true});
+
+    this.buttons.prev = document.createElement('div');
+    this.buttons.prev.className = `${MEDIA_VIEWER_CLASSNAME}-switcher ${MEDIA_VIEWER_CLASSNAME}-switcher-left`;
+    this.buttons.prev.innerHTML = `<span class="tgico-down ${MEDIA_VIEWER_CLASSNAME}-prev-button"></span>`;
+
+    this.buttons.next = document.createElement('div');
+    this.buttons.next.className = `${MEDIA_VIEWER_CLASSNAME}-switcher ${MEDIA_VIEWER_CLASSNAME}-switcher-right`;
+    this.buttons.next.innerHTML = `<span class="tgico-down ${MEDIA_VIEWER_CLASSNAME}-next-button"></span>`;
+
+    this.wholeDiv.append(this.overlaysDiv, this.buttons['mobile-close'], this.buttons.prev, this.buttons.next);
+
+    // * constructing html end
     
+    this.setNewMover();
+  }
+
+  protected setListeners() {
+    this.buttons.download.addEventListener('click', this.onDownloadClick);
+    [this.buttons.close, this.buttons["mobile-close"], this.preloaderStreamable.preloader].forEach(el => {
+      el.addEventListener('click', this.close.bind(this));
+    });
+
     this.buttons.prev.addEventListener('click', (e) => {
       cancelEvent(e);
       if(this.setMoverPromise) return;
 
-      let target = this.prevTargets.pop();
+      const target = this.prevTargets.pop();
       if(target) {
-        this.nextTargets.unshift({element: this.lastTarget, mid: this.currentMessageID});
-        this.openMedia(appMessagesManager.getMessage(target.mid), target.element);
+        this.onPrevClick(target);
       } else {
         this.buttons.prev.style.display = 'none';
       }
@@ -160,31 +170,13 @@ export class AppMediaViewer {
 
       let target = this.nextTargets.shift();
       if(target) {
-        this.prevTargets.push({element: this.lastTarget, mid: this.currentMessageID});
-        this.openMedia(appMessagesManager.getMessage(target.mid), target.element);
+        this.onNextClick(target);
       } else {
         this.buttons.next.style.display = 'none';
       }
     });
-    
-    [this.buttons.download, this.buttons["menu-download"]].forEach(el => {
-      el.addEventListener('click', this.onClickDownload);
-    });
-
-    const forward = (e: MouseEvent) => {
-      appSidebarRight.forwardTab.open([this.currentMessageID]);
-    };
-
-    [this.buttons.forward, this.buttons["menu-forward"]].forEach(el => {
-      el.addEventListener('click', forward);
-    });
-
-    this.author.container.addEventListener('click', this.onAuthorClick);
 
     this.wholeDiv.addEventListener('click', this.onClick);
-    //this.content.mover.addEventListener('click', this.onClickBinded);
-    //this.content.mover.append(this.buttons.prev, this.buttons.next);
-    this.setNewMover();
 
     if(isTouchSupported) {
       const swipeHandler = new SwipeHandler(this.wholeDiv, (xDiff, yDiff) => {
@@ -217,20 +209,19 @@ export class AppMediaViewer {
     }
   }
 
-  close = (e?: MouseEvent) => {
+  protected setBtnMenuToggle(buttons: ButtonMenuItemOptions[]) {
+    const btnMenuToggle = ButtonMenuToggle({onlyMobile: true}, 'bottom-left', buttons);
+    this.wholeDiv.append(btnMenuToggle);
+  }
+
+  public close(e?: MouseEvent) {
     if(e) {
       cancelEvent(e);
     }
 
     if(this.setMoverAnimationPromise) return;
-    //this.overlaysDiv.classList.remove('active');
-    this.content.container.innerHTML = '';
-    /* if(this.content.container.firstElementChild) {
-      URL.revokeObjectURL((this.content.container.firstElementChild as HTMLImageElement).src);
-    } */
 
     this.peerID = 0;
-    this.currentMessageID = 0;
     this.lazyLoadQueue.clear();
 
     const promise = this.setMoverToTarget(this.lastTarget, true).then(({onAnimationEnd}) => onAnimationEnd);
@@ -250,33 +241,13 @@ export class AppMediaViewer {
 
     window.removeEventListener('keydown', this.onKeyDown);
 
-    return promise;
-  };
-
-  onAuthorClick = (e: MouseEvent) => {
-    const mid = this.currentMessageID;
-    this.close(e).then(() => {
-      const message = appMessagesManager.getMessage(mid);
-      appImManager.setPeer(message.peerID, mid);
+    promise.finally(() => {
+      this.wholeDiv.remove();
+      $rootScope.overlayIsActive = false;
     });
-  };
 
-  onClickDownload = (e: MouseEvent) => {
-    const message = appMessagesManager.getMessage(this.currentMessageID);
-    if(message.media.photo) {
-      appPhotosManager.savePhotoFile(message.media.photo);
-    } else {
-      let document: MyDocument = null;
-
-      if(message.media.webpage) document = message.media.webpage.document;
-      else document = message.media.document;
-
-      if(document) {
-        //console.log('will save document:', document);
-        appDocsManager.saveDocFile(document);
-      }
-    }
-  };
+    return promise;
+  }
 
   onClick = (e: MouseEvent) => {
     if(this.setMoverAnimationPromise) return;
@@ -316,18 +287,20 @@ export class AppMediaViewer {
   onKeyDown = (e: KeyboardEvent) => {
     //this.log('onKeyDown', e);
     
-    if(e.key == 'ArrowRight') {
+    if(e.key == 'Escape') {
+      this.close();
+    } else if(e.key == 'ArrowRight') {
       this.buttons.next.click();
     } else if(e.key == 'ArrowLeft') {
       this.buttons.prev.click();
     }
   };
 
-  private async setMoverToTarget(target: HTMLElement, closing = false, fromRight = 0) {
+  protected async setMoverToTarget(target: HTMLElement, closing = false, fromRight = 0) {
     const mover = this.content.mover;
 
     if(!target) {
-      target = this.content.container;
+      target = this.content.media;
     }
 
     if(!closing) {
@@ -353,7 +326,10 @@ export class AppMediaViewer {
 
     let rect: DOMRect;
     if(target) {
-      if(target instanceof SVGImageElement || target.parentElement instanceof SVGForeignObjectElement) {
+      if(target instanceof AvatarElement) {
+        realParent = target;
+        rect = target.getBoundingClientRect();
+      } else if(target instanceof SVGImageElement || target.parentElement instanceof SVGForeignObjectElement) {
         realParent = findUpClassName(target, 'attachment');
         rect = realParent.getBoundingClientRect();
       } else {
@@ -362,7 +338,7 @@ export class AppMediaViewer {
       }
     }
 
-    const containerRect = this.content.container.getBoundingClientRect();
+    const containerRect = this.content.media.getBoundingClientRect();
     
     let transform = '';
     let left: number;
@@ -451,7 +427,7 @@ export class AppMediaViewer {
       let mediaElement: HTMLImageElement | HTMLVideoElement;
       let src: string;
 
-      if(target.tagName == 'DIV') { // useContainerAsTarget
+      if(target.tagName == 'DIV' || target.tagName == 'AVATAR-ELEMENT') { // useContainerAsTarget
         if(target.firstElementChild) {
           mediaElement = new Image();
           src = (target.firstElementChild as HTMLImageElement).src;
@@ -626,7 +602,7 @@ export class AppMediaViewer {
       if(mover.firstElementChild) {
         (mover.firstElementChild as HTMLElement).style.borderRadius = '';
       }
-    }, delay / 2);
+    }, 0/* delay / 2 */);
 
     mover.dataset.timeout = '' + setTimeout(() => {
       mover.classList.remove('moving');
@@ -661,7 +637,7 @@ export class AppMediaViewer {
     return ret;
   }
 
-  private setFullAspect(aspecter: HTMLDivElement, containerRect: DOMRect, rect: DOMRect) {
+  protected setFullAspect(aspecter: HTMLDivElement, containerRect: DOMRect, rect: DOMRect) {
     /* let media = aspecter.firstElementChild;
     let proportion: number;
     if(media instanceof HTMLImageElement) {
@@ -687,7 +663,7 @@ export class AppMediaViewer {
     //}
   }
 
-  private sizeTailPath(path: SVGPathElement, rect: DOMRect, scaleX: number, delay: number, upscale: boolean, isOut: boolean, borderRadius: string) {
+  protected sizeTailPath(path: SVGPathElement, rect: DOMRect, scaleX: number, delay: number, upscale: boolean, isOut: boolean, borderRadius: string) {
     const start = Date.now();
     const {width, height} = rect;
     delay = delay / 2;
@@ -715,10 +691,10 @@ export class AppMediaViewer {
     step();
   }
 
-  private removeCenterFromMover(mover: HTMLElement) {
+  protected removeCenterFromMover(mover: HTMLElement) {
     if(mover.classList.contains('center')) {
       //const rect = mover.getBoundingClientRect();
-      const rect = this.content.container.getBoundingClientRect();
+      const rect = this.content.media.getBoundingClientRect();
       mover.style.transform = `translate3d(${rect.left}px,${rect.top}px,0)`;
       mover.classList.remove('center');
       void mover.offsetLeft; // reflow
@@ -726,7 +702,7 @@ export class AppMediaViewer {
     }
   }
 
-  private moveTheMover(mover: HTMLElement, toLeft = true) {
+  protected moveTheMover(mover: HTMLElement, toLeft = true) {
     const windowW = appPhotosManager.windowW;
 
     this.removeCenterFromMover(mover);
@@ -755,7 +731,7 @@ export class AppMediaViewer {
     }, 350);
   }
 
-  private setNewMover() {
+  protected setNewMover() {
     const newMover = document.createElement('div');
     newMover.classList.add('media-viewer-mover');
 
@@ -776,83 +752,7 @@ export class AppMediaViewer {
     return targetRect.bottom > rect.top && targetRect.top < rect.bottom;
   } */
 
-  // нет смысла делать проверку для reverse и loadMediaPromise
-  private loadMoreMedia(older = true) {
-    //if(!older && this.reverse) return;
-
-    if(older && this.loadedAllMediaDown) return;
-    else if(!older && this.loadedAllMediaUp) return;
-
-    if(older && this.loadMediaPromiseDown) return this.loadMediaPromiseDown;
-    else if(!older && this.loadMediaPromiseUp) return this.loadMediaPromiseUp;
-
-    const loadCount = 50;
-    const backLimit = older ? 0 : loadCount;
-    let maxID = this.currentMessageID;
-  
-    let anchor: {element: HTMLElement, mid: number};
-    if(older) {
-      anchor = this.reverse ? this.prevTargets[0] : this.nextTargets[this.nextTargets.length - 1];
-    } else {
-      anchor = this.reverse ? this.nextTargets[this.nextTargets.length - 1] : this.prevTargets[0];
-    }
-
-    if(anchor) maxID = anchor.mid;
-    if(!older) maxID += 1;
-
-    const peerID = this.peerID;
-
-    const promise = appMessagesManager.getSearch(peerID, '', 
-      {_: 'inputMessagesFilterPhotoVideo'}, maxID, loadCount/* older ? loadCount : 0 */, 0, backLimit).then(value => {
-      if(this.peerID != peerID) {
-        this.log.warn('peer changed');
-        return;
-      }
-
-      this.log('loaded more media by maxID:', maxID, value, older, this.reverse);
-
-      if(value.history.length < loadCount) {
-        /* if(this.reverse) {
-          if(older) this.loadedAllMediaUp = true;
-          else this.loadedAllMediaDown = true;
-        } else { */
-          if(older) this.loadedAllMediaDown = true;
-          else this.loadedAllMediaUp = true;
-        //}
-      }
-
-      const method = older ? value.history.forEach : value.history.forEachReverse;
-      method.call(value.history, mid => {
-        const message = appMessagesManager.getMessage(mid);
-        const media = message.media;
-
-        if(!media || !(media.photo || media.document || (media.webpage && media.webpage.document))) return;
-        if(media._ == 'document' && media.type != 'video') return;
-
-        const t = {element: null as HTMLElement, mid: mid};
-        if(older) {
-          if(this.reverse) this.prevTargets.unshift(t);
-          else this.nextTargets.push(t);
-        } else {
-          if(this.reverse) this.nextTargets.push(t);
-          else this.prevTargets.unshift(t);
-        }
-      });
-
-      this.buttons.prev.style.display = this.prevTargets.length ? '' : 'none';
-      this.buttons.next.style.display = this.nextTargets.length ? '' : 'none';
-    }, () => {}).then(() => {
-      if(older) this.loadMediaPromiseDown = null;
-      else this.loadMediaPromiseUp = null;
-    });
-
-    if(older) this.loadMediaPromiseDown = promise;
-    else this.loadMediaPromiseUp = promise;
-
-    return promise;
-  }
-
-  private updateMediaSource(target: HTMLElement, url: string, tagName: 'video' | 'img') {
+  protected updateMediaSource(target: HTMLElement, url: string, tagName: 'video' | 'img') {
     //if(target instanceof SVGSVGElement) {
       const el = target.querySelector(tagName) as HTMLElement;
       renderImageFromUrl(el, url);
@@ -860,12 +760,30 @@ export class AppMediaViewer {
 
     } */
   }
+
+  protected setAuthorInfo(fromID: number, timestamp: number) {
+    const date = new Date(timestamp * 1000);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    const dateStr = months[date.getMonth()] + ' ' + date.getDate() + ' at '+ date.getHours() + ':' + ('0' + date.getMinutes()).slice(-2);
+    this.author.date.innerText = dateStr;
+
+    const name = appPeersManager.getPeerTitle(fromID);
+    this.author.nameEl.innerHTML = name;
+
+    let oldAvatar = this.author.avatarEl;
+    this.author.avatarEl = (this.author.avatarEl.cloneNode() as AvatarElement);
+    this.author.avatarEl.setAttribute('peer', '' + fromID);
+    oldAvatar.parentElement.replaceChild(this.author.avatarEl, oldAvatar);
+  }
   
-  public async openMedia(message: any, target?: HTMLElement, reverse = false, targetContainer?: HTMLElement, 
-    prevTargets: AppMediaViewer['prevTargets'] = [], nextTargets: AppMediaViewer['prevTargets'] = [], needLoadMore = true) {
+  protected async _openMedia(media: any, fromID: number, fromRight: number, target?: HTMLElement, reverse = false, 
+    prevTargets: TargetType[] = [], nextTargets: TargetType[] = [], needLoadMore = true) {
     if(this.setMoverPromise) return this.setMoverPromise;
-    this.log('openMedia doc:', message);
-    const media = message.media.photo || message.media.document || message.media.webpage.document || message.media.webpage.photo;
+
+    this.log('openMedia:', media, fromID);
+
+    this.setAuthorInfo(fromID, media.date);
     
     const isVideo = (media as MyDocument).type == 'video' || (media as MyDocument).type == 'gif';
     const isFirstOpen = !this.peerID;
@@ -889,25 +807,18 @@ export class AppMediaViewer {
       this.loadMore();
     } */
 
-    let fromRight = 0;
-    if(!isFirstOpen) {
-      //if(this.lastTarget === prevTarget) {
-      if(this.reverse) fromRight = this.currentMessageID < message.mid ? 1 : -1;
-      else fromRight = this.currentMessageID > message.mid ? 1 : -1;
-    }
-
     //if(prevTarget && (!prevTarget.parentElement || !this.isElementVisible(this.targetContainer, prevTarget))) prevTarget = null;
     //if(nextTarget && (!nextTarget.parentElement || !this.isElementVisible(this.targetContainer, nextTarget))) nextTarget = null;
 
-    this.buttons.prev.style.display = this.prevTargets.length ? '' : 'none';
-    this.buttons.next.style.display = this.nextTargets.length ? '' : 'none';
+    this.buttons.prev.classList.toggle('hide', !this.prevTargets.length);
+    this.buttons.next.classList.toggle('hide', !this.nextTargets.length);
     
-    const container = this.content.container;
+    const container = this.content.media;
     const useContainerAsTarget = !target;
     if(useContainerAsTarget) target = container;
 
-    this.currentMessageID = message.mid;
     this.lastTarget = target;
+    const tempID = ++this.tempID;
 
     if(this.needLoadMore) {
       if(this.nextTargets.length < 20) {
@@ -923,28 +834,6 @@ export class AppMediaViewer {
       container.innerHTML = '';
     }
     
-    const date = new Date(media.date * 1000);
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    
-    const dateStr = months[date.getMonth()] + ' ' + date.getDate() + ' at '+ date.getHours() + ':' + ('0' + date.getMinutes()).slice(-2);
-    this.author.date.innerText = dateStr;
-    
-    const name = appPeersManager.getPeerTitle(message.fromID);
-    this.author.nameEl.innerHTML = name;
-    
-    if(message.message) {
-      this.content.caption.innerHTML = RichTextProcessor.wrapRichText(message.message, {
-        entities: message.totalEntities
-      });
-    } else {
-      this.content.caption.innerHTML = '';
-    }
-    
-    let oldAvatar = this.author.avatarEl;
-    this.author.avatarEl = (this.author.avatarEl.cloneNode() as AvatarElement);
-    this.author.avatarEl.setAttribute('peer', '' + message.fromID);
-    oldAvatar.parentElement.replaceChild(this.author.avatarEl, oldAvatar);
-
     // ok set
 
     const wasActive = fromRight !== 0;
@@ -953,7 +842,11 @@ export class AppMediaViewer {
       this.setNewMover();
     } else {
       window.addEventListener('keydown', this.onKeyDown);
+      const mainColumns = this.pageEl.querySelector('#main-columns');
+      this.pageEl.insertBefore(this.wholeDiv, mainColumns);
+      void this.wholeDiv.offsetLeft; // reflow
       this.wholeDiv.classList.add('active');
+      $rootScope.overlayIsActive = true;
     }
 
     ////////this.log('wasActive:', wasActive);
@@ -1079,7 +972,7 @@ export class AppMediaViewer {
             }
 
             (promise as Promise<any>).then(async() => {
-              if(this.currentMessageID != message.mid) {
+              if(this.tempID != tempID) {
                 this.log.warn('media viewer changed video');
                 return;
               }
@@ -1116,7 +1009,7 @@ export class AppMediaViewer {
             this.preloader.attach(mover, true, cancellablePromise);
           });
           cancellablePromise.then(() => {
-            if(this.currentMessageID != message.mid) {
+            if(this.tempID != tempID) {
               this.log.warn('media viewer changed photo');
               return;
             }
@@ -1174,4 +1067,261 @@ export class AppMediaViewer {
   }
 }
 
-export default new AppMediaViewer();
+type AppMediaViewerTargetType = {
+  element: HTMLElement,
+  mid: number
+};
+export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delete' | 'forward', AppMediaViewerTargetType> {
+  public currentMessageID = 0;
+
+  constructor() {
+    super(['delete', 'forward']);
+
+    const stub = document.createElement('div');
+    stub.classList.add(MEDIA_VIEWER_CLASSNAME + '-stub');
+    this.content.main.prepend(stub);
+
+    this.content.caption = document.createElement('div');
+    this.content.caption.classList.add(MEDIA_VIEWER_CLASSNAME + '-caption');
+    this.content.main.append(this.content.caption);
+
+    this.setBtnMenuToggle([{
+      icon: 'forward',
+      text: 'Forward',
+      onClick: this.onForwardClick
+    }, {
+      icon: 'download',
+      text: 'Download',
+      onClick: this.onDownloadClick
+    }, {
+      icon: 'delete',
+      text: 'Delete',
+      onClick: () => {}
+    }]);
+
+    // * constructing html end
+    
+    this.setListeners();
+  }
+
+  protected setListeners() {
+    super.setListeners();
+    this.buttons.forward.addEventListener('click', this.onForwardClick);
+    this.author.container.addEventListener('click', this.onAuthorClick);
+  }
+
+  public close(e?: MouseEvent) {
+    const good = !this.setMoverAnimationPromise;
+    const promise = super.close(e);
+
+    if(good) { // clear
+      this.currentMessageID = 0;
+    }
+
+    return promise;
+  }
+
+  onPrevClick = (target: AppMediaViewerTargetType) => {
+    this.nextTargets.unshift({element: this.lastTarget, mid: this.currentMessageID});
+    this.openMedia(appMessagesManager.getMessage(target.mid), target.element);
+  };
+
+  onNextClick = (target: AppMediaViewerTargetType) => {
+    this.prevTargets.push({element: this.lastTarget, mid: this.currentMessageID});
+    this.openMedia(appMessagesManager.getMessage(target.mid), target.element);
+  };
+
+  onForwardClick = (e: MouseEvent) => {
+    if(this.currentMessageID) {
+      appSidebarRight.forwardTab.open([this.currentMessageID]);
+    }
+  };
+
+  onAuthorClick = (e: MouseEvent) => {
+    if(this.currentMessageID) {
+      const mid = this.currentMessageID;
+      this.close(e).then(() => {
+        const message = appMessagesManager.getMessage(mid);
+        appImManager.setPeer(message.peerID, mid);
+      });
+    }
+  };
+
+  onDownloadClick = (e: MouseEvent) => {
+    const message = appMessagesManager.getMessage(this.currentMessageID);
+    if(message.media.photo) {
+      appPhotosManager.savePhotoFile(message.media.photo);
+    } else {
+      let document: MyDocument = null;
+
+      if(message.media.webpage) document = message.media.webpage.document;
+      else document = message.media.document;
+
+      if(document) {
+        //console.log('will save document:', document);
+        appDocsManager.saveDocFile(document);
+      }
+    }
+  };
+
+  // нет смысла делать проверку для reverse и loadMediaPromise
+  protected loadMoreMedia = (older = true) => {
+    //if(!older && this.reverse) return;
+
+    if(older && this.loadedAllMediaDown) return;
+    else if(!older && this.loadedAllMediaUp) return;
+
+    if(older && this.loadMediaPromiseDown) return this.loadMediaPromiseDown;
+    else if(!older && this.loadMediaPromiseUp) return this.loadMediaPromiseUp;
+
+    const loadCount = 50;
+    const backLimit = older ? 0 : loadCount;
+    let maxID = this.currentMessageID;
+  
+    let anchor: {element: HTMLElement, mid: number};
+    if(older) {
+      anchor = this.reverse ? this.prevTargets[0] : this.nextTargets[this.nextTargets.length - 1];
+    } else {
+      anchor = this.reverse ? this.nextTargets[this.nextTargets.length - 1] : this.prevTargets[0];
+    }
+
+    if(anchor) maxID = anchor.mid;
+    if(!older) maxID += 1;
+
+    const peerID = this.peerID;
+
+    const promise = appMessagesManager.getSearch(peerID, '', 
+      {_: 'inputMessagesFilterPhotoVideo'}, maxID, loadCount/* older ? loadCount : 0 */, 0, backLimit).then(value => {
+      if(this.peerID != peerID) {
+        this.log.warn('peer changed');
+        return;
+      }
+
+      this.log('loaded more media by maxID:', maxID, value, older, this.reverse);
+
+      if(value.history.length < loadCount) {
+        /* if(this.reverse) {
+          if(older) this.loadedAllMediaUp = true;
+          else this.loadedAllMediaDown = true;
+        } else { */
+          if(older) this.loadedAllMediaDown = true;
+          else this.loadedAllMediaUp = true;
+        //}
+      }
+
+      const method = older ? value.history.forEach : value.history.forEachReverse;
+      method.call(value.history, mid => {
+        const message = appMessagesManager.getMessage(mid);
+        const media = message.media;
+
+        if(!media || !(media.photo || media.document || (media.webpage && media.webpage.document))) return;
+        if(media._ == 'document' && media.type != 'video') return;
+
+        const t = {element: null as HTMLElement, mid: mid};
+        if(older) {
+          if(this.reverse) this.prevTargets.unshift(t);
+          else this.nextTargets.push(t);
+        } else {
+          if(this.reverse) this.nextTargets.push(t);
+          else this.prevTargets.unshift(t);
+        }
+      });
+
+      this.buttons.prev.style.display = this.prevTargets.length ? '' : 'none';
+      this.buttons.next.style.display = this.nextTargets.length ? '' : 'none';
+    }, () => {}).then(() => {
+      if(older) this.loadMediaPromiseDown = null;
+      else this.loadMediaPromiseUp = null;
+    });
+
+    if(older) this.loadMediaPromiseDown = promise;
+    else this.loadMediaPromiseUp = promise;
+
+    return promise;
+  };
+
+  private setCaption(message: any) {
+    const caption = message.message;
+    if(caption) {
+      this.content.caption.innerHTML = RichTextProcessor.wrapRichText(caption, {
+        entities: message.totalEntities
+      });
+    } else {
+      this.content.caption.innerHTML = '';
+    }
+  }
+
+  public async openMedia(message: any, target?: HTMLElement, reverse = false, 
+    prevTargets: AppMediaViewer['prevTargets'] = [], nextTargets: AppMediaViewer['prevTargets'] = [], needLoadMore = true) {
+    if(this.setMoverPromise) return this.setMoverPromise;
+
+    const fromID = message.fromID;
+    const media = message.media.photo || message.media.document || message.media.webpage.document || message.media.webpage.photo;
+
+    const isFirstOpen = !this.peerID;
+    let fromRight = 0;
+    if(!isFirstOpen) {
+      //if(this.lastTarget === prevTarget) {
+      if(this.reverse) fromRight = this.currentMessageID < message.mid ? 1 : -1;
+      else fromRight = this.currentMessageID > message.mid ? 1 : -1;
+    } else {
+      this.reverse = reverse;
+    }
+
+    this.currentMessageID = message.mid;
+    const promise = super._openMedia(media, fromID, fromRight, target, reverse, prevTargets, nextTargets, needLoadMore);
+    this.setCaption(message);
+
+    return promise;
+  }
+}
+
+export class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete', {}> {
+  constructor() {
+    super(['delete']);
+
+    this.setBtnMenuToggle([{
+      icon: 'download',
+      text: 'Download',
+      onClick: this.onDownloadClick
+    }, {
+      icon: 'delete',
+      text: 'Delete',
+      onClick: () => {}
+    }]);
+
+    // * constructing html end
+    
+    this.setListeners();
+  }
+
+  onDownloadClick = (e: MouseEvent) => {
+
+  };
+
+  protected loadMoreMedia = (older = true) => {
+    return Promise.resolve();
+  };
+
+  public async openMedia(peerID: number, target?: HTMLElement, reverse = false, 
+    prevTargets: AppMediaViewerAvatar['prevTargets'] = [], nextTargets: AppMediaViewerAvatar['prevTargets'] = [], needLoadMore = true) {
+    if(this.setMoverPromise) return this.setMoverPromise;
+
+    return appProfileManager.getFullPhoto(peerID).then(photo => {
+      const fromID = peerID;
+
+      const isFirstOpen = !this.peerID;
+      let fromRight = 0;
+      if(!isFirstOpen) {
+        //if(this.lastTarget === prevTarget) {
+        /* if(this.reverse) fromRight = this.currentMessageID < message.mid ? 1 : -1;
+        else fromRight = this.currentMessageID > message.mid ? 1 : -1; */
+        fromRight = 1;
+      } else {
+        this.reverse = reverse;
+      }
+  
+      const promise = super._openMedia(photo, fromID, fromRight, target, reverse, prevTargets, nextTargets, needLoadMore);
+    });
+  }
+}

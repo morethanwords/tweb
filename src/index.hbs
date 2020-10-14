@@ -139,42 +139,6 @@
         <path id="poll-line" d="M4.47,5.33v13.6c0,4.97,4.03,9,9,9h458.16"/>
       </defs>
     </svg>
-    <div class="media-viewer-whole">
-      <div class="overlays">
-        <div class="media-viewer">
-          <div class="media-viewer-author">
-            <avatar-element class="media-viewer-userpic"></avatar-element>
-            <div class="media-viewer-name"></div>
-            <div class="media-viewer-date"></div>
-          </div>
-          <div class="media-viewer-buttons">
-            <div class="btn-icon tgico-delete menu-delete rp"></div>
-            <div class="btn-icon tgico-forward menu-forward rp"></div>
-            <div class="btn-icon tgico-download menu-download rp"></div>
-            <div class="btn-icon tgico-close menu-close rp"></div>
-          </div>
-          <div class="media-viewer-content">
-            <div class="media-viewer-stub"></div>
-            <div class="media-viewer-container">
-              <div class="media-viewer-media"></div>
-            </div>
-            <div class="media-viewer-caption"></div>
-          </div>
-        </div>
-      </div>
-      <div class="btn-icon tgico-close only-handhelds menu-mobile-close rp"></div>
-      <div class="btn-icon tgico-more rp btn-menu-toggle only-handhelds">
-        <div class="btn-menu bottom-left">
-          <div class="btn-menu-item menu-menu-forward tgico-forward rp">Forward</div>
-          <div class="btn-menu-item menu-menu-download tgico-download rp">Download</div>
-          <div class="btn-menu-item menu-menu-delete danger tgico-delete rp btn-disabled">Delete</div>
-        </div>
-      </div>
-      {{!-- <div class="media-viewer-switchers"> --}}
-        <div class="media-viewer-switcher media-viewer-switcher-left menu-prev"><span class="tgico-down media-viewer-prev-button"></span></div>
-        <div class="media-viewer-switcher media-viewer-switcher-right menu-next"><span class="tgico-down media-viewer-next-button"></span></div>
-      {{!-- </div> --}}
-    </div>
     <div id="main-columns" class="tabs-container">
       <div class="chats-container sidebar sidebar-left main-column" id="column-left">
         <div class="sidebar-slider tabs-container">
@@ -305,7 +269,7 @@
             </div>
             <div class="sidebar-content">
               <div class="profile-content-wrapper scrollable scrollable-y">
-                <avatar-element class="profile-avatar"></avatar-element>
+                <avatar-element class="profile-avatar" clickable></avatar-element>
                 <div class="profile-name"></div>
                 <div class="profile-subtitle"></div>
                 <div class="profile-buttons">
@@ -451,7 +415,7 @@
           <button class="btn-icon tgico-back sidebar-close-button"></button>
           <div class="chat-info">
             <div class="person">
-              <avatar-element id="im-avatar" dialog="1"></avatar-element>
+              <avatar-element id="im-avatar" dialog="1" clickable></avatar-element>
               <div class="content">
                 <div class="top">
                   <div class="user-title" id="im-title"></div>
@@ -573,7 +537,7 @@
             </div>
             <div class="profile-content">
               <div class="profile-content-wrapper">
-                <avatar-element class="profile-avatar" dialog="1"></avatar-element>
+                <avatar-element class="profile-avatar" dialog="1" clickable></avatar-element>
                 <div class="profile-name"></div>
                 <div class="profile-subtitle"></div>
         

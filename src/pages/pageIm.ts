@@ -1,6 +1,6 @@
 //import {stackBlurImage} from '../lib/StackBlur';
-import Page from "./page";
 import { DEBUG } from "../lib/mtproto/mtproto_config";
+import Page from "./page";
 
 let onFirstMount = () => {
   //return;
@@ -26,24 +26,9 @@ let onFirstMount = () => {
   
     //(Array.from(document.getElementsByClassName('rp')) as HTMLElement[]).forEach(el => ripple(el));
 
-    const misc = await import("../components/misc");
+    const misc = await import("../components/buttonMenuToggle");
     Array.from(document.getElementsByClassName('btn-menu-toggle')).forEach((el) => {
-      (el as HTMLElement).addEventListener('click', (e) => {
-        //console.log('click pageIm');
-        if(!el.classList.contains('btn-menu-toggle')) return false;
-  
-        //window.removeEventListener('mousemove', onMouseMove);
-        let openedMenu = el.querySelector('.btn-menu') as HTMLDivElement;
-        e.cancelBubble = true;
-        //cancelEvent(e);
-  
-        if(el.classList.contains('menu-open')) {
-          el.classList.remove('menu-open');
-          openedMenu.classList.remove('active');
-        } else {
-          misc.openBtnMenu(openedMenu);
-        }
-      });
+      misc.ButtonMenuToggleHandler(el as HTMLElement);
     });
   })
 

@@ -1,5 +1,7 @@
 import appProfileManager from "../lib/appManagers/appProfileManager";
 import $rootScope from "../lib/rootScope";
+import { cancelEvent } from "../lib/utils";
+import { AppMediaViewerAvatar } from "./appMediaViewer";
 
 $rootScope.$on('avatar_update', (e) => {
   let peerID = e.detail;
@@ -26,12 +28,27 @@ export default class AvatarElement extends HTMLElement {
     // (может вызываться много раз, если элемент многократно добавляется/удаляется)
 
     this.isDialog = !!this.getAttribute('dialog');
+    if(this.getAttribute('clickable') === '') {
+      this.setAttribute('clickable', 'set');
+      this.addEventListener('click', (e) => {
+        cancelEvent(e);
+        //console.log('avatar clicked');
+        const peerID = this.peerID;
+        appProfileManager.getFullPhoto(this.peerID).then(photo => {
+          if(this.peerID != peerID) return;
+          if(photo) {
+            const good = Array.from(this.querySelectorAll('img')).find(img => !img.classList.contains('emoji'));
+            new AppMediaViewerAvatar().openMedia(peerID, good ? this : null);
+          }
+        });
+      });
+    }
   }
 
-  disconnectedCallback() {
+  //disconnectedCallback() {
     // браузер вызывает этот метод при удалении элемента из документа
     // (может вызываться много раз, если элемент многократно добавляется/удаляется)
-  }
+  //}
 
   static get observedAttributes(): string[] {
     return ['peer', 'dialog', 'peer-title'/* массив имён атрибутов для отслеживания их изменений */];

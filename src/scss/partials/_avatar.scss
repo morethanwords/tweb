@@ -56,4 +56,8 @@ avatar-element {
   &.tgico-avatar_deletedaccount {
     font-size: 3rem;
   }
+
+  &[clickable] {
+    cursor: pointer;
+  }
 }

@@ -2,6 +2,7 @@ import { CancellablePromise } from "../../helpers/cancellablePromise";
 import { isSafari } from "../../helpers/userAgent";
 import { FileLocation, InputFileLocation, Photo, PhotoSize } from "../../layer";
 import { bytesFromHex, getFileNameByLocation } from "../bin_utils";
+import { DownloadOptions } from "../mtproto/apiFileManager";
 import referenceDatabase, { ReferenceContext } from "../mtproto/referenceDatabase";
 import { calcImageInBox, isObject, safeReplaceArrayInObject } from "../utils";
 import { MyDocument } from "./appDocsManager";
@@ -245,7 +246,7 @@ export class AppPhotosManager {
     return {url: getFileURL('photo', downloadOptions), location: downloadOptions.location};
   } */
   
-  public preloadPhoto(photoID: any, photoSize?: PhotoSize): CancellablePromise<Blob> {
+  public preloadPhoto(photoID: any, photoSize?: PhotoSize, downloadOptions?: DownloadOptions): CancellablePromise<Blob> {
     const photo = this.getPhoto(photoID);
 
     // @ts-ignore
@@ -265,7 +266,10 @@ export class AppPhotosManager {
       return Promise.resolve() as any;
     }
     
-    const downloadOptions = this.getPhotoDownloadOptions(photo, photoSize);
+    if(!downloadOptions) {
+      downloadOptions = this.getPhotoDownloadOptions(photo, photoSize);
+    }
+
     const fileName = getFileNameByLocation(downloadOptions.location);
 
     let download = appDownloadManager.getDownload(fileName);

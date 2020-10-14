@@ -247,7 +247,7 @@ $move-duration: .35s;
     }
 
     &.active {
-      transition: $open-duration transform;
+      transition: $open-duration transform, $open-duration border-radius;
     }
 
     &.moving {

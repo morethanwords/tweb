@@ -1,20 +1,20 @@
 console.log('Services included!');
 
-import AppUsersManager from './appManagers/appUsersManager';
-import AppChatsManager from './appManagers/appChatsManager';
-import AppMessagesIDsManager from './appManagers/appMessagesIDsManager';
-import ApiUpdatesManager from './appManagers/apiUpdatesManager';
-import AppPhotosManager from './appManagers/appPhotosManager';
-import AppDialogsManager from './appManagers/appDialogsManager';
-import AppMessagesManager from './appManagers/appMessagesManager';
-import AppProfileManager from './appManagers/appProfileManager';
-import AppImManager from './appManagers/appImManager';
-import AppPeersManager from './appManagers/appPeersManager';
-import AppStickersManager from './appManagers/appStickersManager';
-import AppDocsManager from './appManagers/appDocsManager';
-import AppSidebarRight from '../components/sidebarRight';
+import AppMediaViewer from '../components/appMediaViewer';
 import AppSidebarLeft from '../components/sidebarLeft';
-import AppMediaViewer from './appManagers/appMediaViewer';
+import AppSidebarRight from '../components/sidebarRight';
+import ApiUpdatesManager from './appManagers/apiUpdatesManager';
+import AppChatsManager from './appManagers/appChatsManager';
+import AppDialogsManager from './appManagers/appDialogsManager';
+import AppDocsManager from './appManagers/appDocsManager';
+import AppImManager from './appManagers/appImManager';
+import AppMessagesIDsManager from './appManagers/appMessagesIDsManager';
+import AppMessagesManager from './appManagers/appMessagesManager';
+import AppPeersManager from './appManagers/appPeersManager';
+import AppPhotosManager from './appManagers/appPhotosManager';
+import AppProfileManager from './appManagers/appProfileManager';
+import AppStickersManager from './appManagers/appStickersManager';
+import AppUsersManager from './appManagers/appUsersManager';
 //import AppSharedMediaManager from './appManagers/appSharedMediaManager';
 
 const appUsersManager = AppUsersManager;
