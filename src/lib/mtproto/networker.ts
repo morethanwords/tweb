@@ -1153,8 +1153,8 @@ export default class MTPNetworker {
         break;
   
       case 'bad_msg_notification':
-        this.log.error('Bad msg notification', message);
         var sentMessage = this.sentMessages[message.bad_msg_id];
+        this.log.error('Bad msg notification', message, sentMessage);
         if(!sentMessage || sentMessage.seq_no != message.bad_msg_seqno) {
           this.log(message.bad_msg_id, message.bad_msg_seqno);
           throw new Error('[MT] Bad msg notification for invalid message');
@@ -1168,7 +1168,7 @@ export default class MTPNetworker {
             this.updateSession();
           }
 
-          var badMessage = this.updateSentMessage(message.bad_msg_id);
+          const badMessage = this.updateSentMessage(message.bad_msg_id);
           if(badMessage) this.pushResend(badMessage.msg_id); // fix 23.01.2020
           this.ackMessage(messageID);
         }

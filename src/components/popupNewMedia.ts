@@ -6,6 +6,7 @@ import { Layouter, RectPart } from "./groupedLayout";
 import InputField from "./inputField";
 import { PopupElement } from "./popup";
 import { ripple } from "./ripple";
+import { toast } from "./toast";
 import { wrapDocument } from "./wrappers";
 
 type SendFileParams = Partial<{
@@ -15,6 +16,8 @@ type SendFileParams = Partial<{
   height: number,
   duration: number
 }>;
+
+const MAX_LENGTH_CAPTION = 1024;
 
 export default class PopupNewMedia extends PopupElement {
   private btnSend: HTMLElement;
@@ -38,14 +41,14 @@ export default class PopupNewMedia extends PopupElement {
     this.btnSend.className = 'btn-primary';
     this.btnSend.innerText = 'SEND';
     ripple(this.btnSend);
-    this.btnSend.addEventListener('click', this.send, {once: true});
+    this.btnSend.addEventListener('click', this.send);
   
     this.header.append(this.btnSend);
     
     this.mediaContainer = document.createElement('div');
     this.mediaContainer.classList.add('popup-photo');
 
-    const inputField = InputField('Add a caption...', 'Caption', 'photo-caption');
+    const inputField = InputField('Add a caption...', 'Caption', 'photo-caption', MAX_LENGTH_CAPTION, 80);
     this.input = inputField.firstElementChild as HTMLInputElement;
     this.container.append(this.mediaContainer, inputField);
 
@@ -64,8 +67,13 @@ export default class PopupNewMedia extends PopupElement {
   };
 
   public send = () => {
+    let caption = this.input.value.trim();
+    if(caption.length > MAX_LENGTH_CAPTION) {
+      toast('Caption is too long.');
+      return;
+    }
+
     this.destroy();
-    let caption = this.input.value;
     const willAttach = this.willAttach;
     willAttach.isMedia = willAttach.type == 'media';
 
