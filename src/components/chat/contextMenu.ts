@@ -7,7 +7,8 @@ import $rootScope from "../../lib/rootScope";
 import { findUpClassName } from "../../lib/utils";
 import ButtonMenu, { ButtonMenuItemOptions } from "../buttonMenu";
 import { attachContextMenuListener, openBtnMenu, positionMenu } from "../misc";
-import { PopupButton, PopupPeer } from "../popup";
+import { PopupButton } from "../popup";
+import PopupPeer from "../popupPeer";
 import appSidebarRight from "../sidebarRight";
 
 export class ChatContextMenu {

@@ -1,7 +1,7 @@
+import Countries, { Country, PhoneCodesMain } from "../countries";
 import mediaSizes from "../helpers/mediaSizes";
 import { isTouchSupported } from "../helpers/touchSupport";
 import { isApple } from "../helpers/userAgent";
-import Config from "../lib/config";
 
 export const loadedURLs: {[url: string]: boolean} = {};
 const set = (elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLVideoElement, url: string) => {
@@ -61,30 +61,34 @@ export function putPreloader(elem: Element, returnDiv = false) {
   elem.innerHTML += html;
 }
 
+let sortedCountries: Country[];
 export function formatPhoneNumber(str: string) {
   str = str.replace(/\D/g, '');
   let phoneCode = str.slice(0, 6);
   
   ////console.log('str', str, phoneCode);
-  
-  let sortedCountries = Config.Countries.slice().sort((a, b) => b.phoneCode.length - a.phoneCode.length);
+  if(!sortedCountries) {
+    sortedCountries = Countries.slice().sort((a, b) => b.phoneCode.length - a.phoneCode.length);
+  }
   
   let country = sortedCountries.find((c) => {
     return c.phoneCode.split(' and ').find((c) => phoneCode.indexOf(c.replace(/\D/g, '')) == 0);
   });
+
+  if(!country) return {formatted: str, country};
+
+  country = PhoneCodesMain[country.phoneCode] || country;
   
-  let pattern = country ? country.pattern || country.phoneCode : '';
-  if(country) {
-    pattern.split('').forEach((symbol, idx) => {
-      if(symbol == ' ' && str[idx] != ' ' && str.length > idx) {
-        str = str.slice(0, idx) + ' ' + str.slice(idx);
-      }
-    });
-    
-    /* if(country.pattern) {
-      str = str.slice(0, country.pattern.length);
-    } */
-  }
+  let pattern = country.pattern || country.phoneCode;
+  pattern.split('').forEach((symbol, idx) => {
+    if(symbol == ' ' && str[idx] != ' ' && str.length > idx) {
+      str = str.slice(0, idx) + ' ' + str.slice(idx);
+    }
+  });
+  
+  /* if(country.pattern) {
+    str = str.slice(0, country.pattern.length);
+  } */
   
   return {formatted: str, country};
 }

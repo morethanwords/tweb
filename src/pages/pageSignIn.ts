@@ -1,6 +1,6 @@
 import { formatPhoneNumber, putPreloader } from "../components/misc";
 import Scrollable from '../components/scrollable';
-import Config from '../lib/config';
+import Countries, { Country as _Country } from "../countries";
 import apiManager from "../lib/mtproto/mtprotoworker";
 import { App, Modes } from "../lib/mtproto/mtproto_config";
 import { RichTextProcessor } from '../lib/richtextprocessor';
@@ -9,13 +9,7 @@ import Page from "./page";
 import pageAuthCode from "./pageAuthCode";
 import pageSignQR from './pageSignQR';
 
-
-type Country = {
-  name: string,
-  code: string,
-  phoneCode: string,
-  pattern: string,
-  emoji: string,
+type Country = _Country & {
   li?: HTMLLIElement[]
 };
 
@@ -24,7 +18,7 @@ let btnNext: HTMLButtonElement = null;
 
 let onFirstMount = () => {
   if(Modes.test) {
-    Config.Countries.push({
+    Countries.push({
       name: 'Test Country',
       phoneCode: '999 66',
       code: 'TC',
@@ -36,7 +30,7 @@ let onFirstMount = () => {
   }
 
   //const countries: Country[] = _countries.default.filter(c => c.emoji);
-  const countries: Country[] = Config.Countries.filter(c => c.emoji).sort((a, b) => a.name.localeCompare(b.name));
+  const countries: Country[] = Countries.filter(c => c.emoji).sort((a, b) => a.name.localeCompare(b.name));
 
   let lastCountrySelected: Country = null;
 

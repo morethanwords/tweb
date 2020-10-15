@@ -6,7 +6,8 @@ import appPeersManager from "../lib/appManagers/appPeersManager";
 import $rootScope from "../lib/rootScope";
 import { findUpTag } from "../lib/utils";
 import { parseMenuButtonsTo, positionMenu, openBtnMenu } from "./misc";
-import { PopupButton, PopupPeer } from "./popup";
+import { PopupButton } from "./popup";
+import PopupPeer from "./popupPeer";
 
 export default class DialogsContextMenu {
   private element = document.getElementById('dialogs-contextmenu') as HTMLDivElement;
