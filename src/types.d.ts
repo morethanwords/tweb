@@ -11,9 +11,11 @@ export type InvokeApiOptions = Partial<{
   singleInRequest: true,
   startMaxLength: number,
 
+  prepareTempMessageID: string,
   afterMessageID: string,
   resultType: string,
   
+  timeout: number,
   waitTime: number,
   stopTime: number,
   rawError: any

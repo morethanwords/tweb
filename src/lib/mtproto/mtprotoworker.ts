@@ -1,17 +1,18 @@
-import {isObject} from '../utils';
-import AppStorage from '../storage';
+import MTProtoWorker from 'worker-loader!./mtproto.worker';
+import type { MethodDeclMap } from '../../layer';
+import type { InvokeApiOptions } from '../../types';
 import CryptoWorkerMethods from '../crypto/crypto_methods';
 import { logger } from '../logger';
-import webpWorkerController from '../webp/webpWorkerController';
-import MTProtoWorker from 'worker-loader!./mtproto.worker';
-import type { DownloadOptions } from './apiFileManager';
-import type { ServiceWorkerTask, ServiceWorkerTaskResponse } from './mtproto.service';
-import { MethodDeclMap } from '../../layer';
-import { MOUNT_CLASS_TO } from './mtproto_config';
 import $rootScope from '../rootScope';
-import referenceDatabase from './referenceDatabase';
+import AppStorage from '../storage';
+import { isObject } from '../utils';
+import webpWorkerController from '../webp/webpWorkerController';
+import type { DownloadOptions } from './apiFileManager';
 import { ApiError } from './apiManager';
-import { InvokeApiOptions } from '../../types';
+import type { ServiceWorkerTask, ServiceWorkerTaskResponse } from './mtproto.service';
+import { MOUNT_CLASS_TO } from './mtproto_config';
+import type { MTMessage } from './networker';
+import referenceDatabase from './referenceDatabase';
 
 type Task = {
   taskID: number,
@@ -24,6 +25,7 @@ const USEWORKERASWORKER = true;
 class ApiManagerProxy extends CryptoWorkerMethods {
   public worker: Worker;
   public postMessage: (...args: any[]) => void;
+  private afterMessageIDTemp = 0;
 
   private taskID = 0;
   private awaiting: {
@@ -206,23 +208,20 @@ class ApiManagerProxy extends CryptoWorkerMethods {
     this.updatesProcessor = callback;
   }
 
-  public invokeApi<T extends keyof MethodDeclMap>(method: T, params: MethodDeclMap[T]['req'] = {}, options: {
-    dcID?: number,
-    timeout?: number,
-    noErrorBox?: boolean,
-    fileUpload?: boolean,
-    ignoreErrors?: boolean,
-    fileDownload?: boolean,
-    createNetworker?: boolean,
-    singleInRequest?: boolean,
-    startMaxLength?: number,
-    
-    waitTime?: number,
-    stopTime?: number,
-    rawError?: any
-  } = {}): Promise<MethodDeclMap[T]['res']> {
+  public invokeApi<T extends keyof MethodDeclMap>(method: T, params: MethodDeclMap[T]['req'] = {}, options: InvokeApiOptions = {}): Promise<MethodDeclMap[T]['res']> {
     //console.log('will invokeApi:', method, params, options);
     return this.performTaskWorker('invokeApi', method, params, options);
+  }
+
+  public invokeApiAfter<T extends keyof MethodDeclMap>(method: T, params: MethodDeclMap[T]['req'] = {}, options: InvokeApiOptions = {}): Promise<MethodDeclMap[T]['res']> {
+    let o = options;
+    o.prepareTempMessageID = '' + ++this.afterMessageIDTemp;
+    
+    o = {...options};
+    (options as MTMessage).messageID = o.prepareTempMessageID;
+
+    //console.log('will invokeApi:', method, params, options);
+    return this.performTaskWorker('invokeApi', method, params, o);
   }
 
   public setBaseDcID(dcID: number) {

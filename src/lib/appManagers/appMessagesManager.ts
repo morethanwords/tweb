@@ -748,9 +748,9 @@ export class AppMessagesManager {
       text = splitted[0];
 
       for(let i = 1; i < splitted.length; ++i) {
-        //setTimeout(() => {
+        setTimeout(() => {
           this.sendText(peerID, splitted[i], options);
-        //}, i);
+        }, i);
       }
     }
 
@@ -837,7 +837,7 @@ export class AppMessagesManager {
 
       var apiPromise: any;
       if(options.viaBotID) {
-        apiPromise = apiManager.invokeApi('messages.sendInlineBotResult', {
+        apiPromise = apiManager.invokeApiAfter('messages.sendInlineBotResult', {
           peer: appPeersManager.getInputPeerByID(peerID),
           random_id: randomID as any,
           reply_to_msg_id: replyToMsgID ? appMessagesIDsManager.getMessageLocalID(replyToMsgID) : undefined,
@@ -846,7 +846,7 @@ export class AppMessagesManager {
           clear_draft: options.clearDraft
         }, sentRequestOptions);
       } else {
-        apiPromise = apiManager.invokeApi('messages.sendMessage', {
+        apiPromise = apiManager.invokeApiAfter('messages.sendMessage', {
           no_webpage: options.noWebPage,
           peer: appPeersManager.getInputPeerByID(peerID),
           message: text,
@@ -1731,7 +1731,7 @@ export class AppMessagesManager {
 
       let apiPromise: Promise<any>;
       if(options.viaBotID) {
-        apiPromise = apiManager.invokeApi('messages.sendInlineBotResult', {
+        apiPromise = apiManager.invokeApiAfter('messages.sendInlineBotResult', {
           peer: appPeersManager.getInputPeerByID(peerID),
           random_id: randomID as any,
           reply_to_msg_id: replyToMsgID ? appMessagesIDsManager.getMessageLocalID(replyToMsgID) : undefined,
@@ -1740,7 +1740,7 @@ export class AppMessagesManager {
           clear_draft: options.clearDraft
         }, sentRequestOptions);
       } else {
-        apiPromise = apiManager.invokeApi('messages.sendMedia', {
+        apiPromise = apiManager.invokeApiAfter('messages.sendMedia', {
           peer: appPeersManager.getInputPeerByID(peerID),
           media: inputMedia,
           random_id: randomID as any,
@@ -2032,7 +2032,7 @@ export class AppMessagesManager {
         sentRequestOptions.afterMessageID = this.pendingAfterMsgs[peerID].messageID;
       }
 
-      const promise = apiManager.invokeApi('messages.forwardMessages', {
+      const promise = apiManager.invokeApiAfter('messages.forwardMessages', {
         from_peer: appPeersManager.getInputPeerByID(-channelID),
         id: msgIDs,
         random_id: randomIDs as any,

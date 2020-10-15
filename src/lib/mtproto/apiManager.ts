@@ -1,6 +1,6 @@
 import AppStorage from '../storage';
 
-import MTPNetworker from './networker';
+import MTPNetworker, { MTMessage } from './networker';
 import { bytesFromHex, bytesToHex, isObject } from '../bin_utils';
 import networkerFactory from './networkerFactory';
 //import { telegramMeWebService } from './mtproto';
@@ -46,6 +46,8 @@ export class ApiManager {
   public telegramMeNotified = false;
 
   private log: ReturnType<typeof logger> = logger('API');
+
+  private afterMessageTempIDs: {[tempID: string]: string} = {};
   
   constructor() {
     //MtpSingleInstanceService.start();
@@ -193,6 +195,13 @@ export class ApiManager {
 
     const deferred = deferredPromise<MethodDeclMap[T]['res']>();
 
+    const afterMessageIDTemp = options.afterMessageID;
+    if(afterMessageIDTemp) {
+      deferred.finally(() => {
+        delete this.afterMessageTempIDs[afterMessageIDTemp];
+      });
+    }
+
     if(MOUNT_CLASS_TO) {
       deferred.finally(() => {
         clearInterval(interval);
@@ -248,9 +257,15 @@ export class ApiManager {
     var cachedNetworker: MTPNetworker;
     var stack = (new Error()).stack || 'empty stack';
     var performRequest = (networker: MTPNetworker) => {
-      return (cachedNetworker = networker)
-      .wrapApiCall(method, params, options)
-      .then(deferred.resolve, (error: ApiError) => {
+      if(afterMessageIDTemp) {
+        options.afterMessageID = this.afterMessageTempIDs[afterMessageIDTemp];
+      }
+      const promise = (cachedNetworker = networker).wrapApiCall(method, params, options);
+      if(options.prepareTempMessageID) {
+        this.afterMessageTempIDs[options.prepareTempMessageID] = (options as MTMessage).messageID;
+      }
+
+      return promise.then(deferred.resolve, (error: ApiError) => {
         //if(!options.ignoreErrors) {
         if(error.type != 'FILE_REFERENCE_EXPIRED') {
           this.log.error('Error', error.code, error.type, this.baseDcID, dcID, method, params);

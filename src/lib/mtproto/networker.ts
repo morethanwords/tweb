@@ -6,7 +6,6 @@ import {TLDeserialization, TLSerialization} from './tl_utils';
 import CryptoWorker from '../crypto/cryptoworker';
 import AppStorage from '../storage';
 import Schema from './schema';
-
 import timeManager from './timeManager';
 import NetworkerFactory from './networkerFactory';
 import { logger, LogLevels } from '../logger';
@@ -30,7 +29,7 @@ import Socket from './transports/websocket';
 
 //console.error('networker included!', new Error().stack);
 
-type MessageOptions = InvokeApiOptions & Partial<{
+export type MTMessageOptions = InvokeApiOptions & Partial<{
   noResponse: true,
   longPoll: true,
   
@@ -39,7 +38,7 @@ type MessageOptions = InvokeApiOptions & Partial<{
   messageID: string,
 }>;
 
-type Message = InvokeApiOptions & MessageOptions & {
+export type MTMessage = InvokeApiOptions & MTMessageOptions & {
   msg_id: string,
   seq_no: number,
   body?: Uint8Array | number[],
@@ -76,7 +75,7 @@ export default class MTPNetworker {
   private lastServerMessages: Array<string> = [];
 
   private sentMessages: {
-    [msgID: string]: Message
+    [msgID: string]: MTMessage
   } = {};
 
   private pendingMessages: {[msgID: string]: number} = {};
@@ -195,7 +194,7 @@ export default class MTPNetworker {
     return seqNo;
   }
 
-  public wrapMtpCall(method: string, params: any = {}, options: MessageOptions = {}) {
+  public wrapMtpCall(method: string, params: any = {}, options: MTMessageOptions = {}) {
     const serializer = new TLSerialization({mtproto: true});
   
     serializer.storeMethod(method, params);
@@ -215,7 +214,7 @@ export default class MTPNetworker {
     return this.pushMessage(message, options);
   }
   
-  public wrapMtpMessage(object: any = {}, options: MessageOptions = {}) {
+  public wrapMtpMessage(object: any = {}, options: MTMessageOptions = {}) {
     const serializer = new TLSerialization({mtproto: true});
     serializer.storeObject(object, 'Object');
   
@@ -424,7 +423,7 @@ export default class MTPNetworker {
     
   }
 
-  private handleSentEncryptedRequestHTTP(promise: ReturnType<MTPNetworker['sendEncryptedRequest']>, message: Message, noResponseMsgs: string[]) {
+  private handleSentEncryptedRequestHTTP(promise: ReturnType<MTPNetworker['sendEncryptedRequest']>, message: MTMessage, noResponseMsgs: string[]) {
     promise
     .then((result) => {
       this.toggleOffline(false);
@@ -481,7 +480,7 @@ export default class MTPNetworker {
     seq_no: number,
     body: Uint8Array | number[],
     isAPI?: boolean
-  }, options: MessageOptions = {}) {
+  }, options: MTMessageOptions = {}) {
     return new Promise((resolve, reject) => {
       this.sentMessages[message.msg_id] = Object.assign(message, options, {
         deferred: {resolve, reject}
@@ -587,7 +586,7 @@ export default class MTPNetworker {
   
     if(this.pendingResends.length) {
       const resendMsgIDs: Array<string> = this.pendingResends.slice();
-      const resendOpts: MessageOptions = {
+      const resendOpts: MTMessageOptions = {
         noSchedule: true,
         notContentRelated: true,
         messageID: '' // will set in wrapMtpMessage->pushMessage
@@ -706,7 +705,7 @@ export default class MTPNetworker {
         }
       });
   
-      var containerSentMessage: Message = {
+      var containerSentMessage: MTMessage = {
         msg_id: timeManager.generateID(),
         seq_no: this.generateSeqNo(true),
         container: true,
@@ -776,7 +775,7 @@ export default class MTPNetworker {
     });
   }
 
-  public sendEncryptedRequest(message: Message, options: any = {}) {
+  public sendEncryptedRequest(message: MTMessage, options: any = {}) {
     const self = this;
 
     this.log.debug('Send encrypted', message, options, this.authKeyID);
