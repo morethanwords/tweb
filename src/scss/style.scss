@@ -1049,16 +1049,11 @@ input:focus, button:focus {
   }
 }
 
-.emoji {
-  display: inline-block;
-  /* width: 100%;
-  height: 100%; */
-  max-width: 100%;
-  max-height: 100%;
-  vertical-align: middle;
-
-  line-height: 1em;
-  font-size: 1em;
+span.emoji {
+  display: inline !important;
+  vertical-align: unset !important;
+  //line-height: 1em;
+  //font-size: 1em;
 
   font-family: apple color emoji,segoe ui emoji,noto color emoji,android emoji,emojisymbols,emojione mozilla,twemoji mozilla,segoe ui symbol;
 }
@@ -1067,6 +1062,13 @@ img.emoji {
   width: 18px;
   height: 18px;
   margin: 0 .125rem;
+
+  display: inline-block;
+  /* width: 100%;
+  height: 100%; */
+  max-width: 100%;
+  max-height: 100%;
+  vertical-align: middle;
 }
 
 .btn-circle {
@@ -1157,7 +1159,7 @@ img.emoji {
   }
 }
 
-[contenteditable] {
+[contenteditable=true] {
   user-select: text;
 }
 

@@ -89,6 +89,7 @@
     /* grid-gap: 4px; */
     width: 100%;
 
+    user-select: none;
     -webkit-user-select: none; /* disable selection/Copy of UIWebView */
     -webkit-touch-callout: none; /* disable the IOS popup when long-press on a link */
 
@@ -216,7 +217,6 @@
     vertical-align: middle;
     //margin: .1rem 0;
     line-height: 27px;
-    user-select: none;
   }
 
   .dialog-avatar {
