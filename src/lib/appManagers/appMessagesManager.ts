@@ -2243,7 +2243,7 @@ export class AppMessagesManager {
 
       const fwdHeader = apiMessage.fwd_from;
       if(fwdHeader) {
-        if(peerID == myID) {
+        //if(peerID == myID) {
           if(fwdHeader.saved_from_peer && fwdHeader.saved_from_msg_id) {
             const savedFromPeerID = appPeersManager.getPeerID(fwdHeader.saved_from_peer);
             const savedFromMid = appMessagesIDsManager.getFullMessageID(fwdHeader.saved_from_msg_id, 
@@ -2252,9 +2252,9 @@ export class AppMessagesManager {
           }
 
           apiMessage.fromID = fwdHeader.channel_id ? -fwdHeader.channel_id : appPeersManager.getPeerID(fwdHeader.from_id);
-        } else {
+        /* } else {
           apiMessage.fwdPostID = fwdHeader.channel_post;
-        }
+        } */
 
         apiMessage.fwdFromID = fwdHeader.channel_id ? -fwdHeader.channel_id : appPeersManager.getPeerID(fwdHeader.from_id);
 

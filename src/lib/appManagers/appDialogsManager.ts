@@ -693,15 +693,16 @@ export class AppDialogsManager {
   
       /* if(lastMessage.from_id == auth.id) { // You:  */
       if(peer._ != 'peerUser' && peerID != lastMessage.fromID) {
-        let sender = appUsersManager.getUser(lastMessage.fromID);
+        const sender = appPeersManager.getPeer(lastMessage.fromID);
         if(sender && sender.id) {
-          let senderBold = document.createElement('b');
+          const senderBold = document.createElement('b');
 
           let str = '';
           if(sender.id == $rootScope.myID) {
             str = 'You';
           } else {
-            str = sender.first_name || sender.last_name || sender.username;
+            //str = sender.first_name || sender.last_name || sender.username;
+            str = appPeersManager.getPeerTitle(lastMessage.fromID, true, true);
           }
 
           //senderBold.innerText = str + ': ';

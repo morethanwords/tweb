@@ -2168,7 +2168,7 @@ export class AppImManager {
     if((this.peerID < 0 && !our) || message.fwd_from || message.reply_to_mid) { // chat
       let title = appPeersManager.getPeerTitle(message.fwdFromID || message.fromID);
 
-      const isForwardFromChannel = !message.fromID && message.fwd_from;
+      const isForwardFromChannel = message.from_id && message.from_id._ == 'peerChannel' && message.fromID == message.fwdFromID;
       
       let isHidden = message.fwd_from && !message.fwd_from.from_id && !message.fwd_from.channel_id;
       if(isHidden) {
@@ -2181,7 +2181,7 @@ export class AppImManager {
       //this.log(title);
       
       if((message.fwdFromID || message.fwd_from)) {
-        if(this.peerID != this.myID) {
+        if(this.peerID != this.myID && !isForwardFromChannel) {
           bubble.classList.add('forwarded');
         }
         
