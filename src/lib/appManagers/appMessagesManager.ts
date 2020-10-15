@@ -13,7 +13,7 @@ import { RichTextProcessor } from "../richtextprocessor";
 import $rootScope from "../rootScope";
 import searchIndexManager from '../searchIndexManager';
 import AppStorage from '../storage';
-import { copy, deepEqual, getObjectKeysAndSort, langPack, limitSymbols, listMergeSorted, safeReplaceObject, tsNow } from "../utils";
+import { copy, deepEqual, getObjectKeysAndSort, langPack, limitSymbols, listMergeSorted, safeReplaceObject, splitStringByLength, tsNow } from "../utils";
 //import { telegramMeWebService } from "../mtproto/mtproto";
 import apiUpdatesManager from "./apiUpdatesManager";
 import appChatsManager from "./appChatsManager";
@@ -738,8 +738,20 @@ export class AppMessagesManager {
     clearDraft: true,
     webPage: any
   }> = {}) {
-    if(typeof(text) != 'string') {
+    if(typeof(text) != 'string' || !text.length) {
       return;
+    }
+
+    const MAX_LENGTH = 4096;
+    if(text.length > MAX_LENGTH) {
+      const splitted = splitStringByLength(text, MAX_LENGTH);
+      text = splitted[0];
+
+      for(let i = 1; i < splitted.length; ++i) {
+        //setTimeout(() => {
+          this.sendText(peerID, splitted[i], options);
+        //}, i);
+      }
     }
 
     peerID = appPeersManager.getPeerMigratedTo(peerID) || peerID;
@@ -747,9 +759,6 @@ export class AppMessagesManager {
     var entities = options.entities || [];
     if(!options.viaBotID) {
       text = RichTextProcessor.parseMarkdown(text, entities);
-    }
-    if(!text.length) {
-      return;
     }
 
     var sendEntites = this.getInputEntities(entities);

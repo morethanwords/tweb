@@ -257,8 +257,11 @@ export class ChatInput {
       // @ts-ignore
       let text = (e.originalEvent || e).clipboardData.getData('text/plain');
   
-      // console.log('messageInput paste', text);
-      text = RichTextProcessor.wrapEmojiText(text);
+      let entities = RichTextProcessor.parseEntities(text);
+      //console.log('messageInput paste', text, entities);
+      entities = entities.filter(e => e._ == 'messageEntityEmoji' || e._ == 'messageEntityLinebreak');
+      //text = RichTextProcessor.wrapEmojiText(text);
+      text = RichTextProcessor.wrapRichText(text, {entities});
   
       // console.log('messageInput paste after', text);
   
