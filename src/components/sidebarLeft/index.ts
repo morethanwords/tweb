@@ -322,6 +322,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     $rootScope.$on('dialogs_archived_unread', (e) => {
       this.archivedCount.innerText = '' + formatNumber(e.detail.count, 1);
+      this.archivedCount.classList.toggle('hide', !e.detail.count);
     });
 
     appUsersManager.getTopPeers();

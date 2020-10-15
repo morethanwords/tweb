@@ -1,3 +1,4 @@
+import { ResolutionUnitSpecifier } from "fast-png";
 import AvatarElement from "../../components/avatar";
 import DialogsContextMenu from "../../components/dialogsContextMenu";
 import { horizontalMenu } from "../../components/horizontalMenu";
@@ -336,11 +337,14 @@ export class AppDialogsManager {
         this.addFilter(filters[filterID]);
       }
 
-      return this.loadDialogs(this.filterID);
+      return this.loadDialogs();
     }).then(result => {
       //this.setPinnedDelimiter();
       //appSidebarLeft.onChatsScroll();
-      this.loadDialogs(1);
+      //this.loadDialogs(1);
+      appMessagesManager.getConversationsAll('', 1).then(() => {
+        this.accumulateArchivedUnread();
+      });
     });
   }
 
@@ -363,8 +367,9 @@ export class AppDialogsManager {
     this.doms = {};
     this.loadedAll = false;
     this.lastActiveListElement = null;
+    this.loadDialogsPromise = undefined;
     this.chatList = this.chatLists[this.filterID];
-    this.loadDialogs(this.filterID);
+    this.loadDialogs();
   };
 
   public setFilterUnreadCount(filterID: number, folder?: Dialog[]) {
@@ -460,7 +465,7 @@ export class AppDialogsManager {
     };
   }
 
-  public async loadDialogs(folderID: number) {
+  public async loadDialogs() {
     if(testScroll) {
       return;
     }
@@ -474,7 +479,9 @@ export class AppDialogsManager {
 
     //return;
 
-    const storage = appMessagesManager.dialogsStorage.getFolder(folderID);
+    const filterID = this.filterID;
+
+    const storage = appMessagesManager.dialogsStorage.getFolder(filterID);
     let offsetIndex = 0;
     
     for(let i = storage.length - 1; i >= 0; --i) {
@@ -492,17 +499,21 @@ export class AppDialogsManager {
       const loadCount = 50/*this.chatsLoadCount */;
 
       const getConversationPromise = (this.filterID > 1 ? appUsersManager.getContacts() as Promise<any> : Promise.resolve()).then(() => {
-        return appMessagesManager.getConversations('', offsetIndex, loadCount, folderID);
+        return appMessagesManager.getConversations('', offsetIndex, loadCount, filterID);
       });
 
       this.loadDialogsPromise = getConversationPromise;
       
       const result = await getConversationPromise;
 
+      if(this.filterID != filterID) {
+        return;
+      }
+
       //console.timeEnd('getDialogs time');
       
       if(result && result.dialogs && result.dialogs.length) {
-        result.dialogs.forEach((dialog: any) => {
+        result.dialogs.forEach((dialog) => {
           this.addDialog(dialog);
         });
       }
@@ -524,7 +535,7 @@ export class AppDialogsManager {
   onChatsScroll = () => {
     if(this.loadedAll || this.loadDialogsPromise) return;
     this.log('onChatsScroll');
-    this.loadDialogs(this.filterID);
+    this.loadDialogs();
   }
 
   public setListClickListener(list: HTMLUListElement, onFound?: () => void, withContext = false) {

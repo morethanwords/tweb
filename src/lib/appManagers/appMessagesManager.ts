@@ -1814,9 +1814,9 @@ export class AppMessagesManager {
     return false;
   }
 
-  public async getConversationsAll(query = '') {
+  public async getConversationsAll(query = '', folderID = 0) {
     const limit = 100, outDialogs: Dialog[] = [];
-    for(let folderID = 0; folderID < 2; ++folderID) {
+    for(; folderID < 2; ++folderID) {
       let offsetIndex = 0;
       for(;;) {
         const {dialogs} = await appMessagesManager.getConversations(query, offsetIndex, limit, folderID);
