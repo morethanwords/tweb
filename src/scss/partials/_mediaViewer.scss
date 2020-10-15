@@ -365,7 +365,7 @@ $move-duration: .35s;
     }
 
     @include respond-to(handhelds) {
-      .menu-mobile-close {
+      .tgico-close.only-handhelds {
         left: 20px;
       }
 

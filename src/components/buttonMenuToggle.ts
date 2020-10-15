@@ -3,7 +3,7 @@ import ButtonMenu, { ButtonMenuItemOptions } from "./buttonMenu";
 import { openBtnMenu } from "./misc";
 
 const ButtonMenuToggle = (options: Partial<{noRipple: true, onlyMobile: true}> = {}, direction: 'bottom-left', buttons: ButtonMenuItemOptions[]) => {
-  const button = ButtonIcon('more', options);
+  const button = ButtonIcon('more btn-menu-toggle', options);
   const btnMenu = ButtonMenu(buttons);
   btnMenu.classList.add(direction);
   ButtonMenuToggleHandler(button);

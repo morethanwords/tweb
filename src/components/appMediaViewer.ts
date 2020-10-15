@@ -1092,7 +1092,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       text: 'Download',
       onClick: this.onDownloadClick
     }, {
-      icon: 'delete',
+      icon: 'delete danger btn-disabled',
       text: 'Delete',
       onClick: () => {}
     }]);
@@ -1297,7 +1297,7 @@ export class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete', AppMe
       text: 'Download',
       onClick: this.onDownloadClick
     }, {
-      icon: 'delete',
+      icon: 'delete danger btn-disabled',
       text: 'Delete',
       onClick: () => {}
     }]);
@@ -1318,7 +1318,7 @@ export class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete', AppMe
   };
 
   onDownloadClick = (e: MouseEvent) => {
-
+    appPhotosManager.savePhotoFile(appPhotosManager.getPhoto(this.currentPhotoID));
   };
 
   protected loadMoreMedia = (older = true) => {
