@@ -29,6 +29,9 @@
     letter-spacing: 1px;
     font-size: 1.1rem;
     background-size: contain;
+  }
+
+  &-ico, &-name {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
