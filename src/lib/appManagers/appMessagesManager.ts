@@ -2096,14 +2096,9 @@ export class AppMessagesManager {
     });
   }
 
-  private doFlushHistory(inputPeer: any, justClear: boolean): Promise<true> {
-    let flags = 0;
-    if(justClear) {
-      flags |= 1;
-    }
-
+  private doFlushHistory(inputPeer: any, justClear?: true): Promise<true> {
     return apiManager.invokeApi('messages.deleteHistory', {
-      flags: flags,
+      just_clear: justClear,
       peer: inputPeer,
       max_id: 0
     }).then((affectedHistory) => {
@@ -2124,7 +2119,7 @@ export class AppMessagesManager {
     })
   }
 
-  public async flushHistory(peerID: number, justClear: boolean) {
+  public async flushHistory(peerID: number, justClear?: true) {
     if(appPeersManager.isChannel(peerID)) {
       let promise = this.getHistory(peerID, 0, 1);
 

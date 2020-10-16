@@ -1,4 +1,5 @@
 import appSidebarLeft, { AppSidebarLeft } from "..";
+import { InputFile } from "../../../layer";
 import appChatsManager from "../../../lib/appManagers/appChatsManager";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
@@ -14,7 +15,7 @@ export default class AppNewGroupTab implements SliderTab {
   private groupNameInput = this.container.querySelector('.new-group-name') as HTMLInputElement;
   private nextBtn = this.container.querySelector('.btn-corner') as HTMLButtonElement;
   private searchGroup = new SearchGroup(' ', 'contacts', true, 'new-group-members disable-hover', false);
-  private uploadAvatar: () => Promise<any> = null;
+  private uploadAvatar: () => Promise<InputFile> = null;
   private userIDs: number[];
   
   constructor() {
@@ -35,7 +36,7 @@ export default class AppNewGroupTab implements SliderTab {
       this.nextBtn.disabled = true;
       appChatsManager.createChat(title, this.userIDs).then((chatID) => {
         if(this.uploadAvatar) {
-          this.uploadAvatar().then((inputFile: any) => {
+          this.uploadAvatar().then((inputFile) => {
             appChatsManager.editPhoto(chatID, inputFile);
           });
         }

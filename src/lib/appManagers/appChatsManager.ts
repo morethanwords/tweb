@@ -1,10 +1,11 @@
-import { ChatAdminRights, ChatBannedRights, ChatFull, ChatParticipants, InputChannel, InputChatPhoto, InputPeer, Updates } from "../../layer";
+import { ChatAdminRights, ChatBannedRights, ChatFull, ChatParticipants, InputChannel, InputChatPhoto, InputFile, InputPeer, Updates } from "../../layer";
 import apiManager from '../mtproto/mtprotoworker';
 import { RichTextProcessor } from "../richtextprocessor";
 import $rootScope from "../rootScope";
 import searchIndexManager from "../searchIndexManager";
 import { copy, getAbbreviation, isObject, numberWithCommas, safeReplaceObject } from "../utils";
 import apiUpdatesManager from "./apiUpdatesManager";
+import appMessagesManager from "./appMessagesManager";
 import appProfileManager from "./appProfileManager";
 import appUsersManager from "./appUsersManager";
 
@@ -296,13 +297,13 @@ export class AppChatsManager {
     };
   }
 
-  public hasChat(id: number, allowMin?: any) {
-    let chat = this.chats[id]
+  public hasChat(id: number, allowMin?: true) {
+    const chat = this.chats[id]
     return isObject(chat) && (allowMin || !chat.pFlags.min);
   }
 
   public getChatPhoto(id: number) {
-    let chat = this.getChat(id);
+    const chat = this.getChat(id);
 
     if(this.cachedPhotoLocations[id] === undefined) {
       this.cachedPhotoLocations[id] = chat && chat.photo ? chat.photo : {empty: true};
@@ -312,7 +313,7 @@ export class AppChatsManager {
   }
 
   public getChatString(id: number) {
-    let chat = this.getChat(id);
+    const chat = this.getChat(id);
     if(this.isChannel(id)) {
       return (this.isMegagroup(id) ? 's' : 'c') + id + '_' + chat.access_hash;
     }
@@ -328,8 +329,8 @@ export class AppChatsManager {
   }
 
   public wrapForFull(id: number, fullChat: any) {
-    let chatFull = copy(fullChat);
-    let chat = this.getChat(id);
+    const chatFull = copy(fullChat);
+    const chat = this.getChat(id);
 
     if(!chatFull.participants_count) {
       chatFull.participants_count = chat.participants_count;
@@ -351,10 +352,10 @@ export class AppChatsManager {
   }
 
   public wrapParticipants(id: number, participants: any[]) {
-    let chat = this.getChat(id);
-    let myID = appUsersManager.getSelf().id;
+    const chat = this.getChat(id);
+    const myID = appUsersManager.getSelf().id;
     if(this.isChannel(id)) {
-      let isAdmin = chat.pFlags.creator;
+      const isAdmin = chat.pFlags.creator;
       participants.forEach((participant) => {
         participant.canLeave = myID == participant.user_id;
         participant.canKick = isAdmin && participant._ == 'channelParticipant';
@@ -363,7 +364,7 @@ export class AppChatsManager {
         participant.user = appUsersManager.getUser(participant.user_id);
       });
     } else {
-      let isAdmin = chat.pFlags.creator || chat.pFlags.admins_enabled && chat.pFlags.admin;
+      const isAdmin = chat.pFlags.creator || chat.pFlags.admins_enabled && chat.pFlags.admin;
       participants.forEach((participant) => {
         participant.canLeave = myID == participant.user_id;
         participant.canKick = !participant.canLeave && (
@@ -393,8 +394,8 @@ export class AppChatsManager {
   }
 
   public inviteToChannel(id: number, userIDs: number[]) {
-    let input = this.getChannelInput(id);
-    let usersInputs = userIDs.map(u => appUsersManager.getUserInput(u));
+    const input = this.getChannelInput(id);
+    const usersInputs = userIDs.map(u => appUsersManager.getUserInput(u));
 
     return apiManager.invokeApi('channels.inviteToChannel', {
       channel: input,
@@ -415,7 +416,7 @@ export class AppChatsManager {
     });
   }
 
-  public editPhoto(id: number, inputFile: any) {
+  public editPhoto(id: number, inputFile: InputFile) {
     const isChannel = this.isChannel(id);
 
     const inputChatPhoto: InputChatPhoto.inputChatUploadedPhoto = {
@@ -499,6 +500,23 @@ export class AppChatsManager {
     return apiManager.invokeApi('channels.joinChannel', {
       channel: this.getChannelInput(id)
     }).then(this.onChatUpdated.bind(this, id));
+  }
+
+  public deleteChatUser(id: number, userID: number) {
+    return apiManager.invokeApi('messages.deleteChatUser', {
+      chat_id: id,
+      user_id: appUsersManager.getUserInput(userID)
+    }).then(this.onChatUpdated.bind(this, id));
+  }
+
+  public leaveChat(id: number) {
+    return this.deleteChatUser(id, appUsersManager.getSelf().id).then(() => {
+      return appMessagesManager.flushHistory(-id);
+    });
+  }
+
+  public leave(id: number) {
+    return this.isChannel(id) ? this.leaveChannel(id) : this.leaveChat(id);
   }
 }
 

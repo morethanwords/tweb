@@ -362,6 +362,12 @@ export class AppImManager {
       });
     });
     
+    $rootScope.$on('dialog_drop', (e) => {
+      if(e.detail.peerID == this.peerID) {
+        this.setPeer(0);
+      }
+    });
+
     $rootScope.$on('apiUpdate', (e) => {
       let update = e.detail;
       
@@ -725,7 +731,7 @@ export class AppImManager {
       //appSidebarRight.toggleSidebar(false);
       document.body.classList.remove(RIGHT_COLUMN_ACTIVE_CLASSNAME);
     }
-    
+
     this._selectTab(id, mediaSizes.isMobile);
     //document.body.classList.toggle(RIGHT_COLUMN_ACTIVE_CLASSNAME, id == 2);
   }

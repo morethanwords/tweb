@@ -56,12 +56,12 @@ export default class DialogsContextMenu {
     this.buttons.delete.addEventListener('click', () => {
       let firstName = appPeersManager.getPeerTitle(this.selectedID, false, true);
 
-      let callbackFlush = (justClear: boolean) => {
+      let callbackFlush = (justClear?: true) => {
         appMessagesManager.flushHistory(this.selectedID, justClear);
       };
 
       let callbackLeave = () => {
-        appChatsManager.leaveChannel(-this.selectedID);
+        appChatsManager.leave(-this.selectedID);
       };
 
       let title: string, description: string, buttons: PopupButton[];
@@ -96,7 +96,7 @@ export default class DialogsContextMenu {
           buttons = [{
             text: 'DELETE FOR ME AND ' + firstName,
             isDanger: true,
-            callback: () => callbackFlush(false)
+            callback: () => callbackFlush()
           }, {
             text: 'DELETE JUST FOR ME',
             isDanger: true,
@@ -112,7 +112,7 @@ export default class DialogsContextMenu {
           buttons = [{
             text: 'DELETE SAVED MESSAGES',
             isDanger: true,
-            callback: () => callbackFlush(false)
+            callback: () => callbackFlush()
           }];
 
           break;
@@ -124,7 +124,7 @@ export default class DialogsContextMenu {
           buttons = [{
             text: 'DELETE AND LEAVE ' + firstName,
             isDanger: true,
-            callback: () => callbackFlush(true)
+            callback: () => callbackLeave()
           }];
 
           break;

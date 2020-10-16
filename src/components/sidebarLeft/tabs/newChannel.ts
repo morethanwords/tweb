@@ -1,4 +1,5 @@
 import appSidebarLeft, { AppSidebarLeft } from "..";
+import { InputFile } from "../../../layer";
 import appChatsManager from "../../../lib/appManagers/appChatsManager";
 import PopupAvatar from "../../popupAvatar";
 import { SliderTab } from "../../slider";
@@ -10,7 +11,7 @@ export default class AppNewChannelTab implements SliderTab {
   private channelDescriptionInput = this.container.querySelector('.new-channel-description') as HTMLInputElement;
   private nextBtn = this.container.querySelector('.btn-corner') as HTMLButtonElement;
   private backBtn = this.container.querySelector('.sidebar-close-button') as HTMLButtonElement;
-  private uploadAvatar: () => Promise<any> = null;
+  private uploadAvatar: () => Promise<InputFile> = null;
 
   constructor() {
     this.container.querySelector('.avatar-edit').addEventListener('click', () => {
@@ -35,7 +36,7 @@ export default class AppNewChannelTab implements SliderTab {
       this.nextBtn.disabled = true;
       appChatsManager.createChannel(title, about).then((channelID) => {
         if(this.uploadAvatar) {
-          this.uploadAvatar().then((inputFile: any) => {
+          this.uploadAvatar().then((inputFile) => {
             appChatsManager.editPhoto(channelID, inputFile);
           });
         }
