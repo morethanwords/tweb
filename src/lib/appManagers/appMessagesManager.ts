@@ -2498,7 +2498,7 @@ export class AppMessagesManager {
       // * 80 for chatlist in landscape orientation
       text = limitSymbols(text, 75, 80);
 
-      let entities = RichTextProcessor.parseEntities(text.replace(/\n/g, ' '), {noLinebreakers: true});
+      let entities = RichTextProcessor.parseEntities(text.replace(/\n/g, ' '));
 
       messageWrapped = RichTextProcessor.wrapRichText(text, {
         noLinebreaks: true, 

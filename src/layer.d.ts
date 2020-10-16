@@ -3795,125 +3795,166 @@ export namespace ReplyMarkup {
 /**
  * @link https://core.telegram.org/type/MessageEntity
  */
-export type MessageEntity = MessageEntity.messageEntityUnknown | MessageEntity.messageEntityMention | MessageEntity.messageEntityHashtag | MessageEntity.messageEntityBotCommand | MessageEntity.messageEntityUrl | MessageEntity.messageEntityEmail | MessageEntity.messageEntityBold | MessageEntity.messageEntityItalic | MessageEntity.messageEntityCode | MessageEntity.messageEntityPre | MessageEntity.messageEntityTextUrl | MessageEntity.messageEntityMentionName | MessageEntity.inputMessageEntityMentionName | MessageEntity.messageEntityPhone | MessageEntity.messageEntityCashtag | MessageEntity.messageEntityUnderline | MessageEntity.messageEntityStrike | MessageEntity.messageEntityBlockquote | MessageEntity.messageEntityBankCard;
+export type MessageEntity = MessageEntity.messageEntityUnknown | MessageEntity.messageEntityMention | MessageEntity.messageEntityHashtag | MessageEntity.messageEntityBotCommand | MessageEntity.messageEntityUrl | MessageEntity.messageEntityEmail | MessageEntity.messageEntityBold | MessageEntity.messageEntityItalic | MessageEntity.messageEntityCode | MessageEntity.messageEntityPre | MessageEntity.messageEntityTextUrl | MessageEntity.messageEntityMentionName | MessageEntity.inputMessageEntityMentionName | MessageEntity.messageEntityPhone | MessageEntity.messageEntityCashtag | MessageEntity.messageEntityUnderline | MessageEntity.messageEntityStrike | MessageEntity.messageEntityBlockquote | MessageEntity.messageEntityBankCard | MessageEntity.messageEntityEmoji | MessageEntity.messageEntityHighlight | MessageEntity.messageEntityLinebreak;
 
 export namespace MessageEntity {
   export type messageEntityUnknown = {
 		_: 'messageEntityUnknown',
 		offset: number,
-		length: number
+		length: number,
+		nested?: Array<MessageEntity>
 	};
 
 	export type messageEntityMention = {
 		_: 'messageEntityMention',
 		offset: number,
-		length: number
+		length: number,
+		nested?: Array<MessageEntity>
 	};
 
 	export type messageEntityHashtag = {
 		_: 'messageEntityHashtag',
 		offset: number,
-		length: number
+		length: number,
+		nested?: Array<MessageEntity>
 	};
 
 	export type messageEntityBotCommand = {
 		_: 'messageEntityBotCommand',
 		offset: number,
-		length: number
+		length: number,
+		nested?: Array<MessageEntity>
 	};
 
 	export type messageEntityUrl = {
 		_: 'messageEntityUrl',
 		offset: number,
-		length: number
+		length: number,
+		nested?: Array<MessageEntity>
 	};
 
 	export type messageEntityEmail = {
 		_: 'messageEntityEmail',
 		offset: number,
-		length: number
+		length: number,
+		nested?: Array<MessageEntity>
 	};
 
 	export type messageEntityBold = {
 		_: 'messageEntityBold',
 		offset: number,
-		length: number
+		length: number,
+		nested?: Array<MessageEntity>
 	};
 
 	export type messageEntityItalic = {
 		_: 'messageEntityItalic',
 		offset: number,
-		length: number
+		length: number,
+		nested?: Array<MessageEntity>
 	};
 
 	export type messageEntityCode = {
 		_: 'messageEntityCode',
 		offset: number,
-		length: number
+		length: number,
+		nested?: Array<MessageEntity>
 	};
 
 	export type messageEntityPre = {
 		_: 'messageEntityPre',
 		offset: number,
 		length: number,
-		language: string
+		language: string,
+		nested?: Array<MessageEntity>
 	};
 
 	export type messageEntityTextUrl = {
 		_: 'messageEntityTextUrl',
 		offset: number,
 		length: number,
-		url: string
+		url: string,
+		nested?: Array<MessageEntity>
 	};
 
 	export type messageEntityMentionName = {
 		_: 'messageEntityMentionName',
 		offset: number,
 		length: number,
-		user_id: number
+		user_id: number,
+		nested?: Array<MessageEntity>
 	};
 
 	export type inputMessageEntityMentionName = {
 		_: 'inputMessageEntityMentionName',
 		offset: number,
 		length: number,
-		user_id: InputUser
+		user_id: InputUser,
+		nested?: Array<MessageEntity>
 	};
 
 	export type messageEntityPhone = {
 		_: 'messageEntityPhone',
 		offset: number,
-		length: number
+		length: number,
+		nested?: Array<MessageEntity>
 	};
 
 	export type messageEntityCashtag = {
 		_: 'messageEntityCashtag',
 		offset: number,
-		length: number
+		length: number,
+		nested?: Array<MessageEntity>
 	};
 
 	export type messageEntityUnderline = {
 		_: 'messageEntityUnderline',
 		offset: number,
-		length: number
+		length: number,
+		nested?: Array<MessageEntity>
 	};
 
 	export type messageEntityStrike = {
 		_: 'messageEntityStrike',
 		offset: number,
-		length: number
+		length: number,
+		nested?: Array<MessageEntity>
 	};
 
 	export type messageEntityBlockquote = {
 		_: 'messageEntityBlockquote',
 		offset: number,
-		length: number
+		length: number,
+		nested?: Array<MessageEntity>
 	};
 
 	export type messageEntityBankCard = {
 		_: 'messageEntityBankCard',
 		offset: number,
-		length: number
+		length: number,
+		nested?: Array<MessageEntity>
+	};
+
+	export type messageEntityEmoji = {
+		_: 'messageEntityEmoji',
+		offset?: number,
+		length?: number,
+		unicode?: string,
+		nested?: Array<MessageEntity>
+	};
+
+	export type messageEntityHighlight = {
+		_: 'messageEntityHighlight',
+		offset?: number,
+		length?: number,
+		nested?: Array<MessageEntity>
+	};
+
+	export type messageEntityLinebreak = {
+		_: 'messageEntityLinebreak',
+		offset?: number,
+		length?: number,
+		nested?: Array<MessageEntity>
 	};
 }
 
@@ -8918,6 +8959,9 @@ export interface ConstructorDeclMap {
 	'messageReplyHeader': MessageReplyHeader.messageReplyHeader,
 	'messageReplies': MessageReplies.messageReplies,
 	'peerBlocked': PeerBlocked.peerBlocked,
+	'messageEntityEmoji': MessageEntity.messageEntityEmoji,
+	'messageEntityHighlight': MessageEntity.messageEntityHighlight,
+	'messageEntityLinebreak': MessageEntity.messageEntityLinebreak,
 }
 
 export type InvokeAfterMsg = {

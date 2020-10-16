@@ -34,7 +34,7 @@ const appSidebarLeft = AppSidebarLeft;
 const appMediaViewer = AppMediaViewer;
 const appDialogsManager = AppDialogsManager;
 
-(window as any).Services = {
+const Services = {
   appUsersManager,
   appChatsManager,
   apiUpdatesManager,
@@ -53,3 +53,10 @@ const appDialogsManager = AppDialogsManager;
   appMediaViewer
   //appSharedMediaManager
 };
+
+(window as any).Services = Services;
+
+for(let i in Services) {
+  // @ts-ignore
+  (window as any)[i] = Services[i];
+}

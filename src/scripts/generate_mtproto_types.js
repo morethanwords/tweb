@@ -10,7 +10,12 @@ for(const constructor of additional) {
     param.type = 'flags.-1?' + param.type;
   });
 
-  const realConstructor = mtproto.constructors.find(c => c.predicate == constructor.predicate);
+  if(constructor.type) {
+    mtproto.constructors.push(constructor);
+  }
+
+  const realConstructor = constructor.type ? constructor : mtproto.constructors.find(c => c.predicate == constructor.predicate);
+
   /* constructor.params.forEach(param => {
     const index = realConstructor.params.findIndex(_param => _param.predicate == param.predicate);
     if(index !== -1) {

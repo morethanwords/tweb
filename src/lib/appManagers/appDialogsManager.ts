@@ -674,20 +674,20 @@ export class AppDialogsManager {
         let lastMessageText = appMessagesManager.getRichReplyText(lastMessage, '');
 
         let messageText = lastMessage.message;
-        let entities = RichTextProcessor.parseEntities(messageText.replace(/\n/g, ' '), {noLinebreakers: true});
-          let regExp = new RegExp(escapeRegExp(highlightWord), 'gi');
-          let match: any;
+        let entities = RichTextProcessor.parseEntities(messageText.replace(/\n/g, ' '));
+        let regExp = new RegExp(escapeRegExp(highlightWord), 'gi');
+        let match: any;
 
-          if(!entities) entities = [];
-          let found = false;
-          while((match = regExp.exec(messageText)) !== null) {
-            entities.push({_: 'messageEntityHighlight', length: highlightWord.length, offset: match.index});
-            found = true;
-          }
+        if(!entities) entities = [];
+        let found = false;
+        while((match = regExp.exec(messageText)) !== null) {
+          entities.push({_: 'messageEntityHighlight', length: highlightWord.length, offset: match.index});
+          found = true;
+        }
     
-          if(found) {
-            entities.sort((a: any, b: any) => a.offset - b.offset);
-          }
+        if(found) {
+          entities.sort((a: any, b: any) => a.offset - b.offset);
+        }
     
         let messageWrapped = RichTextProcessor.wrapRichText(messageText, {
           noLinebreaks: true, 
