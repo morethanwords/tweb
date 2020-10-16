@@ -580,4 +580,17 @@ export function splitStringByLength(str: string, maxLength: number) {
   return out;
 }
 
-(window as any).splitStringByLength = splitStringByLength;
+export function defineNotNumerableProperties(obj: {[key: string]: any}, names: string[]) {
+  //const perf = performance.now();
+  const props = {writable: true, configurable: true};
+  const out: {[name: string]: typeof props} = {};
+  names.forEach(name => {
+    if(obj[name] === undefined) {
+      out[name] = props;
+    }
+  });
+  Object.defineProperties(obj, out);
+  //console.log('defineNotNumerableProperties time:', performance.now() - perf);
+}
+
+//(window as any).splitStringByLength = splitStringByLength;

@@ -493,7 +493,14 @@ export namespace User {
 		bot_info_version?: number,
 		restriction_reason?: Array<RestrictionReason>,
 		bot_inline_placeholder?: string,
-		lang_code?: string
+		lang_code?: string,
+		initials?: string,
+		rFirstName?: string,
+		rFullName?: string,
+		rPhone?: string,
+		sortName?: string,
+		sortStatus?: number,
+		num?: number
 	};
 }
 

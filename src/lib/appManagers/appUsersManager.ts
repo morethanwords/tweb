@@ -1,12 +1,12 @@
 import { formatPhoneNumber } from "../../components/misc";
-import { InputUser, Update, User as MTUser } from "../../layer";
+import { InputUser, Update, User as MTUser, UserStatus } from "../../layer";
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
 import serverTimeManager from "../mtproto/serverTimeManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import $rootScope from "../rootScope";
 import searchIndexManager from "../searchIndexManager";
-import { getAbbreviation, isObject, safeReplaceObject, tsNow } from "../utils";
+import { defineNotNumerableProperties, getAbbreviation, isObject, safeReplaceObject, tsNow } from "../utils";
 import appChatsManager from "./appChatsManager";
 import appPeersManager from "./appPeersManager";
 import appStateManager from "./appStateManager";
@@ -40,15 +40,7 @@ import appStateManager from "./appStateManager";
   sortName?: string,
   sortStatus?: number,
 }; */
-export interface User extends MTUser.user {
-  initials?: string,
-  num?: number,
-  rFirstName?: string,
-  rFullName?: string,
-  rPhone?: string,
-  sortName?: string,
-  sortStatus?: number,
-}
+export type User = MTUser.user;
 
 export class AppUsersManager {
   public users: {[userID: number]: User} = {};
@@ -172,7 +164,7 @@ export class AppUsersManager {
     }
 
     return await apiManager.invokeApi('contacts.resolveUsername', {username}).then(resolvedPeer => {
-      this.saveApiUser(resolvedPeer.users[0]);
+      this.saveApiUser(resolvedPeer.users[0] as User);
       appChatsManager.saveApiChats(resolvedPeer.chats);
 
       return this.users[this.usernames[username]];
@@ -237,75 +229,80 @@ export class AppUsersManager {
     apiUsers.forEach((user) => this.saveApiUser(user));
   }
 
-  public saveApiUser(apiUser: any, noReplace?: boolean) {
-    if(!isObject(apiUser) ||
-      noReplace && isObject(this.users[apiUser.id]) && this.users[apiUser.id].first_name) {
+  public saveApiUser(_user: MTUser, noReplace?: boolean) {
+    if(_user._ == 'userEmpty') return;
+
+    const user = _user;
+    if(noReplace && isObject(this.users[user.id]) && this.users[user.id].first_name) {
       return;
     }
 
-    var userID = apiUser.id;
+    var userID = user.id;
     var result = this.users[userID];
 
-    if(apiUser.pFlags === undefined) {
-      apiUser.pFlags = {};
+    if(user.pFlags === undefined) {
+      user.pFlags = {};
     }
 
-    if(apiUser.pFlags.min) {
+    if(user.pFlags.min) {
       if(result !== undefined) {
         return;
       }
     }
 
-    if(apiUser.phone) {
-      apiUser.rPhone = '+' + formatPhoneNumber(apiUser.phone).formatted;
+    // * exclude from state
+    defineNotNumerableProperties(user, ['initials', 'num', 'rFirstName', 'rFullName', 'rPhone', 'sortName', 'sortStatus']);
+
+    if(user.phone) {
+      user.rPhone = '+' + formatPhoneNumber(user.phone).formatted;
     }
 
-    const fullName = apiUser.first_name + ' ' + (apiUser.last_name || '');
-    if(apiUser.first_name) {
-      apiUser.rFirstName = RichTextProcessor.wrapRichText(apiUser.first_name, {noLinks: true, noLinebreaks: true})
-      apiUser.rFullName = apiUser.last_name ? RichTextProcessor.wrapRichText(fullName, {noLinks: true, noLinebreaks: true}) : apiUser.rFirstName;
+    const fullName = user.first_name + ' ' + (user.last_name || '');
+    if(user.first_name) {
+      user.rFirstName = RichTextProcessor.wrapRichText(user.first_name, {noLinks: true, noLinebreaks: true})
+      user.rFullName = user.last_name ? RichTextProcessor.wrapRichText(fullName, {noLinks: true, noLinebreaks: true}) : user.rFirstName;
     } else {
-      apiUser.rFirstName = RichTextProcessor.wrapRichText(apiUser.last_name, {noLinks: true, noLinebreaks: true}) || apiUser.rPhone || 'user_first_name_deleted';
-      apiUser.rFullName = RichTextProcessor.wrapRichText(apiUser.last_name, {noLinks: true, noLinebreaks: true}) || apiUser.rPhone || 'user_name_deleted';
+      user.rFirstName = RichTextProcessor.wrapRichText(user.last_name, {noLinks: true, noLinebreaks: true}) || user.rPhone || 'user_first_name_deleted';
+      user.rFullName = RichTextProcessor.wrapRichText(user.last_name, {noLinks: true, noLinebreaks: true}) || user.rPhone || 'user_name_deleted';
     }
 
-    if(apiUser.username) {
-      var searchUsername = searchIndexManager.cleanUsername(apiUser.username);
+    if(user.username) {
+      var searchUsername = searchIndexManager.cleanUsername(user.username);
       this.usernames[searchUsername] = userID;
     }
 
-    apiUser.sortName = apiUser.pFlags.deleted ? '' : searchIndexManager.cleanSearchText(fullName, false);
+    user.sortName = user.pFlags.deleted ? '' : searchIndexManager.cleanSearchText(fullName, false);
 
-    apiUser.initials = getAbbreviation(fullName);
+    user.initials = getAbbreviation(fullName);
 
-    if(apiUser.status) {
-      if(apiUser.status.expires) {
-        apiUser.status.expires -= serverTimeManager.serverTimeOffset
+    if(user.status) {
+      if((user.status as UserStatus.userStatusOnline).expires) {
+        (user.status as UserStatus.userStatusOnline).expires -= serverTimeManager.serverTimeOffset
       }
 
-      if(apiUser.status.was_online) {
-        apiUser.status.was_online -= serverTimeManager.serverTimeOffset
+      if((user.status as UserStatus.userStatusOffline).was_online) {
+        (user.status as UserStatus.userStatusOffline).was_online -= serverTimeManager.serverTimeOffset
       }
     }
 
-    if(apiUser.pFlags.bot) {
-      apiUser.sortStatus = -1;
+    if(user.pFlags.bot) {
+      user.sortStatus = -1;
     } else {
-      apiUser.sortStatus = this.getUserStatusForSort(apiUser.status);
+      user.sortStatus = this.getUserStatusForSort(user.status);
     }
 
     var result = this.users[userID];
     if(result === undefined) {
-      result = this.users[userID] = apiUser;
+      result = this.users[userID] = user;
     } else {
-      safeReplaceObject(result, apiUser);
+      safeReplaceObject(result, user);
     }
 
     $rootScope.$broadcast('user_update', userID);
 
     if(this.cachedPhotoLocations[userID] !== undefined) {
-      safeReplaceObject(this.cachedPhotoLocations[userID], apiUser && 
-        apiUser.photo ? apiUser.photo : {empty: true});
+      safeReplaceObject(this.cachedPhotoLocations[userID], user && 
+        user.photo ? user.photo : {empty: true});
     }
   }
 

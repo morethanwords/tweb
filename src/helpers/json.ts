@@ -24,9 +24,12 @@
 // parse('{"file_reference": {"type": "bytes", "value": [1,2,3]}, "file_reference2": {"type": "bytes", "value": [3,2,1]}}');
 // -> {file_reference: Uint8Array}
 
-export function stringify(value: any) {
+// TOO SLOW TOO
+/* export function stringify(value: any) {
   return JSON.stringify(value, (key, value) => {
     if(key == 'downloaded' || (key == 'url' && value.indexOf('blob:') === 0)) return undefined;
     return value;
   });
-}
+} */
+
+export {};

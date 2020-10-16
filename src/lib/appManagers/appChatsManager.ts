@@ -3,7 +3,7 @@ import apiManager from '../mtproto/mtprotoworker';
 import { RichTextProcessor } from "../richtextprocessor";
 import $rootScope from "../rootScope";
 import searchIndexManager from "../searchIndexManager";
-import { copy, getAbbreviation, isObject, numberWithCommas, safeReplaceObject } from "../utils";
+import { copy, defineNotNumerableProperties, getAbbreviation, isObject, numberWithCommas, safeReplaceObject } from "../utils";
 import apiUpdatesManager from "./apiUpdatesManager";
 import appMessagesManager from "./appMessagesManager";
 import appProfileManager from "./appProfileManager";
@@ -89,61 +89,64 @@ export class AppChatsManager {
     apiChats.forEach(chat => this.saveApiChat(chat));
   }
 
-  public saveApiChat(apiChat: any) {
-    if(!isObject(apiChat)) {
+  public saveApiChat(chat: any) {
+    if(!isObject(chat)) {
       return;
     }
+
+    // * exclude from state
+    defineNotNumerableProperties(chat, ['rTitle', 'initials']);
     
-    apiChat.rTitle = apiChat.title || 'chat_title_deleted';
-    apiChat.rTitle = RichTextProcessor.wrapRichText(apiChat.title, {noLinks: true, noLinebreaks: true}) || 'chat_title_deleted';
+    //chat.rTitle = chat.title || 'chat_title_deleted';
+    chat.rTitle = RichTextProcessor.wrapRichText(chat.title, {noLinks: true, noLinebreaks: true}) || 'chat_title_deleted';
 
-    let oldChat = this.chats[apiChat.id];
+    const oldChat = this.chats[chat.id];
 
-    apiChat.initials = getAbbreviation(apiChat.title);
+    chat.initials = getAbbreviation(chat.title);
 
-    if(apiChat.pFlags === undefined) {
-      apiChat.pFlags = {};
+    if(chat.pFlags === undefined) {
+      chat.pFlags = {};
     }
 
-    if(apiChat.pFlags.min) {
+    if(chat.pFlags.min) {
       if(oldChat !== undefined) {
         return;
       }
     }
 
-    if(apiChat._ == 'channel' &&
-        apiChat.participants_count === undefined &&
+    if(chat._ == 'channel' &&
+        chat.participants_count === undefined &&
         oldChat !== undefined &&
         oldChat.participants_count) {
-      apiChat.participants_count = oldChat.participants_count;
+      chat.participants_count = oldChat.participants_count;
     }
 
-    if(apiChat.username) {
-      let searchUsername = searchIndexManager.cleanUsername(apiChat.username);
-      this.usernames[searchUsername] = apiChat.id;
+    if(chat.username) {
+      let searchUsername = searchIndexManager.cleanUsername(chat.username);
+      this.usernames[searchUsername] = chat.id;
     }
 
     let changedPhoto = false;
     if(oldChat === undefined) {
-      oldChat = this.chats[apiChat.id] = apiChat;
+      this.chats[chat.id] = chat;
     } else {
       let oldPhoto = oldChat.photo && oldChat.photo.photo_small;
-      let newPhoto = apiChat.photo && apiChat.photo.photo_small;
+      let newPhoto = chat.photo && chat.photo.photo_small;
       if(JSON.stringify(oldPhoto) !== JSON.stringify(newPhoto)) {
         changedPhoto = true;
       }
 
-      safeReplaceObject(oldChat, apiChat);
-      $rootScope.$broadcast('chat_update', apiChat.id);
+      safeReplaceObject(oldChat, chat);
+      $rootScope.$broadcast('chat_update', chat.id);
     }
 
-    if(this.cachedPhotoLocations[apiChat.id] !== undefined) {
-      safeReplaceObject(this.cachedPhotoLocations[apiChat.id], apiChat && 
-        apiChat.photo ? apiChat.photo : {empty: true});
+    if(this.cachedPhotoLocations[chat.id] !== undefined) {
+      safeReplaceObject(this.cachedPhotoLocations[chat.id], chat && 
+        chat.photo ? chat.photo : {empty: true});
     }
 
     if(changedPhoto) {
-      $rootScope.$broadcast('avatar_update', -apiChat.id);
+      $rootScope.$broadcast('avatar_update', -chat.id);
     }
   }
 

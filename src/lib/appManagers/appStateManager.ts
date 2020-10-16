@@ -96,13 +96,17 @@ export class AppStateManager extends EventListenerBase<{
   public saveState() {
     if(this.state === undefined) return;
 
+    //let perf = performance.now();
     this.setListenerResult('save', this.state);
+    //this.log('saveState: event time:', performance.now() - perf);
 
     //const pinnedOrders = appMessagesManager.dialogsStorage.pinnedOrders;
 
+    //perf = performance.now();
     AppStorage.set({
       state: this.state
     });
+    //this.log('saveState: storage set time:', performance.now() - perf);
   }
 
   public pushToState<T extends keyof State>(key: T, value: State[T]) {

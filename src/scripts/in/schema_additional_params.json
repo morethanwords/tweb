@@ -211,4 +211,15 @@
   "params": [
     {"name": "nested", "type": "Array<MessageEntity>"}
   ]
+}, {
+  "predicate": "user",
+  "params": [
+    {"name": "initials", "type": "string"},
+    {"name": "rFirstName", "type": "string"},
+    {"name": "rFullName", "type": "string"},
+    {"name": "rPhone", "type": "string"},
+    {"name": "sortName", "type": "string"},
+    {"name": "sortStatus", "type": "number"},
+    {"name": "num", "type": "number"}
+  ]
 }]

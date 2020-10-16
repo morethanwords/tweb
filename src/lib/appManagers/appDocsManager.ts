@@ -4,7 +4,7 @@ import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
 import referenceDatabase, { ReferenceContext } from '../mtproto/referenceDatabase';
 import opusDecodeController from '../opusDecodeController';
 import { RichTextProcessor } from '../richtextprocessor';
-import { FileURLType, getFileURL, isObject, safeReplaceArrayInObject } from '../utils';
+import { defineNotNumerableProperties, FileURLType, getFileURL, isObject, safeReplaceArrayInObject } from '../utils';
 import appDownloadManager, { DownloadBlob } from './appDownloadManager';
 import appPhotosManager from './appPhotosManager';
 
@@ -48,6 +48,12 @@ class AppDocsManager {
     }
 
     this.docs[doc.id] = doc;
+
+    // * exclude from state
+    defineNotNumerableProperties(doc, [/* 'thumbs',  */'type', 'h', 'w', 'file_name', 
+    'file', 'duration', 'downloaded', 'url', 'audioTitle', 
+    'audioPerformer', 'sticker', 'stickerEmoji', 'stickerEmojiRaw', 
+    'stickerSetInput', 'stickerThumbConverted', 'animated', 'supportsStreaming']);
     
     doc.attributes.forEach(attribute => {
       switch(attribute._) {
@@ -277,6 +283,7 @@ class AppDocsManager {
     const originalPromise = download;
     originalPromise.then((blob) => {
       if(thumb) {
+        defineNotNumerableProperties(thumb, ['url']);
         thumb.url = URL.createObjectURL(blob);
         return;
       } else if(!doc.supportsStreaming) {

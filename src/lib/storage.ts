@@ -1,6 +1,6 @@
 import { Modes } from './mtproto/mtproto_config';
 import { notifySomeone, isWorker } from '../helpers/context';
-import { stringify } from '../helpers/json';
+//import { stringify } from '../helpers/json';
 
 class ConfigStorage {
   public keyPrefix = '';
@@ -72,7 +72,15 @@ class ConfigStorage {
         value = obj[key];
         key = prefix + key;
         this.cache[key] = value;
+
+        value = JSON.stringify(value);
+        /* let perf = performance.now();
+        let value2 = JSON.stringify(value);
+        console.log('LocalStorage set: stringify time by JSON.stringify:', performance.now() - perf, value2);
+
+        perf = performance.now();
         value = stringify(value);
+        console.log('LocalStorage set: stringify time by own stringify:', performance.now() - perf); */
 
         if(this.useLs) {
           try {

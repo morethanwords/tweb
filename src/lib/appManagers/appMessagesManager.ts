@@ -13,7 +13,7 @@ import { RichTextProcessor } from "../richtextprocessor";
 import $rootScope from "../rootScope";
 import searchIndexManager from '../searchIndexManager';
 import AppStorage from '../storage';
-import { copy, deepEqual, getObjectKeysAndSort, langPack, limitSymbols, listMergeSorted, safeReplaceObject, splitStringByLength, tsNow } from "../utils";
+import { copy, deepEqual, defineNotNumerableProperties, getObjectKeysAndSort, langPack, limitSymbols, listMergeSorted, safeReplaceObject, splitStringByLength, tsNow } from "../utils";
 //import { telegramMeWebService } from "../mtproto/mtproto";
 import apiUpdatesManager from "./apiUpdatesManager";
 import appChatsManager from "./appChatsManager";
@@ -2195,78 +2195,81 @@ export class AppMessagesManager {
     });
   }
 
-  public saveMessages(apiMessages: any[], options: {
+  public saveMessages(messages: any[], options: {
     isEdited?: boolean
   } = {}) {
-    apiMessages.forEach((apiMessage) => {
-      if(apiMessage.pFlags === undefined) {
-        apiMessage.pFlags = {};
+    messages.forEach((message) => {
+      if(message.pFlags === undefined) {
+        message.pFlags = {};
       }
 
-      if(apiMessage._ == 'messageEmpty') {
+      if(message._ == 'messageEmpty') {
         return;
       }
 
-      const peerID = this.getMessagePeer(apiMessage);
-      const isChannel = apiMessage.peer_id._ == 'peerChannel';
+      // * exclude from state
+      defineNotNumerableProperties(message, ['rReply', 'mid', 'savedFrom', 'fwdFromID', 'fromID', 'peerID', 'reply_to_mid', 'viaBotID']);
+
+      const peerID = this.getMessagePeer(message);
+      const isChannel = message.peer_id._ == 'peerChannel';
       const channelID = isChannel ? -peerID : 0;
       const isBroadcast = isChannel && appChatsManager.isBroadcast(channelID);
 
-      const mid = appMessagesIDsManager.getFullMessageID(apiMessage.id, channelID);
-      apiMessage.mid = mid;
+      const mid = appMessagesIDsManager.getFullMessageID(message.id, channelID);
+      message.mid = mid;
 
-      if(apiMessage.grouped_id) {
-        const storage = this.groupedMessagesStorage[apiMessage.grouped_id] ?? (this.groupedMessagesStorage[apiMessage.grouped_id] = {});
-        storage[mid] = apiMessage;
+      if(message.grouped_id) {
+        const storage = this.groupedMessagesStorage[message.grouped_id] ?? (this.groupedMessagesStorage[message.grouped_id] = {});
+        storage[mid] = message;
       }
 
       const dialog = this.getDialogByPeerID(peerID)[0];
       if(dialog && mid > 0) {
-        if(mid > dialog[apiMessage.pFlags.out
+        if(mid > dialog[message.pFlags.out
           ? 'read_outbox_max_id'
           : 'read_inbox_max_id']) {
-          apiMessage.pFlags.unread = true;
+          message.pFlags.unread = true;
         }
       }
       // this.log(dT(), 'msg unread', mid, apiMessage.pFlags.out, dialog && dialog[apiMessage.pFlags.out ? 'read_outbox_max_id' : 'read_inbox_max_id'])
 
-      if(apiMessage.reply_to && apiMessage.reply_to.reply_to_msg_id) {
-        apiMessage.reply_to_mid = appMessagesIDsManager.getFullMessageID(apiMessage.reply_to.reply_to_msg_id, channelID);
+      if(message.reply_to && message.reply_to.reply_to_msg_id) {
+        message.reply_to_mid = appMessagesIDsManager.getFullMessageID(message.reply_to.reply_to_msg_id, channelID);
       }
 
-      apiMessage.date -= serverTimeManager.serverTimeOffset;
+      message.date -= serverTimeManager.serverTimeOffset;
 
       const myID = appUsersManager.getSelf().id;
 
-      apiMessage.peerID = peerID;
-      if(apiMessage.peerID == myID && !apiMessage.from_id && !apiMessage.fwd_from) {
-        apiMessage.fromID = myID;
+      message.peerID = peerID;
+      if(message.peerID == myID && !message.from_id && !message.fwd_from) {
+        message.fromID = myID;
       } else {
-        apiMessage.fromID = apiMessage.pFlags.post || (!apiMessage.pFlags.out && !apiMessage.from_id) ? peerID : appPeersManager.getPeerID(apiMessage.from_id);
+        message.fromID = message.pFlags.post || (!message.pFlags.out && !message.from_id) ? peerID : appPeersManager.getPeerID(message.from_id);
       }
 
-      const fwdHeader = apiMessage.fwd_from;
+      const fwdHeader = message.fwd_from;
       if(fwdHeader) {
         //if(peerID == myID) {
           if(fwdHeader.saved_from_peer && fwdHeader.saved_from_msg_id) {
             const savedFromPeerID = appPeersManager.getPeerID(fwdHeader.saved_from_peer);
             const savedFromMid = appMessagesIDsManager.getFullMessageID(fwdHeader.saved_from_msg_id, 
               appPeersManager.isChannel(savedFromPeerID) ? -savedFromPeerID : 0);
-            apiMessage.savedFrom = savedFromPeerID + '_' + savedFromMid;
+            message.savedFrom = savedFromPeerID + '_' + savedFromMid;
           }
 
-          apiMessage.fromID = appPeersManager.getPeerID(deepEqual(apiMessage.from_id, fwdHeader.from_id) ? fwdHeader.from_id : apiMessage.from_id);
+          message.fromID = appPeersManager.getPeerID(deepEqual(message.from_id, fwdHeader.from_id) ? fwdHeader.from_id : message.from_id);
         /* } else {
           apiMessage.fwdPostID = fwdHeader.channel_post;
         } */
 
-        apiMessage.fwdFromID = appPeersManager.getPeerID(fwdHeader.from_id);
+        message.fwdFromID = appPeersManager.getPeerID(fwdHeader.from_id);
 
         fwdHeader.date -= serverTimeManager.serverTimeOffset;
       }
 
-      if(apiMessage.via_bot_id > 0) {
-        apiMessage.viaBotID = apiMessage.via_bot_id;
+      if(message.via_bot_id > 0) {
+        message.viaBotID = message.via_bot_id;
       }
 
       const mediaContext: ReferenceContext = {
@@ -2274,27 +2277,27 @@ export class AppMessagesManager {
         messageID: mid
       };
 
-      if(apiMessage.media) {
-        switch(apiMessage.media._) {
+      if(message.media) {
+        switch(message.media._) {
           case 'messageMediaEmpty':
-            delete apiMessage.media;
+            delete message.media;
             break;
           case 'messageMediaPhoto':
-            if(apiMessage.media.ttl_seconds) {
-              apiMessage.media = {_: 'messageMediaUnsupportedWeb'};
+            if(message.media.ttl_seconds) {
+              message.media = {_: 'messageMediaUnsupportedWeb'};
             } else {
-              apiMessage.media.photo = appPhotosManager.savePhoto(apiMessage.media.photo, mediaContext);
+              message.media.photo = appPhotosManager.savePhoto(message.media.photo, mediaContext);
               //appPhotosManager.savePhoto(apiMessage.media.photo, mediaContext);
             }
             break;
           case 'messageMediaPoll':
-            apiMessage.media.poll = appPollsManager.savePoll(apiMessage.media.poll, apiMessage.media.results);
+            message.media.poll = appPollsManager.savePoll(message.media.poll, message.media.results);
             break;
           case 'messageMediaDocument':
-            if(apiMessage.media.ttl_seconds) {
-              apiMessage.media = {_: 'messageMediaUnsupportedWeb'};
+            if(message.media.ttl_seconds) {
+              message.media = {_: 'messageMediaUnsupportedWeb'};
             } else {
-              apiMessage.media.document = appDocsManager.saveDoc(apiMessage.media.document, mediaContext); // 11.04.2020 warning
+              message.media.document = appDocsManager.saveDoc(message.media.document, mediaContext); // 11.04.2020 warning
             }
 
 
@@ -2303,91 +2306,91 @@ export class AppMessagesManager {
             /* if(apiMessage.media.webpage.document) {
               appDocsManager.saveDoc(apiMessage.media.webpage.document, mediaContext);
             } */
-            appWebPagesManager.saveWebPage(apiMessage.media.webpage, apiMessage.mid, mediaContext);
+            appWebPagesManager.saveWebPage(message.media.webpage, message.mid, mediaContext);
             break;
           /*case 'messageMediaGame':
             AppGamesManager.saveGame(apiMessage.media.game, apiMessage.mid, mediaContext);
             apiMessage.media.handleMessage = true;
             break; */
           case 'messageMediaInvoice':
-            apiMessage.media = {_: 'messageMediaUnsupportedWeb'};
+            message.media = {_: 'messageMediaUnsupportedWeb'};
             break;
           case 'messageMediaGeoLive':
-            apiMessage.media._ = 'messageMediaGeo';
+            message.media._ = 'messageMediaGeo';
             break;
         }
       }
 
-      if(apiMessage.action) {
+      if(message.action) {
         let migrateFrom: number;
         let migrateTo: number;
-        switch(apiMessage.action._) {
+        switch(message.action._) {
           //case 'messageActionChannelEditPhoto':
           case 'messageActionChatEditPhoto':
-            apiMessage.action.photo = appPhotosManager.savePhoto(apiMessage.action.photo, mediaContext);
+            message.action.photo = appPhotosManager.savePhoto(message.action.photo, mediaContext);
             //appPhotosManager.savePhoto(apiMessage.action.photo, mediaContext);
             if(isBroadcast) { // ! messageActionChannelEditPhoto не существует в принципе, это используется для перевода.
-              apiMessage.action._ = 'messageActionChannelEditPhoto';
+              message.action._ = 'messageActionChannelEditPhoto';
             }
             break;
 
           case 'messageActionChatEditTitle':
             if(isBroadcast) {
-              apiMessage.action._ = 'messageActionChannelEditTitle';
+              message.action._ = 'messageActionChannelEditTitle';
             }
             break;
 
           case 'messageActionChatDeletePhoto':
             if(isBroadcast) {
-              apiMessage.action._ = 'messageActionChannelDeletePhoto';
+              message.action._ = 'messageActionChannelDeletePhoto';
             }
             break;
 
           case 'messageActionChatAddUser':
-            if(apiMessage.action.users.length == 1) {
-              apiMessage.action.user_id = apiMessage.action.users[0];
-              if(apiMessage.fromID == apiMessage.action.user_id) {
+            if(message.action.users.length == 1) {
+              message.action.user_id = message.action.users[0];
+              if(message.fromID == message.action.user_id) {
                 if(isChannel) {
-                  apiMessage.action._ = 'messageActionChatJoined';
+                  message.action._ = 'messageActionChatJoined';
                 } else {
-                  apiMessage.action._ = 'messageActionChatReturn';
+                  message.action._ = 'messageActionChatReturn';
                 }
               }
-            } else if(apiMessage.action.users.length > 1) {
-              apiMessage.action._ = 'messageActionChatAddUsers';
+            } else if(message.action.users.length > 1) {
+              message.action._ = 'messageActionChatAddUsers';
             }
             break;
 
           case 'messageActionChatDeleteUser':
-            if(apiMessage.fromID == apiMessage.action.user_id) {
-              apiMessage.action._ = 'messageActionChatLeave';
+            if(message.fromID == message.action.user_id) {
+              message.action._ = 'messageActionChatLeave';
             }
             break;
 
           case 'messageActionChannelMigrateFrom':
-            migrateFrom = -apiMessage.action.chat_id;
+            migrateFrom = -message.action.chat_id;
             migrateTo = -channelID;
             break
 
           case 'messageActionChatMigrateTo':
             migrateFrom = -channelID;
-            migrateTo = -apiMessage.action.channel_id;
+            migrateTo = -message.action.channel_id;
             break;
 
           case 'messageActionHistoryClear':
             //apiMessage.deleted = true;
-            apiMessage.clear_history = true;
-            delete apiMessage.pFlags.out;
-            delete apiMessage.pFlags.unread;
+            message.clear_history = true;
+            delete message.pFlags.out;
+            delete message.pFlags.unread;
             break;
 
           case 'messageActionPhoneCall':
-            delete apiMessage.fromID;
-            apiMessage.action.type = 
-              (apiMessage.pFlags.out ? 'out_' : 'in_') +
+            delete message.fromID;
+            message.action.type = 
+              (message.pFlags.out ? 'out_' : 'in_') +
               (
-                apiMessage.action.reason._ == 'phoneCallDiscardReasonMissed' ||
-                apiMessage.action.reason._ == 'phoneCallDiscardReasonBusy'
+                message.action.reason._ == 'phoneCallDiscardReasonMissed' ||
+                message.action.reason._ == 'phoneCallDiscardReasonBusy'
                    ? 'missed'
                    : 'ok'
               );
@@ -2402,17 +2405,17 @@ export class AppMessagesManager {
         }
       }
 
-      apiMessage.rReply = this.getRichReplyText(apiMessage);
+      message.rReply = this.getRichReplyText(message);
 
-      if(apiMessage.message && apiMessage.message.length && !apiMessage.totalEntities) {
-        const myEntities = RichTextProcessor.parseEntities(apiMessage.message);
-        const apiEntities = apiMessage.entities || [];
-        apiMessage.totalEntities = RichTextProcessor.mergeEntities(myEntities, apiEntities, !apiMessage.pending);
+      if(message.message && message.message.length && !message.totalEntities) {
+        const myEntities = RichTextProcessor.parseEntities(message.message);
+        const apiEntities = message.entities || [];
+        message.totalEntities = RichTextProcessor.mergeEntities(myEntities, apiEntities, !message.pending);
       }
 
       if(!options.isEdited) {
-        this.messagesStorage[mid] = apiMessage;
-        (this.messagesStorageByPeerID[peerID] ?? (this.messagesStorageByPeerID[peerID] = {}))[mid] = apiMessage;
+        this.messagesStorage[mid] = message;
+        (this.messagesStorageByPeerID[peerID] ?? (this.messagesStorageByPeerID[peerID] = {}))[mid] = message;
       }
     });
   }

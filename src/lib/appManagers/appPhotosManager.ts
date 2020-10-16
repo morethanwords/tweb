@@ -5,7 +5,7 @@ import { bytesFromHex, getFileNameByLocation } from "../bin_utils";
 import { DownloadOptions } from "../mtproto/apiFileManager";
 import apiManager from "../mtproto/mtprotoworker";
 import referenceDatabase, { ReferenceContext } from "../mtproto/referenceDatabase";
-import { calcImageInBox, isObject, safeReplaceArrayInObject } from "../utils";
+import { calcImageInBox, defineNotNumerableProperties, isObject, safeReplaceArrayInObject } from "../utils";
 import { MyDocument } from "./appDocsManager";
 import appDownloadManager from "./appDownloadManager";
 import appUsersManager from "./appUsersManager";
@@ -280,6 +280,8 @@ export class AppPhotosManager {
     download = appDownloadManager.download(downloadOptions);
     download.then(blob => {
       if(!cacheContext.downloaded || cacheContext.downloaded < blob.size) {
+        defineNotNumerableProperties(cacheContext, ['downloaded', 'url']);
+
         cacheContext.downloaded = blob.size;
         cacheContext.url = URL.createObjectURL(blob);
 
