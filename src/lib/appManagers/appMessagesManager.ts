@@ -2404,7 +2404,7 @@ export class AppMessagesManager {
 
       apiMessage.rReply = this.getRichReplyText(apiMessage);
 
-      if(apiMessage.message && apiMessage.message.length) {
+      if(apiMessage.message && apiMessage.message.length && !apiMessage.totalEntities) {
         const myEntities = RichTextProcessor.parseEntities(apiMessage.message);
         const apiEntities = apiMessage.entities || [];
         apiMessage.totalEntities = RichTextProcessor.mergeEntities(myEntities, apiEntities, !apiMessage.pending);

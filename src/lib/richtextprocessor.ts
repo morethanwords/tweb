@@ -745,7 +745,7 @@ namespace RichTextProcessor {
 
   export function wrapUrl(url: string, unsafe: number | boolean): string {
     if(!url.match(/^https?:\/\//i)) {
-      url = 'http://' + url;
+      url = 'https://' + url;
     }
   
     var tgMeMatch;
@@ -789,7 +789,7 @@ namespace RichTextProcessor {
     } else if((telescoPeMatch = url.match(/^https?:\/\/telesco\.pe\/([^/?]+)\/(\d+)/))) {
       url = 'tg://resolve?domain=' + telescoPeMatch[1] + '&post=' + telescoPeMatch[2];
     } else if(unsafe) {
-      url = 'tg://unsafe_url?url=' + encodeURIComponent(url);
+      //url = 'tg://unsafe_url?url=' + encodeURIComponent(url);
     }
   
     return url;
