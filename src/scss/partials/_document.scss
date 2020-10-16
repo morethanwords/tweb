@@ -4,8 +4,9 @@
 
   &-ico {
     background-color: $color-blue;
-    border-radius: 5px;
+    border-radius: .5rem;
     line-height: 10px;
+    padding: 0 .25rem;
 
     &:after {
       content: "";
@@ -30,11 +31,12 @@
     background-size: contain;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   &-download {
     background-color: $color-blue;
-    border-radius: 8px;
+    border-radius: .5rem;
   }
 
   &.ext-zip {
@@ -111,13 +113,6 @@
     width: 54px;
     height: 54px;
     color: #fff;
-    display: flex;
-    justify-content: center;
-
-    
-    &.tgico-largeplay:before {
-      margin-right: -1px;
-    }
 
     @include respond-to(handhelds) {
       height: 36px;
@@ -130,6 +125,8 @@
     align-items: center;
     font-size: 24px;
     cursor: pointer;
+    display: flex;
+    justify-content: center;
     
     .tgico-download {
       transform: scale(1);
@@ -150,6 +147,17 @@
     @include respond-to(handhelds) {
       width: 30px;
       height: 30px;
+    }
+  }
+}
+
+.audio {
+  &-ico {
+    display: flex;
+    justify-content: center;
+
+    &.tgico-largeplay:before {
+      margin-right: -1px;
     }
   }
 }
