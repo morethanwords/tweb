@@ -210,6 +210,10 @@ export default class PopupNewMedia extends PopupElement {
     const container = this.container;
     const willAttach = this.willAttach;
 
+    if(files.length > 10 && willAttach.type == 'media') {
+      willAttach.type = 'document';
+    }
+
     files = files.filter(file => {
       if(willAttach.type == 'media') {
         return ['image/', 'video/'].find(s => file.type.indexOf(s) === 0);

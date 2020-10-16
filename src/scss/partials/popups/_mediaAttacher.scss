@@ -34,11 +34,7 @@
           > div {
             position: absolute;
           }
-        }
-      }
 
-      &.is-document, &.is-album {
-        #{$parent}-photo {
           img, video {
             object-fit: cover;
             width: 100%;

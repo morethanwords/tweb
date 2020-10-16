@@ -6,7 +6,10 @@
     background-color: $color-blue;
     border-radius: .5rem;
     line-height: 10px;
-    padding: 0 .25rem;
+
+    .document:not(.document-with-thumb) & {
+      padding: 1.5rem .25rem 0 .25rem;
+    }
 
     &:after {
       content: "";
@@ -60,14 +63,7 @@
     }
   }
 
-  &:not(.photo) {
-    .document-ico {
-      padding-top: 1.5rem;
-      //background-image: url('../assets/img/doc-in.svg');
-    }
-  }
-
-  &.photo {
+  &.document-with-thumb {
     .document-ico {
       background: #000;
       border-radius: $border-radius;

@@ -318,7 +318,7 @@ export function wrapDocument(doc: MyDocument, withTime = false, uploading = fals
   icoDiv.classList.add('document-ico');
 
   if(doc.thumbs?.length || (uploading && doc.url)) {
-    docDiv.classList.add('photo');
+    docDiv.classList.add('document-with-thumb');
 
     if(uploading) {
       icoDiv.innerHTML = `<img src="${doc.url}">`;
