@@ -186,11 +186,11 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     let preloader: ProgressivePreloader;
     if(message?.media?.preloader) { // means upload
       preloader = message.media.preloader as ProgressivePreloader;
-      preloader.attach(container, undefined, undefined, true);
+      preloader.attach(container, undefined, undefined);
     } else if(!doc.downloaded && !doc.supportsStreaming) {
       const promise = appDocsManager.downloadDocNew(doc);
-      preloader = new ProgressivePreloader(container, true);
-      preloader.attach(container, true, promise, true);
+      preloader = new ProgressivePreloader(null, true, false, 'prepend');
+      preloader.attach(container, true, promise);
 
       /* video.addEventListener('canplay', () => {
         if(preloader) {
@@ -200,7 +200,8 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
 
       await promise;
     } else if(doc.supportsStreaming) {
-      preloader = new ProgressivePreloader(container, false);
+      preloader = new ProgressivePreloader(null, false, false, 'prepend');
+      preloader.attach(container, false, null);
       video.addEventListener('canplay', () => {
         preloader.detach();
       }, {once: true});
@@ -478,7 +479,7 @@ export function wrapPhoto(photo: MyPhoto | MyDocument, message: any, container: 
   if(message?.media?.preloader) { // means upload
     message.media.preloader.attach(container);
   } else if(!cacheContext.downloaded) {
-    preloader = new ProgressivePreloader(container, false);
+    preloader = new ProgressivePreloader(container, false, false, photo._ == 'document' ? 'prepend' : 'append');
   }
 
   const load = () => {

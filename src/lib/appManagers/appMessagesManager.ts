@@ -1115,7 +1115,7 @@ export class AppMessagesManager {
       flags |= 256;
     }
 
-    const preloader = new ProgressivePreloader(null, true);
+    const preloader = new ProgressivePreloader(null, true, false, 'prepend');
 
     const media = {
       _: 'messageMediaPending',
@@ -1346,7 +1346,7 @@ export class AppMessagesManager {
       let messageID = ids[idx];
       let randomID = [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)];
       let randomIDS = bigint(randomID[0]).shiftLeft(32).add(bigint(randomID[1])).toString();
-      let preloader = new ProgressivePreloader(null, true);
+      let preloader = new ProgressivePreloader(null, true, false, 'prepend');
 
       let details = options.sendFileDetails[idx];
 

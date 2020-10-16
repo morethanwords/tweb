@@ -10,7 +10,7 @@ export default class ProgressivePreloader {
 
   private promise: CancellablePromise<any> = null;
 
-  constructor(elem?: Element, private cancelable = true, streamable = false) {
+  constructor(elem?: Element, private cancelable = true, streamable = false, private attachMethod: 'append' | 'prepend' = 'append') {
     this.preloader = document.createElement('div');
     this.preloader.classList.add('preloader-container');
 
@@ -89,7 +89,7 @@ export default class ProgressivePreloader {
     }
   }
 
-  public attach(elem: Element, reset = true, promise?: CancellablePromise<any>, append = true) {
+  public attach(elem: Element, reset = true, promise?: CancellablePromise<any>) {
     if(promise/*  && false */) {
       this.attachPromise(promise);
     }
@@ -99,7 +99,7 @@ export default class ProgressivePreloader {
       if(this.detached) return;
       this.detached = false;
 
-      elem[append ? 'append' : 'prepend'](this.preloader);
+      elem[this.attachMethod](this.preloader);
 
       if(this.cancelable && reset) {
         this.setProgress(0);
