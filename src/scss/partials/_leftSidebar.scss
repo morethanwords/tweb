@@ -307,9 +307,11 @@
   }
 
   .input-wrapper {
-    width: 380px;
+    width: 420px;
     margin: 0 auto;
     flex: 0 0 auto;
+    padding: 0 1.25rem;
+    max-width: 100%;
 
     @include respond-to(handhelds) {
       width: 100%;
