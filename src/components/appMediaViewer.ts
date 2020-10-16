@@ -1139,7 +1139,13 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
   onAuthorClick = (e: MouseEvent) => {
     if(this.currentMessageID && this.currentMessageID != Number.MAX_SAFE_INTEGER) {
       const mid = this.currentMessageID;
-      this.close(e).then(() => {
+      this.close(e)
+      //.then(() => mediaSizes.isMobile ? appSidebarRight.sharedMediaTab.closeBtn.click() : Promise.resolve())
+      .then(() => {
+        if(mediaSizes.isMobile) {
+          appSidebarRight.sharedMediaTab.closeBtn.click();
+        }
+
         const message = appMessagesManager.getMessage(mid);
         appImManager.setPeer(message.peerID, mid);
       });

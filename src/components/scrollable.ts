@@ -518,7 +518,7 @@ export default class Scrollable extends ScrollableBase {
 }
 
 export class ScrollableX extends ScrollableBase {
-  constructor(public el: HTMLElement, logPrefix = '', public appendTo = el, public onScrollOffset = 300, public splitCount = 15, public container: HTMLElement = document.createElement('div')) {
+  constructor(el: HTMLElement, logPrefix = '', public appendTo = el, public onScrollOffset = 300, public splitCount = 15, public container: HTMLElement = document.createElement('div')) {
     super(el, logPrefix, appendTo, container);
 
     this.container.classList.add('scrollable-x');

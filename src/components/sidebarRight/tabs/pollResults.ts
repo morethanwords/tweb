@@ -10,6 +10,7 @@ import { ripple } from "../../ripple";
 export default class AppPollResultsTab implements SliderTab {
   private container = document.getElementById('poll-results-container') as HTMLDivElement;
   private contentDiv = this.container.querySelector('.sidebar-content') as HTMLDivElement;
+  private closeBtn = this.container.querySelector('.sidebar-close-button') as HTMLButtonElement;
   private resultsDiv = this.contentDiv.firstElementChild as HTMLDivElement;
   private scrollable: Scrollable;
 
@@ -72,7 +73,9 @@ export default class AppPollResultsTab implements SliderTab {
       const list = document.createElement('ul');
       list.classList.add('poll-results-voters');
 
-      appDialogsManager.setListClickListener(list);
+      appDialogsManager.setListClickListener(list, () => {
+        this.closeBtn.click();
+      });
 
       list.style.minHeight = Math.min(result.voters, 4) * 50 + 'px';
 

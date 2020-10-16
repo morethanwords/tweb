@@ -7,6 +7,8 @@
       max-width: 420px;
       /* padding: 12px 20px 50px; */
       padding: 12px 20px 32.5px;
+      //max-height: unquote('min(640px, 100%)');
+      max-height: 100%;
 
       &.is-media:not(.is-album) {
         /* max-height: 425px; */
@@ -45,6 +47,7 @@
     }
 
     &-header {
+      flex: 0 0 auto;
       flex-wrap: wrap;
       justify-content: space-between;
       align-items: center;
@@ -120,9 +123,14 @@
     }
   }
 
+  .scrollable {
+    position: relative;
+  }
+
   .input-field {
     width: 100%;
     margin-top: 25px;
+    flex: 0 0 auto;
 
     &::placeholder {
       color: #a2acb4;

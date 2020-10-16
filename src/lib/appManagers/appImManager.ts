@@ -147,6 +147,7 @@ export class AppImManager {
 
   private mainColumns: HTMLElement;
   public _selectTab: ReturnType<typeof horizontalMenu>;
+  public tabID = -1;
   private closeBtn = this.topbar.querySelector('.sidebar-close-button') as HTMLButtonElement;
   public hideRightSidebar = false;
 
@@ -718,7 +719,15 @@ export class AppImManager {
   public selectTab(id: number) {
     document.body.classList.toggle(LEFT_COLUMN_ACTIVE_CLASSNAME, id == 0);
 
+    const prevTabID = this.tabID;
+    this.tabID = id;
+    if(mediaSizes.isMobile && prevTabID == 2 && id == 1) {
+      //appSidebarRight.toggleSidebar(false);
+      document.body.classList.remove(RIGHT_COLUMN_ACTIVE_CLASSNAME);
+    }
+    
     this._selectTab(id, mediaSizes.isMobile);
+    //document.body.classList.toggle(RIGHT_COLUMN_ACTIVE_CLASSNAME, id == 2);
   }
 
   onDatePick = (timestamp: number) => {
