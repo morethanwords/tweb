@@ -750,9 +750,9 @@ namespace RichTextProcessor {
   
     var tgMeMatch;
     var telescoPeMatch;
-    if(unsafe == 2) {
+    /* if(unsafe == 2) {
       url = 'tg://unsafe_url?url=' + encodeURIComponent(url);
-    } else if((tgMeMatch = url.match(/^https?:\/\/t(?:elegram)?\.me\/(.+)/))) {
+    } else  */if((tgMeMatch = url.match(/^https?:\/\/t(?:elegram)?\.me\/(.+)/))) {
       var fullPath = tgMeMatch[1];
       var path = fullPath.split('/');
       switch(path[0]) {
@@ -788,9 +788,9 @@ namespace RichTextProcessor {
       }
     } else if((telescoPeMatch = url.match(/^https?:\/\/telesco\.pe\/([^/?]+)\/(\d+)/))) {
       url = 'tg://resolve?domain=' + telescoPeMatch[1] + '&post=' + telescoPeMatch[2];
-    } else if(unsafe) {
-      //url = 'tg://unsafe_url?url=' + encodeURIComponent(url);
-    }
+    }/*  else if(unsafe) {
+      url = 'tg://unsafe_url?url=' + encodeURIComponent(url);
+    } */
   
     return url;
   }

@@ -2255,12 +2255,12 @@ export class AppMessagesManager {
             apiMessage.savedFrom = savedFromPeerID + '_' + savedFromMid;
           }
 
-          apiMessage.fromID = fwdHeader.channel_id ? -fwdHeader.channel_id : appPeersManager.getPeerID(fwdHeader.from_id);
+          apiMessage.fromID = appPeersManager.getPeerID(deepEqual(apiMessage.from_id, fwdHeader.from_id) ? fwdHeader.from_id : apiMessage.from_id);
         /* } else {
           apiMessage.fwdPostID = fwdHeader.channel_post;
         } */
 
-        apiMessage.fwdFromID = fwdHeader.channel_id ? -fwdHeader.channel_id : appPeersManager.getPeerID(fwdHeader.from_id);
+        apiMessage.fwdFromID = appPeersManager.getPeerID(fwdHeader.from_id);
 
         fwdHeader.date -= serverTimeManager.serverTimeOffset;
       }
