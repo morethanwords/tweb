@@ -11,8 +11,8 @@ import { PopupButton } from "../popup";
 import PopupPeer from "../popupPeer";
 import appSidebarRight from "../sidebarRight";
 
-export class ChatContextMenu {
-  private buttons: (ButtonMenuItemOptions & {verify: (peerID: number, msgID: number, target: HTMLElement) => boolean})[];
+export default class ChatContextMenu {
+  private buttons: (ButtonMenuItemOptions & {verify: () => boolean, notDirect?: () => boolean})[];
   private element: HTMLElement;
 
   private target: HTMLElement;
@@ -26,22 +26,19 @@ export class ChatContextMenu {
         this.init = null;
       }
 
-      let bubble: HTMLElement = null;
+      let bubble: HTMLElement, bubbleContainer: HTMLElement;
 
       try {
-        bubble = findUpClassName(e.target, 'bubble__container');
+        bubbleContainer = findUpClassName(e.target, 'bubble__container');
+        bubble = bubbleContainer ? bubbleContainer.parentElement : findUpClassName(e.target, 'bubble');
       } catch(e) {}
-
-      if(!bubble) return;
 
       if(e instanceof MouseEvent) e.preventDefault();
       if(this.element.classList.contains('active')) {
         return false;
       }
       if(e instanceof MouseEvent) e.cancelBubble = true;
-      
-      bubble = bubble.parentElement as HTMLDivElement; // bc container
-      
+
       const msgID = +bubble.dataset.mid;
       if(!msgID) return;
 
@@ -57,7 +54,9 @@ export class ChatContextMenu {
       }
 
       this.buttons.forEach(button => {
-        const good = button.verify(this.peerID, this.msgID, this.target);
+        const good = bubbleContainer ? 
+          button.verify() : 
+          button.notDirect && button.notDirect() && button.verify();
         button.element.classList.toggle('hide', !good);
       });
 
@@ -77,58 +76,75 @@ export class ChatContextMenu {
       icon: 'reply',
       text: 'Reply',
       onClick: this.onReplyClick,
-      verify: (peerID: number, msgID: number) => (peerID > 0 || appChatsManager.hasRights(-peerID, 'send')) && msgID > 0
+      verify: () => (this.peerID > 0 || appChatsManager.hasRights(-this.peerID, 'send')) && this.msgID > 0
     }, {
       icon: 'edit',
       text: 'Edit',
       onClick: this.onEditClick,
-      verify: (peerID: number, msgID: number) => appMessagesManager.canEditMessage(msgID, 'text')
+      verify: () => appMessagesManager.canEditMessage(this.msgID, 'text')
     }, {
       icon: 'copy',
       text: 'Copy',
       onClick: this.onCopyClick,
-      verify: (peerID: number, msgID: number) => !!appMessagesManager.getMessage(msgID).message
+      verify: () => !!appMessagesManager.getMessage(this.msgID).message
     }, {
       icon: 'pin',
       text: 'Pin',
       onClick: this.onPinClick,
-      verify: (peerID: number, msgID: number) => {
-        const message = appMessagesManager.getMessage(msgID);
-        return msgID > 0 && message._ != 'messageService' && appImManager.pinnedMsgID != msgID && (peerID == $rootScope.myID || (peerID < 0 && appChatsManager.hasRights(-peerID, 'pin')));
+      verify: () => {
+        const message = appMessagesManager.getMessage(this.msgID);
+        return this.msgID > 0 && message._ != 'messageService' && appImManager.pinnedMsgID != this.msgID && (this.peerID == $rootScope.myID || (this.peerID < 0 && appChatsManager.hasRights(-this.peerID, 'pin')));
       }
     }, {
       icon: 'unpin',
       text: 'Unpin',
       onClick: this.onUnpinClick,
-      verify: (peerID: number, msgID: number) => appImManager.pinnedMsgID == msgID && (peerID == $rootScope.myID || (peerID < 0 && appChatsManager.hasRights(-peerID, 'pin')))
+      verify: () => appImManager.pinnedMsgID == this.msgID && (this.peerID == $rootScope.myID || (this.peerID < 0 && appChatsManager.hasRights(-this.peerID, 'pin')))
     }, {
       icon: 'revote',
       text: 'Revote',
       onClick: this.onRetractVote,
-      verify: (peerID: number, msgID) => {
-        const message = appMessagesManager.getMessage(msgID);
+      verify: () => {
+        const message = appMessagesManager.getMessage(this.msgID);
         const poll = message.media?.poll as Poll;
         return poll && poll.chosenIndexes.length && !poll.pFlags.closed && !poll.pFlags.quiz;
-      } 
+      }
     }, {
-      icon: 'lock',
+      icon: 'stop',
       text: 'Stop poll',
       onClick: this.onStopPoll,
-      verify: (peerID: number, msgID) => {
-        const message = appMessagesManager.getMessage(msgID);
+      verify: () => {
+        const message = appMessagesManager.getMessage(this.msgID);
         const poll = message.media?.poll;
-        return appMessagesManager.canEditMessage(msgID, 'poll') && poll && !poll.pFlags.closed && msgID > 0;
-      } 
+        return appMessagesManager.canEditMessage(this.msgID, 'poll') && poll && !poll.pFlags.closed && this.msgID > 0;
+      }
     }, {
       icon: 'forward',
       text: 'Forward',
       onClick: this.onForwardClick,
-      verify: (peerID: number, msgID: number) => msgID > 0
+      verify: () => this.msgID > 0
+    }, {
+      icon: 'revote',
+      text: 'Select',
+      onClick: this.onSelectClick,
+      verify: () => {
+        const message = appMessagesManager.getMessage(this.msgID);
+        return !message.action && !appImManager.chatSelection.selectedMids.has(this.msgID);
+      },
+      notDirect: () => true
+    }, {
+      icon: 'revote',
+      text: 'Clear selection',
+      onClick: this.onClearSelectionClick,
+      verify: () => {
+        return appImManager.chatSelection.selectedMids.has(this.msgID);
+      },
+      notDirect: () => appImManager.chatSelection.selectedMids.has(this.msgID)
     }, {
       icon: 'delete danger',
       text: 'Delete',
       onClick: this.onDeleteClick,
-      verify: (peerID: number, msgID: number) => peerID > 0 || appMessagesManager.getMessage(msgID).fromID == $rootScope.myID || appChatsManager.hasRights(-peerID, 'deleteRevoke')
+      verify: () => this.peerID > 0 || appMessagesManager.getMessage(this.msgID).fromID == $rootScope.myID || appChatsManager.hasRights(-this.peerID, 'deleteRevoke')
     }];
 
     this.element = ButtonMenu(this.buttons);
@@ -191,6 +207,14 @@ export class ChatContextMenu {
 
   private onForwardClick = () => {
     appSidebarRight.forwardTab.open([this.msgID]);
+  };
+
+  private onSelectClick = () => {
+    appImManager.chatSelection.toggleByBubble(findUpClassName(this.target, 'bubble'));
+  };
+
+  private onClearSelectionClick = () => {
+    appImManager.chatSelection.cancelSelection();
   };
 
   private onDeleteClick = () => {

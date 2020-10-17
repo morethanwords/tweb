@@ -238,6 +238,8 @@ class AppDocsManager {
 
     if(!thumb.url) {
       if('bytes' in thumb) {
+        // * exclude from state
+        defineNotNumerableProperties(thumb, ['url']);
         thumb.url = appPhotosManager.getPreviewURLFromBytes(thumb.bytes, !!doc.sticker);
       } else {
         //return this.getFileURL(doc, false, thumb);

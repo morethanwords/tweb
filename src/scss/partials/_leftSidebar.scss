@@ -582,11 +582,6 @@
         padding-left: 38px;
       }
     }
-
-    [type="checkbox"]:checked+span:before {
-      top: 5px;
-      left: 0px;
-    }
   }
 }
 
@@ -670,22 +665,33 @@
         margin-top: 10px;
       }
 
-      [type="checkbox"]+span {
+      [type="checkbox"] + span {
         padding-left: 26px;
       }
     }
   }
 
-  .checkbox [type="checkbox"]+span:after {
-    border-radius: 50%;
-    height: 20px;
-    width: 20px;
-    border-color: #dadbdc;
-  }
+  .checkbox [type="checkbox"] {
+    & + span:after {
+      border-radius: 50%;
+      height: 20px;
+      width: 20px;
+      border-color: #dadbdc;
+    }
 
-  .checkbox [type="checkbox"]:checked+span:after {
-   background-color: #4EA4F6;
-    border: none;
+    &:checked {
+      & + span {
+        &:before {
+          top: 5px;
+          left: 0px;
+        }
+
+        &:after {
+          background-color: #4EA4F6;
+          border: none;
+        }
+      }
+    }
   }
 
   .folder-category-button {

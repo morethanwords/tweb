@@ -154,7 +154,7 @@ export class AppPhotosManager {
   }
 
   public getPreviewURLFromThumb(thumb: PhotoSize.photoCachedSize | PhotoSize.photoStrippedSize, isSticker = false) {
-    return thumb.url ?? (thumb.url = this.getPreviewURLFromBytes(thumb.bytes, isSticker));
+    return thumb.url ?? (defineNotNumerableProperties(thumb, ['url']), thumb.url = this.getPreviewURLFromBytes(thumb.bytes, isSticker));
   }
   
   public setAttachmentPreview(bytes: Uint8Array | number[], element: HTMLElement | SVGForeignObjectElement, isSticker = false, background = false) {

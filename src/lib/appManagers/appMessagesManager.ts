@@ -2195,6 +2195,16 @@ export class AppMessagesManager {
     });
   }
 
+  public getMidsByAlbum(grouped_id: string) {
+    return Object.keys(this.groupedMessagesStorage[grouped_id]).map(id => +id).sort((a, b) => a - b);
+  }
+
+  public getMidsByMid(mid: number) {
+    const message = this.messagesStorage[mid];
+    if(message?.grouped_id) return this.getMidsByAlbum(message.grouped_id);
+    else return [mid];
+  }
+
   public saveMessages(messages: any[], options: {
     isEdited?: boolean
   } = {}) {

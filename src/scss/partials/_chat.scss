@@ -1,8 +1,12 @@
+$btn-send-margin: .5625rem;
+$chat-input-size: 3rem;
+$chat-input-handhelds-size: 2.875rem;
+
 #bubble-contextmenu > div {
-	padding: 0 84px 0 16px;
+	padding: 0 5.25 0 1rem;
 
 	@include respond-to(handhelds) {
-		padding: 0 60px 0 16px;
+		padding: 0 3.75rem 0 1rem;
 	}
 }
 
@@ -10,10 +14,10 @@
 	width: 100%;
 	background-color: #fff;
 	user-select: none;
-	box-shadow: 0px 1px 5px -1px rgba(0,0,0,0.21);
+	box-shadow: 0px 1px 5px -1px rgba(0, 0, 0, .21);
 	z-index: 1;
-	min-height: 56px;
-	max-height: 56px;
+	min-height: 3.5rem;
+	max-height: 3.5rem;
 	// border-bottom: 1px solid #DADCE0;
 
 	@include respond-to(handhelds) {
@@ -248,6 +252,7 @@
 		width: 100%;
 		padding: 0 .5rem;
 		flex: 0 0 auto;
+		position: relative;
 
 		@include respond-to(not-handhelds) {
 			padding-left: 1rem;
@@ -311,9 +316,19 @@
 	#btn-record-cancel {
 		visibility: hidden;
 		opacity: 0;
-		transition: width .1s .1s, margin-right .1s .1s, visibility 0s .1s, opacity .1s 0s;
+		transition: visibility 0s .1s, opacity .1s 0s;
 		padding: 0;
 		z-index: 3;
+		position: absolute;
+		right: 0;
+		top: 0;
+
+		// here percents can be used since there are no other transforms
+		transform: translateX(calc(-100% + #{-1rem + -$btn-send-margin}));
+
+		@include respond-to(handhelds) {
+			transform: translateX(calc(-100% + #{-.5rem + -$btn-send-margin}));
+		}
 	}
 
 	.btn-send-container {
@@ -404,13 +419,20 @@
 		#btn-record-cancel {
 			opacity: 1;
 			visibility: visible;
-			margin-right: 9px;
-			transition: width .1s, margin-right .1s, visibility 0s .1s, opacity .1s .1s;
+			transition: visibility 0s .1s, opacity .1s .1s;
 		}
 
 		// unlock
 		#btn-send, #btn-record-cancel {
 			pointer-events: all;
+		}
+
+		.input-message {
+			width: calc(100% - #{$chat-input-size * 2 + $btn-send-margin * 3 + $btn-send-margin / 2});
+
+			@include respond-to(handhelds) {
+				width: calc(100% - #{$chat-input-handhelds-size * 2 + $btn-send-margin * 2});
+			}
 		}
 
 		#attach-file {
@@ -544,29 +566,30 @@
 		display: flex;
 		align-items: center;
 		flex-direction: column;
-		width: calc(100% - 3.75rem);
+		width: calc(100% - #{$chat-input-size + $btn-send-margin + $btn-send-margin / 2});
 		justify-content: center;
 		background-color: #fff;
 		border-radius: 12px;
 		border-bottom-right-radius: 0;
 		box-shadow: 0 1px 2px 0 rgba(16, 35, 47, .07);
-		margin-right: 9px;
 		padding: 4.5px .5rem;
 		/* padding: 3px .5rem 6px .5rem; */
-		min-height: 54px;
+		min-height: $chat-input-size;
 		max-height: 30rem;
 		caret-color: $button-primary-background;
-		flex: 1;
+		flex: 0 0 auto;
 		position: relative;
 		z-index: 3;
+		transition: width .1s;
 
     @include respond-to(handhelds) {
-			min-height: 46px;
+			width: calc(100% - #{$chat-input-handhelds-size + $btn-send-margin});
+			min-height: $chat-input-handhelds-size;
 			padding: .5px .5rem;
     }
 		
 		@include respond-to(esg-bottom) {
-			min-height: 46px;
+			min-height: $chat-input-handhelds-size;
 			padding: .5px .5rem;
 		}
 		
@@ -982,6 +1005,19 @@
 		body.animation-level-0 & {
 			transition: none;
 		}
+	}
+
+	&.is-selecting {
+		cursor: default !important;
+		user-select: none;
+
+		.is-in .bubble__container {
+			transform: translateX(2.5rem);
+		}
+	}
+
+	&.is-selecting > .scrollable::-webkit-scrollbar {
+		display: none;
 	}
 
 	> .scrollable {

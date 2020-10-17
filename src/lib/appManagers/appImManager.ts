@@ -5,12 +5,14 @@ import AudioElement from '../../components/audio';
 import AvatarElement from '../../components/avatar';
 import BubbleGroups from '../../components/bubbleGroups';
 import { ChatAudio } from '../../components/chat/audio';
-import { ChatContextMenu } from '../../components/chat/contextMenu';
+import ChatContextMenu from '../../components/chat/contextMenu';
 import { ChatInput } from '../../components/chat/input';
 import { MessageRender } from '../../components/chat/messageRender';
 import PinnedContainer from '../../components/chat/pinnedContainer';
 import ReplyContainer from '../../components/chat/replyContainer';
 import { ChatSearch } from '../../components/chat/search';
+import ChatSelection from '../../components/chat/selection';
+import CheckboxField from '../../components/checkbox';
 import { horizontalMenu } from '../../components/horizontalMenu';
 import LazyLoadQueue from '../../components/lazyLoadQueue';
 import { formatPhoneNumber, parseMenuButtonsTo } from '../../components/misc';
@@ -74,6 +76,7 @@ export class AppImManager {
   
   public chatInputC: ChatInput;
   public chatAudio: ChatAudio;
+  public chatSelection: ChatSelection;
 
   private menuButtons: {
     search: HTMLButtonElement
@@ -167,6 +170,8 @@ export class AppImManager {
     this.selectTab(0);
 
     parseMenuButtonsTo(this.menuButtons, this.columnEl.querySelector('.chat-more-button').firstElementChild.children);
+
+    this.chatSelection = new ChatSelection(this, appMessagesManager/* this.bubblesContainer, this.bubbles */);
     
     this.chatAudio = new ChatAudio();
     this.chatInfo.nextElementSibling.prepend(this.chatAudio.divAndCaption.container);
@@ -427,6 +432,14 @@ export class AppImManager {
           }
         }
 
+        return;
+      }
+
+      // ! Trusted - due to audio autoclick
+      if(this.chatSelection.isSelecting && !bubble.classList.contains('service') && e.isTrusted) {
+        cancelEvent(e);
+        //console.log('bubble click', e);
+        this.chatSelection.toggleByBubble(bubble);
         return;
       }
 
@@ -1261,6 +1274,8 @@ export class AppImManager {
     let peerID = this.peerID;
     this.peerChanged = true;
 
+    this.chatSelection.cleanup();
+
     this.avatarEl.setAttribute('peer', '' + this.peerID);
     this.avatarEl.update();
 
@@ -1381,13 +1396,13 @@ export class AppImManager {
   public highlightBubble(element: HTMLElement) {
     if(element.dataset.timeout) {
       clearTimeout(+element.dataset.timeout);
-      element.classList.remove('is-selected');
+      element.classList.remove('is-highlighted');
       void element.offsetWidth; // reflow
     }
 
-    element.classList.add('is-selected');
+    element.classList.add('is-highlighted');
     element.dataset.timeout = '' + setTimeout(() => {
-      element.classList.remove('is-selected');
+      element.classList.remove('is-highlighted');
       delete element.dataset.timeout;
     }, 2000);
   }
@@ -1575,7 +1590,7 @@ export class AppImManager {
       bubble.appendChild(bubbleContainer);
       this.bubbles[+message.mid] = bubble;
     } else {
-      const save = ['is-selected'];
+      const save = ['is-highlighted'];
       const wasClassNames = bubble.className.split(' ');
       const classNames = ['bubble'].concat(save.filter(c => wasClassNames.includes(c)));
       bubble.className = classNames.join(' ');
@@ -1591,6 +1606,10 @@ export class AppImManager {
     }
 
     bubble.dataset.mid = message.mid;
+
+    if(this.chatSelection.isSelecting) {
+      this.chatSelection.toggleBubbleCheckbox(bubble, true);
+    }
 
     if(message._ == 'messageService') {
       let action = message.action;

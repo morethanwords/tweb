@@ -716,7 +716,7 @@ export function wrapAlbum({groupID, attachmentDiv, middleware, uploading, lazyLo
   const items: {size: PhotoSize.photoSize, media: any, message: any}[] = [];
 
   // !higher msgID will be the FIRST in album
-  const storage = Object.keys(appMessagesManager.groupedMessagesStorage[groupID]).map(id => +id).sort((a, b) => a - b);
+  const storage = appMessagesManager.getMidsByAlbum(groupID);
   for(const mid of storage) {
     const m = appMessagesManager.getMessage(mid);
     const media = m.media.photo || m.media.document;

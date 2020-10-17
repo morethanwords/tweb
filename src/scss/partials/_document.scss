@@ -105,6 +105,7 @@
   justify-content: center;
   cursor: pointer;
   position: relative;
+  user-select: none;
 
   &-ico, &-download {
     position: absolute;

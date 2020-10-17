@@ -45,21 +45,42 @@ $bubble-margin: .25rem;
   z-index: 1;
   margin: 0 auto;
 
-  &.is-selected {
+  &.is-highlighted, &.is-selected, /* #bubbles.is-selecting */ & {
     &:after {
       position: absolute;
       left: -50%;
-      top: 0;
-      height: 100%;
+      /* top: 0;
+      bottom: 0; */
+      top: #{$bubble-margin / 2};
+      bottom: -#{$bubble-margin / 2};
       content: " ";
-      background-color: rgba(0, 132, 255, .3);
-      animation: bubbleSelected 2s linear;
       z-index: 1;
     }
+  }
 
+  /* &.is-highlighted, &.is-selected {
     &:not(.is-group-last):after {
-      height: calc(100% + $bubble-margin);
+      height: calc(100% + #{$bubble-margin / 2}) !important;
     }
+
+    & + &:not(.is-group-last) {
+      &:after {
+        top: .125rem !important;
+        height: calc(100% - #{$bubble-margin / 2}) !important;
+      }
+    }
+  } */
+
+  // ! if turn this on, there will be an empty space
+  /* &.is-highlighted, &.is-selected {
+    &.is-group-last:after {
+      bottom: #{$bubble-margin / 2} !important;
+    }
+  } */
+
+  &.is-highlighted:after {
+    background-color: rgba(0, 132, 255, .3);
+    animation: bubbleSelected 2s linear;
   }
 
   &.is-first-unread {
@@ -78,10 +99,30 @@ $bubble-margin: .25rem;
       font-weight: 500; 
       font-size: 15px; 
       background-color: rgba(255, 255, 255, 0.95); 
+      z-index: 2;
+      position: relative;
+    }
+
+    &.is-highlighted, &.is-selected {
+      &:after {
+        top: #{2rem + $bubble-margin} !important;
+      }
     }
   }
 
-  &.is-selected:after, &.is-first-unread:before {
+  &.is-selected {
+    &:after {
+      background-color: rgba(77, 142, 80, .4);
+      animation: fade-in-opacity .2s linear forwards;
+    }
+
+    &.backwards:after {
+      animation: fade-in-backwards-opacity .2s linear forwards;
+    }
+  }
+
+  //&.is-highlighted:after, &.is-first-unread:before, &.is-selected:after {
+  &:after, &:before {
     width: 200%;
     display: block;
   }
@@ -114,6 +155,45 @@ $bubble-margin: .25rem;
       cursor: pointer;
     }
   }
+
+  &-select-checkbox {
+    z-index: 2;
+    position: absolute;
+    left: 0;
+    //bottom: .25rem; // * by avatar
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+
+    [type="checkbox"] {
+      &:not(:checked) + .checkbox-caption:after {
+        
+      }
+
+      &:checked + .checkbox-caption {
+        &:after {
+          background-color: #61c642;
+        }
+      }
+    }
+
+    .checkbox-caption {
+      &:before {
+        top: 7px !important;
+        left: 3px !important;
+        width: 6px !important;
+        height: 11px !important;
+      }
+
+      &:after {
+        box-shadow: 0px 0px 3px 0px rgba(0, 0, 0, .4);
+        border: 2px solid #fff !important;
+        width: 22px;
+        height: 22px;
+      }
+    }
+  }
   
   &__container {
     //min-width: 60px;
@@ -128,6 +208,7 @@ $bubble-margin: .25rem;
     width: max-content;
     height: fit-content;
     z-index: 2;
+    transition: .2s transform;
 
     @include respond-to(not-handhelds) {
       max-width: 85%;
@@ -408,6 +489,7 @@ $bubble-margin: .25rem;
     max-width: 100%;
     border-radius: inherit;
     overflow: hidden;
+    user-select: none;
     
     display: flex; // lol
     justify-content: center;
