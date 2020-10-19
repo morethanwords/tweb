@@ -1,6 +1,6 @@
 import appSidebarRight, { AppSidebarRight } from "..";
 import appMessagesManager from "../../../lib/appManagers/appMessagesManager";
-import { AppSelectPeers } from "../../appSelectPeers";
+import AppSelectPeers from "../../appSelectPeers";
 import { putPreloader } from "../../misc";
 import { SliderTab } from "../../slider";
 
@@ -75,7 +75,9 @@ export default class AppForwardTab implements SliderTab {
       this.sendBtn.classList.toggle('is-visible', !!length);
     }, ['dialogs', 'contacts'], () => {
       //console.log('forward rendered:', this.container.querySelector('.selector ul').childElementCount);
-      appSidebarRight.selectTab(AppSidebarRight.SLIDERITEMSIDS.forward);
+      
+      // !!!!!!!!!! UNCOMMENT BELOW IF NEED TO USE THIS CLASS
+      ////////////////////////////////////////appSidebarRight.selectTab(AppSidebarRight.SLIDERITEMSIDS.forward);
       appSidebarRight.toggleSidebar(true).then(() => {
         if(this.selector) {
           this.selector.checkForTriggers();

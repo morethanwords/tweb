@@ -34,9 +34,9 @@
     border-left: 1px solid #DADCE0;
   }
 
-  body.is-forward-active & {
+  /* body.is-forward-active & {
     z-index: 4;
-  }
+  } */
 
   .sidebar-header {
     flex: 0 0 auto;
@@ -61,9 +61,9 @@
     }
   }
 
-  #forward-container {
+  /* #forward-container {
     z-index: 5;
-  }
+  } */
 
   .sidebar-search {
     display: none;

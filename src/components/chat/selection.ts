@@ -1,13 +1,143 @@
+import { isTouchSupported } from "../../helpers/touchSupport";
 import type { AppImManager } from "../../lib/appManagers/appImManager";
 import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManager";
+import { cancelEvent, cancelSelection, findUpClassName } from "../../lib/utils";
+import Button from "../button";
+import ButtonIcon from "../buttonIcon";
 import CheckboxField from "../checkbox";
+import PopupForward from "../popupForward";
+import { toast } from "../toast";
+
+const SetTransition = (element: HTMLElement, className: string, forwards: boolean, duration: number, onTransitionEnd?: () => void) => {
+  const timeout = element.dataset.timeout;
+  if(timeout !== undefined) {
+    clearTimeout(+timeout);
+  }
+
+  if(forwards) {
+    element.classList.add(className);
+  }
+
+  element.classList.add('animating');
+
+  element.classList.toggle('backwards', !forwards);
+  element.dataset.timeout = '' + setTimeout(() => {
+    delete element.dataset.timeout;
+    if(!forwards) {
+      element.classList.remove('backwards', className);
+    }
+
+    element.classList.remove('animating');
+    
+    onTransitionEnd && onTransitionEnd();
+  }, duration);
+};
+
+const MAX_SELECTION_LENGTH = 100;
+const MIN_CLICK_MOVE = 32; // minimum bubble height
 
 export default class ChatSelection {
   public selectedMids: Set<number> = new Set();
   public isSelecting = false;
 
-  constructor(private appImManager: AppImManager, private appMessagesManager: AppMessagesManager) {
+  private selectionContainer: HTMLElement;
+  private selectionCountEl: HTMLElement;
 
+  constructor(private appImManager: AppImManager, private appMessagesManager: AppMessagesManager) {
+    if(isTouchSupported) return;
+
+    const bubblesContainer = appImManager.bubblesContainer;
+    bubblesContainer.addEventListener('mousedown', (e) => {
+      //console.log('selection mousedown', e);
+      if(e.button != 0) { // LEFT BUTTON
+        return;
+      }
+      
+      const seen: Set<number> = new Set();
+      let selecting: boolean;
+
+      /* let good = false;
+      const {x, y} = e; */
+
+      /* const bubbles = appImManager.bubbles;
+      for(const mid in bubbles) {
+        const bubble = bubbles[mid];
+        bubble.addEventListener('mouseover', () => {
+          console.log('mouseover');
+        }, {once: true});
+      } */
+
+      //const foundTargets: Map<HTMLElement, true> = new Map();
+      const onMouseMove = (e: MouseEvent) => {
+        /* if(!good) {
+          if(Math.abs(e.x - x) > MIN_CLICK_MOVE || Math.abs(e.y - y) > MIN_CLICK_MOVE) {
+            good = true;
+          } else {
+            return;
+          }
+        } */
+
+        /* if(foundTargets.has(e.target as HTMLElement)) return;
+        foundTargets.set(e.target as HTMLElement, true); */
+        const bubble = findUpClassName(e.target, 'bubble');
+        if(!bubble) {
+          console.error('found no bubble', e);
+          return;
+        }
+
+        const mid = +bubble.dataset.mid;
+        if(!mid) return;
+
+        if(e.target != bubble && selecting === undefined) {
+          bubblesContainer.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+          return;
+        }
+
+        if(!seen.has(mid)) {
+          const isBubbleSelected = this.selectedMids.has(mid);
+          if(selecting === undefined) {
+            appImManager.scrollable.container.classList.add('no-select');
+            selecting = !isBubbleSelected;
+          }
+
+          seen.add(mid);
+
+          if((selecting && !isBubbleSelected) || (!selecting && isBubbleSelected)) {
+            if(!this.selectedMids.size) {
+              if(seen.size == 2) {
+                [...seen].forEach(mid => {
+                  const mounted = this.appImManager.getMountedBubble(mid);
+                  if(mounted) {
+                    this.toggleByBubble(mounted.bubble);
+                  }
+                })
+              }
+            } else {
+              this.toggleByBubble(bubble);
+            }
+          }
+        }
+        //console.log('onMouseMove', target);
+      };
+
+      const onMouseUp = (e: MouseEvent) => {
+        if(seen.size) {
+          window.addEventListener('click', (e) => {
+            cancelEvent(e);
+          }, {capture: true, once: true, passive: false});
+        }
+
+        bubblesContainer.removeEventListener('mousemove', onMouseMove);
+        appImManager.scrollable.container.classList.remove('no-select');
+
+        // ! CANCEL USER SELECTION !
+        cancelSelection();
+      };
+
+      bubblesContainer.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp, {once: true});
+    });
   }
 
   public toggleBubbleCheckbox(bubble: HTMLElement, show: boolean) {
@@ -25,31 +155,79 @@ export default class ChatSelection {
         bubble.classList.add('is-selected');
       }
 
-      bubble.append(checkboxField.label);
+      bubble.prepend(checkboxField.label);
     } else if(hasCheckbox) {
-      bubble.lastElementChild.remove();
+      bubble.firstElementChild.remove();
     }
   }
 
   public getCheckboxInputFromBubble(bubble: HTMLElement) {
-    return bubble.lastElementChild.tagName == 'LABEL' && bubble.lastElementChild.firstElementChild as HTMLInputElement;
+    return bubble.firstElementChild.tagName == 'LABEL' && bubble.firstElementChild.firstElementChild as HTMLInputElement;
   }
 
-  public toggleSelection() {
+  public updateForwardContainer() {
+    if(!this.selectedMids.size) return;
+    this.selectionCountEl.innerText = this.selectedMids.size + ' Message' + (this.selectedMids.size == 1 ? '' : 's');
+
+  }
+
+  public toggleSelection(toggleCheckboxes = true) {
     const wasSelecting = this.isSelecting;
     this.isSelecting = this.selectedMids.size > 0;
 
     if(wasSelecting == this.isSelecting) return;
     
-    this.appImManager.bubblesContainer.classList.toggle('is-selecting', !!this.selectedMids.size);
+    const bubblesContainer = this.appImManager.bubblesContainer;
+    //bubblesContainer.classList.toggle('is-selecting', !!this.selectedMids.size);
 
-    for(const mid in this.appImManager.bubbles) {
-      const bubble = this.appImManager.bubbles[mid];
-      this.toggleBubbleCheckbox(bubble, this.isSelecting);
+    SetTransition(bubblesContainer, 'is-selecting', !!this.selectedMids.size, 200, () => {
+      if(!this.isSelecting) {
+        this.selectionContainer.remove();
+        this.selectionContainer = null;
+      }
+    });
+
+    //const chatInput = this.appImManager.chatInput;
+
+    if(this.isSelecting) {
+      if(!this.selectionContainer) {
+        const inputMessageDiv = document.querySelector('.input-message');
+        this.selectionContainer = document.createElement('div');
+        this.selectionContainer.classList.add('selection-container');
+
+        const btnCancel = ButtonIcon('close', {noRipple: true});
+        btnCancel.addEventListener('click', this.cancelSelection, {once: true});
+
+        this.selectionCountEl = document.createElement('div');
+        this.selectionCountEl.classList.add('selection-container-count');
+
+        const btnForward = Button('btn-primary btn-transparent', {icon: 'forward'});
+        btnForward.append('Forward');
+
+        btnForward.addEventListener('click', () => {
+          new PopupForward([...this.selectedMids], () => {
+            this.cancelSelection();
+          });
+        });
+
+        const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'delete'});
+        btnDelete.append('Delete');
+
+        this.selectionContainer.append(btnCancel, this.selectionCountEl, btnForward, btnDelete);
+
+        inputMessageDiv.append(this.selectionContainer);
+      }
+    }
+
+    if(toggleCheckboxes) {
+      for(const mid in this.appImManager.bubbles) {
+        const bubble = this.appImManager.bubbles[mid];
+        this.toggleBubbleCheckbox(bubble, this.isSelecting);
+      }
     }
   }
 
-  public cancelSelection() {
+  public cancelSelection = () => {
     for(const mid of this.selectedMids) {
       const bubble = this.appImManager.bubbles[mid];
       if(bubble) {
@@ -59,12 +237,12 @@ export default class ChatSelection {
 
     this.selectedMids.clear();
     this.toggleSelection();
-  }
+    cancelSelection();
+  };
 
   public cleanup() {
-    this.isSelecting = false;
     this.selectedMids.clear();
-    this.appImManager.bubblesContainer.classList.remove('is-selecting');
+    this.toggleSelection(false);
   }
 
   public toggleByBubble(bubble: HTMLElement) {
@@ -75,6 +253,25 @@ export default class ChatSelection {
     if(found) {
       mids.forEach(mid => this.selectedMids.delete(mid));
     } else {
+      let diff = MAX_SELECTION_LENGTH - this.selectedMids.size - mids.length;
+      if(diff < 0) {
+        toast('Max selection count reached.');
+        return;
+        /* const it = this.selectedMids.values();
+        do {
+          const mid = it.next().value;
+          const mounted = this.appImManager.getMountedBubble(mid);
+          if(mounted) {
+            this.toggleByBubble(mounted.bubble);
+          } else {
+            const mids = this.appMessagesManager.getMidsByMid(mid);
+            for(const mid of mids) {
+              this.selectedMids.delete(mid);
+            }
+          }
+        } while(this.selectedMids.size > MAX_SELECTION_LENGTH); */
+      }
+
       mids.forEach(mid => this.selectedMids.add(mid));
     }
 
@@ -83,24 +280,7 @@ export default class ChatSelection {
     input.checked = !found;
 
     this.toggleSelection();
-    if(found) {
-      bubble.classList.add('backwards');
-      bubble.dataset.timeout = '' + setTimeout(() => {
-        delete bubble.dataset.timeout;
-        bubble.classList.remove('backwards', 'is-selected');
-      }, 200);
-    } else {
-      bubble.classList.remove('backwards');
-      const timeout = bubble.dataset.timeout;
-      if(timeout !== undefined) {
-        clearTimeout(+timeout);
-      }
-
-      bubble.classList.add('is-selected');
-    }
-  }
-
-  public selectMessage(mid: number) {
-    
+    this.updateForwardContainer();
+    SetTransition(bubble, 'is-selected', !found, 200);
   }
 }

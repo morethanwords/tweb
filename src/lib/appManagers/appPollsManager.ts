@@ -1,5 +1,5 @@
 import { InputMedia } from "../../layer";
-import { logger } from "../logger";
+import { logger, LogLevels } from "../logger";
 import apiManager from "../mtproto/mtprotoworker";
 import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
 import { RichTextProcessor } from "../richtextprocessor";
@@ -74,7 +74,7 @@ class AppPollsManager {
   public polls: {[id: string]: Poll} = {};
   public results: {[id: string]: PollResults} = {};
 
-  private log = logger('POLLS'/* , LogLevels.error */);
+  private log = logger('POLLS', LogLevels.error);
 
   constructor() {
     $rootScope.$on('apiUpdate', (e) => {

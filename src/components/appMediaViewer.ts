@@ -19,6 +19,7 @@ import { ButtonMenuItemOptions } from "./buttonMenu";
 import ButtonMenuToggle from "./buttonMenuToggle";
 import { LazyLoadQueueBase } from "./lazyLoadQueue";
 import { renderImageFromUrl } from "./misc";
+import PopupForward from "./popupForward";
 import ProgressivePreloader from "./preloader";
 import appSidebarRight, { AppSidebarRight } from "./sidebarRight";
 import SwipeHandler from "./swipeHandler";
@@ -231,11 +232,11 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     this.loadMediaPromiseUp = this.loadMediaPromiseDown = null;
     this.setMoverPromise = null;
 
-    if(appSidebarRight.historyTabIDs.slice(-1)[0] == AppSidebarRight.SLIDERITEMSIDS.forward) {
+    /* if(appSidebarRight.historyTabIDs.slice(-1)[0] == AppSidebarRight.SLIDERITEMSIDS.forward) {
       promise.then(() => {
         appSidebarRight.forwardTab.closeBtn.click();
       });
-    }
+    } */
 
     window.removeEventListener('keydown', this.onKeyDown);
 
@@ -794,10 +795,10 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       this.isFirstOpen = false;
       //this.loadMore = loadMore;
 
-      if(appSidebarRight.historyTabIDs.slice(-1)[0] == AppSidebarRight.SLIDERITEMSIDS.forward) {
+      /* if(appSidebarRight.historyTabIDs.slice(-1)[0] == AppSidebarRight.SLIDERITEMSIDS.forward) {
         appSidebarRight.forwardTab.closeBtn.click();
         await new Promise((resolve) => setTimeout(resolve, 200));
-      }
+      } */
     }
 
     /* if(this.nextTargets.length < 10 && this.loadMore) {
@@ -1132,7 +1133,10 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
   onForwardClick = (e: MouseEvent) => {
     if(this.currentMessageID) {
-      appSidebarRight.forwardTab.open([this.currentMessageID]);
+      //appSidebarRight.forwardTab.open([this.currentMessageID]);
+      new PopupForward([this.currentMessageID], () => {
+        return this.close();
+      });
     }
   };
 

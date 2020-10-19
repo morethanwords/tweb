@@ -6,14 +6,14 @@ import AppGifsTab from "./tabs/gifs";
 import mediaSizes, { ScreenSize } from "../../helpers/mediaSizes";
 import AppPrivateSearchTab from "./tabs/search";
 import AppSharedMediaTab from "./tabs/sharedMedia";
-import AppForwardTab from "./tabs/forward";
+//import AppForwardTab from "./tabs/forward";
 import { MOUNT_CLASS_TO } from "../../lib/mtproto/mtproto_config";
 
 export const RIGHT_COLUMN_ACTIVE_CLASSNAME = 'is-right-column-shown';
 
 const sharedMediaTab = new AppSharedMediaTab();
 const searchTab = new AppPrivateSearchTab();
-const forwardTab = new AppForwardTab();
+//const forwardTab = new AppForwardTab();
 const stickersTab = new AppStickersTab();
 const pollResultsTab = new AppPollResultsTab();
 const gifsTab = new AppGifsTab();
@@ -22,15 +22,15 @@ export class AppSidebarRight extends SidebarSlider {
   public static SLIDERITEMSIDS = {
     sharedMedia: 0,
     search: 1,
-    forward: 2,
-    stickers: 3,
-    pollResults: 4,
-    gifs: 5,
+    //forward: 2,
+    stickers: 2,
+    pollResults: 3,
+    gifs: 4,
   };
 
   public sharedMediaTab: AppSharedMediaTab;
   public searchTab: AppPrivateSearchTab;
-  public forwardTab: AppForwardTab;
+  //public forwardTab: AppForwardTab;
   public stickersTab: AppStickersTab;
   public pollResultsTab: AppPollResultsTab;
   public gifsTab: AppGifsTab;
@@ -39,7 +39,7 @@ export class AppSidebarRight extends SidebarSlider {
     super(document.getElementById('column-right') as HTMLElement, {
       [AppSidebarRight.SLIDERITEMSIDS.sharedMedia]: sharedMediaTab,
       [AppSidebarRight.SLIDERITEMSIDS.search]: searchTab,
-      [AppSidebarRight.SLIDERITEMSIDS.forward]: forwardTab,
+      //[AppSidebarRight.SLIDERITEMSIDS.forward]: forwardTab,
       [AppSidebarRight.SLIDERITEMSIDS.stickers]: stickersTab,
       [AppSidebarRight.SLIDERITEMSIDS.pollResults]: pollResultsTab,
       [AppSidebarRight.SLIDERITEMSIDS.gifs]: gifsTab
@@ -49,7 +49,7 @@ export class AppSidebarRight extends SidebarSlider {
 
     this.sharedMediaTab = sharedMediaTab;
     this.searchTab = searchTab;
-    this.forwardTab = forwardTab;
+    //this.forwardTab = forwardTab;
     this.stickersTab = stickersTab;
     this.pollResultsTab = pollResultsTab;
     this.gifsTab = gifsTab;

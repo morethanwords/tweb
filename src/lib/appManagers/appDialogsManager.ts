@@ -686,7 +686,7 @@ export class AppDialogsManager {
         }
     
         if(found) {
-          entities.sort((a: any, b: any) => a.offset - b.offset);
+          entities.sort((a, b) => a.offset - b.offset);
         }
     
         let messageWrapped = RichTextProcessor.wrapRichText(messageText, {
@@ -717,7 +717,7 @@ export class AppDialogsManager {
           }
 
           //senderBold.innerText = str + ': ';
-          senderBold.innerHTML = RichTextProcessor.wrapRichText(str, {noLinebreaks: true}) + ': ';
+          senderBold.innerHTML = RichTextProcessor.wrapRichText(str, {noLinebreaks: true, noLinks: true}) + ': ';
           //console.log(sender, senderBold.innerText);
           dom.lastMessageSpan.prepend(senderBold);
         } //////// else console.log('no sender', lastMessage, peerID);

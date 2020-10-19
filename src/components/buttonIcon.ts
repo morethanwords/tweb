@@ -1,10 +1,7 @@
-import { ripple } from "./ripple";
+import Button from "./button";
 
 const ButtonIcon = (className: string, options: Partial<{noRipple: true, onlyMobile: true}> = {}) => {
-  const button = document.createElement('button');
-  button.className = `btn-icon tgico-${className}`;
-  if(!options.noRipple) ripple(button);
-  if(options.onlyMobile) button.classList.add('only-handhelds');
+  const button = Button('btn-icon', {icon: className, ...options});
   return button;
 };
 

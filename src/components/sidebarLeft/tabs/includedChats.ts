@@ -1,5 +1,5 @@
 import { SliderTab } from "../../slider";
-import { AppSelectPeers } from "../../appSelectPeers";
+import AppSelectPeers from "../../appSelectPeers";
 import appSidebarLeft, { AppSidebarLeft } from "..";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import appPeersManager from "../../../lib/appManagers/appPeersManager";

@@ -24,6 +24,7 @@ $large-screen: 1680px;
 //$large-screen: 16800px;
 
 $floating-left-sidebar: 925px;
+$messages-container-width: 728px;
 
 @mixin respond-to($media) {
   @if $media == handhelds {
@@ -82,7 +83,7 @@ $floating-left-sidebar: 925px;
   --message-handhelds-margin: 5.5625rem;
   --message-beside-button-margin: 2.875rem;
   --message-time-background: rgba(0, 0, 0, .35);
-  --messages-container-width: 728px;
+  --messages-container-width: #{$messages-container-width};
   --esg-sticker-size: 80px;
 
   @include respond-to(handhelds) {
@@ -127,6 +128,7 @@ $floating-left-sidebar: 925px;
 @import "partials/popups/stickers";
 @import "partials/popups/datePicker";
 @import "partials/popups/createPoll";
+@import "partials/popups/forward"; 
 
 @import "partials/pages/pages";
 @import "partials/pages/authCode";
@@ -290,7 +292,7 @@ input {
 
 input, textarea {
 	-webkit-appearance: none;
-} 
+}
 
 .subtitle {
   /* font-weight: 500; */
@@ -354,7 +356,7 @@ input, textarea {
 	}
 }
 
-.danger {
+.danger, .danger:before {
   color: $color-error!important;
 }
 
@@ -437,10 +439,6 @@ input, textarea {
       margin-right: 32px;
     }
 
-    &.danger:before {
-      color: $color-error;
-    }
-  
     @include respond-to(handhelds) {
       padding: 0 30px 0 16px;
       height: 50px;
@@ -830,7 +828,7 @@ input:focus, button:focus {
 }
 
 .btn-primary {
-  background: $color-blue;
+  background-color: $color-blue;
   color: #fff;
   border-radius: $border-radius-medium;
   width: 100%;
@@ -842,8 +840,9 @@ input:focus, button:focus {
   overflow: hidden;
   position: relative;
   padding: 0; // new
-  
+ 
   html.no-touch &:hover {
+    transition: .2s background-color;
     background: darken($color-blue, 8%);
   }
   
@@ -851,6 +850,25 @@ input:focus, button:focus {
     height: calc(100% - 20px);
     right: 15px;
     left: auto;
+  }
+
+  // * tgico
+  &:before {
+    color: #707579;
+    font-size: 1.5rem;
+    margin-right: 1rem;
+  }
+}
+
+.btn-transparent {
+  color: #000;
+  background-color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  html.no-touch &:hover {
+    background-color:	var(--color-gray-hover);
   }
 }
 

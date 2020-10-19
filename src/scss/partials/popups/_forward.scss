@@ -1,0 +1,44 @@
+.popup-forward {
+  $parent: ".popup";
+
+  #{$parent} {
+    &-container {
+      width: 420px;
+      max-width: 420px;
+      //padding: 12px 20px 32.5px;
+      padding: .75rem 0 0 0;
+      max-height: unquote('min(40.625rem, 100%)');
+      height: 40.625rem;
+    }
+
+    &-header {
+      flex: 0 0 auto;
+      margin-bottom: 9px;
+      padding: 0 .75rem;
+    }
+
+    &-title {
+      flex-grow: 1;
+    }
+  }
+
+  .selector, .chats-container {
+    height: auto;
+    overflow: hidden;
+    display: flex;
+    width: 100%;
+    flex-direction: row;
+  }
+
+  .selector {
+    &-search-input {
+      font-size: 1.25rem;
+      padding: .5rem 1.5rem;
+      width: 100%;
+    }
+
+    /* ul li > .rp {
+      margin-left: 0;
+    } */
+  }
+}

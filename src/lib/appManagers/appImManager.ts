@@ -17,6 +17,7 @@ import { horizontalMenu } from '../../components/horizontalMenu';
 import LazyLoadQueue from '../../components/lazyLoadQueue';
 import { formatPhoneNumber, parseMenuButtonsTo } from '../../components/misc';
 import PopupDatePicker from '../../components/popupDatepicker';
+import PopupForward from '../../components/popupForward';
 import PopupStickers from '../../components/popupStickers';
 import ProgressivePreloader from '../../components/preloader';
 import { ripple } from '../../components/ripple';
@@ -542,7 +543,8 @@ export class AppImManager {
           return;
         } else if(target.classList.contains('forward')) {
           const mid = +bubble.dataset.mid;
-          appSidebarRight.forwardTab.open([mid]);
+          new PopupForward([mid]);
+          //appSidebarRight.forwardTab.open([mid]);
           return;
         } else if(target.classList.contains('name')) {
           let peerID = +target.dataset.peerID;
@@ -642,8 +644,10 @@ export class AppImManager {
       if(e.key == 'Escape') {
         /* if(AppMediaViewer.wholeDiv.classList.contains('active')) {
           AppMediaViewer.buttons.close.click();
-        } else */ if(appSidebarRight.historyTabIDs.slice(-1)[0] == AppSidebarRight.SLIDERITEMSIDS.forward) {
+        } else */ /* if(appSidebarRight.historyTabIDs.slice(-1)[0] == AppSidebarRight.SLIDERITEMSIDS.forward) {
           appSidebarRight.forwardTab.closeBtn.click();
+        } else */ if(this.chatSelection.isSelecting) {
+          this.chatSelection.cancelSelection();
         } else if(this.chatInputC.replyElements.container.classList.contains('active')) {
           this.chatInputC.replyElements.cancelBtn.click();
         } else if(this.peerID != 0) { // hide current dialog
@@ -1139,6 +1143,7 @@ export class AppImManager {
     this.chatInner.classList.add('disable-hover', 'is-scrolling');
 
     if(!samePeer) {
+      this.chatSelection.cleanup();
       this.lazyLoadQueue.clear();
     }
 
@@ -1273,8 +1278,6 @@ export class AppImManager {
 
     let peerID = this.peerID;
     this.peerChanged = true;
-
-    this.chatSelection.cleanup();
 
     this.avatarEl.setAttribute('peer', '' + this.peerID);
     this.avatarEl.update();

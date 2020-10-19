@@ -8,6 +8,7 @@ import { findUpClassName } from "../../lib/utils";
 import ButtonMenu, { ButtonMenuItemOptions } from "../buttonMenu";
 import { attachContextMenuListener, openBtnMenu, positionMenu } from "../misc";
 import { PopupButton } from "../popup";
+import PopupForward from "../popupForward";
 import PopupPeer from "../popupPeer";
 import appSidebarRight from "../sidebarRight";
 
@@ -124,7 +125,7 @@ export default class ChatContextMenu {
       onClick: this.onForwardClick,
       verify: () => this.msgID > 0
     }, {
-      icon: 'revote',
+      icon: 'select',
       text: 'Select',
       onClick: this.onSelectClick,
       verify: () => {
@@ -133,7 +134,7 @@ export default class ChatContextMenu {
       },
       notDirect: () => true
     }, {
-      icon: 'revote',
+      icon: 'select',
       text: 'Clear selection',
       onClick: this.onClearSelectionClick,
       verify: () => {
@@ -155,17 +156,15 @@ export default class ChatContextMenu {
   private onReplyClick = () => {
     const message = appMessagesManager.getMessage(this.msgID);
     const chatInputC = appImManager.chatInputC;
-    chatInputC.setTopInfo(appPeersManager.getPeerTitle(message.fromID, true), message.message, undefined, message);
-    chatInputC.replyToMsgID = this.msgID;
-    chatInputC.editMsgID = 0;
+    const f = () => {
+      chatInputC.setTopInfo('reply', f, appPeersManager.getPeerTitle(message.fromID, true), message.message, undefined, message);
+      chatInputC.replyToMsgID = this.msgID;
+    };
+    f();
   };
 
   private onEditClick = () => {
-    const message = appMessagesManager.getMessage(this.msgID);
-    const chatInputC = appImManager.chatInputC;
-    chatInputC.setTopInfo('Editing', message.message, message.message, message);
-    chatInputC.replyToMsgID = 0;
-    chatInputC.editMsgID = this.msgID;
+    appImManager.chatInputC.initMessageEditing(this.msgID);
   };
 
   private onCopyClick = () => {
@@ -206,7 +205,7 @@ export default class ChatContextMenu {
   };
 
   private onForwardClick = () => {
-    appSidebarRight.forwardTab.open([this.msgID]);
+    new PopupForward([this.msgID]);
   };
 
   private onSelectClick = () => {

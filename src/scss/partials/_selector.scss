@@ -35,11 +35,15 @@
     display: flex;
     flex-flow: wrap;
 
-    input {
+    &-input {
       border: none;
-      padding: 7px 0px 19px 0px;
       outline: none;
       flex: 1 1 auto;
+    }
+
+    // ! only in this container need this padding
+    .selector-search-input {
+      padding: 7px 0px 19px 0px;
     }
   }
 

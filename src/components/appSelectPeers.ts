@@ -13,15 +13,15 @@ type PeerType = 'contacts' | 'dialogs';
 // TODO: правильная сортировка для addMembers, т.е. для peerType: 'contacts', потому что там идут сначала контакты - потом неконтакты, а должно всё сортироваться по имени
 
 let loadedAllDialogs = false, loadAllDialogsPromise: Promise<any>;
-export class AppSelectPeers {
+export default class AppSelectPeers {
   public container = document.createElement('div');
   public list = document.createElement('ul');
   public chatsContainer = document.createElement('div');
   public scrollable: Scrollable;
   public selectedScrollable: Scrollable;
   
-  public selectedContainer = document.createElement('div');
-  public input = document.createElement('input');
+  public selectedContainer: HTMLElement;
+  public input: HTMLInputElement;
   
   //public selected: {[peerID: number]: HTMLElement} = {};
   public selected = new Set<any>();
@@ -37,24 +37,49 @@ export class AppSelectPeers {
 
   private loadedWhat: Partial<{[k in 'dialogs' | 'archived' | 'contacts']: true}> = {};
   
-  constructor(private appendTo: HTMLElement, private onChange?: (length: number) => void, private peerType: PeerType[] = ['dialogs'], onFirstRender?: () => void, private renderResultsFunc?: (peerIDs: number[]) => void, private chatRightsAction?: ChatRights) {
+  constructor(private appendTo: HTMLElement, private onChange?: (length: number) => void, private peerType: PeerType[] = ['dialogs'], onFirstRender?: () => void, private renderResultsFunc?: (peerIDs: number[]) => void, private chatRightsAction?: ChatRights, private multiSelect = true) {
     this.container.classList.add('selector');
 
     if(!this.renderResultsFunc) {
       this.renderResultsFunc = this.renderResults;
     }
 
-    let topContainer = document.createElement('div');
-    topContainer.classList.add('selector-search-container');
-
-    this.selectedContainer.classList.add('selector-search');
+    this.input = document.createElement('input');
+    this.input.classList.add('selector-search-input');
     this.input.placeholder = !peerType.includes('dialogs') ? 'Add People...' : 'Select chat';
     this.input.type = 'text';
-    this.selectedContainer.append(this.input);
-    topContainer.append(this.selectedContainer);
-    this.selectedScrollable = new Scrollable(topContainer);
 
-    let delimiter = document.createElement('hr');
+    if(multiSelect) {
+      let topContainer = document.createElement('div');
+      topContainer.classList.add('selector-search-container');
+  
+      this.selectedContainer = document.createElement('div');
+      this.selectedContainer.classList.add('selector-search');
+      
+      this.selectedContainer.append(this.input);
+      topContainer.append(this.selectedContainer);
+      this.selectedScrollable = new Scrollable(topContainer);
+  
+      let delimiter = document.createElement('hr');
+
+      this.selectedContainer.addEventListener('click', (e) => {
+        if(this.freezed) return;
+        let target = e.target as HTMLElement;
+        target = findUpClassName(target, 'selector-user');
+  
+        if(!target) return;
+  
+        const peerID = target.dataset.key;
+        const li = this.chatsContainer.querySelector('[data-peerid="' + peerID + '"]') as HTMLElement;
+        if(!li) {
+          this.remove(+peerID || peerID);
+        } else {
+          li.click();
+        }
+      });
+
+      this.container.append(topContainer, delimiter);
+    }
 
     this.chatsContainer.classList.add('chats-container');
     this.chatsContainer.append(this.list);
@@ -70,6 +95,12 @@ export class AppSelectPeers {
 
       let key: any = target.getAttribute('data-peerID');
       key = +key || key;
+
+      if(!this.multiSelect) {
+        this.add(key);
+        return;
+      }
+
       target.classList.toggle('active');
       if(this.selected.has(key)) {
         this.remove(key);
@@ -79,22 +110,6 @@ export class AppSelectPeers {
 
       const checkbox = target.querySelector('input') as HTMLInputElement;
       checkbox.checked = !checkbox.checked;
-    });
-
-    this.selectedContainer.addEventListener('click', (e) => {
-      if(this.freezed) return;
-      let target = e.target as HTMLElement;
-      target = findUpClassName(target, 'selector-user');
-
-      if(!target) return;
-
-      const peerID = target.dataset.key;
-      const li = this.chatsContainer.querySelector('[data-peerid="' + peerID + '"]') as HTMLElement;
-      if(!li) {
-        this.remove(+peerID || peerID);
-      } else {
-        li.click();
-      }
     });
 
     this.input.addEventListener('input', () => {
@@ -125,7 +140,7 @@ export class AppSelectPeers {
       this.getMoreResults();
     };
 
-    this.container.append(topContainer, delimiter, this.chatsContainer);
+    this.container.append(this.chatsContainer);
     appendTo.append(this.container);
 
     // WARNING TIMEOUT
@@ -292,9 +307,11 @@ export class AppSelectPeers {
     peerIDs.forEach(peerID => {
       const {dom} = appDialogsManager.addDialog(peerID, this.scrollable, false, false);
 
-      const selected = this.selected.has(peerID);
-      dom.containerEl.insertAdjacentHTML('afterbegin', `<div class="checkbox"><label><input type="checkbox" ${selected ? 'checked' : ''}><span></span></label></div>`);
-      if(selected) dom.listEl.classList.add('active');
+      if(this.multiSelect) {
+        const selected = this.selected.has(peerID);
+        dom.containerEl.insertAdjacentHTML('afterbegin', `<div class="checkbox"><label><input type="checkbox" ${selected ? 'checked' : ''}><span></span></label></div>`);
+        if(selected) dom.listEl.classList.add('active');
+      }
 
       let subtitle = '';
       if(peerID < 0) {
@@ -314,6 +331,13 @@ export class AppSelectPeers {
 
   public add(peerID: any, title?: string) {
     //console.trace('add');
+    this.selected.add(peerID);
+
+    if(!this.multiSelect) {
+      this.onChange(this.selected.size);
+      return;
+    }
+
     const div = document.createElement('div');
     div.classList.add('selector-user', 'scale-in');
 
@@ -322,7 +346,6 @@ export class AppSelectPeers {
     avatarEl.setAttribute('dialog', '1');
 
     div.dataset.key = '' + peerID;
-    this.selected.add(peerID);
     if(typeof(peerID) === 'number') {
       if(title === undefined) {
         title = peerID == $rootScope.myID ? 'Saved' : appPeersManager.getPeerTitle(peerID, false, true);
@@ -346,6 +369,7 @@ export class AppSelectPeers {
   }
 
   public remove(key: any) {
+    if(!this.multiSelect) return;
     //const div = this.selected[peerID];
     const div = this.selectedContainer.querySelector(`[data-key="${key}"]`) as HTMLElement;
     div.classList.remove('scale-in');

@@ -2268,7 +2268,9 @@ export class AppMessagesManager {
             message.savedFrom = savedFromPeerID + '_' + savedFromMid;
           }
 
-          message.fromID = appPeersManager.getPeerID(deepEqual(message.from_id, fwdHeader.from_id) ? fwdHeader.from_id : message.from_id);
+          if(peerID < 0 || peerID == myID) {
+            message.fromID = appPeersManager.getPeerID(!message.from_id || deepEqual(message.from_id, fwdHeader.from_id) ? fwdHeader.from_id : message.from_id);
+          }
         /* } else {
           apiMessage.fwdPostID = fwdHeader.channel_post;
         } */

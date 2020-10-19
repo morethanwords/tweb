@@ -159,17 +159,17 @@ $bubble-margin: .25rem;
   &-select-checkbox {
     z-index: 2;
     position: absolute;
-    left: 0;
-    //bottom: .25rem; // * by avatar
+    /* left: 0;
+    bottom: .75rem; // * by avatar */
     left: 0;
     top: 50%;
     transform: translateY(-50%);
     display: flex;
 
     [type="checkbox"] {
-      &:not(:checked) + .checkbox-caption:after {
+      /* &:not(:checked) + .checkbox-caption:after {
         
-      }
+      } */
 
       &:checked + .checkbox-caption {
         &:after {

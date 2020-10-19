@@ -4,6 +4,7 @@ import appChatsManager from '../../lib/appManagers/appChatsManager';
 import appDocsManager from "../../lib/appManagers/appDocsManager";
 import appImManager from "../../lib/appManagers/appImManager";
 import appMessagesManager from "../../lib/appManagers/appMessagesManager";
+import appPeersManager from '../../lib/appManagers/appPeersManager';
 import appWebPagesManager from "../../lib/appManagers/appWebPagesManager";
 import apiManager from "../../lib/mtproto/mtprotoworker";
 //import Recorder from '../opus-recorder/dist/recorder.min';
@@ -22,6 +23,8 @@ import { wrapReply } from "../wrappers";
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
+
+type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply';
 
 export class ChatInput {
   public pageEl = document.getElementById('page-chats') as HTMLDivElement;
@@ -48,6 +51,7 @@ export class ChatInput {
   } = {};
 
   public willSendWebPage: any = null;
+  public forwardingMids: number[] = [];
   public replyToMsgID = 0;
   public editMsgID = 0;
   public noWebPage: true;
@@ -62,6 +66,9 @@ export class ChatInput {
   private scrollTop = 0;
   private scrollOffsetTop = 0;
   private scrollDiff = 0;
+
+  private helperType: Exclude<ChatInputHelperType, 'webpage'>;
+  private helperFunc: () => void;
 
   constructor() {
     this.attachMenu = document.getElementById('attach-file') as HTMLButtonElement;
@@ -198,9 +205,8 @@ export class ChatInput {
               if(this.lastUrl != url) return;
               //console.log('got webpage: ', webpage);
   
-              this.setTopInfo(webpage.site_name || webpage.title, webpage.description || webpage.url);
+              this.setTopInfo('webpage', () => {}, webpage.site_name || webpage.title, webpage.description || webpage.url);
   
-              this.replyToMsgID = 0;
               delete this.noWebPage;
               this.willSendWebPage = webpage;
             }
@@ -313,7 +319,7 @@ export class ChatInput {
     const onBtnSendClick = (e: Event) => {
       cancelEvent(e);
       
-      if(!this.recorder || this.recording || !this.isInputEmpty()) {
+      if(!this.recorder || this.recording || !this.isInputEmpty() || this.forwardingMids.length) {
         if(this.recording) {
           if((Date.now() - this.recordStartTime) < RECORD_MIN_TIME) {
             this.btnCancelRecord.click();
@@ -487,23 +493,21 @@ export class ChatInput {
     }
 
     this.replyElements.cancelBtn.addEventListener('click', () => {
-      this.replyElements.container.classList.remove('active');
-      this.replyToMsgID = 0;
+      if(this.willSendWebPage) {
+        this.noWebPage = true;
+        this.willSendWebPage = null;
 
-      if(this.editMsgID) {
-        if(this.willSendWebPage) {
-          let message = appMessagesManager.getMessage(this.editMsgID);
-          this.setTopInfo('Editing', message.message);
-        } else {
-          this.editMsgID = 0;
-          this.messageInput.innerHTML = '';
+        if(this.helperType) {
+          //if(this.helperFunc) {
+            this.helperFunc();
+          //}
 
-          this.updateSendBtn();
+          return;
         }
       }
 
-      this.noWebPage = true;
-      this.willSendWebPage = null;
+      this.clearHelper();
+      this.updateSendBtn();
     });
   }
 
@@ -516,7 +520,7 @@ export class ChatInput {
   public updateSendBtn() {
     let icon: 'send' | 'record';
 
-    if(!this.recorder || this.recording || !this.isInputEmpty()) icon = 'send';
+    if(!this.recorder || this.recording || !this.isInputEmpty() || this.forwardingMids.length) icon = 'send';
     else icon = 'record';
 
     this.btnSend.classList.toggle('send', icon == 'send');
@@ -543,18 +547,16 @@ export class ChatInput {
 
     if(clearInput) {
       this.lastUrl = '';
-      this.editMsgID = 0;
       delete this.noWebPage;
       this.willSendWebPage = null;
       this.messageInput.innerText = '';
-
-      this.updateSendBtn();
     }
 
     if(clearReply || clearInput) {
-      this.replyToMsgID = 0;
-      this.replyElements.container.classList.remove('active');
+      this.clearHelper();
     }
+
+    this.updateSendBtn();
   }
 
   public sendMessage() {
@@ -577,6 +579,10 @@ export class ChatInput {
       });
     }
 
+    if(this.forwardingMids.length) {
+      appMessagesManager.forwardMessages(appImManager.peerID, this.forwardingMids);
+    }
+
     this.onMessageSent();
   }
 
@@ -596,24 +602,72 @@ export class ChatInput {
     return false;
   }
 
-  public setTopInfo(title: string, subtitle: string, input?: string, message?: any) {
-    //appImManager.scrollPosition.prepareFor('down');
+  public initMessageEditing(mid: number) {
+    const message = appMessagesManager.getMessage(mid);
+
+    let input = message.message;
+    const f = () => {
+      this.setTopInfo('edit', f, 'Editing', message.message, input, message);
+      this.editMsgID = mid;
+      input = undefined;
+    };
+    f();
+  }
+
+  public initMessagesForward(mids: number[]) {
+    const f = () => {
+      //const peerTitles: string[]
+      const fromIDs = new Set(mids.map(mid => appMessagesManager.getMessage(mid).fromID));
+      const onlyFirstName = fromIDs.size > 1;
+      const peerTitles = [...fromIDs].map(peerID => appPeersManager.getPeerTitle(peerID, true, onlyFirstName));
+
+      const title = peerTitles.length < 3 ? peerTitles.join(' and ') : peerTitles[0] + ' and ' + (peerTitles.length - 1) + ' others';
+      if(mids.length == 1) {
+        const message = appMessagesManager.getMessage(mids[0]);
+        this.setTopInfo('forward', f, title, message.message, undefined, message);
+      } else {
+        this.setTopInfo('forward', f, title, mids.length + ' forwarded messages');
+      }
+
+      this.forwardingMids = mids;
+    };
+    
+    f();
+  }
+
+  public clearHelper(type?: ChatInputHelperType) {
+    if(this.helperType == 'edit' && type != 'edit') {
+      this.messageInput.innerText = '';
+    }
+
+    this.replyToMsgID = 0;
+    this.forwardingMids.length = 0;
+    this.editMsgID = 0;
+    this.helperType = this.helperFunc = undefined;
+    this.chatInput.parentElement.classList.remove('is-helper-active');
+  }
+
+  public setTopInfo(type: ChatInputHelperType, callerFunc: () => void, title: string, subtitle: string, input?: string, message?: any) {
+    if(type != 'webpage') {
+      this.clearHelper(type);
+      this.helperType = type;
+      this.helperFunc = callerFunc;
+    }
 
     if(this.replyElements.container.lastElementChild.tagName == 'DIV') {
       this.replyElements.container.lastElementChild.remove();
       this.replyElements.container.append(wrapReply(title, subtitle, message));
     }
-    //this.replyElements.titleEl.innerHTML = title ? RichTextProcessor.wrapEmojiText(title) : '';
-    //this.replyElements.subtitleEl.innerHTML = subtitle ? RichTextProcessor.wrapEmojiText(subtitle) : '';
-    this.replyElements.container.classList.add('active');
+
+    this.chatInput.parentElement.classList.add('is-helper-active');
 
     if(input !== undefined) {
       this.messageInput.innerHTML = input ? RichTextProcessor.wrapRichText(input) : '';
-
-      this.updateSendBtn();
     }
 
-    //appImManager.scrollPosition.restore();
+    setTimeout(() => {
+      this.updateSendBtn();
+    }, 0);
   }
 
   public saveScroll() {
