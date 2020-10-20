@@ -607,4 +607,15 @@ export function cancelSelection() {
   }
 }
 
+export function getSelectedText() {
+  if(window.getSelection) {
+    return window.getSelection().toString();
+    // @ts-ignore
+  } else if(document.selection) {
+    // @ts-ignore
+    return document.selection.createRange().text;
+  }
+  return '';
+}​
+
 //(window as any).splitStringByLength = splitStringByLength;

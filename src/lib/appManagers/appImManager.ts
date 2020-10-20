@@ -63,6 +63,7 @@ const ANIMATION_GROUP = 'chat';
 
 export class AppImManager {
   public columnEl = document.getElementById('column-center') as HTMLDivElement;
+  public backgroundEl = this.columnEl.firstElementChild as HTMLDivElement;
   public btnJoin = this.columnEl.querySelector('.chat-join') as HTMLButtonElement;
   public btnMute = this.columnEl.querySelector('.chat-mute-button') as HTMLButtonElement;
   public avatarEl = document.getElementById('im-avatar') as AvatarElement;
@@ -123,7 +124,7 @@ export class AppImManager {
   
   public contextMenu = new ChatContextMenu(this.bubblesContainer);
   
-  private setPeerPromise: Promise<boolean> = null;
+  public setPeerPromise: Promise<boolean> = null;
   
   public bubbleGroups = new BubbleGroups();
 
@@ -137,7 +138,7 @@ export class AppImManager {
   private loadedTopTimes = 0;
   private loadedBottomTimes = 0;
 
-  private messagesQueuePromise: Promise<void> = null;
+  public messagesQueuePromise: Promise<void> = null;
   private messagesQueue: {message: any, bubble: HTMLDivElement, reverse: boolean, promises: Promise<void>[]}[] = [];
   private messagesQueueOnRender: () => void = null;
 
@@ -437,9 +438,19 @@ export class AppImManager {
       }
 
       // ! Trusted - due to audio autoclick
-      if(this.chatSelection.isSelecting && !bubble.classList.contains('service') && e.isTrusted) {
+      if(this.chatSelection.isSelecting && e.isTrusted) {
+        if(bubble.classList.contains('service') && bubble.dataset.mid === undefined) {
+          return;
+        }
+
         cancelEvent(e);
         //console.log('bubble click', e);
+
+        if(isTouchSupported && this.chatSelection.selectedText) {
+          this.chatSelection.selectedText = undefined;
+          return;
+        }
+
         this.chatSelection.toggleByBubble(bubble);
         return;
       }
@@ -526,6 +537,7 @@ export class AppImManager {
         new AppMediaViewer().openMedia(message, targets[idx].element, true, 
           targets.slice(0, idx), targets.slice(idx + 1)/* , !message.grouped_id */);
         
+        cancelEvent(e);
         //appMediaViewer.openMedia(message, target as HTMLImageElement);
         return;
       }
@@ -552,7 +564,7 @@ export class AppImManager {
           if(!isNaN(peerID)) {
             this.setPeer(peerID);
           }
-          
+
           return;
         } else if(target.tagName == "AVATAR-ELEMENT") {
           let peerID = +target.getAttribute('peer');
@@ -560,7 +572,7 @@ export class AppImManager {
           if(!isNaN(peerID)) {
             this.setPeer(peerID);
           }
-          
+
           return;
         }
         
@@ -583,7 +595,7 @@ export class AppImManager {
       }
       
       //console.log('chatInner click', e);
-    });
+    }, {capture: true, passive: false});
 
     this.closeBtn.addEventListener('click', (e) => {
       cancelEvent(e);
@@ -831,7 +843,7 @@ export class AppImManager {
     }
   }
   
-  public onScroll(e: Event) {
+  public onScroll() {
     if(this.onScrollRAF) window.cancelAnimationFrame(this.onScrollRAF);
 
     // * В таком случае, кнопка не будет моргать если чат в самом низу, и правильно отработает случай написания нового сообщения и проскролла вниз
@@ -854,10 +866,10 @@ export class AppImManager {
       }
       
       if(this.scrollable.isScrolledDown) {
-        this.scroll.parentElement.classList.add('scrolled-down');
+        this.bubblesContainer.classList.add('scrolled-down');
         this.scrolledDown = true;
-      } else if(this.scroll.parentElement.classList.contains('scrolled-down')) {
-        this.scroll.parentElement.classList.remove('scrolled-down');
+      } else if(this.bubblesContainer.classList.contains('scrolled-down')) {
+        this.bubblesContainer.classList.remove('scrolled-down');
         this.scrolledDown = false;
       }
 
@@ -866,7 +878,7 @@ export class AppImManager {
   }
   
   public setScroll() {
-    this.scrollable = new Scrollable(this.bubblesContainer, 'IM', this.chatInner, 300);
+    this.scrollable = new Scrollable(this.bubblesContainer/* .firstElementChild */ as HTMLElement, 'IM', this.chatInner, 300);
 
     /* const getScrollOffset = () => {
       //return Math.round(Math.max(300, appPhotosManager.windowH / 1.5));
@@ -880,14 +892,14 @@ export class AppImManager {
     this.scrollable = new Scrollable(this.bubblesContainer, 'y', 'IM', this.chatInner, getScrollOffset()); */
     this.scroll = this.scrollable.container;
 
-    this.bubblesContainer.append(this.goDownBtn);
+    this.bubblesContainer/* .firstElementChild */.append(this.goDownBtn);
     
     this.scrollable.onScrolledTop = () => this.loadMoreHistory(true);
     this.scrollable.onScrolledBottom = () => this.loadMoreHistory(false);
     //this.scrollable.attachSentinels(undefined, 300);
 
     this.scroll.addEventListener('scroll', this.onScroll.bind(this));
-    this.scroll.parentElement.classList.add('scrolled-down');
+    this.bubblesContainer.classList.add('scrolled-down');
 
     if(isTouchSupported) {
       this.scroll.addEventListener('touchmove', () => {
@@ -1289,9 +1301,18 @@ export class AppImManager {
     this.chatInner.classList.toggle('has-rights', hasRights);
 
     const canWrite = (!isChannel || hasRights) && (peerID < 0 || appUsersManager.canSendToUser(peerID));
-    this.chatInput.style.display = canWrite ? '' : 'none';
+    //const needToChangeInputDisplay = !(!this.chatInput.classList.contains('is-hidden') && canWrite);
+    //this.chatInput.style.display = needToChangeInputDisplay ? 'none' : '';
+    this.chatInput.style.display = '';
+    this.chatInput.classList.toggle('is-hidden', !canWrite);
+    this.bubblesContainer.classList.toggle('is-chat-input-hidden', !canWrite);
 
-    this.chatInner.classList.toggle('is-chat-input-hidden', !canWrite);
+    // const noTransition = [this.columnEl/* appSidebarRight.sidebarEl, this.backgroundEl, 
+    //   this.bubblesContainer, this.chatInput, this.chatInner, 
+    //   this.chatInputC.replyElements.container */];
+    // noTransition.forEach(el => {
+    //   el.classList.add('no-transition-all');
+    // });
 
     this.topbar.classList.remove('is-pinned-shown');
     this.topbar.style.display = '';
@@ -1308,6 +1329,13 @@ export class AppImManager {
     this.setPinnedMessage();
 
     window.requestAnimationFrame(() => {
+      /* noTransition.forEach(el => {
+        el.classList.remove('no-transition-all');
+      }); */
+      /* if(needToChangeInputDisplay) {
+        this.chatInput.style.display = '';
+      } */
+
       let title = '';
       if(this.peerID == this.myID) title = 'Saved Messages';
       else title = appPeersManager.getPeerTitle(this.peerID);

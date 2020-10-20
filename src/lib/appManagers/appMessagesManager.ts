@@ -2018,7 +2018,7 @@ export class AppMessagesManager {
     withMyScore: true
   }> = {}) {
     peerID = appPeersManager.getPeerMigratedTo(peerID) || peerID;
-    mids = mids.sort((a, b) => a - b);
+    mids = mids.slice().sort((a, b) => a - b);
 
     const splitted = appMessagesIDsManager.splitMessageIDsByChannels(mids);
     const promises: Promise<void>[] = [];
@@ -2442,6 +2442,9 @@ export class AppMessagesManager {
         case 'messageMediaPhoto':
           messageText += '<i>Photo' + (message.message ? ', ' : '') + '</i>';
           break;
+        case 'messageMediaDice':
+          messageText += RichTextProcessor.wrapEmojiText(message.media.emoticon);
+          break;
         case 'messageMediaGeo':
           messageText += '<i>Geolocation</i>';
           break;
@@ -2471,6 +2474,7 @@ export class AppMessagesManager {
           break;
 
         default:
+          //messageText += message.media._;
           ///////this.log.warn('Got unknown message.media type!', message);
           break;
       }
@@ -2658,6 +2662,15 @@ export class AppMessagesManager {
     }
 
     return true;
+  }
+
+  public canDeleteMessage(messageID: number) {
+    const message = this.messagesStorage[messageID];
+    if(message) {
+      return message.peerID > 0 || message.fromID == $rootScope.myID || appChatsManager.hasRights(message.peerID, 'deleteRevoke');
+    } else {
+      return false;
+    }
   }
 
   public applyConversations(dialogsResult: MessagesPeerDialogs.messagesPeerDialogs) {

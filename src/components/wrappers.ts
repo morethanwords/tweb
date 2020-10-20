@@ -10,7 +10,7 @@ import appMessagesManager from '../lib/appManagers/appMessagesManager';
 import appPhotosManager, { MyPhoto } from '../lib/appManagers/appPhotosManager';
 import LottieLoader from '../lib/lottieLoader';
 import VideoPlayer from '../lib/mediaPlayer';
-import { formatBytes, getEmojiToneIndex, isInDOM } from "../lib/utils";
+import { cancelEvent, formatBytes, getEmojiToneIndex, isInDOM } from "../lib/utils";
 import webpWorkerController from '../lib/webp/webpWorkerController';
 import animationIntersector from './animationIntersector';
 import appMediaPlaybackController from './appMediaPlaybackController';
@@ -353,7 +353,7 @@ export function wrapDocument(doc: MyDocument, withTime = false, uploading = fals
     let preloader: ProgressivePreloader;
     let download: DownloadBlob;
     
-    docDiv.addEventListener('click', () => {
+    docDiv.addEventListener('click', (e) => {
       if(!download) {
         if(downloadDiv.classList.contains('downloading')) {
           return; // means not ready yet

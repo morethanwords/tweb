@@ -1,13 +1,15 @@
+import { isTouchSupported } from "../../helpers/touchSupport";
 import appChatsManager from "../../lib/appManagers/appChatsManager";
 import appImManager from "../../lib/appManagers/appImManager";
 import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import appPeersManager from "../../lib/appManagers/appPeersManager";
 import appPollsManager, { Poll } from "../../lib/appManagers/appPollsManager";
 import $rootScope from "../../lib/rootScope";
-import { findUpClassName } from "../../lib/utils";
+import { cancelEvent, cancelSelection, findUpClassName } from "../../lib/utils";
 import ButtonMenu, { ButtonMenuItemOptions } from "../buttonMenu";
 import { attachContextMenuListener, openBtnMenu, positionMenu } from "../misc";
 import { PopupButton } from "../popup";
+import PopupDeleteMessages from "../popupDeleteMessages";
 import PopupForward from "../popupForward";
 import PopupPeer from "../popupPeer";
 import appSidebarRight from "../sidebarRight";
@@ -21,7 +23,7 @@ export default class ChatContextMenu {
   public msgID: number;
 
   constructor(private attachTo: HTMLElement) {
-    attachContextMenuListener(attachTo, (e) => {
+    const onContextMenu = (e: MouseEvent | Touch) => {
       if(this.init) {
         this.init();
         this.init = null;
@@ -69,7 +71,29 @@ export default class ChatContextMenu {
       });
       
       /////this.log('contextmenu', e, bubble, msgID, side);
-    });
+    };
+
+    if(isTouchSupported) {
+      attachTo.addEventListener('click', (e) => {
+        //const good = !!findUpClassName(e.target, 'message') || !!findUpClassName(e.target, 'bubble__container');
+        const className = (e.target as HTMLElement).className;
+        const good = ['bubble', 'bubble__container', 'message', 'time', 'inner'].find(c => className.includes(c));
+        if(good) {
+          onContextMenu(e);
+        }
+      });
+
+      attachContextMenuListener(attachTo, (e) => {
+        if(appImManager.chatSelection.isSelecting) return;
+
+        cancelSelection();
+        cancelEvent(e as any);
+        let bubble = findUpClassName(e.target, 'bubble');
+        if(bubble) {
+          appImManager.chatSelection.toggleByBubble(bubble);
+        }
+      });
+    } else attachContextMenuListener(attachTo, onContextMenu);
   }
 
   private init = () => {
@@ -145,7 +169,7 @@ export default class ChatContextMenu {
       icon: 'delete danger',
       text: 'Delete',
       onClick: this.onDeleteClick,
-      verify: () => this.peerID > 0 || appMessagesManager.getMessage(this.msgID).fromID == $rootScope.myID || appChatsManager.hasRights(-this.peerID, 'deleteRevoke')
+      verify: () => appMessagesManager.canDeleteMessage(this.msgID)
     }];
 
     this.element = ButtonMenu(this.buttons);
@@ -217,58 +241,6 @@ export default class ChatContextMenu {
   };
 
   private onDeleteClick = () => {
-    const peerID = $rootScope.selectedPeerID;
-    const firstName = appPeersManager.getPeerTitle(peerID, false, true);
-
-    const msgID = this.msgID;
-    const callback = (revoke: boolean) => {
-      appMessagesManager.deleteMessages([msgID], revoke);
-    };
-
-    let title: string, description: string, buttons: PopupButton[];
-    title = 'Delete Message?';
-    description = `Are you sure you want to delete this message?`;
-
-    if(peerID == $rootScope.myID) {
-      buttons = [{
-        text: 'DELETE',
-        isDanger: true,
-        callback: () => callback(false)
-      }];
-    } else {
-      buttons = [{
-        text: 'DELETE JUST FOR ME',
-        isDanger: true,
-        callback: () => callback(false)
-      }];
-
-      if(peerID > 0) {
-        buttons.push({
-          text: 'DELETE FOR ME AND ' + firstName,
-          isDanger: true,
-          callback: () => callback(true)
-        });
-      } else if(appChatsManager.hasRights(-peerID, 'deleteRevoke')) {
-        buttons.push({
-          text: 'DELETE FOR ALL',
-          isDanger: true,
-          callback: () => callback(true)
-        });
-      }
-    }
-
-    buttons.push({
-      text: 'CANCEL',
-      isCancel: true
-    });
-
-    const popup = new PopupPeer('popup-delete-chat', {
-      peerID: peerID,
-      title: title,
-      description: description,
-      buttons: buttons
-    });
-
-    popup.show();
+    new PopupDeleteMessages([this.msgID]);
   };
 }

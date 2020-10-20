@@ -9,6 +9,7 @@ import animationIntersector from "./animationIntersector";
 import { findUpClassName } from "../lib/utils";
 import appImManager from "../lib/appManagers/appImManager";
 import { StickerSet } from "../layer";
+import mediaSizes from "../helpers/mediaSizes";
 
 const ANIMATION_GROUP = 'STICKERS-POPUP';
 
@@ -24,7 +25,7 @@ export default class PopupStickers extends PopupElement {
     id: string,
     access_hash: string
   }) {
-    super('popup-stickers', null, {closable: true, body: true});
+    super('popup-stickers', null, {closable: true, overlayClosable: true, body: true});
 
     this.h6 = document.createElement('h6');
     this.h6.innerText = 'Loading...';
@@ -36,20 +37,11 @@ export default class PopupStickers extends PopupElement {
       animationIntersector.checkAnimations(false);
       this.stickersFooter.removeEventListener('click', this.onFooterClick);
       this.stickersDiv.removeEventListener('click', this.onStickersClick);
-      this.element.removeEventListener('click', onOverlayClick);
     };
 
     this.onCloseAfterTimeout = () => {
       animationIntersector.checkAnimations(undefined, ANIMATION_GROUP);
     };
-
-    const onOverlayClick = (e: MouseEvent) => {
-      if(!findUpClassName(e.target, 'popup-container')) {
-        this.closeBtn.click();
-      }
-    };
-
-    this.element.addEventListener('click', onOverlayClick);
 
     const div = document.createElement('div');
     div.classList.add('sticker-set');
@@ -129,6 +121,8 @@ export default class PopupStickers extends PopupElement {
         
         const div = document.createElement('div');
         div.classList.add('sticker-set-sticker');
+
+        const size = mediaSizes.active.esgSticker.width;
         
         wrapSticker({
           doc, 
@@ -137,8 +131,8 @@ export default class PopupStickers extends PopupElement {
           group: ANIMATION_GROUP, 
           play: true,
           loop: true,
-          width: 80,
-          height: 80
+          width: size,
+          height: size
         });
 
         this.stickersDiv.append(div);

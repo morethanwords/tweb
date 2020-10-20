@@ -11,10 +11,11 @@ import apiManager from "../../lib/mtproto/mtprotoworker";
 import opusDecodeController from "../../lib/opusDecodeController";
 import { RichTextProcessor } from "../../lib/richtextprocessor";
 import $rootScope from '../../lib/rootScope';
-import { cancelEvent, getRichValue } from "../../lib/utils";
+import { cancelEvent, findUpClassName, getRichValue } from "../../lib/utils";
 import ButtonMenu, { ButtonMenuItemOptions } from '../buttonMenu';
 import emoticonsDropdown from "../emoticonsDropdown";
 import PopupCreatePoll from "../popupCreatePoll";
+import PopupForward from '../popupForward';
 import PopupNewMedia from '../popupNewMedia';
 import { ripple } from '../ripple';
 import Scrollable from "../scrollable";
@@ -205,7 +206,7 @@ export class ChatInput {
               if(this.lastUrl != url) return;
               //console.log('got webpage: ', webpage);
   
-              this.setTopInfo('webpage', () => {}, webpage.site_name || webpage.title, webpage.description || webpage.url);
+              this.setTopInfo('webpage', () => {}, webpage.site_name || webpage.title || 'Webpage', webpage.description || webpage.url || '');
   
               delete this.noWebPage;
               this.willSendWebPage = webpage;
@@ -267,7 +268,7 @@ export class ChatInput {
       //console.log('messageInput paste', text, entities);
       entities = entities.filter(e => e._ == 'messageEntityEmoji' || e._ == 'messageEntityLinebreak');
       //text = RichTextProcessor.wrapEmojiText(text);
-      text = RichTextProcessor.wrapRichText(text, {entities});
+      text = RichTextProcessor.wrapRichText(text, {entities, noLinks: true});
   
       // console.log('messageInput paste after', text);
   
@@ -453,7 +454,7 @@ export class ChatInput {
   
         return; */
   
-        let perf = performance.now();
+        //let perf = performance.now();
         opusDecodeController.decode(typedArray, true).then(result => {
           //console.log('WAVEFORM!:', /* waveform,  */performance.now() - perf);
   
@@ -508,6 +509,33 @@ export class ChatInput {
 
       this.clearHelper();
       this.updateSendBtn();
+    });
+
+    let d = false;
+    this.replyElements.container.addEventListener('click', (e) => {
+      if(!findUpClassName(e.target, 'reply-wrapper')) return;
+      if(this.helperType == 'forward') {
+        if(d) return;
+        d = true;
+
+        const mids = this.forwardingMids.slice();
+        const helperFunc = this.helperFunc;
+        this.clearHelper();
+        let selected = false;
+        new PopupForward(mids, () => {
+          selected = true;
+        }, () => {
+          d = false;
+
+          if(!selected) {
+            helperFunc();
+          }
+        });
+      } else if(this.helperType == 'reply') {
+        appImManager.setPeer($rootScope.selectedPeerID, this.replyToMsgID);
+      } else if(this.helperType == 'edit') {
+        appImManager.setPeer($rootScope.selectedPeerID, this.editMsgID);
+      }
     });
   }
 
@@ -579,8 +607,12 @@ export class ChatInput {
       });
     }
 
+    // * wait for sendText set messageID for invokeAfterMsg
     if(this.forwardingMids.length) {
-      appMessagesManager.forwardMessages(appImManager.peerID, this.forwardingMids);
+      const mids = this.forwardingMids.slice();
+      setTimeout(() => {
+        appMessagesManager.forwardMessages(appImManager.peerID, mids);
+      }, 0);
     }
 
     this.onMessageSent();
@@ -629,7 +661,7 @@ export class ChatInput {
         this.setTopInfo('forward', f, title, mids.length + ' forwarded messages');
       }
 
-      this.forwardingMids = mids;
+      this.forwardingMids = mids.slice();
     };
     
     f();
@@ -640,6 +672,12 @@ export class ChatInput {
       this.messageInput.innerText = '';
     }
 
+    if(type) {
+      this.lastUrl = '';
+      delete this.noWebPage;
+      this.willSendWebPage = null;
+    }
+    
     this.replyToMsgID = 0;
     this.forwardingMids.length = 0;
     this.editMsgID = 0;
@@ -660,9 +698,13 @@ export class ChatInput {
     }
 
     this.chatInput.parentElement.classList.add('is-helper-active');
+    /* const scroll = appImManager.scrollable;
+    if(scroll.isScrolledDown && !scroll.scrollLocked && !appImManager.messagesQueuePromise && !appImManager.setPeerPromise) {
+      scroll.scrollTo(scroll.scrollHeight, 'top', true, true, 200);
+    } */
 
     if(input !== undefined) {
-      this.messageInput.innerHTML = input ? RichTextProcessor.wrapRichText(input) : '';
+      this.messageInput.innerHTML = input ? RichTextProcessor.wrapRichText(input, {noLinks: true}) : '';
     }
 
     setTimeout(() => {

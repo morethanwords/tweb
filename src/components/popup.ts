@@ -1,6 +1,5 @@
 import $rootScope from "../lib/rootScope";
-import { cancelEvent } from "../lib/utils";
-import AvatarElement from "./avatar";
+import { cancelEvent, findUpClassName } from "../lib/utils";
 import { ripple } from "./ripple";
 
 export class PopupElement {
@@ -16,7 +15,7 @@ export class PopupElement {
   protected onCloseAfterTimeout: () => void;
   protected onEscape: () => boolean = () => true;
 
-  constructor(className: string, buttons?: Array<PopupButton>, options: Partial<{closable: boolean, withConfirm: string, body: boolean}> = {}) {
+  constructor(className: string, buttons?: Array<PopupButton>, options: Partial<{closable: true, overlayClosable: true, withConfirm: string, body: true}> = {}) {
     this.element.classList.add('popup');
     this.element.className = 'popup' + (className ? ' ' + className : '');
     this.container.classList.add('popup-container', 'z-depth-1');
@@ -33,6 +32,16 @@ export class PopupElement {
       this.header.prepend(this.closeBtn);
 
       this.closeBtn.addEventListener('click', this.destroy, {once: true});
+
+      if(options.overlayClosable) {
+        const onOverlayClick = (e: MouseEvent) => {
+          if(!findUpClassName(e.target, 'popup-container')) {
+            this.closeBtn.click();
+          }
+        };
+    
+        this.element.addEventListener('click', onOverlayClick, {once: true});
+      }
     }
 
     window.addEventListener('keydown', this._onKeyDown, {capture: true});

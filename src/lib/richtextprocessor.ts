@@ -349,12 +349,12 @@ namespace RichTextProcessor {
     entities: MessageEntity[],
     contextSite: string,
     highlightUsername: string,
-    noLinks: boolean,
-    noLinebreaks: boolean,
-    noCommands: boolean,
+    noLinks: true,
+    noLinebreaks: true,
+    noCommands: true,
     fromBot: boolean,
-    noTextFormat: boolean,
-    nested?: boolean,
+    noTextFormat: true,
+    nested?: true,
     contextHashtag?: string
   }> = {}) {
     if(!text || !text.length) {

@@ -1,3 +1,4 @@
+import { isTouchSupported } from "../helpers/touchSupport";
 import appImManager from "../lib/appManagers/appImManager";
 import AppSelectPeers from "./appSelectPeers";
 import { PopupElement } from "./popup";
@@ -6,8 +7,10 @@ export default class PopupForward extends PopupElement {
   private selector: AppSelectPeers;
   //private scrollable: Scrollable;
   
-  constructor(mids: number[], onSelect?: () => Promise<void> | void) {
-    super('popup-forward', null, {closable: true, body: true});
+  constructor(mids: number[], onSelect?: () => Promise<void> | void, onClose?: () => void) {
+    super('popup-forward', null, {closable: true, overlayClosable: true, body: true});
+
+    if(onClose) this.onClose = onClose;
 
     this.selector = new AppSelectPeers(this.body, async() => {
       const peerID = this.selector.getSelected()[0];
@@ -21,6 +24,10 @@ export default class PopupForward extends PopupElement {
       appImManager.chatInputC.initMessagesForward(mids.slice());
     }, ['dialogs', 'contacts'], () => {
       this.show();
+
+      if(!isTouchSupported) {
+        this.selector.input.focus();
+      }
     }, null, 'send', false);
 
     //this.scrollable = new Scrollable(this.body);

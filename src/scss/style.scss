@@ -840,9 +840,10 @@ input:focus, button:focus {
   overflow: hidden;
   position: relative;
   padding: 0; // new
+  transition: .2s opacity;
  
   html.no-touch &:hover {
-    transition: .2s background-color;
+    transition: .2s background-color, .2s opacity;
     background: darken($color-blue, 8%);
   }
   
@@ -852,23 +853,30 @@ input:focus, button:focus {
     left: auto;
   }
 
-  // * tgico
-  &:before {
-    color: #707579;
-    font-size: 1.5rem;
-    margin-right: 1rem;
+  &:disabled {
+    pointer-events: none !important;
+    opacity: .25;
   }
 }
 
+// ! example: multiselect input
 .btn-transparent {
   color: #000;
   background-color: transparent;
   display: flex;
   align-items: center;
-  justify-content: center;
+  padding: 0 .875rem;
+  //width: auto;
 
   html.no-touch &:hover {
     background-color:	var(--color-gray-hover);
+  }
+
+  // * tgico
+  &:before {
+    color: #707579;
+    font-size: 1.5rem;
+    margin-right: 1rem;
   }
 }
 

@@ -36,13 +36,22 @@ export default class AppSelectPeers {
   private cachedContacts: number[];
 
   private loadedWhat: Partial<{[k in 'dialogs' | 'archived' | 'contacts']: true}> = {};
+
+  private renderedPeerIDs: Set<number> = new Set();
   
   constructor(private appendTo: HTMLElement, private onChange?: (length: number) => void, private peerType: PeerType[] = ['dialogs'], onFirstRender?: () => void, private renderResultsFunc?: (peerIDs: number[]) => void, private chatRightsAction?: ChatRights, private multiSelect = true) {
     this.container.classList.add('selector');
 
-    if(!this.renderResultsFunc) {
-      this.renderResultsFunc = this.renderResults;
-    }
+    const f = (renderResultsFunc || this.renderResults).bind(this);
+    this.renderResultsFunc = (peerIDs: number[]) => {
+      peerIDs = peerIDs.filter(peerID => {
+        const notRendered = !this.renderedPeerIDs.has(peerID);
+        if(notRendered) this.renderedPeerIDs.add(peerID);
+        return notRendered;
+      });
+
+      return f(peerIDs);
+    };
 
     this.input = document.createElement('input');
     this.input.classList.add('selector-search-input');
@@ -130,6 +139,7 @@ export default class AppSelectPeers {
         this.promise = null;
         this.list.innerHTML = '';
         this.query = value;
+        this.renderedPeerIDs.clear();
         
         //console.log('selectPeers input:', this.query);
         this.getMoreResults();

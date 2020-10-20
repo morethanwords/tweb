@@ -88,6 +88,14 @@ Utility Classes
   user-select: none;
 }
 
+/* .no-transition {
+  transition: none !important;
+
+  &-all, &-all * {
+    transition: none !important;
+  }
+} */
+
 .center-align, .text-center {
   text-align: center;
 }

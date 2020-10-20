@@ -214,6 +214,7 @@ $chat-helper-size: 39px;
 }
 
 #chat-input {
+	--translateY: 0;
 	display: flex;
 	width: 100%;
 	max-width: 100%;
@@ -222,6 +223,8 @@ $chat-helper-size: 39px;
 	flex: 0 0 auto; /* Forces side columns to stay same width */
 	position: relative;
 	//overflow: hidden;
+	transition: transform var(--layer-transition);
+	transform: translateY(var(--translateY));
 
 	/* // * for no ESG top
 	flex: 1 1 auto;
@@ -235,10 +238,10 @@ $chat-helper-size: 39px;
 
 	@include respond-to(medium-screens) {
 		width: calc(100% - var(--right-column-width));
-		transition: transform var(--layer-transition);
+		//transition: transform var(--layer-transition);
 
 		body.is-right-column-shown & {
-			transform: translate3d(calc(var(--right-column-width) / -2), 0, 0);
+			transform: translate3d(calc(var(--right-column-width) / -2), var(--translateY), 0);
 		}
 
 		body.animation-level-0 & {
@@ -246,20 +249,31 @@ $chat-helper-size: 39px;
 		}
 	}
 
+	&.is-hidden {
+		--translateY: 100%;
+		transform: translate3d(0, var(--translateY), 0);
+		position: absolute;
+		bottom: 0;
+
+		#bubbles.is-selecting:not(.backwards) ~ & {
+			--translateY: 0;
+		}
+	}
+
 	.chat-input-container {
+		--padding-horizontal: #{$chat-padding-handhelds};
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		max-width: var(--messages-container-width);
 		margin: 0 auto;
 		width: 100%;
-		padding: 0 $chat-padding-handhelds;
+		padding: 0 var(--padding-horizontal);
 		flex: 0 0 auto;
 		position: relative;
 
 		@include respond-to(not-handhelds) {
-			padding-left: $chat-padding;
-			padding-right: $chat-padding;
+			--padding-horizontal: #{$chat-padding};
 			padding-bottom: 21px;
 		}
 
@@ -327,17 +341,16 @@ $chat-helper-size: 39px;
 		top: 0;
 
 		// here percents can be used since there are no other transforms
-		transform: translateX(calc(-100% + #{-1rem + -$btn-send-margin}));
+		transform: translateX(calc(-100% + var(--padding-horizontal) * -1 + #{-$btn-send-margin}));
 
-		@include respond-to(handhelds) {
+		/* @include respond-to(handhelds) {
 			transform: translateX(calc(-100% + #{-.5rem + -$btn-send-margin}));
-		}
+		} */
 	}
 
 	.btn-send-container {
-		flex: 0 0 auto;
-		position: relative;
-		align-self: flex-end;
+		position: absolute;
+		right: var(--padding-horizontal);
 		z-index: 2;
 	}
 	
@@ -625,6 +638,10 @@ $chat-helper-size: 39px;
 	.chat-background {
 		overflow: hidden;
 
+		&.no-transition:before {
+			transition: none !important;
+		}
+
 		&, &:before {
 			position: absolute !important;
 			top: 0;
@@ -884,7 +901,7 @@ $chat-helper-size: 39px;
 	align-items: center;
 	flex-direction: column;
 	width: calc(100% - #{$chat-input-size + $btn-send-margin});
-	max-width: 100%;
+	max-width: calc(100% - #{$chat-input-size + $btn-send-margin});
 	justify-content: center;
 	background-color: #fff;
 	border-radius: 12px;
@@ -920,7 +937,12 @@ $chat-helper-size: 39px;
 	@include respond-to(handhelds) {
 		--padding: .5px .5rem;
 		width: calc(100% - #{$chat-input-handhelds-size + $btn-send-margin});
+		max-width: calc(100% - #{$chat-input-handhelds-size + $btn-send-margin});
 		min-height: $chat-input-handhelds-size;
+	}
+
+	@media only screen and (max-width: 420px) { 
+		max-width: 100%;
 	}
 	
 	@include respond-to(esg-bottom) {
@@ -1031,21 +1053,54 @@ $chat-helper-size: 39px;
 		border-radius: inherit;
 		padding: inherit;
 		user-select: none;
+		font-size: 15px;
 
 		&-count {
 			color: #000;
 			font-weight: 500;
 			flex-grow: 1;
-			padding-left: .5rem;
+			white-space: nowrap;
+			//padding-left: .5rem;
+		}
+
+		.btn-icon {
+			margin-left: 6px;
+			maRgin-top: 6px;
+			color: #3f454a;
+			height: 42px;
+			width: 42px;
 		}
 
 		.btn-primary {
 			height: 2.5rem;
-			width: 7.5rem;
+			width: auto;
+
+			@include respond-to(handhelds) {
+				padding: 0 .5rem;
+			}
+
+			@media only screen and (max-width: 380px) { 
+				font-size: 0;
+
+				&:before {
+					margin: 0;
+				}
+			}
 		}
 
-		.btn-primary + .btn-primary {
-			margin-left: .75rem;
+		&-forward {
+			&:before {
+				margin-right: 14px;
+			}
+		}
+
+		&-delete {
+			margin-right: .625rem;
+			margin-left: .375rem;
+
+			&:before {
+				margin-right: 10px;
+			}
 		}
 	}
 	
@@ -1086,6 +1141,7 @@ $chat-helper-size: 39px;
 	flex: 1 1 auto; /* Lets middle column shrink/grow to available width */
 	//overflow: hidden;
 	position: relative;
+
 	transform: translateY(var(--translateY));
 	transition: transform var(--layer-transition);
 
@@ -1096,8 +1152,53 @@ $chat-helper-size: 39px;
 	.chat-container.is-helper-active & {
 		&:not(.is-selecting), &.is-selecting.backwards {
 			--translateY: -#{$chat-helper-size};
+
+			#bubbles-inner {
+				transform: translateY(calc(var(--translateY) * -1));
+				//margin-top: $chat-helper-size;
+				//transition: none;
+			}
 		}
 	}
+
+	&.is-chat-input-hidden.is-selecting:not(.backwards) {
+		--translateY: -79px;
+
+		#bubbles-inner {
+			transform: translateY(calc(var(--translateY) * -1));
+			//margin-top: $chat-helper-size;
+			//transition: none;
+		}
+	}
+
+	/* #bubbles-transform-helper {
+		width: 100%;
+		height: 100%;
+		max-height: 100%;
+		position: relative;
+		transform: translateY(var(--translateY));
+		transition: transform var(--layer-transition); */
+
+		> .scrollable {
+			height: auto;
+			/* position: absolute;
+			bottom: 0;
+			left: 0; */
+			//position: relative; // неизвестно зачем это было
+	
+			//display: flex; // for end
+			//flex-direction: unset;
+			display: block;
+	
+			/* display: flex;
+			flex-direction: column;
+			justify-content: flex-end; */
+			// * scrollbar takes some width, don't need to set padding for iOS
+			html.is-safari:not(.is-ios) & {
+				padding-left: 6px;
+			}
+		}
+	//}
 
 	// ! WARNING, НЕЛЬЗЯ СТАВИТЬ ТРАНСФОРМ КРОМЕ TRANSLATEZ(0) НА БЛОК С OVERFLOW, ОН БУДЕТ ПРЫГАТЬ ВВЕРХ ПРИ ВКЛЮЧЕННОМ ПРАВИЛЕ И ЭТО НЕ ИСПРАВИТЬ JS'ОМ!
 	@include respond-to(medium-screens) {
@@ -1113,9 +1214,6 @@ $chat-helper-size: 39px;
 	}
 
 	&.is-selecting {
-		cursor: default !important;
-		user-select: none;
-
 		&:not(.backwards) .is-in .bubble__container {
 			transform: translateX(2.5rem);
 		}
@@ -1132,42 +1230,25 @@ $chat-helper-size: 39px;
 	/* &.is-selecting > .scrollable::-webkit-scrollbar {
 		display: none;
 	} */
-
-	> .scrollable {
-		height: auto;
-		/* position: absolute;
-		bottom: 0;
-		left: 0; */
-		//position: relative; // неизвестно зачем это было
-
-		//display: flex; // for end
-		//flex-direction: unset;
-		display: block;
-
-		/* display: flex;
-		flex-direction: column;
-		justify-content: flex-end; */
-		// * scrollbar takes some width, don't need to set padding for iOS
-		html.is-safari:not(.is-ios) & {
-			padding-left: 6px;
-		}
-	}
 	
 	&:not(.scrolled-down):not(.search-results-active) {
-		> .scrollable {
-			-webkit-mask-image: -webkit-linear-gradient(bottom, transparent, #000 20px);
-			mask-image: linear-gradient(0deg, transparent 0, #000 20px);
-		}
+		//> #bubbles-transform-helper {
+			// ! these lines will blur messages if chat input helper is active
+			> .scrollable {
+				-webkit-mask-image: -webkit-linear-gradient(bottom, transparent, #000 20px);
+				mask-image: linear-gradient(0deg, transparent 0, #000 20px);
+			}
 
-		> #bubbles-go-down {
-			cursor: pointer;
-			--translateY: 0;
-			opacity: 1;
+			> #bubbles-go-down {
+				cursor: pointer;
+				--translateY: 0;
+				opacity: 1;
 
-			/* &.is-broadcast {
-				--translateY: 79px !important;
-			} */
-		}
+				/* &.is-broadcast {
+					--translateY: 79px !important;
+				} */
+			}
+		//}
 	}
 	
 	.preloader {
@@ -1200,6 +1281,11 @@ $chat-helper-size: 39px;
 	justify-content: flex-end;
 	padding: 0 1rem;
 	max-width: var(--messages-container-width);
+
+	transition: transform var(--layer-transition);
+	transform: translateY(0);
+	/* transition: margin-top var(--layer-transition);
+	transition-delay: .2s; */
 
 	@include respond-to(medium-screens) {
 		width: calc(100% - var(--right-column-width));
@@ -1237,9 +1323,9 @@ $chat-helper-size: 39px;
 		}
 	}
 
-	&.is-chat-input-hidden {
+	/* #bubbles.is-chat-input-hidden & {
 		padding-bottom: 55px;
-	}
+	} */
 
 	&:not(.is-channel), &.is-chat {
 		.message {

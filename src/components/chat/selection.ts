@@ -1,10 +1,11 @@
 import { isTouchSupported } from "../../helpers/touchSupport";
 import type { AppImManager } from "../../lib/appManagers/appImManager";
 import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManager";
-import { cancelEvent, cancelSelection, findUpClassName } from "../../lib/utils";
+import { cancelEvent, cancelSelection, findUpClassName, getSelectedText } from "../../lib/utils";
 import Button from "../button";
 import ButtonIcon from "../buttonIcon";
 import CheckboxField from "../checkbox";
+import PopupDeleteMessages from "../popupDeleteMessages";
 import PopupForward from "../popupForward";
 import { toast } from "../toast";
 
@@ -34,7 +35,7 @@ const SetTransition = (element: HTMLElement, className: string, forwards: boolea
 };
 
 const MAX_SELECTION_LENGTH = 100;
-const MIN_CLICK_MOVE = 32; // minimum bubble height
+//const MIN_CLICK_MOVE = 32; // minimum bubble height
 
 export default class ChatSelection {
   public selectedMids: Set<number> = new Set();
@@ -42,14 +43,25 @@ export default class ChatSelection {
 
   private selectionContainer: HTMLElement;
   private selectionCountEl: HTMLElement;
+  private selectionForwardBtn: HTMLElement;
+  private selectionDeleteBtn: HTMLElement;
+
+  public selectedText: string;
 
   constructor(private appImManager: AppImManager, private appMessagesManager: AppMessagesManager) {
-    if(isTouchSupported) return;
-
     const bubblesContainer = appImManager.bubblesContainer;
+
+    if(isTouchSupported) {
+      bubblesContainer.addEventListener('touchend', (e) => {
+        if(!this.isSelecting) return;
+        this.selectedText = getSelectedText();
+      });
+      return;
+    }
+
     bubblesContainer.addEventListener('mousedown', (e) => {
       //console.log('selection mousedown', e);
-      if(e.button != 0) { // LEFT BUTTON
+      if(e.button != 0 || (!this.selectedMids.size && !(e.target as HTMLElement).classList.contains('bubble'))) { // LEFT BUTTON
         return;
       }
       
@@ -169,6 +181,28 @@ export default class ChatSelection {
     if(!this.selectedMids.size) return;
     this.selectionCountEl.innerText = this.selectedMids.size + ' Message' + (this.selectedMids.size == 1 ? '' : 's');
 
+    let cantForward = false, cantDelete = false;
+    for(const mid of this.selectedMids.values()) {
+      const message = this.appMessagesManager.getMessage(mid);
+      if(!cantForward) {
+        if(message.action) {
+          cantForward = true;
+        }
+      }
+      
+
+      if(!cantDelete) {
+        const canDelete = this.appMessagesManager.canDeleteMessage(mid);
+        if(!canDelete) {
+          cantDelete = true;
+        }
+      }
+
+      if(cantForward && cantDelete) break;
+    }
+
+    this.selectionForwardBtn.toggleAttribute('disabled', cantForward);
+    this.selectionDeleteBtn.toggleAttribute('disabled', cantDelete);
   }
 
   public toggleSelection(toggleCheckboxes = true) {
@@ -180,11 +214,23 @@ export default class ChatSelection {
     const bubblesContainer = this.appImManager.bubblesContainer;
     //bubblesContainer.classList.toggle('is-selecting', !!this.selectedMids.size);
 
+    /* if(bubblesContainer.classList.contains('is-chat-input-hidden')) {
+      const scrollable = this.appImManager.scrollable;
+      if(scrollable.isScrolledDown) {
+        scrollable.scrollTo(scrollable.scrollHeight, 'top', true, true, 200);
+      }
+    } */
+
     SetTransition(bubblesContainer, 'is-selecting', !!this.selectedMids.size, 200, () => {
       if(!this.isSelecting) {
         this.selectionContainer.remove();
-        this.selectionContainer = null;
+        this.selectionContainer = this.selectionForwardBtn = this.selectionDeleteBtn = null;
+        this.selectedText = undefined;
       }
+      
+      window.requestAnimationFrame(() => {
+        this.appImManager.onScroll();
+      });
     });
 
     //const chatInput = this.appImManager.chatInput;
@@ -201,19 +247,23 @@ export default class ChatSelection {
         this.selectionCountEl = document.createElement('div');
         this.selectionCountEl.classList.add('selection-container-count');
 
-        const btnForward = Button('btn-primary btn-transparent', {icon: 'forward'});
-        btnForward.append('Forward');
-
-        btnForward.addEventListener('click', () => {
+        this.selectionForwardBtn = Button('btn-primary btn-transparent selection-container-forward', {icon: 'forward'});
+        this.selectionForwardBtn.append('Forward');
+        this.selectionForwardBtn.addEventListener('click', () => {
           new PopupForward([...this.selectedMids], () => {
             this.cancelSelection();
           });
         });
 
-        const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'delete'});
-        btnDelete.append('Delete');
+        this.selectionDeleteBtn = Button('btn-primary btn-transparent danger selection-container-delete', {icon: 'delete'});
+        this.selectionDeleteBtn.append('Delete');
+        this.selectionDeleteBtn.addEventListener('click', () => {
+          new PopupDeleteMessages([...this.selectedMids], () => {
+            this.cancelSelection();
+          });
+        });
 
-        this.selectionContainer.append(btnCancel, this.selectionCountEl, btnForward, btnDelete);
+        this.selectionContainer.append(btnCancel, this.selectionCountEl, this.selectionForwardBtn, this.selectionDeleteBtn);
 
         inputMessageDiv.append(this.selectionContainer);
       }

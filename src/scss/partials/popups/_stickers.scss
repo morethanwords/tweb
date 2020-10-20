@@ -60,11 +60,15 @@
     }
 
     &-sticker {
-      width: 80px;
-      height: 80px;
+      width: var(--esg-sticker-size);
+      height: var(--esg-sticker-size);
       margin-bottom: 2px;
       justify-self: center;
       cursor: pointer;
+
+      @include respond-to(handhelds) {
+        margin-bottom: 8px;
+      }
 
       &:hover {
         border-radius: 12px;
