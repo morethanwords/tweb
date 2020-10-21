@@ -792,6 +792,22 @@ $chat-helper-size: 39px;
 			background-repeat: no-repeat;
 			background-size: cover;
 			background-position: center center;
+
+			/* > img, > video {
+
+			} */
+
+			// sticker
+			/* > img {
+				object-fit: contain !important;
+				max-width: 100%;
+				max-height: 100%;
+			} */
+			> img {
+				object-fit: cover;
+				width: 100%;
+				height: 100%;
+			}
 		}
 
 		i {
@@ -1216,6 +1232,7 @@ $chat-helper-size: 39px;
 			//display: flex; // for end
 			//flex-direction: unset;
 			display: block;
+			//transform: none;
 	
 			/* display: flex;
 			flex-direction: column;
@@ -1385,9 +1402,8 @@ $chat-helper-size: 39px;
 	bottom: 17.5px;
 	cursor: default;
 	opacity: 0;
-	user-select: none;
 	z-index: 2;
-	transition: var(--btn-corner-transition), opacity .2s;
+	transition: var(--btn-corner-transition), opacity .2s !important;
 	overflow: hidden;
 
   @include respond-to(handhelds) {
@@ -1401,7 +1417,7 @@ $chat-helper-size: 39px;
 	}
 
 	@include respond-to(medium-screens) {
-		transition: transform var(--layer-transition), opacity .2s;
+		transition: transform var(--layer-transition), opacity .2s !important;
 
 		body.is-right-column-shown & {
 			transform: translate3d(calc(var(--right-column-width) * -.5), var(--translateY), 0);

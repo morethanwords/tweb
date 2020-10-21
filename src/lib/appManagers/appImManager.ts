@@ -59,7 +59,7 @@ const TEST_SCROLL = false;
 
 const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
-const ANIMATION_GROUP = 'chat';
+export const CHAT_ANIMATION_GROUP = 'chat';
 
 export class AppImManager {
   public columnEl = document.getElementById('column-center') as HTMLDivElement;
@@ -1185,7 +1185,7 @@ export class AppImManager {
 
     //console.timeEnd('appImManager setPeer pre promise');
     
-    animationIntersector.lockGroup(ANIMATION_GROUP);
+    animationIntersector.lockGroup(CHAT_ANIMATION_GROUP);
     this.setPeerPromise = Promise.all([
       promise.then(() => {
         ////this.log('setPeer removing preloader');
@@ -1204,8 +1204,8 @@ export class AppImManager {
         }
 
         this.scrollable.container.append(this.chatInner);
-        animationIntersector.unlockGroup(ANIMATION_GROUP);
-        animationIntersector.checkAnimations(false, ANIMATION_GROUP/* , true */);
+        animationIntersector.unlockGroup(CHAT_ANIMATION_GROUP);
+        animationIntersector.checkAnimations(false, CHAT_ANIMATION_GROUP/* , true */);
         //this.scrollable.attachSentinels();
         //this.scrollable.container.insertBefore(this.chatInner, this.scrollable.container.lastElementChild);
 
@@ -1387,7 +1387,7 @@ export class AppImManager {
       //bubble.remove();
     });
     
-    animationIntersector.checkAnimations(false, ANIMATION_GROUP);
+    animationIntersector.checkAnimations(false, CHAT_ANIMATION_GROUP);
     this.deleteEmptyDateGroups();
   }
   
@@ -1905,7 +1905,7 @@ export class AppImManager {
                   isOut: isOut,
                   lazyLoadQueue: this.lazyLoadQueue,
                   middleware: null,
-                  group: ANIMATION_GROUP
+                  group: CHAT_ANIMATION_GROUP
                 });
 
                 preloader.attach(attachmentDiv, false);
@@ -2017,7 +2017,7 @@ export class AppImManager {
                 lazyLoadQueue: this.lazyLoadQueue,
                 middleware: this.getMiddleware(),
                 isOut,
-                group: ANIMATION_GROUP
+                group: CHAT_ANIMATION_GROUP
               });
               //}
             } else {
@@ -2103,7 +2103,7 @@ export class AppImManager {
               div: attachmentDiv,
               middleware: this.getMiddleware(),
               lazyLoadQueue: this.lazyLoadQueue,
-              group: ANIMATION_GROUP,
+              group: CHAT_ANIMATION_GROUP,
               //play: !!message.pending || !multipleRender,
               play: true,
               loop: true,
@@ -2139,7 +2139,7 @@ export class AppImManager {
                 isOut: isOut,
                 lazyLoadQueue: this.lazyLoadQueue,
                 middleware: this.getMiddleware(),
-                group: ANIMATION_GROUP
+                group: CHAT_ANIMATION_GROUP
               });
             }
             

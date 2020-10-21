@@ -1,0 +1,244 @@
+.btn-icon {
+  text-align: center;
+  font-size: 1.5rem;
+  line-height: 1.5rem;
+  border-radius: 50% !important;
+  transition: background-color .15s ease-in-out, opacity .15s ease-in-out;
+  color: $color-gray;
+  cursor: pointer;
+  background-color: transparent;
+  border: none;
+  padding: .5rem;
+  position: relative;
+  overflow: hidden;
+  
+  /* kostil */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &.active {
+    color: $color-blue;
+  }
+  
+  html.no-touch &:hover {
+    background-color: var(--color-gray-hover);
+  }
+
+  &:disabled {
+    color: #cacaca;
+    pointer-events: none !important;
+    opacity: .25;
+  }
+}
+
+.btn-corner {
+  --translateY: calc(100% + 20px);
+  position: absolute !important;
+  bottom: 20px;
+  right: 20px;
+  //transition: .2s ease;
+  transition: var(--btn-corner-transition) !important;
+  transform: translate3d(0, var(--translateY), 0);
+  z-index: 3;
+  user-select: none;
+
+  &.is-visible {
+    --translateY: 0;
+  }
+
+  body.animation-level-0 & {
+		transition: none !important;
+	}
+}
+
+.btn-menu {
+  visibility: hidden;
+  position: absolute;
+  background: #fff;
+  box-shadow: 0 5px 8px 1px rgba(0,0,0,.24);
+  z-index: 3;
+  top: 100%;
+  margin-top: 8px;
+  padding: 9px 0;
+  border-radius: $border-radius-medium;
+  opacity: 0;
+  transform: scale(.8);
+  transition-property: opacity,transform,visibility;
+  transition-duration: .2s;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 16px;
+
+  -webkit-user-select: none; /* disable selection/Copy of UIWebView */
+  -webkit-touch-callout: none; /* disable the IOS popup when long-press on a link */
+
+  &.active {
+    visibility: visible;
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  &.bottom-left {
+    right: 0;
+    top: 100%;
+    transform-origin: top right;
+  }
+
+  &.bottom-right {
+    left: 0;
+    top: 100%;
+    transform-origin: top left;
+  }
+
+  &.top-left {
+    top: initial;
+    right: 0;
+    bottom: 100%;
+    transform-origin: bottom right;
+  }
+
+  &.top-right {
+    top: initial;
+    left: 0;
+    bottom: 100%;
+    transform-origin: bottom left;
+  }
+
+  &-item {
+    display: flex;
+    position: relative;
+    padding: 0 40px 0 20px;
+    height: 56px;
+    cursor: pointer !important;
+    pointer-events: all !important;
+    background-position: 16px center;
+    background-size: 24px 24px;
+    background-repeat: no-repeat;
+    color: #000;
+    text-transform: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    align-items: center;
+
+    html.no-touch &:hover {
+      background-color: rgba(112, 117, 121, 0.06);
+    }
+
+    &:before {
+      color: $color-gray;
+      font-size: 1.5rem;
+      margin-right: 32px;
+    }
+
+    @include respond-to(handhelds) {
+      padding: 0 30px 0 16px;
+      height: 50px;
+    }
+  }
+}
+
+.btn-primary {
+  background-color: $color-blue;
+  color: #fff;
+  border-radius: $border-radius-medium;
+  width: 100%;
+  text-align: center;
+  height: 54px;
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+  overflow: hidden;
+  position: relative;
+  padding: 0; // new
+  transition: .2s opacity;
+ 
+  html.no-touch &:hover {
+    transition: .2s background-color, .2s opacity;
+    background: darken($color-blue, 8%);
+  }
+  
+  svg, use {
+    height: calc(100% - 20px);
+    right: 15px;
+    left: auto;
+  }
+
+  &:disabled {
+    pointer-events: none !important;
+    opacity: .25;
+  }
+}
+
+// ! example: multiselect input
+.btn-transparent {
+  color: #000;
+  background-color: transparent;
+  display: flex;
+  align-items: center;
+  padding: 0 .875rem;
+  //width: auto;
+
+  html.no-touch &:hover {
+    background-color:	var(--color-gray-hover);
+  }
+
+  // * tgico
+  &:before {
+    color: #707579;
+    font-size: 1.5rem;
+    margin-right: 1rem;
+  }
+}
+
+.btn-primary.btn-circle {
+  .preloader-circular {
+    height: calc(100% - 20px);
+    right: auto;
+    left: auto;
+    margin: 0;
+    top: 10px;
+    
+    .preloader-path {
+      stroke: #fff;
+    }
+  }
+}
+
+.btn-menu-toggle {
+  position: relative;
+  overflow: visible !important;
+  font-weight: normal !important;
+  cursor: pointer !important;
+  pointer-events: all !important;
+
+  &:not(.btn-primary).menu-open {
+    background-color: var(--color-gray-hover);
+  }
+}
+
+.btn-circle {
+  border-radius: 50%;
+  height: 54px;
+  width: 54px;
+  line-height: 54px;
+  
+  @include respond-to(handhelds) {
+    height: 46px;
+    width: 46px;
+  }
+  
+  path {
+    fill: white;
+  }
+}
+
+.btn-disabled {
+  pointer-events: none !important;
+  cursor: default !important;
+  color: #707579 !important;
+
+  &:before {
+    color: #707579 !important;
+  }
+}
