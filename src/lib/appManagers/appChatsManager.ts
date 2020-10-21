@@ -3,10 +3,11 @@ import apiManager from '../mtproto/mtprotoworker';
 import { RichTextProcessor } from "../richtextprocessor";
 import $rootScope from "../rootScope";
 import searchIndexManager from "../searchIndexManager";
-import { copy, defineNotNumerableProperties, getAbbreviation, isObject, numberWithCommas, safeReplaceObject } from "../utils";
+import { copy, getAbbreviation, isObject, numberWithCommas, safeReplaceObject } from "../utils";
 import apiUpdatesManager from "./apiUpdatesManager";
 import appMessagesManager from "./appMessagesManager";
 import appProfileManager from "./appProfileManager";
+import appStateManager from "./appStateManager";
 import appUsersManager from "./appUsersManager";
 
 export type Channel = {
@@ -64,10 +65,10 @@ export type ChatRights = 'send' | 'edit_title' | 'edit_photo' | 'invite' | 'pin'
 
 export class AppChatsManager {
   public chats: {[id: number]: Channel | Chat | any} = {};
-  public usernames: any = {};
-  public channelAccess: any = {};
-  public megagroups: any = {};
-  public cachedPhotoLocations: any = {};
+  //public usernames: any = {};
+  //public channelAccess: any = {};
+  public megagroups: {[id: number]: true} = {};
+  public cachedPhotoLocations: {[id: number]: any} = {};
 
   public megagroupOnlines: {[id: number]: {timestamp: number, onlines: number}} = {};
 
@@ -83,6 +84,10 @@ export class AppChatsManager {
           break;
       }
     });
+
+    appStateManager.getState().then((state) => {
+      this.chats = state.chats;
+    });
   }
 
   public saveApiChats(apiChats: any[]) {
@@ -95,7 +100,7 @@ export class AppChatsManager {
     }
 
     // * exclude from state
-    defineNotNumerableProperties(chat, ['rTitle', 'initials']);
+    // defineNotNumerableProperties(chat, ['rTitle', 'initials']);
     
     //chat.rTitle = chat.title || 'chat_title_deleted';
     chat.rTitle = RichTextProcessor.wrapRichText(chat.title, {noLinks: true, noLinebreaks: true}) || 'chat_title_deleted';
@@ -121,10 +126,10 @@ export class AppChatsManager {
       chat.participants_count = oldChat.participants_count;
     }
 
-    if(chat.username) {
+    /* if(chat.username) {
       let searchUsername = searchIndexManager.cleanUsername(chat.username);
       this.usernames[searchUsername] = chat.id;
-    }
+    } */
 
     let changedPhoto = false;
     if(oldChat === undefined) {
@@ -152,7 +157,7 @@ export class AppChatsManager {
 
   public getChat(id: number) {
     if(id < 0) id = -id;
-    return this.chats[id] || {_: 'chatEmpty', id: id, deleted: true, access_hash: this.channelAccess[id]};
+    return this.chats[id] || {_: 'chatEmpty', id: id, deleted: true, access_hash: ''/* this.channelAccess[id] */};
   }
 
   public hasRights(id: number, action: ChatRights, flag?: keyof ChatBannedRights['pFlags']) {
@@ -239,13 +244,13 @@ export class AppChatsManager {
     return true;
   }
 
-  public resolveUsername(username: string) {
+  /* public resolveUsername(username: string) {
     return this.usernames[username] || 0;
-  }
+  } */
 
-  public saveChannelAccess(id: number, accessHash: string) {
+  /* public saveChannelAccess(id: number, accessHash: string) {
     this.channelAccess[id] = accessHash;
-  }
+  } */
 
   public saveIsMegagroup(id: number) {
     this.megagroups[id] = true;
@@ -254,7 +259,7 @@ export class AppChatsManager {
   public isChannel(id: number) {
     if(id < 0) id = -id;
     let chat = this.chats[id];
-    if(chat && (chat._ == 'channel' || chat._ == 'channelForbidden') || this.channelAccess[id]) {
+    if(chat && (chat._ == 'channel' || chat._ == 'channelForbidden')/*  || this.channelAccess[id] */) {
       return true;
     }
     return false;
@@ -281,7 +286,7 @@ export class AppChatsManager {
     return {
       _: 'inputChannel',
       channel_id: id,
-      access_hash: this.getChat(id).access_hash || this.channelAccess[id] || 0
+      access_hash: this.getChat(id).access_hash/*  || this.channelAccess[id] */ || 0
     };
   }
 
@@ -296,7 +301,7 @@ export class AppChatsManager {
     return {
       _: 'inputPeerChannel',
       channel_id: id,
-      access_hash: this.getChat(id).access_hash || this.channelAccess[id] || 0
+      access_hash: this.getChat(id).access_hash/*  || this.channelAccess[id] */ || 0
     };
   }
 

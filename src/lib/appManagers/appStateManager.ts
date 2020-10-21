@@ -6,6 +6,8 @@ import EventListenerBase from '../../helpers/eventListenerBase';
 import $rootScope from '../rootScope';
 import AppStorage from '../storage';
 import { logger } from '../logger';
+import type { AppUsersManager } from './appUsersManager';
+import type { AppChatsManager } from './appChatsManager';
 
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
 const STATE_VERSION = App.version;
@@ -13,7 +15,9 @@ const STATE_VERSION = App.version;
 type State = Partial<{
   dialogs: Dialog[],
   allDialogsLoaded: DialogsStorage['allDialogsLoaded'], 
-  peers: {[peerID: string]: ReturnType<AppPeersManager['getPeer']>},
+  //peers: {[peerID: string]: ReturnType<AppPeersManager['getPeer']>},
+  chats: {[peerID: string]: ReturnType<AppChatsManager['getChat']>},
+  users: {[peerID: string]: ReturnType<AppUsersManager['getUser']>},
   messages: any[],
   contactsList: number[],
   updates: any,
@@ -60,12 +64,10 @@ export class AppStateManager extends EventListenerBase<{
             //state = {};
           }
         }
-        
-        // will not throw error because state can be `FALSE`
-        const {peers} = state;
-        
+
         this.state = state || {};
-        this.state.peers = peers || {};
+        this.state.chats = state.chats || {};
+        this.state.users = state.users || {};
         this.state.version = STATE_VERSION;
         
         // ??= doesn't compiles
@@ -114,8 +116,9 @@ export class AppStateManager extends EventListenerBase<{
   }
 
   public setPeer(peerID: number, peer: any) {
-    if(this.state.peers.hasOwnProperty(peerID)) return;
-    this.state.peers[peerID] = peer;
+    const container = peerID > 0 ? this.state.users : this.state.chats;
+    if(container.hasOwnProperty(peerID)) return;
+    container[peerID] = peer;
   }
 }
 

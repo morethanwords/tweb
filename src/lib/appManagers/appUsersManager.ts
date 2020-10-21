@@ -6,57 +6,30 @@ import serverTimeManager from "../mtproto/serverTimeManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import $rootScope from "../rootScope";
 import searchIndexManager from "../searchIndexManager";
-import { defineNotNumerableProperties, getAbbreviation, isObject, safeReplaceObject, tsNow } from "../utils";
+import { getAbbreviation, isObject, safeReplaceObject, tsNow } from "../utils";
 import appChatsManager from "./appChatsManager";
 import appPeersManager from "./appPeersManager";
 import appStateManager from "./appStateManager";
 
 // TODO: updateUserBlocked
 
-/* export type User = {
-  _: 'user',
-  access_hash: string,
-  first_name: string,
-  last_name: string,
-  username: string,
-  flags: number,
-  id: number,
-  phone: string,
-  photo: any,
-  
-  status?: Partial<{
-    _: 'userStatusOffline' | 'userStatusOnline' | 'userStatusRecently' | 'userStatusLastWeek' | 'userStatusLastMonth' | 'userStatusEmpty',
-    wasStatus: any,
-    was_online: number,
-    expires: number
-  }>,
-  
-  initials?: string,
-  num?: number,
-  pFlags: Partial<{verified: boolean, support: boolean, self: boolean, bot: boolean, min: number, deleted: boolean}>,
-  rFirstName?: string,
-  rFullName?: string,
-  rPhone?: string,
-  sortName?: string,
-  sortStatus?: number,
-}; */
 export type User = MTUser.user;
 
 export class AppUsersManager {
   public users: {[userID: number]: User} = {};
   public usernames: {[username: string]: number} = {};
-  public userAccess: {[userID: number]: string} = {};
+  //public userAccess: {[userID: number]: string} = {};
   public cachedPhotoLocations: any = {};
   public contactsIndex = searchIndexManager.createIndex();
   public contactsFillPromise: Promise<Set<number>>;
   public contactsList: Set<number> = new Set();
 
-  public getPeersPromise: Promise<number[]>;
+  public getTopPeersPromise: Promise<number[]>;
 
   constructor() {
-    setInterval(this.updateUsersStatuses.bind(this), 60000);
+    setInterval(this.updateUsersStatuses, 60000);
 
-    $rootScope.$on('stateSynchronized', this.updateUsersStatuses.bind(this));
+    $rootScope.$on('stateSynchronized', this.updateUsersStatuses);
 
     $rootScope.$on('apiUpdate', (e) => {
       const update = e.detail as Update;
@@ -137,6 +110,8 @@ export class AppUsersManager {
         });
         this.contactsFillPromise = Promise.resolve(this.contactsList);
       }
+
+      this.users = state.users;
     });
   }
 
@@ -147,12 +122,14 @@ export class AppUsersManager {
 
     return this.contactsFillPromise = apiManager.invokeApi('contacts.getContacts', {
       hash: 0
-    }).then((result: any) => {
-      this.saveApiUsers(result.users);
+    }).then((result) => {
+      if(result._ == 'contacts.contacts') {
+        this.saveApiUsers(result.users);
 
-      result.contacts.forEach((contact: any) => {
-        this.pushContact(contact.user_id);
-      });
+        result.contacts.forEach((contact) => {
+          this.pushContact(contact.user_id);
+        });
+      }
 
       return this.contactsList;
     });
@@ -221,10 +198,6 @@ export class AppUsersManager {
     });
   }
 
-  /* public resolveUsername(username: string) {
-    return this.usernames[username] || 0;
-  } */
-
   public saveApiUsers(apiUsers: any[]) {
     apiUsers.forEach((user) => this.saveApiUser(user));
   }
@@ -251,7 +224,7 @@ export class AppUsersManager {
     }
 
     // * exclude from state
-    defineNotNumerableProperties(user, ['initials', 'num', 'rFirstName', 'rFullName', 'rPhone', 'sortName', 'sortStatus']);
+    // defineNotNumerableProperties(user, ['initials', 'num', 'rFirstName', 'rFullName', 'rPhone', 'sortName', 'sortStatus']);
 
     if(user.phone) {
       user.rPhone = '+' + formatPhoneNumber(user.phone).formatted;
@@ -306,9 +279,9 @@ export class AppUsersManager {
     }
   }
 
-  public saveUserAccess(id: number, accessHash: string) {
+  /* public saveUserAccess(id: number, accessHash: string) {
     this.userAccess[id] = accessHash;
-  }
+  } */
 
   public getUserStatusForSort(status: User['status']) {
     if(status) {
@@ -336,7 +309,7 @@ export class AppUsersManager {
       return id;
     }
 
-    return this.users[id] || {id: id, pFlags: {deleted: true}, access_hash: this.userAccess[id]} as User;
+    return this.users[id] || {id: id, pFlags: {deleted: true}, access_hash: ''/* this.userAccess[id] */} as User;
   }
 
   public getSelf() {
@@ -462,7 +435,7 @@ export class AppUsersManager {
     };
   }
 
-  public updateUsersStatuses() {
+  public updateUsersStatuses = () => {
     const timestampNow = tsNow(true);
     for(const i in this.users) {
       const user = this.users[i];
@@ -475,7 +448,7 @@ export class AppUsersManager {
         $rootScope.$broadcast('user_update', user.id);
       }
     }
-  }
+  };
 
   public forceUserOnline(id: number) {
     if(this.isBot(id)) {
@@ -571,15 +544,14 @@ export class AppUsersManager {
   } */
 
   public getTopPeers(): Promise<number[]> {
-    if(this.getPeersPromise) return this.getPeersPromise;
+    if(this.getTopPeersPromise) return this.getTopPeersPromise;
 
-    return this.getPeersPromise = appStateManager.getState().then((state) => {
+    return this.getTopPeersPromise = appStateManager.getState().then((state) => {
       if(state?.topPeers?.length) {
         return state.topPeers;
       }
 
       return apiManager.invokeApi('contacts.getTopPeers', {
-        flags: 1,
         correspondents: true,
         offset: 0,
         limit: 30,
@@ -643,9 +615,9 @@ export class AppUsersManager {
       return;
     }
 
-    var user = this.users[userID];
+    const user = this.users[userID];
     if(user) {
-      var status: any = offline ? {
+      const status: any = offline ? {
         _: 'userStatusOffline',
         was_online: tsNow(true)
       } : {

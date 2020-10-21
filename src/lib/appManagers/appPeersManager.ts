@@ -2,7 +2,6 @@ import { DialogPeer, InputDialogPeer, InputPeer, Peer } from "../../layer";
 import { RichTextProcessor } from "../richtextprocessor";
 import { isObject } from "../utils";
 import appChatsManager from "./appChatsManager";
-import appStateManager from "./appStateManager";
 import appUsersManager from "./appUsersManager";
 
 // https://github.com/eelcohn/Telegram-API/wiki/Calculating-color-for-a-Telegram-user-on-IRC
@@ -22,19 +21,10 @@ const DialogColors = ['#e17076', '#7bc862', '#e5ca77', '#65AADD', '#a695e7', '#e
 const DialogColorsMap = [0, 7, 4, 1, 6, 3, 5];
 
 export class AppPeersManager {
-  constructor() {
-    appStateManager.getState().then((state) => {
-      for(let peerID in state.peers) {
-        let peer = state.peers[peerID];
-        this.savePeerInstance(+peerID, peer);
-      }
-    });
-  }
-
-  public savePeerInstance(peerID: number, instance: any) {
-    if(+peerID < 0) appChatsManager.saveApiChat(instance);
+  /* public savePeerInstance(peerID: number, instance: any) {
+    if(peerID < 0) appChatsManager.saveApiChat(instance);
     else appUsersManager.saveApiUser(instance);
-  }
+  } */
 
   public getPeerPhoto(peerID: number) {
     return peerID > 0
@@ -150,13 +140,13 @@ export class AppPeersManager {
     return (peerID > 0) && appUsersManager.isBot(peerID);
   }
 
-  public getInputPeer(peerString: string): InputPeer {
+  /* public getInputPeer(peerString: string): InputPeer {
     var firstChar = peerString.charAt(0);
     var peerParams = peerString.substr(1).split('_');
     let id = +peerParams[0];
 
     if(firstChar == 'u') {
-      appUsersManager.saveUserAccess(id, peerParams[1]);
+      //appUsersManager.saveUserAccess(id, peerParams[1]);
 
       return {
         _: 'inputPeerUser',
@@ -164,7 +154,7 @@ export class AppPeersManager {
         access_hash: peerParams[1]
       };
     } else if(firstChar == 'c' || firstChar == 's') {
-      appChatsManager.saveChannelAccess(id, peerParams[1]);
+      //appChatsManager.saveChannelAccess(id, peerParams[1]);
       if(firstChar == 's') {
         appChatsManager.saveIsMegagroup(id);
       }
@@ -180,7 +170,7 @@ export class AppPeersManager {
         chat_id: id
       };
     }
-  }
+  } */
 
   public getInputPeerByID(peerID: number): InputPeer {
     if(!peerID) {

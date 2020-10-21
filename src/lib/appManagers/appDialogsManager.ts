@@ -703,7 +703,7 @@ export class AppDialogsManager {
       }
   
       /* if(lastMessage.from_id == auth.id) { // You:  */
-      if(peer._ != 'peerUser' && peerID != lastMessage.fromID) {
+      if(peer._ != 'peerUser' && peerID != lastMessage.fromID && !lastMessage.action) {
         const sender = appPeersManager.getPeer(lastMessage.fromID);
         if(sender && sender.id) {
           const senderBold = document.createElement('b');

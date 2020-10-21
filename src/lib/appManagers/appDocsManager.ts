@@ -50,10 +50,11 @@ class AppDocsManager {
     this.docs[doc.id] = doc;
 
     // * exclude from state
-    defineNotNumerableProperties(doc, [/* 'thumbs',  */'type', 'h', 'w', 'file_name', 
-    'file', 'duration', 'downloaded', 'url', 'audioTitle', 
-    'audioPerformer', 'sticker', 'stickerEmoji', 'stickerEmojiRaw', 
-    'stickerSetInput', 'stickerThumbConverted', 'animated', 'supportsStreaming']);
+    // defineNotNumerableProperties(doc, [/* 'thumbs',  */'type', 'h', 'w', 'file_name', 
+    // 'file', 'duration', 'downloaded', 'url', 'audioTitle', 
+    // 'audioPerformer', 'sticker', 'stickerEmoji', 'stickerEmojiRaw', 
+    // 'stickerSetInput', 'stickerThumbConverted', 'animated', 'supportsStreaming']);
+    defineNotNumerableProperties(doc, ['downloaded', 'url']);
     
     doc.attributes.forEach(attribute => {
       switch(attribute._) {

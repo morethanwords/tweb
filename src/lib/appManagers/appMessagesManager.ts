@@ -996,10 +996,12 @@ export class AppMessagesManager {
           size: file.size
         }],
         w: options.width,
-        h: options.height,
-        downloaded: file.size,
-        url: options.objectURL || ''
+        h: options.height
       } as any;
+
+      defineNotNumerableProperties(photo, ['downloaded', 'url']);
+      photo.downloaded = file.size;
+      photo.url = options.objectURL || '';
       
       appPhotosManager.savePhoto(photo);
     } else if(fileType.indexOf('audio/') === 0 || ['video/ogg'].indexOf(fileType) >= 0) {
@@ -1063,12 +1065,15 @@ export class AppMessagesManager {
         attributes,
         w: options.width,
         h: options.height,
-        downloaded: file.size,
         thumbs,
         mime_type: fileType,
-        url: options.objectURL || '',
         size: file.size
       } as any;
+
+      defineNotNumerableProperties(doc, ['downloaded', 'url']);
+      // @ts-ignore
+      doc.downloaded = file.size;
+      doc.url = options.objectURL || '';
 
       if(isPhoto) {
         attributes.push({
@@ -1375,12 +1380,15 @@ export class AppMessagesManager {
           _: 'document',
           id: '' + messageID,
           attributes: [videoAttribute],
-          downloaded: file.size,
           thumbs: [],
           mime_type: file.type,
-          url: details.objectURL || '',
           size: file.size
         } as any;
+
+        defineNotNumerableProperties(doc, ['downloaded', 'url']);
+        // @ts-ignore
+        doc.downloaded = file.size;
+        doc.url = details.objectURL || '';
         
         appDocsManager.saveDoc(doc);
         media.document = doc;
@@ -1396,10 +1404,13 @@ export class AppMessagesManager {
             size: file.size
           } as PhotoSize],
           w: details.width,
-          h: details.height,
-          downloaded: file.size,
-          url: details.objectURL || ''
+          h: details.height
         };
+
+        defineNotNumerableProperties(photo, ['downloaded', 'url']);
+        // @ts-ignore
+        photo.downloaded = file.size;
+        photo.url = details.objectURL || '';
         
         appPhotosManager.savePhoto(photo);
         media.photo = photo;
@@ -2218,7 +2229,7 @@ export class AppMessagesManager {
       }
 
       // * exclude from state
-      defineNotNumerableProperties(message, ['rReply', 'mid', 'savedFrom', 'fwdFromID', 'fromID', 'peerID', 'reply_to_mid', 'viaBotID']);
+      // defineNotNumerableProperties(message, ['rReply', 'mid', 'savedFrom', 'fwdFromID', 'fromID', 'peerID', 'reply_to_mid', 'viaBotID']);
 
       const peerID = this.getMessagePeer(message);
       const isChannel = message.peer_id._ == 'peerChannel';
@@ -2481,33 +2492,7 @@ export class AppMessagesManager {
     }
 
     if(message.action) {
-      let action = message.action;
-
-      let str = '';
-      if(action.message) {
-        str = RichTextProcessor.wrapRichText(action.message, {noLinebreaks: true});
-      } else {
-        let suffix = '';
-        let _ = action._;
-        if(_ == "messageActionPhoneCall") {
-          _ += '.' + action.type;
-  
-          let duration = action.duration;
-          if(duration) {
-            let d = [];
-  
-            d.push(duration % 60 + ' s');
-            if(duration >= 60) d.push((duration / 60 | 0) + ' min');
-            //if(duration >= 3600) d.push((duration / 3600 | 0) + ' h');
-            suffix = ' (' + d.reverse().join(' ') + ')';
-          }
-        }
-
-        // @ts-ignore
-        str = (langPack[_] || action._) + suffix;
-      }
-
-      //this.log('message action:', action);
+      const str = this.wrapMessageActionText(message);
 
       messageText = str ? '<i>' + str + '</i>' : '';
     }
@@ -2527,6 +2512,68 @@ export class AppMessagesManager {
     }
 
     return messageText + messageWrapped;
+  }
+
+  public wrapMessageActionText(message: any) {
+    const action = message.action;
+
+    let str = '';
+    if(action.message) {
+      str = RichTextProcessor.wrapRichText(action.message, {noLinebreaks: true});
+    } else {
+      let _ = action._;
+      let suffix = '';
+      let l = '';
+
+      const getNameDivHTML = (peerID: number) => {
+        const title = appPeersManager.getPeerTitle(peerID);
+        return title ? `<div class="name inline" data-peer-i-d="${peerID}">${title}</div> ` : '';
+      };
+
+      switch(_) {
+        case "messageActionPhoneCall": {
+          _ += '.' + action.type;
+
+          const duration = action.duration;
+          if(duration) {
+            const d: string[] = [];
+    
+            d.push(duration % 60 + ' s');
+            if(duration >= 60) d.push((duration / 60 | 0) + ' min');
+            //if(duration >= 3600) d.push((duration / 3600 | 0) + ' h');
+            suffix = ' (' + d.reverse().join(' ') + ')';
+          }
+
+          return langPack[_] + suffix;
+        }
+
+        case 'messageActionChatDeleteUser':
+        case 'messageActionChatAddUsers':
+        case 'messageActionChatAddUser': {
+          let users: number[] = action.users || [action.user_id];
+
+          l = langPack[_].replace('{}', users.map((userID: number) => getNameDivHTML(userID)).join(', '));
+          break;
+        }
+
+        default:
+          str = langPack[_] || `[${action._}]`;
+          break;
+      }
+
+      if(!l) {
+        l = langPack[_];
+        if(!l) {
+          l = '[' + _ + ']';
+        }
+      }
+
+      str = l[0].toUpperCase() == l[0] ? l : getNameDivHTML(message.fromID) + l + (suffix ? ' ' : '');
+    }
+
+    //this.log('message action:', action);
+
+    return str;
   }
 
   public editPeerFolders(peerIDs: number[], folderID: number) {

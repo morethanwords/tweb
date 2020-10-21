@@ -16,7 +16,7 @@ export type UserAuth = {
 export const App = {
   id: 1025907,
   hash: '452b0359b988148995f22ff0f4229750',
-  version: '0.3.0',
+  version: '0.3.1',
   domains: [] as string[],
   baseDcID: 2
 };

@@ -707,10 +707,13 @@ $bubble-margin: .25rem;
   }
 
   .reply {
-    max-width: 300px;
     margin-bottom: 6px;
     margin-top: 0;
     cursor: pointer;
+
+    &-content {
+      max-width: 300px;
+    }
   }
 
   &.is-reply {
@@ -1160,9 +1163,13 @@ $bubble-margin: .25rem;
     justify-content: center;
     text-align: center;
 
+    i {
+      font-style: normal;
+    }
+
     .name {
       cursor: pointer;
-      margin-right: 5px;
+      //margin-right: 5px;
     }
 
     img.emoji {

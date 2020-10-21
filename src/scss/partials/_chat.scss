@@ -305,7 +305,7 @@ $chat-helper-size: 39px;
 		width: 100%;
 		padding: 9px;
 		/* height: 100%; */
-		max-height: 30rem;
+		max-height: calc(30rem - var(--padding-vertical) * 2);
 		overflow-y: none;
 		resize: none;
 		border: none;
@@ -733,6 +733,10 @@ $chat-helper-size: 39px;
 			.pinned-message-content, .reply-content {
 				padding-left: 40px;
 			}
+
+			.emoji:first-child {
+				margin-right: .25rem;
+			}
 		}
 		
 		html.no-touch &:hover {
@@ -935,7 +939,9 @@ $chat-helper-size: 39px;
 }
 
 .input-message {
-	--padding: .3125rem .5rem;
+	--padding-vertical: .3125rem;
+	--padding-horizontal: .5rem;
+	--padding: var(--padding-vertical) var(--padding-horizontal);
 	display: flex;
 	align-items: center;
 	flex-direction: column;
@@ -974,7 +980,8 @@ $chat-helper-size: 39px;
 	} */
 
 	@include respond-to(handhelds) {
-		--padding: .5px .5rem;
+		--padding-vertical: .5px;
+		--padding-horizontal: .5rem;
 		width: calc(100% - #{$chat-input-handhelds-size + $btn-send-margin});
 		max-width: calc(100% - #{$chat-input-handhelds-size + $btn-send-margin});
 		min-height: $chat-input-handhelds-size;
@@ -985,14 +992,16 @@ $chat-helper-size: 39px;
 	}
 	
 	@include respond-to(esg-bottom) {
-		--padding: .5px .5rem;
+		--padding-vertical: .5px;
+		--padding-horizontal: .5rem;
 		min-height: $chat-input-handhelds-size;
 	}
 	
 	&:after {
 		content: '';
 		position: absolute;
-		bottom: -.1875rem;
+		//bottom: -.1875rem;
+		bottom: -.1925rem;
 		right: -8.4px;
 		width: .5625rem;
 		height: 1.25rem;
@@ -1044,6 +1053,10 @@ $chat-helper-size: 39px;
 		z-index: 1;
 		user-select: none;
 
+		@include respond-to(handhelds) {
+			padding-top: .25rem;
+		}
+
 		.chat-container.is-helper-active & {
 			border-bottom-left-radius: 0;
 			border-bottom-right-radius: 0;
@@ -1069,7 +1082,6 @@ $chat-helper-size: 39px;
 		//padding: 4.5px 0;
 		//padding-bottom: 4.5px;
 		align-items: flex-end;
-		overflow: hidden;
 		
 		.btn-icon:before {
 			vertical-align: bottom;
@@ -1206,6 +1218,10 @@ $chat-helper-size: 39px;
 
 	&.is-chat-input-hidden.is-selecting:not(.backwards) {
 		--translateY: -79px;
+
+		@include respond-to(handhelds) {
+			--translateY: -58px;
+		}
 
 		#bubbles-inner {
 			transform: translateY(calc(var(--translateY) * -1));

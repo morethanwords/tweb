@@ -36,7 +36,7 @@ import apiManager from '../mtproto/mtprotoworker';
 import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
 import { RichTextProcessor } from "../richtextprocessor";
 import $rootScope from '../rootScope';
-import { cancelEvent, findUpClassName, findUpTag, getObjectKeysAndSort, langPack, numberWithCommas, placeCaretAtEnd, whichChild } from "../utils";
+import { cancelEvent, defineNotNumerableProperties, findUpClassName, findUpTag, getObjectKeysAndSort, langPack, numberWithCommas, placeCaretAtEnd, whichChild } from "../utils";
 import apiUpdatesManager from './apiUpdatesManager';
 import appChatsManager, { Channel, Chat } from "./appChatsManager";
 import appDialogsManager from "./appDialogsManager";
@@ -258,6 +258,8 @@ export class AppImManager {
           const photo = appPhotosManager.getPhoto('' + tempID);
           if(/* photo._ != 'photoEmpty' */photo) {
             const newPhoto = message.media.photo;
+            // костыль
+            defineNotNumerableProperties(newPhoto, ['downloaded', 'url']);
             newPhoto.downloaded = photo.downloaded;
             newPhoto.url = photo.url;
           }
@@ -1651,30 +1653,7 @@ export class AppImManager {
 
       bubble.className = 'bubble service';
 
-      let title = appPeersManager.getPeerTitle(message.fromID);
-      let name = document.createElement('div');
-      name.classList.add('name');
-      name.dataset.peerID = message.fromID;
-      name.innerHTML = title;
-
-      let str = '';
-      if(action.message) {
-        str = RichTextProcessor.wrapRichText(action.message, {noLinebreaks: true});
-      } else {
-        if(_ == "messageActionPhoneCall") {
-          _ += '.' + action.type;
-        }
-  
-        // @ts-ignore
-        let l = langPack[_];
-        if(!l) {
-          l = '[' + _ + ']';
-        }
-
-        str = l[0].toUpperCase() == l[0] ? l : (name.innerText ? name.outerHTML + ' ' : '') + l;
-      }
-      
-      bubbleContainer.innerHTML = `<div class="service-msg">${str}</div>`;
+      bubbleContainer.innerHTML = `<div class="service-msg">${message.rReply}</div>`;
 
       if(updatePosition) {
         this.renderMessagesQueue(message, bubble, reverse);
