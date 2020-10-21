@@ -685,7 +685,7 @@ export class ChatInput {
     this.chatInput.parentElement.classList.remove('is-helper-active');
   }
 
-  public setTopInfo(type: ChatInputHelperType, callerFunc: () => void, title: string, subtitle: string, input?: string, message?: any) {
+  public setTopInfo(type: ChatInputHelperType, callerFunc: () => void, title = '', subtitle = '', input?: string, message?: any) {
     if(type != 'webpage') {
       this.clearHelper(type);
       this.helperType = type;

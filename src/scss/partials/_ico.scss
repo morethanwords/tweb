@@ -8,6 +8,7 @@ $tgico-font-path: "assets/fonts" !default;
 `.tgico-select:before {
   content: "\e900";
 }`
+.toLowerCase()
 .replace(/([\s])|(_svg)|(1x)/g, '')
 .replace(/\.(.+?):before\{content:"(.+?);\}/g, `$$$1: "\\$2;\n`);
 */
@@ -64,7 +65,7 @@ $tgico-checkboxblock: "\e930";
 $tgico-checkboxon: "\e931";
 $tgico-eye2: "\e932";
 $tgico-eye1: "\e933";
-$tgico-FullScreen: "\e934";
+$tgico-fullscreen: "\e934";
 $tgico-smallscreen: "\e935";
 $tgico-flag: "\e936";
 $tgico-lamp: "\e937";

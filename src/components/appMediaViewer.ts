@@ -231,6 +231,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     this.loadedAllMediaUp = this.loadedAllMediaDown = false;
     this.loadMediaPromiseUp = this.loadMediaPromiseDown = null;
     this.setMoverPromise = null;
+    this.tempID = -1;
 
     /* if(appSidebarRight.historyTabIDs.slice(-1)[0] == AppSidebarRight.SLIDERITEMSIDS.forward) {
       promise.then(() => {
@@ -887,6 +888,13 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
         video.setAttribute('playsinline', '');
 
+        // * fix for playing video if viewer is closed (https://contest.com/javascript-web-bonus/entry1425#issue11629)
+        video.addEventListener('timeupdate', () => {
+          if(this.tempID != tempID) {
+            video.pause();
+          }
+        });
+
         if(isSafari) {
           video.autoplay = true;
         }
@@ -915,6 +923,10 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
             appMediaPlaybackController.willBePlayedMedia = null;
             
             Promise.all([canPlayThrough, onAnimationEnd]).then(() => {
+              if(this.tempID != tempID) {
+                return;
+              }
+
               const player = new VideoPlayer(video, true, media.supportsStreaming);
               /* div.append(video);
               mover.append(player.wrapper); */

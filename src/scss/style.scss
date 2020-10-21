@@ -343,7 +343,7 @@ input, textarea {
   bottom: 20px;
   right: 20px;
   //transition: .2s ease;
-  transition: var(--btn-corner-transition);
+  transition: var(--btn-corner-transition) !important;
   transform: translate3d(0, var(--translateY), 0);
   z-index: 3;
 

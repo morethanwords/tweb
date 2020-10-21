@@ -238,7 +238,7 @@ let onFirstMount = () => {
         _: 'codeSettings' // that's how we sending Type
       }
       //lang_code: navigator.language || 'en'
-    }).then((code: any) => {
+    }).then((code) => {
       //console.log('got code', code);
 
       pageAuthCode.mount(Object.assign(code, {phone_number: phone_number}));

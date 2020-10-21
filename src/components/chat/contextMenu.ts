@@ -57,7 +57,7 @@ export default class ChatContextMenu {
       }
 
       this.buttons.forEach(button => {
-        const good = bubbleContainer ? 
+        const good = bubbleContainer || isTouchSupported ? 
           button.verify() : 
           button.notDirect && button.notDirect() && button.verify();
         button.element.classList.toggle('hide', !good);

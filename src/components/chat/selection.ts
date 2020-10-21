@@ -109,7 +109,7 @@ export default class ChatSelection {
         if(!seen.has(mid)) {
           const isBubbleSelected = this.selectedMids.has(mid);
           if(selecting === undefined) {
-            appImManager.scrollable.container.classList.add('no-select');
+            //bubblesContainer.classList.add('no-select');
             selecting = !isBubbleSelected;
           }
 
@@ -141,7 +141,7 @@ export default class ChatSelection {
         }
 
         bubblesContainer.removeEventListener('mousemove', onMouseMove);
-        appImManager.scrollable.container.classList.remove('no-select');
+        //bubblesContainer.classList.remove('no-select');
 
         // ! CANCEL USER SELECTION !
         cancelSelection();
@@ -220,6 +220,15 @@ export default class ChatSelection {
         scrollable.scrollTo(scrollable.scrollHeight, 'top', true, true, 200);
       }
     } */
+
+    if(!isTouchSupported) {
+      bubblesContainer.classList.toggle('no-select', this.isSelecting);
+
+      if(wasSelecting) {
+        // ! CANCEL USER SELECTION !
+        cancelSelection();
+      }
+    }
 
     SetTransition(bubblesContainer, 'is-selecting', !!this.selectedMids.size, 200, () => {
       if(!this.isSelecting) {
