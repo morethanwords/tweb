@@ -6,6 +6,7 @@
     background-color: $color-blue;
     border-radius: .5rem;
     line-height: 10px;
+    text-align: center;
 
     .document:not(.document-with-thumb) & {
       padding: 1.5rem .25rem 0 .25rem;

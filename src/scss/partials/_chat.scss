@@ -710,10 +710,15 @@ $chat-helper-size: 39px;
 			padding: 1rem;
 
 			&-subtitle {
-				line-height: 1 !important;
 				max-width: 280px;
 			}
 		}
+
+		/* .pinned-message, .reply {
+			&-subtitle {
+				line-height: 16px !important;
+			}
+		} */
 	}
 
 	.pinned-message, .reply {
@@ -771,7 +776,8 @@ $chat-helper-size: 39px;
 			font-size: 14px;
 			//line-height: 18px;
 			//line-height: 1;
-			line-height: 15px;
+			//line-height: 15px;
+			line-height: 16px;
 			overflow: hidden;
 			white-space: nowrap;
 			text-overflow: ellipsis;
