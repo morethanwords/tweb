@@ -1,5 +1,6 @@
 import { DialogPeer, InputDialogPeer, InputPeer, Peer } from "../../layer";
 import { RichTextProcessor } from "../richtextprocessor";
+import $rootScope from "../rootScope";
 import { isObject } from "../utils";
 import appChatsManager from "./appChatsManager";
 import appUsersManager from "./appUsersManager";
@@ -25,6 +26,10 @@ export class AppPeersManager {
     if(peerID < 0) appChatsManager.saveApiChat(instance);
     else appUsersManager.saveApiUser(instance);
   } */
+
+  public canPinMessage(peerID: number) {
+    return peerID == $rootScope.myID || (peerID < 0 && appChatsManager.hasRights(-peerID, 'pin'));
+  }
 
   public getPeerPhoto(peerID: number) {
     return peerID > 0

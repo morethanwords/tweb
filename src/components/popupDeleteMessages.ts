@@ -54,10 +54,10 @@ export default class PopupDeleteMessages {
     });
 
     const popup = new PopupPeer('popup-delete-chat', {
-      peerID: peerID,
-      title: title,
-      description: description,
-      buttons: buttons
+      peerID,
+      title,
+      description,
+      buttons
     });
 
     popup.show();

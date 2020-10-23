@@ -12,6 +12,7 @@ import { PopupButton } from "../popup";
 import PopupDeleteMessages from "../popupDeleteMessages";
 import PopupForward from "../popupForward";
 import PopupPeer from "../popupPeer";
+import PopupPinMessage from "../popupUnpinMessage";
 import appSidebarRight from "../sidebarRight";
 
 export default class ChatContextMenu {
@@ -124,7 +125,7 @@ export default class ChatContextMenu {
       icon: 'unpin',
       text: 'Unpin',
       onClick: this.onUnpinClick,
-      verify: () => appImManager.pinnedMsgID == this.msgID && (this.peerID == $rootScope.myID || (this.peerID < 0 && appChatsManager.hasRights(-this.peerID, 'pin')))
+      verify: () => appImManager.pinnedMsgID == this.msgID && appPeersManager.canPinMessage(this.peerID)
     }, {
       icon: 'revote',
       text: 'Revote',
@@ -213,11 +214,11 @@ export default class ChatContextMenu {
   };
 
   private onPinClick = () => {
-    appMessagesManager.updatePinnedMessage($rootScope.selectedPeerID, this.msgID);
+    new PopupPinMessage($rootScope.selectedPeerID, this.msgID);
   };
 
   private onUnpinClick = () => {
-    appMessagesManager.updatePinnedMessage($rootScope.selectedPeerID, 0);
+    new PopupPinMessage($rootScope.selectedPeerID, 0);
   };
 
   private onRetractVote = () => {

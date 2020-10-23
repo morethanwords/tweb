@@ -839,6 +839,11 @@ $chat-helper-size: 39px;
 
 	.pinned-message {
 		display: none;
+
+		&-close {
+			visibility: visible !important;
+			left: -3rem;
+		}
 	}
 
 	.pinned-container {
@@ -846,7 +851,7 @@ $chat-helper-size: 39px;
 		overflow: visible;
 
 		@include respond-to(handhelds) {
-			box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.15);
+			box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, .15);
 
 			&:before {
 				width: 100%;
@@ -855,8 +860,8 @@ $chat-helper-size: 39px;
 				left: 0;
 				top: 0;
 				position: absolute;
-				/* box-shadow: inset 0px 2px 3px 0px rgba(0, 0, 0, 0.15); */
-				box-shadow: inset 0px 1px 2px 0px rgba(0, 0, 0, 0.15);
+				/* box-shadow: inset 0px 2px 3px 0px rgba(0, 0, 0, .15); */
+				box-shadow: inset 0px 1px 2px 0px rgba(0, 0, 0, .15);
 			}
 		}
 
@@ -875,6 +880,7 @@ $chat-helper-size: 39px;
 			@include respond-to(handhelds) {
 				font-size: 1.4rem;
 				right: 9px;
+				left: auto;
 				visibility: visible;
 			}
 		}

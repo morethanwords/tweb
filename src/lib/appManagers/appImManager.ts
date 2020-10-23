@@ -19,6 +19,7 @@ import { formatPhoneNumber, parseMenuButtonsTo } from '../../components/misc';
 import PopupDatePicker from '../../components/popupDatepicker';
 import PopupForward from '../../components/popupForward';
 import PopupStickers from '../../components/popupStickers';
+import PopupPinMessage from '../../components/popupUnpinMessage';
 import ProgressivePreloader from '../../components/preloader';
 import { ripple } from '../../components/ripple';
 //import Scrollable from '../../components/scrollable';
@@ -178,7 +179,12 @@ export class AppImManager {
     this.chatAudio = new ChatAudio();
     this.chatInfo.nextElementSibling.prepend(this.chatAudio.divAndCaption.container);
 
-    this.pinnedMessageContainer = new PinnedContainer('message', new ReplyContainer('pinned-message'));
+    this.pinnedMessageContainer = new PinnedContainer('message', new ReplyContainer('pinned-message'), () => {
+      if(appPeersManager.canPinMessage(this.peerID)) {
+        new PopupPinMessage(this.peerID, 0);
+        return Promise.resolve(false);
+      }
+    });
     this.btnJoin.parentElement.insertBefore(this.pinnedMessageContainer.divAndCaption.container, this.btnJoin);
 
     // will call when message is sent (only 1)
