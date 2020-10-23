@@ -221,12 +221,15 @@ export class AppImManager {
       let msgIDs = msgIDsByPeer[this.peerID];
       
       this.renderNewMessagesByIDs(msgIDs);
+      appSidebarRight.sharedMediaTab.renderNewMessages(msgIDs);
     });
     
     $rootScope.$on('history_delete', (e) => {
-      let detail = e.detail;
+      const detail = e.detail;
       
-      this.deleteMessagesByIDs(Object.keys(detail.msgs).map(s => +s));
+      const mids = Object.keys(detail.msgs).map(s => +s);
+      this.deleteMessagesByIDs(mids);
+      appSidebarRight.sharedMediaTab.deleteDeletedMessages(mids);
     });
 
     $rootScope.$on('dialog_flush', (e) => {
@@ -272,6 +275,8 @@ export class AppImManager {
           }
         }
       }
+
+      appSidebarRight.sharedMediaTab.renderNewMessages([mid]);
       
       let bubble = this.bubbles[tempID];
       if(bubble) {

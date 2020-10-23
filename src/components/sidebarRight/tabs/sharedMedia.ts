@@ -33,19 +33,9 @@ let setText = (text: string, el: HTMLDivElement) => {
   });
 };
 
-type ContentType = /* 'contentMembers' |  */'contentMedia' | 'contentDocuments' | 'contentLinks' | 'contentAudio';
 type SharedMediaType = /* 'inputMessagesFilterContacts' |  */'inputMessagesFilterEmpty' | 'inputMessagesFilterPhotoVideo' | 'inputMessagesFilterDocument' | 'inputMessagesFilterUrl' | 'inputMessagesFilterMusic';
 
-const contentToSharedMap: {[contentType in ContentType]: SharedMediaType} = {
-  //contentMembers: 'inputMessagesFilterContacts',
-  contentMedia: 'inputMessagesFilterPhotoVideo',
-  contentDocuments: 'inputMessagesFilterDocument',
-  contentLinks: 'inputMessagesFilterUrl',
-  contentAudio: 'inputMessagesFilterMusic'
-};
-
-// TODO: отправленное сообщение с картинкой, или же новое полученное апдейтом сообщение не отобразится в медии
-// TODO: по-хорошему, нужно просто сделать апдейты для всего сайдбара
+// TODO: отредактированное сообщение не изменится
 
 export default class AppSharedMediaTab implements SliderTab {
   public container: HTMLElement;
@@ -67,7 +57,7 @@ export default class AppSharedMediaTab implements SliderTab {
     notificationsStatus: HTMLParagraphElement
   } = {} as any;
   public sharedMedia: {
-    [t in ContentType]: HTMLDivElement
+    [t in SharedMediaType]: HTMLDivElement
   } = {} as any;
   
   private loadSidebarMediaPromises: {[type: string]: Promise<void>} = {};
@@ -131,11 +121,12 @@ export default class AppSharedMediaTab implements SliderTab {
 
     this.sharedMedia = {
       //contentMembers: this.profileContentEl.querySelector('#content-members'),
-      contentMedia: this.profileContentEl.querySelector('#content-media'),
-      contentDocuments: this.profileContentEl.querySelector('#content-docs'),
-      contentLinks: this.profileContentEl.querySelector('#content-links'),
-      contentAudio: this.profileContentEl.querySelector('#content-audio'),
-    };
+      //inputMessagesFilterEmpty: null,
+      inputMessagesFilterPhotoVideo: this.profileContentEl.querySelector('#content-media'),
+      inputMessagesFilterDocument: this.profileContentEl.querySelector('#content-docs'),
+      inputMessagesFilterUrl: this.profileContentEl.querySelector('#content-links'),
+      inputMessagesFilterMusic: this.profileContentEl.querySelector('#content-audio'),
+    } as any;
 
     let container = this.profileContentEl.querySelector('.content-container .tabs-container') as HTMLDivElement;
     this.profileTabs = this.profileContentEl.querySelector('.profile-tabs');
@@ -177,7 +168,7 @@ export default class AppSharedMediaTab implements SliderTab {
       this.onTransitionEnd();
     });
 
-    this.sharedMedia.contentMedia.addEventListener('click', (e) => {
+    this.sharedMedia.inputMessagesFilterPhotoVideo.addEventListener('click', (e) => {
       const target = e.target as HTMLDivElement;
       
       const messageID = +target.dataset.mid;
@@ -208,6 +199,52 @@ export default class AppSharedMediaTab implements SliderTab {
     /* this.closeBtn.addEventListener('click', () => {
       this.toggleSidebar(false);
     }); */
+  }
+
+  public renderNewMessages(mids: number[]) {
+    mids = mids.slice().reverse(); // ! because it will be ascend sorted array
+    for(const sharedMediaType of this.sharedMediaTypes) {
+      const filtered = this.filterMessagesByType(mids, sharedMediaType);
+      if(filtered.length) {
+        if(this.usedFromHistory[sharedMediaType] !== -1) {
+          this.historiesStorage[this.peerID][sharedMediaType].unshift(...mids);
+          this.usedFromHistory[sharedMediaType] += filtered.length;
+          this.performSearchResult(filtered, sharedMediaType, false);
+        }
+
+        break;
+      }
+    }
+  }
+
+  public deleteDeletedMessages(mids: number[]) {
+    for(const mid of mids) {
+      for(const sharedMediaType of this.sharedMediaTypes) {
+        if(!this.historiesStorage[this.peerID] || !this.historiesStorage[this.peerID][sharedMediaType]) continue;
+
+        const history = this.historiesStorage[this.peerID][sharedMediaType];
+        const idx = history.findIndex(m => m == mid);
+        if(idx !== -1) {
+          history.splice(idx, 1);
+
+          const container = this.sharedMedia[sharedMediaType];
+          const div = container.querySelector(`div[data-mid="${mid}"]`);
+          if(div) {
+            if(sharedMediaType == 'inputMessagesFilterPhotoVideo') {
+              delete this.mediaDivsByIDs[mid];
+            }
+
+            div.remove();
+          }
+
+          if(this.usedFromHistory[sharedMediaType] >= (idx + 1)) {
+            this.usedFromHistory[sharedMediaType]--;
+          }
+
+          break;
+        }
+      }
+    }
   }
 
   private onTransitionStart = () => {
@@ -302,28 +339,27 @@ export default class AppSharedMediaTab implements SliderTab {
     return filtered;
   }
   
-  public async performSearchResult(messages: any[], type: SharedMediaType) {
+  public async performSearchResult(messages: any[], type: SharedMediaType, append = true) {
     const peerID = this.peerID;
     const elemsToAppend: HTMLElement[] = [];
     const promises: Promise<any>[] = [];
-    let sharedMediaDiv: HTMLDivElement;
+    const sharedMediaDiv = this.sharedMedia[type];
 
     /* for(let contentType in contentToSharedMap) {
       if(contentToSharedMap[contentType as ContentType] == type) {
         sharedMediaDiv = this.sharedMedia[contentType as ContentType];
       }
     } */
-    
+
     // https://core.telegram.org/type/MessagesFilter
     switch(type) {
       case 'inputMessagesFilterPhotoVideo': {
-        sharedMediaDiv = this.sharedMedia.contentMedia;
-        
         for(const message of messages) {
           const media = message.media.photo || message.media.document || (message.media.webpage && message.media.webpage.document);
 
           const div = document.createElement('div');
           div.classList.add('grid-item');
+          div.dataset.mid = '' + message.mid;
           //console.log(message, photo);
 
           const isPhoto = media._ == 'photo';
@@ -428,18 +464,15 @@ export default class AppSharedMediaTab implements SliderTab {
       }
       
       case 'inputMessagesFilterDocument': {
-        sharedMediaDiv = this.sharedMedia.contentDocuments;
-        
         for(let message of messages) {
           let div = wrapDocument(message.media.document, true, false, message.mid);
+          div.dataset.mid = '' + message.mid;
           elemsToAppend.push(div);
         }
         break;
       }
       
       case 'inputMessagesFilterUrl': {
-        sharedMediaDiv = this.sharedMedia.contentLinks;
-        
         for(let message of messages) {
           let webpage: any;
 
@@ -546,17 +579,16 @@ export default class AppSharedMediaTab implements SliderTab {
       }
       
       case 'inputMessagesFilterMusic': {
-        sharedMediaDiv = this.sharedMedia.contentAudio;
-        
         for(let message of messages) {
           let div = wrapAudio(message.media.document, true, message.mid);
+          div.dataset.mid = '' + message.mid;
           elemsToAppend.push(div);
         }
         break;
       }
       
       default:
-        console.warn('death is my friend', messages);
+        //console.warn('death is my friend', messages);
         break;
     }
 
@@ -573,7 +605,7 @@ export default class AppSharedMediaTab implements SliderTab {
     }
     
     if(elemsToAppend.length) {
-      sharedMediaDiv.append(...elemsToAppend);
+      sharedMediaDiv[append ? 'append' : 'prepend'](...elemsToAppend);
     }
     
     if(sharedMediaDiv) {
@@ -621,7 +653,7 @@ export default class AppSharedMediaTab implements SliderTab {
       // render from cache
       if(history.length && this.usedFromHistory[type] < history.length) {
         let messages: any[] = [];
-        let used = this.usedFromHistory[type];
+        let used = Math.max(0, this.usedFromHistory[type]);
 
         do {
           let ids = history.slice(used, used + loadCount);
@@ -694,7 +726,7 @@ export default class AppSharedMediaTab implements SliderTab {
     this.lazyLoadQueue.clear();
 
     this.sharedMediaTypes.forEach(type => {
-      this.usedFromHistory[type] = 0;
+      this.usedFromHistory[type] = -1;
     });
 
     this.sharedMediaType = 'inputMessagesFilterPhotoVideo';
@@ -718,12 +750,11 @@ export default class AppSharedMediaTab implements SliderTab {
       this.urlsToRevoke.length = 0;
     }
 
-    (Object.keys(this.sharedMedia) as ContentType[]).forEach(key => {
-      this.sharedMedia[key].innerHTML = '';
+    (Object.keys(this.sharedMedia) as SharedMediaType[]).forEach(sharedMediaType => {
+      this.sharedMedia[sharedMediaType].innerHTML = '';
       
-      const inputFilter = contentToSharedMap[key];
-      if(!this.historiesStorage[this.peerID] || !this.historiesStorage[this.peerID][inputFilter]) {
-        const parent = this.sharedMedia[key].parentElement;
+      if(!this.historiesStorage[this.peerID] || !this.historiesStorage[this.peerID][sharedMediaType]) {
+        const parent = this.sharedMedia[sharedMediaType].parentElement;
         if(!testScroll) {
           if(!parent.querySelector('.preloader')) {
             putPreloader(parent, true);
@@ -744,7 +775,7 @@ export default class AppSharedMediaTab implements SliderTab {
         div.classList.add('grid-item');
         div.dataset.id = '' + (i / 3 | 0);
         //div.innerText = '' + (i / 3 | 0);
-        this.sharedMedia.contentMedia.append(div);
+        this.sharedMedia.inputMessagesFilterPhotoVideo.append(div);
       }
     }
 
