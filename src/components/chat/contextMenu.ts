@@ -8,18 +8,16 @@ import $rootScope from "../../lib/rootScope";
 import { cancelEvent, cancelSelection, findUpClassName } from "../../lib/utils";
 import ButtonMenu, { ButtonMenuItemOptions } from "../buttonMenu";
 import { attachContextMenuListener, openBtnMenu, positionMenu } from "../misc";
-import { PopupButton } from "../popup";
 import PopupDeleteMessages from "../popupDeleteMessages";
 import PopupForward from "../popupForward";
-import PopupPeer from "../popupPeer";
 import PopupPinMessage from "../popupUnpinMessage";
-import appSidebarRight from "../sidebarRight";
 
 export default class ChatContextMenu {
   private buttons: (ButtonMenuItemOptions & {verify: () => boolean, notDirect?: () => boolean})[];
   private element: HTMLElement;
 
   private target: HTMLElement;
+  private isTargetAnAlbumItem: boolean;
   public peerID: number;
   public msgID: number;
 
@@ -51,6 +49,7 @@ export default class ChatContextMenu {
       this.target = e.target as HTMLElement;
 
       const albumItem = findUpClassName(this.target, 'album-item');
+      this.isTargetAnAlbumItem = !!albumItem;
       if(albumItem) {
         this.msgID = +albumItem.dataset.mid;
       } else {
@@ -230,7 +229,7 @@ export default class ChatContextMenu {
   };
 
   private onForwardClick = () => {
-    new PopupForward([this.msgID]);
+    new PopupForward(this.isTargetAnAlbumItem ? [this.msgID] : appMessagesManager.getMidsByMid(this.msgID));
   };
 
   private onSelectClick = () => {
