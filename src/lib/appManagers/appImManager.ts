@@ -340,7 +340,8 @@ export class AppImManager {
       const peerID = e.detail;
 
       if(peerID == this.peerID) {
-        (this.messagesQueuePromise || Promise.resolve()).then(() => {
+        const promise: Promise<any> = this.setPeerPromise || this.messagesQueuePromise || Promise.resolve();
+        promise.then(() => {
           this.setPinnedMessage();
         });
       }

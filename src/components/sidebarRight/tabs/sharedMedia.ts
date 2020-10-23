@@ -245,6 +245,8 @@ export default class AppSharedMediaTab implements SliderTab {
         }
       }
     }
+
+    this.scroll.onScroll();
   }
 
   private onTransitionStart = () => {
