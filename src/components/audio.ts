@@ -34,13 +34,17 @@ export function decodeWaveform(waveform: Uint8Array | number[]) {
     return new Uint8Array([]);
   }
 
-  var dataView = new DataView(waveform.buffer);
-  var result = new Uint8Array(valueCount);
-  for(var i = 0; i < valueCount; i++) {
-    var byteIndex = i * 5 / 8 | 0;
-    var bitShift = i * 5 % 8;
-    var value = dataView.getUint16(byteIndex, true);
-    result[i] = (value >> bitShift) & 0b00011111;
+  try {
+    var dataView = new DataView(waveform.buffer);
+    var result = new Uint8Array(valueCount);
+    for(var i = 0; i < valueCount; i++) {
+      var byteIndex = i * 5 / 8 | 0;
+      var bitShift = i * 5 % 8;
+      var value = dataView.getUint16(byteIndex, true);
+      result[i] = (value >> bitShift) & 0b00011111;
+    }
+  } catch(err) {
+    return new Uint8Array([]);
   }
 
   /* var byteIndex = (valueCount - 1) / 8 | 0;
@@ -82,7 +86,7 @@ function wrapVoiceMessage(doc: MyDocument, audioEl: AudioElement, mid: number) {
   audioEl.append(svg, timeDiv);
 
   let waveform = (doc.attributes.find(attribute => attribute._ == 'documentAttributeAudio') as DocumentAttribute.documentAttributeAudio).waveform || new Uint8Array([]);
-  waveform = decodeWaveform(waveform.slice());
+  waveform = decodeWaveform(waveform.slice(0, 63));
 
   //console.log('decoded waveform:', waveform);
 

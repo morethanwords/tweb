@@ -45,6 +45,8 @@
     z-index: 1;
     background-color: #fff;
     border-bottom: 1px solid #dadce0;
+    position: relative;
+    box-shadow: 0px 1px 5px -1px rgba(0, 0, 0, .16);
 
     .scrollable {
       position: relative;

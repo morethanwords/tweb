@@ -14,12 +14,12 @@ export class TimeManager {
   }
 
   public generateID(): string {
-    var timeTicks = Date.now(),
+    const timeTicks = Date.now(),
       timeSec = Math.floor(timeTicks / 1000) + this.timeOffset,
       timeMSec = timeTicks % 1000,
       random = nextRandomInt(0xFFFF);
 
-    var messageID = [timeSec, (timeMSec << 21) | (random << 3) | 4];
+    let messageID = [timeSec, (timeMSec << 21) | (random << 3) | 4];
     if(this.lastMessageID[0] > messageID[0] ||
       this.lastMessageID[0] == messageID[0] && this.lastMessageID[1] >= messageID[1]) {
       messageID = [this.lastMessageID[0], this.lastMessageID[1] + 4];
@@ -27,21 +27,25 @@ export class TimeManager {
 
     this.lastMessageID = messageID;
 
-    // console.log('generated msg id', messageID, timeOffset)
+    const ret = longFromInts(messageID[0], messageID[1]);
 
-    return longFromInts(messageID[0], messageID[1]);
+    //console.log('[TimeManager]: Generated msg id', messageID, this.timeOffset, ret);
+
+    return ret
   }
 
   public applyServerTime(serverTime: number, localTime?: number) {
-    var newTimeOffset = serverTime - Math.floor((localTime || Date.now()) / 1000);
-    var changed = Math.abs(this.timeOffset - newTimeOffset) > 10;
+    localTime = (localTime || Date.now()) / 1000 | 0;
+    const newTimeOffset = serverTime - localTime;
+    const changed = Math.abs(this.timeOffset - newTimeOffset) > 10;
     AppStorage.set({
       server_time_offset: newTimeOffset
     });
 
     this.lastMessageID = [0, 0];
     this.timeOffset = newTimeOffset;
-    //console.log(dT(), 'Apply server time', serverTime, localTime, newTimeOffset, changed);
+    
+    //console.log('[TimeManager]: Apply server time', serverTime, localTime, newTimeOffset, changed);
 
     return changed;
   }

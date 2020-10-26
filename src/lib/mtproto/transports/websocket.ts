@@ -67,6 +67,11 @@ export default class Socket extends MTTransport {
       this.connected = true;
 
       this.releasePending();
+
+      if(this.networker && this.lastCloseTime) {
+        this.networker.cleanupSent();
+        this.networker.resend();
+      }
     //}, 3e3);
   };
 
@@ -75,37 +80,29 @@ export default class Socket extends MTTransport {
   };
 
   handleClose = (event: CloseEvent) => {
-    this.log('closed', event, this.pending);
+    this.log('closed', event, this.pending, this.ws.bufferedAmount);
     this.connected = false;
 
     const time = Date.now();
     const diff = time - this.lastCloseTime;
-    let needTimeout = !isNaN(diff) && diff < CONNECTION_RETRY_TIMEOUT ? CONNECTION_RETRY_TIMEOUT - diff : 0;
-
-    //this.pending.length = 0;
-    /* if(this.networker) {
-      this.networker.resend();
-      this.networker.cleanupSent();
-    } */
+    const needTimeout = !isNaN(diff) && diff < CONNECTION_RETRY_TIMEOUT ? CONNECTION_RETRY_TIMEOUT - diff : 0;
 
     this.log('will try to reconnect after timeout:', needTimeout / 1000);
     setTimeout(() => {
       this.log('trying to reconnect...');
       this.lastCloseTime = Date.now();
-      this.connect();
-  
-      for(let pending of this.pending) {
+      
+      for(const pending of this.pending) {
         if(pending.bodySent) {
           pending.bodySent = false;
         }
       }
-  
+
       if(this.networker) {
-        this.ws.addEventListener('open', () => {
-          this.networker.resend();
-          this.networker.cleanupSent();
-        }, {once: true});
+        this.pending
       }
+
+      this.connect();
     }, needTimeout);
   };
 
@@ -126,7 +123,7 @@ export default class Socket extends MTTransport {
     }
 
     //console.log('got hex:', data.hex);
-    let pending = this.pending.shift();
+    const pending = this.pending.shift();
     if(!pending) {
       return this.log.debug('no pending for res:', data.hex);
     }
@@ -177,9 +174,13 @@ export default class Socket extends MTTransport {
           this.log.error('bufferedAmount:', this.ws.bufferedAmount);
         } */
 
-        //setTimeout(() => {
-          this.ws.send(enc);
-        //}, 500);
+        if(this.ws.readyState !== this.ws.OPEN) {
+          this.log.error('ws is closed?');
+          this.connected = false;
+          break;
+        }
+
+        this.ws.send(enc);
         
         if(!pending.resolve) { // remove if no response needed
           this.pending.splice(i--, 1);

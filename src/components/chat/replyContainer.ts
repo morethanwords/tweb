@@ -31,11 +31,13 @@ export default class ReplyContainer extends DivAndCaption<(title: string, subtit
     
         //console.log('wrap reply', media);
         
-        if(media.photo || (media.document && ['video', 'sticker'].indexOf(media.document.type) !== -1)) {
+        if(media.photo || (media.document && ['video', 'sticker', 'gif'].indexOf(media.document.type) !== -1)) {
+          let good = false;
           const replyMedia = document.createElement('div');
           replyMedia.classList.add(this.className + '-media');
 
           if(media.document?.type == 'sticker') {
+            good = true;
             wrapSticker({
               doc: media.document,
               div: replyMedia,
@@ -48,22 +50,30 @@ export default class ReplyContainer extends DivAndCaption<(title: string, subtit
           } else {
             const photo = media.photo || media.document;
 
-            if(photo._ == 'document' || !photo.downloaded) {
+            const cacheContext = appPhotosManager.getCacheContext(photo);
+
+            if(!cacheContext.downloaded) {
               const sizes = photo.sizes || photo.thumbs;
               if(sizes && sizes[0].bytes) {
-                appPhotosManager.setAttachmentPreview(sizes[0].bytes, replyMedia, false, true);
+                good = true;
+                renderImageFromUrl(replyMedia, appPhotosManager.getPreviewURLFromThumb(sizes[0]));
               }
             }
 
             const size = appPhotosManager.choosePhotoSize(photo, 32, 32/* mediaSizes.active.regular.width, mediaSizes.active.regular.height */);
-            appPhotosManager.preloadPhoto(photo, size)
-            .then(() => {
-              renderImageFromUrl(replyMedia, photo._ == 'photo' ? photo.url : appPhotosManager.getDocumentCachedThumb(photo.id).url);
-            });
+            if(size._ != 'photoSizeEmpty') {
+              good = true;
+              appPhotosManager.preloadPhoto(photo, size)
+              .then(() => {
+                renderImageFromUrl(replyMedia, photo._ == 'photo' ? photo.url : appPhotosManager.getDocumentCachedThumb(photo.id).url);
+              });
+            }
           }
 
-          this.content.prepend(this.mediaEl = replyMedia);
-          this.container.classList.add('is-media');
+          if(good) {
+            this.content.prepend(this.mediaEl = replyMedia);
+            this.container.classList.add('is-media');
+          }
         }
       } else {
         subtitle = subtitle ? RichTextProcessor.wrapEmojiText(subtitle) : '';

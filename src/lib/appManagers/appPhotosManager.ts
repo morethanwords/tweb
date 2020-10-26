@@ -15,15 +15,17 @@ export type MyPhoto = Photo.photo;
 // TIMES = 2 DUE TO SIDEBAR AND CHAT
 //let TEST_FILE_REFERENCE = "5440692274120994569", TEST_FILE_REFERENCE_TIMES = 2;
 
+type DocumentCacheThumb = {
+  downloaded: number, 
+  url: string
+};
+
 export class AppPhotosManager {
   private photos: {
     [id: string]: MyPhoto
   } = {};
   private documentThumbsCache: {
-    [docID: string]: {
-      downloaded: number, 
-      url: string
-    }
+    [docID: string]: DocumentCacheThumb
   } = {};
   public windowW = 0;
   public windowH = 0;
@@ -294,7 +296,7 @@ export class AppPhotosManager {
     return download;
   }
 
-  public getCacheContext(photo: any) {
+  public getCacheContext(photo: any): DocumentCacheThumb {
     return photo._ == 'document' ? this.getDocumentCachedThumb(photo.id) : photo;
   }
 

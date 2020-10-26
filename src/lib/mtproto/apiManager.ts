@@ -48,6 +48,8 @@ export class ApiManager {
   private log: ReturnType<typeof logger> = logger('API');
 
   private afterMessageTempIDs: {[tempID: string]: string} = {};
+
+  //private lol = false;
   
   constructor() {
     //MtpSingleInstanceService.start();
@@ -193,6 +195,11 @@ export class ApiManager {
   public invokeApi<T extends keyof MethodDeclMap>(method: T, params: MethodDeclMap[T]['req'] = {}, options: InvokeApiOptions = {}): CancellablePromise<MethodDeclMap[T]["res"]> {
     ///////this.log('Invoke api', method, params, options);
 
+    /* if(!this.lol) {
+      networkerFactory.updatesProcessor({_: 'new_session_created'}, true);
+      this.lol = true;
+    } */
+
     const deferred = deferredPromise<MethodDeclMap[T]['res']>();
 
     const afterMessageIDTemp = options.afterMessageID;
@@ -211,7 +218,7 @@ export class ApiManager {
       const interval = MOUNT_CLASS_TO.setInterval(() => {
         this.log.error('Request is still processing:', method, params, options, 'time:', (Date.now() - startTime) / 1000);
         //this.cachedUploadNetworkers[2].requestMessageStatus();
-      }, 30e3);
+      }, 5e3);
     }
 
     const rejectPromise = (error: ApiError) => {

@@ -202,6 +202,8 @@ export default class AppSharedMediaTab implements SliderTab {
   }
 
   public renderNewMessages(mids: number[]) {
+    if(this.init) return; // * not inited yet
+    
     mids = mids.slice().reverse(); // ! because it will be ascend sorted array
     for(const sharedMediaType of this.sharedMediaTypes) {
       const filtered = this.filterMessagesByType(mids, sharedMediaType);
@@ -218,6 +220,8 @@ export default class AppSharedMediaTab implements SliderTab {
   }
 
   public deleteDeletedMessages(mids: number[]) {
+    if(this.init) return; // * not inited yet
+
     for(const mid of mids) {
       for(const sharedMediaType of this.sharedMediaTypes) {
         if(!this.historiesStorage[this.peerID] || !this.historiesStorage[this.peerID][sharedMediaType]) continue;
