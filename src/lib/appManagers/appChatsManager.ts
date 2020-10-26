@@ -390,7 +390,6 @@ export class AppChatsManager {
 
   public createChannel(title: string, about: string): Promise<number> {
     return apiManager.invokeApi('channels.createChannel', {
-      flags: 1,
       broadcast: true,
       title: title,
       about: about

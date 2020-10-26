@@ -11,7 +11,7 @@ class AppWebPagesManager {
   
   constructor() {
     $rootScope.$on('apiUpdate', (e) => {
-      let update = e.detail;
+      const update = e.detail;
 
       switch(update._) {
         case 'updateWebPage':
@@ -39,27 +39,25 @@ class AppWebPagesManager {
       delete apiWebPage.document;
     }
     
-    var siteName = apiWebPage.site_name;
-    var shortTitle = apiWebPage.title || apiWebPage.author || siteName || '';
+    const siteName = apiWebPage.site_name;
+    let shortTitle = apiWebPage.title || apiWebPage.author || siteName || '';
     if(siteName && shortTitle == siteName) {
       delete apiWebPage.site_name;
     }
 
-    if(shortTitle.length > 100) {
-      shortTitle = shortTitle.substr(0, 80) + '...';
-    }
+    shortTitle = limitSymbols(shortTitle, 80, 100);
 
     apiWebPage.rTitle = RichTextProcessor.wrapRichText(shortTitle, {noLinks: true, noLinebreaks: true});
-    var contextHashtag = '';
+    let contextHashtag = '';
     if(siteName == 'GitHub') {
-      var matches = apiWebPage.url.match(/(https?:\/\/github\.com\/[^\/]+\/[^\/]+)/);
+      const matches = apiWebPage.url.match(/(https?:\/\/github\.com\/[^\/]+\/[^\/]+)/);
       if(matches) {
         contextHashtag = matches[0] + '/issues/{1}';
       }
     }
 
     // delete apiWebPage.description
-    var shortDescriptionText = limitSymbols(apiWebPage.description || '', 150, 180);
+    const shortDescriptionText = limitSymbols(apiWebPage.description || '', 150, 180);
     apiWebPage.rDescription = RichTextProcessor.wrapRichText(shortDescriptionText, {
       contextSite: siteName || 'external',
       contextHashtag: contextHashtag
@@ -80,7 +78,6 @@ class AppWebPagesManager {
       }
 
       this.pendingWebPages[apiWebPage.id][messageID] = true;
-      this.webpages[apiWebPage.id] = apiWebPage;
     }
     
     if(this.webpages[apiWebPage.id] === undefined) {

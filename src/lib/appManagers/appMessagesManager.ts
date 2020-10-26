@@ -454,7 +454,7 @@ type MyInputMessagesFilter = 'inputMessagesFilterEmpty'
 export class AppMessagesManager {
   public messagesStorage: {[mid: string]: any} = {};
   public messagesStorageByPeerID: {[peerID: string]: AppMessagesManager['messagesStorage']} = {};
-  public groupedMessagesStorage: {[groupID: string]: any} = {}; // will be used for albums
+  public groupedMessagesStorage: {[groupID: string]: {[mid: string]: any}} = {}; // will be used for albums
   public historiesStorage: {
     [peerID: string]: HistoryStorage
   } = {};
@@ -747,6 +747,10 @@ export class AppMessagesManager {
       const splitted = splitStringByLength(text, MAX_LENGTH);
       text = splitted[0];
 
+      if(splitted.length > 1) {
+        delete options.webPage;
+      }
+
       for(let i = 1; i < splitted.length; ++i) {
         setTimeout(() => {
           this.sendText(peerID, splitted[i], options);
@@ -1033,11 +1037,8 @@ export class AppMessagesManager {
       apiFileName = 'video.mp4';
       actionName = 'sendMessageUploadVideoAction';
 
-      let flags = 1;
-      if(options.isRoundMessage) flags |= 2;
       let videoAttribute: DocumentAttribute.documentAttributeVideo = {
         _: 'documentAttributeVideo',
-        flags: flags,
         pFlags: { // that's only for client, not going to telegram
           supports_streaming: true,
           round_message: options.isRoundMessage || undefined
@@ -1139,14 +1140,12 @@ export class AppMessagesManager {
       id: messageID,
       from_id: appPeersManager.getOutputPeer(fromID),
       peer_id: appPeersManager.getOutputPeer(peerID),
-      flags: flags,
       pFlags: pFlags,
       date: date,
       message: caption,
       media: isDocument ? {
         _: 'messageMediaDocument',
         pFlags: {},
-        flags: 1,
         document: file 
       } : media,
       random_id: randomIDS,
@@ -1364,10 +1363,8 @@ export class AppMessagesManager {
       };
 
       if(file.type.indexOf('video/') === 0) {
-        let flags = 1;
         let videoAttribute: DocumentAttribute.documentAttributeVideo = {
           _: 'documentAttributeVideo',
-          flags: flags,
           pFlags: { // that's only for client, not going to telegram
             supports_streaming: true
           },
@@ -1422,7 +1419,6 @@ export class AppMessagesManager {
         from_id: appPeersManager.getOutputPeer(fromID),
         grouped_id: groupID,
         peer_id: appPeersManager.getOutputPeer(peerID),
-        flags: flags,
         pFlags: pFlags,
         date: date,
         message: caption,
@@ -1532,7 +1528,6 @@ export class AppMessagesManager {
             mime_type: file.type,
             attributes: [{
               _: 'documentAttributeVideo',
-              flags: 2,
               supports_streaming: true,
               duration: details.duration,
               w: details.width,
@@ -2860,16 +2855,18 @@ export class AppMessagesManager {
       else delete message.pFlags.unread;
     }
 
-    if(this.historiesStorage[peerID] === undefined/*  && !message.deleted */) { // warning
-      const historyStorage: HistoryStorage = {count: null, history: [], pending: []};
+    let historyStorage = this.historiesStorage[peerID];
+    if(historyStorage === undefined/*  && !message.deleted */) { // warning
+      historyStorage = this.historiesStorage[peerID] = {count: null, history: [], pending: []};
       historyStorage[mid > 0 ? 'history' : 'pending'].push(mid);
       /* if(mid < 0 && message.pFlags.unread) {
         dialog.unread_count++;
       } */
-      this.historiesStorage[peerID] = historyStorage;
       if(this.mergeReplyKeyboard(historyStorage, message)) {
         $rootScope.$broadcast('history_reply_markup', {peerID});
       }
+    } else if(!historyStorage.history.length && !historyStorage.pending.length) {
+      historyStorage[mid > 0 ? 'history' : 'pending'].push(mid);
     }
 
     if(channelID && dialog.pts) {
@@ -3270,13 +3267,8 @@ export class AppMessagesManager {
           });
         });
       } else {
-        let flags = 0;
-        if(revoke) {
-          flags |= 1;
-        }
-
         promise = apiManager.invokeApi('messages.deleteMessages', {
-          flags: flags,
+          revoke: revoke || undefined,
           id: msgIDs
         }).then((affectedMessages) => {
           apiUpdatesManager.processUpdateMessage({
@@ -3865,9 +3857,9 @@ export class AppMessagesManager {
         const channelID: number = (update as Update.updateDeleteChannelMessages).channel_id;
         const messages = (update as any as Update.updateDeleteChannelMessages).messages;
 
-        for(let i = 0; i < messages.length; i++) {
-          const messageID = appMessagesIDsManager.getFullMessageID(messages[i], channelID);
-          const message: MyMessage = this.messagesStorage[messageID];
+        for(const _messageID of messages) {
+          const mid = appMessagesIDsManager.getFullMessageID(_messageID, channelID);
+          const message: MyMessage = this.messagesStorage[mid];
           if(message) {
             const peerID = this.getMessagePeer(message);
             const history = historiesUpdated[peerID] || (historiesUpdated[peerID] = {count: 0, unread: 0, msgs: {}});
@@ -3878,7 +3870,7 @@ export class AppMessagesManager {
               const smth = c.photo || c.document;
 
               if(smth?.file_reference) {
-                referenceDatabase.deleteContext(smth.file_reference, {type: 'message', messageID});
+                referenceDatabase.deleteContext(smth.file_reference, {type: 'message', messageID: mid});
               }
             }
 
@@ -3886,21 +3878,31 @@ export class AppMessagesManager {
               history.unread++;
             }
             history.count++;
-            history.msgs[messageID] = true;
+            history.msgs[mid] = true;
 
-            message.deleted = true
-            this.messagesStorage[messageID] = {
-              deleted: true,
-              id: messageID,
-              from_id: message.from_id,
-              peer_id: message.peer_id,
-              pFlags: message.pFlags,
-              date: message.date
-            };
+            message.deleted = true;
+
+            delete this.messagesStorage[mid];
+            delete this.messagesStorageByPeerID[peerID][mid];
+
+            if(message._ != 'messageService' && message.grouped_id) {
+              const groupedStorage = this.groupedMessagesStorage[message.grouped_id];
+              if(groupedStorage) {
+                delete groupedStorage[mid];
+
+                if(!Object.keys(groupedStorage).length) {
+                  delete this.groupedMessagesStorage[message.grouped_id];
+                }
+              }
+            }
+
+            if(this.pinnedMessages[peerID] == mid) {
+              this.savePinnedMessage(peerID, 0);
+            }
 
             const peerMessagesToHandle = this.newMessagesToHandle[peerID];
             if(peerMessagesToHandle && peerMessagesToHandle.length) {
-              const peerMessagesHandlePos = peerMessagesToHandle.indexOf(messageID);
+              const peerMessagesHandlePos = peerMessagesToHandle.indexOf(mid);
               if(peerMessagesHandlePos != -1) {
                 peerMessagesToHandle.splice(peerMessagesHandlePos);
               }
@@ -3913,13 +3915,8 @@ export class AppMessagesManager {
           const updatedData = historiesUpdated[peerID];
           const historyStorage = this.historiesStorage[peerID];
           if(historyStorage !== undefined) {
-            const newHistory: number[] = [];
-            const newPending: number[] = [];
-            for(let i = 0; i < historyStorage.history.length; i++) {
-              if(!updatedData.msgs[historyStorage.history[i]]) {
-                newHistory.push(historyStorage.history[i]);
-              }
-            }
+            const newHistory = historyStorage.history.filter(mid => !updatedData.msgs[mid]);
+            const newPending = historyStorage.pending.filter(mid => !updatedData.msgs[mid]);
             historyStorage.history = newHistory;
             if(updatedData.count &&
               historyStorage.count !== null &&
@@ -3930,11 +3927,6 @@ export class AppMessagesManager {
               }
             }
 
-            for(const mid of historyStorage.pending) {
-              if(!updatedData.msgs[mid]) {
-                newPending.push(mid);
-              }
-            }
             historyStorage.pending = newPending;
 
             $rootScope.$broadcast('history_delete', {peerID, msgs: updatedData.msgs});

@@ -221,10 +221,10 @@ export class AppImManager {
     });
     
     $rootScope.$on('history_multiappend', (e) => {
-      let msgIDsByPeer = e.detail;
+      const msgIDsByPeer = e.detail;
       if(!(this.peerID in msgIDsByPeer)) return;
       
-      let msgIDs = msgIDsByPeer[this.peerID];
+      const msgIDs = msgIDsByPeer[this.peerID];
       
       this.renderNewMessagesByIDs(msgIDs);
       appSidebarRight.sharedMediaTab.renderNewMessages(msgIDs);
@@ -321,6 +321,12 @@ export class AppImManager {
         bubble.dataset.mid = '' + mid;
 
         this.bubbleGroups.removeBubble(bubble, tempID);
+
+        if(message.media?.webpage && !bubble.querySelector('.box.web')) {
+          const mounted = this.getMountedBubble(mid);
+          if(!mounted) return;
+          this.renderMessage(mounted.message, true, false, mounted.bubble, false);
+        }
         
         delete this.bubbles[tempID];
       } else {
@@ -334,7 +340,7 @@ export class AppImManager {
     });
     
     $rootScope.$on('message_edit', (e) => {
-      let {peerID, mid, id, justMedia} = e.detail;
+      const {peerID, mid} = e.detail;
       
       if(peerID != this.peerID) return;
       const mounted = this.getMountedBubble(mid);

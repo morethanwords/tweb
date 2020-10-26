@@ -679,6 +679,7 @@ $bubble-margin: .25rem;
     .box.web {
       .quote {
         display: flex;
+        justify-content: space-between;
       }
   
       .preview-resizer {

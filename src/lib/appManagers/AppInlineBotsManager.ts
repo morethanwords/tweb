@@ -275,7 +275,6 @@ export class AppInlineBotsManager {
     let peerID = appMessagesManager.getMessagePeer(message);
     
     return apiManagerProxy.invokeApi('messages.getBotCallbackAnswer', {
-      flags: 1,
       peer: appPeersManager.getInputPeerByID(peerID),
       msg_id: appMessagesIDsManager.getMessageLocalID(mid),
       data: button.data
@@ -293,7 +292,6 @@ export class AppInlineBotsManager {
     var peerID = AppMessagesManager.getMessagePeer(message)
     
     return MtpApiManager.invokeApi('messages.getBotCallbackAnswer', {
-      flags: 2,
       peer: AppPeersManager.getInputPeerByID(peerID),
       msg_id: AppMessagesIDsManager.getMessageLocalID(id)
     }, {timeout: 1, stopTime: -1, noErrorBox: true}).then(function (callbackAnswer) {
