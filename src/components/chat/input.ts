@@ -218,12 +218,12 @@ export class ChatInput {
       if(!value.trim() && !this.serializeNodes(Array.from(this.messageInput.childNodes)).trim()) {
         this.messageInput.innerHTML = '';
 
-        appMessagesManager.setTyping('sendMessageCancelAction');
+        appMessagesManager.setTyping($rootScope.selectedPeerID, 'sendMessageCancelAction');
       } else {
         const time = Date.now();
         if(time - this.lastTimeType >= 6000) {
           this.lastTimeType = time;
-          appMessagesManager.setTyping('sendMessageTypingAction');
+          appMessagesManager.setTyping($rootScope.selectedPeerID, 'sendMessageTypingAction');
         }
       }
 

@@ -320,13 +320,13 @@ export class AppChatsManager {
     return this.cachedPhotoLocations[id];
   }
 
-  public getChatString(id: number) {
+  /* public getChatString(id: number) {
     const chat = this.getChat(id);
     if(this.isChannel(id)) {
       return (this.isMegagroup(id) ? 's' : 'c') + id + '_' + chat.access_hash;
     }
     return 'g' + id;
-  }
+  } */
 
   public getChatMembersString(id: number) {
     const chat = this.getChat(id);
@@ -353,7 +353,7 @@ export class AppChatsManager {
       chatFull.rAbout = RichTextProcessor.wrapRichText(chatFull.about, {noLinebreaks: true});
     }
 
-    chatFull.peerString = this.getChatString(id);
+    //chatFull.peerString = this.getChatString(id);
     chatFull.chat = chat;
 
     return chatFull;
@@ -487,15 +487,17 @@ export class AppChatsManager {
     }
   }
 
-  onChatUpdated = (chatID: number, updates: any) => {
+  private onChatUpdated = (chatID: number, updates: any) => {
+    console.log('onChatUpdated', chatID, updates);
+
     apiUpdatesManager.processUpdateMessage(updates);
     if(updates &&
-        updates.updates &&
-        updates.updates.length &&
+        /* updates.updates &&
+        updates.updates.length && */
         this.isChannel(chatID)) {
       appProfileManager.invalidateChannelParticipants(chatID);
     }
-  }
+  };
 
   public leaveChannel(id: number) {
     return apiManager.invokeApi('channels.leaveChannel', {

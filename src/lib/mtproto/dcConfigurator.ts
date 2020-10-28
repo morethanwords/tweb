@@ -48,7 +48,7 @@ export class DcConfigurator {
     const path = Modes.test ? 'apiws_test' : 'apiws';
     const chosenServer = 'wss://' + subdomain + '.web.telegram.org/' + path;
     const suffix = connectionType == 'upload' ? '-U' : connectionType == 'download' ? '-D' : '';
-    return new Socket(dcID, chosenServer, connectionType != 'client' ? '-U' : '');
+    return new Socket(dcID, chosenServer, suffix);
   };
 
   private transportHTTP = (dcID: number, connectionType: ConnectionType) => {

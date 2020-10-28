@@ -87,12 +87,12 @@ export class AppPeersManager {
     return {_: 'peerChat', chat_id: chatID};
   }
 
-  public getPeerString(peerID: number) {
+  /* public getPeerString(peerID: number) {
     if(peerID > 0) {
       return appUsersManager.getUserString(peerID);
     }
     return appChatsManager.getChatString(-peerID);
-  }
+  } */
 
   public getPeerUsername(peerID: number): string {
     if(peerID > 0) {

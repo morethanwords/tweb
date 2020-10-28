@@ -35,22 +35,29 @@ export default class Obfuscation {
     }
 
     ////////////////////////initPayload.subarray(60, 62).hex = dcID;
+    /* initPayload.set(new Uint8Array([161, 208, 67, 71, 118, 109, 20, 111, 113, 255, 134, 10, 159, 241, 7, 44, 217, 82, 187, 76, 108, 131, 200, 186, 33, 57, 177, 251, 52, 34, 18, 54, 65, 105, 37, 89, 38, 20, 47, 168, 126, 181, 24, 138, 212, 68, 60, 150, 225, 37, 181, 4, 201, 50, 72, 151, 168, 143, 204, 169, 81, 187, 241, 23]));
+    console.log('initPayload', initPayload); */
 
     const reversedPayload = initPayload.slice().reverse();
 
-    let encKey = initPayload.slice(8, 40);
-    let encIv = initPayload.slice(40, 56);
-    let decKey = reversedPayload.slice(8, 40);
-    let decIv = reversedPayload.slice(40, 56);
+    const encKey = initPayload.slice(8, 40);
+    const encIv = initPayload.slice(40, 56);
+    const decKey = reversedPayload.slice(8, 40);
+    const decIv = reversedPayload.slice(40, 56);
 
     /* this.enc = new aesjs.ModeOfOperation.ctr(encKey, new aesjs.Counter(encIv as any));
     this.dec = new aesjs.ModeOfOperation.ctr(decKey, new aesjs.Counter(decIv as any)); */
+
+    /* console.log('encKey', encKey, encIv);
+    console.log('decKey', decKey, decIv); */
 
     this.encNew = new CTR(encKey, encIv);
     this.decNew = new CTR(decKey, decIv);
 
     initPayload.set(codec.obfuscateTag, 56);
     const encrypted = this.encode(initPayload);
+
+    //console.log('encrypted', encrypted);
 
     initPayload.set(encrypted.slice(56, 64), 56);
 

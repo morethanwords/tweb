@@ -336,13 +336,6 @@ $bubble-margin: .25rem;
       max-width: 100%;
     }
   }
-  
-  &.webpage {
-    .time {
-      float: none;
-      width: 0;
-    }
-  }
 
   .preview-resizer {
     display: flex;
@@ -886,13 +879,7 @@ $bubble-margin: .25rem;
     } */
   }
 
-  .bubble__container .message.audio-message {
-    .time {
-      width: unset !important;
-    }
-  }
-
-  .message.contact-message  {
+  .message.contact-message {
     min-width: 200px;
     padding-left: 8px;
 
@@ -920,18 +907,10 @@ $bubble-margin: .25rem;
         line-height: 1.4;
       }
     }
-
-    .time {
-      width: unset;
-    }
   }
 
   .message.document-message {
     max-width: 325px !important;
-
-    .time {
-      width: unset;
-    }
 
     .document {
       padding-left: 66px;
@@ -950,6 +929,21 @@ $bubble-margin: .25rem;
     }
   }
 
+  .message {
+    &.document-message, &.audio-message, &.voice-message, &.poll-message, &.contact-message {
+      .time {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+      }
+    }
+  }
+
+  .message.voice-message {
+    // ! SAFARI FIX BLINK ON SELECTION TRANSFORM !
+    overflow: visible !important;
+  }
+  
   &.is-message-empty {
     .message {
       position: absolute;
@@ -961,49 +955,48 @@ $bubble-margin: .25rem;
       z-index: 2;
       
       .time {
+        margin-left: 0;
         color: #fff;
-        padding: 0;
         display: flex;
         align-items: center;
-        width: auto !important;
+        padding: 0 2.5px;
+        line-height: 20px;
 
         .inner {
-          margin-bottom: 0;
-          position: relative;
-          padding: 0 2.5px;
-          bottom: 0;
+          display: none;
         }
       }
     }
   }
   
   .time {
-    font-size: .8rem;
+    color: transparent;
+    font-size: 12px;
     user-select: none;
-    float: right;
-    user-select: none;
-    height: 20px;
-    line-height: 20px;
+    line-height: 1;
+    vertical-align: middle;
+    /* display: inline-flex;
+    align-items: center; */
+
+    i {
+      font-size: 1.15rem;
+      margin-right: .4rem;
+      /* margin-left: .1rem; */
+    }
+
+    i.edited {
+      overflow: visible;
+      font-size: .8rem;
+    }
     
     .inner {
       position: absolute;
       bottom: 0;
       right: 0;
-      font-size: 12px;
       display: flex;
       align-items: center;
       line-height: 1;
-
-      i {
-        font-size: 1.15rem;
-        margin-right: .4rem;
-        /* margin-left: .1rem; */
-      }
-
-      i.edited {
-        overflow: visible;
-        font-size: .8rem;
-      }
+      padding: inherit;
     }
   }
 
@@ -1036,27 +1029,6 @@ $bubble-margin: .25rem;
     }
   }
 
-  &.is-edited.channel-post .time {
-    min-width: calc(5rem + 46px);
-  }
-
-  &.channel-post .time {
-    width: 5rem;
-  }
-
-  &.is-edited {
-    .time {
-      width: 78px !important;
-    }
-
-    &.emoji-big, &.sticker {
-      .time {
-        /* width: 81px !important; */
-        min-width: unset;
-      }
-    }
-  }
-  
   &:not(.forwarded).hide-name, &.emoji-big {
     .name {
       display: none;
@@ -1179,22 +1151,6 @@ $bubble-margin: .25rem;
   }
 }
 
-.bubble-audio {
-  .message {
-    // ! SAFARI FIX BLINK ON SELECTION TRANSFORM !
-    overflow: visible !important;
-  }
-
-  .time {
-    width: unset !important;
-    padding-left: 14px !important;
-  
-    @include respond-to(handhelds) {
-      padding-left: 0px !important;
-    }
-  }
-} 
-
 .bubble.is-in {
   .bubble__container {
     margin-right: auto;
@@ -1274,12 +1230,11 @@ $bubble-margin: .25rem;
   }
   
   .time {
-    color: #a3adb6;
-    /* width: 36px; */
-    padding-left: 36px;
-    
+    margin-left: -1px;
+    padding-right: 8px;
+
     .inner {
-      padding: 0 7px 0 5px;
+      color: #a3adb6;
       margin-bottom: 4px;
     }
   }
@@ -1421,21 +1376,25 @@ $bubble-margin: .25rem;
   }
   
   .time {
-    color: $darkgreen;
-    width: 50px;
-    display: inline-block;
-    
+    padding-right: 4px;
+    margin-left: -4px;
+
     .inner {
-      padding: 0 4px 0 4px;
-      bottom: 1px;
+      color: $darkgreen;
+      bottom: 2px;
     }
 
-    .tgico:after {
+    &:after, .inner:after {
       font-size: 19px;
-      vertical-align: middle;
+      //vertical-align: middle;
       margin-left: 1px;
+      line-height: 16px; // of message
     }
   }
+
+  /* &.is-message-empty .time:after {
+    margin-bottom: 1px;
+  } */
   
   &.forwarded {
     .name {
@@ -1444,30 +1403,25 @@ $bubble-margin: .25rem;
   }
   
   &.is-read {
-    .time .tgico:after {
+    .time:after, .time .inner:after {
       content: $tgico-checks;
     }
   }
   
   &.is-sent {
-    .time .tgico:after {
+    .time:after, .time .inner:after {
       content: $tgico-check;
     }
   }
 
   &.is-sending {
-    .time .tgico:after {
+    .time:after, .time .inner:after {
       content: $tgico-sending;
     }
   }
 
   &.is-reply .name {
     display: none;
-  }
-
-  &.is-edited .time {
-    /* width: 85px; */
-    width: 90px !important;
   }
 
   .document-ico:after {
@@ -1819,7 +1773,7 @@ poll-element {
     &-footer {
       text-align: center;
       margin-top: 7px;
-      height: 21px;
+      height: 27px;
     }
 
     &-footer-button {
@@ -1897,12 +1851,6 @@ poll-element {
     line-height: 20px;
     font-size: 10px;
     cursor: pointer;
-  }
-
-  & + .time {
-    height: unset !important;
-    padding-top: 0px !important;
-    padding-bottom: 7px !important;
   }
 
   .circle-hover {

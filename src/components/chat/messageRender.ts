@@ -8,7 +8,7 @@ export namespace MessageRender {
   }; */
 
   export const setTime = (message: Message, bubble: HTMLElement, bubbleContainer: HTMLElement, messageDiv: HTMLElement) => {
-    let date = new Date(message.date * 1000);
+    const date = new Date(message.date * 1000);
     let time = ('0' + date.getHours()).slice(-2) + ':' + ('0' + date.getMinutes()).slice(-2);
 
     if(message.views) {
@@ -16,7 +16,7 @@ export namespace MessageRender {
       time = formatNumber(message.views, 1) + ' <i class="tgico-channelviews"></i> ' + time;
   
       if(!message.savedFrom) {
-        let forward = document.createElement('div');
+        const forward = document.createElement('div');
         forward.classList.add('bubble-beside-button', 'forward');
         forward.innerHTML = `
         <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24">
@@ -35,14 +35,10 @@ export namespace MessageRender {
       time = '<i class="edited">edited</i> ' + time;
     }
 
-    let timeSpan = document.createElement('span');
-    timeSpan.classList.add('time');
-    
-    let timeInner = document.createElement('div');
-    timeInner.classList.add('inner', 'tgico');
-    timeInner.innerHTML = time;
+    const timeSpan = document.createElement('span');
+    timeSpan.classList.add('time', 'tgico');
+    timeSpan.innerHTML = `${time}<div class="inner tgico">${time}</div>`;
 
-    timeSpan.appendChild(timeInner);
     messageDiv.append(timeSpan);
 
     return timeSpan;

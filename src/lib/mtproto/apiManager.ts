@@ -16,6 +16,16 @@ import { CancellablePromise, deferredPromise } from '../../helpers/cancellablePr
 import $rootScope from '../rootScope';
 /// #endif
 
+/* var networker = apiManager.cachedNetworkers.websocket.upload[2];
+networker.wrapMtpMessage({
+  _: 'msgs_state_req',
+  msg_ids: ["6888292542796810828"]
+}, {
+  notContentRelated: true
+}).then(res => {
+  console.log('status', res);
+}); */
+
 //console.error('apiManager included!');
 // TODO: если запрос словил флуд, нужно сохранять его параметры и возвращать тот же промис на новый такой же запрос, например - загрузка истории
 
@@ -127,7 +137,17 @@ export class ApiManager {
     }
 
     const connectionType: ConnectionType = options.fileDownload ? 'download' : (options.fileUpload ? 'upload' : 'client');
+    //const connectionType: ConnectionType = 'client';
+
+    /// #if MTPROTO_HTTP_UPLOAD
+    // @ts-ignore
     const transportType: TransportType = connectionType == 'upload' ? 'https' : 'websocket';
+    //const transportType: TransportType = connectionType != 'client' ? 'https' : 'websocket';
+    /// #else
+    // @ts-ignore
+    const transportType = 'websocket';
+    /// #endif
+
     const transport = dcConfigurator.chooseServer(dcID, connectionType, transportType);
     
     if(!this.cachedNetworkers.hasOwnProperty(transportType)) {

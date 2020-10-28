@@ -624,18 +624,18 @@
   .selector {
     ul {
       li > .rp {
-        margin: 0 8px !important;
-        padding: 7px 12px !important;
-        height: 62px;
+        margin: 0 .5rem;
+        padding: .5rem .75rem;
+        height: 3.875rem;
 
         @include respond-to(handhelds) {
-          margin: 0 !important;
+          margin: 0;
         }
       }
   
       .dialog-avatar {
-        width: 46px;
-        height: 46px;
+        width: 2.875rem;
+        height: 2.875rem;
       }
   
       .user-caption {

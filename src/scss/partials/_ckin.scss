@@ -24,6 +24,17 @@
         object-fit: contain;
       }
     }
+
+    .time {
+      float: right;
+      padding: 7px 0px 9px 14px;
+      font-size: 15px;
+      color: white;
+      
+      @include respond-to(handhelds) {
+        padding: 7px 0px 9px 0px;
+      }
+    }
   }
 
   &__overlay {
@@ -383,17 +394,6 @@ input[type=range] {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.time {
-  float: right;
-  padding: 7px 0px 9px 14px;
-  font-size: 15px;
-  color: white;
-  
-  @include respond-to(handhelds) {
-    padding: 7px 0px 9px 0px;
-  }
 }
 
 .circle .circle-time {

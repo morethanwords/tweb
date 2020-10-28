@@ -24,6 +24,7 @@ export default class PopupForward extends PopupElement {
       appImManager.chatInputC.initMessagesForward(mids.slice());
     }, ['dialogs', 'contacts'], () => {
       this.show();
+      this.selector.checkForTriggers(); // ! due to zero height before mounting
 
       if(!isTouchSupported) {
         this.selector.input.focus();

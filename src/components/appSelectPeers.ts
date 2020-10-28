@@ -301,7 +301,8 @@ export default class AppSelectPeers {
     if(promises.length) {
       promise.then(this.checkForTriggers);
     }
-    return promise
+
+    return promise;
   }
 
   private renderResults(peerIDs: number[]) {

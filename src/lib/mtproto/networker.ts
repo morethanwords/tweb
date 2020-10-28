@@ -116,13 +116,13 @@ export default class MTPNetworker {
 
     const suffix = this.options.fileUpload ? '-U' : this.options.fileDownload ? '-D' : '';
     this.upload = this.options.fileUpload || this.options.fileDownload;
-    //this.log = logger('NET-' + dcID + suffix, this.upload && this.dcID == 1 ? LogLevels.debug | LogLevels.warn | LogLevels.log | LogLevels.error : LogLevels.error);
+    //this.log = logger('NET-' + dcID + suffix, this.upload && this.dcID == 2 ? LogLevels.debug | LogLevels.warn | LogLevels.log | LogLevels.error : LogLevels.error);
     this.log = logger('NET-' + dcID + suffix, LogLevels.log | LogLevels.error);
     this.log('constructor'/* , this.authKey, this.authKeyID, this.serverSalt */);
 
     // Test resend after bad_server_salt
-    /* if(this.dcID == 1 && this.upload) {
-      timeManager.applyServerTime((Date.now() / 1000 - 86400) | 0);
+    /* if(this.dcID == 2 && this.upload) {
+      //timeManager.applyServerTime((Date.now() / 1000 - 86400) | 0);
       this.serverSalt[0] = 0;
     } */
 
@@ -1284,7 +1284,10 @@ export default class MTPNetworker {
           }
   
           delete this.sentMessages[sentMessageID];
+        } else {
+          this.log('Rpc result for unknown message:', sentMessageID);
         }
+
         break;
       }
   

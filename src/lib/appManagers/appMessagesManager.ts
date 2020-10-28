@@ -1,9 +1,9 @@
 import ProgressivePreloader from "../../components/preloader";
 import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
-import { Dialog as MTDialog, DialogFilter, DialogPeer, DocumentAttribute, InputMessage, Message, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, PhotoSize, Update } from "../../layer";
+import { Dialog as MTDialog, DialogFilter, DialogPeer, DocumentAttribute, InputMessage, Message, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, PhotoSize, SendMessageAction, Update } from "../../layer";
 import { InvokeApiOptions, Modify } from "../../types";
 import { bigint, nextRandomInt } from "../bin_utils";
-import { logger } from "../logger";
+import { logger, LogLevels } from "../logger";
 import type { ApiFileManager } from '../mtproto/apiFileManager';
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
@@ -507,7 +507,7 @@ export class AppMessagesManager {
     folderID: 0
   };
 
-  private log = logger('MESSAGES'/* , LogLevels.error */);
+  private log = logger('MESSAGES'/* , LogLevels.error | LogLevels.debug | LogLevels.log | LogLevels.warn */);
 
   public dialogsStorage = new DialogsStorage();
   public filtersStorage = new FiltersStorage();
@@ -1168,7 +1168,7 @@ export class AppMessagesManager {
       uploadPromise: ReturnType<ApiFileManager['uploadFile']> = null;
 
     const invoke = (flags: number, inputMedia: any) => {
-      this.setTyping('sendMessageCancelAction');
+      this.setTyping(peerID, 'sendMessageCancelAction');
 
       return apiManager.invokeApi('messages.sendMedia', {
         flags: flags,
@@ -1261,7 +1261,7 @@ export class AppMessagesManager {
           uploadPromise.addNotifyListener((progress: {done: number, total: number}) => {
             this.log('upload progress', progress);
             const percents = Math.max(1, Math.floor(100 * progress.done / progress.total));
-            this.setTyping({_: actionName, progress: percents | 0});
+            this.setTyping(peerID, {_: actionName, progress: percents | 0});
           });
 
           uploadPromise.catch(err => {
@@ -1270,7 +1270,7 @@ export class AppMessagesManager {
 
               deferred.resolve();
               this.cancelPendingMessage(randomIDS);
-              this.setTyping('sendMessageCancelAction');
+              this.setTyping(peerID, 'sendMessageCancelAction');
             }
           });
 
@@ -1457,7 +1457,7 @@ export class AppMessagesManager {
 
     let inputPeer = appPeersManager.getInputPeerByID(peerID);
     let invoke = (multiMedia: any[]) => {
-      this.setTyping('sendMessageCancelAction');
+      this.setTyping(peerID, 'sendMessageCancelAction');
 
       return apiManager.invokeApi('messages.sendMultiMedia', {
         flags: flags,
@@ -1500,7 +1500,7 @@ export class AppMessagesManager {
       uploadPromise.addNotifyListener((progress: {done: number, total: number}) => {
         this.log('upload progress', progress);
         const percents = Math.max(1, Math.floor(100 * progress.done / progress.total));
-        this.setTyping({_: actionName, progress: percents | 0});
+        this.setTyping(peerID, {_: actionName, progress: percents | 0});
       });
 
       uploadPromise.catch(err => {
@@ -3960,7 +3960,7 @@ export class AppMessagesManager {
         const foundDialog = this.getDialogByPeerID(peerID);
         const hasDialog = foundDialog.length > 0;
 
-        const canViewHistory = channel._ == 'channel' && (channel.username || !channel.pFlags.left && !channel.pFlags.kicked) && true || false;
+        const canViewHistory = channel._ == 'channel' && (channel.username || !channel.pFlags.left && !channel.pFlags.kicked);
         const hasHistory = this.historiesStorage[peerID] !== undefined;
 
         if(canViewHistory != hasHistory) {
@@ -3974,7 +3974,6 @@ export class AppMessagesManager {
           } else {
             if(foundDialog[0]) {
               this.dialogsStorage.dropDialog(peerID);
-              //this.dialogsStorage[foundDialog[0].folder_id].splice(foundDialog[1], 1);
               $rootScope.$broadcast('dialog_drop', {peerID: peerID, dialog: foundDialog[0]});
             }
           }
@@ -4486,17 +4485,13 @@ export class AppMessagesManager {
     }
   }
 
-  public setTyping(action: any): Promise<boolean> {
+  public setTyping(peerID: number, _action: any): Promise<boolean> {
     if(!$rootScope.myID) return Promise.resolve(false);
     
-    if(typeof(action) == 'string') {
-      action = {_: action};
-    }
-    
-    let input = appPeersManager.getInputPeerByID($rootScope.myID);
+    const action: SendMessageAction = typeof(_action) == 'string' ? {_: _action} : _action;
     return apiManager.invokeApi('messages.setTyping', {
-      peer: input,
-      action: action
+      peer: appPeersManager.getInputPeerByID(peerID),
+      action
     }) as Promise<boolean>;
   }
 }

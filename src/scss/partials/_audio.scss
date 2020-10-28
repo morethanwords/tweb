@@ -2,7 +2,7 @@
   position: relative;
   padding-left: 67px;
   min-height: 58px;
-  max-width: 244px;
+  max-width: 258px;
   overflow: visible!important;
 
   @include respond-to(handhelds) {
@@ -10,6 +10,7 @@
   }
 
   &-toggle, &-download {
+    overflow: hidden;
     border-radius: 50%;
     background-color: $color-blue;
     font-size: 0;

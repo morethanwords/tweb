@@ -1326,6 +1326,7 @@ export class AppImManager {
     this.chatInput.style.display = '';
     this.chatInput.classList.toggle('is-hidden', !canWrite);
     this.bubblesContainer.classList.toggle('is-chat-input-hidden', !canWrite);
+    this.chatInputC.messageInput.toggleAttribute('contenteditable', canWrite);
 
     // const noTransition = [this.columnEl/* appSidebarRight.sidebarEl, this.backgroundEl, 
     //   this.bubblesContainer, this.chatInput, this.chatInner, 
@@ -2141,22 +2142,12 @@ export class AppImManager {
             }
             
             break;
-          } else if(doc.mime_type == 'audio/ogg') {
-            let docDiv = wrapDocument(doc, false, false, message.mid);
-            
-            bubble.classList.remove('is-message-empty');
-            
-            bubble.classList.add('bubble-audio');
-            messageDiv.append(docDiv);
-            processingWebPage = true;
-            
-            break;
           } else {
-            let docDiv = wrapDocument(doc, false, false, message.mid);
+            const docDiv = wrapDocument(doc, false, false, message.mid);
             
             bubble.classList.remove('is-message-empty');
             messageDiv.append(docDiv);
-            messageDiv.classList.add((doc.type || 'document') + '-message');
+            messageDiv.classList.add((doc.type != 'photo' ? doc.type || 'document' : 'document') + '-message');
             processingWebPage = true;
             
             break;
@@ -2168,14 +2159,14 @@ export class AppImManager {
         case 'messageMediaContact': {
           //this.log('wrapping contact', message);
 
-          let contactDiv = document.createElement('div');
+          const contactDiv = document.createElement('div');
           contactDiv.classList.add('contact');
           contactDiv.dataset.peerID = '' + messageMedia.user_id;
 
           messageDiv.classList.add('contact-message');
           processingWebPage = true;
 
-          let texts = [];
+          const texts = [];
           if(message.media.first_name) texts.push(RichTextProcessor.wrapEmojiText(message.media.first_name));
           if(message.media.last_name) texts.push(RichTextProcessor.wrapEmojiText(message.media.last_name));
 
@@ -2185,13 +2176,14 @@ export class AppImManager {
               <div class="contact-number">${message.media.phone_number ? '+' + formatPhoneNumber(message.media.phone_number).formatted : 'Unknown phone number'}</div>
             </div>`;
 
-          let avatarElem = new AvatarElement();
+          const avatarElem = new AvatarElement();
           avatarElem.setAttribute('peer', '' + message.media.user_id);
           avatarElem.classList.add('contact-avatar');
 
           contactDiv.prepend(avatarElem);
 
           bubble.classList.remove('is-message-empty');
+          messageDiv.classList.add('contact-message');
           messageDiv.append(contactDiv);
 
           break;
@@ -2200,8 +2192,9 @@ export class AppImManager {
         case 'messageMediaPoll': {
           bubble.classList.remove('is-message-empty');
           
-          let pollElement = wrapPoll(message.media.poll.id, message.mid);
+          const pollElement = wrapPoll(message.media.poll.id, message.mid);
           messageDiv.prepend(pollElement);
+          messageDiv.classList.add('poll-message');
 
           break;
         }
