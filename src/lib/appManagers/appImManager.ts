@@ -222,20 +222,25 @@ export class AppImManager {
     
     $rootScope.$on('history_multiappend', (e) => {
       const msgIDsByPeer = e.detail;
+
+      for(const peerID in msgIDsByPeer) {
+        appSidebarRight.sharedMediaTab.renderNewMessages(+peerID, msgIDsByPeer[peerID]);
+      }
+
       if(!(this.peerID in msgIDsByPeer)) return;
-      
       const msgIDs = msgIDsByPeer[this.peerID];
-      
       this.renderNewMessagesByIDs(msgIDs);
-      appSidebarRight.sharedMediaTab.renderNewMessages(msgIDs);
     });
     
     $rootScope.$on('history_delete', (e) => {
-      const detail = e.detail;
-      
-      const mids = Object.keys(detail.msgs).map(s => +s);
-      this.deleteMessagesByIDs(mids);
-      appSidebarRight.sharedMediaTab.deleteDeletedMessages(mids);
+      const {peerID, msgs} = e.detail;
+
+      const mids = Object.keys(msgs).map(s => +s);
+      appSidebarRight.sharedMediaTab.deleteDeletedMessages(peerID, mids);
+
+      if(peerID == this.peerID) {
+        this.deleteMessagesByIDs(mids);
+      }
     });
 
     $rootScope.$on('dialog_flush', (e) => {
@@ -282,7 +287,7 @@ export class AppImManager {
         }
       }
 
-      appSidebarRight.sharedMediaTab.renderNewMessages([mid]);
+      appSidebarRight.sharedMediaTab.renderNewMessages(message.peerID, [mid]);
       
       let bubble = this.bubbles[tempID];
       if(bubble) {

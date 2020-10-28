@@ -201,15 +201,20 @@ export default class AppSharedMediaTab implements SliderTab {
     }); */
   }
 
-  public renderNewMessages(mids: number[]) {
+  public renderNewMessages(peerID: number, mids: number[]) {
     if(this.init) return; // * not inited yet
+
+    if(!this.historiesStorage[peerID]) return;
     
     mids = mids.slice().reverse(); // ! because it will be ascend sorted array
     for(const sharedMediaType of this.sharedMediaTypes) {
       const filtered = this.filterMessagesByType(mids, sharedMediaType);
       if(filtered.length) {
-        if(this.usedFromHistory[sharedMediaType] !== -1) {
-          this.historiesStorage[this.peerID][sharedMediaType].unshift(...mids);
+        if(this.historiesStorage[peerID][sharedMediaType]) {
+          this.historiesStorage[peerID][sharedMediaType].unshift(...mids);
+        }
+
+        if(this.peerID == peerID && this.usedFromHistory[sharedMediaType] !== -1) {
           this.usedFromHistory[sharedMediaType] += filtered.length;
           this.performSearchResult(filtered, sharedMediaType, false);
         }
@@ -219,30 +224,34 @@ export default class AppSharedMediaTab implements SliderTab {
     }
   }
 
-  public deleteDeletedMessages(mids: number[]) {
+  public deleteDeletedMessages(peerID: number, mids: number[]) {
     if(this.init) return; // * not inited yet
+
+    if(!this.historiesStorage[peerID]) return;
 
     for(const mid of mids) {
       for(const sharedMediaType of this.sharedMediaTypes) {
-        if(!this.historiesStorage[this.peerID] || !this.historiesStorage[this.peerID][sharedMediaType]) continue;
+        if(!this.historiesStorage[peerID][sharedMediaType]) continue;
 
-        const history = this.historiesStorage[this.peerID][sharedMediaType];
+        const history = this.historiesStorage[peerID][sharedMediaType];
         const idx = history.findIndex(m => m == mid);
         if(idx !== -1) {
           history.splice(idx, 1);
 
-          const container = this.sharedMedia[sharedMediaType];
-          const div = container.querySelector(`div[data-mid="${mid}"]`);
-          if(div) {
-            if(sharedMediaType == 'inputMessagesFilterPhotoVideo') {
-              delete this.mediaDivsByIDs[mid];
+          if(this.peerID == peerID) {
+            const container = this.sharedMedia[sharedMediaType];
+            const div = container.querySelector(`div[data-mid="${mid}"]`);
+            if(div) {
+              if(sharedMediaType == 'inputMessagesFilterPhotoVideo') {
+                delete this.mediaDivsByIDs[mid];
+              }
+  
+              div.remove();
             }
-
-            div.remove();
-          }
-
-          if(this.usedFromHistory[sharedMediaType] >= (idx + 1)) {
-            this.usedFromHistory[sharedMediaType]--;
+  
+            if(this.usedFromHistory[sharedMediaType] >= (idx + 1)) {
+              this.usedFromHistory[sharedMediaType]--;
+            }
           }
 
           break;
