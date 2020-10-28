@@ -318,15 +318,15 @@ export default class VideoPlayer {
   
     const html = this.buildControls();
     player.insertAdjacentHTML('beforeend', html);
-    let updateInterval = 0;
     let elapsed = 0;
     let prevTime = 0;
+    let timeDuration: HTMLElement;
   
     if(skin === 'default') {
       const toggle = player.querySelectorAll('.toggle') as NodeListOf<HTMLElement>;
       const fullScreenButton = player.querySelector('.fullscreen') as HTMLElement;
-      var timeElapsed = player.querySelector('#time-elapsed');
-      var timeDuration = player.querySelector('#time-duration') as HTMLElement;
+      const timeElapsed = player.querySelector('#time-elapsed');
+      timeDuration = player.querySelector('#time-duration') as HTMLElement;
       timeDuration.innerHTML = String(video.duration | 0).toHHMMSS();
 
       const volumeDiv = document.createElement('div');
@@ -451,10 +451,6 @@ export default class VideoPlayer {
       /* video.addEventListener('play', () => {
       }); */
 
-      video.addEventListener('pause', () => {
-        clearInterval(updateInterval);
-      });
-  
       video.addEventListener('dblclick', () => {
         if(isTouchSupported) {
           return;
@@ -470,16 +466,20 @@ export default class VideoPlayer {
       'webkitfullscreenchange mozfullscreenchange fullscreenchange MSFullscreenChange'.split(' ').forEach(eventName => {
         player.addEventListener(eventName, this.onFullScreen, false);
       });
+
+      video.addEventListener('timeupdate', () => {
+        timeElapsed.innerHTML = String(video.currentTime | 0).toHHMMSS();
+      });
     } else if(skin === 'circle') {
       const wrapper = document.createElement('div');
       wrapper.classList.add('circle-time-left');
       video.parentNode.insertBefore(wrapper, video);
       wrapper.innerHTML = '<div class="circle-time"></div><div class="iconVolume tgico-nosound"></div>';
   
-      var circle = player.querySelector('.progress-ring__circle') as SVGCircleElement;
+      const circle = player.querySelector('.progress-ring__circle') as SVGCircleElement;
       const radius = circle.r.baseVal.value;
-      var circumference = 2 * Math.PI * radius;
-      var timeDuration = player.querySelector('.circle-time') as HTMLElement;
+      const circumference = 2 * Math.PI * radius;
+      timeDuration = player.querySelector('.circle-time') as HTMLElement;
       const iconVolume = player.querySelector('.iconVolume') as HTMLDivElement;
       circle.style.strokeDasharray = circumference + ' ' + circumference;
       circle.style.strokeDashoffset = '' + circumference;
@@ -505,6 +505,28 @@ export default class VideoPlayer {
       video.addEventListener('pause', () => {
         iconVolume.style.display = '';
       });
+
+      let updateInterval = 0;
+      video.addEventListener('timeupdate', () => {
+        clearInterval(updateInterval);
+
+        let elapsed = 0;
+        let prevTime = 0;
+  
+        updateInterval = window.setInterval(() => {
+          if(video.currentTime != prevTime) {
+            elapsed = video.currentTime; // Update if getCurrentTime was changed
+            prevTime = video.currentTime;
+          }
+          
+          const offset = circumference - elapsed / video.duration * circumference;
+          circle.style.strokeDashoffset = '' + offset;
+          if(video.paused) clearInterval(updateInterval);
+        }, 20);
+  
+        const timeLeft = String((video.duration - video.currentTime) | 0).toHHMMSS();
+        if(timeLeft != '0') timeDuration.innerHTML = timeLeft;
+      });
     }
 
     video.addEventListener('play', () => {
@@ -522,14 +544,6 @@ export default class VideoPlayer {
         timeDuration.innerHTML = String(Math.round(video.duration)).toHHMMSS();
       });
     }
-  
-    video.addEventListener('timeupdate', () => {
-      if(skin == 'default') {
-        timeElapsed.innerHTML = String(video.currentTime | 0).toHHMMSS();
-      }
-
-      updateInterval = this.handleProgress(timeDuration, circumference, circle, updateInterval);
-    });
   }
 
   public togglePlay(stop?: boolean) {
@@ -545,32 +559,6 @@ export default class VideoPlayer {
   
     this.video[this.video.paused ? 'play' : 'pause']();
     //this.wrapper.classList.toggle('is-playing', !this.video.paused);
-  }
-
-  private handleProgress(timeDuration: HTMLElement, circumference: number, circle: SVGCircleElement, updateInterval: number) {
-    const {video, skin} = this;
-
-    clearInterval(updateInterval);
-    let elapsed = 0;
-    let prevTime = 0;
-
-    if(skin === 'circle') {
-      updateInterval = window.setInterval(() => {
-        if(video.currentTime != prevTime) {
-          elapsed = video.currentTime; // Update if getCurrentTime was changed
-          prevTime = video.currentTime;
-        }
-        
-        const offset = circumference - elapsed / video.duration * circumference;
-        circle.style.strokeDashoffset = '' + offset;
-        if(video.paused) clearInterval(updateInterval);
-      }, 20);
-
-      const timeLeft = String((video.duration - video.currentTime) | 0).toHHMMSS();
-      if(timeLeft != '0') timeDuration.innerHTML = timeLeft;
-
-      return updateInterval;
-    }
   }
 
   private buildControls() {

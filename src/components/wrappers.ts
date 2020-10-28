@@ -22,6 +22,8 @@ import { renderImageFromUrl } from './misc';
 import PollElement from './poll';
 import ProgressivePreloader from './preloader';
 
+const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
+
 export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group}: {
   doc: MyDocument, 
   container?: HTMLDivElement, 
@@ -35,22 +37,28 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   noInfo?: true,
   group?: string,
 }) {
+  const isAlbumItem = !(boxWidth && boxHeight);
+  const canAutoplay = doc.type != 'video' || (doc.size <= MAX_VIDEO_AUTOPLAY_SIZE && !isAlbumItem);
+  let spanTime: HTMLElement;
+
   if(!noInfo) {
     if(doc.type != 'round') {
-      let span: HTMLSpanElement, spanPlay: HTMLSpanElement;
-  
-      span = document.createElement('span');
-      span.classList.add('video-time');
-      container.append(span);
+      spanTime = document.createElement('span');
+      spanTime.classList.add('video-time');
+      container.append(spanTime);
   
       if(doc.type != 'gif') {
-        span.innerText = (doc.duration + '').toHHMMSS(false);
-  
-        spanPlay = document.createElement('span');
-        spanPlay.classList.add('video-play', 'tgico-largeplay', 'btn-circle', 'position-center');
-        container.append(spanPlay);
+        spanTime.innerText = (doc.duration + '').toHHMMSS(false);
+        
+        if(canAutoplay) {
+          spanTime.classList.add('tgico', 'can-autoplay');
+        } else {
+          const spanPlay = document.createElement('span');
+          spanPlay.classList.add('video-play', 'tgico-largeplay', 'btn-circle', 'position-center');
+          container.append(spanPlay);
+        }
       } else {
-        span.innerText = 'GIF';
+        spanTime.innerText = 'GIF';
       }
     }
   }
@@ -132,7 +140,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   
   let img: HTMLImageElement;
   if(message) {
-    if(doc.type == 'video' && doc.thumbs?.length) {
+    if(!canAutoplay && doc.thumbs?.length) {
       return wrapPhoto(doc, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware);
     }
 
@@ -199,18 +207,18 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       }, {once: true}); */
 
       await promise;
+
+      if(middleware && !middleware()) {
+        return;
+      }
     } else if(doc.supportsStreaming) {
       preloader = new ProgressivePreloader(null, false, false, 'prepend');
       preloader.attach(container, false, null);
-      video.addEventListener('canplay', () => {
+      video.addEventListener(isSafari ? 'timeupdate' : 'canplay', () => {
         preloader.detach();
       }, {once: true});
     }
-
-    if(middleware && !middleware()) {
-      return;
-    }
-
+    
     //console.log('loaded doc:', doc, doc.url, container);
 
     const deferred = deferredPromise<void>();
@@ -224,7 +232,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
         /* if(!video.paused) {
           video.pause();
         } */
-        if(doc.type == 'gif' && group) {
+        if(doc.type != 'round' && group) {
           animationIntersector.addAnimation(video, group);
         }
 
@@ -234,6 +242,12 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
         //}, 5000);
       }, {once: true});
     //}
+
+    if(doc.type == 'video') {
+      video.addEventListener('timeupdate', () => {
+        spanTime.innerText = (video.duration - video.currentTime + '').toHHMMSS(false);
+      });
+    }
 
     video.addEventListener('error', (e) => {
       deferred.resolve();
@@ -253,15 +267,15 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       container.append(video);
     } */
 
-    if(doc.type == 'gif'/*  || true */) {
+    if(doc.type == 'round') {
+      video.dataset.ckin = 'circle';
+      video.dataset.overlay = '1';
+      new VideoPlayer(video);
+    } else {
       video.muted = true;
       video.loop = true;
       //video.play();
       video.autoplay = true;
-    } else if(doc.type == 'round') {
-      video.dataset.ckin = 'circle';
-      video.dataset.overlay = '1';
-      new VideoPlayer(video);
     }
 
     return deferred;

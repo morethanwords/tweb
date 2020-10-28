@@ -519,6 +519,10 @@ $bubble-margin: .25rem;
         display: none;
       }
     }
+
+    .preloader-container {
+      z-index: 1;
+    }
   }
   
   &:not(.sticker) {
@@ -535,6 +539,12 @@ $bubble-margin: .25rem;
     object-fit: cover;
     width: 100%;
     height: 100%;
+  }
+
+  html.is-safari &:not(.round) {
+    img:not(.emoji), video {
+      border-radius: inherit;
+    }
   }
 
   &.is-album {
@@ -1000,7 +1010,7 @@ $bubble-margin: .25rem;
     }
   }
 
-  span.video-time {
+  .video-time {
     position: absolute;
     top: 3px;
     left: 3px;
@@ -1014,9 +1024,18 @@ $bubble-margin: .25rem;
     align-items: center;
     cursor: pointer;
     user-select: none;
+
+    &.can-autoplay:after {
+      content: $tgico-nosound;
+
+      // * same as .iconVolume
+      padding: 0 1px 0 3px;
+      font-size: 1.25rem;
+      color: #fff;
+    }
   }
 
-  span.video-play {
+  .video-play {
     background-color: var(--message-time-background);
     color: #fff;
     text-align: center;
