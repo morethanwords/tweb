@@ -3,7 +3,7 @@ import appImManager from "../../lib/appManagers/appImManager";
 import { cancelEvent } from "../../lib/utils";
 import DivAndCaption from "../divAndCaption";
 
-const CLASSNAME_SHOWN_MAIN = 'is-pinned-message-shown';
+const classNames: string[] = [];
 const CLASSNAME_BASE = 'pinned-container';
 const HEIGHT = 52;
 
@@ -16,6 +16,8 @@ export default class PinnedContainer {
       this.divAndCaption.container.dataset.mid = '' + mid;
       prev(mid, title, subtitle);
     }; */
+
+    classNames.push(`is-pinned-${className}-shown`);
 
     divAndCaption.container.classList.add(CLASSNAME_BASE, 'hide');
     divAndCaption.title.classList.add(CLASSNAME_BASE + '-title');
@@ -45,11 +47,15 @@ export default class PinnedContainer {
       return;
     }
 
-    const scrollTop = mediaSizes.isMobile ? appImManager.scrollable.scrollTop : undefined;
+    const scrollTop = mediaSizes.isMobile /* && !appImManager.scrollable.isScrolledDown */ ? appImManager.scrollable.scrollTop : undefined;
     this.divAndCaption.container.classList.toggle('hide', hide);
-    appImManager.topbar.classList.toggle(`is-pinned-${this.className}-shown`, !hide);
+    const className = `is-pinned-${this.className}-shown`;
+    appImManager.topbar.classList.toggle(className, !hide);
 
-    if(scrollTop !== undefined && !appImManager.topbar.classList.contains(CLASSNAME_SHOWN_MAIN)) {
+    const active = classNames.filter(className => appImManager.topbar.classList.contains(className));
+    const maxActive = hide ? 0 : 1;
+    
+    if(scrollTop !== undefined && active.length <= maxActive) {
       appImManager.scrollable.scrollTop = scrollTop + ((hide ? -1 : 1) * HEIGHT);
     }
   }
