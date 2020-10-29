@@ -1,7 +1,5 @@
-import {isObject} from '../bin_utils';
-import {convertToUint8Array, 
-  bufferConcat, nextRandomInt, bytesToHex,
-  bytesCmp, bigStringInt} from '../bin_utils';
+import {isObject} from './bin_utils';
+import { bigStringInt} from './bin_utils';
 import {TLDeserialization, TLSerialization} from './tl_utils';
 import CryptoWorker from '../crypto/cryptoworker';
 import AppStorage from '../storage';
@@ -13,6 +11,8 @@ import { Modes, App } from './mtproto_config';
 import { InvokeApiOptions } from '../../types';
 import { longToBytes } from '../crypto/crypto_utils';
 import MTTransport from './transports/transport';
+import { convertToUint8Array, bufferConcat, bytesCmp, bytesToHex } from '../../helpers/bytes';
+import { nextRandomInt } from '../../helpers/random';
 
 /// #if MTPROTO_HTTP_UPLOAD
 // @ts-ignore

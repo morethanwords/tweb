@@ -1,8 +1,9 @@
 import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
 import { notifyAll, notifySomeone } from "../../helpers/context";
+import { getFileNameByLocation } from "../../helpers/fileName";
+import { nextRandomInt } from "../../helpers/random";
 import { isSafari } from "../../helpers/userAgent";
 import { FileLocation, InputFile, InputFileLocation, UploadFile } from "../../layer";
-import { getFileNameByLocation, nextRandomInt } from "../bin_utils";
 import cacheStorage from "../cacheStorage";
 import cryptoWorker from "../crypto/cryptoworker";
 import FileManager from "../filemanager";

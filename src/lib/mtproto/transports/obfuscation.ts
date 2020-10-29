@@ -1,6 +1,6 @@
 //import aesjs from 'aes-js';
 import { CTR } from "@cryptography/aes";
-import { bytesFromWordss } from "../../bin_utils";
+import { bytesFromWordss } from "../../../helpers/bytes";
 import { Codec } from "./codec";
 
 /* 

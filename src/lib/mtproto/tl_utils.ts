@@ -1,4 +1,5 @@
-import { bigint, bigStringInt, bytesToHex, isObject } from '../bin_utils';
+import { bytesToHex } from '../../helpers/bytes';
+import { bigint, bigStringInt, isObject } from './bin_utils';
 /// #if MTPROTO_WORKER
 // @ts-ignore
 import { gzipUncompress } from '../crypto/crypto_utils';

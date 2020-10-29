@@ -1,10 +1,10 @@
-import { bufferConcats, bytesToHex, bytesFromHex, bufferConcat, bytesXor } from "../bin_utils";
 import CryptoWorker from "../crypto/cryptoworker";
 import {str2bigInt, isZero,
   bigInt2str, powMod, int2bigInt, mult, mod, sub, bitSize, negative, add, greater} from '../../vendor/leemon';
 
 import {logger, LogLevels} from '../logger';
 import { AccountPassword, PasswordKdfAlgo } from "../../layer";
+import { bufferConcats, bytesToHex, bytesFromHex, bufferConcat, bytesXor } from "../../helpers/bytes";
 
 const log = logger('SRP', LogLevels.error);
 

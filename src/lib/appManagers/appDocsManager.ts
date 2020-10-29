@@ -1,5 +1,5 @@
+import { getFileNameByLocation } from '../../helpers/fileName';
 import { Document, InputFileLocation, PhotoSize } from '../../layer';
-import { getFileNameByLocation } from '../bin_utils';
 import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
 import referenceDatabase, { ReferenceContext } from '../mtproto/referenceDatabase';
 import opusDecodeController from '../opusDecodeController';

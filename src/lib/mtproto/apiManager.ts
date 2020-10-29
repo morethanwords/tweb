@@ -1,7 +1,7 @@
 import AppStorage from '../storage';
 
 import MTPNetworker, { MTMessage } from './networker';
-import { bytesFromHex, bytesToHex, isObject } from '../bin_utils';
+import { isObject } from './bin_utils';
 import networkerFactory from './networkerFactory';
 //import { telegramMeWebService } from './mtproto';
 import authorizer from './authorizer';
@@ -11,6 +11,7 @@ import { logger } from '../logger';
 import type { InvokeApiOptions } from '../../types';
 import type { MethodDeclMap } from '../../layer';
 import { CancellablePromise, deferredPromise } from '../../helpers/cancellablePromise';
+import { bytesFromHex, bytesToHex } from '../../helpers/bytes';
 
 /// #if !MTPROTO_WORKER
 import $rootScope from '../rootScope';

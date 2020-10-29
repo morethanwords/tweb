@@ -1,4 +1,4 @@
-import { nextRandomInt } from "../../bin_utils";
+import { nextRandomInt } from "../../../helpers/random";
 import { IntermediatePacketCodec } from "./intermediate";
 /*  Data packets are aligned to 4bytes. This codec adds random bytes of size
   from 0 to 3 bytes, which are ignored by decoder. */

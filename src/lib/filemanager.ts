@@ -1,4 +1,4 @@
-import {blobConstruct} from './bin_utils';
+import { blobConstruct } from "../helpers/blob";
 
 export class FileManager {
   public blobSupported = true;

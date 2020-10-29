@@ -1,4 +1,4 @@
-import { convertToArrayBuffer } from "../bin_utils";
+import { convertToArrayBuffer } from "../../helpers/bytes";
 import type { InputCheckPasswordSRP } from "../../layer";
 import type { aesEncryptSync } from "./crypto_utils";
 

@@ -1,5 +1,5 @@
+import { bytesFromArrayBuffer } from '../../../helpers/bytes';
 import MTTransport from './transport';
-import { bytesFromArrayBuffer } from '../../bin_utils';
 
 export default class HTTP extends MTTransport {
   constructor(dcID: number, url: string) {

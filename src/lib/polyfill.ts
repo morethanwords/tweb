@@ -1,8 +1,9 @@
-import { bytesToHex, bytesFromHex, bufferConcats } from "./bin_utils";
 // @ts-ignore
-import {SecureRandom} from 'jsbn';
+//import {SecureRandom} from 'jsbn';
+import { bytesToHex, bytesFromHex, bufferConcats } from '../helpers/bytes';
+import { nextRandomInt } from '../helpers/random';
 
-export const secureRandom = new SecureRandom();
+//export const secureRandom = new SecureRandom();
 
 Object.defineProperty(Uint8Array.prototype, 'hex', {
   get: function(): string {
@@ -17,7 +18,10 @@ Object.defineProperty(Uint8Array.prototype, 'hex', {
 });
 
 Uint8Array.prototype.randomize = function() {
-  secureRandom.nextBytes(this);
+  //secureRandom.nextBytes(this);
+  for(let i = 0; i < this.length; ++i) {
+    this[i] = nextRandomInt(255);
+  }
   return this;
 };
 

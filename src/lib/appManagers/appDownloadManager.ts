@@ -2,11 +2,11 @@ import $rootScope from "../rootScope";
 import apiManager from "../mtproto/mtprotoworker";
 import { deferredPromise, CancellablePromise } from "../../helpers/cancellablePromise";
 import type { DownloadOptions } from "../mtproto/apiFileManager";
-import { getFileNameByLocation } from "../bin_utils";
 import { InputFile } from "../../layer";
 import referenceDatabase, {ReferenceBytes} from "../mtproto/referenceDatabase";
 import type { ApiError } from "../mtproto/apiManager";
 import cacheStorage from "../cacheStorage";
+import { getFileNameByLocation } from "../../helpers/fileName";
 
 export type ResponseMethodBlob = 'blob';
 export type ResponseMethodJson = 'json';

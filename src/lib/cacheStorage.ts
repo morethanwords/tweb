@@ -1,4 +1,4 @@
-import {blobConstruct} from './bin_utils';
+import { blobConstruct } from '../helpers/blob';
 import FileManager from './filemanager';
 import { MOUNT_CLASS_TO } from './mtproto/mtproto_config';
 //import { logger } from './polyfill';

@@ -5,9 +5,9 @@ import pageIm from './pageIm';
 import pagePassword from './pagePassword';
 import pageSignIn from './pageSignIn';
 import { App } from '../lib/mtproto/mtproto_config';
-import { bytesToBase64, bytesCmp } from '../lib/bin_utils';
 import serverTimeManager from '../lib/mtproto/serverTimeManager';
 import { AuthAuthorization, AuthLoginToken } from '../layer';
+import { bytesCmp, bytesToBase64 } from '../helpers/bytes';
 
 let onFirstMount = async() => {
   const pageElement = page.pageEl;

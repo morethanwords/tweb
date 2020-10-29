@@ -1,5 +1,5 @@
+import { bytesFromArrayBuffer, bytesFromHex } from '../helpers/bytes';
 import CryptoWorker from '../lib/crypto/cryptoworker';
-import { bytesFromHex, bytesFromArrayBuffer } from '../lib/bin_utils';
 
 test('factorize', () => {
   for(let i = 0; i < 10; ++i) {

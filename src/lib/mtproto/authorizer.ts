@@ -1,6 +1,5 @@
 import { TLSerialization, TLDeserialization } from "./tl_utils";
 import dcConfigurator from "./dcConfigurator";
-import { bytesToHex, bytesCmp, bytesFromHex, bytesXor } from "../bin_utils";
 import rsaKeysManager from "./rsaKeysManager";
 import timeManager from "./timeManager";
 
@@ -10,6 +9,7 @@ import { BigInteger } from "jsbn";
 import CryptoWorker from "../crypto/cryptoworker";
 
 import { logger, LogLevels } from "../logger";
+import { bytesCmp, bytesToHex, bytesFromHex, bytesXor } from "../../helpers/bytes";
 //import { bigInt2str, greater, int2bigInt, one, powMod, str2bigInt, sub } from "../../vendor/leemon";
 
 /* let fNewNonce: any = bytesFromHex('8761970c24cb2329b5b2459752c502f3057cb7e8dbab200e526e8767fdc73b3c').reverse();

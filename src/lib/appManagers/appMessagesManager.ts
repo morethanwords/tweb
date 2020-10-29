@@ -1,8 +1,8 @@
 import ProgressivePreloader from "../../components/preloader";
 import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
+import { randomLong } from "../../helpers/random";
 import { Dialog as MTDialog, DialogFilter, DialogPeer, DocumentAttribute, InputMessage, Message, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, PhotoSize, SendMessageAction, Update } from "../../layer";
 import { InvokeApiOptions, Modify } from "../../types";
-import { bigint, nextRandomInt } from "../bin_utils";
 import { langPack } from "../langPack";
 import { logger, LogLevels } from "../logger";
 import type { ApiFileManager } from '../mtproto/apiFileManager';
@@ -772,8 +772,7 @@ export class AppMessagesManager {
     }
     
     var messageID = this.tempID--;
-    var randomID = [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)];
-    var randomIDS = bigint(randomID[0]).shiftLeft(32).add(bigint(randomID[1])).toString();
+    var randomIDS = randomLong();
     var historyStorage = this.historiesStorage[peerID];
     var pFlags: any = {};
     var replyToMsgID = options.replyToMsgID;
@@ -844,7 +843,7 @@ export class AppMessagesManager {
       if(options.viaBotID) {
         apiPromise = apiManager.invokeApiAfter('messages.sendInlineBotResult', {
           peer: appPeersManager.getInputPeerByID(peerID),
-          random_id: randomID as any,
+          random_id: randomIDS,
           reply_to_msg_id: replyToMsgID ? appMessagesIDsManager.getMessageLocalID(replyToMsgID) : undefined,
           query_id: options.queryID,
           id: options.resultID,
@@ -855,7 +854,7 @@ export class AppMessagesManager {
           no_webpage: options.noWebPage,
           peer: appPeersManager.getInputPeerByID(peerID),
           message: text,
-          random_id: randomID as any,
+          random_id: randomIDS,
           reply_to_msg_id: replyToMsgID ? appMessagesIDsManager.getMessageLocalID(replyToMsgID) : undefined,
           entities: sendEntites,
           clear_draft: options.clearDraft
@@ -947,8 +946,7 @@ export class AppMessagesManager {
   }> = {}) {
     peerID = appPeersManager.getPeerMigratedTo(peerID) || peerID;
     var messageID = this.tempID--;
-    var randomID = [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)];
-    var randomIDS = bigint(randomID[0]).shiftLeft(32).add(bigint(randomID[1])).toString();
+    var randomIDS = randomLong();
     var historyStorage = this.historiesStorage[peerID] ?? (this.historiesStorage[peerID] = {count: null, history: [], pending: []});
     var flags = 0;
     var pFlags: any = {};
@@ -1178,7 +1176,7 @@ export class AppMessagesManager {
         peer: appPeersManager.getInputPeerByID(peerID),
         media: inputMedia,
         message: caption,
-        random_id: randomID as any,
+        random_id: randomIDS,
         reply_to_msg_id: appMessagesIDsManager.getMessageLocalID(replyToMsgID)
       }).then((updates) => {
         apiUpdatesManager.processUpdateMessage(updates);
@@ -1349,8 +1347,7 @@ export class AppMessagesManager {
       //let messageID = this.tempID--;
       //if(!groupID) groupID = messageID;
       let messageID = ids[idx];
-      let randomID = [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)];
-      let randomIDS = bigint(randomID[0]).shiftLeft(32).add(bigint(randomID[1])).toString();
+      let randomIDS = randomLong();
       let preloader = new ProgressivePreloader(null, true, false, 'prepend');
 
       let details = options.sendFileDetails[idx];
@@ -1425,7 +1422,6 @@ export class AppMessagesManager {
         message: caption,
         media: media,
         random_id: randomIDS,
-        randomID: randomID,
         reply_to: {reply_to_msg_id: replyToMsgID},
         views: asChannel && 1,
         pending: true,
@@ -1562,7 +1558,7 @@ export class AppMessagesManager {
           inputs.push({
             _: 'inputSingleMedia',
             media: inputMedia,
-            random_id: message.randomID,
+            random_id: message.random_id,
             message: caption,
             entities: []
           });
@@ -1594,8 +1590,7 @@ export class AppMessagesManager {
     peerID = appPeersManager.getPeerMigratedTo(peerID) || peerID;
 
     const messageID = this.tempID--;
-    const randomID = [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)];
-    const randomIDS = bigint(randomID[0]).shiftLeft(32).add(bigint(randomID[1])).toString();
+    const randomIDS = randomLong();
     const historyStorage = this.historiesStorage[peerID] ?? (this.historiesStorage[peerID] = {count: null, history: [], pending: []});
     const replyToMsgID = options.replyToMsgID;
     const isChannel = appPeersManager.isChannel(peerID);
@@ -1740,7 +1735,7 @@ export class AppMessagesManager {
       if(options.viaBotID) {
         apiPromise = apiManager.invokeApiAfter('messages.sendInlineBotResult', {
           peer: appPeersManager.getInputPeerByID(peerID),
-          random_id: randomID as any,
+          random_id: randomIDS,
           reply_to_msg_id: replyToMsgID ? appMessagesIDsManager.getMessageLocalID(replyToMsgID) : undefined,
           query_id: options.queryID,
           id: options.resultID,
@@ -1750,7 +1745,7 @@ export class AppMessagesManager {
         apiPromise = apiManager.invokeApiAfter('messages.sendMedia', {
           peer: appPeersManager.getInputPeerByID(peerID),
           media: inputMedia,
-          random_id: randomID as any,
+          random_id: randomIDS,
           reply_to_msg_id: replyToMsgID ? appMessagesIDsManager.getMessageLocalID(replyToMsgID) : undefined,
           message: '',
           clear_draft: options.clearDraft
@@ -2032,7 +2027,7 @@ export class AppMessagesManager {
 
     for(const channelID in splitted.msgIDs) {
       const msgIDs = splitted.msgIDs[channelID];
-      const randomIDs: [number, number][] = msgIDs.map(() => [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)]);
+      const randomIDs: string[] = msgIDs.map(() => randomLong());
 
       const sentRequestOptions: InvokeApiOptions = {};
       if(this.pendingAfterMsgs[peerID]) {
@@ -2042,7 +2037,7 @@ export class AppMessagesManager {
       const promise = apiManager.invokeApiAfter('messages.forwardMessages', {
         from_peer: appPeersManager.getInputPeerByID(-channelID),
         id: msgIDs,
-        random_id: randomIDs as any,
+        random_id: randomIDs,
         to_peer: appPeersManager.getInputPeerByID(peerID),
         with_my_score: options.withMyScore
       }, sentRequestOptions).then((updates) => {

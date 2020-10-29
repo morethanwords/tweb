@@ -1,6 +1,7 @@
 import { TLSerialization } from "./tl_utils";
-import { bytesFromHex, bigStringInt, bytesToHex, bytesFromArrayBuffer } from "../bin_utils";
+import { bigStringInt } from "./bin_utils";
 import CryptoWorker from '../crypto/cryptoworker';
+import { bytesFromArrayBuffer, bytesFromHex, bytesToHex } from "../../helpers/bytes";
 
 export class RSAKeysManager {
 

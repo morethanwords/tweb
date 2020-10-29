@@ -8,7 +8,7 @@ secureRandom;
 import {pqPrimeFactorization, bytesModPow, sha1HashSync,
   aesEncryptSync, aesDecryptSync, hash_pbkdf2, sha256HashSync, rsaEncrypt} from './crypto_utils';
 
-import {gzipUncompress} from '../bin_utils';
+import {gzipUncompress} from '../mtproto/bin_utils';
 
 ctx.onmessage = function(e) {
   var taskID = e.data.taskID,

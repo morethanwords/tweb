@@ -12,7 +12,9 @@ import {str2bigInt, bpe, equalsInt, greater,
 // @ts-ignore
 import {BigInteger} from 'jsbn';
 
-import { addPadding, bytesToHex, bytesFromHex, nextRandomInt, bytesFromBigInt, bytesToWordss, bytesFromWordss } from '../bin_utils';
+import { addPadding, bytesFromBigInt } from '../mtproto/bin_utils';
+import { bytesToWordss, bytesFromWordss, bytesToHex, bytesFromHex } from '../../helpers/bytes';
+import { nextRandomInt } from '../../helpers/random';
 
 export function longToBytes(sLong: string) {
   /* let perf = performance.now();

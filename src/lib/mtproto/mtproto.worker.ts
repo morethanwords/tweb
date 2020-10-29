@@ -1,6 +1,5 @@
 // just to include
-import {secureRandom} from '../polyfill';
-secureRandom;
+import '../polyfill';
 
 import apiManager from "./apiManager";
 import AppStorage from '../storage';

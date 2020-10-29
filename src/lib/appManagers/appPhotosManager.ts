@@ -1,7 +1,8 @@
+import { bytesFromHex } from "../../helpers/bytes";
 import { CancellablePromise } from "../../helpers/cancellablePromise";
+import { getFileNameByLocation } from "../../helpers/fileName";
 import { isSafari } from "../../helpers/userAgent";
 import { FileLocation, InputFileLocation, Photo, PhotoSize, PhotosPhotos } from "../../layer";
-import { bytesFromHex, getFileNameByLocation } from "../bin_utils";
 import { DownloadOptions } from "../mtproto/apiFileManager";
 import apiManager from "../mtproto/mtprotoworker";
 import referenceDatabase, { ReferenceContext } from "../mtproto/referenceDatabase";

@@ -1,5 +1,6 @@
 import AppStorage from '../storage';
-import { nextRandomInt, longFromInts } from '../bin_utils';
+import { longFromInts } from './bin_utils';
+import { nextRandomInt } from '../../helpers/random';
 
 export class TimeManager {
   private lastMessageID = [0, 0];
