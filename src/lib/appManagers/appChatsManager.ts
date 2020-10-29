@@ -2,8 +2,7 @@ import { ChatAdminRights, ChatBannedRights, ChatFull, ChatParticipants, InputCha
 import apiManager from '../mtproto/mtprotoworker';
 import { RichTextProcessor } from "../richtextprocessor";
 import $rootScope from "../rootScope";
-import searchIndexManager from "../searchIndexManager";
-import { copy, getAbbreviation, isObject, numberWithCommas, safeReplaceObject } from "../utils";
+import { copy, isObject, numberWithCommas, safeReplaceObject } from "../utils";
 import apiUpdatesManager from "./apiUpdatesManager";
 import appMessagesManager from "./appMessagesManager";
 import appProfileManager from "./appProfileManager";
@@ -107,7 +106,7 @@ export class AppChatsManager {
 
     const oldChat = this.chats[chat.id];
 
-    chat.initials = getAbbreviation(chat.title);
+    chat.initials = RichTextProcessor.getAbbreviation(chat.title);
 
     if(chat.pFlags === undefined) {
       chat.pFlags = {};

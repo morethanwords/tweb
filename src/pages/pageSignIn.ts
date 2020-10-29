@@ -280,7 +280,7 @@ let onFirstMount = () => {
       });
       
       return nearestDcResult;
-    }).then((nearestDcResult: any) => {
+    }).then((nearestDcResult) => {
       let country = countries.find((c) => c.code == nearestDcResult.country);
       if(country) {
         if(!selectCountryCode.value.length && !telEl.value.length) {

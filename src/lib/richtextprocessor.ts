@@ -798,6 +798,30 @@ namespace RichTextProcessor {
   export function matchUrl(text: string) {
     return text.match(urlRegExp);
   }
+
+  const el = document.createElement('span');
+  export function getAbbreviation(str: string, onlyFirst = false) {
+    const wrapped = wrapEmojiText(str);
+    el.innerHTML = wrapped;
+
+    const childNodes = el.childNodes;
+    let first = '', last = '';
+
+    const firstNode = childNodes[0];
+    if('length' in firstNode) first = (firstNode as any).textContent.charAt(0).toUpperCase(); 
+    else first = (firstNode as HTMLElement).outerHTML;
+
+    if(onlyFirst) return first;
+
+    if(str.indexOf(' ') !== -1) {
+      const lastNode = childNodes[childNodes.length - 1];
+      if(lastNode == firstNode) last = lastNode.textContent.split(' ').pop().charAt(0).toUpperCase();
+      else if('length' in lastNode) last = (lastNode as any).textContent.charAt(0).toUpperCase(); 
+      else last = (lastNode as HTMLElement).outerHTML;
+    }
+
+    return first + last;
+  }
 }
 
 MOUNT_CLASS_TO && (MOUNT_CLASS_TO.RichTextProcessor = RichTextProcessor);

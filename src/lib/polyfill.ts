@@ -58,6 +58,23 @@ String.prototype.toHHMMSS = function(leadZero = false) {
   return (hours ? /* ('0' + hours).slice(-2) */hours + ':' : '') + minutes + ':' + seconds;
 };
 
+/* Promise.prototype.finally = Promise.prototype.finally || {
+  finally(fn: () => any) {
+    const onFinally = (callback: typeof fn) => Promise.resolve(fn()).then(callback);
+    return this.then(
+      result => onFinally(() => result),
+      reason => onFinally(() => Promise.reject(reason))
+    );
+  }
+}.finally; */
+Promise.prototype.finally = Promise.prototype.finally || function<T>(this: Promise<T>, fn: () => any) {
+  const onFinally = (callback: typeof fn) => Promise.resolve(fn()).then(callback);
+  return this.then(
+    result => onFinally(() => result),
+    reason => onFinally(() => Promise.reject(reason))
+  );
+};
+
 declare global {
   interface Uint8Array {
     hex: string;
@@ -75,5 +92,9 @@ declare global {
   
   interface String {
     toHHMMSS(leadZero?: boolean): string;
+  }
+
+  interface Promise<T> {
+    finally: (onfinally?: () => void) => Promise<T>;
   }
 }

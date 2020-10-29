@@ -223,4 +223,6 @@ function alignLimit(limit: number) {
   return 2 ** Math.ceil(Math.log(limit) / Math.log(2));
 }
 
+//export default () => {};
+
 //MOUNT_CLASS_TO && (MOUNT_CLASS_TO.onFetch = onFetch);

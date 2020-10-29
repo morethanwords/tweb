@@ -3,6 +3,7 @@ import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePr
 import { Dialog as MTDialog, DialogFilter, DialogPeer, DocumentAttribute, InputMessage, Message, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, PhotoSize, SendMessageAction, Update } from "../../layer";
 import { InvokeApiOptions, Modify } from "../../types";
 import { bigint, nextRandomInt } from "../bin_utils";
+import { langPack } from "../langPack";
 import { logger, LogLevels } from "../logger";
 import type { ApiFileManager } from '../mtproto/apiFileManager';
 //import apiManager from '../mtproto/apiManager';
@@ -13,7 +14,7 @@ import { RichTextProcessor } from "../richtextprocessor";
 import $rootScope from "../rootScope";
 import searchIndexManager from '../searchIndexManager';
 import AppStorage from '../storage';
-import { copy, deepEqual, defineNotNumerableProperties, getObjectKeysAndSort, langPack, limitSymbols, listMergeSorted, safeReplaceObject, splitStringByLength, tsNow } from "../utils";
+import { copy, deepEqual, defineNotNumerableProperties, getObjectKeysAndSort, limitSymbols, listMergeSorted, safeReplaceObject, splitStringByLength, tsNow } from "../utils";
 //import { telegramMeWebService } from "../mtproto/mtproto";
 import apiUpdatesManager from "./apiUpdatesManager";
 import appChatsManager from "./appChatsManager";

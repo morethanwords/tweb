@@ -6,7 +6,7 @@ import serverTimeManager from "../mtproto/serverTimeManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import $rootScope from "../rootScope";
 import searchIndexManager from "../searchIndexManager";
-import { getAbbreviation, isObject, safeReplaceObject, tsNow } from "../utils";
+import { isObject, safeReplaceObject, tsNow } from "../utils";
 import appChatsManager from "./appChatsManager";
 import appPeersManager from "./appPeersManager";
 import appStateManager from "./appStateManager";
@@ -246,7 +246,7 @@ export class AppUsersManager {
 
     user.sortName = user.pFlags.deleted ? '' : searchIndexManager.cleanSearchText(fullName, false);
 
-    user.initials = getAbbreviation(fullName);
+    user.initials = RichTextProcessor.getAbbreviation(fullName);
 
     if(user.status) {
       if((user.status as UserStatus.userStatusOnline).expires) {

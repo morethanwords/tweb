@@ -32,12 +32,13 @@ import mediaSizes from '../../helpers/mediaSizes';
 import { isTouchSupported } from '../../helpers/touchSupport';
 import { isAndroid, isApple, isSafari } from '../../helpers/userAgent';
 import { InputNotifyPeer, InputPeerNotifySettings, NotifyPeer, Update } from '../../layer';
+import { langPack } from '../langPack';
 import { logger, LogLevels } from "../logger";
 import apiManager from '../mtproto/mtprotoworker';
 import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
 import { RichTextProcessor } from "../richtextprocessor";
 import $rootScope from '../rootScope';
-import { cancelEvent, defineNotNumerableProperties, findUpClassName, findUpTag, getObjectKeysAndSort, langPack, numberWithCommas, placeCaretAtEnd, whichChild } from "../utils";
+import { cancelEvent, defineNotNumerableProperties, findUpClassName, findUpTag, getObjectKeysAndSort, numberWithCommas, placeCaretAtEnd, whichChild } from "../utils";
 import apiUpdatesManager from './apiUpdatesManager';
 import appChatsManager, { Channel, Chat } from "./appChatsManager";
 import appDialogsManager from "./appDialogsManager";
@@ -685,7 +686,7 @@ export class AppImManager {
           appSidebarRight.forwardTab.closeBtn.click();
         } else */ if(this.chatSelection.isSelecting) {
           this.chatSelection.cancelSelection();
-        } else if(this.chatInputC.replyElements.container.classList.contains('active')) {
+        } else if(this.columnEl.classList.contains('is-helper-active')) {
           this.chatInputC.replyElements.cancelBtn.click();
         } else if(this.peerID != 0) { // hide current dialog
           this.setPeer(0);

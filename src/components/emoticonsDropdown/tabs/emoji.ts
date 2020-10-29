@@ -128,6 +128,7 @@ export default class EmojiTab implements EmoticonsTab {
     //.reduce((prev, curr) => prev + String.fromCodePoint(parseInt(curr, 16)), '');
 
     const spanEmoji = document.createElement('span');
+    spanEmoji.classList.add('category-item');
 
     let kek: string;
     /* if(unified) {
@@ -151,6 +152,12 @@ export default class EmojiTab implements EmoticonsTab {
     //console.log(kek);
   
     spanEmoji.innerHTML = kek;
+
+    if(spanEmoji.children.length > 1) {
+      const first = spanEmoji.firstElementChild;
+      spanEmoji.innerHTML = '';
+      spanEmoji.append(first);
+    }
 
     if(spanEmoji.firstElementChild) {
       (spanEmoji.firstElementChild as HTMLImageElement).setAttribute('loading', 'lazy');

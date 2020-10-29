@@ -7,7 +7,7 @@ import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import { logger } from "../../../lib/logger";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import $rootScope from "../../../lib/rootScope";
-import { getAbbreviation, limitSymbols } from "../../../lib/utils";
+import { limitSymbols } from "../../../lib/utils";
 import AppMediaViewer from "../../appMediaViewer";
 import AvatarElement from "../../avatar";
 import { horizontalMenu } from "../../horizontalMenu";
@@ -545,7 +545,7 @@ export default class AppSharedMediaTab implements SliderTab {
           
           //this.log('wrapping webpage', webpage);
           
-          previewDiv.innerHTML = getAbbreviation(webpage.title || webpage.display_url || webpage.description || webpage.url, true);
+          previewDiv.innerHTML = RichTextProcessor.getAbbreviation(webpage.title || webpage.display_url || webpage.description || webpage.url, true);
           previewDiv.classList.add('empty');
           if(webpage.photo) {
             let load = () => appPhotosManager.preloadPhoto(webpage.photo.id, appPhotosManager.choosePhotoSize(webpage.photo, 60, 60))

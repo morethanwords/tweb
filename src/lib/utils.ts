@@ -1,5 +1,4 @@
 import type { DownloadOptions } from "./mtproto/apiFileManager";
-import { RichTextProcessor } from "./richtextprocessor";
 
 /* export function isInDOM(element: Element, parentNode?: HTMLElement): boolean {
   if(!element) {
@@ -197,34 +196,6 @@ export function generatePathData(x: number, y: number, width: number, height: nu
   return data.join(' ');
 };
 
-export const langPack: {[actionType: string]: string} = {
-  "messageActionChatCreate": "created the group",
-	"messageActionChatEditTitle": "changed group name",
-	"messageActionChatEditPhoto": "changed group photo",
-	"messageActionChatDeletePhoto": "removed group photo",
-	"messageActionChatReturn": "returned to group",
-	"messageActionChatJoined": "joined the group",
-  "messageActionChatAddUser": "invited {}",
-  "messageActionChatAddUsers": "invited {} users",
-	"messageActionChatLeave": "left the group",
-	"messageActionChatDeleteUser": "removed user {}",
-	"messageActionChatJoinedByLink": "joined the group",
-  "messageActionPinMessage": "pinned message",
-  "messageActionContactSignUp": "joined Telegram",
-	"messageActionChannelCreate": "Channel created",
-	"messageActionChannelEditTitle": "Channel renamed",
-	"messageActionChannelEditPhoto": "Channel photo updated",
-  "messageActionChannelDeletePhoto": "Channel photo removed",
-  "messageActionHistoryClear": "",//"History cleared",
-
-  "messageActionChannelMigrateFrom": "",
-
-  "messageActionPhoneCall.in_ok": "Incoming Call",
-	"messageActionPhoneCall.out_ok": "Outgoing Call",
-	"messageActionPhoneCall.in_missed": "Missed Call",
-	"messageActionPhoneCall.out_missed": "Cancelled Call",
-};
-
 export function isObject(object: any) {
   return typeof(object) === 'object' && object !== null;
 }
@@ -232,30 +203,6 @@ export function isObject(object: any) {
 export function tsNow(seconds?: boolean) {
   var t = +new Date();
   return seconds ? Math.floor(t / 1000) : t;
-}
-
-const el = document.createElement('span');
-export function getAbbreviation(str: string, onlyFirst = false) {
-  const wrapped = RichTextProcessor.wrapEmojiText(str);
-  el.innerHTML = wrapped;
-
-  const childNodes = el.childNodes;
-  let first = '', last = '';
-
-  const firstNode = childNodes[0];
-  if('length' in firstNode) first = (firstNode as any).textContent.charAt(0).toUpperCase(); 
-  else first = (firstNode as HTMLElement).outerHTML;
-
-  if(onlyFirst) return first;
-
-  if(str.indexOf(' ') !== -1) {
-    const lastNode = childNodes[childNodes.length - 1];
-    if(lastNode == firstNode) last = lastNode.textContent.split(' ').pop().charAt(0).toUpperCase();
-    else if('length' in lastNode) last = (lastNode as any).textContent.charAt(0).toUpperCase(); 
-    else last = (lastNode as HTMLElement).outerHTML;
-  }
-
-  return first + last;
 }
 
 export function safeReplaceObject(wasObject: any, newObject: any) {
@@ -607,7 +554,9 @@ export function cancelSelection() {
   }
 }
 
-export function getSelectedText() {
+//(window as any).splitStringByLength = splitStringByLength;
+
+export function getSelectedText(): string {
   if(window.getSelection) {
     return window.getSelection().toString();
     // @ts-ignore
@@ -615,7 +564,6 @@ export function getSelectedText() {
     // @ts-ignore
     return document.selection.createRange().text;
   }
+  
   return '';
-}​
-
-//(window as any).splitStringByLength = splitStringByLength;
+}
