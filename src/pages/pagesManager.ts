@@ -13,7 +13,7 @@ class PagesManager {
 
   constructor() {
     this.pagesDiv = document.getElementById('auth-pages') as HTMLDivElement;
-    this.selectTab = horizontalMenu(null, this.pagesDiv.firstElementChild as HTMLDivElement, null, () => {
+    this.selectTab = horizontalMenu(null, this.pagesDiv.firstElementChild.firstElementChild as HTMLDivElement, null, () => {
       if(this.page.onShown) {
         this.page.onShown();
       }

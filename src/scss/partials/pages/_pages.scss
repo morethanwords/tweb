@@ -30,9 +30,26 @@
     flex: 0 0 auto;
   }
 
+  > .scrollable {
+    display: flex;
+    flex-direction: column;
+
+    &:before, &:after {
+      content: " ";
+      flex: 1;
+      min-height: 3rem;
+      /* height: 105px; */
+      width: 100%;
+    }
+  }
+
   .tabs-container {
-    height: 100%;
-    width: 100%;
+    max-width: 720px;
+    min-width: auto;
+    margin: 0 auto;
+    overflow-x: hidden;
+    /* height: 100%;
+    width: 100%; */
 
     > div {
       /* justify-content: center; */
@@ -46,19 +63,6 @@
         flex: 1 1 auto;
         display: flex;
         flex-direction: column;
-      }
-    }
-
-    .container > .scrollable {
-      display: flex;
-      flex-direction: column;
-
-      &:before, &:after {
-        content: " ";
-        flex: 1;
-        min-height: 3rem;
-        /* height: 105px; */
-        width: 100%;
       }
     }
   }
