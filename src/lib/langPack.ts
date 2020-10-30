@@ -24,4 +24,6 @@ export const langPack: {[actionType: string]: string} = {
 	"messageActionPhoneCall.out_ok": "Outgoing Call",
 	"messageActionPhoneCall.in_missed": "Missed Call",
 	"messageActionPhoneCall.out_missed": "Cancelled Call",
+
+	"messageActionBotAllowed": "You allowed this bot to message you when logged in {}"
 };

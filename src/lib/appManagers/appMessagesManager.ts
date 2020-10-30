@@ -1,7 +1,7 @@
 import ProgressivePreloader from "../../components/preloader";
 import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
 import { randomLong } from "../../helpers/random";
-import { Dialog as MTDialog, DialogFilter, DialogPeer, DocumentAttribute, InputMessage, Message, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, PhotoSize, SendMessageAction, Update } from "../../layer";
+import { Dialog as MTDialog, DialogFilter, DialogPeer, DocumentAttribute, InputMessage, Message, MessageAction, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, PhotoSize, SendMessageAction, Update } from "../../layer";
 import { InvokeApiOptions, Modify } from "../../types";
 import { langPack } from "../langPack";
 import { logger, LogLevels } from "../logger";
@@ -2506,11 +2506,11 @@ export class AppMessagesManager {
   }
 
   public wrapMessageActionText(message: any) {
-    const action = message.action;
+    const action = message.action as MessageAction;
 
     let str = '';
-    if(action.message) {
-      str = RichTextProcessor.wrapRichText(action.message, {noLinebreaks: true});
+    if((action as MessageAction.messageActionCustomAction).message) {
+      str = RichTextProcessor.wrapRichText((action as MessageAction.messageActionCustomAction).message, {noLinebreaks: true});
     } else {
       let _ = action._;
       let suffix = '';
@@ -2521,9 +2521,9 @@ export class AppMessagesManager {
         return title ? `<div class="name inline" data-peer-i-d="${peerID}">${title}</div> ` : '';
       };
 
-      switch(_) {
+      switch(action._) {
         case "messageActionPhoneCall": {
-          _ += '.' + action.type;
+          _ += '.' + (action as any).type;
 
           const duration = action.duration;
           if(duration) {
@@ -2539,11 +2539,25 @@ export class AppMessagesManager {
         }
 
         case 'messageActionChatDeleteUser':
+        // @ts-ignore
         case 'messageActionChatAddUsers':
         case 'messageActionChatAddUser': {
-          let users: number[] = action.users || [action.user_id];
+          const users: number[] = (action as MessageAction.messageActionChatAddUser).users || [(action as MessageAction.messageActionChatDeleteUser).user_id];
 
           l = langPack[_].replace('{}', users.map((userID: number) => getNameDivHTML(userID)).join(', '));
+          break;
+        }
+
+        case 'messageActionBotAllowed': {
+          const anchorHTML = RichTextProcessor.wrapRichText(action.domain, {
+            entities: [{
+              _: 'messageEntityUrl',
+              length: action.domain.length,
+              offset: 0
+            }]
+          });
+          
+          l = langPack[_].replace('{}', anchorHTML);
           break;
         }
 

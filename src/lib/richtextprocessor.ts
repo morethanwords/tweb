@@ -743,7 +743,7 @@ namespace RichTextProcessor {
     return wrapRichText(text, {entities});
   }
 
-  export function wrapUrl(url: string, unsafe: number | boolean): string {
+  export function wrapUrl(url: string, unsafe?: number | boolean): string {
     if(!url.match(/^https?:\/\//i)) {
       url = 'https://' + url;
     }

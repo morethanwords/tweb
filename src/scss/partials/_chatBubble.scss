@@ -1187,6 +1187,16 @@ $bubble-margin: .25rem;
       font-style: normal;
     }
 
+    a {
+      color: #fff;
+    }
+
+    a, .name {
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+
     .name {
       cursor: pointer;
       //margin-right: 5px;
