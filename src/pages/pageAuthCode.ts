@@ -160,15 +160,12 @@ let onFirstMount = (): Promise<any> => {
           codeInput.innerText = response._;
           break;
       }
-    }).catch(err => {
-      codeInput.removeAttribute('disabled');
-
+    }).catch(async(err) => {
       switch(err.type) {
         case 'SESSION_PASSWORD_NEEDED':
           //console.warn('pageAuthCode: SESSION_PASSWORD_NEEDED');
           err.handled = true;
-          cleanup();
-          pagePassword.mount();
+          await pagePassword.mount();
           break;
         case 'PHONE_CODE_EMPTY':
         case 'PHONE_CODE_INVALID':
@@ -179,6 +176,8 @@ let onFirstMount = (): Promise<any> => {
           codeInputLabel.innerText = err.type;
           break;
       }
+
+      codeInput.removeAttribute('disabled');
     });
   };
 

@@ -2,6 +2,7 @@
 //import apiManager from '../lib/mtproto/apiManager';
 import { putPreloader } from '../components/misc';
 import mediaSizes from '../helpers/mediaSizes';
+import { isAppleMobile, isSafari } from '../helpers/userAgent';
 import { AccountPassword } from '../layer';
 import LottieLoader, { RLottiePlayer } from '../lib/lottieLoader';
 //import passwordManager from '../lib/mtproto/passwordManager';
@@ -11,7 +12,7 @@ import { cancelEvent } from '../lib/utils';
 import Page from './page';
 import pageIm from './pageIm';
 
-
+const TEST = false;
 let passwordInput: HTMLInputElement;
 
 let onFirstMount = (): Promise<any> => {
@@ -26,7 +27,7 @@ let onFirstMount = (): Promise<any> => {
   const toggleVisible = page.pageEl.querySelector('.toggle-visible') as HTMLSpanElement;
 
   let getState = () => {
-    return passwordManager.getState().then(_state => {
+    return !TEST && passwordManager.getState().then(_state => {
       state = _state;
 
       passwordInputLabel.innerText = state.hint ?? 'Password';
@@ -145,7 +146,9 @@ let onFirstMount = (): Promise<any> => {
 };
 
 const page = new Page('page-password', true, onFirstMount, null, () => {
-  passwordInput.focus();
+  //if(!isAppleMobile) {
+    passwordInput.focus();
+  //}
 });
 
 export default page;

@@ -90,9 +90,7 @@ let onFirstMount = () => import('../lib/appManagers/appProfileManager').then(imp
             id: response.user.id
           });
 
-          sendAvatar().then(() => {
-            pageIm.mount();
-          }, () => {
+          sendAvatar().finally(() => {
             pageIm.mount();
           });
           
