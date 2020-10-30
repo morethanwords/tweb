@@ -518,12 +518,18 @@ export class AppDialogsManager {
         });
       }
 
-      if(!result.dialogs.length || this.chatList.childElementCount == result.count) { // loaded all
+      // * loaded all
+      //if(!result.dialogs.length || this.chatList.childElementCount == result.count) {
+      // !result.dialogs.length не подходит, так как при супердревном диалоге getConversations его не выдаст.
+      if(this.chatList.childElementCount == result.count) {
         this.loadedAll = true;
       }
 
       this.log.debug('getDialogs ' + loadCount + ' dialogs by offset:', offsetIndex, result, this.chatList.childElementCount);
-      this.scroll.onScroll();
+
+      setTimeout(() => {
+        this.scroll.onScroll();
+      }, 0);
     } catch(err) {
       this.log.error(err);
     }

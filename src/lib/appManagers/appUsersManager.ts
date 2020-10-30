@@ -100,6 +100,8 @@ export class AppUsersManager {
       for(const userID of contactsList) {
         appStateManager.setPeer(userID, this.getUser(userID));
       }
+
+      appStateManager.pushToState('contactsList', contactsList);
     });
 
     appStateManager.getState().then((state) => {
