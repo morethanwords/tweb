@@ -2493,16 +2493,33 @@ export class AppImManager {
       }
     }
 
+    let additionMsgIDs: number[];
+    if(additionMsgID) {
+      const historyStorage = appMessagesManager.historiesStorage[peerID];
+      if(historyStorage && historyStorage.history.length < loadCount) {
+        additionMsgIDs = historyStorage.history.slice();
+
+        // * filter last album, because we don't know is this the last item
+        for(let i = additionMsgIDs.length - 1; i >= 0; --i) {
+          const message = appMessagesManager.getMessage(additionMsgIDs[i]);
+          if(message.grouped_id) additionMsgIDs.splice(i, 1);
+        }
+
+        maxID = additionMsgIDs[additionMsgIDs.length - 1];
+      }
+    }
+
     /* const result = additionMsgID ? 
       {history: [additionMsgID]} : 
       appMessagesManager.getHistory(this.peerID, maxID, loadCount, backLimit); */
     let result: ReturnType<AppMessagesManager['getHistory']> | {history: number[]} = appMessagesManager.getHistory(this.peerID, maxID, loadCount, backLimit);
     let resultPromise: Promise<any>;
 
-    const isFirstMessageRender = !!additionMsgID && result instanceof Promise && !appMessagesManager.getMessage(additionMsgID).grouped_id;
+    //const isFirstMessageRender = !!additionMsgID && result instanceof Promise && !appMessagesManager.getMessage(additionMsgID).grouped_id;
+    const isFirstMessageRender = additionMsgIDs?.length;
     if(isFirstMessageRender) {
       resultPromise = result as Promise<any>;
-      result = {history: [additionMsgID]};
+      result = {history: additionMsgIDs};
       //additionMsgID = 0;
     }
 
@@ -2551,8 +2568,7 @@ export class AppImManager {
 
     if(isFirstMessageRender) {
       waitPromise.then(() => {
-        const mids = getObjectKeysAndSort(this.bubbles, 'desc');
-        mids.findAndSplice(mid => mid == additionMsgID);
+        const mids = getObjectKeysAndSort(this.bubbles, 'desc').filter(mid => !additionMsgIDs.includes(mid));
         mids.forEach((mid, idx) => {
           const bubble = this.bubbles[mid];
   
@@ -2568,6 +2584,10 @@ export class AppImManager {
           }, {once: true});
           //this.log('supa', bubble);
         });
+
+        setTimeout(() => {
+          this.loadMoreHistory(true, true);
+        }, 0);
       });
     }
 
