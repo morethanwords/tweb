@@ -4186,7 +4186,7 @@ export class AppMessagesManager {
         limit += backLimit;
       }
 
-      return this.requestHistory(reqPeerID, maxID, limit, offset).then((historyResult: any) => {
+      return this.requestHistory(reqPeerID, maxID, limit, offset).then((historyResult) => {
         historyStorage.count = historyResult.count || historyResult.messages.length;
         if(isMigrated) {
           historyStorage.count++;
@@ -4331,7 +4331,7 @@ export class AppMessagesManager {
       //timeout: APITIMEOUT,
       noErrorBox: true
     }).then((historyResult) => {
-      this.log('requestHistory result:', historyResult, maxID, limit, offset);
+      this.log('requestHistory result:', peerID, historyResult, maxID, limit, offset);
 
       if(historyResult._ == 'messages.messagesNotModified') {
         return historyResult;

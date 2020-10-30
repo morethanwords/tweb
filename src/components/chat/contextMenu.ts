@@ -118,6 +118,8 @@ export default class ChatContextMenu {
       onClick: this.onPinClick,
       verify: () => {
         const message = appMessagesManager.getMessage(this.msgID);
+        // for new layer
+        // return this.msgID > 0 && message._ != 'messageService' && appImManager.pinnedMsgID != this.msgID && (this.peerID > 0 || appChatsManager.hasRights(-this.peerID, 'pin'));
         return this.msgID > 0 && message._ != 'messageService' && appImManager.pinnedMsgID != this.msgID && (this.peerID == $rootScope.myID || (this.peerID < 0 && appChatsManager.hasRights(-this.peerID, 'pin')));
       }
     }, {

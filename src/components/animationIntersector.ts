@@ -2,6 +2,7 @@ import { isInDOM } from "../lib/utils";
 import { RLottiePlayer } from "../lib/lottieLoader";
 import { MOUNT_CLASS_TO } from "../lib/mtproto/mtproto_config";
 import $rootScope from "../lib/rootScope";
+import { isSafari } from "../helpers/userAgent";
 
 export interface AnimationItem {
   el: HTMLElement,
@@ -71,9 +72,11 @@ export class AnimationIntersector {
     const {el, animation} = player;
     animation.remove();
 
-    if(animation instanceof HTMLVideoElement) {
-      animation.src = '';
-      animation.load();
+    if(animation instanceof HTMLVideoElement && isSafari) {
+      setTimeout(() => { // TODO: очистка по очереди, а не все вместе с этим таймаутом
+        animation.src = '';
+        animation.load();
+      }, 1e3);
     }
 
     for(const group in this.byGroups) {

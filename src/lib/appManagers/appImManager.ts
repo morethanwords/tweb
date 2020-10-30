@@ -44,7 +44,7 @@ import appChatsManager, { Channel, Chat } from "./appChatsManager";
 import appDialogsManager from "./appDialogsManager";
 import appDocsManager from './appDocsManager';
 import appInlineBotsManager from './AppInlineBotsManager';
-import appMessagesManager, { Dialog } from "./appMessagesManager";
+import appMessagesManager, { AppMessagesManager, Dialog, HistoryResult } from "./appMessagesManager";
 import appPeersManager from "./appPeersManager";
 import appPhotosManager from "./appPhotosManager";
 import appPollsManager from './appPollsManager';
@@ -57,7 +57,8 @@ import appUsersManager from "./appUsersManager";
 
 appSidebarLeft; // just to include
 
-const TEST_SCROLL = false;
+const TEST_SCROLL_TIMES: number = undefined;
+let TEST_SCROLL = TEST_SCROLL_TIMES;
 
 const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -843,7 +844,7 @@ export class AppImManager {
 
   public loadMoreHistory(top: boolean, justLoad = false) {
     //this.log('loadMoreHistory', top);
-    if(!this.peerID || TEST_SCROLL || this.setPeerPromise || (top && this.getHistoryTopPromise) || (!top && this.getHistoryBottomPromise)) return;
+    if(!this.peerID || /* TEST_SCROLL || */ this.setPeerPromise || (top && this.getHistoryTopPromise) || (!top && this.getHistoryBottomPromise)) return;
 
     // warning, если иды только отрицательные то вниз не попадёт (хотя мб и так не попадёт)
     let history = Object.keys(this.bubbles).map(id => +id).filter(id => id > 0).sort((a, b) => a - b);
@@ -1026,6 +1027,10 @@ export class AppImManager {
     ////console.time('appImManager cleanup');
     this.scrolledAll = false;
     this.scrolledAllDown = false;
+
+    if(TEST_SCROLL !== undefined) {
+      TEST_SCROLL = TEST_SCROLL_TIMES;
+    }
 
     this.bubbles = {};
     this.dateMessages = {};
@@ -2338,7 +2343,7 @@ export class AppImManager {
     return bubble;
   }
 
-  public performHistoryResult(history: number[], reverse: boolean, isBackLimit: boolean, additionMsgID: number) {
+  public performHistoryResult(history: number[], reverse: boolean, isBackLimit: boolean, additionMsgID?: number) {
     // commented bot getProfile in getHistory!
     if(!history/* .filter((id: number) => id > 0) */.length) {
       if(!isBackLimit) {
@@ -2382,13 +2387,17 @@ export class AppImManager {
 
       const method = (reverse ? history.shift : history.pop).bind(history);
 
+      //const padding = 99999;
       const realLength = this.scrollable.length;
-      let previousScrollHeightMinusTop: number;
+      let previousScrollHeightMinusTop: number/* , previousScrollHeight: number */;
       if(realLength > 0 && (reverse || isSafari)) { // for safari need set when scrolling bottom too
         this.messagesQueueOnRender = () => {
           const {scrollTop, scrollHeight} = this.scrollable;
 
+          //previousScrollHeight = scrollHeight + padding;
           previousScrollHeightMinusTop = reverse ? scrollHeight - scrollTop : scrollTop;
+
+          //this.chatInner.style.paddingTop = padding + 'px';
           /* if(reverse) {
             previousScrollHeightMinusTop = this.scrollable.scrollHeight - scrollTop;
           } else {
@@ -2409,8 +2418,18 @@ export class AppImManager {
       //.then(() => new Promise(resolve => setTimeout(resolve, 100)))
       .then(() => {
         if(previousScrollHeightMinusTop !== undefined) {
+          /* const scrollHeight = this.scrollable.scrollHeight;
+          const addedHeight = scrollHeight - previousScrollHeight;
+
+          this.chatInner.style.paddingTop = (padding - addedHeight) + 'px';
+
+          //const newScrollTop = reverse ? scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
+          const newScrollTop = reverse ? scrollHeight - addedHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
+          this.log('performHistoryResult: will set scrollTop', 
+            previousScrollHeightMinusTop, this.scrollable.scrollHeight, 
+            newScrollTop, this.scrollable.container.clientHeight); */
+          //const newScrollTop = reverse ? scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
           const newScrollTop = reverse ? this.scrollable.scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
-          //this.log('performHistoryResult: will set scrollTop', this.scrollable.scrollHeight, newScrollTop, this.scrollable.container.clientHeight);
 
           // touchSupport for safari iOS
           isTouchSupported && isApple && (this.scrollable.container.style.overflow = 'hidden');
@@ -2444,13 +2463,22 @@ export class AppImManager {
     //console.time('appImManager call getHistory');
     const pageCount = appPhotosManager.windowH / 38/*  * 1.25 */ | 0;
     //const loadCount = Object.keys(this.bubbles).length > 0 ? 50 : pageCount;
-    const realLoadCount = Object.keys(this.bubbles).length > 0 ? Math.max(40, pageCount) : pageCount;//const realLoadCount = 50;
+    const realLoadCount = Object.keys(this.bubbles).length > 0 || additionMsgID ? Math.max(40, pageCount) : pageCount;//const realLoadCount = 50;
     let loadCount = realLoadCount;
     
-    if(TEST_SCROLL) {
+    /* if(TEST_SCROLL) {
       //loadCount = 1;
       if(Object.keys(this.bubbles).length > 0)
       return {cached: false, promise: Promise.resolve(true)};
+    } */
+    if(TEST_SCROLL !== undefined) {
+      if(TEST_SCROLL) {
+        if(Object.keys(this.bubbles).length > 0) {
+          --TEST_SCROLL;
+        }
+      } else {
+        return {cached: false, promise: Promise.resolve(true)};
+      }
     }
     
     ////console.time('render history total');
@@ -2465,12 +2493,21 @@ export class AppImManager {
       }
     }
 
-    const result = appMessagesManager.getHistory(this.peerID, maxID, loadCount, backLimit);
+    /* const result = additionMsgID ? 
+      {history: [additionMsgID]} : 
+      appMessagesManager.getHistory(this.peerID, maxID, loadCount, backLimit); */
+    let result: ReturnType<AppMessagesManager['getHistory']> | {history: number[]} = appMessagesManager.getHistory(this.peerID, maxID, loadCount, backLimit);
+    let resultPromise: Promise<any>;
 
-    let promise: Promise<boolean>, cached: boolean;
-    if(result instanceof Promise) {
-      cached = false;
-      promise = result.then((result) => {
+    const isFirstMessageRender = !!additionMsgID && result instanceof Promise && !appMessagesManager.getMessage(additionMsgID).grouped_id;
+    if(isFirstMessageRender) {
+      resultPromise = result as Promise<any>;
+      result = {history: [additionMsgID]};
+      //additionMsgID = 0;
+    }
+
+    const processPromise = (result: Promise<HistoryResult>) => {
+      const promise = result.then((result) => {
         this.log('getHistory not cached result by maxID:', maxID, reverse, isBackLimit, result, peerID, justLoad);
 
         if(justLoad) {
@@ -2487,24 +2524,55 @@ export class AppImManager {
         
         ////console.timeEnd('render history total');
         
-        return this.performHistoryResult(result.history || [], reverse, isBackLimit, additionMsgID);
+        return this.performHistoryResult(result.history || [], reverse, isBackLimit, !isFirstMessageRender && additionMsgID);
       }, (err) => {
         this.log.error('getHistory error:', err);
         return false;
       });
+      
+      return promise;
+    };
+
+    let promise: Promise<boolean>, cached: boolean;
+    if(result instanceof Promise) {
+      cached = false;
+      promise = processPromise(result);
     } else if(justLoad) {
       return null;
     } else {
       cached = true;
       this.log('getHistory cached result by maxID:', maxID, reverse, isBackLimit, result, peerID, justLoad);
-      promise = this.performHistoryResult(result.history || [], reverse, isBackLimit, additionMsgID);
+      promise = this.performHistoryResult(result.history || [], reverse, isBackLimit, !isFirstMessageRender && additionMsgID);
       //return (reverse ? this.getHistoryTopPromise = promise : this.getHistoryBottomPromise = promise);
       //return this.performHistoryResult(result.history || [], reverse, isBackLimit, additionMsgID, true);
     }
 
-    (reverse ? this.getHistoryTopPromise = promise : this.getHistoryBottomPromise = promise);
+    const waitPromise = isFirstMessageRender ? processPromise(resultPromise) : promise;
 
-    promise.finally(() => {
+    if(isFirstMessageRender) {
+      waitPromise.then(() => {
+        const mids = getObjectKeysAndSort(this.bubbles, 'desc');
+        mids.findAndSplice(mid => mid == additionMsgID);
+        mids.forEach((mid, idx) => {
+          const bubble = this.bubbles[mid];
+  
+          //if(idx || isSafari) {
+            // ! 0.1 = 1ms задержка для Safari, без этого первое сообщение над самым нижним может появиться позже другого с animation-delay, LOL !
+            bubble.style.animationDelay = ((idx || 0.1) * 10) + 'ms';
+          //}
+
+          bubble.classList.add('zoom-fade');
+          bubble.addEventListener('animationend', () => {
+            bubble.style.animationDelay = '';
+            bubble.classList.remove('zoom-fade');
+          }, {once: true});
+          //this.log('supa', bubble);
+        });
+      });
+    }
+
+    (reverse ? this.getHistoryTopPromise = waitPromise : this.getHistoryBottomPromise = waitPromise);
+    waitPromise.finally(() => {
       (reverse ? this.getHistoryTopPromise = undefined : this.getHistoryBottomPromise = undefined);
     });
 
@@ -2512,7 +2580,7 @@ export class AppImManager {
       return null;
     }
 
-    /* false &&  */promise.then(() => {
+    /* false &&  */!isFirstMessageRender && promise.then(() => {
       if(reverse) {
         this.loadedTopTimes++;
         this.loadedBottomTimes = Math.max(0, --this.loadedBottomTimes);
@@ -2537,7 +2605,7 @@ export class AppImManager {
           this.scrolledAllDown = false;
 
           this.log('getHistory: slice bottom messages:', ids.length, loadCount);
-          this.getHistoryBottomPromise = undefined; // !WARNING, это нужно для обратной загрузки истории, если запрос словил флуд
+          //this.getHistoryBottomPromise = undefined; // !WARNING, это нужно для обратной загрузки истории, если запрос словил флуд
         } else {
           //ids = ids.slice(0, removeCount);
           //ids = ids.slice(0, ids.length - (removeCount * 2));
@@ -2545,7 +2613,7 @@ export class AppImManager {
           this.scrolledAll = false;
 
           this.log('getHistory: slice up messages:', ids.length, loadCount);
-          this.getHistoryTopPromise = undefined; // !WARNING, это нужно для обратной загрузки истории, если запрос словил флуд
+          //this.getHistoryTopPromise = undefined; // !WARNING, это нужно для обратной загрузки истории, если запрос словил флуд
         }
 
         this.log('getHistory: will slice ids:', ids, reverse);
@@ -2556,10 +2624,12 @@ export class AppImManager {
       this.setUnreadDelimiter(); // не нашёл места лучше
 
       // preload more
-      setTimeout(() => {
-        this.loadMoreHistory(true, true);
-        this.loadMoreHistory(false, true);
-      }, 0);
+      //if(!isFirstMessageRender) {
+        setTimeout(() => {
+          this.loadMoreHistory(true, true);
+          this.loadMoreHistory(false, true);
+        }, 0);
+      //}
     });
 
     return {cached, promise};

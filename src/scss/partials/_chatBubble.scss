@@ -14,6 +14,24 @@ $bubble-margin: .25rem;
   }
 }
 
+/*
+ * zoom-fade-opacity
+ */
+ @keyframes zoom-opacity-fade-in {
+  0% {
+    //transform: scale(.8) translateZ(0);
+    transform: scale3d(.8, .8, 1);
+    //transform: scale(.8);
+    opacity: 0;
+  }
+  100% {
+    //transform: scale(1) translateZ(0);
+    transform: scale3d(1, 1, 1);
+    //transform: scale(1);
+    opacity: 1;
+  }
+}
+
 .bubbles-date-group {
   position: relative;
 
@@ -154,6 +172,16 @@ $bubble-margin: .25rem;
     .bubble__container {
       cursor: pointer;
     }
+  }
+
+  &.zoom-fade /* .bubble__container */ {
+    //transform: scale(.8) translateZ(0);
+    transform: scale3d(.8, .8, 1);
+    //transform: scale(.8);
+    opacity: 0;
+    transform-origin: center;
+    animation: zoom-opacity-fade-in .2s linear forwards;
+    animation-delay: 0;
   }
 
   &-select-checkbox {
