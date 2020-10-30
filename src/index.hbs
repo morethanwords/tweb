@@ -40,20 +40,22 @@
             <h4>Sign in to Telegram</h4>
             <p class="subtitle">Please confirm your country and<br> enter your phone number.</p>
             <div class="input-wrapper">
-              <div class="input-field input-select">
-                <input type="text" name="countryCode" id="countryCode" autocomplete="rrRandomRR" required />
-                <label for="countryCode">Country</label>
-                <span class="arrow arrow-down"></span>
-              </div>
-              <div class="input-field">
-                <input type="tel" name="phone" id="phone" autocomplete="rr55RandomRR55" required />
-                <label for="phone">Phone Number</label>
-              </div>
-              <label class="checkbox-field">
-                <input type="checkbox" id="keepSigned" checked="checked">
-                <span>Keep me signed in</span>
-              </label>
-              <button class="btn-primary rp" style="visibility: hidden;">NEXT</button>
+              {{!-- <form action=""> --}}
+                <div class="input-field input-select">
+                  <input type="text" name="countryCode" id="countryCode" autocomplete="rrRandomRR" required />
+                  <label for="countryCode">Country</label>
+                  <span class="arrow arrow-down"></span>
+                </div>
+                <div class="input-field">
+                  <input type="tel" name="phone" id="phone" autocomplete="rr55RandomRR55" required />
+                  <label for="phone">Phone Number</label>
+                </div>
+                <label class="checkbox-field">
+                  <input type="checkbox" id="keepSigned" checked="checked">
+                  <span>Keep me signed in</span>
+                </label>
+                <button class="btn-primary rp" style="visibility: hidden;">NEXT</button>
+              {{!-- </form> --}}
               <div class="qr"><a href="#" class="a-qr">Quick log in using QR code</a></div>
             </div>
           </div>

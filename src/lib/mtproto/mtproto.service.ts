@@ -51,7 +51,8 @@ const onFetch = (event: FetchEvent): void => {
         const info: DownloadOptions = JSON.parse(decodeURIComponent(params));
         //const fileName = getFileNameByLocation(info.location);
 
-        const limitPart = STREAM_CHUNK_UPPER_LIMIT;
+        // ! если грузить очень большое видео чанками по 512Кб в мобильном Safari, то стрим не запустится
+        const limitPart = info.size > (75 * 1024 * 1024) ? STREAM_CHUNK_UPPER_LIMIT : STREAM_CHUNK_MIDDLE_LIMIT;
 
         /* if(info.size > limitPart && isSafari && offset == limitPart) {
           //end = info.size - 1;
@@ -197,13 +198,12 @@ ctx.onoffline = ctx.ononline = onChangeState;
 
 onChangeState();
 
-const DOWNLOAD_CHUNK_LIMIT = 512 * 1024;
-
 /* const STREAM_CHUNK_UPPER_LIMIT = 256 * 1024;
 const SMALLEST_CHUNK_LIMIT = 256 * 4; */
 /* const STREAM_CHUNK_UPPER_LIMIT = 1024 * 1024;
 const SMALLEST_CHUNK_LIMIT = 1024 * 4; */
-const STREAM_CHUNK_UPPER_LIMIT = 512 * 1024;
+const STREAM_CHUNK_MIDDLE_LIMIT = 512 * 1024;
+const STREAM_CHUNK_UPPER_LIMIT = 1024 * 1024;
 const SMALLEST_CHUNK_LIMIT = 512 * 4;
 
 function parseRange(header: string): [number, number] {

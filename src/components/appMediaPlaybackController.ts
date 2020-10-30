@@ -42,7 +42,7 @@ class AppMediaPlaybackController {
     //source.type = doc.type == 'voice' && !opusDecodeController.isPlaySupported() ? 'audio/wav' : doc.mime_type;
 
     if(doc.type == 'round') {
-      media.setAttribute('playsinline', '');
+      media.setAttribute('playsinline', 'true');
     }
 
     media.dataset.mid = '' + mid;

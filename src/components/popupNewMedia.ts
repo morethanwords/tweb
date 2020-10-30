@@ -142,7 +142,7 @@ export default class PopupNewMedia extends PopupElement {
             video.autoplay = false;
             video.controls = false;
             video.muted = true;
-            video.setAttribute('playsinline', '');
+            video.setAttribute('playsinline', 'true');
 
             video.onloadeddata = () => {
               params.width = video.videoWidth;

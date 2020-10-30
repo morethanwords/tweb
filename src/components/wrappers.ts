@@ -2,7 +2,7 @@ import { readBlobAsText } from '../helpers/blob';
 import { deferredPromise } from '../helpers/cancellablePromise';
 import { months } from '../helpers/date';
 import mediaSizes from '../helpers/mediaSizes';
-import { isSafari } from '../helpers/userAgent';
+import { isAppleMobile, isSafari } from '../helpers/userAgent';
 import { PhotoSize } from '../layer';
 import appDocsManager, { MyDocument } from "../lib/appManagers/appDocsManager";
 import { DownloadBlob } from '../lib/appManagers/appDownloadManager';
@@ -74,7 +74,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
 
   const video = document.createElement('video');
   video.muted = true;
-  video.setAttribute('playsinline', '');
+  video.setAttribute('playsinline', 'true');
   if(doc.type == 'round') {
     //video.muted = true;
     const globalVideo = appMediaPlaybackController.addMedia(doc, message.mid);
@@ -224,7 +224,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     const deferred = deferredPromise<void>();
 
     //if(doc.type == 'gif'/*  || true */) {
-      video.addEventListener('canplay', () => {
+      video.addEventListener(isAppleMobile ? 'loadeddata' : 'canplay', () => {
         if(img?.parentElement) {
           img.remove();
         }

@@ -77,6 +77,8 @@ export default class ChatContextMenu {
       attachTo.addEventListener('click', (e) => {
         //const good = !!findUpClassName(e.target, 'message') || !!findUpClassName(e.target, 'bubble__container');
         const className = (e.target as HTMLElement).className;
+        if(!className || !className.includes) return;
+
         const good = ['bubble', 'bubble__container', 'message', 'time', 'inner'].find(c => className.includes(c));
         if(good) {
           onContextMenu(e);

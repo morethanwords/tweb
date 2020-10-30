@@ -886,7 +886,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
         //video.src = '';
 
-        video.setAttribute('playsinline', '');
+        video.setAttribute('playsinline', 'true');
 
         // * fix for playing video if viewer is closed (https://contest.com/javascript-web-bonus/entry1425#issue11629)
         video.addEventListener('timeupdate', () => {
@@ -896,6 +896,8 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
         });
 
         if(isSafari) {
+          // test stream
+          // video.controls = true;
           video.autoplay = true;
         }
 

@@ -62,11 +62,12 @@
     }
   }
 
-  @include respond-to(floating-left-sidebar) {
+  /* @include respond-to(floating-left-sidebar) {
     .main-column {
       height: calc(var(--vh, 1vh) * 100) !important;
+      min-height: calc(var(--vh, 1vh) * 100) !important;
     }
-  }
+  } */
 
   /* @include respond-to(until-floating-left-sidebar) {
     .main-column {

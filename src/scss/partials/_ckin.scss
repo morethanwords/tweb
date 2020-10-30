@@ -416,6 +416,8 @@ input[type=range] {
 video[data-ckin="circle"] {
   border-radius: 50%;
   overflow: hidden;
+  position: relative;
+  z-index: -1;
 }
 .progress-ring {
   position: absolute;

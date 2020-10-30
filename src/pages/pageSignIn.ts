@@ -103,7 +103,7 @@ let onFirstMount = () => {
       selectCountryCode.value = countryName;
       lastCountrySelected = countries.find(c => c.name == countryName);
       
-      telEl.value = phoneCode;
+      telEl.value = lastValue = phoneCode;
       setTimeout(() => telEl.focus(), 0);
       //console.log('clicked', e, countryName, phoneCode);
     });
@@ -176,17 +176,25 @@ let onFirstMount = () => {
     else selectCountryCode.focus();
   });
 
-  let sortedCountries = countries.slice().sort((a, b) => b.phoneCode.length - a.phoneCode.length);
-
+  let pasted = false;
+  let lastValue = '';
   let telEl = page.pageEl.querySelector('input[name="phone"]') as HTMLInputElement;
   const telLabel = telEl.nextElementSibling as HTMLLabelElement;
   telEl.addEventListener('input', function(this: typeof telEl, e) {
+    //console.log('input', this.value);
     this.classList.remove('error');
+
+    const diff = Math.abs(this.value.length - lastValue.length);
+    if(diff > 1 && !pasted) {
+      this.value = lastValue + this.value;
+    }
+
+    pasted = false;
 
     telLabel.innerText = 'Phone Number';
 
     let {formatted, country} = formatPhoneNumber(this.value);
-    this.value = formatted ? '+' + formatted : '';
+    this.value = lastValue = formatted ? '+' + formatted : '';
 
     //console.log(formatted, country);
 
@@ -204,7 +212,17 @@ let onFirstMount = () => {
     }
   });
 
+  telEl.addEventListener('paste', (e) => {
+    pasted = true;
+    //console.log('paste', telEl.value);
+  });
+
+  /* telEl.addEventListener('change', (e) => {
+    console.log('change', telEl.value);
+  }); */
+
   telEl.addEventListener('keypress', function(this: typeof telEl, e) {
+    console.log('keypress', this.value);
     if(!btnNext.style.visibility &&/* this.value.length >= 9 && */ e.key == 'Enter') {
       return btnNext.click();
     } else if(/\D/.test(e.key)) {
@@ -286,7 +304,7 @@ let onFirstMount = () => {
         if(!selectCountryCode.value.length && !telEl.value.length) {
           selectCountryCode.value = country.name;
           lastCountrySelected = country;
-          telEl.value = '+' + country.phoneCode.split(' and ').shift();
+          telEl.value = lastValue = '+' + country.phoneCode.split(' and ').shift();
         }
       }
   

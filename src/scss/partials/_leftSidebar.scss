@@ -16,7 +16,8 @@
     position: fixed;
     left: 0;
     top: 0;
-    height: calc(var(--vh, 1vh) * 100);
+    /* height: calc(var(--vh, 1vh) * 100);
+    min-height: calc(var(--vh, 1vh) * 100) !important; */
     width: 26.5rem;
     transform: translate3d(-5rem, 0, 0);
     transition: transform var(--layer-transition);
