@@ -100,6 +100,9 @@
       color: $color-blue;
       position: relative;
       overflow: hidden;
+      max-width: 100%;
+      white-space: nowrap;
+      text-overflow: ellipsis;
 			
 			html.no-touch &:hover {
 				background-color: var(--color-gray-hover);

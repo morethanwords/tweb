@@ -57,7 +57,7 @@ let onFirstMount = (): Promise<any> => {
     cancelEvent(e);
     passwordVisible = !passwordVisible;
 
-    this.classList.toggle('tgico-eye2', passwordVisible);
+    this.classList.toggle('eye-hidden', passwordVisible);
     if(passwordVisible) {
       passwordInput.setAttribute('type', 'text');
       animation.setDirection(1);
