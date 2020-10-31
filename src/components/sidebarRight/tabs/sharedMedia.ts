@@ -134,7 +134,7 @@ export default class AppSharedMediaTab implements SliderTab {
     this.scroll = new Scrollable(this.container, 'SR', undefined, 400);
     this.scroll.onScrolledBottom = () => {
       if(this.sharedMediaSelected && this.sharedMediaSelected.childElementCount/* && false */) {
-        this.log('onScrolledBottom will load media');
+        //this.log('onScrolledBottom will load media');
         this.loadSidebarMedia(true);
       }
     };
@@ -641,7 +641,7 @@ export default class AppSharedMediaTab implements SliderTab {
     }
   }
   
-  public loadSidebarMedia(single = false) {
+  public loadSidebarMedia(single = false, justLoad = false) {
     if(testScroll/*  || 1 == 1 */) {
       return;
     }
@@ -651,10 +651,12 @@ export default class AppSharedMediaTab implements SliderTab {
     const peerID = this.peerID;
     
     let typesToLoad = single ? [this.sharedMediaType] : this.sharedMediaTypes;
-    typesToLoad = typesToLoad.filter(type => !this.loadedAllMedia[type]);
+    typesToLoad = typesToLoad.filter(type => !this.loadedAllMedia[type] 
+      || this.usedFromHistory[type] < this.historiesStorage[peerID][type].length);
+
     if(!typesToLoad.length) return;
 
-    const loadCount = (appPhotosManager.windowH / 130 | 0) * 3; // that's good for all types
+    const loadCount = justLoad ? 50 : (appPhotosManager.windowH / 130 | 0) * 3 * 1.25; // that's good for all types
     
     const historyStorage = this.historiesStorage[peerID] ?? (this.historiesStorage[peerID] = {});
 
@@ -666,7 +668,7 @@ export default class AppSharedMediaTab implements SliderTab {
       const logStr = `loadSidebarMedia [${type}]: `;
 
       // render from cache
-      if(history.length && this.usedFromHistory[type] < history.length) {
+      if(history.length && this.usedFromHistory[type] < history.length && !justLoad) {
         let messages: any[] = [];
         let used = Math.max(0, this.usedFromHistory[type]);
 
@@ -709,13 +711,29 @@ export default class AppSharedMediaTab implements SliderTab {
           this.log.warn('peer changed');
           return;
         }
-        
-        if(value.history.length < loadCount) {
+
+        if(history.length >= value.count) {
           this.log(logStr + 'loaded all media', value, loadCount);
           this.loadedAllMedia[type] = true;
         }
 
+        if(justLoad) {
+          return Promise.resolve();
+        }
+
         this.usedFromHistory[type] = history.length;
+
+        if(!this.loadedAllMedia[type]) {
+          this.loadSidebarMediaPromises[type].then(() => {
+            setTimeout(() => {
+              this.log('will preload more');
+              this.loadSidebarMedia(true, true).then(() => {
+                this.log('preloaded more');
+                this.scroll.checkForTriggers();
+              });
+            }, 0);
+          });
+        }
 
         //if(value.history.length) {
           return this.performSearchResult(this.filterMessagesByType(value.history, type), type);
