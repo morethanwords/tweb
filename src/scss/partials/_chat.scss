@@ -874,6 +874,8 @@ $chat-helper-size: 39px;
 		width: auto;
 
 		&:not(.is-floating) {
+			max-width: 239px;
+
 			.pinned-message-close {
 				display: flex;
 				margin-right: .75rem;

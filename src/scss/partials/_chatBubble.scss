@@ -188,7 +188,8 @@ $bubble-margin: .25rem;
     z-index: 2;
     position: absolute;
     left: 0;
-    bottom: .75rem; // * by avatar
+    //bottom: .75rem; // * by avatar
+    bottom: 5px;      // * by middle of one-line message
     /* left: 0;
     top: 50%;
     transform: translateY(-50%); */
@@ -257,6 +258,16 @@ $bubble-margin: .25rem;
       font-size: 1rem;
       cursor: pointer;
 
+      #bubbles.is-selecting & {
+        transform: scale(1);
+        transform-origin: bottom;
+        transition: transform var(--layer-transition);
+      }
+
+      #bubbles.is-selecting:not(.backwards) & {
+        transform: scale(.76);
+      }
+
       // @include respond-to(handhelds) {
       //   left: -45px;
       // }
@@ -316,6 +327,12 @@ $bubble-margin: .25rem;
 
   &.is-group-last {
     padding-bottom: $bubble-margin;
+
+    #bubbles-inner.is-chat &.is-in {
+      .bubble-select-checkbox {
+        bottom: 7px;
+      }
+    }
   }
 
   &:not(.forwarded) {
