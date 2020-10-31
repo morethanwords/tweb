@@ -16,7 +16,7 @@ export default class EventListenerBase<Listeners extends {[name: string]: Functi
     (this.listeners[name] ?? (this.listeners[name] = [])).push({callback, once});
 
     if(this.listenerResults.hasOwnProperty(name)) {
-      callback(this.listenerResults[name]);
+      callback(...this.listenerResults[name]);
 
       if(once) {
         this.removeListener(name, callback);

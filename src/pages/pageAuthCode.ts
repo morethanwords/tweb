@@ -1,4 +1,6 @@
 import mediaSizes from '../helpers/mediaSizes';
+import { AuthSentCode, AuthSentCodeType } from '../layer';
+import appStateManager from '../lib/appManagers/appStateManager';
 import LottieLoader, { RLottiePlayer } from '../lib/lottieLoader';
 //import CryptoWorker from '../lib/crypto/cryptoworker';
 //import apiManager from '../lib/mtproto/apiManager';
@@ -10,19 +12,9 @@ import pagePassword from './pagePassword';
 import pageSignIn from './pageSignIn';
 import pageSignUp from './pageSignUp';
 
-let authCode: {
-  _: string, // 'auth.sentCode'
-  pFlags: any, // {}
-  flags: number,
-  type: {
-    _: string, // 'auth.sentCodeTypeSms',
-    length: number
-  },
-  phone_code_hash: string,
-  phone_number: string
-} = null;
+let authCode: AuthSentCode.authSentCode = null;
 
-const EDITONSAMEPAGE = false;
+//const EDITONSAMEPAGE = false;
 
 let headerElement: HTMLHeadElement = null;
 let sentTypeElement: HTMLParagraphElement = null;
@@ -34,13 +26,13 @@ let onFirstMount = (): Promise<any> => {
   let animation: RLottiePlayer;
   let idleAnimation: RLottiePlayer;
 
-  const CODELENGTH = authCode.type.length;
+  const CODELENGTH = (authCode.type as AuthSentCodeType.authSentCodeTypeApp).length;
 
   codeInput = page.pageEl.querySelector('#code') as HTMLInputElement;
   const codeInputLabel = codeInput.nextElementSibling as HTMLLabelElement;
   const editButton = page.pageEl.querySelector('.phone-edit') as HTMLElement;
 
-  if(EDITONSAMEPAGE) {
+  /* if(EDITONSAMEPAGE) {
     let editable = false;
     let changePhonePromise: Promise<unknown>;
 
@@ -59,7 +51,7 @@ let onFirstMount = (): Promise<any> => {
         settings: {
           _: 'codeSettings' // that's how we sending Type
         }
-        /* lang_code: navigator.language || 'en' */
+        //lang_code: navigator.language || 'en'
       }).then((code: any) => {
         console.log('got code 2', code);
 
@@ -109,11 +101,11 @@ let onFirstMount = (): Promise<any> => {
   
       if(!editable) changePhone();
     });
-  } else {
+  } else { */
     editButton.addEventListener('click', function() {
       return pageSignIn.mount();
     });
-  }
+  //}
 
   let cleanup = () => {
     setTimeout(() => {
@@ -186,6 +178,7 @@ let onFirstMount = (): Promise<any> => {
   // end symbol = frame 165
   codeInput.addEventListener('input', function(this: typeof codeInput, e) {
     this.classList.remove('error');
+    codeInputLabel.innerText = 'Code';
 
     this.value = this.value.replace(/\D/g, '');
     if(this.value.length > CODELENGTH) {
@@ -201,20 +194,38 @@ let onFirstMount = (): Promise<any> => {
 
     lastLength = length;
 
+    playAnimation(length);
+  });
+
+  const playAnimation = (length: number) => {
     if(!animation) return;
     
     let frame: number;
     if(length) {
       frame = Math.round(Math.min(max, length) * (165 / max) + 11.33);
 
-      idleAnimation.canvas.style.display = 'none';
+      if(idleAnimation) {
+        idleAnimation.stop(true);
+        idleAnimation.canvas.style.display = 'none';
+      }
+      
       animation.canvas.style.display = '';
     } else {
+      /* const cb = (frameNo: number) => {
+        if(frameNo <= 1) { */
+          /* idleAnimation.play();
+          idleAnimation.canvas.style.display = '';
+          animation.canvas.style.display = 'none'; */
+      /*     animation.removeListener('enterFrame', cb);
+        }
+      };
+      animation.addListener('enterFrame', cb); */
+      
       frame = 0;
     }
     //animation.playSegments([1, 2]);
 
-    let direction = needFrame > frame ? -1 : 1;
+    const direction = needFrame > frame ? -1 : 1;
     //console.log('keydown', length, frame, direction);
 
     animation.setDirection(direction);
@@ -229,6 +240,14 @@ let onFirstMount = (): Promise<any> => {
 
     /* animation.goToAndStop(15, true); */
     //animation.goToAndStop(length / max * );
+  };
+
+  codeInput.addEventListener('focus', () => {
+    playAnimation(Math.max(codeInput.value.length, 1));
+  });
+
+  codeInput.addEventListener('blur', () => {
+    playAnimation(0);
   });
 
   let imageDiv = page.pageEl.querySelector('.auth-image') as HTMLDivElement;
@@ -242,6 +261,11 @@ let onFirstMount = (): Promise<any> => {
       height: size
     }, 'assets/img/TwoFactorSetupMonkeyIdle.tgs').then(animation => {
       idleAnimation = animation;
+
+      // ! animationIntersector will stop animation instantly
+      if(!codeInput.value.length) {
+        animation.play();
+      }
     }),
 
     LottieLoader.loadAnimationFromURL({
@@ -268,12 +292,12 @@ let onFirstMount = (): Promise<any> => {
         }
 
         if(currentFrame == 0 && needFrame == 0) {
-          animation.curFrame = 0;
+          //animation.curFrame = 0;
           
           if(idleAnimation) {
-            animation.canvas.style.display = 'none';
             idleAnimation.canvas.style.display = '';
-            idleAnimation.restart();
+            idleAnimation.play();
+            animation.canvas.style.display = 'none';
           }
         }
       });
@@ -288,6 +312,12 @@ const page = new Page('page-authCode', true, onFirstMount, (_authCode: typeof au
   if(!headerElement) {
     headerElement = page.pageEl.getElementsByClassName('phone')[0] as HTMLHeadElement;
     sentTypeElement = page.pageEl.getElementsByClassName('sent-type')[0] as HTMLParagraphElement;
+  } else {
+    codeInput.value = '';
+
+    const evt = document.createEvent('HTMLEvents');
+    evt.initEvent('input', false, true);
+    codeInput.dispatchEvent(evt);
   }
 
   //let LottieLoader = (await import('../lib/lottieLoader')).default;
@@ -307,6 +337,9 @@ const page = new Page('page-authCode', true, onFirstMount, (_authCode: typeof au
       sentTypeElement.innerHTML = `Please check everything<br>for a code (type: ${authCode.type._})`;
       break;
   }
+
+  appStateManager.pushToState('authState', {_: 'authStateAuthCode', sentCode: _authCode});
+  appStateManager.saveState();
 }, () => {
   codeInput.focus();
 });

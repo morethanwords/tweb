@@ -1,14 +1,13 @@
 import { putPreloader } from '../components/misc';
 import PopupAvatar from '../components/popupAvatar';
+import appStateManager from '../lib/appManagers/appStateManager';
 //import apiManager from '../lib/mtproto/apiManager';
 import apiManager from '../lib/mtproto/mtprotoworker';
+import { AuthState } from '../types';
 import Page from './page';
 import pageIm from './pageIm';
 
-let authCode: {
-  'phone_number': string,
-  'phone_code_hash': string
-} = null;
+let authCode: AuthState.signUp['authCode'] = null;
 
 let onFirstMount = () => import('../lib/appManagers/appProfileManager').then(imported => {
   const pageElement = page.pageEl;
@@ -116,6 +115,9 @@ let onFirstMount = () => import('../lib/appManagers/appProfileManager').then(imp
 
 const page = new Page('page-signUp', true, onFirstMount, (_authCode: typeof authCode) => {
   authCode = _authCode;
+
+  appStateManager.pushToState('authState', {_: 'authStateSignUp', authCode: _authCode});
+  appStateManager.saveState();
 });
 
 export default page;

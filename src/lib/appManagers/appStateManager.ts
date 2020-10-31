@@ -1,6 +1,5 @@
 import type { Dialog, DialogsStorage, FiltersStorage } from './appMessagesManager';
 import type { AppStickersManager } from './appStickersManager';
-import type { AppPeersManager } from './appPeersManager';
 import { App, MOUNT_CLASS_TO, UserAuth } from '../mtproto/mtproto_config';
 import EventListenerBase from '../../helpers/eventListenerBase';
 import $rootScope from '../rootScope';
@@ -8,6 +7,7 @@ import AppStorage from '../storage';
 import { logger } from '../logger';
 import type { AppUsersManager } from './appUsersManager';
 import type { AppChatsManager } from './appChatsManager';
+import type { AuthState } from '../../types';
 
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
 const STATE_VERSION = App.version;
@@ -28,7 +28,8 @@ type State = Partial<{
   topPeers: number[],
   recentSearch: number[],
   stickerSets: AppStickersManager['stickerSets'],
-  version: typeof STATE_VERSION
+  version: typeof STATE_VERSION,
+  authState: AuthState
 }>;
 
 const REFRESH_KEYS = ['dialogs', 'allDialogsLoaded', 'messages', 'contactsList', 'stateCreatedTime',
@@ -80,7 +81,11 @@ export class AppStateManager extends EventListenerBase<{
         //return resolve();
 
         if(auth?.id) {
+          // ! Warning ! DON'T delete this
+          this.state.authState = {_: 'authStateSignedIn'};
           $rootScope.$broadcast('user_auth', {id: auth.id});
+        } else if(!this.state.authState) {
+          this.state.authState = {_: 'authStateSignIn'};
         }
         
         //console.timeEnd('load state');

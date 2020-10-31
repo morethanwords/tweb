@@ -1,6 +1,7 @@
 import { formatPhoneNumber, putPreloader } from "../components/misc";
 import Scrollable from '../components/scrollable';
 import Countries, { Country as _Country } from "../countries";
+import appStateManager from "../lib/appManagers/appStateManager";
 import apiManager from "../lib/mtproto/mtprotoworker";
 import { App, Modes } from "../lib/mtproto/mtproto_config";
 import { RichTextProcessor } from '../lib/richtextprocessor';
@@ -222,7 +223,7 @@ let onFirstMount = () => {
   }); */
 
   telEl.addEventListener('keypress', function(this: typeof telEl, e) {
-    console.log('keypress', this.value);
+    //console.log('keypress', this.value);
     if(!btnNext.style.visibility &&/* this.value.length >= 9 && */ e.key == 'Enter') {
       return btnNext.click();
     } else if(/\D/.test(e.key)) {
@@ -322,6 +323,9 @@ const page = new Page('page-sign', true, onFirstMount, () => {
   
   btnNext.textContent = 'NEXT';
   btnNext.removeAttribute('disabled');
+
+  appStateManager.pushToState('authState', {_: 'authStateSignIn'});
+  appStateManager.saveState();
 });
 
 export default page;

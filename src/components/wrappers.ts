@@ -140,7 +140,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   
   let img: HTMLImageElement;
   if(message) {
-    if(!canAutoplay && doc.thumbs?.length) {
+    if(!canAutoplay) {
       return wrapPhoto(doc, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware);
     }
 
@@ -483,6 +483,10 @@ export function wrapPhoto(photo: MyPhoto | MyDocument, message: any, container: 
     if(!image || image.tagName != 'IMG') {
       container.append(image = new Image());
     }
+  }
+
+  if(!((photo as MyPhoto).sizes || (photo as MyDocument).thumbs)) {
+    return Promise.resolve();
   }
 
   //console.log('wrapPhoto downloaded:', photo, photo.downloaded, container);

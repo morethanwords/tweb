@@ -1239,7 +1239,8 @@ export namespace AuthSentCode {
 		type: AuthSentCodeType,
 		phone_code_hash: string,
 		next_type?: AuthCodeType,
-		timeout?: number
+		timeout?: number,
+		phone_number?: string
 	};
 }
 

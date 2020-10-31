@@ -4,6 +4,7 @@ import { putPreloader } from '../components/misc';
 import mediaSizes from '../helpers/mediaSizes';
 import { isAppleMobile, isSafari } from '../helpers/userAgent';
 import { AccountPassword } from '../layer';
+import appStateManager from '../lib/appManagers/appStateManager';
 import LottieLoader, { RLottiePlayer } from '../lib/lottieLoader';
 //import passwordManager from '../lib/mtproto/passwordManager';
 import apiManager from '../lib/mtproto/mtprotoworker';
@@ -25,8 +26,14 @@ let onFirstMount = (): Promise<any> => {
   passwordInput = document.getElementById('password') as HTMLInputElement;
   const passwordInputLabel = passwordInput.nextElementSibling as HTMLLabelElement;
   const toggleVisible = page.pageEl.querySelector('.toggle-visible') as HTMLSpanElement;
+  let getStateInterval: number;
 
   let getState = () => {
+    // * just to check session relevance
+    if(!getStateInterval) {
+      getStateInterval = window.setInterval(getState, 10e3);
+    }
+
     return !TEST && passwordManager.getState().then(_state => {
       state = _state;
 
@@ -92,6 +99,7 @@ let onFirstMount = (): Promise<any> => {
             id: response.user.id
           });
   
+          clearInterval(getStateInterval);
           pageIm.mount();
           if(animation) animation.remove();
           break;
@@ -149,6 +157,9 @@ const page = new Page('page-password', true, onFirstMount, null, () => {
   //if(!isAppleMobile) {
     passwordInput.focus();
   //}
+
+  appStateManager.pushToState('authState', {_: 'authStatePassword'});
+  appStateManager.saveState();
 });
 
 export default page;

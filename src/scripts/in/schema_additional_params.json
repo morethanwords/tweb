@@ -222,4 +222,9 @@
     {"name": "sortStatus", "type": "number"},
     {"name": "num", "type": "number"}
   ]
+}, {
+  "predicate": "auth.sentCode",
+  "params": [
+    {"name": "phone_number", "type": "string"}
+  ]
 }]

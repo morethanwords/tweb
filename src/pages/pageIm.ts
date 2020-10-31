@@ -1,9 +1,14 @@
 //import {stackBlurImage} from '../lib/StackBlur';
+//import appStateManager from "../lib/appManagers/appStateManager";
+import appStateManager from "../lib/appManagers/appStateManager";
 import { DEBUG } from "../lib/mtproto/mtproto_config";
 import Page from "./page";
 
 let onFirstMount = () => {
   //return;
+  appStateManager.pushToState('authState', {_: 'authStateSignedIn'});
+  // ! TOO SLOW
+  /* appStateManager.saveState(); */
 
   const promise = import('../lib/appManagers/appDialogsManager');
   promise.finally(async() => {

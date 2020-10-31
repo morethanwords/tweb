@@ -12,6 +12,7 @@ import VideoPlayer from "../lib/mediaPlayer";
 import { RichTextProcessor } from "../lib/richtextprocessor";
 import $rootScope from "../lib/rootScope";
 import { cancelEvent, fillPropertyValue, findUpClassName, generatePathData } from "../lib/utils";
+import animationIntersector from "./animationIntersector";
 import appMediaPlaybackController from "./appMediaPlaybackController";
 import AvatarElement from "./avatar";
 import ButtonIcon from "./buttonIcon";
@@ -244,6 +245,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     promise.finally(() => {
       this.wholeDiv.remove();
       $rootScope.overlayIsActive = false;
+      animationIntersector.checkAnimations(false);
     });
 
     return promise;
@@ -846,6 +848,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       void this.wholeDiv.offsetLeft; // reflow
       this.wholeDiv.classList.add('active');
       $rootScope.overlayIsActive = true;
+      animationIntersector.checkAnimations(true);
     }
 
     ////////this.log('wasActive:', wasActive);
