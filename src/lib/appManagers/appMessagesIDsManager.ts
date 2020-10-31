@@ -1,8 +1,30 @@
+import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
+import appStateManager from "./appStateManager";
+
 export class AppMessagesIDsManager {
   public channelLocals: {[channelID: string]: number} = {};
   public channelsByLocals: {[localStart: string]: number} = {};
   public channelCurLocal = 0;
   public fullMsgIDModulus = 4294967296;
+
+  constructor() {
+    appStateManager.getState().then(state => {
+      const cached = state.messagesIDsLocals;
+      if(cached) {
+        this.channelLocals = cached.channelLocals;
+        this.channelsByLocals = cached.channelsByLocals;
+        this.channelCurLocal = cached.channelCurLocal;
+      }
+    });
+
+    appStateManager.addListener('save', () => {
+      appStateManager.pushToState('messagesIDsLocals', {
+        channelLocals: this.channelLocals,
+        channelsByLocals: this.channelsByLocals,
+        channelCurLocal: this.channelCurLocal
+      });
+    });
+  }
 
   public getFullMessageID(msgID: number, channelID: number): number {
     if(!channelID || msgID <= 0) {
@@ -58,4 +80,6 @@ export class AppMessagesIDsManager {
   }
 }
 
-export default new AppMessagesIDsManager();
+const appMessagesIDsManager = new AppMessagesIDsManager();
+MOUNT_CLASS_TO.appMessagesIDsManager = appMessagesIDsManager;
+export default appMessagesIDsManager;

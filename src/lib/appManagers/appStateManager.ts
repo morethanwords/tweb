@@ -8,6 +8,7 @@ import { logger } from '../logger';
 import type { AppUsersManager } from './appUsersManager';
 import type { AppChatsManager } from './appChatsManager';
 import type { AuthState } from '../../types';
+import type { AppMessagesIDsManager } from './appMessagesIDsManager';
 
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
 const STATE_VERSION = App.version;
@@ -29,7 +30,12 @@ type State = Partial<{
   recentSearch: number[],
   stickerSets: AppStickersManager['stickerSets'],
   version: typeof STATE_VERSION,
-  authState: AuthState
+  authState: AuthState,
+  messagesIDsLocals: {
+    channelLocals: AppMessagesIDsManager['channelLocals'],
+    channelsByLocals: AppMessagesIDsManager['channelsByLocals'],
+    channelCurLocal: AppMessagesIDsManager['channelCurLocal'],
+  }
 }>;
 
 const REFRESH_KEYS = ['dialogs', 'allDialogsLoaded', 'messages', 'contactsList', 'stateCreatedTime',

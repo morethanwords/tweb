@@ -654,6 +654,12 @@ export class AppMessagesManager {
       if(state.dialogs) {
         state.dialogs.forEachReverse(dialog => {
           this.saveConversation(dialog);
+
+          // ! WARNING, убрать это когда нужно будет делать чтобы pending сообщения сохранялись
+          const message = this.getMessage(dialog.top_message);
+          if(message.deleted) {
+            this.reloadConversation(dialog.peerID);
+          }
         });
       }
     });
