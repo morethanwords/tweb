@@ -2,14 +2,13 @@ export default class SwipeHandler {
   private xDown: number;
   private yDown: number;
 
-  constructor(element: HTMLElement, private onSwipe: (xDiff: number, yDiff: number) => boolean) {
+  constructor(element: HTMLElement, private onSwipe: (xDiff: number, yDiff: number) => boolean, private verifyTouchTarget?: (evt: TouchEvent) => boolean) {
     element.addEventListener('touchstart', this.handleTouchStart, false);
     element.addEventListener('touchmove', this.handleTouchMove, false);
   }
 
   handleTouchStart = (evt: TouchEvent) => {
-    // * Fix for seek input
-    if((evt.target as HTMLElement).tagName == 'INPUT') {
+    if(this.verifyTouchTarget && !this.verifyTouchTarget(evt)) {
       this.xDown = this.yDown = null;
       return;
     }

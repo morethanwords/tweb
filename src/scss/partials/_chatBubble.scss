@@ -259,13 +259,13 @@ $bubble-margin: .25rem;
       cursor: pointer;
 
       #bubbles.is-selecting & {
-        transform: scale(1);
+        transform: scale3d(1, 1, 1);
         transform-origin: bottom;
         transition: transform var(--layer-transition);
       }
 
       #bubbles.is-selecting:not(.backwards) & {
-        transform: scale(.76);
+        transform: scale3d(.76, .76, 1);
       }
 
       // @include respond-to(handhelds) {
@@ -327,6 +327,10 @@ $bubble-margin: .25rem;
 
   &.is-group-last {
     padding-bottom: $bubble-margin;
+
+    .bubble-select-checkbox {
+      bottom: 8px;
+    }
 
     #bubbles-inner.is-chat &.is-in {
       .bubble-select-checkbox {

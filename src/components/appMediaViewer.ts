@@ -22,6 +22,7 @@ import { LazyLoadQueueBase } from "./lazyLoadQueue";
 import { renderImageFromUrl } from "./misc";
 import PopupForward from "./popupForward";
 import ProgressivePreloader from "./preloader";
+import Scrollable from "./scrollable";
 import appSidebarRight, { AppSidebarRight } from "./sidebarRight";
 import SwipeHandler from "./swipeHandler";
 
@@ -206,6 +207,13 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
         }
 
         return false;
+      }, (evt) => {
+        // * Fix for seek input
+        if((evt.target as HTMLElement).tagName == 'INPUT' || findUpClassName(evt.target, 'media-viewer-caption')) {
+          return false;
+        }
+
+        return true;
       });
     }
   }
@@ -274,7 +282,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     }
 
     let mover: HTMLElement = null;
-    ['media-viewer-mover', 'media-viewer-buttons', 'media-viewer-author'].find(s => {
+    ['media-viewer-mover', 'media-viewer-buttons', 'media-viewer-author', 'media-viewer-caption'].find(s => {
       try {
         mover = findUpClassName(target, s);
         if(mover) return true;
@@ -1093,13 +1101,17 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
   constructor(private inputFilter: 'inputMessagesFilterPhotoVideo' | 'inputMessagesFilterChatPhotos' = 'inputMessagesFilterPhotoVideo') {
     super(['delete', 'forward']);
 
-    const stub = document.createElement('div');
+    /* const stub = document.createElement('div');
     stub.classList.add(MEDIA_VIEWER_CLASSNAME + '-stub');
-    this.content.main.prepend(stub);
+    this.content.main.prepend(stub); */
 
     this.content.caption = document.createElement('div');
-    this.content.caption.classList.add(MEDIA_VIEWER_CLASSNAME + '-caption');
-    this.content.main.append(this.content.caption);
+    this.content.caption.classList.add(MEDIA_VIEWER_CLASSNAME + '-caption'/* , 'media-viewer-stub' */);
+
+    new Scrollable(this.content.caption);
+
+    //this.content.main.append(this.content.caption);
+    this.wholeDiv.append(this.content.caption);
 
     this.setBtnMenuToggle([{
       icon: 'forward',
@@ -1274,12 +1286,13 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
   private setCaption(message: any) {
     const caption = message.message;
+    this.content.caption.classList.toggle('hide', !caption);
     if(caption) {
-      this.content.caption.innerHTML = RichTextProcessor.wrapRichText(caption, {
+      this.content.caption.firstElementChild.innerHTML = RichTextProcessor.wrapRichText(caption, {
         entities: message.totalEntities
       });
     } else {
-      this.content.caption.innerHTML = '';
+      this.content.caption.firstElementChild.innerHTML = '';
     }
   }
 

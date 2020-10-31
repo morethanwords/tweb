@@ -624,7 +624,7 @@ export class AppImManager {
         } else if(target.classList.contains('name')) {
           let peerID = +target.dataset.peerID;
           
-          if(!isNaN(peerID)) {
+          if(peerID) {
             this.setPeer(peerID);
           }
 
@@ -632,7 +632,7 @@ export class AppImManager {
         } else if(target.tagName == "AVATAR-ELEMENT") {
           let peerID = +target.getAttribute('peer');
           
-          if(!isNaN(peerID)) {
+          if(peerID) {
             this.setPeer(peerID);
           }
 
@@ -652,7 +652,7 @@ export class AppImManager {
       } else if(target.tagName == 'IMG' && target.parentElement.tagName == "AVATAR-ELEMENT") {
         let peerID = +target.parentElement.getAttribute('peer');
         
-        if(!isNaN(peerID)) {
+        if(peerID) {
           this.setPeer(peerID);
         }
       }
