@@ -292,6 +292,14 @@ $chat-helper-size: 39px;
 		outline: none;
 		cursor: text;
 
+		@media only screen and (max-height: 30rem) {
+			max-height: unquote('max(39px, calc(100vh - 10rem))');
+		}
+
+		@include respond-to(handhelds) {
+			max-height: 10rem;
+		}
+
 		/* span.emoji {
 			font-size: .95rem;
 		} */

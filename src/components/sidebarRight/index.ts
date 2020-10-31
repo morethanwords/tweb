@@ -108,13 +108,13 @@ export class AppSidebarRight extends SidebarSlider {
 
     document.body.classList.toggle(RIGHT_COLUMN_ACTIVE_CLASSNAME, enable);
     //console.log('sidebar selectTab', enable, willChange);
-    if(mediaSizes.isMobile) {
+    //if(mediaSizes.isMobile) {
       //appImManager._selectTab(active ? 1 : 2);
       appImManager.selectTab(active ? 1 : 2);
       return new Promise(resolve => {
-        setTimeout(resolve, 250); // delay of slider animation
+        setTimeout(resolve, mediaSizes.isMobile ? 250 : 200); // delay of slider animation
       });    
-    }
+    //}
 
     return new Promise(resolve => {
       setTimeout(resolve, 200); // delay for third column open
