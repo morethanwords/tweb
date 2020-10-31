@@ -55,7 +55,7 @@ export class AppSidebarRight extends SidebarSlider {
     this.gifsTab = gifsTab;
 
     mediaSizes.addListener('changeScreen', (from, to) => {
-      if(from !== undefined && to == ScreenSize.medium && from !== ScreenSize.mobile) {
+      if(to == ScreenSize.medium && from !== ScreenSize.mobile) {
         this.toggleSidebar(false);
       }
     });

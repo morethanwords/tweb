@@ -315,7 +315,7 @@ export default class AppSharedMediaTab implements SliderTab {
 
       case 'inputMessagesFilterDocument': {
         for(let message of messages) {
-          if(!message.media.document || ['voice', 'audio', 'gif', 'sticker'].includes(message.media.document.type)) {
+          if(!message.media.document || ['voice', 'audio', 'gif', 'sticker', 'round'].includes(message.media.document.type)) {
             continue;
           }
           

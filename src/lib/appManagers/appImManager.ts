@@ -28,7 +28,7 @@ import appSidebarLeft from "../../components/sidebarLeft";
 import appSidebarRight, { AppSidebarRight, RIGHT_COLUMN_ACTIVE_CLASSNAME } from '../../components/sidebarRight';
 import StickyIntersector from '../../components/stickyIntersector';
 import { wrapAlbum, wrapDocument, wrapPhoto, wrapPoll, wrapReply, wrapSticker, wrapVideo } from '../../components/wrappers';
-import mediaSizes from '../../helpers/mediaSizes';
+import mediaSizes, { ScreenSize } from '../../helpers/mediaSizes';
 import { isTouchSupported } from '../../helpers/touchSupport';
 import { isAndroid, isApple, isSafari } from '../../helpers/userAgent';
 import { InputNotifyPeer, InputPeerNotifySettings, NotifyPeer, Update } from '../../layer';
@@ -178,8 +178,44 @@ export class AppImManager {
 
     this.chatSelection = new ChatSelection(this, appMessagesManager/* this.bubblesContainer, this.bubbles */);
     
+    const chatUtils = this.chatInfo.nextElementSibling;
     this.chatAudio = new ChatAudio();
-    this.chatInfo.nextElementSibling.prepend(this.chatAudio.divAndCaption.container);
+    chatUtils.prepend(this.chatAudio.divAndCaption.container);
+
+    // * fix topbar overflow section
+
+    const setUtilsWidth = () => {
+      this.log('utils width:', chatUtils.scrollWidth);
+      this.chatInfo.style.setProperty('--utils-width', chatUtils.scrollWidth + 'px');
+    };
+
+    let mutationRAF: number;
+    const mutationObserver = new MutationObserver((mutationList) => {
+      if(mutationRAF) window.cancelAnimationFrame(mutationRAF);
+      //mutationRAF = window.setTimeout(() => {
+      mutationRAF = window.requestAnimationFrame(() => {
+        //mutationRAF = window.requestAnimationFrame(() => {
+          setUtilsWidth();
+        //});
+      });
+      //}, 64);
+    });
+    
+    mutationObserver.observe(chatUtils, {
+      attributes: true,
+      childList: true,
+      subtree: true
+    });
+
+    mediaSizes.addListener('changeScreen', (from, to) => {
+      setUtilsWidth();
+
+      this.chatAudio.divAndCaption.container.classList.toggle('is-floating', to == ScreenSize.mobile);
+      this.pinnedMessageContainer.divAndCaption.container.classList.toggle('is-floating', to == ScreenSize.mobile 
+        /* || (!this.chatAudio.divAndCaption.container.classList.contains('hide') && to == ScreenSize.medium) */);
+    });
+
+    // * fix topbar overflow section end
 
     this.pinnedMessageContainer = new PinnedContainer('message', new ReplyContainer('pinned-message'), () => {
       if(appPeersManager.canPinMessage(this.peerID)) {
@@ -2505,7 +2541,7 @@ export class AppImManager {
           if(message.grouped_id) additionMsgIDs.splice(i, 1);
         }
 
-        maxID = additionMsgIDs[additionMsgIDs.length - 1];
+        maxID = additionMsgIDs[additionMsgIDs.length - 1] || maxID;
       }
     }
 

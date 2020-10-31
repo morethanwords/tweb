@@ -101,27 +101,11 @@ $chat-helper-size: 39px;
 		flex: 1 1 auto;
 		overflow: hidden;
 
+		max-width: calc(100% - var(--utils-width));
+
 		@include respond-to(medium-screens) {
 			body.is-right-column-shown & {
-				max-width: calc(100% - var(--right-column-width) * 1.6);
-			}
-		}
-	}
-
-	@include respond-to(medium-screens) {
-		&.is-pinned-message-shown {
-			body.is-right-column-shown & {
-				.chat-info {
-					max-width: calc(100% - var(--right-column-width) * 1.75);
-				}
-			}
-
-			&.is-pinned-audio-shown {
-				body.is-right-column-shown & {
-					.chat-info {
-						max-width: calc(100% - var(--right-column-width) * 2.25);
-					}
-				}
+				max-width: calc(100% - var(--right-column-width) - var(--utils-width));
 			}
 		}
 	}
@@ -162,10 +146,6 @@ $chat-helper-size: 39px;
 		padding-left: 10px;
 		max-width: 100%;
 		overflow: hidden;
-
-    @include respond-to(handhelds) {
-			max-width: 208px;
-    }
 	}
 	
 	.person {
@@ -609,10 +589,7 @@ $chat-helper-size: 39px;
 	cursor: pointer;
 	font-size: 18px;
 	line-height: 24px;
-	white-space: nowrap;
-	text-overflow: ellipsis;
 	max-width: calc(100% - 1.5rem);
-	overflow: hidden;
 
 	/* @include respond-to(handhelds) {
 		text-overflow: ellipsis;
@@ -625,7 +602,13 @@ $chat-helper-size: 39px;
 	}
 }
 
-.info#im-subtitle {
+#im-title, #im-subtitle {
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	overflow: hidden;
+}
+
+#im-subtitle {
 	margin-top: -2px;
 }
 
@@ -696,31 +679,6 @@ $chat-helper-size: 39px;
 		}
 	}
 
-	@include respond-to(handhelds) {
-		.pinned-message {
-			position: absolute !important;
-			top: 100%;
-			width: 100% !important;
-			background: #fff !important;
-			left: 0;
-			// border-top: 1px solid #ccc;
-			max-height: 100% !important;
-			// height: 100%;
-			height: 52px;
-			padding: 1rem;
-
-			&-subtitle {
-				max-width: 280px;
-			}
-		}
-
-		/* .pinned-message, .reply {
-			&-subtitle {
-				line-height: 16px !important;
-			}
-		} */
-	}
-
 	.pinned-message, .reply {
 		cursor: pointer;
 		display: flex;
@@ -728,10 +686,10 @@ $chat-helper-size: 39px;
 		align-items: center;
 		overflow: hidden;
 		box-sizing: border-box;
-		width: 187px;
 		margin-right: 1rem;
 		max-height: 35px;
 		position: relative;
+		user-select: none;
 		/* padding: .25rem; */
 
 		&.is-media {
@@ -742,10 +700,6 @@ $chat-helper-size: 39px;
 			.emoji:first-child {
 				margin-right: .25rem;
 			}
-		}
-		
-		html.no-touch &:hover {
-			background-color: var(--color-gray-hover);
 		}
 		
 		&-border {
@@ -837,18 +791,37 @@ $chat-helper-size: 39px;
 		} */
 	}
 
-	.pinned-message {
-		display: none;
-
-		&-close {
-			visibility: visible !important;
-			left: -3rem;
+	.reply {
+		html.no-touch &:hover {
+			background-color: var(--color-gray-hover);
 		}
 	}
 
 	.pinned-container {
 		flex: 0 0 auto;
 		overflow: visible;
+
+		&.is-floating {
+			position: absolute !important;
+			top: 100%;
+			width: 100% !important;
+			background: #fff !important;
+			left: 0;
+			max-height: 100% !important;
+			height: 52px;
+
+			.pinned-container-close {
+				position: absolute;
+				font-size: 1.4rem;
+				right: 9px;
+				display: flex;
+			}
+
+			.pinned-container-wrapper {
+				padding: 0 1rem;
+				height: 100%;
+			}
+		}
 
 		@include respond-to(handhelds) {
 			box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, .15);
@@ -865,24 +838,50 @@ $chat-helper-size: 39px;
 			}
 		}
 
+		&-content {
+			width: 100%;
+			overflow: hidden;
+		}
+
 		&-close, .pinned-audio-ico {
 			font-size: 1.5rem;
-			position: absolute;
 			display: flex;
 			justify-content: center;
-			right: 0;
+			z-index: 1;
+			flex: 0 0 auto;
 		}
 
 		&-close {
-			visibility: hidden;
-			//left: -3rem;
+			display: none;
+		}
 
-			@include respond-to(handhelds) {
-				font-size: 1.4rem;
-				right: 9px;
-				left: auto;
-				visibility: visible;
+		&-wrapper {
+			display: flex;
+			flex: 1 1 auto;
+			overflow: hidden;
+			align-items: center;
+			padding: .25rem;
+			border-radius: 4px;
+
+			html.no-touch &:hover {
+				background-color: var(--color-gray-hover);
 			}
+		}
+	}
+
+	.pinned-message {
+		display: none;
+		width: auto;
+
+		&:not(.is-floating) {
+			.pinned-message-close {
+				display: flex;
+				margin-right: .75rem;
+			}
+		}
+
+		&.is-floating .pinned-message-subtitle {
+			max-width: 280px;
 		}
 	}
 
@@ -893,32 +892,19 @@ $chat-helper-size: 39px;
     cursor: pointer;
 		//width: 210px;
 
-		@include respond-to(handhelds) {
-			height: 52px;
-			
-			padding-left: 58px;
-			background: #fff;
-			width: 100%;
-			position: absolute;
-			left: 0;
-			top: 100%;
-		}
-
-		@include respond-to(not-handhelds) {
-			padding-left: 2.5rem;
-			padding-right: 2.5rem;
+		&:not(.is-floating) {
+			padding-right: 1.75rem;
 			max-width: 210px;
 			position: relative;
 		}
-		
-		&-ico {
-			left: 0;
-			right: auto !important;
-			color: #50a2e9;
 
-			@include respond-to(handhelds) {
-				margin-left: 20px;
-			}
+		&.is-floating .pinned-audio-ico {
+			margin-left: -.25rem;
+		}
+
+		&-ico {
+			color: #50a2e9;
+			margin-right: .375rem;
 
 			&:before {
 				content: $tgico-largeplay;

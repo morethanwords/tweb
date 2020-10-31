@@ -23,14 +23,14 @@ export class ChatAudio extends PinnedContainer {
 
     this.divAndCaption.border.remove();
 
-    this.toggleEl = document.createElement('div');
-    this.toggleEl.classList.add('pinned-audio-ico', 'tgico');
+    this.toggleEl = document.createElement('button');
+    this.toggleEl.classList.add('pinned-audio-ico', 'tgico', 'btn-icon');
     this.toggleEl.addEventListener('click', (e) => {
       cancelEvent(e);
       appMediaPlaybackController.toggle();
     });
 
-    this.divAndCaption.container.prepend(this.toggleEl);
+    this.wrapper.prepend(this.toggleEl);
 
     $rootScope.$on('audio_play', (e) => {
       const {doc, mid} = e.detail;

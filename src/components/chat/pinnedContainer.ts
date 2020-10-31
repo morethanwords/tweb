@@ -2,6 +2,7 @@ import mediaSizes from "../../helpers/mediaSizes";
 import appImManager from "../../lib/appManagers/appImManager";
 import { cancelEvent } from "../../lib/utils";
 import DivAndCaption from "../divAndCaption";
+import { ripple } from "../ripple";
 
 const classNames: string[] = [];
 const CLASSNAME_BASE = 'pinned-container';
@@ -9,6 +10,7 @@ const HEIGHT = 52;
 
 export default class PinnedContainer {
   private close: HTMLElement;
+  protected wrapper: HTMLElement;
 
   constructor(protected className: string, public divAndCaption: DivAndCaption<(title: string, subtitle: string, message?: any) => void>, onClose?: () => void | Promise<boolean>) {
     /* const prev = this.divAndCaption.fill;
@@ -22,11 +24,19 @@ export default class PinnedContainer {
     divAndCaption.container.classList.add(CLASSNAME_BASE, 'hide');
     divAndCaption.title.classList.add(CLASSNAME_BASE + '-title');
     divAndCaption.subtitle.classList.add(CLASSNAME_BASE + '-subtitle');
+    divAndCaption.content.classList.add(CLASSNAME_BASE + '-content');
 
     this.close = document.createElement('button');
     this.close.classList.add(CLASSNAME_BASE + '-close', `pinned-${className}-close`, 'btn-icon', 'tgico-close');
 
-    divAndCaption.container.append(this.close);
+    //divAndCaption.container.prepend(this.close);
+
+    this.wrapper = document.createElement('div');
+    this.wrapper.classList.add(CLASSNAME_BASE + '-wrapper');
+    this.wrapper.append(...Array.from(divAndCaption.container.children));
+    ripple(this.wrapper);
+    
+    divAndCaption.container.append(this.close, this.wrapper);
 
     this.close.addEventListener('click', (e) => {
       cancelEvent(e);
@@ -46,6 +56,8 @@ export default class PinnedContainer {
     } else if(hide == isHidden) {
       return;
     }
+
+    this.divAndCaption.container.classList.toggle('is-floating', mediaSizes.isMobile);
 
     const scrollTop = mediaSizes.isMobile /* && !appImManager.scrollable.isScrolledDown */ ? appImManager.scrollable.scrollTop : undefined;
     this.divAndCaption.container.classList.toggle('hide', hide);
