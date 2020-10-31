@@ -179,11 +179,13 @@ export class RLottiePlayer extends EventListenerBase<{
     this.setMainLoop();
   }
 
-  public pause() {
+  public pause(clearPendingRAF = true) {
     if(this.paused) return;
 
     this.paused = true;
-    clearTimeout(this.rafId);
+    if(clearPendingRAF) {
+      clearTimeout(this.rafId);
+    }
     //window.cancelAnimationFrame(this.rafId);
   }
 
@@ -292,38 +294,34 @@ export class RLottiePlayer extends EventListenerBase<{
   }
 
   private mainLoopForwards() {
-    const frame = this.curFrame;
-    this.curFrame += this.skipDelta;
+    const frame = this.curFrame >= this.frameCount ? this.curFrame = 0 : this.curFrame += this.skipDelta;
+    //console.log('mainLoopForwards', this.curFrame, this.skipDelta, frame);
 
     this.requestFrame(frame);
-    if(this.curFrame >= this.frameCount) {
+    if((frame + this.skipDelta) >= this.frameCount) {
       //this.playedTimes++;
 
       if(!this.loop) {
-        this.pause();
+        this.pause(false);
         return false;
       }
-
-      this.curFrame = 0;
     }
 
     return true;
   }
   
   private mainLoopBackwards() {
-    const frame = this.curFrame;
-    this.curFrame -= this.skipDelta;
+    const frame = this.curFrame < 0 ? this.curFrame = this.frameCount - 1 : this.curFrame -= this.skipDelta;
+    //console.log('mainLoopBackwards', this.curFrame, this.skipDelta, frame);
 
     this.requestFrame(frame);
-    if(this.curFrame < 0) {
+    if((frame - this.skipDelta) < 0) {
       //this.playedTimes++;
 
       if(!this.loop) {
-        this.pause();
+        this.pause(false);
         return false;
       }
-
-      this.curFrame = this.frameCount - 1;
     }
 
     return true;
