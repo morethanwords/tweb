@@ -593,7 +593,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
 
     // чтобы проверить установленную позицию - раскомментировать
-    //throw '';
+    // throw '';
 
     //await new Promise((resolve) => setTimeout(resolve, 5e3));
 

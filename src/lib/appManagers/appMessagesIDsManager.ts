@@ -81,5 +81,5 @@ export class AppMessagesIDsManager {
 }
 
 const appMessagesIDsManager = new AppMessagesIDsManager();
-MOUNT_CLASS_TO.appMessagesIDsManager = appMessagesIDsManager;
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appMessagesIDsManager = appMessagesIDsManager);
 export default appMessagesIDsManager;

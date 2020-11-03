@@ -263,6 +263,9 @@ $move-duration: .35s;
       //object-fit: contain;
       opacity: 1;
 
+      /* border-radius: inherit;
+      transition: $open-duration border-radius; */
+
       //&.thumbnail {
         position: absolute;
         //z-index: -1;
@@ -369,7 +372,8 @@ $move-duration: .35s;
   }
 
   &-mover.active &-aspecter {
-    transition: $open-duration all;
+    transition: width $open-duration, height $open-duration, transform $open-duration, border-radius $open-duration;
+    //transition: $open-duration all;
   }
 
   &-whole {
