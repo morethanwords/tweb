@@ -649,9 +649,21 @@ export class ChatInput {
   public initMessagesForward(mids: number[]) {
     const f = () => {
       //const peerTitles: string[]
-      const fromIDs = new Set(mids.map(mid => appMessagesManager.getMessage(mid).fromID));
-      const onlyFirstName = fromIDs.size > 1;
-      const peerTitles = [...fromIDs].map(peerID => appPeersManager.getPeerTitle(peerID, true, onlyFirstName));
+      const smth: Set<string | number> = new Set(mids.map(mid => {
+        const message = appMessagesManager.getMessage(mid);
+        if(message.fwd_from && message.fwd_from.from_name && !message.fromID && !message.fwdFromID) {
+          return message.fwd_from.from_name;
+        } else {
+          return message.fromID;
+        }
+      }));
+
+      const onlyFirstName = smth.size > 1;
+      const peerTitles = [...smth].map(smth => {
+        return typeof(smth) === 'number' ? 
+          appPeersManager.getPeerTitle(smth, true, onlyFirstName) : 
+          (onlyFirstName ? smth.split(' ')[0] : smth);
+      });
 
       const title = peerTitles.length < 3 ? peerTitles.join(' and ') : peerTitles[0] + ' and ' + (peerTitles.length - 1) + ' others';
       if(mids.length == 1) {

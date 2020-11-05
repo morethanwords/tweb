@@ -51,6 +51,10 @@ export class AppPeersManager {
   }
 
   public getPeerTitle(peerID: number | any, plainText = false, onlyFirstName = false) {
+    if(!peerID) {
+      peerID = $rootScope.myID;
+    }
+    
     let peer: any = {}; 
     if(!isObject(peerID)) {
       peer = this.getPeer(peerID);
@@ -206,6 +210,8 @@ export class AppPeersManager {
   }
 
   public getPeerColorByID(peerID: number, pic = true) {
+    if(!peerID) return '';
+
     const idx = DialogColorsMap[(peerID < 0 ? -peerID : peerID) % 7];
     const color = (pic ? DialogColors : DialogColorsFg)[idx];
     return color;
