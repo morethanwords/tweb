@@ -484,7 +484,7 @@ export default class Scrollable extends ScrollableBase {
       const clientHeight = this.container.clientHeight;
       const height = element.scrollHeight;
       
-      const d = (clientHeight - height) / 2;
+      const d = height >= clientHeight ? 0 : (clientHeight - height) / 2;
       offset -= d;
       
       this.scrollTo(offset, 'top', smooth);
@@ -558,7 +558,7 @@ export class ScrollableX extends ScrollableBase {
       const clientWidth = this.container.clientWidth;
       const width = element.scrollWidth;
       
-      const d = (clientWidth - width) / 2;
+      const d = width >= clientWidth ? 0 : (clientWidth - width) / 2;
       offset -= d;
       
       this.scrollTo(offset, 'left', smooth, undefined, scrollTime);
