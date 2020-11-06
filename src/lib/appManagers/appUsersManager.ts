@@ -584,7 +584,7 @@ export class AppUsersManager {
       q: query,
       limit
     }).then((peers) => {
-      //console.log(peers);
+      //console.log('search contacts result:', peers);
       this.saveApiUsers(peers.users);
       appChatsManager.saveApiChats(peers.chats);
 

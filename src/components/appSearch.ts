@@ -182,9 +182,8 @@ export default class AppSearch {
         //console.log('input search contacts result:', contacts);
 
         let setResults = (results: Peer[], group: SearchGroup, showMembersCount = false) => {
-          results.forEach((inputPeer) => {
-            let peerID = appPeersManager.getPeerID(inputPeer);
-
+          // ! because contacts.search returns duplicates in my_results
+          new Set(results.map(peer => appPeersManager.getPeerID(peer))).forEach((peerID) => {
             if(peerID == $rootScope.myID) {
               if(!renderedSaved) {
                 this.renderSaved();

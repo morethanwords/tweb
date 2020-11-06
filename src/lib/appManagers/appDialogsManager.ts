@@ -838,7 +838,7 @@ export class AppDialogsManager {
       dialog = _dialog;
     }
 
-    let peerID: number = dialog.peerID;
+    const peerID: number = dialog.peerID;
 
     if(!container) {
       if(this.doms[peerID]) return;
@@ -851,17 +851,17 @@ export class AppDialogsManager {
 
     let title = appPeersManager.getPeerTitle(peerID, false, onlyFirstName);
 
-    let avatarEl = new AvatarElement();
+    const avatarEl = new AvatarElement();
     avatarEl.setAttribute('dialog', meAsSaved ? '1' : '0');
     avatarEl.setAttribute('peer', '' + peerID);
     avatarEl.classList.add('dialog-avatar');
 
     if(drawStatus && peerID != $rootScope.myID && dialog.peer) {
-      let peer = dialog.peer;
+      const peer = dialog.peer;
       
       switch(peer._) {
         case 'peerUser':
-          let user = appUsersManager.getUser(peerID);
+          const user = appUsersManager.getUser(peerID);
           //console.log('found user', user);
   
           if(user.status && user.status._ == 'userStatusOnline') {
@@ -874,10 +874,10 @@ export class AppDialogsManager {
       }
     }
 
-    let captionDiv = document.createElement('div');
+    const captionDiv = document.createElement('div');
     captionDiv.classList.add('user-caption');
 
-    let titleSpan = document.createElement('span');
+    const titleSpan = document.createElement('span');
     titleSpan.classList.add('user-title');
 
     if(peerID == $rootScope.myID && meAsSaved) {
@@ -888,11 +888,11 @@ export class AppDialogsManager {
     //p.classList.add('')
 
     // в других случаях иконка верификации не нужна (а первый - это главные чатлисты)
-    if(!container) {
+    //if(!container) {
       let peer: any;
 
       // for muted icon
-      titleSpan.classList.add('tgico');
+      titleSpan.classList.add('tgico'); // * эта строка будет актуальна только для !container, но ладно
 
       if(peerID < 0) {
         peer = appChatsManager.getChat(-peerID);
@@ -906,15 +906,15 @@ export class AppDialogsManager {
         i.classList.add('verified-icon');
         titleSpan.append(i);
       }
-    }
+    //}
     
-    let span = document.createElement('span');
+    const span = document.createElement('span');
     span.classList.add('user-last-message');
 
     //captionDiv.append(titleSpan);
     //captionDiv.append(span);
 
-    let paddingDiv = document.createElement('div');
+    const paddingDiv = document.createElement('div');
     paddingDiv.classList.add('rp');
     paddingDiv.append(avatarEl, captionDiv);
 
@@ -938,30 +938,34 @@ export class AppDialogsManager {
     }
     
 
-    let li = document.createElement('li');
+    const li = document.createElement('li');
     li.append(paddingDiv);
     li.setAttribute('data-peerID', '' + peerID);
 
-    let statusSpan = document.createElement('span');
+    const statusSpan = document.createElement('span');
     statusSpan.classList.add('message-status');
 
-    let lastTimeSpan = document.createElement('span');
+    const lastTimeSpan = document.createElement('span');
     lastTimeSpan.classList.add('message-time');
 
-    let unreadMessagesSpan = document.createElement('span');
+    const unreadMessagesSpan = document.createElement('span');
+    unreadMessagesSpan.classList.add('dialog-subtitle-badge');
 
-    let titleP = document.createElement('p');
+    const titleP = document.createElement('p');
+    titleP.classList.add('dialog-title');
 
-    let rightSpan = document.createElement('span');
+    const rightSpan = document.createElement('span');
+    rightSpan.classList.add('dialog-title-details');
     rightSpan.append(statusSpan, lastTimeSpan);
     titleP.append(titleSpan, rightSpan);
 
-    let messageP = document.createElement('p');
+    const messageP = document.createElement('p');
+    messageP.classList.add('dialog-subtitle');
     messageP.append(span, unreadMessagesSpan);
 
     captionDiv.append(titleP, messageP);
 
-    let dom: DialogDom = {
+    const dom: DialogDom = {
       avatarEl,
       captionDiv,
       titleSpan,

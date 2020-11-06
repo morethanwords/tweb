@@ -194,18 +194,32 @@
     align-items: flex-start;
     //height: 1.7rem; // hot-fix
     height: 27px; // maybe new hot-fix
-    
-    /* span:not(.tgico-pinnedchat):not(.emoji):last-child { */
-    .user-title + span {
-      /* font-size: .9rem; */
-      //font-size: .8rem;
-      font-size: .75rem;
-      padding: 1px 0px 0px 0px;
-      flex: 0 0 auto;
-    }
+  }
 
-    .user-last-message + span:not(.tgico-pinnedchat) {
-      font-size: .9rem;
+  .dialog {
+    &-title {
+      &-details {
+        /* font-size: .9rem; */
+        //font-size: .8rem;
+        font-size: .75rem;
+        padding: 1px 0px 0px 0px;
+        flex: 0 0 auto;
+      }
+    }
+    
+    &-subtitle {
+      &-badge {
+        font-size: .9rem;
+
+        &.tgico-pinnedchat {
+          width: 24px;
+          font-size: 1.5rem;
+        }
+
+        &:not(:empty), &.tgico-pinnedchat {
+          margin-left: .5rem;
+        }
+      }
     }
   }
 
@@ -267,7 +281,6 @@
   }
 
   .user-last-message {
-    max-width: 86%;
     img.emoji {
       width: 20px;
       height: 20px;
@@ -317,14 +330,9 @@
 
   .unread {
     min-width: 24px;
-    padding: 0 8px;
+    padding: 0 7.75px; // ! fix initial width due to font-size: .9rem;
     font-weight: 500;
     transition: .2s background-color;
-  }
-
-  .tgico-pinnedchat {
-    width: 24px;
-    font-size: 1.5rem;
   }
 
   .unread:empty {
