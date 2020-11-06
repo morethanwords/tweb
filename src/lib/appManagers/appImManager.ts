@@ -365,7 +365,7 @@ export class AppImManager {
 
         this.bubbleGroups.removeBubble(bubble, tempID);
 
-        if(message.media?.webpage && !bubble.querySelector('.box.web')) {
+        if(message.media?.webpage && !bubble.querySelector('.web')) {
           const mounted = this.getMountedBubble(mid);
           if(!mounted) return;
           this.renderMessage(mounted.message, true, false, mounted.bubble, false);
@@ -2032,7 +2032,7 @@ export class AppImManager {
           bubble.classList.add('webpage');
           
           let box = document.createElement('div');
-          box.classList.add('box', 'web');
+          box.classList.add('web');
           
           let quote = document.createElement('div');
           quote.classList.add('quote');
@@ -2066,7 +2066,11 @@ export class AppImManager {
               });
               //}
             } else {
-              doc = null;
+              const docDiv = wrapDocument(doc, false, false, message.mid);
+              preview.append(docDiv);
+              preview.classList.add('preview-with-document');
+              //messageDiv.classList.add((webpage.type || 'document') + '-message');
+              //doc = null;
             }
           }
           

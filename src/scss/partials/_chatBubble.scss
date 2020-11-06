@@ -379,10 +379,20 @@ $bubble-margin: .25rem;
       width: min-content;
     }
     
-    .box.web {
+    .web {
       /* width: max-content; */ // commented 10.02.2020
       /* width: min-content; */
       max-width: 100%;
+    }
+  }
+
+  &.webpage {
+    .preview-with-document {
+      margin-bottom: 0 !important;
+    }
+
+    .document {
+      height: 3.375rem;
     }
   }
 
@@ -638,8 +648,68 @@ $bubble-margin: .25rem;
       //clip-path: ellipse(100px 100px at center);
     }
   }
+
+  .web {
+    margin-top: -6px !important;
+    // margin-bottom: 5px;
+    max-width: 100%;
+    overflow: hidden;
+    
+    .preview {
+      max-height: unquote('min(400px, 100%)');
+      max-width: unquote('min(480px, 100%)');
+      /* max-height: 100%;
+      max-width: 100%; */
+      border-radius: 4px;
+      margin-bottom: 3px;
+      overflow: hidden;
+      user-select: none;
+      cursor: pointer;
+      position: relative;
+
+      width: max-content;
+      
+      img, video {
+        max-width: 100%;
+        /* width: 100%;
+        height: 100%; */
+      }
+    }
+    
+    .title {
+      letter-spacing: -0.2px;
+      line-height: 1.2;
+      font-weight: 500 !important;
+    }
+    
+    .name {
+      letter-spacing: -0.3px;
+      display: block;
+      
+      html.no-touch &:hover {
+        text-decoration: underline;
+      }
+    }
+    
+    .text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.2;
+      letter-spacing: -0.3px;
+      margin-top: 2px;
+      font-size: 0.965rem;
+    }
+
+    .quote {
+      // padding-left: .5rem;
+      padding-left: 0.55rem;
+      max-width: 100%;
+      overflow: hidden;
+      width: 100%;
+    }
+  }
   
-  .box, .reply {
+  .web, .reply {
     font-size: .95rem;
     // margin: .25rem;
     margin: 4px 4px 4px 6px;
@@ -653,70 +723,6 @@ $bubble-margin: .25rem;
       cursor: pointer;
     } */
     
-    &.web {
-      margin-top: -6px;
-      // margin-bottom: 5px;
-      max-width: 100%;
-      overflow: hidden;
-      
-      .preview {
-        max-height: unquote('min(400px, 100%)');
-        max-width: unquote('min(480px, 100%)');
-        /* max-height: 100%;
-        max-width: 100%; */
-        border-radius: 4px;
-        margin-bottom: 3px;
-        overflow: hidden;
-        user-select: none;
-        cursor: pointer;
-        position: relative;
-
-        width: max-content;
-        
-        img, video {
-          max-width: 100%;
-          /* width: 100%;
-          height: 100%; */
-        }
-      }
-      
-      .title {
-        letter-spacing: -0.2px;
-        line-height: 1.2;
-        font-weight: 500 !important;
-      }
-      
-      .name {
-        letter-spacing: -0.3px;
-        display: block;
-        
-        html.no-touch &:hover {
-          text-decoration: underline;
-        }
-      }
-      
-      .text {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        line-height: 1.2;
-        letter-spacing: -0.3px;
-        margin-top: 2px;
-        font-size: 0.965rem;
-      }
-    }
-    
-    .quote {
-      // padding-left: .5rem;
-      padding-left: 0.55rem;
-      max-width: 100%;
-      overflow: hidden;
-      width: 100%;
-    }
-
-    .text/* , .reply-subtitle */ {
-      line-height: 1.2;
-    }
-    
     .name, .reply-title {
       font-weight: 500 !important;
       display: inline!important;
@@ -728,7 +734,7 @@ $bubble-margin: .25rem;
       width: fit-content;
     }
 
-    .box.web {
+    .web {
       .quote {
         display: flex;
         justify-content: space-between;
@@ -825,60 +831,39 @@ $bubble-margin: .25rem;
     .emoji {
       font-size: 1.2rem;
     }
-
-    pre, code {
-      white-space: pre-wrap;       /* css-3 */
-      white-space: -moz-pre-wrap;  /* Mozilla, since 1999 */
-      white-space: -pre-wrap;      /* Opera 4-6 */
-      white-space: -o-pre-wrap;    /* Opera 7 */
-      word-wrap: break-word;       /* Internet Explorer 5.5+ */
-    }
   }
 
-  // all for audio (not voice)
-  .message.audio-message {
+  .audio:not(.is-voice) {
+    justify-content: unset;
+    max-width: none;
+    width: 258px;
 
-    .audio {
-      justify-content: unset;
-      max-width: none;
+    $parent: ".audio";
 
-      
-      @include respond-to(handhelds) {
-        height: 59px;
-        padding-left: 47px;
-      }
-
-      // .preloader-container {
-      //   @include respond-to(handhelds) {
-      //     width: 30px;
-      //     height: 30px;
-      //     // left: 2px;
-      //   }
-      // }
-
+    #{$parent} {
       &-time {
         padding-bottom: 7px;
       }
-
+  
       &-time, &-subtitle {
         color: #4fae4e;
         line-height: 1.45;
         margin-top: 0;
       }
-
+  
       &-title {
         font-weight: 500;
         margin-left: -1px;
       }
-
+  
       &-details {
         margin-top: 8px;
-
+  
         @include respond-to(handhelds) {
           margin-top: -1px;
         }
       }
-
+  
       &-ico {
         font-size: 0;
         
@@ -888,6 +873,19 @@ $bubble-margin: .25rem;
         }
       }
     }
+    
+    @include respond-to(handhelds) {
+      height: 59px;
+      padding-left: 47px;
+    }
+
+    // .preloader-container {
+    //   @include respond-to(handhelds) {
+    //     width: 30px;
+    //     height: 30px;
+    //     // left: 2px;
+    //   }
+    // }
 
     .progress-line {
       /* width: calc(100% + 50px); */
@@ -917,7 +915,10 @@ $bubble-margin: .25rem;
         }
       }
     }
+  }
 
+  // all for audio (not voice)
+  .message.audio-message {
     //&.audio-message {
       min-width: 275px;
       //max-width: 380px !important;
@@ -1301,10 +1302,10 @@ $bubble-margin: .25rem;
   .quote {
     border-left: 2px $color-blue solid;
     
-    * {
+    /* * {
       overflow: hidden;
       text-overflow: ellipsis;
-    }
+    } */
   }
 
   .quote .name, .reply-title {
@@ -1345,7 +1346,7 @@ $bubble-margin: .25rem;
     color: #707579 !important;
   }
 
-  .message.audio-message {
+  .audio:not(.is-voice) {
     .progress-line {
       &__seek {
         background: rgba(193, 207, 220, 0.39);
@@ -1437,7 +1438,7 @@ $bubble-margin: .25rem;
 
   &.is-reply {
     &.emoji-big, &.sticker {
-      .box, .reply {
+      .web, .reply {
         background-color: #eeffde;
         right: calc(100% + 10px);
         border-color: rgba($color-green, .12);
