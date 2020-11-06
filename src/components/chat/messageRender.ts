@@ -1,3 +1,5 @@
+import { getFullDate } from "../../helpers/date";
+import RichTextProcessor from "../../lib/richtextprocessor";
 import { formatNumber } from "../../lib/utils";
 
 type Message = any;
@@ -12,8 +14,10 @@ export namespace MessageRender {
     let time = ('0' + date.getHours()).slice(-2) + ':' + ('0' + date.getMinutes()).slice(-2);
 
     if(message.views) {
+      const postAuthor = message.post_author || message.fwd_from?.post_author;
+
       bubble.classList.add('channel-post');
-      time = formatNumber(message.views, 1) + ' <i class="tgico-channelviews"></i> ' + time;
+      time = formatNumber(message.views, 1) + ' <i class="tgico-channelviews"></i> ' + (postAuthor ? RichTextProcessor.wrapEmojiText(postAuthor) + ', ' : '') + time;
   
       if(!message.savedFrom) {
         const forward = document.createElement('div');
@@ -35,9 +39,14 @@ export namespace MessageRender {
       time = '<i class="edited">edited</i> ' + time;
     }
 
+    const title = getFullDate(date) 
+      + (message.edit_date ? `\nEdited: ${getFullDate(new Date(message.edit_date * 1000))}` : '');
+      + (message.fwd_from ? `\nOriginal: ${getFullDate(new Date(message.fwd_from.date * 1000))}` : '');
+
     const timeSpan = document.createElement('span');
     timeSpan.classList.add('time', 'tgico');
-    timeSpan.innerHTML = `${time}<div class="inner tgico">${time}</div>`;
+    timeSpan.title = title;
+    timeSpan.innerHTML = `${time}<div class="inner tgico" title="${title}">${time}</div>`;
 
     messageDiv.append(timeSpan);
 

@@ -545,8 +545,9 @@ export class AppDialogsManager {
   }
 
   public setListClickListener(list: HTMLUListElement, onFound?: () => void, withContext = false) {
-    list.addEventListener('click', (e: Event) => {
-      cancelEvent(e);
+    list.addEventListener('mousedown', (e) => {
+      if(e.button != 0) return;
+      //cancelEvent(e);
 
       this.log('dialogs click list');
       let target = e.target as HTMLElement;

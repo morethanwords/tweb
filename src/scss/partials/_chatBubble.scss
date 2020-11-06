@@ -1020,6 +1020,7 @@ $bubble-margin: .25rem;
         align-items: center;
         padding: 0 2.5px;
         line-height: 20px;
+        pointer-events: all; // show title
 
         .inner {
           display: none;
@@ -1034,6 +1035,7 @@ $bubble-margin: .25rem;
     user-select: none;
     line-height: 1;
     vertical-align: middle;
+    pointer-events: none; // do not show title
     /* display: inline-flex;
     align-items: center; */
 
@@ -1049,6 +1051,7 @@ $bubble-margin: .25rem;
     }
     
     .inner {
+      pointer-events: all;
       position: absolute;
       bottom: 0;
       right: 0;

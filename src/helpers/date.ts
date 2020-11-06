@@ -30,3 +30,8 @@ export const formatDateAccordingToToday = (time: Date) => {
 
   return timeStr;
 };
+
+export const getFullDate = (date: Date) => {
+  return date.getDate() + ' ' + months[date.getMonth()] + ' ' + date.getFullYear() + 
+    ', ' + ('0' + date.getHours()).slice(-2) + ':' + ('0' + date.getMinutes()).slice(-2) + ':' + ('0' + date.getSeconds()).slice(-2);
+};
