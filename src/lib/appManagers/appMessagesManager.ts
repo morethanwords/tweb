@@ -3039,7 +3039,7 @@ export class AppMessagesManager {
         var neededContents: {
           [messageMediaType: string]: boolean
         } = {},
-          neededDocTypes: string[] = [];
+          neededDocTypes: string[] = [], excludeDocTypes: string[] = [];
 
         switch(inputFilter._) {
           case 'inputMessagesFilterPhotos':
@@ -3059,6 +3059,7 @@ export class AppMessagesManager {
 
           case 'inputMessagesFilterDocument':
             neededContents['messageMediaDocument'] = true;
+            excludeDocTypes.push('video');
             break;
 
           case 'inputMessagesFilterVoice':
@@ -3107,16 +3108,20 @@ export class AppMessagesManager {
           //|| (neededContents['mentioned'] && message.totalEntities.find((e: any) => e._ == 'messageEntityMention'));
 
           let found = false;
-          if(message.media && neededContents[message.media._]) {
-            if(neededDocTypes.length &&
-                message.media._ == 'messageMediaDocument' &&
-                !neededDocTypes.includes(message.media.document.type)) {
-              continue;
+          if(message.media && neededContents[message.media._] && !message.fwd_from) {
+            if(message.media._ == 'messageMediaDocument') {
+              if((neededDocTypes.length && !neededDocTypes.includes(message.media.document.type)) 
+                || excludeDocTypes.includes(message.media.document.type)) {
+                continue;
+              }
             }
 
             found = true;
-          } else if(neededContents['url'] && message.message && RichTextProcessor.matchUrl(message.message)) {
-            found = true;
+          } else if(neededContents['url'] && message.message) {
+            const goodEntities = ['messageEntityTextUrl', 'messageEntityUrl'];
+            if((message.totalEntities as MessageEntity[]).find(e => goodEntities.includes(e._)) || RichTextProcessor.matchUrl(message.message)) {
+              found = true;
+            }
           } else if(neededContents['avatar'] && message.action && ['messageActionChannelEditPhoto', 'messageActionChatEditPhoto'].includes(message.action._)) {
             found = true;
           }

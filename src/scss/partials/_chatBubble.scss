@@ -1682,6 +1682,7 @@ poll-element {
   display: block;
   //min-width: 280px;
   min-width: 330px;
+  user-select: none;
   
   @include respond-to(handhelds) {
     min-width: 240px;
@@ -1694,7 +1695,6 @@ poll-element {
   .poll {
     &-title {
       font-weight: 500;
-      user-select: none;
   
       @include respond-to(handhelds) {
         max-width: 88%;
@@ -1706,7 +1706,6 @@ poll-element {
       color: #707579;
       margin-top: 2px;
       margin-bottom: 7px;
-      user-select: none;
       display: flex;
       position: relative;
 
@@ -1754,7 +1753,6 @@ poll-element {
       &-text {
         margin-top: 6px;
         margin-left: 12px;
-        user-select: none;
       }
 
       &-percents {
@@ -1769,7 +1767,6 @@ poll-element {
         margin-left: -9px;
         text-align: right;
         width: 40px;
-        user-select: none;
       }
 
       &-selected {
@@ -1834,7 +1831,6 @@ poll-element {
     &-votes-count {
       color: #707579;
       font-size: 14px;
-      user-select: none;
       padding-top: 1px;
     }
 
@@ -1877,7 +1873,6 @@ poll-element {
       //border-bottom-right-radius: 12px;
       font-size: 1rem;
       line-height: 37px;
-      user-select: none;
       overflow: hidden;
     }
 

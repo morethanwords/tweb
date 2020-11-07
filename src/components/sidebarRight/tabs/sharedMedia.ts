@@ -648,7 +648,7 @@ export default class AppSharedMediaTab implements SliderTab {
 
     if(!typesToLoad.length) return;
 
-    const loadCount = justLoad ? 50 : (appPhotosManager.windowH / 130 | 0) * 3 * 1.25; // that's good for all types
+    const loadCount = justLoad ? 50 : Math.round((appPhotosManager.windowH / 130 | 0) * 3 * 1.25); // that's good for all types
     
     const historyStorage = this.historiesStorage[peerID] ?? (this.historiesStorage[peerID] = {});
 
@@ -657,27 +657,29 @@ export default class AppSharedMediaTab implements SliderTab {
       
       const history = historyStorage[type] ?? (historyStorage[type] = []);
 
-      const logStr = `loadSidebarMedia [${type}]: `;
+      const logStr = 'loadSidebarMedia [' + type + ']: ';
 
       // render from cache
       if(history.length && this.usedFromHistory[type] < history.length && !justLoad) {
         let messages: any[] = [];
         let used = Math.max(0, this.usedFromHistory[type]);
+        let slicedLength = 0;
 
         do {
           let ids = history.slice(used, used + loadCount);
           this.log(logStr + 'will render from cache', used, history, ids, loadCount);
           used += ids.length;
+          slicedLength += ids.length;
 
           messages.push(...this.filterMessagesByType(ids, type));
-        } while(messages.length < loadCount && used < history.length);
+        } while(slicedLength < loadCount && used < history.length);
         
         // если перебор
-        if(messages.length > loadCount) {
+        /* if(slicedLength > loadCount) {
           let diff = messages.length - loadCount;
           messages = messages.slice(0, messages.length - diff);
           used -= diff;
-        }
+        } */
 
         this.usedFromHistory[type] = used;
         //if(messages.length) {
@@ -704,7 +706,9 @@ export default class AppSharedMediaTab implements SliderTab {
           return;
         }
 
-        if(history.length >= value.count) {
+        // ! Фикс случая, когда не загружаются документы при открытой панели разработчиков (происходит из-за того, что не совпадают критерии отбора документов в getSearch)
+        if(value.history.length < loadCount) {
+        //if((value.count || history.length == value.count) && history.length >= value.count) {
           this.log(logStr + 'loaded all media', value, loadCount);
           this.loadedAllMedia[type] = true;
         }
