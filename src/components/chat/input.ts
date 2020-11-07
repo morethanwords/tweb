@@ -21,6 +21,7 @@ import { ripple } from '../ripple';
 import Scrollable from "../scrollable";
 import { toast } from "../toast";
 import { wrapReply } from "../wrappers";
+import { checkRTL } from '../../helpers/string';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -182,6 +183,7 @@ export class ChatInput {
 
     this.messageInput.addEventListener('input', (e) => {
       //console.log('messageInput input', this.messageInput.innerText, this.serializeNodes(Array.from(this.messageInput.childNodes)));
+      this.setDirection();
   
       const value = this.messageInput.innerText;
   
@@ -585,6 +587,17 @@ export class ChatInput {
     }
 
     this.updateSendBtn();
+    this.setDirection();
+  }
+
+  public setDirection() {
+    const char = this.messageInput.innerText[0];
+    let direction = 'ltr';
+    if(char && checkRTL(char)) {
+      direction = 'rtl';
+    }
+
+    this.messageInput.style.direction = direction;
   }
 
   public sendMessage() {
@@ -695,6 +708,7 @@ export class ChatInput {
     this.editMsgID = 0;
     this.helperType = this.helperFunc = undefined;
     this.chatInput.parentElement.classList.remove('is-helper-active');
+    this.setDirection();
   }
 
   public setTopInfo(type: ChatInputHelperType, callerFunc: () => void, title = '', subtitle = '', input?: string, message?: any) {
@@ -721,6 +735,7 @@ export class ChatInput {
 
     setTimeout(() => {
       this.updateSendBtn();
+      this.setDirection();
     }, 0);
   }
 
