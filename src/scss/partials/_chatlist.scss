@@ -111,14 +111,12 @@
     &.is-muted {
       .user-title {
         &:after {
+          flex: 0 0 auto;
           content: $tgico-nosound;
           color: #a3a3a3;
           font-size: 1.125rem;
-          line-height: 27px;
-          vertical-align: middle;
           margin-left: .125rem;
-          display: inline-block;
-          height: 29px;
+          display: inline;
           animation: fade-in-opacity .2s ease forwards;
         }
       }
@@ -204,6 +202,7 @@
         font-size: .75rem;
         padding: 1px 0px 0px 0px;
         flex: 0 0 auto;
+        margin-left: .5rem;
       }
     }
     
@@ -245,13 +244,15 @@
     flex: 1 1 auto;
     //padding: 1px 3.5px 1px 9px; - DO MAKETA JS3
     padding: 1px 8.5px 1px 9px; // JS3
+
     p:last-child {
       margin-top: -3px;
     }
   }
 
   .user-title {
-    max-width: 82%;
+    display: flex;
+    align-items: center;
 
     img.emoji {
       vertical-align: top;
@@ -269,13 +270,13 @@
       margin-top: -1.5px;
     }
 
-    i.verified-icon {
+    .verified-icon {
+      flex: 0 0 auto;
       content: " ";
       background: url(assets/img/icon-verified.svg);
       display: inline-block;
       width: 20px;
       height: 20px;
-      vertical-align: text-bottom;
       margin-left: .125rem;
     }
   }

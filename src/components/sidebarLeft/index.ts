@@ -335,6 +335,10 @@ export class AppSidebarLeft extends SidebarSlider {
         this.recentSearchLoaded = true;
       }
 
+      if(this.searchInput.value.trim()) {
+        return;
+      }
+
       this.searchGroups.recent.list.innerHTML = '';
       this.recentSearchClearBtn.style.display = this.recentSearch.length ? '' : 'none';
 

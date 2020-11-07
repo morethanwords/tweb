@@ -25,6 +25,7 @@ type DialogDom = {
   avatarEl: AvatarElement,
   captionDiv: HTMLDivElement,
   titleSpan: HTMLSpanElement,
+  titleSpanContainer: HTMLSpanElement,
   statusSpan: HTMLSpanElement,
   lastTimeSpan: HTMLSpanElement,
   unreadMessagesSpan: HTMLSpanElement,
@@ -877,34 +878,31 @@ export class AppDialogsManager {
     const captionDiv = document.createElement('div');
     captionDiv.classList.add('user-caption');
 
+    const titleSpanContainer = document.createElement('span');
+    titleSpanContainer.classList.add('user-title');
+
     const titleSpan = document.createElement('span');
-    titleSpan.classList.add('user-title');
 
     if(peerID == $rootScope.myID && meAsSaved) {
       title = onlyFirstName ? 'Saved' : 'Saved Messages';
     } 
 
     titleSpan.innerHTML = title;
+    titleSpanContainer.append(titleSpan);
     //p.classList.add('')
 
     // в других случаях иконка верификации не нужна (а первый - это главные чатлисты)
     //if(!container) {
-      let peer: any;
+      const peer = appPeersManager.getPeer(peerID);
 
       // for muted icon
-      titleSpan.classList.add('tgico'); // * эта строка будет актуальна только для !container, но ладно
-
-      if(peerID < 0) {
-        peer = appChatsManager.getChat(-peerID);
-      } else {
-        peer = appUsersManager.getUser(peerID);
-      }
+      titleSpanContainer.classList.add('tgico'); // * эта строка будет актуальна только для !container, но ладно
 
       if(peer?.pFlags?.verified) {
-        titleSpan.classList.add('is-verified');
+        titleSpanContainer.classList.add('is-verified');
         const i = document.createElement('i');
         i.classList.add('verified-icon');
-        titleSpan.append(i);
+        titleSpanContainer.append(i);
       }
     //}
     
@@ -957,7 +955,7 @@ export class AppDialogsManager {
     const rightSpan = document.createElement('span');
     rightSpan.classList.add('dialog-title-details');
     rightSpan.append(statusSpan, lastTimeSpan);
-    titleP.append(titleSpan, rightSpan);
+    titleP.append(titleSpanContainer, rightSpan);
 
     const messageP = document.createElement('p');
     messageP.classList.add('dialog-subtitle');
@@ -969,6 +967,7 @@ export class AppDialogsManager {
       avatarEl,
       captionDiv,
       titleSpan,
+      titleSpanContainer,
       statusSpan,
       lastTimeSpan,
       unreadMessagesSpan,
