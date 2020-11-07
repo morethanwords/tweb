@@ -392,6 +392,18 @@ export class AppImManager {
       if(!mounted) return;
       this.renderMessage(mounted.message, true, false, mounted.bubble, false);
     });
+
+    $rootScope.$on('album_edit', (e) => {
+      const {peerID, groupID, deletedMids} = e.detail;
+      
+      if(peerID != this.peerID) return;
+      const mids = appMessagesManager.getMidsByAlbum(groupID);
+      const maxID = Math.max(...mids.concat(deletedMids));
+      if(!this.bubbles[maxID]) return;
+
+      const renderMaxID = getObjectKeysAndSort(appMessagesManager.groupedMessagesStorage[groupID], 'asc').pop();
+      this.renderMessage(appMessagesManager.getMessage(renderMaxID), true, false, this.bubbles[maxID], false);
+    });
     
     $rootScope.$on('peer_pinned_message', (e) => {
       const peerID = e.detail;
@@ -1439,18 +1451,21 @@ export class AppImManager {
     }
   }
   
-  public deleteMessagesByIDs(msgIDs: number[]) {
-    msgIDs.forEach(id => {
-      if(!(id in this.bubbles)) return;
+  public deleteMessagesByIDs(mids: number[]) {
+    mids.forEach(mid => {
+      if(!(mid in this.bubbles)) return;
       
-      let bubble = this.bubbles[id];
-      delete this.bubbles[id];
+      /* const mounted = this.getMountedBubble(mid);
+      if(!mounted) return; */
+
+      const bubble = this.bubbles[mid];
+      delete this.bubbles[mid];
 
       if(this.firstUnreadBubble == bubble) {
         this.firstUnreadBubble = null;
       }
 
-      this.bubbleGroups.removeBubble(bubble, id);
+      this.bubbleGroups.removeBubble(bubble, mid);
       this.unreadedObserver.unobserve(bubble);
       //this.unreaded.findAndSplice(mid => mid == id);
       this.scrollable.removeElement(bubble);
@@ -1664,17 +1679,17 @@ export class AppImManager {
     //return;
     if(message.deleted) return;
     else if(message.grouped_id) { // will render only last album's message
-      let storage = appMessagesManager.groupedMessagesStorage[message.grouped_id];
-      let maxID = Math.max(...Object.keys(storage).map(i => +i));
+      const storage = appMessagesManager.groupedMessagesStorage[message.grouped_id];
+      const maxID = Math.max(...Object.keys(storage).map(i => +i));
       if(message.mid < maxID) {
         return;
       }
     }
     
-    let peerID = this.peerID;
-    let our = message.fromID == this.myID;
+    const peerID = this.peerID;
+    const our = message.fromID == this.myID;
     
-    let messageDiv = document.createElement('div');
+    const messageDiv = document.createElement('div');
     messageDiv.classList.add('message');
     
     //messageDiv.innerText = message.message;
@@ -1689,7 +1704,6 @@ export class AppImManager {
       bubble = document.createElement('div');
       bubble.classList.add('bubble');
       bubble.appendChild(bubbleContainer);
-      this.bubbles[+message.mid] = bubble;
     } else {
       const save = ['is-highlighted'];
       const wasClassNames = bubble.className.split(' ');
@@ -1703,9 +1717,14 @@ export class AppImManager {
       if(bubble == this.firstUnreadBubble) {
         bubble.classList.add('is-first-unread');
       }
+
+      const originalMid = +bubble.dataset.mid;
+      delete this.bubbles[originalMid];
       //bubble.innerHTML = '';
     }
 
+    // ! reset due to album edit or delete item
+    this.bubbles[+message.mid] = bubble;
     bubble.dataset.mid = message.mid;
 
     if(this.chatSelection.isSelecting) {
@@ -1732,21 +1751,9 @@ export class AppImManager {
 
     let messageMessage: string, totalEntities: any[];
     if(message.grouped_id) {
-      let group = appMessagesManager.groupedMessagesStorage[message.grouped_id];
-      let foundMessages = 0;
-      for(let i in group) {
-        let m = group[i];
-        if(m.message) {
-          if(++foundMessages > 1) break;
-          messageMessage = m.message;
-          totalEntities = m.totalEntities;
-        }  
-      }
-
-      if(foundMessages > 1) {
-        messageMessage = undefined;
-        totalEntities = undefined;
-      }
+      const t = appMessagesManager.getAlbumText(message.grouped_id);
+      messageMessage = t.message;
+      totalEntities = t.totalEntities;
     } else {
       messageMessage = message.message;
       totalEntities = message.totalEntities;
@@ -1993,28 +2000,25 @@ export class AppImManager {
         }
         
         case 'messageMediaPhoto': {
-          let photo = messageMedia.photo;
+          const photo = messageMedia.photo;
           ////////this.log('messageMediaPhoto', photo);
           
           bubble.classList.add('hide-name', 'photo');
           const tailSupported = !isAndroid;
           if(tailSupported) bubble.classList.add('with-media-tail');
 
-          if(message.grouped_id) {
+          const storage = appMessagesManager.groupedMessagesStorage[message.grouped_id];
+          if(message.grouped_id && Object.keys(storage).length != 1) {
             bubble.classList.add('is-album');
+            wrapAlbum({
+              groupID: message.grouped_id, 
+              attachmentDiv,
+              middleware: this.getMiddleware(),
+              isOut: our,
+              lazyLoadQueue: this.lazyLoadQueue
+            });
 
-            let storage = appMessagesManager.groupedMessagesStorage[message.grouped_id];
-            if(Object.keys(storage).length != 1) {
-              wrapAlbum({
-                groupID: message.grouped_id, 
-                attachmentDiv,
-                middleware: this.getMiddleware(),
-                isOut: our,
-                lazyLoadQueue: this.lazyLoadQueue
-              });
-
-              break;
-            }
+            break;
           }
 
           wrapPhoto(photo, message, attachmentDiv, undefined, undefined, tailSupported, isOut, this.lazyLoadQueue, this.getMiddleware());
@@ -2167,7 +2171,8 @@ export class AppImManager {
             //this.log('never get free 2', doc);
             
             bubble.classList.add('hide-name', doc.type == 'round' ? 'round' : 'video');
-            if(message.grouped_id) {
+            const storage = appMessagesManager.groupedMessagesStorage[message.grouped_id];
+            if(message.grouped_id && Object.keys(storage).length != 1) {
               bubble.classList.add('is-album');
   
               wrapAlbum({

@@ -1,3 +1,4 @@
+import { MessageRender } from "../../components/chat/messageRender";
 import ProgressivePreloader from "../../components/preloader";
 import { listMergeSorted } from "../../helpers/array";
 import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
@@ -5,7 +6,7 @@ import { tsNow } from "../../helpers/date";
 import { copy, defineNotNumerableProperties, deepEqual, safeReplaceObject, getObjectKeysAndSort } from "../../helpers/object";
 import { randomLong } from "../../helpers/random";
 import { splitStringByLength, limitSymbols } from "../../helpers/string";
-import { Dialog as MTDialog, DialogFilter, DialogPeer, DocumentAttribute, InputMessage, Message, MessageAction, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, PhotoSize, SendMessageAction, Update } from "../../layer";
+import { Dialog as MTDialog, DialogFilter, DialogPeer, DocumentAttribute, InputMessage, Message, MessageAction, MessageEntity, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, PhotoSize, SendMessageAction, Update } from "../../layer";
 import { InvokeApiOptions, Modify } from "../../types";
 import { langPack } from "../langPack";
 import { logger, LogLevels } from "../logger";
@@ -533,7 +534,6 @@ export class AppMessagesManager {
 
         $rootScope.$broadcast('message_edit', {
           peerID: this.getMessagePeer(message),
-          id: message.id,
           mid: msgID,
           justMedia: true
         });
@@ -2206,8 +2206,29 @@ export class AppMessagesManager {
     });
   }
 
+  public getAlbumText(grouped_id: string) {
+    const group = appMessagesManager.groupedMessagesStorage[grouped_id];
+    let foundMessages = 0, message: string, totalEntities: MessageEntity[];
+    for(const i in group) {
+      const m = group[i];
+      if(m.message) {
+        if(++foundMessages > 1) break;
+        message = m.message;
+        totalEntities = m.totalEntities;
+      }  
+    }
+
+    if(foundMessages > 1) {
+      message = undefined;
+      totalEntities = undefined;
+    }
+
+    return {message, totalEntities};
+  }
+
   public getMidsByAlbum(grouped_id: string) {
-    return Object.keys(this.groupedMessagesStorage[grouped_id]).map(id => +id).sort((a, b) => a - b);
+    return getObjectKeysAndSort(this.groupedMessagesStorage[grouped_id], 'asc');
+    //return Object.keys(this.groupedMessagesStorage[grouped_id]).map(id => +id).sort((a, b) => a - b);
   }
 
   public getMidsByMid(mid: number) {
@@ -2219,6 +2240,7 @@ export class AppMessagesManager {
   public saveMessages(messages: any[], options: {
     isEdited?: boolean
   } = {}) {
+    let albums: Set<string>;
     messages.forEach((message) => {
       if(message.pFlags === undefined) {
         message.pFlags = {};
@@ -2428,7 +2450,15 @@ export class AppMessagesManager {
         }
       }
 
-      message.rReply = this.getRichReplyText(message);
+      if(message.grouped_id) {
+        if(!albums) {
+          albums = new Set();          
+        }
+
+        albums.add(message.grouped_id);
+      } else {
+        message.rReply = this.getRichReplyText(message);
+      }
 
       if(message.message && message.message.length && !message.totalEntities) {
         const myEntities = RichTextProcessor.parseEntities(message.message);
@@ -2441,6 +2471,16 @@ export class AppMessagesManager {
         (this.messagesStorageByPeerID[peerID] ?? (this.messagesStorageByPeerID[peerID] = {}))[mid] = message;
       }
     });
+
+    if(albums) {
+      albums.forEach(groupID => {
+        const mids = this.groupedMessagesStorage[groupID];
+        for(const mid in mids) {
+          const message = this.messagesStorage[mid];
+          message.rReply = this.getRichReplyText(message);
+        }
+      });
+    }
   }
 
   public getRichReplyText(message: any, text: string = message.message) {
@@ -2448,7 +2488,8 @@ export class AppMessagesManager {
 
     if(message.media) {
       if(message.grouped_id) {
-        messageText += '<i>Album' + (message.message ? ', ' : '') + '</i>';
+        text = this.getAlbumText(message.grouped_id).message;
+        messageText += '<i>Album' + (text ? ', ' : '') + '</i>';
       } else switch(message.media._) {
         case 'messageMediaPhoto':
           messageText += '<i>Photo' + (message.message ? ', ' : '') + '</i>';
@@ -3742,13 +3783,27 @@ export class AppMessagesManager {
           }
         } else {
           $rootScope.$broadcast('message_edit', {
-            peerID: peerID,
-            id: message.id,
-            mid: mid,
+            peerID,
+            mid,
             justMedia: false
           });
 
-          if(isTopMessage) {
+          const groupID = (message as Message.message).grouped_id;
+          if(this.pinnedMessages[peerID]) {
+            let pinnedMid: number;
+            if(groupID) {
+              const mids = this.getMidsByAlbum(groupID);
+              pinnedMid = mids.find(mid => this.pinnedMessages[peerID] == mid);
+            } else if(this.pinnedMessages[peerID] == mid) {
+              pinnedMid = mid;
+            }
+
+            if(pinnedMid) {
+              $rootScope.$broadcast('peer_pinned_message', peerID);
+            }
+          }
+
+          if(isTopMessage || groupID) {
             const updatedDialogs: {[peerID: number]: Dialog} = {};
             updatedDialogs[peerID] = dialog;
             $rootScope.$broadcast('dialogs_multiupdate', updatedDialogs);
@@ -3872,7 +3927,14 @@ export class AppMessagesManager {
 
       case 'updateDeleteMessages':
       case 'updateDeleteChannelMessages': {
-        const historiesUpdated: {[peerID: number]: {count: number, unread: number, msgs: {[mid: number]: true}}} = {};
+        const historiesUpdated: {
+          [peerID: number]: {
+            count: number, 
+            unread: number, 
+            msgs: {[mid: number]: true},
+            albums?: {[groupID: string]: Set<number>},
+          }
+        } = {};
         const channelID: number = (update as Update.updateDeleteChannelMessages).channel_id;
         const messages = (update as any as Update.updateDeleteChannelMessages).messages;
 
@@ -3909,7 +3971,11 @@ export class AppMessagesManager {
               if(groupedStorage) {
                 delete groupedStorage[mid];
 
+                if(!history.albums) history.albums = {};
+                (history.albums[message.grouped_id] || (history.albums[message.grouped_id] = new Set())).add(mid);
+
                 if(!Object.keys(groupedStorage).length) {
+                  delete history.albums;
                   delete this.groupedMessagesStorage[message.grouped_id];
                 }
               }
@@ -3932,6 +3998,18 @@ export class AppMessagesManager {
         Object.keys(historiesUpdated).forEach(_peerID => {
           const peerID = +_peerID;
           const updatedData = historiesUpdated[peerID];
+
+          if(updatedData.albums) {
+            for(const groupID in updatedData.albums) {
+              $rootScope.$broadcast('album_edit', {peerID, groupID, deletedMids: [...updatedData.albums[groupID]]});
+              /* const mids = this.getMidsByAlbum(groupID);
+              if(mids.length) {
+                const mid = Math.max(...mids);
+                $rootScope.$broadcast('message_edit', {peerID, mid, justMedia: false});
+              } */
+            }
+          }
+
           const historyStorage = this.historiesStorage[peerID];
           if(historyStorage !== undefined) {
             const newHistory = historyStorage.history.filter(mid => !updatedData.msgs[mid]);

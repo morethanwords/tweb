@@ -48,6 +48,7 @@ export function defineNotNumerableProperties(obj: {[key: string]: any}, names: s
 }
 
 export function getObjectKeysAndSort(object: any, sort: 'asc' | 'desc' = 'asc') {
+  if(!object) return [];
   const ids = Object.keys(object).map(i => +i);
   if(sort == 'asc') return ids.sort((a, b) => a - b);
   else return ids.sort((a, b) => b - a);

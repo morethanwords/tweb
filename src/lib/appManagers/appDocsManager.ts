@@ -1,7 +1,6 @@
 import { FileURLType, getFileNameByLocation, getFileURL } from '../../helpers/fileName';
-import { safeReplaceArrayInObject, defineNotNumerableProperties } from '../../helpers/object';
+import { safeReplaceArrayInObject, defineNotNumerableProperties, isObject } from '../../helpers/object';
 import { Document, InputFileLocation, PhotoSize } from '../../layer';
-import { isObject } from '../mtproto/bin_utils';
 import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
 import referenceDatabase, { ReferenceContext } from '../mtproto/referenceDatabase';
 import opusDecodeController from '../opusDecodeController';

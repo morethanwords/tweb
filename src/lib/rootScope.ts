@@ -32,13 +32,15 @@ type BroadcastEvents = {
   'history_reload': number,
   'history_request': void,
   
-  'message_edit': {peerID: number, id: number, mid: number, justMedia: boolean},
+  'message_edit': {peerID: number, mid: number, justMedia: boolean},
   'message_views': {mid: number, views: number},
   'message_sent': {tempID: number, mid: number},
   'messages_pending': void,
   'messages_read': void,
   'messages_downloaded': number[],
   'messages_media_read': number[],
+
+  'album_edit': {peerID: number, groupID: string, deletedMids: number[]},
 
   'stickers_installed': StickerSet.stickerSet,
   'stickers_deleted': StickerSet.stickerSet,
