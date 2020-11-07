@@ -1,5 +1,5 @@
 import {isTouchSupported} from "../helpers/touchSupport";
-import { findUpClassName } from "../lib/utils";
+import { findUpClassName } from "../helpers/dom";
 
 let rippleClickID = 0;
 export function ripple(elem: HTMLElement, callback: (id: number) => Promise<boolean | void> = () => Promise.resolve(), onEnd: (id: number) => void = null) {

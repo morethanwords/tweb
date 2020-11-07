@@ -6,7 +6,7 @@ import { wrapSticker } from "./wrappers";
 import LazyLoadQueue from "./lazyLoadQueue";
 import { putPreloader } from "./misc";
 import animationIntersector from "./animationIntersector";
-import { findUpClassName } from "../lib/utils";
+import { findUpClassName } from "../helpers/dom";
 import appImManager from "../lib/appManagers/appImManager";
 import { StickerSet } from "../layer";
 import mediaSizes from "../helpers/mediaSizes";

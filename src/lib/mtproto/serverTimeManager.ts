@@ -1,5 +1,5 @@
+import { tsNow } from '../../helpers/date';
 import AppStorage from '../storage';
-import { tsNow } from '../utils';
 
 export class ServerTimeManager {
   public timestampNow = tsNow(true);

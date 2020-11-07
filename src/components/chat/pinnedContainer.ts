@@ -1,6 +1,6 @@
 import mediaSizes from "../../helpers/mediaSizes";
 import appImManager from "../../lib/appManagers/appImManager";
-import { cancelEvent } from "../../lib/utils";
+import { cancelEvent } from "../../helpers/dom";
 import DivAndCaption from "../divAndCaption";
 import { ripple } from "../ripple";
 

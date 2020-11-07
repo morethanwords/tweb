@@ -1,4 +1,5 @@
-import { InputFileLocation, FileLocation } from "../layer";
+import type { InputFileLocation, FileLocation } from "../layer";
+import type { DownloadOptions } from "../lib/mtproto/apiFileManager";
 
 export function getFileNameByLocation(location: InputFileLocation | FileLocation, options?: Partial<{
   fileName: string
@@ -25,4 +26,14 @@ export function getFileNameByLocation(location: InputFileLocation | FileLocation
       return '';
     }
   }
+}
+
+export type FileURLType = 'photo' | 'thumb' | 'document' | 'stream' | 'download';
+export function getFileURL(type: FileURLType, options: DownloadOptions) {
+  //console.log('getFileURL', location);
+  //const perf = performance.now();
+  const encoded = encodeURIComponent(JSON.stringify(options));
+  //console.log('getFileURL encode:', performance.now() - perf, encoded);
+
+  return '/' + type + '/' + encoded;
 }

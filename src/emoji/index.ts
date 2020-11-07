@@ -34,3 +34,8 @@ export function toCodePoints(unicodeSurrogates: string): Array<string> {
 
   return points;
 }
+
+export function getEmojiToneIndex(input: string) {
+  let match = input.match(/[\uDFFB-\uDFFF]/);
+  return match ? 5 - (57343 - match[0].charCodeAt(0)) : 0;
+}

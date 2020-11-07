@@ -1,10 +1,11 @@
-import {encodeEntities, copy} from './utils';
 import Config from './config';
 
 import emojiRegExp from '../emoji/regex';
 import { encodeEmoji } from '../emoji';
 import { MOUNT_CLASS_TO } from './mtproto/mtproto_config';
 import { MessageEntity } from '../layer';
+import { copy } from '../helpers/object';
+import { encodeEntities } from '../helpers/string';
 
 const EmojiHelper = {
   emojiMap: (code: string) => { return code; },

@@ -1,7 +1,7 @@
 import { isTouchSupported } from "../helpers/touchSupport";
 import appImManager from "../lib/appManagers/appImManager";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
-import { calcImageInBox } from "../lib/utils";
+import { calcImageInBox } from "../helpers/dom";
 import { Layouter, RectPart } from "./groupedLayout";
 import InputField from "./inputField";
 import { PopupElement } from "./popup";

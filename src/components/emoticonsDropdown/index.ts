@@ -3,7 +3,7 @@ import appChatsManager from "../../lib/appManagers/appChatsManager";
 import appImManager from "../../lib/appManagers/appImManager";
 import { MOUNT_CLASS_TO } from "../../lib/mtproto/mtproto_config";
 import $rootScope from "../../lib/rootScope";
-import { findUpClassName, findUpTag, whichChild } from "../../lib/utils";
+import { findUpClassName, findUpTag, whichChild } from "../../helpers/dom";
 import animationIntersector from "../animationIntersector";
 import { horizontalMenu } from "../horizontalMenu";
 import LazyLoadQueue, { LazyLoadQueueIntersector } from "../lazyLoadQueue";

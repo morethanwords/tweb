@@ -3,7 +3,6 @@ import { logger, LogLevels } from '../logger';
 import apiManager from '../mtproto/mtprotoworker';
 import $rootScope from '../rootScope';
 //import networkerFactory from '../mtproto/networkerFactory';
-import { tsNow } from "../utils";
 import appChatsManager from "./appChatsManager";
 import appPeersManager from "./appPeersManager";
 import appStateManager from './appStateManager';
@@ -400,7 +399,7 @@ export class ApiUpdatesManager {
   
     if(update._ == 'updateChannelTooLong') {
       if(!curState.lastPtsUpdateTime ||
-          curState.lastPtsUpdateTime < tsNow() - 10000) {
+          curState.lastPtsUpdateTime < Date.now() - 10000) {
         // this.log.trace('channel too long, get diff', channelID, update)
         this.getChannelDifference(channelID);
       }
@@ -461,7 +460,7 @@ export class ApiUpdatesManager {
         curState.pts = update.pts;
         popPts = true;
   
-        curState.lastPtsUpdateTime = tsNow();
+        curState.lastPtsUpdateTime = Date.now();
       } else if(update.pts_count) {
         // this.log.warn('Duplicate update', update)
         return false;

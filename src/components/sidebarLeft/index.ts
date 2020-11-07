@@ -1,4 +1,5 @@
 //import { logger } from "../polyfill";
+import { formatNumber } from "../../helpers/number";
 import appChatsManager from "../../lib/appManagers/appChatsManager";
 import appDialogsManager from "../../lib/appManagers/appDialogsManager";
 import appImManager from "../../lib/appManagers/appImManager";
@@ -7,7 +8,7 @@ import appStateManager from "../../lib/appManagers/appStateManager";
 import appUsersManager from "../../lib/appManagers/appUsersManager";
 import { MOUNT_CLASS_TO } from "../../lib/mtproto/mtproto_config";
 import $rootScope from "../../lib/rootScope";
-import { findUpClassName, findUpTag, formatNumber } from "../../lib/utils";
+import { findUpClassName, findUpTag } from "../../helpers/dom";
 import AppSearch, { SearchGroup } from "../appSearch";
 import AvatarElement from "../avatar";
 import { parseMenuButtonsTo } from "../misc";

@@ -5,7 +5,7 @@ import appStateManager from "../lib/appManagers/appStateManager";
 import apiManager from "../lib/mtproto/mtprotoworker";
 import { App, Modes } from "../lib/mtproto/mtproto_config";
 import { RichTextProcessor } from '../lib/richtextprocessor';
-import { findUpTag } from "../lib/utils";
+import { findUpTag } from "../helpers/dom";
 import Page from "./page";
 import pageAuthCode from "./pageAuthCode";
 import pageSignQR from './pageSignQR';

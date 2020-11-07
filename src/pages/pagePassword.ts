@@ -9,7 +9,7 @@ import LottieLoader, { RLottiePlayer } from '../lib/lottieLoader';
 //import passwordManager from '../lib/mtproto/passwordManager';
 import apiManager from '../lib/mtproto/mtprotoworker';
 import passwordManager from '../lib/mtproto/passwordManager';
-import { cancelEvent } from '../lib/utils';
+import { cancelEvent } from '../helpers/dom';
 import Page from './page';
 import pageIm from './pageIm';
 

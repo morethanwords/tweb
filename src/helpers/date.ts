@@ -35,3 +35,8 @@ export const getFullDate = (date: Date) => {
   return date.getDate() + ' ' + months[date.getMonth()] + ' ' + date.getFullYear() + 
     ', ' + ('0' + date.getHours()).slice(-2) + ':' + ('0' + date.getMinutes()).slice(-2) + ':' + ('0' + date.getSeconds()).slice(-2);
 };
+
+export function tsNow(seconds?: true) {
+  const t = Date.now();
+  return seconds ? Math.floor(t / 1000) : t;
+}

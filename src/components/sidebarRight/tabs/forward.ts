@@ -1,4 +1,4 @@
-import appSidebarRight, { AppSidebarRight } from "..";
+import appSidebarRight from "..";
 import appMessagesManager from "../../../lib/appManagers/appMessagesManager";
 import AppSelectPeers from "../../appSelectPeers";
 import { putPreloader } from "../../misc";

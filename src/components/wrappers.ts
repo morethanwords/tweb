@@ -1,7 +1,9 @@
+import { getEmojiToneIndex } from '../emoji';
 import { readBlobAsText } from '../helpers/blob';
 import { deferredPromise } from '../helpers/cancellablePromise';
 import { months } from '../helpers/date';
 import mediaSizes from '../helpers/mediaSizes';
+import { formatBytes } from '../helpers/number';
 import { isAppleMobile, isSafari } from '../helpers/userAgent';
 import { PhotoSize } from '../layer';
 import appDocsManager, { MyDocument } from "../lib/appManagers/appDocsManager";
@@ -10,7 +12,7 @@ import appMessagesManager from '../lib/appManagers/appMessagesManager';
 import appPhotosManager, { MyPhoto } from '../lib/appManagers/appPhotosManager';
 import LottieLoader from '../lib/lottieLoader';
 import VideoPlayer from '../lib/mediaPlayer';
-import { cancelEvent, formatBytes, getEmojiToneIndex, isInDOM } from "../lib/utils";
+import { isInDOM } from "../helpers/dom";
 import webpWorkerController from '../lib/webp/webpWorkerController';
 import animationIntersector from './animationIntersector';
 import appMediaPlaybackController from './appMediaPlaybackController';
@@ -21,6 +23,7 @@ import LazyLoadQueue from './lazyLoadQueue';
 import { renderImageFromUrl } from './misc';
 import PollElement from './poll';
 import ProgressivePreloader from './preloader';
+import './middleEllipsis';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 
@@ -316,9 +319,11 @@ export const formatDate = (timestamp: number, monthShort = false, withYear = tru
   return str + ' at ' + date.getHours() + ':' + ('0' + date.getMinutes()).slice(-2);
 };
 
-export function wrapDocument(doc: MyDocument, withTime = false, uploading = false, mid?: number): HTMLElement {
+export function wrapDocument(doc: MyDocument, withTime = false, uploading = false, mid?: number, fontWeight = 500): HTMLElement {
   if(doc.type == 'audio' || doc.type == 'voice') {
-    return wrapAudio(doc, withTime, mid);
+    const audioElement = wrapAudio(doc, withTime, mid);
+    audioElement.dataset.fontWeight = '' + fontWeight;
+    return audioElement;
   }
 
   let extSplitted = doc.file_name ? doc.file_name.split('.') : '';
@@ -347,6 +352,7 @@ export function wrapDocument(doc: MyDocument, withTime = false, uploading = fals
     icoDiv.innerText = ext;
   }
 
+  //let fileName = stringMiddleOverflow(doc.file_name || 'Unknown.file', 26);
   let fileName = doc.file_name || 'Unknown.file';
   let size = formatBytes(doc.size);
   
@@ -356,7 +362,7 @@ export function wrapDocument(doc: MyDocument, withTime = false, uploading = fals
   
   docDiv.innerHTML = `
   ${!uploading ? `<div class="document-download"><div class="tgico-download"></div></div>` : ''}
-  <div class="document-name">${fileName}</div>
+  <div class="document-name"><middle-ellipsis-element data-font-weight="${fontWeight}">${fileName}</middle-ellipsis-element></div>
   <div class="document-size">${size}</div>
   `;
 

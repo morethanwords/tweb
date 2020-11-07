@@ -4,7 +4,7 @@ import apiManager from "../../../lib/mtproto/mtprotoworker";
 import appMessagesManager, { MyDialogFilter } from "../../../lib/appManagers/appMessagesManager";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import appPeersManager from "../../../lib/appManagers/appPeersManager";
-import { cancelEvent } from "../../../lib/utils";
+import { cancelEvent } from "../../../helpers/dom";
 import appSidebarLeft from "..";
 import { ripple } from "../../ripple";
 import { toast } from "../../toast";

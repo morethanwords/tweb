@@ -1,4 +1,4 @@
-import { isInDOM, cancelEvent } from "../lib/utils";
+import { isInDOM, cancelEvent } from "../helpers/dom";
 import { CancellablePromise } from "../helpers/cancellablePromise";
 
 export default class ProgressivePreloader {

@@ -2,7 +2,7 @@ import { SliderTab } from "../../slider";
 import SearchInput from "../../searchInput";
 import Scrollable from "../../scrollable";
 import LazyLoadQueue from "../../lazyLoadQueue";
-import { findUpClassName } from "../../../lib/utils";
+import { findUpClassName } from "../../../helpers/dom";
 import appImManager from "../../../lib/appManagers/appImManager";
 import appStickersManager from "../../../lib/appManagers/appStickersManager";
 import PopupStickers from "../../popupStickers";

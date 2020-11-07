@@ -1017,3 +1017,9 @@ img.emoji {
 //   -webkit-user-select: none; /* disable selection/Copy of UIWebView */
 //   -webkit-touch-callout: none; /* disable the IOS popup when long-press on a link */
 // }   
+
+middle-ellipsis-element {
+  width: 100%;
+	overflow: hidden;
+	display: block;
+}

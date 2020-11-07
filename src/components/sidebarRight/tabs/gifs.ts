@@ -6,7 +6,7 @@ import appSidebarRight, { AppSidebarRight } from "..";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import appInlineBotsManager, { AppInlineBotsManager } from "../../../lib/appManagers/AppInlineBotsManager";
 import GifsMasonry from "../../gifsMasonry";
-import { findUpClassName } from "../../../lib/utils";
+import { findUpClassName } from "../../../helpers/dom";
 import appImManager from "../../../lib/appManagers/appImManager";
 import type { MyDocument } from "../../../lib/appManagers/appDocsManager";
 import mediaSizes from "../../../helpers/mediaSizes";

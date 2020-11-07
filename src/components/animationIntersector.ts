@@ -1,4 +1,4 @@
-import { isInDOM } from "../lib/utils";
+import { isInDOM } from "../helpers/dom";
 import { RLottiePlayer } from "../lib/lottieLoader";
 import { MOUNT_CLASS_TO } from "../lib/mtproto/mtproto_config";
 import $rootScope from "../lib/rootScope";

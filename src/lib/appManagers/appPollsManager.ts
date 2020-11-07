@@ -1,10 +1,10 @@
+import { copy } from "../../helpers/object";
 import { InputMedia } from "../../layer";
 import { logger, LogLevels } from "../logger";
 import apiManager from "../mtproto/mtprotoworker";
 import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
 import { RichTextProcessor } from "../richtextprocessor";
 import $rootScope from "../rootScope";
-import { copy } from "../utils";
 import apiUpdatesManager from "./apiUpdatesManager";
 import appMessagesManager from './appMessagesManager';
 import appPeersManager from './appPeersManager';

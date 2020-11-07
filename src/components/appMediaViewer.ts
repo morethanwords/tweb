@@ -11,7 +11,7 @@ import { logger } from "../lib/logger";
 import VideoPlayer from "../lib/mediaPlayer";
 import { RichTextProcessor } from "../lib/richtextprocessor";
 import $rootScope from "../lib/rootScope";
-import { cancelEvent, fillPropertyValue, findUpClassName, generatePathData } from "../lib/utils";
+import { cancelEvent, fillPropertyValue, findUpClassName, generatePathData } from "../helpers/dom";
 import animationIntersector from "./animationIntersector";
 import appMediaPlaybackController from "./appMediaPlaybackController";
 import AvatarElement from "./avatar";

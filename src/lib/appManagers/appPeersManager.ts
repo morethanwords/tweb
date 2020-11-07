@@ -1,7 +1,7 @@
+import { isObject } from "../../helpers/object";
 import { DialogPeer, InputDialogPeer, InputPeer, Peer } from "../../layer";
 import { RichTextProcessor } from "../richtextprocessor";
 import $rootScope from "../rootScope";
-import { isObject } from "../utils";
 import appChatsManager from "./appChatsManager";
 import appUsersManager from "./appUsersManager";
 

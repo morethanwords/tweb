@@ -1,6 +1,6 @@
 import { getFullDate } from "../../helpers/date";
+import { formatNumber } from "../../helpers/number";
 import RichTextProcessor from "../../lib/richtextprocessor";
-import { formatNumber } from "../../lib/utils";
 
 type Message = any;
 

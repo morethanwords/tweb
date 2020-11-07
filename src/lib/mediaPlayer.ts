@@ -1,4 +1,4 @@
-import { cancelEvent } from "./utils";
+import { cancelEvent } from "../helpers/dom";
 import appMediaPlaybackController from "../components/appMediaPlaybackController";
 import { isAppleMobile } from "../helpers/userAgent";
 import { isTouchSupported } from "../helpers/touchSupport";

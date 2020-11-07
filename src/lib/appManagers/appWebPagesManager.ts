@@ -1,9 +1,10 @@
-import { limitSymbols, safeReplaceObject } from "../utils";
 import appPhotosManager from "./appPhotosManager";
 import appDocsManager from "./appDocsManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import { ReferenceContext } from "../mtproto/referenceDatabase";
 import $rootScope from "../rootScope";
+import { safeReplaceObject } from "../../helpers/object";
+import { limitSymbols } from "../../helpers/string";
 
 class AppWebPagesManager {
   webpages: any = {};

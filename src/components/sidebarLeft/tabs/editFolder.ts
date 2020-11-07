@@ -1,8 +1,8 @@
 import appSidebarLeft, { AppSidebarLeft } from "..";
+import { deepEqual, copy } from "../../../helpers/object";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import appMessagesManager, { MyDialogFilter as DialogFilter } from "../../../lib/appManagers/appMessagesManager";
 import lottieLoader, { RLottiePlayer } from "../../../lib/lottieLoader";
-import { copy, deepEqual } from "../../../lib/utils";
 import { parseMenuButtonsTo } from "../../misc";
 import { ripple } from "../../ripple";
 import { SliderTab } from "../../slider";

@@ -1,3 +1,4 @@
+import { limitSymbols } from "../../../helpers/string";
 import appImManager from "../../../lib/appManagers/appImManager";
 import appMessagesManager from "../../../lib/appManagers/appMessagesManager";
 import appPeersManager from "../../../lib/appManagers/appPeersManager";
@@ -7,7 +8,6 @@ import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import { logger } from "../../../lib/logger";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import $rootScope from "../../../lib/rootScope";
-import { limitSymbols } from "../../../lib/utils";
 import AppMediaViewer from "../../appMediaViewer";
 import AvatarElement from "../../avatar";
 import { horizontalMenu } from "../../horizontalMenu";
@@ -478,9 +478,10 @@ export default class AppSharedMediaTab implements SliderTab {
         break;
       }
       
+      case 'inputMessagesFilterMusic':
       case 'inputMessagesFilterDocument': {
-        for(let message of messages) {
-          let div = wrapDocument(message.media.document, true, false, message.mid);
+        for(const message of messages) {
+          const div = wrapDocument(message.media.document, true, false, message.mid, 400);
           div.dataset.mid = '' + message.mid;
           elemsToAppend.push(div);
         }
@@ -592,16 +593,7 @@ export default class AppSharedMediaTab implements SliderTab {
         
         break;
       }
-      
-      case 'inputMessagesFilterMusic': {
-        for(let message of messages) {
-          let div = wrapAudio(message.media.document, true, message.mid);
-          div.dataset.mid = '' + message.mid;
-          elemsToAppend.push(div);
-        }
-        break;
-      }
-      
+
       default:
         //console.warn('death is my friend', messages);
         break;

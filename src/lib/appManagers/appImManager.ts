@@ -29,6 +29,8 @@ import appSidebarRight, { AppSidebarRight, RIGHT_COLUMN_ACTIVE_CLASSNAME } from 
 import StickyIntersector from '../../components/stickyIntersector';
 import { wrapAlbum, wrapDocument, wrapPhoto, wrapPoll, wrapReply, wrapSticker, wrapVideo } from '../../components/wrappers';
 import mediaSizes, { ScreenSize } from '../../helpers/mediaSizes';
+import { numberWithCommas } from '../../helpers/number';
+import { defineNotNumerableProperties, getObjectKeysAndSort } from '../../helpers/object';
 import { isTouchSupported } from '../../helpers/touchSupport';
 import { isAndroid, isApple, isSafari } from '../../helpers/userAgent';
 import { InputNotifyPeer, InputPeerNotifySettings, NotifyPeer, Update } from '../../layer';
@@ -38,7 +40,7 @@ import apiManager from '../mtproto/mtprotoworker';
 import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
 import { RichTextProcessor } from "../richtextprocessor";
 import $rootScope from '../rootScope';
-import { cancelEvent, defineNotNumerableProperties, findUpClassName, findUpTag, getObjectKeysAndSort, numberWithCommas, placeCaretAtEnd, whichChild } from "../utils";
+import { cancelEvent, findUpClassName, findUpTag, placeCaretAtEnd, whichChild } from "../../helpers/dom";
 import apiUpdatesManager from './apiUpdatesManager';
 import appChatsManager, { Channel, Chat } from "./appChatsManager";
 import appDialogsManager from "./appDialogsManager";
@@ -327,7 +329,7 @@ export class AppImManager {
 
       appSidebarRight.sharedMediaTab.renderNewMessages(message.peerID, [mid]);
       
-      let bubble = this.bubbles[tempID];
+      const bubble = this.bubbles[tempID];
       if(bubble) {
         this.bubbles[mid] = bubble;
         
@@ -335,8 +337,8 @@ export class AppImManager {
 
         // set new mids to album items for mediaViewer
         if(message.grouped_id) {
-          let items = bubble.querySelectorAll('.album-item');
-          let groupIDs = getObjectKeysAndSort(appMessagesManager.groupedMessagesStorage[message.grouped_id]);
+          const items = bubble.querySelectorAll('.album-item');
+          const groupIDs = getObjectKeysAndSort(appMessagesManager.groupedMessagesStorage[message.grouped_id]);
           (Array.from(items) as HTMLElement[]).forEach((item, idx) => {
             item.dataset.mid = '' + groupIDs[idx];
           });
@@ -412,15 +414,15 @@ export class AppImManager {
         }); */
         this.needUpdate.forEachReverse((obj, idx) => {
           if(obj.replyMid == mid) {
-            let {mid, replyMid} = this.needUpdate.splice(idx, 1)[0];
+            const {mid, replyMid} = this.needUpdate.splice(idx, 1)[0];
             
             //this.log('messages_downloaded', mid, replyMid, i, this.needUpdate, this.needUpdate.length, mids, this.bubbles[mid]);
-            let bubble = this.bubbles[mid];
+            const bubble = this.bubbles[mid];
             if(!bubble) return;
             
-            let message = appMessagesManager.getMessage(mid);
+            const message = appMessagesManager.getMessage(mid);
             
-            let repliedMessage = appMessagesManager.getMessage(replyMid);
+            const repliedMessage = appMessagesManager.getMessage(replyMid);
             if(repliedMessage.deleted) { // чтобы не пыталось бесконечно загрузить удалённое сообщение
               delete message.reply_to_mid; // WARNING!
             }
@@ -439,7 +441,7 @@ export class AppImManager {
     });
 
     $rootScope.$on('apiUpdate', (e) => {
-      let update = e.detail;
+      const update = e.detail;
       
       this.handleUpdate(update);
     });
@@ -489,8 +491,8 @@ export class AppImManager {
           return;
         }
 
-        for(let timestamp in this.dateMessages) {
-          let d = this.dateMessages[timestamp];
+        for(const timestamp in this.dateMessages) {
+          const d = this.dateMessages[timestamp];
           if(d.div == bubble) {
             new PopupDatePicker(new Date(+timestamp), this.onDatePick).show();
             break;
@@ -518,7 +520,7 @@ export class AppImManager {
         return;
       }
 
-      let contactDiv: HTMLElement = findUpClassName(target, 'contact');
+      const contactDiv: HTMLElement = findUpClassName(target, 'contact');
       if(contactDiv) {
         this.setPeer(+contactDiv.dataset.peerID);
         return;
@@ -707,10 +709,10 @@ export class AppImManager {
       new ChatSearch();
     });
     
-    let onKeyDown = (e: KeyboardEvent) => {
+    const onKeyDown = (e: KeyboardEvent) => {
       if($rootScope.overlayIsActive) return;
       
-      let target = e.target as HTMLElement;
+      const target = e.target as HTMLElement;
       
       //if(target.tagName == 'INPUT') return;
       
@@ -743,7 +745,7 @@ export class AppImManager {
     document.body.addEventListener('keydown', onKeyDown);
     
     this.goDownBtn.addEventListener('click', () => {
-      let dialog = appMessagesManager.getDialogByPeerID(this.peerID)[0];
+      const dialog = appMessagesManager.getDialogByPeerID(this.peerID)[0];
       
       if(dialog) {
         this.setPeer(this.peerID/* , dialog.top_message */);
@@ -761,8 +763,8 @@ export class AppImManager {
     //apiUpdatesManager.attach();
 
     this.stickyIntersector = new StickyIntersector(this.scrollable.container, (stuck, target) => {
-      for(let timestamp in this.dateMessages) {
-        let dateMessage = this.dateMessages[timestamp];
+      for(const timestamp in this.dateMessages) {
+        const dateMessage = this.dateMessages[timestamp];
         if(dateMessage.container == target) {
           dateMessage.div.classList.toggle('is-sticky', stuck);
           break;
@@ -775,12 +777,12 @@ export class AppImManager {
         return;
       }
 
-      let readed: number[] = [];
+      const readed: number[] = [];
     
       entries.forEach(entry => {
         if(entry.isIntersecting) {
-          let target = entry.target as HTMLElement;
-          let mid = +target.dataset.mid;
+          const target = entry.target as HTMLElement;
+          const mid = +target.dataset.mid;
           readed.push(mid);
           this.unreadedObserver.unobserve(target);
           this.unreaded.findAndSplice(id => id == mid);
@@ -788,11 +790,11 @@ export class AppImManager {
       });
 
       if(readed.length) {
-        let max = Math.max(...readed);
+        const max = Math.max(...readed);
 
         let length = readed.length;
         for(let i = this.unreaded.length - 1; i >= 0; --i) {
-          let mid = this.unreaded[i];
+          const mid = this.unreaded[i];
           if(mid < max) {
             length++;
             this.unreaded.splice(i, 1);
@@ -1106,9 +1108,9 @@ export class AppImManager {
   }
 
   public getMountedBubble(mid: number) {
-    let message = appMessagesManager.getMessage(mid);
+    const message = appMessagesManager.getMessage(mid);
 
-    let bubble = this.bubbles[mid];
+    const bubble = this.bubbles[mid];
     if(!bubble && message.grouped_id) {
       const a = this.getAlbumBubble(message.grouped_id);
       if(a) return a;

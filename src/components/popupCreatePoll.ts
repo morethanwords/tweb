@@ -2,7 +2,7 @@ import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import appPeersManager from "../lib/appManagers/appPeersManager";
 import appPollsManager, { Poll } from "../lib/appManagers/appPollsManager";
 import $rootScope from "../lib/rootScope";
-import { findUpTag, whichChild } from "../lib/utils";
+import { findUpTag, whichChild } from "../helpers/dom";
 import CheckboxField from "./checkbox";
 import InputField from "./inputField";
 import { PopupElement } from "./popup";

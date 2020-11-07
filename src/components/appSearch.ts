@@ -4,12 +4,12 @@ import appMessagesIDsManager from "../lib/appManagers/appMessagesIDsManager";
 import appUsersManager from "../lib/appManagers/appUsersManager";
 import appPeersManager from '../lib/appManagers/appPeersManager';
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
-import { escapeRegExp } from "../lib/utils";
 import { formatPhoneNumber } from "./misc";
 import appChatsManager from "../lib/appManagers/appChatsManager";
 import SearchInput from "./searchInput";
 import { Peer } from "../layer";
 import $rootScope from "../lib/rootScope";
+import { escapeRegExp } from "../helpers/string";
 
 export class SearchGroup {
   container: HTMLDivElement;

@@ -5,7 +5,7 @@ import appPeersManager from "../lib/appManagers/appPeersManager";
 import appPhotosManager from "../lib/appManagers/appPhotosManager";
 import appUsersManager from "../lib/appManagers/appUsersManager";
 import $rootScope from "../lib/rootScope";
-import { cancelEvent, findUpAttribute, findUpClassName } from "../lib/utils";
+import { cancelEvent, findUpAttribute, findUpClassName } from "../helpers/dom";
 import Scrollable from "./scrollable";
 
 type PeerType = 'contacts' | 'dialogs';

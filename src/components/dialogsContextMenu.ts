@@ -4,7 +4,7 @@ import appImManager from "../lib/appManagers/appImManager";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import appPeersManager from "../lib/appManagers/appPeersManager";
 import $rootScope from "../lib/rootScope";
-import { findUpTag } from "../lib/utils";
+import { findUpTag } from "../helpers/dom";
 import { parseMenuButtonsTo, positionMenu, openBtnMenu } from "./misc";
 import { PopupButton } from "./popup";
 import PopupPeer from "./popupPeer";

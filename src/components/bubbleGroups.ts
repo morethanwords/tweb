@@ -1,5 +1,5 @@
 import $rootScope from "../lib/rootScope";
-import { generatePathData } from "../lib/utils";
+import { generatePathData } from "../helpers/dom";
 
 export default class BubbleGroups {
   bubblesByGroups: Array<{timestamp: number, fromID: number, mid: number, group: HTMLDivElement[]}> = []; // map to group

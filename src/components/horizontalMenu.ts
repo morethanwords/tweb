@@ -1,4 +1,4 @@
-import { findUpTag, whichChild } from "../lib/utils";
+import { findUpTag, whichChild } from "../helpers/dom";
 import Transition from "./transition";
 
 export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?: (id: number, tabContent: HTMLDivElement) => void, onTransitionEnd?: () => void, transitionTime = 250) {

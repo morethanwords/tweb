@@ -5,7 +5,7 @@ import appPollsManager, { Poll, PollResults } from "../lib/appManagers/appPollsM
 import serverTimeManager from "../lib/mtproto/serverTimeManager";
 import { RichTextProcessor } from "../lib/richtextprocessor";
 import $rootScope from "../lib/rootScope";
-import { cancelEvent, findUpClassName } from "../lib/utils";
+import { cancelEvent, findUpClassName } from "../helpers/dom";
 import { ripple } from "./ripple";
 import appSidebarRight from "./sidebarRight";
 

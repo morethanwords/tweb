@@ -1,4 +1,4 @@
-import { calcImageInBox } from "../lib/utils";
+import { calcImageInBox } from "../helpers/dom";
 import appDocsManager, {MyDocument} from "../lib/appManagers/appDocsManager";
 import { wrapVideo } from "./wrappers";
 import { renderImageFromUrl } from "./misc";

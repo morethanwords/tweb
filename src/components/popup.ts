@@ -1,5 +1,5 @@
 import $rootScope from "../lib/rootScope";
-import { cancelEvent, findUpClassName } from "../lib/utils";
+import { cancelEvent, findUpClassName } from "../helpers/dom";
 import { ripple } from "./ripple";
 
 export class PopupElement {

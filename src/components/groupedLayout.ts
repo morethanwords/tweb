@@ -5,6 +5,9 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 
+import { accumulate } from "../helpers/array";
+import { clamp } from "../helpers/number";
+
 type Size = {w: number, h: number};
 export type GroupMediaLayout = {
   geometry: {
@@ -26,13 +29,6 @@ export const RectPart = {
   Bottom: 4,
   Left: 8
 };
-
-let accumulate = (arr: number[], initialValue: number) => arr.reduce((acc, value) => acc + value, initialValue);
-
-// https://github.com/telegramdesktop/tdesktop/blob/74d848311b31ef0eb6d2c43a4d30ade8f1d2d9fb/Telegram/SourceFiles/core/utils.h#L128
-function snap<T>(v: T, _min: T, _max: T): T {
-  return (v < _min) ? _min : ((v > _max) ? _max : v);
-}
 
 // https://github.com/telegramdesktop/tdesktop/blob/4669c07dc5335cbf4795bbbe5b0ab7c007b9aee2/Telegram/SourceFiles/ui/grouped_layout.cpp
 export class Layouter {
@@ -324,8 +320,8 @@ class ComplexLayouter {
     const kMinRatio = 0.6667;
     return ratios.map(ratio => {
       return averageRatio > 1.1
-			  ? snap(ratio, 1., kMaxRatio)
-			  : snap(ratio, kMinRatio, 1.);
+			  ? clamp(ratio, 1., kMaxRatio)
+			  : clamp(ratio, kMinRatio, 1.);
     });
   }
 

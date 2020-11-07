@@ -1,7 +1,7 @@
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import appProfileManager from "../lib/appManagers/appProfileManager";
 import $rootScope from "../lib/rootScope";
-import { cancelEvent } from "../lib/utils";
+import { cancelEvent } from "../helpers/dom";
 import AppMediaViewer, { AppMediaViewerAvatar } from "./appMediaViewer";
 
 $rootScope.$on('avatar_update', (e) => {

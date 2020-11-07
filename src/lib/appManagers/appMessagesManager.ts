@@ -1,6 +1,10 @@
 import ProgressivePreloader from "../../components/preloader";
+import { listMergeSorted } from "../../helpers/array";
 import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
+import { tsNow } from "../../helpers/date";
+import { copy, defineNotNumerableProperties, deepEqual, safeReplaceObject, getObjectKeysAndSort } from "../../helpers/object";
 import { randomLong } from "../../helpers/random";
+import { splitStringByLength, limitSymbols } from "../../helpers/string";
 import { Dialog as MTDialog, DialogFilter, DialogPeer, DocumentAttribute, InputMessage, Message, MessageAction, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, PhotoSize, SendMessageAction, Update } from "../../layer";
 import { InvokeApiOptions, Modify } from "../../types";
 import { langPack } from "../langPack";
@@ -14,7 +18,6 @@ import { RichTextProcessor } from "../richtextprocessor";
 import $rootScope from "../rootScope";
 import searchIndexManager from '../searchIndexManager';
 import AppStorage from '../storage';
-import { copy, deepEqual, defineNotNumerableProperties, getObjectKeysAndSort, limitSymbols, listMergeSorted, safeReplaceObject, splitStringByLength, tsNow } from "../utils";
 //import { telegramMeWebService } from "../mtproto/mtproto";
 import apiUpdatesManager from "./apiUpdatesManager";
 import appChatsManager from "./appChatsManager";

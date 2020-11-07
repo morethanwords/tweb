@@ -10,6 +10,7 @@ import mediaSizes from "../helpers/mediaSizes";
 import { isSafari } from "../helpers/userAgent";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import $rootScope from "../lib/rootScope";
+import './middleEllipsis';
 
 $rootScope.$on('messages_media_read', e => {
   const mids = e.detail;
@@ -252,7 +253,7 @@ function wrapAudio(doc: MyDocument, audioEl: AudioElement) {
 
   const html = `
   <div class="audio-details">
-    <div class="audio-title">${title}</div>
+    <div class="audio-title"><middle-ellipsis-element data-font-weight="${audioEl.dataset.fontWeight}">${title}</middle-ellipsis-element></div>
     <div class="audio-subtitle">${subtitle}</div>
     <div class="audio-time"></div>
   </div>`;

@@ -2,7 +2,7 @@ import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import appPeersManager from "../../lib/appManagers/appPeersManager";
 import { RichTextProcessor } from "../../lib/richtextprocessor";
 import $rootScope from "../../lib/rootScope";
-import { cancelEvent } from "../../lib/utils";
+import { cancelEvent } from "../../helpers/dom";
 import appMediaPlaybackController from "../appMediaPlaybackController";
 import DivAndCaption from "../divAndCaption";
 import { formatDate } from "../wrappers";

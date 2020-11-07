@@ -1,12 +1,13 @@
 import { bytesFromHex } from "../../helpers/bytes";
 import { CancellablePromise } from "../../helpers/cancellablePromise";
 import { getFileNameByLocation } from "../../helpers/fileName";
+import { safeReplaceArrayInObject, defineNotNumerableProperties, isObject } from "../../helpers/object";
 import { isSafari } from "../../helpers/userAgent";
 import { FileLocation, InputFileLocation, Photo, PhotoSize, PhotosPhotos } from "../../layer";
 import { DownloadOptions } from "../mtproto/apiFileManager";
 import apiManager from "../mtproto/mtprotoworker";
 import referenceDatabase, { ReferenceContext } from "../mtproto/referenceDatabase";
-import { calcImageInBox, defineNotNumerableProperties, isObject, safeReplaceArrayInObject } from "../utils";
+import { calcImageInBox } from "../../helpers/dom";
 import { MyDocument } from "./appDocsManager";
 import appDownloadManager from "./appDownloadManager";
 import appUsersManager from "./appUsersManager";

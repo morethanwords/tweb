@@ -5,7 +5,7 @@ import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import appPeersManager from "../../lib/appManagers/appPeersManager";
 import appPollsManager, { Poll } from "../../lib/appManagers/appPollsManager";
 import $rootScope from "../../lib/rootScope";
-import { cancelEvent, cancelSelection, findUpClassName } from "../../lib/utils";
+import { cancelEvent, cancelSelection, findUpClassName } from "../../helpers/dom";
 import ButtonMenu, { ButtonMenuItemOptions } from "../buttonMenu";
 import { attachContextMenuListener, openBtnMenu, positionMenu } from "../misc";
 import PopupDeleteMessages from "../popupDeleteMessages";

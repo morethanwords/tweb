@@ -1,11 +1,11 @@
 import MTProtoWorker from 'worker-loader!./mtproto.worker';
+import { isObject } from '../../helpers/object';
 import type { MethodDeclMap } from '../../layer';
 import type { InvokeApiOptions } from '../../types';
 import CryptoWorkerMethods from '../crypto/crypto_methods';
 import { logger } from '../logger';
 import $rootScope from '../rootScope';
 import AppStorage from '../storage';
-import { isObject } from '../utils';
 import webpWorkerController from '../webp/webpWorkerController';
 import type { DownloadOptions } from './apiFileManager';
 import { ApiError } from './apiManager';

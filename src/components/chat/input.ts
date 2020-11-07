@@ -11,7 +11,7 @@ import apiManager from "../../lib/mtproto/mtprotoworker";
 import opusDecodeController from "../../lib/opusDecodeController";
 import { RichTextProcessor } from "../../lib/richtextprocessor";
 import $rootScope from '../../lib/rootScope';
-import { cancelEvent, findUpClassName, getRichValue } from "../../lib/utils";
+import { cancelEvent, findUpClassName, getRichValue } from "../../helpers/dom";
 import ButtonMenu, { ButtonMenuItemOptions } from '../buttonMenu';
 import emoticonsDropdown from "../emoticonsDropdown";
 import PopupCreatePoll from "../popupCreatePoll";
