@@ -813,8 +813,8 @@ $bubble-margin: .25rem;
     font-size: 16px;
     //padding: 0 .6rem .2675rem .6rem;
     padding: 0 .6rem 6px .6rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    /* overflow: hidden;
+    text-overflow: ellipsis; */
     max-width: 100%;
     color: #000;
     line-height: 21px;

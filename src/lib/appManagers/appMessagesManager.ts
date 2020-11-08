@@ -2285,8 +2285,8 @@ export class AppMessagesManager {
       const myID = appUsersManager.getSelf().id;
 
       message.peerID = peerID;
-      if(message.peerID == myID && !message.from_id && !message.fwd_from) {
-        message.fromID = myID;
+      if(message.peerID == myID/*  && !message.from_id && !message.fwd_from */) {
+        message.fromID = message.fwd_from?.from_id ? appPeersManager.getPeerID(message.fwd_from.from_id) : myID;
       } else {
         message.fromID = message.pFlags.post || (!message.pFlags.out && !message.from_id) ? peerID : appPeersManager.getPeerID(message.from_id);
       }
@@ -2301,9 +2301,9 @@ export class AppMessagesManager {
             message.savedFrom = savedFromPeerID + '_' + savedFromMid;
           }
 
-          if(peerID < 0 || peerID == myID) {
+          /* if(peerID < 0 || peerID == myID) {
             message.fromID = appPeersManager.getPeerID(!message.from_id || deepEqual(message.from_id, fwdHeader.from_id) ? fwdHeader.from_id : message.from_id);
-          }
+          } */
         /* } else {
           apiMessage.fwdPostID = fwdHeader.channel_post;
         } */
@@ -2466,10 +2466,10 @@ export class AppMessagesManager {
         message.totalEntities = RichTextProcessor.mergeEntities(myEntities, apiEntities, !message.pending);
       }
 
-      if(!options.isEdited) {
+      //if(!options.isEdited) {
         this.messagesStorage[mid] = message;
         (this.messagesStorageByPeerID[peerID] ?? (this.messagesStorageByPeerID[peerID] = {}))[mid] = message;
-      }
+      //}
     });
 
     if(albums) {
@@ -2543,11 +2543,11 @@ export class AppMessagesManager {
       // * 80 for chatlist in landscape orientation
       text = limitSymbols(text, 75, 80);
 
-      let entities = RichTextProcessor.parseEntities(text.replace(/\n/g, ' '));
+      const entities = RichTextProcessor.parseEntities(text.replace(/\n/g, ' '));
 
       messageWrapped = RichTextProcessor.wrapRichText(text, {
         noLinebreaks: true, 
-        entities: entities, 
+        entities, 
         noLinks: true,
         noTextFormat: true
       });
@@ -3777,7 +3777,7 @@ export class AppMessagesManager {
         }
 
         // console.trace(dT(), 'edit message', message)
-        this.saveMessages([message], {isEdited: true});
+        this.saveMessages([message]/* , {isEdited: true} */);
         safeReplaceObject(this.messagesStorage[mid], message);
 
         const dialog = this.getDialogByPeerID(peerID)[0];
