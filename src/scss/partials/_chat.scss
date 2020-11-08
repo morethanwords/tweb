@@ -784,7 +784,12 @@ $chat-helper-size: 39px;
 
 		i {
 			font-style: normal;
-			color: $color-blue;
+			//color: $color-blue;
+			color: #707579;
+
+			/* &.document-title {
+				color: #707579;
+			} */
 		}
 
 		img.emoji {

@@ -1310,7 +1310,7 @@ $bubble-margin: .25rem;
     } */
   }
 
-  .quote .name, .reply-title {
+  .quote .name, .reply-title/* , .reply i */ {
     color: $color-blue;
   }
   
@@ -1456,7 +1456,7 @@ $bubble-margin: .25rem;
     background-color: $darkgreen;
   }
 
-  .quote .name, .reply-title {
+  .quote .name, .reply-title, .reply i {
     color: $darkgreen;
   }
   

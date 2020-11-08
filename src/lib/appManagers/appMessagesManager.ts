@@ -2520,7 +2520,7 @@ export class AppMessagesManager {
           } else if(document.type == 'sticker') {
             messageText = (document.stickerEmoji || '') + '<i>Sticker</i>';
           } else {
-            messageText = '<i>' + document.file_name + '</i>';
+            messageText = '<i>' + document.file_name + (message.message ? ', ' : '') + '</i>';
           }
 
           break;
@@ -2548,6 +2548,7 @@ export class AppMessagesManager {
       messageWrapped = RichTextProcessor.wrapRichText(text, {
         noLinebreaks: true, 
         entities: entities, 
+        noLinks: true,
         noTextFormat: true
       });
     }

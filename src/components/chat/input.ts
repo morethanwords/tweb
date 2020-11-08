@@ -550,7 +550,7 @@ export class ChatInput {
   public updateSendBtn() {
     let icon: 'send' | 'record';
 
-    if(!this.recorder || this.recording || !this.isInputEmpty() || this.forwardingMids.length) icon = 'send';
+    if(!this.recorder || this.recording || !this.isInputEmpty() || this.forwardingMids.length || this.editMsgID) icon = 'send';
     else icon = 'record';
 
     this.btnSend.classList.toggle('send', icon == 'send');
