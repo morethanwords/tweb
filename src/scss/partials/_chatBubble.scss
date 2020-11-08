@@ -1009,6 +1009,8 @@ $bubble-margin: .25rem;
   &.is-message-empty {
     .message {
       position: absolute;
+      /* position: relative;
+      width: max-content; */
       bottom: .1rem;
       right: .2rem;
       border-radius: 12px;
@@ -1024,6 +1026,7 @@ $bubble-margin: .25rem;
         padding: 0 2.5px;
         line-height: 20px;
         pointer-events: all; // show title
+        white-space: nowrap;
 
         .inner {
           display: none;
@@ -1063,6 +1066,7 @@ $bubble-margin: .25rem;
       align-items: center;
       line-height: 1;
       padding: inherit;
+      white-space: nowrap;
     }
   }
 

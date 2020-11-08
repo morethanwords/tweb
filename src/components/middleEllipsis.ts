@@ -116,7 +116,8 @@ function getTextWidth(text: string, font: string) {
   //context.font = font;
   const metrics = context.measureText(text);
   //console.log('getTextWidth perf:', performance.now() - perf);
-  return metrics.width;
+  //return metrics.width;
+  return Math.round(metrics.width);
 }
 
 export class MiddleEllipsisElement extends HTMLElement {

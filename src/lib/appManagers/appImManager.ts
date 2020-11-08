@@ -1712,7 +1712,8 @@ export class AppImManager {
 
       bubbleContainer = bubble.firstElementChild as HTMLDivElement;
       bubbleContainer.innerHTML = '';
-      bubbleContainer.style.marginBottom = '';
+      //bubbleContainer.style.marginBottom = '';
+      bubbleContainer.style.cssText = '';
 
       if(bubble == this.firstUnreadBubble) {
         bubble.classList.add('is-first-unread');
