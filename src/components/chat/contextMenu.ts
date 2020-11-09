@@ -237,7 +237,7 @@ export default class ChatContextMenu {
   };
 
   private onSelectClick = () => {
-    appImManager.chatSelection.toggleByBubble(findUpClassName(this.target, 'bubble'));
+    appImManager.chatSelection.toggleByBubble(findUpClassName(this.target, 'album-item') || findUpClassName(this.target, 'bubble'));
   };
 
   private onClearSelectionClick = () => {

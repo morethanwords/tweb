@@ -209,6 +209,9 @@ $bubble-margin: .25rem;
     }
 
     .checkbox-caption {
+      padding: 0;
+      width: 25px;
+
       &:before {
         top: 7px !important;
         left: 3px !important;
@@ -614,10 +617,7 @@ $bubble-margin: .25rem;
       max-height: none;
 
       .album-item {
-        background-color: #000;
-        background-size: cover;
-        /* background-position: center center; */
-        /* flex: 1 0 auto; */
+        background-color: lighten($color-blue, 35%);
         max-width: 100%;
         cursor: pointer;
         position: absolute;
@@ -625,6 +625,40 @@ $bubble-margin: .25rem;
 
         img, video {
           border-radius: inherit;
+        }
+
+        .bubble-select-checkbox {
+          bottom: auto !important;
+          left: auto;
+          right: .25rem;
+          top: .25rem;
+        }
+
+        &.is-selected {
+          border-radius: 0;
+          
+          .album-item-media {
+            transform: scale(1);
+            border-radius: 0;
+          }
+
+          &.animating {
+            transition: border-radius var(--layer-transition);
+
+            .album-item-media {
+              transition: transform var(--layer-transition), border-radius var(--layer-transition);
+            }
+          }
+
+          &:not(.backwards) {
+            .album-item-media {
+              transform: scale(.925);
+            }
+
+            &, .album-item-media {
+              border-radius: .5rem;
+            }
+          }
         }
       }
     }
@@ -1462,6 +1496,10 @@ $bubble-margin: .25rem;
 
   .quote .name, .reply-title, .reply i {
     color: $darkgreen;
+  }
+
+  .album-item {
+    background-color: darken(#eeffde, 10%) !important;
   }
   
   .time {

@@ -798,11 +798,14 @@ export function wrapAlbum({groupID, attachmentDiv, middleware, uploading, lazyLo
       div.style.borderBottomRightRadius = 'inherit';
     }
 
+    const mediaDiv = document.createElement('div');
+    mediaDiv.classList.add('album-item-media');
+
     if(media._ == 'photo') {
       wrapPhoto(
         media,
         message,
-        div,
+        mediaDiv,
         0,
         0,
         false,
@@ -814,7 +817,7 @@ export function wrapAlbum({groupID, attachmentDiv, middleware, uploading, lazyLo
     } else {
       wrapVideo({
         doc: message.media.document,
-        container: div,
+        container: mediaDiv,
         message,
         boxWidth: 0,
         boxHeight: 0,
@@ -828,6 +831,7 @@ export function wrapAlbum({groupID, attachmentDiv, middleware, uploading, lazyLo
     // @ts-ignore
     //div.style.backgroundColor = '#' + Math.floor(Math.random() * (2 ** 24 - 1)).toString(16).padStart(6, '0');
 
+    div.append(mediaDiv);
     attachmentDiv.append(div);
   }
 }

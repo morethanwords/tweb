@@ -528,7 +528,8 @@ export class AppImManager {
           return;
         }
 
-        this.chatSelection.toggleByBubble(bubble);
+        //this.chatSelection.toggleByBubble(bubble);
+        this.chatSelection.toggleByBubble(findUpClassName(target, 'album-item') || bubble);
         return;
       }
 
@@ -890,6 +891,10 @@ export class AppImManager {
     }
 
     return null;
+  }
+
+  public getBubbleAlbumItems(bubble: HTMLElement) {
+    return Array.from(bubble.querySelectorAll('.album-item')) as HTMLElement[];
   }
 
   public loadMoreHistory(top: boolean, justLoad = false) {

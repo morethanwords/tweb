@@ -1023,3 +1023,10 @@ middle-ellipsis-element {
 	overflow: hidden;
 	display: block;
 }
+
+.album-item {
+  &-media {
+    width: 100%;
+    height: 100%;
+  }
+}

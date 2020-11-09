@@ -154,6 +154,7 @@ export default class ChatSelection {
 
   public toggleBubbleCheckbox(bubble: HTMLElement, show: boolean) {
     const hasCheckbox = !!this.getCheckboxInputFromBubble(bubble);
+    const isAlbum = bubble.classList.contains('is-album');
     if(show) {
       if(hasCheckbox) return;
       
@@ -170,6 +171,10 @@ export default class ChatSelection {
       bubble.prepend(checkboxField.label);
     } else if(hasCheckbox) {
       bubble.firstElementChild.remove();
+    }
+
+    if(isAlbum) {
+      this.appImManager.getBubbleAlbumItems(bubble).forEach(item => this.toggleBubbleCheckbox(item, show));
     }
   }
 
@@ -304,15 +309,40 @@ export default class ChatSelection {
     this.toggleSelection(false);
   }
 
-  public toggleByBubble(bubble: HTMLElement) {
-    const mid = +bubble.dataset.mid;
-    const mids = this.appMessagesManager.getMidsByMid(mid);
+  private updateBubbleSelection(bubble: HTMLElement, isSelected: boolean) {
+    this.toggleBubbleCheckbox(bubble, true);
+    const input = this.getCheckboxInputFromBubble(bubble);
+    input.checked = isSelected;
 
-    const found = mids.find(mid => this.selectedMids.has(mid));
+    this.toggleSelection();
+    this.updateForwardContainer();
+    SetTransition(bubble, 'is-selected', isSelected, 200);
+  }
+
+  public isAlbumBubbleSelected(bubble: HTMLElement) {
+    const albumCheckboxInput = this.getCheckboxInputFromBubble(bubble);
+    return albumCheckboxInput?.checked;
+  }
+
+  public toggleByBubble = (bubble: HTMLElement) => {
+    const mid = +bubble.dataset.mid;
+
+    const isAlbum = bubble.classList.contains('is-album');
+    if(isAlbum) {
+      if(!this.isAlbumBubbleSelected(bubble)) {
+        const mids = this.appMessagesManager.getMidsByMid(mid);
+        mids.forEach(mid => this.selectedMids.delete(mid));
+      }
+
+      this.appImManager.getBubbleAlbumItems(bubble).forEach(this.toggleByBubble);
+      return;
+    }
+
+    const found = this.selectedMids.has(mid);
     if(found) {
-      mids.forEach(mid => this.selectedMids.delete(mid));
+      this.selectedMids.delete(mid);
     } else {
-      let diff = MAX_SELECTION_LENGTH - this.selectedMids.size - mids.length;
+      const diff = MAX_SELECTION_LENGTH - this.selectedMids.size - 1;
       if(diff < 0) {
         toast('Max selection count reached.');
         return;
@@ -331,15 +361,23 @@ export default class ChatSelection {
         } while(this.selectedMids.size > MAX_SELECTION_LENGTH); */
       }
 
-      mids.forEach(mid => this.selectedMids.add(mid));
+      this.selectedMids.add(mid);
     }
 
-    this.toggleBubbleCheckbox(bubble, true);
-    const input = this.getCheckboxInputFromBubble(bubble);
-    input.checked = !found;
+    const isAlbumItem = bubble.classList.contains('album-item');
+    if(isAlbumItem) {
+      const albumContainer = findUpClassName(bubble, 'bubble');
+      const isAlbumSelected = this.isAlbumBubbleSelected(albumContainer);
 
-    this.toggleSelection();
-    this.updateForwardContainer();
-    SetTransition(bubble, 'is-selected', !found, 200);
-  }
+      const mids = this.appMessagesManager.getMidsByMid(mid);
+      const selectedMids = mids.filter(mid => this.selectedMids.has(mid));
+
+      const willChange = mids.length == selectedMids.length || isAlbumSelected;
+      if(willChange) {
+        this.updateBubbleSelection(albumContainer, mids.length == selectedMids.length);
+      }
+    }
+
+    this.updateBubbleSelection(bubble, !found);
+  };
 }

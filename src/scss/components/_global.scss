@@ -25,6 +25,9 @@ a {
   -webkit-tap-highlight-color: transparent;
 }
 
+img, video {
+  -webkit-user-drag: none;
+}
 
 // Positioning
 .valign-wrapper {
