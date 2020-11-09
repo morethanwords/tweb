@@ -8,6 +8,7 @@ import CheckboxField from "../checkbox";
 import PopupDeleteMessages from "../popupDeleteMessages";
 import PopupForward from "../popupForward";
 import { toast } from "../toast";
+import BubbleGroups from "../bubbleGroups";
 
 const SetTransition = (element: HTMLElement, className: string, forwards: boolean, duration: number, onTransitionEnd?: () => void) => {
   const timeout = element.dataset.timeout;
@@ -293,10 +294,14 @@ export default class ChatSelection {
 
   public cancelSelection = () => {
     for(const mid of this.selectedMids) {
-      const bubble = this.appImManager.bubbles[mid];
+      const mounted = this.appImManager.getMountedBubble(mid);
+      if(mounted) {
+        this.toggleByBubble(mounted.message.grouped_id ? mounted.bubble.querySelector(`.album-item[data-mid="${mid}"]`) : mounted.bubble);
+      }
+      /* const bubble = this.appImManager.bubbles[mid];
       if(bubble) {
         this.toggleByBubble(bubble);
-      }
+      } */
     }
 
     this.selectedMids.clear();
