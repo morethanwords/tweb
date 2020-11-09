@@ -204,6 +204,11 @@ export default class AppIncludedChatsTab implements SliderTab {
         (categories.querySelector(`[data-peerID="${flag}"]`) as HTMLElement).click();
       }
     }
+
+    // ! потому что onOpen срабатывает раньше, чем блок отрисовывается, и высоты нет
+    setTimeout(() => {
+      this.selector.selectedScrollable.scrollTo(this.selector.selectedScrollable.scrollHeight, 'top', false, true);
+    }, 0);
   }
 
   onSelectChange = (length: number) => {
