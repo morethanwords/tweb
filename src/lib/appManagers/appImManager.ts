@@ -2551,6 +2551,7 @@ export class AppImManager {
         for(let i = additionMsgIDs.length - 1; i >= 0; --i) {
           const message = appMessagesManager.getMessage(additionMsgIDs[i]);
           if(message.grouped_id) additionMsgIDs.splice(i, 1);
+          else break;
         }
 
         maxID = additionMsgIDs[additionMsgIDs.length - 1] || maxID;

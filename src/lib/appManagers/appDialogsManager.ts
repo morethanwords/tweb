@@ -329,19 +329,16 @@ export class AppDialogsManager {
 
     //selectTab(0);
     (this.folders.menu.firstElementChild.firstElementChild as HTMLElement).click();
-
-    /* false &&  */appStateManager.getState().then(() => {
-      return appMessagesManager.filtersStorage.getDialogFilters();
-    }).then(filters => {
-      for(const filterID in filters) {
-        this.addFilter(filters[filterID]);
-      }
+    appStateManager.getState().then((state) => {
+      const getFiltersPromise = !state.filters || Object.keys(state.filters).length ? appMessagesManager.filtersStorage.getDialogFilters() : Promise.resolve({});
+      getFiltersPromise.then((filters) => {
+        for(const filterID in filters) {
+          this.addFilter(filters[filterID]);
+        }
+      });
 
       return this.loadDialogs();
     }).then(result => {
-      //this.setPinnedDelimiter();
-      //appSidebarLeft.onChatsScroll();
-      //this.loadDialogs(1);
       appMessagesManager.getConversationsAll('', 1).then(() => {
         this.accumulateArchivedUnread();
       });
