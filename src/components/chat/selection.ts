@@ -164,7 +164,7 @@ export default class ChatSelection {
 
       // * if it is a render of new message
       const mid = +bubble.dataset.mid;
-      if(this.selectedMids.has(mid)) {
+      if(this.selectedMids.has(mid) && (!isAlbum || this.isAlbumMidsSelected(mid))) {
         checkboxField.input.checked = true;
         bubble.classList.add('is-selected');
       }
@@ -329,6 +329,12 @@ export default class ChatSelection {
     return albumCheckboxInput?.checked;
   }
 
+  public isAlbumMidsSelected(mid: number) {
+    const mids = this.appMessagesManager.getMidsByMid(mid);
+    const selectedMids = mids.filter(mid => this.selectedMids.has(mid));
+    return mids.length == selectedMids.length;
+  }
+
   public toggleByBubble = (bubble: HTMLElement) => {
     const mid = +bubble.dataset.mid;
 
@@ -373,13 +379,11 @@ export default class ChatSelection {
     if(isAlbumItem) {
       const albumContainer = findUpClassName(bubble, 'bubble');
       const isAlbumSelected = this.isAlbumBubbleSelected(albumContainer);
+      const isAlbumMidsSelected = this.isAlbumMidsSelected(mid);
 
-      const mids = this.appMessagesManager.getMidsByMid(mid);
-      const selectedMids = mids.filter(mid => this.selectedMids.has(mid));
-
-      const willChange = mids.length == selectedMids.length || isAlbumSelected;
+      const willChange = isAlbumMidsSelected || isAlbumSelected;
       if(willChange) {
-        this.updateBubbleSelection(albumContainer, mids.length == selectedMids.length);
+        this.updateBubbleSelection(albumContainer, isAlbumMidsSelected);
       }
     }
 
