@@ -1,4 +1,3 @@
-import { MessageRender } from "../../components/chat/messageRender";
 import ProgressivePreloader from "../../components/preloader";
 import { listMergeSorted } from "../../helpers/array";
 import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
@@ -6,19 +5,21 @@ import { tsNow } from "../../helpers/date";
 import { copy, defineNotNumerableProperties, deepEqual, safeReplaceObject, getObjectKeysAndSort } from "../../helpers/object";
 import { randomLong } from "../../helpers/random";
 import { splitStringByLength, limitSymbols } from "../../helpers/string";
-import { Dialog as MTDialog, DialogFilter, DialogPeer, DocumentAttribute, InputMessage, Message, MessageAction, MessageEntity, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, PhotoSize, SendMessageAction, Update } from "../../layer";
-import { InvokeApiOptions, Modify } from "../../types";
+import { Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMessage, Message, MessageAction, MessageEntity, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, PhotoSize, SendMessageAction, Update } from "../../layer";
+import { InvokeApiOptions } from "../../types";
 import { langPack } from "../langPack";
 import { logger, LogLevels } from "../logger";
 import type { ApiFileManager } from '../mtproto/apiFileManager';
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
 import referenceDatabase, { ReferenceContext } from "../mtproto/referenceDatabase";
-import { default as ServerTimeManager, default as serverTimeManager } from "../mtproto/serverTimeManager";
+import serverTimeManager from "../mtproto/serverTimeManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import $rootScope from "../rootScope";
 import searchIndexManager from '../searchIndexManager';
 import AppStorage from '../storage';
+import DialogsStorage from "../storages/dialogs";
+import FiltersStorage from "../storages/filters";
 //import { telegramMeWebService } from "../mtproto/mtproto";
 import apiUpdatesManager from "./apiUpdatesManager";
 import appChatsManager from "./appChatsManager";
@@ -31,7 +32,6 @@ import appPollsManager from "./appPollsManager";
 import appStateManager from "./appStateManager";
 import appUsersManager from "./appUsersManager";
 import appWebPagesManager from "./appWebPagesManager";
-
 
 //console.trace('include');
 // TODO: если удалить сообщение в непрогруженном диалоге, то при обновлении, из-за стейта, последнего сообщения в чатлисте не будет
@@ -59,390 +59,7 @@ export type HistoryResult = {
 
 export type Dialog = MTDialog.dialog;
 
-export class DialogsStorage {
-  public dialogs: {[peerID: string]: Dialog} = {};
-  public byFolders: {[folderID: number]: Dialog[]} = {};
-
-  public allDialogsLoaded: {[folder_id: number]: boolean} = {};
-  public dialogsOffsetDate: {[folder_id: number]: number} = {};
-  public pinnedOrders: {[folder_id: number]: number[]} = {
-    0: [],
-    1: []
-  };
-  public dialogsNum = 0;
-
-  public getFolder(id: number) {
-    if(id <= 1) {
-      return this.byFolders[id] ?? (this.byFolders[id] = []);
-    }
-
-    const dialogs: {dialog: Dialog, index: number}[] = [];
-    const filter = appMessagesManager.filtersStorage.filters[id];
-
-    for(const peerID in this.dialogs) {
-      const dialog = this.dialogs[peerID];
-      if(appMessagesManager.filtersStorage.testDialogForFilter(dialog, filter)) {
-        let index: number;
-
-        const pinnedIndex = filter.pinned_peers.indexOf(dialog.peerID);
-        if(pinnedIndex !== -1) {
-          index = this.generateDialogIndex(this.generateDialogPinnedDateByIndex(filter.pinned_peers.length - 1 - pinnedIndex));
-        } else if(dialog.pFlags?.pinned) {
-          index = this.generateIndexForDialog(dialog, true);
-        } else {
-          index = dialog.index;
-        }
-
-        dialogs.push({dialog, index});
-      }
-    }
-
-    dialogs.sort((a, b) => b.index - a.index);
-    return dialogs.map(d => d.dialog);
-  }
-
-  public getDialog(peerID: number, folderID?: number): [Dialog, number] | [] {
-    const folders: Dialog[][] = [];
-
-    if(folderID === undefined) {
-      const dialogs = this.byFolders;
-      for(const folderID in dialogs) {
-        folders.push(dialogs[folderID]);
-      }
-    } else {
-      folders.push(this.getFolder(folderID));
-    }
-
-    for(let folder of folders) {
-      const index = folder.findIndex(dialog => dialog.peerID == peerID);
-      if(index !== -1) {
-        return [folder[index], index];
-      }
-    }
-
-    return [];
-  }
-
-  /*
-  var date = Date.now() / 1000 | 0;
-  var m = date * 0x10000;
-
-  var k = (date + 1) * 0x10000;
-  k - m;
-  65536
-  */
-  public generateDialogIndex(date?: number) {
-    if(date === undefined) {
-      date = tsNow(true) + serverTimeManager.serverTimeOffset;
-    }
-
-    return (date * 0x10000) + ((++this.dialogsNum) & 0xFFFF);
-  }
-
-  public generateIndexForDialog(dialog: Dialog, justReturn = false) {
-    const channelID = appPeersManager.isChannel(dialog.peerID) ? -dialog.peerID : 0;
-    const mid = appMessagesIDsManager.getFullMessageID(dialog.top_message, channelID);
-    const message = appMessagesManager.getMessage(mid);
-
-    let topDate = (message as Message.message).date || Date.now() / 1000;
-    if(channelID) {
-      const channel = appChatsManager.getChat(channelID);
-      if(!topDate || channel.date && channel.date > topDate) {
-        topDate = channel.date;
-      }
-    }
-
-    const savedDraft: any = {};// DraftsManager.saveDraft(peerID, dialog.draft); // warning
-    if(savedDraft && savedDraft.date > topDate) {
-      topDate = savedDraft.date;
-    }
-
-    if(dialog.pFlags.pinned && !justReturn) {
-      topDate = this.generateDialogPinnedDate(dialog);
-      //this.log('topDate', peerID, topDate);
-    }
-
-    const index = this.generateDialogIndex(topDate);
-    if(justReturn) return index;
-    dialog.index = index;
-  }
-
-  public generateDialogPinnedDateByIndex(pinnedIndex: number) {
-    return 0x7fff0000 + (pinnedIndex & 0xFFFF); // 0xFFFF - потому что в папках может быть бесконечное число пиннедов
-  }
-
-  public generateDialogPinnedDate(dialog: Dialog) {
-    const order = this.pinnedOrders[dialog.folder_id];
-
-    const foundIndex = order.indexOf(dialog.peerID);
-    const pinnedIndex = foundIndex === -1 ? order.push(dialog.peerID) - 1 : foundIndex;
-
-    return this.generateDialogPinnedDateByIndex(pinnedIndex);
-  }
-
-  public pushDialog(dialog: Dialog, offsetDate?: number) {
-    const dialogs = this.getFolder(dialog.folder_id);
-    const pos = dialogs.findIndex(d => d.peerID == dialog.peerID);
-    if(pos !== -1) {
-      dialogs.splice(pos, 1);
-    }
-
-    //if(!this.dialogs[dialog.peerID]) {
-      this.dialogs[dialog.peerID] = dialog;
-    //}
-
-    if(offsetDate &&
-      !dialog.pFlags.pinned &&
-      (!this.dialogsOffsetDate[dialog.folder_id] || offsetDate < this.dialogsOffsetDate[dialog.folder_id])) {
-      if(pos !== -1) {
-        // So the dialog jumped to the last position
-        return false;
-      }
-      this.dialogsOffsetDate[dialog.folder_id] = offsetDate;
-    }
-
-    const index = dialog.index;
-    const len = dialogs.length;
-    if(!len || index < dialogs[len - 1].index) {
-      dialogs.push(dialog);
-    } else if(index >= dialogs[0].index) {
-      dialogs.unshift(dialog);
-    } else {
-      for(let i = 0; i < len; i++) {
-        if(index > dialogs[i].index) {
-          dialogs.splice(i, 0, dialog);
-          break;
-        }
-      }
-    }
-  }
-
-  public dropDialog(peerID: number): [Dialog, number] | [] {
-    const foundDialog = this.getDialog(peerID);
-    if(foundDialog[0]) {
-      this.byFolders[foundDialog[0].folder_id].splice(foundDialog[1], 1);
-      delete this.dialogs[peerID];
-    }
-
-    return foundDialog;
-  }
-}
-
-export type MyDialogFilter = Modify<DialogFilter, {
-  pinned_peers: number[],
-  include_peers: number[],
-  exclude_peers: number[],
-  orderIndex?: number
-}>;
-
-export class FiltersStorage {
-  public filters: {[filterID: string]: MyDialogFilter} = {};
-  public orderIndex = 0;
-
-  constructor() {
-    $rootScope.$on('apiUpdate', (e) => {
-      this.handleUpdate(e.detail);
-    });
-  }
-
-  public handleUpdate(update: Update) {
-    switch(update._) {
-      case 'updateDialogFilter': {
-        //console.log('updateDialogFilter', update);
-        if(update.filter) {
-          this.saveDialogFilter(update.filter as any);
-        } else if(this.filters[update.id]) { // Папка удалена
-          //this.getDialogFilters(true);
-          $rootScope.$broadcast('filter_delete', this.filters[update.id]);
-          delete this.filters[update.id];
-        }
-
-        break;
-      }
-    }
-  }
-
-  public testDialogForFilter(dialog: Dialog, filter: MyDialogFilter) {
-    // exclude_peers
-    for(const peerID of filter.exclude_peers) {
-      if(peerID == dialog.peerID) {
-        return false;
-      }
-    }
-
-    // include_peers
-    for(const peerID of filter.include_peers) {
-      if(peerID == dialog.peerID) {
-        return true;
-      }
-    }
-
-    const pFlags = filter.pFlags;
-
-    // exclude_archived
-    if(pFlags.exclude_archived && dialog.folder_id == 1) {
-      return false;
-    }
-
-    // exclude_read
-    if(pFlags.exclude_read && !dialog.unread_count) {
-      return false;
-    }
-
-    // exclude_muted
-    if(pFlags.exclude_muted) {
-      const isMuted = (dialog.notify_settings?.mute_until * 1000) > Date.now();
-      if(isMuted) {
-        return false;
-      }
-    }
-
-    const peerID = dialog.peerID;
-    if(peerID < 0) {
-      // broadcasts
-      if(pFlags.broadcasts && appPeersManager.isBroadcast(peerID)) {
-        return true;
-      }
-
-      // groups
-      if(pFlags.groups && appPeersManager.isAnyGroup(peerID)) {
-        return true;
-      }
-    } else {
-      // bots
-      if(appPeersManager.isBot(peerID)) {
-        return !!pFlags.bots;
-      }
-      
-      // non_contacts
-      if(pFlags.non_contacts && !appUsersManager.contactsList.has(peerID)) {
-        return true;
-      }
-
-      // contacts
-      if(pFlags.contacts && appUsersManager.contactsList.has(peerID)) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  public toggleDialogPin(peerID: number, filterID: number) {
-    const filter = this.filters[filterID];
-
-    const wasPinned = filter.pinned_peers.findAndSplice(p => p == peerID);
-    if(!wasPinned) {
-      filter.pinned_peers.unshift(peerID);
-    }
-    
-    return this.updateDialogFilter(filter);
-  }
-
-  public createDialogFilter(filter: MyDialogFilter) {
-    let maxID = Math.max(1, ...Object.keys(this.filters).map(i => +i));
-    filter = copy(filter);
-    filter.id = maxID + 1;
-    return this.updateDialogFilter(filter);
-  }
-
-  public updateDialogFilter(filter: MyDialogFilter, remove = false) {
-    const flags = remove ? 0 : 1;
-
-    return apiManager.invokeApi('messages.updateDialogFilter', {
-      flags,
-      id: filter.id,
-      filter: remove ? undefined : this.getOutputDialogFilter(filter)
-    }).then((bool: boolean) => { // возможно нужна проверка и откат, если результат не ТРУ
-      //console.log('updateDialogFilter bool:', bool);
-
-      if(bool) {
-        /* if(!this.filters[filter.id]) {
-          this.saveDialogFilter(filter);
-        }
-
-        $rootScope.$broadcast('filter_update', filter); */
-
-        this.handleUpdate({
-          _: 'updateDialogFilter',
-          id: filter.id,
-          filter: remove ? undefined : filter as any
-        });
-      }
-
-      return bool;
-    });
-  }
-
-  public getOutputDialogFilter(filter: MyDialogFilter) {
-    const c: MyDialogFilter = copy(filter);
-    ['pinned_peers', 'exclude_peers', 'include_peers'].forEach(key => {
-      // @ts-ignore
-      c[key] = c[key].map((peerID: number) => appPeersManager.getInputPeerByID(peerID));
-    });
-
-    c.include_peers.forEachReverse((peerID, idx) => {
-      if(c.pinned_peers.includes(peerID)) {
-        c.include_peers.splice(idx, 1);
-      }
-    });
-
-    return c as any as DialogFilter;
-  }
-
-  public async getDialogFilters(overwrite = false) {
-    if(Object.keys(this.filters).length && !overwrite) {
-      return this.filters;
-    }
-
-    const filters = await apiManager.invokeApi('messages.getDialogFilters');
-    for(const filter of filters) {
-      this.saveDialogFilter(filter as any as MyDialogFilter, false);
-    }
-
-    //console.log(this.filters);
-    return this.filters;
-  }
-
-  public saveDialogFilter(filter: MyDialogFilter, update = true) {
-    ['pinned_peers', 'exclude_peers', 'include_peers'].forEach(key => {
-      // @ts-ignore
-      filter[key] = filter[key].map((peer: any) => appPeersManager.getPeerID(peer));
-    });
-
-    filter.include_peers.forEachReverse((peerID, idx) => {
-      if(filter.pinned_peers.includes(peerID)) {
-        filter.include_peers.splice(idx, 1);
-      }
-    });
-    
-    filter.include_peers = filter.pinned_peers.concat(filter.include_peers);
-
-    if(this.filters[filter.id]) {
-      Object.assign(this.filters[filter.id], filter);
-    } else {
-      this.filters[filter.id] = filter;
-    }
-
-    this.setOrderIndex(filter);
-
-    if(update) {
-      $rootScope.$broadcast('filter_update', filter);
-    }
-  }
-
-  public setOrderIndex(filter: MyDialogFilter) {
-    if(filter.hasOwnProperty('orderIndex')) {
-      if(filter.orderIndex > this.orderIndex) {
-        this.orderIndex = filter.orderIndex;
-      }
-    } else {
-      filter.orderIndex = this.orderIndex++;
-    }
-  }
-}
-
-type MyMessage = Message.message | Message.messageService;
+export type MyMessage = Message.message | Message.messageService;
 type MyInputMessagesFilter = 'inputMessagesFilterEmpty' 
   | 'inputMessagesFilterPhotos' 
   | 'inputMessagesFilterPhotoVideo' 
@@ -514,10 +131,13 @@ export class AppMessagesManager {
 
   private log = logger('MESSAGES'/* , LogLevels.error | LogLevels.debug | LogLevels.log | LogLevels.warn */);
 
-  public dialogsStorage = new DialogsStorage();
-  public filtersStorage = new FiltersStorage();
+  public dialogsStorage: DialogsStorage;
+  public filtersStorage: FiltersStorage;
 
   constructor() {
+    this.dialogsStorage = new DialogsStorage(this, appMessagesIDsManager, appChatsManager, appPeersManager, serverTimeManager);
+    this.filtersStorage = new FiltersStorage(appPeersManager, appUsersManager, /* apiManager, */ $rootScope);
+
     $rootScope.$on('apiUpdate', (e) => {
       this.handleUpdate(e.detail);
     });
@@ -970,7 +590,7 @@ export class AppMessagesManager {
     const isDocument = !(file instanceof File) && !(file instanceof Blob);
     let caption = options.caption || '';
 
-    const date = tsNow(true) + ServerTimeManager.serverTimeOffset;
+    const date = tsNow(true) + serverTimeManager.serverTimeOffset;
 
     this.log('sendFile', file, fileType);
 
@@ -1321,7 +941,7 @@ export class AppMessagesManager {
 
     let caption = options.caption || '';
 
-    let date = tsNow(true) + ServerTimeManager.serverTimeOffset;
+    let date = tsNow(true) + serverTimeManager.serverTimeOffset;
 
     if(caption) {
       let entities = options.entities || [];
@@ -1707,7 +1327,7 @@ export class AppMessagesManager {
       from_id: appPeersManager.getOutputPeer(fromID),
       peer_id: appPeersManager.getOutputPeer(peerID),
       pFlags: pFlags,
-      date: tsNow(true) + ServerTimeManager.serverTimeOffset,
+      date: tsNow(true) + serverTimeManager.serverTimeOffset,
       message: '',
       media: media,
       random_id: randomIDS,
@@ -3193,7 +2813,7 @@ export class AppMessagesManager {
       var offsetMessage = maxID && this.getMessage(maxID);
 
       if(offsetMessage && offsetMessage.date) {
-        offsetDate = offsetMessage.date + ServerTimeManager.serverTimeOffset;
+        offsetDate = offsetMessage.date + serverTimeManager.serverTimeOffset;
         offsetID = offsetMessage.id;
         offsetPeerID = this.getMessagePeer(offsetMessage);
       }
@@ -3484,7 +3104,7 @@ export class AppMessagesManager {
   }
 
   public handleUpdate(update: Update) {
-    this.log.debug('AMM: handleUpdate:', update._);
+    this.log.debug('handleUpdate', update._);
     switch(update._) {
       case 'updateMessageID': {
         const randomID = update.random_id;

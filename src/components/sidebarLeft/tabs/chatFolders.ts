@@ -1,15 +1,16 @@
 import { SliderTab } from "../../slider";
 import lottieLoader, { RLottiePlayer } from "../../../lib/lottieLoader";
-import apiManager from "../../../lib/mtproto/mtprotoworker";
-import appMessagesManager, { MyDialogFilter } from "../../../lib/appManagers/appMessagesManager";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
-import appPeersManager from "../../../lib/appManagers/appPeersManager";
-import { cancelEvent } from "../../../helpers/dom";
-import appSidebarLeft from "..";
+import { cancelEvent, positionElementByIndex } from "../../../helpers/dom";
 import { ripple } from "../../ripple";
 import { toast } from "../../toast";
-import { DialogFilterSuggested, DialogFilter } from "../../../layer";
-import $rootScope from "../../../lib/rootScope";
+import type { ApiManagerProxy } from "../../../lib/mtproto/mtprotoworker";
+import type { AppMessagesManager } from "../../../lib/appManagers/appMessagesManager";
+import type { MyDialogFilter } from "../../../lib/storages/filters";
+import type { AppPeersManager } from "../../../lib/appManagers/appPeersManager";
+import type { AppSidebarLeft } from "..";
+import type { DialogFilterSuggested, DialogFilter } from "../../../layer";
+import type _$rootScope from "../../../lib/rootScope";
 
 export default class AppChatFoldersTab implements SliderTab {
   public container: HTMLElement;
@@ -20,6 +21,10 @@ export default class AppChatFoldersTab implements SliderTab {
   private animation: RLottiePlayer;
 
   private filtersRendered: {[filterID: number]: HTMLElement} = {};
+
+  constructor(private appMessagesManager: AppMessagesManager, private appPeersManager: AppPeersManager, private appSidebarLeft: AppSidebarLeft, private apiManager: ApiManagerProxy, private $rootScope: typeof _$rootScope) {
+
+  }
 
   private renderFolder(dialogFilter: DialogFilterSuggested | DialogFilter | MyDialogFilter, container?: HTMLElement, div: HTMLElement = document.createElement('div')) {
     let filter: DialogFilter | MyDialogFilter;
@@ -35,7 +40,7 @@ export default class AppChatFoldersTab implements SliderTab {
       const filterID = filter.id;
       if(!this.filtersRendered.hasOwnProperty(filter.id)) {
         div.addEventListener('click', () => {
-          appSidebarLeft.editFolderTab.open(appMessagesManager.filtersStorage.filters[filterID]);
+          this.appSidebarLeft.editFolderTab.open(this.appMessagesManager.filtersStorage.filters[filterID]);
         });
       }
 
@@ -60,11 +65,11 @@ export default class AppChatFoldersTab implements SliderTab {
         else if(pFlags.exclude_archived) description += 'Unarchived';
         d.push(description);
       } else {
-        const folder = appMessagesManager.dialogsStorage.getFolder(filter.id);
+        const folder = this.appMessagesManager.dialogsStorage.getFolder(filter.id);
         let chats = 0, channels = 0, groups = 0;
         for(const dialog of folder) {
-          if(appPeersManager.isAnyGroup(dialog.peerID)) groups++;
-          else if(appPeersManager.isBroadcast(dialog.peerID)) channels++;
+          if(this.appPeersManager.isAnyGroup(dialog.peerID)) groups++;
+          else if(this.appPeersManager.isBroadcast(dialog.peerID)) channels++;
           else chats++;
         }
 
@@ -83,7 +88,11 @@ export default class AppChatFoldersTab implements SliderTab {
     `;
     ripple(div);
 
-    if(container) container.append(div);
+    if((filter as MyDialogFilter).hasOwnProperty('orderIndex')) {
+       // ! header will be at 0 index
+      positionElementByIndex(div, div.parentElement || container, (filter as MyDialogFilter).orderIndex);
+    } else if(container) container.append(div);
+    
     return div;
   }
 
@@ -98,7 +107,7 @@ export default class AppChatFoldersTab implements SliderTab {
       if(Object.keys(this.filtersRendered).length >= 10) {
         toast('Sorry, you can\'t create more folders.');
       } else {
-        appSidebarLeft.editFolderTab.open();
+        this.appSidebarLeft.editFolderTab.open();
       }
     });
 
@@ -112,14 +121,13 @@ export default class AppChatFoldersTab implements SliderTab {
       this.animation = player;
     });
 
-    appMessagesManager.filtersStorage.getDialogFilters().then(filters => {
-      for(const filterID in filters) {
-        const filter = filters[filterID];
+    this.appMessagesManager.filtersStorage.getDialogFilters().then(filters => {
+      for(const filter of filters) {
         this.renderFolder(filter, this.foldersContainer);
       }
     });
 
-    $rootScope.$on('filter_update', (e) => {
+    this.$rootScope.$on('filter_update', (e) => {
       const filter = e.detail;
       if(this.filtersRendered.hasOwnProperty(filter.id)) {
         this.renderFolder(filter, null, this.filtersRendered[filter.id]);
@@ -130,7 +138,7 @@ export default class AppChatFoldersTab implements SliderTab {
       this.getSuggestedFilters();
     });
 
-    $rootScope.$on('filter_delete', (e) => {
+    this.$rootScope.$on('filter_delete', (e) => {
       const filter = e.detail;
       if(this.filtersRendered.hasOwnProperty(filter.id)) {
         /* for(const suggested of this.suggestedFilters) {
@@ -145,11 +153,19 @@ export default class AppChatFoldersTab implements SliderTab {
       }
     });
 
+    this.$rootScope.$on('filter_order', (e) => {
+      const order = e.detail;
+      order.forEach((filterID, idx) => {
+        const div = this.filtersRendered[filterID];
+        positionElementByIndex(div, div.parentElement, idx + 1); // ! + 1 due to header 
+      });
+    });
+
     this.getSuggestedFilters();
   }
 
   private getSuggestedFilters() {
-    apiManager.invokeApi('messages.getSuggestedDialogFilters').then(suggestedFilters => {
+    this.apiManager.invokeApi('messages.getSuggestedDialogFilters').then(suggestedFilters => {
       this.suggestedContainer.style.display = suggestedFilters.length ? '' : 'none';
       Array.from(this.suggestedContainer.children).slice(1).forEach(el => el.remove());
 
@@ -171,7 +187,7 @@ export default class AppChatFoldersTab implements SliderTab {
 
           button.setAttribute('disabled', 'true');
 
-          appMessagesManager.filtersStorage.createDialogFilter(filter.filter as any).then(bool => {
+          this.appMessagesManager.filtersStorage.createDialogFilter(filter.filter as any).then(bool => {
             if(bool) {
               div.remove();
             }

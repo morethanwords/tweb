@@ -13,7 +13,7 @@ export default class SidebarSlider {
   protected _selectTab: (id: number) => void;
   public historyTabIDs: number[] = [];
 
-  constructor(public sidebarEl: HTMLElement, public tabs: {[id: number]: SliderTab}, canHideFirst = false) {
+  constructor(public sidebarEl: HTMLElement, public tabs: {[id: number]: SliderTab} = {}, canHideFirst = false) {
     this._selectTab = horizontalMenu(null, this.sidebarEl.querySelector('.sidebar-slider') as HTMLDivElement, null, null, TRANSITION_TIME);
     if(!canHideFirst) {
       this._selectTab(0);

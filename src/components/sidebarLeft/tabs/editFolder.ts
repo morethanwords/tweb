@@ -1,12 +1,13 @@
 import appSidebarLeft, { AppSidebarLeft } from "..";
 import { deepEqual, copy } from "../../../helpers/object";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
-import appMessagesManager, { MyDialogFilter as DialogFilter } from "../../../lib/appManagers/appMessagesManager";
+import { MyDialogFilter as DialogFilter } from "../../../lib/storages/filters";
 import lottieLoader, { RLottiePlayer } from "../../../lib/lottieLoader";
 import { parseMenuButtonsTo } from "../../misc";
 import { ripple } from "../../ripple";
 import { SliderTab } from "../../slider";
 import { toast } from "../../toast";
+import appMessagesManager from "../../../lib/appManagers/appMessagesManager";
 
 const MAX_FOLDER_NAME_LENGTH = 12;
 

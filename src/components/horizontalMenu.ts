@@ -2,8 +2,6 @@ import { findUpTag, whichChild } from "../helpers/dom";
 import Transition from "./transition";
 
 export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?: (id: number, tabContent: HTMLDivElement) => void, onTransitionEnd?: () => void, transitionTime = 250) {
-  let prevId = -1;
-
   const selectTab = Transition(content, tabs || content.dataset.slider == 'tabs' ? 'tabs' : 'navigation', transitionTime, onTransitionEnd);
 
   if(tabs) {
@@ -34,7 +32,7 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?
       const tabContent = content.children[id] as HTMLDivElement;
 
       if(onClick) onClick(id, tabContent);
-      if(target.classList.contains('active') || id == prevId) {
+      if(target.classList.contains('active') || id == selectTab.prevId) {
         return false;
       }
       
@@ -42,9 +40,9 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?
       prev && prev.classList.remove('active');
 
       // stripe from ZINCHUK
-      if(useStripe && prevId != -1) {
+      if(useStripe && selectTab.prevId != -1) {
         const indicator = target.querySelector('i')!;
-        const currentIndicator = target.parentElement.children[prevId].querySelector('i')!;
+        const currentIndicator = target.parentElement.children[selectTab.prevId].querySelector('i')!;
   
         currentIndicator.classList.remove('animate');
         indicator.classList.remove('animate');
@@ -66,8 +64,6 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?
 
       target.classList.add('active');
       selectTab(id);
-
-      prevId = id;
     });
   }
   

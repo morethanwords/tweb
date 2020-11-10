@@ -1,7 +1,8 @@
 import type { StickerSet, Update } from "../layer";
 import type { MyDocument } from "./appManagers/appDocsManager";
-import type { AppMessagesManager, Dialog, MyDialogFilter } from "./appManagers/appMessagesManager";
+import type { AppMessagesManager, Dialog } from "./appManagers/appMessagesManager";
 import type { Poll, PollResults } from "./appManagers/appPollsManager";
+import type { MyDialogFilter } from "./storages/filters";
 import { MOUNT_CLASS_TO } from "./mtproto/mtproto_config";
 
 type BroadcastEvents = {
@@ -12,6 +13,7 @@ type BroadcastEvents = {
 
   'filter_delete': MyDialogFilter,
   'filter_update': MyDialogFilter,
+  'filter_order': number[],
   
   'dialog_draft': {peerID: number, draft: any, index: number},
   'dialog_unread': {peerID: number, count?: number},

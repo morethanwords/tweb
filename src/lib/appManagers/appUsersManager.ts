@@ -24,6 +24,7 @@ export class AppUsersManager {
   public contactsIndex = searchIndexManager.createIndex();
   public contactsFillPromise: Promise<Set<number>>;
   public contactsList: Set<number> = new Set();
+  private updatedContactsList = false;
 
   public getTopPeersPromise: Promise<number[]>;
 
@@ -107,10 +108,11 @@ export class AppUsersManager {
 
     appStateManager.getState().then((state) => {
       const contactsList = state.contactsList;
-      if(contactsList && Array.isArray(contactsList) && contactsList.length) {
+      if(contactsList && Array.isArray(contactsList)) {
         contactsList.forEach(userID => {
           this.pushContact(userID);
         });
+
         this.contactsFillPromise = Promise.resolve(this.contactsList);
       }
 
@@ -119,13 +121,13 @@ export class AppUsersManager {
   }
 
   public fillContacts() {
-    if(this.contactsFillPromise) {
+    if(this.contactsFillPromise && this.updatedContactsList) {
       return this.contactsFillPromise;
     }
 
-    return this.contactsFillPromise = apiManager.invokeApi('contacts.getContacts', {
-      hash: 0
-    }).then((result) => {
+    this.updatedContactsList = true;
+
+    const promise = apiManager.invokeApi('contacts.getContacts').then((result) => {
       if(result._ == 'contacts.contacts') {
         this.saveApiUsers(result.users);
 
@@ -134,8 +136,12 @@ export class AppUsersManager {
         });
       }
 
+      this.contactsFillPromise = promise;
+
       return this.contactsList;
     });
+
+    return this.contactsFillPromise || (this.contactsFillPromise = promise);
   }
 
   public async resolveUsername(username: string) {

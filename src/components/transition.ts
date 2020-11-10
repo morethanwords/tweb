@@ -31,12 +31,12 @@ const Transition = (content: HTMLElement, type: 'tabs' | 'navigation' | 'zoom-fa
   //const deferred: (() => void)[] = [];
   let transitionEndTimeout: number;
   let prevTabContent: HTMLElement = null;
-  let prevId = -1;
 
   const animationFunction = type == 'zoom-fade' ? null : (type == 'tabs' ? slideTabs : slideNavigation);
 
-  const selectTab = (id: number, animate = true) => {
-    if(id == prevId) return false;
+  function selectTab(id: number, animate = true) {
+    const self = selectTab;
+    if(id == self.prevId) return false;
 
     //console.log('selectTab id:', id);
 
@@ -51,10 +51,10 @@ const Transition = (content: HTMLElement, type: 'tabs' | 'navigation' | 'zoom-fa
 
       tabContent.classList.add('active');
 
-      prevId = id;
+      self.prevId = id;
       prevTabContent = tabContent;
 
-      if(onTransitionEnd) onTransitionEnd(prevId);
+      if(onTransitionEnd) onTransitionEnd(self.prevId);
       return;
     }
 
@@ -64,12 +64,12 @@ const Transition = (content: HTMLElement, type: 'tabs' | 'navigation' | 'zoom-fa
     }
 
     content.classList.add('animating');
-    const toRight = prevId < id;
+    const toRight = self.prevId < id;
     content.classList.toggle('backwards', !toRight);
 
     if(!tabContent) {
       //prevTabContent.classList.remove('active');
-    } else if(prevId != -1) {
+    } else if(self.prevId != -1) {
       if(animationFunction) {
         animationFunction(tabContent, prevTabContent, toRight);
       }
@@ -79,7 +79,7 @@ const Transition = (content: HTMLElement, type: 'tabs' | 'navigation' | 'zoom-fa
       tabContent.classList.add('active');
     }
     
-    const _prevId = prevId;
+    const _prevId = self.prevId;
     if(hideTimeouts.hasOwnProperty(id)) clearTimeout(hideTimeouts[id]);
     if(p/*  && false */) {
       hideTimeouts[_prevId] = window.setTimeout(() => {
@@ -99,13 +99,13 @@ const Transition = (content: HTMLElement, type: 'tabs' | 'navigation' | 'zoom-fa
       if(onTransitionEnd) {
         if(transitionEndTimeout) clearTimeout(transitionEndTimeout);
         transitionEndTimeout = window.setTimeout(() => {
-          onTransitionEnd(prevId);
+          onTransitionEnd(self.prevId);
           transitionEndTimeout = 0;
         }, transitionTime);
       }
     }
     
-    prevId = id;
+    self.prevId = id;
     prevTabContent = tabContent;
 
     /* if(p) {
@@ -115,7 +115,9 @@ const Transition = (content: HTMLElement, type: 'tabs' | 'navigation' | 'zoom-fa
     } else {
       return Promise.resolve();
     } */
-  };
+  }
+
+  selectTab.prevId = -1;
   
   return selectTab;
 };

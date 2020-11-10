@@ -1,4 +1,4 @@
-import type { Dialog, DialogsStorage, FiltersStorage } from './appMessagesManager';
+import type { Dialog } from './appMessagesManager';
 import type { AppStickersManager } from './appStickersManager';
 import { App, MOUNT_CLASS_TO, UserAuth } from '../mtproto/mtproto_config';
 import EventListenerBase from '../../helpers/eventListenerBase';
@@ -9,6 +9,8 @@ import type { AppUsersManager } from './appUsersManager';
 import type { AppChatsManager } from './appChatsManager';
 import type { AuthState } from '../../types';
 import type { AppMessagesIDsManager } from './appMessagesIDsManager';
+import type FiltersStorage from '../storages/filters';
+import type DialogsStorage from '../storages/dialogs';
 
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
 const STATE_VERSION = App.version;

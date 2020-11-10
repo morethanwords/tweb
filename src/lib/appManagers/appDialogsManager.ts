@@ -15,7 +15,8 @@ import { RichTextProcessor } from "../richtextprocessor";
 import $rootScope from "../rootScope";
 import { findUpClassName, positionElementByIndex } from "../../helpers/dom";
 import appImManager, { AppImManager } from "./appImManager";
-import appMessagesManager, { Dialog, MyDialogFilter as DialogFilter } from "./appMessagesManager";
+import appMessagesManager, { Dialog } from "./appMessagesManager";
+import {MyDialogFilter as DialogFilter} from "../storages/filters";
 import appPeersManager from './appPeersManager';
 import appStateManager from "./appStateManager";
 import appUsersManager, { User } from "./appUsersManager";
@@ -35,14 +36,11 @@ type DialogDom = {
 };
 
 const testScroll = false;
-//const USEPINNEDDELIMITER = false;
 
 export class AppDialogsManager {
   public _chatList = document.getElementById('dialogs') as HTMLUListElement;
   public chatList = this._chatList;
-  
-  //public pinnedDelimiter: HTMLDivElement;
-  
+
   public doms: {[peerID: number]: DialogDom} = {};
   public lastActiveListElement: HTMLElement = null;
 
@@ -91,12 +89,6 @@ export class AppDialogsManager {
 
     this.allUnreadCount = this.folders.menu.querySelector('.unread-count');
     
-    /* if(USEPINNEDDELIMITER) {
-      this.pinnedDelimiter = document.createElement('div');
-      this.pinnedDelimiter.classList.add('pinned-delimiter');
-      this.pinnedDelimiter.appendChild(document.createElement('span'));
-    } */
-
     this.folders.menuScrollContainer = this.folders.menu.parentElement;
 
     this.scroll = this._scroll = new Scrollable(this.chatsContainer, 'CL', this.chatList, 500);
@@ -165,18 +157,17 @@ export class AppDialogsManager {
     });
 
     $rootScope.$on('dialog_top', (e) => {
-      let dialog: any = e.detail;
+      const dialog = e.detail;
 
       this.setLastMessage(dialog);
       this.setDialogPosition(dialog);
 
-      //this.setPinnedDelimiter();
       this.setFiltersUnreadCount();
     });
 
     $rootScope.$on('dialog_flush', (e) => {
-      let peerID: number = e.detail.peerID;
-      let dialog = appMessagesManager.getDialogByPeerID(peerID)[0];
+      const peerID: number = e.detail.peerID;
+      const dialog = appMessagesManager.getDialogByPeerID(peerID)[0];
       if(dialog) {
         this.setLastMessage(dialog);
         this.validateForFilter();
@@ -192,7 +183,6 @@ export class AppDialogsManager {
         this.updateDialog(dialog);
       }
 
-      //this.setPinnedDelimiter();
       this.validateForFilter();
       this.setFiltersUnreadCount();
     });
@@ -291,16 +281,23 @@ export class AppDialogsManager {
       }
     });
 
-    /* $rootScope.$on('filter_pinned_order', (e) => {
-      const {order, id} = e.detail as {order: number[], id: number};
-      if(this.prevTabID != id) {
-        return;
-      }
+    $rootScope.$on('filter_order', (e) => {
+      const order = e.detail;
+      
+      const containerToAppend = this.folders.menu.firstElementChild as HTMLUListElement;
+      order.forEach((filterID) => {
+        const filter = appMessagesManager.filtersStorage.filters[filterID];
+        const renderedFilter = this.filtersRendered[filterID];
 
-      for(const peerID of order) {
-        this.updateDialog(appMessagesManager.getDialogByPeerID(peerID)[0]);
+        positionElementByIndex(renderedFilter.menu, containerToAppend, filter.orderIndex);
+        positionElementByIndex(renderedFilter.container, this.folders.container, filter.orderIndex);
+      });
+
+      if(this.filterID) {
+        const tabIndex = order.indexOf(this.filterID) + 1;
+        selectTab.prevId = tabIndex;
       }
-    }); */
+    });
 
     const foldersScrollable = new ScrollableX(this.folders.menuScrollContainer);
     this.chatsContainer.prepend(this.folders.menuScrollContainer);
@@ -330,10 +327,10 @@ export class AppDialogsManager {
     //selectTab(0);
     (this.folders.menu.firstElementChild.firstElementChild as HTMLElement).click();
     appStateManager.getState().then((state) => {
-      const getFiltersPromise = !state.filters || Object.keys(state.filters).length ? appMessagesManager.filtersStorage.getDialogFilters() : Promise.resolve({});
+      const getFiltersPromise = !state.filters || Object.keys(state.filters).length ? appMessagesManager.filtersStorage.getDialogFilters() : Promise.resolve([]);
       getFiltersPromise.then((filters) => {
-        for(const filterID in filters) {
-          this.addFilter(filters[filterID]);
+        for(const filter of filters) {
+          this.addFilter(filter);
         }
       });
 
@@ -433,7 +430,7 @@ export class AppDialogsManager {
     ripple(li);
 
     const containerToAppend = this.folders.menu.firstElementChild as HTMLUListElement;
-    positionElementByIndex(li, containerToAppend, filter.orderIndex + 1); // because 0 is All
+    positionElementByIndex(li, containerToAppend, filter.orderIndex);
     //containerToAppend.append(li);
 
     const ul = document.createElement('ul');
@@ -441,7 +438,7 @@ export class AppDialogsManager {
     div.append(ul);
     div.dataset.filterID = '' + filter.id;
     //this.folders.container.append(div);
-    positionElementByIndex(div, this.folders.container, filter.orderIndex + 1); // because 0 is All
+    positionElementByIndex(div, this.folders.container, filter.orderIndex);
 
     this.chatLists[filter.id] = ul;
     this.setListClickListener(ul, null, true);
@@ -607,42 +604,6 @@ export class AppDialogsManager {
       this.log.debug('setDialogPosition:', dialog, dom, pos);
     }
   }
-
-  /* public setPinnedDelimiter() {
-    if(!USEPINNEDDELIMITER) return;
-
-    let index = -1;
-    let dialogs = appMessagesManager.dialogsStorage.getFolder(0);
-    for(let dialog of dialogs) {
-      if(dialog.pFlags?.pinned) {
-        index++;
-      }
-    }
-
-    let currentIndex = (this.pinnedDelimiter.parentElement && whichChild(this.pinnedDelimiter.parentElement)) ?? -1;
-
-    if(index == currentIndex) return;
-
-    let children = this.chatList.children;
-
-    let modifying: HTMLElement[] = [];
-    if(currentIndex != -1 && children.length > currentIndex) {
-      let li = children[currentIndex] as HTMLElement;
-      modifying.push(li);
-    }
-
-    if(index != -1 && children.length > index) {
-      let li = children[index] as HTMLElement;
-      modifying.push(li);
-      li.append(this.pinnedDelimiter);
-    } else {
-      this.pinnedDelimiter.remove();
-    }
-      
-    modifying.forEach(elem => {
-      this.scroll.updateElement(elem);
-    });
-  } */
 
   public setLastMessage(dialog: any, lastMessage?: any, dom?: DialogDom, highlightWord?: string) {
     if(!lastMessage) {

@@ -4,7 +4,7 @@ import appSidebarLeft, { AppSidebarLeft } from "..";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import appPeersManager from "../../../lib/appManagers/appPeersManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
-import { MyDialogFilter as DialogFilter } from "../../../lib/appManagers/appMessagesManager";
+import { MyDialogFilter as DialogFilter } from "../../../lib/storages/filters";
 import $rootScope from "../../../lib/rootScope";
 import { copy } from "../../../helpers/object";
 

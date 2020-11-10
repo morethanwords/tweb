@@ -22,7 +22,7 @@ type Task = {
 
 const USEWORKERASWORKER = true;
 
-class ApiManagerProxy extends CryptoWorkerMethods {
+export class ApiManagerProxy extends CryptoWorkerMethods {
   public worker: Worker;
   public postMessage: (...args: any[]) => void;
   private afterMessageIDTemp = 0;

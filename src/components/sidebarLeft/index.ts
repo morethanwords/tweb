@@ -10,7 +10,7 @@ import { MOUNT_CLASS_TO } from "../../lib/mtproto/mtproto_config";
 import $rootScope from "../../lib/rootScope";
 import { findUpClassName, findUpTag } from "../../helpers/dom";
 import AppSearch, { SearchGroup } from "../appSearch";
-import AvatarElement from "../avatar";
+import "../avatar";
 import { parseMenuButtonsTo } from "../misc";
 import { ScrollableX } from "../scrollable";
 import SearchInput from "../searchInput";
@@ -26,8 +26,8 @@ import AppIncludedChatsTab from "./tabs/includedChats";
 import AppNewChannelTab from "./tabs/newChannel";
 import AppNewGroupTab from "./tabs/newGroup";
 import AppSettingsTab from "./tabs/settings";
-
-AvatarElement;
+import appMessagesManager from "../../lib/appManagers/appMessagesManager";
+import apiManagerProxy from "../../lib/mtproto/mtprotoworker";
 
 const newChannelTab = new AppNewChannelTab();
 const addMembersTab = new AppAddMembersTab();
@@ -35,7 +35,6 @@ const contactsTab = new AppContactsTab();
 const newGroupTab = new AppNewGroupTab();
 const settingsTab = new AppSettingsTab();
 const editProfileTab = new AppEditProfileTab();
-const chatFoldersTab = new AppChatFoldersTab();
 const editFolderTab = new AppEditFolderTab();
 const includedChatsTab = new AppIncludedChatsTab();
 const archivedTab = new AppArchivedTab();
@@ -124,7 +123,9 @@ export class AppSidebarLeft extends SidebarSlider {
   private recentSearchClearBtn: HTMLElement;
 
   constructor() {
-    super(document.getElementById('column-left') as HTMLDivElement, {
+    super(document.getElementById('column-left') as HTMLDivElement);
+
+    Object.assign(this.tabs, {
       [AppSidebarLeft.SLIDERITEMSIDS.archived]: archivedTab,
       [AppSidebarLeft.SLIDERITEMSIDS.newChannel]: newChannelTab,
       [AppSidebarLeft.SLIDERITEMSIDS.contacts]: contactsTab,
@@ -132,7 +133,7 @@ export class AppSidebarLeft extends SidebarSlider {
       [AppSidebarLeft.SLIDERITEMSIDS.newGroup]: newGroupTab,
       [AppSidebarLeft.SLIDERITEMSIDS.settings]: settingsTab,
       [AppSidebarLeft.SLIDERITEMSIDS.editProfile]: editProfileTab,
-      [AppSidebarLeft.SLIDERITEMSIDS.chatFolders]: chatFoldersTab,
+      [AppSidebarLeft.SLIDERITEMSIDS.chatFolders]: this.chatFoldersTab = new AppChatFoldersTab(appMessagesManager, appPeersManager, this, apiManagerProxy, $rootScope),
       [AppSidebarLeft.SLIDERITEMSIDS.editFolder]: editFolderTab,
       [AppSidebarLeft.SLIDERITEMSIDS.includedChats]: includedChatsTab,
     });
@@ -153,7 +154,6 @@ export class AppSidebarLeft extends SidebarSlider {
     this.newGroupTab = newGroupTab;
     this.settingsTab = settingsTab;
     this.editProfileTab = editProfileTab;
-    this.chatFoldersTab = chatFoldersTab;
     this.editFolderTab = editFolderTab;
     this.includedChatsTab = includedChatsTab;
 
