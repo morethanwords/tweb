@@ -80,7 +80,7 @@ export default class ChatContextMenu {
         const className = (e.target as HTMLElement).className;
         if(!className || !className.includes) return;
 
-        const good = ['bubble', 'bubble__container', 'message', 'time', 'inner'].find(c => className.includes(c));
+        const good = ['bubble', 'bubble__container', 'message', 'time', 'inner'].find(c => className.match(new RegExp(c + '($|\\s)')));
         if(good) {
           onContextMenu(e);
         }

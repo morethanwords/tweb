@@ -228,6 +228,7 @@ export function positionMenu({clientX, clientY}: {clientX: number, clientY: numb
   }
 
   // ! don't need reverse for this, this will be the side WHERE ANIMATION WILL END !
+  // ! NO LOGIC HERE !
   let verticalSide: 'top' | 'bottom';
 
   if(side !== undefined) {
@@ -251,7 +252,7 @@ export function positionMenu({clientX, clientY}: {clientX: number, clientY: numb
   }
   
   if((clientY + scrollHeight + PADDING_TOP) > innerHeight) {
-    elem.style.top = Math.max(PADDING_TOP, clientY - scrollHeight) + 'px';
+    elem.style.top = clamp(clientY - scrollHeight, PADDING_TOP, innerHeight - scrollHeight - PADDING_TOP) + 'px';
     // elem.style.top = (innerHeight - scrollHeight - PADDING_TOP) + 'px';
     verticalSide = 'top';
   } else {
