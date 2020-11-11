@@ -1,6 +1,7 @@
 //import apiManager from '../mtproto/apiManager';
 import { logger, LogLevels } from '../logger';
 import apiManager from '../mtproto/mtprotoworker';
+import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
 import $rootScope from '../rootScope';
 //import networkerFactory from '../mtproto/networkerFactory';
 import appChatsManager from "./appChatsManager";
@@ -555,4 +556,6 @@ export class ApiUpdatesManager {
   }
 }
 
-export default new ApiUpdatesManager();
+const apiUpdatesManager = new ApiUpdatesManager();
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.apiUpdatesManager = apiUpdatesManager);
+export default apiUpdatesManager

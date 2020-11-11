@@ -1,5 +1,6 @@
 import { isObject } from "../../helpers/object";
 import { DialogPeer, InputDialogPeer, InputPeer, Peer } from "../../layer";
+import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
 import { RichTextProcessor } from "../richtextprocessor";
 import $rootScope from "../rootScope";
 import appChatsManager from "./appChatsManager";
@@ -230,4 +231,5 @@ export class AppPeersManager {
 }
 
 const appPeersManager = new AppPeersManager();
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appPeersManager = appPeersManager);
 export default appPeersManager;

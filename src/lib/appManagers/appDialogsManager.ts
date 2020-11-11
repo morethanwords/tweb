@@ -4,7 +4,7 @@ import { horizontalMenu } from "../../components/horizontalMenu";
 import { attachContextMenuListener, putPreloader } from "../../components/misc";
 import { ripple } from "../../components/ripple";
 //import Scrollable from "../../components/scrollable";
-import Scrollable, { ScrollableX } from "../../components/scrollable";
+import Scrollable, { ScrollableX, SliceSides, SliceSidesContainer } from "../../components/scrollable";
 import appSidebarLeft from "../../components/sidebarLeft";
 import { formatDateAccordingToToday } from "../../helpers/date";
 import { escapeRegExp } from "../../helpers/string";
@@ -20,6 +20,7 @@ import {MyDialogFilter as DialogFilter} from "../storages/filters";
 import appPeersManager from './appPeersManager';
 import appStateManager from "./appStateManager";
 import appUsersManager, { User } from "./appUsersManager";
+import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
 
 type DialogDom = {
   avatarEl: AvatarElement,
@@ -36,6 +37,7 @@ type DialogDom = {
 };
 
 const testScroll = false;
+let testTopSlice = 1;
 
 export class AppDialogsManager {
   public _chatList = document.getElementById('dialogs') as HTMLUListElement;
@@ -52,7 +54,6 @@ export class AppDialogsManager {
   private chatsPreloader: HTMLDivElement;
 
   public loadDialogsPromise: Promise<any>;
-  public loadedAll = false;
 
   public scroll: Scrollable = null;
   public _scroll: Scrollable = null;
@@ -84,6 +85,8 @@ export class AppDialogsManager {
 
   private accumulateArchivedTimeout: number;
 
+  private topOffsetIndex = 0;
+
   constructor() {
     this.chatsPreloader = putPreloader(null, true);
 
@@ -91,7 +94,8 @@ export class AppDialogsManager {
     
     this.folders.menuScrollContainer = this.folders.menu.parentElement;
 
-    this.scroll = this._scroll = new Scrollable(this.chatsContainer, 'CL', this.chatList, 500);
+    this.scroll = this._scroll = new Scrollable(this.chatsContainer, 'CL', 500);
+    this.scroll.onScrolledTop = this.onChatsScrollTop;
     this.scroll.onScrolledBottom = this.onChatsScroll;
     this.scroll.setVirtualContainer(this.chatList);
     //this.scroll.attachSentinels();
@@ -120,7 +124,7 @@ export class AppDialogsManager {
 
     this.setListClickListener(this.chatList, null, true);
 
-    /* if(testScroll) {
+    if(testScroll) {
       let i = 0;
       let add = () => {
         let li = document.createElement('li');
@@ -130,11 +134,11 @@ export class AppDialogsManager {
         i++;
         this.scroll.append(li);
       };
-      for(let i = 0; i < 100; ++i) {
+      for(let i = 0; i < 500; ++i) {
         add();
       }
       (window as any).addElement = add;
-    } */
+    }
 
     $rootScope.$on('user_update', (e) => {
       const userID = e.detail;
@@ -156,14 +160,14 @@ export class AppDialogsManager {
       }
     });
 
-    $rootScope.$on('dialog_top', (e) => {
+    /* $rootScope.$on('dialog_top', (e) => {
       const dialog = e.detail;
 
       this.setLastMessage(dialog);
       this.setDialogPosition(dialog);
 
       this.setFiltersUnreadCount();
-    });
+    }); */
 
     $rootScope.$on('dialog_flush', (e) => {
       const peerID: number = e.detail.peerID;
@@ -188,22 +192,21 @@ export class AppDialogsManager {
     });
 
     $rootScope.$on('dialog_drop', (e) => {
-      let {peerID, dialog} = e.detail;
+      const {peerID, dialog} = e.detail;
 
-      let dom = this.getDialogDom(peerID);
+      const dom = this.getDialogDom(peerID);
       if(dom) {
         dom.listEl.remove();
         delete this.doms[peerID];
-        this.scroll.reorder();
       }
 
       this.setFiltersUnreadCount();
     });
 
     $rootScope.$on('dialog_unread', (e) => {
-      let info = e.detail;
+      const info = e.detail;
 
-      let dialog = appMessagesManager.getDialogByPeerID(info.peerID)[0];
+      const dialog = appMessagesManager.getDialogByPeerID(info.peerID)[0];
       if(dialog) {
         this.setUnreadMessages(dialog);
 
@@ -327,7 +330,7 @@ export class AppDialogsManager {
     //selectTab(0);
     (this.folders.menu.firstElementChild.firstElementChild as HTMLElement).click();
     appStateManager.getState().then((state) => {
-      const getFiltersPromise = !state.filters || Object.keys(state.filters).length ? appMessagesManager.filtersStorage.getDialogFilters() : Promise.resolve([]);
+      const getFiltersPromise = appMessagesManager.filtersStorage.getDialogFilters();
       getFiltersPromise.then((filters) => {
         for(const filter of filters) {
           this.addFilter(filter);
@@ -340,6 +343,12 @@ export class AppDialogsManager {
         this.accumulateArchivedUnread();
       });
     });
+
+    /* const mutationObserver = new MutationObserver((mutationList, observer) => {
+
+    });
+
+    mutationObserver.observe */
   }
 
   private updateDialog(dialog: Dialog) {
@@ -347,8 +356,18 @@ export class AppDialogsManager {
       return;
     }
 
+    if(this.topOffsetIndex && dialog.index > this.topOffsetIndex) {
+      const dom = this.getDialogDom(dialog.peerID);
+      if(dom) {
+        dom.listEl.remove();
+        delete this.doms[dialog.peerID];
+      }
+
+      return;
+    }
+
     if(!this.doms.hasOwnProperty(dialog.peerID)) {
-      this.addDialog(dialog);
+      this.addDialogNew({dialog});
     }
 
     if(this.getDialogDom(dialog.peerID)) {
@@ -359,14 +378,16 @@ export class AppDialogsManager {
 
   onTabChange = () => {
     this.doms = {};
-    this.loadedAll = false;
+    this.topOffsetIndex = 0;
+    this.scroll.loadedAll.top = true;
+    this.scroll.loadedAll.bottom = false;
     this.lastActiveListElement = null;
     this.loadDialogsPromise = undefined;
     this.chatList = this.chatLists[this.filterID];
     this.loadDialogs();
   };
 
-  public setFilterUnreadCount(filterID: number, folder?: Dialog[]) {
+  private setFilterUnreadCount(filterID: number, folder?: Dialog[]) {
     const unreadSpan = filterID == 0 ? this.allUnreadCount : this.filtersRendered[filterID]?.unread;
     if(!unreadSpan) {
       return;
@@ -378,7 +399,7 @@ export class AppDialogsManager {
     unreadSpan.innerText = sum ? '' + sum : '';
   }
 
-  public setFiltersUnreadCount() {
+  private setFiltersUnreadCount() {
     for(const filterID in this.filtersRendered) {
       this.setFilterUnreadCount(+filterID);
     }
@@ -389,12 +410,11 @@ export class AppDialogsManager {
   /**
    * Удалит неподходящие чаты из списка, но не добавит их(!)
    */
-  public validateForFilter() {
+  private validateForFilter() {
     // !WARNING, возможно это было зачем-то, но комментарий исправил архивирование
     //if(this.filterID == 0) return;
 
     const folder = appMessagesManager.dialogsStorage.getFolder(this.filterID);
-    let affected = false;
     for(const _peerID in this.doms) {
       const peerID = +_peerID;
 
@@ -402,20 +422,16 @@ export class AppDialogsManager {
       if(folder.findIndex((dialog) => dialog.peerID == peerID) === -1) {
         const listEl = this.doms[peerID].listEl;
         listEl.remove();
-        affected = true;
+        delete this.doms[peerID];
 
         if(this.lastActiveListElement == listEl) {
           this.lastActiveListElement = null;
         }
       }
     }
-
-    if(affected) {
-      this.scroll.reorder();
-    }
   }
 
-  public addFilter(filter: DialogFilter) {
+  private addFilter(filter: DialogFilter) {
     if(this.filtersRendered[filter.id]) return;
 
     const li = document.createElement('li');
@@ -459,7 +475,7 @@ export class AppDialogsManager {
     };
   }
 
-  public async loadDialogs() {
+  private async loadDialogs(side: SliceSides = 'bottom') {
     if(testScroll) {
       return;
     }
@@ -474,23 +490,41 @@ export class AppDialogsManager {
     //return;
 
     const filterID = this.filterID;
+    let loadCount = 30/*this.chatsLoadCount */;
 
     const storage = appMessagesManager.dialogsStorage.getFolder(filterID);
     let offsetIndex = 0;
-    
-    for(let i = storage.length - 1; i >= 0; --i) {
-      const dialog = storage[i];
-      if(this.getDialogDom(dialog.peerID)) {
-        offsetIndex = dialog.index;
-        break;
+
+    if(side == 'top') {
+      const element = this.chatList.firstElementChild;
+      if(element) {
+        const peerID = +element.getAttribute('data-peerID');
+        const index = storage.findIndex(dialog => dialog.peerID == peerID);
+        const needIndex = Math.max(0, index - loadCount);
+        loadCount = index - needIndex;
+        offsetIndex = storage[needIndex].index + 1;
       }
+    } else {
+      const element = this.chatList.lastElementChild;
+      if(element) {
+        const peerID = +element.getAttribute('data-peerID');
+        const dialog = storage.find(dialog => dialog.peerID == peerID);
+        offsetIndex = dialog.index;
+      }
+      /* for(let i = storage.length - 1; i >= 0; --i) {
+        const dialog = storage[i];
+        if(this.getDialogDom(dialog.peerID)) {
+          offsetIndex = dialog.index;
+          break;
+        }
+      } */
     }
+    
+    
     //let offset = storage[storage.length - 1]?.index || 0;
 
     try {
       //console.time('getDialogs time');
-
-      const loadCount = 50/*this.chatsLoadCount */;
 
       const getConversationPromise = (this.filterID > 1 ? appUsersManager.getContacts() as Promise<any> : Promise.resolve()).then(() => {
         return appMessagesManager.getConversations('', offsetIndex, loadCount, filterID);
@@ -505,23 +539,59 @@ export class AppDialogsManager {
       }
 
       //console.timeEnd('getDialogs time');
-      
-      if(result && result.dialogs && result.dialogs.length) {
-        result.dialogs.forEach((dialog) => {
-          this.addDialog(dialog);
-        });
-      }
 
       // * loaded all
       //if(!result.dialogs.length || this.chatList.childElementCount == result.count) {
       // !result.dialogs.length не подходит, так как при супердревном диалоге getConversations его не выдаст.
-      if(this.chatList.childElementCount == result.count) {
-        this.loadedAll = true;
+      //if(this.chatList.childElementCount == result.count) {
+      if(side == 'bottom') {
+        if(result.isEnd) {
+          this.scroll.loadedAll[side] = true;
+        }
+      } else {
+        const storage = appMessagesManager.dialogsStorage.getFolder(filterID);
+        if(!result.dialogs.length || (storage.length && storage[0].index < offsetIndex)) {
+          this.scroll.loadedAll[side] = true;
+        }
+      }
+      
+      if(result.dialogs.length) {
+        const dialogs = side == 'top' ? result.dialogs.slice().reverse() : result.dialogs;
+        dialogs.forEach((dialog) => {
+          this.addDialogNew({
+            dialog,
+            append: side == 'bottom'
+          });
+        });
+
+        //if(side == 'bottom' || true || (testTopSlice-- > 0 && side == 'top')) {
+          //setTimeout(() => {
+            const sliced = this.scroll.slice(side == 'bottom' ? 'top' : 'bottom', 30/* result.dialogs.length */);
+            sliced.forEach(el => {
+              const peerID = +el.getAttribute('data-peerID');
+              delete this.doms[peerID];
+            });
+          //}, 0);
+        //}
+      }
+
+      if(!this.scroll.loadedAll['top']) {
+        const element = this.chatList.firstElementChild;
+        if(element) {
+          const peerID = +element.getAttribute('data-peerID');
+          const dialog = appMessagesManager.getDialogByPeerID(peerID)[0];
+          this.topOffsetIndex = dialog.index;
+        }
+      } else {
+        this.topOffsetIndex = 0;
       }
 
       this.log.debug('getDialogs ' + loadCount + ' dialogs by offset:', offsetIndex, result, this.chatList.childElementCount);
 
       setTimeout(() => {
+        /* setTimeout(() => {
+          this.scroll.slice(true);
+        }, 100); */
         this.scroll.onScroll();
       }, 0);
     } catch(err) {
@@ -531,12 +601,16 @@ export class AppDialogsManager {
     this.chatsPreloader.remove();
     this.loadDialogsPromise = undefined;
   }
+
+  public onChatsScrollTop = () => {
+    this.onChatsScroll('top');
+  };
   
-  onChatsScroll = () => {
-    if(this.loadedAll || this.loadDialogsPromise) return;
-    this.log('onChatsScroll');
-    this.loadDialogs();
-  }
+  public onChatsScroll = (side: SliceSides = 'bottom') => {
+    if(this.scroll.loadedAll[side] || this.loadDialogsPromise) return;
+    this.log.error('onChatsScroll', side);
+    this.loadDialogs(side);
+  };
 
   public setListClickListener(list: HTMLUListElement, onFound?: () => void, withContext = false) {
     list.addEventListener('mousedown', (e) => {
@@ -588,28 +662,28 @@ export class AppDialogsManager {
     }
   }
 
-  public setDialogPosition(dialog: Dialog, pos?: number) {
+  private setDialogPosition(dialog: Dialog) {
     const dom = this.getDialogDom(dialog.peerID);
     if(!dom) {
       return;
     }
 
-    if(pos === undefined) {
-      pos = appMessagesManager.dialogsStorage.getDialog(dialog.peerID, this.filterID)[1];
+    let pos = appMessagesManager.dialogsStorage.getDialog(dialog.peerID, this.filterID)[1];
+    if(this.topOffsetIndex) {
+      const element = this.chatList.firstElementChild;
+      if(element) {
+        const peerID = +element.getAttribute('data-peerID');
+        const firstDialog = appMessagesManager.getDialogByPeerID(peerID);
+        pos -= firstDialog[1];
+      }
     }
 
     if(positionElementByIndex(dom.listEl, this.chatList, pos)) {
-      this.scroll.reorder();
-
       this.log.debug('setDialogPosition:', dialog, dom, pos);
     }
   }
 
   public setLastMessage(dialog: any, lastMessage?: any, dom?: DialogDom, highlightWord?: string) {
-    if(!lastMessage) {
-      lastMessage = appMessagesManager.getMessage(dialog.top_message);
-    }
-
     ///////console.log('setlastMessage:', lastMessage);
     if(!dom) {
       dom = this.getDialogDom(dialog.peerID);
@@ -618,6 +692,10 @@ export class AppDialogsManager {
         //this.log.error('no dom for dialog:', dialog, lastMessage, dom, highlightWord);
         return;
       }
+    }
+
+    if(!lastMessage) {
+      lastMessage = appMessagesManager.getMessage(dialog.top_message);
     }
 
     if(lastMessage._ == 'messageEmpty' || (lastMessage._ == 'messageService' && !lastMessage.rReply)) {
@@ -700,7 +778,7 @@ export class AppDialogsManager {
     }
   }
 
-  public setUnreadMessages(dialog: Dialog) {
+  private setUnreadMessages(dialog: Dialog) {
     const dom = this.getDialogDom(dialog.peerID);
 
     if(dialog.folder_id == 1) {
@@ -765,7 +843,7 @@ export class AppDialogsManager {
     }
   }
 
-  public accumulateArchivedUnread() {
+  private accumulateArchivedUnread() {
     if(this.accumulateArchivedTimeout) return;
     this.accumulateArchivedTimeout = window.setTimeout(() => {
       this.accumulateArchivedTimeout = 0;
@@ -775,11 +853,23 @@ export class AppDialogsManager {
     }, 0);
   }
 
-  public getDialogDom(peerID: number) {
+  private getDialogDom(peerID: number) {
     return this.doms[peerID];
   }
 
-  public addDialog(_dialog: Dialog | number, container?: HTMLUListElement | Scrollable, drawStatus = true, rippleEnabled = true, onlyFirstName = false, meAsSaved = true) {
+  public addDialogNew(options: {
+    dialog: Dialog | number,
+    container?: HTMLUListElement | Scrollable,
+    drawStatus?: boolean,
+    rippleEnabled?: boolean,
+    onlyFirstName?: boolean,
+    meAsSaved?: boolean,
+    append?: boolean
+  }) {
+    return this.addDialog(options.dialog, options.container, options.drawStatus, options.rippleEnabled, options.onlyFirstName, options.meAsSaved, options.append);
+  }
+
+  public addDialog(_dialog: Dialog | number, container?: HTMLUListElement | Scrollable, drawStatus = true, rippleEnabled = true, onlyFirstName = false, meAsSaved = true, append = true) {
     let dialog: Dialog;
     
     if(typeof(_dialog) === 'number') {
@@ -939,8 +1029,9 @@ export class AppDialogsManager {
         good = true;
       }
     } */
+    const method: 'append' | 'prepend' = append ? 'append' : 'prepend';
     if(!container/*  || good */) {
-      this.scroll.append(li);
+      this.scroll[method](li);
 
       this.doms[dialog.peerID] = dom;
 
@@ -955,7 +1046,7 @@ export class AppDialogsManager {
 
       this.setLastMessage(dialog);
     } else {
-      container.append(li);
+      container[method](li);
     }
     
     return {dom, dialog};
@@ -995,4 +1086,5 @@ export class AppDialogsManager {
 }
 
 const appDialogsManager = new AppDialogsManager();
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appDialogsManager = appDialogsManager);
 export default appDialogsManager;

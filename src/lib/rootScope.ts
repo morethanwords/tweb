@@ -20,7 +20,7 @@ type BroadcastEvents = {
   'dialog_flush': {peerID: number},
   'dialog_drop': {peerID: number, dialog?: Dialog},
   'dialog_migrate': {migrateFrom: number, migrateTo: number},
-  'dialog_top': Dialog,
+  //'dialog_top': Dialog,
   'dialog_notify_settings': number,
   'dialogs_multiupdate': {[peerID: string]: Dialog},
   'dialogs_archived_unread': {count: number},

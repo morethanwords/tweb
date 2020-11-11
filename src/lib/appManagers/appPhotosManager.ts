@@ -11,6 +11,7 @@ import { calcImageInBox } from "../../helpers/dom";
 import { MyDocument } from "./appDocsManager";
 import appDownloadManager from "./appDownloadManager";
 import appUsersManager from "./appUsersManager";
+import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
 
 export type MyPhoto = Photo.photo;
 
@@ -346,4 +347,6 @@ export class AppPhotosManager {
   }
 }
 
-export default new AppPhotosManager();
+const appPhotosManager = new AppPhotosManager();
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appPhotosManager = appPhotosManager);
+export default appPhotosManager;

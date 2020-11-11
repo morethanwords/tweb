@@ -960,7 +960,7 @@ export class AppImManager {
   }
   
   public setScroll() {
-    this.scrollable = new Scrollable(this.bubblesContainer/* .firstElementChild */ as HTMLElement, 'IM', this.chatInner, 300);
+    this.scrollable = new Scrollable(this.bubblesContainer/* .firstElementChild */ as HTMLElement, 'IM', 300);
 
     /* const getScrollOffset = () => {
       //return Math.round(Math.max(300, appPhotosManager.windowH / 1.5));
@@ -1236,7 +1236,6 @@ export class AppImManager {
     this.cleanup();
     this.chatInner = document.createElement('div');
     this.chatInner.id = 'bubbles-inner';
-    this.scrollable.appendTo = this.chatInner;
     this.chatInner.className = oldChatInner.className;
     this.chatInner.classList.add('disable-hover', 'is-scrolling');
 
@@ -1473,7 +1472,7 @@ export class AppImManager {
       this.bubbleGroups.removeBubble(bubble, mid);
       this.unreadedObserver.unobserve(bubble);
       //this.unreaded.findAndSplice(mid => mid == id);
-      this.scrollable.removeElement(bubble);
+      bubble.remove();
       //bubble.remove();
     });
     
@@ -1567,9 +1566,9 @@ export class AppImManager {
       container.append(div);
 
       if(reverse) {
-        this.scrollable.prepend(container, false);
+        this.chatInner.prepend(container);
       } else {
-        this.scrollable.append(container, false);
+        this.chatInner.append(container);
       }
 
       this.stickyIntersector.observeStickyHeaderChanges(container);
@@ -1715,7 +1714,7 @@ export class AppImManager {
       const classNames = ['bubble'].concat(save.filter(c => wasClassNames.includes(c)));
       bubble.className = classNames.join(' ');
 
-      bubbleContainer = bubble.firstElementChild as HTMLDivElement;
+      bubbleContainer = bubble.lastElementChild as HTMLDivElement;
       bubbleContainer.innerHTML = '';
       //bubbleContainer.style.marginBottom = '';
       bubbleContainer.style.cssText = '';
@@ -2441,7 +2440,7 @@ export class AppImManager {
       const method = (reverse ? history.shift : history.pop).bind(history);
 
       //const padding = 99999;
-      const realLength = this.scrollable.length;
+      const realLength = this.scrollable.container.childElementCount;
       let previousScrollHeightMinusTop: number/* , previousScrollHeight: number */;
       if(realLength > 0 && (reverse || isSafari)) { // for safari need set when scrolling bottom too
         this.messagesQueueOnRender = () => {

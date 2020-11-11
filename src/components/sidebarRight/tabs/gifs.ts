@@ -31,8 +31,7 @@ export default class AppGifsTab implements SliderTab {
   private searchPromise: ReturnType<AppInlineBotsManager['getInlineResults']>;
 
   constructor() {
-    this.scrollable = new Scrollable(this.contentDiv, ANIMATIONGROUP, undefined, undefined, 2);
-    this.scrollable.setVirtualContainer(this.gifsDiv);
+    this.scrollable = new Scrollable(this.contentDiv, ANIMATIONGROUP);
     
     this.masonry = new GifsMasonry(this.gifsDiv, ANIMATIONGROUP, this.scrollable);
 

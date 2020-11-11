@@ -18,6 +18,7 @@ import { wrapSticker } from "../../wrappers";
 
 export default class StickersTab implements EmoticonsTab {
   public content: HTMLElement;
+  private stickersDiv: HTMLElement;
 
   private stickerSets: {[id: string]: {
     stickers: HTMLElement,
@@ -66,12 +67,12 @@ export default class StickersTab implements EmoticonsTab {
         this.queueCategoryPush.forEach(({element, prepend}) => {
           if(prepend) {
             if(this.recentDiv.parentElement) {
-              this.scroll.prepend(element);
-              this.scroll.prepend(this.recentDiv);
+              this.stickersDiv.prepend(element);
+              this.stickersDiv.prepend(this.recentDiv);
             } else {
-              this.scroll.prepend(element);
+              this.stickersDiv.prepend(element);
             }
-          } else this.scroll.append(element);
+          } else this.stickersDiv.append(element);
         });
 
         this.queueCategoryPush.length = 0;
@@ -234,9 +235,9 @@ export default class StickersTab implements EmoticonsTab {
 
     let menuScroll = new ScrollableX(menuWrapper);
 
-    let stickersDiv = document.createElement('div');
-    stickersDiv.classList.add('stickers-categories');
-    this.content.append(stickersDiv);
+    this.stickersDiv = document.createElement('div');
+    this.stickersDiv.classList.add('stickers-categories');
+    this.content.append(this.stickersDiv);
 
     /* stickersDiv.addEventListener('mouseover', (e) => {
       let target = e.target as HTMLElement;
@@ -274,10 +275,10 @@ export default class StickersTab implements EmoticonsTab {
       }
     });
 
-    stickersDiv.addEventListener('click', EmoticonsDropdown.onMediaClick);
+    this.stickersDiv.addEventListener('click', EmoticonsDropdown.onMediaClick);
 
-    this.scroll = new Scrollable(this.content, 'STICKERS', undefined, undefined, 2);
-    this.scroll.setVirtualContainer(stickersDiv);
+    this.scroll = new Scrollable(this.content, 'STICKERS');
+    this.scroll.setVirtualContainer(this.stickersDiv);
 
     this.stickyIntersector = EmoticonsDropdown.menuOnClick(this.menu, this.scroll, menuScroll);
 

@@ -23,8 +23,7 @@ export default class AppStickersTab implements SliderTab {
   private lazyLoadQueue: LazyLoadQueue;
 
   constructor() {
-    this.scrollable = new Scrollable(this.contentDiv, 'STICKERS-SEARCH', undefined, undefined, 2);
-    this.scrollable.setVirtualContainer(this.setsDiv);
+    this.scrollable = new Scrollable(this.contentDiv, 'STICKERS-SEARCH');
 
     this.lazyLoadQueue = new LazyLoadQueue();
 
@@ -176,7 +175,7 @@ export default class AppStickersTab implements SliderTab {
 
     div.append(header, stickersDiv);
 
-    this.scrollable.append(div);
+    this.setsDiv.append(div);
   }
 
   public init() {

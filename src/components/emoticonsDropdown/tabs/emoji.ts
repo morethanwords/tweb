@@ -81,7 +81,7 @@ export default class EmojiTab implements EmoticonsTab {
     //console.timeEnd('emojiParse');
 
     const menu = this.content.previousElementSibling as HTMLElement;
-    const emojiScroll = this.scroll = new Scrollable(this.content, 'EMOJI', null);
+    const emojiScroll = this.scroll = new Scrollable(this.content, 'EMOJI');
 
     //emojiScroll.setVirtualContainer(emojiScroll.container);
 
@@ -111,7 +111,7 @@ export default class EmojiTab implements EmoticonsTab {
           console.error('no div by category:', category);
         }
   
-        emojiScroll.append(div);
+        emojiScroll.container.append(div);
         this.stickyIntersector.observeStickyHeaderChanges(div);
         return div;
       });

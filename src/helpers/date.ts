@@ -21,7 +21,7 @@ export const formatDateAccordingToToday = (time: Date) => {
   if((now - timestamp) < ONE_DAY && date.getDate() == time.getDate()) { // if the same day
     timeStr = ('0' + time.getHours()).slice(-2) + ':' + ('0' + time.getMinutes()).slice(-2);
   } else if(date.getFullYear() != time.getFullYear()) { // different year
-    timeStr = time.getDate() + '.' + (time.getMonth() + 1) + '.' + ('' + time.getFullYear()).slice(-2);
+    timeStr = time.getDate() + '.' + ('0' + (time.getMonth() + 1)).slice(-2) + '.' + ('' + time.getFullYear()).slice(-2);
   } else if((now - timestamp) < (ONE_DAY * 7) && getWeekNumber(date) == getWeekNumber(time)) { // current week
     timeStr = days[time.getDay()].slice(0, 3);
   } else { // same year

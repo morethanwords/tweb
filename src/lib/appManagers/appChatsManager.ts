@@ -2,6 +2,7 @@ import { numberWithCommas } from "../../helpers/number";
 import { isObject, safeReplaceObject, copy } from "../../helpers/object";
 import { ChatAdminRights, ChatBannedRights, ChatFull, ChatParticipants, InputChannel, InputChatPhoto, InputFile, InputPeer, Updates } from "../../layer";
 import apiManager from '../mtproto/mtprotoworker';
+import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
 import { RichTextProcessor } from "../richtextprocessor";
 import $rootScope from "../rootScope";
 import apiUpdatesManager from "./apiUpdatesManager";
@@ -529,4 +530,6 @@ export class AppChatsManager {
   }
 }
 
-export default new AppChatsManager();
+const appChatsManager = new AppChatsManager();
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appChatsManager = appChatsManager);
+export default appChatsManager;

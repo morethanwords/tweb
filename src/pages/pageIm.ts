@@ -1,7 +1,6 @@
 //import {stackBlurImage} from '../lib/StackBlur';
 //import appStateManager from "../lib/appManagers/appStateManager";
 import appStateManager from "../lib/appManagers/appStateManager";
-import { DEBUG } from "../lib/mtproto/mtproto_config";
 import Page from "./page";
 
 let onFirstMount = () => {
@@ -24,11 +23,7 @@ let onFirstMount = () => {
     alert('navigator.mediaDevices:' + typeof(navigator.mediaDevices));
     alert('navigator.mediaDevices.getUserMedia:' + typeof(navigator.mediaDevices?.getUserMedia));
     alert('global.WebAssembly:' + typeof(WebAssembly)); */
-  
-    if(DEBUG) {
-      import('../lib/services');
-    }
-  
+
     //(Array.from(document.getElementsByClassName('rp')) as HTMLElement[]).forEach(el => ripple(el));
 
     const misc = await import("../components/buttonMenuToggle");

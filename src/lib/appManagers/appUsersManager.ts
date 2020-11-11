@@ -4,6 +4,7 @@ import { safeReplaceObject, isObject } from "../../helpers/object";
 import { InputUser, Update, User as MTUser, UserStatus } from "../../layer";
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
+import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
 import serverTimeManager from "../mtproto/serverTimeManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import $rootScope from "../rootScope";
@@ -641,4 +642,6 @@ export class AppUsersManager {
   }
 }
 
-export default new AppUsersManager();
+const appUsersManager = new AppUsersManager();
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appUsersManager = appUsersManager);
+export default appUsersManager

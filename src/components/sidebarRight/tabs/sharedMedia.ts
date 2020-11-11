@@ -131,7 +131,7 @@ export default class AppSharedMediaTab implements SliderTab {
     let container = this.profileContentEl.querySelector('.content-container .tabs-container') as HTMLDivElement;
     this.profileTabs = this.profileContentEl.querySelector('.profile-tabs');
     
-    this.scroll = new Scrollable(this.container, 'SR', undefined, 400);
+    this.scroll = new Scrollable(this.container, 'SR', 400);
     this.scroll.onScrolledBottom = () => {
       if(this.sharedMediaSelected && this.sharedMediaSelected.childElementCount/* && false */) {
         //this.log('onScrolledBottom will load media');

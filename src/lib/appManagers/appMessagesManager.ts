@@ -12,6 +12,7 @@ import { logger, LogLevels } from "../logger";
 import type { ApiFileManager } from '../mtproto/apiFileManager';
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
+import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
 import referenceDatabase, { ReferenceContext } from "../mtproto/referenceDatabase";
 import serverTimeManager from "../mtproto/serverTimeManager";
 import { RichTextProcessor } from "../richtextprocessor";
@@ -1506,7 +1507,8 @@ export class AppMessagesManager {
     if(query || this.dialogsStorage.allDialogsLoaded[realFolderID] || curDialogStorage.length >= offset + limit) {
       return Promise.resolve({
         dialogs: curDialogStorage.slice(offset, offset + limit),
-        count: this.dialogsStorage.allDialogsLoaded[realFolderID] ? curDialogStorage.length : null
+        count: this.dialogsStorage.allDialogsLoaded[realFolderID] ? curDialogStorage.length : null,
+        isEnd: this.dialogsStorage.allDialogsLoaded[realFolderID] && (offset + limit) >= curDialogStorage.length
       });
     }
 
@@ -1526,7 +1528,8 @@ export class AppMessagesManager {
 
       return {
         dialogs: curDialogStorage.slice(offset, offset + limit),
-        count: totalCount
+        count: totalCount,
+        isEnd: this.dialogsStorage.allDialogsLoaded[realFolderID] && (offset + limit) >= curDialogStorage.length
       };
     });
   }
@@ -1906,7 +1909,7 @@ export class AppMessagesManager {
 
       message.peerID = peerID;
       if(message.peerID == myID/*  && !message.from_id && !message.fwd_from */) {
-        message.fromID = message.fwd_from?.from_id ? appPeersManager.getPeerID(message.fwd_from.from_id) : myID;
+        message.fromID = message.fwd_from ? (message.fwd_from.from_id ? appPeersManager.getPeerID(message.fwd_from.from_id) : 0) : myID;
       } else {
         message.fromID = message.pFlags.post || (!message.pFlags.out && !message.from_id) ? peerID : appPeersManager.getPeerID(message.from_id);
       }
@@ -2424,7 +2427,7 @@ export class AppMessagesManager {
       } */
 
       if(topMessage) {
-        const wasDialogBefore = this.getDialogByPeerID(peerID)[0];
+        //const wasDialogBefore = this.getDialogByPeerID(peerID)[0];
 
         // here need to just replace, not FULL replace dialog! WARNING
         /* if(wasDialogBefore?.pFlags?.pinned && !dialog?.pFlags?.pinned) {
@@ -2435,12 +2438,12 @@ export class AppMessagesManager {
 
         this.saveConversation(dialog);
         
-        if(wasDialogBefore) {
+        /* if(wasDialogBefore) {
           $rootScope.$broadcast('dialog_top', dialog);
-        } else {
+        } else { */
           updatedDialogs[peerID] = dialog;
           hasUpdated = true;
-        }
+        //}
       } else {
         const dropped = this.dialogsStorage.dropDialog(peerID);
         if(dropped.length) {
@@ -4220,4 +4223,5 @@ export class AppMessagesManager {
 }
 
 const appMessagesManager = new AppMessagesManager();
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appMessagesManager = appMessagesManager);
 export default appMessagesManager;
