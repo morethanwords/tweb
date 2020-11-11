@@ -1,5 +1,6 @@
 import Countries, { Country, PhoneCodesMain } from "../countries";
 import mediaSizes from "../helpers/mediaSizes";
+import { clamp } from "../helpers/number";
 import { isTouchSupported } from "../helpers/touchSupport";
 import { isApple } from "../helpers/userAgent";
 
@@ -139,6 +140,7 @@ let closeBtnMenu = () => {
   if(openedMenu) {
     openedMenu.classList.remove('active');
     openedMenu.parentElement.classList.remove('menu-open');
+    openedMenu.previousElementSibling.remove(); // remove overlay
     openedMenu = null;
   }
   
@@ -183,6 +185,9 @@ export function openBtnMenu(menuElement: HTMLElement, onClose?: () => void) {
   openedMenu.classList.add('active');
   openedMenu.parentElement.classList.add('menu-open');
 
+  const overlay = document.createElement('div');
+  overlay.classList.add('btn-menu-overlay');
+  openedMenu.parentElement.insertBefore(overlay, openedMenu);
   //document.body.classList.add('disable-hover');
   
   openedMenuOnClose = onClose;
@@ -200,6 +205,8 @@ export function openBtnMenu(menuElement: HTMLElement, onClose?: () => void) {
   window.addEventListener('contextmenu', onClick, {once: true});
 }
 
+const PADDING_TOP = 16;
+const PADDING_LEFT = 16;
 export function positionMenu({clientX, clientY}: {clientX: number, clientY: number}/* e: MouseEvent */, elem: HTMLElement, side?: 'left' | 'right') {
   //let {clientX, clientY} = e;
 
@@ -211,12 +218,8 @@ export function positionMenu({clientX, clientY}: {clientX: number, clientY: numb
   }
 
   if(side === undefined) {
-    if((clientX + scrollWidth) > innerWidth) {
-      if((clientX - scrollWidth) < 0) {
-        elem.style.left = (innerWidth - scrollWidth) + 'px';
-      } else {
-        side = 'right';
-      }
+    if((clientX + scrollWidth + PADDING_LEFT) > innerWidth) {
+      side = 'right';
     }
   }
 
@@ -224,17 +227,24 @@ export function positionMenu({clientX, clientY}: {clientX: number, clientY: numb
     side = 'left';
   }
 
-  elem.classList.remove('bottom-left', 'bottom-right');
-  if(side !== undefined) {
-    elem.style.left = (side == 'right' ? clientX - scrollWidth : clientX) + 'px';
-    elem.classList.add(side == 'left' ? 'bottom-right' : 'bottom-left');
-  }
+  // ! don't need reverse for this, this will be the side WHERE ANIMATION WILL END !
+  let verticalSide: 'top' | 'bottom';
 
-  if((clientY + scrollHeight) > innerHeight) {
-    elem.style.top = (innerHeight - scrollHeight) + 'px';
-  } else {
-    elem.style.top = clientY + 'px';
+  if(side !== undefined) {
+    const left = clamp(side == 'right' ? clientX - scrollWidth : clientX, PADDING_LEFT, innerWidth - scrollWidth - PADDING_LEFT);
+    elem.style.left = left + 'px';
   }
+  
+  if((clientY + scrollHeight + PADDING_TOP) > innerHeight) {
+    elem.style.top = (clientY - scrollHeight) + 'px';
+    verticalSide = 'top';
+  } else {
+    elem.style.top = Math.max(PADDING_TOP, clientY) + 'px';
+    verticalSide = 'bottom';
+  }
+  
+  elem.classList.remove('bottom-left', 'bottom-right', 'top-left', 'top-right');
+  elem.classList.add(verticalSide + '-' + (side == 'left' ? 'right' : 'left'));
 }
 
 export function attachContextMenuListener(element: HTMLElement, callback: (e: Touch | MouseEvent) => void) {

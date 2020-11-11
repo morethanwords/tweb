@@ -64,6 +64,7 @@ export default class ChatContextMenu {
       });
 
       const side: 'left' | 'right' = bubble.classList.contains('is-in') ? 'left' : 'right';
+      //bubble.parentElement.append(this.element);
       positionMenu(e, this.element, side);
       openBtnMenu(this.element, () => {
         this.peerID = this.msgID = 0;

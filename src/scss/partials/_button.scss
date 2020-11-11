@@ -56,7 +56,7 @@
   visibility: hidden;
   position: absolute;
   background: #fff;
-  box-shadow: 0 5px 8px 1px rgba(0,0,0,.24);
+  box-shadow: 0 5px 8px 1px rgba(0, 0, 0, .24);
   z-index: 3;
   top: 100%;
   margin-top: 8px;
@@ -64,9 +64,9 @@
   border-radius: $border-radius-medium;
   opacity: 0;
   transform: scale(.8);
-  transition-property: opacity,transform,visibility;
+  transition-property: opacity, transform, visibility;
   transition-duration: .2s;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-timing-function: cubic-bezier(.4, 0, .2, 1);
   font-size: 16px;
 
   -webkit-user-select: none; /* disable selection/Copy of UIWebView */
@@ -122,7 +122,7 @@
     align-items: center;
 
     html.no-touch &:hover {
-      background-color: rgba(112, 117, 121, 0.06);
+      background-color: rgba(112, 117, 121, .06);
     }
 
     &:before {
@@ -135,6 +135,25 @@
       padding: 0 30px 0 16px;
       height: 50px;
     }
+  }
+
+  /* &-overlay {
+    position: fixed !important;
+    left: -100vw;
+    right: -100vw;
+    top: -100vh;
+    bottom: -100vh;
+    z-index: 1;
+    background-color: rgba(0, 0, 0, .2);
+  } */
+  &-overlay {
+    position: fixed !important;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 1;
+    //background-color: rgba(0, 0, 0, .2);
   }
 }
 

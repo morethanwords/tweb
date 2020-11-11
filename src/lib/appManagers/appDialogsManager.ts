@@ -338,9 +338,11 @@ export class AppDialogsManager {
       });
 
       return this.loadDialogs();
-    }).then(result => {
-      appMessagesManager.getConversationsAll('', 1).then(() => {
-        this.accumulateArchivedUnread();
+    }).then(() => {
+      appMessagesManager.getConversationsAll('', 0).finally(() => {
+        appMessagesManager.getConversationsAll('', 1).then(() => {
+          this.accumulateArchivedUnread();
+        });
       });
     });
 
