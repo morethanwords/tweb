@@ -161,7 +161,6 @@
                     </ul>
                   </nav>
                 </div>
-                {{!-- <div class="tabs-container" id="folders-container" data-slider="none"> --}}
                 <div class="tabs-container" id="folders-container">
                   <div>
                     <ul id="dialogs"></ul>
@@ -394,13 +393,6 @@
             </div>
           </div>
         </div>
-        <div class="btn-menu" id="dialogs-contextmenu">
-          <div class="btn-menu-item menu-unread tgico rp"><div></div></div>
-          <div class="btn-menu-item menu-pin tgico rp"><div></div></div>
-          <div class="btn-menu-item menu-mute tgico rp"><div></div></div>
-          <div class="btn-menu-item menu-archive tgico rp"><div></div></div>
-          <div class="btn-menu-item menu-delete tgico-delete danger rp"><div></div></div>
-        </div>
       </div>
       <div class="chat-container main-column" id="column-center">
         {{!-- <canvas id="chat-background-canvas"></canvas> --}}
@@ -604,6 +596,13 @@
           </div>
         </div>
       </div>
+    </div>
+    <div class="btn-menu" id="dialogs-contextmenu">
+      <div class="btn-menu-item menu-unread tgico rp"><div></div></div>
+      <div class="btn-menu-item menu-pin tgico rp"><div></div></div>
+      <div class="btn-menu-item menu-mute tgico rp"><div></div></div>
+      <div class="btn-menu-item menu-archive tgico rp"><div></div></div>
+      <div class="btn-menu-item menu-delete tgico-delete danger rp"><div></div></div>
     </div>
   </div>
   {{# each htmlWebpackPlugin.files.js }}

@@ -59,7 +59,6 @@
   box-shadow: 0 5px 8px 1px rgba(0, 0, 0, .24);
   z-index: 3;
   top: 100%;
-  margin-top: 8px;
   padding: 9px 0;
   border-radius: $border-radius-medium;
   opacity: 0;
@@ -241,6 +240,10 @@
 
   &:not(.btn-primary).menu-open {
     background-color: var(--color-gray-hover);
+  }
+
+  .btn-menu {
+    margin-top: .5rem;
   }
 }
 

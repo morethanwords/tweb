@@ -8,8 +8,10 @@
       top: 52%;
     }
   }
-  
-  > div {
+
+  #main-columns {
+    width: 100%;
+    overflow: hidden;
     position: relative;
     min-height: 100%;
 
@@ -17,11 +19,6 @@
       height: 100%;
       max-height: 100%;
     //}
-  }
-
-  #main-columns {
-    width: 100%;
-    overflow: hidden;
   }
 
   @include respond-to(handhelds) {

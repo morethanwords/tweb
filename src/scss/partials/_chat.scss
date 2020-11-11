@@ -5,13 +5,13 @@ $chat-padding: 1rem;
 $chat-padding-handhelds: .5rem;
 $chat-helper-size: 39px;
 
-#bubble-contextmenu > div {
+/* #bubble-contextmenu > div {
 	padding: 0 5.25 0 1rem;
 
 	@include respond-to(handhelds) {
 		padding: 0 3.75rem 0 1rem;
 	}
-}
+} */
 
 #topbar {
 	width: 100%;

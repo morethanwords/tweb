@@ -2320,6 +2320,8 @@ export class AppImManager {
             nameDiv.style.color = appPeersManager.getPeerColorByID(message.fwdFromID, false);
             nameDiv.innerHTML = title;
           } else {
+            /* const fromTitle = message.fromID == this.myID || appPeersManager.isBroadcast(message.fwdFromID || message.fromID) ? '' : `<div class="name" data-peer-i-d="${message.fromID}" style="color: ${appPeersManager.getPeerColorByID(message.fromID, false)};">${appPeersManager.getPeerTitle(message.fromID)}</div>`;
+            nameDiv.innerHTML = fromTitle + 'Forwarded from ' + title; */
             nameDiv.innerHTML = 'Forwarded from ' + title;
           }
           

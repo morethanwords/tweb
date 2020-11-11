@@ -1167,10 +1167,14 @@ $bubble-margin: .25rem;
     //width: max-content;
     //white-space: nowrap;
   }
+
+  &:not(.is-group-first) .bubble__container > .name .name {
+    display: none;
+  }
   
   &:not(.webpage) {
     &.photo, &.video {
-      .name {
+      .bubble__container > .name {
         //padding-bottom: .2675rem;
         padding-bottom: 6px;
       }

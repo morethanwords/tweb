@@ -205,8 +205,8 @@ export function openBtnMenu(menuElement: HTMLElement, onClose?: () => void) {
   window.addEventListener('contextmenu', onClick, {once: true});
 }
 
-const PADDING_TOP = 16;
-const PADDING_LEFT = 16;
+const PADDING_TOP = 8;
+const PADDING_LEFT = 8;
 export function positionMenu({clientX, clientY}: {clientX: number, clientY: number}/* e: MouseEvent */, elem: HTMLElement, side?: 'left' | 'right') {
   //let {clientX, clientY} = e;
 
@@ -231,12 +231,28 @@ export function positionMenu({clientX, clientY}: {clientX: number, clientY: numb
   let verticalSide: 'top' | 'bottom';
 
   if(side !== undefined) {
-    const left = clamp(side == 'right' ? clientX - scrollWidth : clientX, PADDING_LEFT, innerWidth - scrollWidth - PADDING_LEFT);
+    let left: number;
+    if(side === 'right') {
+      left = clientX - scrollWidth;
+      if(left < PADDING_LEFT) {
+        side = 'left';
+        left = Math.max(PADDING_LEFT, clientX);
+      }
+    } else {
+      left = Math.max(PADDING_LEFT, clientX);
+      if((clientX + scrollWidth) > (innerWidth - PADDING_LEFT)) {
+        side = 'right';
+        left = Math.max(clientX - scrollWidth, scrollWidth - PADDING_LEFT);
+      }
+    }
+
+    //const left = clamp(side == 'right' ? clientX - scrollWidth : clientX, PADDING_LEFT, innerWidth - scrollWidth - PADDING_LEFT);
     elem.style.left = left + 'px';
   }
   
   if((clientY + scrollHeight + PADDING_TOP) > innerHeight) {
-    elem.style.top = (clientY - scrollHeight) + 'px';
+    elem.style.top = Math.max(PADDING_TOP, clientY - scrollHeight) + 'px';
+    // elem.style.top = (innerHeight - scrollHeight - PADDING_TOP) + 'px';
     verticalSide = 'top';
   } else {
     elem.style.top = Math.max(PADDING_TOP, clientY) + 'px';
