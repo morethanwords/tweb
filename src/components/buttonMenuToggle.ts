@@ -1,6 +1,6 @@
 import ButtonIcon from "./buttonIcon";
 import ButtonMenu, { ButtonMenuItemOptions } from "./buttonMenu";
-import { openBtnMenu } from "./misc";
+import { closeBtnMenu, openBtnMenu } from "./misc";
 
 const ButtonMenuToggle = (options: Partial<{noRipple: true, onlyMobile: true}> = {}, direction: 'bottom-left', buttons: ButtonMenuItemOptions[]) => {
   const button = ButtonIcon('more btn-menu-toggle', options);
@@ -23,7 +23,7 @@ const ButtonMenuToggleHandler = (el: HTMLElement) => {
 
     if(el.classList.contains('menu-open')) {
       el.classList.remove('menu-open');
-      openedMenu.classList.remove('active');
+      closeBtnMenu();
     } else {
       openBtnMenu(openedMenu);
     }

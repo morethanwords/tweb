@@ -136,7 +136,7 @@ let onClick = (e: MouseEvent | TouchEvent) => {
   closeBtnMenu();
 };
 
-let closeBtnMenu = () => {
+export const closeBtnMenu = () => {
   if(openedMenu) {
     openedMenu.classList.remove('active');
     openedMenu.parentElement.classList.remove('menu-open');
