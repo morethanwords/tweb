@@ -8,7 +8,7 @@ import { PopupElement } from "./popup";
 import { ripple } from "./ripple";
 import Scrollable from "./scrollable";
 import { toast } from "./toast";
-import { wrapDocument } from "./wrappers";
+import { prepareAlbum, wrapDocument } from "./wrappers";
 
 type SendFileParams = Partial<{
   file: File,
@@ -256,27 +256,15 @@ export default class PopupNewMedia extends PopupElement {
         if(willAttach.sendFileDetails.length > 1) {
           container.classList.add('is-album');
 
-          const layouter = new Layouter(willAttach.sendFileDetails.map(o => ({w: o.width, h: o.height})), 380, 100, 4);
-          const layout = layouter.layout();
+          this.mediaContainer.append(...results);
 
-          for(const {geometry, sides} of layout) {
-            const div = results.shift();
-
-            div.style.width = geometry.width + 'px';
-            div.style.height = geometry.height + 'px';
-            div.style.top = geometry.y + 'px';
-            div.style.left = geometry.x + 'px';
-
-            if(sides & RectPart.Right) {
-              this.mediaContainer.style.width = geometry.width + geometry.x + 'px';
-            }
-
-            if(sides & RectPart.Bottom) {
-              this.mediaContainer.style.height = geometry.height + geometry.y + 'px';
-            }
-
-            this.mediaContainer.append(div);
-          }
+          prepareAlbum({
+            container: this.mediaContainer,
+            items: willAttach.sendFileDetails.map(o => ({w: o.width, h: o.height})),
+            maxWidth: 380,
+            minWidth: 100,
+            spacing: 4
+          });
 
           //console.log('chatInput album layout:', layout);
         } else {

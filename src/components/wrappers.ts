@@ -29,7 +29,7 @@ const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 
 export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group}: {
   doc: MyDocument, 
-  container?: HTMLDivElement, 
+  container?: HTMLElement, 
   message?: any, 
   boxWidth?: number, 
   boxHeight?: number, 
@@ -414,7 +414,7 @@ export function wrapAudio(doc: MyDocument, withTime = false, mid?: number): HTML
   return elem;
 }
 
-function wrapMediaWithTail(photo: MyPhoto | MyDocument, message: {mid: number, message: string}, container: HTMLDivElement, boxWidth: number, boxHeight: number, isOut: boolean) {
+function wrapMediaWithTail(photo: MyPhoto | MyDocument, message: {mid: number, message: string}, container: HTMLElement, boxWidth: number, boxHeight: number, isOut: boolean) {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.classList.add('bubble__media-container', isOut ? 'is-out' : 'is-in');
   
@@ -469,7 +469,7 @@ function wrapMediaWithTail(photo: MyPhoto | MyDocument, message: {mid: number, m
   return img;
 }
 
-export function wrapPhoto(photo: MyPhoto | MyDocument, message: any, container: HTMLDivElement, boxWidth = mediaSizes.active.regular.width, boxHeight = mediaSizes.active.regular.height, withTail: boolean, isOut: boolean, lazyLoadQueue: LazyLoadQueue, middleware: () => boolean, size: PhotoSize = null) {
+export function wrapPhoto(photo: MyPhoto | MyDocument, message: any, container: HTMLElement, boxWidth = mediaSizes.active.regular.width, boxHeight = mediaSizes.active.regular.height, withTail: boolean, isOut: boolean, lazyLoadQueue: LazyLoadQueue, middleware: () => boolean, size: PhotoSize = null) {
   let image: HTMLImageElement;
   if(withTail) {
     image = wrapMediaWithTail(photo, message, container, boxWidth, boxHeight, isOut);
@@ -729,6 +729,81 @@ export function wrapReply(title: string, subtitle: string, message?: any) {
   return replyContainer.container;
 }
 
+export function prepareAlbum(options: {
+  container: HTMLElement,
+  items: {w: number, h: number}[],
+  maxWidth: number,
+  minWidth: number,
+  spacing: number,
+  maxHeight?: number,
+  forMedia?: true
+}) {
+  const layouter = new Layouter(options.items, options.maxWidth, options.minWidth, options.spacing, options.maxHeight);
+  const layout = layouter.layout();
+
+  const widthItem = layout.find(item => item.sides & RectPart.Right);
+  const width = widthItem.geometry.width + widthItem.geometry.x;
+
+  const heightItem = layout.find(item => item.sides & RectPart.Bottom);
+  const height = heightItem.geometry.height + heightItem.geometry.y;
+
+  const container = options.container;
+  container.style.width = width + 'px';
+  container.style.height = height + 'px';
+  const children = container.children;
+
+  layout.forEach(({geometry, sides}, idx) => {
+    let div: HTMLElement;
+    div = children[idx] as HTMLElement;
+    if(!div) {
+      div = document.createElement('div');
+      container.append(div);
+    }
+
+    div.classList.add('album-item');
+
+    div.style.width = (geometry.width / width * 100) + '%';
+    div.style.height = (geometry.height / height * 100) + '%';
+    div.style.top = (geometry.y / height * 100) + '%';
+    div.style.left = (geometry.x / width * 100) + '%';
+
+    if(sides & RectPart.Left && sides & RectPart.Top) {
+      div.style.borderTopLeftRadius = 'inherit';
+    }
+
+    if(sides & RectPart.Left && sides & RectPart.Bottom) {
+      div.style.borderBottomLeftRadius = 'inherit';
+    }
+
+    if(sides & RectPart.Right && sides & RectPart.Top) {
+      div.style.borderTopRightRadius = 'inherit';
+    }
+
+    if(sides & RectPart.Right && sides & RectPart.Bottom) {
+      div.style.borderBottomRightRadius = 'inherit';
+    }
+
+    if(options.forMedia) {
+      const mediaDiv = document.createElement('div');
+      mediaDiv.classList.add('album-item-media');
+  
+      div.append(mediaDiv);
+    }
+
+    // @ts-ignore
+    //div.style.backgroundColor = '#' + Math.floor(Math.random() * (2 ** 24 - 1)).toString(16).padStart(6, '0');
+  });
+
+  /* if(options.forMedia) {
+    layout.forEach((_, i) => {
+      const mediaDiv = document.createElement('div');
+      mediaDiv.classList.add('album-item-media');
+  
+      options.container.children[i].append(mediaDiv);
+    });
+  } */
+}
+
 export function wrapAlbum({groupID, attachmentDiv, middleware, uploading, lazyLoadQueue, isOut}: {
   groupID: string, 
   attachmentDiv: HTMLElement,
@@ -749,58 +824,21 @@ export function wrapAlbum({groupID, attachmentDiv, middleware, uploading, lazyLo
     items.push({size, media, message: m});
   }
 
-  const spacing = 2;
-  const layouter = new Layouter(items.map(i => ({w: i.size.w, h: i.size.h})), mediaSizes.active.album.width, 100, spacing);
-  const layout = layouter.layout();
-  //console.log('layout:', layout, items.map(i => ({w: i.size.w, h: i.size.h})));
+  prepareAlbum({
+    container: attachmentDiv,
+    items: items.map(i => ({w: i.size.w, h: i.size.h})),
+    maxWidth: mediaSizes.active.album.width,
+    minWidth: 100,
+    spacing: 2,
+    forMedia: true
+  });
 
-  /* let borderRadius = window.getComputedStyle(realParent).getPropertyValue('border-radius');
-  let brSplitted = fillPropertyValue(borderRadius); */
-
-  for(const {geometry, sides} of layout) {
-    const item = items.shift();
-    if(!item) {
-      console.error('no item for layout!');
-      continue;
-    }
-
+  items.forEach((item, idx) => {
     const {size, media, message} = item;
-    const div = document.createElement('div');
-    div.classList.add('album-item');
-    div.dataset.mid = message.mid;
 
-    div.style.width = geometry.width + 'px';
-    div.style.height = geometry.height + 'px';
-    div.style.top = geometry.y + 'px';
-    div.style.left = geometry.x + 'px';
-
-    if(sides & RectPart.Right) {
-      attachmentDiv.style.width = geometry.width + geometry.x + 'px';
-    }
-
-    if(sides & RectPart.Bottom) {
-      attachmentDiv.style.height = geometry.height + geometry.y + 'px';
-    }
-
-    if(sides & RectPart.Left && sides & RectPart.Top) {
-      div.style.borderTopLeftRadius = 'inherit';
-    }
-
-    if(sides & RectPart.Left && sides & RectPart.Bottom) {
-      div.style.borderBottomLeftRadius = 'inherit';
-    }
-
-    if(sides & RectPart.Right && sides & RectPart.Top) {
-      div.style.borderTopRightRadius = 'inherit';
-    }
-
-    if(sides & RectPart.Right && sides & RectPart.Bottom) {
-      div.style.borderBottomRightRadius = 'inherit';
-    }
-
-    const mediaDiv = document.createElement('div');
-    mediaDiv.classList.add('album-item-media');
-
+    const div = attachmentDiv.children[idx] as HTMLElement;
+    div.dataset.mid = '' + message.mid;
+    const mediaDiv = div.firstElementChild as HTMLElement;
     if(media._ == 'photo') {
       wrapPhoto(
         media,
@@ -827,13 +865,7 @@ export function wrapAlbum({groupID, attachmentDiv, middleware, uploading, lazyLo
         middleware
       });
     }
-
-    // @ts-ignore
-    //div.style.backgroundColor = '#' + Math.floor(Math.random() * (2 ** 24 - 1)).toString(16).padStart(6, '0');
-
-    div.append(mediaDiv);
-    attachmentDiv.append(div);
-  }
+  });
 }
 
 export function wrapPoll(pollID: string, mid: number) {
