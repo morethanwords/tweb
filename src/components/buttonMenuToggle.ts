@@ -17,12 +17,11 @@ const ButtonMenuToggleHandler = (el: HTMLElement) => {
     if(!el.classList.contains('btn-menu-toggle')) return false;
 
     //window.removeEventListener('mousemove', onMouseMove);
-    let openedMenu = el.querySelector('.btn-menu') as HTMLDivElement;
+    const openedMenu = el.querySelector('.btn-menu') as HTMLDivElement;
     e.cancelBubble = true;
     //cancelEvent(e);
 
     if(el.classList.contains('menu-open')) {
-      el.classList.remove('menu-open');
       closeBtnMenu();
     } else {
       openBtnMenu(openedMenu);

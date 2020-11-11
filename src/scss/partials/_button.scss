@@ -148,13 +148,20 @@
   } */
   &-overlay {
     position: fixed !important;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 1;
+    cursor: default;
+    //background-color: rgba(0, 0, 0, .2);
+  }
+
+  &-toggle &-overlay {
     left: -100vw;
     right: -100vw;
     top: -100vh;
     bottom: -100vh;
-    z-index: 1;
-    cursor: default;
-    //background-color: rgba(0, 0, 0, .2);
   }
 }
 
