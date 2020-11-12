@@ -59,7 +59,7 @@ export default class ChatContextMenu {
       this.buttons.forEach(button => {
         let good: boolean;
 
-        if(appImManager.chatSelection.isSelecting && !button.withSelection) {
+        if((appImManager.chatSelection.isSelecting && !button.withSelection) || (button.withSelection && !appImManager.chatSelection.isSelecting)) {
           good = false;
         } else {
           good = bubbleContainer || isTouchSupported ? 
@@ -171,7 +171,7 @@ export default class ChatContextMenu {
       icon: 'forward',
       text: 'Forward selected',
       onClick: this.onForwardClick,
-      verify: () => appImManager.chatSelection.selectedMids.has(this.msgID),
+      verify: () => !appImManager.chatSelection.selectionForwardBtn.hasAttribute('disabled') && appImManager.chatSelection.selectedMids.has(this.msgID),
       notDirect: () => appImManager.chatSelection.selectedMids.has(this.msgID),
       withSelection: true
     }, {
@@ -200,7 +200,7 @@ export default class ChatContextMenu {
       icon: 'delete danger',
       text: 'Delete selected',
       onClick: this.onDeleteClick,
-      verify: () => appImManager.chatSelection.selectedMids.has(this.msgID),
+      verify: () => !appImManager.chatSelection.selectionDeleteBtn.hasAttribute('disabled') && appImManager.chatSelection.selectedMids.has(this.msgID),
       notDirect: () => appImManager.chatSelection.selectedMids.has(this.msgID),
       withSelection: true
     }];
