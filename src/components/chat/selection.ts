@@ -8,7 +8,6 @@ import CheckboxField from "../checkbox";
 import PopupDeleteMessages from "../popupDeleteMessages";
 import PopupForward from "../popupForward";
 import { toast } from "../toast";
-import BubbleGroups from "../bubbleGroups";
 
 const SetTransition = (element: HTMLElement, className: string, forwards: boolean, duration: number, onTransitionEnd?: () => void) => {
   const timeout = element.dataset.timeout;

@@ -41,8 +41,19 @@ export default class ChatContextMenu {
       }
       if(e instanceof MouseEvent) e.cancelBubble = true;
 
-      const msgID = +bubble.dataset.mid;
-      if(!msgID) return;
+      let mid = +bubble.dataset.mid;
+      if(!mid) return;
+
+      // * если открыть контекстное меню для альбома не по бабблу, и последний элемент не выбран, чтобы показать остальные пункты
+      if(appImManager.chatSelection.isSelecting && !bubbleContainer) {
+        const mids = appMessagesManager.getMidsByMid(mid);
+        if(mids.length > 1) {
+          const selectedMid = appImManager.chatSelection.selectedMids.has(mid) ? mid : mids.find(mid => appImManager.chatSelection.selectedMids.has(mid));
+          if(selectedMid) {
+            mid = selectedMid;
+          }
+        }
+      }
 
       this.peerID = $rootScope.selectedPeerID;
       //this.msgID = msgID;
@@ -53,18 +64,19 @@ export default class ChatContextMenu {
       if(albumItem) {
         this.msgID = +albumItem.dataset.mid;
       } else {
-        this.msgID = msgID;
+        this.msgID = mid;
       }
 
       this.buttons.forEach(button => {
         let good: boolean;
 
-        if((appImManager.chatSelection.isSelecting && !button.withSelection) || (button.withSelection && !appImManager.chatSelection.isSelecting)) {
+        //if((appImManager.chatSelection.isSelecting && !button.withSelection) || (button.withSelection && !appImManager.chatSelection.isSelecting)) {
+        if(appImManager.chatSelection.isSelecting && !button.withSelection) {
           good = false;
         } else {
           good = bubbleContainer || isTouchSupported ? 
             button.verify() : 
-            button.notDirect && button.notDirect() && button.verify();
+            button.notDirect && button.verify() && button.notDirect();
         }
 
         button.element.classList.toggle('hide', !good);
@@ -126,8 +138,8 @@ export default class ChatContextMenu {
       icon: 'copy',
       text: 'Copy selected',
       onClick: this.onCopyClick,
-      verify: () => !![...appImManager.chatSelection.selectedMids].find(mid => !!appMessagesManager.getMessage(mid).message),
-      notDirect: () => !![...appImManager.chatSelection.selectedMids].find(mid => !!appMessagesManager.getMessage(mid).message),
+      verify: () => appImManager.chatSelection.selectedMids.has(this.msgID) && !![...appImManager.chatSelection.selectedMids].find(mid => !!appMessagesManager.getMessage(mid).message),
+      notDirect: () => true,
       withSelection: true
     }, {
       icon: 'pin',
@@ -171,8 +183,8 @@ export default class ChatContextMenu {
       icon: 'forward',
       text: 'Forward selected',
       onClick: this.onForwardClick,
-      verify: () => !appImManager.chatSelection.selectionForwardBtn.hasAttribute('disabled') && appImManager.chatSelection.selectedMids.has(this.msgID),
-      notDirect: () => appImManager.chatSelection.selectedMids.has(this.msgID),
+      verify: () => appImManager.chatSelection.selectedMids.has(this.msgID) && !appImManager.chatSelection.selectionForwardBtn.hasAttribute('disabled'),
+      notDirect: () => true,
       withSelection: true
     }, {
       icon: 'select',
@@ -189,7 +201,7 @@ export default class ChatContextMenu {
       text: 'Clear selection',
       onClick: this.onClearSelectionClick,
       verify: () => appImManager.chatSelection.selectedMids.has(this.msgID),
-      notDirect: () => appImManager.chatSelection.selectedMids.has(this.msgID),
+      notDirect: () => true,
       withSelection: true
     }, {
       icon: 'delete danger',
@@ -200,8 +212,8 @@ export default class ChatContextMenu {
       icon: 'delete danger',
       text: 'Delete selected',
       onClick: this.onDeleteClick,
-      verify: () => !appImManager.chatSelection.selectionDeleteBtn.hasAttribute('disabled') && appImManager.chatSelection.selectedMids.has(this.msgID),
-      notDirect: () => appImManager.chatSelection.selectedMids.has(this.msgID),
+      verify: () => appImManager.chatSelection.selectedMids.has(this.msgID) && !appImManager.chatSelection.selectionDeleteBtn.hasAttribute('disabled'),
+      notDirect: () => true,
       withSelection: true
     }];
 
