@@ -2392,11 +2392,12 @@ export class AppMessagesManager {
 
   public canDeleteMessage(messageID: number) {
     const message = this.messagesStorage[messageID];
-    if(message) {
-      return message.peerID > 0 || message.fromID == $rootScope.myID || appChatsManager.hasRights(message.peerID, 'deleteRevoke');
-    } else {
-      return false;
-    }
+    return message && (
+      message.peerID > 0 
+      || message.fromID == $rootScope.myID 
+      || appChatsManager.getChat(message.peerID)._ == 'chat' 
+      || appChatsManager.hasRights(message.peerID, 'deleteRevoke')
+    );
   }
 
   public applyConversations(dialogsResult: MessagesPeerDialogs.messagesPeerDialogs) {

@@ -17,7 +17,7 @@ export default class PopupDeleteMessages {
     };
 
     let title: string, description: string, buttons: PopupButton[];
-    title = `Delete Message${mids.length == 1 ? '' : 's'}?`;
+    title = `Delete ${mids.length == 1 ? '' : mids.length + ' '}Message${mids.length == 1 ? '' : 's'}?`;
     description = `Are you sure you want to delete ${mids.length == 1 ? 'this message' : 'these messages'}?`;
 
     if(peerID == $rootScope.myID) {
@@ -39,12 +39,45 @@ export default class PopupDeleteMessages {
           isDanger: true,
           callback: () => callback(true)
         });
-      } else if(appChatsManager.hasRights(-peerID, 'deleteRevoke')) {
-        buttons.push({
-          text: 'DELETE FOR ALL',
-          isDanger: true,
-          callback: () => callback(true)
-        });
+      } else {
+        const chat = appChatsManager.getChat(-peerID);
+
+        const hasRights = appChatsManager.hasRights(-peerID, 'deleteRevoke');
+        if(chat._ == 'chat') {
+          const canRevoke = hasRights ? mids.slice() : mids.filter(mid => {
+            const message = appMessagesManager.getMessage(mid);
+            return message.fromID == $rootScope.myID;
+          });
+
+          if(canRevoke.length) {
+            if(canRevoke.length == mids.length) {
+              buttons.push({
+                text: 'DELETE FOR ALL',
+                isDanger: true,
+                callback: () => callback(true)
+              });
+            } else {
+              const buttonText = 'Unsend my and delete';
+              buttons.push({
+                text: buttonText,
+                isDanger: true,
+                callback: () => callback(true)
+              });
+  
+              description = `You can also delete the ${canRevoke.length} message${canRevoke.length > 1 ? 's' : ''} you sent from the inboxes of other group members by pressing "${buttonText}".`;
+            }
+          }
+        } else {
+          if(!hasRights || appChatsManager.isBroadcast(-peerID)) {
+            buttons.shift();
+          }
+
+          buttons.push({
+            text: 'DELETE FOR ALL',
+            isDanger: true,
+            callback: () => callback(true)
+          });
+        }
       }
     }
 
