@@ -13,7 +13,7 @@ import PopupForward from "../popupForward";
 import PopupPinMessage from "../popupUnpinMessage";
 
 export default class ChatContextMenu {
-  private buttons: (ButtonMenuItemOptions & {verify: () => boolean, notDirect?: () => boolean})[];
+  private buttons: (ButtonMenuItemOptions & {verify: () => boolean, notDirect?: () => boolean, withSelection?: true})[];
   private element: HTMLElement;
 
   private target: HTMLElement;
@@ -57,9 +57,16 @@ export default class ChatContextMenu {
       }
 
       this.buttons.forEach(button => {
-        const good = bubbleContainer || isTouchSupported ? 
-          button.verify() : 
-          button.notDirect && button.notDirect() && button.verify();
+        let good: boolean;
+
+        if(appImManager.chatSelection.isSelecting && !button.withSelection) {
+          good = false;
+        } else {
+          good = bubbleContainer || isTouchSupported ? 
+            button.verify() : 
+            button.notDirect && button.notDirect() && button.verify();
+        }
+
         button.element.classList.toggle('hide', !good);
       });
 
@@ -116,6 +123,13 @@ export default class ChatContextMenu {
       onClick: this.onCopyClick,
       verify: () => !!appMessagesManager.getMessage(this.msgID).message
     }, {
+      icon: 'copy',
+      text: 'Copy selected',
+      onClick: this.onCopyClick,
+      verify: () => !![...appImManager.chatSelection.selectedMids].find(mid => !!appMessagesManager.getMessage(mid).message),
+      notDirect: () => !![...appImManager.chatSelection.selectedMids].find(mid => !!appMessagesManager.getMessage(mid).message),
+      withSelection: true
+    }, {
       icon: 'pin',
       text: 'Pin',
       onClick: this.onPinClick,
@@ -154,6 +168,13 @@ export default class ChatContextMenu {
       onClick: this.onForwardClick,
       verify: () => this.msgID > 0
     }, {
+      icon: 'forward',
+      text: 'Forward selected',
+      onClick: this.onForwardClick,
+      verify: () => appImManager.chatSelection.selectedMids.has(this.msgID),
+      notDirect: () => appImManager.chatSelection.selectedMids.has(this.msgID),
+      withSelection: true
+    }, {
       icon: 'select',
       text: 'Select',
       onClick: this.onSelectClick,
@@ -161,20 +182,27 @@ export default class ChatContextMenu {
         const message = appMessagesManager.getMessage(this.msgID);
         return !message.action && !appImManager.chatSelection.selectedMids.has(this.msgID);
       },
-      notDirect: () => true
+      notDirect: () => true,
+      withSelection: true
     }, {
       icon: 'select',
       text: 'Clear selection',
       onClick: this.onClearSelectionClick,
-      verify: () => {
-        return appImManager.chatSelection.selectedMids.has(this.msgID);
-      },
-      notDirect: () => appImManager.chatSelection.selectedMids.has(this.msgID)
+      verify: () => appImManager.chatSelection.selectedMids.has(this.msgID),
+      notDirect: () => appImManager.chatSelection.selectedMids.has(this.msgID),
+      withSelection: true
     }, {
       icon: 'delete danger',
       text: 'Delete',
       onClick: this.onDeleteClick,
       verify: () => appMessagesManager.canDeleteMessage(this.msgID)
+    }, {
+      icon: 'delete danger',
+      text: 'Delete selected',
+      onClick: this.onDeleteClick,
+      verify: () => appImManager.chatSelection.selectedMids.has(this.msgID),
+      notDirect: () => appImManager.chatSelection.selectedMids.has(this.msgID),
+      withSelection: true
     }];
 
     this.element = ButtonMenu(this.buttons);
@@ -197,9 +225,11 @@ export default class ChatContextMenu {
   };
 
   private onCopyClick = () => {
-    const message = appMessagesManager.getMessage(this.msgID);
-    
-    const str = message ? message.message : '';
+    const mids = appImManager.chatSelection.isSelecting ? [...appImManager.chatSelection.selectedMids] : [this.msgID];
+    const str = mids.reduce((acc, mid) => {
+      const message = appMessagesManager.getMessage(mid);
+      return acc + (message?.message ? message.message + '\n' : '');
+    }, '').trim();
     
     const textArea = document.createElement('textarea');
     textArea.value = str;
@@ -234,7 +264,11 @@ export default class ChatContextMenu {
   };
 
   private onForwardClick = () => {
-    new PopupForward(this.isTargetAnAlbumItem ? [this.msgID] : appMessagesManager.getMidsByMid(this.msgID));
+    if(appImManager.chatSelection.isSelecting) {
+      appImManager.chatSelection.selectionForwardBtn.click();
+    } else {
+      new PopupForward(this.isTargetAnAlbumItem ? [this.msgID] : appMessagesManager.getMidsByMid(this.msgID));
+    }
   };
 
   private onSelectClick = () => {
@@ -246,6 +280,10 @@ export default class ChatContextMenu {
   };
 
   private onDeleteClick = () => {
-    new PopupDeleteMessages([this.msgID]);
+    if(appImManager.chatSelection.isSelecting) {
+      appImManager.chatSelection.selectionDeleteBtn.click();
+    } else {
+      new PopupDeleteMessages([this.msgID]);
+    }
   };
 }

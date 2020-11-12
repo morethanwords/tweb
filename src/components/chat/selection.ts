@@ -44,8 +44,8 @@ export default class ChatSelection {
 
   private selectionContainer: HTMLElement;
   private selectionCountEl: HTMLElement;
-  private selectionForwardBtn: HTMLElement;
-  private selectionDeleteBtn: HTMLElement;
+  public selectionForwardBtn: HTMLElement;
+  public selectionDeleteBtn: HTMLElement;
 
   public selectedText: string;
 
