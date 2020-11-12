@@ -1,4 +1,5 @@
 import Countries, { Country, PhoneCodesMain } from "../countries";
+import { cancelEvent } from "../helpers/dom";
 import mediaSizes from "../helpers/mediaSizes";
 import { clamp } from "../helpers/number";
 import { isTouchSupported } from "../helpers/touchSupport";
@@ -116,24 +117,15 @@ let onMouseMove = (e: MouseEvent) => {
   //console.log('mousemove', diffX, diffY);
 };
 
-let onClick = (e: MouseEvent | TouchEvent) => {
-  /* if(touchSupport && e.type == 'touchstart') {
-    const target = findUpClassName(e.target, 'btn-menu');
-    if(!target) {
-      window.addEventListener('touchend', (e) => {
-        return cancelEvent(e);
-      }, {once: true});
-    }
-  } *//*  else if(!touchSupport && e.type == 'mousedown') {
-    const target = findUpClassName(e.target, 'btn-menu');
-    if(!target) {
-      closeBtnMenu();
-      return cancelEvent(e);
-    }
-  } */
-  
-  //e.preventDefault();
+const onClick = (e: MouseEvent | TouchEvent) => {
   closeBtnMenu();
+};
+
+const onKeyDown = (e: KeyboardEvent) => {
+  if(e.key == 'Escape') {
+    closeBtnMenu();
+    cancelEvent(e);
+  }
 };
 
 export const closeBtnMenu = () => {
@@ -149,17 +141,13 @@ export const closeBtnMenu = () => {
     openedMenuOnClose = null;
   }
 
-  //document.body.classList.remove('disable-hover');
-
   if(isTouchSupported) {
     window.removeEventListener('touchmove', onClick);
-    //window.removeEventListener('touchstart', onClick);
   } else {
     window.removeEventListener('mousemove', onMouseMove);
-    //window.removeEventListener('mousedown', onClick);
-    //window.removeEventListener('click', onClick);
   }
 
+  window.removeEventListener('keydown', onKeyDown, {capture: true});
   window.removeEventListener('click', onClick);
   window.removeEventListener('contextmenu', onClick);
 };
@@ -194,13 +182,11 @@ export function openBtnMenu(menuElement: HTMLElement, onClose?: () => void) {
 
   if(isTouchSupported) {
     window.addEventListener('touchmove', onClick, {once: true});
-    //window.addEventListener('touchstart', onClick);
   } else {
     window.addEventListener('mousemove', onMouseMove);
-    //window.addEventListener('mousedown', onClick);
-    //window.addEventListener('click', onClick, {once: true});
   }
   
+  window.addEventListener('keydown', onKeyDown, {capture: true});
   window.addEventListener('click', onClick, {once: true});
   window.addEventListener('contextmenu', onClick, {once: true});
 }

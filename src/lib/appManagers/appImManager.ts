@@ -187,8 +187,9 @@ export class AppImManager {
     // * fix topbar overflow section
 
     const setUtilsWidth = () => {
-      this.log('utils width:', chatUtils.scrollWidth);
-      this.chatInfo.style.setProperty('--utils-width', chatUtils.scrollWidth + 'px');
+      const width = /* chatUtils.scrollWidth */chatUtils.getBoundingClientRect().width;
+      this.log('utils width:', width);
+      this.chatInfo.style.setProperty('--utils-width', width + 'px');
     };
 
     let mutationRAF: number;
