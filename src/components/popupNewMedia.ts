@@ -1,7 +1,7 @@
 import { isTouchSupported } from "../helpers/touchSupport";
 import appImManager from "../lib/appManagers/appImManager";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
-import { calcImageInBox } from "../helpers/dom";
+import { calcImageInBox, getRichValue } from "../helpers/dom";
 import { Layouter, RectPart } from "./groupedLayout";
 import InputField from "./inputField";
 import { PopupElement } from "./popup";
@@ -53,9 +53,15 @@ export default class PopupNewMedia extends PopupElement {
     const scrollable = new Scrollable(null);
     scrollable.container.append(this.mediaContainer);
     
-    const inputField = InputField('Add a caption...', 'Caption', 'photo-caption', MAX_LENGTH_CAPTION, 80);
-    this.input = inputField.firstElementChild as HTMLInputElement;
-    this.container.append(scrollable.container, inputField);
+    const inputField = InputField({
+      placeholder: 'Add a caption...',
+      label: 'Caption',
+      name: 'photo-caption',
+      maxLength: MAX_LENGTH_CAPTION,
+      showLengthOn: 80
+    });
+    this.input = inputField.input;
+    this.container.append(scrollable.container, inputField.container);
 
     this.attachFiles(files);
   }
@@ -72,7 +78,7 @@ export default class PopupNewMedia extends PopupElement {
   };
 
   public send = () => {
-    let caption = this.input.value.trim();
+    let caption = getRichValue(this.input);
     if(caption.length > MAX_LENGTH_CAPTION) {
       toast('Caption is too long.');
       return;

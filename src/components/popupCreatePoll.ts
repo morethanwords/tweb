@@ -2,7 +2,7 @@ import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import appPeersManager from "../lib/appManagers/appPeersManager";
 import appPollsManager, { Poll } from "../lib/appManagers/appPollsManager";
 import $rootScope from "../lib/rootScope";
-import { findUpTag, whichChild } from "../helpers/dom";
+import { cancelEvent, findUpTag, getRichValue, isInputEmpty, whichChild } from "../helpers/dom";
 import CheckboxField from "./checkbox";
 import InputField from "./inputField";
 import { PopupElement } from "./popup";
@@ -32,10 +32,15 @@ export default class PopupCreatePoll extends PopupElement {
 
     this.title.innerText = 'New Poll';
 
-    const questionField = InputField('Ask a Question', 'Ask a Question', 'question', MAX_LENGTH_QUESTION);
-    this.questionInput = questionField.firstElementChild as HTMLInputElement;
+    const questionField = InputField({
+      placeholder: 'Ask a Question',
+      label: 'Ask a Question', 
+      name: 'question', 
+      maxLength: MAX_LENGTH_QUESTION
+    });
+    this.questionInput = questionField.input;
 
-    this.header.append(questionField);
+    this.header.append(questionField.container);
 
     const hr = document.createElement('hr');
     const d = document.createElement('div');
@@ -93,14 +98,19 @@ export default class PopupCreatePoll extends PopupElement {
     const quizSolutionContainer = document.createElement('div');
     quizSolutionContainer.classList.add('poll-create-questions');
 
-    const quizSolutionField = InputField('Add a Comment (Optional)', 'Add a Comment (Optional)', 'solution', MAX_LENGTH_SOLUTION);
-    this.quizSolutionInput = quizSolutionField.firstElementChild as HTMLInputElement;
+    const quizSolutionField = InputField({
+      placeholder: 'Add a Comment (Optional)', 
+      label: 'Add a Comment (Optional)',
+      name: 'solution',
+      maxLength: MAX_LENGTH_SOLUTION
+    });
+    this.quizSolutionInput = quizSolutionField.input;
 
     const quizSolutionSubtitle = document.createElement('div');
     quizSolutionSubtitle.classList.add('subtitle');
     quizSolutionSubtitle.innerText = 'Users will see this comment after choosing a wrong answer, good for educational purposes.';
 
-    quizSolutionContainer.append(quizSolutionField, quizSolutionSubtitle);
+    quizSolutionContainer.append(quizSolutionField.container, quizSolutionSubtitle);
 
     quizElements.push(quizHr, quizSolutionCaption, quizSolutionContainer);
     quizElements.forEach(el => el.classList.add('hide'));
@@ -120,15 +130,15 @@ export default class PopupCreatePoll extends PopupElement {
 
   private getFilledAnswers() {
     const answers = Array.from(this.questions.children).map((el, idx) => {
-      const input = el.querySelector('input[type="text"]') as HTMLInputElement;
-      return input.value;
+      const input = el.querySelector('.input-field-input');
+      return getRichValue(input);
     }).filter(v => !!v.trim());
 
     return answers;
   }
 
   onSubmitClick = (e: MouseEvent) => {
-    const question = this.questionInput.value.trim();
+    const question = getRichValue(this.questionInput);
 
     if(!question) {
       toast('Please enter a question.');
@@ -158,7 +168,7 @@ export default class PopupCreatePoll extends PopupElement {
       return;
     }
 
-    const quizSolution = this.quizSolutionInput.value.trim() || undefined;
+    const quizSolution = getRichValue(this.quizSolutionInput) || undefined;
     if(quizSolution?.length > MAX_LENGTH_SOLUTION) {
       toast('Explanation is too long.');
       return;
@@ -210,14 +220,15 @@ export default class PopupCreatePoll extends PopupElement {
     const target = e.target as HTMLInputElement;
 
     const radioLabel = findUpTag(target, 'LABEL');
-    if(target.value.length) {
+    const isEmpty = isInputEmpty(target);
+    if(!isEmpty) {
       target.parentElement.classList.add('is-filled');
       radioLabel.classList.remove('hidden-widget');
       radioLabel.firstElementChild.removeAttribute('disabled');
     }
 
     const isLast = !radioLabel.nextElementSibling;
-    if(isLast && target.value.length && this.questions.childElementCount < 10) {
+    if(isLast && !isEmpty && this.questions.childElementCount < 10) {
       this.appendMoreField();
     }
   };
@@ -235,11 +246,17 @@ export default class PopupCreatePoll extends PopupElement {
   private appendMoreField() {
     const tempID = this.tempID++;
     const idx = this.questions.childElementCount + 1;
-    const questionField = InputField('Add an Option', 'Option ' + idx, 'question-' + tempID, MAX_LENGTH_OPTION);
-    (questionField.firstElementChild as HTMLInputElement).addEventListener('input', this.onInput);
+    const questionField = InputField({
+      placeholder: 'Add an Option', 
+      label: 'Option ' + idx, 
+      name: 'question-' + tempID, 
+      maxLength: MAX_LENGTH_OPTION
+    });
+    questionField.input.addEventListener('input', this.onInput);
 
     const radioField = RadioField('', 'question');
-    radioField.main.append(questionField);
+    radioField.main.append(questionField.container);
+    radioField.main.addEventListener('click', cancelEvent);
     radioField.label.classList.add('hidden-widget');
     radioField.input.disabled = true;
     if(!this.quizCheckboxField.input.checked) {
@@ -255,7 +272,7 @@ export default class PopupCreatePoll extends PopupElement {
 
     const deleteBtn = document.createElement('span');
     deleteBtn.classList.add('btn-icon', 'tgico-close');
-    questionField.append(deleteBtn);
+    questionField.container.append(deleteBtn);
   
     deleteBtn.addEventListener('click', this.onDeleteClick, {once: true});
 

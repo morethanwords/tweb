@@ -11,7 +11,7 @@ import apiManager from "../../lib/mtproto/mtprotoworker";
 import opusDecodeController from "../../lib/opusDecodeController";
 import { RichTextProcessor } from "../../lib/richtextprocessor";
 import $rootScope from '../../lib/rootScope';
-import { cancelEvent, findUpClassName, getRichValue } from "../../helpers/dom";
+import { cancelEvent, findUpClassName, getRichValue, isInputEmpty, serializeNodes } from "../../helpers/dom";
 import ButtonMenu, { ButtonMenuItemOptions } from '../buttonMenu';
 import emoticonsDropdown from "../emoticonsDropdown";
 import PopupCreatePoll from "../popupCreatePoll";
@@ -21,7 +21,7 @@ import { ripple } from '../ripple';
 import Scrollable from "../scrollable";
 import { toast } from "../toast";
 import { wrapReply } from "../wrappers";
-import { checkRTL } from '../../helpers/string';
+import InputField from '../inputField';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -30,7 +30,7 @@ type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply';
 
 export class ChatInput {
   public pageEl = document.getElementById('page-chats') as HTMLDivElement;
-  public messageInput = document.getElementById('input-message') as HTMLDivElement/* HTMLInputElement */;
+  public messageInput: HTMLDivElement/* HTMLInputElement */;
   public fileInput = document.getElementById('input-file') as HTMLInputElement;
   public inputMessageContainer = document.getElementsByClassName('input-message-container')[0] as HTMLDivElement;
   public inputScroll = new Scrollable(this.inputMessageContainer);
@@ -73,6 +73,15 @@ export class ChatInput {
   private helperFunc: () => void;
 
   constructor() {
+    const messageInputField = InputField({
+      placeholder: 'Message',
+      name: 'message'
+    });
+
+    messageInputField.input.className = '';
+    this.inputScroll.container.append(messageInputField.input);
+    this.messageInput = messageInputField.input;
+
     this.attachMenu = document.getElementById('attach-file') as HTMLButtonElement;
 
     let willAttachType: 'document' | 'media';
@@ -183,8 +192,6 @@ export class ChatInput {
 
     this.messageInput.addEventListener('input', (e) => {
       //console.log('messageInput input', this.messageInput.innerText, this.serializeNodes(Array.from(this.messageInput.childNodes)));
-      this.setDirection();
-  
       const value = this.messageInput.innerText;
   
       const entities = RichTextProcessor.parseEntities(value);
@@ -217,7 +224,7 @@ export class ChatInput {
         }
       }
   
-      if(!value.trim() && !this.serializeNodes(Array.from(this.messageInput.childNodes)).trim()) {
+      if(!value.trim() && !serializeNodes(Array.from(this.messageInput.childNodes)).trim()) {
         this.messageInput.innerHTML = '';
 
         appMessagesManager.setTyping($rootScope.selectedPeerID, 'sendMessageCancelAction');
@@ -232,7 +239,7 @@ export class ChatInput {
       this.updateSendBtn();
     });
 
-    if(!RichTextProcessor.emojiSupported) {
+    /* if(!RichTextProcessor.emojiSupported) {
       this.messageInput.addEventListener('copy', (e) => {
         const selection = document.getSelection();
         
@@ -243,7 +250,7 @@ export class ChatInput {
     
         let selectedNodes = Array.from(ancestorContainer.childNodes).slice(range.startOffset, range.endOffset);
         if(selectedNodes.length) {
-          str = this.serializeNodes(selectedNodes);
+          str = serializeNodes(selectedNodes);
         } else {
           str = selection.toString();
         }
@@ -257,30 +264,7 @@ export class ChatInput {
         event.clipboardData.setData('text/plain', str);
         event.preventDefault();
       });
-    }
-    
-    this.messageInput.addEventListener('paste', (e) => {
-      //console.log('messageInput paste');
-
-      e.preventDefault();
-      // @ts-ignore
-      let text = (e.originalEvent || e).clipboardData.getData('text/plain');
-  
-      let entities = RichTextProcessor.parseEntities(text);
-      //console.log('messageInput paste', text, entities);
-      entities = entities.filter(e => e._ == 'messageEntityEmoji' || e._ == 'messageEntityLinebreak');
-      //text = RichTextProcessor.wrapEmojiText(text);
-      text = RichTextProcessor.wrapRichText(text, {entities, noLinks: true});
-  
-      // console.log('messageInput paste after', text);
-  
-      // @ts-ignore
-      //let html = (e.originalEvent || e).clipboardData.getData('text/html');
-  
-      // @ts-ignore
-      //console.log('paste text', text, );
-      window.document.execCommand('insertHTML', false, text);
-    });
+    } */
 
     this.fileInput.addEventListener('change', (e) => {
       let files = (e.target as HTMLInputElement & EventTarget).files;
@@ -292,7 +276,7 @@ export class ChatInput {
       this.fileInput.value = '';
     }, false);
 
-    document.addEventListener('paste', (event) => {
+    document.addEventListener('paste', (e) => {
       const peerID = $rootScope.selectedPeerID;
       if(!peerID || $rootScope.overlayIsActive || (peerID < 0 && !appChatsManager.hasRights(peerID, 'send', 'send_media'))) {
         return;
@@ -301,13 +285,15 @@ export class ChatInput {
       //console.log('document paste');
 
       // @ts-ignore
-      var items = (event.clipboardData || event.originalEvent.clipboardData).items;
+      const items = (e.clipboardData || e.originalEvent.clipboardData).items;
       //console.log('item', event.clipboardData.getData());
+      let foundFile = false;
       for(let i = 0; i < items.length; ++i) {
         if(items[i].kind == 'file') {
-          event.preventDefault()
-          event.cancelBubble = true;
-          event.stopPropagation();
+          e.preventDefault()
+          e.cancelBubble = true;
+          e.stopPropagation();
+          foundFile = true;
 
           let file = items[i].getAsFile();
           //console.log(items[i], file);
@@ -541,10 +527,8 @@ export class ChatInput {
     });
   }
 
-  private isInputEmpty() {
-    let value = this.messageInput.innerText;
-  
-    return !value.trim() && !this.serializeNodes(Array.from(this.messageInput.childNodes)).trim();
+  public isInputEmpty() {
+    return isInputEmpty(this.messageInput);
   }
 
   public updateSendBtn() {
@@ -556,18 +540,6 @@ export class ChatInput {
     this.btnSend.classList.toggle('send', icon == 'send');
     this.btnSend.classList.toggle('record', icon == 'record');
   }
-  
-  public serializeNodes(nodes: Node[]): string {
-    return nodes.reduce((str, child: any) => {
-      //console.log('childNode', str, child, typeof(child), typeof(child) === 'string', child.innerText);
-
-      if(typeof(child) === 'object' && child.textContent) return str += child.textContent;
-      if(child.innerText) return str += child.innerText;
-      if(child.tagName == 'IMG' && child.classList && child.classList.contains('emoji')) return str += child.getAttribute('alt');
-
-      return str;
-    }, '');
-  };
 
   public onMessageSent(clearInput = true, clearReply?: boolean) {
     let dialog = appMessagesManager.getDialogByPeerID(appImManager.peerID)[0];
@@ -587,17 +559,6 @@ export class ChatInput {
     }
 
     this.updateSendBtn();
-    this.setDirection();
-  }
-
-  public setDirection() {
-    const char = this.messageInput.innerText[0];
-    let direction = 'ltr';
-    if(char && checkRTL(char)) {
-      direction = 'rtl';
-    }
-
-    this.messageInput.style.direction = direction;
   }
 
   public sendMessage() {
@@ -708,7 +669,6 @@ export class ChatInput {
     this.editMsgID = 0;
     this.helperType = this.helperFunc = undefined;
     this.chatInput.parentElement.classList.remove('is-helper-active');
-    this.setDirection();
   }
 
   public setTopInfo(type: ChatInputHelperType, callerFunc: () => void, title = '', subtitle = '', input?: string, message?: any) {
@@ -735,7 +695,6 @@ export class ChatInput {
 
     setTimeout(() => {
       this.updateSendBtn();
-      this.setDirection();
     }, 0);
   }
 

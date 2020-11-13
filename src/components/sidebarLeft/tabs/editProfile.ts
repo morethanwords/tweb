@@ -1,9 +1,13 @@
 import appSidebarLeft from "..";
+import { getRichValue } from "../../../helpers/dom";
 import { InputFile } from "../../../layer";
 import appProfileManager from "../../../lib/appManagers/appProfileManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
+import RichTextProcessor from "../../../lib/richtextprocessor";
 import $rootScope from "../../../lib/rootScope";
+import AvatarElement from "../../avatar";
+import InputField from "../../inputField";
 import PopupAvatar from "../../popupAvatar";
 import Scrollable from "../../scrollable";
 import { SliderTab } from "../../slider";
@@ -11,21 +15,21 @@ import { SliderTab } from "../../slider";
 // TODO: аватарка не поменяется в этой вкладке после изменения почему-то (если поставить в другом клиенте, и потом тут проверить, для этого ещё вышел в чатлист)
 
 export default class AppEditProfileTab implements SliderTab {
-  private container = document.querySelector('.edit-profile-container') as HTMLDivElement;
-  private scrollWrapper = this.container.querySelector('.scroll-wrapper') as HTMLDivElement;
-  private nextBtn = this.container.querySelector('.btn-corner') as HTMLButtonElement;
-  private canvas = this.container.querySelector('.avatar-edit-canvas') as HTMLCanvasElement;
+  private container: HTMLElement;
+  private scrollWrapper: HTMLElement;
+  private nextBtn: HTMLButtonElement;
+  private canvas: HTMLCanvasElement;
   private uploadAvatar: () => Promise<InputFile> = null;
 
-  private firstNameInput = this.container.querySelector('.firstname') as HTMLInputElement;
-  private lastNameInput = this.container.querySelector('.lastname') as HTMLInputElement;
-  private bioInput = this.container.querySelector('.bio') as HTMLInputElement;
-  private userNameInput = this.container.querySelector('.username') as HTMLInputElement;
+  private firstNameInput: HTMLInputElement;
+  private lastNameInput: HTMLInputElement;
+  private bioInput: HTMLInputElement;
+  private userNameInput: HTMLInputElement;
 
-  private avatarElem = document.createElement('avatar-element');
+  private avatarElem: AvatarElement;
 
-  private profileUrlContainer = this.container.querySelector('.profile-url-container') as HTMLDivElement;
-  private profileUrlAnchor = this.profileUrlContainer.lastElementChild as HTMLAnchorElement;
+  private profileUrlContainer: HTMLDivElement;
+  private profileUrlAnchor: HTMLAnchorElement;
 
   private originalValues = {
     firstName: '',
@@ -34,8 +38,20 @@ export default class AppEditProfileTab implements SliderTab {
     bio: ''
   };
 
-  constructor() {
-    this.container.querySelector('.avatar-edit').addEventListener('click', () => {
+  public init() {
+    this.container = document.querySelector('.edit-profile-container');
+    this.scrollWrapper = this.container.querySelector('.scroll-wrapper');
+    this.nextBtn = this.container.querySelector('.btn-corner');
+    this.canvas = this.container.querySelector('.avatar-edit-canvas');
+
+    this.avatarElem = document.createElement('avatar-element') as AvatarElement;
+    this.avatarElem.classList.add('avatar-placeholder');
+
+    this.profileUrlContainer = this.container.querySelector('.profile-url-container');
+    this.profileUrlAnchor = this.profileUrlContainer.lastElementChild as HTMLAnchorElement;
+
+    const avatarEdit = this.container.querySelector('.avatar-edit');
+    avatarEdit.addEventListener('click', () => {
       new PopupAvatar().open(this.canvas, (_upload) => {
         this.uploadAvatar = _upload;
         this.handleChange();
@@ -43,13 +59,56 @@ export default class AppEditProfileTab implements SliderTab {
       });
     });
 
-    this.avatarElem.classList.add('avatar-placeholder');
+    {
+      const inputWrapper = document.createElement('div');
+      inputWrapper.classList.add('input-wrapper');
+  
+      const firstNameInputField = InputField({
+        label: 'Name',
+        name: 'first-name',
+        maxLength: 70
+      });
+      const lastNameInputField = InputField({
+        label: 'Last Name',
+        name: 'last-name',
+        maxLength: 64
+      });
+      const bioInputField = InputField({
+        label: 'Bio (optional)',
+        name: 'bio',
+        maxLength: 70
+      });
+  
+      this.firstNameInput = firstNameInputField.input;
+      this.lastNameInput = lastNameInputField.input;
+      this.bioInput = bioInputField.input;
+  
+      inputWrapper.append(firstNameInputField.container, lastNameInputField.container, bioInputField.container);
+      avatarEdit.parentElement.insertBefore(inputWrapper, avatarEdit.nextElementSibling);
+    }
+
+    {
+      const inputWrapper = document.createElement('div');
+      inputWrapper.classList.add('input-wrapper');
+
+      const userNameInputField = InputField({
+        label: 'Username (optional)',
+        name: 'username',
+        plainText: true
+      });
+      this.userNameInput = userNameInputField.input;
+
+      inputWrapper.append(userNameInputField.container);
+      
+      const caption = this.profileUrlContainer.parentElement;
+      caption.parentElement.insertBefore(inputWrapper, caption);
+    }
 
     let userNameLabel = this.userNameInput.nextElementSibling as HTMLLabelElement;
 
-    this.firstNameInput.addEventListener('input', () => this.handleChange());
-    this.lastNameInput.addEventListener('input', () => this.handleChange());
-    this.bioInput.addEventListener('input', () => this.handleChange());
+    this.firstNameInput.addEventListener('input', this.handleChange);
+    this.lastNameInput.addEventListener('input', this.handleChange);
+    this.bioInput.addEventListener('input', this.handleChange);
     this.userNameInput.addEventListener('input', () => {
       let value = this.userNameInput.value;
 
@@ -110,8 +169,7 @@ export default class AppEditProfileTab implements SliderTab {
 
       let promises: Promise<any>[] = [];
       
-
-      promises.push(appProfileManager.updateProfile(this.firstNameInput.value, this.lastNameInput.value, this.bioInput.value).then(() => {
+      promises.push(appProfileManager.updateProfile(getRichValue(this.firstNameInput), getRichValue(this.lastNameInput), getRichValue(this.bioInput)).then(() => {
         appSidebarLeft.selectTab(0);
       }, (err) => {
         console.error('updateProfile error:', err);
@@ -127,10 +185,8 @@ export default class AppEditProfileTab implements SliderTab {
         promises.push(appProfileManager.updateUsername(this.userNameInput.value));
       }
 
-      Promise.race(promises).then(() => {
-        this.nextBtn.disabled = false;
-      }, () => {
-        this.nextBtn.disabled = false;
+      Promise.race(promises).finally(() => {
+        this.nextBtn.removeAttribute('disabled');
       });
     });
 
@@ -138,17 +194,34 @@ export default class AppEditProfileTab implements SliderTab {
   }
 
   public fillElements() {
-    let user = appUsersManager.getSelf();
-    this.firstNameInput.value = this.originalValues.firstName = user.first_name ?? '';
-    this.lastNameInput.value = this.originalValues.lastName = user.last_name ?? '';
+    if(this.init) {
+      this.init();
+      this.init = null;
+    }
+
+    const user = appUsersManager.getSelf();
+
+    Object.assign(this.originalValues, {
+      firstName: user.first_name,
+      lastName: user.last_name,
+      userName: user.username
+    });
+
+    this.firstNameInput.innerHTML = user.rFirstName;
+    this.lastNameInput.innerHTML = RichTextProcessor.wrapRichText(user.last_name, {noLinks: true, noLinebreaks: true});
     this.userNameInput.value = this.originalValues.userName = user.username ?? '';
+
+    this.firstNameInput.classList.remove('error');
+    this.lastNameInput.classList.remove('error');
+    this.bioInput.classList.remove('error');
 
     this.userNameInput.classList.remove('valid', 'error');
     this.userNameInput.nextElementSibling.innerHTML = 'Username (optional)';
 
-    appProfileManager.getProfile(user.id).then(userFull => {
+    appProfileManager.getProfile(user.id, true).then(userFull => {
       if(userFull.rAbout) {
-        this.bioInput.value = this.originalValues.bio = userFull.rAbout;
+        this.originalValues.bio = userFull.about;
+        this.bioInput.innerHTML = userFull.rAbout;
       }
     });
 
@@ -168,10 +241,10 @@ export default class AppEditProfileTab implements SliderTab {
 
   private isChanged() {
     return !!this.uploadAvatar 
-      || this.firstNameInput.value != this.originalValues.firstName 
-      || this.lastNameInput.value != this.originalValues.lastName 
-      || (this.userNameInput.value != this.originalValues.userName && !this.userNameInput.classList.contains('error')) 
-      || this.bioInput.value != this.originalValues.bio;
+      || (!this.firstNameInput.classList.contains('error') && getRichValue(this.firstNameInput) != this.originalValues.firstName) 
+      || (!this.lastNameInput.classList.contains('error') && getRichValue(this.lastNameInput) != this.originalValues.lastName) 
+      || (!this.bioInput.classList.contains('error') && getRichValue(this.bioInput) != this.originalValues.bio)
+      || (this.userNameInput.value != this.originalValues.userName && !this.userNameInput.classList.contains('error'));
   }
 
   private setProfileUrl() {
@@ -185,13 +258,13 @@ export default class AppEditProfileTab implements SliderTab {
     }
   }
 
-  private handleChange() {
+  private handleChange = () => {
     if(this.isChanged()) {
       this.nextBtn.classList.add('is-visible');
     } else {
       this.nextBtn.classList.remove('is-visible');
     }
-  }
+  };
 
   onCloseAfterTimeout() {
     this.nextBtn.classList.remove('is-visible');

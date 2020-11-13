@@ -42,6 +42,18 @@
   transform: translate3d(0, var(--translateY), 0);
   z-index: 3;
   user-select: none;
+  background-color: $color-blue;
+  text-align: center;
+  font-size: 1.5rem;
+  color: #fff;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  overflow: hidden;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
   &.is-visible {
     --translateY: 0;
@@ -49,7 +61,12 @@
 
   body.animation-level-0 & {
 		transition: none !important;
-	}
+  }
+  
+  &:disabled {
+    opacity: 1 !important;
+    pointer-events: all !important;
+  }
 }
 
 .btn-menu {
@@ -238,7 +255,7 @@
   cursor: pointer !important;
   pointer-events: all !important;
 
-  &:not(.btn-primary).menu-open {
+  &:not(.btn-primary):not(.btn-corner).menu-open {
     background-color: var(--color-gray-hover);
   }
 

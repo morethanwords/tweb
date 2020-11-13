@@ -25,9 +25,8 @@
     .btn-icon {
       position: absolute;
       right: .5rem;
-      top: 50%;
+      top: .5rem;
       z-index: 1;
-      transform: translateY(-50%);
       opacity: 1;
       transition: opacity .2s ease;
     }
@@ -47,7 +46,7 @@
   .poll-create-questions {
     padding: 0px 1.25rem 2.03125rem;
 
-    .input-field input {
+    .input-field-input {
       padding-right: 3.25rem;
     }
   }
@@ -64,5 +63,9 @@
     margin-top: .875rem;
     font-size: .875rem;
     line-height: 1.2;
+  }
+
+  .btn-primary {
+    width: 94px;
   }
 }

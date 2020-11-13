@@ -102,6 +102,7 @@ $messages-container-width: 728px;
 }
 
 @import "partials/ico";
+@import "partials/input";
 @import "partials/button";
 @import "partials/checkbox";
 @import "partials/chatlist";
@@ -294,7 +295,7 @@ h4 {
   }
 }
 
-input {
+input, [contenteditable] {
   caret-color: $button-primary-background;
 }
 
@@ -442,140 +443,6 @@ hr {
   }
 }
 
-.input-wrapper {
-  width: 360px;
-  margin: 0 auto;
-}
-
-.input-field {
-  position: relative;
-  
-  .arrow-down {
-    position: absolute;
-    content: " ";
-    top: 50%;
-    bottom: 0;
-    right: 21px;
-    cursor: pointer;
-    
-    height: 0;
-    width: 0;
-    
-    border: solid #707579;
-    border-radius: 1px;
-    border-width: 0 2px 2px 0;
-    display: inline-block;
-    padding: 5px;
-    vertical-align: middle;
-    
-    z-index: 2;
-    
-    margin-top: -9px;
-    transform: rotate(45deg);
-    -webkit-transform: rotate(45deg);
-    transition: .2s all;
-  }
-  
-  label {
-    position: absolute;
-    color: $placeholder-color;
-    left: 1rem;
-    right: auto;
-    z-index: 2;
-    top: 50%;
-    transform: translateY(-50%);
-    background-color: #fff;
-    transition: .2s all, .1s opacity;
-    display: inline-block;
-    cursor: text;
-  }
-  
-  input {
-    --border-width: 1px;
-    border: var(--border-width) solid #DADCE0;
-    border-radius: $border-radius-medium;
-    //padding: 0 1rem;
-    padding: 0 calc(1rem - var(--border-width));
-    box-sizing: border-box;
-    width: 100%;
-    height: 54px;
-    transition: .2s border-color;
-    position: relative;
-    z-index: 1;
-
-    html.no-touch & {
-      &:hover:not(:focus):not(.error):not(.valid) {
-        border-color: var(--color-gray);
-      }
-    }
-
-    @include respond-to(handhelds) {
-      height: 50px;
-    }
-    /* font-weight: 500; */
-
-    /* &:hover {
-      border-color: #000;
-    } */
-    
-    &:focus {
-      --border-width: 2px;
-      border-color: $button-primary-background;
-      //padding: 0 calc(1rem - 1px);
-    }
-    
-    &:disabled {
-      background-color: #fff;
-      color: #000;
-    }
-    
-    &.error {
-      border-color: $color-error;
-
-      & + label {
-        color: $color-error!important;
-      }
-    }
-
-    &.valid {
-      border-color: #26962F;
-      
-      & + label {
-        color: #26962F !important;
-      }
-    }
-
-    /* &.error, &.valid {
-      transition: .2s border-width;
-    } */
-    
-    &:focus ~ .arrow-down {
-      margin-top: -4px;
-      transform: rotate(225deg);
-      -webkit-transform: rotate(225deg);
-      border-color: $button-primary-background;
-    }
-    
-    &:focus + label {
-      color: $button-primary-background;
-    }
-    
-    &:focus + label, &:valid + label, &:disabled + label {
-      top: -.5rem;
-      transform: none;
-      padding: 0 5px;
-      left: .75rem;
-      font-size: 0.75rem!important;
-      //color: #666;
-      opacity: 1;
-    }
-  }
-}
-
-.input-wrapper > * + * {
-  margin-top: 1.5rem;
-}
-
 .select-wrapper {
   max-height: 23.5rem;
   /* height: auto; */
@@ -638,23 +505,6 @@ hr {
 .phone-code {
   color: $placeholder-color;
   text-align: right;
-}
-
-::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
-  color: #909192;
-  opacity: 1; /* Firefox */
-}
-
-:-ms-input-placeholder { /* Internet Explorer 10-11 */
-  color: #a2acb4;
-}
-
-::-ms-input-placeholder { /* Microsoft Edge */
-  color: #a2acb4;
-}
-
-input:focus, button:focus {
-  outline: none;
 }
 
 // this dimensions will be used for monkey business
@@ -787,8 +637,19 @@ img.emoji {
   }
 }
 
-[contenteditable=true] {
+[contenteditable] {
   user-select: text;
+  outline: none;
+  cursor: text;
+
+  &[data-placeholder] {
+    &:empty:before {
+			content: attr(data-placeholder);
+			color: #a2acb4;
+      display: block; /* For Firefox By Ariel Flesler */
+      cursor: text;
+		}
+  }
 }
 
 .sticky_sentinel {

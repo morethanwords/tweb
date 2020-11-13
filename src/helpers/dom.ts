@@ -127,6 +127,28 @@ export function getRichElementValue(node: any, lines: string[], line: string[], 
   }
 }
 
+export function isInputEmpty(element: HTMLElement) {
+  if(element.hasAttribute('contenteditable') || element.tagName != 'INPUT') {
+    const value = element.innerText;
+
+    return !value.trim() && !serializeNodes(Array.from(element.childNodes)).trim();
+  } else {
+    return !(element as HTMLInputElement).value.trim().length;
+  }
+}
+
+export function serializeNodes(nodes: Node[]): string {
+  return nodes.reduce((str, child: any) => {
+    //console.log('childNode', str, child, typeof(child), typeof(child) === 'string', child.innerText);
+
+    if(typeof(child) === 'object' && child.textContent) return str += child.textContent;
+    if(child.innerText) return str += child.innerText;
+    if(child.tagName == 'IMG' && child.classList && child.classList.contains('emoji')) return str += child.getAttribute('alt');
+
+    return str;
+  }, '');
+}
+
 /* if (Config.Modes.animations &&
   typeof window.requestAnimationFrame == 'function') {
   window.onAnimationFrameCallback = function (cb) {

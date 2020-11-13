@@ -809,15 +809,15 @@ namespace RichTextProcessor {
     let first = '', last = '';
 
     const firstNode = childNodes[0];
-    if('length' in firstNode) first = (firstNode as any).textContent.charAt(0).toUpperCase(); 
+    if('length' in firstNode) first = (firstNode as any).textContent.trim().charAt(0).toUpperCase(); 
     else first = (firstNode as HTMLElement).outerHTML;
 
     if(onlyFirst) return first;
 
     if(str.indexOf(' ') !== -1) {
       const lastNode = childNodes[childNodes.length - 1];
-      if(lastNode == firstNode) last = lastNode.textContent.split(' ').pop().charAt(0).toUpperCase();
-      else if('length' in lastNode) last = (lastNode as any).textContent.charAt(0).toUpperCase(); 
+      if(lastNode == firstNode) last = lastNode.textContent.split(' ').pop().trim().charAt(0).toUpperCase();
+      else if('length' in lastNode) last = (lastNode as any).textContent.trim().charAt(0).toUpperCase(); 
       else last = (lastNode as HTMLElement).outerHTML;
     }
 

@@ -132,25 +132,20 @@
     margin-top: 25px;
     flex: 0 0 auto;
 
-    &::placeholder {
-      color: #a2acb4;
-    }
-
-    input {
+    &-input {
       //height: 54px;
       font-size: 1rem;
       border-radius: $border-radius-medium;
+
+      &:not(:focus):empty + label {
+        opacity: 0;
+      }
     }
 
     label {
       font-size: inherit;
-      opacity: 0;
     }
   }
-}
-
-.popup-create-poll.popup-new-media .btn-primary {
-  width: 94px;
 }
 
 .popup-new-media.popup-send-photo {

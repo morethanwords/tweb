@@ -290,7 +290,6 @@ $chat-helper-size: 39px;
 		resize: none;
 		border: none;
 		outline: none;
-		cursor: text;
 
 		@media only screen and (max-height: 30rem) {
 			max-height: unquote('max(39px, calc(100vh - 10rem))');
@@ -303,13 +302,6 @@ $chat-helper-size: 39px;
 		/* span.emoji {
 			font-size: .95rem;
 		} */
-
-		//[contenteditable=true]:empty:before {
-		&:empty:before {
-			content: attr(data-placeholder);
-			color: #a2acb4;
-			display: block; /* For Firefox By Ariel Flesler */
-		}
 	}
 
 	.toggle-emoticons {
@@ -967,7 +959,6 @@ $chat-helper-size: 39px;
 	box-shadow: 0 1px 2px 0 rgba(16, 35, 47, .07);
 	min-height: $chat-input-size;
 	max-height: 30rem;
-	caret-color: $button-primary-background;
 	flex: 0 0 auto;
 	position: relative;
 	z-index: 3;

@@ -68,7 +68,7 @@ export class AppChatsManager {
   public chats: {[id: number]: Channel | Chat | any} = {};
   //public usernames: any = {};
   //public channelAccess: any = {};
-  public megagroups: {[id: number]: true} = {};
+  //public megagroups: {[id: number]: true} = {};
   public cachedPhotoLocations: {[id: number]: any} = {};
 
   public megagroupOnlines: {[id: number]: {timestamp: number, onlines: number}} = {};
@@ -253,13 +253,13 @@ export class AppChatsManager {
     this.channelAccess[id] = accessHash;
   } */
 
-  public saveIsMegagroup(id: number) {
+  /* public saveIsMegagroup(id: number) {
     this.megagroups[id] = true;
-  }
+  } */
 
   public isChannel(id: number) {
     if(id < 0) id = -id;
-    let chat = this.chats[id];
+    const chat = this.chats[id];
     if(chat && (chat._ == 'channel' || chat._ == 'channelForbidden')/*  || this.channelAccess[id] */) {
       return true;
     }
@@ -267,11 +267,11 @@ export class AppChatsManager {
   }
 
   public isMegagroup(id: number) {
-    if(this.megagroups[id]) {
+    /* if(this.megagroups[id]) {
       return true;
-    }
+    } */
 
-    let chat = this.chats[id];
+    const chat = this.chats[id];
     if(chat && chat._ == 'channel' && chat.pFlags.megagroup) {
       return true;
     }

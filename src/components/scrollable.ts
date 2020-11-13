@@ -158,7 +158,7 @@ export default class Scrollable extends ScrollableBase {
     });
   };
 
-  public checkForTriggers() {
+  public checkForTriggers = () => {
     if(this.scrollLocked || (!this.onScrolledTop && !this.onScrolledBottom)) return;
 
     const container = this.container;
@@ -179,7 +179,7 @@ export default class Scrollable extends ScrollableBase {
     if(this.onScrolledBottom && (maxScrollTop - scrollTop) <= this.onScrollOffset) {
       this.onScrolledBottom();
     }
-  }
+  };
 
   public prepend(element: HTMLElement) {
     (this.splitUp || this.container).prepend(element);

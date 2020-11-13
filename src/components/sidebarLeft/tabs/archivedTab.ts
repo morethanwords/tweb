@@ -19,7 +19,7 @@ export default class AppArchivedTab implements SliderTab {
     appDialogsManager.setListClickListener(this.chatList, null, true);
 
     window.addEventListener('resize', () => {
-      setTimeout(appDialogsManager.onChatsScroll, 0);
+      setTimeout(appDialogsManager.scroll.checkForTriggers, 0);
     });
   }
 
