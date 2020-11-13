@@ -750,7 +750,7 @@ export class AppImManager {
         return;
       }
       
-      if(e.target != this.chatInputC.messageInput && target.tagName != 'INPUT') {
+      if(e.target != this.chatInputC.messageInput && target.tagName != 'INPUT' && !target.hasAttribute('contenteditable')) {
         this.chatInputC.messageInput.focus();
         placeCaretAtEnd(this.chatInputC.messageInput);
       }
@@ -1724,7 +1724,16 @@ export class AppImManager {
         bubble.classList.add('is-first-unread');
       }
 
+      // * Нужно очистить прошлую информацию, полезно если удалить последний элемент из альбома в ПОСЛЕДНЕМ БАББЛЕ ГРУППЫ (видно по аватару)
       const originalMid = +bubble.dataset.mid;
+      if(+message.mid != originalMid) {
+        this.bubbleGroups.removeBubble(bubble, originalMid);
+
+        if(!updatePosition) {
+          this.bubbleGroups.addBubble(bubble, message, reverse);
+        }
+      }
+
       delete this.bubbles[originalMid];
       //bubble.innerHTML = '';
     }

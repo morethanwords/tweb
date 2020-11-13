@@ -295,7 +295,7 @@ export default class ChatContextMenu {
     if(appImManager.chatSelection.isSelecting) {
       appImManager.chatSelection.selectionDeleteBtn.click();
     } else {
-      new PopupDeleteMessages([this.msgID]);
+      new PopupDeleteMessages(this.isTargetAnAlbumItem ? [this.msgID] : appMessagesManager.getMidsByMid(this.msgID));
     }
   };
 }
