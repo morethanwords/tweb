@@ -1129,6 +1129,11 @@ $bubble-margin: .25rem;
     }
   }
 
+  pre {
+    display: inline;
+    margin: 0;
+  }
+
   .video-play {
     background-color: var(--message-time-background);
     color: #fff;

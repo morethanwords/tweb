@@ -65,8 +65,8 @@ const usernameRegExp = '[a-zA-Z\\d_]{5,32}';
 const botCommandRegExp = '\\/([a-zA-Z\\d_]{1,32})(?:@(' + usernameRegExp + '))?(\\b|$)';
 const fullRegExp = new RegExp('(^| )(@)(' + usernameRegExp + ')|(' + urlRegExp + ')|(\\n)|(' + emojiRegExp + ')|(^|[\\s\\(\\]])(#[' + alphaNumericRegExp + ']{2,64})|(^|\\s)' + botCommandRegExp, 'i')
 const emailRegExp = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-const markdownTestRegExp = /[`_*@]/;
-const markdownRegExp = /(^|\s|\n)(````?)([\s\S]+?)(````?)([\s\n\.,:?!;]|$)|(^|\s)(`|\*\*|__)([^\n]+?)\7([\s\.,:?!;]|$)|@(\d+)\s*\((.+?)\)/m;
+//const markdownTestRegExp = /[`_*@~]/;
+const markdownRegExp = /(^|\s|\n)(````?)([\s\S]+?)(````?)([\s\n\.,:?!;]|$)|(^|\s)(`|~~|\*\*|__)([^\n]+?)\7([\s\.,:?!;]|$)|@(\d+)\s*\((.+?)\)|(\[(.+?)\]\((.+?)\))/m;
 const siteHashtags: {[siteName: string]: string} = {
   Telegram: 'tg://search_hashtag?hashtag={1}',
   Twitter: 'https://twitter.com/hashtag/{1}',
@@ -82,8 +82,10 @@ const siteMentions: {[siteName: string]: string} = {
 };
 const markdownEntities = {
   '`': 'messageEntityCode',
+  '``': 'messageEntityPre',
   '**': 'messageEntityBold',
-  '__': 'messageEntityItalic'
+  '__': 'messageEntityItalic',
+  '~~': 'messageEntityStrike'
 };
 
 namespace RichTextProcessor {
@@ -212,71 +214,89 @@ namespace RichTextProcessor {
     })
   } */
 
-  export function parseMarkdown(text: string, entities: MessageEntity[], noTrim?: any) {
-     if(!markdownTestRegExp.test(text)) {
+  export function parseMarkdown(text: string, entities: MessageEntity[], noTrim?: any): string {
+    /* if(!markdownTestRegExp.test(text)) {
       return noTrim ? text : text.trim();
-    }
+    } */
   
     var raw = text;
     var match;
     var newText: any = [];
     var rawOffset = 0;
     var matchIndex;
-    while (match = raw.match(markdownRegExp)) {
-      matchIndex = rawOffset + match.index
-      newText.push(raw.substr(0, match.index))
-      var text = (match[3] || match[8] || match[11])
-      rawOffset -= text.length
-      text = text.replace(/^\s+|\s+$/g, '')
-      rawOffset += text.length
-      if (text.match(/^`*$/)) {
-        newText.push(match[0])
-      }
-      else if (match[3]) { // pre
-        if (match[5] == '\n') {
-          match[5] = ''
-          rawOffset -= 1
+    while(match = raw.match(markdownRegExp)) {
+      matchIndex = rawOffset + match.index;
+      newText.push(raw.substr(0, match.index));
+      var text = (match[3] || match[8] || match[11] || match[14]);
+      rawOffset -= text.length;
+      text = text.replace(/^\s+|\s+$/g, '');
+      rawOffset += text.length;
+
+      if(text.match(/^`*$/)) {
+        newText.push(match[0]);
+      } else if(match[3]) { // pre
+        if(match[5] == '\n') {
+          match[5] = '';
+          rawOffset -= 1;
         }
-        newText.push(match[1] + text + match[5])
+
+        newText.push(match[1] + text + match[5]);
         entities.push({
           _: 'messageEntityPre',
           language: '',
           offset: matchIndex + match[1].length,
           length: text.length
-        })
-        rawOffset -= match[2].length + match[4].length
-      } else if (match[7]) { // code|italic|bold
-        newText.push(match[6] + text + match[9])
+        });
+
+        rawOffset -= match[2].length + match[4].length;
+      } else if(match[7]) { // code|italic|bold
+        newText.push(match[6] + text + match[9]);
         entities.push({
           // @ts-ignore
           _: markdownEntities[match[7]],
           offset: matchIndex + match[6].length,
           length: text.length
-        })
-        rawOffset -= match[7].length * 2
-      } else if (match[11]) { // custom mention
+        });
+
+        rawOffset -= match[7].length * 2;
+      } else if(match[11]) { // custom mention
         newText.push(text)
         entities.push({
           _: 'messageEntityMentionName',
           user_id: +match[10],
           offset: matchIndex,
           length: text.length
-        })
-        rawOffset -= match[0].length - text.length
+        });
+
+        rawOffset -= match[0].length - text.length;
+      } else if(match[12]) { // text url
+        newText.push(text);
+        entities.push({
+          _: 'messageEntityTextUrl',
+          url: match[13],
+          offset: matchIndex,
+          length: text.length
+        });
+
+        rawOffset -= match[12].length - text.length;
       }
-      raw = raw.substr(match.index + match[0].length)
-      rawOffset += match.index + match[0].length
+
+      raw = raw.substr(match.index + match[0].length);
+      rawOffset += match.index + match[0].length;
     }
-    newText.push(raw)
-    newText = newText.join('')
-    if (!newText.replace(/\s+/g, '').length) {
-      newText = text
-      entities.splice(0, entities.length)
+
+    newText.push(raw);
+    newText = newText.join('');
+    if(!newText.replace(/\s+/g, '').length) {
+      newText = text;
+      entities.splice(0, entities.length);
     }
-    if (!entities.length && !noTrim) {
-      newText = newText.trim()
+
+    if(!entities.length && !noTrim) {
+      newText = newText.trim();
     }
-    return newText
+
+    return newText;
   }
 
   export function mergeEntities(currentEntities: MessageEntity[], newEntities: MessageEntity[], fromApi?: boolean) {
@@ -355,6 +375,10 @@ namespace RichTextProcessor {
     noCommands: true,
     fromBot: boolean,
     noTextFormat: true,
+    passEntities: Partial<{
+      [_ in MessageEntity['_']]: true
+    }>,
+
     nested?: true,
     contextHashtag?: string
   }> = {}) {
@@ -362,6 +386,7 @@ namespace RichTextProcessor {
       return '';
     }
   
+    const passEntities: typeof options.passEntities = options.passEntities || {};
     const entities = options.entities || parseEntities(text);
     const contextSite = options.contextSite || 'Telegram';
     const contextExternal = contextSite != 'Telegram';
@@ -469,7 +494,7 @@ namespace RichTextProcessor {
             inner = encodeEntities(replaceUrlEncodings(entityText));
           }
 
-          if(options.noLinks) {
+          if(options.noLinks && !passEntities[entity._]) {
             html.push(inner);
           } else {
             html.push(
@@ -559,6 +584,14 @@ namespace RichTextProcessor {
           );
           break;
 
+        case 'messageEntityUnderline':
+          html.push(
+            '<u>',
+            wrapRichNestedText(entityText, entity.nested, options),
+            '</u>'
+          );
+          break;
+
         case 'messageEntityCode':
           if(options.noTextFormat) {
             html.push(encodeEntities(entityText));
@@ -599,7 +632,7 @@ namespace RichTextProcessor {
     return text;
   }
 
-  export function wrapDraftText(text: string, options: any = {}) {
+  /* export function wrapDraftText(text: string, options: any = {}) {
     if(!text || !text.length) {
       return '';
     }
@@ -673,7 +706,44 @@ namespace RichTextProcessor {
     }
     code.push(text.substr(lastOffset));
     return code.join('');
+  } */
+
+  export function wrapDraftText(text: string, options: Partial<{
+    entities: MessageEntity[]
+  }> = {}) {
+    return wrapRichText(text, {
+      ...options, 
+      noLinks: true,
+      passEntities: {
+        messageEntityTextUrl: true
+      }
+    });
   }
+
+  //const draftEntityTypes: MessageEntity['_'][] = (['messageEntityTextUrl', 'messageEntityEmoji'] as MessageEntity['_'][]).concat(Object.values(markdownEntities) as any);
+  /* const draftEntityTypes: Partial<{[_ in MessageEntity['_']]: true}> = {
+    messageEntityCode: true,
+    messageEntityPre: true,
+    messageEntityBold: true,
+    messageEntityItalic: true,
+    messageEntityStrike: true,
+    messageEntityEmoji: true,
+    messageEntityLinebreak: true,
+    messageEntityUnderline: true,
+    messageEntityTextUrl: true
+  };
+  export function wrapDraftText(text: string, options: Partial<{
+    entities: MessageEntity[]
+  }> = {}) {
+    const checkEntity = (entity: MessageEntity) => {
+      return draftEntityTypes[entity._];
+    };
+    const entities = options.entities ? options.entities.filter(entity => {
+      return draftEntityTypes[entity._];
+    }) : [];
+
+    return wrapRichText(text, {entities});
+  } */
 
   export function checkBrackets(url: string) {
     var urlLength = url.length;

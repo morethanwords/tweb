@@ -1,3 +1,5 @@
+import { MOUNT_CLASS_TO } from "../lib/mtproto/mtproto_config";
+
 /* export function isInDOM(element: Element, parentNode?: HTMLElement): boolean {
   if(!element) {
     return false;
@@ -45,24 +47,6 @@ export function cancelEvent(event: Event) {
   return false;
 }
 
-export function getRichValue(field: any) {
-  if(!field) {
-    return '';
-  }
-  var lines: string[] = [];
-  var line: string[] = [];
-
-  getRichElementValue(field, lines, line);
-  if (line.length) {
-    lines.push(line.join(''));
-  }
-
-  var value = lines.join('\n');
-  value = value.replace(/\u00A0/g, ' ');
-
-  return value;
-}
-
 export function placeCaretAtEnd(el: HTMLElement) {
   el.focus();
   if(typeof window.getSelection != "undefined" && typeof document.createRange != "undefined") {
@@ -82,28 +66,84 @@ export function placeCaretAtEnd(el: HTMLElement) {
   }
 }
 
-export function getRichElementValue(node: any, lines: string[], line: string[], selNode?: Node, selOffset?: number) {
+export function getRichValue(field: HTMLElement) {
+  if(!field) {
+    return '';
+  }
+
+  const lines: string[] = [];
+  const line: string[] = [];
+
+  getRichElementValue(field, lines, line);
+  if(line.length) {
+    lines.push(line.join(''));
+  }
+
+  let value = lines.join('\n');
+  value = value.replace(/\u00A0/g, ' ');
+
+  return value;
+}
+
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.getRichValue = getRichValue);
+
+const markdownTags = [{
+  tagName: 'STRONG', 
+  markdown: '**'
+}, {
+  tagName: 'EM',
+  markdown: '__'
+}, {
+  tagName: 'CODE',
+  markdown: '`'
+}, {
+  tagName: 'PRE',
+  markdown: '``'
+}, {
+  tagName: 'DEL',
+  markdown: '~~'
+}, {
+  tagName: 'A',
+  markdown: (node: HTMLElement) => `[${(node.parentElement as HTMLAnchorElement).href}](${node.nodeValue})`
+}];
+export function getRichElementValue(node: HTMLElement, lines: string[], line: string[], selNode?: Node, selOffset?: number) {
   if(node.nodeType == 3) { // TEXT
     if(selNode === node) {
-      var value = node.nodeValue
-      line.push(value.substr(0, selOffset) + '\x01' + value.substr(selOffset))
+      const value = node.nodeValue;
+      line.push(value.substr(0, selOffset) + '\x01' + value.substr(selOffset));
     } else {
-      line.push(node.nodeValue)
+      let markdown: string;
+      if(node.parentNode) {
+        const tagName = node.parentElement.tagName;
+        const markdownTag = markdownTags.find(m => m.tagName == tagName);
+        if(markdownTag) {
+          if(typeof(markdownTag.markdown) === 'function') {
+            line.push(markdownTag.markdown(node));
+            return;
+          }
+
+          markdown = markdownTag.markdown;
+        }
+      }
+
+      line.push(markdown && node.nodeValue.trim() ? markdown + node.nodeValue + markdown : node.nodeValue);
     }
-    return
+
+    return;
   }
-  if (node.nodeType != 1) { // NON-ELEMENT
-    return
+
+  if(node.nodeType != 1) { // NON-ELEMENT
+    return;
   }
-  var isSelected = (selNode === node)
-  var isBlock = node.tagName == 'DIV' || node.tagName == 'P'
-  var curChild
+
+  const isSelected = (selNode === node);
+  const isBlock = node.tagName == 'DIV' || node.tagName == 'P';
   if(isBlock && line.length || node.tagName == 'BR') {
-    lines.push(line.join(''))
-    line.splice(0, line.length)
+    lines.push(line.join(''));
+    line.splice(0, line.length);
   } else if(node.tagName == 'IMG') {
-    if(node.alt) {
-      line.push(node.alt);
+    if((node as HTMLImageElement).alt) {
+      line.push((node as HTMLImageElement).alt);
     }
   }
 
@@ -111,10 +151,10 @@ export function getRichElementValue(node: any, lines: string[], line: string[], 
     line.push('\x01');
   }
 
-  var curChild = node.firstChild;
+  let curChild = node.firstChild as HTMLElement;
   while(curChild) {
     getRichElementValue(curChild, lines, line, selNode, selOffset);
-    curChild = curChild.nextSibling;
+    curChild = curChild.nextSibling as any;
   }
 
   if(isSelected && selOffset) {

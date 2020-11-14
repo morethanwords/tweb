@@ -130,7 +130,7 @@ export default class PopupCreatePoll extends PopupElement {
 
   private getFilledAnswers() {
     const answers = Array.from(this.questions.children).map((el, idx) => {
-      const input = el.querySelector('.input-field-input');
+      const input = el.querySelector('.input-field-input') as HTMLElement;
       return getRichValue(input);
     }).filter(v => !!v.trim());
 

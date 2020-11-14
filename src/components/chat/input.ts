@@ -565,7 +565,7 @@ export class ChatInput {
     //let str = this.serializeNodes(Array.from(this.messageInput.childNodes));
     let str = getRichValue(this.messageInput);
 
-    //console.log('childnode str after:', str/* , getRichValue(this.messageInput) */);
+    console.log('childnode str after:', str/* , getRichValue(this.messageInput) */);
 
     //return;
 
@@ -611,7 +611,7 @@ export class ChatInput {
   public initMessageEditing(mid: number) {
     const message = appMessagesManager.getMessage(mid);
 
-    let input = message.message;
+    let input = RichTextProcessor.wrapDraftText(message.message, {entities: message.totalEntities});
     const f = () => {
       this.setTopInfo('edit', f, 'Editing', message.message, input, message);
       this.editMsgID = mid;
@@ -690,7 +690,7 @@ export class ChatInput {
     } */
 
     if(input !== undefined) {
-      this.messageInput.innerHTML = input ? RichTextProcessor.wrapRichText(input, {noLinks: true}) : '';
+      this.messageInput.innerHTML = input || '';
     }
 
     setTimeout(() => {
