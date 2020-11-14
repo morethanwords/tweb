@@ -53,6 +53,7 @@ import appPollsManager from './appPollsManager';
 import appProfileManager from "./appProfileManager";
 import appStickersManager from './appStickersManager';
 import appUsersManager from "./appUsersManager";
+import { months } from '../../helpers/date';
 
 
 //console.log('appImManager included33!');
@@ -1542,8 +1543,6 @@ export class AppImManager {
       if(today.getTime() == date.getTime()) {
         str = 'Today';
       } else {
-        const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
         str = months[date.getMonth()] + ' ' + date.getDate();
 
         if(date.getFullYear() != today.getFullYear()) {

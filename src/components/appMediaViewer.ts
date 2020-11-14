@@ -23,8 +23,9 @@ import { renderImageFromUrl } from "./misc";
 import PopupForward from "./popupForward";
 import ProgressivePreloader from "./preloader";
 import Scrollable from "./scrollable";
-import appSidebarRight, { AppSidebarRight } from "./sidebarRight";
+import appSidebarRight from "./sidebarRight";
 import SwipeHandler from "./swipeHandler";
+import { months, ONE_DAY } from "../helpers/date";
 
 // TODO: масштабирование картинок (не SVG) при ресайзе, и правильный возврат на исходную позицию
 // TODO: картинки "обрезаются" если возвращаются или появляются с места, где есть их перекрытие (топбар, поле ввода)
@@ -772,11 +773,23 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
   }
 
   protected setAuthorInfo(fromID: number, timestamp: number) {
-    const date = new Date(timestamp * 1000);
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    
-    const dateStr = months[date.getMonth()] + ' ' + date.getDate() + ' at '+ date.getHours() + ':' + ('0' + date.getMinutes()).slice(-2);
-    this.author.date.innerText = dateStr;
+    const date = new Date();
+    const time = new Date(timestamp * 1000);
+    const now = date.getTime() / 1000;
+
+    const timeStr = time.getHours() + ':' + ('0' + time.getMinutes()).slice(-2);
+    let dateStr: string;
+    if((now - timestamp) < ONE_DAY && date.getDate() == time.getDate()) { // if the same day
+      dateStr = 'Today';
+    } else if((now - timestamp) < (ONE_DAY * 2) && (date.getDate() - 1) == time.getDate()) { // yesterday
+      dateStr = 'Yesterday';
+    } else if(date.getFullYear() != time.getFullYear()) { // different year
+      dateStr = months[time.getMonth()].slice(0, 3) + ' ' + time.getDate() + ', ' + time.getFullYear();
+    } else {
+      dateStr = months[time.getMonth()].slice(0, 3) + ' ' + time.getDate();
+    }
+
+    this.author.date.innerText = dateStr + ' at ' + timeStr;
 
     const name = appPeersManager.getPeerTitle(fromID);
     this.author.nameEl.innerHTML = name;
@@ -787,13 +800,13 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     oldAvatar.parentElement.replaceChild(this.author.avatarEl, oldAvatar);
   }
   
-  protected async _openMedia(media: any, fromID: number, fromRight: number, target?: HTMLElement, reverse = false, 
+  protected async _openMedia(media: any, timestamp: number, fromID: number, fromRight: number, target?: HTMLElement, reverse = false, 
     prevTargets: TargetType[] = [], nextTargets: TargetType[] = [], needLoadMore = true) {
     if(this.setMoverPromise) return this.setMoverPromise;
 
     this.log('openMedia:', media, fromID);
 
-    this.setAuthorInfo(fromID, media.date);
+    this.setAuthorInfo(fromID, timestamp);
     
     const isVideo = (media as MyDocument).type == 'video' || (media as MyDocument).type == 'gif';
 
@@ -1315,7 +1328,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     }
 
     this.currentMessageID = mid;
-    const promise = super._openMedia(media, fromID, fromRight, target, reverse, prevTargets, nextTargets, needLoadMore);
+    const promise = super._openMedia(media, message.date, fromID, fromRight, target, reverse, prevTargets, nextTargets, needLoadMore);
     this.setCaption(message);
 
     return promise;
@@ -1404,6 +1417,6 @@ export class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete', AppMe
 
     this.currentPhotoID = photo.id;
   
-    return super._openMedia(photo, this.peerID, fromRight, target, false);
+    return super._openMedia(photo, photo.date, this.peerID, fromRight, target, false);
   }
 }

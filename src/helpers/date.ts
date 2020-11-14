@@ -1,7 +1,7 @@
 export const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 export const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-const ONE_DAY = 86400;
+export const ONE_DAY = 86400;
 
 // https://stackoverflow.com/a/6117889
 export const getWeekNumber = (date: Date) => {
