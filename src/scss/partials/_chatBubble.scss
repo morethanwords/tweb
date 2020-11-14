@@ -117,7 +117,7 @@ $bubble-margin: .25rem;
       line-height: 2.1; 
       font-weight: 500; 
       font-size: 15px; 
-      background-color: rgba(255, 255, 255, 0.95); 
+      background-color: rgba(255, 255, 255, .95); 
       z-index: 2;
       position: relative;
     }
@@ -152,11 +152,11 @@ $bubble-margin: .25rem;
     //z-index: 3;
     z-index: 2;
     transition: opacity .3s ease;
-    opacity: 0.99999; // for safari
+    opacity: .99999; // for safari
     pointer-events: none;
 
     &.is-sticky {
-      opacity: 0.00001; // for safari
+      opacity: .00001; // for safari
 
       #bubbles-inner:not(.is-scrolling) & {
         //transition-delay: 1.35s;
@@ -235,7 +235,7 @@ $bubble-margin: .25rem;
     min-width: 56px;
     max-width: 100%;
     border-radius: 12px;
-    box-shadow: 0 1px 2px 0 rgba(16, 35, 47, 0.15);
+    box-shadow: 0 1px 2px 0 rgba(16, 35, 47, .15);
     position: relative;
     display: flex;
     flex-direction: column-reverse;
@@ -313,7 +313,7 @@ $bubble-margin: .25rem;
     justify-content: center;
     color: #fff;
     border-radius: 50%;
-    background: rgba(0, 0, 0, 0.16);
+    background: rgba(0, 0, 0, .16);
     cursor: pointer;
   }
 
@@ -715,13 +715,13 @@ $bubble-margin: .25rem;
     }
     
     .title {
-      letter-spacing: -0.2px;
+      letter-spacing: -.2px;
       line-height: 1.2;
       font-weight: 500 !important;
     }
     
     .name {
-      letter-spacing: -0.3px;
+      letter-spacing: -.3px;
       display: block;
       
       html.no-touch &:hover {
@@ -733,14 +733,14 @@ $bubble-margin: .25rem;
       overflow: hidden;
       text-overflow: ellipsis;
       line-height: 1.2;
-      letter-spacing: -0.3px;
+      letter-spacing: -.3px;
       margin-top: 2px;
-      font-size: 0.965rem;
+      font-size: .965rem;
     }
 
     .quote {
       // padding-left: .5rem;
-      padding-left: 0.55rem;
+      padding-left: .55rem;
       max-width: 100%;
       overflow: hidden;
       width: 100%;
@@ -750,10 +750,9 @@ $bubble-margin: .25rem;
   .web, .reply {
     font-size: .95rem;
     // margin: .25rem;
-    margin: 4px 4px 4px 6px;
+    margin: 4px 4px 0 6px;
     //padding: .25rem;
     padding: 4px;
-    margin-bottom: -5px;
     border-radius: 4px;
     //transition: anim(background-color);
     
@@ -943,7 +942,7 @@ $bubble-margin: .25rem;
       &__seek {
         height: 2px;
         overflow: visible !important;
-        background: rgba(124, 195, 107, 0.52);
+        background: rgba(124, 195, 107, .52);
         
         &::-webkit-slider-thumb {
           height: 12px;
@@ -1249,7 +1248,7 @@ $bubble-margin: .25rem;
   
   .service-msg {
     color: #fff;
-    background-color: rgba(0, 0, 0, 0.24);
+    background-color: rgba(0, 0, 0, .24);
     font-size: 14px;
     padding: 0 8px;
     line-height: 24px;
@@ -1400,7 +1399,7 @@ $bubble-margin: .25rem;
   .audio:not(.is-voice) {
     .progress-line {
       &__seek {
-        background: rgba(193, 207, 220, 0.39);
+        background: rgba(193, 207, 220, .39);
       }
 
       &__filled {
@@ -1483,7 +1482,7 @@ $bubble-margin: .25rem;
 
   .quote {
     html.no-touch &:hover {
-      background-color: rgba($color-green, 0.12);
+      background-color: rgba($color-green, .12);
     }
   }
 
@@ -1642,7 +1641,7 @@ $bubble-margin: .25rem;
 
       html.no-touch &-answer:hover {
         .animation-ring {
-          background-color: rgba(79, 174, 78, 0.08);
+          background-color: rgba(79, 174, 78, .08);
         }
       }
 
@@ -1694,7 +1693,7 @@ $bubble-margin: .25rem;
     justify-content: center;
     align-items: center;
     border-radius: 6px;
-    background-color: rgba(0, 0, 0, 0.23);
+    background-color: rgba(0, 0, 0, .23);
     z-index: 2;
     font-size: 14px;
     user-select: none;
@@ -1705,10 +1704,11 @@ $bubble-margin: .25rem;
     width: 100%;
     cursor: pointer;
     position: relative;
-    transition: background-color 0.35s ease;
+    transition: background-color .35s ease;
+    overflow: hidden;
 
     html.no-touch &:hover {
-      background-color: rgba(0, 0, 0, 0.06);
+      background-color: rgba(0, 0, 0, .06);
     }
 
     & + & {
@@ -1857,7 +1857,7 @@ poll-element {
       &.is-voting {
         .progress-ring__circle {
           stroke-dashoffset: -19.792;
-          animation: pollAnswerRotate 0.65s linear infinite;
+          animation: pollAnswerRotate .65s linear infinite;
         }
       }
 
@@ -2018,9 +2018,9 @@ poll-element {
     border-radius: 50%;
     height: 34px;
     width: 34px;
-    transition: transform 0.12s;
+    transition: transform .12s;
     background-color: #f4f4f4;
-    transform: scale(0.1);
+    transform: scale(.1);
     visibility: hidden;
   }
 
@@ -2033,7 +2033,7 @@ poll-element {
     &__circle {
       transform-origin: center;
       transform: rotate(-90deg);
-      transition: stroke-dashoffset 0.15s;
+      transition: stroke-dashoffset .15s;
       stroke-dasharray: 56.5487, 56.5487;
       stroke-dashoffset: 0;
       stroke-opacity: 1;
