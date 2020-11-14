@@ -1515,16 +1515,17 @@ export class AppImManager {
   }
 
   public highlightBubble(element: HTMLElement) {
-    if(element.dataset.timeout) {
-      clearTimeout(+element.dataset.timeout);
+    const datasetKey = 'highlightTimeout';
+    if(element.dataset[datasetKey]) {
+      clearTimeout(+element.dataset[datasetKey]);
       element.classList.remove('is-highlighted');
       void element.offsetWidth; // reflow
     }
 
     element.classList.add('is-highlighted');
-    element.dataset.timeout = '' + setTimeout(() => {
+    element.dataset[datasetKey] = '' + setTimeout(() => {
       element.classList.remove('is-highlighted');
-      delete element.dataset.timeout;
+      delete element.dataset[datasetKey];
     }, 2000);
   }
 

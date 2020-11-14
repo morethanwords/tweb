@@ -35,6 +35,9 @@ export default class ChatContextMenu {
         bubble = bubbleContainer ? bubbleContainer.parentElement : findUpClassName(e.target, 'bubble');
       } catch(e) {}
 
+      // ! context menu click by date bubble (there is no pointer-events)
+      if(!bubble) return;
+
       if(e instanceof MouseEvent) e.preventDefault();
       if(this.element.classList.contains('active')) {
         return false;

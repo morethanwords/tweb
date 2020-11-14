@@ -153,6 +153,7 @@ $bubble-margin: .25rem;
     z-index: 2;
     transition: opacity .3s ease;
     opacity: 0.99999; // for safari
+    pointer-events: none;
 
     &.is-sticky {
       opacity: 0.00001; // for safari
@@ -172,6 +173,7 @@ $bubble-margin: .25rem;
 
     .bubble__container {
       cursor: pointer;
+      pointer-events: all;
     }
   }
 

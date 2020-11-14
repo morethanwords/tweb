@@ -22,6 +22,7 @@ import Scrollable from "../scrollable";
 import { toast } from "../toast";
 import { wrapReply } from "../wrappers";
 import InputField from '../inputField';
+import { MessageEntity } from '../../layer';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -195,35 +196,56 @@ export class ChatInput {
       const value = this.messageInput.innerText;
   
       const entities = RichTextProcessor.parseEntities(value);
-      //console.log('messageInput entities', entities);
+      console.log('messageInput entities', entities);
   
-      const entityUrl = entities.find(e => e._ == 'messageEntityUrl');
-      if(entityUrl) { // need to get webpage
-        const url = value.slice(entityUrl.offset, entityUrl.offset + entityUrl.length);
+      const urlEntities = entities.filter(e => e._ == 'messageEntityUrl');
+      if(urlEntities.length) {
+        const richEntities: MessageEntity[] = [];
+        const richValue = RichTextProcessor.parseMarkdown(getRichValue(this.messageInput), richEntities);
+        console.log('messageInput url', entities, richEntities);
+        for(const entity of urlEntities) {
+          const url = value.slice(entity.offset, entity.offset + entity.length);
   
-        //console.log('messageInput url:', url);
+          if(!(url.includes('http://') || url.includes('https://')) && !richEntities.find(e => e._ == 'messageEntityTextUrl')) {
+            continue;
+          }
   
-        if(this.lastUrl != url) {
-          this.lastUrl = url;
-          this.willSendWebPage = null;
-          apiManager.invokeApi('messages.getWebPage', {
-            url: url,
-            hash: 0
-          }).then((webpage) => {
-            webpage = appWebPagesManager.saveWebPage(webpage);
-            if(webpage._  == 'webPage') {
-              if(this.lastUrl != url) return;
-              //console.log('got webpage: ', webpage);
+          //console.log('messageInput url:', url);
+    
+          if(this.lastUrl != url) {
+            this.lastUrl = url;
+            this.willSendWebPage = null;
+            apiManager.invokeApi('messages.getWebPage', {
+              url: url,
+              hash: 0
+            }).then((webpage) => {
+              webpage = appWebPagesManager.saveWebPage(webpage);
+              if(webpage._  == 'webPage') {
+                if(this.lastUrl != url) return;
+                //console.log('got webpage: ', webpage);
+    
+                this.setTopInfo('webpage', () => {}, webpage.site_name || webpage.title || 'Webpage', webpage.description || webpage.url || '');
+    
+                delete this.noWebPage;
+                this.willSendWebPage = webpage;
+              }
+            });
+          }
   
-              this.setTopInfo('webpage', () => {}, webpage.site_name || webpage.title || 'Webpage', webpage.description || webpage.url || '');
-  
-              delete this.noWebPage;
-              this.willSendWebPage = webpage;
-            }
-          });
+          break;
+        }
+      } else if(this.lastUrl) {
+        this.lastUrl = '';
+        delete this.noWebPage;
+        this.willSendWebPage = null;
+        
+        if(this.helperType) {
+          this.helperFunc();
+        } else {
+          this.clearHelper();
         }
       }
-  
+
       if(!value.trim() && !serializeNodes(Array.from(this.messageInput.childNodes)).trim()) {
         this.messageInput.innerHTML = '';
 
@@ -481,7 +503,9 @@ export class ChatInput {
       };
     }
 
-    this.replyElements.cancelBtn.addEventListener('click', () => {
+    this.replyElements.cancelBtn.addEventListener('click', (e) => {
+      cancelEvent(e);
+
       if(this.willSendWebPage) {
         this.noWebPage = true;
         this.willSendWebPage = null;

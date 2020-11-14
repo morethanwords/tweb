@@ -204,24 +204,24 @@ export default class AppEditProfileTab implements SliderTab {
     Object.assign(this.originalValues, {
       firstName: user.first_name,
       lastName: user.last_name,
-      userName: user.username
+      userName: user.username,
+      bio: ''
     });
 
     this.firstNameInput.innerHTML = user.rFirstName;
     this.lastNameInput.innerHTML = RichTextProcessor.wrapRichText(user.last_name, {noLinks: true, noLinebreaks: true});
+    this.bioInput.innerHTML = '';
     this.userNameInput.value = this.originalValues.userName = user.username ?? '';
-
-    this.firstNameInput.classList.remove('error');
-    this.lastNameInput.classList.remove('error');
-    this.bioInput.classList.remove('error');
 
     this.userNameInput.classList.remove('valid', 'error');
     this.userNameInput.nextElementSibling.innerHTML = 'Username (optional)';
 
     appProfileManager.getProfile(user.id, true).then(userFull => {
-      if(userFull.rAbout) {
+      if(userFull.about) {
         this.originalValues.bio = userFull.about;
         this.bioInput.innerHTML = userFull.rAbout;
+
+        this.handleChange();
       }
     });
 
@@ -233,6 +233,7 @@ export default class AppEditProfileTab implements SliderTab {
     this.uploadAvatar = null;
 
     this.setProfileUrl();
+    this.handleChange();
   }
 
   public isUsernameValid(username: string) {
@@ -268,5 +269,6 @@ export default class AppEditProfileTab implements SliderTab {
 
   onCloseAfterTimeout() {
     this.nextBtn.classList.remove('is-visible');
+    this.firstNameInput.innerHTML = this.lastNameInput.innerHTML = this.bioInput.innerHTML = '';
   }
 }

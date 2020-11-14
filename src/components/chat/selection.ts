@@ -8,31 +8,7 @@ import CheckboxField from "../checkbox";
 import PopupDeleteMessages from "../popupDeleteMessages";
 import PopupForward from "../popupForward";
 import { toast } from "../toast";
-
-const SetTransition = (element: HTMLElement, className: string, forwards: boolean, duration: number, onTransitionEnd?: () => void) => {
-  const timeout = element.dataset.timeout;
-  if(timeout !== undefined) {
-    clearTimeout(+timeout);
-  }
-
-  if(forwards) {
-    element.classList.add(className);
-  }
-
-  element.classList.add('animating');
-
-  element.classList.toggle('backwards', !forwards);
-  element.dataset.timeout = '' + setTimeout(() => {
-    delete element.dataset.timeout;
-    if(!forwards) {
-      element.classList.remove('backwards', className);
-    }
-
-    element.classList.remove('animating');
-    
-    onTransitionEnd && onTransitionEnd();
-  }, duration);
-};
+import SetTransition from "../singleTransition";
 
 const MAX_SELECTION_LENGTH = 100;
 //const MIN_CLICK_MOVE = 32; // minimum bubble height
@@ -61,7 +37,16 @@ export default class ChatSelection {
 
     bubblesContainer.addEventListener('mousedown', (e) => {
       //console.log('selection mousedown', e);
-      if(e.button != 0 || (!this.selectedMids.size && !(e.target as HTMLElement).classList.contains('bubble'))) { // LEFT BUTTON
+      const bubble = findUpClassName(e.target, 'bubble');
+      // LEFT BUTTON
+      // проверка внизу нужна для того, чтобы не активировать селект если target потомок .bubble
+      if(e.button != 0
+        || (
+          !this.selectedMids.size 
+          && !(e.target as HTMLElement).classList.contains('bubble')
+          && bubble
+          )
+        ) {
         return;
       }
       
@@ -80,7 +65,12 @@ export default class ChatSelection {
       } */
 
       //const foundTargets: Map<HTMLElement, true> = new Map();
+      let canceledSelection = false;
       const onMouseMove = (e: MouseEvent) => {
+        if(!canceledSelection) {
+          cancelSelection();
+          canceledSelection = true;
+        }
         /* if(!good) {
           if(Math.abs(e.x - x) > MIN_CLICK_MOVE || Math.abs(e.y - y) > MIN_CLICK_MOVE) {
             good = true;
@@ -93,7 +83,7 @@ export default class ChatSelection {
         foundTargets.set(e.target as HTMLElement, true); */
         const bubble = findUpClassName(e.target, 'bubble');
         if(!bubble) {
-          console.error('found no bubble', e);
+          //console.error('found no bubble', e);
           return;
         }
 

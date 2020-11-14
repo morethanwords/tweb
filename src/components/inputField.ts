@@ -96,7 +96,8 @@ const InputField = (options: {
 
     processInput = () => {
       const wasError = input.classList.contains('error');
-      const inputLength = plainText ? input.value.length : getRichValue(input).length;
+      // * https://stackoverflow.com/a/54369605 #2 to count emoji as 1 symbol
+      const inputLength = plainText ? input.value.length : [...getRichValue(input)].length;
       const diff = maxLength - inputLength;
       const isError = diff < 0;
       input.classList.toggle('error', isError);
