@@ -126,14 +126,12 @@ let onFirstMount = (): Promise<any> => {
     //console.log('invoking auth.signIn with params:', params);
 
     apiManager.invokeApi('auth.signIn', params, {ignoreErrors: true})
-    .then((response: any) => {
+    .then((response) => {
       //console.log('auth.signIn response:', response);
       
       switch(response._) {
         case 'auth.authorization':
-          apiManager.setUserAuth({
-            id: response.user.id
-          });
+          apiManager.setUserAuth(response.user.id);
 
           pageIm.mount();
           cleanup();
@@ -148,9 +146,9 @@ let onFirstMount = (): Promise<any> => {
 
           cleanup();
           break;
-        default:
+        /* default:
           codeInput.innerText = response._;
-          break;
+          break; */
       }
     }).catch(async(err) => {
       switch(err.type) {
@@ -242,9 +240,9 @@ let onFirstMount = (): Promise<any> => {
     //animation.goToAndStop(length / max * );
   };
 
-  codeInput.addEventListener('focus', () => {
+  /* codeInput.addEventListener('focus', () => {
     playAnimation(Math.max(codeInput.value.length, 1));
-  });
+  }); */
 
   codeInput.addEventListener('blur', () => {
     playAnimation(0);

@@ -1,7 +1,4 @@
-export type UserAuth = {
-  dcID: number,
-  id: number
-};
+export type UserAuth = number;
 
 /*
 

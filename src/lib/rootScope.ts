@@ -4,11 +4,11 @@ import type { AppMessagesManager, Dialog } from "./appManagers/appMessagesManage
 import type { Poll, PollResults } from "./appManagers/appPollsManager";
 import type { MyDialogFilter } from "./storages/filters";
 import type { ConnectionStatusChange } from "../types";
-import { MOUNT_CLASS_TO } from "./mtproto/mtproto_config";
+import { MOUNT_CLASS_TO, UserAuth } from "./mtproto/mtproto_config";
 
 type BroadcastEvents = {
   'user_update': number,
-  'user_auth': {dcID?: number, id: number},
+  'user_auth': UserAuth,
   'peer_changed': number,
   'peer_pinned_message': number,
 
@@ -79,7 +79,7 @@ class RootScope {
 
   constructor() {
     this.on('user_auth', (e) => {
-      this.myID = e.detail.id;
+      this.myID = e.detail;
     });
 
     this.on('connection_status_change', (e) => {

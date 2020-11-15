@@ -85,9 +85,7 @@ let onFirstMount = () => import('../lib/appManagers/appProfileManager').then(imp
       
       switch(response._) {
         case 'auth.authorization': // success
-          apiManager.setUserAuth({ // warning
-            id: response.user.id
-          });
+          apiManager.setUserAuth(response.user.id);
 
           sendAvatar().finally(() => {
             pageIm.mount();

@@ -4,8 +4,8 @@ import { MOUNT_CLASS_TO } from './mtproto_config';
 //import { computeCheck } from "../crypto/srp";
 
 export class PasswordManager {
-  public getState(options: any = {}): Promise<AccountPassword> {
-    return apiManager.invokeApi('account.getPassword', {}, options).then((result) => {
+  public getState(): Promise<AccountPassword> {
+    return apiManager.invokeApi('account.getPassword').then((result) => {
       return result;
     });
   }
@@ -61,15 +61,15 @@ export class PasswordManager {
     });
   }
 
-  public requestRecovery(options: any = {}) {
+  /* public requestRecovery(options: any = {}) {
     return apiManager.invokeApi('auth.requestPasswordRecovery', {}, options);
   }
 
   public recover(code: any, options: any = {}) {
     return apiManager.invokeApi('auth.recoverPassword', {
-      code: code
+      code
     }, options);
-  }
+  } */
 }
 
 const passwordManager = new PasswordManager();

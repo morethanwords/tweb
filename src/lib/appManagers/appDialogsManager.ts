@@ -110,7 +110,7 @@ class ConnectionStatusComponent {
 
     let setFirstConnectionTimeout = window.setTimeout(setConnectionStatus, 2e3);
 
-    let bool = true;
+    /* let bool = true;
     document.addEventListener('dblclick', () => {
       rootScope.broadcast('connection_status_change', {
         dcID: 2,
@@ -121,7 +121,7 @@ class ConnectionStatusComponent {
         online: bool = !bool,
         _: "networkerStatus"
       });
-    });
+    }); */
   }
 
   private setStatusText = (text: string) => {

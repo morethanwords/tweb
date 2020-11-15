@@ -10,7 +10,7 @@ import webpWorkerController from '../webp/webpWorkerController';
 import type { DownloadOptions } from './apiFileManager';
 import { ApiError } from './apiManager';
 import type { ServiceWorkerTask, ServiceWorkerTaskResponse } from './mtproto.service';
-import { MOUNT_CLASS_TO } from './mtproto_config';
+import { MOUNT_CLASS_TO, UserAuth } from './mtproto_config';
 import type { MTMessage } from './networker';
 import referenceDatabase from './referenceDatabase';
 
@@ -230,7 +230,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
     return this.performTaskWorker('setBaseDcID', dcID);
   }
 
-  public setUserAuth(userAuth: {id: number}) {
+  public setUserAuth(userAuth: UserAuth) {
     rootScope.broadcast('user_auth', userAuth);
     return this.performTaskWorker('setUserAuth', userAuth);
   }

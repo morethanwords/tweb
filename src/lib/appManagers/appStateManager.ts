@@ -88,10 +88,10 @@ export class AppStateManager extends EventListenerBase<{
         
         //return resolve();
 
-        if(auth?.id) {
+        if(auth) {
           // ! Warning ! DON'T delete this
           this.state.authState = {_: 'authStateSignedIn'};
-          rootScope.broadcast('user_auth', {id: auth.id});
+          rootScope.broadcast('user_auth', auth);
         } else if(!this.state.authState) {
           this.state.authState = {_: 'authStateSignIn'};
         }

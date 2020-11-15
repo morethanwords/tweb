@@ -61,9 +61,7 @@ let onFirstMount = async() => {
   
         if(loginToken._ == 'auth.loginTokenSuccess') {
           const authorization = loginToken.authorization as any as AuthAuthorization.authAuthorization;
-          apiManager.setUserAuth({
-            id: authorization.user.id
-          });
+          apiManager.setUserAuth(authorization.user.id);
           pageIm.mount();
           break;
         }

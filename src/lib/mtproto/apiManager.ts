@@ -54,7 +54,7 @@ export class ApiManager {
   private gettingNetworkers: {[dcIDAndType: string]: Promise<MTPNetworker>} = {};
   public baseDcID = 0;
   
-  public telegramMeNotified = false;
+  //public telegramMeNotified = false;
 
   private log: ReturnType<typeof logger> = logger('API');
 
@@ -72,30 +72,32 @@ export class ApiManager {
     }); */
   }
   
-  public telegramMeNotify(newValue: boolean) {
+  /* public telegramMeNotify(newValue: boolean) {
     if(this.telegramMeNotified !== newValue) {
       this.telegramMeNotified = newValue;
       //telegramMeWebService.setAuthorized(this.telegramMeNotified);
     }
-  }
+  } */
   
   // mtpSetUserAuth
-  public setUserAuth(userAuth: {id: number}) {
-    var fullUserAuth = Object.assign({dcID: this.baseDcID}, userAuth);
+  public setUserAuth(userID: number) {
     AppStorage.set({
-      dc: this.baseDcID,
-      user_auth: fullUserAuth
+      user_auth: userID
     });
     
-    this.telegramMeNotify(true);
+    //this.telegramMeNotify(true);
 
     /// #if !MTPROTO_WORKER
-    rootScope.broadcast('user_auth', fullUserAuth);
+    rootScope.broadcast('user_auth', userID);
     /// #endif
   }
 
   public setBaseDcID(dcID: number) {
     this.baseDcID = dcID;
+
+    AppStorage.set({
+      dc: this.baseDcID
+    });
   }
   
   // mtpLogOut
@@ -124,7 +126,7 @@ export class ApiManager {
       error.handled = true;
     }).finally(() => {
       this.baseDcID = 0;
-      this.telegramMeNotify(false);
+      //this.telegramMeNotify(false);
       AppStorage.clear();
     })/* .then(() => {
       location.pathname = '/';
@@ -284,11 +286,11 @@ export class ApiManager {
       }
     };
     
-    var dcID: number;
+    let dcID: number;
     
-    var cachedNetworker: MTPNetworker;
-    var stack = (new Error()).stack || 'empty stack';
-    var performRequest = (networker: MTPNetworker) => {
+    let cachedNetworker: MTPNetworker;
+    let stack = (new Error()).stack || 'empty stack';
+    const performRequest = (networker: MTPNetworker) => {
       if(afterMessageIDTemp) {
         options.afterMessageID = this.afterMessageTempIDs[afterMessageIDTemp];
       }
@@ -304,17 +306,20 @@ export class ApiManager {
         }
         
         if(error.code == 401 && this.baseDcID == dcID) {
-          AppStorage.remove('dc', 'user_auth');
-          this.telegramMeNotify(false);
+          if(error.type != 'SESSION_PASSWORD_NEEDED') {
+            AppStorage.remove('dc', 'user_auth'); // ! возможно тут вообще не нужно это делать, но нужно проверить случай с USER_DEACTIVATED (https://core.telegram.org/api/errors)
+            //this.telegramMeNotify(false);
+          }
+          
           rejectPromise(error);
         } else if(error.code == 401 && this.baseDcID && dcID != this.baseDcID) {
           if(this.cachedExportPromise[dcID] === undefined) {
-            let promise = new Promise((exportResolve, exportReject) => {
+            const promise = new Promise((exportResolve, exportReject) => {
               this.invokeApi('auth.exportAuthorization', {dc_id: dcID}, {noErrorBox: true}).then((exportedAuth) => {
                 this.invokeApi('auth.importAuthorization', {
                   id: exportedAuth.id,
                   bytes: exportedAuth.bytes
-                }, {dcID: dcID, noErrorBox: true}).then(exportResolve, exportReject);
+                }, {dcID, noErrorBox: true}).then(exportResolve, exportReject);
               }, exportReject);
             });
             
@@ -326,12 +331,12 @@ export class ApiManager {
             this.invokeApi(method, params, options).then(deferred.resolve, rejectPromise);
           }, rejectPromise);
         } else if(error.code == 303) {
-          var newDcID = +error.type.match(/^(PHONE_MIGRATE_|NETWORK_MIGRATE_|USER_MIGRATE_)(\d+)/)[2];
+          const newDcID = +error.type.match(/^(PHONE_MIGRATE_|NETWORK_MIGRATE_|USER_MIGRATE_)(\d+)/)[2];
           if(newDcID != dcID) {
             if(options.dcID) {
               options.dcID = newDcID;
             } else {
-              AppStorage.set({dc: this.baseDcID = newDcID});
+              this.setBaseDcID(newDcID);
             }
             
             this.getNetworker(newDcID, options).then((networker) => {
@@ -339,7 +344,7 @@ export class ApiManager {
             }, rejectPromise);
           }
         } else if(!options.rawError && error.code == 420) {
-          var waitTime = +error.type.match(/^FLOOD_WAIT_(\d+)/)[1] || 10;
+          const waitTime = +error.type.match(/^FLOOD_WAIT_(\d+)/)[1] || 10;
           
           if(waitTime > (options.floodMaxTimeout !== undefined ? options.floodMaxTimeout : 60)) {
             return rejectPromise(error);
@@ -349,7 +354,7 @@ export class ApiManager {
             performRequest(cachedNetworker);
           }, waitTime/* (waitTime + 5) */ * 1000); // 03.02.2020
         } else if(!options.rawError && (error.code == 500 || error.type == 'MSG_WAIT_FAILED')) {
-          var now = Date.now();
+          const now = Date.now();
           if(options.stopTime) {
             if(now >= options.stopTime) {
               return rejectPromise(error);

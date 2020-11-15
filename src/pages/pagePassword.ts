@@ -95,9 +95,7 @@ let onFirstMount = (): Promise<any> => {
         
       switch(response._) {
         case 'auth.authorization':
-          apiManager.setUserAuth({
-            id: response.user.id
-          });
+          apiManager.setUserAuth(response.user.id);
   
           clearInterval(getStateInterval);
           pageIm.mount();
