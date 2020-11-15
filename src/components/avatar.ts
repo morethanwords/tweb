@@ -1,10 +1,10 @@
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import appProfileManager from "../lib/appManagers/appProfileManager";
-import $rootScope from "../lib/rootScope";
+import rootScope from "../lib/rootScope";
 import { cancelEvent } from "../helpers/dom";
 import AppMediaViewer, { AppMediaViewerAvatar } from "./appMediaViewer";
 
-$rootScope.$on('avatar_update', (e) => {
+rootScope.on('avatar_update', (e) => {
   let peerID = e.detail;
 
   appProfileManager.removeFromAvatarsCache(peerID);

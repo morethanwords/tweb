@@ -1,5 +1,5 @@
 import appImManager from "../../lib/appManagers/appImManager";
-import $rootScope from "../../lib/rootScope";
+import rootScope from "../../lib/rootScope";
 import { cancelEvent, whichChild, findUpTag } from "../../helpers/dom";
 import AppSearch, { SearchGroup } from "../appSearch";
 import PopupDatePicker from "../popupDatepicker";
@@ -73,7 +73,7 @@ export class ChatSearch {
         this.selectResult(this.searchGroup.list.children[0] as HTMLElement);
       }
     });
-    this.appSearch.beginSearch($rootScope.selectedPeerID);
+    this.appSearch.beginSearch(rootScope.selectedPeerID);
 
     //appImManager.topbar.parentElement.insertBefore(this.results, appImManager.bubblesContainer);
     appImManager.bubblesContainer.append(this.results);

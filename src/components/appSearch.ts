@@ -8,7 +8,7 @@ import { formatPhoneNumber } from "./misc";
 import appChatsManager from "../lib/appManagers/appChatsManager";
 import SearchInput from "./searchInput";
 import { Peer } from "../layer";
-import $rootScope from "../lib/rootScope";
+import rootScope from "../lib/rootScope";
 import { escapeRegExp } from "../helpers/string";
 
 export class SearchGroup {
@@ -137,7 +137,7 @@ export default class AppSearch {
 
   private renderSaved() {
     const group = this.searchGroups.contacts;
-    let {dialog, dom} = appDialogsManager.addDialog($rootScope.myID, group.list, false);
+    let {dialog, dom} = appDialogsManager.addDialog(rootScope.myID, group.list, false);
     dom.lastMessageSpan.innerHTML = 'chat with yourself';
     group.setActive();
   }
@@ -161,7 +161,7 @@ export default class AppSearch {
     if(!this.peerID && !maxID && !this.loadedContacts) {
       let renderedSaved = false;
       if('saved messages'.includes(query.toLowerCase()) 
-        || appUsersManager.getUser($rootScope.myID).sortName.includes(query.toLowerCase())/*  && this.searchGroups.hasOwnProperty('saved') */) {
+        || appUsersManager.getUser(rootScope.myID).sortName.includes(query.toLowerCase())/*  && this.searchGroups.hasOwnProperty('saved') */) {
         this.renderSaved();
         renderedSaved = true;
       }
@@ -174,7 +174,7 @@ export default class AppSearch {
         this.loadedContacts = true;
 
         // set saved message as first peer to render
-        const peer = contacts.my_results.findAndSplice(p => (p as Peer.peerUser).user_id == $rootScope.myID);
+        const peer = contacts.my_results.findAndSplice(p => (p as Peer.peerUser).user_id == rootScope.myID);
         if(peer) {
           contacts.my_results.unshift(peer);
         }
@@ -184,7 +184,7 @@ export default class AppSearch {
         let setResults = (results: Peer[], group: SearchGroup, showMembersCount = false) => {
           // ! because contacts.search returns duplicates in my_results
           new Set(results.map(peer => appPeersManager.getPeerID(peer))).forEach((peerID) => {
-            if(peerID == $rootScope.myID) {
+            if(peerID == rootScope.myID) {
               if(!renderedSaved) {
                 this.renderSaved();
               }

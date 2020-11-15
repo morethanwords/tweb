@@ -1,7 +1,7 @@
 import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import appPeersManager from "../../lib/appManagers/appPeersManager";
 import { RichTextProcessor } from "../../lib/richtextprocessor";
-import $rootScope from "../../lib/rootScope";
+import rootScope from "../../lib/rootScope";
 import { cancelEvent } from "../../helpers/dom";
 import appMediaPlaybackController from "../appMediaPlaybackController";
 import DivAndCaption from "../divAndCaption";
@@ -32,7 +32,7 @@ export class ChatAudio extends PinnedContainer {
 
     this.wrapper.prepend(this.toggleEl);
 
-    $rootScope.$on('audio_play', (e) => {
+    rootScope.on('audio_play', (e) => {
       const {doc, mid} = e.detail;
 
       let title: string, subtitle: string;
@@ -51,7 +51,7 @@ export class ChatAudio extends PinnedContainer {
       this.toggle(false);
     });
 
-    $rootScope.$on('audio_pause', () => {
+    rootScope.on('audio_pause', () => {
       this.toggleEl.classList.remove('flip-icon');
     });
   }

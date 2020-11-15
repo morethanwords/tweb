@@ -5,7 +5,7 @@ import appProfileManager from "../../../lib/appManagers/appProfileManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
 import RichTextProcessor from "../../../lib/richtextprocessor";
-import $rootScope from "../../../lib/rootScope";
+import rootScope from "../../../lib/rootScope";
 import AvatarElement from "../../avatar";
 import InputField from "../../inputField";
 import PopupAvatar from "../../popupAvatar";
@@ -225,7 +225,7 @@ export default class AppEditProfileTab implements SliderTab {
       }
     });
 
-    this.avatarElem.setAttribute('peer', '' + $rootScope.myID);
+    this.avatarElem.setAttribute('peer', '' + rootScope.myID);
     if(!this.avatarElem.parentElement) {
       this.canvas.parentElement.append(this.avatarElem);
     }

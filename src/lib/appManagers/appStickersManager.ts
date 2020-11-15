@@ -2,7 +2,7 @@ import { Document, InputFileLocation, InputStickerSet, MessagesRecentStickers, M
 import { Modify } from '../../types';
 import apiManager from '../mtproto/mtprotoworker';
 import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
-import $rootScope from '../rootScope';
+import rootScope from '../rootScope';
 import appDocsManager from './appDocsManager';
 import appStateManager from './appStateManager';
 
@@ -44,13 +44,13 @@ export class AppStickersManager {
       //}
     });
 
-    $rootScope.$on('apiUpdate', (e) => {
+    rootScope.on('apiUpdate', (e) => {
       const update = e.detail;
       
       switch(update._) {
         case 'updateNewStickerSet': {
           this.saveStickerSet(update.stickerset, update.stickerset.set.id);
-          $rootScope.$broadcast('stickers_installed', update.stickerset.set);
+          rootScope.broadcast('stickers_installed', update.stickerset.set);
           break;
         }
       }
@@ -210,7 +210,7 @@ export class AppStickersManager {
 
       if(res) {
         delete set.installed_date;
-        $rootScope.$broadcast('stickers_deleted', set);
+        rootScope.broadcast('stickers_deleted', set);
         return true;
       }
     } else {
@@ -221,7 +221,7 @@ export class AppStickersManager {
 
       if(res) {
         set.installed_date = Date.now() / 1000 | 0;
-        $rootScope.$broadcast('stickers_installed', set);
+        rootScope.broadcast('stickers_installed', set);
         return true;
       }
     }

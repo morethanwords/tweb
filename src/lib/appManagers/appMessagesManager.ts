@@ -16,7 +16,7 @@ import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
 import referenceDatabase, { ReferenceContext } from "../mtproto/referenceDatabase";
 import serverTimeManager from "../mtproto/serverTimeManager";
 import { RichTextProcessor } from "../richtextprocessor";
-import $rootScope from "../rootScope";
+import rootScope from "../rootScope";
 import searchIndexManager from '../searchIndexManager';
 import AppStorage from '../storage';
 import DialogsStorage from "../storages/dialogs";
@@ -137,13 +137,13 @@ export class AppMessagesManager {
 
   constructor() {
     this.dialogsStorage = new DialogsStorage(this, appMessagesIDsManager, appChatsManager, appPeersManager, serverTimeManager);
-    this.filtersStorage = new FiltersStorage(appPeersManager, appUsersManager, /* apiManager, */ $rootScope);
+    this.filtersStorage = new FiltersStorage(appPeersManager, appUsersManager, /* apiManager, */ rootScope);
 
-    $rootScope.$on('apiUpdate', (e) => {
+    rootScope.on('apiUpdate', (e) => {
       this.handleUpdate(e.detail);
     });
 
-    $rootScope.$on('webpage_updated', (e) => {
+    rootScope.on('webpage_updated', (e) => {
       const eventData = e.detail;
       eventData.msgs.forEach((msgID) => {
         const message = this.getMessage(msgID) as Message.message;
@@ -153,7 +153,7 @@ export class AppMessagesManager {
           webpage: appWebPagesManager.getWebPage(eventData.id)
         };
 
-        $rootScope.$broadcast('message_edit', {
+        rootScope.broadcast('message_edit', {
           peerID: this.getMessagePeer(message),
           mid: msgID,
           justMedia: true
@@ -161,7 +161,7 @@ export class AppMessagesManager {
       });
     });
 
-    /* $rootScope.$on('draft_updated', (e) => {
+    /* rootScope.$on('draft_updated', (e) => {
       let eventData = e.detail;;
       var peerID = eventData.peerID;
       var draft = eventData.draft;
@@ -189,7 +189,7 @@ export class AppMessagesManager {
 
         this.dialogsStorage.pushDialog(dialog);
 
-        $rootScope.$broadcast('dialog_draft', {
+        rootScope.$broadcast('dialog_draft', {
           peerID,
           draft,
           index: dialog.index
@@ -459,7 +459,7 @@ export class AppMessagesManager {
       } else {
         delete message.error;
       }
-      $rootScope.$broadcast('messages_pending');
+      rootScope.broadcast('messages_pending');
     }
 
     message.send = () =>  {
@@ -545,7 +545,7 @@ export class AppMessagesManager {
 
     this.saveMessages([message]);
     historyStorage.pending.unshift(messageID);
-    $rootScope.$broadcast('history_append', {peerID, messageID, my: true});
+    rootScope.broadcast('history_append', {peerID, messageID, my: true});
 
     setTimeout(() => message.send(), 0);
     // setTimeout(function () {
@@ -790,7 +790,7 @@ export class AppMessagesManager {
         delete message.error;
       }
 
-      $rootScope.$broadcast('messages_pending');
+      rootScope.broadcast('messages_pending');
     };
 
     let uploaded = false,
@@ -912,7 +912,7 @@ export class AppMessagesManager {
 
     this.saveMessages([message]);
     historyStorage.pending.unshift(messageID);
-    $rootScope.$broadcast('history_append', {peerID, messageID, my: true});
+    rootScope.broadcast('history_append', {peerID, messageID, my: true});
 
     setTimeout(message.send.bind(this), 0);
 
@@ -1060,14 +1060,14 @@ export class AppMessagesManager {
 
       this.saveMessages([message]);
       historyStorage.pending.unshift(messageID);
-      //$rootScope.$broadcast('history_append', {peerID: peerID, messageID: messageID, my: true});
+      //rootScope.$broadcast('history_append', {peerID: peerID, messageID: messageID, my: true});
 
       this.pendingByRandomID[randomIDS] = [peerID, messageID];
 
       return message;
     });
 
-    $rootScope.$broadcast('history_append', {peerID, messageID: messages[messages.length - 1].id, my: true});
+    rootScope.broadcast('history_append', {peerID, messageID: messages[messages.length - 1].id, my: true});
 
     let toggleError = (message: any, on: boolean) => {
       if(on) {
@@ -1076,7 +1076,7 @@ export class AppMessagesManager {
         delete message.error;
       }
 
-      $rootScope.$broadcast('messages_pending');
+      rootScope.broadcast('messages_pending');
     };
 
     let uploaded = false,
@@ -1352,7 +1352,7 @@ export class AppMessagesManager {
           delete historyMessage.error
         }
       } */
-      $rootScope.$broadcast('messages_pending');
+      rootScope.broadcast('messages_pending');
     };
 
     message.send = () => {
@@ -1404,7 +1404,7 @@ export class AppMessagesManager {
 
     this.saveMessages([message]);
     historyStorage.pending.unshift(messageID);
-    $rootScope.$broadcast('history_append', {peerID, messageID, my: true});
+    rootScope.broadcast('history_append', {peerID, messageID, my: true});
 
     setTimeout(message.send, 0);
 
@@ -1621,10 +1621,10 @@ export class AppMessagesManager {
       if(Object.keys(noIDsDialogs).length) {
         //setTimeout(() => { // test bad situation
           this.reloadConversation(Object.keys(noIDsDialogs).map(id => +id)).then(() => {
-            $rootScope.$broadcast('dialogs_multiupdate', noIDsDialogs);
+            rootScope.broadcast('dialogs_multiupdate', noIDsDialogs);
   
             for(let peerID in noIDsDialogs) {
-              $rootScope.$broadcast('dialog_unread', {peerID: +peerID});
+              rootScope.broadcast('dialog_unread', {peerID: +peerID});
             }
           });
         //}, 10e3);
@@ -1641,7 +1641,7 @@ export class AppMessagesManager {
       if(hasPrepend) {
         this.scheduleHandleNewDialogs();
       } else {
-        $rootScope.$broadcast('dialogs_multiupdate', {});
+        rootScope.broadcast('dialogs_multiupdate', {});
       }
 
       return count;
@@ -1788,11 +1788,11 @@ export class AppMessagesManager {
       }
 
       if(justClear) {
-        $rootScope.$broadcast('dialog_flush', {peerID});
+        rootScope.broadcast('dialog_flush', {peerID});
       } else {
         this.dialogsStorage.dropDialog(peerID);
 
-        $rootScope.$broadcast('dialog_drop', {peerID});
+        rootScope.broadcast('dialog_drop', {peerID});
       }
     });
   }
@@ -1805,14 +1805,14 @@ export class AppMessagesManager {
 
       if(!this.messagesStorage.hasOwnProperty(mid)) {
         this.wrapSingleMessage(mid).then(() => {
-          $rootScope.$broadcast('peer_pinned_message', peerID);
+          rootScope.broadcast('peer_pinned_message', peerID);
         });
 
         return;
       }
     }
 
-    $rootScope.$broadcast('peer_pinned_message', peerID);
+    rootScope.broadcast('peer_pinned_message', peerID);
   }
 
   public getPinnedMessage(peerID: number) {
@@ -2330,10 +2330,10 @@ export class AppMessagesManager {
         setTimeout(() => {
           const dropped = this.dialogsStorage.dropDialog(migrateFrom);
           if(dropped.length) {
-            $rootScope.$broadcast('dialog_drop', {peerID: migrateFrom, dialog: dropped[0]});
+            rootScope.broadcast('dialog_drop', {peerID: migrateFrom, dialog: dropped[0]});
           }
 
-          $rootScope.$broadcast('dialog_migrate', {migrateFrom, migrateTo});
+          rootScope.broadcast('dialog_migrate', {migrateFrom, migrateTo});
         }, 100);
       }
     }
@@ -2394,7 +2394,7 @@ export class AppMessagesManager {
     const message = this.messagesStorage[messageID];
     return message && (
       message.peerID > 0 
-      || message.fromID == $rootScope.myID 
+      || message.fromID == rootScope.myID 
       || appChatsManager.getChat(message.peerID)._ == 'chat' 
       || appChatsManager.hasRights(message.peerID, 'deleteRevoke')
     );
@@ -2440,7 +2440,7 @@ export class AppMessagesManager {
         this.saveConversation(dialog);
         
         /* if(wasDialogBefore) {
-          $rootScope.$broadcast('dialog_top', dialog);
+          rootScope.$broadcast('dialog_top', dialog);
         } else { */
           updatedDialogs[peerID] = dialog;
           hasUpdated = true;
@@ -2448,7 +2448,7 @@ export class AppMessagesManager {
       } else {
         const dropped = this.dialogsStorage.dropDialog(peerID);
         if(dropped.length) {
-          $rootScope.$broadcast('dialog_drop', {peerID: peerID, dialog: dropped[0]});
+          rootScope.broadcast('dialog_drop', {peerID: peerID, dialog: dropped[0]});
         }
       }
 
@@ -2463,7 +2463,7 @@ export class AppMessagesManager {
     });
 
     if(hasUpdated) {
-      $rootScope.$broadcast('dialogs_multiupdate', updatedDialogs);
+      rootScope.broadcast('dialogs_multiupdate', updatedDialogs);
     }
   }
 
@@ -2548,7 +2548,7 @@ export class AppMessagesManager {
         dialog.unread_count++;
       } */
       if(this.mergeReplyKeyboard(historyStorage, message)) {
-        $rootScope.$broadcast('history_reply_markup', {peerID});
+        rootScope.broadcast('history_reply_markup', {peerID});
       }
     } else if(!historyStorage.history.length && !historyStorage.pending.length) {
       historyStorage[mid > 0 ? 'history' : 'pending'].push(mid);
@@ -2875,7 +2875,7 @@ export class AppMessagesManager {
     clearTimeout(this.newMessagesHandlePromise);
     this.newMessagesHandlePromise = 0;
 
-    $rootScope.$broadcast('history_multiappend', this.newMessagesToHandle);
+    rootScope.broadcast('history_multiappend', this.newMessagesToHandle);
     this.newMessagesToHandle = {};
   };
 
@@ -2903,7 +2903,7 @@ export class AppMessagesManager {
       this.incrementMaxSeenID(newMaxSeenID);
     }
 
-    $rootScope.$broadcast('dialogs_multiupdate', this.newDialogsToHandle as any);
+    rootScope.broadcast('dialogs_multiupdate', this.newDialogsToHandle as any);
     this.newDialogsToHandle = {};
   };
 
@@ -3189,7 +3189,7 @@ export class AppMessagesManager {
         }
 
         if(this.mergeReplyKeyboard(historyStorage, message)) {
-          $rootScope.$broadcast('history_reply_markup', {peerID});
+          rootScope.broadcast('history_reply_markup', {peerID});
         }
 
         if(!message.pFlags.out && message.from_id) {
@@ -3201,7 +3201,7 @@ export class AppMessagesManager {
 
         if(randomID) {
           if(pendingMessage = this.finalizePendingMessage(randomID, message)) {
-            $rootScope.$broadcast('history_update', {peerID, mid: message.mid});
+            rootScope.broadcast('history_update', {peerID, mid: message.mid});
           }
 
           delete this.pendingByMessageID[message.mid];
@@ -3251,7 +3251,7 @@ export class AppMessagesManager {
             dialog.pFlags.unread_mark = true;
           }
 
-          $rootScope.$broadcast('dialogs_multiupdate', {peerID: dialog});
+          rootScope.broadcast('dialogs_multiupdate', {peerID: dialog});
         }
 
         break;
@@ -3409,10 +3409,10 @@ export class AppMessagesManager {
         // @ts-ignore
         if(message.clear_history) { // that's will never happen
           if(isTopMessage) {
-            $rootScope.$broadcast('dialog_flush', {peerID: peerID});
+            rootScope.broadcast('dialog_flush', {peerID: peerID});
           }
         } else {
-          $rootScope.$broadcast('message_edit', {
+          rootScope.broadcast('message_edit', {
             peerID,
             mid,
             justMedia: false
@@ -3429,14 +3429,14 @@ export class AppMessagesManager {
             }
 
             if(pinnedMid) {
-              $rootScope.$broadcast('peer_pinned_message', peerID);
+              rootScope.broadcast('peer_pinned_message', peerID);
             }
           }
 
           if(isTopMessage || groupID) {
             const updatedDialogs: {[peerID: number]: Dialog} = {};
             updatedDialogs[peerID] = dialog;
-            $rootScope.$broadcast('dialogs_multiupdate', updatedDialogs);
+            rootScope.broadcast('dialogs_multiupdate', updatedDialogs);
           }
         }
         break;
@@ -3507,11 +3507,11 @@ export class AppMessagesManager {
         // need be commented for read out messages
         //if(newUnreadCount != 0 || !isOut) { // fix 16.11.2019 (maybe not)
           //////////this.log.warn(dT(), 'cnt', peerID, newUnreadCount, isOut, foundDialog, update, foundAffected);
-          $rootScope.$broadcast('dialog_unread', {peerID, count: newUnreadCount});
+          rootScope.broadcast('dialog_unread', {peerID, count: newUnreadCount});
         //}
 
         if(foundAffected) {
-          $rootScope.$broadcast('messages_read');
+          rootScope.broadcast('messages_read');
         }
         break;
       }
@@ -3534,7 +3534,7 @@ export class AppMessagesManager {
           }
         }
 
-        $rootScope.$broadcast('messages_media_read', messages);
+        rootScope.broadcast('messages_media_read', messages);
         break;
       }
 
@@ -3631,11 +3631,11 @@ export class AppMessagesManager {
 
           if(updatedData.albums) {
             for(const groupID in updatedData.albums) {
-              $rootScope.$broadcast('album_edit', {peerID, groupID, deletedMids: [...updatedData.albums[groupID]]});
+              rootScope.broadcast('album_edit', {peerID, groupID, deletedMids: [...updatedData.albums[groupID]]});
               /* const mids = this.getMidsByAlbum(groupID);
               if(mids.length) {
                 const mid = Math.max(...mids);
-                $rootScope.$broadcast('message_edit', {peerID, mid, justMedia: false});
+                rootScope.$broadcast('message_edit', {peerID, mid, justMedia: false});
               } */
             }
           }
@@ -3656,7 +3656,7 @@ export class AppMessagesManager {
 
             historyStorage.pending = newPending;
 
-            $rootScope.$broadcast('history_delete', {peerID, msgs: updatedData.msgs});
+            rootScope.broadcast('history_delete', {peerID, msgs: updatedData.msgs});
           }
 
           const foundDialog = this.getDialogByPeerID(peerID)[0];
@@ -3664,7 +3664,7 @@ export class AppMessagesManager {
             if(updatedData.unread) {
               foundDialog.unread_count -= updatedData.unread;
 
-              $rootScope.$broadcast('dialog_unread', {
+              rootScope.broadcast('dialog_unread', {
                 peerID,
                 count: foundDialog.unread_count
               });
@@ -3692,7 +3692,7 @@ export class AppMessagesManager {
 
         if(canViewHistory != hasHistory) {
           delete this.historiesStorage[peerID];
-          $rootScope.$broadcast('history_forbidden', peerID);
+          rootScope.broadcast('history_forbidden', peerID);
         }
 
         if(hasDialog != needDialog) {
@@ -3701,7 +3701,7 @@ export class AppMessagesManager {
           } else {
             if(foundDialog[0]) {
               this.dialogsStorage.dropDialog(peerID);
-              $rootScope.$broadcast('dialog_drop', {peerID: peerID, dialog: foundDialog[0]});
+              rootScope.broadcast('dialog_drop', {peerID: peerID, dialog: foundDialog[0]});
             }
           }
         }
@@ -3719,7 +3719,7 @@ export class AppMessagesManager {
 
         delete this.historiesStorage[peerID];
         this.reloadConversation(-channelID).then(() => {
-          $rootScope.$broadcast('history_reload', peerID);
+          rootScope.broadcast('history_reload', peerID);
         });
 
         break;
@@ -3731,7 +3731,7 @@ export class AppMessagesManager {
         const message = this.getMessage(mid);
         if(message && message.views && message.views < views) {
           message.views = views;
-          $rootScope.$broadcast('message_views', {mid, views});
+          rootScope.broadcast('message_views', {mid, views});
         }
         break;
       }
@@ -3809,7 +3809,7 @@ export class AppMessagesManager {
         delete message.random_id;
         delete message.send;
 
-        $rootScope.$broadcast('messages_pending');
+        rootScope.broadcast('messages_pending');
       }
 
       delete this.messagesStorage[tempID];
@@ -3835,7 +3835,7 @@ export class AppMessagesManager {
       delete this.tempFinalizeCallbacks[tempID];
     }
 
-    $rootScope.$broadcast('message_sent', {tempID, mid});
+    rootScope.broadcast('message_sent', {tempID, mid});
   }
 
   public incrementMaxSeenID(maxID: number) {
@@ -3989,7 +3989,7 @@ export class AppMessagesManager {
       historyStorage.history.splice(offset, historyStorage.history.length - offset);
       historyResult.messages.forEach((message: any) => {
         if(this.mergeReplyKeyboard(historyStorage, message)) {
-          $rootScope.$broadcast('history_reply_markup', {peerID});
+          rootScope.broadcast('history_reply_markup', {peerID});
         }
 
         historyStorage.history.push(message.mid);
@@ -4047,7 +4047,7 @@ export class AppMessagesManager {
 
     //console.trace('requestHistory', peerID, maxID, limit, offset);
 
-    $rootScope.$broadcast('history_request');
+    rootScope.broadcast('history_request');
 
     return apiManager.invokeApi('messages.getHistory', {
       peer: appPeersManager.getInputPeerByID(peerID),
@@ -4187,7 +4187,7 @@ export class AppMessagesManager {
               this.saveMessages(getMessagesResult.messages);
             }
     
-            $rootScope.$broadcast('messages_downloaded', splitted.mids[+channelID]);
+            rootScope.broadcast('messages_downloaded', splitted.mids[+channelID]);
           }));
         });
 
@@ -4202,7 +4202,7 @@ export class AppMessagesManager {
 
   public wrapSingleMessage(msgID: number, overwrite = false): Promise<void> {
     if(this.messagesStorage[msgID] && !overwrite) {
-      $rootScope.$broadcast('messages_downloaded', [msgID]);
+      rootScope.broadcast('messages_downloaded', [msgID]);
       return Promise.resolve();
     } else if(this.needSingleMessages.indexOf(msgID) == -1) {
       this.needSingleMessages.push(msgID);
@@ -4213,7 +4213,7 @@ export class AppMessagesManager {
   }
 
   public setTyping(peerID: number, _action: any): Promise<boolean> {
-    if(!$rootScope.myID) return Promise.resolve(false);
+    if(!rootScope.myID) return Promise.resolve(false);
     
     const action: SendMessageAction = typeof(_action) == 'string' ? {_: _action} : _action;
     return apiManager.invokeApi('messages.setTyping', {

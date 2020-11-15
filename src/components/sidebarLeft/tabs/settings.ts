@@ -1,7 +1,7 @@
 import { SliderTab } from "../../slider";
 import AvatarElement from "../../avatar";
 import { parseMenuButtonsTo } from "../../misc";
-//import $rootScope from "../../lib/rootScope";
+//import rootScope from "../../lib/rootScope";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
 import appSidebarLeft, { AppSidebarLeft } from "..";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
@@ -26,7 +26,7 @@ export default class AppSettingsTab implements SliderTab {
   constructor() {
     parseMenuButtonsTo(this.buttons, this.container.querySelector('.profile-buttons').children);
 
-    /* $rootScope.$on('user_auth', (e) => {
+    /* rootScope.$on('user_auth', (e) => {
       this.fillElements();
     }); */
 

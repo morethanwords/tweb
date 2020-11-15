@@ -2,7 +2,7 @@ import { isTouchSupported } from "../../helpers/touchSupport";
 import appChatsManager from "../../lib/appManagers/appChatsManager";
 import appImManager from "../../lib/appManagers/appImManager";
 import { MOUNT_CLASS_TO } from "../../lib/mtproto/mtproto_config";
-import $rootScope from "../../lib/rootScope";
+import rootScope from "../../lib/rootScope";
 import { findUpClassName, findUpTag, whichChild } from "../../helpers/dom";
 import animationIntersector from "../animationIntersector";
 import { horizontalMenu } from "../horizontalMenu";
@@ -157,7 +157,7 @@ export class EmoticonsDropdown {
     (this.tabsEl.children[1] as HTMLLIElement).click(); // set emoji tab
     this.tabs[0].init(); // onTransitionEnd не вызовется, т.к. это первая открытая вкладка
 
-    $rootScope.$on('peer_changed', this.checkRights);
+    rootScope.on('peer_changed', this.checkRights);
     this.checkRights();
   }
 
@@ -174,7 +174,7 @@ export class EmoticonsDropdown {
   };
 
   public checkRights = () => {
-    const peerID = $rootScope.selectedPeerID;
+    const peerID = rootScope.selectedPeerID;
     const children = this.tabsEl.children;
     const tabsElements = Array.from(children) as HTMLElement[];
 

@@ -8,7 +8,7 @@ import appStickersManager from "../../../lib/appManagers/appStickersManager";
 import lottieLoader from "../../../lib/lottieLoader";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
-import $rootScope from "../../../lib/rootScope";
+import rootScope from "../../../lib/rootScope";
 import animationIntersector from "../../animationIntersector";
 import { LazyLoadQueueRepeat } from "../../lazyLoadQueue";
 import { putPreloader, renderImageFromUrl } from "../../misc";
@@ -256,7 +256,7 @@ export default class StickersTab implements EmoticonsTab {
       }
     }); */
 
-    $rootScope.$on('stickers_installed', (e) => {
+    rootScope.on('stickers_installed', (e) => {
       const set: StickerSet.stickerSet = e.detail;
       
       if(!this.stickerSets[set.id] && this.mounted) {
@@ -264,7 +264,7 @@ export default class StickersTab implements EmoticonsTab {
       }
     });
 
-    $rootScope.$on('stickers_deleted', (e) => {
+    rootScope.on('stickers_deleted', (e) => {
       const set: StickerSet.stickerSet = e.detail;
       
       if(this.stickerSets[set.id] && this.mounted) {

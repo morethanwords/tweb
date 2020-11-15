@@ -4,7 +4,7 @@ import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import appPhotosManager from "../../../lib/appManagers/appPhotosManager";
 import appSidebarLeft, { AppSidebarLeft } from "..";
-import $rootScope from "../../../lib/rootScope";
+import rootScope from "../../../lib/rootScope";
 import SearchInput from "../../searchInput";
 
 // TODO: поиск по людям глобальный, если не нашло в контактах никого
@@ -70,10 +70,10 @@ export default class AppContactsTab implements SliderTab {
       const contacts = [..._contacts];
 
       if(!query) {
-        contacts.findAndSplice(u => u == $rootScope.myID);
+        contacts.findAndSplice(u => u == rootScope.myID);
       }
       /* if(query && 'saved messages'.includes(query.toLowerCase())) {
-        contacts.unshift($rootScope.myID);
+        contacts.unshift(rootScope.myID);
       } */
 
       let sorted = contacts

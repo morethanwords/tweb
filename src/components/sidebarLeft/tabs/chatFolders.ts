@@ -10,7 +10,7 @@ import type { MyDialogFilter } from "../../../lib/storages/filters";
 import type { AppPeersManager } from "../../../lib/appManagers/appPeersManager";
 import type { AppSidebarLeft } from "..";
 import type { DialogFilterSuggested, DialogFilter } from "../../../layer";
-import type _$rootScope from "../../../lib/rootScope";
+import type _rootScope from "../../../lib/rootScope";
 
 export default class AppChatFoldersTab implements SliderTab {
   public container: HTMLElement;
@@ -22,7 +22,7 @@ export default class AppChatFoldersTab implements SliderTab {
 
   private filtersRendered: {[filterID: number]: HTMLElement} = {};
 
-  constructor(private appMessagesManager: AppMessagesManager, private appPeersManager: AppPeersManager, private appSidebarLeft: AppSidebarLeft, private apiManager: ApiManagerProxy, private $rootScope: typeof _$rootScope) {
+  constructor(private appMessagesManager: AppMessagesManager, private appPeersManager: AppPeersManager, private appSidebarLeft: AppSidebarLeft, private apiManager: ApiManagerProxy, private rootScope: typeof _rootScope) {
 
   }
 
@@ -127,7 +127,7 @@ export default class AppChatFoldersTab implements SliderTab {
       }
     });
 
-    this.$rootScope.$on('filter_update', (e) => {
+    this.rootScope.on('filter_update', (e) => {
       const filter = e.detail;
       if(this.filtersRendered.hasOwnProperty(filter.id)) {
         this.renderFolder(filter, null, this.filtersRendered[filter.id]);
@@ -138,7 +138,7 @@ export default class AppChatFoldersTab implements SliderTab {
       this.getSuggestedFilters();
     });
 
-    this.$rootScope.$on('filter_delete', (e) => {
+    this.rootScope.on('filter_delete', (e) => {
       const filter = e.detail;
       if(this.filtersRendered.hasOwnProperty(filter.id)) {
         /* for(const suggested of this.suggestedFilters) {
@@ -153,7 +153,7 @@ export default class AppChatFoldersTab implements SliderTab {
       }
     });
 
-    this.$rootScope.$on('filter_order', (e) => {
+    this.rootScope.on('filter_order', (e) => {
       const order = e.detail;
       order.forEach((filterID, idx) => {
         const div = this.filtersRendered[filterID];

@@ -4,7 +4,7 @@ import appImManager from "../../lib/appManagers/appImManager";
 import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import appPeersManager from "../../lib/appManagers/appPeersManager";
 import appPollsManager, { Poll } from "../../lib/appManagers/appPollsManager";
-import $rootScope from "../../lib/rootScope";
+import rootScope from "../../lib/rootScope";
 import { cancelEvent, cancelSelection, findUpClassName } from "../../helpers/dom";
 import ButtonMenu, { ButtonMenuItemOptions } from "../buttonMenu";
 import { attachContextMenuListener, openBtnMenu, positionMenu } from "../misc";
@@ -58,7 +58,7 @@ export default class ChatContextMenu {
         }
       }
 
-      this.peerID = $rootScope.selectedPeerID;
+      this.peerID = rootScope.selectedPeerID;
       //this.msgID = msgID;
       this.target = e.target as HTMLElement;
 
@@ -152,7 +152,7 @@ export default class ChatContextMenu {
         const message = appMessagesManager.getMessage(this.msgID);
         // for new layer
         // return this.msgID > 0 && message._ != 'messageService' && appImManager.pinnedMsgID != this.msgID && (this.peerID > 0 || appChatsManager.hasRights(-this.peerID, 'pin'));
-        return this.msgID > 0 && message._ != 'messageService' && appImManager.pinnedMsgID != this.msgID && (this.peerID == $rootScope.myID || (this.peerID < 0 && appChatsManager.hasRights(-this.peerID, 'pin')));
+        return this.msgID > 0 && message._ != 'messageService' && appImManager.pinnedMsgID != this.msgID && (this.peerID == rootScope.myID || (this.peerID < 0 && appChatsManager.hasRights(-this.peerID, 'pin')));
       }
     }, {
       icon: 'unpin',
@@ -263,11 +263,11 @@ export default class ChatContextMenu {
   };
 
   private onPinClick = () => {
-    new PopupPinMessage($rootScope.selectedPeerID, this.msgID);
+    new PopupPinMessage(rootScope.selectedPeerID, this.msgID);
   };
 
   private onUnpinClick = () => {
-    new PopupPinMessage($rootScope.selectedPeerID, 0);
+    new PopupPinMessage(rootScope.selectedPeerID, 0);
   };
 
   private onRetractVote = () => {

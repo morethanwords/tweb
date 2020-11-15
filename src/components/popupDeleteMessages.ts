@@ -1,13 +1,13 @@
 import appChatsManager from "../lib/appManagers/appChatsManager";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import appPeersManager from "../lib/appManagers/appPeersManager";
-import $rootScope from "../lib/rootScope";
+import rootScope from "../lib/rootScope";
 import { PopupButton } from "./popup";
 import PopupPeer from "./popupPeer";
 
 export default class PopupDeleteMessages {
   constructor(mids: number[], onConfirm?: () => void) {
-    const peerID = $rootScope.selectedPeerID;
+    const peerID = rootScope.selectedPeerID;
     const firstName = appPeersManager.getPeerTitle(peerID, false, true);
 
     mids = mids.slice();
@@ -20,7 +20,7 @@ export default class PopupDeleteMessages {
     title = `Delete ${mids.length == 1 ? '' : mids.length + ' '}Message${mids.length == 1 ? '' : 's'}?`;
     description = `Are you sure you want to delete ${mids.length == 1 ? 'this message' : 'these messages'}?`;
 
-    if(peerID == $rootScope.myID) {
+    if(peerID == rootScope.myID) {
       buttons = [{
         text: 'DELETE',
         isDanger: true,
@@ -46,7 +46,7 @@ export default class PopupDeleteMessages {
         if(chat._ == 'chat') {
           const canRevoke = hasRights ? mids.slice() : mids.filter(mid => {
             const message = appMessagesManager.getMessage(mid);
-            return message.fromID == $rootScope.myID;
+            return message.fromID == rootScope.myID;
           });
 
           if(canRevoke.length) {

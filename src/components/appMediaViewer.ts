@@ -10,7 +10,7 @@ import appPhotosManager from "../lib/appManagers/appPhotosManager";
 import { logger } from "../lib/logger";
 import VideoPlayer from "../lib/mediaPlayer";
 import { RichTextProcessor } from "../lib/richtextprocessor";
-import $rootScope from "../lib/rootScope";
+import rootScope from "../lib/rootScope";
 import { cancelEvent, fillPropertyValue, findUpClassName, generatePathData } from "../helpers/dom";
 import animationIntersector from "./animationIntersector";
 import appMediaPlaybackController from "./appMediaPlaybackController";
@@ -253,7 +253,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
     promise.finally(() => {
       this.wholeDiv.remove();
-      $rootScope.overlayIsActive = false;
+      rootScope.overlayIsActive = false;
       animationIntersector.checkAnimations(false);
     });
 
@@ -868,7 +868,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       this.pageEl.insertBefore(this.wholeDiv, mainColumns);
       void this.wholeDiv.offsetLeft; // reflow
       this.wholeDiv.classList.add('active');
-      $rootScope.overlayIsActive = true;
+      rootScope.overlayIsActive = true;
       animationIntersector.checkAnimations(true);
     }
 
@@ -1324,7 +1324,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       else fromRight = this.currentMessageID > mid ? 1 : -1;
     } else {
       this.reverse = reverse;
-      this.peerID = $rootScope.selectedPeerID;
+      this.peerID = rootScope.selectedPeerID;
     }
 
     this.currentMessageID = mid;

@@ -3,6 +3,7 @@ import type { MyDocument } from "./appManagers/appDocsManager";
 import type { AppMessagesManager, Dialog } from "./appManagers/appMessagesManager";
 import type { Poll, PollResults } from "./appManagers/appPollsManager";
 import type { MyDialogFilter } from "./storages/filters";
+import type { ConnectionStatusChange } from "../types";
 import { MOUNT_CLASS_TO } from "./mtproto/mtproto_config";
 
 type BroadcastEvents = {
@@ -61,38 +62,51 @@ type BroadcastEvents = {
 
   'apiUpdate': Update,
   'download_progress': any,
+  'connection_status_change': ConnectionStatusChange
   //'draft_updated': any,
 };
 
-const $rootScope = {
-  $broadcast: <T extends keyof BroadcastEvents>(name: T, detail?: BroadcastEvents[T]) => {
+class RootScope {
+  public overlayIsActive: boolean = false;
+  public selectedPeerID = 0;
+  public myID = 0;
+  public idle = {
+    isIDLE: false
+  };
+  public connectionStatus: {[name: string]: ConnectionStatusChange} = {};
+
+  constructor() {
+    this.on('user_auth', (e) => {
+      this.myID = e.detail.id;
+    });
+
+    this.on('connection_status_change', (e) => {
+      const status = e.detail;
+      this.connectionStatus[e.detail.name] = status;
+    });
+  }
+
+  public broadcast = <T extends keyof BroadcastEvents>(name: T, detail?: BroadcastEvents[T]) => {
     /* if(name != 'user_update') {
       console.debug(dT(), 'Broadcasting ' + name + ' event, with args:', detail);
     } */
 
-    let myCustomEvent = new CustomEvent(name, {detail});
+    const myCustomEvent = new CustomEvent(name, {detail});
     document.dispatchEvent(myCustomEvent);
-  },
-  $on: <T extends keyof BroadcastEvents>(name: T, callback: (e: Omit<CustomEvent, 'detail'> & {detail: BroadcastEvents[T]}) => any) => {
+  };
+
+  public on = <T extends keyof BroadcastEvents>(name: T, callback: (e: Omit<CustomEvent, 'detail'> & {detail: BroadcastEvents[T]}) => any) => {
     // @ts-ignore
     document.addEventListener(name, callback);
-  },
-  $off: <T extends keyof BroadcastEvents>(name: T, callback: (e: Omit<CustomEvent, 'detail'> & {detail: BroadcastEvents[T]}) => any) => {
+  };
+
+  public off = <T extends keyof BroadcastEvents>(name: T, callback: (e: Omit<CustomEvent, 'detail'> & {detail: BroadcastEvents[T]}) => any) => {
     // @ts-ignore
     document.removeEventListener(name, callback);
-  },
+  };
+}
 
-  overlayIsActive: false,
-  selectedPeerID: 0,
-  myID: 0,
-  idle: {
-    isIDLE: false
-  }
-};
+const rootScope = new RootScope();
 
-$rootScope.$on('user_auth', (e) => {
-  $rootScope.myID = e.detail.id;
-});
-
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.$rootScope = $rootScope);
-export default $rootScope;
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.rootScope = rootScope);
+export default rootScope;

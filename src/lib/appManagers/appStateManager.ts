@@ -2,7 +2,7 @@ import type { Dialog } from './appMessagesManager';
 import type { AppStickersManager } from './appStickersManager';
 import { App, MOUNT_CLASS_TO, UserAuth } from '../mtproto/mtproto_config';
 import EventListenerBase from '../../helpers/eventListenerBase';
-import $rootScope from '../rootScope';
+import rootScope from '../rootScope';
 import AppStorage from '../storage';
 import { logger } from '../logger';
 import type { AppUsersManager } from './appUsersManager';
@@ -91,7 +91,7 @@ export class AppStateManager extends EventListenerBase<{
         if(auth?.id) {
           // ! Warning ! DON'T delete this
           this.state.authState = {_: 'authStateSignedIn'};
-          $rootScope.$broadcast('user_auth', {id: auth.id});
+          rootScope.broadcast('user_auth', {id: auth.id});
         } else if(!this.state.authState) {
           this.state.authState = {_: 'authStateSignIn'};
         }

@@ -4,7 +4,7 @@ import appImManager from "../lib/appManagers/appImManager";
 import appPollsManager, { Poll, PollResults } from "../lib/appManagers/appPollsManager";
 import serverTimeManager from "../lib/mtproto/serverTimeManager";
 import { RichTextProcessor } from "../lib/richtextprocessor";
-import $rootScope from "../lib/rootScope";
+import rootScope from "../lib/rootScope";
 import { cancelEvent, findUpClassName } from "../helpers/dom";
 import { ripple } from "./ripple";
 import appSidebarRight from "./sidebarRight";
@@ -65,7 +65,7 @@ export const roundPercents = (percents: number[]) => {
 };
 
 const connectedPolls: {id: string, element: PollElement}[] = [];
-$rootScope.$on('poll_update', (e) => {
+rootScope.on('poll_update', (e) => {
   const {poll, results} = e.detail as {poll: Poll, results: PollResults};
 
   //console.log('poll_update', poll, results);
@@ -78,7 +78,7 @@ $rootScope.$on('poll_update', (e) => {
   }
 });
 
-$rootScope.$on('peer_changed', () => {
+rootScope.on('peer_changed', () => {
   if(prevQuizHint) {
     hideQuizHint(prevQuizHint, prevQuizHintOnHide, prevQuizHintTimeout);
   }

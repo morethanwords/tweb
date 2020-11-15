@@ -1,4 +1,4 @@
-import $rootScope from "../lib/rootScope";
+import rootScope from "../lib/rootScope";
 import { cancelEvent, findUpClassName } from "../helpers/dom";
 import { ripple } from "./ripple";
 
@@ -103,7 +103,7 @@ export class PopupElement {
     document.body.append(this.element);
     void this.element.offsetWidth; // reflow
     this.element.classList.add('active');
-    $rootScope.overlayIsActive = true;
+    rootScope.overlayIsActive = true;
   }
 
   public destroy = () => {
@@ -112,7 +112,7 @@ export class PopupElement {
 
     window.removeEventListener('keydown', this._onKeyDown, {capture: true});
     if(this.closeBtn) this.closeBtn.removeEventListener('click', this.destroy);
-    $rootScope.overlayIsActive = false;
+    rootScope.overlayIsActive = false;
 
     setTimeout(() => {
       this.element.remove();

@@ -102,7 +102,7 @@ export class AppInlineBotsManager {
       }
       ConfigStorage.set({inline_bots_popular: result})
       
-      $rootScope.$broadcast('inline_bots_popular')
+      rootScope.$broadcast('inline_bots_popular')
     })
   }
   
@@ -217,7 +217,7 @@ export class AppInlineBotsManager {
         var setHash = {}
         setHash['inline_switch_pm' + botID] = {peer: peerString, time: tsNow()}
         Storage.set(setHash)
-        $rootScope.$broadcast('history_focus', {peerString: AppPeersManager.getPeerString(botID)})
+        rootScope.$broadcast('history_focus', {peerString: AppPeersManager.getPeerString(botID)})
         AppMessagesManager.startBot(botID, 0, startParam)
       }
       
@@ -239,7 +239,7 @@ export class AppInlineBotsManager {
       }
       
       function switchInlineQuery (botID, toPeerString, query) {
-        $rootScope.$broadcast('history_focus', {
+        rootScope.$broadcast('history_focus', {
           peerString: toPeerString,
           attachment: {
             _: 'inline_query',

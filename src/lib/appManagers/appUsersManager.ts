@@ -7,7 +7,7 @@ import apiManager from '../mtproto/mtprotoworker';
 import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
 import serverTimeManager from "../mtproto/serverTimeManager";
 import { RichTextProcessor } from "../richtextprocessor";
-import $rootScope from "../rootScope";
+import rootScope from "../rootScope";
 import searchIndexManager from "../searchIndexManager";
 import appChatsManager from "./appChatsManager";
 import appPeersManager from "./appPeersManager";
@@ -32,9 +32,9 @@ export class AppUsersManager {
   constructor() {
     setInterval(this.updateUsersStatuses, 60000);
 
-    $rootScope.$on('stateSynchronized', this.updateUsersStatuses);
+    rootScope.on('stateSynchronized', this.updateUsersStatuses);
 
-    $rootScope.$on('apiUpdate', (e) => {
+    rootScope.on('apiUpdate', (e) => {
       const update = e.detail as Update;
       //console.log('on apiUpdate', update);
       switch(update._) {
@@ -54,7 +54,7 @@ export class AppUsersManager {
             }
 
             user.sortStatus = this.getUserStatusForSort(user.status);
-            $rootScope.$broadcast('user_update', userID);
+            rootScope.broadcast('user_update', userID);
           } //////else console.warn('No user by id:', userID);
           break;
   
@@ -74,8 +74,8 @@ export class AppUsersManager {
                 update.photo : {empty: true});
             }
   
-            $rootScope.$broadcast('user_update', userID);
-            $rootScope.$broadcast('avatar_update', userID);
+            rootScope.broadcast('user_update', userID);
+            rootScope.broadcast('avatar_update', userID);
           } else console.warn('No user by id:', userID);
 
           break;
@@ -281,7 +281,7 @@ export class AppUsersManager {
       safeReplaceObject(result, user);
     }
 
-    $rootScope.$broadcast('user_update', userID);
+    rootScope.broadcast('user_update', userID);
 
     if(this.cachedPhotoLocations[userID] !== undefined) {
       safeReplaceObject(this.cachedPhotoLocations[userID], user && 
@@ -323,7 +323,7 @@ export class AppUsersManager {
   }
 
   public getSelf() {
-    return this.getUser($rootScope.myID);
+    return this.getUser(rootScope.myID);
   }
 
   public getUserStatusString(userID: number) {
@@ -404,7 +404,7 @@ export class AppUsersManager {
   }
 
   public isNonContactUser(id: number) {
-    return this.isRegularUser(id) && !this.isContact(id) && id != $rootScope.myID;
+    return this.isRegularUser(id) && !this.isContact(id) && id != rootScope.myID;
   }
 
   public hasUser(id: number, allowMin?: boolean) {
@@ -455,7 +455,7 @@ export class AppUsersManager {
         user.status.expires < timestampNow) {
 
         user.status = {_: 'userStatusOffline', was_online: user.status.expires};
-        $rootScope.$broadcast('user_update', user.id);
+        rootScope.broadcast('user_update', user.id);
       }
     }
   };
@@ -479,7 +479,7 @@ export class AppUsersManager {
       };
       
       user.sortStatus = this.getUserStatusForSort(user.status);
-      $rootScope.$broadcast('user_update', id);
+      rootScope.broadcast('user_update', id);
     }
   }
 
@@ -615,7 +615,7 @@ export class AppUsersManager {
           this.contactsList.splice(curPos, 1);
         }
 
-        $rootScope.$broadcast('contacts_update', userID);
+        rootScope.$broadcast('contacts_update', userID);
       }
     }
   } */
@@ -637,7 +637,7 @@ export class AppUsersManager {
 
       user.status = status;
       user.sortStatus = this.getUserStatusForSort(user.status);
-      $rootScope.$broadcast('user_update', userID);
+      rootScope.broadcast('user_update', userID);
     }
   }
 }

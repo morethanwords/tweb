@@ -12,7 +12,7 @@ import { isTouchSupported } from "../../helpers/touchSupport";
 import { isSafari } from "../../helpers/userAgent";
 import { logger, LogLevels } from "../logger";
 import { RichTextProcessor } from "../richtextprocessor";
-import $rootScope from "../rootScope";
+import rootScope from "../rootScope";
 import { findUpClassName, positionElementByIndex } from "../../helpers/dom";
 import appImManager, { AppImManager } from "./appImManager";
 import appMessagesManager, { Dialog } from "./appMessagesManager";
@@ -21,6 +21,9 @@ import appPeersManager from './appPeersManager';
 import appStateManager from "./appStateManager";
 import appUsersManager, { User } from "./appUsersManager";
 import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
+import Button from "../../components/button";
+import SetTransition from "../../components/singleTransition";
+import AppStorage from '../storage';
 
 type DialogDom = {
   avatarEl: AvatarElement,
@@ -94,7 +97,11 @@ export class AppDialogsManager {
     
     this.folders.menuScrollContainer = this.folders.menu.parentElement;
 
-    this.scroll = this._scroll = new Scrollable(this.chatsContainer, 'CL', 500);
+    const bottomPart = document.createElement('div');
+    bottomPart.classList.add('connection-status-bottom');
+    bottomPart.append(this.folders.container);
+
+    this.scroll = this._scroll = new Scrollable(bottomPart, 'CL', 500);
     this.scroll.onScrolledTop = this.onChatsScrollTop;
     this.scroll.onScrolledBottom = this.onChatsScroll;
     this.scroll.setVirtualContainer(this.chatList);
@@ -140,13 +147,13 @@ export class AppDialogsManager {
       (window as any).addElement = add;
     }
 
-    $rootScope.$on('user_update', (e) => {
+    rootScope.on('user_update', (e) => {
       const userID = e.detail;
       const user = appUsersManager.getUser(userID);
       const dialog = appMessagesManager.getDialogByPeerID(user.id)[0];
       //console.log('updating user:', user, dialog);
 
-      if(dialog && !appUsersManager.isBot(dialog.peerID) && dialog.peerID != $rootScope.myID) {
+      if(dialog && !appUsersManager.isBot(dialog.peerID) && dialog.peerID != rootScope.myID) {
         const online = user.status?._ == 'userStatusOnline';
         const dom = this.getDialogDom(dialog.peerID);
 
@@ -155,12 +162,12 @@ export class AppDialogsManager {
         }
       }
 
-      if($rootScope.selectedPeerID == user.id) {
+      if(rootScope.selectedPeerID == user.id) {
         appImManager.setPeerStatus();
       }
     });
 
-    /* $rootScope.$on('dialog_top', (e) => {
+    /* rootScope.$on('dialog_top', (e) => {
       const dialog = e.detail;
 
       this.setLastMessage(dialog);
@@ -169,7 +176,7 @@ export class AppDialogsManager {
       this.setFiltersUnreadCount();
     }); */
 
-    $rootScope.$on('dialog_flush', (e) => {
+    rootScope.on('dialog_flush', (e) => {
       const peerID: number = e.detail.peerID;
       const dialog = appMessagesManager.getDialogByPeerID(peerID)[0];
       if(dialog) {
@@ -179,7 +186,7 @@ export class AppDialogsManager {
       }
     });
 
-    $rootScope.$on('dialogs_multiupdate', (e) => {
+    rootScope.on('dialogs_multiupdate', (e) => {
       const dialogs = e.detail;
 
       for(const id in dialogs) {
@@ -191,7 +198,7 @@ export class AppDialogsManager {
       this.setFiltersUnreadCount();
     });
 
-    $rootScope.$on('dialog_drop', (e) => {
+    rootScope.on('dialog_drop', (e) => {
       const {peerID, dialog} = e.detail;
 
       const dom = this.getDialogDom(peerID);
@@ -203,14 +210,14 @@ export class AppDialogsManager {
       this.setFiltersUnreadCount();
     });
 
-    $rootScope.$on('dialog_unread', (e) => {
+    rootScope.on('dialog_unread', (e) => {
       const info = e.detail;
 
       const dialog = appMessagesManager.getDialogByPeerID(info.peerID)[0];
       if(dialog) {
         this.setUnreadMessages(dialog);
 
-        if(dialog.peerID == $rootScope.selectedPeerID) {
+        if(dialog.peerID == rootScope.selectedPeerID) {
           appImManager.updateUnreadByDialog(dialog);
         }
 
@@ -219,14 +226,14 @@ export class AppDialogsManager {
       }
     });
 
-    $rootScope.$on('dialog_notify_settings', e => {
+    rootScope.on('dialog_notify_settings', e => {
       const dialog = appMessagesManager.getDialogByPeerID(e.detail)[0];
       if(dialog) {
         this.setUnreadMessages(dialog); // возможно это не нужно, но нужно менять is-muted
       }
     });
 
-    $rootScope.$on('peer_changed', (e) => {
+    rootScope.on('peer_changed', (e) => {
       let peerID = e.detail;
 
       let lastPeerID = this.lastActiveListElement && +this.lastActiveListElement.getAttribute('data-peerID');
@@ -244,7 +251,7 @@ export class AppDialogsManager {
       }
     });
 
-    $rootScope.$on('filter_update', (e) => {
+    rootScope.on('filter_update', (e) => {
       const filter: DialogFilter = e.detail;
       if(!this.filtersRendered[filter.id]) {
         this.addFilter(filter);
@@ -264,7 +271,7 @@ export class AppDialogsManager {
       elements.title.innerHTML = RichTextProcessor.wrapEmojiText(filter.title);
     });
 
-    $rootScope.$on('filter_delete', (e) => {
+    rootScope.on('filter_delete', (e) => {
       const filter: DialogFilter = e.detail;
       const elements = this.filtersRendered[filter.id];
       if(!elements) return;
@@ -284,7 +291,7 @@ export class AppDialogsManager {
       }
     });
 
-    $rootScope.$on('filter_order', (e) => {
+    rootScope.on('filter_order', (e) => {
       const order = e.detail;
       
       const containerToAppend = this.folders.menu.firstElementChild as HTMLUListElement;
@@ -303,7 +310,7 @@ export class AppDialogsManager {
     });
 
     const foldersScrollable = new ScrollableX(this.folders.menuScrollContainer);
-    this.chatsContainer.prepend(this.folders.menuScrollContainer);
+    bottomPart.prepend(this.folders.menuScrollContainer);
     const selectTab = horizontalMenu(this.folders.menu, this.folders.container, (id, tabContent) => {
       /* if(id != 0) {
         id += 1;
@@ -345,6 +352,49 @@ export class AppDialogsManager {
         });
       });
     });
+
+    const statusDiv = document.createElement('div');
+    statusDiv.classList.add('connection-status');
+
+    const networkButton = Button('btn-primary bg-warning connection-status-button');
+    networkButton.innerText = 'Waiting for network...';
+    putPreloader(networkButton);
+    statusDiv.append(networkButton);
+    this.chatsContainer.append(statusDiv, bottomPart);
+
+    rootScope.on('connection_status_change', e => {
+      const status = e.detail;
+      console.log(status);
+
+      setConnectionStatus();
+    });
+
+    const setConnectionStatus = () => {
+      AppStorage.get<number>('dc').then(baseDcID => {
+        if(setFirstConnectionTimeout) {
+          clearTimeout(setFirstConnectionTimeout);
+          setFirstConnectionTimeout = 0;
+        }
+
+        const status = rootScope.connectionStatus['NET-' + baseDcID];
+        SetTransition(statusDiv, 'is-not-connected', !status?.online, 200);
+      });
+    };
+
+    let setFirstConnectionTimeout = window.setTimeout(setConnectionStatus, 2e3);
+
+    /* let bool = true;
+    document.addEventListener('dblclick', () => {
+      rootScope.broadcast('connection_status_change', {
+        dcID: 5,
+        isFileDownload: false,
+        isFileNetworker: false,
+        isFileUpload: false,
+        name: "NET-5",
+        online: bool = !bool,
+        _: "networkerStatus"
+      });
+    }); */
 
     /* const mutationObserver = new MutationObserver((mutationList, observer) => {
 
@@ -754,7 +804,7 @@ export class AppDialogsManager {
           const senderBold = document.createElement('b');
 
           let str = '';
-          if(sender.id == $rootScope.myID) {
+          if(sender.id == rootScope.myID) {
             str = 'You';
           } else {
             //str = sender.first_name || sender.last_name || sender.username;
@@ -808,7 +858,7 @@ export class AppDialogsManager {
 
     const lastMessage = appMessagesManager.getMessage(dialog.top_message);
     if(lastMessage._ != 'messageEmpty' && !lastMessage.deleted && 
-      lastMessage.fromID == $rootScope.myID && lastMessage.peerID != $rootScope.myID/*  && 
+      lastMessage.fromID == rootScope.myID && lastMessage.peerID != rootScope.myID/*  && 
       dialog.read_outbox_max_id */) { // maybe comment, 06.20.2020
       const outgoing = (lastMessage.pFlags && lastMessage.pFlags.unread)
         /*  && dialog.read_outbox_max_id != 0 */; // maybe uncomment, 31.01.2020
@@ -851,7 +901,7 @@ export class AppDialogsManager {
       this.accumulateArchivedTimeout = 0;
       const dialogs = appMessagesManager.dialogsStorage.getFolder(1);
       const sum = dialogs.reduce((acc, dialog) => acc + dialog.unread_count, 0);
-      $rootScope.$broadcast('dialogs_archived_unread', {count: sum});
+      rootScope.broadcast('dialogs_archived_unread', {count: sum});
     }, 0);
   }
 
@@ -906,7 +956,7 @@ export class AppDialogsManager {
     avatarEl.setAttribute('peer', '' + peerID);
     avatarEl.classList.add('dialog-avatar');
 
-    if(drawStatus && peerID != $rootScope.myID && dialog.peer) {
+    if(drawStatus && peerID != rootScope.myID && dialog.peer) {
       const peer = dialog.peer;
       
       switch(peer._) {
@@ -932,7 +982,7 @@ export class AppDialogsManager {
 
     const titleSpan = document.createElement('span');
 
-    if(peerID == $rootScope.myID && meAsSaved) {
+    if(peerID == rootScope.myID && meAsSaved) {
       title = onlyFirstName ? 'Saved' : 'Saved Messages';
     } 
 
@@ -1037,7 +1087,7 @@ export class AppDialogsManager {
 
       this.doms[dialog.peerID] = dom;
 
-      if($rootScope.selectedPeerID == peerID) {
+      if(rootScope.selectedPeerID == peerID) {
         li.classList.add('active');
         this.lastActiveListElement = li;
       }

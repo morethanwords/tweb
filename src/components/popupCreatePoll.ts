@@ -1,7 +1,7 @@
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import appPeersManager from "../lib/appManagers/appPeersManager";
 import appPollsManager, { Poll } from "../lib/appManagers/appPollsManager";
-import $rootScope from "../lib/rootScope";
+import rootScope from "../lib/rootScope";
 import { cancelEvent, findUpTag, getRichValue, isInputEmpty, whichChild } from "../helpers/dom";
 import CheckboxField from "./checkbox";
 import InputField from "./inputField";
@@ -57,7 +57,7 @@ export default class PopupCreatePoll extends PopupElement {
     settingsCaption.classList.add('caption');
     settingsCaption.innerText = 'Settings';
 
-    const peerID = $rootScope.selectedPeerID;
+    const peerID = rootScope.selectedPeerID;
     
     if(!appPeersManager.isBroadcast(peerID)) {
       this.anonymousCheckboxField = CheckboxField('Anonymous Voting', 'anonymous');
@@ -213,7 +213,7 @@ export default class PopupCreatePoll extends PopupElement {
 
     //console.log('Will try to create poll:', inputMediaPoll);
 
-    appMessagesManager.sendOther($rootScope.selectedPeerID, inputMediaPoll);
+    appMessagesManager.sendOther(rootScope.selectedPeerID, inputMediaPoll);
   };
 
   onInput = (e: Event) => {

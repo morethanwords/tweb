@@ -7,7 +7,7 @@ import appProfileManager from "../../../lib/appManagers/appProfileManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import { logger } from "../../../lib/logger";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
-import $rootScope from "../../../lib/rootScope";
+import rootScope from "../../../lib/rootScope";
 import AppMediaViewer from "../../appMediaViewer";
 import AvatarElement from "../../avatar";
 import { horizontalMenu } from "../../horizontalMenu";
@@ -408,7 +408,7 @@ export default class AppSharedMediaTab implements SliderTab {
           
           const load = () => appPhotosManager.preloadPhoto(isPhoto ? media.id : media, appPhotosManager.choosePhotoSize(media, 200, 200))
           .then(() => {
-            if($rootScope.selectedPeerID != peerID) {
+            if(rootScope.selectedPeerID != peerID) {
               this.log.warn('peer changed');
               return;
             }
@@ -551,7 +551,7 @@ export default class AppSharedMediaTab implements SliderTab {
           if(webpage.photo) {
             let load = () => appPhotosManager.preloadPhoto(webpage.photo.id, appPhotosManager.choosePhotoSize(webpage.photo, 60, 60))
             .then(() => {
-              if($rootScope.selectedPeerID != peerID) {
+              if(rootScope.selectedPeerID != peerID) {
                 this.log.warn('peer changed');
                 return;
               }
@@ -701,7 +701,7 @@ export default class AppSharedMediaTab implements SliderTab {
         
         this.log(logStr + 'search house of glass', type, value);
 
-        if($rootScope.selectedPeerID != peerID) {
+        if(rootScope.selectedPeerID != peerID) {
           this.log.warn('peer changed');
           return;
         }
@@ -826,14 +826,14 @@ export default class AppSharedMediaTab implements SliderTab {
   }
 
   public fillProfileElements() {
-    let peerID = this.peerID = $rootScope.selectedPeerID;
+    let peerID = this.peerID = rootScope.selectedPeerID;
 
     this.cleanupHTML();
 
     this.profileElements.avatar.setAttribute('peer', '' + peerID);
 
     // username
-    if(peerID != $rootScope.myID) {
+    if(peerID != rootScope.myID) {
       let username = appPeersManager.getPeerUsername(peerID);
       if(username) {
         setText(appPeersManager.getPeerUsername(peerID), this.profileElements.username);
@@ -859,7 +859,7 @@ export default class AppSharedMediaTab implements SliderTab {
       //membersLi.style.display = 'none';
 
       let user = appUsersManager.getUser(peerID);
-      if(user.phone && peerID != $rootScope.myID) {
+      if(user.phone && peerID != rootScope.myID) {
         setText(user.rPhone, this.profileElements.phone);
       }
       
@@ -869,7 +869,7 @@ export default class AppSharedMediaTab implements SliderTab {
           return;
         }
         
-        if(userFull.rAbout && peerID != $rootScope.myID) {
+        if(userFull.rAbout && peerID != rootScope.myID) {
           setText(userFull.rAbout, this.profileElements.bio);
         }
         

@@ -39,7 +39,7 @@ import { logger, LogLevels } from "../logger";
 import apiManager from '../mtproto/mtprotoworker';
 import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
 import { RichTextProcessor } from "../richtextprocessor";
-import $rootScope from '../rootScope';
+import rootScope from '../rootScope';
 import { cancelEvent, findUpClassName, findUpTag, placeCaretAtEnd, whichChild } from "../../helpers/dom";
 import apiUpdatesManager from './apiUpdatesManager';
 import appChatsManager, { Channel, Chat } from "./appChatsManager";
@@ -163,7 +163,7 @@ export class AppImManager {
   public hideRightSidebar = false;
 
   get myID() {
-    return $rootScope.myID;
+    return rootScope.myID;
   }
 
   constructor() {
@@ -230,7 +230,7 @@ export class AppImManager {
     this.btnJoin.parentElement.insertBefore(this.pinnedMessageContainer.divAndCaption.container, this.btnJoin);
 
     // will call when message is sent (only 1)
-    $rootScope.$on('history_append', (e) => {
+    rootScope.on('history_append', (e) => {
       let details = e.detail;
 
       if(!this.scrolledAllDown) {
@@ -241,7 +241,7 @@ export class AppImManager {
     });
     
     // will call when sent for update pos
-    $rootScope.$on('history_update', (e) => {
+    rootScope.on('history_update', (e) => {
       let details = e.detail;
       
       if(details.mid && details.peerID == this.peerID) {
@@ -262,7 +262,7 @@ export class AppImManager {
       }
     });
     
-    $rootScope.$on('history_multiappend', (e) => {
+    rootScope.on('history_multiappend', (e) => {
       const msgIDsByPeer = e.detail;
 
       for(const peerID in msgIDsByPeer) {
@@ -274,7 +274,7 @@ export class AppImManager {
       this.renderNewMessagesByIDs(msgIDs);
     });
     
-    $rootScope.$on('history_delete', (e) => {
+    rootScope.on('history_delete', (e) => {
       const {peerID, msgs} = e.detail;
 
       const mids = Object.keys(msgs).map(s => +s);
@@ -285,14 +285,14 @@ export class AppImManager {
       }
     });
 
-    $rootScope.$on('dialog_flush', (e) => {
+    rootScope.on('dialog_flush', (e) => {
       let peerID: number = e.detail.peerID;
       if(this.peerID == peerID) {
         this.deleteMessagesByIDs(Object.keys(this.bubbles).map(m => +m));
       }
     });
 
-    $rootScope.$on('chat_update', (e) => {
+    rootScope.on('chat_update', (e) => {
       const peerID: number = e.detail;
       if(this.peerID == -peerID) {
         const chat = appChatsManager.getChat(peerID) as Channel | Chat;
@@ -302,7 +302,7 @@ export class AppImManager {
     });
     
     // Calls when message successfully sent and we have an ID
-    $rootScope.$on('message_sent', (e) => {
+    rootScope.on('message_sent', (e) => {
       const {tempID, mid} = e.detail;
       
       this.log('message_sent', e.detail);
@@ -386,7 +386,7 @@ export class AppImManager {
       }
     });
     
-    $rootScope.$on('message_edit', (e) => {
+    rootScope.on('message_edit', (e) => {
       const {peerID, mid} = e.detail;
       
       if(peerID != this.peerID) return;
@@ -395,7 +395,7 @@ export class AppImManager {
       this.renderMessage(mounted.message, true, false, mounted.bubble, false);
     });
 
-    $rootScope.$on('album_edit', (e) => {
+    rootScope.on('album_edit', (e) => {
       const {peerID, groupID, deletedMids} = e.detail;
       
       if(peerID != this.peerID) return;
@@ -407,7 +407,7 @@ export class AppImManager {
       this.renderMessage(appMessagesManager.getMessage(renderMaxID), true, false, this.bubbles[maxID], false);
     });
     
-    $rootScope.$on('peer_pinned_message', (e) => {
+    rootScope.on('peer_pinned_message', (e) => {
       const peerID = e.detail;
 
       if(peerID == this.peerID) {
@@ -418,7 +418,7 @@ export class AppImManager {
       }
     });
 
-    $rootScope.$on('messages_downloaded', (e) => {
+    rootScope.on('messages_downloaded', (e) => {
       const mids: number[] = e.detail;
       
       mids.forEach(mid => {
@@ -448,13 +448,13 @@ export class AppImManager {
       });
     });
     
-    $rootScope.$on('dialog_drop', (e) => {
+    rootScope.on('dialog_drop', (e) => {
       if(e.detail.peerID == this.peerID) {
         this.setPeer(0);
       }
     });
 
-    $rootScope.$on('apiUpdate', (e) => {
+    rootScope.on('apiUpdate', (e) => {
       const update = e.detail;
       
       this.handleUpdate(update);
@@ -463,12 +463,12 @@ export class AppImManager {
     window.addEventListener('blur', () => {
       animationIntersector.checkAnimations(true);
       
-      this.offline = $rootScope.idle.isIDLE = true;
+      this.offline = rootScope.idle.isIDLE = true;
       this.updateStatus();
       clearInterval(this.updateStatusInterval);
       
       window.addEventListener('focus', () => {
-        this.offline = $rootScope.idle.isIDLE = false;
+        this.offline = rootScope.idle.isIDLE = false;
         this.updateStatus();
         this.updateStatusInterval = window.setInterval(() => this.updateStatus(), 50e3);
 
@@ -725,7 +725,7 @@ export class AppImManager {
     });
     
     const onKeyDown = (e: KeyboardEvent) => {
-      if($rootScope.overlayIsActive) return;
+      if(rootScope.overlayIsActive) return;
       
       const target = e.target as HTMLElement;
       
@@ -1159,8 +1159,8 @@ export class AppImManager {
       this.topbar.style.display = this.chatInput.style.display = 'none';
       this.goDownBtn.classList.add('hide');
       this.cleanup(true);
-      this.peerID = $rootScope.selectedPeerID = 0;
-      $rootScope.$broadcast('peer_changed', this.peerID);
+      this.peerID = rootScope.selectedPeerID = 0;
+      rootScope.broadcast('peer_changed', this.peerID);
 
       this.selectTab(0);
       
@@ -1218,7 +1218,7 @@ export class AppImManager {
     }
 
     // set new
-    this.peerID = $rootScope.selectedPeerID = peerID;
+    this.peerID = rootScope.selectedPeerID = peerID;
 
     this.log('setPeer peerID:', this.peerID, dialog, lastMsgID, topMessage);
 
@@ -1436,7 +1436,7 @@ export class AppImManager {
 
     appSidebarRight.sharedMediaTab.fillProfileElements();
 
-    $rootScope.$broadcast('peer_changed', this.peerID);
+    rootScope.broadcast('peer_changed', this.peerID);
   }
   
   public updateUnreadByDialog(dialog: Dialog) {
@@ -2894,7 +2894,7 @@ export class AppImManager {
         const dialog = appMessagesManager.getDialogByPeerID(peerID)[0];
         if(dialog) {
           dialog.notify_settings = notify_settings;
-          $rootScope.$broadcast('dialog_notify_settings', peerID);
+          rootScope.broadcast('dialog_notify_settings', peerID);
         }
         
         if(peerID == this.peerID) {

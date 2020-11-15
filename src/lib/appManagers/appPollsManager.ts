@@ -4,7 +4,7 @@ import { logger, LogLevels } from "../logger";
 import apiManager from "../mtproto/mtprotoworker";
 import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
 import { RichTextProcessor } from "../richtextprocessor";
-import $rootScope from "../rootScope";
+import rootScope from "../rootScope";
 import apiUpdatesManager from "./apiUpdatesManager";
 import appMessagesManager from './appMessagesManager';
 import appPeersManager from './appPeersManager';
@@ -77,7 +77,7 @@ class AppPollsManager {
   private log = logger('POLLS', LogLevels.error);
 
   constructor() {
-    $rootScope.$on('apiUpdate', (e) => {
+    rootScope.on('apiUpdate', (e) => {
       let update = e.detail;
       
       this.handleUpdate(update);
@@ -95,7 +95,7 @@ class AppPollsManager {
         }
 
         poll = this.savePoll(poll, update.results);
-        $rootScope.$broadcast('poll_update', {poll, results: update.results});
+        rootScope.broadcast('poll_update', {poll, results: update.results});
         break;
       }
 

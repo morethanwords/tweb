@@ -4,7 +4,7 @@ import { ChatAdminRights, ChatBannedRights, ChatFull, ChatParticipants, InputCha
 import apiManager from '../mtproto/mtprotoworker';
 import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
 import { RichTextProcessor } from "../richtextprocessor";
-import $rootScope from "../rootScope";
+import rootScope from "../rootScope";
 import apiUpdatesManager from "./apiUpdatesManager";
 import appMessagesManager from "./appMessagesManager";
 import appProfileManager from "./appProfileManager";
@@ -74,14 +74,14 @@ export class AppChatsManager {
   public megagroupOnlines: {[id: number]: {timestamp: number, onlines: number}} = {};
 
   constructor() {
-    $rootScope.$on('apiUpdate', (e) => {
+    rootScope.on('apiUpdate', (e) => {
       // console.log('on apiUpdate', update)
       const update = e.detail;
       switch(update._) {
         case 'updateChannel':
           const channelID = update.channel_id;
           //console.log('updateChannel:', update);
-          $rootScope.$broadcast('channel_settings', {channelID: channelID});
+          rootScope.broadcast('channel_settings', {channelID: channelID});
           break;
       }
     });
@@ -143,7 +143,7 @@ export class AppChatsManager {
       }
 
       safeReplaceObject(oldChat, chat);
-      $rootScope.$broadcast('chat_update', chat.id);
+      rootScope.broadcast('chat_update', chat.id);
     }
 
     if(this.cachedPhotoLocations[chat.id] !== undefined) {
@@ -152,7 +152,7 @@ export class AppChatsManager {
     }
 
     if(changedPhoto) {
-      $rootScope.$broadcast('avatar_update', -chat.id);
+      rootScope.broadcast('avatar_update', -chat.id);
     }
   }
 

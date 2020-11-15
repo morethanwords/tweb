@@ -10,7 +10,7 @@ import apiManager from "../../lib/mtproto/mtprotoworker";
 //import Recorder from '../opus-recorder/dist/recorder.min';
 import opusDecodeController from "../../lib/opusDecodeController";
 import { RichTextProcessor } from "../../lib/richtextprocessor";
-import $rootScope from '../../lib/rootScope';
+import rootScope from '../../lib/rootScope';
 import { cancelEvent, findUpClassName, getRichValue, isInputEmpty, serializeNodes } from "../../helpers/dom";
 import ButtonMenu, { ButtonMenuItemOptions } from '../buttonMenu';
 import emoticonsDropdown from "../emoticonsDropdown";
@@ -151,7 +151,7 @@ export class ChatInput {
 
     this.updateSendBtn();
 
-    $rootScope.$on('peer_changed', (e) => {
+    rootScope.on('peer_changed', (e) => {
       const peerID = e.detail;
       
       const visible = this.attachMenuButtons.filter(button => {
@@ -249,12 +249,12 @@ export class ChatInput {
       if(!value.trim() && !serializeNodes(Array.from(this.messageInput.childNodes)).trim()) {
         this.messageInput.innerHTML = '';
 
-        appMessagesManager.setTyping($rootScope.selectedPeerID, 'sendMessageCancelAction');
+        appMessagesManager.setTyping(rootScope.selectedPeerID, 'sendMessageCancelAction');
       } else {
         const time = Date.now();
         if(time - this.lastTimeType >= 6000) {
           this.lastTimeType = time;
-          appMessagesManager.setTyping($rootScope.selectedPeerID, 'sendMessageTypingAction');
+          appMessagesManager.setTyping(rootScope.selectedPeerID, 'sendMessageTypingAction');
         }
       }
 
@@ -299,8 +299,8 @@ export class ChatInput {
     }, false);
 
     document.addEventListener('paste', (e) => {
-      const peerID = $rootScope.selectedPeerID;
-      if(!peerID || $rootScope.overlayIsActive || (peerID < 0 && !appChatsManager.hasRights(peerID, 'send', 'send_media'))) {
+      const peerID = rootScope.selectedPeerID;
+      if(!peerID || rootScope.overlayIsActive || (peerID < 0 && !appChatsManager.hasRights(peerID, 'send', 'send_media'))) {
         return;
       }
 
@@ -341,7 +341,7 @@ export class ChatInput {
           this.sendMessage();
         }
       } else {
-        if($rootScope.selectedPeerID < 0 && !appChatsManager.hasRights($rootScope.selectedPeerID, 'send', 'send_media')) {
+        if(rootScope.selectedPeerID < 0 && !appChatsManager.hasRights(rootScope.selectedPeerID, 'send', 'send_media')) {
           toast(POSTING_MEDIA_NOT_ALLOWED);
           return;
         }
@@ -544,9 +544,9 @@ export class ChatInput {
           }
         });
       } else if(this.helperType == 'reply') {
-        appImManager.setPeer($rootScope.selectedPeerID, this.replyToMsgID);
+        appImManager.setPeer(rootScope.selectedPeerID, this.replyToMsgID);
       } else if(this.helperType == 'edit') {
-        appImManager.setPeer($rootScope.selectedPeerID, this.editMsgID);
+        appImManager.setPeer(rootScope.selectedPeerID, this.editMsgID);
       }
     });
   }

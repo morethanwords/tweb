@@ -3,7 +3,7 @@ import appDialogsManager from "../lib/appManagers/appDialogsManager";
 import appImManager from "../lib/appManagers/appImManager";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import appPeersManager from "../lib/appManagers/appPeersManager";
-import $rootScope from "../lib/rootScope";
+import rootScope from "../lib/rootScope";
 import { findUpTag } from "../helpers/dom";
 import { parseMenuButtonsTo, positionMenu, openBtnMenu } from "./misc";
 import { PopupButton } from "./popup";
@@ -166,7 +166,7 @@ export default class DialogsContextMenu {
 
     this.selectedID = +li.getAttribute('data-peerID');
     const dialog = appMessagesManager.getDialogByPeerID(this.selectedID)[0];
-    const notOurDialog = dialog.peerID != $rootScope.myID;
+    const notOurDialog = dialog.peerID != rootScope.myID;
 
     // archive button
     if(notOurDialog) {
@@ -231,7 +231,7 @@ export default class DialogsContextMenu {
     } else {
       deleteButtonText = 'Delete';
       //deleteButtonText = 'Delete chat';
-      this.peerType = this.selectedID == $rootScope.myID ? 'saved' : 'chat';
+      this.peerType = this.selectedID == rootScope.myID ? 'saved' : 'chat';
     }
     (this.buttons.delete.firstElementChild as HTMLElement).innerText = deleteButtonText;
 

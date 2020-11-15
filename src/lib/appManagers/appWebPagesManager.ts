@@ -2,7 +2,7 @@ import appPhotosManager from "./appPhotosManager";
 import appDocsManager from "./appDocsManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import { ReferenceContext } from "../mtproto/referenceDatabase";
-import $rootScope from "../rootScope";
+import rootScope from "../rootScope";
 import { safeReplaceObject } from "../../helpers/object";
 import { limitSymbols } from "../../helpers/string";
 
@@ -11,7 +11,7 @@ class AppWebPagesManager {
   pendingWebPages: any = {};
   
   constructor() {
-    $rootScope.$on('apiUpdate', (e) => {
+    rootScope.on('apiUpdate', (e) => {
       const update = e.detail;
 
       switch(update._) {
@@ -93,7 +93,7 @@ class AppWebPagesManager {
         msgs.push(+msgID);
       }
 
-      $rootScope.$broadcast('webpage_updated', {
+      rootScope.broadcast('webpage_updated', {
         id: apiWebPage.id,
         msgs: msgs
       });

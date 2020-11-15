@@ -1,4 +1,4 @@
-import $rootScope from "../lib/rootScope";
+import rootScope from "../lib/rootScope";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import appDocsManager, {MyDocument} from "../lib/appManagers/appDocsManager";
 import { CancellablePromise, deferredPromise } from "../helpers/cancellablePromise";
@@ -66,7 +66,7 @@ class AppMediaPlaybackController {
 
       // audio_pause не успеет сработать без таймаута
       setTimeout(() => {
-        $rootScope.$broadcast('audio_play', {doc, mid});
+        rootScope.broadcast('audio_play', {doc, mid});
       }, 0);
     });
 
@@ -158,7 +158,7 @@ class AppMediaPlaybackController {
   }
 
   onPause = (e: Event) => {
-    $rootScope.$broadcast('audio_pause');
+    rootScope.broadcast('audio_pause');
   };
 
   onEnded = (e: Event) => {

@@ -1,7 +1,7 @@
 import { isInDOM } from "../helpers/dom";
 import { RLottiePlayer } from "../lib/lottieLoader";
 import { MOUNT_CLASS_TO } from "../lib/mtproto/mtproto_config";
-import $rootScope from "../lib/rootScope";
+import rootScope from "../lib/rootScope";
 import { isSafari } from "../helpers/userAgent";
 
 export interface AnimationItem {
@@ -22,7 +22,7 @@ export class AnimationIntersector {
 
   constructor() {
     this.observer = new IntersectionObserver((entries) => {
-      if($rootScope.idle.isIDLE) return;
+      if(rootScope.idle.isIDLE) return;
 
       for(const entry of entries) {
         const target = entry.target;
@@ -99,7 +99,7 @@ export class AnimationIntersector {
   }
 
   public checkAnimations(blurred?: boolean, group?: string, destroy = false) {
-    if($rootScope.idle.isIDLE) return;
+    if(rootScope.idle.isIDLE) return;
     
     const groups = group /* && false */ ? [group] : Object.keys(this.byGroups);
 

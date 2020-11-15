@@ -14,7 +14,7 @@ import { CancellablePromise, deferredPromise } from '../../helpers/cancellablePr
 import { bytesFromHex, bytesToHex } from '../../helpers/bytes';
 
 /// #if !MTPROTO_WORKER
-import $rootScope from '../rootScope';
+import rootScope from '../rootScope';
 /// #endif
 
 /* var networker = apiManager.cachedNetworkers.websocket.upload[2];
@@ -90,7 +90,7 @@ export class ApiManager {
     this.telegramMeNotify(true);
 
     /// #if !MTPROTO_WORKER
-    $rootScope.$broadcast('user_auth', fullUserAuth);
+    rootScope.broadcast('user_auth', fullUserAuth);
     /// #endif
   }
 
@@ -206,6 +206,10 @@ export class ApiManager {
           throw error;
         }
       }
+
+      /* networker.onConnectionStatusChange = (online) => {
+        console.log('status:', online);
+      }; */
 
       delete this.gettingNetworkers[getKey];
       return cache[dcID] = networker;

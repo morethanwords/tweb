@@ -56,6 +56,10 @@ networkerFactory.setUpdatesProcessor((obj, bool) => {
   respond({update: {obj, bool}});
 });
 
+networkerFactory.onConnectionStatusChange = (status) => {
+  respond({type: 'connectionStatusChange', payload: status});
+};
+
 ctx.addEventListener('message', async(e) => {
   try {
     const task = e.data;

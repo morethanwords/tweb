@@ -68,9 +68,13 @@ export default class Socket extends MTTransport {
 
       this.releasePending();
 
-      if(this.networker && this.lastCloseTime) {
-        this.networker.cleanupSent();
-        this.networker.resend();
+      if(this.networker) {
+        this.networker.setConnectionStatus(true);
+
+        if(this.lastCloseTime) {
+          this.networker.cleanupSent();
+          this.networker.resend();
+        }
       }
     //}, 3e3);
   };
@@ -87,6 +91,10 @@ export default class Socket extends MTTransport {
     const diff = time - this.lastCloseTime;
     const needTimeout = !isNaN(diff) && diff < CONNECTION_RETRY_TIMEOUT ? CONNECTION_RETRY_TIMEOUT - diff : 0;
 
+    if(this.networker) {
+      this.networker.setConnectionStatus(false);
+    }
+
     this.log('will try to reconnect after timeout:', needTimeout / 1000);
     setTimeout(() => {
       this.log('trying to reconnect...');
@@ -96,10 +104,6 @@ export default class Socket extends MTTransport {
         if(pending.bodySent) {
           pending.bodySent = false;
         }
-      }
-
-      if(this.networker) {
-        this.pending
       }
 
       this.connect();

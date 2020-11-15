@@ -70,7 +70,9 @@ export type MTMessage = InvokeApiOptions & MTMessageOptions & {
 export default class MTPNetworker {
   private authKeyUint8: Uint8Array;
 
-  private upload: boolean;
+  private isFileNetworker: boolean;
+  private isFileUpload: boolean;
+  private isFileDownload: boolean;
 
   private lastServerMessages: Array<string> = [];
 
@@ -105,19 +107,27 @@ export default class MTPNetworker {
 
   //private transport: MTTransport;
 
+  private name: string;
   private log: ReturnType<typeof logger>;
+  
+  private isOnline = false;
+  //public onConnectionStatusChange: (online: boolean) => void;
 
-  constructor(private dcID: number, private authKey: number[], private authKeyID: Uint8Array,
-    private serverSalt: number[], private transport: MTTransport, private options: InvokeApiOptions = {}) {
+  constructor(public dcID: number, private authKey: number[], private authKeyID: Uint8Array,
+    private serverSalt: number[], private transport: MTTransport, options: InvokeApiOptions = {}) {
     this.authKeyUint8 = convertToUint8Array(this.authKey);
     //this.authKeyID = sha1BytesSync(this.authKey).slice(-8);
 
     //console.trace('Create', dcID, options);
 
-    const suffix = this.options.fileUpload ? '-U' : this.options.fileDownload ? '-D' : '';
-    this.upload = this.options.fileUpload || this.options.fileDownload;
-    //this.log = logger('NET-' + dcID + suffix, this.upload && this.dcID == 2 ? LogLevels.debug | LogLevels.warn | LogLevels.log | LogLevels.error : LogLevels.error);
-    this.log = logger('NET-' + dcID + suffix, LogLevels.log | LogLevels.error);
+    this.isFileUpload = !!options.fileUpload;
+    this.isFileDownload = !!options.fileDownload;
+    this.isFileNetworker = this.isFileUpload || this.isFileDownload;
+
+    const suffix = this.isFileUpload ? '-U' : this.isFileDownload ? '-D' : '';
+    this.name = 'NET-' + dcID + suffix;
+    //this.log = logger(this.name, this.upload && this.dcID == 2 ? LogLevels.debug | LogLevels.warn | LogLevels.log | LogLevels.error : LogLevels.error);
+    this.log = logger(this.name, LogLevels.log | LogLevels.error);
     this.log('constructor'/* , this.authKey, this.authKeyID, this.serverSalt */);
 
     // Test resend after bad_server_salt
@@ -130,8 +140,8 @@ export default class MTPNetworker {
 
     // if(!NetworkerFactory.offlineInited) {
     //   NetworkerFactory.offlineInited = true;
-    //   /* $rootScope.offline = true
-    //   $rootScope.offlineConnecting = true */
+    //   /* rootScope.offline = true
+    //   rootScope.offlineConnecting = true */
     // }
 
     /// #if MTPROTO_HTTP_UPLOAD
@@ -198,7 +208,7 @@ export default class MTPNetworker {
     return seqNo;
   }
 
-  public wrapMtpCall(method: string, params: any = {}, options: MTMessageOptions = {}) {
+  public wrapMtpCall(method: string, params: any, options: MTMessageOptions) {
     const serializer = new TLSerialization({mtproto: true});
   
     serializer.storeMethod(method, params);
@@ -218,7 +228,7 @@ export default class MTPNetworker {
     return this.pushMessage(message, options);
   }
   
-  public wrapMtpMessage(object: any = {}, options: MTMessageOptions = {}) {
+  public wrapMtpMessage(object: any, options: MTMessageOptions) {
     const serializer = new TLSerialization({mtproto: true});
     serializer.storeObject(object, 'Object');
   
@@ -321,7 +331,7 @@ export default class MTPNetworker {
     AppStorage.get<number>('dc').then((baseDcID: number) => {
       if(isClean && (
           baseDcID != this.dcID ||
-          this.upload ||
+          this.isFileNetworker ||
           (this.sleepAfter && Date.now() > this.sleepAfter)
         )) {
         //console.warn(dT(), 'Send long-poll for DC is delayed', this.dcID, this.sleepAfter);
@@ -354,7 +364,7 @@ export default class MTPNetworker {
   }
 
   public checkConnection = (event: Event | string) => {
-    /* $rootScope.offlineConnecting = true */
+    /* rootScope.offlineConnecting = true */
   
     this.log('Check connection', event);
     clearTimeout(this.checkConnectionTimeout);
@@ -374,14 +384,14 @@ export default class MTPNetworker {
     };
 
     this.sendEncryptedRequest(pingMessage).then((result) => {
-      /* delete $rootScope.offlineConnecting */
+      /* delete rootScope.offlineConnecting */
       this.toggleOffline(false);
     }, () => {
       this.log('Delay ', this.checkConnectionPeriod * 1000);
       this.checkConnectionTimeout = setTimeout(this.checkConnection, this.checkConnectionPeriod * 1000 | 0);
       this.checkConnectionPeriod = Math.min(60, this.checkConnectionPeriod * 1.5);
       /* setTimeout(function() {
-        delete $rootScope.offlineConnecting
+        delete rootScope.offlineConnecting
       }, 1000); */
     });
   };
@@ -393,8 +403,8 @@ export default class MTPNetworker {
     }
   
     this.offline = enabled;
-    /* $rootScope.offline = enabled;
-    $rootScope.offlineConnecting = false; */
+    /* rootScope.offline = enabled;
+    rootScope.offlineConnecting = false; */
 
     if(this.offline) {
       clearTimeout(this.nextReqTimeout);
@@ -481,17 +491,20 @@ export default class MTPNetworker {
     seq_no: number,
     body: Uint8Array | number[],
     isAPI?: boolean
-  }, options: MTMessageOptions = {}) {
-    return new Promise((resolve, reject) => {
-      this.sentMessages[message.msg_id] = Object.assign(message, options, {
-        deferred: {resolve, reject}
-      });
+  }, options: MTMessageOptions) {
+    const promise = new Promise((resolve, reject) => {
+      this.sentMessages[message.msg_id] = Object.assign(message, options, options.notContentRelated 
+        ? undefined 
+        : {
+          deferred: {resolve, reject}
+        }
+      );
 
-      // this.log('Networker pushMessage:', this.sentMessages[message.msg_id]);
+      //this.log.error('Networker pushMessage:', this.sentMessages[message.msg_id]);
 
       this.pendingMessages[message.msg_id] = 0;
     
-      if(!options || !options.noSchedule) {
+      if(!options.noSchedule) {
         this.scheduleRequest();
       }
 
@@ -499,6 +512,40 @@ export default class MTPNetworker {
         options.messageID = message.msg_id;
       }
     });
+
+    if(!options.notContentRelated && !options.noResponse) {
+      const timeout = setTimeout(() => {
+        this.log.error('timeout', message);
+        this.setConnectionStatus(false);
+      }, 5e3);
+  
+      promise.finally(() => {
+        clearTimeout(timeout);
+        this.setConnectionStatus(true);
+      });
+    }
+
+    return promise;
+  }
+
+  public setConnectionStatus(online: boolean) {
+    const willChange = this.isOnline != online;
+    this.isOnline = online;
+
+    if(willChange && NetworkerFactory.onConnectionStatusChange) {
+      NetworkerFactory.onConnectionStatusChange({
+        _: 'networkerStatus', 
+        online: this.isOnline, 
+        dcID: this.dcID,
+        name: this.name,
+        isFileNetworker: this.isFileNetworker,
+        isFileDownload: this.isFileDownload,
+        isFileUpload: this.isFileUpload
+      });
+    }
+    /* if(this.onConnectionStatusChange) {
+      this.onConnectionStatusChange(this.isOnline);
+    } */
   }
 
   public pushResend(messageID: string, delay = 0) {
@@ -1198,7 +1245,7 @@ export default class MTPNetworker {
         this.applyServerSalt(message.server_salt);
   
         AppStorage.get<number>('dc').then((baseDcID: number) => {
-          if(baseDcID == this.dcID && !this.upload && NetworkerFactory.updatesProcessor) {
+          if(baseDcID == this.dcID && !this.isFileNetworker && NetworkerFactory.updatesProcessor) {
             NetworkerFactory.updatesProcessor(message, true);
           }
         });

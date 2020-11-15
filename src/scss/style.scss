@@ -313,6 +313,10 @@ input, textarea {
   color: $color-error!important;
 }
 
+.bg-warning {
+  background: #fed85a;
+}
+
 #bubble-contextmenu, #dialogs-contextmenu {
 	position: fixed;
 	right: auto;

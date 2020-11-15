@@ -1,4 +1,4 @@
-import $rootScope from "../rootScope";
+import rootScope from "../rootScope";
 import apiManager from "../mtproto/mtprotoworker";
 import { deferredPromise, CancellablePromise } from "../../helpers/cancellablePromise";
 import type { DownloadOptions } from "../mtproto/apiFileManager";
@@ -30,7 +30,7 @@ export class AppDownloadManager {
   private uploadID = 0;
 
   constructor() {
-    $rootScope.$on('download_progress', (e) => {
+    rootScope.on('download_progress', (e) => {
       const details = e.detail as {done: number, fileName: string, total: number, offset: number};
       this.progress[details.fileName] = details;
 

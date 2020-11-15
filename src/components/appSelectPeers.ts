@@ -4,7 +4,7 @@ import appMessagesManager, { Dialog } from "../lib/appManagers/appMessagesManage
 import appPeersManager from "../lib/appManagers/appPeersManager";
 import appPhotosManager from "../lib/appManagers/appPhotosManager";
 import appUsersManager from "../lib/appManagers/appUsersManager";
-import $rootScope from "../lib/rootScope";
+import rootScope from "../lib/rootScope";
 import { cancelEvent, findUpAttribute, findUpClassName } from "../helpers/dom";
 import Scrollable from "./scrollable";
 
@@ -168,9 +168,9 @@ export default class AppSelectPeers {
     if(!this.offsetIndex && this.folderID == 0 && 
       (!this.query 
         || 'saved messages'.includes(this.query.toLowerCase()) 
-        || appUsersManager.getUser($rootScope.myID).sortName.includes(this.query.toLowerCase())) && 
+        || appUsersManager.getUser(rootScope.myID).sortName.includes(this.query.toLowerCase())) && 
       this.peerType.includes('dialogs')) {
-      this.renderResultsFunc([$rootScope.myID]);
+      this.renderResultsFunc([rootScope.myID]);
     }
   }
 
@@ -193,7 +193,7 @@ export default class AppSelectPeers {
       const newOffsetIndex = dialogs[dialogs.length - 1].index || 0;
 
       dialogs = dialogs.slice();
-      dialogs.findAndSplice(d => d.peerID == $rootScope.myID); // no my account
+      dialogs.findAndSplice(d => d.peerID == rootScope.myID); // no my account
 
       if(this.chatRightsAction) {
         dialogs = dialogs.filter(d => {
@@ -242,7 +242,7 @@ export default class AppSelectPeers {
       this.cachedContacts = (await this.promise)[0].slice(); */
       this.promise = appUsersManager.getContacts(this.query);
       this.cachedContacts = (await this.promise).slice();
-      this.cachedContacts.findAndSplice(userID => userID == $rootScope.myID); // no my account
+      this.cachedContacts.findAndSplice(userID => userID == rootScope.myID); // no my account
       this.promise = null;
     }
 
@@ -327,7 +327,7 @@ export default class AppSelectPeers {
       let subtitle = '';
       if(peerID < 0) {
         subtitle = appChatsManager.getChatMembersString(-peerID);
-      } else if(peerID == $rootScope.myID) {
+      } else if(peerID == rootScope.myID) {
         subtitle = 'chat with yourself';
       } else {
         subtitle = appUsersManager.getUserStatusString(peerID);
@@ -359,7 +359,7 @@ export default class AppSelectPeers {
     div.dataset.key = '' + peerID;
     if(typeof(peerID) === 'number') {
       if(title === undefined) {
-        title = peerID == $rootScope.myID ? 'Saved' : appPeersManager.getPeerTitle(peerID, false, true);
+        title = peerID == rootScope.myID ? 'Saved' : appPeersManager.getPeerTitle(peerID, false, true);
       }
 
       avatarEl.setAttribute('peer', '' + peerID);

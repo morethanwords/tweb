@@ -62,3 +62,13 @@ export namespace AuthState {
     _: 'authStateSignedIn'
   };
 }
+
+export type ConnectionStatusChange = {
+  _: 'networkerStatus', 
+  online: boolean, 
+  dcID: number,
+  name: string,
+  isFileNetworker: boolean,
+  isFileDownload: boolean,
+  isFileUpload: boolean
+};

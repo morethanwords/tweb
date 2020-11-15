@@ -9,10 +9,10 @@ import { Download } from "../lib/appManagers/appDownloadManager";
 import mediaSizes from "../helpers/mediaSizes";
 import { isSafari } from "../helpers/userAgent";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
-import $rootScope from "../lib/rootScope";
+import rootScope from "../lib/rootScope";
 import './middleEllipsis';
 
-$rootScope.$on('messages_media_read', e => {
+rootScope.on('messages_media_read', e => {
   const mids = e.detail;
 
   mids.forEach(mid => {
@@ -64,7 +64,7 @@ function wrapVoiceMessage(doc: MyDocument, audioEl: AudioElement, mid: number) {
   audioEl.classList.add('is-voice');
 
   const message = appMessagesManager.getMessage(mid);
-  const isOut = message.fromID == $rootScope.myID && message.peerID != $rootScope.myID;
+  const isOut = message.fromID == rootScope.myID && message.peerID != rootScope.myID;
   let isUnread = message && message.pFlags.media_unread;
   if(isUnread) {
     audioEl.classList.add('is-unread');

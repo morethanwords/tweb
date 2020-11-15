@@ -4,7 +4,7 @@ import type { MethodDeclMap } from '../../layer';
 import type { InvokeApiOptions } from '../../types';
 import CryptoWorkerMethods from '../crypto/crypto_methods';
 import { logger } from '../logger';
-import $rootScope from '../rootScope';
+import rootScope from '../rootScope';
 import AppStorage from '../storage';
 import webpWorkerController from '../webp/webpWorkerController';
 import type { DownloadOptions } from './apiFileManager';
@@ -127,7 +127,9 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
           this.updatesProcessor(task.update.obj, task.update.bool);
         }
       } else if(task.progress) {
-        $rootScope.$broadcast('download_progress', task.progress);
+        rootScope.broadcast('download_progress', task.progress);
+      } else if(task.type == 'connectionStatusChange') {
+        rootScope.broadcast('connection_status_change', task.payload);
       } else if(task.type == 'convertWebp') {
         webpWorkerController.postMessage(task);
       } else if((task as ServiceWorkerTaskResponse).type == 'requestFilePart') {
@@ -229,7 +231,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
   }
 
   public setUserAuth(userAuth: {id: number}) {
-    $rootScope.$broadcast('user_auth', userAuth);
+    rootScope.broadcast('user_auth', userAuth);
     return this.performTaskWorker('setUserAuth', userAuth);
   }
 

@@ -7,11 +7,11 @@ import appPeersManager from "../../lib/appManagers/appPeersManager";
 import appStateManager from "../../lib/appManagers/appStateManager";
 import appUsersManager from "../../lib/appManagers/appUsersManager";
 import { MOUNT_CLASS_TO } from "../../lib/mtproto/mtproto_config";
-import $rootScope from "../../lib/rootScope";
+import rootScope from "../../lib/rootScope";
 import { findUpClassName, findUpTag } from "../../helpers/dom";
 import AppSearch, { SearchGroup } from "../appSearch";
 import "../avatar";
-import { parseMenuButtonsTo } from "../misc";
+import { parseMenuButtonsTo, putPreloader } from "../misc";
 import { ScrollableX } from "../scrollable";
 import SearchInput from "../searchInput";
 import SidebarSlider from "../slider";
@@ -133,7 +133,7 @@ export class AppSidebarLeft extends SidebarSlider {
       [AppSidebarLeft.SLIDERITEMSIDS.newGroup]: newGroupTab,
       [AppSidebarLeft.SLIDERITEMSIDS.settings]: settingsTab,
       [AppSidebarLeft.SLIDERITEMSIDS.editProfile]: editProfileTab,
-      [AppSidebarLeft.SLIDERITEMSIDS.chatFolders]: this.chatFoldersTab = new AppChatFoldersTab(appMessagesManager, appPeersManager, this, apiManagerProxy, $rootScope),
+      [AppSidebarLeft.SLIDERITEMSIDS.chatFolders]: this.chatFoldersTab = new AppChatFoldersTab(appMessagesManager, appPeersManager, this, apiManagerProxy, rootScope),
       [AppSidebarLeft.SLIDERITEMSIDS.editFolder]: editFolderTab,
       [AppSidebarLeft.SLIDERITEMSIDS.includedChats]: includedChatsTab,
     });
@@ -141,7 +141,8 @@ export class AppSidebarLeft extends SidebarSlider {
     //this._selectTab(0); // make first tab as default
 
     this.searchInput = new SearchInput('Telegram Search');
-    this.sidebarEl.querySelector('.item-main .sidebar-header').append(this.searchInput.container);
+    const sidebarHeader = this.sidebarEl.querySelector('.item-main .sidebar-header');
+    sidebarHeader.append(this.searchInput.container);
 
     this.toolsBtn = this.sidebarEl.querySelector('.sidebar-tools-button') as HTMLButtonElement;
     this.backBtn = this.sidebarEl.querySelector('.sidebar-back-button') as HTMLButtonElement;
@@ -321,7 +322,7 @@ export class AppSidebarLeft extends SidebarSlider {
       });
     });
 
-    $rootScope.$on('dialogs_archived_unread', (e) => {
+    rootScope.on('dialogs_archived_unread', (e) => {
       this.archivedCount.innerText = '' + formatNumber(e.detail.count, 1);
       this.archivedCount.classList.toggle('hide', !e.detail.count);
     });

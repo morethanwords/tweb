@@ -2,7 +2,7 @@
 import { logger, LogLevels } from '../logger';
 import apiManager from '../mtproto/mtprotoworker';
 import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
-import $rootScope from '../rootScope';
+import rootScope from '../rootScope';
 //import networkerFactory from '../mtproto/networkerFactory';
 import appChatsManager from "./appChatsManager";
 import appPeersManager from "./appPeersManager";
@@ -151,10 +151,10 @@ export class ApiUpdatesManager {
       case 'updateShortChatMessage': {
         this.log('updateShortMessage | updateShortChatMessage', {...updateMessage});
         const isOut = updateMessage.pFlags.out;
-        const fromID = updateMessage.from_id || (isOut ? $rootScope.myID : updateMessage.user_id);
+        const fromID = updateMessage.from_id || (isOut ? rootScope.myID : updateMessage.user_id);
         const toID = updateMessage.chat_id
           ? -updateMessage.chat_id
-          : (updateMessage.user_id || $rootScope.myID);
+          : (updateMessage.user_id || rootScope.myID);
   
         this.processUpdate({
           _: 'updateNewMessage',
@@ -217,7 +217,7 @@ export class ApiUpdatesManager {
         updatesState.date = differenceResult.date;
         updatesState.seq = differenceResult.seq;
         updatesState.syncLoading = false;
-        $rootScope.$broadcast('stateSynchronized');
+        rootScope.broadcast('stateSynchronized');
         return false;
       }
 
@@ -266,7 +266,7 @@ export class ApiUpdatesManager {
         this.getDifference();
       } else {
         // this.log('finished get diff')
-        $rootScope.$broadcast('stateSynchronized');
+        rootScope.broadcast('stateSynchronized');
         updatesState.syncLoading = false;
       }
     }, () => {
@@ -299,7 +299,7 @@ export class ApiUpdatesManager {
       if(differenceResult._ == 'updates.channelDifferenceEmpty') {
         this.log('apply channel empty diff', differenceResult);
         channelState.syncLoading = false;
-        $rootScope.$broadcast('stateSynchronized');
+        rootScope.broadcast('stateSynchronized');
         return false;
       }
   
@@ -337,7 +337,7 @@ export class ApiUpdatesManager {
         this.getChannelDifference(channelID);
       } else {
         this.log('finished channel get diff');
-        $rootScope.$broadcast('stateSynchronized');
+        rootScope.broadcast('stateSynchronized');
         channelState.syncLoading = false;
       }
     }, () => {
@@ -519,7 +519,7 @@ export class ApiUpdatesManager {
   }
 
   public saveUpdate(update: any) {
-    $rootScope.$broadcast('apiUpdate', update);
+    rootScope.broadcast('apiUpdate', update);
   }
   
   public attach() {

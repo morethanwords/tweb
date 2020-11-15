@@ -4,7 +4,7 @@ import type { Modify } from "../../types";
 import type { AppPeersManager } from "../appManagers/appPeersManager";
 import type { AppUsersManager } from "../appManagers/appUsersManager";
 //import type { ApiManagerProxy } from "../mtproto/mtprotoworker";
-import type _$rootScope from "../rootScope";
+import type _rootScope from "../rootScope";
 import type {Dialog} from '../appManagers/appMessagesManager';
 import apiManager from "../mtproto/mtprotoworker";
 
@@ -22,8 +22,8 @@ export default class FiltersStorage {
   public filters: {[filterID: string]: MyDialogFilter} = {};
   public orderIndex = START_ORDER_INDEX;
 
-  constructor(private appPeersManager: AppPeersManager, private appUsersManager: AppUsersManager, /* private apiManager: ApiManagerProxy, */ private $rootScope: typeof _$rootScope) {
-    $rootScope.$on('apiUpdate', (e) => {
+  constructor(private appPeersManager: AppPeersManager, private appUsersManager: AppUsersManager, /* private apiManager: ApiManagerProxy, */ private rootScope: typeof _rootScope) {
+    rootScope.on('apiUpdate', (e) => {
       this.handleUpdate(e.detail);
     });
   }
@@ -37,7 +37,7 @@ export default class FiltersStorage {
           this.saveDialogFilter(update.filter as any);
         } else if(this.filters[update.id]) { // Папка удалена
           //this.getDialogFilters(true);
-          this.$rootScope.$broadcast('filter_delete', this.filters[update.id]);
+          this.rootScope.broadcast('filter_delete', this.filters[update.id]);
           delete this.filters[update.id];
         }
 
@@ -73,7 +73,7 @@ export default class FiltersStorage {
           this.setOrderIndex(filter);
         });
 
-        this.$rootScope.$broadcast('filter_order', update.order);
+        this.rootScope.broadcast('filter_order', update.order);
         
         break;
       }
@@ -179,7 +179,7 @@ export default class FiltersStorage {
           this.saveDialogFilter(filter);
         }
 
-        $rootScope.$broadcast('filter_update', filter); */
+        rootScope.$broadcast('filter_update', filter); */
 
         this.handleUpdate({
           _: 'updateDialogFilter',
@@ -246,7 +246,7 @@ export default class FiltersStorage {
     this.setOrderIndex(filter);
 
     if(update) {
-      this.$rootScope.$broadcast('filter_update', filter);
+      this.rootScope.broadcast('filter_update', filter);
     }
   }
 

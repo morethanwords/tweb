@@ -2,7 +2,7 @@ import { isObject } from "../../helpers/object";
 import { DialogPeer, InputDialogPeer, InputPeer, Peer } from "../../layer";
 import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
 import { RichTextProcessor } from "../richtextprocessor";
-import $rootScope from "../rootScope";
+import rootScope from "../rootScope";
 import appChatsManager from "./appChatsManager";
 import appUsersManager from "./appUsersManager";
 
@@ -29,7 +29,7 @@ export class AppPeersManager {
   } */
 
   public canPinMessage(peerID: number) {
-    return peerID == $rootScope.myID || (peerID < 0 && appChatsManager.hasRights(-peerID, 'pin'));
+    return peerID == rootScope.myID || (peerID < 0 && appChatsManager.hasRights(-peerID, 'pin'));
   }
 
   public getPeerPhoto(peerID: number) {
@@ -53,7 +53,7 @@ export class AppPeersManager {
 
   public getPeerTitle(peerID: number | any, plainText = false, onlyFirstName = false) {
     if(!peerID) {
-      peerID = $rootScope.myID;
+      peerID = rootScope.myID;
     }
     
     let peer: any = {}; 
