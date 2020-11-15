@@ -32,7 +32,7 @@ export class AppUsersManager {
   constructor() {
     setInterval(this.updateUsersStatuses, 60000);
 
-    rootScope.on('stateSynchronized', this.updateUsersStatuses);
+    rootScope.on('state_synchronized', this.updateUsersStatuses);
 
     rootScope.on('apiUpdate', (e) => {
       const update = e.detail as Update;

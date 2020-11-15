@@ -42,6 +42,108 @@ type DialogDom = {
 const testScroll = false;
 let testTopSlice = 1;
 
+class ConnectionStatusComponent {
+  private statusContainer: HTMLElement;
+  private statusEl: HTMLElement;
+  private statusPreloader: HTMLElement;
+
+  private currentText = '';
+
+  private connecting = false;
+  private updating = false;
+
+  private log: ReturnType<typeof logger>;
+
+  constructor(chatsContainer: HTMLElement) {
+    this.log = logger('CS');
+  
+    this.statusContainer = document.createElement('div');
+    this.statusContainer.classList.add('connection-status');
+
+    this.statusEl = Button('btn-primary bg-warning connection-status-button', {noRipple: true});
+    this.statusPreloader = putPreloader(null, true).firstElementChild as HTMLElement;
+    this.statusContainer.append(this.statusEl);
+
+    chatsContainer.prepend(this.statusContainer);
+
+    rootScope.on('connection_status_change', (e) => {
+      const status = e.detail;
+      console.log(status);
+
+      setConnectionStatus();
+    });
+
+    rootScope.on('state_synchronizing', (e) => {
+      const channelID = e.detail;
+      if(!channelID) {
+        this.updating = true;
+        this.log('updating', this.updating);
+        this.setState();
+      }
+    });
+
+    rootScope.on('state_synchronized', (e) => {
+      const channelID = e.detail;
+      this.log('state_synchronized', channelID);
+      if(!channelID) {
+        this.updating = false;
+        this.log('updating', this.updating);
+        this.setState();
+      }
+    });
+
+    const setConnectionStatus = () => {
+      AppStorage.get<number>('dc').then(baseDcID => {
+        if(setFirstConnectionTimeout) {
+          clearTimeout(setFirstConnectionTimeout);
+          setFirstConnectionTimeout = 0;
+        }
+
+        const status = rootScope.connectionStatus['NET-' + baseDcID];
+        const online = status && status.online;
+
+        this.connecting = !online;
+        this.log('connecting', this.connecting);
+        this.setState();
+      });
+    };
+
+    let setFirstConnectionTimeout = window.setTimeout(setConnectionStatus, 2e3);
+
+    let bool = true;
+    document.addEventListener('dblclick', () => {
+      rootScope.broadcast('connection_status_change', {
+        dcID: 2,
+        isFileDownload: false,
+        isFileNetworker: false,
+        isFileUpload: false,
+        name: "NET-2",
+        online: bool = !bool,
+        _: "networkerStatus"
+      });
+    });
+  }
+
+  private setStatusText = (text: string) => {
+    if(this.currentText == text) return;
+    this.statusEl.innerText = this.currentText = text;
+    this.statusEl.appendChild(this.statusPreloader);
+  };
+
+  private setState = () => {
+    if(this.connecting) {
+      this.setStatusText('Waiting for network...');
+    } else if(this.updating) {
+      this.setStatusText('Updating...');
+    }
+
+    this.log('setState', this.connecting || this.updating);
+    window.requestAnimationFrame(() => {
+      SetTransition(this.statusContainer, 'is-shown', this.connecting || this.updating, 200);
+    });
+  };
+}
+
 export class AppDialogsManager {
   public _chatList = document.getElementById('dialogs') as HTMLUListElement;
   public chatList = this._chatList;
@@ -353,48 +455,8 @@ export class AppDialogsManager {
       });
     });
 
-    const statusDiv = document.createElement('div');
-    statusDiv.classList.add('connection-status');
-
-    const networkButton = Button('btn-primary bg-warning connection-status-button');
-    networkButton.innerText = 'Waiting for network...';
-    putPreloader(networkButton);
-    statusDiv.append(networkButton);
-    this.chatsContainer.append(statusDiv, bottomPart);
-
-    rootScope.on('connection_status_change', e => {
-      const status = e.detail;
-      console.log(status);
-
-      setConnectionStatus();
-    });
-
-    const setConnectionStatus = () => {
-      AppStorage.get<number>('dc').then(baseDcID => {
-        if(setFirstConnectionTimeout) {
-          clearTimeout(setFirstConnectionTimeout);
-          setFirstConnectionTimeout = 0;
-        }
-
-        const status = rootScope.connectionStatus['NET-' + baseDcID];
-        SetTransition(statusDiv, 'is-not-connected', !status?.online, 200);
-      });
-    };
-
-    let setFirstConnectionTimeout = window.setTimeout(setConnectionStatus, 2e3);
-
-    /* let bool = true;
-    document.addEventListener('dblclick', () => {
-      rootScope.broadcast('connection_status_change', {
-        dcID: 5,
-        isFileDownload: false,
-        isFileNetworker: false,
-        isFileUpload: false,
-        name: "NET-5",
-        online: bool = !bool,
-        _: "networkerStatus"
-      });
-    }); */
+    new ConnectionStatusComponent(this.chatsContainer);
+    this.chatsContainer.append(bottomPart);
 
     /* const mutationObserver = new MutationObserver((mutationList, observer) => {
 

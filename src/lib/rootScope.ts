@@ -50,13 +50,15 @@ type BroadcastEvents = {
 
   'audio_play': {doc: MyDocument, mid: number},
   'audio_pause': void,
-
+  
+  'state_synchronized': number,
+  'state_synchronizing': number,
+  
   //'contacts_update': any,
   'avatar_update': number,
   'chat_full_update': number,
   'poll_update': {poll: Poll, results: PollResults},
   'chat_update': number,
-  'stateSynchronized': void,
   'channel_settings': {channelID: number},
   'webpage_updated': {id: string, msgs: number[]},
 

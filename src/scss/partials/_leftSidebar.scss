@@ -299,13 +299,13 @@
     overflow: hidden;
     flex: 0 0 auto;
     
-    &:not(.is-not-connected) {
+    &:not(.is-shown) {
       .connection-status-button {
         display: none;
       }
     }
 
-    &.is-not-connected {
+    &.is-shown {
       &.animating {
         .connection-status-button, & + .connection-status-bottom {
           transition: transform var(--layer-transition);
