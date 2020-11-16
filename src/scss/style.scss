@@ -295,7 +295,7 @@ h4 {
   }
 }
 
-input, [contenteditable] {
+input, [contenteditable=true] {
   caret-color: $button-primary-background;
 }
 
@@ -641,18 +641,18 @@ img.emoji {
   }
 }
 
-[contenteditable] {
+[contenteditable=true] {
   user-select: text;
   outline: none;
   cursor: text;
+}
 
-  &[data-placeholder] {
-    &:empty:before {
-			content: attr(data-placeholder);
-			color: #a2acb4;
-      display: block; /* For Firefox By Ariel Flesler */
-      cursor: text;
-		}
+[contenteditable][data-placeholder] {
+  &:empty:before {
+    content: attr(data-placeholder);
+    color: #a2acb4;
+    display: block; /* For Firefox By Ariel Flesler */
+    pointer-events: none;
   }
 }
 
