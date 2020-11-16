@@ -739,6 +739,8 @@ export class AppDialogsManager {
   public onChatsRegularScroll = () => {
     if(this.sliceTimeout) clearTimeout(this.sliceTimeout);
     this.sliceTimeout = window.setTimeout(() => {
+      this.sliceTimeout = undefined;
+      
       /* const observer = new IntersectionObserver((entries) => {
         const 
       });
@@ -747,12 +749,16 @@ export class AppDialogsManager {
         observer.observe(el);
       }); */
 
-      const scrollTopWas = this.scroll.scrollTop;
+      //const scrollTopWas = this.scroll.scrollTop;
 
       const rect = this.scroll.container.getBoundingClientRect();
       const children = Array.from(this.scroll.splitUp.children) as HTMLElement[];
       const firstElement = document.elementFromPoint(rect.x, rect.y) as HTMLElement;
       const lastElement = document.elementFromPoint(rect.x, rect.y + rect.height - 1) as HTMLElement;
+
+      if(!firstElement || !lastElement) {
+        return;
+      }
 
       const firstElementRect = firstElement.getBoundingClientRect();
       const elementOverflow = firstElementRect.y - rect.y;
@@ -804,8 +810,6 @@ export class AppDialogsManager {
       const scrollTop =  */
 
       //this.scroll.scrollIntoView(firstElement, false);
-
-      this.sliceTimeout = undefined;
     }, 1e3);
   };
 
