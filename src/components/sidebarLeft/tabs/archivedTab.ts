@@ -12,6 +12,7 @@ export default class AppArchivedTab implements SliderTab {
 
   init() {
     this.scroll = new Scrollable(this.container, 'CLA', 500);
+    this.scroll.container.addEventListener('scroll', appDialogsManager.onChatsRegularScroll);
     this.scroll.setVirtualContainer(this.chatList);
     this.scroll.onScrolledBottom = appDialogsManager.onChatsScroll;
     ///this.scroll.attachSentinels();

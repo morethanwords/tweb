@@ -129,7 +129,7 @@ export default class Scrollable extends ScrollableBase {
 
   public onScrollMeasure: number = null;
   
-  public lastScrollTop: number = 0;
+  private lastScrollTop: number = 0;
 
   public loadedAll: SliceSidesContainer = {top: true, bottom: false};
 
@@ -155,6 +155,7 @@ export default class Scrollable extends ScrollableBase {
       this.checkForTriggers();
 
       this.onScrollMeasure = 0;
+      this.lastScrollTop = this.scrollTop;
     });
   };
 
@@ -170,13 +171,16 @@ export default class Scrollable extends ScrollableBase {
     const {clientHeight, scrollTop} = container;
     const maxScrollTop = scrollHeight - clientHeight;
 
+    // 1 - bottom, -1 - top
+    const direction = this.lastScrollTop == scrollTop ? 0 : (this.lastScrollTop < scrollTop ? 1 : -1);
+
     //this.log('checkForTriggers:', scrollTop, maxScrollTop);
 
-    if(this.onScrolledTop && scrollTop <= this.onScrollOffset) {
+    if(this.onScrolledTop && scrollTop <= this.onScrollOffset && direction <= 0/* && direction === -1 */) {
       this.onScrolledTop();
     }
 
-    if(this.onScrolledBottom && (maxScrollTop - scrollTop) <= this.onScrollOffset) {
+    if(this.onScrolledBottom && (maxScrollTop - scrollTop) <= this.onScrollOffset && direction >= 0/* && direction === 1 */) {
       this.onScrolledBottom();
     }
   };
@@ -215,7 +219,7 @@ export default class Scrollable extends ScrollableBase {
     return this.scrollTop;
   };
 
-  public slice(side: SliceSides, safeCount: number/*  sliceLength: number */) {
+  /* public slice(side: SliceSides, safeCount: number) {
     //const isOtherSideLoaded = this.loadedAll[side == 'top' ? 'bottom' : 'top'];
     //const multiplier = 2 - +isOtherSideLoaded;
     const multiplier = 2;
@@ -239,8 +243,15 @@ export default class Scrollable extends ScrollableBase {
       this.loadedAll[side] = false;
     }
 
+    // * fix instant load of cutted side
+    if(side == 'top') {
+      this.lastScrollTop = 0;
+    } else {
+      this.lastScrollTop = this.scrollHeight + this.container.clientHeight;
+    }
+
     return sliced;
-  }
+  } */
 
   get isScrolledDown() {
     return this.scrollHeight - Math.round(this.scrollTop + this.container.offsetHeight) <= 1;

@@ -9,7 +9,7 @@ import appSidebarLeft from "../../components/sidebarLeft";
 import { formatDateAccordingToToday } from "../../helpers/date";
 import { escapeRegExp } from "../../helpers/string";
 import { isTouchSupported } from "../../helpers/touchSupport";
-import { isSafari } from "../../helpers/userAgent";
+import { isApple, isSafari } from "../../helpers/userAgent";
 import { logger, LogLevels } from "../logger";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
@@ -192,6 +192,8 @@ export class AppDialogsManager {
 
   private topOffsetIndex = 0;
 
+  private sliceTimeout: number;
+
   constructor() {
     this.chatsPreloader = putPreloader(null, true);
 
@@ -204,6 +206,7 @@ export class AppDialogsManager {
     bottomPart.append(this.folders.container);
 
     this.scroll = this._scroll = new Scrollable(bottomPart, 'CL', 500);
+    this.scroll.container.addEventListener('scroll', this.onChatsRegularScroll);
     this.scroll.onScrolledTop = this.onChatsScrollTop;
     this.scroll.onScrolledBottom = this.onChatsScroll;
     this.scroll.setVirtualContainer(this.chatList);
@@ -589,132 +592,222 @@ export class AppDialogsManager {
     };
   }
 
-  private async loadDialogs(side: SliceSides = 'bottom') {
+  private loadDialogs(side: SliceSides = 'bottom') {
     if(testScroll) {
       return;
     }
     
     if(this.loadDialogsPromise/*  || 1 == 1 */) return this.loadDialogsPromise;
-    
-    if(!this.chatList.childElementCount) {
-      const container = this.chatList.parentElement;
-      container.append(this.chatsPreloader);
-    }
 
-    //return;
-
-    const filterID = this.filterID;
-    let loadCount = 30/*this.chatsLoadCount */;
-
-    const storage = appMessagesManager.dialogsStorage.getFolder(filterID);
-    let offsetIndex = 0;
-
-    if(side == 'top') {
-      const element = this.chatList.firstElementChild;
-      if(element) {
-        const peerID = +element.getAttribute('data-peerID');
-        const index = storage.findIndex(dialog => dialog.peerID == peerID);
-        const needIndex = Math.max(0, index - loadCount);
-        loadCount = index - needIndex;
-        offsetIndex = storage[needIndex].index + 1;
+    const promise = new Promise(async(resolve, reject) => {
+      if(!this.chatList.childElementCount) {
+        const container = this.chatList.parentElement;
+        container.append(this.chatsPreloader);
       }
-    } else {
-      const element = this.chatList.lastElementChild;
-      if(element) {
-        const peerID = +element.getAttribute('data-peerID');
-        const dialog = storage.find(dialog => dialog.peerID == peerID);
-        offsetIndex = dialog.index;
-      }
-      /* for(let i = storage.length - 1; i >= 0; --i) {
-        const dialog = storage[i];
-        if(this.getDialogDom(dialog.peerID)) {
-          offsetIndex = dialog.index;
-          break;
-        }
-      } */
-    }
-    
-    
-    //let offset = storage[storage.length - 1]?.index || 0;
-
-    try {
-      //console.time('getDialogs time');
-
-      const getConversationPromise = (this.filterID > 1 ? appUsersManager.getContacts() as Promise<any> : Promise.resolve()).then(() => {
-        return appMessagesManager.getConversations('', offsetIndex, loadCount, filterID);
-      });
-
-      this.loadDialogsPromise = getConversationPromise;
-      
-      const result = await getConversationPromise;
-
-      if(this.filterID != filterID) {
-        return;
-      }
-
-      //console.timeEnd('getDialogs time');
-
-      // * loaded all
-      //if(!result.dialogs.length || this.chatList.childElementCount == result.count) {
-      // !result.dialogs.length не подходит, так как при супердревном диалоге getConversations его не выдаст.
-      //if(this.chatList.childElementCount == result.count) {
-      if(side == 'bottom') {
-        if(result.isEnd) {
-          this.scroll.loadedAll[side] = true;
-        }
-      } else {
-        const storage = appMessagesManager.dialogsStorage.getFolder(filterID);
-        if(!result.dialogs.length || (storage.length && storage[0].index < offsetIndex)) {
-          this.scroll.loadedAll[side] = true;
-        }
-      }
-      
-      if(result.dialogs.length) {
-        const dialogs = side == 'top' ? result.dialogs.slice().reverse() : result.dialogs;
-        dialogs.forEach((dialog) => {
-          this.addDialogNew({
-            dialog,
-            append: side == 'bottom'
-          });
-        });
-
-        //if(side == 'bottom' || true || (testTopSlice-- > 0 && side == 'top')) {
-          //setTimeout(() => {
-            const sliced = this.scroll.slice(side == 'bottom' ? 'top' : 'bottom', 30/* result.dialogs.length */);
-            sliced.forEach(el => {
-              const peerID = +el.getAttribute('data-peerID');
-              delete this.doms[peerID];
-            });
-          //}, 0);
-        //}
-      }
-
-      if(!this.scroll.loadedAll['top']) {
+  
+      //return;
+  
+      const filterID = this.filterID;
+      let loadCount = 30/*this.chatsLoadCount */;
+  
+      const storage = appMessagesManager.dialogsStorage.getFolder(filterID);
+      let offsetIndex = 0;
+  
+      if(side == 'top') {
         const element = this.chatList.firstElementChild;
         if(element) {
           const peerID = +element.getAttribute('data-peerID');
-          const dialog = appMessagesManager.getDialogByPeerID(peerID)[0];
-          this.topOffsetIndex = dialog.index;
+          const index = storage.findIndex(dialog => dialog.peerID == peerID);
+          const needIndex = Math.max(0, index - loadCount);
+          loadCount = index - needIndex;
+          offsetIndex = storage[needIndex].index + 1;
         }
       } else {
-        this.topOffsetIndex = 0;
+        const element = this.chatList.lastElementChild;
+        if(element) {
+          const peerID = +element.getAttribute('data-peerID');
+          const dialog = storage.find(dialog => dialog.peerID == peerID);
+          offsetIndex = dialog.index;
+        }
+      }
+      
+      //let offset = storage[storage.length - 1]?.index || 0;
+  
+      try {
+        //console.time('getDialogs time');
+  
+        const getConversationPromise = (this.filterID > 1 ? appUsersManager.getContacts() as Promise<any> : Promise.resolve()).then(() => {
+          return appMessagesManager.getConversations('', offsetIndex, loadCount, filterID);
+        });
+  
+        const result = await getConversationPromise;
+  
+        if(this.filterID != filterID) {
+          return;
+        }
+  
+        //console.timeEnd('getDialogs time');
+  
+        // * loaded all
+        //if(!result.dialogs.length || this.chatList.childElementCount == result.count) {
+        // !result.dialogs.length не подходит, так как при супердревном диалоге getConversations его не выдаст.
+        //if(this.chatList.childElementCount == result.count) {
+        if(side == 'bottom') {
+          if(result.isEnd) {
+            this.scroll.loadedAll[side] = true;
+          }
+        } else {
+          const storage = appMessagesManager.dialogsStorage.getFolder(filterID);
+          if(!result.dialogs.length || (storage.length && storage[0].index < offsetIndex)) {
+            this.scroll.loadedAll[side] = true;
+          }
+        }
+        
+        if(result.dialogs.length) {
+          const dialogs = side == 'top' ? result.dialogs.slice().reverse() : result.dialogs;
+  
+          /* let previousScrollHeightMinusTop: number;
+          //if(isApple || true) {
+          if(isApple && side == 'top') {
+            const {scrollTop, scrollHeight} = this.scroll;
+  
+            previousScrollHeightMinusTop = side == 'top' ? scrollHeight - scrollTop : scrollTop;
+            //this.scroll.scrollLocked = 1;
+          } */
+  
+          dialogs.forEach((dialog) => {
+            this.addDialogNew({
+              dialog,
+              append: side == 'bottom'
+            });
+          });
+  
+          /* if(previousScrollHeightMinusTop !== undefined) {
+            const newScrollTop = side == 'top' ? this.scroll.scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
+  
+            // touchSupport for safari iOS
+            isTouchSupported && isApple && (this.scroll.container.style.overflow = 'hidden');
+            this.scroll.scrollTop = newScrollTop;
+            isTouchSupported && isApple && (this.scroll.container.style.overflow = '');
+          } */
+
+          //this.scroll.scrollLocked = 0;
+          
+          //if(side == 'bottom' || true || (testTopSlice-- > 0 && side == 'top')) {
+            //setTimeout(() => {
+              /* const sliced = this.scroll.slice(side == 'bottom' ? 'top' : 'bottom', 30); // result.dialogs.length
+              sliced.forEach(el => {
+                const peerID = +el.getAttribute('data-peerID');
+                delete this.doms[peerID];
+              }); */
+            //}, 0);
+          //}
+        }
+  
+        if(!this.scroll.loadedAll['top']) {
+          const element = this.chatList.firstElementChild;
+          if(element) {
+            const peerID = +element.getAttribute('data-peerID');
+            const dialog = appMessagesManager.getDialogByPeerID(peerID)[0];
+            this.topOffsetIndex = dialog.index;
+          }
+        } else {
+          this.topOffsetIndex = 0;
+        }
+  
+        this.log.debug('getDialogs ' + loadCount + ' dialogs by offset:', offsetIndex, result, this.chatList.childElementCount);
+  
+        setTimeout(() => {
+          /* setTimeout(() => {
+            this.scroll.slice(true);
+          }, 100); */
+          this.scroll.onScroll();
+        }, 0);
+      } catch(err) {
+        this.log.error(err);
+      }
+      
+      this.chatsPreloader.remove();
+      resolve();
+    });
+
+    return this.loadDialogsPromise = promise.finally(() => {
+      this.loadDialogsPromise = undefined;
+    });
+  }
+
+  public onChatsRegularScroll = () => {
+    if(this.sliceTimeout) clearTimeout(this.sliceTimeout);
+    this.sliceTimeout = window.setTimeout(() => {
+      /* const observer = new IntersectionObserver((entries) => {
+        const 
+      });
+
+      Array.from(this.chatList.children).forEach(el => {
+        observer.observe(el);
+      }); */
+
+      const scrollTopWas = this.scroll.scrollTop;
+
+      const rect = this.scroll.container.getBoundingClientRect();
+      const children = Array.from(this.scroll.splitUp.children) as HTMLElement[];
+      const firstElement = document.elementFromPoint(rect.x, rect.y) as HTMLElement;
+      const lastElement = document.elementFromPoint(rect.x, rect.y + rect.height - 1) as HTMLElement;
+
+      const firstElementRect = firstElement.getBoundingClientRect();
+      const elementOverflow = firstElementRect.y - rect.y;
+
+      const sliced: HTMLElement[] = [];
+      const firstIndex = children.indexOf(firstElement);
+      const lastIndex = children.indexOf(lastElement);
+
+      const saveLength = 10;
+
+      const sliceFromStart = isApple ? [] : children.slice(0, Math.max(0, firstIndex - saveLength));
+      const sliceFromEnd = children.slice(lastIndex + saveLength);
+
+      /* if(sliceFromStart.length != sliceFromEnd.length) {
+        console.log('not equal', sliceFromStart.length, sliceFromEnd.length);
       }
 
-      this.log.debug('getDialogs ' + loadCount + ' dialogs by offset:', offsetIndex, result, this.chatList.childElementCount);
+      if(sliceFromStart.length > sliceFromEnd.length) {
+        const diff = sliceFromStart.length - sliceFromEnd.length;
+        sliceFromStart.splice(0, diff);
+      } else if(sliceFromEnd.length > sliceFromStart.length) {
+        const diff = sliceFromEnd.length - sliceFromStart.length;
+        sliceFromEnd.splice(sliceFromEnd.length - diff, diff);
+      } */
 
-      setTimeout(() => {
-        /* setTimeout(() => {
-          this.scroll.slice(true);
-        }, 100); */
-        this.scroll.onScroll();
-      }, 0);
-    } catch(err) {
-      this.log.error(err);
-    }
-    
-    this.chatsPreloader.remove();
-    this.loadDialogsPromise = undefined;
-  }
+      if(sliceFromStart.length) {
+        this.scroll.loadedAll['top'] = false;
+      }
+
+      if(sliceFromEnd.length) {
+        this.scroll.loadedAll['bottom'] = false;
+      }
+
+      sliced.push(...sliceFromStart);
+      sliced.push(...sliceFromEnd);
+
+      sliced.forEach(el => {
+        el.remove();
+        const peerID = +el.getAttribute('data-peerID');
+        delete this.doms[peerID];
+      });
+
+      //this.log('[slicer] elements', firstElement, lastElement, rect, sliced, sliceFromStart.length, sliceFromEnd.length);
+
+      //this.log('[slicer] reset scrollTop', scrollTopWas, this.scroll.scrollTop, firstElement.offsetTop, firstElementRect.y, rect.y, elementOverflow);
+
+      this.scroll.scrollTop = firstElement.offsetTop - elementOverflow;
+      /* const firstElementRect = firstElement.getBoundingClientRect();
+      const scrollTop =  */
+
+      //this.scroll.scrollIntoView(firstElement, false);
+
+      this.sliceTimeout = undefined;
+    }, 1e3);
+  };
 
   public onChatsScrollTop = () => {
     this.onChatsScroll('top');
@@ -722,7 +815,7 @@ export class AppDialogsManager {
   
   public onChatsScroll = (side: SliceSides = 'bottom') => {
     if(this.scroll.loadedAll[side] || this.loadDialogsPromise) return;
-    this.log.error('onChatsScroll', side);
+    this.log('onChatsScroll', side);
     this.loadDialogs(side);
   };
 
