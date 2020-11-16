@@ -13,7 +13,7 @@ import { isApple, isSafari } from "../../helpers/userAgent";
 import { logger, LogLevels } from "../logger";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
-import { findUpClassName, positionElementByIndex } from "../../helpers/dom";
+import { findUpClassName, findUpTag, positionElementByIndex } from "../../helpers/dom";
 import appImManager, { AppImManager } from "./appImManager";
 import appMessagesManager, { Dialog } from "./appMessagesManager";
 import {MyDialogFilter as DialogFilter} from "../storages/filters";
@@ -740,7 +740,7 @@ export class AppDialogsManager {
     if(this.sliceTimeout) clearTimeout(this.sliceTimeout);
     this.sliceTimeout = window.setTimeout(() => {
       this.sliceTimeout = undefined;
-      
+
       /* const observer = new IntersectionObserver((entries) => {
         const 
       });
@@ -753,12 +753,16 @@ export class AppDialogsManager {
 
       const rect = this.scroll.container.getBoundingClientRect();
       const children = Array.from(this.scroll.splitUp.children) as HTMLElement[];
-      const firstElement = document.elementFromPoint(rect.x, rect.y) as HTMLElement;
-      const lastElement = document.elementFromPoint(rect.x, rect.y + rect.height - 1) as HTMLElement;
+      const firstElement = findUpTag(document.elementFromPoint(rect.x, rect.y + 1), 'LI') as HTMLElement;
+      const lastElement = findUpTag(document.elementFromPoint(rect.x, rect.y + rect.height - 1), 'LI') as HTMLElement;
+
+      //alert('got element:' + rect.y);
 
       if(!firstElement || !lastElement) {
         return;
       }
+
+      //alert('got element:' + !!firstElement);
 
       const firstElementRect = firstElement.getBoundingClientRect();
       const elementOverflow = firstElementRect.y - rect.y;
@@ -803,14 +807,16 @@ export class AppDialogsManager {
 
       //this.log('[slicer] elements', firstElement, lastElement, rect, sliced, sliceFromStart.length, sliceFromEnd.length);
 
-      //this.log('[slicer] reset scrollTop', scrollTopWas, this.scroll.scrollTop, firstElement.offsetTop, firstElementRect.y, rect.y, elementOverflow);
+      //this.log('[slicer] reset scrollTop', this.scroll.scrollTop, firstElement.offsetTop, firstElementRect.y, rect.y, elementOverflow);
+
+      //alert('left length:' + children.length);
 
       this.scroll.scrollTop = firstElement.offsetTop - elementOverflow;
       /* const firstElementRect = firstElement.getBoundingClientRect();
       const scrollTop =  */
 
       //this.scroll.scrollIntoView(firstElement, false);
-    }, 1e3);
+    }, 200);
   };
 
   public onChatsScrollTop = () => {

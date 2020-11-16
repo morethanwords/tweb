@@ -196,13 +196,13 @@ export class ChatInput {
       const value = this.messageInput.innerText;
   
       const entities = RichTextProcessor.parseEntities(value);
-      console.log('messageInput entities', entities);
+      //console.log('messageInput entities', entities);
   
       const urlEntities = entities.filter(e => e._ == 'messageEntityUrl');
       if(urlEntities.length) {
         const richEntities: MessageEntity[] = [];
         const richValue = RichTextProcessor.parseMarkdown(getRichValue(this.messageInput), richEntities);
-        console.log('messageInput url', entities, richEntities);
+        //console.log('messageInput url', entities, richEntities);
         for(const entity of urlEntities) {
           const url = value.slice(entity.offset, entity.offset + entity.length);
   

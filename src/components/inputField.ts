@@ -64,7 +64,7 @@ const InputField = (options: {
     const input = div.firstElementChild as HTMLElement;
     const observer = new MutationObserver((mutationsList, observer) => {
       const isEmpty = isInputEmpty(input);
-      console.log('input', isEmpty);
+      //console.log('input', isEmpty);
 
       const char = input.innerText[0];
       let direction = 'ltr';
