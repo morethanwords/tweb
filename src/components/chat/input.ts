@@ -589,7 +589,7 @@ export class ChatInput {
     //let str = this.serializeNodes(Array.from(this.messageInput.childNodes));
     let str = getRichValue(this.messageInput);
 
-    console.log('childnode str after:', str/* , getRichValue(this.messageInput) */);
+    //console.log('childnode str after:', str/* , getRichValue(this.messageInput) */);
 
     //return;
 

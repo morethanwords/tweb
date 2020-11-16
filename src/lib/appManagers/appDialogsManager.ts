@@ -20,7 +20,7 @@ import {MyDialogFilter as DialogFilter} from "../storages/filters";
 import appPeersManager from './appPeersManager';
 import appStateManager from "./appStateManager";
 import appUsersManager, { User } from "./appUsersManager";
-import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
+import { App, MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
 import Button from "../../components/button";
 import SetTransition from "../../components/singleTransition";
 import AppStorage from '../storage';
@@ -94,6 +94,10 @@ class ConnectionStatusComponent {
 
     const setConnectionStatus = () => {
       AppStorage.get<number>('dc').then(baseDcID => {
+        if(!baseDcID) {
+          baseDcID = App.baseDcID;
+        }
+        
         if(setFirstConnectionTimeout) {
           clearTimeout(setFirstConnectionTimeout);
           setFirstConnectionTimeout = 0;
