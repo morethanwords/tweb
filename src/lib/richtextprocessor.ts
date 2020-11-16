@@ -512,8 +512,8 @@ namespace RichTextProcessor {
           break;
 
         case 'messageEntityEmoji':
-          html.push(emojiSupported ? 
-            `<span class="emoji" contenteditable="false">${encodeEntities(entityText)}</span>` : 
+          html.push(emojiSupported ? // ! contenteditable="false" было у span, зачем?
+            `<span class="emoji">${encodeEntities(entityText)}</span>` : 
             `<img src="assets/img/emoji/${entity.unicode}.png" alt="${encodeEntities(entityText)}" class="emoji">`);
           break;
 
