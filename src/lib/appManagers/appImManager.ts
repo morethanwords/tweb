@@ -66,6 +66,7 @@ let TEST_SCROLL = TEST_SCROLL_TIMES;
 const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
 export const CHAT_ANIMATION_GROUP = 'chat';
+const IGNORE_ACTIONS = ['messageActionHistoryClear'];
 
 export class AppImManager {
   public columnEl = document.getElementById('column-center') as HTMLDivElement;
@@ -1749,7 +1750,7 @@ export class AppImManager {
     if(message._ == 'messageService') {
       let action = message.action;
       let _ = action._;
-      if(langPack.hasOwnProperty(_) && !langPack[_]) {
+      if(IGNORE_ACTIONS.includes(_) || (langPack.hasOwnProperty(_) && !langPack[_])) {
         return bubble;
       }
 

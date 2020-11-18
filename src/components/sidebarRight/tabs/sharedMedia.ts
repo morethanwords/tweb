@@ -503,6 +503,7 @@ export default class AppSharedMediaTab implements SliderTab {
               const match = RichTextProcessor.matchUrl(message.message);
               if(!match) {
                 this.log.error('NO ENTITY AND NO MATCH:', message);
+                continue;
               }
 
               url = match[0];

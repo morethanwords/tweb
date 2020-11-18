@@ -854,6 +854,7 @@ $bubble-margin: .25rem;
     color: #000;
     line-height: 21px;
     word-break: break-word;
+    white-space: pre-wrap; // * fix spaces on line begin
     
     /* * {
       overflow: hidden;

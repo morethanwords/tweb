@@ -16,7 +16,7 @@ export const langPack: {[actionType: string]: string} = {
 	"messageActionChannelEditTitle": "Channel renamed",
 	"messageActionChannelEditPhoto": "Channel photo updated",
   "messageActionChannelDeletePhoto": "Channel photo removed",
-  "messageActionHistoryClear": "",//"History cleared",
+  "messageActionHistoryClear": "History was cleared",
 
   "messageActionChannelMigrateFrom": "",
 
