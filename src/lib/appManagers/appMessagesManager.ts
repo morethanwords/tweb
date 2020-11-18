@@ -3193,7 +3193,7 @@ export class AppMessagesManager {
         }
 
         if(!message.pFlags.out && message.from_id) {
-          appUsersManager.forceUserOnline(appPeersManager.getPeerID(message.from_id));
+          appUsersManager.forceUserOnline(appPeersManager.getPeerID(message.from_id), message.date);
         }
 
         const randomID = this.pendingByMessageID[message.mid];
@@ -3262,7 +3262,7 @@ export class AppMessagesManager {
         const peers = update.folder_peers;
 
         this.scheduleHandleNewDialogs();
-        peers.forEach((folderPeer: any) => {
+        peers.forEach((folderPeer) => {
           const {folder_id, peer} = folderPeer;
 
           const peerID = appPeersManager.getPeerID(peer);

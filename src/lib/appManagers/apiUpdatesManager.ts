@@ -11,7 +11,7 @@ import appUsersManager from "./appUsersManager";
 
 type UpdatesState = {
   pendingPtsUpdates: any[],
-  pendingSeqUpdates: any,
+  pendingSeqUpdates?: any,
   syncPending: {
     seqAwaiting?: number,
     ptsAwaiting?: true,
@@ -36,7 +36,7 @@ export class ApiUpdatesManager {
   public channelStates: {[channelID: number]: UpdatesState} = {};
   private attached = false;
 
-  private log = logger('UPDATES', LogLevels.error);
+  private log = logger('UPDATES', LogLevels.error/*  | LogLevels.log */);
 
   constructor() {
     // * false for test purposes
@@ -219,6 +219,8 @@ export class ApiUpdatesManager {
     }, {
       timeout: 0x7fffffff
     }).then((differenceResult) => {
+      this.log('Get diff result', differenceResult);
+
       if(differenceResult._ == 'updates.differenceEmpty') {
         this.log('apply empty diff', differenceResult.seq);
         updatesState.date = differenceResult.date;
@@ -299,14 +301,14 @@ export class ApiUpdatesManager {
       channelState.syncPending = null;
     }
 
-    // this.log('Get channel diff', appChatsManager.getChat(channelID), channelState.pts)
+    //this.log.trace('Get channel diff', appChatsManager.getChat(channelID), channelState.pts);
     apiManager.invokeApi('updates.getChannelDifference', {
       channel: appChatsManager.getChannelInput(channelID),
       filter: {_: 'channelMessagesFilterEmpty'},
       pts: channelState.pts,
       limit: 30
     }, {timeout: 0x7fffffff}).then((differenceResult) => {
-      // this.log('channel diff result', differenceResult)
+      this.log('Get channel diff result', differenceResult)
       channelState.pts = 'pts' in differenceResult ? differenceResult.pts : undefined;
   
       if(differenceResult._ == 'updates.channelDifferenceEmpty') {
@@ -367,7 +369,6 @@ export class ApiUpdatesManager {
       this.channelStates[channelID] = {
         pts,
         pendingPtsUpdates: [],
-        pendingSeqUpdates: null,
         syncPending: null,
         syncLoading: false
       };

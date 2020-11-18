@@ -9,6 +9,7 @@ import serverTimeManager from "../mtproto/serverTimeManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
 import searchIndexManager from "../searchIndexManager";
+import apiUpdatesManager from "./apiUpdatesManager";
 import appChatsManager from "./appChatsManager";
 import appPeersManager from "./appPeersManager";
 import appStateManager from "./appStateManager";
@@ -63,6 +64,7 @@ export class AppUsersManager {
           const user = this.users[userID];
           if(user) {
             this.forceUserOnline(userID);
+
             if(!user.photo) {
               user.photo = update.photo;
             } else {
@@ -460,8 +462,18 @@ export class AppUsersManager {
     }
   };
 
-  public forceUserOnline(id: number) {
+  public forceUserOnline(id: number, eventTimestamp?: number) {
     if(this.isBot(id)) {
+      return;
+    }
+
+    const timestamp = tsNow(true);
+    const onlineTimeFor = 60;
+    if(eventTimestamp) {
+      if((timestamp - eventTimestamp) >= onlineTimeFor) {
+        return;
+      }
+    } else if(apiUpdatesManager.updatesState.syncLoading) {
       return;
     }
 
@@ -475,7 +487,7 @@ export class AppUsersManager {
 
       user.status = {
         _: 'userStatusOnline',
-        expires: tsNow(true) + 60
+        expires: timestamp + onlineTimeFor
       };
       
       user.sortStatus = this.getUserStatusForSort(user.status);

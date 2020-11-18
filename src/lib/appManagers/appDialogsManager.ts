@@ -24,6 +24,7 @@ import { App, MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
 import Button from "../../components/button";
 import SetTransition from "../../components/singleTransition";
 import AppStorage from '../storage';
+import apiUpdatesManager from "./apiUpdatesManager";
 
 type DialogDom = {
   avatarEl: AvatarElement,
@@ -105,6 +106,10 @@ class ConnectionStatusComponent {
 
         const status = rootScope.connectionStatus['NET-' + baseDcID];
         const online = status && status.online;
+
+        if(this.connecting && online) {
+          apiUpdatesManager.forceGetDifference();
+        }
 
         this.connecting = !online;
         this.log('connecting', this.connecting);
@@ -194,7 +199,7 @@ export class AppDialogsManager {
 
   private accumulateArchivedTimeout: number;
 
-  private topOffsetIndex = 0;
+  //private topOffsetIndex = 0;
 
   private sliceTimeout: number;
 
@@ -472,6 +477,19 @@ export class AppDialogsManager {
     mutationObserver.observe */
   }
 
+  get topOffsetIndex() {
+    if(!this.scroll.loadedAll['top']) {
+      const element = this.chatList.firstElementChild;
+      if(element) {
+        const peerID = +element.getAttribute('data-peerID');
+        const dialog = appMessagesManager.getDialogByPeerID(peerID)[0];
+        return dialog.index;
+      }
+    }
+
+    return 0;
+  }
+
   private updateDialog(dialog: Dialog) {
     if(!dialog) {
       return;
@@ -499,7 +517,6 @@ export class AppDialogsManager {
 
   onTabChange = () => {
     this.doms = {};
-    this.topOffsetIndex = 0;
     this.scroll.loadedAll.top = true;
     this.scroll.loadedAll.bottom = false;
     this.lastActiveListElement = null;
@@ -706,17 +723,6 @@ export class AppDialogsManager {
               }); */
             //}, 0);
           //}
-        }
-  
-        if(!this.scroll.loadedAll['top']) {
-          const element = this.chatList.firstElementChild;
-          if(element) {
-            const peerID = +element.getAttribute('data-peerID');
-            const dialog = appMessagesManager.getDialogByPeerID(peerID)[0];
-            this.topOffsetIndex = dialog.index;
-          }
-        } else {
-          this.topOffsetIndex = 0;
         }
   
         this.log.debug('getDialogs ' + loadCount + ' dialogs by offset:', offsetIndex, result, this.chatList.childElementCount);
