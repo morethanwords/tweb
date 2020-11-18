@@ -581,7 +581,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
     } else if('bytes' in thumb) {
       img = new Image();
 
-      if((!isSafari || doc.pFlags.stickerThumbConverted || thumb.url)/*  && false */) {
+      if((webpWorkerController.isWebpSupported() || doc.pFlags.stickerThumbConverted || thumb.url)/*  && false */) {
         renderImageFromUrl(img, appPhotosManager.getPreviewURLFromThumb(thumb, true), afterRender);
       } else {
         webpWorkerController.convert(doc.id, thumb.bytes as Uint8Array).then(bytes => {
@@ -691,6 +691,10 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
       if(!downloaded && (!div.firstElementChild || div.firstElementChild.tagName != 'IMG')) {
         img.classList.add('fade-in-transition');
         img.style.opacity = '0';
+
+        if(!div.firstElementChild) {
+          div.append(img);
+        }
 
         img.addEventListener('load', () => {
           doc.downloaded = true;

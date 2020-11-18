@@ -52,6 +52,11 @@ function respond(...args: any[]) {
   } */
 }
 
+let webpSupported = false;
+export const isWebpSupported = () => {
+  return webpSupported;
+};
+
 networkerFactory.setUpdatesProcessor((obj, bool) => {
   respond({update: {obj, bool}});
 });
@@ -97,6 +102,9 @@ ctx.addEventListener('message', async(e) => {
       }
 
       respond(responseTask);
+      return;
+    } else if(task.type == 'webpSupport') {
+      webpSupported = task.payload;
       return;
     }
   

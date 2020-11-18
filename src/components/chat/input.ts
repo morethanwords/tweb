@@ -11,7 +11,7 @@ import apiManager from "../../lib/mtproto/mtprotoworker";
 import opusDecodeController from "../../lib/opusDecodeController";
 import { RichTextProcessor } from "../../lib/richtextprocessor";
 import rootScope from '../../lib/rootScope';
-import { cancelEvent, findUpClassName, getRichValue, isInputEmpty, serializeNodes } from "../../helpers/dom";
+import { cancelEvent, findUpClassName, getRichValue, isInputEmpty, placeCaretAtEnd, serializeNodes } from "../../helpers/dom";
 import ButtonMenu, { ButtonMenuItemOptions } from '../buttonMenu';
 import emoticonsDropdown from "../emoticonsDropdown";
 import PopupCreatePoll from "../popupCreatePoll";
@@ -719,6 +719,10 @@ export class ChatInput {
 
     if(input !== undefined) {
       this.messageInput.innerHTML = input || '';
+      window.requestAnimationFrame(() => {
+        placeCaretAtEnd(this.messageInput);
+        this.inputScroll.scrollTop = this.inputScroll.scrollHeight;
+      });
     }
 
     setTimeout(() => {

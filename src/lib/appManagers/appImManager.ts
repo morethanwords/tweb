@@ -732,7 +732,7 @@ export class AppImManager {
       
       //if(target.tagName == 'INPUT') return;
       
-      //this.log('onkeydown', e);
+      this.log('onkeydown', e);
 
       if(e.key == 'Escape') {
         /* if(AppMediaViewer.wholeDiv.classList.contains('active')) {
@@ -750,6 +750,31 @@ export class AppImManager {
         return;
       } else if(e.code == "KeyC" && (e.ctrlKey || e.metaKey) && target.tagName != 'INPUT') {
         return;
+      } else if(e.code == 'ArrowUp') {
+        if(!this.chatInputC.editMsgID) {
+          const history = appMessagesManager.historiesStorage[this.peerID];
+          if(history?.history) {
+            let goodMid: number;
+            for(const mid of history.history) {
+              const message = appMessagesManager.getMessage(mid);
+              const good = this.myID == this.peerID ? message.fromID == this.myID : message.pFlags.out;
+
+              if(good) {
+                if(appMessagesManager.canEditMessage(mid, 'text')) {
+                  goodMid = mid;
+                }
+
+                break;
+              }
+            }
+  
+            if(goodMid) {
+              this.chatInputC.initMessageEditing(goodMid);
+            }
+          }
+        }/*  else {
+          this.scrollable.scrollTop -= 20;
+        } */
       }
       
       if(e.target != this.chatInputC.messageInput && target.tagName != 'INPUT' && !target.hasAttribute('contenteditable')) {
@@ -1394,7 +1419,11 @@ export class AppImManager {
     this.chatInput.style.display = '';
     this.chatInput.classList.toggle('is-hidden', !canWrite);
     this.bubblesContainer.classList.toggle('is-chat-input-hidden', !canWrite);
-    this.chatInputC.messageInput.toggleAttribute('contenteditable', canWrite);
+    if(!canWrite) {
+      this.chatInputC.messageInput.removeAttribute('contenteditable');
+    } else {
+      this.chatInputC.messageInput.setAttribute('contenteditable', 'true');
+    }
 
     // const noTransition = [this.columnEl/* appSidebarRight.sidebarEl, this.backgroundEl, 
     //   this.bubblesContainer, this.chatInput, this.chatInner, 
@@ -1765,12 +1794,14 @@ export class AppImManager {
       return bubble;
     }
 
+    let messageMedia = message.media;
+
     let messageMessage: string, totalEntities: any[];
     if(message.grouped_id) {
       const t = appMessagesManager.getAlbumText(message.grouped_id);
       messageMessage = t.message;
       totalEntities = t.totalEntities;
-    } else {
+    } else if(messageMedia?.document?.type != 'sticker') {
       messageMessage = message.message;
       totalEntities = message.totalEntities;
     }
@@ -1779,8 +1810,6 @@ export class AppImManager {
       entities: totalEntities
     });
     
-    let messageMedia = message.media;
-
     if(totalEntities && !messageMedia) {
       let emojiEntities = totalEntities.filter((e: any) => e._ == 'messageEntityEmoji');
       let strLength = messageMessage.length;

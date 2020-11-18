@@ -1,10 +1,12 @@
 import { FileURLType, getFileNameByLocation, getFileURL } from '../../helpers/fileName';
 import { safeReplaceArrayInObject, defineNotNumerableProperties, isObject } from '../../helpers/object';
+import { isSafari } from '../../helpers/userAgent';
 import { Document, InputFileLocation, PhotoSize } from '../../layer';
 import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
 import referenceDatabase, { ReferenceContext } from '../mtproto/referenceDatabase';
 import opusDecodeController from '../opusDecodeController';
 import { RichTextProcessor } from '../richtextprocessor';
+import webpWorkerController from '../webp/webpWorkerController';
 import appDownloadManager, { DownloadBlob } from './appDownloadManager';
 import appPhotosManager from './appPhotosManager';
 
@@ -99,7 +101,8 @@ class AppDocsManager {
             }
           }
 
-          if(/* apiDoc.thumbs &&  */doc.mime_type == 'image/webp') {
+          // * there can be no thumbs, then it is a document
+          if(/* apiDoc.thumbs &&  */doc.mime_type == 'image/webp' && (doc.thumbs || webpWorkerController.isWebpSupported())) {
             doc.type = 'sticker';
             doc.sticker = 1;
           }

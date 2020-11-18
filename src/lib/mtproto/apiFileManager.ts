@@ -2,13 +2,13 @@ import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePr
 import { notifyAll, notifySomeone } from "../../helpers/context";
 import { getFileNameByLocation } from "../../helpers/fileName";
 import { nextRandomInt } from "../../helpers/random";
-import { isSafari } from "../../helpers/userAgent";
 import { FileLocation, InputFile, InputFileLocation, UploadFile } from "../../layer";
 import cacheStorage from "../cacheStorage";
 import cryptoWorker from "../crypto/cryptoworker";
 import FileManager from "../filemanager";
 import { logger, LogLevels } from "../logger";
 import apiManager from "./apiManager";
+import { isWebpSupported } from "./mtproto.worker";
 import { MOUNT_CLASS_TO } from "./mtproto_config";
 
 
@@ -182,7 +182,7 @@ export class ApiFileManager {
 
     let process: ApiFileManager['uncompressTGS'] | ApiFileManager['convertWebp'];
 
-    if(options.mimeType == 'image/webp' && isSafari) {
+    if(options.mimeType == 'image/webp' && !isWebpSupported()) {
       process = this.convertWebp;
       options.mimeType = 'image/png';
     } else if(options.mimeType == 'application/x-tgsticker') {

@@ -2142,6 +2142,7 @@ export class AppMessagesManager {
             messageText = '<i>Video message' + (message.message ? ', ' : '') + '</i>';
           } else if(document.type == 'sticker') {
             messageText = (document.stickerEmoji || '') + '<i>Sticker</i>';
+            text = '';
           } else {
             messageText = '<i>' + document.file_name + (message.message ? ', ' : '') + '</i>';
           }
@@ -2379,7 +2380,8 @@ export class AppMessagesManager {
       return false;
     }
 
-    if(this.getMessagePeer(message) == appUsersManager.getSelf().id) {
+    // * second rule for saved messages, because there is no 'out' flag
+    if(message.pFlags.out || this.getMessagePeer(message) == appUsersManager.getSelf().id) {
       return true;
     }
 

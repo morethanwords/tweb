@@ -870,7 +870,7 @@ namespace RichTextProcessor {
     return text.match(urlRegExp);
   }
 
-  const el = document.createElement('span');
+  /* const el = document.createElement('span');
   export function getAbbreviation(str: string, onlyFirst = false) {
     const wrapped = wrapEmojiText(str);
     el.innerHTML = wrapped;
@@ -892,6 +892,18 @@ namespace RichTextProcessor {
     }
 
     return first + last;
+  } */
+  export function getAbbreviation(str: string, onlyFirst = false) {
+    const splitted = str.trim().split(' ');
+    if(!splitted[0]) return '';
+
+    const first = [...splitted[0]][0];
+
+    if(onlyFirst || splitted.length == 1) return wrapEmojiText(first);
+
+    const last = [...splitted[splitted.length - 1]][0];
+
+    return wrapEmojiText(first + last);
   }
 }
 

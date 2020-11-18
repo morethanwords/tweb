@@ -1242,6 +1242,10 @@ $bubble-margin: .25rem;
   &__media-container {
     cursor: pointer;
   }
+
+  audio-element, poll-element {
+    white-space: nowrap; // * fix due to .message white-space prewrap
+  }
 }
 
 .bubble.service {

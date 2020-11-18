@@ -106,6 +106,10 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
           this.postMessage = this.worker.postMessage.bind(this.worker);
         }
 
+        const isWebpSupported = webpWorkerController.isWebpSupported();
+        this.log('WebP supported:', isWebpSupported);
+        this.postMessage({type: 'webpSupport', payload: isWebpSupported});
+
         this.releasePending();
       }
 
