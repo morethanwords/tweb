@@ -674,6 +674,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
             let animation = LottieLoader.getAnimation(div);
   
             if(animation.paused) {
+              animation.autoplay = true;
               animation.restart();
             }
           });

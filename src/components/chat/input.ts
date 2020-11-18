@@ -503,7 +503,7 @@ export class ChatInput {
       };
     }
 
-    this.replyElements.cancelBtn.addEventListener('click', (e) => {
+    const onCancelHelper = (e: Event) => {
       cancelEvent(e);
 
       if(this.willSendWebPage) {
@@ -521,10 +521,14 @@ export class ChatInput {
 
       this.clearHelper();
       this.updateSendBtn();
-    });
+    };
+
+    this.replyElements.cancelBtn.addEventListener(isTouchSupported ? 'touchend' : 'click', onCancelHelper);
 
     let d = false;
-    this.replyElements.container.addEventListener('click', (e) => {
+    this.replyElements.container.addEventListener(isTouchSupported ? 'touchend' : 'click', (e) => {
+      cancelEvent(e);
+      
       if(!findUpClassName(e.target, 'reply-wrapper')) return;
       if(this.helperType == 'forward') {
         if(d) return;

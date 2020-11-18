@@ -40,7 +40,7 @@ export namespace MessageRender {
     }
 
     const title = getFullDate(date) 
-      + (message.edit_date ? `\nEdited: ${getFullDate(new Date(message.edit_date * 1000))}` : '');
+      + (message.edit_date ? `\nEdited: ${getFullDate(new Date(message.edit_date * 1000))}` : '')
       + (message.fwd_from ? `\nOriginal: ${getFullDate(new Date(message.fwd_from.date * 1000))}` : '');
 
     const timeSpan = document.createElement('span');
