@@ -10,6 +10,7 @@ import SearchInput from "./searchInput";
 import { Peer } from "../layer";
 import rootScope from "../lib/rootScope";
 import { escapeRegExp } from "../helpers/string";
+import searchIndexManager from "../lib/searchIndexManager";
 
 export class SearchGroup {
   container: HTMLDivElement;
@@ -143,13 +144,6 @@ export default class AppSearch {
     this.searchInput.input.focus();
   }
 
-  private renderSaved() {
-    const group = this.searchGroups.contacts;
-    let {dialog, dom} = appDialogsManager.addDialog(rootScope.myID, group.list, false);
-    dom.lastMessageSpan.innerHTML = 'chat with yourself';
-    group.setActive();
-  }
-  
   public searchMore() {
     if(this.searchPromise) return this.searchPromise;
     
@@ -167,85 +161,79 @@ export default class AppSearch {
     const maxID = appMessagesIDsManager.getMessageIDInfo(this.minMsgID)[0] || 0;
 
     if(!this.peerID && !maxID && !this.loadedContacts) {
-      let renderedSaved = false;
-      if('saved messages'.includes(query.toLowerCase()) 
-        || appUsersManager.getUser(rootScope.myID).sortName.includes(query.toLowerCase())/*  && this.searchGroups.hasOwnProperty('saved') */) {
-        this.renderSaved();
-        renderedSaved = true;
-      }
+      const renderedPeerIDs: Set<number> = new Set();
 
-      appUsersManager.searchContacts(query, 20).then((contacts) => {
+      const setResults = (results: number[], group: SearchGroup, showMembersCount = false) => {
+        results.forEach((peerID) => {
+          if(renderedPeerIDs.has(peerID)) {
+            return;
+          }
+
+          renderedPeerIDs.add(peerID);
+
+          const peer = appPeersManager.getPeer(peerID);
+
+          //////////this.log('contacts peer', peer);
+
+          const {dom} = appDialogsManager.addDialog(peerID, group.list, false);
+
+          if(showMembersCount && (peer.participants_count || peer.participants)) {
+            const regExp = new RegExp(`(${escapeRegExp(query)}|${escapeRegExp(searchIndexManager.cleanSearchText(query))})`, 'gi');
+            dom.titleSpan.innerHTML = dom.titleSpan.innerHTML.replace(regExp, '<i>$1</i>');
+            dom.lastMessageSpan.innerText = appChatsManager.getChatMembersString(-peerID);
+          } else if(peerID == rootScope.myID) {
+            dom.lastMessageSpan.innerHTML = 'chat with yourself';
+          } else {
+            let username = appPeersManager.getPeerUsername(peerID);
+            if(!username) {
+              const user = appUsersManager.getUser(peerID);
+              if(user && user.phone) {
+                username = '+' + formatPhoneNumber(user.phone).formatted;
+              }
+            } else {
+              username = '@' + username;
+            }
+
+            dom.lastMessageSpan.innerHTML = '<i>' + username + '</i>';
+          }
+        });
+
+        group.toggle();
+      };
+
+      const onLoad = <T>(arg: T) => {
         if(this.searchInput.value != query) {
           return;
         }
 
         this.loadedContacts = true;
 
-        // set saved message as first peer to render
-        const peer = contacts.my_results.findAndSplice(p => (p as Peer.peerUser).user_id == rootScope.myID);
-        if(peer) {
-          contacts.my_results.unshift(peer);
+        return arg;
+      };
+
+      appUsersManager.getContacts(query, true)
+      .then(onLoad)
+      .then((contacts) => {
+        if(contacts) {
+          setResults(contacts, this.searchGroups.contacts, true);
         }
+      });
 
-        //console.log('input search contacts result:', contacts);
+      appUsersManager.searchContacts(query, 20)
+      .then(onLoad)
+      .then((contacts) => {
+        if(contacts) {
+          setResults(contacts.my_results, this.searchGroups.contacts, true);
+          setResults(contacts.results, this.searchGroups.globalContacts);
+        }
+      });
 
-        let setResults = (results: Peer[], group: SearchGroup, showMembersCount = false) => {
-          // ! because contacts.search returns duplicates in my_results
-          new Set(results.map(peer => appPeersManager.getPeerID(peer))).forEach((peerID) => {
-            if(peerID == rootScope.myID) {
-              if(!renderedSaved) {
-                this.renderSaved();
-              }
-
-              return;
-            }
-
-            let peer = appPeersManager.getPeer(peerID);
-            let originalDialog = appMessagesManager.getDialogByPeerID(peerID)[0];
-
-            //////////this.log('contacts peer', peer);
-          
-            if(!originalDialog) {
-              /////////this.log('no original dialog by peerID:', peerID);
-              
-              originalDialog = {
-                peerID: peerID,
-                pFlags: {},
-                peer: peer
-              } as any;
-            }
-            
-            let {dialog, dom} = appDialogsManager.addDialog(originalDialog, group.list, false);
-
-            if(showMembersCount && (peer.participants_count || peer.participants)) {
-              let regExp = new RegExp(`(${escapeRegExp(query)})`, 'gi');
-              dom.titleSpan.innerHTML = dom.titleSpan.innerHTML.replace(regExp, '<i>$1</i>');
-              dom.lastMessageSpan.innerText = appChatsManager.getChatMembersString(-peerID);
-            } else {
-              let username = appPeersManager.getPeerUsername(peerID);
-              if(!username) {
-                let user = appUsersManager.getUser(peerID);
-                if(user && user.phone) {
-                  username = '+' + formatPhoneNumber(user.phone).formatted;
-                }
-              } else {
-                username = '@' + username;
-              }
-
-              dom.lastMessageSpan.innerHTML = '<i>' + username + '</i>';
-            }
-          });
-
-          if(results.length) group.setActive();
-          else if(renderedSaved) { // удалить все пункты снизу
-            Array.from(group.list.children).slice(1).forEach(c => c.remove());
-          } else {
-            group.clear();
-          }
-        };
-
-        setResults(contacts.my_results, this.searchGroups.contacts, true);
-        setResults(contacts.results, this.searchGroups.globalContacts);
+      appMessagesManager.getConversations(query, 0, 20, 0)
+      .then(onLoad)
+      .then(value => {
+        if(value) {
+          setResults(value.dialogs.map(d => d.peerID), this.searchGroups.contacts, true);
+        }
       });
     }
     
@@ -265,25 +253,15 @@ export default class AppSearch {
       }
       
       const searchGroup = this.searchGroups.messages;
-      searchGroup.setActive();
 
       history.forEach((msgID: number) => {
         const message = appMessagesManager.getMessage(msgID);
-        let originalDialog = appMessagesManager.getDialogByPeerID(message.peerID)[0];
-        
-        if(!originalDialog) {
-          ////////this.log('no original dialog by message:', message);
-          
-          originalDialog = {
-            peerID: message.peerID,
-            pFlags: {},
-            peer: message.peer_id
-          } as any;
-        }
-        
-        const {dialog, dom} = appDialogsManager.addDialog(originalDialog, this.scrollable/* searchGroup.list */, false);
+
+        const {dialog, dom} = appDialogsManager.addDialog(message.peerID, this.scrollable/* searchGroup.list */, false);
         appDialogsManager.setLastMessage(dialog, message, dom, query);
       });
+
+      searchGroup.toggle();
       
       this.minMsgID = history[history.length - 1];
       this.offsetRate = next_rate;

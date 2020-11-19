@@ -392,8 +392,8 @@ export class AppChatsManager {
   public createChannel(title: string, about: string): Promise<number> {
     return apiManager.invokeApi('channels.createChannel', {
       broadcast: true,
-      title: title,
-      about: about
+      title,
+      about
     }).then((updates: any) => {
       apiUpdatesManager.processUpdateMessage(updates);
 
@@ -416,7 +416,7 @@ export class AppChatsManager {
   public createChat(title: string, userIDs: number[]): Promise<number> {
     return apiManager.invokeApi('messages.createChat', {
       users: userIDs.map(u => appUsersManager.getUserInput(u)),
-      title: title
+      title
     }).then(updates => {
       apiUpdatesManager.processUpdateMessage(updates);
 
@@ -489,7 +489,7 @@ export class AppChatsManager {
   }
 
   private onChatUpdated = (chatID: number, updates: any) => {
-    console.log('onChatUpdated', chatID, updates);
+    //console.log('onChatUpdated', chatID, updates);
 
     apiUpdatesManager.processUpdateMessage(updates);
     if(updates &&

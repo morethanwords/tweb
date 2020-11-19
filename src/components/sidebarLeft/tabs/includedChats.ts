@@ -94,9 +94,10 @@ export default class AppIncludedChatsTab implements SliderTab {
     return `<div class="checkbox"><label><input type="checkbox" ${selected ? 'checked' : ''}><span></span></label></div>`;
   }
 
-  renderResults = (peerIDs: number[]) => {
+  renderResults = async(peerIDs: number[]) => {
     //const other = this.type == 'included' ? this.filter.exclude_peers : this.filter.include_peers;
 
+    await appUsersManager.getContacts();
     peerIDs.forEach(peerID => {
       //if(other.includes(peerID)) return;
 

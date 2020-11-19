@@ -1104,6 +1104,7 @@ export class AppDialogsManager {
       if(!originalDialog) {
         originalDialog = {
           peerID: _dialog,
+          peer: appPeersManager.getOutputPeer(_dialog),
           pFlags: {}
         } as any;
       }

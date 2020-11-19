@@ -19,16 +19,16 @@ import appStateManager from "./appStateManager";
 export type User = MTUser.user;
 
 export class AppUsersManager {
-  public users: {[userID: number]: User} = {};
-  public usernames: {[username: string]: number} = {};
+  private users: {[userID: number]: User} = {};
+  private usernames: {[username: string]: number} = {};
   //public userAccess: {[userID: number]: string} = {};
-  public cachedPhotoLocations: any = {};
-  public contactsIndex = searchIndexManager.createIndex();
-  public contactsFillPromise: Promise<Set<number>>;
+  private cachedPhotoLocations: any = {};
+  private contactsIndex = searchIndexManager.createIndex();
+  private contactsFillPromise: Promise<Set<number>>;
   public contactsList: Set<number> = new Set();
   private updatedContactsList = false;
 
-  public getTopPeersPromise: Promise<number[]>;
+  private getTopPeersPromise: Promise<number[]>;
 
   constructor() {
     setInterval(this.updateUsersStatuses, 60000);
@@ -110,6 +110,8 @@ export class AppUsersManager {
     });
 
     appStateManager.getState().then((state) => {
+      this.users = state.users;
+
       const contactsList = state.contactsList;
       if(contactsList && Array.isArray(contactsList)) {
         contactsList.forEach(userID => {
@@ -118,8 +120,6 @@ export class AppUsersManager {
 
         this.contactsFillPromise = Promise.resolve(this.contactsList);
       }
-
-      this.users = state.users;
     });
   }
 
@@ -179,7 +179,7 @@ export class AppUsersManager {
             ' ' + serviceText;
   }
 
-  public getContacts(query?: string) {
+  public getContacts(query?: string, includeSaved = false) {
     return this.fillContacts().then(_contactsList => {
       let contactsList = [..._contactsList];
       if(query) {
@@ -195,6 +195,16 @@ export class AppUsersManager {
 
         return sortName1.localeCompare(sortName2);
       });
+
+      if(includeSaved) {
+        const isSearchingSaved = 'saved messages'.includes(query.toLowerCase()) 
+          || appUsersManager.getUser(rootScope.myID).sortName.includes(query.toLowerCase());
+
+        if(isSearchingSaved) {
+          contactsList.findAndSplice(p => p == rootScope.myID);
+          contactsList.unshift(rootScope.myID);
+        }
+      }
 
       /* contactsList.sort((userID1: number, userID2: number) => {
         const sortName1 = (this.users[userID1] || {}).sortName || '';
@@ -222,15 +232,14 @@ export class AppUsersManager {
       return;
     }
 
-    var userID = user.id;
-    var result = this.users[userID];
+    const userID = user.id;
 
     if(user.pFlags === undefined) {
       user.pFlags = {};
     }
 
     if(user.pFlags.min) {
-      if(result !== undefined) {
+      if(this.users[userID] !== undefined) {
         return;
       }
     }
@@ -252,7 +261,7 @@ export class AppUsersManager {
     }
 
     if(user.username) {
-      var searchUsername = searchIndexManager.cleanUsername(user.username);
+      const searchUsername = searchIndexManager.cleanUsername(user.username);
       this.usernames[searchUsername] = userID;
     }
 
@@ -276,11 +285,11 @@ export class AppUsersManager {
       user.sortStatus = this.getUserStatusForSort(user.status);
     }
 
-    var result = this.users[userID];
-    if(result === undefined) {
-      result = this.users[userID] = user;
+    const oldUser = this.users[userID];
+    if(oldUser === undefined) {
+      this.users[userID] = user;
     } else {
-      safeReplaceObject(result, user);
+      safeReplaceObject(oldUser, user);
     }
 
     rootScope.broadcast('user_update', userID);
@@ -599,16 +608,44 @@ export class AppUsersManager {
     });
   }
 
+  /* public searchContacts(query: string, limit = 20) {
+    return Promise.all([
+      this.getContacts(query),
+      apiManager.invokeApi('contacts.search', {
+        q: query,
+        limit
+      })
+    ]).then(results => {
+      const [myContacts, peers] = results;
+
+      this.saveApiUsers(peers.users);
+      appChatsManager.saveApiChats(peers.chats);
+
+      // * contacts.search returns duplicates in my_results
+      const myResults = new Set(myContacts.concat(peers.my_results.map(p => appPeersManager.getPeerID(p))));
+
+      const out = {
+        my_results: [...myResults].slice(0, limit),
+        results: peers.results.map(p => appPeersManager.getPeerID(p))
+      };
+
+      return out;
+    });
+  } */
   public searchContacts(query: string, limit = 20) {
     return apiManager.invokeApi('contacts.search', {
       q: query,
       limit
-    }).then((peers) => {
-      //console.log('search contacts result:', peers);
+    }).then(peers => {
       this.saveApiUsers(peers.users);
       appChatsManager.saveApiChats(peers.chats);
 
-      return peers;
+      const out = {
+        my_results: [...new Set(peers.my_results.map(p => appPeersManager.getPeerID(p)))], // ! contacts.search returns duplicates in my_results
+        results: peers.results.map(p => appPeersManager.getPeerID(p))
+      };
+
+      return out;
     });
   }
 
