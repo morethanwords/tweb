@@ -174,7 +174,7 @@ export class AppSidebarLeft extends SidebarSlider {
       this.globalSearch = new AppSearch(this.searchContainer, this.searchInput, this.searchGroups, (count) => {
         if(!count && !this.searchInput.value.trim()) {
           this.globalSearch.reset();
-          this.searchGroups.people.setActive();
+          this.searchGroups.people.toggle();
           this.renderRecentSearch();
         }
       });
@@ -215,11 +215,13 @@ export class AppSidebarLeft extends SidebarSlider {
 
       appUsersManager.getTopPeers().then(peers => {
         //console.log('got top categories:', categories);
-        peers.forEach((peerID) => {
-          let {dialog, dom} = appDialogsManager.addDialog(peerID, this.searchGroups.people.list, false, true, true);
-    
-          this.searchGroups.people.setActive();
-        });
+        if(peers.length) {
+          peers.forEach((peerID) => {
+            appDialogsManager.addDialog(peerID, this.searchGroups.people.list, false, true, true);
+          });
+        }
+
+        this.searchGroups.people.toggle();
       });
 
       let hideNewBtnMenuTimeout: number;
@@ -246,7 +248,7 @@ export class AppSidebarLeft extends SidebarSlider {
         transition(1);
 
         if(firstTime) {
-          this.searchGroups.people.setActive();
+          this.searchGroups.people.toggle();
           this.renderRecentSearch();
           firstTime = false;
         }
@@ -350,7 +352,9 @@ export class AppSidebarLeft extends SidebarSlider {
         dom.lastMessageSpan.innerText = peerID > 0 ? appUsersManager.getUserStatusString(peerID) : appChatsManager.getChatMembersString(peerID);
       });
 
-      if(setActive) {
+      if(!this.recentSearch.length) {
+        this.searchGroups.recent.clear();
+      } else if(setActive) {
         this.searchGroups.recent.setActive();
       }
     });

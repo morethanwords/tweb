@@ -692,9 +692,9 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
         img.classList.add('fade-in-transition');
         img.style.opacity = '0';
 
-        if(!div.firstElementChild) {
+        /* if(!div.firstElementChild) {
           div.append(img);
-        }
+        } */
 
         img.addEventListener('load', () => {
           doc.downloaded = true;

@@ -48,6 +48,14 @@ export class SearchGroup {
   setActive() {
     this.container.style.display = '';
   }
+
+  toggle() {
+    if(this.list.childElementCount) {
+      this.setActive();
+    } else {
+      this.clear();
+    }
+  }
 }
 
 /**
