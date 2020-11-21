@@ -2405,6 +2405,13 @@ export class AppMessagesManager {
   public applyConversations(dialogsResult: MessagesPeerDialogs.messagesPeerDialogs) {
     // * В эту функцию попадут только те диалоги, в которых есть read_inbox_max_id и read_outbox_max_id, в отличие от тех, что будут в getTopMessages
 
+    // ! fix 'dialogFolder', maybe there is better way to do it, this only can happen by 'messages.getPinnedDialogs' by folder_id: 0
+    dialogsResult.dialogs.forEachReverse((dialog, idx) => {
+      if(dialog._ == 'dialogFolder') {
+        dialogsResult.dialogs.splice(idx, 1);
+      }
+    });
+
     appUsersManager.saveApiUsers(dialogsResult.users);
     appChatsManager.saveApiChats(dialogsResult.chats);
     this.saveMessages(dialogsResult.messages);
@@ -2412,7 +2419,6 @@ export class AppMessagesManager {
     //this.log('applyConversation', dialogsResult);
 
     const updatedDialogs: {[peerID: number]: Dialog} = {};
-    let hasUpdated = false;
     (dialogsResult.dialogs as Dialog[]).forEach((dialog) => {
       const peerID = appPeersManager.getPeerID(dialog.peer);
       let topMessage = dialog.top_message;
@@ -2444,8 +2450,9 @@ export class AppMessagesManager {
         /* if(wasDialogBefore) {
           rootScope.$broadcast('dialog_top', dialog);
         } else { */
-          updatedDialogs[peerID] = dialog;
-          hasUpdated = true;
+          //if(wasDialogBefore?.top_message != topMessage) {
+            updatedDialogs[peerID] = dialog;
+          //}
         //}
       } else {
         const dropped = this.dialogsStorage.dropDialog(peerID);
@@ -2464,7 +2471,7 @@ export class AppMessagesManager {
       }
     });
 
-    if(hasUpdated) {
+    if(Object.keys(updatedDialogs).length) {
       rootScope.broadcast('dialogs_multiupdate', updatedDialogs);
     }
   }
@@ -3327,6 +3334,41 @@ export class AppMessagesManager {
 
       case 'updatePinnedDialogs': {
         const folderID = update.folder_id ?? 0;
+        
+        const handleOrder = (order: number[]) => {
+          this.dialogsStorage.pinnedOrders[folderID].length = 0;
+          let willHandle = false;
+          order.reverse(); // index must be higher
+          order.forEach((peerID) => {
+            newPinned[peerID] = true;
+  
+            const foundDialog = this.getDialogByPeerID(peerID);
+            if(!foundDialog.length) {
+              this.newDialogsToHandle[peerID] = {reload: true};
+              willHandle = true;
+              return;
+            }
+  
+            const dialog = foundDialog[0];
+            dialog.pFlags.pinned = true;
+            this.dialogsStorage.generateIndexForDialog(dialog);
+  
+            this.newDialogsToHandle[peerID] = dialog;
+            willHandle = true;
+          });
+          
+          this.dialogsStorage.getFolder(folderID).forEach(dialog => {
+            const peerID = dialog.peerID;
+            if(dialog.pFlags.pinned && !newPinned[peerID]) {
+              this.newDialogsToHandle[peerID] = {reload: true};
+              willHandle = true;
+            }
+          });
+  
+          if(willHandle) {
+            this.scheduleHandleNewDialogs();
+          }
+        };
 
         this.log('updatePinnedDialogs', update);
         const newPinned: {[peerID: number]: true} = {};
@@ -3334,10 +3376,14 @@ export class AppMessagesManager {
           apiManager.invokeApi('messages.getPinnedDialogs', {
             folder_id: folderID
           }).then((dialogsResult) => {
-            dialogsResult.dialogs.reverse();
+            // * for test reordering and rendering
+            // dialogsResult.dialogs.reverse();
+
             this.applyConversations(dialogsResult);
 
-            dialogsResult.dialogs.forEach((dialog) => {
+            handleOrder(dialogsResult.dialogs.map(d => d.peerID));
+
+            /* dialogsResult.dialogs.forEach((dialog) => {
               newPinned[dialog.peerID] = true;
             });
 
@@ -3347,7 +3393,7 @@ export class AppMessagesManager {
                 this.newDialogsToHandle[peerID] = {reload: true};
                 this.scheduleHandleNewDialogs();
               }
-            });
+            }); */
           });
 
           break;
@@ -3355,39 +3401,7 @@ export class AppMessagesManager {
 
         //this.log('before order:', this.dialogsStorage[0].map(d => d.peerID));
 
-        this.dialogsStorage.pinnedOrders[folderID].length = 0;
-        let willHandle = false;
-        update.order.reverse(); // index must be higher
-        update.order.forEach((peer: any) => {
-          const peerID = appPeersManager.getPeerID(peer.peer);
-          newPinned[peerID] = true;
-
-          const foundDialog = this.getDialogByPeerID(peerID);
-          if(!foundDialog.length) {
-            this.newDialogsToHandle[peerID] = {reload: true};
-            willHandle = true;
-            return;
-          }
-
-          const dialog = foundDialog[0];
-          dialog.pFlags.pinned = true;
-          this.dialogsStorage.generateIndexForDialog(dialog);
-
-          this.newDialogsToHandle[peerID] = dialog;
-          willHandle = true;
-        });
-        
-        this.dialogsStorage.getFolder(folderID).forEach(dialog => {
-          const peerID = dialog.peerID;
-          if(dialog.pFlags.pinned && !newPinned[peerID]) {
-            this.newDialogsToHandle[peerID] = {reload: true};
-            willHandle = true;
-          }
-        });
-
-        if(willHandle) {
-          this.scheduleHandleNewDialogs();
-        }
+        handleOrder(update.order.map(peer => appPeersManager.getPeerID((peer as DialogPeer.dialogPeer).peer)));
 
         break;
       }   

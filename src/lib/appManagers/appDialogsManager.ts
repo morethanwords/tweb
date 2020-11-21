@@ -511,7 +511,7 @@ export class AppDialogsManager {
 
     if(this.getDialogDom(dialog.peerID)) {
       this.setLastMessage(dialog);
-      this.setDialogPosition(dialog);
+      this.reorderDialogs();
     }
   }
 
@@ -763,8 +763,8 @@ export class AppDialogsManager {
 
       const rect = this.scroll.container.getBoundingClientRect();
       const children = Array.from(this.scroll.splitUp.children) as HTMLElement[];
-      const firstElement = findUpTag(document.elementFromPoint(rect.x, rect.y + 1), 'LI') as HTMLElement;
-      const lastElement = findUpTag(document.elementFromPoint(rect.x, rect.y + rect.height - 1), 'LI') as HTMLElement;
+      const firstElement = findUpTag(document.elementFromPoint(Math.ceil(rect.x), Math.ceil(rect.y + 1)), 'LI') as HTMLElement;
+      const lastElement = findUpTag(document.elementFromPoint(Math.ceil(rect.x), Math.floor(rect.y + rect.height - 1)), 'LI') as HTMLElement;
 
       //alert('got element:' + rect.y);
 
@@ -889,25 +889,39 @@ export class AppDialogsManager {
     }
   }
 
-  private setDialogPosition(dialog: Dialog) {
-    const dom = this.getDialogDom(dialog.peerID);
-    if(!dom) {
-      return;
-    }
+  private reorderDialogs() {
+    //const perf = performance.now();
 
-    let pos = appMessagesManager.dialogsStorage.getDialog(dialog.peerID, this.filterID)[1];
+    let offset = 0;
     if(this.topOffsetIndex) {
       const element = this.chatList.firstElementChild;
       if(element) {
         const peerID = +element.getAttribute('data-peerID');
         const firstDialog = appMessagesManager.getDialogByPeerID(peerID);
-        pos -= firstDialog[1];
+        offset = firstDialog[1];
       }
     }
 
-    if(positionElementByIndex(dom.listEl, this.chatList, pos)) {
-      this.log.debug('setDialogPosition:', dialog, dom, pos);
-    }
+    const dialogs = appMessagesManager.dialogsStorage.getFolder(this.filterID);
+    const currentOrder = (Array.from(this.chatList.children) as HTMLElement[]).map(el => +el.getAttribute('data-peerID'));
+
+    dialogs.forEach((dialog, index) => {
+      const dom = this.getDialogDom(dialog.peerID);
+      if(!dom) {
+        return;
+      }
+
+      const currentIndex = currentOrder[dialog.peerID];
+      const needIndex = index - offset;
+
+      if(currentIndex != needIndex) {
+        if(positionElementByIndex(dom.listEl, this.chatList, needIndex)) {
+          this.log.debug('setDialogPosition:', dialog, dom, needIndex);
+        }
+      }
+    });
+
+    //this.log('Reorder time:', performance.now() - perf);
   }
 
   public setLastMessage(dialog: any, lastMessage?: any, dom?: DialogDom, highlightWord?: string) {
