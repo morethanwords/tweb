@@ -184,6 +184,12 @@ export function openBtnMenu(menuElement: HTMLElement, onClose?: () => void) {
     window.addEventListener('keydown', onKeyDown, {capture: true});
     window.addEventListener('contextmenu', onClick, {once: true});
   }
+
+  // ! because this event must be canceled, and can't cancel on menu click (below)
+  overlay.addEventListener(CLICK_EVENT_NAME, (e) => {
+    cancelEvent(e);
+    onClick(e);
+  });
   
   // ! safari iOS doesn't handle window click event on overlay, idk why
   document.addEventListener(CLICK_EVENT_NAME, onClick);
