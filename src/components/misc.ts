@@ -3,7 +3,7 @@ import { cancelEvent } from "../helpers/dom";
 import mediaSizes from "../helpers/mediaSizes";
 import { clamp } from "../helpers/number";
 import { isTouchSupported } from "../helpers/touchSupport";
-import { isApple } from "../helpers/userAgent";
+import { isApple, isSafari } from "../helpers/userAgent";
 
 export const loadedURLs: {[url: string]: boolean} = {};
 const set = (elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLVideoElement, url: string) => {
@@ -118,6 +118,7 @@ let onMouseMove = (e: MouseEvent) => {
 };
 
 const onClick = (e: MouseEvent | TouchEvent) => {
+  //cancelEvent(e);
   closeBtnMenu();
 };
 
@@ -141,15 +142,13 @@ export const closeBtnMenu = () => {
     openedMenuOnClose = null;
   }
 
-  if(isTouchSupported) {
-    window.removeEventListener('touchmove', onClick);
-  } else {
+  if(!isTouchSupported) {
     window.removeEventListener('mousemove', onMouseMove);
+    window.removeEventListener('keydown', onKeyDown, {capture: true});
+    window.removeEventListener('contextmenu', onClick);
   }
 
-  window.removeEventListener('keydown', onKeyDown, {capture: true});
-  window.removeEventListener('click', onClick);
-  window.removeEventListener('contextmenu', onClick);
+  document.removeEventListener('click', onClick);
 };
 
 window.addEventListener('resize', () => {
@@ -180,15 +179,14 @@ export function openBtnMenu(menuElement: HTMLElement, onClose?: () => void) {
   
   openedMenuOnClose = onClose;
 
-  if(isTouchSupported) {
-    window.addEventListener('touchmove', onClick, {once: true});
-  } else {
+  if(!isTouchSupported) {
     window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('keydown', onKeyDown, {capture: true});
+    window.addEventListener('contextmenu', onClick, {once: true});
   }
   
-  window.addEventListener('keydown', onKeyDown, {capture: true});
-  window.addEventListener('click', onClick, {once: true});
-  window.addEventListener('contextmenu', onClick, {once: true});
+  // ! safari iOS doesn't handle window click event on overlay, idk why
+  document.addEventListener('click', onClick);
 }
 
 const PADDING_TOP = 8;
@@ -263,34 +261,17 @@ export function attachContextMenuListener(element: HTMLElement, callback: (e: To
 
     element.addEventListener('touchstart', (e) => {
       if(e.touches.length > 1) {
-        clearTimeout(timeout);
+        onCancel();
         return;
       }
   
-      element.addEventListener('touchmove', onCancel, {once: true});
-      element.addEventListener('touchend', onCancel, {once: true});
-      element.addEventListener('touchcancel', onCancel, {once: true});
-  
-      /* let eee = (e: TouchEvent) => {
-        const target = findUpClassName(e.target, 'btn-menu');
-        if(!target) {
-          closeBtnMenu();
-          window.addEventListener('touchend', (e) => {
-            return cancelEvent(e);
-          }, {once: true});
-        }
-      }; */
+      element.addEventListener('touchmove', onCancel);
+      element.addEventListener('touchend', onCancel);
+      element.addEventListener('touchcancel', onCancel);
 
       timeout = window.setTimeout(() => {
         callback(e.touches[0]);
         onCancel();
-
-        /* window.requestAnimationFrame(() => {
-          window.addEventListener('touchstart', eee);
-          window.addEventListener('touchend', (e) => {
-            window.removeEventListener('touchstart', eee);
-          }, {once: true});
-        }); */
       }, .4e3);
     });
   } else {
