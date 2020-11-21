@@ -191,61 +191,99 @@ export function openBtnMenu(menuElement: HTMLElement, onClose?: () => void) {
 
 const PADDING_TOP = 8;
 const PADDING_LEFT = 8;
-export function positionMenu({clientX, clientY}: {clientX: number, clientY: number}/* e: MouseEvent */, elem: HTMLElement, side?: 'left' | 'right') {
+export function positionMenu({clientX, clientY}: {clientX: number, clientY: number}/* e: MouseEvent */, elem: HTMLElement, side?: 'left' | 'right' | 'center') {
   //let {clientX, clientY} = e;
 
-  let {scrollWidth, scrollHeight} = elem;
-  let {innerWidth, innerHeight} = window;
+  // * side mean the OPEN side
 
-  if(mediaSizes.isMobile) {
-    side = undefined;
-  }
+  let {scrollWidth: menuWidth, scrollHeight: menuHeight} = elem;
+  let {innerWidth: windowWidth, innerHeight: windowHeight} = window;
 
-  if(side === undefined) {
-    if((clientX + scrollWidth + PADDING_LEFT) > innerWidth) {
+  side = mediaSizes.isMobile ? 'right' : 'left';
+  let verticalSide: 'top' /* | 'bottom' */ | 'center' = 'top';
+
+  const getSides = () => {
+    return {
+      x: {
+        left: clientX,
+        right: clientX - menuWidth
+      },
+      intermediateX: side == 'right' ? PADDING_LEFT : windowWidth - menuWidth - PADDING_LEFT,
+      //intermediateX: clientX < windowWidth / 2 ? PADDING_LEFT : windowWidth - menuWidth - PADDING_LEFT,
+      y: {
+        top: clientY,
+        bottom: clientY - menuHeight
+      },
+      //intermediateY: verticalSide == 'top' ? PADDING_TOP : windowHeight - menuHeight - PADDING_TOP,
+      intermediateY: clientY < windowHeight / 2 ? PADDING_TOP : windowHeight - menuHeight - PADDING_TOP,
+    };
+  };
+
+  const sides = getSides();
+
+  const possibleSides = {
+    x: {
+      left: sides.x.left + menuWidth + PADDING_LEFT <= windowWidth,
+      right: sides.x.right >= PADDING_LEFT
+    },
+    y: {
+      top: sides.y.top + menuHeight + PADDING_TOP <= windowHeight,
+      bottom: sides.y.bottom - PADDING_TOP >= PADDING_TOP
+    }
+  };
+
+  /* if(side === undefined) {
+    if((clientX + menuWidth + PADDING_LEFT) > windowWidth) {
       side = 'right';
     }
-  }
+  } */
 
-  if(!side) {
-    side = 'left';
-  }
+  {
+    /* const x = sides.x;
 
-  // ! don't need reverse for this, this will be the side WHERE ANIMATION WILL END !
-  // ! NO LOGIC HERE !
-  let verticalSide: 'top' | 'bottom';
-
-  if(side !== undefined) {
-    let left: number;
-    if(side === 'right') {
-      left = clientX - scrollWidth;
-      if(left < PADDING_LEFT) {
-        side = 'left';
-        left = Math.max(PADDING_LEFT, clientX);
-      }
-    } else {
-      left = Math.max(PADDING_LEFT, clientX);
-      if((clientX + scrollWidth) > (innerWidth - PADDING_LEFT)) {
-        side = 'right';
-        left = Math.max(clientX - scrollWidth, scrollWidth - PADDING_LEFT);
-      }
+    const s = Object.keys(x) as (keyof typeof possibleSides.x)[];
+    if(side) {
+      s.findAndSplice(s => s == side);
+      s.unshift(side);
     }
 
-    //const left = clamp(side == 'right' ? clientX - scrollWidth : clientX, PADDING_LEFT, innerWidth - scrollWidth - PADDING_LEFT);
+    const possibleSide = s.find(s => possibleSides.x[s]); */
+    let left: number;
+    /* if(possibleSide) {
+      left = x[possibleSide];
+      side = possibleSide;
+    } else {
+      left = sides.intermediateX;
+      side = undefined;
+    } */
+    left = possibleSides.x[side] ? sides.x[side] : (side = 'center', sides.intermediateX);
+  
     elem.style.left = left + 'px';
   }
-  
-  if((clientY + scrollHeight + PADDING_TOP) > innerHeight) {
-    elem.style.top = clamp(clientY - scrollHeight, PADDING_TOP, innerHeight - scrollHeight - PADDING_TOP) + 'px';
+
+  /* if((clientY + menuHeight + PADDING_TOP) > windowHeight) {
+    elem.style.top = clamp(clientY - menuHeight, PADDING_TOP, windowHeight - menuHeight - PADDING_TOP) + 'px';
     // elem.style.top = (innerHeight - scrollHeight - PADDING_TOP) + 'px';
-    verticalSide = 'top';
+    verticalSide = 'bottom';
   } else {
     elem.style.top = Math.max(PADDING_TOP, clientY) + 'px';
-    verticalSide = 'bottom';
+    verticalSide = 'top';
+  } */
+
+  {
+    let top: number;
+
+    top = possibleSides.y[verticalSide] ? sides.y[verticalSide] : (verticalSide = 'center', sides.intermediateY);
+  
+    elem.style.top = top + 'px';
   }
   
-  elem.classList.remove('bottom-left', 'bottom-right', 'top-left', 'top-right');
-  elem.classList.add(verticalSide + '-' + (side == 'left' ? 'right' : 'left'));
+  elem.className = elem.className.replace(/(top|center|bottom)-(left|center|right)/g, '');
+  elem.classList.add(
+    //(verticalSide == 'center' ? verticalSide : (verticalSide == 'bottom' ? 'top' : 'bottom')) +
+    (verticalSide == 'center' ? verticalSide : 'bottom') +
+    '-' +
+    (side == 'center' ? side : (side == 'left' ? 'right' : 'left')));
 }
 
 export function attachContextMenuListener(element: HTMLElement, callback: (e: Touch | MouseEvent) => void) {
