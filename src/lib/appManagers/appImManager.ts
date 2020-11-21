@@ -40,7 +40,7 @@ import apiManager from '../mtproto/mtprotoworker';
 import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from '../rootScope';
-import { cancelEvent, findUpClassName, findUpTag, placeCaretAtEnd, whichChild } from "../../helpers/dom";
+import { cancelEvent, CLICK_EVENT_NAME, findUpClassName, findUpTag, placeCaretAtEnd, whichChild } from "../../helpers/dom";
 import apiUpdatesManager from './apiUpdatesManager';
 import appChatsManager, { Channel, Chat } from "./appChatsManager";
 import appDialogsManager from "./appDialogsManager";
@@ -708,7 +708,7 @@ export class AppImManager {
       this.mutePeer(this.peerID);
     });
 
-    this.btnJoin.addEventListener('click', (e) => {
+    this.btnJoin.addEventListener(CLICK_EVENT_NAME, (e) => {
       cancelEvent(e);
 
       this.btnJoin.setAttribute('disabled', 'true');
@@ -717,11 +717,11 @@ export class AppImManager {
       });
     });
     
-    this.menuButtons.mute.addEventListener('click', (e) => {
+    this.menuButtons.mute.addEventListener(CLICK_EVENT_NAME, (e) => {
       this.mutePeer(this.peerID);
     });
 
-    this.menuButtons.search.addEventListener('click', (e) => {
+    this.menuButtons.search.addEventListener(CLICK_EVENT_NAME, (e) => {
       new ChatSearch();
     });
     
@@ -745,6 +745,12 @@ export class AppImManager {
           this.chatInputC.replyElements.cancelBtn.click();
         } else if(this.peerID != 0) { // hide current dialog
           this.setPeer(0);
+          cancelEvent(e);
+        }
+
+        // * cancel event for safari, because if application is in fullscreen, browser will try to exit fullscreen
+        if(this.peerID) {
+          cancelEvent(e);
         }
       } else if(e.key == 'Meta' || e.key == 'Control') {
         return;
@@ -785,7 +791,8 @@ export class AppImManager {
     
     document.body.addEventListener('keydown', onKeyDown);
     
-    this.goDownBtn.addEventListener('click', () => {
+    this.goDownBtn.addEventListener(CLICK_EVENT_NAME, (e) => {
+      cancelEvent(e);
       const dialog = appMessagesManager.getDialogByPeerID(this.peerID)[0];
       
       if(dialog) {
@@ -1898,7 +1905,8 @@ export class AppImManager {
         containerDiv.append(rowDiv);
       });
 
-      containerDiv.addEventListener('click', (e) => {
+      containerDiv.addEventListener(CLICK_EVENT_NAME, (e) => {
+        cancelEvent(e);
         let target = e.target as HTMLElement;
 
         if(!target.classList.contains('reply-markup-button')) target = findUpClassName(target, 'reply-markup-button');
@@ -2790,8 +2798,13 @@ export class AppImManager {
   }
   
   public setMutedState(muted = false) {
-    appSidebarRight.sharedMediaTab.profileElements.notificationsCheckbox.checked = !muted;
-    appSidebarRight.sharedMediaTab.profileElements.notificationsStatus.innerText = muted ? 'Disabled' : 'Enabled';
+    if(!this.peerID) return;
+    
+    const profileElements = appSidebarRight.sharedMediaTab.profileElements;
+    if(profileElements) {
+      appSidebarRight.sharedMediaTab.profileElements.notificationsCheckbox.checked = !muted;
+      appSidebarRight.sharedMediaTab.profileElements.notificationsStatus.innerText = muted ? 'Disabled' : 'Enabled';
+    }
 
     if(appPeersManager.isBroadcast(this.peerID)) { // not human
       this.btnMute.classList.remove('tgico-mute', 'tgico-unmute');

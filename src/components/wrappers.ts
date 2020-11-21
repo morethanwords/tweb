@@ -12,7 +12,7 @@ import appMessagesManager from '../lib/appManagers/appMessagesManager';
 import appPhotosManager, { MyPhoto } from '../lib/appManagers/appPhotosManager';
 import LottieLoader from '../lib/lottieLoader';
 import VideoPlayer from '../lib/mediaPlayer';
-import { isInDOM } from "../helpers/dom";
+import { cancelEvent, CLICK_EVENT_NAME, isInDOM } from "../helpers/dom";
 import webpWorkerController from '../lib/webp/webpWorkerController';
 import animationIntersector from './animationIntersector';
 import appMediaPlaybackController from './appMediaPlaybackController';
@@ -373,7 +373,8 @@ export function wrapDocument(doc: MyDocument, withTime = false, uploading = fals
     let preloader: ProgressivePreloader;
     let download: DownloadBlob;
     
-    docDiv.addEventListener('click', (e) => {
+    docDiv.addEventListener(CLICK_EVENT_NAME, (e) => {
+      cancelEvent(e);
       if(!download) {
         if(downloadDiv.classList.contains('downloading')) {
           return; // means not ready yet
@@ -670,7 +671,8 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
         }, true);
   
         if(emoji) {
-          div.addEventListener('click', () => {
+          div.addEventListener(CLICK_EVENT_NAME, (e) => {
+            cancelEvent(e);
             let animation = LottieLoader.getAnimation(div);
   
             if(animation.paused) {

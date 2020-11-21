@@ -1,7 +1,7 @@
 import { isTouchSupported } from "../../helpers/touchSupport";
 import type { AppImManager } from "../../lib/appManagers/appImManager";
 import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManager";
-import { cancelEvent, cancelSelection, findUpClassName, getSelectedText } from "../../helpers/dom";
+import { blurActiveElement, cancelEvent, cancelSelection, findUpClassName, getSelectedText } from "../../helpers/dom";
 import Button from "../button";
 import ButtonIcon from "../buttonIcon";
 import CheckboxField from "../checkbox";
@@ -224,6 +224,8 @@ export default class ChatSelection {
         cancelSelection();
       }
     }
+
+    blurActiveElement(); // * for mobile keyboards
 
     SetTransition(bubblesContainer, 'is-selecting', !!this.selectedMids.size, 200, () => {
       if(!this.isSelecting) {

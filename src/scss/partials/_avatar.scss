@@ -10,6 +10,7 @@ avatar-element {
   /* overflow: hidden; */
   position: relative;
   user-select: none;
+  text-transform: uppercase;
   
   @include respond-to(handhelds) {
     font-size: 14px;

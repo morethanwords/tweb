@@ -1173,7 +1173,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     this.openMedia(appMessagesManager.getMessage(target.mid), target.element);
   };
 
-  onForwardClick = (e: MouseEvent) => {
+  onForwardClick = () => {
     if(this.currentMessageID) {
       //appSidebarRight.forwardTab.open([this.currentMessageID]);
       new PopupForward([this.currentMessageID], () => {
@@ -1198,7 +1198,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     }
   };
 
-  onDownloadClick = (e: MouseEvent) => {
+  onDownloadClick = () => {
     const message = appMessagesManager.getMessage(this.currentMessageID);
     if(message.media.photo) {
       appPhotosManager.savePhotoFile(message.media.photo);
@@ -1370,7 +1370,7 @@ export class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete', AppMe
     this.openMedia(target.photoID, target.element, 1);
   };
 
-  onDownloadClick = (e: MouseEvent) => {
+  onDownloadClick = () => {
     appPhotosManager.savePhotoFile(appPhotosManager.getPhoto(this.currentPhotoID));
   };
 

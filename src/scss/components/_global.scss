@@ -87,7 +87,7 @@ Utility Classes
 }
 
 // No Text Select
-.no-select {
+.no-select/* , .no-select * */ {
   user-select: none;
 }
 

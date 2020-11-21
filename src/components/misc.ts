@@ -1,5 +1,5 @@
 import Countries, { Country, PhoneCodesMain } from "../countries";
-import { cancelEvent } from "../helpers/dom";
+import { cancelEvent, CLICK_EVENT_NAME } from "../helpers/dom";
 import mediaSizes from "../helpers/mediaSizes";
 import { clamp } from "../helpers/number";
 import { isTouchSupported } from "../helpers/touchSupport";
@@ -148,7 +148,7 @@ export const closeBtnMenu = () => {
     window.removeEventListener('contextmenu', onClick);
   }
 
-  document.removeEventListener('click', onClick);
+  document.removeEventListener(CLICK_EVENT_NAME, onClick);
 };
 
 window.addEventListener('resize', () => {
@@ -186,18 +186,21 @@ export function openBtnMenu(menuElement: HTMLElement, onClose?: () => void) {
   }
   
   // ! safari iOS doesn't handle window click event on overlay, idk why
-  document.addEventListener('click', onClick);
+  document.addEventListener(CLICK_EVENT_NAME, onClick);
 }
 
 const PADDING_TOP = 8;
 const PADDING_LEFT = 8;
-export function positionMenu({clientX, clientY}: {clientX: number, clientY: number}/* e: MouseEvent */, elem: HTMLElement, side?: 'left' | 'right' | 'center') {
+export function positionMenu({pageX, pageY}: MouseEvent | Touch, elem: HTMLElement, side?: 'left' | 'right' | 'center') {
   //let {clientX, clientY} = e;
 
   // * side mean the OPEN side
 
   let {scrollWidth: menuWidth, scrollHeight: menuHeight} = elem;
-  let {innerWidth: windowWidth, innerHeight: windowHeight} = window;
+  //let {innerWidth: windowWidth, innerHeight: windowHeight} = window;
+  const rect = document.body.getBoundingClientRect();
+  const windowWidth = rect.width;
+  const windowHeight = rect.height;
 
   side = mediaSizes.isMobile ? 'right' : 'left';
   let verticalSide: 'top' /* | 'bottom' */ | 'center' = 'top';
@@ -205,17 +208,17 @@ export function positionMenu({clientX, clientY}: {clientX: number, clientY: numb
   const getSides = () => {
     return {
       x: {
-        left: clientX,
-        right: clientX - menuWidth
+        left: pageX,
+        right: pageX - menuWidth
       },
       intermediateX: side == 'right' ? PADDING_LEFT : windowWidth - menuWidth - PADDING_LEFT,
       //intermediateX: clientX < windowWidth / 2 ? PADDING_LEFT : windowWidth - menuWidth - PADDING_LEFT,
       y: {
-        top: clientY,
-        bottom: clientY - menuHeight
+        top: pageY,
+        bottom: pageY - menuHeight
       },
       //intermediateY: verticalSide == 'top' ? PADDING_TOP : windowHeight - menuHeight - PADDING_TOP,
-      intermediateY: clientY < windowHeight / 2 ? PADDING_TOP : windowHeight - menuHeight - PADDING_TOP,
+      intermediateY: pageY < windowHeight / 2 ? PADDING_TOP : windowHeight - menuHeight - PADDING_TOP,
     };
   };
 
@@ -290,11 +293,13 @@ export function attachContextMenuListener(element: HTMLElement, callback: (e: To
   if(isApple && isTouchSupported) {
     let timeout: number;
 
+    const options: any = /* null */{capture: true};
+
     const onCancel = () => {
       clearTimeout(timeout);
-      element.removeEventListener('touchmove', onCancel);
-      element.removeEventListener('touchend', onCancel);
-      element.removeEventListener('touchcancel', onCancel);
+      element.removeEventListener('touchmove', onCancel, options);
+      element.removeEventListener('touchend', onCancel, options);
+      element.removeEventListener('touchcancel', onCancel, options);
     };
 
     element.addEventListener('touchstart', (e) => {
@@ -303,11 +308,12 @@ export function attachContextMenuListener(element: HTMLElement, callback: (e: To
         return;
       }
   
-      element.addEventListener('touchmove', onCancel);
-      element.addEventListener('touchend', onCancel);
-      element.addEventListener('touchcancel', onCancel);
+      element.addEventListener('touchmove', onCancel, options);
+      element.addEventListener('touchend', onCancel, options);
+      element.addEventListener('touchcancel', onCancel, options);
 
       timeout = window.setTimeout(() => {
+        element.addEventListener('touchend', cancelEvent, {once: true}); // * fix instant closing
         callback(e.touches[0]);
         onCancel();
       }, .4e3);

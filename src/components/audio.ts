@@ -11,6 +11,7 @@ import { isSafari } from "../helpers/userAgent";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import rootScope from "../lib/rootScope";
 import './middleEllipsis';
+import { cancelEvent, CLICK_EVENT_NAME } from "../helpers/dom";
 
 rootScope.on('messages_media_read', e => {
   const mids = e.detail;
@@ -213,12 +214,14 @@ function wrapVoiceMessage(doc: MyDocument, audioEl: AudioElement, mid: number) {
         mousedown = false;
       }
     });
-    progress.addEventListener('click', (e) => {
+    progress.addEventListener(CLICK_EVENT_NAME, (e) => {
+      cancelEvent(e);
       if(!audio.paused) scrub(e);
     });
     
-    function scrub(e: MouseEvent) {
-      const scrubTime = e.offsetX / availW /* width */ * audio.duration;
+    function scrub(e: MouseEvent | TouchEvent) {
+      const offsetX = e instanceof MouseEvent ? e.offsetX : e.changedTouches[0].clientX;
+      const scrubTime = offsetX / availW /* width */ * audio.duration;
       lastIndex = Math.round(scrubTime / audio.duration * barCount);
       
       rects.slice(0, lastIndex + 1).forEach(node => node.classList.add('active'));
@@ -366,7 +369,8 @@ export default class AudioElement extends HTMLElement {
         audioTimeDiv.innerText = String(audio.currentTime | 0).toHHMMSS(true) + ' / ' + durationStr;
       }
 
-      toggle.addEventListener('click', () => {
+      toggle.addEventListener(CLICK_EVENT_NAME, (e) => {
+        cancelEvent(e);
         if(audio.paused) audio.play().catch(() => {});
         else audio.pause();
       });
@@ -395,7 +399,8 @@ export default class AudioElement extends HTMLElement {
       if(doc.type == 'voice') {
         let download: Download;
 
-        const onClick = () => {
+        const onClick = (e: Event) => {
+          cancelEvent(e);
           if(!download) {
             if(!preloader) {
               preloader = new ProgressivePreloader(null, true);
@@ -406,7 +411,7 @@ export default class AudioElement extends HTMLElement {
             
             download.then(() => {
               downloadDiv.remove();
-              this.removeEventListener('click', onClick);
+              this.removeEventListener(CLICK_EVENT_NAME, onClick);
               onLoad();
             }).catch(err => {
               if(err.name === 'AbortError') {
@@ -422,7 +427,7 @@ export default class AudioElement extends HTMLElement {
           }
         };
     
-        this.addEventListener('click', onClick);
+        this.addEventListener(CLICK_EVENT_NAME, onClick);
         this.click();
       } else {
         onLoad(false);
@@ -430,8 +435,9 @@ export default class AudioElement extends HTMLElement {
         //if(appMediaPlaybackController.mediaExists(mid)) { // чтобы показать прогресс, если аудио уже было скачано
           //onLoad();
         //} else {
-          const r = () => {
+          const r = (e: Event) => {
             //onLoad();
+            cancelEvent(e);
             appMediaPlaybackController.resolveWaitingForLoadMedia(mid);
   
             appMediaPlaybackController.willBePlayed(this.audio); // prepare for loading audio
@@ -464,7 +470,7 @@ export default class AudioElement extends HTMLElement {
             });
           };
   
-          this.addEventListener('click', r, {once: true});
+          this.addEventListener(CLICK_EVENT_NAME, r, {once: true});
         //}
       }
     } else {

@@ -1,5 +1,5 @@
 import rootScope from "../lib/rootScope";
-import { cancelEvent, findUpClassName } from "../helpers/dom";
+import { blurActiveElement, cancelEvent, findUpClassName } from "../helpers/dom";
 import { ripple } from "./ripple";
 
 export class PopupElement {
@@ -100,6 +100,7 @@ export class PopupElement {
   };
 
   public show() {
+    blurActiveElement(); // * hide mobile keyboard
     document.body.append(this.element);
     void this.element.offsetWidth; // reflow
     this.element.classList.add('active');

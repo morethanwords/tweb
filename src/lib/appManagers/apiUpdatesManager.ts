@@ -569,7 +569,7 @@ export class ApiUpdatesManager {
       } else {
         // ! for testing
         /* state.seq = 1;
-        state.pts = state.pts - 100;
+        state.pts = state.pts - 1000;
         state.date = 1; */
 
         Object.assign(this.updatesState, state);

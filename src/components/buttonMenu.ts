@@ -1,6 +1,7 @@
+import { CLICK_EVENT_NAME } from "../helpers/dom";
 import { ripple } from "./ripple";
 
-export type ButtonMenuItemOptions = {icon: string, text: string, onClick: (e: MouseEvent) => void, element?: HTMLElement};
+export type ButtonMenuItemOptions = {icon: string, text: string, onClick: (e: MouseEvent | TouchEvent) => void, element?: HTMLElement};
 
 const ButtonMenuItem = (options: ButtonMenuItemOptions) => {
   if(options.element) return options.element;
@@ -11,7 +12,7 @@ const ButtonMenuItem = (options: ButtonMenuItemOptions) => {
   el.innerText = text;
 
   ripple(el);
-  el.addEventListener('click', onClick);
+  el.addEventListener(CLICK_EVENT_NAME, onClick);
 
   return options.element = el;
 };

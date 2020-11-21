@@ -229,6 +229,12 @@ $bubble-margin: .25rem;
       }
     }
   }
+
+  #bubbles.is-selecting & {
+    .audio, .document, .attachment, poll-element {
+      pointer-events: none !important;
+    }
+  }
   
   &__container {
     //min-width: 60px;
@@ -244,7 +250,12 @@ $bubble-margin: .25rem;
     height: fit-content;
     z-index: 2;
     transition: .2s transform;
-    user-select: text;
+    user-select: none;
+
+    html.no-touch #bubbles:not(.is-selecting) &,
+    html.is-touch #bubbles.is-selecting:not(.no-select) & {
+      user-select: text;
+    }
 
     @include respond-to(not-handhelds) {
       max-width: 85%;

@@ -214,12 +214,9 @@
       max-width: 78px;
       width: 78px;
       align-items: center;
-      position: relative;
       display: flex;
       flex-direction: column;
-      cursor: pointer;
       padding: 12px 0 0 !important;
-      overflow: hidden;
       margin: 0;
 
       @include respond-to(handhelds) {
@@ -233,6 +230,10 @@
       height: 54px;
     }
 
+    .dialog-title-details {
+      display: none;
+    }
+
     .user-caption {
       max-width: 65px;
       padding: 2px 0px 9px;
@@ -241,10 +242,6 @@
       @include respond-to(handhelds) {
         max-width: 56px;
       }
-    }
-
-    .user-title {
-      max-width: unset;
     }
 
     .search-group-scrollable {
@@ -594,10 +591,6 @@
     .input-wrapper {
       width: 100%;
       padding: 0 16px;
-    }
-
-    .input-field input {
-      height: 50px;
     }
   }
 

@@ -8,7 +8,7 @@ import appStateManager from "../../lib/appManagers/appStateManager";
 import appUsersManager from "../../lib/appManagers/appUsersManager";
 import { MOUNT_CLASS_TO } from "../../lib/mtproto/mtproto_config";
 import rootScope from "../../lib/rootScope";
-import { findUpClassName, findUpTag } from "../../helpers/dom";
+import { CLICK_EVENT_NAME, findUpClassName, findUpTag } from "../../helpers/dom";
 import AppSearch, { SearchGroup } from "../appSearch";
 import "../avatar";
 import { parseMenuButtonsTo, putPreloader } from "../misc";
@@ -292,32 +292,32 @@ export class AppSidebarLeft extends SidebarSlider {
 
     this.archivedCount = this.buttons.archived.querySelector('.archived-count') as HTMLSpanElement;
 
-    this.buttons.saved.addEventListener('click', (e) => {
+    this.buttons.saved.addEventListener(CLICK_EVENT_NAME, (e) => {
       ///////this.log('savedbtn click');
       setTimeout(() => { // menu doesn't close if no timeout (lol)
         appImManager.setPeer(appImManager.myID);
       }, 0);
     });
     
-    this.buttons.archived.addEventListener('click', (e) => {
+    this.buttons.archived.addEventListener(CLICK_EVENT_NAME, (e) => {
       this.selectTab(AppSidebarLeft.SLIDERITEMSIDS.archived);
     });
 
-    this.buttons.contacts.addEventListener('click', (e) => {
+    this.buttons.contacts.addEventListener(CLICK_EVENT_NAME, (e) => {
       this.contactsTab.openContacts();
     });
 
-    this.buttons.settings.addEventListener('click', (e) => {
+    this.buttons.settings.addEventListener(CLICK_EVENT_NAME, (e) => {
       this.settingsTab.fillElements();
       this.selectTab(AppSidebarLeft.SLIDERITEMSIDS.settings);
     });
 
-    this.newButtons.channel.addEventListener('click', (e) => {
+    this.newButtons.channel.addEventListener(CLICK_EVENT_NAME, (e) => {
       this.selectTab(AppSidebarLeft.SLIDERITEMSIDS.newChannel);
     });
 
     [this.newButtons.group, this.buttons.newGroup].forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener(CLICK_EVENT_NAME, (e) => {
         this.addMembersTab.init(0, 'chat', false, (peerIDs) => {
           this.newGroupTab.init(peerIDs);
         });

@@ -87,33 +87,60 @@ export default class ChatContextMenu {
 
       const side: 'left' | 'right' = bubble.classList.contains('is-in') ? 'left' : 'right';
       //bubble.parentElement.append(this.element);
+      //appImManager.log('contextmenu', e, bubble, side);
       positionMenu(e, this.element, side);
       openBtnMenu(this.element, () => {
         this.peerID = this.msgID = 0;
         this.target = null;
       });
-      
-      /////this.log('contextmenu', e, bubble, msgID, side);
     };
 
     if(isTouchSupported) {
-      attachTo.addEventListener('click', (e) => {
-        //const good = !!findUpClassName(e.target, 'message') || !!findUpClassName(e.target, 'bubble__container');
+      const attachClickEvent = (elem: HTMLElement, callback: (e: TouchEvent) => void) => {
+        elem.addEventListener('touchstart', (e) => {
+          const onTouchMove = (e: TouchEvent) => {
+            elem.removeEventListener('touchend', onTouchEnd);
+          };
+  
+          const onTouchEnd = (e: TouchEvent) => {
+            elem.removeEventListener('touchmove', onTouchMove);
+            callback(e);
+          };
+  
+          elem.addEventListener('touchend', onTouchEnd, {once: true});
+          elem.addEventListener('touchmove', onTouchMove, {once: true});
+        });
+      };
+
+      attachClickEvent(attachTo, (e) => {
+        if(appImManager.chatSelection.isSelecting) {
+          return;
+        }
+
         const className = (e.target as HTMLElement).className;
         if(!className || !className.includes) return;
 
+        appImManager.log('touchend', e);
+
         const good = ['bubble', 'bubble__container', 'message', 'time', 'inner'].find(c => className.match(new RegExp(c + '($|\\s)')));
         if(good) {
-          onContextMenu(e);
+          cancelEvent(e);
+          onContextMenu(e.changedTouches[0]);
         }
       });
 
       attachContextMenuListener(attachTo, (e) => {
         if(appImManager.chatSelection.isSelecting) return;
 
+        // * these two lines will fix instant text selection on iOS Safari
+        attachTo.classList.add('no-select');
+        attachTo.addEventListener('touchend', () => {
+          attachTo.classList.remove('no-select');
+        }, {once: true});
+
         cancelSelection();
-        cancelEvent(e as any);
-        let bubble = findUpClassName(e.target, 'bubble');
+        //cancelEvent(e as any);
+        const bubble = findUpClassName(e.target, 'album-item') || findUpClassName(e.target, 'bubble');
         if(bubble) {
           appImManager.chatSelection.toggleByBubble(bubble);
         }

@@ -1,4 +1,5 @@
 import { MOUNT_CLASS_TO } from "../lib/mtproto/mtproto_config";
+import { isTouchSupported } from "./touchSupport";
 
 /* export function isInDOM(element: Element, parentNode?: HTMLElement): boolean {
   if(!element) {
@@ -66,6 +67,38 @@ export function placeCaretAtEnd(el: HTMLElement) {
   }
 }
 
+/* export function getFieldSelection(field: any) {
+  if(field.selectionStart) {
+    return field.selectionStart;
+  // @ts-ignore
+  } else if(!document.selection) {
+    return 0;
+  }
+
+  const c = '\x01';
+  // @ts-ignore
+  const sel = document.selection.createRange();
+  const txt = sel.text;
+  const dup = sel.duplicate();
+  let len = 0;
+
+  try {
+    dup.moveToElementText(field);
+  } catch(e) {
+    return 0;
+  }
+
+  sel.text = txt + c;
+  len = dup.text.indexOf(c);
+  sel.moveStart('character', -1);
+  sel.text = '';
+
+  // if (browser.msie && len == -1) {
+  //   return field.value.length
+  // }
+  return len;
+} */
+
 export function getRichValue(field: HTMLElement) {
   if(!field) {
     return '';
@@ -90,6 +123,15 @@ MOUNT_CLASS_TO && (MOUNT_CLASS_TO.getRichValue = getRichValue);
 const markdownTags = [{
   tagName: 'STRONG', 
   markdown: '**'
+}, {
+  tagName: 'B',   // * legacy (Ctrl+B)
+  markdown: '**'
+}, {
+  tagName: 'U',   // * legacy (Ctrl+I)
+  markdown: '_-_'
+}, {
+  tagName: 'I',   // * legacy (Ctrl+I)
+  markdown: '__'
 }, {
   tagName: 'EM',
   markdown: '__'
@@ -126,7 +168,7 @@ export function getRichElementValue(node: HTMLElement, lines: string[], line: st
         }
       }
 
-      line.push(markdown && node.nodeValue.trim() ? markdown + node.nodeValue + markdown : node.nodeValue);
+      line.push(markdown && node.nodeValue.trim() ? '\x01' + markdown + node.nodeValue + markdown + '\x01' : node.nodeValue);
     }
 
     return;
@@ -392,3 +434,11 @@ export function getSelectedText(): string {
   
   return '';
 }
+
+export function blurActiveElement() {
+  if(document.activeElement && (document.activeElement as HTMLInputElement).blur) {
+    (document.activeElement as HTMLInputElement).blur();
+  }
+}
+
+export const CLICK_EVENT_NAME = isTouchSupported ? 'touchend' : 'click';
