@@ -1130,7 +1130,7 @@ export class AppImManager {
     //this.lazyLoadQueue.clear();
     
     // clear input 
-    this.chatInputC.messageInput.innerHTML = '';
+    this.chatInputC.clearInput();
     this.chatInputC.replyElements.cancelBtn.click();
 
     // clear messages

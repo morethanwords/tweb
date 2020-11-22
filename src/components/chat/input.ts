@@ -11,7 +11,7 @@ import apiManager from "../../lib/mtproto/mtprotoworker";
 import opusDecodeController from "../../lib/opusDecodeController";
 import { RichTextProcessor } from "../../lib/richtextprocessor";
 import rootScope from '../../lib/rootScope';
-import { cancelEvent, findUpClassName, getRichValue, isInputEmpty, placeCaretAtEnd, serializeNodes } from "../../helpers/dom";
+import { cancelEvent, CLICK_EVENT_NAME, findUpClassName, getRichValue, isInputEmpty, placeCaretAtEnd, serializeNodes } from "../../helpers/dom";
 import ButtonMenu, { ButtonMenuItemOptions } from '../buttonMenu';
 import emoticonsDropdown from "../emoticonsDropdown";
 import PopupCreatePoll from "../popupCreatePoll";
@@ -72,27 +72,28 @@ export class ChatInput {
 
   private helperType: Exclude<ChatInputHelperType, 'webpage'>;
   private helperFunc: () => void;
+  private helperWaitingForward: boolean;
+
+  private willAttachType: 'document' | 'media';
+
+  private lockRedo = false;
+  private canRedoFromHTML = '';
+  readonly undoHistory: string[] = [];
+  readonly executedHistory: string[] = [];
+  private canUndoFromHTML = '';
 
   constructor() {
-    const messageInputField = InputField({
-      placeholder: 'Message',
-      name: 'message'
-    });
-
-    messageInputField.input.className = '';
-    this.inputScroll.container.append(messageInputField.input);
-    this.messageInput = messageInputField.input;
+    this.attachMessageInputField();
 
     this.attachMenu = document.getElementById('attach-file') as HTMLButtonElement;
 
-    let willAttachType: 'document' | 'media';
     this.attachMenuButtons = [{
       icon: 'photo',
       text: 'Photo or Video',
       onClick: () => {
         this.fileInput.value = '';
         this.fileInput.setAttribute('accept', 'image/*, video/*');
-        willAttachType = 'media';
+        this.willAttachType = 'media';
         this.fileInput.click();
       },
       verify: (peerID: number) => peerID > 0 || appChatsManager.hasRights(peerID, 'send', 'send_media')
@@ -102,7 +103,7 @@ export class ChatInput {
       onClick: () => {
         this.fileInput.value = '';
         this.fileInput.removeAttribute('accept');
-        willAttachType = 'document';
+        this.willAttachType = 'document';
         this.fileInput.click();
       },
       verify: (peerID: number) => peerID > 0 || appChatsManager.hasRights(peerID, 'send', 'send_media')
@@ -164,261 +165,19 @@ export class ChatInput {
       this.updateSendBtn();
     });
 
-    this.messageInput.addEventListener('keydown', (e: KeyboardEvent) => {
-      if(e.key == 'Enter' && !isTouchSupported) {
-        /* if(e.ctrlKey || e.metaKey) {
-          this.messageInput.innerHTML += '<br>';
-          placeCaretAtEnd(this.message)
-          return;
-        } */
-
-        if(e.shiftKey || e.ctrlKey || e.metaKey) {
-          return;
-        }
-  
-        this.sendMessage();
-      }
-    });
-
-    if(isTouchSupported) {
-      this.messageInput.addEventListener('touchend', (e) => {
-        this.saveScroll();
-        emoticonsDropdown.toggle(false);
-      });
-
-      window.addEventListener('resize', () => {
-        this.restoreScroll();
-      });
-    }
-
-    this.messageInput.addEventListener('input', (e) => {
-      //console.log('messageInput input', this.messageInput.innerText, this.serializeNodes(Array.from(this.messageInput.childNodes)));
-      const value = this.messageInput.innerText;
-  
-      const entities = RichTextProcessor.parseEntities(value);
-      //console.log('messageInput entities', entities);
-  
-      const urlEntities = entities.filter(e => e._ == 'messageEntityUrl');
-      if(urlEntities.length) {
-        const richEntities: MessageEntity[] = [];
-        const richValue = RichTextProcessor.parseMarkdown(getRichValue(this.messageInput), richEntities);
-        //console.log('messageInput url', entities, richEntities);
-        for(const entity of urlEntities) {
-          const url = value.slice(entity.offset, entity.offset + entity.length);
-  
-          if(!(url.includes('http://') || url.includes('https://')) && !richEntities.find(e => e._ == 'messageEntityTextUrl')) {
-            continue;
-          }
-  
-          //console.log('messageInput url:', url);
-    
-          if(this.lastUrl != url) {
-            this.lastUrl = url;
-            this.willSendWebPage = null;
-            apiManager.invokeApi('messages.getWebPage', {
-              url: url,
-              hash: 0
-            }).then((webpage) => {
-              webpage = appWebPagesManager.saveWebPage(webpage);
-              if(webpage._  == 'webPage') {
-                if(this.lastUrl != url) return;
-                //console.log('got webpage: ', webpage);
-    
-                this.setTopInfo('webpage', () => {}, webpage.site_name || webpage.title || 'Webpage', webpage.description || webpage.url || '');
-    
-                delete this.noWebPage;
-                this.willSendWebPage = webpage;
-              }
-            });
-          }
-  
-          break;
-        }
-      } else if(this.lastUrl) {
-        this.lastUrl = '';
-        delete this.noWebPage;
-        this.willSendWebPage = null;
-        
-        if(this.helperType) {
-          this.helperFunc();
-        } else {
-          this.clearHelper();
-        }
-      }
-
-      if(!value.trim() && !serializeNodes(Array.from(this.messageInput.childNodes)).trim()) {
-        this.messageInput.innerHTML = '';
-
-        appMessagesManager.setTyping(rootScope.selectedPeerID, 'sendMessageCancelAction');
-      } else {
-        const time = Date.now();
-        if(time - this.lastTimeType >= 6000) {
-          this.lastTimeType = time;
-          appMessagesManager.setTyping(rootScope.selectedPeerID, 'sendMessageTypingAction');
-        }
-      }
-
-      this.updateSendBtn();
-    });
-
-    /* if(!RichTextProcessor.emojiSupported) {
-      this.messageInput.addEventListener('copy', (e) => {
-        const selection = document.getSelection();
-        
-        let range = selection.getRangeAt(0);
-        let ancestorContainer = range.commonAncestorContainer;
-    
-        let str = '';
-    
-        let selectedNodes = Array.from(ancestorContainer.childNodes).slice(range.startOffset, range.endOffset);
-        if(selectedNodes.length) {
-          str = serializeNodes(selectedNodes);
-        } else {
-          str = selection.toString();
-        }
-    
-        //console.log('messageInput copy', str, ancestorContainer.childNodes, range);
-  
-        //let str = getRichValueWithCaret(this.messageInput);
-        //console.log('messageInput childNode copy:', str);
-    
-        // @ts-ignore
-        event.clipboardData.setData('text/plain', str);
-        event.preventDefault();
-      });
-    } */
-
     this.fileInput.addEventListener('change', (e) => {
       let files = (e.target as HTMLInputElement & EventTarget).files;
       if(!files.length) {
         return;
       }
       
-      new PopupNewMedia(Array.from(files).slice(), willAttachType);
+      new PopupNewMedia(Array.from(files).slice(), this.willAttachType);
       this.fileInput.value = '';
     }, false);
 
-    document.addEventListener('paste', (e) => {
-      const peerID = rootScope.selectedPeerID;
-      if(!peerID || rootScope.overlayIsActive || (peerID < 0 && !appChatsManager.hasRights(peerID, 'send', 'send_media'))) {
-        return;
-      }
+    document.addEventListener('paste', this.onDocumentPaste, true);
 
-      //console.log('document paste');
-
-      // @ts-ignore
-      const items = (e.clipboardData || e.originalEvent.clipboardData).items;
-      //console.log('item', event.clipboardData.getData());
-      let foundFile = false;
-      for(let i = 0; i < items.length; ++i) {
-        if(items[i].kind == 'file') {
-          e.preventDefault()
-          e.cancelBubble = true;
-          e.stopPropagation();
-          foundFile = true;
-
-          let file = items[i].getAsFile();
-          //console.log(items[i], file);
-          if(!file) continue;
-
-          willAttachType = file.type.indexOf('image/') === 0 ? 'media' : "document";
-          new PopupNewMedia([file], willAttachType);
-        }
-      }
-    }, true);
-
-    const onBtnSendClick = (e: Event) => {
-      cancelEvent(e);
-      
-      if(!this.recorder || this.recording || !this.isInputEmpty() || this.forwardingMids.length) {
-        if(this.recording) {
-          if((Date.now() - this.recordStartTime) < RECORD_MIN_TIME) {
-            this.btnCancelRecord.click();
-          } else {
-            this.recorder.stop();
-          }
-        } else {
-          this.sendMessage();
-        }
-      } else {
-        if(rootScope.selectedPeerID < 0 && !appChatsManager.hasRights(rootScope.selectedPeerID, 'send', 'send_media')) {
-          toast(POSTING_MEDIA_NOT_ALLOWED);
-          return;
-        }
-
-        this.chatInput.classList.add('is-locked');
-        this.recorder.start().then(() => {
-          this.recordCanceled = false;
-          
-          this.chatInput.classList.add('is-recording');
-          this.recording = true;
-          this.updateSendBtn();
-          opusDecodeController.setKeepAlive(true);
-
-          this.recordStartTime = Date.now();
-
-          const sourceNode: MediaStreamAudioSourceNode = this.recorder.sourceNode;
-          const context = sourceNode.context;
-
-          const analyser = context.createAnalyser();
-          sourceNode.connect(analyser);
-          //analyser.connect(context.destination);
-          analyser.fftSize = 32;
-
-          const frequencyData = new Uint8Array(analyser.frequencyBinCount);
-          const max = frequencyData.length * 255;
-          const min = 54 / 150;
-          let r = () => {
-            if(!this.recording) return;
-
-            analyser.getByteFrequencyData(frequencyData);
-
-            let sum = 0;
-            frequencyData.forEach(value => {
-              sum += value;
-            });
-            
-            let percents = Math.min(1, (sum / max) + min);
-            //console.log('frequencyData', frequencyData, percents);
-
-            this.recordRippleEl.style.transform = `scale(${percents})`;
-
-            let diff = Date.now() - this.recordStartTime;
-            let ms = diff % 1000;
-
-            let formatted = ('' + (diff / 1000)).toHHMMSS() + ',' + ('00' + Math.round(ms / 10)).slice(-2);
-
-            this.recordTimeEl.innerText = formatted;
-
-            window.requestAnimationFrame(r);
-          };
-
-          r();
-        }).catch((e: Error) => {
-          switch(e.name as string) {
-            case 'NotAllowedError': {
-              toast('Please allow access to your microphone');
-              break;
-            }
-
-            case 'NotReadableError': {
-              toast(e.message);
-              break;
-            }
-
-            default:
-              console.error('Recorder start error:', e, e.name, e.message);
-              toast(e.message);
-              break;
-          }
-
-          this.chatInput.classList.remove('is-recording', 'is-locked');
-        });
-      }
-    };
-
-    this.btnSend.addEventListener('touchend', onBtnSendClick);
-    this.btnSend.addEventListener('click', onBtnSendClick);
+    this.btnSend.addEventListener(CLICK_EVENT_NAME, this.onBtnSendClick);
 
     if(this.recorder) {
       const onCancelRecordClick = (e: Event) => {
@@ -427,8 +186,7 @@ export class ChatInput {
         this.recorder.stop();
         opusDecodeController.setKeepAlive(false);
       };
-      this.btnCancelRecord.addEventListener('touchend', onCancelRecordClick);
-      this.btnCancelRecord.addEventListener('click', onCancelRecordClick);
+      this.btnCancelRecord.addEventListener(CLICK_EVENT_NAME, onCancelRecordClick);
 
       this.recorder.onstop = () => {
         this.recording = false;
@@ -503,56 +261,475 @@ export class ChatInput {
       };
     }
 
-    const onCancelHelper = (e: Event) => {
-      cancelEvent(e);
+    this.replyElements.cancelBtn.addEventListener(CLICK_EVENT_NAME, this.onHelperCancel);
+    this.replyElements.container.addEventListener(CLICK_EVENT_NAME, this.onHelperClick);
+  }
 
-      if(this.willSendWebPage) {
-        this.noWebPage = true;
-        this.willSendWebPage = null;
+  private attachMessageInputField() {
+    const messageInputField = InputField({
+      placeholder: 'Message',
+      name: 'message'
+    });
 
-        if(this.helperType) {
-          //if(this.helperFunc) {
-            this.helperFunc();
-          //}
+    messageInputField.input.className = '';
+    this.messageInput = messageInputField.input;
+    this.attachMessageInputListeners();
 
+    const container = this.inputScroll.container;
+    if(container.firstElementChild) {
+      container.replaceChild(messageInputField.input, container.firstElementChild);
+    } else {
+      container.append(messageInputField.input);
+    }
+  }
+
+  private attachMessageInputListeners() {
+    this.messageInput.addEventListener('keydown', (e: KeyboardEvent) => {
+      if(e.key == 'Enter' && !isTouchSupported) {
+        /* if(e.ctrlKey || e.metaKey) {
+          this.messageInput.innerHTML += '<br>';
+          placeCaretAtEnd(this.message)
+          return;
+        } */
+
+        if(e.shiftKey || e.ctrlKey || e.metaKey) {
           return;
         }
-      }
-
-      this.clearHelper();
-      this.updateSendBtn();
-    };
-
-    this.replyElements.cancelBtn.addEventListener(isTouchSupported ? 'touchend' : 'click', onCancelHelper);
-
-    let d = false;
-    this.replyElements.container.addEventListener(isTouchSupported ? 'touchend' : 'click', (e) => {
-      cancelEvent(e);
-      
-      if(!findUpClassName(e.target, 'reply-wrapper')) return;
-      if(this.helperType == 'forward') {
-        if(d) return;
-        d = true;
-
-        const mids = this.forwardingMids.slice();
-        const helperFunc = this.helperFunc;
-        this.clearHelper();
-        let selected = false;
-        new PopupForward(mids, () => {
-          selected = true;
-        }, () => {
-          d = false;
-
-          if(!selected) {
-            helperFunc();
-          }
-        });
-      } else if(this.helperType == 'reply') {
-        appImManager.setPeer(rootScope.selectedPeerID, this.replyToMsgID);
-      } else if(this.helperType == 'edit') {
-        appImManager.setPeer(rootScope.selectedPeerID, this.editMsgID);
+  
+        this.sendMessage();
+      } else if(e.ctrlKey || e.metaKey) {
+        this.handleMarkdownShortcut(e);
       }
     });
+
+    if(isTouchSupported) {
+      this.messageInput.addEventListener('touchend', (e) => {
+        this.saveScroll();
+        emoticonsDropdown.toggle(false);
+      });
+
+      window.addEventListener('resize', () => {
+        this.restoreScroll();
+      });
+    }
+
+    this.messageInput.addEventListener('input', this.onMessageInput);
+  }
+
+  private onDocumentPaste = (e: ClipboardEvent) => {
+    const peerID = rootScope.selectedPeerID;
+    if(!peerID || rootScope.overlayIsActive || (peerID < 0 && !appChatsManager.hasRights(peerID, 'send', 'send_media'))) {
+      return;
+    }
+
+    //console.log('document paste');
+
+    // @ts-ignore
+    const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+    //console.log('item', event.clipboardData.getData());
+    //let foundFile = false;
+    for(let i = 0; i < items.length; ++i) {
+      if(items[i].kind == 'file') {
+        e.preventDefault()
+        e.cancelBubble = true;
+        e.stopPropagation();
+        //foundFile = true;
+
+        let file = items[i].getAsFile();
+        //console.log(items[i], file);
+        if(!file) continue;
+
+        this.willAttachType = file.type.indexOf('image/') === 0 ? 'media' : "document";
+        new PopupNewMedia([file], this.willAttachType);
+      }
+    }
+  };
+
+  private prepareDocumentExecute = () => {
+    this.executedHistory.push(this.messageInput.innerHTML);
+    return () => this.canUndoFromHTML = this.messageInput.innerHTML;
+  };
+
+  private undoRedo = (e: Event, type: 'undo' | 'redo', needHTML: string) => {
+    cancelEvent(e); // cancel legacy event
+
+    let html = this.messageInput.innerHTML;
+    if(html && html != needHTML) {
+      this.lockRedo = true;
+
+      let sameHTMLTimes = 0;
+      do {
+        document.execCommand(type, false, null);
+        const currentHTML = this.messageInput.innerHTML;
+        if(html == currentHTML) {
+          if(++sameHTMLTimes > 2) { // * unlink, removeFormat (а может и нет, случай: заболдить подчёркнутый текст (выделить ровно его), попробовать отменить)
+            break;
+          }
+        } else {
+          sameHTMLTimes = 0;
+        }
+
+        html = currentHTML;
+      } while(html != needHTML);
+
+      this.lockRedo = false;
+    }
+  };
+
+  private handleMarkdownShortcut = (e: KeyboardEvent) => {
+    const formatKeys: {[key: string]: string | (() => void)} = {
+      'B': 'Bold',
+      'I': 'Italic',
+      'U': 'Underline',
+      'S': 'Strikethrough',
+      'M': () => document.execCommand('fontName', false, 'monospace')
+    };
+
+    for(const key in formatKeys) {
+      const good = e.code == ('Key' + key);
+      if(good) {
+        const getSelectedNodes = () => {
+          const nodes: Node[] = [];
+          const selection = window.getSelection();
+          for(let i = 0; i < selection.rangeCount; ++i) {
+            const range = selection.getRangeAt(i);
+            let {startContainer, endContainer} = range;
+            if(endContainer.nodeType != 3) endContainer = endContainer.firstChild;
+            
+            while(startContainer && startContainer != endContainer) {
+              nodes.push(startContainer.nodeType == 3 ? startContainer : startContainer.firstChild);
+              startContainer = startContainer.nextSibling;
+            }
+            
+            if(nodes[nodes.length - 1] != endContainer) {
+              nodes.push(endContainer);
+            }
+          }
+
+          // * filter null's due to <br>
+          return nodes.filter(node => !!node);
+        };
+        
+        const saveExecuted = this.prepareDocumentExecute();
+        const executed: any[] = [];
+        /**
+         * * clear previous formatting, due to Telegram's inability to handle several entities
+         */
+        const checkForSingle = () => {
+          const nodes = getSelectedNodes();
+          console.log('Using formatting:', formatKeys[key], nodes, this.executedHistory);
+
+          const parents = [...new Set(nodes.map(node => node.parentNode))];
+          //const differentParents = !!nodes.find(node => node.parentNode != firstParent);
+          const differentParents = parents.length > 1;
+
+          let notSingle = false;
+          if(differentParents) {
+            notSingle = true;
+          } else {
+            const node = nodes[0];
+            if(node && (node.parentNode as HTMLElement) != this.messageInput && (node.parentNode.parentNode as HTMLElement) != this.messageInput) {
+              notSingle = true;
+            }
+          }
+
+          if(notSingle) {
+            if(key == 'M') {
+              executed.push(document.execCommand('styleWithCSS', false, 'true'));
+            }
+
+            executed.push(document.execCommand('unlink', false, null));
+            executed.push(document.execCommand('removeFormat', false, null));
+            // @ts-ignore
+            executed.push(typeof(formatKeys[key]) === 'function' ? formatKeys[key]() : document.execCommand(formatKeys[key], false, null));
+
+            if(key == 'M') {
+              executed.push(document.execCommand('styleWithCSS', false, 'false'));
+            }
+          }
+        };
+        
+        if(key == 'M') {
+          let haveMonospace = false;
+          executed.push(document.execCommand('styleWithCSS', false, 'true'));
+
+          const selection = window.getSelection();
+          if(!selection.isCollapsed) {
+            const range = selection.getRangeAt(0);
+            // @ts-ignore
+            if(range.commonAncestorContainer.parentNode.tagName == 'SPAN' || range.commonAncestorContainer.tagName == 'SPAN') {
+              haveMonospace = true;
+            }
+          }
+
+          executed.push(document.execCommand('removeFormat', false, null));
+          
+          if(!haveMonospace) {
+            // @ts-ignore
+            executed.push(typeof(formatKeys[key]) === 'function' ? formatKeys[key]() : document.execCommand(formatKeys[key], false, null));
+          }
+
+          executed.push(document.execCommand('styleWithCSS', false, 'false'));
+        } else {
+          // @ts-ignore
+          executed.push(typeof(formatKeys[key]) === 'function' ? formatKeys[key]() : document.execCommand(formatKeys[key], false, null));
+        }
+        
+        checkForSingle();
+        saveExecuted();
+        cancelEvent(e); // cancel legacy event
+        break;
+      }
+    }
+
+    //return;
+    if(e.code == 'KeyZ') {
+      const html = this.messageInput.innerHTML;
+
+      if(e.shiftKey) {
+        if(this.undoHistory.length) {
+          this.executedHistory.push(this.messageInput.innerHTML);
+          const html = this.undoHistory.pop();
+          this.undoRedo(e, 'redo', html);
+          this.canRedoFromHTML = this.undoHistory.length ? this.messageInput.innerHTML : '';
+          this.canUndoFromHTML = this.messageInput.innerHTML;
+        }
+      } else {
+        // * подождём, когда пользователь сам восстановит поле до нужного состояния, которое стало сразу после saveExecuted
+        if(this.executedHistory.length && (!this.canUndoFromHTML || html == this.canUndoFromHTML)) {
+          this.undoHistory.push(this.messageInput.innerHTML);
+          const html = this.executedHistory.pop();
+          this.undoRedo(e, 'undo', html);
+
+          // * поставим новое состояние чтобы снова подождать, если пользователь изменит что-то, и потом попробует откатить до предыдущего состояния
+          this.canUndoFromHTML = this.canRedoFromHTML = this.messageInput.innerHTML;
+        }
+      }
+    }
+  };
+
+  private onMessageInput = (/* e: Event */) => {
+    //console.log('messageInput input', this.messageInput.innerText, this.serializeNodes(Array.from(this.messageInput.childNodes)));
+    const value = this.messageInput.innerText;
+      
+    const entities = RichTextProcessor.parseEntities(value);
+    //console.log('messageInput entities', entities);
+
+    const html = this.messageInput.innerHTML;
+    if(this.canRedoFromHTML && html != this.canRedoFromHTML && !this.lockRedo) {
+      this.canRedoFromHTML = '';
+      this.undoHistory.length = 0;
+    }
+
+    const urlEntities = entities.filter(e => e._ == 'messageEntityUrl');
+    if(urlEntities.length) {
+      const richEntities: MessageEntity[] = [];
+      const richValue = RichTextProcessor.parseMarkdown(getRichValue(this.messageInput), richEntities);
+      //console.log('messageInput url', entities, richEntities);
+      for(const entity of urlEntities) {
+        const url = value.slice(entity.offset, entity.offset + entity.length);
+
+        if(!(url.includes('http://') || url.includes('https://')) && !richEntities.find(e => e._ == 'messageEntityTextUrl')) {
+          continue;
+        }
+
+        //console.log('messageInput url:', url);
+
+        if(this.lastUrl != url) {
+          this.lastUrl = url;
+          this.willSendWebPage = null;
+          apiManager.invokeApi('messages.getWebPage', {
+            url: url,
+            hash: 0
+          }).then((webpage) => {
+            webpage = appWebPagesManager.saveWebPage(webpage);
+            if(webpage._  == 'webPage') {
+              if(this.lastUrl != url) return;
+              //console.log('got webpage: ', webpage);
+
+              this.setTopInfo('webpage', () => {}, webpage.site_name || webpage.title || 'Webpage', webpage.description || webpage.url || '');
+
+              delete this.noWebPage;
+              this.willSendWebPage = webpage;
+            }
+          });
+        }
+
+        break;
+      }
+    } else if(this.lastUrl) {
+      this.lastUrl = '';
+      delete this.noWebPage;
+      this.willSendWebPage = null;
+      
+      if(this.helperType) {
+        this.helperFunc();
+      } else {
+        this.clearHelper();
+      }
+    }
+
+    if(!value.trim() && !serializeNodes(Array.from(this.messageInput.childNodes)).trim()) {
+      this.messageInput.innerHTML = '';
+
+      appMessagesManager.setTyping(rootScope.selectedPeerID, 'sendMessageCancelAction');
+    } else {
+      const time = Date.now();
+      if(time - this.lastTimeType >= 6000) {
+        this.lastTimeType = time;
+        appMessagesManager.setTyping(rootScope.selectedPeerID, 'sendMessageTypingAction');
+      }
+    }
+
+    this.updateSendBtn();
+  };
+
+  private onBtnSendClick = (e: Event) => {
+    cancelEvent(e);
+      
+    if(!this.recorder || this.recording || !this.isInputEmpty() || this.forwardingMids.length) {
+      if(this.recording) {
+        if((Date.now() - this.recordStartTime) < RECORD_MIN_TIME) {
+          this.btnCancelRecord.click();
+        } else {
+          this.recorder.stop();
+        }
+      } else {
+        this.sendMessage();
+      }
+    } else {
+      if(rootScope.selectedPeerID < 0 && !appChatsManager.hasRights(rootScope.selectedPeerID, 'send', 'send_media')) {
+        toast(POSTING_MEDIA_NOT_ALLOWED);
+        return;
+      }
+
+      this.chatInput.classList.add('is-locked');
+      this.recorder.start().then(() => {
+        this.recordCanceled = false;
+        
+        this.chatInput.classList.add('is-recording');
+        this.recording = true;
+        this.updateSendBtn();
+        opusDecodeController.setKeepAlive(true);
+
+        this.recordStartTime = Date.now();
+
+        const sourceNode: MediaStreamAudioSourceNode = this.recorder.sourceNode;
+        const context = sourceNode.context;
+
+        const analyser = context.createAnalyser();
+        sourceNode.connect(analyser);
+        //analyser.connect(context.destination);
+        analyser.fftSize = 32;
+
+        const frequencyData = new Uint8Array(analyser.frequencyBinCount);
+        const max = frequencyData.length * 255;
+        const min = 54 / 150;
+        let r = () => {
+          if(!this.recording) return;
+
+          analyser.getByteFrequencyData(frequencyData);
+
+          let sum = 0;
+          frequencyData.forEach(value => {
+            sum += value;
+          });
+          
+          let percents = Math.min(1, (sum / max) + min);
+          //console.log('frequencyData', frequencyData, percents);
+
+          this.recordRippleEl.style.transform = `scale(${percents})`;
+
+          let diff = Date.now() - this.recordStartTime;
+          let ms = diff % 1000;
+
+          let formatted = ('' + (diff / 1000)).toHHMMSS() + ',' + ('00' + Math.round(ms / 10)).slice(-2);
+
+          this.recordTimeEl.innerText = formatted;
+
+          window.requestAnimationFrame(r);
+        };
+
+        r();
+      }).catch((e: Error) => {
+        switch(e.name as string) {
+          case 'NotAllowedError': {
+            toast('Please allow access to your microphone');
+            break;
+          }
+
+          case 'NotReadableError': {
+            toast(e.message);
+            break;
+          }
+
+          default:
+            console.error('Recorder start error:', e, e.name, e.message);
+            toast(e.message);
+            break;
+        }
+
+        this.chatInput.classList.remove('is-recording', 'is-locked');
+      });
+    }
+  };
+
+  private onHelperCancel = (e: Event) => {
+    cancelEvent(e);
+
+    if(this.willSendWebPage) {
+      this.noWebPage = true;
+      this.willSendWebPage = null;
+
+      if(this.helperType) {
+        //if(this.helperFunc) {
+          this.helperFunc();
+        //}
+
+        return;
+      }
+    }
+
+    this.clearHelper();
+    this.updateSendBtn();
+  };
+
+  private onHelperClick = (e: Event) => {
+    cancelEvent(e);
+      
+    if(!findUpClassName(e.target, 'reply-wrapper')) return;
+    if(this.helperType == 'forward') {
+      if(this.helperWaitingForward) return;
+      this.helperWaitingForward = true;
+
+      const mids = this.forwardingMids.slice();
+      const helperFunc = this.helperFunc;
+      this.clearHelper();
+      let selected = false;
+      new PopupForward(mids, () => {
+        selected = true;
+      }, () => {
+        this.helperWaitingForward = false;
+
+        if(!selected) {
+          helperFunc();
+        }
+      });
+    } else if(this.helperType == 'reply') {
+      appImManager.setPeer(rootScope.selectedPeerID, this.replyToMsgID);
+    } else if(this.helperType == 'edit') {
+      appImManager.setPeer(rootScope.selectedPeerID, this.editMsgID);
+    }
+  };
+
+  public clearInput() {
+    this.attachMessageInputField();
+
+    // clear executions
+    this.canRedoFromHTML = '';
+    this.undoHistory.length = 0;
+    this.executedHistory.length = 0;
+    this.canUndoFromHTML = '';
   }
 
   public isInputEmpty() {
@@ -579,7 +756,7 @@ export class ChatInput {
       this.lastUrl = '';
       delete this.noWebPage;
       this.willSendWebPage = null;
-      this.messageInput.innerText = '';
+      this.clearInput();
     }
 
     if(clearReply || clearInput) {
@@ -683,7 +860,7 @@ export class ChatInput {
 
   public clearHelper(type?: ChatInputHelperType) {
     if(this.helperType == 'edit' && type != 'edit') {
-      this.messageInput.innerText = '';
+      this.clearInput();
     }
 
     if(type) {
@@ -718,7 +895,9 @@ export class ChatInput {
     } */
 
     if(input !== undefined) {
+      this.clearInput();
       this.messageInput.innerHTML = input || '';
+      this.onMessageInput();
       window.requestAnimationFrame(() => {
         placeCaretAtEnd(this.messageInput);
         this.inputScroll.scrollTop = this.inputScroll.scrollHeight;

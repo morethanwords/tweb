@@ -94,6 +94,12 @@
     transform: scale(1);
   }
 
+  &:not(.active) {
+    &, .btn-menu-item {
+      pointer-events: none !important;
+    }
+  }
+
   &.bottom-left {
     right: 0;
     top: 100%;

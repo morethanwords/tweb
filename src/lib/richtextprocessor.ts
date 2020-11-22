@@ -66,7 +66,7 @@ const botCommandRegExp = '\\/([a-zA-Z\\d_]{1,32})(?:@(' + usernameRegExp + '))?(
 const fullRegExp = new RegExp('(^| )(@)(' + usernameRegExp + ')|(' + urlRegExp + ')|(\\n)|(' + emojiRegExp + ')|(^|[\\s\\(\\]])(#[' + alphaNumericRegExp + ']{2,64})|(^|\\s)' + botCommandRegExp, 'i')
 const emailRegExp = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 //const markdownTestRegExp = /[`_*@~]/;
-const markdownRegExp = /(^|\s|\n)(````?)([\s\S]+?)(````?)([\s\n\.,:?!;]|$)|(^|\s)(`|~~|\*\*|__)([^\n]+?)\7([\s\.,:?!;]|$)|@(\d+)\s*\((.+?)\)|(\[(.+?)\]\((.+?)\))/m;
+const markdownRegExp = /(^|\s|\n)(````?)([\s\S]+?)(````?)([\s\n\.,:?!;]|$)|(^|\s|\x01)(`|~~|\*\*|__|_-_)([^\n]+?)\7([\x01\s\.,:?!;]|$)|@(\d+)\s*\((.+?)\)|(\[(.+?)\]\((.+?)\))/m;
 const siteHashtags: {[siteName: string]: string} = {
   Telegram: 'tg://search_hashtag?hashtag={1}',
   Twitter: 'https://twitter.com/hashtag/{1}',
@@ -80,12 +80,13 @@ const siteMentions: {[siteName: string]: string} = {
   Instagram: 'https://instagram.com/{1}/',
   GitHub: 'https://github.com/{1}'
 };
-const markdownEntities = {
+const markdownEntities: {[markdown: string]: any} = {
   '`': 'messageEntityCode',
   '``': 'messageEntityPre',
   '**': 'messageEntityBold',
   '__': 'messageEntityItalic',
-  '~~': 'messageEntityStrike'
+  '~~': 'messageEntityStrike',
+  '_-_': 'messageEntityUnderline'
 };
 
 namespace RichTextProcessor {
@@ -219,15 +220,14 @@ namespace RichTextProcessor {
       return noTrim ? text : text.trim();
     } */
   
-    var raw = text;
-    var match;
-    var newText: any = [];
-    var rawOffset = 0;
-    var matchIndex;
+    let raw = text;
+    let match;
+    let newText: any = [];
+    let rawOffset = 0;
     while(match = raw.match(markdownRegExp)) {
-      matchIndex = rawOffset + match.index;
+      const matchIndex = rawOffset + match.index;
       newText.push(raw.substr(0, match.index));
-      var text = (match[3] || match[8] || match[11] || match[14]);
+      let text = (match[3] || match[8] || match[11] || match[14]);
       rawOffset -= text.length;
       text = text.replace(/^\s+|\s+$/g, '');
       rawOffset += text.length;
@@ -250,15 +250,21 @@ namespace RichTextProcessor {
 
         rawOffset -= match[2].length + match[4].length;
       } else if(match[7]) { // code|italic|bold
-        newText.push(match[6] + text + match[9]);
+        const isSOH = match[6] == '\x01';
+        if(!isSOH) {
+          newText.push(match[6] + text + match[9]);
+        } else {
+          newText.push(text);
+        }
+
         entities.push({
-          // @ts-ignore
           _: markdownEntities[match[7]],
-          offset: matchIndex + match[6].length,
+          //offset: matchIndex + match[6].length,
+          offset: matchIndex + (isSOH ? 0 : match[6].length),
           length: text.length
         });
 
-        rawOffset -= match[7].length * 2;
+        rawOffset -= match[7].length * 2 + (isSOH ? 2 : 0);
       } else if(match[11]) { // custom mention
         newText.push(text)
         entities.push({
@@ -373,6 +379,7 @@ namespace RichTextProcessor {
     noLinks: true,
     noLinebreaks: true,
     noCommands: true,
+    noEmphasis: true,
     fromBot: boolean,
     noTextFormat: true,
     passEntities: Partial<{
@@ -542,31 +549,36 @@ namespace RichTextProcessor {
           );
           break;
 
-        case 'messageEntityBold':
+        case 'messageEntityBold': {
           if(options.noTextFormat) {
             html.push(wrapRichNestedText(entityText, entity.nested, options));
             break;
           }
           
+          const tag = options.noEmphasis ? 'b' : 'strong';
           html.push(
-            '<strong>',
+            `<${tag}>`,
             wrapRichNestedText(entityText, entity.nested, options),
-            '</strong>'
+            `</${tag}>`
           );
           break;
+        }
+          
 
-        case 'messageEntityItalic':
+        case 'messageEntityItalic': {
           if(options.noTextFormat) {
             html.push(wrapRichNestedText(entityText, entity.nested, options));
             break;
           }
   
+          const tag = options.noEmphasis ? 'i' : 'em';
           html.push(
-            '<em>',
+            `<${tag}>`,
             wrapRichNestedText(entityText, entity.nested, options),
-            '</em>'
+            `</${tag}>`
           );
           break;
+        }
 
         case 'messageEntityHighlight':
           html.push(
@@ -714,6 +726,7 @@ namespace RichTextProcessor {
     return wrapRichText(text, {
       ...options, 
       noLinks: true,
+      noEmphasis: true,
       passEntities: {
         messageEntityTextUrl: true
       }
