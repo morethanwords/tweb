@@ -84,3 +84,5 @@ export const checkRTL = (s: string) => {
 
   return rtlDirCheck.test(s);
 };
+
+//(window as any).checkRTL = checkRTL;

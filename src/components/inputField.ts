@@ -1,4 +1,4 @@
-import { getRichValue, isInputEmpty } from "../helpers/dom";
+import { getRichValue } from "../helpers/dom";
 import { checkRTL } from "../helpers/string";
 import RichTextProcessor from "../lib/richtextprocessor";
 
@@ -18,6 +18,9 @@ let init = () => {
     let entities = RichTextProcessor.parseEntities(text);
     //console.log('messageInput paste', text, entities);
     entities = entities.filter(e => e._ == 'messageEntityEmoji' || e._ == 'messageEntityLinebreak');
+    if(RichTextProcessor.emojiSupported) { // * fix safari emoji
+      entities = entities.filter(e => e._ != 'messageEntityEmoji');
+    }
     //text = RichTextProcessor.wrapEmojiText(text);
     text = RichTextProcessor.wrapRichText(text, {entities, noLinks: true});
 
@@ -63,14 +66,17 @@ const InputField = (options: {
 
     const input = div.firstElementChild as HTMLElement;
     const observer = new MutationObserver((mutationsList, observer) => {
-      const isEmpty = isInputEmpty(input);
+      //const isEmpty = isInputEmpty(input);
       //console.log('input', isEmpty);
 
+      //const char = [...getRichValue(input)][0];
       const char = input.innerText[0];
       let direction = 'ltr';
       if(char && checkRTL(char)) {
         direction = 'rtl';
       }
+
+      //console.log('RTL', direction, char);
 
       input.style.direction = direction;
 

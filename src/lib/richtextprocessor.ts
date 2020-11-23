@@ -519,8 +519,8 @@ namespace RichTextProcessor {
           break;
 
         case 'messageEntityEmoji':
-          html.push(emojiSupported ? // ! contenteditable="false" нужен для поля ввода, иначе там будет меняться шрифт в Safari
-            `<span contenteditable="false" class="emoji">${encodeEntities(entityText)}</span>` : 
+          html.push(emojiSupported ? // ! contenteditable="false" нужен для поля ввода, иначе там будет меняться шрифт в Safari, или же рендерить смайлик напрямую, без контейнера
+            `<span class="emoji">${encodeEntities(entityText)}</span>` : 
             `<img src="assets/img/emoji/${entity.unicode}.png" alt="${encodeEntities(entityText)}" class="emoji">`);
           break;
 
@@ -723,8 +723,13 @@ namespace RichTextProcessor {
   export function wrapDraftText(text: string, options: Partial<{
     entities: MessageEntity[]
   }> = {}) {
+    let entities = options.entities.slice();
+    if(emojiSupported) { // * fix safari emoji
+      entities = entities.filter(e => e._ != 'messageEntityEmoji');
+    }
+
     return wrapRichText(text, {
-      ...options, 
+      entities, 
       noLinks: true,
       noEmphasis: true,
       passEntities: {
