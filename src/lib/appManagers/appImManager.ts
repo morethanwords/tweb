@@ -162,6 +162,9 @@ export class AppImManager {
   public tabID = -1;
   private closeBtn = this.topbar.querySelector('.sidebar-close-button') as HTMLButtonElement;
   public hideRightSidebar = false;
+  
+  private chatUtils: HTMLElement;
+  private setUtilsRAF: number;
 
   get myID() {
     return rootScope.myID;
@@ -182,62 +185,18 @@ export class AppImManager {
 
     this.chatSelection = new ChatSelection(this, appMessagesManager/* this.bubblesContainer, this.bubbles */);
     
-    const chatUtils = this.chatInfo.nextElementSibling;
+    this.chatUtils = this.chatInfo.nextElementSibling as HTMLElement;
     this.chatAudio = new ChatAudio();
-    chatUtils.prepend(this.chatAudio.divAndCaption.container);
+    this.chatUtils.prepend(this.chatAudio.divAndCaption.container);
 
     // * fix topbar overflow section
 
-    const observeOptions = {
-      attributes: true,
-      childList: true,
-      subtree: true
-    };
-
-    // ! У МЕНЯ ПРОСТО СГОРЕЛО, САФАРИ КОНЧЕННЫЙ БРАУЗЕР - ЕСЛИ НЕ СКРЫВАТЬ БЛОК, ТО ПРИ ПЕРЕВОРОТЕ ЭКРАНА НА АЙФОНЕ БЛОК БУДЕТ НЕПРАВИЛЬНО ШИРИНЫ, ДАЖЕ БЕЗ ЭТОЙ ФУНКЦИИ!
-    const setUtilsWidth = () => {
-      //return;
-      if(mutationRAF) window.cancelAnimationFrame(mutationRAF);
-      chatUtils.classList.add('hide');
-      mutationObserver.disconnect();
-      mutationRAF = window.requestAnimationFrame(() => {
-        
-        //mutationRAF = window.requestAnimationFrame(() => {
-          
-          //setTimeout(() => {
-            chatUtils.classList.remove('hide');
-            /* this.chatInfo.style.removeProperty('--utils-width');
-            void this.chatInfo.offsetLeft; // reflow */
-            const width = /* chatUtils.scrollWidth */chatUtils.getBoundingClientRect().width;
-            this.log('utils width:', width);
-            this.chatInfo.style.setProperty('--utils-width', width + 'px');
-            //this.chatInfo.classList.toggle('have-utils-width', !!width);
-          //}, 0);
-          
-          mutationRAF = 0;
-
-          mutationObserver.observe(chatUtils, observeOptions);
-        //});
-      });
-    };
-
-    /* window.addEventListener('resize', () => {
-      setTimeout(setUtilsWidth, 5000);
-    }); */
-
-    let mutationRAF: number;
-    const mutationObserver = new MutationObserver((mutationList) => {
-      setUtilsWidth();
-    });
-    
-    mutationObserver.observe(chatUtils, observeOptions);
-
+    window.addEventListener('resize', () => this.setUtilsWidth(true));
     mediaSizes.addListener('changeScreen', (from, to) => {
-      
       this.chatAudio.divAndCaption.container.classList.toggle('is-floating', to == ScreenSize.mobile);
       this.pinnedMessageContainer.divAndCaption.container.classList.toggle('is-floating', to == ScreenSize.mobile 
       /* || (!this.chatAudio.divAndCaption.container.classList.contains('hide') && to == ScreenSize.medium) */);
-      setUtilsWidth();
+      this.setUtilsWidth(true);
     });
 
     // * fix topbar overflow section end
@@ -319,6 +278,7 @@ export class AppImManager {
         const chat = appChatsManager.getChat(peerID) as Channel | Chat;
         
         this.btnJoin.classList.toggle('hide', !chat?.pFlags?.left);
+        this.setUtilsWidth();
       }
     });
     
@@ -883,6 +843,39 @@ export class AppImManager {
       }
     });
   }
+
+  // ! У МЕНЯ ПРОСТО СГОРЕЛО, САФАРИ КОНЧЕННЫЙ БРАУЗЕР - ЕСЛИ НЕ СКРЫВАТЬ БЛОК, ТО ПРИ ПЕРЕВОРОТЕ ЭКРАНА НА АЙФОНЕ БЛОК БУДЕТ НЕПРАВИЛЬНО ШИРИНЫ, ДАЖЕ БЕЗ ЭТОЙ ФУНКЦИИ!
+  public setUtilsWidth = (resize = false) => {
+    //return;
+    if(this.setUtilsRAF) window.cancelAnimationFrame(this.setUtilsRAF);
+
+    if(isSafari && resize) {
+      this.chatUtils.classList.add('hide');
+    }
+
+    //mutationObserver.disconnect();
+    this.setUtilsRAF = window.requestAnimationFrame(() => {
+      
+      //mutationRAF = window.requestAnimationFrame(() => {
+        
+        //setTimeout(() => {
+          if(isSafari && resize) {
+            this.chatUtils.classList.remove('hide');
+          }
+          /* this.chatInfo.style.removeProperty('--utils-width');
+          void this.chatInfo.offsetLeft; // reflow */
+          const width = /* chatUtils.scrollWidth */this.chatUtils.getBoundingClientRect().width;
+          this.log('utils width:', width);
+          this.chatInfo.style.setProperty('--utils-width', width + 'px');
+          //this.chatInfo.classList.toggle('have-utils-width', !!width);
+        //}, 0);
+        
+        this.setUtilsRAF = 0;
+
+        //mutationObserver.observe(chatUtils, observeOptions);
+      //});
+    });
+  };
 
   public selectTab(id: number) {
     document.body.classList.toggle(LEFT_COLUMN_ACTIVE_CLASSNAME, id == 0);
@@ -1468,6 +1461,7 @@ export class AppImManager {
 
     this.btnMute.classList.toggle('hide', !isBroadcast);
     this.btnJoin.classList.toggle('hide', !appChatsManager.getChat(-this.peerID)?.pFlags?.left);
+    this.setUtilsWidth();
     
     this.menuButtons.mute.style.display = this.myID == this.peerID ? 'none' : '';
 

@@ -304,6 +304,7 @@ export class ChatInput {
 
     if(isTouchSupported) {
       this.messageInput.addEventListener('touchend', (e) => {
+        appImManager.selectTab(1); // * set chat tab for album orientation
         this.saveScroll();
         emoticonsDropdown.toggle(false);
       });

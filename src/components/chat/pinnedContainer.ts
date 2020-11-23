@@ -70,10 +70,13 @@ export default class PinnedContainer {
     if(scrollTop !== undefined && active.length <= maxActive) {
       appImManager.scrollable.scrollTop = scrollTop + ((hide ? -1 : 1) * HEIGHT);
     }
+
+    appImManager.setUtilsWidth();
   }
 
   public fill(title: string, subtitle: string, message: any) {
     this.divAndCaption.container.dataset.mid = '' + message.mid;
     this.divAndCaption.fill(title, subtitle, message);
+    appImManager.setUtilsWidth();
   }
 }
