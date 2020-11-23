@@ -2078,7 +2078,6 @@ export class AppImManager {
           
           bubble.classList.add('hide-name', 'photo');
           const tailSupported = !isAndroid;
-          if(tailSupported) bubble.classList.add('with-media-tail');
 
           const storage = appMessagesManager.groupedMessagesStorage[message.grouped_id];
           if(message.grouped_id && Object.keys(storage).length != 1) {
@@ -2094,6 +2093,7 @@ export class AppImManager {
             break;
           }
 
+          if(tailSupported) bubble.classList.add('with-media-tail');
           wrapPhoto(photo, message, attachmentDiv, undefined, undefined, tailSupported, isOut, this.lazyLoadQueue, this.getMiddleware());
 
           break;

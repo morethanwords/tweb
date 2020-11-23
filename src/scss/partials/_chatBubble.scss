@@ -230,7 +230,7 @@ $bubble-margin: .25rem;
     }
   }
 
-  #bubbles.is-selecting & {
+  #bubbles.is-selecting &:not(.is-album) {
     .audio, .document, .attachment, poll-element {
       pointer-events: none !important;
     }
@@ -560,6 +560,8 @@ $bubble-margin: .25rem;
     border-radius: inherit;
     overflow: hidden;
     user-select: none;
+
+    //-webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%); // fix safari overflow
     
     display: flex; // lol
     justify-content: center;
@@ -628,50 +630,58 @@ $bubble-margin: .25rem;
     .attachment {
       max-width: unquote('min(451px, 100%)');
       max-height: none;
+      //overflow: hidden;
+    }
+  }
 
-      .album-item {
-        background-color: lighten($color-blue, 35%);
-        max-width: 100%;
-        cursor: pointer;
-        position: absolute;
-        overflow: hidden;
+  .album-item {
+    background-color: lighten($color-blue, 35%);
+    max-width: 100%;
+    cursor: pointer;
+    position: absolute;
+    overflow: hidden;
 
-        img, video {
-          border-radius: inherit;
+    /* #bubbles.is-selecting & {
+      -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%); // fix safari overflow
+    } */
+
+    img, video {
+      border-radius: inherit;
+    }
+
+    &-media { // * fix overflow for handhelds
+      border-radius: inherit;
+    }
+
+    .bubble-select-checkbox {
+      bottom: auto !important;
+      left: auto;
+      right: .25rem;
+      top: .25rem;
+    }
+
+    &.is-selected {
+      border-radius: 0;
+      
+      .album-item-media {
+        transform: scale(1);
+      }
+
+      &.animating {
+        transition: border-radius var(--layer-transition);
+
+        .album-item-media {
+          transition: transform var(--layer-transition), border-radius var(--layer-transition);
+        }
+      }
+
+      &:not(.backwards) {
+        .album-item-media {
+          transform: scale(.925);
         }
 
-        .bubble-select-checkbox {
-          bottom: auto !important;
-          left: auto;
-          right: .25rem;
-          top: .25rem;
-        }
-
-        &.is-selected {
-          border-radius: 0;
-          
-          .album-item-media {
-            transform: scale(1);
-            border-radius: 0;
-          }
-
-          &.animating {
-            transition: border-radius var(--layer-transition);
-
-            .album-item-media {
-              transition: transform var(--layer-transition), border-radius var(--layer-transition);
-            }
-          }
-
-          &:not(.backwards) {
-            .album-item-media {
-              transform: scale(.925);
-            }
-
-            &, .album-item-media {
-              border-radius: .5rem;
-            }
-          }
+        &, .album-item-media {
+          border-radius: .5rem;
         }
       }
     }
@@ -1204,7 +1214,7 @@ $bubble-margin: .25rem;
     }
   }
 
-  &:not(.webpage):not(.is-album):not(.sticker):not(.round):not(.emoji-big) .attachment, .album-item {
+  &:not(.webpage):not(.is-album):not(.sticker):not(.round):not(.emoji-big) .attachment {
     background-color: #000;
   }
   
