@@ -11,6 +11,7 @@ import { attachContextMenuListener, openBtnMenu, positionMenu } from "../misc";
 import PopupDeleteMessages from "../popupDeleteMessages";
 import PopupForward from "../popupForward";
 import PopupPinMessage from "../popupUnpinMessage";
+import { copyTextToClipboard } from "../../helpers/clipboard";
 
 export default class ChatContextMenu {
   private buttons: (ButtonMenuItemOptions & {verify: () => boolean, notDirect?: () => boolean, withSelection?: true})[];
@@ -153,7 +154,8 @@ export default class ChatContextMenu {
       icon: 'reply',
       text: 'Reply',
       onClick: this.onReplyClick,
-      verify: () => (this.peerID > 0 || appChatsManager.hasRights(-this.peerID, 'send')) && this.msgID > 0
+      verify: () => (this.peerID > 0 || appChatsManager.hasRights(-this.peerID, 'send')) && this.msgID > 0/* ,
+      cancelEvent: true */
     }, {
       icon: 'edit',
       text: 'Edit',
@@ -194,7 +196,8 @@ export default class ChatContextMenu {
         const message = appMessagesManager.getMessage(this.msgID);
         const poll = message.media?.poll as Poll;
         return poll && poll.chosenIndexes.length && !poll.pFlags.closed && !poll.pFlags.quiz;
-      }
+      }/* ,
+      cancelEvent: true */
     }, {
       icon: 'stop',
       text: 'Stop poll',
@@ -203,7 +206,8 @@ export default class ChatContextMenu {
         const message = appMessagesManager.getMessage(this.msgID);
         const poll = message.media?.poll;
         return appMessagesManager.canEditMessage(this.msgID, 'poll') && poll && !poll.pFlags.closed && this.msgID > 0;
-      }
+      }/* ,
+      cancelEvent: true */
     }, {
       icon: 'forward',
       text: 'Forward',
@@ -273,20 +277,7 @@ export default class ChatContextMenu {
       return acc + (message?.message ? message.message + '\n' : '');
     }, '').trim();
     
-    const textArea = document.createElement('textarea');
-    textArea.value = str;
-    textArea.style.position = 'fixed';  //avoid scrolling to bottom
-    document.body.appendChild(textArea);
-    textArea.focus();
-    textArea.select();
-    
-    try {
-      document.execCommand('copy');
-    } catch (err) {
-      console.error('Oops, unable to copy', err);
-    }
-    
-    document.body.removeChild(textArea);
+    copyTextToClipboard(str);
   };
 
   private onPinClick = () => {

@@ -723,13 +723,17 @@ export class ChatInput {
   };
 
   public clearInput() {
-    this.attachMessageInputField();
+    if(isTouchSupported) {
+      this.messageInput.innerText = '';
+    } else {
+      this.attachMessageInputField();
 
-    // clear executions
-    this.canRedoFromHTML = '';
-    this.undoHistory.length = 0;
-    this.executedHistory.length = 0;
-    this.canUndoFromHTML = '';
+      // clear executions
+      this.canRedoFromHTML = '';
+      this.undoHistory.length = 0;
+      this.executedHistory.length = 0;
+      this.canUndoFromHTML = '';
+    }
   }
 
   public isInputEmpty() {
