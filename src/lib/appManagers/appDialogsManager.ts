@@ -915,6 +915,12 @@ export class AppDialogsManager {
         }
   
         const needIndex = index - offset;
+        if(needIndex > currentOrder.length) {
+          dom.listEl.remove();
+          delete this.doms[dialog.peerID];
+          return;
+        }
+
         const peerIDByIndex = currentOrder[needIndex];
   
         if(peerIDByIndex != dialog.peerID) {
