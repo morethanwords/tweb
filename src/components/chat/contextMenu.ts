@@ -5,7 +5,7 @@ import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import appPeersManager from "../../lib/appManagers/appPeersManager";
 import appPollsManager, { Poll } from "../../lib/appManagers/appPollsManager";
 import rootScope from "../../lib/rootScope";
-import { cancelEvent, cancelSelection, findUpClassName } from "../../helpers/dom";
+import { attachClickEvent, cancelEvent, cancelSelection, findUpClassName } from "../../helpers/dom";
 import ButtonMenu, { ButtonMenuItemOptions } from "../buttonMenu";
 import { attachContextMenuListener, openBtnMenu, positionMenu } from "../misc";
 import PopupDeleteMessages from "../popupDeleteMessages";
@@ -97,22 +97,6 @@ export default class ChatContextMenu {
     };
 
     if(isTouchSupported) {
-      const attachClickEvent = (elem: HTMLElement, callback: (e: TouchEvent) => void) => {
-        elem.addEventListener('touchstart', (e) => {
-          const onTouchMove = (e: TouchEvent) => {
-            elem.removeEventListener('touchend', onTouchEnd);
-          };
-  
-          const onTouchEnd = (e: TouchEvent) => {
-            elem.removeEventListener('touchmove', onTouchMove);
-            callback(e);
-          };
-  
-          elem.addEventListener('touchend', onTouchEnd, {once: true});
-          elem.addEventListener('touchmove', onTouchMove, {once: true});
-        });
-      };
-
       attachClickEvent(attachTo, (e) => {
         if(appImManager.chatSelection.isSelecting) {
           return;
@@ -126,7 +110,7 @@ export default class ChatContextMenu {
         const good = ['bubble', 'bubble__container', 'message', 'time', 'inner'].find(c => className.match(new RegExp(c + '($|\\s)')));
         if(good) {
           cancelEvent(e);
-          onContextMenu(e.changedTouches[0]);
+          onContextMenu((e as TouchEvent).changedTouches[0]);
         }
       });
 

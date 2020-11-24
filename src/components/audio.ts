@@ -11,7 +11,7 @@ import { isSafari } from "../helpers/userAgent";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import rootScope from "../lib/rootScope";
 import './middleEllipsis';
-import { cancelEvent, CLICK_EVENT_NAME } from "../helpers/dom";
+import { attachClickEvent, cancelEvent, detachClickEvent } from "../helpers/dom";
 
 rootScope.on('messages_media_read', e => {
   const mids = e.detail;
@@ -214,13 +214,20 @@ function wrapVoiceMessage(doc: MyDocument, audioEl: AudioElement, mid: number) {
         mousedown = false;
       }
     });
-    progress.addEventListener(CLICK_EVENT_NAME, (e) => {
+    attachClickEvent(progress, (e) => {
       cancelEvent(e);
       if(!audio.paused) scrub(e);
     });
     
     function scrub(e: MouseEvent | TouchEvent) {
-      const offsetX = e instanceof MouseEvent ? e.offsetX : e.changedTouches[0].clientX;
+      let offsetX: number;
+      if(e instanceof MouseEvent) {
+        offsetX = e.offsetX;
+      } else { // touch
+        const rect = (e.target as HTMLElement).getBoundingClientRect();
+        offsetX = e.targetTouches[0].pageX - rect.left;
+      }
+      
       const scrubTime = offsetX / availW /* width */ * audio.duration;
       lastIndex = Math.round(scrubTime / audio.duration * barCount);
       
@@ -369,12 +376,12 @@ export default class AudioElement extends HTMLElement {
         audioTimeDiv.innerText = String(audio.currentTime | 0).toHHMMSS(true) + ' / ' + durationStr;
       }
 
-      toggle.addEventListener(CLICK_EVENT_NAME, (e) => {
+      attachClickEvent(toggle, (e) => {
         cancelEvent(e);
         if(audio.paused) audio.play().catch(() => {});
         else audio.pause();
       });
-      
+
       this.addAudioListener('ended', () => {
         //toggle.classList.add('tgico-largeplay');
         toggle.classList.remove('tgico-largepause');
@@ -400,7 +407,10 @@ export default class AudioElement extends HTMLElement {
         let download: Download;
 
         const onClick = (e: Event) => {
-          cancelEvent(e);
+          if(e) {
+            cancelEvent(e);
+          }
+
           if(!download) {
             if(!preloader) {
               preloader = new ProgressivePreloader(null, true);
@@ -411,7 +421,7 @@ export default class AudioElement extends HTMLElement {
             
             download.then(() => {
               downloadDiv.remove();
-              this.removeEventListener(CLICK_EVENT_NAME, onClick);
+              detachClickEvent(this, onClick);
               onLoad();
             }).catch(err => {
               if(err.name === 'AbortError') {
@@ -427,8 +437,8 @@ export default class AudioElement extends HTMLElement {
           }
         };
     
-        this.addEventListener(CLICK_EVENT_NAME, onClick);
-        this.click();
+        attachClickEvent(this, onClick);
+        onClick(null);
       } else {
         onLoad(false);
 
@@ -437,7 +447,7 @@ export default class AudioElement extends HTMLElement {
         //} else {
           const r = (e: Event) => {
             //onLoad();
-            cancelEvent(e);
+            //cancelEvent(e);
             appMediaPlaybackController.resolveWaitingForLoadMedia(mid);
   
             appMediaPlaybackController.willBePlayed(this.audio); // prepare for loading audio
@@ -469,8 +479,8 @@ export default class AudioElement extends HTMLElement {
               //}, 10e3);
             });
           };
-  
-          this.addEventListener(CLICK_EVENT_NAME, r, {once: true});
+
+          attachClickEvent(this, r, {once: true, capture: true, passive: false});
         //}
       }
     } else {

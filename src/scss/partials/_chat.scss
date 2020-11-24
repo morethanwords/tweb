@@ -353,6 +353,7 @@ $chat-helper-size: 39px;
 		> .tgico {
 			position: absolute;
 			animation: hide-icon .4s forwards ease-in-out;
+			height: 24px;
 		}
 
 		&.send {

@@ -1,4 +1,4 @@
-import { cancelEvent, CLICK_EVENT_NAME } from "../helpers/dom";
+import { attachClickEvent, cancelEvent, CLICK_EVENT_NAME } from "../helpers/dom";
 import { closeBtnMenu } from "./misc";
 import { ripple } from "./ripple";
 
@@ -13,24 +13,13 @@ const ButtonMenuItem = (options: ButtonMenuItemOptions) => {
   el.innerText = text;
 
   ripple(el);
-  /* if(options.cancelEvent) {
-    el.addEventListener(CLICK_EVENT_NAME, (e) => {
-      cancelEvent(e);
-      closeBtnMenu();
-      options.onClick(e);
-    });
-  } else {
-    el.addEventListener(CLICK_EVENT_NAME, onClick);
-  } */
-  if(CLICK_EVENT_NAME == 'touchend') { // * cancel keyboard close
-    el.addEventListener(CLICK_EVENT_NAME, (e) => {
-      cancelEvent(e);
-      options.onClick(e);
-      closeBtnMenu();
-    });
-  } else {
-    el.addEventListener(CLICK_EVENT_NAME, onClick);
-  }
+
+  // * cancel keyboard close
+  attachClickEvent(el, CLICK_EVENT_NAME == 'touchend' ? (e) => {
+    cancelEvent(e);
+    onClick(e);
+    closeBtnMenu();
+  } : onClick);
 
   return options.element = el;
 };

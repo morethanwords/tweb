@@ -442,3 +442,37 @@ export function blurActiveElement() {
 }
 
 export const CLICK_EVENT_NAME = isTouchSupported ? 'touchend' : 'click';
+export const attachClickEvent = (elem: HTMLElement, callback: (e: TouchEvent | MouseEvent) => void, options?: AddEventListenerOptions) => {
+  if(CLICK_EVENT_NAME == 'touchend') {
+    const o = {...options, once: true};
+
+    const onTouchStart = (e: TouchEvent) => {
+      const onTouchMove = (e: TouchEvent) => {
+        elem.removeEventListener('touchend', onTouchEnd, o);
+      };
+  
+      const onTouchEnd = (e: TouchEvent) => {
+        elem.removeEventListener('touchmove', onTouchMove, o);
+        callback(e);
+        if(options.once) {
+          elem.removeEventListener('touchstart', onTouchStart);
+        }
+      };
+  
+      elem.addEventListener('touchend', onTouchEnd, o);
+      elem.addEventListener('touchmove', onTouchMove, o);
+    };
+
+    elem.addEventListener('touchstart', onTouchStart);
+  } else {
+    elem.addEventListener(CLICK_EVENT_NAME, callback, options);
+  }
+};
+
+export const detachClickEvent = (elem: HTMLElement, callback: (e: TouchEvent | MouseEvent) => void, options?: AddEventListenerOptions) => {
+  if(CLICK_EVENT_NAME == 'touchend') {
+    elem.removeEventListener('touchstart', callback, options);
+  } else {
+    elem.removeEventListener(CLICK_EVENT_NAME, callback, options);
+  }
+};

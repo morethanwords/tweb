@@ -723,7 +723,11 @@ namespace RichTextProcessor {
   export function wrapDraftText(text: string, options: Partial<{
     entities: MessageEntity[]
   }> = {}) {
-    let entities = options.entities.slice();
+    if(!text) {
+      return '';
+    }
+
+    let entities = (options.entities || []).slice();
     if(emojiSupported) { // * fix safari emoji
       entities = entities.filter(e => e._ != 'messageEntityEmoji');
     }
