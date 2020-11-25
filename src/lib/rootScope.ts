@@ -10,7 +10,7 @@ type BroadcastEvents = {
   'user_update': number,
   'user_auth': UserAuth,
   'peer_changed': number,
-  'peer_pinned_message': number,
+  'peer_pinned_messages': number,
 
   'filter_delete': MyDialogFilter,
   'filter_update': MyDialogFilter,

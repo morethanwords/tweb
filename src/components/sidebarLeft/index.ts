@@ -11,11 +11,11 @@ import rootScope from "../../lib/rootScope";
 import { CLICK_EVENT_NAME, findUpClassName, findUpTag } from "../../helpers/dom";
 import AppSearch, { SearchGroup } from "../appSearch";
 import "../avatar";
-import { parseMenuButtonsTo, putPreloader } from "../misc";
+import { parseMenuButtonsTo } from "../misc";
 import { ScrollableX } from "../scrollable";
 import SearchInput from "../searchInput";
 import SidebarSlider from "../slider";
-import Transition from "../transition";
+import { TransitionSlider } from "../transition";
 import AppAddMembersTab from "./tabs/addMembers";
 import AppArchivedTab from "./tabs/archivedTab";
 import AppChatFoldersTab from "./tabs/chatFolders";
@@ -226,7 +226,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
       let hideNewBtnMenuTimeout: number;
       //const transition = Transition.bind(null, this.searchContainer.parentElement, 150);
-      const transition = Transition(this.searchContainer.parentElement, 'zoom-fade', 150, (id) => {
+      const transition = TransitionSlider(this.searchContainer.parentElement, 'zoom-fade', 150, (id) => {
         if(hideNewBtnMenuTimeout) clearTimeout(hideNewBtnMenuTimeout);
 
         if(id == 0) {

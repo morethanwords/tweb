@@ -12,7 +12,6 @@ import PinnedContainer from '../../components/chat/pinnedContainer';
 import ReplyContainer from '../../components/chat/replyContainer';
 import { ChatSearch } from '../../components/chat/search';
 import ChatSelection from '../../components/chat/selection';
-import CheckboxField from '../../components/checkbox';
 import { horizontalMenu } from '../../components/horizontalMenu';
 import LazyLoadQueue from '../../components/lazyLoadQueue';
 import { formatPhoneNumber, parseMenuButtonsTo } from '../../components/misc';
@@ -40,7 +39,7 @@ import apiManager from '../mtproto/mtprotoworker';
 import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from '../rootScope';
-import { cancelEvent, CLICK_EVENT_NAME, findUpClassName, findUpTag, placeCaretAtEnd, whichChild } from "../../helpers/dom";
+import { attachClickEvent, cancelEvent, CLICK_EVENT_NAME, findUpClassName, findUpTag, placeCaretAtEnd, whichChild } from "../../helpers/dom";
 import apiUpdatesManager from './apiUpdatesManager';
 import appChatsManager, { Channel, Chat } from "./appChatsManager";
 import appDialogsManager from "./appDialogsManager";
@@ -54,6 +53,7 @@ import appProfileManager from "./appProfileManager";
 import appStickersManager from './appStickersManager';
 import appUsersManager from "./appUsersManager";
 import { months } from '../../helpers/date';
+import PinnedMessage from '../../components/chat/pinnedMessage';
 
 
 //console.log('appImManager included33!');
@@ -108,8 +108,7 @@ export class AppImManager {
   public offline = false;
   public updateStatusInterval = 0;
   
-  public pinnedMsgID = 0;
-  private pinnedMessageContainer: PinnedContainer = null;
+  public pinnedMessage: PinnedMessage;
   
   public lazyLoadQueue = new LazyLoadQueue();
   
@@ -136,7 +135,6 @@ export class AppImManager {
   public bubbleGroups = new BubbleGroups();
 
   private scrolledDown = true;
-  private onScrollRAF = 0;
   private isScrollingTimeout = 0;
 
   private unreadedObserver: IntersectionObserver = null;
@@ -194,20 +192,13 @@ export class AppImManager {
     window.addEventListener('resize', () => this.setUtilsWidth(true));
     mediaSizes.addListener('changeScreen', (from, to) => {
       this.chatAudio.divAndCaption.container.classList.toggle('is-floating', to == ScreenSize.mobile);
-      this.pinnedMessageContainer.divAndCaption.container.classList.toggle('is-floating', to == ScreenSize.mobile 
-      /* || (!this.chatAudio.divAndCaption.container.classList.contains('hide') && to == ScreenSize.medium) */);
+      this.pinnedMessage.onChangeScreen(from, to);
       this.setUtilsWidth(true);
     });
 
     // * fix topbar overflow section end
 
-    this.pinnedMessageContainer = new PinnedContainer('message', new ReplyContainer('pinned-message'), () => {
-      if(appPeersManager.canPinMessage(this.peerID)) {
-        new PopupPinMessage(this.peerID, 0);
-        return Promise.resolve(false);
-      }
-    });
-    this.btnJoin.parentElement.insertBefore(this.pinnedMessageContainer.divAndCaption.container, this.btnJoin);
+    this.pinnedMessage = new PinnedMessage(this, appMessagesManager);
 
     // will call when message is sent (only 1)
     rootScope.on('history_append', (e) => {
@@ -387,17 +378,6 @@ export class AppImManager {
       const renderMaxID = getObjectKeysAndSort(appMessagesManager.groupedMessagesStorage[groupID], 'asc').pop();
       this.renderMessage(appMessagesManager.getMessage(renderMaxID), true, false, this.bubbles[maxID], false);
     });
-    
-    rootScope.on('peer_pinned_message', (e) => {
-      const peerID = e.detail;
-
-      if(peerID == this.peerID) {
-        const promise: Promise<any> = this.setPeerPromise || this.messagesQueuePromise || Promise.resolve();
-        promise.then(() => {
-          this.setPinnedMessage();
-        });
-      }
-    });
 
     rootScope.on('messages_downloaded', (e) => {
       const mids: number[] = e.detail;
@@ -464,9 +444,13 @@ export class AppImManager {
         cancelEvent(e);
         
         const mid = +pinned.dataset.mid;
-        const message = appMessagesManager.getMessage(mid);
+        if(pinned.classList.contains('pinned-message')) {
+          this.pinnedMessage.followPinnedMessage(mid);
+        } else {
+          const message = appMessagesManager.getMessage(mid);
 
-        this.setPeer(message.peerID, mid);
+          this.setPeer(message.peerID, mid);
+        }
       } else {
         appSidebarRight.toggleSidebar(true);
       }
@@ -688,7 +672,7 @@ export class AppImManager {
       this.mutePeer(this.peerID);
     });
 
-    this.btnJoin.addEventListener(CLICK_EVENT_NAME, (e) => {
+    attachClickEvent(this.btnJoin, (e) => {
       cancelEvent(e);
 
       this.btnJoin.setAttribute('disabled', 'true');
@@ -696,7 +680,7 @@ export class AppImManager {
         this.btnJoin.removeAttribute('disabled');
       });
     });
-    
+
     this.menuButtons.mute.addEventListener(CLICK_EVENT_NAME, (e) => {
       this.mutePeer(this.peerID);
     });
@@ -905,20 +889,6 @@ export class AppImManager {
       //console.log('got history date:', history);
     });
   };
-
-  public setPinnedMessage() {
-    /////this.log('setting pinned message', message);
-    //return;
-    const message = appMessagesManager.getPinnedMessage(this.peerID);
-    if(message && !message.deleted) {
-      this.pinnedMessageContainer.fill('Pinned Message', message.message, message);
-      this.pinnedMessageContainer.toggle(false);
-      this.pinnedMsgID = message.mid;
-    } else if(this.pinnedMsgID) {
-      this.pinnedMsgID = 0;
-      this.pinnedMessageContainer.toggle(true);
-    }
-  }
   
   public updateStatus() {
     if(!this.myID) return Promise.resolve();
@@ -973,39 +943,34 @@ export class AppImManager {
     }
   }
   
-  public onScroll() {
-    if(this.onScrollRAF) window.cancelAnimationFrame(this.onScrollRAF);
-
+  public onScroll = () => {
     // * В таком случае, кнопка не будет моргать если чат в самом низу, и правильно отработает случай написания нового сообщения и проскролла вниз
     if(this.scrollable.scrollLocked && this.scrolledDown) return;
-
-    this.onScrollRAF = window.requestAnimationFrame(() => {
       //lottieLoader.checkAnimations(false, 'chat');
 
-      if(!isTouchSupported) {
-        if(this.isScrollingTimeout) {
-          clearTimeout(this.isScrollingTimeout);
-        } else if(!this.chatInner.classList.contains('is-scrolling')) {
-          this.chatInner.classList.add('is-scrolling');
-        }
+    if(!isTouchSupported) {
+      if(this.isScrollingTimeout) {
+        clearTimeout(this.isScrollingTimeout);
+      } else if(!this.chatInner.classList.contains('is-scrolling')) {
+        this.chatInner.classList.add('is-scrolling');
+      }
   
-        this.isScrollingTimeout = window.setTimeout(() => {
-          this.chatInner.classList.remove('is-scrolling');
-          this.isScrollingTimeout = 0;
-        }, 1350);
-      }
-      
-      if(this.scrollable.isScrolledDown) {
-        this.bubblesContainer.classList.add('scrolled-down');
-        this.scrolledDown = true;
-      } else if(this.bubblesContainer.classList.contains('scrolled-down')) {
-        this.bubblesContainer.classList.remove('scrolled-down');
-        this.scrolledDown = false;
-      }
+      this.isScrollingTimeout = window.setTimeout(() => {
+        this.chatInner.classList.remove('is-scrolling');
+        this.isScrollingTimeout = 0;
+      }, 1350);
+    }
+    
+    if(this.scrollable.isScrolledDown) {
+      this.bubblesContainer.classList.add('scrolled-down');
+      this.scrolledDown = true;
+    } else if(this.bubblesContainer.classList.contains('scrolled-down')) {
+      this.bubblesContainer.classList.remove('scrolled-down');
+      this.scrolledDown = false;
+    }
 
-      this.onScrollRAF = 0;
-    });
-  }
+    this.pinnedMessage.setCorrectIndex(this.scrollable.lastScrollDirection);
+  };
   
   public setScroll() {
     this.scrollable = new Scrollable(this.bubblesContainer/* .firstElementChild */ as HTMLElement, 'IM', 300);
@@ -1024,11 +989,11 @@ export class AppImManager {
 
     this.bubblesContainer/* .firstElementChild */.append(this.goDownBtn);
     
+    this.scrollable.onAdditionalScroll = this.onScroll;
     this.scrollable.onScrolledTop = () => this.loadMoreHistory(true);
     this.scrollable.onScrolledBottom = () => this.loadMoreHistory(false);
     //this.scrollable.attachSentinels(undefined, 300);
 
-    this.scroll.addEventListener('scroll', this.onScroll.bind(this));
     this.bubblesContainer.classList.add('scrolled-down');
 
     if(isTouchSupported) {
@@ -1465,7 +1430,7 @@ export class AppImManager {
     
     this.menuButtons.mute.style.display = this.myID == this.peerID ? 'none' : '';
 
-    this.setPinnedMessage();
+    this.pinnedMessage.setPinnedMessage();
 
     window.requestAnimationFrame(() => {
       /* noTransition.forEach(el => {

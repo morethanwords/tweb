@@ -3,23 +3,23 @@ import { PopupButton } from "./popup";
 import PopupPeer from "./popupPeer";
 
 export default class PopupPinMessage {
-  constructor(peerID: number, mid: number) {
+  constructor(peerID: number, mid: number, unpin?: true) {
     let title: string, description: string, buttons: PopupButton[] = [];
 
-    const callback = () => appMessagesManager.updatePinnedMessage(peerID, mid);
-    if(mid) {
-      title = 'Pin Message?';
-      description = 'Would you like to pin this message?';
-      buttons.push({
-        text: 'PIN',
-        callback
-      });
-    } else {
+    const callback = () => appMessagesManager.updatePinnedMessage(peerID, mid, unpin);
+    if(unpin) {
       title = `Unpin Message?`;
       description = 'Would you like to unpin this message?';
       buttons.push({
         text: 'UNPIN',
         isDanger: true,
+        callback
+      });
+    } else {
+      title = 'Pin Message?';
+      description = 'Would you like to pin this message?';
+      buttons.push({
+        text: 'PIN',
         callback
       });
     }

@@ -526,7 +526,7 @@ export function wrapPhoto(photo: MyPhoto | MyDocument, message: any, container: 
 
 export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, onlyThumb, emoji, width, height, withThumb, loop}: {
   doc: MyDocument, 
-  div: HTMLDivElement, 
+  div: HTMLElement, 
   middleware?: () => boolean, 
   lazyLoadQueue?: LazyLoadQueue, 
   group?: string, 

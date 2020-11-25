@@ -124,12 +124,14 @@ export type SliceSidesContainer = {[k in SliceSides]: boolean};
 export default class Scrollable extends ScrollableBase {
   public splitUp: HTMLElement;
   
+  public onAdditionalScroll: () => void = null;
   public onScrolledTop: () => void = null;
   public onScrolledBottom: () => void = null;
 
   public onScrollMeasure: number = null;
   
-  private lastScrollTop: number = 0;
+  public lastScrollTop: number = 0;
+  public lastScrollDirection: number = 0;
 
   public loadedAll: SliceSidesContainer = {top: true, bottom: false};
 
@@ -150,37 +152,43 @@ export default class Scrollable extends ScrollableBase {
       //this.log('onScroll call', this.onScrollMeasure);
     //}
 
-    if(this.onScrollMeasure || ((this.scrollLocked || (!this.onScrolledTop && !this.onScrolledBottom)) && !this.splitUp)) return;
+    if(this.onScrollMeasure || ((this.scrollLocked || (!this.onScrolledTop && !this.onScrolledBottom)) && !this.splitUp && !this.onAdditionalScroll)) return;
     this.onScrollMeasure = window.requestAnimationFrame(() => {
-      this.checkForTriggers();
-
       this.onScrollMeasure = 0;
-      this.lastScrollTop = this.scrollTop;
+
+      const scrollTop = this.container.scrollTop;
+      this.lastScrollDirection = this.lastScrollTop == scrollTop ? 0 : (this.lastScrollTop < scrollTop ? 1 : -1); // * 1 - bottom, -1 - top
+      this.lastScrollTop = scrollTop;
+
+      if(this.onAdditionalScroll) {
+        this.onAdditionalScroll();
+      }
+      
+      if(this.checkForTriggers) {
+        this.checkForTriggers();
+      }
     });
   };
 
   public checkForTriggers = () => {
     if(this.scrollLocked || (!this.onScrolledTop && !this.onScrolledBottom)) return;
 
-    const container = this.container;
-    const scrollHeight = container.scrollHeight;
+    const scrollHeight = this.container.scrollHeight;
     if(!scrollHeight) { // незачем вызывать триггеры если блок пустой или не виден
       return;
     }
 
-    const {clientHeight, scrollTop} = container;
+    const clientHeight = this.container.clientHeight;
     const maxScrollTop = scrollHeight - clientHeight;
-
-    // 1 - bottom, -1 - top
-    const direction = this.lastScrollTop == scrollTop ? 0 : (this.lastScrollTop < scrollTop ? 1 : -1);
+    const scrollTop = this.lastScrollTop;
 
     //this.log('checkForTriggers:', scrollTop, maxScrollTop);
 
-    if(this.onScrolledTop && scrollTop <= this.onScrollOffset && direction <= 0/* && direction === -1 */) {
+    if(this.onScrolledTop && scrollTop <= this.onScrollOffset && this.lastScrollDirection <= 0/* && direction === -1 */) {
       this.onScrolledTop();
     }
 
-    if(this.onScrolledBottom && (maxScrollTop - scrollTop) <= this.onScrollOffset && direction >= 0/* && direction === 1 */) {
+    if(this.onScrolledBottom && (maxScrollTop - scrollTop) <= this.onScrollOffset && this.lastScrollDirection >= 0/* && direction === 1 */) {
       this.onScrolledBottom();
     }
   };

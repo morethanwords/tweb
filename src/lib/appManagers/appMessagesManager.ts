@@ -72,7 +72,8 @@ type MyInputMessagesFilter = 'inputMessagesFilterEmpty'
   | 'inputMessagesFilterMusic' 
   | 'inputMessagesFilterUrl' 
   | 'inputMessagesFilterMyMentions'
-  | 'inputMessagesFilterChatPhotos';
+  | 'inputMessagesFilterChatPhotos'
+  | 'inputMessagesFilterPinned';
 
 export class AppMessagesManager {
   public messagesStorage: {[mid: string]: any} = {};
@@ -81,7 +82,10 @@ export class AppMessagesManager {
   public historiesStorage: {
     [peerID: string]: HistoryStorage
   } = {};
-  public pinnedMessages: {[peerID: string]: number} = {};
+
+  // * mids - descend sorted
+  public pinnedMessagesStorage: {[peerID: string]: Partial<{promise: Promise<number[]>, mids: number[]}>} = {};
+
   public pendingByRandomID: {[randomID: string]: [number, number]} = {};
   public pendingByMessageID: any = {};
   public pendingAfterMsgs: any = {};
@@ -1797,11 +1801,11 @@ export class AppMessagesManager {
     });
   }
 
-  public savePinnedMessage(peerID: number, mid: number) {
+  /* public savePinnedMessage(peerID: number, mid: number) {
     if(!mid) {
-      delete this.pinnedMessages[peerID];
+      delete this.pinnedMessagesStorage[peerID];
     } else {
-      this.pinnedMessages[peerID] = mid;
+      this.pinnedMessagesStorage[peerID] = mid;
 
       if(!this.messagesStorage.hasOwnProperty(mid)) {
         this.wrapSingleMessage(mid).then(() => {
@@ -1813,18 +1817,38 @@ export class AppMessagesManager {
     }
 
     rootScope.broadcast('peer_pinned_message', peerID);
+  } */
+
+  public getPinnedMessagesStorage(peerID: number) {
+    return this.pinnedMessagesStorage[peerID] ?? (this.pinnedMessagesStorage[peerID] = {});
   }
 
-  public getPinnedMessage(peerID: number) {
-    return this.getMessage(this.pinnedMessages[peerID] || 0);
+  public getPinnedMessages(peerID: number) {
+    const storage = this.getPinnedMessagesStorage(peerID);
+    if(storage.mids) {
+      return Promise.resolve(storage.mids);
+    } else if(storage.promise) {
+      return storage.promise;
+    }
+
+    return storage.promise = new Promise<number[]>((resolve, reject) => {
+      this.getSearch(peerID, '', {_: 'inputMessagesFilterPinned'}, 0, 50).then(result => {
+        resolve(storage.mids = result.history);
+      }, reject);
+    }).finally(() => {
+      storage.promise = null;
+    });
   }
   
-  public updatePinnedMessage(peerID: number, msgID: number) {
+  public updatePinnedMessage(peerID: number, mid: number, unpin?: true, silent?: true, oneSide?: true) {
     apiManager.invokeApi('messages.updatePinnedMessage', {
       peer: appPeersManager.getInputPeerByID(peerID),
-      id: msgID
+      unpin,
+      silent,
+      pm_oneside: oneSide,
+      id: mid
     }).then(updates => {
-      /////this.log('pinned updates:', updates);
+      this.log('pinned updates:', updates);
       apiUpdatesManager.processUpdateMessage(updates);
     });
   }
@@ -2667,7 +2691,8 @@ export class AppMessagesManager {
     //this.log(dT(), 'search', useSearchCache, sameSearchCache, this.lastSearchResults, maxID);
 
     if(peerID && !maxID && !query) {
-      var historyStorage = this.historiesStorage[peerID];
+      const historyStorage = this.historiesStorage[peerID];
+      let filtering = true;
 
       if(historyStorage !== undefined && historyStorage.history.length) {
         var neededContents: {
@@ -2729,49 +2754,53 @@ export class AppMessagesManager {
             break; */
 
           default:
-            return Promise.resolve({
+            filtering = false;
+            break;
+            /* return Promise.resolve({
               count: 0,
               next_rate: 0,
               history: [] as number[]
-            });
+            }); */
         }
 
-        for(let i = 0, length = historyStorage.history.length; i < length; i++) {
-          const message = this.messagesStorage[historyStorage.history[i]];
-
-          //|| (neededContents['mentioned'] && message.totalEntities.find((e: any) => e._ == 'messageEntityMention'));
-
-          let found = false;
-          if(message.media && neededContents[message.media._] && !message.fwd_from) {
-            if(message.media._ == 'messageMediaDocument') {
-              if((neededDocTypes.length && !neededDocTypes.includes(message.media.document.type)) 
-                || excludeDocTypes.includes(message.media.document.type)) {
-                continue;
+        if(filtering) {
+          for(let i = 0, length = historyStorage.history.length; i < length; i++) {
+            const message = this.messagesStorage[historyStorage.history[i]];
+  
+            //|| (neededContents['mentioned'] && message.totalEntities.find((e: any) => e._ == 'messageEntityMention'));
+  
+            let found = false;
+            if(message.media && neededContents[message.media._] && !message.fwd_from) {
+              if(message.media._ == 'messageMediaDocument') {
+                if((neededDocTypes.length && !neededDocTypes.includes(message.media.document.type)) 
+                  || excludeDocTypes.includes(message.media.document.type)) {
+                  continue;
+                }
               }
-            }
-
-            found = true;
-          } else if(neededContents['url'] && message.message) {
-            const goodEntities = ['messageEntityTextUrl', 'messageEntityUrl'];
-            if((message.totalEntities as MessageEntity[]).find(e => goodEntities.includes(e._)) || RichTextProcessor.matchUrl(message.message)) {
+  
+              found = true;
+            } else if(neededContents['url'] && message.message) {
+              const goodEntities = ['messageEntityTextUrl', 'messageEntityUrl'];
+              if((message.totalEntities as MessageEntity[]).find(e => goodEntities.includes(e._)) || RichTextProcessor.matchUrl(message.message)) {
+                found = true;
+              }
+            } else if(neededContents['avatar'] && message.action && ['messageActionChannelEditPhoto', 'messageActionChatEditPhoto'].includes(message.action._)) {
               found = true;
             }
-          } else if(neededContents['avatar'] && message.action && ['messageActionChannelEditPhoto', 'messageActionChatEditPhoto'].includes(message.action._)) {
-            found = true;
-          }
-
-          if(found) {
-            foundMsgs.push(message.mid);
-            if(foundMsgs.length >= limit) {
-              break;
+  
+            if(found) {
+              foundMsgs.push(message.mid);
+              if(foundMsgs.length >= limit) {
+                break;
+              }
             }
           }
         }
       }
 
       // this.log.warn(dT(), 'before append', foundMsgs)
-      if(foundMsgs.length < limit && this.lastSearchResults.length && sameSearchCache) {
-        var minID = foundMsgs.length ? foundMsgs[foundMsgs.length - 1] : false;
+      if(filtering && foundMsgs.length < limit && this.lastSearchResults.length && sameSearchCache) {
+        let minID = foundMsgs.length ? foundMsgs[foundMsgs.length - 1] : false;
         for(let i = 0; i < this.lastSearchResults.length; i++) {
           if(minID === false || this.lastSearchResults[i] < minID) {
             foundMsgs.push(this.lastSearchResults[i]);
@@ -3435,19 +3464,19 @@ export class AppMessagesManager {
           });
 
           const groupID = (message as Message.message).grouped_id;
-          if(this.pinnedMessages[peerID]) {
+          /* if(this.pinnedMessagesStorage[peerID]) {
             let pinnedMid: number;
             if(groupID) {
               const mids = this.getMidsByAlbum(groupID);
-              pinnedMid = mids.find(mid => this.pinnedMessages[peerID] == mid);
-            } else if(this.pinnedMessages[peerID] == mid) {
+              pinnedMid = mids.find(mid => this.pinnedMessagesStorage[peerID] == mid);
+            } else if(this.pinnedMessagesStorage[peerID] == mid) {
               pinnedMid = mid;
             }
 
             if(pinnedMid) {
               rootScope.broadcast('peer_pinned_message', peerID);
             }
-          }
+          } */
 
           if(isTopMessage || groupID) {
             const updatedDialogs: {[peerID: number]: Dialog} = {};
@@ -3627,9 +3656,9 @@ export class AppMessagesManager {
               }
             }
 
-            if(this.pinnedMessages[peerID] == mid) {
+            /* if(this.pinnedMessagesStorage[peerID] == mid) {
               this.savePinnedMessage(peerID, 0);
-            }
+            } */
 
             const peerMessagesToHandle = this.newMessagesToHandle[peerID];
             if(peerMessagesToHandle && peerMessagesToHandle.length) {
@@ -3791,13 +3820,41 @@ export class AppMessagesManager {
         break;
       }
 
-      // 'updateChannelPinnedMessage' will be handled by appProfileManager
-      case 'updateChatPinnedMessage':
-      case 'updateUserPinnedMessage': {
-        // hz nado li tut appMessagesIDsManager.getFullMessageID(update.max_id, channelID);
-        const peerID = appPeersManager.getPeerID(update);
-        this.savePinnedMessage(peerID, update.id);
-        
+      case 'updatePinnedMessages':
+      case 'updatePinnedChannelMessages': {
+        const channelID = update._ == 'updatePinnedChannelMessages' ? update.channel_id : undefined;
+        const peerID = channelID ? -channelID : appPeersManager.getPeerID((update as Update.updatePinnedMessages).peer);
+
+        const storage = this.getPinnedMessagesStorage(peerID);
+        if(!storage.mids) {
+          break;
+        }
+
+        const messages = channelID ? update.messages.map(messageID => appMessagesIDsManager.getFullMessageID(messageID, channelID)) : update.messages; 
+
+        const missingMessages = messages.filter(mid => !this.messagesStorage[mid]);
+        const getMissingPromise = missingMessages.length ? Promise.all(missingMessages.map(mid => this.wrapSingleMessage(mid))) : Promise.resolve();
+        getMissingPromise.finally(() => {
+          const werePinned = update.pFlags?.pinned;
+          if(werePinned) {
+            for(const mid of messages) {
+              storage.mids.push(mid);
+              const message = this.messagesStorage[mid];
+              message.pFlags.pinned = true;
+            }
+  
+            storage.mids.sort((a, b) => b - a);
+          } else {
+            for(const mid of messages) {
+              storage.mids.findAndSplice(_mid => _mid == mid);
+              const message = this.messagesStorage[mid];
+              delete message.pFlags.pinned;
+            }
+          }
+  
+          rootScope.broadcast('peer_pinned_messages', peerID);
+        });
+
         break;
       }
     }

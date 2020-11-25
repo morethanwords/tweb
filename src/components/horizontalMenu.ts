@@ -1,8 +1,8 @@
 import { findUpTag, whichChild } from "../helpers/dom";
-import Transition from "./transition";
+import { TransitionSlider } from "./transition";
 
 export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?: (id: number, tabContent: HTMLDivElement) => void, onTransitionEnd?: () => void, transitionTime = 250) {
-  const selectTab = Transition(content, tabs || content.dataset.slider == 'tabs' ? 'tabs' : 'navigation', transitionTime, onTransitionEnd);
+  const selectTab = TransitionSlider(content, tabs || content.dataset.slider == 'tabs' ? 'tabs' : 'navigation', transitionTime, onTransitionEnd);
 
   if(tabs) {
     const useStripe = !tabs.classList.contains('no-stripe');

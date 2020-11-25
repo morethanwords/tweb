@@ -74,7 +74,7 @@
           overflow: visible;
 
           i {
-            bottom: calc(-.625rem - -2px);
+            bottom: calc(-.625rem - -1.75px); // * 1.75px will fix for high DPR
             padding-right: 1rem !important;
 	          margin-left: -.5rem !important;
           }

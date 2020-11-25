@@ -165,13 +165,13 @@ export default class ChatContextMenu {
         const message = appMessagesManager.getMessage(this.msgID);
         // for new layer
         // return this.msgID > 0 && message._ != 'messageService' && appImManager.pinnedMsgID != this.msgID && (this.peerID > 0 || appChatsManager.hasRights(-this.peerID, 'pin'));
-        return this.msgID > 0 && message._ != 'messageService' && appImManager.pinnedMsgID != this.msgID && (this.peerID == rootScope.myID || (this.peerID < 0 && appChatsManager.hasRights(-this.peerID, 'pin')));
+        return this.msgID > 0 && message._ != 'messageService' && /* appImManager.pinnedMsgID != this.msgID && */ (this.peerID == rootScope.myID || (this.peerID < 0 && appChatsManager.hasRights(-this.peerID, 'pin')));
       }
     }, {
       icon: 'unpin',
       text: 'Unpin',
       onClick: this.onUnpinClick,
-      verify: () => appImManager.pinnedMsgID == this.msgID && appPeersManager.canPinMessage(this.peerID)
+      verify: () => /* appImManager.pinnedMsgID == this.msgID && */ appPeersManager.canPinMessage(this.peerID)
     }, {
       icon: 'revote',
       text: 'Revote',
@@ -269,7 +269,7 @@ export default class ChatContextMenu {
   };
 
   private onUnpinClick = () => {
-    new PopupPinMessage(rootScope.selectedPeerID, 0);
+    new PopupPinMessage(rootScope.selectedPeerID, this.msgID, true);
   };
 
   private onRetractVote = () => {
