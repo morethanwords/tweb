@@ -90,7 +90,8 @@ export default class ChatSelection {
         const mid = +bubble.dataset.mid;
         if(!mid) return;
 
-        if(e.target != bubble && selecting === undefined) {
+        // * cancel selecting if selecting message text
+        if(e.target != bubble && selecting === undefined && !this.selectedMids.size) {
           bubblesContainer.removeEventListener('mousemove', onMouseMove);
           document.removeEventListener('mouseup', onMouseUp);
           return;
