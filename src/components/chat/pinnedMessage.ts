@@ -96,6 +96,7 @@ class AnimatedSuper {
 }
 
 class AnimatedCounter {
+  static EMPTY_INDEX = -1;
   static BASE_CLASS = 'animated-counter';
   container: HTMLElement;
   decimals: {
@@ -157,12 +158,10 @@ class AnimatedCounter {
   hideLeft(number: number) {
     const decimals = ('' + number).length;
     const byDecimal = this.decimals.slice(decimals);//this.decimals.splice(deleteCount, this.decimals.length - deleteCount);
-    const EMPTY_INDEX = 0;
     byDecimal.forEach((decimal) => {
-      const row = decimal.animatedSuper.getRow(EMPTY_INDEX, true);
-      decimal.animatedSuper.animate(EMPTY_INDEX, this.previousNumber, this.reverse ? number < this.previousNumber : number > this.previousNumber, true);
-      //decimal.container.remove();
-      //decimal.animatedSuper.clearRows();
+      const previousDecimalNumber = +decimal.placeholder.innerText || 0;
+      const row = decimal.animatedSuper.getRow(AnimatedCounter.EMPTY_INDEX, true);
+      decimal.animatedSuper.animate(AnimatedCounter.EMPTY_INDEX, previousDecimalNumber, this.reverse ? number < this.previousNumber : number > this.previousNumber, true);
     });
 
     this.clear(number);
@@ -171,27 +170,18 @@ class AnimatedCounter {
   setCount(number: number) {
     //this.prepareNumber(number);
 
+    const previousByDecimal = Array.from('' + this.previousNumber).map(n => +n);
     const byDecimal = Array.from('' + number).map(n => +n);
     byDecimal.forEach((decimalNumber, idx) => {
       const decimal = this.getDecimal(idx);
-      const row = decimal.animatedSuper.getRow(number, true);
+      //const row = decimal.animatedSuper.getRow(number, true);
+      const row = decimal.animatedSuper.getRow(decimalNumber, true);
+      const previousDecimalNumber = previousByDecimal[idx] ?? AnimatedCounter.EMPTY_INDEX;
       row.innerText = decimal.placeholder.innerText = '' + decimalNumber;
-      decimal.animatedSuper.animate(number, this.previousNumber, this.reverse ? number < this.previousNumber : number > this.previousNumber, true);
+      //decimal.animatedSuper.animate(number, this.previousNumber, this.reverse ? number < this.previousNumber : number > this.previousNumber, true);
+      decimal.animatedSuper.animate(decimalNumber, previousDecimalNumber, this.reverse ? number < this.previousNumber : number > this.previousNumber, true);
     });
 
-    /* const sides = ['from-top', 'from-bottom'];
-    if(this.reverse) {
-      sides.reverse();
-    }
-
-    const isHigher = number > this.previousNumber;
-    if(!isHigher) {
-      sides.reverse();
-    }
-
-    this.container.classList.add(sides[0]);
-    this.container.classList.remove(sides[1]); */
-    
     this.hideLeft(number);
     //this.clear(number);
     this.previousNumber = number;
