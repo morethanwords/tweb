@@ -1726,6 +1726,16 @@ export class AppImManager {
       bubble = document.createElement('div');
       bubble.classList.add('bubble');
       bubble.appendChild(bubbleContainer);
+
+      if(!our) {
+        //this.log('not our message', message, message.pFlags.unread);
+        if(message.pFlags.unread) {
+          this.unreadedObserver.observe(bubble); 
+          if(!this.unreaded.indexOf(message.mid)) {
+            this.unreaded.push(message.mid);
+          }
+        }
+      }
     } else {
       const save = ['is-highlighted'];
       const wasClassNames = bubble.className.split(' ');
@@ -1776,16 +1786,6 @@ export class AppImManager {
 
       if(updatePosition) {
         this.renderMessagesQueue(message, bubble, reverse);
-      }
-
-      if(!our) {
-        //this.log('not our message', message, message.pFlags.unread);
-        if(message.pFlags.unread) {
-          this.unreadedObserver.observe(bubble); 
-          if(!this.unreaded.indexOf(message.mid)) {
-            this.unreaded.push(message.mid);
-          }
-        }
       }
 
       return bubble;
