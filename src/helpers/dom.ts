@@ -442,7 +442,7 @@ export function blurActiveElement() {
 }
 
 export const CLICK_EVENT_NAME = isTouchSupported ? 'touchend' : 'click';
-export const attachClickEvent = (elem: HTMLElement, callback: (e: TouchEvent | MouseEvent) => void, options?: AddEventListenerOptions) => {
+export const attachClickEvent = (elem: HTMLElement, callback: (e: TouchEvent | MouseEvent) => void, options: AddEventListenerOptions = {}) => {
   if(CLICK_EVENT_NAME == 'touchend') {
     const o = {...options, once: true};
 

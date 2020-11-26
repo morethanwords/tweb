@@ -1430,9 +1430,10 @@ export class AppImManager {
     
     this.menuButtons.mute.style.display = this.myID == this.peerID ? 'none' : '';
 
-    this.pinnedMessage.setPinnedMessage();
-
     window.requestAnimationFrame(() => {
+      this.pinnedMessage.pinnedIndex/*  = this.pinnedMessage.wasPinnedIndex */ = 0;
+      //this.pinnedMessage.setCorrectIndex();
+      this.pinnedMessage.setPinnedMessage();
       /* noTransition.forEach(el => {
         el.classList.remove('no-transition-all');
       }); */
@@ -1777,6 +1778,16 @@ export class AppImManager {
         this.renderMessagesQueue(message, bubble, reverse);
       }
 
+      if(!our) {
+        //this.log('not our message', message, message.pFlags.unread);
+        if(message.pFlags.unread) {
+          this.unreadedObserver.observe(bubble); 
+          if(!this.unreaded.indexOf(message.mid)) {
+            this.unreaded.push(message.mid);
+          }
+        }
+      }
+
       return bubble;
     }
 
@@ -1916,14 +1927,6 @@ export class AppImManager {
       if(message.mid < 0) status = 'is-sending';
       else status = message.pFlags.unread ? 'is-sent' : 'is-read';
       bubble.classList.add(status);
-    } else {
-      //this.log('not our message', message, message.pFlags.unread);
-      if(message.pFlags.unread) {
-        this.unreadedObserver.observe(bubble); 
-        if(!this.unreaded.indexOf(message.mid)) {
-          this.unreaded.push(message.mid);
-        }
-      }
     }
 
     const isOut = our && (!message.fwd_from || this.peerID != this.myID);

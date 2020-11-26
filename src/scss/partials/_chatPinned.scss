@@ -247,6 +247,10 @@
   display: none;
   width: auto;
 
+  &-content {
+    overflow: visible !important; // * fix blinking in Safari iOS, transform overflow
+  }
+
   &-media-container {
     width: 2rem;
     height: 2rem;
@@ -272,6 +276,8 @@
   &.is-media {
     .pinned-message-title, .pinned-message-subtitle {
       transform: translateX(2.5rem);
+      width: calc(100% - 2.5rem);
+      //overflow: hidden !important;
     }
   }
 

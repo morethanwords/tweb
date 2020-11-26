@@ -47,24 +47,31 @@ class AnimatedSuper {
     }, AnimatedSuper.DURATION);
   }
 
-  public /* async */ animate(index: number, previousIndex: number, fromTop = index > previousIndex, ignorePrevious = false) {
-    if(index == previousIndex) {
-      this.clearRows(index);
-      return;
+  public setNewRow(index: number, reflow = false) {
+    const row = this.rows[index];
+    if(row.new) {
+      if(reflow) {
+        row.element.classList.remove('hide');
+        void row.element.offsetLeft; // reflow
+      } else {
+        row.element.classList.remove('is-hiding', 'hide');
+      }
+
+      delete row.new;
     }
 
-    //const fromTop = index > previousIndex;
+    this.clearRows(index);
+  }
+
+  public animate(index: number, previousIndex: number, fromTop = index > previousIndex, ignorePrevious = false) {
+    if(index === previousIndex) { // * handle if set index 0 and previousIndex 0
+      return this.setNewRow(index);
+    }
 
     const row = this.rows[index];
     const previousRow = this.rows[previousIndex];
-    //const height = this.container.getBoundingClientRect().height;
-
     if(!previousRow && !ignorePrevious) {
-      if(row.new) {
-        row.element.classList.remove('hide');
-      }
-
-      return;
+      return this.setNewRow(index);
     }
 
     const sides = ['from-top', 'from-bottom'];
@@ -78,17 +85,11 @@ class AnimatedSuper {
     }
 
     if(row.new) {
-      //await new Promise((resolve) => window.requestAnimationFrame(resolve));
-      row.element.classList.remove('hide');
-      void row.element.offsetLeft; // reflow
-      delete row.new;
-      //await new Promise((resolve) => window.requestAnimationFrame(resolve));
+      this.setNewRow(index, true);
     }
 
     row.element.classList.toggle('is-hiding', false);
     previousRow && previousRow.element.classList.toggle('is-hiding', true);
-    //SetTransition(row.element, 'is-hiding', false, AnimatedSuper.DURATION);
-    //previousRow && SetTransition(previousRow.element, 'is-hiding', true, AnimatedSuper.DURATION);
 
     this.clearRows(index);
   }
@@ -242,7 +243,7 @@ export default class PinnedMessage {
   }
 
   public setCorrectIndex(lastScrollDirection?: number) {
-    if(this.locked) {
+    if(this.locked || this.appImManager.setPeerPromise) {
       return;
     }/*  else if(this.waitForScrollBottom) {
       if(lastScrollDirection === 1) {
@@ -258,7 +259,9 @@ export default class PinnedMessage {
     const y = Math.floor(rect.top + rect.height - 1);
     let el: HTMLElement = document.elementFromPoint(x, y) as any;
     //this.appImManager.log('[PM]: setCorrectIndex: get last element perf:', performance.now() - perf, el, x, y);
+    if(!el) return;
     el = findUpClassName(el, 'bubble');
+    if(!el) return;
 
     if(el && el.dataset.mid !== undefined) {
       const mid = +el.dataset.mid;
@@ -268,7 +271,7 @@ export default class PinnedMessage {
           currentIndex = mids.length ? mids.length - 1 : 0;
         }
 
-        this.appImManager.log('pinned currentIndex', currentIndex);
+        //this.appImManager.log('pinned currentIndex', currentIndex);
   
         const changed = this.pinnedIndex != currentIndex;
         if(changed) {
@@ -367,14 +370,14 @@ export default class PinnedMessage {
 
         this.pinnedMessageContainer.divAndCaption.container.classList.toggle('is-media', isMediaSet);
 
-        if(this.wasPinnedIndex != this.pinnedIndex) {
+        //if(this.wasPinnedIndex != this.pinnedIndex) {
           this.animatedSubtitle.animate(pinnedIndex, this.wasPinnedIndex);
           if(isMediaSet) {
             this.animatedMedia.animate(pinnedIndex, this.wasPinnedIndex);
           } else {
             this.animatedMedia.clearRows();
           }
-        }
+        //}
 
         this.pinnedMessageBorder.render(mids.length, mids.length - pinnedIndex - 1);
         this.wasPinnedIndex = pinnedIndex;
