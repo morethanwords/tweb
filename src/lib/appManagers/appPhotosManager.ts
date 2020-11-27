@@ -158,6 +158,33 @@ export class AppPhotosManager {
     return URL.createObjectURL(blob);
   }
 
+  /**
+   * https://core.telegram.org/api/files#vector-thumbnails
+   */
+  public getPathFromPhotoPathSize(size: PhotoSize.photoPathSize) {
+    const bytes = size.bytes;
+    const lookup = "AACAAAAHAAALMAAAQASTAVAAAZaacaaaahaaalmaaaqastava.az0123456789-,";
+
+    let path = 'M';
+    for(let i = 0, length = bytes.length; i < length; ++i) {
+      const num = bytes[i];
+
+      if(num >= (128 + 64)) {
+        path += lookup[num - 128 - 64];
+      } else {
+        if(num >= 128) {
+          path += ',';
+        } else if(num >= 64) {
+          path += '-'; 
+        }
+        path += '' + (num & 63);
+      }
+    }
+    path += 'z';
+
+    return path;
+  }
+
   public getPreviewURLFromThumb(thumb: PhotoSize.photoCachedSize | PhotoSize.photoStrippedSize, isSticker = false) {
     return thumb.url ?? (defineNotNumerableProperties(thumb, ['url']), thumb.url = this.getPreviewURLFromBytes(thumb.bytes, isSticker));
   }

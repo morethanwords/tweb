@@ -564,8 +564,8 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
 
   const toneIndex = emoji ? getEmojiToneIndex(emoji) : -1;
   
-  if(doc.thumbs?.length && !div.firstElementChild && (!doc.downloaded || stickerType == 2 || onlyThumb) && toneIndex <= 0/*  && doc.thumbs[0]._ != 'photoSizeEmpty' */) {
-    const thumb = doc.thumbs[0];
+  if((doc.thumbs?.length || doc.stickerCachedThumbs) && !div.firstElementChild && (!doc.downloaded || stickerType == 2 || onlyThumb)/*  && doc.thumbs[0]._ != 'photoSizeEmpty' */) {
+    const thumb = doc.stickerCachedThumbs && doc.stickerCachedThumbs[toneIndex] || doc.thumbs[0];
     
     //console.log('wrap sticker', thumb, div);
 
@@ -580,23 +580,29 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
       img = new Image();
       renderImageFromUrl(img, thumb.url, afterRender);
     } else if('bytes' in thumb) {
-      img = new Image();
-
-      if((webpWorkerController.isWebpSupported() || doc.pFlags.stickerThumbConverted || thumb.url)/*  && false */) {
-        renderImageFromUrl(img, appPhotosManager.getPreviewURLFromThumb(thumb, true), afterRender);
-      } else {
-        webpWorkerController.convert(doc.id, thumb.bytes as Uint8Array).then(bytes => {
-          thumb.bytes = bytes;
-          doc.pFlags.stickerThumbConverted = true;
-          
-          if(middleware && !middleware()) return;
-
-          if(!div.childElementCount) {
-            renderImageFromUrl(img, appPhotosManager.getPreviewURLFromThumb(thumb, true), afterRender);
-          }
-        }).catch(() => {});
+      if(thumb._ == 'photoPathSize') {
+        //if(!doc.w) console.error('no w', doc);
+        div.innerHTML = `<svg class="rlottie-vector" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${doc.w || 512} ${doc.h || 512}" xml:space="preserve">
+          <path d="${appPhotosManager.getPathFromPhotoPathSize(thumb)}"/>
+        </svg>`;
+      } else if(toneIndex <= 0) {
+        img = new Image();
+        if((webpWorkerController.isWebpSupported() || doc.pFlags.stickerThumbConverted || thumb.url)/*  && false */) {
+          renderImageFromUrl(img, appPhotosManager.getPreviewURLFromThumb(thumb, true), afterRender);
+        } else {
+          webpWorkerController.convert(doc.id, thumb.bytes as Uint8Array).then(bytes => {
+            thumb.bytes = bytes;
+            doc.pFlags.stickerThumbConverted = true;
+            
+            if(middleware && !middleware()) return;
+  
+            if(!div.childElementCount) {
+              renderImageFromUrl(img, appPhotosManager.getPreviewURLFromThumb(thumb, true), afterRender);
+            }
+          }).catch(() => {});
+        }
       }
-    } else if(stickerType == 2 && (withThumb || onlyThumb)) {
+    } else if(stickerType == 2 && (withThumb || onlyThumb) && toneIndex <= 0) {
       img = new Image();
 
       const load = () => {
@@ -637,6 +643,9 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
         console.log('loaded sticker:', doc, div);
       } */
 
+      //await new Promise((resolve) => setTimeout(resolve, 500));
+      //return;
+
       //console.time('download sticker' + doc.id);
 
       //appDocsManager.downloadDocNew(doc.id).promise.then(res => res.json()).then(async(json) => {
@@ -649,7 +658,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
         //console.log('loaded sticker:', doc, div/* , blob */);
         if(middleware && !middleware()) return;
 
-        let animation = await LottieLoader.loadAnimationWorker/* loadAnimation */({
+        let animation = await LottieLoader.loadAnimationWorker({
           container: div,
           loop: loop && !emoji,
           autoplay: play,
@@ -661,11 +670,28 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
         //const deferred = deferredPromise<void>();
   
         animation.addListener('firstFrame', () => {
-          if(div.firstElementChild && div.firstElementChild.tagName == 'IMG') {
-            div.firstElementChild.remove();
+          const element = div.firstElementChild;
+          const needFadeIn = !element || element.tagName === 'svg';
+
+          const cb = () => {
+            if(element && element != animation.canvas) {
+              element.remove();
+            }
+          };
+
+          if(!needFadeIn) {
+            cb();
           } else {
             animation.canvas.classList.add('fade-in');
+
+            if(element) {
+              setTimeout(() => {
+                cb();
+              }, element.tagName === 'svg' ? 50 : 200);
+            }
           }
+
+          appDocsManager.saveLottiePreview(doc, animation.canvas, toneIndex);
 
           //deferred.resolve();
         }, true);

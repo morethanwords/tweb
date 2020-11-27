@@ -1,6 +1,5 @@
 import { FileURLType, getFileNameByLocation, getFileURL } from '../../helpers/fileName';
 import { safeReplaceArrayInObject, defineNotNumerableProperties, isObject } from '../../helpers/object';
-import { isSafari } from '../../helpers/userAgent';
 import { Document, InputFileLocation, PhotoSize } from '../../layer';
 import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
 import referenceDatabase, { ReferenceContext } from '../mtproto/referenceDatabase';
@@ -16,6 +15,7 @@ export type MyDocument = Document.document;
 
 class AppDocsManager {
   private docs: {[docID: string]: MyDocument} = {};
+  private savingLottiePreview: {[docID: string]: true} = {};
 
   public saveDoc(doc: Document, context?: ReferenceContext): MyDocument {
     if(doc._ == 'documentEmpty') {
@@ -324,6 +324,66 @@ class AppDocsManager {
     }
 
     return download;
+  }
+
+  public saveLottiePreview(doc: MyDocument, canvas: HTMLCanvasElement, toneIndex: number) {
+    const key = doc.id + '-' + toneIndex;
+    if(this.savingLottiePreview[key]/*  || true */) return;
+
+    if(!doc.stickerCachedThumbs) {
+      defineNotNumerableProperties(doc, ['stickerCachedThumbs']);
+      doc.stickerCachedThumbs = {};
+    }
+
+    const thumb = doc.stickerCachedThumbs[toneIndex];
+    if(thumb && thumb.w >= canvas.width && thumb.h >= canvas.height) {
+      return;
+    }
+
+    /* if(doc.thumbs.find(t => t._ == 'photoStrippedSize') 
+      || (doc.stickerCachedThumb || (doc.stickerSavedThumbWidth >= canvas.width && doc.stickerSavedThumbHeight >= canvas.height))) {
+      return;
+    } */
+
+    this.savingLottiePreview[key] = true;
+    canvas.toBlob((blob) => {
+      //console.log('got lottie preview', doc, blob, URL.createObjectURL(blob));
+
+      const thumb = {
+        url: URL.createObjectURL(blob),
+        w: canvas.width,
+        h: canvas.height
+      };
+
+      doc.stickerCachedThumbs[toneIndex] = thumb;
+
+      delete this.savingLottiePreview[key];
+      
+      /* const reader = new FileReader();
+      reader.onloadend = (e) => {
+        const uint8 = new Uint8Array(e.target.result as ArrayBuffer);
+        const thumb: PhotoSize.photoStrippedSize = {
+          _: 'photoStrippedSize',
+          bytes: uint8,
+          type: 'i'
+        };
+
+        doc.stickerSavedThumbWidth = canvas.width;
+        doc.stickerSavedThumbHeight = canvas.width;
+
+        defineNotNumerableProperties(thumb, ['url']);
+        thumb.url = URL.createObjectURL(blob);
+        doc.thumbs.findAndSplice(t => t._ == thumb._);
+        doc.thumbs.unshift(thumb);
+
+        if(!webpWorkerController.isWebpSupported()) {
+          doc.pFlags.stickerThumbConverted = true;
+        }
+
+        delete this.savingLottiePreview[doc.id];
+      };
+      reader.readAsArrayBuffer(blob); */
+    });
   }
 
   public saveDocFile(doc: MyDocument) {

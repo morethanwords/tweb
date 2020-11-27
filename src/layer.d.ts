@@ -2927,7 +2927,7 @@ export namespace Document {
 		date: number,
 		mime_type: string,
 		size: number,
-		thumbs?: Array<PhotoSize.photoSize | PhotoSize.photoCachedSize | PhotoSize.photoStrippedSize>,
+		thumbs?: Array<PhotoSize.photoSize | PhotoSize.photoCachedSize | PhotoSize.photoStrippedSize | PhotoSize.photoPathSize>,
 		video_thumbs?: Array<VideoSize>,
 		dc_id: number,
 		attributes: Array<DocumentAttribute>,
@@ -2948,6 +2948,7 @@ export namespace Document {
 		pFlags?: Partial<{
 			stickerThumbConverted?: true,
 		}>,
+		stickerCachedThumbs?: {[toneIndex: number]: {url: string, w: number, h: number}},
 		animated?: boolean,
 		supportsStreaming?: boolean
 	};

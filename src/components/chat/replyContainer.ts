@@ -42,7 +42,7 @@ export function wrapReplyDivAndCaption(options: {
           div: mediaEl,
           lazyLoadQueue: appImManager.lazyLoadQueue,
           group: CHAT_ANIMATION_GROUP,
-          onlyThumb: media.document.sticker == 2,
+          //onlyThumb: media.document.sticker == 2,
           width: 32,
           height: 32
         });

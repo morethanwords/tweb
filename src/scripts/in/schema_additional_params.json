@@ -1,7 +1,7 @@
 [{
   "predicate": "document",
   "params": [
-    {"name": "thumbs", "type": "Array<PhotoSize.photoSize | PhotoSize.photoCachedSize | PhotoSize.photoStrippedSize>"},
+    {"name": "thumbs", "type": "Array<PhotoSize.photoSize | PhotoSize.photoCachedSize | PhotoSize.photoStrippedSize | PhotoSize.photoPathSize>"},
     {"name": "type", "type": "'gif' | 'sticker' | 'audio' | 'voice' | 'video' | 'round' | 'photo'"},
     {"name": "h", "type": "number"},
     {"name": "w", "type": "number"},
@@ -17,6 +17,7 @@
     {"name": "stickerEmojiRaw", "type": "string"},
     {"name": "stickerSetInput", "type": "InputStickerSet.inputStickerSetID"},
     {"name": "stickerThumbConverted", "type": "true"},
+    {"name": "stickerCachedThumbs", "type": "{[toneIndex: number]: {url: string, w: number, h: number}}"},
     {"name": "animated", "type": "boolean"},
     {"name": "supportsStreaming", "type": "boolean"}
   ]
