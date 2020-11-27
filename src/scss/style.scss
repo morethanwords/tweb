@@ -551,6 +551,7 @@ hr {
   width: 166px;
   height: 166px;
   margin: 0 auto 18px;
+  position: relative;
   
   @include respond-to(handhelds) {
     width: 120px;
@@ -700,6 +701,10 @@ img.emoji {
 }
 
 .rlottie, .rlottie-vector {
+  left: 0;
+  top: 0;
+  bottom: 0;
+  right: 0;
   position: absolute;
   max-width: 100%;
   max-height: 100%;
