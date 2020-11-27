@@ -11,7 +11,7 @@ import apiManager from "../../lib/mtproto/mtprotoworker";
 import opusDecodeController from "../../lib/opusDecodeController";
 import { RichTextProcessor } from "../../lib/richtextprocessor";
 import rootScope from '../../lib/rootScope';
-import { cancelEvent, CLICK_EVENT_NAME, findUpClassName, getRichValue, isInputEmpty, placeCaretAtEnd, serializeNodes } from "../../helpers/dom";
+import { blurActiveElement, cancelEvent, CLICK_EVENT_NAME, findUpClassName, getRichValue, getSelectedNodes, isInputEmpty, isSelectionSingle, markdownTags, MarkdownType, placeCaretAtEnd, serializeNodes } from "../../helpers/dom";
 import ButtonMenu, { ButtonMenuItemOptions } from '../buttonMenu';
 import emoticonsDropdown from "../emoticonsDropdown";
 import PopupCreatePoll from "../popupCreatePoll";
@@ -23,11 +23,251 @@ import { toast } from "../toast";
 import { wrapReply } from "../wrappers";
 import InputField from '../inputField';
 import { MessageEntity } from '../../layer';
+import ButtonIcon from '../buttonIcon';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
 
 type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply';
+
+export class MarkupTooltip {
+  public container: HTMLElement;
+  private wrapper: HTMLElement;
+  private buttons: {[type in MarkdownType]: HTMLElement} = {} as any;
+  private linkBackButton: HTMLElement;
+  private hideTimeout: number;
+  private inputs: HTMLElement[] = [];
+  private addedListener = false;
+  private waitingForMouseUp = false;
+  private linkInput: HTMLInputElement;
+  private savedRange: Range;
+
+  private init() {
+    this.container = document.createElement('div');
+    this.container.classList.add('markup-tooltip', 'z-depth-1', 'hide');
+
+    this.wrapper = document.createElement('div');
+    this.wrapper.classList.add('markup-tooltip-wrapper');
+    
+    const tools1 = document.createElement('div');
+    const tools2 = document.createElement('div');
+    tools1.classList.add('markup-tooltip-tools');
+    tools2.classList.add('markup-tooltip-tools');
+
+    const arr = ['bold', 'italic', 'underline', 'strikethrough', 'monospace', 'link'] as (keyof MarkupTooltip['buttons'])[];
+    arr.forEach(c => {
+      const button = ButtonIcon(c, {noRipple: true});
+      tools1.append(this.buttons[c] = button);
+
+      if(c !== 'link') {
+        button.addEventListener('click', () => {
+          appImManager.chatInputC.applyMarkdown(c);
+        });
+      } else {
+        button.addEventListener('click', () => {
+          this.container.classList.add('is-link');
+
+          if(button.classList.contains('active')) {
+            const startContainer = this.savedRange.startContainer;
+            const anchor = startContainer.parentElement as HTMLAnchorElement;
+            this.linkInput.value = anchor.href;
+          } else {
+            this.linkInput.value = '';
+          }
+        });
+      }
+    });
+
+    this.linkBackButton = ButtonIcon('back', {noRipple: true});
+    this.linkInput = document.createElement('input');
+    this.linkInput.placeholder = 'Enter URL...';
+    this.linkInput.classList.add('input-clear');
+    this.linkInput.addEventListener('keydown', (e) => {
+      if(e.code == 'Enter') {
+        const valid = !this.linkInput.value.length || RichTextProcessor.matchUrl(this.linkInput.value);///^(http)|(https):\/\//i.test(this.linkInput.value);
+        if(!valid) {
+          if(this.linkInput.classList.contains('error')) {
+            this.linkInput.classList.remove('error');
+            void this.linkInput.offsetLeft; // reflow
+          }
+
+          this.linkInput.classList.add('error');
+        } else {
+          cancelEvent(e);
+          this.resetSelection();
+          appImManager.chatInputC.applyMarkdown('link', this.linkInput.value);
+          this.hide();
+        }
+      } else {
+        this.linkInput.classList.remove('error');
+      }
+    });
+
+    this.linkBackButton.addEventListener('click', () => {
+      this.container.classList.remove('is-link');
+      //input.value = '';
+      this.resetSelection();
+    });
+    
+    const delimiter1 = document.createElement('span');
+    const delimiter2 = document.createElement('span');
+    delimiter1.classList.add('markup-tooltip-delimiter');
+    delimiter2.classList.add('markup-tooltip-delimiter');
+    tools1.insertBefore(delimiter1, this.buttons.link);
+    tools2.append(this.linkBackButton, delimiter2, this.linkInput);
+    //tools1.insertBefore(delimiter2, this.buttons.link.nextSibling);
+
+    this.wrapper.append(tools1, tools2);
+    this.container.append(this.wrapper);
+    document.body.append(this.container);
+  }
+
+  private resetSelection() {
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(this.savedRange);
+    this.inputs[0].focus();
+  }
+
+  public hide() {
+    if(this.init) return;
+
+    this.container.classList.remove('is-visible');
+    document.removeEventListener('mouseup', this.onMouseUp);
+    if(this.hideTimeout) clearTimeout(this.hideTimeout);
+    this.hideTimeout = window.setTimeout(() => {
+      this.hideTimeout = undefined;
+      this.container.classList.add('hide');
+      this.container.classList.remove('is-link');
+    }, 200);
+  }
+
+  public getActiveMarkupButton() {
+    const nodes = getSelectedNodes();
+    const parents = [...new Set(nodes.map(node => node.parentNode))];
+    if(parents.length > 1) return undefined;
+
+    const node = parents[0] as HTMLElement;
+    let currentMarkup: HTMLElement;
+    for(const type in markdownTags) {
+      const tag = markdownTags[type as MarkdownType];
+      if(node.matches(tag.match)) {
+        currentMarkup = this.buttons[type as MarkdownType];
+        break;
+      }
+    }
+
+    return currentMarkup;
+  }
+
+  public setActiveMarkupButton() {
+    const activeButton = this.getActiveMarkupButton();
+
+    for(const i in this.buttons) {
+      // @ts-ignore
+      const button = this.buttons[i];
+      if(button != activeButton) {
+        button.classList.remove('active');
+      }
+    }
+
+    if(activeButton) {
+      activeButton.classList.add('active');
+    }
+
+    return activeButton;
+  }
+
+  public show() {
+    if(this.init) {
+      this.init();
+      this.init = null;
+    }
+
+    const selection = document.getSelection();
+
+    if(!selection.toString().trim().length) {
+      this.hide();
+      return;
+    }
+
+    if(this.hideTimeout !== undefined) {
+      clearTimeout(this.hideTimeout);
+    }
+
+    const range = this.savedRange = selection.getRangeAt(0);
+
+    const activeButton = this.setActiveMarkupButton();
+    
+    this.container.classList.remove('is-link');
+    const isFirstShow = this.container.classList.contains('hide');
+    if(isFirstShow) {
+      this.container.classList.remove('hide');
+      this.container.classList.add('no-transition');
+    }
+    
+    const selectionRect = range.getBoundingClientRect();
+    //const containerRect = this.container.getBoundingClientRect();
+    const sizesRect = this.container.firstElementChild.firstElementChild.getBoundingClientRect();
+    const top = selectionRect.top - sizesRect.height - 8;
+    const left = selectionRect.left + (selectionRect.width - sizesRect.width) / 2;
+    //const top = selectionRect.top - 44 - 8;
+    
+    this.container.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+    
+    if(isFirstShow) {
+      void this.container.offsetLeft; // reflow
+      this.container.classList.remove('no-transition');
+    }
+    
+    this.container.classList.add('is-visible');
+
+    console.log('selection', selectionRect, activeButton);
+  }
+
+  private onMouseUp = (e: Event) => {
+    if(findUpClassName(e.target, 'markup-tooltip')) return;
+    this.hide();
+    document.removeEventListener('mouseup', this.onMouseUp);
+  };
+
+  public setMouseUpEvent() {
+    if(this.waitingForMouseUp) return;
+    this.waitingForMouseUp = true;
+    document.addEventListener('mouseup', (e) => {
+      this.waitingForMouseUp = false;
+      this.show();
+
+      document.addEventListener('mouseup', this.onMouseUp);
+    }, {once: true});
+  }
+
+  public handleSelection(input: HTMLElement) {
+    this.inputs.push(input);
+
+    if(this.addedListener) return;
+    this.addedListener = true;
+    document.addEventListener('selectionchange', (e) => {
+      if(document.activeElement == this.linkInput) {
+        return;
+      }
+
+      if(!this.inputs.includes(document.activeElement as HTMLElement)) {
+        this.hide();
+        return;
+      }
+
+      const selection = document.getSelection();
+
+      if(!selection.toString().trim().length) {
+        this.hide();
+        return;
+      }
+
+      this.setMouseUpEvent();
+    });
+  }
+}
 
 export class ChatInput {
   public pageEl = document.getElementById('page-chats') as HTMLDivElement;
@@ -82,7 +322,13 @@ export class ChatInput {
   readonly executedHistory: string[] = [];
   private canUndoFromHTML = '';
 
+  public markupTooltip: MarkupTooltip;
+
   constructor() {
+    if(!isTouchSupported) {
+      this.markupTooltip = new MarkupTooltip();
+    }
+
     this.attachMessageInputField();
 
     this.attachMenu = document.getElementById('attach-file') as HTMLButtonElement;
@@ -314,7 +560,24 @@ export class ChatInput {
       });
     }
 
+    this.messageInput.addEventListener('beforeinput', (e: Event) => {
+      // * validate due to manual formatting through browser's context menu
+      const inputType = (e as InputEvent).inputType;
+      //console.log('message beforeinput event', e);
+
+      if(inputType.indexOf('format') === 0) {
+        //console.log('message beforeinput format', e, inputType, this.messageInput.innerHTML);
+        const markdownType = inputType.split('format')[1].toLowerCase() as MarkdownType;
+        if(this.applyMarkdown(markdownType)) {
+          cancelEvent(e); // * cancel legacy markdown event
+        }
+      }
+    });
     this.messageInput.addEventListener('input', this.onMessageInput);
+
+    if(this.markupTooltip) {
+      this.markupTooltip.handleSelection(this.messageInput);
+    }
   }
 
   private onDocumentPaste = (e: ClipboardEvent) => {
@@ -377,107 +640,110 @@ export class ChatInput {
     }
   };
 
+  public applyMarkdown(type: MarkdownType, href?: string) {
+    const commandsMap: Partial<{[key in typeof type]: string | (() => void)}> = {
+      bold: 'Bold',
+      italic: 'Italic',
+      underline: 'Underline',
+      strikethrough: 'Strikethrough',
+      monospace: () => document.execCommand('fontName', false, 'monospace'),
+      link: href ? () => document.execCommand('createLink', false, href) : () => document.execCommand('unlink', false, null)
+    };
+
+    if(!commandsMap[type]) {
+      return false;
+    }
+
+    const command = commandsMap[type];
+
+    //type = 'monospace';
+
+    const saveExecuted = this.prepareDocumentExecute();
+    const executed: any[] = [];
+    /**
+     * * clear previous formatting, due to Telegram's inability to handle several entities
+     */
+    const checkForSingle = () => {
+      const nodes = getSelectedNodes();
+      //console.log('Using formatting:', commandsMap[type], nodes, this.executedHistory);
+
+      const parents = [...new Set(nodes.map(node => node.parentNode))];
+      //const differentParents = !!nodes.find(node => node.parentNode != firstParent);
+      const differentParents = parents.length > 1;
+
+      let notSingle = false;
+      if(differentParents) {
+        notSingle = true;
+      } else {
+        const node = nodes[0];
+        if(node && (node.parentNode as HTMLElement) != this.messageInput && (node.parentNode.parentNode as HTMLElement) != this.messageInput) {
+          notSingle = true;
+        }
+      }
+
+      if(notSingle) {
+        //if(type === 'monospace') {
+          executed.push(document.execCommand('styleWithCSS', false, 'true'));
+        //}
+
+        executed.push(document.execCommand('unlink', false, null));
+        executed.push(document.execCommand('removeFormat', false, null));
+        executed.push(typeof(command) === 'function' ? command() : document.execCommand(command, false, null));
+
+        //if(type === 'monospace') {
+          executed.push(document.execCommand('styleWithCSS', false, 'false'));
+        //}
+      }
+    };
+    
+    //if(type === 'monospace') {
+      let haveThisType = false;
+      executed.push(document.execCommand('styleWithCSS', false, 'true'));
+
+      const selection = window.getSelection();
+      if(!selection.isCollapsed) {
+        const range = selection.getRangeAt(0);
+        const tag = markdownTags[type];
+
+        const node = range.commonAncestorContainer;
+        if((node.parentNode as HTMLElement).matches(tag.match) || (node instanceof HTMLElement && node.matches(tag.match))) {
+          haveThisType = true;
+        }
+      }
+
+      executed.push(document.execCommand('removeFormat', false, null));
+      
+      if(!haveThisType) {
+        executed.push(typeof(command) === 'function' ? command() : document.execCommand(command, false, null));
+      }
+
+      executed.push(document.execCommand('styleWithCSS', false, 'false'));
+    /* } else {
+      executed.push(typeof(command) === 'function' ? command() : document.execCommand(command, false, null));
+    } */
+
+    checkForSingle();
+    saveExecuted();
+    if(this.markupTooltip) {
+      this.markupTooltip.setActiveMarkupButton();
+    }
+
+    return true;
+  }
+
   private handleMarkdownShortcut = (e: KeyboardEvent) => {
-    const formatKeys: {[key: string]: string | (() => void)} = {
-      'B': 'Bold',
-      'I': 'Italic',
-      'U': 'Underline',
-      'S': 'Strikethrough',
-      'M': () => document.execCommand('fontName', false, 'monospace')
+    const formatKeys: {[key: string]: MarkdownType} = {
+      'B': 'bold',
+      'I': 'italic',
+      'U': 'underline',
+      'S': 'strikethrough',
+      'M': 'monospace'
     };
 
     for(const key in formatKeys) {
       const good = e.code == ('Key' + key);
       if(good) {
-        const getSelectedNodes = () => {
-          const nodes: Node[] = [];
-          const selection = window.getSelection();
-          for(let i = 0; i < selection.rangeCount; ++i) {
-            const range = selection.getRangeAt(i);
-            let {startContainer, endContainer} = range;
-            if(endContainer.nodeType != 3) endContainer = endContainer.firstChild;
-            
-            while(startContainer && startContainer != endContainer) {
-              nodes.push(startContainer.nodeType == 3 ? startContainer : startContainer.firstChild);
-              startContainer = startContainer.nextSibling;
-            }
-            
-            if(nodes[nodes.length - 1] != endContainer) {
-              nodes.push(endContainer);
-            }
-          }
-
-          // * filter null's due to <br>
-          return nodes.filter(node => !!node);
-        };
-        
-        const saveExecuted = this.prepareDocumentExecute();
-        const executed: any[] = [];
-        /**
-         * * clear previous formatting, due to Telegram's inability to handle several entities
-         */
-        const checkForSingle = () => {
-          const nodes = getSelectedNodes();
-          console.log('Using formatting:', formatKeys[key], nodes, this.executedHistory);
-
-          const parents = [...new Set(nodes.map(node => node.parentNode))];
-          //const differentParents = !!nodes.find(node => node.parentNode != firstParent);
-          const differentParents = parents.length > 1;
-
-          let notSingle = false;
-          if(differentParents) {
-            notSingle = true;
-          } else {
-            const node = nodes[0];
-            if(node && (node.parentNode as HTMLElement) != this.messageInput && (node.parentNode.parentNode as HTMLElement) != this.messageInput) {
-              notSingle = true;
-            }
-          }
-
-          if(notSingle) {
-            if(key == 'M') {
-              executed.push(document.execCommand('styleWithCSS', false, 'true'));
-            }
-
-            executed.push(document.execCommand('unlink', false, null));
-            executed.push(document.execCommand('removeFormat', false, null));
-            // @ts-ignore
-            executed.push(typeof(formatKeys[key]) === 'function' ? formatKeys[key]() : document.execCommand(formatKeys[key], false, null));
-
-            if(key == 'M') {
-              executed.push(document.execCommand('styleWithCSS', false, 'false'));
-            }
-          }
-        };
-        
-        if(key == 'M') {
-          let haveMonospace = false;
-          executed.push(document.execCommand('styleWithCSS', false, 'true'));
-
-          const selection = window.getSelection();
-          if(!selection.isCollapsed) {
-            const range = selection.getRangeAt(0);
-            // @ts-ignore
-            if(range.commonAncestorContainer.parentNode.tagName == 'SPAN' || range.commonAncestorContainer.tagName == 'SPAN') {
-              haveMonospace = true;
-            }
-          }
-
-          executed.push(document.execCommand('removeFormat', false, null));
-          
-          if(!haveMonospace) {
-            // @ts-ignore
-            executed.push(typeof(formatKeys[key]) === 'function' ? formatKeys[key]() : document.execCommand(formatKeys[key], false, null));
-          }
-
-          executed.push(document.execCommand('styleWithCSS', false, 'false'));
-        } else {
-          // @ts-ignore
-          executed.push(typeof(formatKeys[key]) === 'function' ? formatKeys[key]() : document.execCommand(formatKeys[key], false, null));
-        }
-        
-        checkForSingle();
-        saveExecuted();
+        this.applyMarkdown(formatKeys[key]);
         cancelEvent(e); // cancel legacy event
         break;
       }
@@ -509,7 +775,19 @@ export class ChatInput {
     }
   };
 
-  private onMessageInput = (/* e: Event */) => {
+  private onMessageInput = (e?: Event) => {
+    // * validate due to manual formatting through browser's context menu
+    /* const inputType = (e as InputEvent).inputType;
+    console.log('message input event', e);
+    if(inputType == 'formatBold') {
+      console.log('message input format', this.messageInput.innerHTML);
+      cancelEvent(e);
+    }
+
+    if(!isSelectionSingle()) {
+      alert('not single');
+    } */
+
     //console.log('messageInput input', this.messageInput.innerText, this.serializeNodes(Array.from(this.messageInput.childNodes)));
     const value = this.messageInput.innerText;
       
@@ -605,6 +883,7 @@ export class ChatInput {
       }
 
       this.chatInput.classList.add('is-locked');
+      blurActiveElement();
       this.recorder.start().then(() => {
         this.recordCanceled = false;
         

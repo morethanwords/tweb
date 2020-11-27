@@ -6,6 +6,7 @@ import { MOUNT_CLASS_TO } from './mtproto/mtproto_config';
 import { MessageEntity } from '../layer';
 import { copy } from '../helpers/object';
 import { encodeEntities } from '../helpers/string';
+import { isSafari } from '../helpers/userAgent';
 
 const EmojiHelper = {
   emojiMap: (code: string) => { return code; },
@@ -379,7 +380,7 @@ namespace RichTextProcessor {
     noLinks: true,
     noLinebreaks: true,
     noCommands: true,
-    noEmphasis: true,
+    wrappingDraft: true,
     fromBot: boolean,
     noTextFormat: true,
     passEntities: Partial<{
@@ -433,7 +434,8 @@ namespace RichTextProcessor {
             ' href="',
             contextUrl.replace('{1}', encodeURIComponent(username)),
             '">',
-            encodeEntities(entityText),
+            wrapRichNestedText(entityText, entity.nested, options),
+            //encodeEntities(entityText),
             '</a>'
           )
           break;
@@ -448,7 +450,7 @@ namespace RichTextProcessor {
             '<a href="#/im?p=u',
             encodeURIComponent(entity.user_id),
             '">',
-            encodeEntities(entityText),
+            wrapRichNestedText(entityText, entity.nested, options),
             '</a>'
           );
           break;
@@ -492,7 +494,7 @@ namespace RichTextProcessor {
         case 'messageEntityTextUrl':
           let inner: string;
           let url: string;
-          if (entity._ == 'messageEntityTextUrl') {
+          if(entity._ == 'messageEntityTextUrl') {
             url = (entity as MessageEntity.messageEntityTextUrl).url;
             url = wrapUrl(url, true);
             inner = wrapRichNestedText(entityText, entity.nested, options);
@@ -519,6 +521,11 @@ namespace RichTextProcessor {
           break;
 
         case 'messageEntityEmoji':
+          if(options.wrappingDraft && emojiSupported) { // * fix safari emoji
+            html.push(encodeEntities(entityText));
+            break;
+          }
+
           html.push(emojiSupported ? // ! contenteditable="false" нужен для поля ввода, иначе там будет меняться шрифт в Safari, или же рендерить смайлик напрямую, без контейнера
             `<span class="emoji">${encodeEntities(entityText)}</span>` : 
             `<img src="assets/img/emoji/${entity.unicode}.png" alt="${encodeEntities(entityText)}" class="emoji">`);
@@ -554,29 +561,27 @@ namespace RichTextProcessor {
             html.push(wrapRichNestedText(entityText, entity.nested, options));
             break;
           }
-          
-          const tag = options.noEmphasis ? 'b' : 'strong';
-          html.push(
-            `<${tag}>`,
-            wrapRichNestedText(entityText, entity.nested, options),
-            `</${tag}>`
-          );
+
+          if(options.wrappingDraft) {
+            html.push(`<span style="font-weight: bold;">${wrapRichNestedText(entityText, entity.nested, options)}</span>`);
+          } else {
+            html.push(`<strong>${wrapRichNestedText(entityText, entity.nested, options)}</strong>`);
+          }
           break;
         }
-          
 
         case 'messageEntityItalic': {
           if(options.noTextFormat) {
             html.push(wrapRichNestedText(entityText, entity.nested, options));
             break;
           }
-  
-          const tag = options.noEmphasis ? 'i' : 'em';
-          html.push(
-            `<${tag}>`,
-            wrapRichNestedText(entityText, entity.nested, options),
-            `</${tag}>`
-          );
+
+          if(options.wrappingDraft) {
+            html.push(`<span style="font-style: italic;">${wrapRichNestedText(entityText, entity.nested, options)}</span>`);
+          } else {
+            html.push(`<em>${wrapRichNestedText(entityText, entity.nested, options)}</em>`);
+          }
+
           break;
         }
 
@@ -589,19 +594,21 @@ namespace RichTextProcessor {
           break;
 
         case 'messageEntityStrike':
-          html.push(
-            '<del>',
-            wrapRichNestedText(entityText, entity.nested, options),
-            '</del>'
-          );
+          if(options.wrappingDraft) {
+            const styleName = isSafari ? 'text-decoration' : 'text-decoration-line';
+            html.push(`<span style="${styleName}: line-through;">${wrapRichNestedText(entityText, entity.nested, options)}</span>`);
+          } else {
+            html.push(`<del>${wrapRichNestedText(entityText, entity.nested, options)}</del>`);
+          }
           break;
 
         case 'messageEntityUnderline':
-          html.push(
-            '<u>',
-            wrapRichNestedText(entityText, entity.nested, options),
-            '</u>'
-          );
+          if(options.wrappingDraft) {
+            const styleName = isSafari ? 'text-decoration' : 'text-decoration-line';
+            html.push(`<span style="${styleName}: underline;">${wrapRichNestedText(entityText, entity.nested, options)}</span>`);
+          } else {
+            html.push(`<u>${wrapRichNestedText(entityText, entity.nested, options)}</u>`);
+          }
           break;
 
         case 'messageEntityCode':
@@ -610,11 +617,16 @@ namespace RichTextProcessor {
             break;
           }
   
-          html.push(
-            '<code>',
-            encodeEntities(entityText),
-            '</code>'
-          );
+          if(options.wrappingDraft) {
+            html.push(`<span style="font-family: monospace;">${encodeEntities(entityText)}</span>`);
+          } else {
+            html.push(
+              '<code>',
+              encodeEntities(entityText),
+              '</code>'
+            );
+          }
+          
           break;
 
         case 'messageEntityPre':
@@ -728,14 +740,11 @@ namespace RichTextProcessor {
     }
 
     let entities = (options.entities || []).slice();
-    if(emojiSupported) { // * fix safari emoji
-      entities = entities.filter(e => e._ != 'messageEntityEmoji');
-    }
 
     return wrapRichText(text, {
       entities, 
       noLinks: true,
-      noEmphasis: true,
+      wrappingDraft: true,
       passEntities: {
         messageEntityTextUrl: true
       }

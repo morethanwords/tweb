@@ -1,5 +1,6 @@
 import { MOUNT_CLASS_TO } from "../lib/mtproto/mtproto_config";
 import { isTouchSupported } from "./touchSupport";
+import { isSafari } from "./userAgent";
 
 /* export function isInDOM(element: Element, parentNode?: HTMLElement): boolean {
   if(!element) {
@@ -120,34 +121,46 @@ export function getRichValue(field: HTMLElement) {
 
 MOUNT_CLASS_TO && (MOUNT_CLASS_TO.getRichValue = getRichValue);
 
-const markdownTags = [{
-  tagName: 'STRONG', 
-  markdown: '**'
-}, {
-  tagName: 'B',   // * legacy (Ctrl+B)
-  markdown: '**'
-}, {
-  tagName: 'U',   // * legacy (Ctrl+I)
-  markdown: '_-_'
-}, {
-  tagName: 'I',   // * legacy (Ctrl+I)
-  markdown: '__'
-}, {
-  tagName: 'EM',
-  markdown: '__'
-}, {
-  tagName: 'CODE',
-  markdown: '`'
-}, {
-  tagName: 'PRE',
-  markdown: '``'
-}, {
-  tagName: 'DEL',
-  markdown: '~~'
-}, {
-  tagName: 'A',
-  markdown: (node: HTMLElement) => `[${(node.parentElement as HTMLAnchorElement).href}](${node.nodeValue})`
-}];
+const markdownTypes = {
+  bold: '**',
+  underline: '_-_',
+  italic: '__',
+  monospace: '`',
+  pre: '``',
+  strikethrough: '~~'
+};
+
+export type MarkdownType = 'bold' | 'italic' | 'underline' | 'strikethrough' | 'monospace' | 'link';
+export type MarkdownTag = {
+  match: string,
+  markdown: string | ((node: HTMLElement) => string)
+};
+export const markdownTags: {[type in MarkdownType]: MarkdownTag} = {
+  bold: {
+    match: '[style*="font-weight"]',
+    markdown: markdownTypes.bold
+  },
+  underline: {
+    match: isSafari ? '[style="text-decoration: underline;"]' : '[style="text-decoration-line: underline;"]',
+    markdown: markdownTypes.underline
+  },
+  italic: {
+    match: '[style="font-style: italic;"]',
+    markdown: markdownTypes.italic
+  },
+  monospace: {
+    match: '[style="font-family: monospace;"]',
+    markdown: markdownTypes.monospace
+  },
+  strikethrough: {
+    match: isSafari ? '[style="text-decoration: line-through;"]' : '[style="text-decoration-line: line-through;"]',
+    markdown: markdownTypes.strikethrough
+  },
+  link: {
+    match: 'A',
+    markdown: (node: HTMLElement) => `[${(node.parentElement as HTMLAnchorElement).href}](${node.nodeValue})`
+  }
+};
 export function getRichElementValue(node: HTMLElement, lines: string[], line: string[], selNode?: Node, selOffset?: number) {
   if(node.nodeType == 3) { // TEXT
     if(selNode === node) {
@@ -156,8 +169,17 @@ export function getRichElementValue(node: HTMLElement, lines: string[], line: st
     } else {
       let markdown: string;
       if(node.parentNode) {
-        const tagName = node.parentElement.tagName;
-        const markdownTag = markdownTags.find(m => m.tagName == tagName);
+        const parentElement = node.parentElement;
+        
+        let markdownTag: MarkdownTag;
+        for(const type in markdownTags) {
+          const tag = markdownTags[type as MarkdownType];
+          if(parentElement.matches(tag.match)) {
+            markdownTag = tag;
+            break;
+          }
+        }
+
         if(markdownTag) {
           if(typeof(markdownTag.markdown) === 'function') {
             line.push(markdownTag.markdown(node));
@@ -475,4 +497,44 @@ export const detachClickEvent = (elem: HTMLElement, callback: (e: TouchEvent | M
   } else {
     elem.removeEventListener(CLICK_EVENT_NAME, callback, options);
   }
+};
+
+export const getSelectedNodes = () => {
+  const nodes: Node[] = [];
+  const selection = window.getSelection();
+  for(let i = 0; i < selection.rangeCount; ++i) {
+    const range = selection.getRangeAt(i);
+    let {startContainer, endContainer} = range;
+    if(endContainer.nodeType != 3) endContainer = endContainer.firstChild;
+    
+    while(startContainer && startContainer != endContainer) {
+      nodes.push(startContainer.nodeType == 3 ? startContainer : startContainer.firstChild);
+      startContainer = startContainer.nextSibling;
+    }
+    
+    if(nodes[nodes.length - 1] != endContainer) {
+      nodes.push(endContainer);
+    }
+  }
+
+  // * filter null's due to <br>
+  return nodes.filter(node => !!node);
+};
+
+export const isSelectionSingle = (input: Element = document.activeElement) => {
+  const nodes = getSelectedNodes();
+  const parents = [...new Set(nodes.map(node => node.parentNode))];
+  const differentParents = parents.length > 1;
+
+  let single = true;
+  if(differentParents) {
+    single = false;
+  } else {
+    const node = nodes[0];
+    if(node && node.parentNode != input && node.parentNode.parentNode != input) {
+      single = false;
+    }
+  }
+
+  return single;
 };

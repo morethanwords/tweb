@@ -153,3 +153,31 @@
 input:focus, button:focus {
   outline: none;
 }
+
+.input-clear {
+  outline: none;
+  border: none;
+  padding: 0;
+
+  &.error {
+    animation: input-shake .2s ease-in-out forwards;
+  }
+}
+
+@keyframes input-shake {
+  0% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-.5rem);
+  }
+
+  75% {
+    transform: translateX(.5rem);
+  }
+
+  100% {
+    transform: translateX(0);
+  }
+}

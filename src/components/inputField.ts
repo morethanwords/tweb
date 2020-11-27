@@ -18,11 +18,8 @@ let init = () => {
     let entities = RichTextProcessor.parseEntities(text);
     //console.log('messageInput paste', text, entities);
     entities = entities.filter(e => e._ == 'messageEntityEmoji' || e._ == 'messageEntityLinebreak');
-    if(RichTextProcessor.emojiSupported) { // * fix safari emoji
-      entities = entities.filter(e => e._ != 'messageEntityEmoji');
-    }
     //text = RichTextProcessor.wrapEmojiText(text);
-    text = RichTextProcessor.wrapRichText(text, {entities, noLinks: true});
+    text = RichTextProcessor.wrapRichText(text, {entities, noLinks: true, wrappingDraft: true});
 
     // console.log('messageInput paste after', text);
 

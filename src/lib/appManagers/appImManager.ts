@@ -39,7 +39,7 @@ import apiManager from '../mtproto/mtprotoworker';
 import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from '../rootScope';
-import { attachClickEvent, cancelEvent, CLICK_EVENT_NAME, findUpClassName, findUpTag, placeCaretAtEnd, whichChild } from "../../helpers/dom";
+import { attachClickEvent, blurActiveElement, cancelEvent, cancelSelection, CLICK_EVENT_NAME, findUpClassName, findUpTag, placeCaretAtEnd, whichChild } from "../../helpers/dom";
 import apiUpdatesManager from './apiUpdatesManager';
 import appChatsManager, { Channel, Chat } from "./appChatsManager";
 import appDialogsManager from "./appDialogsManager";
@@ -703,7 +703,9 @@ export class AppImManager {
           AppMediaViewer.buttons.close.click();
         } else */ /* if(appSidebarRight.historyTabIDs.slice(-1)[0] == AppSidebarRight.SLIDERITEMSIDS.forward) {
           appSidebarRight.forwardTab.closeBtn.click();
-        } else */ if(this.chatSelection.isSelecting) {
+        } else */if(this.chatInputC.markupTooltip && this.chatInputC.markupTooltip.container.classList.contains('is-visible')) {
+          this.chatInputC.markupTooltip.hide();
+        } else if(this.chatSelection.isSelecting) {
           this.chatSelection.cancelSelection();
         } else if(this.columnEl.classList.contains('is-helper-active')) {
           this.chatInputC.replyElements.cancelBtn.click();
@@ -1108,8 +1110,10 @@ export class AppImManager {
     //this.lazyLoadQueue.clear();
     
     // clear input 
+    cancelSelection();
     this.chatInputC.clearInput();
-    this.chatInputC.replyElements.cancelBtn.click();
+    this.chatInputC.clearHelper();
+    //this.chatInputC.replyElements.cancelBtn.click();
 
     // clear messages
     if(bubblesToo) {

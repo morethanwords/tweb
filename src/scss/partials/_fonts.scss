@@ -2,13 +2,13 @@
 
 @font-face {
   font-family: "#{$tgico-font-family}";
-  src: url("#{$tgico-font-path}/#{$tgico-font-family}.eot?owpifk");
-  src: url("#{$tgico-font-path}/#{$tgico-font-family}.eot?owpifk#iefix")
+  src: url("#{$tgico-font-path}/#{$tgico-font-family}.eot?5dnghg");
+  src: url("#{$tgico-font-path}/#{$tgico-font-family}.eot?5dnghg#iefix")
       format("embedded-opentype"),
-    url("#{$tgico-font-path}/#{$tgico-font-family}.ttf?owpifk")
+    url("#{$tgico-font-path}/#{$tgico-font-family}.ttf?5dnghg")
       format("truetype"),
-    url("#{$tgico-font-path}/#{$tgico-font-family}.woff?owpifk") format("woff"),
-    url("#{$tgico-font-path}/#{$tgico-font-family}.svg?owpifk##{$tgico-font-family}")
+    url("#{$tgico-font-path}/#{$tgico-font-family}.woff?5dnghg") format("woff"),
+    url("#{$tgico-font-path}/#{$tgico-font-family}.svg?5dnghg##{$tgico-font-family}")
       format("svg");
   font-weight: normal;
   font-style: normal;
@@ -34,348 +34,418 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-.tgico-select:before {
+
+.tgico-dragmedia:before {
   content: "\e900";
 }
-.tgico-info2:before {
+.tgico-dragfiles:before {
   content: "\e901";
 }
-.tgico-clouddownload:before {
+.tgico-link:before {
   content: "\e902";
 }
-.tgico-readchats:before {
+.tgico-monospace:before {
   content: "\e903";
 }
-.tgico-noncontacts:before {
+.tgico-strikethrough:before {
   content: "\e904";
 }
-.tgico-bots:before {
+.tgico-underline:before {
   content: "\e905";
 }
-.tgico-muted:before {
+.tgico-italic:before {
   content: "\e906";
 }
-.tgico-favourites:before {
+.tgico-bold:before {
   content: "\e907";
 }
-.tgico-tip:before {
+.tgico-botcom:before {
   content: "\e908";
 }
-.tgico-loginlogodesktop:before {
+.tgico-calendarfilter:before {
   content: "\e909";
 }
-.tgico-loginlogomobile:before {
+.tgico-email:before {
   content: "\e90a";
 }
-.tgico-calendar:before {
+.tgico-passwordoff:before {
   content: "\e90b";
 }
-.tgico-keyboard:before {
+.tgico-commentssticker:before {
   content: "\e90c";
 }
-.tgico-gifs:before {
+.tgico-comments:before {
   content: "\e90d";
 }
-.tgico-stickers:before {
+.tgico-previous:before {
   content: "\e90e";
 }
-.tgico-deleteleft:before {
+.tgico-next:before {
   content: "\e90f";
 }
-.tgico-folder:before {
+.tgico-mention:before {
   content: "\e910";
 }
-.tgico-revote:before {
+.tgico-down:before {
   content: "\e911";
 }
-.tgico-livelocation:before {
+.tgico-pinlist:before {
   content: "\e912";
 }
-.tgico-microphone2:before {
+.tgico-replace:before {
   content: "\e913";
 }
-.tgico-colorize:before {
+.tgico-schedule:before {
   content: "\e914";
 }
-.tgico-poll:before {
+.tgico-zoomout:before {
   content: "\e915";
 }
-.tgico-minus:before {
+.tgico-zoomin:before {
   content: "\e916";
 }
-.tgico-nosound:before {
+.tgico-select:before {
   content: "\e917";
 }
-.tgico-microphone:before {
+.tgico-info2:before {
   content: "\e918";
 }
-.tgico-largeplay:before {
+.tgico-clouddownload:before {
   content: "\e919";
 }
-.tgico-largepause:before {
+.tgico-readchats:before {
   content: "\e91a";
 }
-.tgico-newchannel:before {
+.tgico-noncontacts:before {
   content: "\e91b";
 }
-.tgico-newgroup:before {
+.tgico-bots:before {
   content: "\e91c";
 }
-.tgico-newprivate:before {
+.tgico-muted:before {
   content: "\e91d";
 }
-.tgico-chatsplaceholder:before {
+.tgico-favourites:before {
   content: "\e91e";
 }
-.tgico-newchat_filled:before {
+.tgico-tip:before {
   content: "\e91f";
 }
-.tgico-addmember_filled:before {
+.tgico-loginlogodesktop:before {
   content: "\e920";
 }
-.tgico-delete:before {
+.tgico-loginlogomobile:before {
   content: "\e921";
 }
-.tgico-delete_filled:before {
+.tgico-calendar:before {
   content: "\e922";
 }
-.tgico-send2:before {
+.tgico-keyboard:before {
   content: "\e923";
 }
-.tgico-avatar_deletedaccount:before {
+.tgico-gifs:before {
   content: "\e924";
 }
-.tgico-avatar_archivedchats:before {
+.tgico-stickers:before {
   content: "\e925";
 }
-.tgico-avatar_savedmessages:before {
+.tgico-deleteleft:before {
   content: "\e926";
 }
-.tgico-pinnedchat:before {
+.tgico-folder:before {
   content: "\e927";
 }
-.tgico-channelviews:before {
+.tgico-revote:before {
   content: "\e928";
 }
-.tgico-sendingerror:before {
+.tgico-livelocation:before {
   content: "\e929";
 }
-.tgico-sending:before {
+.tgico-microphone2:before {
   content: "\e92a";
 }
-.tgico-check:before {
+.tgico-colorize:before {
   content: "\e92b";
 }
-.tgico-checks:before {
+.tgico-poll:before {
   content: "\e92c";
 }
-.tgico-radioon:before {
+.tgico-minus:before {
   content: "\e92d";
 }
-.tgico-radiooff:before {
+.tgico-nosound:before {
   content: "\e92e";
 }
-.tgico-checkboxempty:before {
+.tgico-microphone:before {
   content: "\e92f";
 }
-.tgico-checkboxblock:before {
+.tgico-largeplay:before {
   content: "\e930";
 }
-.tgico-checkboxon:before {
+.tgico-largepause:before {
   content: "\e931";
 }
-.tgico-eye2:before {
+.tgico-newchannel:before {
   content: "\e932";
 }
-.tgico-eye1:before {
+.tgico-newgroup:before {
   content: "\e933";
 }
-.tgico-fullscreen:before {
+.tgico-newprivate:before {
   content: "\e934";
 }
-.tgico-smallscreen:before {
+.tgico-chatsplaceholder:before {
   content: "\e935";
 }
-.tgico-flag:before {
+.tgico-newchat_filled:before {
   content: "\e936";
 }
-.tgico-lamp:before {
+.tgico-addmember_filled:before {
   content: "\e937";
 }
-.tgico-sport:before {
+.tgico-delete:before {
   content: "\e938";
 }
-.tgico-car:before {
+.tgico-delete_filled:before {
   content: "\e939";
 }
-.tgico-eats:before {
+.tgico-send2:before {
   content: "\e93a";
 }
-.tgico-animals:before {
+.tgico-avatar_deletedaccount:before {
   content: "\e93b";
 }
-.tgico-smile:before {
+.tgico-avatar_archivedchats:before {
   content: "\e93c";
 }
-.tgico-unpin:before {
+.tgico-avatar_savedmessages:before {
   content: "\e93d";
 }
-.tgico-send:before {
+.tgico-pinnedchat:before {
   content: "\e93e";
 }
-.tgico-unread:before {
+.tgico-channelviews:before {
   content: "\e93f";
 }
-.tgico-settings:before {
+.tgico-sendingerror:before {
   content: "\e940";
 }
-.tgico-edit:before {
+.tgico-sending:before {
   content: "\e941";
 }
-.tgico-download:before {
+.tgico-check:before {
   content: "\e942";
 }
-.tgico-cameraadd:before {
+.tgico-checks:before {
   content: "\e943";
 }
-.tgico-camera:before {
+.tgico-radioon:before {
   content: "\e944";
 }
-.tgico-permissions:before {
+.tgico-radiooff:before {
   content: "\e945";
 }
-.tgico-admin:before {
+.tgico-checkboxempty:before {
   content: "\e946";
 }
-.tgico-stop:before {
+.tgico-checkboxblock:before {
   content: "\e947";
 }
-.tgico-username:before {
+.tgico-checkboxon:before {
   content: "\e948";
 }
-.tgico-location:before {
+.tgico-eye2:before {
   content: "\e949";
 }
-.tgico-info:before {
+.tgico-eye1:before {
   content: "\e94a";
 }
-.tgico-deleteuser:before {
+.tgico-FullScreen:before {
   content: "\e94b";
 }
-.tgico-adduser:before {
+.tgico-smallscreen:before {
   content: "\e94c";
 }
-.tgico-recent:before {
+.tgico-flag:before {
   content: "\e94d";
 }
-.tgico-channel:before {
+.tgico-lamp:before {
   content: "\e94e";
 }
-.tgico-document:before {
+.tgico-sport:before {
   content: "\e94f";
 }
-.tgico-activesessions:before {
+.tgico-car:before {
   content: "\e950";
 }
-.tgico-logout:before {
+.tgico-eats:before {
   content: "\e951";
 }
-.tgico-help:before {
+.tgico-animals:before {
   content: "\e952";
 }
-.tgico-play:before {
+.tgico-smile:before {
   content: "\e953";
 }
-.tgico-pause:before {
+.tgico-unpin:before {
   content: "\e954";
 }
-.tgico-reply:before {
+.tgico-send:before {
   content: "\e955";
 }
-.tgico-forward:before {
+.tgico-unread:before {
   content: "\e956";
 }
-.tgico-next:before {
+.tgico-settings:before {
   content: "\e957";
 }
-.tgico-unlock:before {
+.tgico-edit:before {
   content: "\e958";
 }
-.tgico-lock:before {
+.tgico-download:before {
   content: "\e959";
 }
-.tgico-data:before {
+.tgico-cameraadd:before {
   content: "\e95a";
 }
-.tgico-user:before {
+.tgico-camera:before {
   content: "\e95b";
 }
-.tgico-group:before {
+.tgico-permissions:before {
   content: "\e95c";
 }
-.tgico-mute:before {
+.tgico-admin:before {
   content: "\e95d";
 }
-.tgico-unmute:before {
+.tgico-stop:before {
   content: "\e95e";
 }
-.tgico-photo:before {
+.tgico-username:before {
   content: "\e95f";
 }
-.tgico-language:before {
+.tgico-location:before {
   content: "\e960";
 }
-.tgico-message:before {
+.tgico-info:before {
   content: "\e961";
 }
-.tgico-pin:before {
+.tgico-deleteuser:before {
   content: "\e962";
 }
-.tgico-attach:before {
+.tgico-adduser:before {
   content: "\e963";
 }
-.tgico-phone:before {
+.tgico-recent:before {
   content: "\e964";
 }
-.tgico-savedmessages:before {
+.tgico-channel:before {
   content: "\e965";
 }
-.tgico-checkbox:before {
+.tgico-document:before {
   content: "\e966";
 }
-.tgico-copy:before {
+.tgico-activesessions:before {
   content: "\e967";
 }
-.tgico-unarchive:before {
+.tgico-logout:before {
   content: "\e968";
 }
-.tgico-archive:before {
+.tgico-help:before {
   content: "\e969";
 }
-.tgico-check1:before {
+.tgico-play:before {
   content: "\e96a";
 }
-.tgico-up:before {
+.tgico-pause:before {
   content: "\e96b";
 }
-.tgico-down:before {
+.tgico-reply:before {
   content: "\e96c";
 }
-.tgico-close:before {
+.tgico-forward:before {
   content: "\e96d";
 }
-.tgico-add:before {
+.tgico-next:before {
   content: "\e96e";
 }
-.tgico-back:before {
+.tgico-unlock:before {
   content: "\e96f";
 }
-.tgico-more:before {
+.tgico-lock:before {
   content: "\e970";
 }
-.tgico-menu:before {
+.tgico-data:before {
   content: "\e971";
 }
-.tgico-search:before {
+.tgico-user:before {
   content: "\e972";
+}
+.tgico-group:before {
+  content: "\e973";
+}
+.tgico-mute:before {
+  content: "\e974";
+}
+.tgico-unmute:before {
+  content: "\e975";
+}
+.tgico-photo:before {
+  content: "\e976";
+}
+.tgico-language:before {
+  content: "\e977";
+}
+.tgico-message:before {
+  content: "\e978";
+}
+.tgico-pin:before {
+  content: "\e979";
+}
+.tgico-attach:before {
+  content: "\e97a";
+}
+.tgico-phone:before {
+  content: "\e97b";
+}
+.tgico-savedmessages:before {
+  content: "\e97c";
+}
+.tgico-checkbox:before {
+  content: "\e97d";
+}
+.tgico-copy:before {
+  content: "\e97e";
+}
+.tgico-unarchive:before {
+  content: "\e97f";
+}
+.tgico-archive:before {
+  content: "\e980";
+}
+.tgico-check1:before {
+  content: "\e981";
+}
+.tgico-up:before {
+  content: "\e982";
+}
+.tgico-down:before {
+  content: "\e983";
+}
+.tgico-close:before {
+  content: "\e984";
+}
+.tgico-add:before {
+  content: "\e985";
+}
+.tgico-back:before {
+  content: "\e986";
+}
+.tgico-more:before {
+  content: "\e987";
+}
+.tgico-menu:before {
+  content: "\e988";
+}
+.tgico-search:before {
+  content: "\e989";
 }
