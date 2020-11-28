@@ -1,4 +1,4 @@
-import { Document, InputFileLocation, InputStickerSet, MessagesRecentStickers, MessagesStickerSet, PhotoSize, StickerSet, StickerSetCovered } from '../../layer';
+import { Document, InputFileLocation, InputStickerSet, MessagesAllStickers, MessagesFeaturedStickers, MessagesFoundStickerSets, MessagesRecentStickers, MessagesStickers, MessagesStickerSet, PhotoSize, StickerPack, StickerSet, StickerSetCovered } from '../../layer';
 import { Modify } from '../../types';
 import apiManager from '../mtproto/mtprotoworker';
 import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
@@ -15,18 +15,8 @@ export class AppStickersManager {
 
   private saveSetsTimeout: number;
 
-  private hashes: Partial<{
-    featured: Partial<{hash: number, result: StickerSetCovered[]}>,
-    search: {
-      [query: string]: Partial<{
-        hash: number, 
-        result: StickerSetCovered[]
-      }>
-    }
-  }> = {
-    featured: {},
-    search: {}
-  };
+  private getStickerSetPromises: {[setID: string]: Promise<MessagesStickerSet>} = {};
+  private getStickersByEmoticonsPromises: {[emoticon: string]: Promise<Document[]>} = {};
   
   constructor() {
     appStateManager.getState().then(({stickerSets}) => {
@@ -74,25 +64,29 @@ export class AppStickersManager {
   }> = {}): Promise<MessagesStickerSet> {
     if(this.stickerSets[set.id] && !params.overwrite && this.stickerSets[set.id].documents?.length) return this.stickerSets[set.id];
 
-    const stickerSet = await apiManager.invokeApi('messages.getStickerSet', {
+    if(this.getStickerSetPromises[set.id]) {
+      return this.getStickerSetPromises[set.id];
+    }
+
+    const promise = this.getStickerSetPromises[set.id] = apiManager.invokeApi('messages.getStickerSet', {
       stickerset: this.getStickerSetInput(set)
     });
-
+    
+    const stickerSet = await promise;
+    delete this.getStickerSetPromises[set.id];
     this.saveStickerSet(stickerSet, set.id);
 
-    return stickerSet as any;
+    return stickerSet;
   }
 
   public async getRecentStickers(): Promise<Modify<MessagesRecentStickers.messagesRecentStickers, {
     stickers: Document[]
   }>> {
-    const res = await apiManager.invokeApi('messages.getRecentStickers') as MessagesRecentStickers.messagesRecentStickers;
+    const res = await apiManager.invokeApiHashable('messages.getRecentStickers') as MessagesRecentStickers.messagesRecentStickers;
 
-    if(res._ == 'messages.recentStickers') {
-      this.saveStickers(res.stickers);
-    }
+    this.saveStickers(res.stickers);
 
-    return res as any;
+    return res;
   }
 
   public getAnimatedEmojiSticker(emoji: string) {
@@ -185,21 +179,13 @@ export class AppStickersManager {
   }
 
   public async getFeaturedStickers() {
-    const res = await apiManager.invokeApi('messages.getFeaturedStickers', {
-      hash: this.hashes.featured?.hash || 0
-    });
+    const res = await apiManager.invokeApiHashable('messages.getFeaturedStickers') as MessagesFeaturedStickers.messagesFeaturedStickers;
     
-    const hashed = this.hashes.featured ?? (this.hashes.featured = {});
-    if(res._ != 'messages.featuredStickersNotModified') {
-      hashed.hash = res.hash;
-      hashed.result = res.sets;
-    }
-
-    hashed.result.forEach(covered => {
+    res.sets.forEach(covered => {
       this.saveStickerSet({set: covered.set, documents: [], packs: []}, covered.set.id);
     });
 
-    return hashed.result;
+    return res.sets;
   }
 
   public async toggleStickerSet(set: StickerSet.stickerSet) {
@@ -231,20 +217,13 @@ export class AppStickersManager {
 
   public async searchStickerSets(query: string, excludeFeatured = true) {
     const flags = excludeFeatured ? 1 : 0;
-    const res = await apiManager.invokeApi('messages.searchStickerSets', {
+    const res = await apiManager.invokeApiHashable('messages.searchStickerSets', {
       flags,
       exclude_featured: excludeFeatured || undefined,
-      q: query,
-      hash: this.hashes.search[query]?.hash || 0
-    });
+      q: query
+    }) as MessagesFoundStickerSets.messagesFoundStickerSets;
 
-    const hashed = this.hashes.search[query] ?? (this.hashes.search[query] = {});
-    if(res._ != 'messages.foundStickerSetsNotModified') {
-      hashed.hash = res.hash;
-      hashed.result = res.sets;
-    }
-
-    hashed.result.forEach(covered => {
+    res.sets.forEach(covered => {
       this.saveStickerSet({set: covered.set, documents: [], packs: []}, covered.set.id);
     });
 
@@ -252,12 +231,60 @@ export class AppStickersManager {
     for(let id in this.stickerSets) {
       const {set} = this.stickerSets[id];
 
-      if(set.title.toLowerCase().includes(query.toLowerCase()) && !hashed.result.find(c => c.set.id == set.id)) {
+      if(set.title.toLowerCase().includes(query.toLowerCase()) && !res.sets.find(c => c.set.id == set.id)) {
         foundSaved.push({_: 'stickerSetCovered', set, cover: null});
       }
     }
 
-    return hashed.result.concat(foundSaved);
+    return res.sets.concat(foundSaved);
+  }
+
+  public getAllStickers() {
+    return apiManager.invokeApiHashable('messages.getAllStickers');
+  }
+
+  public preloadStickerSets() {
+    return this.getAllStickers().then(allStickers => {
+      return Promise.all((allStickers as MessagesAllStickers.messagesAllStickers).sets.map(set => this.getStickerSet(set)));
+    });
+  }
+
+  public getStickersByEmoticon(emoticon: string) {
+    if(this.getStickersByEmoticonsPromises[emoticon]) return this.getStickersByEmoticonsPromises[emoticon];
+
+    return this.getStickersByEmoticonsPromises[emoticon] = Promise.all([
+      apiManager.invokeApiHashable('messages.getStickers', {
+        emoticon
+      }),
+      this.preloadStickerSets(),
+      this.getRecentStickers()
+    ]).then(([messagesStickers, installedSets, recentStickers]) => {
+      const foundStickers = (messagesStickers as MessagesStickers.messagesStickers).stickers.map(sticker => appDocsManager.saveDoc(sticker));
+      const cachedStickersAnimated: Document.document[] = [], cachedStickersStatic: Document.document[] = [];
+
+      //console.log('getStickersByEmoticon', messagesStickers, installedSets, recentStickers);
+
+      const iteratePacks = (packs: StickerPack.stickerPack[]) => {
+        for(const pack of packs) {
+          if(pack.emoticon.includes(emoticon)) {
+            for(const docID of pack.documents) {
+              const doc = appDocsManager.getDoc(docID);
+              (doc.animated ? cachedStickersAnimated : cachedStickersStatic).push(doc);
+            }
+          }
+        }
+      };
+
+      iteratePacks(recentStickers.packs);
+
+      for(const set of installedSets) {
+        iteratePacks(set.packs);
+      }
+
+      const stickers = [...new Set(cachedStickersAnimated.concat(cachedStickersStatic, foundStickers))];
+
+      return stickers;
+    });
   }
 }
 

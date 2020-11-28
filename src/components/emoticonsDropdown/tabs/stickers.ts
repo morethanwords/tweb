@@ -1,7 +1,7 @@
 import emoticonsDropdown, { EmoticonsDropdown, EMOTICONSSTICKERGROUP, EmoticonsTab } from "..";
 import { readBlobAsText } from "../../../helpers/blob";
 import mediaSizes from "../../../helpers/mediaSizes";
-import { StickerSet } from "../../../layer";
+import { MessagesAllStickers, StickerSet } from "../../../layer";
 import appDocsManager, { MyDocument } from "../../../lib/appManagers/appDocsManager";
 import appDownloadManager from "../../../lib/appManagers/appDownloadManager";
 import appStickersManager from "../../../lib/appManagers/appStickersManager";
@@ -10,11 +10,105 @@ import apiManager from "../../../lib/mtproto/mtprotoworker";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import rootScope from "../../../lib/rootScope";
 import animationIntersector from "../../animationIntersector";
-import { LazyLoadQueueRepeat } from "../../lazyLoadQueue";
+import LazyLoadQueue, { LazyLoadQueueRepeat } from "../../lazyLoadQueue";
 import { putPreloader, renderImageFromUrl } from "../../misc";
 import Scrollable, { ScrollableX } from "../../scrollable";
 import StickyIntersector from "../../stickyIntersector";
 import { wrapSticker } from "../../wrappers";
+
+export class SuperStickerRenderer {
+  lazyLoadQueue: LazyLoadQueueRepeat;
+  animatedDivs: Set<HTMLDivElement> = new Set();
+
+  constructor(private regularLazyLoadQueue: LazyLoadQueue, private group: string) {
+    this.lazyLoadQueue = new LazyLoadQueueRepeat(undefined, (target, visible) => {
+      if(!visible) {
+        this.processInvisibleDiv(target as HTMLDivElement);
+      }
+    });
+  }
+
+  renderSticker(doc: MyDocument, div?: HTMLDivElement) {
+    if(!div) {
+      div = document.createElement('div');
+      div.classList.add('grid-item', 'super-sticker');
+
+      if(doc.sticker == 2) {
+        this.animatedDivs.add(div);
+
+        this.lazyLoadQueue.observe({
+          div, 
+          load: this.processVisibleDiv
+        });
+      }
+    } 
+
+    // * This will wrap only a thumb
+    wrapSticker({
+      doc, 
+      div,
+      lazyLoadQueue: this.regularLazyLoadQueue, 
+      group: this.group, 
+      onlyThumb: doc.sticker == 2
+    });
+
+    return div;
+  }
+
+  checkAnimationContainer = (div: HTMLElement, visible: boolean) => {
+    //console.error('checkAnimationContainer', div, visible);
+    const players = animationIntersector.getAnimations(div);
+    players.forEach(player => {
+      if(!visible) {
+        animationIntersector.checkAnimation(player, true, true);
+      } else {
+        animationIntersector.checkAnimation(player, false);
+      }
+    });
+  };
+
+  processVisibleDiv = (div: HTMLElement) => {
+    const docID = div.dataset.docID;
+    const doc = appDocsManager.getDoc(docID);
+    
+    const size = mediaSizes.active.esgSticker.width;
+
+    const promise = wrapSticker({
+      doc, 
+      div: div as HTMLDivElement,
+      width: size,
+      height: size,
+      lazyLoadQueue: null, 
+      group: this.group, 
+      onlyThumb: false,
+      play: true,
+      loop: true
+    });
+
+    promise.then(() => {
+      //clearTimeout(timeout);
+      this.checkAnimationContainer(div, this.lazyLoadQueue.intersector.isVisible(div));
+    });
+
+    /* let timeout = window.setTimeout(() => {
+      console.error('processVisibleDiv timeout', div, doc);
+    }, 1e3); */
+
+    return promise;
+  };
+
+  processInvisibleDiv = (div: HTMLElement) => {
+    const docID = div.dataset.docID;
+    const doc = appDocsManager.getDoc(docID);
+
+    //console.log('STICKER INvisible:', /* div,  */docID);
+
+    this.checkAnimationContainer(div, false);
+
+    div.innerHTML = '';
+    this.renderSticker(doc, div as HTMLDivElement);
+  };
+}
 
 export default class StickersTab implements EmoticonsTab {
   public content: HTMLElement;
@@ -38,14 +132,13 @@ export default class StickersTab implements EmoticonsTab {
 
   private stickyIntersector: StickyIntersector;
 
-  private animatedDivs: Set<HTMLDivElement> = new Set();
-  private lazyLoadQueue: LazyLoadQueueRepeat;
+  private superStickerRenderer: SuperStickerRenderer;
 
   categoryPush(categoryDiv: HTMLElement, categoryTitle: string, promise: Promise<MyDocument[]>, prepend?: boolean) {
     //if((docs.length % 5) != 0) categoryDiv.classList.add('not-full');
 
     const itemsDiv = document.createElement('div');
-    itemsDiv.classList.add('category-items');
+    itemsDiv.classList.add('category-items', 'super-stickers');
 
     const titleDiv = document.createElement('div');
     titleDiv.classList.add('category-title');
@@ -60,7 +153,7 @@ export default class StickersTab implements EmoticonsTab {
     promise.then(documents => {
       documents.forEach(doc => {
         //if(doc._ == 'documentEmpty') return;
-        itemsDiv.append(this.renderSticker(doc));
+        itemsDiv.append(this.superStickerRenderer.renderSticker(doc));
       });
 
       if(this.queueCategoryPush.length) {
@@ -78,33 +171,6 @@ export default class StickersTab implements EmoticonsTab {
         this.queueCategoryPush.length = 0;
       }
     });
-  }
-
-  renderSticker(doc: MyDocument, div?: HTMLDivElement) {
-    if(!div) {
-      div = document.createElement('div');
-      div.classList.add('grid-item');
-
-      if(doc.sticker == 2) {
-        this.animatedDivs.add(div);
-
-        this.lazyLoadQueue.observe({
-          div, 
-          load: this.processVisibleDiv
-        });
-      }
-    } 
-
-    // * This will wrap only a thumb
-    wrapSticker({
-      doc, 
-      div,
-      lazyLoadQueue: EmoticonsDropdown.lazyLoadQueue, 
-      group: EMOTICONSSTICKERGROUP, 
-      onlyThumb: doc.sticker == 2
-    });
-
-    return div;
   }
 
   async renderStickerSet(set: StickerSet.stickerSet, prepend = false) {
@@ -168,60 +234,6 @@ export default class StickersTab implements EmoticonsTab {
       }); // kostil
     }
   }
-
-  checkAnimationContainer = (div: HTMLElement, visible: boolean) => {
-    //console.error('checkAnimationContainer', div, visible);
-    const players = animationIntersector.getAnimations(div);
-    players.forEach(player => {
-      if(!visible) {
-        animationIntersector.checkAnimation(player, true, true);
-      } else {
-        animationIntersector.checkAnimation(player, false);
-      }
-    });
-  };
-
-  processVisibleDiv = (div: HTMLElement) => {
-    const docID = div.dataset.docID;
-    const doc = appDocsManager.getDoc(docID);
-    
-    const size = mediaSizes.active.esgSticker.width;
-
-    const promise = wrapSticker({
-      doc, 
-      div: div as HTMLDivElement,
-      width: size,
-      height: size,
-      lazyLoadQueue: null, 
-      group: EMOTICONSSTICKERGROUP, 
-      onlyThumb: false,
-      play: true,
-      loop: true
-    });
-
-    promise.then(() => {
-      //clearTimeout(timeout);
-      this.checkAnimationContainer(div, this.lazyLoadQueue.intersector.isVisible(div));
-    });
-
-    /* let timeout = window.setTimeout(() => {
-      console.error('processVisibleDiv timeout', div, doc);
-    }, 1e3); */
-
-    return promise;
-  };
-
-  processInvisibleDiv = (div: HTMLElement) => {
-    const docID = div.dataset.docID;
-    const doc = appDocsManager.getDoc(docID);
-
-    //console.log('STICKER INvisible:', /* div,  */docID);
-
-    this.checkAnimationContainer(div, false);
-
-    div.innerHTML = '';
-    this.renderSticker(doc, div as HTMLDivElement);
-  };
 
   init() {
     this.content = document.getElementById('content-stickers');
@@ -299,16 +311,10 @@ export default class StickersTab implements EmoticonsTab {
         this.categoryPush(this.recentDiv, 'Recent', Promise.resolve(this.recentStickers), true);
       }),
 
-      apiManager.invokeApi('messages.getAllStickers', {hash: 0}).then(async(res) => {
-        let stickers: {
-          _: 'messages.allStickers',
-          hash: number,
-          sets: Array<StickerSet.stickerSet>
-        } = res as any;
-
+      appStickersManager.getAllStickers().then((res) => {
         preloader.remove();
 
-        for(let set of stickers.sets) {
+        for(let set of (res as MessagesAllStickers.messagesAllStickers).sets) {
           this.renderStickerSet(set);
         }
       })
@@ -316,13 +322,9 @@ export default class StickersTab implements EmoticonsTab {
       this.mounted = true;
     });
 
-    this.lazyLoadQueue = new LazyLoadQueueRepeat(undefined, (target, visible) => {
-      if(!visible) {
-        this.processInvisibleDiv(target as HTMLDivElement);
-      }
-    });
+    this.superStickerRenderer = new SuperStickerRenderer(EmoticonsDropdown.lazyLoadQueue, EMOTICONSSTICKERGROUP);
 
-    emoticonsDropdown.addLazyLoadQueueRepeat(this.lazyLoadQueue, this.processInvisibleDiv);
+    emoticonsDropdown.addLazyLoadQueueRepeat(this.superStickerRenderer.lazyLoadQueue, this.superStickerRenderer.processInvisibleDiv);
 
     /* setInterval(() => {
       // @ts-ignore
@@ -342,7 +344,7 @@ export default class StickersTab implements EmoticonsTab {
 
     let div = this.recentDiv.querySelector(`[data-doc-i-d="${doc.id}"]`);
     if(!div) {
-      div = this.renderSticker(doc);
+      div = this.superStickerRenderer.renderSticker(doc);
     }
 
     const items = this.recentDiv.querySelector('.category-items');

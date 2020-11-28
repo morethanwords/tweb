@@ -565,7 +565,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
   const toneIndex = emoji ? getEmojiToneIndex(emoji) : -1;
   
   if((doc.thumbs?.length || doc.stickerCachedThumbs) && !div.firstElementChild && (!doc.downloaded || stickerType == 2 || onlyThumb)/*  && doc.thumbs[0]._ != 'photoSizeEmpty' */) {
-    const thumb = doc.stickerCachedThumbs && doc.stickerCachedThumbs[toneIndex] || doc.thumbs[0];
+    let thumb = doc.stickerCachedThumbs && doc.stickerCachedThumbs[toneIndex] || doc.thumbs[0];
     
     //console.log('wrap sticker', thumb, div);
 
@@ -581,23 +581,33 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
       renderImageFromUrl(img, thumb.url, afterRender);
     } else if('bytes' in thumb) {
       if(thumb._ == 'photoPathSize') {
-        //if(!doc.w) console.error('no w', doc);
-        div.innerHTML = `<svg class="rlottie-vector" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${doc.w || 512} ${doc.h || 512}" xml:space="preserve">
-          <path d="${appPhotosManager.getPathFromPhotoPathSize(thumb)}"/>
-        </svg>`;
-      } else if(toneIndex <= 0) {
+        if(thumb.bytes.length) {
+          //if(!doc.w) console.error('no w', doc);
+          const d = appPhotosManager.getPathFromPhotoPathSize(thumb);
+          /* if(d == 'Mz' || d.includes('151,48,349,33z')) {
+            console.error('no path', doc);
+          } */
+          div.innerHTML = `<svg class="rlottie-vector" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${doc.w || 512} ${doc.h || 512}" xml:space="preserve">
+            <path d="${d}"/>
+          </svg>`;
+        } else {
+          thumb = doc.thumbs.find(t => (t as PhotoSize.photoStrippedSize).bytes?.length) || thumb;
+        }
+      } 
+      
+      if(thumb && thumb._ != 'photoPathSize' && toneIndex <= 0) {
         img = new Image();
         if((webpWorkerController.isWebpSupported() || doc.pFlags.stickerThumbConverted || thumb.url)/*  && false */) {
-          renderImageFromUrl(img, appPhotosManager.getPreviewURLFromThumb(thumb, true), afterRender);
+          renderImageFromUrl(img, appPhotosManager.getPreviewURLFromThumb(thumb as PhotoSize.photoStrippedSize, true), afterRender);
         } else {
-          webpWorkerController.convert(doc.id, thumb.bytes as Uint8Array).then(bytes => {
-            thumb.bytes = bytes;
+          webpWorkerController.convert(doc.id, (thumb as PhotoSize.photoStrippedSize).bytes as Uint8Array).then(bytes => {
+            (thumb as PhotoSize.photoStrippedSize).bytes = bytes;
             doc.pFlags.stickerThumbConverted = true;
             
             if(middleware && !middleware()) return;
   
             if(!div.childElementCount) {
-              renderImageFromUrl(img, appPhotosManager.getPreviewURLFromThumb(thumb, true), afterRender);
+              renderImageFromUrl(img, appPhotosManager.getPreviewURLFromThumb(thumb as PhotoSize.photoStrippedSize, true), afterRender);
             }
           }).catch(() => {});
         }
@@ -610,14 +620,14 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
 
         const r = () => {
           if(div.childElementCount || (middleware && !middleware())) return;
-          renderImageFromUrl(img, thumb.url, afterRender);
+          renderImageFromUrl(img, (thumb as PhotoSize.photoStrippedSize).url, afterRender);
         };
   
-        if(thumb.url) {
+        if((thumb as PhotoSize.photoStrippedSize).url) {
           r();
           return Promise.resolve();
         } else {
-          return appDocsManager.getThumbURL(doc, thumb).promise.then(r);
+          return appDocsManager.getThumbURL(doc, thumb as PhotoSize.photoStrippedSize).promise.then(r);
         }
       };
       

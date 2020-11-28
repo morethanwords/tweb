@@ -1,8 +1,8 @@
 import Recorder from '../../../public/recorder.min';
 import { isTouchSupported } from "../../helpers/touchSupport";
 import appChatsManager from '../../lib/appManagers/appChatsManager';
-import appDocsManager from "../../lib/appManagers/appDocsManager";
-import appImManager from "../../lib/appManagers/appImManager";
+import appDocsManager, { MyDocument } from "../../lib/appManagers/appDocsManager";
+import appImManager, { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
 import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import appPeersManager from '../../lib/appManagers/appPeersManager';
 import appWebPagesManager from "../../lib/appManagers/appWebPagesManager";
@@ -11,9 +11,9 @@ import apiManager from "../../lib/mtproto/mtprotoworker";
 import opusDecodeController from "../../lib/opusDecodeController";
 import { RichTextProcessor } from "../../lib/richtextprocessor";
 import rootScope from '../../lib/rootScope';
-import { blurActiveElement, cancelEvent, CLICK_EVENT_NAME, findUpClassName, getRichValue, getSelectedNodes, isInputEmpty, isSelectionSingle, markdownTags, MarkdownType, placeCaretAtEnd, serializeNodes } from "../../helpers/dom";
+import { blurActiveElement, cancelEvent, CLICK_EVENT_NAME, findUpClassName, getRichValue, getSelectedNodes, isInputEmpty, markdownTags, MarkdownType, placeCaretAtEnd, serializeNodes } from "../../helpers/dom";
 import ButtonMenu, { ButtonMenuItemOptions } from '../buttonMenu';
-import emoticonsDropdown from "../emoticonsDropdown";
+import emoticonsDropdown, { EmoticonsDropdown } from "../emoticonsDropdown";
 import PopupCreatePoll from "../popupCreatePoll";
 import PopupForward from '../popupForward';
 import PopupNewMedia from '../popupNewMedia';
@@ -24,11 +24,96 @@ import { wrapReply } from "../wrappers";
 import InputField from '../inputField';
 import { MessageEntity } from '../../layer';
 import ButtonIcon from '../buttonIcon';
+import appStickersManager from '../../lib/appManagers/appStickersManager';
+import SetTransition from '../singleTransition';
+import { SuperStickerRenderer } from '../emoticonsDropdown/tabs/stickers';
+import LazyLoadQueue from '../lazyLoadQueue';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
 
 type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply';
+
+export class StickersHelper {
+  private container: HTMLElement;
+  private stickersContainer: HTMLElement;
+  private scrollable: Scrollable;
+  private superStickerRenderer: SuperStickerRenderer;
+  private lazyLoadQueue: LazyLoadQueue;
+  private lastEmoticon = '';
+
+  constructor(private appendTo: HTMLElement) {
+
+  }
+
+  public checkEmoticon(emoticon: string) {
+    if(this.lastEmoticon == emoticon) return;
+
+    if(this.lastEmoticon && !emoticon) {
+      if(this.container) {
+        SetTransition(this.container, 'is-visible', false, 200/* , () => {
+          this.stickersContainer.innerHTML = '';
+        } */);
+      }
+    }
+
+    this.lastEmoticon = emoticon;
+    if(this.lazyLoadQueue) {
+      this.lazyLoadQueue.clear();
+    }
+    
+    if(!emoticon) {
+      return;
+    }
+
+    appStickersManager.getStickersByEmoticon(emoticon)
+    .then(stickers => {
+      if(this.lastEmoticon != emoticon) {
+        return;
+      }
+
+      if(this.init) {
+        this.init();
+        this.init = null;
+      }
+
+      this.stickersContainer.innerHTML = '';
+      this.lazyLoadQueue.clear();
+      if(stickers.length) {
+        stickers.forEach(sticker => {
+          this.stickersContainer.append(this.superStickerRenderer.renderSticker(sticker as MyDocument));
+        });
+      }
+
+      SetTransition(this.container, 'is-visible', true, 200);
+      this.scrollable.scrollTop = 0;
+    });
+  }
+
+  private init() {
+    this.container = document.createElement('div');
+    this.container.classList.add('stickers-helper', 'z-depth-1');
+
+    this.stickersContainer = document.createElement('div');
+    this.stickersContainer.classList.add('stickers-helper-stickers', 'super-stickers');
+    this.stickersContainer.addEventListener('click', (e) => {
+      if(!findUpClassName(e.target, 'super-sticker')) {
+        return;
+      }
+
+      appImManager.chatInputC.clearInput();
+      EmoticonsDropdown.onMediaClick(e);
+    });
+
+    this.container.append(this.stickersContainer);
+
+    this.scrollable = new Scrollable(this.container);
+    this.lazyLoadQueue = new LazyLoadQueue();
+    this.superStickerRenderer = new SuperStickerRenderer(this.lazyLoadQueue, CHAT_ANIMATION_GROUP);
+
+    this.appendTo.append(this.container);
+  }
+}
 
 export class MarkupTooltip {
   public container: HTMLElement;
@@ -323,6 +408,7 @@ export class ChatInput {
   private canUndoFromHTML = '';
 
   public markupTooltip: MarkupTooltip;
+  public stickersHelper: StickersHelper;
 
   constructor() {
     if(!isTouchSupported) {
@@ -381,6 +467,8 @@ export class ChatInput {
     this.replyElements.cancelBtn = this.replyElements.container.querySelector('.reply-cancel') as HTMLButtonElement;
     this.replyElements.titleEl = this.replyElements.container.querySelector('.reply-title') as HTMLDivElement;
     this.replyElements.subtitleEl = this.replyElements.container.querySelector('.reply-subtitle') as HTMLDivElement;
+
+    this.stickersHelper = new StickersHelper(this.replyElements.container.parentElement);
 
     try {
       this.recorder = new Recorder({
@@ -789,10 +877,23 @@ export class ChatInput {
     } */
 
     //console.log('messageInput input', this.messageInput.innerText, this.serializeNodes(Array.from(this.messageInput.childNodes)));
-    const value = this.messageInput.innerText;
+    //const value = this.messageInput.innerText;
+    const value = getRichValue(this.messageInput);
       
     const entities = RichTextProcessor.parseEntities(value);
     //console.log('messageInput entities', entities);
+
+    if(this.stickersHelper) {
+      let emoticon = '';
+      if(entities.length && entities[0]._ == 'messageEntityEmoji') {
+        const entity = entities[0];
+        if(entity.length == value.length && !entity.offset) {
+          emoticon = value;
+        }
+      }
+
+      this.stickersHelper.checkEmoticon(emoticon);
+    }
 
     const html = this.messageInput.innerHTML;
     if(this.canRedoFromHTML && html != this.canRedoFromHTML && !this.lockRedo) {
@@ -1014,6 +1115,8 @@ export class ChatInput {
       this.executedHistory.length = 0;
       this.canUndoFromHTML = '';
     }
+
+    this.onMessageInput();
   }
 
   public isInputEmpty() {

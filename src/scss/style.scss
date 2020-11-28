@@ -721,6 +721,38 @@ img.emoji {
   fill: rgba(0, 0, 0, .08);
 }
 
+.super-stickers {
+  width: 100%;
+	display: grid;
+	grid-template-columns: repeat(auto-fill, var(--esg-sticker-size)); // 64px
+	grid-column-gap: 1px;
+	justify-content: space-between;
+}
+
+.super-sticker {
+  html.no-touch &:hover {
+    border-radius: 12px;
+    background-color: var(--color-gray-hover);
+  }
+  
+  /* &:nth-child(5n+5) {
+    margin-right: 0;
+  } */
+  
+  > img, > .rlottie {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  > img {
+    animation: fade-in-opacity .2s ease forwards;
+    object-fit: contain;
+  }
+}
+
 .fade-in-transition {
   opacity: 1;
   transition: opacity .2s ease;

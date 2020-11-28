@@ -22,6 +22,15 @@ type Task = {
 
 const USEWORKERASWORKER = true;
 
+type HashResult = {
+  hash: number,
+  result: any
+};
+
+type HashOptions = {
+  [queryJSON: string]: HashResult
+};
+
 export class ApiManagerProxy extends CryptoWorkerMethods {
   public worker: Worker;
   public postMessage: (...args: any[]) => void;
@@ -40,6 +49,8 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
   public updatesProcessor: (obj: any, bool: boolean) => void = null;
 
   private log = logger('API-PROXY');
+
+  private hashes: {[method: string]: HashOptions} = {};
 
   constructor() {
     super();
@@ -228,6 +239,36 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
 
     //console.log('will invokeApi:', method, params, options);
     return this.performTaskWorker('invokeApi', method, params, o);
+  }
+
+  public invokeApiHashable<T extends keyof MethodDeclMap>(method: T, params: Omit<MethodDeclMap[T]['req'], 'hash'> = {} as any, options: InvokeApiOptions = {}): Promise<MethodDeclMap[T]['res']> {
+    //console.log('will invokeApi:', method, params, options);
+
+    const queryJSON = JSON.stringify(params);
+    let cached: HashResult;
+    if(this.hashes[method]) {
+      cached = this.hashes[method][queryJSON];
+      if(cached) {
+        (params as any).hash = cached.hash;
+      }
+    }
+
+    return this.performTaskWorker('invokeApi', method, params, options).then((result: any) => {
+      if(result._.includes('NotModified')) {
+        //this.log.warn('NotModified saved!', method, queryJSON);
+        return cached.result;
+      }
+      
+      if(result.hash) {
+        if(!this.hashes[method]) this.hashes[method] = {};
+        this.hashes[method][queryJSON] = {
+          hash: result.hash,
+          result: result
+        };
+      }
+
+      return result;
+    });
   }
 
   public setBaseDcID(dcID: number) {
