@@ -94,7 +94,8 @@ export class AppStickersManager {
     if(!stickerSet || !stickerSet.documents) return undefined;
 
     emoji = emoji.replace(/\ufe0f/g, '').replace(/🏻|🏼|🏽|🏾|🏿/g, '');
-    return stickerSet.documents.find(doc => (doc as Document.document).stickerEmojiRaw == emoji);
+    const pack = stickerSet.packs.find(p => p.emoticon == emoji);
+    return pack ? appDocsManager.getDoc(pack.documents[0]) : undefined;
   }
   
   public saveStickerSet(res: Omit<MessagesStickerSet.messagesStickerSet, '_'>, id: string) {
