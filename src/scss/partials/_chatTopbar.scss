@@ -66,12 +66,6 @@
 		}
 	} */
 
-	@include respond-to(handhelds) {
-		.chat-mute-button, .chat-search-button {
-			display: none;
-		}
-	}
-
 	/* @include respond-to(handhelds) {
 		position: sticky;
 		top: 0;
@@ -124,6 +118,10 @@
 		overflow: hidden;
 		padding-left: 49px;
 		//--utils-width: NaN;
+
+		@include respond-to(handhelds) {
+			padding-left: 52px;
+    }
 		
 		//&.have-utils-width {
 			max-width: calc(100% - var(--utils-width));
@@ -156,6 +154,12 @@
 				transition: none;
 			}
 		}
+
+		@include respond-to(handhelds) {
+			> .btn-icon:not(.btn-menu-toggle) {
+				display: none;
+			}
+		}
 	}
 
 	.chat-join {
@@ -182,10 +186,6 @@
 		display: flex;
 		align-items: center;
 		cursor: pointer;
-
-    @include respond-to(handhelds) {
-			margin-left: 10px;
-    }
 
 		.bottom {
 			font-size: 14px;

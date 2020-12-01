@@ -28,6 +28,7 @@ export default class ChatTopbar {
   subtitle: HTMLDivElement;
   chatUtils: HTMLDivElement;
   btnJoin: HTMLButtonElement;
+  btnPinned: HTMLButtonElement;
   btnMute: HTMLButtonElement;
   btnSearch: HTMLButtonElement;
   btnMore: HTMLButtonElement;
@@ -94,6 +95,7 @@ export default class ChatTopbar {
     this.btnJoin = Button('btn-primary chat-join hide');
     this.btnJoin.append('SUBSCRIBE');
 
+    this.btnPinned = ButtonIcon('pinlist');
     this.btnMute = ButtonIcon('mute');
     this.btnSearch = ButtonIcon('search');
     const menuButtons: (ButtonMenuItemOptions & {verify: () => boolean})[] = [{
@@ -102,6 +104,11 @@ export default class ChatTopbar {
       onClick: () => {
         new ChatSearch(this, this.chat);
       },
+      verify: () => mediaSizes.isMobile
+    }, {
+      icon: 'pinlist',
+      text: 'Pinned Messages',
+      onClick: () => {},
       verify: () => mediaSizes.isMobile
     }, {
       icon: 'mute',
@@ -118,6 +125,20 @@ export default class ChatTopbar {
       },
       verify: () => rootScope.myID != this.peerID && this.appMessagesManager.isPeerMuted(this.peerID)
     }, {
+      icon: 'select',
+      text: 'Select Messages',
+      onClick: () => {
+        this.chat.selection.toggleSelection(true, true);
+      },
+      verify: () => !this.chat.selection.isSelecting
+    }, {
+      icon: 'select',
+      text: 'Clear Selection',
+      onClick: () => {
+        this.chat.selection.cancelSelection();
+      },
+      verify: () => this.chat.selection.isSelecting
+    }, {
       icon: 'delete danger',
       text: 'Delete and Leave',
       onClick: () => {},
@@ -130,7 +151,7 @@ export default class ChatTopbar {
       });
     });
 
-    this.chatUtils.append(this.chatAudio.divAndCaption.container, this.btnJoin, this.btnMute, this.btnSearch, this.btnMore);
+    this.chatUtils.append(this.chatAudio.divAndCaption.container, this.btnJoin, this.btnPinned, this.btnMute, this.btnSearch, this.btnMore);
 
     this.container.append(this.btnBack, this.chatInfo, this.chatUtils);
 

@@ -179,11 +179,11 @@ export default class ChatSelection {
     return bubble.firstElementChild.tagName == 'LABEL' && bubble.firstElementChild.firstElementChild as HTMLInputElement;
   }
 
-  public updateForwardContainer() {
-    if(!this.selectedMids.size) return;
+  public updateForwardContainer(forceSelection = false) {
+    if(!this.selectedMids.size && !forceSelection) return;
     this.selectionCountEl.innerText = this.selectedMids.size + ' Message' + (this.selectedMids.size == 1 ? '' : 's');
 
-    let cantForward = false, cantDelete = false;
+    let cantForward = !this.selectedMids.size, cantDelete = !this.selectedMids.size;
     for(const mid of this.selectedMids.values()) {
       const message = this.appMessagesManager.getMessage(mid);
       if(!cantForward) {
@@ -207,9 +207,9 @@ export default class ChatSelection {
     this.selectionDeleteBtn.toggleAttribute('disabled', cantDelete);
   }
 
-  public toggleSelection(toggleCheckboxes = true) {
+  public toggleSelection(toggleCheckboxes = true, forceSelection = false) {
     const wasSelecting = this.isSelecting;
-    this.isSelecting = this.selectedMids.size > 0;
+    this.isSelecting = this.selectedMids.size > 0 || forceSelection;
 
     if(wasSelecting == this.isSelecting) return;
     
@@ -234,7 +234,7 @@ export default class ChatSelection {
 
     blurActiveElement(); // * for mobile keyboards
 
-    SetTransition(bubblesContainer, 'is-selecting', !!this.selectedMids.size, 200, () => {
+    SetTransition(bubblesContainer, 'is-selecting', !!this.selectedMids.size || forceSelection, 200, () => {
       if(!this.isSelecting) {
         this.selectionContainer.remove();
         this.selectionContainer = this.selectionForwardBtn = this.selectionDeleteBtn = null;
@@ -286,6 +286,10 @@ export default class ChatSelection {
         const bubble = this.chatBubbles.bubbles[mid];
         this.toggleBubbleCheckbox(bubble, this.isSelecting);
       }
+    }
+
+    if(forceSelection) {
+      this.updateForwardContainer(forceSelection);
     }
   }
 
