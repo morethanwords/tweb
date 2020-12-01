@@ -7,7 +7,7 @@ import PopupPeer from "./popupPeer";
 
 export default class PopupDeleteMessages {
   constructor(mids: number[], onConfirm?: () => void) {
-    const peerID = rootScope.selectedPeerID;
+    const peerID = appMessagesManager.getMessage(mids[0]).peerID;
     const firstName = appPeersManager.getPeerTitle(peerID, false, true);
 
     mids = mids.slice();

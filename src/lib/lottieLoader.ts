@@ -2,6 +2,7 @@ import RLottieWorker from 'worker-loader!./rlottie/rlottie.worker';
 import animationIntersector from "../components/animationIntersector";
 import EventListenerBase from "../helpers/eventListenerBase";
 import mediaSizes from "../helpers/mediaSizes";
+import { clamp } from '../helpers/number';
 import { isAndroid, isApple, isAppleMobile, isSafari } from "../helpers/userAgent";
 import { logger, LogLevels } from "./logger";
 import apiManager from "./mtproto/mtprotoworker";
@@ -91,7 +92,7 @@ export class RLottiePlayer extends EventListenerBase<{
       }
     }
 
-    // Skip ratio
+    // * Skip ratio (30fps)
     let skipRatio: number;
     if(options.skipRatio !== undefined) skipRatio = options.skipRatio;
     else if((isAndroid || isAppleMobile || (isApple && !isSafari)) && this.width < 100 && this.height < 100) {
@@ -100,8 +101,11 @@ export class RLottiePlayer extends EventListenerBase<{
 
     this.skipDelta = skipRatio !== undefined ? 1 / skipRatio | 0 : 1;
 
-    // Pixel ratio
-    const pixelRatio = window.devicePixelRatio;
+    //options.needUpscale = true;
+
+    // * Pixel ratio
+    //const pixelRatio = window.devicePixelRatio;
+    const pixelRatio = clamp(window.devicePixelRatio, 1, 2);
     if(pixelRatio > 1) {
       //this.cachingEnabled = true;//this.width < 100 && this.height < 100;
       if(options.needUpscale) {
@@ -125,7 +129,7 @@ export class RLottiePlayer extends EventListenerBase<{
       }
     }
 
-    // Cache frames params
+    // * Cache frames params
     if(!options.noCache) {
       // проверка на размер уже после скейлинга, сделано для попапа и сайдбара, где стикеры 80х80 и 68х68, туда нужно 75%
       if(isApple && this.width > 100 && this.height > 100) {

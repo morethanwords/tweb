@@ -187,7 +187,7 @@ export default class EmojiTab implements EmoticonsTab {
 
     //console.log('contentEmoji div', target);
 
-    appImManager.chatInputC.messageInput.innerHTML += target.outerHTML;
+    appImManager.chat.input.messageInput.innerHTML += target.outerHTML;
 
     // Recent
     const emoji = this.getEmojiFromElement(target);
@@ -210,7 +210,7 @@ export default class EmojiTab implements EmoticonsTab {
 
     // Append to input
     const event = new Event('input', {bubbles: true, cancelable: true});
-    appImManager.chatInputC.messageInput.dispatchEvent(event);
+    appImManager.chat.input.messageInput.dispatchEvent(event);
   };
 
   onClose() {

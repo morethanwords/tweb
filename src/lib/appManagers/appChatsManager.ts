@@ -1,6 +1,7 @@
 import { numberWithCommas } from "../../helpers/number";
 import { isObject, safeReplaceObject, copy } from "../../helpers/object";
-import { ChatAdminRights, ChatBannedRights, ChatFull, ChatParticipants, InputChannel, InputChatPhoto, InputFile, InputPeer, Updates } from "../../layer";
+import { ChatAdminRights, ChatBannedRights, ChatFull, ChatParticipants, InputChannel, InputChatPhoto, InputFile, InputPeer, SendMessageAction, Updates } from "../../layer";
+import { addFunction } from "../../rlottie.github.io/a.out";
 import apiManager from '../mtproto/mtprotoworker';
 import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
 import { RichTextProcessor } from "../richtextprocessor";
@@ -64,6 +65,8 @@ export type Chat = {
 
 export type ChatRights = 'send' | 'edit_title' | 'edit_photo' | 'invite' | 'pin' | 'deleteRevoke' | 'delete';
 
+export type UserTyping = Partial<{userID: number, action: SendMessageAction, timeout: number}>;
+
 export class AppChatsManager {
   public chats: {[id: number]: Channel | Chat | any} = {};
   //public usernames: any = {};
@@ -72,6 +75,8 @@ export class AppChatsManager {
   public cachedPhotoLocations: {[id: number]: any} = {};
 
   public megagroupOnlines: {[id: number]: {timestamp: number, onlines: number}} = {};
+
+  public typingsInPeer: {[peerID: number]: UserTyping[]} = {};
 
   constructor() {
     rootScope.on('apiUpdate', (e) => {
@@ -83,6 +88,56 @@ export class AppChatsManager {
           //console.log('updateChannel:', update);
           rootScope.broadcast('channel_settings', {channelID: channelID});
           break;
+
+        case 'updateUserTyping':
+        case 'updateChatUserTyping': {
+          if(rootScope.myID == update.user_id) {
+            return;
+          }
+          
+          const peerID = update._ == 'updateUserTyping' ? update.user_id : -update.chat_id;
+          const typings = this.typingsInPeer[peerID] ?? (this.typingsInPeer[peerID] = []);
+          let typing = typings.find(t => t.userID == update.user_id);
+          if(!typing) {
+            typing = {
+              userID: update.user_id
+            };
+
+            typings.push(typing);
+          }
+
+          //console.log('updateChatUserTyping', update, typings);
+          
+          typing.action = update.action;
+          
+          if(!appUsersManager.hasUser(update.user_id)) {
+            if(update._ == 'updateChatUserTyping') {
+              if(update.chat_id && appChatsManager.hasChat(update.chat_id) && !appChatsManager.isChannel(update.chat_id)) {
+                appProfileManager.getChatFull(update.chat_id);
+              }
+            }
+            
+            //return;
+          }
+          
+          appUsersManager.forceUserOnline(update.user_id);
+
+          if(typing.timeout !== undefined) clearTimeout(typing.timeout);
+
+          typing.timeout = window.setTimeout(() => {
+            delete typing.timeout;
+            typings.findAndSplice(t => t.userID == update.user_id);
+ 
+            rootScope.broadcast('peer_typings', {peerID, typings});
+
+            if(!typings.length) {
+              delete this.typingsInPeer[peerID];
+            }
+          }, 6000);
+
+          rootScope.broadcast('peer_typings', {peerID, typings});
+          break;
+        }
       }
     });
 

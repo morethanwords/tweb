@@ -13,7 +13,7 @@ export type MyDocument = Document.document;
 
 // TODO: если залить картинку файлом, а потом перезайти в диалог - превьюшка заново скачается
 
-class AppDocsManager {
+export class AppDocsManager {
   private docs: {[docID: string]: MyDocument} = {};
   private savingLottiePreview: {[docID: string]: true} = {};
 

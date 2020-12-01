@@ -46,7 +46,7 @@ export default class AppNewGroupTab implements SliderTab {
     });
 
     const chatsContainer = document.createElement('div');
-    chatsContainer.classList.add('chats-container');
+    chatsContainer.classList.add('chatlist-container');
     chatsContainer.append(this.searchGroup.container);
 
     const scrollable = new Scrollable(chatsContainer);

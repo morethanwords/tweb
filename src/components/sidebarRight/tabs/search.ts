@@ -26,7 +26,7 @@ export default class AppPrivateSearchTab implements SliderTab {
     this.closeBtn = this.container.querySelector('.sidebar-close-button');
     this.searchInput = new SearchInput('Search');
     this.closeBtn.parentElement.append(this.searchInput.container);
-    this.appSearch = new AppSearch(this.container.querySelector('.chats-container'), this.searchInput, {
+    this.appSearch = new AppSearch(this.container.querySelector('.chatlist-container'), this.searchInput, {
       messages: new SearchGroup('Private Search', 'messages')
     });
   }

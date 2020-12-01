@@ -1,4 +1,4 @@
-.chats-container {
+.chatlist-container {
   position: relative;
 
   /* .scrollable {
@@ -391,7 +391,7 @@
   }
 }
 
-// use together like class="chats-container contacts-container"
+// use together like class="chatlist-container contacts-container"
 .contacts-container, .search-group-contacts {
   .dialog-avatar {
     width: 48px;

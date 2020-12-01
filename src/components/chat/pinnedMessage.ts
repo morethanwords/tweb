@@ -1,13 +1,15 @@
 import type { AppImManager } from "../../lib/appManagers/appImManager";
 import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManager";
+import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
+import type ChatTopbar from "./topbar";
 import { ScreenSize } from "../../helpers/mediaSizes";
-import appPeersManager from "../../lib/appManagers/appPeersManager";
 import PopupPinMessage from "../popupUnpinMessage";
 import PinnedContainer from "./pinnedContainer";
 import PinnedMessageBorder from "./pinnedMessageBorder";
 import ReplyContainer, { wrapReplyDivAndCaption } from "./replyContainer";
 import rootScope from "../../lib/rootScope";
 import { findUpClassName } from "../../helpers/dom";
+import Chat from "./chat";
 
 class AnimatedSuper {
   static DURATION = 200;
@@ -188,7 +190,7 @@ class AnimatedCounter {
   }
 }
 
-export default class PinnedMessage {
+export default class ChatPinnedMessage {
   public pinnedMessageContainer: PinnedContainer;
   public pinnedMessageBorder: PinnedMessageBorder;
   public pinnedIndex = 0;
@@ -200,17 +202,17 @@ export default class PinnedMessage {
   public animatedMedia: AnimatedSuper;
   public animatedCounter: AnimatedCounter;
   
-  constructor(private appImManager: AppImManager, private appMessagesManager: AppMessagesManager) {
-    this.pinnedMessageContainer = new PinnedContainer('message', new ReplyContainer('pinned-message'), () => {
-      if(appPeersManager.canPinMessage(this.appImManager.peerID)) {
-        new PopupPinMessage(this.appImManager.peerID, 0);
+  constructor(private topbar: ChatTopbar, private chat: Chat, private appMessagesManager: AppMessagesManager, private appPeersManager: AppPeersManager) {
+    this.pinnedMessageContainer = new PinnedContainer(topbar, chat, 'message', new ReplyContainer('pinned-message'), () => {
+      if(appPeersManager.canPinMessage(this.topbar.peerID)) {
+        new PopupPinMessage(this.topbar.peerID, 0);
         return Promise.resolve(false);
       }
     });
 
     this.pinnedMessageBorder = new PinnedMessageBorder();
     this.pinnedMessageContainer.divAndCaption.border.replaceWith(this.pinnedMessageBorder.render(1, 0));
-    this.appImManager.btnJoin.parentElement.insertBefore(this.pinnedMessageContainer.divAndCaption.container, this.appImManager.btnJoin);
+    this.topbar.btnJoin.parentElement.insertBefore(this.pinnedMessageContainer.divAndCaption.container, this.topbar.btnJoin);
 
     this.animatedSubtitle = new AnimatedSuper();
     this.pinnedMessageContainer.divAndCaption.subtitle.append(this.animatedSubtitle.container);
@@ -223,17 +225,17 @@ export default class PinnedMessage {
     this.pinnedMessageContainer.divAndCaption.title.innerHTML = 'Pinned Message ';
     this.pinnedMessageContainer.divAndCaption.title.append(this.animatedCounter.container);
 
-    rootScope.on('peer_pinned_messages', (e) => {
+    this.topbar.listenerSetter.add(rootScope, 'peer_pinned_messages', (e) => {
       const peerID = e.detail;
 
-      if(peerID == this.appImManager.peerID) {
+      if(peerID == this.topbar.peerID) {
         this.setPinnedMessage();
       }
     });
   }
 
   public setCorrectIndex(lastScrollDirection?: number) {
-    if(this.locked || this.appImManager.setPeerPromise) {
+    if(this.locked || this.chat.setPeerPromise) {
       return;
     }/*  else if(this.waitForScrollBottom) {
       if(lastScrollDirection === 1) {
@@ -244,7 +246,7 @@ export default class PinnedMessage {
     } */
 
     ///const perf = performance.now();
-    const rect = this.appImManager.scrollable.container.getBoundingClientRect();
+    const rect = this.chat.bubbles.scrollable.container.getBoundingClientRect();
     const x = Math.ceil(rect.left + ((rect.right - rect.left) / 2) + 1);
     const y = Math.floor(rect.top + rect.height - 1);
     let el: HTMLElement = document.elementFromPoint(x, y) as any;
@@ -255,7 +257,7 @@ export default class PinnedMessage {
 
     if(el && el.dataset.mid !== undefined) {
       const mid = +el.dataset.mid;
-      this.appMessagesManager.getPinnedMessages(this.appImManager.peerID).then(mids => {
+      this.appMessagesManager.getPinnedMessages(this.topbar.peerID).then(mids => {
         let currentIndex = mids.findIndex(_mid => _mid <= mid);
         if(currentIndex === -1) {
           currentIndex = mids.length ? mids.length - 1 : 0;
@@ -292,14 +294,14 @@ export default class PinnedMessage {
         this.pinnedIndex = index >= (mids.length - 1) ? 0 : index + 1;
         this.setPinnedMessage();
         
-        const setPeerPromise = this.appImManager.setPeer(message.peerID, mid);
+        const setPeerPromise = this.chat.setPeer(message.peerID, mid);
         if(setPeerPromise instanceof Promise) {
           await setPeerPromise;
         }
   
-        await this.appImManager.scrollable.scrollLockedPromise;
+        await this.chat.bubbles.scrollable.scrollLockedPromise;
       } catch(err) {
-        this.appImManager.log.error('[PM]: followPinnedMessage error:', err);
+        this.chat.log.error('[PM]: followPinnedMessage error:', err);
       }
 
       // подождём, пока скролл остановится
@@ -318,9 +320,9 @@ export default class PinnedMessage {
   public setPinnedMessage() {
     /////this.log('setting pinned message', message);
     //return;
-    const promise: Promise<any> = this.appImManager.setPeerPromise || this.appImManager.messagesQueuePromise || Promise.resolve();
+    const promise: Promise<any> = this.chat.setPeerPromise || this.chat.bubbles.messagesQueuePromise || Promise.resolve();
     Promise.all([
-      this.appMessagesManager.getPinnedMessages(this.appImManager.peerID),
+      this.appMessagesManager.getPinnedMessages(this.topbar.peerID),
       promise
     ]).then(([mids]) => {
       //const mids = results[0];
@@ -344,11 +346,12 @@ export default class PinnedMessage {
 
         const fromTop = pinnedIndex > this.wasPinnedIndex;
 
-        this.appImManager.log('[PM]: setPinnedMessage: fromTop', fromTop, pinnedIndex, this.wasPinnedIndex);
+        this.chat.log('[PM]: setPinnedMessage: fromTop', fromTop, pinnedIndex, this.wasPinnedIndex);
 
         const writeTo = this.animatedSubtitle.getRow(pinnedIndex);
         const writeMediaTo = this.animatedMedia.getRow(pinnedIndex);
         writeMediaTo.classList.add('pinned-message-media');
+        //writeMediaTo.innerHTML = writeMediaTo.style.cssText = writeMediaTo.dataset.docID = '';
         const isMediaSet = wrapReplyDivAndCaption({
           title: undefined,
           titleEl: null,

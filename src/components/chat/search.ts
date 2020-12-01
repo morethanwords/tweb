@@ -1,12 +1,13 @@
-import appImManager from "../../lib/appManagers/appImManager";
+import type ChatTopbar from "./topbar";
 import rootScope from "../../lib/rootScope";
 import { cancelEvent, whichChild, findUpTag } from "../../helpers/dom";
 import AppSearch, { SearchGroup } from "../appSearch";
 import PopupDatePicker from "../popupDatepicker";
 import { ripple } from "../ripple";
 import SearchInput from "../searchInput";
+import type Chat from "./chat";
 
-export class ChatSearch {
+export default class ChatSearch {
   private element: HTMLElement;
   private backBtn: HTMLElement;
   private searchInput: SearchInput;
@@ -27,16 +28,16 @@ export class ChatSearch {
   private selectedIndex = 0;
   private setPeerPromise: Promise<any>;
 
-  constructor() {
+  constructor(private topbar: ChatTopbar, private chat: Chat) {
     this.element = document.createElement('div');
-    this.element.classList.add('sidebar-header', 'chat-search', 'chats-container');
+    this.element.classList.add('sidebar-header', 'chat-search', 'chatlist-container');
 
     this.backBtn = document.createElement('button');
     this.backBtn.classList.add('btn-icon', 'tgico-back', 'sidebar-close-button');
     ripple(this.backBtn);
     
     this.backBtn.addEventListener('click', () => {
-      appImManager.topbar.classList.remove('hide-pinned');
+      this.topbar.container.classList.remove('hide-pinned');
       this.element.remove();
       this.searchInput.remove();
       this.results.remove();
@@ -46,14 +47,14 @@ export class ChatSearch {
       this.upBtn.removeEventListener('click', this.onUpClick);
       this.downBtn.removeEventListener('click', this.onDownClick);
       this.searchGroup.list.removeEventListener('click', this.onResultsClick);
-      appImManager.bubblesContainer.classList.remove('search-results-active');
+      this.chat.bubbles.bubblesContainer.classList.remove('search-results-active');
     }, {once: true});
 
     this.searchInput = new SearchInput('Search');
     
     // Results
     this.results = document.createElement('div');
-    this.results.classList.add('chat-search-results', 'chats-container');
+    this.results.classList.add('chat-search-results', 'chatlist-container');
 
     this.searchGroup = new SearchGroup('', 'messages', undefined, '', false);
     this.searchGroup.list.addEventListener('click', this.onResultsClick);
@@ -66,17 +67,17 @@ export class ChatSearch {
       if(!this.foundCount) {
         this.foundCountEl.innerText = this.searchInput.value ? 'No results' : '';
         this.results.classList.remove('active');
-        appImManager.bubblesContainer.classList.remove('search-results-active');
+        this.chat.bubbles.bubblesContainer.classList.remove('search-results-active');
         this.upBtn.setAttribute('disabled', 'true');
         this.downBtn.setAttribute('disabled', 'true');
       } else {
         this.selectResult(this.searchGroup.list.children[0] as HTMLElement);
       }
     });
-    this.appSearch.beginSearch(rootScope.selectedPeerID);
+    this.appSearch.beginSearch(this.chat.peerID);
 
     //appImManager.topbar.parentElement.insertBefore(this.results, appImManager.bubblesContainer);
-    appImManager.bubblesContainer.append(this.results);
+    this.chat.bubbles.bubblesContainer.append(this.results);
 
     // Footer
     this.footer = document.createElement('div');
@@ -109,20 +110,20 @@ export class ChatSearch {
 
     this.footer.append(this.foundCountEl, this.dateBtn, this.controls);
     
-    appImManager.topbar.parentElement.insertBefore(this.footer, appImManager.chatInput);
+    this.topbar.container.parentElement.insertBefore(this.footer, chat.input.chatInput);
 
     // Append container
     this.element.append(this.backBtn, this.searchInput.container);
 
-    appImManager.topbar.classList.add('hide-pinned');
-    appImManager.topbar.parentElement.append(this.element);
+    this.topbar.container.classList.add('hide-pinned');
+    this.topbar.container.parentElement.append(this.element);
 
     this.searchInput.input.focus();
   }
 
   onDateClick = (e: MouseEvent) => {
     cancelEvent(e);
-    new PopupDatePicker(new Date(), appImManager.onDatePick).show();
+    new PopupDatePicker(new Date(), this.chat.bubbles.onDatePick).show();
   };
 
   selectResult = (elem: HTMLElement) => {
@@ -146,9 +147,9 @@ export class ChatSearch {
     }
 
     this.results.classList.remove('active');
-    appImManager.bubblesContainer.classList.remove('search-results-active');
+    this.chat.bubbles.bubblesContainer.classList.remove('search-results-active');
 
-    const res = appImManager.setPeer(peerID, lastMsgID);
+    const res = this.chat.setPeer(peerID, lastMsgID);
     this.setPeerPromise = (res instanceof Promise ? res : Promise.resolve(res)).then(() => {
       this.selectedIndex = index;
       this.foundCountEl.innerText = `${index + 1} of ${this.foundCount}`;
@@ -171,7 +172,7 @@ export class ChatSearch {
 
   onFooterClick = (e: MouseEvent) => {
     if(this.foundCount) {
-      appImManager.bubblesContainer.classList.toggle('search-results-active');
+      this.chat.bubbles.bubblesContainer.classList.toggle('search-results-active');
       this.results.classList.toggle('active');
     }
   };

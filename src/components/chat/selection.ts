@@ -1,6 +1,7 @@
-import { isTouchSupported } from "../../helpers/touchSupport";
-import type { AppImManager } from "../../lib/appManagers/appImManager";
 import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManager";
+import type ChatBubbles from "./bubbles";
+import type ChatInput from "./input";
+import { isTouchSupported } from "../../helpers/touchSupport";
 import { blurActiveElement, cancelEvent, cancelSelection, findUpClassName, getSelectedText } from "../../helpers/dom";
 import Button from "../button";
 import ButtonIcon from "../buttonIcon";
@@ -9,6 +10,7 @@ import PopupDeleteMessages from "../popupDeleteMessages";
 import PopupForward from "../popupForward";
 import { toast } from "../toast";
 import SetTransition from "../singleTransition";
+import ListenerSetter from "../../helpers/listenerSetter";
 
 const MAX_SELECTION_LENGTH = 100;
 //const MIN_CLICK_MOVE = 32; // minimum bubble height
@@ -24,18 +26,21 @@ export default class ChatSelection {
 
   public selectedText: string;
 
-  constructor(private appImManager: AppImManager, private appMessagesManager: AppMessagesManager) {
-    const bubblesContainer = appImManager.bubblesContainer;
+  private listenerSetter: ListenerSetter;
+
+  constructor(private chatBubbles: ChatBubbles, private chatInput: ChatInput, private appMessagesManager: AppMessagesManager) {
+    const bubblesContainer = chatBubbles.bubblesContainer;
+    this.listenerSetter = chatBubbles.listenerSetter;
 
     if(isTouchSupported) {
-      bubblesContainer.addEventListener('touchend', (e) => {
+      this.listenerSetter.add(bubblesContainer, 'touchend', (e) => {
         if(!this.isSelecting) return;
         this.selectedText = getSelectedText();
       });
       return;
     }
 
-    bubblesContainer.addEventListener('mousedown', (e) => {
+    this.listenerSetter.add(bubblesContainer, 'mousedown', (e) => {
       //console.log('selection mousedown', e);
       const bubble = findUpClassName(e.target, 'bubble');
       // LEFT BUTTON
@@ -92,8 +97,8 @@ export default class ChatSelection {
 
         // * cancel selecting if selecting message text
         if(e.target != bubble && selecting === undefined && !this.selectedMids.size) {
-          bubblesContainer.removeEventListener('mousemove', onMouseMove);
-          document.removeEventListener('mouseup', onMouseUp);
+          this.listenerSetter.removeManual(bubblesContainer, 'mousemove', onMouseMove);
+          this.listenerSetter.removeManual(document, 'mouseup', onMouseUp, documentListenerOptions);
           return;
         }
 
@@ -110,7 +115,7 @@ export default class ChatSelection {
             if(!this.selectedMids.size) {
               if(seen.size == 2) {
                 [...seen].forEach(mid => {
-                  const mounted = this.appImManager.getMountedBubble(mid);
+                  const mounted = this.chatBubbles.getMountedBubble(mid);
                   if(mounted) {
                     this.toggleByBubble(mounted.bubble);
                   }
@@ -131,15 +136,16 @@ export default class ChatSelection {
           }, {capture: true, once: true, passive: false});
         }
 
-        bubblesContainer.removeEventListener('mousemove', onMouseMove);
+        this.listenerSetter.removeManual(bubblesContainer, 'mousemove', onMouseMove);
         //bubblesContainer.classList.remove('no-select');
 
         // ! CANCEL USER SELECTION !
         cancelSelection();
       };
 
-      bubblesContainer.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp, {once: true});
+      const documentListenerOptions = {once: true};
+      this.listenerSetter.add(bubblesContainer, 'mousemove', onMouseMove);
+      this.listenerSetter.add(document, 'mouseup', onMouseUp, documentListenerOptions);
     });
   }
 
@@ -165,7 +171,7 @@ export default class ChatSelection {
     }
 
     if(isAlbum) {
-      this.appImManager.getBubbleAlbumItems(bubble).forEach(item => this.toggleBubbleCheckbox(item, show));
+      this.chatBubbles.getBubbleAlbumItems(bubble).forEach(item => this.toggleBubbleCheckbox(item, show));
     }
   }
 
@@ -207,7 +213,7 @@ export default class ChatSelection {
 
     if(wasSelecting == this.isSelecting) return;
     
-    const bubblesContainer = this.appImManager.bubblesContainer;
+    const bubblesContainer = this.chatBubbles.bubblesContainer;
     //bubblesContainer.classList.toggle('is-selecting', !!this.selectedMids.size);
 
     /* if(bubblesContainer.classList.contains('is-chat-input-hidden')) {
@@ -236,7 +242,7 @@ export default class ChatSelection {
       }
       
       window.requestAnimationFrame(() => {
-        this.appImManager.onScroll();
+        this.chatBubbles.onScroll();
       });
     });
 
@@ -244,19 +250,18 @@ export default class ChatSelection {
 
     if(this.isSelecting) {
       if(!this.selectionContainer) {
-        const inputMessageDiv = document.querySelector('.input-message');
         this.selectionContainer = document.createElement('div');
         this.selectionContainer.classList.add('selection-container');
 
         const btnCancel = ButtonIcon('close', {noRipple: true});
-        btnCancel.addEventListener('click', this.cancelSelection, {once: true});
+        this.listenerSetter.add(btnCancel, 'click', this.cancelSelection, {once: true});
 
         this.selectionCountEl = document.createElement('div');
         this.selectionCountEl.classList.add('selection-container-count');
 
         this.selectionForwardBtn = Button('btn-primary btn-transparent selection-container-forward', {icon: 'forward'});
         this.selectionForwardBtn.append('Forward');
-        this.selectionForwardBtn.addEventListener('click', () => {
+        this.listenerSetter.add(this.selectionForwardBtn, 'click', () => {
           new PopupForward([...this.selectedMids], () => {
             this.cancelSelection();
           });
@@ -264,7 +269,7 @@ export default class ChatSelection {
 
         this.selectionDeleteBtn = Button('btn-primary btn-transparent danger selection-container-delete', {icon: 'delete'});
         this.selectionDeleteBtn.append('Delete');
-        this.selectionDeleteBtn.addEventListener('click', () => {
+        this.listenerSetter.add(this.selectionDeleteBtn, 'click', () => {
           new PopupDeleteMessages([...this.selectedMids], () => {
             this.cancelSelection();
           });
@@ -272,13 +277,13 @@ export default class ChatSelection {
 
         this.selectionContainer.append(btnCancel, this.selectionCountEl, this.selectionForwardBtn, this.selectionDeleteBtn);
 
-        inputMessageDiv.append(this.selectionContainer);
+        this.chatInput.rowsWrapper.append(this.selectionContainer);
       }
     }
 
     if(toggleCheckboxes) {
-      for(const mid in this.appImManager.bubbles) {
-        const bubble = this.appImManager.bubbles[mid];
+      for(const mid in this.chatBubbles.bubbles) {
+        const bubble = this.chatBubbles.bubbles[mid];
         this.toggleBubbleCheckbox(bubble, this.isSelecting);
       }
     }
@@ -286,7 +291,7 @@ export default class ChatSelection {
 
   public cancelSelection = () => {
     for(const mid of this.selectedMids) {
-      const mounted = this.appImManager.getMountedBubble(mid);
+      const mounted = this.chatBubbles.getMountedBubble(mid);
       if(mounted) {
         this.toggleByBubble(mounted.message.grouped_id ? mounted.bubble.querySelector(`.album-item[data-mid="${mid}"]`) : mounted.bubble);
       }
@@ -337,7 +342,7 @@ export default class ChatSelection {
         mids.forEach(mid => this.selectedMids.delete(mid));
       }
 
-      this.appImManager.getBubbleAlbumItems(bubble).forEach(this.toggleByBubble);
+      this.chatBubbles.getBubbleAlbumItems(bubble).forEach(this.toggleByBubble);
       return;
     }
 

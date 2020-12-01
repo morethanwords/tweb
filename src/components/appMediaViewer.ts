@@ -1324,7 +1324,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       else fromRight = this.currentMessageID > mid ? 1 : -1;
     } else {
       this.reverse = reverse;
-      this.peerID = rootScope.selectedPeerID;
+      this.peerID = message.peerID;
     }
 
     this.currentMessageID = mid;

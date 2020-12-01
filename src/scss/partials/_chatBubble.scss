@@ -64,7 +64,7 @@ $bubble-margin: .25rem;
   margin: 0 auto;
   user-select: none;
 
-  &.is-highlighted, &.is-selected, /* #bubbles.is-selecting */ & {
+  &.is-highlighted, &.is-selected, /* .bubbles.is-selecting */ & {
     &:after {
       position: absolute;
       left: -50%;
@@ -158,7 +158,7 @@ $bubble-margin: .25rem;
     &.is-sticky {
       opacity: .00001; // for safari
 
-      #bubbles-inner:not(.is-scrolling) & {
+      .bubbles-inner:not(.is-scrolling) & {
         //transition-delay: 1.35s;
 
         .bubble__container {
@@ -166,7 +166,7 @@ $bubble-margin: .25rem;
         }
       }
 
-      /* #bubbles-inner.is-scrolling & {
+      /* .bubbles-inner.is-scrolling & {
         transition-delay: 0;
       } */
     }
@@ -230,7 +230,7 @@ $bubble-margin: .25rem;
     }
   }
 
-  #bubbles.is-selecting &:not(.is-album) {
+  .bubbles.is-selecting &:not(.is-album) {
     .audio, .document, .attachment, poll-element {
       pointer-events: none !important;
     }
@@ -252,8 +252,8 @@ $bubble-margin: .25rem;
     transition: .2s transform;
     user-select: none;
 
-    html.no-touch #bubbles:not(.is-selecting) &,
-    html.is-touch #bubbles.is-selecting:not(.no-select) & {
+    html.no-touch .bubbles:not(.is-selecting) &,
+    html.is-touch .bubbles.is-selecting:not(.no-select) & {
       user-select: text;
     }
 
@@ -276,13 +276,13 @@ $bubble-margin: .25rem;
       font-size: 1rem;
       cursor: pointer;
 
-      #bubbles.is-selecting & {
+      .bubbles.is-selecting & {
         transform: scale3d(1, 1, 1);
         transform-origin: bottom;
         transition: transform var(--layer-transition);
       }
 
-      #bubbles.is-selecting:not(.backwards) & {
+      .bubbles.is-selecting:not(.backwards) & {
         transform: scale3d(.76, .76, 1);
       }
 
@@ -350,7 +350,7 @@ $bubble-margin: .25rem;
       bottom: 8px;
     }
 
-    #bubbles-inner.is-chat &.is-in {
+    .bubbles-inner.is-chat &.is-in {
       .bubble-select-checkbox {
         bottom: 7px;
       }
@@ -641,7 +641,7 @@ $bubble-margin: .25rem;
     position: absolute;
     overflow: hidden;
 
-    /* #bubbles.is-selecting & {
+    /* .bubbles.is-selecting & {
       -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%); // fix safari overflow
     } */
 
@@ -1014,6 +1014,8 @@ $bubble-margin: .25rem;
       &-details {
         padding-left: 12px;
         margin-top: 8px;
+        display: flex;
+        flex-direction: column;
       }
 
       &-name {

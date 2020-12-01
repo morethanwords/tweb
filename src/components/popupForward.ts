@@ -20,8 +20,8 @@ export default class PopupForward extends PopupElement {
 
       await (onSelect ? onSelect() || Promise.resolve() : Promise.resolve());
 
-      appImManager.setPeer(peerID);
-      appImManager.chatInputC.initMessagesForward(mids.slice());
+      appImManager.setInnerPeer(peerID);
+      appImManager.chat.input.initMessagesForward(mids.slice());
     }, ['dialogs', 'contacts'], () => {
       this.show();
       this.selector.checkForTriggers(); // ! due to zero height before mounting

@@ -1,6 +1,5 @@
 import appChatsManager from "../lib/appManagers/appChatsManager";
 import appDialogsManager from "../lib/appManagers/appDialogsManager";
-import appImManager from "../lib/appManagers/appImManager";
 import appMessagesManager, {Dialog} from "../lib/appManagers/appMessagesManager";
 import appPeersManager from "../lib/appManagers/appPeersManager";
 import rootScope from "../lib/rootScope";
@@ -102,7 +101,7 @@ export default class DialogsContextMenu {
   };
   
   private onMuteClick = () => {
-    appImManager.mutePeer(this.selectedID);
+    appMessagesManager.mutePeer(this.selectedID);
   };
 
   private onUnreadClick = () => {

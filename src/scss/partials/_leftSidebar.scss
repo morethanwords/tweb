@@ -109,7 +109,7 @@
     }
   }
 
-  #chats-container {
+  #chatlist-container {
     max-height: 100%;
     overflow: hidden;
     position: relative;
@@ -393,7 +393,7 @@
     }
   }
 
-  .chats-container {
+  .chatlist-container {
     flex: 1 1 auto;
   }
 
@@ -690,7 +690,7 @@
   color: #50a2e9;
 }
 
-.popup-forward, .included-chats-container {
+.popup-forward, .included-chatlist-container {
   .selector {
     ul {
       li > .rp {
@@ -721,7 +721,7 @@
   }
 }
 
-.included-chats-container {
+.included-chatlist-container {
   .sidebar-left-h2 {
     color: #707579;
     font-size: 15px;

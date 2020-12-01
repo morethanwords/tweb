@@ -37,7 +37,7 @@ let init = () => {
 const InputField = (options: {
   placeholder?: string, 
   label?: string, 
-  name: string, 
+  name?: string, 
   maxLength?: number, 
   showLengthOn?: number,
   plainText?: true
@@ -57,8 +57,8 @@ const InputField = (options: {
     }
 
     div.innerHTML = `
-    <div id="input-${name}" ${placeholder ? `data-placeholder="${placeholder}"` : ''} contenteditable="true" class="input-field-input"></div>
-    ${label ? `<label for="input-${name}">${label}</label>` : ''}
+    <div ${placeholder ? `data-placeholder="${placeholder}"` : ''} contenteditable="true" class="input-field-input"></div>
+    ${label ? `<label>${label}</label>` : ''}
     `;
 
     const input = div.firstElementChild as HTMLElement;
@@ -86,8 +86,8 @@ const InputField = (options: {
     observer.observe(input, {characterData: true, childList: true, subtree: true});
   } else {
     div.innerHTML = `
-    <input type="text" name="${name}" id="input-${name}" ${placeholder ? `placeholder="${placeholder}"` : ''} autocomplete="off" required="" class="input-field-input">
-    ${label ? `<label for="input-${name}">${label}</label>` : ''}
+    <input type="text" name="${name}" ${placeholder ? `placeholder="${placeholder}"` : ''} autocomplete="off" required="" class="input-field-input">
+    ${label ? `<label>${label}</label>` : ''}
     `;
   }
 

@@ -1,3 +1,5 @@
+import { whichChild } from "../helpers/dom";
+
 function slideNavigation(tabContent: HTMLElement, prevTabContent: HTMLElement, toRight: boolean) {
   const width = prevTabContent.getBoundingClientRect().width;
   const elements = [tabContent, prevTabContent];
@@ -79,8 +81,13 @@ const Transition = (content: HTMLElement, animationFunction: TransitionFunction,
   let transitionEndTimeout: number;
   let prevTabContent: HTMLElement = null;
 
-  function selectTab(id: number, animate = true) {
+  function selectTab(id: number | HTMLElement, animate = true) {
     const self = selectTab;
+
+    if(id instanceof HTMLElement) {
+      id = whichChild(id);
+    }
+    
     if(id == self.prevId) return false;
 
     //console.log('selectTab id:', id);

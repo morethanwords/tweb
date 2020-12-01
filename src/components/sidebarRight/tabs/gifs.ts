@@ -50,7 +50,7 @@ export default class AppGifsTab implements SliderTab {
     if(!target) return;
 
     const fileID = target.dataset.docID;
-    if(appImManager.chatInputC.sendMessageWithDocument(fileID)) {
+    if(appImManager.chat.input.sendMessageWithDocument(fileID)) {
       if(mediaSizes.isMobile) {
         this.backBtn.click();
       }

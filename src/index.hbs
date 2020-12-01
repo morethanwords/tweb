@@ -134,7 +134,7 @@
       </defs>
     </svg>
     <div id="main-columns" class="tabs-container">
-      <div class="chats-container sidebar sidebar-left main-column" id="column-left">
+      <div class="chatlist-container sidebar sidebar-left main-column" id="column-left">
         <div class="sidebar-slider tabs-container">
           <div class="sidebar-slider-item item-main">
             <div class="sidebar-header">
@@ -153,7 +153,7 @@
               </div>
             </div>
             <div class="sidebar-content transition zoom-fade">
-              <div class="transition-item active" id="chats-container">
+              <div class="transition-item active" id="chatlist-container">
                 <div class="folders-tabs-scrollable hide">
                   <nav class="menu-horizontal" id="folders-tabs">
                     <ul>
@@ -365,7 +365,7 @@
               </div>
             </div>
           </div>
-          <div class="sidebar-slider-item included-chats-container">
+          <div class="sidebar-slider-item included-chatlist-container">
             <div class="sidebar-header">
               <button class="btn-icon tgico-back sidebar-close-button"></button>
               <div class="sidebar-header__title"></div>
@@ -374,132 +374,14 @@
           </div>
         </div>
       </div>
-      <div class="chat-container main-column" id="column-center">
-        {{!-- <canvas id="chat-background-canvas"></canvas> --}}
-        <div class="chat-background"></div>
-        <div id="topbar" style="display: none;" class="sidebar-header">
-          <button class="btn-icon tgico-back sidebar-close-button"></button>
-          <div class="chat-info">
-            <div class="person">
-              <avatar-element id="im-avatar" dialog="1" clickable></avatar-element>
-              <div class="content">
-                <div class="top">
-                  <div class="user-title" id="im-title"></div>
-                </div>
-                <div class="bottom">
-                  <div class="info" id="im-subtitle"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="chat-utils">
-            <button class="btn-primary rp chat-join hide">SUBSCRIBE</button>
-            <div class="btn-icon rp chat-mute-button hide"></div>
-            <div class="btn-icon rp tgico-search chat-search-button"></div>
-            <div class="btn-icon btn-menu-toggle rp tgico-more chat-more-button">
-              <div class="btn-menu bottom-left">
-                <div class="btn-menu-item menu-search tgico-search rp">Search</div>
-                <div class="btn-menu-item menu-mute rp">Mute</div>
-                <div class="btn-menu-item menu-delete tgico-delete danger rp btn-disabled">Delete and Leave</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div id="bubbles" class="scrolled-down">
-          {{!-- <div id="bubbles-transform-helper"> --}}
-            <div id="bubbles-inner"></div>
-            <div id="bubbles-go-down" class="tgico-down btn-corner z-depth-1 rp hide"></div>
-          {{!-- </div> --}}
-        </div>
-        <div id="chat-input" style="display: none;">
-          <div class="chat-input-container">
-            <div class="input-message">
-              <div class="reply-wrapper">
-                <button class="btn-icon rp tgico-close reply-cancel"></button>
-                <div class="reply">
-                  <div class="reply-border"></div>
-                  <div class="reply-content">
-                    <div class="reply-title"></div>
-                    <div class="reply-subtitle"></div>
-                  </div>
-                </div>
-              </div>
-              <div class="new-message-wrapper">
-                <button class="btn-icon rp tgico toggle-emoticons" id="toggle-emoticons"></button>
-                <!-- <textarea type="text" id="input-message" placeholder="Message" contenteditable="true"></textarea> -->
-                <div class="input-message-container"></div>
-                <button class="btn-icon tgico-attach btn-menu-toggle" id="attach-file"></button>
-                <div class="record-time"></div>
-                <input type="file" id="input-file" style="display: none;" multiple />
-              </div>
-            </div>
-            <button class="btn-circle z-depth-1 btn-icon tgico-delete danger" id="btn-record-cancel"></button>
-            <div class="btn-send-container">
-              <div class="record-ripple"></div>
-              <button class="btn-circle rp z-depth-1 btn-icon" id="btn-send">
-                <span class="tgico tgico-send"></span>
-                <span class="tgico tgico-microphone2"></span>
-              </button>
-            </div>
-          </div>
-          <div class="emoji-dropdown" id="emoji-dropdown" style="display: none;">
-            <div class="emoji-container">
-              <div class="tabs-container">
-                <div class="emoji-padding">
-                  <nav class="menu-horizontal-div no-stripe">
-                    <button class="menu-horizontal-div-item active btn-icon tgico-recent rp"></button>
-                    <button class="menu-horizontal-div-item btn-icon tgico-smile rp"></button>
-                    <button class="menu-horizontal-div-item btn-icon tgico-animals rp"></button>
-                    <button class="menu-horizontal-div-item btn-icon tgico-eats rp"></button>
-                    <button class="menu-horizontal-div-item btn-icon tgico-car rp"></button>
-                    <button class="menu-horizontal-div-item btn-icon tgico-sport rp"></button>
-                    <button class="menu-horizontal-div-item btn-icon tgico-lamp rp"></button>
-                    <!-- <button class="menu-horizontal-div-item btn-icon tgico-info rp"></button> -->
-                    <button class="menu-horizontal-div-item btn-icon tgico-flag rp"></button>
-                  </nav>
-                  <div class="emoticons-content" id="content-emoji"></div>
-                </div>
-                <div class="stickers-padding">
-                  <div class="menu-wrapper">
-                    <nav class="menu-horizontal-div no-stripe justify-start">
-                      <button class="menu-horizontal-div-item btn-icon tgico-recent active"></button>
-                    </nav>
-                  </div>
-                  <div class="emoticons-content" id="content-stickers"></div>
-                </div>
-                <div class="gifs-padding">
-                  <div class="emoticons-content" id="content-gifs">
-                    <div class="gifs-masonry"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="emoji-tabs menu-horizontal-div no-stripe">
-              <button class="menu-horizontal-div-item emoji-tabs-search justify-self-start btn-icon tgico-search rp" data-tab="-1"></button>
-              <button class="menu-horizontal-div-item emoji-tabs-emoji btn-icon tgico-smile rp" data-tab="0"></button>
-              <button class="menu-horizontal-div-item emoji-tabs-stickers btn-icon tgico-stickers rp" data-tab="1"></button>
-              <button class="menu-horizontal-div-item emoji-tabs-gifs btn-icon tgico-gifs rp" data-tab="2"></button>
-              <button class="menu-horizontal-div-item emoji-tabs-delete justify-self-end btn-icon tgico-deleteleft rp" data-tab="-1"></button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <div class="main-column" id="column-center"></div>
       <div class="sidebar sidebar-right main-column" id="column-right">
         <div class="sidebar-content sidebar-slider tabs-container">
           <div class="sidebar-slider-item profile-container" id="shared-media-container">
             <div class="sidebar-header">
               <button class="btn-icon tgico sidebar-close-button"></button>
               <div class="sidebar-header__title">Info</div>
-      
-              <!-- <button class="btn-icon rp tgico-edit sidebar-edit-button"></button> -->
-      
               <div class="btn-icon tgico-more"></div>
-              <!-- <div class="btn-icon tgico-more rp btn-menu-toggle">
-                <div class="btn-menu bottom-left"> -->
-                  <!-- <div class="btn-menu-item menu-mute rp">Mute</div>
-                  <div class="btn-menu-item menu-delete tgico-delete danger rp">Delete and Leave</div> -->
-                <!-- </div>
-              </div> -->
             </div>
             <div class="profile-content">
               <div class="profile-content-wrapper">
@@ -547,26 +429,26 @@
               </div>
             </div>
           </div>
-          <div class="sidebar-slider-item chats-container" id="search-private-container">
+          <div class="sidebar-slider-item chatlist-container" id="search-private-container">
             <div class="sidebar-header">
               <button class="btn-icon tgico-close sidebar-close-button"></button>
             </div>
-            <div class="chats-container"></div>
+            <div class="chatlist-container"></div>
           </div>
-          <div class="sidebar-slider-item chats-container" id="stickers-container">
+          <div class="sidebar-slider-item chatlist-container" id="stickers-container">
             <div class="sidebar-header">
               <button class="btn-icon tgico-close sidebar-close-button"></button>
             </div>
             <div class="sidebar-content"><div class="sticker-sets"></div></div>
           </div>
-          <div class="sidebar-slider-item chats-container" id="poll-results-container">
+          <div class="sidebar-slider-item chatlist-container" id="poll-results-container">
             <div class="sidebar-header">
               <button class="btn-icon tgico-close sidebar-close-button"></button>
               <div class="sidebar-header__title">Results</div>
             </div>
             <div class="sidebar-content"><div class="poll-results"></div></div>
           </div>
-          <div class="sidebar-slider-item chats-container" id="search-gifs-container">
+          <div class="sidebar-slider-item chatlist-container" id="search-gifs-container">
             <div class="sidebar-header">
               <button class="btn-icon tgico-close sidebar-close-button"></button>
             </div>
@@ -581,6 +463,46 @@
       <div class="btn-menu-item menu-mute tgico rp"><div></div></div>
       <div class="btn-menu-item menu-archive tgico rp"><div></div></div>
       <div class="btn-menu-item menu-delete tgico-delete danger rp"><div></div></div>
+    </div>
+    <div class="emoji-dropdown" id="emoji-dropdown" style="display: none;">
+      <div class="emoji-container">
+        <div class="tabs-container">
+          <div class="emoji-padding">
+            <nav class="menu-horizontal-div no-stripe">
+              <button class="menu-horizontal-div-item active btn-icon tgico-recent rp"></button>
+              <button class="menu-horizontal-div-item btn-icon tgico-smile rp"></button>
+              <button class="menu-horizontal-div-item btn-icon tgico-animals rp"></button>
+              <button class="menu-horizontal-div-item btn-icon tgico-eats rp"></button>
+              <button class="menu-horizontal-div-item btn-icon tgico-car rp"></button>
+              <button class="menu-horizontal-div-item btn-icon tgico-sport rp"></button>
+              <button class="menu-horizontal-div-item btn-icon tgico-lamp rp"></button>
+              <!-- <button class="menu-horizontal-div-item btn-icon tgico-info rp"></button> -->
+              <button class="menu-horizontal-div-item btn-icon tgico-flag rp"></button>
+            </nav>
+            <div class="emoticons-content" id="content-emoji"></div>
+          </div>
+          <div class="stickers-padding">
+            <div class="menu-wrapper">
+              <nav class="menu-horizontal-div no-stripe justify-start">
+                <button class="menu-horizontal-div-item btn-icon tgico-recent active"></button>
+              </nav>
+            </div>
+            <div class="emoticons-content" id="content-stickers"></div>
+          </div>
+          <div class="gifs-padding">
+            <div class="emoticons-content" id="content-gifs">
+              <div class="gifs-masonry"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="emoji-tabs menu-horizontal-div no-stripe">
+        <button class="menu-horizontal-div-item emoji-tabs-search justify-self-start btn-icon tgico-search rp" data-tab="-1"></button>
+        <button class="menu-horizontal-div-item emoji-tabs-emoji btn-icon tgico-smile rp" data-tab="0"></button>
+        <button class="menu-horizontal-div-item emoji-tabs-stickers btn-icon tgico-stickers rp" data-tab="1"></button>
+        <button class="menu-horizontal-div-item emoji-tabs-gifs btn-icon tgico-gifs rp" data-tab="2"></button>
+        <button class="menu-horizontal-div-item emoji-tabs-delete justify-self-end btn-icon tgico-deleteleft rp" data-tab="-1"></button>
+      </div>
     </div>
   </div>
   {{# each htmlWebpackPlugin.files.js }}

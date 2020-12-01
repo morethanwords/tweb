@@ -1160,9 +1160,14 @@ export default class MTPNetworker {
 
   // * https://core.telegram.org/mtproto/service_messages_about_messages#notice-of-ignored-error-message
   public processMessage(message: any, messageID: string, sessionID: Uint8Array | number[]) {
+    if(message._ == 'messageEmpty') {
+      this.log.warn('processMessage: messageEmpty', message, messageID);
+      return;
+    }
+
     const msgidInt = parseInt(messageID.substr(0, -10), 10);
     if(msgidInt % 2) {
-      this.log.warn('[MT] Server even message id: ', messageID, message);
+      this.log.warn('Server even message id: ', messageID, message);
       return;
     }
 

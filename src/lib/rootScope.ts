@@ -4,6 +4,7 @@ import type { AppMessagesManager, Dialog } from "./appManagers/appMessagesManage
 import type { Poll, PollResults } from "./appManagers/appPollsManager";
 import type { MyDialogFilter } from "./storages/filters";
 import type { ConnectionStatusChange } from "../types";
+import type { UserTyping } from "./appManagers/appChatsManager";
 import { MOUNT_CLASS_TO, UserAuth } from "./mtproto/mtproto_config";
 
 type BroadcastEvents = {
@@ -11,6 +12,7 @@ type BroadcastEvents = {
   'user_auth': UserAuth,
   'peer_changed': number,
   'peer_pinned_messages': number,
+  'peer_typings': {peerID: number, typings: UserTyping[]},
 
   'filter_delete': MyDialogFilter,
   'filter_update': MyDialogFilter,
@@ -70,7 +72,6 @@ type BroadcastEvents = {
 
 class RootScope {
   public overlayIsActive: boolean = false;
-  public selectedPeerID = 0;
   public myID = 0;
   public idle = {
     isIDLE: false
@@ -102,10 +103,14 @@ class RootScope {
     document.addEventListener(name, callback);
   };
 
+  public addEventListener = this.on;
+
   public off = <T extends keyof BroadcastEvents>(name: T, callback: (e: Omit<CustomEvent, 'detail'> & {detail: BroadcastEvents[T]}) => any) => {
     // @ts-ignore
     document.removeEventListener(name, callback);
   };
+
+  public removeEventListener = this.off;
 }
 
 const rootScope = new RootScope();

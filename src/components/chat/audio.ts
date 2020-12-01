@@ -1,5 +1,6 @@
-import appMessagesManager from "../../lib/appManagers/appMessagesManager";
-import appPeersManager from "../../lib/appManagers/appPeersManager";
+import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManager";
+import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
+import type ChatTopbar from "./topbar";
 import { RichTextProcessor } from "../../lib/richtextprocessor";
 import rootScope from "../../lib/rootScope";
 import { cancelEvent } from "../../helpers/dom";
@@ -7,12 +8,13 @@ import appMediaPlaybackController from "../appMediaPlaybackController";
 import DivAndCaption from "../divAndCaption";
 import { formatDate } from "../wrappers";
 import PinnedContainer from "./pinnedContainer";
+import Chat from "./chat";
 
-export class ChatAudio extends PinnedContainer {
+export default class ChatAudio extends PinnedContainer {
   private toggleEl: HTMLElement;
 
-  constructor() {
-    super('audio', new DivAndCaption('pinned-audio', (title: string, subtitle: string) => {
+  constructor(protected topbar: ChatTopbar, protected chat: Chat, protected appMessagesManager: AppMessagesManager, protected appPeersManager: AppPeersManager) {
+    super(topbar, chat, 'audio', new DivAndCaption('pinned-audio', (title: string, subtitle: string) => {
       this.divAndCaption.title.innerHTML = title;
       this.divAndCaption.subtitle.innerHTML = subtitle;
     }), () => {
@@ -25,14 +27,14 @@ export class ChatAudio extends PinnedContainer {
 
     this.toggleEl = document.createElement('button');
     this.toggleEl.classList.add('pinned-audio-ico', 'tgico', 'btn-icon');
-    this.toggleEl.addEventListener('click', (e) => {
+    this.topbar.listenerSetter.add(this.toggleEl, 'click', (e) => {
       cancelEvent(e);
       appMediaPlaybackController.toggle();
     });
 
     this.wrapper.prepend(this.toggleEl);
 
-    rootScope.on('audio_play', (e) => {
+    this.topbar.listenerSetter.add(rootScope, 'audio_play', (e) => {
       const {doc, mid} = e.detail;
 
       let title: string, subtitle: string;
@@ -51,7 +53,7 @@ export class ChatAudio extends PinnedContainer {
       this.toggle(false);
     });
 
-    rootScope.on('audio_pause', () => {
+    this.topbar.listenerSetter.add(rootScope, 'audio_pause', () => {
       this.toggleEl.classList.remove('flip-icon');
     });
   }

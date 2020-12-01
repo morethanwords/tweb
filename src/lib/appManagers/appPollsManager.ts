@@ -70,7 +70,7 @@ export type Poll = {
   chosenIndexes?: number[]
 };
 
-class AppPollsManager {
+export class AppPollsManager {
   public polls: {[id: string]: Poll} = {};
   public results: {[id: string]: PollResults} = {};
 

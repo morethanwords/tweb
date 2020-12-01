@@ -25,7 +25,7 @@ export default class BubbleGroups {
     let group: HTMLDivElement[];
 
     // fix for saved messages forward to self
-    if(fromID == rootScope.myID && rootScope.selectedPeerID == rootScope.myID && message.fwdFromID == fromID) {
+    if(fromID == rootScope.myID && message.peerID == rootScope.myID && message.fwdFromID == fromID) {
       fromID = -fromID;
     }
     

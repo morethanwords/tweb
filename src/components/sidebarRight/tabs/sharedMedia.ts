@@ -100,6 +100,7 @@ export default class AppSharedMediaTab implements SliderTab {
   private loadMutex: Promise<any> = Promise.resolve();
 
   private log = logger('SM'/* , LogLevels.error */);
+  setPeerStatusInterval: number;
 
   public init() {
     this.container = document.getElementById('shared-media-container');
@@ -193,13 +194,56 @@ export default class AppSharedMediaTab implements SliderTab {
     
     this.profileElements.notificationsCheckbox.addEventListener('change', () => {
       //let checked = this.profileElements.notificationsCheckbox.checked;
-      appImManager.mutePeer(this.peerID);
+      appMessagesManager.mutePeer(this.peerID);
     });
+
+    rootScope.on('dialog_notify_settings', (e) => {
+      if(this.peerID == e.detail) {
+        const muted = appMessagesManager.isPeerMuted(this.peerID);
+        this.profileElements.notificationsCheckbox.checked = !muted;
+        this.profileElements.notificationsStatus.innerText = muted ? 'Disabled' : 'Enabled';
+      }
+    });
+
+    rootScope.on('peer_typings', (e) => {
+      const {peerID} = e.detail;
+
+      if(this.peerID == peerID) {
+        this.setPeerStatus();
+      }
+    });
+
+    rootScope.on('user_update', (e) => {
+      const userID = e.detail;
+
+      if(this.peerID == userID) {
+        this.setPeerStatus();
+      }
+    });
+
+    this.setPeerStatusInterval = window.setInterval(this.setPeerStatus, 60e3);
 
     /* this.closeBtn.addEventListener('click', () => {
       this.toggleSidebar(false);
     }); */
   }
+
+  public setPeerStatus = (needClear = false) => {
+    if(!this.peerID) return;
+
+    const peerID = this.peerID;
+    if(needClear) {
+      this.profileElements.subtitle.innerHTML = '';
+    }
+
+    appImManager.getPeerStatus(this.peerID).then((subtitle) => {
+      if(peerID != this.peerID) {
+        return;
+      }
+
+      this.profileElements.subtitle.innerHTML = subtitle;
+    });
+  };
 
   public renderNewMessages(peerID: number, mids: number[]) {
     if(this.init) return; // * not inited yet
@@ -408,7 +452,7 @@ export default class AppSharedMediaTab implements SliderTab {
           
           const load = () => appPhotosManager.preloadPhoto(isPhoto ? media.id : media, appPhotosManager.choosePhotoSize(media, 200, 200))
           .then(() => {
-            if(rootScope.selectedPeerID != peerID) {
+            if(appImManager.chat.peerID != peerID) {
               this.log.warn('peer changed');
               return;
             }
@@ -552,7 +596,7 @@ export default class AppSharedMediaTab implements SliderTab {
           if(webpage.photo) {
             let load = () => appPhotosManager.preloadPhoto(webpage.photo.id, appPhotosManager.choosePhotoSize(webpage.photo, 60, 60))
             .then(() => {
-              if(rootScope.selectedPeerID != peerID) {
+              if(appImManager.chat.peerID != peerID) {
                 this.log.warn('peer changed');
                 return;
               }
@@ -702,7 +746,7 @@ export default class AppSharedMediaTab implements SliderTab {
         
         this.log(logStr + 'search house of glass', type, value);
 
-        if(rootScope.selectedPeerID != peerID) {
+        if(appImManager.chat.peerID != peerID) {
           this.log.warn('peer changed');
           return;
         }
@@ -827,7 +871,7 @@ export default class AppSharedMediaTab implements SliderTab {
   }
 
   public fillProfileElements() {
-    let peerID = this.peerID = rootScope.selectedPeerID;
+    let peerID = this.peerID = appImManager.chat.peerID;
 
     this.cleanupHTML();
 
@@ -846,8 +890,6 @@ export default class AppSharedMediaTab implements SliderTab {
         if(dialog.notify_settings && dialog.notify_settings.mute_until) {
           muted = new Date(dialog.notify_settings.mute_until * 1000) > new Date();
         }
-        
-        appImManager.setMutedState(muted);
       }
     } else {
       window.requestAnimationFrame(() => {
@@ -893,6 +935,13 @@ export default class AppSharedMediaTab implements SliderTab {
         }
       });
     }
+
+    let title: string;
+    if(peerID == rootScope.myID) title = 'Saved Messages';
+    else title = appPeersManager.getPeerTitle(peerID);
+    this.profileElements.name.innerHTML = title;
+
+    this.setPeerStatus(true);
   }
 
   /* onOpen() {

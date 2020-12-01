@@ -90,7 +90,7 @@ export default class AppSelectPeers {
       this.container.append(topContainer, delimiter);
     }
 
-    this.chatsContainer.classList.add('chats-container');
+    this.chatsContainer.classList.add('chatlist-container');
     this.chatsContainer.append(this.list);
     this.scrollable = new Scrollable(this.chatsContainer);
     this.scrollable.setVirtualContainer(this.list);

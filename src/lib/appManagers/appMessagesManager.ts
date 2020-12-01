@@ -5,7 +5,7 @@ import { tsNow } from "../../helpers/date";
 import { copy, defineNotNumerableProperties, deepEqual, safeReplaceObject, getObjectKeysAndSort } from "../../helpers/object";
 import { randomLong } from "../../helpers/random";
 import { splitStringByLength, limitSymbols } from "../../helpers/string";
-import { Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMessage, Message, MessageAction, MessageEntity, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, PhotoSize, SendMessageAction, Update } from "../../layer";
+import { Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMessage, InputNotifyPeer, InputPeerNotifySettings, Message, MessageAction, MessageEntity, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, NotifyPeer, PhotoSize, SendMessageAction, Update } from "../../layer";
 import { InvokeApiOptions } from "../../types";
 import { langPack } from "../langPack";
 import { logger, LogLevels } from "../logger";
@@ -3857,7 +3857,98 @@ export class AppMessagesManager {
 
         break;
       }
+
+      case 'updateNotifySettings': {
+        const {peer, notify_settings} = update;
+        
+        const peerID = appPeersManager.getPeerID((peer as NotifyPeer.notifyPeer).peer);
+        
+        const dialog = this.getDialogByPeerID(peerID)[0];
+        if(dialog) {
+          dialog.notify_settings = notify_settings;
+          rootScope.broadcast('dialog_notify_settings', peerID);
+        }
+
+        /////this.log('updateNotifySettings', peerID, notify_settings);
+        break;
+      }
     }
+  }
+
+  public isPeerMuted(peerID: number) {
+    if(peerID == rootScope.myID) return false;
+
+    const dialog = this.getDialogByPeerID(peerID)[0];
+    let muted = false;
+    if(dialog && dialog.notify_settings && dialog.notify_settings.mute_until) {
+      muted = new Date(dialog.notify_settings.mute_until * 1000) > new Date();
+    }
+
+    return muted;
+  }
+
+  public mutePeer(peerID: number) {
+    let inputPeer = appPeersManager.getInputPeerByID(peerID);
+    let inputNotifyPeer: InputNotifyPeer.inputNotifyPeer = {
+      _: 'inputNotifyPeer',
+      peer: inputPeer
+    };
+    
+    let settings: InputPeerNotifySettings = {
+      _: 'inputPeerNotifySettings'
+    };
+
+    let dialog = appMessagesManager.getDialogByPeerID(peerID)[0];
+    let muted = true;
+    if(dialog && dialog.notify_settings) {
+      muted = dialog.notify_settings.mute_until > (Date.now() / 1000 | 0);
+    }
+    
+    if(!muted) {
+      settings.mute_until = 2147483647;
+    }
+    
+    apiManager.invokeApi('account.updateNotifySettings', {
+      peer: inputNotifyPeer,
+      settings: settings
+    }).then(bool => {
+      if(bool) {
+        this.handleUpdate({
+          _: 'updateNotifySettings', 
+          peer: {
+            _: 'notifyPeer',
+            peer: appPeersManager.getOutputPeer(peerID)
+          }, 
+          notify_settings: { // ! WOW, IT WORKS !
+            ...settings,
+            _: 'peerNotifySettings',
+          }
+        });
+      }
+    });
+    
+    /* return apiManager.invokeApi('account.getNotifySettings', {
+      peer: inputNotifyPeer
+    }).then((settings: any) => {
+      settings.mute_until = 2000000000; // 2147483646
+      
+      return apiManager.invokeApi('account.updateNotifySettings', {
+        peer: inputNotifyPeer,
+        settings: Object.assign(settings, {
+          _: 'inputPeerNotifySettings'
+        })
+      }).then(res => {
+        this.log('mute result:', res);
+      });
+    }); */
+    
+  }
+
+  public canWriteToPeer(peerID: number) {
+    const isChannel = appPeersManager.isChannel(peerID);
+    const hasRights = isChannel && appChatsManager.hasRights(-peerID, 'send');
+
+    return (!isChannel || hasRights) && (peerID < 0 || appUsersManager.canSendToUser(peerID));
   }
 
   public finalizePendingMessage(randomID: number, finalMessage: any) {
@@ -3906,6 +3997,31 @@ export class AppMessagesManager {
       }
 
       delete this.tempFinalizeCallbacks[tempID];
+    }
+
+    // set cached url to media
+    const message = appMessagesManager.getMessage(mid);
+    if(message.media) {
+      if(message.media.photo) {
+        const photo = appPhotosManager.getPhoto('' + tempID);
+        if(/* photo._ != 'photoEmpty' */photo) {
+          const newPhoto = message.media.photo;
+          // костыль
+          defineNotNumerableProperties(newPhoto, ['downloaded', 'url']);
+          newPhoto.downloaded = photo.downloaded;
+          newPhoto.url = photo.url;
+        }
+      } else if(message.media.document) {
+        const doc = appDocsManager.getDoc('' + tempID);
+        if(/* doc._ != 'documentEmpty' &&  */doc?.type && doc.type != 'sticker') {
+          const newDoc = message.media.document;
+          newDoc.downloaded = doc.downloaded;
+          newDoc.url = doc.url;
+        }
+      } else if(message.media.poll) {
+        delete appPollsManager.polls[tempID];
+        delete appPollsManager.results[tempID];
+      }
     }
 
     rootScope.broadcast('message_sent', {tempID, mid});
@@ -4286,7 +4402,7 @@ export class AppMessagesManager {
   }
 
   public setTyping(peerID: number, _action: any): Promise<boolean> {
-    if(!rootScope.myID) return Promise.resolve(false);
+    if(!rootScope.myID || !peerID || !this.canWriteToPeer(peerID)) return Promise.resolve(false);
     
     const action: SendMessageAction = typeof(_action) == 'string' ? {_: _action} : _action;
     return apiManager.invokeApi('messages.setTyping', {

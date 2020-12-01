@@ -118,7 +118,7 @@ const setQuizHint = (solution: string, solution_entities: any[], onHide: () => v
   element.append(container);
 
   textEl.innerHTML = RichTextProcessor.wrapRichText(solution, {entities: solution_entities});
-  appImManager.bubblesContainer.append(element);
+  appImManager.chat.bubbles.bubblesContainer.append(element);
 
   void element.offsetLeft; // reflow
   element.classList.add('active');

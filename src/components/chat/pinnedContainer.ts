@@ -1,5 +1,6 @@
+import type Chat from "./chat";
+import type ChatTopbar from "./topbar";
 import mediaSizes from "../../helpers/mediaSizes";
-import appImManager from "../../lib/appManagers/appImManager";
 import { cancelEvent } from "../../helpers/dom";
 import DivAndCaption from "../divAndCaption";
 import { ripple } from "../ripple";
@@ -12,7 +13,7 @@ export default class PinnedContainer {
   private close: HTMLElement;
   protected wrapper: HTMLElement;
 
-  constructor(protected className: string, public divAndCaption: DivAndCaption<(title: string, subtitle: string, message?: any) => void>, onClose?: () => void | Promise<boolean>) {
+  constructor(protected topbar: ChatTopbar, protected chat: Chat, protected className: string, public divAndCaption: DivAndCaption<(title: string, subtitle: string, message?: any) => void>, onClose?: () => void | Promise<boolean>) {
     /* const prev = this.divAndCaption.fill;
     this.divAndCaption.fill = (mid, title, subtitle) => {
       this.divAndCaption.container.dataset.mid = '' + mid;
@@ -38,7 +39,7 @@ export default class PinnedContainer {
     
     divAndCaption.container.append(this.close, this.wrapper);
 
-    this.close.addEventListener('click', (e) => {
+    this.topbar.listenerSetter.add(this.close, 'click', (e) => {
       cancelEvent(e);
 
       ((onClose ? onClose() : null) || Promise.resolve(true)).then(needClose => {
@@ -59,24 +60,24 @@ export default class PinnedContainer {
 
     this.divAndCaption.container.classList.toggle('is-floating', mediaSizes.isMobile);
 
-    const scrollTop = mediaSizes.isMobile /* && !appImManager.scrollable.isScrolledDown */ ? appImManager.scrollable.scrollTop : undefined;
+    const scrollTop = mediaSizes.isMobile /* && !appImManager.scrollable.isScrolledDown */ ? this.chat.bubbles.scrollable.scrollTop : undefined;
     this.divAndCaption.container.classList.toggle('hide', hide);
     const className = `is-pinned-${this.className}-shown`;
-    appImManager.topbar.classList.toggle(className, !hide);
+    this.topbar.container.classList.toggle(className, !hide);
 
-    const active = classNames.filter(className => appImManager.topbar.classList.contains(className));
+    const active = classNames.filter(className => this.topbar.container.classList.contains(className));
     const maxActive = hide ? 0 : 1;
     
     if(scrollTop !== undefined && active.length <= maxActive) {
-      appImManager.scrollable.scrollTop = scrollTop + ((hide ? -1 : 1) * HEIGHT);
+      this.chat.bubbles.scrollable.scrollTop = scrollTop + ((hide ? -1 : 1) * HEIGHT);
     }
 
-    appImManager.setUtilsWidth();
+    this.topbar.setUtilsWidth();
   }
 
   public fill(title: string, subtitle: string, message: any) {
     this.divAndCaption.container.dataset.mid = '' + message.mid;
     this.divAndCaption.fill(title, subtitle, message);
-    appImManager.setUtilsWidth();
+    this.topbar.setUtilsWidth();
   }
 }

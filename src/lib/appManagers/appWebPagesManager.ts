@@ -6,7 +6,7 @@ import rootScope from "../rootScope";
 import { safeReplaceObject } from "../../helpers/object";
 import { limitSymbols } from "../../helpers/string";
 
-class AppWebPagesManager {
+export class AppWebPagesManager {
   webpages: any = {};
   pendingWebPages: any = {};
   

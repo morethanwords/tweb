@@ -5,7 +5,7 @@ export default class DivAndCaption<T> {
   public title: HTMLElement;
   public subtitle: HTMLElement;
 
-  constructor(protected className: string, public fill: T) {
+  constructor(protected className: string, public fill?: T) {
     this.container = document.createElement('div');
     this.container.className = className;
 

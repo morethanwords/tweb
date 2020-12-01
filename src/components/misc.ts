@@ -1,5 +1,6 @@
 import Countries, { Country, PhoneCodesMain } from "../countries";
 import { cancelEvent, CLICK_EVENT_NAME } from "../helpers/dom";
+import ListenerSetter from "../helpers/listenerSetter";
 import mediaSizes from "../helpers/mediaSizes";
 import { clamp } from "../helpers/number";
 import { isTouchSupported } from "../helpers/touchSupport";
@@ -295,7 +296,10 @@ export function positionMenu({pageX, pageY}: MouseEvent | Touch, elem: HTMLEleme
     (side == 'center' ? side : (side == 'left' ? 'right' : 'left')));
 }
 
-export function attachContextMenuListener(element: HTMLElement, callback: (e: Touch | MouseEvent) => void) {
+export function attachContextMenuListener(element: HTMLElement, callback: (e: Touch | MouseEvent) => void, listenerSetter?: ListenerSetter) {
+  const add = listenerSetter ? listenerSetter.add.bind(listenerSetter, element) : element.addEventListener.bind(element);
+  const remove = listenerSetter ? listenerSetter.removeManual.bind(listenerSetter, element) : element.removeEventListener.bind(element);
+
   if(isApple && isTouchSupported) {
     let timeout: number;
 
@@ -303,20 +307,20 @@ export function attachContextMenuListener(element: HTMLElement, callback: (e: To
 
     const onCancel = () => {
       clearTimeout(timeout);
-      element.removeEventListener('touchmove', onCancel, options);
-      element.removeEventListener('touchend', onCancel, options);
-      element.removeEventListener('touchcancel', onCancel, options);
+      remove('touchmove', onCancel, options);
+      remove('touchend', onCancel, options);
+      remove('touchcancel', onCancel, options);
     };
 
-    element.addEventListener('touchstart', (e) => {
+    add('touchstart', (e: TouchEvent) => {
       if(e.touches.length > 1) {
         onCancel();
         return;
       }
   
-      element.addEventListener('touchmove', onCancel, options);
-      element.addEventListener('touchend', onCancel, options);
-      element.addEventListener('touchcancel', onCancel, options);
+      add('touchmove', onCancel, options);
+      add('touchend', onCancel, options);
+      add('touchcancel', onCancel, options);
 
       timeout = window.setTimeout(() => {
         element.addEventListener('touchend', cancelEvent, {once: true}); // * fix instant closing
@@ -325,6 +329,6 @@ export function attachContextMenuListener(element: HTMLElement, callback: (e: To
       }, .4e3);
     });
   } else {
-    element.addEventListener('contextmenu', callback);
+    add('contextmenu', callback);
   }
 };

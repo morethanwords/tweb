@@ -85,7 +85,7 @@ export default class PopupStickers extends PopupElement {
     if(!target) return;
 
     const fileID = target.dataset.docID;
-    if(appImManager.chatInputC.sendMessageWithDocument(fileID)) {
+    if(appImManager.chat.input.sendMessageWithDocument(fileID)) {
       this.closeBtn.click();
     } else {
       console.warn('got no doc by id:', fileID);

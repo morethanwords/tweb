@@ -20,7 +20,7 @@ export default class AppIncludedChatsTab implements SliderTab {
   private originalFilter: DialogFilter;
 
   init() {
-    this.container = document.querySelector('.included-chats-container');
+    this.container = document.querySelector('.included-chatlist-container');
     this.closeBtn = this.container.querySelector('.sidebar-close-button');
     this.confirmBtn = this.container.querySelector('.btn-confirm');
     this.title = this.container.querySelector('.sidebar-header__title');

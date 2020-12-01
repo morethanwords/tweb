@@ -2,7 +2,6 @@ import { isTouchSupported } from "../helpers/touchSupport";
 import appImManager from "../lib/appManagers/appImManager";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import { calcImageInBox, getRichValue } from "../helpers/dom";
-import { Layouter, RectPart } from "./groupedLayout";
 import InputField from "./inputField";
 import { PopupElement } from "./popup";
 import { ripple } from "./ripple";
@@ -90,8 +89,8 @@ export default class PopupNewMedia extends PopupElement {
 
     //console.log('will send files with options:', willAttach);
 
-    const peerID = appImManager.peerID;
-    const chatInputC = appImManager.chatInputC;
+    const peerID = appImManager.chat.peerID;
+    const chatInputC = appImManager.chat.input;
 
     if(willAttach.sendFileDetails.length > 1 && willAttach.isMedia) {
       appMessagesManager.sendAlbum(peerID, willAttach.sendFileDetails.map(d => d.file), Object.assign({

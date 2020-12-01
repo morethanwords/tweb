@@ -160,11 +160,7 @@ export class AppDialogsManager {
   public doms: {[peerID: number]: DialogDom} = {};
   public lastActiveListElement: HTMLElement = null;
 
-  /* private rippleCallback: (value?: boolean | PromiseLike<boolean>) => void = null;
-  private lastClickID = 0;
-  private lastGoodClickID = 0; */
-
-  public chatsContainer = document.getElementById('chats-container') as HTMLDivElement;
+  public chatsContainer = document.getElementById('chatlist-container') as HTMLDivElement;
   private chatsPreloader: HTMLDivElement;
 
   public loadDialogsPromise: Promise<any>;
@@ -276,10 +272,6 @@ export class AppDialogsManager {
           dom.avatarEl.classList.toggle('is-online', online);
         }
       }
-
-      if(rootScope.selectedPeerID == user.id) {
-        appImManager.setPeerStatus();
-      }
     });
 
     /* rootScope.$on('dialog_top', (e) => {
@@ -331,11 +323,6 @@ export class AppDialogsManager {
       const dialog = appMessagesManager.getDialogByPeerID(info.peerID)[0];
       if(dialog) {
         this.setUnreadMessages(dialog);
-
-        if(dialog.peerID == rootScope.selectedPeerID) {
-          appImManager.updateUnreadByDialog(dialog);
-        }
-
         this.validateForFilter();
         this.setFiltersUnreadCount();
       }
@@ -421,6 +408,19 @@ export class AppDialogsManager {
       if(this.filterID) {
         const tabIndex = order.indexOf(this.filterID) + 1;
         selectTab.prevId = tabIndex;
+      }
+    });
+
+    rootScope.on('peer_typings', (e) => {
+      const {peerID, typings} = e.detail;
+
+      const dialog = appMessagesManager.getDialogByPeerID(peerID)[0];
+      if(!dialog) return;
+
+      if(typings.length) {
+        this.setTyping(dialog, appUsersManager.getUser(typings[0]));
+      } else {
+        this.unsetTyping(dialog);
       }
     });
 
@@ -861,8 +861,6 @@ export class AppDialogsManager {
         this.lastActiveListElement.classList.remove('active');
       }
 
-      let result: ReturnType<AppImManager['setPeer']>;
-      //console.log('appDialogsManager: lock lazyLoadQueue');
       if(elem) {
         if(onFound) onFound();
 
@@ -874,14 +872,9 @@ export class AppDialogsManager {
           this.lastActiveListElement = elem;
         }
 
-        result = appImManager.setPeer(peerID, lastMsgID);
-
-        /* if(result instanceof Promise) {
-          this.lastGoodClickID = this.lastClickID;
-          appImManager.lazyLoadQueue.lock();
-        } */
+        appImManager.setPeer(peerID, lastMsgID);
       } else {
-        result = appImManager.setPeer(0);
+        appImManager.setPeer(0);
       }
     }, {capture: true});
 
@@ -1217,23 +1210,7 @@ export class AppDialogsManager {
 
     if(rippleEnabled) {
       ripple(paddingDiv);
-      /* ripple(paddingDiv, (id) => {
-        this.log('dialogs click element');
-        this.lastClickID = id;
-  
-        return new Promise((resolve, reject) => {
-          this.rippleCallback = resolve;
-          //setTimeout(() => resolve(), 100);
-          //window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()));
-        });
-      }, (id) => {
-        //console.log('appDialogsManager: ripple onEnd called!');
-        if(id == this.lastGoodClickID) {
-          appImManager.lazyLoadQueue.unlock();
-        }
-      }); */
     }
-    
 
     const li = document.createElement('li');
     li.append(paddingDiv);
@@ -1287,7 +1264,7 @@ export class AppDialogsManager {
 
       this.doms[dialog.peerID] = dom;
 
-      if(rootScope.selectedPeerID == peerID) {
+      if(appImManager.chat?.peerID == peerID) {
         li.classList.add('active');
         this.lastActiveListElement = li;
       }

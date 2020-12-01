@@ -1,8 +1,16 @@
-import { attachClickEvent, cancelEvent, CLICK_EVENT_NAME } from "../helpers/dom";
+import { attachClickEvent, AttachClickOptions, cancelEvent, CLICK_EVENT_NAME } from "../helpers/dom";
+import ListenerSetter from "../helpers/listenerSetter";
 import { closeBtnMenu } from "./misc";
 import { ripple } from "./ripple";
 
-export type ButtonMenuItemOptions = {icon: string, text: string, onClick: (e: MouseEvent | TouchEvent) => void, element?: HTMLElement/* , cancelEvent?: true */};
+export type ButtonMenuItemOptions = {
+  icon: string, 
+  text: string, 
+  onClick: (e: MouseEvent | TouchEvent) => void, 
+  element?: HTMLElement,
+  options?: AttachClickOptions
+  /* , cancelEvent?: true */
+};
 
 const ButtonMenuItem = (options: ButtonMenuItemOptions) => {
   if(options.element) return options.element;
@@ -19,14 +27,24 @@ const ButtonMenuItem = (options: ButtonMenuItemOptions) => {
     cancelEvent(e);
     onClick(e);
     closeBtnMenu();
-  } : onClick);
+  } : onClick, options.options);
 
   return options.element = el;
 };
 
-const ButtonMenu = (buttons: ButtonMenuItemOptions[]) => {
+const ButtonMenu = (buttons: ButtonMenuItemOptions[], listenerSetter?: ListenerSetter) => {
   const el = document.createElement('div');
   el.classList.add('btn-menu');
+
+  if(listenerSetter) {
+    buttons.forEach(b => {
+      if(b.options) {
+        b.options.listenerSetter = listenerSetter;
+      } else {
+        b.options = {listenerSetter};
+      }
+    });
+  }
 
   const items = buttons.map(ButtonMenuItem);
 

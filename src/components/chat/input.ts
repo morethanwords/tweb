@@ -1,381 +1,65 @@
+import type { AppChatsManager } from '../../lib/appManagers/appChatsManager';
+import type { AppDocsManager } from "../../lib/appManagers/appDocsManager";
+import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManager";
+import type { AppPeersManager } from '../../lib/appManagers/appPeersManager';
+import type { AppWebPagesManager } from "../../lib/appManagers/appWebPagesManager";
+import type { AppImManager } from '../../lib/appManagers/appImManager';
+import type Chat from './chat';
 import Recorder from '../../../public/recorder.min';
 import { isTouchSupported } from "../../helpers/touchSupport";
-import appChatsManager from '../../lib/appManagers/appChatsManager';
-import appDocsManager, { MyDocument } from "../../lib/appManagers/appDocsManager";
-import appImManager, { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
-import appMessagesManager from "../../lib/appManagers/appMessagesManager";
-import appPeersManager from '../../lib/appManagers/appPeersManager';
-import appWebPagesManager from "../../lib/appManagers/appWebPagesManager";
 import apiManager from "../../lib/mtproto/mtprotoworker";
 //import Recorder from '../opus-recorder/dist/recorder.min';
 import opusDecodeController from "../../lib/opusDecodeController";
-import { RichTextProcessor } from "../../lib/richtextprocessor";
-import rootScope from '../../lib/rootScope';
-import { blurActiveElement, cancelEvent, CLICK_EVENT_NAME, findUpClassName, getRichValue, getSelectedNodes, isInputEmpty, markdownTags, MarkdownType, placeCaretAtEnd, serializeNodes } from "../../helpers/dom";
-import ButtonMenu, { ButtonMenuItemOptions } from '../buttonMenu';
-import emoticonsDropdown, { EmoticonsDropdown } from "../emoticonsDropdown";
+import RichTextProcessor from "../../lib/richtextprocessor";
+import { blurActiveElement, cancelEvent, cancelSelection, CLICK_EVENT_NAME, findUpClassName, getRichValue, getSelectedNodes, isInputEmpty, markdownTags, MarkdownType, placeCaretAtEnd, serializeNodes } from "../../helpers/dom";
+import { ButtonMenuItemOptions } from '../buttonMenu';
+import emoticonsDropdown from "../emoticonsDropdown";
 import PopupCreatePoll from "../popupCreatePoll";
 import PopupForward from '../popupForward';
 import PopupNewMedia from '../popupNewMedia';
-import { ripple } from '../ripple';
 import Scrollable from "../scrollable";
 import { toast } from "../toast";
 import { wrapReply } from "../wrappers";
 import InputField from '../inputField';
 import { MessageEntity } from '../../layer';
+import MarkupTooltip from './markupTooltip';
+import StickersHelper from './stickersHelper';
 import ButtonIcon from '../buttonIcon';
-import appStickersManager from '../../lib/appManagers/appStickersManager';
-import SetTransition from '../singleTransition';
-import { SuperStickerRenderer } from '../emoticonsDropdown/tabs/stickers';
-import LazyLoadQueue from '../lazyLoadQueue';
+import DivAndCaption from '../divAndCaption';
+import ButtonMenuToggle from '../buttonMenuToggle';
+import ListenerSetter from '../../helpers/listenerSetter';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
 
 type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply';
 
-export class StickersHelper {
-  private container: HTMLElement;
-  private stickersContainer: HTMLElement;
-  private scrollable: Scrollable;
-  private superStickerRenderer: SuperStickerRenderer;
-  private lazyLoadQueue: LazyLoadQueue;
-  private lastEmoticon = '';
-
-  constructor(private appendTo: HTMLElement) {
-
-  }
-
-  public checkEmoticon(emoticon: string) {
-    if(this.lastEmoticon == emoticon) return;
-
-    if(this.lastEmoticon && !emoticon) {
-      if(this.container) {
-        SetTransition(this.container, 'is-visible', false, 200/* , () => {
-          this.stickersContainer.innerHTML = '';
-        } */);
-      }
-    }
-
-    this.lastEmoticon = emoticon;
-    if(this.lazyLoadQueue) {
-      this.lazyLoadQueue.clear();
-    }
-    
-    if(!emoticon) {
-      return;
-    }
-
-    appStickersManager.getStickersByEmoticon(emoticon)
-    .then(stickers => {
-      if(this.lastEmoticon != emoticon) {
-        return;
-      }
-
-      if(this.init) {
-        this.init();
-        this.init = null;
-      }
-
-      this.stickersContainer.innerHTML = '';
-      this.lazyLoadQueue.clear();
-      if(stickers.length) {
-        stickers.forEach(sticker => {
-          this.stickersContainer.append(this.superStickerRenderer.renderSticker(sticker as MyDocument));
-        });
-      }
-
-      SetTransition(this.container, 'is-visible', true, 200);
-      this.scrollable.scrollTop = 0;
-    });
-  }
-
-  private init() {
-    this.container = document.createElement('div');
-    this.container.classList.add('stickers-helper', 'z-depth-1');
-
-    this.stickersContainer = document.createElement('div');
-    this.stickersContainer.classList.add('stickers-helper-stickers', 'super-stickers');
-    this.stickersContainer.addEventListener('click', (e) => {
-      if(!findUpClassName(e.target, 'super-sticker')) {
-        return;
-      }
-
-      appImManager.chatInputC.clearInput();
-      EmoticonsDropdown.onMediaClick(e);
-    });
-
-    this.container.append(this.stickersContainer);
-
-    this.scrollable = new Scrollable(this.container);
-    this.lazyLoadQueue = new LazyLoadQueue();
-    this.superStickerRenderer = new SuperStickerRenderer(this.lazyLoadQueue, CHAT_ANIMATION_GROUP);
-
-    this.appendTo.append(this.container);
-  }
-}
-
-export class MarkupTooltip {
-  public container: HTMLElement;
-  private wrapper: HTMLElement;
-  private buttons: {[type in MarkdownType]: HTMLElement} = {} as any;
-  private linkBackButton: HTMLElement;
-  private hideTimeout: number;
-  private inputs: HTMLElement[] = [];
-  private addedListener = false;
-  private waitingForMouseUp = false;
-  private linkInput: HTMLInputElement;
-  private savedRange: Range;
-
-  private init() {
-    this.container = document.createElement('div');
-    this.container.classList.add('markup-tooltip', 'z-depth-1', 'hide');
-
-    this.wrapper = document.createElement('div');
-    this.wrapper.classList.add('markup-tooltip-wrapper');
-    
-    const tools1 = document.createElement('div');
-    const tools2 = document.createElement('div');
-    tools1.classList.add('markup-tooltip-tools');
-    tools2.classList.add('markup-tooltip-tools');
-
-    const arr = ['bold', 'italic', 'underline', 'strikethrough', 'monospace', 'link'] as (keyof MarkupTooltip['buttons'])[];
-    arr.forEach(c => {
-      const button = ButtonIcon(c, {noRipple: true});
-      tools1.append(this.buttons[c] = button);
-
-      if(c !== 'link') {
-        button.addEventListener('click', () => {
-          appImManager.chatInputC.applyMarkdown(c);
-        });
-      } else {
-        button.addEventListener('click', () => {
-          this.container.classList.add('is-link');
-
-          if(button.classList.contains('active')) {
-            const startContainer = this.savedRange.startContainer;
-            const anchor = startContainer.parentElement as HTMLAnchorElement;
-            this.linkInput.value = anchor.href;
-          } else {
-            this.linkInput.value = '';
-          }
-        });
-      }
-    });
-
-    this.linkBackButton = ButtonIcon('back', {noRipple: true});
-    this.linkInput = document.createElement('input');
-    this.linkInput.placeholder = 'Enter URL...';
-    this.linkInput.classList.add('input-clear');
-    this.linkInput.addEventListener('keydown', (e) => {
-      if(e.code == 'Enter') {
-        const valid = !this.linkInput.value.length || RichTextProcessor.matchUrl(this.linkInput.value);///^(http)|(https):\/\//i.test(this.linkInput.value);
-        if(!valid) {
-          if(this.linkInput.classList.contains('error')) {
-            this.linkInput.classList.remove('error');
-            void this.linkInput.offsetLeft; // reflow
-          }
-
-          this.linkInput.classList.add('error');
-        } else {
-          cancelEvent(e);
-          this.resetSelection();
-          appImManager.chatInputC.applyMarkdown('link', this.linkInput.value);
-          this.hide();
-        }
-      } else {
-        this.linkInput.classList.remove('error');
-      }
-    });
-
-    this.linkBackButton.addEventListener('click', () => {
-      this.container.classList.remove('is-link');
-      //input.value = '';
-      this.resetSelection();
-    });
-    
-    const delimiter1 = document.createElement('span');
-    const delimiter2 = document.createElement('span');
-    delimiter1.classList.add('markup-tooltip-delimiter');
-    delimiter2.classList.add('markup-tooltip-delimiter');
-    tools1.insertBefore(delimiter1, this.buttons.link);
-    tools2.append(this.linkBackButton, delimiter2, this.linkInput);
-    //tools1.insertBefore(delimiter2, this.buttons.link.nextSibling);
-
-    this.wrapper.append(tools1, tools2);
-    this.container.append(this.wrapper);
-    document.body.append(this.container);
-  }
-
-  private resetSelection() {
-    const selection = window.getSelection();
-    selection.removeAllRanges();
-    selection.addRange(this.savedRange);
-    this.inputs[0].focus();
-  }
-
-  public hide() {
-    if(this.init) return;
-
-    this.container.classList.remove('is-visible');
-    document.removeEventListener('mouseup', this.onMouseUp);
-    if(this.hideTimeout) clearTimeout(this.hideTimeout);
-    this.hideTimeout = window.setTimeout(() => {
-      this.hideTimeout = undefined;
-      this.container.classList.add('hide');
-      this.container.classList.remove('is-link');
-    }, 200);
-  }
-
-  public getActiveMarkupButton() {
-    const nodes = getSelectedNodes();
-    const parents = [...new Set(nodes.map(node => node.parentNode))];
-    if(parents.length > 1) return undefined;
-
-    const node = parents[0] as HTMLElement;
-    let currentMarkup: HTMLElement;
-    for(const type in markdownTags) {
-      const tag = markdownTags[type as MarkdownType];
-      if(node.matches(tag.match)) {
-        currentMarkup = this.buttons[type as MarkdownType];
-        break;
-      }
-    }
-
-    return currentMarkup;
-  }
-
-  public setActiveMarkupButton() {
-    const activeButton = this.getActiveMarkupButton();
-
-    for(const i in this.buttons) {
-      // @ts-ignore
-      const button = this.buttons[i];
-      if(button != activeButton) {
-        button.classList.remove('active');
-      }
-    }
-
-    if(activeButton) {
-      activeButton.classList.add('active');
-    }
-
-    return activeButton;
-  }
-
-  public show() {
-    if(this.init) {
-      this.init();
-      this.init = null;
-    }
-
-    const selection = document.getSelection();
-
-    if(!selection.toString().trim().length) {
-      this.hide();
-      return;
-    }
-
-    if(this.hideTimeout !== undefined) {
-      clearTimeout(this.hideTimeout);
-    }
-
-    const range = this.savedRange = selection.getRangeAt(0);
-
-    const activeButton = this.setActiveMarkupButton();
-    
-    this.container.classList.remove('is-link');
-    const isFirstShow = this.container.classList.contains('hide');
-    if(isFirstShow) {
-      this.container.classList.remove('hide');
-      this.container.classList.add('no-transition');
-    }
-    
-    const selectionRect = range.getBoundingClientRect();
-    //const containerRect = this.container.getBoundingClientRect();
-    const sizesRect = this.container.firstElementChild.firstElementChild.getBoundingClientRect();
-    const top = selectionRect.top - sizesRect.height - 8;
-    const left = selectionRect.left + (selectionRect.width - sizesRect.width) / 2;
-    //const top = selectionRect.top - 44 - 8;
-    
-    this.container.style.transform = `translate3d(${left}px, ${top}px, 0)`;
-    
-    if(isFirstShow) {
-      void this.container.offsetLeft; // reflow
-      this.container.classList.remove('no-transition');
-    }
-    
-    this.container.classList.add('is-visible');
-
-    console.log('selection', selectionRect, activeButton);
-  }
-
-  private onMouseUp = (e: Event) => {
-    if(findUpClassName(e.target, 'markup-tooltip')) return;
-    this.hide();
-    document.removeEventListener('mouseup', this.onMouseUp);
-  };
-
-  public setMouseUpEvent() {
-    if(this.waitingForMouseUp) return;
-    this.waitingForMouseUp = true;
-    document.addEventListener('mouseup', (e) => {
-      this.waitingForMouseUp = false;
-      this.show();
-
-      document.addEventListener('mouseup', this.onMouseUp);
-    }, {once: true});
-  }
-
-  public handleSelection(input: HTMLElement) {
-    this.inputs.push(input);
-
-    if(this.addedListener) return;
-    this.addedListener = true;
-    document.addEventListener('selectionchange', (e) => {
-      if(document.activeElement == this.linkInput) {
-        return;
-      }
-
-      if(!this.inputs.includes(document.activeElement as HTMLElement)) {
-        this.hide();
-        return;
-      }
-
-      const selection = document.getSelection();
-
-      if(!selection.toString().trim().length) {
-        this.hide();
-        return;
-      }
-
-      this.setMouseUpEvent();
-    });
-  }
-}
-
-export class ChatInput {
+export default class ChatInput {
   public pageEl = document.getElementById('page-chats') as HTMLDivElement;
-  public messageInput: HTMLDivElement/* HTMLInputElement */;
-  public fileInput = document.getElementById('input-file') as HTMLInputElement;
-  public inputMessageContainer = document.getElementsByClassName('input-message-container')[0] as HTMLDivElement;
-  public inputScroll = new Scrollable(this.inputMessageContainer);
+  public messageInput: HTMLDivElement;
+  public fileInput: HTMLInputElement;
+  public inputMessageContainer: HTMLDivElement;
+  public inputScroll: Scrollable;
   public btnSend = document.getElementById('btn-send') as HTMLButtonElement;
-  public btnCancelRecord = this.btnSend.parentElement.previousElementSibling as HTMLButtonElement;
+  public btnCancelRecord: HTMLButtonElement;
   public lastUrl = '';
   public lastTimeType = 0;
 
-  private inputContainer = this.btnSend.parentElement.parentElement as HTMLDivElement;
-  private chatInput = this.inputContainer.parentElement as HTMLDivElement;
+  public chatInput: HTMLElement;
+  public inputContainer: HTMLElement;
+  public rowsWrapper: HTMLDivElement;
+  private newMessageWrapper: HTMLDivElement;
+  private btnToggleEmoticons: HTMLButtonElement;
+  private btnSendContainer: HTMLDivElement;
 
   public attachMenu: HTMLButtonElement;
   private attachMenuButtons: (ButtonMenuItemOptions & {verify: (peerID: number) => boolean})[];
 
   public replyElements: {
-    container?: HTMLDivElement,
+    container?: HTMLElement,
     cancelBtn?: HTMLButtonElement,
-    titleEl?: HTMLDivElement,
-    subtitleEl?: HTMLDivElement
+    titleEl?: HTMLElement,
+    subtitleEl?: HTMLElement
   } = {};
 
   public willSendWebPage: any = null;
@@ -387,8 +71,8 @@ export class ChatInput {
   private recorder: any;
   private recording = false;
   private recordCanceled = false;
-  private recordTimeEl = this.inputContainer.querySelector('.record-time') as HTMLDivElement;
-  private recordRippleEl = this.inputContainer.querySelector('.record-ripple') as HTMLDivElement;
+  private recordTimeEl: HTMLElement;
+  private recordRippleEl: HTMLElement;
   private recordStartTime = 0;
 
   private scrollTop = 0;
@@ -399,7 +83,7 @@ export class ChatInput {
   private helperFunc: () => void;
   private helperWaitingForward: boolean;
 
-  private willAttachType: 'document' | 'media';
+  public willAttachType: 'document' | 'media';
 
   private lockRedo = false;
   private canRedoFromHTML = '';
@@ -407,17 +91,42 @@ export class ChatInput {
   readonly executedHistory: string[] = [];
   private canUndoFromHTML = '';
 
-  public markupTooltip: MarkupTooltip;
   public stickersHelper: StickersHelper;
+  public listenerSetter: ListenerSetter;
 
-  constructor() {
-    if(!isTouchSupported) {
-      this.markupTooltip = new MarkupTooltip();
-    }
+  constructor(private chat: Chat, private appMessagesManager: AppMessagesManager, private appDocsManager: AppDocsManager, private appChatsManager: AppChatsManager, private appPeersManager: AppPeersManager, private appWebPagesManager: AppWebPagesManager, private appImManager: AppImManager) {
+    this.listenerSetter = new ListenerSetter();
 
-    this.attachMessageInputField();
+    this.chatInput = document.createElement('div');
+    this.chatInput.classList.add('chat-input');
 
-    this.attachMenu = document.getElementById('attach-file') as HTMLButtonElement;
+    this.inputContainer = document.createElement('div');
+    this.inputContainer.classList.add('chat-input-container');
+
+    this.rowsWrapper = document.createElement('div');
+    this.rowsWrapper.classList.add('rows-wrapper');
+
+    this.replyElements.container = document.createElement('div');
+    this.replyElements.container.classList.add('reply-wrapper');
+
+    this.replyElements.cancelBtn = ButtonIcon('close reply-cancel');
+
+    const dac = new DivAndCaption('reply');
+
+    this.replyElements.titleEl = dac.title;
+    this.replyElements.subtitleEl = dac.subtitle;
+
+    this.replyElements.container.append(this.replyElements.cancelBtn, dac.container);
+
+    this.newMessageWrapper = document.createElement('div');
+    this.newMessageWrapper.classList.add('new-message-wrapper');
+
+    this.btnToggleEmoticons = ButtonIcon('none toggle-emoticons', {noRipple: true});
+
+    this.inputMessageContainer = document.createElement('div');
+    this.inputMessageContainer.classList.add('input-message-container');
+
+    this.inputScroll = new Scrollable(this.inputMessageContainer);
 
     this.attachMenuButtons = [{
       icon: 'photo',
@@ -443,10 +152,54 @@ export class ChatInput {
       icon: 'poll',
       text: 'Poll',
       onClick: () => {
-        new PopupCreatePoll().show();
+        new PopupCreatePoll(this.chat.peerID).show();
       },
       verify: (peerID: number) => peerID < 0 && appChatsManager.hasRights(peerID, 'send', 'send_polls')
     }];
+
+    this.attachMenu = ButtonMenuToggle({noRipple: true, listenerSetter: this.listenerSetter}, 'top-left', this.attachMenuButtons);
+    this.attachMenu.classList.add('attach-file', 'tgico-attach');
+    this.attachMenu.classList.remove('tgico-more');
+
+    this.recordTimeEl = document.createElement('div');
+    this.recordTimeEl.classList.add('record-time');
+
+    this.fileInput = document.createElement('input');
+    this.fileInput.type = 'file';
+    this.fileInput.multiple = true;
+    this.fileInput.style.display = 'none';
+
+    this.newMessageWrapper.append(this.btnToggleEmoticons, this.inputMessageContainer, this.attachMenu, this.recordTimeEl, this.fileInput);
+
+    this.rowsWrapper.append(this.replyElements.container, this.newMessageWrapper);
+
+    this.btnCancelRecord = ButtonIcon('delete danger btn-circle z-depth-1 btn-record-cancel');
+
+    this.btnSendContainer = document.createElement('div');
+    this.btnSendContainer.classList.add('btn-send-container');
+
+    this.recordRippleEl = document.createElement('div');
+    this.recordRippleEl.classList.add('record-ripple');
+
+    this.btnSend = ButtonIcon('none btn-circle z-depth-1 btn-send');
+    this.btnSend.insertAdjacentHTML('afterbegin', `
+    <span class="tgico tgico-send"></span>
+    <span class="tgico tgico-microphone2"></span>
+    `);
+
+    this.btnSendContainer.append(this.recordRippleEl, this.btnSend);
+
+    this.inputContainer.append(this.rowsWrapper, this.btnCancelRecord, this.btnSendContainer);
+    this.chatInput.append(this.inputContainer);
+
+    // * constructor end
+
+    const toggleClass = isTouchSupported ? 'flip-icon' : 'active';
+    emoticonsDropdown.attachButtonListener(this.btnToggleEmoticons);
+    emoticonsDropdown.events.onOpen.push(this.onEmoticonsOpen);
+    emoticonsDropdown.events.onClose.push(this.onEmoticonsClose);
+
+    this.attachMessageInputField();
 
     /* this.attachMenu.addEventListener('mousedown', (e) => {
       const hidden = this.attachMenu.querySelectorAll('.hide');
@@ -457,18 +210,7 @@ export class ChatInput {
       }
     }, {passive: false, capture: true}); */
 
-    const attachBtnMenu = ButtonMenu(this.attachMenuButtons);
-    attachBtnMenu.classList.add('top-left');
-    this.attachMenu.append(attachBtnMenu);
-
-    ripple(this.attachMenu);
-
-    this.replyElements.container = this.pageEl.querySelector('.reply-wrapper') as HTMLDivElement;
-    this.replyElements.cancelBtn = this.replyElements.container.querySelector('.reply-cancel') as HTMLButtonElement;
-    this.replyElements.titleEl = this.replyElements.container.querySelector('.reply-title') as HTMLDivElement;
-    this.replyElements.subtitleEl = this.replyElements.container.querySelector('.reply-subtitle') as HTMLDivElement;
-
-    this.stickersHelper = new StickersHelper(this.replyElements.container.parentElement);
+    this.stickersHelper = new StickersHelper(this.rowsWrapper);
 
     try {
       this.recorder = new Recorder({
@@ -486,20 +228,7 @@ export class ChatInput {
 
     this.updateSendBtn();
 
-    rootScope.on('peer_changed', (e) => {
-      const peerID = e.detail;
-      
-      const visible = this.attachMenuButtons.filter(button => {
-        const good = button.verify(peerID);
-        button.element.classList.toggle('hide', !good);
-        return good;
-      });
-      
-      this.attachMenu.toggleAttribute('disabled', !visible.length);
-      this.updateSendBtn();
-    });
-
-    this.fileInput.addEventListener('change', (e) => {
+    this.listenerSetter.add(this.fileInput, 'change', (e) => {
       let files = (e.target as HTMLInputElement & EventTarget).files;
       if(!files.length) {
         return;
@@ -509,9 +238,7 @@ export class ChatInput {
       this.fileInput.value = '';
     }, false);
 
-    document.addEventListener('paste', this.onDocumentPaste, true);
-
-    this.btnSend.addEventListener(CLICK_EVENT_NAME, this.onBtnSendClick);
+    this.listenerSetter.add(this.btnSend, CLICK_EVENT_NAME, this.onBtnSendClick);
 
     if(this.recorder) {
       const onCancelRecordClick = (e: Event) => {
@@ -520,7 +247,7 @@ export class ChatInput {
         this.recorder.stop();
         opusDecodeController.setKeepAlive(false);
       };
-      this.btnCancelRecord.addEventListener(CLICK_EVENT_NAME, onCancelRecordClick);
+      this.listenerSetter.add(this.btnCancelRecord, CLICK_EVENT_NAME, onCancelRecordClick);
 
       this.recorder.onstop = () => {
         this.recording = false;
@@ -536,33 +263,14 @@ export class ChatInput {
         const dataBlob = new Blob([typedArray], {type: 'audio/ogg'});
         /* const fileName = new Date().toISOString() + ".opus";
         console.log('Recorder data received', typedArray, dataBlob); */
-  
-        /* var url = URL.createObjectURL( dataBlob );
-  
-        var audio = document.createElement('audio');
-        audio.controls = true;
-        audio.src = url;
-  
-        var link = document.createElement('a');
-        link.href = url;
-        link.download = fileName;
-        link.innerHTML = link.download;
-  
-        var li = document.createElement('li');
-        li.appendChild(link);
-        li.appendChild(audio);
-  
-        document.body.append(li);
-  
-        return; */
-  
+
         //let perf = performance.now();
         opusDecodeController.decode(typedArray, true).then(result => {
           //console.log('WAVEFORM!:', /* waveform,  */performance.now() - perf);
   
           opusDecodeController.setKeepAlive(false);
   
-          let peerID = appImManager.peerID;
+          let peerID = this.chat.peerID;
           // тут objectURL ставится уже с audio/wav
           appMessagesManager.sendFile(peerID, dataBlob, {
             isVoiceMessage: true,
@@ -575,28 +283,62 @@ export class ChatInput {
 
           this.onMessageSent(false, true);
         });
-  
-        /* const url = URL.createObjectURL(dataBlob);
-        
-        var audio = document.createElement('audio');
-        audio.controls = true;
-        audio.src = url;
-  
-        var link = document.createElement('a');
-        link.href = url;
-        link.download = fileName;
-        link.innerHTML = link.download;
-  
-        var li = document.createElement('li');
-        li.appendChild(link);
-        li.appendChild(audio);
-  
-        recordingslist.appendChild(li); */
       };
     }
 
-    this.replyElements.cancelBtn.addEventListener(CLICK_EVENT_NAME, this.onHelperCancel);
-    this.replyElements.container.addEventListener(CLICK_EVENT_NAME, this.onHelperClick);
+    this.listenerSetter.add(this.replyElements.cancelBtn, CLICK_EVENT_NAME, this.onHelperCancel);
+    this.listenerSetter.add(this.replyElements.container, CLICK_EVENT_NAME, this.onHelperClick);
+  }
+
+  private onEmoticonsOpen = () => {
+    const toggleClass = isTouchSupported ? 'flip-icon' : 'active';
+    this.btnToggleEmoticons.classList.toggle(toggleClass, true);
+  };
+
+  private onEmoticonsClose = () => {
+    const toggleClass = isTouchSupported ? 'flip-icon' : 'active';
+    this.btnToggleEmoticons.classList.toggle(toggleClass, false);
+  };
+
+  public destroy() {
+    this.chat.log.error('Input destroying');
+
+    emoticonsDropdown.events.onOpen.findAndSplice(f => f == this.onEmoticonsOpen);
+    emoticonsDropdown.events.onClose.findAndSplice(f => f == this.onEmoticonsClose);
+
+    this.listenerSetter.removeAll();
+  }
+
+  public cleanup() {
+    if(!this.chat.peerID) {
+      this.chatInput.style.display = 'none';
+    }
+
+    cancelSelection();
+    this.clearInput();
+    this.clearHelper();
+  }
+
+  public finishPeerChange() {
+    const peerID = this.chat.peerID;
+
+    const visible = this.attachMenuButtons.filter(button => {
+      const good = button.verify(peerID);
+      button.element.classList.toggle('hide', !good);
+      return good;
+    });
+
+    const canWrite = this.appMessagesManager.canWriteToPeer(peerID);
+    this.chatInput.style.display = '';
+    this.chatInput.classList.toggle('is-hidden', !canWrite);
+    if(!canWrite) {
+      this.messageInput.removeAttribute('contenteditable');
+    } else {
+      this.messageInput.setAttribute('contenteditable', 'true');
+    }
+    
+    this.attachMenu.toggleAttribute('disabled', !visible.length);
+    this.updateSendBtn();
   }
 
   private attachMessageInputField() {
@@ -605,7 +347,7 @@ export class ChatInput {
       name: 'message'
     });
 
-    messageInputField.input.className = '';
+    messageInputField.input.className = 'input-message-input';
     this.messageInput = messageInputField.input;
     this.attachMessageInputListeners();
 
@@ -618,7 +360,7 @@ export class ChatInput {
   }
 
   private attachMessageInputListeners() {
-    this.messageInput.addEventListener('keydown', (e: KeyboardEvent) => {
+    this.listenerSetter.add(this.messageInput, 'keydown', (e: KeyboardEvent) => {
       if(e.key == 'Enter' && !isTouchSupported) {
         /* if(e.ctrlKey || e.metaKey) {
           this.messageInput.innerHTML += '<br>';
@@ -637,18 +379,18 @@ export class ChatInput {
     });
 
     if(isTouchSupported) {
-      this.messageInput.addEventListener('touchend', (e) => {
-        appImManager.selectTab(1); // * set chat tab for album orientation
+      this.listenerSetter.add(this.messageInput, 'touchend', (e) => {
+        this.appImManager.selectTab(1); // * set chat tab for album orientation
         this.saveScroll();
         emoticonsDropdown.toggle(false);
       });
 
-      window.addEventListener('resize', () => {
+      this.listenerSetter.add(window, 'resize', () => {
         this.restoreScroll();
       });
     }
 
-    this.messageInput.addEventListener('beforeinput', (e: Event) => {
+    this.listenerSetter.add(this.messageInput, 'beforeinput', (e: Event) => {
       // * validate due to manual formatting through browser's context menu
       const inputType = (e as InputEvent).inputType;
       //console.log('message beforeinput event', e);
@@ -661,41 +403,8 @@ export class ChatInput {
         }
       }
     });
-    this.messageInput.addEventListener('input', this.onMessageInput);
-
-    if(this.markupTooltip) {
-      this.markupTooltip.handleSelection(this.messageInput);
-    }
+    this.listenerSetter.add(this.messageInput, 'input', this.onMessageInput);
   }
-
-  private onDocumentPaste = (e: ClipboardEvent) => {
-    const peerID = rootScope.selectedPeerID;
-    if(!peerID || rootScope.overlayIsActive || (peerID < 0 && !appChatsManager.hasRights(peerID, 'send', 'send_media'))) {
-      return;
-    }
-
-    //console.log('document paste');
-
-    // @ts-ignore
-    const items = (e.clipboardData || e.originalEvent.clipboardData).items;
-    //console.log('item', event.clipboardData.getData());
-    //let foundFile = false;
-    for(let i = 0; i < items.length; ++i) {
-      if(items[i].kind == 'file') {
-        e.preventDefault()
-        e.cancelBubble = true;
-        e.stopPropagation();
-        //foundFile = true;
-
-        let file = items[i].getAsFile();
-        //console.log(items[i], file);
-        if(!file) continue;
-
-        this.willAttachType = file.type.indexOf('image/') === 0 ? 'media' : "document";
-        new PopupNewMedia([file], this.willAttachType);
-      }
-    }
-  };
 
   private prepareDocumentExecute = () => {
     this.executedHistory.push(this.messageInput.innerHTML);
@@ -812,8 +521,8 @@ export class ChatInput {
 
     checkForSingle();
     saveExecuted();
-    if(this.markupTooltip) {
-      this.markupTooltip.setActiveMarkupButton();
+    if(this.appImManager.markupTooltip) {
+      this.appImManager.markupTooltip.setActiveMarkupButton();
     }
 
     return true;
@@ -922,7 +631,7 @@ export class ChatInput {
             url: url,
             hash: 0
           }).then((webpage) => {
-            webpage = appWebPagesManager.saveWebPage(webpage);
+            webpage = this.appWebPagesManager.saveWebPage(webpage);
             if(webpage._  == 'webPage') {
               if(this.lastUrl != url) return;
               //console.log('got webpage: ', webpage);
@@ -952,12 +661,12 @@ export class ChatInput {
     if(!value.trim() && !serializeNodes(Array.from(this.messageInput.childNodes)).trim()) {
       this.messageInput.innerHTML = '';
 
-      appMessagesManager.setTyping(rootScope.selectedPeerID, 'sendMessageCancelAction');
+      this.appMessagesManager.setTyping(this.chat.peerID, 'sendMessageCancelAction');
     } else {
       const time = Date.now();
       if(time - this.lastTimeType >= 6000) {
         this.lastTimeType = time;
-        appMessagesManager.setTyping(rootScope.selectedPeerID, 'sendMessageTypingAction');
+        this.appMessagesManager.setTyping(this.chat.peerID, 'sendMessageTypingAction');
       }
     }
 
@@ -978,7 +687,7 @@ export class ChatInput {
         this.sendMessage();
       }
     } else {
-      if(rootScope.selectedPeerID < 0 && !appChatsManager.hasRights(rootScope.selectedPeerID, 'send', 'send_media')) {
+      if(this.chat.peerID < 0 && !this.appChatsManager.hasRights(this.chat.peerID, 'send', 'send_media')) {
         toast(POSTING_MEDIA_NOT_ALLOWED);
         return;
       }
@@ -1097,9 +806,9 @@ export class ChatInput {
         }
       });
     } else if(this.helperType == 'reply') {
-      appImManager.setPeer(rootScope.selectedPeerID, this.replyToMsgID);
+      this.chat.setPeer(this.chat.peerID, this.replyToMsgID);
     } else if(this.helperType == 'edit') {
-      appImManager.setPeer(rootScope.selectedPeerID, this.editMsgID);
+      this.chat.setPeer(this.chat.peerID, this.editMsgID);
     }
   };
 
@@ -1134,9 +843,9 @@ export class ChatInput {
   }
 
   public onMessageSent(clearInput = true, clearReply?: boolean) {
-    let dialog = appMessagesManager.getDialogByPeerID(appImManager.peerID)[0];
+    let dialog = this.appMessagesManager.getDialogByPeerID(this.chat.peerID)[0];
     if(dialog && dialog.top_message) {
-      appMessagesManager.readHistory(appImManager.peerID, dialog.top_message); // lol
+      this.appMessagesManager.readHistory(this.chat.peerID, dialog.top_message); // lol
     }
 
     if(clearInput) {
@@ -1162,11 +871,11 @@ export class ChatInput {
     //return;
 
     if(this.editMsgID) {
-      appMessagesManager.editMessage(this.editMsgID, str, {
+      this.appMessagesManager.editMessage(this.editMsgID, str, {
         noWebPage: this.noWebPage
       });
     } else {
-      appMessagesManager.sendText(appImManager.peerID, str, {
+      this.appMessagesManager.sendText(this.chat.peerID, str, {
         replyToMsgID: this.replyToMsgID == 0 ? undefined : this.replyToMsgID,
         noWebPage: this.noWebPage,
         webPage: this.willSendWebPage
@@ -1177,7 +886,7 @@ export class ChatInput {
     if(this.forwardingMids.length) {
       const mids = this.forwardingMids.slice();
       setTimeout(() => {
-        appMessagesManager.forwardMessages(appImManager.peerID, mids);
+        this.appMessagesManager.forwardMessages(this.chat.peerID, mids);
       }, 0);
     }
 
@@ -1185,9 +894,9 @@ export class ChatInput {
   }
 
   public sendMessageWithDocument(document: any) {
-    document = appDocsManager.getDoc(document);
+    document = this.appDocsManager.getDoc(document);
     if(document && document._ != 'documentEmpty') {
-      appMessagesManager.sendFile(appImManager.peerID, document, {isMedia: true, replyToMsgID: this.replyToMsgID});
+      this.appMessagesManager.sendFile(this.chat.peerID, document, {isMedia: true, replyToMsgID: this.replyToMsgID});
       this.onMessageSent(false, true);
 
       if(document.type == 'sticker') {
@@ -1201,7 +910,7 @@ export class ChatInput {
   }
 
   public initMessageEditing(mid: number) {
-    const message = appMessagesManager.getMessage(mid);
+    const message = this.appMessagesManager.getMessage(mid);
 
     let input = RichTextProcessor.wrapDraftText(message.message, {entities: message.totalEntities});
     const f = () => {
@@ -1216,7 +925,7 @@ export class ChatInput {
     const f = () => {
       //const peerTitles: string[]
       const smth: Set<string | number> = new Set(mids.map(mid => {
-        const message = appMessagesManager.getMessage(mid);
+        const message = this.appMessagesManager.getMessage(mid);
         if(message.fwd_from && message.fwd_from.from_name && !message.fromID && !message.fwdFromID) {
           return message.fwd_from.from_name;
         } else {
@@ -1227,13 +936,13 @@ export class ChatInput {
       const onlyFirstName = smth.size > 1;
       const peerTitles = [...smth].map(smth => {
         return typeof(smth) === 'number' ? 
-          appPeersManager.getPeerTitle(smth, true, onlyFirstName) : 
+          this.appPeersManager.getPeerTitle(smth, true, onlyFirstName) : 
           (onlyFirstName ? smth.split(' ')[0] : smth);
       });
 
       const title = peerTitles.length < 3 ? peerTitles.join(' and ') : peerTitles[0] + ' and ' + (peerTitles.length - 1) + ' others';
       if(mids.length == 1) {
-        const message = appMessagesManager.getMessage(mids[0]);
+        const message = this.appMessagesManager.getMessage(mids[0]);
         this.setTopInfo('forward', f, title, message.message, undefined, message);
       } else {
         this.setTopInfo('forward', f, title, mids.length + ' forwarded messages');
@@ -1260,7 +969,7 @@ export class ChatInput {
     this.forwardingMids.length = 0;
     this.editMsgID = 0;
     this.helperType = this.helperFunc = undefined;
-    this.chatInput.parentElement.classList.remove('is-helper-active');
+    this.chat.container.classList.remove('is-helper-active');
   }
 
   public setTopInfo(type: ChatInputHelperType, callerFunc: () => void, title = '', subtitle = '', input?: string, message?: any) {
@@ -1275,7 +984,7 @@ export class ChatInput {
       this.replyElements.container.append(wrapReply(title, subtitle, message));
     }
 
-    this.chatInput.parentElement.classList.add('is-helper-active');
+    this.chat.container.classList.add('is-helper-active');
     /* const scroll = appImManager.scrollable;
     if(scroll.isScrolledDown && !scroll.scrollLocked && !appImManager.messagesQueuePromise && !appImManager.setPeerPromise) {
       scroll.scrollTo(scroll.scrollHeight, 'top', true, true, 200);
@@ -1297,7 +1006,7 @@ export class ChatInput {
   }
 
   public saveScroll() {
-    this.scrollTop = appImManager.scrollable.container.scrollTop;
+    this.scrollTop = this.chat.bubbles.scrollable.container.scrollTop;
     this.scrollOffsetTop = this.chatInput.offsetTop;
   }
 
@@ -1305,7 +1014,7 @@ export class ChatInput {
     if(this.chatInput.style.display) return;
     //console.log('input resize', offsetTop, this.chatInput.offsetTop);
     let newOffsetTop = this.chatInput.offsetTop;
-    let container = appImManager.scrollable.container;
+    let container = this.chat.bubbles.scrollable.container;
     let scrollTop = container.scrollTop;
     let clientHeight = container.clientHeight;
     let maxScrollTop = container.scrollHeight;

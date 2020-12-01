@@ -75,7 +75,7 @@
 }
 
 @include respond-to(until-floating-left-sidebar) {
-  .chats-container ul li > .rp {
+  .chatlist-container ul li > .rp {
     .c-ripple {
       --ripple-duration: .2s;
 

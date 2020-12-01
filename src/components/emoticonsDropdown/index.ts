@@ -40,7 +40,6 @@ export class EmoticonsDropdown {
   public searchButton: HTMLElement;
   public deleteBtn: HTMLElement;
   
-  public toggleEl: HTMLElement;
   private displayTimeout: number;
 
   public events: {
@@ -57,26 +56,28 @@ export class EmoticonsDropdown {
 
   private selectTab: ReturnType<typeof horizontalMenu>;
 
+  private firstTime = true;
+
   constructor() {
     this.element = document.getElementById('emoji-dropdown') as HTMLDivElement;
+  }
 
-    let firstTime = true;
-    this.toggleEl = document.getElementById('toggle-emoticons');
+  public attachButtonListener(button: HTMLElement) {
     if(isTouchSupported) {
-      this.toggleEl.addEventListener('click', () => {
-        if(firstTime) {
-          firstTime = false;
+      button.addEventListener('click', () => {
+        if(this.firstTime) {
+          this.firstTime = false;
           this.toggle(true);
         } else {
           this.toggle();
         }
       });
     } else {
-      this.toggleEl.onmouseover = (e) => {
+      button.onmouseover = (e) => {
         clearTimeout(this.displayTimeout);
         //this.displayTimeout = setTimeout(() => {
-          if(firstTime) {
-            this.toggleEl.onmouseout = this.element.onmouseout = (e) => {
+          if(this.firstTime) {
+            button.onmouseout = this.element.onmouseout = (e) => {
               if(test) return;
               if(!this.element.classList.contains('active')) return;
 
@@ -95,7 +96,7 @@ export class EmoticonsDropdown {
               clearTimeout(this.displayTimeout);
             };
 
-            firstTime = false;
+            this.firstTime = false;
           }
 
           this.toggle(true);
@@ -138,7 +139,7 @@ export class EmoticonsDropdown {
 
     this.deleteBtn = this.element.querySelector('.emoji-tabs-delete');
     this.deleteBtn.addEventListener('click', () => {
-      const input = appImManager.chatInputC.messageInput;
+      const input = appImManager.chat.input.messageInput;
       if((input.lastChild as any)?.tagName) {
         input.lastElementChild.remove();
       } else if(input.lastChild) {
@@ -150,7 +151,7 @@ export class EmoticonsDropdown {
       }
 
       const event = new Event('input', {bubbles: true, cancelable: true});
-      appImManager.chatInputC.messageInput.dispatchEvent(event);
+      appImManager.chat.input.messageInput.dispatchEvent(event);
       //appSidebarRight.stickersTab.init();
     });
 
@@ -174,7 +175,7 @@ export class EmoticonsDropdown {
   };
 
   public checkRights = () => {
-    const peerID = rootScope.selectedPeerID;
+    const peerID = appImManager.chat.peerID;
     const children = this.tabsEl.children;
     const tabsElements = Array.from(children) as HTMLElement[];
 
@@ -206,17 +207,18 @@ export class EmoticonsDropdown {
     }
 
     if(isTouchSupported) {
-      this.toggleEl.classList.toggle('flip-icon', willBeActive);
       if(willBeActive) {
-        appImManager.chatInputC.saveScroll();
+        appImManager.chat.input.saveScroll();
         // @ts-ignore
         document.activeElement.blur();
         await new Promise((resolve) => {
           setTimeout(resolve, 100);
         });
       }
-    } else {
-      this.toggleEl.classList.toggle('active', enable);
+    }
+
+    if(this.element.parentElement !== appImManager.chat.input.chatInput) {
+      appImManager.chat.input.chatInput.append(this.element);
     }
     
     if((this.element.style.display && enable === undefined) || enable) {
@@ -349,7 +351,7 @@ export class EmoticonsDropdown {
     const fileID = target.dataset.docID;
     if(!fileID) return;
 
-    if(appImManager.chatInputC.sendMessageWithDocument(fileID)) {
+    if(appImManager.chat.input.sendMessageWithDocument(fileID)) {
       /* dropdown.classList.remove('active');
       toggleEl.classList.remove('active'); */
       emoticonsDropdown.toggle(false);

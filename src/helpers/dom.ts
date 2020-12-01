@@ -1,4 +1,5 @@
 import { MOUNT_CLASS_TO } from "../lib/mtproto/mtproto_config";
+import ListenerSetter from "./listenerSetter";
 import { isTouchSupported } from "./touchSupport";
 import { isSafari } from "./userAgent";
 
@@ -464,30 +465,34 @@ export function blurActiveElement() {
 }
 
 export const CLICK_EVENT_NAME = isTouchSupported ? 'touchend' : 'click';
-export const attachClickEvent = (elem: HTMLElement, callback: (e: TouchEvent | MouseEvent) => void, options: AddEventListenerOptions = {}) => {
+export type AttachClickOptions = AddEventListenerOptions & Partial<{listenerSetter: ListenerSetter}>;
+export const attachClickEvent = (elem: HTMLElement, callback: (e: TouchEvent | MouseEvent) => void, options: AttachClickOptions = {}) => {
+  const add = options.listenerSetter ? options.listenerSetter.add.bind(options.listenerSetter, elem) : elem.addEventListener.bind(elem);
+  const remove = options.listenerSetter ? options.listenerSetter.removeManual.bind(options.listenerSetter, elem) : elem.removeEventListener.bind(elem);
+
   if(CLICK_EVENT_NAME == 'touchend') {
     const o = {...options, once: true};
 
     const onTouchStart = (e: TouchEvent) => {
       const onTouchMove = (e: TouchEvent) => {
-        elem.removeEventListener('touchend', onTouchEnd, o);
+        remove('touchend', onTouchEnd, o);
       };
   
       const onTouchEnd = (e: TouchEvent) => {
-        elem.removeEventListener('touchmove', onTouchMove, o);
+        remove('touchmove', onTouchMove, o);
         callback(e);
         if(options.once) {
-          elem.removeEventListener('touchstart', onTouchStart);
+          remove('touchstart', onTouchStart);
         }
       };
   
-      elem.addEventListener('touchend', onTouchEnd, o);
-      elem.addEventListener('touchmove', onTouchMove, o);
+      add('touchend', onTouchEnd, o);
+      add('touchmove', onTouchMove, o);
     };
 
-    elem.addEventListener('touchstart', onTouchStart);
+    add('touchstart', onTouchStart);
   } else {
-    elem.addEventListener(CLICK_EVENT_NAME, callback, options);
+    add(CLICK_EVENT_NAME, callback, options);
   }
 };
 
