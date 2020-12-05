@@ -232,7 +232,7 @@
   }
 }
 
-// ! example: multiselect input
+// ! example: multiselect input, button in pinned messages chat
 .btn-transparent {
   color: #000;
   background-color: transparent;
@@ -240,6 +240,7 @@
   align-items: center;
   padding: 0 .875rem;
   //width: auto;
+  text-transform: capitalize;
 
   html.no-touch &:hover {
     background-color:	var(--color-gray-hover);

@@ -8,6 +8,7 @@ export default class MarkupTooltip {
   private wrapper: HTMLElement;
   private buttons: {[type in MarkdownType]: HTMLElement} = {} as any;
   private linkBackButton: HTMLElement;
+  private linkApplyButton: HTMLButtonElement;
   private hideTimeout: number;
   private addedListener = false;
   private waitingForMouseUp = false;
@@ -50,6 +51,8 @@ export default class MarkupTooltip {
           } else {
             this.linkInput.value = '';
           }
+
+          this.linkInput.classList.toggle('is-valid', this.isLinkValid());
         });
       }
     });
@@ -59,8 +62,9 @@ export default class MarkupTooltip {
     this.linkInput.placeholder = 'Enter URL...';
     this.linkInput.classList.add('input-clear');
     this.linkInput.addEventListener('keydown', (e) => {
+      const valid = !this.linkInput.value.length || !!RichTextProcessor.matchUrl(this.linkInput.value);///^(http)|(https):\/\//i.test(this.linkInput.value);
+
       if(e.code == 'Enter') {
-        const valid = !this.linkInput.value.length || RichTextProcessor.matchUrl(this.linkInput.value);///^(http)|(https):\/\//i.test(this.linkInput.value);
         if(!valid) {
           if(this.linkInput.classList.contains('error')) {
             this.linkInput.classList.remove('error');
@@ -69,14 +73,16 @@ export default class MarkupTooltip {
 
           this.linkInput.classList.add('error');
         } else {
-          cancelEvent(e);
-          this.resetSelection();
-          this.appImManager.chat.input.applyMarkdown('link', this.linkInput.value);
-          this.hide();
+          this.applyLink(e);
         }
-      } else {
-        this.linkInput.classList.remove('error');
       }
+    });
+
+    this.linkInput.addEventListener('input', (e) => {
+      const valid = this.isLinkValid();
+
+      this.linkInput.classList.toggle('is-valid', valid);
+      this.linkInput.classList.remove('error');
     });
 
     this.linkBackButton.addEventListener('click', () => {
@@ -84,18 +90,40 @@ export default class MarkupTooltip {
       //input.value = '';
       this.resetSelection();
     });
+
+    this.linkApplyButton = ButtonIcon('check markup-tooltip-link-apply', {noRipple: true});
+    this.linkApplyButton.addEventListener('click', (e) => {
+      this.applyLink(e);
+    });
+
+    const applyDiv = document.createElement('div');
+    applyDiv.classList.add('markup-tooltip-link-apply-container');
     
     const delimiter1 = document.createElement('span');
     const delimiter2 = document.createElement('span');
+    const delimiter3 = document.createElement('span');
     delimiter1.classList.add('markup-tooltip-delimiter');
     delimiter2.classList.add('markup-tooltip-delimiter');
+    delimiter3.classList.add('markup-tooltip-delimiter');
     tools1.insertBefore(delimiter1, this.buttons.link);
-    tools2.append(this.linkBackButton, delimiter2, this.linkInput);
+    applyDiv.append(delimiter3, this.linkApplyButton);
+    tools2.append(this.linkBackButton, delimiter2, this.linkInput, applyDiv);
     //tools1.insertBefore(delimiter2, this.buttons.link.nextSibling);
 
     this.wrapper.append(tools1, tools2);
     this.container.append(this.wrapper);
     document.body.append(this.container);
+  }
+
+  private applyLink(e: Event) {
+    cancelEvent(e);
+    this.resetSelection();
+    this.appImManager.chat.input.applyMarkdown('link', this.linkInput.value);
+    this.hide();
+  }
+
+  private isLinkValid() {
+    return !this.linkInput.value.length || !!RichTextProcessor.matchUrl(this.linkInput.value);
   }
 
   private resetSelection() {

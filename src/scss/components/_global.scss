@@ -91,13 +91,13 @@ Utility Classes
   user-select: none;
 }
 
-/* .no-transition {
+.no-transition {
   transition: none !important;
 
-  &-all, &-all * {
+  /* &-all, &-all * {
     transition: none !important;
-  }
-} */
+  } */
+}
 
 .inline {
   display: inline;

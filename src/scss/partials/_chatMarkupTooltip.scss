@@ -43,8 +43,7 @@
 			width: $widthLink;
 
 			.markup-tooltip-delimiter {
-				margin-left: .25rem;
-				margin-right: .75rem;
+				margin: 0 .25rem;
 			}
 		}
 	}
@@ -83,12 +82,28 @@
 		transform: translateX(#{-$widthRegular});
 	}
 
+	&-link-apply {
+		color: $color-blue;
+		font-size: 2rem;
+
+		&-container {
+			display: flex;
+			align-items: center;
+			opacity: 0;
+			transition: opacity var(--layer-transition);
+			pointer-events: none;
+		}
+	}
+
 	.input-clear {
 		flex: 1 1 auto;
 		text-overflow: ellipsis;
-	}
 
-	&.no-transition {
-		transition: none;
+		margin: 0 .5rem;
+
+		&.is-valid + .markup-tooltip-link-apply-container {
+			opacity: 1;
+			pointer-events: all;
+		}
 	}
 }
