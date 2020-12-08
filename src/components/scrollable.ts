@@ -70,7 +70,7 @@ export class ScrollableBase {
   }
 
   protected setListeners() {
-    window.addEventListener('resize', this.onScroll);
+    window.addEventListener('resize', this.onScroll, {passive: true});
     this.container.addEventListener('scroll', this.onScroll, {passive: true, capture: true});
   }
 
@@ -160,7 +160,7 @@ export default class Scrollable extends ScrollableBase {
       this.lastScrollDirection = this.lastScrollTop == scrollTop ? 0 : (this.lastScrollTop < scrollTop ? 1 : -1); // * 1 - bottom, -1 - top
       this.lastScrollTop = scrollTop;
 
-      if(this.onAdditionalScroll) {
+      if(this.onAdditionalScroll && this.lastScrollDirection !== 0) {
         this.onAdditionalScroll();
       }
       

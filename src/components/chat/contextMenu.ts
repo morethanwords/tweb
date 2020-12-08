@@ -4,7 +4,6 @@ import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import type { AppPollsManager, Poll } from "../../lib/appManagers/appPollsManager";
 import type Chat from "./chat";
 import { isTouchSupported } from "../../helpers/touchSupport";
-import rootScope from "../../lib/rootScope";
 import { attachClickEvent, cancelEvent, cancelSelection, findUpClassName } from "../../helpers/dom";
 import ButtonMenu, { ButtonMenuItemOptions } from "../buttonMenu";
 import { attachContextMenuListener, openBtnMenu, positionMenu } from "../misc";
@@ -18,7 +17,7 @@ export default class ChatContextMenu {
   private element: HTMLElement;
 
   private target: HTMLElement;
-  private isTargetAnAlbumItem: boolean;
+  private isTargetAGroupedItem: boolean;
   public peerID: number;
   public msgID: number;
 
@@ -63,10 +62,10 @@ export default class ChatContextMenu {
       //this.msgID = msgID;
       this.target = e.target as HTMLElement;
 
-      const albumItem = findUpClassName(this.target, 'album-item');
-      this.isTargetAnAlbumItem = !!albumItem;
-      if(albumItem) {
-        this.msgID = +albumItem.dataset.mid;
+      const groupedItem = findUpClassName(this.target, 'grouped-item');
+      this.isTargetAGroupedItem = !!groupedItem;
+      if(groupedItem) {
+        this.msgID = +groupedItem.dataset.mid;
       } else {
         this.msgID = mid;
       }
@@ -125,7 +124,7 @@ export default class ChatContextMenu {
 
         cancelSelection();
         //cancelEvent(e as any);
-        const bubble = findUpClassName(e.target, 'album-item') || findUpClassName(e.target, 'bubble');
+        const bubble = findUpClassName(e.target, 'grouped-item') || findUpClassName(e.target, 'bubble');
         if(bubble) {
           chat.selection.toggleByBubble(bubble);
         }
@@ -138,13 +137,13 @@ export default class ChatContextMenu {
       icon: 'reply',
       text: 'Reply',
       onClick: this.onReplyClick,
-      verify: () => (this.peerID > 0 || this.appChatsManager.hasRights(-this.peerID, 'send')) && this.msgID > 0/* ,
+      verify: () => (this.peerID > 0 || this.appChatsManager.hasRights(-this.peerID, 'send')) && this.msgID > 0 && !!this.chat.input.messageInput/* ,
       cancelEvent: true */
     }, {
       icon: 'edit',
       text: 'Edit',
       onClick: this.onEditClick,
-      verify: () => this.appMessagesManager.canEditMessage(this.msgID, 'text')
+      verify: () => this.appMessagesManager.canEditMessage(this.msgID, 'text') && !!this.chat.input.messageInput
     }, {
       icon: 'copy',
       text: 'Copy',
@@ -163,15 +162,16 @@ export default class ChatContextMenu {
       onClick: this.onPinClick,
       verify: () => {
         const message = this.appMessagesManager.getMessage(this.msgID);
-        // for new layer
-        // return this.msgID > 0 && message._ != 'messageService' && appImManager.pinnedMsgID != this.msgID && (this.peerID > 0 || appChatsManager.hasRights(-this.peerID, 'pin'));
-        return this.msgID > 0 && message._ != 'messageService' && /* appImManager.pinnedMsgID != this.msgID && */ (this.peerID == rootScope.myID || (this.peerID < 0 && this.appChatsManager.hasRights(-this.peerID, 'pin')));
+        return this.msgID > 0 && message._ != 'messageService' && !message.pFlags.pinned && this.appPeersManager.canPinMessage(this.peerID);
       }
     }, {
       icon: 'unpin',
       text: 'Unpin',
       onClick: this.onUnpinClick,
-      verify: () => /* appImManager.pinnedMsgID == this.msgID && */ this.appPeersManager.canPinMessage(this.peerID)
+      verify: () => {
+        const message = this.appMessagesManager.getMessage(this.msgID);
+        return message.pFlags.pinned && this.appPeersManager.canPinMessage(this.peerID);
+      }
     }, {
       icon: 'revote',
       text: 'Revote',
@@ -284,12 +284,12 @@ export default class ChatContextMenu {
     if(this.chat.selection.isSelecting) {
       this.chat.selection.selectionForwardBtn.click();
     } else {
-      new PopupForward(this.isTargetAnAlbumItem ? [this.msgID] : this.appMessagesManager.getMidsByMid(this.msgID));
+      new PopupForward(this.isTargetAGroupedItem ? [this.msgID] : this.appMessagesManager.getMidsByMid(this.msgID));
     }
   };
 
   private onSelectClick = () => {
-    this.chat.selection.toggleByBubble(findUpClassName(this.target, 'album-item') || findUpClassName(this.target, 'bubble'));
+    this.chat.selection.toggleByBubble(findUpClassName(this.target, 'grouped-item') || findUpClassName(this.target, 'bubble'));
   };
 
   private onClearSelectionClick = () => {
@@ -300,7 +300,7 @@ export default class ChatContextMenu {
     if(this.chat.selection.isSelecting) {
       this.chat.selection.selectionDeleteBtn.click();
     } else {
-      new PopupDeleteMessages(this.isTargetAnAlbumItem ? [this.msgID] : this.appMessagesManager.getMidsByMid(this.msgID));
+      new PopupDeleteMessages(this.isTargetAGroupedItem ? [this.msgID] : this.appMessagesManager.getMidsByMid(this.msgID));
     }
   };
 }

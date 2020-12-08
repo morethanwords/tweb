@@ -4,6 +4,7 @@ import mediaSizes from "../../helpers/mediaSizes";
 import { cancelEvent } from "../../helpers/dom";
 import DivAndCaption from "../divAndCaption";
 import { ripple } from "../ripple";
+import ListenerSetter from "../../helpers/listenerSetter";
 
 const classNames: string[] = [];
 const CLASSNAME_BASE = 'pinned-container';
@@ -13,7 +14,7 @@ export default class PinnedContainer {
   private close: HTMLElement;
   protected wrapper: HTMLElement;
 
-  constructor(protected topbar: ChatTopbar, protected chat: Chat, protected className: string, public divAndCaption: DivAndCaption<(title: string, subtitle: string, message?: any) => void>, onClose?: () => void | Promise<boolean>) {
+  constructor(protected topbar: ChatTopbar, protected chat: Chat, public listenerSetter: ListenerSetter, protected className: string, public divAndCaption: DivAndCaption<(title: string, subtitle: string, message?: any) => void>, onClose?: () => void | Promise<boolean>) {
     /* const prev = this.divAndCaption.fill;
     this.divAndCaption.fill = (mid, title, subtitle) => {
       this.divAndCaption.container.dataset.mid = '' + mid;
@@ -39,7 +40,7 @@ export default class PinnedContainer {
     
     divAndCaption.container.append(this.close, this.wrapper);
 
-    this.topbar.listenerSetter.add(this.close, 'click', (e) => {
+    this.listenerSetter.add(this.close, 'click', (e) => {
       cancelEvent(e);
 
       ((onClose ? onClose() : null) || Promise.resolve(true)).then(needClose => {

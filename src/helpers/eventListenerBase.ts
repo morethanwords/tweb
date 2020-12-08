@@ -30,7 +30,8 @@ export default class EventListenerBase<Listeners extends {[name: string]: Functi
     }
   }
 
-  protected setListenerResult(name: keyof Listeners, ...args: ArgumentTypes<Listeners[typeof name]>) {
+  // * must be protected, but who cares
+  public setListenerResult(name: keyof Listeners, ...args: ArgumentTypes<Listeners[typeof name]>) {
     if(this.reuseResults) {
       this.listenerResults[name] = args;
     }

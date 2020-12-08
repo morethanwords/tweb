@@ -8,6 +8,7 @@ const CheckboxField = (text: string, name: string, round = false) => {
 
   const span = document.createElement('span');
   span.classList.add('checkbox-caption');
+  if(round) span.classList.add('tgico-check');
   if(text) {
     span.innerText = text;
   }

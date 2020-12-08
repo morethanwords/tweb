@@ -1,68 +1,73 @@
-import { Modes } from './mtproto/mtproto_config';
-import { notifySomeone, isWorker } from '../helpers/context';
+import CacheStorageController from './cacheStorage';
+import { MOUNT_CLASS_TO } from './mtproto/mtproto_config';
 //import { stringify } from '../helpers/json';
 
-class ConfigStorage {
-  public keyPrefix = '';
-  public noPrefix = false;
+class AppStorage {
+  //private log = (...args: any[]) => console.log('[SW LS]', ...args);
+  private log = (...args: any[]) => {};
+
+  private cacheStorage = new CacheStorageController('session');
+
+  //public noPrefix = false;
   private cache: {[key: string]: any} = {};
-  private useLs = true;
+  private useCS = true;
 
-  storageGetPrefix() {
-    if(this.noPrefix) {
-      this.noPrefix = false;
-      return '';
-    }
+  constructor() {
 
-    return this.keyPrefix;
   }
 
-  get(keys: string | string[], callback: any) {
-    var single = false;
-    if(!Array.isArray(keys)) {
-      keys = Array.prototype.slice.call(arguments);
-      callback = keys.pop();
-      single = keys.length == 1;
-    }
-    var result = [];
-    var allFound = true;
-    var prefix = this.storageGetPrefix();
+  public storageGetPrefix() {
+    /* if(this.noPrefix) {
+      this.noPrefix = false;
+      return '';
+    } */
 
+    return '';
+    //return this.keyPrefix;
+  }
+
+  public async get<T>(...keys: string[]): Promise<T> {
+    const single = keys.length === 1;
+    const result: any[] = [];
+    const prefix = this.storageGetPrefix();
     for(let key of keys) {
       key = prefix + key;
-
+  
       if(this.cache.hasOwnProperty(key)) {
         result.push(this.cache[key]);
-      } else if(this.useLs) {
+      } else if(this.useCS) {
         let value: any;
         try {
-          value = localStorage.getItem(key);
+          value = await this.cacheStorage.getFile(key, 'text');
+          value = JSON.parse(value);
         } catch(e) {
-          this.useLs = false;
+          if(e !== 'NO_ENTRY_FOUND') {
+            this.useCS = false;
+            value = undefined;
+            console.error('[AS]: get error:', e, key, value);
+          }
         }
-
+  
         // const str = `[get] ${keys.join(', ')}`;
         // console.time(str);
         try {
-          value = (value === undefined || value === null) ? false : JSON.parse(value);
+          value = (value === undefined || value === null) ? false : value;
         } catch(e) {
           value = false;
         }
         //console.timeEnd(str);
         result.push(this.cache[key] = value);
       } else {
-        allFound = false;
+        throw 'something went wrong';
       }
     }
-
-    if(allFound) {
-      return callback(single ? result[0] : result);
-    }
+  
+    return single ? result[0] : result;
   }
 
-  set(obj: any, callback: any) {
-    var keyValues: any = {};
-    var prefix = this.storageGetPrefix(),
+  public async set(obj: any) {
+    let keyValues: any = {};
+    let prefix = this.storageGetPrefix(),
       key, value;
 
     //console.log('storageSetValue', obj, callback, arguments);
@@ -82,140 +87,48 @@ class ConfigStorage {
         value = stringify(value);
         console.log('LocalStorage set: stringify time by own stringify:', performance.now() - perf); */
 
-        if(this.useLs) {
+        if(this.useCS) {
           try {
             //console.log('setItem', key, value);
-            localStorage.setItem(key, value);
-          } catch (e) {
-            this.useLs = false;
+            await this.cacheStorage.save(key, new Response(value, {headers: {'Content-Type': 'application/json'}}));
+          } catch(e) {
+            //this.useCS = false;
+            console.error('[AS]: set error:', e, value);
           }
         } else {
           keyValues[key] = value;
         }
       }
     }
-
-    if(this.useLs) {
-      if(callback) {
-        callback();
-      }
-
-      return;
-    }
   }
 
-  remove(keys: any, callback: any) {
+  public async remove(...keys: any[]) {
     if(!Array.isArray(keys)) {
-      keys = Array.prototype.slice.call(arguments)
-      if(typeof keys[keys.length - 1] === 'function') {
-        callback = keys.pop();
-      }
+      keys = Array.prototype.slice.call(arguments);
     }
 
-    var prefix = this.storageGetPrefix(),
+    let prefix = this.storageGetPrefix(),
       i, key;
 
     for(i = 0; i < keys.length; i++) {
       key = keys[i] = prefix + keys[i];
       delete this.cache[key];
-      if(this.useLs) {
+      if(this.useCS) {
         try {
-          localStorage.removeItem(key);
+          await this.cacheStorage.delete(key);
         } catch(e) {
-          this.useLs = false;
+          this.useCS = false;
+          console.error('[AS]: remove error:', e);
         }
       }
     }
-
-    if(callback) {
-      callback();
-    }
-  }
-
-  clear() {
-    localStorage.clear();
-    location.reload();
-  }
-}
-
-class AppStorage {
-  private taskID = 0;
-  private tasks: {[taskID: number]: (result: any) => void} = {};
-  //private log = (...args: any[]) => console.log('[SW LS]', ...args);
-  private log = (...args: any[]) => {};
-
-  private configStorage: ConfigStorage;
-
-  constructor() {
-    if(Modes.test) {
-      this.setPrefix('t_');
-    }
-
-    if(!isWorker) {
-      this.configStorage = new ConfigStorage();
-    }
-  }
-
-  public setPrefix(newPrefix: string) {
-    if(this.configStorage) {
-      this.configStorage.keyPrefix = newPrefix;
-    }
-  }
-
-  public noPrefix() {
-    if(this.configStorage) {
-      this.configStorage.noPrefix = true;
-    }
-  }
-
-  public finishTask(taskID: number, result: any) {
-    this.log('finishTask:', taskID, result, Object.keys(this.tasks));
-
-    if(!this.tasks.hasOwnProperty(taskID)) {
-      this.log('no such task:', taskID, result);
-      return;
-    }
-
-    this.tasks[taskID](result);
-    delete this.tasks[taskID];
-  }
-
-  private proxy<T>(methodName: 'set' | 'get' | 'remove' | 'clear', ..._args: any[]) {
-    return new Promise<T>((resolve, reject) => {
-      if(isWorker) {
-        const taskID = this.taskID++;
-
-        this.tasks[taskID] = resolve;
-        const task = {useLs: true, task: methodName, taskID, args: _args};
-
-        notifySomeone(task);
-      } else {
-        let args = Array.prototype.slice.call(_args);
-        args.push((result: T) => {
-          resolve(result);
-        });
-
-        this.configStorage[methodName].apply(this.configStorage, args as any);
-      }
-    });
-  }
-
-  public get<T>(...args: any[]) {
-    return this.proxy<T>('get', ...args);
-  }
-
-  public set<T>(...args: any[]) {
-    //console.trace(...args);
-    return this.proxy<T>('set', ...args);
-  }
-
-  public remove<T>(...args: any[]) {
-    return this.proxy<T>('remove', ...args);
   }
 
   public clear() {
-    return this.proxy('clear');
+    return this.cacheStorage.deleteAll();
   }
 }
 
-export default new AppStorage();
+const appStorage = new AppStorage();
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appStorage = appStorage);
+export default appStorage;

@@ -3,7 +3,7 @@ import { notifyAll, notifySomeone } from "../../helpers/context";
 import { getFileNameByLocation } from "../../helpers/fileName";
 import { nextRandomInt } from "../../helpers/random";
 import { FileLocation, InputFile, InputFileLocation, UploadFile } from "../../layer";
-import cacheStorage from "../cacheStorage";
+import CacheStorageController from "../cacheStorage";
 import cryptoWorker from "../crypto/cryptoworker";
 import FileManager from "../filemanager";
 import { logger, LogLevels } from "../logger";
@@ -33,6 +33,8 @@ type MyUploadFile = UploadFile.uploadFile;
 const MAX_FILE_SAVE_SIZE = 20e6;
 
 export class ApiFileManager {
+  public cacheStorage = new CacheStorageController('cachedFiles');
+
   public cachedDownloadPromises: {
     [fileName: string]: CancellablePromise<Blob>
   } = {};
@@ -112,7 +114,7 @@ export class ApiFileManager {
   }
 
   public getFileStorage() {
-    return cacheStorage;
+    return this.cacheStorage;
   }
 
   public cancelDownload(fileName: string) {
@@ -409,7 +411,7 @@ export class ApiFileManager {
   public deleteFile(fileName: string) {
     //this.log('will delete file:', fileName);
     delete this.cachedDownloadPromises[fileName];
-    return this.getFileStorage().deleteFile(fileName);
+    return this.getFileStorage().delete(fileName);
   }
 
   public uploadFile({file, fileName}: {file: Blob | File, fileName: string}) {

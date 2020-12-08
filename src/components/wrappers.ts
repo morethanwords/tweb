@@ -24,6 +24,7 @@ import { renderImageFromUrl } from './misc';
 import PollElement from './poll';
 import ProgressivePreloader from './preloader';
 import './middleEllipsis';
+import { nextRandomInt } from '../helpers/random';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 
@@ -432,7 +433,7 @@ function wrapMediaWithTail(photo: MyPhoto | MyDocument, message: {mid: number, m
   svg.setAttributeNS(null, 'viewBox', '0 0 ' + width + ' ' + height);
   svg.setAttributeNS(null, 'preserveAspectRatio', 'none');
 
-  const clipID = 'clip' + message.mid;
+  const clipID = 'clip' + message.mid + '_' + nextRandomInt(9999);
   svg.dataset.clipID = clipID;
   
   const defs = document.createElementNS("http://www.w3.org/2000/svg", 'defs');
@@ -803,7 +804,7 @@ export function prepareAlbum(options: {
       container.append(div);
     }
 
-    div.classList.add('album-item');
+    div.classList.add('album-item', 'grouped-item');
 
     div.style.width = (geometry.width / width * 100) + '%';
     div.style.height = (geometry.height / height * 100) + '%';

@@ -10,7 +10,7 @@ import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
 import rootScope from '../rootScope';
 import apiUpdatesManager from './apiUpdatesManager';
 import appUsersManager from "./appUsersManager";
-import Chat from '../../components/chat/chat';
+import Chat, { ChatType } from '../../components/chat/chat';
 import appChatsManager from './appChatsManager';
 import appDocsManager from './appDocsManager';
 import appInlineBotsManager from './AppInlineBotsManager';
@@ -139,11 +139,12 @@ export class AppImManager {
       
       //if(target.tagName == 'INPUT') return;
       
-      this.log('onkeydown', e, document.activeElement);
+      //this.log('onkeydown', e, document.activeElement);
 
       const chat = this.chat;
 
       if(e.key == 'Escape') {
+        let cancel = true;
         if(this.markupTooltip?.container?.classList.contains('is-visible')) {
           this.markupTooltip.hide();
         } else if(chat.selection.isSelecting) {
@@ -152,11 +153,12 @@ export class AppImManager {
           chat.input.replyElements.cancelBtn.click();
         } else if(chat.peerID != 0) { // hide current dialog
           this.setPeer(0);
-          cancelEvent(e);
+        } else {
+          cancel = false;
         }
 
         // * cancel event for safari, because if application is in fullscreen, browser will try to exit fullscreen
-        if(chat.peerID) {
+        if(cancel) {
           cancelEvent(e);
         }
       } else if(e.key == 'Meta' || e.key == 'Control') {
@@ -183,12 +185,13 @@ export class AppImManager {
   
             if(goodMid) {
               chat.input.initMessageEditing(goodMid);
+              cancelEvent(e); // * prevent from scrolling
             }
           }
         }
       }
       
-      if(e.target != chat.input.messageInput && target.tagName != 'INPUT' && !target.hasAttribute('contenteditable')) {
+      if(chat.input.messageInput && e.target != chat.input.messageInput && target.tagName != 'INPUT' && !target.hasAttribute('contenteditable')) {
         chat.input.messageInput.focus();
         placeCaretAtEnd(chat.input.messageInput);
       }
@@ -336,15 +339,19 @@ export class AppImManager {
     this.selectTab(1);
   }
 
-  public setInnerPeer(peerID: number, lastMsgID?: number) {
+  public setInnerPeer(peerID: number, lastMsgID?: number, type: ChatType = 'chat') {
     // * prevent opening already opened peer
-    const existingIndex = this.chats.findIndex(chat => chat.peerID == peerID);
+    const existingIndex = this.chats.findIndex(chat => chat.peerID == peerID && chat.type == type);
     if(existingIndex !== -1) {
       this.spliceChats(existingIndex + 1);
       return this.setPeer(peerID, lastMsgID);
     }
 
     this.createNewChat();
+
+    if(type) {
+      this.chat.type = type;
+    }
 
     this.chatsSelectTab(this.chat.container);
 

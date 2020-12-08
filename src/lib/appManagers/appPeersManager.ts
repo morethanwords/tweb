@@ -29,7 +29,7 @@ export class AppPeersManager {
   } */
 
   public canPinMessage(peerID: number) {
-    return peerID == rootScope.myID || (peerID < 0 && appChatsManager.hasRights(-peerID, 'pin'));
+    return peerID > 0 || appChatsManager.hasRights(-peerID, 'pin');
   }
 
   public getPeerPhoto(peerID: number) {

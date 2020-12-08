@@ -26,6 +26,11 @@ $large-screen: 1680px;
 $floating-left-sidebar: 925px;
 $messages-container-width: 728px;
 
+$chat-input-size: 3.375rem;
+$chat-input-handhelds-size: 2.875rem;
+$chat-padding: 1rem;
+$chat-padding-handhelds: .5rem;
+
 @mixin respond-to($media) {
   @if $media == handhelds {
     @media only screen and (max-width: $small-screen) { @content; }
@@ -81,7 +86,7 @@ $messages-container-width: 728px;
   --layer-transition: .2s ease-in-out;
   //--layer-transition: .3s cubic-bezier(.33, 1, .68, 1);
   //--layer-transition: none;
-  --btn-corner-transition: transform .2s cubic-bezier(.34, 1.56, .64, 1);
+  --btn-corner-transition: .2s cubic-bezier(.34, 1.56, .64, 1);
   --message-handhelds-margin: 5.5625rem;
   --message-beside-button-margin: 2.875rem;
   --message-time-background: rgba(0, 0, 0, .35);
@@ -91,10 +96,16 @@ $messages-container-width: 728px;
   @include respond-to(handhelds) {
     --right-column-width: 100vw;
     --esg-sticker-size: 68px;
+
+    --chat-input-size: #{$chat-input-handhelds-size};
+    --chat-input-padding: #{$chat-padding-handhelds};
   }
 
   @include respond-to(not-handhelds) {
     --right-column-width: calc(#{$large-screen} / 4);
+
+    --chat-input-size: #{$chat-input-size};
+    --chat-input-padding: #{$chat-padding};
   }
 
   @include respond-to(only-medium-screens) {
@@ -1046,5 +1057,43 @@ middle-ellipsis-element {
   &-media {
     width: 100%;
     height: 100%;
+  }
+}
+
+.badge {
+  border-radius: .75rem;
+  font-weight: 500;
+  color: white;
+  font-size: .9rem; // ! this will fix vertical center
+  transition: background-color .2s ease-in-out;
+
+  &:empty {
+    display: none;
+  }
+
+  &-20 {
+    height: 1.25rem;
+    min-width: 1.25rem;
+    line-height: 1.25rem !important;
+    padding: 0 5.75px;
+  }
+
+  &-24 {
+    height: 1.5rem;
+    min-width: 1.5rem;
+    line-height: 1.5rem !important;
+    padding: 0 7.75px;
+  }
+
+  &-green {
+    background-color: $color-green;
+  }
+
+  &-blue {
+    background-color: $color-blue;
+  }
+
+  &-gray {
+    background-color: #c5c9cc;
   }
 }

@@ -38,7 +38,7 @@
   bottom: 20px;
   right: 20px;
   //transition: .2s ease;
-  transition: var(--btn-corner-transition) !important;
+  transition: transform var(--btn-corner-transition) !important;
   transform: translate3d(0, var(--translateY), 0);
   z-index: 3;
   user-select: none;
@@ -49,12 +49,12 @@
   border: none;
   outline: none;
   cursor: pointer;
-  overflow: hidden;
-
+  
   display: flex;
   align-items: center;
   justify-content: center;
-
+  padding: 0 !important;
+  
   &.is-visible {
     --translateY: 0;
   }

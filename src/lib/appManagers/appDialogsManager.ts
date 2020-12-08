@@ -203,7 +203,7 @@ export class AppDialogsManager {
   constructor() {
     this.chatsPreloader = putPreloader(null, true);
 
-    this.allUnreadCount = this.folders.menu.querySelector('.unread-count');
+    this.allUnreadCount = this.folders.menu.querySelector('.badge');
     
     this.folders.menuScrollContainer = this.folders.menu.parentElement;
 
@@ -218,7 +218,7 @@ export class AppDialogsManager {
     this.scroll.setVirtualContainer(this.chatList);
     //this.scroll.attachSentinels();
 
-    if(isTouchSupported && isSafari) {
+    /* if(isTouchSupported && isSafari) {
       let allowUp: boolean, allowDown: boolean, slideBeginY: number;
       const container = this.scroll.container;
       container.addEventListener('touchstart', (event) => {
@@ -238,7 +238,7 @@ export class AppDialogsManager {
           event.preventDefault();
         }
       });
-    }
+    } */
 
     this.setListClickListener(this.chatList, null, true);
 
@@ -578,7 +578,7 @@ export class AppDialogsManager {
     const titleSpan = document.createElement('span');
     titleSpan.innerHTML = RichTextProcessor.wrapEmojiText(filter.title);
     const unreadSpan = document.createElement('span');
-    unreadSpan.classList.add('unread-count');
+    unreadSpan.classList.add('badge', 'badge-20', 'badge-blue');
     const i = document.createElement('i');
     span.append(titleSpan, unreadSpan, i);
     li.append(span);

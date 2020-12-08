@@ -14,7 +14,7 @@ export default class ChatAudio extends PinnedContainer {
   private toggleEl: HTMLElement;
 
   constructor(protected topbar: ChatTopbar, protected chat: Chat, protected appMessagesManager: AppMessagesManager, protected appPeersManager: AppPeersManager) {
-    super(topbar, chat, 'audio', new DivAndCaption('pinned-audio', (title: string, subtitle: string) => {
+    super(topbar, chat, topbar.listenerSetter, 'audio', new DivAndCaption('pinned-audio', (title: string, subtitle: string) => {
       this.divAndCaption.title.innerHTML = title;
       this.divAndCaption.subtitle.innerHTML = subtitle;
     }), () => {

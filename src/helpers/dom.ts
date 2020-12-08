@@ -543,3 +543,50 @@ export const isSelectionSingle = (input: Element = document.activeElement) => {
 
   return single;
 };
+
+export const handleScrollSideEvent = (elem: HTMLElement, side: 'top' | 'bottom', callback: () => void, listenerSetter: ListenerSetter) => {
+  if(isTouchSupported) {
+    let lastY: number;
+    const options = {passive: true};
+    listenerSetter.add(elem, 'touchstart', (e) => {
+      if(e.touches.length > 1) {
+        onTouchEnd();
+        return;
+      }
+
+      lastY = e.touches[0].clientY;
+
+      listenerSetter.add(elem, 'touchmove', onTouchMove, options);
+      listenerSetter.add(elem, 'touchend', onTouchEnd, options);
+    }, options);
+
+    const onTouchMove = (e: TouchEvent) => {
+      const clientY = e.touches[0].clientY;
+
+      const isDown = clientY < lastY;
+      if(side == 'bottom' && isDown) callback();
+      else if(side == 'top' && !isDown) callback();
+      lastY = clientY;
+      //alert('isDown: ' + !!isDown);
+    };
+    
+    const onTouchEnd = () => {
+      listenerSetter.removeManual(elem, 'touchmove', onTouchMove, options);
+      listenerSetter.removeManual(elem, 'touchend', onTouchEnd, options);
+    };
+  } else {
+    listenerSetter.add(elem, 'wheel', (e) => {
+      const isDown = e.deltaY > 0;
+      //this.log('wheel', e, isDown);
+      if(side == 'bottom' && isDown) callback();
+      else if(side == 'top' && !isDown) callback();
+    }, {passive: true});
+  }
+};
+
+export const getElementByPoint = (container: HTMLElement, verticalSide: 'top' | 'bottom'): HTMLElement => {
+  const rect = container.getBoundingClientRect();
+  const x = Math.ceil(rect.left + ((rect.right - rect.left) / 2) + 1);
+  const y = verticalSide == 'bottom' ? Math.floor(rect.top + rect.height - 1) : Math.ceil(rect.top + 1);
+  return document.elementFromPoint(x, y) as any;
+};

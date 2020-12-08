@@ -5,8 +5,8 @@ import type { DownloadOptions } from "../mtproto/apiFileManager";
 import { InputFile } from "../../layer";
 import referenceDatabase, {ReferenceBytes} from "../mtproto/referenceDatabase";
 import type { ApiError } from "../mtproto/apiManager";
-import cacheStorage from "../cacheStorage";
 import { getFileNameByLocation } from "../../helpers/fileName";
+import CacheStorageController from "../cacheStorage";
 
 export type ResponseMethodBlob = 'blob';
 export type ResponseMethodJson = 'json';
@@ -23,6 +23,7 @@ export type Progress = {done: number, fileName: string, total: number, offset: n
 export type ProgressCallback = (details: Progress) => void;
 
 export class AppDownloadManager {
+  private cacheStorage = new CacheStorageController('cachedFiles');
   private downloads: {[fileName: string]: Download} = {};
   private progress: {[fileName: string]: Progress} = {};
   private progressCallbacks: {[fileName: string]: Array<ProgressCallback>} = {};
@@ -102,7 +103,7 @@ export class AppDownloadManager {
 
     const tryDownload = (): Promise<unknown> => {
       if(!apiManager.worker) {
-        return cacheStorage.getFile(fileName).then((blob) => {
+        return this.cacheStorage.getFile(fileName).then((blob) => {
           if(blob.size < options.size) throw 'wrong size';
           else deferred.resolve(blob);
         }).catch(() => {

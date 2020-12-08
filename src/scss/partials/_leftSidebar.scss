@@ -86,21 +86,8 @@
       }
     }
 
-    .unread-count {
+    .badge {
       margin-left: 5px;
-      background: #50a2e9;
-      height: 1.25rem;
-      border-radius: .75rem;
-      font-weight: 500;
-      color: white;
-      line-height: 1.25rem;
-      min-width: 1.25rem;
-      font-size: .9rem; // ! this will fix vertical center
-      padding: 0 5.75px;
-
-      &:empty {
-        display: none;
-      }
     }
 
     &:not(.hide) + .scrollable {
@@ -653,6 +640,11 @@
         padding-left: 38px;
       }
     }
+  }
+
+  .checkbox-field {
+    margin: 0;
+    padding: 0;
   }
 }
 

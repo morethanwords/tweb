@@ -1,4 +1,3 @@
-import type { AppImManager } from "../../lib/appManagers/appImManager";
 import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManager";
 import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import type ChatTopbar from "./topbar";
@@ -8,8 +7,10 @@ import PinnedContainer from "./pinnedContainer";
 import PinnedMessageBorder from "./pinnedMessageBorder";
 import ReplyContainer, { wrapReplyDivAndCaption } from "./replyContainer";
 import rootScope from "../../lib/rootScope";
-import { findUpClassName } from "../../helpers/dom";
+import { cancelEvent, findUpClassName, getElementByPoint, handleScrollSideEvent } from "../../helpers/dom";
 import Chat from "./chat";
+import ListenerSetter from "../../helpers/listenerSetter";
+import ButtonIcon from "../buttonIcon";
 
 class AnimatedSuper {
   static DURATION = 200;
@@ -191,28 +192,54 @@ class AnimatedCounter {
 }
 
 export default class ChatPinnedMessage {
+  public static LOAD_COUNT = 50;
+  public static LOAD_OFFSET = 5;
+
   public pinnedMessageContainer: PinnedContainer;
   public pinnedMessageBorder: PinnedMessageBorder;
-  public pinnedIndex = 0;
+
+  public pinnedMaxMid = 0;
+  public pinnedMid = 0;
+  public pinnedIndex = -1;
   public wasPinnedIndex = 0;
+  
   public locked = false;
   public waitForScrollBottom = false;
+
+  public count = 0;
+  public mids: number[] = [];
+  public offsetIndex = 0;
+
+  public loading = false;
+  public loadedBottom = false;
+  public loadedTop = false;
 
   public animatedSubtitle: AnimatedSuper;
   public animatedMedia: AnimatedSuper;
   public animatedCounter: AnimatedCounter;
+
+  public listenerSetter: ListenerSetter;
+  public scrollDownListenerSetter: ListenerSetter = null;
+
+  public hidden = false;
+
+  public getCurrentIndexPromise: Promise<any> = null;
+  public btnOpen: HTMLButtonElement;
   
   constructor(private topbar: ChatTopbar, private chat: Chat, private appMessagesManager: AppMessagesManager, private appPeersManager: AppPeersManager) {
-    this.pinnedMessageContainer = new PinnedContainer(topbar, chat, 'message', new ReplyContainer('pinned-message'), () => {
+    this.listenerSetter = new ListenerSetter();
+
+    this.pinnedMessageContainer = new PinnedContainer(topbar, chat, this.listenerSetter, 'message', new ReplyContainer('pinned-message'), () => {
       if(appPeersManager.canPinMessage(this.topbar.peerID)) {
-        new PopupPinMessage(this.topbar.peerID, 0);
+        new PopupPinMessage(this.topbar.peerID, this.pinnedMid, true);
         return Promise.resolve(false);
+      } else {
+        return this.appMessagesManager.hidePinnedMessages(this.topbar.peerID).then(() => true);
       }
     });
 
     this.pinnedMessageBorder = new PinnedMessageBorder();
     this.pinnedMessageContainer.divAndCaption.border.replaceWith(this.pinnedMessageBorder.render(1, 0));
-    this.topbar.btnJoin.parentElement.insertBefore(this.pinnedMessageContainer.divAndCaption.container, this.topbar.btnJoin);
 
     this.animatedSubtitle = new AnimatedSuper();
     this.pinnedMessageContainer.divAndCaption.subtitle.append(this.animatedSubtitle.container);
@@ -225,90 +252,261 @@ export default class ChatPinnedMessage {
     this.pinnedMessageContainer.divAndCaption.title.innerHTML = 'Pinned Message ';
     this.pinnedMessageContainer.divAndCaption.title.append(this.animatedCounter.container);
 
-    this.topbar.listenerSetter.add(rootScope, 'peer_pinned_messages', (e) => {
+    this.btnOpen = ButtonIcon('pinlist pinned-container-close pinned-message-pinlist', {noRipple: true});
+    this.pinnedMessageContainer.divAndCaption.container.prepend(this.btnOpen);
+
+    this.listenerSetter.add(this.btnOpen, 'click', (e) => {
+      cancelEvent(e);
+      this.topbar.openPinned(true);
+    });
+
+    this.listenerSetter.add(rootScope, 'peer_pinned_messages', (e) => {
       const peerID = e.detail;
 
       if(peerID == this.topbar.peerID) {
-        this.setPinnedMessage();
+        //this.wasPinnedIndex = 0;
+        //setTimeout(() => {
+          if(this.hidden) {
+            this.pinnedMessageContainer.toggle(this.hidden = false);
+          }
+
+          this.loadedTop = this.loadedBottom = false;
+          this.pinnedIndex = -1;
+          this.pinnedMid = 0;
+          this.count = 0;
+          this.mids = [];
+          this.offsetIndex = 0;
+          this.pinnedMaxMid = 0;
+          this.setCorrectIndex(0);
+        //}, 300);
+      }
+    });
+
+    this.listenerSetter.add(rootScope, 'peer_pinned_hidden', (e) => {
+      const {peerID, maxID} = e.detail;
+
+      if(peerID == this.topbar.peerID) {
+        this.pinnedMessageContainer.toggle(this.hidden = true);
       }
     });
   }
 
-  public setCorrectIndex(lastScrollDirection?: number) {
-    if(this.locked || this.chat.setPeerPromise) {
-      return;
-    }/*  else if(this.waitForScrollBottom) {
-      if(lastScrollDirection === 1) {
-        this.waitForScrollBottom = false;
-      } else {
-        return;
-      }
-    } */
+  public destroy() {
+    this.pinnedMessageContainer.divAndCaption.container.remove();
+    this.listenerSetter.removeAll();
+    this.unsetScrollDownListener(false);
+  }
 
-    ///const perf = performance.now();
-    const rect = this.chat.bubbles.scrollable.container.getBoundingClientRect();
-    const x = Math.ceil(rect.left + ((rect.right - rect.left) / 2) + 1);
-    const y = Math.floor(rect.top + rect.height - 1);
-    let el: HTMLElement = document.elementFromPoint(x, y) as any;
-    //this.appImManager.log('[PM]: setCorrectIndex: get last element perf:', performance.now() - perf, el, x, y);
+  public setCorrectIndex(lastScrollDirection?: number) {
+    if(this.locked || this.hidden/*  || this.chat.setPeerPromise || this.chat.bubbles.messagesQueuePromise */) {
+      return;
+    }
+
+    if((this.loadedBottom || this.loadedTop) && !this.count) {
+      return;
+    }
+
+    //const perf = performance.now();
+    let el = getElementByPoint(this.chat.bubbles.scrollable.container, 'bottom');
+    //this.chat.log('[PM]: setCorrectIndex: get last element perf:', performance.now() - perf, el);
     if(!el) return;
     el = findUpClassName(el, 'bubble');
     if(!el) return;
 
-    if(el && el.dataset.mid !== undefined) {
-      const mid = +el.dataset.mid;
-      this.appMessagesManager.getPinnedMessages(this.topbar.peerID).then(mids => {
-        let currentIndex = mids.findIndex(_mid => _mid <= mid);
-        if(currentIndex === -1) {
-          currentIndex = mids.length ? mids.length - 1 : 0;
-        }
+    const mid = el.dataset.mid;
+    if(el && mid !== undefined) {
+      this.chat.log('[PM]: setCorrectIndex will test mid:', mid);
+      this.testMid(+mid, lastScrollDirection);
+    }
+  }
 
-        //this.appImManager.log('pinned currentIndex', currentIndex);
+  public testMid(mid: number, lastScrollDirection?: number) {
+    //if(lastScrollDirection !== undefined) return;
+    if(this.hidden) return;
+
+    this.chat.log('[PM]: testMid', mid);
+
+    let currentIndex: number = this.mids.findIndex(_mid => _mid <= mid);
+    if(currentIndex !== -1 && !this.isNeededMore(currentIndex)) {
+      currentIndex += this.offsetIndex;
+    } else if(this.loadedTop && mid < this.mids[this.mids.length - 1]) {
+      //currentIndex = 0;
+      currentIndex = this.mids.length - 1 + this.offsetIndex;
+    } else {
+      if(!this.getCurrentIndexPromise) {
+        this.getCurrentIndexPromise = this.getCurrentIndex(mid, lastScrollDirection !== undefined);
+      }
+
+      return;
+    }
+
+    //const idx = Math.max(0, this.mids.indexOf(mid));
+
+    /* if(currentIndex == this.count) {
+      currentIndex = 0;
+    } */
+
+    this.chat.log('[PM]: testMid: pinned currentIndex', currentIndex, mid);
+
+    const changed = this.pinnedIndex != currentIndex;
+    if(changed) {
+      if(this.waitForScrollBottom && lastScrollDirection !== undefined) {
+        if(this.pinnedIndex === 0 || this.pinnedIndex > currentIndex) { // если не скроллил вниз и пытается поставить нижний пиннед - выйти
+          return;
+        }
+      }
+
+      this.pinnedIndex = currentIndex;
+      this.pinnedMid = this.mids.find(_mid => _mid <= mid) || this.mids[this.mids.length - 1];
+      this.setPinnedMessage();
+    }
+  }
+
+  private isNeededMore(currentIndex: number) {
+    return (this.count > ChatPinnedMessage.LOAD_COUNT && 
+      (
+        (!this.loadedBottom && currentIndex <= ChatPinnedMessage.LOAD_OFFSET) || 
+        (!this.loadedTop && (this.count - 1 - currentIndex) <= ChatPinnedMessage.LOAD_OFFSET)
+      )
+    );
+  }
+
+  private async getCurrentIndex(mid: number, correctAfter = true) {
+    if(this.loading) return;
+    this.loading = true;
+
+    try {
+      let gotRest = false;
+      const promises = [
+        this.appMessagesManager.getSearch(this.topbar.peerID, '', {_: 'inputMessagesFilterPinned'}, mid, ChatPinnedMessage.LOAD_COUNT, 0, ChatPinnedMessage.LOAD_COUNT)
+        .then(r => {
+          gotRest = true;
+          return r;
+        })
+      ];
   
-        const changed = this.pinnedIndex != currentIndex;
-        if(changed) {
-          if(this.waitForScrollBottom) {
-            if(lastScrollDirection === 1) { // если проскроллил вниз - разблокировать
-              this.waitForScrollBottom = false;
-            } else if(this.pinnedIndex > currentIndex) { // если не скроллил вниз и пытается поставить нижний пиннед - выйти
-              return;
-            }
-          }
+      if(!this.pinnedMaxMid) {
+        const promise = this.appMessagesManager.getPinnedMessage(this.topbar.peerID).then(p => {
+          if(!p.maxID) return;
+          this.pinnedMaxMid = p.maxID;
 
-          this.pinnedIndex = currentIndex;
-          this.setPinnedMessage();
-        }
-      });
+          if(!gotRest && correctAfter) {
+            this.mids = [this.pinnedMaxMid];
+            this.count = p.count;
+            this.pinnedIndex = 0;
+            this.pinnedMid = this.mids[0];
+            this.setPinnedMessage();
+            //this.pinnedMessageContainer.toggle(false);
+          }
+        });
+  
+        promises.push(promise as any);
+      }
+      
+      const result = (await Promise.all(promises))[0];
+  
+      let backLimited = result.history.findIndex(_mid => _mid <= mid);
+      if(backLimited === -1) {
+        backLimited = result.history.length;
+      }/*  else {
+        backLimited -= 1;
+      } */
+      
+      this.offsetIndex = result.offset_id_offset ? result.offset_id_offset - backLimited : 0;
+      this.mids = result.history.slice();
+      this.count = result.count;
+
+      if(!this.count) {
+        this.pinnedMessageContainer.toggle(true);
+      }
+  
+      this.loadedTop = (this.offsetIndex + this.mids.length) == this.count;
+      this.loadedBottom = !this.offsetIndex;
+  
+      this.chat.log('[PM]: getCurrentIndex result:', mid, result, backLimited, this.offsetIndex, this.loadedTop, this.loadedBottom);
+    } catch(err) {
+      this.chat.log.error('[PM]: getCurrentIndex error', err);
+    }
+    
+    this.loading = false;
+
+    if(this.locked) {
+      this.testMid(mid);
+    } else if(correctAfter) {
+      this.setCorrectIndex(0);
+    }
+
+    this.getCurrentIndexPromise = null;
+    //return result.offset_id_offset || 0;
+  }
+
+  public setScrollDownListener() {
+    this.waitForScrollBottom = true;
+
+    if(!this.scrollDownListenerSetter) {
+      this.scrollDownListenerSetter = new ListenerSetter();
+      handleScrollSideEvent(this.chat.bubbles.scrollable.container, 'bottom', () => {
+        this.unsetScrollDownListener();
+      }, this.scrollDownListenerSetter);
+    }
+  }
+
+  public unsetScrollDownListener(refreshPosition = true) {
+    this.waitForScrollBottom = false;
+
+    if(this.scrollDownListenerSetter) {
+      this.scrollDownListenerSetter.removeAll();
+      this.scrollDownListenerSetter = null;
+    }
+
+    if(refreshPosition) {
+      this.setCorrectIndex(0);
+    }
+  }
+
+  public async handleFollowingPinnedMessage() {
+    this.locked = true;
+
+    this.chat.log('[PM]: handleFollowingPinnedMessage');
+    try {
+      this.setScrollDownListener();
+
+      const setPeerPromise = this.chat.setPeerPromise;
+      if(setPeerPromise instanceof Promise) {
+        await setPeerPromise;
+      }
+  
+      await this.chat.bubbles.scrollable.scrollLockedPromise;
+
+      if(this.getCurrentIndexPromise) {
+        await this.getCurrentIndexPromise;
+      }
+
+      this.chat.log('[PM]: handleFollowingPinnedMessage: unlock');
+      this.locked = false;
+
+      /* // подождём, пока скролл остановится
+      setTimeout(() => {
+        this.chat.log('[PM]: handleFollowingPinnedMessage: unlock');
+        this.locked = false;
+      }, 50); */
+    } catch(err) {
+      this.chat.log.error('[PM]: handleFollowingPinnedMessage error:', err);
+
+      this.locked = false;
+      this.waitForScrollBottom = false;
+      this.setCorrectIndex(0);
     }
   }
 
   public async followPinnedMessage(mid: number) {
     const message = this.appMessagesManager.getMessage(mid);
     if(message && !message.deleted) {
-      this.locked = true;
-
-      try {
-        const mids = await this.appMessagesManager.getPinnedMessages(message.peerID);
-        const index = mids.indexOf(mid);
-        
-        this.pinnedIndex = index >= (mids.length - 1) ? 0 : index + 1;
-        this.setPinnedMessage();
-        
-        const setPeerPromise = this.chat.setPeer(message.peerID, mid);
-        if(setPeerPromise instanceof Promise) {
-          await setPeerPromise;
-        }
-  
-        await this.chat.bubbles.scrollable.scrollLockedPromise;
-      } catch(err) {
-        this.chat.log.error('[PM]: followPinnedMessage error:', err);
-      }
-
-      // подождём, пока скролл остановится
-      setTimeout(() => {
-        this.locked = false;
-        this.waitForScrollBottom = true;
-      }, 50);
+      this.chat.setPeer(this.topbar.peerID, mid);
+      (this.chat.setPeerPromise || Promise.resolve()).then(() => { // * debounce fast clicker
+        this.handleFollowingPinnedMessage();
+        this.testMid(this.pinnedIndex >= (this.count - 1) ? this.pinnedMaxMid : mid - 1);
+      });
     }
   }
 
@@ -320,24 +518,24 @@ export default class ChatPinnedMessage {
   public setPinnedMessage() {
     /////this.log('setting pinned message', message);
     //return;
-    const promise: Promise<any> = this.chat.setPeerPromise || this.chat.bubbles.messagesQueuePromise || Promise.resolve();
+    /* const promise: Promise<any> = this.chat.setPeerPromise || this.chat.bubbles.messagesQueuePromise || Promise.resolve();
     Promise.all([
-      this.appMessagesManager.getPinnedMessages(this.topbar.peerID),
       promise
-    ]).then(([mids]) => {
+    ]).then(() => { */
       //const mids = results[0];
-      if(mids.length) {
-        const pinnedIndex = this.pinnedIndex >= mids.length ? mids.length - 1 : this.pinnedIndex;
-        const message = this.appMessagesManager.getMessage(mids[pinnedIndex]);
+      const count = this.count;
+      if(count) {
+        const pinnedIndex = this.pinnedIndex;
+        const message = this.appMessagesManager.getMessage(this.pinnedMid);
 
-        //this.animatedCounter.prepareNumber(mids.length);
+        //this.animatedCounter.prepareNumber(count);
 
         //setTimeout(() => {
           const isLast = pinnedIndex === 0;
           this.animatedCounter.container.classList.toggle('is-last', isLast);
           //SetTransition(this.animatedCounter.container, 'is-last', isLast, AnimatedSuper.DURATION);
           if(!isLast) {
-            this.animatedCounter.setCount(mids.length - pinnedIndex);
+            this.animatedCounter.setCount(count - pinnedIndex);
           }
         //}, 100);
 
@@ -372,13 +570,15 @@ export default class ChatPinnedMessage {
           }
         //}
 
-        this.pinnedMessageBorder.render(mids.length, mids.length - pinnedIndex - 1);
+        this.pinnedMessageBorder.render(count, count - pinnedIndex - 1);
         this.wasPinnedIndex = pinnedIndex;
         this.pinnedMessageContainer.divAndCaption.container.dataset.mid = '' + message.mid;
       } else {
         this.pinnedMessageContainer.toggle(true);
         this.wasPinnedIndex = 0;
       }
-    });
+
+      this.pinnedMessageContainer.divAndCaption.container.classList.toggle('is-many', this.count > 1);
+    //});
   }
 }

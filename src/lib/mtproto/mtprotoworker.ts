@@ -132,17 +132,14 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
         return;
       }
       
-      if(task.useLs) {
-        // @ts-ignore
-        AppStorage[task.task](...task.args).then(res => {
-          this.postMessage({useLs: true, taskID: task.taskID, args: res});
-        });
-      } else if(task.update) {
+      if(task.update) {
         if(this.updatesProcessor) {
           this.updatesProcessor(task.update.obj, task.update.bool);
         }
       } else if(task.progress) {
         rootScope.broadcast('download_progress', task.progress);
+      } else if(task.type == 'reload') {
+        location.reload();
       } else if(task.type == 'connectionStatusChange') {
         rootScope.broadcast('connection_status_change', task.payload);
       } else if(task.type == 'convertWebp') {
@@ -255,21 +252,27 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
 
     return this.performTaskWorker('invokeApi', method, params, options).then((result: any) => {
       if(result._.includes('NotModified')) {
-        //this.log.warn('NotModified saved!', method, queryJSON);
+        this.log.warn('NotModified saved!', method, queryJSON);
         return cached.result;
       }
       
-      if(result.hash) {
+      if(result.hash/*  || result.messages */) {
+        const hash = result.hash/*  || this.computeHash(result.messages) */;
+        
         if(!this.hashes[method]) this.hashes[method] = {};
         this.hashes[method][queryJSON] = {
-          hash: result.hash,
-          result: result
+          hash,
+          result
         };
       }
 
       return result;
     });
   }
+
+  /* private computeHash(smth: any[]) {
+    return smth.reduce((hash, v) => (((hash * 0x4F25) & 0x7FFFFFFF) + v.id) & 0x7FFFFFFF, 0);
+  } */
 
   public setBaseDcID(dcID: number) {
     return this.performTaskWorker('setBaseDcID', dcID);

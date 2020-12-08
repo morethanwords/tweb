@@ -84,6 +84,11 @@
     position: relative;
     width: 100%;
 
+    .checkbox-field {
+      margin: 0;
+      padding: 0;
+    }
+
     [type="checkbox"] + span {
       padding-left: 54px;
       margin-left: -54px;

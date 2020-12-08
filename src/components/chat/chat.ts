@@ -10,6 +10,7 @@ import type { AppProfileManager } from "../../lib/appManagers/appProfileManager"
 import type { AppStickersManager } from "../../lib/appManagers/appStickersManager";
 import type { AppUsersManager } from "../../lib/appManagers/appUsersManager";
 import type { AppWebPagesManager } from "../../lib/appManagers/appWebPagesManager";
+import EventListenerBase from "../../helpers/eventListenerBase";
 import { logger, LogLevels } from "../../lib/logger";
 import rootScope from "../../lib/rootScope";
 import appSidebarRight, { AppSidebarRight } from "../sidebarRight";
@@ -19,7 +20,11 @@ import ChatInput from "./input";
 import ChatSelection from "./selection";
 import ChatTopbar from "./topbar";
 
-export default class Chat {
+export type ChatType = 'chat' | 'pinned' | 'replies' | 'discussion';
+
+export default class Chat extends EventListenerBase<{
+  setPeer: (mid: number, isTopMessage: boolean) => void
+}> {
   public container: HTMLElement;
   public backgroundEl: HTMLElement;
 
@@ -33,9 +38,13 @@ export default class Chat {
   public setPeerPromise: Promise<void>;
   public peerChanged: boolean;
 
-  public log: ReturnType<typeof logger>; 
+  public log: ReturnType<typeof logger>;
+
+  public type: ChatType = 'chat';
   
   constructor(public appImManager: AppImManager, private appChatsManager: AppChatsManager, private appDocsManager: AppDocsManager, private appInlineBotsManager: AppInlineBotsManager, private appMessagesManager: AppMessagesManager, private appPeersManager: AppPeersManager, private appPhotosManager: AppPhotosManager, private appProfileManager: AppProfileManager, private appStickersManager: AppStickersManager, private appUsersManager: AppUsersManager, private appWebPagesManager: AppWebPagesManager, private appSidebarRight: AppSidebarRight, private appPollsManager: AppPollsManager) {
+    super();
+
     this.container = document.createElement('div');
     this.container.classList.add('chat');
 
@@ -52,11 +61,24 @@ export default class Chat {
   }
 
   private init() {
-    this.topbar = new ChatTopbar(this, appSidebarRight, this.appMessagesManager, this.appPeersManager, this.appChatsManager, this.appUsersManager, this.appProfileManager);
+    this.topbar = new ChatTopbar(this, appSidebarRight, this.appMessagesManager, this.appPeersManager, this.appChatsManager);
     this.bubbles = new ChatBubbles(this, this.appMessagesManager, this.appSidebarRight, this.appStickersManager, this.appUsersManager, this.appInlineBotsManager, this.appPhotosManager, this.appDocsManager, this.appPeersManager, this.appChatsManager);
     this.input = new ChatInput(this, this.appMessagesManager, this.appDocsManager, this.appChatsManager, this.appPeersManager, this.appWebPagesManager, this.appImManager);
     this.selection = new ChatSelection(this.bubbles, this.input, this.appMessagesManager);
     this.contextMenu = new ChatContextMenu(this.bubbles.bubblesContainer, this, this.appMessagesManager, this.appChatsManager, this.appPeersManager, this.appPollsManager);
+
+    if(this.type == 'chat') {
+      this.topbar.constructPeerHelpers();
+    }
+
+    this.topbar.construct();
+    this.input.construct();
+
+    if(this.type == 'chat') { // * гений в деле, разный порядок из-за разной последовательности действий
+      this.input.constructPeerHelpers();
+    } else if(this.type == 'pinned') {
+      this.input.constructPinnedHelpers();
+    }
 
     this.container.append(this.topbar.container, this.bubbles.bubblesContainer, this.input.chatInput);
   }
@@ -126,24 +148,11 @@ export default class Chat {
       return;
     }
 
-    const {cached, promise} = result;
+    const {promise} = result;
 
-    // clear 
-    if(!cached) {
-      if(!samePeer) {
-        this.finishPeerChange();
-      }
-    }
-    
     //console.timeEnd('appImManager setPeer pre promise');
     
-    this.setPeerPromise = promise.then(() => {
-      if(cached) {
-        if(!samePeer) {
-          this.finishPeerChange();
-        }
-      }
-    }).finally(() => {
+    this.setPeerPromise = promise.finally(() => {
       if(this.peerID == peerID) {
         this.setPeerPromise = null;
       }
@@ -155,18 +164,19 @@ export default class Chat {
     return this.setPeerPromise;
   }
 
-  public finishPeerChange() {
+  public finishPeerChange(isTarget: boolean, isJump: boolean, lastMsgID: number) {
     if(this.peerChanged) return;
 
     let peerID = this.peerID;
     this.peerChanged = true;
 
     this.topbar.setPeer(peerID);
+    this.topbar.finishPeerChange(isTarget, isJump, lastMsgID);
     this.bubbles.finishPeerChange();
     this.input.finishPeerChange();
 
     appSidebarRight.sharedMediaTab.fillProfileElements();
 
-    rootScope.broadcast('peer_changed', this.peerID);
+    rootScope.broadcast('peer_changed', peerID);
   }
 }

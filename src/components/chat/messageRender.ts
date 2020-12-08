@@ -1,5 +1,6 @@
 import { getFullDate } from "../../helpers/date";
 import { formatNumber } from "../../helpers/number";
+import appImManager from "../../lib/appManagers/appImManager";
 import RichTextProcessor from "../../lib/richtextprocessor";
 
 type Message = any;
@@ -39,7 +40,7 @@ export namespace MessageRender {
       time = '<i class="edited">edited</i> ' + time;
     }
 
-    if(message.pFlags.pinned) {
+    if(appImManager.chat.type != 'pinned' && message.pFlags.pinned) {
       bubble.classList.add('is-pinned');
       time = '<i class="tgico tgico-pinnedchat"></i>' + time;
     }

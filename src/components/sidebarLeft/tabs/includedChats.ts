@@ -91,7 +91,7 @@ export default class AppIncludedChatsTab implements SliderTab {
   }
 
   checkbox(selected?: boolean) {
-    return `<div class="checkbox"><label><input type="checkbox" ${selected ? 'checked' : ''}><span></span></label></div>`;
+    return `<div class="checkbox"><label class="checkbox-field"><input type="checkbox" ${selected ? 'checked' : ''}><span></span></label></div>`;
   }
 
   renderResults = async(peerIDs: number[]) => {

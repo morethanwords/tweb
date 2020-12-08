@@ -28,9 +28,9 @@ export default class ChatSelection {
 
   private listenerSetter: ListenerSetter;
 
-  constructor(private chatBubbles: ChatBubbles, private chatInput: ChatInput, private appMessagesManager: AppMessagesManager) {
-    const bubblesContainer = chatBubbles.bubblesContainer;
-    this.listenerSetter = chatBubbles.listenerSetter;
+  constructor(private bubbles: ChatBubbles, private input: ChatInput, private appMessagesManager: AppMessagesManager) {
+    const bubblesContainer = bubbles.bubblesContainer;
+    this.listenerSetter = bubbles.listenerSetter;
 
     if(isTouchSupported) {
       this.listenerSetter.add(bubblesContainer, 'touchend', (e) => {
@@ -49,6 +49,7 @@ export default class ChatSelection {
         || (
           !this.selectedMids.size 
           && !(e.target as HTMLElement).classList.contains('bubble')
+          && !(e.target as HTMLElement).classList.contains('document-selection')
           && bubble
           )
         ) {
@@ -86,7 +87,7 @@ export default class ChatSelection {
 
         /* if(foundTargets.has(e.target as HTMLElement)) return;
         foundTargets.set(e.target as HTMLElement, true); */
-        const bubble = findUpClassName(e.target, 'bubble');
+        const bubble = findUpClassName(e.target, 'grouped-item') || findUpClassName(e.target, 'bubble');
         if(!bubble) {
           //console.error('found no bubble', e);
           return;
@@ -96,7 +97,7 @@ export default class ChatSelection {
         if(!mid) return;
 
         // * cancel selecting if selecting message text
-        if(e.target != bubble && selecting === undefined && !this.selectedMids.size) {
+        if(e.target != bubble && !(e.target as HTMLElement).classList.contains('document-selection') && selecting === undefined && !this.selectedMids.size) {
           this.listenerSetter.removeManual(bubblesContainer, 'mousemove', onMouseMove);
           this.listenerSetter.removeManual(document, 'mouseup', onMouseUp, documentListenerOptions);
           return;
@@ -115,7 +116,7 @@ export default class ChatSelection {
             if(!this.selectedMids.size) {
               if(seen.size == 2) {
                 [...seen].forEach(mid => {
-                  const mounted = this.chatBubbles.getMountedBubble(mid);
+                  const mounted = this.bubbles.getMountedBubble(mid);
                   if(mounted) {
                     this.toggleByBubble(mounted.bubble);
                   }
@@ -151,7 +152,7 @@ export default class ChatSelection {
 
   public toggleBubbleCheckbox(bubble: HTMLElement, show: boolean) {
     const hasCheckbox = !!this.getCheckboxInputFromBubble(bubble);
-    const isAlbum = bubble.classList.contains('is-album');
+    const isGrouped = bubble.classList.contains('is-grouped');
     if(show) {
       if(hasCheckbox) return;
       
@@ -160,23 +161,44 @@ export default class ChatSelection {
 
       // * if it is a render of new message
       const mid = +bubble.dataset.mid;
-      if(this.selectedMids.has(mid) && (!isAlbum || this.isAlbumMidsSelected(mid))) {
+      if(this.selectedMids.has(mid) && (!isGrouped || this.isGroupedMidsSelected(mid))) {
         checkboxField.input.checked = true;
         bubble.classList.add('is-selected');
       }
 
-      bubble.prepend(checkboxField.label);
+      if(bubble.classList.contains('document-container')) {
+        bubble.querySelector('.document, audio-element').append(checkboxField.label);
+      } else {
+        bubble.prepend(checkboxField.label);
+      }
     } else if(hasCheckbox) {
-      bubble.firstElementChild.remove();
+      this.getCheckboxInputFromBubble(bubble).parentElement.remove();
     }
 
-    if(isAlbum) {
-      this.chatBubbles.getBubbleAlbumItems(bubble).forEach(item => this.toggleBubbleCheckbox(item, show));
+    if(isGrouped) {
+      this.bubbles.getBubbleGroupedItems(bubble).forEach(item => this.toggleBubbleCheckbox(item, show));
     }
   }
 
-  public getCheckboxInputFromBubble(bubble: HTMLElement) {
-    return bubble.firstElementChild.tagName == 'LABEL' && bubble.firstElementChild.firstElementChild as HTMLInputElement;
+  public getCheckboxInputFromBubble(bubble: HTMLElement): HTMLInputElement {
+    /* let perf = performance.now();
+    let checkbox = bubble.firstElementChild.tagName == 'LABEL' && bubble.firstElementChild.firstElementChild as HTMLInputElement;
+    console.log('getCheckboxInputFromBubble firstElementChild time:', performance.now() - perf);
+
+    perf = performance.now();
+    checkbox = bubble.querySelector('label input');
+    console.log('getCheckboxInputFromBubble querySelector time:', performance.now() - perf); */
+    /* let perf = performance.now();
+    let contains = bubble.classList.contains('document-container');
+    console.log('getCheckboxInputFromBubble classList time:', performance.now() - perf);
+
+    perf = performance.now();
+    contains = bubble.className.includes('document-container');
+    console.log('getCheckboxInputFromBubble className time:', performance.now() - perf); */
+
+    return bubble.classList.contains('document-container') ? 
+      bubble.querySelector('label input') : 
+      bubble.firstElementChild.tagName == 'LABEL' && bubble.firstElementChild.firstElementChild as HTMLInputElement;
   }
 
   public updateForwardContainer(forceSelection = false) {
@@ -213,7 +235,7 @@ export default class ChatSelection {
 
     if(wasSelecting == this.isSelecting) return;
     
-    const bubblesContainer = this.chatBubbles.bubblesContainer;
+    const bubblesContainer = this.bubbles.bubblesContainer;
     //bubblesContainer.classList.toggle('is-selecting', !!this.selectedMids.size);
 
     /* if(bubblesContainer.classList.contains('is-chat-input-hidden')) {
@@ -234,7 +256,9 @@ export default class ChatSelection {
 
     blurActiveElement(); // * for mobile keyboards
 
-    SetTransition(bubblesContainer, 'is-selecting', !!this.selectedMids.size || forceSelection, 200, () => {
+    const forwards = !!this.selectedMids.size || forceSelection;
+    SetTransition(this.input.rowsWrapper, 'is-centering', forwards, 200);
+    SetTransition(bubblesContainer, 'is-selecting', forwards, 200, () => {
       if(!this.isSelecting) {
         this.selectionContainer.remove();
         this.selectionContainer = this.selectionForwardBtn = this.selectionDeleteBtn = null;
@@ -242,7 +266,7 @@ export default class ChatSelection {
       }
       
       window.requestAnimationFrame(() => {
-        this.chatBubbles.onScroll();
+        this.bubbles.onScroll();
       });
     });
 
@@ -277,13 +301,13 @@ export default class ChatSelection {
 
         this.selectionContainer.append(btnCancel, this.selectionCountEl, this.selectionForwardBtn, this.selectionDeleteBtn);
 
-        this.chatInput.rowsWrapper.append(this.selectionContainer);
+        this.input.rowsWrapper.append(this.selectionContainer);
       }
     }
 
     if(toggleCheckboxes) {
-      for(const mid in this.chatBubbles.bubbles) {
-        const bubble = this.chatBubbles.bubbles[mid];
+      for(const mid in this.bubbles.bubbles) {
+        const bubble = this.bubbles.bubbles[mid];
         this.toggleBubbleCheckbox(bubble, this.isSelecting);
       }
     }
@@ -295,9 +319,10 @@ export default class ChatSelection {
 
   public cancelSelection = () => {
     for(const mid of this.selectedMids) {
-      const mounted = this.chatBubbles.getMountedBubble(mid);
+      const mounted = this.bubbles.getMountedBubble(mid);
       if(mounted) {
-        this.toggleByBubble(mounted.message.grouped_id ? mounted.bubble.querySelector(`.album-item[data-mid="${mid}"]`) : mounted.bubble);
+        //this.toggleByBubble(mounted.message.grouped_id ? mounted.bubble.querySelector(`.grouped-item[data-mid="${mid}"]`) : mounted.bubble);
+        this.toggleByBubble(mounted.bubble);
       }
       /* const bubble = this.appImManager.bubbles[mid];
       if(bubble) {
@@ -325,12 +350,12 @@ export default class ChatSelection {
     SetTransition(bubble, 'is-selected', isSelected, 200);
   }
 
-  public isAlbumBubbleSelected(bubble: HTMLElement) {
-    const albumCheckboxInput = this.getCheckboxInputFromBubble(bubble);
-    return albumCheckboxInput?.checked;
+  public isGroupedBubbleSelected(bubble: HTMLElement) {
+    const groupedCheckboxInput = this.getCheckboxInputFromBubble(bubble);
+    return groupedCheckboxInput?.checked;
   }
 
-  public isAlbumMidsSelected(mid: number) {
+  public isGroupedMidsSelected(mid: number) {
     const mids = this.appMessagesManager.getMidsByMid(mid);
     const selectedMids = mids.filter(mid => this.selectedMids.has(mid));
     return mids.length == selectedMids.length;
@@ -339,14 +364,14 @@ export default class ChatSelection {
   public toggleByBubble = (bubble: HTMLElement) => {
     const mid = +bubble.dataset.mid;
 
-    const isAlbum = bubble.classList.contains('is-album');
-    if(isAlbum) {
-      if(!this.isAlbumBubbleSelected(bubble)) {
+    const isGrouped = bubble.classList.contains('is-grouped');
+    if(isGrouped) {
+      if(!this.isGroupedBubbleSelected(bubble)) {
         const mids = this.appMessagesManager.getMidsByMid(mid);
         mids.forEach(mid => this.selectedMids.delete(mid));
       }
 
-      this.chatBubbles.getBubbleAlbumItems(bubble).forEach(this.toggleByBubble);
+      this.bubbles.getBubbleGroupedItems(bubble).forEach(this.toggleByBubble);
       return;
     }
 
@@ -376,15 +401,15 @@ export default class ChatSelection {
       this.selectedMids.add(mid);
     }
 
-    const isAlbumItem = bubble.classList.contains('album-item');
-    if(isAlbumItem) {
-      const albumContainer = findUpClassName(bubble, 'bubble');
-      const isAlbumSelected = this.isAlbumBubbleSelected(albumContainer);
-      const isAlbumMidsSelected = this.isAlbumMidsSelected(mid);
+    const isGroupedItem = bubble.classList.contains('grouped-item');
+    if(isGroupedItem) {
+      const groupContainer = findUpClassName(bubble, 'bubble');
+      const isGroupedSelected = this.isGroupedBubbleSelected(groupContainer);
+      const isGroupedMidsSelected = this.isGroupedMidsSelected(mid);
 
-      const willChange = isAlbumMidsSelected || isAlbumSelected;
+      const willChange = isGroupedMidsSelected || isGroupedSelected;
       if(willChange) {
-        this.updateBubbleSelection(albumContainer, isAlbumMidsSelected);
+        this.updateBubbleSelection(groupContainer, isGroupedMidsSelected);
       }
     }
 

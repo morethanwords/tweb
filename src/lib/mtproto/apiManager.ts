@@ -112,7 +112,7 @@ export class ApiManager {
     }
     
     // WebPushApiManager.forceUnsubscribe(); // WARNING
-    let storageResult = await AppStorage.get<string[]|boolean[]>(storageKeys);
+    let storageResult = await AppStorage.get<string[]|boolean[]>(...storageKeys);
     
     let logoutPromises = [];
     for(let i = 0; i < storageResult.length; i++) {
@@ -127,7 +127,10 @@ export class ApiManager {
     }).finally(() => {
       this.baseDcID = 0;
       //this.telegramMeNotify(false);
-      AppStorage.clear();
+      const promise = AppStorage.clear();
+      promise.finally(() => {
+        self.postMessage({type: 'reload'});
+      });
     })/* .then(() => {
       location.pathname = '/';
     }) */;
@@ -176,7 +179,7 @@ export class ApiManager {
     const akID = 'dc' + dcID + '_auth_keyID';
     const ss = 'dc' + dcID + '_server_salt';
     
-    return this.gettingNetworkers[getKey] = AppStorage.get<string[]/* |boolean[] */>([ak, akID, ss])
+    return this.gettingNetworkers[getKey] = AppStorage.get<string[]>(ak, akID, ss)
     .then(async([authKeyHex, authKeyIDHex, serverSaltHex]) => {
       let networker: MTPNetworker;
       if(authKeyHex && authKeyHex.length == 512) {

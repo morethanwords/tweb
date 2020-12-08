@@ -1,15 +1,15 @@
 import { blobConstruct } from '../helpers/blob';
 import FileManager from './filemanager';
-import { MOUNT_CLASS_TO } from './mtproto/mtproto_config';
+//import { MOUNT_CLASS_TO } from './mtproto/mtproto_config';
 //import { logger } from './polyfill';
 
-class CacheStorageController {
-  public dbName = 'cachedFiles';
+export default class CacheStorageController {
+  //public dbName = 'cachedFiles';
   public openDbPromise: Promise<Cache>;
 
   //private log: ReturnType<typeof logger> = logger('CS');
 
-  constructor() {
+  constructor(public dbName: string) {
     this.openDatabase();
   }
 
@@ -21,9 +21,19 @@ class CacheStorageController {
     return this.openDbPromise = caches.open(this.dbName);
   }
 
-  public deleteFile(fileName: string) {
+  public delete(entryName: string) {
     return this.timeoutOperation(async(cache) => {
-      const deleted = await cache.delete('/' + fileName);
+      const deleted = await cache.delete('/' + entryName);
+    });
+  }
+
+  public deleteAll() {
+    return caches.delete(this.dbName);
+  }
+
+  public save(entryName: string, response: Response) {
+    return this.timeoutOperation((cache) => {
+      return cache.put('/' + entryName, response);
     });
   }
 
@@ -33,18 +43,16 @@ class CacheStorageController {
       blob = blobConstruct(blob) as Blob;
     }
 
-    return this.timeoutOperation(async(cache) => {
-      await cache.put('/' + fileName, new Response(blob));
-
+    return this.save(fileName, new Response(blob)).then(() => {
       return blob as Blob;
     });
   }
 
-  public getBlobSize(blob: any) {
+  /* public getBlobSize(blob: any) {
     return blob.size || blob.byteLength || blob.length;
-  }
+  } */
 
-  public getFile(fileName: string) {
+  public getFile(fileName: string, method: 'blob' | 'json' | 'text' = 'blob'): Promise<any> {
     //return Promise.reject();
 
     // const str = `get fileName: ${fileName}`;
@@ -54,10 +62,10 @@ class CacheStorageController {
 
       if(!response || !cache) {
         //console.warn('getFile:', response, fileName);
-        throw 'No response???';
+        throw 'NO_ENTRY_FOUND';
       }
    
-      const promise = response.blob();
+      const promise = response[method]();
       // promise.then(() => {
       //   console.timeEnd(str);
       // });
@@ -101,6 +109,6 @@ class CacheStorageController {
   }
 }
 
-const cacheStorage = new CacheStorageController(); 
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.cacheStorage = cacheStorage);
-export default cacheStorage;
+//const cacheStorage = new CacheStorageController(); 
+//MOUNT_CLASS_TO && (MOUNT_CLASS_TO.cacheStorage = cacheStorage);
+//export default cacheStorage;

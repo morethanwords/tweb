@@ -12,6 +12,7 @@ type BroadcastEvents = {
   'user_auth': UserAuth,
   'peer_changed': number,
   'peer_pinned_messages': number,
+  'peer_pinned_hidden': {peerID: number, maxID: number},
   'peer_typings': {peerID: number, typings: UserTyping[]},
 
   'filter_delete': MyDialogFilter,
@@ -90,9 +91,9 @@ class RootScope {
   }
 
   public broadcast = <T extends keyof BroadcastEvents>(name: T, detail?: BroadcastEvents[T]) => {
-    /* if(name != 'user_update') {
-      console.debug(dT(), 'Broadcasting ' + name + ' event, with args:', detail);
-    } */
+    if(name != 'user_update') {
+      console.debug('Broadcasting ' + name + ' event, with args:', detail);
+    }
 
     const myCustomEvent = new CustomEvent(name, {detail});
     document.dispatchEvent(myCustomEvent);

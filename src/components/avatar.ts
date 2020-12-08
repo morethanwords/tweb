@@ -3,6 +3,7 @@ import appProfileManager from "../lib/appManagers/appProfileManager";
 import rootScope from "../lib/rootScope";
 import { cancelEvent } from "../helpers/dom";
 import AppMediaViewer, { AppMediaViewerAvatar } from "./appMediaViewer";
+import { Photo } from "../layer";
 
 rootScope.on('avatar_update', (e) => {
   let peerID = e.detail;
@@ -66,6 +67,8 @@ export default class AvatarElement extends HTMLElement {
                   _: 'messageMediaPhoto',
                   photo: photo
                 },
+                peerID,
+                date: (photo as Photo.photo).date,
                 fromID: peerID
               };
 

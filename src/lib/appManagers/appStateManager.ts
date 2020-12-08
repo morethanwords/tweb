@@ -37,7 +37,8 @@ type State = Partial<{
     channelLocals: AppMessagesIDsManager['channelLocals'],
     channelsByLocals: AppMessagesIDsManager['channelsByLocals'],
     channelCurLocal: AppMessagesIDsManager['channelCurLocal'],
-  }
+  },
+  hiddenPinnedMessages: {[peerID: string]: number}
 }>;
 
 const REFRESH_KEYS = ['dialogs', 'allDialogsLoaded', 'messages', 'contactsList', 'stateCreatedTime',
@@ -65,7 +66,7 @@ export class AppStateManager extends EventListenerBase<{
         if(state) {
           if(state.version != STATE_VERSION) {
             state = {};
-          } else if((state.stateCreatedTime || 0) + REFRESH_EVERY < time) {
+          } else if(((state.stateCreatedTime || 0) + REFRESH_EVERY) < time && false) {
             this.log('will refresh state', state.stateCreatedTime, time);
             REFRESH_KEYS.forEach(key => {
               delete state[key];
@@ -77,6 +78,7 @@ export class AppStateManager extends EventListenerBase<{
         this.state = state || {};
         this.state.chats = state.chats || {};
         this.state.users = state.users || {};
+        this.state.hiddenPinnedMessages = this.state.hiddenPinnedMessages || {};
         this.state.version = STATE_VERSION;
         
         // ??= doesn't compiles
@@ -97,7 +99,7 @@ export class AppStateManager extends EventListenerBase<{
         }
         
         //console.timeEnd('load state');
-        resolve(state);
+        resolve(this.state);
       }).catch(resolve).finally(() => {
         setInterval(() => this.saveState(), 10000);
       });

@@ -7,7 +7,6 @@ import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import { formatPhoneNumber } from "./misc";
 import appChatsManager from "../lib/appManagers/appChatsManager";
 import SearchInput from "./searchInput";
-import { Peer } from "../layer";
 import rootScope from "../lib/rootScope";
 import { escapeRegExp } from "../helpers/string";
 import searchIndexManager from "../lib/searchIndexManager";
@@ -237,7 +236,7 @@ export default class AppSearch {
       });
     }
     
-    return this.searchPromise = appMessagesManager.getSearch(this.peerID, query, null, maxID, 20, this.offsetRate).then(res => {
+    return this.searchPromise = appMessagesManager.getSearch(this.peerID, query, {_: 'inputMessagesFilterEmpty'}, maxID, 20, this.offsetRate).then(res => {
       this.searchPromise = null;
       
       if(this.searchInput.value != query) {

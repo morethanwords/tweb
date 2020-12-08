@@ -15,7 +15,7 @@ import LazyLoadQueue from "../../lazyLoadQueue";
 import { putPreloader, renderImageFromUrl } from "../../misc";
 import Scrollable from "../../scrollable";
 import { SliderTab } from "../../slider";
-import { wrapAudio, wrapDocument } from "../../wrappers";
+import { wrapDocument } from "../../wrappers";
 
 const testScroll = false;
 
@@ -101,6 +101,7 @@ export default class AppSharedMediaTab implements SliderTab {
 
   private log = logger('SM'/* , LogLevels.error */);
   setPeerStatusInterval: number;
+  cleaned: boolean;
 
   public init() {
     this.container = document.getElementById('shared-media-container');
@@ -804,6 +805,7 @@ export default class AppSharedMediaTab implements SliderTab {
     });
 
     this.sharedMediaType = 'inputMessagesFilterPhotoVideo';
+    this.cleaned = true;
   }
 
   public cleanupHTML() {
@@ -861,6 +863,8 @@ export default class AppSharedMediaTab implements SliderTab {
   }
 
   public setPeer(peerID: number) {
+    if(this.peerID == peerID) return;
+
     if(this.init) {
       this.init();
       this.init = null;
@@ -871,7 +875,10 @@ export default class AppSharedMediaTab implements SliderTab {
   }
 
   public fillProfileElements() {
-    let peerID = this.peerID = appImManager.chat.peerID;
+    if(!this.cleaned) return;
+    this.cleaned = false;
+    
+    const peerID = this.peerID;
 
     this.cleanupHTML();
 
@@ -906,7 +913,7 @@ export default class AppSharedMediaTab implements SliderTab {
         setText(user.rPhone, this.profileElements.phone);
       }
       
-      appProfileManager.getProfile(peerID, true).then(userFull => {
+      appProfileManager.getProfile(peerID).then(userFull => {
         if(this.peerID != peerID) {
           this.log.warn('peer changed');
           return;

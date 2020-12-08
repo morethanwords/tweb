@@ -1,8 +1,9 @@
 import rootScope from "../lib/rootScope";
 import { generatePathData } from "../helpers/dom";
 
+type BubbleGroup = {timestamp: number, fromID: number, mid: number, group: HTMLDivElement[]};
 export default class BubbleGroups {
-  bubblesByGroups: Array<{timestamp: number, fromID: number, mid: number, group: HTMLDivElement[]}> = []; // map to group
+  bubblesByGroups: Array<BubbleGroup> = []; // map to group
   groups: Array<HTMLDivElement[]> = [];
   //updateRAFs: Map<HTMLDivElement[], number> = new Map();
   newGroupDiff = 120;
@@ -62,8 +63,9 @@ export default class BubbleGroups {
 
   setClipIfNeeded(bubble: HTMLDivElement, remove = false) {
     //console.log('setClipIfNeeded', bubble, remove);
-    if(bubble.classList.contains('is-message-empty')/*  && !bubble.classList.contains('is-reply') */ 
-      && (bubble.classList.contains('photo') || bubble.classList.contains('video'))) {
+    const className = bubble.className;
+    if(className.includes('is-message-empty')/*  && !className.includes('is-reply') */ 
+      && (className.includes('photo') || className.includes('video'))) {
       let container = bubble.querySelector('.bubble__media-container') as SVGSVGElement;
       //console.log('setClipIfNeeded', bubble, remove, container);
       if(!container) return;
@@ -78,21 +80,21 @@ export default class BubbleGroups {
           let path = container.firstElementChild.firstElementChild.lastElementChild as SVGPathElement;
           let width = +object.getAttributeNS(null, 'width');
           let height = +object.getAttributeNS(null, 'height');
-          let isOut = bubble.classList.contains('is-out');
-          let isReply = bubble.classList.contains('is-reply');
+          let isOut = className.includes('is-out');
+          let isReply = className.includes('is-reply');
           let d = '';
   
           //console.log('setClipIfNeeded', object, width, height, isOut);
   
           let tr: number, tl: number;
-          if(bubble.classList.contains('forwarded') || isReply) {
+          if(className.includes('forwarded') || isReply) {
             tr = tl = 0;
           } else if(isOut) {
-            tr = bubble.classList.contains('is-group-first') ? 12 : 6;
+            tr = className.includes('is-group-first') ? 12 : 6;
             tl = 12;
           } else {
             tr = 12;
-            tl = bubble.classList.contains('is-group-first') ? 12 : 6;
+            tl = className.includes('is-group-first') ? 12 : 6;
           }
   
           if(isOut) {

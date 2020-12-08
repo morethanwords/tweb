@@ -336,6 +336,30 @@
       } */
     }
   }
+
+  &.hide ~ .tgico-pinlist, &:not(.is-many) ~ .tgico-pinlist {
+    display: none; 
+  }
+
+  &.is-many {
+    &:not(.is-floating) {
+      .pinned-message-pinlist {
+        display: none;
+      }
+    }
+  
+    &.is-floating {
+      .pinned-message-close {
+        display: none;
+      }
+    }
+  }
+
+  &:not(.is-many) {
+    .pinned-message-pinlist {
+      display: none;
+    }
+  }
 }
 
 .pinned-audio {

@@ -6,7 +6,11 @@ export default class PopupPinMessage {
   constructor(peerID: number, mid: number, unpin?: true) {
     let title: string, description: string, buttons: PopupButton[] = [];
 
-    const callback = () => appMessagesManager.updatePinnedMessage(peerID, mid, unpin);
+    const callback = () => {
+      setTimeout(() => { // * костыль, потому что document.elementFromPoint вернёт popup-peer пока он будет закрываться
+        appMessagesManager.updatePinnedMessage(peerID, mid, unpin);
+      }, 300);
+    };
     if(unpin) {
       title = `Unpin Message?`;
       description = 'Would you like to unpin this message?';

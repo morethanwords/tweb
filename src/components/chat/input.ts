@@ -22,12 +22,12 @@ import { toast } from "../toast";
 import { wrapReply } from "../wrappers";
 import InputField from '../inputField';
 import { MessageEntity } from '../../layer';
-import MarkupTooltip from './markupTooltip';
 import StickersHelper from './stickersHelper';
 import ButtonIcon from '../buttonIcon';
 import DivAndCaption from '../divAndCaption';
 import ButtonMenuToggle from '../buttonMenuToggle';
 import ListenerSetter from '../../helpers/listenerSetter';
+import Button from '../button';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -94,11 +94,19 @@ export default class ChatInput {
   public stickersHelper: StickersHelper;
   public listenerSetter: ListenerSetter;
 
+  public pinnedControlBtn: HTMLButtonElement;
+
+  public goDownBtn: HTMLButtonElement;
+  public goDownUnreadBadge: HTMLElement;
+
   constructor(private chat: Chat, private appMessagesManager: AppMessagesManager, private appDocsManager: AppDocsManager, private appChatsManager: AppChatsManager, private appPeersManager: AppPeersManager, private appWebPagesManager: AppWebPagesManager, private appImManager: AppImManager) {
     this.listenerSetter = new ListenerSetter();
+  }
 
+  public construct() {
     this.chatInput = document.createElement('div');
     this.chatInput.classList.add('chat-input');
+    this.chatInput.style.display = 'none';
 
     this.inputContainer = document.createElement('div');
     this.inputContainer.classList.add('chat-input-container');
@@ -106,6 +114,24 @@ export default class ChatInput {
     this.rowsWrapper = document.createElement('div');
     this.rowsWrapper.classList.add('rows-wrapper');
 
+    this.inputContainer.append(this.rowsWrapper);
+    this.chatInput.append(this.inputContainer);
+
+    this.goDownBtn = Button('bubbles-go-down btn-corner btn-circle z-depth-1 hide', {icon: 'arrow-down'});
+    this.goDownUnreadBadge = document.createElement('span');
+    this.goDownUnreadBadge.classList.add('badge', 'badge-24', 'badge-green');
+    this.goDownBtn.append(this.goDownUnreadBadge);
+    this.chatInput.append(this.goDownBtn);
+
+    this.listenerSetter.add(this.goDownBtn, CLICK_EVENT_NAME, (e) => {
+      cancelEvent(e);
+      this.chat.bubbles.onGoDownClick();
+    });
+
+    // * constructor end
+  }
+
+  public constructPeerHelpers() {
     this.replyElements.container = document.createElement('div');
     this.replyElements.container.classList.add('reply-wrapper');
 
@@ -137,7 +163,7 @@ export default class ChatInput {
         this.willAttachType = 'media';
         this.fileInput.click();
       },
-      verify: (peerID: number) => peerID > 0 || appChatsManager.hasRights(peerID, 'send', 'send_media')
+      verify: (peerID: number) => peerID > 0 || this.appChatsManager.hasRights(peerID, 'send', 'send_media')
     }, {
       icon: 'document',
       text: 'Document',
@@ -147,14 +173,14 @@ export default class ChatInput {
         this.willAttachType = 'document';
         this.fileInput.click();
       },
-      verify: (peerID: number) => peerID > 0 || appChatsManager.hasRights(peerID, 'send', 'send_media')
+      verify: (peerID: number) => peerID > 0 || this.appChatsManager.hasRights(peerID, 'send', 'send_media')
     }, {
       icon: 'poll',
       text: 'Poll',
       onClick: () => {
         new PopupCreatePoll(this.chat.peerID).show();
       },
-      verify: (peerID: number) => peerID < 0 && appChatsManager.hasRights(peerID, 'send', 'send_polls')
+      verify: (peerID: number) => peerID < 0 && this.appChatsManager.hasRights(peerID, 'send', 'send_polls')
     }];
 
     this.attachMenu = ButtonMenuToggle({noRipple: true, listenerSetter: this.listenerSetter}, 'top-left', this.attachMenuButtons);
@@ -189,12 +215,8 @@ export default class ChatInput {
 
     this.btnSendContainer.append(this.recordRippleEl, this.btnSend);
 
-    this.inputContainer.append(this.rowsWrapper, this.btnCancelRecord, this.btnSendContainer);
-    this.chatInput.append(this.inputContainer);
+    this.inputContainer.append(this.btnCancelRecord, this.btnSendContainer);
 
-    // * constructor end
-
-    const toggleClass = isTouchSupported ? 'flip-icon' : 'active';
     emoticonsDropdown.attachButtonListener(this.btnToggleEmoticons);
     emoticonsDropdown.events.onOpen.push(this.onEmoticonsOpen);
     emoticonsDropdown.events.onClose.push(this.onEmoticonsClose);
@@ -272,7 +294,7 @@ export default class ChatInput {
   
           let peerID = this.chat.peerID;
           // тут objectURL ставится уже с audio/wav
-          appMessagesManager.sendFile(peerID, dataBlob, {
+          this.appMessagesManager.sendFile(peerID, dataBlob, {
             isVoiceMessage: true,
             isMedia: true,
             duration,
@@ -290,6 +312,34 @@ export default class ChatInput {
     this.listenerSetter.add(this.replyElements.container, CLICK_EVENT_NAME, this.onHelperClick);
   }
 
+  public constructPinnedHelpers() {
+    const container = document.createElement('div');
+    container.classList.add('pinned-container');
+
+    this.pinnedControlBtn = Button('btn-primary btn-transparent pinned-container-button', {icon: 'unpin'});
+    container.append(this.pinnedControlBtn);
+
+    this.listenerSetter.add(this.pinnedControlBtn, 'click', () => {
+      const peerID = this.chat.peerID;
+
+      let promise: Promise<any>;
+      if(this.appPeersManager.canPinMessage(peerID)) {
+        promise = this.appMessagesManager.unpinAllMessages(peerID);
+      } else {
+        promise = this.appMessagesManager.hidePinnedMessages(peerID);
+      }
+
+      promise.then(() => {
+        this.chat.appImManager.setPeer(0); // * close tab
+      });
+    });
+
+    this.rowsWrapper.append(container);
+
+    this.chatInput.classList.add('type-pinned');
+    this.rowsWrapper.classList.add('is-centered');
+  }
+
   private onEmoticonsOpen = () => {
     const toggleClass = isTouchSupported ? 'flip-icon' : 'active';
     this.btnToggleEmoticons.classList.toggle(toggleClass, true);
@@ -299,6 +349,13 @@ export default class ChatInput {
     const toggleClass = isTouchSupported ? 'flip-icon' : 'active';
     this.btnToggleEmoticons.classList.toggle(toggleClass, false);
   };
+
+  public setUnreadCount() {
+    const dialog = this.appMessagesManager.getDialogByPeerID(this.chat.peerID)[0];
+    const count = dialog?.unread_count;
+    this.goDownUnreadBadge.innerText = '' + (count || '');
+    this.goDownUnreadBadge.classList.toggle('badge-gray', this.appMessagesManager.isPeerMuted(this.chat.peerID));
+  }
 
   public destroy() {
     this.chat.log.error('Input destroying');
@@ -312,33 +369,54 @@ export default class ChatInput {
   public cleanup() {
     if(!this.chat.peerID) {
       this.chatInput.style.display = 'none';
+      this.goDownBtn.classList.add('hide');
     }
 
     cancelSelection();
-    this.clearInput();
-    this.clearHelper();
+
+    if(this.messageInput) {
+      this.clearInput();
+      this.clearHelper();
+    }
   }
 
   public finishPeerChange() {
     const peerID = this.chat.peerID;
 
-    const visible = this.attachMenuButtons.filter(button => {
-      const good = button.verify(peerID);
-      button.element.classList.toggle('hide', !good);
-      return good;
-    });
-
-    const canWrite = this.appMessagesManager.canWriteToPeer(peerID);
     this.chatInput.style.display = '';
-    this.chatInput.classList.toggle('is-hidden', !canWrite);
-    if(!canWrite) {
-      this.messageInput.removeAttribute('contenteditable');
-    } else {
-      this.messageInput.setAttribute('contenteditable', 'true');
+
+    const isBroadcast = this.appPeersManager.isBroadcast(peerID);
+    this.goDownBtn.classList.toggle('is-broadcast', isBroadcast);
+    this.goDownBtn.classList.remove('hide');
+
+    if(this.goDownUnreadBadge) {
+      this.setUnreadCount();
     }
-    
-    this.attachMenu.toggleAttribute('disabled', !visible.length);
-    this.updateSendBtn();
+
+    if(this.messageInput) {
+      const canWrite = this.appMessagesManager.canWriteToPeer(peerID);
+      this.chatInput.classList.add('no-transition');
+      this.chatInput.classList.toggle('is-hidden', !canWrite);
+      void this.chatInput.offsetLeft; // reflow
+      this.chatInput.classList.remove('no-transition');
+
+      const visible = this.attachMenuButtons.filter(button => {
+        const good = button.verify(peerID);
+        button.element.classList.toggle('hide', !good);
+        return good;
+      });
+  
+      if(!canWrite) {
+        this.messageInput.removeAttribute('contenteditable');
+      } else {
+        this.messageInput.setAttribute('contenteditable', 'true');
+      }
+      
+      this.attachMenu.toggleAttribute('disabled', !visible.length);
+      this.updateSendBtn();
+    } else if(this.pinnedControlBtn) {
+      this.pinnedControlBtn.append(this.appPeersManager.canPinMessage(this.chat.peerID) ? 'Unpin all messages' : 'Don\'t show pinned messages');
+    }
   }
 
   private attachMessageInputField() {

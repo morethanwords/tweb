@@ -320,7 +320,7 @@ export default class AppSelectPeers {
 
       if(this.multiSelect) {
         const selected = this.selected.has(peerID);
-        dom.containerEl.insertAdjacentHTML('afterbegin', `<div class="checkbox"><label><input type="checkbox" ${selected ? 'checked' : ''}><span></span></label></div>`);
+        dom.containerEl.insertAdjacentHTML('afterbegin', `<div class="checkbox"><label class="checkbox-field"><input type="checkbox" ${selected ? 'checked' : ''}><span></span></label></div>`);
         if(selected) dom.listEl.classList.add('active');
       }
 

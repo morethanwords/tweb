@@ -2,7 +2,6 @@
 import '../polyfill';
 
 import apiManager from "./apiManager";
-import AppStorage from '../storage';
 import cryptoWorker from "../crypto/cryptoworker";
 import networkerFactory from "./networkerFactory";
 import apiFileManager from './apiFileManager';
@@ -74,10 +73,7 @@ ctx.addEventListener('message', async(e) => {
 
     //debugger;
   
-    if(task.useLs) {
-      AppStorage.finishTask(task.taskID, task.args);
-      return;
-    } else if(task.type == 'convertWebp') {
+    if(task.type == 'convertWebp') {
       const {fileName, bytes} = task.payload;
       const deferred = apiFileManager.webpConvertPromises[fileName];
       if(deferred) {

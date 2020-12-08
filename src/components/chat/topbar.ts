@@ -1,8 +1,6 @@
 import type { AppChatsManager, Channel } from "../../lib/appManagers/appChatsManager";
 import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManager";
 import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
-import type { AppProfileManager } from "../../lib/appManagers/appProfileManager";
-import type { AppUsersManager } from "../../lib/appManagers/appUsersManager";
 import type { AppSidebarRight } from "../sidebarRight";
 import type Chat from "./chat";
 import { findUpClassName, cancelEvent, attachClickEvent } from "../../helpers/dom";
@@ -18,6 +16,7 @@ import ChatPinnedMessage from "./pinnedMessage";
 import ChatSearch from "./search";
 import { ButtonMenuItemOptions } from "../buttonMenu";
 import ListenerSetter from "../../helpers/listenerSetter";
+import appStateManager from "../../lib/appManagers/appStateManager";
 
 export default class ChatTopbar {
   container: HTMLDivElement;
@@ -38,15 +37,20 @@ export default class ChatTopbar {
 
   private setUtilsRAF: number;
   public peerID: number;
+  public wasPeerID: number;
   private setPeerStatusInterval: number;
 
   public listenerSetter: ListenerSetter;
 
-  constructor(private chat: Chat, private appSidebarRight: AppSidebarRight, private appMessagesManager: AppMessagesManager, private appPeersManager: AppPeersManager, private appChatsManager: AppChatsManager, private appUsersManager: AppUsersManager, private appProfileManager: AppProfileManager) {
+  public menuButtons: (ButtonMenuItemOptions & {verify: () => boolean})[] = [];
+
+  constructor(private chat: Chat, private appSidebarRight: AppSidebarRight, private appMessagesManager: AppMessagesManager, private appPeersManager: AppPeersManager, private appChatsManager: AppChatsManager) {
+    this.listenerSetter = new ListenerSetter();
+  }
+
+  public construct() {
     this.chat.log.error('Topbar construction');
 
-    this.listenerSetter = new ListenerSetter();
-    
     this.container = document.createElement('div');
     this.container.classList.add('sidebar-header', 'topbar');
 
@@ -58,10 +62,6 @@ export default class ChatTopbar {
 
     const person = document.createElement('div');
     person.classList.add('person');
-
-    this.avatarElement = new AvatarElement();
-    this.avatarElement.setAttribute('dialog', '1');
-    this.avatarElement.setAttribute('clickable', '');
 
     const content = document.createElement('div');
     content.classList.add('content');
@@ -77,13 +77,16 @@ export default class ChatTopbar {
     const bottom = document.createElement('div');
     bottom.classList.add('bottom');
 
-    this.subtitle = document.createElement('div');
-    this.subtitle.classList.add('info');
-
-    bottom.append(this.subtitle);
+    if(this.subtitle) {
+      bottom.append(this.subtitle);
+    }
 
     content.append(top, bottom);
-    person.append(this.avatarElement, content);
+    if(this.avatarElement) {
+      person.append(this.avatarElement);
+    }
+
+    person.append(content);
     this.chatInfo.append(person);
 
     // * chat utils section
@@ -92,25 +95,77 @@ export default class ChatTopbar {
 
     this.chatAudio = new ChatAudio(this, this.chat, this.appMessagesManager, this.appPeersManager);
 
+    if(this.menuButtons.length) {
+      this.btnMore = ButtonMenuToggle({listenerSetter: this.listenerSetter}, 'bottom-left', this.menuButtons, () => {
+        this.menuButtons.forEach(button => {
+          button.element.classList.toggle('hide', !button.verify());
+        });
+      });
+    }
+
+    this.chatUtils.append(...[this.chatAudio ? this.chatAudio.divAndCaption.container : null, this.pinnedMessage ? this.pinnedMessage.pinnedMessageContainer.divAndCaption.container : null, this.btnJoin, this.btnPinned, this.btnMute, this.btnSearch, this.btnMore].filter(Boolean));
+
+    this.container.append(this.btnBack, this.chatInfo, this.chatUtils);
+
+    // * construction end
+
+    // * fix topbar overflow section
+
+    this.listenerSetter.add(window, 'resize', this.onResize);
+    mediaSizes.addListener('changeScreen', this.onChangeScreen);
+
+    this.listenerSetter.add(this.container, 'click', (e) => {
+      const pinned: HTMLElement = findUpClassName(e.target, 'pinned-container');
+      if(pinned) {
+        cancelEvent(e);
+        
+        const mid = +pinned.dataset.mid;
+        if(pinned.classList.contains('pinned-message')) {
+          //if(!this.pinnedMessage.locked) {
+            this.pinnedMessage.followPinnedMessage(mid);
+          //}
+        } else {
+          const message = this.appMessagesManager.getMessage(mid);
+  
+          this.chat.setPeer(message.peerID, mid);
+        }
+      } else {
+        this.appSidebarRight.toggleSidebar(true);
+      }
+    });
+
+    this.listenerSetter.add(this.btnBack, 'click', (e) => {
+      cancelEvent(e);
+      this.chat.appImManager.setPeer(0);
+    });
+  }
+
+  public constructPeerHelpers() {
+    this.avatarElement = new AvatarElement();
+    this.avatarElement.setAttribute('dialog', '1');
+    this.avatarElement.setAttribute('clickable', '');
+
+    this.subtitle = document.createElement('div');
+    this.subtitle.classList.add('info');
+
+    this.pinnedMessage = new ChatPinnedMessage(this, this.chat, this.appMessagesManager, this.appPeersManager);
+
     this.btnJoin = Button('btn-primary chat-join hide');
     this.btnJoin.append('SUBSCRIBE');
 
-    this.btnPinned = ButtonIcon('pinlist');
-    this.btnMute = ButtonIcon('mute');
-    this.btnSearch = ButtonIcon('search');
-    const menuButtons: (ButtonMenuItemOptions & {verify: () => boolean})[] = [{
+    this.menuButtons = [{
       icon: 'search',
       text: 'Search',
       onClick: () => {
         new ChatSearch(this, this.chat);
       },
       verify: () => mediaSizes.isMobile
-    }, {
+    }, /* {
       icon: 'pinlist',
       text: 'Pinned Messages',
-      onClick: () => {},
+      onClick: () => this.openPinned(false),
       verify: () => mediaSizes.isMobile
-    }, {
+    }, */ {
       icon: 'mute',
       text: 'Mute',
       onClick: () => {
@@ -144,53 +199,20 @@ export default class ChatTopbar {
       onClick: () => {},
       verify: () => true
     }];
-    //menuButtons.forEach(b => b.options = {listenerSetter: this.listenerSetter});
-    this.btnMore = ButtonMenuToggle({listenerSetter: this.listenerSetter}, 'bottom-left', menuButtons, () => {
-      menuButtons.forEach(button => {
-        button.element.classList.toggle('hide', !button.verify());
-      });
-    });
 
-    this.chatUtils.append(this.chatAudio.divAndCaption.container, this.btnJoin, this.btnPinned, this.btnMute, this.btnSearch, this.btnMore);
+    this.btnPinned = ButtonIcon('pinlist');
+    this.btnMute = ButtonIcon('mute');
+    this.btnSearch = ButtonIcon('search');
 
-    this.container.append(this.btnBack, this.chatInfo, this.chatUtils);
-
-    // * construction end
-
-    // * fix topbar overflow section
-
-    this.listenerSetter.add(window, 'resize', this.onResize);
-    mediaSizes.addListener('changeScreen', this.onChangeScreen);
-
-    this.pinnedMessage = new ChatPinnedMessage(this, this.chat, this.appMessagesManager, this.appPeersManager);
-
-    this.listenerSetter.add(this.container, 'click', (e) => {
-      const pinned: HTMLElement = findUpClassName(e.target, 'pinned-container');
-      if(pinned) {
-        cancelEvent(e);
-        
-        const mid = +pinned.dataset.mid;
-        if(pinned.classList.contains('pinned-message')) {
-          this.pinnedMessage.followPinnedMessage(mid);
-        } else {
-          const message = this.appMessagesManager.getMessage(mid);
-  
-          this.chat.setPeer(message.peerID, mid);
-        }
-      } else {
-        this.appSidebarRight.toggleSidebar(true);
-      }
-    });
-
-    this.listenerSetter.add(this.btnBack, 'click', (e) => {
+    this.listenerSetter.add(this.btnPinned, 'click', (e) => {
       cancelEvent(e);
-      this.chat.appImManager.setPeer(0);
+      this.openPinned(true);
     });
 
     this.listenerSetter.add(this.btnSearch, 'click', (e) => {
       cancelEvent(e);
       if(this.peerID) {
-        appSidebarRight.searchTab.open(this.peerID);
+        this.appSidebarRight.searchTab.open(this.peerID);
       }
     });
 
@@ -199,12 +221,11 @@ export default class ChatTopbar {
       this.appMessagesManager.mutePeer(this.peerID);
     });
 
-    //this.listenerSetter.add(this.btnJoin, 'mousedown', (e) => {
     attachClickEvent(this.btnJoin, (e) => {
       cancelEvent(e);
 
       this.btnJoin.setAttribute('disabled', 'true');
-      appChatsManager.joinChannel(-this.peerID).finally(() => {
+      this.appChatsManager.joinChannel(-this.peerID).finally(() => {
         this.btnJoin.removeAttribute('disabled');
       });
     //});
@@ -213,7 +234,7 @@ export default class ChatTopbar {
     this.listenerSetter.add(rootScope, 'chat_update', (e) => {
       const peerID: number = e.detail;
       if(this.peerID == -peerID) {
-        const chat = appChatsManager.getChat(peerID) as Channel/*  | Chat */;
+        const chat = this.appChatsManager.getChat(peerID) as Channel/*  | Chat */;
         
         this.btnJoin.classList.toggle('hide', !(chat as Channel)?.pFlags?.left);
         this.setUtilsWidth();
@@ -244,7 +265,23 @@ export default class ChatTopbar {
       }
     });
 
+    this.chat.addListener('setPeer', (mid, isTopMessage) => {
+      if(isTopMessage) {
+        this.pinnedMessage.unsetScrollDownListener();
+        this.pinnedMessage.testMid(mid, 0); // * because slider will not let get bubble by document.elementFromPoint
+      } else if(!this.pinnedMessage.locked) {
+        this.pinnedMessage.handleFollowingPinnedMessage();
+        this.pinnedMessage.testMid(mid);
+      }
+    });
+
     this.setPeerStatusInterval = window.setInterval(this.setPeerStatus, 60e3);
+
+    return this;
+  }
+
+  public openPinned(byCurrent: boolean) {
+    this.chat.appImManager.setInnerPeer(this.peerID, byCurrent ? +this.pinnedMessage.pinnedMessageContainer.divAndCaption.container.dataset.mid : 0, 'pinned');
   }
 
   private onResize = () => {
@@ -252,8 +289,8 @@ export default class ChatTopbar {
   };
 
   private onChangeScreen = (from: ScreenSize, to: ScreenSize) => {
-    this.chatAudio.divAndCaption.container.classList.toggle('is-floating', to == ScreenSize.mobile);
-    this.pinnedMessage.onChangeScreen(from, to);
+    this.chatAudio && this.chatAudio.divAndCaption.container.classList.toggle('is-floating', to == ScreenSize.mobile);
+    this.pinnedMessage && this.pinnedMessage.onChangeScreen(from, to);
     this.setUtilsWidth(true);
   };
 
@@ -263,48 +300,86 @@ export default class ChatTopbar {
     this.listenerSetter.removeAll();
     mediaSizes.removeListener('changeScreen', this.onChangeScreen);
     window.clearInterval(this.setPeerStatusInterval);
+    
+    if(this.pinnedMessage) {
+      this.pinnedMessage.destroy(); // * возможно это можно не делать
+    }
 
     delete this.chatAudio;
     delete this.pinnedMessage;
   }
 
   public setPeer(peerID: number) {
+    this.wasPeerID = this.peerID;
     this.peerID = peerID;
 
-    this.avatarElement.setAttribute('peer', '' + peerID);
-    this.avatarElement.update();
+    this.container.style.display = peerID ? '' : 'none';
+  }
+
+  public finishPeerChange(isTarget: boolean, isJump: boolean, lastMsgID: number) {
+    const peerID = this.peerID;
+
+    if(this.avatarElement) {
+      this.avatarElement.setAttribute('peer', '' + peerID);
+      this.avatarElement.update();
+    }
 
     this.container.classList.remove('is-pinned-shown');
-    this.container.style.display = peerID ? '' : 'none';
 
     const isBroadcast = this.appPeersManager.isBroadcast(peerID);
 
-    this.btnMute.classList.toggle('hide', !isBroadcast);
-    this.btnJoin.classList.toggle('hide', !this.appChatsManager.getChat(-peerID)?.pFlags?.left);
+    this.btnMute && this.btnMute.classList.toggle('hide', !isBroadcast);
+    this.btnJoin && this.btnJoin.classList.toggle('hide', !this.appChatsManager.getChat(-peerID)?.pFlags?.left);
     this.setUtilsWidth();
 
+    const middleware = this.chat.bubbles.getMiddleware();
+    if(this.pinnedMessage) { // * replace with new one
+      if(this.wasPeerID) { // * change
+        const newPinnedMessage = new ChatPinnedMessage(this, this.chat, this.appMessagesManager, this.appPeersManager);
+        this.pinnedMessage.pinnedMessageContainer.divAndCaption.container.replaceWith(newPinnedMessage.pinnedMessageContainer.divAndCaption.container);
+        this.pinnedMessage.destroy();
+        this.pinnedMessage = newPinnedMessage;
+      }
+      
+      appStateManager.getState().then((state) => {
+        if(!middleware()) return;
+
+        this.pinnedMessage.hidden = !!state.hiddenPinnedMessages[peerID];
+
+        if(!isTarget) {
+          this.pinnedMessage.setCorrectIndex(0);
+        }
+      });
+    }
+
     window.requestAnimationFrame(() => {
-      this.pinnedMessage.pinnedIndex/*  = this.pinnedMessage.wasPinnedIndex */ = 0;
-      //this.pinnedMessage.setCorrectIndex();
-      this.pinnedMessage.setPinnedMessage();
-      /* noTransition.forEach(el => {
-        el.classList.remove('no-transition-all');
-      }); */
-      /* if(needToChangeInputDisplay) {
-        this.chatInput.style.display = '';
-      } */
-  
-      let title = '';
-      if(peerID == rootScope.myID) title = 'Saved Messages';
-      else title = this.appPeersManager.getPeerTitle(peerID);
-      this.title.innerHTML = title;
- 
+      this.setTitle();
       this.setPeerStatus(true);
       this.setMutedState();
     });
   }
 
+  public setTitle(count?: number) {
+    let title = '';
+    if(this.chat.type == 'pinned') {
+      title = count === -1 ? 'Pinned Messages' : (count === 1 ? 'Pinned Message' : (count + ' Pinned Messages'));
+      
+      if(count === undefined) {
+        this.appMessagesManager.getSearchCounters(this.peerID, [{_: 'inputMessagesFilterPinned'}]).then(result => {
+          this.setTitle(result[0].count);
+        });
+      }
+    } else {
+      if(this.peerID == rootScope.myID) title = 'Saved Messages';
+      else title = this.appPeersManager.getPeerTitle(this.peerID);
+    }
+    
+    this.title.innerHTML = title;
+  }
+
   public setMutedState() {
+    if(!this.btnMute) return;
+
     const peerID = this.peerID;
     let muted = this.appMessagesManager.isPeerMuted(peerID);
     if(this.appPeersManager.isBroadcast(peerID)) { // not human
@@ -350,6 +425,8 @@ export default class ChatTopbar {
   };
 
   public setPeerStatus = (needClear = false) => {
+    if(!this.subtitle) return;
+
     const peerID = this.peerID;
     if(needClear) {
       this.subtitle.innerHTML = '';
