@@ -14,7 +14,7 @@
         /* max-height: 425px; */
   
         #{$parent}-photo {
-          max-height: 320px;
+          //max-height: 320px;
           margin: 0 auto;
   
           img {
@@ -24,6 +24,7 @@
           > div {
             display: flex;
             justify-content: center;
+            margin: 0 auto;
           }
         }
       }
@@ -33,7 +34,7 @@
           margin: 0 auto;
           position: relative;
 
-          > div {
+          .album-item {
             position: absolute;
           }
 
@@ -87,6 +88,7 @@
       //justify-content: center;
       width: fit-content;
       border-radius: $border-radius-medium;
+      user-select: none;
       /* align-items: center; */
   
       .document {
@@ -151,5 +153,20 @@
 .popup-new-media.popup-send-photo {
   .popup-header {
     padding: 0;
+  }
+
+  .checkbox-field {
+    margin-bottom: 0;
+    padding-left: 0;
+  }
+
+  .popup-album, .popup-container:not(.is-album) .popup-item-media {
+    position: relative;
+    border-radius: inherit;
+    overflow: hidden;
+  }
+
+  .popup-album + .popup-album, .popup-container:not(.is-album) .popup-item-media + .popup-item-media {
+    margin-top: .5rem;
   }
 }

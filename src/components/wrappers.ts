@@ -25,6 +25,7 @@ import PollElement from './poll';
 import ProgressivePreloader from './preloader';
 import './middleEllipsis';
 import { nextRandomInt } from '../helpers/random';
+import RichTextProcessor from '../lib/richtextprocessor';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 
@@ -337,7 +338,7 @@ export function wrapDocument(doc: MyDocument, withTime = false, uploading = fals
   const icoDiv = document.createElement('div');
   icoDiv.classList.add('document-ico');
 
-  if(doc.thumbs?.length || (uploading && doc.url)) {
+  if(doc.thumbs?.length || (uploading && doc.url && doc.type == 'photo')) {
     docDiv.classList.add('document-with-thumb');
 
     if(uploading) {
@@ -858,7 +859,7 @@ export function wrapAlbum({groupID, attachmentDiv, middleware, uploading, lazyLo
 }) {
   const items: {size: PhotoSize.photoSize, media: any, message: any}[] = [];
 
-  // !higher msgID will be the FIRST in album
+  // !lowest msgID will be the FIRST in album
   const storage = appMessagesManager.getMidsByAlbum(groupID);
   for(const mid of storage) {
     const m = appMessagesManager.getMessage(mid);
@@ -866,6 +867,11 @@ export function wrapAlbum({groupID, attachmentDiv, middleware, uploading, lazyLo
 
     const size: any = media._ == 'photo' ? appPhotosManager.choosePhotoSize(media, 480, 480) : {w: media.w, h: media.h};
     items.push({size, media, message: m});
+  }
+
+  // * pending
+  if(storage[0] < 0) {
+    items.reverse();
   }
 
   prepareAlbum({
@@ -910,6 +916,77 @@ export function wrapAlbum({groupID, attachmentDiv, middleware, uploading, lazyLo
       });
     }
   });
+}
+
+export function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, messageDiv}: {
+  albumMustBeRenderedFull: boolean,
+  message: any,
+  messageDiv: HTMLElement,
+  bubble: HTMLElement,
+  uploading?: boolean
+}) {
+  let nameContainer: HTMLDivElement;
+  const mids = albumMustBeRenderedFull ? appMessagesManager.getMidsByMid(message.mid) : [message.mid];
+  const isPending = message.mid < 0;
+  if(isPending) {
+    mids.reverse();
+  }
+
+  mids.forEach((mid, idx) => {
+    const message = appMessagesManager.getMessage(mid);
+    const doc = message.media.document;
+    const div = wrapDocument(doc, false, isPending, mid);
+
+    const container = document.createElement('div');
+    container.classList.add('document-container');
+    container.dataset.mid = '' + mid;
+
+    const wrapper = document.createElement('div');
+    wrapper.classList.add('document-wrapper');
+    
+    if(message.message) {
+      const messageDiv = document.createElement('div');
+      messageDiv.classList.add('document-message');
+
+      const richText = RichTextProcessor.wrapRichText(message.message, {
+        entities: message.totalEntities
+      });
+
+      messageDiv.innerHTML = richText;
+      wrapper.append(messageDiv);
+    }
+
+    if(mids.length > 1) {
+      const selection = document.createElement('div');
+      selection.classList.add('document-selection');
+      container.append(selection);
+      
+      container.classList.add('grouped-item');
+
+      if(idx === 0) {
+        nameContainer = wrapper;
+      }
+    }
+
+    if(isPending) {
+      if(doc.type == 'audio' || doc.type == 'voice') {
+        (div as AudioElement).preloader = message.media.preloader;
+      } else {
+        const icoDiv = div.querySelector('.audio-download, .document-ico');
+        message.media.preloader.attach(icoDiv, false);
+      }
+    }
+
+    wrapper.append(div);
+    container.append(wrapper);
+    messageDiv.append(container);
+  });
+
+  if(mids.length > 1) {
+    bubble.classList.add('is-multiple-documents', 'is-grouped');
+  }
+
+  return nameContainer;
 }
 
 export function wrapPoll(pollID: string, mid: number) {

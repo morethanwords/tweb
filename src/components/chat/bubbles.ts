@@ -30,7 +30,7 @@ import AudioElement from "../audio";
 import AvatarElement from "../avatar";
 import { formatPhoneNumber } from "../misc";
 import { ripple } from "../ripple";
-import { wrapAlbum, wrapPhoto, wrapVideo, wrapDocument, wrapSticker, wrapPoll, wrapReply } from "../wrappers";
+import { wrapAlbum, wrapPhoto, wrapVideo, wrapDocument, wrapSticker, wrapPoll, wrapReply, wrapGroupedDocuments } from "../wrappers";
 import { MessageRender } from "./messageRender";
 import LazyLoadQueue from "../lazyLoadQueue";
 import { AppChatsManager } from "../../lib/appManagers/appChatsManager";
@@ -196,20 +196,18 @@ export default class ChatBubbles {
       const message = this.appMessagesManager.getMessage(mid);
 
       appSidebarRight.sharedMediaTab.renderNewMessages(message.peerID, [mid]);
-      
-      const bubble = this.bubbles[tempID];
-      if(bubble) {
-        this.bubbles[mid] = bubble;
+
+      const mounted = this.getMountedBubble(tempID) || this.getMountedBubble(mid);
+      if(mounted) {
+        const bubble = mounted.bubble;
+        //this.bubbles[mid] = bubble;
         
         /////this.log('message_sent', bubble);
 
         // set new mids to album items for mediaViewer
         if(message.grouped_id) {
-          const items = bubble.querySelectorAll('.grouped-item');
-          const groupIDs = getObjectKeysAndSort(appMessagesManager.groupedMessagesStorage[message.grouped_id]);
-          (Array.from(items) as HTMLElement[]).forEach((item, idx) => {
-            item.dataset.mid = '' + groupIDs[idx];
-          });
+          const item = bubble.querySelector(`.grouped-item[data-mid="${tempID}"]`) as HTMLElement;
+          item.dataset.mid = '' + mid;
         }
 
         if(message.media?.poll) {
@@ -222,16 +220,16 @@ export default class ChatBubbles {
         }
 
         if(['audio', 'voice'].includes(message.media?.document?.type)) {
-          const audio = bubble.querySelector('audio-element');
+          const audio = bubble.querySelector(`audio-element[message-id="${tempID}"]`);
           audio.setAttribute('doc-id', message.media.document.id);
           audio.setAttribute('message-id', '' + mid);
         }
 
-        bubble.classList.remove('is-sending');
+        /* bubble.classList.remove('is-sending');
         bubble.classList.add('is-sent');
         bubble.dataset.mid = '' + mid;
 
-        this.bubbleGroups.removeBubble(bubble, tempID);
+        this.bubbleGroups.removeBubble(bubble, tempID); */
 
         if(message.media?.webpage && !bubble.querySelector('.web')) {
           const mounted = this.getMountedBubble(mid);
@@ -239,9 +237,21 @@ export default class ChatBubbles {
           this.renderMessage(mounted.message, true, false, mounted.bubble, false);
         }
         
-        delete this.bubbles[tempID];
+        //delete this.bubbles[tempID];
       } else {
         this.log.warn('message_sent there is no bubble', e.detail);
+      }
+
+      if(this.bubbles[tempID]) {
+        const bubble = this.bubbles[tempID];
+        this.bubbles[mid] = bubble;
+        delete this.bubbles[tempID];
+
+        bubble.classList.remove('is-sending');
+        bubble.classList.add('is-sent');
+        bubble.dataset.mid = '' + mid;
+
+        this.bubbleGroups.removeBubble(bubble, tempID);
       }
 
       if(this.unreadOut.has(tempID)) {
@@ -1360,7 +1370,7 @@ export default class ChatBubbles {
     let messageMedia = message.media;
 
     let messageMessage: string, totalEntities: any[];
-    if(messageMedia?.document && !messageMedia.document.type) {
+    if(messageMedia?.document && messageMedia.document.type !== 'video') {
       // * just filter this case
     } else if(message.grouped_id && albumMustBeRenderedFull) {
       const t = this.appMessagesManager.getAlbumText(message.grouped_id);
@@ -1575,25 +1585,23 @@ export default class ChatBubbles {
             case 'audio':
             case 'voice':
             case 'document': {
-              const doc = this.appDocsManager.getDoc(message.id);
-              //if(doc._ == 'documentEmpty') break;
-              this.log('will wrap pending doc:', doc);
-              const docDiv = wrapDocument(doc, false, true, message.id);
-
-              if(doc.type == 'audio' || doc.type == 'voice') {
-                (docDiv as AudioElement).preloader = preloader;
-              } else {
-                const icoDiv = docDiv.querySelector('.audio-download, .document-ico');
-                preloader.attach(icoDiv, false);
+              const newNameContainer = wrapGroupedDocuments({
+                albumMustBeRenderedFull,
+                message,
+                bubble,
+                messageDiv
+              });
+  
+              if(newNameContainer) {
+                nameContainer = newNameContainer;
               }
-
+              
               if(pending.type == 'voice') {
                 bubble.classList.add('bubble-audio');
               }
               
               bubble.classList.remove('is-message-empty');
               messageDiv.classList.add((pending.type || 'document') + '-message');
-              messageDiv.append(docDiv);
               processingWebPage = true;
               break;
             }
@@ -1805,52 +1813,15 @@ export default class ChatBubbles {
             
             break;
           } else {
-            //const storage = this.appMessagesManager.groupedMessagesStorage[message.grouped_id];
-            //const isFullAlbum = storage && Object.keys(storage).length != 1;
-            const mids = albumMustBeRenderedFull ? this.appMessagesManager.getMidsByMid(message.mid) : [message.mid];
-            mids.forEach((mid, idx) => {
-              const message = this.appMessagesManager.getMessage(mid);
-              const doc = message.media.document;
-              const div = wrapDocument(doc, false, false, mid);
-
-              const container = document.createElement('div');
-              container.classList.add('document-container');
-              container.dataset.mid = '' + mid;
-
-              const wrapper = document.createElement('div');
-              wrapper.classList.add('document-wrapper');
-              
-              if(message.message) {
-                const messageDiv = document.createElement('div');
-                messageDiv.classList.add('document-message');
-
-                const richText = RichTextProcessor.wrapRichText(message.message, {
-                  entities: message.totalEntities
-                });
-
-                messageDiv.innerHTML = richText;
-                wrapper.append(messageDiv);
-              }
-
-              if(mids.length > 1) {
-                const selection = document.createElement('div');
-                selection.classList.add('document-selection');
-                container.append(selection);
-                
-                container.classList.add('grouped-item');
-
-                if(idx === 0) {
-                  nameContainer = wrapper;
-                }
-              }
-  
-              wrapper.append(div);
-              container.append(wrapper);
-              messageDiv.append(container);
+            const newNameContainer = wrapGroupedDocuments({
+              albumMustBeRenderedFull,
+              message,
+              bubble,
+              messageDiv
             });
 
-            if(mids.length > 1) {
-              bubble.classList.add('is-multiple-documents', 'is-grouped');
+            if(newNameContainer) {
+              nameContainer = newNameContainer;
             }
 
             bubble.classList.remove('is-message-empty');

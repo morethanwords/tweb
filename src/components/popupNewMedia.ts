@@ -8,6 +8,7 @@ import { ripple } from "./ripple";
 import Scrollable from "./scrollable";
 import { toast } from "./toast";
 import { prepareAlbum, wrapDocument } from "./wrappers";
+import CheckboxField from "./checkbox";
 
 type SendFileParams = Partial<{
   file: File,
@@ -25,13 +26,16 @@ export default class PopupNewMedia extends PopupElement {
   private btnSend: HTMLElement;
   private input: HTMLInputElement;
   private mediaContainer: HTMLElement;
+  private groupCheckboxField: { label: HTMLLabelElement; input: HTMLInputElement; span: HTMLSpanElement; };
 
   private willAttach: Partial<{
     type: 'media' | 'document',
-    isMedia: boolean,
+    isMedia: true,
+    group: boolean,
     sendFileDetails: SendFileParams[]
   }> = {
-    sendFileDetails: []
+    sendFileDetails: [],
+    group: false
   };
 
   constructor(files: File[], willAttachType: PopupNewMedia['willAttach']['type']) {
@@ -60,7 +64,29 @@ export default class PopupNewMedia extends PopupElement {
       showLengthOn: 80
     });
     this.input = inputField.input;
-    this.container.append(scrollable.container, inputField.container);
+
+    this.container.append(scrollable.container);
+
+    if(files.length > 1) {
+      this.groupCheckboxField = CheckboxField('Group items', 'group-items');
+      this.container.append(this.groupCheckboxField.label, inputField.container);
+  
+      this.groupCheckboxField.input.checked = true;
+      this.willAttach.group = true;
+
+      this.groupCheckboxField.input.addEventListener('change', () => {
+        const checked = this.groupCheckboxField.input.checked;
+  
+        this.willAttach.group = checked;
+        this.willAttach.sendFileDetails.length = 0;
+
+        //this.mediaContainer.innerHTML = '';
+        //this.container.classList.remove('is-media', 'is-document', 'is-album');
+        this.attachFiles(files);
+      });
+    }
+    
+    this.container.append(inputField.container);
 
     this.attachFiles(files);
   }
@@ -85,18 +111,35 @@ export default class PopupNewMedia extends PopupElement {
 
     this.destroy();
     const willAttach = this.willAttach;
-    willAttach.isMedia = willAttach.type == 'media';
+    willAttach.isMedia = willAttach.type == 'media' ? true : undefined;
 
     //console.log('will send files with options:', willAttach);
 
     const peerID = appImManager.chat.peerID;
     const chatInputC = appImManager.chat.input;
 
-    if(willAttach.sendFileDetails.length > 1 && willAttach.isMedia) {
-      appMessagesManager.sendAlbum(peerID, willAttach.sendFileDetails.map(d => d.file), Object.assign({
-        caption,
-        replyToMsgID: chatInputC.replyToMsgID
-      }, willAttach));
+    if(willAttach.sendFileDetails.length > 1 && willAttach.group) {
+      for(let i = 0; i < willAttach.sendFileDetails.length;) {
+        let firstType = willAttach.sendFileDetails[i].file.type.split('/')[0];
+        for(var k = 0; k < 10 && i < willAttach.sendFileDetails.length; ++i, ++k) {
+          const type = willAttach.sendFileDetails[i].file.type.split('/')[0];
+          if(firstType != type) {
+            break;
+          }
+        }
+
+        const w = {...willAttach};
+        w.sendFileDetails = willAttach.sendFileDetails.slice(i - k, i);
+
+        appMessagesManager.sendAlbum(peerID, w.sendFileDetails.map(d => d.file), Object.assign({
+          caption,
+          replyToMsgID: chatInputC.replyToMsgID,
+          isMedia: willAttach.isMedia
+        }, w));
+
+        caption = undefined;
+        chatInputC.replyToMsgID = 0;
+      }
     } else {
       if(caption) {
         if(willAttach.sendFileDetails.length > 1) {
@@ -109,7 +152,7 @@ export default class PopupNewMedia extends PopupElement {
       const promises = willAttach.sendFileDetails.map(params => {
         const promise = appMessagesManager.sendFile(peerID, params.file, Object.assign({
           //isMedia: willAttach.isMedia, 
-          isMedia: params.file.type.includes('audio/') || willAttach.isMedia, 
+          isMedia: willAttach.isMedia, 
           caption,
           replyToMsgID: chatInputC.replyToMsgID
         }, params));
@@ -176,7 +219,8 @@ export default class PopupNewMedia extends PopupElement {
 
         case 'document': {
           const isPhoto = file.type.indexOf('image/') !== -1;
-          if(isPhoto) {
+          const isAudio = file.type.indexOf('audio/') !== -1;
+          if(isPhoto || isAudio) {
             params.objectURL = URL.createObjectURL(file);
           }
 
@@ -220,9 +264,9 @@ export default class PopupNewMedia extends PopupElement {
     const container = this.container;
     const willAttach = this.willAttach;
 
-    if(files.length > 10 && willAttach.type == 'media') {
+    /* if(files.length > 10 && willAttach.type == 'media') {
       willAttach.type = 'document';
-    }
+    } */
 
     files = files.filter(file => {
       if(willAttach.type == 'media') {
@@ -232,64 +276,77 @@ export default class PopupNewMedia extends PopupElement {
       }
     });
 
-    if(files.length) {
-      if(willAttach.type == 'document') {
-        this.title.innerText = 'Send ' + (files.length > 1 ? files.length + ' Files' : 'File');
-        container.classList.add('is-document');
-      } else {
-        container.classList.add('is-media');
+    Promise.all(files.map(this.attachFile)).then(results => {
+      this.container.classList.remove('is-media', 'is-document', 'is-album');
+      this.mediaContainer.innerHTML = '';
 
-        let foundPhotos = 0;
-        let foundVideos = 0;
-        files.forEach(file => {
-          if(file.type.indexOf('image/') === 0) ++foundPhotos;
-          else if(file.type.indexOf('video/') === 0) ++foundVideos;
-        });
-        
-        if(foundPhotos && foundVideos) {
-          this.title.innerText = 'Send Album';
-        } else if(foundPhotos) {
-          this.title.innerText = 'Send ' + (foundPhotos > 1 ? foundPhotos + ' Photos' : 'Photo');
-        } else if(foundVideos) {
-          this.title.innerText = 'Send ' + (foundVideos > 1 ? foundVideos + ' Videos' : 'Video');
+      if(files.length) {
+        if(willAttach.type == 'document') {
+          this.title.innerText = 'Send ' + (files.length > 1 ? files.length + ' Files' : 'File');
+          container.classList.add('is-document');
+        } else {
+          container.classList.add('is-media');
+  
+          let foundPhotos = 0;
+          let foundVideos = 0;
+          files.forEach(file => {
+            if(file.type.indexOf('image/') === 0) ++foundPhotos;
+            else if(file.type.indexOf('video/') === 0) ++foundVideos;
+          });
+          
+          if(foundPhotos && foundVideos && willAttach.group) {
+            this.title.innerText = 'Send Album';
+          } else if(foundPhotos) {
+            this.title.innerText = 'Send ' + (foundPhotos > 1 ? foundPhotos + ' Photos' : 'Photo');
+          } else if(foundVideos) {
+            this.title.innerText = 'Send ' + (foundVideos > 1 ? foundVideos + ' Videos' : 'Video');
+          }
         }
       }
-    }
 
-    Promise.all(files.map(this.attachFile)).then(results => {
       if(willAttach.type == 'media') {
-        if(willAttach.sendFileDetails.length > 1) {
+        if(willAttach.sendFileDetails.length > 1 && willAttach.group) {
           container.classList.add('is-album');
 
-          this.mediaContainer.append(...results);
+          for(let i = 0; i < results.length; i += 10) {
+            const albumContainer = document.createElement('div');
+            albumContainer.classList.add('popup-album');
 
-          prepareAlbum({
-            container: this.mediaContainer,
-            items: willAttach.sendFileDetails.map(o => ({w: o.width, h: o.height})),
-            maxWidth: 380,
-            minWidth: 100,
-            spacing: 4
-          });
+            albumContainer.append(...results.slice(i, i + 10));
+            prepareAlbum({
+              container: albumContainer,
+              items: willAttach.sendFileDetails.slice(i, i + 10).map(o => ({w: o.width, h: o.height})),
+              maxWidth: 380,
+              minWidth: 100,
+              spacing: 4
+            });
+
+            this.mediaContainer.append(albumContainer);
+          }
 
           //console.log('chatInput album layout:', layout);
         } else {
-          const params = willAttach.sendFileDetails[0];
-          const div = results[0];
-          const {w, h} = calcImageInBox(params.width, params.height, 380, 320);
-          div.style.width = w + 'px';
-          div.style.height = h + 'px';
-          this.mediaContainer.append(div);
+          for(let i = 0; i < results.length; ++i) {
+            const params = willAttach.sendFileDetails[i];
+            const div = results[i];
+            const {w, h} = calcImageInBox(params.width, params.height, 380, 320);
+            div.style.width = w + 'px';
+            div.style.height = h + 'px';
+            this.mediaContainer.append(div);
+          }
         }
       } else {
         this.mediaContainer.append(...results);
       }
 
       // show now
-      document.body.addEventListener('keydown', this.onKeyDown);
-      this.onClose = () => {
-        document.body.removeEventListener('keydown', this.onKeyDown);
-      };
-      this.show();
+      if(!this.element.classList.contains('active')) {
+        document.body.addEventListener('keydown', this.onKeyDown);
+        this.onClose = () => {
+          document.body.removeEventListener('keydown', this.onKeyDown);
+        };
+        this.show();
+      }
     });
   }
 }
