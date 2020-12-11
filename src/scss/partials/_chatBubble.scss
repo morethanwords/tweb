@@ -1067,18 +1067,7 @@ $bubble-margin: .25rem;
         left: -75vw;
       }
 
-      &.is-selected {
-        .document-selection {
-          background-color: rgba(77, 142, 80, .4);
-          animation: fade-in-opacity .2s linear forwards;
-        }
-
-        &.backwards {
-          .document-selection, .document-wrapper:before {
-            animation: fade-in-backwards-opacity .2s linear forwards;
-          }
-        } 
-
+      &.is-highlighted, &.is-selected {
         .document-wrapper {
           &:before {
             content: " ";
@@ -1088,8 +1077,33 @@ $bubble-margin: .25rem;
             bottom: 0;
             left: 0;
             background-color: rgba(0, 0, 0, .06);
-            animation: fade-in-opacity .2s linear forwards;
             border-radius: inherit;
+          }
+        }
+      }
+
+      &.is-highlighted {
+        .document-selection {
+          background-color: rgba(0, 132, 255, .3);
+        }
+
+        .document-selection, .document-wrapper:before {
+          animation: bubbleSelected 2s linear;
+        }
+      }
+
+      &.is-selected {
+        .document-selection {
+          background-color: rgba(77, 142, 80, .4);
+        }
+
+        .document-selection, .document-wrapper:before {
+          animation: fade-in-opacity .2s linear forwards;
+        }
+
+        &.backwards {
+          .document-selection, .document-wrapper:before {
+            animation: fade-in-backwards-opacity .2s linear forwards;
           }
         }
       }
