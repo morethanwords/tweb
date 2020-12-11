@@ -21,7 +21,7 @@ fNonce = false;
 fResult = false; */
 
 type AuthOptions = {
-  dcID: number,
+  dcId: number,
   nonce: Uint8Array,
   
   serverNonce?: Uint8Array,
@@ -49,7 +49,7 @@ type AuthOptions = {
   tmpAesKey?: Uint8Array,
   tmpAesIv?: Uint8Array,
   
-  authKeyID?: Uint8Array,
+  authKeyId?: Uint8Array,
   authKey?: number[],
   serverSalt?: number[],
 
@@ -59,7 +59,7 @@ type AuthOptions = {
 
 export class Authorizer {
   private cached: {
-    [dcID: number]: Promise<AuthOptions>
+    [dcId: number]: Promise<AuthOptions>
   } = {};
   
   private log: ReturnType<typeof logger>;
@@ -68,13 +68,13 @@ export class Authorizer {
     this.log = logger(`AUTHORIZER`, LogLevels.error | LogLevels.log);
   }
   
-  public mtpSendPlainRequest(dcID: number, requestArray: Uint8Array) {
+  public mtpSendPlainRequest(dcId: number, requestArray: Uint8Array) {
     var requestLength = requestArray.byteLength;
     //requestArray = new /* Int32Array */Uint8Array(requestBuffer);
     
     var header = new TLSerialization();
     header.storeLongP(0, 0, 'auth_key_id'); // Auth key
-    header.storeLong(timeManager.generateID(), 'msg_id'); // Msg_id
+    header.storeLong(timeManager.generateId(), 'msg_id'); // Msg_id
     header.storeInt(requestLength, 'request_length');
     
     let headerArray = header.getBytes(true) as Uint8Array;
@@ -93,7 +93,7 @@ export class Authorizer {
     resultArray.set(requestArray, headerArray.length);
     
     let requestData = xhrSendBuffer ? resultBuffer : resultArray; */
-    let transport = dcConfigurator.chooseServer(dcID);
+    let transport = dcConfigurator.chooseServer(dcId);
     let baseError = {
       code: 406,
       type: 'NETWORK_BAD_RESPONSE',
@@ -150,7 +150,7 @@ export class Authorizer {
     
     this.log('Send req_pq', auth.nonce.hex);
     try {
-      var deserializer = await this.mtpSendPlainRequest(auth.dcID, request.getBytes(true));
+      var deserializer = await this.mtpSendPlainRequest(auth.dcId, request.getBytes(true));
     } catch(error) {
       this.log.error('req_pq error', error.message);
       throw error;
@@ -261,7 +261,7 @@ export class Authorizer {
     this.log('Send req_DH_params', req_DH_params/* , requestBytes.hex */);
     
     try {
-      var deserializer = await this.mtpSendPlainRequest(auth.dcID, requestBytes);
+      var deserializer = await this.mtpSendPlainRequest(auth.dcId, requestBytes);
     } catch(error) {
       this.log('Send req_DH_params FAIL!', error);
       throw error;
@@ -453,7 +453,7 @@ export class Authorizer {
     this.log('Send set_client_DH_params');
     
     try {
-      var deserializer = await this.mtpSendPlainRequest(auth.dcID, request.getBytes(true));
+      var deserializer = await this.mtpSendPlainRequest(auth.dcId, request.getBytes(true));
     } catch(err) {
       throw err;
     }
@@ -481,7 +481,7 @@ export class Authorizer {
     //var authKeyHash = sha1BytesSync(authKey),
     let authKeyHash = await CryptoWorker.sha1Hash(authKey),
     authKeyAux = authKeyHash.slice(0, 8),
-    authKeyID = authKeyHash.slice(-8);
+    authKeyId = authKeyHash.slice(-8);
     
     this.log('Got Set_client_DH_params_answer', response._, authKey);
     switch(response._) {
@@ -494,9 +494,9 @@ export class Authorizer {
         }
         
         var serverSalt = bytesXor(auth.newNonce.slice(0, 8), auth.serverNonce.slice(0, 8));
-        this.log('Auth successfull!', authKeyID, authKey, serverSalt);
+        this.log('Auth successfull!', authKeyId, authKey, serverSalt);
         
-        auth.authKeyID = authKeyID;
+        auth.authKeyId = authKeyId;
         auth.authKey = authKey;
         auth.serverSalt = serverSalt;
         
@@ -524,25 +524,25 @@ export class Authorizer {
   }
   
   // mtpAuth
-  public async auth(dcID: number): Promise<AuthOptions> {
-    if(dcID in this.cached) {
-      return this.cached[dcID];
+  public async auth(dcId: number): Promise<AuthOptions> {
+    if(dcId in this.cached) {
+      return this.cached[dcId];
     }
     
     let nonce = /* fNonce ? fNonce :  */new Uint8Array(16).randomize();
     /* var nonce = new Array(16);
     MTProto.secureRandom.nextBytes(nonce); */
     
-    if(!dcConfigurator.chooseServer(dcID)) {
-      return Promise.reject(new Error('[MT] No server found for dc ' + dcID));
+    if(!dcConfigurator.chooseServer(dcId)) {
+      return Promise.reject(new Error('[MT] No server found for dc ' + dcId));
     }
 
     try {
-      let promise = this.mtpSendReqPQ({dcID, nonce});
-      this.cached[dcID] = promise;
+      let promise = this.mtpSendReqPQ({dcId, nonce});
+      this.cached[dcId] = promise;
       return await promise;
     } catch(err) {
-      delete this.cached[dcID];
+      delete this.cached[dcId];
       throw err;
     }
   }

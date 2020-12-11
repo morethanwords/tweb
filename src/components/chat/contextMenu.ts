@@ -18,8 +18,8 @@ export default class ChatContextMenu {
 
   private target: HTMLElement;
   private isTargetAGroupedItem: boolean;
-  public peerID: number;
-  public msgID: number;
+  public peerId: number;
+  public mid: number;
 
   constructor(private attachTo: HTMLElement, private chat: Chat, private appMessagesManager: AppMessagesManager, private appChatsManager: AppChatsManager, private appPeersManager: AppPeersManager, private appPollsManager: AppPollsManager) {
     const onContextMenu = (e: MouseEvent | Touch) => {
@@ -58,16 +58,16 @@ export default class ChatContextMenu {
         }
       }
 
-      this.peerID = this.chat.peerID;
+      this.peerId = this.chat.peerId;
       //this.msgID = msgID;
       this.target = e.target as HTMLElement;
 
       const groupedItem = findUpClassName(this.target, 'grouped-item');
       this.isTargetAGroupedItem = !!groupedItem;
       if(groupedItem) {
-        this.msgID = +groupedItem.dataset.mid;
+        this.mid = +groupedItem.dataset.mid;
       } else {
-        this.msgID = mid;
+        this.mid = mid;
       }
 
       this.buttons.forEach(button => {
@@ -90,7 +90,7 @@ export default class ChatContextMenu {
       //appImManager.log('contextmenu', e, bubble, side);
       positionMenu(e, this.element, side);
       openBtnMenu(this.element, () => {
-        this.peerID = this.msgID = 0;
+        this.peerId = this.mid = 0;
         this.target = null;
       });
     };
@@ -137,23 +137,23 @@ export default class ChatContextMenu {
       icon: 'reply',
       text: 'Reply',
       onClick: this.onReplyClick,
-      verify: () => (this.peerID > 0 || this.appChatsManager.hasRights(-this.peerID, 'send')) && this.msgID > 0 && !!this.chat.input.messageInput/* ,
+      verify: () => (this.peerId > 0 || this.appChatsManager.hasRights(-this.peerId, 'send')) && this.mid > 0 && !!this.chat.input.messageInput/* ,
       cancelEvent: true */
     }, {
       icon: 'edit',
       text: 'Edit',
       onClick: this.onEditClick,
-      verify: () => this.appMessagesManager.canEditMessage(this.msgID, 'text') && !!this.chat.input.messageInput
+      verify: () => this.appMessagesManager.canEditMessage(this.mid, 'text') && !!this.chat.input.messageInput
     }, {
       icon: 'copy',
       text: 'Copy',
       onClick: this.onCopyClick,
-      verify: () => !!this.appMessagesManager.getMessage(this.msgID).message
+      verify: () => !!this.appMessagesManager.getMessage(this.mid).message
     }, {
       icon: 'copy',
       text: 'Copy selected',
       onClick: this.onCopyClick,
-      verify: () => this.chat.selection.selectedMids.has(this.msgID) && !![...this.chat.selection.selectedMids].find(mid => !!this.appMessagesManager.getMessage(mid).message),
+      verify: () => this.chat.selection.selectedMids.has(this.mid) && !![...this.chat.selection.selectedMids].find(mid => !!this.appMessagesManager.getMessage(mid).message),
       notDirect: () => true,
       withSelection: true
     }, {
@@ -161,23 +161,23 @@ export default class ChatContextMenu {
       text: 'Pin',
       onClick: this.onPinClick,
       verify: () => {
-        const message = this.appMessagesManager.getMessage(this.msgID);
-        return this.msgID > 0 && message._ != 'messageService' && !message.pFlags.pinned && this.appPeersManager.canPinMessage(this.peerID);
+        const message = this.appMessagesManager.getMessage(this.mid);
+        return this.mid > 0 && message._ != 'messageService' && !message.pFlags.pinned && this.appPeersManager.canPinMessage(this.peerId);
       }
     }, {
       icon: 'unpin',
       text: 'Unpin',
       onClick: this.onUnpinClick,
       verify: () => {
-        const message = this.appMessagesManager.getMessage(this.msgID);
-        return message.pFlags.pinned && this.appPeersManager.canPinMessage(this.peerID);
+        const message = this.appMessagesManager.getMessage(this.mid);
+        return message.pFlags.pinned && this.appPeersManager.canPinMessage(this.peerId);
       }
     }, {
       icon: 'revote',
       text: 'Revote',
       onClick: this.onRetractVote,
       verify: () => {
-        const message = this.appMessagesManager.getMessage(this.msgID);
+        const message = this.appMessagesManager.getMessage(this.mid);
         const poll = message.media?.poll as Poll;
         return poll && poll.chosenIndexes.length && !poll.pFlags.closed && !poll.pFlags.quiz;
       }/* ,
@@ -187,21 +187,21 @@ export default class ChatContextMenu {
       text: 'Stop poll',
       onClick: this.onStopPoll,
       verify: () => {
-        const message = this.appMessagesManager.getMessage(this.msgID);
+        const message = this.appMessagesManager.getMessage(this.mid);
         const poll = message.media?.poll;
-        return this.appMessagesManager.canEditMessage(this.msgID, 'poll') && poll && !poll.pFlags.closed && this.msgID > 0;
+        return this.appMessagesManager.canEditMessage(this.mid, 'poll') && poll && !poll.pFlags.closed && this.mid > 0;
       }/* ,
       cancelEvent: true */
     }, {
       icon: 'forward',
       text: 'Forward',
       onClick: this.onForwardClick,
-      verify: () => this.msgID > 0
+      verify: () => this.mid > 0
     }, {
       icon: 'forward',
       text: 'Forward selected',
       onClick: this.onForwardClick,
-      verify: () => this.chat.selection.selectedMids.has(this.msgID) && !this.chat.selection.selectionForwardBtn.hasAttribute('disabled'),
+      verify: () => this.chat.selection.selectedMids.has(this.mid) && !this.chat.selection.selectionForwardBtn.hasAttribute('disabled'),
       notDirect: () => true,
       withSelection: true
     }, {
@@ -209,8 +209,8 @@ export default class ChatContextMenu {
       text: 'Select',
       onClick: this.onSelectClick,
       verify: () => {
-        const message = this.appMessagesManager.getMessage(this.msgID);
-        return !message.action && !this.chat.selection.selectedMids.has(this.msgID);
+        const message = this.appMessagesManager.getMessage(this.mid);
+        return !message.action && !this.chat.selection.selectedMids.has(this.mid);
       },
       notDirect: () => true,
       withSelection: true
@@ -218,19 +218,19 @@ export default class ChatContextMenu {
       icon: 'select',
       text: 'Clear selection',
       onClick: this.onClearSelectionClick,
-      verify: () => this.chat.selection.selectedMids.has(this.msgID),
+      verify: () => this.chat.selection.selectedMids.has(this.mid),
       notDirect: () => true,
       withSelection: true
     }, {
       icon: 'delete danger',
       text: 'Delete',
       onClick: this.onDeleteClick,
-      verify: () => this.appMessagesManager.canDeleteMessage(this.msgID)
+      verify: () => this.appMessagesManager.canDeleteMessage(this.mid)
     }, {
       icon: 'delete danger',
       text: 'Delete selected',
       onClick: this.onDeleteClick,
-      verify: () => this.chat.selection.selectedMids.has(this.msgID) && !this.chat.selection.selectionDeleteBtn.hasAttribute('disabled'),
+      verify: () => this.chat.selection.selectedMids.has(this.mid) && !this.chat.selection.selectionDeleteBtn.hasAttribute('disabled'),
       notDirect: () => true,
       withSelection: true
     }];
@@ -241,21 +241,21 @@ export default class ChatContextMenu {
   };
 
   private onReplyClick = () => {
-    const message = this.appMessagesManager.getMessage(this.msgID);
+    const message = this.appMessagesManager.getMessage(this.mid);
     const chatInputC = this.chat.input;
     const f = () => {
-      chatInputC.setTopInfo('reply', f, this.appPeersManager.getPeerTitle(message.fromID, true), message.message, undefined, message);
-      chatInputC.replyToMsgID = this.msgID;
+      chatInputC.setTopInfo('reply', f, this.appPeersManager.getPeerTitle(message.fromId, true), message.message, undefined, message);
+      chatInputC.replyToMsgId = this.mid;
     };
     f();
   };
 
   private onEditClick = () => {
-    this.chat.input.initMessageEditing(this.msgID);
+    this.chat.input.initMessageEditing(this.mid);
   };
 
   private onCopyClick = () => {
-    const mids = this.chat.selection.isSelecting ? [...this.chat.selection.selectedMids] : [this.msgID];
+    const mids = this.chat.selection.isSelecting ? [...this.chat.selection.selectedMids] : [this.mid];
     const str = mids.reduce((acc, mid) => {
       const message = this.appMessagesManager.getMessage(mid);
       return acc + (message?.message ? message.message + '\n' : '');
@@ -265,26 +265,26 @@ export default class ChatContextMenu {
   };
 
   private onPinClick = () => {
-    new PopupPinMessage(this.peerID, this.msgID);
+    new PopupPinMessage(this.peerId, this.mid);
   };
 
   private onUnpinClick = () => {
-    new PopupPinMessage(this.peerID, this.msgID, true);
+    new PopupPinMessage(this.peerId, this.mid, true);
   };
 
   private onRetractVote = () => {
-    this.appPollsManager.sendVote(this.msgID, []);
+    this.appPollsManager.sendVote(this.mid, []);
   };
 
   private onStopPoll = () => {
-    this.appPollsManager.stopPoll(this.msgID);
+    this.appPollsManager.stopPoll(this.mid);
   };
 
   private onForwardClick = () => {
     if(this.chat.selection.isSelecting) {
       this.chat.selection.selectionForwardBtn.click();
     } else {
-      new PopupForward(this.isTargetAGroupedItem ? [this.msgID] : this.appMessagesManager.getMidsByMid(this.msgID));
+      new PopupForward(this.isTargetAGroupedItem ? [this.mid] : this.appMessagesManager.getMidsByMid(this.mid));
     }
   };
 
@@ -300,7 +300,7 @@ export default class ChatContextMenu {
     if(this.chat.selection.isSelecting) {
       this.chat.selection.selectionDeleteBtn.click();
     } else {
-      new PopupDeleteMessages(this.isTargetAGroupedItem ? [this.msgID] : this.appMessagesManager.getMidsByMid(this.msgID));
+      new PopupDeleteMessages(this.isTargetAGroupedItem ? [this.mid] : this.appMessagesManager.getMidsByMid(this.mid));
     }
   };
 }

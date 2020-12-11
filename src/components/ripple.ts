@@ -1,7 +1,7 @@
 import {isTouchSupported} from "../helpers/touchSupport";
 import { findUpClassName } from "../helpers/dom";
 
-let rippleClickID = 0;
+let rippleClickId = 0;
 export function ripple(elem: HTMLElement, callback: (id: number) => Promise<boolean | void> = () => Promise.resolve(), onEnd: (id: number) => void = null) {
   //return;
   if(elem.querySelector('.c-ripple')) return;
@@ -23,7 +23,7 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
     const startTime = Date.now();
     const span = document.createElement('span');
 
-    const clickID = rippleClickID++;
+    const clickId = rippleClickId++;
     
     //console.log('ripple drawRipple');
     
@@ -44,14 +44,14 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
         setTimeout(() => {
           //console.log('ripple elapsedTime total pre-remove:', Date.now() - startTime);
           span.remove();
-          if(onEnd) onEnd(clickID);
+          if(onEnd) onEnd(clickId);
         }, delay);
       } else {
         span.classList.add('hiding');
         setTimeout(() => {
           //console.log('ripple elapsedTime total pre-remove:', Date.now() - startTime);
           span.remove();
-          if(onEnd) onEnd(clickID);
+          if(onEnd) onEnd(clickId);
         }, duration / 2);
       }
 
@@ -60,7 +60,7 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
     };
     //});
 
-    callback && callback(clickID);
+    callback && callback(clickId);
 
     /* callback().then((bad) => {
       if(bad) {

@@ -10,9 +10,9 @@ export class NetworkerFactory {
     this.updatesProcessor = callback;
   }
 
-  public getNetworker(dcID: number, authKey: number[], authKeyID: Uint8Array, serverSalt: number[], transport: MTTransport, options: InvokeApiOptions) {
-    //console.log('NetworkerFactory: creating new instance of MTPNetworker:', dcID, options);
-    return new MTPNetworker(dcID, authKey, authKeyID, serverSalt, transport, options);
+  public getNetworker(dcId: number, authKey: number[], authKeyID: Uint8Array, serverSalt: number[], transport: MTTransport, options: InvokeApiOptions) {
+    //console.log('NetworkerFactory: creating new instance of MTPNetworker:', dcId, options);
+    return new MTPNetworker(dcId, authKey, authKeyID, serverSalt, transport, options);
   }
 }
 

@@ -10,6 +10,7 @@ import type { AppProfileManager } from "../../lib/appManagers/appProfileManager"
 import type { AppStickersManager } from "../../lib/appManagers/appStickersManager";
 import type { AppUsersManager } from "../../lib/appManagers/appUsersManager";
 import type { AppWebPagesManager } from "../../lib/appManagers/appWebPagesManager";
+import type { ApiManagerProxy } from "../../lib/mtproto/mtprotoworker";
 import EventListenerBase from "../../helpers/eventListenerBase";
 import { logger, LogLevels } from "../../lib/logger";
 import rootScope from "../../lib/rootScope";
@@ -34,7 +35,7 @@ export default class Chat extends EventListenerBase<{
   public selection: ChatSelection;
   public contextMenu: ChatContextMenu;
 
-  public peerID = 0;
+  public peerId = 0;
   public setPeerPromise: Promise<void>;
   public peerChanged: boolean;
 
@@ -42,7 +43,7 @@ export default class Chat extends EventListenerBase<{
 
   public type: ChatType = 'chat';
   
-  constructor(public appImManager: AppImManager, private appChatsManager: AppChatsManager, private appDocsManager: AppDocsManager, private appInlineBotsManager: AppInlineBotsManager, private appMessagesManager: AppMessagesManager, private appPeersManager: AppPeersManager, private appPhotosManager: AppPhotosManager, private appProfileManager: AppProfileManager, private appStickersManager: AppStickersManager, private appUsersManager: AppUsersManager, private appWebPagesManager: AppWebPagesManager, private appSidebarRight: AppSidebarRight, private appPollsManager: AppPollsManager) {
+  constructor(public appImManager: AppImManager, private appChatsManager: AppChatsManager, private appDocsManager: AppDocsManager, private appInlineBotsManager: AppInlineBotsManager, private appMessagesManager: AppMessagesManager, private appPeersManager: AppPeersManager, private appPhotosManager: AppPhotosManager, private appProfileManager: AppProfileManager, private appStickersManager: AppStickersManager, private appUsersManager: AppUsersManager, private appWebPagesManager: AppWebPagesManager, private appSidebarRight: AppSidebarRight, private appPollsManager: AppPollsManager, public apiManager: ApiManagerProxy) {
     super();
 
     this.container = document.createElement('div');
@@ -108,7 +109,7 @@ export default class Chat extends EventListenerBase<{
     this.peerChanged = false;
   }
 
-  public setPeer(peerID: number, lastMsgID?: number) {
+  public setPeer(peerId: number, lastMsgId?: number) {
     if(this.init) {
       this.init();
       this.init = null;
@@ -117,33 +118,33 @@ export default class Chat extends EventListenerBase<{
     //console.time('appImManager setPeer');
     //console.time('appImManager setPeer pre promise');
     ////console.time('appImManager: pre render start');
-    if(peerID == 0) {
+    if(peerId == 0) {
       appSidebarRight.toggleSidebar(false);
-      this.peerID = peerID;
+      this.peerId = peerId;
       this.cleanup();
-      this.topbar.setPeer(peerID);
-      this.bubbles.setPeer(peerID);
-      rootScope.broadcast('peer_changed', peerID);
+      this.topbar.setPeer(peerId);
+      this.bubbles.setPeer(peerId);
+      rootScope.broadcast('peer_changed', peerId);
 
       return;
     }
 
-    const samePeer = this.peerID == peerID;
+    const samePeer = this.peerId == peerId;
 
     // set new
     if(!samePeer) {
-      if(appSidebarRight.historyTabIDs[appSidebarRight.historyTabIDs.length - 1] == AppSidebarRight.SLIDERITEMSIDS.search) {
+      if(appSidebarRight.historyTabIds[appSidebarRight.historyTabIds.length - 1] == AppSidebarRight.SLIDERITEMSIDS.search) {
         appSidebarRight.searchTab.closeBtn?.click();
       }
 
-      this.peerID = peerID;
-      appSidebarRight.sharedMediaTab.setPeer(peerID);
+      this.peerId = peerId;
+      appSidebarRight.sharedMediaTab.setPeer(peerId);
       this.cleanup();
     } else {
       this.peerChanged = true;
     }
 
-    const result = this.bubbles.setPeer(peerID, lastMsgID);
+    const result = this.bubbles.setPeer(peerId, lastMsgId);
     if(!result) {
       return;
     }
@@ -153,7 +154,7 @@ export default class Chat extends EventListenerBase<{
     //console.timeEnd('appImManager setPeer pre promise');
     
     this.setPeerPromise = promise.finally(() => {
-      if(this.peerID == peerID) {
+      if(this.peerId == peerId) {
         this.setPeerPromise = null;
       }
     });
@@ -164,19 +165,19 @@ export default class Chat extends EventListenerBase<{
     return this.setPeerPromise;
   }
 
-  public finishPeerChange(isTarget: boolean, isJump: boolean, lastMsgID: number) {
+  public finishPeerChange(isTarget: boolean, isJump: boolean, lastMsgId: number) {
     if(this.peerChanged) return;
 
-    let peerID = this.peerID;
+    let peerId = this.peerId;
     this.peerChanged = true;
 
-    this.topbar.setPeer(peerID);
-    this.topbar.finishPeerChange(isTarget, isJump, lastMsgID);
+    this.topbar.setPeer(peerId);
+    this.topbar.finishPeerChange(isTarget, isJump, lastMsgId);
     this.bubbles.finishPeerChange();
     this.input.finishPeerChange();
 
     appSidebarRight.sharedMediaTab.fillProfileElements();
 
-    rootScope.broadcast('peer_changed', peerID);
+    rootScope.broadcast('peer_changed', peerId);
   }
 }

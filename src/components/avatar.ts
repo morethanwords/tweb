@@ -6,17 +6,17 @@ import AppMediaViewer, { AppMediaViewerAvatar } from "./appMediaViewer";
 import { Photo } from "../layer";
 
 rootScope.on('avatar_update', (e) => {
-  let peerID = e.detail;
+  let peerId = e.detail;
 
-  appProfileManager.removeFromAvatarsCache(peerID);
-  (Array.from(document.querySelectorAll('avatar-element[peer="' + peerID + '"]')) as AvatarElement[]).forEach(elem => {
+  appProfileManager.removeFromAvatarsCache(peerId);
+  (Array.from(document.querySelectorAll('avatar-element[peer="' + peerId + '"]')) as AvatarElement[]).forEach(elem => {
     //console.log('updating avatar:', elem);
     elem.update();
   });
 }); 
 
 export default class AvatarElement extends HTMLElement {
-  private peerID: number;
+  private peerId: number;
   private isDialog = false;
   public peerTitle: string;
 
@@ -37,19 +37,19 @@ export default class AvatarElement extends HTMLElement {
         cancelEvent(e);
         if(loading) return;
         //console.log('avatar clicked');
-        const peerID = this.peerID;
+        const peerId = this.peerId;
         loading = true;
 
-        const photo = await appProfileManager.getFullPhoto(this.peerID);
-        if(this.peerID != peerID || !photo) {
+        const photo = await appProfileManager.getFullPhoto(this.peerId);
+        if(this.peerId != peerId || !photo) {
           loading = false;
           return;
         }
 
-        if(peerID < 0) {
-          const maxID = Number.MAX_SAFE_INTEGER;
+        if(peerId < 0) {
+          const maxId = Number.MAX_SAFE_INTEGER;
           const inputFilter = 'inputMessagesFilterChatPhotos';
-          const mid = await appMessagesManager.getSearch(peerID, '', {_: inputFilter}, maxID, 2, 0, 1).then(value => {
+          const mid = await appMessagesManager.getSearch(peerId, '', {_: inputFilter}, maxId, 2, 0, 1).then(value => {
             //console.log(lol);
             // ! by descend
             return value.history[0];
@@ -62,17 +62,17 @@ export default class AvatarElement extends HTMLElement {
             if(messagePhoto.id != photo.id) {
               message = {
                 _: 'message',
-                mid: maxID,
+                mid: maxId,
                 media: {
                   _: 'messageMediaPhoto',
                   photo: photo
                 },
-                peerID,
+                peerId,
                 date: (photo as Photo.photo).date,
-                fromID: peerID
+                fromId: peerId
               };
 
-              appMessagesManager.messagesStorage[maxID] = message;
+              appMessagesManager.messagesStorage[maxId] = message;
             }
 
             const good = Array.from(this.querySelectorAll('img')).find(img => !img.classList.contains('emoji'));
@@ -84,7 +84,7 @@ export default class AvatarElement extends HTMLElement {
 
         if(photo) {
           const good = Array.from(this.querySelectorAll('img')).find(img => !img.classList.contains('emoji'));
-          new AppMediaViewerAvatar(peerID).openMedia(photo.id, good ? this : null);
+          new AppMediaViewerAvatar(peerId).openMedia(photo.id, good ? this : null);
         }
 
         loading = false;
@@ -105,11 +105,11 @@ export default class AvatarElement extends HTMLElement {
     //console.log('avatar changed attribute:', name, oldValue, newValue);
     // вызывается при изменении одного из перечисленных выше атрибутов
     if(name == 'peer') {
-      if(this.peerID == +newValue) {
+      if(this.peerId == +newValue) {
         return;
       }
       
-      this.peerID = +newValue;
+      this.peerId = +newValue;
       this.update();
     } else if(name == 'peer-title') {
       this.peerTitle = newValue;
@@ -119,7 +119,7 @@ export default class AvatarElement extends HTMLElement {
   }
 
   public update() {
-    appProfileManager.putPhoto(this, this.peerID, this.isDialog, this.peerTitle);
+    appProfileManager.putPhoto(this, this.peerId, this.isDialog, this.peerTitle);
   }
 
   adoptedCallback() {

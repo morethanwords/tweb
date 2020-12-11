@@ -12,41 +12,41 @@ type BroadcastEvents = {
   'user_auth': UserAuth,
   'peer_changed': number,
   'peer_pinned_messages': number,
-  'peer_pinned_hidden': {peerID: number, maxID: number},
-  'peer_typings': {peerID: number, typings: UserTyping[]},
+  'peer_pinned_hidden': {peerId: number, maxId: number},
+  'peer_typings': {peerId: number, typings: UserTyping[]},
 
   'filter_delete': MyDialogFilter,
   'filter_update': MyDialogFilter,
   'filter_order': number[],
   
-  'dialog_draft': {peerID: number, draft: any, index: number},
-  'dialog_unread': {peerID: number, count?: number},
-  'dialog_flush': {peerID: number},
-  'dialog_drop': {peerID: number, dialog?: Dialog},
+  'dialog_draft': {peerId: number, draft: any, index: number},
+  'dialog_unread': {peerId: number, count?: number},
+  'dialog_flush': {peerId: number},
+  'dialog_drop': {peerId: number, dialog?: Dialog},
   'dialog_migrate': {migrateFrom: number, migrateTo: number},
   //'dialog_top': Dialog,
   'dialog_notify_settings': number,
-  'dialogs_multiupdate': {[peerID: string]: Dialog},
+  'dialogs_multiupdate': {[peerId: string]: Dialog},
   'dialogs_archived_unread': {count: number},
   
-  'history_append': {peerID: number, messageID: number, my?: boolean},
-  'history_update': {peerID: number, mid: number},
-  'history_reply_markup': {peerID: number},
+  'history_append': {peerId: number, messageId: number, my?: boolean},
+  'history_update': {peerId: number, mid: number},
+  'history_reply_markup': {peerId: number},
   'history_multiappend': AppMessagesManager['newMessagesToHandle'],
-  'history_delete': {peerID: number, msgs: {[mid: number]: true}},
+  'history_delete': {peerId: number, msgs: {[mid: number]: true}},
   'history_forbidden': number,
   'history_reload': number,
   'history_request': void,
   
-  'message_edit': {peerID: number, mid: number, justMedia: boolean},
+  'message_edit': {peerId: number, mid: number, justMedia: boolean},
   'message_views': {mid: number, views: number},
-  'message_sent': {tempID: number, mid: number},
+  'message_sent': {tempId: number, mid: number},
   'messages_pending': void,
   'messages_read': void,
   'messages_downloaded': number[],
   'messages_media_read': number[],
 
-  'album_edit': {peerID: number, groupID: string, deletedMids: number[]},
+  'album_edit': {peerId: number, groupId: string, deletedMids: number[]},
 
   'stickers_installed': StickerSet.stickerSet,
   'stickers_deleted': StickerSet.stickerSet,
@@ -62,7 +62,7 @@ type BroadcastEvents = {
   'chat_full_update': number,
   'poll_update': {poll: Poll, results: PollResults},
   'chat_update': number,
-  'channel_settings': {channelID: number},
+  'channel_settings': {channelId: number},
   'webpage_updated': {id: string, msgs: number[]},
 
   'apiUpdate': Update,
@@ -73,7 +73,7 @@ type BroadcastEvents = {
 
 class RootScope {
   public overlayIsActive: boolean = false;
-  public myID = 0;
+  public myId = 0;
   public idle = {
     isIDLE: false
   };
@@ -81,7 +81,7 @@ class RootScope {
 
   constructor() {
     this.on('user_auth', (e) => {
-      this.myID = e.detail;
+      this.myId = e.detail;
     });
 
     this.on('connection_status_change', (e) => {

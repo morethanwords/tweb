@@ -8,7 +8,7 @@ import { logger } from '../logger';
 import type { AppUsersManager } from './appUsersManager';
 import type { AppChatsManager } from './appChatsManager';
 import type { AuthState } from '../../types';
-import type { AppMessagesIDsManager } from './appMessagesIDsManager';
+import type { AppMessagesIdsManager } from './appMessagesIdsManager';
 import type FiltersStorage from '../storages/filters';
 import type DialogsStorage from '../storages/dialogs';
 
@@ -18,14 +18,14 @@ const STATE_VERSION = App.version;
 type State = Partial<{
   dialogs: Dialog[],
   allDialogsLoaded: DialogsStorage['allDialogsLoaded'], 
-  //peers: {[peerID: string]: ReturnType<AppPeersManager['getPeer']>},
-  chats: {[peerID: string]: ReturnType<AppChatsManager['getChat']>},
-  users: {[peerID: string]: ReturnType<AppUsersManager['getUser']>},
+  //peers: {[peerId: string]: ReturnType<AppPeersManager['getPeer']>},
+  chats: {[peerId: string]: ReturnType<AppChatsManager['getChat']>},
+  users: {[peerId: string]: ReturnType<AppUsersManager['getUser']>},
   messages: any[],
   contactsList: number[],
   updates: any,
   filters: FiltersStorage['filters'],
-  maxSeenMsgID: number,
+  maxSeenMsgId: number,
   stateCreatedTime: number,
   recentEmoji: string[],
   topPeers: number[],
@@ -33,16 +33,16 @@ type State = Partial<{
   stickerSets: AppStickersManager['stickerSets'],
   version: typeof STATE_VERSION,
   authState: AuthState,
-  messagesIDsLocals: {
-    channelLocals: AppMessagesIDsManager['channelLocals'],
-    channelsByLocals: AppMessagesIDsManager['channelsByLocals'],
-    channelCurLocal: AppMessagesIDsManager['channelCurLocal'],
+  messagesIdsLocals: {
+    channelLocals: AppMessagesIdsManager['channelLocals'],
+    channelsByLocals: AppMessagesIdsManager['channelsByLocals'],
+    channelCurLocal: AppMessagesIdsManager['channelCurLocal'],
   },
-  hiddenPinnedMessages: {[peerID: string]: number}
+  hiddenPinnedMessages: {[peerId: string]: number}
 }>;
 
 const REFRESH_KEYS = ['dialogs', 'allDialogsLoaded', 'messages', 'contactsList', 'stateCreatedTime',
-  'updates', 'maxSeenMsgID', 'filters', 'topPeers'] as any as Array<keyof State>;
+  'updates', 'maxSeenMsgId', 'filters', 'topPeers'] as any as Array<keyof State>;
 
 export class AppStateManager extends EventListenerBase<{
   save: (state: State) => void
@@ -130,10 +130,10 @@ export class AppStateManager extends EventListenerBase<{
     this.state[key] = value;
   }
 
-  public setPeer(peerID: number, peer: any) {
-    const container = peerID > 0 ? this.state.users : this.state.chats;
-    if(container.hasOwnProperty(peerID)) return;
-    container[peerID] = peer;
+  public setPeer(peerId: number, peer: any) {
+    const container = peerId > 0 ? this.state.users : this.state.chats;
+    if(container.hasOwnProperty(peerId)) return;
+    container[peerId] = peer;
   }
 }
 

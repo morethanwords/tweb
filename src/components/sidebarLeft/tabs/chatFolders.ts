@@ -20,7 +20,7 @@ export default class AppChatFoldersTab implements SliderTab {
   private stickerContainer: HTMLElement;
   private animation: RLottiePlayer;
 
-  private filtersRendered: {[filterID: number]: HTMLElement} = {};
+  private filtersRendered: {[filterId: number]: HTMLElement} = {};
 
   constructor(private appMessagesManager: AppMessagesManager, private appPeersManager: AppPeersManager, private appSidebarLeft: AppSidebarLeft, private apiManager: ApiManagerProxy, private rootScope: typeof _rootScope) {
 
@@ -37,10 +37,10 @@ export default class AppChatFoldersTab implements SliderTab {
       filter = dialogFilter;
       description = '';
 
-      const filterID = filter.id;
+      const filterId = filter.id;
       if(!this.filtersRendered.hasOwnProperty(filter.id)) {
         div.addEventListener('click', () => {
-          this.appSidebarLeft.editFolderTab.open(this.appMessagesManager.filtersStorage.filters[filterID]);
+          this.appSidebarLeft.editFolderTab.open(this.appMessagesManager.filtersStorage.filters[filterId]);
         });
       }
 
@@ -68,8 +68,8 @@ export default class AppChatFoldersTab implements SliderTab {
         const folder = this.appMessagesManager.dialogsStorage.getFolder(filter.id);
         let chats = 0, channels = 0, groups = 0;
         for(const dialog of folder) {
-          if(this.appPeersManager.isAnyGroup(dialog.peerID)) groups++;
-          else if(this.appPeersManager.isBroadcast(dialog.peerID)) channels++;
+          if(this.appPeersManager.isAnyGroup(dialog.peerId)) groups++;
+          else if(this.appPeersManager.isBroadcast(dialog.peerId)) channels++;
           else chats++;
         }
 
@@ -155,8 +155,8 @@ export default class AppChatFoldersTab implements SliderTab {
 
     this.rootScope.on('filter_order', (e) => {
       const order = e.detail;
-      order.forEach((filterID, idx) => {
-        const div = this.filtersRendered[filterID];
+      order.forEach((filterId, idx) => {
+        const div = this.filtersRendered[filterId];
         positionElementByIndex(div, div.parentElement, idx + 1); // ! + 1 due to header 
       });
     });

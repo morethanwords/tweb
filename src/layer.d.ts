@@ -829,8 +829,8 @@ export namespace Message {
 		restriction_reason?: Array<RestrictionReason>,
 		mid?: number,
 		deleted?: boolean,
-		peerID?: number,
-		fromID?: number,
+		peerId?: number,
+		fromId?: number,
 		canBeEdited?: boolean
 	};
 
@@ -854,8 +854,8 @@ export namespace Message {
 		action: MessageAction,
 		mid?: number,
 		deleted?: boolean,
-		peerID?: number,
-		fromID?: number,
+		peerId?: number,
+		fromId?: number,
 		canBeEdited?: boolean
 	};
 }
@@ -1124,7 +1124,7 @@ export namespace Dialog {
 		draft?: DraftMessage,
 		folder_id?: number,
 		index?: number,
-		peerID?: number
+		peerId?: number
 	};
 
 	export type dialogFolder = {
@@ -1141,7 +1141,7 @@ export namespace Dialog {
 		unread_muted_messages_count: number,
 		unread_unmuted_messages_count: number,
 		index?: number,
-		peerID?: number,
+		peerId?: number,
 		folder_id?: number
 	};
 }

@@ -9,7 +9,7 @@ import { CancellablePromise, deferredPromise } from '../../helpers/cancellablePr
 const log = logger('SW', LogLevels.error/*  | LogLevels.debug | LogLevels.log */);
 const ctx = self as any as ServiceWorkerGlobalScope;
 
-const deferredPromises: {[taskID: number]: CancellablePromise<any>} = {};
+const deferredPromises: {[taskId: number]: CancellablePromise<any>} = {};
 
 ctx.addEventListener('message', (e) => {
   const task = e.data as ServiceWorkerTaskResponse;
@@ -24,7 +24,7 @@ ctx.addEventListener('message', (e) => {
   delete deferredPromises[task.id];
 });
 
-let taskID = 0;
+let taskId = 0;
 
 export interface ServiceWorkerTask extends WorkerTaskTemplate {
   type: 'requestFilePart',
@@ -75,12 +75,12 @@ const onFetch = (event: FetchEvent): void => {
             const limit = end && end < limitPart ? alignLimit(end - offset + 1) : limitPart;
             const alignedOffset = alignOffset(offset, limit);
   
-            log.debug('[stream] requestFilePart:', /* info.dcID, info.location, */ alignedOffset, limit);
+            log.debug('[stream] requestFilePart:', /* info.dcId, info.location, */ alignedOffset, limit);
 
             const task: ServiceWorkerTask = {
               type: 'requestFilePart',
-              id: taskID++,
-              payload: [info.dcID, info.location, alignedOffset, limit]
+              id: taskId++,
+              payload: [info.dcId, info.location, alignedOffset, limit]
             };
 
             

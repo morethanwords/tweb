@@ -22,7 +22,7 @@ export class AppWebPagesManager {
     });
   }
   
-  public saveWebPage(apiWebPage: any, messageID?: number, mediaContext?: ReferenceContext) {
+  public saveWebPage(apiWebPage: any, messageId?: number, mediaContext?: ReferenceContext) {
     if(apiWebPage.photo && apiWebPage.photo._ === 'photo') {
       //appPhotosManager.savePhoto(apiWebPage.photo, mediaContext);
       apiWebPage.photo = appPhotosManager.savePhoto(apiWebPage.photo, mediaContext);
@@ -73,12 +73,12 @@ export class AppWebPagesManager {
       apiWebPage.type = 'photo';
     }
     
-    if(messageID) {
+    if(messageId) {
       if(this.pendingWebPages[apiWebPage.id] === undefined) {
         this.pendingWebPages[apiWebPage.id] = {};
       }
 
-      this.pendingWebPages[apiWebPage.id][messageID] = true;
+      this.pendingWebPages[apiWebPage.id][messageId] = true;
     }
     
     if(this.webpages[apiWebPage.id] === undefined) {
@@ -87,10 +87,10 @@ export class AppWebPagesManager {
       safeReplaceObject(this.webpages[apiWebPage.id], apiWebPage);
     }
     
-    if(!messageID && this.pendingWebPages[apiWebPage.id] !== undefined) {
+    if(!messageId && this.pendingWebPages[apiWebPage.id] !== undefined) {
       const msgs: number[] = [];
-      for(let msgID in this.pendingWebPages[apiWebPage.id]) {
-        msgs.push(+msgID);
+      for(let msgId in this.pendingWebPages[apiWebPage.id]) {
+        msgs.push(+msgId);
       }
 
       rootScope.broadcast('webpage_updated', {

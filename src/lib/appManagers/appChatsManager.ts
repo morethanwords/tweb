@@ -1,7 +1,6 @@
 import { numberWithCommas } from "../../helpers/number";
 import { isObject, safeReplaceObject, copy } from "../../helpers/object";
 import { ChatAdminRights, ChatBannedRights, ChatFull, ChatParticipants, InputChannel, InputChatPhoto, InputFile, InputPeer, SendMessageAction, Updates } from "../../layer";
-import { addFunction } from "../../rlottie.github.io/a.out";
 import apiManager from '../mtproto/mtprotoworker';
 import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
 import { RichTextProcessor } from "../richtextprocessor";
@@ -65,7 +64,7 @@ export type Chat = {
 
 export type ChatRights = 'send' | 'edit_title' | 'edit_photo' | 'invite' | 'pin' | 'deleteRevoke' | 'delete';
 
-export type UserTyping = Partial<{userID: number, action: SendMessageAction, timeout: number}>;
+export type UserTyping = Partial<{userId: number, action: SendMessageAction, timeout: number}>;
 
 export class AppChatsManager {
   public chats: {[id: number]: Channel | Chat | any} = {};
@@ -76,7 +75,7 @@ export class AppChatsManager {
 
   public megagroupOnlines: {[id: number]: {timestamp: number, onlines: number}} = {};
 
-  public typingsInPeer: {[peerID: number]: UserTyping[]} = {};
+  public typingsInPeer: {[peerId: number]: UserTyping[]} = {};
 
   constructor() {
     rootScope.on('apiUpdate', (e) => {
@@ -84,23 +83,23 @@ export class AppChatsManager {
       const update = e.detail;
       switch(update._) {
         case 'updateChannel':
-          const channelID = update.channel_id;
+          const channelId = update.channel_id;
           //console.log('updateChannel:', update);
-          rootScope.broadcast('channel_settings', {channelID: channelID});
+          rootScope.broadcast('channel_settings', {channelId: channelId});
           break;
 
         case 'updateUserTyping':
         case 'updateChatUserTyping': {
-          if(rootScope.myID == update.user_id) {
+          if(rootScope.myId == update.user_id) {
             return;
           }
           
-          const peerID = update._ == 'updateUserTyping' ? update.user_id : -update.chat_id;
-          const typings = this.typingsInPeer[peerID] ?? (this.typingsInPeer[peerID] = []);
-          let typing = typings.find(t => t.userID == update.user_id);
+          const peerId = update._ == 'updateUserTyping' ? update.user_id : -update.chat_id;
+          const typings = this.typingsInPeer[peerId] ?? (this.typingsInPeer[peerId] = []);
+          let typing = typings.find(t => t.userId == update.user_id);
           if(!typing) {
             typing = {
-              userID: update.user_id
+              userId: update.user_id
             };
 
             typings.push(typing);
@@ -126,16 +125,16 @@ export class AppChatsManager {
 
           typing.timeout = window.setTimeout(() => {
             delete typing.timeout;
-            typings.findAndSplice(t => t.userID == update.user_id);
+            typings.findAndSplice(t => t.userId == update.user_id);
  
-            rootScope.broadcast('peer_typings', {peerID, typings});
+            rootScope.broadcast('peer_typings', {peerId, typings});
 
             if(!typings.length) {
-              delete this.typingsInPeer[peerID];
+              delete this.typingsInPeer[peerId];
             }
           }, 6000);
 
-          rootScope.broadcast('peer_typings', {peerID, typings});
+          rootScope.broadcast('peer_typings', {peerId, typings});
           break;
         }
       }
@@ -417,11 +416,11 @@ export class AppChatsManager {
 
   public wrapParticipants(id: number, participants: any[]) {
     const chat = this.getChat(id);
-    const myID = appUsersManager.getSelf().id;
+    const myId = appUsersManager.getSelf().id;
     if(this.isChannel(id)) {
       const isAdmin = chat.pFlags.creator;
       participants.forEach((participant) => {
-        participant.canLeave = myID == participant.user_id;
+        participant.canLeave = myId == participant.user_id;
         participant.canKick = isAdmin && participant._ == 'channelParticipant';
 
         // just for order by last seen
@@ -430,10 +429,10 @@ export class AppChatsManager {
     } else {
       const isAdmin = chat.pFlags.creator || chat.pFlags.admins_enabled && chat.pFlags.admin;
       participants.forEach((participant) => {
-        participant.canLeave = myID == participant.user_id;
+        participant.canLeave = myId == participant.user_id;
         participant.canKick = !participant.canLeave && (
           chat.pFlags.creator ||
-          participant._ == 'chatParticipant' && (isAdmin || myID == participant.inviter_id)
+          participant._ == 'chatParticipant' && (isAdmin || myId == participant.inviter_id)
         );
 
         // just for order by last seen
@@ -456,9 +455,9 @@ export class AppChatsManager {
     });
   }
 
-  public inviteToChannel(id: number, userIDs: number[]) {
+  public inviteToChannel(id: number, userIds: number[]) {
     const input = this.getChannelInput(id);
-    const usersInputs = userIDs.map(u => appUsersManager.getUserInput(u));
+    const usersInputs = userIds.map(u => appUsersManager.getUserInput(u));
 
     return apiManager.invokeApi('channels.inviteToChannel', {
       channel: input,
@@ -468,9 +467,9 @@ export class AppChatsManager {
     });
   }
 
-  public createChat(title: string, userIDs: number[]): Promise<number> {
+  public createChat(title: string, userIds: number[]): Promise<number> {
     return apiManager.invokeApi('messages.createChat', {
-      users: userIDs.map(u => appUsersManager.getUserInput(u)),
+      users: userIds.map(u => appUsersManager.getUserInput(u)),
       title
     }).then(updates => {
       apiUpdatesManager.processUpdateMessage(updates);
@@ -543,15 +542,15 @@ export class AppChatsManager {
     }
   }
 
-  private onChatUpdated = (chatID: number, updates: any) => {
-    //console.log('onChatUpdated', chatID, updates);
+  private onChatUpdated = (chatId: number, updates: any) => {
+    //console.log('onChatUpdated', chatId, updates);
 
     apiUpdatesManager.processUpdateMessage(updates);
     if(updates &&
         /* updates.updates &&
         updates.updates.length && */
-        this.isChannel(chatID)) {
-      appProfileManager.invalidateChannelParticipants(chatID);
+        this.isChannel(chatId)) {
+      appProfileManager.invalidateChannelParticipants(chatId);
     }
   };
 
@@ -567,10 +566,10 @@ export class AppChatsManager {
     }).then(this.onChatUpdated.bind(this, id));
   }
 
-  public deleteChatUser(id: number, userID: number) {
+  public deleteChatUser(id: number, userId: number) {
     return apiManager.invokeApi('messages.deleteChatUser', {
       chat_id: id,
-      user_id: appUsersManager.getUserInput(userID)
+      user_id: appUsersManager.getUserInput(userId)
     }).then(this.onChatUpdated.bind(this, id));
   }
 

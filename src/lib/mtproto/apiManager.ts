@@ -12,6 +12,7 @@ import type { InvokeApiOptions } from '../../types';
 import type { MethodDeclMap } from '../../layer';
 import { CancellablePromise, deferredPromise } from '../../helpers/cancellablePromise';
 import { bytesFromHex, bytesToHex } from '../../helpers/bytes';
+//import { clamp } from '../../helpers/number';
 
 /// #if !MTPROTO_WORKER
 import rootScope from '../rootScope';
@@ -41,33 +42,43 @@ export type ApiError = Partial<{
   message: ApiError
 }>;
 
+/* class RotatableArray<T> {
+  public array: Array<T> = [];
+  private lastIndex = -1;
+
+  public get() {
+    this.lastIndex = clamp(this.lastIndex + 1, 0, this.array.length - 1);
+    return this.array[this.lastIndex];
+  }
+} */
+
 export class ApiManager {
   public cachedNetworkers: {
     [transportType in TransportType]: {
       [connectionType in ConnectionType]: {
-        [dcID: number]: MTPNetworker
+        [dcId: number]: MTPNetworker[]
       }
     }
   } = {} as any;
   
   public cachedExportPromise: {[x: number]: Promise<unknown>} = {};
-  private gettingNetworkers: {[dcIDAndType: string]: Promise<MTPNetworker>} = {};
-  public baseDcID = 0;
+  private gettingNetworkers: {[dcIdAndType: string]: Promise<MTPNetworker>} = {};
+  public baseDcId = 0;
   
   //public telegramMeNotified = false;
 
   private log: ReturnType<typeof logger> = logger('API');
 
-  private afterMessageTempIDs: {[tempID: string]: string} = {};
+  private afterMessageTempIds: {[tempId: string]: string} = {};
 
   //private lol = false;
   
   constructor() {
     //MtpSingleInstanceService.start();
     
-    /* AppStorage.get<number>('dc').then((dcID) => {
-      if(dcID) {
-        this.baseDcID = dcID;
+    /* AppStorage.get<number>('dc').then((dcId) => {
+      if(dcId) {
+        this.baseDcId = dcId;
       }
     }); */
   }
@@ -80,23 +91,23 @@ export class ApiManager {
   } */
   
   // mtpSetUserAuth
-  public setUserAuth(userID: number) {
+  public setUserAuth(userId: number) {
     AppStorage.set({
-      user_auth: userID
+      user_auth: userId
     });
     
     //this.telegramMeNotify(true);
 
     /// #if !MTPROTO_WORKER
-    rootScope.broadcast('user_auth', userID);
+    rootScope.broadcast('user_auth', userId);
     /// #endif
   }
 
-  public setBaseDcID(dcID: number) {
-    this.baseDcID = dcID;
+  public setBaseDcId(dcId: number) {
+    this.baseDcId = dcId;
 
     AppStorage.set({
-      dc: this.baseDcID
+      dc: this.baseDcId
     });
   }
   
@@ -106,9 +117,9 @@ export class ApiManager {
     
     let prefix = Modes.test ? 't_dc' : 'dc';
     
-    for(let dcID = 1; dcID <= 5; dcID++) {
-      storageKeys.push(prefix + dcID + '_auth_key');
-      //storageKeys.push(prefix + dcID + '_auth_keyID');
+    for(let dcId = 1; dcId <= 5; dcId++) {
+      storageKeys.push(prefix + dcId + '_auth_key');
+      //storageKeys.push(prefix + dcId + '_auth_keyId');
     }
     
     // WebPushApiManager.forceUnsubscribe(); // WARNING
@@ -117,7 +128,7 @@ export class ApiManager {
     let logoutPromises = [];
     for(let i = 0; i < storageResult.length; i++) {
       if(storageResult[i]) {
-        logoutPromises.push(this.invokeApi('auth.logOut', {}, {dcID: i + 1, ignoreErrors: true}));
+        logoutPromises.push(this.invokeApi('auth.logOut', {}, {dcId: i + 1, ignoreErrors: true}));
       }
     }
     
@@ -125,7 +136,7 @@ export class ApiManager {
     }, (error) => {
       error.handled = true;
     }).finally(() => {
-      this.baseDcID = 0;
+      this.baseDcId = 0;
       //this.telegramMeNotify(false);
       const promise = AppStorage.clear();
       promise.finally(() => {
@@ -137,25 +148,19 @@ export class ApiManager {
   }
   
   // mtpGetNetworker
-  public getNetworker(dcID: number, options: InvokeApiOptions = {}): Promise<MTPNetworker> {
-    if(!dcID) {
-      throw new Error('get Networker without dcID');
-    }
-
+  public getNetworker(dcId: number, options: InvokeApiOptions = {}): Promise<MTPNetworker> {
     const connectionType: ConnectionType = options.fileDownload ? 'download' : (options.fileUpload ? 'upload' : 'client');
     //const connectionType: ConnectionType = 'client';
 
     /// #if MTPROTO_HTTP_UPLOAD
     // @ts-ignore
-    const transportType: TransportType = connectionType == 'upload' ? 'https' : 'websocket';
+    const transportType: TransportType = connectionType == 'upload' && false ? 'https' : 'websocket';
     //const transportType: TransportType = connectionType != 'client' ? 'https' : 'websocket';
     /// #else
     // @ts-ignore
     const transportType = 'websocket';
     /// #endif
 
-    const transport = dcConfigurator.chooseServer(dcID, connectionType, transportType);
-    
     if(!this.cachedNetworkers.hasOwnProperty(transportType)) {
       this.cachedNetworkers[transportType] = {
         client: {},
@@ -165,22 +170,29 @@ export class ApiManager {
     }
 
     const cache = this.cachedNetworkers[transportType][connectionType];
-    
-    if(cache[dcID] !== undefined) {
-      return Promise.resolve(cache[dcID]);
+    if(!(dcId in cache)) {
+      cache[dcId] = [];
     }
     
-    const getKey = [dcID, transportType, connectionType].join('-');
+    const networkers = cache[dcId];
+    if(networkers.length >= /* 1 */(connectionType == 'client' ? 1 : 3)) {
+      const networker = networkers.pop();
+      networkers.unshift(networker);
+      return Promise.resolve(networker);
+    }
+    
+    const getKey = [dcId, transportType, connectionType].join('-');
     if(this.gettingNetworkers[getKey]) {
       return this.gettingNetworkers[getKey];
     }
 
-    const ak = 'dc' + dcID + '_auth_key';
-    const akID = 'dc' + dcID + '_auth_keyID';
-    const ss = 'dc' + dcID + '_server_salt';
+    const ak = 'dc' + dcId + '_auth_key';
+    const akId = 'dc' + dcId + '_auth_keyId';
+    const ss = 'dc' + dcId + '_server_salt';
     
-    return this.gettingNetworkers[getKey] = AppStorage.get<string[]>(ak, akID, ss)
-    .then(async([authKeyHex, authKeyIDHex, serverSaltHex]) => {
+    return this.gettingNetworkers[getKey] = AppStorage.get<string[]>(ak, akId, ss)
+    .then(async([authKeyHex, authKeyIdHex, serverSaltHex]) => {
+      const transport = dcConfigurator.chooseServer(dcId, connectionType, transportType, false);
       let networker: MTPNetworker;
       if(authKeyHex && authKeyHex.length == 512) {
         if(!serverSaltHex || serverSaltHex.length != 16) {
@@ -188,23 +200,23 @@ export class ApiManager {
         }
         
         const authKey = bytesFromHex(authKeyHex);
-        const authKeyID = new Uint8Array(bytesFromHex(authKeyIDHex));
+        const authKeyId = new Uint8Array(bytesFromHex(authKeyIdHex));
         const serverSalt = bytesFromHex(serverSaltHex);
         
-        networker = networkerFactory.getNetworker(dcID, authKey, authKeyID, serverSalt, transport, options);
+        networker = networkerFactory.getNetworker(dcId, authKey, authKeyId, serverSalt, transport, options);
       } else {
         try { // if no saved state
-          const auth = await authorizer.auth(dcID);
+          const auth = await authorizer.auth(dcId);
   
           const storeObj = {
             [ak]: bytesToHex(auth.authKey),
-            [akID]: auth.authKeyID.hex,
+            [akId]: auth.authKeyId.hex,
             [ss]: bytesToHex(auth.serverSalt)
           };
           
           AppStorage.set(storeObj);
           
-          networker = networkerFactory.getNetworker(dcID, auth.authKey, auth.authKeyID, auth.serverSalt, transport, options);
+          networker = networkerFactory.getNetworker(dcId, auth.authKey, auth.authKeyId, auth.serverSalt, transport, options);
         } catch(error) {
           this.log('Get networker error', error, error.stack);
           delete this.gettingNetworkers[getKey];
@@ -217,7 +229,8 @@ export class ApiManager {
       }; */
 
       delete this.gettingNetworkers[getKey];
-      return cache[dcID] = networker;
+      networkers.unshift(networker);
+      return networker;
     });
   }
   
@@ -232,10 +245,10 @@ export class ApiManager {
 
     const deferred = deferredPromise<MethodDeclMap[T]['res']>();
 
-    const afterMessageIDTemp = options.afterMessageID;
-    if(afterMessageIDTemp) {
+    const afterMessageIdTemp = options.afterMessageId;
+    if(afterMessageIdTemp) {
       deferred.finally(() => {
-        delete this.afterMessageTempIDs[afterMessageIDTemp];
+        delete this.afterMessageTempIds[afterMessageIdTemp];
       });
     }
 
@@ -289,60 +302,60 @@ export class ApiManager {
       }
     };
     
-    let dcID: number;
+    let dcId: number;
     
     let cachedNetworker: MTPNetworker;
     let stack = (new Error()).stack || 'empty stack';
     const performRequest = (networker: MTPNetworker) => {
-      if(afterMessageIDTemp) {
-        options.afterMessageID = this.afterMessageTempIDs[afterMessageIDTemp];
+      if(afterMessageIdTemp) {
+        options.afterMessageId = this.afterMessageTempIds[afterMessageIdTemp];
       }
       const promise = (cachedNetworker = networker).wrapApiCall(method, params, options);
-      if(options.prepareTempMessageID) {
-        this.afterMessageTempIDs[options.prepareTempMessageID] = (options as MTMessage).messageID;
+      if(options.prepareTempMessageId) {
+        this.afterMessageTempIds[options.prepareTempMessageId] = (options as MTMessage).messageId;
       }
 
       return promise.then(deferred.resolve, (error: ApiError) => {
         //if(!options.ignoreErrors) {
         if(error.type != 'FILE_REFERENCE_EXPIRED') {
-          this.log.error('Error', error.code, error.type, this.baseDcID, dcID, method, params);
+          this.log.error('Error', error.code, error.type, this.baseDcId, dcId, method, params);
         }
         
-        if(error.code == 401 && this.baseDcID == dcID) {
+        if(error.code == 401 && this.baseDcId == dcId) {
           if(error.type != 'SESSION_PASSWORD_NEEDED') {
             AppStorage.remove('dc', 'user_auth'); // ! возможно тут вообще не нужно это делать, но нужно проверить случай с USER_DEACTIVATED (https://core.telegram.org/api/errors)
             //this.telegramMeNotify(false);
           }
           
           rejectPromise(error);
-        } else if(error.code == 401 && this.baseDcID && dcID != this.baseDcID) {
-          if(this.cachedExportPromise[dcID] === undefined) {
+        } else if(error.code == 401 && this.baseDcId && dcId != this.baseDcId) {
+          if(this.cachedExportPromise[dcId] === undefined) {
             const promise = new Promise((exportResolve, exportReject) => {
-              this.invokeApi('auth.exportAuthorization', {dc_id: dcID}, {noErrorBox: true}).then((exportedAuth) => {
+              this.invokeApi('auth.exportAuthorization', {dc_id: dcId}, {noErrorBox: true}).then((exportedAuth) => {
                 this.invokeApi('auth.importAuthorization', {
                   id: exportedAuth.id,
                   bytes: exportedAuth.bytes
-                }, {dcID, noErrorBox: true}).then(exportResolve, exportReject);
+                }, {dcId, noErrorBox: true}).then(exportResolve, exportReject);
               }, exportReject);
             });
             
-            this.cachedExportPromise[dcID] = promise;
+            this.cachedExportPromise[dcId] = promise;
           }
           
-          this.cachedExportPromise[dcID].then(() => {
+          this.cachedExportPromise[dcId].then(() => {
             //(cachedNetworker = networker).wrapApiCall(method, params, options).then(deferred.resolve, rejectPromise);
             this.invokeApi(method, params, options).then(deferred.resolve, rejectPromise);
           }, rejectPromise);
         } else if(error.code == 303) {
-          const newDcID = +error.type.match(/^(PHONE_MIGRATE_|NETWORK_MIGRATE_|USER_MIGRATE_)(\d+)/)[2];
-          if(newDcID != dcID) {
-            if(options.dcID) {
-              options.dcID = newDcID;
+          const newDcId = +error.type.match(/^(PHONE_MIGRATE_|NETWORK_MIGRATE_|USER_MIGRATE_)(\d+)/)[2];
+          if(newDcId != dcId) {
+            if(options.dcId) {
+              options.dcId = newDcId;
             } else {
-              this.setBaseDcID(newDcID);
+              this.setBaseDcId(newDcId);
             }
             
-            this.getNetworker(newDcID, options).then((networker) => {
+            this.getNetworker(newDcId, options).then((networker) => {
               networker.wrapApiCall(method, params, options).then(deferred.resolve, rejectPromise);
             }, rejectPromise);
           }
@@ -374,11 +387,11 @@ export class ApiManager {
       });
     }
     
-    if(dcID = (options.dcID || this.baseDcID)) {
-      this.getNetworker(dcID, options).then(performRequest, rejectPromise);
+    if(dcId = (options.dcId || this.baseDcId)) {
+      this.getNetworker(dcId, options).then(performRequest, rejectPromise);
     } else {
-      AppStorage.get<number>('dc').then((baseDcID) => {
-        this.getNetworker(this.baseDcID = dcID = baseDcID || App.baseDcID, options).then(performRequest, rejectPromise);
+      AppStorage.get<number>('dc').then((baseDcId) => {
+        this.getNetworker(this.baseDcId = dcId = baseDcId || App.baseDcId, options).then(performRequest, rejectPromise);
       });
     }
 

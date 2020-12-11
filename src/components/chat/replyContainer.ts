@@ -1,3 +1,4 @@
+import { limitSymbols } from "../../helpers/string";
 import appImManager, { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
 import appPhotosManager from "../../lib/appManagers/appPhotosManager";
 import { RichTextProcessor } from "../../lib/richtextprocessor";
@@ -15,17 +16,13 @@ export function wrapReplyDivAndCaption(options: {
 }) {
   let {title, titleEl, subtitle, subtitleEl, mediaEl, message} = options;
   if(title !== undefined) {
-    if(title.length > 150) {
-      title = title.substr(0, 140) + '...';
-    }
+    limitSymbols(title, 140);
 
     title = title ? RichTextProcessor.wrapEmojiText(title) : '';
     titleEl.innerHTML = title;
   }
-  
-  if(subtitle.length > 150) {
-    subtitle = subtitle.substr(0, 140) + '...';
-  }
+
+  subtitle = limitSymbols(subtitle, 140);
 
   const media = message && message.media;
   let setMedia = false;
@@ -40,6 +37,7 @@ export function wrapReplyDivAndCaption(options: {
         
       }; */
 
+      const boxSize = 32;
       if(media.document?.type == 'sticker') {
         if(mediaEl.style.backgroundImage) {
           mediaEl.style.backgroundImage = ''; 
@@ -52,8 +50,8 @@ export function wrapReplyDivAndCaption(options: {
           lazyLoadQueue: appImManager.chat.bubbles.lazyLoadQueue,
           group: CHAT_ANIMATION_GROUP,
           //onlyThumb: media.document.sticker == 2,
-          width: 32,
-          height: 32
+          width: boxSize,
+          height: boxSize
         });
       } else {
         if(mediaEl.firstElementChild) {
@@ -72,7 +70,7 @@ export function wrapReplyDivAndCaption(options: {
           }
         }
 
-        const size = appPhotosManager.choosePhotoSize(photo, 32, 32/* mediaSizes.active.regular.width, mediaSizes.active.regular.height */);
+        const size = appPhotosManager.choosePhotoSize(photo, boxSize, boxSize/* mediaSizes.active.regular.width, mediaSizes.active.regular.height */);
         if(size._ != 'photoSizeEmpty') {
           setMedia = true;
           appPhotosManager.preloadPhoto(photo, size)

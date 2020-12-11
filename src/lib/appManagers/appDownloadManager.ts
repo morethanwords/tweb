@@ -28,7 +28,7 @@ export class AppDownloadManager {
   private progress: {[fileName: string]: Progress} = {};
   private progressCallbacks: {[fileName: string]: Array<ProgressCallback>} = {};
 
-  private uploadID = 0;
+  private uploadId = 0;
 
   constructor() {
     rootScope.on('download_progress', (e) => {
@@ -124,7 +124,7 @@ export class AppDownloadManager {
     if(!fileName) {
       const mimeType = file?.type;
       if(mimeType) { // the same like apiFileName in appMessagesManager for upload!
-        const ext = this.uploadID++ + '.' + mimeType.split('/')[1];
+        const ext = this.uploadId++ + '.' + mimeType.split('/')[1];
   
         if(['image/jpeg', 'image/png', 'image/bmp'].indexOf(mimeType) >= 0) {
           fileName = 'photo' + ext;
@@ -137,7 +137,7 @@ export class AppDownloadManager {
         }
         
       } else {
-        fileName = 'upload-' + this.uploadID++;
+        fileName = 'upload-' + this.uploadId++;
       }
     }
 

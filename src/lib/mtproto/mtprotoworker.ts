@@ -15,12 +15,12 @@ import type { MTMessage } from './networker';
 import referenceDatabase from './referenceDatabase';
 
 type Task = {
-  taskID: number,
+  taskId: number,
   task: string,
   args: any[]
 };
 
-const USEWORKERASWORKER = true;
+const USE_WORKER_AS_WORKER = true;
 
 type HashResult = {
   hash: number,
@@ -34,9 +34,9 @@ type HashOptions = {
 export class ApiManagerProxy extends CryptoWorkerMethods {
   public worker: Worker;
   public postMessage: (...args: any[]) => void;
-  private afterMessageIDTemp = 0;
+  private afterMessageIdTemp = 0;
 
-  private taskID = 0;
+  private taskId = 0;
   private awaiting: {
     [id: number]: {
       resolve: any,
@@ -73,7 +73,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
       this.log('set SW');
       this.releasePending();
 
-      if(!USEWORKERASWORKER) {
+      if(!USE_WORKER_AS_WORKER) {
         this.postMessage = navigator.serviceWorker.controller.postMessage.bind(navigator.serviceWorker.controller);
       }
 
@@ -113,7 +113,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
         this.worker = worker;
         this.log('set webWorker');
 
-        if(USEWORKERASWORKER) {
+        if(USE_WORKER_AS_WORKER) {
           this.postMessage = this.worker.postMessage.bind(this.worker);
         }
 
@@ -173,17 +173,17 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
           navigator.serviceWorker.controller.postMessage(task);
         }
       } else {
-        this.finalizeTask(task.taskID, task.result, task.error);
+        this.finalizeTask(task.taskId, task.result, task.error);
       }
     });
   }
 
-  private finalizeTask(taskID: number, result: any, error: any) {
-    const deferred = this.awaiting[taskID];
+  private finalizeTask(taskId: number, result: any, error: any) {
+    const deferred = this.awaiting[taskId];
     if(deferred !== undefined) {
       this.log.debug('done', deferred.taskName, result, error);
       error ? deferred.reject(error) : deferred.resolve(result);
-      delete this.awaiting[taskID];
+      delete this.awaiting[taskId];
     }
   }
 
@@ -191,18 +191,18 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
     this.log.debug('start', task, args);
 
     return new Promise<T>((resolve, reject) => {
-      this.awaiting[this.taskID] = {resolve, reject, taskName: task};
+      this.awaiting[this.taskId] = {resolve, reject, taskName: task};
   
       const params = {
         task,
-        taskID: this.taskID,
+        taskId: this.taskId,
         args
       };
 
       this.pending.push(params);
       this.releasePending();
   
-      this.taskID++;
+      this.taskId++;
     });
   }
 
@@ -229,10 +229,10 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
 
   public invokeApiAfter<T extends keyof MethodDeclMap>(method: T, params: MethodDeclMap[T]['req'] = {}, options: InvokeApiOptions = {}): Promise<MethodDeclMap[T]['res']> {
     let o = options;
-    o.prepareTempMessageID = '' + ++this.afterMessageIDTemp;
+    o.prepareTempMessageId = '' + ++this.afterMessageIdTemp;
     
     o = {...options};
-    (options as MTMessage).messageID = o.prepareTempMessageID;
+    (options as MTMessage).messageId = o.prepareTempMessageId;
 
     //console.log('will invokeApi:', method, params, options);
     return this.performTaskWorker('invokeApi', method, params, o);
@@ -274,8 +274,12 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
     return smth.reduce((hash, v) => (((hash * 0x4F25) & 0x7FFFFFFF) + v.id) & 0x7FFFFFFF, 0);
   } */
 
-  public setBaseDcID(dcID: number) {
-    return this.performTaskWorker('setBaseDcID', dcID);
+  public setBaseDcId(dcId: number) {
+    return this.performTaskWorker('setBaseDcId', dcId);
+  }
+
+  public setQueueId(queueId: number) {
+    return this.performTaskWorker('setQueueId', queueId);
   }
 
   public setUserAuth(userAuth: UserAuth) {

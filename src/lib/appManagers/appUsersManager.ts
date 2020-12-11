@@ -19,9 +19,9 @@ import appStateManager from "./appStateManager";
 export type User = MTUser.user;
 
 export class AppUsersManager {
-  private users: {[userID: number]: User} = {};
+  private users: {[userId: number]: User} = {};
   private usernames: {[username: string]: number} = {};
-  //public userAccess: {[userID: number]: string} = {};
+  //public userAccess: {[userId: number]: string} = {};
   private cachedPhotoLocations: any = {};
   private contactsIndex = searchIndexManager.createIndex();
   private contactsFillPromise: Promise<Set<number>>;
@@ -40,8 +40,8 @@ export class AppUsersManager {
       //console.log('on apiUpdate', update);
       switch(update._) {
         case 'updateUserStatus':
-          const userID = update.user_id;
-          const user = this.users[userID];
+          const userId = update.user_id;
+          const user = this.users[userId];
           if(user) {
             user.status = update.status;
             if(user.status) {
@@ -55,15 +55,15 @@ export class AppUsersManager {
             }
 
             user.sortStatus = this.getUserStatusForSort(user.status);
-            rootScope.broadcast('user_update', userID);
-          } //////else console.warn('No user by id:', userID);
+            rootScope.broadcast('user_update', userId);
+          } //////else console.warn('No user by id:', userId);
           break;
   
         case 'updateUserPhoto': {
-          const userID = update.user_id;
-          const user = this.users[userID];
+          const userId = update.user_id;
+          const user = this.users[userId];
           if(user) {
-            this.forceUserOnline(userID);
+            this.forceUserOnline(userId);
 
             if(!user.photo) {
               user.photo = update.photo;
@@ -71,14 +71,14 @@ export class AppUsersManager {
               safeReplaceObject(user.photo, update.photo);
             }
   
-            if(this.cachedPhotoLocations[userID] !== undefined) {
-              safeReplaceObject(this.cachedPhotoLocations[userID], update.photo ?  
+            if(this.cachedPhotoLocations[userId] !== undefined) {
+              safeReplaceObject(this.cachedPhotoLocations[userId], update.photo ?  
                 update.photo : {empty: true});
             }
   
-            rootScope.broadcast('user_update', userID);
-            rootScope.broadcast('avatar_update', userID);
-          } else console.warn('No user by id:', userID);
+            rootScope.broadcast('user_update', userId);
+            rootScope.broadcast('avatar_update', userId);
+          } else console.warn('No user by id:', userId);
 
           break;
         }
@@ -102,8 +102,8 @@ export class AppUsersManager {
 
     appStateManager.addListener('save', () => {
       const contactsList = [...this.contactsList];
-      for(const userID of contactsList) {
-        appStateManager.setPeer(userID, this.getUser(userID));
+      for(const userId of contactsList) {
+        appStateManager.setPeer(userId, this.getUser(userId));
       }
 
       appStateManager.pushToState('contactsList', contactsList);
@@ -114,8 +114,8 @@ export class AppUsersManager {
 
       const contactsList = state.contactsList;
       if(contactsList && Array.isArray(contactsList)) {
-        contactsList.forEach(userID => {
-          this.pushContact(userID);
+        contactsList.forEach(userId => {
+          this.pushContact(userId);
         });
 
         this.contactsFillPromise = Promise.resolve(this.contactsList);
@@ -160,9 +160,9 @@ export class AppUsersManager {
     });
   }
 
-  public pushContact(userID: number) {
-    this.contactsList.add(userID);
-    searchIndexManager.indexObject(userID, this.getUserSearchText(userID), this.contactsIndex);
+  public pushContact(userId: number) {
+    this.contactsList.add(userId);
+    searchIndexManager.indexObject(userId, this.getUserSearchText(userId), this.contactsIndex);
   }
 
   public getUserSearchText(id: number) {
@@ -189,26 +189,26 @@ export class AppUsersManager {
         contactsList = filteredContactsList;
       }
 
-      contactsList.sort((userID1: number, userID2: number) => {
-        const sortName1 = (this.users[userID1] || {}).sortName || '';
-        const sortName2 = (this.users[userID2] || {}).sortName || '';
+      contactsList.sort((userId1: number, userId2: number) => {
+        const sortName1 = (this.users[userId1] || {}).sortName || '';
+        const sortName2 = (this.users[userId2] || {}).sortName || '';
 
         return sortName1.localeCompare(sortName2);
       });
 
       if(includeSaved) {
         const isSearchingSaved = 'saved messages'.includes(query.toLowerCase()) 
-          || appUsersManager.getUser(rootScope.myID).sortName.includes(query.toLowerCase());
+          || appUsersManager.getUser(rootScope.myId).sortName.includes(query.toLowerCase());
 
         if(isSearchingSaved) {
-          contactsList.findAndSplice(p => p == rootScope.myID);
-          contactsList.unshift(rootScope.myID);
+          contactsList.findAndSplice(p => p == rootScope.myId);
+          contactsList.unshift(rootScope.myId);
         }
       }
 
-      /* contactsList.sort((userID1: number, userID2: number) => {
-        const sortName1 = (this.users[userID1] || {}).sortName || '';
-        const sortName2 = (this.users[userID2] || {}).sortName || '';
+      /* contactsList.sort((userId1: number, userId2: number) => {
+        const sortName1 = (this.users[userId1] || {}).sortName || '';
+        const sortName2 = (this.users[userId2] || {}).sortName || '';
         if(sortName1 == sortName2) {
           return 0;
         } 
@@ -232,14 +232,14 @@ export class AppUsersManager {
       return;
     }
 
-    const userID = user.id;
+    const userId = user.id;
 
     if(user.pFlags === undefined) {
       user.pFlags = {};
     }
 
     if(user.pFlags.min) {
-      if(this.users[userID] !== undefined) {
+      if(this.users[userId] !== undefined) {
         return;
       }
     }
@@ -262,7 +262,7 @@ export class AppUsersManager {
 
     if(user.username) {
       const searchUsername = searchIndexManager.cleanUsername(user.username);
-      this.usernames[searchUsername] = userID;
+      this.usernames[searchUsername] = userId;
     }
 
     user.sortName = user.pFlags.deleted ? '' : searchIndexManager.cleanSearchText(fullName, false);
@@ -285,17 +285,17 @@ export class AppUsersManager {
       user.sortStatus = this.getUserStatusForSort(user.status);
     }
 
-    const oldUser = this.users[userID];
+    const oldUser = this.users[userId];
     if(oldUser === undefined) {
-      this.users[userID] = user;
+      this.users[userId] = user;
     } else {
       safeReplaceObject(oldUser, user);
     }
 
-    rootScope.broadcast('user_update', userID);
+    rootScope.broadcast('user_update', userId);
 
-    if(this.cachedPhotoLocations[userID] !== undefined) {
-      safeReplaceObject(this.cachedPhotoLocations[userID], user && 
+    if(this.cachedPhotoLocations[userId] !== undefined) {
+      safeReplaceObject(this.cachedPhotoLocations[userId], user && 
         user.photo ? user.photo : {empty: true});
     }
   }
@@ -334,15 +334,15 @@ export class AppUsersManager {
   }
 
   public getSelf() {
-    return this.getUser(rootScope.myID);
+    return this.getUser(rootScope.myId);
   }
 
-  public getUserStatusString(userID: number) {
-    if(this.isBot(userID)) {
+  public getUserStatusString(userId: number) {
+    if(this.isBot(userId)) {
       return 'bot';
     }
 
-    const user = this.getUser(userID);
+    const user = this.getUser(userId);
     if(!user) {
       return '';
     }
@@ -415,7 +415,7 @@ export class AppUsersManager {
   }
 
   public isNonContactUser(id: number) {
-    return this.isRegularUser(id) && !this.isContact(id) && id != rootScope.myID;
+    return this.isRegularUser(id) && !this.isContact(id) && id != rootScope.myId;
   }
 
   public hasUser(id: number, allowMin?: boolean) {
@@ -559,17 +559,17 @@ export class AppUsersManager {
     })
   } */
 
-  /* public deleteContacts(userIDs: number[]) {
+  /* public deleteContacts(userIds: number[]) {
     var ids: any[] = [];
-    userIDs.forEach((userID) => {
-      ids.push(this.getUserInput(userID));
+    userIds.forEach((userId) => {
+      ids.push(this.getUserInput(userId));
     })
 
     return apiManager.invokeApi('contacts.deleteContacts', {
       id: ids
     }).then(() => {
-      userIDs.forEach((userID) => {
-        this.onContactUpdated(userID, false);
+      userIds.forEach((userId) => {
+        this.onContactUpdated(userId, false);
       });
     });
   } */
@@ -588,22 +588,22 @@ export class AppUsersManager {
         limit: 30,
         hash: 0,
       }).then((result) => {
-        let peerIDs: number[];
+        let peerIds: number[];
         if(result._ == 'contacts.topPeers') {
           //console.log(result);
           this.saveApiUsers(result.users);
           appChatsManager.saveApiChats(result.chats);
     
-          peerIDs = result.categories[0].peers.map((topPeer) => {
-            const peerID = appPeersManager.getPeerID(topPeer.peer);
-            appStateManager.setPeer(peerID, this.getUser(peerID));
-            return peerID;
+          peerIds = result.categories[0].peers.map((topPeer) => {
+            const peerId = appPeersManager.getPeerId(topPeer.peer);
+            appStateManager.setPeer(peerId, this.getUser(peerId));
+            return peerId;
           });
         }
   
-        appStateManager.pushToState('topPeers', peerIDs);
+        appStateManager.pushToState('topPeers', peerIds);
   
-        return peerIDs;
+        return peerIds;
       });
     });
   }
@@ -641,40 +641,40 @@ export class AppUsersManager {
       appChatsManager.saveApiChats(peers.chats);
 
       const out = {
-        my_results: [...new Set(peers.my_results.map(p => appPeersManager.getPeerID(p)))], // ! contacts.search returns duplicates in my_results
-        results: peers.results.map(p => appPeersManager.getPeerID(p))
+        my_results: [...new Set(peers.my_results.map(p => appPeersManager.getPeerId(p)))], // ! contacts.search returns duplicates in my_results
+        results: peers.results.map(p => appPeersManager.getPeerId(p))
       };
 
       return out;
     });
   }
 
-  /* public onContactUpdated(userID: number, isContact: boolean) {
-    userID = parseInt('' + userID);
+  /* public onContactUpdated(userId: number, isContact: boolean) {
+    userId = parseInt('' + userId);
 
     if(Array.isArray(this.contactsList)) {
-      var curPos = this.contactsList.indexOf(userID);
+      var curPos = this.contactsList.indexOf(userId);
       var curIsContact = curPos != -1;
 
       if(isContact != curIsContact) {
         if(isContact) {
-          this.contactsList.push(userID)
-          searchIndexManager.indexObject(userID, this.getUserSearchText(userID), this.contactsIndex);
+          this.contactsList.push(userId)
+          searchIndexManager.indexObject(userId, this.getUserSearchText(userId), this.contactsIndex);
         } else {
           this.contactsList.splice(curPos, 1);
         }
 
-        rootScope.$broadcast('contacts_update', userID);
+        rootScope.$broadcast('contacts_update', userId);
       }
     }
   } */
 
-  public setUserStatus(userID: number, offline: boolean) {
-    if(this.isBot(userID)) {
+  public setUserStatus(userId: number, offline: boolean) {
+    if(this.isBot(userId)) {
       return;
     }
 
-    const user = this.users[userID];
+    const user = this.users[userId];
     if(user) {
       const status: any = offline ? {
         _: 'userStatusOffline',
@@ -686,7 +686,7 @@ export class AppUsersManager {
 
       user.status = status;
       user.sortStatus = this.getUserStatusForSort(user.status);
-      rootScope.broadcast('user_update', userID);
+      rootScope.broadcast('user_update', userId);
     }
   }
 }

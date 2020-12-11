@@ -13,14 +13,14 @@ export default class PopupForward extends PopupElement {
     if(onClose) this.onClose = onClose;
 
     this.selector = new AppSelectPeers(this.body, async() => {
-      const peerID = this.selector.getSelected()[0];
+      const peerId = this.selector.getSelected()[0];
       this.closeBtn.click();
 
       this.selector = null;
 
       await (onSelect ? onSelect() || Promise.resolve() : Promise.resolve());
 
-      appImManager.setInnerPeer(peerID);
+      appImManager.setInnerPeer(peerId);
       appImManager.chat.input.initMessagesForward(mids.slice());
     }, ['dialogs', 'contacts'], () => {
       this.show();

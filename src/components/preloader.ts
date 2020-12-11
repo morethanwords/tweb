@@ -5,7 +5,7 @@ export default class ProgressivePreloader {
   public preloader: HTMLDivElement;
   private circle: SVGCircleElement;
   
-  private tempID = 0;
+  private tempId = 0;
   private detached = true;
 
   private promise: CancellablePromise<any> = null;
@@ -60,12 +60,12 @@ export default class ProgressivePreloader {
   public attachPromise(promise: CancellablePromise<any>) {
     this.promise = promise;
 
-    const tempID = --this.tempID;
+    const tempId = --this.tempId;
 
     const onEnd = () => {
       promise.notify = null;
 
-      if(tempID == this.tempID) {
+      if(tempId == this.tempId) {
         this.detach();
         this.promise = promise = null;
       }
@@ -80,7 +80,7 @@ export default class ProgressivePreloader {
           onEnd();
         } */
 
-        if(tempID != this.tempID) return;
+        if(tempId != this.tempId) return;
 
         //console.log('preloader download', promise, details);
         const percents = details.done / details.total * 100;

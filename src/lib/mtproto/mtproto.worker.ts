@@ -67,9 +67,9 @@ networkerFactory.onConnectionStatusChange = (status) => {
 ctx.addEventListener('message', async(e) => {
   try {
     const task = e.data;
-    const taskID = task.taskID;
+    const taskId = task.taskId;
 
-    //log.debug('got message:', taskID, task);
+    //log.debug('got message:', taskId, task);
 
     //debugger;
   
@@ -109,9 +109,10 @@ ctx.addEventListener('message', async(e) => {
       case 'gzipUncompress':
         // @ts-ignore
         return cryptoWorker[task.task].apply(cryptoWorker, task.args).then(result => {
-          respond({taskID: taskID, result: result});
+          respond({taskId: taskId, result: result});
         });
   
+      case 'setQueueId':
       case 'cancelDownload':
       case 'uploadFile':
       case 'downloadFile': {
@@ -126,16 +127,16 @@ ctx.addEventListener('message', async(e) => {
             result = await result;
           }
   
-          respond({taskID: taskID, result: result});
+          respond({taskId: taskId, result: result});
         } catch(err) {
-          respond({taskID: taskID, error: err});
+          respond({taskId: taskId, error: err});
         }
       }
 
       case 'getNetworker': {
         // @ts-ignore
         apiManager[task.task].apply(apiManager, task.args);
-        respond({taskID: taskID, result: null});
+        respond({taskId: taskId, result: null});
         break;
       }
   
@@ -148,9 +149,9 @@ ctx.addEventListener('message', async(e) => {
             result = await result;
           }
   
-          respond({taskID: taskID, result: result});
+          respond({taskId: taskId, result: result});
         } catch(err) {
-          respond({taskID: taskID, error: err});
+          respond({taskId: taskId, error: err});
         }
   
         //throw new Error('Unknown task: ' + task.task);

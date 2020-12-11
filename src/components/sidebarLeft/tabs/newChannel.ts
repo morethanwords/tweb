@@ -34,15 +34,15 @@ export default class AppNewChannelTab implements SliderTab {
       let about = this.channelDescriptionInput.value;
 
       this.nextBtn.disabled = true;
-      appChatsManager.createChannel(title, about).then((channelID) => {
+      appChatsManager.createChannel(title, about).then((channelId) => {
         if(this.uploadAvatar) {
           this.uploadAvatar().then((inputFile) => {
-            appChatsManager.editPhoto(channelID, inputFile);
+            appChatsManager.editPhoto(channelId, inputFile);
           });
         }
         
         appSidebarLeft.removeTabFromHistory(AppSidebarLeft.SLIDERITEMSIDS.newChannel);
-        appSidebarLeft.addMembersTab.init(channelID, 'channel', true);
+        appSidebarLeft.addMembersTab.init(channelId, 'channel', true);
       });
     });
   }

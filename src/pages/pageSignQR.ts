@@ -29,7 +29,7 @@ let onFirstMount = async() => {
     cachedPromise = null;
   }, {once: true});
   
-  let options: {dcID?: number, ignoreErrors: true} = {ignoreErrors: true};
+  let options: {dcId?: number, ignoreErrors: true} = {ignoreErrors: true};
   let prevToken: Uint8Array | number[];
 
   return async() => {
@@ -48,9 +48,9 @@ let onFirstMount = async() => {
         }, {ignoreErrors: true});
     
         if(loginToken._ == 'auth.loginTokenMigrateTo') {
-          if(!options.dcID) {
-            options.dcID = loginToken.dc_id;
-            apiManager.setBaseDcID(loginToken.dc_id);
+          if(!options.dcId) {
+            options.dcId = loginToken.dc_id;
+            apiManager.setBaseDcId(loginToken.dc_id);
             //continue;
           }
           

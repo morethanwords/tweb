@@ -53,7 +53,9 @@ export default class CacheStorageController {
   } */
 
   public getFile(fileName: string, method: 'blob' | 'json' | 'text' = 'blob'): Promise<any> {
-    //return Promise.reject();
+    if(method == 'blob') {
+      return Promise.reject();
+    }
 
     // const str = `get fileName: ${fileName}`;
     // console.time(str);

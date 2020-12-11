@@ -14,8 +14,8 @@ export type MyDocument = Document.document;
 // TODO: если залить картинку файлом, а потом перезайти в диалог - превьюшка заново скачается
 
 export class AppDocsManager {
-  private docs: {[docID: string]: MyDocument} = {};
-  private savingLottiePreview: {[docID: string]: true} = {};
+  private docs: {[docId: string]: MyDocument} = {};
+  private savingLottiePreview: {[docId: string]: true} = {};
 
   public saveDoc(doc: Document, context?: ReferenceContext): MyDocument {
     if(doc._ == 'documentEmpty') {
@@ -176,8 +176,8 @@ export class AppDocsManager {
     return doc;
   }
   
-  public getDoc(docID: string | MyDocument): MyDocument {
-    return isObject(docID) && typeof(docID) !== 'string' ? docID as any : this.docs[docID as string] as any;
+  public getDoc(docId: string | MyDocument): MyDocument {
+    return isObject(docId) && typeof(docId) !== 'string' ? docId as any : this.docs[docId as string] as any;
   }
 
   public getMediaInput(doc: MyDocument) {
@@ -203,7 +203,7 @@ export class AppDocsManager {
     };
   }
 
-  public getFileDownloadOptions(doc: MyDocument, thumb?: PhotoSize.photoSize) {
+  public getFileDownloadOptions(doc: MyDocument, thumb?: PhotoSize.photoSize, queueId?: number) {
     const inputFileLocation = this.getInput(doc, thumb?.type);
 
     let mimeType: string;
@@ -214,11 +214,12 @@ export class AppDocsManager {
     }
 
     return {
-      dcID: doc.dc_id, 
+      dcId: doc.dc_id, 
       location: inputFileLocation, 
       size: thumb ? thumb.size : doc.size, 
       mimeType: mimeType,
-      fileName: doc.file_name
+      fileName: doc.file_name,
+      queueId
     };
   }
 
@@ -247,7 +248,7 @@ export class AppDocsManager {
         thumb.url = appPhotosManager.getPreviewURLFromBytes(thumb.bytes, !!doc.sticker);
       } else {
         //return this.getFileURL(doc, false, thumb);
-        promise = this.downloadDocNew(doc, thumb);
+        promise = this.downloadDoc(doc, thumb);
       }
     }
 
@@ -275,7 +276,7 @@ export class AppDocsManager {
     return getFileNameByLocation(this.getInput(doc, thumbSize), {fileName: doc.file_name});
   }
 
-  public downloadDocNew(doc: MyDocument, thumb?: PhotoSize.photoSize): DownloadBlob {
+  public downloadDoc(doc: MyDocument, thumb?: PhotoSize.photoSize, queueId?: number): DownloadBlob {
     const fileName = this.getInputFileName(doc, thumb?.type);
 
     let download: DownloadBlob = appDownloadManager.getDownload(fileName);
@@ -283,7 +284,7 @@ export class AppDocsManager {
       return download;
     }
 
-    const downloadOptions = this.getFileDownloadOptions(doc, thumb);
+    const downloadOptions = this.getFileDownloadOptions(doc, thumb, queueId);
     download = appDownloadManager.download(downloadOptions);
 
     const originalPromise = download;
@@ -386,8 +387,8 @@ export class AppDocsManager {
     });
   }
 
-  public saveDocFile(doc: MyDocument) {
-    const options = this.getFileDownloadOptions(doc);
+  public saveDocFile(doc: MyDocument, queueId?: number) {
+    const options = this.getFileDownloadOptions(doc, undefined, queueId);
     return appDownloadManager.downloadToDisc(options, doc.file_name);
   }
 }

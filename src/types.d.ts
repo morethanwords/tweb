@@ -2,7 +2,7 @@ import { AuthSentCode } from "./layer";
 import type { ApiError } from "./lib/mtproto/apiManager";
 
 export type InvokeApiOptions = Partial<{
-  dcID: number,
+  dcId: number,
   floodMaxTimeout: number,
   noErrorBox: true,
   fileUpload: true,
@@ -12,8 +12,8 @@ export type InvokeApiOptions = Partial<{
   singleInRequest: true,
   startMaxLength: number,
 
-  prepareTempMessageID: string,
-  afterMessageID: string,
+  prepareTempMessageId: string,
+  afterMessageId: string,
   resultType: string,
   
   timeout: number,
@@ -66,7 +66,7 @@ export namespace AuthState {
 export type ConnectionStatusChange = {
   _: 'networkerStatus', 
   online: boolean, 
-  dcID: number,
+  dcId: number,
   name: string,
   isFileNetworker: boolean,
   isFileDownload: boolean,

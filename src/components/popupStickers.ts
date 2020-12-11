@@ -84,11 +84,11 @@ export default class PopupStickers extends PopupElement {
     const target = findUpClassName(e.target, 'sticker-set-sticker');
     if(!target) return;
 
-    const fileID = target.dataset.docID;
-    if(appImManager.chat.input.sendMessageWithDocument(fileID)) {
+    const fileId = target.dataset.docId;
+    if(appImManager.chat.input.sendMessageWithDocument(fileId)) {
       this.closeBtn.click();
     } else {
-      console.warn('got no doc by id:', fileID);
+      console.warn('got no doc by id:', fileId);
     }
   };
 

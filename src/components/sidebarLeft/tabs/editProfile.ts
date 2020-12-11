@@ -225,7 +225,7 @@ export default class AppEditProfileTab implements SliderTab {
       }
     });
 
-    this.avatarElem.setAttribute('peer', '' + rootScope.myID);
+    this.avatarElem.setAttribute('peer', '' + rootScope.myId);
     if(!this.avatarElem.parentElement) {
       this.canvas.parentElement.append(this.avatarElem);
     }

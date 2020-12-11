@@ -1,5 +1,5 @@
 export default abstract class MTTransport {
-  constructor(protected dcID: number, protected url: string) {
+  constructor(protected dcId: number, protected url: string) {
     
   }
 

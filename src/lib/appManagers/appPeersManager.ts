@@ -23,46 +23,46 @@ const DialogColors = ['#e17076', '#7bc862', '#e5ca77', '#65AADD', '#a695e7', '#e
 const DialogColorsMap = [0, 7, 4, 1, 6, 3, 5];
 
 export class AppPeersManager {
-  /* public savePeerInstance(peerID: number, instance: any) {
-    if(peerID < 0) appChatsManager.saveApiChat(instance);
+  /* public savePeerInstance(peerId: number, instance: any) {
+    if(peerId < 0) appChatsManager.saveApiChat(instance);
     else appUsersManager.saveApiUser(instance);
   } */
 
-  public canPinMessage(peerID: number) {
-    return peerID > 0 || appChatsManager.hasRights(-peerID, 'pin');
+  public canPinMessage(peerId: number) {
+    return peerId > 0 || appChatsManager.hasRights(-peerId, 'pin');
   }
 
-  public getPeerPhoto(peerID: number) {
-    return peerID > 0
-      ? appUsersManager.getUserPhoto(peerID)
-      : appChatsManager.getChatPhoto(-peerID);
+  public getPeerPhoto(peerId: number) {
+    return peerId > 0
+      ? appUsersManager.getUserPhoto(peerId)
+      : appChatsManager.getChatPhoto(-peerId);
   }
 
-  public getPeerMigratedTo(peerID: number) {
-    if(peerID >= 0) {
+  public getPeerMigratedTo(peerId: number) {
+    if(peerId >= 0) {
       return false;
     }
 
-    let chat = appChatsManager.getChat(-peerID);
+    let chat = appChatsManager.getChat(-peerId);
     if(chat && chat.migrated_to && chat.pFlags.deactivated) {
-      return this.getPeerID(chat.migrated_to);
+      return this.getPeerId(chat.migrated_to);
     }
     
     return false;
   }
 
-  public getPeerTitle(peerID: number | any, plainText = false, onlyFirstName = false) {
-    if(!peerID) {
-      peerID = rootScope.myID;
+  public getPeerTitle(peerId: number | any, plainText = false, onlyFirstName = false) {
+    if(!peerId) {
+      peerId = rootScope.myId;
     }
     
     let peer: any = {}; 
-    if(!isObject(peerID)) {
-      peer = this.getPeer(peerID);
-    } else peer = peerID;
+    if(!isObject(peerId)) {
+      peer = this.getPeer(peerId);
+    } else peer = peerId;
 
     let title = '';
-    if(peerID > 0) {
+    if(peerId > 0) {
       if(peer.first_name) title += peer.first_name;
       if(peer.last_name) title += ' ' + peer.last_name;
   
@@ -79,40 +79,40 @@ export class AppPeersManager {
     return plainText ? title : RichTextProcessor.wrapEmojiText(title);
   }
 
-  public getOutputPeer(peerID: number): Peer {
-    if(peerID > 0) {
-      return {_: 'peerUser', user_id: peerID};
+  public getOutputPeer(peerId: number): Peer {
+    if(peerId > 0) {
+      return {_: 'peerUser', user_id: peerId};
     }
 
-    let chatID = -peerID;
-    if(appChatsManager.isChannel(chatID)) {
-      return {_: 'peerChannel', channel_id: chatID};
+    let chatId = -peerId;
+    if(appChatsManager.isChannel(chatId)) {
+      return {_: 'peerChannel', channel_id: chatId};
     }
 
-    return {_: 'peerChat', chat_id: chatID};
+    return {_: 'peerChat', chat_id: chatId};
   }
 
-  /* public getPeerString(peerID: number) {
-    if(peerID > 0) {
-      return appUsersManager.getUserString(peerID);
+  /* public getPeerString(peerId: number) {
+    if(peerId > 0) {
+      return appUsersManager.getUserString(peerId);
     }
-    return appChatsManager.getChatString(-peerID);
+    return appChatsManager.getChatString(-peerId);
   } */
 
-  public getPeerUsername(peerID: number): string {
-    if(peerID > 0) {
-      return appUsersManager.getUser(peerID).username || '';
+  public getPeerUsername(peerId: number): string {
+    if(peerId > 0) {
+      return appUsersManager.getUser(peerId).username || '';
     }
-    return appChatsManager.getChat(-peerID).username || '';
+    return appChatsManager.getChat(-peerId).username || '';
   }
 
-  public getPeer(peerID: number) {
-    return peerID > 0
-      ? appUsersManager.getUser(peerID)
-      : appChatsManager.getChat(-peerID)
+  public getPeer(peerId: number) {
+    return peerId > 0
+      ? appUsersManager.getUser(peerId)
+      : appChatsManager.getChat(-peerId)
   }
 
-  public getPeerID(peerString: any/* Peer | number | string */): number {
+  public getPeerId(peerString: any/* Peer | number | string */): number {
     if(typeof(peerString) === 'number') return peerString;
     else if(isObject(peerString)) return peerString.user_id ? peerString.user_id : -(peerString.channel_id || peerString.chat_id);
     else if(!peerString) return 0;
@@ -123,31 +123,31 @@ export class AppPeersManager {
     return isUser ? peerParams[0] : -peerParams[0] || 0;
   }
 
-  public getDialogPeer(peerID: number): DialogPeer {
+  public getDialogPeer(peerId: number): DialogPeer {
     return {
       _: 'dialogPeer',
-      peer: this.getOutputPeer(peerID)
+      peer: this.getOutputPeer(peerId)
     };
   }
 
-  public isChannel(peerID: number): boolean {
-    return (peerID < 0) && appChatsManager.isChannel(-peerID);
+  public isChannel(peerId: number): boolean {
+    return (peerId < 0) && appChatsManager.isChannel(-peerId);
   }
 
-  public isMegagroup(peerID: number) {
-    return (peerID < 0) && appChatsManager.isMegagroup(-peerID);
+  public isMegagroup(peerId: number) {
+    return (peerId < 0) && appChatsManager.isMegagroup(-peerId);
   }
 
-  public isAnyGroup(peerID: number): boolean {
-    return (peerID < 0) && !appChatsManager.isBroadcast(-peerID);
+  public isAnyGroup(peerId: number): boolean {
+    return (peerId < 0) && !appChatsManager.isBroadcast(-peerId);
   }
 
   public isBroadcast(id: number): boolean {
     return this.isChannel(id) && !this.isMegagroup(id);
   }
 
-  public isBot(peerID: number): boolean {
-    return (peerID > 0) && appUsersManager.isBot(peerID);
+  public isBot(peerId: number): boolean {
+    return (peerId > 0) && appUsersManager.isBot(peerId);
   }
 
   /* public getInputPeer(peerString: string): InputPeer {
@@ -182,48 +182,48 @@ export class AppPeersManager {
     }
   } */
 
-  public getInputPeerByID(peerID: number): InputPeer {
-    if(!peerID) {
+  public getInputPeerById(peerId: number): InputPeer {
+    if(!peerId) {
       return {_: 'inputPeerEmpty'};
     }
 
-    if(peerID < 0) {
-      const chatID = -peerID;
-      if(!appChatsManager.isChannel(chatID)) {
-        return appChatsManager.getChatInputPeer(chatID);
+    if(peerId < 0) {
+      const chatId = -peerId;
+      if(!appChatsManager.isChannel(chatId)) {
+        return appChatsManager.getChatInputPeer(chatId);
       } else {
-        return appChatsManager.getChannelInputPeer(chatID);
+        return appChatsManager.getChannelInputPeer(chatId);
       }
     }
 
     return {
       _: 'inputPeerUser',
-      user_id: peerID,
-      access_hash: appUsersManager.getUser(peerID).access_hash
+      user_id: peerId,
+      access_hash: appUsersManager.getUser(peerId).access_hash
     };
   }
 
-  public getInputDialogPeerByID(peerID: number): InputDialogPeer {
+  public getInputDialogPeerById(peerId: number): InputDialogPeer {
     return {
       _: 'inputDialogPeer',
-      peer: this.getInputPeerByID(peerID)
+      peer: this.getInputPeerById(peerId)
     }
   }
 
-  public getPeerColorByID(peerID: number, pic = true) {
-    if(!peerID) return '';
+  public getPeerColorById(peerId: number, pic = true) {
+    if(!peerId) return '';
 
-    const idx = DialogColorsMap[(peerID < 0 ? -peerID : peerID) % 7];
+    const idx = DialogColorsMap[(peerId < 0 ? -peerId : peerId) % 7];
     const color = (pic ? DialogColors : DialogColorsFg)[idx];
     return color;
   }
 
-  public getPeerSearchText(peerID: number) {
+  public getPeerSearchText(peerId: number) {
     let text;
-    if(peerID > 0) {
-      text = '%pu ' + appUsersManager.getUserSearchText(peerID);
-    } else if(peerID < 0) {
-      const chat = appChatsManager.getChat(-peerID);
+    if(peerId > 0) {
+      text = '%pu ' + appUsersManager.getUserSearchText(peerId);
+    } else if(peerId < 0) {
+      const chat = appChatsManager.getChat(-peerId);
       text = '%pg ' + (chat.title || '');
     }
     return text;

@@ -8,12 +8,12 @@ export type ReferenceContext = ReferenceContext.referenceContextProfilePhoto | R
 export namespace ReferenceContext {
   export type referenceContextProfilePhoto = {
     type: 'profilePhoto',
-    peerID: number
+    peerId: number
   };
 
   export type referenceContextMessage = {
     type: 'message',
-    messageID: number
+    messageId: number
   };
 }
 
@@ -80,9 +80,9 @@ class ReferenceDatabase {
     [context, reference] = this.getContext(reference);
     switch(context?.type) {
       case 'message': {
-        return appMessagesManager.wrapSingleMessage(context.messageID, true);
+        return appMessagesManager.wrapSingleMessage(context.messageId, true);
         // .then(() => {
-        //   console.log('FILE_REFERENCE_EXPIRED: got message', context, appMessagesManager.getMessage((context as ReferenceContext.referenceContextMessage).messageID).media, reference);
+        //   console.log('FILE_REFERENCE_EXPIRED: got message', context, appMessagesManager.getMessage((context as ReferenceContext.referenceContextMessage).messageId).media, reference);
         // });
       }
 

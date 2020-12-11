@@ -1,15 +1,15 @@
 import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
 import appStateManager from "./appStateManager";
 
-export class AppMessagesIDsManager {
-  public channelLocals: {[channelID: string]: number} = {};
+export class AppMessagesIdsManager {
+  public channelLocals: {[channelId: string]: number} = {};
   public channelsByLocals: {[localStart: string]: number} = {};
   public channelCurLocal = 0;
-  public fullMsgIDModulus = 4294967296;
+  public fullMsgIdModulus = 4294967296;
 
   constructor() {
     appStateManager.getState().then(state => {
-      const cached = state.messagesIDsLocals;
+      const cached = state.messagesIdsLocals;
       if(cached) {
         this.channelLocals = cached.channelLocals;
         this.channelsByLocals = cached.channelsByLocals;
@@ -18,7 +18,7 @@ export class AppMessagesIDsManager {
     });
 
     appStateManager.addListener('save', () => {
-      appStateManager.pushToState('messagesIDsLocals', {
+      appStateManager.pushToState('messagesIdsLocals', {
         channelLocals: this.channelLocals,
         channelsByLocals: this.channelsByLocals,
         channelCurLocal: this.channelCurLocal
@@ -26,60 +26,60 @@ export class AppMessagesIDsManager {
     });
   }
 
-  public getFullMessageID(msgID: number, channelID: number): number {
-    if(!channelID || msgID <= 0) {
-      return msgID;
+  public getFullMessageId(msgId: number, channelId: number): number {
+    if(!channelId || msgId <= 0) {
+      return msgId;
     }
 
-    msgID = this.getMessageLocalID(msgID);
-    let localStart = this.channelLocals[channelID];
+    msgId = this.getMessageLocalId(msgId);
+    let localStart = this.channelLocals[channelId];
     if(!localStart) {
-      localStart = (++this.channelCurLocal) * this.fullMsgIDModulus;
-      this.channelsByLocals[localStart] = channelID;
-      this.channelLocals[channelID] = localStart;
+      localStart = (++this.channelCurLocal) * this.fullMsgIdModulus;
+      this.channelsByLocals[localStart] = channelId;
+      this.channelLocals[channelId] = localStart;
     }
 
-    return localStart + msgID;
+    return localStart + msgId;
   }
 
-  public getMessageIDInfo(fullMsgID: number) {
-    if(fullMsgID < this.fullMsgIDModulus) {
-      return [fullMsgID, 0];
+  public getMessageIdInfo(fullMsgId: number) {
+    if(fullMsgId < this.fullMsgIdModulus) {
+      return [fullMsgId, 0];
     }
 
-    const msgID = fullMsgID % this.fullMsgIDModulus;
-    const channelID = this.channelsByLocals[fullMsgID - msgID];
+    const msgId = fullMsgId % this.fullMsgIdModulus;
+    const channelId = this.channelsByLocals[fullMsgId - msgId];
 
-    return [msgID, channelID];
+    return [msgId, channelId];
   }
 
-  public getMessageLocalID(fullMsgID: number) {
-    return fullMsgID ? fullMsgID % this.fullMsgIDModulus : 0;
+  public getMessageLocalId(fullMsgId: number) {
+    return fullMsgId ? fullMsgId % this.fullMsgIdModulus : 0;
   }
 
-  public splitMessageIDsByChannels(mids: number[]) {
-    const msgIDsByChannels: {[channelID: number]: number[]} = {};
-    const midsByChannels: {[channelID: number]: number[]} = {};
+  public splitMessageIdsByChannels(mids: number[]) {
+    const msgIdsByChannels: {[channelId: number]: number[]} = {};
+    const midsByChannels: {[channelId: number]: number[]} = {};
     for(const mid of mids) {
-      const msgChannel = this.getMessageIDInfo(mid);
-      const channelID = msgChannel[1];
+      const msgChannel = this.getMessageIdInfo(mid);
+      const channelId = msgChannel[1];
 
-      if(msgIDsByChannels[channelID] === undefined) {
-        msgIDsByChannels[channelID] = [];
-        midsByChannels[channelID] = [];
+      if(msgIdsByChannels[channelId] === undefined) {
+        msgIdsByChannels[channelId] = [];
+        midsByChannels[channelId] = [];
       }
 
-      msgIDsByChannels[channelID].push(msgChannel[0]);
-      midsByChannels[channelID].push(mid);
+      msgIdsByChannels[channelId].push(msgChannel[0]);
+      midsByChannels[channelId].push(mid);
     }
 
     return {
-      msgIDs: msgIDsByChannels,
+      msgIds: msgIdsByChannels,
       mids: midsByChannels
     };
   }
 }
 
-const appMessagesIDsManager = new AppMessagesIDsManager();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appMessagesIDsManager = appMessagesIDsManager);
-export default appMessagesIDsManager;
+const appMessagesIdsManager = new AppMessagesIdsManager();
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appMessagesIdsManager = appMessagesIdsManager);
+export default appMessagesIdsManager;

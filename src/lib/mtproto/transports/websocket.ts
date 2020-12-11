@@ -32,10 +32,10 @@ export default class Socket extends MTTransport {
 
   lastCloseTime: number;
 
-  constructor(dcID: number, url: string, logSuffix: string) {
-    super(dcID, url);
+  constructor(dcId: number, url: string, logSuffix: string) {
+    super(dcId, url);
 
-    this.log = logger(`WS-${dcID}` + logSuffix, LogLevels.error | LogLevels.log/*  | LogLevels.debug */);
+    this.log = logger(`WS-${dcId}` + logSuffix, LogLevels.error | LogLevels.log/*  | LogLevels.debug */);
     this.log('constructor');
     this.connect();
   }
@@ -122,7 +122,7 @@ export default class Socket extends MTTransport {
       this.log.debug('redirecting to networker');
       return this.networker.parseResponse(data).then(response => {
         this.log.debug('redirecting to networker response:', response);
-        this.networker.processMessage(response.response, response.messageID, response.sessionID);
+        this.networker.processMessage(response.response, response.messageId, response.sessionId);
       });
     }
 

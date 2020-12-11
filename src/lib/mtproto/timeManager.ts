@@ -3,7 +3,7 @@ import { longFromInts } from './bin_utils';
 import { nextRandomInt } from '../../helpers/random';
 
 export class TimeManager {
-  private lastMessageID = [0, 0];
+  private lastMessageId = [0, 0];
   private timeOffset = 0;
 
   constructor() {
@@ -14,23 +14,23 @@ export class TimeManager {
     });
   }
 
-  public generateID(): string {
+  public generateId(): string {
     const timeTicks = Date.now(),
       timeSec = Math.floor(timeTicks / 1000) + this.timeOffset,
       timeMSec = timeTicks % 1000,
       random = nextRandomInt(0xFFFF);
 
-    let messageID = [timeSec, (timeMSec << 21) | (random << 3) | 4];
-    if(this.lastMessageID[0] > messageID[0] ||
-      this.lastMessageID[0] == messageID[0] && this.lastMessageID[1] >= messageID[1]) {
-      messageID = [this.lastMessageID[0], this.lastMessageID[1] + 4];
+    let messageId = [timeSec, (timeMSec << 21) | (random << 3) | 4];
+    if(this.lastMessageId[0] > messageId[0] ||
+      this.lastMessageId[0] == messageId[0] && this.lastMessageId[1] >= messageId[1]) {
+      messageId = [this.lastMessageId[0], this.lastMessageId[1] + 4];
     }
 
-    this.lastMessageID = messageID;
+    this.lastMessageId = messageId;
 
-    const ret = longFromInts(messageID[0], messageID[1]);
+    const ret = longFromInts(messageId[0], messageId[1]);
 
-    //console.log('[TimeManager]: Generated msg id', messageID, this.timeOffset, ret);
+    //console.log('[TimeManager]: Generated msg id', messageId, this.timeOffset, ret);
 
     return ret
   }
@@ -43,7 +43,7 @@ export class TimeManager {
       server_time_offset: newTimeOffset
     });
 
-    this.lastMessageID = [0, 0];
+    this.lastMessageId = [0, 0];
     this.timeOffset = newTimeOffset;
     
     //console.log('[TimeManager]: Apply server time', serverTime, localTime, newTimeOffset, changed);

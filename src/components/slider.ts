@@ -32,7 +32,7 @@ const TRANSITION_TIME = 250;
 
 export default class SidebarSlider {
   protected _selectTab: (id: number) => void;
-  public historyTabIDs: number[] = [];
+  public historyTabIds: number[] = [];
 
   constructor(public sidebarEl: HTMLElement, public tabs: {[id: number]: SliderTab} = {}, private canHideFirst = false) {
     this._selectTab = horizontalMenu(null, this.sidebarEl.querySelector('.sidebar-slider') as HTMLDivElement, null, null, TRANSITION_TIME);
@@ -45,15 +45,15 @@ export default class SidebarSlider {
     });
   }
 
-  public closeTab = (tabID?: number) => {
-    if(tabID !== undefined && this.historyTabIDs[this.historyTabIDs.length - 1] != tabID) {
+  public closeTab = (tabId?: number) => {
+    if(tabId !== undefined && this.historyTabIds[this.historyTabIds.length - 1] != tabId) {
       return false;
     }
 
     //console.log('sidebar-close-button click:', this.historyTabIDs);
-    let closingID = this.historyTabIDs.pop(); // pop current
-    this.onCloseTab(closingID);
-    this._selectTab(this.historyTabIDs[this.historyTabIDs.length - 1] ?? (this.canHideFirst ? -1 : 0));
+    let closingId = this.historyTabIds.pop(); // pop current
+    this.onCloseTab(closingId);
+    this._selectTab(this.historyTabIds[this.historyTabIds.length - 1] ?? (this.canHideFirst ? -1 : 0));
     return true;
   };
 
@@ -62,7 +62,7 @@ export default class SidebarSlider {
       id = id.id;
     }
 
-    if(this.historyTabIDs[this.historyTabIDs.length - 1] == id) {
+    if(this.historyTabIds[this.historyTabIds.length - 1] == id) {
       return false;
     }
 
@@ -79,13 +79,13 @@ export default class SidebarSlider {
       }
     }
     
-    this.historyTabIDs.push(id);
+    this.historyTabIds.push(id);
     this._selectTab(id);
     return true;
   }
 
   public removeTabFromHistory(id: number) {
-    this.historyTabIDs.findAndSplice(i => i == id);
+    this.historyTabIds.findAndSplice(i => i == id);
     this.onCloseTab(id);
   }
 

@@ -1,7 +1,7 @@
 import rootScope from "../lib/rootScope";
 import { generatePathData } from "../helpers/dom";
 
-type BubbleGroup = {timestamp: number, fromID: number, mid: number, group: HTMLDivElement[]};
+type BubbleGroup = {timestamp: number, fromId: number, mid: number, group: HTMLDivElement[]};
 export default class BubbleGroups {
   bubblesByGroups: Array<BubbleGroup> = []; // map to group
   groups: Array<HTMLDivElement[]> = [];
@@ -22,12 +22,12 @@ export default class BubbleGroups {
   
   addBubble(bubble: HTMLDivElement, message: any, reverse: boolean) {
     let timestamp = message.date;
-    let fromID = message.fromID;
+    let fromId = message.fromId;
     let group: HTMLDivElement[];
 
     // fix for saved messages forward to self
-    if(fromID == rootScope.myID && message.peerID == rootScope.myID && message.fwdFromID == fromID) {
-      fromID = -fromID;
+    if(fromId == rootScope.myId && message.peerId == rootScope.myId && message.fwdFromId == fromId) {
+      fromId = -fromId;
     }
     
     // try to find added
@@ -36,7 +36,7 @@ export default class BubbleGroups {
     if(this.bubblesByGroups.length) {
       if(reverse) {
         let g = this.bubblesByGroups[0];
-        if(g.fromID == fromID && (g.timestamp - timestamp) < this.newGroupDiff) {
+        if(g.fromId == fromId && (g.timestamp - timestamp) < this.newGroupDiff) {
           group = g.group;
           group.unshift(bubble);
         } else {
@@ -44,7 +44,7 @@ export default class BubbleGroups {
         }
       } else {
         let g = this.bubblesByGroups[this.bubblesByGroups.length - 1];
-        if(g.fromID == fromID && (timestamp - g.timestamp) < this.newGroupDiff) {
+        if(g.fromId == fromId && (timestamp - g.timestamp) < this.newGroupDiff) {
           group = g.group;
           group.push(bubble);
         } else {
@@ -55,9 +55,9 @@ export default class BubbleGroups {
       this.groups.push(group = [bubble]);
     }
 
-    //console.log('[BUBBLE]: addBubble', bubble, message.mid, fromID, reverse, group);
+    //console.log('[BUBBLE]: addBubble', bubble, message.mid, fromId, reverse, group);
     
-    this.bubblesByGroups[reverse ? 'unshift' : 'push']({timestamp, fromID, mid: message.mid, group});
+    this.bubblesByGroups[reverse ? 'unshift' : 'push']({timestamp, fromId, mid: message.mid, group});
     this.updateGroup(group);
   }
 
@@ -76,7 +76,7 @@ export default class BubbleGroups {
         if(remove) {
           object.removeAttributeNS(null, 'clip-path');
         } else {
-          let clipID = container.dataset.clipID;
+          let clipId = container.dataset.clipId;
           let path = container.firstElementChild.firstElementChild.lastElementChild as SVGPathElement;
           let width = +object.getAttributeNS(null, 'width');
           let height = +object.getAttributeNS(null, 'height');
@@ -104,7 +104,7 @@ export default class BubbleGroups {
           }
           
           path.setAttributeNS(null, 'd', d);
-          object.setAttributeNS(null, 'clip-path', 'url(#' + clipID + ')');
+          object.setAttributeNS(null, 'clip-path', 'url(#' + clipId + ')');
         }
       });
     }
@@ -151,7 +151,7 @@ export default class BubbleGroups {
     //}));
   }
 
-  updateGroupByMessageID(mid: number) {
+  updateGroupByMessageId(mid: number) {
     let details = this.bubblesByGroups.find(g => g.mid == mid);
     if(details) {
       this.updateGroup(details.group);

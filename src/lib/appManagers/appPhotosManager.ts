@@ -3,7 +3,7 @@ import { CancellablePromise } from "../../helpers/cancellablePromise";
 import { getFileNameByLocation } from "../../helpers/fileName";
 import { safeReplaceArrayInObject, defineNotNumerableProperties, isObject } from "../../helpers/object";
 import { isSafari } from "../../helpers/userAgent";
-import { FileLocation, InputFileLocation, Photo, PhotoSize, PhotosPhotos } from "../../layer";
+import { FileLocation, InputFileLocation, InputMedia, Photo, PhotoSize, PhotosPhotos } from "../../layer";
 import { DownloadOptions } from "../mtproto/apiFileManager";
 import apiManager from "../mtproto/mtprotoworker";
 import referenceDatabase, { ReferenceContext } from "../mtproto/referenceDatabase";
@@ -28,7 +28,7 @@ export class AppPhotosManager {
     [id: string]: MyPhoto
   } = {};
   private documentThumbsCache: {
-    [docID: string]: DocumentCacheThumb
+    [docId: string]: DocumentCacheThumb
   } = {};
   public windowW = 0;
   public windowH = 0;
@@ -115,24 +115,24 @@ export class AppPhotosManager {
     return bestPhotoSize;
   }
   
-  public getUserPhotos(userID: number, maxID: string = '0', limit: number = 20) {
-    const inputUser = appUsersManager.getUserInput(userID);
+  public getUserPhotos(userId: number, maxId: string = '0', limit: number = 20) {
+    const inputUser = appUsersManager.getUserInput(userId);
     return apiManager.invokeApi('photos.getUserPhotos', {
       user_id: inputUser,
       offset: 0,
       limit: limit,
-      max_id: maxID
+      max_id: maxId
     }).then((photosResult) => {
       appUsersManager.saveApiUsers(photosResult.users);
-      const photoIDs: string[] = [];
+      const photoIds: string[] = [];
       photosResult.photos.forEach((photo, idx) => {
-        photosResult.photos[idx] = this.savePhoto(photo, {type: 'profilePhoto', peerID: userID});
-        photoIDs.push(photo.id);
+        photosResult.photos[idx] = this.savePhoto(photo, {type: 'profilePhoto', peerId: userId});
+        photoIds.push(photo.id);
       });
       
       return {
         count: (photosResult as PhotosPhotos.photosPhotosSlice).count || photosResult.photos.length,
-        photos: photoIDs
+        photos: photoIds
       };
     });
   }
@@ -251,7 +251,7 @@ export class AppPhotosManager {
     return photoSize;
   }
   
-  public getPhotoDownloadOptions(photo: MyPhoto | MyDocument, photoSize: PhotoSize) {
+  public getPhotoDownloadOptions(photo: MyPhoto | MyDocument, photoSize: PhotoSize, queueId?: number) {
     const isMyDocument = photo._ == 'document';
 
     if(!photoSize || photoSize._ == 'photoSizeEmpty') {
@@ -269,7 +269,7 @@ export class AppPhotosManager {
       thumb_size: photoSize.type
     } : (photoSize as PhotoSize.photoSize).location;
 
-    return {dcID: photo.dc_id, location, size: isPhoto ? (photoSize as PhotoSize.photoSize).size : undefined};
+    return {dcId: photo.dc_id, location, size: isPhoto ? (photoSize as PhotoSize.photoSize).size : undefined, queueId};
   }
 
   /* public getPhotoURL(photo: MTPhoto | MTMyDocument, photoSize: MTPhotoSize) {
@@ -278,8 +278,8 @@ export class AppPhotosManager {
     return {url: getFileURL('photo', downloadOptions), location: downloadOptions.location};
   } */
   
-  public preloadPhoto(photoID: any, photoSize?: PhotoSize, downloadOptions?: DownloadOptions): CancellablePromise<Blob> {
-    const photo = this.getPhoto(photoID);
+  public preloadPhoto(photoId: any, photoSize?: PhotoSize, queueId?: number): CancellablePromise<Blob> {
+    const photo = this.getPhoto(photoId);
 
     // @ts-ignore
     if(!photo || photo._ == 'photoEmpty') {
@@ -298,9 +298,7 @@ export class AppPhotosManager {
       return Promise.resolve() as any;
     }
     
-    if(!downloadOptions) {
-      downloadOptions = this.getPhotoDownloadOptions(photo, photoSize);
-    }
+    const downloadOptions = this.getPhotoDownloadOptions(photo, photoSize, queueId);
 
     const fileName = getFileNameByLocation(downloadOptions.location);
 
@@ -330,15 +328,15 @@ export class AppPhotosManager {
     return photo._ == 'document' ? this.getDocumentCachedThumb(photo.id) : photo;
   }
 
-  public getDocumentCachedThumb(docID: string) {
-    return this.documentThumbsCache[docID] ?? (this.documentThumbsCache[docID] = {downloaded: 0, url: ''});
+  public getDocumentCachedThumb(docId: string) {
+    return this.documentThumbsCache[docId] ?? (this.documentThumbsCache[docId] = {downloaded: 0, url: ''});
   }
   
-  public getPhoto(photoID: any): MyPhoto {
-    return isObject(photoID) ? photoID : this.photos[photoID];
+  public getPhoto(photoId: any): MyPhoto {
+    return isObject(photoId) ? photoId : this.photos[photoId];
   }
 
-  public getInput(photo: MyPhoto) {
+  public getInput(photo: MyPhoto): InputMedia.inputMediaPhoto {
     return {
       _: 'inputMediaPhoto',
       id: {
@@ -351,7 +349,7 @@ export class AppPhotosManager {
     };
   }
 
-  public savePhotoFile(photo: MyPhoto | MyDocument) {
+  public savePhotoFile(photo: MyPhoto | MyDocument, queueId?: number) {
     const fullPhotoSize = this.choosePhotoSize(photo, 0xFFFF, 0xFFFF);
     if(!(fullPhotoSize._ == 'photoSize' || fullPhotoSize._ == 'photoSizeProgressive')) {
       return;
@@ -366,10 +364,11 @@ export class AppPhotosManager {
     };
 
     appDownloadManager.downloadToDisc({
-      dcID: photo.dc_id, 
+      dcId: photo.dc_id, 
       location, 
       size: fullPhotoSize.size, 
-      fileName: 'photo' + photo.id + '.jpg'
+      fileName: 'photo' + photo.id + '.jpg',
+      queueId
     }, 'photo' + photo.id + '.jpg');
   }
 }

@@ -52,7 +52,7 @@ export default class AppContactsTab implements SliderTab {
       this.init = null;
     }
 
-    if(appSidebarLeft.historyTabIDs.indexOf(AppSidebarLeft.SLIDERITEMSIDS.contacts) === -1) {
+    if(appSidebarLeft.historyTabIds.indexOf(AppSidebarLeft.SLIDERITEMSIDS.contacts) === -1) {
       appSidebarLeft.selectTab(AppSidebarLeft.SLIDERITEMSIDS.contacts);
     }
 
@@ -62,7 +62,7 @@ export default class AppContactsTab implements SliderTab {
     this.promise = appUsersManager.getContacts(query).then(_contacts => {
       this.promise = null;
 
-      if(appSidebarLeft.historyTabIDs[appSidebarLeft.historyTabIDs.length - 1] != AppSidebarLeft.SLIDERITEMSIDS.contacts) {
+      if(appSidebarLeft.historyTabIds[appSidebarLeft.historyTabIds.length - 1] != AppSidebarLeft.SLIDERITEMSIDS.contacts) {
         console.warn('user closed contacts before it\'s loaded');
         return;
       }
@@ -70,15 +70,15 @@ export default class AppContactsTab implements SliderTab {
       const contacts = [..._contacts];
 
       if(!query) {
-        contacts.findAndSplice(u => u == rootScope.myID);
+        contacts.findAndSplice(u => u == rootScope.myId);
       }
       /* if(query && 'saved messages'.includes(query.toLowerCase())) {
         contacts.unshift(rootScope.myID);
       } */
 
       let sorted = contacts
-      .map(userID => {
-        let user = appUsersManager.getUser(userID);
+      .map(userId => {
+        let user = appUsersManager.getUser(userId);
         let status = appUsersManager.getUserStatusForSort(user.status);
 
         return {user, status};

@@ -68,8 +68,8 @@ export class SuperStickerRenderer {
   };
 
   processVisibleDiv = (div: HTMLElement) => {
-    const docID = div.dataset.docID;
-    const doc = appDocsManager.getDoc(docID);
+    const docId = div.dataset.docId;
+    const doc = appDocsManager.getDoc(docId);
     
     const size = mediaSizes.active.esgSticker.width;
 
@@ -98,10 +98,10 @@ export class SuperStickerRenderer {
   };
 
   processInvisibleDiv = (div: HTMLElement) => {
-    const docID = div.dataset.docID;
-    const doc = appDocsManager.getDoc(docID);
+    const docId = div.dataset.docId;
+    const doc = appDocsManager.getDoc(docId);
 
-    //console.log('STICKER INvisible:', /* div,  */docID);
+    //console.log('STICKER INvisible:', /* div,  */docId);
 
     this.checkAnimationContainer(div, false);
 

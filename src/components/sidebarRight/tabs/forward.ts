@@ -10,7 +10,7 @@ export default class AppForwardTab implements SliderTab {
   private sendBtn: HTMLButtonElement;
 
   private selector: AppSelectPeers;
-  private msgIDs: number[] = [];
+  private mids: number[] = [];
 
   onCloseAfterTimeout() {
     document.body.classList.remove('is-forward-active');
@@ -35,21 +35,21 @@ export default class AppForwardTab implements SliderTab {
     this.sendBtn = this.container.querySelector('.btn-circle') as HTMLButtonElement;
 
     this.sendBtn.addEventListener('click', () => {
-      let peerIDs = this.selector.getSelected();
+      let peerIds = this.selector.getSelected();
       
-      if(this.msgIDs.length && peerIDs.length) {
+      if(this.mids.length && peerIds.length) {
         this.sendBtn.classList.remove('tgico-send');
         this.sendBtn.disabled = true;
         putPreloader(this.sendBtn);
         this.selector.freezed = true;
 
         let s = () => {
-          let promises = peerIDs.splice(0, 3).map(peerID => {
-            return appMessagesManager.forwardMessages(peerID, this.msgIDs);
+          let promises = peerIds.splice(0, 3).map(peerId => {
+            return appMessagesManager.forwardMessages(peerId, this.mids);
           });
           
           Promise.all(promises).then(() => {
-            if(peerIDs.length) {
+            if(peerIds.length) {
               return s();
             } else {
               this.closeBtn.click();
@@ -69,7 +69,7 @@ export default class AppForwardTab implements SliderTab {
     }
 
     this.cleanup();
-    this.msgIDs = ids;
+    this.mids = ids;
 
     this.selector = new AppSelectPeers(this.container, (length) => {
       this.sendBtn.classList.toggle('is-visible', !!length);

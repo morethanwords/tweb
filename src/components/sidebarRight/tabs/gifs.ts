@@ -25,7 +25,7 @@ export default class AppGifsTab implements SliderTab {
   private nextOffset = '';
   private loadedAll = false;
 
-  private gifBotPeerID: number;
+  private gifBotPeerId: number;
   private masonry: GifsMasonry;
 
   private searchPromise: ReturnType<AppInlineBotsManager['getInlineResults']>;
@@ -49,13 +49,13 @@ export default class AppGifsTab implements SliderTab {
     const target = findUpClassName(e.target, 'gif');
     if(!target) return;
 
-    const fileID = target.dataset.docID;
-    if(appImManager.chat.input.sendMessageWithDocument(fileID)) {
+    const fileId = target.dataset.docId;
+    if(appImManager.chat.input.sendMessageWithDocument(fileId)) {
       if(mediaSizes.isMobile) {
         this.backBtn.click();
       }
     } else {
-      console.warn('got no doc by id:', fileID);
+      console.warn('got no doc by id:', fileId);
     }
   };
 
@@ -94,12 +94,12 @@ export default class AppGifsTab implements SliderTab {
   public async search(query: string, newSearch = true) {
     if(this.searchPromise || this.loadedAll) return;
 
-    if(!this.gifBotPeerID) {
-      this.gifBotPeerID = (await appUsersManager.resolveUsername('gif')).id;
+    if(!this.gifBotPeerId) {
+      this.gifBotPeerId = (await appUsersManager.resolveUsername('gif')).id;
     }
 
     try {
-      this.searchPromise = appInlineBotsManager.getInlineResults(0, this.gifBotPeerID, query, this.nextOffset);
+      this.searchPromise = appInlineBotsManager.getInlineResults(0, this.gifBotPeerId, query, this.nextOffset);
       const { results, next_offset } = await this.searchPromise;
 
       if(this.searchInput.value != query) {

@@ -36,8 +36,8 @@ export default class AppStickersTab implements SliderTab {
     this.setsDiv.addEventListener('click', (e) => {
       const sticker = findUpClassName(e.target, 'sticker-set-sticker');
       if(sticker) {
-        const docID = sticker.dataset.docID;
-        appImManager.chat.input.sendMessageWithDocument(docID);
+        const docId = sticker.dataset.docId;
+        appImManager.chat.input.sendMessageWithDocument(docId);
         return;
       }
 

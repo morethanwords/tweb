@@ -41,7 +41,7 @@ export default class AppSharedMediaTab implements SliderTab {
   public container: HTMLElement;
   public closeBtn: HTMLElement;
 
-  private peerID = 0;
+  private peerId = 0;
 
   public profileContentEl: HTMLDivElement;
   public contentContainer: HTMLDivElement;
@@ -78,7 +78,7 @@ export default class AppSharedMediaTab implements SliderTab {
   private lazyLoadQueue = new LazyLoadQueue();
   
   public historiesStorage: {
-    [peerID: number]: Partial<{
+    [peerId: number]: Partial<{
       [type in SharedMediaType]: number[]
     }>
   } = {};
@@ -89,9 +89,9 @@ export default class AppSharedMediaTab implements SliderTab {
   public scroll: Scrollable = null;
 
   private profileTabs: HTMLUListElement;
-  private prevTabID = -1;
+  private prevTabId = -1;
   
-  private mediaDivsByIDs: {
+  private mediaDivsByIds: {
     [mid: number]: HTMLDivElement
   } = {};
   
@@ -143,28 +143,28 @@ export default class AppSharedMediaTab implements SliderTab {
     //this.scroll.attachSentinels(undefined, 400);
     
     horizontalMenu(this.profileTabs, container, (id, tabContent) => {
-      if(this.prevTabID == id) return;
+      if(this.prevTabId == id) return;
 
-      if(this.prevTabID != -1) {
+      if(this.prevTabId != -1) {
         this.onTransitionStart();
       }
       
       this.sharedMediaType = this.sharedMediaTypes[id];
       this.sharedMediaSelected = tabContent.firstElementChild as HTMLDivElement;
 
-      if(this.prevTabID != -1 && this.profileTabs.offsetTop) {
+      if(this.prevTabId != -1 && this.profileTabs.offsetTop) {
         this.scroll.scrollTop -= this.profileTabs.offsetTop;
       }
 
       /* this.log('setVirtualContainer', id, this.sharedMediaSelected, this.sharedMediaSelected.childElementCount);
       this.scroll.setVirtualContainer(this.sharedMediaSelected); */
 
-      if(this.prevTabID != -1 && !this.sharedMediaSelected.childElementCount) { // quick brown fix
+      if(this.prevTabId != -1 && !this.sharedMediaSelected.childElementCount) { // quick brown fix
         //this.contentContainer.classList.remove('loaded');
         this.loadSidebarMedia(true);
       }
 
-      this.prevTabID = id;
+      this.prevTabId = id;
     }, () => {
       this.scroll.onScroll();
       this.onTransitionEnd();
@@ -173,19 +173,19 @@ export default class AppSharedMediaTab implements SliderTab {
     this.sharedMedia.inputMessagesFilterPhotoVideo.addEventListener('click', (e) => {
       const target = e.target as HTMLDivElement;
       
-      const messageID = +target.dataset.mid;
-      if(!messageID) {
-        this.log.warn('no messageID by click on target:', target);
+      const messageId = +target.dataset.mid;
+      if(!messageId) {
+        this.log.warn('no messageId by click on target:', target);
         return;
       }
       
-      const message = appMessagesManager.getMessage(messageID);
+      const message = appMessagesManager.getMessage(messageId);
       
-      const ids = Object.keys(this.mediaDivsByIDs).map(k => +k).sort((a, b) => a - b);
-      const idx = ids.findIndex(i => i == messageID);
+      const ids = Object.keys(this.mediaDivsByIds).map(k => +k).sort((a, b) => a - b);
+      const idx = ids.findIndex(i => i == messageId);
       
       const targets = ids.map(id => {
-        const element = this.mediaDivsByIDs[id] as HTMLElement;
+        const element = this.mediaDivsByIds[id] as HTMLElement;
         //element = element.querySelector('img') || element;
         return {element, mid: id};
       });
@@ -195,29 +195,29 @@ export default class AppSharedMediaTab implements SliderTab {
     
     this.profileElements.notificationsCheckbox.addEventListener('change', () => {
       //let checked = this.profileElements.notificationsCheckbox.checked;
-      appMessagesManager.mutePeer(this.peerID);
+      appMessagesManager.mutePeer(this.peerId);
     });
 
     rootScope.on('dialog_notify_settings', (e) => {
-      if(this.peerID == e.detail) {
-        const muted = appMessagesManager.isPeerMuted(this.peerID);
+      if(this.peerId == e.detail) {
+        const muted = appMessagesManager.isPeerMuted(this.peerId);
         this.profileElements.notificationsCheckbox.checked = !muted;
         this.profileElements.notificationsStatus.innerText = muted ? 'Disabled' : 'Enabled';
       }
     });
 
     rootScope.on('peer_typings', (e) => {
-      const {peerID} = e.detail;
+      const {peerId} = e.detail;
 
-      if(this.peerID == peerID) {
+      if(this.peerId == peerId) {
         this.setPeerStatus();
       }
     });
 
     rootScope.on('user_update', (e) => {
-      const userID = e.detail;
+      const userId = e.detail;
 
-      if(this.peerID == userID) {
+      if(this.peerId == userId) {
         this.setPeerStatus();
       }
     });
@@ -230,15 +230,15 @@ export default class AppSharedMediaTab implements SliderTab {
   }
 
   public setPeerStatus = (needClear = false) => {
-    if(!this.peerID) return;
+    if(!this.peerId) return;
 
-    const peerID = this.peerID;
+    const peerId = this.peerId;
     if(needClear) {
       this.profileElements.subtitle.innerHTML = '';
     }
 
-    appImManager.getPeerStatus(this.peerID).then((subtitle) => {
-      if(peerID != this.peerID) {
+    appImManager.getPeerStatus(this.peerId).then((subtitle) => {
+      if(peerId != this.peerId) {
         return;
       }
 
@@ -246,20 +246,20 @@ export default class AppSharedMediaTab implements SliderTab {
     });
   };
 
-  public renderNewMessages(peerID: number, mids: number[]) {
+  public renderNewMessages(peerId: number, mids: number[]) {
     if(this.init) return; // * not inited yet
 
-    if(!this.historiesStorage[peerID]) return;
+    if(!this.historiesStorage[peerId]) return;
     
     mids = mids.slice().reverse(); // ! because it will be ascend sorted array
     for(const sharedMediaType of this.sharedMediaTypes) {
       const filtered = this.filterMessagesByType(mids, sharedMediaType);
       if(filtered.length) {
-        if(this.historiesStorage[peerID][sharedMediaType]) {
-          this.historiesStorage[peerID][sharedMediaType].unshift(...mids);
+        if(this.historiesStorage[peerId][sharedMediaType]) {
+          this.historiesStorage[peerId][sharedMediaType].unshift(...mids);
         }
 
-        if(this.peerID == peerID && this.usedFromHistory[sharedMediaType] !== -1) {
+        if(this.peerId == peerId && this.usedFromHistory[sharedMediaType] !== -1) {
           this.usedFromHistory[sharedMediaType] += filtered.length;
           this.performSearchResult(filtered, sharedMediaType, false);
         }
@@ -269,26 +269,26 @@ export default class AppSharedMediaTab implements SliderTab {
     }
   }
 
-  public deleteDeletedMessages(peerID: number, mids: number[]) {
+  public deleteDeletedMessages(peerId: number, mids: number[]) {
     if(this.init) return; // * not inited yet
 
-    if(!this.historiesStorage[peerID]) return;
+    if(!this.historiesStorage[peerId]) return;
 
     for(const mid of mids) {
       for(const sharedMediaType of this.sharedMediaTypes) {
-        if(!this.historiesStorage[peerID][sharedMediaType]) continue;
+        if(!this.historiesStorage[peerId][sharedMediaType]) continue;
 
-        const history = this.historiesStorage[peerID][sharedMediaType];
+        const history = this.historiesStorage[peerId][sharedMediaType];
         const idx = history.findIndex(m => m == mid);
         if(idx !== -1) {
           history.splice(idx, 1);
 
-          if(this.peerID == peerID) {
+          if(this.peerId == peerId) {
             const container = this.sharedMedia[sharedMediaType];
             const div = container.querySelector(`div[data-mid="${mid}"]`);
             if(div) {
               if(sharedMediaType == 'inputMessagesFilterPhotoVideo') {
-                delete this.mediaDivsByIDs[mid];
+                delete this.mediaDivsByIds[mid];
               }
   
               div.remove();
@@ -400,7 +400,7 @@ export default class AppSharedMediaTab implements SliderTab {
   }
   
   public async performSearchResult(messages: any[], type: SharedMediaType, append = true) {
-    const peerID = this.peerID;
+    const peerId = this.peerId;
     const elemsToAppend: HTMLElement[] = [];
     const promises: Promise<any>[] = [];
     const sharedMediaDiv = this.sharedMedia[type];
@@ -453,7 +453,7 @@ export default class AppSharedMediaTab implements SliderTab {
           
           const load = () => appPhotosManager.preloadPhoto(isPhoto ? media.id : media, appPhotosManager.choosePhotoSize(media, 200, 200))
           .then(() => {
-            if(appImManager.chat.peerID != peerID) {
+            if(appImManager.chat.peerId != peerId) {
               this.log.warn('peer changed');
               return;
             }
@@ -517,7 +517,7 @@ export default class AppSharedMediaTab implements SliderTab {
           }
 
           elemsToAppend.push(div);
-          this.mediaDivsByIDs[message.mid] = div;
+          this.mediaDivsByIds[message.mid] = div;
         }
         
         break;
@@ -597,7 +597,7 @@ export default class AppSharedMediaTab implements SliderTab {
           if(webpage.photo) {
             let load = () => appPhotosManager.preloadPhoto(webpage.photo.id, appPhotosManager.choosePhotoSize(webpage.photo, 60, 60))
             .then(() => {
-              if(appImManager.chat.peerID != peerID) {
+              if(appImManager.chat.peerId != peerId) {
                 this.log.warn('peer changed');
                 return;
               }
@@ -651,7 +651,7 @@ export default class AppSharedMediaTab implements SliderTab {
 
     if(promises.length) {
       await Promise.all(promises);
-      if(this.peerID != peerID) {
+      if(this.peerId != peerId) {
         this.log.warn('peer changed');
         return;
       }
@@ -684,19 +684,19 @@ export default class AppSharedMediaTab implements SliderTab {
       return;
     }
     
-    this.log('loadSidebarMedia', single, this.peerID, this.loadSidebarMediaPromises);
+    this.log('loadSidebarMedia', single, this.peerId, this.loadSidebarMediaPromises);
     
-    const peerID = this.peerID;
+    const peerId = this.peerId;
     
     let typesToLoad = single ? [this.sharedMediaType] : this.sharedMediaTypes;
     typesToLoad = typesToLoad.filter(type => !this.loadedAllMedia[type] 
-      || this.usedFromHistory[type] < this.historiesStorage[peerID][type].length);
+      || this.usedFromHistory[type] < this.historiesStorage[peerId][type].length);
 
     if(!typesToLoad.length) return;
 
     const loadCount = justLoad ? 50 : Math.round((appPhotosManager.windowH / 130 | 0) * 3 * 1.25); // that's good for all types
     
-    const historyStorage = this.historiesStorage[peerID] ?? (this.historiesStorage[peerID] = {});
+    const historyStorage = this.historiesStorage[peerId] ?? (this.historiesStorage[peerId] = {});
 
     const promises = typesToLoad.map(type => {
       if(this.loadSidebarMediaPromises[type]) return this.loadSidebarMediaPromises[type];
@@ -736,18 +736,18 @@ export default class AppSharedMediaTab implements SliderTab {
       }
       
       // заливать новую картинку сюда только после полной отправки!
-      let maxID = history[history.length - 1] || 0;
+      let maxId = history[history.length - 1] || 0;
       
-      this.log(logStr + 'search house of glass pre', type, maxID);
+      this.log(logStr + 'search house of glass pre', type, maxId);
       
       //let loadCount = history.length ? 50 : 15;
-      return this.loadSidebarMediaPromises[type] = appMessagesManager.getSearch(peerID, '', {_: type}, maxID, loadCount)
+      return this.loadSidebarMediaPromises[type] = appMessagesManager.getSearch(peerId, '', {_: type}, maxId, loadCount)
       .then(value => {
         history.push(...value.history);
         
         this.log(logStr + 'search house of glass', type, value);
 
-        if(appImManager.chat.peerID != peerID) {
+        if(appImManager.chat.peerId != peerId) {
           this.log.warn('peer changed');
           return;
         }
@@ -796,8 +796,8 @@ export default class AppSharedMediaTab implements SliderTab {
     this.loadSidebarMediaPromises = {};
     this.loadedAllMedia = {};
 
-    this.prevTabID = -1;
-    this.mediaDivsByIDs = {};
+    this.prevTabId = -1;
+    this.mediaDivsByIds = {};
     this.lazyLoadQueue.clear();
 
     this.sharedMediaTypes.forEach(type => {
@@ -829,7 +829,7 @@ export default class AppSharedMediaTab implements SliderTab {
     (Object.keys(this.sharedMedia) as SharedMediaType[]).forEach(sharedMediaType => {
       this.sharedMedia[sharedMediaType].innerHTML = '';
       
-      if(!this.historiesStorage[this.peerID] || !this.historiesStorage[this.peerID][sharedMediaType]) {
+      if(!this.historiesStorage[this.peerId] || !this.historiesStorage[this.peerId][sharedMediaType]) {
         const parent = this.sharedMedia[sharedMediaType].parentElement;
         if(!testScroll) {
           if(!parent.querySelector('.preloader')) {
@@ -862,15 +862,15 @@ export default class AppSharedMediaTab implements SliderTab {
     this.loadMutex = promise;
   }
 
-  public setPeer(peerID: number) {
-    if(this.peerID == peerID) return;
+  public setPeer(peerId: number) {
+    if(this.peerId == peerId) return;
 
     if(this.init) {
       this.init();
       this.init = null;
     }
 
-    this.peerID = peerID;
+    this.peerId = peerId;
     this.cleanup();
   }
 
@@ -878,20 +878,20 @@ export default class AppSharedMediaTab implements SliderTab {
     if(!this.cleaned) return;
     this.cleaned = false;
     
-    const peerID = this.peerID;
+    const peerId = this.peerId;
 
     this.cleanupHTML();
 
-    this.profileElements.avatar.setAttribute('peer', '' + peerID);
+    this.profileElements.avatar.setAttribute('peer', '' + peerId);
 
     // username
-    if(peerID != rootScope.myID) {
-      let username = appPeersManager.getPeerUsername(peerID);
+    if(peerId != rootScope.myId) {
+      let username = appPeersManager.getPeerUsername(peerId);
       if(username) {
-        setText(appPeersManager.getPeerUsername(peerID), this.profileElements.username);
+        setText(appPeersManager.getPeerUsername(peerId), this.profileElements.username);
       }
       
-      let dialog = appMessagesManager.getDialogByPeerID(peerID)[0];
+      let dialog = appMessagesManager.getDialogByPeerId(peerId)[0];
       if(dialog) {
         let muted = false;
         if(dialog.notify_settings && dialog.notify_settings.mute_until) {
@@ -905,32 +905,32 @@ export default class AppSharedMediaTab implements SliderTab {
     }
     
     //let membersLi = this.profileTabs.firstElementChild.children[0] as HTMLLIElement;
-    if(peerID > 0) {
+    if(peerId > 0) {
       //membersLi.style.display = 'none';
 
-      let user = appUsersManager.getUser(peerID);
-      if(user.phone && peerID != rootScope.myID) {
+      let user = appUsersManager.getUser(peerId);
+      if(user.phone && peerId != rootScope.myId) {
         setText(user.rPhone, this.profileElements.phone);
       }
       
-      appProfileManager.getProfile(peerID).then(userFull => {
-        if(this.peerID != peerID) {
+      appProfileManager.getProfile(peerId).then(userFull => {
+        if(this.peerId != peerId) {
           this.log.warn('peer changed');
           return;
         }
         
-        if(userFull.rAbout && peerID != rootScope.myID) {
+        if(userFull.rAbout && peerId != rootScope.myId) {
           setText(userFull.rAbout, this.profileElements.bio);
         }
         
         //this.log('userFull', userFull);
       });
     } else {
-      //membersLi.style.display = appPeersManager.isBroadcast(peerID) ? 'none' : '';
-      let chat = appPeersManager.getPeer(peerID);
+      //membersLi.style.display = appPeersManager.isBroadcast(peerId) ? 'none' : '';
+      let chat = appPeersManager.getPeer(peerId);
       
       appProfileManager.getChatFull(chat.id).then((chatFull) => {
-        if(this.peerID != peerID) {
+        if(this.peerId != peerId) {
           this.log.warn('peer changed');
           return;
         }
@@ -944,8 +944,8 @@ export default class AppSharedMediaTab implements SliderTab {
     }
 
     let title: string;
-    if(peerID == rootScope.myID) title = 'Saved Messages';
-    else title = appPeersManager.getPeerTitle(peerID);
+    if(peerId == rootScope.myId) title = 'Saved Messages';
+    else title = appPeersManager.getPeerTitle(peerId);
     this.profileElements.name.innerHTML = title;
 
     this.setPeerStatus(true);

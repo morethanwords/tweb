@@ -15,7 +15,7 @@ export const App = {
   hash: '452b0359b988148995f22ff0f4229750',
   version: '0.3.2',
   domains: [] as string[],
-  baseDcID: 2
+  baseDcId: 2
 };
 
 export const Modes = {
@@ -27,4 +27,4 @@ export const Modes = {
 };
 
 export const DEBUG = process.env.NODE_ENV != 'production';
-export const MOUNT_CLASS_TO: any = DEBUG ? typeof(window) !== 'undefined' ? window : self : null;
+export const MOUNT_CLASS_TO: any = DEBUG ? (typeof(window) !== 'undefined' ? window : self) : null;

@@ -17,7 +17,7 @@ export default class PopupCreatePoll extends PopupElement {
   private questionInput: HTMLInputElement;
   private questions: HTMLElement;
   private scrollable: Scrollable;
-  private tempID = 0;
+  private tempId = 0;
 
   private anonymousCheckboxField: ReturnType<typeof CheckboxField>;
   private multipleCheckboxField: PopupCreatePoll['anonymousCheckboxField'];
@@ -26,7 +26,7 @@ export default class PopupCreatePoll extends PopupElement {
   private correctAnswers: Uint8Array[];
   private quizSolutionInput: HTMLInputElement;
 
-  constructor(private peerID: number) {
+  constructor(private peerId: number) {
     super('popup-create-poll popup-new-media', null, {closable: true, withConfirm: 'CREATE', body: true});
 
     this.title.innerText = 'New Poll';
@@ -56,7 +56,7 @@ export default class PopupCreatePoll extends PopupElement {
     settingsCaption.classList.add('caption');
     settingsCaption.innerText = 'Settings';
 
-    if(!appPeersManager.isBroadcast(peerID)) {
+    if(!appPeersManager.isBroadcast(peerId)) {
       this.anonymousCheckboxField = CheckboxField('Anonymous Voting', 'anonymous');
       this.anonymousCheckboxField.input.checked = true;
       dd.append(this.anonymousCheckboxField.label);
@@ -210,7 +210,7 @@ export default class PopupCreatePoll extends PopupElement {
 
     //console.log('Will try to create poll:', inputMediaPoll);
 
-    appMessagesManager.sendOther(this.peerID, inputMediaPoll);
+    appMessagesManager.sendOther(this.peerId, inputMediaPoll);
   };
 
   onInput = (e: Event) => {
@@ -241,12 +241,12 @@ export default class PopupCreatePoll extends PopupElement {
   };
 
   private appendMoreField() {
-    const tempID = this.tempID++;
+    const tempId = this.tempId++;
     const idx = this.questions.childElementCount + 1;
     const questionField = InputField({
       placeholder: 'Add an Option', 
       label: 'Option ' + idx, 
-      name: 'question-' + tempID, 
+      name: 'question-' + tempId, 
       maxLength: MAX_LENGTH_OPTION
     });
     questionField.input.addEventListener('input', this.onInput);

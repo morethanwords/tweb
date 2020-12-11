@@ -36,8 +36,8 @@ export default class ChatTopbar {
   public pinnedMessage: ChatPinnedMessage;
 
   private setUtilsRAF: number;
-  public peerID: number;
-  public wasPeerID: number;
+  public peerId: number;
+  public wasPeerId: number;
   private setPeerStatusInterval: number;
 
   public listenerSetter: ListenerSetter;
@@ -127,7 +127,7 @@ export default class ChatTopbar {
         } else {
           const message = this.appMessagesManager.getMessage(mid);
   
-          this.chat.setPeer(message.peerID, mid);
+          this.chat.appImManager.setPeer(message.peerId, mid);
         }
       } else {
         this.appSidebarRight.toggleSidebar(true);
@@ -169,16 +169,16 @@ export default class ChatTopbar {
       icon: 'mute',
       text: 'Mute',
       onClick: () => {
-        this.appMessagesManager.mutePeer(this.peerID);
+        this.appMessagesManager.mutePeer(this.peerId);
       },
-      verify: () => rootScope.myID != this.peerID && !this.appMessagesManager.isPeerMuted(this.peerID)
+      verify: () => rootScope.myId != this.peerId && !this.appMessagesManager.isPeerMuted(this.peerId)
     }, {
       icon: 'unmute',
       text: 'Unmute',
       onClick: () => {
-        this.appMessagesManager.mutePeer(this.peerID);
+        this.appMessagesManager.mutePeer(this.peerId);
       },
-      verify: () => rootScope.myID != this.peerID && this.appMessagesManager.isPeerMuted(this.peerID)
+      verify: () => rootScope.myId != this.peerId && this.appMessagesManager.isPeerMuted(this.peerId)
     }, {
       icon: 'select',
       text: 'Select Messages',
@@ -211,30 +211,30 @@ export default class ChatTopbar {
 
     this.listenerSetter.add(this.btnSearch, 'click', (e) => {
       cancelEvent(e);
-      if(this.peerID) {
-        this.appSidebarRight.searchTab.open(this.peerID);
+      if(this.peerId) {
+        this.appSidebarRight.searchTab.open(this.peerId);
       }
     });
 
     this.listenerSetter.add(this.btnMute, 'click', (e) => {
       cancelEvent(e);
-      this.appMessagesManager.mutePeer(this.peerID);
+      this.appMessagesManager.mutePeer(this.peerId);
     });
 
     attachClickEvent(this.btnJoin, (e) => {
       cancelEvent(e);
 
       this.btnJoin.setAttribute('disabled', 'true');
-      this.appChatsManager.joinChannel(-this.peerID).finally(() => {
+      this.appChatsManager.joinChannel(-this.peerId).finally(() => {
         this.btnJoin.removeAttribute('disabled');
       });
     //});
     }, {listenerSetter: this.listenerSetter});
 
     this.listenerSetter.add(rootScope, 'chat_update', (e) => {
-      const peerID: number = e.detail;
-      if(this.peerID == -peerID) {
-        const chat = this.appChatsManager.getChat(peerID) as Channel/*  | Chat */;
+      const peerId: number = e.detail;
+      if(this.peerId == -peerId) {
+        const chat = this.appChatsManager.getChat(peerId) as Channel/*  | Chat */;
         
         this.btnJoin.classList.toggle('hide', !(chat as Channel)?.pFlags?.left);
         this.setUtilsWidth();
@@ -242,25 +242,25 @@ export default class ChatTopbar {
     });
 
     this.listenerSetter.add(rootScope, 'dialog_notify_settings', (e) => {
-      const peerID = e.detail;
+      const peerId = e.detail;
 
-      if(peerID == this.peerID) {
+      if(peerId == this.peerId) {
         this.setMutedState();
       }
     });
 
     this.listenerSetter.add(rootScope, 'peer_typings', (e) => {
-      const {peerID} = e.detail;
+      const {peerId} = e.detail;
 
-      if(this.peerID == peerID) {
+      if(this.peerId == peerId) {
         this.setPeerStatus();
       }
     });
 
     this.listenerSetter.add(rootScope, 'user_update', (e) => {
-      const userID = e.detail;
+      const userId = e.detail;
 
-      if(this.peerID == userID) {
+      if(this.peerId == userId) {
         this.setPeerStatus();
       }
     });
@@ -281,7 +281,7 @@ export default class ChatTopbar {
   }
 
   public openPinned(byCurrent: boolean) {
-    this.chat.appImManager.setInnerPeer(this.peerID, byCurrent ? +this.pinnedMessage.pinnedMessageContainer.divAndCaption.container.dataset.mid : 0, 'pinned');
+    this.chat.appImManager.setInnerPeer(this.peerId, byCurrent ? +this.pinnedMessage.pinnedMessageContainer.divAndCaption.container.dataset.mid : 0, 'pinned');
   }
 
   private onResize = () => {
@@ -309,32 +309,32 @@ export default class ChatTopbar {
     delete this.pinnedMessage;
   }
 
-  public setPeer(peerID: number) {
-    this.wasPeerID = this.peerID;
-    this.peerID = peerID;
+  public setPeer(peerId: number) {
+    this.wasPeerId = this.peerId;
+    this.peerId = peerId;
 
-    this.container.style.display = peerID ? '' : 'none';
+    this.container.style.display = peerId ? '' : 'none';
   }
 
-  public finishPeerChange(isTarget: boolean, isJump: boolean, lastMsgID: number) {
-    const peerID = this.peerID;
+  public finishPeerChange(isTarget: boolean, isJump: boolean, lastMsgId: number) {
+    const peerId = this.peerId;
 
     if(this.avatarElement) {
-      this.avatarElement.setAttribute('peer', '' + peerID);
+      this.avatarElement.setAttribute('peer', '' + peerId);
       this.avatarElement.update();
     }
 
     this.container.classList.remove('is-pinned-shown');
 
-    const isBroadcast = this.appPeersManager.isBroadcast(peerID);
+    const isBroadcast = this.appPeersManager.isBroadcast(peerId);
 
     this.btnMute && this.btnMute.classList.toggle('hide', !isBroadcast);
-    this.btnJoin && this.btnJoin.classList.toggle('hide', !this.appChatsManager.getChat(-peerID)?.pFlags?.left);
+    this.btnJoin && this.btnJoin.classList.toggle('hide', !this.appChatsManager.getChat(-peerId)?.pFlags?.left);
     this.setUtilsWidth();
 
     const middleware = this.chat.bubbles.getMiddleware();
     if(this.pinnedMessage) { // * replace with new one
-      if(this.wasPeerID) { // * change
+      if(this.wasPeerId) { // * change
         const newPinnedMessage = new ChatPinnedMessage(this, this.chat, this.appMessagesManager, this.appPeersManager);
         this.pinnedMessage.pinnedMessageContainer.divAndCaption.container.replaceWith(newPinnedMessage.pinnedMessageContainer.divAndCaption.container);
         this.pinnedMessage.destroy();
@@ -344,7 +344,7 @@ export default class ChatTopbar {
       appStateManager.getState().then((state) => {
         if(!middleware()) return;
 
-        this.pinnedMessage.hidden = !!state.hiddenPinnedMessages[peerID];
+        this.pinnedMessage.hidden = !!state.hiddenPinnedMessages[peerId];
 
         if(!isTarget) {
           this.pinnedMessage.setCorrectIndex(0);
@@ -365,13 +365,13 @@ export default class ChatTopbar {
       title = count === -1 ? 'Pinned Messages' : (count === 1 ? 'Pinned Message' : (count + ' Pinned Messages'));
       
       if(count === undefined) {
-        this.appMessagesManager.getSearchCounters(this.peerID, [{_: 'inputMessagesFilterPinned'}]).then(result => {
+        this.appMessagesManager.getSearchCounters(this.peerId, [{_: 'inputMessagesFilterPinned'}]).then(result => {
           this.setTitle(result[0].count);
         });
       }
     } else {
-      if(this.peerID == rootScope.myID) title = 'Saved Messages';
-      else title = this.appPeersManager.getPeerTitle(this.peerID);
+      if(this.peerId == rootScope.myId) title = 'Saved Messages';
+      else title = this.appPeersManager.getPeerTitle(this.peerId);
     }
     
     this.title.innerHTML = title;
@@ -380,9 +380,9 @@ export default class ChatTopbar {
   public setMutedState() {
     if(!this.btnMute) return;
 
-    const peerID = this.peerID;
-    let muted = this.appMessagesManager.isPeerMuted(peerID);
-    if(this.appPeersManager.isBroadcast(peerID)) { // not human
+    const peerId = this.peerId;
+    let muted = this.appMessagesManager.isPeerMuted(peerId);
+    if(this.appPeersManager.isBroadcast(peerId)) { // not human
       this.btnMute.classList.remove('tgico-mute', 'tgico-unmute');
       this.btnMute.classList.add(muted ? 'tgico-unmute' : 'tgico-mute');
       this.btnMute.style.display = '';
@@ -427,13 +427,13 @@ export default class ChatTopbar {
   public setPeerStatus = (needClear = false) => {
     if(!this.subtitle) return;
 
-    const peerID = this.peerID;
+    const peerId = this.peerId;
     if(needClear) {
       this.subtitle.innerHTML = '';
     }
 
-    this.chat.appImManager.getPeerStatus(this.peerID).then((subtitle) => {
-      if(peerID != this.peerID) {
+    this.chat.appImManager.getPeerStatus(this.peerId).then((subtitle) => {
+      if(peerId != this.peerId) {
         return;
       }
 

@@ -40,7 +40,7 @@ export default class ChatAudio extends PinnedContainer {
       let title: string, subtitle: string;
       const message = appMessagesManager.getMessage(mid);
       if(doc.type == 'voice' || doc.type == 'round') {
-        title = appPeersManager.getPeerTitle(message.fromID, false, true);
+        title = appPeersManager.getPeerTitle(message.fromId, false, true);
         //subtitle = 'Voice message';
         subtitle = formatDate(message.date, false, false);
       } else {

@@ -115,7 +115,7 @@ export default class PopupNewMedia extends PopupElement {
 
     //console.log('will send files with options:', willAttach);
 
-    const peerID = appImManager.chat.peerID;
+    const peerId = appImManager.chat.peerId;
     const chatInputC = appImManager.chat.input;
 
     if(willAttach.sendFileDetails.length > 1 && willAttach.group) {
@@ -131,41 +131,41 @@ export default class PopupNewMedia extends PopupElement {
         const w = {...willAttach};
         w.sendFileDetails = willAttach.sendFileDetails.slice(i - k, i);
 
-        appMessagesManager.sendAlbum(peerID, w.sendFileDetails.map(d => d.file), Object.assign({
+        appMessagesManager.sendAlbum(peerId, w.sendFileDetails.map(d => d.file), Object.assign({
           caption,
-          replyToMsgID: chatInputC.replyToMsgID,
+          replyToMsgId: chatInputC.replyToMsgId,
           isMedia: willAttach.isMedia
         }, w));
 
         caption = undefined;
-        chatInputC.replyToMsgID = 0;
+        chatInputC.replyToMsgId = 0;
       }
     } else {
       if(caption) {
         if(willAttach.sendFileDetails.length > 1) {
-          appMessagesManager.sendText(peerID, caption, {replyToMsgID: chatInputC.replyToMsgID});
+          appMessagesManager.sendText(peerId, caption, {replyToMsgId: chatInputC.replyToMsgId});
           caption = '';
-          chatInputC.replyToMsgID = 0;
+          chatInputC.replyToMsgId = 0;
         }
       }
   
       const promises = willAttach.sendFileDetails.map(params => {
-        const promise = appMessagesManager.sendFile(peerID, params.file, Object.assign({
+        const promise = appMessagesManager.sendFile(peerId, params.file, Object.assign({
           //isMedia: willAttach.isMedia, 
           isMedia: willAttach.isMedia, 
           caption,
-          replyToMsgID: chatInputC.replyToMsgID
+          replyToMsgId: chatInputC.replyToMsgId
         }, params));
 
         caption = '';
-        chatInputC.replyToMsgID = 0;
+        chatInputC.replyToMsgId = 0;
         return promise;
       });
     }
 
     //Promise.all(promises);
 
-    //appMessagesManager.sendFile(appImManager.peerID, willAttach.file, willAttach);
+    //appMessagesManager.sendFile(appImManager.peerId, willAttach.file, willAttach);
     
     chatInputC.onMessageSent();
   };

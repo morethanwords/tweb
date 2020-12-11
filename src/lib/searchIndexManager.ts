@@ -2,7 +2,7 @@ import Config from './config';
 
 export type SearchIndex = {
   fullTexts: {
-    [peerID: string]: string
+    [peerId: string]: string
   }/* ,
   shortIndexes: {
     [shortStr: string]: number[]
@@ -75,10 +75,10 @@ class SearchIndexManager {
 
     query = this.cleanSearchText(query);
 
-    const newFoundObjs: {[peerID: string]: true} = {};
+    const newFoundObjs: {[peerId: string]: true} = {};
     const queryWords = query.split(' ');
-    for(const peerID in fullTexts) {
-      const fullText = fullTexts[peerID];
+    for(const peerId in fullTexts) {
+      const fullText = fullTexts[peerId];
 
       let found = true;
       for(const word of queryWords) {
@@ -89,7 +89,7 @@ class SearchIndexManager {
       }
 
       if(found) {
-        newFoundObjs[peerID] = true;
+        newFoundObjs[peerId] = true;
       }
     }
     

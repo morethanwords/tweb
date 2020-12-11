@@ -152,7 +152,7 @@ export default class PollElement extends HTMLElement {
   private chosenIndexes: number[] = [];
   private percents: number[];
 
-  private pollID: string;
+  private pollId: string;
   private mid: number;
 
   private quizInterval: number;
@@ -178,11 +178,11 @@ export default class PollElement extends HTMLElement {
       //console.log('line total length:', lineTotalLength);
     }
 
-    this.pollID = this.getAttribute('poll-id');
+    this.pollId = this.getAttribute('poll-id');
     this.mid = +this.getAttribute('message-id');
-    const {poll, results} = appPollsManager.getPoll(this.pollID);
+    const {poll, results} = appPollsManager.getPoll(this.pollId);
 
-    connectedPolls.push({id: this.pollID, element: this});
+    connectedPolls.push({id: this.pollId, element: this});
 
     //console.log('pollElement poll:', poll, results);
 
@@ -324,7 +324,7 @@ export default class PollElement extends HTMLElement {
 
     this.viewResults.addEventListener('click', (e) => {
       cancelEvent(e);
-      appSidebarRight.pollResultsTab.init(this.pollID, this.mid);
+      appSidebarRight.pollResultsTab.init(this.pollId, this.mid);
     });
     ripple(this.viewResults);
 
@@ -383,14 +383,14 @@ export default class PollElement extends HTMLElement {
     // вызывается при изменении одного из перечисленных выше атрибутов
     // console.log('Poll: attributeChangedCallback', name, oldValue, newValue, this.isConnected);
     if(name == 'poll-id') {
-      this.pollID = newValue;
+      this.pollId = newValue;
     } else if(name == 'message-id') {
       this.mid = +newValue;
     }
 
     if(this.mid > 0 && oldValue !== undefined && +oldValue < 0) {
       this.disconnectedCallback();
-      connectedPolls.push({id: this.pollID, element: this});
+      connectedPolls.push({id: this.pollId, element: this});
     }
   }
 
@@ -542,9 +542,9 @@ export default class PollElement extends HTMLElement {
        * WINDOWS DESKTOP - реверс
        * все приложения накладывают аватарку первую на вторую, а в макете зато вторая на первую, ЛОЛ!
        */
-      results.recent_voters/* .slice().reverse() */.forEach((userID, idx) => {
+      results.recent_voters/* .slice().reverse() */.forEach((userId, idx) => {
         const style = idx == 0 ? '' : `style="transform: translateX(-${idx * 3}px);"`;
-        html += `<avatar-element dialog="0" peer="${userID}" ${style}></avatar-element>`;
+        html += `<avatar-element dialog="0" peer="${userId}" ${style}></avatar-element>`;
       });
       this.avatarsDiv.innerHTML = html;
     }

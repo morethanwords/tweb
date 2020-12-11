@@ -26,6 +26,7 @@ import ProgressivePreloader from './preloader';
 import './middleEllipsis';
 import { nextRandomInt } from '../helpers/random';
 import RichTextProcessor from '../lib/richtextprocessor';
+import appImManager from '../lib/appManagers/appImManager';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 
@@ -40,7 +41,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   middleware?: () => boolean,
   lazyLoadQueue?: LazyLoadQueue,
   noInfo?: true,
-  group?: string,
+  group?: string
 }) {
   const isAlbumItem = !(boxWidth && boxHeight);
   const canAutoplay = doc.type != 'video' || (doc.size <= MAX_VIDEO_AUTOPLAY_SIZE && !isAlbumItem);
@@ -69,7 +70,17 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   }
 
   if(doc.mime_type == 'image/gif') {
-    return wrapPhoto(doc, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware);
+    return wrapPhoto({
+      photo: doc, 
+      message, 
+      container, 
+      boxWidth, 
+      boxHeight, 
+      withTail, 
+      isOut, 
+      lazyLoadQueue, 
+      middleware
+    });
   }
 
   /* const video = doc.type == 'round' ? appMediaPlaybackController.addMedia(doc, message.mid) as HTMLVideoElement : document.createElement('video');
@@ -146,7 +157,17 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   let img: HTMLImageElement;
   if(message) {
     if(!canAutoplay) {
-      return wrapPhoto(doc, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware);
+      return wrapPhoto({
+        photo: doc, 
+        message, 
+        container, 
+        boxWidth, 
+        boxHeight, 
+        withTail, 
+        isOut, 
+        lazyLoadQueue, 
+        middleware
+      });
     }
 
     if(withTail) {
@@ -201,7 +222,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       preloader = message.media.preloader as ProgressivePreloader;
       preloader.attach(container, undefined, undefined);
     } else if(!doc.downloaded && !doc.supportsStreaming) {
-      const promise = appDocsManager.downloadDocNew(doc);
+      const promise = appDocsManager.downloadDoc(doc, undefined, lazyLoadQueue?.queueId);
       preloader = new ProgressivePreloader(null, true, false, 'prepend');
       preloader.attach(container, true, promise);
 
@@ -344,7 +365,13 @@ export function wrapDocument(doc: MyDocument, withTime = false, uploading = fals
     if(uploading) {
       icoDiv.innerHTML = `<img src="${doc.url}">`;
     } else {
-      wrapPhoto(doc, null, icoDiv, 54, 54, false, null, null, null);
+      wrapPhoto({
+        photo: doc, 
+        message: null, 
+        container: icoDiv, 
+        boxWidth: 54, 
+        boxHeight: 54
+      });
       icoDiv.style.width = icoDiv.style.height = '';
     }
 
@@ -386,7 +413,7 @@ export function wrapDocument(doc: MyDocument, withTime = false, uploading = fals
           preloader = new ProgressivePreloader(null, true);
         }
 
-        download = appDocsManager.saveDocFile(doc);
+        download = appDocsManager.saveDocFile(doc, appImManager.chat.bubbles.lazyLoadQueue.queueId);
         preloader.attach(downloadDiv, true, download);
         
         download.then(() => {
@@ -434,8 +461,8 @@ function wrapMediaWithTail(photo: MyPhoto | MyDocument, message: {mid: number, m
   svg.setAttributeNS(null, 'viewBox', '0 0 ' + width + ' ' + height);
   svg.setAttributeNS(null, 'preserveAspectRatio', 'none');
 
-  const clipID = 'clip' + message.mid + '_' + nextRandomInt(9999);
-  svg.dataset.clipID = clipID;
+  const clipId = 'clip' + message.mid + '_' + nextRandomInt(9999);
+  svg.dataset.clipId = clipId;
   
   const defs = document.createElementNS("http://www.w3.org/2000/svg", 'defs');
   let clipPathHTML: string = '';
@@ -456,7 +483,7 @@ function wrapMediaWithTail(photo: MyPhoto | MyDocument, message: {mid: number, m
     }
   }
 
-  defs.innerHTML = `<clipPath id="${clipID}">${clipPathHTML}</clipPath>`;
+  defs.innerHTML = `<clipPath id="${clipId}">${clipPathHTML}</clipPath>`;
   
   container.style.width = parseInt(container.style.width) - 9 + 'px';
   container.classList.add('with-tail');
@@ -472,7 +499,26 @@ function wrapMediaWithTail(photo: MyPhoto | MyDocument, message: {mid: number, m
   return img;
 }
 
-export function wrapPhoto(photo: MyPhoto | MyDocument, message: any, container: HTMLElement, boxWidth = mediaSizes.active.regular.width, boxHeight = mediaSizes.active.regular.height, withTail: boolean, isOut: boolean, lazyLoadQueue: LazyLoadQueue, middleware: () => boolean, size: PhotoSize = null) {
+export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware, size}: {
+  photo: MyPhoto | MyDocument, 
+  message: any, 
+  container: HTMLElement, 
+  boxWidth?: number, 
+  boxHeight?: number, 
+  withTail?: boolean, 
+  isOut?: boolean, 
+  lazyLoadQueue?: LazyLoadQueue, 
+  middleware?: () => boolean, 
+  size?: PhotoSize
+}) {
+  if(boxWidth === undefined) {
+    boxWidth = mediaSizes.active.regular.width;
+  }
+
+  if(boxHeight === undefined) {
+    boxHeight = mediaSizes.active.regular.height;
+  }
+
   let image: HTMLImageElement;
   if(withTail) {
     image = wrapMediaWithTail(photo, message, container, boxWidth, boxHeight, isOut);
@@ -510,7 +556,9 @@ export function wrapPhoto(photo: MyPhoto | MyDocument, message: any, container: 
   }
 
   const load = () => {
-    const promise = photo._ == 'document' && photo.animated ? appDocsManager.downloadDocNew(photo) : appPhotosManager.preloadPhoto(photo, size);
+    const promise = photo._ == 'document' && photo.animated ? 
+      appDocsManager.downloadDoc(photo, undefined, lazyLoadQueue?.queueId) : 
+      appPhotosManager.preloadPhoto(photo, size, lazyLoadQueue?.queueId);
 
     if(preloader) {
       preloader.attach(container, true, promise);
@@ -560,7 +608,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
     throw new Error('wrong doc for wrapSticker!');
   }
 
-  div.dataset.docID = doc.id;
+  div.dataset.docId = doc.id;
   
   //console.log('wrap sticker', doc, div, onlyThumb);
 
@@ -662,7 +710,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
 
       //appDocsManager.downloadDocNew(doc.id).promise.then(res => res.json()).then(async(json) => {
       //fetch(doc.url).then(res => res.json()).then(async(json) => {
-      /* return */ await appDocsManager.downloadDocNew(doc)
+      /* return */ await appDocsManager.downloadDoc(doc, undefined, lazyLoadQueue?.queueId)
       .then(readBlobAsText)
       //.then(JSON.parse)
       .then(async(json) => {
@@ -759,7 +807,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
 
       if(doc.url) r();
       else {
-        appDocsManager.downloadDocNew(doc).then(r);
+        appDocsManager.downloadDoc(doc, undefined, lazyLoadQueue?.queueId).then(r);
       }
     }
   }; 
@@ -849,8 +897,8 @@ export function prepareAlbum(options: {
   } */
 }
 
-export function wrapAlbum({groupID, attachmentDiv, middleware, uploading, lazyLoadQueue, isOut}: {
-  groupID: string, 
+export function wrapAlbum({groupId, attachmentDiv, middleware, uploading, lazyLoadQueue, isOut}: {
+  groupId: string, 
   attachmentDiv: HTMLElement,
   middleware?: () => boolean,
   lazyLoadQueue?: LazyLoadQueue,
@@ -860,7 +908,7 @@ export function wrapAlbum({groupID, attachmentDiv, middleware, uploading, lazyLo
   const items: {size: PhotoSize.photoSize, media: any, message: any}[] = [];
 
   // !lowest msgID will be the FIRST in album
-  const storage = appMessagesManager.getMidsByAlbum(groupID);
+  const storage = appMessagesManager.getMidsByAlbum(groupId);
   for(const mid of storage) {
     const m = appMessagesManager.getMessage(mid);
     const media = m.media.photo || m.media.document;
@@ -890,18 +938,17 @@ export function wrapAlbum({groupID, attachmentDiv, middleware, uploading, lazyLo
     div.dataset.mid = '' + message.mid;
     const mediaDiv = div.firstElementChild as HTMLElement;
     if(media._ == 'photo') {
-      wrapPhoto(
-        media,
+      wrapPhoto({
+        photo: media,
         message,
-        mediaDiv,
-        0,
-        0,
-        false,
+        container: mediaDiv,
+        boxWidth: 0,
+        boxHeight: 0,
         isOut,
         lazyLoadQueue,
         middleware,
         size
-      );
+      });
     } else {
       wrapVideo({
         doc: message.media.document,
@@ -989,9 +1036,9 @@ export function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, 
   return nameContainer;
 }
 
-export function wrapPoll(pollID: string, mid: number) {
+export function wrapPoll(pollId: string, mid: number) {
   const elem = new PollElement();
-  elem.setAttribute('poll-id', pollID);
+  elem.setAttribute('poll-id', pollId);
   elem.setAttribute('message-id', '' + mid);
   return elem;
 }

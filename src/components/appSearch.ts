@@ -1,6 +1,6 @@
 import appDialogsManager from "../lib/appManagers/appDialogsManager";
 import Scrollable from "./scrollable";
-import appMessagesIDsManager from "../lib/appManagers/appMessagesIDsManager";
+import appMessagesIdsManager from "../lib/appManagers/appMessagesIdsManager";
 import appUsersManager from "../lib/appManagers/appUsersManager";
 import appPeersManager from '../lib/appManagers/appPeersManager';
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
@@ -64,7 +64,7 @@ export class SearchGroup {
 type SearchGroupType = 'saved' | 'contacts' | 'globalContacts' | 'messages' | string;
 
 export default class AppSearch {
-  private minMsgID = 0;
+  private minMsgId = 0;
   private loadedCount = -1;
   private foundCount = -1;
   private offsetRate = 0;
@@ -77,7 +77,7 @@ export default class AppSearch {
 
   public listsContainer: HTMLDivElement = null;
 
-  private peerID = 0; // 0 - means global
+  private peerId = 0; // 0 - means global
 
   private scrollable: Scrollable;
 
@@ -94,7 +94,7 @@ export default class AppSearch {
 
     this.searchInput.onChange = (value) => {
       /* if(!value.trim()) {
-        //this.peerID = 0;
+        //this.peerId = 0;
         return;
       } */
       
@@ -119,10 +119,10 @@ export default class AppSearch {
     if(all) {
       this.searchInput.value = '';
       this.query = '';
-      this.peerID = 0;
+      this.peerId = 0;
     }
 
-    this.minMsgID = 0;
+    this.minMsgId = 0;
     this.loadedCount = -1;
     this.foundCount = -1;
     this.offsetRate = 0;
@@ -135,9 +135,9 @@ export default class AppSearch {
     this.searchPromise = null;
   }
 
-  public beginSearch(peerID?: number) {
-    if(peerID) {
-      this.peerID = peerID;
+  public beginSearch(peerId?: number) {
+    if(peerId) {
+      this.peerId = peerId;
     }
     
     this.searchInput.input.focus();
@@ -157,35 +157,35 @@ export default class AppSearch {
       return Promise.resolve();
     }
     
-    const maxID = appMessagesIDsManager.getMessageIDInfo(this.minMsgID)[0] || 0;
+    const maxId = appMessagesIdsManager.getMessageIdInfo(this.minMsgId)[0] || 0;
 
-    if(!this.peerID && !maxID && !this.loadedContacts) {
-      const renderedPeerIDs: Set<number> = new Set();
+    if(!this.peerId && !maxId && !this.loadedContacts) {
+      const renderedPeerIds: Set<number> = new Set();
 
       const setResults = (results: number[], group: SearchGroup, showMembersCount = false) => {
-        results.forEach((peerID) => {
-          if(renderedPeerIDs.has(peerID)) {
+        results.forEach((peerId) => {
+          if(renderedPeerIds.has(peerId)) {
             return;
           }
 
-          renderedPeerIDs.add(peerID);
+          renderedPeerIds.add(peerId);
 
-          const peer = appPeersManager.getPeer(peerID);
+          const peer = appPeersManager.getPeer(peerId);
 
           //////////this.log('contacts peer', peer);
 
-          const {dom} = appDialogsManager.addDialog(peerID, group.list, false);
+          const {dom} = appDialogsManager.addDialog(peerId, group.list, false);
 
           if(showMembersCount && (peer.participants_count || peer.participants)) {
             const regExp = new RegExp(`(${escapeRegExp(query)}|${escapeRegExp(searchIndexManager.cleanSearchText(query))})`, 'gi');
             dom.titleSpan.innerHTML = dom.titleSpan.innerHTML.replace(regExp, '<i>$1</i>');
-            dom.lastMessageSpan.innerText = appChatsManager.getChatMembersString(-peerID);
-          } else if(peerID == rootScope.myID) {
+            dom.lastMessageSpan.innerText = appChatsManager.getChatMembersString(-peerId);
+          } else if(peerId == rootScope.myId) {
             dom.lastMessageSpan.innerHTML = 'chat with yourself';
           } else {
-            let username = appPeersManager.getPeerUsername(peerID);
+            let username = appPeersManager.getPeerUsername(peerId);
             if(!username) {
-              const user = appUsersManager.getUser(peerID);
+              const user = appUsersManager.getUser(peerId);
               if(user && user.phone) {
                 username = '+' + formatPhoneNumber(user.phone).formatted;
               }
@@ -231,38 +231,38 @@ export default class AppSearch {
       .then(onLoad)
       .then(value => {
         if(value) {
-          setResults(value.dialogs.map(d => d.peerID), this.searchGroups.contacts, true);
+          setResults(value.dialogs.map(d => d.peerId), this.searchGroups.contacts, true);
         }
       });
     }
     
-    return this.searchPromise = appMessagesManager.getSearch(this.peerID, query, {_: 'inputMessagesFilterEmpty'}, maxID, 20, this.offsetRate).then(res => {
+    return this.searchPromise = appMessagesManager.getSearch(this.peerId, query, {_: 'inputMessagesFilterEmpty'}, maxId, 20, this.offsetRate).then(res => {
       this.searchPromise = null;
       
       if(this.searchInput.value != query) {
         return;
       }
       
-      //console.log('input search result:', this.peerID, query, null, maxID, 20, res);
+      //console.log('input search result:', this.peerId, query, null, maxId, 20, res);
       
       const {count, history, next_rate} = res;
       
-      if(history[0] == this.minMsgID) {
+      if(history[0] == this.minMsgId) {
         history.shift();
       }
       
       const searchGroup = this.searchGroups.messages;
 
-      history.forEach((msgID: number) => {
-        const message = appMessagesManager.getMessage(msgID);
+      history.forEach((msgId: number) => {
+        const message = appMessagesManager.getMessage(msgId);
 
-        const {dialog, dom} = appDialogsManager.addDialog(message.peerID, this.scrollable/* searchGroup.list */, false);
+        const {dialog, dom} = appDialogsManager.addDialog(message.peerId, this.scrollable/* searchGroup.list */, false);
         appDialogsManager.setLastMessage(dialog, message, dom, query);
       });
 
       searchGroup.toggle();
       
-      this.minMsgID = history[history.length - 1];
+      this.minMsgId = history[history.length - 1];
       this.offsetRate = next_rate;
       
       if(this.loadedCount == -1) {

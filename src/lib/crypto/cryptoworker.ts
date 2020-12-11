@@ -2,14 +2,14 @@ import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
 import CryptoWorkerMethods from './crypto_methods';
 
 type Task = {
-  taskID: number,
+  taskId: number,
   task: string,
   args: any[]
 };
 
 class CryptoWorker extends CryptoWorkerMethods {
   private webWorker: Worker | boolean = false;
-  private taskID = 0;
+  private taskId = 0;
   private awaiting: {
     [id: number]: {
       resolve: any,
@@ -63,7 +63,7 @@ class CryptoWorker extends CryptoWorkerMethods {
             console.info('CW set webWorker');
             this.releasePending();
           } else {
-            this.finalizeTask(e.data.taskID, e.data.result);
+            this.finalizeTask(e.data.taskId, e.data.result);
           }
         };
 
@@ -77,12 +77,12 @@ class CryptoWorker extends CryptoWorkerMethods {
   }
 
   /// #if !MTPROTO_WORKER
-  private finalizeTask(taskID: number, result: any) {
-    let deferred = this.awaiting[taskID];
+  private finalizeTask(taskId: number, result: any) {
+    let deferred = this.awaiting[taskId];
     if(deferred !== undefined) {
       this.debug && console.log('CW done', deferred.taskName, result);
       deferred.resolve(result);
-      delete this.awaiting[taskID];
+      delete this.awaiting[taskId];
     }
   }
   /// #endif
@@ -94,11 +94,11 @@ class CryptoWorker extends CryptoWorkerMethods {
     return Promise.resolve<T>(this.utils[task](...args));
     /// #else
     return new Promise<T>((resolve, reject) => {
-      this.awaiting[this.taskID] = {resolve, reject, taskName: task};
+      this.awaiting[this.taskId] = {resolve, reject, taskName: task};
   
       let params = {
         task,
-        taskID: this.taskID,
+        taskId: this.taskId,
         args
       };
 
@@ -106,7 +106,7 @@ class CryptoWorker extends CryptoWorkerMethods {
       this.pending.push(params);
       this.releasePending();
   
-      this.taskID++;
+      this.taskId++;
     });
     /// #endif
   }

@@ -3,7 +3,7 @@ import { PopupElement, PopupButton } from "./popup";
 
 export default class PopupPeer extends PopupElement {
   constructor(private className: string, options: Partial<{
-    peerID: number,
+    peerId: number,
     title: string,
     description: string,
     buttons: Array<PopupButton>
@@ -12,7 +12,7 @@ export default class PopupPeer extends PopupElement {
 
     let avatarEl = new AvatarElement();
     avatarEl.setAttribute('dialog', '1');
-    avatarEl.setAttribute('peer', '' + options.peerID);
+    avatarEl.setAttribute('peer', '' + options.peerId);
     avatarEl.classList.add('peer-avatar');
 
     this.title.innerText = options.title || '';

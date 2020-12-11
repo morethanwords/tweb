@@ -5,7 +5,7 @@ import { horizontalMenu } from "../components/horizontalMenu";
 import { MOUNT_CLASS_TO } from "../lib/mtproto/mtproto_config";
 
 class PagesManager {
-  private pageID = -1;
+  private pageId = -1;
   private page: Page;
 
   private selectTab: ReturnType<typeof horizontalMenu>;
@@ -25,20 +25,20 @@ class PagesManager {
       this.pagesDiv.style.display = '';
 
       let id = whichChild(page.pageEl);
-      if(this.pageID == id) return;
+      if(this.pageId == id) return;
 
       this.selectTab(id);
 
-      if(this.pageID != -1 && id > 1) {
+      if(this.pageId != -1 && id > 1) {
         lottieLoader.loadLottieWorkers();
       }
 
-      this.pageID = id;
+      this.pageId = id;
     } else {
       this.pagesDiv.style.display = 'none';
       page.pageEl.style.display = '';
 
-      this.pageID = -1;
+      this.pageId = -1;
     }
 
     this.page = page;

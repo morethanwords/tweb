@@ -33,7 +33,7 @@ export class EmoticonsDropdown {
 
   private container: HTMLElement;
   private tabsEl: HTMLElement;
-  private tabID = -1;
+  private tabId = -1;
 
   private tabs: {[id: number]: EmoticonsTab};
 
@@ -119,7 +119,7 @@ export class EmoticonsDropdown {
     this.container = this.element.querySelector('.emoji-container .tabs-container') as HTMLDivElement;
     this.tabsEl = this.element.querySelector('.emoji-tabs') as HTMLUListElement;
     this.selectTab = horizontalMenu(this.tabsEl, this.container, this.onSelectTabClick, () => {
-      const tab = this.tabs[this.tabID];
+      const tab = this.tabs[this.tabId];
       if(tab.init) {
         tab.init();
       }
@@ -130,7 +130,7 @@ export class EmoticonsDropdown {
 
     this.searchButton = this.element.querySelector('.emoji-tabs-search');
     this.searchButton.addEventListener('click', () => {
-      if(this.tabID == 1) {
+      if(this.tabId == 1) {
         appSidebarRight.stickersTab.init();
       } else {
         appSidebarRight.gifsTab.init();
@@ -163,26 +163,26 @@ export class EmoticonsDropdown {
   }
 
   private onSelectTabClick = (id: number) => {
-    if(this.tabID == id) {
+    if(this.tabId == id) {
       return;
     }
     
     animationIntersector.checkAnimations(true, EMOTICONSSTICKERGROUP);
 
-    this.tabID = id;
-    this.searchButton.classList.toggle('hide', this.tabID == 0);
-    this.deleteBtn.classList.toggle('hide', this.tabID != 0);
+    this.tabId = id;
+    this.searchButton.classList.toggle('hide', this.tabId == 0);
+    this.deleteBtn.classList.toggle('hide', this.tabId != 0);
   };
 
   public checkRights = () => {
-    const peerID = appImManager.chat.peerID;
+    const peerId = appImManager.chat.peerId;
     const children = this.tabsEl.children;
     const tabsElements = Array.from(children) as HTMLElement[];
 
-    const canSendStickers = peerID > 0 || appChatsManager.hasRights(peerID, 'send', 'send_stickers');
+    const canSendStickers = peerId > 0 || appChatsManager.hasRights(peerId, 'send', 'send_stickers');
     tabsElements[2].toggleAttribute('disabled', !canSendStickers);
 
-    const canSendGifs = peerID > 0 || appChatsManager.hasRights(peerID, 'send', 'send_gifs');
+    const canSendGifs = peerId > 0 || appChatsManager.hasRights(peerId, 'send', 'send_gifs');
     tabsElements[3].toggleAttribute('disabled', !canSendGifs);
 
     const active = this.tabsEl.querySelector('.active');
@@ -348,15 +348,15 @@ export class EmoticonsDropdown {
 
     if(!target) return;
     
-    const fileID = target.dataset.docID;
-    if(!fileID) return;
+    const fileId = target.dataset.docId;
+    if(!fileId) return;
 
-    if(appImManager.chat.input.sendMessageWithDocument(fileID)) {
+    if(appImManager.chat.input.sendMessageWithDocument(fileId)) {
       /* dropdown.classList.remove('active');
       toggleEl.classList.remove('active'); */
       emoticonsDropdown.toggle(false);
     } else {
-      console.warn('got no doc by id:', fileID);
+      console.warn('got no doc by id:', fileId);
     }
   };
 

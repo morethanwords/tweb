@@ -40,7 +40,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
   protected content: {[k in 'main' | 'container' | 'media' | 'mover' | ContentAdditionType]: HTMLElement} = {} as any;
   public buttons: {[k in 'download' | 'close' | 'prev' | 'next' | 'mobile-close' | ButtonsAdditionType]: HTMLElement} = {} as any;
   
-  protected tempID = 0;
+  protected tempId = 0;
   protected preloader: ProgressivePreloader = null;
   protected preloaderStreamable: ProgressivePreloader = null;
 
@@ -241,7 +241,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     this.loadedAllMediaUp = this.loadedAllMediaDown = false;
     this.loadMediaPromiseUp = this.loadMediaPromiseDown = null;
     this.setMoverPromise = null;
-    this.tempID = -1;
+    this.tempId = -1;
 
     /* if(appSidebarRight.historyTabIDs.slice(-1)[0] == AppSidebarRight.SLIDERITEMSIDS.forward) {
       promise.then(() => {
@@ -454,8 +454,8 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
         const video = mediaElement = document.createElement('video');
         video.src = target?.src;
       } else if(target instanceof SVGSVGElement) {
-        const clipID = target.dataset.clipID;
-        const newClipID = clipID + '-mv';
+        const clipId = target.dataset.clipId;
+        const newClipId = clipId + '-mv';
 
         const {width, height} = containerRect;
 
@@ -467,8 +467,8 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
         newSvg.setAttributeNS(null, 'viewBox', `0 0 ${width} ${height}`);
         newSvg.setAttributeNS(null, 'preserveAspectRatio', 'xMidYMid meet');
 
-        newSvg.insertAdjacentHTML('beforeend', target.firstElementChild.outerHTML.replace(clipID, newClipID));
-        newSvg.insertAdjacentHTML('beforeend', target.lastElementChild.outerHTML.replace(clipID, newClipID));
+        newSvg.insertAdjacentHTML('beforeend', target.firstElementChild.outerHTML.replace(clipId, newClipId));
+        newSvg.insertAdjacentHTML('beforeend', target.lastElementChild.outerHTML.replace(clipId, newClipId));
 
         // теперь надо выставить новую позицию для хвостика
         const defs = newSvg.firstElementChild;
@@ -772,7 +772,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     } */
   }
 
-  protected setAuthorInfo(fromID: number, timestamp: number) {
+  protected setAuthorInfo(fromId: number, timestamp: number) {
     const date = new Date();
     const time = new Date(timestamp * 1000);
     const now = date.getTime() / 1000;
@@ -791,22 +791,22 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
     this.author.date.innerText = dateStr + ' at ' + timeStr;
 
-    const name = appPeersManager.getPeerTitle(fromID);
+    const name = appPeersManager.getPeerTitle(fromId);
     this.author.nameEl.innerHTML = name;
 
     let oldAvatar = this.author.avatarEl;
     this.author.avatarEl = (this.author.avatarEl.cloneNode() as AvatarElement);
-    this.author.avatarEl.setAttribute('peer', '' + fromID);
+    this.author.avatarEl.setAttribute('peer', '' + fromId);
     oldAvatar.parentElement.replaceChild(this.author.avatarEl, oldAvatar);
   }
   
-  protected async _openMedia(media: any, timestamp: number, fromID: number, fromRight: number, target?: HTMLElement, reverse = false, 
+  protected async _openMedia(media: any, timestamp: number, fromId: number, fromRight: number, target?: HTMLElement, reverse = false, 
     prevTargets: TargetType[] = [], nextTargets: TargetType[] = [], needLoadMore = true) {
     if(this.setMoverPromise) return this.setMoverPromise;
 
-    this.log('openMedia:', media, fromID);
+    this.log('openMedia:', media, fromId);
 
-    this.setAuthorInfo(fromID, timestamp);
+    this.setAuthorInfo(fromId, timestamp);
     
     const isVideo = (media as MyDocument).type == 'video' || (media as MyDocument).type == 'gif';
 
@@ -840,7 +840,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     if(useContainerAsTarget) target = container;
 
     this.lastTarget = target;
-    const tempID = ++this.tempID;
+    const tempId = ++this.tempId;
 
     if(this.needLoadMore) {
       if(this.nextTargets.length < 20) {
@@ -914,7 +914,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
         // * fix for playing video if viewer is closed (https://contest.com/javascript-web-bonus/entry1425#issue11629)
         video.addEventListener('timeupdate', () => {
-          if(this.tempID != tempID) {
+          if(this.tempId != tempId) {
             video.pause();
           }
         });
@@ -949,7 +949,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
             appMediaPlaybackController.willBePlayedMedia = null;
             
             Promise.all([canPlayThrough, onAnimationEnd]).then(() => {
-              if(this.tempID != tempID) {
+              if(this.tempId != tempId) {
                 return;
               }
 
@@ -999,7 +999,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
         
         //if(!video.src || media.url != video.src) {
           const load = () => {
-            const promise = media.supportsStreaming ? Promise.resolve() : appDocsManager.downloadDocNew(media);
+            const promise = media.supportsStreaming ? Promise.resolve() : appDocsManager.downloadDoc(media);
             
             if(!media.supportsStreaming) {
               onAnimationEnd.then(() => {
@@ -1008,7 +1008,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
             }
 
             (promise as Promise<any>).then(async() => {
-              if(this.tempID != tempID) {
+              if(this.tempId != tempId) {
                 this.log.warn('media viewer changed video');
                 return;
               }
@@ -1045,7 +1045,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
             this.preloader.attach(mover, true, cancellablePromise);
           });
           cancellablePromise.then(() => {
-            if(this.tempID != tempID) {
+            if(this.tempId != tempId) {
               this.log.warn('media viewer changed photo');
               return;
             }
@@ -1108,8 +1108,8 @@ type AppMediaViewerTargetType = {
   mid: number
 };
 export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delete' | 'forward', AppMediaViewerTargetType> {
-  public currentMessageID = 0;
-  public peerID: number;
+  public currentMessageId = 0;
+  public peerId: number;
 
   constructor(private inputFilter: 'inputMessagesFilterPhotoVideo' | 'inputMessagesFilterChatPhotos' = 'inputMessagesFilterPhotoVideo') {
     super(['delete', 'forward']);
@@ -1156,35 +1156,35 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     const promise = super.close(e);
 
     if(good) { // clear
-      this.currentMessageID = 0;
-      this.peerID = 0;
+      this.currentMessageId = 0;
+      this.peerId = 0;
     }
 
     return promise;
   } */
 
   onPrevClick = (target: AppMediaViewerTargetType) => {
-    this.nextTargets.unshift({element: this.lastTarget, mid: this.currentMessageID});
+    this.nextTargets.unshift({element: this.lastTarget, mid: this.currentMessageId});
     this.openMedia(appMessagesManager.getMessage(target.mid), target.element);
   };
 
   onNextClick = (target: AppMediaViewerTargetType) => {
-    this.prevTargets.push({element: this.lastTarget, mid: this.currentMessageID});
+    this.prevTargets.push({element: this.lastTarget, mid: this.currentMessageId});
     this.openMedia(appMessagesManager.getMessage(target.mid), target.element);
   };
 
   onForwardClick = () => {
-    if(this.currentMessageID) {
-      //appSidebarRight.forwardTab.open([this.currentMessageID]);
-      new PopupForward([this.currentMessageID], () => {
+    if(this.currentMessageId) {
+      //appSidebarRight.forwardTab.open([this.currentMessageId]);
+      new PopupForward([this.currentMessageId], () => {
         return this.close();
       });
     }
   };
 
   onAuthorClick = (e: MouseEvent) => {
-    if(this.currentMessageID && this.currentMessageID != Number.MAX_SAFE_INTEGER) {
-      const mid = this.currentMessageID;
+    if(this.currentMessageId && this.currentMessageId != Number.MAX_SAFE_INTEGER) {
+      const mid = this.currentMessageId;
       this.close(e)
       //.then(() => mediaSizes.isMobile ? appSidebarRight.sharedMediaTab.closeBtn.click() : Promise.resolve())
       .then(() => {
@@ -1193,15 +1193,15 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
         }
 
         const message = appMessagesManager.getMessage(mid);
-        appImManager.setPeer(message.peerID, mid);
+        appImManager.setPeer(message.peerId, mid);
       });
     }
   };
 
   onDownloadClick = () => {
-    const message = appMessagesManager.getMessage(this.currentMessageID);
+    const message = appMessagesManager.getMessage(this.currentMessageId);
     if(message.media.photo) {
-      appPhotosManager.savePhotoFile(message.media.photo);
+      appPhotosManager.savePhotoFile(message.media.photo, appImManager.chat.bubbles.lazyLoadQueue.queueId);
     } else {
       let document: MyDocument = null;
 
@@ -1210,7 +1210,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
       if(document) {
         //console.log('will save document:', document);
-        appDocsManager.saveDocFile(document);
+        appDocsManager.saveDocFile(document, appImManager.chat.bubbles.lazyLoadQueue.queueId);
       }
     }
   };
@@ -1227,7 +1227,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
     const loadCount = 50;
     const backLimit = older ? 0 : loadCount;
-    let maxID = this.currentMessageID;
+    let maxId = this.currentMessageId;
   
     let anchor: {element: HTMLElement, mid: number};
     if(older) {
@@ -1236,19 +1236,19 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       anchor = this.reverse ? this.nextTargets[this.nextTargets.length - 1] : this.prevTargets[0];
     }
 
-    if(anchor) maxID = anchor.mid;
-    if(!older) maxID += 1;
+    if(anchor) maxId = anchor.mid;
+    if(!older) maxId += 1;
 
-    const peerID = this.peerID;
+    const peerId = this.peerId;
 
-    const promise = appMessagesManager.getSearch(peerID, '', 
-      {_: this.inputFilter}, maxID, loadCount/* older ? loadCount : 0 */, 0, backLimit).then(value => {
-      if(this.peerID != peerID) {
+    const promise = appMessagesManager.getSearch(peerId, '', 
+      {_: this.inputFilter}, maxId, loadCount/* older ? loadCount : 0 */, 0, backLimit).then(value => {
+      if(this.peerId != peerId) {
         this.log.warn('peer changed');
         return;
       }
 
-      this.log('loaded more media by maxID:', maxID, value, older, this.reverse);
+      this.log('loaded more media by maxId:', maxId, value, older, this.reverse);
 
       if(value.history.length < loadCount) {
         /* if(this.reverse) {
@@ -1314,36 +1314,36 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     if(this.setMoverPromise) return this.setMoverPromise;
 
     const mid = message.mid;
-    const fromID = message.fromID;
+    const fromId = message.fromId;
     const media = this.getMediaFromMessage(message);
 
     let fromRight = 0;
     if(!this.isFirstOpen) {
       //if(this.lastTarget === prevTarget) {
-      if(this.reverse) fromRight = this.currentMessageID < mid ? 1 : -1;
-      else fromRight = this.currentMessageID > mid ? 1 : -1;
+      if(this.reverse) fromRight = this.currentMessageId < mid ? 1 : -1;
+      else fromRight = this.currentMessageId > mid ? 1 : -1;
     } else {
       this.reverse = reverse;
-      this.peerID = message.peerID;
+      this.peerId = message.peerId;
     }
 
-    this.currentMessageID = mid;
-    const promise = super._openMedia(media, message.date, fromID, fromRight, target, reverse, prevTargets, nextTargets, needLoadMore);
+    this.currentMessageId = mid;
+    const promise = super._openMedia(media, message.date, fromId, fromRight, target, reverse, prevTargets, nextTargets, needLoadMore);
     this.setCaption(message);
 
     return promise;
   }
 }
 
-type AppMediaViewerAvatarTargetType = {element: HTMLElement, photoID: string};
+type AppMediaViewerAvatarTargetType = {element: HTMLElement, photoId: string};
 export class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete', AppMediaViewerAvatarTargetType> {
-  public currentPhotoID: string;
-  public peerID: number;
+  public currentPhotoId: string;
+  public peerId: number;
 
-  constructor(peerID: number) {
+  constructor(peerId: number) {
     super(['delete']);
 
-    this.peerID = peerID;
+    this.peerId = peerId;
 
     this.setBtnMenuToggle([{
       icon: 'download',
@@ -1361,44 +1361,44 @@ export class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete', AppMe
   }
 
   onPrevClick = (target: AppMediaViewerAvatarTargetType) => {
-    this.nextTargets.unshift({element: this.lastTarget, photoID: this.currentPhotoID});
-    this.openMedia(target.photoID, target.element, -1);
+    this.nextTargets.unshift({element: this.lastTarget, photoId: this.currentPhotoId});
+    this.openMedia(target.photoId, target.element, -1);
   };
 
   onNextClick = (target: AppMediaViewerAvatarTargetType) => {
-    this.prevTargets.push({element: this.lastTarget, photoID: this.currentPhotoID});
-    this.openMedia(target.photoID, target.element, 1);
+    this.prevTargets.push({element: this.lastTarget, photoId: this.currentPhotoId});
+    this.openMedia(target.photoId, target.element, 1);
   };
 
   onDownloadClick = () => {
-    appPhotosManager.savePhotoFile(appPhotosManager.getPhoto(this.currentPhotoID));
+    appPhotosManager.savePhotoFile(appPhotosManager.getPhoto(this.currentPhotoId), appImManager.chat.bubbles.lazyLoadQueue.queueId);
   };
 
   protected loadMoreMedia = (older = true) => {
-    if(this.peerID < 0) return Promise.resolve(); // ! это значит, что открыло аватар чата, но следующих фотографий нет.
+    if(this.peerId < 0) return Promise.resolve(); // ! это значит, что открыло аватар чата, но следующих фотографий нет.
     if(this.loadedAllMediaDown) return Promise.resolve();
     if(this.loadMediaPromiseDown) return this.loadMediaPromiseDown;
 
-    const peerID = this.peerID;
+    const peerId = this.peerId;
     const loadCount = 50;
 
-    const maxID = this.nextTargets.length ? this.nextTargets[this.nextTargets.length - 1].photoID : this.currentPhotoID;
+    const maxId = this.nextTargets.length ? this.nextTargets[this.nextTargets.length - 1].photoId : this.currentPhotoId;
 
-    const promise = appPhotosManager.getUserPhotos(peerID, maxID, loadCount).then(value => {
-      if(this.peerID != peerID) {
+    const promise = appPhotosManager.getUserPhotos(peerId, maxId, loadCount).then(value => {
+      if(this.peerId != peerId) {
         this.log.warn('peer changed');
         return;
       }
 
-      this.log('loaded more media by maxID:', /* maxID,  */value, older, this.reverse);
+      this.log('loaded more media by maxId:', /* maxId,  */value, older, this.reverse);
 
       if(value.photos.length < loadCount) {
         this.loadedAllMediaDown = true;
       }
 
-      value.photos.forEach(photoID => {
-        if(this.currentPhotoID == photoID) return;
-        this.nextTargets.push({element: null as HTMLElement, photoID});
+      value.photos.forEach(photoId => {
+        if(this.currentPhotoId == photoId) return;
+        this.nextTargets.push({element: null as HTMLElement, photoId: photoId});
       });
 
       this.buttons.prev.classList.toggle('hide', !this.prevTargets.length);
@@ -1410,13 +1410,13 @@ export class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete', AppMe
     return this.loadMediaPromiseDown = promise;
   };
 
-  public async openMedia(photoID: string, target?: HTMLElement, fromRight = 0) {
+  public async openMedia(photoId: string, target?: HTMLElement, fromRight = 0) {
     if(this.setMoverPromise) return this.setMoverPromise;
 
-    const photo = appPhotosManager.getPhoto(photoID);
+    const photo = appPhotosManager.getPhoto(photoId);
 
-    this.currentPhotoID = photo.id;
+    this.currentPhotoId = photo.id;
   
-    return super._openMedia(photo, photo.date, this.peerID, fromRight, target, false);
+    return super._openMedia(photo, photo.date, this.peerId, fromRight, target, false);
   }
 }

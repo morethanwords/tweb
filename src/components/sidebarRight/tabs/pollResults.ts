@@ -14,7 +14,7 @@ export default class AppPollResultsTab implements SliderTab {
   private resultsDiv = this.contentDiv.firstElementChild as HTMLDivElement;
   private scrollable: Scrollable;
 
-  private pollID: string;
+  private pollId: string;
   private mid: number;
 
   constructor() {
@@ -23,7 +23,7 @@ export default class AppPollResultsTab implements SliderTab {
 
   public cleanup() {
     this.resultsDiv.innerHTML = '';
-    this.pollID = '';
+    this.pollId = '';
     this.mid = 0;
   }
 
@@ -31,17 +31,17 @@ export default class AppPollResultsTab implements SliderTab {
     this.cleanup();
   }
 
-  public init(pollID: string, mid: number) {
-    if(this.pollID == pollID && this.mid == mid) return;
+  public init(pollId: string, mid: number) {
+    if(this.pollId == pollId && this.mid == mid) return;
     
     this.cleanup();
 
-    this.pollID = pollID;
+    this.pollId = pollId;
     this.mid = mid;
 
     appSidebarRight.selectTab(AppSidebarRight.SLIDERITEMSIDS.pollResults);
 
-    const poll = appPollsManager.getPoll(pollID);
+    const poll = appPollsManager.getPoll(pollId);
 
     const title = document.createElement('h3');
     title.innerHTML = poll.poll.rQuestion;

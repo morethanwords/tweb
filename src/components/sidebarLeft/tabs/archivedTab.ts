@@ -8,7 +8,7 @@ export default class AppArchivedTab implements SliderTab {
   public scroll: Scrollable = null;
   public loadedAll: boolean;
   public loadDialogsPromise: Promise<any>;
-  public wasFilterID: number;
+  public wasFilterId: number;
 
   init() {
     this.scroll = new Scrollable(this.container, 'CLA', 500);
@@ -30,20 +30,20 @@ export default class AppArchivedTab implements SliderTab {
       this.init = null;
     }
 
-    this.wasFilterID = appDialogsManager.filterID;
+    this.wasFilterId = appDialogsManager.filterId;
     appDialogsManager.scroll = this.scroll;
-    appDialogsManager.filterID = 1;
+    appDialogsManager.filterId = 1;
     appDialogsManager.onTabChange();
   }
 
   // вообще, так делать нельзя, но нет времени чтобы переделать главный чатлист на слайд...
   onOpenAfterTimeout() {
-    appDialogsManager.chatLists[this.wasFilterID].innerHTML = '';
+    appDialogsManager.chatLists[this.wasFilterId].innerHTML = '';
   }
 
   onClose() {
     appDialogsManager.scroll = appDialogsManager._scroll;
-    appDialogsManager.filterID = this.wasFilterID;
+    appDialogsManager.filterId = this.wasFilterId;
     appDialogsManager.onTabChange();
   }
 

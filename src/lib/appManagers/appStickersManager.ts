@@ -10,12 +10,12 @@ import appStateManager from './appStateManager';
 
 export class AppStickersManager {
   private stickerSets: {
-    [stickerSetID: string]: MessagesStickerSet
+    [stickerSetId: string]: MessagesStickerSet
   } = {};
 
   private saveSetsTimeout: number;
 
-  private getStickerSetPromises: {[setID: string]: Promise<MessagesStickerSet>} = {};
+  private getStickerSetPromises: {[setId: string]: Promise<MessagesStickerSet>} = {};
   private getStickersByEmoticonsPromises: {[emoticon: string]: Promise<Document[]>} = {};
   
   constructor() {
@@ -136,7 +136,7 @@ export class AppStickersManager {
 
   public getStickerSetThumbDownloadOptions(stickerSet: StickerSet.stickerSet) {
     const thumb = stickerSet.thumb as PhotoSize.photoSize;
-    const dcID = stickerSet.thumb_dc_id;
+    const dcId = stickerSet.thumb_dc_id;
 
     const isAnimated = stickerSet.pFlags?.animated;
 
@@ -147,12 +147,12 @@ export class AppStickersManager {
       local_id: thumb.location.local_id
     };
 
-    return {dcID, location: input, size: thumb.size, mimeType: isAnimated ? "application/x-tgsticker" : 'image/webp'};
+    return {dcId, location: input, size: thumb.size, mimeType: isAnimated ? "application/x-tgsticker" : 'image/webp'};
   }
 
   /* public getStickerSetThumbURL(stickerSet: MTStickerSet) {
     const thumb = stickerSet.thumb;
-    const dcID = stickerSet.thumb_dc_id;
+    const dcId = stickerSet.thumb_dc_id;
 
     const isAnimated = stickerSet.pFlags?.animated;
 
@@ -268,8 +268,8 @@ export class AppStickersManager {
       const iteratePacks = (packs: StickerPack.stickerPack[]) => {
         for(const pack of packs) {
           if(pack.emoticon.includes(emoticon)) {
-            for(const docID of pack.documents) {
-              const doc = appDocsManager.getDoc(docID);
+            for(const docId of pack.documents) {
+              const doc = appDocsManager.getDoc(docId);
               (doc.animated ? cachedStickersAnimated : cachedStickersStatic).push(doc);
             }
           }

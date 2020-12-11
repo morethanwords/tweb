@@ -60,8 +60,8 @@ export default class GifsMasonry {
     //console.log('processVisibleDiv');
 
     const load = () => {
-      const docID = div.dataset.docID;
-      const doc = appDocsManager.getDoc(docID);
+      const docId = div.dataset.docId;
+      const doc = appDocsManager.getDoc(docId);
 
       const promise = this.scrollPromise.then(() => {
         const promise = wrapVideo({
@@ -176,7 +176,7 @@ export default class GifsMasonry {
     div.style.width = w + 'px';
     div.style.opacity = '0';
     //div.style.height = h + 'px';
-    div.dataset.docID = doc.id;
+    div.dataset.docId = doc.id;
 
     this.element.append(div);
 

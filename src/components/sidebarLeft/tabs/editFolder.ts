@@ -186,9 +186,9 @@ export default class AppEditFolderTab implements SliderTab {
 
       const renderMore = (_length: number) => {
         for(let i = 0, length = Math.min(peers.length, _length); i < length; ++i) {
-          const peerID = peers.shift();
+          const peerId = peers.shift();
 
-          const {dom} = appDialogsManager.addDialog(peerID, ul, false, false, undefined, true);
+          const {dom} = appDialogsManager.addDialog(peerId, ul, false, false, undefined, true);
           dom.lastMessageSpan.parentElement.remove();
         }
 

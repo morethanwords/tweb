@@ -293,8 +293,8 @@ let onFirstMount = () => {
       }
 
       (promise || Promise.resolve()).then(() => {
-        dcs.forEach(dcID => {
-          apiManager.getNetworker(dcID, {fileDownload: true});
+        dcs.forEach(dcId => {
+          apiManager.getNetworker(dcId, {fileDownload: true});
         });
       });
       

@@ -136,10 +136,10 @@ export class AppPollsManager {
     }
   }
 
-  public getPoll(pollID: string): {poll: Poll, results: PollResults} {
+  public getPoll(pollId: string): {poll: Poll, results: PollResults} {
     return {
-      poll: this.polls[pollID], 
-      results: this.results[pollID]
+      poll: this.polls[pollId], 
+      results: this.results[pollId]
     };
   }
 
@@ -159,27 +159,27 @@ export class AppPollsManager {
     };
   }
 
-  public sendVote(mid: number, optionIDs: number[]): Promise<void> {
+  public sendVote(mid: number, optionIds: number[]): Promise<void> {
     const message = appMessagesManager.getMessage(mid);
     const poll: Poll = message.media.poll;
 
-    const options: Uint8Array[] = optionIDs.map(index => {
+    const options: Uint8Array[] = optionIds.map(index => {
       return poll.answers[index].option;
     });
     
-    const inputPeer = appPeersManager.getInputPeerByID(message.peerID);
-    const messageID = message.id;
+    const inputPeer = appPeersManager.getInputPeerById(message.peerId);
+    const messageId = message.id;
 
     if(mid < 0) {
       return appMessagesManager.invokeAfterMessageIsSent(mid, 'sendVote', (mid) => {
         this.log('invoke sendVote callback');
-        return this.sendVote(mid, optionIDs);
+        return this.sendVote(mid, optionIds);
       });
     }
 
     return apiManager.invokeApi('messages.sendVote', {
       peer: inputPeer,
-      msg_id: messageID,
+      msg_id: messageId,
       options
     }).then(updates => {
       this.log('sendVote updates:', updates);
@@ -189,12 +189,12 @@ export class AppPollsManager {
 
   public getResults(mid: number) {
     const message = appMessagesManager.getMessage(mid);
-    const inputPeer = appPeersManager.getInputPeerByID(message.peerID);
-    const messageID = message.id;
+    const inputPeer = appPeersManager.getInputPeerById(message.peerId);
+    const messageId = message.id;
 
     return apiManager.invokeApi('messages.getPollResults', {
       peer: inputPeer,
-      msg_id: messageID
+      msg_id: messageId
     }).then(updates => {
       apiUpdatesManager.processUpdateMessage(updates);
       this.log('getResults updates:', updates);
@@ -203,8 +203,8 @@ export class AppPollsManager {
 
   public getVotes(mid: number, option?: Uint8Array, offset?: string, limit = 20) {
     const message = appMessagesManager.getMessage(mid);
-    const inputPeer = appPeersManager.getInputPeerByID(message.peerID);
-    const messageID = message.id;
+    const inputPeer = appPeersManager.getInputPeerById(message.peerId);
+    const messageId = message.id;
 
     let flags = 0;
     if(option) {
@@ -218,7 +218,7 @@ export class AppPollsManager {
     return apiManager.invokeApi('messages.getPollVotes', {
       flags,
       peer: inputPeer,
-      id: messageID,
+      id: messageId,
       option,
       offset,
       limit

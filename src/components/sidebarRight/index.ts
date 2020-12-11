@@ -62,7 +62,7 @@ export class AppSidebarRight extends SidebarSlider {
   }
 
   public onCloseTab(id: number) {
-    if(!this.historyTabIDs.length) {
+    if(!this.historyTabIds.length) {
       this.toggleSidebar(false);
     }
 
@@ -102,7 +102,7 @@ export class AppSidebarRight extends SidebarSlider {
       appImManager.hideRightSidebar = false;
     }
 
-    if(!active && !this.historyTabIDs.length) {
+    if(!active && !this.historyTabIds.length) {
       this.selectTab(AppSidebarRight.SLIDERITEMSIDS.sharedMedia);
     }
 

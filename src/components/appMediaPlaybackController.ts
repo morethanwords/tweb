@@ -93,7 +93,7 @@ class AppMediaPlaybackController {
     }
 
     // если что - загрузит voice или round заранее, так правильнее
-    const downloadPromise: Promise<any> = !doc.supportsStreaming ? appDocsManager.downloadDocNew(doc) : Promise.resolve();
+    const downloadPromise: Promise<any> = !doc.supportsStreaming ? appDocsManager.downloadDoc(doc) : Promise.resolve();
     Promise.all([deferred, downloadPromise]).then(() => {
       //media.autoplay = true;
       //console.log('will set media url:', media, doc, doc.type, doc.url);
@@ -186,7 +186,7 @@ class AppMediaPlaybackController {
     const message = appMessagesManager.getMessage(mid);
     this.prevMid = this.nextMid = 0;
 
-    return appMessagesManager.getSearch(message.peerID, '', {
+    return appMessagesManager.getSearch(message.peerId, '', {
       //_: type == 'audio' ? 'inputMessagesFilterMusic' : (type == 'round' ? 'inputMessagesFilterRoundVideo' : 'inputMessagesFilterVoice')
       _: type == 'audio' ? 'inputMessagesFilterMusic' : 'inputMessagesFilterRoundVoice'
     }, mid, 3, 0, 2).then(value => {

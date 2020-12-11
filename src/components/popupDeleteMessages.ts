@@ -7,8 +7,8 @@ import PopupPeer from "./popupPeer";
 
 export default class PopupDeleteMessages {
   constructor(mids: number[], onConfirm?: () => void) {
-    const peerID = appMessagesManager.getMessage(mids[0]).peerID;
-    const firstName = appPeersManager.getPeerTitle(peerID, false, true);
+    const peerId = appMessagesManager.getMessage(mids[0]).peerId;
+    const firstName = appPeersManager.getPeerTitle(peerId, false, true);
 
     mids = mids.slice();
     const callback = (revoke: boolean) => {
@@ -20,7 +20,7 @@ export default class PopupDeleteMessages {
     title = `Delete ${mids.length == 1 ? '' : mids.length + ' '}Message${mids.length == 1 ? '' : 's'}?`;
     description = `Are you sure you want to delete ${mids.length == 1 ? 'this message' : 'these messages'}?`;
 
-    if(peerID == rootScope.myID) {
+    if(peerId == rootScope.myId) {
       buttons = [{
         text: 'DELETE',
         isDanger: true,
@@ -33,20 +33,20 @@ export default class PopupDeleteMessages {
         callback: () => callback(false)
       }];
 
-      if(peerID > 0) {
+      if(peerId > 0) {
         buttons.push({
           text: 'DELETE FOR ME AND ' + firstName,
           isDanger: true,
           callback: () => callback(true)
         });
       } else {
-        const chat = appChatsManager.getChat(-peerID);
+        const chat = appChatsManager.getChat(-peerId);
 
-        const hasRights = appChatsManager.hasRights(-peerID, 'deleteRevoke');
+        const hasRights = appChatsManager.hasRights(-peerId, 'deleteRevoke');
         if(chat._ == 'chat') {
           const canRevoke = hasRights ? mids.slice() : mids.filter(mid => {
             const message = appMessagesManager.getMessage(mid);
-            return message.fromID == rootScope.myID;
+            return message.fromId == rootScope.myId;
           });
 
           if(canRevoke.length) {
@@ -68,7 +68,7 @@ export default class PopupDeleteMessages {
             }
           }
         } else {
-          if(!hasRights || appChatsManager.isBroadcast(-peerID)) {
+          if(!hasRights || appChatsManager.isBroadcast(-peerId)) {
             buttons.shift();
           }
 
@@ -87,7 +87,7 @@ export default class PopupDeleteMessages {
     });
 
     const popup = new PopupPeer('popup-delete-chat', {
-      peerID,
+      peerId,
       title,
       description,
       buttons

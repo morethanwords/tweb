@@ -117,7 +117,7 @@ export class AppSidebarLeft extends SidebarSlider {
   private searchGroups: {[k in 'contacts' | 'globalContacts' | 'messages' | 'people' | 'recent']: SearchGroup} = {} as any;
   private globalSearch: AppSearch;
 
-  // peerIDs
+  // peerIds
   private recentSearch: number[] = [];
   private recentSearchLoaded = false;
   private recentSearchClearBtn: HTMLElement;
@@ -189,18 +189,18 @@ export class AppSidebarLeft extends SidebarSlider {
           return;
         }
   
-        const peerID = +target.getAttribute('data-peerID');
-        if(this.recentSearch[0] != peerID) {
-          this.recentSearch.findAndSplice(p => p == peerID);
-          this.recentSearch.unshift(peerID);
+        const peerId = +target.getAttribute('data-peerId');
+        if(this.recentSearch[0] != peerId) {
+          this.recentSearch.findAndSplice(p => p == peerId);
+          this.recentSearch.unshift(peerId);
           if(this.recentSearch.length > 20) {
             this.recentSearch.length = 20;
           }
   
           this.renderRecentSearch();
           appStateManager.pushToState('recentSearch', this.recentSearch);
-          for(const peerID of this.recentSearch) {
-            appStateManager.setPeer(peerID, appPeersManager.getPeer(peerID));
+          for(const peerId of this.recentSearch) {
+            appStateManager.setPeer(peerId, appPeersManager.getPeer(peerId));
           }
   
           clearRecentSearchBtn.style.display = '';
@@ -216,8 +216,8 @@ export class AppSidebarLeft extends SidebarSlider {
       appUsersManager.getTopPeers().then(peers => {
         //console.log('got top categories:', categories);
         if(peers.length) {
-          peers.forEach((peerID) => {
-            appDialogsManager.addDialog(peerID, this.searchGroups.people.list, false, true, true);
+          peers.forEach((peerId) => {
+            appDialogsManager.addDialog(peerId, this.searchGroups.people.list, false, true, true);
           });
         }
 
@@ -295,7 +295,7 @@ export class AppSidebarLeft extends SidebarSlider {
     this.buttons.saved.addEventListener(CLICK_EVENT_NAME, (e) => {
       ///////this.log('savedbtn click');
       setTimeout(() => { // menu doesn't close if no timeout (lol)
-        appImManager.setPeer(appImManager.myID);
+        appImManager.setPeer(appImManager.myId);
       }, 0);
     });
     
@@ -318,8 +318,8 @@ export class AppSidebarLeft extends SidebarSlider {
 
     [this.newButtons.group, this.buttons.newGroup].forEach(btn => {
       btn.addEventListener(CLICK_EVENT_NAME, (e) => {
-        this.addMembersTab.init(0, 'chat', false, (peerIDs) => {
-          this.newGroupTab.init(peerIDs);
+        this.addMembersTab.init(0, 'chat', false, (peerIds) => {
+          this.newGroupTab.init(peerIds);
         });
       });
     });
@@ -346,10 +346,10 @@ export class AppSidebarLeft extends SidebarSlider {
       this.searchGroups.recent.list.innerHTML = '';
       this.recentSearchClearBtn.style.display = this.recentSearch.length ? '' : 'none';
 
-      this.recentSearch.slice(0, 20).forEach(peerID => {
-        let {dialog, dom} = appDialogsManager.addDialog(peerID, this.searchGroups.recent.list, false, true, false, true);
+      this.recentSearch.slice(0, 20).forEach(peerId => {
+        let {dialog, dom} = appDialogsManager.addDialog(peerId, this.searchGroups.recent.list, false, true, false, true);
 
-        dom.lastMessageSpan.innerText = peerID > 0 ? appUsersManager.getUserStatusString(peerID) : appChatsManager.getChatMembersString(peerID);
+        dom.lastMessageSpan.innerText = peerId > 0 ? appUsersManager.getUserStatusString(peerId) : appChatsManager.getChatMembersString(peerId);
       });
 
       if(!this.recentSearch.length) {

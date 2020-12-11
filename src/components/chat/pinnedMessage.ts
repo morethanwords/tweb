@@ -230,11 +230,11 @@ export default class ChatPinnedMessage {
     this.listenerSetter = new ListenerSetter();
 
     this.pinnedMessageContainer = new PinnedContainer(topbar, chat, this.listenerSetter, 'message', new ReplyContainer('pinned-message'), () => {
-      if(appPeersManager.canPinMessage(this.topbar.peerID)) {
-        new PopupPinMessage(this.topbar.peerID, this.pinnedMid, true);
+      if(appPeersManager.canPinMessage(this.topbar.peerId)) {
+        new PopupPinMessage(this.topbar.peerId, this.pinnedMid, true);
         return Promise.resolve(false);
       } else {
-        return this.appMessagesManager.hidePinnedMessages(this.topbar.peerID).then(() => true);
+        return this.appMessagesManager.hidePinnedMessages(this.topbar.peerId).then(() => true);
       }
     });
 
@@ -261,9 +261,9 @@ export default class ChatPinnedMessage {
     });
 
     this.listenerSetter.add(rootScope, 'peer_pinned_messages', (e) => {
-      const peerID = e.detail;
+      const peerId = e.detail;
 
-      if(peerID == this.topbar.peerID) {
+      if(peerId == this.topbar.peerId) {
         //this.wasPinnedIndex = 0;
         //setTimeout(() => {
           if(this.hidden) {
@@ -283,9 +283,9 @@ export default class ChatPinnedMessage {
     });
 
     this.listenerSetter.add(rootScope, 'peer_pinned_hidden', (e) => {
-      const {peerID, maxID} = e.detail;
+      const {peerId, maxId} = e.detail;
 
-      if(peerID == this.topbar.peerID) {
+      if(peerId == this.topbar.peerId) {
         this.pinnedMessageContainer.toggle(this.hidden = true);
       }
     });
@@ -378,7 +378,7 @@ export default class ChatPinnedMessage {
     try {
       let gotRest = false;
       const promises = [
-        this.appMessagesManager.getSearch(this.topbar.peerID, '', {_: 'inputMessagesFilterPinned'}, mid, ChatPinnedMessage.LOAD_COUNT, 0, ChatPinnedMessage.LOAD_COUNT)
+        this.appMessagesManager.getSearch(this.topbar.peerId, '', {_: 'inputMessagesFilterPinned'}, mid, ChatPinnedMessage.LOAD_COUNT, 0, ChatPinnedMessage.LOAD_COUNT)
         .then(r => {
           gotRest = true;
           return r;
@@ -386,9 +386,9 @@ export default class ChatPinnedMessage {
       ];
   
       if(!this.pinnedMaxMid) {
-        const promise = this.appMessagesManager.getPinnedMessage(this.topbar.peerID).then(p => {
-          if(!p.maxID) return;
-          this.pinnedMaxMid = p.maxID;
+        const promise = this.appMessagesManager.getPinnedMessage(this.topbar.peerId).then(p => {
+          if(!p.maxId) return;
+          this.pinnedMaxMid = p.maxId;
 
           if(!gotRest && correctAfter) {
             this.mids = [this.pinnedMaxMid];
@@ -502,7 +502,7 @@ export default class ChatPinnedMessage {
   public async followPinnedMessage(mid: number) {
     const message = this.appMessagesManager.getMessage(mid);
     if(message && !message.deleted) {
-      this.chat.setPeer(this.topbar.peerID, mid);
+      this.chat.setPeer(this.topbar.peerId, mid);
       (this.chat.setPeerPromise || Promise.resolve()).then(() => { // * debounce fast clicker
         this.handleFollowingPinnedMessage();
         this.testMid(this.pinnedIndex >= (this.count - 1) ? this.pinnedMaxMid : mid - 1);
@@ -549,7 +549,7 @@ export default class ChatPinnedMessage {
         const writeTo = this.animatedSubtitle.getRow(pinnedIndex);
         const writeMediaTo = this.animatedMedia.getRow(pinnedIndex);
         writeMediaTo.classList.add('pinned-message-media');
-        //writeMediaTo.innerHTML = writeMediaTo.style.cssText = writeMediaTo.dataset.docID = '';
+        //writeMediaTo.innerHTML = writeMediaTo.style.cssText = writeMediaTo.dataset.docId = '';
         const isMediaSet = wrapReplyDivAndCaption({
           title: undefined,
           titleEl: null,

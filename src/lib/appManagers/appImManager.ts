@@ -51,7 +51,7 @@ export class AppImManager {
 
   private mainColumns: HTMLElement;
   public _selectTab: ReturnType<typeof horizontalMenu>;
-  public tabID = -1;
+  public tabId = -1;
   //private closeBtn: HTMLButtonElement;// = this.topbar.querySelector('.sidebar-close-button') as HTMLButtonElement;
   public hideRightSidebar = false;
   
@@ -59,8 +59,8 @@ export class AppImManager {
 
   public markupTooltip: MarkupTooltip;
 
-  get myID() {
-    return rootScope.myID;
+  get myId() {
+    return rootScope.myId;
   }
 
   get chat(): Chat {
@@ -118,7 +118,7 @@ export class AppImManager {
     this.chatsContainer.classList.add('chats-container', 'tabs-container');
 
     this.chatsSelectTab = TransitionSlider(this.chatsContainer, 'navigation', 250, (id) => {
-
+      apiManager.setQueueId(this.chat.bubbles.lazyLoadQueue.queueId);
     });
     
     this.columnEl.append(this.chatsContainer);
@@ -151,7 +151,7 @@ export class AppImManager {
           chat.selection.cancelSelection();
         } else if(chat.container.classList.contains('is-helper-active')) {
           chat.input.replyElements.cancelBtn.click();
-        } else if(chat.peerID != 0) { // hide current dialog
+        } else if(chat.peerId != 0) { // hide current dialog
           this.setPeer(0);
         } else {
           cancel = false;
@@ -166,13 +166,13 @@ export class AppImManager {
       } else if(e.code == "KeyC" && (e.ctrlKey || e.metaKey) && target.tagName != 'INPUT') {
         return;
       } else if(e.code == 'ArrowUp') {
-        if(!chat.input.editMsgID) {
-          const history = appMessagesManager.historiesStorage[chat.peerID];
+        if(!chat.input.editMsgId) {
+          const history = appMessagesManager.historiesStorage[chat.peerId];
           if(history?.history) {
             let goodMid: number;
             for(const mid of history.history) {
               const message = appMessagesManager.getMessage(mid);
-              const good = this.myID == chat.peerID ? message.fromID == this.myID : message.pFlags.out;
+              const good = this.myId == chat.peerId ? message.fromId == this.myId : message.pFlags.out;
 
               if(good) {
                 if(appMessagesManager.canEditMessage(mid, 'text')) {
@@ -206,8 +206,8 @@ export class AppImManager {
   }
 
   private onDocumentPaste = (e: ClipboardEvent) => {
-    const peerID = this.chat?.peerID;
-    if(!peerID || rootScope.overlayIsActive || (peerID < 0 && !appChatsManager.hasRights(peerID, 'send', 'send_media'))) {
+    const peerId = this.chat?.peerId;
+    if(!peerId || rootScope.overlayIsActive || (peerId < 0 && !appChatsManager.hasRights(peerId, 'send', 'send_media'))) {
       return;
     }
 
@@ -238,9 +238,9 @@ export class AppImManager {
   public selectTab(id: number) {
     document.body.classList.toggle(LEFT_COLUMN_ACTIVE_CLASSNAME, id == 0);
 
-    const prevTabID = this.tabID;
-    this.tabID = id;
-    if(mediaSizes.isMobile && prevTabID == 2 && id == 1) {
+    const prevTabId = this.tabId;
+    this.tabId = id;
+    if(mediaSizes.isMobile && prevTabId == 2 && id == 1) {
       //appSidebarRight.toggleSidebar(false);
       document.body.classList.remove(RIGHT_COLUMN_ACTIVE_CLASSNAME);
     }
@@ -250,14 +250,14 @@ export class AppImManager {
   }
   
   public updateStatus() {
-    if(!this.myID) return Promise.resolve();
+    if(!this.myId) return Promise.resolve();
     
-    appUsersManager.setUserStatus(this.myID, this.offline);
+    appUsersManager.setUserStatus(this.myId, this.offline);
     return apiManager.invokeApi('account.updateStatus', {offline: this.offline});
   }
 
   private createNewChat() {
-    const chat = new Chat(this, appChatsManager, appDocsManager, appInlineBotsManager, appMessagesManager, appPeersManager, appPhotosManager, appProfileManager, appStickersManager, appUsersManager, appWebPagesManager, appSidebarRight, appPollsManager);
+    const chat = new Chat(this, appChatsManager, appDocsManager, appInlineBotsManager, appMessagesManager, appPeersManager, appPhotosManager, appProfileManager, appStickersManager, appUsersManager, appWebPagesManager, appSidebarRight, appPollsManager, apiManager);
 
     this.chats.push(chat);
   }
@@ -270,13 +270,13 @@ export class AppImManager {
     this.chatsSelectTab(this.chat.container);
 
     if(justReturn) {
-      rootScope.broadcast('peer_changed', this.chat.peerID);
+      rootScope.broadcast('peer_changed', this.chat.peerId);
 
-      if(appSidebarRight.historyTabIDs[appSidebarRight.historyTabIDs.length - 1] == AppSidebarRight.SLIDERITEMSIDS.search) {
+      if(appSidebarRight.historyTabIds[appSidebarRight.historyTabIds.length - 1] == AppSidebarRight.SLIDERITEMSIDS.search) {
         appSidebarRight.searchTab.closeBtn?.click();
       }
   
-      appSidebarRight.sharedMediaTab.setPeer(this.chat.peerID);
+      appSidebarRight.sharedMediaTab.setPeer(this.chat.peerId);
       appSidebarRight.sharedMediaTab.loadSidebarMedia(true);
       appSidebarRight.sharedMediaTab.fillProfileElements();
     }
@@ -289,7 +289,7 @@ export class AppImManager {
     }, 250);
   }
 
-  public setPeer(peerID: number, lastMsgID?: number): boolean {
+  public setPeer(peerId: number, lastMsgId?: number): boolean {
     if(this.init) {
       this.init();
       this.init = null;
@@ -298,7 +298,7 @@ export class AppImManager {
     const chat = this.chat;
     const chatIndex = this.chats.indexOf(chat);
 
-    if(!peerID) {
+    if(!peerId) {
       if(chatIndex > 0) {
         this.spliceChats(chatIndex);
         return;
@@ -314,16 +314,16 @@ export class AppImManager {
 
         return;
       }
-    } else if(chatIndex > 0 && chat.peerID && chat.peerID != peerID) {
+    } else if(chatIndex > 0 && chat.peerId && chat.peerId != peerId) {
       this.spliceChats(1, false);
-      return this.setPeer(peerID, lastMsgID);
+      return this.setPeer(peerId, lastMsgId);
     }
 
-    if(peerID || mediaSizes.activeScreen != ScreenSize.mobile) {
-      chat.setPeer(peerID, lastMsgID);
+    if(peerId || mediaSizes.activeScreen != ScreenSize.mobile) {
+      chat.setPeer(peerId, lastMsgId);
     }
 
-    if(peerID == 0) {
+    if(peerId == 0) {
       this.selectTab(0);
       
       document.body.classList.add(LEFT_COLUMN_ACTIVE_CLASSNAME);
@@ -339,12 +339,12 @@ export class AppImManager {
     this.selectTab(1);
   }
 
-  public setInnerPeer(peerID: number, lastMsgID?: number, type: ChatType = 'chat') {
+  public setInnerPeer(peerId: number, lastMsgId?: number, type: ChatType = 'chat') {
     // * prevent opening already opened peer
-    const existingIndex = this.chats.findIndex(chat => chat.peerID == peerID && chat.type == type);
+    const existingIndex = this.chats.findIndex(chat => chat.peerId == peerId && chat.type == type);
     if(existingIndex !== -1) {
       this.spliceChats(existingIndex + 1);
-      return this.setPeer(peerID, lastMsgID);
+      return this.setPeer(peerId, lastMsgId);
     }
 
     this.createNewChat();
@@ -355,16 +355,16 @@ export class AppImManager {
 
     this.chatsSelectTab(this.chat.container);
 
-    return this.setPeer(peerID, lastMsgID);
+    return this.setPeer(peerId, lastMsgId);
   }
 
-  public async getPeerStatus(peerID: number) {
+  public async getPeerStatus(peerId: number) {
     let subtitle = '';
-    if(!peerID) return subtitle;
+    if(!peerId) return subtitle;
 
-    if(peerID < 0) { // not human
-      const chat = appPeersManager.getPeer(peerID);
-      const isChannel = appPeersManager.isChannel(peerID) && !appPeersManager.isMegagroup(peerID);
+    if(peerId < 0) { // not human
+      const chat = appPeersManager.getPeer(peerId);
+      const isChannel = appPeersManager.isChannel(peerId) && !appPeersManager.isMegagroup(peerId);
 
       const chatInfo = await appProfileManager.getChatFull(chat.id) as any;
       this.chat.log('chatInfo res:', chatInfo);
@@ -381,15 +381,15 @@ export class AppImManager {
   
         return subtitle;
       }
-    } else if(!appUsersManager.isBot(peerID)) { // user
-      const user = appUsersManager.getUser(peerID);
+    } else if(!appUsersManager.isBot(peerId)) { // user
+      const user = appUsersManager.getUser(peerId);
       
-      if(rootScope.myID == peerID) {
+      if(rootScope.myId == peerId) {
         return '';
       } else if(user) {
         subtitle = appUsersManager.getUserStatusString(user.id);
 
-        const typings = appChatsManager.typingsInPeer[peerID];
+        const typings = appChatsManager.typingsInPeer[peerId];
         if(typings && typings.length) {
           return '<span class="online">typing...</span>';
         } else if(subtitle == 'online') {

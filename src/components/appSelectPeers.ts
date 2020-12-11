@@ -23,12 +23,12 @@ export default class AppSelectPeers {
   public selectedContainer: HTMLElement;
   public input: HTMLInputElement;
   
-  //public selected: {[peerID: number]: HTMLElement} = {};
+  //public selected: {[peerId: number]: HTMLElement} = {};
   public selected = new Set<any>();
 
   public freezed = false;
 
-  private folderID = 0;
+  private folderId = 0;
   private offsetIndex = 0;
   private promise: Promise<any>;
 
@@ -37,20 +37,20 @@ export default class AppSelectPeers {
 
   private loadedWhat: Partial<{[k in 'dialogs' | 'archived' | 'contacts']: true}> = {};
 
-  private renderedPeerIDs: Set<number> = new Set();
+  private renderedPeerIds: Set<number> = new Set();
   
-  constructor(private appendTo: HTMLElement, private onChange?: (length: number) => void, private peerType: PeerType[] = ['dialogs'], onFirstRender?: () => void, private renderResultsFunc?: (peerIDs: number[]) => void, private chatRightsAction?: ChatRights, private multiSelect = true) {
+  constructor(private appendTo: HTMLElement, private onChange?: (length: number) => void, private peerType: PeerType[] = ['dialogs'], onFirstRender?: () => void, private renderResultsFunc?: (peerIds: number[]) => void, private chatRightsAction?: ChatRights, private multiSelect = true) {
     this.container.classList.add('selector');
 
     const f = (renderResultsFunc || this.renderResults).bind(this);
-    this.renderResultsFunc = (peerIDs: number[]) => {
-      peerIDs = peerIDs.filter(peerID => {
-        const notRendered = !this.renderedPeerIDs.has(peerID);
-        if(notRendered) this.renderedPeerIDs.add(peerID);
+    this.renderResultsFunc = (peerIds: number[]) => {
+      peerIds = peerIds.filter(peerId => {
+        const notRendered = !this.renderedPeerIds.has(peerId);
+        if(notRendered) this.renderedPeerIds.add(peerId);
         return notRendered;
       });
 
-      return f(peerIDs);
+      return f(peerIds);
     };
 
     this.input = document.createElement('input');
@@ -78,10 +78,10 @@ export default class AppSelectPeers {
   
         if(!target) return;
   
-        const peerID = target.dataset.key;
-        const li = this.chatsContainer.querySelector('[data-peerid="' + peerID + '"]') as HTMLElement;
+        const peerId = target.dataset.key;
+        const li = this.chatsContainer.querySelector('[data-peerid="' + peerId + '"]') as HTMLElement;
         if(!li) {
-          this.remove(+peerID || peerID);
+          this.remove(+peerId || peerId);
         } else {
           li.click();
         }
@@ -96,13 +96,13 @@ export default class AppSelectPeers {
     this.scrollable.setVirtualContainer(this.list);
 
     this.chatsContainer.addEventListener('click', (e) => {
-      const target = findUpAttribute(e.target, 'data-peerID') as HTMLElement;
+      const target = findUpAttribute(e.target, 'data-peerId') as HTMLElement;
       cancelEvent(e);
 
       if(!target) return;
       if(this.freezed) return;
 
-      let key: any = target.getAttribute('data-peerID');
+      let key: any = target.getAttribute('data-peerId');
       key = +key || key;
 
       if(!this.multiSelect) {
@@ -132,14 +132,14 @@ export default class AppSelectPeers {
         //if(this.peerType.includes('dialogs')) {
           delete this.loadedWhat.dialogs;
           delete this.loadedWhat.archived;
-          this.folderID = 0;
+          this.folderId = 0;
           this.offsetIndex = 0;
         //}
 
         this.promise = null;
         this.list.innerHTML = '';
         this.query = value;
-        this.renderedPeerIDs.clear();
+        this.renderedPeerIds.clear();
         
         //console.log('selectPeers input:', this.query);
         this.getMoreResults();
@@ -165,12 +165,12 @@ export default class AppSelectPeers {
   }
 
   private renderSaved() {
-    if(!this.offsetIndex && this.folderID == 0 && 
+    if(!this.offsetIndex && this.folderId == 0 && 
       (!this.query 
         || 'saved messages'.includes(this.query.toLowerCase()) 
-        || appUsersManager.getUser(rootScope.myID).sortName.includes(this.query.toLowerCase())) && 
+        || appUsersManager.getUser(rootScope.myId).sortName.includes(this.query.toLowerCase())) && 
       this.peerType.includes('dialogs')) {
-      this.renderResultsFunc([rootScope.myID]);
+      this.renderResultsFunc([rootScope.myId]);
     }
   }
 
@@ -184,7 +184,7 @@ export default class AppSelectPeers {
     // в десктопе - сначала без группы, потом архивные, потом контакты без сообщений
     const pageCount = appPhotosManager.windowH / 72 * 1.25 | 0;
 
-    this.promise = appMessagesManager.getConversations(this.query, this.offsetIndex, pageCount, this.folderID);
+    this.promise = appMessagesManager.getConversations(this.query, this.offsetIndex, pageCount, this.folderId);
     const value = await this.promise;
     this.promise = null;
 
@@ -193,11 +193,11 @@ export default class AppSelectPeers {
       const newOffsetIndex = dialogs[dialogs.length - 1].index || 0;
 
       dialogs = dialogs.slice();
-      dialogs.findAndSplice(d => d.peerID == rootScope.myID); // no my account
+      dialogs.findAndSplice(d => d.peerId == rootScope.myId); // no my account
 
       if(this.chatRightsAction) {
         dialogs = dialogs.filter(d => {
-          return (d.peerID > 0 && (this.chatRightsAction != 'send' || appUsersManager.canSendToUser(d.peerID))) || appChatsManager.hasRights(-d.peerID, this.chatRightsAction);
+          return (d.peerId > 0 && (this.chatRightsAction != 'send' || appUsersManager.canSendToUser(d.peerId))) || appChatsManager.hasRights(-d.peerId, this.chatRightsAction);
         });
       }
 
@@ -205,14 +205,14 @@ export default class AppSelectPeers {
 
       this.offsetIndex = newOffsetIndex;
 
-      this.renderResultsFunc(dialogs.map(dialog => dialog.peerID));
+      this.renderResultsFunc(dialogs.map(dialog => dialog.peerId));
     } else {
       if(!this.loadedWhat.dialogs) {
         this.renderSaved();
 
         this.loadedWhat.dialogs = true;
         this.offsetIndex = 0;
-        this.folderID = 1;
+        this.folderId = 1;
 
         return this.getMoreDialogs();
       } else {
@@ -242,7 +242,7 @@ export default class AppSelectPeers {
       this.cachedContacts = (await this.promise)[0].slice(); */
       this.promise = appUsersManager.getContacts(this.query);
       this.cachedContacts = (await this.promise).slice();
-      this.cachedContacts.findAndSplice(userID => userID == rootScope.myID); // no my account
+      this.cachedContacts.findAndSplice(userId => userId == rootScope.myId); // no my account
       this.promise = null;
     }
 
@@ -305,32 +305,32 @@ export default class AppSelectPeers {
     return promise;
   }
 
-  private renderResults(peerIDs: number[]) {
-    //console.log('will renderResults:', peerIDs);
+  private renderResults(peerIds: number[]) {
+    //console.log('will renderResults:', peerIds);
 
     // оставим только неконтакты с диалогов
     if(!this.peerType.includes('dialogs') && this.loadedWhat.contacts) {
-      peerIDs = peerIDs.filter(peerID => {
-        return appUsersManager.isNonContactUser(peerID);
+      peerIds = peerIds.filter(peerId => {
+        return appUsersManager.isNonContactUser(peerId);
       });
     }
 
-    peerIDs.forEach(peerID => {
-      const {dom} = appDialogsManager.addDialog(peerID, this.scrollable, false, false);
+    peerIds.forEach(peerId => {
+      const {dom} = appDialogsManager.addDialog(peerId, this.scrollable, false, false);
 
       if(this.multiSelect) {
-        const selected = this.selected.has(peerID);
+        const selected = this.selected.has(peerId);
         dom.containerEl.insertAdjacentHTML('afterbegin', `<div class="checkbox"><label class="checkbox-field"><input type="checkbox" ${selected ? 'checked' : ''}><span></span></label></div>`);
         if(selected) dom.listEl.classList.add('active');
       }
 
       let subtitle = '';
-      if(peerID < 0) {
-        subtitle = appChatsManager.getChatMembersString(-peerID);
-      } else if(peerID == rootScope.myID) {
+      if(peerId < 0) {
+        subtitle = appChatsManager.getChatMembersString(-peerId);
+      } else if(peerId == rootScope.myId) {
         subtitle = 'chat with yourself';
       } else {
-        subtitle = appUsersManager.getUserStatusString(peerID);
+        subtitle = appUsersManager.getUserStatusString(peerId);
         if(subtitle == 'online') {
           subtitle = `<i>${subtitle}</i>`;
         }
@@ -340,9 +340,9 @@ export default class AppSelectPeers {
     });
   }
 
-  public add(peerID: any, title?: string) {
+  public add(peerId: any, title?: string) {
     //console.trace('add');
-    this.selected.add(peerID);
+    this.selected.add(peerId);
 
     if(!this.multiSelect) {
       this.onChange(this.selected.size);
@@ -356,13 +356,13 @@ export default class AppSelectPeers {
     avatarEl.classList.add('selector-user-avatar', 'tgico');
     avatarEl.setAttribute('dialog', '1');
 
-    div.dataset.key = '' + peerID;
-    if(typeof(peerID) === 'number') {
+    div.dataset.key = '' + peerId;
+    if(typeof(peerId) === 'number') {
       if(title === undefined) {
-        title = peerID == rootScope.myID ? 'Saved' : appPeersManager.getPeerTitle(peerID, false, true);
+        title = peerId == rootScope.myId ? 'Saved' : appPeersManager.getPeerTitle(peerId, false, true);
       }
 
-      avatarEl.setAttribute('peer', '' + peerID);
+      avatarEl.setAttribute('peer', '' + peerId);
     }
 
     if(title) {
@@ -381,7 +381,7 @@ export default class AppSelectPeers {
 
   public remove(key: any) {
     if(!this.multiSelect) return;
-    //const div = this.selected[peerID];
+    //const div = this.selected[peerId];
     const div = this.selectedContainer.querySelector(`[data-key="${key}"]`) as HTMLElement;
     div.classList.remove('scale-in');
     void div.offsetWidth;

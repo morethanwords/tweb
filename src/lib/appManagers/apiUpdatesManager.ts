@@ -33,7 +33,7 @@ export class ApiUpdatesManager {
     syncLoading: true
   };
 
-  public channelStates: {[channelID: number]: UpdatesState} = {};
+  public channelStates: {[channelId: number]: UpdatesState} = {};
   private attached = false;
 
   private log = logger('UPDATES', LogLevels.error/*  | LogLevels.log */);
@@ -82,15 +82,15 @@ export class ApiUpdatesManager {
     return true;
   }
 
-  public popPendingPtsUpdate(channelID: number) {
-    const curState = channelID ? this.getChannelState(channelID) : this.updatesState;
+  public popPendingPtsUpdate(channelId: number) {
+    const curState = channelId ? this.getChannelState(channelId) : this.updatesState;
     if(!curState.pendingPtsUpdates.length) {
       return false;
     }
     curState.pendingPtsUpdates.sort((a: any, b: any) => {
       return a.pts - b.pts;
     });
-    // this.log('pop update', channelID, curState.pendingPtsUpdates)
+    // this.log('pop update', channelId, curState.pendingPtsUpdates)
   
     let curPts = curState.pts;
     let goodPts = 0;
@@ -157,10 +157,10 @@ export class ApiUpdatesManager {
       case 'updateShortChatMessage': {
         this.log('updateShortMessage | updateShortChatMessage', {...updateMessage});
         const isOut = updateMessage.pFlags.out;
-        const fromID = updateMessage.from_id || (isOut ? rootScope.myID : updateMessage.user_id);
-        const toID = updateMessage.chat_id
+        const fromId = updateMessage.from_id || (isOut ? rootScope.myId : updateMessage.user_id);
+        const toId = updateMessage.chat_id
           ? -updateMessage.chat_id
-          : (updateMessage.user_id || rootScope.myID);
+          : (updateMessage.user_id || rootScope.myId);
   
         this.processUpdate({
           _: 'updateNewMessage',
@@ -168,8 +168,8 @@ export class ApiUpdatesManager {
             _: 'message',
             pFlags: updateMessage.pFlags,
             id: updateMessage.id,
-            from_id: appPeersManager.getOutputPeer(fromID),
-            peer_id: appPeersManager.getOutputPeer(toID),
+            from_id: appPeersManager.getOutputPeer(fromId),
+            peer_id: appPeersManager.getOutputPeer(toId),
             date: updateMessage.date,
             message: updateMessage.message,
             fwd_from: updateMessage.fwd_from,
@@ -239,7 +239,7 @@ export class ApiUpdatesManager {
         appUsersManager.saveApiUsers(differenceResult.users);
         appChatsManager.saveApiChats(differenceResult.chats);
 
-        // Should be first because of updateMessageID
+        // Should be first because of updateMessageId
         // this.log('applying', differenceResult.other_updates.length, 'other updates')
     
         differenceResult.other_updates.forEach((update) => {
@@ -288,12 +288,12 @@ export class ApiUpdatesManager {
     });
   }
 
-  public getChannelDifference(channelID: number) {
-    const channelState = this.getChannelState(channelID);
+  public getChannelDifference(channelId: number) {
+    const channelState = this.getChannelState(channelId);
     if(!channelState.syncLoading) {
       channelState.syncLoading = true;
       channelState.pendingPtsUpdates = [];
-      rootScope.broadcast('state_synchronizing', channelID);
+      rootScope.broadcast('state_synchronizing', channelId);
     }
 
     if(channelState.syncPending) {
@@ -301,9 +301,9 @@ export class ApiUpdatesManager {
       channelState.syncPending = null;
     }
 
-    //this.log.trace('Get channel diff', appChatsManager.getChat(channelID), channelState.pts);
+    //this.log.trace('Get channel diff', appChatsManager.getChat(channelId), channelState.pts);
     apiManager.invokeApi('updates.getChannelDifference', {
-      channel: appChatsManager.getChannelInput(channelID),
+      channel: appChatsManager.getChannelInput(channelId),
       filter: {_: 'channelMessagesFilterEmpty'},
       pts: channelState.pts,
       limit: 30
@@ -314,22 +314,22 @@ export class ApiUpdatesManager {
       if(differenceResult._ == 'updates.channelDifferenceEmpty') {
         this.log('apply channel empty diff', differenceResult);
         channelState.syncLoading = false;
-        rootScope.broadcast('state_synchronized', channelID);
+        rootScope.broadcast('state_synchronized', channelId);
         return false;
       }
   
       if(differenceResult._ == 'updates.channelDifferenceTooLong') {
         this.log('channel diff too long', differenceResult);
         channelState.syncLoading = false;
-        delete this.channelStates[channelID];
-        this.saveUpdate({_: 'updateChannelReload', channel_id: channelID});
+        delete this.channelStates[channelId];
+        this.saveUpdate({_: 'updateChannelReload', channel_id: channelId});
         return false;
       }
   
       appUsersManager.saveApiUsers(differenceResult.users);
       appChatsManager.saveApiChats(differenceResult.chats);
   
-      // Should be first because of updateMessageID
+      // Should be first because of updateMessageId
       this.log('applying', differenceResult.other_updates.length, 'channel other updates');
       differenceResult.other_updates.forEach((update) => {
         this.saveUpdate(update);
@@ -349,10 +349,10 @@ export class ApiUpdatesManager {
   
       if(differenceResult._ == 'updates.channelDifference' &&
         !differenceResult.pFlags['final']) {
-        this.getChannelDifference(channelID);
+        this.getChannelDifference(channelId);
       } else {
         this.log('finished channel get diff');
-        rootScope.broadcast('state_synchronized', channelID);
+        rootScope.broadcast('state_synchronized', channelId);
         channelState.syncLoading = false;
       }
     }, () => {
@@ -360,13 +360,13 @@ export class ApiUpdatesManager {
     });
   }
   
-  public addChannelState(channelID: number, pts: number) {
+  public addChannelState(channelId: number, pts: number) {
     if(!pts) {
-      throw new Error('Add channel state without pts ' + channelID);
+      throw new Error('Add channel state without pts ' + channelId);
     }
 
-    if(!(channelID in this.channelStates)) {
-      this.channelStates[channelID] = {
+    if(!(channelId in this.channelStates)) {
+      this.channelStates[channelId] = {
         pts,
         pendingPtsUpdates: [],
         syncPending: null,
@@ -379,35 +379,35 @@ export class ApiUpdatesManager {
     return false;
   }
   
-  public getChannelState(channelID: number, pts?: number) {
-    if(this.channelStates[channelID] === undefined) {
-      this.addChannelState(channelID, pts);
+  public getChannelState(channelId: number, pts?: number) {
+    if(this.channelStates[channelId] === undefined) {
+      this.addChannelState(channelId, pts);
     }
 
-    return this.channelStates[channelID];
+    return this.channelStates[channelId];
   }
 
   public processUpdate(update: any, options: any = {}) {
-    let channelID = 0;
+    let channelId = 0;
     switch(update._) {
       case 'updateNewChannelMessage':
       case 'updateEditChannelMessage':
-        channelID = -appPeersManager.getPeerID(update.message.peer_id);
+        channelId = -appPeersManager.getPeerId(update.message.peer_id);
         break;
       case 'updateDeleteChannelMessages':
-        channelID = update.channel_id;
+        channelId = update.channel_id;
         break;
       case 'updateChannelTooLong':
-        channelID = update.channel_id;
-        if(!(channelID in this.channelStates)) {
+        channelId = update.channel_id;
+        if(!(channelId in this.channelStates)) {
           return false;
         }
         break;
     }
   
-    const curState = channelID ? this.getChannelState(channelID, update.pts) : this.updatesState;
+    const curState = channelId ? this.getChannelState(channelId, update.pts) : this.updatesState;
   
-    // this.log.log('process', channelID, curState.pts, update)
+    // this.log.log('process', channelId, curState.pts, update)
   
     if(curState.syncLoading) {
       return false;
@@ -416,8 +416,8 @@ export class ApiUpdatesManager {
     if(update._ == 'updateChannelTooLong') {
       if(!curState.lastPtsUpdateTime ||
           curState.lastPtsUpdateTime < Date.now() - 10000) {
-        // this.log.trace('channel too long, get diff', channelID, update)
-        this.getChannelDifference(channelID);
+        // this.log.trace('channel too long, get diff', channelId, update)
+        this.getChannelDifference(channelId);
       }
       return false;
     }
@@ -427,24 +427,24 @@ export class ApiUpdatesManager {
         update._ == 'updateNewChannelMessage' ||
         update._ == 'updateEditChannelMessage') {
       const message = update.message;
-      const toPeerID = appPeersManager.getPeerID(message.peer_id);
+      const toPeerId = appPeersManager.getPeerId(message.peer_id);
       const fwdHeader = message.fwd_from || {};
       let reason: any = false;
-      if(message.from_id && !appUsersManager.hasUser(appPeersManager.getPeerID(message.from_id), message.pFlags.post/* || channelID*/) && (reason = 'author') ||
-          fwdHeader.from_id && !appUsersManager.hasUser(appPeersManager.getPeerID(fwdHeader.from_id), !!fwdHeader.channel_id) && (reason = 'fwdAuthor') ||
+      if(message.from_id && !appUsersManager.hasUser(appPeersManager.getPeerId(message.from_id), message.pFlags.post/* || channelId*/) && (reason = 'author') ||
+          fwdHeader.from_id && !appUsersManager.hasUser(appPeersManager.getPeerId(fwdHeader.from_id), !!fwdHeader.channel_id) && (reason = 'fwdAuthor') ||
           fwdHeader.channel_id && !appChatsManager.hasChat(fwdHeader.channel_id, true) && (reason = 'fwdChannel') ||
-          toPeerID > 0 && !appUsersManager.hasUser(toPeerID) && (reason = 'toPeer User') ||
-          toPeerID < 0 && !appChatsManager.hasChat(-toPeerID) && (reason = 'toPeer Chat')) {
-        this.log.warn('Not enough data for message update', toPeerID, reason, message)
-        if(channelID && appChatsManager.hasChat(channelID)) {
-          this.getChannelDifference(channelID);
+          toPeerId > 0 && !appUsersManager.hasUser(toPeerId) && (reason = 'toPeer User') ||
+          toPeerId < 0 && !appChatsManager.hasChat(-toPeerId) && (reason = 'toPeer Chat')) {
+        this.log.warn('Not enough data for message update', toPeerId, reason, message)
+        if(channelId && appChatsManager.hasChat(channelId)) {
+          this.getChannelDifference(channelId);
         } else {
           this.forceGetDifference();
         }
         return false;
       }
-    } else if(channelID && !appChatsManager.hasChat(channelID)) {
-      // this.log.log('skip update, missing channel', channelID, update)
+    } else if(channelId && !appChatsManager.hasChat(channelId)) {
+      // this.log.log('skip update, missing channel', channelId, update)
       return false;
     }
   
@@ -454,13 +454,13 @@ export class ApiUpdatesManager {
     if(update.pts) {
       const newPts = curState.pts + (update.pts_count || 0);
       if(newPts < update.pts) {
-        this.log.warn('Pts hole', curState, update, channelID && appChatsManager.getChat(channelID));
+        this.log.warn('Pts hole', curState, update, channelId && appChatsManager.getChat(channelId));
         curState.pendingPtsUpdates.push(update);
         if(!curState.syncPending) {
           curState.syncPending = {
             timeout: window.setTimeout(() => {
-              if(channelID) {
-                this.getChannelDifference(channelID);
+              if(channelId) {
+                this.getChannelDifference(channelId);
               } else {
                 this.getDifference();
               }
@@ -482,10 +482,10 @@ export class ApiUpdatesManager {
         return false;
       }
 
-      if(channelID && options.date && this.updatesState.date < options.date) {
+      if(channelId && options.date && this.updatesState.date < options.date) {
         this.updatesState.date = options.date;
       }
-    } else if(!channelID && options.seq > 0) {
+    } else if(!channelId && options.seq > 0) {
       const seq = options.seq;
       const seqStart = options.seqStart || seq;
   
@@ -527,7 +527,7 @@ export class ApiUpdatesManager {
     this.saveUpdate(update);
   
     if(popPts) {
-      this.popPendingPtsUpdate(channelID);
+      this.popPendingPtsUpdate(channelId);
     } else if(popSeq) {
       this.popPendingSeqUpdate();
     }

@@ -52,13 +52,13 @@
   "predicate": "dialog",
   "params": [
     {"name": "index", "type": "number"},
-    {"name": "peerID", "type": "number"}
+    {"name": "peerId", "type": "number"}
   ]
 }, {
   "predicate": "dialogFolder",
   "params": [
     {"name": "index", "type": "number"},
-    {"name": "peerID", "type": "number"},
+    {"name": "peerId", "type": "number"},
     {"name": "folder_id", "type": "number"}
   ]
 }, {
@@ -66,8 +66,8 @@
   "params": [
     {"name": "mid", "type": "number"},
     {"name": "deleted", "type": "boolean"},
-    {"name": "peerID", "type": "number"},
-    {"name": "fromID", "type": "number"},
+    {"name": "peerId", "type": "number"},
+    {"name": "fromId", "type": "number"},
     {"name": "grouped_id", "type": "string"},
     {"name": "canBeEdited", "type": "boolean"},
     {"name": "unread", "type": "true"}
@@ -77,8 +77,8 @@
   "params": [
     {"name": "mid", "type": "number"},
     {"name": "deleted", "type": "boolean"},
-    {"name": "peerID", "type": "number"},
-    {"name": "fromID", "type": "number"},
+    {"name": "peerId", "type": "number"},
+    {"name": "fromId", "type": "number"},
     {"name": "canBeEdited", "type": "boolean"},
     {"name": "unread", "type": "true"}
   ]

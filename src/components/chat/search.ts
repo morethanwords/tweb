@@ -74,7 +74,7 @@ export default class ChatSearch {
         this.selectResult(this.searchGroup.list.children[0] as HTMLElement);
       }
     });
-    this.appSearch.beginSearch(this.chat.peerID);
+    this.appSearch.beginSearch(this.chat.peerId);
 
     //appImManager.topbar.parentElement.insertBefore(this.results, appImManager.bubblesContainer);
     this.chat.bubbles.bubblesContainer.append(this.results);
@@ -129,8 +129,8 @@ export default class ChatSearch {
   selectResult = (elem: HTMLElement) => {
     if(this.setPeerPromise) return this.setPeerPromise;
 
-    const peerID = +elem.getAttribute('data-peerID');
-    const lastMsgID = +elem.dataset.mid || undefined;
+    const peerId = +elem.getAttribute('data-peerId');
+    const lastMsgId = +elem.dataset.mid || undefined;
 
     const index = whichChild(elem);
 
@@ -149,7 +149,7 @@ export default class ChatSearch {
     this.results.classList.remove('active');
     this.chat.bubbles.bubblesContainer.classList.remove('search-results-active');
 
-    const res = this.chat.setPeer(peerID, lastMsgID);
+    const res = this.chat.setPeer(peerId, lastMsgId);
     this.setPeerPromise = (res instanceof Promise ? res : Promise.resolve(res)).then(() => {
       this.selectedIndex = index;
       this.foundCountEl.innerText = `${index + 1} of ${this.foundCount}`;

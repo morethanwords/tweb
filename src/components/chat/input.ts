@@ -53,7 +53,7 @@ export default class ChatInput {
   private btnSendContainer: HTMLDivElement;
 
   public attachMenu: HTMLButtonElement;
-  private attachMenuButtons: (ButtonMenuItemOptions & {verify: (peerID: number) => boolean})[];
+  private attachMenuButtons: (ButtonMenuItemOptions & {verify: (peerId: number) => boolean})[];
 
   public replyElements: {
     container?: HTMLElement,
@@ -64,8 +64,8 @@ export default class ChatInput {
 
   public willSendWebPage: any = null;
   public forwardingMids: number[] = [];
-  public replyToMsgID = 0;
-  public editMsgID = 0;
+  public replyToMsgId = 0;
+  public editMsgId = 0;
   public noWebPage: true;
 
   private recorder: any;
@@ -163,7 +163,7 @@ export default class ChatInput {
         this.willAttachType = 'media';
         this.fileInput.click();
       },
-      verify: (peerID: number) => peerID > 0 || this.appChatsManager.hasRights(peerID, 'send', 'send_media')
+      verify: (peerId: number) => peerId > 0 || this.appChatsManager.hasRights(peerId, 'send', 'send_media')
     }, {
       icon: 'document',
       text: 'Document',
@@ -173,14 +173,14 @@ export default class ChatInput {
         this.willAttachType = 'document';
         this.fileInput.click();
       },
-      verify: (peerID: number) => peerID > 0 || this.appChatsManager.hasRights(peerID, 'send', 'send_media')
+      verify: (peerId: number) => peerId > 0 || this.appChatsManager.hasRights(peerId, 'send', 'send_media')
     }, {
       icon: 'poll',
       text: 'Poll',
       onClick: () => {
-        new PopupCreatePoll(this.chat.peerID).show();
+        new PopupCreatePoll(this.chat.peerId).show();
       },
-      verify: (peerID: number) => peerID < 0 && this.appChatsManager.hasRights(peerID, 'send', 'send_polls')
+      verify: (peerId: number) => peerId < 0 && this.appChatsManager.hasRights(peerId, 'send', 'send_polls')
     }];
 
     this.attachMenu = ButtonMenuToggle({noRipple: true, listenerSetter: this.listenerSetter}, 'top-left', this.attachMenuButtons);
@@ -292,15 +292,15 @@ export default class ChatInput {
   
           opusDecodeController.setKeepAlive(false);
   
-          let peerID = this.chat.peerID;
+          let peerId = this.chat.peerId;
           // тут objectURL ставится уже с audio/wav
-          this.appMessagesManager.sendFile(peerID, dataBlob, {
+          this.appMessagesManager.sendFile(peerId, dataBlob, {
             isVoiceMessage: true,
             isMedia: true,
             duration,
             waveform: result.waveform,
             objectURL: result.url,
-            replyToMsgID: this.replyToMsgID
+            replyToMsgId: this.replyToMsgId
           });
 
           this.onMessageSent(false, true);
@@ -320,13 +320,13 @@ export default class ChatInput {
     container.append(this.pinnedControlBtn);
 
     this.listenerSetter.add(this.pinnedControlBtn, 'click', () => {
-      const peerID = this.chat.peerID;
+      const peerId = this.chat.peerId;
 
       let promise: Promise<any>;
-      if(this.appPeersManager.canPinMessage(peerID)) {
-        promise = this.appMessagesManager.unpinAllMessages(peerID);
+      if(this.appPeersManager.canPinMessage(peerId)) {
+        promise = this.appMessagesManager.unpinAllMessages(peerId);
       } else {
-        promise = this.appMessagesManager.hidePinnedMessages(peerID);
+        promise = this.appMessagesManager.hidePinnedMessages(peerId);
       }
 
       promise.then(() => {
@@ -351,10 +351,10 @@ export default class ChatInput {
   };
 
   public setUnreadCount() {
-    const dialog = this.appMessagesManager.getDialogByPeerID(this.chat.peerID)[0];
+    const dialog = this.appMessagesManager.getDialogByPeerId(this.chat.peerId)[0];
     const count = dialog?.unread_count;
     this.goDownUnreadBadge.innerText = '' + (count || '');
-    this.goDownUnreadBadge.classList.toggle('badge-gray', this.appMessagesManager.isPeerMuted(this.chat.peerID));
+    this.goDownUnreadBadge.classList.toggle('badge-gray', this.appMessagesManager.isPeerMuted(this.chat.peerId));
   }
 
   public destroy() {
@@ -367,7 +367,7 @@ export default class ChatInput {
   }
 
   public cleanup() {
-    if(!this.chat.peerID) {
+    if(!this.chat.peerId) {
       this.chatInput.style.display = 'none';
       this.goDownBtn.classList.add('hide');
     }
@@ -381,11 +381,11 @@ export default class ChatInput {
   }
 
   public finishPeerChange() {
-    const peerID = this.chat.peerID;
+    const peerId = this.chat.peerId;
 
     this.chatInput.style.display = '';
 
-    const isBroadcast = this.appPeersManager.isBroadcast(peerID);
+    const isBroadcast = this.appPeersManager.isBroadcast(peerId);
     this.goDownBtn.classList.toggle('is-broadcast', isBroadcast);
     this.goDownBtn.classList.remove('hide');
 
@@ -394,14 +394,14 @@ export default class ChatInput {
     }
 
     if(this.messageInput) {
-      const canWrite = this.appMessagesManager.canWriteToPeer(peerID);
+      const canWrite = this.appMessagesManager.canWriteToPeer(peerId);
       this.chatInput.classList.add('no-transition');
       this.chatInput.classList.toggle('is-hidden', !canWrite);
       void this.chatInput.offsetLeft; // reflow
       this.chatInput.classList.remove('no-transition');
 
       const visible = this.attachMenuButtons.filter(button => {
-        const good = button.verify(peerID);
+        const good = button.verify(peerId);
         button.element.classList.toggle('hide', !good);
         return good;
       });
@@ -415,7 +415,7 @@ export default class ChatInput {
       this.attachMenu.toggleAttribute('disabled', !visible.length);
       this.updateSendBtn();
     } else if(this.pinnedControlBtn) {
-      this.pinnedControlBtn.append(this.appPeersManager.canPinMessage(this.chat.peerID) ? 'Unpin all messages' : 'Don\'t show pinned messages');
+      this.pinnedControlBtn.append(this.appPeersManager.canPinMessage(this.chat.peerId) ? 'Unpin all messages' : 'Don\'t show pinned messages');
     }
   }
 
@@ -739,12 +739,12 @@ export default class ChatInput {
     if(!value.trim() && !serializeNodes(Array.from(this.messageInput.childNodes)).trim()) {
       this.messageInput.innerHTML = '';
 
-      this.appMessagesManager.setTyping(this.chat.peerID, 'sendMessageCancelAction');
+      this.appMessagesManager.setTyping(this.chat.peerId, 'sendMessageCancelAction');
     } else {
       const time = Date.now();
       if(time - this.lastTimeType >= 6000) {
         this.lastTimeType = time;
-        this.appMessagesManager.setTyping(this.chat.peerID, 'sendMessageTypingAction');
+        this.appMessagesManager.setTyping(this.chat.peerId, 'sendMessageTypingAction');
       }
     }
 
@@ -765,7 +765,7 @@ export default class ChatInput {
         this.sendMessage();
       }
     } else {
-      if(this.chat.peerID < 0 && !this.appChatsManager.hasRights(this.chat.peerID, 'send', 'send_media')) {
+      if(this.chat.peerId < 0 && !this.appChatsManager.hasRights(this.chat.peerId, 'send', 'send_media')) {
         toast(POSTING_MEDIA_NOT_ALLOWED);
         return;
       }
@@ -884,9 +884,9 @@ export default class ChatInput {
         }
       });
     } else if(this.helperType == 'reply') {
-      this.chat.setPeer(this.chat.peerID, this.replyToMsgID);
+      this.chat.setPeer(this.chat.peerId, this.replyToMsgId);
     } else if(this.helperType == 'edit') {
-      this.chat.setPeer(this.chat.peerID, this.editMsgID);
+      this.chat.setPeer(this.chat.peerId, this.editMsgId);
     }
   };
 
@@ -913,7 +913,7 @@ export default class ChatInput {
   public updateSendBtn() {
     let icon: 'send' | 'record';
 
-    if(!this.recorder || this.recording || !this.isInputEmpty() || this.forwardingMids.length || this.editMsgID) icon = 'send';
+    if(!this.recorder || this.recording || !this.isInputEmpty() || this.forwardingMids.length || this.editMsgId) icon = 'send';
     else icon = 'record';
 
     this.btnSend.classList.toggle('send', icon == 'send');
@@ -921,9 +921,9 @@ export default class ChatInput {
   }
 
   public onMessageSent(clearInput = true, clearReply?: boolean) {
-    let dialog = this.appMessagesManager.getDialogByPeerID(this.chat.peerID)[0];
+    let dialog = this.appMessagesManager.getDialogByPeerId(this.chat.peerId)[0];
     if(dialog && dialog.top_message) {
-      this.appMessagesManager.readHistory(this.chat.peerID, dialog.top_message); // lol
+      this.appMessagesManager.readHistory(this.chat.peerId, dialog.top_message); // lol
     }
 
     if(clearInput) {
@@ -948,23 +948,23 @@ export default class ChatInput {
 
     //return;
 
-    if(this.editMsgID) {
-      this.appMessagesManager.editMessage(this.editMsgID, str, {
+    if(this.editMsgId) {
+      this.appMessagesManager.editMessage(this.editMsgId, str, {
         noWebPage: this.noWebPage
       });
     } else {
-      this.appMessagesManager.sendText(this.chat.peerID, str, {
-        replyToMsgID: this.replyToMsgID == 0 ? undefined : this.replyToMsgID,
+      this.appMessagesManager.sendText(this.chat.peerId, str, {
+        replyToMsgId: this.replyToMsgId == 0 ? undefined : this.replyToMsgId,
         noWebPage: this.noWebPage,
         webPage: this.willSendWebPage
       });
     }
 
-    // * wait for sendText set messageID for invokeAfterMsg
+    // * wait for sendText set messageId for invokeAfterMsg
     if(this.forwardingMids.length) {
       const mids = this.forwardingMids.slice();
       setTimeout(() => {
-        this.appMessagesManager.forwardMessages(this.chat.peerID, mids);
+        this.appMessagesManager.forwardMessages(this.chat.peerId, mids);
       }, 0);
     }
 
@@ -974,7 +974,7 @@ export default class ChatInput {
   public sendMessageWithDocument(document: any) {
     document = this.appDocsManager.getDoc(document);
     if(document && document._ != 'documentEmpty') {
-      this.appMessagesManager.sendFile(this.chat.peerID, document, {isMedia: true, replyToMsgID: this.replyToMsgID});
+      this.appMessagesManager.sendFile(this.chat.peerId, document, {isMedia: true, replyToMsgId: this.replyToMsgId});
       this.onMessageSent(false, true);
 
       if(document.type == 'sticker') {
@@ -993,7 +993,7 @@ export default class ChatInput {
     let input = RichTextProcessor.wrapDraftText(message.message, {entities: message.totalEntities});
     const f = () => {
       this.setTopInfo('edit', f, 'Editing', message.message, input, message);
-      this.editMsgID = mid;
+      this.editMsgId = mid;
       input = undefined;
     };
     f();
@@ -1004,10 +1004,10 @@ export default class ChatInput {
       //const peerTitles: string[]
       const smth: Set<string | number> = new Set(mids.map(mid => {
         const message = this.appMessagesManager.getMessage(mid);
-        if(message.fwd_from && message.fwd_from.from_name && !message.fromID && !message.fwdFromID) {
+        if(message.fwd_from && message.fwd_from.from_name && !message.fromId && !message.fwdFromId) {
           return message.fwd_from.from_name;
         } else {
-          return message.fromID;
+          return message.fromId;
         }
       }));
 
@@ -1043,9 +1043,9 @@ export default class ChatInput {
       this.willSendWebPage = null;
     }
     
-    this.replyToMsgID = 0;
+    this.replyToMsgId = 0;
     this.forwardingMids.length = 0;
-    this.editMsgID = 0;
+    this.editMsgId = 0;
     this.helperType = this.helperFunc = undefined;
     this.chat.container.classList.remove('is-helper-active');
   }

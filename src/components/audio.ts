@@ -65,7 +65,7 @@ function wrapVoiceMessage(doc: MyDocument, audioEl: AudioElement, mid: number) {
   audioEl.classList.add('is-voice');
 
   const message = appMessagesManager.getMessage(mid);
-  const isOut = message.fromID == rootScope.myID && message.peerID != rootScope.myID;
+  const isOut = message.fromId == rootScope.myId && message.peerId != rootScope.myId;
   let isUnread = message && message.pFlags.media_unread;
   if(isUnread) {
     audioEl.classList.add('is-unread');
@@ -330,8 +330,8 @@ export default class AudioElement extends HTMLElement {
     this.classList.add('audio');
 
     const mid = +this.getAttribute('message-id');
-    const docID = this.getAttribute('doc-id');
-    const doc = appDocsManager.getDoc(docID);
+    const docId = this.getAttribute('doc-id');
+    const doc = appDocsManager.getDoc(docId);
     const uploading = +doc.id < 0;
 
     const durationStr = String(doc.duration | 0).toHHMMSS(true);
@@ -416,7 +416,7 @@ export default class AudioElement extends HTMLElement {
               preloader = new ProgressivePreloader(null, true);
             }
             
-            download = appDocsManager.downloadDocNew(doc);
+            download = appDocsManager.downloadDoc(doc);
             preloader.attach(downloadDiv, true, download);
             
             download.then(() => {

@@ -16,7 +16,7 @@ export default class AppNewGroupTab implements SliderTab {
   private nextBtn = this.container.querySelector('.btn-corner') as HTMLButtonElement;
   private searchGroup = new SearchGroup(' ', 'contacts', true, 'new-group-members disable-hover', false);
   private uploadAvatar: () => Promise<InputFile> = null;
-  private userIDs: number[];
+  private userIds: number[];
   
   constructor() {
     this.container.querySelector('.avatar-edit').addEventListener('click', () => {
@@ -34,10 +34,10 @@ export default class AppNewGroupTab implements SliderTab {
       const title = this.groupNameInput.value;
 
       this.nextBtn.disabled = true;
-      appChatsManager.createChat(title, this.userIDs).then((chatID) => {
+      appChatsManager.createChat(title, this.userIds).then((chatId) => {
         if(this.uploadAvatar) {
           this.uploadAvatar().then((inputFile) => {
-            appChatsManager.editPhoto(chatID, inputFile);
+            appChatsManager.editPhoto(chatId, inputFile);
           });
         }
         
@@ -70,15 +70,15 @@ export default class AppNewGroupTab implements SliderTab {
     this.searchGroup.clear();
   }
 
-  public init(userIDs: number[]) {
-    this.userIDs = userIDs;
+  public init(userIds: number[]) {
+    this.userIds = userIds;
 
     appSidebarLeft.selectTab(AppSidebarLeft.SLIDERITEMSIDS.newGroup);
-    this.userIDs.forEach(userID => {
-      let {dom} = appDialogsManager.addDialog(userID, this.searchGroup.list, false, false);
+    this.userIds.forEach(userId => {
+      let {dom} = appDialogsManager.addDialog(userId, this.searchGroup.list, false, false);
 
       let subtitle = '';
-      subtitle = appUsersManager.getUserStatusString(userID);
+      subtitle = appUsersManager.getUserStatusString(userId);
       if(subtitle == 'online') {
         subtitle = `<i>${subtitle}</i>`;
       }
@@ -88,7 +88,7 @@ export default class AppNewGroupTab implements SliderTab {
       }
     });
 
-    this.searchGroup.nameEl.innerText = this.userIDs.length + ' members';
+    this.searchGroup.nameEl.innerText = this.userIds.length + ' members';
     this.searchGroup.setActive();
   }
 }

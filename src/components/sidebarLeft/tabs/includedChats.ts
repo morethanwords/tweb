@@ -61,9 +61,9 @@ export default class AppIncludedChatsTab implements SliderTab {
       }
 
       if(this.type == 'included') {
-        this.filter.pinned_peers = this.filter.pinned_peers.filter(peerID => {
-          return peers.includes(peerID); // * because I have pinned peer in include_peers too
-          /* const index = peers.indexOf(peerID);
+        this.filter.pinned_peers = this.filter.pinned_peers.filter(peerId => {
+          return peers.includes(peerId); // * because I have pinned peer in include_peers too
+          /* const index = peers.indexOf(peerId);
           if(index !== -1) {
             peers.splice(index, 1);
             return true;
@@ -72,18 +72,18 @@ export default class AppIncludedChatsTab implements SliderTab {
           } */
         });
       } else {
-        this.filter.pinned_peers = this.filter.pinned_peers.filter(peerID => {
-          return !peers.includes(peerID);
+        this.filter.pinned_peers = this.filter.pinned_peers.filter(peerId => {
+          return !peers.includes(peerId);
         });
       }
 
       const other = this.type == 'included' ? 'exclude_peers' : 'include_peers';
-      this.filter[other] = this.filter[other].filter(peerID => {
-        return !peers.includes(peerID);
+      this.filter[other] = this.filter[other].filter(peerId => {
+        return !peers.includes(peerId);
       });
       
       this.filter[this.type == 'included' ? 'include_peers' : 'exclude_peers'] = peers;
-      //this.filter.pinned_peers = this.filter.pinned_peers.filter(peerID => this.filter.include_peers.includes(peerID));
+      //this.filter.pinned_peers = this.filter.pinned_peers.filter(peerId => this.filter.include_peers.includes(peerId));
 
       appSidebarLeft.editFolderTab.setFilter(this.filter, false);
       this.closeBtn.click();
@@ -94,31 +94,31 @@ export default class AppIncludedChatsTab implements SliderTab {
     return `<div class="checkbox"><label class="checkbox-field"><input type="checkbox" ${selected ? 'checked' : ''}><span></span></label></div>`;
   }
 
-  renderResults = async(peerIDs: number[]) => {
+  renderResults = async(peerIds: number[]) => {
     //const other = this.type == 'included' ? this.filter.exclude_peers : this.filter.include_peers;
 
     await appUsersManager.getContacts();
-    peerIDs.forEach(peerID => {
-      //if(other.includes(peerID)) return;
+    peerIds.forEach(peerId => {
+      //if(other.includes(peerId)) return;
 
-      const {dom} = appDialogsManager.addDialog(peerID, this.selector.scrollable, false, false);
+      const {dom} = appDialogsManager.addDialog(peerId, this.selector.scrollable, false, false);
 
-      const selected = this.selector.selected.has(peerID);
+      const selected = this.selector.selected.has(peerId);
       dom.containerEl.insertAdjacentHTML('beforeend', this.checkbox(selected));
       if(selected) dom.listEl.classList.add('active');
 
       let subtitle = '';
 
-      if(peerID > 0) {
-        if(peerID == rootScope.myID) {
+      if(peerId > 0) {
+        if(peerId == rootScope.myId) {
           subtitle = 'Chat with yourself';
-        } else if(appUsersManager.isBot(peerID)) {
+        } else if(appUsersManager.isBot(peerId)) {
           subtitle = 'Bot';
         } else {
-          subtitle = appUsersManager.contactsList.has(peerID) ? 'Contact' : 'Non-Contact';
+          subtitle = appUsersManager.contactsList.has(peerId) ? 'Contact' : 'Non-Contact';
         }
       } else {
-        subtitle = appPeersManager.isBroadcast(peerID) ? 'Channel' : 'Group';
+        subtitle = appPeersManager.isBroadcast(peerId) ? 'Channel' : 'Group';
       }
 
       dom.lastMessageSpan.innerHTML = subtitle;
@@ -163,7 +163,7 @@ export default class AppIncludedChatsTab implements SliderTab {
 
     let html = '';
     for(const key in details) {
-      html += `<div class="folder-category-button ${details[key].ico}" data-peerID="${key}"><p>${details[key].text}</p>${this.checkbox()}</div>`;
+      html += `<div class="folder-category-button ${details[key].ico}" data-peerId="${key}"><p>${details[key].text}</p>${this.checkbox()}</div>`;
     }
     categories.innerHTML = html;
 
@@ -185,24 +185,24 @@ export default class AppIncludedChatsTab implements SliderTab {
     this.selector.input.placeholder = 'Search';
 
     const _add = this.selector.add.bind(this.selector);
-    this.selector.add = (peerID, title) => {
-      const div = _add(peerID, details[peerID]?.text);
-      if(details[peerID]) {
-        div.querySelector('avatar-element').classList.add(details[peerID].ico);
+    this.selector.add = (peerId, title) => {
+      const div = _add(peerId, details[peerId]?.text);
+      if(details[peerId]) {
+        div.querySelector('avatar-element').classList.add(details[peerId].ico);
       }
       return div;
     };
 
     this.selector.list.parentElement.insertBefore(fragment, this.selector.list);
 
-    selectedPeers.forEach(peerID => {
-      this.selector.add(peerID);
+    selectedPeers.forEach(peerId => {
+      this.selector.add(peerId);
     });
 
     for(const flag in filter.pFlags) {
       // @ts-ignore
       if(details.hasOwnProperty(flag) && !!filter.pFlags[flag]) {
-        (categories.querySelector(`[data-peerID="${flag}"]`) as HTMLElement).click();
+        (categories.querySelector(`[data-peerId="${flag}"]`) as HTMLElement).click();
       }
     }
 

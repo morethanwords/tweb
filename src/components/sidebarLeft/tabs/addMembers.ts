@@ -11,8 +11,8 @@ export default class AppAddMembersTab implements SliderTab {
   private nextBtn = this.contentDiv.querySelector('.btn-corner') as HTMLButtonElement;
   private selector: AppSelectPeers;
   private peerType: 'channel' | 'chat';
-  private peerID: number; // always positive
-  private takeOut: (peerIDs: number[]) => void
+  private peerId: number; // always positive
+  private takeOut: (peerIds: number[]) => void
   private skippable: boolean;
 
   constructor() {
@@ -22,10 +22,10 @@ export default class AppAddMembersTab implements SliderTab {
         return;
       }
 
-      const peerIDs = this.selector.getSelected();
-      if(peerIDs.length) {
+      const peerIds = this.selector.getSelected();
+      if(peerIds.length) {
         if(this.takeOut) {
-          this.takeOut(peerIDs);
+          this.takeOut(peerIds);
           return;
         }
 
@@ -34,7 +34,7 @@ export default class AppAddMembersTab implements SliderTab {
         putPreloader(this.nextBtn);
         this.selector.freezed = true;
 
-        appChatsManager.inviteToChannel(this.peerID, peerIDs).then(() => {
+        appChatsManager.inviteToChannel(this.peerId, peerIds).then(() => {
           this.backBtn.click();
         });
       }
@@ -49,7 +49,7 @@ export default class AppAddMembersTab implements SliderTab {
   }
 
   public init(id: number, type: 'channel' | 'chat', skippable: boolean, takeOut?: AppAddMembersTab['takeOut']) {
-    this.peerID = Math.abs(id);
+    this.peerId = Math.abs(id);
     this.peerType = type;
     this.takeOut = takeOut;
     this.skippable = skippable;

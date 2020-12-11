@@ -13,9 +13,9 @@ export default class DialogsContextMenu {
   private element: HTMLElement;
   private buttons: (ButtonMenuItemOptions & {verify: () => boolean})[];
 
-  private selectedID: number;
+  private selectedId: number;
   private peerType: 'channel' | 'chat' | 'megagroup' | 'group' | 'saved';
-  private filterID: number;
+  private filterId: number;
   private dialog: Dialog;
 
   private init() {
@@ -40,7 +40,7 @@ export default class DialogsContextMenu {
       text: 'Pin',
       onClick: this.onPinClick,
       verify: () => {
-        const isPinned = this.filterID > 1 ? appMessagesManager.filtersStorage.filters[this.filterID].pinned_peers.includes(this.dialog.peerID) : !!this.dialog.pFlags?.pinned;
+        const isPinned = this.filterId > 1 ? appMessagesManager.filtersStorage.filters[this.filterId].pinned_peers.includes(this.dialog.peerId) : !!this.dialog.pFlags?.pinned;
         return !isPinned;
       }
     }, {
@@ -48,7 +48,7 @@ export default class DialogsContextMenu {
       text: 'Unpin',
       onClick: this.onPinClick,
       verify: () => {
-        const isPinned = this.filterID > 1 ? appMessagesManager.filtersStorage.filters[this.filterID].pinned_peers.includes(this.dialog.peerID) : !!this.dialog.pFlags?.pinned;
+        const isPinned = this.filterId > 1 ? appMessagesManager.filtersStorage.filters[this.filterId].pinned_peers.includes(this.dialog.peerId) : !!this.dialog.pFlags?.pinned;
         return isPinned;
       }
     }, {
@@ -57,7 +57,7 @@ export default class DialogsContextMenu {
       onClick: this.onMuteClick,
       verify: () => {
         const isMuted = this.dialog.notify_settings && this.dialog.notify_settings.mute_until > (Date.now() / 1000 | 0);
-        return !isMuted && this.selectedID != rootScope.myID; 
+        return !isMuted && this.selectedId != rootScope.myId; 
       }
     }, {
       icon: 'unmute',
@@ -65,18 +65,18 @@ export default class DialogsContextMenu {
       onClick: this.onMuteClick,
       verify: () => {
         const isMuted = this.dialog.notify_settings && this.dialog.notify_settings.mute_until > (Date.now() / 1000 | 0);
-        return isMuted && this.selectedID != rootScope.myID; 
+        return isMuted && this.selectedId != rootScope.myId; 
       }
     }, {
       icon: 'archive',
       text: 'Archive',
       onClick: this.onArchiveClick,
-      verify: () => this.filterID == 0 && this.selectedID != rootScope.myID
+      verify: () => this.filterId == 0 && this.selectedId != rootScope.myId
     }, {
       icon: 'unarchive',
       text: 'Unarchive',
       onClick: this.onArchiveClick,
-      verify: () => this.filterID == 1 && this.selectedID != rootScope.myID
+      verify: () => this.filterId == 1 && this.selectedId != rootScope.myId
     }, {
       icon: 'delete danger',
       text: 'Delete',
@@ -90,41 +90,41 @@ export default class DialogsContextMenu {
   }
 
   private onArchiveClick = () => {
-    let dialog = appMessagesManager.getDialogByPeerID(this.selectedID)[0];
+    let dialog = appMessagesManager.getDialogByPeerId(this.selectedId)[0];
     if(dialog) {
-      appMessagesManager.editPeerFolders([dialog.peerID], +!dialog.folder_id);
+      appMessagesManager.editPeerFolders([dialog.peerId], +!dialog.folder_id);
     }
   };
 
   private onPinClick = () => {
-    appMessagesManager.toggleDialogPin(this.selectedID, this.filterID);
+    appMessagesManager.toggleDialogPin(this.selectedId, this.filterId);
   };
   
   private onMuteClick = () => {
-    appMessagesManager.mutePeer(this.selectedID);
+    appMessagesManager.mutePeer(this.selectedId);
   };
 
   private onUnreadClick = () => {
-    const dialog = appMessagesManager.getDialogByPeerID(this.selectedID)[0];
+    const dialog = appMessagesManager.getDialogByPeerId(this.selectedId)[0];
     if(!dialog) return;
 
     if(dialog.unread_count) {
-      appMessagesManager.readHistory(this.selectedID, dialog.top_message);
-      appMessagesManager.markDialogUnread(this.selectedID, true);
+      appMessagesManager.readHistory(this.selectedId, dialog.top_message);
+      appMessagesManager.markDialogUnread(this.selectedId, true);
     } else {
-      appMessagesManager.markDialogUnread(this.selectedID);
+      appMessagesManager.markDialogUnread(this.selectedId);
     }
   };
 
   private onDeleteClick = () => {
-    let firstName = appPeersManager.getPeerTitle(this.selectedID, false, true);
+    let firstName = appPeersManager.getPeerTitle(this.selectedId, false, true);
 
     let callbackFlush = (justClear?: true) => {
-      appMessagesManager.flushHistory(this.selectedID, justClear);
+      appMessagesManager.flushHistory(this.selectedId, justClear);
     };
 
     let callbackLeave = () => {
-      appChatsManager.leave(-this.selectedID);
+      appChatsManager.leave(-this.selectedId);
     };
 
     let title: string, description: string, buttons: PopupButton[];
@@ -200,7 +200,7 @@ export default class DialogsContextMenu {
     });
 
     let popup = new PopupPeer('popup-delete-chat', {
-      peerID: this.selectedID,
+      peerId: this.selectedId,
       title: title,
       description: description,
       buttons: buttons
@@ -229,10 +229,10 @@ export default class DialogsContextMenu {
     }
     if(e instanceof MouseEvent) e.cancelBubble = true;
 
-    this.filterID = appDialogsManager.filterID;
+    this.filterId = appDialogsManager.filterId;
 
-    this.selectedID = +li.getAttribute('data-peerID');
-    this.dialog = appMessagesManager.getDialogByPeerID(this.selectedID)[0];
+    this.selectedId = +li.getAttribute('data-peerId');
+    this.dialog = appMessagesManager.getDialogByPeerId(this.selectedId)[0];
 
     this.buttons.forEach(button => {
       const good = button.verify();
@@ -242,22 +242,22 @@ export default class DialogsContextMenu {
 
     // delete button
     let deleteButtonText = '';
-    if(appPeersManager.isMegagroup(this.selectedID)) {
+    if(appPeersManager.isMegagroup(this.selectedId)) {
       deleteButtonText = 'Leave';
       //deleteButtonText = 'Leave group';
       this.peerType = 'megagroup';
-    } else if(appPeersManager.isChannel(this.selectedID)) {
+    } else if(appPeersManager.isChannel(this.selectedId)) {
       deleteButtonText = 'Leave';
       //deleteButtonText = 'Leave channel';
       this.peerType = 'channel';
-    } else if(this.selectedID < 0) {
+    } else if(this.selectedId < 0) {
       deleteButtonText = 'Delete';
       //deleteButtonText = 'Delete and leave';
       this.peerType = 'group';
     } else {
       deleteButtonText = 'Delete';
       //deleteButtonText = 'Delete chat';
-      this.peerType = this.selectedID == rootScope.myID ? 'saved' : 'chat';
+      this.peerType = this.selectedId == rootScope.myId ? 'saved' : 'chat';
     }
     this.buttons[this.buttons.length - 1].element.firstChild.nodeValue = deleteButtonText;
 
@@ -265,7 +265,7 @@ export default class DialogsContextMenu {
     positionMenu(e, this.element);
     openBtnMenu(this.element, () => {
       li.classList.remove('menu-open');
-      this.selectedID = this.dialog = this.filterID = undefined;
+      this.selectedId = this.dialog = this.filterId = undefined;
     });
   };
 }
