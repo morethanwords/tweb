@@ -131,18 +131,26 @@ export class ApiManager {
         logoutPromises.push(this.invokeApi('auth.logOut', {}, {dcId: i + 1, ignoreErrors: true}));
       }
     }
-    
-    return Promise.all(logoutPromises).then(() => {
-    }, (error) => {
-      error.handled = true;
-    }).finally(() => {
+
+    const clear = () => {
+      //console.error('apiManager: logOut clear');
+      
       this.baseDcId = 0;
       //this.telegramMeNotify(false);
       const promise = AppStorage.clear();
       promise.finally(() => {
         self.postMessage({type: 'reload'});
       });
-    })/* .then(() => {
+    };
+
+    setTimeout(clear, 1e3);
+
+    //return;
+    
+    return Promise.all(logoutPromises).then(() => {
+    }, (error) => {
+      error.handled = true;
+    }).finally(clear)/* .then(() => {
       location.pathname = '/';
     }) */;
   }

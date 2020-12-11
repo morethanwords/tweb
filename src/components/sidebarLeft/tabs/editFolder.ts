@@ -8,6 +8,7 @@ import { ripple } from "../../ripple";
 import { SliderTab } from "../../slider";
 import { toast } from "../../toast";
 import appMessagesManager from "../../../lib/appManagers/appMessagesManager";
+import { CLICK_EVENT_NAME } from "../../../helpers/dom";
 
 const MAX_FOLDER_NAME_LENGTH = 12;
 
@@ -71,7 +72,7 @@ export default class AppEditFolderTab implements SliderTab {
       this.animation = player;
     });
 
-    this.deleteFolderBtn.addEventListener('click', () => {
+    this.deleteFolderBtn.addEventListener(CLICK_EVENT_NAME, () => {
       this.deleteFolderBtn.setAttribute('disabled', 'true');
       appMessagesManager.filtersStorage.updateDialogFilter(this.filter, true).then(bool => {
         if(bool) {
