@@ -239,7 +239,7 @@ export class ApiUpdatesManager {
         appUsersManager.saveApiUsers(differenceResult.users);
         appChatsManager.saveApiChats(differenceResult.chats);
 
-        // Should be first because of updateMessageId
+        // Should be first because of updateMessageID
         // this.log('applying', differenceResult.other_updates.length, 'other updates')
     
         differenceResult.other_updates.forEach((update) => {
@@ -329,7 +329,7 @@ export class ApiUpdatesManager {
       appUsersManager.saveApiUsers(differenceResult.users);
       appChatsManager.saveApiChats(differenceResult.chats);
   
-      // Should be first because of updateMessageId
+      // Should be first because of updateMessageID
       this.log('applying', differenceResult.other_updates.length, 'channel other updates');
       differenceResult.other_updates.forEach((update) => {
         this.saveUpdate(update);

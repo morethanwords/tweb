@@ -513,7 +513,7 @@ export class AppMessagesManager {
             chats: [],
             seq: 0,
             updates: [{
-              _: 'updateMessageId',
+              _: 'updateMessageID',
               random_id: randomIdS,
               id: updates.id
             }, {
@@ -3012,7 +3012,7 @@ export class AppMessagesManager {
       case 'updateMessageID': {
         const randomId = update.random_id;
         const pendingData = this.pendingByRandomId[randomId];
-        //this.log('AMM updateMessageId:', update, pendingData);
+        //this.log('AMM updateMessageID:', update, pendingData);
         if(pendingData) {
           const peerId: number = pendingData[0];
           const tempId = pendingData[1];
@@ -3827,22 +3827,22 @@ export class AppMessagesManager {
   }
 
   public finalizePendingMessage(randomId: number, finalMessage: any) {
-    var pendingData = this.pendingByRandomId[randomId];
+    const pendingData = this.pendingByRandomId[randomId];
     // this.log('pdata', randomID, pendingData)
 
     if(pendingData) {
-      var peerId = pendingData[0];
-      var tempId = pendingData[1];
-      var historyStorage = this.historiesStorage[peerId],
-        message;
+      const peerId = pendingData[0];
+      const tempId = pendingData[1];
+      const historyStorage = this.historiesStorage[peerId];
 
       // this.log('pending', randomID, historyStorage.pending)
-      var pos = historyStorage.pending.indexOf(tempId);
+      const pos = historyStorage.pending.indexOf(tempId);
       if(pos != -1) {
         historyStorage.pending.splice(pos, 1);
       }
 
-      if(message = this.messagesStorage[tempId]) {
+      const message = this.messagesStorage[tempId];
+      if(message) {
         delete message.pending;
         delete message.error;
         delete message.random_id;
@@ -3858,7 +3858,7 @@ export class AppMessagesManager {
       return message;
     }
 
-    return false
+    return false;
   }
 
   public finalizePendingMessageCallbacks(tempId: number, mid: number) {
