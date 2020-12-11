@@ -342,6 +342,10 @@
   }
 
   &.is-many {
+    .pinned-message-close {
+      display: none;
+    }
+    
     &:not(.is-floating) {
       .pinned-message-pinlist {
         display: none;

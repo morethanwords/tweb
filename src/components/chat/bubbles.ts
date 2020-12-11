@@ -643,7 +643,7 @@ export default class ChatBubbles {
   public getMountedBubble(mid: number) {
     const message = this.appMessagesManager.getMessage(mid);
 
-    if(message.grouped_id) {
+    if(message.grouped_id && this.appMessagesManager.getMidsByAlbum(message.grouped_id).length > 1) {
       const a = this.getGroupedBubble(message.grouped_id);
       if(a) {
         a.bubble = a.bubble.querySelector(`.document-container[data-mid="${mid}"]`) || a.bubble;
