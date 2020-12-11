@@ -130,7 +130,7 @@ export class RLottiePlayer extends EventListenerBase<{
     }
 
     // * Cache frames params
-    if(!options.noCache) {
+    if(!options.noCache/*  && false */) {
       // проверка на размер уже после скейлинга, сделано для попапа и сайдбара, где стикеры 80х80 и 68х68, туда нужно 75%
       if(isApple && this.width > 100 && this.height > 100) {
         this.cachingDelta = 2; //2 // 50%
@@ -298,7 +298,7 @@ export class RLottiePlayer extends EventListenerBase<{
   }
 
   private mainLoopForwards() {
-    const frame = this.curFrame >= this.frameCount ? this.curFrame = 0 : this.curFrame += this.skipDelta;
+    const frame = (this.curFrame + this.skipDelta) >= this.frameCount ? this.curFrame = 0 : this.curFrame += this.skipDelta;
     //console.log('mainLoopForwards', this.curFrame, this.skipDelta, frame);
 
     this.requestFrame(frame);
@@ -315,7 +315,7 @@ export class RLottiePlayer extends EventListenerBase<{
   }
   
   private mainLoopBackwards() {
-    const frame = this.curFrame < 0 ? this.curFrame = this.frameCount - 1 : this.curFrame -= this.skipDelta;
+    const frame = (this.curFrame - this.skipDelta) < 0 ? this.curFrame = this.frameCount - 1 : this.curFrame -= this.skipDelta;
     //console.log('mainLoopBackwards', this.curFrame, this.skipDelta, frame);
 
     this.requestFrame(frame);
