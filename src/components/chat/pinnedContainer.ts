@@ -6,7 +6,8 @@ import DivAndCaption from "../divAndCaption";
 import { ripple } from "../ripple";
 import ListenerSetter from "../../helpers/listenerSetter";
 
-const classNames: string[] = [];
+//const classNames: string[] = [];
+const classNames: string[] = ['is-pinned-message-shown', 'is-pinned-audio-shown'];
 const CLASSNAME_BASE = 'pinned-container';
 const HEIGHT = 52;
 
@@ -21,7 +22,7 @@ export default class PinnedContainer {
       prev(mid, title, subtitle);
     }; */
 
-    classNames.push(`is-pinned-${className}-shown`);
+    //classNames.push(`is-pinned-${className}-shown`);
 
     divAndCaption.container.classList.add(CLASSNAME_BASE, 'hide');
     divAndCaption.title.classList.add(CLASSNAME_BASE + '-title');
@@ -61,7 +62,9 @@ export default class PinnedContainer {
 
     this.divAndCaption.container.classList.toggle('is-floating', mediaSizes.isMobile);
 
-    const scrollTop = mediaSizes.isMobile /* && !appImManager.scrollable.isScrolledDown */ ? this.chat.bubbles.scrollable.scrollTop : undefined;
+    const scrollable = this.chat.bubbles.scrollable;
+
+    const scrollTop = mediaSizes.isMobile /* && !appImManager.scrollable.isScrolledDown */ ? scrollable.scrollTop : undefined;
     this.divAndCaption.container.classList.toggle('hide', hide);
     const className = `is-pinned-${this.className}-shown`;
     this.topbar.container.classList.toggle(className, !hide);
@@ -69,8 +72,8 @@ export default class PinnedContainer {
     const active = classNames.filter(className => this.topbar.container.classList.contains(className));
     const maxActive = hide ? 0 : 1;
     
-    if(scrollTop !== undefined && active.length <= maxActive) {
-      this.chat.bubbles.scrollable.scrollTop = scrollTop + ((hide ? -1 : 1) * HEIGHT);
+    if(scrollTop !== undefined && active.length <= maxActive/*  && !scrollable.isScrolledDown */) {
+      scrollable.scrollTop = scrollTop + ((hide ? -1 : 1) * HEIGHT);
     }
 
     this.topbar.setUtilsWidth();

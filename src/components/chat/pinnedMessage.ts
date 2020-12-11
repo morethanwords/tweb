@@ -11,6 +11,7 @@ import { cancelEvent, findUpClassName, getElementByPoint, handleScrollSideEvent 
 import Chat from "./chat";
 import ListenerSetter from "../../helpers/listenerSetter";
 import ButtonIcon from "../buttonIcon";
+import { RIGHT_COLUMN_ACTIVE_CLASSNAME } from "../sidebarRight";
 
 class AnimatedSuper {
   static DURATION = 200;
@@ -293,6 +294,7 @@ export default class ChatPinnedMessage {
 
   public destroy() {
     this.pinnedMessageContainer.divAndCaption.container.remove();
+    this.pinnedMessageContainer.toggle(true);
     this.listenerSetter.removeAll();
     this.unsetScrollDownListener(false);
   }

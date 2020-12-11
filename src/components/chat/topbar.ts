@@ -127,7 +127,7 @@ export default class ChatTopbar {
         } else {
           const message = this.appMessagesManager.getMessage(mid);
   
-          this.chat.appImManager.setPeer(message.peerId, mid);
+          this.chat.appImManager.setInnerPeer(message.peerId, mid);
         }
       } else {
         this.appSidebarRight.toggleSidebar(true);
@@ -324,8 +324,6 @@ export default class ChatTopbar {
       this.avatarElement.update();
     }
 
-    this.container.classList.remove('is-pinned-shown');
-
     const isBroadcast = this.appPeersManager.isBroadcast(peerId);
 
     this.btnMute && this.btnMute.classList.toggle('hide', !isBroadcast);
@@ -338,6 +336,7 @@ export default class ChatTopbar {
         const newPinnedMessage = new ChatPinnedMessage(this, this.chat, this.appMessagesManager, this.appPeersManager);
         this.pinnedMessage.pinnedMessageContainer.divAndCaption.container.replaceWith(newPinnedMessage.pinnedMessageContainer.divAndCaption.container);
         this.pinnedMessage.destroy();
+        //this.pinnedMessage.pinnedMessageContainer.toggle(true);
         this.pinnedMessage = newPinnedMessage;
       }
       
