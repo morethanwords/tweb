@@ -1,5 +1,5 @@
-import rootScope from "../lib/rootScope";
-import { generatePathData } from "../helpers/dom";
+import rootScope from "../../lib/rootScope";
+import { generatePathData } from "../../helpers/dom";
 
 type BubbleGroup = {timestamp: number, fromId: number, mid: number, group: HTMLDivElement[]};
 export default class BubbleGroups {
@@ -70,43 +70,45 @@ export default class BubbleGroups {
       //console.log('setClipIfNeeded', bubble, remove, container);
       if(!container) return;
 
-      Array.from(container.children).forEach(object => {
-        if(object instanceof SVGDefsElement) return;
-
-        if(remove) {
-          object.removeAttributeNS(null, 'clip-path');
-        } else {
-          let clipId = container.dataset.clipId;
-          let path = container.firstElementChild.firstElementChild.lastElementChild as SVGPathElement;
-          let width = +object.getAttributeNS(null, 'width');
-          let height = +object.getAttributeNS(null, 'height');
-          let isOut = className.includes('is-out');
-          let isReply = className.includes('is-reply');
-          let d = '';
+      try {
+        Array.from(container.children).forEach(object => {
+          if(object instanceof SVGDefsElement) return;
   
-          //console.log('setClipIfNeeded', object, width, height, isOut);
-  
-          let tr: number, tl: number;
-          if(className.includes('forwarded') || isReply) {
-            tr = tl = 0;
-          } else if(isOut) {
-            tr = className.includes('is-group-first') ? 12 : 6;
-            tl = 12;
+          if(remove) {
+            object.removeAttributeNS(null, 'clip-path');
           } else {
-            tr = 12;
-            tl = className.includes('is-group-first') ? 12 : 6;
+            let clipId = container.dataset.clipId;
+            let path = container.firstElementChild.firstElementChild.lastElementChild as SVGPathElement;
+            let width = +object.getAttributeNS(null, 'width');
+            let height = +object.getAttributeNS(null, 'height');
+            let isOut = className.includes('is-out');
+            let isReply = className.includes('is-reply');
+            let d = '';
+    
+            //console.log('setClipIfNeeded', object, width, height, isOut);
+    
+            let tr: number, tl: number;
+            if(className.includes('forwarded') || isReply) {
+              tr = tl = 0;
+            } else if(isOut) {
+              tr = className.includes('is-group-first') ? 12 : 6;
+              tl = 12;
+            } else {
+              tr = 12;
+              tl = className.includes('is-group-first') ? 12 : 6;
+            }
+    
+            if(isOut) {
+              d = generatePathData(0, 0, width - 9, height, tl, tr, 0, 12);
+            } else {
+              d = generatePathData(9, 0, width - 9, height, tl, tr, 12, 0);
+            }
+            
+            path.setAttributeNS(null, 'd', d);
+            object.setAttributeNS(null, 'clip-path', 'url(#' + clipId + ')');
           }
-  
-          if(isOut) {
-            d = generatePathData(0, 0, width - 9, height, tl, tr, 0, 12);
-          } else {
-            d = generatePathData(9, 0, width - 9, height, tl, tr, 12, 0);
-          }
-          
-          path.setAttributeNS(null, 'd', d);
-          object.setAttributeNS(null, 'clip-path', 'url(#' + clipId + ')');
-        }
-      });
+        });
+      } catch(err) {}
     }
   }
   

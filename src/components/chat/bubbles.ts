@@ -13,7 +13,7 @@ import { isTouchSupported } from "../../helpers/touchSupport";
 import { logger } from "../../lib/logger";
 import rootScope from "../../lib/rootScope";
 import AppMediaViewer from "../appMediaViewer";
-import BubbleGroups from "../bubbleGroups";
+import BubbleGroups from "./bubbleGroups";
 import PopupDatePicker from "../popupDatepicker";
 import PopupForward from "../popupForward";
 import PopupStickers from "../popupStickers";
@@ -1377,8 +1377,8 @@ export default class ChatBubbles {
     let messageMedia = message.media;
 
     let messageMessage: string, totalEntities: any[];
-    if(messageMedia?.document && messageMedia.document.type !== 'video') {
-      // * just filter this case
+    if(messageMedia?.document && !['video', 'gif'].includes(messageMedia.document.type)) {
+      // * just filter these cases for documents caption
     } else if(message.grouped_id && albumMustBeRenderedFull) {
       const t = this.appMessagesManager.getAlbumText(message.grouped_id);
       messageMessage = t.message;
@@ -1553,7 +1553,7 @@ export default class ChatBubbles {
                 const photo = this.appPhotosManager.getPhoto(message.id);
                 //if(photo._ == 'photoEmpty') break;
                 this.log('will wrap pending photo:', pending, message, photo);
-                const withTail = !isAndroid;
+                const withTail = !isAndroid && !message.message;
                 if(withTail) bubble.classList.add('with-media-tail');
                 wrapPhoto({
                   photo, message, 
@@ -1574,15 +1574,15 @@ export default class ChatBubbles {
                 let doc = this.appDocsManager.getDoc(message.id);
                 //if(doc._ == 'documentEmpty') break;
                 this.log('will wrap pending video:', pending, message, doc);
-                const tailSupported = !isAndroid && !isApple && doc.type != 'round';
-                if(tailSupported) bubble.classList.add('with-media-tail');
+                const withTail = !isAndroid && !isApple && doc.type != 'round' && !message.message;
+                if(withTail) bubble.classList.add('with-media-tail');
                 wrapVideo({
                   doc, 
                   container: attachmentDiv, 
                   message, 
                   boxWidth: mediaSizes.active.regular.width,
                   boxHeight: mediaSizes.active.regular.height, 
-                  withTail: tailSupported, 
+                  withTail, 
                   isOut: isOut,
                   lazyLoadQueue: this.lazyLoadQueue,
                   middleware: null,
@@ -1629,8 +1629,7 @@ export default class ChatBubbles {
           ////////this.log('messageMediaPhoto', photo);
           
           bubble.classList.add('hide-name', 'photo');
-          const withTail = !isAndroid;
-
+          
           const storage = this.appMessagesManager.groupedMessagesStorage[message.grouped_id];
           if(message.grouped_id && Object.keys(storage).length != 1 && albumMustBeRenderedFull) {
             bubble.classList.add('is-album', 'is-grouped');
@@ -1641,10 +1640,11 @@ export default class ChatBubbles {
               isOut: our,
               lazyLoadQueue: this.lazyLoadQueue
             });
-
+            
             break;
           }
-
+          
+          const withTail = !isAndroid && !message.message;
           if(withTail) bubble.classList.add('with-media-tail');
           wrapPhoto({
             photo, 
@@ -1825,16 +1825,16 @@ export default class ChatBubbles {
                 lazyLoadQueue: this.lazyLoadQueue
               });
             } else {
-              const tailSupported = !isAndroid && !isApple && doc.type != 'round';
-              if(tailSupported) bubble.classList.add('with-media-tail');
+              const withTail = !isAndroid && !isApple && doc.type != 'round' && !message.message;
+              if(withTail) bubble.classList.add('with-media-tail');
               wrapVideo({
                 doc, 
                 container: attachmentDiv, 
                 message, 
                 boxWidth: mediaSizes.active.regular.width,
                 boxHeight: mediaSizes.active.regular.height, 
-                withTail: tailSupported, 
-                isOut: isOut,
+                withTail, 
+                isOut,
                 lazyLoadQueue: this.lazyLoadQueue,
                 middleware: this.getMiddleware(),
                 group: CHAT_ANIMATION_GROUP
