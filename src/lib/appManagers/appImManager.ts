@@ -218,16 +218,25 @@ export class AppImManager {
     const toggle = async(e: DragEvent, mount: boolean) => {
       if(mount == mounted) return;
 
+      const _types = e.dataTransfer.types;
+      // @ts-ignore
+      const isFiles = _types.contains ? _types.contains('Files') : _types.indexOf('Files') >= 0;
+
+      if(!isFiles) { // * skip dragging text case
+        counter = 0;
+        return;
+      }
+
       if(mount && !drops.length) {
         const types: string[] = await getFilesFromEvent(e, true)
-        const isFiles = e.dataTransfer.types[0] === 'Files' && !types.length; // * can't get file items not from 'drop' on Safari
+        const force = isFiles && !types.length; // * can't get file items not from 'drop' on Safari
         
         const foundMedia = types.filter(t => ['image', 'video'].includes(t.split('/')[0])).length;
         const foundDocuments = types.length - foundMedia;
   
         this.log('drag files', types);
         
-        if(types.length || isFiles) {
+        if(types.length || force) {
           drops.push(new ChatDragAndDrop(dropsContainer, {
             icon: 'dragfiles',
             header: 'Drop files here to send them',
@@ -240,7 +249,7 @@ export class AppImManager {
           }));
         }
   
-        if((foundMedia && !foundDocuments) || isFiles) {
+        if((foundMedia && !foundDocuments) || force) {
           drops.push(new ChatDragAndDrop(dropsContainer, {
             icon: 'dragmedia',
             header: 'Drop files here to send them',
