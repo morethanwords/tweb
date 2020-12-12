@@ -11,7 +11,6 @@ import { clamp } from "../helpers/number";
  *   <div data-middle-ellipsis="20">A Javascript solution to middle ellipsis</div>
  *   <div data-middle-ellipsis="-3">A Javascript solution to middle ellipsis</div>
  */
-const attributeName = 'data-middle-ellipsis';
 const ellipsis = '…';
 const map: Map<HTMLElement, {
   text: string,
@@ -39,42 +38,51 @@ const testQueueElements = () => {
 };
 
 window.addEventListener('resize', () => {
-  (Array.from(document.querySelectorAll(`[${attributeName}]`)) as HTMLElement[]).forEach(el => testQueue.add(el));
+  for(const [key] of map) {
+    testQueue.add(key);
+  }
+  
   setTestQueue();
 }, {capture: true, passive: true});
 
-const testElement = (elm: HTMLElement) => {
+const testElement = (element: HTMLElement) => {
   //const perf = performance.now();
   // do not recalculate variables a second time
-  const mapped = map.get(elm);
+  let mapped = map.get(element);
+  const firstTime = !mapped;
+
   let {text, textLength, from, multiplier, font, textWidth, elementWidth} = mapped || {};
-  // first time
-  if(!mapped) {
-    text = elm.textContent;
+  //console.log('[MEE] testElement got mapped', mapped);
+
+  if(firstTime) {
+    text = element.textContent;
     textLength = text.length;
-    from = parseFloat(elm.getAttribute(attributeName)) || 50;
+    from = /* parseFloat(element.getAttribute(attributeName)) ||  */50;
     multiplier = from > 0 && from / 100;
 
     //const perf = performance.now();
-    font = `${elm.dataset.fontWeight || 400} ${fontSize} ${fontFamily}`;
+    font = `${element.dataset.fontWeight || 400} ${fontSize} ${fontFamily}`;
     /* const computedStyle = window.getComputedStyle(elm, null);
     font = `${computedStyle.getPropertyValue('font-weight')} ${computedStyle.getPropertyValue('font-size')} ${computedStyle.getPropertyValue('font-family')}`; */
     //console.log('testMiddleEllipsis get computed style:', performance.now() - perf, font);
 
     textWidth = getTextWidth(text, font);
     //const perf = performance.now();
-    elementWidth = elm.offsetWidth;
+    elementWidth = element.getBoundingClientRect().width;
     //console.log('testMiddleEllipsis get offsetWidth:', performance.now() - perf, font);
-    map.set(elm, {text, textLength, from, multiplier, font, textWidth, elementWidth});
+    mapped = {text, textLength, from, multiplier, font, textWidth, elementWidth};
+    map.set(element, mapped);
+
+    //console.log('[MEE] testElement map set', element);
   }
   
-  const {offsetWidth} = elm;
-  const widthChanged = !mapped || elementWidth !== offsetWidth;
-  mapped && widthChanged && (mapped.elementWidth = elementWidth = offsetWidth);
+  const newElementWidth = element.getBoundingClientRect().width;
+  const widthChanged = firstTime || elementWidth !== newElementWidth;
+  !firstTime && widthChanged && (mapped.elementWidth = elementWidth = newElementWidth);
   
   if(widthChanged) {
     if(textWidth > elementWidth) {
-      elm.setAttribute('title', text);
+      element.setAttribute('title', text);
       let smallerText = text;
       let smallerWidth = elementWidth;
       while(smallerText.length > 3) {
@@ -87,12 +95,16 @@ const testElement = (elm: HTMLElement) => {
         smallerText = half1 + half2;
         smallerWidth = getTextWidth(smallerText + ellipsis, font);
         if(smallerWidth < elementWidth) {
-          elm.textContent = half1 + ellipsis + half2;
+          element.textContent = half1 + ellipsis + half2;
           break;
         }
       }
+
+      // * set new width after cutting text
+      mapped.elementWidth = element.getBoundingClientRect().width;
+      //mapped.textWidth = smallerWidth;
     } else {
-      elm.removeAttribute('title');
+      element.removeAttribute('title');
     }
   }
 
@@ -116,27 +128,29 @@ function getTextWidth(text: string, font: string) {
   //context.font = font;
   const metrics = context.measureText(text);
   //console.log('getTextWidth perf:', performance.now() - perf);
-  //return metrics.width;
-  return Math.round(metrics.width);
+  return metrics.width;
+  //return Math.round(metrics.width);
 }
 
 export class MiddleEllipsisElement extends HTMLElement {
   constructor() {
     super();
-
-    if(this.getAttribute('data-middle-ellipsis') === null) {
-      this.setAttribute('data-middle-ellipsis', '');
-    }
   }
 
   connectedCallback() {
+    //console.log('[MEE]: connectedCallback before', map.has(this), testQueue.has(this), map.size, this.textContent, map);
+
+    map.set(this, null);
     testQueue.add(this);
     setTestQueue();
     //testElement(this);
+
+    //console.log('[MEE]: connectedCallback after', map.has(this), map.size, testQueue.has(this), testQueue.size);
   }
 
   disconnectedCallback() {
-    map.delete(this);
+    const deleted = map.delete(this);
+    //console.log('[MEE]: disconnectedCallback', deleted, map.has(this), map.size, this.textContent, map);
   }
 }
 
