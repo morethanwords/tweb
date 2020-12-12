@@ -1,0 +1,123 @@
+.drops-container {
+  --padding: 20px;
+  --pinned-floating-height: 0px;
+  position: absolute !important;
+  z-index: 3;
+  top: calc(56px + var(--pinned-floating-height) + var(--padding));
+  right: var(--padding);
+  bottom: var(--padding);
+  left: var(--padding);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  user-select: none;
+  width: auto !important;
+
+  @include respond-to(medium-screens) {
+		//transition: transform var(--layer-transition);
+
+		body.is-right-column-shown & {
+      //left: calc(var(--right-column-width) / -2);
+      right: calc(var(--right-column-width));
+    }
+  }
+
+  @include respond-to(handhelds) {
+    --padding: 10px;
+  }
+
+  &:not(.is-visible) {
+    display: none;
+  }
+
+  &.is-visible {
+    animation: fade-in-opacity .2s linear forwards;
+
+    &.backwards {
+      animation: fade-in-backwards-opacity .2s linear forwards;
+    }
+  }
+}
+
+.drop {
+  background-color: #fff;
+  position: relative;
+  //height: 100%;
+  border-radius: $border-radius-big;
+  width: 100%;
+  max-width: 696px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #a2acb4;
+  transition: color .2s ease-in-out;
+  pointer-events: all;
+  flex: 1 1 auto;
+
+  &-outline {
+    &-wrapper {
+      position: absolute;
+      top: 19px;
+      right: 19px;
+      bottom: 19px;
+      left: 19px;
+      pointer-events: none;
+    }
+
+    &-path {
+      fill: none;
+      stroke-dasharray: 13.5, 11;
+      stroke: #a2acb4;
+      stroke-width: 2;
+      stroke-linecap: round;
+      transition: stroke .2s ease-in-out;
+      stroke-dashoffset: 0;
+
+      .drop.is-dragover & {
+        animation: drop-outline-move .5s linear infinite;
+        stroke: $color-blue;
+      }
+
+      /* .drop.is-dragover.backwards & {
+        //animation: drop-outline-backwards-move .5s linear forwards;
+        animation-direction: reverse;
+        animation-fill-mode: forwards;
+      } */
+    }
+  }
+
+  &-icon {
+    font-size: 6rem;
+  }
+
+  &-header {
+    font-weight: 500;
+    font-size: 1.25rem;
+  }
+
+  &.is-dragover {
+    color: $color-blue;
+  }
+
+  & + & {
+    margin-top: 10px;
+  }
+}
+
+@keyframes drop-outline-move {
+  0% {
+    stroke-dashoffset: 0;
+  }
+
+  100% {
+    stroke-dashoffset: -24.5;
+  }
+}
+
+body.is-dragging {
+  .page-chats {
+    pointer-events: none;
+  }
+}

@@ -321,6 +321,8 @@ export function generatePathData(x: number, y: number, width: number, height: nu
   return data.join(' ');
 };
 
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.generatePathData = generatePathData);
+
 //export function findUpClassName<T>(el: any, className: string): T;
 export function findUpClassName(el: any, className: string): HTMLElement {
   return el.closest('.' + className);
@@ -590,3 +592,65 @@ export const getElementByPoint = (container: HTMLElement, verticalSide: 'top' | 
   const y = verticalSide == 'bottom' ? Math.floor(rect.top + rect.height - 1) : Math.ceil(rect.top + 1);
   return document.elementFromPoint(x, y) as any;
 };
+
+export async function getFilesFromEvent(e: ClipboardEvent | DragEvent, onlyTypes = false): Promise<any[]> {
+  const files: any[] = [];
+
+  const scanFiles = async(item: any) => {
+    if(item.isDirectory) {
+      const directoryReader = item.createReader();
+      await new Promise((resolve, reject) => {
+        directoryReader.readEntries(async(entries: any) => {
+          for(const entry of entries) {
+            await scanFiles(entry);
+          }
+
+          resolve();
+        });
+      });
+    } else if(item) {
+      if(onlyTypes) {
+        files.push(item.type);
+      } else {
+        const file = item instanceof File ? 
+          item : 
+          (
+            item instanceof DataTransferItem ? 
+              item.getAsFile() : 
+              await new Promise((resolve, reject) => item.file(resolve, reject))
+          );
+
+        /* if(!onlyTypes) {
+          console.log('getFilesFromEvent: got file', item, file);
+        } */
+
+        if(!file) return;
+        files.push(file);
+      }
+    }
+  };
+
+  if(e instanceof DragEvent && e.dataTransfer.files && !e.dataTransfer.items) {
+    for(let i = 0; i < e.dataTransfer.files.length; i++) {
+      const file = e.dataTransfer.files[i];
+      files.push(onlyTypes ? file.type : file);
+    }
+  } else {
+    // @ts-ignore
+    const items = (e.dataTransfer || e.clipboardData || e.originalEvent.clipboardData).items;
+
+    for(let i = 0; i < items.length; ++i) {
+      const item: DataTransferItem = items[i];
+      if(item.kind === 'file') {
+        const entry = onlyTypes ? item : item.webkitGetAsEntry() || item.getAsFile();
+        await scanFiles(entry);
+      }
+    }
+  }
+
+  /* if(!onlyTypes) {
+    console.log('getFilesFromEvent: got files:', e, files);
+  } */
+  
+  return files;
+}
