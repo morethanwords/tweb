@@ -99,7 +99,7 @@ $chat-helper-size: 39px;
 		background: none;
 		border: none;
 		width: 100%;
-		padding: 9px;
+		padding: 9px 8px 9px 8px;
 		/* height: 100%; */
 		max-height: calc(30rem - var(--padding-vertical) * 2);
 		overflow-y: none;
@@ -333,6 +333,25 @@ $chat-helper-size: 39px;
 			}
 		}
 	}
+
+	.pinned-container {
+		box-shadow: none;
+		@include respond-to(handhelds) {
+			font-size: 15px;
+		}
+
+		.btn-transparent {
+			justify-content: center;
+	
+			&::before {
+				margin-right: 10px;
+			}
+		}
+	
+		&::before {
+			box-shadow: none;
+		}
+	}
 }
 
 @keyframes recordBlink {
@@ -437,7 +456,8 @@ $chat-helper-size: 39px;
 	background-color: #fff;
 	border-radius: 12px;
 	border-bottom-right-radius: 0;
-	box-shadow: 0 1px 2px 0 rgba(16, 35, 47, .07);
+	//box-shadow: 0 1px 2px 0 rgba(16, 35, 47, .07);
+	box-shadow: 0px 1px 8px 1px rgba(0, 0, 0, 0.18);
 	min-height: var(--chat-input-size);
 	max-height: 30rem;
 	flex: 0 0 auto;
@@ -722,6 +742,16 @@ $chat-helper-size: 39px;
 		padding: 0.25rem;
 		width: 34px;
 		height: 34px;
+		//По макету ниже....
+		// display: block;
+		// flex: 0 0 auto;
+		// font-size: 24px;
+		// line-height: 24px;
+		// color: #8d969c;
+		// padding: 0.25rem;
+		// margin-left: -1px;
+		// width: 40px;
+		// height: 40px;
 		
 		&.active {
 			color: $color-blue;

@@ -11,6 +11,7 @@ import PopupDeleteMessages from "../popupDeleteMessages";
 import PopupForward from "../popupForward";
 import PopupPinMessage from "../popupUnpinMessage";
 import { copyTextToClipboard } from "../../helpers/clipboard";
+import { isAppleMobile, isSafari } from "../../helpers/userAgent";
 
 export default class ChatContextMenu {
   private buttons: (ButtonMenuItemOptions & {verify: () => boolean, notDirect?: () => boolean, withSelection?: true})[];
@@ -118,9 +119,12 @@ export default class ChatContextMenu {
 
         // * these two lines will fix instant text selection on iOS Safari
         document.body.classList.add('no-select'); // * need no-select on body because chat-input transforms in channels
-        attachTo.addEventListener('touchend', () => {
+        attachTo.addEventListener('touchend', (e) => {
+          cancelEvent(e); // ! this one will fix propagation to document loader button, etc
           document.body.classList.remove('no-select');
-        }, {once: true});
+
+          //this.chat.bubbles.onBubblesClick(e);
+        }, {once: true, capture: true});
 
         cancelSelection();
         //cancelEvent(e as any);

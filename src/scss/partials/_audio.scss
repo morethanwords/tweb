@@ -383,9 +383,9 @@
 
   @include respond-to(handhelds) {
     &-download {
-      /* background: transparent; */
-      margin-left: 2px;
-      margin-top: 1px;
+      //background: transparent;
+      margin-left: 6px;
+      margin-top: 6px;
     }
 
     &.is-voice {

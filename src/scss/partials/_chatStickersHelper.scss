@@ -5,11 +5,13 @@
 	transition: opacity .2s ease-in-out;
 	overflow: hidden;
 	padding: 0 !important;
+    border-radius: 10px !important;
 
 	> .scrollable {
 		position: relative;
 		max-height: 220px;
-  	min-height: var(--esg-sticker-size);
+  		min-height: var(--esg-sticker-size);
+	  	padding: 7px;
 	}
 
 	&-stickers {

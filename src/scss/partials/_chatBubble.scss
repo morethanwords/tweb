@@ -152,6 +152,18 @@ $bubble-margin: .25rem;
     }
   }
 
+  &.channel-post {
+    .message.poll-message {
+        .time {
+          position: unset;
+        }
+    }
+
+		poll-element .poll-footer {
+				height: auto;
+		}
+  }
+
   &.is-date {
     position: sticky;
     top: $bubble-margin;
@@ -219,6 +231,13 @@ $bubble-margin: .25rem;
   .bubbles.is-selecting &:not(.is-album) {
     .audio, .document, .attachment, poll-element {
       pointer-events: none !important;
+    }
+  }
+
+  // ! hide context menu for media on android
+  .bubbles.is-selecting & {
+    img, video {
+      pointer-events: none;
     }
   }
   
@@ -1027,7 +1046,7 @@ $bubble-margin: .25rem;
       height: 58px;
 
       @include respond-to(handhelds) {
-        padding-left: 44px;
+        padding-left: 44px; //было 44
       }
 
       &-name {
@@ -1119,6 +1138,11 @@ $bubble-margin: .25rem;
         height: 1.5rem;
         background: #fff;
         border-radius: 50%;
+
+        @include respond-to(handhelds) {
+          left: 20px;
+          top: 25px;
+        }
 
         &:before {
           content: " ";
@@ -1302,6 +1326,10 @@ $bubble-margin: .25rem;
       line-height: 1;
       padding: inherit;
       white-space: nowrap;
+    }
+
+    .tgico-pinnedchat:before {
+      font-weight: bold;
     }
   }
 
@@ -1981,6 +2009,7 @@ poll-element {
   
       @include respond-to(handhelds) {
         max-width: 88%;
+        white-space: normal;
       }
     }
 

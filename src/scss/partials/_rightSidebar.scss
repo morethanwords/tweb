@@ -445,10 +445,8 @@
           }
 
           @include respond-to(handhelds) {
-            width: 40px;
-            height: 40px;
-            top: 2px;
-            left: -12px;
+            width: 36px;
+            height: 36px;
           }
 
           @include respond-to(not-handhelds) {

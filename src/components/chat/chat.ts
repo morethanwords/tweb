@@ -1,7 +1,7 @@
 import type { AppChatsManager } from "../../lib/appManagers/appChatsManager";
 import type { AppDocsManager } from "../../lib/appManagers/appDocsManager";
 import type { AppImManager } from "../../lib/appManagers/appImManager";
-import type { AppInlineBotsManager } from "../../lib/appManagers/AppInlineBotsManager";
+import type { AppInlineBotsManager } from "../../lib/appManagers/appInlineBotsManager";
 import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManager";
 import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import type { AppPhotosManager } from "../../lib/appManagers/appPhotosManager";

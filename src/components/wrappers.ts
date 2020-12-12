@@ -26,6 +26,7 @@ import ProgressivePreloader from './preloader';
 import './middleEllipsis';
 import { nextRandomInt } from '../helpers/random';
 import RichTextProcessor from '../lib/richtextprocessor';
+import appImManager from '../lib/appManagers/appImManager';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 
@@ -412,8 +413,8 @@ export function wrapDocument(doc: MyDocument, withTime = false, uploading = fals
           preloader = new ProgressivePreloader(null, true);
         }
 
-        preloader.attach(downloadDiv, true);
-        /* download = appDocsManager.saveDocFile(doc, appImManager.chat.bubbles.lazyLoadQueue.queueId);
+        //preloader.attach(downloadDiv, true);
+        download = appDocsManager.saveDocFile(doc, appImManager.chat.bubbles.lazyLoadQueue.queueId);
         preloader.attach(downloadDiv, true, download);
         
         download.then(() => {
@@ -426,7 +427,7 @@ export function wrapDocument(doc: MyDocument, withTime = false, uploading = fals
           downloadDiv.classList.remove('downloading');
         });
         
-        downloadDiv.classList.add('downloading'); */
+        downloadDiv.classList.add('downloading');
       } else {
         download.cancel();
       }

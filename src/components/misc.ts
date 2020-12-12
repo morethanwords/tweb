@@ -323,12 +323,21 @@ export function attachContextMenuListener(element: HTMLElement, callback: (e: To
       add('touchcancel', onCancel, options);
 
       timeout = window.setTimeout(() => {
-        element.addEventListener('touchend', cancelEvent, {once: true}); // * fix instant closing
         callback(e.touches[0]);
         onCancel();
+
+        if(openedMenu) {
+          element.addEventListener('touchend', cancelEvent, {once: true}); // * fix instant closing
+        }
       }, .4e3);
     });
   } else {
-    add('contextmenu', callback);
+    add('contextmenu', isTouchSupported ? (e: any) => {
+      callback(e);
+
+      if(openedMenu) {
+        element.addEventListener('touchend', cancelEvent, {once: true}); // * fix instant closing
+      }
+    } : callback);
   }
 };

@@ -4,7 +4,7 @@ import Scrollable from "../../scrollable";
 import animationIntersector from "../../animationIntersector";
 import appSidebarRight, { AppSidebarRight } from "..";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
-import appInlineBotsManager, { AppInlineBotsManager } from "../../../lib/appManagers/AppInlineBotsManager";
+import appInlineBotsManager, { AppInlineBotsManager } from "../../../lib/appManagers/appInlineBotsManager";
 import GifsMasonry from "../../gifsMasonry";
 import { findUpClassName } from "../../../helpers/dom";
 import appImManager from "../../../lib/appManagers/appImManager";

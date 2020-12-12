@@ -1,6 +1,6 @@
 import { toast } from "../../components/toast";
 import { BotInlineResult } from "../../layer";
-import appPeersManager from "../appManagers/appPeersManager";
+import appPeersManager from "./appPeersManager";
 import apiManagerProxy from "../mtproto/mtprotoworker";
 import { RichTextProcessor } from "../richtextprocessor";
 import appDocsManager from "./appDocsManager";

@@ -280,6 +280,10 @@ html {
   text-rendering: optimizeSpeed;
 }
 
+body {
+  touch-action: pan-x pan-y;
+}
+
 /* body {
   position: absolute;
   top: 0;
@@ -746,7 +750,7 @@ img.emoji {
 
 .super-sticker {
   html.no-touch &:hover {
-    border-radius: 12px;
+    border-radius: 10px;
     background-color: var(--color-gray-hover);
   }
   

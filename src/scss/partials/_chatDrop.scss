@@ -59,10 +59,10 @@
   &-outline {
     &-wrapper {
       position: absolute;
-      top: 19px;
-      right: 19px;
-      bottom: 19px;
-      left: 19px;
+      top: 15px;
+      right: 15px;
+      bottom: 15px;
+      left: 15px;
       pointer-events: none;
     }
 
@@ -95,6 +95,16 @@
   &-header {
     font-weight: 500;
     font-size: 1.25rem;
+    margin-top: -10px;
+  }
+
+  @media only screen and (max-height: 670px) {
+    &-icon {
+      font-size: 0;
+    }
+    &-header {
+      margin-top: 0px;
+    }
   }
 
   &.is-dragover {

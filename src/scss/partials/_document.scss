@@ -10,6 +10,11 @@
 
     .document:not(.document-with-thumb) & {
       padding: 1.5rem .25rem 0 .25rem;
+
+      @include respond-to(handhelds) {
+        padding: 14px 0px 0px 0px;
+        font-size: 14px;
+      }
     }
 
     &:after {
@@ -132,6 +137,12 @@
     .tgico-download {
       transform: scale(1);
       transition: .2s scale;
+
+      @include respond-to(handhelds) {
+        margin-top: -1px;
+        margin-right: -1px;
+        font-size: 20px;
+      }
     }
 
     &.downloading {
@@ -146,8 +157,8 @@
     height: 42px;
 
     @include respond-to(handhelds) {
-      width: 30px;
-      height: 30px;
+      width: 26px;
+      height: 26px;
     }
   }
 }

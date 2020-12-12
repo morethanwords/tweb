@@ -89,11 +89,13 @@ class AppStorage {
 
         if(this.useCS) {
           try {
-            //console.log('setItem', key, value);
+            //console.log('setItem: will set', key/* , value */);
+            await this.cacheStorage.delete(key); // * try to prevent memory leak in Chrome leading to 'Unexpected internal error.'
             await this.cacheStorage.save(key, new Response(value, {headers: {'Content-Type': 'application/json'}}));
+            //console.log('setItem: have set', key/* , value */);
           } catch(e) {
             //this.useCS = false;
-            console.error('[AS]: set error:', e, value);
+            console.error('[AS]: set error:', e, key/* , value */);
           }
         } else {
           keyValues[key] = value;

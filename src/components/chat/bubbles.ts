@@ -3,7 +3,7 @@ import type { AppMessagesManager, Dialog, HistoryResult } from "../../lib/appMan
 import type { AppSidebarRight } from "../sidebarRight";
 import type { AppStickersManager } from "../../lib/appManagers/appStickersManager";
 import type { AppUsersManager } from "../../lib/appManagers/appUsersManager";
-import type { AppInlineBotsManager } from "../../lib/appManagers/AppInlineBotsManager";
+import type { AppInlineBotsManager } from "../../lib/appManagers/appInlineBotsManager";
 import type { AppPhotosManager } from "../../lib/appManagers/appPhotosManager";
 import type { AppDocsManager } from "../../lib/appManagers/appDocsManager";
 import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
@@ -345,192 +345,7 @@ export default class ChatBubbles {
       }
     });
 
-    this.listenerSetter.add(this.bubblesContainer, 'click', (e) => {
-      let target = e.target as HTMLElement;
-      let bubble: HTMLElement = null;
-      try {
-        bubble = findUpClassName(target, 'bubble');
-      } catch(err) {}
-      
-      if(!bubble) return;
-
-      if(bubble.classList.contains('is-date') && findUpClassName(target, 'bubble__container')) {
-        if(bubble.classList.contains('is-sticky') && !this.chatInner.classList.contains('is-scrolling')) {
-          return;
-        }
-
-        for(const timestamp in this.dateMessages) {
-          const d = this.dateMessages[timestamp];
-          if(d.div == bubble) {
-            new PopupDatePicker(new Date(+timestamp), this.onDatePick).show();
-            break;
-          }
-        }
-
-        return;
-      }
-
-      // ! Trusted - due to audio autoclick
-      if(this.chat.selection.isSelecting && e.isTrusted) {
-        if(bubble.classList.contains('service') && bubble.dataset.mid === undefined) {
-          return;
-        }
-
-        cancelEvent(e);
-        //console.log('bubble click', e);
-
-        if(isTouchSupported && this.chat.selection.selectedText) {
-          this.chat.selection.selectedText = undefined;
-          return;
-        }
-
-        //this.chatSelection.toggleByBubble(bubble);
-        this.chat.selection.toggleByBubble(findUpClassName(target, 'grouped-item') || bubble);
-        return;
-      }
-
-      const contactDiv: HTMLElement = findUpClassName(target, 'contact');
-      if(contactDiv) {
-        this.chat.appImManager.setInnerPeer(+contactDiv.dataset.peerId);
-        return;
-      }
-
-      //this.log('chatInner click:', target);
-      const isVideoComponentElement = target.tagName == 'SPAN';
-      /* if(isVideoComponentElement) {
-        const video = target.parentElement.querySelector('video') as HTMLElement;
-        if(video) {
-          video.click(); // hot-fix for time and play button
-          return;
-        }
-      } */
-
-      if(bubble.classList.contains('sticker') && target.parentElement.classList.contains('attachment')) {
-        const messageId = +bubble.dataset.mid;
-        const message = appMessagesManager.getMessage(messageId);
-
-        const doc = message.media?.document;
-
-        if(doc?.stickerSetInput) {
-          new PopupStickers(doc.stickerSetInput).show();
-        }
-
-        return;
-      }
-
-      if((target.tagName == 'IMG' && !target.classList.contains('emoji') && target.parentElement.tagName != "AVATAR-ELEMENT" && !target.classList.contains('document-thumb')) 
-        || target.classList.contains('album-item')
-        || isVideoComponentElement
-        || (target.tagName == 'VIDEO' && !bubble.classList.contains('round'))) {
-        let messageId = +findUpClassName(target, 'album-item')?.dataset.mid || +bubble.dataset.mid;
-        let message = appMessagesManager.getMessage(messageId);
-        if(!message) {
-          this.log.warn('no message by messageId:', messageId);
-          return;
-        }
-
-        let targets: {element: HTMLElement, mid: number}[] = [];
-        let ids = Object.keys(this.bubbles).map(k => +k).filter(id => {
-          //if(!this.scrollable.visibleElements.find(e => e.element == this.bubbles[id])) return false;
-  
-          let message = appMessagesManager.getMessage(id);
-          
-          return message.media && (message.media.photo || (message.media.document && (message.media.document.type == 'video' || message.media.document.type == 'gif')) || (message.media.webpage && (message.media.webpage.document || message.media.webpage.photo)));
-        }).sort((a, b) => a - b);
-
-        ids.forEach(id => {
-          let withTail = this.bubbles[id].classList.contains('with-media-tail');
-          let str = '.album-item img, .album-item video, .preview img, .preview video, ';
-          if(withTail) {
-            str += '.bubble__media-container';
-          } else {
-            str += '.attachment img, .attachment video';
-          }
-
-          let elements = this.bubbles[id].querySelectorAll(str) as NodeListOf<HTMLElement>;
-          Array.from(elements).forEach((element: HTMLElement) => {
-            let albumItem = findUpClassName(element, 'album-item');
-            targets.push({
-              element,
-              mid: +albumItem?.dataset.mid || id
-            });
-          });
-        });
-
-        targets.sort((a, b) => a.mid - b.mid);
-
-        let idx = targets.findIndex(t => t.mid == messageId);
-
-        this.log('open mediaViewer single with ids:', ids, idx, targets);
-
-        if(!targets[idx]) {
-          this.log('no target for media viewer!', target);
-          return;
-        }
-
-        new AppMediaViewer().openMedia(message, targets[idx].element, true, 
-          targets.slice(0, idx), targets.slice(idx + 1)/* , !message.grouped_id */);
-        
-        cancelEvent(e);
-        //appMediaViewer.openMedia(message, target as HTMLImageElement);
-        return;
-      }
-      
-      if(['IMG', 'DIV', "AVATAR-ELEMENT"].indexOf(target.tagName) === -1) target = findUpTag(target, 'DIV');
-      
-      if(target.tagName == 'DIV' || target.tagName == "AVATAR-ELEMENT") {
-        if(target.classList.contains('goto-original')) {
-          let savedFrom = bubble.dataset.savedFrom;
-          let splitted = savedFrom.split('_');
-          let peerId = +splitted[0];
-          let msgId = +splitted[1];
-          ////this.log('savedFrom', peerId, msgID);
-          this.chat.appImManager.setInnerPeer(peerId, msgId);
-          return;
-        } else if(target.classList.contains('forward')) {
-          const mid = +bubble.dataset.mid;
-          new PopupForward([mid]);
-          //appSidebarRight.forwardTab.open([mid]);
-          return;
-        } else if(target.classList.contains('name')) {
-          let peerId = +target.dataset.peerId;
-          
-          if(peerId) {
-            this.chat.appImManager.setInnerPeer(peerId);
-          }
-
-          return;
-        } else if(target.tagName == "AVATAR-ELEMENT") {
-          let peerId = +target.getAttribute('peer');
-          
-          if(peerId) {
-            this.chat.appImManager.setInnerPeer(peerId);
-          }
-
-          return;
-        }
-        
-        let isReplyClick = false;
-        
-        try {
-          isReplyClick = !!findUpClassName(e.target, 'reply');
-        } catch(err) {}
-        
-        if(isReplyClick && bubble.classList.contains('is-reply')/*  || bubble.classList.contains('forwarded') */) {
-          this.replyFollowHistory.push(+bubble.dataset.mid);
-          let originalMessageId = +bubble.getAttribute('data-original-mid');
-          this.chat.setPeer(this.peerId, originalMessageId);
-        }
-      } else if(target.tagName == 'IMG' && target.parentElement.tagName == "AVATAR-ELEMENT") {
-        let peerId = +target.parentElement.getAttribute('peer');
-        
-        if(peerId) {
-          this.chat.appImManager.setInnerPeer(peerId);
-        }
-      }
-      
-      //console.log('chatInner click', e);
-    }, {capture: true, passive: false});
+    this.listenerSetter.add(this.bubblesContainer, 'click', this.onBubblesClick/* , {capture: true, passive: false} */);
     
     this.stickyIntersector = new StickyIntersector(this.scrollable.container, (stuck, target) => {
       for(const timestamp in this.dateMessages) {
@@ -585,6 +400,193 @@ export default class ChatBubbles {
       }
     });
   }
+
+  public onBubblesClick = (e: Event) => {
+    let target = e.target as HTMLElement;
+    let bubble: HTMLElement = null;
+    try {
+      bubble = findUpClassName(target, 'bubble');
+    } catch(err) {}
+    
+    if(!bubble) return;
+
+    if(bubble.classList.contains('is-date') && findUpClassName(target, 'bubble__container')) {
+      if(bubble.classList.contains('is-sticky') && !this.chatInner.classList.contains('is-scrolling')) {
+        return;
+      }
+
+      for(const timestamp in this.dateMessages) {
+        const d = this.dateMessages[timestamp];
+        if(d.div == bubble) {
+          new PopupDatePicker(new Date(+timestamp), this.onDatePick).show();
+          break;
+        }
+      }
+
+      return;
+    }
+
+    // ! Trusted - due to audio autoclick
+    if(this.chat.selection.isSelecting && e.isTrusted) {
+      if(bubble.classList.contains('service') && bubble.dataset.mid === undefined) {
+        return;
+      }
+
+      cancelEvent(e);
+      //console.log('bubble click', e);
+
+      if(isTouchSupported && this.chat.selection.selectedText) {
+        this.chat.selection.selectedText = undefined;
+        return;
+      }
+
+      //this.chatSelection.toggleByBubble(bubble);
+      this.chat.selection.toggleByBubble(findUpClassName(target, 'grouped-item') || bubble);
+      return;
+    }
+
+    const contactDiv: HTMLElement = findUpClassName(target, 'contact');
+    if(contactDiv) {
+      this.chat.appImManager.setInnerPeer(+contactDiv.dataset.peerId);
+      return;
+    }
+
+    //this.log('chatInner click:', target);
+    const isVideoComponentElement = target.tagName == 'SPAN';
+    /* if(isVideoComponentElement) {
+      const video = target.parentElement.querySelector('video') as HTMLElement;
+      if(video) {
+        video.click(); // hot-fix for time and play button
+        return;
+      }
+    } */
+
+    if(bubble.classList.contains('sticker') && target.parentElement.classList.contains('attachment')) {
+      const messageId = +bubble.dataset.mid;
+      const message = this.appMessagesManager.getMessage(messageId);
+
+      const doc = message.media?.document;
+
+      if(doc?.stickerSetInput) {
+        new PopupStickers(doc.stickerSetInput).show();
+      }
+
+      return;
+    }
+
+    if((target.tagName == 'IMG' && !target.classList.contains('emoji') && target.parentElement.tagName != "AVATAR-ELEMENT" && !target.classList.contains('document-thumb')) 
+      || target.classList.contains('album-item')
+      || isVideoComponentElement
+      || (target.tagName == 'VIDEO' && !bubble.classList.contains('round'))) {
+      let messageId = +findUpClassName(target, 'album-item')?.dataset.mid || +bubble.dataset.mid;
+      let message = this.appMessagesManager.getMessage(messageId);
+      if(!message) {
+        this.log.warn('no message by messageId:', messageId);
+        return;
+      }
+
+      let targets: {element: HTMLElement, mid: number}[] = [];
+      let ids = Object.keys(this.bubbles).map(k => +k).filter(id => {
+        //if(!this.scrollable.visibleElements.find(e => e.element == this.bubbles[id])) return false;
+
+        let message = this.appMessagesManager.getMessage(id);
+        
+        return message.media && (message.media.photo || (message.media.document && (message.media.document.type == 'video' || message.media.document.type == 'gif')) || (message.media.webpage && (message.media.webpage.document || message.media.webpage.photo)));
+      }).sort((a, b) => a - b);
+
+      ids.forEach(id => {
+        let withTail = this.bubbles[id].classList.contains('with-media-tail');
+        let str = '.album-item img, .album-item video, .preview img, .preview video, ';
+        if(withTail) {
+          str += '.bubble__media-container';
+        } else {
+          str += '.attachment img, .attachment video';
+        }
+
+        let elements = this.bubbles[id].querySelectorAll(str) as NodeListOf<HTMLElement>;
+        Array.from(elements).forEach((element: HTMLElement) => {
+          let albumItem = findUpClassName(element, 'album-item');
+          targets.push({
+            element,
+            mid: +albumItem?.dataset.mid || id
+          });
+        });
+      });
+
+      targets.sort((a, b) => a.mid - b.mid);
+
+      let idx = targets.findIndex(t => t.mid == messageId);
+
+      this.log('open mediaViewer single with ids:', ids, idx, targets);
+
+      if(!targets[idx]) {
+        this.log('no target for media viewer!', target);
+        return;
+      }
+
+      new AppMediaViewer().openMedia(message, targets[idx].element, true, 
+        targets.slice(0, idx), targets.slice(idx + 1)/* , !message.grouped_id */);
+      
+      cancelEvent(e);
+      //appMediaViewer.openMedia(message, target as HTMLImageElement);
+      return;
+    }
+    
+    if(['IMG', 'DIV', "AVATAR-ELEMENT"].indexOf(target.tagName) === -1) target = findUpTag(target, 'DIV');
+    
+    if(target.tagName == 'DIV' || target.tagName == "AVATAR-ELEMENT") {
+      if(target.classList.contains('goto-original')) {
+        let savedFrom = bubble.dataset.savedFrom;
+        let splitted = savedFrom.split('_');
+        let peerId = +splitted[0];
+        let msgId = +splitted[1];
+        ////this.log('savedFrom', peerId, msgID);
+        this.chat.appImManager.setInnerPeer(peerId, msgId);
+        return;
+      } else if(target.classList.contains('forward')) {
+        const mid = +bubble.dataset.mid;
+        new PopupForward([mid]);
+        //appSidebarRight.forwardTab.open([mid]);
+        return;
+      } else if(target.classList.contains('name')) {
+        let peerId = +target.dataset.peerId;
+        
+        if(peerId) {
+          this.chat.appImManager.setInnerPeer(peerId);
+        }
+
+        return;
+      } else if(target.tagName == "AVATAR-ELEMENT") {
+        let peerId = +target.getAttribute('peer');
+        
+        if(peerId) {
+          this.chat.appImManager.setInnerPeer(peerId);
+        }
+
+        return;
+      }
+      
+      let isReplyClick = false;
+      
+      try {
+        isReplyClick = !!findUpClassName(e.target, 'reply');
+      } catch(err) {}
+      
+      if(isReplyClick && bubble.classList.contains('is-reply')/*  || bubble.classList.contains('forwarded') */) {
+        this.replyFollowHistory.push(+bubble.dataset.mid);
+        let originalMessageId = +bubble.getAttribute('data-original-mid');
+        this.chat.setPeer(this.peerId, originalMessageId);
+      }
+    } else if(target.tagName == 'IMG' && target.parentElement.tagName == "AVATAR-ELEMENT") {
+      let peerId = +target.parentElement.getAttribute('peer');
+      
+      if(peerId) {
+        this.chat.appImManager.setInnerPeer(peerId);
+      }
+    }
+    
+    //console.log('chatInner click', e);
+  };
 
   public onGoDownClick() {
     if(this.replyFollowHistory.length) {
