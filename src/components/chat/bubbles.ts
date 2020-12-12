@@ -7,7 +7,7 @@ import type { AppInlineBotsManager } from "../../lib/appManagers/AppInlineBotsMa
 import type { AppPhotosManager } from "../../lib/appManagers/appPhotosManager";
 import type { AppDocsManager } from "../../lib/appManagers/appDocsManager";
 import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
-import { findUpClassName, cancelEvent, findUpTag, CLICK_EVENT_NAME, whichChild, getElementByPoint } from "../../helpers/dom";
+import { findUpClassName, cancelEvent, findUpTag, whichChild, getElementByPoint, attachClickEvent } from "../../helpers/dom";
 import { getObjectKeysAndSort } from "../../helpers/object";
 import { isTouchSupported } from "../../helpers/touchSupport";
 import { logger } from "../../lib/logger";
@@ -1480,7 +1480,7 @@ export default class ChatBubbles {
         containerDiv.append(rowDiv);
       });
 
-      containerDiv.addEventListener(CLICK_EVENT_NAME, (e) => {
+      attachClickEvent(containerDiv, (e) => {
         cancelEvent(e);
         let target = e.target as HTMLElement;
 

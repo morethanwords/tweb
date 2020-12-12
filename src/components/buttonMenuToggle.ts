@@ -14,6 +14,7 @@ const ButtonMenuToggle = (options: Partial<{noRipple: true, onlyMobile: true, li
   return button;
 };
 
+// TODO: refactor for attachClickEvent, because if move finger after touchstart, it will start anyway
 const ButtonMenuToggleHandler = (el: HTMLElement, onOpen?: () => void, options?: AttachClickOptions) => {
   const add = options?.listenerSetter ? options.listenerSetter.add.bind(options.listenerSetter, el) : el.addEventListener.bind(el);
 

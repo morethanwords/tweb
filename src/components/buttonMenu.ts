@@ -23,7 +23,7 @@ const ButtonMenuItem = (options: ButtonMenuItemOptions) => {
   ripple(el);
 
   // * cancel keyboard close
-  attachClickEvent(el, CLICK_EVENT_NAME == 'touchend' ? (e) => {
+  attachClickEvent(el, CLICK_EVENT_NAME !== 'click' ? (e) => {
     cancelEvent(e);
     onClick(e);
     closeBtnMenu();

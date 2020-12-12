@@ -8,7 +8,7 @@ import appStateManager from "../../lib/appManagers/appStateManager";
 import appUsersManager from "../../lib/appManagers/appUsersManager";
 import { MOUNT_CLASS_TO } from "../../lib/mtproto/mtproto_config";
 import rootScope from "../../lib/rootScope";
-import { CLICK_EVENT_NAME, findUpClassName, findUpTag } from "../../helpers/dom";
+import { attachClickEvent, findUpClassName, findUpTag } from "../../helpers/dom";
 import AppSearch, { SearchGroup } from "../appSearch";
 import "../avatar";
 import { parseMenuButtonsTo } from "../misc";
@@ -292,32 +292,32 @@ export class AppSidebarLeft extends SidebarSlider {
 
     this.archivedCount = this.buttons.archived.querySelector('.archived-count') as HTMLSpanElement;
 
-    this.buttons.saved.addEventListener(CLICK_EVENT_NAME, (e) => {
+    attachClickEvent(this.buttons.saved, (e) => {
       ///////this.log('savedbtn click');
       setTimeout(() => { // menu doesn't close if no timeout (lol)
         appImManager.setPeer(appImManager.myId);
       }, 0);
     });
     
-    this.buttons.archived.addEventListener(CLICK_EVENT_NAME, (e) => {
+    attachClickEvent(this.buttons.archived, (e) => {
       this.selectTab(AppSidebarLeft.SLIDERITEMSIDS.archived);
     });
 
-    this.buttons.contacts.addEventListener(CLICK_EVENT_NAME, (e) => {
+    attachClickEvent(this.buttons.contacts, (e) => {
       this.contactsTab.openContacts();
     });
 
-    this.buttons.settings.addEventListener(CLICK_EVENT_NAME, (e) => {
+    attachClickEvent(this.buttons.settings, (e) => {
       this.settingsTab.fillElements();
       this.selectTab(AppSidebarLeft.SLIDERITEMSIDS.settings);
     });
 
-    this.newButtons.channel.addEventListener(CLICK_EVENT_NAME, (e) => {
+    attachClickEvent(this.newButtons.channel, (e) => {
       this.selectTab(AppSidebarLeft.SLIDERITEMSIDS.newChannel);
     });
 
     [this.newButtons.group, this.buttons.newGroup].forEach(btn => {
-      btn.addEventListener(CLICK_EVENT_NAME, (e) => {
+      attachClickEvent(btn, (e) => {
         this.addMembersTab.init(0, 'chat', false, (peerIds) => {
           this.newGroupTab.init(peerIds);
         });

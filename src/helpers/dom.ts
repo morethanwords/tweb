@@ -477,6 +477,7 @@ export const attachClickEvent = (elem: HTMLElement, callback: (e: TouchEvent | M
 
     const onTouchStart = (e: TouchEvent) => {
       const onTouchMove = (e: TouchEvent) => {
+        remove('touchmove', onTouchMove, o);
         remove('touchend', onTouchEnd, o);
       };
   

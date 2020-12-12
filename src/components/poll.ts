@@ -5,7 +5,7 @@ import appPollsManager, { Poll, PollResults } from "../lib/appManagers/appPollsM
 import serverTimeManager from "../lib/mtproto/serverTimeManager";
 import { RichTextProcessor } from "../lib/richtextprocessor";
 import rootScope from "../lib/rootScope";
-import { cancelEvent, CLICK_EVENT_NAME, findUpClassName } from "../helpers/dom";
+import { attachClickEvent, cancelEvent, detachClickEvent, findUpClassName } from "../helpers/dom";
 import { ripple } from "./ripple";
 import appSidebarRight from "./sidebarRight";
 
@@ -338,7 +338,7 @@ export default class PollElement extends HTMLElement {
         this.votersCountDiv.classList.add('hide');
       }
 
-      this.sendVoteBtn.addEventListener(CLICK_EVENT_NAME, (e) => {
+      attachClickEvent(this.sendVoteBtn, (e) => {
         cancelEvent(e);
         /* const indexes = this.answerDivs.filter(el => el.classList.contains('is-chosing')).map(el => +el.dataset.index);
         if(indexes.length) {
@@ -364,7 +364,7 @@ export default class PollElement extends HTMLElement {
       this.performResults(results, poll.chosenIndexes);
     } else if(!this.isClosed) {
       this.setVotersCount(results);
-      this.addEventListener(CLICK_EVENT_NAME, this.clickHandler);
+      attachClickEvent(this, this.clickHandler);
     }
   }
 
@@ -406,7 +406,7 @@ export default class PollElement extends HTMLElement {
       this.descDiv.append(toggleHint);
 
       //let active = false;
-      toggleHint.addEventListener(CLICK_EVENT_NAME, (e) => {
+      attachClickEvent(toggleHint, (e) => {
         cancelEvent(e);
 
         //active = true;
@@ -514,9 +514,9 @@ export default class PollElement extends HTMLElement {
       this.chosenIndexes = chosenIndexes.slice();
 
       if(this.isRetracted) {
-        this.addEventListener(CLICK_EVENT_NAME, this.clickHandler);
+        attachClickEvent(this, this.clickHandler);
       } else {
-        this.removeEventListener(CLICK_EVENT_NAME, this.clickHandler);
+        detachClickEvent(this, this.clickHandler);
       }
     }
     

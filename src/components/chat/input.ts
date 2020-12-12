@@ -11,7 +11,7 @@ import apiManager from "../../lib/mtproto/mtprotoworker";
 //import Recorder from '../opus-recorder/dist/recorder.min';
 import opusDecodeController from "../../lib/opusDecodeController";
 import RichTextProcessor from "../../lib/richtextprocessor";
-import { blurActiveElement, cancelEvent, cancelSelection, CLICK_EVENT_NAME, findUpClassName, getRichValue, getSelectedNodes, isInputEmpty, markdownTags, MarkdownType, placeCaretAtEnd, serializeNodes } from "../../helpers/dom";
+import { attachClickEvent, blurActiveElement, cancelEvent, cancelSelection, findUpClassName, getRichValue, getSelectedNodes, isInputEmpty, markdownTags, MarkdownType, placeCaretAtEnd, serializeNodes } from "../../helpers/dom";
 import { ButtonMenuItemOptions } from '../buttonMenu';
 import emoticonsDropdown from "../emoticonsDropdown";
 import PopupCreatePoll from "../popupCreatePoll";
@@ -123,10 +123,10 @@ export default class ChatInput {
     this.goDownBtn.append(this.goDownUnreadBadge);
     this.chatInput.append(this.goDownBtn);
 
-    this.listenerSetter.add(this.goDownBtn, CLICK_EVENT_NAME, (e) => {
+    attachClickEvent(this.goDownBtn, (e) => {
       cancelEvent(e);
       this.chat.bubbles.onGoDownClick();
-    });
+    }, {listenerSetter: this.listenerSetter});
 
     // * constructor end
   }
@@ -260,7 +260,23 @@ export default class ChatInput {
       this.fileInput.value = '';
     }, false);
 
-    this.listenerSetter.add(this.btnSend, CLICK_EVENT_NAME, this.onBtnSendClick);
+    /* let time = Date.now();
+    this.btnSend.addEventListener('touchstart', (e) => {
+      time = Date.now();
+    });
+
+    let eventName1 = 'touchend';
+    this.btnSend.addEventListener(eventName1, (e: Event) => {
+      //cancelEvent(e);
+      console.log(eventName1 + ', time: ' + (Date.now() - time));
+    });
+
+    let eventName = 'mousedown';
+    this.btnSend.addEventListener(eventName, (e: Event) => {
+      cancelEvent(e);
+      console.log(eventName + ', time: ' + (Date.now() - time));
+    }); */
+    attachClickEvent(this.btnSend, this.onBtnSendClick, {listenerSetter: this.listenerSetter});
 
     if(this.recorder) {
       const onCancelRecordClick = (e: Event) => {
@@ -269,7 +285,7 @@ export default class ChatInput {
         this.recorder.stop();
         opusDecodeController.setKeepAlive(false);
       };
-      this.listenerSetter.add(this.btnCancelRecord, CLICK_EVENT_NAME, onCancelRecordClick);
+      attachClickEvent(this.btnCancelRecord, onCancelRecordClick, {listenerSetter: this.listenerSetter});
 
       this.recorder.onstop = () => {
         this.recording = false;
@@ -308,8 +324,8 @@ export default class ChatInput {
       };
     }
 
-    this.listenerSetter.add(this.replyElements.cancelBtn, CLICK_EVENT_NAME, this.onHelperCancel);
-    this.listenerSetter.add(this.replyElements.container, CLICK_EVENT_NAME, this.onHelperClick);
+    attachClickEvent(this.replyElements.cancelBtn, this.onHelperCancel, {listenerSetter: this.listenerSetter});
+    attachClickEvent(this.replyElements.container, this.onHelperClick, {listenerSetter: this.listenerSetter});
   }
 
   public constructPinnedHelpers() {

@@ -5,7 +5,7 @@ import { parseMenuButtonsTo } from "../../misc";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
 import appSidebarLeft, { AppSidebarLeft } from "..";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
-import { CLICK_EVENT_NAME } from "../../../helpers/dom";
+import { attachClickEvent } from "../../../helpers/dom";
 
 export default class AppSettingsTab implements SliderTab {
   private container = document.querySelector('.settings-container') as HTMLDivElement;
@@ -31,7 +31,7 @@ export default class AppSettingsTab implements SliderTab {
       this.fillElements();
     }); */
 
-    this.logOutBtn.addEventListener(CLICK_EVENT_NAME, (e) => {
+    attachClickEvent(this.logOutBtn, (e) => {
       apiManager.logOut();
     });
 
