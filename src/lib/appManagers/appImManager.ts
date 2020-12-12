@@ -222,7 +222,7 @@ export class AppImManager {
       // @ts-ignore
       const isFiles = _types.contains ? _types.contains('Files') : _types.indexOf('Files') >= 0;
 
-      if(!isFiles) { // * skip dragging text case
+      if(!isFiles || !this.canDrag()) { // * skip dragging text case
         counter = 0;
         return;
       }
@@ -318,11 +318,13 @@ export class AppImManager {
     dropsContainer.classList.add('drops-container');
   }
 
-  private onDocumentPaste = (e: ClipboardEvent | DragEvent, attachType?: 'media' | 'document') => {
+  private canDrag() {
     const peerId = this.chat?.peerId;
-    if(!peerId || rootScope.overlayIsActive || (peerId < 0 && !appChatsManager.hasRights(peerId, 'send', 'send_media'))) {
-      return;
-    }
+    return !(!peerId || rootScope.overlayIsActive || (peerId < 0 && !appChatsManager.hasRights(peerId, 'send', 'send_media')));
+  }
+
+  private onDocumentPaste = (e: ClipboardEvent | DragEvent, attachType?: 'media' | 'document') => {
+    if(!this.canDrag()) return;
 
     //console.log('document paste');
     //console.log('item', event.clipboardData.getData());
