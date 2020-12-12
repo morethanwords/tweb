@@ -252,7 +252,16 @@ export default class ChatSelection {
         // ! CANCEL USER SELECTION !
         cancelSelection();
       }
-    }
+    }/*  else {
+      if(!wasSelecting) {
+        bubblesContainer.classList.add('no-select');
+        setTimeout(() => {
+          cancelSelection();
+          bubblesContainer.classList.remove('no-select');
+          cancelSelection();
+        }, 100);
+      }
+    } */
 
     blurActiveElement(); // * for mobile keyboards
 

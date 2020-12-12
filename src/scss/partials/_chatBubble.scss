@@ -238,8 +238,12 @@ $bubble-margin: .25rem;
     transition: .2s transform;
     user-select: none;
 
-    html.no-touch .bubbles:not(.is-selecting) &,
+    /* html.no-touch .bubbles:not(.is-selecting) &,
     html.is-touch .bubbles.is-selecting:not(.no-select) & {
+      user-select: text;
+    } */
+    html.no-touch .bubbles:not(.is-selecting) &,
+    html.is-touch body:not(.no-select) .bubbles.is-selecting & { // * need no-select on body because chat-input transforms in channels
       user-select: text;
     }
 

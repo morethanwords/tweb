@@ -117,9 +117,9 @@ export default class ChatContextMenu {
         if(chat.selection.isSelecting) return;
 
         // * these two lines will fix instant text selection on iOS Safari
-        attachTo.classList.add('no-select');
+        document.body.classList.add('no-select'); // * need no-select on body because chat-input transforms in channels
         attachTo.addEventListener('touchend', () => {
-          attachTo.classList.remove('no-select');
+          document.body.classList.remove('no-select');
         }, {once: true});
 
         cancelSelection();
