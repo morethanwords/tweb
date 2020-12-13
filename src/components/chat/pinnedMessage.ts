@@ -11,7 +11,6 @@ import { cancelEvent, findUpClassName, getElementByPoint, handleScrollSideEvent 
 import Chat from "./chat";
 import ListenerSetter from "../../helpers/listenerSetter";
 import ButtonIcon from "../buttonIcon";
-import { RIGHT_COLUMN_ACTIVE_CLASSNAME } from "../sidebarRight";
 
 class AnimatedSuper {
   static DURATION = 200;
@@ -203,6 +202,7 @@ export default class ChatPinnedMessage {
   public pinnedMid = 0;
   public pinnedIndex = -1;
   public wasPinnedIndex = 0;
+  public wasPinnedMediaIndex = 0;
   
   public locked = false;
   public waitForScrollBottom = false;
@@ -566,7 +566,8 @@ export default class ChatPinnedMessage {
         //if(this.wasPinnedIndex != this.pinnedIndex) {
           this.animatedSubtitle.animate(pinnedIndex, this.wasPinnedIndex);
           if(isMediaSet) {
-            this.animatedMedia.animate(pinnedIndex, this.wasPinnedIndex);
+            this.animatedMedia.animate(pinnedIndex, this.wasPinnedMediaIndex); // * wasPinnedMediaIndex из-за того, что блок меняется с другим алгоритмом
+            this.wasPinnedMediaIndex = pinnedIndex;
           } else {
             this.animatedMedia.clearRows();
           }
