@@ -870,6 +870,7 @@ img.emoji {
 
 .animated-super {
   &-row {
+    --translateY: 100%;
     position: absolute;
     left: 0;
     top: 0;
@@ -877,15 +878,23 @@ img.emoji {
     bottom: 0;
     transition: transform var(--pm-transition), opacity var(--pm-transition);
 
+    /* &:not(.is-hiding) {
+      transform: none !important;
+    } */
+
     &.is-hiding {
       opacity: 0;
 
       &.from-top {
-        transform: translateY(-100%);
+        transform: translate3d(0, calc(var(--translateY) * -1), 0);
+        //transform: translateY(calc(var(--translateY) * -1));
+        //transform: translateY(-100%);
       }
 
       &.from-bottom {
-        transform: translateY(100%);
+        transform: translate3d(0, var(--translateY), 0);
+        //transform: translateY(var(--translateY));
+        //transform: translateY(100%);
       }
       
       /* &.backwards {

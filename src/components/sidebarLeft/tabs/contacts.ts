@@ -5,7 +5,7 @@ import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import appPhotosManager from "../../../lib/appManagers/appPhotosManager";
 import appSidebarLeft, { AppSidebarLeft } from "..";
 import rootScope from "../../../lib/rootScope";
-import SearchInput from "../../searchInput";
+import InputSearch from "../../inputSearch";
 
 // TODO: поиск по людям глобальный, если не нашло в контактах никого
 
@@ -15,7 +15,7 @@ export default class AppContactsTab implements SliderTab {
   private scrollable: Scrollable;
   private promise: Promise<void>;
 
-  private searchInput: SearchInput;
+  private inputSearch: InputSearch;
 
   init() {
     this.container = document.getElementById('contacts-container');
@@ -24,12 +24,12 @@ export default class AppContactsTab implements SliderTab {
     appDialogsManager.setListClickListener(this.list);
     this.scrollable = new Scrollable(this.list.parentElement);
 
-    this.searchInput = new SearchInput('Search', (value) => {
+    this.inputSearch = new InputSearch('Search', (value) => {
       this.list.innerHTML = '';
       this.openContacts(value);
     });
 
-    this.container.firstElementChild.append(this.searchInput.container);
+    this.container.firstElementChild.append(this.inputSearch.container);
 
     // preload contacts
     // appUsersManager.getContacts();
@@ -43,7 +43,7 @@ export default class AppContactsTab implements SliderTab {
 
   public onCloseAfterTimeout() {
     this.list.innerHTML = '';
-    this.searchInput.value = '';
+    this.inputSearch.value = '';
   }
 
   public openContacts(query?: string) {

@@ -1,16 +1,15 @@
 import type ChatTopbar from "./topbar";
-import rootScope from "../../lib/rootScope";
 import { cancelEvent, whichChild, findUpTag } from "../../helpers/dom";
 import AppSearch, { SearchGroup } from "../appSearch";
 import PopupDatePicker from "../popupDatepicker";
 import { ripple } from "../ripple";
-import SearchInput from "../searchInput";
+import InputSearch from "../inputSearch";
 import type Chat from "./chat";
 
 export default class ChatSearch {
   private element: HTMLElement;
   private backBtn: HTMLElement;
-  private searchInput: SearchInput;
+  private inputSearch: InputSearch;
 
   private results: HTMLElement;
 
@@ -39,7 +38,7 @@ export default class ChatSearch {
     this.backBtn.addEventListener('click', () => {
       this.topbar.container.classList.remove('hide-pinned');
       this.element.remove();
-      this.searchInput.remove();
+      this.inputSearch.remove();
       this.results.remove();
       this.footer.remove();
       this.footer.removeEventListener('click', this.onFooterClick);
@@ -50,7 +49,7 @@ export default class ChatSearch {
       this.chat.bubbles.bubblesContainer.classList.remove('search-results-active');
     }, {once: true});
 
-    this.searchInput = new SearchInput('Search');
+    this.inputSearch = new InputSearch('Search');
     
     // Results
     this.results = document.createElement('div');
@@ -59,13 +58,13 @@ export default class ChatSearch {
     this.searchGroup = new SearchGroup('', 'messages', undefined, '', false);
     this.searchGroup.list.addEventListener('click', this.onResultsClick);
 
-    this.appSearch = new AppSearch(this.results, this.searchInput, {
+    this.appSearch = new AppSearch(this.results, this.inputSearch, {
       messages: this.searchGroup
     }, (count) => {
       this.foundCount = count;
 
       if(!this.foundCount) {
-        this.foundCountEl.innerText = this.searchInput.value ? 'No results' : '';
+        this.foundCountEl.innerText = this.inputSearch.value ? 'No results' : '';
         this.results.classList.remove('active');
         this.chat.bubbles.bubblesContainer.classList.remove('search-results-active');
         this.upBtn.setAttribute('disabled', 'true');
@@ -113,12 +112,12 @@ export default class ChatSearch {
     this.topbar.container.parentElement.insertBefore(this.footer, chat.input.chatInput);
 
     // Append container
-    this.element.append(this.backBtn, this.searchInput.container);
+    this.element.append(this.backBtn, this.inputSearch.container);
 
     this.topbar.container.classList.add('hide-pinned');
     this.topbar.container.parentElement.append(this.element);
 
-    this.searchInput.input.focus();
+    this.inputSearch.input.focus();
   }
 
   onDateClick = (e: MouseEvent) => {

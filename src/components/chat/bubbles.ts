@@ -35,6 +35,7 @@ import LazyLoadQueue from "../lazyLoadQueue";
 import { AppChatsManager } from "../../lib/appManagers/appChatsManager";
 import Chat from "./chat";
 import ListenerSetter from "../../helpers/listenerSetter";
+import { pause } from "../../helpers/schedulers";
 
 const IGNORE_ACTIONS = ['messageActionHistoryClear'];
 
@@ -1122,10 +1123,13 @@ export default class ChatBubbles {
         if(!bubble?.parentElement) {
           bubble = this.findNextMountedBubbleByMsgId(lastMsgId);
         }
-
-        this.scrollable.scrollIntoView(bubble, samePeer/* , fromUp */);
-        if(!forwardingUnread) {
-          this.highlightBubble(bubble);
+        
+        // ! sometimes there can be no bubble
+        if(bubble) {
+          this.scrollable.scrollIntoView(bubble, samePeer/* , fromUp */);
+          if(!forwardingUnread) {
+            this.highlightBubble(bubble);
+          }
         }
       } else {
         this.scrollable.scrollTop = this.scrollable.scrollHeight;
@@ -1263,7 +1267,9 @@ export default class ChatBubbles {
               }
             });
 
-            resolve();
+            //setTimeout(() => {
+              resolve();
+            //}, 500);
             this.messagesQueuePromise = null;
           }, reject);
         }, 0);

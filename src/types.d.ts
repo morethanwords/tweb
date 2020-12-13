@@ -35,6 +35,12 @@ export type Modify<T, R> = Omit<T, keyof R> & R;
 
 export type ArgumentTypes<F extends Function> = F extends (...args: infer A) => any ? A : never;
 
+export type AnyLiteral = Record<string, any>;
+export type AnyClass = new (...args: any[]) => any;
+export type AnyFunction = (...args: any) => any;
+export type AnyToVoidFunction = (...args: any) => void;
+export type NoneToVoidFunction = () => void;
+
 export type AuthState = AuthState.signIn | AuthState.authCode | AuthState.password | AuthState.signUp | AuthState.signedIn;
 export namespace AuthState {
   export type signIn = {

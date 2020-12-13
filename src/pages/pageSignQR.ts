@@ -8,6 +8,7 @@ import { App } from '../lib/mtproto/mtproto_config';
 import serverTimeManager from '../lib/mtproto/serverTimeManager';
 import { AuthAuthorization, AuthLoginToken } from '../layer';
 import { bytesCmp, bytesToBase64 } from '../helpers/bytes';
+import { pause } from '../helpers/schedulers';
 
 let onFirstMount = async() => {
   const pageElement = page.pageEl;
@@ -102,7 +103,7 @@ let onFirstMount = async() => {
         let timestamp = Date.now() / 1000;
         let diff = loginToken.expires - timestamp - serverTimeManager.serverTimeOffset;
   
-        await new Promise((resolve, reject) => setTimeout(resolve, diff > 5 ? 5e3 : 1e3 * diff | 0));
+        await pause(diff > 5 ? 5e3 : 1e3 * diff | 0);
       } catch(err) {
         switch(err.type) {
           case 'SESSION_PASSWORD_NEEDED':

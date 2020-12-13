@@ -699,7 +699,17 @@ class TLDeserialization {
       }
 
       if(!constructorData) {
-        throw new Error('Constructor not found: ' + constructor + ' ' + this.fetchInt() + ' ' + this.fetchInt() + ' ' + field);
+        console.error('Constructor not found:', constructor);
+        
+        let int1: number, int2: number;
+        try {
+          int1 = this.fetchInt(field);
+          int2 = this.fetchInt(field);
+        } catch(err) {
+
+        }
+
+        throw new Error('Constructor not found: ' + constructor + ' ' + int1 + ' ' + int2 + ' ' + field);
       }
     }
   

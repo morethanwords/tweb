@@ -1,5 +1,5 @@
 import { SliderTab } from "../../slider";
-import SearchInput from "../../searchInput";
+import InputSearch from "../../inputSearch";
 import Scrollable from "../../scrollable";
 import animationIntersector from "../../animationIntersector";
 import appSidebarRight, { AppSidebarRight } from "..";
@@ -18,7 +18,7 @@ export default class AppGifsTab implements SliderTab {
   private contentDiv = this.container.querySelector('.sidebar-content') as HTMLDivElement;
   private backBtn = this.container.querySelector('.sidebar-close-button') as HTMLButtonElement;
   //private input = this.container.querySelector('#stickers-search') as HTMLInputElement;
-  private searchInput: SearchInput;
+  private inputSearch: InputSearch;
   private gifsDiv = this.contentDiv.firstElementChild as HTMLDivElement;
   private scrollable: Scrollable;
 
@@ -35,14 +35,14 @@ export default class AppGifsTab implements SliderTab {
     
     this.masonry = new GifsMasonry(this.gifsDiv, ANIMATIONGROUP, this.scrollable);
 
-    this.searchInput = new SearchInput('Search GIFs', (value) => {
+    this.inputSearch = new InputSearch('Search GIFs', (value) => {
       this.reset();
       this.search(value);
     });
 
     this.gifsDiv.addEventListener('click', this.onGifsClick);
 
-    this.backBtn.parentElement.append(this.searchInput.container);
+    this.backBtn.parentElement.append(this.inputSearch.container);
   }
 
   onGifsClick = (e: MouseEvent) => {
@@ -66,7 +66,7 @@ export default class AppGifsTab implements SliderTab {
   public onCloseAfterTimeout() {
     this.reset();
     this.gifsDiv.innerHTML = '';
-    this.searchInput.value = '';
+    this.inputSearch.value = '';
     animationIntersector.checkAnimations(undefined, ANIMATIONGROUP);
   }
 
@@ -86,7 +86,7 @@ export default class AppGifsTab implements SliderTab {
       this.reset();
 
       this.scrollable.onScrolledBottom = () => {
-        this.search(this.searchInput.value, false);
+        this.search(this.inputSearch.value, false);
       };
     });
   }
@@ -102,7 +102,7 @@ export default class AppGifsTab implements SliderTab {
       this.searchPromise = appInlineBotsManager.getInlineResults(0, this.gifBotPeerId, query, this.nextOffset);
       const { results, next_offset } = await this.searchPromise;
 
-      if(this.searchInput.value != query) {
+      if(this.inputSearch.value != query) {
         return;
       }
 

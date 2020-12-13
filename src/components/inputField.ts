@@ -34,6 +34,22 @@ let init = () => {
   init = null;
 };
 
+const checkAndSetRTL = (input: HTMLElement) => {
+  //const isEmpty = isInputEmpty(input);
+  //console.log('input', isEmpty);
+
+  //const char = [...getRichValue(input)][0];
+  const char = (input instanceof HTMLInputElement ? input.value : input.innerText)[0];
+  let direction = 'ltr';
+  if(char && checkRTL(char)) {
+    direction = 'rtl';
+  }
+
+  //console.log('RTL', direction, char);
+
+  input.style.direction = direction;
+};
+
 const InputField = (options: {
   placeholder?: string, 
   label?: string, 
@@ -51,6 +67,7 @@ const InputField = (options: {
 
   const {placeholder, label, maxLength, showLengthOn, name, plainText} = options;
 
+  let input: HTMLElement;
   if(!plainText) {
     if(init) {
       init();
@@ -61,21 +78,9 @@ const InputField = (options: {
     ${label ? `<label>${label}</label>` : ''}
     `;
 
-    const input = div.firstElementChild as HTMLElement;
-    const observer = new MutationObserver((mutationsList, observer) => {
-      //const isEmpty = isInputEmpty(input);
-      //console.log('input', isEmpty);
-
-      //const char = [...getRichValue(input)][0];
-      const char = input.innerText[0];
-      let direction = 'ltr';
-      if(char && checkRTL(char)) {
-        direction = 'rtl';
-      }
-
-      //console.log('RTL', direction, char);
-
-      input.style.direction = direction;
+    input = div.firstElementChild as HTMLElement;
+    const observer = new MutationObserver(() => {
+      checkAndSetRTL(input);
 
       if(processInput) {
         processInput();
@@ -86,21 +91,23 @@ const InputField = (options: {
     observer.observe(input, {characterData: true, childList: true, subtree: true});
   } else {
     div.innerHTML = `
-    <input type="text" name="${name}" ${placeholder ? `placeholder="${placeholder}"` : ''} autocomplete="off" required="" class="input-field-input">
+    <input type="text" ${name ? `name="${name}"` : ''} ${placeholder ? `placeholder="${placeholder}"` : ''} autocomplete="off" ${label ? 'required=""' : ''} class="input-field-input">
     ${label ? `<label>${label}</label>` : ''}
     `;
+
+    input = div.firstElementChild as HTMLElement;
+    input.addEventListener('input', () => checkAndSetRTL(input));
   }
 
   let processInput: () => void;
   if(maxLength) {
-    const input = div.firstElementChild as HTMLInputElement;
     const labelEl = div.lastElementChild as HTMLLabelElement;
     let showingLength = false;
 
     processInput = () => {
       const wasError = input.classList.contains('error');
       // * https://stackoverflow.com/a/54369605 #2 to count emoji as 1 symbol
-      const inputLength = plainText ? input.value.length : [...getRichValue(input)].length;
+      const inputLength = plainText ? (input as HTMLInputElement).value.length : [...getRichValue(input)].length;
       const diff = maxLength - inputLength;
       const isError = diff < 0;
       input.classList.toggle('error', isError);
@@ -117,7 +124,10 @@ const InputField = (options: {
     input.addEventListener('input', processInput);
   }
 
-  return {container: div, input: div.firstElementChild as HTMLInputElement};
+  return {
+    container: div, 
+    input: div.firstElementChild as HTMLInputElement
+  };
 };
 
 export default InputField;

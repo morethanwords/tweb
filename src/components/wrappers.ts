@@ -572,7 +572,7 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
     });
   };
 
-  return cacheContext.downloaded || !lazyLoadQueue ? load() : (lazyLoadQueue.push({div: container, load: load, wasSeen: true}), Promise.resolve());
+  return cacheContext.downloaded || !lazyLoadQueue ? load() : (lazyLoadQueue.push({div: container, load/* : load, wasSeen: true */}), Promise.resolve());
 }
 
 export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, onlyThumb, emoji, width, height, withThumb, loop}: {
@@ -813,7 +813,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
     }
   }; 
   
-  return lazyLoadQueue && (!doc.downloaded || stickerType == 2) ? (lazyLoadQueue.push({div, load, wasSeen: group == 'chat' && stickerType != 2}), Promise.resolve()) : load();
+  return lazyLoadQueue && (!doc.downloaded || stickerType == 2) ? (lazyLoadQueue.push({div, load/* , wasSeen: group == 'chat' && stickerType != 2 */}), Promise.resolve()) : load();
 }
 
 export function wrapReply(title: string, subtitle: string, message?: any) {

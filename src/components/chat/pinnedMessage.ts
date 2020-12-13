@@ -11,6 +11,7 @@ import { cancelEvent, findUpClassName, getElementByPoint, handleScrollSideEvent 
 import Chat from "./chat";
 import ListenerSetter from "../../helpers/listenerSetter";
 import ButtonIcon from "../buttonIcon";
+import { debounce } from "../../helpers/schedulers";
 
 class AnimatedSuper {
   static DURATION = 200;
@@ -94,6 +95,17 @@ class AnimatedSuper {
     row.element.classList.toggle('is-hiding', false);
     previousRow && previousRow.element.classList.toggle('is-hiding', true);
 
+    /* const height = row.element.getBoundingClientRect().height;
+    row.element.style.transform = `translateY(${fromTop ? height * -1 : height}px)`;
+    if(previousRow) {
+      previousRow.element.style.transform = `translateY(${fromTop ? height : height * -1}px)`;
+    } */
+
+    /* row.element.style.setProperty('--height', row.element.getBoundingClientRect().height + 'px');
+    if(previousRow) {
+      previousRow.element.style.setProperty('--height', previousRow.element.getBoundingClientRect().height + 'px');
+    } */
+    
     this.clearRows(index);
   }
 }
@@ -227,6 +239,8 @@ export default class ChatPinnedMessage {
   public getCurrentIndexPromise: Promise<any> = null;
   public btnOpen: HTMLButtonElement;
   
+  public setPinnedMessage: () => void;
+  
   constructor(private topbar: ChatTopbar, private chat: Chat, private appMessagesManager: AppMessagesManager, private appPeersManager: AppPeersManager) {
     this.listenerSetter = new ListenerSetter();
 
@@ -290,6 +304,10 @@ export default class ChatPinnedMessage {
         this.pinnedMessageContainer.toggle(this.hidden = true);
       }
     });
+
+    // * 200 - no lags
+    // * 100 - need test
+    this.setPinnedMessage = debounce(() => this._setPinnedMessage(), 100, true, true);
   }
 
   public destroy() {
@@ -300,6 +318,8 @@ export default class ChatPinnedMessage {
   }
 
   public setCorrectIndex(lastScrollDirection?: number) {
+    //return;
+
     if(this.locked || this.hidden/*  || this.chat.setPeerPromise || this.chat.bubbles.messagesQueuePromise */) {
       return;
     }
@@ -314,6 +334,8 @@ export default class ChatPinnedMessage {
     if(!el) return;
     el = findUpClassName(el, 'bubble');
     if(!el) return;
+
+    //return;
 
     const mid = el.dataset.mid;
     if(el && mid !== undefined) {
@@ -517,7 +539,7 @@ export default class ChatPinnedMessage {
       /* || (!this.chatAudio.divAndCaption.container.classList.contains('hide') && to == ScreenSize.medium) */);
   }
 
-  public setPinnedMessage() {
+  public _setPinnedMessage() {
     /////this.log('setting pinned message', message);
     //return;
     /* const promise: Promise<any> = this.chat.setPeerPromise || this.chat.bubbles.messagesQueuePromise || Promise.resolve();

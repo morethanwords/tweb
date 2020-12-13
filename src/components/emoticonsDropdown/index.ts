@@ -13,6 +13,7 @@ import StickyIntersector from "../stickyIntersector";
 import EmojiTab from "./tabs/emoji";
 import GifsTab from "./tabs/gifs";
 import StickersTab from "./tabs/stickers";
+import { pause } from "../../helpers/schedulers";
 
 export const EMOTICONSSTICKERGROUP = 'emoticons-dropdown';
 
@@ -211,9 +212,7 @@ export class EmoticonsDropdown {
         appImManager.chat.input.saveScroll();
         // @ts-ignore
         document.activeElement.blur();
-        await new Promise((resolve) => {
-          setTimeout(resolve, 100);
-        });
+        await pause(100);
       }
     }
 

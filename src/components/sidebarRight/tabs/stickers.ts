@@ -1,5 +1,5 @@
 import { SliderTab } from "../../slider";
-import SearchInput from "../../searchInput";
+import InputSearch from "../../inputSearch";
 import Scrollable from "../../scrollable";
 import LazyLoadQueue from "../../lazyLoadQueue";
 import { findUpClassName } from "../../../helpers/dom";
@@ -17,7 +17,7 @@ export default class AppStickersTab implements SliderTab {
   private contentDiv = this.container.querySelector('.sidebar-content') as HTMLDivElement;
   private backBtn = this.container.querySelector('.sidebar-close-button') as HTMLButtonElement;
   //private input = this.container.querySelector('#stickers-search') as HTMLInputElement;
-  private searchInput: SearchInput;
+  private inputSearch: InputSearch;
   private setsDiv = this.contentDiv.firstElementChild as HTMLDivElement;
   private scrollable: Scrollable;
   private lazyLoadQueue: LazyLoadQueue;
@@ -27,11 +27,11 @@ export default class AppStickersTab implements SliderTab {
 
     this.lazyLoadQueue = new LazyLoadQueue();
 
-    this.searchInput = new SearchInput('Search Stickers', (value) => {
+    this.inputSearch = new InputSearch('Search Stickers', (value) => {
       this.search(value);
     });
 
-    this.backBtn.parentElement.append(this.searchInput.container);
+    this.backBtn.parentElement.append(this.inputSearch.container);
 
     this.setsDiv.addEventListener('click', (e) => {
       const sticker = findUpClassName(e.target, 'sticker-set-sticker');
@@ -76,7 +76,7 @@ export default class AppStickersTab implements SliderTab {
 
   public onCloseAfterTimeout() {
     this.setsDiv.innerHTML = '';
-    this.searchInput.value = '';
+    this.inputSearch.value = '';
     animationIntersector.checkAnimations(undefined, 'STICKERS-SEARCH');
   }
 
@@ -188,7 +188,7 @@ export default class AppStickersTab implements SliderTab {
 
   public renderFeatured() {
     return appStickersManager.getFeaturedStickers().then(coveredSets => {
-      if(this.searchInput.value) {
+      if(this.inputSearch.value) {
         return;
       }
 
@@ -225,7 +225,7 @@ export default class AppStickersTab implements SliderTab {
     }
 
     return appStickersManager.searchStickerSets(query, false).then(coveredSets => {
-      if(this.searchInput.value != query) {
+      if(this.inputSearch.value != query) {
         return;
       }
 

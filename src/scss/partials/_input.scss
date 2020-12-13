@@ -47,15 +47,17 @@
   }
   
   input, &-input {
+    --height: 54px;
+    --padding: 1rem;
     --border-width: 1px;
     --border-width-top: 2px;
     border: var(--border-width) solid #DADCE0;
     border-radius: $border-radius-medium;
     //padding: 0 1rem;
-    padding: calc(1rem - var(--border-width-top)) calc(1rem - var(--border-width));
+    padding: calc(var(--padding) - var(--border-width-top)) calc(var(--padding) - var(--border-width));
     box-sizing: border-box;
     width: 100%;
-    min-height: 54px;
+    min-height: var(--height);
     transition: .2s border-color;
     position: relative;
     z-index: 1;
@@ -126,7 +128,7 @@
       transform: none;
       padding: 0 5px;
       left: .75rem;
-      font-size: 0.75rem!important;
+      font-size: .75rem!important;
       //color: #666;
       opacity: 1;
     }
@@ -143,11 +145,11 @@
 }
 
 :-ms-input-placeholder { /* Internet Explorer 10-11 */
-  color: #a2acb4;
+  color: #909192;
 }
 
 ::-ms-input-placeholder { /* Microsoft Edge */
-  color: #a2acb4;
+  color: #909192;
 }
 
 input:focus, button:focus {
@@ -179,5 +181,76 @@ input:focus, button:focus {
 
   100% {
     transform: translateX(0);
+  }
+}
+
+.input-search {
+  position: relative;
+  width: 100%;
+  //Vozmojno nado budet vernut margin-left: 22px;, tak kak eto vrode v levom bare tak po verstke, a v pravom bare dlya mobili nado 16, gde stiker seti 
+  margin-left: 22px;
+  margin-right: 4px;
+  overflow: hidden;
+
+  @include respond-to(handhelds) {
+    margin-left: 16px;
+  }
+
+  &-input {
+    --height: 40px;
+    background-color: var(--color-gray-hover);
+    padding: 0px calc(42px - var(--border-width));
+    height: var(--height);
+    max-height: var(--height);
+    //line-height: calc(var(--height) + 2px - var(--border-width) * 2);
+    border-radius: 22px;
+    transition: background-color .2s ease-in-out, border-color .2s ease-in-out;
+    border-color: transparent;
+
+    &:hover {
+      border-color: var(--color-gray);
+    }
+
+    &:focus {
+      --border-width: 2px;
+      background-color: transparent;
+      border-color: $button-primary-background;
+
+      & + .tgico {
+        color: $button-primary-background;
+        opacity: 1;
+      }
+    }
+
+    /* &:empty:before {
+      color: #909192 !important;
+    } */
+
+    /* &:empty ~ .tgico-close,  */&:placeholder-shown ~ .tgico-close {
+      display: none;
+    }
+  }
+
+  .tgico {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    text-align: center;
+    font-size: 24px;
+    color: $color-gray;
+    opacity: .6;
+    transition: all .2s ease-out;
+
+    &:before {
+      vertical-align: middle;
+    }
+  }
+
+  .tgico-close {
+    left: auto;
+    right: 0px;
+    top: 48%;
+    z-index: 1;
   }
 }

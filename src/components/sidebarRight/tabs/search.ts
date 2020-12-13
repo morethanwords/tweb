@@ -1,13 +1,13 @@
 import appSidebarRight, { AppSidebarRight } from "..";
 import AppSearch, { SearchGroup } from "../../appSearch";
-import SearchInput from "../../searchInput";
+import InputSearch from "../../inputSearch";
 import { SliderTab } from "../../slider";
 
 export default class AppPrivateSearchTab implements SliderTab {
   public container: HTMLElement;
   public closeBtn: HTMLElement;
 
-  private searchInput: SearchInput;
+  private inputSearch: InputSearch;
   private appSearch: AppSearch;
 
   private peerId = 0;
@@ -24,9 +24,9 @@ export default class AppPrivateSearchTab implements SliderTab {
   public init() {
     this.container = document.getElementById('search-private-container');
     this.closeBtn = this.container.querySelector('.sidebar-close-button');
-    this.searchInput = new SearchInput('Search');
-    this.closeBtn.parentElement.append(this.searchInput.container);
-    this.appSearch = new AppSearch(this.container.querySelector('.chatlist-container'), this.searchInput, {
+    this.inputSearch = new InputSearch('Search');
+    this.closeBtn.parentElement.append(this.inputSearch.container);
+    this.appSearch = new AppSearch(this.container.querySelector('.chatlist-container'), this.inputSearch, {
       messages: new SearchGroup('Private Search', 'messages')
     });
   }

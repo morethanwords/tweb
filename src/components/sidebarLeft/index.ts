@@ -13,7 +13,7 @@ import AppSearch, { SearchGroup } from "../appSearch";
 import "../avatar";
 import { parseMenuButtonsTo } from "../misc";
 import { ScrollableX } from "../scrollable";
-import SearchInput from "../searchInput";
+import InputSearch from "../inputSearch";
 import SidebarSlider from "../slider";
 import { TransitionSlider } from "../transition";
 import AppAddMembersTab from "./tabs/addMembers";
@@ -81,7 +81,7 @@ export class AppSidebarLeft extends SidebarSlider {
   private backBtn: HTMLButtonElement;
   private searchContainer: HTMLDivElement;
   //private searchInput = document.getElementById('global-search') as HTMLInputElement;
-  private searchInput: SearchInput;
+  private inputSearch: InputSearch;
   
   private menuEl: HTMLElement;
   private buttons: {
@@ -140,9 +140,9 @@ export class AppSidebarLeft extends SidebarSlider {
 
     //this._selectTab(0); // make first tab as default
 
-    this.searchInput = new SearchInput('Telegram Search');
+    this.inputSearch = new InputSearch('Telegram Search');
     const sidebarHeader = this.sidebarEl.querySelector('.item-main .sidebar-header');
-    sidebarHeader.append(this.searchInput.container);
+    sidebarHeader.append(this.inputSearch.container);
 
     this.toolsBtn = this.sidebarEl.querySelector('.sidebar-tools-button') as HTMLButtonElement;
     this.backBtn = this.sidebarEl.querySelector('.sidebar-back-button') as HTMLButtonElement;
@@ -161,7 +161,7 @@ export class AppSidebarLeft extends SidebarSlider {
     this.menuEl = this.toolsBtn.querySelector('.btn-menu');
     this.newBtnMenu = this.sidebarEl.querySelector('#new-menu');
 
-    this.searchInput.input.addEventListener('focus', () => {
+    this.inputSearch.input.addEventListener('focus', () => {
       this.searchGroups = {
         //saved: new SearchGroup('', 'contacts'),
         contacts: new SearchGroup('Chats', 'contacts'),
@@ -171,8 +171,8 @@ export class AppSidebarLeft extends SidebarSlider {
         recent: new SearchGroup('Recent', 'contacts', false, 'search-group-recent')
       };
 
-      this.globalSearch = new AppSearch(this.searchContainer, this.searchInput, this.searchGroups, (count) => {
-        if(!count && !this.searchInput.value.trim()) {
+      this.globalSearch = new AppSearch(this.searchContainer, this.inputSearch, this.searchGroups, (count) => {
+        if(!count && !this.inputSearch.value.trim()) {
           this.globalSearch.reset();
           this.searchGroups.people.toggle();
           this.renderRecentSearch();
@@ -263,7 +263,7 @@ export class AppSidebarLeft extends SidebarSlider {
       };
 
       let firstTime = true;
-      this.searchInput.input.addEventListener('focus', onFocus);
+      this.inputSearch.input.addEventListener('focus', onFocus);
       onFocus();
 
       this.backBtn.addEventListener('click', (e) => {
@@ -339,7 +339,7 @@ export class AppSidebarLeft extends SidebarSlider {
         this.recentSearchLoaded = true;
       }
 
-      if(this.searchInput.value.trim()) {
+      if(this.inputSearch.value.trim()) {
         return;
       }
 

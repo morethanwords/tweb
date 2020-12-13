@@ -8,6 +8,7 @@ import AppPrivateSearchTab from "./tabs/search";
 import AppSharedMediaTab from "./tabs/sharedMedia";
 //import AppForwardTab from "./tabs/forward";
 import { MOUNT_CLASS_TO } from "../../lib/mtproto/mtproto_config";
+import { pause } from "../../helpers/schedulers";
 
 export const RIGHT_COLUMN_ACTIVE_CLASSNAME = 'is-right-column-shown';
 
@@ -111,14 +112,10 @@ export class AppSidebarRight extends SidebarSlider {
     //if(mediaSizes.isMobile) {
       //appImManager._selectTab(active ? 1 : 2);
       appImManager.selectTab(active ? 1 : 2);
-      return new Promise(resolve => {
-        setTimeout(resolve, mediaSizes.isMobile ? 250 : 200); // delay of slider animation
-      });    
+      return pause(mediaSizes.isMobile ? 250 : 200); // delay of slider animation
     //}
 
-    return new Promise(resolve => {
-      setTimeout(resolve, 200); // delay for third column open
-    });
+    return pause(200); // delay for third column open
     //return Promise.resolve();
 
     /* return new Promise((resolve, reject) => {

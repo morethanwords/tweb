@@ -6,7 +6,7 @@ import appPeersManager from '../lib/appManagers/appPeersManager';
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import { formatPhoneNumber } from "./misc";
 import appChatsManager from "../lib/appManagers/appChatsManager";
-import SearchInput from "./searchInput";
+import InputSearch from "./inputSearch";
 import rootScope from "../lib/rootScope";
 import { escapeRegExp } from "../helpers/string";
 import searchIndexManager from "../lib/searchIndexManager";
@@ -81,7 +81,7 @@ export default class AppSearch {
 
   private scrollable: Scrollable;
 
-  constructor(public container: HTMLElement, public searchInput: SearchInput, public searchGroups: {[group in SearchGroupType]: SearchGroup}, public onSearch?: (count: number) => void) {
+  constructor(public container: HTMLElement, public searchInput: InputSearch, public searchGroups: {[group in SearchGroupType]: SearchGroup}, public onSearch?: (count: number) => void) {
     this.scrollable = new Scrollable(this.container);
     this.listsContainer = this.scrollable.container as HTMLDivElement;
     for(let i in this.searchGroups) {

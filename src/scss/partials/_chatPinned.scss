@@ -337,6 +337,35 @@
     }
   }
 
+  .animated-super-row {
+    --translateY: 16px;
+  }
+  
+  .pinned-message-media {
+    --translateY: 32px;
+  }
+
+  /* .animated-super-row.is-hiding {
+    &.from-top {
+      transform: translateY(-16px);
+    }
+  
+    &.from-bottom {
+      transform: translateY(16px);
+    }
+  }
+  
+  .pinned-message-media.is-hiding {
+    &.from-top {
+      transform: translateY(-32px);
+    }
+  
+    &.from-bottom {
+      transform: translateY(32px);
+    }
+  } */
+ 
+
   &.hide ~ .tgico-pinlist, &:not(.is-many) ~ .tgico-pinlist {
     display: none; 
   }

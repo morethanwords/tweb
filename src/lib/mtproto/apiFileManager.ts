@@ -210,9 +210,9 @@ export class ApiFileManager {
 
     this.log('downloadFile', fileName, size, location, options.mimeType, process);
 
-    if(options.queueId) {
+    /* if(options.queueId) {
       this.log.error('downloadFile queueId:', fileName, options.queueId);
-    }
+    } */
 
     if(cachedPromise) {
       //this.log('downloadFile cachedPromise');

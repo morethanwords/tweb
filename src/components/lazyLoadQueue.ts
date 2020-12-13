@@ -1,3 +1,4 @@
+import { debounce } from "../helpers/schedulers";
 import { logger, LogLevels } from "../lib/logger";
 import VisibilityIntersector, { OnVisibilityChange } from "./visibilityIntersector";
 
@@ -22,8 +23,10 @@ export class LazyLoadQueueBase {
   protected unlockResolve: () => void = null;
 
   protected log = logger('LL', LogLevels.error);
+  protected processQueue: () => void;
 
   constructor(protected parallelLimit = PARALLEL_LIMIT) {
+    this.processQueue = debounce(() => this._processQueue(), 20, false, true);
   }
 
   public clear() {
@@ -58,7 +61,7 @@ export class LazyLoadQueueBase {
     this.processQueue();
   }
 
-  public async processItem(item: LazyLoadElementBase) {
+  protected async processItem(item: LazyLoadElementBase) {
     if(this.lockPromise) {
       return;
     }
@@ -96,7 +99,7 @@ export class LazyLoadQueueBase {
     this.processQueue();
   }
 
-  public async processQueue(item?: LazyLoadElementBase) {
+  protected _processQueue(item?: LazyLoadElementBase) {
     if(!this.queue.length || this.lockPromise || (this.parallelLimit > 0 && this.inProcess.size >= this.parallelLimit)) return;
 
     do {
@@ -236,9 +239,9 @@ export default class LazyLoadQueue extends LazyLoadQueueIntersector {
     if(!inserted) return false;
 
     this.intersector.observe(el.div);
-    if(el.wasSeen) {
+    /* if(el.wasSeen) {
       this.processQueue(el);
-    } else if(!el.hasOwnProperty('wasSeen')) {
+    } else  */if(!el.hasOwnProperty('wasSeen')) {
       el.wasSeen = false;
     }
     
