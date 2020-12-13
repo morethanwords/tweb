@@ -329,7 +329,15 @@ export class AppImManager {
     //console.log('document paste');
     //console.log('item', event.clipboardData.getData());
 
-    cancelEvent(e);
+    if(e instanceof DragEvent) {
+      const _types = e.dataTransfer.types;
+      // @ts-ignore
+      const isFiles = _types.contains ? _types.contains('Files') : _types.indexOf('Files') >= 0;
+      if(isFiles) {
+        cancelEvent(e);
+      }
+    }
+    
     getFilesFromEvent(e).then((files: File[]) => {
       if(files.length) {
         if(attachType == 'media' && files.find(file => !['image', 'video'].includes(file.type.split('/')[0]))) {
