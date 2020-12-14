@@ -1302,6 +1302,7 @@ $bubble-margin: .25rem;
     pointer-events: none; // do not show title
     display: inline-flex;
     z-index: 1;
+    cursor: default;
     /* display: inline-flex;
     align-items: center; */
 
@@ -1473,7 +1474,7 @@ $bubble-margin: .25rem;
   }
 
   audio-element, poll-element {
-    white-space: nowrap; // * fix due to .message white-space prewrap
+    white-space: normal; // * fix due to .message white-space prewrap
   }
 }
 
@@ -1744,7 +1745,7 @@ $bubble-margin: .25rem;
   
   .time {
     padding-right: 4px;
-    margin-left: -4px;
+    margin-left: -3px;
 
     .inner {
       color: $darkgreen;

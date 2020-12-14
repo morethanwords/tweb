@@ -101,7 +101,13 @@ export default class AppIncludedChatsTab implements SliderTab {
     peerIds.forEach(peerId => {
       //if(other.includes(peerId)) return;
 
-      const {dom} = appDialogsManager.addDialog(peerId, this.selector.scrollable, false, false);
+      const {dom} = appDialogsManager.addDialogNew({
+        dialog: peerId,
+        container: this.selector.scrollable,
+        drawStatus: false,
+        rippleEnabled: false,
+        avatarSize: 46
+      });
 
       const selected = this.selector.selected.has(peerId);
       dom.containerEl.insertAdjacentHTML('beforeend', this.checkbox(selected));

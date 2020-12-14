@@ -1,19 +1,25 @@
 avatar-element {
+  --size: 54px;
+  --multiplier: 1;
   color: #fff;
-  width: 54px;
-  height: 54px;
-  line-height: 54px;
+  width: var(--size);
+  height: var(--size);
+  line-height: var(--size);
   border-radius: 50%;
   background-color: $color-blue;
   text-align: center;
-  font-size: 1.25em;
+  font-size: calc(1.25rem / var(--multiplier));
   /* overflow: hidden; */
   position: relative;
   user-select: none;
   text-transform: uppercase;
-  
-  @include respond-to(handhelds) {
-    font-size: 14px;
+
+  &.tgico-savedmessages:before {
+    font-size: calc(26px / var(--multiplier));
+  }
+
+  &.tgico-avatar_deletedaccount:before {
+    font-size: calc(56px / var(--multiplier));
   }
   
   /* kostil */
@@ -30,11 +36,6 @@ avatar-element {
     &.fade-in {
       animation: fade-in-opacity .2s ease forwards;
     }
-  }
-  
-  &[class*=" tgico-"] {
-    line-height: 52px;
-    font-size: 28px;
   }
   
   path {
@@ -54,11 +55,51 @@ avatar-element {
     height: 14px;
   }
 
-  &.tgico-avatar_deletedaccount {
-    font-size: 3rem;
-  }
-
   &[clickable] {
     cursor: pointer;
+  }
+
+  /* &.avatar-54 {
+    width: 54px;
+    height: 54px;
+    line-height: 54px;
+    font-size: 1.25rem;
+
+    &.tgico-savedmessages:before {
+      font-size: 26px;
+    }
+
+    &.tgico-avatar_deletedaccount:before {
+      font-size: 56px;
+    }
+  } */
+  &.avatar-120 {
+    --size: 120px;
+    --multiplier: 0.45;
+  }
+
+  &.avatar-48 {
+    --size: 48px;
+    --multiplier: 1.125;
+  }
+
+  &.avatar-46 {
+    --size: 46px;
+    --multiplier: 1.173913;
+  }
+
+  &.avatar-44 {
+    --size: 44px;
+    --multiplier: 1.227272;
+  }
+
+  &.avatar-40 {
+    --size: 40px;
+    --multiplier: 1.35;
+  }
+
+  &.avatar-32 {
+    --size: 32px;
+    --multiplier: 1.6875;
   }
 }

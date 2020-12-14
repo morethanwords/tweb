@@ -82,12 +82,9 @@
     }
 
     &-avatar {
-      height: 32px !important;
-      width: 32px !important;
       float: left;
       margin-right: 8px;
       overflow: hidden;
-      font-size: 14px;
       
       html.is-safari & {
         -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%); // fix safari overflow
@@ -117,11 +114,6 @@
   }
 
   ul {
-    .dialog-avatar {
-      height: 48px;
-      width: 48px;
-    }
-
     .user-caption {
       padding: 1px 3.5px 1px 12px;
     }

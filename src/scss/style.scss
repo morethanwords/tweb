@@ -797,18 +797,6 @@ img.emoji {
   }
 }
 
-#folders-container .rp avatar-element {
-  font-size: 20px;
-
-  &:before {
-    font-size: 26px;
-  }
-
-  &.tgico-avatar_deletedaccount:before {
-    font-size: 56px;
-  }
-}
-
 // .message .audio .preloader-container {
 // 	@include respond-to(handhelds) {
 // 		width: 30px;

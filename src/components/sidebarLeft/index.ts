@@ -217,7 +217,13 @@ export class AppSidebarLeft extends SidebarSlider {
         //console.log('got top categories:', categories);
         if(peers.length) {
           peers.forEach((peerId) => {
-            appDialogsManager.addDialog(peerId, this.searchGroups.people.list, false, true, true);
+            appDialogsManager.addDialogNew({
+              dialog: peerId, 
+              container: this.searchGroups.people.list, 
+              drawStatus: false,
+              onlyFirstName: true,
+              avatarSize: 54
+            });
           });
         }
 
@@ -347,7 +353,13 @@ export class AppSidebarLeft extends SidebarSlider {
       this.recentSearchClearBtn.style.display = this.recentSearch.length ? '' : 'none';
 
       this.recentSearch.slice(0, 20).forEach(peerId => {
-        let {dialog, dom} = appDialogsManager.addDialog(peerId, this.searchGroups.recent.list, false, true, false, true);
+        let {dialog, dom} = appDialogsManager.addDialogNew({
+          dialog: peerId,
+          container: this.searchGroups.recent.list,
+          drawStatus: false,
+          meAsSaved: true,
+          avatarSize: 48
+        });
 
         dom.lastMessageSpan.innerText = peerId > 0 ? appUsersManager.getUserStatusString(peerId) : appChatsManager.getChatMembersString(peerId);
       });

@@ -211,11 +211,6 @@
         max-width: 77px;
       }
     }
-    
-    .dialog-avatar {
-      width: 54px;
-      height: 54px;
-    }
 
     .dialog-title-details {
       display: none;
@@ -610,12 +605,6 @@
     }
   }
 
-  avatar-element {
-    height: 2rem;
-    width: 2rem;
-    font-size: .875rem;
-  }
-
   .user-caption {
     padding: 6px 28px;
   }  
@@ -693,11 +682,6 @@
         @include respond-to(handhelds) {
           margin: 0;
         }
-      }
-  
-      .dialog-avatar {
-        width: 2.875rem;
-        height: 2.875rem;
       }
   
       .user-caption {
@@ -792,8 +776,8 @@
     }
 
     .dialog-avatar {
-      width: 46px;
-      height: 46px;
+      --size: 46px;
+      --multiplier: 1.173913;
     }
 
     li > .rp {

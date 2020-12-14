@@ -130,6 +130,10 @@ export default class MarkupTooltip {
     this.wrapper.append(tools1, tools2);
     this.container.append(this.wrapper);
     document.body.append(this.container);
+    
+    window.addEventListener('resize', () => {
+      this.hide();
+    });
   }
 
   private applyLink(e: Event) {

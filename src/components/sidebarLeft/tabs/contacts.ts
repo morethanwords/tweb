@@ -90,7 +90,12 @@ export default class AppContactsTab implements SliderTab {
         let arr = sorted.splice(0, pageCount); // надо splice!
 
         arr.forEach(({user}) => {
-          let {dialog, dom} = appDialogsManager.addDialog(user.id, this.list, false);
+          let {dialog, dom} = appDialogsManager.addDialogNew({
+            dialog: user.id,
+            container: this.list,
+            drawStatus: false,
+            avatarSize: 48
+          });
   
           let status = appUsersManager.getUserStatusString(user.id);
           dom.lastMessageSpan.innerHTML = status == 'online' ? `<i>${status}</i>` : status;

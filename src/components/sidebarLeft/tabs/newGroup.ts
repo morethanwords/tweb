@@ -75,7 +75,13 @@ export default class AppNewGroupTab implements SliderTab {
 
     appSidebarLeft.selectTab(AppSidebarLeft.SLIDERITEMSIDS.newGroup);
     this.userIds.forEach(userId => {
-      let {dom} = appDialogsManager.addDialog(userId, this.searchGroup.list, false, false);
+      let {dom} = appDialogsManager.addDialogNew({
+        dialog: userId,
+        container: this.searchGroup.list,
+        drawStatus: false,
+        rippleEnabled: false,
+        avatarSize: 48
+      });
 
       let subtitle = '';
       subtitle = appUsersManager.getUserStatusString(userId);

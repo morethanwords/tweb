@@ -202,23 +202,6 @@
 		}
 	}
 
-	avatar-element {
-		width: 40px;
-		height: 40px;
-		line-height: 40px;
-		//font-size: 16px;
-		font-size: 16px;
-		flex: 0 0 auto;
-
-		&:before {
-			font-size: 20px;
-		}
-
-		&.tgico-avatar_deletedaccount:before {
-			font-size: 40px;
-		}
-	}
-
 	&.hide-pinned + .bubbles {
 		.bubbles-inner {
 			margin-bottom: .25rem;

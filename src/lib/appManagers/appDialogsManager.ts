@@ -1108,12 +1108,13 @@ export class AppDialogsManager {
     rippleEnabled?: boolean,
     onlyFirstName?: boolean,
     meAsSaved?: boolean,
-    append?: boolean
+    append?: boolean,
+    avatarSize?: number
   }) {
-    return this.addDialog(options.dialog, options.container, options.drawStatus, options.rippleEnabled, options.onlyFirstName, options.meAsSaved, options.append);
+    return this.addDialog(options.dialog, options.container, options.drawStatus, options.rippleEnabled, options.onlyFirstName, options.meAsSaved, options.append, options.avatarSize);
   }
 
-  public addDialog(_dialog: Dialog | number, container?: HTMLUListElement | Scrollable, drawStatus = true, rippleEnabled = true, onlyFirstName = false, meAsSaved = true, append = true) {
+  public addDialog(_dialog: Dialog | number, container?: HTMLUListElement | Scrollable, drawStatus = true, rippleEnabled = true, onlyFirstName = false, meAsSaved = true, append = true, avatarSize = 54) {
     let dialog: Dialog;
     
     if(typeof(_dialog) === 'number') {
@@ -1147,7 +1148,7 @@ export class AppDialogsManager {
     const avatarEl = new AvatarElement();
     avatarEl.setAttribute('dialog', meAsSaved ? '1' : '0');
     avatarEl.setAttribute('peer', '' + peerId);
-    avatarEl.classList.add('dialog-avatar');
+    avatarEl.classList.add('dialog-avatar', 'avatar-' + avatarSize);
 
     if(drawStatus && peerId != rootScope.myId && dialog.peer) {
       const peer = dialog.peer;

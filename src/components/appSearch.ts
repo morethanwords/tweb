@@ -174,7 +174,12 @@ export default class AppSearch {
 
           //////////this.log('contacts peer', peer);
 
-          const {dom} = appDialogsManager.addDialog(peerId, group.list, false);
+          const {dom} = appDialogsManager.addDialogNew({
+            dialog: peerId, 
+            container: group.list, 
+            drawStatus: false,
+            avatarSize: 48
+          });
 
           if(showMembersCount && (peer.participants_count || peer.participants)) {
             const regExp = new RegExp(`(${escapeRegExp(query)}|${escapeRegExp(searchIndexManager.cleanSearchText(query))})`, 'gi');
@@ -256,7 +261,12 @@ export default class AppSearch {
       history.forEach((msgId: number) => {
         const message = appMessagesManager.getMessage(msgId);
 
-        const {dialog, dom} = appDialogsManager.addDialog(message.peerId, this.scrollable/* searchGroup.list */, false);
+        const {dialog, dom} = appDialogsManager.addDialogNew({
+          dialog: message.peerId, 
+          container: this.scrollable/* searchGroup.list */, 
+          drawStatus: false,
+          avatarSize: 48
+        });
         appDialogsManager.setLastMessage(dialog, message, dom, query);
       });
 

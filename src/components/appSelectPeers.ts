@@ -316,7 +316,13 @@ export default class AppSelectPeers {
     }
 
     peerIds.forEach(peerId => {
-      const {dom} = appDialogsManager.addDialog(peerId, this.scrollable, false, false);
+      const {dom} = appDialogsManager.addDialogNew({
+        dialog: peerId,
+        container: this.scrollable,
+        drawStatus: false,
+        rippleEnabled: false,
+        avatarSize: 48
+      });
 
       if(this.multiSelect) {
         const selected = this.selected.has(peerId);
@@ -355,6 +361,7 @@ export default class AppSelectPeers {
     const avatarEl = document.createElement('avatar-element');
     avatarEl.classList.add('selector-user-avatar', 'tgico');
     avatarEl.setAttribute('dialog', '1');
+    avatarEl.classList.add('avatar-32');
 
     div.dataset.key = '' + peerId;
     if(typeof(peerId) === 'number') {

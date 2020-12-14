@@ -88,7 +88,14 @@ export default class AppPollResultsTab implements SliderTab {
 
         appPollsManager.getVotes(mid, answer.option, offset, limit).then(votesList => {
           votesList.votes.forEach(vote => {
-            const {dom} = appDialogsManager.addDialog(vote.user_id, list, false, false, undefined, false);
+            const {dom} = appDialogsManager.addDialogNew({
+              dialog: vote.user_id,
+              container: list,
+              drawStatus: false,
+              rippleEnabled: false, 
+              meAsSaved: false,
+              avatarSize: 32
+            });
             dom.lastMessageSpan.parentElement.remove();
           });
 

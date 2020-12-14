@@ -95,7 +95,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     this.author.container.classList.add(MEDIA_VIEWER_CLASSNAME + '-author', 'no-select');
 
     this.author.avatarEl = new AvatarElement();
-    this.author.avatarEl.classList.add(MEDIA_VIEWER_CLASSNAME + '-userpic');
+    this.author.avatarEl.classList.add(MEDIA_VIEWER_CLASSNAME + '-userpic', 'avatar-44');
 
     this.author.nameEl = document.createElement('div');
     this.author.nameEl.classList.add(MEDIA_VIEWER_CLASSNAME + '-name');
