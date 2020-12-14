@@ -121,6 +121,11 @@ export class AppImManager {
     this.chatsContainer.classList.add('chats-container', 'tabs-container');
 
     this.chatsSelectTab = TransitionSlider(this.chatsContainer, 'navigation', 250, (id) => {
+      const topbar = this.chat.topbar;
+      if(topbar.pinnedMessage) { // * буду молиться богам, чтобы это ничего не сломало, но это исправляет получение пиннеда после анимации
+        topbar.pinnedMessage.setCorrectIndex(0);
+      }
+
       apiManager.setQueueId(this.chat.bubbles.lazyLoadQueue.queueId);
     });
     

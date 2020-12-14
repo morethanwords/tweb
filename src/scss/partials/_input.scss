@@ -201,7 +201,8 @@ input:focus, button:focus {
     background-color: var(--color-gray-hover);
     padding: 0px calc(42px - var(--border-width));
     height: var(--height);
-    max-height: var(--height);
+    min-height: var(--height) !important;
+    max-height: var(--height) !important;
     //line-height: calc(var(--height) + 2px - var(--border-width) * 2);
     border-radius: 22px;
     transition: background-color .2s ease-in-out, border-color .2s ease-in-out;

@@ -469,6 +469,10 @@ $chat-helper-size: 39px;
 		width: 17.125rem;
 	}
 
+	.chat-input.type-pinned.can-pin & {
+		width: 13.125rem;
+	}
+
 	&.is-centering {
 		html:not(.is-safari) & {
 			transition: width .2s, border-bottom-right-radius .1s, transform .2s;
@@ -722,6 +726,10 @@ $chat-helper-size: 39px;
 
 	.pinned-container {
 		width: 17.125rem;
+
+		.chat-input.can-pin & {
+			width: 13.125rem;
+		}
 
 		&-button {
 			height: 2.5rem;

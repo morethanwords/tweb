@@ -13,7 +13,7 @@ export default class PopupPeer extends PopupElement {
     let avatarEl = new AvatarElement();
     avatarEl.setAttribute('dialog', '1');
     avatarEl.setAttribute('peer', '' + options.peerId);
-    avatarEl.classList.add('peer-avatar');
+    avatarEl.classList.add('avatar-32');
 
     this.title.innerText = options.title || '';
     this.header.prepend(avatarEl);

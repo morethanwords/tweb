@@ -347,6 +347,12 @@ export default class ChatInput {
 
       promise.then(() => {
         this.chat.appImManager.setPeer(0); // * close tab
+
+        // ! костыль, это скроет закреплённые сообщения сразу, вместо того, чтобы ждать пока анимация перехода закончится
+        const originalChat = this.chat.appImManager.chat;
+        if(originalChat.topbar.pinnedMessage) {
+          originalChat.topbar.pinnedMessage.pinnedMessageContainer.toggle(true);
+        }
       });
     });
 
@@ -407,6 +413,10 @@ export default class ChatInput {
 
     if(this.goDownUnreadBadge) {
       this.setUnreadCount();
+    }
+
+    if(this.chat.type == 'pinned') {
+      this.chatInput.classList.toggle('can-pin', this.appPeersManager.canPinMessage(peerId));
     }
 
     if(this.messageInput) {

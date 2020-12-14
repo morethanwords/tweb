@@ -75,7 +75,12 @@ avatar-element {
   } */
   &.avatar-120 {
     --size: 120px;
-    --multiplier: 0.45;
+    --multiplier: .45;
+  }
+
+  &.avatar-100 {
+    --size: 100px;
+    --multiplier: .54;
   }
 
   &.avatar-48 {

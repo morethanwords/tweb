@@ -122,7 +122,7 @@ export class ApiFileManager {
   }
 
   public setQueueId(queueId: number) {
-    this.log.error('setQueueId', queueId);
+    //this.log.error('setQueueId', queueId);
     this.queueId = queueId;
   }
 

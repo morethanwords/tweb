@@ -278,10 +278,6 @@ $bubble-margin: .25rem;
       position: absolute;
       margin-left: -45px;
       //left: -3rem; # DO JS3
-      width: 40px;
-      height: 40px;
-      line-height: 40px;
-      font-size: 1rem;
       cursor: pointer;
 
       .bubbles.is-selecting & {

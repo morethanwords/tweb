@@ -1894,7 +1894,7 @@ export default class ChatBubbles {
 
           const avatarElem = new AvatarElement();
           avatarElem.setAttribute('peer', '' + message.media.user_id);
-          avatarElem.classList.add('contact-avatar');
+          avatarElem.classList.add('contact-avatar', 'avatar-54');
 
           contactDiv.prepend(avatarElem);
 
@@ -2019,7 +2019,7 @@ export default class ChatBubbles {
       if((!our && this.peerId < 0 && (!this.appPeersManager.isChannel(this.peerId) || this.appPeersManager.isMegagroup(this.peerId))) 
         || (this.peerId == rootScope.myId && !message.reply_to_mid)) {
         let avatarElem = new AvatarElement();
-        avatarElem.classList.add('user-avatar');
+        avatarElem.classList.add('user-avatar', 'avatar-40');
 
         if(!message.fwdFromId && message.fwd_from && message.fwd_from.from_name) {
           avatarElem.setAttribute('peer-title', /* '🔥 FF 🔥' */message.fwd_from.from_name);

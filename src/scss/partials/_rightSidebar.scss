@@ -226,8 +226,8 @@
 
     @include respond-to(handhelds) {
       margin: 0 auto 10px;
-      width: 100px;
-      height: 100px;
+      --size: 100px;
+      --multiplier: .54;
     }
   }
 
