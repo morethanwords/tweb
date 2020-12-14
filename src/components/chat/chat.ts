@@ -165,6 +165,9 @@ export default class Chat extends EventListenerBase<{
 
     appSidebarRight.sharedMediaTab.setLoadMutex(this.setPeerPromise);
     appSidebarRight.sharedMediaTab.loadSidebarMedia(true);
+    this.setPeerPromise.then(() => {
+      appSidebarRight.sharedMediaTab.loadSidebarMedia(false);
+    });
 
     return this.setPeerPromise;
   }

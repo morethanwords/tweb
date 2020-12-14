@@ -116,6 +116,10 @@
       min-height: calc((var(--vh, 1vh) * 100) - 100% - 60px);
       display: flex;
       flex-direction: column;
+
+      &.sliding {
+        max-height: calc((var(--vh, 1vh) * 100) - 100% - 60px);
+      }
     }
   }
 

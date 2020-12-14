@@ -400,6 +400,10 @@ export class AppImManager {
       appSidebarRight.sharedMediaTab.setPeer(this.chat.peerId);
       appSidebarRight.sharedMediaTab.loadSidebarMedia(true);
       appSidebarRight.sharedMediaTab.fillProfileElements();
+      
+      setTimeout(() => {
+        appSidebarRight.sharedMediaTab.loadSidebarMedia(false);
+      });
     }
     
     setTimeout(() => {

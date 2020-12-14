@@ -314,6 +314,7 @@ export default class AppSharedMediaTab implements SliderTab {
       const scrollBarWidth = container.offsetWidth - container.clientWidth;
       container.style.overflowY = 'hidden';
       container.style.paddingRight = `${scrollBarWidth}px`;
+      this.contentContainer.classList.add('sliding');
     }
   };
 
@@ -322,6 +323,7 @@ export default class AppSharedMediaTab implements SliderTab {
     const container = this.scroll.container;
     container.style.overflowY = '';
     container.style.paddingRight = '0';
+    this.contentContainer.classList.remove('sliding');
   };
 
   public filterMessagesByType(ids: number[], type: SharedMediaType) {
@@ -688,7 +690,7 @@ export default class AppSharedMediaTab implements SliderTab {
     
     const peerId = this.peerId;
     
-    let typesToLoad = single ? [this.sharedMediaType] : this.sharedMediaTypes;
+    let typesToLoad = single ? [this.sharedMediaType] : this.sharedMediaTypes.filter(t => t !== this.sharedMediaType);
     typesToLoad = typesToLoad.filter(type => !this.loadedAllMedia[type] 
       || this.usedFromHistory[type] < this.historiesStorage[peerId][type].length);
 
@@ -769,10 +771,13 @@ export default class AppSharedMediaTab implements SliderTab {
           this.loadSidebarMediaPromises[type].then(() => {
             setTimeout(() => {
               this.log('will preload more');
-              this.loadSidebarMedia(true, true).then(() => {
-                this.log('preloaded more');
-                this.scroll.checkForTriggers();
-              });
+              const promise = this.loadSidebarMedia(true, true);
+              if(promise) {
+                promise.then(() => {
+                  this.log('preloaded more');
+                  this.scroll.checkForTriggers();
+                });
+              }
             }, 0);
           });
         }
