@@ -1242,7 +1242,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     const peerId = this.peerId;
 
     const promise = appMessagesManager.getSearch(peerId, '', 
-      {_: this.inputFilter}, maxId, loadCount/* older ? loadCount : 0 */, 0, backLimit).then(value => {
+      {_: this.inputFilter}, maxId, backLimit ? 0 : loadCount/* older ? loadCount : 0 */, 0, backLimit).then(value => {
       if(this.peerId != peerId) {
         this.log.warn('peer changed');
         return;

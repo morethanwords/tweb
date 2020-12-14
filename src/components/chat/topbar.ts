@@ -281,6 +281,18 @@ export default class ChatTopbar {
     return this;
   }
 
+  public constructPinnedHelpers() {
+    this.listenerSetter.add(rootScope, 'peer_pinned_messages', (e) => {
+      const {peerId, mids, pinned} = e.detail;
+
+      if(peerId !== this.peerId) return;
+
+      if(mids) {
+        this.setTitle();
+      }
+    });
+  }
+
   public openPinned(byCurrent: boolean) {
     this.chat.appImManager.setInnerPeer(this.peerId, byCurrent ? +this.pinnedMessage.pinnedMessageContainer.divAndCaption.container.dataset.mid : 0, 'pinned');
   }
@@ -366,7 +378,19 @@ export default class ChatTopbar {
       
       if(count === undefined) {
         this.appMessagesManager.getSearchCounters(this.peerId, [{_: 'inputMessagesFilterPinned'}]).then(result => {
-          this.setTitle(result[0].count);
+          const count = result[0].count;
+          this.setTitle(count);
+
+          // ! костыль х2, это нужно делать в другом месте
+          if(!count) {
+            this.chat.appImManager.setPeer(0); // * close tab
+
+            // ! костыль, это скроет закреплённые сообщения сразу, вместо того, чтобы ждать пока анимация перехода закончится
+            const originalChat = this.chat.appImManager.chat;
+            if(originalChat.topbar.pinnedMessage) {
+              originalChat.topbar.pinnedMessage.pinnedMessageContainer.toggle(true);
+            }
+          }
         });
       }
     } else {

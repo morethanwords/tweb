@@ -1683,7 +1683,7 @@ export class AppMessagesManager {
           }
         }
 
-        rootScope.broadcast('peer_pinned_messages', peerId);
+        rootScope.broadcast('peer_pinned_messages', {peerId, unpinAll: true});
         delete this.pinnedMessages[peerId];
 
         return true;
@@ -3726,7 +3726,7 @@ export class AppMessagesManager {
           delete this.pinnedMessages[peerId];
           appStateManager.getState().then(state => {
             delete state.hiddenPinnedMessages[peerId];
-            rootScope.broadcast('peer_pinned_messages', peerId);
+            rootScope.broadcast('peer_pinned_messages', {peerId, mids: messages, pinned: werePinned});
           });
         });
 

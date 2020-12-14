@@ -70,6 +70,8 @@ export default class Chat extends EventListenerBase<{
 
     if(this.type == 'chat') {
       this.topbar.constructPeerHelpers();
+    } else if(this.type == 'pinned') {
+      this.topbar.constructPinnedHelpers();
     }
 
     this.topbar.construct();
@@ -79,8 +81,10 @@ export default class Chat extends EventListenerBase<{
       this.input.constructPeerHelpers();
     } else if(this.type == 'pinned') {
       this.input.constructPinnedHelpers();
+      this.bubbles.constructPinnedHelpers();
     }
 
+    this.container.classList.add('type-' + this.type);
     this.container.append(this.topbar.container, this.bubbles.bubblesContainer, this.input.chatInput);
   }
 

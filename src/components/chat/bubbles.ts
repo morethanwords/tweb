@@ -402,6 +402,20 @@ export default class ChatBubbles {
     });
   }
 
+  public constructPinnedHelpers() {
+    this.listenerSetter.add(rootScope, 'peer_pinned_messages', (e) => {
+      const {peerId, mids, pinned} = e.detail;
+
+      if(peerId !== this.peerId) return;
+
+      if(mids) {
+        if(!pinned) {
+          this.deleteMessagesByIds(mids);
+        }
+      }
+    });
+  }
+
   public onBubblesClick = (e: Event) => {
     let target = e.target as HTMLElement;
     let bubble: HTMLElement = null;

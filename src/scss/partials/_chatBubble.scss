@@ -154,13 +154,13 @@ $bubble-margin: .25rem;
 
   &.channel-post {
     .message.poll-message {
-        .time {
-          position: unset;
-        }
+      .time {
+        position: unset;
+      }
     }
 
 		poll-element .poll-footer {
-				height: auto;
+			height: auto;
 		}
   }
 
@@ -189,7 +189,7 @@ $bubble-margin: .25rem;
       } */
     }
 
-    .bubble__container {
+    .chat:not(.type-pinned) & .bubble__container {
       cursor: pointer;
       pointer-events: all;
     }
@@ -665,17 +665,17 @@ $bubble-margin: .25rem;
     }
 
     &.is-selected {
-      //border-radius: 0;
+      border-radius: 0;
       
       .album-item-media {
         transform: scale(1);
       }
 
       &.animating {
-        //transition: border-radius var(--layer-transition);
+        transition: border-radius var(--layer-transition);
 
         .album-item-media {
-          transition: transform var(--layer-transition)/* , border-radius var(--layer-transition) */;
+          transition: transform var(--layer-transition), border-radius var(--layer-transition);
         }
       }
 
@@ -684,9 +684,10 @@ $bubble-margin: .25rem;
           transform: scale(.883333);
         }
 
-        /* &, .album-item-media {
-          border-radius: .5rem;
-        } */
+        &, .album-item-media {
+          //border-radius: .5rem;
+          border-radius: 0;
+        }
       }
     }
   }

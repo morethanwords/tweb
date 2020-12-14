@@ -11,7 +11,7 @@ type BroadcastEvents = {
   'user_update': number,
   'user_auth': UserAuth,
   'peer_changed': number,
-  'peer_pinned_messages': number,
+  'peer_pinned_messages': {peerId: number, mids?: number[], pinned?: boolean, unpinAll?: true},
   'peer_pinned_hidden': {peerId: number, maxId: number},
   'peer_typings': {peerId: number, typings: UserTyping[]},
 
