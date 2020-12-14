@@ -1081,9 +1081,11 @@ export class AppDialogsManager {
       //dom.unreadMessagesSpan.innerText = '' + (dialog.unread_count ? formatNumber(dialog.unread_count, 1) : ' ');
       dom.unreadMessagesSpan.innerText = '' + (dialog.unread_count || ' ');
       dom.unreadMessagesSpan.classList.add('unread');
-    } else if(isPinned) {
+    } else {
       dom.unreadMessagesSpan.classList.remove('unread');
-      dom.unreadMessagesSpan.classList.add('tgico-pinnedchat');
+      if(isPinned) {
+        dom.unreadMessagesSpan.classList.add('tgico-pinnedchat');
+      }
     }
   }
 

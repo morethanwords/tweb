@@ -144,7 +144,7 @@ export default class ChatTopbar {
     this.avatarElement = new AvatarElement();
     this.avatarElement.setAttribute('dialog', '1');
     this.avatarElement.setAttribute('clickable', '');
-    this.avatarElement.classList.add('avatar-40');
+    this.avatarElement.classList.add('avatar-40', 'person-avatar');
 
     this.subtitle = document.createElement('div');
     this.subtitle.classList.add('info');

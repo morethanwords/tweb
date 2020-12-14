@@ -191,6 +191,10 @@
 		align-items: center;
 		cursor: pointer;
 
+		&-avatar {
+			flex: 0 0 auto;
+		}
+
 		.bottom {
 			font-size: 14px;
 			//line-height: 18px;
