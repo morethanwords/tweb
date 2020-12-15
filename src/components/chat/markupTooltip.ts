@@ -48,25 +48,7 @@ export default class MarkupTooltip {
       } else {
         attachClickEvent(button, (e) => {
           cancelEvent(e);
-          this.container.classList.add('is-link');
-
-          const selection = document.getSelection();
-          this.savedRange = selection.getRangeAt(0);
-          
-          if(button.classList.contains('active')) {
-            const startContainer = this.savedRange.startContainer;
-            const anchor = startContainer.parentElement as HTMLAnchorElement;
-            this.linkInput.value = anchor.href;
-          } else {
-            this.linkInput.value = '';
-          }
-
-          this.setTooltipPosition(true);
-
-          setTimeout(() => {
-            this.linkInput.focus(); // !!! instant focus will break animation
-          }, 200);
-          this.linkInput.classList.toggle('is-valid', this.isLinkValid());
+          this.showLinkEditor();
         });
       }
     });
@@ -134,6 +116,29 @@ export default class MarkupTooltip {
     window.addEventListener('resize', () => {
       this.hide();
     });
+  }
+
+  public showLinkEditor() {
+    const button = this.buttons.link;
+    this.container.classList.add('is-link');
+
+    const selection = document.getSelection();
+    this.savedRange = selection.getRangeAt(0);
+    
+    if(button.classList.contains('active')) {
+      const startContainer = this.savedRange.startContainer;
+      const anchor = startContainer.parentElement as HTMLAnchorElement;
+      this.linkInput.value = anchor.href;
+    } else {
+      this.linkInput.value = '';
+    }
+
+    this.setTooltipPosition(true);
+
+    setTimeout(() => {
+      this.linkInput.focus(); // !!! instant focus will break animation
+    }, 200);
+    this.linkInput.classList.toggle('is-valid', this.isLinkValid());
   }
 
   private applyLink(e: Event) {

@@ -671,15 +671,27 @@ export default class ChatInput {
       'I': 'italic',
       'U': 'underline',
       'S': 'strikethrough',
-      'M': 'monospace'
+      'M': 'monospace',
+      'K': 'link'
     };
 
-    for(const key in formatKeys) {
-      const good = e.code == ('Key' + key);
-      if(good) {
-        this.applyMarkdown(formatKeys[key]);
-        cancelEvent(e); // cancel legacy event
-        break;
+    const selection = document.getSelection();
+    if(selection.toString().trim().length) {
+      for(const key in formatKeys) {
+        const good = e.code == ('Key' + key);
+  
+        if(good) {
+          // * костыльчик
+          if(key === 'K') {
+            this.appImManager.markupTooltip.showLinkEditor();
+            cancelEvent(e);
+            break;
+          }
+  
+          this.applyMarkdown(formatKeys[key]);
+          cancelEvent(e); // cancel legacy event
+          break;
+        }
       }
     }
 
