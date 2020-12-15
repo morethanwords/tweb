@@ -94,6 +94,18 @@ $chat-helper-size: 39px;
 		background: inherit;
 		overflow: hidden;
 	} */
+
+	.btn-send-container {
+		.btn-menu-overlay {
+			z-index: 3;
+		}
+	}
+
+	.menu-send {
+		top: auto;
+    bottom: calc(100% + 10px);
+    //right: var(--chat-input-padding);
+	}
 	
 	.input-message-input {
 		background: none;
@@ -106,6 +118,7 @@ $chat-helper-size: 39px;
 		resize: none;
 		border: none;
 		outline: none;
+		white-space: pre-wrap;
 
 		@media only screen and (max-height: 30rem) {
 			max-height: unquote('max(39px, calc(100vh - 10rem))');

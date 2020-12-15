@@ -230,7 +230,7 @@ namespace RichTextProcessor {
       newText.push(raw.substr(0, match.index));
       let text = (match[3] || match[8] || match[11] || match[14]);
       rawOffset -= text.length;
-      text = text.replace(/^\s+|\s+$/g, '');
+      //text = text.replace(/^\s+|\s+$/g, '');
       rawOffset += text.length;
 
       if(text.match(/^`*$/)) {
