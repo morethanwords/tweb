@@ -134,7 +134,8 @@ export const closeBtnMenu = () => {
   if(openedMenu) {
     openedMenu.classList.remove('active');
     openedMenu.parentElement.classList.remove('menu-open');
-    openedMenu.previousElementSibling.remove(); // remove overlay
+    //openedMenu.previousElementSibling.remove(); // remove overlay
+    if(menuOverlay) menuOverlay.remove();
     openedMenu = null;
   }
   
@@ -165,7 +166,7 @@ window.addEventListener('resize', () => {
   } */
 });
 
-let openedMenu: HTMLElement = null, openedMenuOnClose: () => void = null;
+let openedMenu: HTMLElement = null, openedMenuOnClose: () => void = null, menuOverlay: HTMLElement = null;
 export function openBtnMenu(menuElement: HTMLElement, onClose?: () => void) {
   closeBtnMenu();
   
@@ -173,9 +174,19 @@ export function openBtnMenu(menuElement: HTMLElement, onClose?: () => void) {
   openedMenu.classList.add('active');
   openedMenu.parentElement.classList.add('menu-open');
 
-  const overlay = document.createElement('div');
-  overlay.classList.add('btn-menu-overlay');
-  openedMenu.parentElement.insertBefore(overlay, openedMenu);
+  if(!menuOverlay) {
+    menuOverlay = document.createElement('div');
+    menuOverlay.classList.add('btn-menu-overlay');
+
+    // ! because this event must be canceled, and can't cancel on menu click (below)
+    menuOverlay.addEventListener(CLICK_EVENT_NAME, (e) => {
+      cancelEvent(e);
+      onClick(e);
+    });
+  }
+
+  openedMenu.parentElement.insertBefore(menuOverlay, openedMenu);
+
   //document.body.classList.add('disable-hover');
   
   openedMenuOnClose = onClose;
@@ -186,11 +197,11 @@ export function openBtnMenu(menuElement: HTMLElement, onClose?: () => void) {
     window.addEventListener('contextmenu', onClick, {once: true});
   }
 
-  // ! because this event must be canceled, and can't cancel on menu click (below)
+  /* // ! because this event must be canceled, and can't cancel on menu click (below)
   overlay.addEventListener(CLICK_EVENT_NAME, (e) => {
     cancelEvent(e);
     onClick(e);
-  });
+  }); */
   
   // ! safari iOS doesn't handle window click event on overlay, idk why
   document.addEventListener(CLICK_EVENT_NAME, onClick);

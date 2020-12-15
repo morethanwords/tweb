@@ -119,6 +119,10 @@ const queryableFunctions = {
         throw new Error('Invalid file');
       } */
 
+      /* let perf = performance.now();
+      let json = JSON.parse(jsString);
+      console.log('sticker decode:', performance.now() - perf); */
+
       const match = jsString.match(/"fr":\s*?(\d+?),/);
       const frameRate = +match?.[1] || DEFAULT_FPS;
 

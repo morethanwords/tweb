@@ -192,11 +192,14 @@
     //background-color: rgba(0, 0, 0, .2);
   }
 
-  &-toggle &-overlay {
+  /* &-toggle  */&-overlay {
     left: -100vw;
     right: -100vw;
     top: -100vh;
     bottom: -100vh;
+
+    width: auto !important;
+    max-width: none !important;
   }
 }
 

@@ -12,7 +12,7 @@ import apiManager from "../../lib/mtproto/mtprotoworker";
 import opusDecodeController from "../../lib/opusDecodeController";
 import RichTextProcessor from "../../lib/richtextprocessor";
 import { attachClickEvent, blurActiveElement, cancelEvent, cancelSelection, findUpClassName, getRichValue, getSelectedNodes, isInputEmpty, markdownTags, MarkdownType, placeCaretAtEnd, serializeNodes } from "../../helpers/dom";
-import { ButtonMenuItemOptions } from '../buttonMenu';
+import ButtonMenu, { ButtonMenuItemOptions } from '../buttonMenu';
 import emoticonsDropdown from "../emoticonsDropdown";
 import PopupCreatePoll from "../popupCreatePoll";
 import PopupForward from '../popupForward';
@@ -28,6 +28,7 @@ import DivAndCaption from '../divAndCaption';
 import ButtonMenuToggle from '../buttonMenuToggle';
 import ListenerSetter from '../../helpers/listenerSetter';
 import Button from '../button';
+import { attachContextMenuListener, openBtnMenu } from '../misc';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -54,6 +55,9 @@ export default class ChatInput {
 
   public attachMenu: HTMLButtonElement;
   private attachMenuButtons: (ButtonMenuItemOptions & {verify: (peerId: number) => boolean})[];
+
+  public sendMenu: HTMLDivElement;
+  private sendMenuButtons: (ButtonMenuItemOptions & {verify: (peerId: number) => boolean})[];
 
   public replyElements: {
     container?: HTMLElement,
@@ -187,6 +191,26 @@ export default class ChatInput {
     this.attachMenu.classList.add('attach-file', 'tgico-attach');
     this.attachMenu.classList.remove('tgico-more');
 
+    this.sendMenuButtons = [{
+      icon: 'mute',
+      text: 'Send Without Sound',
+      onClick: () => {
+        
+      },
+      verify: (peerId: number) => true
+    }, {
+      icon: 'schedule',
+      text: 'Schedule Message',
+      onClick: () => {
+        
+      },
+      verify: (peerId: number) => true
+    }];
+
+    this.sendMenu = ButtonMenu(this.sendMenuButtons, this.listenerSetter);
+    this.sendMenu.classList.add('menu-send', 'top-left');
+    //this.inputContainer.append(this.sendMenu);
+
     this.recordTimeEl = document.createElement('div');
     this.recordTimeEl.classList.add('record-time');
 
@@ -213,7 +237,16 @@ export default class ChatInput {
     <span class="tgico tgico-microphone2"></span>
     `);
 
-    this.btnSendContainer.append(this.recordRippleEl, this.btnSend);
+    attachContextMenuListener(this.btnSend, (e: any) => {
+      if(this.isInputEmpty()) {
+        return;
+      }
+      
+      cancelEvent(e);
+      openBtnMenu(this.sendMenu);
+    }, this.listenerSetter);
+
+    this.btnSendContainer.append(this.recordRippleEl, this.btnSend, this.sendMenu);
 
     this.inputContainer.append(this.btnCancelRecord, this.btnSendContainer);
 
@@ -691,17 +724,21 @@ export default class ChatInput {
 
     //console.log('messageInput input', this.messageInput.innerText, this.serializeNodes(Array.from(this.messageInput.childNodes)));
     //const value = this.messageInput.innerText;
-    const value = getRichValue(this.messageInput);
+    const richValue = getRichValue(this.messageInput);
       
-    const entities = RichTextProcessor.parseEntities(value);
-    //console.log('messageInput entities', entities);
+    //const entities = RichTextProcessor.parseEntities(value);
+    const markdownEntities: MessageEntity[] = [];
+    const value = RichTextProcessor.parseMarkdown(richValue, markdownEntities);
+    const entities = RichTextProcessor.mergeEntities(markdownEntities, RichTextProcessor.parseEntities(value));
+
+    //this.chat.log('messageInput entities', richValue, value, markdownEntities);
 
     if(this.stickersHelper) {
       let emoticon = '';
       if(entities.length && entities[0]._ == 'messageEntityEmoji') {
         const entity = entities[0];
-        if(entity.length == value.length && !entity.offset) {
-          emoticon = value;
+        if(entity.length == richValue.length && !entity.offset) {
+          emoticon = richValue;
         }
       }
 
@@ -714,16 +751,18 @@ export default class ChatInput {
       this.undoHistory.length = 0;
     }
 
-    const urlEntities = entities.filter(e => e._ == 'messageEntityUrl');
+    const urlEntities: Array<MessageEntity.messageEntityUrl | MessageEntity.messageEntityTextUrl> = entities.filter(e => e._ == 'messageEntityUrl' || e._ == 'messageEntityTextUrl') as any;
     if(urlEntities.length) {
-      const richEntities: MessageEntity[] = [];
-      const richValue = RichTextProcessor.parseMarkdown(getRichValue(this.messageInput), richEntities);
-      //console.log('messageInput url', entities, richEntities);
       for(const entity of urlEntities) {
-        const url = value.slice(entity.offset, entity.offset + entity.length);
+        let url: string;
+        if(entity._ === 'messageEntityTextUrl') {
+          url = entity.url;
+        } else {
+          url = richValue.slice(entity.offset, entity.offset + entity.length);
 
-        if(!(url.includes('http://') || url.includes('https://')) && !richEntities.find(e => e._ == 'messageEntityTextUrl')) {
-          continue;
+          if(!(url.includes('http://') || url.includes('https://'))) {
+            continue;
+          }
         }
 
         //console.log('messageInput url:', url);
@@ -732,7 +771,7 @@ export default class ChatInput {
           this.lastUrl = url;
           this.willSendWebPage = null;
           apiManager.invokeApi('messages.getWebPage', {
-            url: url,
+            url,
             hash: 0
           }).then((webpage) => {
             webpage = this.appWebPagesManager.saveWebPage(webpage);
@@ -762,7 +801,7 @@ export default class ChatInput {
       }
     }
 
-    if(!value.trim() && !serializeNodes(Array.from(this.messageInput.childNodes)).trim()) {
+    if(!richValue.trim() && !serializeNodes(Array.from(this.messageInput.childNodes)).trim()) {
       this.messageInput.innerHTML = '';
 
       this.appMessagesManager.setTyping(this.chat.peerId, 'sendMessageCancelAction');

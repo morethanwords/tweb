@@ -690,7 +690,7 @@ export default class AppSharedMediaTab implements SliderTab {
     
     const peerId = this.peerId;
     
-    let typesToLoad = single ? [this.sharedMediaType] : this.sharedMediaTypes.filter(t => t !== this.sharedMediaType);
+    let typesToLoad = single ? [this.sharedMediaType] : this.sharedMediaTypes.filter(t => t !== this.sharedMediaType && t !== 'inputMessagesFilterEmpty');
     typesToLoad = typesToLoad.filter(type => !this.loadedAllMedia[type] 
       || this.usedFromHistory[type] < this.historiesStorage[peerId][type].length);
 

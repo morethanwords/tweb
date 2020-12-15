@@ -235,9 +235,10 @@ export default class ChatBubbles {
         this.bubbleGroups.removeBubble(bubble, tempId); */
 
         if(message.media?.webpage && !bubble.querySelector('.web')) {
-          const mounted = this.getMountedBubble(mid);
+          this.renderMessage(message, true, false, bubble, false);
+          /* const mounted = this.getMountedBubble(mid);
           if(!mounted) return;
-          this.renderMessage(mounted.message, true, false, mounted.bubble, false);
+          this.renderMessage(mounted.message, true, false, mounted.bubble, false); */
         }
         
         //delete this.bubbles[tempId];
