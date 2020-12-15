@@ -548,14 +548,14 @@ export default class ChatBubbles {
       return;
     }
     
-    if(['IMG', 'DIV', "AVATAR-ELEMENT"].indexOf(target.tagName) === -1) target = findUpTag(target, 'DIV');
+    if(['IMG', 'DIV', "AVATAR-ELEMENT", 'A'].indexOf(target.tagName) === -1) target = findUpTag(target, 'DIV');
     
-    if(target.tagName == 'DIV' || target.tagName == "AVATAR-ELEMENT") {
+    if(target.tagName == 'DIV' || target.tagName == "AVATAR-ELEMENT" || target.tagName == 'A') {
       if(target.classList.contains('goto-original')) {
-        let savedFrom = bubble.dataset.savedFrom;
-        let splitted = savedFrom.split('_');
-        let peerId = +splitted[0];
-        let msgId = +splitted[1];
+        const savedFrom = bubble.dataset.savedFrom;
+        const splitted = savedFrom.split('_');
+        const peerId = +splitted[0];
+        const msgId = +splitted[1];
         ////this.log('savedFrom', peerId, msgID);
         this.chat.appImManager.setInnerPeer(peerId, msgId);
         return;
@@ -564,8 +564,23 @@ export default class ChatBubbles {
         new PopupForward([mid]);
         //appSidebarRight.forwardTab.open([mid]);
         return;
-      } else if(target.classList.contains('name')) {
-        let peerId = +target.dataset.peerId;
+      }/*  else if(target.classList.contains('follow')) {
+        cancelEvent(e);
+        const savedFrom = target.dataset.follow;
+        const splitted = savedFrom.split('_');
+        this.chat.appImManager.setInnerPeer(+splitted[0], splitted.length > 1 ? +splitted[1] : undefined);
+
+        return;
+      } else if(target.classList.contains('mention')) {
+        cancelEvent(e);
+        const username = target.innerText;
+        this.appUsersManager.resolveUsername(username.slice(1)).then(peer => {
+          this.chat.appImManager.setInnerPeer(peer._ == 'user' ? peer.id : -peer.id);
+        });
+        
+        return;
+      } */ else if(target.classList.contains('name')) {
+        const peerId = +target.dataset.peerId;
         
         if(peerId) {
           this.chat.appImManager.setInnerPeer(peerId);
@@ -573,7 +588,7 @@ export default class ChatBubbles {
 
         return;
       } else if(target.tagName == "AVATAR-ELEMENT") {
-        let peerId = +target.getAttribute('peer');
+        const peerId = +target.getAttribute('peer');
         
         if(peerId) {
           this.chat.appImManager.setInnerPeer(peerId);
@@ -1405,12 +1420,17 @@ export default class ChatBubbles {
     } else if(message.grouped_id && albumMustBeRenderedFull) {
       const t = this.appMessagesManager.getAlbumText(message.grouped_id);
       messageMessage = t.message;
+      //totalEntities = t.entities;
       totalEntities = t.totalEntities;
     } else if(messageMedia?.document?.type != 'sticker') {
       messageMessage = message.message;
+      //totalEntities = message.entities;
       totalEntities = message.totalEntities;
     }
     
+    /* let richText = RichTextProcessor.wrapRichText(messageMessage, {
+      entities: totalEntities
+    }); */
     let richText = RichTextProcessor.wrapRichText(messageMessage, {
       entities: totalEntities
     });

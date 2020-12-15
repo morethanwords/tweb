@@ -30,6 +30,7 @@ import appPollsManager from './appPollsManager';
 import SetTransition from '../../components/singleTransition';
 import { isSafari } from '../../helpers/userAgent';
 import ChatDragAndDrop from '../../components/chat/dragAndDrop';
+import appMessagesIdsManager from './appMessagesIdsManager';
 
 //console.log('appImManager included33!');
 
@@ -133,6 +134,38 @@ export class AppImManager {
     
     this.createNewChat();
     this.chatsSelectTab(0);
+
+    window.addEventListener('hashchange', (e) => {
+      const hash = location.hash;
+      const splitted = hash.split('?');
+
+      const params: any = {};
+      splitted[1].split('&').forEach(item => {
+        params[item.split('=')[0]] = decodeURIComponent(item.split('=')[1]);
+      });
+
+      this.log('hashchange', splitted[0], params);
+
+      switch(splitted[0]) {
+        case '#/im': {
+          const p = params.p;
+          if(p[0] === '@') {
+            let postId = params.post !== undefined ? +params.post : undefined;
+            appUsersManager.resolveUsername(p).then(peer => {
+              const isUser = peer._ == 'user';
+              const peerId = isUser ? peer.id : -peer.id;
+              if(postId) {
+                postId = appMessagesIdsManager.getFullMessageId(postId, -peerId);
+              }
+
+              this.setInnerPeer(peerId, postId);
+            });
+          }
+        }
+      }
+
+      location.hash = '';
+    });
 
     //apiUpdatesManager.attach();
   }

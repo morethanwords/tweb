@@ -147,16 +147,21 @@ export class AppUsersManager {
     return this.contactsFillPromise || (this.contactsFillPromise = promise);
   }
 
-  public async resolveUsername(username: string) {
-    if(this.usernames[username]) {
-      return this.users[this.usernames[username]];
+  public resolveUsername(username: string) {
+    if(username[0] == '@') {
+      username = username.slice(1);
     }
 
-    return await apiManager.invokeApi('contacts.resolveUsername', {username}).then(resolvedPeer => {
-      this.saveApiUser(resolvedPeer.users[0] as User);
+    username = username.toLowerCase();
+    if(this.usernames[username]) {
+      return Promise.resolve(this.users[this.usernames[username]]);
+    }
+
+    return apiManager.invokeApi('contacts.resolveUsername', {username}).then(resolvedPeer => {
+      this.saveApiUsers(resolvedPeer.users);
       appChatsManager.saveApiChats(resolvedPeer.chats);
 
-      return this.users[this.usernames[username]];
+      return appPeersManager.getPeer(appPeersManager.getPeerId(resolvedPeer.peer));
     });
   }
 

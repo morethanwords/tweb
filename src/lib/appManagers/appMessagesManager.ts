@@ -1695,22 +1695,24 @@ export class AppMessagesManager {
 
   public getAlbumText(grouped_id: string) {
     const group = appMessagesManager.groupedMessagesStorage[grouped_id];
-    let foundMessages = 0, message: string, totalEntities: MessageEntity[];
+    let foundMessages = 0, message: string, totalEntities: MessageEntity[], entities: MessageEntity[];
     for(const i in group) {
       const m = group[i];
       if(m.message) {
         if(++foundMessages > 1) break;
         message = m.message;
         totalEntities = m.totalEntities;
+        entities = m.entities;
       }  
     }
 
     if(foundMessages > 1) {
       message = undefined;
       totalEntities = undefined;
+      entities = undefined;
     }
 
-    return {message, totalEntities};
+    return {message, entities, totalEntities};
   }
 
   public getMidsByAlbum(grouped_id: string) {
@@ -1946,9 +1948,14 @@ export class AppMessagesManager {
       }
 
       if(message.message && message.message.length && !message.totalEntities) {
+        //message.totalEntities = (message.entities || []).slice();
         const myEntities = RichTextProcessor.parseEntities(message.message);
         const apiEntities = message.entities || [];
-        message.totalEntities = RichTextProcessor.mergeEntities(myEntities, apiEntities, !message.pending);
+        //message.totalEntities = RichTextProcessor.mergeEntitiesNew(myEntities, apiEntities, !message.pending);
+        message.totalEntities = RichTextProcessor.mergeEntities(apiEntities, myEntities, !message.pending); // ! only in this order, otherwise bold and emoji formatting won't work
+        /* message.totalEntities = RichTextProcessor.mergeEntities(apiEntities, apiEntities, !message.pending);
+        message.totalEntities = RichTextProcessor.mergeEntities(myEntities, message.totalEntities, !message.pending); */
+        //message.totalEntities = RichTextProcessor.mergeEntities(myEntities, apiEntities, !message.pending);
       }
 
       //if(!options.isEdited) {
