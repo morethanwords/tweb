@@ -156,8 +156,8 @@ export class AppMessagesManager {
 
     rootScope.on('webpage_updated', (e) => {
       const eventData = e.detail;
-      eventData.msgs.forEach((msgId) => {
-        const message = this.getMessage(msgId) as Message.message;
+      eventData.msgs.forEach((mid) => {
+        const message = this.getMessage(mid) as Message.message;
         if(!message) return;
         message.media = {
           _: 'messageMediaWebPage', 
@@ -166,7 +166,7 @@ export class AppMessagesManager {
 
         rootScope.broadcast('message_edit', {
           peerId: this.getMessagePeer(message),
-          mid: msgId,
+          mid: mid,
           justMedia: true
         });
       });
@@ -320,7 +320,7 @@ export class AppMessagesManager {
     return obj.deferred;
   }
 
-  public editMessage(messageId: number, text: string, options: Partial<{
+  public editMessage(mid: number, text: string, options: Partial<{
     noWebPage: true,
     newMedia: any
   }> = {}): Promise<void> {
@@ -328,8 +328,8 @@ export class AppMessagesManager {
       return Promise.reject({type: 'MESSAGE_EDIT_FORBIDDEN'});
     } */
 
-    if(messageId < 0) {
-      return this.invokeAfterMessageIsSent(messageId, 'edit', (mid) => {
+    if(mid < 0) {
+      return this.invokeAfterMessageIsSent(mid, 'edit', (mid) => {
         this.log('invoke editMessage callback', mid);
         return this.editMessage(mid, text, options);
       });
@@ -341,12 +341,12 @@ export class AppMessagesManager {
       text = RichTextProcessor.parseMarkdown(text, entities);
     }
 
-    const message = this.getMessage(messageId);
+    const message = this.getMessage(mid);
     const peerId = this.getMessagePeer(message);
 
     return apiManager.invokeApi('messages.editMessage', {
       peer: appPeersManager.getInputPeerById(peerId),
-      id: appMessagesIdsManager.getMessageLocalId(messageId),
+      id: appMessagesIdsManager.getMessageLocalId(mid),
       message: text,
       media: options.newMedia,
       entities: entities ? this.getInputEntities(entities) : undefined,
@@ -3306,9 +3306,13 @@ export class AppMessagesManager {
           break;
         }
 
+        const oldMessage = this.messagesStorage[mid];
+        if(oldMessage.media?.webpage) {
+          appWebPagesManager.deleteWebPageFromPending(oldMessage.media.webpage, mid);
+        }
+
         // console.trace(dT(), 'edit message', message)
-        this.saveMessages([message]/* , {isEdited: true} */);
-        safeReplaceObject(this.messagesStorage[mid], message);
+        this.saveMessages([message]);
 
         const dialog = this.getDialogByPeerId(peerId)[0];
         const isTopMessage = dialog && dialog.top_message == mid;
@@ -3488,6 +3492,12 @@ export class AppMessagesManager {
 
               if(smth?.file_reference) {
                 referenceDatabase.deleteContext(smth.file_reference, {type: 'message', messageId: mid});
+              }
+
+              // @ts-ignore
+              if(message.media.webpage) {
+                // @ts-ignore
+                appWebPagesManager.deleteWebPageFromPending(message.media.webpage, mid);
               }
             }
 

@@ -911,16 +911,22 @@ export default class ChatInput {
     cancelEvent(e);
 
     if(this.willSendWebPage) {
-      this.noWebPage = true;
-      this.willSendWebPage = null;
-
+      const lastUrl = this.lastUrl;
+      let needReturn = false;
       if(this.helperType) {
         //if(this.helperFunc) {
           this.helperFunc();
         //}
 
-        return;
+        needReturn = true;
       }
+
+      // * restore values
+      this.lastUrl = lastUrl;
+      this.noWebPage = true;
+      this.willSendWebPage = null;
+
+      if(needReturn) return;
     }
 
     this.clearHelper();
@@ -1019,7 +1025,7 @@ export default class ChatInput {
       });
     } else {
       this.appMessagesManager.sendText(this.chat.peerId, str, {
-        replyToMsgId: this.replyToMsgId == 0 ? undefined : this.replyToMsgId,
+        replyToMsgId: this.replyToMsgId || this.replyToMsgId,
         noWebPage: this.noWebPage,
         webPage: this.willSendWebPage
       });

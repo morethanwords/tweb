@@ -91,9 +91,9 @@ class RootScope {
   }
 
   public broadcast = <T extends keyof BroadcastEvents>(name: T, detail?: BroadcastEvents[T]) => {
-    if(name != 'user_update') {
+    /* if(name != 'user_update') {
       console.debug('Broadcasting ' + name + ' event, with args:', detail);
-    }
+    } */
 
     const myCustomEvent = new CustomEvent(name, {detail});
     document.dispatchEvent(myCustomEvent);

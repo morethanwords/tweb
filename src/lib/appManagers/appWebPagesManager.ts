@@ -7,8 +7,12 @@ import { safeReplaceObject } from "../../helpers/object";
 import { limitSymbols } from "../../helpers/string";
 
 export class AppWebPagesManager {
-  webpages: any = {};
-  pendingWebPages: any = {};
+  private webpages: any = {};
+  private pendingWebPages: {
+    [webPageId: string]: {
+      [mid: string]: true
+    }
+  } = {};
   
   constructor() {
     rootScope.on('apiUpdate', (e) => {
@@ -22,7 +26,7 @@ export class AppWebPagesManager {
     });
   }
   
-  public saveWebPage(apiWebPage: any, messageId?: number, mediaContext?: ReferenceContext) {
+  public saveWebPage(apiWebPage: any, mid?: number, mediaContext?: ReferenceContext) {
     if(apiWebPage.photo && apiWebPage.photo._ === 'photo') {
       //appPhotosManager.savePhoto(apiWebPage.photo, mediaContext);
       apiWebPage.photo = appPhotosManager.savePhoto(apiWebPage.photo, mediaContext);
@@ -65,20 +69,20 @@ export class AppWebPagesManager {
     });
     
     if(apiWebPage.type != 'photo' &&
-    apiWebPage.type != 'video' &&
-    apiWebPage.type != 'gif' &&
-    apiWebPage.type != 'document' &&
-    !apiWebPage.description &&
-    apiWebPage.photo) {
+      apiWebPage.type != 'video' &&
+      apiWebPage.type != 'gif' &&
+      apiWebPage.type != 'document' &&
+      !apiWebPage.description &&
+      apiWebPage.photo) {
       apiWebPage.type = 'photo';
     }
     
-    if(messageId) {
+    if(mid) {
       if(this.pendingWebPages[apiWebPage.id] === undefined) {
         this.pendingWebPages[apiWebPage.id] = {};
       }
 
-      this.pendingWebPages[apiWebPage.id][messageId] = true;
+      this.pendingWebPages[apiWebPage.id][mid] = true;
     }
     
     if(this.webpages[apiWebPage.id] === undefined) {
@@ -87,19 +91,30 @@ export class AppWebPagesManager {
       safeReplaceObject(this.webpages[apiWebPage.id], apiWebPage);
     }
     
-    if(!messageId && this.pendingWebPages[apiWebPage.id] !== undefined) {
+    if(!mid && this.pendingWebPages[apiWebPage.id] !== undefined) {
       const msgs: number[] = [];
-      for(let msgId in this.pendingWebPages[apiWebPage.id]) {
+      for(const msgId in this.pendingWebPages[apiWebPage.id]) {
         msgs.push(+msgId);
       }
 
       rootScope.broadcast('webpage_updated', {
         id: apiWebPage.id,
-        msgs: msgs
+        msgs
       });
     }
 
     return apiWebPage;
+  }
+
+  public deleteWebPageFromPending(webPage: any, mid: number) {
+    const id = webPage.id;
+    if(this.pendingWebPages[id] && this.pendingWebPages[id][mid]) {
+      delete this.pendingWebPages[id][mid];
+
+      if(!Object.keys(this.pendingWebPages[id]).length) {
+        delete this.pendingWebPages[id];
+      }
+    }
   }
 
   public getWebPage(id: string) {
