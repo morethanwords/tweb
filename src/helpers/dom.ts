@@ -640,13 +640,16 @@ export async function getFilesFromEvent(e: ClipboardEvent | DragEvent, onlyTypes
     // @ts-ignore
     const items = (e.dataTransfer || e.clipboardData || e.originalEvent.clipboardData).items;
 
+    const promises: Promise<any>[] = [];
     for(let i = 0; i < items.length; ++i) {
       const item: DataTransferItem = items[i];
       if(item.kind === 'file') {
-        const entry = onlyTypes ? item : item.webkitGetAsEntry() || item.getAsFile();
-        await scanFiles(entry);
+        const entry = (onlyTypes ? item : item.webkitGetAsEntry()) || item.getAsFile();
+        promises.push(scanFiles(entry));
       }
     }
+    
+    await Promise.all(promises);
   }
 
   /* if(!onlyTypes) {
