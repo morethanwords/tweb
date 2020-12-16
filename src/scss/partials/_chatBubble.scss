@@ -1475,6 +1475,16 @@ $bubble-margin: .25rem;
   }
 }
 
+// * fix scroll with only 1 bubble
+.bubbles-date-group:last-of-type {
+  .bubble:last-of-type {
+    margin-bottom: 2px;
+    /* &:after, .document-container:last-of-type .document-selection {
+      bottom: 0 !important;
+    } */
+  }
+}
+
 .bubble.service {
   align-self: center;
   
