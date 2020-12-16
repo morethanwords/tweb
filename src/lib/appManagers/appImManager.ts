@@ -20,7 +20,7 @@ import appPhotosManager from './appPhotosManager';
 import appProfileManager from './appProfileManager';
 import appStickersManager from './appStickersManager';
 import appWebPagesManager from './appWebPagesManager';
-import { cancelEvent, findUpClassName, generatePathData, getFilesFromEvent, placeCaretAtEnd } from '../../helpers/dom';
+import { cancelEvent, getFilesFromEvent, placeCaretAtEnd } from '../../helpers/dom';
 import PopupNewMedia from '../../components/popupNewMedia';
 import { TransitionSlider } from '../../components/transition';
 import { numberWithCommas } from '../../helpers/number';
@@ -28,9 +28,7 @@ import MarkupTooltip from '../../components/chat/markupTooltip';
 import { isTouchSupported } from '../../helpers/touchSupport';
 import appPollsManager from './appPollsManager';
 import SetTransition from '../../components/singleTransition';
-import { isSafari } from '../../helpers/userAgent';
 import ChatDragAndDrop from '../../components/chat/dragAndDrop';
-import appMessagesIdsManager from './appMessagesIdsManager';
 
 //console.log('appImManager included33!');
 
@@ -154,9 +152,6 @@ export class AppImManager {
             appUsersManager.resolveUsername(p).then(peer => {
               const isUser = peer._ == 'user';
               const peerId = isUser ? peer.id : -peer.id;
-              if(postId) {
-                postId = appMessagesIdsManager.getFullMessageId(postId, -peerId);
-              }
 
               this.setInnerPeer(peerId, postId);
             });
@@ -212,11 +207,11 @@ export class AppImManager {
           if(history?.history) {
             let goodMid: number;
             for(const mid of history.history) {
-              const message = appMessagesManager.getMessage(mid);
+              const message = appMessagesManager.getMessageByPeer(chat.peerId, mid);
               const good = this.myId == chat.peerId ? message.fromId == this.myId : message.pFlags.out;
 
               if(good) {
-                if(appMessagesManager.canEditMessage(mid, 'text')) {
+                if(appMessagesManager.canEditMessage(this.chat.peerId, mid, 'text')) {
                   goodMid = mid;
                 }
 
@@ -508,7 +503,7 @@ export class AppImManager {
     this.createNewChat();
 
     if(type) {
-      this.chat.type = type;
+      this.chat.setType(type);
     }
 
     this.chatsSelectTab(this.chat.container);

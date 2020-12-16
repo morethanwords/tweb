@@ -68,6 +68,7 @@ export default class ChatInput {
 
   public willSendWebPage: any = null;
   public forwardingMids: number[] = [];
+  public forwardingFromPeerId: number = 0;
   public replyToMsgId = 0;
   public editMsgId = 0;
   public noWebPage: true;
@@ -102,6 +103,7 @@ export default class ChatInput {
 
   public goDownBtn: HTMLButtonElement;
   public goDownUnreadBadge: HTMLElement;
+  btnScheduled: HTMLButtonElement;
 
   constructor(private chat: Chat, private appMessagesManager: AppMessagesManager, private appDocsManager: AppDocsManager, private appChatsManager: AppChatsManager, private appPeersManager: AppPeersManager, private appWebPagesManager: AppWebPagesManager, private appImManager: AppImManager) {
     this.listenerSetter = new ListenerSetter();
@@ -157,6 +159,9 @@ export default class ChatInput {
     this.inputMessageContainer.classList.add('input-message-container');
 
     this.inputScroll = new Scrollable(this.inputMessageContainer);
+
+    this.btnScheduled = ButtonIcon('schedule', {noRipple: true});
+    this.btnScheduled.classList.add('btn-scheduled', 'hide');
 
     this.attachMenuButtons = [{
       icon: 'photo',
@@ -219,7 +224,7 @@ export default class ChatInput {
     this.fileInput.multiple = true;
     this.fileInput.style.display = 'none';
 
-    this.newMessageWrapper.append(this.btnToggleEmoticons, this.inputMessageContainer, this.attachMenu, this.recordTimeEl, this.fileInput);
+    this.newMessageWrapper.append(this.btnToggleEmoticons, this.inputMessageContainer, this.btnScheduled, this.attachMenu, this.recordTimeEl, this.fileInput);
 
     this.rowsWrapper.append(this.replyElements.container, this.newMessageWrapper);
 
@@ -310,6 +315,10 @@ export default class ChatInput {
       console.log(eventName + ', time: ' + (Date.now() - time));
     }); */
     attachClickEvent(this.btnSend, this.onBtnSendClick, {listenerSetter: this.listenerSetter});
+
+    attachClickEvent(this.btnScheduled, (e) => {
+      this.appImManager.setInnerPeer(this.chat.peerId, 0, 'scheduled');
+    }, {listenerSetter: this.listenerSetter});
 
     if(this.recorder) {
       const onCancelRecordClick = (e: Event) => {
@@ -450,6 +459,13 @@ export default class ChatInput {
 
     if(this.chat.type == 'pinned') {
       this.chatInput.classList.toggle('can-pin', this.appPeersManager.canPinMessage(peerId));
+    } else if(this.chat.type == 'chat') {
+      this.btnScheduled.classList.add('hide');
+      const middleware = this.chat.bubbles.getMiddleware();
+      this.appMessagesManager.getScheduledMessages(peerId).then(mids => {
+        if(!middleware()) return;
+        this.btnScheduled.classList.toggle('hide', !mids.length);
+      });
     }
 
     if(this.messageInput) {
@@ -953,11 +969,12 @@ export default class ChatInput {
       if(this.helperWaitingForward) return;
       this.helperWaitingForward = true;
 
+      const fromId = this.forwardingFromPeerId;
       const mids = this.forwardingMids.slice();
       const helperFunc = this.helperFunc;
       this.clearHelper();
       let selected = false;
-      new PopupForward(mids, () => {
+      new PopupForward(fromId, mids, () => {
         selected = true;
       }, () => {
         this.helperWaitingForward = false;
@@ -1032,7 +1049,7 @@ export default class ChatInput {
     //return;
 
     if(this.editMsgId) {
-      this.appMessagesManager.editMessage(this.editMsgId, str, {
+      this.appMessagesManager.editMessage(this.chat.peerId, this.editMsgId, str, {
         noWebPage: this.noWebPage
       });
     } else {
@@ -1046,8 +1063,10 @@ export default class ChatInput {
     // * wait for sendText set messageId for invokeAfterMsg
     if(this.forwardingMids.length) {
       const mids = this.forwardingMids.slice();
+      const fromPeerId = this.forwardingFromPeerId;
+      const peerId = this.chat.peerId;
       setTimeout(() => {
-        this.appMessagesManager.forwardMessages(this.chat.peerId, mids);
+        this.appMessagesManager.forwardMessages(peerId, fromPeerId, mids);
       }, 0);
     }
 
@@ -1071,7 +1090,7 @@ export default class ChatInput {
   }
 
   public initMessageEditing(mid: number) {
-    const message = this.appMessagesManager.getMessage(mid);
+    const message = this.chat.getMessage(mid);
 
     let input = RichTextProcessor.wrapDraftText(message.message, {entities: message.totalEntities});
     const f = () => {
@@ -1082,11 +1101,11 @@ export default class ChatInput {
     f();
   }
 
-  public initMessagesForward(mids: number[]) {
+  public initMessagesForward(fromPeerId: number, mids: number[]) {
     const f = () => {
       //const peerTitles: string[]
       const smth: Set<string | number> = new Set(mids.map(mid => {
-        const message = this.appMessagesManager.getMessage(mid);
+        const message = this.appMessagesManager.getMessageByPeer(fromPeerId, mid);
         if(message.fwd_from && message.fwd_from.from_name && !message.fromId && !message.fwdFromId) {
           return message.fwd_from.from_name;
         } else {
@@ -1103,13 +1122,14 @@ export default class ChatInput {
 
       const title = peerTitles.length < 3 ? peerTitles.join(' and ') : peerTitles[0] + ' and ' + (peerTitles.length - 1) + ' others';
       if(mids.length == 1) {
-        const message = this.appMessagesManager.getMessage(mids[0]);
+        const message = this.appMessagesManager.getMessageByPeer(fromPeerId, mids[0]);
         this.setTopInfo('forward', f, title, message.message, undefined, message);
       } else {
         this.setTopInfo('forward', f, title, mids.length + ' forwarded messages');
       }
 
       this.forwardingMids = mids.slice();
+      this.forwardingFromPeerId = fromPeerId;
     };
     
     f();
@@ -1128,6 +1148,7 @@ export default class ChatInput {
     
     this.replyToMsgId = 0;
     this.forwardingMids.length = 0;
+    this.forwardingFromPeerId = 0;
     this.editMsgId = 0;
     this.helperType = this.helperFunc = undefined;
     this.chat.container.classList.remove('is-helper-active');

@@ -524,7 +524,7 @@ export default class ChatPinnedMessage {
   }
 
   public async followPinnedMessage(mid: number) {
-    const message = this.appMessagesManager.getMessage(mid);
+    const message = this.chat.getMessage(mid);
     if(message && !message.deleted) {
       this.chat.setPeer(this.topbar.peerId, mid);
       (this.chat.setPeerPromise || Promise.resolve()).then(() => { // * debounce fast clicker
@@ -550,7 +550,7 @@ export default class ChatPinnedMessage {
       const count = this.count;
       if(count) {
         const pinnedIndex = this.pinnedIndex;
-        const message = this.appMessagesManager.getMessage(this.pinnedMid);
+        const message = this.chat.getMessage(this.pinnedMid);
 
         //this.animatedCounter.prepareNumber(count);
 

@@ -1165,18 +1165,18 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
   onPrevClick = (target: AppMediaViewerTargetType) => {
     this.nextTargets.unshift({element: this.lastTarget, mid: this.currentMessageId});
-    this.openMedia(appMessagesManager.getMessage(target.mid), target.element);
+    this.openMedia(appMessagesManager.getMessageByPeer(this.peerId, target.mid), target.element);
   };
 
   onNextClick = (target: AppMediaViewerTargetType) => {
     this.prevTargets.push({element: this.lastTarget, mid: this.currentMessageId});
-    this.openMedia(appMessagesManager.getMessage(target.mid), target.element);
+    this.openMedia(appMessagesManager.getMessageByPeer(this.peerId, target.mid), target.element);
   };
 
   onForwardClick = () => {
     if(this.currentMessageId) {
       //appSidebarRight.forwardTab.open([this.currentMessageId]);
-      new PopupForward([this.currentMessageId], () => {
+      new PopupForward(this.peerId, [this.currentMessageId], () => {
         return this.close();
       });
     }
@@ -1192,14 +1192,14 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
           appSidebarRight.sharedMediaTab.closeBtn.click();
         }
 
-        const message = appMessagesManager.getMessage(mid);
+        const message = appMessagesManager.getMessageByPeer(this.peerId, mid);
         appImManager.setPeer(message.peerId, mid);
       });
     }
   };
 
   onDownloadClick = () => {
-    const message = appMessagesManager.getMessage(this.currentMessageId);
+    const message = appMessagesManager.getMessageByPeer(this.peerId, this.currentMessageId);
     if(message.media.photo) {
       appPhotosManager.savePhotoFile(message.media.photo, appImManager.chat.bubbles.lazyLoadQueue.queueId);
     } else {
@@ -1262,7 +1262,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
       const method = older ? value.history.forEach : value.history.forEachReverse;
       method.call(value.history, mid => {
-        const message = appMessagesManager.getMessage(mid);
+        const message = appMessagesManager.getMessageByPeer(this.peerId, mid);
         const media = this.getMediaFromMessage(message);
 
         if(!media) return;

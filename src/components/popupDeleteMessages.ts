@@ -6,14 +6,13 @@ import { PopupButton } from "./popup";
 import PopupPeer from "./popupPeer";
 
 export default class PopupDeleteMessages {
-  constructor(mids: number[], onConfirm?: () => void) {
-    const peerId = appMessagesManager.getMessage(mids[0]).peerId;
+  constructor(peerId: number, mids: number[], onConfirm?: () => void) {
     const firstName = appPeersManager.getPeerTitle(peerId, false, true);
 
     mids = mids.slice();
     const callback = (revoke: boolean) => {
       onConfirm && onConfirm();
-      appMessagesManager.deleteMessages(mids, revoke);
+      appMessagesManager.deleteMessages(peerId, mids, revoke);
     };
 
     let title: string, description: string, buttons: PopupButton[];
@@ -45,7 +44,7 @@ export default class PopupDeleteMessages {
         const hasRights = appChatsManager.hasRights(-peerId, 'deleteRevoke');
         if(chat._ == 'chat') {
           const canRevoke = hasRights ? mids.slice() : mids.filter(mid => {
-            const message = appMessagesManager.getMessage(mid);
+            const message = appMessagesManager.getMessageByPeer(peerId, mid);
             return message.fromId == rootScope.myId;
           });
 

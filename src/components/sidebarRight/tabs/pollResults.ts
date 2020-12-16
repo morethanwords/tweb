@@ -14,6 +14,7 @@ export default class AppPollResultsTab implements SliderTab {
   private resultsDiv = this.contentDiv.firstElementChild as HTMLDivElement;
   private scrollable: Scrollable;
 
+  private peerId: number;
   private pollId: string;
   private mid: number;
 
@@ -31,11 +32,12 @@ export default class AppPollResultsTab implements SliderTab {
     this.cleanup();
   }
 
-  public init(pollId: string, mid: number) {
-    if(this.pollId == pollId && this.mid == mid) return;
+  public init(peerId: number, pollId: string, mid: number) {
+    if(this.peerId == peerId && this.pollId == pollId && this.mid == mid) return;
     
     this.cleanup();
 
+    this.peerId = peerId;
     this.pollId = pollId;
     this.mid = mid;
 
@@ -86,7 +88,7 @@ export default class AppPollResultsTab implements SliderTab {
         if(loading) return;
         loading = true;
 
-        appPollsManager.getVotes(mid, answer.option, offset, limit).then(votesList => {
+        appPollsManager.getVotes(peerId, mid, answer.option, offset, limit).then(votesList => {
           votesList.votes.forEach(vote => {
             const {dom} = appDialogsManager.addDialogNew({
               dialog: vote.user_id,

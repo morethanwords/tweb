@@ -1,7 +1,6 @@
 import { tsNow } from "../../helpers/date";
 import type { Message } from "../../layer";
 import type { AppChatsManager } from "../appManagers/appChatsManager";
-import type { AppMessagesIdsManager } from "../appManagers/appMessagesIdsManager";
 import type { AppMessagesManager, Dialog } from "../appManagers/appMessagesManager";
 import type { AppPeersManager } from "../appManagers/appPeersManager";
 import type { ServerTimeManager } from "../mtproto/serverTimeManager";
@@ -18,7 +17,7 @@ export default class DialogsStorage {
   };
   public dialogsNum = 0;
 
-  constructor(private appMessagesManager: AppMessagesManager, private appMessagesIdsManager: AppMessagesIdsManager, private appChatsManager: AppChatsManager, private appPeersManager: AppPeersManager, private serverTimeManager: ServerTimeManager) {
+  constructor(private appMessagesManager: AppMessagesManager, private appChatsManager: AppChatsManager, private appPeersManager: AppPeersManager, private serverTimeManager: ServerTimeManager) {
 
   }
 
@@ -92,8 +91,8 @@ export default class DialogsStorage {
 
   public generateIndexForDialog(dialog: Dialog, justReturn = false) {
     const channelId = this.appPeersManager.isChannel(dialog.peerId) ? -dialog.peerId : 0;
-    const mid = this.appMessagesIdsManager.getFullMessageId(dialog.top_message, channelId);
-    const message = this.appMessagesManager.getMessage(mid);
+    const mid = dialog.top_message;
+    const message = this.appMessagesManager.getMessageByPeer(dialog.peerId, mid);
 
     let topDate = (message as Message.message).date || Date.now() / 1000;
     if(channelId) {

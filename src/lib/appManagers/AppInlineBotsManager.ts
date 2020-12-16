@@ -4,8 +4,6 @@ import appPeersManager from "./appPeersManager";
 import apiManagerProxy from "../mtproto/mtprotoworker";
 import { RichTextProcessor } from "../richtextprocessor";
 import appDocsManager from "./appDocsManager";
-import appMessagesIdsManager from "./appMessagesIdsManager";
-import appMessagesManager from "./appMessagesManager";
 import appPhotosManager from "./appPhotosManager";
 import appUsersManager from "./appUsersManager";
 
@@ -270,13 +268,10 @@ export class AppInlineBotsManager {
         })
       } */
       
-  public callbackButtonClick(mid: number, button: any) {
-    let message = appMessagesManager.getMessage(mid);
-    let peerId = appMessagesManager.getMessagePeer(message);
-    
+  public callbackButtonClick(peerId: number, mid: number, button: any) {
     return apiManagerProxy.invokeApi('messages.getBotCallbackAnswer', {
       peer: appPeersManager.getInputPeerById(peerId),
-      msg_id: appMessagesIdsManager.getMessageLocalId(mid),
+      msg_id: mid,
       data: button.data
     }, {timeout: 1, stopTime: -1, noErrorBox: true}).then((callbackAnswer) => {
       if(typeof callbackAnswer.message === 'string' && callbackAnswer.message.length) {

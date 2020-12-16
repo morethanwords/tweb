@@ -189,7 +189,7 @@ $bubble-margin: .25rem;
       } */
     }
 
-    .chat:not(.type-pinned) & .bubble__container {
+    .chat.type-chat & .bubble__container {
       cursor: pointer;
       pointer-events: all;
     }

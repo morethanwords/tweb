@@ -27,6 +27,7 @@ import './middleEllipsis';
 import { nextRandomInt } from '../helpers/random';
 import RichTextProcessor from '../lib/richtextprocessor';
 import appImManager from '../lib/appManagers/appImManager';
+import Chat from './chat/chat';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 
@@ -93,7 +94,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   video.setAttribute('playsinline', 'true');
   if(doc.type == 'round') {
     //video.muted = true;
-    const globalVideo = appMediaPlaybackController.addMedia(doc, message.mid);
+    const globalVideo = appMediaPlaybackController.addMedia(message.peerId, doc, message.mid);
 
     video.addEventListener('canplay', () => {
       if(globalVideo.currentTime > 0) {
@@ -342,9 +343,9 @@ export const formatDate = (timestamp: number, monthShort = false, withYear = tru
   return str + ' at ' + date.getHours() + ':' + ('0' + date.getMinutes()).slice(-2);
 };
 
-export function wrapDocument(doc: MyDocument, withTime = false, uploading = false, mid?: number, fontWeight = 500): HTMLElement {
+export function wrapDocument(peerId: number, doc: MyDocument, withTime = false, uploading = false, mid?: number, fontWeight = 500): HTMLElement {
   if(doc.type == 'audio' || doc.type == 'voice') {
-    const audioElement = wrapAudio(doc, withTime, mid);
+    const audioElement = wrapAudio(peerId, doc, withTime, mid);
     audioElement.dataset.fontWeight = '' + fontWeight;
     return audioElement;
   }
@@ -437,8 +438,9 @@ export function wrapDocument(doc: MyDocument, withTime = false, uploading = fals
   return docDiv;
 }
 
-export function wrapAudio(doc: MyDocument, withTime = false, mid?: number): HTMLElement {
+export function wrapAudio(peerId: number, doc: MyDocument, withTime = false, mid?: number): HTMLElement {
   let elem = new AudioElement();
+  elem.setAttribute('peer-id', '' + peerId);
   elem.setAttribute('doc-id', doc.id);
   elem.setAttribute('with-time', '' + +withTime);
   elem.setAttribute('message-id', '' + mid);
@@ -898,20 +900,21 @@ export function prepareAlbum(options: {
   } */
 }
 
-export function wrapAlbum({groupId, attachmentDiv, middleware, uploading, lazyLoadQueue, isOut}: {
+export function wrapAlbum({groupId, attachmentDiv, middleware, uploading, lazyLoadQueue, isOut, chat}: {
   groupId: string, 
   attachmentDiv: HTMLElement,
   middleware?: () => boolean,
   lazyLoadQueue?: LazyLoadQueue,
   uploading?: boolean,
-  isOut: boolean
+  isOut: boolean,
+  chat: Chat
 }) {
   const items: {size: PhotoSize.photoSize, media: any, message: any}[] = [];
 
   // !lowest msgID will be the FIRST in album
   const storage = appMessagesManager.getMidsByAlbum(groupId);
   for(const mid of storage) {
-    const m = appMessagesManager.getMessage(mid);
+    const m = chat.getMessage(mid);
     const media = m.media.photo || m.media.document;
 
     const size: any = media._ == 'photo' ? appPhotosManager.choosePhotoSize(media, 480, 480) : {w: media.w, h: media.h};
@@ -966,24 +969,25 @@ export function wrapAlbum({groupId, attachmentDiv, middleware, uploading, lazyLo
   });
 }
 
-export function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, messageDiv}: {
+export function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, messageDiv, chat}: {
   albumMustBeRenderedFull: boolean,
   message: any,
   messageDiv: HTMLElement,
   bubble: HTMLElement,
-  uploading?: boolean
+  uploading?: boolean,
+  chat: Chat
 }) {
   let nameContainer: HTMLDivElement;
-  const mids = albumMustBeRenderedFull ? appMessagesManager.getMidsByMid(message.mid) : [message.mid];
+  const mids = albumMustBeRenderedFull ? chat.getMidsByMid(message.mid) : [message.mid];
   const isPending = message.mid < 0;
   if(isPending) {
     mids.reverse();
   }
 
   mids.forEach((mid, idx) => {
-    const message = appMessagesManager.getMessage(mid);
+    const message = chat.getMessage(mid);
     const doc = message.media.document;
-    const div = wrapDocument(doc, false, isPending, mid);
+    const div = wrapDocument(chat.peerId, doc, false, isPending, mid);
 
     const container = document.createElement('div');
     container.classList.add('document-container');
@@ -1037,8 +1041,9 @@ export function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, 
   return nameContainer;
 }
 
-export function wrapPoll(pollId: string, mid: number) {
+export function wrapPoll(peerId: number, pollId: string, mid: number) {
   const elem = new PollElement();
+  elem.setAttribute('peer-id', '' + peerId);
   elem.setAttribute('poll-id', pollId);
   elem.setAttribute('message-id', '' + mid);
   return elem;

@@ -199,6 +199,7 @@
       text-overflow: ellipsis;
       overflow: hidden;
       word-break: break-word;
+      white-space: pre-wrap;
     }
 
     &-bio {

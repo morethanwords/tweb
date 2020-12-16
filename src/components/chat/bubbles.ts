@@ -35,7 +35,6 @@ import LazyLoadQueue from "../lazyLoadQueue";
 import { AppChatsManager } from "../../lib/appManagers/appChatsManager";
 import Chat from "./chat";
 import ListenerSetter from "../../helpers/listenerSetter";
-import { pause } from "../../helpers/schedulers";
 
 const IGNORE_ACTIONS = ['messageActionHistoryClear'];
 
@@ -148,7 +147,7 @@ export default class ChatBubbles {
         let bubble = this.bubbles[mid];
         if(!bubble) return;
         
-        let message = appMessagesManager.getMessage(mid);
+        let message = this.chat.getMessage(mid);
         //this.log('history_update', this.bubbles[mid], mid, message);
 
         let dateMessage = this.getDateContainerByMessage(message, false);
@@ -196,7 +195,7 @@ export default class ChatBubbles {
       
       this.log('message_sent', e.detail);
 
-      const message = this.appMessagesManager.getMessage(mid);
+      const message = this.chat.getMessage(mid);
 
       appSidebarRight.sharedMediaTab.renderNewMessages(message.peerId, [mid]);
 
@@ -282,7 +281,7 @@ export default class ChatBubbles {
       if(!this.bubbles[maxId]) return;
 
       const renderMaxId = getObjectKeysAndSort(appMessagesManager.groupedMessagesStorage[groupId], 'asc').pop();
-      this.renderMessage(appMessagesManager.getMessage(renderMaxId), true, false, this.bubbles[maxId], false);
+      this.renderMessage(this.chat.getMessage(renderMaxId), true, false, this.bubbles[maxId], false);
     });
 
     this.listenerSetter.add(rootScope, 'messages_downloaded', (e) => {
@@ -301,9 +300,9 @@ export default class ChatBubbles {
             const bubble = this.bubbles[mid];
             if(!bubble) return;
             
-            const message = appMessagesManager.getMessage(mid);
+            const message = this.chat.getMessage(mid);
             
-            const repliedMessage = appMessagesManager.getMessage(replyMid);
+            const repliedMessage = this.chat.getMessage(replyMid);
             if(repliedMessage.deleted) { // чтобы не пыталось бесконечно загрузить удалённое сообщение
               delete message.reply_to_mid; // WARNING!
             }
@@ -321,10 +320,14 @@ export default class ChatBubbles {
       }
     });
 
+    this.listenerSetter.add(this.bubblesContainer, 'click', this.onBubblesClick/* , {capture: true, passive: false} */);
+  }
+
+  public constructPeerHelpers() {
     this.listenerSetter.add(rootScope, 'dialog_unread', (e) => {
       const info = e.detail;
 
-      const dialog = appMessagesManager.getDialogByPeerId(info.peerId)[0];
+      const dialog = this.appMessagesManager.getDialogByPeerId(info.peerId)[0];
       if(dialog?.peerId == this.peerId) {
         this.chat.input.setUnreadCount();
         this.updateUnreadByDialog(dialog);
@@ -347,8 +350,6 @@ export default class ChatBubbles {
       }
     });
 
-    this.listenerSetter.add(this.bubblesContainer, 'click', this.onBubblesClick/* , {capture: true, passive: false} */);
-    
     this.stickyIntersector = new StickyIntersector(this.scrollable.container, (stuck, target) => {
       for(const timestamp in this.dateMessages) {
         const dateMessage = this.dateMessages[timestamp];
@@ -395,9 +396,9 @@ export default class ChatBubbles {
         } */
 
         //appMessagesManager.readMessages(readed);
-        /* false && */ appMessagesManager.readHistory(this.peerId, max).catch((err: any) => {
+        /* false && */ this.appMessagesManager.readHistory(this.peerId, max).catch((err: any) => {
           this.log.error('readHistory err:', err);
-          appMessagesManager.readHistory(this.peerId, max);
+          this.appMessagesManager.readHistory(this.peerId, max);
         });
       }
     });
@@ -406,7 +407,6 @@ export default class ChatBubbles {
   public constructPinnedHelpers() {
     this.listenerSetter.add(rootScope, 'peer_pinned_messages', (e) => {
       const {peerId, mids, pinned} = e.detail;
-
       if(peerId !== this.peerId) return;
 
       if(mids) {
@@ -414,6 +414,15 @@ export default class ChatBubbles {
           this.deleteMessagesByIds(mids);
         }
       }
+    });
+  }
+
+  public constructScheduledHelpers() {
+    this.listenerSetter.add(rootScope, 'scheduled_delete', (e) => {
+      const {peerId, mids} = e.detail;
+      if(peerId !== this.peerId) return;
+
+      this.deleteMessagesByIds(mids);
     });
   }
 
@@ -479,7 +488,7 @@ export default class ChatBubbles {
 
     if(bubble.classList.contains('sticker') && target.parentElement.classList.contains('attachment')) {
       const messageId = +bubble.dataset.mid;
-      const message = this.appMessagesManager.getMessage(messageId);
+      const message = this.chat.getMessage(messageId);
 
       const doc = message.media?.document;
 
@@ -495,7 +504,7 @@ export default class ChatBubbles {
       || isVideoComponentElement
       || (target.tagName == 'VIDEO' && !bubble.classList.contains('round'))) {
       let messageId = +findUpClassName(target, 'album-item')?.dataset.mid || +bubble.dataset.mid;
-      let message = this.appMessagesManager.getMessage(messageId);
+      let message = this.chat.getMessage(messageId);
       if(!message) {
         this.log.warn('no message by messageId:', messageId);
         return;
@@ -505,7 +514,7 @@ export default class ChatBubbles {
       let ids = Object.keys(this.bubbles).map(k => +k).filter(id => {
         //if(!this.scrollable.visibleElements.find(e => e.element == this.bubbles[id])) return false;
 
-        let message = this.appMessagesManager.getMessage(id);
+        let message = this.chat.getMessage(id);
         
         return message.media && (message.media.photo || (message.media.document && (message.media.document.type == 'video' || message.media.document.type == 'gif')) || (message.media.webpage && (message.media.webpage.document || message.media.webpage.photo)));
       }).sort((a, b) => a - b);
@@ -548,9 +557,9 @@ export default class ChatBubbles {
       return;
     }
     
-    if(['IMG', 'DIV', "AVATAR-ELEMENT", 'A'].indexOf(target.tagName) === -1) target = findUpTag(target, 'DIV');
+    if(['IMG', 'DIV', "AVATAR-ELEMENT"/* , 'A' */].indexOf(target.tagName) === -1) target = findUpTag(target, 'DIV');
     
-    if(target.tagName == 'DIV' || target.tagName == "AVATAR-ELEMENT" || target.tagName == 'A') {
+    if(target.tagName == 'DIV' || target.tagName == "AVATAR-ELEMENT"/*  || target.tagName == 'A' */) {
       if(target.classList.contains('goto-original')) {
         const savedFrom = bubble.dataset.savedFrom;
         const splitted = savedFrom.split('_');
@@ -561,25 +570,10 @@ export default class ChatBubbles {
         return;
       } else if(target.classList.contains('forward')) {
         const mid = +bubble.dataset.mid;
-        new PopupForward([mid]);
+        new PopupForward(this.peerId, [mid]);
         //appSidebarRight.forwardTab.open([mid]);
         return;
-      }/*  else if(target.classList.contains('follow')) {
-        cancelEvent(e);
-        const savedFrom = target.dataset.follow;
-        const splitted = savedFrom.split('_');
-        this.chat.appImManager.setInnerPeer(+splitted[0], splitted.length > 1 ? +splitted[1] : undefined);
-
-        return;
-      } else if(target.classList.contains('mention')) {
-        cancelEvent(e);
-        const username = target.innerText;
-        this.appUsersManager.resolveUsername(username.slice(1)).then(peer => {
-          this.chat.appImManager.setInnerPeer(peer._ == 'user' ? peer.id : -peer.id);
-        });
-        
-        return;
-      } */ else if(target.classList.contains('name')) {
+      } else if(target.classList.contains('name')) {
         const peerId = +target.dataset.peerId;
         
         if(peerId) {
@@ -628,7 +622,7 @@ export default class ChatBubbles {
           const rect = bubble.getBoundingClientRect();
           bad = (this.appPhotosManager.windowH / 2) > rect.top;
         } else {
-          const message = this.appMessagesManager.getMessage(mid);
+          const message = this.chat.getMessage(mid);
           if(!message.deleted) {
             bad = false;
           }
@@ -661,7 +655,7 @@ export default class ChatBubbles {
       if(this.bubbles[mid]) {
         return {
           bubble: this.bubbles[mid], 
-          message: this.appMessagesManager.getMessage(+mid)
+          message: this.chat.getMessage(+mid)
         };
       }
     }
@@ -674,7 +668,7 @@ export default class ChatBubbles {
   }
 
   public getMountedBubble(mid: number) {
-    const message = this.appMessagesManager.getMessage(mid);
+    const message = this.chat.getMessage(mid);
 
     if(message.grouped_id && this.appMessagesManager.getMidsByAlbum(message.grouped_id).length > 1) {
       const a = this.getGroupedBubble(message.grouped_id);
@@ -837,7 +831,9 @@ export default class ChatBubbles {
       }
 
       this.bubbleGroups.removeBubble(bubble, mid);
-      this.unreadedObserver.unobserve(bubble);
+      if(this.unreadedObserver) {
+        this.unreadedObserver.unobserve(bubble);
+      }
       //this.unreaded.findAndSplice(mid => mid == id);
       bubble.remove();
       //bubble.remove();
@@ -854,7 +850,7 @@ export default class ChatBubbles {
     }
     
     msgIds.forEach((msgId: number) => {
-      let message = this.appMessagesManager.getMessage(msgId);
+      let message = this.chat.getMessage(msgId);
       
       /////////this.log('got new message to append:', message);
       
@@ -937,7 +933,9 @@ export default class ChatBubbles {
         this.chatInner.append(container);
       }
 
-      this.stickyIntersector.observeStickyHeaderChanges(container);
+      if(this.stickyIntersector) {
+        this.stickyIntersector.observeStickyHeaderChanges(container);
+      }
     }
 
     return this.dateMessages[dateTimestamp];
@@ -951,12 +949,12 @@ export default class ChatBubbles {
     this.listenerSetter.removeAll();
 
     this.lazyLoadQueue.clear();
-    this.unreadedObserver.disconnect();
-    this.stickyIntersector.disconnect();
+    this.unreadedObserver && this.unreadedObserver.disconnect();
+    this.stickyIntersector && this.stickyIntersector.disconnect();
 
     delete this.lazyLoadQueue;
-    delete this.unreadedObserver;
-    delete this.stickyIntersector;
+    this.unreadedObserver && delete this.unreadedObserver;
+    this.stickyIntersector && delete this.stickyIntersector;
   }
 
   public cleanup(bubblesToo = false) {
@@ -990,10 +988,14 @@ export default class ChatBubbles {
 
     this.getHistoryTopPromise = this.getHistoryBottomPromise = undefined;
 
-    this.stickyIntersector.disconnect();
+    if(this.stickyIntersector) {
+      this.stickyIntersector.disconnect();
+    }
     
-    this.unreadedObserver.disconnect();
-    this.unreaded.length = 0;
+    if(this.unreadedObserver) {
+      this.unreadedObserver.disconnect();
+      this.unreaded.length = 0;
+    }
 
     this.loadedTopTimes = this.loadedBottomTimes = 0;
 
@@ -1350,7 +1352,7 @@ export default class ChatBubbles {
 
       if(!our && !message.pFlags.out) {
         //this.log('not our message', message, message.pFlags.unread);
-        if(message.pFlags.unread) {
+        if(message.pFlags.unread && this.unreadedObserver) {
           this.unreadedObserver.observe(bubble); 
           if(!this.unreaded.indexOf(message.mid)) {
             this.unreaded.push(message.mid);
@@ -1539,7 +1541,7 @@ export default class ChatBubbles {
         }
 
         const button = row.buttons[column];
-        this.appInlineBotsManager.callbackButtonClick(message.mid, button);
+        this.appInlineBotsManager.callbackButtonClick(this.peerId, message.mid, button);
       });
 
       const offset = rows.length * 45 + 'px';
@@ -1585,7 +1587,8 @@ export default class ChatBubbles {
                 groupId: '' + message.id, 
                 attachmentDiv,
                 uploading: true,
-                isOut: true
+                isOut: true,
+                chat: this.chat
               });
 
               break;
@@ -1645,7 +1648,8 @@ export default class ChatBubbles {
                 albumMustBeRenderedFull,
                 message,
                 bubble,
-                messageDiv
+                messageDiv,
+                chat: this.chat
               });
   
               if(newNameContainer) {
@@ -1681,7 +1685,8 @@ export default class ChatBubbles {
               attachmentDiv,
               middleware: this.getMiddleware(),
               isOut: our,
-              lazyLoadQueue: this.lazyLoadQueue
+              lazyLoadQueue: this.lazyLoadQueue,
+              chat: this.chat
             });
             
             break;
@@ -1748,7 +1753,7 @@ export default class ChatBubbles {
               });
               //}
             } else {
-              const docDiv = wrapDocument(doc, false, false, message.mid);
+              const docDiv = wrapDocument(this.peerId, doc, false, false, message.mid);
               preview.append(docDiv);
               preview.classList.add('preview-with-document');
               //messageDiv.classList.add((webpage.type || 'document') + '-message');
@@ -1865,7 +1870,8 @@ export default class ChatBubbles {
                 attachmentDiv,
                 middleware: this.getMiddleware(),
                 isOut: our,
-                lazyLoadQueue: this.lazyLoadQueue
+                lazyLoadQueue: this.lazyLoadQueue,
+                chat: this.chat
               });
             } else {
               const withTail = !isAndroid && !isApple && doc.type != 'round' && !message.message;
@@ -1890,7 +1896,8 @@ export default class ChatBubbles {
               albumMustBeRenderedFull,
               message,
               bubble,
-              messageDiv
+              messageDiv,
+              chat: this.chat
             });
 
             if(newNameContainer) {
@@ -1943,7 +1950,7 @@ export default class ChatBubbles {
         case 'messageMediaPoll': {
           bubble.classList.remove('is-message-empty');
           
-          const pollElement = wrapPoll(message.media.poll.id, message.mid);
+          const pollElement = wrapPoll(this.peerId, message.media.poll.id, message.mid);
           messageDiv.prepend(pollElement);
           messageDiv.classList.add('poll-message');
 
@@ -2015,7 +2022,7 @@ export default class ChatBubbles {
         }
       } else {
         if(message.reply_to_mid) {
-          let originalMessage = this.appMessagesManager.getMessage(message.reply_to_mid);
+          let originalMessage = this.chat.getMessage(message.reply_to_mid);
           let originalPeerTitle = this.appPeersManager.getPeerTitle(originalMessage.fromId || originalMessage.fwdFromId, true) || '';
           
           /////////this.log('message to render reply', originalMessage, originalPeerTitle, bubble, message);
@@ -2023,7 +2030,7 @@ export default class ChatBubbles {
           // need to download separately
           if(originalMessage._ == 'messageEmpty') {
             //////////this.log('message to render reply empty, need download', message, message.reply_to_mid);
-            this.appMessagesManager.wrapSingleMessage(message.reply_to_mid);
+            this.appMessagesManager.wrapSingleMessage(this.peerId, message.reply_to_mid);
             this.needUpdate.push({replyMid: message.reply_to_mid, mid: message.mid});
             
             originalPeerTitle = 'Loading...';
@@ -2071,7 +2078,7 @@ export default class ChatBubbles {
       bubble.classList.add('hide-name');
     }
 
-    if(this.chat.type == 'pinned') {
+    if(this.chat.type === 'pinned') {
       savedFrom = `${this.chat.peerId}_${message.mid}`;
     }
 
@@ -2163,7 +2170,7 @@ export default class ChatBubbles {
       }
 
       while(history.length) {
-        let message = this.appMessagesManager.getMessage(method());
+        let message = this.chat.getMessage(method());
         this.renderMessage(message, reverse, true);
       }
 
@@ -2223,9 +2230,9 @@ export default class ChatBubbles {
 
   public requestHistory(maxId: number, loadCount: number, backLimit: number) {
     //const middleware = this.getMiddleware();
-    if(this.chat.type == 'chat') {
+    if(this.chat.type === 'chat') {
       return this.appMessagesManager.getHistory(this.peerId, maxId, loadCount, backLimit);
-    } else if(this.chat.type == 'pinned') {
+    } else if(this.chat.type === 'pinned') {
       const promise = this.appMessagesManager.getSearch(this.peerId, '', {_: 'inputMessagesFilterPinned'}, maxId, loadCount, 0, backLimit);
 
       /* if(maxId) {
@@ -2238,6 +2245,8 @@ export default class ChatBubbles {
       } */
 
       return promise;
+    } else if(this.chat.type === 'scheduled') {
+      return this.appMessagesManager.getScheduledMessages(this.peerId).then(mids => ({history: mids}));
     }
   }
 
@@ -2293,7 +2302,7 @@ export default class ChatBubbles {
 
         // * filter last album, because we don't know is this the last item
         for(let i = additionMsgIds.length - 1; i >= 0; --i) {
-          const message = this.appMessagesManager.getMessage(additionMsgIds[i]);
+          const message = this.chat.getMessage(additionMsgIds[i]);
           if(message.grouped_id) additionMsgIds.splice(i, 1);
           else break;
         }
@@ -2438,7 +2447,7 @@ export default class ChatBubbles {
 
       // preload more
       //if(!isFirstMessageRender) {
-      if(this.chat.type == 'chat') {
+      if(this.chat.type === 'chat') {
         const storage = this.appMessagesManager.historiesStorage[peerId];
         const isMaxIdInHistory = storage.history.indexOf(maxId) !== -1;
         if(isMaxIdInHistory) { // * otherwise it is a search or jump
@@ -2490,7 +2499,9 @@ export default class ChatBubbles {
 
       if(dateMessage.container.childElementCount == 2) { // only date div + sentinel div
         dateMessage.container.remove();
-        this.stickyIntersector.unobserve(dateMessage.container, dateMessage.div);
+        if(this.stickyIntersector) {
+          this.stickyIntersector.unobserve(dateMessage.container, dateMessage.div);
+        }
         delete this.dateMessages[i];
       }
     }

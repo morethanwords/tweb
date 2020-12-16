@@ -14,10 +14,10 @@ import './middleEllipsis';
 import { attachClickEvent, cancelEvent, detachClickEvent } from "../helpers/dom";
 
 rootScope.on('messages_media_read', e => {
-  const mids = e.detail;
+  const {mids, peerId} = e.detail;
 
   mids.forEach(mid => {
-    (Array.from(document.querySelectorAll('audio-element[message-id="' + mid + '"]')) as AudioElement[]).forEach(elem => {
+    (Array.from(document.querySelectorAll('audio-element[message-id="' + mid + '"][peer-id="' + peerId + '"]')) as AudioElement[]).forEach(elem => {
       //console.log('updating avatar:', elem);
       elem.classList.remove('is-unread');
     });
@@ -61,10 +61,10 @@ export function decodeWaveform(waveform: Uint8Array | number[]) {
   return result;
 }
 
-function wrapVoiceMessage(doc: MyDocument, audioEl: AudioElement, mid: number) {
+function wrapVoiceMessage(peerId: number, doc: MyDocument, audioEl: AudioElement, mid: number) {
   audioEl.classList.add('is-voice');
 
-  const message = appMessagesManager.getMessage(mid);
+  const message = appMessagesManager.getMessageByPeer(peerId, mid);
   const isOut = message.fromId == rootScope.myId && message.peerId != rootScope.myId;
   let isUnread = message && message.pFlags.media_unread;
   if(isUnread) {
@@ -171,7 +171,7 @@ function wrapVoiceMessage(doc: MyDocument, audioEl: AudioElement, mid: number) {
     audioEl.addAudioListener('playing', () => {
       if(isUnread && !isOut && audioEl.classList.contains('is-unread')) {
         audioEl.classList.remove('is-unread');
-        appMessagesManager.readMessages([mid]);
+        appMessagesManager.readMessages(peerId, [mid]);
         isUnread = false;
       }
 
@@ -329,6 +329,7 @@ export default class AudioElement extends HTMLElement {
 
     this.classList.add('audio');
 
+    const peerId = +this.getAttribute('peer-id');
     const mid = +this.getAttribute('message-id');
     const docId = this.getAttribute('doc-id');
     const doc = appDocsManager.getDoc(docId);
@@ -351,13 +352,13 @@ export default class AudioElement extends HTMLElement {
       this.append(downloadDiv);
     }
 
-    const onTypeLoad = doc.type == 'voice' ? wrapVoiceMessage(doc, this, mid) : wrapAudio(doc, this);
+    const onTypeLoad = doc.type == 'voice' ? wrapVoiceMessage(peerId, doc, this, mid) : wrapAudio(doc, this);
     
     const audioTimeDiv = this.querySelector('.audio-time') as HTMLDivElement;
     audioTimeDiv.innerHTML = durationStr;
 
     const onLoad = (autoload = true) => {
-      const audio = this.audio = appMediaPlaybackController.addMedia(doc, mid, autoload);
+      const audio = this.audio = appMediaPlaybackController.addMedia(peerId, doc, mid, autoload);
 
       this.onTypeDisconnect = onTypeLoad();
       

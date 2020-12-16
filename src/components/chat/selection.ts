@@ -207,7 +207,7 @@ export default class ChatSelection {
 
     let cantForward = !this.selectedMids.size, cantDelete = !this.selectedMids.size;
     for(const mid of this.selectedMids.values()) {
-      const message = this.appMessagesManager.getMessage(mid);
+      const message = this.appMessagesManager.getMessageByPeer(this.bubbles.peerId, mid);
       if(!cantForward) {
         if(message.action) {
           cantForward = true;
@@ -216,7 +216,7 @@ export default class ChatSelection {
       
 
       if(!cantDelete) {
-        const canDelete = this.appMessagesManager.canDeleteMessage(mid);
+        const canDelete = this.appMessagesManager.canDeleteMessage(this.bubbles.peerId, mid);
         if(!canDelete) {
           cantDelete = true;
         }
@@ -295,7 +295,7 @@ export default class ChatSelection {
         this.selectionForwardBtn = Button('btn-primary btn-transparent selection-container-forward', {icon: 'forward'});
         this.selectionForwardBtn.append('Forward');
         this.listenerSetter.add(this.selectionForwardBtn, 'click', () => {
-          new PopupForward([...this.selectedMids], () => {
+          new PopupForward(this.bubbles.peerId, [...this.selectedMids], () => {
             this.cancelSelection();
           });
         });
@@ -303,7 +303,7 @@ export default class ChatSelection {
         this.selectionDeleteBtn = Button('btn-primary btn-transparent danger selection-container-delete', {icon: 'delete'});
         this.selectionDeleteBtn.append('Delete');
         this.listenerSetter.add(this.selectionDeleteBtn, 'click', () => {
-          new PopupDeleteMessages([...this.selectedMids], () => {
+          new PopupDeleteMessages(this.bubbles.peerId, [...this.selectedMids], () => {
             this.cancelSelection();
           });
         });
@@ -365,7 +365,7 @@ export default class ChatSelection {
   }
 
   public isGroupedMidsSelected(mid: number) {
-    const mids = this.appMessagesManager.getMidsByMid(mid);
+    const mids = this.appMessagesManager.getMidsByMid(this.bubbles.peerId, mid);
     const selectedMids = mids.filter(mid => this.selectedMids.has(mid));
     return mids.length == selectedMids.length;
   }
@@ -376,7 +376,7 @@ export default class ChatSelection {
     const isGrouped = bubble.classList.contains('is-grouped');
     if(isGrouped) {
       if(!this.isGroupedBubbleSelected(bubble)) {
-        const mids = this.appMessagesManager.getMidsByMid(mid);
+        const mids = this.appMessagesManager.getMidsByMid(this.bubbles.peerId, mid);
         mids.forEach(mid => this.selectedMids.delete(mid));
       }
 

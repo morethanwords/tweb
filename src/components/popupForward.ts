@@ -7,7 +7,7 @@ export default class PopupForward extends PopupElement {
   private selector: AppSelectPeers;
   //private scrollable: Scrollable;
   
-  constructor(mids: number[], onSelect?: () => Promise<void> | void, onClose?: () => void) {
+  constructor(fromPeerId: number, mids: number[], onSelect?: () => Promise<void> | void, onClose?: () => void) {
     super('popup-forward', null, {closable: true, overlayClosable: true, body: true});
 
     if(onClose) this.onClose = onClose;
@@ -21,7 +21,7 @@ export default class PopupForward extends PopupElement {
       await (onSelect ? onSelect() || Promise.resolve() : Promise.resolve());
 
       appImManager.setInnerPeer(peerId);
-      appImManager.chat.input.initMessagesForward(mids.slice());
+      appImManager.chat.input.initMessagesForward(fromPeerId, mids.slice());
     }, ['dialogs', 'contacts'], () => {
       this.show();
       this.selector.checkForTriggers(); // ! due to zero height before mounting

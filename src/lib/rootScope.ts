@@ -44,14 +44,17 @@ type BroadcastEvents = {
   'messages_pending': void,
   'messages_read': void,
   'messages_downloaded': number[],
-  'messages_media_read': number[],
+  'messages_media_read': {peerId: number, mids: number[]},
+
+  'scheduled_new': {peerId: number, mid: number},
+  'scheduled_delete': {peerId: number, mids: number[]},
 
   'album_edit': {peerId: number, groupId: string, deletedMids: number[]},
 
   'stickers_installed': StickerSet.stickerSet,
   'stickers_deleted': StickerSet.stickerSet,
 
-  'audio_play': {doc: MyDocument, mid: number},
+  'audio_play': {doc: MyDocument, mid: number, peerId: number},
   'audio_pause': void,
   
   'state_synchronized': number,

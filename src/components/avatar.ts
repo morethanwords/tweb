@@ -57,7 +57,7 @@ export default class AvatarElement extends HTMLElement {
 
           if(mid) {
             // ! гений в деле, костылируем (но это гениально)
-            let message = appMessagesManager.getMessage(mid);
+            let message = appMessagesManager.getMessageByPeer(peerId, mid);
             const messagePhoto = message.action.photo;
             if(messagePhoto.id != photo.id) {
               message = {
@@ -72,7 +72,7 @@ export default class AvatarElement extends HTMLElement {
                 fromId: peerId
               };
 
-              appMessagesManager.messagesStorage[maxId] = message;
+              appMessagesManager.getMessagesStorage(peerId)[maxId] = message;
             }
 
             const good = Array.from(this.querySelectorAll('img')).find(img => !img.classList.contains('emoji'));

@@ -45,7 +45,7 @@ export default class AppForwardTab implements SliderTab {
 
         let s = () => {
           let promises = peerIds.splice(0, 3).map(peerId => {
-            return appMessagesManager.forwardMessages(peerId, this.mids);
+            return appMessagesManager.forwardMessages(peerId, 0, this.mids);
           });
           
           Promise.all(promises).then(() => {

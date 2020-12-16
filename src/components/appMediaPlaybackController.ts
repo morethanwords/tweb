@@ -34,7 +34,7 @@ class AppMediaPlaybackController {
     document.body.append(this.container);
   }
 
-  public addMedia(doc: MyDocument, mid: number, autoload = true): HTMLMediaElement {
+  public addMedia(peerId: number, doc: MyDocument, mid: number, autoload = true): HTMLMediaElement {
     if(this.media[mid]) return this.media[mid];
 
     const media = document.createElement(doc.type == 'round' ? 'video' : 'audio');
@@ -61,12 +61,12 @@ class AppMediaPlaybackController {
         }
   
         this.playingMedia = media;
-        this.loadSiblingsMedia(doc.type as MediaType, mid);
+        this.loadSiblingsMedia(peerId, doc.type as MediaType, mid);
       }
 
       // audio_pause не успеет сработать без таймаута
       setTimeout(() => {
-        rootScope.broadcast('audio_play', {doc, mid});
+        rootScope.broadcast('audio_play', {peerId, doc, mid});
       }, 0);
     });
 
@@ -75,7 +75,7 @@ class AppMediaPlaybackController {
     
     const onError = (e: Event) => {
       if(this.nextMid == mid) {
-        this.loadSiblingsMedia(doc.type as MediaType, mid).then(() => {
+        this.loadSiblingsMedia(peerId, doc.type as MediaType, mid).then(() => {
           if(this.nextMid && this.media[this.nextMid]) {
             this.media[this.nextMid].play();
           }
@@ -181,12 +181,11 @@ class AppMediaPlaybackController {
     }
   };
 
-  private loadSiblingsMedia(type: MediaType, mid: number) {
+  private loadSiblingsMedia(peerId: number, type: MediaType, mid: number) {
     const media = this.playingMedia;
-    const message = appMessagesManager.getMessage(mid);
     this.prevMid = this.nextMid = 0;
 
-    return appMessagesManager.getSearch(message.peerId, '', {
+    return appMessagesManager.getSearch(peerId, '', {
       //_: type == 'audio' ? 'inputMessagesFilterMusic' : (type == 'round' ? 'inputMessagesFilterRoundVideo' : 'inputMessagesFilterVoice')
       _: type == 'audio' ? 'inputMessagesFilterMusic' : 'inputMessagesFilterRoundVoice'
     }, mid, 3, 0, 2).then(value => {
@@ -204,8 +203,8 @@ class AppMediaPlaybackController {
       }
 
       [this.prevMid, this.nextMid].filter(Boolean).forEach(mid => {
-        const message = appMessagesManager.getMessage(mid);
-        this.addMedia(message.media.document, mid, false);
+        const message = appMessagesManager.getMessageByPeer(peerId, mid);
+        this.addMedia(peerId, message.media.document, mid, false);
       });
       
       //console.log('loadSiblingsAudio', audio, type, mid, value, this.prevMid, this.nextMid);

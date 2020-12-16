@@ -21,7 +21,7 @@ import ChatInput from "./input";
 import ChatSelection from "./selection";
 import ChatTopbar from "./topbar";
 
-export type ChatType = 'chat' | 'pinned' | 'replies' | 'discussion';
+export type ChatType = 'chat' | 'pinned' | 'replies' | 'discussion' | 'scheduled';
 
 export default class Chat extends EventListenerBase<{
   setPeer: (mid: number, isTopMessage: boolean) => void
@@ -61,6 +61,14 @@ export default class Chat extends EventListenerBase<{
     this.appImManager.chatsContainer.append(this.container);
   }
 
+  public setType(type: ChatType) {
+    this.type = type;
+
+    if(this.type === 'scheduled') {
+      this.getMessage = (mid) => this.appMessagesManager.getMessageFromStorage(this.appMessagesManager.getScheduledMessagesStorage(this.peerId), mid);
+    }
+  }
+
   private init() {
     this.topbar = new ChatTopbar(this, appSidebarRight, this.appMessagesManager, this.appPeersManager, this.appChatsManager);
     this.bubbles = new ChatBubbles(this, this.appMessagesManager, this.appSidebarRight, this.appStickersManager, this.appUsersManager, this.appInlineBotsManager, this.appPhotosManager, this.appDocsManager, this.appPeersManager, this.appChatsManager);
@@ -68,20 +76,23 @@ export default class Chat extends EventListenerBase<{
     this.selection = new ChatSelection(this.bubbles, this.input, this.appMessagesManager);
     this.contextMenu = new ChatContextMenu(this.bubbles.bubblesContainer, this, this.appMessagesManager, this.appChatsManager, this.appPeersManager, this.appPollsManager);
 
-    if(this.type == 'chat') {
+    if(this.type === 'chat') {
       this.topbar.constructPeerHelpers();
-    } else if(this.type == 'pinned') {
+    } else if(this.type === 'pinned') {
       this.topbar.constructPinnedHelpers();
     }
 
     this.topbar.construct();
     this.input.construct();
 
-    if(this.type == 'chat') { // * гений в деле, разный порядок из-за разной последовательности действий
+    if(this.type === 'chat') { // * гений в деле, разный порядок из-за разной последовательности действий
+      this.bubbles.constructPeerHelpers();
       this.input.constructPeerHelpers();
-    } else if(this.type == 'pinned') {
-      this.input.constructPinnedHelpers();
+    } else if(this.type === 'pinned') {
       this.bubbles.constructPinnedHelpers();
+      this.input.constructPinnedHelpers();
+    } else if(this.type === 'scheduled') {
+      this.bubbles.constructScheduledHelpers();
     }
 
     this.container.classList.add('type-' + this.type);
@@ -186,5 +197,13 @@ export default class Chat extends EventListenerBase<{
     appSidebarRight.sharedMediaTab.fillProfileElements();
 
     rootScope.broadcast('peer_changed', peerId);
+  }
+
+  public getMessage(mid: number) {
+    return this.appMessagesManager.getMessageByPeer(this.peerId, mid);
+  }
+
+  public getMidsByMid(mid: number) {
+    return this.appMessagesManager.getMidsByMid(this.peerId, mid);
   }
 }

@@ -1,6 +1,5 @@
 import appDialogsManager from "../lib/appManagers/appDialogsManager";
 import Scrollable from "./scrollable";
-import appMessagesIdsManager from "../lib/appManagers/appMessagesIdsManager";
 import appUsersManager from "../lib/appManagers/appUsersManager";
 import appPeersManager from '../lib/appManagers/appPeersManager';
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
@@ -157,7 +156,7 @@ export default class AppSearch {
       return Promise.resolve();
     }
     
-    const maxId = appMessagesIdsManager.getMessageIdInfo(this.minMsgId)[0] || 0;
+    const maxId = this.minMsgId || 0;
 
     if(!this.peerId && !maxId && !this.loadedContacts) {
       const renderedPeerIds: Set<number> = new Set();
@@ -259,7 +258,7 @@ export default class AppSearch {
       const searchGroup = this.searchGroups.messages;
 
       history.forEach((msgId: number) => {
-        const message = appMessagesManager.getMessage(msgId);
+        const message = appMessagesManager.getMessageByPeer(this.peerId, msgId);
 
         const {dialog, dom} = appDialogsManager.addDialogNew({
           dialog: message.peerId, 

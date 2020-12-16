@@ -224,7 +224,7 @@ export default class PopupNewMedia extends PopupElement {
             params.objectURL = URL.createObjectURL(file);
           }
 
-          const docDiv = wrapDocument({
+          const docDiv = wrapDocument(0, {
             file: file,
             file_name: file.name || '',
             size: file.size,

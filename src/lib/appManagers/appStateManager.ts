@@ -8,7 +8,6 @@ import { logger } from '../logger';
 import type { AppUsersManager } from './appUsersManager';
 import type { AppChatsManager } from './appChatsManager';
 import type { AuthState } from '../../types';
-import type { AppMessagesIdsManager } from './appMessagesIdsManager';
 import type FiltersStorage from '../storages/filters';
 import type DialogsStorage from '../storages/dialogs';
 
@@ -33,11 +32,6 @@ type State = Partial<{
   stickerSets: AppStickersManager['stickerSets'],
   version: typeof STATE_VERSION,
   authState: AuthState,
-  messagesIdsLocals: {
-    channelLocals: AppMessagesIdsManager['channelLocals'],
-    channelsByLocals: AppMessagesIdsManager['channelsByLocals'],
-    channelCurLocal: AppMessagesIdsManager['channelCurLocal'],
-  },
   hiddenPinnedMessages: {[peerId: string]: number}
 }>;
 

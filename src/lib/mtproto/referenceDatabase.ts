@@ -13,6 +13,7 @@ export namespace ReferenceContext {
 
   export type referenceContextMessage = {
     type: 'message',
+    peerId: number,
     messageId: number
   };
 }
@@ -80,7 +81,7 @@ class ReferenceDatabase {
     [context, reference] = this.getContext(reference);
     switch(context?.type) {
       case 'message': {
-        return appMessagesManager.wrapSingleMessage(context.messageId, true);
+        return appMessagesManager.wrapSingleMessage(context.peerId, context.messageId, true);
         // .then(() => {
         //   console.log('FILE_REFERENCE_EXPIRED: got message', context, appMessagesManager.getMessage((context as ReferenceContext.referenceContextMessage).messageId).media, reference);
         // });

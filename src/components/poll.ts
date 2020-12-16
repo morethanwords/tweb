@@ -152,6 +152,7 @@ export default class PollElement extends HTMLElement {
   private chosenIndexes: number[] = [];
   private percents: number[];
 
+  private peerId: number;
   private pollId: string;
   private mid: number;
 
@@ -178,6 +179,7 @@ export default class PollElement extends HTMLElement {
       //console.log('line total length:', lineTotalLength);
     }
 
+    this.peerId = +this.getAttribute('peer-id');
     this.pollId = this.getAttribute('poll-id');
     this.mid = +this.getAttribute('message-id');
     const {poll, results} = appPollsManager.getPoll(this.pollId);
@@ -307,7 +309,7 @@ export default class PollElement extends HTMLElement {
 
             setTimeout(() => {
               // нужно запросить апдейт чтобы опрос обновился
-              appPollsManager.getResults(this.mid);
+              appPollsManager.getResults(this.peerId, this.mid);
             }, 3e3);
           }
         }, 1e3);
@@ -324,7 +326,7 @@ export default class PollElement extends HTMLElement {
 
     this.viewResults.addEventListener('click', (e) => {
       cancelEvent(e);
-      appSidebarRight.pollResultsTab.init(this.pollId, this.mid);
+      appSidebarRight.pollResultsTab.init(this.peerId, this.pollId, this.mid);
     });
     ripple(this.viewResults);
 
@@ -464,7 +466,7 @@ export default class PollElement extends HTMLElement {
     
     this.classList.add('disable-hover');
     this.sentVote = true;
-    return this.sendVotePromise = appPollsManager.sendVote(this.mid, indexes).then(() => {
+    return this.sendVotePromise = appPollsManager.sendVote(this.peerId, this.mid, indexes).then(() => {
       targets.forEach(target => {
         target.classList.remove('is-voting');
       });

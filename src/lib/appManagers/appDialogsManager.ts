@@ -939,7 +939,7 @@ export class AppDialogsManager {
     }
 
     if(!lastMessage) {
-      lastMessage = appMessagesManager.getMessage(dialog.top_message);
+      lastMessage = appMessagesManager.getMessageByPeer(dialog.peerId, dialog.top_message);
     }
 
     if(lastMessage._ == 'messageEmpty' || (lastMessage._ == 'messageService' && !lastMessage.rReply)) {
@@ -1048,7 +1048,7 @@ export class AppDialogsManager {
       dom.listEl.classList.toggle('is-muted', isMuted);
     }
 
-    const lastMessage = appMessagesManager.getMessage(dialog.top_message);
+    const lastMessage = appMessagesManager.getMessageByPeer(dialog.peerId, dialog.top_message);
     if(lastMessage._ != 'messageEmpty' && !lastMessage.deleted && 
       lastMessage.fromId == rootScope.myId && lastMessage.peerId != rootScope.myId/*  && 
       dialog.read_outbox_max_id */) { // maybe comment, 06.20.2020

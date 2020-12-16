@@ -179,7 +179,7 @@ export default class AppSharedMediaTab implements SliderTab {
         return;
       }
       
-      const message = appMessagesManager.getMessage(messageId);
+      const message = appMessagesManager.getMessageByPeer(this.peerId, messageId);
       
       const ids = Object.keys(this.mediaDivsByIds).map(k => +k).sort((a, b) => a - b);
       const idx = ids.findIndex(i => i == messageId);
@@ -331,11 +331,11 @@ export default class AppSharedMediaTab implements SliderTab {
 
     if(type != 'inputMessagesFilterUrl') {
       for(let mid of ids) {
-        let message = appMessagesManager.getMessage(mid);
+        let message = appMessagesManager.getMessageByPeer(this.peerId, mid);
         if(message.media) messages.push(message);
       }
     } else {
-      messages = ids.slice().map(mid => appMessagesManager.getMessage(mid));
+      messages = ids.slice().map(mid => appMessagesManager.getMessageByPeer(this.peerId, mid));
     }
 
     let filtered: any[] = [];
@@ -528,7 +528,7 @@ export default class AppSharedMediaTab implements SliderTab {
       case 'inputMessagesFilterMusic':
       case 'inputMessagesFilterDocument': {
         for(const message of messages) {
-          const div = wrapDocument(message.media.document, true, false, message.mid, 400);
+          const div = wrapDocument(this.peerId, message.media.document, true, false, message.mid, 400);
           div.dataset.mid = '' + message.mid;
           elemsToAppend.push(div);
         }

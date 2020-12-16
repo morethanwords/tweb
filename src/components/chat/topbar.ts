@@ -125,7 +125,7 @@ export default class ChatTopbar {
             this.pinnedMessage.followPinnedMessage(mid);
           //}
         } else {
-          const message = this.appMessagesManager.getMessage(mid);
+          const message = this.appMessagesManager.getMessageByPeer(this.peerId, mid);
   
           this.chat.appImManager.setInnerPeer(message.peerId, mid);
         }
@@ -373,7 +373,7 @@ export default class ChatTopbar {
 
   public setTitle(count?: number) {
     let title = '';
-    if(this.chat.type == 'pinned') {
+    if(this.chat.type === 'pinned') {
       title = count === -1 ? 'Pinned Messages' : (count === 1 ? 'Pinned Message' : (count + ' Pinned Messages'));
       
       if(count === undefined) {
@@ -393,7 +393,15 @@ export default class ChatTopbar {
           }
         });
       }
-    } else {
+    } else if(this.chat.type === 'scheduled') {
+      title = count === -1 ? 'Scheduled Messages' : (count === 1 ? 'Scheduled Message' : (count + ' Scheduled Messages'));
+      
+      if(count === undefined) {
+        this.appMessagesManager.getScheduledMessages(this.peerId).then(mids => {
+          this.setTitle(mids.length);
+        });
+      }
+    } else if(this.chat.type === 'chat') {
       if(this.peerId == rootScope.myId) title = 'Saved Messages';
       else title = this.appPeersManager.getPeerTitle(this.peerId);
     }
