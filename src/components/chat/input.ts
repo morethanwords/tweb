@@ -535,6 +535,7 @@ export default class ChatInput {
   }
 
   private attachMessageInputField() {
+    const oldInput = this.messageInputField?.input;
     this.messageInputField = new InputField({
       placeholder: 'Message',
       name: 'message'
@@ -545,8 +546,8 @@ export default class ChatInput {
     this.attachMessageInputListeners();
 
     const container = this.inputScroll.container;
-    if(container.firstElementChild) {
-      container.replaceChild(this.messageInputField.input, container.firstElementChild);
+    if(oldInput) {
+      oldInput.replaceWith(this.messageInputField.input);
     } else {
       container.append(this.messageInputField.input);
     }

@@ -60,7 +60,7 @@ export class AppStateManager extends EventListenerBase<{
         if(state) {
           if(state.version != STATE_VERSION) {
             state = {};
-          } else if(((state.stateCreatedTime || 0) + REFRESH_EVERY) < time && false) {
+          } else if(((state.stateCreatedTime || 0) + REFRESH_EVERY) < time/*  && false */) {
             this.log('will refresh state', state.stateCreatedTime, time);
             REFRESH_KEYS.forEach(key => {
               delete state[key];
