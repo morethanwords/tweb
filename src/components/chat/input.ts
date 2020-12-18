@@ -31,6 +31,7 @@ import Button from '../button';
 import PopupSchedule from '../popups/schedule';
 import SendMenu from './sendContextMenu';
 import rootScope from '../../lib/rootScope';
+import PopupPinMessage from '../popups/unpinMessage';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -403,14 +404,7 @@ export default class ChatInput {
     this.listenerSetter.add(this.pinnedControlBtn, 'click', () => {
       const peerId = this.chat.peerId;
 
-      let promise: Promise<any>;
-      if(this.appPeersManager.canPinMessage(peerId)) {
-        promise = this.appMessagesManager.unpinAllMessages(peerId);
-      } else {
-        promise = this.appMessagesManager.hidePinnedMessages(peerId);
-      }
-
-      promise.then(() => {
+      new PopupPinMessage(peerId, 0, true, () => {
         this.chat.appImManager.setPeer(0); // * close tab
 
         // ! костыль, это скроет закреплённые сообщения сразу, вместо того, чтобы ждать пока анимация перехода закончится

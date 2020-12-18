@@ -244,13 +244,14 @@ export default class ChatPinnedMessage {
   constructor(private topbar: ChatTopbar, private chat: Chat, private appMessagesManager: AppMessagesManager, private appPeersManager: AppPeersManager) {
     this.listenerSetter = new ListenerSetter();
 
-    this.pinnedMessageContainer = new PinnedContainer(topbar, chat, this.listenerSetter, 'message', new ReplyContainer('pinned-message'), () => {
+    this.pinnedMessageContainer = new PinnedContainer(topbar, chat, this.listenerSetter, 'message', new ReplyContainer('pinned-message'), async() => {
       if(appPeersManager.canPinMessage(this.topbar.peerId)) {
         new PopupPinMessage(this.topbar.peerId, this.pinnedMid, true);
-        return Promise.resolve(false);
       } else {
-        return this.appMessagesManager.hidePinnedMessages(this.topbar.peerId).then(() => true);
+        new PopupPinMessage(this.topbar.peerId, 0, true);
       }
+
+      return false;
     });
 
     this.pinnedMessageBorder = new PinnedMessageBorder();
