@@ -4,6 +4,8 @@ import appChatsManager from "../../../lib/appManagers/appChatsManager";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import { SearchGroup } from "../../appSearch";
+import Button from "../../button";
+import InputField from "../../inputField";
 import PopupAvatar from "../../popups/avatar";
 import Scrollable from "../../scrollable";
 import { SliderTab } from "../../slider";
@@ -12,11 +14,11 @@ export default class AppNewGroupTab implements SliderTab {
   private container = document.querySelector('.new-group-container') as HTMLDivElement;
   private contentDiv = this.container.querySelector('.sidebar-content') as HTMLDivElement;
   private canvas = this.container.querySelector('.avatar-edit-canvas') as HTMLCanvasElement;
-  private groupNameInput = this.container.querySelector('.new-group-name') as HTMLInputElement;
-  private nextBtn = this.container.querySelector('.btn-corner') as HTMLButtonElement;
   private searchGroup = new SearchGroup(' ', 'contacts', true, 'new-group-members disable-hover', false);
   private uploadAvatar: () => Promise<InputFile> = null;
   private userIds: number[];
+  private nextBtn: HTMLButtonElement;
+  private groupNameInputField: InputField;
   
   constructor() {
     this.container.querySelector('.avatar-edit').addEventListener('click', () => {
@@ -25,13 +27,25 @@ export default class AppNewGroupTab implements SliderTab {
       });
     });
 
-    this.groupNameInput.addEventListener('input', () => {
-      const value = this.groupNameInput.value;
-      this.nextBtn.classList.toggle('is-visible', !!value.length);
+    const inputWrapper = document.createElement('div');
+    inputWrapper.classList.add('input-wrapper');
+
+    this.groupNameInputField = new InputField({
+      label: 'Group Name',
+      maxLength: 128
     });
 
+    inputWrapper.append(this.groupNameInputField.container);
+
+    this.groupNameInputField.input.addEventListener('input', () => {
+      const value = this.groupNameInputField.value;
+      this.nextBtn.classList.toggle('is-visible', !!value.length && !this.groupNameInputField.input.classList.contains('error'));
+    });
+
+    this.nextBtn = Button('btn-corner btn-circle', {icon: 'next'});
+
     this.nextBtn.addEventListener('click', () => {
-      const title = this.groupNameInput.value;
+      const title = this.groupNameInputField.value;
 
       this.nextBtn.disabled = true;
       appChatsManager.createChat(title, this.userIds).then((chatId) => {
@@ -51,7 +65,7 @@ export default class AppNewGroupTab implements SliderTab {
 
     const scrollable = new Scrollable(chatsContainer);
 
-    this.contentDiv.append(chatsContainer);
+    this.contentDiv.append(inputWrapper, chatsContainer, this.nextBtn);
   }
 
   public onClose() {
@@ -65,7 +79,7 @@ export default class AppNewGroupTab implements SliderTab {
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
     this.uploadAvatar = null;
-    this.groupNameInput.value = '';
+    this.groupNameInputField.value = '';
     this.nextBtn.disabled = false;
     this.searchGroup.clear();
   }

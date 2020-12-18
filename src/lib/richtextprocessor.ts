@@ -4,7 +4,6 @@ import emojiRegExp from '../emoji/regex';
 import { encodeEmoji } from '../emoji';
 import { MOUNT_CLASS_TO } from './mtproto/mtproto_config';
 import { MessageEntity } from '../layer';
-import { copy } from '../helpers/object';
 import { encodeEntities } from '../helpers/string';
 import { isSafari } from '../helpers/userAgent';
 
@@ -373,14 +372,14 @@ namespace RichTextProcessor {
     return currentEntities;
   }
 
-  export function wrapRichNestedText(text: string, nested: MessageEntity[], options: any) {
+  /* export function wrapRichNestedText(text: string, nested: MessageEntity[], options: any) {
     if(nested === undefined) {
       return encodeEntities(text);
     }
   
     options.hasNested = true;
     return wrapRichText(text, {entities: nested, nested: true});
-  }
+  } */
 
   export function wrapRichText(text: string, options: Partial<{
     entities: MessageEntity[],

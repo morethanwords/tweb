@@ -1,15 +1,18 @@
+import Button from '../components/button';
+import InputField from '../components/inputField';
 import { putPreloader } from '../components/misc';
 import PopupAvatar from '../components/popups/avatar';
 import appStateManager from '../lib/appManagers/appStateManager';
 //import apiManager from '../lib/mtproto/apiManager';
 import apiManager from '../lib/mtproto/mtprotoworker';
+import RichTextProcessor from '../lib/richtextprocessor';
 import { AuthState } from '../types';
 import Page from './page';
 import pageIm from './pageIm';
 
 let authCode: AuthState.signUp['authCode'] = null;
 
-let onFirstMount = () => import('../lib/appManagers/appProfileManager').then(imported => {
+const onFirstMount = () => import('../lib/appManagers/appProfileManager').then(imported => {
   const pageElement = page.pageEl;
   const avatarPreview = pageElement.querySelector('#canvas-avatar') as HTMLCanvasElement;
   const appProfileManager = imported.default;
@@ -23,19 +26,18 @@ let onFirstMount = () => import('../lib/appManagers/appProfileManager').then(imp
 
   const headerName = pageElement.getElementsByClassName('fullName')[0] as HTMLHeadingElement;
 
-  let handleInput = function(this: typeof fieldName, e: Event) {
-    let name = fieldName.value || '';
-    let lastName = fieldLastName.value || '';
+  const handleInput = (e: Event) => {
+    const name = nameInputField.value || '';
+    const lastName = lastNameInputField.value || '';
 
-    let fullName = name || lastName 
+    const fullName = name || lastName 
       ? (name + ' ' + lastName).trim() 
       : 'Your Name';
     
-    if(headerName.innerText != fullName) headerName.innerText = fullName;
-    this.classList.remove('error');
+    if(headerName.innerHTML != fullName) headerName.innerHTML = RichTextProcessor.wrapEmojiText(fullName);
   };
 
-  let sendAvatar = () => new Promise((resolve, reject) => {
+  let sendAvatar = () => new Promise<void>((resolve, reject) => {
     if(!uploadAvatar) {
       //console.log('User has not selected avatar');
       return resolve();
@@ -49,29 +51,49 @@ let onFirstMount = () => import('../lib/appManagers/appProfileManager').then(imp
     }, reject);
   });
 
-  const fieldName = document.getElementById('name') as HTMLInputElement;
-  fieldName.addEventListener('input', handleInput);
+  const inputWrapper = document.createElement('div');
+  inputWrapper.classList.add('input-wrapper');
 
-  const fieldLastName = document.getElementById('lastName') as HTMLInputElement;
-  fieldLastName.addEventListener('input', handleInput);
+  const nameInputField = new InputField({
+    label: 'Name',
+    maxLength: 70
+  });
 
-  const signUpButton = document.getElementById('signUp') as HTMLButtonElement;
-  signUpButton.addEventListener('click', function(this: typeof signUpButton, e) {
-    this.setAttribute('disabled', 'true');
+  const lastNameInputField = new InputField({
+    label: 'Last Name (optional)',
+    maxLength: 64
+  });
 
-    if(!fieldName.value.length) {
-      fieldName.classList.add('error');
+  const btnSignUp = Button('btn-primary');
+  btnSignUp.append('START MESSAGING');
+
+  inputWrapper.append(nameInputField.container, lastNameInputField.container, btnSignUp);
+
+  headerName.parentElement.append(inputWrapper);
+
+  nameInputField.input.addEventListener('input', handleInput);
+  lastNameInputField.input.addEventListener('input', handleInput);
+
+  btnSignUp.addEventListener('click', function(this: typeof btnSignUp, e) {
+    if(nameInputField.input.classList.contains('error') || lastNameInputField.input.classList.contains('error')) {
       return false;
     }
 
-    let name = fieldName.value;
-    let lastName = fieldLastName.value;
+    if(!nameInputField.value.length) {
+      nameInputField.input.classList.add('error');
+      return false;
+    }
 
-    let params = {
-      'phone_number': authCode.phone_number,
-      'phone_code_hash': authCode.phone_code_hash,
-      'first_name': name,
-      'last_name': lastName
+    this.setAttribute('disabled', 'true');
+
+    const name = nameInputField.value.trim();
+    const lastName = lastNameInputField.value.trim();
+
+    const params = {
+      phone_number: authCode.phone_number,
+      phone_code_hash: authCode.phone_code_hash,
+      first_name: name,
+      last_name: lastName
     };
 
     //console.log('invoking auth.signUp with params:', params);
@@ -80,7 +102,7 @@ let onFirstMount = () => import('../lib/appManagers/appProfileManager').then(imp
     putPreloader(this);
 
     apiManager.invokeApi('auth.signUp', params)
-    .then((response: any) => {
+    .then((response) => {
       //console.log('auth.signUp response:', response);
       
       switch(response._) {

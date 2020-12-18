@@ -9,6 +9,8 @@ import { SliderTab } from "../../slider";
 import { toast } from "../../toast";
 import appMessagesManager from "../../../lib/appManagers/appMessagesManager";
 import { attachClickEvent } from "../../../helpers/dom";
+import InputField from "../../inputField";
+import RichTextProcessor from "../../../lib/richtextprocessor";
 
 const MAX_FOLDER_NAME_LENGTH = 12;
 
@@ -22,7 +24,8 @@ export default class AppEditFolderTab implements SliderTab {
   private confirmBtn: HTMLElement;
   private menuBtn: HTMLElement;
   private deleteFolderBtn: HTMLElement;
-  private nameInput: HTMLInputElement;
+  private nameInput: HTMLElement;
+  private nameInputField: InputField;
 
   private include_peers: HTMLElement;
   private exclude_peers: HTMLElement;
@@ -44,7 +47,19 @@ export default class AppEditFolderTab implements SliderTab {
     this.confirmBtn = this.container.querySelector('.btn-confirm');
     this.menuBtn = this.container.querySelector('.btn-menu-toggle');
     this.deleteFolderBtn = this.menuBtn.querySelector('.menu-delete');
-    this.nameInput = this.container.querySelector('#folder-name');
+
+    const inputWrapper = document.createElement('div');
+    inputWrapper.classList.add('input-wrapper');
+    
+    this.nameInputField = new InputField({
+      label: 'Folder Name',
+      maxLength: MAX_FOLDER_NAME_LENGTH
+    });
+    this.nameInput = this.nameInputField.input;
+
+    inputWrapper.append(this.nameInputField.container);
+
+    this.caption.parentElement.insertBefore(inputWrapper, this.caption.nextSibling);
 
     this.include_peers = this.container.querySelector('.folder-list-included');
     this.exclude_peers = this.container.querySelector('.folder-list-excluded');
@@ -84,8 +99,12 @@ export default class AppEditFolderTab implements SliderTab {
     });
 
     this.confirmBtn.addEventListener('click', () => {
-      if(!this.nameInput.value.trim()) {
-        this.nameInput.classList.add('error');
+      if(this.nameInputField.input.classList.contains('error')) {
+        return;
+      }
+
+      if(!this.nameInputField.value.trim()) {
+        this.nameInputField.input.classList.add('error');
         return;
       }
 
@@ -122,14 +141,7 @@ export default class AppEditFolderTab implements SliderTab {
     });
     
     this.nameInput.addEventListener('input', () => {
-      if(this.nameInput.value.length > MAX_FOLDER_NAME_LENGTH) {
-        this.nameInput.value = this.nameInput.value.slice(0, MAX_FOLDER_NAME_LENGTH);
-        return;
-      }
-
-      this.filter.title = this.nameInput.value;
-      this.nameInput.classList.remove('error');
-
+      this.filter.title = this.nameInputField.value;
       this.editCheckForChange();
     });
   }
@@ -154,7 +166,7 @@ export default class AppEditFolderTab implements SliderTab {
     this.title.innerText = 'New Folder';
     this.menuBtn.classList.add('hide');
     this.confirmBtn.classList.remove('hide');
-    this.nameInput.value = '';
+    this.nameInputField.value = '';
 
     for(const flag in this.flags) {
       // @ts-ignore
@@ -172,7 +184,7 @@ export default class AppEditFolderTab implements SliderTab {
     }
     
     const filter = this.filter;
-    this.nameInput.value = filter.title;
+    this.nameInputField.value = RichTextProcessor.wrapEmojiText(filter.title);
 
     for(const flag in this.flags) {
       // @ts-ignore

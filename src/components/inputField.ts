@@ -54,6 +54,8 @@ class InputField {
   public container: HTMLElement;
   public input: HTMLElement;
 
+  //public onLengthChange: (length: number, isOverflow: boolean) => void;
+
   constructor(private options: {
     placeholder?: string, 
     label?: string, 
@@ -115,6 +117,8 @@ class InputField {
         const diff = maxLength - inputLength;
         const isError = diff < 0;
         input.classList.toggle('error', isError);
+
+        //this.onLengthChange && this.onLengthChange(inputLength, isError);
 
         if(isError || diff <= showLengthOn) {
           labelEl.innerText = label + ` (${maxLength - inputLength})`;
