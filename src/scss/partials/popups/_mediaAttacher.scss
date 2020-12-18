@@ -141,7 +141,7 @@
       font-size: 1rem;
       border-radius: $border-radius-medium;
 
-      &:not(:focus):empty + label {
+      &:not(:focus):empty ~ label {
         opacity: 0;
       }
     }

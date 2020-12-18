@@ -110,7 +110,7 @@ export default class PopupNewMedia extends PopupElement {
 
   private onKeyDown = (e: KeyboardEvent) => {
     const target = e.target as HTMLElement;
-    if(target.tagName != 'INPUT') {
+    if(target !== this.input) {
       this.input.focus();
       placeCaretAtEnd(this.input);
     }

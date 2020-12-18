@@ -248,6 +248,7 @@ export class AppMessagesManager {
     
           if(removeUnread && dialog.unread_count) dialog.unread_count -= removeUnread; 
     
+          dialog.unread_count = Math.max(0, dialog.unread_count);
           dialogs.push(dialog);
     
           appStateManager.setPeer(dialog.peerId, appPeersManager.getPeer(dialog.peerId));

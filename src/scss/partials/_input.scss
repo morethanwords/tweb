@@ -95,7 +95,7 @@
     &.error {
       border-color: $color-error;
 
-      & + label {
+      & ~ label {
         color: $color-error!important;
       }
     }
@@ -103,7 +103,7 @@
     &.valid {
       border-color: #26962F;
       
-      & + label {
+      & ~ label {
         color: #26962F !important;
       }
     }
@@ -119,11 +119,11 @@
       border-color: $button-primary-background;
     }
     
-    &:focus + label {
+    &:focus ~ label {
       color: $button-primary-background;
     }
     
-    &:focus + label, &:valid + label, &:not(:empty) + label, &:disabled + label {
+    &:focus ~ label, &:valid ~ label, &:not(:empty) ~ label, &:disabled ~ label {
       top: -.5rem;
       transform: none;
       padding: 0 5px;
@@ -217,7 +217,7 @@ input:focus, button:focus {
       background-color: transparent;
       border-color: $button-primary-background;
 
-      & + .tgico {
+      & ~ .tgico {
         color: $button-primary-background;
         opacity: 1;
       }
