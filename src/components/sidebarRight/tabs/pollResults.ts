@@ -14,9 +14,7 @@ export default class AppPollResultsTab implements SliderTab {
   private resultsDiv = this.contentDiv.firstElementChild as HTMLDivElement;
   private scrollable: Scrollable;
 
-  private peerId: number;
-  private pollId: string;
-  private mid: number;
+  private message: any;
 
   constructor() {
     this.scrollable = new Scrollable(this.contentDiv, 'POLL-RESULTS');
@@ -24,26 +22,23 @@ export default class AppPollResultsTab implements SliderTab {
 
   public cleanup() {
     this.resultsDiv.innerHTML = '';
-    this.pollId = '';
-    this.mid = 0;
+    this.message = undefined;
   }
 
   public onCloseAfterTimeout() {
     this.cleanup();
   }
 
-  public init(peerId: number, pollId: string, mid: number) {
-    if(this.peerId == peerId && this.pollId == pollId && this.mid == mid) return;
+  public init(message: any) {
+    if(this.message === message) return;
     
     this.cleanup();
 
-    this.peerId = peerId;
-    this.pollId = pollId;
-    this.mid = mid;
+    this.message = message;
 
     appSidebarRight.selectTab(AppSidebarRight.SLIDERITEMSIDS.pollResults);
 
-    const poll = appPollsManager.getPoll(pollId);
+    const poll = appPollsManager.getPoll(message.media.poll.id);
 
     const title = document.createElement('h3');
     title.innerHTML = poll.poll.rQuestion;
@@ -88,7 +83,7 @@ export default class AppPollResultsTab implements SliderTab {
         if(loading) return;
         loading = true;
 
-        appPollsManager.getVotes(peerId, mid, answer.option, offset, limit).then(votesList => {
+        appPollsManager.getVotes(message, answer.option, offset, limit).then(votesList => {
           votesList.votes.forEach(vote => {
             const {dom} = appDialogsManager.addDialogNew({
               dialog: vote.user_id,

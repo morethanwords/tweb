@@ -1,7 +1,7 @@
 import appSidebarLeft, { AppSidebarLeft } from "..";
 import { InputFile } from "../../../layer";
 import appChatsManager from "../../../lib/appManagers/appChatsManager";
-import PopupAvatar from "../../popupAvatar";
+import PopupAvatar from "../../popups/avatar";
 import { SliderTab } from "../../slider";
 
 export default class AppNewChannelTab implements SliderTab {

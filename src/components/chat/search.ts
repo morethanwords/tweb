@@ -1,7 +1,7 @@
 import type ChatTopbar from "./topbar";
 import { cancelEvent, whichChild, findUpTag } from "../../helpers/dom";
 import AppSearch, { SearchGroup } from "../appSearch";
-import PopupDatePicker from "../popupDatepicker";
+import PopupDatePicker from "../popups/datePicker";
 import { ripple } from "../ripple";
 import InputSearch from "../inputSearch";
 import type Chat from "./chat";

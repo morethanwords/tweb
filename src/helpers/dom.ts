@@ -467,12 +467,14 @@ export function blurActiveElement() {
 }
 
 export const CLICK_EVENT_NAME = isTouchSupported ? 'touchend' : 'click';
-export type AttachClickOptions = AddEventListenerOptions & Partial<{listenerSetter: ListenerSetter}>;
+export type AttachClickOptions = AddEventListenerOptions & Partial<{listenerSetter: ListenerSetter, touchMouseDown: true}>;
 export const attachClickEvent = (elem: HTMLElement, callback: (e: TouchEvent | MouseEvent) => void, options: AttachClickOptions = {}) => {
   const add = options.listenerSetter ? options.listenerSetter.add.bind(options.listenerSetter, elem) : elem.addEventListener.bind(elem);
   const remove = options.listenerSetter ? options.listenerSetter.removeManual.bind(options.listenerSetter, elem) : elem.removeEventListener.bind(elem);
 
-  if(CLICK_EVENT_NAME == 'touchend') {
+  if(options.touchMouseDown && CLICK_EVENT_NAME === 'touchend') {
+    add('mousedown', callback, options);
+  } else if(CLICK_EVENT_NAME === 'touchend') {
     const o = {...options, once: true};
 
     const onTouchStart = (e: TouchEvent) => {
@@ -600,7 +602,7 @@ export async function getFilesFromEvent(e: ClipboardEvent | DragEvent, onlyTypes
   const scanFiles = async(item: any) => {
     if(item.isDirectory) {
       const directoryReader = item.createReader();
-      await new Promise((resolve, reject) => {
+      await new Promise<void>((resolve, reject) => {
         directoryReader.readEntries(async(entries: any) => {
           for(const entry of entries) {
             await scanFiles(entry);

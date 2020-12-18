@@ -19,8 +19,6 @@ export function logger(prefix: string, level = LogLevels.log | LogLevels.warn | 
 
   //level = LogLevels.log | LogLevels.warn | LogLevels.error | LogLevels.debug
 
-  prefix = '[' + prefix + ']:';
-
   function Log(...args: any[]) {
     return level & LogLevels.log && console.log(dT(), prefix, ...args);
   }
@@ -48,6 +46,12 @@ export function logger(prefix: string, level = LogLevels.log | LogLevels.warn | 
   Log.debug = function(...args: any[]) {
     return level & LogLevels.debug && console.debug(dT(), prefix, ...args);
   };
+
+  Log.setPrefix = function(_prefix: string) {
+    prefix = '[' + _prefix + ']:';
+  };
+
+  Log.setPrefix(prefix);
   
   return Log;
 };

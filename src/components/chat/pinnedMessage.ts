@@ -2,7 +2,7 @@ import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManage
 import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import type ChatTopbar from "./topbar";
 import { ScreenSize } from "../../helpers/mediaSizes";
-import PopupPinMessage from "../popupUnpinMessage";
+import PopupPinMessage from "../popups/unpinMessage";
 import PinnedContainer from "./pinnedContainer";
 import PinnedMessageBorder from "./pinnedMessageBorder";
 import ReplyContainer, { wrapReplyDivAndCaption } from "./replyContainer";
@@ -429,7 +429,7 @@ export default class ChatPinnedMessage {
       
       const result = (await Promise.all(promises))[0];
   
-      let backLimited = result.history.findIndex(_mid => _mid <= mid);
+      let backLimited = result.history.findIndex(message => message.mid <= mid);
       if(backLimited === -1) {
         backLimited = result.history.length;
       }/*  else {
@@ -437,7 +437,7 @@ export default class ChatPinnedMessage {
       } */
       
       this.offsetIndex = result.offset_id_offset ? result.offset_id_offset - backLimited : 0;
-      this.mids = result.history.slice();
+      this.mids = result.history.map(message => message.mid).slice();
       this.count = result.count;
 
       if(!this.count) {

@@ -183,7 +183,7 @@ export class ApiManager {
     }
     
     const networkers = cache[dcId];
-    if(networkers.length >= /* 1 */(connectionType == 'client' ? 1 : 3)) {
+    if(networkers.length >= /* 1 */(connectionType !== 'download' ? 1 : 3)) {
       const networker = networkers.pop();
       networkers.unshift(networker);
       return Promise.resolve(networker);

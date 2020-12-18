@@ -1,21 +1,22 @@
-import rootScope from "../lib/rootScope";
-import { blurActiveElement, cancelEvent, findUpClassName } from "../helpers/dom";
-import { ripple } from "./ripple";
+import rootScope from "../../lib/rootScope";
+import { blurActiveElement, cancelEvent, findUpClassName } from "../../helpers/dom";
+import { ripple } from "../ripple";
 
-export class PopupElement {
+export type PopupOptions = Partial<{closable: true, overlayClosable: true, withConfirm: string, body: true}>;
+export default class PopupElement {
   protected element = document.createElement('div');
   protected container = document.createElement('div');
   protected header = document.createElement('div');
   protected title = document.createElement('div');
-  protected closeBtn: HTMLElement;
-  protected confirmBtn: HTMLElement;
+  protected btnClose: HTMLElement;
+  protected btnConfirm: HTMLElement;
   protected body: HTMLElement;
 
   protected onClose: () => void;
   protected onCloseAfterTimeout: () => void;
   protected onEscape: () => boolean = () => true;
 
-  constructor(className: string, buttons?: Array<PopupButton>, options: Partial<{closable: true, overlayClosable: true, withConfirm: string, body: true}> = {}) {
+  constructor(className: string, buttons?: Array<PopupButton>, options: PopupOptions = {}) {
     this.element.classList.add('popup');
     this.element.className = 'popup' + (className ? ' ' + className : '');
     this.container.classList.add('popup-container', 'z-depth-1');
@@ -26,17 +27,17 @@ export class PopupElement {
     this.header.append(this.title);
 
     if(options.closable) {
-      this.closeBtn = document.createElement('span');
-      this.closeBtn.classList.add('btn-icon', 'popup-close', 'tgico-close');
+      this.btnClose = document.createElement('span');
+      this.btnClose.classList.add('btn-icon', 'popup-close', 'tgico-close');
       //ripple(this.closeBtn);
-      this.header.prepend(this.closeBtn);
+      this.header.prepend(this.btnClose);
 
-      this.closeBtn.addEventListener('click', this.destroy, {once: true});
+      this.btnClose.addEventListener('click', this.destroy, {once: true});
 
       if(options.overlayClosable) {
         const onOverlayClick = (e: MouseEvent) => {
           if(!findUpClassName(e.target, 'popup-container')) {
-            this.closeBtn.click();
+            this.btnClose.click();
           }
         };
     
@@ -47,11 +48,11 @@ export class PopupElement {
     window.addEventListener('keydown', this._onKeyDown, {capture: true});
 
     if(options.withConfirm) {
-      this.confirmBtn = document.createElement('button');
-      this.confirmBtn.classList.add('btn-primary');
-      this.confirmBtn.innerText = options.withConfirm;
-      this.header.append(this.confirmBtn);
-      ripple(this.confirmBtn);
+      this.btnConfirm = document.createElement('button');
+      this.btnConfirm.classList.add('btn-primary');
+      this.btnConfirm.innerText = options.withConfirm;
+      this.header.append(this.btnConfirm);
+      ripple(this.btnConfirm);
     }
 
     this.container.append(this.header);
@@ -112,7 +113,7 @@ export class PopupElement {
     this.element.classList.remove('active');
 
     window.removeEventListener('keydown', this._onKeyDown, {capture: true});
-    if(this.closeBtn) this.closeBtn.removeEventListener('click', this.destroy);
+    if(this.btnClose) this.btnClose.removeEventListener('click', this.destroy);
     rootScope.overlayIsActive = false;
 
     setTimeout(() => {

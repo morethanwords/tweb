@@ -1,6 +1,6 @@
 import type { StickerSet, Update } from "../layer";
 import type { MyDocument } from "./appManagers/appDocsManager";
-import type { AppMessagesManager, Dialog } from "./appManagers/appMessagesManager";
+import type { AppMessagesManager, Dialog, MessagesStorage } from "./appManagers/appMessagesManager";
 import type { Poll, PollResults } from "./appManagers/appPollsManager";
 import type { MyDialogFilter } from "./storages/filters";
 import type { ConnectionStatusChange } from "../types";
@@ -30,17 +30,17 @@ type BroadcastEvents = {
   'dialogs_archived_unread': {count: number},
   
   'history_append': {peerId: number, messageId: number, my?: boolean},
-  'history_update': {peerId: number, mid: number},
+  'history_update': {storage: MessagesStorage, peerId: number, mid: number},
   'history_reply_markup': {peerId: number},
   'history_multiappend': AppMessagesManager['newMessagesToHandle'],
   'history_delete': {peerId: number, msgs: {[mid: number]: true}},
   'history_forbidden': number,
   'history_reload': number,
-  'history_request': void,
+  //'history_request': void,
   
-  'message_edit': {peerId: number, mid: number, justMedia: boolean},
+  'message_edit': {storage: MessagesStorage, peerId: number, mid: number},
   'message_views': {mid: number, views: number},
-  'message_sent': {tempId: number, mid: number},
+  'message_sent': {storage: MessagesStorage, tempId: number, tempMessage: any, mid: number},
   'messages_pending': void,
   'messages_read': void,
   'messages_downloaded': number[],

@@ -5,8 +5,8 @@ import appPeersManager from "../lib/appManagers/appPeersManager";
 import rootScope from "../lib/rootScope";
 import { findUpTag } from "../helpers/dom";
 import { positionMenu, openBtnMenu } from "./misc";
-import { PopupButton } from "./popup";
-import PopupPeer from "./popupPeer";
+import { PopupButton } from "./popups";
+import PopupPeer from "./popups/peer";
 import ButtonMenu, { ButtonMenuItemOptions } from "./buttonMenu";
 
 export default class DialogsContextMenu {

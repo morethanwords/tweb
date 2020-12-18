@@ -7,11 +7,11 @@ import { isTouchSupported } from "../../helpers/touchSupport";
 import { attachClickEvent, cancelEvent, cancelSelection, findUpClassName } from "../../helpers/dom";
 import ButtonMenu, { ButtonMenuItemOptions } from "../buttonMenu";
 import { attachContextMenuListener, openBtnMenu, positionMenu } from "../misc";
-import PopupDeleteMessages from "../popupDeleteMessages";
-import PopupForward from "../popupForward";
-import PopupPinMessage from "../popupUnpinMessage";
+import PopupDeleteMessages from "../popups/deleteMessages";
+import PopupForward from "../popups/forward";
+import PopupPinMessage from "../popups/unpinMessage";
 import { copyTextToClipboard } from "../../helpers/clipboard";
-import { isAppleMobile, isSafari } from "../../helpers/userAgent";
+import PopupSendNow from "../popups/sendNow";
 
 export default class ChatContextMenu {
   private buttons: (ButtonMenuItemOptions & {verify: () => boolean, notDirect?: () => boolean, withSelection?: true})[];
@@ -21,6 +21,7 @@ export default class ChatContextMenu {
   private isTargetAGroupedItem: boolean;
   public peerId: number;
   public mid: number;
+  public message: any;
 
   constructor(private attachTo: HTMLElement, private chat: Chat, private appMessagesManager: AppMessagesManager, private appChatsManager: AppChatsManager, private appPeersManager: AppPeersManager, private appPollsManager: AppPollsManager) {
     const onContextMenu = (e: MouseEvent | Touch) => {
@@ -70,6 +71,8 @@ export default class ChatContextMenu {
       } else {
         this.mid = mid;
       }
+
+      this.message = this.chat.getMessage(this.mid);
 
       this.buttons.forEach(button => {
         let good: boolean;
@@ -138,21 +141,50 @@ export default class ChatContextMenu {
 
   private init() {
     this.buttons = [{
+      icon: 'send2',
+      text: 'Send Now',
+      onClick: this.onSendScheduledClick,
+      verify: () => this.chat.type === 'scheduled'
+    }, {
+      icon: 'send2',
+      text: 'Send Now selected',
+      onClick: this.onSendScheduledClick,
+      verify: () => this.chat.type === 'scheduled' && this.chat.selection.selectedMids.has(this.mid) && !this.chat.selection.selectionSendNowBtn.hasAttribute('disabled'),
+      notDirect: () => true,
+      withSelection: true
+    }, {
+      icon: 'schedule',
+      text: 'Reschedule',
+      onClick: () => {
+        this.chat.input.scheduleSending(() => {
+          this.appMessagesManager.editMessage(this.message, this.message.message, {
+            scheduleDate: this.chat.input.scheduleDate,
+            entities: this.message.entities
+          });
+
+          this.chat.input.onMessageSent(false, false);
+        }, new Date(this.message.date * 1000));
+      },
+      verify: () => this.chat.type === 'scheduled'
+    }, {
       icon: 'reply',
       text: 'Reply',
       onClick: this.onReplyClick,
-      verify: () => (this.peerId > 0 || this.appChatsManager.hasRights(-this.peerId, 'send')) && this.mid > 0 && !!this.chat.input.messageInput/* ,
+      verify: () => (this.peerId > 0 || this.appChatsManager.hasRights(-this.peerId, 'send')) && 
+        this.mid > 0 && 
+        !!this.chat.input.messageInput && 
+        this.chat.type !== 'scheduled'/* ,
       cancelEvent: true */
     }, {
       icon: 'edit',
       text: 'Edit',
       onClick: this.onEditClick,
-      verify: () => this.appMessagesManager.canEditMessage(this.peerId, this.mid, 'text') && !!this.chat.input.messageInput
+      verify: () => this.appMessagesManager.canEditMessage(this.message, 'text') && !!this.chat.input.messageInput
     }, {
       icon: 'copy',
       text: 'Copy',
       onClick: this.onCopyClick,
-      verify: () => !!this.chat.getMessage(this.mid).message
+      verify: () => !!this.message.message
     }, {
       icon: 'copy',
       text: 'Copy selected',
@@ -164,25 +196,22 @@ export default class ChatContextMenu {
       icon: 'pin',
       text: 'Pin',
       onClick: this.onPinClick,
-      verify: () => {
-        const message = this.chat.getMessage(this.mid);
-        return this.mid > 0 && message._ != 'messageService' && !message.pFlags.pinned && this.appPeersManager.canPinMessage(this.peerId);
-      }
+      verify: () => this.mid > 0 && 
+        this.message._ != 'messageService' && 
+        !this.message.pFlags.pinned && 
+        this.appPeersManager.canPinMessage(this.peerId) && 
+        this.chat.type !== 'scheduled',
     }, {
       icon: 'unpin',
       text: 'Unpin',
       onClick: this.onUnpinClick,
-      verify: () => {
-        const message = this.chat.getMessage(this.mid);
-        return message.pFlags.pinned && this.appPeersManager.canPinMessage(this.peerId);
-      }
+      verify: () => this.message.pFlags.pinned && this.appPeersManager.canPinMessage(this.peerId),
     }, {
       icon: 'revote',
       text: 'Revote',
       onClick: this.onRetractVote,
       verify: () => {
-        const message = this.chat.getMessage(this.mid);
-        const poll = message.media?.poll as Poll;
+        const poll = this.message.media?.poll as Poll;
         return poll && poll.chosenIndexes.length && !poll.pFlags.closed && !poll.pFlags.quiz;
       }/* ,
       cancelEvent: true */
@@ -191,31 +220,27 @@ export default class ChatContextMenu {
       text: 'Stop poll',
       onClick: this.onStopPoll,
       verify: () => {
-        const message = this.chat.getMessage(this.mid);
-        const poll = message.media?.poll;
-        return this.appMessagesManager.canEditMessage(this.peerId, this.mid, 'poll') && poll && !poll.pFlags.closed && this.mid > 0;
+        const poll = this.message.media?.poll;
+        return this.appMessagesManager.canEditMessage(this.message, 'poll') && poll && !poll.pFlags.closed && this.mid > 0;
       }/* ,
       cancelEvent: true */
     }, {
       icon: 'forward',
       text: 'Forward',
       onClick: this.onForwardClick,
-      verify: () => this.mid > 0
+      verify: () => this.mid > 0 && this.chat.type !== 'scheduled'
     }, {
       icon: 'forward',
       text: 'Forward selected',
       onClick: this.onForwardClick,
-      verify: () => this.chat.selection.selectedMids.has(this.mid) && !this.chat.selection.selectionForwardBtn.hasAttribute('disabled'),
+      verify: () => this.chat.selection.selectionForwardBtn && this.chat.selection.selectedMids.has(this.mid) && !this.chat.selection.selectionForwardBtn.hasAttribute('disabled'),
       notDirect: () => true,
       withSelection: true
     }, {
       icon: 'select',
       text: 'Select',
       onClick: this.onSelectClick,
-      verify: () => {
-        const message = this.chat.getMessage(this.mid);
-        return !message.action && !this.chat.selection.selectedMids.has(this.mid);
-      },
+      verify: () => !this.message.action && !this.chat.selection.selectedMids.has(this.mid),
       notDirect: () => true,
       withSelection: true
     }, {
@@ -229,7 +254,7 @@ export default class ChatContextMenu {
       icon: 'delete danger',
       text: 'Delete',
       onClick: this.onDeleteClick,
-      verify: () => this.appMessagesManager.canDeleteMessage(this.peerId, this.mid)
+      verify: () => this.appMessagesManager.canDeleteMessage(this.message)
     }, {
       icon: 'delete danger',
       text: 'Delete selected',
@@ -242,6 +267,14 @@ export default class ChatContextMenu {
     this.element = ButtonMenu(this.buttons, this.chat.bubbles.listenerSetter);
     this.element.id = 'bubble-contextmenu';
     this.chat.container.append(this.element);
+  };
+
+  private onSendScheduledClick = () => {
+    if(this.chat.selection.isSelecting) {
+      this.chat.selection.selectionSendNowBtn.click();
+    } else {
+      new PopupSendNow(this.peerId, this.chat.getMidsByMid(this.mid));
+    }
   };
 
   private onReplyClick = () => {
@@ -277,11 +310,11 @@ export default class ChatContextMenu {
   };
 
   private onRetractVote = () => {
-    this.appPollsManager.sendVote(this.peerId, this.mid, []);
+    this.appPollsManager.sendVote(this.message, []);
   };
 
   private onStopPoll = () => {
-    this.appPollsManager.stopPoll(this.peerId, this.mid);
+    this.appPollsManager.stopPoll(this.message);
   };
 
   private onForwardClick = () => {
@@ -304,7 +337,7 @@ export default class ChatContextMenu {
     if(this.chat.selection.isSelecting) {
       this.chat.selection.selectionDeleteBtn.click();
     } else {
-      new PopupDeleteMessages(this.peerId, this.isTargetAGroupedItem ? [this.mid] : this.chat.getMidsByMid(this.mid));
+      new PopupDeleteMessages(this.peerId, this.isTargetAGroupedItem ? [this.mid] : this.chat.getMidsByMid(this.mid), this.chat.type);
     }
   };
 }

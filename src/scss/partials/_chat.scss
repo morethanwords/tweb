@@ -178,12 +178,33 @@ $chat-helper-size: 39px;
 			height: 24px;
 		}
 
-		&.send {
+		.tgico-send {
 			color: $color-blue !important;
 		}
 
+		.tgico-check {
+			color: $color-blue !important;
+			height: 32px!important;
+			font-size: 2rem;
+
+			&:before {
+				font-weight: bold;
+			}
+		}
+
+		.tgico-schedule {
+			background-color: $color-blue;
+			color: #fff;
+			border-radius: 50%;
+			width: 34px;
+			height: 34px;
+			line-height: 38px;
+		}
+
 		&.send .tgico-send, 
-		&.record .tgico-microphone2 {
+		&.record .tgico-microphone2,
+		&.edit .tgico-check,
+		&.schedule .tgico-schedule {
 			animation: grow-icon .4s forwards ease-in-out;
 		}
 	}

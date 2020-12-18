@@ -1,25 +1,30 @@
-import appChatsManager from "../lib/appManagers/appChatsManager";
-import appMessagesManager from "../lib/appManagers/appMessagesManager";
-import appPeersManager from "../lib/appManagers/appPeersManager";
-import rootScope from "../lib/rootScope";
-import { PopupButton } from "./popup";
-import PopupPeer from "./popupPeer";
+import appChatsManager from "../../lib/appManagers/appChatsManager";
+import appMessagesManager from "../../lib/appManagers/appMessagesManager";
+import appPeersManager from "../../lib/appManagers/appPeersManager";
+import rootScope from "../../lib/rootScope";
+import { PopupButton } from ".";
+import PopupPeer from "./peer";
+import { ChatType } from "../chat/chat";
 
 export default class PopupDeleteMessages {
-  constructor(peerId: number, mids: number[], onConfirm?: () => void) {
+  constructor(peerId: number, mids: number[], type: ChatType, onConfirm?: () => void) {
     const firstName = appPeersManager.getPeerTitle(peerId, false, true);
 
     mids = mids.slice();
     const callback = (revoke: boolean) => {
       onConfirm && onConfirm();
-      appMessagesManager.deleteMessages(peerId, mids, revoke);
+      if(type === 'scheduled') {
+        appMessagesManager.deleteScheduledMessages(peerId, mids);
+      } else {
+        appMessagesManager.deleteMessages(peerId, mids, revoke);
+      }
     };
 
     let title: string, description: string, buttons: PopupButton[];
     title = `Delete ${mids.length == 1 ? '' : mids.length + ' '}Message${mids.length == 1 ? '' : 's'}?`;
     description = `Are you sure you want to delete ${mids.length == 1 ? 'this message' : 'these messages'}?`;
 
-    if(peerId == rootScope.myId) {
+    if(peerId == rootScope.myId || type === 'scheduled') {
       buttons = [{
         text: 'DELETE',
         isDanger: true,

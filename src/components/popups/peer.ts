@@ -1,5 +1,5 @@
-import AvatarElement from "./avatar";
-import { PopupElement, PopupButton } from "./popup";
+import AvatarElement from "../avatar";
+import PopupElement, { PopupButton } from ".";
 
 export default class PopupPeer extends PopupElement {
   constructor(private className: string, options: Partial<{

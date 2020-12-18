@@ -1,5 +1,5 @@
 import { putPreloader } from '../components/misc';
-import PopupAvatar from '../components/popupAvatar';
+import PopupAvatar from '../components/popups/avatar';
 import appStateManager from '../lib/appManagers/appStateManager';
 //import apiManager from '../lib/mtproto/apiManager';
 import apiManager from '../lib/mtproto/mtprotoworker';

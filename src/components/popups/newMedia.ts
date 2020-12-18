@@ -1,14 +1,13 @@
-import { isTouchSupported } from "../helpers/touchSupport";
-import appImManager from "../lib/appManagers/appImManager";
-import appMessagesManager from "../lib/appManagers/appMessagesManager";
-import { calcImageInBox, getRichValue } from "../helpers/dom";
-import InputField from "./inputField";
-import { PopupElement } from "./popup";
-import { ripple } from "./ripple";
-import Scrollable from "./scrollable";
-import { toast } from "./toast";
-import { prepareAlbum, wrapDocument } from "./wrappers";
-import CheckboxField from "./checkbox";
+import type Chat from "../chat/chat";
+import { isTouchSupported } from "../../helpers/touchSupport";
+import { calcImageInBox, placeCaretAtEnd } from "../../helpers/dom";
+import InputField from "../inputField";
+import PopupElement from ".";
+import Scrollable from "../scrollable";
+import { toast } from "../toast";
+import { prepareAlbum, wrapDocument } from "../wrappers";
+import CheckboxField from "../checkbox";
+import SendContextMenu from "../chat/sendContextMenu";
 
 type SendFileParams = Partial<{
   file: File,
@@ -23,10 +22,10 @@ const MAX_LENGTH_CAPTION = 1024;
 // TODO: .gif upload as video
 
 export default class PopupNewMedia extends PopupElement {
-  private btnSend: HTMLElement;
-  private input: HTMLInputElement;
+  private input: HTMLElement;
   private mediaContainer: HTMLElement;
   private groupCheckboxField: { label: HTMLLabelElement; input: HTMLInputElement; span: HTMLSpanElement; };
+  private wasInputValue = '';
 
   private willAttach: Partial<{
     type: 'media' | 'document',
@@ -37,39 +36,57 @@ export default class PopupNewMedia extends PopupElement {
     sendFileDetails: [],
     group: false
   };
+  inputField: InputField;
 
-  constructor(files: File[], willAttachType: PopupNewMedia['willAttach']['type']) {
-    super('popup-send-photo popup-new-media', null, {closable: true});
+  constructor(private chat: Chat, files: File[], willAttachType: PopupNewMedia['willAttach']['type']) {
+    super('popup-send-photo popup-new-media', null, {closable: true, withConfirm: 'SEND'});
 
     this.willAttach.type = willAttachType;
 
-    this.btnSend = document.createElement('button');
-    this.btnSend.className = 'btn-primary';
-    this.btnSend.innerText = 'SEND';
-    ripple(this.btnSend);
-    this.btnSend.addEventListener('click', this.send);
-  
-    this.header.append(this.btnSend);
+    this.btnConfirm.addEventListener('click', () => this.send());
+
+    if(this.chat.type !== 'scheduled') {
+      const sendMenu = new SendContextMenu({
+        onSilentClick: () => {
+          this.chat.input.sendSilent = true;
+          this.send();
+        },
+        onScheduleClick: () => {
+          this.chat.input.scheduleSending(() => {
+            this.send();
+          });
+        },
+        openSide: 'bottom-left',
+        onContextElement: this.btnConfirm,
+      });
+
+      sendMenu.setPeerId(this.chat.peerId);
+
+      this.header.append(sendMenu.sendMenu);
+    }
 
     this.mediaContainer = document.createElement('div');
     this.mediaContainer.classList.add('popup-photo');
     const scrollable = new Scrollable(null);
     scrollable.container.append(this.mediaContainer);
     
-    const inputField = InputField({
+    this.inputField = new InputField({
       placeholder: 'Add a caption...',
       label: 'Caption',
       name: 'photo-caption',
       maxLength: MAX_LENGTH_CAPTION,
       showLengthOn: 80
     });
-    this.input = inputField.input;
+    this.input = this.inputField.input;
+
+    this.inputField.value = this.wasInputValue = this.chat.input.messageInputField.value;
+    this.chat.input.messageInputField.value = '';
 
     this.container.append(scrollable.container);
 
     if(files.length > 1) {
       this.groupCheckboxField = CheckboxField('Group items', 'group-items');
-      this.container.append(this.groupCheckboxField.label, inputField.container);
+      this.container.append(this.groupCheckboxField.label, this.inputField.container);
   
       this.groupCheckboxField.input.checked = true;
       this.willAttach.group = true;
@@ -86,7 +103,7 @@ export default class PopupNewMedia extends PopupElement {
       });
     }
     
-    this.container.append(inputField.container);
+    this.container.append(this.inputField.container);
 
     this.attachFiles(files);
   }
@@ -95,15 +112,24 @@ export default class PopupNewMedia extends PopupElement {
     const target = e.target as HTMLElement;
     if(target.tagName != 'INPUT') {
       this.input.focus();
+      placeCaretAtEnd(this.input);
     }
     
     if(e.key == 'Enter' && !isTouchSupported) {
-      this.btnSend.click();
+      this.btnConfirm.click();
     }
   };
 
-  public send = () => {
-    let caption = getRichValue(this.input);
+  public send(force = false) {
+    if(this.chat.type === 'scheduled' && !force) {
+      this.chat.input.scheduleSending(() => {
+        this.send(true);
+      });
+      
+      return;
+    }
+
+    let caption = this.inputField.value;
     if(caption.length > MAX_LENGTH_CAPTION) {
       toast('Caption is too long.');
       return;
@@ -115,8 +141,10 @@ export default class PopupNewMedia extends PopupElement {
 
     //console.log('will send files with options:', willAttach);
 
-    const peerId = appImManager.chat.peerId;
-    const chatInputC = appImManager.chat.input;
+    const peerId = this.chat.peerId;
+    const input = this.chat.input;
+    const silent = input.sendSilent;
+    const scheduleDate = input.scheduleDate;
 
     if(willAttach.sendFileDetails.length > 1 && willAttach.group) {
       for(let i = 0; i < willAttach.sendFileDetails.length;) {
@@ -131,34 +159,38 @@ export default class PopupNewMedia extends PopupElement {
         const w = {...willAttach};
         w.sendFileDetails = willAttach.sendFileDetails.slice(i - k, i);
 
-        appMessagesManager.sendAlbum(peerId, w.sendFileDetails.map(d => d.file), Object.assign({
+        this.chat.appMessagesManager.sendAlbum(peerId, w.sendFileDetails.map(d => d.file), Object.assign({
           caption,
-          replyToMsgId: chatInputC.replyToMsgId,
-          isMedia: willAttach.isMedia
+          replyToMsgId: input.replyToMsgId,
+          isMedia: willAttach.isMedia,
+          silent,
+          scheduleDate
         }, w));
 
         caption = undefined;
-        chatInputC.replyToMsgId = 0;
+        input.replyToMsgId = undefined;
       }
     } else {
       if(caption) {
         if(willAttach.sendFileDetails.length > 1) {
-          appMessagesManager.sendText(peerId, caption, {replyToMsgId: chatInputC.replyToMsgId});
+          this.chat.appMessagesManager.sendText(peerId, caption, {replyToMsgId: input.replyToMsgId, silent, scheduleDate});
           caption = '';
-          chatInputC.replyToMsgId = 0;
+          input.replyToMsgId = undefined;
         }
       }
   
       const promises = willAttach.sendFileDetails.map(params => {
-        const promise = appMessagesManager.sendFile(peerId, params.file, Object.assign({
+        const promise = this.chat.appMessagesManager.sendFile(peerId, params.file, Object.assign({
           //isMedia: willAttach.isMedia, 
           isMedia: willAttach.isMedia, 
           caption,
-          replyToMsgId: chatInputC.replyToMsgId
+          replyToMsgId: input.replyToMsgId,
+          silent,
+          scheduleDate
         }, params));
 
         caption = '';
-        chatInputC.replyToMsgId = 0;
+        input.replyToMsgId = undefined;
         return promise;
       });
     }
@@ -167,8 +199,8 @@ export default class PopupNewMedia extends PopupElement {
 
     //appMessagesManager.sendFile(appImManager.peerId, willAttach.file, willAttach);
     
-    chatInputC.onMessageSent();
-  };
+    input.onMessageSent();
+  }
 
   public attachFile = (file: File) => {
     const willAttach = this.willAttach;
@@ -343,6 +375,10 @@ export default class PopupNewMedia extends PopupElement {
       if(!this.element.classList.contains('active')) {
         document.body.addEventListener('keydown', this.onKeyDown);
         this.onClose = () => {
+          if(this.wasInputValue) {
+            this.chat.input.messageInputField.value = this.wasInputValue;
+          }
+
           document.body.removeEventListener('keydown', this.onKeyDown);
         };
         this.show();

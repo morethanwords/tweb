@@ -31,9 +31,19 @@ export const formatDateAccordingToToday = (time: Date) => {
   return timeStr;
 };
 
-export const getFullDate = (date: Date) => {
-  return date.getDate() + ' ' + months[date.getMonth()] + ' ' + date.getFullYear() + 
-    ', ' + ('0' + date.getHours()).slice(-2) + ':' + ('0' + date.getMinutes()).slice(-2) + ':' + ('0' + date.getSeconds()).slice(-2);
+export const getFullDate = (date: Date, options: Partial<{
+  noTime: true, 
+  noSeconds: true,
+  monthAsNumber: true,
+  leadingZero: true
+}> = {}) => {
+  const joiner = options.monthAsNumber ? '.' : ' ';
+  const time = ('0' + date.getHours()).slice(-2) + ':' + ('0' + date.getMinutes()).slice(-2) + (options.noSeconds ? '' : ':' + ('0' + date.getSeconds()).slice(-2));
+
+  return (options.leadingZero ? ('0' + date.getDate()).slice(-2) : date.getDate()) + 
+    joiner + (options.monthAsNumber ? ('0' + (date.getMonth() + 1)).slice(-2) : months[date.getMonth()]) + 
+    joiner + date.getFullYear() + 
+    (options.noTime ? '' : ', ' + time);
 };
 
 export function tsNow(seconds?: true) {

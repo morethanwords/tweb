@@ -5,7 +5,7 @@ import LazyLoadQueue from "../../lazyLoadQueue";
 import { findUpClassName } from "../../../helpers/dom";
 import appImManager from "../../../lib/appManagers/appImManager";
 import appStickersManager from "../../../lib/appManagers/appStickersManager";
-import PopupStickers from "../../popupStickers";
+import PopupStickers from "../../popups/stickers";
 import animationIntersector from "../../animationIntersector";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import { wrapSticker } from "../../wrappers";

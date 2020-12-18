@@ -50,84 +50,106 @@ const checkAndSetRTL = (input: HTMLElement) => {
   input.style.direction = direction;
 };
 
-const InputField = (options: {
-  placeholder?: string, 
-  label?: string, 
-  name?: string, 
-  maxLength?: number, 
-  showLengthOn?: number,
-  plainText?: true
-}) => {
-  const div = document.createElement('div');
-  div.classList.add('input-field');
+class InputField {
+  public container: HTMLElement;
+  public input: HTMLElement;
 
-  if(options.maxLength) {
-    options.showLengthOn = Math.round(options.maxLength / 3);
-  }
+  constructor(private options: {
+    placeholder?: string, 
+    label?: string, 
+    name?: string, 
+    maxLength?: number, 
+    showLengthOn?: number,
+    plainText?: true
+  } = {}) {
+    this.container = document.createElement('div');
+    this.container.classList.add('input-field');
 
-  const {placeholder, label, maxLength, showLengthOn, name, plainText} = options;
-
-  let input: HTMLElement;
-  if(!plainText) {
-    if(init) {
-      init();
+    if(options.maxLength) {
+      options.showLengthOn = Math.round(options.maxLength / 3);
     }
 
-    div.innerHTML = `
-    <div ${placeholder ? `data-placeholder="${placeholder}"` : ''} contenteditable="true" class="input-field-input"></div>
-    ${label ? `<label>${label}</label>` : ''}
-    `;
+    const {placeholder, label, maxLength, showLengthOn, name, plainText} = options;
 
-    input = div.firstElementChild as HTMLElement;
-    const observer = new MutationObserver(() => {
-      checkAndSetRTL(input);
-
-      if(processInput) {
-        processInput();
+    let input: HTMLElement;
+    if(!plainText) {
+      if(init) {
+        init();
       }
-    });
-    
-    // ! childList for paste first symbol
-    observer.observe(input, {characterData: true, childList: true, subtree: true});
-  } else {
-    div.innerHTML = `
-    <input type="text" ${name ? `name="${name}"` : ''} ${placeholder ? `placeholder="${placeholder}"` : ''} autocomplete="off" ${label ? 'required=""' : ''} class="input-field-input">
-    ${label ? `<label>${label}</label>` : ''}
-    `;
 
-    input = div.firstElementChild as HTMLElement;
-    input.addEventListener('input', () => checkAndSetRTL(input));
+      this.container.innerHTML = `
+      <div ${placeholder ? `data-placeholder="${placeholder}"` : ''} contenteditable="true" class="input-field-input"></div>
+      ${label ? `<label>${label}</label>` : ''}
+      `;
+
+      input = this.container.firstElementChild as HTMLElement;
+      const observer = new MutationObserver(() => {
+        checkAndSetRTL(input);
+
+        if(processInput) {
+          processInput();
+        }
+      });
+      
+      // ! childList for paste first symbol
+      observer.observe(input, {characterData: true, childList: true, subtree: true});
+    } else {
+      this.container.innerHTML = `
+      <input type="text" ${name ? `name="${name}"` : ''} ${placeholder ? `placeholder="${placeholder}"` : ''} autocomplete="off" ${label ? 'required=""' : ''} class="input-field-input">
+      ${label ? `<label>${label}</label>` : ''}
+      `;
+
+      input = this.container.firstElementChild as HTMLElement;
+      input.addEventListener('input', () => checkAndSetRTL(input));
+    }
+
+    let processInput: () => void;
+    if(maxLength) {
+      const labelEl = this.container.lastElementChild as HTMLLabelElement;
+      let showingLength = false;
+
+      processInput = () => {
+        const wasError = input.classList.contains('error');
+        // * https://stackoverflow.com/a/54369605 #2 to count emoji as 1 symbol
+        const inputLength = plainText ? (input as HTMLInputElement).value.length : [...getRichValue(input)].length;
+        const diff = maxLength - inputLength;
+        const isError = diff < 0;
+        input.classList.toggle('error', isError);
+
+        if(isError || diff <= showLengthOn) {
+          labelEl.innerText = label + ` (${maxLength - inputLength})`;
+          if(!showingLength) showingLength = true;
+        } else if((wasError && !isError) || showingLength) {
+          labelEl.innerText = label;
+          showingLength = false;
+        }
+      };
+
+      input.addEventListener('input', processInput);
+    }
+
+    this.input = input;
   }
 
-  let processInput: () => void;
-  if(maxLength) {
-    const labelEl = div.lastElementChild as HTMLLabelElement;
-    let showingLength = false;
-
-    processInput = () => {
-      const wasError = input.classList.contains('error');
-      // * https://stackoverflow.com/a/54369605 #2 to count emoji as 1 symbol
-      const inputLength = plainText ? (input as HTMLInputElement).value.length : [...getRichValue(input)].length;
-      const diff = maxLength - inputLength;
-      const isError = diff < 0;
-      input.classList.toggle('error', isError);
-
-      if(isError || diff <= showLengthOn) {
-        labelEl.innerText = label + ` (${maxLength - inputLength})`;
-        if(!showingLength) showingLength = true;
-      } else if((wasError && !isError) || showingLength) {
-        labelEl.innerText = label;
-        showingLength = false;
-      }
-    };
-
-    input.addEventListener('input', processInput);
+  get value() {
+    return this.options.plainText ? (this.input as HTMLInputElement).value : getRichValue(this.input);
+    //return getRichValue(this.input);
   }
 
-  return {
-    container: div, 
-    input: div.firstElementChild as HTMLInputElement
-  };
-};
+  set value(value: string) {
+    this.setValueSilently(value);
+
+    const event = new Event('input', {bubbles: true, cancelable: true});
+    this.input.dispatchEvent(event);
+  }
+
+  public setValueSilently(value: string) {
+    if(this.options.plainText) {
+      (this.input as HTMLInputElement).value = value;
+    } else {
+      this.input.innerHTML = value;
+    }
+  }
+}
 
 export default InputField;

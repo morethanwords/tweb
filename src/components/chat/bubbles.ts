@@ -1,5 +1,5 @@
 import { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
-import type { AppMessagesManager, Dialog, HistoryResult } from "../../lib/appManagers/appMessagesManager";
+import type { AppMessagesManager, Dialog, HistoryResult, MyMessage } from "../../lib/appManagers/appMessagesManager";
 import type { AppSidebarRight } from "../sidebarRight";
 import type { AppStickersManager } from "../../lib/appManagers/appStickersManager";
 import type { AppUsersManager } from "../../lib/appManagers/appUsersManager";
@@ -7,16 +7,16 @@ import type { AppInlineBotsManager } from "../../lib/appManagers/appInlineBotsMa
 import type { AppPhotosManager } from "../../lib/appManagers/appPhotosManager";
 import type { AppDocsManager } from "../../lib/appManagers/appDocsManager";
 import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
-import { findUpClassName, cancelEvent, findUpTag, whichChild, getElementByPoint, attachClickEvent } from "../../helpers/dom";
+import { findUpClassName, cancelEvent, findUpTag, whichChild, getElementByPoint, attachClickEvent, positionElementByIndex } from "../../helpers/dom";
 import { getObjectKeysAndSort } from "../../helpers/object";
 import { isTouchSupported } from "../../helpers/touchSupport";
 import { logger } from "../../lib/logger";
 import rootScope from "../../lib/rootScope";
 import AppMediaViewer from "../appMediaViewer";
 import BubbleGroups from "./bubbleGroups";
-import PopupDatePicker from "../popupDatepicker";
-import PopupForward from "../popupForward";
-import PopupStickers from "../popupStickers";
+import PopupDatePicker from "../popups/datePicker";
+import PopupForward from "../popups/forward";
+import PopupStickers from "../popups/stickers";
 import ProgressivePreloader from "../preloader";
 import Scrollable from "../scrollable";
 import StickyIntersector from "../stickyIntersector";
@@ -35,6 +35,7 @@ import LazyLoadQueue from "../lazyLoadQueue";
 import { AppChatsManager } from "../../lib/appManagers/appChatsManager";
 import Chat from "./chat";
 import ListenerSetter from "../../helpers/listenerSetter";
+import PollElement from "../poll";
 
 const IGNORE_ACTIONS = ['messageActionHistoryClear'];
 
@@ -101,7 +102,7 @@ export default class ChatBubbles {
 
   public replyFollowHistory: number[] = [];
 
-  constructor(private chat: Chat, private appMessagesManager: AppMessagesManager, private appSidebarRight: AppSidebarRight, private appStickersManager: AppStickersManager, private appUsersManager: AppUsersManager, private appInlineBotsManager: AppInlineBotsManager, private appPhotosManager: AppPhotosManager, private appDocsManager: AppDocsManager, private appPeersManager: AppPeersManager, private appChatsManager: AppChatsManager) {
+  constructor(private chat: Chat, private appMessagesManager: AppMessagesManager, private appStickersManager: AppStickersManager, private appUsersManager: AppUsersManager, private appInlineBotsManager: AppInlineBotsManager, private appPhotosManager: AppPhotosManager, private appDocsManager: AppDocsManager, private appPeersManager: AppPeersManager, private appChatsManager: AppChatsManager) {
     this.chat.log.error('Bubbles construction');
     
     this.listenerSetter = new ListenerSetter();
@@ -126,59 +127,23 @@ export default class ChatBubbles {
 
     // * events
 
-    // will call when message is sent (only 1)
-    this.listenerSetter.add(rootScope, 'history_append', (e) => {
-      let details = e.detail;
-
-      if(!this.scrolledAllDown) {
-        this.chat.setPeer(this.peerId, 0);
-      } else {
-        this.renderNewMessagesByIds([details.messageId], true);
-      }
-    });
-    
     // will call when sent for update pos
     this.listenerSetter.add(rootScope, 'history_update', (e) => {
-      let details = e.detail;
+      const {storage, peerId, mid} = e.detail;
       
-      if(details.mid && details.peerId == this.peerId) {
-        let mid = details.mid;
-        
-        let bubble = this.bubbles[mid];
+      if(mid && peerId == this.peerId && this.chat.getMessagesStorage() === storage) {
+        const bubble = this.bubbles[mid];
         if(!bubble) return;
-        
-        let message = this.chat.getMessage(mid);
-        //this.log('history_update', this.bubbles[mid], mid, message);
 
-        let dateMessage = this.getDateContainerByMessage(message, false);
-        dateMessage.container.append(bubble);
+        const message = this.chat.getMessage(mid);
+        //bubble.remove();
+        this.bubbleGroups.removeBubble(bubble, message.mid);
+        this.setBubblePosition(bubble, message, false);
+        //this.log('history_update', this.bubbles[mid], mid, message);
 
         this.bubbleGroups.addBubble(bubble, message, false);
 
         //this.renderMessage(message, false, false, bubble);
-      }
-    });
-
-    this.listenerSetter.add(rootScope, 'history_multiappend', (e) => {
-      const msgIdsByPeer = e.detail;
-
-      for(const peerId in msgIdsByPeer) {
-        appSidebarRight.sharedMediaTab.renderNewMessages(+peerId, msgIdsByPeer[peerId]);
-      }
-
-      if(!(this.peerId in msgIdsByPeer)) return;
-      const msgIds = msgIdsByPeer[this.peerId];
-      this.renderNewMessagesByIds(msgIds);
-    });
-    
-    this.listenerSetter.add(rootScope, 'history_delete', (e) => {
-      const {peerId, msgs} = e.detail;
-
-      const mids = Object.keys(msgs).map(s => +s);
-      appSidebarRight.sharedMediaTab.deleteDeletedMessages(peerId, mids);
-
-      if(peerId == this.peerId) {
-        this.deleteMessagesByIds(mids);
       }
     });
 
@@ -191,16 +156,18 @@ export default class ChatBubbles {
 
     // Calls when message successfully sent and we have an id
     this.listenerSetter.add(rootScope, 'message_sent', (e) => {
-      const {tempId, mid} = e.detail;
+      const {storage, tempId, tempMessage, mid} = e.detail;
+
+      // ! can't use peerId to validate here, because id can be the same in 'scheduled' and 'chat' types
+      if(this.chat.getMessagesStorage() !== storage) {
+        return;
+      }
       
       this.log('message_sent', e.detail);
 
-      const message = this.chat.getMessage(mid);
-
-      appSidebarRight.sharedMediaTab.renderNewMessages(message.peerId, [mid]);
-
       const mounted = this.getMountedBubble(tempId) || this.getMountedBubble(mid);
       if(mounted) {
+        const message = this.chat.getMessage(mid);
         const bubble = mounted.bubble;
         //this.bubbles[mid] = bubble;
         
@@ -214,8 +181,9 @@ export default class ChatBubbles {
 
         if(message.media?.poll) {
           const newPoll = message.media.poll;
-          const pollElement = bubble.querySelector('poll-element');
+          const pollElement = bubble.querySelector('poll-element') as PollElement;
           if(pollElement) {
+            pollElement.message = message;
             pollElement.setAttribute('poll-id', newPoll.id);
             pollElement.setAttribute('message-id', '' + mid);
           }
@@ -261,27 +229,43 @@ export default class ChatBubbles {
         this.unreadOut.delete(tempId);
         this.unreadOut.add(mid);
       }
+
+      // * check timing of scheduled message
+      if(this.chat.type === 'scheduled') {
+        const timestamp = Date.now() / 1000 | 0;
+        const maxTimestamp = tempMessage.date - 10;
+        this.log('scheduled timing:', timestamp, maxTimestamp);
+        if(timestamp >= maxTimestamp) {
+          this.deleteMessagesByIds([mid]);
+        }
+      }
     });
 
     this.listenerSetter.add(rootScope, 'message_edit', (e) => {
-      const {peerId, mid} = e.detail;
+      const {storage, peerId, mid} = e.detail;
       
-      if(peerId != this.peerId) return;
+      if(peerId != this.peerId || storage !== this.chat.getMessagesStorage()) return;
       const mounted = this.getMountedBubble(mid);
       if(!mounted) return;
-      this.renderMessage(mounted.message, true, false, mounted.bubble, false);
+
+      const updatePosition = this.chat.type === 'scheduled';
+      this.renderMessage(mounted.message, true, false, mounted.bubble, updatePosition);
+
+      if(updatePosition) {
+        this.deleteEmptyDateGroups();
+      }
     });
 
     this.listenerSetter.add(rootScope, 'album_edit', (e) => {
       const {peerId, groupId, deletedMids} = e.detail;
       
       if(peerId != this.peerId) return;
-      const mids = appMessagesManager.getMidsByAlbum(groupId);
-      const maxId = Math.max(...mids.concat(deletedMids));
-      if(!this.bubbles[maxId]) return;
+      const mids = this.appMessagesManager.getMidsByAlbum(groupId);
+      const renderedId = mids.concat(deletedMids).find(mid => this.bubbles[mid]);
+      if(!renderedId) return;
 
-      const renderMaxId = getObjectKeysAndSort(appMessagesManager.groupedMessagesStorage[groupId], 'asc').pop();
-      this.renderMessage(this.chat.getMessage(renderMaxId), true, false, this.bubbles[maxId], false);
+      const renderMaxId = getObjectKeysAndSort(this.appMessagesManager.groupedMessagesStorage[groupId], 'asc').pop();
+      this.renderMessage(this.chat.getMessage(renderMaxId), true, false, this.bubbles[renderedId], false);
     });
 
     this.listenerSetter.add(rootScope, 'messages_downloaded', (e) => {
@@ -321,9 +305,48 @@ export default class ChatBubbles {
     });
 
     this.listenerSetter.add(this.bubblesContainer, 'click', this.onBubblesClick/* , {capture: true, passive: false} */);
+
+    this.stickyIntersector = new StickyIntersector(this.scrollable.container, (stuck, target) => {
+      for(const timestamp in this.dateMessages) {
+        const dateMessage = this.dateMessages[timestamp];
+        if(dateMessage.container == target) {
+          dateMessage.div.classList.toggle('is-sticky', stuck);
+          break;
+        }
+      }
+    });
   }
 
   public constructPeerHelpers() {
+    // will call when message is sent (only 1)
+    this.listenerSetter.add(rootScope, 'history_append', (e) => {
+      let details = e.detail;
+
+      if(!this.scrolledAllDown) {
+        this.chat.setPeer(this.peerId, 0);
+      } else {
+        this.renderNewMessagesByIds([details.messageId], true);
+      }
+    });
+
+    this.listenerSetter.add(rootScope, 'history_multiappend', (e) => {
+      const msgIdsByPeer = e.detail;
+
+      if(!(this.peerId in msgIdsByPeer)) return;
+      const msgIds = msgIdsByPeer[this.peerId];
+      this.renderNewMessagesByIds(msgIds);
+    });
+    
+    this.listenerSetter.add(rootScope, 'history_delete', (e) => {
+      const {peerId, msgs} = e.detail;
+
+      const mids = Object.keys(msgs).map(s => +s);
+
+      if(peerId == this.peerId) {
+        this.deleteMessagesByIds(mids);
+      }
+    });
+
     this.listenerSetter.add(rootScope, 'dialog_unread', (e) => {
       const info = e.detail;
 
@@ -347,16 +370,6 @@ export default class ChatBubbles {
 
       if(this.peerId == peerId) {
         this.chat.input.setUnreadCount();
-      }
-    });
-
-    this.stickyIntersector = new StickyIntersector(this.scrollable.container, (stuck, target) => {
-      for(const timestamp in this.dateMessages) {
-        const dateMessage = this.dateMessages[timestamp];
-        if(dateMessage.container == target) {
-          dateMessage.div.classList.toggle('is-sticky', stuck);
-          break;
-        }
       }
     });
 
@@ -418,11 +431,24 @@ export default class ChatBubbles {
   }
 
   public constructScheduledHelpers() {
+    const onUpdate = () => {
+      this.chat.topbar.setTitle(Object.keys(this.appMessagesManager.getScheduledMessagesStorage(this.peerId)).length);
+    };
+
+    this.listenerSetter.add(rootScope, 'scheduled_new', (e) => {
+      const {peerId, mid} = e.detail;
+      if(peerId !== this.peerId) return;
+
+      this.renderNewMessagesByIds([mid]);
+      onUpdate();
+    });
+
     this.listenerSetter.add(rootScope, 'scheduled_delete', (e) => {
       const {peerId, mids} = e.detail;
       if(peerId !== this.peerId) return;
 
       this.deleteMessagesByIds(mids);
+      onUpdate();
     });
   }
 
@@ -653,9 +679,11 @@ export default class ChatBubbles {
     const group = this.appMessagesManager.groupedMessagesStorage[groupId];
     for(const mid in group) {
       if(this.bubbles[mid]) {
+        const maxId = Math.max(...Object.keys(group).map(id => +id)); // * because in scheduled album can be rendered by lowest mid during sending
         return {
           bubble: this.bubbles[mid], 
-          message: this.chat.getMessage(+mid)
+          mid: +mid,
+          message: this.chat.getMessage(maxId)
         };
       }
     }
@@ -681,7 +709,7 @@ export default class ChatBubbles {
     const bubble = this.bubbles[mid];
     if(!bubble) return;
 
-    return {bubble, message};
+    return {bubble, mid, message};
   }
 
   private findNextMountedBubbleByMsgId(mid: number) {
@@ -843,14 +871,15 @@ export default class ChatBubbles {
     this.deleteEmptyDateGroups();
   }
   
-  public renderNewMessagesByIds(msgIds: number[], scrolledDown = this.scrolledDown) {
+  public renderNewMessagesByIds(mids: number[], scrolledDown = this.scrolledDown) {
     if(!this.scrolledAllDown) { // seems search active or sliced
-      this.log('seems search is active, skipping render:', msgIds);
+      this.log('seems search is active, skipping render:', mids);
       return;
     }
-    
-    msgIds.forEach((msgId: number) => {
-      let message = this.chat.getMessage(msgId);
+
+    mids = mids.filter(mid => !this.bubbles[mid]);
+    mids.forEach((mid: number) => {
+      const message = this.chat.getMessage(mid);
       
       /////////this.log('got new message to append:', message);
       
@@ -910,6 +939,10 @@ export default class ChatBubbles {
           str += ', ' + date.getFullYear();
         }
       }
+
+      if(this.chat.type === 'scheduled') {
+        str = 'Scheduled for ' + str;
+      }
       
       const div = document.createElement('div');
       div.className = 'bubble service is-date';
@@ -918,6 +951,15 @@ export default class ChatBubbles {
 
       const container = document.createElement('div');
       container.className = 'bubbles-date-group';
+
+      const haveTimestamps = getObjectKeysAndSort(this.dateMessages, 'asc');
+      let i = 0;
+      for(; i < haveTimestamps.length; ++i) {
+        const t = haveTimestamps[i];
+        if(dateTimestamp < t) {
+          break;
+        }
+      }
       
       this.dateMessages[dateTimestamp] = {
         div,
@@ -927,11 +969,13 @@ export default class ChatBubbles {
 
       container.append(div);
 
-      if(reverse) {
+      positionElementByIndex(container, this.chatInner, i);
+
+      /* if(reverse) {
         this.chatInner.prepend(container);
       } else {
         this.chatInner.append(container);
-      }
+      } */
 
       if(this.stickyIntersector) {
         this.stickyIntersector.observeStickyHeaderChanges(container);
@@ -1060,7 +1104,7 @@ export default class ChatBubbles {
     this.log('setPeer peerId:', this.peerId, dialog, lastMsgId, topMessage);
 
     // add last message, bc in getHistory will load < max_id
-    const additionMsgId = isJump ? 0 : topMessage;
+    const additionMsgId = isJump || this.chat.type !== 'chat' ? 0 : topMessage;
 
     /* this.setPeerPromise = null;
     this.preloader.detach();
@@ -1231,7 +1275,7 @@ export default class ChatBubbles {
         } else if(el.readyState >= 4) return;
       } else if(el.complete || !el.src) return;
 
-      let promise = new Promise((resolve, reject) => {
+      let promise = new Promise<void>((resolve, reject) => {
         let r: () => boolean;
         let onLoad = () => {
           clearTimeout(timeout);
@@ -1291,12 +1335,7 @@ export default class ChatBubbles {
             }
 
             queue.forEach(({message, bubble, reverse}) => {
-              const dateMessage = this.getDateContainerByMessage(message, reverse);
-              if(reverse) {
-                dateMessage.container.insertBefore(bubble, dateMessage.div.nextSibling);
-              } else {
-                dateMessage.container.append(bubble);
-              }
+              this.setBubblePosition(bubble, message, reverse);
             });
 
             //setTimeout(() => {
@@ -1307,6 +1346,44 @@ export default class ChatBubbles {
         }, 0);
       });
     }
+  }
+
+  public setBubblePosition(bubble: HTMLElement, message: any, reverse: boolean) {
+    const dateMessage = this.getDateContainerByMessage(message, reverse);
+    let children = Array.from(dateMessage.container.children).slice(1) as HTMLElement[];
+    let i = 0, foundMidOnSameTimestamp = 0;
+    for(; i < children.length; ++i) {
+      const t = children[i];
+      const timestamp = +t.dataset.timestamp;
+      if(message.date < timestamp) {
+        break;
+      } else if(message.date === timestamp) {
+        foundMidOnSameTimestamp = +t.dataset.mid;
+      }
+      
+      if(foundMidOnSameTimestamp && message.mid < foundMidOnSameTimestamp) {
+        break;
+      }
+    }
+
+    // * 1 for date
+    let index = 1 + i;
+    if(bubble.parentElement) { // * if already mounted
+      const currentIndex = whichChild(bubble);
+      if(index > currentIndex) {
+        index -= 1; // * minus for already mounted
+      }
+    }
+
+    positionElementByIndex(bubble, dateMessage.container, index);
+
+    //this.bubbleGroups.updateGroupByMessageId(message.mid);
+
+    /* if(reverse) {
+      dateMessage.container.insertBefore(bubble, dateMessage.div.nextSibling);
+    } else {
+      dateMessage.container.append(bubble);
+    } */
   }
 
   // * will change .cleaned in cleanup() and new instance will be created
@@ -1321,7 +1398,7 @@ export default class ChatBubbles {
   public renderMessage(message: any, reverse = false, multipleRender = false, bubble: HTMLDivElement = null, updatePosition = true) {
     this.log.debug('message to render:', message);
     //return;
-    const albumMustBeRenderedFull = this.chat.type == 'chat';
+    const albumMustBeRenderedFull = this.chat.type === 'chat' || this.chat.type === 'scheduled';
     if(message.deleted) return;
     else if(message.grouped_id && albumMustBeRenderedFull) { // will render only last album's message
       const storage = this.appMessagesManager.groupedMessagesStorage[message.grouped_id];
@@ -1376,21 +1453,30 @@ export default class ChatBubbles {
 
       // * Нужно очистить прошлую информацию, полезно если удалить последний элемент из альбома в ПОСЛЕДНЕМ БАББЛЕ ГРУППЫ (видно по аватару)
       const originalMid = +bubble.dataset.mid;
-      if(+message.mid != originalMid) {
+      const sameMid = +message.mid == originalMid;
+      /* if(updatePosition) {
+        bubble.remove(); // * for positionElementByIndex
+      } */
+
+      if(!sameMid || updatePosition) {
         this.bubbleGroups.removeBubble(bubble, originalMid);
+      }
+
+      if(!sameMid) {
+        delete this.bubbles[originalMid];
 
         if(!updatePosition) {
           this.bubbleGroups.addBubble(bubble, message, reverse);
         }
       }
 
-      delete this.bubbles[originalMid];
       //bubble.innerHTML = '';
     }
 
     // ! reset due to album edit or delete item
     this.bubbles[+message.mid] = bubble;
     bubble.dataset.mid = message.mid;
+    bubble.dataset.timestamp = message.date;
 
     if(this.chat.selection.isSelecting) {
       this.chat.selection.toggleBubbleCheckbox(bubble, true);
@@ -1950,7 +2036,7 @@ export default class ChatBubbles {
         case 'messageMediaPoll': {
           bubble.classList.remove('is-message-empty');
           
-          const pollElement = wrapPoll(this.peerId, message.media.poll.id, message.mid);
+          const pollElement = wrapPoll(message);
           messageDiv.prepend(pollElement);
           messageDiv.classList.add('poll-message');
 
@@ -2223,7 +2309,7 @@ export default class ChatBubbles {
         return;
       }
 
-      this.chat.setPeer(this.peerId, history.messages[0].mid);
+      this.chat.setPeer(this.peerId, (history.messages[0] as MyMessage).mid);
       //console.log('got history date:', history);
     });
   };
@@ -2233,7 +2319,8 @@ export default class ChatBubbles {
     if(this.chat.type === 'chat') {
       return this.appMessagesManager.getHistory(this.peerId, maxId, loadCount, backLimit);
     } else if(this.chat.type === 'pinned') {
-      const promise = this.appMessagesManager.getSearch(this.peerId, '', {_: 'inputMessagesFilterPinned'}, maxId, loadCount, 0, backLimit);
+      const promise = this.appMessagesManager.getSearch(this.peerId, '', {_: 'inputMessagesFilterPinned'}, maxId, loadCount, 0, backLimit)
+      .then(value => ({history: value.history.map(m => m.mid)}));
 
       /* if(maxId) {
         promise.then(result => {
@@ -2246,7 +2333,11 @@ export default class ChatBubbles {
 
       return promise;
     } else if(this.chat.type === 'scheduled') {
-      return this.appMessagesManager.getScheduledMessages(this.peerId).then(mids => ({history: mids}));
+      return this.appMessagesManager.getScheduledMessages(this.peerId).then(mids => {
+        this.scrolledAll = true;
+        this.scrolledAllDown = true;
+        return {history: mids.slice().reverse()};
+      });
     }
   }
 
@@ -2296,8 +2387,8 @@ export default class ChatBubbles {
 
     let additionMsgIds: number[];
     if(additionMsgId && !isBackLimit) {
-      const historyStorage = this.appMessagesManager.historiesStorage[peerId];
-      if(historyStorage && historyStorage.history.length < loadCount) {
+      const historyStorage = this.appMessagesManager.getHistoryStorage(peerId);
+      if(historyStorage.history.length < loadCount) {
         additionMsgIds = historyStorage.history.slice();
 
         // * filter last album, because we don't know is this the last item
@@ -2448,7 +2539,7 @@ export default class ChatBubbles {
       // preload more
       //if(!isFirstMessageRender) {
       if(this.chat.type === 'chat') {
-        const storage = this.appMessagesManager.historiesStorage[peerId];
+        const storage = this.appMessagesManager.getHistoryStorage(peerId);
         const isMaxIdInHistory = storage.history.indexOf(maxId) !== -1;
         if(isMaxIdInHistory) { // * otherwise it is a search or jump
           setTimeout(() => {

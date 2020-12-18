@@ -1,24 +1,36 @@
-import { PopupElement } from "./popup";
+import PopupElement, { PopupOptions } from ".";
+import { getFullDate, months } from "../../helpers/date";
+import InputField from "../inputField";
 
 export default class PopupDatePicker extends PopupElement {
-  private controlsDiv: HTMLElement;
-  private monthTitle: HTMLElement;
-  private prevBtn: HTMLElement;
-  private nextBtn: HTMLElement;
+  protected controlsDiv: HTMLElement;
+  protected monthTitle: HTMLElement;
+  protected prevBtn: HTMLElement;
+  protected nextBtn: HTMLElement;
 
-  private monthsContainer: HTMLElement;
-  private month: HTMLElement;
+  protected monthsContainer: HTMLElement;
+  protected month: HTMLElement;
 
-  private minMonth: Date;
-  private maxMonth: Date;
-  private minDate = new Date('2013-08-01T00:00:00');
-  private maxDate: Date;
-  private selectedDate: Date;
-  private selectedMonth: Date;
-  private selectedEl: HTMLElement;
+  protected minMonth: Date;
+  protected maxMonth: Date;
+  protected minDate: Date;
+  protected maxDate: Date;
+  protected selectedDate: Date;
+  protected selectedMonth: Date;
+  protected selectedEl: HTMLElement;
 
-  constructor(initDate: Date, public onPick: (timestamp: number) => void) {
-    super('popup-date-picker', [{
+  protected timeDiv: HTMLDivElement;
+  protected hoursInputField: InputField;
+  protected minutesInputField: InputField;
+
+  constructor(initDate: Date, public onPick: (timestamp: number) => void, protected options: Partial<{
+    noButtons: true, 
+    noTitle: true, 
+    minDate: Date,
+    maxDate: Date
+    withTime: true
+  }> & PopupOptions = {}) {
+    super('popup-date-picker', options.noButtons ? [] : [{
       text: 'CANCEL',
       isCancel: true
     }, {
@@ -28,10 +40,9 @@ export default class PopupDatePicker extends PopupElement {
           this.onPick(this.selectedDate.getTime() / 1000 | 0);
         }
       }
-    }]);
+    }], {body: true, ...options});
 
-    const popupBody = document.createElement('div');
-    popupBody.classList.add('popup-body');
+    this.minDate = options.minDate || new Date('2013-08-01T00:00:00');
 
     // Controls
     this.controlsDiv = document.createElement('div');
@@ -55,8 +66,80 @@ export default class PopupDatePicker extends PopupElement {
     this.monthsContainer.classList.add('date-picker-months');
     this.monthsContainer.addEventListener('click', this.onDateClick);
 
-    popupBody.append(this.controlsDiv, this.monthsContainer);
-    this.container.append(popupBody);
+    this.body.append(this.controlsDiv, this.monthsContainer);
+
+    // Time inputs
+    if(options.withTime) {
+      this.timeDiv = document.createElement('div');
+      this.timeDiv.classList.add('date-picker-time');
+
+      const delimiter = document.createElement('div');
+      delimiter.classList.add('date-picker-time-delimiter');
+      delimiter.append(':');
+
+      const handleTimeInput = (max: number, inputField: InputField, onInput: (length: number) => void, onOverflow?: (number: number) => void) => {
+        const maxString = '' + max;
+        inputField.input.addEventListener('input', (e) => {
+          let value = inputField.value.replace(/\D/g, '');
+          if(value.length > 2) {
+            value = value.slice(0, 2);
+          } else {
+            if((value.length === 1 && +value[0] > +maxString[0]) || (value.length === 2 && +value > max)) {
+              if(value.length === 2 && onOverflow) {
+                onOverflow(+value[1]);
+              }
+
+              value = '0' + value[0];
+            }
+          }
+
+          inputField.setValueSilently(value);
+          onInput(value.length);
+        });
+      };
+
+      this.hoursInputField = new InputField({plainText: true});
+      this.minutesInputField = new InputField({plainText: true});
+
+      handleTimeInput(23, this.hoursInputField, (length) => {
+        if(length === 2) {
+          this.minutesInputField.input.focus();
+        }
+
+        this.setTimeTitle();
+      }, (number) => {
+        this.minutesInputField.value = (number + this.minutesInputField.value).slice(0, 2);
+      });
+      handleTimeInput(59, this.minutesInputField, (length) => {
+        if(!length) {
+          this.hoursInputField.input.focus();
+        }
+
+        this.setTimeTitle();
+      });
+
+      this.selectedDate = initDate;
+
+      initDate.setMinutes(initDate.getMinutes() + 10);
+      
+      this.hoursInputField.setValueSilently(('0' + initDate.getHours()).slice(-2));
+      this.minutesInputField.setValueSilently(('0' + initDate.getMinutes()).slice(-2));
+
+      initDate.setHours(0, 0, 0, 0);
+      
+      this.timeDiv.append(this.hoursInputField.container, delimiter, this.minutesInputField.container);
+
+      this.btnConfirm.addEventListener('click', () => {
+        if(this.onPick) {
+          this.selectedDate.setHours(+this.hoursInputField.value || 0, +this.minutesInputField.value || 0, 0, 0);
+          this.onPick(this.selectedDate.getTime() / 1000 | 0);
+        }
+
+        this.destroy();
+      }, {once: true});
+
+      this.body.append(this.timeDiv);
+    }
 
     const popupCenterer = document.createElement('div');
     popupCenterer.classList.add('popup-centerer');
@@ -68,7 +151,7 @@ export default class PopupDatePicker extends PopupElement {
     initDate.setHours(0, 0, 0, 0);
     this.selectedDate = initDate;
 
-    this.maxDate = new Date();
+    this.maxDate = options.maxDate || new Date();
     this.maxDate.setHours(0, 0, 0, 0);
 
     this.selectedMonth = new Date(this.selectedDate);
@@ -78,6 +161,7 @@ export default class PopupDatePicker extends PopupElement {
     this.maxMonth.setDate(1);
 
     this.minMonth = new Date(this.minDate);
+    this.minMonth.setHours(0, 0, 0, 0);
     this.minMonth.setDate(1);
 
     if(this.selectedMonth.getTime() == this.minMonth.getTime()) {
@@ -88,6 +172,11 @@ export default class PopupDatePicker extends PopupElement {
       this.nextBtn.setAttribute('disabled', 'true');
     }
 
+    if(options.noTitle) {
+      this.setTitle = () => {};
+    }
+
+    this.setTimeTitle();
     this.setTitle();
     this.setMonth();
   }
@@ -132,7 +221,30 @@ export default class PopupDatePicker extends PopupElement {
 
     this.setTitle();
     this.setMonth();
+    this.setTimeTitle();
   };
+
+  public setTimeTitle() {
+    if(this.btnConfirm && this.selectedDate) {
+      let dayStr = '';
+      const date = new Date();
+      date.setHours(0, 0, 0, 0);
+
+      if(this.selectedDate.getTime() === date.getTime()) {
+        dayStr = 'Today';
+      } else if(this.selectedDate.getTime() === (date.getTime() + 86400e3)) {
+        dayStr = 'Tomorrow';
+      } else {
+        dayStr = 'on ' + getFullDate(this.selectedDate, {
+          noTime: true,
+          monthAsNumber: true,
+          leadingZero: true
+        });
+      }
+
+      this.btnConfirm.innerText = 'Send ' + dayStr + ' at ' + ('00' + this.hoursInputField.value).slice(-2) + ':' + ('00' + this.minutesInputField.value).slice(-2);
+    }
+  }
 
   public setTitle() {
     const splitted = this.selectedDate.toString().split(' ', 3);
@@ -140,7 +252,6 @@ export default class PopupDatePicker extends PopupElement {
   }
 
   public setMonth() {
-    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     this.monthTitle.innerText = months[this.selectedMonth.getMonth()] + ' ' + this.selectedMonth.getFullYear();
 
     if(this.month) {
@@ -176,11 +287,11 @@ export default class PopupDatePicker extends PopupElement {
       el.innerText = '' + date;
       el.dataset.timestamp = '' + firstDate.getTime();
 
-      if(firstDate > this.maxDate) {
+      if(firstDate > this.maxDate || firstDate < this.minDate) {
         el.setAttribute('disabled', 'true');
       }
       
-      if(firstDate.getTime() == this.selectedDate.getTime()) {
+      if(firstDate.getTime() === this.selectedDate.getTime()) {
         this.selectedEl = el;
         el.classList.add('active');
       }
@@ -188,7 +299,7 @@ export default class PopupDatePicker extends PopupElement {
       this.month.append(el);
 
       firstDate.setDate(date + 1);
-    } while(firstDate.getDate() != 1);
+    } while(firstDate.getDate() !== 1);
 
     this.container.classList.toggle('is-max-lines', (this.month.childElementCount / 7) > 6);
 

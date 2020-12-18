@@ -1148,7 +1148,7 @@ namespace RichTextProcessor {
   }
   
   export function matchUrl(text: string) {
-    return text.match(urlRegExp);
+    return !text ? null : text.match(urlRegExp);
   }
 
   /* const el = document.createElement('span');

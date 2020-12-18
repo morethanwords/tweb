@@ -1,4 +1,5 @@
 .popup-new-media {
+  user-select: none;
   $parent: ".popup";
 
   #{$parent} {
@@ -54,6 +55,7 @@
       align-items: center;
       margin-bottom: 9px;
       padding: 12px 20px 15px;
+      position: relative;
   
       .btn-primary {
         width: 79px;
@@ -147,6 +149,15 @@
     label {
       font-size: inherit;
     }
+  }
+
+  .btn-menu-overlay {
+    z-index: 3;
+  }
+
+  .menu-send {
+    z-index: 4;
+    top: calc(100% + .25rem);
   }
 }
 

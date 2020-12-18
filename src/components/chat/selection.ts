@@ -1,16 +1,18 @@
 import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManager";
 import type ChatBubbles from "./bubbles";
 import type ChatInput from "./input";
+import type Chat from "./chat";
 import { isTouchSupported } from "../../helpers/touchSupport";
 import { blurActiveElement, cancelEvent, cancelSelection, findUpClassName, getSelectedText } from "../../helpers/dom";
 import Button from "../button";
 import ButtonIcon from "../buttonIcon";
 import CheckboxField from "../checkbox";
-import PopupDeleteMessages from "../popupDeleteMessages";
-import PopupForward from "../popupForward";
+import PopupDeleteMessages from "../popups/deleteMessages";
+import PopupForward from "../popups/forward";
 import { toast } from "../toast";
 import SetTransition from "../singleTransition";
 import ListenerSetter from "../../helpers/listenerSetter";
+import PopupSendNow from "../popups/sendNow";
 
 const MAX_SELECTION_LENGTH = 100;
 //const MIN_CLICK_MOVE = 32; // minimum bubble height
@@ -21,6 +23,7 @@ export default class ChatSelection {
 
   private selectionContainer: HTMLElement;
   private selectionCountEl: HTMLElement;
+  public selectionSendNowBtn: HTMLElement;
   public selectionForwardBtn: HTMLElement;
   public selectionDeleteBtn: HTMLElement;
 
@@ -28,7 +31,7 @@ export default class ChatSelection {
 
   private listenerSetter: ListenerSetter;
 
-  constructor(private bubbles: ChatBubbles, private input: ChatInput, private appMessagesManager: AppMessagesManager) {
+  constructor(private chat: Chat, private bubbles: ChatBubbles, private input: ChatInput, private appMessagesManager: AppMessagesManager) {
     const bubblesContainer = bubbles.bubblesContainer;
     this.listenerSetter = bubbles.listenerSetter;
 
@@ -205,7 +208,7 @@ export default class ChatSelection {
     if(!this.selectedMids.size && !forceSelection) return;
     this.selectionCountEl.innerText = this.selectedMids.size + ' Message' + (this.selectedMids.size == 1 ? '' : 's');
 
-    let cantForward = !this.selectedMids.size, cantDelete = !this.selectedMids.size;
+    let cantForward = !this.selectedMids.size, cantDelete = !this.selectedMids.size, cantSend = !this.selectedMids.size;
     for(const mid of this.selectedMids.values()) {
       const message = this.appMessagesManager.getMessageByPeer(this.bubbles.peerId, mid);
       if(!cantForward) {
@@ -216,7 +219,7 @@ export default class ChatSelection {
       
 
       if(!cantDelete) {
-        const canDelete = this.appMessagesManager.canDeleteMessage(this.bubbles.peerId, mid);
+        const canDelete = this.appMessagesManager.canDeleteMessage(this.chat.getMessage(mid));
         if(!canDelete) {
           cantDelete = true;
         }
@@ -225,7 +228,8 @@ export default class ChatSelection {
       if(cantForward && cantDelete) break;
     }
 
-    this.selectionForwardBtn.toggleAttribute('disabled', cantForward);
+    this.selectionSendNowBtn && this.selectionSendNowBtn.toggleAttribute('disabled', cantSend);
+    this.selectionForwardBtn && this.selectionForwardBtn.toggleAttribute('disabled', cantForward);
     this.selectionDeleteBtn.toggleAttribute('disabled', cantDelete);
   }
 
@@ -270,7 +274,7 @@ export default class ChatSelection {
     SetTransition(bubblesContainer, 'is-selecting', forwards, 200, () => {
       if(!this.isSelecting) {
         this.selectionContainer.remove();
-        this.selectionContainer = this.selectionForwardBtn = this.selectionDeleteBtn = null;
+        this.selectionContainer = this.selectionSendNowBtn = this.selectionForwardBtn = this.selectionDeleteBtn = null;
         this.selectedText = undefined;
       }
       
@@ -292,23 +296,35 @@ export default class ChatSelection {
         this.selectionCountEl = document.createElement('div');
         this.selectionCountEl.classList.add('selection-container-count');
 
-        this.selectionForwardBtn = Button('btn-primary btn-transparent selection-container-forward', {icon: 'forward'});
-        this.selectionForwardBtn.append('Forward');
-        this.listenerSetter.add(this.selectionForwardBtn, 'click', () => {
-          new PopupForward(this.bubbles.peerId, [...this.selectedMids], () => {
-            this.cancelSelection();
+        if(this.chat.type === 'scheduled') {
+          this.selectionSendNowBtn = Button('btn-primary btn-transparent selection-container-send', {icon: 'send2'});
+          this.selectionSendNowBtn.append('Send Now');
+          this.listenerSetter.add(this.selectionSendNowBtn, 'click', () => {
+            new PopupSendNow(this.bubbles.peerId, [...this.selectedMids], () => {
+              this.cancelSelection();
+            })
           });
-        });
+        }
+        
+        if(this.chat.type === 'chat' || this.chat.type === 'pinned') {
+          this.selectionForwardBtn = Button('btn-primary btn-transparent selection-container-forward', {icon: 'forward'});
+          this.selectionForwardBtn.append('Forward');
+          this.listenerSetter.add(this.selectionForwardBtn, 'click', () => {
+            new PopupForward(this.bubbles.peerId, [...this.selectedMids], () => {
+              this.cancelSelection();
+            });
+          });
+        }
 
         this.selectionDeleteBtn = Button('btn-primary btn-transparent danger selection-container-delete', {icon: 'delete'});
         this.selectionDeleteBtn.append('Delete');
         this.listenerSetter.add(this.selectionDeleteBtn, 'click', () => {
-          new PopupDeleteMessages(this.bubbles.peerId, [...this.selectedMids], () => {
+          new PopupDeleteMessages(this.bubbles.peerId, [...this.selectedMids], this.chat.type, () => {
             this.cancelSelection();
           });
         });
 
-        this.selectionContainer.append(btnCancel, this.selectionCountEl, this.selectionForwardBtn, this.selectionDeleteBtn);
+        this.selectionContainer.append(...[btnCancel, this.selectionCountEl, this.selectionSendNowBtn, this.selectionForwardBtn, this.selectionDeleteBtn].filter(Boolean));
 
         this.input.rowsWrapper.append(this.selectionContainer);
       }
@@ -365,7 +381,7 @@ export default class ChatSelection {
   }
 
   public isGroupedMidsSelected(mid: number) {
-    const mids = this.appMessagesManager.getMidsByMid(this.bubbles.peerId, mid);
+    const mids = this.chat.getMidsByMid(mid);
     const selectedMids = mids.filter(mid => this.selectedMids.has(mid));
     return mids.length == selectedMids.length;
   }
@@ -376,7 +392,7 @@ export default class ChatSelection {
     const isGrouped = bubble.classList.contains('is-grouped');
     if(isGrouped) {
       if(!this.isGroupedBubbleSelected(bubble)) {
-        const mids = this.appMessagesManager.getMidsByMid(this.bubbles.peerId, mid);
+        const mids = this.chat.getMidsByMid(mid);
         mids.forEach(mid => this.selectedMids.delete(mid));
       }
 

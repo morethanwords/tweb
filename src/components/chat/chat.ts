@@ -43,7 +43,7 @@ export default class Chat extends EventListenerBase<{
 
   public type: ChatType = 'chat';
   
-  constructor(public appImManager: AppImManager, private appChatsManager: AppChatsManager, private appDocsManager: AppDocsManager, private appInlineBotsManager: AppInlineBotsManager, private appMessagesManager: AppMessagesManager, private appPeersManager: AppPeersManager, private appPhotosManager: AppPhotosManager, private appProfileManager: AppProfileManager, private appStickersManager: AppStickersManager, private appUsersManager: AppUsersManager, private appWebPagesManager: AppWebPagesManager, private appSidebarRight: AppSidebarRight, private appPollsManager: AppPollsManager, public apiManager: ApiManagerProxy) {
+  constructor(public appImManager: AppImManager, public appChatsManager: AppChatsManager, public appDocsManager: AppDocsManager, public appInlineBotsManager: AppInlineBotsManager, public appMessagesManager: AppMessagesManager, public appPeersManager: AppPeersManager, public appPhotosManager: AppPhotosManager, public appProfileManager: AppProfileManager, public appStickersManager: AppStickersManager, public appUsersManager: AppUsersManager, public appWebPagesManager: AppWebPagesManager, public appPollsManager: AppPollsManager, public apiManager: ApiManagerProxy) {
     super();
 
     this.container = document.createElement('div');
@@ -65,15 +65,16 @@ export default class Chat extends EventListenerBase<{
     this.type = type;
 
     if(this.type === 'scheduled') {
-      this.getMessage = (mid) => this.appMessagesManager.getMessageFromStorage(this.appMessagesManager.getScheduledMessagesStorage(this.peerId), mid);
+      this.getMessagesStorage = () => this.appMessagesManager.getScheduledMessagesStorage(this.peerId);
+      //this.getMessage = (mid) => this.appMessagesManager.getMessageFromStorage(this.appMessagesManager.getScheduledMessagesStorage(this.peerId), mid);
     }
   }
 
   private init() {
     this.topbar = new ChatTopbar(this, appSidebarRight, this.appMessagesManager, this.appPeersManager, this.appChatsManager);
-    this.bubbles = new ChatBubbles(this, this.appMessagesManager, this.appSidebarRight, this.appStickersManager, this.appUsersManager, this.appInlineBotsManager, this.appPhotosManager, this.appDocsManager, this.appPeersManager, this.appChatsManager);
+    this.bubbles = new ChatBubbles(this, this.appMessagesManager, this.appStickersManager, this.appUsersManager, this.appInlineBotsManager, this.appPhotosManager, this.appDocsManager, this.appPeersManager, this.appChatsManager);
     this.input = new ChatInput(this, this.appMessagesManager, this.appDocsManager, this.appChatsManager, this.appPeersManager, this.appWebPagesManager, this.appImManager);
-    this.selection = new ChatSelection(this.bubbles, this.input, this.appMessagesManager);
+    this.selection = new ChatSelection(this, this.bubbles, this.input, this.appMessagesManager);
     this.contextMenu = new ChatContextMenu(this.bubbles.bubblesContainer, this, this.appMessagesManager, this.appChatsManager, this.appPeersManager, this.appPollsManager);
 
     if(this.type === 'chat') {
@@ -93,6 +94,7 @@ export default class Chat extends EventListenerBase<{
       this.input.constructPinnedHelpers();
     } else if(this.type === 'scheduled') {
       this.bubbles.constructScheduledHelpers();
+      this.input.constructPeerHelpers();
     }
 
     this.container.classList.add('type-' + this.type);
@@ -196,14 +198,21 @@ export default class Chat extends EventListenerBase<{
 
     appSidebarRight.sharedMediaTab.fillProfileElements();
 
+    this.log.setPrefix('CHAT-' + peerId + '-' + this.type);
+
     rootScope.broadcast('peer_changed', peerId);
   }
 
+  public getMessagesStorage() {
+    return this.appMessagesManager.getMessagesStorage(this.peerId);
+  }
+
   public getMessage(mid: number) {
-    return this.appMessagesManager.getMessageByPeer(this.peerId, mid);
+    return this.appMessagesManager.getMessageFromStorage(this.getMessagesStorage(), mid);
+    //return this.appMessagesManager.getMessageByPeer(this.peerId, mid);
   }
 
   public getMidsByMid(mid: number) {
-    return this.appMessagesManager.getMidsByMid(this.peerId, mid);
+    return this.appMessagesManager.getMidsByMessage(this.getMessage(mid));
   }
 }

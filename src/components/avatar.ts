@@ -49,15 +49,14 @@ export default class AvatarElement extends HTMLElement {
         if(peerId < 0) {
           const maxId = Number.MAX_SAFE_INTEGER;
           const inputFilter = 'inputMessagesFilterChatPhotos';
-          const mid = await appMessagesManager.getSearch(peerId, '', {_: inputFilter}, maxId, 2, 0, 1).then(value => {
+          let message: any = await appMessagesManager.getSearch(peerId, '', {_: inputFilter}, maxId, 2, 0, 1).then(value => {
             //console.log(lol);
             // ! by descend
             return value.history[0];
           });
 
-          if(mid) {
+          if(message) {
             // ! гений в деле, костылируем (но это гениально)
-            let message = appMessagesManager.getMessageByPeer(peerId, mid);
             const messagePhoto = message.action.photo;
             if(messagePhoto.id != photo.id) {
               message = {

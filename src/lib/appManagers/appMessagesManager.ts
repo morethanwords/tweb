@@ -96,17 +96,23 @@ export class AppMessagesManager {
   } = {};
   public pinnedMessages: {[peerId: string]: PinnedStorage} = {};
 
-  public pendingByRandomId: {[randomId: string]: [number, number]} = {};
-  public pendingByMessageId: any = {};
+  public pendingByRandomId: {
+    [randomId: string]: {
+      peerId: number,
+      tempId: number,
+      storage: MessagesStorage
+    }
+  } = {};
+  public pendingByMessageId: {[mid: string]: string} = {};
   public pendingAfterMsgs: any = {};
   public pendingTopMsgs: {[peerId: string]: number} = {};
   public sendFilePromise: CancellablePromise<void> = Promise.resolve();
   public tempId = -1;
   public tempFinalizeCallbacks: {
-    [mid: string]: {
+    [tempId: string]: {
       [callbackName: string]: Partial<{
         deferred: CancellablePromise<void>, 
-        callback: (mid: number) => Promise<any>
+        callback: (message: any) => Promise<any>
       }>
     }
   } = {};
@@ -141,7 +147,7 @@ export class AppMessagesManager {
     folderId: 0
   };
 
-  private log = logger('MESSAGES'/* , LogLevels.error | LogLevels.debug | LogLevels.log | LogLevels.warn */);
+  private log = logger('MESSAGES', LogLevels.error | LogLevels.debug | LogLevels.log | LogLevels.warn);
 
   public dialogsStorage: DialogsStorage;
   public filtersStorage: FiltersStorage;
@@ -164,10 +170,12 @@ export class AppMessagesManager {
           webpage: appWebPagesManager.getWebPage(eventData.id)
         };
 
+        const peerId = this.getMessagePeer(message);
+        const storage = this.getMessagesStorage(peerId);
         rootScope.broadcast('message_edit', {
-          peerId: this.getMessagePeer(message),
-          mid: mid,
-          justMedia: true
+          storage,
+          peerId,
+          mid
         });
       });
     });
@@ -216,8 +224,8 @@ export class AppMessagesManager {
         const folder = this.dialogsStorage.getFolder(+folderId);
   
         for(let dialog of folder) {
-          const historyStorage = this.historiesStorage[dialog.peerId];
-          const history = [].concat(historyStorage?.pending ?? [], historyStorage?.history ?? []);
+          const historyStorage = this.getHistoryStorage(dialog.peerId);
+          const history = [].concat(historyStorage.pending, historyStorage.history);
     
           dialog = copy(dialog);
           let removeUnread = 0;
@@ -311,8 +319,8 @@ export class AppMessagesManager {
     return sendEntites;
   }
 
-  public invokeAfterMessageIsSent(messageId: number, callbackName: string, callback: (mid: number) => Promise<any>) {
-    const finalize = this.tempFinalizeCallbacks[messageId] ?? (this.tempFinalizeCallbacks[messageId] = {});
+  public invokeAfterMessageIsSent(tempId: number, callbackName: string, callback: (message: any) => Promise<any>) {
+    const finalize = this.tempFinalizeCallbacks[tempId] ?? (this.tempFinalizeCallbacks[tempId] = {});
     const obj = finalize[callbackName] ?? (finalize[callbackName] = {deferred: deferredPromise<void>()});
 
     obj.callback = callback;
@@ -320,27 +328,32 @@ export class AppMessagesManager {
     return obj.deferred;
   }
 
-  public editMessage(peerId: number, mid: number, text: string, options: Partial<{
+  public editMessage(message: any, text: string, options: Partial<{
     noWebPage: true,
-    newMedia: any
+    newMedia: any,
+    scheduleDate: number,
+    entities: MessageEntity[]
   }> = {}): Promise<void> {
     /* if(!this.canEditMessage(messageId)) {
       return Promise.reject({type: 'MESSAGE_EDIT_FORBIDDEN'});
     } */
 
+    const {mid, peerId} = message;
+
     if(mid < 0) {
-      return this.invokeAfterMessageIsSent(mid, 'edit', (mid) => {
-        this.log('invoke editMessage callback', mid);
-        return this.editMessage(peerId, mid, text, options);
+      return this.invokeAfterMessageIsSent(mid, 'edit', (message) => {
+        this.log('invoke editMessage callback', message);
+        return this.editMessage(message, text, options);
       });
     }
 
-    let entities: any[];
-    if(typeof(text) === 'string') {
+    let entities = options.entities;
+    if(typeof(text) === 'string' && !entities) {
       entities = [];
       text = RichTextProcessor.parseMarkdown(text, entities);
     }
 
+    const schedule_date = options.scheduleDate || (message.pFlags.is_scheduled ? message.date : undefined);
     return apiManager.invokeApi('messages.editMessage', {
       peer: appPeersManager.getInputPeerById(peerId),
       id: mid,
@@ -348,6 +361,7 @@ export class AppMessagesManager {
       media: options.newMedia,
       entities: entities ? this.getInputEntities(entities) : undefined,
       no_webpage: options.noWebPage,
+      schedule_date
     }).then((updates) => {
       apiUpdatesManager.processUpdateMessage(updates);
     }, (error) => {
@@ -373,11 +387,15 @@ export class AppMessagesManager {
     noWebPage: true,
     reply_markup: any,
     clearDraft: true,
-    webPage: any
+    webPage: any,
+    scheduleDate: number,
+    silent: true
   }> = {}) {
     if(typeof(text) != 'string' || !text.length) {
       return;
     }
+
+    //this.checkSendOptions(options);
 
     const MAX_LENGTH = 4096;
     if(text.length > MAX_LENGTH) {
@@ -409,17 +427,12 @@ export class AppMessagesManager {
     
     var messageId = this.tempId--;
     var randomIdS = randomLong();
-    var historyStorage = this.historiesStorage[peerId];
     var pFlags: any = {};
     var replyToMsgId = options.replyToMsgId;
     var isChannel = appPeersManager.isChannel(peerId);
     var isMegagroup = isChannel && appPeersManager.isMegagroup(peerId);
     var asChannel = isChannel && !isMegagroup ? true : false;
     var message: any;
-
-    if(historyStorage === undefined) {
-      historyStorage = this.historiesStorage[peerId] = {count: null, history: [], pending: []};
-    }
 
     var fromId = appUsersManager.getSelf().id;
     if(peerId != fromId) {
@@ -440,8 +453,8 @@ export class AppMessagesManager {
       id: messageId,
       from_id: appPeersManager.getOutputPeer(fromId),
       peer_id: appPeersManager.getOutputPeer(peerId),
-      pFlags: pFlags,
-      date: tsNow(true) + serverTimeManager.serverTimeOffset,
+      pFlags,
+      date: options.scheduleDate || (tsNow(true) + serverTimeManager.serverTimeOffset),
       message: text,
       random_id: randomIdS,
       reply_to: {reply_to_msg_id: replyToMsgId},
@@ -493,7 +506,9 @@ export class AppMessagesManager {
           random_id: randomIdS,
           reply_to_msg_id: replyToMsgId || undefined,
           entities: sendEntites,
-          clear_draft: options.clearDraft
+          clear_draft: options.clearDraft,
+          schedule_date: options.scheduleDate || undefined,
+          silent: options.silent
         }, sentRequestOptions);
       }
 
@@ -504,6 +519,8 @@ export class AppMessagesManager {
           message.id = updates.id;
           message.media = updates.media;
           message.entities = updates.entities;
+
+          // * override with new updates
           updates = {
             _: 'updates',
             users: [],
@@ -514,9 +531,7 @@ export class AppMessagesManager {
               random_id: randomIdS,
               id: updates.id
             }, {
-              _: isChannel
-                    ? 'updateNewChannelMessage'
-                    : 'updateNewMessage',
+              _: options.scheduleDate ? 'updateNewScheduledMessage' : (isChannel ? 'updateNewChannelMessage' : 'updateNewMessage'),
               message: message,
               pts: updates.pts,
               pts_count: updates.pts_count
@@ -549,20 +564,7 @@ export class AppMessagesManager {
       this.pendingAfterMsgs[peerId] = sentRequestOptions;
     }
 
-    this.saveMessages([message]);
-    historyStorage.pending.unshift(messageId);
-    rootScope.broadcast('history_append', {peerId, messageId, my: true});
-
-    setTimeout(() => message.send(), 0);
-    // setTimeout(function () {
-    //   message.send()
-    // }, 5000)
-
-    /* if(options.clearDraft) { // WARNING
-      DraftsManager.clearDraft(peerId)
-    } */
-
-    this.pendingByRandomId[randomIdS] = [peerId, messageId];
+    this.beforeMessageSending(message, {isScheduled: !!options.scheduleDate || undefined});
   }
 
   public sendFile(peerId: number, file: File | Blob | MyDocument, options: Partial<{
@@ -579,13 +581,15 @@ export class AppMessagesManager {
     objectURL: string,
     duration: number,
     background: true,
+    silent: true,
+    scheduleDate: number,
 
     waveform: Uint8Array
   }> = {}) {
     peerId = appPeersManager.getPeerMigratedTo(peerId) || peerId;
+    //this.checkSendOptions(options);
     const messageId = this.tempId--;
     const randomIdS = randomLong();
-    const historyStorage = this.historiesStorage[peerId] ?? (this.historiesStorage[peerId] = {count: null, history: [], pending: []});
     const pFlags: any = {};
     const replyToMsgId = options.replyToMsgId;
     const isChannel = appPeersManager.isChannel(peerId);
@@ -598,7 +602,7 @@ export class AppMessagesManager {
     const isDocument = !(file instanceof File) && !(file instanceof Blob);
     let caption = options.caption || '';
 
-    const date = tsNow(true) + serverTimeManager.serverTimeOffset;
+    const date = options.scheduleDate || (tsNow(true) + serverTimeManager.serverTimeOffset);
 
     this.log('sendFile', file, fileType);
 
@@ -860,7 +864,7 @@ export class AppMessagesManager {
 
               deferred.resolve();
               sentDeferred.reject(err);
-              this.cancelPendingMessage(peerId, randomIdS);
+              this.cancelPendingMessage(randomIdS);
               this.setTyping(peerId, 'sendMessageCancelAction');
             }
           });
@@ -874,24 +878,21 @@ export class AppMessagesManager {
       return sentDeferred;
     };
 
-    historyStorage.pending.unshift(messageId);
-    this.pendingByRandomId[randomIdS] = [peerId, messageId];
+    this.beforeMessageSending(message, {isGroupedItem: options.isGroupedItem, isScheduled: !!options.scheduleDate || undefined});
 
     if(!options.isGroupedItem) {
-      this.saveMessages([message]);
-      rootScope.broadcast('history_append', {peerId, messageId, my: true});
-      setTimeout(message.send, 0);
       sentDeferred.then(inputMedia => {
         this.setTyping(peerId, 'sendMessageCancelAction');
 
         return apiManager.invokeApi('messages.sendMedia', {
           background: options.background,
-          clear_draft: true,
           peer: appPeersManager.getInputPeerById(peerId),
           media: inputMedia,
           message: caption,
           random_id: randomIdS,
-          reply_to_msg_id: replyToMsgId
+          reply_to_msg_id: replyToMsgId,
+          schedule_date: options.scheduleDate,
+          silent: options.silent
         }).then((updates) => {
           apiUpdatesManager.processUpdateMessage(updates);
         }, (error) => {
@@ -923,8 +924,12 @@ export class AppMessagesManager {
       width: number,
       height: number,
       objectURL: string,
-    }>[]
+    }>[],
+    silent: true,
+    scheduleDate: number
   }> = {}) {
+    //this.checkSendOptions(options);
+
     if(files.length === 1) {
       return this.sendFile(peerId, files[0], {...options, ...options.sendFileDetails[0]});
     }
@@ -946,6 +951,8 @@ export class AppMessagesManager {
       const o: any = {
         isGroupedItem: true,
         isMedia: options.isMedia,
+        scheduleDate: options.scheduleDate,
+        silent: options.silent,
         ...details
       };
 
@@ -962,9 +969,15 @@ export class AppMessagesManager {
     messages.forEach(message => {
       message.grouped_id = groupId;
     });
-    this.saveMessages(messages);
 
-    rootScope.broadcast('history_append', {peerId, messageId: groupId, my: true});
+    const storage = options.scheduleDate ? this.getScheduledMessagesStorage(peerId) : this.getMessagesStorage(peerId);
+    if(options.scheduleDate) {
+      this.saveMessages(messages, {storage, isScheduled: true});
+      rootScope.broadcast('scheduled_new', {peerId, mid: groupId});
+    } else {
+      this.saveMessages(messages, {storage});
+      rootScope.broadcast('history_append', {peerId, messageId: groupId, my: true});
+    }
     
     //return;
 
@@ -985,7 +998,9 @@ export class AppMessagesManager {
       return apiManager.invokeApi('messages.sendMultiMedia', {
         peer: inputPeer,
         multi_media: multiMedia,
-        reply_to_msg_id: replyToMsgId
+        reply_to_msg_id: replyToMsgId,
+        schedule_date: options.scheduleDate,
+        silent: options.silent
       }).then((updates) => {
         apiUpdatesManager.processUpdateMessage(updates);
       }, (error) => {
@@ -1038,13 +1053,15 @@ export class AppMessagesManager {
     reply_markup: any,
     clearDraft: true,
     queryId: string
-    resultId: string
+    resultId: string,
+    scheduleDate: number,
+    silent: true
   }> = {}) {
     peerId = appPeersManager.getPeerMigratedTo(peerId) || peerId;
 
+    //this.checkSendOptions(options);
     const messageId = this.tempId--;
     const randomIdS = randomLong();
-    const historyStorage = this.historiesStorage[peerId] ?? (this.historiesStorage[peerId] = {count: null, history: [], pending: []});
     const replyToMsgId = options.replyToMsgId;
     const isChannel = appPeersManager.isChannel(peerId);
     const isMegagroup = isChannel && appPeersManager.isMegagroup(peerId);
@@ -1150,10 +1167,10 @@ export class AppMessagesManager {
       id: messageId,
       from_id: appPeersManager.getOutputPeer(fromId),
       peer_id: appPeersManager.getOutputPeer(peerId),
-      pFlags: pFlags,
-      date: tsNow(true) + serverTimeManager.serverTimeOffset,
+      pFlags,
+      date: options.scheduleDate || (tsNow(true) + serverTimeManager.serverTimeOffset),
       message: '',
-      media: media,
+      media,
       random_id: randomIdS,
       reply_to: {reply_to_msg_id: replyToMsgId},
       via_bot_id: options.viaBotId,
@@ -1201,7 +1218,9 @@ export class AppMessagesManager {
           random_id: randomIdS,
           reply_to_msg_id: replyToMsgId || undefined,
           message: '',
-          clear_draft: options.clearDraft
+          clear_draft: options.clearDraft,
+          schedule_date: options.scheduleDate,
+          silent: options.silent
         }, sentRequestOptions);
       }
 
@@ -1225,28 +1244,56 @@ export class AppMessagesManager {
       this.pendingAfterMsgs[peerId] = sentRequestOptions;
     }
 
-    this.saveMessages([message]);
-    historyStorage.pending.unshift(messageId);
-    rootScope.broadcast('history_append', {peerId, messageId, my: true});
-
-    setTimeout(message.send, 0);
-
-    /* if(options.clearDraft) {
-      DraftsManager.clearDraft(peerId)
-    } */
-
-    this.pendingByRandomId[randomIdS] = [peerId, messageId];
+    this.beforeMessageSending(message, {isScheduled: !!options.scheduleDate || undefined});
   }
 
-  public cancelPendingMessage(peerId: number, randomId: string) {
+  /* private checkSendOptions(options: Partial<{
+    scheduleDate: number
+  }>) {
+    if(options.scheduleDate) {
+      const minTimestamp = (Date.now() / 1000 | 0) + 10;
+      if(options.scheduleDate <= minTimestamp) {
+        delete options.scheduleDate;
+      }
+    }
+  } */
+
+  private beforeMessageSending(message: any, options: Partial<{isGroupedItem: true, isScheduled: true}> = {}) {
+    const messageId = message.id;
+    const peerId = this.getMessagePeer(message);
+    const storage = options.isScheduled ? this.getScheduledMessagesStorage(peerId) : this.getMessagesStorage(peerId);
+
+    if(options.isScheduled) {
+      if(!options.isGroupedItem) {
+        this.saveMessages([message], {storage, isScheduled: true});
+        rootScope.broadcast('scheduled_new', {peerId, mid: messageId});
+      }
+    } else {
+      const historyStorage = this.getHistoryStorage(peerId);
+      historyStorage.pending.unshift(messageId);
+
+      if(!options.isGroupedItem) {
+        this.saveMessages([message], {storage});
+        rootScope.broadcast('history_append', {peerId, messageId, my: true});
+      }
+    }
+    
+    this.pendingByRandomId[message.random_id] = {peerId, tempId: messageId, storage};
+
+    if(!options.isGroupedItem) {
+      setTimeout(message.send, 0);
+      //setTimeout(message.send, 4000);
+    }
+  }
+
+  public cancelPendingMessage(randomId: string) {
     const pendingData = this.pendingByRandomId[randomId];
 
     this.log('cancelPendingMessage', randomId, pendingData);
 
     if(pendingData) {
-      const peerId = pendingData[0];
-      const tempId = pendingData[1];
-      const historyStorage = this.historiesStorage[peerId];
+      const {peerId, tempId, storage} = pendingData;
+      const historyStorage = this.getHistoryStorage(peerId);
       const pos = historyStorage.pending.indexOf(tempId);
 
       apiUpdatesManager.processUpdateMessage({
@@ -1257,11 +1304,11 @@ export class AppMessagesManager {
         }
       });
 
-      if(pos != -1) {
+      if(pos !== -1) {
         historyStorage.pending.splice(pos, 1);
       }
 
-      const storage = this.getMessagesStorage(peerId);
+      delete this.pendingByRandomId[randomId];
       delete storage[tempId];
 
       return true;
@@ -1473,7 +1520,9 @@ export class AppMessagesManager {
   }
 
   public forwardMessages(peerId: number, fromPeerId: number, msgIds: number[], options: Partial<{
-    withMyScore: true
+    withMyScore: true,
+    silent: true,
+    scheduleDate: number
   }> = {}) {
     peerId = appPeersManager.getPeerMigratedTo(peerId) || peerId;
     msgIds = msgIds.slice().sort((a, b) => a - b);
@@ -1490,7 +1539,9 @@ export class AppMessagesManager {
       id: msgIds,
       random_id: randomIds,
       to_peer: appPeersManager.getInputPeerById(peerId),
-      with_my_score: options.withMyScore
+      with_my_score: options.withMyScore,
+      silent: options.silent,
+      schedule_date: options.scheduleDate
     }, sentRequestOptions).then((updates) => {
       apiUpdatesManager.processUpdateMessage(updates);
     }, () => {}).then(() => {
@@ -1522,8 +1573,10 @@ export class AppMessagesManager {
         continue;
       }
 
-      const storage = this.messagesStorageByPeerId[peerId];
-      return this.getMessageFromStorage(storage, messageId);
+      const message = this.messagesStorageByPeerId[peerId][messageId];
+      if(message) {
+        return message;
+      }
     }
 
     return this.getMessageFromStorage(null, messageId);
@@ -1596,12 +1649,12 @@ export class AppMessagesManager {
 
   public async flushHistory(peerId: number, justClear?: true) {
     if(appPeersManager.isChannel(peerId)) {
-      let promise = this.getHistory(peerId, 0, 1);
+      const promise = this.getHistory(peerId, 0, 1);
 
-      let historyResult = promise instanceof Promise ? await promise : promise;
+      const historyResult = promise instanceof Promise ? await promise : promise;
 
-      let channelId = -peerId;
-      let maxId = historyResult.history[0] || 0;
+      const channelId = -peerId;
+      const maxId = historyResult.history[0] || 0;
       return apiManager.invokeApi('channels.deleteHistory', {
         channel: appChatsManager.getChannelInput(channelId),
         max_id: maxId
@@ -1651,7 +1704,7 @@ export class AppMessagesManager {
 
     return p.promise = this.getSearch(peerId, '', {_: 'inputMessagesFilterPinned'}, 0, 1).then(result => {
       p.count = result.count;
-      p.maxId = result.history[0];
+      p.maxId = result.history[0]?.mid;
       return p;
     }).finally(() => {
       delete p.promise;
@@ -1730,10 +1783,9 @@ export class AppMessagesManager {
     //return Object.keys(this.groupedMessagesStorage[grouped_id]).map(id => +id).sort((a, b) => a - b);
   }
 
-  public getMidsByMid(peerId: number, mid: number) {
-    const message = this.getMessageByPeer(peerId, mid);
+  public getMidsByMessage(message: any) {
     if(message?.grouped_id) return this.getMidsByAlbum(message.grouped_id);
-    else return [mid];
+    else return [message.mid];
   }
 
   public saveMessages(messages: any[], options: Partial<{
@@ -1784,7 +1836,10 @@ export class AppMessagesManager {
         message.reply_to_mid = message.reply_to.reply_to_msg_id;
       }
 
-      message.date -= serverTimeManager.serverTimeOffset;
+      const overwriting = !!message.peerId;
+      if(!overwriting) {
+        message.date -= serverTimeManager.serverTimeOffset;
+      }
 
       const myId = appUsersManager.getSelf().id;
 
@@ -1813,7 +1868,9 @@ export class AppMessagesManager {
 
         message.fwdFromId = appPeersManager.getPeerId(fwdHeader.from_id);
 
-        fwdHeader.date -= serverTimeManager.serverTimeOffset;
+        if(!overwriting) {
+          fwdHeader.date -= serverTimeManager.serverTimeOffset;
+        }
       }
 
       if(message.via_bot_id > 0) {
@@ -1950,7 +2007,7 @@ export class AppMessagesManager {
 
       if(message.grouped_id) {
         if(!groups) {
-          groups = new Map();          
+          groups = new Map();
         }
 
         groups.set(peerId, message.grouped_id);
@@ -2243,13 +2300,7 @@ export class AppMessagesManager {
     return true;
   }
 
-  public canEditMessage(peerId: number, messageId: number, kind: 'text' | 'poll' = 'text') {
-    const storage = this.getMessagesStorage(peerId);
-    if(!storage[messageId]) {
-      return false;
-    }
-
-    const message = storage[messageId];
+  public canEditMessage(message: any, kind: 'text' | 'poll' = 'text') {
     if(!message || !this.canMessageBeEdited(message, kind)) {
       return false;
     }
@@ -2266,8 +2317,7 @@ export class AppMessagesManager {
     return true;
   }
 
-  public canDeleteMessage(peerId: number, messageId: number) {
-    const message = this.getMessagesStorage(peerId)[messageId];
+  public canDeleteMessage(message: any) {
     return message && (
       message.peerId > 0 
       || message.fromId == rootScope.myId 
@@ -2421,9 +2471,8 @@ export class AppMessagesManager {
       else delete message.pFlags.unread;
     }
 
-    let historyStorage = this.historiesStorage[peerId];
+    let historyStorage = this.getHistoryStorage(peerId);
     if(historyStorage === undefined/*  && !message.deleted */) { // warning
-      historyStorage = this.historiesStorage[peerId] = {count: null, history: [], pending: []};
       historyStorage[mid > 0 ? 'history' : 'pending'].push(mid);
       /* if(mid < 0 && message.pFlags.unread) {
         dialog.unread_count++;
@@ -2536,9 +2585,9 @@ export class AppMessagesManager {
     count: number,
     next_rate: number,
     offset_id_offset: number,
-    history: number[]
+    history: MyMessage[]
   }> {
-    const foundMsgs: number[] = [];
+    const foundMsgs: any[] = [];
 
     //this.log('search', maxId);
 
@@ -2558,7 +2607,7 @@ export class AppMessagesManager {
     if(peerId && !backLimit && !maxId && !query && limit !== 1/*  && inputFilter._ !== 'inputMessagesFilterPinned' */) {
       storage = beta ? 
         this.getSearchStorage(peerId, inputFilter._) : 
-        this.historiesStorage[peerId];
+        this.getHistoryStorage(peerId);
       let filtering = true;
 
       const history = maxId ? storage.history.slice(storage.history.indexOf(maxId) + 1) : storage.history;
@@ -2667,7 +2716,7 @@ export class AppMessagesManager {
             } */
   
             if(found) {
-              foundMsgs.push(message.mid);
+              foundMsgs.push(message);
               if(foundMsgs.length >= limit) {
                 break;
               }
@@ -2769,7 +2818,7 @@ export class AppMessagesManager {
           }
         }
 
-        foundMsgs.push(message.mid);
+        foundMsgs.push(message);
       });
 
       return {
@@ -2885,11 +2934,11 @@ export class AppMessagesManager {
   public readHistory(peerId: number, maxId = 0) {
     // console.trace('start read')
     const isChannel = appPeersManager.isChannel(peerId);
-    const historyStorage = this.historiesStorage[peerId];
+    const historyStorage = this.getHistoryStorage(peerId);
     const foundDialog = this.getDialogByPeerId(peerId)[0];
 
     if(!foundDialog || !foundDialog.unread_count) {
-      if(!historyStorage || !historyStorage.history.length) {
+      if(!historyStorage.history.length) {
         return Promise.resolve(false);
       }
 
@@ -3001,32 +3050,34 @@ export class AppMessagesManager {
     }
   }
 
+  public getHistoryStorage(peerId: number) {
+    return this.historiesStorage[peerId] ?? (this.historiesStorage[peerId] = {count: null, history: [], pending: []});
+  }
+
   public handleUpdate(update: Update) {
-    this.log.debug('handleUpdate', update._);
+    this.log.debug('handleUpdate', update._, update);
     switch(update._) {
       case 'updateMessageID': {
         const randomId = update.random_id;
         const pendingData = this.pendingByRandomId[randomId];
         //this.log('AMM updateMessageID:', update, pendingData);
         if(pendingData) {
-          const peerId: number = pendingData[0];
-          const tempId = pendingData[1];
+          const {peerId, tempId, storage} = pendingData;
           const mid = update.id;
-          const storage = this.getMessagesStorage(peerId);
-          const message = storage[mid];
-          if(message) {
-            const historyStorage = this.historiesStorage[peerId];
+          const message = this.getMessageFromStorage(storage, mid);
+          if(!message.deleted) {
+            const historyStorage = this.getHistoryStorage(peerId);
             const pos = historyStorage.pending.indexOf(tempId);
-            if(pos != -1) {
+            if(pos !== -1) {
               historyStorage.pending.splice(pos, 1);
             }
-            delete storage[tempId];
 
-            this.finalizePendingMessageCallbacks(peerId, tempId, mid);
+            this.finalizePendingMessageCallbacks(storage, tempId, mid);
           } else {
             this.pendingByMessageId[mid] = randomId;
           }
         }
+
         break;
       }
 
@@ -3034,6 +3085,7 @@ export class AppMessagesManager {
       case 'updateNewChannelMessage': {
         const message = update.message as MyMessage;
         const peerId = this.getMessagePeer(message);
+        const storage = this.getMessagesStorage(peerId);
         const foundDialog = this.getDialogByPeerId(peerId);
 
         if(!foundDialog.length) {
@@ -3053,17 +3105,13 @@ export class AppMessagesManager {
           }
         }
 
-        this.saveMessages([message]);
+        this.saveMessages([message], {storage});
         // this.log.warn(dT(), 'message unread', message.mid, message.pFlags.unread)
 
-        let historyStorage = this.historiesStorage[peerId];
-        if(historyStorage === undefined) {
-          historyStorage = this.historiesStorage[peerId] = {
-            count: null,
-            history: [],
-            pending: []
-          };
-        }
+        const dialog = foundDialog[0];
+        const pendingMessage = this.checkPendingMessage(message);
+
+        const historyStorage = this.getHistoryStorage(peerId);
 
         const history = message.mid > 0 ? historyStorage.history : historyStorage.pending;
         if(history.indexOf(message.mid) != -1) {
@@ -3076,36 +3124,24 @@ export class AppMessagesManager {
             return b - a;
           });
         }
-
-        if(message.mid > 0 &&
-            historyStorage.count !== null) {
+  
+        if(message.mid > 0 && historyStorage.count !== null) {
           historyStorage.count++;
         }
-
+  
         if(this.mergeReplyKeyboard(historyStorage, message)) {
           rootScope.broadcast('history_reply_markup', {peerId});
         }
-
+  
         if(!message.pFlags.out && message.from_id) {
           appUsersManager.forceUserOnline(appPeersManager.getPeerId(message.from_id), message.date);
-        }
-
-        const randomId = this.pendingByMessageId[message.mid];
-        let pendingMessage: any;
-
-        if(randomId) {
-          if(pendingMessage = this.finalizePendingMessage(peerId, randomId, message)) {
-            rootScope.broadcast('history_update', {peerId, mid: message.mid});
-          }
-
-          delete this.pendingByMessageId[message.mid];
         }
 
         if(!pendingMessage) {
           if(this.newMessagesToHandle[peerId] === undefined) {
             this.newMessagesToHandle[peerId] = [];
           }
-
+  
           this.newMessagesToHandle[peerId].push(message.mid);
           if(!this.newMessagesHandlePromise) {
             this.newMessagesHandlePromise = window.setTimeout(this.handleNewMessages, 0);
@@ -3113,7 +3149,6 @@ export class AppMessagesManager {
         }
 
         const inboxUnread = !message.pFlags.out && message.pFlags.unread;
-        const dialog = foundDialog[0];
         dialog.top_message = message.mid;
         if(inboxUnread) {
           dialog.unread_count++;
@@ -3301,26 +3336,26 @@ export class AppMessagesManager {
           break;
         }
 
-        const oldMessage = storage[mid];
-        if(oldMessage.media?.webpage) {
-          appWebPagesManager.deleteWebPageFromPending(oldMessage.media.webpage, mid);
-        }
-
         // console.trace(dT(), 'edit message', message)
-        this.saveMessages([message]);
+        
+        const oldMessage = this.getMessageFromStorage(storage, mid);
+        this.saveMessages([message], {storage});
+        const newMessage = this.getMessageFromStorage(storage, mid);
+
+        this.handleEditedMessage(oldMessage, newMessage);
 
         const dialog = this.getDialogByPeerId(peerId)[0];
         const isTopMessage = dialog && dialog.top_message == mid;
         // @ts-ignore
         if(message.clear_history) { // that's will never happen
           if(isTopMessage) {
-            rootScope.broadcast('dialog_flush', {peerId: peerId});
+            rootScope.broadcast('dialog_flush', {peerId});
           }
         } else {
           rootScope.broadcast('message_edit', {
+            storage,
             peerId,
-            mid,
-            justMedia: false
+            mid
           });
 
           const groupId = (message as Message.message).grouped_id;
@@ -3387,7 +3422,7 @@ export class AppMessagesManager {
           }
           
           // this.log.warn('read', messageId, message.pFlags.unread, message)
-          if(message && message.pFlags.unread) {
+          if(message.pFlags.unread) {
             delete message.pFlags.unread;
             if(!foundAffected) {
               foundAffected = true;
@@ -3429,7 +3464,7 @@ export class AppMessagesManager {
         const messages: number[] = update.messages;
         for(const messageId of messages) {
           const message = this.getMessageByPeer(peerId, messageId);
-          if(message) {
+          if(!message.deleted) {
             delete message.pFlags.media_unread;
           }
         }
@@ -3442,7 +3477,7 @@ export class AppMessagesManager {
         const channelId: number = update.channel_id;
         const messages: number[] = [];
         const peerId: number = -channelId;
-        const history = (this.historiesStorage[peerId] || {}).history || [];
+        const history = this.getHistoryStorage(peerId).history;
         if(history.length) {
           history.forEach((msgId: number) => {
             if(!update.available_min_id || msgId <= update.available_min_id) {
@@ -3456,129 +3491,50 @@ export class AppMessagesManager {
 
       case 'updateDeleteMessages':
       case 'updateDeleteChannelMessages': {
-        const historiesUpdated: {
-          [peerId: number]: {
-            count: number, 
-            unread: number, 
-            msgs: {[mid: number]: true},
-            albums?: {[groupId: string]: Set<number>},
-          }
-        } = {};
         const channelId: number = (update as Update.updateDeleteChannelMessages).channel_id;
         const messages = (update as any as Update.updateDeleteChannelMessages).messages;
+        const peerId = channelId ? -channelId : this.getMessageById(messages[0]).peerId;
+        
+        if(!peerId) {
+          break;
+        }
+        
+        const historyUpdated = this.handleDeletedMessages(peerId, this.getMessagesStorage(peerId), messages);
 
-        for(const _messageId of messages) {
-          const mid = _messageId;
-          const message: MyMessage = this.getMessageByPeer(-channelId, mid);
-          if(message) {
-            const peerId = this.getMessagePeer(message);
-            const history = historiesUpdated[peerId] || (historiesUpdated[peerId] = {count: 0, unread: 0, msgs: {}});
-
-            if((message as Message.message).media) {
-              // @ts-ignore
-              const c = message.media.webpage || message.media;
-              const smth = c.photo || c.document;
-
-              if(smth?.file_reference) {
-                referenceDatabase.deleteContext(smth.file_reference, {type: 'message', peerId, messageId: mid});
-              }
-
-              // @ts-ignore
-              if(message.media.webpage) {
-                // @ts-ignore
-                appWebPagesManager.deleteWebPageFromPending(message.media.webpage, mid);
-              }
+        const historyStorage = this.getHistoryStorage(peerId);
+        //if(historyStorage !== undefined) {
+          const newHistory = historyStorage.history.filter(mid => !historyUpdated.msgs[mid]);
+          const newPending = historyStorage.pending.filter(mid => !historyUpdated.msgs[mid]);
+          historyStorage.history = newHistory;
+          if(historyUpdated.count &&
+            historyStorage.count !== null &&
+            historyStorage.count > 0) {
+            historyStorage.count -= historyUpdated.count;
+            if(historyStorage.count < 0) {
+              historyStorage.count = 0;
             }
+          }
 
-            if(!message.pFlags.out && message.pFlags.unread) {
-              history.unread++;
-            }
-            history.count++;
-            history.msgs[mid] = true;
+          historyStorage.pending = newPending;
 
-            message.deleted = true;
+          rootScope.broadcast('history_delete', {peerId, msgs: historyUpdated.msgs});
+        //}
 
-            delete this.getMessagesStorage(peerId)[mid];
+        const foundDialog = this.getDialogByPeerId(peerId)[0];
+        if(foundDialog) {
+          if(historyUpdated.unread) {
+            foundDialog.unread_count -= historyUpdated.unread;
 
-            if(message._ != 'messageService' && message.grouped_id) {
-              const groupedStorage = this.groupedMessagesStorage[message.grouped_id];
-              if(groupedStorage) {
-                delete groupedStorage[mid];
+            rootScope.broadcast('dialog_unread', {
+              peerId,
+              count: foundDialog.unread_count
+            });
+          }
 
-                if(!history.albums) history.albums = {};
-                (history.albums[message.grouped_id] || (history.albums[message.grouped_id] = new Set())).add(mid);
-
-                if(!Object.keys(groupedStorage).length) {
-                  delete history.albums;
-                  delete this.groupedMessagesStorage[message.grouped_id];
-                }
-              }
-            }
-
-            /* if(this.pinnedMessagesStorage[peerId] == mid) {
-              this.savePinnedMessage(peerId, 0);
-            } */
-
-            const peerMessagesToHandle = this.newMessagesToHandle[peerId];
-            if(peerMessagesToHandle && peerMessagesToHandle.length) {
-              const peerMessagesHandlePos = peerMessagesToHandle.indexOf(mid);
-              if(peerMessagesHandlePos != -1) {
-                peerMessagesToHandle.splice(peerMessagesHandlePos);
-              }
-            }
+          if(historyUpdated.msgs[foundDialog.top_message]) {
+            this.reloadConversation(peerId);
           }
         }
-
-        Object.keys(historiesUpdated).forEach(_peerId => {
-          const peerId = +_peerId;
-          const updatedData = historiesUpdated[peerId];
-
-          if(updatedData.albums) {
-            for(const groupId in updatedData.albums) {
-              rootScope.broadcast('album_edit', {peerId, groupId, deletedMids: [...updatedData.albums[groupId]]});
-              /* const mids = this.getMidsByAlbum(groupId);
-              if(mids.length) {
-                const mid = Math.max(...mids);
-                rootScope.$broadcast('message_edit', {peerId, mid, justMedia: false});
-              } */
-            }
-          }
-
-          const historyStorage = this.historiesStorage[peerId];
-          if(historyStorage !== undefined) {
-            const newHistory = historyStorage.history.filter(mid => !updatedData.msgs[mid]);
-            const newPending = historyStorage.pending.filter(mid => !updatedData.msgs[mid]);
-            historyStorage.history = newHistory;
-            if(updatedData.count &&
-              historyStorage.count !== null &&
-              historyStorage.count > 0) {
-              historyStorage.count -= updatedData.count;
-              if(historyStorage.count < 0) {
-                historyStorage.count = 0;
-              }
-            }
-
-            historyStorage.pending = newPending;
-
-            rootScope.broadcast('history_delete', {peerId, msgs: updatedData.msgs});
-          }
-
-          const foundDialog = this.getDialogByPeerId(peerId)[0];
-          if(foundDialog) {
-            if(updatedData.unread) {
-              foundDialog.unread_count -= updatedData.unread;
-
-              rootScope.broadcast('dialog_unread', {
-                peerId,
-                count: foundDialog.unread_count
-              });
-            }
-
-            if(updatedData.msgs[foundDialog.top_message]) {
-              this.reloadConversation(peerId);
-            }
-          }
-        });
         break;
       }
 
@@ -3633,7 +3589,7 @@ export class AppMessagesManager {
         const views = update.views;
         const mid = update.id;
         const message = this.getMessageByPeer(-update.channel_id, mid);
-        if(message && message.views && message.views < views) {
+        if(!message.deleted && message.views && message.views < views) {
           message.views = views;
           rootScope.broadcast('message_views', {mid, views});
         }
@@ -3747,17 +3703,27 @@ export class AppMessagesManager {
         break;
       }
 
-      // * https://core.telegram.org/api/scheduled-messages
       case 'updateNewScheduledMessage': {
-        const message = update.message as Message.message;
-
+        const message = update.message as MyMessage;
         const peerId = this.getMessagePeer(message);
+
         const storage = this.scheduledMessagesStorage[peerId];
         if(storage) {
-          this.saveMessages([message]);
-          storage.unshift(message.mid);
-          
-          rootScope.broadcast('scheduled_new', {peerId, mid: message.mid});
+          const mid = message.id;
+
+          const oldMessage = this.getMessageFromStorage(storage, mid);
+          this.saveMessages([message], {storage, isScheduled: true});
+          const newMessage = this.getMessageFromStorage(storage, mid);
+
+          if(!oldMessage.deleted) {
+            this.handleEditedMessage(oldMessage, newMessage);
+            rootScope.broadcast('message_edit', {storage, peerId, mid: message.mid});
+          } else {
+            const pendingMessage = this.checkPendingMessage(message);
+            if(!pendingMessage) {
+              rootScope.broadcast('scheduled_new', {peerId, mid: message.mid});
+            }
+          }
         }
         
         break;
@@ -3768,9 +3734,7 @@ export class AppMessagesManager {
 
         const storage = this.scheduledMessagesStorage[peerId];
         if(storage) {
-          for(const mid of update.messages) {
-            delete storage[mid];
-          }
+          this.handleDeletedMessages(peerId, storage, update.messages);
 
           rootScope.broadcast('scheduled_delete', {peerId, mids: update.messages});
         }
@@ -3778,6 +3742,21 @@ export class AppMessagesManager {
         break;
       }
     }
+  }
+
+  private checkPendingMessage(message: any) {
+    const randomId = this.pendingByMessageId[message.mid];
+    let pendingMessage: any;
+    if(randomId) {
+      const pendingData = this.pendingByRandomId[randomId];
+      if(pendingMessage = this.finalizePendingMessage(randomId, message)) {
+        rootScope.broadcast('history_update', {storage: pendingData.storage, peerId: message.peerId, mid: message.mid});
+      }
+
+      delete this.pendingByMessageId[message.mid];
+    }
+
+    return pendingMessage;
   }
 
   public isPeerMuted(peerId: number) {
@@ -3840,24 +3819,22 @@ export class AppMessagesManager {
     return (!isChannel || hasRights) && (peerId < 0 || appUsersManager.canSendToUser(peerId));
   }
 
-  public finalizePendingMessage(peerId: number, randomId: number, finalMessage: any) {
+  public finalizePendingMessage(randomId: string, finalMessage: any) {
     const pendingData = this.pendingByRandomId[randomId];
     // this.log('pdata', randomID, pendingData)
 
     if(pendingData) {
-      const peerId = pendingData[0];
-      const tempId = pendingData[1];
-      const historyStorage = this.historiesStorage[peerId];
+      const {peerId, tempId, storage} = pendingData;
+      const historyStorage = this.getHistoryStorage(peerId);
 
       // this.log('pending', randomID, historyStorage.pending)
       const pos = historyStorage.pending.indexOf(tempId);
-      if(pos != -1) {
+      if(pos !== -1) {
         historyStorage.pending.splice(pos, 1);
       }
 
-      const storage = this.getMessagesStorage(peerId);
-      const message = storage[tempId];
-      if(message) {
+      const message = this.getMessageFromStorage(storage, tempId);
+      if(!message.deleted) {
         delete message.pending;
         delete message.error;
         delete message.random_id;
@@ -3865,10 +3842,10 @@ export class AppMessagesManager {
 
         rootScope.broadcast('messages_pending');
       }
+      
+      delete this.pendingByRandomId[randomId];
 
-      delete storage[tempId];
-
-      this.finalizePendingMessageCallbacks(peerId, tempId, finalMessage.mid);
+      this.finalizePendingMessageCallbacks(storage, tempId, finalMessage.mid);
 
       return message;
     }
@@ -3876,21 +3853,21 @@ export class AppMessagesManager {
     return false;
   }
 
-  public finalizePendingMessageCallbacks(peerId: number, tempId: number, mid: number) {
+  public finalizePendingMessageCallbacks(storage: MessagesStorage, tempId: number, mid: number) {
+    const message = this.getMessageFromStorage(storage, mid);
     const callbacks = this.tempFinalizeCallbacks[tempId];
     this.log.warn(callbacks, tempId);
     if(callbacks !== undefined) {
       for(const name in callbacks) {
         const {deferred, callback} = callbacks[name];
         this.log(`finalizePendingMessageCallbacks: will invoke ${name} callback`);
-        callback(mid).then(deferred.resolve, deferred.reject);
+        callback(message).then(deferred.resolve, deferred.reject);
       }
 
       delete this.tempFinalizeCallbacks[tempId];
     }
 
     // set cached url to media
-    const message = this.getMessageByPeer(peerId, mid);
     if(message.media) {
       if(message.media.photo) {
         const photo = appPhotosManager.getPhoto('' + tempId);
@@ -3914,7 +3891,10 @@ export class AppMessagesManager {
       }
     }
 
-    rootScope.broadcast('message_sent', {tempId, mid});
+    const tempMessage = this.getMessageFromStorage(storage, tempId);
+    delete storage[tempId];
+
+    rootScope.broadcast('message_sent', {storage, tempId, tempMessage, mid});
   }
 
   public incrementMaxSeenId(maxId: number) {
@@ -3938,8 +3918,8 @@ export class AppMessagesManager {
   public getScheduledMessages(peerId: number): Promise<number[]> {
     if(!this.canWriteToPeer(peerId)) return Promise.resolve([]);
 
-    const storage = this.scheduledMessagesStorage[peerId];
-    if(storage?.length) {
+    const storage = this.getScheduledMessagesStorage(peerId);
+    if(Object.keys(storage).length) {
       return Promise.resolve(Object.keys(storage).map(id => +id));
     }
 
@@ -3960,12 +3940,30 @@ export class AppMessagesManager {
     });
   }
 
+  public sendScheduledMessages(peerId: number, mids: number[]) {
+    return apiManager.invokeApi('messages.sendScheduledMessages', {
+      peer: appPeersManager.getInputPeerById(peerId),
+      id: mids
+    }).then(updates => {
+      apiUpdatesManager.processUpdateMessage(updates);
+    });
+  }
+
+  public deleteScheduledMessages(peerId: number, mids: number[]) {
+    return apiManager.invokeApi('messages.deleteScheduledMessages', {
+      peer: appPeersManager.getInputPeerById(peerId),
+      id: mids
+    }).then(updates => {
+      apiUpdatesManager.processUpdateMessage(updates);
+    });
+  }
+
   public getHistory(peerId: number, maxId = 0, limit: number, backLimit?: number) {
     if(this.migratedFromTo[peerId]) {
       peerId = this.migratedFromTo[peerId];
     }
 
-    const historyStorage = this.historiesStorage[peerId] ?? (this.historiesStorage[peerId] = {count: null, history: [], pending: []});
+    const historyStorage = this.getHistoryStorage(peerId);
     const unreadOffset = 0;
     const unreadSkip = false;
 
@@ -4026,7 +4024,7 @@ export class AppMessagesManager {
       }
 
       return this.requestHistory(reqPeerId, maxId, limit, offset).then((historyResult) => {
-        historyStorage.count = historyResult.count || historyResult.messages.length;
+        historyStorage.count = (historyResult as MessagesMessages.messagesMessagesSlice).count || historyResult.messages.length;
         if(isMigrated) {
           historyStorage.count++;
         }
@@ -4076,11 +4074,11 @@ export class AppMessagesManager {
   public fillHistoryStorage(peerId: number, maxId: number, fullLimit: number, historyStorage: HistoryStorage): Promise<boolean> {
     // this.log('fill history storage', peerId, maxId, fullLimit, angular.copy(historyStorage))
     const offset = (this.migratedFromTo[peerId] && !maxId) ? 1 : 0;
-    return this.requestHistory(peerId, maxId, fullLimit, offset).then((historyResult: any) => {
-      historyStorage.count = historyResult.count || historyResult.messages.length;
+    return this.requestHistory(peerId, maxId, fullLimit, offset).then((historyResult) => {
+      historyStorage.count = (historyResult as MessagesMessages.messagesMessagesSlice).count || historyResult.messages.length;
 
       if(!maxId && historyResult.messages.length) {
-        maxId = historyResult.messages[0].mid + 1;
+        maxId = (historyResult.messages[0] as MyMessage).mid + 1;
       }
 
       let offset = 0;
@@ -4095,12 +4093,12 @@ export class AppMessagesManager {
       const wasTotalCount = historyStorage.history.length;
 
       historyStorage.history.splice(offset, historyStorage.history.length - offset);
-      historyResult.messages.forEach((message: any) => {
+      historyResult.messages.forEach((message) => {
         if(this.mergeReplyKeyboard(historyStorage, message)) {
           rootScope.broadcast('history_reply_markup', {peerId});
         }
 
-        historyStorage.history.push(message.mid);
+        historyStorage.history.push((message as MyMessage).mid);
       });
 
       const totalCount = historyStorage.history.length;
@@ -4140,8 +4138,8 @@ export class AppMessagesManager {
   public wrapHistoryResult(peerId: number, result: HistoryResult) {
     if(result.unreadOffset) {
       for(let i = result.history.length - 1; i >= 0; i--) {
-        const message = this.getMessagesStorage(peerId)[result.history[i]];
-        if(message && !message.pFlags.out && message.pFlags.unread) {
+        const message = this.getMessageByPeer(peerId, result.history[i]);
+        if(!message.deleted && !message.pFlags.out && message.pFlags.unread) {
           result.unreadOffset = i + 1;
           break;
         }
@@ -4150,14 +4148,14 @@ export class AppMessagesManager {
     return result;
   }
 
-  public requestHistory(peerId: number, maxId: number, limit = 0, offset = 0, offsetDate = 0): Promise<any> {
+  public requestHistory(peerId: number, maxId: number, limit = 0, offset = 0, offsetDate = 0): Promise<Exclude<MessagesMessages, MessagesMessages.messagesMessagesNotModified>> {
     const isChannel = appPeersManager.isChannel(peerId);
 
     //console.trace('requestHistory', peerId, maxId, limit, offset);
 
-    rootScope.broadcast('history_request');
-
-    return apiManager.invokeApi('messages.getHistory', {
+    //rootScope.broadcast('history_request');
+    
+    const promise = apiManager.invokeApi('messages.getHistory', {
       peer: appPeersManager.getInputPeerById(peerId),
       offset_id: maxId || 0,
       offset_date: offsetDate,
@@ -4169,12 +4167,14 @@ export class AppMessagesManager {
     }, {
       //timeout: APITIMEOUT,
       noErrorBox: true
-    }).then((historyResult) => {
+    }) as ReturnType<AppMessagesManager['requestHistory']>;
+
+    return promise.then((historyResult) => {
       this.log('requestHistory result:', peerId, historyResult, maxId, limit, offset);
 
-      if(historyResult._ == 'messages.messagesNotModified') {
-        return historyResult;
-      }
+      /* if(historyResult._ == 'messages.messagesNotModified') {
+        return historyResult as any;
+      } */
 
       appUsersManager.saveApiUsers(historyResult.users);
       appChatsManager.saveApiChats(historyResult.chats);
@@ -4192,7 +4192,7 @@ export class AppMessagesManager {
       }
 
       // will load more history if last message is album grouped (because it can be not last item)
-      const historyStorage = this.historiesStorage[peerId];
+      const historyStorage = this.getHistoryStorage(peerId);
       // historyResult.messages: desc sorted
       if(length && (historyResult.messages[length - 1] as Message.message).grouped_id 
         && (historyStorage.history.length + historyResult.messages.length) < (historyResult as MessagesMessages.messagesMessagesSlice).count) {
@@ -4205,7 +4205,7 @@ export class AppMessagesManager {
       /* if(peerId < 0 || !appUsersManager.isBot(peerId) || (length == limit && limit < historyResult.count)) {
         return historyResult;
       } */
-      return historyResult;
+      return historyResult as any;
 
       /* return appProfileManager.getProfile(peerId).then((userFull: any) => {
         var description = userFull.bot_info && userFull.bot_info.description;
@@ -4326,6 +4326,88 @@ export class AppMessagesManager {
       peer: appPeersManager.getInputPeerById(peerId),
       action
     }) as Promise<boolean>;
+  }
+
+  private handleDeletedMessages(peerId: number, storage: MessagesStorage, messages: number[]) {
+    const history: {
+      count: number, 
+      unread: number, 
+      msgs: {[mid: number]: true},
+      albums?: {[groupId: string]: Set<number>},
+    } = {count: 0, unread: 0, msgs: {}} as any;
+
+    for(const mid of messages) {
+      const message: MyMessage = this.getMessageFromStorage(storage, mid);
+      if(message.deleted) continue;
+
+      if((message as Message.message).media) {
+        // @ts-ignore
+        const c = message.media.webpage || message.media;
+        const smth = c.photo || c.document;
+
+        if(smth?.file_reference) {
+          referenceDatabase.deleteContext(smth.file_reference, {type: 'message', peerId, messageId: mid});
+        }
+
+        // @ts-ignore
+        if(message.media.webpage) {
+          // @ts-ignore
+          appWebPagesManager.deleteWebPageFromPending(message.media.webpage, mid);
+        }
+      }
+
+      if(!message.pFlags.out && message.pFlags.unread) {
+        history.unread++;
+      }
+      history.count++;
+      history.msgs[mid] = true;
+
+      message.deleted = true;
+
+      if(message._ != 'messageService' && message.grouped_id) {
+        const groupedStorage = this.groupedMessagesStorage[message.grouped_id];
+        if(groupedStorage) {
+          delete groupedStorage[mid];
+
+          if(!history.albums) history.albums = {};
+          (history.albums[message.grouped_id] || (history.albums[message.grouped_id] = new Set())).add(mid);
+
+          if(!Object.keys(groupedStorage).length) {
+            delete history.albums;
+            delete this.groupedMessagesStorage[message.grouped_id];
+          }
+        }
+      }
+
+      delete storage[mid];
+
+      const peerMessagesToHandle = this.newMessagesToHandle[peerId];
+      if(peerMessagesToHandle && peerMessagesToHandle.length) {
+        const peerMessagesHandlePos = peerMessagesToHandle.indexOf(mid);
+        if(peerMessagesHandlePos != -1) {
+          peerMessagesToHandle.splice(peerMessagesHandlePos);
+        }
+      }
+    }
+
+    if(history.albums) {
+      for(const groupId in history.albums) {
+        rootScope.broadcast('album_edit', {peerId, groupId, deletedMids: [...history.albums[groupId]]});
+        /* const mids = this.getMidsByAlbum(groupId);
+        if(mids.length) {
+          const mid = Math.max(...mids);
+          rootScope.$broadcast('message_edit', {peerId, mid, justMedia: false});
+        } */
+      }
+    }
+
+    return history;
+  }
+  
+  private handleEditedMessage(oldMessage: any, newMessage: any) {
+    if(oldMessage.media?.webpage) {
+      appWebPagesManager.deleteWebPageFromPending(oldMessage.media.webpage, oldMessage.mid);
+    }
   }
 }
 

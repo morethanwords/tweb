@@ -193,7 +193,7 @@ class AppMediaPlaybackController {
         return;
       }
  
-      for(let m of value.history) {
+      for(const {mid: m} of value.history) {
         if(m > mid) {
           this.nextMid = m;
         } else if(m < mid) {

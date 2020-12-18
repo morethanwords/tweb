@@ -21,7 +21,7 @@ import appProfileManager from './appProfileManager';
 import appStickersManager from './appStickersManager';
 import appWebPagesManager from './appWebPagesManager';
 import { cancelEvent, getFilesFromEvent, placeCaretAtEnd } from '../../helpers/dom';
-import PopupNewMedia from '../../components/popupNewMedia';
+import PopupNewMedia from '../../components/popups/newMedia';
 import { TransitionSlider } from '../../components/transition';
 import { numberWithCommas } from '../../helpers/number';
 import MarkupTooltip from '../../components/chat/markupTooltip';
@@ -203,15 +203,15 @@ export class AppImManager {
         return;
       } else if(e.code == 'ArrowUp') {
         if(!chat.input.editMsgId) {
-          const history = appMessagesManager.historiesStorage[chat.peerId];
-          if(history?.history) {
+          const history = appMessagesManager.getHistoryStorage(chat.peerId);
+          if(history.history.length) {
             let goodMid: number;
             for(const mid of history.history) {
               const message = appMessagesManager.getMessageByPeer(chat.peerId, mid);
               const good = this.myId == chat.peerId ? message.fromId == this.myId : message.pFlags.out;
 
               if(good) {
-                if(appMessagesManager.canEditMessage(this.chat.peerId, mid, 'text')) {
+                if(appMessagesManager.canEditMessage(this.chat.getMessage(mid), 'text')) {
                   goodMid = mid;
                 }
 
@@ -234,6 +234,28 @@ export class AppImManager {
     };
     
     document.body.addEventListener('keydown', onKeyDown);
+
+    rootScope.addEventListener('history_multiappend', (e) => {
+      const msgIdsByPeer = e.detail;
+
+      for(const peerId in msgIdsByPeer) {
+        appSidebarRight.sharedMediaTab.renderNewMessages(+peerId, msgIdsByPeer[peerId]);
+      }
+    });
+    
+    rootScope.addEventListener('history_delete', (e) => {
+      const {peerId, msgs} = e.detail;
+
+      const mids = Object.keys(msgs).map(s => +s);
+      appSidebarRight.sharedMediaTab.deleteDeletedMessages(peerId, mids);
+    });
+
+    // Calls when message successfully sent and we have an id
+    rootScope.addEventListener('message_sent', (e) => {
+      const {storage, tempId, mid} = e.detail;
+      const message = appMessagesManager.getMessageFromStorage(storage, mid);
+      appSidebarRight.sharedMediaTab.renderNewMessages(message.peerId, [mid]);
+    });
 
     if(!isTouchSupported) {
       this.attachDragAndDropListeners();
@@ -379,7 +401,7 @@ export class AppImManager {
   
         const chatInput = this.chat.input;
         chatInput.willAttachType = attachType || (files[0].type.indexOf('image/') === 0 ? 'media' : "document");
-        new PopupNewMedia(files, chatInput.willAttachType);
+        new PopupNewMedia(this.chat, files, chatInput.willAttachType);
       }
     });
   };
@@ -406,7 +428,7 @@ export class AppImManager {
   }
 
   private createNewChat() {
-    const chat = new Chat(this, appChatsManager, appDocsManager, appInlineBotsManager, appMessagesManager, appPeersManager, appPhotosManager, appProfileManager, appStickersManager, appUsersManager, appWebPagesManager, appSidebarRight, appPollsManager, apiManager);
+    const chat = new Chat(this, appChatsManager, appDocsManager, appInlineBotsManager, appMessagesManager, appPeersManager, appPhotosManager, appProfileManager, appStickersManager, appUsersManager, appWebPagesManager, appPollsManager, apiManager);
 
     this.chats.push(chat);
   }
@@ -509,6 +531,10 @@ export class AppImManager {
     this.chatsSelectTab(this.chat.container);
 
     return this.setPeer(peerId, lastMsgId);
+  }
+
+  public openScheduled(peerId: number) {
+    this.setInnerPeer(peerId, undefined, 'scheduled');
   }
 
   public async getPeerStatus(peerId: number) {

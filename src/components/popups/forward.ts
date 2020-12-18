@@ -1,7 +1,7 @@
-import { isTouchSupported } from "../helpers/touchSupport";
-import appImManager from "../lib/appManagers/appImManager";
-import AppSelectPeers from "./appSelectPeers";
-import { PopupElement } from "./popup";
+import { isTouchSupported } from "../../helpers/touchSupport";
+import appImManager from "../../lib/appManagers/appImManager";
+import AppSelectPeers from "../appSelectPeers";
+import PopupElement from ".";
 
 export default class PopupForward extends PopupElement {
   private selector: AppSelectPeers;
@@ -14,7 +14,7 @@ export default class PopupForward extends PopupElement {
 
     this.selector = new AppSelectPeers(this.body, async() => {
       const peerId = this.selector.getSelected()[0];
-      this.closeBtn.click();
+      this.btnClose.click();
 
       this.selector = null;
 

@@ -3,7 +3,8 @@ import InputField from "./inputField";
 
 export default class InputSearch {
   public container: HTMLElement;
-  public input: HTMLInputElement;
+  public input: HTMLElement;
+  public inputField: InputField;
   public clearBtn: HTMLElement;
 
   public prevValue = '';
@@ -11,18 +12,18 @@ export default class InputSearch {
   public onChange: (value: string) => void;
 
   constructor(placeholder: string, onChange?: (value: string) => void) {
-    const inputField = InputField({
+    this.inputField = new InputField({
       placeholder,
       plainText: true
     });
 
-    this.container = inputField.container;
+    this.container = this.inputField.container;
     this.container.classList.remove('input-field');
     this.container.classList.add('input-search');
 
     this.onChange = onChange;
 
-    this.input = inputField.input;
+    this.input = this.inputField.input;
     this.input.classList.add('input-search-input');
 
     const searchIcon = document.createElement('span');
@@ -59,18 +60,13 @@ export default class InputSearch {
   };
 
   get value() {
-    return this.input.value;
-    //return getRichValue(this.input);
+    return this.inputField.value;
   }
 
   set value(value: string) {
-    //this.input.innerHTML = value;
-    this.input.value = value;
     this.prevValue = value;
     clearTimeout(this.timeout);
-    
-    const event = new Event('input', {bubbles: true, cancelable: true});
-    this.input.dispatchEvent(event);
+    this.inputField.value = value;
   }
 
   public remove() {

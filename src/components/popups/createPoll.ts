@@ -1,20 +1,20 @@
-import appMessagesManager from "../lib/appManagers/appMessagesManager";
-import appPeersManager from "../lib/appManagers/appPeersManager";
-import appPollsManager, { Poll } from "../lib/appManagers/appPollsManager";
-import { cancelEvent, findUpTag, getRichValue, isInputEmpty, whichChild } from "../helpers/dom";
-import CheckboxField from "./checkbox";
-import InputField from "./inputField";
-import { PopupElement } from "./popup";
-import RadioField from "./radioField";
-import Scrollable from "./scrollable";
-import { toast } from "./toast";
+import type { Poll } from "../../lib/appManagers/appPollsManager";
+import type Chat from "../chat/chat";
+import PopupElement from ".";
+import { cancelEvent, findUpTag, getRichValue, isInputEmpty, whichChild } from "../../helpers/dom";
+import CheckboxField from "../checkbox";
+import InputField from "../inputField";
+import RadioField from "../radioField";
+import Scrollable from "../scrollable";
+import { toast } from "../toast";
+import SendContextMenu from "../chat/sendContextMenu";
 
 const MAX_LENGTH_QUESTION = 255;
 const MAX_LENGTH_OPTION = 100;
 const MAX_LENGTH_SOLUTION = 200;
 
 export default class PopupCreatePoll extends PopupElement {
-  private questionInput: HTMLInputElement;
+  private questionInputField: InputField;
   private questions: HTMLElement;
   private scrollable: Scrollable;
   private tempId = 0;
@@ -24,22 +24,41 @@ export default class PopupCreatePoll extends PopupElement {
   private quizCheckboxField: PopupCreatePoll['anonymousCheckboxField'];
 
   private correctAnswers: Uint8Array[];
-  private quizSolutionInput: HTMLInputElement;
+  private quizSolutionField: InputField;
 
-  constructor(private peerId: number) {
+  constructor(private chat: Chat) {
     super('popup-create-poll popup-new-media', null, {closable: true, withConfirm: 'CREATE', body: true});
 
     this.title.innerText = 'New Poll';
 
-    const questionField = InputField({
+    this.questionInputField = new InputField({
       placeholder: 'Ask a Question',
       label: 'Ask a Question', 
       name: 'question', 
       maxLength: MAX_LENGTH_QUESTION
     });
-    this.questionInput = questionField.input;
 
-    this.header.append(questionField.container);
+    if(this.chat.type !== 'scheduled') {
+      const sendMenu = new SendContextMenu({
+        onSilentClick: () => {
+          this.chat.input.sendSilent = true;
+          this.send();
+        },
+        onScheduleClick: () => {
+          this.chat.input.scheduleSending(() => {
+            this.send();
+          });
+        },
+        openSide: 'bottom-left',
+        onContextElement: this.btnConfirm,
+      });
+  
+      sendMenu.setPeerId(this.chat.peerId);
+
+      this.header.append(sendMenu.sendMenu);
+    }
+
+    this.header.append(this.questionInputField.container);
 
     const hr = document.createElement('hr');
     const d = document.createElement('div');
@@ -56,7 +75,7 @@ export default class PopupCreatePoll extends PopupElement {
     settingsCaption.classList.add('caption');
     settingsCaption.innerText = 'Settings';
 
-    if(!appPeersManager.isBroadcast(peerId)) {
+    if(!this.chat.appPeersManager.isBroadcast(this.chat.peerId)) {
       this.anonymousCheckboxField = CheckboxField('Anonymous Voting', 'anonymous');
       this.anonymousCheckboxField.input.checked = true;
       dd.append(this.anonymousCheckboxField.label);
@@ -95,19 +114,18 @@ export default class PopupCreatePoll extends PopupElement {
     const quizSolutionContainer = document.createElement('div');
     quizSolutionContainer.classList.add('poll-create-questions');
 
-    const quizSolutionField = InputField({
+    this.quizSolutionField = new InputField({
       placeholder: 'Add a Comment (Optional)', 
       label: 'Add a Comment (Optional)',
       name: 'solution',
       maxLength: MAX_LENGTH_SOLUTION
     });
-    this.quizSolutionInput = quizSolutionField.input;
 
     const quizSolutionSubtitle = document.createElement('div');
     quizSolutionSubtitle.classList.add('subtitle');
     quizSolutionSubtitle.innerText = 'Users will see this comment after choosing a wrong answer, good for educational purposes.';
 
-    quizSolutionContainer.append(quizSolutionField.container, quizSolutionSubtitle);
+    quizSolutionContainer.append(this.quizSolutionField.container, quizSolutionSubtitle);
 
     quizElements.push(quizHr, quizSolutionCaption, quizSolutionContainer);
     quizElements.forEach(el => el.classList.add('hide'));
@@ -115,7 +133,7 @@ export default class PopupCreatePoll extends PopupElement {
     this.body.parentElement.insertBefore(hr, this.body);
     this.body.append(d, this.questions, document.createElement('hr'), settingsCaption, dd, ...quizElements);
 
-    this.confirmBtn.addEventListener('click', this.onSubmitClick);
+    this.btnConfirm.addEventListener('click', this.onSubmitClick);
 
     this.scrollable = new Scrollable(this.body);
     this.appendMoreField();
@@ -128,14 +146,18 @@ export default class PopupCreatePoll extends PopupElement {
   private getFilledAnswers() {
     const answers = Array.from(this.questions.children).map((el, idx) => {
       const input = el.querySelector('.input-field-input') as HTMLElement;
-      return getRichValue(input);
+      return input instanceof HTMLInputElement ? input.value : getRichValue(input);
     }).filter(v => !!v.trim());
 
     return answers;
   }
 
-  onSubmitClick = (e: MouseEvent) => {
-    const question = getRichValue(this.questionInput);
+  private onSubmitClick = () => {
+    this.send();
+  };
+
+  public send(force = false) {
+    const question = this.questionInputField.value;
 
     if(!question) {
       toast('Please enter a question.');
@@ -165,14 +187,22 @@ export default class PopupCreatePoll extends PopupElement {
       return;
     }
 
-    const quizSolution = getRichValue(this.quizSolutionInput) || undefined;
+    const quizSolution = this.quizSolutionField.value || undefined;
     if(quizSolution?.length > MAX_LENGTH_SOLUTION) {
       toast('Explanation is too long.');
       return;
     }
 
-    this.closeBtn.click();
-    this.confirmBtn.removeEventListener('click', this.onSubmitClick);
+    if(this.chat.type === 'scheduled' && !force) {
+      this.chat.input.scheduleSending(() => {
+        this.send(true);
+      });
+      
+      return;
+    }
+
+    this.btnClose.click();
+    this.btnConfirm.removeEventListener('click', this.onSubmitClick);
 
     //const randomID = [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)];
     //const randomIDS = bigint(randomID[0]).shiftLeft(32).add(bigint(randomID[1])).toString();
@@ -206,12 +236,17 @@ export default class PopupCreatePoll extends PopupElement {
     };
     //poll.id = randomIDS;
 
-    const inputMediaPoll = appPollsManager.getInputMediaPoll(poll, this.correctAnswers, quizSolution);
+    const inputMediaPoll = this.chat.appPollsManager.getInputMediaPoll(poll, this.correctAnswers, quizSolution);
 
     //console.log('Will try to create poll:', inputMediaPoll);
 
-    appMessagesManager.sendOther(this.peerId, inputMediaPoll);
-  };
+    this.chat.appMessagesManager.sendOther(this.chat.peerId, inputMediaPoll, {
+      scheduleDate: this.chat.input.scheduleDate,
+      silent: this.chat.input.sendSilent
+    });
+
+    this.chat.input.onMessageSent(false, false);
+  }
 
   onInput = (e: Event) => {
     const target = e.target as HTMLInputElement;
@@ -243,7 +278,7 @@ export default class PopupCreatePoll extends PopupElement {
   private appendMoreField() {
     const tempId = this.tempId++;
     const idx = this.questions.childElementCount + 1;
-    const questionField = InputField({
+    const questionField = new InputField({
       placeholder: 'Add an Option', 
       label: 'Option ' + idx, 
       name: 'question-' + tempId, 

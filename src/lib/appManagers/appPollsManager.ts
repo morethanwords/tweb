@@ -159,20 +159,21 @@ export class AppPollsManager {
     };
   }
 
-  public sendVote(peerId: number, messageId: number, optionIds: number[]): Promise<void> {
-    const message = appMessagesManager.getMessageByPeer(peerId, messageId);
+  public sendVote(message: any, optionIds: number[]): Promise<void> {
     const poll: Poll = message.media.poll;
 
     const options: Uint8Array[] = optionIds.map(index => {
       return poll.answers[index].option;
     });
     
+    const messageId = message.mid;
+    const peerId = message.peerId;
     const inputPeer = appPeersManager.getInputPeerById(peerId);
 
     if(messageId < 0) {
-      return appMessagesManager.invokeAfterMessageIsSent(messageId, 'sendVote', (mid) => {
+      return appMessagesManager.invokeAfterMessageIsSent(messageId, 'sendVote', (message) => {
         this.log('invoke sendVote callback');
-        return this.sendVote(peerId, mid, optionIds);
+        return this.sendVote(message, optionIds);
       });
     }
 
@@ -186,33 +187,22 @@ export class AppPollsManager {
     });
   }
 
-  public getResults(peerId: number, messageId: number) {
-    const message = appMessagesManager.getMessageByPeer(peerId, messageId);
+  public getResults(message: any) {
     const inputPeer = appPeersManager.getInputPeerById(message.peerId);
 
     return apiManager.invokeApi('messages.getPollResults', {
       peer: inputPeer,
-      msg_id: messageId
+      msg_id: message.mid
     }).then(updates => {
       apiUpdatesManager.processUpdateMessage(updates);
       this.log('getResults updates:', updates);
     });
   }
 
-  public getVotes(peerId: number, messageId: number, option?: Uint8Array, offset?: string, limit = 20) {
-    let flags = 0;
-    if(option) {
-      flags |= 1 << 0;
-    }
-
-    if(offset) {
-      flags |= 1 << 1;
-    }
-
+  public getVotes(message: any, option?: Uint8Array, offset?: string, limit = 20) {
     return apiManager.invokeApi('messages.getPollVotes', {
-      flags,
-      peer: appPeersManager.getInputPeerById(peerId),
-      id: messageId,
+      peer: appPeersManager.getInputPeerById(message.peerId),
+      id: message.mid,
       option,
       offset,
       limit
@@ -225,15 +215,14 @@ export class AppPollsManager {
     });
   }
 
-  public stopPoll(peerId: number, messageId: number) {
-    const message = appMessagesManager.getMessageByPeer(peerId, messageId);
+  public stopPoll(message: any) {
     const poll: Poll = message.media.poll;
     
     if(poll.pFlags.closed) return Promise.resolve();
 
     const newPoll = copy(poll);
     newPoll.pFlags.closed = true;
-    return appMessagesManager.editMessage(peerId, messageId, undefined, {
+    return appMessagesManager.editMessage(message, undefined, {
       newMedia: this.getInputMediaPoll(newPoll)
     }).then(() => {
       //console.log('stopped poll');

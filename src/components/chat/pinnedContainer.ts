@@ -80,6 +80,7 @@ export default class PinnedContainer {
   }
 
   public fill(title: string, subtitle: string, message: any) {
+    this.divAndCaption.container.dataset.peerId = '' + message.peerId;
     this.divAndCaption.container.dataset.mid = '' + message.mid;
     this.divAndCaption.fill(title, subtitle, message);
     this.topbar.setUtilsWidth();

@@ -1,15 +1,15 @@
-import { PopupElement } from "./popup";
-import appStickersManager from "../lib/appManagers/appStickersManager";
-import { RichTextProcessor } from "../lib/richtextprocessor";
-import Scrollable from "./scrollable";
-import { wrapSticker } from "./wrappers";
-import LazyLoadQueue from "./lazyLoadQueue";
-import { putPreloader } from "./misc";
-import animationIntersector from "./animationIntersector";
-import { findUpClassName } from "../helpers/dom";
-import appImManager from "../lib/appManagers/appImManager";
-import { StickerSet } from "../layer";
-import mediaSizes from "../helpers/mediaSizes";
+import PopupElement from ".";
+import appStickersManager from "../../lib/appManagers/appStickersManager";
+import { RichTextProcessor } from "../../lib/richtextprocessor";
+import Scrollable from "../scrollable";
+import { wrapSticker } from "../wrappers";
+import LazyLoadQueue from "../lazyLoadQueue";
+import { putPreloader } from "../misc";
+import animationIntersector from "../animationIntersector";
+import { findUpClassName } from "../../helpers/dom";
+import appImManager from "../../lib/appManagers/appImManager";
+import { StickerSet } from "../../layer";
+import mediaSizes from "../../helpers/mediaSizes";
 
 const ANIMATION_GROUP = 'STICKERS-POPUP';
 
@@ -74,7 +74,7 @@ export default class PopupStickers extends PopupElement {
     this.stickersFooter.setAttribute('disabled', 'true');
 
     appStickersManager.toggleStickerSet(this.set).then(() => {
-      this.closeBtn.click();
+      this.btnClose.click();
     }).catch(() => {
       this.stickersFooter.removeAttribute('disabled');
     });
@@ -86,7 +86,7 @@ export default class PopupStickers extends PopupElement {
 
     const fileId = target.dataset.docId;
     if(appImManager.chat.input.sendMessageWithDocument(fileId)) {
-      this.closeBtn.click();
+      this.btnClose.click();
     } else {
       console.warn('got no doc by id:', fileId);
     }

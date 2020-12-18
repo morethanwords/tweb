@@ -1,6 +1,6 @@
-import appMessagesManager from "../lib/appManagers/appMessagesManager";
-import { PopupButton } from "./popup";
-import PopupPeer from "./popupPeer";
+import appMessagesManager from "../../lib/appManagers/appMessagesManager";
+import { PopupButton } from ".";
+import PopupPeer from "./peer";
 
 export default class PopupPinMessage {
   constructor(peerId: number, mid: number, unpin?: true) {

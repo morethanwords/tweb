@@ -1,5 +1,5 @@
 import type { AppChatsManager } from '../../lib/appManagers/appChatsManager';
-import type { AppDocsManager } from "../../lib/appManagers/appDocsManager";
+import type { AppDocsManager, MyDocument } from "../../lib/appManagers/appDocsManager";
 import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManager";
 import type { AppPeersManager } from '../../lib/appManagers/appPeersManager';
 import type { AppWebPagesManager } from "../../lib/appManagers/appWebPagesManager";
@@ -11,12 +11,12 @@ import apiManager from "../../lib/mtproto/mtprotoworker";
 //import Recorder from '../opus-recorder/dist/recorder.min';
 import opusDecodeController from "../../lib/opusDecodeController";
 import RichTextProcessor from "../../lib/richtextprocessor";
-import { attachClickEvent, blurActiveElement, cancelEvent, cancelSelection, findUpClassName, getRichValue, getSelectedNodes, isInputEmpty, markdownTags, MarkdownType, placeCaretAtEnd, serializeNodes } from "../../helpers/dom";
-import ButtonMenu, { ButtonMenuItemOptions } from '../buttonMenu';
+import { attachClickEvent, blurActiveElement, cancelEvent, cancelSelection, findUpClassName, getSelectedNodes, isInputEmpty, markdownTags, MarkdownType, placeCaretAtEnd, serializeNodes } from "../../helpers/dom";
+import { ButtonMenuItemOptions } from '../buttonMenu';
 import emoticonsDropdown from "../emoticonsDropdown";
-import PopupCreatePoll from "../popupCreatePoll";
-import PopupForward from '../popupForward';
-import PopupNewMedia from '../popupNewMedia';
+import PopupCreatePoll from "../popups/createPoll";
+import PopupForward from '../popups/forward';
+import PopupNewMedia from '../popups/newMedia';
 import Scrollable from "../scrollable";
 import { toast } from "../toast";
 import { wrapReply } from "../wrappers";
@@ -28,7 +28,9 @@ import DivAndCaption from '../divAndCaption';
 import ButtonMenuToggle from '../buttonMenuToggle';
 import ListenerSetter from '../../helpers/listenerSetter';
 import Button from '../button';
-import { attachContextMenuListener, openBtnMenu } from '../misc';
+import PopupSchedule from '../popups/schedule';
+import SendMenu from './sendContextMenu';
+import rootScope from '../../lib/rootScope';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -37,7 +39,8 @@ type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply';
 
 export default class ChatInput {
   public pageEl = document.getElementById('page-chats') as HTMLDivElement;
-  public messageInput: HTMLDivElement;
+  public messageInput: HTMLElement;
+  public messageInputField: InputField;
   public fileInput: HTMLInputElement;
   public inputMessageContainer: HTMLDivElement;
   public inputScroll: Scrollable;
@@ -56,8 +59,7 @@ export default class ChatInput {
   public attachMenu: HTMLButtonElement;
   private attachMenuButtons: (ButtonMenuItemOptions & {verify: (peerId: number) => boolean})[];
 
-  public sendMenu: HTMLDivElement;
-  private sendMenuButtons: (ButtonMenuItemOptions & {verify: (peerId: number) => boolean})[];
+  public sendMenu: SendMenu;
 
   public replyElements: {
     container?: HTMLElement,
@@ -69,9 +71,11 @@ export default class ChatInput {
   public willSendWebPage: any = null;
   public forwardingMids: number[] = [];
   public forwardingFromPeerId: number = 0;
-  public replyToMsgId = 0;
-  public editMsgId = 0;
+  public replyToMsgId: number;
+  public editMsgId: number;
   public noWebPage: true;
+  public scheduleDate: number;
+  public sendSilent: true;
 
   private recorder: any;
   private recording = false;
@@ -160,8 +164,36 @@ export default class ChatInput {
 
     this.inputScroll = new Scrollable(this.inputMessageContainer);
 
-    this.btnScheduled = ButtonIcon('schedule', {noRipple: true});
-    this.btnScheduled.classList.add('btn-scheduled', 'hide');
+    if(this.chat.type === 'chat') {
+      this.btnScheduled = ButtonIcon('schedule', {noRipple: true});
+      this.btnScheduled.classList.add('btn-scheduled', 'hide');
+
+      attachClickEvent(this.btnScheduled, (e) => {
+        this.appImManager.openScheduled(this.chat.peerId);
+      }, {listenerSetter: this.listenerSetter});
+
+      this.listenerSetter.add(rootScope, 'scheduled_new', (e) => {
+        const peerId = e.detail.peerId;
+
+        if(this.chat.peerId !== peerId) {
+          return;
+        }
+
+        this.btnScheduled.classList.remove('hide');
+      });
+
+      this.listenerSetter.add(rootScope, 'scheduled_delete', (e) => {
+        const peerId = e.detail.peerId;
+
+        if(this.chat.peerId !== peerId) {
+          return;
+        }
+
+        this.appMessagesManager.getScheduledMessages(this.chat.peerId).then(value => {
+          this.btnScheduled.classList.toggle('hide', !value.length);
+        });
+      });
+    }
 
     this.attachMenuButtons = [{
       icon: 'photo',
@@ -187,7 +219,7 @@ export default class ChatInput {
       icon: 'poll',
       text: 'Poll',
       onClick: () => {
-        new PopupCreatePoll(this.chat.peerId).show();
+        new PopupCreatePoll(this.chat).show();
       },
       verify: (peerId: number) => peerId < 0 && this.appChatsManager.hasRights(peerId, 'send', 'send_polls')
     }];
@@ -196,24 +228,6 @@ export default class ChatInput {
     this.attachMenu.classList.add('attach-file', 'tgico-attach');
     this.attachMenu.classList.remove('tgico-more');
 
-    this.sendMenuButtons = [{
-      icon: 'mute',
-      text: 'Send Without Sound',
-      onClick: () => {
-        
-      },
-      verify: (peerId: number) => true
-    }, {
-      icon: 'schedule',
-      text: 'Schedule Message',
-      onClick: () => {
-        
-      },
-      verify: (peerId: number) => true
-    }];
-
-    this.sendMenu = ButtonMenu(this.sendMenuButtons, this.listenerSetter);
-    this.sendMenu.classList.add('menu-send', 'top-left');
     //this.inputContainer.append(this.sendMenu);
 
     this.recordTimeEl = document.createElement('div');
@@ -224,7 +238,7 @@ export default class ChatInput {
     this.fileInput.multiple = true;
     this.fileInput.style.display = 'none';
 
-    this.newMessageWrapper.append(this.btnToggleEmoticons, this.inputMessageContainer, this.btnScheduled, this.attachMenu, this.recordTimeEl, this.fileInput);
+    this.newMessageWrapper.append(...[this.btnToggleEmoticons, this.inputMessageContainer, this.btnScheduled, this.attachMenu, this.recordTimeEl, this.fileInput].filter(Boolean));
 
     this.rowsWrapper.append(this.replyElements.container, this.newMessageWrapper);
 
@@ -239,19 +253,32 @@ export default class ChatInput {
     this.btnSend = ButtonIcon('none btn-circle z-depth-1 btn-send');
     this.btnSend.insertAdjacentHTML('afterbegin', `
     <span class="tgico tgico-send"></span>
+    <span class="tgico tgico-schedule"></span>
+    <span class="tgico tgico-check"></span>
     <span class="tgico tgico-microphone2"></span>
     `);
 
-    attachContextMenuListener(this.btnSend, (e: any) => {
-      if(this.isInputEmpty()) {
-        return;
-      }
-      
-      cancelEvent(e);
-      openBtnMenu(this.sendMenu);
-    }, this.listenerSetter);
+    this.btnSendContainer.append(this.recordRippleEl, this.btnSend);
 
-    this.btnSendContainer.append(this.recordRippleEl, this.btnSend, this.sendMenu);
+    if(this.chat.type !== 'scheduled') {
+      this.sendMenu = new SendMenu({
+        onSilentClick: () => {
+          this.sendSilent = true;
+          this.sendMessage();
+        },
+        onScheduleClick: () => {
+          this.scheduleSending(undefined);
+        },
+        listenerSetter: this.listenerSetter,
+        openSide: 'top-left',
+        onContextElement: this.btnSend,
+        onOpen: () => {
+          return !this.isInputEmpty();
+        }
+      });
+      
+      this.btnSendContainer.append(this.sendMenu.sendMenu);
+    }
 
     this.inputContainer.append(this.btnCancelRecord, this.btnSendContainer);
 
@@ -294,7 +321,7 @@ export default class ChatInput {
         return;
       }
       
-      new PopupNewMedia(Array.from(files).slice(), this.willAttachType);
+      new PopupNewMedia(this.chat, Array.from(files).slice(), this.willAttachType);
       this.fileInput.value = '';
     }, false);
 
@@ -314,11 +341,7 @@ export default class ChatInput {
       cancelEvent(e);
       console.log(eventName + ', time: ' + (Date.now() - time));
     }); */
-    attachClickEvent(this.btnSend, this.onBtnSendClick, {listenerSetter: this.listenerSetter});
-
-    attachClickEvent(this.btnScheduled, (e) => {
-      this.appImManager.setInnerPeer(this.chat.peerId, 0, 'scheduled');
-    }, {listenerSetter: this.listenerSetter});
+    attachClickEvent(this.btnSend, this.onBtnSendClick, {listenerSetter: this.listenerSetter, touchMouseDown: true});
 
     if(this.recorder) {
       const onCancelRecordClick = (e: Event) => {
@@ -414,6 +437,22 @@ export default class ChatInput {
     this.btnToggleEmoticons.classList.toggle(toggleClass, false);
   };
 
+  public scheduleSending = (callback: () => void = this.sendMessage.bind(this, true), initDate = new Date()) => {
+    new PopupSchedule(initDate, (timestamp) => {
+      const minTimestamp = (Date.now() / 1000 | 0) + 10;
+      if(timestamp <= minTimestamp) {
+        timestamp = undefined;
+      }
+
+      this.scheduleDate = timestamp;
+      callback();
+
+      if(this.chat.type !== 'scheduled' && timestamp) {
+        this.appImManager.openScheduled(this.chat.peerId);
+      }
+    }).show();
+  };
+
   public setUnreadCount() {
     const dialog = this.appMessagesManager.getDialogByPeerId(this.chat.peerId)[0];
     const count = dialog?.unread_count;
@@ -457,15 +496,22 @@ export default class ChatInput {
       this.setUnreadCount();
     }
 
-    if(this.chat.type == 'pinned') {
+    if(this.chat.type === 'pinned') {
       this.chatInput.classList.toggle('can-pin', this.appPeersManager.canPinMessage(peerId));
-    } else if(this.chat.type == 'chat') {
+    }/*  else if(this.chat.type === 'chat') {
+    } */
+
+    if(this.btnScheduled) {
       this.btnScheduled.classList.add('hide');
       const middleware = this.chat.bubbles.getMiddleware();
       this.appMessagesManager.getScheduledMessages(peerId).then(mids => {
         if(!middleware()) return;
         this.btnScheduled.classList.toggle('hide', !mids.length);
       });
+    }
+
+    if(this.sendMenu) {
+      this.sendMenu.setPeerId(peerId);
     }
 
     if(this.messageInput) {
@@ -495,20 +541,20 @@ export default class ChatInput {
   }
 
   private attachMessageInputField() {
-    const messageInputField = InputField({
+    this.messageInputField = new InputField({
       placeholder: 'Message',
       name: 'message'
     });
 
-    messageInputField.input.className = 'input-message-input';
-    this.messageInput = messageInputField.input;
+    this.messageInputField.input.className = 'input-message-input';
+    this.messageInput = this.messageInputField.input;
     this.attachMessageInputListeners();
 
     const container = this.inputScroll.container;
     if(container.firstElementChild) {
-      container.replaceChild(messageInputField.input, container.firstElementChild);
+      container.replaceChild(this.messageInputField.input, container.firstElementChild);
     } else {
-      container.append(messageInputField.input);
+      container.append(this.messageInputField.input);
     }
   }
 
@@ -752,7 +798,7 @@ export default class ChatInput {
 
     //console.log('messageInput input', this.messageInput.innerText, this.serializeNodes(Array.from(this.messageInput.childNodes)));
     //const value = this.messageInput.innerText;
-    const richValue = getRichValue(this.messageInput);
+    const richValue = this.messageInputField.value;
       
     //const entities = RichTextProcessor.parseEntities(value);
     const markdownEntities: MessageEntity[] = [];
@@ -846,8 +892,8 @@ export default class ChatInput {
 
   private onBtnSendClick = (e: Event) => {
     cancelEvent(e);
-      
-    if(!this.recorder || this.recording || !this.isInputEmpty() || this.forwardingMids.length) {
+
+    if(!this.recorder || this.recording || !this.isInputEmpty() || this.forwardingMids.length || this.editMsgId) {
       if(this.recording) {
         if((Date.now() - this.recordStartTime) < RECORD_MIN_TIME) {
           this.btnCancelRecord.click();
@@ -1011,20 +1057,27 @@ export default class ChatInput {
   }
 
   public updateSendBtn() {
-    let icon: 'send' | 'record';
+    let icon: 'send' | 'record' | 'edit' | 'schedule';
 
-    if(!this.recorder || this.recording || !this.isInputEmpty() || this.forwardingMids.length || this.editMsgId) icon = 'send';
+    if(this.editMsgId) icon = 'edit';
+    else if(!this.recorder || this.recording || !this.isInputEmpty() || this.forwardingMids.length) icon = this.chat.type === 'scheduled' ? 'schedule' : 'send';
     else icon = 'record';
 
-    this.btnSend.classList.toggle('send', icon == 'send');
-    this.btnSend.classList.toggle('record', icon == 'record');
+    ['send', 'record', 'edit', 'schedule'].forEach(i => {
+      this.btnSend.classList.toggle(i, icon === i);
+    });
   }
 
   public onMessageSent(clearInput = true, clearReply?: boolean) {
-    let dialog = this.appMessagesManager.getDialogByPeerId(this.chat.peerId)[0];
-    if(dialog && dialog.top_message) {
-      this.appMessagesManager.readHistory(this.chat.peerId, dialog.top_message); // lol
+    if(this.chat.type !== 'scheduled') {
+      let dialog = this.appMessagesManager.getDialogByPeerId(this.chat.peerId)[0];
+      if(dialog && dialog.top_message) {
+        this.appMessagesManager.readHistory(this.chat.peerId, dialog.top_message); // lol
+      }
     }
+
+    this.scheduleDate = undefined;
+    this.sendSilent = undefined;
 
     if(clearInput) {
       this.lastUrl = '';
@@ -1040,23 +1093,30 @@ export default class ChatInput {
     this.updateSendBtn();
   }
 
-  public sendMessage() {
+  public sendMessage(force = false) {
+    if(this.chat.type === 'scheduled' && !force && !this.editMsgId) {
+      this.scheduleSending();
+      return;
+    }
+
     //let str = this.serializeNodes(Array.from(this.messageInput.childNodes));
-    let str = getRichValue(this.messageInput);
+    let str = this.messageInputField.value;
 
     //console.log('childnode str after:', str/* , getRichValue(this.messageInput) */);
 
     //return;
 
     if(this.editMsgId) {
-      this.appMessagesManager.editMessage(this.chat.peerId, this.editMsgId, str, {
+      this.appMessagesManager.editMessage(this.chat.getMessage(this.editMsgId), str, {
         noWebPage: this.noWebPage
       });
     } else {
       this.appMessagesManager.sendText(this.chat.peerId, str, {
-        replyToMsgId: this.replyToMsgId || this.replyToMsgId,
+        replyToMsgId: this.replyToMsgId,
         noWebPage: this.noWebPage,
-        webPage: this.willSendWebPage
+        webPage: this.willSendWebPage,
+        scheduleDate: this.scheduleDate,
+        silent: this.sendSilent
       });
     }
 
@@ -1065,18 +1125,40 @@ export default class ChatInput {
       const mids = this.forwardingMids.slice();
       const fromPeerId = this.forwardingFromPeerId;
       const peerId = this.chat.peerId;
+      const silent = this.sendSilent;
+      const scheduleDate = this.scheduleDate;
       setTimeout(() => {
-        this.appMessagesManager.forwardMessages(peerId, fromPeerId, mids);
+        this.appMessagesManager.forwardMessages(peerId, fromPeerId, mids, {
+          silent,
+          scheduleDate: scheduleDate
+        });
       }, 0);
     }
 
     this.onMessageSent();
   }
 
-  public sendMessageWithDocument(document: any) {
+  public sendMessageWithDocument(document: MyDocument | string, force = false) {
     document = this.appDocsManager.getDoc(document);
-    if(document && document._ != 'documentEmpty') {
-      this.appMessagesManager.sendFile(this.chat.peerId, document, {isMedia: true, replyToMsgId: this.replyToMsgId});
+
+    const flag = document.type === 'sticker' ? 'send_stickers' : (document.type === 'gif' ? 'send_gifs' : 'send_media');
+    if(this.chat.peerId < 0 && !this.appChatsManager.hasRights(this.chat.peerId, 'send', flag)) {
+      toast(POSTING_MEDIA_NOT_ALLOWED);
+      return;
+    }
+
+    if(this.chat.type === 'scheduled' && !force) {
+      this.scheduleSending(() => this.sendMessageWithDocument(document, true));
+      return false;
+    }
+
+    if(document) {
+      this.appMessagesManager.sendFile(this.chat.peerId, document, {
+        isMedia: true, 
+        replyToMsgId: this.replyToMsgId, 
+        silent: this.sendSilent, 
+        scheduleDate: this.scheduleDate
+      });
       this.onMessageSent(false, true);
 
       if(document.type == 'sticker') {
@@ -1088,6 +1170,18 @@ export default class ChatInput {
     
     return false;
   }
+
+  /* public sendSomething(callback: () => void, force = false) {
+    if(this.chat.type === 'scheduled' && !force) {
+      this.scheduleSending(() => this.sendSomething(callback, true));
+      return false;
+    }
+
+    callback();
+    this.onMessageSent(false, true);
+
+    return true;
+  } */
 
   public initMessageEditing(mid: number) {
     const message = this.chat.getMessage(mid);
@@ -1146,10 +1240,10 @@ export default class ChatInput {
       this.willSendWebPage = null;
     }
     
-    this.replyToMsgId = 0;
+    this.replyToMsgId = undefined;
     this.forwardingMids.length = 0;
     this.forwardingFromPeerId = 0;
-    this.editMsgId = 0;
+    this.editMsgId = undefined;
     this.helperType = this.helperFunc = undefined;
     this.chat.container.classList.remove('is-helper-active');
   }

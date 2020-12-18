@@ -4,7 +4,7 @@ import appChatsManager from "../../../lib/appManagers/appChatsManager";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import { SearchGroup } from "../../appSearch";
-import PopupAvatar from "../../popupAvatar";
+import PopupAvatar from "../../popups/avatar";
 import Scrollable from "../../scrollable";
 import { SliderTab } from "../../slider";
 

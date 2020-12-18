@@ -1041,10 +1041,11 @@ export function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, 
   return nameContainer;
 }
 
-export function wrapPoll(peerId: number, pollId: string, mid: number) {
+export function wrapPoll(message: any) {
   const elem = new PollElement();
-  elem.setAttribute('peer-id', '' + peerId);
-  elem.setAttribute('poll-id', pollId);
-  elem.setAttribute('message-id', '' + mid);
+  elem.message = message;
+  elem.setAttribute('peer-id', '' + message.peerId);
+  elem.setAttribute('poll-id', message.media.poll.id);
+  elem.setAttribute('message-id', '' + message.mid);
   return elem;
 }

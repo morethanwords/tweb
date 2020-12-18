@@ -498,7 +498,7 @@ export default class AppSharedMediaTab implements SliderTab {
           div.append(img);
 
           if(isDownloaded || willHaveThumb) {
-            const promise = new Promise((resolve, reject) => {
+            const promise = new Promise<void>((resolve, reject) => {
               (thumb || img).addEventListener('load', () => {
                 clearTimeout(timeout);
                 resolve();
@@ -542,14 +542,14 @@ export default class AppSharedMediaTab implements SliderTab {
           if(message.media?.webpage && message.media.webpage._ != 'webPageEmpty') {
             webpage = message.media.webpage;
           } else {
-            const entity = message.totalEntities.find((e: any) => e._ == 'messageEntityUrl' || e._ == 'messageEntityTextUrl');
+            const entity = message.totalEntities ? message.totalEntities.find((e: any) => e._ == 'messageEntityUrl' || e._ == 'messageEntityTextUrl') : null;
             let url: string, display_url: string, sliced: string;
 
             if(!entity) {
-              this.log.error('NO ENTITY:', message);
+              //this.log.error('NO ENTITY:', message);
               const match = RichTextProcessor.matchUrl(message.message);
               if(!match) {
-                this.log.error('NO ENTITY AND NO MATCH:', message);
+                //this.log.error('NO ENTITY AND NO MATCH:', message);
                 continue;
               }
 
@@ -745,7 +745,8 @@ export default class AppSharedMediaTab implements SliderTab {
       //let loadCount = history.length ? 50 : 15;
       return this.loadSidebarMediaPromises[type] = appMessagesManager.getSearch(peerId, '', {_: type}, maxId, loadCount)
       .then(value => {
-        history.push(...value.history);
+        const mids = value.history.map(message => message.mid);
+        history.push(...mids);
         
         this.log(logStr + 'search house of glass', type, value);
 
@@ -783,7 +784,7 @@ export default class AppSharedMediaTab implements SliderTab {
         }
 
         //if(value.history.length) {
-          return this.performSearchResult(this.filterMessagesByType(value.history, type), type);
+          return this.performSearchResult(this.filterMessagesByType(mids, type), type);
         //}
       }).catch(err => {
         this.log.error('load error:', err);

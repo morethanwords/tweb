@@ -115,19 +115,18 @@ export default class ChatTopbar {
     mediaSizes.addListener('changeScreen', this.onChangeScreen);
 
     this.listenerSetter.add(this.container, 'click', (e) => {
-      const pinned: HTMLElement = findUpClassName(e.target, 'pinned-container');
-      if(pinned) {
+      const container: HTMLElement = findUpClassName(e.target, 'pinned-container');
+      if(container) {
         cancelEvent(e);
         
-        const mid = +pinned.dataset.mid;
-        if(pinned.classList.contains('pinned-message')) {
+        const mid = +container.dataset.mid;
+        const peerId = +container.dataset.peerId;
+        if(container.classList.contains('pinned-message')) {
           //if(!this.pinnedMessage.locked) {
             this.pinnedMessage.followPinnedMessage(mid);
           //}
         } else {
-          const message = this.appMessagesManager.getMessageByPeer(this.peerId, mid);
-  
-          this.chat.appImManager.setInnerPeer(message.peerId, mid);
+          this.chat.appImManager.setInnerPeer(peerId, mid);
         }
       } else {
         this.appSidebarRight.toggleSidebar(true);
@@ -374,7 +373,8 @@ export default class ChatTopbar {
   public setTitle(count?: number) {
     let title = '';
     if(this.chat.type === 'pinned') {
-      title = count === -1 ? 'Pinned Messages' : (count === 1 ? 'Pinned Message' : (count + ' Pinned Messages'));
+      //title = !count ? 'Pinned Messages' : (count === 1 ? 'Pinned Message' : (count + ' Pinned Messages'));
+      title = [count > 1 ? count : false, 'Pinned Messages'].filter(Boolean).join(' ');
       
       if(count === undefined) {
         this.appMessagesManager.getSearchCounters(this.peerId, [{_: 'inputMessagesFilterPinned'}]).then(result => {
@@ -394,7 +394,13 @@ export default class ChatTopbar {
         });
       }
     } else if(this.chat.type === 'scheduled') {
-      title = count === -1 ? 'Scheduled Messages' : (count === 1 ? 'Scheduled Message' : (count + ' Scheduled Messages'));
+      if(this.peerId === rootScope.myId) {
+        //title = !count ? 'Reminders' : (count === 1 ? 'Reminder' : (count + ' Reminders'));
+        title = [count > 1 ? count : false, 'Reminders'].filter(Boolean).join(' ');
+      } else {
+        //title = !count ? 'Scheduled Messages' : (count === 1 ? 'Scheduled Message' : (count + ' Scheduled Messages'));
+        title = [count > 1 ? count : false, 'Scheduled Messages'].filter(Boolean).join(' ');
+      }
       
       if(count === undefined) {
         this.appMessagesManager.getScheduledMessages(this.peerId).then(mids => {

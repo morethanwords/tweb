@@ -64,7 +64,7 @@ export const roundPercents = (percents: number[]) => {
   //console.log('roundPercents after percents:', percents);
 };
 
-const connectedPolls: {id: string, element: PollElement}[] = [];
+/* const connectedPolls: {id: string, element: PollElement}[] = [];
 rootScope.on('poll_update', (e) => {
   const {poll, results} = e.detail as {poll: Poll, results: PollResults};
 
@@ -75,6 +75,17 @@ rootScope.on('poll_update', (e) => {
       pollElement.isClosed = !!poll.pFlags.closed;
       pollElement.performResults(results, poll.chosenIndexes);
     }
+  }
+}); */
+
+rootScope.on('poll_update', (e) => {
+  const {poll, results} = e.detail as {poll: Poll, results: PollResults};
+
+  const pollElement = document.querySelector(`poll-element[poll-id="${poll.id}"]`) as PollElement;
+  //console.log('poll_update', poll, results);
+  if(pollElement) {
+    pollElement.isClosed = !!poll.pFlags.closed;
+    pollElement.performResults(results, poll.chosenIndexes);
   }
 });
 
@@ -152,9 +163,7 @@ export default class PollElement extends HTMLElement {
   private chosenIndexes: number[] = [];
   private percents: number[];
 
-  private peerId: number;
-  private pollId: string;
-  private mid: number;
+  public message: any;
 
   private quizInterval: number;
   private quizTimer: SVGSVGElement;
@@ -179,12 +188,14 @@ export default class PollElement extends HTMLElement {
       //console.log('line total length:', lineTotalLength);
     }
 
-    this.peerId = +this.getAttribute('peer-id');
-    this.pollId = this.getAttribute('poll-id');
-    this.mid = +this.getAttribute('message-id');
-    const {poll, results} = appPollsManager.getPoll(this.pollId);
+    const pollId = this.message.media.poll.id;
+    const {poll, results} = appPollsManager.getPoll(pollId);
 
-    connectedPolls.push({id: this.pollId, element: this});
+    /* const timestamp = Date.now() / 1000 | 0;
+    if(timestamp < this.message.date) { */
+    if(this.message.pFlags.is_scheduled) {
+      this.classList.add('disable-hover');
+    }
 
     //console.log('pollElement poll:', poll, results);
 
@@ -309,7 +320,7 @@ export default class PollElement extends HTMLElement {
 
             setTimeout(() => {
               // нужно запросить апдейт чтобы опрос обновился
-              appPollsManager.getResults(this.peerId, this.mid);
+              appPollsManager.getResults(this.message);
             }, 3e3);
           }
         }, 1e3);
@@ -326,7 +337,7 @@ export default class PollElement extends HTMLElement {
 
     this.viewResults.addEventListener('click', (e) => {
       cancelEvent(e);
-      appSidebarRight.pollResultsTab.init(this.peerId, this.pollId, this.mid);
+      appSidebarRight.pollResultsTab.init(this.message);
     });
     ripple(this.viewResults);
 
@@ -367,32 +378,6 @@ export default class PollElement extends HTMLElement {
     } else if(!this.isClosed) {
       this.setVotersCount(results);
       attachClickEvent(this, this.clickHandler);
-    }
-  }
-
-  disconnectedCallback() {
-    // браузер вызывает этот метод при удалении элемента из документа
-    // (может вызываться много раз, если элемент многократно добавляется/удаляется)
-
-    connectedPolls.findAndSplice(c => c.element == this);
-  }
-
-  static get observedAttributes(): string[] {
-    return ['poll-id', 'message-id'/* массив имён атрибутов для отслеживания их изменений */];
-  }
-
-  attributeChangedCallback(name: string, oldValue: string, newValue: string) {
-    // вызывается при изменении одного из перечисленных выше атрибутов
-    // console.log('Poll: attributeChangedCallback', name, oldValue, newValue, this.isConnected);
-    if(name == 'poll-id') {
-      this.pollId = newValue;
-    } else if(name == 'message-id') {
-      this.mid = +newValue;
-    }
-
-    if(this.mid > 0 && oldValue !== undefined && +oldValue < 0) {
-      this.disconnectedCallback();
-      connectedPolls.push({id: this.pollId, element: this});
     }
   }
 
@@ -466,7 +451,7 @@ export default class PollElement extends HTMLElement {
     
     this.classList.add('disable-hover');
     this.sentVote = true;
-    return this.sendVotePromise = appPollsManager.sendVote(this.peerId, this.mid, indexes).then(() => {
+    return this.sendVotePromise = appPollsManager.sendVote(this.message, indexes).then(() => {
       targets.forEach(target => {
         target.classList.remove('is-voting');
       });

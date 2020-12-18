@@ -1,7 +1,7 @@
-import appDownloadManager from "../lib/appManagers/appDownloadManager";
-import resizeableImage from "../lib/cropper";
-import { PopupElement } from "./popup";
-import { ripple } from "./ripple";
+import appDownloadManager from "../../lib/appManagers/appDownloadManager";
+import resizeableImage from "../../lib/cropper";
+import PopupElement from ".";
+import { ripple } from "../ripple";
 
 export default class PopupAvatar extends PopupElement {
   private cropContainer: HTMLElement;
@@ -26,7 +26,7 @@ export default class PopupAvatar extends PopupElement {
     this.h6 = document.createElement('h6');
     this.h6.innerText = 'Drag to Reposition';
 
-    this.closeBtn.classList.remove('btn-icon');
+    this.btnClose.classList.remove('btn-icon');
 
     this.header.append(this.h6);
 
@@ -70,7 +70,7 @@ export default class PopupAvatar extends PopupElement {
     ripple(this.btnSubmit);
     this.btnSubmit.addEventListener('click', () => {
       this.cropper.crop();
-      this.closeBtn.click();
+      this.btnClose.click();
 
       this.canvas.toBlob(blob => {
         this.blob = blob; // save blob to send after reg

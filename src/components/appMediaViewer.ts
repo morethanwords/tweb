@@ -20,7 +20,7 @@ import { ButtonMenuItemOptions } from "./buttonMenu";
 import ButtonMenuToggle from "./buttonMenuToggle";
 import { LazyLoadQueueBase } from "./lazyLoadQueue";
 import { renderImageFromUrl } from "./misc";
-import PopupForward from "./popupForward";
+import PopupForward from "./popups/forward";
 import ProgressivePreloader from "./preloader";
 import Scrollable from "./scrollable";
 import appSidebarRight from "./sidebarRight";
@@ -1261,8 +1261,8 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       }
 
       const method = older ? value.history.forEach : value.history.forEachReverse;
-      method.call(value.history, mid => {
-        const message = appMessagesManager.getMessageByPeer(this.peerId, mid);
+      method.call(value.history, message => {
+        const mid = message.mid
         const media = this.getMediaFromMessage(message);
 
         if(!media) return;
