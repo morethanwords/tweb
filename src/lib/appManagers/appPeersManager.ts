@@ -22,6 +22,7 @@ const DialogColorsFg = ['#c03d33', '#4fad2d', '#d09306', '#168acd', '#8544d6', '
 const DialogColors = ['#e17076', '#7bc862', '#e5ca77', '#65AADD', '#a695e7', '#ee7aae', '#6ec9cb', '#faa774'];
 const DialogColorsMap = [0, 7, 4, 1, 6, 3, 5];
 
+export type PeerType = 'channel' | 'chat' | 'megagroup' | 'group' | 'saved';
 export class AppPeersManager {
   /* public savePeerInstance(peerId: number, instance: any) {
     if(peerId < 0) appChatsManager.saveApiChat(instance);
@@ -227,6 +228,29 @@ export class AppPeersManager {
       text = '%pg ' + (chat.title || '');
     }
     return text;
+  }
+
+  public getDialogType(peerId: number): PeerType {
+    if(appPeersManager.isMegagroup(peerId)) {
+      return 'megagroup';
+    } else if(appPeersManager.isChannel(peerId)) {
+      return 'channel';
+    } else if(peerId < 0) {
+      return 'group';
+    } else {
+      return peerId == rootScope.myId ? 'saved' : 'chat';
+    }
+  }
+
+  public getDeleteButtonText(peerId: number) {
+    switch(this.getDialogType(peerId)) {
+      case 'megagroup':
+      case 'channel':
+        return 'Leave';
+      
+      default:
+        return 'Delete';
+    }
   }
 }
 

@@ -8,7 +8,6 @@ import Scrollable, { ScrollableX, SliceSides, SliceSidesContainer } from "../../
 import appSidebarLeft from "../../components/sidebarLeft";
 import { formatDateAccordingToToday } from "../../helpers/date";
 import { escapeRegExp } from "../../helpers/string";
-import { isTouchSupported } from "../../helpers/touchSupport";
 import { isApple, isSafari } from "../../helpers/userAgent";
 import { logger, LogLevels } from "../logger";
 import { RichTextProcessor } from "../richtextprocessor";
@@ -621,7 +620,7 @@ export class AppDialogsManager {
     
     if(this.loadDialogsPromise/*  || 1 == 1 */) return this.loadDialogsPromise;
 
-    const promise = new Promise(async(resolve, reject) => {
+    const promise = new Promise<void>(async(resolve, reject) => {
       if(!this.chatList.childElementCount) {
         const container = this.chatList.parentElement;
         container.append(this.chatsPreloader);

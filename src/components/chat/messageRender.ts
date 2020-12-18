@@ -1,7 +1,7 @@
 import { getFullDate } from "../../helpers/date";
 import { formatNumber } from "../../helpers/number";
-import appImManager from "../../lib/appManagers/appImManager";
 import RichTextProcessor from "../../lib/richtextprocessor";
+import Chat from "./chat";
 
 type Message = any;
 
@@ -10,7 +10,7 @@ export namespace MessageRender {
 
   }; */
 
-  export const setTime = (message: Message, bubble: HTMLElement, bubbleContainer: HTMLElement, messageDiv: HTMLElement) => {
+  export const setTime = (chat: Chat, message: Message, bubble: HTMLElement, bubbleContainer: HTMLElement, messageDiv: HTMLElement) => {
     const date = new Date(message.date * 1000);
     let time = ('0' + date.getHours()).slice(-2) + ':' + ('0' + date.getMinutes()).slice(-2);
 
@@ -40,7 +40,7 @@ export namespace MessageRender {
       time = '<i class="edited">edited</i> ' + time;
     }
 
-    if(appImManager.chat.type != 'pinned' && message.pFlags.pinned) {
+    if(chat.type != 'pinned' && message.pFlags.pinned) {
       bubble.classList.add('is-pinned');
       time = '<i class="tgico tgico-pinnedchat"></i>' + time;
     }

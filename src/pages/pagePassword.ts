@@ -43,10 +43,12 @@ let onFirstMount = (): Promise<any> => {
 
   let handleError = (err: any) => {
     btnNext.removeAttribute('disabled');
+    passwordInput.classList.add('error');
     
     switch(err.type) {
       default:
-        btnNext.innerText = err.type;
+        //btnNext.innerText = err.type;
+        btnNext.innerText = 'INVALID PASSWORD';
         break;
     }
 
@@ -111,6 +113,7 @@ let onFirstMount = (): Promise<any> => {
 
   passwordInput.addEventListener('keypress', function(this, e) {
     this.classList.remove('error');
+    btnNext.innerText = 'NEXT';
 
     if(e.key == 'Enter') {
       return btnNext.click();

@@ -17,6 +17,7 @@ import ChatSearch from "./search";
 import { ButtonMenuItemOptions } from "../buttonMenu";
 import ListenerSetter from "../../helpers/listenerSetter";
 import appStateManager from "../../lib/appManagers/appStateManager";
+import PopupDeleteDialog from "../popups/deleteDialog";
 
 export default class ChatTopbar {
   container: HTMLDivElement;
@@ -100,6 +101,9 @@ export default class ChatTopbar {
         this.menuButtons.forEach(button => {
           button.element.classList.toggle('hide', !button.verify());
         });
+
+        // delete button
+        this.menuButtons[this.menuButtons.length - 1].element.firstChild.nodeValue = this.appPeersManager.getDeleteButtonText(this.peerId);
       });
     }
 
@@ -185,7 +189,7 @@ export default class ChatTopbar {
       onClick: () => {
         this.chat.selection.toggleSelection(true, true);
       },
-      verify: () => !this.chat.selection.isSelecting
+      verify: () => !this.chat.selection.isSelecting && !!Object.keys(this.chat.bubbles.bubbles).length
     }, {
       icon: 'select',
       text: 'Clear Selection',
@@ -195,9 +199,11 @@ export default class ChatTopbar {
       verify: () => this.chat.selection.isSelecting
     }, {
       icon: 'delete danger',
-      text: 'Delete and Leave',
-      onClick: () => {},
-      verify: () => true
+      text: 'Delete',
+      onClick: () => {
+        new PopupDeleteDialog(this.peerId);
+      },
+      verify: () => !!this.appMessagesManager.getDialogByPeerId(this.peerId)[0]
     }];
 
     this.btnPinned = ButtonIcon('pinlist');

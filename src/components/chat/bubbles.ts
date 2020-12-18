@@ -1559,7 +1559,7 @@ export default class ChatBubbles {
       messageDiv.innerHTML = richText;
     }
     
-    const timeSpan = MessageRender.setTime(message, bubble, bubbleContainer, messageDiv);
+    const timeSpan = MessageRender.setTime(this.chat, message, bubble, bubbleContainer, messageDiv);
     bubbleContainer.prepend(messageDiv);
     //bubble.prepend(timeSpan, messageDiv); // that's bad
 

@@ -8,13 +8,13 @@ import { positionMenu, openBtnMenu } from "./misc";
 import { PopupButton } from "./popups";
 import PopupPeer from "./popups/peer";
 import ButtonMenu, { ButtonMenuItemOptions } from "./buttonMenu";
+import PopupDeleteDialog from "./popups/deleteDialog";
 
 export default class DialogsContextMenu {
   private element: HTMLElement;
   private buttons: (ButtonMenuItemOptions & {verify: () => boolean})[];
 
   private selectedId: number;
-  private peerType: 'channel' | 'chat' | 'megagroup' | 'group' | 'saved';
   private filterId: number;
   private dialog: Dialog;
 
@@ -117,96 +117,7 @@ export default class DialogsContextMenu {
   };
 
   private onDeleteClick = () => {
-    let firstName = appPeersManager.getPeerTitle(this.selectedId, false, true);
-
-    let callbackFlush = (justClear?: true) => {
-      appMessagesManager.flushHistory(this.selectedId, justClear);
-    };
-
-    let callbackLeave = () => {
-      appChatsManager.leave(-this.selectedId);
-    };
-
-    let title: string, description: string, buttons: PopupButton[];
-    switch(this.peerType) {
-      case 'channel': {
-        title = 'Leave Channel?';
-        description = `Are you sure you want to leave this channel?`;
-        buttons = [{
-          text: 'LEAVE ' + firstName,
-          isDanger: true,
-          callback: callbackLeave
-        }];
-
-        break;
-      }
-
-      case 'megagroup': {
-        title = 'Leave Group?';
-        description = `Are you sure you want to leave this group?`;
-        buttons = [{
-          text: 'LEAVE ' + firstName,
-          isDanger: true,
-          callback: callbackLeave
-        }];
-
-        break;
-      }
-
-      case 'chat': {
-        title = 'Delete Chat?';
-        description = `Are you sure you want to delete chat with <b>${firstName}</b>?`;
-        buttons = [{
-          text: 'DELETE FOR ME AND ' + firstName,
-          isDanger: true,
-          callback: () => callbackFlush()
-        }, {
-          text: 'DELETE JUST FOR ME',
-          isDanger: true,
-          callback: () => callbackFlush(true)
-        }];
-
-        break;
-      }
-
-      case 'saved': {
-        title = 'Delete Saved Messages?';
-        description = `Are you sure you want to delete all your saved messages?`;
-        buttons = [{
-          text: 'DELETE SAVED MESSAGES',
-          isDanger: true,
-          callback: () => callbackFlush()
-        }];
-
-        break;
-      }
-
-      case 'group': {
-        title = 'Delete and leave Group?';
-        description = `Are you sure you want to delete all message history and leave <b>${firstName}</b>?`;
-        buttons = [{
-          text: 'DELETE AND LEAVE ' + firstName,
-          isDanger: true,
-          callback: () => callbackLeave()
-        }];
-
-        break;
-      }
-    }
-
-    buttons.push({
-      text: 'CANCEL',
-      isCancel: true
-    });
-
-    let popup = new PopupPeer('popup-delete-chat', {
-      peerId: this.selectedId,
-      title: title,
-      description: description,
-      buttons: buttons
-    });
-
-    popup.show();
+    new PopupDeleteDialog(this.selectedId);
   };
 
   onContextMenu = (e: MouseEvent | Touch) => {
@@ -241,25 +152,7 @@ export default class DialogsContextMenu {
     });
 
     // delete button
-    let deleteButtonText = '';
-    if(appPeersManager.isMegagroup(this.selectedId)) {
-      deleteButtonText = 'Leave';
-      //deleteButtonText = 'Leave group';
-      this.peerType = 'megagroup';
-    } else if(appPeersManager.isChannel(this.selectedId)) {
-      deleteButtonText = 'Leave';
-      //deleteButtonText = 'Leave channel';
-      this.peerType = 'channel';
-    } else if(this.selectedId < 0) {
-      deleteButtonText = 'Delete';
-      //deleteButtonText = 'Delete and leave';
-      this.peerType = 'group';
-    } else {
-      deleteButtonText = 'Delete';
-      //deleteButtonText = 'Delete chat';
-      this.peerType = this.selectedId == rootScope.myId ? 'saved' : 'chat';
-    }
-    this.buttons[this.buttons.length - 1].element.firstChild.nodeValue = deleteButtonText;
+    this.buttons[this.buttons.length - 1].element.firstChild.nodeValue = appPeersManager.getDeleteButtonText(this.selectedId);
 
     li.classList.add('menu-open');
     positionMenu(e, this.element);
