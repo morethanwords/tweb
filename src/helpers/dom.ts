@@ -415,11 +415,11 @@ export function calcImageInBox(imageW: number, imageH: number, boxW: number, box
 }
 
 export function positionElementByIndex(element: HTMLElement, container: HTMLElement, pos: number) {
-  const prevPos = whichChild(element);
+  const prevPos = element.parentElement === container ? whichChild(element) : -1;
 
-  if(prevPos == pos) {
+  if(prevPos === pos) {
     return false;
-  } else if(prevPos != -1 && prevPos < pos) { // was higher
+  } else if(prevPos !== -1 && prevPos < pos) { // was higher
     pos += 1;
   }
 

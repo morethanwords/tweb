@@ -254,7 +254,9 @@ export default class ChatBubbles {
       this.renderMessage(mounted.message, true, false, mounted.bubble, updatePosition);
 
       if(updatePosition) {
-        this.deleteEmptyDateGroups();
+        (this.messagesQueuePromise || Promise.resolve()).then(() => {
+          this.deleteEmptyDateGroups();
+        });
       }
     });
 
@@ -271,9 +273,13 @@ export default class ChatBubbles {
     });
 
     this.listenerSetter.add(rootScope, 'messages_downloaded', (e) => {
-      const mids: number[] = e.detail;
+      const {peerId, mids} = e.detail;
       
-      mids.forEach(mid => {
+      if(peerId !== this.peerId) {
+        return;
+      }
+
+      (mids as number[]).forEach(mid => {
         /* const promise = (this.scrollable.scrollLocked && this.scrollable.scrollLockedPromise) || Promise.resolve();
         promise.then(() => {
 
@@ -288,7 +294,7 @@ export default class ChatBubbles {
             
             const message = this.chat.getMessage(mid);
             
-            const repliedMessage = this.chat.getMessage(replyMid);
+            const repliedMessage = this.chat.type === 'scheduled' ? this.appMessagesManager.getMessageByPeer(this.peerId, replyMid) : this.chat.getMessage(replyMid);
             if(repliedMessage.deleted) { // чтобы не пыталось бесконечно загрузить удалённое сообщение
               delete message.reply_to_mid; // WARNING!
             }
@@ -628,7 +634,8 @@ export default class ChatBubbles {
       if(isReplyClick && bubble.classList.contains('is-reply')/*  || bubble.classList.contains('forwarded') */) {
         this.replyFollowHistory.push(+bubble.dataset.mid);
         let originalMessageId = +bubble.getAttribute('data-original-mid');
-        this.chat.setPeer(this.peerId, originalMessageId);
+        this.chat.appImManager.setInnerPeer(this.peerId, originalMessageId);
+        //this.chat.setPeer(this.peerId, originalMessageId);
       }
     } else if(target.tagName == 'IMG' && target.parentElement.tagName == "AVATAR-ELEMENT") {
       let peerId = +target.parentElement.getAttribute('peer');
@@ -1369,12 +1376,12 @@ export default class ChatBubbles {
   
       // * 1 for date, 1 for date sentinel
       let index = 2 + i;
-      if(bubble.parentElement) { // * if already mounted
+      /* if(bubble.parentElement) { // * if already mounted
         const currentIndex = whichChild(bubble);
         if(index > currentIndex) {
           index -= 1; // * minus for already mounted
         }
-      }
+      } */
   
       positionElementByIndex(bubble, dateMessage.container, index);
     } else {
@@ -2111,7 +2118,7 @@ export default class ChatBubbles {
         }
       } else {
         if(message.reply_to_mid) {
-          let originalMessage = this.chat.getMessage(message.reply_to_mid);
+          let originalMessage = this.chat.type === 'scheduled' ? this.appMessagesManager.getMessageByPeer(this.peerId, message.reply_to_mid) : this.chat.getMessage(message.reply_to_mid);
           let originalPeerTitle = this.appPeersManager.getPeerTitle(originalMessage.fromId || originalMessage.fwdFromId, true) || '';
           
           /////////this.log('message to render reply', originalMessage, originalPeerTitle, bubble, message);

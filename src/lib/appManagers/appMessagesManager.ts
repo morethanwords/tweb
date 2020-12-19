@@ -4373,7 +4373,7 @@ export class AppMessagesManager {
           const msgIds: InputMessage[] = mids.map((msgId: number) => {
             return {
               _: 'inputMessageID',
-              id: msgId
+              id: this.getLocalMessageId(msgId)
             };
           });
     
@@ -4396,7 +4396,7 @@ export class AppMessagesManager {
               this.saveMessages(getMessagesResult.messages);
             }
     
-            rootScope.broadcast('messages_downloaded', mids);
+            rootScope.broadcast('messages_downloaded', {peerId: +peerId, mids});
           }));
         }
 
@@ -4411,7 +4411,7 @@ export class AppMessagesManager {
 
   public wrapSingleMessage(peerId: number, msgId: number, overwrite = false): Promise<void> {
     if(this.getMessagesStorage(peerId)[msgId] && !overwrite) {
-      rootScope.broadcast('messages_downloaded', [msgId]);
+      rootScope.broadcast('messages_downloaded', {peerId, mids: [msgId]});
       return Promise.resolve();
     } else if(!this.needSingleMessages[peerId] || this.needSingleMessages[peerId].indexOf(msgId) == -1) {
       (this.needSingleMessages[peerId] ?? (this.needSingleMessages[peerId] = [])).push(msgId);

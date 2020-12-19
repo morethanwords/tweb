@@ -30,23 +30,24 @@ export function decodeWaveform(waveform: Uint8Array | number[]) {
     waveform = new Uint8Array(waveform);
   }
 
-  var bitCount = waveform.length * 8;
-  var valueCount = bitCount / 5 | 0;
+  const bitCount = waveform.length * 8;
+  const valueCount = bitCount / 5 | 0;
   if(!valueCount) {
     return new Uint8Array([]);
   }
 
+  let result: Uint8Array;
   try {
-    var dataView = new DataView(waveform.buffer);
-    var result = new Uint8Array(valueCount);
-    for(var i = 0; i < valueCount; i++) {
-      var byteIndex = i * 5 / 8 | 0;
-      var bitShift = i * 5 % 8;
-      var value = dataView.getUint16(byteIndex, true);
+    const dataView = new DataView(waveform.buffer);
+    result = new Uint8Array(valueCount);
+    for(let i = 0; i < valueCount; i++) {
+      const byteIndex = i * 5 / 8 | 0;
+      const bitShift = i * 5 % 8;
+      const value = dataView.getUint16(byteIndex, true);
       result[i] = (value >> bitShift) & 0b00011111;
     }
   } catch(err) {
-    return new Uint8Array([]);
+    result = new Uint8Array([]);
   }
 
   /* var byteIndex = (valueCount - 1) / 8 | 0;
@@ -448,6 +449,9 @@ export default class AudioElement extends HTMLElement {
           //onLoad();
         //} else {
           const r = (e: Event) => {
+            if(this.audio.src) {
+              return;
+            }
             //onLoad();
             //cancelEvent(e);
             appMediaPlaybackController.resolveWaitingForLoadMedia(this.message.peerId, this.message.mid);
@@ -482,7 +486,9 @@ export default class AudioElement extends HTMLElement {
             });
           };
 
-          attachClickEvent(this, r, {once: true, capture: true, passive: false});
+          if(!this.audio.src) {
+            attachClickEvent(this, r, {once: true, capture: true, passive: false});
+          }
         //}
       }
     } else {

@@ -43,7 +43,7 @@ type BroadcastEvents = {
   'message_sent': {storage: MessagesStorage, tempId: number, tempMessage: any, mid: number},
   'messages_pending': void,
   'messages_read': void,
-  'messages_downloaded': number[],
+  'messages_downloaded': {peerId: number, mids: number[]},
   'messages_media_read': {peerId: number, mids: number[]},
 
   'scheduled_new': {peerId: number, mid: number},
