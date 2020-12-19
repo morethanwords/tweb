@@ -272,7 +272,8 @@ export default class PopupNewMedia extends PopupElement {
                   url: params.objectURL
                 }
               }
-            } as any
+            } as any,
+            uploading: true
           });
 
           const finish = () => {

@@ -1064,6 +1064,12 @@ $bubble-margin: .25rem;
     }
   }
 
+  .document-container .time.tgico {
+    position: relative !important;
+    height: 0px !important;
+    visibility: hidden !important;
+  }
+
   &.is-multiple-documents {
     /* .bubble__container {
       position: unset;

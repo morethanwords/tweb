@@ -1749,6 +1749,9 @@ export default class ChatBubbles {
               if(newNameContainer) {
                 nameContainer = newNameContainer;
               }
+
+              const lastContainer = messageDiv.lastElementChild.querySelector('.document-size');
+              lastContainer && lastContainer.append(timeSpan.cloneNode(true));
               
               if(pending.type == 'voice') {
                 bubble.classList.add('bubble-audio');
@@ -1999,6 +2002,9 @@ export default class ChatBubbles {
             if(newNameContainer) {
               nameContainer = newNameContainer;
             }
+
+            const lastContainer = messageDiv.lastElementChild.querySelector('.document-size');
+            lastContainer && lastContainer.append(timeSpan.cloneNode(true));
 
             bubble.classList.remove('is-message-empty');
             messageDiv.classList.add((doc.type != 'photo' ? doc.type || 'document' : 'document') + '-message');
