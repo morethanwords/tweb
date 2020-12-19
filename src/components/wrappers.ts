@@ -343,9 +343,21 @@ export const formatDate = (timestamp: number, monthShort = false, withYear = tru
   return str + ' at ' + date.getHours() + ':' + ('0' + date.getMinutes()).slice(-2);
 };
 
-export function wrapDocument(peerId: number, doc: MyDocument, withTime = false, uploading = false, mid?: number, fontWeight = 500): HTMLElement {
+export function wrapDocument({message, withTime, uploading, fontWeight}: {
+  message: any, 
+  withTime?: boolean,
+  uploading?: boolean,
+  fontWeight?: number
+}): HTMLElement {
+  if(!fontWeight) fontWeight = 500;
+
+  const doc = message.media.document;
   if(doc.type == 'audio' || doc.type == 'voice') {
-    const audioElement = wrapAudio(peerId, doc, withTime, mid);
+    const audioElement = new AudioElement();
+    audioElement.setAttribute('message-id', '' + message.mid);
+    audioElement.setAttribute('peer-id', '' + message.peerId);
+    audioElement.withTime = withTime;
+    audioElement.message = message;
     audioElement.dataset.fontWeight = '' + fontWeight;
     return audioElement;
   }
@@ -436,15 +448,6 @@ export function wrapDocument(peerId: number, doc: MyDocument, withTime = false, 
   }
   
   return docDiv;
-}
-
-export function wrapAudio(peerId: number, doc: MyDocument, withTime = false, mid?: number): HTMLElement {
-  let elem = new AudioElement();
-  elem.setAttribute('peer-id', '' + peerId);
-  elem.setAttribute('doc-id', doc.id);
-  elem.setAttribute('with-time', '' + +withTime);
-  elem.setAttribute('message-id', '' + mid);
-  return elem;
 }
 
 function wrapMediaWithTail(photo: MyPhoto | MyDocument, message: {mid: number, message: string}, container: HTMLElement, boxWidth: number, boxHeight: number, isOut: boolean) {
@@ -921,10 +924,10 @@ export function wrapAlbum({groupId, attachmentDiv, middleware, uploading, lazyLo
     items.push({size, media, message: m});
   }
 
-  // * pending
+  /* // * pending
   if(storage[0] < 0) {
     items.reverse();
-  }
+  } */
 
   prepareAlbum({
     container: attachmentDiv,
@@ -979,15 +982,17 @@ export function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, 
 }) {
   let nameContainer: HTMLDivElement;
   const mids = albumMustBeRenderedFull ? chat.getMidsByMid(message.mid) : [message.mid];
-  const isPending = message.mid < 0;
-  if(isPending) {
+  const isPending = message.pFlags.is_outgoing;
+  /* if(isPending) {
     mids.reverse();
-  }
+  } */
 
   mids.forEach((mid, idx) => {
     const message = chat.getMessage(mid);
     const doc = message.media.document;
-    const div = wrapDocument(chat.peerId, doc, false, isPending, mid);
+    const div = wrapDocument({
+      message
+    });
 
     const container = document.createElement('div');
     container.classList.add('document-container');

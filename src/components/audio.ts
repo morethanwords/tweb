@@ -61,10 +61,11 @@ export function decodeWaveform(waveform: Uint8Array | number[]) {
   return result;
 }
 
-function wrapVoiceMessage(peerId: number, doc: MyDocument, audioEl: AudioElement, mid: number) {
+function wrapVoiceMessage(audioEl: AudioElement) {
   audioEl.classList.add('is-voice');
 
-  const message = appMessagesManager.getMessageByPeer(peerId, mid);
+  const message = audioEl.message;
+  const doc = message.media.document as MyDocument;
   const isOut = message.fromId == rootScope.myId && message.peerId != rootScope.myId;
   let isUnread = message && message.pFlags.media_unread;
   if(isUnread) {
@@ -171,7 +172,7 @@ function wrapVoiceMessage(peerId: number, doc: MyDocument, audioEl: AudioElement
     audioEl.addAudioListener('playing', () => {
       if(isUnread && !isOut && audioEl.classList.contains('is-unread')) {
         audioEl.classList.remove('is-unread');
-        appMessagesManager.readMessages(peerId, [mid]);
+        appMessagesManager.readMessages(audioEl.message.peerId, [audioEl.message.mid]);
         isUnread = false;
       }
 
@@ -249,9 +250,10 @@ function wrapVoiceMessage(peerId: number, doc: MyDocument, audioEl: AudioElement
   return onLoad;
 }
 
-function wrapAudio(doc: MyDocument, audioEl: AudioElement) {
-  const withTime = !!+audioEl.getAttribute('with-time');
+function wrapAudio(audioEl: AudioElement) {
+  const withTime = audioEl.withTime;
 
+  const doc = audioEl.message.media.document;
   const title = doc.audioTitle || doc.file_name;
   let subtitle = doc.audioPerformer ? RichTextProcessor.wrapPlainText(doc.audioPerformer) : '';
 
@@ -314,6 +316,8 @@ function wrapAudio(doc: MyDocument, audioEl: AudioElement) {
 export default class AudioElement extends HTMLElement {
   public audio: HTMLAudioElement;
   public preloader: ProgressivePreloader;
+  public message: any;
+  public withTime = false;
 
   private attachedHandlers: {[name: string]: any[]} = {};
   private onTypeDisconnect: () => void;
@@ -329,11 +333,8 @@ export default class AudioElement extends HTMLElement {
 
     this.classList.add('audio');
 
-    const peerId = +this.getAttribute('peer-id');
-    const mid = +this.getAttribute('message-id');
-    const docId = this.getAttribute('doc-id');
-    const doc = appDocsManager.getDoc(docId);
-    const uploading = +doc.id < 0;
+    const doc = this.message.media.document;
+    const uploading = this.message.pFlags.is_outgoing;
 
     const durationStr = String(doc.duration | 0).toHHMMSS(true);
 
@@ -352,13 +353,13 @@ export default class AudioElement extends HTMLElement {
       this.append(downloadDiv);
     }
 
-    const onTypeLoad = doc.type == 'voice' ? wrapVoiceMessage(peerId, doc, this, mid) : wrapAudio(doc, this);
+    const onTypeLoad = doc.type == 'voice' ? wrapVoiceMessage(this) : wrapAudio(this);
     
     const audioTimeDiv = this.querySelector('.audio-time') as HTMLDivElement;
     audioTimeDiv.innerHTML = durationStr;
 
     const onLoad = (autoload = true) => {
-      const audio = this.audio = appMediaPlaybackController.addMedia(peerId, doc, mid, autoload);
+      const audio = this.audio = appMediaPlaybackController.addMedia(this.message.peerId, this.message.media.document, this.message.mid, autoload);
 
       this.onTypeDisconnect = onTypeLoad();
       
@@ -449,7 +450,7 @@ export default class AudioElement extends HTMLElement {
           const r = (e: Event) => {
             //onLoad();
             //cancelEvent(e);
-            appMediaPlaybackController.resolveWaitingForLoadMedia(mid);
+            appMediaPlaybackController.resolveWaitingForLoadMedia(this.message.peerId, this.message.mid);
   
             appMediaPlaybackController.willBePlayed(this.audio); // prepare for loading audio
   
@@ -465,7 +466,7 @@ export default class AudioElement extends HTMLElement {
             preloader.attach(downloadDiv);
             this.append(downloadDiv);
     
-            new Promise((resolve) => {
+            new Promise<void>((resolve) => {
               if(this.audio.readyState >= 2) resolve();
               else this.addAudioListener('canplay', resolve);
             }).then(() => {
@@ -473,7 +474,7 @@ export default class AudioElement extends HTMLElement {
   
               //setTimeout(() => {
                 // release loaded audio
-                if(appMediaPlaybackController.willBePlayedMedia == this.audio) {
+                if(appMediaPlaybackController.willBePlayedMedia === this.audio) {
                   this.audio.play();
                   appMediaPlaybackController.willBePlayedMedia = null;
                 }

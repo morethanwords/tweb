@@ -17,13 +17,22 @@ type MediaType = 'voice' | 'audio' | 'round';
 
 class AppMediaPlaybackController {
   private container: HTMLElement;
-  private media: {[mid: string]: HTMLMediaElement} = {};
+  private media: {
+    [peerId: string]: {
+      [mid: string]: HTMLMediaElement
+    }
+  } = {};
   private playingMedia: HTMLMediaElement;
 
-  private waitingMediaForLoad: {[mid: string]: CancellablePromise<void>} = {};
+  private waitingMediaForLoad: {
+    [peerId: string]: {
+      [mid: string]: CancellablePromise<void>
+    }
+  } = {};
   
   public willBePlayedMedia: HTMLMediaElement;
 
+  private currentPeerId: number;
   private prevMid: number;
   private nextMid: number;
 
@@ -35,7 +44,8 @@ class AppMediaPlaybackController {
   }
 
   public addMedia(peerId: number, doc: MyDocument, mid: number, autoload = true): HTMLMediaElement {
-    if(this.media[mid]) return this.media[mid];
+    const storage = this.media[peerId] ?? (this.media[peerId] = {});
+    if(storage[mid]) return storage[mid];
 
     const media = document.createElement(doc.type == 'round' ? 'video' : 'audio');
     //const source = document.createElement('source');
@@ -55,6 +65,8 @@ class AppMediaPlaybackController {
     this.container.append(media);
 
     media.addEventListener('playing', () => {
+      this.currentPeerId = peerId;
+
       if(this.playingMedia != media) {
         if(this.playingMedia && !this.playingMedia.paused) {
           this.playingMedia.pause();
@@ -76,8 +88,8 @@ class AppMediaPlaybackController {
     const onError = (e: Event) => {
       if(this.nextMid == mid) {
         this.loadSiblingsMedia(peerId, doc.type as MediaType, mid).then(() => {
-          if(this.nextMid && this.media[this.nextMid]) {
-            this.media[this.nextMid].play();
+          if(this.nextMid && storage[this.nextMid]) {
+            storage[this.nextMid].play();
           }
         });
       }
@@ -89,7 +101,8 @@ class AppMediaPlaybackController {
     if(autoload) {
       deferred.resolve();
     } else {
-      this.waitingMediaForLoad[mid] = deferred;
+      const waitingStorage = this.waitingMediaForLoad[peerId] ?? (this.waitingMediaForLoad[peerId] = {});
+      waitingStorage[mid] = deferred;
     }
 
     // если что - загрузит voice или round заранее, так правильнее
@@ -105,7 +118,7 @@ class AppMediaPlaybackController {
       media.src = doc.url;
     }, onError);
     
-    return this.media[mid] = media;
+    return storage[mid] = media;
   }
 
   // safari подгрузит последний чанк и песня включится,
@@ -136,11 +149,12 @@ class AppMediaPlaybackController {
     }/* , {once: true} */);
   }
 
-  public resolveWaitingForLoadMedia(mid: number) {
-    const promise = this.waitingMediaForLoad[mid];
+  public resolveWaitingForLoadMedia(peerId: number, mid: number) {
+    const storage = this.waitingMediaForLoad[peerId] ?? (this.waitingMediaForLoad[peerId] = {});
+    const promise = storage[mid];
     if(promise) {
       promise.resolve();
-      delete this.waitingMediaForLoad[mid];
+      delete storage[mid];
     }
   }
   
@@ -167,13 +181,13 @@ class AppMediaPlaybackController {
     //console.log('on media end');
 
     if(this.nextMid) {
-      const media = this.media[this.nextMid];
+      const media = this.media[this.currentPeerId][this.nextMid];
 
       /* if(isSafari) {
         media.autoplay = true;
       } */
 
-      this.resolveWaitingForLoadMedia(this.nextMid);
+      this.resolveWaitingForLoadMedia(this.currentPeerId, this.nextMid);
 
       setTimeout(() => {
         media.play()//.catch(() => {});
@@ -189,7 +203,7 @@ class AppMediaPlaybackController {
       //_: type == 'audio' ? 'inputMessagesFilterMusic' : (type == 'round' ? 'inputMessagesFilterRoundVideo' : 'inputMessagesFilterVoice')
       _: type == 'audio' ? 'inputMessagesFilterMusic' : 'inputMessagesFilterRoundVoice'
     }, mid, 3, 0, 2).then(value => {
-      if(this.playingMedia != media) {
+      if(this.playingMedia !== media) {
         return;
       }
  

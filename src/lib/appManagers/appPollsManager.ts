@@ -170,7 +170,7 @@ export class AppPollsManager {
     const peerId = message.peerId;
     const inputPeer = appPeersManager.getInputPeerById(peerId);
 
-    if(messageId < 0) {
+    if(message.pFlags.is_outgoing) {
       return appMessagesManager.invokeAfterMessageIsSent(messageId, 'sendVote', (message) => {
         this.log('invoke sendVote callback');
         return this.sendVote(message, optionIds);

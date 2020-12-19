@@ -256,13 +256,24 @@ export default class PopupNewMedia extends PopupElement {
             params.objectURL = URL.createObjectURL(file);
           }
 
-          const docDiv = wrapDocument(0, {
-            file: file,
-            file_name: file.name || '',
-            size: file.size,
-            type: isPhoto ? 'photo' : 'doc',
-            url: params.objectURL
-          } as any, false, true);
+          const docDiv = wrapDocument({
+            message: {
+              _: 'message',
+              mid: 0,
+              peerId: 0,
+              media: {
+                _: 'messageMediaDocument',
+                document: {
+                  _: 'document',
+                  file: file,
+                  file_name: file.name || '',
+                  size: file.size,
+                  type: isPhoto ? 'photo' : 'doc',
+                  url: params.objectURL
+                }
+              }
+            } as any
+          });
 
           const finish = () => {
             itemDiv.append(docDiv);

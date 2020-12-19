@@ -513,7 +513,8 @@ export class ApiFileManager {
       (r.value as Promise<void>).then(process);
     };
 
-    const maxRequests = Infinity;
+    //const maxRequests = Infinity;
+    const maxRequests = 10;
     /* for(let i = 0; i < 10; ++i) {
       process();
     } */

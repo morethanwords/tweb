@@ -36,6 +36,7 @@ import { AppChatsManager } from "../../lib/appManagers/appChatsManager";
 import Chat from "./chat";
 import ListenerSetter from "../../helpers/listenerSetter";
 import PollElement from "../poll";
+import AudioElement from "../audio";
 
 const IGNORE_ACTIONS = ['messageActionHistoryClear'];
 
@@ -120,7 +121,7 @@ export default class ChatBubbles {
     // * constructor end
 
     this.log = this.chat.log;
-    this.bubbleGroups = new BubbleGroups();
+    this.bubbleGroups = new BubbleGroups(this.chat);
     this.preloader = new ProgressivePreloader(null, false);
     this.lazyLoadQueue = new LazyLoadQueue();
     this.lazyLoadQueue.queueId = ++queueId;
@@ -165,7 +166,7 @@ export default class ChatBubbles {
       
       this.log('message_sent', e.detail);
 
-      const mounted = this.getMountedBubble(tempId) || this.getMountedBubble(mid);
+      const mounted = this.getMountedBubble(tempId, tempMessage) || this.getMountedBubble(mid);
       if(mounted) {
         const message = this.chat.getMessage(mid);
         const bubble = mounted.bubble;
@@ -175,7 +176,7 @@ export default class ChatBubbles {
 
         // set new mids to album items for mediaViewer
         if(message.grouped_id) {
-          const item = bubble.querySelector(`.grouped-item[data-mid="${tempId}"]`) as HTMLElement;
+          const item = (bubble.querySelector(`.grouped-item[data-mid="${tempId}"]`) as HTMLElement) || bubble; // * it can be .document-container
           item.dataset.mid = '' + mid;
         }
 
@@ -190,9 +191,10 @@ export default class ChatBubbles {
         }
 
         if(['audio', 'voice'].includes(message.media?.document?.type)) {
-          const audio = bubble.querySelector(`audio-element[message-id="${tempId}"]`);
+          const audio = bubble.querySelector(`audio-element[message-id="${tempId}"]`) as AudioElement;
           audio.setAttribute('doc-id', message.media.document.id);
           audio.setAttribute('message-id', '' + mid);
+          audio.message = message;
         }
 
         /* bubble.classList.remove('is-sending');
@@ -219,7 +221,7 @@ export default class ChatBubbles {
         delete this.bubbles[tempId];
 
         bubble.classList.remove('is-sending');
-        bubble.classList.add('is-sent');
+        bubble.classList.add(this.peerId === rootScope.myId && this.chat.type !== 'scheduled' ? 'is-read' : 'is-sent');
         bubble.dataset.mid = '' + mid;
 
         this.bubbleGroups.removeBubble(bubble, tempId);
@@ -695,9 +697,7 @@ export default class ChatBubbles {
     return Array.from(bubble.querySelectorAll('.grouped-item')) as HTMLElement[];
   }
 
-  public getMountedBubble(mid: number) {
-    const message = this.chat.getMessage(mid);
-
+  public getMountedBubble(mid: number, message = this.chat.getMessage(mid)) {
     if(message.grouped_id && this.appMessagesManager.getMidsByAlbum(message.grouped_id).length > 1) {
       const a = this.getGroupedBubble(message.grouped_id);
       if(a) {
@@ -1350,40 +1350,40 @@ export default class ChatBubbles {
 
   public setBubblePosition(bubble: HTMLElement, message: any, reverse: boolean) {
     const dateMessage = this.getDateContainerByMessage(message, reverse);
-    let children = Array.from(dateMessage.container.children).slice(1) as HTMLElement[];
-    let i = 0, foundMidOnSameTimestamp = 0;
-    for(; i < children.length; ++i) {
-      const t = children[i];
-      const timestamp = +t.dataset.timestamp;
-      if(message.date < timestamp) {
-        break;
-      } else if(message.date === timestamp) {
-        foundMidOnSameTimestamp = +t.dataset.mid;
+    if(this.chat.type === 'scheduled' || this.chat.type === 'pinned') {
+      let children = Array.from(dateMessage.container.children).slice(2) as HTMLElement[];
+      let i = 0, foundMidOnSameTimestamp = 0;
+      for(; i < children.length; ++i) {
+        const t = children[i];
+        const timestamp = +t.dataset.timestamp;
+        if(message.date < timestamp) {
+          break;
+        } else if(message.date === timestamp) {
+          foundMidOnSameTimestamp = +t.dataset.mid;
+        }
+        
+        if(foundMidOnSameTimestamp && message.mid < foundMidOnSameTimestamp) {
+          break;
+        }
       }
-      
-      if(foundMidOnSameTimestamp && message.mid < foundMidOnSameTimestamp) {
-        break;
+  
+      // * 1 for date, 1 for date sentinel
+      let index = 2 + i;
+      if(bubble.parentElement) { // * if already mounted
+        const currentIndex = whichChild(bubble);
+        if(index > currentIndex) {
+          index -= 1; // * minus for already mounted
+        }
       }
-    }
-
-    // * 1 for date
-    let index = 1 + i;
-    if(bubble.parentElement) { // * if already mounted
-      const currentIndex = whichChild(bubble);
-      if(index > currentIndex) {
-        index -= 1; // * minus for already mounted
-      }
-    }
-
-    positionElementByIndex(bubble, dateMessage.container, index);
-
-    //this.bubbleGroups.updateGroupByMessageId(message.mid);
-
-    /* if(reverse) {
-      dateMessage.container.insertBefore(bubble, dateMessage.div.nextSibling);
+  
+      positionElementByIndex(bubble, dateMessage.container, index);
     } else {
-      dateMessage.container.append(bubble);
-    } */
+      if(reverse) {
+        dateMessage.container.insertBefore(bubble, dateMessage.container.children[1].nextSibling);
+      } else {
+        dateMessage.container.append(bubble);
+      }
+    }
   }
 
   // * will change .cleaned in cleanup() and new instance will be created
@@ -1637,10 +1637,11 @@ export default class ChatBubbles {
       bubbleContainer.prepend(containerDiv);
     }
     
+    const isOutgoing = message.pFlags.is_outgoing/*  && this.peerId != rootScope.myId */;
     if(our) {
-      if(message.pFlags.unread || message.mid < 0) this.unreadOut.add(message.mid); // message.mid < 0 added 11.02.2020
+      if(message.pFlags.unread || isOutgoing) this.unreadOut.add(message.mid);
       let status = '';
-      if(message.mid < 0) status = 'is-sending';
+      if(isOutgoing) status = 'is-sending';
       else status = message.pFlags.unread ? 'is-sent' : 'is-read';
       bubble.classList.add(status);
     }
@@ -1839,7 +1840,9 @@ export default class ChatBubbles {
               });
               //}
             } else {
-              const docDiv = wrapDocument(this.peerId, doc, false, false, message.mid);
+              const docDiv = wrapDocument({
+                message
+              });
               preview.append(docDiv);
               preview.classList.add('preview-with-document');
               //messageDiv.classList.add((webpage.type || 'document') + '-message');

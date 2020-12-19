@@ -137,6 +137,10 @@ export class AppImManager {
       const hash = location.hash;
       const splitted = hash.split('?');
 
+      if(!splitted[1]) {
+        return;
+      }
+
       const params: any = {};
       splitted[1].split('&').forEach(item => {
         params[item.split('=')[0]] = decodeURIComponent(item.split('=')[1]);
@@ -148,7 +152,7 @@ export class AppImManager {
         case '#/im': {
           const p = params.p;
           if(p[0] === '@') {
-            let postId = params.post !== undefined ? +params.post : undefined;
+            let postId = params.post !== undefined ? appMessagesManager.generateMessageId(+params.post) : undefined;
             appUsersManager.resolveUsername(p).then(peer => {
               const isUser = peer._ == 'user';
               const peerId = isUser ? peer.id : -peer.id;

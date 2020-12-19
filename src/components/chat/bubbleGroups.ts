@@ -1,6 +1,7 @@
 import rootScope from "../../lib/rootScope";
 import { generatePathData } from "../../helpers/dom";
 import { MyMessage } from "../../lib/appManagers/appMessagesManager";
+import Chat from "./chat";
 
 type Group = {bubble: HTMLDivElement, mid: number, timestamp: number}[];
 type BubbleGroup = {timestamp: number, fromId: number, mid: number, group: Group};
@@ -9,6 +10,10 @@ export default class BubbleGroups {
   private groups: Array<Group> = [];
   //updateRAFs: Map<HTMLDivElement[], number> = new Map();
   private newGroupDiff = 121; // * 121 in scheduled messages
+
+  constructor(private chat: Chat) {
+
+  }
 
   removeBubble(bubble: HTMLDivElement, mid: number) {
     const details = this.bubbles.findAndSplice(g => g.mid === mid);
@@ -38,10 +43,37 @@ export default class BubbleGroups {
     
     const insertObject = {bubble, mid, timestamp};
     if(this.bubbles.length) {
-      const foundBubble = this.bubbles.find(bubble => {
+      let foundBubble: BubbleGroup;
+      let foundAtIndex = -1;
+      for(let i = 0; i < this.bubbles.length; ++i) {
+        const bubble = this.bubbles[i];
+        const diff = Math.abs(bubble.timestamp - timestamp);
+        const good = bubble.fromId === fromId && diff <= this.newGroupDiff;
+
+        if(good) {
+          foundAtIndex = i;
+
+          if(this.chat.type === 'scheduled') {
+            break;
+          }
+        } else {
+          foundAtIndex = -1;
+        }
+
+        if(this.chat.type !== 'scheduled') {
+          if(mid > bubble.mid) {
+            break;
+          }
+        }
+      }
+
+      if(foundAtIndex !== -1) {
+        foundBubble = this.bubbles[foundAtIndex];
+      }
+      /* const foundBubble = this.bubbles.find(bubble => {
         const diff = Math.abs(bubble.timestamp - timestamp);
         return bubble.fromId === fromId && diff <= this.newGroupDiff;
-      });
+      }); */
 
       if(!foundBubble) this.groups.push(group = [insertObject]);
       else {
@@ -70,8 +102,21 @@ export default class BubbleGroups {
     }
 
     //console.log('[BUBBLE]: addBubble', bubble, message.mid, fromId, reverse, group);
+
+    if(mid > 0) {
+      let insertIndex = 0;
+      for(; insertIndex < this.bubbles.length; ++insertIndex) {
+        if(this.bubbles[insertIndex].mid < mid) {
+          break;
+        }
+      }
+
+      this.bubbles.splice(insertIndex, 0, {timestamp, fromId, mid: message.mid, group});
+    } else {
+      this.bubbles.unshift({timestamp, fromId, mid: message.mid, group});
+    }
     
-    this.bubbles.push({timestamp, fromId, mid: message.mid, group});
+    //this.bubbles.push({timestamp, fromId, mid: message.mid, group});
     this.updateGroup(group);
   }
 

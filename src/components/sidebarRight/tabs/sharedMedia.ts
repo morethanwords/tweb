@@ -528,7 +528,11 @@ export default class AppSharedMediaTab implements SliderTab {
       case 'inputMessagesFilterMusic':
       case 'inputMessagesFilterDocument': {
         for(const message of messages) {
-          const div = wrapDocument(this.peerId, message.media.document, true, false, message.mid, 400);
+          const div = wrapDocument({
+            message,
+            withTime: true,
+            fontWeight: 400
+          });
           div.dataset.mid = '' + message.mid;
           elemsToAppend.push(div);
         }

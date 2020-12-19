@@ -364,7 +364,7 @@ namespace RichTextProcessor {
     return totalEntities;
   } */
 
-  export function mergeEntities(currentEntities: MessageEntity[], newEntities: MessageEntity[], fromApi?: boolean) {
+  export function mergeEntities(currentEntities: MessageEntity[], newEntities: MessageEntity[]) {
     currentEntities = currentEntities.slice();
     const filtered = newEntities.filter(e => !currentEntities.find(_e => e._ == _e._ && e.offset == _e.offset && e.length == _e.length));
     currentEntities.push(...filtered);
