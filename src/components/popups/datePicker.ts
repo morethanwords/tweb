@@ -28,7 +28,8 @@ export default class PopupDatePicker extends PopupElement {
     noTitle: true, 
     minDate: Date,
     maxDate: Date
-    withTime: true
+    withTime: true,
+    showOverflowMonths: true
   }> & PopupOptions = {}) {
     super('popup-date-picker', options.noButtons ? [] : [{
       text: 'CANCEL',
@@ -242,13 +243,28 @@ export default class PopupDatePicker extends PopupElement {
         });
       }
 
-      this.btnConfirm.innerText = 'Send ' + dayStr + ' at ' + ('00' + this.hoursInputField.value).slice(-2) + ':' + ('00' + this.minutesInputField.value).slice(-2);
+      this.btnConfirm.firstChild.nodeValue = 'Send ' + dayStr + ' at ' + ('00' + this.hoursInputField.value).slice(-2) + ':' + ('00' + this.minutesInputField.value).slice(-2);
     }
   }
 
   public setTitle() {
     const splitted = this.selectedDate.toString().split(' ', 3);
     this.title.innerText = splitted[0] + ', ' + splitted[1] + ' ' + splitted[2];
+  }
+
+  private renderElement(disabled: boolean, innerText = '') {
+    const el = document.createElement('button');
+    el.classList.add('btn-icon', 'date-picker-month-date');
+
+    if(disabled) {
+      el.setAttribute('disabled', 'true');
+    }
+
+    if(innerText) {
+      el.innerText = innerText;
+    }
+
+    return el;
   }
 
   public setMonth() {
@@ -263,8 +279,9 @@ export default class PopupDatePicker extends PopupElement {
 
     const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
     this.month.append(...days.map(s => {
-      const el = document.createElement('span');
-      el.innerText = s;
+      const el = this.renderElement(true, s);
+      el.classList.remove('date-picker-month-date');
+      el.classList.add('date-picker-month-day');
       return el;
     }));
 
@@ -274,23 +291,24 @@ export default class PopupDatePicker extends PopupElement {
     let dayIndex = firstDate.getDay() - 1;
     if(dayIndex == -1) dayIndex = days.length - 1;
 
+    const clonedDate = new Date(firstDate.getTime());
+    clonedDate.setDate(clonedDate.getDate() - dayIndex - 1);
+
     // Padding first week
     for(let i = 0; i < dayIndex; ++i) {
-      const el = document.createElement('span');
-      this.month.append(el);
+      if(this.options.showOverflowMonths) {
+        clonedDate.setDate(clonedDate.getDate() + 1);
+        this.month.append(this.renderElement(true, '' + clonedDate.getDate()));
+      } else {
+        this.month.append(this.renderElement(true));
+      }
     }
 
     do {
       const date = firstDate.getDate();
-      const el = document.createElement('button');
-      el.classList.add('btn-icon');
-      el.innerText = '' + date;
+      const el = this.renderElement(firstDate > this.maxDate || firstDate < this.minDate, '' + date);
       el.dataset.timestamp = '' + firstDate.getTime();
 
-      if(firstDate > this.maxDate || firstDate < this.minDate) {
-        el.setAttribute('disabled', 'true');
-      }
-      
       if(firstDate.getTime() === this.selectedDate.getTime()) {
         this.selectedEl = el;
         el.classList.add('active');
@@ -300,6 +318,14 @@ export default class PopupDatePicker extends PopupElement {
 
       firstDate.setDate(date + 1);
     } while(firstDate.getDate() !== 1);
+
+    const remainder = this.month.childElementCount % 7;
+    if(this.options.showOverflowMonths && remainder) {
+      for(let i = remainder; i < 7; ++i) {
+        this.month.append(this.renderElement(true, '' + firstDate.getDate()));
+        firstDate.setDate(firstDate.getDate() + 1);
+      }
+    }
 
     this.container.classList.toggle('is-max-lines', (this.month.childElementCount / 7) > 6);
 

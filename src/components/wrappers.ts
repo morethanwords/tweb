@@ -351,7 +351,7 @@ export function wrapDocument({message, withTime, uploading, fontWeight}: {
 }): HTMLElement {
   if(!fontWeight) fontWeight = 500;
 
-  const doc = message.media.document;
+  const doc = message.media.document || message.media.webpage.document;
   if(doc.type == 'audio' || doc.type == 'voice') {
     const audioElement = new AudioElement();
     audioElement.setAttribute('message-id', '' + message.mid);

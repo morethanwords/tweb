@@ -11,7 +11,7 @@ export default class PopupDeleteMessages {
     const firstName = appPeersManager.getPeerTitle(peerId, false, true);
 
     mids = mids.slice();
-    const callback = (revoke: boolean) => {
+    const callback = (revoke?: true) => {
       onConfirm && onConfirm();
       if(type === 'scheduled') {
         appMessagesManager.deleteScheduledMessages(peerId, mids);
@@ -28,13 +28,13 @@ export default class PopupDeleteMessages {
       buttons = [{
         text: 'DELETE',
         isDanger: true,
-        callback: () => callback(false)
+        callback: () => callback()
       }];
     } else {
       buttons = [{
         text: 'DELETE JUST FOR ME',
         isDanger: true,
-        callback: () => callback(false)
+        callback: () => callback()
       }];
 
       if(peerId > 0) {

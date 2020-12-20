@@ -29,7 +29,7 @@ export default class AppAddMembersTab implements SliderTab {
           return;
         }
 
-        this.nextBtn.classList.remove('tgico-next');
+        this.nextBtn.classList.remove('tgico-arrow-next');
         this.nextBtn.disabled = true;
         putPreloader(this.nextBtn);
         this.selector.freezed = true;
@@ -61,7 +61,7 @@ export default class AppAddMembersTab implements SliderTab {
 
     this.nextBtn.innerHTML = '';
     this.nextBtn.disabled = false;
-    this.nextBtn.classList.add('tgico-next');
+    this.nextBtn.classList.add('tgico-arrow-next');
     this.nextBtn.classList.toggle('is-visible', skippable);
 
     appSidebarLeft.selectTab(AppSidebarLeft.SLIDERITEMSIDS.addMembers);

@@ -162,20 +162,26 @@ export default class PopupNewMedia extends PopupElement {
         this.chat.appMessagesManager.sendAlbum(peerId, w.sendFileDetails.map(d => d.file), Object.assign({
           caption,
           replyToMsgId: input.replyToMsgId,
+          threadId: this.chat.threadId,
           isMedia: willAttach.isMedia,
           silent,
           scheduleDate
         }, w));
 
         caption = undefined;
-        input.replyToMsgId = undefined;
+        input.replyToMsgId = this.chat.threadId;
       }
     } else {
       if(caption) {
         if(willAttach.sendFileDetails.length > 1) {
-          this.chat.appMessagesManager.sendText(peerId, caption, {replyToMsgId: input.replyToMsgId, silent, scheduleDate});
+          this.chat.appMessagesManager.sendText(peerId, caption, {
+            replyToMsgId: input.replyToMsgId, 
+            threadId: this.chat.threadId,
+            silent, 
+            scheduleDate
+          });
           caption = '';
-          input.replyToMsgId = undefined;
+          //input.replyToMsgId = undefined;
         }
       }
   
@@ -185,14 +191,16 @@ export default class PopupNewMedia extends PopupElement {
           isMedia: willAttach.isMedia, 
           caption,
           replyToMsgId: input.replyToMsgId,
+          threadId: this.chat.threadId,
           silent,
           scheduleDate
         }, params));
 
         caption = '';
-        input.replyToMsgId = undefined;
         return promise;
       });
+
+      input.replyToMsgId = this.chat.threadId;
     }
 
     //Promise.all(promises);

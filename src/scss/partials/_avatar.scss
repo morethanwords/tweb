@@ -107,4 +107,9 @@ avatar-element {
     --size: 32px;
     --multiplier: 1.6875;
   }
+
+  &.avatar-18 {
+    --size: 18px;
+    --multiplier: 3;
+  }
 }

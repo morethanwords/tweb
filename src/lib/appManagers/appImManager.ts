@@ -455,9 +455,9 @@ export class AppImManager {
       appSidebarRight.sharedMediaTab.loadSidebarMedia(true);
       appSidebarRight.sharedMediaTab.fillProfileElements();
       
-      setTimeout(() => {
+      /* setTimeout(() => {
         appSidebarRight.sharedMediaTab.loadSidebarMedia(false);
-      });
+      }); */
     }
     
     setTimeout(() => {

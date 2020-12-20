@@ -37,6 +37,7 @@ import Chat from "./chat";
 import ListenerSetter from "../../helpers/listenerSetter";
 import PollElement from "../poll";
 import AudioElement from "../audio";
+import { MessageReplies, MessageReplyHeader } from "../../layer";
 
 const IGNORE_ACTIONS = ['messageActionHistoryClear'];
 
@@ -104,7 +105,7 @@ export default class ChatBubbles {
   public replyFollowHistory: number[] = [];
 
   constructor(private chat: Chat, private appMessagesManager: AppMessagesManager, private appStickersManager: AppStickersManager, private appUsersManager: AppUsersManager, private appInlineBotsManager: AppInlineBotsManager, private appPhotosManager: AppPhotosManager, private appDocsManager: AppDocsManager, private appPeersManager: AppPeersManager, private appChatsManager: AppChatsManager) {
-    this.chat.log.error('Bubbles construction');
+    //this.chat.log.error('Bubbles construction');
     
     this.listenerSetter = new ListenerSetter();
 
@@ -358,10 +359,9 @@ export default class ChatBubbles {
     this.listenerSetter.add(rootScope, 'dialog_unread', (e) => {
       const info = e.detail;
 
-      const dialog = this.appMessagesManager.getDialogByPeerId(info.peerId)[0];
-      if(dialog?.peerId == this.peerId) {
+      if(info.peerId == this.peerId) {
         this.chat.input.setUnreadCount();
-        this.updateUnreadByDialog(dialog);
+        this.updateUnreadByDialog();
       }
     });
 
@@ -510,6 +510,21 @@ export default class ChatBubbles {
       return;
     }
 
+    const commentsDiv: HTMLElement = findUpClassName(target, 'replies-footer');
+    if(commentsDiv) {
+      const mid = +bubble.dataset.mid;
+      const message = this.chat.getMessage(mid);
+      const replies = message.replies as MessageReplies;
+      if(replies) {
+        this.appMessagesManager.getDiscussionMessage(this.peerId, mid).then(result => {
+          const message = result.messages[0];
+          this.chat.appImManager.setInnerPeer(-replies.channel_id, (message as MyMessage).mid, 'discussion');
+        });
+      }
+
+      return;
+    }
+
     //this.log('chatInner click:', target);
     const isVideoComponentElement = target.tagName == 'SPAN';
     /* if(isVideoComponentElement) {
@@ -634,7 +649,12 @@ export default class ChatBubbles {
       if(isReplyClick && bubble.classList.contains('is-reply')/*  || bubble.classList.contains('forwarded') */) {
         this.replyFollowHistory.push(+bubble.dataset.mid);
         let originalMessageId = +bubble.getAttribute('data-original-mid');
-        this.chat.appImManager.setInnerPeer(this.peerId, originalMessageId);
+
+        if(this.chat.type === 'discussion') {
+          this.chat.appImManager.setPeer(this.peerId, originalMessageId);
+        } else {
+          this.chat.appImManager.setInnerPeer(this.peerId, originalMessageId);
+        }
         //this.chat.setPeer(this.peerId, originalMessageId);
       }
     } else if(target.tagName == 'IMG' && target.parentElement.tagName == "AVATAR-ELEMENT") {
@@ -673,14 +693,15 @@ export default class ChatBubbles {
       const mid = this.replyFollowHistory.pop();
       this.chat.setPeer(this.peerId, mid);
     } else {
-      const dialog = this.appMessagesManager.getDialogByPeerId(this.peerId)[0];
+      this.chat.setPeer(this.peerId/* , dialog.top_message */);
+      // const dialog = this.appMessagesManager.getDialogByPeerId(this.peerId)[0];
       
-      if(dialog) {
-        this.chat.setPeer(this.peerId/* , dialog.top_message */);
-      } else {
-        this.log('will scroll down 3');
-        this.scroll.scrollTop = this.scroll.scrollHeight;
-      }
+      // if(dialog) {
+      //   this.chat.setPeer(this.peerId/* , dialog.top_message */);
+      // } else {
+      //   this.log('will scroll down 3');
+      //   this.scroll.scrollTop = this.scroll.scrollHeight;
+      // }
     }
   }
 
@@ -745,10 +766,11 @@ export default class ChatBubbles {
 
     if(this.scrolledAllDown) return;
     
-    let dialog = this.appMessagesManager.getDialogByPeerId(this.peerId)[0];
+    //let dialog = this.appMessagesManager.getDialogByPeerId(this.peerId)[0];
+    const historyStorage = this.appMessagesManager.getHistoryStorage(this.peerId, this.chat.threadId);
     
     // if scroll down after search
-    if(!top && (!dialog || history.indexOf(dialog.top_message) === -1)/*  && this.chat.type == 'chat' */) {
+    if(!top && history.indexOf(historyStorage.maxId) === -1/*  && this.chat.type == 'chat' */) {
       this.log('Will load more (down) history by maxId:', history[history.length - 1], history);
       /* false &&  */this.getHistory(history[history.length - 1], false, true, undefined, justLoad);
     }
@@ -833,14 +855,15 @@ export default class ChatBubbles {
     }
   }
 
-  public updateUnreadByDialog(dialog: Dialog) {
-    let maxId = this.peerId == rootScope.myId ? dialog.read_inbox_max_id : dialog.read_outbox_max_id;
+  public updateUnreadByDialog() {
+    const historyStorage = this.appMessagesManager.getHistoryStorage(this.peerId, this.chat.threadId);
+    const maxId = this.peerId == rootScope.myId ? historyStorage.readMaxId : historyStorage.readOutboxMaxId;
     
     ///////this.log('updateUnreadByDialog', maxId, dialog, this.unreadOut);
     
-    for(let msgId of this.unreadOut) {
+    for(const msgId of this.unreadOut) {
       if(msgId > 0 && msgId <= maxId) {
-        let bubble = this.bubbles[msgId];
+        const bubble = this.bubbles[msgId];
         if(bubble) {
           bubble.classList.remove('is-sent');
           bubble.classList.add('is-read');
@@ -882,6 +905,14 @@ export default class ChatBubbles {
     if(!this.scrolledAllDown) { // seems search active or sliced
       this.log('seems search is active, skipping render:', mids);
       return;
+    }
+
+    if(this.chat.threadId) {
+      mids = mids.filter(mid => {
+        const message = this.chat.getMessage(mid);
+        const replyTo = message.reply_to as MessageReplyHeader;
+        return replyTo && (replyTo.reply_to_top_id || replyTo.reply_to_msg_id) === this.chat.threadId;
+      });
     }
 
     mids = mids.filter(mid => !this.bubbles[mid]);
@@ -993,7 +1024,7 @@ export default class ChatBubbles {
   }
 
   public destroy() {
-    this.chat.log.error('Bubbles destroying');
+    //this.chat.log.error('Bubbles destroying');
 
     this.scrollable.onScrolledTop = this.scrollable.onScrolledBottom = this.scrollable.onAdditionalScroll = null;
 
@@ -1068,15 +1099,16 @@ export default class ChatBubbles {
 
     const samePeer = this.peerId == peerId;
 
-    const dialog = this.appMessagesManager.getDialogByPeerId(peerId)[0] || null;
-    let topMessage = lastMsgId <= 0 ? lastMsgId : dialog?.top_message ?? 0;
+    const historyStorage = this.appMessagesManager.getHistoryStorage(peerId, this.chat.threadId);
+    let topMessage = lastMsgId <= 0 ? lastMsgId : historyStorage.maxId ?? 0;
     const isTarget = lastMsgId !== undefined;
 
-    if(!isTarget && dialog) {
-      if(dialog.unread_count && !samePeer) {
-        lastMsgId = dialog.read_inbox_max_id;
+    if(!isTarget && historyStorage.maxId) {
+      const isUnread = this.appMessagesManager.isHistoryUnread(peerId, this.chat.threadId);
+      if(/* dialog.unread_count */isUnread && !samePeer) {
+        lastMsgId = historyStorage.readMaxId;
       } else {
-        lastMsgId = dialog.top_message;
+        lastMsgId = historyStorage.maxId;
         //lastMsgID = topMessage;
       }
     }
@@ -1090,7 +1122,7 @@ export default class ChatBubbles {
           this.scrollable.scrollIntoView(mounted.bubble);
           this.highlightBubble(mounted.bubble);
           this.chat.setListenerResult('setPeer', lastMsgId, false);
-        } else if(dialog && !isJump) {
+        } else if(historyStorage.maxId && !isJump) {
           //this.log('will scroll down', this.scroll.scrollTop, this.scroll.scrollHeight);
           this.scroll.scrollTop = this.scroll.scrollHeight;
           this.chat.setListenerResult('setPeer', lastMsgId, true);
@@ -1108,7 +1140,7 @@ export default class ChatBubbles {
       this.replyFollowHistory.length = 0;
     }
 
-    this.log('setPeer peerId:', this.peerId, dialog, lastMsgId, topMessage);
+    this.log('setPeer peerId:', this.peerId, historyStorage, lastMsgId, topMessage);
 
     // add last message, bc in getHistory will load < max_id
     const additionMsgId = isJump || this.chat.type !== 'chat' ? 0 : topMessage;
@@ -1187,14 +1219,14 @@ export default class ChatBubbles {
       this.lazyLoadQueue.unlock();
 
       //if(dialog && lastMsgID && lastMsgID != topMessage && (this.bubbles[lastMsgID] || this.firstUnreadBubble)) {
-      if(dialog && (isTarget || isJump)) {
+      if(historyStorage.maxId && (isTarget || isJump)) {
         if(this.scrollable.scrollLocked) {
           clearTimeout(this.scrollable.scrollLocked);
           this.scrollable.scrollLocked = 0;
         }
         
         const fromUp = maxBubbleId > 0 && (maxBubbleId < lastMsgId || lastMsgId < 0);
-        const forwardingUnread = dialog.read_inbox_max_id == lastMsgId && !isTarget;
+        const forwardingUnread = historyStorage.readMaxId === lastMsgId && !isTarget;
         if(!fromUp && (samePeer || forwardingUnread)) {
           this.scrollable.scrollTop = this.scrollable.scrollHeight;
         } else if(fromUp/*  && (samePeer || forwardingUnread) */) {
@@ -1228,12 +1260,15 @@ export default class ChatBubbles {
       this.log('scrolledAllDown:', this.scrolledAllDown);
 
       //if(!this.unreaded.length && dialog) { // lol
-      if(this.scrolledAllDown && dialog) { // lol
-        this.appMessagesManager.readHistory(peerId, dialog.top_message);
+      if(this.scrolledAllDown && historyStorage.maxId) { // lol
+        this.appMessagesManager.readHistory(peerId, historyStorage.maxId);
       }
 
-      if(dialog?.pFlags?.unread_mark) {
-        this.appMessagesManager.markDialogUnread(peerId, true);
+      if(this.chat.type === 'chat') {
+        const dialog = this.appMessagesManager.getDialogByPeerId(peerId)[0];
+        if(dialog?.pFlags.unread_mark) {
+          this.appMessagesManager.markDialogUnread(peerId, true);
+        }
       }
 
       this.chatInner.classList.remove('disable-hover', 'is-scrolling'); // warning, performance!
@@ -1653,6 +1688,8 @@ export default class ChatBubbles {
       bubble.classList.add(status);
     }
 
+    const withReplyFooter = message.replies && message.replies.pFlags.comments;
+
     const isOut = our && (!message.fwd_from || this.peerId != rootScope.myId);
     let nameContainer = bubbleContainer;
     
@@ -1693,7 +1730,7 @@ export default class ChatBubbles {
                 const photo = this.appPhotosManager.getPhoto(message.id);
                 //if(photo._ == 'photoEmpty') break;
                 this.log('will wrap pending photo:', pending, message, photo);
-                const withTail = !isAndroid && !message.message;
+                const withTail = !isAndroid && !message.message && !withReplyFooter;
                 if(withTail) bubble.classList.add('with-media-tail');
                 wrapPhoto({
                   photo, message, 
@@ -1714,7 +1751,7 @@ export default class ChatBubbles {
                 let doc = this.appDocsManager.getDoc(message.id);
                 //if(doc._ == 'documentEmpty') break;
                 this.log('will wrap pending video:', pending, message, doc);
-                const withTail = !isAndroid && !isApple && doc.type != 'round' && !message.message;
+                const withTail = !isAndroid && !isApple && doc.type != 'round' && !message.message && !withReplyFooter;
                 if(withTail) bubble.classList.add('with-media-tail');
                 wrapVideo({
                   doc, 
@@ -1789,7 +1826,7 @@ export default class ChatBubbles {
             break;
           }
           
-          const withTail = !isAndroid && !message.message;
+          const withTail = !isAndroid && !message.message && !withReplyFooter;
           if(withTail) bubble.classList.add('with-media-tail');
           wrapPhoto({
             photo, 
@@ -1917,7 +1954,7 @@ export default class ChatBubbles {
           box.append(quote);
           
           //bubble.prepend(box);
-          bubbleContainer.prepend(timeSpan, box);
+          messageDiv.insertBefore(box, messageDiv.lastElementChild);
           
           //this.log('night running', bubble.scrollHeight);
           
@@ -1973,7 +2010,7 @@ export default class ChatBubbles {
                 chat: this.chat
               });
             } else {
-              const withTail = !isAndroid && !isApple && doc.type != 'round' && !message.message;
+              const withTail = !isAndroid && !isApple && doc.type != 'round' && !message.message && withReplyFooter;
               if(withTail) bubble.classList.add('with-media-tail');
               wrapVideo({
                 doc, 
@@ -2123,7 +2160,7 @@ export default class ChatBubbles {
           nameContainer.append(nameDiv);
         }
       } else {
-        if(message.reply_to_mid) {
+        if(message.reply_to_mid && message.reply_to_mid !== this.chat.threadId) {
           let originalMessage = this.chat.type === 'scheduled' ? this.appMessagesManager.getMessageByPeer(this.peerId, message.reply_to_mid) : this.chat.getMessage(message.reply_to_mid);
           let originalPeerTitle = this.appPeersManager.getPeerTitle(originalMessage.fromId || originalMessage.fwdFromId, true) || '';
           
@@ -2186,7 +2223,7 @@ export default class ChatBubbles {
 
     if(savedFrom) {
       const goto = document.createElement('div');
-      goto.classList.add('bubble-beside-button', 'goto-original', 'tgico-next');
+      goto.classList.add('bubble-beside-button', 'goto-original', 'tgico-arrow-next');
       bubbleContainer.append(goto);
       bubble.dataset.savedFrom = savedFrom;
       bubble.classList.add('with-beside-button');
@@ -2199,6 +2236,15 @@ export default class ChatBubbles {
       this.renderMessagesQueue(message, bubble, reverse);
     } else {
       this.bubbleGroups.updateGroupByMessageId(message.mid);
+    }
+
+    if(withReplyFooter) {
+      MessageRender.renderReplies({
+        bubble,
+        bubbleContainer,
+        message,
+        messageDiv
+      });
     }
 
     return bubble;
@@ -2229,14 +2275,9 @@ export default class ChatBubbles {
       }
     } */
 
-    let dialog = this.appMessagesManager.getDialogByPeerId(this.peerId)[0];
-    if(dialog && dialog.top_message) {
-      for(let mid of history) {
-        if(mid == dialog.top_message) {
-          this.scrolledAllDown = true;
-          break;
-        }
-      }
+    const historyStorage = this.appMessagesManager.getHistoryStorage(this.peerId, this.chat.threadId);
+    if(history.includes(historyStorage.maxId)) {
+      this.scrolledAllDown = true;
     }
 
     //console.time('appImManager render history');
@@ -2332,20 +2373,11 @@ export default class ChatBubbles {
 
   public requestHistory(maxId: number, loadCount: number, backLimit: number) {
     //const middleware = this.getMiddleware();
-    if(this.chat.type === 'chat') {
-      return this.appMessagesManager.getHistory(this.peerId, maxId, loadCount, backLimit);
+    if(this.chat.type === 'chat' || this.chat.type === 'discussion') {
+      return this.appMessagesManager.getHistory(this.peerId, maxId, loadCount, backLimit, this.chat.threadId);
     } else if(this.chat.type === 'pinned') {
       const promise = this.appMessagesManager.getSearch(this.peerId, '', {_: 'inputMessagesFilterPinned'}, maxId, loadCount, 0, backLimit)
       .then(value => ({history: value.history.map(m => m.mid)}));
-
-      /* if(maxId) {
-        promise.then(result => {
-          if(!middleware()) return;
-  
-          this.messagesCount = result.count;
-          this.chat.topbar.setTitle();  
-        });
-      } */
 
       return promise;
     } else if(this.chat.type === 'scheduled') {
@@ -2403,7 +2435,7 @@ export default class ChatBubbles {
 
     let additionMsgIds: number[];
     if(additionMsgId && !isBackLimit) {
-      const historyStorage = this.appMessagesManager.getHistoryStorage(peerId);
+      const historyStorage = this.appMessagesManager.getHistoryStorage(peerId, this.chat.threadId);
       if(historyStorage.history.length < loadCount) {
         additionMsgIds = historyStorage.history.slice();
 
@@ -2554,8 +2586,8 @@ export default class ChatBubbles {
 
       // preload more
       //if(!isFirstMessageRender) {
-      if(this.chat.type === 'chat') {
-        const storage = this.appMessagesManager.getHistoryStorage(peerId);
+      if(this.chat.type === 'chat' || this.chat.type === 'discussion') {
+        const storage = this.appMessagesManager.getHistoryStorage(peerId, this.chat.threadId);
         const isMaxIdInHistory = storage.history.indexOf(maxId) !== -1;
         if(isMaxIdInHistory) { // * otherwise it is a search or jump
           setTimeout(() => {
@@ -2578,10 +2610,11 @@ export default class ChatBubbles {
       return;
     }
 
-    let dialog = this.appMessagesManager.getDialogByPeerId(this.peerId)[0];
-    if(!dialog?.unread_count) return;
+    const historyStorage = this.appMessagesManager.getHistoryStorage(this.peerId, this.chat.threadId);
+    const isUnread = this.appMessagesManager.isHistoryUnread(this.peerId, this.chat.threadId);
+    if(!isUnread) return;
 
-    let maxId = dialog.read_inbox_max_id;
+    let maxId = historyStorage.readMaxId;
     maxId = Object.keys(this.bubbles).filter(mid => !this.bubbles[mid].classList.contains('is-out')).map(i => +i).sort((a, b) => a - b).find(i => i > maxId);
 
     if(maxId && this.bubbles[maxId]) {
@@ -2591,7 +2624,7 @@ export default class ChatBubbles {
         this.firstUnreadBubble = null;
       }
 
-      if(maxId != dialog.top_message) {
+      if(maxId !== historyStorage.maxId) {
         bubble.classList.add('is-first-unread');
       }
 

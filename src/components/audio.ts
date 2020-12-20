@@ -66,7 +66,7 @@ function wrapVoiceMessage(audioEl: AudioElement) {
   audioEl.classList.add('is-voice');
 
   const message = audioEl.message;
-  const doc = message.media.document as MyDocument;
+  const doc = (message.media.document || message.media.webpage.document) as MyDocument;
   const isOut = message.fromId == rootScope.myId && message.peerId != rootScope.myId;
   let isUnread = message && message.pFlags.media_unread;
   if(isUnread) {
@@ -254,7 +254,7 @@ function wrapVoiceMessage(audioEl: AudioElement) {
 function wrapAudio(audioEl: AudioElement) {
   const withTime = audioEl.withTime;
 
-  const doc = audioEl.message.media.document;
+  const doc = audioEl.message.media.document || audioEl.message.media.webpage.document;
   const title = doc.audioTitle || doc.file_name;
   let subtitle = doc.audioPerformer ? RichTextProcessor.wrapPlainText(doc.audioPerformer) : '';
 
@@ -334,7 +334,7 @@ export default class AudioElement extends HTMLElement {
 
     this.classList.add('audio');
 
-    const doc = this.message.media.document;
+    const doc = this.message.media.document || this.message.media.webpage.document;
     const uploading = this.message.pFlags.is_outgoing;
 
     const durationStr = String(doc.duration | 0).toHHMMSS(true);
@@ -360,7 +360,7 @@ export default class AudioElement extends HTMLElement {
     audioTimeDiv.innerHTML = durationStr;
 
     const onLoad = (autoload = true) => {
-      const audio = this.audio = appMediaPlaybackController.addMedia(this.message.peerId, this.message.media.document, this.message.mid, autoload);
+      const audio = this.audio = appMediaPlaybackController.addMedia(this.message.peerId, this.message.media.document || this.message.media.webpage.document, this.message.mid, autoload);
 
       this.onTypeDisconnect = onTypeLoad();
       

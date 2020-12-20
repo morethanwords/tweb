@@ -36,6 +36,7 @@ export default class Chat extends EventListenerBase<{
   public contextMenu: ChatContextMenu;
 
   public peerId = 0;
+  public threadId: number;
   public setPeerPromise: Promise<void>;
   public peerChanged: boolean;
 
@@ -55,7 +56,7 @@ export default class Chat extends EventListenerBase<{
     // * constructor end
 
     this.log = logger('CHAT', LogLevels.log | LogLevels.warn | LogLevels.debug | LogLevels.error);
-    this.log.error('Chat construction');
+    //this.log.error('Chat construction');
 
     this.container.append(this.backgroundEl);
     this.appImManager.chatsContainer.append(this.container);
@@ -95,6 +96,9 @@ export default class Chat extends EventListenerBase<{
     } else if(this.type === 'scheduled') {
       this.bubbles.constructScheduledHelpers();
       this.input.constructPeerHelpers();
+    } else if(this.type === 'discussion') {
+      this.bubbles.constructPeerHelpers();
+      this.input.constructPeerHelpers();
     }
 
     this.container.classList.add('type-' + this.type);
@@ -102,7 +106,7 @@ export default class Chat extends EventListenerBase<{
   }
 
   public destroy() {
-    const perf = performance.now();
+    //const perf = performance.now();
 
     this.topbar.destroy();
     this.bubbles.destroy();
@@ -116,7 +120,7 @@ export default class Chat extends EventListenerBase<{
 
     this.container.remove();
 
-    this.log.error('Chat destroy time:', performance.now() - perf);
+    //this.log.error('Chat destroy time:', performance.now() - perf);
   }
 
   public cleanup() {
@@ -130,6 +134,11 @@ export default class Chat extends EventListenerBase<{
     if(this.init) {
       this.init();
       this.init = null;
+    }
+
+    if(this.type === 'discussion' && !this.threadId) {
+      this.threadId = lastMsgId;
+      lastMsgId = 0;
     }
 
     //console.time('appImManager setPeer');
@@ -178,9 +187,9 @@ export default class Chat extends EventListenerBase<{
 
     appSidebarRight.sharedMediaTab.setLoadMutex(this.setPeerPromise);
     appSidebarRight.sharedMediaTab.loadSidebarMedia(true);
-    this.setPeerPromise.then(() => {
+    /* this.setPeerPromise.then(() => {
       appSidebarRight.sharedMediaTab.loadSidebarMedia(false);
-    });
+    }); */
 
     return this.setPeerPromise;
   }

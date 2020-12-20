@@ -79,15 +79,7 @@
       width: 100%;
       justify-content: center;
 
-      span, .btn-icon {
-        // justify-self: center;
-        // width: 40px;
-        // height: 40px;
-        // font-size: 1rem;
-        // color: #707579;
-        // display: flex;
-        // justify-content: center;
-        // align-items: center;
+      .btn-icon {
         justify-self: center;
         width: 38px;
         height: 38px;
@@ -96,6 +88,14 @@
         display: flex;
         justify-content: center;
         align-items: center;
+
+        &:disabled {
+          opacity: 1;
+        }
+      }
+
+      &-date:disabled {
+        color: #c2c3c4;
       }
 
       .btn-icon:not(:disabled) {
@@ -106,6 +106,79 @@
         color: #fff;
         border-radius: 50%;
         background-color: $color-blue;
+      }
+    }
+  }
+}
+
+.popup-schedule {
+  .popup-header {
+    justify-content: space-between;
+
+    .btn-icon {
+      font-size: 22px;
+    }
+
+    .popup-close {
+      color: #52585d;
+    }
+  }
+
+  .popup-container {
+    min-width: 420px;
+    width: 420px;
+  }
+
+  .date-picker {
+    &-month {
+      &-title {
+        font-weight: 500;
+        font-size: 20px;
+        margin-left: -5rem;
+      }
+
+      .btn-icon {
+        font-weight: 500;
+        font-size: 15px;
+      }
+
+      &-date:disabled {
+        color: #9ba3a8 !important;
+      }
+
+      &-day {
+        font-weight: bold;
+        color: black !important;
+        font-size: 14px !important;
+      }
+    }
+
+    &-time {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 1.5rem;
+
+      .input-field {
+        width: 80px;
+
+        &-input {
+          text-align: center;
+        }
+      }
+
+      &-delimiter {
+        padding: 14px 20px;
+      }
+    }
+
+    &-controls {
+      .btn-icon {
+        color: #2a8ee4;
+
+        &:disabled {
+          visibility: visible;
+          opacity: 1;
+        }
       }
     }
   }

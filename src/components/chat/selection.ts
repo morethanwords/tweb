@@ -304,9 +304,7 @@ export default class ChatSelection {
               this.cancelSelection();
             })
           });
-        }
-        
-        if(this.chat.type === 'chat' || this.chat.type === 'pinned') {
+        } else {
           this.selectionForwardBtn = Button('btn-primary btn-transparent selection-container-forward', {icon: 'forward'});
           this.selectionForwardBtn.append('Forward');
           this.listenerSetter.add(this.selectionForwardBtn, 'click', () => {

@@ -714,7 +714,8 @@ $bubble-margin: .25rem;
   }
 
   .web {
-    margin-top: -6px !important;
+    padding-top: 1px;
+    margin: 4px 0 -5px 1px;
     // margin-bottom: 5px;
     max-width: 100%;
     overflow: hidden;
@@ -775,11 +776,6 @@ $bubble-margin: .25rem;
   
   .web, .reply {
     font-size: .95rem;
-    // margin: .25rem;
-    margin: 4px 4px 0 6px;
-    //padding: .25rem;
-    padding: 4px;
-    border-radius: 4px;
     //transition: anim(background-color);
     
     /* &:hover {
@@ -829,9 +825,10 @@ $bubble-margin: .25rem;
   }
 
   .reply {
-    margin-bottom: 6px;
-    margin-top: 0;
+    padding: 4px;
+    margin: 0 4px 6px 4px;
     cursor: pointer;
+    border-radius: 4px;
 
     &-content {
       max-width: 300px;
@@ -881,6 +878,7 @@ $bubble-margin: .25rem;
     line-height: 21px;
     word-break: break-word;
     white-space: pre-wrap; // * fix spaces on line begin
+    position: relative;
     
     /* * {
       overflow: hidden;
@@ -1479,6 +1477,70 @@ $bubble-margin: .25rem;
   audio-element, poll-element {
     white-space: normal; // * fix due to .message white-space prewrap
   }
+
+  .replies-footer {
+    height: 50px;
+    border-top: 1px solid #dadce0;
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 0 .5rem;
+    border-bottom-left-radius: inherit;
+    border-bottom-right-radius: inherit;
+    color: $color-blue;
+    min-width: 15rem;
+    user-select: none;
+
+    .tgico-comments, .tgico-next {
+      font-size: 1.4375rem;
+    }
+
+    &-text {
+      font-weight: 500;
+      margin-left: 13px;
+      display: flex;
+      align-items: center;
+    }
+
+    &-avatars {
+      display: flex;
+      flex-direction: row-reverse;
+
+      avatar-element {
+        border: 2px solid #fff;
+        cursor: pointer;
+      }
+    }
+
+    .tgico-next {
+      position: absolute;
+      right: .5rem;
+    }
+    
+    .rp {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      overflow: hidden;
+      border-radius: inherit;
+      cursor: pointer;
+    }
+
+    &.is-unread {
+      .replies-footer-text {
+        &:after {
+          content: " ";
+          background-color: $color-blue;
+          width: .5rem;
+          height: .5rem;
+          margin-left: .75rem;
+          border-radius: 50%;
+        }
+      }
+    }
+  }
 }
 
 // * fix scroll with only 1 bubble
@@ -1988,7 +2050,7 @@ $bubble-margin: .25rem;
     }
 
     &.is-link:before {
-      content: $tgico-next;
+      content: $tgico-arrow-next;
       position: absolute;
       right: 2px;
       top: 2px;
@@ -2251,11 +2313,7 @@ poll-element {
   }
 
   avatar-element {
-    width: 18px;
-    height: 18px;
     border: 1px solid #fff;
-    line-height: 20px;
-    font-size: 10px;
     cursor: pointer;
   }
 

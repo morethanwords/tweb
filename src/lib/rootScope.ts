@@ -20,7 +20,7 @@ type BroadcastEvents = {
   'filter_order': number[],
   
   'dialog_draft': {peerId: number, draft: any, index: number},
-  'dialog_unread': {peerId: number, count?: number},
+  'dialog_unread': {peerId: number},
   'dialog_flush': {peerId: number},
   'dialog_drop': {peerId: number, dialog?: Dialog},
   'dialog_migrate': {migrateFrom: number, migrateTo: number},

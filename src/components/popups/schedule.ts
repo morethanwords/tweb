@@ -21,7 +21,8 @@ export default class PopupSchedule extends PopupDatePicker {
         date.setDate(date.getDate() - 1);
         return date;
       })(),
-      withTime: true
+      withTime: true,
+      showOverflowMonths: true
     });
 
     this.element.classList.add('popup-schedule');

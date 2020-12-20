@@ -1,6 +1,9 @@
 import { getFullDate } from "../../helpers/date";
 import { formatNumber } from "../../helpers/number";
+import { MessageReplies } from "../../layer";
+import appPeersManager from "../../lib/appManagers/appPeersManager";
 import RichTextProcessor from "../../lib/richtextprocessor";
+import { ripple } from "../ripple";
 import Chat from "./chat";
 
 type Message = any;
@@ -57,5 +60,57 @@ export namespace MessageRender {
     messageDiv.append(timeSpan);
 
     return timeSpan;
+  };
+
+  export const renderReplies = ({bubble, bubbleContainer, message, messageDiv}: {
+    bubble: HTMLElement,
+    bubbleContainer: HTMLElement,
+    message: any,
+    messageDiv: HTMLElement
+  }) => {
+    const replies = message.replies as MessageReplies;
+    const isFooter = !bubble.classList.contains('sticker') && !bubble.classList.contains('emoji-big');
+    if(isFooter) {
+      const container = document.createElement('div');
+      container.classList.add('replies-footer');
+
+      let leftHTML = '', lastStyle = '';
+      if(replies?.recent_repliers) {
+        leftHTML += '<div class="replies-footer-avatars">'
+        /**
+         * MACOS, ANDROID - без реверса
+         * WINDOWS DESKTOP - реверс
+         * все приложения накладывают аватарку первую на вторую, а в макете зато вторая на первую, ЛОЛ!
+         */
+        let l: string[] = [];
+        replies.recent_repliers/* .slice().reverse() */.forEach((peer, idx) => {
+          lastStyle = idx == 0 ? '' : `style="transform: translateX(-${idx * 12}px);"`;
+          l.push(`<avatar-element class="avatar-32" dialog="0" peer="${appPeersManager.getPeerId(peer)}" ${lastStyle}></avatar-element>`);
+        });
+        leftHTML += l.reverse().join('') + '</div>';
+      } else {
+        leftHTML = '<span class="tgico-comments"></span>';
+      }
+
+      let text: string;
+      if(replies?.replies) {
+        text = replies.replies + ' ' + (replies.replies > 1 ? 'Comments' : 'Comment');
+      } else {
+        text = 'Leave a Comment';
+      }
+
+      if(replies) {
+        if(replies.read_max_id < replies.max_id) {
+          container.classList.add('is-unread');
+        }
+      }
+
+      container.innerHTML = `${leftHTML}<span class="replies-footer-text" ${lastStyle}>${text}</span><span class="tgico-next"></span>`;
+
+      const rippleContainer = document.createElement('div');
+      container.append(rippleContainer);
+      ripple(rippleContainer);
+      bubbleContainer.prepend(container);
+    }
   };
 }

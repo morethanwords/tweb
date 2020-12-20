@@ -89,7 +89,7 @@ export default class ChatInput {
   private scrollOffsetTop = 0;
   private scrollDiff = 0;
 
-  private helperType: Exclude<ChatInputHelperType, 'webpage'>;
+  public helperType: Exclude<ChatInputHelperType, 'webpage'>;
   private helperFunc: () => void;
   private helperWaitingForward: boolean;
 
@@ -382,7 +382,8 @@ export default class ChatInput {
             duration,
             waveform: result.waveform,
             objectURL: result.url,
-            replyToMsgId: this.replyToMsgId
+            replyToMsgId: this.replyToMsgId,
+            threadId: this.chat.threadId
           });
 
           this.onMessageSent(false, true);
@@ -455,7 +456,7 @@ export default class ChatInput {
   }
 
   public destroy() {
-    this.chat.log.error('Input destroying');
+    //this.chat.log.error('Input destroying');
 
     emoticonsDropdown.events.onOpen.findAndSplice(f => f == this.onEmoticonsOpen);
     emoticonsDropdown.events.onClose.findAndSplice(f => f == this.onEmoticonsClose);
@@ -1108,6 +1109,7 @@ export default class ChatInput {
     } else {
       this.appMessagesManager.sendText(this.chat.peerId, str, {
         replyToMsgId: this.replyToMsgId,
+        threadId: this.chat.threadId,
         noWebPage: this.noWebPage,
         webPage: this.willSendWebPage,
         scheduleDate: this.scheduleDate,
@@ -1151,6 +1153,7 @@ export default class ChatInput {
       this.appMessagesManager.sendFile(this.chat.peerId, document, {
         isMedia: true, 
         replyToMsgId: this.replyToMsgId, 
+        threadId: this.chat.threadId,
         silent: this.sendSilent, 
         scheduleDate: this.scheduleDate
       });
@@ -1235,7 +1238,7 @@ export default class ChatInput {
       this.willSendWebPage = null;
     }
     
-    this.replyToMsgId = undefined;
+    this.replyToMsgId = this.chat.threadId;
     this.forwardingMids.length = 0;
     this.forwardingFromPeerId = 0;
     this.editMsgId = undefined;

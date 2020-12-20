@@ -50,7 +50,7 @@ export default class ChatTopbar {
   }
 
   public construct() {
-    this.chat.log.error('Topbar construction');
+    //this.chat.log.error('Topbar construction');
 
     this.container = document.createElement('div');
     this.container.classList.add('sidebar-header', 'topbar');
@@ -320,7 +320,7 @@ export default class ChatTopbar {
   };
 
   public destroy() {
-    this.chat.log.error('Topbar destroying');
+    //this.chat.log.error('Topbar destroying');
 
     this.listenerSetter.removeAll();
     mediaSizes.removeListener('changeScreen', this.onChangeScreen);
@@ -386,7 +386,6 @@ export default class ChatTopbar {
   public setTitle(count?: number) {
     let title = '';
     if(this.chat.type === 'pinned') {
-      //title = !count ? 'Pinned Messages' : (count === 1 ? 'Pinned Message' : (count + ' Pinned Messages'));
       title = [count > 1 ? count : false, 'Pinned Messages'].filter(Boolean).join(' ');
       
       if(count === undefined) {
@@ -408,16 +407,25 @@ export default class ChatTopbar {
       }
     } else if(this.chat.type === 'scheduled') {
       if(this.peerId === rootScope.myId) {
-        //title = !count ? 'Reminders' : (count === 1 ? 'Reminder' : (count + ' Reminders'));
         title = [count > 1 ? count : false, 'Reminders'].filter(Boolean).join(' ');
       } else {
-        //title = !count ? 'Scheduled Messages' : (count === 1 ? 'Scheduled Message' : (count + ' Scheduled Messages'));
         title = [count > 1 ? count : false, 'Scheduled Messages'].filter(Boolean).join(' ');
       }
       
       if(count === undefined) {
         this.appMessagesManager.getScheduledMessages(this.peerId).then(mids => {
           this.setTitle(mids.length);
+        });
+      }
+    } else if(this.chat.type === 'discussion') {
+      title = [count > 1 ? count : false, 'Comments'].filter(Boolean).join(' ');
+
+      if(count === undefined) {
+        Promise.all([
+          this.appMessagesManager.getHistory(this.peerId, 0, 1, 0, this.chat.threadId),
+          Promise.resolve()
+        ]).then(() => {
+          this.setTitle(this.appMessagesManager.getHistoryStorage(this.peerId, this.chat.threadId).count);
         });
       }
     } else if(this.chat.type === 'chat') {
