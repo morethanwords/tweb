@@ -267,6 +267,9 @@ export default class PopupNewMedia extends PopupElement {
           const docDiv = wrapDocument({
             message: {
               _: 'message',
+              pFlags: {
+                is_outgoing: true
+              },
               mid: 0,
               peerId: 0,
               media: {
@@ -280,8 +283,7 @@ export default class PopupNewMedia extends PopupElement {
                   url: params.objectURL
                 }
               }
-            } as any,
-            uploading: true
+            } as any
           });
 
           const finish = () => {

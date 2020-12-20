@@ -1451,7 +1451,8 @@ export default class ChatBubbles {
     }
     
     const peerId = this.peerId;
-    const our = message.fromId == rootScope.myId; // * can't use 'message.pFlags.out' here because this check will be used to define side of message (left-right)
+    // * can't use 'message.pFlags.out' here because this check will be used to define side of message (left-right)
+    const our = message.fromId == rootScope.myId || (message.pFlags.out && this.appPeersManager.isMegagroup(this.peerId));
     
     const messageDiv = document.createElement('div');
     messageDiv.classList.add('message');
@@ -2185,11 +2186,15 @@ export default class ChatBubbles {
           bubble.classList.add('is-reply');
         }
         
-        if(!bubble.classList.contains('sticker') && (peerId < 0 && peerId != message.fromId)) {
+        if(!bubble.classList.contains('sticker') && (peerId < 0 && (peerId != message.fromId || our)) && message.fromId !== rootScope.myId) {
           let nameDiv = document.createElement('div');
           nameDiv.classList.add('name');
           nameDiv.innerHTML = title;
-          nameDiv.style.color = this.appPeersManager.getPeerColorById(message.fromId, false);
+
+          if(!our) {
+            nameDiv.style.color = this.appPeersManager.getPeerColorById(message.fromId, false);
+          }
+
           nameDiv.dataset.peerId = message.fromId;
           nameContainer.append(nameDiv);
         } else /* if(!message.reply_to_mid) */ {

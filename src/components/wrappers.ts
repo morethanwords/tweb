@@ -343,13 +343,14 @@ export const formatDate = (timestamp: number, monthShort = false, withYear = tru
   return str + ' at ' + date.getHours() + ':' + ('0' + date.getMinutes()).slice(-2);
 };
 
-export function wrapDocument({message, withTime, uploading, fontWeight}: {
+export function wrapDocument({message, withTime, fontWeight}: {
   message: any, 
   withTime?: boolean,
-  uploading?: boolean,
   fontWeight?: number
 }): HTMLElement {
   if(!fontWeight) fontWeight = 500;
+
+  const uploading = message.pFlags.is_outgoing;
 
   const doc = message.media.document || message.media.webpage.document;
   if(doc.type == 'audio' || doc.type == 'voice') {

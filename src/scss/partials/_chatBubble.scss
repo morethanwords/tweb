@@ -1432,7 +1432,7 @@ $bubble-margin: .25rem;
   }
 
   &:not(.sticker):not(.emoji-big) {
-    &.hide-name, &:not(.is-group-first), &.is-out {
+    &.hide-name, &:not(.is-group-first)/* , &.is-out */ {
       .reply {
         margin-top: 6px;
       }
@@ -1759,6 +1759,10 @@ $bubble-margin: .25rem;
     &, .poll-footer-button {
       border-radius: 12px 6px 6px 12px;
     }
+
+    .name {
+      color: #50af4f;
+    }
   }
     
   &.is-group-first {
@@ -1863,9 +1867,9 @@ $bubble-margin: .25rem;
     }
   }
 
-  &.is-reply .name {
+  /* &.is-reply .name {
     display: none;
-  }
+  } */
 
   .document-ico:after {
     border-top-color: #eeffde;
