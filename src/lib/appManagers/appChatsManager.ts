@@ -212,7 +212,7 @@ export class AppChatsManager {
 
   public getChat(id: number) {
     if(id < 0) id = -id;
-    return this.chats[id] || {_: 'chatEmpty', id: id, deleted: true, access_hash: ''/* this.channelAccess[id] */};
+    return this.chats[id] || {_: 'chatEmpty', id, deleted: true, access_hash: '', pFlags: {}/* this.channelAccess[id] */};
   }
 
   public hasRights(id: number, action: ChatRights, flag?: keyof ChatBannedRights['pFlags']) {
@@ -222,7 +222,7 @@ export class AppChatsManager {
     if(chat._ == 'chatForbidden' ||
         chat._ == 'channelForbidden' ||
         chat.pFlags.kicked ||
-        chat.pFlags.left) {
+        (chat.pFlags.left && !chat.pFlags.megagroup)) {
       return false;
     }
 
@@ -387,7 +387,7 @@ export class AppChatsManager {
     const chat = this.getChat(id);
 
     const isChannel = this.isBroadcast(id);
-    const participants_count = chat.participants_count || chat.participants?.participants.length || 0;
+    const participants_count = chat.participants_count || chat.participants?.participants.length || 1;
     return numberWithCommas(participants_count) + ' ' + (isChannel ? 'followers' : 'members');
   }
 

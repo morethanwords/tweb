@@ -533,6 +533,9 @@ export default class AppSharedMediaTab implements SliderTab {
             withTime: true,
             fontWeight: 400
           });
+          if(message.media.document.type === 'audio') {
+            div.classList.add('audio-48');
+          }
           div.dataset.mid = '' + message.mid;
           elemsToAppend.push(div);
         }

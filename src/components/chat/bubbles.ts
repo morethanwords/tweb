@@ -1143,7 +1143,7 @@ export default class ChatBubbles {
     this.log('setPeer peerId:', this.peerId, historyStorage, lastMsgId, topMessage);
 
     // add last message, bc in getHistory will load < max_id
-    const additionMsgId = isJump || this.chat.type !== 'chat' ? 0 : topMessage;
+    const additionMsgId = isJump || (this.chat.type !== 'chat' && this.chat.type !== 'discussion') ? 0 : topMessage;
 
     /* this.setPeerPromise = null;
     this.preloader.detach();
@@ -2041,7 +2041,7 @@ export default class ChatBubbles {
               nameContainer = newNameContainer;
             }
 
-            const lastContainer = messageDiv.lastElementChild.querySelector('.document-size');
+            const lastContainer = messageDiv.lastElementChild.querySelector('.document-size, .audio');
             lastContainer && lastContainer.append(timeSpan.cloneNode(true));
 
             bubble.classList.remove('is-message-empty');

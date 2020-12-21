@@ -1,5 +1,6 @@
 import PopupElement, { PopupOptions } from ".";
 import { getFullDate, months } from "../../helpers/date";
+import mediaSizes from "../../helpers/mediaSizes";
 import InputField from "../inputField";
 
 export default class PopupDatePicker extends PopupElement {
@@ -272,7 +273,8 @@ export default class PopupDatePicker extends PopupElement {
   }
 
   public setMonth() {
-    this.monthTitle.innerText = months[this.selectedMonth.getMonth()] + ' ' + this.selectedMonth.getFullYear();
+    const monthName = months[this.selectedMonth.getMonth()];
+    this.monthTitle.innerText = (this.timeDiv && mediaSizes.isMobile ? monthName.slice(0, 3) : monthName) + ' ' + this.selectedMonth.getFullYear();
 
     if(this.month) {
       this.month.remove();

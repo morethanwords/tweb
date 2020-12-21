@@ -259,16 +259,17 @@ function wrapAudio(audioEl: AudioElement) {
   let subtitle = doc.audioPerformer ? RichTextProcessor.wrapPlainText(doc.audioPerformer) : '';
 
   if(withTime) {
-    subtitle += (subtitle ? ' · ' : '') + formatDate(doc.date);
+    subtitle += (subtitle ? ' • ' : '') + formatDate(doc.date);
   } else if(!subtitle) {
     subtitle = 'Unknown Artist';
   }
 
+  subtitle = ' • ' + subtitle;
+
   const html = `
   <div class="audio-details">
     <div class="audio-title"><middle-ellipsis-element data-font-weight="${audioEl.dataset.fontWeight}">${title}</middle-ellipsis-element></div>
-    <div class="audio-subtitle">${subtitle}</div>
-    <div class="audio-time"></div>
+    <div class="audio-subtitle"><div class="audio-time"></div>${subtitle}</div>
   </div>`;
   
   audioEl.insertAdjacentHTML('beforeend', html);
@@ -282,7 +283,7 @@ function wrapAudio(audioEl: AudioElement) {
     audioEl.addAudioListener('ended', () => {
       audioEl.classList.remove('audio-show-progress');
       // Reset subtitle
-      subtitleDiv.innerHTML = subtitle;
+      subtitleDiv.lastChild.replaceWith(subtitle);
       launched = false;
     });
 
@@ -291,9 +292,8 @@ function wrapAudio(audioEl: AudioElement) {
         audioEl.classList.add('audio-show-progress');
         launched = true;
 
-        subtitleDiv.innerHTML = '';
         if(progressLine) {
-          subtitleDiv.append(progressLine.container);
+          subtitleDiv.lastChild.replaceWith(progressLine.container);
         }
       }
     };
@@ -335,9 +335,10 @@ export default class AudioElement extends HTMLElement {
     this.classList.add('audio');
 
     const doc = this.message.media.document || this.message.media.webpage.document;
+    const isVoice = doc.type == 'voice';
     const uploading = this.message.pFlags.is_outgoing;
 
-    const durationStr = String(doc.duration | 0).toHHMMSS(true);
+    const durationStr = String(doc.duration | 0).toHHMMSS();
 
     this.innerHTML = `<div class="audio-toggle audio-ico tgico-largeplay">    
                          <div class="part one" x="0" y="0" fill="#fff"></div>
@@ -346,15 +347,15 @@ export default class AudioElement extends HTMLElement {
 
     const downloadDiv = document.createElement('div');
     downloadDiv.classList.add('audio-download');
-    if(!uploading && doc.type != 'audio') {
+    if(!uploading && isVoice) {
       downloadDiv.innerHTML = '<div class="tgico-download"></div>';
     }
 
-    if(doc.type != 'audio' || uploading) {
+    if(isVoice || uploading) {
       this.append(downloadDiv);
     }
 
-    const onTypeLoad = doc.type == 'voice' ? wrapVoiceMessage(this) : wrapAudio(this);
+    const onTypeLoad = isVoice ? wrapVoiceMessage(this) : wrapAudio(this);
     
     const audioTimeDiv = this.querySelector('.audio-time') as HTMLDivElement;
     audioTimeDiv.innerHTML = durationStr;
@@ -366,8 +367,10 @@ export default class AudioElement extends HTMLElement {
       
       const toggle = this.querySelector('.audio-toggle') as HTMLDivElement;
 
+      const getTimeStr = () => String(audio.currentTime | 0).toHHMMSS() + (isVoice ? (' / ' + durationStr) : '');
+
       const onPlaying = () => {
-        audioTimeDiv.innerText = String(audio.currentTime | 0).toHHMMSS(true) + ' / ' + durationStr;
+        audioTimeDiv.innerText = getTimeStr();
         if(!audio.paused) {
           //toggle.classList.remove('tgico-largeplay');
           toggle.classList.add('tgico-largepause');
@@ -376,7 +379,6 @@ export default class AudioElement extends HTMLElement {
 
       if(!audio.paused || (audio.currentTime > 0 && audio.currentTime != audio.duration)) {
         onPlaying();
-        audioTimeDiv.innerText = String(audio.currentTime | 0).toHHMMSS(true) + ' / ' + durationStr;
       }
 
       attachClickEvent(toggle, (e) => {
@@ -392,7 +394,7 @@ export default class AudioElement extends HTMLElement {
 
       this.addAudioListener('timeupdate', () => {
         if(appMediaPlaybackController.isSafariBuffering(audio)) return;
-        audioTimeDiv.innerText = String(audio.currentTime | 0).toHHMMSS(true) + ' / ' + durationStr;
+        audioTimeDiv.innerText = getTimeStr();
       });
 
       this.addAudioListener('pause', () => {
@@ -406,7 +408,7 @@ export default class AudioElement extends HTMLElement {
     if(!uploading) {
       let preloader: ProgressivePreloader = this.preloader;
 
-      if(doc.type == 'voice') {
+      if(isVoice) {
         let download: Download;
 
         const onClick = (e: Event) => {

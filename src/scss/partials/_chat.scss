@@ -789,6 +789,10 @@ $chat-helper-size: 39px;
 
 			@include respond-to(handhelds) {
 				padding: 0 .5rem;
+
+				&.tgico-send2 {
+					padding: 0 2px;
+				}
 			}
 
 			@media only screen and (max-width: 380px) { 

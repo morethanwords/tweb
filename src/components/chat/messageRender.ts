@@ -1,6 +1,7 @@
 import { getFullDate } from "../../helpers/date";
 import { formatNumber } from "../../helpers/number";
 import { MessageReplies } from "../../layer";
+import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import appPeersManager from "../../lib/appManagers/appPeersManager";
 import RichTextProcessor from "../../lib/richtextprocessor";
 import { ripple } from "../ripple";
@@ -100,7 +101,8 @@ export namespace MessageRender {
       }
 
       if(replies) {
-        if(replies.read_max_id < replies.max_id) {
+        const historyStorage = appMessagesManager.getHistoryStorage(-replies.channel_id);
+        if(replies.read_max_id < replies.max_id && (!historyStorage.readMaxId || historyStorage.readMaxId < replies.max_id)) {
           container.classList.add('is-unread');
         }
       }

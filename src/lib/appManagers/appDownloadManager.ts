@@ -102,6 +102,8 @@ export class AppDownloadManager {
     };
 
     const tryDownload = (): Promise<unknown> => {
+      //return Promise.resolve();
+
       if(!apiManager.worker) {
         return this.cacheStorage.getFile(fileName).then((blob) => {
           if(blob.size < options.size) throw 'wrong size';

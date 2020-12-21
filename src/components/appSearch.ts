@@ -251,7 +251,7 @@ export default class AppSearch {
       
       const {count, history, next_rate} = res;
       
-      if(history[0].mid == this.minMsgId) {
+      if(history.length && history[0].mid == this.minMsgId) {
         history.shift();
       }
       
@@ -269,7 +269,7 @@ export default class AppSearch {
 
       searchGroup.toggle();
       
-      this.minMsgId = history[history.length - 1].mid;
+      this.minMsgId = history.length && history[history.length - 1].mid;
       this.offsetRate = next_rate;
       
       if(this.loadedCount == -1) {

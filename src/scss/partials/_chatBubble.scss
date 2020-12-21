@@ -895,110 +895,48 @@ $bubble-margin: .25rem;
     }
   }
 
-  .audio:not(.is-voice) {
-    justify-content: unset;
-    max-width: none;
-    width: 258px;
-
+  .audio {
+    padding-right: 2px;
+    
     $parent: ".audio";
-
     #{$parent} {
-      &-time {
-        padding-bottom: 7px;
-      }
-  
-      &-time, &-subtitle {
-        color: #4fae4e;
-        line-height: 1.45;
-        margin-top: 0;
-      }
-  
       &-title {
         font-weight: 500;
-        margin-left: -1px;
       }
-  
-      &-details {
-        margin-top: 8px;
-  
-        @include respond-to(handhelds) {
-          margin-top: -1px;
-        }
-      }
-  
+
       &-ico {
         font-size: 0;
-        
-        @include respond-to(handhelds) {
-          margin-top: 1px;
-          margin-left: 2px;
-        }
       }
     }
     
     @include respond-to(handhelds) {
-      height: 59px;
+      height: 42px;
       padding-left: 47px;
-    }
 
-    // .preloader-container {
-    //   @include respond-to(handhelds) {
-    //     width: 30px;
-    //     height: 30px;
-    //     // left: 2px;
-    //   }
-    // }
-
-    .progress-line {
-      /* width: calc(100% + 50px); */
-      width: 191px;
-      margin: 9px 0 9px;
-
-      @include respond-to(handhelds) {
-         width: unset;
+      .audio-details {
+        margin-top: 2px;
+        margin-bottom: 0;
       }
 
-      &__filled {
-        background-color: #47aa41;
-        transform-origin: left;
-        height: 2px;
-      }
-
-      &__seek {
-        height: 2px;
-        overflow: visible !important;
-        background: rgba(124, 195, 107, .52);
-        
-        &::-webkit-slider-thumb {
-          height: 12px;
-          width: 12px;
-          background: #47aa41;
-          border: none;
-        }
+      .audio-subtitle {
+        margin-top: -1px;
       }
     }
   }
 
   // all for audio (not voice)
   .message.audio-message {
-    //&.audio-message {
-      min-width: 275px;
-      //max-width: 380px !important;
-      max-width: 275px !important;
-      padding-top: 8px !important;
-      padding-left: 8px !important;
+    min-width: 335px;
+    max-width: 335px !important;
 
-      /* .audio-details * {
-        overflow: visible;
-      } */
-    //}
+    @include respond-to(handhelds) {
+      min-width: 280px;
+      max-width: 300px !important;
+    }
+  }
 
-    /* @include respond-to(handhelds) {
-      .preloader-container .you-spin-me-round {
-        margin-top: 1px;
-        margin-left: 2px;
-      }
-    } */
+  .message.audio-message, .message.voice-message {
+    padding: 8px !important;
   }
 
   .message.contact-message {
@@ -1706,27 +1644,6 @@ $bubble-margin: .25rem;
     color: #707579 !important;
   }
 
-  .audio:not(.is-voice) {
-    .progress-line {
-      &__seek {
-        background: rgba(193, 207, 220, .39);
-      }
-
-      &__filled {
-        background-color: #0089ff;
-      }
-
-      &__loaded {
-        background-color: #cacaca;
-      }
-
-      input::-webkit-slider-thumb { 
-        background: #63a2e3; 
-        border: none;
-      }
-    }
-  }
-
   /* .poll {
     &-answer-selected {
       &:before {
@@ -1969,9 +1886,23 @@ $bubble-margin: .25rem;
     pointer-events: none;
   }
 
-  .progress-line {
-    &__loaded {
-      background-color: #90e18d !important;
+  .audio:not(.is-voice) {
+    .progress-line {
+      &__loaded {
+        background-color: #90e18d !important;
+      }
+  
+      &__filled {
+        background-color: #47aa41;
+      }
+  
+      &__seek {
+        background: rgba(124, 195, 107, .52);
+        
+        &::-webkit-slider-thumb {
+          background: #47aa41;
+        }
+      }
     }
   }
 

@@ -460,15 +460,12 @@
         }
 
         .audio {
-          padding-bottom: 26px;
           padding-left: 61px;
           /* min-height: 58px; */
           max-width: 368px;
           justify-content: unset;
-
-          &-details {
-            height: 66px;
-          }
+          height: 48px;
+          margin-bottom: 1.5rem;
 
           &.audio-show-progress .audio-subtitle {
             overflow: visible;
@@ -478,20 +475,9 @@
             padding-bottom: 16px;
           } */
 
-          &-ico {
+          &-ico, &-download {
             width: 48px;
             height: 48px;
-          }
-
-          &-download {
-            border-radius: 50%;
-            background-color: #50a2e9;
-            align-items: center;
-
-            @include respond-to(not-handhelds) {
-              width: 48px;
-              height: 48px;
-            }
           }
 
           .part {
@@ -503,58 +489,6 @@
             @include respond-to(handhelds) {
               width: 100px;
               height: 100px;
-            }
-          }
-
-          &-title {
-            font-size: 1rem;
-            color: #000;
-            line-height: 1.2;
-            padding-top: 5px;
-            margin-top: 0;
-            margin-left: -1px;
-          }
-
-          &-subtitle {
-            font-size: 14px;
-            line-height: 1.25;
-            color: #707579;
-            margin-left: -1px;
-            margin-top: 3px;
-          }
-
-          &-time {
-            margin-top: 1px;
-          }
-
-          &-title, &-subtitle {
-            overflow: hidden;
-	          text-overflow: ellipsis;
-          }
-        }
-
-        .progress-line {
-          margin: 11px 0 8px;
-
-          &__filled {
-            background-color: #0089ff;
-            transform-origin: left;
-            height: 2px;
-          }
-
-          &__loaded {
-            background-color: #cacaca;
-          }
-
-          &__seek {
-            height: 2px;
-            //background-color: #e6ecf0;
-            background: rgba(193, 207, 220, 0.39);
-
-            &::-webkit-slider-thumb {
-              height: 12px;
-              width: 12px;
-              border: none;
             }
           }
         }

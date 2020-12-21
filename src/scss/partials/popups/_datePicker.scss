@@ -119,6 +119,10 @@
     margin-bottom: 17px;
     margin-left: 0;
 
+    @include respond-to(handhelds) {
+      margin-left: 3px;
+    }
+
     .btn-icon {
       font-size: 22px;
     }
@@ -132,6 +136,12 @@
     min-width: 420px;
     width: 420px;
     padding: 4px 16px 16px 16px;
+
+    @include respond-to(handhelds) {
+      min-width: 312px;
+      width: 312px;
+      padding: 4px 14px 14px 14px;
+    }
   }
 
   .date-picker {
@@ -140,10 +150,19 @@
       margin-left: 2px;
       width: unset;
 
+      @include respond-to(handhelds) {
+        margin-left: 0;
+        margin-right: -6px;
+      }
+
       &-title {
         font-weight: 500;
         font-size: 20px;
         margin-left: -5rem;
+
+        @include respond-to(handhelds) {
+          margin-left: -2rem;
+        }
       }
 
       .btn-icon {
@@ -168,12 +187,20 @@
 
     &-months {
       margin-bottom: 14px;
+
+      @include respond-to(handhelds) {
+        margin-bottom: 13px;
+      }
     }
 
     &-time {
       display: flex;
       justify-content: center;
       margin-bottom: 1.5rem;
+
+      @include respond-to(handhelds) {
+        margin-bottom: 22px;
+      }
 
       .input-field {
         width: 80px;
@@ -202,5 +229,11 @@
 
   .btn-primary {
     font-weight: normal;
+
+    @include respond-to(handhelds) {
+      height: 50px;
+      widtH: 280px;
+      margin-left: 2px;
+    }
   }
 }

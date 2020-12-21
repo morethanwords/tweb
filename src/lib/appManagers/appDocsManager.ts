@@ -157,7 +157,8 @@ export class AppDocsManager {
     }
 
     // for testing purposes
-    //doc.supportsStreaming = false;
+    // doc.supportsStreaming = false;
+    // doc.url = '';
     
     if(!doc.file_name) {
       doc.file_name = '';
@@ -304,7 +305,7 @@ export class AppDocsManager {
       download = originalPromise.then(async(blob) => {
         let reader = new FileReader();
   
-        await new Promise((resolve, reject) => {
+        await new Promise<void>((resolve, reject) => {
           reader.onloadend = (e) => {
             let uint8 = new Uint8Array(e.target.result as ArrayBuffer);
             //console.log('sending uint8 to decoder:', uint8);

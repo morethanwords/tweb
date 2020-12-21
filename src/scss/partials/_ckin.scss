@@ -284,7 +284,7 @@ video::-webkit-media-controls-enclosure {
   position: relative;
   cursor: pointer;
 
-  input[type=range] {
+  &__seek {
     -webkit-appearance: none;
     -moz-appearance: none;
     background: transparent;

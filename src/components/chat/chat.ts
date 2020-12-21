@@ -138,7 +138,7 @@ export default class Chat extends EventListenerBase<{
 
     if(this.type === 'discussion' && !this.threadId) {
       this.threadId = lastMsgId;
-      lastMsgId = 0;
+      lastMsgId = undefined;
     }
 
     //console.time('appImManager setPeer');

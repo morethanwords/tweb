@@ -577,14 +577,13 @@ export class AppImManager {
 
     if(peerId < 0) { // not human
       const chat = appPeersManager.getPeer(peerId);
-      const isChannel = appPeersManager.isChannel(peerId) && !appPeersManager.isMegagroup(peerId);
 
       const chatInfo = await appProfileManager.getChatFull(chat.id) as any;
       this.chat.log('chatInfo res:', chatInfo);
 
-      const participants_count = chatInfo.participants_count || (chatInfo.participants && chatInfo.participants.participants && chatInfo.participants.participants.length);
-      if(participants_count) {
-        subtitle = numberWithCommas(participants_count) + ' ' + (isChannel ? 'followers' : 'members');
+      const participants_count = chatInfo.participants_count || (chatInfo.participants && chatInfo.participants.participants && chatInfo.participants.participants.length) || 1;
+      //if(participants_count) {
+        subtitle = appChatsManager.getChatMembersString(-peerId);
 
         if(participants_count < 2) return subtitle;
         const onlines = await appChatsManager.getOnlines(chat.id);
@@ -593,7 +592,7 @@ export class AppImManager {
         }
   
         return subtitle;
-      }
+      //}
     } else if(!appUsersManager.isBot(peerId)) { // user
       const user = appUsersManager.getUser(peerId);
       

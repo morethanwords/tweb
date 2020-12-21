@@ -1,9 +1,9 @@
 .audio {
   position: relative;
   padding-left: 67px;
-  min-height: 58px;
-  max-width: 258px;
   overflow: visible!important;
+  height: 54px;
+  user-select: none;
 
   @include respond-to(handhelds) {
     padding-left: 45px;
@@ -341,6 +341,7 @@
 
   &-waveform {
     height: 23px;
+    margin-top: -4px;
 
     //overflow: visible!important;
 
@@ -354,57 +355,113 @@
     }
   }
 
+  //&.audio-54 {
+    &-details {
+      margin-top: 4px;
+      margin-bottom: 2px;
+    }
+  //}
+
+  &.audio-48 {
+    .audio-details {
+      margin-top: 3px;
+      margin-bottom: 0;
+    }
+
+    .audio-title {
+      margin-bottom: -2px;
+    }
+  }
+
   &-title {
     font-size: 1rem;
     color: #000;
-    user-select: none;
   }
 
   &-time, &-subtitle {
     font-size: 14px;
     color: $color-gray;
-    margin-top: 3px;
-    margin-left: -1px;
-    user-select: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: flex;
 
     @include respond-to(handhelds) {
-      margin-top: 1px;
       font-size: 12px;
     }
   }
 
+  // * for audio
+  &-subtitle {
+    align-items: center;
+
+    .audio-time {
+      flex: 0 0 auto;
+      margin-right: 4px;
+    }
+  }
+
+  // * for audio
+  &-title, &-subtitle {
+    margin-left: -1px;
+  }
+
+  // * for audio
   &-title, &:not(.audio-show-progress) &-subtitle {
     white-space: nowrap;
 		overflow: hidden;
 		max-width: 100%;
 		text-overflow: ellipsis;
   }
-
-
-  @include respond-to(handhelds) {
-    &-download {
-      //background: transparent;
-      margin-left: 6px;
-      margin-top: 6px;
+  
+  &.is-voice {
+    .audio-time {
+      line-height: 1;
+      margin-left: -1px;
+      margin-top: 2px;
     }
 
-    &.is-voice {
-      .audio-download {
-        margin: 0;
+    &.is-unread {
+      .audio-time {
+        &:after {
+          content: " ";
+          width: .5rem;
+          height: .5rem;
+          background-color: $color-blue;
+          border-radius: 50%;
+          margin-left: .375rem;
+          display: inline;
+          margin-top: 2px;
+        }
       }
     }
   }
 
-  &.is-voice.is-unread {
-    .audio-time {
-      &:after {
-        content: " ";
-        width: .5rem;
-        height: .5rem;
-        background-color: $color-blue;
-        border-radius: 50%;
-        margin-left: .375rem;
-        display: inline-block;
+  // * for audio
+  .progress-line {
+    flex: 1 1 auto;
+    margin-left: 5px;
+    margin-top: -1px;
+
+    &__filled {
+      background-color: #0089ff;
+      transform-origin: left;
+      height: 2px;
+    }
+
+    &__loaded {
+      background-color: #cacaca;
+    }
+
+    &__seek {
+      height: 2px;
+      //background-color: #e6ecf0;
+      background: rgba(193, 207, 220, 0.39);
+
+      &::-webkit-slider-thumb {
+        height: 12px;
+        width: 12px;
+        border: none;
       }
     }
   }
