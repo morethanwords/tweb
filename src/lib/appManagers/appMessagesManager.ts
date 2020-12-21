@@ -455,45 +455,28 @@ export class AppMessagesManager {
 
     peerId = appPeersManager.getPeerMigratedTo(peerId) || peerId;
 
-    var entities = options.entities || [];
+    let entities = options.entities || [];
     if(!options.viaBotId) {
       text = RichTextProcessor.parseMarkdown(text, entities);
     }
 
-    var sendEntites = this.getInputEntities(entities);
+    let sendEntites = this.getInputEntities(entities);
     if(!sendEntites.length) {
       sendEntites = undefined;
     }
     
-    var messageId = this.generateTempMessageId(peerId);
-    var randomIdS = randomLong();
-    var pFlags: any = {};
-    var replyToMsgId = options.replyToMsgId ? this.getLocalMessageId(options.replyToMsgId) : undefined;
-    var isChannel = appPeersManager.isChannel(peerId);
-    var isMegagroup = isChannel && appPeersManager.isMegagroup(peerId);
-    var asChannel = isChannel && !isMegagroup ? true : false;
-    var message: any;
+    const messageId = this.generateTempMessageId(peerId);
+    const randomIdS = randomLong();
+    const replyToMsgId = options.replyToMsgId ? this.getLocalMessageId(options.replyToMsgId) : undefined;
+    const isChannel = appPeersManager.isChannel(peerId);
+    const isBroadcast = appPeersManager.isBroadcast(peerId);
 
-    var fromId = appUsersManager.getSelf().id;
-    if(peerId != fromId) {
-      pFlags.out = true;
-
-      if(!isChannel && !appUsersManager.isBot(peerId)) {
-        pFlags.unread = true;
-      }
-    }
-
-    if(asChannel) {
-      fromId = 0;
-      pFlags.post = true;
-    }
-
-    message = {
+    const message: any = {
       _: 'message',
       id: messageId,
-      from_id: appPeersManager.getOutputPeer(fromId),
+      from_id: this.generateFromId(peerId),
       peer_id: appPeersManager.getOutputPeer(peerId),
-      pFlags,
+      pFlags: this.generateFlags(peerId),
       date: options.scheduleDate || (tsNow(true) + serverTimeManager.serverTimeOffset),
       message: text,
       random_id: randomIdS,
@@ -501,7 +484,7 @@ export class AppMessagesManager {
       via_bot_id: options.viaBotId,
       reply_markup: options.reply_markup,
       entities: entities,
-      views: asChannel && 1,
+      views: isBroadcast && 1,
       pending: true
     };
 
@@ -512,7 +495,7 @@ export class AppMessagesManager {
       };
     }
 
-    var toggleError = (on: any) => {
+    const toggleError = (on: any) => {
       if(on) {
         message.error = true;
       } else {
@@ -523,12 +506,12 @@ export class AppMessagesManager {
 
     message.send = () =>  {
       toggleError(false);
-      var sentRequestOptions: any = {};
+      const sentRequestOptions: any = {};
       if(this.pendingAfterMsgs[peerId]) {
         sentRequestOptions.afterMessageId = this.pendingAfterMsgs[peerId].messageId;
       }
 
-      var apiPromise: any;
+      let apiPromise: any;
       if(options.viaBotId) {
         apiPromise = apiManager.invokeApiAfter('messages.sendInlineBotResult', {
           peer: appPeersManager.getInputPeerById(peerId),
@@ -631,7 +614,7 @@ export class AppMessagesManager {
     //this.checkSendOptions(options);
     const messageId = this.generateTempMessageId(peerId);
     const randomIdS = randomLong();
-    const pFlags: any = {};
+    const pFlags = this.generateFlags(peerId);
     const replyToMsgId = options.replyToMsgId ? this.getLocalMessageId(options.replyToMsgId) : undefined;
     const isChannel = appPeersManager.isChannel(peerId);
     const isMegagroup = isChannel && appPeersManager.isMegagroup(peerId);
@@ -777,20 +760,6 @@ export class AppMessagesManager {
 
     this.log('AMM: sendFile', attachType, apiFileName, file.type, options);
 
-    let fromId = appUsersManager.getSelf().id;
-    if(peerId != fromId) {
-      pFlags.out = true;
-
-      if(!isChannel && !appUsersManager.isBot(peerId)) {
-        pFlags.unread = true;
-      }
-    }
-
-    if(asChannel) {
-      fromId = 0;
-      pFlags.post = true;
-    }
-
     const preloader = new ProgressivePreloader(null, true, false, 'prepend');
 
     const media = {
@@ -810,7 +779,7 @@ export class AppMessagesManager {
     const message: any = {
       _: 'message',
       id: messageId,
-      from_id: appPeersManager.getOutputPeer(fromId),
+      from_id: this.generateFromId(peerId),
       peer_id: appPeersManager.getOutputPeer(peerId),
       pFlags,
       date,
@@ -1198,25 +1167,12 @@ export class AppMessagesManager {
         break; */
     }
 
-    let pFlags: any = {};
-    if(peerId != fromId) {
-      pFlags.out = true;
-      if(!appUsersManager.isBot(peerId)) {
-        pFlags.unread = true;
-      }
-    }
-
-    if(asChannel) {
-      fromId = 0;
-      pFlags.post = true;
-    }
-
     const message: any = {
       _: 'message',
       id: messageId,
-      from_id: appPeersManager.getOutputPeer(fromId),
+      from_id: this.generateFromId(peerId),
       peer_id: appPeersManager.getOutputPeer(peerId),
-      pFlags,
+      pFlags: this.generateFlags(peerId),
       date: options.scheduleDate || (tsNow(true) + serverTimeManager.serverTimeOffset),
       message: '',
       media,
@@ -1350,6 +1306,35 @@ export class AppMessagesManager {
     }
 
     return header;
+  }
+
+  /**
+   * Generate correct from_id according to anonymous or broadcast
+   */
+  public generateFromId(peerId: number) {
+    if(peerId < 0 && (appPeersManager.isBroadcast(peerId) || appPeersManager.getPeer(peerId).admin_rights?.pFlags?.anonymous)) {
+      return undefined;
+    } else {
+      return appPeersManager.getOutputPeer(peerId);
+    }
+  }
+
+  public generateFlags(peerId: number) {
+    const pFlags: any = {};
+    const fromId = appUsersManager.getSelf().id;
+    if(peerId !== fromId) {
+      pFlags.out = true;
+
+      if(!appPeersManager.isChannel(peerId) && !appUsersManager.isBot(peerId)) {
+        pFlags.unread = true;
+      }
+    }
+
+    if(appPeersManager.isBroadcast(peerId)) {
+      pFlags.post = true;
+    }
+
+    return pFlags;
   }
 
   private setDialogIndexByMessage(dialog: MTDialog.dialog, message: MyMessage) {

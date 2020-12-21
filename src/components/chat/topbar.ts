@@ -97,7 +97,8 @@ export default class ChatTopbar {
     this.chatAudio = new ChatAudio(this, this.chat, this.appMessagesManager, this.appPeersManager);
 
     if(this.menuButtons.length) {
-      this.btnMore = ButtonMenuToggle({listenerSetter: this.listenerSetter}, 'bottom-left', this.menuButtons, () => {
+      this.btnMore = ButtonMenuToggle({listenerSetter: this.listenerSetter}, 'bottom-left', this.menuButtons, (e) => {
+        cancelEvent(e);
         this.menuButtons.forEach(button => {
           button.element.classList.toggle('hide', !button.verify());
         });
@@ -118,7 +119,7 @@ export default class ChatTopbar {
     this.listenerSetter.add(window, 'resize', this.onResize);
     mediaSizes.addListener('changeScreen', this.onChangeScreen);
 
-    this.listenerSetter.add(this.container, 'click', (e) => {
+    attachClickEvent(this.container, (e) => {
       const container: HTMLElement = findUpClassName(e.target, 'pinned-container');
       if(container) {
         cancelEvent(e);
@@ -135,12 +136,12 @@ export default class ChatTopbar {
       } else {
         this.appSidebarRight.toggleSidebar(true);
       }
-    });
+    }, {listenerSetter: this.listenerSetter});
 
-    this.listenerSetter.add(this.btnBack, 'click', (e) => {
+    attachClickEvent(this.btnBack, (e) => {
       cancelEvent(e);
       this.chat.appImManager.setPeer(0);
-    });
+    }, {listenerSetter: this.listenerSetter});
   }
 
   public constructPeerHelpers() {

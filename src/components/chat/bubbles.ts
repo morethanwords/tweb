@@ -2120,7 +2120,8 @@ export default class ChatBubbles {
 
     let savedFrom = '';
     
-    if((this.peerId < 0 && !our) || message.fwd_from || message.reply_to_mid) { // chat
+    const needName = (peerId < 0 && (peerId != message.fromId || our)) && message.fromId !== rootScope.myId;
+    if(needName || message.fwd_from || message.reply_to_mid) { // chat
       let title = this.appPeersManager.getPeerTitle(message.fwdFromId || message.fromId);
 
       const isForwardFromChannel = message.from_id && message.from_id._ == 'peerChannel' && message.fromId == message.fwdFromId;
@@ -2186,7 +2187,7 @@ export default class ChatBubbles {
           bubble.classList.add('is-reply');
         }
         
-        if(!bubble.classList.contains('sticker') && (peerId < 0 && (peerId != message.fromId || our)) && message.fromId !== rootScope.myId) {
+        if(!bubble.classList.contains('sticker') && needName) {
           let nameDiv = document.createElement('div');
           nameDiv.classList.add('name');
           nameDiv.innerHTML = title;
