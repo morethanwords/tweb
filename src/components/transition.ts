@@ -53,7 +53,7 @@ function slideTabs(tabContent: HTMLElement, prevTabContent: HTMLElement, toRight
   };
 } */
 
-export const TransitionSlider = (content: HTMLElement, type: 'tabs' | 'navigation' | 'zoom-fade'/*  | 'counter' */, transitionTime: number, onTransitionEnd?: (id: number) => void) => {
+export const TransitionSlider = (content: HTMLElement, type: 'tabs' | 'navigation' | 'zoom-fade' | 'none'/*  | 'counter' */, transitionTime: number, onTransitionEnd?: (id: number) => void) => {
   let animationFunction: TransitionFunction = null;
 
   switch(type) {

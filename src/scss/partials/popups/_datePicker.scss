@@ -1,5 +1,6 @@
 .popup-date-picker {
   $parent: ".popup";
+  user-select: none;
 
   #{$parent} {
     &-container {
@@ -114,6 +115,9 @@
 .popup-schedule {
   .popup-header {
     justify-content: space-between;
+    margin-top: 5px;
+    margin-bottom: 17px;
+    margin-left: 0;
 
     .btn-icon {
       font-size: 22px;
@@ -127,10 +131,15 @@
   .popup-container {
     min-width: 420px;
     width: 420px;
+    padding: 4px 16px 16px 16px;
   }
 
   .date-picker {
     &-month {
+      margin-right: -20px;
+      margin-left: 2px;
+      width: unset;
+
       &-title {
         font-weight: 500;
         font-size: 20px;
@@ -138,8 +147,12 @@
       }
 
       .btn-icon {
+        justify-self: auto;
         font-weight: 500;
-        font-size: 15px;
+        font-size: 14px;
+        width: 36px;
+        height: 36px;
+        margin-top: -4px;
       }
 
       &-date:disabled {
@@ -151,6 +164,10 @@
         color: black !important;
         font-size: 14px !important;
       }
+    }
+
+    &-months {
+      margin-bottom: 14px;
     }
 
     &-time {
@@ -181,5 +198,9 @@
         }
       }
     }
+  }
+
+  .btn-primary {
+    font-weight: normal;
   }
 }

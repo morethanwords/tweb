@@ -1,6 +1,5 @@
 //import apiManager from '../mtproto/apiManager';
 import animationIntersector from '../../components/animationIntersector';
-import { horizontalMenu } from '../../components/horizontalMenu';
 import appSidebarLeft from "../../components/sidebarLeft";
 import appSidebarRight, { AppSidebarRight, RIGHT_COLUMN_ACTIVE_CLASSNAME } from '../../components/sidebarRight';
 import mediaSizes, { ScreenSize } from '../../helpers/mediaSizes';
@@ -22,13 +21,13 @@ import appStickersManager from './appStickersManager';
 import appWebPagesManager from './appWebPagesManager';
 import { cancelEvent, getFilesFromEvent, placeCaretAtEnd } from '../../helpers/dom';
 import PopupNewMedia from '../../components/popups/newMedia';
-import { TransitionSlider } from '../../components/transition';
 import { numberWithCommas } from '../../helpers/number';
 import MarkupTooltip from '../../components/chat/markupTooltip';
 import { isTouchSupported } from '../../helpers/touchSupport';
 import appPollsManager from './appPollsManager';
 import SetTransition from '../../components/singleTransition';
 import ChatDragAndDrop from '../../components/chat/dragAndDrop';
+import { debounce } from '../../helpers/schedulers';
 
 //console.log('appImManager included33!');
 
@@ -42,7 +41,7 @@ export class AppImManager {
   public columnEl = document.getElementById('column-center') as HTMLDivElement;
   public chatsContainer: HTMLElement;
 
-  public chatsSelectTab: ReturnType<typeof horizontalMenu>;
+  //public chatsSelectTab: ReturnType<typeof horizontalMenu>;
 
   public offline = false;
   public updateStatusInterval = 0;
@@ -58,7 +57,9 @@ export class AppImManager {
   public hideRightSidebar = false;
   
   private chats: Chat[] = [];
-
+  private prevTab: HTMLElement;
+  private chatsSelectTabDebounced: () => void;
+  
   public markupTooltip: MarkupTooltip;
 
   get myId() {
@@ -119,19 +120,19 @@ export class AppImManager {
     this.chatsContainer = document.createElement('div');
     this.chatsContainer.classList.add('chats-container', 'tabs-container');
 
-    this.chatsSelectTab = TransitionSlider(this.chatsContainer, 'navigation', 250, (id) => {
+    this.columnEl.append(this.chatsContainer);
+
+    this.chatsSelectTabDebounced = debounce(() => {
       const topbar = this.chat.topbar;
       if(topbar.pinnedMessage) { // * буду молиться богам, чтобы это ничего не сломало, но это исправляет получение пиннеда после анимации
         topbar.pinnedMessage.setCorrectIndex(0);
       }
 
       apiManager.setQueueId(this.chat.bubbles.lazyLoadQueue.queueId);
-    });
-    
-    this.columnEl.append(this.chatsContainer);
+    }, 250, false, true);
     
     this.createNewChat();
-    this.chatsSelectTab(0);
+    this.chatsSelectTab(this.chat.container);
 
     window.addEventListener('hashchange', (e) => {
       const hash = location.hash;
@@ -167,6 +168,20 @@ export class AppImManager {
     });
 
     //apiUpdatesManager.attach();
+  }
+
+  private chatsSelectTab(tab: HTMLElement) {
+    if(this.prevTab === tab) {
+      return;
+    }
+
+    if(this.prevTab) {
+      this.prevTab.classList.remove('active');
+      this.chatsSelectTabDebounced();
+    }
+
+    tab.classList.add('active');
+    this.prevTab = tab;
   }
 
   private init() {
@@ -498,9 +513,16 @@ export class AppImManager {
       return this.setPeer(peerId, lastMsgId);
     }
 
+    // * don't reset peer if returning
+    if(peerId === chat.peerId && mediaSizes.activeScreen === ScreenSize.mobile && document.body.classList.contains(LEFT_COLUMN_ACTIVE_CLASSNAME)) {
+      this.selectTab(1);
+      return false;
+    }
+
     if(peerId || mediaSizes.activeScreen !== ScreenSize.mobile) {
       const result = chat.setPeer(peerId, lastMsgId);
 
+      // * wait for cached render
       const promise = result?.cached ? result.promise : Promise.resolve();
       if(peerId) {
         promise.then(() => {
@@ -511,6 +533,9 @@ export class AppImManager {
               this.hideRightSidebar = false;
             }
         
+            setTimeout(() => {
+              this.chatsSelectTab(this.chat.container);
+            }, 0);
             this.selectTab(1);
           }, 0);
         });
@@ -537,7 +562,7 @@ export class AppImManager {
       this.chat.setType(type);
     }
 
-    this.chatsSelectTab(this.chat.container);
+    //this.chatsSelectTab(this.chat.container);
 
     return this.setPeer(peerId, lastMsgId);
   }

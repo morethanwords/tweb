@@ -444,12 +444,57 @@ $chat-helper-size: 39px;
 }
 
 .chat {
-	display: flex;
+	display: flex !important;
 	// padding: 200px;
 	width: 100%;
 	align-items: center;
 	//overflow: hidden;
 	flex-direction: column;
+	//z-index: 1;
+
+	&:not(.active):not(:last-child) {
+		filter: brightness(.8);
+	}
+
+	@include respond-to(no-floating-left-sidebar) {
+		&:not(.active) {
+			transform: translate3d(calc((100vw - min(calc(100vw * .4), 420px)) * -.25), 0, 0);
+
+			&:last-child { // * 420px - max left sidebar width, .4 - left sidebar width percents
+				transform: translate3d(calc(100vw - min(calc(100vw * .4), 420px)), 0, 0);
+			}
+		}
+	}
+
+	@include respond-to(large-screens) {
+		&:not(.active) {
+			transform: translate3d(calc((#{$large-screen} - var(--right-column-width)) * -.25), 0, 0);
+
+			&:last-child {
+				transform: translate3d(calc(#{$large-screen} - var(--right-column-width)), 0, 0);
+			}
+		}
+	}
+	
+	@include respond-to(only-medium-screens) {
+		&:not(.active) {
+			transform: translate3d(-25vw, 0, 0);
+
+			&:last-child {
+				transform: translate3d(75vw, 0, 0);
+			}
+		}
+	}
+
+	@include respond-to(until-floating-left-sidebar) {
+		&:not(.active) {
+			transform: translate3d(-25vw, 0, 0);
+
+			&:last-child {
+				transform: translate3d(100vw, 0, 0);
+			}
+		}
+	}
 	
 	&-background {
 		overflow: hidden;

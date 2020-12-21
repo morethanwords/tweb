@@ -62,7 +62,7 @@
       border-bottom: none;
 
       ul {
-        justify-content: start;
+        justify-content: flex-start;
         z-index: 0;
       }
 
@@ -552,7 +552,7 @@
 
     p {
       height: unset;
-      justify-content: start;
+      justify-content: flex-start;
     }
 
     p:last-child {
