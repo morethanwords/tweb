@@ -1,4 +1,4 @@
-import type { ArgumentTypes } from "../types";
+import type { ArgumentTypes, SuperReturnType } from "../types";
 
 export default class EventListenerBase<Listeners extends {[name: string]: Function}> {
   protected listeners: Partial<{
@@ -36,14 +36,17 @@ export default class EventListenerBase<Listeners extends {[name: string]: Functi
       this.listenerResults[name] = args;
     }
 
+    const arr: Array<SuperReturnType<Listeners[typeof name]>> = [];
     if(this.listeners[name]) {
       this.listeners[name].forEach(listener => {
-        listener.callback(...args);
+        arr.push(listener.callback(...args));
 
         if(listener.once) {
           this.removeListener(name, listener.callback);
         }
       });
     }
+
+    return arr;
   }
 }

@@ -559,7 +559,7 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
   if(message?.media?.preloader) { // means upload
     message.media.preloader.attach(container);
   } else if(!cacheContext.downloaded) {
-    preloader = new ProgressivePreloader(container, false, false, photo._ == 'document' ? 'prepend' : 'append');
+    preloader = new ProgressivePreloader(null, false, false, photo._ == 'document' ? 'prepend' : 'append');
   }
 
   const load = () => {

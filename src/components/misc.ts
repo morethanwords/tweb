@@ -2,9 +2,8 @@ import Countries, { Country, PhoneCodesMain } from "../countries";
 import { cancelEvent, CLICK_EVENT_NAME } from "../helpers/dom";
 import ListenerSetter from "../helpers/listenerSetter";
 import mediaSizes from "../helpers/mediaSizes";
-import { clamp } from "../helpers/number";
 import { isTouchSupported } from "../helpers/touchSupport";
-import { isApple, isSafari } from "../helpers/userAgent";
+import { isApple } from "../helpers/userAgent";
 
 export const loadedURLs: {[url: string]: boolean} = {};
 const set = (elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLVideoElement, url: string) => {

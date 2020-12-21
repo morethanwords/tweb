@@ -113,7 +113,8 @@ export default class ChatContextMenu {
         const good = ['bubble', 'bubble__container', 'message', 'time', 'inner'].find(c => className.match(new RegExp(c + '($|\\s)')));
         if(good) {
           cancelEvent(e);
-          onContextMenu((e as TouchEvent).changedTouches[0]);
+          //onContextMenu((e as TouchEvent).changedTouches[0]);
+          onContextMenu((e as TouchEvent).changedTouches ? (e as TouchEvent).changedTouches[0] : e as MouseEvent);
         }
       }, {listenerSetter: this.chat.bubbles.listenerSetter});
 

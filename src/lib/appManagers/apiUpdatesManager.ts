@@ -40,7 +40,7 @@ export class ApiUpdatesManager {
 
   constructor() {
     // * false for test purposes
-    /* false &&  */appStateManager.addListener('save', () => {
+    /* false &&  */appStateManager.addListener('save', async() => {
       const us = this.updatesState;
       appStateManager.pushToState('updates', {
         seq: us.seq,

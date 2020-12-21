@@ -191,7 +191,7 @@ export default class Chat extends EventListenerBase<{
       appSidebarRight.sharedMediaTab.loadSidebarMedia(false);
     }); */
 
-    return this.setPeerPromise;
+    return result;
   }
 
   public finishPeerChange(isTarget: boolean, isJump: boolean, lastMsgId: number) {

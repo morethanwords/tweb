@@ -45,6 +45,10 @@ export default class PopupDatePicker extends PopupElement {
 
     this.minDate = options.minDate || new Date('2013-08-01T00:00:00');
 
+    if(initDate < this.minDate) {
+      initDate.setFullYear(this.minDate.getFullYear(), this.minDate.getMonth(), this.minDate.getDate());
+    }
+
     // Controls
     this.controlsDiv = document.createElement('div');
     this.controlsDiv.classList.add('date-picker-controls');

@@ -271,22 +271,24 @@ export default class ChatTopbar {
       }
     });
 
-    this.chat.addListener('setPeer', (mid, isTopMessage) => {
-      const middleware = this.chat.bubbles.getMiddleware();
-      appStateManager.getState().then((state) => {
-        if(!middleware()) return;
-
-        this.pinnedMessage.hidden = !!state.hiddenPinnedMessages[this.chat.peerId];
-
-        if(isTopMessage) {
-          this.pinnedMessage.unsetScrollDownListener();
-          this.pinnedMessage.testMid(mid, 0); // * because slider will not let get bubble by document.elementFromPoint
-        } else if(!this.pinnedMessage.locked) {
-          this.pinnedMessage.handleFollowingPinnedMessage();
-          this.pinnedMessage.testMid(mid);
-        }
+    if(this.pinnedMessage) {
+      this.chat.addListener('setPeer', (mid, isTopMessage) => {
+        const middleware = this.chat.bubbles.getMiddleware();
+        appStateManager.getState().then((state) => {
+          if(!middleware()) return;
+  
+          this.pinnedMessage.hidden = !!state.hiddenPinnedMessages[this.chat.peerId];
+  
+          if(isTopMessage) {
+            this.pinnedMessage.unsetScrollDownListener();
+            this.pinnedMessage.testMid(mid, 0); // * because slider will not let get bubble by document.elementFromPoint
+          } else if(!this.pinnedMessage.locked) {
+            this.pinnedMessage.handleFollowingPinnedMessage();
+            this.pinnedMessage.testMid(mid);
+          }
+        });
       });
-    });
+    }
 
     this.setPeerStatusInterval = window.setInterval(this.setPeerStatus, 60e3);
 

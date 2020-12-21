@@ -51,8 +51,8 @@ export class AppImManager {
 
   public setPeerPromise: Promise<void> = null;
 
-  private mainColumns: HTMLElement;
-  public _selectTab: ReturnType<typeof horizontalMenu>;
+  //private mainColumns: HTMLElement;
+  //public _selectTab: ReturnType<typeof horizontalMenu>;
   public tabId = -1;
   //private closeBtn: HTMLButtonElement;// = this.topbar.querySelector('.sidebar-close-button') as HTMLButtonElement;
   public hideRightSidebar = false;
@@ -74,8 +74,8 @@ export class AppImManager {
 
     this.log = logger('IM', LogLevels.log | LogLevels.warn | LogLevels.debug | LogLevels.error);
 
-    this.mainColumns = this.columnEl.parentElement;
-    this._selectTab = horizontalMenu(null, this.mainColumns);
+    //this.mainColumns = this.columnEl.parentElement;
+    //this._selectTab = horizontalMenu(null, this.mainColumns);
     this.selectTab(0);
     
     window.addEventListener('blur', () => {
@@ -420,7 +420,7 @@ export class AppImManager {
       document.body.classList.remove(RIGHT_COLUMN_ACTIVE_CLASSNAME);
     }
 
-    this._selectTab(id, mediaSizes.isMobile);
+    //this._selectTab(id, mediaSizes.isMobile);
     //document.body.classList.toggle(RIGHT_COLUMN_ACTIVE_CLASSNAME, id == 2);
   }
   
@@ -498,24 +498,29 @@ export class AppImManager {
       return this.setPeer(peerId, lastMsgId);
     }
 
-    if(peerId || mediaSizes.activeScreen != ScreenSize.mobile) {
-      chat.setPeer(peerId, lastMsgId);
+    if(peerId || mediaSizes.activeScreen !== ScreenSize.mobile) {
+      const result = chat.setPeer(peerId, lastMsgId);
+
+      const promise = result?.cached ? result.promise : Promise.resolve();
+      if(peerId) {
+        promise.then(() => {
+          //window.requestAnimationFrame(() => {
+          setTimeout(() => { // * setTimeout is better here
+            if(this.hideRightSidebar) {
+              appSidebarRight.toggleSidebar(true);
+              this.hideRightSidebar = false;
+            }
+        
+            this.selectTab(1);
+          }, 0);
+        });
+      }
     }
 
-    if(peerId == 0) {
+    if(!peerId) {
       this.selectTab(0);
-      
-      document.body.classList.add(LEFT_COLUMN_ACTIVE_CLASSNAME);
       return false;
     }
-
-    document.body.classList.remove(LEFT_COLUMN_ACTIVE_CLASSNAME);
-    if(this.hideRightSidebar) {
-      appSidebarRight.toggleSidebar(true);
-      this.hideRightSidebar = false;
-    }
-
-    this.selectTab(1);
   }
 
   public setInnerPeer(peerId: number, lastMsgId?: number, type: ChatType = 'chat') {

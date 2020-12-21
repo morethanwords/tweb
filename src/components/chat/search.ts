@@ -149,7 +149,7 @@ export default class ChatSearch {
     this.chat.bubbles.bubblesContainer.classList.remove('search-results-active');
 
     const res = this.chat.setPeer(peerId, lastMsgId);
-    this.setPeerPromise = (res instanceof Promise ? res : Promise.resolve(res)).then(() => {
+    this.setPeerPromise = ((res instanceof Promise ? res : Promise.resolve(res)) as Promise<any>).then(() => {
       this.selectedIndex = index;
       this.foundCountEl.innerText = `${index + 1} of ${this.foundCount}`;
 

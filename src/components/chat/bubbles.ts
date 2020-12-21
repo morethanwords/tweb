@@ -2408,7 +2408,8 @@ export default class ChatBubbles {
     //console.time('appImManager call getHistory');
     const pageCount = this.appPhotosManager.windowH / 38/*  * 1.25 */ | 0;
     //const loadCount = Object.keys(this.bubbles).length > 0 ? 50 : pageCount;
-    const realLoadCount = Object.keys(this.bubbles).length > 0 || additionMsgId ? Math.max(40, pageCount) : pageCount;//const realLoadCount = 50;
+    //const realLoadCount = Object.keys(this.bubbles).length > 0 || additionMsgId ? Math.max(40, pageCount) : pageCount;//const realLoadCount = 50;
+    const realLoadCount = pageCount;//const realLoadCount = 50;
     let loadCount = realLoadCount;
     
     /* if(TEST_SCROLL) {

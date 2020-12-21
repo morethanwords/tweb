@@ -3,9 +3,6 @@ import { MOUNT_CLASS_TO } from './mtproto/mtproto_config';
 //import { stringify } from '../helpers/json';
 
 class AppStorage {
-  //private log = (...args: any[]) => console.log('[SW LS]', ...args);
-  private log = (...args: any[]) => {};
-
   private cacheStorage = new CacheStorageController('session');
 
   //public noPrefix = false;
@@ -66,24 +63,23 @@ class AppStorage {
   }
 
   public async set(obj: any) {
-    let keyValues: any = {};
-    let prefix = this.storageGetPrefix(),
-      key, value;
-
+    const prefix = this.storageGetPrefix();
     //console.log('storageSetValue', obj, callback, arguments);
 
-    for(key in obj) {
+    for(let key in obj) {
       if(obj.hasOwnProperty(key)) {
-        value = obj[key];
+        let value = obj[key];
         key = prefix + key;
         this.cache[key] = value;
 
+        let perf = performance.now();
         value = JSON.stringify(value);
-        /* let perf = performance.now();
-        let value2 = JSON.stringify(value);
-        console.log('LocalStorage set: stringify time by JSON.stringify:', performance.now() - perf, value2);
 
-        perf = performance.now();
+        let elapsedTime = performance.now() - perf;
+        if(elapsedTime > 10) {
+          console.warn('LocalStorage set: stringify time by JSON.stringify:', elapsedTime, key);
+        }
+        /* perf = performance.now();
         value = stringify(value);
         console.log('LocalStorage set: stringify time by own stringify:', performance.now() - perf); */
 
@@ -97,8 +93,6 @@ class AppStorage {
             //this.useCS = false;
             console.error('[AS]: set error:', e, key/* , value */);
           }
-        } else {
-          keyValues[key] = value;
         }
       }
     }
@@ -109,11 +103,9 @@ class AppStorage {
       keys = Array.prototype.slice.call(arguments);
     }
 
-    let prefix = this.storageGetPrefix(),
-      i, key;
-
-    for(i = 0; i < keys.length; i++) {
-      key = keys[i] = prefix + keys[i];
+    const prefix = this.storageGetPrefix();
+    for(let i = 0; i < keys.length; i++) {
+      const key = keys[i] = prefix + keys[i];
       delete this.cache[key];
       if(this.useCS) {
         try {

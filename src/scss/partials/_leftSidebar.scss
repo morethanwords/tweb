@@ -9,6 +9,11 @@
   @include respond-to(handhelds) {
     width: 100%;
     max-width: 100%;
+
+    body:not(.is-left-column-shown) & {
+      transform: translate3d(-25vw, 0, 0);
+      filter: brightness(80%);
+    }
   }
   
   @include respond-to(floating-left-sidebar) {

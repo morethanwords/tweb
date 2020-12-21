@@ -24,10 +24,12 @@
   @include respond-to(handhelds) {
     .main-column {
       width: 100%;
+      display: flex !important;
+      z-index: 1;
 
-      &:not(.active) {
+      /* &:not(.active) {
         display: none;
-      }
+      } */
     }
 
     /* #column-left {

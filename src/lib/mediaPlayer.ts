@@ -70,9 +70,9 @@ export class ProgressLine {
     this.container.addEventListener('mouseup', this.onMouseUp);
 
     if(isTouchSupported) {
-      this.container.addEventListener('touchmove', this.onMouseMove);
-      this.container.addEventListener('touchstart', this.onMouseDown);
-      this.container.addEventListener('touchend', this.onMouseUp);
+      this.container.addEventListener('touchmove', this.onMouseMove, {passive: true});
+      this.container.addEventListener('touchstart', this.onMouseDown, {passive: true});
+      this.container.addEventListener('touchend', this.onMouseUp, {passive: true});
     }
   }
 

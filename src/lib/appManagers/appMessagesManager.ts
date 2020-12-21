@@ -227,51 +227,77 @@ export class AppMessagesManager {
       }
     }); */
 
+    function timedChunk(items: any[], process: (...args: any[]) => any, context: any, callback: (...args: any[]) => void) {
+      const todo = items.slice();
+
+      const f = () => {
+        const start = +new Date();
+  
+        do {
+          process.call(context, todo.shift());
+        } while(todo.length > 0 && (+new Date() - start < 50));
+  
+        if(todo.length > 0) {
+          setTimeout(f, 25);
+        } else {
+          callback(items);
+        }
+      };
+  
+      setTimeout(f, 25);
+    }
+
     appStateManager.addListener('save', () => {
       const messages: any[] = [];
       const dialogs: Dialog[] = [];
+      const items: any[] = [];
+      
+      const processDialog = (dialog: MTDialog.dialog) => {
+        const historyStorage = this.getHistoryStorage(dialog.peerId);
+        const history = [].concat(historyStorage.pending, historyStorage.history);
+        dialog = copy(dialog);
+        let removeUnread = 0;
+        for(const mid of history) {
+          const message = this.getMessageByPeer(dialog.peerId, mid);
+          if(/* message._ != 'messageEmpty' &&  */!message.pFlags.is_outgoing) {
+            messages.push(message);
+      
+            if(message.fromId != dialog.peerId) {
+              appStateManager.setPeer(message.fromId, appPeersManager.getPeer(message.fromId));
+            }
+    
+            dialog.top_message = message.mid;
+            this.setDialogIndexByMessage(dialog, message);
+    
+            break;
+          } else if(message.pFlags && message.pFlags.unread) {
+            ++removeUnread;
+          }
+        }
+    
+        if(removeUnread && dialog.unread_count) dialog.unread_count -= removeUnread; 
+    
+        dialog.unread_count = Math.max(0, dialog.unread_count);
+        dialogs.push(dialog);
+    
+        appStateManager.setPeer(dialog.peerId, appPeersManager.getPeer(dialog.peerId));
+      };
 
       for(const folderId in this.dialogsStorage.byFolders) {
         const folder = this.dialogsStorage.getFolder(+folderId);
-  
+        
         for(let dialog of folder) {
-          const historyStorage = this.getHistoryStorage(dialog.peerId);
-          const history = [].concat(historyStorage.pending, historyStorage.history);
-    
-          dialog = copy(dialog);
-          let removeUnread = 0;
-          for(const mid of history) {
-            const message = this.getMessageByPeer(dialog.peerId, mid);
-            if(/* message._ != 'messageEmpty' &&  */!message.pFlags.is_outgoing) {
-              messages.push(message);
-      
-              if(message.fromId != dialog.peerId) {
-                appStateManager.setPeer(message.fromId, appPeersManager.getPeer(message.fromId));
-              }
-    
-              dialog.top_message = message.mid;
-              this.setDialogIndexByMessage(dialog, message);
-    
-              break;
-            } else if(message.pFlags && message.pFlags.unread) {
-              ++removeUnread;
-            }
-          }
-    
-          if(removeUnread && dialog.unread_count) dialog.unread_count -= removeUnread; 
-    
-          dialog.unread_count = Math.max(0, dialog.unread_count);
-          dialogs.push(dialog);
-    
-          appStateManager.setPeer(dialog.peerId, appPeersManager.getPeer(dialog.peerId));
+          items.push(dialog);
         }
       }
 
-      appStateManager.pushToState('dialogs', dialogs);
-      appStateManager.pushToState('messages', messages);
-      appStateManager.pushToState('filters', this.filtersStorage.filters);
-      appStateManager.pushToState('allDialogsLoaded', this.dialogsStorage.allDialogsLoaded);
-      appStateManager.pushToState('maxSeenMsgId', this.maxSeenId);
+      return new Promise((resolve => timedChunk(items, processDialog, this, resolve))).then(() => {
+        appStateManager.pushToState('dialogs', dialogs);
+        appStateManager.pushToState('messages', messages);
+        appStateManager.pushToState('filters', this.filtersStorage.filters);
+        appStateManager.pushToState('allDialogsLoaded', this.dialogsStorage.allDialogsLoaded);
+        appStateManager.pushToState('maxSeenMsgId', this.maxSeenId);
+      });
     });
 
     appStateManager.getState().then(state => {
@@ -3187,6 +3213,7 @@ export class AppMessagesManager {
   }
 
   public readMessages(peerId: number, msgIds: number[]) {
+    msgIds = msgIds.map(mid => this.getLocalMessageId(mid));
     if(peerId < 0 && appPeersManager.isChannel(peerId)) {
       const channelId = -peerId;
       apiManager.invokeApi('channels.readMessageContents', {
@@ -4113,7 +4140,7 @@ export class AppMessagesManager {
   public sendScheduledMessages(peerId: number, mids: number[]) {
     return apiManager.invokeApi('messages.sendScheduledMessages', {
       peer: appPeersManager.getInputPeerById(peerId),
-      id: mids
+      id: mids.map(mid => this.getLocalMessageId(mid))
     }).then(updates => {
       apiUpdatesManager.processUpdateMessage(updates);
     });
@@ -4122,7 +4149,7 @@ export class AppMessagesManager {
   public deleteScheduledMessages(peerId: number, mids: number[]) {
     return apiManager.invokeApi('messages.deleteScheduledMessages', {
       peer: appPeersManager.getInputPeerById(peerId),
-      id: mids
+      id: mids.map(mid => this.getLocalMessageId(mid))
     }).then(updates => {
       apiUpdatesManager.processUpdateMessage(updates);
     });

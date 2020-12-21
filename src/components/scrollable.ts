@@ -154,7 +154,9 @@ export default class Scrollable extends ScrollableBase {
 
     //return;
 
-    if(this.onScrollMeasure || ((this.scrollLocked || (!this.onScrolledTop && !this.onScrolledBottom)) && !this.splitUp && !this.onAdditionalScroll)) return;
+    //if(this.onScrollMeasure || ((this.scrollLocked || (!this.onScrolledTop && !this.onScrolledBottom)) && !this.splitUp && !this.onAdditionalScroll)) return;
+    if((this.scrollLocked || (!this.onScrolledTop && !this.onScrolledBottom)) && !this.splitUp && !this.onAdditionalScroll) return;
+    if(this.onScrollMeasure) window.cancelAnimationFrame(this.onScrollMeasure);
     this.onScrollMeasure = window.requestAnimationFrame(() => {
       this.onScrollMeasure = 0;
 

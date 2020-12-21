@@ -466,13 +466,14 @@ export function blurActiveElement() {
   }
 }
 
-export const CLICK_EVENT_NAME = isTouchSupported ? 'touchend' : 'click';
+export const CLICK_EVENT_NAME: 'mousedown' | 'touchend' | 'click' = (isTouchSupported ? 'mousedown' : 'click') as any;
 export type AttachClickOptions = AddEventListenerOptions & Partial<{listenerSetter: ListenerSetter, touchMouseDown: true}>;
 export const attachClickEvent = (elem: HTMLElement, callback: (e: TouchEvent | MouseEvent) => void, options: AttachClickOptions = {}) => {
   const add = options.listenerSetter ? options.listenerSetter.add.bind(options.listenerSetter, elem) : elem.addEventListener.bind(elem);
   const remove = options.listenerSetter ? options.listenerSetter.removeManual.bind(options.listenerSetter, elem) : elem.removeEventListener.bind(elem);
 
-  if(options.touchMouseDown && CLICK_EVENT_NAME === 'touchend') {
+  options.touchMouseDown = true;
+  /* if(options.touchMouseDown && CLICK_EVENT_NAME === 'touchend') {
     add('mousedown', callback, options);
   } else if(CLICK_EVENT_NAME === 'touchend') {
     const o = {...options, once: true};
@@ -498,7 +499,8 @@ export const attachClickEvent = (elem: HTMLElement, callback: (e: TouchEvent | M
     add('touchstart', onTouchStart);
   } else {
     add(CLICK_EVENT_NAME, callback, options);
-  }
+  } */
+  add(CLICK_EVENT_NAME, callback, options);
 };
 
 export const detachClickEvent = (elem: HTMLElement, callback: (e: TouchEvent | MouseEvent) => void, options?: AddEventListenerOptions) => {

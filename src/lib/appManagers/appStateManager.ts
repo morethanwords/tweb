@@ -16,13 +16,16 @@ const STATE_VERSION = App.version;
 
 type State = Partial<{
   dialogs: Dialog[],
-  allDialogsLoaded: DialogsStorage['allDialogsLoaded'], 
-  //peers: {[peerId: string]: ReturnType<AppPeersManager['getPeer']>},
+  allDialogsLoaded: DialogsStorage['allDialogsLoaded'],
   chats: {[peerId: string]: ReturnType<AppChatsManager['getChat']>},
   users: {[peerId: string]: ReturnType<AppUsersManager['getUser']>},
   messages: any[],
   contactsList: number[],
-  updates: any,
+  updates: Partial<{
+    seq: number,
+    pts: number,
+    date: number
+  }>,
   filters: FiltersStorage['filters'],
   maxSeenMsgId: number,
   stateCreatedTime: number,
@@ -35,16 +38,45 @@ type State = Partial<{
   hiddenPinnedMessages: {[peerId: string]: number}
 }>;
 
+/* const STATE_INIT: State = {
+  dialogs: [],
+  allDialogsLoaded: {},
+  chats: {},
+  users: {},
+  messages: [],
+  contactsList: [],
+  updates: {},
+  filters: {},
+  maxSeenMsgId: 0,
+  stateCreatedTime: 0,
+  recentEmoji: [],
+  topPeers: [],
+  recentSearch: [],
+  stickerSets: {},
+  version: '',
+  authState: 
+}; */
+
+const ALL_KEYS = ['dialogs', 'allDialogsLoaded', 'chats', 
+  'users', 'messages', 'contactsList', 
+  'updates', 'filters', 'maxSeenMsgId', 
+  'stateCreatedTime', 'recentEmoji', 'topPeers', 
+  'recentSearch', 'stickerSets', 'version', 
+  'authState', 'hiddenPinnedMessages'
+] as any as Array<keyof State>;
+
 const REFRESH_KEYS = ['dialogs', 'allDialogsLoaded', 'messages', 'contactsList', 'stateCreatedTime',
   'updates', 'maxSeenMsgId', 'filters', 'topPeers'] as any as Array<keyof State>;
 
 export class AppStateManager extends EventListenerBase<{
-  save: (state: State) => void
+  save: (state: State) => Promise<void>
 }> {
   public loaded: Promise<State>;
   private log = logger('STATE'/* , LogLevels.error */);
 
   private state: State;
+  private savePromise: Promise<void>;
+  private tempId = 0;
 
   constructor() {
     super();
@@ -55,7 +87,18 @@ export class AppStateManager extends EventListenerBase<{
     if(this.loaded) return this.loaded;
     //console.time('load state');
     return this.loaded = new Promise((resolve) => {
-      AppStorage.get<[State, UserAuth]>('state', 'user_auth').then(([state, auth]) => {
+      AppStorage.get<any>(...ALL_KEYS, 'user_auth').then((arr) => {
+        let state: State = {};
+
+        // ! then can't store false values
+        ALL_KEYS.forEach((key, idx) => {
+          const value = arr[idx];
+          if(value !== false) {
+            // @ts-ignore
+            state[key] = value;
+          }
+        });
+
         const time = Date.now();
         if(state) {
           if(state.version != STATE_VERSION) {
@@ -84,6 +127,7 @@ export class AppStateManager extends EventListenerBase<{
         
         //return resolve();
 
+        const auth: UserAuth = arr[arr.length - 1];
         if(auth) {
           // ! Warning ! DON'T delete this
           this.state.authState = {_: 'authStateSignedIn'};
@@ -95,7 +139,10 @@ export class AppStateManager extends EventListenerBase<{
         //console.timeEnd('load state');
         resolve(this.state);
       }).catch(resolve).finally(() => {
-        setInterval(() => this.saveState(), 10000);
+        setInterval(() => {
+          this.tempId++;
+          this.saveState();
+        }, 10000);
       });
     });
   }
@@ -105,18 +152,26 @@ export class AppStateManager extends EventListenerBase<{
   }
 
   public saveState() {
-    if(this.state === undefined) return;
+    if(this.state === undefined || this.savePromise) return;
 
+    const tempId = this.tempId;
+    this.savePromise = Promise.all(this.setListenerResult('save', this.state)).then(() => {
+      return AppStorage.set(this.state);
+    }).then(() => {
+      this.savePromise = null;
+
+      if(this.tempId !== tempId) {
+        this.saveState();
+      }
+    });
     //let perf = performance.now();
-    this.setListenerResult('save', this.state);
+    
     //this.log('saveState: event time:', performance.now() - perf);
 
     //const pinnedOrders = appMessagesManager.dialogsStorage.pinnedOrders;
 
     //perf = performance.now();
-    AppStorage.set({
-      state: this.state
-    });
+    
     //this.log('saveState: storage set time:', performance.now() - perf);
   }
 
@@ -128,6 +183,16 @@ export class AppStateManager extends EventListenerBase<{
     const container = peerId > 0 ? this.state.users : this.state.chats;
     if(container.hasOwnProperty(peerId)) return;
     container[peerId] = peer;
+  }
+
+  public resetState() {
+    for(let i in this.state) {
+      // @ts-ignore
+      this.state[i] = false;
+    }
+    AppStorage.set(this.state).then(() => {
+      location.reload();
+    });
   }
 }
 
