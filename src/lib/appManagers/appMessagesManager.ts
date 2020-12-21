@@ -1822,13 +1822,13 @@ export class AppMessagesManager {
     });
   }
 
-  public updatePinnedMessage(peerId: number, id: number, unpin?: true, silent?: true, oneSide?: true) {
+  public updatePinnedMessage(peerId: number, mid: number, unpin?: true, silent?: true, oneSide?: true) {
     return apiManager.invokeApi('messages.updatePinnedMessage', {
       peer: appPeersManager.getInputPeerById(peerId),
       unpin,
       silent,
       pm_oneside: oneSide,
-      id
+      id: this.getLocalMessageId(mid)
     }).then(updates => {
       this.log('pinned updates:', updates);
       apiUpdatesManager.processUpdateMessage(updates);

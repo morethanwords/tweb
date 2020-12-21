@@ -2,6 +2,7 @@ import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import { PopupButton } from ".";
 import PopupPeer from "./peer";
 import appPeersManager from "../../lib/appManagers/appPeersManager";
+import rootScope from "../../lib/rootScope";
 
 export default class PopupPinMessage {
   constructor(peerId: number, mid: number, unpin?: true, onConfirm?: () => void) {
@@ -68,15 +69,22 @@ export default class PopupPinMessage {
       } else {
         description = 'Would you like to pin this message?';
 
-        buttons.push({
-          text: 'PIN JUST FOR ME',
-          callback: () => callback(true)
-        });
-
-        buttons.push({
-          text: 'PIN FOR ME AND ' + firstName,
-          callback: () => callback()
-        });
+        if(peerId === rootScope.myId) {
+          buttons.push({
+            text: 'PIN',
+            callback: () => callback()
+          });
+        } else {
+          buttons.push({
+            text: 'PIN JUST FOR ME',
+            callback: () => callback(true)
+          });
+  
+          buttons.push({
+            text: 'PIN FOR ME AND ' + firstName,
+            callback: () => callback()
+          });
+        }
       }
     }
 
