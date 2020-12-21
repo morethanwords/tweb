@@ -385,10 +385,20 @@ export class AppChatsManager {
 
   public getChatMembersString(id: number) {
     const chat = this.getChat(id);
+    const chatFull = appProfileManager.chatsFull[id];
+    let count: number;
+    if(chatFull) {
+      if(chatFull._ === 'channelFull') {
+        count = chatFull.participants_count;
+      } else {
+        count = (chatFull.participants as ChatParticipants.chatParticipants).participants?.length;
+      }
+    } else {
+      count = chat.participants_count || chat.participants?.participants.length;
+    }
 
     const isChannel = this.isBroadcast(id);
-    const participants_count = chat.participants_count || chat.participants?.participants.length || 1;
-    return numberWithCommas(participants_count) + ' ' + (isChannel ? 'followers' : 'members');
+    return numberWithCommas(count || 1) + ' ' + (isChannel ? 'followers' : 'members');
   }
 
   public wrapForFull(id: number, fullChat: any) {

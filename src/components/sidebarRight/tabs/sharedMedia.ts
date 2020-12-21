@@ -904,13 +904,7 @@ export default class AppSharedMediaTab implements SliderTab {
         setText(appPeersManager.getPeerUsername(peerId), this.profileElements.username);
       }
       
-      let dialog = appMessagesManager.getDialogByPeerId(peerId)[0];
-      if(dialog) {
-        let muted = false;
-        if(dialog.notify_settings && dialog.notify_settings.mute_until) {
-          muted = new Date(dialog.notify_settings.mute_until * 1000) > new Date();
-        }
-      }
+      this.profileElements.notificationsCheckbox.checked = !appMessagesManager.isPeerMuted(peerId);
     } else {
       window.requestAnimationFrame(() => {
         this.profileElements.notificationsRow.style.display = 'none';

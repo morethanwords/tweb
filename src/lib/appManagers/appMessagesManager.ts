@@ -86,6 +86,9 @@ export type MessagesStorage = {
   [mid: string]: any
 };
 export class AppMessagesManager {
+  public static MESSAGE_ID_INCREMENT = 0x10000;
+  public static MESSAGE_ID_OFFSET = 0xFFFFFFFF;
+
   public messagesStorageByPeerId: {[peerId: string]: MessagesStorage} = {};
   public groupedMessagesStorage: {[groupId: string]: MessagesStorage} = {}; // will be used for albums
   public scheduledMessagesStorage: {[peerId: string]: MessagesStorage} = {};
@@ -1905,35 +1908,39 @@ export class AppMessagesManager {
   }
 
   public generateMessageId(messageId: number, temp = false) {
-    const q = 0xFFFFFFFF;
+    const q = AppMessagesManager.MESSAGE_ID_OFFSET;
     const num = temp ? ++this.tempNum : 0;
     if(messageId >= q) {
       if(temp) {
-        return messageId + (num & 0xFFFF);
+        return messageId + (num & (AppMessagesManager.MESSAGE_ID_INCREMENT - 1));
       }
 
       return messageId;
     }
 
-    return q + (messageId * 0x10000 + (num & 0xFFFF));
+    return q + (messageId * AppMessagesManager.MESSAGE_ID_INCREMENT + (num & (AppMessagesManager.MESSAGE_ID_INCREMENT - 1)));
   }
 
   /**
    * * will ignore outgoing offset
    */
   public getLocalMessageId(messageId: number) {
-    const q = 0xFFFFFFFF;
+    const q = AppMessagesManager.MESSAGE_ID_OFFSET;
     if(messageId <= q) {
       return messageId;
     }
 
-    const l = 0xFFFF;
+    const l = AppMessagesManager.MESSAGE_ID_INCREMENT - 1;
     const used = messageId & l;
     if(used !== l) {
       messageId -= used + 1;
     }
 
-    return (messageId - q) / 0x10000;
+    return (messageId - q) / AppMessagesManager.MESSAGE_ID_INCREMENT;
+  }
+
+  public incrementMessageId(messageId: number, increment: number) {
+    return this.generateMessageId(this.getLocalMessageId(messageId) + increment);
   }
 
   public saveMessages(messages: any[], options: Partial<{
@@ -3870,6 +3877,11 @@ export class AppMessagesManager {
               delete message.pFlags.pinned;
             }
           }
+
+          /* const info = this.pinnedMessages[peerId];
+          if(info) {
+            info.count += messages.length * (werePinned ? 1 : -1);
+          } */
   
           delete this.pinnedMessages[peerId];
           appStateManager.getState().then(state => {
@@ -4273,7 +4285,7 @@ export class AppMessagesManager {
       historyStorage.count = (historyResult as MessagesMessages.messagesMessagesSlice).count || historyResult.messages.length;
 
       if(!maxId && historyResult.messages.length) {
-        maxId = (historyResult.messages[0] as MyMessage).mid + 1;
+        maxId = this.incrementMessageId((historyResult.messages[0] as MyMessage).mid, 1);
       }
 
       let offset = 0;

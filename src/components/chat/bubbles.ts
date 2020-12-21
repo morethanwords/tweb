@@ -37,7 +37,7 @@ import Chat from "./chat";
 import ListenerSetter from "../../helpers/listenerSetter";
 import PollElement from "../poll";
 import AudioElement from "../audio";
-import { MessageReplies, MessageReplyHeader } from "../../layer";
+import { MessageEntity, MessageReplies, MessageReplyHeader } from "../../layer";
 
 const IGNORE_ACTIONS = ['messageActionHistoryClear'];
 
@@ -752,7 +752,7 @@ export default class ChatBubbles {
     if(!this.peerId || /* TEST_SCROLL || */ this.chat.setPeerPromise || (top && this.getHistoryTopPromise) || (!top && this.getHistoryBottomPromise)) return;
 
     // warning, если иды только отрицательные то вниз не попадёт (хотя мб и так не попадёт)
-    let history = Object.keys(this.bubbles).map(id => +id).filter(id => id > 0).sort((a, b) => a - b);
+    const history = Object.keys(this.bubbles).map(id => +id).sort((a, b) => a - b);
     if(!history.length) return;
     
     if(top && !this.scrolledAll) {
@@ -1100,15 +1100,15 @@ export default class ChatBubbles {
     const samePeer = this.peerId == peerId;
 
     const historyStorage = this.appMessagesManager.getHistoryStorage(peerId, this.chat.threadId);
-    let topMessage = lastMsgId <= 0 ? lastMsgId : historyStorage.maxId ?? 0;
+    let topMessage = this.chat.type === 'pinned' ? this.appMessagesManager.pinnedMessages[peerId].maxId : historyStorage.maxId ?? 0;
     const isTarget = lastMsgId !== undefined;
 
-    if(!isTarget && historyStorage.maxId) {
+    if(!isTarget && topMessage) {
       const isUnread = this.appMessagesManager.isHistoryUnread(peerId, this.chat.threadId);
       if(/* dialog.unread_count */isUnread && !samePeer) {
         lastMsgId = historyStorage.readMaxId;
       } else {
-        lastMsgId = historyStorage.maxId;
+        lastMsgId = topMessage;
         //lastMsgID = topMessage;
       }
     }
@@ -1122,7 +1122,7 @@ export default class ChatBubbles {
           this.scrollable.scrollIntoView(mounted.bubble);
           this.highlightBubble(mounted.bubble);
           this.chat.setListenerResult('setPeer', lastMsgId, false);
-        } else if(historyStorage.maxId && !isJump) {
+        } else if(topMessage && !isJump) {
           //this.log('will scroll down', this.scroll.scrollTop, this.scroll.scrollHeight);
           this.scroll.scrollTop = this.scroll.scrollHeight;
           this.chat.setListenerResult('setPeer', lastMsgId, true);
@@ -1143,7 +1143,7 @@ export default class ChatBubbles {
     this.log('setPeer peerId:', this.peerId, historyStorage, lastMsgId, topMessage);
 
     // add last message, bc in getHistory will load < max_id
-    const additionMsgId = isJump || (this.chat.type !== 'chat' && this.chat.type !== 'discussion') ? 0 : topMessage;
+    const additionMsgId = isJump || this.chat.type === 'scheduled' ? 0 : topMessage;
 
     /* this.setPeerPromise = null;
     this.preloader.detach();
@@ -1219,7 +1219,7 @@ export default class ChatBubbles {
       this.lazyLoadQueue.unlock();
 
       //if(dialog && lastMsgID && lastMsgID != topMessage && (this.bubbles[lastMsgID] || this.firstUnreadBubble)) {
-      if(historyStorage.maxId && (isTarget || isJump)) {
+      if(topMessage && (isTarget || isJump)) {
         if(this.scrollable.scrollLocked) {
           clearTimeout(this.scrollable.scrollLocked);
           this.scrollable.scrollLocked = 0;
@@ -1260,8 +1260,8 @@ export default class ChatBubbles {
       this.log('scrolledAllDown:', this.scrolledAllDown);
 
       //if(!this.unreaded.length && dialog) { // lol
-      if(this.scrolledAllDown && historyStorage.maxId) { // lol
-        this.appMessagesManager.readHistory(peerId, historyStorage.maxId);
+      if(this.scrolledAllDown && topMessage) { // lol
+        this.appMessagesManager.readHistory(peerId, topMessage);
       }
 
       if(this.chat.type === 'chat') {
@@ -1545,7 +1545,7 @@ export default class ChatBubbles {
 
     let messageMedia = message.media;
 
-    let messageMessage: string, totalEntities: any[];
+    let messageMessage: string, totalEntities: MessageEntity[];
     if(messageMedia?.document && !['video', 'gif'].includes(messageMedia.document.type)) {
       // * just filter these cases for documents caption
     } else if(message.grouped_id && albumMustBeRenderedFull) {
@@ -1567,7 +1567,7 @@ export default class ChatBubbles {
     });
     
     if(totalEntities && !messageMedia) {
-      let emojiEntities = totalEntities.filter((e: any) => e._ == 'messageEntityEmoji');
+      let emojiEntities = totalEntities.filter((e) => e._ == 'messageEntityEmoji');
       let strLength = messageMessage.length;
       let emojiStrLength = emojiEntities.reduce((acc: number, curr: any) => acc + curr.length, 0);
       
@@ -2436,24 +2436,28 @@ export default class ChatBubbles {
 
       if(!reverse) { // if not jump
         loadCount = 0;
-        maxId += 1;
+        maxId = this.appMessagesManager.incrementMessageId(maxId, 1);
       }
     }
 
     let additionMsgIds: number[];
     if(additionMsgId && !isBackLimit) {
-      const historyStorage = this.appMessagesManager.getHistoryStorage(peerId, this.chat.threadId);
-      if(historyStorage.history.length < loadCount) {
-        additionMsgIds = historyStorage.history.slice();
+      if(this.chat.type === 'pinned') {
+        additionMsgIds = [additionMsgId];
+      } else {
+        const historyStorage = this.appMessagesManager.getHistoryStorage(peerId, this.chat.threadId);
+        if(historyStorage.history.length < loadCount) {
+          additionMsgIds = historyStorage.history.slice();
 
-        // * filter last album, because we don't know is this the last item
-        for(let i = additionMsgIds.length - 1; i >= 0; --i) {
-          const message = this.chat.getMessage(additionMsgIds[i]);
-          if(message.grouped_id) additionMsgIds.splice(i, 1);
-          else break;
+          // * filter last album, because we don't know is this the last item
+          for(let i = additionMsgIds.length - 1; i >= 0; --i) {
+            const message = this.chat.getMessage(additionMsgIds[i]);
+            if(message.grouped_id) additionMsgIds.splice(i, 1);
+            else break;
+          }
+
+          maxId = additionMsgIds[additionMsgIds.length - 1] || maxId;
         }
-
-        maxId = additionMsgIds[additionMsgIds.length - 1] || maxId;
       }
     }
 
