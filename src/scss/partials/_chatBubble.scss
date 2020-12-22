@@ -1221,7 +1221,7 @@ $bubble-margin: .25rem;
         color: #fff;
         display: flex;
         align-items: center;
-        padding: 0 2.5px 0 4px;
+        padding: 0 2.5px;
         line-height: 18px;
         pointer-events: all; // show title
         white-space: nowrap;
@@ -1428,6 +1428,8 @@ $bubble-margin: .25rem;
   }
 
   .replies {
+    user-select: none;
+
     .rp {
       width: 100%;
       height: 100%;
@@ -1470,7 +1472,6 @@ $bubble-margin: .25rem;
       border-bottom-right-radius: inherit;
       color: $color-blue;
       min-width: 15rem;
-      user-select: none;
   
       .tgico-comments, .tgico-next {
         font-size: 1.4375rem;

@@ -37,7 +37,7 @@ import Chat from "./chat";
 import ListenerSetter from "../../helpers/listenerSetter";
 import PollElement from "../poll";
 import AudioElement from "../audio";
-import { MessageEntity, MessageReplies, MessageReplyHeader } from "../../layer";
+import { Message, MessageEntity, MessageReplies, MessageReplyHeader } from "../../layer";
 import { DEBUG, MOUNT_CLASS_TO } from "../../lib/mtproto/mtproto_config";
 
 const IGNORE_ACTIONS = ['messageActionHistoryClear'];
@@ -524,12 +524,11 @@ export default class ChatBubbles {
 
     const commentsDiv: HTMLElement = findUpClassName(target, 'replies');
     if(commentsDiv) {
-      const mid = +bubble.dataset.mid;
-      const message = this.chat.getMessage(mid);
-      const replies = message.replies as MessageReplies;
+      const bubbleMid = +bubble.dataset.mid;
+      const message = this.appMessagesManager.filterMessages(this.chat.getMessage(bubbleMid), message => !!(message as Message.message).replies)[0] as Message.message;
+      const replies = message.replies;
       if(replies) {
-        this.appMessagesManager.getDiscussionMessage(this.peerId, mid).then(result => {
-          const message = result.messages[0];
+        this.appMessagesManager.getDiscussionMessage(this.peerId, message.mid).then(message => {
           this.chat.appImManager.setInnerPeer(-replies.channel_id, (message as MyMessage).mid, 'discussion');
         });
       }
@@ -1452,7 +1451,7 @@ export default class ChatBubbles {
   public renderMessage(message: any, reverse = false, multipleRender = false, bubble: HTMLDivElement = null, updatePosition = true) {
     this.log.debug('message to render:', message);
     //return;
-    const albumMustBeRenderedFull = this.chat.type === 'chat' || this.chat.type === 'scheduled';
+    const albumMustBeRenderedFull = this.chat.type !== 'pinned';
     if(message.deleted) return;
     else if(message.grouped_id && albumMustBeRenderedFull) { // will render only last album's message
       const storage = this.appMessagesManager.groupedMessagesStorage[message.grouped_id];
@@ -1701,7 +1700,8 @@ export default class ChatBubbles {
       bubble.classList.add(status);
     }
 
-    const withReplyFooter = message.replies && message.replies.pFlags.comments && message.replies.channel_id !== 777;
+    let messageWithReplies: Message.message = this.appMessagesManager.filterMessages(message, message => !!(message as Message.message).replies)[0] as any;
+    const withReplies = messageWithReplies && messageWithReplies.replies && messageWithReplies.replies.pFlags.comments && messageWithReplies.replies.channel_id !== 777;
 
     const isOut = our && (!message.fwd_from || this.peerId != rootScope.myId);
     let nameContainer = bubbleContainer;
@@ -1743,7 +1743,7 @@ export default class ChatBubbles {
                 const photo = this.appPhotosManager.getPhoto(message.id);
                 //if(photo._ == 'photoEmpty') break;
                 this.log('will wrap pending photo:', pending, message, photo);
-                const withTail = !isAndroid && !message.message && !withReplyFooter;
+                const withTail = !isAndroid && !message.message && !withReplies;
                 if(withTail) bubble.classList.add('with-media-tail');
                 wrapPhoto({
                   photo, message, 
@@ -1764,7 +1764,7 @@ export default class ChatBubbles {
                 let doc = this.appDocsManager.getDoc(message.id);
                 //if(doc._ == 'documentEmpty') break;
                 this.log('will wrap pending video:', pending, message, doc);
-                const withTail = !isAndroid && !isApple && doc.type != 'round' && !message.message && !withReplyFooter;
+                const withTail = !isAndroid && !isApple && doc.type != 'round' && !message.message && !withReplies;
                 if(withTail) bubble.classList.add('with-media-tail');
                 wrapVideo({
                   doc, 
@@ -1839,7 +1839,7 @@ export default class ChatBubbles {
             break;
           }
           
-          const withTail = !isAndroid && !message.message && !withReplyFooter;
+          const withTail = !isAndroid && !message.message && !withReplies;
           if(withTail) bubble.classList.add('with-media-tail');
           wrapPhoto({
             photo, 
@@ -2023,7 +2023,7 @@ export default class ChatBubbles {
                 chat: this.chat
               });
             } else {
-              const withTail = !isAndroid && !isApple && doc.type != 'round' && !message.message && withReplyFooter;
+              const withTail = !isAndroid && !isApple && doc.type != 'round' && !message.message && withReplies;
               if(withTail) bubble.classList.add('with-media-tail');
               wrapVideo({
                 doc, 
@@ -2241,7 +2241,7 @@ export default class ChatBubbles {
       savedFrom = `${this.chat.peerId}_${message.mid}`;
     }
 
-    if(message.mid === this.chat.threadId) {
+    if(messageWithReplies && messageWithReplies.mid === this.chat.threadId) {
       bubble.classList.add('is-thread-starter');
     }
 
@@ -2262,11 +2262,11 @@ export default class ChatBubbles {
       this.bubbleGroups.updateGroupByMessageId(message.mid);
     }
 
-    if(withReplyFooter) {
+    if(withReplies) {
       MessageRender.renderReplies({
         bubble,
         bubbleContainer,
-        message,
+        message: messageWithReplies,
         messageDiv
       });
     }
@@ -2508,7 +2508,7 @@ export default class ChatBubbles {
         if(isTopEnd) {
           const serviceStartMessageId = this.appMessagesManager.threadsServiceMessagesIdsStorage[this.peerId + '_' + this.chat.threadId];
           if(serviceStartMessageId) historyResult.history.push(serviceStartMessageId);
-          historyResult.history.push(this.chat.threadId);
+          historyResult.history.push(...this.chat.getMidsByMid(this.chat.threadId).reverse());
           this.scrolledAll = true;
         }
       }
@@ -2639,7 +2639,7 @@ export default class ChatBubbles {
 
       // preload more
       //if(!isFirstMessageRender) {
-      if(this.chat.type === 'chat' || this.chat.type === 'discussion') {
+      if(this.chat.type === 'chat'/*  || this.chat.type === 'discussion' */) {
         const storage = this.appMessagesManager.getHistoryStorage(peerId, this.chat.threadId);
         const isMaxIdInHistory = storage.history.indexOf(maxId) !== -1;
         if(isMaxIdInHistory) { // * otherwise it is a search or jump

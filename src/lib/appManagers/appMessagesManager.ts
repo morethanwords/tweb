@@ -1908,6 +1908,25 @@ export class AppMessagesManager {
     else return [message.mid];
   }
 
+  public filterMessages(message: any, verify: (message: MyMessage) => boolean) {
+    const out: MyMessage[] = [];
+    if(message.grouped_id) {
+      const storage = this.groupedMessagesStorage[message.grouped_id];
+      for(const mid in storage) {
+        const message = storage[mid];
+        if(verify(message)) {
+          out.push(message);
+        }
+      }
+    } else {
+      if(verify(message)) {
+        out.push(message);
+      }
+    }
+
+    return out;
+  }
+
   public generateTempMessageId(peerId: number) {
     const dialog = this.getDialogByPeerId(peerId)[0];
     return this.generateMessageId(dialog?.top_message || 0, true);
@@ -3046,7 +3065,7 @@ export class AppMessagesManager {
       appUsersManager.saveApiUsers(result.users);
       this.saveMessages(result.messages);
 
-      const message = result.messages[0] as MyMessage;
+      const message = this.filterMessages(result.messages[0], message => !!(message as Message.message).replies)[0] as Message.message;
       const threadKey = message.peerId + '_' + message.mid;
 
       if(!this.threadsServiceMessagesIdsStorage[threadKey]) {
@@ -3076,7 +3095,7 @@ export class AppMessagesManager {
 
       this.threadsToReplies[threadKey] = peerId + '_' + mid;
 
-      return result;
+      return message;
     });
   }
 
@@ -3355,6 +3374,7 @@ export class AppMessagesManager {
 
         const pendingMessage = this.checkPendingMessage(message);
         const historyStorage = this.getHistoryStorage(peerId);
+        this.updateMessageRepliesIfNeeded(message);
 
         const history = message.mid > 0 ? historyStorage.history : historyStorage.pending;
         if(history.indexOf(message.mid) !== -1) {
@@ -3390,8 +3410,6 @@ export class AppMessagesManager {
             this.newMessagesHandlePromise = window.setTimeout(this.handleNewMessages, 0);
           }
         }
-
-        this.updateMessageRepliesIfNeeded(message);
         
         const dialog = foundDialog[0];
         if(dialog) {
