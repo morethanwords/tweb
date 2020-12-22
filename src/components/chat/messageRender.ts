@@ -136,7 +136,7 @@ class RepliesElement extends HTMLElement {
       ripple(rippleContainer);
     } else {
       this.classList.add('bubble-beside-button');
-      this.innerHTML = `<span class="tgico-commentssticker"></span><span class="replies-beside-text">${formatNumber(replies.replies, 0) || ''}</span>`;
+      this.innerHTML = `<span class="tgico-commentssticker"></span><span class="replies-beside-text">${replies.replies ? formatNumber(replies.replies, 0) : ''}</span>`;
     }
 
     if(!this.updated) {

@@ -1220,7 +1220,7 @@ $bubble-margin: .25rem;
         color: #fff;
         display: flex;
         align-items: center;
-        padding: 0 2.5px;
+        padding: 0 2.5px 0 4px;
         line-height: 18px;
         pointer-events: all; // show title
         white-space: nowrap;
@@ -1252,7 +1252,7 @@ $bubble-margin: .25rem;
     i {
       font-size: 1.15rem;
       margin-right: .4rem;
-      /* margin-left: .1rem; */
+      margin-left: 2px;
     }
 
     i.edited {
