@@ -55,8 +55,7 @@ export type HistoryStorage = {
 export type HistoryResult = {
   count: number,
   history: number[],
-  unreadOffset: number,
-  unreadSkip: boolean
+  offsetIdOffset?: number
 };
 
 export type Dialog = MTDialog.dialog;
@@ -110,6 +109,7 @@ export class AppMessagesManager {
   } = {};
   public pinnedMessages: {[peerId: string]: PinnedStorage} = {};
 
+  public threadsServiceMessagesIdsStorage: {[peerId_threadId: string]: number} = {};
   public threadsToReplies: {
     [peerId_threadId: string]: string;
   } = {};
@@ -3047,12 +3047,34 @@ export class AppMessagesManager {
       this.saveMessages(result.messages);
 
       const message = result.messages[0] as MyMessage;
+      const threadKey = message.peerId + '_' + message.mid;
+
+      if(!this.threadsServiceMessagesIdsStorage[threadKey]) {
+        (result.messages as Message.message[]).forEach(message => {
+          const serviceStartMessage: Message.messageService = {
+            _: 'messageService',
+            id: this.generateMessageId(message.id, true),
+            date: message.date,
+            from_id: message.from_id,
+            peer_id: message.peer_id,
+            action: {
+              _: 'messageActionCustomAction',
+              message: 'Discussion started'
+            },
+            reply_to: this.generateReplyHeader(message.id)
+          };
+  
+          this.saveMessages([serviceStartMessage], {isOutgoing: true});
+          this.threadsServiceMessagesIdsStorage[threadKey] = serviceStartMessage.mid;
+        });
+      }
+      
       const historyStorage = this.getHistoryStorage(message.peerId, message.mid);
       result.max_id = historyStorage.maxId = this.generateMessageId(result.max_id) || 0;
       result.read_inbox_max_id = historyStorage.readMaxId = this.generateMessageId(result.read_inbox_max_id) || 0;
       result.read_outbox_max_id = historyStorage.readOutboxMaxId = this.generateMessageId(result.read_outbox_max_id) || 0;
 
-      this.threadsToReplies[message.peerId + '_' + message.mid] = peerId + '_' + mid;
+      this.threadsToReplies[threadKey] = peerId + '_' + mid;
 
       return result;
     });
@@ -4214,14 +4236,12 @@ export class AppMessagesManager {
     });
   }
 
-  public getHistory(peerId: number, maxId = 0, limit: number, backLimit?: number, threadId?: number) {
+  public getHistory(peerId: number, maxId = 0, limit: number, backLimit?: number, threadId?: number): Promise<HistoryResult> | HistoryResult {
     if(this.migratedFromTo[peerId]) {
       peerId = this.migratedFromTo[peerId];
     }
 
     const historyStorage = this.getHistoryStorage(peerId, threadId);
-    const unreadOffset = 0;
-    const unreadSkip = false;
 
     let offset = 0;
     let offsetNotFound = false;
@@ -4230,12 +4250,9 @@ export class AppMessagesManager {
     let reqPeerId = peerId;
     if(this.migratedToFrom[peerId]) {
       isMigrated = true;
-      /* if(maxId && maxId < appMessagesIdsManager.fullMsgIdModulus) {
-        reqPeerId = this.migratedToFrom[peerId];
-      } */
     }
 
-    if(maxId > 0) {
+    if(maxId) {
       offsetNotFound = true;
       for(; offset < historyStorage.history.length; offset++) {
         if(maxId > historyStorage.history[offset]) {
@@ -4257,23 +4274,18 @@ export class AppMessagesManager {
         limit = limit;
       }
 
-      let history = historyStorage.history.slice(offset, offset + limit);
-      if(!maxId && historyStorage.pending.length) {
-        history = historyStorage.pending.slice().concat(history);
-      }
-
-      return this.wrapHistoryResult(peerId, {
+      const history = historyStorage.history.slice(offset, offset + limit);
+      return {
         count: historyStorage.count,
         history: history,
-        unreadOffset: unreadOffset,
-        unreadSkip: unreadSkip
-      });
+        offsetIdOffset: offset
+      };
     }
 
     if(offsetNotFound) {
       offset = 0;
     }
-    if((backLimit || unreadSkip || maxId) && historyStorage.history.indexOf(maxId) == -1) {
+    if((backLimit || maxId) && historyStorage.history.indexOf(maxId) === -1) {
       if(backLimit) {
         offset = -backLimit;
         limit += backLimit;
@@ -4285,45 +4297,31 @@ export class AppMessagesManager {
           historyStorage.count++;
         }
 
-        let history: number[] = [];
-        historyResult.messages.forEach((message: any) => {
-          history.push(message.mid);
-        });
-
-        if(!maxId && historyStorage.pending.length) {
-          history = historyStorage.pending.slice().concat(history);
-        }
-
-        return this.wrapHistoryResult(peerId, {
+        const history = (historyResult.messages as MyMessage[]).map(message => message.mid);
+        return {
           count: historyStorage.count,
-          history: history,
-          unreadOffset: unreadOffset,
-          unreadSkip: unreadSkip
-        });
+          history,
+          offsetIdOffset: (historyResult as MessagesMessages.messagesMessagesSlice).offset_id_offset || 0
+        };
       });
     }
 
     return this.fillHistoryStorage(peerId, maxId, limit, historyStorage, threadId).then(() => {
-      offset = 0;
-      if(maxId > 0) {
-        for(offset = 0; offset < historyStorage.history.length; offset++) {
+      let offset = 0;
+      if(maxId) {
+        for(; offset < historyStorage.history.length; offset++) {
           if(maxId > historyStorage.history[offset]) {
             break;
           }
         }
       }
 
-      let history = historyStorage.history.slice(backLimit ? Math.max(offset - backLimit, 0) : offset, offset + limit);
-      if(!maxId && historyStorage.pending.length) {
-        history = historyStorage.pending.slice().concat(history);
-      }
-
-      return this.wrapHistoryResult(peerId, {
+      const history = historyStorage.history.slice(backLimit ? Math.max(offset - backLimit, 0) : offset, offset + limit);
+      return {
         count: historyStorage.count,
-        history: history,
-        unreadOffset: unreadOffset,
-        unreadSkip: unreadSkip
-      });
+        history,
+        offsetIdOffset: offset
+      };
     });
   }
 
@@ -4338,7 +4336,7 @@ export class AppMessagesManager {
       }
 
       let offset = 0;
-      if(maxId > 0) {
+      if(maxId) {
         for(; offset < historyStorage.history.length; offset++) {
           if(maxId > historyStorage.history[offset]) {
             break;
@@ -4391,19 +4389,6 @@ export class AppMessagesManager {
     });
   }
 
-  public wrapHistoryResult(peerId: number, result: HistoryResult) {
-    if(result.unreadOffset) {
-      for(let i = result.history.length - 1; i >= 0; i--) {
-        const message = this.getMessageByPeer(peerId, result.history[i]);
-        if(!message.deleted && !message.pFlags.out && message.pFlags.unread) {
-          result.unreadOffset = i + 1;
-          break;
-        }
-      }
-    }
-    return result;
-  }
-
   public requestHistory(peerId: number, maxId: number, limit = 0, offset = 0, offsetDate = 0, threadId = 0): Promise<Exclude<MessagesMessages, MessagesMessages.messagesMessagesNotModified>> {
     const isChannel = appPeersManager.isChannel(peerId);
 
@@ -4417,7 +4402,7 @@ export class AppMessagesManager {
       offset_id: this.getLocalMessageId(maxId) || 0,
       offset_date: offsetDate,
       add_offset: offset,
-      limit: limit,
+      limit,
       max_id: 0,
       min_id: 0,
       hash: 0
@@ -4456,7 +4441,7 @@ export class AppMessagesManager {
         });
       }
 
-      return historyResult as any;
+      return historyResult;
     }, (error) => {
       switch (error.type) {
         case 'CHANNEL_PRIVATE':

@@ -2241,6 +2241,10 @@ export default class ChatBubbles {
       savedFrom = `${this.chat.peerId}_${message.mid}`;
     }
 
+    if(message.mid === this.chat.threadId) {
+      bubble.classList.add('is-thread-starter');
+    }
+
     if(savedFrom) {
       const goto = document.createElement('div');
       goto.classList.add('bubble-beside-button', 'goto-original', 'tgico-arrow-next');
@@ -2275,6 +2279,12 @@ export default class ChatBubbles {
     if(!history/* .filter((id: number) => id > 0) */.length) {
       if(!isBackLimit) {
         this.scrolledAll = true;
+
+        /* if(this.chat.type === 'discussion') {
+          const serviceStartMessageId = this.appMessagesManager.threadsServiceMessagesIdsStorage[this.peerId + '_' + this.chat.threadId];
+          if(serviceStartMessageId) history.push(serviceStartMessageId);
+          history.push(this.chat.threadId);
+        } */
       } else {
         this.scrolledAllDown = true;
       }
@@ -2393,8 +2403,33 @@ export default class ChatBubbles {
 
   public requestHistory(maxId: number, loadCount: number, backLimit: number) {
     //const middleware = this.getMiddleware();
-    if(this.chat.type === 'chat' || this.chat.type === 'discussion') {
+    if(this.chat.type === 'chat') {
       return this.appMessagesManager.getHistory(this.peerId, maxId, loadCount, backLimit, this.chat.threadId);
+    } else if(this.chat.type === 'discussion') {
+      const result = this.appMessagesManager.getHistory(this.peerId, maxId, loadCount, backLimit, this.chat.threadId);
+      const checkForStart = (historyResult: HistoryResult) => {
+        const topLoadCount = loadCount;
+        const isTopEnd = historyResult.offsetIdOffset >= (historyResult.count - topLoadCount);
+        this.log('discussion got history', loadCount, backLimit, historyResult, isTopEnd);
+
+        // * inject discussion start
+        if(isTopEnd) {
+          const serviceStartMessageId = this.appMessagesManager.threadsServiceMessagesIdsStorage[this.peerId + '_' + this.chat.threadId];
+          if(serviceStartMessageId) historyResult.history.push(serviceStartMessageId);
+          historyResult.history.push(this.chat.threadId);
+          this.scrolledAll = true;
+        }
+      };
+
+      if(result instanceof Promise) {
+        return result.then(result => {
+          checkForStart(result);
+          return result;
+        });
+      }
+
+      checkForStart(result);
+      return result;
     } else if(this.chat.type === 'pinned') {
       const promise = this.appMessagesManager.getSearch(this.peerId, '', {_: 'inputMessagesFilterPinned'}, maxId, loadCount, 0, backLimit)
       .then(value => ({history: value.history.map(m => m.mid)}));
