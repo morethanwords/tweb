@@ -11,13 +11,15 @@ export default class AppPrivateSearchTab implements SliderTab {
   private appSearch: AppSearch;
 
   private peerId = 0;
+  private threadId = 0;
 
   onOpenAfterTimeout() {
-    this.appSearch.beginSearch(this.peerId);
+    this.appSearch.beginSearch(this.peerId, this.threadId);
   }
 
   onCloseAfterTimeout() {
     this.peerId = 0;
+    this.threadId = 0;
     this.appSearch.reset();
   }
 
@@ -31,18 +33,19 @@ export default class AppPrivateSearchTab implements SliderTab {
     });
   }
 
-  open(peerId: number) {
+  open(peerId: number, threadId?: number) {
     if(this.init) {
       this.init();
       this.init = null;
     }
 
-    if(this.peerId != 0) {
-      this.appSearch.beginSearch(this.peerId);
+    if(this.peerId !== 0) {
+      this.appSearch.beginSearch(this.peerId, this.threadId);
       return;
     }
 
     this.peerId = peerId;
+    this.threadId = threadId;
     
     appSidebarRight.selectTab(AppSidebarRight.SLIDERITEMSIDS.search);
     appSidebarRight.toggleSidebar(true);

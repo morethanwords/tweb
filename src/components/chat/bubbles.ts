@@ -1701,7 +1701,7 @@ export default class ChatBubbles {
       bubble.classList.add(status);
     }
 
-    const withReplyFooter = message.replies && message.replies.pFlags.comments;
+    const withReplyFooter = message.replies && message.replies.pFlags.comments && message.replies.channel_id !== 777;
 
     const isOut = our && (!message.fwd_from || this.peerId != rootScope.myId);
     let nameContainer = bubbleContainer;
@@ -2087,6 +2087,7 @@ export default class ChatBubbles {
             </div>`;
 
           const avatarElem = new AvatarElement();
+          //avatarElem.lazyLoadQueue = this.lazyLoadQueue;
           avatarElem.setAttribute('peer', '' + message.media.user_id);
           avatarElem.classList.add('contact-avatar', 'avatar-54');
 
@@ -2218,6 +2219,7 @@ export default class ChatBubbles {
       if((!our && this.peerId < 0 && (!this.appPeersManager.isChannel(this.peerId) || this.appPeersManager.isMegagroup(this.peerId))) 
         || (this.peerId == rootScope.myId && !message.reply_to_mid)) {
         let avatarElem = new AvatarElement();
+        //avatarElem.lazyLoadQueue = this.lazyLoadQueue;
         avatarElem.classList.add('user-avatar', 'avatar-40');
 
         if(!message.fwdFromId && message.fwd_from && message.fwd_from.from_name) {
@@ -2376,7 +2378,7 @@ export default class ChatBubbles {
 
   onDatePick = (timestamp: number) => {
     const peerId = this.peerId;
-    this.appMessagesManager.requestHistory(peerId, 0, 2, -1, timestamp).then(history => {
+    this.appMessagesManager.requestHistory(peerId, 0, 2, -1, timestamp, this.chat.threadId).then(history => {
       if(!history?.messages?.length) {
         this.log.error('no history!');
         return;

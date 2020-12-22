@@ -240,6 +240,8 @@ export default class ChatPinnedMessage {
   public btnOpen: HTMLButtonElement;
   
   public setPinnedMessage: () => void;
+
+  private isStatic = false;
   
   constructor(private topbar: ChatTopbar, private chat: Chat, private appMessagesManager: AppMessagesManager, private appPeersManager: AppPeersManager) {
     this.listenerSetter = new ListenerSetter();
@@ -309,6 +311,8 @@ export default class ChatPinnedMessage {
     // * 200 - no lags
     // * 100 - need test
     this.setPinnedMessage = debounce(() => this._setPinnedMessage(), 100, true, true);
+
+    this.isStatic = this.chat.type === 'discussion';
   }
 
   public destroy() {
@@ -319,6 +323,7 @@ export default class ChatPinnedMessage {
   }
 
   public setCorrectIndex(lastScrollDirection?: number) {
+    if(this.isStatic) return;
     //return;
 
     if(this.locked || this.hidden/*  || this.chat.setPeerPromise || this.chat.bubbles.messagesQueuePromise */) {
@@ -340,16 +345,18 @@ export default class ChatPinnedMessage {
 
     const mid = el.dataset.mid;
     if(el && mid !== undefined) {
-      this.chat.log('[PM]: setCorrectIndex will test mid:', mid);
+      //this.chat.log('[PM]: setCorrectIndex will test mid:', mid);
       this.testMid(+mid, lastScrollDirection);
     }
   }
 
   public testMid(mid: number, lastScrollDirection?: number) {
+    if(this.isStatic) return;
+    
     //if(lastScrollDirection !== undefined) return;
     if(this.hidden) return;
 
-    this.chat.log('[PM]: testMid', mid);
+    //this.chat.log('[PM]: testMid', mid);
 
     let currentIndex: number = this.mids.findIndex(_mid => _mid <= mid);
     if(currentIndex !== -1 && !this.isNeededMore(currentIndex)) {
@@ -371,7 +378,7 @@ export default class ChatPinnedMessage {
       currentIndex = 0;
     } */
 
-    this.chat.log('[PM]: testMid: pinned currentIndex', currentIndex, mid);
+    //this.chat.log('[PM]: testMid: pinned currentIndex', currentIndex, mid);
 
     const changed = this.pinnedIndex != currentIndex;
     if(changed) {

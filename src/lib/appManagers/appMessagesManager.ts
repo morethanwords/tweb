@@ -1493,9 +1493,11 @@ export class AppMessagesManager {
     if(threadId) {
       const chatHistoryStorage = this.getHistoryStorage(peerId);
       const readMaxId = Math.max(chatHistoryStorage.readMaxId, historyStorage.readMaxId);
-      return readMaxId < historyStorage.maxId;
+      const message = this.getMessageByPeer(peerId, historyStorage.maxId);
+      return !message.pFlags.out && readMaxId < historyStorage.maxId;
     } else {
-      return (peerId > 0 ? Math.max(historyStorage.readMaxId, historyStorage.readOutboxMaxId) : historyStorage.readMaxId) < historyStorage.maxId;
+      const message = this.getMessageByPeer(peerId, historyStorage.maxId);
+      return !message.pFlags.out && (peerId > 0 ? Math.max(historyStorage.readMaxId, historyStorage.readOutboxMaxId) : historyStorage.readMaxId) < historyStorage.maxId;
     }
   }
 
@@ -2956,7 +2958,7 @@ export class AppMessagesManager {
         max_id: 0,
         min_id: 0,
         hash: 0,
-        top_msg_id: threadId
+        top_msg_id: this.getLocalMessageId(threadId) || 0
       }, {
         //timeout: APITIMEOUT,
         noErrorBox: true

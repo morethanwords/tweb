@@ -4,6 +4,7 @@ import rootScope from "../lib/rootScope";
 import { attachClickEvent, cancelEvent } from "../helpers/dom";
 import AppMediaViewer, { AppMediaViewerAvatar } from "./appMediaViewer";
 import { Photo } from "../layer";
+import type { LazyLoadQueueIntersector } from "./lazyLoadQueue";
 
 rootScope.on('avatar_update', (e) => {
   let peerId = e.detail;
@@ -19,6 +20,8 @@ export default class AvatarElement extends HTMLElement {
   private peerId: number;
   private isDialog = false;
   public peerTitle: string;
+  public lazyLoadQueue: LazyLoadQueueIntersector;
+  private addedToQueue = false;
 
   constructor() {
     super();
@@ -91,10 +94,13 @@ export default class AvatarElement extends HTMLElement {
     }
   }
 
-  //disconnectedCallback() {
+  disconnectedCallback() {
     // браузер вызывает этот метод при удалении элемента из документа
     // (может вызываться много раз, если элемент многократно добавляется/удаляется)
-  //}
+    if(this.lazyLoadQueue) {
+      this.lazyLoadQueue.unobserve(this);
+    }
+  }
 
   static get observedAttributes(): string[] {
     return ['peer', 'dialog', 'peer-title'/* массив имён атрибутов для отслеживания их изменений */];
@@ -118,7 +124,20 @@ export default class AvatarElement extends HTMLElement {
   }
 
   public update() {
-    appProfileManager.putPhoto(this, this.peerId, this.isDialog, this.peerTitle);
+    if(this.lazyLoadQueue) {
+      if(this.addedToQueue) return;
+      this.lazyLoadQueue.push({
+        div: this, 
+        load: () => {
+          return appProfileManager.putPhoto(this, this.peerId, this.isDialog, this.peerTitle).finally(() => {
+            this.addedToQueue = false;
+          });
+        }
+      });
+      this.addedToQueue = true;
+    } else {
+      appProfileManager.putPhoto(this, this.peerId, this.isDialog, this.peerTitle);
+    }
   }
 }
 

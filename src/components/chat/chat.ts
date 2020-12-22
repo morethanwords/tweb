@@ -79,9 +79,13 @@ export default class Chat extends EventListenerBase<{
     this.contextMenu = new ChatContextMenu(this.bubbles.bubblesContainer, this, this.appMessagesManager, this.appChatsManager, this.appPeersManager, this.appPollsManager);
 
     if(this.type === 'chat') {
+      this.topbar.constructUtils();
       this.topbar.constructPeerHelpers();
     } else if(this.type === 'pinned') {
       this.topbar.constructPinnedHelpers();
+    } else if(this.type === 'discussion') {
+      this.topbar.constructUtils();
+      this.topbar.constructDiscussionHelpers();
     }
 
     this.topbar.construct();

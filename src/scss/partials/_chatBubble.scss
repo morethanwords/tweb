@@ -189,7 +189,8 @@ $bubble-margin: .25rem;
       } */
     }
 
-    .chat.type-chat & .bubble__container {
+    .chat.type-chat & .bubble__container,
+    .chat.type-discussion & .bubble__container {
       cursor: pointer;
       pointer-events: all;
     }
@@ -1224,6 +1225,7 @@ $bubble-margin: .25rem;
         line-height: 18px;
         pointer-events: all; // show title
         white-space: nowrap;
+        height: 18px;
 
         .inner {
           display: none;
@@ -1248,10 +1250,14 @@ $bubble-margin: .25rem;
     cursor: default;
     /* display: inline-flex;
     align-items: center; */
+    height: 12px;
 
     i {
       font-size: 1.15rem;
       margin-right: .4rem;
+    }
+
+    &-icon {
       margin-left: 2px;
     }
 
@@ -1270,6 +1276,7 @@ $bubble-margin: .25rem;
       line-height: 1;
       padding: inherit;
       white-space: nowrap;
+      height: 12px; // * as font-size
     }
 
     .tgico-pinnedchat:before {
@@ -1492,7 +1499,7 @@ $bubble-margin: .25rem;
       }
   
       &.is-unread {
-        .replies-text {
+        .replies-footer-text {
           &:after {
             content: " ";
             background-color: $color-blue;
@@ -1771,7 +1778,7 @@ $bubble-margin: .25rem;
 
     .inner {
       color: $darkgreen;
-      bottom: 2px;
+      bottom: 4px;
     }
 
     &:after, .inner:after {

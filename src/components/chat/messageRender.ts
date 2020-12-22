@@ -21,7 +21,7 @@ export namespace MessageRender {
       const postAuthor = message.post_author || message.fwd_from?.post_author;
 
       bubble.classList.add('channel-post');
-      time = formatNumber(message.views, 1) + ' <i class="tgico-channelviews"></i> ' + (postAuthor ? RichTextProcessor.wrapEmojiText(postAuthor) + ', ' : '') + time;
+      time = formatNumber(message.views, 1) + ' <i class="tgico-channelviews time-icon"></i> ' + (postAuthor ? RichTextProcessor.wrapEmojiText(postAuthor) + ', ' : '') + time;
   
       if(!message.savedFrom) {
         const forward = document.createElement('div');
@@ -45,7 +45,7 @@ export namespace MessageRender {
 
     if(chat.type != 'pinned' && message.pFlags.pinned) {
       bubble.classList.add('is-pinned');
-      time = '<i class="tgico tgico-pinnedchat"></i>' + time;
+      time = '<i class="tgico-pinnedchat time-icon"></i>' + time;
     }
 
     const title = getFullDate(date) 

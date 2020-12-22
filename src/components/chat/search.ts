@@ -73,7 +73,7 @@ export default class ChatSearch {
         this.selectResult(this.searchGroup.list.children[0] as HTMLElement);
       }
     });
-    this.appSearch.beginSearch(this.chat.peerId);
+    this.appSearch.beginSearch(this.chat.peerId, this.chat.threadId);
 
     //appImManager.topbar.parentElement.insertBefore(this.results, appImManager.bubblesContainer);
     this.chat.bubbles.bubblesContainer.append(this.results);

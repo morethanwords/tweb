@@ -77,6 +77,7 @@ export default class AppSearch {
   public listsContainer: HTMLDivElement = null;
 
   private peerId = 0; // 0 - means global
+  private threadId = 0;
 
   private scrollable: Scrollable;
 
@@ -119,6 +120,7 @@ export default class AppSearch {
       this.searchInput.value = '';
       this.query = '';
       this.peerId = 0;
+      this.threadId = 0;
     }
 
     this.minMsgId = 0;
@@ -134,9 +136,13 @@ export default class AppSearch {
     this.searchPromise = null;
   }
 
-  public beginSearch(peerId?: number) {
+  public beginSearch(peerId?: number, threadId?: number) {
     if(peerId) {
       this.peerId = peerId;
+    }
+
+    if(threadId) {
+      this.threadId = threadId;
     }
     
     this.searchInput.input.focus();
@@ -240,7 +246,7 @@ export default class AppSearch {
       });
     }
     
-    return this.searchPromise = appMessagesManager.getSearch(this.peerId, query, {_: 'inputMessagesFilterEmpty'}, maxId, 20, this.offsetRate).then(res => {
+    return this.searchPromise = appMessagesManager.getSearch(this.peerId, query, {_: 'inputMessagesFilterEmpty'}, maxId, 20, this.offsetRate, undefined, this.threadId).then(res => {
       this.searchPromise = null;
       
       if(this.searchInput.value != query) {

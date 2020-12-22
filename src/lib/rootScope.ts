@@ -5,7 +5,7 @@ import type { Poll, PollResults } from "./appManagers/appPollsManager";
 import type { MyDialogFilter } from "./storages/filters";
 import type { ConnectionStatusChange } from "../types";
 import type { UserTyping } from "./appManagers/appChatsManager";
-import { MOUNT_CLASS_TO, UserAuth } from "./mtproto/mtproto_config";
+import { DEBUG, MOUNT_CLASS_TO, UserAuth } from "./mtproto/mtproto_config";
 
 type BroadcastEvents = {
   'user_update': number,
@@ -96,8 +96,10 @@ class RootScope {
   }
 
   public broadcast = <T extends keyof BroadcastEvents>(name: T, detail?: BroadcastEvents[T]) => {
-    /* if(name != 'user_update') {
-      console.debug('Broadcasting ' + name + ' event, with args:', detail);
+    /* if(DEBUG) {
+      if(name != 'user_update') {
+        console.debug('Broadcasting ' + name + ' event, with args:', detail);
+      }
     } */
 
     const myCustomEvent = new CustomEvent(name, {detail});

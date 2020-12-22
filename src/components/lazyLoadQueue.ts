@@ -199,6 +199,11 @@ export class LazyLoadQueueIntersector extends LazyLoadQueueBase {
   public unshift(el: LazyLoadElement) {
     super.unshift(el);
   }
+
+  public unobserve(el: HTMLElement) {
+    this.queue.findAndSplice(i => i.div === el);
+    this.intersector.unobserve(el);
+  }
 }
 
 export default class LazyLoadQueue extends LazyLoadQueueIntersector {
