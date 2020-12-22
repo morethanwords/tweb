@@ -2403,33 +2403,8 @@ export default class ChatBubbles {
 
   public requestHistory(maxId: number, loadCount: number, backLimit: number) {
     //const middleware = this.getMiddleware();
-    if(this.chat.type === 'chat') {
+    if(this.chat.type === 'chat' || this.chat.type === 'discussion') {
       return this.appMessagesManager.getHistory(this.peerId, maxId, loadCount, backLimit, this.chat.threadId);
-    } else if(this.chat.type === 'discussion') {
-      const result = this.appMessagesManager.getHistory(this.peerId, maxId, loadCount, backLimit, this.chat.threadId);
-      const checkForStart = (historyResult: HistoryResult) => {
-        const topLoadCount = loadCount;
-        const isTopEnd = historyResult.offsetIdOffset >= (historyResult.count - topLoadCount);
-        this.log('discussion got history', loadCount, backLimit, historyResult, isTopEnd);
-
-        // * inject discussion start
-        if(isTopEnd) {
-          const serviceStartMessageId = this.appMessagesManager.threadsServiceMessagesIdsStorage[this.peerId + '_' + this.chat.threadId];
-          if(serviceStartMessageId) historyResult.history.push(serviceStartMessageId);
-          historyResult.history.push(this.chat.threadId);
-          this.scrolledAll = true;
-        }
-      };
-
-      if(result instanceof Promise) {
-        return result.then(result => {
-          checkForStart(result);
-          return result;
-        });
-      }
-
-      checkForStart(result);
-      return result;
     } else if(this.chat.type === 'pinned') {
       const promise = this.appMessagesManager.getSearch(this.peerId, '', {_: 'inputMessagesFilterPinned'}, maxId, loadCount, 0, backLimit)
       .then(value => ({history: value.history.map(m => m.mid)}));
@@ -2538,6 +2513,20 @@ export default class ChatBubbles {
           this.log.warn('peer changed');
           ////console.timeEnd('render history total');
           return Promise.reject();
+        }
+
+        if(this.chat.type === 'discussion') {
+          const topLoadCount = loadCount;
+          const isTopEnd = result.offsetIdOffset >= (result.count - topLoadCount);
+          this.log('discussion got history', loadCount, backLimit, result, isTopEnd);
+
+          // * inject discussion start
+          if(isTopEnd) {
+            const serviceStartMessageId = this.appMessagesManager.threadsServiceMessagesIdsStorage[this.peerId + '_' + this.chat.threadId];
+            if(serviceStartMessageId) result.history.push(serviceStartMessageId);
+            result.history.push(this.chat.threadId);
+            this.scrolledAll = true;
+          }
         }
         
         ////console.timeEnd('render history total');

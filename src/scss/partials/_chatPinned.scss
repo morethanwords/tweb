@@ -393,6 +393,12 @@
       display: none;
     }
   }
+
+  .chat.type-discussion & {
+    .pinned-container-close {
+      display: none !important;
+    }
+  }
 }
 
 .pinned-audio {
