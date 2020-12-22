@@ -2499,6 +2499,21 @@ export default class ChatBubbles {
       //additionMsgID = 0;
     }
 
+    const processResult = (historyResult: typeof result) => {
+      if(this.chat.type === 'discussion' && 'offsetIdOffset' in historyResult) {
+        const isTopEnd = historyResult.offsetIdOffset >= (historyResult.count - loadCount);
+        this.log('discussion got history', loadCount, backLimit, historyResult, isTopEnd);
+
+        // * inject discussion start
+        if(isTopEnd) {
+          const serviceStartMessageId = this.appMessagesManager.threadsServiceMessagesIdsStorage[this.peerId + '_' + this.chat.threadId];
+          if(serviceStartMessageId) historyResult.history.push(serviceStartMessageId);
+          historyResult.history.push(this.chat.threadId);
+          this.scrolledAll = true;
+        }
+      }
+    };
+
     const processPromise = (result: Promise<HistoryResult>) => {
       const promise = result.then((result) => {
         this.log('getHistory not cached result by maxId:', maxId, reverse, isBackLimit, result, peerId, justLoad);
@@ -2515,19 +2530,7 @@ export default class ChatBubbles {
           return Promise.reject();
         }
 
-        if(this.chat.type === 'discussion') {
-          const topLoadCount = loadCount;
-          const isTopEnd = result.offsetIdOffset >= (result.count - topLoadCount);
-          this.log('discussion got history', loadCount, backLimit, result, isTopEnd);
-
-          // * inject discussion start
-          if(isTopEnd) {
-            const serviceStartMessageId = this.appMessagesManager.threadsServiceMessagesIdsStorage[this.peerId + '_' + this.chat.threadId];
-            if(serviceStartMessageId) result.history.push(serviceStartMessageId);
-            result.history.push(this.chat.threadId);
-            this.scrolledAll = true;
-          }
-        }
+        processResult(result);
         
         ////console.timeEnd('render history total');
         
@@ -2549,6 +2552,7 @@ export default class ChatBubbles {
     } else {
       cached = true;
       this.log('getHistory cached result by maxId:', maxId, reverse, isBackLimit, result, peerId, justLoad);
+      processResult(result);
       promise = this.performHistoryResult(result.history || [], reverse, isBackLimit, !isFirstMessageRender && additionMsgId);
       //return (reverse ? this.getHistoryTopPromise = promise : this.getHistoryBottomPromise = promise);
       //return this.performHistoryResult(result.history || [], reverse, isBackLimit, additionMsgID, true);
