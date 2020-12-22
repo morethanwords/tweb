@@ -522,7 +522,7 @@ export default class ChatBubbles {
       return;
     }
 
-    const commentsDiv: HTMLElement = findUpClassName(target, 'replies-footer');
+    const commentsDiv: HTMLElement = findUpClassName(target, 'replies');
     if(commentsDiv) {
       const mid = +bubble.dataset.mid;
       const message = this.chat.getMessage(mid);

@@ -334,8 +334,8 @@ $bubble-margin: .25rem;
 
   .forward {
     svg {
-      width: 20px;
-      height: 20px;
+      width: 22px;
+      height: 22px;
     }
   }
 
@@ -1221,7 +1221,7 @@ $bubble-margin: .25rem;
         display: flex;
         align-items: center;
         padding: 0 2.5px;
-        line-height: 20px;
+        line-height: 18px;
         pointer-events: all; // show title
         white-space: nowrap;
 
@@ -1229,6 +1229,10 @@ $bubble-margin: .25rem;
           display: none;
         }
       }
+    }
+
+    &.sticker .message {
+      bottom: 0;
     }
   }
   
@@ -1416,45 +1420,7 @@ $bubble-margin: .25rem;
     white-space: normal; // * fix due to .message white-space prewrap
   }
 
-  .replies-footer {
-    height: 50px;
-    border-top: 1px solid #dadce0;
-    position: relative;
-    display: flex;
-    align-items: center;
-    padding: 0 .5rem;
-    border-bottom-left-radius: inherit;
-    border-bottom-right-radius: inherit;
-    color: $color-blue;
-    min-width: 15rem;
-    user-select: none;
-
-    .tgico-comments, .tgico-next {
-      font-size: 1.4375rem;
-    }
-
-    &-text {
-      font-weight: 500;
-      margin-left: 13px;
-      display: flex;
-      align-items: center;
-    }
-
-    &-avatars {
-      display: flex;
-      flex-direction: row-reverse;
-
-      avatar-element {
-        border: 2px solid #fff;
-        cursor: pointer;
-      }
-    }
-
-    .tgico-next {
-      position: absolute;
-      right: .5rem;
-    }
-    
+  .replies {
     .rp {
       width: 100%;
       height: 100%;
@@ -1466,15 +1432,75 @@ $bubble-margin: .25rem;
       cursor: pointer;
     }
 
-    &.is-unread {
-      .replies-footer-text {
-        &:after {
-          content: " ";
-          background-color: $color-blue;
-          width: .5rem;
-          height: .5rem;
-          margin-left: .75rem;
-          border-radius: 50%;
+    &-beside {
+      flex-direction: column;
+      width: 36px;
+      min-height: 36px;
+      height: auto;
+      max-height: 52px;
+      bottom: 47px; // * forward button + 9px margin
+      border-radius: 2rem;
+      right: -44px; // * because not 38px, as forward button
+      padding: 5.5px 0;
+
+      .tgico-commentssticker {
+        font-size: 23px;
+      }
+
+      &-text {
+        font-size: .75rem;
+      }
+    }
+
+    &-footer {
+      height: 50px;
+      border-top: 1px solid #dadce0;
+      position: relative;
+      display: flex;
+      align-items: center;
+      padding: 0 .5rem;
+      border-bottom-left-radius: inherit;
+      border-bottom-right-radius: inherit;
+      color: $color-blue;
+      min-width: 15rem;
+      user-select: none;
+  
+      .tgico-comments, .tgico-next {
+        font-size: 1.4375rem;
+      }
+  
+      &-text {
+        font-weight: 500;
+        margin-left: 13px;
+        display: flex;
+        align-items: center;
+      }
+  
+      &-avatars {
+        display: flex;
+        flex-direction: row-reverse;
+  
+        avatar-element {
+          border: 2px solid #fff;
+          cursor: pointer;
+        }
+      }
+  
+      .tgico-next {
+        position: absolute;
+        right: .5rem;
+      }
+  
+      &.is-unread {
+        .replies-text {
+          &:after {
+            content: " ";
+            background-color: $color-blue;
+            width: .5rem;
+            height: .5rem;
+            margin-left: .75rem;
+            border-radius: 50%;
+          }
         }
       }
     }
