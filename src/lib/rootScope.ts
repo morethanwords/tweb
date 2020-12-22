@@ -1,4 +1,4 @@
-import type { StickerSet, Update } from "../layer";
+import type { Message, StickerSet, Update } from "../layer";
 import type { MyDocument } from "./appManagers/appDocsManager";
 import type { AppMessagesManager, Dialog, MessagesStorage } from "./appManagers/appMessagesManager";
 import type { Poll, PollResults } from "./appManagers/appPollsManager";
@@ -45,6 +45,8 @@ type BroadcastEvents = {
   'messages_read': void,
   'messages_downloaded': {peerId: number, mids: number[]},
   'messages_media_read': {peerId: number, mids: number[]},
+
+  'replies_updated': Message.message,
 
   'scheduled_new': {peerId: number, mid: number},
   'scheduled_delete': {peerId: number, mids: number[]},

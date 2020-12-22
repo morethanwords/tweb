@@ -19,7 +19,7 @@ import {MyDialogFilter as DialogFilter} from "../storages/filters";
 import appPeersManager from './appPeersManager';
 import appStateManager from "./appStateManager";
 import appUsersManager, { User } from "./appUsersManager";
-import { App, MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
+import { App, DEBUG, MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
 import Button from "../../components/button";
 import SetTransition from "../../components/singleTransition";
 import AppStorage from '../storage';
@@ -876,6 +876,16 @@ export class AppDialogsManager {
         appImManager.setPeer(0);
       }
     }, {capture: true});
+
+    if(DEBUG) {
+      list.addEventListener('dblclick', (e) => {
+        const li = findUpTag(e.target, 'LI');
+        if(li) {
+          const peerId = +li.getAttribute('data-peerId');
+          this.log('debug dialog:', appMessagesManager.getDialogByPeerId(peerId));
+        }
+      });
+    }
 
     if(withContext) {
       attachContextMenuListener(list, this.contextMenu.onContextMenu);

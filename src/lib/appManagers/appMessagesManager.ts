@@ -4,7 +4,7 @@ import { tsNow } from "../../helpers/date";
 import { copy, defineNotNumerableProperties, getObjectKeysAndSort } from "../../helpers/object";
 import { randomLong } from "../../helpers/random";
 import { splitStringByLength, limitSymbols } from "../../helpers/string";
-import { Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputNotifyPeer, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, NotifyPeer, PhotoSize, SendMessageAction, Update } from "../../layer";
+import { Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputNotifyPeer, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, NotifyPeer, PhotoSize, SendMessageAction, Update } from "../../layer";
 import { InvokeApiOptions } from "../../types";
 import { langPack } from "../langPack";
 import { logger, LogLevels } from "../logger";
@@ -109,6 +109,10 @@ export class AppMessagesManager {
     }>
   } = {};
   public pinnedMessages: {[peerId: string]: PinnedStorage} = {};
+
+  public threadsToReplies: {
+    [peerId_threadId: string]: string;
+  } = {};
 
   public pendingByRandomId: {
     [randomId: string]: {
@@ -2399,7 +2403,7 @@ export class AppMessagesManager {
     });
   }
 
-  public markDialogUnread(peerId: number, read?: boolean) {
+  public markDialogUnread(peerId: number, read?: true) {
     const dialog = this.getDialogByPeerId(peerId)[0];
     if(!dialog) return Promise.reject();
 
@@ -3022,6 +3026,15 @@ export class AppMessagesManager {
     });
   }
 
+  public subscribeRepliesThread(peerId: number, mid: number) {
+    const repliesKey = peerId + '_' + mid;
+    for(const threadKey in this.threadsToReplies) {
+      if(this.threadsToReplies[threadKey] === repliesKey) return;
+    }
+
+    this.getDiscussionMessage(peerId, mid);
+  }
+
   public getDiscussionMessage(peerId: number, mid: number) {
     return apiManager.invokeApi('messages.getDiscussionMessage', {
       peer: appPeersManager.getInputPeerById(peerId),
@@ -3036,6 +3049,8 @@ export class AppMessagesManager {
       result.max_id = historyStorage.maxId = this.generateMessageId(result.max_id) || 0;
       result.read_inbox_max_id = historyStorage.readMaxId = this.generateMessageId(result.read_inbox_max_id) || 0;
       result.read_outbox_max_id = historyStorage.readOutboxMaxId = this.generateMessageId(result.read_outbox_max_id) || 0;
+
+      this.threadsToReplies[message.peerId + '_' + message.mid] = peerId + '_' + mid;
 
       return result;
     });
@@ -3315,11 +3330,10 @@ export class AppMessagesManager {
         // this.log.warn(dT(), 'message unread', message.mid, message.pFlags.unread)
 
         const pendingMessage = this.checkPendingMessage(message);
-
         const historyStorage = this.getHistoryStorage(peerId);
 
         const history = message.mid > 0 ? historyStorage.history : historyStorage.pending;
-        if(history.indexOf(message.mid) != -1) {
+        if(history.indexOf(message.mid) !== -1) {
           return false;
         }
         const topMsgId = history[0];
@@ -3338,8 +3352,8 @@ export class AppMessagesManager {
           rootScope.broadcast('history_reply_markup', {peerId});
         }
   
-        if(!message.pFlags.out && message.from_id) {
-          appUsersManager.forceUserOnline(appPeersManager.getPeerId(message.from_id), message.date);
+        if(message.fromId > 0 && !message.pFlags.out && message.from_id) {
+          appUsersManager.forceUserOnline(message.fromId, message.date);
         }
 
         if(!pendingMessage) {
@@ -3352,6 +3366,8 @@ export class AppMessagesManager {
             this.newMessagesHandlePromise = window.setTimeout(this.handleNewMessages, 0);
           }
         }
+
+        this.updateMessageRepliesIfNeeded(message);
         
         const dialog = foundDialog[0];
         if(dialog) {
@@ -3950,6 +3966,37 @@ export class AppMessagesManager {
     }
   }
 
+  private updateMessageRepliesIfNeeded(threadMessage: MyMessage) {
+    try { // * на всякий случай, скорее всего это не понадобится
+      if(threadMessage.peerId < 0 && threadMessage.reply_to) {
+        const threadId = threadMessage.reply_to.reply_to_top_id || threadMessage.reply_to.reply_to_msg_id;
+        const threadKey = threadMessage.peerId + '_' + threadId;
+        const repliesKey = this.threadsToReplies[threadKey];
+        if(repliesKey) {
+          const [peerId, mid] = repliesKey.split('_').map(n => +n);
+
+          this.updateMessage(peerId, mid, 'replies_updated');
+        }
+      }
+    } catch(err) {
+      this.log.error('incrementMessageReplies err', err, threadMessage);
+    }
+  }
+
+  public updateMessage(peerId: number, mid: number, broadcastEventName?: 'replies_updated'): Promise<Message.message> {
+    const promise: Promise<Message.message> = this.wrapSingleMessage(peerId, mid, true).then(() => {
+      const message = this.getMessageByPeer(peerId, mid);
+
+      if(broadcastEventName) {
+        rootScope.broadcast(broadcastEventName, message);
+      }
+
+      return message;
+    });
+    
+    return promise;
+  }
+
   private checkPendingMessage(message: any) {
     const randomId = this.pendingByMessageId[message.mid];
     let pendingMessage: any;
@@ -4474,7 +4521,7 @@ export class AppMessagesManager {
 
         Promise.all(promises).finally(() => {
           this.fetchSingleMessagesPromise = null;
-          if(this.needSingleMessages.length) this.fetchSingleMessages();
+          if(Object.keys(this.needSingleMessages).length) this.fetchSingleMessages();
           resolve();
         });
       }, 0);
@@ -4482,10 +4529,10 @@ export class AppMessagesManager {
   }
 
   public wrapSingleMessage(peerId: number, msgId: number, overwrite = false): Promise<void> {
-    if(this.getMessagesStorage(peerId)[msgId] && !overwrite) {
+    if(!this.getMessageByPeer(peerId, msgId).deleted && !overwrite) {
       rootScope.broadcast('messages_downloaded', {peerId, mids: [msgId]});
       return Promise.resolve();
-    } else if(!this.needSingleMessages[peerId] || this.needSingleMessages[peerId].indexOf(msgId) == -1) {
+    } else if(!this.needSingleMessages[peerId] || this.needSingleMessages[peerId].indexOf(msgId) === -1) {
       (this.needSingleMessages[peerId] ?? (this.needSingleMessages[peerId] = [])).push(msgId);
       return this.fetchSingleMessages();
     } else if(this.fetchSingleMessagesPromise) {
@@ -4530,6 +4577,8 @@ export class AppMessagesManager {
           appWebPagesManager.deleteWebPageFromPending(message.media.webpage, mid);
         }
       }
+
+      this.updateMessageRepliesIfNeeded(message);
 
       if(!message.pFlags.out && message.pFlags.unread) {
         history.unread++;

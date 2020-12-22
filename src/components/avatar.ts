@@ -1,7 +1,7 @@
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import appProfileManager from "../lib/appManagers/appProfileManager";
 import rootScope from "../lib/rootScope";
-import { cancelEvent } from "../helpers/dom";
+import { attachClickEvent, cancelEvent } from "../helpers/dom";
 import AppMediaViewer, { AppMediaViewerAvatar } from "./appMediaViewer";
 import { Photo } from "../layer";
 
@@ -33,7 +33,7 @@ export default class AvatarElement extends HTMLElement {
     if(this.getAttribute('clickable') === '') {
       this.setAttribute('clickable', 'set');
       let loading = false;
-      this.addEventListener('click', async(e) => {
+      attachClickEvent(this, async(e) => {
         cancelEvent(e);
         if(loading) return;
         //console.log('avatar clicked');
@@ -120,13 +120,6 @@ export default class AvatarElement extends HTMLElement {
   public update() {
     appProfileManager.putPhoto(this, this.peerId, this.isDialog, this.peerTitle);
   }
-
-  adoptedCallback() {
-    // вызывается, когда элемент перемещается в новый документ
-    // (происходит в document.adoptNode, используется очень редко)
-  }
-
-  // у элемента могут быть ещё другие методы и свойства
 }
 
 customElements.define("avatar-element", AvatarElement);

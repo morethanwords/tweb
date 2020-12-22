@@ -7,7 +7,7 @@ import PinnedContainer from "./pinnedContainer";
 import PinnedMessageBorder from "./pinnedMessageBorder";
 import ReplyContainer, { wrapReplyDivAndCaption } from "./replyContainer";
 import rootScope from "../../lib/rootScope";
-import { cancelEvent, findUpClassName, getElementByPoint, handleScrollSideEvent } from "../../helpers/dom";
+import { attachClickEvent, cancelEvent, findUpClassName, getElementByPoint, handleScrollSideEvent } from "../../helpers/dom";
 import Chat from "./chat";
 import ListenerSetter from "../../helpers/listenerSetter";
 import ButtonIcon from "../buttonIcon";
@@ -271,10 +271,10 @@ export default class ChatPinnedMessage {
     this.btnOpen = ButtonIcon('pinlist pinned-container-close pinned-message-pinlist', {noRipple: true});
     this.pinnedMessageContainer.divAndCaption.container.prepend(this.btnOpen);
 
-    this.listenerSetter.add(this.btnOpen, 'click', (e) => {
+    attachClickEvent(this.btnOpen, (e) => {
       cancelEvent(e);
       this.topbar.openPinned(true);
-    });
+    }, {listenerSetter: this.listenerSetter});
 
     this.listenerSetter.add(rootScope, 'peer_pinned_messages', (e) => {
       const peerId = e.detail.peerId;

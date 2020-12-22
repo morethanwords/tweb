@@ -38,6 +38,7 @@ import ListenerSetter from "../../helpers/listenerSetter";
 import PollElement from "../poll";
 import AudioElement from "../audio";
 import { MessageEntity, MessageReplies, MessageReplyHeader } from "../../layer";
+import { DEBUG, MOUNT_CLASS_TO } from "../../lib/mtproto/mtproto_config";
 
 const IGNORE_ACTIONS = ['messageActionHistoryClear'];
 
@@ -314,6 +315,17 @@ export default class ChatBubbles {
     });
 
     this.listenerSetter.add(this.bubblesContainer, 'click', this.onBubblesClick/* , {capture: true, passive: false} */);
+
+    if(DEBUG) {
+      this.listenerSetter.add(this.bubblesContainer, 'dblclick', (e) => {
+        const bubble = findUpClassName(e.target, 'grouped-item') || findUpClassName(e.target, 'bubble');
+        if(bubble) {
+          const mid = +bubble.dataset.mid;
+          this.log('debug message:', this.chat.getMessage(mid));
+          this.chat.bubbles.highlightBubble(bubble);
+        }
+      });
+    }
 
     this.stickyIntersector = new StickyIntersector(this.scrollable.container, (stuck, target) => {
       for(const timestamp in this.dateMessages) {

@@ -1,20 +1,19 @@
 import { getFullDate } from "../../helpers/date";
 import { formatNumber } from "../../helpers/number";
-import { MessageReplies } from "../../layer";
+import { Message } from "../../layer";
 import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import appPeersManager from "../../lib/appManagers/appPeersManager";
 import RichTextProcessor from "../../lib/richtextprocessor";
+import rootScope from "../../lib/rootScope";
 import { ripple } from "../ripple";
 import Chat from "./chat";
-
-type Message = any;
 
 export namespace MessageRender {
   /* export const setText = () => {
 
   }; */
 
-  export const setTime = (chat: Chat, message: Message, bubble: HTMLElement, bubbleContainer: HTMLElement, messageDiv: HTMLElement) => {
+  export const setTime = (chat: Chat, message: any, bubble: HTMLElement, bubbleContainer: HTMLElement, messageDiv: HTMLElement) => {
     const date = new Date(message.date * 1000);
     let time = ('0' + date.getHours()).slice(-2) + ':' + ('0' + date.getMinutes()).slice(-2);
 
@@ -69,50 +68,87 @@ export namespace MessageRender {
     message: any,
     messageDiv: HTMLElement
   }) => {
-    const replies = message.replies as MessageReplies;
     const isFooter = !bubble.classList.contains('sticker') && !bubble.classList.contains('emoji-big');
+    const repliesFooter = new RepliesFooterElement();
+    
     if(isFooter) {
-      const container = document.createElement('div');
-      container.classList.add('replies-footer');
-
-      let leftHTML = '', lastStyle = '';
-      if(replies?.recent_repliers) {
-        leftHTML += '<div class="replies-footer-avatars">'
-        /**
-         * MACOS, ANDROID - без реверса
-         * WINDOWS DESKTOP - реверс
-         * все приложения накладывают аватарку первую на вторую, а в макете зато вторая на первую, ЛОЛ!
-         */
-        let l: string[] = [];
-        replies.recent_repliers/* .slice().reverse() */.forEach((peer, idx) => {
-          lastStyle = idx == 0 ? '' : `style="transform: translateX(-${idx * 12}px);"`;
-          l.push(`<avatar-element class="avatar-32" dialog="0" peer="${appPeersManager.getPeerId(peer)}" ${lastStyle}></avatar-element>`);
-        });
-        leftHTML += l.reverse().join('') + '</div>';
-      } else {
-        leftHTML = '<span class="tgico-comments"></span>';
-      }
-
-      let text: string;
-      if(replies?.replies) {
-        text = replies.replies + ' ' + (replies.replies > 1 ? 'Comments' : 'Comment');
-      } else {
-        text = 'Leave a Comment';
-      }
-
-      if(replies) {
-        const historyStorage = appMessagesManager.getHistoryStorage(-replies.channel_id);
-        if(replies.read_max_id < replies.max_id && (!historyStorage.readMaxId || historyStorage.readMaxId < replies.max_id)) {
-          container.classList.add('is-unread');
-        }
-      }
-
-      container.innerHTML = `${leftHTML}<span class="replies-footer-text" ${lastStyle}>${text}</span><span class="tgico-next"></span>`;
-
-      const rippleContainer = document.createElement('div');
-      container.append(rippleContainer);
-      ripple(rippleContainer);
-      bubbleContainer.prepend(container);
+      repliesFooter.message = message;
+      repliesFooter.type = 'footer';
+      bubbleContainer.prepend(repliesFooter);
     }
   };
 }
+
+rootScope.on('replies_updated', (e) => {
+  const message = e.detail;
+  (Array.from(document.querySelectorAll(`replies-footer-element[data-post-key="${message.peerId}_${message.mid}"]`)) as RepliesFooterElement[]).forEach(element => {
+    element.message = message;
+    element.render();
+  });
+});
+
+class RepliesFooterElement extends HTMLElement {
+  public message: Message.message;
+  public type: 'footer' | 'beside';
+  
+  private updated = false;
+
+  constructor() {
+    super();
+
+    this.classList.add('replies-footer');
+  }
+
+  connectedCallback() {
+    this.render();
+    this.dataset.postKey = this.message.peerId + '_' + this.message.mid;
+  }
+
+  public render() {
+    const replies = this.message.replies;
+
+    let leftHTML = '', lastStyle = '';
+    if(replies.recent_repliers) {
+      leftHTML += '<div class="replies-footer-avatars">'
+      /**
+       * MACOS, ANDROID - без реверса
+       * WINDOWS DESKTOP - реверс
+       * все приложения накладывают аватарку первую на вторую, а в макете зато вторая на первую, ЛОЛ!
+       */
+      let l: string[] = [];
+      replies.recent_repliers/* .slice().reverse() */.forEach((peer, idx) => {
+        lastStyle = idx == 0 ? '' : `style="transform: translateX(-${idx * 12}px);"`;
+        l.push(`<avatar-element class="avatar-32" dialog="0" peer="${appPeersManager.getPeerId(peer)}" ${lastStyle}></avatar-element>`);
+      });
+      leftHTML += l.reverse().join('') + '</div>';
+    } else {
+      leftHTML = '<span class="tgico-comments"></span>';
+    }
+
+    let text: string;
+    if(replies.replies) {
+      text = replies.replies + ' ' + (replies.replies > 1 ? 'Comments' : 'Comment');
+    } else {
+      text = 'Leave a Comment';
+    }
+
+    const historyStorage = appMessagesManager.getHistoryStorage(-replies.channel_id);
+    if(replies.read_max_id < replies.max_id && (!historyStorage.readMaxId || historyStorage.readMaxId < replies.max_id)) {
+      this.classList.add('is-unread');
+    }
+
+    if(!this.updated) {
+      appMessagesManager.subscribeRepliesThread(this.message.peerId, this.message.mid);
+      appMessagesManager.updateMessage(this.message.peerId, this.message.mid, 'replies_updated');
+      this.updated = true;
+    }
+
+    this.innerHTML = `${leftHTML}<span class="replies-footer-text" ${lastStyle}>${text}</span><span class="tgico-next"></span>`;
+
+    const rippleContainer = document.createElement('div');
+    this.append(rippleContainer);
+    ripple(rippleContainer);
+  }
+}
+
+customElements.define('replies-footer-element', RepliesFooterElement);
