@@ -1,7 +1,7 @@
 import type Chat from "./chat";
 import type ChatTopbar from "./topbar";
 import mediaSizes from "../../helpers/mediaSizes";
-import { cancelEvent } from "../../helpers/dom";
+import { attachClickEvent, cancelEvent } from "../../helpers/dom";
 import DivAndCaption from "../divAndCaption";
 import { ripple } from "../ripple";
 import ListenerSetter from "../../helpers/listenerSetter";
@@ -41,7 +41,7 @@ export default class PinnedContainer {
     
     divAndCaption.container.append(this.close, this.wrapper);
 
-    this.listenerSetter.add(this.close, 'click', (e) => {
+    attachClickEvent(this.close, (e) => {
       cancelEvent(e);
 
       ((onClose ? onClose() : null) || Promise.resolve(true)).then(needClose => {
@@ -49,7 +49,7 @@ export default class PinnedContainer {
           this.toggle(true);
         }
       });
-    });
+    }, {listenerSetter: this.listenerSetter});
   }
 
   public toggle(hide?: boolean) {

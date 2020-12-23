@@ -496,11 +496,12 @@ export class AppImManager {
       if(chatIndex > 0) {
         this.spliceChats(chatIndex);
         return;
-      } else if(mediaSizes.activeScreen == ScreenSize.medium) { // * floating sidebar case
+      } else if(mediaSizes.activeScreen === ScreenSize.medium) { // * floating sidebar case
         const isNowOpen = document.body.classList.toggle(LEFT_COLUMN_ACTIVE_CLASSNAME);
 
         if(isNowOpen && document.body.classList.contains(RIGHT_COLUMN_ACTIVE_CLASSNAME)) {
           appSidebarRight.toggleSidebar(false, false);
+          this.selectTab(0);
           this.hideRightSidebar = isNowOpen;
         } else if(this.hideRightSidebar) {
           appSidebarRight.toggleSidebar(true);

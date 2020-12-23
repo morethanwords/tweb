@@ -3,7 +3,7 @@ import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import type ChatTopbar from "./topbar";
 import { RichTextProcessor } from "../../lib/richtextprocessor";
 import rootScope from "../../lib/rootScope";
-import { cancelEvent } from "../../helpers/dom";
+import { attachClickEvent, cancelEvent } from "../../helpers/dom";
 import appMediaPlaybackController from "../appMediaPlaybackController";
 import DivAndCaption from "../divAndCaption";
 import { formatDate } from "../wrappers";
@@ -27,10 +27,10 @@ export default class ChatAudio extends PinnedContainer {
 
     this.toggleEl = document.createElement('button');
     this.toggleEl.classList.add('pinned-audio-ico', 'tgico', 'btn-icon');
-    this.topbar.listenerSetter.add(this.toggleEl, 'click', (e) => {
+    attachClickEvent(this.toggleEl, (e) => {
       cancelEvent(e);
       appMediaPlaybackController.toggle();
-    });
+    }, {listenerSetter: this.topbar.listenerSetter});
 
     this.wrapper.prepend(this.toggleEl);
 

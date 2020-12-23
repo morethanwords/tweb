@@ -154,6 +154,8 @@ export default class ChatSelection {
   }
 
   public toggleBubbleCheckbox(bubble: HTMLElement, show: boolean) {
+    if(!this.canSelectBubble(bubble)) return;
+
     const hasCheckbox = !!this.getCheckboxInputFromBubble(bubble);
     const isGrouped = bubble.classList.contains('is-grouped');
     if(show) {
@@ -183,7 +185,7 @@ export default class ChatSelection {
     }
   }
 
-  public getCheckboxInputFromBubble(bubble: HTMLElement): HTMLInputElement {
+  private getCheckboxInputFromBubble(bubble: HTMLElement): HTMLInputElement {
     /* let perf = performance.now();
     let checkbox = bubble.firstElementChild.tagName == 'LABEL' && bubble.firstElementChild.firstElementChild as HTMLInputElement;
     console.log('getCheckboxInputFromBubble firstElementChild time:', performance.now() - perf);
@@ -204,7 +206,7 @@ export default class ChatSelection {
       bubble.firstElementChild.tagName == 'LABEL' && bubble.firstElementChild.firstElementChild as HTMLInputElement;
   }
 
-  public updateForwardContainer(forceSelection = false) {
+  private updateForwardContainer(forceSelection = false) {
     if(!this.selectedMids.size && !forceSelection) return;
     this.selectionCountEl.innerText = this.selectedMids.size + ' Message' + (this.selectedMids.size == 1 ? '' : 's');
 
@@ -373,18 +375,20 @@ export default class ChatSelection {
     SetTransition(bubble, 'is-selected', isSelected, 200);
   }
 
-  public isGroupedBubbleSelected(bubble: HTMLElement) {
+  private isGroupedBubbleSelected(bubble: HTMLElement) {
     const groupedCheckboxInput = this.getCheckboxInputFromBubble(bubble);
     return groupedCheckboxInput?.checked;
   }
 
-  public isGroupedMidsSelected(mid: number) {
+  private isGroupedMidsSelected(mid: number) {
     const mids = this.chat.getMidsByMid(mid);
     const selectedMids = mids.filter(mid => this.selectedMids.has(mid));
     return mids.length == selectedMids.length;
   }
 
   public toggleByBubble = (bubble: HTMLElement) => {
+    if(!this.canSelectBubble(bubble)) return;
+
     const mid = +bubble.dataset.mid;
 
     const isGrouped = bubble.classList.contains('is-grouped');
@@ -438,4 +442,8 @@ export default class ChatSelection {
 
     this.updateBubbleSelection(bubble, !found);
   };
+
+  private canSelectBubble(bubble: HTMLElement) {
+    return !bubble.classList.contains('service');
+  }
 }

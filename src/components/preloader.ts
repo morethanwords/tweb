@@ -1,4 +1,4 @@
-import { isInDOM, cancelEvent } from "../helpers/dom";
+import { isInDOM, cancelEvent, attachClickEvent } from "../helpers/dom";
 import { CancellablePromise } from "../helpers/cancellablePromise";
 
 export default class ProgressivePreloader {
@@ -42,7 +42,7 @@ export default class ProgressivePreloader {
     }
 
     if(this.cancelable) {
-      this.preloader.addEventListener('click', (e) => {
+      attachClickEvent(this.preloader, (e) => {
         cancelEvent(e);
 
         if(this.promise && this.promise.cancel) {

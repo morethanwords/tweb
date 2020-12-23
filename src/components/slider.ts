@@ -1,3 +1,4 @@
+import { attachClickEvent } from "../helpers/dom";
 import { horizontalMenu } from "./horizontalMenu";
 
 export interface SliderTab {
@@ -41,7 +42,7 @@ export default class SidebarSlider {
     }
 
     Array.from(this.sidebarEl.querySelectorAll('.sidebar-close-button') as any as HTMLElement[]).forEach(el => {
-      el.addEventListener('click', () => this.closeTab());
+      attachClickEvent(el, () => this.closeTab());
     });
   }
 

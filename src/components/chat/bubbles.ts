@@ -1546,7 +1546,7 @@ export default class ChatBubbles {
     bubble.dataset.mid = message.mid;
     bubble.dataset.timestamp = message.date;
 
-    if(this.chat.selection.isSelecting) {
+    if(this.chat.selection.isSelecting && message._ !== 'messageService') {
       this.chat.selection.toggleBubbleCheckbox(bubble, true);
     }
 
