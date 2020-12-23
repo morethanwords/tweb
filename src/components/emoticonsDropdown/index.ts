@@ -56,18 +56,18 @@ export class EmoticonsDropdown {
   };
 
   private selectTab: ReturnType<typeof horizontalMenu>;
-
-  private firstTime = true;
+  private forceClose = false;
 
   constructor() {
     this.element = document.getElementById('emoji-dropdown') as HTMLDivElement;
   }
 
   public attachButtonListener(button: HTMLElement) {
+    let firstTime = true;
     if(isTouchSupported) {
       button.addEventListener('click', () => {
-        if(this.firstTime) {
-          this.firstTime = false;
+        if(firstTime) {
+          firstTime = false;
           this.toggle(true);
         } else {
           this.toggle();
@@ -75,29 +75,13 @@ export class EmoticonsDropdown {
       });
     } else {
       button.onmouseover = (e) => {
+        //console.log('onmouseover button');
         clearTimeout(this.displayTimeout);
         //this.displayTimeout = setTimeout(() => {
-          if(this.firstTime) {
-            button.onmouseout = this.element.onmouseout = (e) => {
-              if(test) return;
-              if(!this.element.classList.contains('active')) return;
+          if(firstTime) {
+            button.onmouseout = this.onMouseOut;
 
-              const toElement = (e as any).toElement as Element;
-              if(toElement && findUpClassName(toElement, 'emoji-dropdown')) {
-                return;
-              }
-
-              clearTimeout(this.displayTimeout);
-              this.displayTimeout = window.setTimeout(() => {
-                this.toggle(false);
-              }, 200);
-            };
-  
-            this.element.onmouseover = (e) => {
-              clearTimeout(this.displayTimeout);
-            };
-
-            this.firstTime = false;
+            firstTime = false;
           }
 
           this.toggle(true);
@@ -105,6 +89,21 @@ export class EmoticonsDropdown {
       };
     }
   }
+
+  private onMouseOut = (e: MouseEvent) => {
+    if(test) return;
+    if(!this.element.classList.contains('active')) return;
+
+    const toElement = (e as any).toElement as Element;
+    if(toElement && findUpClassName(toElement, 'emoji-dropdown')) {
+      return;
+    }
+
+    clearTimeout(this.displayTimeout);
+    this.displayTimeout = window.setTimeout(() => {
+      this.toggle(false);
+    }, 200);
+  };
 
   private init() {
     this.emojiTab = new EmojiTab();
@@ -161,6 +160,18 @@ export class EmoticonsDropdown {
 
     rootScope.on('peer_changed', this.checkRights);
     this.checkRights();
+
+    if(!isTouchSupported) {
+      this.element.onmouseout = this.onMouseOut;
+      this.element.onmouseover = (e) => {
+        if(this.forceClose) {
+          return;
+        }
+
+        //console.log('onmouseover element');
+        clearTimeout(this.displayTimeout);
+      };
+    }
   }
 
   private onSelectTabClick = (id: number) => {
@@ -237,6 +248,9 @@ export class EmoticonsDropdown {
         EmoticonsDropdown.lazyLoadQueue.unlock();
         EmoticonsDropdown.lazyLoadQueue.refresh();
 
+        this.forceClose = false;
+        this.container.classList.remove('disable-hover');
+
         this.events.onOpenAfter.forEach(cb => cb());
       }, isTouchSupported ? 0 : 200);
 
@@ -263,6 +277,9 @@ export class EmoticonsDropdown {
         animationIntersector.unlockIntersectionGroup(EMOTICONSSTICKERGROUP);
         EmoticonsDropdown.lazyLoadQueue.unlock();
         EmoticonsDropdown.lazyLoadQueue.refresh();
+
+        this.forceClose = false;
+        this.container.classList.remove('disable-hover');
 
         this.events.onCloseAfter.forEach(cb => cb());
       }, isTouchSupported ? 0 : 200);
@@ -353,6 +370,8 @@ export class EmoticonsDropdown {
     if(appImManager.chat.input.sendMessageWithDocument(fileId)) {
       /* dropdown.classList.remove('active');
       toggleEl.classList.remove('active'); */
+      emoticonsDropdown.forceClose = true;
+      emoticonsDropdown.container.classList.add('disable-hover');
       emoticonsDropdown.toggle(false);
     } else {
       console.warn('got no doc by id:', fileId);

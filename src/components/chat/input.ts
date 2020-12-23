@@ -574,11 +574,11 @@ export default class ChatInput {
     });
 
     if(isTouchSupported) {
-      this.listenerSetter.add(this.messageInput, 'touchend', (e) => {
+      attachClickEvent(this.messageInput, (e) => {
         this.appImManager.selectTab(1); // * set chat tab for album orientation
         this.saveScroll();
         emoticonsDropdown.toggle(false);
-      });
+      }, {listenerSetter: this.listenerSetter});
 
       this.listenerSetter.add(window, 'resize', () => {
         this.restoreScroll();

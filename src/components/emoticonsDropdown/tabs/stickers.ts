@@ -6,7 +6,6 @@ import appDocsManager, { MyDocument } from "../../../lib/appManagers/appDocsMana
 import appDownloadManager from "../../../lib/appManagers/appDownloadManager";
 import appStickersManager from "../../../lib/appManagers/appStickersManager";
 import lottieLoader from "../../../lib/lottieLoader";
-import apiManager from "../../../lib/mtproto/mtprotoworker";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import rootScope from "../../../lib/rootScope";
 import animationIntersector from "../../animationIntersector";
@@ -330,7 +329,7 @@ export default class StickersTab implements EmoticonsTab {
       // @ts-ignore
       const players = Object.values(lottieLoader.players).filter(p => p.width == 80);
       
-      console.log('STICKERS RENDERED IN PANEL:', players.length, players.filter(p => !p.paused).length, this.lazyLoadQueue.intersector.getVisible().length);
+      console.log('STICKERS RENDERED IN PANEL:', players.length, players.filter(p => !p.paused).length, this.superStickerRenderer.lazyLoadQueue.intersector.getVisible().length);
     }, .25e3); */
     
 

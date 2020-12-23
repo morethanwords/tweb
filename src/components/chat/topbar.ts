@@ -3,7 +3,7 @@ import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManage
 import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import type { AppSidebarRight } from "../sidebarRight";
 import type Chat from "./chat";
-import { findUpClassName, cancelEvent, attachClickEvent } from "../../helpers/dom";
+import { findUpClassName, cancelEvent, attachClickEvent, blurActiveElement } from "../../helpers/dom";
 import mediaSizes, { ScreenSize } from "../../helpers/mediaSizes";
 import { isSafari } from "../../helpers/userAgent";
 import rootScope from "../../lib/rootScope";
@@ -121,6 +121,7 @@ export default class ChatTopbar {
 
     attachClickEvent(this.container, (e) => {
       const container: HTMLElement = findUpClassName(e.target, 'pinned-container');
+      blurActiveElement();
       if(container) {
         cancelEvent(e);
         
@@ -141,6 +142,7 @@ export default class ChatTopbar {
     attachClickEvent(this.btnBack, (e) => {
       cancelEvent(e);
       this.chat.appImManager.setPeer(0);
+      blurActiveElement();
     }, {listenerSetter: this.listenerSetter});
   }
 
@@ -222,17 +224,20 @@ export default class ChatTopbar {
 
     attachClickEvent(this.btnPinned, (e) => {
       cancelEvent(e);
+      blurActiveElement();
       this.openPinned(true);
     }, {listenerSetter: this.listenerSetter});
 
     attachClickEvent(this.btnMute, (e) => {
       cancelEvent(e);
+      blurActiveElement();
       this.appMessagesManager.mutePeer(this.peerId);
     }, {listenerSetter: this.listenerSetter});
 
     attachClickEvent(this.btnJoin, (e) => {
       cancelEvent(e);
 
+      blurActiveElement();
       this.btnJoin.setAttribute('disabled', 'true');
       this.appChatsManager.joinChannel(-this.peerId).finally(() => {
         this.btnJoin.removeAttribute('disabled');

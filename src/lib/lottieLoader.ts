@@ -129,6 +129,8 @@ export class RLottiePlayer extends EventListenerBase<{
       }
     }
 
+    //options.noCache = true;
+    
     // * Cache frames params
     if(!options.noCache/*  && false */) {
       // проверка на размер уже после скейлинга, сделано для попапа и сайдбара, где стикеры 80х80 и 68х68, туда нужно 75%
@@ -140,7 +142,8 @@ export class RLottiePlayer extends EventListenerBase<{
         this.cachingDelta = 4; // 75%
       }
     }
-
+    
+    // this.cachingDelta = Infinity;
     // if(isApple) {
     //   this.cachingDelta = 0; //2 // 50%
     // }
@@ -238,9 +241,11 @@ export class RLottiePlayer extends EventListenerBase<{
 
     try {
       this.imageData.data.set(frame);
-
+      
       //this.context.putImageData(new ImageData(frame, this.width, this.height), 0, 0);
+      //let perf = performance.now();
       this.context.putImageData(this.imageData, 0, 0);
+      //console.log('renderFrame2 perf:', performance.now() - perf);
     } catch(err) {
       console.error('RLottiePlayer renderFrame error:', err/* , frame */, this.width, this.height);
       this.autoplay = false;

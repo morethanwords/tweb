@@ -2799,7 +2799,7 @@ export class AppMessagesManager {
     offset_id_offset: number,
     history: MyMessage[]
   }> {
-    const foundMsgs: any[] = [];
+    const foundMsgs: Message.message[] = [];
 
     //this.log('search', maxId);
 
@@ -2940,7 +2940,7 @@ export class AppMessagesManager {
 
     if(foundMsgs.length) {
       if(foundMsgs.length < limit && (beta ? storage.count !== storage.history.length : true)) {
-        maxId = foundMsgs[foundMsgs.length - 1];
+        maxId = foundMsgs[foundMsgs.length - 1].mid;
         limit = limit - foundMsgs.length;
       } else {
         return Promise.resolve({
@@ -3036,7 +3036,7 @@ export class AppMessagesManager {
 
       return {
         count: foundCount,
-        offset_id_offset: searchResult.offset_id_offset,
+        offset_id_offset: searchResult.offset_id_offset || 0,
         next_rate: searchResult.next_rate,
         history: foundMsgs
       };

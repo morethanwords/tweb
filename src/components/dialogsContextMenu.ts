@@ -1,12 +1,9 @@
-import appChatsManager from "../lib/appManagers/appChatsManager";
 import appDialogsManager from "../lib/appManagers/appDialogsManager";
 import appMessagesManager, {Dialog} from "../lib/appManagers/appMessagesManager";
 import appPeersManager from "../lib/appManagers/appPeersManager";
 import rootScope from "../lib/rootScope";
 import { findUpTag } from "../helpers/dom";
 import { positionMenu, openBtnMenu } from "./misc";
-import { PopupButton } from "./popups";
-import PopupPeer from "./popups/peer";
 import ButtonMenu, { ButtonMenuItemOptions } from "./buttonMenu";
 import PopupDeleteDialog from "./popups/deleteDialog";
 
