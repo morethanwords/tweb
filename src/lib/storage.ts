@@ -1,5 +1,5 @@
 import CacheStorageController from './cacheStorage';
-import { MOUNT_CLASS_TO } from './mtproto/mtproto_config';
+import { DEBUG, MOUNT_CLASS_TO } from './mtproto/mtproto_config';
 //import { stringify } from '../helpers/json';
 
 class AppStorage {
@@ -72,12 +72,14 @@ class AppStorage {
         key = prefix + key;
         this.cache[key] = value;
 
-        let perf = performance.now();
+        let perf = /* DEBUG */false ? performance.now() : 0;
         value = JSON.stringify(value);
 
-        let elapsedTime = performance.now() - perf;
-        if(elapsedTime > 10) {
-          console.warn('LocalStorage set: stringify time by JSON.stringify:', elapsedTime, key);
+        if(perf) {
+          let elapsedTime = performance.now() - perf;
+          if(elapsedTime > 10) {
+            console.warn('LocalStorage set: stringify time by JSON.stringify:', elapsedTime, key);
+          }
         }
         /* perf = performance.now();
         value = stringify(value);

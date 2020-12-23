@@ -397,11 +397,8 @@ export class AppMessagesManager {
       });
     }
 
-    let entities = options.entities;
-    if(typeof(text) === 'string' && !entities) {
-      entities = [];
-      text = RichTextProcessor.parseMarkdown(text, entities);
-    }
+    let entities = options.entities || [];
+    text = RichTextProcessor.parseMarkdown(text, entities);
 
     const schedule_date = options.scheduleDate || (message.pFlags.is_scheduled ? message.date : undefined);
     return apiManager.invokeApi('messages.editMessage', {
@@ -494,7 +491,7 @@ export class AppMessagesManager {
       reply_to: this.generateReplyHeader(options.replyToMsgId, options.threadId),
       via_bot_id: options.viaBotId,
       reply_markup: options.reply_markup,
-      entities: entities,
+      entities,
       views: isBroadcast && 1,
       pending: true
     };
@@ -641,8 +638,8 @@ export class AppMessagesManager {
 
     this.log('sendFile', file, fileType);
 
+    const entities = options.entities || [];
     if(caption) {
-      let entities = options.entities || [];
       caption = RichTextProcessor.parseMarkdown(caption, entities);
     }
 
@@ -792,6 +789,7 @@ export class AppMessagesManager {
       id: messageId,
       from_id: this.generateFromId(peerId),
       peer_id: appPeersManager.getOutputPeer(peerId),
+      entities,
       pFlags,
       date,
       message: caption,
@@ -913,7 +911,8 @@ export class AppMessagesManager {
           random_id: randomIdS,
           reply_to_msg_id: replyToMsgId,
           schedule_date: options.scheduleDate,
-          silent: options.silent
+          silent: options.silent,
+          entities
         }).then((updates) => {
           apiUpdatesManager.processUpdateMessage(updates);
         }, (error) => {
@@ -960,9 +959,8 @@ export class AppMessagesManager {
     const replyToMsgId = options.replyToMsgId ? this.getLocalMessageId(options.replyToMsgId) : undefined;
 
     let caption = options.caption || '';
-    let entities: MessageEntity[];
+    let entities = options.entities || [];
     if(caption) {
-      entities = options.entities || [];
       caption = RichTextProcessor.parseMarkdown(caption, entities);
     }
 

@@ -457,6 +457,13 @@ export class AppImManager {
 
     const spliced = this.chats.splice(fromIndex, this.chats.length - fromIndex);
 
+    // * fix middle chat z-index on animation
+    if(spliced.length > 1) {
+      spliced.slice(0, -1).forEach(chat => {
+        chat.container.remove();
+      });
+    }
+
     this.chatsSelectTab(this.chat.container);
 
     if(justReturn) {

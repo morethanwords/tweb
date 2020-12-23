@@ -5,6 +5,7 @@ import ButtonIcon from "../buttonIcon";
 import { clamp } from "../../helpers/number";
 import { isTouchSupported } from "../../helpers/touchSupport";
 import { isApple } from "../../helpers/userAgent";
+//import { logger } from "../../lib/logger";
 
 export default class MarkupTooltip {
   public container: HTMLElement;
@@ -17,10 +18,11 @@ export default class MarkupTooltip {
   private waitingForMouseUp = false;
   private linkInput: HTMLInputElement;
   private savedRange: Range;
-  mouseUpCounter: number = 0;
+  private mouseUpCounter: number = 0;
+  //private log: ReturnType<typeof logger>;
 
   constructor(private appImManager: AppImManager) {
-
+    //this.log = logger('MARKUP');
   }
 
   private init() {
@@ -41,14 +43,20 @@ export default class MarkupTooltip {
       tools1.append(this.buttons[c] = button);
 
       if(c !== 'link') {
-        button.addEventListener('click', () => {
+        button.addEventListener('mousedown', (e) => {
+          cancelEvent(e); 
           this.appImManager.chat.input.applyMarkdown(c);
-          this.hide();
+          this.cancelClosening();
+          
+          /* this.mouseUpCounter = 0;
+          this.setMouseUpEvent(); */
+          //this.hide();
         });
       } else {
         attachClickEvent(button, (e) => {
           cancelEvent(e);
           this.showLinkEditor();
+          this.cancelClosening();
         });
       }
     });
@@ -81,17 +89,19 @@ export default class MarkupTooltip {
       this.linkInput.classList.remove('error');
     });
 
-    attachClickEvent(this.linkBackButton, (e) => {
+    this.linkBackButton.addEventListener('mousedown', (e) => {
+      //this.log('linkBackButton click');
       cancelEvent(e);
       this.container.classList.remove('is-link');
       //input.value = '';
       this.resetSelection();
       this.setTooltipPosition();
+      this.cancelClosening();
     });
 
     this.linkApplyButton = ButtonIcon('check markup-tooltip-link-apply', {noRipple: true});
-    attachClickEvent(this.linkApplyButton, (e) => {
-      cancelEvent(e);
+    this.linkApplyButton.addEventListener('mousedown', (e) => {
+      //this.log('linkApplyButton click');
       this.applyLink(e);
     });
 
@@ -145,7 +155,9 @@ export default class MarkupTooltip {
     cancelEvent(e);
     this.resetSelection();
     this.appImManager.chat.input.applyMarkdown('link', this.linkInput.value);
-    this.hide();
+    setTimeout(() => {
+      this.hide();
+    }, 0);
   }
 
   private isLinkValid() {
@@ -160,10 +172,12 @@ export default class MarkupTooltip {
   }
 
   public hide() {
+    //return;
+
     if(this.init) return;
 
     this.container.classList.remove('is-visible');
-    document.removeEventListener('mouseup', this.onMouseUp);
+    //document.removeEventListener('mouseup', this.onMouseUp);
     document.removeEventListener('mouseup', this.onMouseUpSingle);
     this.waitingForMouseUp = false;
 
@@ -178,37 +192,31 @@ export default class MarkupTooltip {
   public getActiveMarkupButton() {
     const nodes = getSelectedNodes();
     const parents = [...new Set(nodes.map(node => node.parentNode))];
-    if(parents.length > 1) return undefined;
+    //if(parents.length > 1 && parents) return [];
 
-    const node = parents[0] as HTMLElement;
-    let currentMarkup: HTMLElement;
-    for(const type in markdownTags) {
-      const tag = markdownTags[type as MarkdownType];
-      if(node.matches(tag.match)) {
-        currentMarkup = this.buttons[type as MarkdownType];
-        break;
+    const currentMarkups: Set<HTMLElement> = new Set();
+    (parents as HTMLElement[]).forEach(node => {
+      for(const type in markdownTags) {
+        const tag = markdownTags[type as MarkdownType];
+        const closest = node.closest(tag.match + ', [contenteditable]');
+        if(closest !== this.appImManager.chat.input.messageInput) {
+          currentMarkups.add(this.buttons[type as MarkdownType]);
+        }
       }
-    }
+    });
+    
 
-    return currentMarkup;
+    return [...currentMarkups];
   }
 
   public setActiveMarkupButton() {
-    const activeButton = this.getActiveMarkupButton();
+    const activeButtons = this.getActiveMarkupButton();
 
     for(const i in this.buttons) {
       // @ts-ignore
       const button = this.buttons[i];
-      if(button != activeButton) {
-        button.classList.remove('active');
-      }
+      button.classList.toggle('active', activeButtons.includes(button));
     }
-
-    if(activeButton) {
-      activeButton.classList.add('active');
-    }
-
-    return activeButton;
   }
 
   private setTooltipPosition(isLinkToggle = false) {
@@ -253,7 +261,6 @@ export default class MarkupTooltip {
     }
 
     const selection = document.getSelection();
-
     if(!selection.toString().trim().length) {
       this.hide();
       return;
@@ -285,21 +292,19 @@ export default class MarkupTooltip {
     
     this.container.classList.add('is-visible');
 
-    //console.log('selection', selectionRect, activeButton);
+    //this.log('selection', selectionRect, activeButton);
   }
 
-  private onMouseUp = (e: Event) => {
+  /* private onMouseUp = (e: Event) => {
+    this.log('onMouseUp');
     if(findUpClassName(e.target, 'markup-tooltip')) return;
-    /* if(isTouchSupported) {
-      this.appImManager.chat.input.messageInput.focus();
-      cancelEvent(e);
-    } */
 
     this.hide();
-    document.removeEventListener('mouseup', this.onMouseUp);
-  };
+    //document.removeEventListener('mouseup', this.onMouseUp);
+  }; */
 
   private onMouseUpSingle = (e: Event) => {
+    //this.log('onMouseUpSingle');
     this.waitingForMouseUp = false;
 
     if(isTouchSupported) {
@@ -314,39 +319,51 @@ export default class MarkupTooltip {
 
     this.show();
 
-    !isTouchSupported && document.addEventListener('mouseup', this.onMouseUp);
+    //!isTouchSupported && document.addEventListener('mouseup', this.onMouseUp);
   };
 
   public setMouseUpEvent() {
     if(this.waitingForMouseUp) return;
     this.waitingForMouseUp = true;
 
-    console.log('[MARKUP]: setMouseUpEvent');
+    //this.log('setMouseUpEvent');
 
     document.addEventListener('mouseup', this.onMouseUpSingle, {once: true});
+  }
+
+  public cancelClosening() {
+    if(isTouchSupported && !isApple) {
+      document.removeEventListener('mouseup', this.onMouseUpSingle);
+      document.addEventListener('mouseup', (e) => {
+        cancelEvent(e);
+        this.mouseUpCounter = 1;
+        this.waitingForMouseUp = false;
+        this.setMouseUpEvent();
+      }, {once: true});
+    }
   }
 
   public handleSelection() {
     if(this.addedListener) return;
     this.addedListener = true;
     document.addEventListener('selectionchange', (e) => {
-      if(document.activeElement == this.linkInput) {
+      //this.log('selectionchange');
+
+      if(document.activeElement === this.linkInput) {
         return;
       }
 
-      if(document.activeElement != this.appImManager.chat.input.messageInput) {
+      if(document.activeElement !== this.appImManager.chat.input.messageInput) {
         this.hide();
         return;
       }
 
       const selection = document.getSelection();
-
       if(!selection.toString().trim().length) {
         this.hide();
         return;
       }
 
-      console.log('[MARKUP]: selectionchange');
       if(isTouchSupported) {
         if(isApple) {
           this.show();

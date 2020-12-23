@@ -215,11 +215,12 @@ namespace RichTextProcessor {
     })
   } */
 
-  export function parseMarkdown(text: string, entities: MessageEntity[], noTrim?: any): string {
+  export function parseMarkdown(text: string, currentEntities: MessageEntity[], noTrim?: any): string {
     /* if(!markdownTestRegExp.test(text)) {
       return noTrim ? text : text.trim();
     } */
-  
+
+    const entities: MessageEntity[] = [];
     let raw = text;
     let match;
     let newText: any = [];
@@ -302,67 +303,11 @@ namespace RichTextProcessor {
       newText = newText.trim();
     }
 
+    mergeEntities(currentEntities, entities);
+    combineSameEntities(currentEntities);
+
     return newText;
   }
-
-  /* export function mergeEntities(currentEntities: MessageEntity[], newEntities: MessageEntity[], fromApi?: boolean) {
-    const totalEntities = newEntities.slice();
-    const newLength = newEntities.length;
-    let startJ = 0;
-    for(let i = 0, length = currentEntities.length; i < length; i++) {
-      const curEntity = currentEntities[i];
-      // if(fromApi &&
-      //   curEntity._ != 'messageEntityLinebreak' &&
-      //   curEntity._ != 'messageEntityEmoji') {
-      //   continue;
-      // }
-
-      // console.log('s', curEntity, newEntities);
-      const start = curEntity.offset;
-      const end = start + curEntity.length;
-      let bad = false;
-      for(let j = startJ; j < newLength; j++) {
-        const newEntity = newEntities[j];
-        const cStart = newEntity.offset;
-        const cEnd = cStart + newEntity.length;
-        if(cStart <= start) {
-          startJ = j;
-        }
-  
-        if(start >= cStart && start < cEnd ||
-          end > cStart && end <= cEnd) {
-          // console.log('bad', curEntity, newEntity)
-          if(fromApi && start >= cStart && end <= cEnd) {
-            if(newEntity.nested === undefined) {
-              newEntity.nested = [];
-            }
-  
-            curEntity.offset -= cStart;
-            newEntity.nested.push(copy(curEntity));
-          }
-  
-          bad = true;
-          break;
-        }
-  
-        if(cStart >= end) {
-          break;
-        }
-      }
-  
-      if(bad) {
-        continue;
-      }
-  
-      totalEntities.push(curEntity);
-    }
-  
-    totalEntities.sort((a, b) => {
-      return a.offset - b.offset;
-    });
-    // console.log('merge', currentEntities, newEntities, totalEntities)
-    return totalEntities;
-  } */
 
   export function mergeEntities(currentEntities: MessageEntity[], newEntities: MessageEntity[]) {
     currentEntities = currentEntities.slice();
@@ -372,14 +317,23 @@ namespace RichTextProcessor {
     return currentEntities;
   }
 
-  /* export function wrapRichNestedText(text: string, nested: MessageEntity[], options: any) {
-    if(nested === undefined) {
-      return encodeEntities(text);
+  export function combineSameEntities(entities: MessageEntity[]) {
+    //entities = entities.slice();
+    for(let i = 0; i < entities.length; ++i) {
+      const entity = entities[i];
+
+      let nextEntityIdx = -1;
+      do {
+        nextEntityIdx = entities.findIndex((e, _i) => _i !== i && e._ === entity._ && (e.offset - entity.length) === entity.offset);
+        if(nextEntityIdx !== -1) {
+          const nextEntity = entities[nextEntityIdx];
+          entity.length += nextEntity.length;
+          entities.splice(nextEntityIdx, 1);
+        }
+      } while(nextEntityIdx !== -1);
     }
-  
-    options.hasNested = true;
-    return wrapRichText(text, {entities: nested, nested: true});
-  } */
+    //return entities;
+  }
 
   export function wrapRichText(text: string, options: Partial<{
     entities: MessageEntity[],
@@ -620,365 +574,6 @@ namespace RichTextProcessor {
     return out;
   }
 
-  /* export function wrapRichTextOld(text: string, options: Partial<{
-    entities: MessageEntity[],
-    contextSite: string,
-    highlightUsername: string,
-    noLinks: true,
-    noLinebreaks: true,
-    noCommands: true,
-    wrappingDraft: true,
-    fromBot: boolean,
-    noTextFormat: true,
-    passEntities: Partial<{
-      [_ in MessageEntity['_']]: true
-    }>,
-
-    nested?: true,
-    contextHashtag?: string
-  }> = {}) {
-    if(!text || !text.length) {
-      return '';
-    }
-  
-    const passEntities: typeof options.passEntities = options.passEntities || {};
-    const entities = options.entities || parseEntities(text);
-    const contextSite = options.contextSite || 'Telegram';
-    const contextExternal = contextSite != 'Telegram';
-
-    //console.log('wrapRichText got entities:', text, entities);
-    const html: string[] = [];
-    let lastOffset = 0;
-    for(let i = 0, len = entities.length; i < len; i++) {
-      const entity = entities[i];
-      if(entity.offset > lastOffset) {
-        html.push(
-          encodeEntities(text.substr(lastOffset, entity.offset - lastOffset))
-        );
-      } else if(entity.offset < lastOffset) {
-        continue;
-      }
-  
-      let skipEntity = false;
-      const entityText = text.substr(entity.offset, entity.length);
-      switch(entity._) {
-        case 'messageEntityMention':
-          var contextUrl = !options.noLinks && siteMentions[contextSite]
-          if (!contextUrl) {
-            skipEntity = true
-            break
-          }
-          var username = entityText.substr(1)
-          var attr = ''
-          if (options.highlightUsername &&
-            options.highlightUsername.toLowerCase() == username.toLowerCase()) {
-            attr = 'class="im_message_mymention"'
-          }
-          html.push(
-            '<a ',
-            attr,
-            contextExternal ? ' target="_blank" rel="noopener noreferrer" ' : '',
-            ' href="',
-            contextUrl.replace('{1}', encodeURIComponent(username)),
-            '">',
-            wrapRichNestedText(entityText, entity.nested, options),
-            //encodeEntities(entityText),
-            '</a>'
-          )
-          break;
-
-        case 'messageEntityMentionName':
-          if(options.noLinks) {
-            skipEntity = true;
-            break;
-          }
-
-          html.push(
-            '<a href="#/im?p=u',
-            encodeURIComponent(entity.user_id),
-            '">',
-            wrapRichNestedText(entityText, entity.nested, options),
-            '</a>'
-          );
-          break;
-
-        case 'messageEntityHashtag':
-          var contextUrl = !options.noLinks && siteHashtags[contextSite];
-          if(!contextUrl) {
-            skipEntity = true;
-            break;
-          }
-
-          var hashtag = entityText.substr(1);
-          html.push(
-            '<a ',
-            contextExternal ? ' target="_blank" rel="noopener noreferrer" ' : '',
-            'href="',
-            contextUrl.replace('{1}', encodeURIComponent(hashtag))
-            ,
-            '">',
-            encodeEntities(entityText),
-            '</a>'
-          );
-          break;
-
-        case 'messageEntityEmail':
-          if(options.noLinks) {
-            skipEntity = true;
-            break;
-          }
-
-          html.push(
-            '<a href="',
-            encodeEntities('mailto:' + entityText),
-            '" target="_blank" rel="noopener noreferrer">',
-            encodeEntities(entityText),
-            '</a>'
-          );
-          break;
-
-        case 'messageEntityUrl':
-        case 'messageEntityTextUrl':
-          let inner: string;
-          let url: string;
-          if(entity._ == 'messageEntityTextUrl') {
-            url = (entity as MessageEntity.messageEntityTextUrl).url;
-            url = wrapUrl(url, true);
-            inner = wrapRichNestedText(entityText, entity.nested, options);
-          } else {
-            url = wrapUrl(entityText, false);
-            inner = encodeEntities(replaceUrlEncodings(entityText));
-          }
-
-          if(options.noLinks && !passEntities[entity._]) {
-            html.push(inner);
-          } else {
-            html.push(
-              '<a href="',
-              encodeEntities(url),
-              '" target="_blank" rel="noopener noreferrer">',
-              inner,
-              '</a>'
-            );
-          }
-          break;
-
-        case 'messageEntityLinebreak':
-          html.push(options.noLinebreaks ? ' ' : '<br/>');
-          break;
-
-        case 'messageEntityEmoji':
-          if(options.wrappingDraft && emojiSupported) { // * fix safari emoji
-            html.push(encodeEntities(entityText));
-            break;
-          }
-
-          html.push(emojiSupported ? // ! contenteditable="false" нужен для поля ввода, иначе там будет меняться шрифт в Safari, или же рендерить смайлик напрямую, без контейнера
-            `<span class="emoji">${encodeEntities(entityText)}</span>` : 
-            `<img src="assets/img/emoji/${entity.unicode}.png" alt="${encodeEntities(entityText)}" class="emoji">`);
-          break;
-
-        case 'messageEntityBotCommand':
-          if(options.noLinks || options.noCommands || contextExternal) {
-            skipEntity = true;
-            break;
-          }
-
-          var command = entityText.substr(1);
-          var bot;
-          var atPos;
-          if ((atPos = command.indexOf('@')) != -1) {
-            bot = command.substr(atPos + 1);
-            command = command.substr(0, atPos);
-          } else {
-            bot = options.fromBot;
-          }
-
-          html.push(
-            '<a href="',
-            encodeEntities('tg://bot_command?command=' + encodeURIComponent(command) + (bot ? '&bot=' + encodeURIComponent(bot) : '')),
-            '">',
-            encodeEntities(entityText),
-            '</a>'
-          );
-          break;
-
-        case 'messageEntityBold': {
-          if(options.noTextFormat) {
-            html.push(wrapRichNestedText(entityText, entity.nested, options));
-            break;
-          }
-
-          if(options.wrappingDraft) {
-            html.push(`<span style="font-weight: bold;">${wrapRichNestedText(entityText, entity.nested, options)}</span>`);
-          } else {
-            html.push(`<strong>${wrapRichNestedText(entityText, entity.nested, options)}</strong>`);
-          }
-          break;
-        }
-
-        case 'messageEntityItalic': {
-          if(options.noTextFormat) {
-            html.push(wrapRichNestedText(entityText, entity.nested, options));
-            break;
-          }
-
-          if(options.wrappingDraft) {
-            html.push(`<span style="font-style: italic;">${wrapRichNestedText(entityText, entity.nested, options)}</span>`);
-          } else {
-            html.push(`<em>${wrapRichNestedText(entityText, entity.nested, options)}</em>`);
-          }
-
-          break;
-        }
-
-        case 'messageEntityHighlight':
-          html.push(
-            '<i>',
-            wrapRichNestedText(entityText, entity.nested, options),
-            '</i>'
-          );
-          break;
-
-        case 'messageEntityStrike':
-          if(options.wrappingDraft) {
-            const styleName = isSafari ? 'text-decoration' : 'text-decoration-line';
-            html.push(`<span style="${styleName}: line-through;">${wrapRichNestedText(entityText, entity.nested, options)}</span>`);
-          } else {
-            html.push(`<del>${wrapRichNestedText(entityText, entity.nested, options)}</del>`);
-          }
-          break;
-
-        case 'messageEntityUnderline':
-          if(options.wrappingDraft) {
-            const styleName = isSafari ? 'text-decoration' : 'text-decoration-line';
-            html.push(`<span style="${styleName}: underline;">${wrapRichNestedText(entityText, entity.nested, options)}</span>`);
-          } else {
-            html.push(`<u>${wrapRichNestedText(entityText, entity.nested, options)}</u>`);
-          }
-          break;
-
-        case 'messageEntityCode':
-          if(options.noTextFormat) {
-            html.push(encodeEntities(entityText));
-            break;
-          }
-  
-          if(options.wrappingDraft) {
-            html.push(`<span style="font-family: monospace;">${encodeEntities(entityText)}</span>`);
-          } else {
-            html.push(
-              '<code>',
-              encodeEntities(entityText),
-              '</code>'
-            );
-          }
-          
-          break;
-
-        case 'messageEntityPre':
-          if(options.noTextFormat) {
-            html.push(encodeEntities(entityText));
-            break;
-          }
-          
-          html.push(
-            '<pre><code', (entity.language ? ' class="language-' + encodeEntities(entity.language) + '"' : ''), '>',
-            encodeEntities(entityText),
-            '</code></pre>'
-          );
-          break;
-
-        default:
-          skipEntity = true;
-      }
-
-      lastOffset = entity.offset + (skipEntity ? 0 : entity.length);
-    }
-  
-    html.push(encodeEntities(text.substr(lastOffset))); // may be empty string
-    //console.log(html);
-    text = html.join('');
-
-    return text;
-  } */
-
-  /* export function wrapDraftText(text: string, options: any = {}) {
-    if(!text || !text.length) {
-      return '';
-    }
-  
-    var entities = options.entities;
-    if(entities === undefined) {
-      entities = parseEntities(text);
-    }
-    var i = 0;
-    var len = entities.length;
-    var entity;
-    var entityText;
-    var skipEntity;
-    var code = [];
-    var lastOffset = 0;
-    for(i = 0; i < len; i++) {
-      entity = entities[i];
-      if(entity.offset > lastOffset) {
-        code.push(
-          text.substr(lastOffset, entity.offset - lastOffset)
-        );
-      } else if(entity.offset < lastOffset) {
-        continue;
-      }
-  
-      skipEntity = false;
-      entityText = text.substr(entity.offset, entity.length);
-      switch(entity._) {
-        case 'messageEntityEmoji':
-          code.push(
-            ':',
-            entity.title,
-            ':'
-          );
-          break;
-  
-        case 'messageEntityCode':
-          code.push(
-            '`', entityText, '`'
-          );
-          break;
-  
-        case 'messageEntityBold':
-          code.push(
-            '**', entityText, '**'
-          );
-          break;
-  
-        case 'messageEntityItalic':
-          code.push(
-            '__', entityText, '__'
-          );
-          break;
-  
-        case 'messageEntityPre':
-          code.push(
-            '```', entityText, '```'
-          );
-          break;
-  
-        case 'messageEntityMentionName':
-          code.push(
-            '@', entity.user_id, ' (', entityText, ')'
-          );
-          break;
-  
-        default:
-          skipEntity = true;
-      }
-      lastOffset = entity.offset + (skipEntity ? 0 : entity.length);
-    }
-    code.push(text.substr(lastOffset));
-    return code.join('');
-  } */
-
   export function wrapDraftText(text: string, options: Partial<{
     entities: MessageEntity[]
   }> = {}) {
@@ -997,31 +592,6 @@ namespace RichTextProcessor {
       }
     });
   }
-
-  //const draftEntityTypes: MessageEntity['_'][] = (['messageEntityTextUrl', 'messageEntityEmoji'] as MessageEntity['_'][]).concat(Object.values(markdownEntities) as any);
-  /* const draftEntityTypes: Partial<{[_ in MessageEntity['_']]: true}> = {
-    messageEntityCode: true,
-    messageEntityPre: true,
-    messageEntityBold: true,
-    messageEntityItalic: true,
-    messageEntityStrike: true,
-    messageEntityEmoji: true,
-    messageEntityLinebreak: true,
-    messageEntityUnderline: true,
-    messageEntityTextUrl: true
-  };
-  export function wrapDraftText(text: string, options: Partial<{
-    entities: MessageEntity[]
-  }> = {}) {
-    const checkEntity = (entity: MessageEntity) => {
-      return draftEntityTypes[entity._];
-    };
-    const entities = options.entities ? options.entities.filter(entity => {
-      return draftEntityTypes[entity._];
-    }) : [];
-
-    return wrapRichText(text, {entities});
-  } */
 
   export function checkBrackets(url: string) {
     var urlLength = url.length;
@@ -1150,29 +720,6 @@ namespace RichTextProcessor {
     return !text ? null : text.match(urlRegExp);
   }
 
-  /* const el = document.createElement('span');
-  export function getAbbreviation(str: string, onlyFirst = false) {
-    const wrapped = wrapEmojiText(str);
-    el.innerHTML = wrapped;
-
-    const childNodes = el.childNodes;
-    let first = '', last = '';
-
-    const firstNode = childNodes[0];
-    if('length' in firstNode) first = (firstNode as any).textContent.trim().charAt(0).toUpperCase(); 
-    else first = (firstNode as HTMLElement).outerHTML;
-
-    if(onlyFirst) return first;
-
-    if(str.indexOf(' ') !== -1) {
-      const lastNode = childNodes[childNodes.length - 1];
-      if(lastNode == firstNode) last = lastNode.textContent.split(' ').pop().trim().charAt(0).toUpperCase();
-      else if('length' in lastNode) last = (lastNode as any).textContent.trim().charAt(0).toUpperCase(); 
-      else last = (lastNode as HTMLElement).outerHTML;
-    }
-
-    return first + last;
-  } */
   export function getAbbreviation(str: string, onlyFirst = false) {
     const splitted = str.trim().split(' ');
     if(!splitted[0]) return '';

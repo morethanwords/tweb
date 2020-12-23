@@ -9,11 +9,16 @@
 	opacity: 0;
 	transition: opacity var(--layer-transition), transform var(--layer-transition), width var(--layer-transition);
 	position: fixed;
-	left: 0;
 	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
 	height: 44px;
 	width: $widthRegular;
 	overflow: hidden;
+	z-index: 1;
+	display: flex;
+	justify-content: flex-start;
 
 	&-wrapper {
 		position: absolute;
@@ -27,6 +32,7 @@
 		height: 100%;
 		transform: translateX(0);
 		transition: transform var(--layer-transition);
+		max-width: 100%;
 	}
 
 	&-tools {
@@ -34,6 +40,8 @@
 		align-items: center;
 		justify-content: space-between;
 		padding: $padding;
+		flex: 0 0 auto;
+		max-width: 100%;
 
 		&:first-child {
 			width: $widthRegular;

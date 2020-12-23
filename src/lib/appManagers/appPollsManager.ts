@@ -1,5 +1,5 @@
 import { copy } from "../../helpers/object";
-import { InputMedia } from "../../layer";
+import { InputMedia, MessageEntity } from "../../layer";
 import { logger, LogLevels } from "../logger";
 import apiManager from "../mtproto/mtprotoworker";
 import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
@@ -143,11 +143,13 @@ export class AppPollsManager {
     };
   }
 
-  public getInputMediaPoll(poll: Poll, correctAnswers?: Uint8Array[], solution?: string): InputMedia.inputMediaPoll {
-    let solution_entities: any[];
+  public getInputMediaPoll(poll: Poll, correctAnswers?: Uint8Array[], solution?: string, solutionEntities?: MessageEntity[]): InputMedia.inputMediaPoll {
     if(solution) {
-      solution_entities = [];
-      solution = RichTextProcessor.parseMarkdown(solution, solution_entities);
+      if(!solutionEntities) {
+        solutionEntities = [];
+      }
+
+      solution = RichTextProcessor.parseMarkdown(solution, solutionEntities);
     }
 
     return {
@@ -155,7 +157,7 @@ export class AppPollsManager {
       poll,
       correct_answers: correctAnswers,
       solution,
-      solution_entities
+      solution_entities: solutionEntities
     };
   }
 

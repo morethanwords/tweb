@@ -11,7 +11,7 @@ import apiManager from "../../lib/mtproto/mtprotoworker";
 //import Recorder from '../opus-recorder/dist/recorder.min';
 import opusDecodeController from "../../lib/opusDecodeController";
 import RichTextProcessor from "../../lib/richtextprocessor";
-import { attachClickEvent, blurActiveElement, cancelEvent, cancelSelection, findUpClassName, getSelectedNodes, isInputEmpty, markdownTags, MarkdownType, placeCaretAtEnd, serializeNodes } from "../../helpers/dom";
+import { attachClickEvent, blurActiveElement, cancelEvent, cancelSelection, findUpClassName, getRichValue, getSelectedNodes, isInputEmpty, markdownTags, MarkdownType, placeCaretAtEnd, serializeNodes } from "../../helpers/dom";
 import { ButtonMenuItemOptions } from '../buttonMenu';
 import emoticonsDropdown from "../emoticonsDropdown";
 import PopupCreatePoll from "../popups/createPoll";
@@ -585,7 +585,7 @@ export default class ChatInput {
       });
     }
 
-    this.listenerSetter.add(this.messageInput, 'beforeinput', (e: Event) => {
+    /* this.listenerSetter.add(this.messageInput, 'beforeinput', (e: Event) => {
       // * validate due to manual formatting through browser's context menu
       const inputType = (e as InputEvent).inputType;
       //console.log('message beforeinput event', e);
@@ -597,7 +597,7 @@ export default class ChatInput {
           cancelEvent(e); // * cancel legacy markdown event
         }
       }
-    });
+    }); */
     this.listenerSetter.add(this.messageInput, 'input', this.onMessageInput);
   }
 
@@ -655,7 +655,7 @@ export default class ChatInput {
     /**
      * * clear previous formatting, due to Telegram's inability to handle several entities
      */
-    const checkForSingle = () => {
+    /* const checkForSingle = () => {
       const nodes = getSelectedNodes();
       //console.log('Using formatting:', commandsMap[type], nodes, this.executedHistory);
 
@@ -686,11 +686,13 @@ export default class ChatInput {
           executed.push(document.execCommand('styleWithCSS', false, 'false'));
         //}
       }
-    };
+    }; */
+
+    executed.push(document.execCommand('styleWithCSS', false, 'true'));
     
-    //if(type === 'monospace') {
+    if(type === 'monospace') {
       let haveThisType = false;
-      executed.push(document.execCommand('styleWithCSS', false, 'true'));
+      //executed.push(document.execCommand('styleWithCSS', false, 'true'));
 
       const selection = window.getSelection();
       if(!selection.isCollapsed) {
@@ -703,18 +705,20 @@ export default class ChatInput {
         }
       }
 
-      executed.push(document.execCommand('removeFormat', false, null));
-      
-      if(!haveThisType) {
+      //executed.push(document.execCommand('removeFormat', false, null));
+
+      if(haveThisType) {
+        executed.push(document.execCommand('fontName', false, 'Roboto'));
+      } else {
         executed.push(typeof(command) === 'function' ? command() : document.execCommand(command, false, null));
       }
-
-      executed.push(document.execCommand('styleWithCSS', false, 'false'));
-    /* } else {
+    } else {
       executed.push(typeof(command) === 'function' ? command() : document.execCommand(command, false, null));
-    } */
+    }
 
-    checkForSingle();
+    executed.push(document.execCommand('styleWithCSS', false, 'false'));
+
+    //checkForSingle();
     saveExecuted();
     if(this.appImManager.markupTooltip) {
       this.appImManager.markupTooltip.setActiveMarkupButton();
@@ -794,10 +798,10 @@ export default class ChatInput {
 
     //console.log('messageInput input', this.messageInput.innerText, this.serializeNodes(Array.from(this.messageInput.childNodes)));
     //const value = this.messageInput.innerText;
-    const richValue = this.messageInputField.value;
+    const markdownEntities: MessageEntity[] = [];
+    const richValue = getRichValue(this.messageInputField.input, markdownEntities);
       
     //const entities = RichTextProcessor.parseEntities(value);
-    const markdownEntities: MessageEntity[] = [];
     const value = RichTextProcessor.parseMarkdown(richValue, markdownEntities);
     const entities = RichTextProcessor.mergeEntities(markdownEntities, RichTextProcessor.parseEntities(value));
 
@@ -813,6 +817,10 @@ export default class ChatInput {
       }
 
       this.stickersHelper.checkEmoticon(emoticon);
+    }
+
+    if(!richValue.trim()) {
+      this.appImManager.markupTooltip.hide();
     }
 
     const html = this.messageInput.innerHTML;
@@ -1095,19 +1103,18 @@ export default class ChatInput {
       return;
     }
 
-    //let str = this.serializeNodes(Array.from(this.messageInput.childNodes));
-    let str = this.messageInputField.value;
-
-    //console.log('childnode str after:', str/* , getRichValue(this.messageInput) */);
+    const entities: MessageEntity[] = [];
+    const str = getRichValue(this.messageInputField.input, entities);
 
     //return;
-
     if(this.editMsgId) {
       this.appMessagesManager.editMessage(this.chat.getMessage(this.editMsgId), str, {
+        entities,
         noWebPage: this.noWebPage
       });
     } else {
       this.appMessagesManager.sendText(this.chat.peerId, str, {
+        entities,
         replyToMsgId: this.replyToMsgId,
         threadId: this.chat.threadId,
         noWebPage: this.noWebPage,

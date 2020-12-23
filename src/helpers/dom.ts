@@ -1,4 +1,6 @@
+import { MessageEntity } from "../layer";
 import { MOUNT_CLASS_TO } from "../lib/mtproto/mtproto_config";
+import RichTextProcessor from "../lib/richtextprocessor";
 import ListenerSetter from "./listenerSetter";
 import { isTouchSupported } from "./touchSupport";
 import { isSafari } from "./userAgent";
@@ -101,7 +103,7 @@ export function placeCaretAtEnd(el: HTMLElement) {
   return len;
 } */
 
-export function getRichValue(field: HTMLElement) {
+export function getRichValue(field: HTMLElement, entities?: MessageEntity[]) {
   if(!field) {
     return '';
   }
@@ -109,13 +111,19 @@ export function getRichValue(field: HTMLElement) {
   const lines: string[] = [];
   const line: string[] = [];
 
-  getRichElementValue(field, lines, line);
+  getRichElementValue(field, lines, line, undefined, undefined, entities);
   if(line.length) {
     lines.push(line.join(''));
   }
 
   let value = lines.join('\n');
   value = value.replace(/\u00A0/g, ' ');
+
+  if(entities) {
+    RichTextProcessor.combineSameEntities(entities);
+  }
+
+  console.log('getRichValue:', value, entities);
 
   return value;
 }
@@ -134,64 +142,78 @@ const markdownTypes = {
 export type MarkdownType = 'bold' | 'italic' | 'underline' | 'strikethrough' | 'monospace' | 'link';
 export type MarkdownTag = {
   match: string,
-  markdown: string | ((node: HTMLElement) => string)
+  markdown: string | ((node: HTMLElement) => string),
+  entityName: 'messageEntityBold' | 'messageEntityUnderline' | 'messageEntityItalic' | 'messageEntityPre' | 'messageEntityStrike' | 'messageEntityTextUrl';
 };
 export const markdownTags: {[type in MarkdownType]: MarkdownTag} = {
   bold: {
-    match: '[style*="font-weight"]',
-    markdown: markdownTypes.bold
+    match: '[style*="font-weight"], b',
+    markdown: markdownTypes.bold,
+    entityName: 'messageEntityBold'
   },
   underline: {
-    match: isSafari ? '[style="text-decoration: underline;"]' : '[style="text-decoration-line: underline;"]',
-    markdown: markdownTypes.underline
+    match: '[style*="underline"], u',
+    markdown: markdownTypes.underline,
+    entityName: 'messageEntityUnderline'
   },
   italic: {
-    match: '[style="font-style: italic;"]',
-    markdown: markdownTypes.italic
+    match: '[style*="italic"], i',
+    markdown: markdownTypes.italic,
+    entityName: 'messageEntityItalic'
   },
   monospace: {
-    match: '[style="font-family: monospace;"]',
-    markdown: markdownTypes.monospace
+    match: '[style*="monospace"], [face="monospace"]',
+    markdown: markdownTypes.monospace,
+    entityName: 'messageEntityPre'
   },
   strikethrough: {
-    match: isSafari ? '[style="text-decoration: line-through;"]' : '[style="text-decoration-line: line-through;"]',
-    markdown: markdownTypes.strikethrough
+    match: '[style*="line-through"], strike',
+    markdown: markdownTypes.strikethrough,
+    entityName: 'messageEntityStrike'
   },
   link: {
     match: 'A',
-    markdown: (node: HTMLElement) => `[${(node.parentElement as HTMLAnchorElement).href}](${node.nodeValue})`
+    markdown: (node: HTMLElement) => `[${(node.parentElement as HTMLAnchorElement).href}](${node.nodeValue})`,
+    entityName: 'messageEntityTextUrl'
   }
 };
-export function getRichElementValue(node: HTMLElement, lines: string[], line: string[], selNode?: Node, selOffset?: number) {
+export function getRichElementValue(node: HTMLElement, lines: string[], line: string[], selNode?: Node, selOffset?: number, entities?: MessageEntity[], offset = {offset: 0}) {
   if(node.nodeType == 3) { // TEXT
     if(selNode === node) {
       const value = node.nodeValue;
       line.push(value.substr(0, selOffset) + '\x01' + value.substr(selOffset));
     } else {
-      let markdown: string;
-      if(node.parentNode) {
-        const parentElement = node.parentElement;
-        
-        let markdownTag: MarkdownTag;
-        for(const type in markdownTags) {
-          const tag = markdownTags[type as MarkdownType];
-          if(parentElement.matches(tag.match)) {
-            markdownTag = tag;
-            break;
-          }
-        }
+      const nodeValue = node.nodeValue;
+      line.push(nodeValue);
 
-        if(markdownTag) {
-          if(typeof(markdownTag.markdown) === 'function') {
-            line.push(markdownTag.markdown(node));
-            return;
+      if(entities && nodeValue.trim()) {
+        if(node.parentNode) {
+          const parentElement = node.parentElement;
+          
+          for(const type in markdownTags) {
+            const tag = markdownTags[type as MarkdownType];
+            const closest = parentElement.closest(tag.match + ', [contenteditable]');
+            if(closest && closest.getAttribute('contenteditable') === null) {
+              if(tag.entityName === 'messageEntityTextUrl') {
+                entities.push({
+                  _: tag.entityName as any,
+                  url: (parentElement as HTMLAnchorElement).href,
+                  offset: offset.offset,
+                  length: nodeValue.length
+                });
+              } else {
+                entities.push({
+                  _: tag.entityName as any,
+                  offset: offset.offset,
+                  length: nodeValue.length
+                });
+              }
+            }
           }
-
-          markdown = markdownTag.markdown;
         }
       }
 
-      line.push(markdown && node.nodeValue.trim() ? '\x01' + markdown + node.nodeValue + markdown + '\x01' : node.nodeValue);
+      offset.offset += nodeValue.length;
     }
 
     return;
@@ -207,8 +229,10 @@ export function getRichElementValue(node: HTMLElement, lines: string[], line: st
     lines.push(line.join(''));
     line.splice(0, line.length);
   } else if(node.tagName == 'IMG') {
-    if((node as HTMLImageElement).alt) {
-      line.push((node as HTMLImageElement).alt);
+    const alt = (node as HTMLImageElement).alt;
+    if(alt) {
+      line.push(alt);
+      offset.offset += alt.length;
     }
   }
 
@@ -218,7 +242,7 @@ export function getRichElementValue(node: HTMLElement, lines: string[], line: st
 
   let curChild = node.firstChild as HTMLElement;
   while(curChild) {
-    getRichElementValue(curChild, lines, line, selNode, selOffset);
+    getRichElementValue(curChild, lines, line, selNode, selOffset, entities, offset);
     curChild = curChild.nextSibling as any;
   }
 

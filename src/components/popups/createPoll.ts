@@ -8,6 +8,7 @@ import RadioField from "../radioField";
 import Scrollable from "../scrollable";
 import { toast } from "../toast";
 import SendContextMenu from "../chat/sendContextMenu";
+import { MessageEntity } from "../../layer";
 
 const MAX_LENGTH_QUESTION = 255;
 const MAX_LENGTH_OPTION = 100;
@@ -187,7 +188,8 @@ export default class PopupCreatePoll extends PopupElement {
       return;
     }
 
-    const quizSolution = this.quizSolutionField.value || undefined;
+    const quizSolutionEntities: MessageEntity[] = [];
+    const quizSolution = getRichValue(this.quizSolutionField.input, quizSolutionEntities) || undefined;
     if(quizSolution?.length > MAX_LENGTH_SOLUTION) {
       toast('Explanation is too long.');
       return;
@@ -236,7 +238,7 @@ export default class PopupCreatePoll extends PopupElement {
     };
     //poll.id = randomIDS;
 
-    const inputMediaPoll = this.chat.appPollsManager.getInputMediaPoll(poll, this.correctAnswers, quizSolution);
+    const inputMediaPoll = this.chat.appPollsManager.getInputMediaPoll(poll, this.correctAnswers, quizSolution, quizSolutionEntities);
 
     //console.log('Will try to create poll:', inputMediaPoll);
 
