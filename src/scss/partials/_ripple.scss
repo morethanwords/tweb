@@ -48,11 +48,13 @@
     transform: scale(0);
     border-radius: 50%;
     animation: ripple-effect .7s forwards;
+    //animation-timing-function: ease-out;
     transition: .35s opacity;
     //overflow: hidden;
 
     .btn-menu &, .c-ripple.is-square & {
       animation-name: ripple-effect-handhelds;
+      //animation-timing-function: ease-out;
       animation-duration: .2s;
       transition-duration: .1s;
       //border-radius: 15%;
@@ -80,9 +82,10 @@
       --ripple-duration: .2s;
 
       &__circle {
+        animation-name: ripple-effect-handhelds;
+        //animation-timing-function: ease-out;
         animation-duration: .2s;
         transition-duration: .1s;
-        animation-name: ripple-effect-handhelds;
       }
     }
   }
@@ -100,7 +103,8 @@
 
 @keyframes ripple-effect-handhelds {
   0% {
-    transform: scale(.85);
+    //transform: scale(.85);
+    transform: scale(.27);
   }
 
   to {

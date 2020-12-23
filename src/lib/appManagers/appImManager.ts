@@ -466,7 +466,7 @@ export class AppImManager {
         appSidebarRight.searchTab.closeBtn?.click();
       }
   
-      appSidebarRight.sharedMediaTab.setPeer(this.chat.peerId);
+      appSidebarRight.sharedMediaTab.setPeer(this.chat.peerId, this.chat.threadId);
       appSidebarRight.sharedMediaTab.loadSidebarMedia(true);
       appSidebarRight.sharedMediaTab.fillProfileElements();
       

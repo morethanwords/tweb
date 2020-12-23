@@ -1110,6 +1110,7 @@ type AppMediaViewerTargetType = {
 export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delete' | 'forward', AppMediaViewerTargetType> {
   public currentMessageId = 0;
   public peerId: number;
+  public threadId: number;
 
   constructor(private inputFilter: 'inputMessagesFilterPhotoVideo' | 'inputMessagesFilterChatPhotos' = 'inputMessagesFilterPhotoVideo') {
     super(['delete', 'forward']);
@@ -1193,7 +1194,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
         }
 
         const message = appMessagesManager.getMessageByPeer(this.peerId, mid);
-        appImManager.setPeer(message.peerId, mid);
+        appImManager.setInnerPeer(message.peerId, mid, this.threadId ? 'discussion' : undefined, this.threadId);
       });
     }
   };
@@ -1237,13 +1238,14 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     }
 
     if(anchor) maxId = anchor.mid;
-    if(!older) maxId += 1;
+    if(!older) maxId = appMessagesManager.incrementMessageId(maxId, 1);
 
     const peerId = this.peerId;
+    const threadId = this.threadId;
 
     const promise = appMessagesManager.getSearch(peerId, '', 
-      {_: this.inputFilter}, maxId, backLimit ? 0 : loadCount/* older ? loadCount : 0 */, 0, backLimit).then(value => {
-      if(this.peerId != peerId) {
+      {_: this.inputFilter}, maxId, backLimit ? 0 : loadCount/* older ? loadCount : 0 */, 0, backLimit, threadId).then(value => {
+      if(this.peerId !== peerId || this.threadId !== threadId) {
         this.log.warn('peer changed');
         return;
       }
@@ -1310,7 +1312,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
   }
 
   public async openMedia(message: any, target?: HTMLElement, reverse = false, 
-    prevTargets: AppMediaViewer['prevTargets'] = [], nextTargets: AppMediaViewer['prevTargets'] = [], needLoadMore = true) {
+    prevTargets: AppMediaViewer['prevTargets'] = [], nextTargets: AppMediaViewer['prevTargets'] = [], needLoadMore = true, threadId?: number) {
     if(this.setMoverPromise) return this.setMoverPromise;
 
     const mid = message.mid;
@@ -1325,6 +1327,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     } else {
       this.reverse = reverse;
       this.peerId = message.peerId;
+      this.threadId = threadId;
     }
 
     this.currentMessageId = mid;

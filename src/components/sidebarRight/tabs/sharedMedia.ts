@@ -42,6 +42,7 @@ export default class AppSharedMediaTab implements SliderTab {
   public closeBtn: HTMLElement;
 
   private peerId = 0;
+  private threadId = 0;
 
   public profileContentEl: HTMLDivElement;
   public contentContainer: HTMLDivElement;
@@ -190,7 +191,7 @@ export default class AppSharedMediaTab implements SliderTab {
         return {element, mid: id};
       });
       
-      new AppMediaViewer().openMedia(message, target, false, targets.slice(idx + 1).reverse(), targets.slice(0, idx).reverse(), true);
+      new AppMediaViewer().openMedia(message, target, false, targets.slice(idx + 1).reverse(), targets.slice(0, idx).reverse(), true/* , this.threadId */);
     });
     
     this.profileElements.notificationsCheckbox.addEventListener('change', () => {
@@ -403,6 +404,7 @@ export default class AppSharedMediaTab implements SliderTab {
   
   public async performSearchResult(messages: any[], type: SharedMediaType, append = true) {
     const peerId = this.peerId;
+    const threadId = this.threadId;
     const elemsToAppend: HTMLElement[] = [];
     const promises: Promise<any>[] = [];
     const sharedMediaDiv = this.sharedMedia[type];
@@ -455,7 +457,7 @@ export default class AppSharedMediaTab implements SliderTab {
           
           const load = () => appPhotosManager.preloadPhoto(isPhoto ? media.id : media, appPhotosManager.choosePhotoSize(media, 200, 200))
           .then(() => {
-            if(appImManager.chat.peerId != peerId) {
+            if(this.peerId != peerId || this.threadId != threadId) {
               this.log.warn('peer changed');
               return;
             }
@@ -606,7 +608,7 @@ export default class AppSharedMediaTab implements SliderTab {
           if(webpage.photo) {
             let load = () => appPhotosManager.preloadPhoto(webpage.photo.id, appPhotosManager.choosePhotoSize(webpage.photo, 60, 60))
             .then(() => {
-              if(appImManager.chat.peerId != peerId) {
+              if(this.peerId != peerId || this.threadId != threadId) {
                 this.log.warn('peer changed');
                 return;
               }
@@ -660,7 +662,7 @@ export default class AppSharedMediaTab implements SliderTab {
 
     if(promises.length) {
       await Promise.all(promises);
-      if(this.peerId != peerId) {
+      if(this.peerId !== peerId || this.threadId !== threadId) {
         this.log.warn('peer changed');
         return;
       }
@@ -696,6 +698,7 @@ export default class AppSharedMediaTab implements SliderTab {
     this.log('loadSidebarMedia', single, this.peerId, this.loadSidebarMediaPromises);
     
     const peerId = this.peerId;
+    const threadId = this.threadId;
     
     let typesToLoad = single ? [this.sharedMediaType] : this.sharedMediaTypes.filter(t => t !== this.sharedMediaType && t !== 'inputMessagesFilterEmpty');
     typesToLoad = typesToLoad.filter(type => !this.loadedAllMedia[type] 
@@ -750,14 +753,14 @@ export default class AppSharedMediaTab implements SliderTab {
       this.log(logStr + 'search house of glass pre', type, maxId);
       
       //let loadCount = history.length ? 50 : 15;
-      return this.loadSidebarMediaPromises[type] = appMessagesManager.getSearch(peerId, '', {_: type}, maxId, loadCount)
+      return this.loadSidebarMediaPromises[type] = appMessagesManager.getSearch(peerId, '', {_: type}, maxId, loadCount, undefined, undefined/* , this.threadId */)
       .then(value => {
         const mids = value.history.map(message => message.mid);
         history.push(...mids);
         
         this.log(logStr + 'search house of glass', type, value);
 
-        if(appImManager.chat.peerId != peerId) {
+        if(this.peerId !== peerId || this.threadId !== threadId) {
           this.log.warn('peer changed');
           return;
         }
@@ -875,8 +878,8 @@ export default class AppSharedMediaTab implements SliderTab {
     this.loadMutex = promise;
   }
 
-  public setPeer(peerId: number) {
-    if(this.peerId == peerId) return;
+  public setPeer(peerId: number, threadId = 0) {
+    if(this.peerId === peerId && this.threadId === peerId) return;
 
     if(this.init) {
       this.init();
@@ -884,6 +887,7 @@ export default class AppSharedMediaTab implements SliderTab {
     }
 
     this.peerId = peerId;
+    this.threadId = threadId;
     this.cleanup();
   }
 
@@ -892,6 +896,7 @@ export default class AppSharedMediaTab implements SliderTab {
     this.cleaned = false;
     
     const peerId = this.peerId;
+    const threadId = this.threadId;
 
     this.cleanupHTML();
 
@@ -923,7 +928,7 @@ export default class AppSharedMediaTab implements SliderTab {
       }
       
       appProfileManager.getProfile(peerId).then(userFull => {
-        if(this.peerId != peerId) {
+        if(this.peerId !== peerId || this.threadId !== threadId) {
           this.log.warn('peer changed');
           return;
         }
@@ -939,7 +944,7 @@ export default class AppSharedMediaTab implements SliderTab {
       let chat = appPeersManager.getPeer(peerId);
       
       appProfileManager.getChatFull(chat.id).then((chatFull) => {
-        if(this.peerId != peerId) {
+        if(this.peerId !== peerId || this.threadId !== threadId) {
           this.log.warn('peer changed');
           return;
         }

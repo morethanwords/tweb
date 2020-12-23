@@ -1417,7 +1417,7 @@ $bubble-margin: .25rem;
   }
 
   &.photo, &.video {
-    &.is-message-empty.is-group-last {
+    &.is-message-empty.is-group-last:not(.with-replies) {
       .bubble__container:after {
         display: none;
       }
@@ -1683,7 +1683,7 @@ $bubble-margin: .25rem;
   }
 
   &.is-message-empty.is-group-last {
-    &:not(.with-media-tail) {
+    &:not(.with-media-tail):not(.with-replies) {
       &.photo, &.video {
         .bubble__container {
           border-bottom-left-radius: 6px;

@@ -617,7 +617,7 @@ export default class ChatBubbles {
       }
 
       new AppMediaViewer().openMedia(message, targets[idx].element, true, 
-        targets.slice(0, idx), targets.slice(idx + 1)/* , !message.grouped_id */);
+        targets.slice(0, idx), targets.slice(idx + 1), undefined, this.chat.threadId/* , !message.grouped_id */);
       
       cancelEvent(e);
       //appMediaViewer.openMedia(message, target as HTMLImageElement);
