@@ -195,12 +195,12 @@ export default class ChatTopbar {
     }];
 
     this.btnSearch = ButtonIcon('search');
-    this.listenerSetter.add(this.btnSearch, 'click', (e) => {
+    attachClickEvent(this.btnSearch, (e) => {
       cancelEvent(e);
       if(this.peerId) {
         this.appSidebarRight.searchTab.open(this.peerId, this.chat.threadId);
       }
-    });
+    }, {listenerSetter: this.listenerSetter});
   }
 
   public constructPeerHelpers() {
@@ -220,15 +220,15 @@ export default class ChatTopbar {
     this.btnPinned = ButtonIcon('pinlist');
     this.btnMute = ButtonIcon('mute');
 
-    this.listenerSetter.add(this.btnPinned, 'click', (e) => {
+    attachClickEvent(this.btnPinned, (e) => {
       cancelEvent(e);
       this.openPinned(true);
-    });
+    }, {listenerSetter: this.listenerSetter});
 
-    this.listenerSetter.add(this.btnMute, 'click', (e) => {
+    attachClickEvent(this.btnMute, (e) => {
       cancelEvent(e);
       this.appMessagesManager.mutePeer(this.peerId);
-    });
+    }, {listenerSetter: this.listenerSetter});
 
     attachClickEvent(this.btnJoin, (e) => {
       cancelEvent(e);

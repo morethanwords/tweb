@@ -38,7 +38,7 @@ import ListenerSetter from "../../helpers/listenerSetter";
 import PollElement from "../poll";
 import AudioElement from "../audio";
 import { Message, MessageEntity, MessageReplies, MessageReplyHeader } from "../../layer";
-import { DEBUG, MOUNT_CLASS_TO } from "../../lib/mtproto/mtproto_config";
+import { DEBUG, MOUNT_CLASS_TO, REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
 
 const IGNORE_ACTIONS = ['messageActionHistoryClear'];
 
@@ -60,7 +60,7 @@ export default class ChatBubbles {
   //public messagesCount: number = -1;
 
   public unreadOut = new Set<number>();
-  public needUpdate: {replyMid: number, mid: number}[] = []; // if need wrapSingleMessage
+  public needUpdate: {replyToPeerId: number, replyMid: number, mid: number}[] = []; // if need wrapSingleMessage
 
   public bubbles: {[mid: string]: HTMLDivElement} = {};
   public dateMessages: {[timestamp: number]: { 
@@ -277,17 +277,13 @@ export default class ChatBubbles {
     this.listenerSetter.add(rootScope, 'messages_downloaded', (e) => {
       const {peerId, mids} = e.detail;
       
-      if(peerId !== this.peerId) {
-        return;
-      }
-
       (mids as number[]).forEach(mid => {
         /* const promise = (this.scrollable.scrollLocked && this.scrollable.scrollLockedPromise) || Promise.resolve();
         promise.then(() => {
 
         }); */
         this.needUpdate.forEachReverse((obj, idx) => {
-          if(obj.replyMid == mid) {
+          if(obj.replyMid === mid, obj.replyToPeerId === peerId) {
             const {mid, replyMid} = this.needUpdate.splice(idx, 1)[0];
             
             //this.log('messages_downloaded', mid, replyMid, i, this.needUpdate, this.needUpdate.length, mids, this.bubbles[mid]);
@@ -296,9 +292,9 @@ export default class ChatBubbles {
             
             const message = this.chat.getMessage(mid);
             
-            const repliedMessage = this.chat.type === 'scheduled' ? this.appMessagesManager.getMessageByPeer(this.peerId, replyMid) : this.chat.getMessage(replyMid);
-            if(repliedMessage.deleted) { // чтобы не пыталось бесконечно загрузить удалённое сообщение
-              delete message.reply_to_mid; // WARNING!
+            const repliedMessage = this.appMessagesManager.getMessageByPeer(obj.replyToPeerId, replyMid);
+            if(repliedMessage.deleted) { // ! чтобы не пыталось бесконечно загрузить удалённое сообщение
+              delete message.reply_to_mid; // ! WARNING!
             }
             
             this.renderMessage(message, true, false, bubble, false);
@@ -429,9 +425,9 @@ export default class ChatBubbles {
         } */
 
         //appMessagesManager.readMessages(readed);
-        /* false && */ this.appMessagesManager.readHistory(this.peerId, max).catch((err: any) => {
+        /* false && */ this.appMessagesManager.readHistory(this.peerId, max, this.chat.threadId).catch((err: any) => {
           this.log.error('readHistory err:', err);
-          this.appMessagesManager.readHistory(this.peerId, max);
+          this.appMessagesManager.readHistory(this.peerId, max, this.chat.threadId);
         });
       }
     });
@@ -525,12 +521,23 @@ export default class ChatBubbles {
     const commentsDiv: HTMLElement = findUpClassName(target, 'replies');
     if(commentsDiv) {
       const bubbleMid = +bubble.dataset.mid;
-      const message = this.appMessagesManager.filterMessages(this.chat.getMessage(bubbleMid), message => !!(message as Message.message).replies)[0] as Message.message;
-      const replies = message.replies;
-      if(replies) {
-        this.appMessagesManager.getDiscussionMessage(this.peerId, message.mid).then(message => {
-          this.chat.appImManager.setInnerPeer(-replies.channel_id, (message as MyMessage).mid, 'discussion');
+      if(this.peerId === REPLIES_PEER_ID) {
+        const message = this.chat.getMessage(bubbleMid) as Message.message;
+        const peerId = this.appPeersManager.getPeerId(message.reply_to.reply_to_peer_id);
+        const threadId = message.reply_to.reply_to_top_id;
+
+        this.appMessagesManager.wrapSingleMessage(peerId, threadId).then(() => {
+          this.appMessagesManager.generateThreadServiceStartMessage(this.appMessagesManager.getMessageByPeer(peerId, threadId));
+          this.chat.appImManager.setInnerPeer(peerId, message.fwd_from.saved_from_msg_id, 'discussion', threadId);
         });
+      } else {
+        const message = this.appMessagesManager.filterMessages(this.chat.getMessage(bubbleMid), message => !!(message as Message.message).replies)[0] as Message.message;
+        const replies = message.replies;
+        if(replies) {
+          this.appMessagesManager.getDiscussionMessage(this.peerId, message.mid).then(message => {
+            this.chat.appImManager.setInnerPeer(-replies.channel_id, undefined, 'discussion', (message as MyMessage).mid);
+          });
+        }
       }
 
       return;
@@ -658,14 +665,21 @@ export default class ChatBubbles {
       } catch(err) {}
       
       if(isReplyClick && bubble.classList.contains('is-reply')/*  || bubble.classList.contains('forwarded') */) {
-        this.replyFollowHistory.push(+bubble.dataset.mid);
-        let originalMessageId = +bubble.getAttribute('data-original-mid');
+        const bubbleMid = +bubble.dataset.mid;
+        this.replyFollowHistory.push(bubbleMid);
 
-        if(this.chat.type === 'discussion') {
+        const message = this.chat.getMessage(bubbleMid) as Message.message;
+
+        const replyToPeerId = message.reply_to.reply_to_peer_id ? this.appPeersManager.getPeerId(message.reply_to.reply_to_peer_id) : this.peerId;
+        const replyToMid = message.reply_to.reply_to_msg_id;
+
+        this.chat.appImManager.setInnerPeer(replyToPeerId, replyToMid, this.chat.type, this.chat.threadId);
+
+        /* if(this.chat.type === 'discussion') {
           this.chat.appImManager.setPeer(this.peerId, originalMessageId);
         } else {
           this.chat.appImManager.setInnerPeer(this.peerId, originalMessageId);
-        }
+        } */
         //this.chat.setPeer(this.peerId, originalMessageId);
       }
     } else if(target.tagName == 'IMG' && target.parentElement.tagName == "AVATAR-ELEMENT") {
@@ -1114,6 +1128,11 @@ export default class ChatBubbles {
     let topMessage = this.chat.type === 'pinned' ? this.appMessagesManager.pinnedMessages[peerId].maxId : historyStorage.maxId ?? 0;
     const isTarget = lastMsgId !== undefined;
 
+    // * this one will fix topMessage for null message in history (e.g. channel comments with only 1 comment and it is a topMessage)
+    if(this.chat.type !== 'pinned' && topMessage && !historyStorage.history.includes(topMessage)) {
+      topMessage = 0;
+    }
+
     if(!isTarget && topMessage) {
       const isUnread = this.appMessagesManager.isHistoryUnread(peerId, this.chat.threadId);
       if(/* dialog.unread_count */isUnread && !samePeer) {
@@ -1124,7 +1143,7 @@ export default class ChatBubbles {
       }
     }
 
-    const isJump = lastMsgId != topMessage;
+    const isJump = lastMsgId !== topMessage;
     
     if(samePeer) {
       const mounted = this.getMountedBubble(lastMsgId);
@@ -1230,7 +1249,7 @@ export default class ChatBubbles {
       this.lazyLoadQueue.unlock();
 
       //if(dialog && lastMsgID && lastMsgID != topMessage && (this.bubbles[lastMsgID] || this.firstUnreadBubble)) {
-      if(topMessage && (isTarget || isJump)) {
+      if((topMessage && isJump) || isTarget) {
         if(this.scrollable.scrollLocked) {
           clearTimeout(this.scrollable.scrollLocked);
           this.scrollable.scrollLocked = 0;
@@ -1272,7 +1291,7 @@ export default class ChatBubbles {
 
       //if(!this.unreaded.length && dialog) { // lol
       if(this.scrolledAllDown && topMessage) { // lol
-        this.appMessagesManager.readHistory(peerId, topMessage);
+        this.appMessagesManager.readHistory(peerId, topMessage, this.chat.threadId);
       }
 
       if(this.chat.type === 'chat') {
@@ -1295,19 +1314,14 @@ export default class ChatBubbles {
   }
 
   public finishPeerChange() {
-    let peerId = this.peerId;
-
-    //this.topbar.setPeer(peerId);
-
-    const isAnyGroup = this.appPeersManager.isAnyGroup(peerId);
+    const peerId = this.peerId;
     const isChannel = this.appPeersManager.isChannel(peerId);
-    
     const canWrite = this.appMessagesManager.canWriteToPeer(peerId);
     
     this.chatInner.classList.toggle('has-rights', canWrite);
     this.bubblesContainer.classList.toggle('is-chat-input-hidden', !canWrite);
 
-    this.chatInner.classList.toggle('is-chat', isAnyGroup || peerId == rootScope.myId);
+    this.chatInner.classList.toggle('is-chat', this.chat.isAnyGroup());
     this.chatInner.classList.toggle('is-channel', isChannel);
   }
 
@@ -1536,7 +1550,7 @@ export default class ChatBubbles {
       this.chat.selection.toggleBubbleCheckbox(bubble, true);
     }
 
-    if(message._ == 'messageService') {
+    if(message._ === 'messageService') {
       let action = message.action;
       let _ = action._;
       if(IGNORE_ACTIONS.includes(_) || (langPack.hasOwnProperty(_) && !langPack[_])) {
@@ -1564,7 +1578,7 @@ export default class ChatBubbles {
       messageMessage = t.message;
       //totalEntities = t.entities;
       totalEntities = t.totalEntities;
-    } else if(messageMedia?.document?.type != 'sticker') {
+    } else if(messageMedia?.document?.type !== 'sticker') {
       messageMessage = message.message;
       //totalEntities = message.entities;
       totalEntities = message.totalEntities;
@@ -1700,8 +1714,19 @@ export default class ChatBubbles {
       bubble.classList.add(status);
     }
 
-    let messageWithReplies: Message.message = this.appMessagesManager.filterMessages(message, message => !!(message as Message.message).replies)[0] as any;
-    const withReplies = messageWithReplies && messageWithReplies.replies && messageWithReplies.replies.pFlags.comments && messageWithReplies.replies.channel_id !== 777;
+    let messageWithReplies: Message.message;
+    let withReplies: boolean;
+    if(this.peerId === REPLIES_PEER_ID) {
+      messageWithReplies = message;
+      withReplies = true;
+    } else {
+      messageWithReplies = this.appMessagesManager.filterMessages(message, message => !!(message as Message.message).replies)[0] as any;
+      withReplies = messageWithReplies && messageWithReplies.replies && messageWithReplies.replies.pFlags.comments && messageWithReplies.replies.channel_id !== 777;
+    }
+
+    if(withReplies) {
+      bubble.classList.add('with-replies');
+    }
 
     const isOut = our && (!message.fwd_from || this.peerId != rootScope.myId);
     let nameContainer = bubbleContainer;
@@ -2163,7 +2188,7 @@ export default class ChatBubbles {
           nameDiv.classList.add('name');
           nameDiv.dataset.peerId = message.fwdFromId;
 
-          if(this.peerId == rootScope.myId || isForwardFromChannel) {
+          if(this.peerId === rootScope.myId || this.peerId === REPLIES_PEER_ID || isForwardFromChannel) {
             nameDiv.style.color = this.appPeersManager.getPeerColorById(message.fwdFromId, false);
             nameDiv.innerHTML = title;
           } else {
@@ -2175,31 +2200,6 @@ export default class ChatBubbles {
           nameContainer.append(nameDiv);
         }
       } else {
-        if(message.reply_to_mid && message.reply_to_mid !== this.chat.threadId) {
-          let originalMessage = this.chat.type === 'scheduled' ? this.appMessagesManager.getMessageByPeer(this.peerId, message.reply_to_mid) : this.chat.getMessage(message.reply_to_mid);
-          let originalPeerTitle = this.appPeersManager.getPeerTitle(originalMessage.fromId || originalMessage.fwdFromId, true) || '';
-          
-          /////////this.log('message to render reply', originalMessage, originalPeerTitle, bubble, message);
-          
-          // need to download separately
-          if(originalMessage._ == 'messageEmpty') {
-            //////////this.log('message to render reply empty, need download', message, message.reply_to_mid);
-            this.appMessagesManager.wrapSingleMessage(this.peerId, message.reply_to_mid);
-            this.needUpdate.push({replyMid: message.reply_to_mid, mid: message.mid});
-            
-            originalPeerTitle = 'Loading...';
-          }
-          
-          if(originalMessage.mid) {
-            bubble.setAttribute('data-original-mid', originalMessage.mid);
-          } else {
-            bubble.setAttribute('data-original-mid', message.reply_to_mid);
-          }
-          
-          bubbleContainer.append(wrapReply(originalPeerTitle, originalMessage.message || '', originalMessage));
-          bubble.classList.add('is-reply');
-        }
-        
         if(!bubble.classList.contains('sticker') && needName) {
           let nameDiv = document.createElement('div');
           nameDiv.classList.add('name');
@@ -2215,9 +2215,34 @@ export default class ChatBubbles {
           bubble.classList.add('hide-name');
         }
       }
+
+      if(message.reply_to_mid && message.reply_to_mid !== this.chat.threadId) {
+        const replyToPeerId = message.reply_to.reply_to_peer_id ? this.appPeersManager.getPeerId(message.reply_to.reply_to_peer_id) : this.peerId;
+
+        let originalMessage = this.appMessagesManager.getMessageByPeer(replyToPeerId, message.reply_to_mid);
+        let originalPeerTitle: string;
+        
+        /////////this.log('message to render reply', originalMessage, originalPeerTitle, bubble, message);
+        
+        // need to download separately
+        if(originalMessage._ == 'messageEmpty') {
+          //////////this.log('message to render reply empty, need download', message, message.reply_to_mid);
+          this.appMessagesManager.wrapSingleMessage(replyToPeerId, message.reply_to_mid);
+          this.needUpdate.push({replyToPeerId, replyMid: message.reply_to_mid, mid: message.mid});
+          
+          originalPeerTitle = 'Loading...';
+        } else {
+          originalPeerTitle = this.appPeersManager.getPeerTitle(originalMessage.fromId || originalMessage.fwdFromId, true) || '';
+        }
+
+        const wrapped = wrapReply(originalPeerTitle, originalMessage.message || '', originalMessage);
+        bubbleContainer.append(wrapped);
+        //bubbleContainer.insertBefore(, nameContainer);
+        bubble.classList.add('is-reply');
+      }
       
-      if((!our && this.peerId < 0 && (!this.appPeersManager.isChannel(this.peerId) || this.appPeersManager.isMegagroup(this.peerId))) 
-        || (this.peerId == rootScope.myId && !message.reply_to_mid)) {
+      const needAvatar = this.chat.isAnyGroup() && !isOut;
+      if(needAvatar) {
         let avatarElem = new AvatarElement();
         //avatarElem.lazyLoadQueue = this.lazyLoadQueue;
         avatarElem.classList.add('user-avatar', 'avatar-40');
@@ -2226,7 +2251,7 @@ export default class ChatBubbles {
           avatarElem.setAttribute('peer-title', /* '🔥 FF 🔥' */message.fwd_from.from_name);
         }
 
-        avatarElem.setAttribute('peer', '' + (((message.fwd_from && this.peerId == rootScope.myId) || isForwardFromChannel ? message.fwdFromId : message.fromId) || 0));
+        avatarElem.setAttribute('peer', '' + (((message.fwd_from && (this.peerId === rootScope.myId || this.peerId === REPLIES_PEER_ID)) || isForwardFromChannel ? message.fwdFromId : message.fromId) || 0));
         avatarElem.update();
         
         //this.log('exec loadDialogPhoto', message);
@@ -2245,7 +2270,7 @@ export default class ChatBubbles {
       bubble.classList.add('is-thread-starter');
     }
 
-    if(savedFrom) {
+    if(savedFrom && this.peerId !== REPLIES_PEER_ID) {
       const goto = document.createElement('div');
       goto.classList.add('bubble-beside-button', 'goto-original', 'tgico-arrow-next');
       bubbleContainer.append(goto);

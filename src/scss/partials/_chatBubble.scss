@@ -1005,6 +1005,10 @@ $bubble-margin: .25rem;
     position: relative !important;
     height: 0px !important;
     visibility: hidden !important;
+
+    .inner {
+      visibility: hidden !important;
+    }
   }
 
   &.is-multiple-documents {
@@ -1219,6 +1223,7 @@ $bubble-margin: .25rem;
       .time {
         margin-left: 0;
         color: #fff;
+        visibility: visible;
         display: flex;
         align-items: center;
         padding: 0 2.5px;
@@ -1233,13 +1238,22 @@ $bubble-margin: .25rem;
       }
     }
 
+    &.with-replies:not(.sticker) .message {
+      bottom: 55px;
+    }
+
     &.sticker .message {
       bottom: 0;
     }
   }
+
+  &.with-replies .attachment {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
   
   .time {
-    color: transparent;
+    visibility: hidden; // * can't use color transparent here, because in name can be emoji
     font-size: 12px;
     user-select: none;
     line-height: 1;
@@ -1277,6 +1291,7 @@ $bubble-margin: .25rem;
       padding: inherit;
       white-space: nowrap;
       height: 12px; // * as font-size
+      visibility: visible;
     }
 
     .tgico-pinnedchat:before {
@@ -1349,6 +1364,7 @@ $bubble-margin: .25rem;
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
+    order: 1;
     //width: max-content;
     //white-space: nowrap;
   }
@@ -1462,8 +1478,8 @@ $bubble-margin: .25rem;
     }
 
     &-footer {
-      height: 50px;
-      border-top: 1px solid #dadce0;
+      height: 51px;
+      border-top: 2px solid #e6e7ea;
       position: relative;
       display: flex;
       align-items: center;
@@ -1479,9 +1495,11 @@ $bubble-margin: .25rem;
   
       &-text {
         font-weight: 500;
-        margin-left: 13px;
+        font-size: 15px;
+        margin-left: 9px;
         display: flex;
         align-items: center;
+        color: #1f88e3;
       }
   
       &-avatars {
@@ -1496,7 +1514,7 @@ $bubble-margin: .25rem;
   
       .tgico-next {
         position: absolute;
-        right: .5rem;
+        right: 4px;
       }
   
       &.is-unread {

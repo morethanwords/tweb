@@ -4,7 +4,7 @@ import { safeReplaceObject, isObject } from "../../helpers/object";
 import { InputUser, Update, User as MTUser, UserStatus } from "../../layer";
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
-import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
+import { MOUNT_CLASS_TO, REPLIES_PEER_ID } from "../mtproto/mtproto_config";
 import serverTimeManager from "../mtproto/serverTimeManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
@@ -343,6 +343,13 @@ export class AppUsersManager {
   }
 
   public getUserStatusString(userId: number) {
+    switch(userId) {
+      case REPLIES_PEER_ID:
+        return 'reply notifications';
+      case 777000:
+        return 'service notifications';
+    }
+
     if(this.isBot(userId)) {
       return 'bot';
     }
@@ -350,6 +357,10 @@ export class AppUsersManager {
     const user = this.getUser(userId);
     if(!user) {
       return '';
+    }
+
+    if(user.pFlags.support) {
+      return 'support';
     }
     
     let str = '';
@@ -430,7 +441,7 @@ export class AppUsersManager {
 
   public canSendToUser(id: number) {
     const user = this.getUser(id);
-    return !user.pFlags.deleted;
+    return !user.pFlags.deleted && user.username !== 'replies';
   }
 
   public getUserPhoto(id: number) {

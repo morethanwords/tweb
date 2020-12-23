@@ -15,7 +15,7 @@ avatar-element {
   text-transform: uppercase;
 
   &.tgico-savedmessages:before {
-    font-size: calc(26px / var(--multiplier));
+    font-size: calc(25px / var(--multiplier));
   }
 
   &.tgico-avatar_deletedaccount:before {
@@ -101,6 +101,11 @@ avatar-element {
   &.avatar-40 {
     --size: 40px;
     --multiplier: 1.35;
+  }
+
+  &.avatar-34 {
+    --size: 34px;
+    --multiplier: 1.588235;
   }
 
   &.avatar-32 {

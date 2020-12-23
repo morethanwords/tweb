@@ -1066,9 +1066,9 @@ export default class ChatInput {
 
   public onMessageSent(clearInput = true, clearReply?: boolean) {
     if(this.chat.type !== 'scheduled') {
-      let dialog = this.appMessagesManager.getDialogByPeerId(this.chat.peerId)[0];
-      if(dialog && dialog.top_message) {
-        this.appMessagesManager.readHistory(this.chat.peerId, dialog.top_message); // lol
+      const historyStorage = this.appMessagesManager.getHistoryStorage(this.chat.peerId, this.chat.threadId);
+      if(historyStorage.maxId) {
+        this.appMessagesManager.readHistory(this.chat.peerId, historyStorage.maxId, this.chat.threadId); // lol
       }
     }
 

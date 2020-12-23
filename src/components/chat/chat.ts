@@ -20,6 +20,7 @@ import ChatContextMenu from "./contextMenu";
 import ChatInput from "./input";
 import ChatSelection from "./selection";
 import ChatTopbar from "./topbar";
+import { REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
 
 export type ChatType = 'chat' | 'pinned' | 'replies' | 'discussion' | 'scheduled';
 
@@ -140,11 +141,6 @@ export default class Chat extends EventListenerBase<{
       this.init = null;
     }
 
-    if(this.type === 'discussion' && !this.threadId) {
-      this.threadId = lastMsgId;
-      lastMsgId = undefined;
-    }
-
     //console.time('appImManager setPeer');
     //console.time('appImManager setPeer pre promise');
     ////console.time('appImManager: pre render start');
@@ -227,5 +223,9 @@ export default class Chat extends EventListenerBase<{
 
   public getMidsByMid(mid: number) {
     return this.appMessagesManager.getMidsByMessage(this.getMessage(mid));
+  }
+
+  public isAnyGroup() {
+    return this.peerId === rootScope.myId || this.peerId === REPLIES_PEER_ID || this.appPeersManager.isAnyGroup(this.peerId);
   }
 }

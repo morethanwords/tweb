@@ -25,6 +25,8 @@ type UpdatesState = {
   lastPtsUpdateTime?: number
 };
 
+const SYNC_DELAY = 25;
+
 export class ApiUpdatesManager {
   public updatesState: UpdatesState = {
     pendingPtsUpdates: [],
@@ -464,7 +466,7 @@ export class ApiUpdatesManager {
               } else {
                 this.getDifference();
               }
-            }, 5000)
+            }, SYNC_DELAY)
           }
         }
 
@@ -502,7 +504,7 @@ export class ApiUpdatesManager {
             curState.syncPending = {
               timeout: window.setTimeout(() => {
                 this.getDifference();
-              }, 5000)
+              }, SYNC_DELAY)
             }
           }
 

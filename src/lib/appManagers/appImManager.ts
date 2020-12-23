@@ -548,7 +548,7 @@ export class AppImManager {
     }
   }
 
-  public setInnerPeer(peerId: number, lastMsgId?: number, type: ChatType = 'chat') {
+  public setInnerPeer(peerId: number, lastMsgId?: number, type: ChatType = 'chat', threadId?: number) {
     // * prevent opening already opened peer
     const existingIndex = this.chats.findIndex(chat => chat.peerId == peerId && chat.type == type);
     if(existingIndex !== -1) {
@@ -560,6 +560,10 @@ export class AppImManager {
 
     if(type) {
       this.chat.setType(type);
+
+      if(threadId) {
+        this.chat.threadId = threadId;
+      }
     }
 
     //this.chatsSelectTab(this.chat.container);
@@ -593,7 +597,7 @@ export class AppImManager {
   
         return subtitle;
       //}
-    } else if(!appUsersManager.isBot(peerId)) { // user
+    } else { // user
       const user = appUsersManager.getUser(peerId);
       
       if(rootScope.myId == peerId) {
@@ -601,17 +605,19 @@ export class AppImManager {
       } else if(user) {
         subtitle = appUsersManager.getUserStatusString(user.id);
 
-        const typings = appChatsManager.typingsInPeer[peerId];
-        if(typings && typings.length) {
-          return '<span class="online">typing...</span>';
-        } else if(subtitle == 'online') {
-          return `<span class="online">${subtitle}</span>`;
+        if(!appUsersManager.isBot(peerId)) {
+          const typings = appChatsManager.typingsInPeer[peerId];
+          if(typings && typings.length) {
+            return '<span class="online">typing...</span>';
+          } else if(subtitle == 'online') {
+            return `<span class="online">${subtitle}</span>`;
+          } else {
+            return subtitle;
+          }
         } else {
           return subtitle;
         }
       }
-    } else {
-      return 'bot';
     }
   }
 }
