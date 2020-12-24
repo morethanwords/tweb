@@ -179,7 +179,7 @@ export default class PollElement extends HTMLElement {
     // элемент создан
   }
 
-  connectedCallback() {
+  public render() {
     // браузер вызывает этот метод при добавлении элемента в документ
     // (может вызываться много раз, если элемент многократно добавляется/удаляется)
 
@@ -266,18 +266,18 @@ export default class PollElement extends HTMLElement {
         svg.classList.add('poll-quiz-timer');
 
         this.quizTimer = svg;
-  
+
         const strokeWidth = 2;
         const radius = 7;
         const circumference = 2 * Math.PI * radius;
-  
+
         const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
         circle.classList.add('poll-quiz-timer-circle');
         circle.setAttributeNS(null, 'cx', '16');
         circle.setAttributeNS(null, 'cy', '16');
         circle.setAttributeNS(null, 'r', '' + radius);
         circle.setAttributeNS(null, 'stroke-width', '' + strokeWidth);
-  
+
         svg.append(circle);
         this.descDiv.append(svg);
         
@@ -381,9 +381,8 @@ export default class PollElement extends HTMLElement {
     }
   }
 
-  adoptedCallback() {
-    // вызывается, когда элемент перемещается в новый документ
-    // (происходит в document.adoptNode, используется очень редко)
+  connectedCallback() {
+    this.render();
   }
 
   initQuizHint(results: PollResults) {

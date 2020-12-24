@@ -359,7 +359,7 @@ export default class ChatBubbles {
 
       const mids = Object.keys(msgs).map(s => +s);
 
-      if(peerId == this.peerId) {
+      if(peerId === this.peerId) {
         this.deleteMessagesByIds(mids);
       }
     });
@@ -367,7 +367,7 @@ export default class ChatBubbles {
     this.listenerSetter.add(rootScope, 'dialog_unread', (e) => {
       const info = e.detail;
 
-      if(info.peerId == this.peerId) {
+      if(info.peerId === this.peerId) {
         this.chat.input.setUnreadCount();
         this.updateUnreadByDialog();
       }
@@ -384,7 +384,7 @@ export default class ChatBubbles {
     this.listenerSetter.add(rootScope, 'dialog_notify_settings', (e) => {
       const peerId = e.detail;
 
-      if(this.peerId == peerId) {
+      if(this.peerId === peerId) {
         this.chat.input.setUnreadCount();
       }
     });
@@ -899,7 +899,7 @@ export default class ChatBubbles {
     }
   }
   
-  public deleteMessagesByIds(mids: number[]) {
+  public deleteMessagesByIds(mids: number[], permanent = true) {
     mids.forEach(mid => {
       if(!(mid in this.bubbles)) return;
       
@@ -921,6 +921,10 @@ export default class ChatBubbles {
       bubble.remove();
       //bubble.remove();
     });
+
+    if(permanent && this.chat.selection.isSelecting) {
+      this.chat.selection.deleteSelectedMids(mids);
+    }
     
     animationIntersector.checkAnimations(false, CHAT_ANIMATION_GROUP);
     this.deleteEmptyDateGroups();
@@ -1546,10 +1550,6 @@ export default class ChatBubbles {
     bubble.dataset.mid = message.mid;
     bubble.dataset.timestamp = message.date;
 
-    if(this.chat.selection.isSelecting && message._ !== 'messageService') {
-      this.chat.selection.toggleBubbleCheckbox(bubble, true);
-    }
-
     if(message._ === 'messageService') {
       let action = message.action;
       let _ = action._;
@@ -2056,6 +2056,10 @@ export default class ChatBubbles {
       } */
     }
 
+    if(this.chat.selection.isSelecting) {
+      this.chat.selection.toggleBubbleCheckbox(bubble, true);
+    }
+
     let savedFrom = '';
     
     const needName = (peerId < 0 && (peerId != message.fromId || our)) && message.fromId !== rootScope.myId;
@@ -2557,7 +2561,7 @@ export default class ChatBubbles {
 
         this.log('getHistory: will slice ids:', ids, reverse);
 
-        this.deleteMessagesByIds(ids);
+        this.deleteMessagesByIds(ids, false);
       }
 
       this.setUnreadDelimiter(); // не нашёл места лучше

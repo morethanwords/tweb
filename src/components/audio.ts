@@ -328,10 +328,7 @@ export default class AudioElement extends HTMLElement {
     // элемент создан
   }
 
-  connectedCallback() {
-    // браузер вызывает этот метод при добавлении элемента в документ
-    // (может вызываться много раз, если элемент многократно добавляется/удаляется)
-
+  public render() {
     this.classList.add('audio');
 
     const doc = this.message.media.document || this.message.media.webpage.document;
@@ -499,6 +496,11 @@ export default class AudioElement extends HTMLElement {
     }
   }
 
+  /* connectedCallback() {
+    // браузер вызывает этот метод при добавлении элемента в документ
+    // (может вызываться много раз, если элемент многократно добавляется/удаляется)
+  } */
+
   public addAudioListener(name: string, callback: any) {
     if(!this.attachedHandlers[name]) this.attachedHandlers[name] = [];
     this.attachedHandlers[name].push(callback);
@@ -523,21 +525,6 @@ export default class AudioElement extends HTMLElement {
 
     this.preloader = null;
   }
-
-  static get observedAttributes(): string[] {
-    return [/* массив имён атрибутов для отслеживания их изменений */];
-  }
-
-  attributeChangedCallback(name: string, oldValue: string, newValue: string) {
-    // вызывается при изменении одного из перечисленных выше атрибутов
-  }
-
-  adoptedCallback() {
-    // вызывается, когда элемент перемещается в новый документ
-    // (происходит в document.adoptNode, используется очень редко)
-  }
-
-  // у элемента могут быть ещё другие методы и свойства
 }
 
 customElements.define("audio-element", AudioElement);

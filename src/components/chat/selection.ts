@@ -206,7 +206,7 @@ export default class ChatSelection {
       bubble.firstElementChild.tagName == 'LABEL' && bubble.firstElementChild.firstElementChild as HTMLInputElement;
   }
 
-  private updateForwardContainer(forceSelection = false) {
+  private updateContainer(forceSelection = false) {
     if(!this.selectedMids.size && !forceSelection) return;
     this.selectionCountEl.innerText = this.selectedMids.size + ' Message' + (this.selectedMids.size == 1 ? '' : 's');
 
@@ -338,7 +338,7 @@ export default class ChatSelection {
     }
 
     if(forceSelection) {
-      this.updateForwardContainer(forceSelection);
+      this.updateContainer(forceSelection);
     }
   }
 
@@ -371,7 +371,7 @@ export default class ChatSelection {
     input.checked = isSelected;
 
     this.toggleSelection();
-    this.updateForwardContainer();
+    this.updateContainer();
     SetTransition(bubble, 'is-selected', isSelected, 200);
   }
 
@@ -442,6 +442,18 @@ export default class ChatSelection {
 
     this.updateBubbleSelection(bubble, !found);
   };
+
+  /**
+   * ! Call this method only to handle deleted messages
+   */
+  public deleteSelectedMids(mids: number[]) {
+    mids.forEach(mid => {
+      this.selectedMids.delete(mid);
+    });
+
+    this.updateContainer();
+    this.toggleSelection();
+  }
 
   public canSelectBubble(bubble: HTMLElement) {
     return !bubble.classList.contains('service') && !bubble.classList.contains('is-sending');

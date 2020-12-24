@@ -360,6 +360,7 @@ export function wrapDocument({message, withTime, fontWeight}: {
     audioElement.withTime = withTime;
     audioElement.message = message;
     audioElement.dataset.fontWeight = '' + fontWeight;
+    audioElement.render();
     return audioElement;
   }
 
@@ -1053,5 +1054,6 @@ export function wrapPoll(message: any) {
   elem.setAttribute('peer-id', '' + message.peerId);
   elem.setAttribute('poll-id', message.media.poll.id);
   elem.setAttribute('message-id', '' + message.mid);
+  //elem.render();
   return elem;
 }

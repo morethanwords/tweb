@@ -86,10 +86,7 @@ export class ApiFileManager {
 
   public downloadCheck(dcId: string | number) {
     const downloadPull = this.downloadPulls[dcId];
-    //const downloadLimit = dcId == 'upload' ? 11 : 5;
-    //const downloadLimit = 24;
-    //const downloadLimit = dcId == 'upload' ? 48 : 300;
-    const downloadLimit = dcId == 'upload' ? 48 : 100;
+    const downloadLimit = dcId == 'upload' ? 100 : 100;
     //const downloadLimit = Infinity;
 
     if(this.downloadActives[dcId] >= downloadLimit || !downloadPull || !downloadPull.length) {
@@ -442,7 +439,10 @@ export class ApiFileManager {
     }
     
     let errorHandler = (error: any) => {
-      this.log.error('Up Error', error);
+      if(error?.type !== 'UPLOAD_CANCELED') {
+        this.log.error('Up Error', error);
+      }
+
       deferred.reject(error);
       canceled = true;
       errorHandler = () => {};
@@ -463,13 +463,13 @@ export class ApiFileManager {
     
             reader.onloadend = (e) => {
               if(canceled) {
-                uploadReject();
+                uploadReject({type: 'UPLOAD_CANCELED'});
                 return;
               }
               
               if(e.target.readyState != FileReader.DONE) {
                 self.log.error('wrong readyState!');
-                uploadReject();
+                uploadReject({type: 'WRONG_READY_STATE'});
                 return;
               }
   
@@ -513,8 +513,8 @@ export class ApiFileManager {
       (r.value as Promise<void>).then(process);
     };
 
-    //const maxRequests = Infinity;
     const maxRequests = 10;
+    //const maxRequests = 10;
     /* for(let i = 0; i < 10; ++i) {
       process();
     } */

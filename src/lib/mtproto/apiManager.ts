@@ -162,7 +162,7 @@ export class ApiManager {
 
     /// #if MTPROTO_HTTP_UPLOAD
     // @ts-ignore
-    const transportType: TransportType = connectionType == 'upload' && false ? 'https' : 'websocket';
+    const transportType: TransportType = connectionType == 'upload' ? 'https' : 'websocket';
     //const transportType: TransportType = connectionType != 'client' ? 'https' : 'websocket';
     /// #else
     // @ts-ignore
