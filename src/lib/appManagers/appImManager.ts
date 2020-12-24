@@ -36,12 +36,11 @@ appSidebarLeft; // just to include
 const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
 export const CHAT_ANIMATION_GROUP = 'chat';
+const FOCUS_EVENT_NAME = isTouchSupported ? 'touchstart' : 'mousemove';
 
 export class AppImManager {
   public columnEl = document.getElementById('column-center') as HTMLDivElement;
   public chatsContainer: HTMLElement;
-
-  //public chatsSelectTab: ReturnType<typeof horizontalMenu>;
 
   public offline = false;
   public updateStatusInterval = 0;
@@ -50,10 +49,7 @@ export class AppImManager {
 
   public setPeerPromise: Promise<void> = null;
 
-  //private mainColumns: HTMLElement;
-  //public _selectTab: ReturnType<typeof horizontalMenu>;
   public tabId = -1;
-  //private closeBtn: HTMLButtonElement;// = this.topbar.querySelector('.sidebar-close-button') as HTMLButtonElement;
   public hideRightSidebar = false;
   
   private chats: Chat[] = [];
@@ -75,8 +71,6 @@ export class AppImManager {
 
     this.log = logger('IM', LogLevels.log | LogLevels.warn | LogLevels.debug | LogLevels.error);
 
-    //this.mainColumns = this.columnEl.parentElement;
-    //this._selectTab = horizontalMenu(null, this.mainColumns);
     this.selectTab(0);
     
     window.addEventListener('blur', () => {
@@ -95,27 +89,12 @@ export class AppImManager {
         animationIntersector.checkAnimations(false);
       }, {once: true});
     });
-    
-    /* this.closeBtn.addEventListener('click', (e) => {
-      cancelEvent(e);
 
-      if(mediaSizes.isMobile) {
-        //this.setPeer(0);
-        this.selectTab(0);
-      } else {
-        const isNowOpen = document.body.classList.toggle(LEFT_COLUMN_ACTIVE_CLASSNAME);
-
-        if(isNowOpen && document.body.classList.contains(RIGHT_COLUMN_ACTIVE_CLASSNAME)) {
-          appSidebarRight.toggleSidebar(false, false);
-          this.hideRightSidebar = isNowOpen;
-        } else if(this.hideRightSidebar) {
-          appSidebarRight.toggleSidebar(true);
-        }
-      }
-    }); */
-    
-    this.updateStatusInterval = window.setInterval(() => this.updateStatus(), 50e3);
-    this.updateStatus();
+    // * Prevent setting online after reloading page
+    window.addEventListener(FOCUS_EVENT_NAME, () => {
+      this.updateStatusInterval = window.setInterval(() => this.updateStatus(), 50e3);
+      this.updateStatus();
+    }, {once: true, passive: true});
 
     this.chatsContainer = document.createElement('div');
     this.chatsContainer.classList.add('chats-container', 'tabs-container');
@@ -166,8 +145,6 @@ export class AppImManager {
 
       location.hash = '';
     });
-
-    //apiUpdatesManager.attach();
   }
 
   private chatsSelectTab(tab: HTMLElement) {
@@ -198,7 +175,7 @@ export class AppImManager {
 
       const chat = this.chat;
 
-      if(e.key == 'Escape') {
+      if(e.key === 'Escape') {
         let cancel = true;
         if(this.markupTooltip?.container?.classList.contains('is-visible')) {
           this.markupTooltip.hide();
@@ -206,7 +183,7 @@ export class AppImManager {
           chat.selection.cancelSelection();
         } else if(chat.container.classList.contains('is-helper-active')) {
           chat.input.replyElements.cancelBtn.click();
-        } else if(chat.peerId != 0) { // hide current dialog
+        } else if(chat.peerId !== 0) { // hide current dialog
           this.setPeer(0);
         } else {
           cancel = false;
@@ -216,25 +193,27 @@ export class AppImManager {
         if(cancel) {
           cancelEvent(e);
         }
-      } else if(e.key == 'Meta' || e.key == 'Control') {
+      } else if(e.key === 'Meta' || e.key === 'Control') {
         return;
-      } else if(e.code == "KeyC" && (e.ctrlKey || e.metaKey) && target.tagName != 'INPUT') {
+      } else if(e.code === "KeyC" && (e.ctrlKey || e.metaKey) && target.tagName !== 'INPUT') {
         return;
-      } else if(e.code == 'ArrowUp') {
+      } else if(e.code === 'ArrowUp') {
         if(!chat.input.editMsgId) {
           const history = appMessagesManager.getHistoryStorage(chat.peerId);
           if(history.history.length) {
             let goodMid: number;
             for(const mid of history.history) {
               const message = appMessagesManager.getMessageByPeer(chat.peerId, mid);
-              const good = this.myId == chat.peerId ? message.fromId == this.myId : message.pFlags.out;
+              const good = this.myId === chat.peerId ? message.fromId === this.myId : message.pFlags.out;
 
               if(good) {
-                if(appMessagesManager.canEditMessage(this.chat.getMessage(mid), 'text')) {
+                if(appMessagesManager.canEditMessage(chat.getMessage(mid), 'text')) {
                   goodMid = mid;
+                  break;
                 }
 
-                break;
+                // * this check will allow editing only last message
+                //break;
               }
             }
   
@@ -246,7 +225,7 @@ export class AppImManager {
         }
       }
       
-      if(chat.input.messageInput && e.target != chat.input.messageInput && target.tagName != 'INPUT' && !target.hasAttribute('contenteditable')) {
+      if(chat.input.messageInput && e.target !== chat.input.messageInput && target.tagName !== 'INPUT' && !target.hasAttribute('contenteditable')) {
         chat.input.messageInput.focus();
         placeCaretAtEnd(chat.input.messageInput);
       }
@@ -426,11 +405,11 @@ export class AppImManager {
   };
 
   public selectTab(id: number) {
-    document.body.classList.toggle(LEFT_COLUMN_ACTIVE_CLASSNAME, id == 0);
+    document.body.classList.toggle(LEFT_COLUMN_ACTIVE_CLASSNAME, id === 0);
 
     const prevTabId = this.tabId;
     this.tabId = id;
-    if(mediaSizes.isMobile && prevTabId == 2 && id == 1) {
+    if(mediaSizes.isMobile && prevTabId === 2 && id === 1) {
       //appSidebarRight.toggleSidebar(false);
       document.body.classList.remove(RIGHT_COLUMN_ACTIVE_CLASSNAME);
     }
@@ -469,7 +448,7 @@ export class AppImManager {
     if(justReturn) {
       rootScope.broadcast('peer_changed', this.chat.peerId);
 
-      if(appSidebarRight.historyTabIds[appSidebarRight.historyTabIds.length - 1] == AppSidebarRight.SLIDERITEMSIDS.search) {
+      if(appSidebarRight.historyTabIds[appSidebarRight.historyTabIds.length - 1] === AppSidebarRight.SLIDERITEMSIDS.search) {
         appSidebarRight.searchTab.closeBtn?.click();
       }
   
@@ -516,7 +495,7 @@ export class AppImManager {
 
         return;
       }
-    } else if(chatIndex > 0 && chat.peerId && chat.peerId != peerId) {
+    } else if(chatIndex > 0 && chat.peerId && chat.peerId !== peerId) {
       this.spliceChats(1, false);
       return this.setPeer(peerId, lastMsgId);
     }

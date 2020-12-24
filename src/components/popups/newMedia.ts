@@ -8,10 +8,13 @@ import { toast } from "../toast";
 import { prepareAlbum, wrapDocument } from "../wrappers";
 import CheckboxField from "../checkbox";
 import SendContextMenu from "../chat/sendContextMenu";
+import { createPosterForVideo, createPosterFromVideo } from "../../helpers/files";
 
 type SendFileParams = Partial<{
   file: File,
   objectURL: string,
+  thumbBlob: Blob,
+  thumbURL: string,
   width: number,
   height: number,
   duration: number
@@ -238,7 +241,11 @@ export default class PopupNewMedia extends PopupElement {
               params.duration = Math.floor(video.duration);
 
               itemDiv.append(video);
-              resolve(itemDiv);
+              createPosterFromVideo(video).then(blob => {
+                params.thumbBlob = blob;
+                params.thumbURL = URL.createObjectURL(blob);
+                resolve(itemDiv);
+              });
             };
 
             video.append(source);

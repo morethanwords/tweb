@@ -469,7 +469,7 @@ export default class AudioElement extends HTMLElement {
               this.audio.play().catch(() => {});
             }
     
-            preloader.attach(downloadDiv);
+            preloader.attach(downloadDiv, false);
             this.append(downloadDiv);
     
             new Promise<void>((resolve) => {

@@ -221,7 +221,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     let preloader: ProgressivePreloader;
     if(message?.media?.preloader) { // means upload
       preloader = message.media.preloader as ProgressivePreloader;
-      preloader.attach(container, undefined, undefined);
+      preloader.attach(container, false);
     } else if(!doc.downloaded && !doc.supportsStreaming) {
       const promise = appDocsManager.downloadDoc(doc, undefined, lazyLoadQueue?.queueId);
       preloader = new ProgressivePreloader(null, true, false, 'prepend');
@@ -557,7 +557,7 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
 
   let preloader: ProgressivePreloader;
   if(message?.media?.preloader) { // means upload
-    message.media.preloader.attach(container);
+    message.media.preloader.attach(container, false);
   } else if(!cacheContext.downloaded) {
     preloader = new ProgressivePreloader(null, false, false, photo._ == 'document' ? 'prepend' : 'append');
   }

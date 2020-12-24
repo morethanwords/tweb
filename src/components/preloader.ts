@@ -65,7 +65,7 @@ export default class ProgressivePreloader {
     const onEnd = () => {
       promise.notify = null;
 
-      if(tempId == this.tempId) {
+      if(tempId === this.tempId) {
         this.detach();
         this.promise = promise = null;
       }
@@ -80,7 +80,7 @@ export default class ProgressivePreloader {
           onEnd();
         } */
 
-        if(tempId != this.tempId) return;
+        if(tempId !== this.tempId) return;
 
         //console.log('preloader download', promise, details);
         const percents = details.done / details.total * 100;
@@ -89,7 +89,7 @@ export default class ProgressivePreloader {
     }
   }
 
-  public attach(elem: Element, reset = true, promise?: CancellablePromise<any>) {
+  public attach(elem: Element, reset = false, promise?: CancellablePromise<any>) {
     if(promise/*  && false */) {
       this.attachPromise(promise);
     }
@@ -129,7 +129,7 @@ export default class ProgressivePreloader {
       return;
     }
     
-    if(percents == 0) {
+    if(percents === 0) {
       this.circle.style.strokeDasharray = '';
       return;
     }

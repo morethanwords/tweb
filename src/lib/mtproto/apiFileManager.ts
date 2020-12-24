@@ -110,7 +110,7 @@ export class ApiFileManager {
       data.deferred.resolve(result);
     }, (error: Error) => {
       // @ts-ignore
-      if(!error.type || (error.type !== 'DOWNLOAD_CANCELED' && error.type !== 'UPLOAD_CANCELED')) {
+      if(!error || !error.type || (error.type !== 'DOWNLOAD_CANCELED' && error.type !== 'UPLOAD_CANCELED')) {
         this.log.error('downloadCheck error:', error);
       }
 

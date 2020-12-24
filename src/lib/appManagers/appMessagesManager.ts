@@ -2,6 +2,7 @@ import { LazyLoadQueueBase } from "../../components/lazyLoadQueue";
 import ProgressivePreloader from "../../components/preloader";
 import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
 import { tsNow } from "../../helpers/date";
+import { createPosterForVideo } from "../../helpers/files";
 import { copy, defineNotNumerableProperties, getObjectKeysAndSort } from "../../helpers/object";
 import { randomLong } from "../../helpers/random";
 import { splitStringByLength, limitSymbols } from "../../helpers/string";
@@ -361,7 +362,7 @@ export class AppMessagesManager {
     });
   }
 
-  public getInputEntities(entities: any) {
+  public getInputEntities(entities: MessageEntity[]) {
     var sendEntites = copy(entities);
     sendEntites.forEach((entity: any) => {
       if(entity._ == 'messageEntityMentionName') {
@@ -615,6 +616,8 @@ export class AppMessagesManager {
     width: number,
     height: number,
     objectURL: string,
+    thumbBlob: Blob,
+    thumbURL: string,
     duration: number,
     background: true,
     silent: true,
@@ -765,7 +768,31 @@ export class AppMessagesManager {
           size: file.size,
           url: options.objectURL
         });
+      } else if(attachType === 'video') {
+        if(options.thumbURL) {
+          thumbs.push({
+            _: 'photoSize',
+            w: options.width,
+            h: options.height,
+            type: 'full',
+            location: null,
+            size: options.thumbBlob.size,
+            url: options.thumbURL
+          });
+        }
+
+        const thumb = thumbs[0] as PhotoSize.photoSize;
+        const docThumb = appPhotosManager.getDocumentCachedThumb(document.id);
+        docThumb.downloaded = thumb.size;
+        docThumb.url = thumb.url;
       }
+
+      /* if(thumbs.length) {
+        const thumb = thumbs[0] as PhotoSize.photoSize;
+        const docThumb = appPhotosManager.getDocumentCachedThumb(document.id);
+        docThumb.downloaded = thumb.size;
+        docThumb.url = thumb.url;
+      } */
       
       appDocsManager.saveDoc(document);
     }
@@ -775,17 +802,11 @@ export class AppMessagesManager {
     const preloader = new ProgressivePreloader(null, true, false, 'prepend');
 
     const media = {
-      _: 'messageMediaPending',
-      type: options.isGroupedItem && options.isMedia ? 'album' : attachType,
-      file_name: fileName || apiFileName,
-      size: file.size,
-      file,
+      _: photo ? 'messageMediaPhoto' : 'messageMediaDocument',
+      pFlags: {},
       preloader,
       photo,
-      document,
-      w: options.width,
-      h: options.height,
-      url: options.objectURL
+      document
     };
 
     const message: any = {
@@ -844,9 +865,25 @@ export class AppMessagesManager {
             uploadPromise = appDownloadManager.upload(file);
             preloader.attachPromise(uploadPromise);
           }
+
+          let thumbUploadPromise: typeof uploadPromise;
+          if(attachType === 'video' && options.objectURL) {
+            thumbUploadPromise = new Promise((resolve, reject) => {
+              const blobPromise = options.thumbBlob ? Promise.resolve(options.thumbBlob) : createPosterForVideo(options.objectURL);
+              blobPromise.then(blob => {
+                if(!blob) {
+                  resolve(null);
+                } else {
+                  appDownloadManager.upload(blob).then(resolve, reject);
+                }
+              }, reject);
+            });
+          }
   
-          uploadPromise && uploadPromise.then((inputFile) => {
+          uploadPromise && uploadPromise.then(async(inputFile) => {
             this.log('appMessagesManager: sendFile uploaded:', inputFile);
+            
+            delete message.media.preloader;
 
             inputFile.name = apiFileName;
             uploaded = true;
@@ -867,7 +904,16 @@ export class AppMessagesManager {
                   attributes
                 };
             }
-  
+
+            if(thumbUploadPromise) {
+              try {
+                const inputFile = await thumbUploadPromise;
+                (inputMedia as InputMedia.inputMediaUploadedDocument).thumb = inputFile;
+              } catch(err) {
+                this.log.error('sendFile thumb upload error:', err);
+              }
+            }
+            
             sentDeferred.resolve(inputMedia);
           }, (/* error */) => {
             toggleError(true);
@@ -952,6 +998,8 @@ export class AppMessagesManager {
       width: number,
       height: number,
       objectURL: string,
+      thumbBlob: Blob,
+      thumbURL: string
     }>[],
     silent: true,
     scheduleDate: number
@@ -1045,7 +1093,7 @@ export class AppMessagesManager {
       });
     };
 
-    const promises: Promise<InputSingleMedia>[] = messages.map(message => {
+    const promises: Promise<InputSingleMedia>[] = messages.map((message, idx) => {
       return (message.send() as Promise<InputMedia>).then((inputMedia: InputMedia) => {
         return apiManager.invokeApi('messages.uploadMedia', {
           peer: inputPeer,
@@ -1078,13 +1126,18 @@ export class AppMessagesManager {
 
         return inputSingleMedia;
       }).catch((err: any) => {
+        if(err.name === 'AbortError') {
+          return null;
+        }
+
+        this.log.error('sendAlbum upload item error:', err, message);
         toggleError(message, true);
         throw err;
       });
     });
 
     Promise.all(promises).then(inputs => {
-      invoke(inputs);
+      invoke(inputs.filter(Boolean));
     });
   }
 
@@ -2251,47 +2304,50 @@ export class AppMessagesManager {
       if(message.grouped_id) {
         text = this.getAlbumText(message.grouped_id).message;
         messageText += '<i>Album' + (text ? ', ' : '') + '</i>';
-      } else switch(message.media._) {
-        case 'messageMediaPhoto':
-          messageText += '<i>Photo' + (message.message ? ', ' : '') + '</i>';
-          break;
-        case 'messageMediaDice':
-          messageText += RichTextProcessor.wrapEmojiText(message.media.emoticon);
-          break;
-        case 'messageMediaGeo':
-          messageText += '<i>Geolocation</i>';
-          break;
-        case 'messageMediaPoll':
-          messageText += '<i>' + message.media.poll.rReply + '</i>';
-          break;
-        case 'messageMediaContact':
-          messageText += '<i>Contact</i>';
-          break;
-        case 'messageMediaDocument':
-          let document = message.media.document;
-
-          if(document.type == 'video') {
-            messageText = '<i>Video' + (message.message ? ', ' : '') + '</i>';
-          } else if(document.type == 'voice') {
-            messageText = '<i>Voice message</i>';
-          } else if(document.type == 'gif') {
-            messageText = '<i>GIF' + (message.message ? ', ' : '') + '</i>';
-          } else if(document.type == 'round') {
-            messageText = '<i>Video message' + (message.message ? ', ' : '') + '</i>';
-          } else if(document.type == 'sticker') {
-            messageText = (document.stickerEmoji || '') + '<i>Sticker</i>';
-            text = '';
-          } else {
-            messageText = '<i>' + document.file_name + (message.message ? ', ' : '') + '</i>';
-          }
-
-          break;
-
-        default:
-          //messageText += message.media._;
-          ///////this.log.warn('Got unknown message.media type!', message);
-          break;
-      }
+      } else {
+        const media = message.media;
+        switch(media._) {
+          case 'messageMediaPhoto':
+            messageText += '<i>Photo' + (message.message ? ', ' : '') + '</i>';
+            break;
+          case 'messageMediaDice':
+            messageText += RichTextProcessor.wrapEmojiText(media.emoticon);
+            break;
+          case 'messageMediaGeo':
+            messageText += '<i>Geolocation</i>';
+            break;
+          case 'messageMediaPoll':
+            messageText += '<i>' + media.poll.rReply + '</i>';
+            break;
+          case 'messageMediaContact':
+            messageText += '<i>Contact</i>';
+            break;
+          case 'messageMediaDocument':
+            let document = media.document;
+  
+            if(document.type == 'video') {
+              messageText = '<i>Video' + (message.message ? ', ' : '') + '</i>';
+            } else if(document.type == 'voice') {
+              messageText = '<i>Voice message</i>';
+            } else if(document.type == 'gif') {
+              messageText = '<i>GIF' + (message.message ? ', ' : '') + '</i>';
+            } else if(document.type == 'round') {
+              messageText = '<i>Video message' + (message.message ? ', ' : '') + '</i>';
+            } else if(document.type == 'sticker') {
+              messageText = (document.stickerEmoji || '') + '<i>Sticker</i>';
+              text = '';
+            } else {
+              messageText = '<i>' + document.file_name + (message.message ? ', ' : '') + '</i>';
+            }
+  
+            break;
+  
+          default:
+            //messageText += media._;
+            ///////this.log.warn('Got unknown media type!', message);
+            break;
+        }
+      } 
     }
 
     if(message.action) {
@@ -2482,8 +2538,7 @@ export class AppMessagesManager {
     const goodMedias = [
       'messageMediaPhoto',
       'messageMediaDocument',
-      'messageMediaWebPage',
-      'messageMediaPending'
+      'messageMediaWebPage'
     ];
 
     if(kind == 'poll') {
