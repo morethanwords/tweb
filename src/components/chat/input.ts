@@ -345,13 +345,7 @@ export default class ChatInput {
     attachClickEvent(this.btnSend, this.onBtnSendClick, {listenerSetter: this.listenerSetter, touchMouseDown: true});
 
     if(this.recorder) {
-      const onCancelRecordClick = (e: Event) => {
-        cancelEvent(e);
-        this.recordCanceled = true;
-        this.recorder.stop();
-        opusDecodeController.setKeepAlive(false);
-      };
-      attachClickEvent(this.btnCancelRecord, onCancelRecordClick, {listenerSetter: this.listenerSetter});
+      attachClickEvent(this.btnCancelRecord, this.onCancelRecordClick, {listenerSetter: this.listenerSetter});
 
       this.recorder.onstop = () => {
         this.recording = false;
@@ -421,6 +415,16 @@ export default class ChatInput {
     this.chatInput.classList.add('type-pinned');
     this.rowsWrapper.classList.add('is-centered');
   }
+
+  private onCancelRecordClick = (e?: Event) => {
+    if(e) {
+      cancelEvent(e);
+    }
+    
+    this.recordCanceled = true;
+    this.recorder.stop();
+    opusDecodeController.setKeepAlive(false);
+  };
 
   private onEmoticonsOpen = () => {
     const toggleClass = isTouchSupported ? 'flip-icon' : 'active';
@@ -900,7 +904,7 @@ export default class ChatInput {
     if(!this.recorder || this.recording || !this.isInputEmpty() || this.forwardingMids.length || this.editMsgId) {
       if(this.recording) {
         if((Date.now() - this.recordStartTime) < RECORD_MIN_TIME) {
-          this.btnCancelRecord.click();
+          this.onCancelRecordClick();
         } else {
           this.recorder.stop();
         }

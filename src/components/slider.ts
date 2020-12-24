@@ -47,7 +47,7 @@ export default class SidebarSlider {
   }
 
   public closeTab = (tabId?: number) => {
-    if(tabId !== undefined && this.historyTabIds[this.historyTabIds.length - 1] != tabId) {
+    if(tabId !== undefined && this.historyTabIds[this.historyTabIds.length - 1] !== tabId) {
       return false;
     }
 
@@ -63,7 +63,7 @@ export default class SidebarSlider {
       id = id.id;
     }
 
-    if(this.historyTabIds[this.historyTabIds.length - 1] == id) {
+    if(this.historyTabIds[this.historyTabIds.length - 1] === id) {
       return false;
     }
 
@@ -86,7 +86,7 @@ export default class SidebarSlider {
   }
 
   public removeTabFromHistory(id: number) {
-    this.historyTabIds.findAndSplice(i => i == id);
+    this.historyTabIds.findAndSplice(i => i === id);
     this.onCloseTab(id);
   }
 
@@ -108,7 +108,7 @@ export default class SidebarSlider {
   public addTab(tab: SuperSliderTab) {
     let id: number;
     if(tab.container.parentElement) {
-      id = Array.from(this.sidebarEl.children).findIndex(el => el == tab.container);
+      id = Array.from(this.sidebarEl.children).findIndex(el => el === tab.container);
     } else {
       id = this.sidebarEl.childElementCount;
       this.sidebarEl.append(tab.container);

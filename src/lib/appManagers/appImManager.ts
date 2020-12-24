@@ -449,7 +449,7 @@ export class AppImManager {
       rootScope.broadcast('peer_changed', this.chat.peerId);
 
       if(appSidebarRight.historyTabIds[appSidebarRight.historyTabIds.length - 1] === AppSidebarRight.SLIDERITEMSIDS.search) {
-        appSidebarRight.searchTab.closeBtn?.click();
+        appSidebarRight.closeTab(AppSidebarRight.SLIDERITEMSIDS.search);
       }
   
       appSidebarRight.sharedMediaTab.setPeer(this.chat.peerId, this.chat.threadId);

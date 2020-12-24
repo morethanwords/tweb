@@ -91,7 +91,7 @@ export default class AppEditFolderTab implements SliderTab {
       this.deleteFolderBtn.setAttribute('disabled', 'true');
       appMessagesManager.filtersStorage.updateDialogFilter(this.filter, true).then(bool => {
         if(bool) {
-          this.closeBtn.click();
+          appSidebarLeft.closeTab(AppSidebarLeft.SLIDERITEMSIDS.editFolder);
         }
       }).finally(() => {
         this.deleteFolderBtn.removeAttribute('disabled');
@@ -127,7 +127,7 @@ export default class AppEditFolderTab implements SliderTab {
 
       promise.then(bool => {
         if(bool) {
-          this.closeBtn.click();
+          appSidebarLeft.closeTab(AppSidebarLeft.SLIDERITEMSIDS.editFolder);
         }
       }).catch(err => {
         if(err.type == 'DIALOG_FILTERS_TOO_MUCH') {

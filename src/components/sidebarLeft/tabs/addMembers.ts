@@ -18,7 +18,7 @@ export default class AppAddMembersTab implements SliderTab {
   constructor() {
     this.nextBtn.addEventListener('click', () => {
       if(this.skippable) {
-        this.backBtn.click();
+        appSidebarLeft.closeTab(AppSidebarLeft.SLIDERITEMSIDS.addMembers);
         return;
       }
 
@@ -35,7 +35,7 @@ export default class AppAddMembersTab implements SliderTab {
         this.selector.freezed = true;
 
         appChatsManager.inviteToChannel(this.peerId, peerIds).then(() => {
-          this.backBtn.click();
+          appSidebarLeft.closeTab(AppSidebarLeft.SLIDERITEMSIDS.addMembers);
         });
       }
     });

@@ -86,7 +86,7 @@ export default class AppIncludedChatsTab implements SliderTab {
       //this.filter.pinned_peers = this.filter.pinned_peers.filter(peerId => this.filter.include_peers.includes(peerId));
 
       appSidebarLeft.editFolderTab.setFilter(this.filter, false);
-      this.closeBtn.click();
+      appSidebarLeft.closeTab(AppSidebarLeft.SLIDERITEMSIDS.includedChats);
     });
   }
 

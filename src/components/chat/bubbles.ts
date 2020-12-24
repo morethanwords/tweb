@@ -176,6 +176,13 @@ export default class ChatBubbles {
         
         /////this.log('message_sent', bubble);
 
+        if(message.media?.document && !message.media.document.type) {
+          const div = bubble.querySelector(`.document-container[data-mid="${tempId}"] .document`) as AudioElement;
+          if(div) {
+            div.replaceWith(wrapDocument({message}));
+          }
+        }
+
         // set new mids to album items for mediaViewer
         if(message.grouped_id) {
           const item = (bubble.querySelector(`.grouped-item[data-mid="${tempId}"]`) as HTMLElement) || bubble; // * it can be .document-container
@@ -192,11 +199,13 @@ export default class ChatBubbles {
           }
         }
 
-        if(['audio', 'voice'].includes(message.media?.document?.type)) {
-          const audio = bubble.querySelector(`audio-element[message-id="${tempId}"]`) as AudioElement;
-          audio.setAttribute('doc-id', message.media.document.id);
-          audio.setAttribute('message-id', '' + mid);
-          audio.message = message;
+        if(message.media?.document) {
+          if(['audio', 'voice'].includes(message.media.document.type)) {
+            const audio = bubble.querySelector(`audio-element[message-id="${tempId}"]`) as AudioElement;
+            audio.setAttribute('doc-id', message.media.document.id);
+            audio.setAttribute('message-id', '' + mid);
+            audio.message = message;
+          }
         }
 
         /* bubble.classList.remove('is-sending');

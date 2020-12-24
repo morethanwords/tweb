@@ -23,7 +23,7 @@ import { renderImageFromUrl } from "./misc";
 import PopupForward from "./popups/forward";
 import ProgressivePreloader from "./preloader";
 import Scrollable from "./scrollable";
-import appSidebarRight from "./sidebarRight";
+import appSidebarRight, { AppSidebarRight } from "./sidebarRight";
 import SwipeHandler from "./swipeHandler";
 import { months, ONE_DAY } from "../helpers/date";
 
@@ -1190,7 +1190,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       //.then(() => mediaSizes.isMobile ? appSidebarRight.sharedMediaTab.closeBtn.click() : Promise.resolve())
       .then(() => {
         if(mediaSizes.isMobile) {
-          appSidebarRight.sharedMediaTab.closeBtn.click();
+          appSidebarRight.closeTab(AppSidebarRight.SLIDERITEMSIDS.sharedMedia);
         }
 
         const message = appMessagesManager.getMessageByPeer(this.peerId, mid);

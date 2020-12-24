@@ -160,7 +160,7 @@ export default class Chat extends EventListenerBase<{
     // set new
     if(!samePeer) {
       if(appSidebarRight.historyTabIds[appSidebarRight.historyTabIds.length - 1] == AppSidebarRight.SLIDERITEMSIDS.search) {
-        appSidebarRight.searchTab.closeBtn?.click();
+        appSidebarRight.closeTab(AppSidebarRight.SLIDERITEMSIDS.search);
       }
 
       this.peerId = peerId;
