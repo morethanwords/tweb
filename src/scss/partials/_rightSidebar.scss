@@ -110,23 +110,6 @@
         padding-top: 15px;
       }
     }
-
-    .content-container {
-      width: 100%;
-      max-width: 100%;
-      //overflow: hidden;
-      position: absolute;
-      top: 100%;
-      //min-height: 100vh; /* Fallback for browsers that do not support Custom Properties */
-      //min-height: calc(var(--vh, 1vh) * 100);
-      min-height: calc((var(--vh, 1vh) * 100) - 100% - 60px);
-      display: flex;
-      flex-direction: column;
-
-      &.sliding {
-        max-height: calc((var(--vh, 1vh) * 100) - 100% - 60px);
-      }
-    }
   }
 
   &-container {
@@ -245,6 +228,23 @@
   &-name, &-subtitle, &-row, &-avatar {
     flex: 0 0 auto;
   }
+}
+
+.search-super {
+  width: 100%;
+  max-width: 100%;
+  //overflow: hidden;
+  position: absolute;
+  top: 100%;
+  //min-height: 100vh; /* Fallback for browsers that do not support Custom Properties */
+  //min-height: calc(var(--vh, 1vh) * 100);
+  min-height: calc((var(--vh, 1vh) * 100) - 100% - 56px);
+  display: flex;
+  flex-direction: column;
+
+  &.sliding {
+    max-height: calc((var(--vh, 1vh) * 100) - 100% - 56px);
+  }
 
   &-tabs {
     //margin-top: 36px;
@@ -258,239 +258,239 @@
       padding-right: 1.5rem !important;
 	    margin-left: -.75rem !important;
     }
+  }
 
-    &-content {
-      //min-height: 100%;
-      min-height: calc(100% - 49px);
-      grid-template-rows: 100%;
-      flex: 1 1 auto;
-      //position: absolute; // FIX THE SAFARI!
-      //position: relative;
-      /* width: 500%;
-      margin-left: -100%;
-   */
-      /* > div {
-        height: 0;
-      
-        &.active {
-          height: auto;
-        }
+  &-tabs-container {
+    //min-height: 100%;
+    min-height: calc(100% - 49px);
+    grid-template-rows: 100%;
+    flex: 1 1 auto;
+    //position: absolute; // FIX THE SAFARI!
+    //position: relative;
+    /* width: 500%;
+    margin-left: -100%;
+ */
+    /* > div {
+      height: 0;
+    
+      &.active {
+        height: auto;
+      }
+    } */
+
+    > div {
+      //height: 100%;
+      position: relative;
+      min-height: 150px;
+
+      /* > div:not(:empty) + .content-empty {
+        display: none;
       } */
-  
-      > div {
-        //height: 100%;
-        position: relative;
-        min-height: 150px;
+    }
 
-        /* > div:not(:empty) + .content-empty {
-          display: none;
-        } */
+    /* > div > div:not(.scroll-padding) {
+      height: 100%;
+    } */
+
+    .preloader {
+      padding: 0;
+      position: absolute !important;
+      height: 100%;
+
+      > svg {
+        height: 50px;
+        width: 50px;
       }
-  
-      /* > div > div:not(.scroll-padding) {
-        height: 100%;
+    }
+  }
+
+  &-content-media {
+    width: 100%;
+    padding: 7.5px;
+
+    display: grid;
+    grid-template-columns: repeat(3,1fr);
+    grid-auto-rows: 1fr;
+    grid-gap: 3.5px;
+
+    @include respond-to(handhelds) {
+      padding: 7.5px 7.5px 7.5px 6.5px;
+    }
+
+    .video-time {
+      position: absolute;
+      left: 5px;
+      top: 4px;
+      height: 18px;
+      border-radius: 4px;
+      background-color: var(--message-time-background);
+      padding: 0px 6px 0px 5px;
+      z-index: 1;
+      font-size: 12px;
+      color: white;
+    }
+
+    .grid-item {
+      overflow: hidden;
+
+      &-media {
+        opacity: 1;
+        transition: opacity .2s ease;
+
+        html:not(.is-mac) &.thumbnail {
+          filter: blur(7px);
+        }
+      }
+    }
+
+    /* span.video-play {
+      background-color: var(--message-time-background);
+      color: #fff;
+      text-align: center;
+      font-size: 34px;
+      line-height: 60px;
+      cursor: pointer;
+    } */
+  }
+
+  &-content-docs {
+    padding: 7px 20px;
+
+    .document {
+      padding-left: 4rem;
+      padding-right: 1rem;
+      //height: 54px;
+      height: calc(50px + 1.5rem);
+
+      &-ico, &-download {
+        width: 48px;
+        height: 48px;
+      }
+
+      /* & + .document {
+        margin-top: 1.5rem;
       } */
-  
-      .preloader {
-        padding: 0;
-        position: absolute !important;
-        height: 100%;
-  
-        > svg {
-          height: 50px;
-          width: 50px;
-        }
-      }
-  
-      #content-media {
-        width: 100%;
-        padding: 7.5px;
+    }
 
-        display: grid;
-        grid-template-columns: repeat(3,1fr);
-        grid-auto-rows: 1fr;
-        grid-gap: 3.5px;
-  
-        @include respond-to(handhelds) {
-          padding: 7.5px 7.5px 7.5px 6.5px;
-        }
-  
-        .video-time {
-          position: absolute;
-          left: 5px;
-          top: 4px;
-          height: 18px;
-          border-radius: 4px;
-          background-color: var(--message-time-background);
-          padding: 0px 6px 0px 5px;
-          z-index: 1;
-          font-size: 12px;
-          color: white;
-        }
+    .document-name {
+      font-weight: normal;
 
-        .grid-item {
-          overflow: hidden;
+      width: 100%;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
 
-          &-media {
-            opacity: 1;
-            transition: opacity .2s ease;
-  
-            html:not(.is-mac) &.thumbnail {
-              filter: blur(7px);
-            }
-          }
-        }
+  &-content-links {
+    padding: 0 30px 15px 15px;
 
-        /* span.video-play {
-          background-color: var(--message-time-background);
-          color: #fff;
-          text-align: center;
-          font-size: 34px;
-          line-height: 60px;
-          cursor: pointer;
-        } */
-      }
-  
-      #content-docs {
-        padding: 7px 20px;
-  
-        .document {
-          padding-left: 4rem;
-          padding-right: 1rem;
-          //height: 54px;
-          height: calc(50px + 1.5rem);
-  
-          &-ico, &-download {
-            width: 48px;
-            height: 48px;
-          }
-  
-          /* & + .document {
-            margin-top: 1.5rem;
-          } */
-        }
-  
-        .document-name {
-          font-weight: normal;
-  
-          width: 100%;
-          max-width: 100%;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-      }
-  
-      #content-links {
-        padding: 0 30px 15px 15px;
-  
-        > div {
+    > div {
+      display: flex;
+      flex-direction: column;
+      margin-top: 20px;
+      margin-left: 5px;
+      padding-bottom: 2px;
+      //padding-bottom: 10px;
+      position: relative;
+      padding-left: 60px;
+      overflow: hidden;
+      //min-height: 48px;
+      min-height: 58px;
+
+      .preview {
+        height: 48px;
+        width: 48px;
+        border-radius: 5px;
+        overflow: hidden;
+        position: absolute;
+        left: 0;
+        top: 0;
+        background-repeat: no-repeat;
+        background-size: cover;
+        background-position: center center;
+
+        &.empty {
           display: flex;
-          flex-direction: column;
-          margin-top: 20px;
-          margin-left: 5px;
-          padding-bottom: 2px;
-          //padding-bottom: 10px;
-          position: relative;
-          padding-left: 60px;
-          overflow: hidden;
-          //min-height: 48px;
-          min-height: 58px;
-  
-          .preview {
-            height: 48px;
-            width: 48px;
-            border-radius: 5px;
-            overflow: hidden;
-            position: absolute;
-            left: 0;
-            top: 0;
-            background-repeat: no-repeat;
-            background-size: cover;
-            background-position: center center;
-  
-            &.empty {
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-size: 2rem;
-              color: #fff;
-              text-transform: uppercase;
-              background-color: $color-blue;
-            }
-          }
-  
-          .url {
-            white-space: nowrap;
-            text-overflow: ellipsis;
-            overflow: hidden;
-          }
-        }
-  
-        .title {
-          font-size: 16px;
-          margin-top: 3px;
-        }
-  
-        .subtitle {
-          font-size: 14px;
+          align-items: center;
+          justify-content: center;
+          font-size: 2rem;
+          color: #fff;
+          text-transform: uppercase;
+          background-color: $color-blue;
         }
       }
-  
-      #content-audio {
-        padding: 20px 15px 15px 20px;
-  
-        > div {
-          min-height: 60px;
-        }
 
-        .preloader-container {
-          .preloader-circular {
-            background-color: rgba(0, 0, 0, 0.35);
-          }
+      .url {
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+      }
+    }
 
-          @include respond-to(handhelds) {
-            width: 36px;
-            height: 36px;
-          }
+    .title {
+      font-size: 16px;
+      margin-top: 3px;
+    }
 
-          @include respond-to(not-handhelds) {
-            width: 38px;
-            height: 38px;
-          }
-        }
+    .subtitle {
+      font-size: 14px;
+    }
+  }
 
-        .audio {
-          padding-left: 61px;
-          /* min-height: 58px; */
-          max-width: 368px;
-          justify-content: unset;
-          height: 48px;
-          margin-bottom: 1.5rem;
+  &-content-audio {
+    padding: 20px 15px 15px 20px;
 
-          &.audio-show-progress .audio-subtitle {
-            overflow: visible;
-          }
+    > div {
+      min-height: 60px;
+    }
 
-          /* &-no-subtitle {
-            padding-bottom: 16px;
-          } */
+    .preloader-container {
+      .preloader-circular {
+        background-color: rgba(0, 0, 0, 0.35);
+      }
 
-          &-ico, &-download {
-            width: 48px;
-            height: 48px;
-          }
+      @include respond-to(handhelds) {
+        width: 36px;
+        height: 36px;
+      }
 
-          .part {
-            height: 112px;
-            width: 112px;
-            position: absolute;
-            background-color: white;
+      @include respond-to(not-handhelds) {
+        width: 38px;
+        height: 38px;
+      }
+    }
 
-            @include respond-to(handhelds) {
-              width: 100px;
-              height: 100px;
-            }
-          }
+    .audio {
+      padding-left: 61px;
+      /* min-height: 58px; */
+      max-width: 368px;
+      justify-content: unset;
+      height: 48px;
+      margin-bottom: 1.5rem;
+
+      &.audio-show-progress .audio-subtitle {
+        overflow: visible;
+      }
+
+      /* &-no-subtitle {
+        padding-bottom: 16px;
+      } */
+
+      &-ico, &-download {
+        width: 48px;
+        height: 48px;
+      }
+
+      .part {
+        height: 112px;
+        width: 112px;
+        position: absolute;
+        background-color: white;
+
+        @include respond-to(handhelds) {
+          width: 100px;
+          height: 100px;
         }
       }
     }

@@ -62,7 +62,7 @@ export type HistoryResult = {
 export type Dialog = MTDialog.dialog;
 
 export type MyMessage = Message.message | Message.messageService;
-type MyInputMessagesFilter = 'inputMessagesFilterEmpty' 
+export type MyInputMessagesFilter = 'inputMessagesFilterEmpty' 
   | 'inputMessagesFilterPhotos' 
   | 'inputMessagesFilterPhotoVideo' 
   | 'inputMessagesFilterVideo' 
