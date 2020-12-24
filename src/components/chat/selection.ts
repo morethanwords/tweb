@@ -443,7 +443,7 @@ export default class ChatSelection {
     this.updateBubbleSelection(bubble, !found);
   };
 
-  private canSelectBubble(bubble: HTMLElement) {
-    return !bubble.classList.contains('service');
+  public canSelectBubble(bubble: HTMLElement) {
+    return !bubble.classList.contains('service') && !bubble.classList.contains('is-sending');
   }
 }

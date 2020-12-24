@@ -78,7 +78,7 @@ export class AppPollsManager {
 
   constructor() {
     rootScope.on('apiUpdate', (e) => {
-      let update = e.detail;
+      const update = e.detail;
       
       this.handleUpdate(update);
     });
@@ -122,7 +122,11 @@ export class AppPollsManager {
   }
 
   public saveResults(poll: Poll, results: PollResults) {
-    this.results[poll.id] = results;
+    if(this.results[poll.id]) {
+      results = Object.assign(this.results[poll.id], results);
+    } else {
+      this.results[poll.id] = results;
+    }
 
     if(!results.pFlags.min) { // ! https://core.telegram.org/constructor/pollResults - min
       poll.chosenIndexes.length = 0;
@@ -157,7 +161,7 @@ export class AppPollsManager {
       poll,
       correct_answers: correctAnswers,
       solution,
-      solution_entities: solutionEntities
+      solution_entities: solutionEntities?.length ? solutionEntities : undefined
     };
   }
 
@@ -181,7 +185,7 @@ export class AppPollsManager {
 
     return apiManager.invokeApi('messages.sendVote', {
       peer: inputPeer,
-      msg_id: message.id,
+      msg_id: appMessagesManager.getLocalMessageId(message.mid),
       options
     }).then(updates => {
       this.log('sendVote updates:', updates);
@@ -194,7 +198,7 @@ export class AppPollsManager {
 
     return apiManager.invokeApi('messages.getPollResults', {
       peer: inputPeer,
-      msg_id: message.id
+      msg_id: appMessagesManager.getLocalMessageId(message.mid)
     }).then(updates => {
       apiUpdatesManager.processUpdateMessage(updates);
       this.log('getResults updates:', updates);
@@ -204,7 +208,7 @@ export class AppPollsManager {
   public getVotes(message: any, option?: Uint8Array, offset?: string, limit = 20) {
     return apiManager.invokeApi('messages.getPollVotes', {
       peer: appPeersManager.getInputPeerById(message.peerId),
-      id: message.id,
+      id: appMessagesManager.getLocalMessageId(message.mid),
       option,
       offset,
       limit

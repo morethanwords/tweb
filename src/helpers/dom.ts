@@ -123,57 +123,41 @@ export function getRichValue(field: HTMLElement, entities?: MessageEntity[]) {
     RichTextProcessor.combineSameEntities(entities);
   }
 
-  console.log('getRichValue:', value, entities);
+  //console.log('getRichValue:', value, entities);
 
   return value;
 }
 
 MOUNT_CLASS_TO && (MOUNT_CLASS_TO.getRichValue = getRichValue);
 
-const markdownTypes = {
-  bold: '**',
-  underline: '_-_',
-  italic: '__',
-  monospace: '`',
-  pre: '``',
-  strikethrough: '~~'
-};
-
 export type MarkdownType = 'bold' | 'italic' | 'underline' | 'strikethrough' | 'monospace' | 'link';
 export type MarkdownTag = {
   match: string,
-  markdown: string | ((node: HTMLElement) => string),
   entityName: 'messageEntityBold' | 'messageEntityUnderline' | 'messageEntityItalic' | 'messageEntityPre' | 'messageEntityStrike' | 'messageEntityTextUrl';
 };
 export const markdownTags: {[type in MarkdownType]: MarkdownTag} = {
   bold: {
     match: '[style*="font-weight"], b',
-    markdown: markdownTypes.bold,
     entityName: 'messageEntityBold'
   },
   underline: {
     match: '[style*="underline"], u',
-    markdown: markdownTypes.underline,
     entityName: 'messageEntityUnderline'
   },
   italic: {
     match: '[style*="italic"], i',
-    markdown: markdownTypes.italic,
     entityName: 'messageEntityItalic'
   },
   monospace: {
     match: '[style*="monospace"], [face="monospace"]',
-    markdown: markdownTypes.monospace,
     entityName: 'messageEntityPre'
   },
   strikethrough: {
     match: '[style*="line-through"], strike',
-    markdown: markdownTypes.strikethrough,
     entityName: 'messageEntityStrike'
   },
   link: {
     match: 'A',
-    markdown: (node: HTMLElement) => `[${(node.parentElement as HTMLAnchorElement).href}](${node.nodeValue})`,
     entityName: 'messageEntityTextUrl'
   }
 };

@@ -17,6 +17,7 @@ export default class ChatContextMenu {
   private buttons: (ButtonMenuItemOptions & {verify: () => boolean, notDirect?: () => boolean, withSelection?: true})[];
   private element: HTMLElement;
 
+  private isSelectable: boolean;
   private target: HTMLElement;
   private isTargetAGroupedItem: boolean;
   public peerId: number;
@@ -60,6 +61,7 @@ export default class ChatContextMenu {
         }
       }
 
+      this.isSelectable = this.chat.selection.canSelectBubble(bubble);
       this.peerId = this.chat.peerId;
       //this.msgID = msgID;
       this.target = e.target as HTMLElement;
@@ -145,7 +147,7 @@ export default class ChatContextMenu {
       icon: 'send2',
       text: 'Send Now',
       onClick: this.onSendScheduledClick,
-      verify: () => this.chat.type === 'scheduled'
+      verify: () => this.chat.type === 'scheduled' && !this.message.pFlags.is_outgoing
     }, {
       icon: 'send2',
       text: 'Send Now selected',
@@ -172,7 +174,7 @@ export default class ChatContextMenu {
       text: 'Reply',
       onClick: this.onReplyClick,
       verify: () => (this.peerId > 0 || this.appChatsManager.hasRights(-this.peerId, 'send')) && 
-        this.mid > 0 && 
+        !this.message.pFlags.is_outgoing && 
         !!this.chat.input.messageInput && 
         this.chat.type !== 'scheduled'/* ,
       cancelEvent: true */
@@ -197,7 +199,7 @@ export default class ChatContextMenu {
       icon: 'pin',
       text: 'Pin',
       onClick: this.onPinClick,
-      verify: () => this.mid > 0 && 
+      verify: () => !this.message.pFlags.is_outgoing && 
         this.message._ != 'messageService' && 
         !this.message.pFlags.pinned && 
         this.appPeersManager.canPinMessage(this.peerId) && 
@@ -222,26 +224,28 @@ export default class ChatContextMenu {
       onClick: this.onStopPoll,
       verify: () => {
         const poll = this.message.media?.poll;
-        return this.appMessagesManager.canEditMessage(this.message, 'poll') && poll && !poll.pFlags.closed && this.mid > 0;
+        return this.appMessagesManager.canEditMessage(this.message, 'poll') && poll && !poll.pFlags.closed && !this.message.pFlags.is_outgoing;
       }/* ,
       cancelEvent: true */
     }, {
       icon: 'forward',
       text: 'Forward',
       onClick: this.onForwardClick,
-      verify: () => this.mid > 0 && this.chat.type !== 'scheduled'
+      verify: () => this.chat.type !== 'scheduled' && !this.message.pFlags.is_outgoing
     }, {
       icon: 'forward',
       text: 'Forward selected',
       onClick: this.onForwardClick,
-      verify: () => this.chat.selection.selectionForwardBtn && this.chat.selection.selectedMids.has(this.mid) && !this.chat.selection.selectionForwardBtn.hasAttribute('disabled'),
+      verify: () => this.chat.selection.selectionForwardBtn && 
+        this.chat.selection.selectedMids.has(this.mid) && 
+        !this.chat.selection.selectionForwardBtn.hasAttribute('disabled'),
       notDirect: () => true,
       withSelection: true
     }, {
       icon: 'select',
       text: 'Select',
       onClick: this.onSelectClick,
-      verify: () => !this.message.action && !this.chat.selection.selectedMids.has(this.mid),
+      verify: () => !this.message.action && !this.chat.selection.selectedMids.has(this.mid) && this.isSelectable,
       notDirect: () => true,
       withSelection: true
     }, {

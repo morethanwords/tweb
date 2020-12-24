@@ -402,7 +402,9 @@ export class AppMessagesManager {
     }
 
     let entities = options.entities || [];
-    text = RichTextProcessor.parseMarkdown(text, entities);
+    if(text) {
+      text = RichTextProcessor.parseMarkdown(text, entities);
+    }
 
     const schedule_date = options.scheduleDate || (message.pFlags.is_scheduled ? message.date : undefined);
     return apiManager.invokeApi('messages.editMessage', {
@@ -410,7 +412,7 @@ export class AppMessagesManager {
       id: message.id,
       message: text,
       media: options.newMedia,
-      entities: entities ? this.getInputEntities(entities) : undefined,
+      entities: entities.length ? this.getInputEntities(entities) : undefined,
       no_webpage: options.noWebPage,
       schedule_date
     }).then((updates) => {
@@ -882,7 +884,7 @@ export class AppMessagesManager {
   
           uploadPromise && uploadPromise.then(async(inputFile) => {
             this.log('appMessagesManager: sendFile uploaded:', inputFile);
-            
+
             delete message.media.preloader;
 
             inputFile.name = apiFileName;
@@ -1162,7 +1164,6 @@ export class AppMessagesManager {
     const isMegagroup = isChannel && appPeersManager.isMegagroup(peerId);
     const asChannel = isChannel && !isMegagroup ? true : false;
 
-    let fromId = appUsersManager.getSelf().id;
     let media;
     switch(inputMedia._) {
       case 'inputMediaPoll': {

@@ -1948,7 +1948,7 @@ export default class ChatBubbles {
                 chat: this.chat
               });
             } else {
-              const withTail = !isAndroid && !isApple && doc.type != 'round' && !message.message && withReplies;
+              const withTail = !isAndroid && !isApple && doc.type != 'round' && !message.message && !withReplies;
               if(withTail) bubble.classList.add('with-media-tail');
               wrapVideo({
                 doc, 
