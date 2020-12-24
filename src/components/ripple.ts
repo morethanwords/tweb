@@ -55,6 +55,10 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
         }, duration / 2);
       }
 
+      if(!isTouchSupported) {
+        window.removeEventListener('contextmenu', handler);
+      }
+
       handler = null;
       touchStartFired = false;
     };
@@ -171,6 +175,7 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
       let {clientX, clientY} = e;
       drawRipple(clientX, clientY);
       window.addEventListener('mouseup', handler, {once: true});
+      window.addEventListener('contextmenu', handler, {once: true});
     });
   }
 }

@@ -15,7 +15,7 @@ export class SearchGroup {
   nameEl: HTMLDivElement;
   list: HTMLUListElement;
 
-  constructor(public name: string, public type: string, private clearable = true, className?: string, clickable = true) {
+  constructor(public name: string, public type: string, private clearable = true, className?: string, clickable = true, public autonomous = true) {
     this.list = document.createElement('ul');
     this.container = document.createElement('div');
     if(className) this.container.className = className;
@@ -32,7 +32,7 @@ export class SearchGroup {
     this.container.style.display = 'none';
 
     if(clickable) {
-      appDialogsManager.setListClickListener(this.list);
+      appDialogsManager.setListClickListener(this.list, undefined, undefined, autonomous);
     }
   }
 
@@ -183,7 +183,8 @@ export default class AppSearch {
             dialog: peerId, 
             container: group.list, 
             drawStatus: false,
-            avatarSize: 48
+            avatarSize: 48,
+            autonomous: group.autonomous
           });
 
           if(showMembersCount && (peer.participants_count || peer.participants)) {

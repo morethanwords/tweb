@@ -72,7 +72,7 @@ export default class AppPollResultsTab implements SliderTab {
 
       appDialogsManager.setListClickListener(list, () => {
         this.closeBtn.click();
-      });
+      }, undefined, true);
 
       list.style.minHeight = Math.min(result.voters, 4) * 50 + 'px';
 

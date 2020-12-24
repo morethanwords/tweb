@@ -167,8 +167,8 @@ export class AppSidebarLeft extends SidebarSlider {
         contacts: new SearchGroup('Chats', 'contacts'),
         globalContacts: new SearchGroup('Global Search', 'contacts'),
         messages: new SearchGroup('Global Search', 'messages'),
-        people: new SearchGroup('People', 'contacts', false, 'search-group-people'),
-        recent: new SearchGroup('Recent', 'contacts', false, 'search-group-recent')
+        people: new SearchGroup('People', 'contacts', false, 'search-group-people', true, false),
+        recent: new SearchGroup('Recent', 'contacts', false, 'search-group-recent', true, false)
       };
 
       this.globalSearch = new AppSearch(this.searchContainer, this.inputSearch, this.searchGroups, (count) => {
@@ -222,7 +222,8 @@ export class AppSidebarLeft extends SidebarSlider {
               container: this.searchGroups.people.list, 
               drawStatus: false,
               onlyFirstName: true,
-              avatarSize: 54
+              avatarSize: 54,
+              autonomous: false
             });
           });
         }
@@ -358,7 +359,8 @@ export class AppSidebarLeft extends SidebarSlider {
           container: this.searchGroups.recent.list,
           drawStatus: false,
           meAsSaved: true,
-          avatarSize: 48
+          avatarSize: 48,
+          autonomous: false
         });
 
         dom.lastMessageSpan.innerText = peerId > 0 ? appUsersManager.getUserStatusString(peerId) : appChatsManager.getChatMembersString(peerId);

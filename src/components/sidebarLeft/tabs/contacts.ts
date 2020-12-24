@@ -94,7 +94,8 @@ export default class AppContactsTab implements SliderTab {
             dialog: user.id,
             container: this.list,
             drawStatus: false,
-            avatarSize: 48
+            avatarSize: 48,
+            autonomous: false
           });
   
           let status = appUsersManager.getUserStatusString(user.id);
