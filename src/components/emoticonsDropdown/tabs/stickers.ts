@@ -341,7 +341,7 @@ export default class StickersTab implements EmoticonsTab {
       return;
     }
 
-    let div = this.recentDiv.querySelector(`[data-doc-i-d="${doc.id}"]`);
+    let div = this.recentDiv.querySelector(`[data-doc-id="${doc.id}"]`);
     if(!div) {
       div = this.superStickerRenderer.renderSticker(doc);
     }

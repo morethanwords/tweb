@@ -1,10 +1,11 @@
+import { LazyLoadQueueBase } from "../../components/lazyLoadQueue";
 import ProgressivePreloader from "../../components/preloader";
 import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
 import { tsNow } from "../../helpers/date";
 import { copy, defineNotNumerableProperties, getObjectKeysAndSort } from "../../helpers/object";
 import { randomLong } from "../../helpers/random";
 import { splitStringByLength, limitSymbols } from "../../helpers/string";
-import { Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputNotifyPeer, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, NotifyPeer, PhotoSize, SendMessageAction, Update } from "../../layer";
+import { Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputNotifyPeer, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, NotifyPeer, PhotoSize, SendMessageAction, Update } from "../../layer";
 import { InvokeApiOptions } from "../../types";
 import { langPack } from "../langPack";
 import { logger, LogLevels } from "../logger";
@@ -133,6 +134,8 @@ export class AppMessagesManager {
       }>
     }
   } = {};
+  
+  public sendSmthLazyLoadQueue = new LazyLoadQueueBase(1);
 
   public needSingleMessages: {[peerId: string]: number[]} = {};
   private fetchSingleMessagesPromise: Promise<void> = null;
@@ -510,11 +513,11 @@ export class AppMessagesManager {
         delete message.error;
       }
       rootScope.broadcast('messages_pending');
-    }
+    };
 
-    message.send = () =>  {
+    message.send = () => {
       toggleError(false);
-      const sentRequestOptions: any = {};
+      const sentRequestOptions: InvokeApiOptions = {};
       if(this.pendingAfterMsgs[peerId]) {
         sentRequestOptions.afterMessageId = this.pendingAfterMsgs[peerId].messageId;
       }
@@ -543,8 +546,9 @@ export class AppMessagesManager {
         }, sentRequestOptions);
       }
 
-      // this.log(flags, entities)
+      //this.log('sendText', message.mid);
       apiPromise.then((updates: any) => {
+        //this.log('sendText sent', message.mid);
         if(updates._ == 'updateShortSentMessage') {
           message.date = updates.date;
           message.id = updates.id;
@@ -834,9 +838,7 @@ export class AppMessagesManager {
         
         sentDeferred.resolve(inputMedia);
       } else if(file instanceof File || file instanceof Blob) {
-        const deferred = deferredPromise<void>();
-
-        this.sendFilePromise.then(() => {
+        const load = () => {
           if(!uploaded || message.error) {
             uploaded = false;
             uploadPromise = appDownloadManager.upload(file);
@@ -881,17 +883,22 @@ export class AppMessagesManager {
             if(err.name === 'AbortError' && !uploaded) {
               this.log('cancelling upload', media);
 
-              deferred.resolve();
               sentDeferred.reject(err);
               this.cancelPendingMessage(randomIdS);
               this.setTyping(peerId, 'sendMessageCancelAction');
             }
           });
 
-          uploadPromise.finally(deferred.resolve);
-        });
+          return sentDeferred;
+        };
 
-        this.sendFilePromise = deferred;
+        if(options.isGroupedItem) {
+          load();
+        } else {
+          this.sendSmthLazyLoadQueue.push({
+            load
+          });
+        }
       }
 
       return sentDeferred;
@@ -1021,28 +1028,31 @@ export class AppMessagesManager {
     const invoke = (multiMedia: any[]) => {
       this.setTyping(peerId, 'sendMessageCancelAction');
 
-      return apiManager.invokeApi('messages.sendMultiMedia', {
-        peer: inputPeer,
-        multi_media: multiMedia,
-        reply_to_msg_id: replyToMsgId,
-        schedule_date: options.scheduleDate,
-        silent: options.silent
-      }).then((updates) => {
-        apiUpdatesManager.processUpdateMessage(updates);
-      }, (error) => {
-        messages.forEach(message => toggleError(message, true));
+      this.sendSmthLazyLoadQueue.push({
+        load: () => {
+          return apiManager.invokeApi('messages.sendMultiMedia', {
+            peer: inputPeer,
+            multi_media: multiMedia,
+            reply_to_msg_id: replyToMsgId,
+            schedule_date: options.scheduleDate,
+            silent: options.silent
+          }).then((updates) => {
+            apiUpdatesManager.processUpdateMessage(updates);
+          }, (error) => {
+            messages.forEach(message => toggleError(message, true));
+          });
+        }
       });
     };
 
-    const inputs: InputSingleMedia[] = [];
-    for(const message of messages) {
-      const inputMedia: InputMedia = await message.send();
-      this.log('sendAlbum uploaded item:', inputMedia);
-
-      await apiManager.invokeApi('messages.uploadMedia', {
-        peer: inputPeer,
-        media: inputMedia
-      }).then(messageMedia => {
+    const promises: Promise<InputSingleMedia>[] = messages.map(message => {
+      return (message.send() as Promise<InputMedia>).then((inputMedia: InputMedia) => {
+        return apiManager.invokeApi('messages.uploadMedia', {
+          peer: inputPeer,
+          media: inputMedia
+        });
+      })
+      .then(messageMedia => {
         let inputMedia: any;
         if(messageMedia._ == 'messageMediaPhoto') {
           const photo = appPhotosManager.savePhoto(messageMedia.photo);
@@ -1052,25 +1062,30 @@ export class AppMessagesManager {
           inputMedia = appDocsManager.getMediaInput(doc);
         }
 
-        inputs.push({
+        const inputSingleMedia: InputSingleMedia = {
           _: 'inputSingleMedia',
           media: inputMedia,
           random_id: message.random_id,
           message: caption,
           entities
-        });
+        };
 
         // * only 1 caption for all inputs
         if(caption) {
           caption = '';
           entities = [];
         }
-      }, () => {
-        toggleError(message, true);
-      });
-    }
 
-    invoke(inputs);
+        return inputSingleMedia;
+      }).catch((err: any) => {
+        toggleError(message, true);
+        throw err;
+      });
+    });
+
+    Promise.all(promises).then(inputs => {
+      invoke(inputs);
+    });
   }
 
   public sendOther(peerId: number, inputMedia: any, options: Partial<{
@@ -1638,7 +1653,7 @@ export class AppMessagesManager {
       schedule_date: options.scheduleDate
     }, sentRequestOptions).then((updates) => {
       apiUpdatesManager.processUpdateMessage(updates);
-    }, () => {}).then(() => {
+    }).finally(() => {
       if(this.pendingAfterMsgs[peerId] === sentRequestOptions) {
         delete this.pendingAfterMsgs[peerId];
       }

@@ -253,7 +253,7 @@ export class ApiManager {
 
     const deferred = deferredPromise<MethodDeclMap[T]['res']>();
 
-    const afterMessageIdTemp = options.afterMessageId;
+    let afterMessageIdTemp = options.afterMessageId;
     if(afterMessageIdTemp) {
       deferred.finally(() => {
         delete this.afterMessageTempIds[afterMessageIdTemp];
@@ -325,7 +325,7 @@ export class ApiManager {
 
       return promise.then(deferred.resolve, (error: ApiError) => {
         //if(!options.ignoreErrors) {
-        if(error.type != 'FILE_REFERENCE_EXPIRED') {
+        if(error.type != 'FILE_REFERENCE_EXPIRED' && error.type !== 'MSG_WAIT_FAILED') {
           this.log.error('Error', error.code, error.type, this.baseDcId, dcId, method, params);
         }
         
@@ -377,7 +377,15 @@ export class ApiManager {
           setTimeout(() => {
             performRequest(cachedNetworker);
           }, waitTime/* (waitTime + 5) */ * 1000); // 03.02.2020
-        } else if(!options.rawError && (error.code == 500 || error.type == 'MSG_WAIT_FAILED')) {
+        } else if(!options.rawError && error.code == 500) {
+          if(error.type === 'MSG_WAIT_FAILED') {
+            afterMessageIdTemp = undefined;
+            delete options.afterMessageId;
+            delete this.afterMessageTempIds[options.prepareTempMessageId];
+            performRequest(cachedNetworker);
+            return;
+          }
+
           const now = Date.now();
           if(options.stopTime) {
             if(now >= options.stopTime) {
