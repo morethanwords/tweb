@@ -1193,7 +1193,12 @@ export default class ChatInput {
 
     let input = RichTextProcessor.wrapDraftText(message.message, {entities: message.totalEntities});
     const f = () => {
-      this.setTopInfo('edit', f, 'Editing', message.message, input, message);
+      // ! костыль
+      const replyText = this.appMessagesManager.getRichReplyText(message, undefined, [message.mid]);
+      this.setTopInfo('edit', f, 'Editing', undefined, input, message);
+      const subtitleEl = this.replyElements.container.querySelector('.reply-subtitle');
+      subtitleEl.innerHTML = replyText;
+
       this.editMsgId = mid;
       input = undefined;
     };
@@ -1220,11 +1225,17 @@ export default class ChatInput {
       });
 
       const title = peerTitles.length < 3 ? peerTitles.join(' and ') : peerTitles[0] + ' and ' + (peerTitles.length - 1) + ' others';
-      if(mids.length == 1) {
-        const message = this.appMessagesManager.getMessageByPeer(fromPeerId, mids[0]);
-        this.setTopInfo('forward', f, title, message.message, undefined, message);
+      const firstMessage = this.appMessagesManager.getMessageByPeer(fromPeerId, mids[0]);
+
+      const replyText = this.appMessagesManager.getRichReplyText(firstMessage, undefined, mids);
+      if(replyText.includes('Album') || mids.length === 1) {
+        this.setTopInfo('forward', f, title);
+
+        // ! костыль
+        const subtitleEl = this.replyElements.container.querySelector('.reply-subtitle');
+        subtitleEl.innerHTML = replyText;
       } else {
-        this.setTopInfo('forward', f, title, mids.length + ' forwarded messages');
+        this.setTopInfo('forward', f, title, mids.length + ' ' + (mids.length > 1 ? 'forwarded messages' : 'forwarded message'));
       }
 
       this.forwardingMids = mids.slice();

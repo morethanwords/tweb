@@ -2298,14 +2298,35 @@ export class AppMessagesManager {
     }
   }
 
-  public getRichReplyText(message: any, text: string = message.message) {
+  public getRichReplyText(message: any, text: string = message.message, usingMids?: number[]) {
     let messageText = '';
 
     if(message.media) {
+      let usingFullAlbum = true;
       if(message.grouped_id) {
-        text = this.getAlbumText(message.grouped_id).message;
-        messageText += '<i>Album' + (text ? ', ' : '') + '</i>';
+        if(usingMids) {
+          const mids = this.getMidsByMessage(message);
+          if(usingMids.length === mids.length) {
+            for(const mid of mids) {
+              if(!usingMids.includes(mid)) {
+                usingFullAlbum = false;
+                break;
+              }
+            }
+          } else {
+            usingFullAlbum = false;
+          }
+        }
+
+        if(usingFullAlbum) {
+          text = this.getAlbumText(message.grouped_id).message;
+          messageText += '<i>Album' + (text ? ', ' : '') + '</i>';
+        }
       } else {
+        usingFullAlbum = false;
+      }
+
+      if(!usingFullAlbum) {
         const media = message.media;
         switch(media._) {
           case 'messageMediaPhoto':
