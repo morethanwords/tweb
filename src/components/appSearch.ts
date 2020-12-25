@@ -150,7 +150,7 @@ export default class AppSearch {
     
     const maxId = this.minMsgId || 0;
 
-    return this.searchPromise = appMessagesManager.getSearchNew({
+    return this.searchPromise = appMessagesManager.getSearch({
       peerId: this.peerId, 
       query, 
       inputFilter: {_: 'inputMessagesFilterEmpty'}, 

@@ -1244,7 +1244,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     if(anchor) maxId = anchor.mid;
     if(!older) maxId = appMessagesManager.incrementMessageId(maxId, 1);
 
-    const promise = appMessagesManager.getSearchNew({
+    const promise = appMessagesManager.getSearch({
       peerId: this.searchContext.peerId,
       query: this.searchContext.query,
       inputFilter: {

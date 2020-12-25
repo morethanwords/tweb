@@ -21,6 +21,10 @@ avatar-element {
   &.tgico-avatar_deletedaccount:before {
     font-size: calc(56px / var(--multiplier));
   }
+
+  &.tgico-calendarfilter:before {
+    font-size: calc(32px / var(--multiplier));
+  }
   
   /* kostil */
   display: flex;
@@ -111,6 +115,11 @@ avatar-element {
   &.avatar-32 {
     --size: 32px;
     --multiplier: 1.6875;
+  }
+
+  &.avatar-30 {
+    --size: 30px;
+    --multiplier: 1.8;
   }
 
   &.avatar-18 {

@@ -1887,7 +1887,7 @@ export class AppMessagesManager {
     if(p.promise) return p.promise;
     else if(p.maxId) return Promise.resolve(p);
 
-    return p.promise = this.getSearchNew({
+    return p.promise = this.getSearch({
       peerId, 
       inputFilter: {_: 'inputMessagesFilterPinned'},
       maxId: 0,
@@ -2887,7 +2887,7 @@ export class AppMessagesManager {
     });
   }
 
-  public getSearchNew({peerId, query, inputFilter, maxId, limit, nextRate, backLimit, threadId, folderId}: {
+  public getSearch({peerId, query, inputFilter, maxId, limit, nextRate, backLimit, threadId, folderId, minDate, maxDate}: {
     peerId?: number,
     maxId?: number,
     limit?: number,
@@ -2899,18 +2899,24 @@ export class AppMessagesManager {
     inputFilter?: {
       _: MyInputMessagesFilter
     },
-  }) {
-    return this.getSearch(peerId, query, inputFilter, maxId, limit, nextRate, backLimit, threadId, folderId);
-  }
-
-  public getSearch(peerId = 0, query: string = '', inputFilter: {
-    _: MyInputMessagesFilter
-  } = {_: 'inputMessagesFilterEmpty'}, maxId: number, limit = 20, nextRate = 0, backLimit = 0, threadId?: number, folderId?: number): Promise<{
+    minDate?: number,
+    maxDate?: number
+  }): Promise<{
     count: number,
     next_rate: number,
     offset_id_offset: number,
     history: MyMessage[]
   }> {
+    if(!peerId) peerId = 0;
+    if(!query) query = '';
+    if(!inputFilter) inputFilter = {_: 'inputMessagesFilterEmpty'};
+    if(!limit) limit = 20;
+    if(!nextRate) nextRate = 0;
+    if(!backLimit) backLimit = 0;
+
+    minDate = minDate ? minDate / 1000 | 0 : 0;
+    maxDate = maxDate ? maxDate / 1000 | 0 : 0;
+
     const foundMsgs: Message.message[] = [];
 
     //this.log('search', maxId);
@@ -3077,8 +3083,8 @@ export class AppMessagesManager {
         peer: appPeersManager.getInputPeerById(peerId),
         q: query || '',
         filter: inputFilter as any as MessagesFilter,
-        min_date: 0,
-        max_date: 0,
+        min_date: minDate,
+        max_date: maxDate,
         limit,
         offset_id: this.getLocalMessageId(maxId) || 0,
         add_offset: backLimit ? -backLimit : 0,
@@ -3105,8 +3111,8 @@ export class AppMessagesManager {
       apiPromise = apiManager.invokeApi('messages.searchGlobal', {
         q: query,
         filter: inputFilter as any as MessagesFilter,
-        min_date: 0,
-        max_date: 0,
+        min_date: minDate,
+        max_date: maxDate,
         offset_rate: nextRate,
         offset_peer: appPeersManager.getInputPeerById(offsetPeerId),
         offset_id: offsetId,

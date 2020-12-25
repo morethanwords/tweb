@@ -290,7 +290,7 @@ function wrapAudio(audioEl: AudioElement) {
   const html = `
   <div class="audio-details">
     <div class="audio-title"><middle-ellipsis-element data-font-weight="${audioEl.dataset.fontWeight}">${title}</middle-ellipsis-element>${titleAdditionHTML}</div>
-    <div class="audio-subtitle"><div class="audio-time"></div>${subtitle}</div>
+    <div class="audio-subtitle"><div class="audio-time"></div>${subtitle || '<div></div>'}</div>
   </div>`;
   
   audioEl.insertAdjacentHTML('beforeend', html);
@@ -356,7 +356,8 @@ export default class AudioElement extends HTMLElement {
     this.classList.add('audio');
 
     const doc = this.message.media.document || this.message.media.webpage.document;
-    const isVoice = !this.voiceAsMusic && doc.type == 'voice';
+    const isRealVoice = doc.type == 'voice';
+    const isVoice = !this.voiceAsMusic && isRealVoice;
     const uploading = this.message.pFlags.is_outgoing;
 
     const durationStr = String(doc.duration | 0).toHHMMSS();
@@ -429,7 +430,7 @@ export default class AudioElement extends HTMLElement {
     if(!uploading) {
       let preloader: ProgressivePreloader = this.preloader;
 
-      if(isVoice) {
+      if(isRealVoice) {
         let download: Download;
 
         const onClick = (e: Event) => {

@@ -19,7 +19,7 @@ import { horizontalMenu } from "./horizontalMenu";
 import LazyLoadQueue from "./lazyLoadQueue";
 import { renderImageFromUrl, putPreloader, formatPhoneNumber } from "./misc";
 import { ripple } from "./ripple";
-import Scrollable from "./scrollable";
+import Scrollable, { ScrollableX } from "./scrollable";
 import { wrapDocument } from "./wrappers";
 
 const testScroll = false;
@@ -33,7 +33,9 @@ export type SearchSuperContext = {
   folderId?: number,
   threadId?: number,
   date?: number,
-  nextRate?: number
+  nextRate?: number,
+  minDate?: number,
+  maxDate?: number
 };
 
 export default class AppSearchSuper {
@@ -43,6 +45,7 @@ export default class AppSearchSuper {
   public tabSelected: HTMLElement;
 
   public container: HTMLElement;
+  public nav: HTMLElement;
   private tabsContainer: HTMLElement;
   private tabsMenu: HTMLUListElement;
   private prevTabId = -1;
@@ -74,14 +77,23 @@ export default class AppSearchSuper {
     }
   }> = {};
 
+  private searchGroupMedia: SearchGroup;
+
   constructor(public types: {inputFilter: SearchSuperType, name: string}[], public scrollable: Scrollable, public searchGroups?: {[group in SearchGroupType]: SearchGroup}, public asChatList = false) {
     this.container = document.createElement('div');
     this.container.classList.add('search-super');
 
-    const nav = document.createElement('nav');
+    const navScrollableContainer = document.createElement('div');
+    navScrollableContainer.classList.add('search-super-tabs-scrollable', 'menu-horizontal-scrollable');
+
+    const navScrollable = new ScrollableX(navScrollableContainer);
+
+    const nav = this.nav = document.createElement('nav');
     nav.classList.add('search-super-tabs', 'menu-horizontal');
     this.tabsMenu = document.createElement('ul');
     nav.append(this.tabsMenu);
+
+    navScrollable.container.append(nav);
 
     for(const type of types) {
       const li = document.createElement('li');
@@ -115,9 +127,11 @@ export default class AppSearchSuper {
       this.tabs[type.inputFilter] = content;
     }
 
-    this.container.append(nav, this.tabsContainer);
+    this.container.append(navScrollableContainer, this.tabsContainer);
 
     // * construct end
+
+    this.searchGroupMedia = new SearchGroup('', 'messages', true);
 
     this.scrollable.onScrolledBottom = () => {
       if(this.tabSelected && this.tabSelected.childElementCount/* && false */) {
@@ -296,10 +310,19 @@ export default class AppSearchSuper {
   
   public async performSearchResult(messages: any[], type: SearchSuperType, append = true) {
     const elemsToAppend: {element: HTMLElement, message: any}[] = [];
+    const sharedMediaDiv: HTMLElement = this.tabs[type];
     const promises: Promise<any>[] = [];
-    const sharedMediaDiv: HTMLElement = type === 'inputMessagesFilterEmpty' ? this.searchGroups.messages.list : this.tabs[type];
-
     const middleware = this.getMiddleware();
+    
+    let searchGroup: SearchGroup;
+    if(type === 'inputMessagesFilterPhotoVideo' && !!this.searchContext.query.trim()) {
+      type = 'inputMessagesFilterEmpty';
+      searchGroup = this.searchGroupMedia;
+      sharedMediaDiv.append(searchGroup.container);
+    } else if(type === 'inputMessagesFilterEmpty') {
+      searchGroup = this.searchGroups.messages;
+    }
+
 
     // https://core.telegram.org/type/MessagesFilter
     switch(type) {
@@ -307,14 +330,14 @@ export default class AppSearchSuper {
         for(const message of messages) {
           const {dialog, dom} = appDialogsManager.addDialogNew({
             dialog: message.peerId, 
-            container: sharedMediaDiv as HTMLUListElement/* searchGroup.list */, 
+            container: searchGroup.list, 
             drawStatus: false,
             avatarSize: 54
           });
           appDialogsManager.setLastMessage(dialog, message, dom, this.searchContext.query);
         }
 
-        this.searchGroups.messages.setActive();
+        searchGroup.setActive();
         break;
       }
 
@@ -689,7 +712,24 @@ export default class AppSearchSuper {
         .then((contacts) => {
           if(contacts) {
             setResults(contacts.my_results, this.searchGroups.contacts, true);
-            setResults(contacts.results, this.searchGroups.globalContacts);
+            setResults(contacts.results/* .concat(contacts.results, contacts.results, contacts.results) */, this.searchGroups.globalContacts);
+
+            if(this.searchGroups.globalContacts.nameEl.lastElementChild) {
+              this.searchGroups.globalContacts.nameEl.lastElementChild.remove();
+            }
+
+            this.searchGroups.globalContacts.container.classList.add('is-short');
+            
+            if(this.searchGroups.globalContacts.list.childElementCount > 3) {
+              const showMore = document.createElement('div');
+              showMore.classList.add('search-group__show-more');
+              showMore.innerText = 'Show more';
+              this.searchGroups.globalContacts.nameEl.append(showMore);
+              showMore.addEventListener('click', () => {
+                const isShort = this.searchGroups.globalContacts.container.classList.toggle('is-short');
+                showMore.innerText = isShort ? 'Show more' : 'Show less';
+              });
+            }
           }
         }),
   
@@ -835,7 +875,7 @@ export default class AppSearchSuper {
       //this.log(logStr + 'search house of glass pre', type, maxId);
       
       //let loadCount = history.length ? 50 : 15;
-      return this.loadPromises[type] = appMessagesManager.getSearchNew({
+      return this.loadPromises[type] = appMessagesManager.getSearch({
         peerId, 
         query: this.searchContext.query,
         inputFilter: {_: type},
@@ -843,7 +883,9 @@ export default class AppSearchSuper {
         limit: loadCount,
         nextRate: this.nextRates[type] ?? (this.nextRates[type] = 0),
         threadId: this.searchContext.threadId,
-        folderId: this.searchContext.folderId
+        folderId: this.searchContext.folderId,
+        minDate: this.searchContext.minDate,
+        maxDate: this.searchContext.maxDate
       }).then(value => {
         history.push(...value.history.map(m => ({mid: m.mid, peerId: m.peerId})));
         
@@ -870,13 +912,15 @@ export default class AppSearchSuper {
         this.usedFromHistory[type] = history.length;
 
         if(!this.loaded[type]) {
-          this.loadPromises[type].then(() => {
+          (this.loadPromises[type] || Promise.resolve()).then(() => {
             setTimeout(() => {
+              if(!middleware()) return;
               //this.log('will preload more');
               if(this.type === type) {
                 const promise = this.load(true, true);
                 if(promise) {
                   promise.then(() => {
+                    if(!middleware()) return;
                     //this.log('preloaded more');
                     setTimeout(() => {
                       this.scrollable.checkForTriggers();
@@ -988,6 +1032,7 @@ export default class AppSearchSuper {
     });
     
     this.monthContainers = {};
+    this.searchGroupMedia.clear();
 
     if(testScroll) {
       for(let i = 0; i < 1500; ++i) {
@@ -1016,19 +1061,23 @@ export default class AppSearchSuper {
     return context;
   }
 
-  public setQuery({peerId, query, threadId, historyStorage, folderId}: {
+  public setQuery({peerId, query, threadId, historyStorage, folderId, minDate, maxDate}: {
     peerId: number, 
     query?: string, 
     threadId?: number, 
     historyStorage?: AppSearchSuper['historyStorage'], 
-    folderId?: number
+    folderId?: number,
+    minDate?: number,
+    maxDate?: number
   }) {
     this.searchContext = {
       peerId: peerId || 0,
       query: query || '',
       inputFilter: this.type,
       threadId,
-      folderId
+      folderId,
+      minDate,
+      maxDate
     };
     
     this.historyStorage = historyStorage ?? {};

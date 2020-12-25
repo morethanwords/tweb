@@ -1,7 +1,5 @@
 //import { logger } from "../polyfill";
 import { formatNumber } from "../../helpers/number";
-import appChatsManager from "../../lib/appManagers/appChatsManager";
-import appDialogsManager from "../../lib/appManagers/appDialogsManager";
 import appImManager from "../../lib/appManagers/appImManager";
 import appPeersManager from "../../lib/appManagers/appPeersManager";
 import appStateManager from "../../lib/appManagers/appStateManager";
@@ -29,6 +27,7 @@ import AppSettingsTab from "./tabs/settings";
 import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import apiManagerProxy from "../../lib/mtproto/mtprotoworker";
 import AppSearchSuper from "../appSearchSuper.";
+import { DateData, fillTipDates } from "../../helpers/date";
 
 const newChannelTab = new AppNewChannelTab();
 const addMembersTab = new AppAddMembersTab();
@@ -213,21 +212,157 @@ export class AppSidebarLeft extends SidebarSlider {
 
     scrollable.container.append(searchSuper.container);
 
-    searchSuper.setQuery({
-      peerId: 0, 
-      folderId: 0
+    const resetSearch = () => {
+      searchSuper.setQuery({
+        peerId: 0, 
+        folderId: 0
+      });
+      searchSuper.selectTab(0);
+      searchSuper.load(true); 
+    };
+
+    resetSearch();
+
+    let pickedElements: HTMLElement[] = [];
+    let selectedPeerId = 0;
+    let selectedMinDate = 0;
+    let selectedMaxDate = 0;
+    const updatePicked = () => {
+      (this.inputSearch.input as HTMLInputElement).placeholder = pickedElements.length ? 'Search' : 'Telegram Search';
+      this.inputSearch.container.classList.toggle('is-picked-twice', pickedElements.length === 2);
+      this.inputSearch.container.classList.toggle('is-picked', !!pickedElements.length);
+
+      if(pickedElements.length) {
+        this.inputSearch.input.style.setProperty('--paddingLeft', (pickedElements[pickedElements.length - 1].getBoundingClientRect().right - this.inputSearch.input.getBoundingClientRect().left) + 'px');
+      } else {
+        this.inputSearch.input.style.removeProperty('--paddingLeft');
+      }
+    };
+
+    const helper = document.createElement('div');
+    helper.classList.add('search-helper');
+    helper.addEventListener('click', (e) => {
+      const target = findUpClassName(e.target, 'selector-user');
+      if(!target) {
+        return;
+      }
+
+      const key = target.dataset.key;
+      if(key.indexOf('date_') === 0) {
+        const [_, minDate, maxDate] = key.split('_');
+        selectedMinDate = +minDate;
+        selectedMaxDate = +maxDate;
+      } else {
+        selectedPeerId = +key;
+      }
+
+      target.addEventListener('click', () => {
+        unselectEntity(target);
+      });
+
+      this.inputSearch.container.append(target);
+      this.inputSearch.onChange(this.inputSearch.value = '');
+      pickedElements.push(target);
+      updatePicked();
     });
-    searchSuper.selectTab(0);
-    searchSuper.load(true); 
+
+    searchSuper.nav.parentElement.append(helper);
+
+    const renderEntity = (peerId: any, title?: string) => {
+      const div = document.createElement('div');
+      div.classList.add('selector-user'/* , 'scale-in' */);
+
+      const avatarEl = document.createElement('avatar-element');
+      avatarEl.classList.add('selector-user-avatar', 'tgico');
+      avatarEl.setAttribute('dialog', '1');
+      avatarEl.classList.add('avatar-30');
+
+      div.dataset.key = '' + peerId;
+      if(typeof(peerId) === 'number') {
+        if(title === undefined) {
+          title = peerId == rootScope.myId ? 'Saved' : appPeersManager.getPeerTitle(peerId, false, true);
+        }
+
+        avatarEl.setAttribute('peer', '' + peerId);
+      } else {
+        avatarEl.classList.add('tgico-calendarfilter');
+      }
+
+      if(title) {
+        div.innerHTML = title;
+      }
+
+      div.insertAdjacentElement('afterbegin', avatarEl);
+
+      return div;
+    };
+
+    const unselectEntity = (target: HTMLElement) => {
+      const key = target.dataset.key;
+      if(key.indexOf('date_') === 0) {
+        selectedMinDate = selectedMaxDate = 0;
+      } else {
+        selectedPeerId = 0;
+      }
+      
+      target.remove();
+      pickedElements.findAndSplice(t => t === target);
+
+      setTimeout(() => {
+        updatePicked();
+        this.inputSearch.onChange(this.inputSearch.value);
+      }, 0);
+    };
+
+    this.inputSearch.onClear = () => {
+      pickedElements.forEach(el => {
+        unselectEntity(el);
+      });
+    };
 
     this.inputSearch.onChange = (value) => {
       searchSuper.cleanupHTML();
       searchSuper.setQuery({
-        peerId: 0, 
-        folderId: 0,
-        query: value
+        peerId: selectedPeerId, 
+        folderId: selectedPeerId ? undefined : 0,
+        query: value,
+        minDate: selectedMinDate,
+        maxDate: selectedMaxDate
       });
       searchSuper.load(true);
+
+      helper.innerHTML = '';
+      searchSuper.nav.classList.remove('hide');
+      if(!value) {
+      }
+      
+      if(!selectedPeerId && value.trim()) {
+        const middleware = searchSuper.getMiddleware();
+        Promise.all([
+          appMessagesManager.getConversationsAll(value).then(dialogs => dialogs.map(d => d.peerId)),
+          appUsersManager.getContacts(value, true)
+        ]).then(results => {
+          if(!middleware()) return;
+          const peerIds = new Set(results[0].concat(results[1]));
+  
+          peerIds.forEach(peerId => {
+            helper.append(renderEntity(peerId));
+          });
+  
+          searchSuper.nav.classList.toggle('hide', !!helper.innerHTML);
+          //console.log('got peerIds by value:', value, [...peerIds]);
+        });
+      }
+      
+      if(!selectedMinDate && value.trim()) {
+        const dates: DateData[] = [];
+        fillTipDates(value, dates);
+        dates.forEach(dateData => {
+          helper.append(renderEntity('date_' + dateData.minDate + '_' + dateData.maxDate, dateData.title));
+        });
+
+        searchSuper.nav.classList.toggle('hide', !!helper.innerHTML);
+      }
     };
 
     searchSuper.tabs.inputMessagesFilterEmpty.addEventListener('click', (e) => {
@@ -272,6 +407,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
       if(id === 0) {
         this.inputSearch.onClearClick();
+        resetSearch();
         hideNewBtnMenuTimeout = window.setTimeout(() => {
           hideNewBtnMenuTimeout = 0;
           this.newBtnMenu.classList.remove('is-hidden');

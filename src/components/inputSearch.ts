@@ -10,6 +10,7 @@ export default class InputSearch {
   public prevValue = '';
   public timeout = 0;
   public onChange: (value: string) => void;
+  public onClear: () => void;
 
   constructor(placeholder: string, onChange?: (value: string) => void) {
     this.inputField = new InputField({
@@ -57,6 +58,7 @@ export default class InputSearch {
   onClearClick = () => {
     this.value = '';
     this.onChange && this.onChange('');
+    this.onClear && this.onClear();
   };
 
   get value() {

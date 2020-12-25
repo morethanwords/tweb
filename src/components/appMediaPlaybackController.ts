@@ -199,7 +199,7 @@ class AppMediaPlaybackController {
     const media = this.playingMedia;
     this.prevMid = this.nextMid = 0;
 
-    return appMessagesManager.getSearchNew({
+    return appMessagesManager.getSearch({
       peerId, 
       query: '', 
       inputFilter: {

@@ -52,7 +52,7 @@ export default class AvatarElement extends HTMLElement {
         if(peerId < 0) {
           const maxId = Number.MAX_SAFE_INTEGER;
           const inputFilter = 'inputMessagesFilterChatPhotos';
-          let message: any = await appMessagesManager.getSearchNew({
+          let message: any = await appMessagesManager.getSearch({
             peerId, 
             inputFilter: {_: inputFilter}, 
             maxId, 

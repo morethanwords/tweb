@@ -2350,7 +2350,7 @@ export default class ChatBubbles {
     if(this.chat.type === 'chat' || this.chat.type === 'discussion') {
       return this.appMessagesManager.getHistory(this.peerId, maxId, loadCount, backLimit, this.chat.threadId);
     } else if(this.chat.type === 'pinned') {
-      const promise = this.appMessagesManager.getSearchNew({
+      const promise = this.appMessagesManager.getSearch({
         peerId: this.peerId, 
         inputFilter: {_: 'inputMessagesFilterPinned'}, 
         maxId, 
