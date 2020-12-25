@@ -1255,7 +1255,9 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       backLimit,
       threadId: this.searchContext.threadId,
       folderId: this.searchContext.folderId,
-      nextRate: this.searchContext.nextRate
+      nextRate: this.searchContext.nextRate,
+      minDate: this.searchContext.minDate,
+      maxDate: this.searchContext.maxDate
     }).then(value => {
       this.log('loaded more media by maxId:', maxId, value, older, this.reverse);
 

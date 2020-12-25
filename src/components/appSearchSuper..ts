@@ -741,7 +741,7 @@ export default class AppSearchSuper {
           }
         })
       ]);
-    } else {
+    } else if(!this.searchContext.peerId && !this.searchContext.minDate) {
       const renderRecentSearch = (setActive = true) => {
         return appStateManager.getState().then(state => {
           if(!middleware()) {
@@ -794,7 +794,7 @@ export default class AppSearchSuper {
 
         renderRecentSearch()
       ]);
-    }
+    } else return Promise.resolve();
   }
   
   public load(single = false, justLoad = false) {
@@ -828,7 +828,7 @@ export default class AppSearchSuper {
           this.loadedChats = true;
         }
 
-        if(!this.searchContext.query.trim()) {
+        if(!this.searchContext.query.trim() && !this.searchContext.peerId && !this.searchContext.minDate) {
           this.loaded[type] = true;
           return Promise.resolve();
         }

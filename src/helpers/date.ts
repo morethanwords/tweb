@@ -67,9 +67,80 @@ export type DateData = {
   maxDate: number,
 };
 export function fillTipDates(query: string, dates: DateData[]) {
-  const q = query.trim();
+  const q = query.trim().toLowerCase();
 
   if(q.length < 3) {
+    return;
+  }
+
+  if("today".indexOf(q) === 0) {
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const day = date.getDate();
+    date.setFullYear(year, month, day);
+    date.setHours(0, 0, 0);
+
+    const minDate = date.getTime();
+    date.setFullYear(year, month, day + 1);
+    date.setHours(0, 0, 0);
+
+    const maxDate = date.getTime() - 1;
+    dates.push({
+      title: 'Today',
+      minDate,
+      maxDate
+    });
+    return;
+  }
+
+  if("yesterday".indexOf(q) === 0) {
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const day = date.getDate();
+    date.setFullYear(year, month, day);
+    date.setHours(0, 0, 0);
+
+    const minDate = date.getTime() - 86400000;
+    date.setFullYear(year, month, day + 1);
+    date.setHours(0, 0, 0);
+
+    const maxDate = date.getTime() - 86400001;
+    dates.push({
+      title: 'Yesterday',
+      minDate,
+      maxDate
+    });
+    return;
+  }
+
+  const dayOfWeek = getDayOfWeek(q);
+  if(dayOfWeek >= 0) {
+    const date = new Date();
+    const now = date.getTime();
+    const currentDay = date.getDay();
+    const distance = dayOfWeek - currentDay;
+    date.setDate(date.getDate() + distance);
+    if(date.getTime() > now) {
+      date.setTime(date.getTime() - 604800000);
+    }
+    const year = date.getFullYear()
+    const month = date.getMonth();
+    const day = date.getDate();
+    date.setFullYear(year, month, day);
+    date.setHours(0, 0, 0);
+
+    const minDate = date.getTime();
+    date.setFullYear(year, month, day + 1);
+    date.setHours(0, 0, 0);
+
+    const maxDate = date.getTime() - 1;
+    dates.push({
+      title: formatWeekLong(minDate),
+      minDate,
+      maxDate
+    });
     return;
   }
 
@@ -289,6 +360,11 @@ function formatterYearMax(timestamp: number) {
   return ('0' + date.getDate()).slice(-2) + '.' + ('0' + (date.getMonth() + 1)).slice(-2) + '.' + date.getFullYear();
 }
 
+function formatWeekLong(timestamp: number) {
+  const date = new Date(timestamp);
+  return days[date.getDay()];
+}
+
 function validDateForMonth(day: number, month: number) {
   if(month >= 0 && month < 12) {
     if(day >= 0 && day < numberOfDaysEachMonth[month]) {
@@ -331,6 +407,22 @@ function getMonth(q: string) {
     const month = months[i].toLowerCase();
     if(month.indexOf(q) === 0) {
       return i;
+    }
+  }
+  return -1;
+}
+
+function getDayOfWeek(q: string) {
+  const c = new Date();
+  if(q.length <= 3) {
+    return -1;
+  }
+  
+  for(let i = 0; i < 7; i++) {
+    c.setDate(c.getDate() + 1);
+    
+    if(formatWeekLong(c.getTime()).toLowerCase().indexOf(q) === 0) {
+      return c.getDay();
     }
   }
   return -1;
