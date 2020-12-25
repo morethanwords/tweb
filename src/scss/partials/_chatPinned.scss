@@ -295,8 +295,12 @@
     }
   }
 
-  &.is-floating .pinned-message-subtitle {
-    max-width: 280px;
+  &.is-floating {
+    .chat:not(.type-discussion) & {
+      .pinned-container-wrapper {
+        padding-right: 3rem;
+      }
+    }
   }
 
   &-content {

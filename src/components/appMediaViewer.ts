@@ -26,6 +26,7 @@ import Scrollable from "./scrollable";
 import appSidebarRight, { AppSidebarRight } from "./sidebarRight";
 import SwipeHandler from "./swipeHandler";
 import { months, ONE_DAY } from "../helpers/date";
+import { SearchSuperContext } from "./appSearchSuper.";
 
 // TODO: масштабирование картинок (не SVG) при ресайзе, и правильный возврат на исходную позицию
 // TODO: картинки "обрезаются" если возвращаются или появляются с места, где есть их перекрытие (топбар, поле ввода)
@@ -804,7 +805,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     prevTargets: TargetType[] = [], nextTargets: TargetType[] = [], needLoadMore = true) {
     if(this.setMoverPromise) return this.setMoverPromise;
 
-    this.log('openMedia:', media, fromId);
+    this.log('openMedia:', media, fromId, prevTargets, nextTargets);
 
     this.setAuthorInfo(fromId, timestamp);
     
@@ -1105,14 +1106,15 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
 type AppMediaViewerTargetType = {
   element: HTMLElement,
-  mid: number
+  mid: number,
+  peerId: number
 };
 export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delete' | 'forward', AppMediaViewerTargetType> {
   public currentMessageId = 0;
-  public peerId: number;
-  public threadId: number;
+  public currentPeerId = 0;
+  public searchContext: SearchSuperContext;
 
-  constructor(private inputFilter: 'inputMessagesFilterPhotoVideo' | 'inputMessagesFilterChatPhotos' = 'inputMessagesFilterPhotoVideo') {
+  constructor() {
     super(['delete', 'forward']);
 
     /* const stub = document.createElement('div');
@@ -1165,27 +1167,29 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
   } */
 
   onPrevClick = (target: AppMediaViewerTargetType) => {
-    this.nextTargets.unshift({element: this.lastTarget, mid: this.currentMessageId});
-    this.openMedia(appMessagesManager.getMessageByPeer(this.peerId, target.mid), target.element);
+    this.nextTargets.unshift({element: this.lastTarget, mid: this.currentMessageId, peerId: this.currentPeerId});
+    this.openMedia(appMessagesManager.getMessageByPeer(target.peerId, target.mid), target.element, -1);
   };
 
   onNextClick = (target: AppMediaViewerTargetType) => {
-    this.prevTargets.push({element: this.lastTarget, mid: this.currentMessageId});
-    this.openMedia(appMessagesManager.getMessageByPeer(this.peerId, target.mid), target.element);
+    this.prevTargets.push({element: this.lastTarget, mid: this.currentMessageId, peerId: this.currentPeerId});
+    this.openMedia(appMessagesManager.getMessageByPeer(target.peerId, target.mid), target.element, 1);
   };
 
   onForwardClick = () => {
     if(this.currentMessageId) {
       //appSidebarRight.forwardTab.open([this.currentMessageId]);
-      new PopupForward(this.peerId, [this.currentMessageId], () => {
+      new PopupForward(this.currentPeerId, [this.currentMessageId], () => {
         return this.close();
       });
     }
   };
 
   onAuthorClick = (e: MouseEvent) => {
-    if(this.currentMessageId && this.currentMessageId != Number.MAX_SAFE_INTEGER) {
+    if(this.currentMessageId && this.currentMessageId !== Number.MAX_SAFE_INTEGER) {
       const mid = this.currentMessageId;
+      const peerId = this.currentPeerId;
+      const threadId = this.searchContext.threadId;
       this.close(e)
       //.then(() => mediaSizes.isMobile ? appSidebarRight.sharedMediaTab.closeBtn.click() : Promise.resolve())
       .then(() => {
@@ -1193,14 +1197,14 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
           appSidebarRight.closeTab(AppSidebarRight.SLIDERITEMSIDS.sharedMedia);
         }
 
-        const message = appMessagesManager.getMessageByPeer(this.peerId, mid);
-        appImManager.setInnerPeer(message.peerId, mid, this.threadId ? 'discussion' : undefined, this.threadId);
+        const message = appMessagesManager.getMessageByPeer(peerId, mid);
+        appImManager.setInnerPeer(message.peerId, mid, threadId ? 'discussion' : undefined, threadId);
       });
     }
   };
 
   onDownloadClick = () => {
-    const message = appMessagesManager.getMessageByPeer(this.peerId, this.currentMessageId);
+    const message = appMessagesManager.getMessageByPeer(this.currentPeerId, this.currentMessageId);
     if(message.media.photo) {
       appPhotosManager.savePhotoFile(message.media.photo, appImManager.chat.bubbles.lazyLoadQueue.queueId);
     } else {
@@ -1230,7 +1234,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     const backLimit = older ? 0 : loadCount;
     let maxId = this.currentMessageId;
   
-    let anchor: {element: HTMLElement, mid: number};
+    let anchor: AppMediaViewerTargetType;
     if(older) {
       anchor = this.reverse ? this.prevTargets[0] : this.nextTargets[this.nextTargets.length - 1];
     } else {
@@ -1240,17 +1244,24 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     if(anchor) maxId = anchor.mid;
     if(!older) maxId = appMessagesManager.incrementMessageId(maxId, 1);
 
-    const peerId = this.peerId;
-    const threadId = this.threadId;
-
-    const promise = appMessagesManager.getSearch(peerId, '', 
-      {_: this.inputFilter}, maxId, backLimit ? 0 : loadCount/* older ? loadCount : 0 */, 0, backLimit, threadId).then(value => {
-      if(this.peerId !== peerId || this.threadId !== threadId) {
-        this.log.warn('peer changed');
-        return;
-      }
-
+    const promise = appMessagesManager.getSearchNew({
+      peerId: this.searchContext.peerId,
+      query: this.searchContext.query,
+      inputFilter: {
+        _: this.searchContext.inputFilter
+      },
+      maxId,
+      limit: backLimit ? 0 : loadCount,
+      backLimit,
+      threadId: this.searchContext.threadId,
+      folderId: this.searchContext.folderId,
+      nextRate: this.searchContext.nextRate
+    }).then(value => {
       this.log('loaded more media by maxId:', maxId, value, older, this.reverse);
+
+      if(value.next_rate) {
+        this.searchContext.nextRate = value.next_rate;
+      }
 
       if(value.history.length < loadCount) {
         /* if(this.reverse) {
@@ -1264,13 +1275,13 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
       const method = older ? value.history.forEach : value.history.forEachReverse;
       method.call(value.history, message => {
-        const mid = message.mid
+        const {mid, peerId} = message;
         const media = this.getMediaFromMessage(message);
 
         if(!media) return;
         //if(media._ == 'document' && media.type != 'video') return;
 
-        const t = {element: null as HTMLElement, mid: mid};
+        const t = {element: null as HTMLElement, mid, peerId};
         if(older) {
           if(this.reverse) this.prevTargets.unshift(t);
           else this.nextTargets.push(t);
@@ -1311,26 +1322,30 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     }
   }
 
-  public async openMedia(message: any, target?: HTMLElement, reverse = false, 
-    prevTargets: AppMediaViewer['prevTargets'] = [], nextTargets: AppMediaViewer['prevTargets'] = [], needLoadMore = true, threadId?: number) {
+  public setSearchContext(context: SearchSuperContext) {
+    this.searchContext = context;
+
+    if(this.searchContext.folderId !== undefined) {
+      this.loadedAllMediaUp = true;
+
+      if(this.searchContext.nextRate === undefined) {
+        this.loadedAllMediaDown = true;
+      }
+    }
+
+    return this;
+  }
+
+  public async openMedia(message: any, target?: HTMLElement, fromRight = 0, reverse = false, 
+    prevTargets: AppMediaViewer['prevTargets'] = [], nextTargets: AppMediaViewer['prevTargets'] = [], needLoadMore = true) {
     if(this.setMoverPromise) return this.setMoverPromise;
 
     const mid = message.mid;
     const fromId = message.fromId;
     const media = this.getMediaFromMessage(message);
 
-    let fromRight = 0;
-    if(!this.isFirstOpen) {
-      //if(this.lastTarget === prevTarget) {
-      if(this.reverse) fromRight = this.currentMessageId < mid ? 1 : -1;
-      else fromRight = this.currentMessageId > mid ? 1 : -1;
-    } else {
-      this.reverse = reverse;
-      this.peerId = message.peerId;
-      this.threadId = threadId;
-    }
-
     this.currentMessageId = mid;
+    this.currentPeerId = message.peerId;
     const promise = super._openMedia(media, message.date, fromId, fromRight, target, reverse, prevTargets, nextTargets, needLoadMore);
     this.setCaption(message);
 

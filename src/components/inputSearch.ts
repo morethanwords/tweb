@@ -45,7 +45,7 @@ export default class InputSearch {
 
     //this.input.classList.toggle('is-empty', !value.trim());
 
-    if(value != this.prevValue) {
+    if(value !== this.prevValue) {
       this.prevValue = value;
       clearTimeout(this.timeout);
       this.timeout = window.setTimeout(() => {

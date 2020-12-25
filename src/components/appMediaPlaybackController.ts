@@ -199,10 +199,17 @@ class AppMediaPlaybackController {
     const media = this.playingMedia;
     this.prevMid = this.nextMid = 0;
 
-    return appMessagesManager.getSearch(peerId, '', {
-      //_: type == 'audio' ? 'inputMessagesFilterMusic' : (type == 'round' ? 'inputMessagesFilterRoundVideo' : 'inputMessagesFilterVoice')
-      _: type == 'audio' ? 'inputMessagesFilterMusic' : 'inputMessagesFilterRoundVoice'
-    }, mid, 3, 0, 2).then(value => {
+    return appMessagesManager.getSearchNew({
+      peerId, 
+      query: '', 
+      inputFilter: {
+        //_: type == 'audio' ? 'inputMessagesFilterMusic' : (type == 'round' ? 'inputMessagesFilterRoundVideo' : 'inputMessagesFilterVoice')
+        _: type == 'audio' ? 'inputMessagesFilterMusic' : 'inputMessagesFilterRoundVoice'
+      },
+      maxId: mid,
+      limit: 3,
+      backLimit: 2
+    }).then(value => {
       if(this.playingMedia !== media) {
         return;
       }

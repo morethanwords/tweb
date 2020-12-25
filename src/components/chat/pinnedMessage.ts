@@ -410,7 +410,13 @@ export default class ChatPinnedMessage {
     try {
       let gotRest = false;
       const promises = [
-        this.appMessagesManager.getSearch(this.topbar.peerId, '', {_: 'inputMessagesFilterPinned'}, mid, ChatPinnedMessage.LOAD_COUNT, 0, ChatPinnedMessage.LOAD_COUNT)
+        this.appMessagesManager.getSearchNew({
+          peerId: this.topbar.peerId, 
+          inputFilter: {_: 'inputMessagesFilterPinned'}, 
+          maxId: mid, 
+          limit: ChatPinnedMessage.LOAD_COUNT, 
+          backLimit: ChatPinnedMessage.LOAD_COUNT
+        })
         .then(r => {
           gotRest = true;
           return r;

@@ -1,7 +1,7 @@
 import { getEmojiToneIndex } from '../emoji';
 import { readBlobAsText } from '../helpers/blob';
 import { deferredPromise } from '../helpers/cancellablePromise';
-import { months } from '../helpers/date';
+import { formatDateAccordingToToday, months } from '../helpers/date';
 import mediaSizes from '../helpers/mediaSizes';
 import { formatBytes } from '../helpers/number';
 import { isAppleMobile, isSafari } from '../helpers/userAgent';
@@ -28,6 +28,7 @@ import { nextRandomInt } from '../helpers/random';
 import RichTextProcessor from '../lib/richtextprocessor';
 import appImManager from '../lib/appManagers/appImManager';
 import Chat from './chat/chat';
+import { SearchSuperContext } from './appSearchSuper.';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 
@@ -343,10 +344,13 @@ export const formatDate = (timestamp: number, monthShort = false, withYear = tru
   return str + ' at ' + date.getHours() + ':' + ('0' + date.getMinutes()).slice(-2);
 };
 
-export function wrapDocument({message, withTime, fontWeight}: {
+export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showSender, searchContext}: {
   message: any, 
   withTime?: boolean,
-  fontWeight?: number
+  fontWeight?: number,
+  voiceAsMusic?: boolean,
+  showSender?: boolean,
+  searchContext?: SearchSuperContext
 }): HTMLElement {
   if(!fontWeight) fontWeight = 500;
 
@@ -359,6 +363,11 @@ export function wrapDocument({message, withTime, fontWeight}: {
     audioElement.setAttribute('peer-id', '' + message.peerId);
     audioElement.withTime = withTime;
     audioElement.message = message;
+
+    if(voiceAsMusic) audioElement.voiceAsMusic = voiceAsMusic;
+    if(searchContext) audioElement.searchContext = searchContext;
+    if(showSender) audioElement.showSender = showSender;
+
     audioElement.dataset.fontWeight = '' + fontWeight;
     audioElement.render();
     return audioElement;
@@ -403,10 +412,19 @@ export function wrapDocument({message, withTime, fontWeight}: {
   if(withTime) {
     size += ' · ' + formatDate(doc.date);
   }
+
+  if(showSender) {
+    size += ' · ' + appMessagesManager.getSenderToPeerText(message);
+  }
+
+  let titleAdditionHTML = '';
+  if(showSender) {
+    titleAdditionHTML = `<div class="sent-time">${formatDateAccordingToToday(new Date(message.date * 1000))}</div>`;
+  }
   
   docDiv.innerHTML = `
   ${!uploading ? `<div class="document-download"><div class="tgico-download"></div></div>` : ''}
-  <div class="document-name"><middle-ellipsis-element data-font-weight="${fontWeight}">${fileName}</middle-ellipsis-element></div>
+  <div class="document-name"><middle-ellipsis-element data-font-weight="${fontWeight}">${fileName}</middle-ellipsis-element>${titleAdditionHTML}</div>
   <div class="document-size">${size}</div>
   `;
 

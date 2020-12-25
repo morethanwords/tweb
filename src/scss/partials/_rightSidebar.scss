@@ -230,20 +230,27 @@
   }
 }
 
+#shared-media-container {
+  .search-super {
+    top: 100%;
+    min-height: calc((var(--vh, 1vh) * 100) - 100% - 56px);
+
+    &.sliding {
+      max-height: calc((var(--vh, 1vh) * 100) - 100% - 56px);
+    }
+  }
+}
+
 .search-super {
   width: 100%;
   max-width: 100%;
-  //overflow: hidden;
   position: absolute;
-  top: 100%;
-  //min-height: 100vh; /* Fallback for browsers that do not support Custom Properties */
-  //min-height: calc(var(--vh, 1vh) * 100);
-  min-height: calc((var(--vh, 1vh) * 100) - 100% - 56px);
+  min-height: 100%;
   display: flex;
   flex-direction: column;
 
   &.sliding {
-    max-height: calc((var(--vh, 1vh) * 100) - 100% - 56px);
+    max-height: 100%;
   }
 
   &-tabs {
@@ -304,19 +311,11 @@
     }
   }
 
+  &-month:first-of-type &-month-name {
+    display: none;
+  }
+
   &-content-media {
-    width: 100%;
-    padding: 7.5px;
-
-    display: grid;
-    grid-template-columns: repeat(3,1fr);
-    grid-auto-rows: 1fr;
-    grid-gap: 3.5px;
-
-    @include respond-to(handhelds) {
-      padding: 7.5px 7.5px 7.5px 6.5px;
-    }
-
     .video-time {
       position: absolute;
       left: 5px;
@@ -353,7 +352,23 @@
     } */
   }
 
-  &-content-docs {
+  &-content-media &-month {
+    &-items {
+      width: 100%;
+      padding: 7.5px;
+
+      display: grid;
+      grid-template-columns: repeat(3,1fr);
+      grid-auto-rows: 1fr;
+      grid-gap: 3.5px;
+
+      @include respond-to(handhelds) {
+        padding: 7.5px 7.5px 7.5px 6.5px;
+      }
+    }
+  }
+
+  &-content-files {
     padding: 7px 20px;
 
     .document {
@@ -385,7 +400,7 @@
   &-content-links {
     padding: 0 30px 15px 15px;
 
-    > div {
+    .search-super-item {
       display: flex;
       flex-direction: column;
       margin-top: 20px;
@@ -438,16 +453,12 @@
     }
   }
 
-  &-content-audio {
+  &-content-music, &-content-voice {
     padding: 20px 15px 15px 20px;
-
-    > div {
-      min-height: 60px;
-    }
 
     .preloader-container {
       .preloader-circular {
-        background-color: rgba(0, 0, 0, 0.35);
+        background-color: rgba(0, 0, 0, .35);
       }
 
       @include respond-to(handhelds) {
@@ -494,6 +505,24 @@
         }
       }
     }
+  }
+}
+
+#search-container {
+  .search-super-content-music {
+    .audio:not(.audio-show-progress) .audio-time {
+      display: none;
+    }
+  }
+  
+  .document-name, .audio-title, .title {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .sent-time {
+    flex: 0 0 auto;
+    margin-left: .5rem;
   }
 }
 

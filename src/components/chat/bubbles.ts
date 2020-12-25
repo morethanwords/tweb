@@ -586,7 +586,7 @@ export default class ChatBubbles {
         return;
       }
 
-      let targets: {element: HTMLElement, mid: number}[] = [];
+      let targets: {element: HTMLElement, mid: number, peerId: number}[] = [];
       let ids = Object.keys(this.bubbles).map(k => +k).filter(id => {
         //if(!this.scrollable.visibleElements.find(e => e.element == this.bubbles[id])) return false;
 
@@ -609,7 +609,8 @@ export default class ChatBubbles {
           let albumItem = findUpClassName(element, 'album-item');
           targets.push({
             element,
-            mid: +albumItem?.dataset.mid || id
+            mid: +albumItem?.dataset.mid || id,
+            peerId: this.peerId
           });
         });
       });
@@ -625,8 +626,13 @@ export default class ChatBubbles {
         return;
       }
 
-      new AppMediaViewer().openMedia(message, targets[idx].element, true, 
-        targets.slice(0, idx), targets.slice(idx + 1), undefined, this.chat.threadId/* , !message.grouped_id */);
+      new AppMediaViewer()
+      .setSearchContext({
+        threadId: this.chat.threadId,
+        peerId: this.peerId,
+        inputFilter: 'inputMessagesFilterPhotoVideo'
+      })
+      .openMedia(message, targets[idx].element, 0, true, targets.slice(0, idx), targets.slice(idx + 1));
       
       cancelEvent(e);
       //appMediaViewer.openMedia(message, target as HTMLImageElement);
@@ -2344,7 +2350,13 @@ export default class ChatBubbles {
     if(this.chat.type === 'chat' || this.chat.type === 'discussion') {
       return this.appMessagesManager.getHistory(this.peerId, maxId, loadCount, backLimit, this.chat.threadId);
     } else if(this.chat.type === 'pinned') {
-      const promise = this.appMessagesManager.getSearch(this.peerId, '', {_: 'inputMessagesFilterPinned'}, maxId, loadCount, 0, backLimit)
+      const promise = this.appMessagesManager.getSearchNew({
+        peerId: this.peerId, 
+        inputFilter: {_: 'inputMessagesFilterPinned'}, 
+        maxId, 
+        limit: loadCount, 
+        backLimit
+      })
       .then(value => ({history: value.history.map(m => m.mid)}));
 
       return promise;

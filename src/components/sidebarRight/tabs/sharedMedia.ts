@@ -1,12 +1,12 @@
 import appImManager from "../../../lib/appManagers/appImManager";
-import appMessagesManager, { MyInputMessagesFilter } from "../../../lib/appManagers/appMessagesManager";
+import appMessagesManager, { MyInputMessagesFilter, MyMessage } from "../../../lib/appManagers/appMessagesManager";
 import appPeersManager from "../../../lib/appManagers/appPeersManager";
 import appProfileManager from "../../../lib/appManagers/appProfileManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import { logger } from "../../../lib/logger";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import rootScope from "../../../lib/rootScope";
-import AppSearchSuper from "../../appSearchSuper.";
+import AppSearchSuper, { SearchSuperType } from "../../appSearchSuper.";
 import AvatarElement from "../../avatar";
 import Scrollable from "../../scrollable";
 import { SliderTab } from "../../slider";
@@ -48,7 +48,7 @@ export default class AppSharedMediaTab implements SliderTab {
 
   public historiesStorage: {
     [peerId: number]: Partial<{
-      [type in MyInputMessagesFilter]: number[]
+      [type in SearchSuperType]: {mid: number, peerId: number}[]
     }>
   } = {};
 
@@ -118,13 +118,13 @@ export default class AppSharedMediaTab implements SliderTab {
       name: 'Media'
     }, {
       inputFilter: 'inputMessagesFilterDocument',
-      name: 'Docs'
+      name: 'Files'
     }, {
       inputFilter: 'inputMessagesFilterUrl',
       name: 'Links'
     }, {
       inputFilter: 'inputMessagesFilterMusic',
-      name: 'Audio'
+      name: 'Music'
     }], this.scroll);
 
     this.profileContentEl.append(this.searchSuper.container);
@@ -155,10 +155,10 @@ export default class AppSharedMediaTab implements SliderTab {
     mids = mids.slice().reverse(); // ! because it will be ascend sorted array
     for(const type of this.searchSuper.types) {
       const inputFilter = type.inputFilter;
-      const filtered = this.searchSuper.filterMessagesByType(mids, inputFilter);
+      const filtered = this.searchSuper.filterMessagesByType(mids.map(mid => appMessagesManager.getMessageByPeer(peerId, mid)), inputFilter);
       if(filtered.length) {
         if(this.historiesStorage[peerId][inputFilter]) {
-          this.historiesStorage[peerId][inputFilter].unshift(...mids);
+          this.historiesStorage[peerId][inputFilter].unshift(...filtered.map(message => ({mid: message.mid, peerId: message.peerId})));
         }
 
         if(this.peerId == peerId && this.searchSuper.usedFromHistory[inputFilter] !== -1) {
@@ -183,18 +183,14 @@ export default class AppSharedMediaTab implements SliderTab {
         if(!this.historiesStorage[peerId][inputFilter]) continue;
 
         const history = this.historiesStorage[peerId][inputFilter];
-        const idx = history.findIndex(m => m == mid);
+        const idx = history.findIndex(m => m.mid === mid);
         if(idx !== -1) {
           history.splice(idx, 1);
 
           if(this.peerId == peerId) {
             const container = this.searchSuper.tabs[inputFilter];
-            const div = container.querySelector(`div[data-mid="${mid}"]`);
+            const div = container.querySelector(`div[data-mid="${mid}"][data-peer-id="${peerId}"]`);
             if(div) {
-              if(inputFilter == 'inputMessagesFilterPhotoVideo') {
-                delete this.searchSuper.mediaDivsByIds[mid];
-              }
-  
               div.remove();
             }
   
@@ -220,6 +216,7 @@ export default class AppSharedMediaTab implements SliderTab {
     this.profileElements.notificationsStatus.innerText = 'Enabled';
 
     this.searchSuper.cleanupHTML();
+    this.searchSuper.selectTab(0, false);
   }
 
   public setLoadMutex(promise: Promise<any>) {
@@ -236,7 +233,11 @@ export default class AppSharedMediaTab implements SliderTab {
 
     this.peerId = peerId;
     this.threadId = threadId;
-    this.searchSuper.setQuery(peerId, '', threadId, this.historiesStorage[peerId] ?? (this.historiesStorage[peerId] = {}));
+    this.searchSuper.setQuery({
+      peerId, 
+      //threadId, 
+      historyStorage: this.historiesStorage[peerId] ?? (this.historiesStorage[peerId] = {})
+    });
     this.cleaned = true;
   }
 

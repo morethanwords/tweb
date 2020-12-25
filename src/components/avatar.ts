@@ -52,7 +52,13 @@ export default class AvatarElement extends HTMLElement {
         if(peerId < 0) {
           const maxId = Number.MAX_SAFE_INTEGER;
           const inputFilter = 'inputMessagesFilterChatPhotos';
-          let message: any = await appMessagesManager.getSearch(peerId, '', {_: inputFilter}, maxId, 2, 0, 1).then(value => {
+          let message: any = await appMessagesManager.getSearchNew({
+            peerId, 
+            inputFilter: {_: inputFilter}, 
+            maxId, 
+            limit: 2, 
+            backLimit: 1
+          }).then(value => {
             //console.log(lol);
             // ! by descend
             return value.history[0];
@@ -78,7 +84,12 @@ export default class AvatarElement extends HTMLElement {
             }
 
             const good = Array.from(this.querySelectorAll('img')).find(img => !img.classList.contains('emoji'));
-            new AppMediaViewer(inputFilter).openMedia(message, good ? this : null);
+            new AppMediaViewer()
+            .setSearchContext({
+              peerId,
+              inputFilter,
+            })
+            .openMedia(message, good ? this : null);
             loading = false;
             return;
           }

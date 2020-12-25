@@ -1887,7 +1887,12 @@ export class AppMessagesManager {
     if(p.promise) return p.promise;
     else if(p.maxId) return Promise.resolve(p);
 
-    return p.promise = this.getSearch(peerId, '', {_: 'inputMessagesFilterPinned'}, 0, 1).then(result => {
+    return p.promise = this.getSearchNew({
+      peerId, 
+      inputFilter: {_: 'inputMessagesFilterPinned'},
+      maxId: 0,
+      limit: 1
+    }).then(result => {
       p.count = result.count;
       p.maxId = result.history[0]?.mid;
       return p;
@@ -2380,8 +2385,7 @@ export class AppMessagesManager {
 
     let messageWrapped = '';
     if(text) {
-      // * 80 for chatlist in landscape orientation
-      text = limitSymbols(text, 75, 80);
+      text = limitSymbols(text, 100);
 
       const entities = RichTextProcessor.parseEntities(text.replace(/\n/g, ' '));
 
@@ -2394,6 +2398,21 @@ export class AppMessagesManager {
     }
 
     return messageText + messageWrapped;
+  }
+
+  public getSenderToPeerText(message: MyMessage) {
+    let senderTitle = '', peerTitle: string;
+    
+    senderTitle = message.pFlags.out ? 'You' : appPeersManager.getPeerTitle(message.fromId, false, false);
+    peerTitle = appPeersManager.isAnyGroup(message.peerId) || (message.pFlags.out && message.peerId !== rootScope.myId) ? 
+      appPeersManager.getPeerTitle(message.peerId, false, false) : 
+      '';
+
+    if(peerTitle) {
+      senderTitle += ' ➝ ' + peerTitle;
+    }
+
+    return senderTitle;
   }
 
   public wrapMessageActionText(message: any) {
@@ -2868,24 +2887,25 @@ export class AppMessagesManager {
     });
   }
 
-  public getSearchNew({peerId, query, inputFilter, maxId, limit, offsetRate, backLimit, threadId}: {
-    peerId: number,
-    maxId: number,
+  public getSearchNew({peerId, query, inputFilter, maxId, limit, nextRate, backLimit, threadId, folderId}: {
+    peerId?: number,
+    maxId?: number,
     limit?: number,
-    offsetRate?: number,
+    nextRate?: number,
     backLimit?: number,
     threadId?: number,
+    folderId?: number,
     query?: string,
     inputFilter?: {
       _: MyInputMessagesFilter
     },
   }) {
-    return this.getSearch(peerId, query, inputFilter, maxId, limit, offsetRate, backLimit, threadId);
+    return this.getSearch(peerId, query, inputFilter, maxId, limit, nextRate, backLimit, threadId, folderId);
   }
 
   public getSearch(peerId = 0, query: string = '', inputFilter: {
     _: MyInputMessagesFilter
-  } = {_: 'inputMessagesFilterEmpty'}, maxId: number, limit = 20, offsetRate = 0, backLimit = 0, threadId = 0): Promise<{
+  } = {_: 'inputMessagesFilterEmpty'}, maxId: number, limit = 20, nextRate = 0, backLimit = 0, threadId?: number, folderId?: number): Promise<{
     count: number,
     next_rate: number,
     offset_id_offset: number,
@@ -3052,7 +3072,7 @@ export class AppMessagesManager {
     }
 
     let apiPromise: Promise<any>;
-    if(peerId || !query) {
+    if(peerId && !nextRate && folderId === undefined/*  || !query */) {
       apiPromise = apiManager.invokeApi('messages.search', {
         peer: appPeersManager.getInputPeerById(peerId),
         q: query || '',
@@ -3087,10 +3107,11 @@ export class AppMessagesManager {
         filter: inputFilter as any as MessagesFilter,
         min_date: 0,
         max_date: 0,
-        offset_rate: offsetRate,
+        offset_rate: nextRate,
         offset_peer: appPeersManager.getInputPeerById(offsetPeerId),
         offset_id: offsetId,
         limit,
+        folder_id: folderId
       }, {
         //timeout: APITIMEOUT,
         noErrorBox: true
@@ -3110,7 +3131,7 @@ export class AppMessagesManager {
         storage.count = searchResult.count;
       }
 
-      this.log('messages.search result:', inputFilter, searchResult);
+      this.log('getSearch result:', inputFilter, searchResult);
 
       const foundCount: number = searchResult.count || (foundMsgs.length + searchResult.messages.length);
 
@@ -4298,7 +4319,7 @@ export class AppMessagesManager {
         }
       } else if(message.media.document) {
         const doc = appDocsManager.getDoc('' + tempId);
-        if(/* doc._ != 'documentEmpty' &&  */doc?.type && doc.type != 'sticker') {
+        if(/* doc._ != 'documentEmpty' &&  */doc?.type && doc.type !== 'sticker') {
           const newDoc = message.media.document;
           newDoc.downloaded = doc.downloaded;
           newDoc.url = doc.url;
@@ -4325,7 +4346,7 @@ export class AppMessagesManager {
     AppStorage.set({max_seen_msg: maxId});
 
     apiManager.invokeApi('messages.receivedMessages', {
-      max_id: maxId
+      max_id: this.getLocalMessageId(maxId)
     });
   }
 

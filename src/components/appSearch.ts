@@ -1,14 +1,7 @@
 import appDialogsManager from "../lib/appManagers/appDialogsManager";
 import Scrollable from "./scrollable";
-import appUsersManager from "../lib/appManagers/appUsersManager";
-import appPeersManager from '../lib/appManagers/appPeersManager';
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
-import { formatPhoneNumber } from "./misc";
-import appChatsManager from "../lib/appManagers/appChatsManager";
 import InputSearch from "./inputSearch";
-import rootScope from "../lib/rootScope";
-import { escapeRegExp } from "../helpers/string";
-import searchIndexManager from "../lib/searchIndexManager";
 
 export class SearchGroup {
   container: HTMLDivElement;
@@ -57,17 +50,12 @@ export class SearchGroup {
   }
 }
 
-/**
- * * Saved будет использована только для вывода одного элемента - избранное
- */
-type SearchGroupType = 'saved' | 'contacts' | 'globalContacts' | 'messages' | string;
+export type SearchGroupType = 'contacts' | 'globalContacts' | 'messages' | string;
 
 export default class AppSearch {
   private minMsgId = 0;
   private loadedCount = -1;
   private foundCount = -1;
-  private offsetRate = 0;
-  private loadedContacts = false;
 
   private searchPromise: Promise<void> = null;
   private searchTimeout: number = 0;
@@ -126,8 +114,6 @@ export default class AppSearch {
     this.minMsgId = 0;
     this.loadedCount = -1;
     this.foundCount = -1;
-    this.offsetRate = 0;
-    this.loadedContacts = false;
 
     for(let i in this.searchGroups) {
       this.searchGroups[i as SearchGroupType].clear();
@@ -164,112 +150,36 @@ export default class AppSearch {
     
     const maxId = this.minMsgId || 0;
 
-    if(!this.peerId && !maxId && !this.loadedContacts) {
-      const renderedPeerIds: Set<number> = new Set();
-
-      const setResults = (results: number[], group: SearchGroup, showMembersCount = false) => {
-        results.forEach((peerId) => {
-          if(renderedPeerIds.has(peerId)) {
-            return;
-          }
-
-          renderedPeerIds.add(peerId);
-
-          const peer = appPeersManager.getPeer(peerId);
-
-          //////////this.log('contacts peer', peer);
-
-          const {dom} = appDialogsManager.addDialogNew({
-            dialog: peerId, 
-            container: group.list, 
-            drawStatus: false,
-            avatarSize: 48,
-            autonomous: group.autonomous
-          });
-
-          if(showMembersCount && (peer.participants_count || peer.participants)) {
-            const regExp = new RegExp(`(${escapeRegExp(query)}|${escapeRegExp(searchIndexManager.cleanSearchText(query))})`, 'gi');
-            dom.titleSpan.innerHTML = dom.titleSpan.innerHTML.replace(regExp, '<i>$1</i>');
-            dom.lastMessageSpan.innerText = appChatsManager.getChatMembersString(-peerId);
-          } else if(peerId == rootScope.myId) {
-            dom.lastMessageSpan.innerHTML = 'chat with yourself';
-          } else {
-            let username = appPeersManager.getPeerUsername(peerId);
-            if(!username) {
-              const user = appUsersManager.getUser(peerId);
-              if(user && user.phone) {
-                username = '+' + formatPhoneNumber(user.phone).formatted;
-              }
-            } else {
-              username = '@' + username;
-            }
-
-            dom.lastMessageSpan.innerHTML = '<i>' + username + '</i>';
-          }
-        });
-
-        group.toggle();
-      };
-
-      const onLoad = <T>(arg: T) => {
-        if(this.searchInput.value != query) {
-          return;
-        }
-
-        this.loadedContacts = true;
-
-        return arg;
-      };
-
-      appUsersManager.getContacts(query, true)
-      .then(onLoad)
-      .then((contacts) => {
-        if(contacts) {
-          setResults(contacts, this.searchGroups.contacts, true);
-        }
-      });
-
-      appUsersManager.searchContacts(query, 20)
-      .then(onLoad)
-      .then((contacts) => {
-        if(contacts) {
-          setResults(contacts.my_results, this.searchGroups.contacts, true);
-          setResults(contacts.results, this.searchGroups.globalContacts);
-        }
-      });
-
-      appMessagesManager.getConversations(query, 0, 20, 0)
-      .then(onLoad)
-      .then(value => {
-        if(value) {
-          setResults(value.dialogs.map(d => d.peerId), this.searchGroups.contacts, true);
-        }
-      });
-    }
-    
-    return this.searchPromise = appMessagesManager.getSearch(this.peerId, query, {_: 'inputMessagesFilterEmpty'}, maxId, 20, this.offsetRate, undefined, this.threadId).then(res => {
+    return this.searchPromise = appMessagesManager.getSearchNew({
+      peerId: this.peerId, 
+      query, 
+      inputFilter: {_: 'inputMessagesFilterEmpty'}, 
+      maxId, 
+      limit: 20,
+      threadId: this.threadId
+    }).then(res => {
       this.searchPromise = null;
       
-      if(this.searchInput.value != query) {
+      if(this.searchInput.value !== query) {
         return;
       }
       
       //console.log('input search result:', this.peerId, query, null, maxId, 20, res);
       
-      const {count, history, next_rate} = res;
+      const {count, history} = res;
       
-      if(history.length && history[0].mid == this.minMsgId) {
+      if(history.length && history[0].mid === this.minMsgId) {
         history.shift();
       }
       
       const searchGroup = this.searchGroups.messages;
 
-      history.forEach((message: any) => {
+      history.forEach((message) => {
         const {dialog, dom} = appDialogsManager.addDialogNew({
           dialog: message.peerId, 
           container: this.scrollable/* searchGroup.list */, 
           drawStatus: false,
-          avatarSize: 48
+          avatarSize: 54
         });
         appDialogsManager.setLastMessage(dialog, message, dom, query);
       });
@@ -277,14 +187,13 @@ export default class AppSearch {
       searchGroup.toggle();
       
       this.minMsgId = history.length && history[history.length - 1].mid;
-      this.offsetRate = next_rate;
       
-      if(this.loadedCount == -1) {
+      if(this.loadedCount === -1) {
         this.loadedCount = 0;
       }
       this.loadedCount += history.length;
       
-      if(this.foundCount == -1) {
+      if(this.foundCount === -1) {
         this.foundCount = count;
         this.onSearch && this.onSearch(this.foundCount);
       }

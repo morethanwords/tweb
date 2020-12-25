@@ -79,7 +79,7 @@ export class AppPeersManager {
     
     return plainText ? title : RichTextProcessor.wrapEmojiText(title);
   }
-
+  
   public getOutputPeer(peerId: number): Peer {
     if(peerId > 0) {
       return {_: 'peerUser', user_id: peerId};
