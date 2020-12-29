@@ -1078,6 +1078,10 @@ middle-ellipsis-element {
     min-width: 1.25rem;
     line-height: 1.25rem !important;
     padding: 0 5.75px;
+
+    html.is-safari & {
+      line-height: 22px !important;
+    }
   }
 
   &-24 {

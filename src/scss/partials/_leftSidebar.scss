@@ -142,6 +142,34 @@
   
     .search-helper {
       display: flex;
+      margin-left: 28px;
+
+      @include respond-to(handhelds) {
+       margin-left: 20px;
+      }
+
+      .selector-user {
+        margin-top: 7px;
+        font-size: 14px;
+
+        &:hover {
+          background-color: rgba(80, 162, 233, .2);
+        }
+
+        &-avatar:after {
+          display: none !important;
+        }
+      }
+    }
+    
+    .search-super-tabs-scrollable { 
+      position: sticky; 
+      top: 0; 
+      z-index: 2; 
+
+      .menu-horizontal ul {
+        justify-content: space-around;
+      }
     }
   }
 

@@ -6,7 +6,7 @@ const postcssPresetEnv = require('postcss-preset-env');
 const ServiceWorkerWebpackPlugin = require('serviceworker-webpack-plugin');
 const fs = require('fs');
 
-const allowedIPs = ['195.66.140.39', '192.168.31.144', '127.0.0.1', '192.168.31.1', '192.168.31.192', '176.100.18.181', '46.219.250.22', '193.42.119.184', '46.133.168.67', '78.26.144.197', '46.133.225.88', '128.124.170.79'];
+const allowedIPs = ['194.58.97.147', '195.66.140.39', '192.168.31.144', '127.0.0.1', '192.168.31.1', '192.168.31.192', '176.100.8.202', '46.219.250.22', '193.42.119.184', '46.133.168.67', '78.26.144.197', '46.133.225.88', '128.124.170.79'];
 const devMode = process.env.NODE_ENV !== 'production';
 const useLocal = false;
 
@@ -59,6 +59,7 @@ module.exports = {
       {
         test: /\.ts?$/,
         use: [
+          //{ loader: 'babel-loader', options: require('./babel.config') },
           'ts-loader', 
           { loader: "ifdef-loader", options: opts }
         ],
@@ -93,7 +94,7 @@ module.exports = {
     contentBase: path.join(__dirname, 'public'),
     watchContentBase: true,
     compress: true,
-    http2: true,
+    http2: useLocal ? undefined : true,
     https: useLocal ? undefined : {
       key: fs.readFileSync(__dirname + '/certs/server-key.pem', 'utf8'),
       cert: fs.readFileSync(__dirname + '/certs/server-cert.pem', 'utf8')
@@ -101,13 +102,13 @@ module.exports = {
     allowedHosts: useLocal ? undefined : [
       'tweb.enko.club'
     ],
-    host: '0.0.0.0',
+    host: useLocal ? undefined : '0.0.0.0',
     public: useLocal ? undefined : 'tweb.enko.club',
     //host: '192.168.0.105', // '0.0.0.0'
     //host: 'tweb.enko.club', // '0.0.0.0'
-    port: 443,
+    port: useLocal ? undefined : 443,
     overlay: true,
-    before: function(app, server, compiler) {
+    before: useLocal ? undefined : function(app, server, compiler) {
       app.use((req, res, next) => {
         let IP = '';
         if(req.headers['cf-connecting-ip']) {

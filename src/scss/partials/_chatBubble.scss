@@ -416,6 +416,10 @@ $bubble-margin: .25rem;
 
     .document {
       height: 3.375rem;
+
+      @include respond-to(handhelds) {
+        padding-left: 44px;
+      }
     }
   }
 
@@ -938,6 +942,7 @@ $bubble-margin: .25rem;
 
   .message.audio-message, .message.voice-message {
     padding: 8px !important;
+    //padding: 4px 6px 4px 8px !important;
   }
 
   .message.contact-message {

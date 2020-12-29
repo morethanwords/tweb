@@ -811,7 +811,7 @@ export default class ChatInput {
 
     //this.chat.log('messageInput entities', richValue, value, markdownEntities);
 
-    if(this.stickersHelper) {
+    if(this.stickersHelper && (this.chat.peerId > 0 || this.appChatsManager.hasRights(this.chat.peerId, 'send', 'send_stickers'))) {
       let emoticon = '';
       if(entities.length && entities[0]._ == 'messageEntityEmoji') {
         const entity = entities[0];

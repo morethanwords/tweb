@@ -337,7 +337,9 @@ export default class AppSearchSuper {
           appDialogsManager.setLastMessage(dialog, message, dom, this.searchContext.query);
         }
 
-        searchGroup.setActive();
+        if(searchGroup.list.childElementCount) {
+          searchGroup.setActive();
+        }
         break;
       }
 
@@ -608,9 +610,9 @@ export default class AppSearchSuper {
       });
     }
     
-    if(type !== 'inputMessagesFilterEmpty') {
-      this.afterPerforming(messages.length, sharedMediaDiv);
-    }
+    //if(type !== 'inputMessagesFilterEmpty') {
+      this.afterPerforming(type === 'inputMessagesFilterEmpty' ? 1 : messages.length, sharedMediaDiv);
+    //}
   }
 
   private afterPerforming(length: number, tab: HTMLElement) {

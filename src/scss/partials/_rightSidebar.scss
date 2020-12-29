@@ -249,6 +249,23 @@
   display: flex;
   flex-direction: column;
 
+  .search-group__show-more {
+    color: $color-blue;
+    cursor: pointer;
+    font-weight: 400;
+  }
+
+  .search-super-month-name {
+    border-top: 1px solid #dadce0;
+    padding: 24px 0px 0px 24px;
+    font-weight: 500;
+    color: #707579;
+
+    @include respond-to(handhelds) {
+      padding: 18px 0px 0px 16px;
+    }
+  }
+
   &.sliding {
     max-height: 100%;
   }
@@ -268,6 +285,8 @@
   }
 
   &-tabs-scrollable {
+    box-shadow: none !important;
+
     .scrollable {
       position: relative;
     }
@@ -322,6 +341,11 @@
   }
 
   &-content-media {
+    .search-super-month-name {
+      border: none;
+      padding: 9px 0px 7px 24px;
+    }
+
     .video-time {
       position: absolute;
       left: 5px;
@@ -333,6 +357,7 @@
       z-index: 1;
       font-size: 12px;
       color: white;
+      line-height: 18px;
     }
 
     .grid-item {
@@ -375,17 +400,25 @@
   }
 
   &-content-files {
-    padding: 7px 20px;
+    // padding: 8px 20px;
+    .search-super-month-items {
+      padding: 8px 24px 16px 20px;
+
+      @include respond-to(handhelds) {
+        padding: 8px 16px 8px 12px;
+      }
+    }
 
     .document {
-      padding-left: 4rem;
-      padding-right: 1rem;
+      padding-left: 60px;
+      // padding-right: 1rem;
       //height: 54px;
-      height: calc(50px + 1.5rem);
+      height: calc(48px + 1.5rem);
 
       &-ico, &-download {
         width: 48px;
         height: 48px;
+        border-radius: 5px !important;
       }
 
       /* & + .document {
@@ -404,7 +437,7 @@
   }
 
   &-content-links {
-    padding: 0 30px 15px 15px;
+    // padding: 0 24px 15px 15px;
 
     .search-super-item {
       display: flex;
@@ -446,45 +479,64 @@
         white-space: nowrap;
         text-overflow: ellipsis;
         overflow: hidden;
+        font-size: 14px;
+        margin-top: -1px;
       }
     }
 
     .title {
       font-size: 16px;
-      margin-top: 3px;
+      margin-top: 2px;
     }
 
     .subtitle {
       font-size: 14px;
+      max-width: 310px;
+
+      &.sender {
+        margin-top: 2px;
     }
   }
 
-  &-content-music, &-content-voice {
-    padding: 20px 15px 15px 20px;
+  .search-super-month-items {
+    padding: 0 24px 15px 15px;
+  
+    @include respond-to(handhelds) {
+      padding: 0 16px 15px 7px;
+    }
+  }
+
+}
+
+&-content-music, &-content-voice {
+
+  .search-super-month-items {
+    padding: 20px 15px 0px 20px;
+
+    @include respond-to(handhelds) {
+      padding: 20px 15px 0px 12px;
+    }
+  }
 
     .preloader-container {
       .preloader-circular {
         background-color: rgba(0, 0, 0, .35);
       }
 
-      @include respond-to(handhelds) {
-        width: 36px;
-        height: 36px;
-      }
-
-      @include respond-to(not-handhelds) {
-        width: 38px;
-        height: 38px;
-      }
+        width: 36px !important;
+        height: 36px !important;
     }
 
     .audio {
       padding-left: 61px;
       /* min-height: 58px; */
-      max-width: 368px;
       justify-content: unset;
       height: 48px;
       margin-bottom: 1.5rem;
+
+      @include respond-to(not-handhelds) {
+        max-width: 377px;
+      }
 
       &.audio-show-progress .audio-subtitle {
         overflow: visible;
@@ -500,14 +552,14 @@
       }
 
       .part {
-        height: 112px;
-        width: 112px;
+        height: 112px !important;
+        width: 112px !important;
         position: absolute;
         background-color: white;
 
         @include respond-to(handhelds) {
-          width: 100px;
-          height: 100px;
+          width: 100px !important;
+          height: 100px !important;
         }
       }
     }
@@ -528,7 +580,10 @@
 
   .sent-time {
     flex: 0 0 auto;
-    margin-left: .5rem;
+    margin-left: 8px;
+    margin-top: 3px;
+    font-size: 12px;
+    color: #707579;
   }
 
   .search-group.is-short {

@@ -284,7 +284,7 @@
     width: 100%;
     //border-bottom: 1px solid #DADCE0;
     padding: 1rem 0 .5rem;
-    margin-bottom: .5rem;
+    margin-bottom: 17px;
 
     @include respond-to(handhelds) {
       margin-bottom: 0;
@@ -298,31 +298,49 @@
       user-select: none;
 
       @include respond-to(handhelds) {
-        padding: 0 9px 0 16px;
+        padding: 5px 9px 0 16px;
         font-size: 15px;
       }
     }
 
     &-contacts {
-      padding: 16px 0 7px;
+      border-bottom: 1px solid #dadce0;
 
       @include respond-to(handhelds) {
-        padding: 7px 0 0px;
+        padding: 0px 0 2px;
       }
 
-      .search-group__name {
-        padding-bottom: 17px;
+      // .search-group__name {
+      //   padding-bottom: 17px;
         
-        @include respond-to(handhelds) {
-          padding-bottom: 0;
-        }
-      }
+      //   @include respond-to(handhelds) {
+      //     padding-bottom: 0;
+      //   }
+      // }
+    }
+
+    &-people.search-group-contacts {
+      padding: 5px 0 5px !important;
     }
 
     &:last-child {
       border-bottom: none;
     }
   }
+
+  .search-super {
+    .search-group {
+      margin-bottom: 0px;
+      padding: 4px 0 0;
+
+      &__name {
+        padding-top: 1rem;
+        display: flex;
+        justify-content: space-between;
+      }
+    }
+  }
+
 }
 
 // use together like class="chatlist-container contacts-container"

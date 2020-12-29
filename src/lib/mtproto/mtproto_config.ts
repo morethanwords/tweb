@@ -5,7 +5,7 @@ export const REPLIES_PEER_ID = 1271266957;
 export const App = {
   id: 1025907,
   hash: '452b0359b988148995f22ff0f4229750',
-  version: '0.3.2',
+  version: '0.4.0',
   domains: [] as string[],
   baseDcId: 2
 };

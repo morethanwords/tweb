@@ -543,7 +543,10 @@ export class AppImManager {
       return this.setPeer(peerId, lastMsgId);
     }
 
-    this.createNewChat();
+    const chat = this.chat;
+    if(!chat.init) { // * use first not inited chat
+      this.createNewChat();
+    }
 
     if(type) {
       this.chat.setType(type);

@@ -602,7 +602,7 @@ export class AppMessagesManager {
       this.pendingAfterMsgs[peerId] = sentRequestOptions;
     }
 
-    this.beforeMessageSending(message, {isScheduled: !!options.scheduleDate || undefined});
+    this.beforeMessageSending(message, {isScheduled: !!options.scheduleDate || undefined, threadId: options.threadId});
   }
 
   public sendFile(peerId: number, file: File | Blob | MyDocument, options: Partial<{
@@ -952,7 +952,7 @@ export class AppMessagesManager {
       return sentDeferred;
     };
 
-    this.beforeMessageSending(message, {isGroupedItem: options.isGroupedItem, isScheduled: !!options.scheduleDate || undefined});
+    this.beforeMessageSending(message, {isGroupedItem: options.isGroupedItem, isScheduled: !!options.scheduleDate || undefined, threadId: options.threadId});
 
     if(!options.isGroupedItem) {
       sentDeferred.then(inputMedia => {
@@ -1327,7 +1327,7 @@ export class AppMessagesManager {
       this.pendingAfterMsgs[peerId] = sentRequestOptions;
     }
 
-    this.beforeMessageSending(message, {isScheduled: !!options.scheduleDate || undefined});
+    this.beforeMessageSending(message, {isScheduled: !!options.scheduleDate || undefined, threadId: options.threadId});
   }
 
   /* private checkSendOptions(options: Partial<{
@@ -1341,7 +1341,7 @@ export class AppMessagesManager {
     }
   } */
 
-  private beforeMessageSending(message: any, options: Partial<{isGroupedItem: true, isScheduled: true}> = {}) {
+  private beforeMessageSending(message: any, options: Partial<{isGroupedItem: true, isScheduled: true, threadId: number}> = {}) {
     const messageId = message.id;
     const peerId = this.getMessagePeer(message);
     const storage = options.isScheduled ? this.getScheduledMessagesStorage(peerId) : this.getMessagesStorage(peerId);
@@ -1352,8 +1352,16 @@ export class AppMessagesManager {
         rootScope.broadcast('scheduled_new', {peerId, mid: messageId});
       }
     } else {
-      const historyStorage = this.getHistoryStorage(peerId);
-      historyStorage.history.unshift(messageId);
+      if(options.threadId && this.threadsStorage[peerId]) {
+        delete this.threadsStorage[peerId][options.threadId];
+      }
+      //if(options.threadId) {
+        const historyStorage = this.getHistoryStorage(peerId/* , options.threadId */);
+        historyStorage.history.unshift(messageId);
+      //}
+
+      /* const historyStorage = this.getHistoryStorage(peerId);
+      historyStorage.history.unshift(messageId); */
 
       if(!options.isGroupedItem) {
         this.saveMessages([message], {storage, isOutgoing: true});
