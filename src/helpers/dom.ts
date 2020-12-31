@@ -609,28 +609,29 @@ export const getElementByPoint = (container: HTMLElement, verticalSide: 'top' | 
 export async function getFilesFromEvent(e: ClipboardEvent | DragEvent, onlyTypes = false): Promise<any[]> {
   const files: any[] = [];
 
-  const scanFiles = async(item: any) => {
-    if(item.isDirectory) {
-      const directoryReader = item.createReader();
+  const scanFiles = async(entry: any, item: DataTransferItem) => {
+    if(entry.isDirectory) {
+      const directoryReader = entry.createReader();
       await new Promise<void>((resolve, reject) => {
         directoryReader.readEntries(async(entries: any) => {
           for(const entry of entries) {
-            await scanFiles(entry);
+            await scanFiles(entry, item);
           }
 
           resolve();
         });
       });
-    } else if(item) {
+    } else if(entry) {
       if(onlyTypes) {
-        files.push(item.type);
+        files.push(entry.type);
       } else {
-        const file = item instanceof File ? 
-          item : 
+        const itemFile = item.getAsFile(); // * Safari can't handle entry.file with pasting
+        const file = entry instanceof File ? 
+          entry : 
           (
-            item instanceof DataTransferItem ? 
-              item.getAsFile() : 
-              await new Promise((resolve, reject) => item.file(resolve, reject))
+            entry instanceof DataTransferItem ? 
+              entry.getAsFile() : 
+              await new Promise((resolve, reject) => entry.file(resolve, (err: any) => resolve(itemFile)))
           );
 
         /* if(!onlyTypes) {
@@ -657,7 +658,7 @@ export async function getFilesFromEvent(e: ClipboardEvent | DragEvent, onlyTypes
       const item: DataTransferItem = items[i];
       if(item.kind === 'file') {
         const entry = (onlyTypes ? item : item.webkitGetAsEntry()) || item.getAsFile();
-        promises.push(scanFiles(entry));
+        promises.push(scanFiles(entry, item));
       }
     }
     
