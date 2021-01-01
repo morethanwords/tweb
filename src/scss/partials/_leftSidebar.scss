@@ -421,6 +421,19 @@
       height: calc(100% - 64px); */
     }
   }
+
+  .input-wrapper {
+    width: 420px;
+    margin: 0 auto;
+    flex: 0 0 auto;
+    padding: 0 1.25rem;
+    max-width: 100%;
+
+    @include respond-to(handhelds) {
+      width: 100%;
+      padding: 0 1rem;
+    }
+  }
 }
 
 #search-container {
@@ -437,19 +450,6 @@
     height: 120px;
     margin: 1px auto 32px;
     flex: 0 0 auto;
-  }
-
-  .input-wrapper {
-    width: 420px;
-    margin: 0 auto;
-    flex: 0 0 auto;
-    padding: 0 1.25rem;
-    max-width: 100%;
-
-    @include respond-to(handhelds) {
-      width: 100%;
-      padding: 0 16px;
-    }
   }
 
   .chatlist-container {
@@ -471,6 +471,10 @@
     margin: 0 auto;
     flex: 0 0 auto;
   }
+
+  .folder-category-button:nth-child(n+2) {
+    pointer-events: none;
+  }
 }
 
 .new-group-members {
@@ -485,30 +489,26 @@
   .profile {
     &-button {
       display: flex;
-      padding: 1.125rem 0.625rem;
+      padding: 1.125rem .625rem;
       height: 3.5rem;
       line-height: 1.4;
-      border-radius: 0.625rem;
-      margin: 0px 0.5rem 0px 0.4375rem;
+      border-radius: .625rem;
       overflow: hidden;
+      font-weight: normal;
+      text-transform: unset;
 
       @include respond-to(handhelds) {
-        padding: 0.75rem 0.625rem;
+        padding: .75rem .625rem;
         height: 48px;
         margin: 0 0 2px 0;
         border-radius: 0;
       }
 
-      html.no-touch &:hover {
-        background: var(--color-gray-hover);
-        cursor: pointer;
-      }
-
       &:before {
         font-size: 24px;
         color: #707579;
-        margin-left: 0.375rem;
-        margin-top: -0.0625rem;
+        margin-left: .375rem;
+        margin-right: 2rem;
       }
 
       p {
@@ -518,8 +518,9 @@
     }
 
     &-buttons {
-      margin-top: .9375rem;
+      margin-top: 1.125rem;
       width: 100%;
+      padding: 0 .4375rem;
 
       @include respond-to(handhelds) {
         margin-top: 0.6875rem;
@@ -665,7 +666,7 @@
   }
 
   .input-wrapper {
-    margin-bottom: 10px;
+    margin-bottom: 10px !important;
   }
 }
 
@@ -696,9 +697,9 @@
   width: 100%;
 
   .checkbox {
-    margin-top: -9px !important;
-    right: 0;
+    margin-top: 0 !important;
     position: absolute;
+    right: 0;
 
     [type="checkbox"] + span {
       padding-left: 46px;
@@ -717,12 +718,14 @@
 
 .folder-category-button {
   display: flex;
-  font-size: 1.5rem;
-  padding: 13px 24px 10px 24px;
+  padding: 0 1.5rem;
   overflow: hidden;
+  font-weight: normal;
+  height: 50px;
+  border-radius: 0;
 
   @include respond-to(handhelds) {
-    padding: 13px 16px 10px 16px;
+    padding: 0 1rem;
   }
 
   p {
@@ -742,6 +745,7 @@
 
   &:before {
     color: #797d82;
+    margin-right: 2rem;
   }
 }
 

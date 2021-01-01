@@ -1,4 +1,4 @@
-import { SliderTab } from "../../slider";
+import { SliderTab, SliderSuperTab } from "../../slider";
 import lottieLoader, { RLottiePlayer } from "../../../lib/lottieLoader";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import { cancelEvent, positionElementByIndex } from "../../../helpers/dom";
@@ -11,9 +11,9 @@ import type { AppPeersManager } from "../../../lib/appManagers/appPeersManager";
 import type { AppSidebarLeft } from "..";
 import type { DialogFilterSuggested, DialogFilter } from "../../../layer";
 import type _rootScope from "../../../lib/rootScope";
+import Button from "../../button";
 
-export default class AppChatFoldersTab implements SliderTab {
-  public container: HTMLElement;
+export default class AppChatFoldersTab extends SliderSuperTab {
   public createFolderBtn: HTMLElement;
   private foldersContainer: HTMLElement;
   private suggestedContainer: HTMLElement;
@@ -23,7 +23,7 @@ export default class AppChatFoldersTab implements SliderTab {
   private filtersRendered: {[filterId: number]: HTMLElement} = {};
 
   constructor(private appMessagesManager: AppMessagesManager, private appPeersManager: AppPeersManager, private appSidebarLeft: AppSidebarLeft, private apiManager: ApiManagerProxy, private rootScope: typeof _rootScope) {
-
+    super(appSidebarLeft);
   }
 
   private renderFolder(dialogFilter: DialogFilterSuggested | DialogFilter | MyDialogFilter, container?: HTMLElement, div: HTMLElement = document.createElement('div')) {
@@ -97,11 +97,43 @@ export default class AppChatFoldersTab implements SliderTab {
   }
 
   init() {
-    this.container = document.querySelector('.chat-folders-container');
-    this.stickerContainer = this.container.querySelector('.sticker-container');
-    this.foldersContainer = this.container.querySelector('.folders-my');
-    this.suggestedContainer = this.container.querySelector('.folders-suggested');
-    this.createFolderBtn = this.container.querySelector('.btn-create-folder');
+    this.container.classList.add('chat-folders-container');
+    this.title.innerText = 'Chat Folders';
+
+    this.scrollable.container.classList.add('chat-folders');
+
+    this.stickerContainer = document.createElement('div');
+    this.stickerContainer.classList.add('sticker-container');
+    
+    const caption = document.createElement('div');
+    caption.classList.add('caption');
+    caption.innerHTML = `Create folders for different groups of chats<br>and quickly switch between them.`;
+    
+    this.createFolderBtn = Button('btn-primary btn-create-folder', {
+      text: 'Create Folder',
+      icon: 'add'
+    });
+
+    this.foldersContainer = document.createElement('div');
+    this.foldersContainer.classList.add('folders-my');
+
+    const foldersH2 = document.createElement('div');
+    foldersH2.classList.add('sidebar-left-h2');
+    foldersH2.innerText = 'Folders';
+
+    this.foldersContainer.append(foldersH2);
+
+    this.suggestedContainer = document.createElement('div');
+    this.suggestedContainer.classList.add('folders-suggested');
+    this.suggestedContainer.style.display = 'none';
+
+    const suggestedH2 = document.createElement('div');
+    suggestedH2.classList.add('sidebar-left-h2');
+    suggestedH2.innerText = 'Recommended folders';
+
+    this.suggestedContainer.append(suggestedH2);
+
+    this.scrollable.append(this.stickerContainer, caption, this.createFolderBtn, document.createElement('hr'), this.foldersContainer, document.createElement('hr'), this.suggestedContainer);
 
     this.createFolderBtn.addEventListener('click', () => {
       if(Object.keys(this.filtersRendered).length >= 10) {

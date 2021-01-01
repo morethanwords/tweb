@@ -1,4 +1,4 @@
-import { SliderTab } from "../../slider";
+import { SliderTab, SliderSuperTab } from "../../slider";
 import AppSelectPeers from "../../appSelectPeers";
 import appSidebarLeft, { AppSidebarLeft } from "..";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
@@ -7,23 +7,27 @@ import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import { MyDialogFilter as DialogFilter } from "../../../lib/storages/filters";
 import rootScope from "../../../lib/rootScope";
 import { copy } from "../../../helpers/object";
+import ButtonIcon from "../../buttonIcon";
 
-export default class AppIncludedChatsTab implements SliderTab {
-  public container: HTMLElement;
-  private closeBtn: HTMLElement;
+export default class AppIncludedChatsTab extends SliderSuperTab {
   private confirmBtn: HTMLElement;
-  private title: HTMLElement;
 
   private selector: AppSelectPeers;
   private type: 'included' | 'excluded';
   private filter: DialogFilter;
   private originalFilter: DialogFilter;
 
+  constructor(appSidebarLeft: AppSidebarLeft) {
+    super(appSidebarLeft);
+  }
+
   init() {
-    this.container = document.querySelector('.included-chatlist-container');
-    this.closeBtn = this.container.querySelector('.sidebar-close-button');
-    this.confirmBtn = this.container.querySelector('.btn-confirm');
-    this.title = this.container.querySelector('.sidebar-header__title');
+    this.content.remove();
+    this.container.classList.add('included-chatlist-container');
+    this.confirmBtn = ButtonIcon('check1 btn-confirm', {noRipple: true});
+    this.confirmBtn.style.display = 'none';
+
+    this.header.append(this.confirmBtn);
 
     this.confirmBtn.addEventListener('click', () => {
       const selected = this.selector.getSelected();
@@ -86,7 +90,7 @@ export default class AppIncludedChatsTab implements SliderTab {
       //this.filter.pinned_peers = this.filter.pinned_peers.filter(peerId => this.filter.include_peers.includes(peerId));
 
       appSidebarLeft.editFolderTab.setFilter(this.filter, false);
-      appSidebarLeft.closeTab(AppSidebarLeft.SLIDERITEMSIDS.includedChats);
+      this.close();
     });
   }
 
@@ -150,26 +154,26 @@ export default class AppIncludedChatsTab implements SliderTab {
     const categories = document.createElement('div');
     categories.classList.add('folder-categories');
 
-    let details: any;
+    let details: {[flag: string]: {ico: string, text: string}};
     if(this.type == 'excluded') {
       details = {
-        exclude_muted: {ico: 'tgico-mute', text: 'Muted'},
-        exclude_archived: {ico: 'tgico-archive', text: 'Archived'},
-        exclude_read: {ico: 'tgico-readchats', text: 'Read'}
+        exclude_muted: {ico: 'mute', text: 'Muted'},
+        exclude_archived: {ico: 'archive', text: 'Archived'},
+        exclude_read: {ico: 'readchats', text: 'Read'}
       };
     } else {
       details = {
-        contacts: {ico: 'tgico-newprivate', text: 'Contacts'},
-        non_contacts: {ico: 'tgico-noncontacts', text: 'Non-Contacts'},
-        groups: {ico: 'tgico-group', text: 'Groups'},
-        broadcasts: {ico: 'tgico-newchannel', text: 'Channels'},
-        bots: {ico: 'tgico-bots', text: 'Bots'}
+        contacts: {ico: 'newprivate', text: 'Contacts'},
+        non_contacts: {ico: 'noncontacts', text: 'Non-Contacts'},
+        groups: {ico: 'group', text: 'Groups'},
+        broadcasts: {ico: 'newchannel', text: 'Channels'},
+        bots: {ico: 'bots', text: 'Bots'}
       };
     }
 
     let html = '';
     for(const key in details) {
-      html += `<div class="folder-category-button ${details[key].ico}" data-peerId="${key}"><p>${details[key].text}</p>${this.checkbox()}</div>`;
+      html += `<button class="folder-category-button btn-primary btn-transparent tgico-${details[key].ico}" data-peerId="${key}">${details[key].text}${this.checkbox()}</button>`;
     }
     categories.innerHTML = html;
 
@@ -184,7 +188,7 @@ export default class AppIncludedChatsTab implements SliderTab {
 
     /////////////////
 
-    const selectedPeers = (this.type == 'included' ? filter.include_peers : filter.exclude_peers).slice();
+    const selectedPeers = (this.type === 'included' ? filter.include_peers : filter.exclude_peers).slice();
 
     this.selector = new AppSelectPeers(this.container, this.onSelectChange, ['dialogs'], null, this.renderResults);
     this.selector.selected = new Set(selectedPeers);
@@ -194,7 +198,7 @@ export default class AppIncludedChatsTab implements SliderTab {
     this.selector.add = (peerId, title) => {
       const div = _add(peerId, details[peerId]?.text);
       if(details[peerId]) {
-        div.querySelector('avatar-element').classList.add(details[peerId].ico);
+        div.querySelector('avatar-element').classList.add('tgico-' + details[peerId].ico);
       }
       return div;
     };
@@ -232,11 +236,14 @@ export default class AppIncludedChatsTab implements SliderTab {
     }
   }
 
-  open(filter: DialogFilter, type: 'included' | 'excluded') {
+  /**
+   * Do not ignore arguments!
+   */
+  public open(filter?: DialogFilter, type?: 'included' | 'excluded') {
     this.originalFilter = filter;
     this.filter = copy(this.originalFilter);
     this.type = type;
-
-    appSidebarLeft.selectTab(AppSidebarLeft.SLIDERITEMSIDS.includedChats);
+    
+    return super.open();
   }
 }

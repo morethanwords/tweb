@@ -5,25 +5,25 @@ import { MyDialogFilter as DialogFilter } from "../../../lib/storages/filters";
 import lottieLoader, { RLottiePlayer } from "../../../lib/lottieLoader";
 import { parseMenuButtonsTo } from "../../misc";
 import { ripple } from "../../ripple";
-import { SliderTab } from "../../slider";
+import { SliderTab, SliderSuperTab } from "../../slider";
 import { toast } from "../../toast";
 import appMessagesManager from "../../../lib/appManagers/appMessagesManager";
 import { attachClickEvent } from "../../../helpers/dom";
 import InputField from "../../inputField";
 import RichTextProcessor from "../../../lib/richtextprocessor";
+import ButtonIcon from "../../buttonIcon";
+import ButtonMenuToggle from "../../buttonMenuToggle";
+import { ButtonMenuItemOptions } from "../../buttonMenu";
+import Button from "../../button";
 
 const MAX_FOLDER_NAME_LENGTH = 12;
 
-export default class AppEditFolderTab implements SliderTab {
-  public container: HTMLElement;
-  private closeBtn: HTMLElement;
-  private title: HTMLElement;
+export default class AppEditFolderTab extends SliderSuperTab {
   private caption: HTMLElement;
   private stickerContainer: HTMLElement;
 
   private confirmBtn: HTMLElement;
   private menuBtn: HTMLElement;
-  private deleteFolderBtn: HTMLElement;
   private nameInput: HTMLElement;
   private nameInputField: InputField;
 
@@ -37,16 +37,37 @@ export default class AppEditFolderTab implements SliderTab {
 
   private type: 'edit' | 'create';
 
-  init() {
-    this.container = document.querySelector('.edit-folder-container');
-    this.closeBtn = this.container.querySelector('.sidebar-close-button');
-    this.title = this.container.querySelector('.sidebar-header__title');
-    this.caption = this.container.querySelector('.caption');
-    this.stickerContainer = this.container.querySelector('.sticker-container');
+  constructor(appSidebarLeft: AppSidebarLeft) {
+    super(appSidebarLeft);
+  }
 
-    this.confirmBtn = this.container.querySelector('.btn-confirm');
-    this.menuBtn = this.container.querySelector('.btn-menu-toggle');
-    this.deleteFolderBtn = this.menuBtn.querySelector('.menu-delete');
+  init() {
+    this.container.classList.add('edit-folder-container');
+    this.caption = document.createElement('div');
+    this.caption.classList.add('caption');
+    this.caption.innerHTML = `Choose chats and types of chats that will<br>appear and never appear in this folder.`;
+    this.stickerContainer = document.createElement('div');
+    this.stickerContainer.classList.add('sticker-container');
+
+    this.confirmBtn = ButtonIcon('check1 btn-confirm hide');
+    const deleteFolderButton: ButtonMenuItemOptions = {
+      icon: 'delete danger',
+      text: 'Delete Folder',
+      onClick: () => {
+        deleteFolderButton.element.setAttribute('disabled', 'true');
+        appMessagesManager.filtersStorage.updateDialogFilter(this.filter, true).then(bool => {
+          if(bool) {
+            this.close();
+          }
+        }).finally(() => {
+          deleteFolderButton.element.removeAttribute('disabled');
+        });
+      }
+    };
+    this.menuBtn = ButtonMenuToggle({}, 'bottom-left', [deleteFolderButton]);
+    this.menuBtn.classList.add('hide');
+
+    this.header.append(this.confirmBtn, this.menuBtn);
 
     const inputWrapper = document.createElement('div');
     inputWrapper.classList.add('input-wrapper');
@@ -59,15 +80,85 @@ export default class AppEditFolderTab implements SliderTab {
 
     inputWrapper.append(this.nameInputField.container);
 
-    this.caption.parentElement.insertBefore(inputWrapper, this.caption.nextSibling);
+    const generateList = (className: string, h2Text: string, buttons: {icon: string, name?: string, withRipple?: true, text: string}[], to: any) => {
+      const container = document.createElement('div');
+      container.classList.add('folder-list', className);
 
-    this.include_peers = this.container.querySelector('.folder-list-included');
-    this.exclude_peers = this.container.querySelector('.folder-list-excluded');
+      const h2 = document.createElement('div');
+      h2.classList.add('sidebar-left-h2');
+      h2.innerHTML = h2Text;
+
+      const categories = document.createElement('div');
+      categories.classList.add('folder-categories');
+
+      buttons.forEach(o => {
+        const button = Button('folder-category-button btn-primary btn-transparent', {
+          icon: o.icon,
+          text: o.text,
+          noRipple: o.withRipple ? undefined : true,
+          rippleSquare: true
+        });
+
+        if(o.name) {
+          to[o.name] = button;
+        }
+
+        categories.append(button);
+      });
+
+      container.append(h2, categories);
+
+      return container;
+    };
+
+    this.include_peers = generateList('folder-list-included', 'Included chats', [{
+      icon: 'add blue',
+      text: 'Add Chats',
+      withRipple: true
+    }, {
+      text: 'Contacts',
+      icon: 'newprivate',
+      name: 'contacts'
+    }, {
+      text: 'Non-Contacts',
+      icon: 'noncontacts',
+      name: 'non_contacts'
+    }, {
+      text: 'Groups',
+      icon: 'group',
+      name: 'groups'
+    }, {
+      text: 'Channels',
+      icon: 'channel',
+      name: 'broadcasts'
+    }, {
+      text: 'Bots',
+      icon: 'bots',
+      name: 'bots'
+    }], this.flags);
+
+    this.exclude_peers = generateList('folder-list-excluded', 'Excluded chats', [{
+      icon: 'minus blue',
+      text: 'Remove Chats',
+      withRipple: true
+    }, {
+      text: 'Muted',
+      icon: 'mute',
+      name: 'exclude_muted'
+    }, {
+      text: 'Archived',
+      icon: 'archive',
+      name: 'exclude_archived'
+    }, {
+      text: 'Read',
+      icon: 'readchats',
+      name: 'exclude_read'
+    }], this.flags);
+
+    this.scrollable.append(this.stickerContainer, this.caption, inputWrapper, this.include_peers, this.exclude_peers);
 
     const includedFlagsContainer = this.include_peers.querySelector('.folder-categories');
     const excludedFlagsContainer = this.exclude_peers.querySelector('.folder-categories');
-    parseMenuButtonsTo(this.flags, includedFlagsContainer.children);
-    parseMenuButtonsTo(this.flags, excludedFlagsContainer.children);
 
     includedFlagsContainer.firstElementChild.addEventListener('click', () => {
       appSidebarLeft.includedChatsTab.open(this.filter, 'included');
@@ -85,17 +176,6 @@ export default class AppEditFolderTab implements SliderTab {
       height: 86
     }, 'assets/img/Folders_2.tgs').then(player => {
       this.animation = player;
-    });
-
-    attachClickEvent(this.deleteFolderBtn, () => {
-      this.deleteFolderBtn.setAttribute('disabled', 'true');
-      appMessagesManager.filtersStorage.updateDialogFilter(this.filter, true).then(bool => {
-        if(bool) {
-          appSidebarLeft.closeTab(AppSidebarLeft.SLIDERITEMSIDS.editFolder);
-        }
-      }).finally(() => {
-        this.deleteFolderBtn.removeAttribute('disabled');
-      });
     });
 
     this.confirmBtn.addEventListener('click', () => {
@@ -127,7 +207,7 @@ export default class AppEditFolderTab implements SliderTab {
 
       promise.then(bool => {
         if(bool) {
-          appSidebarLeft.closeTab(AppSidebarLeft.SLIDERITEMSIDS.editFolder);
+          this.close();
         }
       }).catch(err => {
         if(err.type == 'DIALOG_FILTERS_TOO_MUCH') {
@@ -176,9 +256,9 @@ export default class AppEditFolderTab implements SliderTab {
 
   private onEditOpen() {
     this.caption.style.display = 'none';
-    this.title.innerText = this.type == 'create' ? 'New Folder' : 'Edit Folder';
+    this.title.innerText = this.type === 'create' ? 'New Folder' : 'Edit Folder';
 
-    if(this.type == 'edit') {
+    if(this.type === 'edit') {
       this.menuBtn.classList.remove('hide');
       this.confirmBtn.classList.add('hide');
     }
@@ -187,8 +267,7 @@ export default class AppEditFolderTab implements SliderTab {
     this.nameInputField.value = RichTextProcessor.wrapDraftText(filter.title);
 
     for(const flag in this.flags) {
-      // @ts-ignore
-      this.flags[flag].style.display = !!filter.pFlags[flag] ? '' : 'none';
+      this.flags[flag as keyof AppEditFolderTab['flags']].style.display = !!filter.pFlags[flag as keyof AppEditFolderTab['flags']] ? '' : 'none';
     }
 
     (['include_peers', 'exclude_peers'] as ['include_peers', 'exclude_peers']).forEach(key => {
@@ -237,7 +316,7 @@ export default class AppEditFolderTab implements SliderTab {
   }
 
   editCheckForChange() {
-    if(this.type == 'edit') {
+    if(this.type === 'edit') {
       const changed = !deepEqual(this.originalFilter, this.filter);
       this.confirmBtn.classList.toggle('hide', !changed);
       this.menuBtn.classList.toggle('hide', changed);
@@ -258,9 +337,9 @@ export default class AppEditFolderTab implements SliderTab {
     }
   }
 
-  open(filter?: DialogFilter) {
-    appSidebarLeft.selectTab(AppSidebarLeft.SLIDERITEMSIDS.editFolder);
-
+  public open(filter?: DialogFilter) {
+    const ret = super.open();
+    
     if(filter === undefined) {
       this.setFilter({
         _: 'dialogFilter',
@@ -278,5 +357,7 @@ export default class AppEditFolderTab implements SliderTab {
       this.type = 'edit';
       this.onEditOpen();
     }
+
+    return ret;
   }
 }

@@ -7,7 +7,7 @@ import appUsersManager from "../../lib/appManagers/appUsersManager";
 import { MOUNT_CLASS_TO } from "../../lib/mtproto/mtproto_config";
 import rootScope from "../../lib/rootScope";
 import { attachClickEvent, findUpClassName, findUpTag } from "../../helpers/dom";
-import AppSearch, { SearchGroup } from "../appSearch";
+import { SearchGroup } from "../appSearch";
 import "../avatar";
 import { parseMenuButtonsTo } from "../misc";
 import Scrollable, { ScrollableX } from "../scrollable";
@@ -33,9 +33,6 @@ const newChannelTab = new AppNewChannelTab();
 const addMembersTab = new AppAddMembersTab();
 const contactsTab = new AppContactsTab();
 const newGroupTab = new AppNewGroupTab();
-const settingsTab = new AppSettingsTab();
-const editFolderTab = new AppEditFolderTab();
-const includedChatsTab = new AppIncludedChatsTab();
 const archivedTab = new AppArchivedTab();
 
 export class AppSidebarLeft extends SidebarSlider {
@@ -44,11 +41,7 @@ export class AppSidebarLeft extends SidebarSlider {
     contacts: 2,
     newChannel: 3,
     addMembers: 4,
-    newGroup: 5,
-    settings: 6,
-    chatFolders: 7,
-    editFolder: 8,
-    includedChats: 9,
+    newGroup: 5
   };
 
   private toolsBtn: HTMLButtonElement;
@@ -98,11 +91,7 @@ export class AppSidebarLeft extends SidebarSlider {
       [AppSidebarLeft.SLIDERITEMSIDS.newChannel]: newChannelTab,
       [AppSidebarLeft.SLIDERITEMSIDS.contacts]: contactsTab,
       [AppSidebarLeft.SLIDERITEMSIDS.addMembers]: addMembersTab,
-      [AppSidebarLeft.SLIDERITEMSIDS.newGroup]: newGroupTab,
-      [AppSidebarLeft.SLIDERITEMSIDS.settings]: settingsTab,
-      [AppSidebarLeft.SLIDERITEMSIDS.chatFolders]: this.chatFoldersTab = new AppChatFoldersTab(appMessagesManager, appPeersManager, this, apiManagerProxy, rootScope),
-      [AppSidebarLeft.SLIDERITEMSIDS.editFolder]: editFolderTab,
-      [AppSidebarLeft.SLIDERITEMSIDS.includedChats]: includedChatsTab,
+      [AppSidebarLeft.SLIDERITEMSIDS.newGroup]: newGroupTab
     });
 
     //this._selectTab(0); // make first tab as default
@@ -119,9 +108,10 @@ export class AppSidebarLeft extends SidebarSlider {
     this.addMembersTab = addMembersTab;
     this.contactsTab = contactsTab;
     this.newGroupTab = newGroupTab;
-    this.settingsTab = settingsTab;
-    this.editFolderTab = editFolderTab;
-    this.includedChatsTab = includedChatsTab;
+    this.settingsTab = new AppSettingsTab(this);
+    this.chatFoldersTab = new AppChatFoldersTab(appMessagesManager, appPeersManager, this, apiManagerProxy, rootScope);
+    this.editFolderTab = new AppEditFolderTab(this);
+    this.includedChatsTab = new AppIncludedChatsTab(this);
     this.editProfileTab = new AppEditProfileTab(this);
 
     this.menuEl = this.toolsBtn.querySelector('.btn-menu');
@@ -150,8 +140,7 @@ export class AppSidebarLeft extends SidebarSlider {
     });
 
     attachClickEvent(this.buttons.settings, (e) => {
-      this.settingsTab.fillElements();
-      this.selectTab(AppSidebarLeft.SLIDERITEMSIDS.settings);
+      this.settingsTab.open();
     });
 
     attachClickEvent(this.newButtons.channel, (e) => {

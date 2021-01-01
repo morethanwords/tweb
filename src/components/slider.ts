@@ -23,9 +23,6 @@ export class SliderSuperTab implements SliderTab {
 
   public id: number;
 
-  // fix incompability
-  public onOpen: SliderTab['onOpen'];
-
   constructor(protected slider: SidebarSlider) {
     this.container = document.createElement('div');
     this.container.classList.add('sidebar-slider-item');
@@ -56,6 +53,11 @@ export class SliderSuperTab implements SliderTab {
 
   public open() {
     return this.slider.selectTab(this);
+  }
+
+  // * fix incompability
+  public onOpen() {
+
   }
 }
 
