@@ -20,6 +20,10 @@ export default class AppEditProfileTab implements SliderTab {
   private canvas: HTMLCanvasElement;
   private uploadAvatar: () => Promise<InputFile> = null;
 
+  private firstNameInputField: InputField;
+  private lastNameInputField: InputField;
+  private bioInputField: InputField;
+  private userNameInputField: InputField;
   private firstNameInput: HTMLElement;
   private lastNameInput: HTMLElement;
   private bioInput: HTMLElement;
@@ -36,10 +40,6 @@ export default class AppEditProfileTab implements SliderTab {
     userName: '',
     bio: ''
   };
-  firstNameInputField: InputField;
-  lastNameInputField: InputField;
-  bioInputField: InputField;
-  userNameInputField: InputField;
 
   public init() {
     this.container = document.querySelector('.edit-profile-container');
@@ -211,9 +211,9 @@ export default class AppEditProfileTab implements SliderTab {
       bio: ''
     });
 
-    this.firstNameInput.innerHTML = user.rFirstName;
-    this.lastNameInput.innerHTML = RichTextProcessor.wrapRichText(user.last_name, {noLinks: true, noLinebreaks: true});
-    this.bioInput.innerHTML = '';
+    this.firstNameInputField.value = RichTextProcessor.wrapDraftText(user.first_name);
+    this.lastNameInputField.value = RichTextProcessor.wrapDraftText(user.last_name);
+    this.bioInputField.value = '';
     this.userNameInputField.value = this.originalValues.userName = user.username ?? '';
 
     this.userNameInput.classList.remove('valid', 'error');
@@ -222,7 +222,7 @@ export default class AppEditProfileTab implements SliderTab {
     appProfileManager.getProfile(user.id, true).then(userFull => {
       if(userFull.about) {
         this.originalValues.bio = userFull.about;
-        this.bioInput.innerHTML = userFull.rAbout;
+        this.bioInputField.value = RichTextProcessor.wrapDraftText(userFull.about);
 
         this.handleChange();
       }
@@ -263,15 +263,11 @@ export default class AppEditProfileTab implements SliderTab {
   }
 
   private handleChange = () => {
-    if(this.isChanged()) {
-      this.nextBtn.classList.add('is-visible');
-    } else {
-      this.nextBtn.classList.remove('is-visible');
-    }
+    this.nextBtn.classList.toggle('is-visible', this.isChanged());
   };
 
   onCloseAfterTimeout() {
     this.nextBtn.classList.remove('is-visible');
-    this.firstNameInput.innerHTML = this.lastNameInput.innerHTML = this.bioInput.innerHTML = '';
+    this.firstNameInputField.value = this.lastNameInputField.value = this.bioInputField.value = '';
   }
 }

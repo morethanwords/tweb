@@ -2,7 +2,7 @@ node_modules
 coverage
 __pycache__
 dist
-.DS_Store
+**/.DS_Store
 stats.json
 certs
 src/rlottie.github.io

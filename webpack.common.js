@@ -8,7 +8,7 @@ const fs = require('fs');
 
 const allowedIPs = ['194.58.97.147', '195.66.140.39', '192.168.31.144', '127.0.0.1', '192.168.31.1', '192.168.31.192', '176.100.8.202', '46.219.250.22', '193.42.119.184', '46.133.168.67', '78.26.144.197', '46.133.225.88', '128.124.170.79'];
 const devMode = process.env.NODE_ENV !== 'production';
-const useLocal = false;
+const useLocal = true;
 
 if(devMode) {
   console.log('DEVMODE IS ON!');

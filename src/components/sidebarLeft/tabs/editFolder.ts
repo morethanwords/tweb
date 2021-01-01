@@ -184,7 +184,7 @@ export default class AppEditFolderTab implements SliderTab {
     }
     
     const filter = this.filter;
-    this.nameInputField.value = RichTextProcessor.wrapEmojiText(filter.title);
+    this.nameInputField.value = RichTextProcessor.wrapDraftText(filter.title);
 
     for(const flag in this.flags) {
       // @ts-ignore
