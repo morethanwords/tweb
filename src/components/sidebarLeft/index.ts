@@ -34,7 +34,6 @@ const addMembersTab = new AppAddMembersTab();
 const contactsTab = new AppContactsTab();
 const newGroupTab = new AppNewGroupTab();
 const settingsTab = new AppSettingsTab();
-const editProfileTab = new AppEditProfileTab();
 const editFolderTab = new AppEditFolderTab();
 const includedChatsTab = new AppIncludedChatsTab();
 const archivedTab = new AppArchivedTab();
@@ -47,10 +46,9 @@ export class AppSidebarLeft extends SidebarSlider {
     addMembers: 4,
     newGroup: 5,
     settings: 6,
-    editProfile: 7,
-    chatFolders: 8,
-    editFolder: 9,
-    includedChats: 10,
+    chatFolders: 7,
+    editFolder: 8,
+    includedChats: 9,
   };
 
   private toolsBtn: HTMLButtonElement;
@@ -102,7 +100,6 @@ export class AppSidebarLeft extends SidebarSlider {
       [AppSidebarLeft.SLIDERITEMSIDS.addMembers]: addMembersTab,
       [AppSidebarLeft.SLIDERITEMSIDS.newGroup]: newGroupTab,
       [AppSidebarLeft.SLIDERITEMSIDS.settings]: settingsTab,
-      [AppSidebarLeft.SLIDERITEMSIDS.editProfile]: editProfileTab,
       [AppSidebarLeft.SLIDERITEMSIDS.chatFolders]: this.chatFoldersTab = new AppChatFoldersTab(appMessagesManager, appPeersManager, this, apiManagerProxy, rootScope),
       [AppSidebarLeft.SLIDERITEMSIDS.editFolder]: editFolderTab,
       [AppSidebarLeft.SLIDERITEMSIDS.includedChats]: includedChatsTab,
@@ -123,9 +120,9 @@ export class AppSidebarLeft extends SidebarSlider {
     this.contactsTab = contactsTab;
     this.newGroupTab = newGroupTab;
     this.settingsTab = settingsTab;
-    this.editProfileTab = editProfileTab;
     this.editFolderTab = editFolderTab;
     this.includedChatsTab = includedChatsTab;
+    this.editProfileTab = new AppEditProfileTab(this);
 
     this.menuEl = this.toolsBtn.querySelector('.btn-menu');
     this.newBtnMenu = this.sidebarEl.querySelector('#new-menu');

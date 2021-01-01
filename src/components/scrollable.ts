@@ -123,6 +123,7 @@ export type SliceSidesContainer = {[k in SliceSides]: boolean};
 
 export default class Scrollable extends ScrollableBase {
   public splitUp: HTMLElement;
+  public padding: HTMLElement;
   
   public onAdditionalScroll: () => void = null;
   public onScrolledTop: () => void = null;
@@ -135,8 +136,15 @@ export default class Scrollable extends ScrollableBase {
 
   public loadedAll: SliceSidesContainer = {top: true, bottom: false};
 
-  constructor(el: HTMLElement, logPrefix = '', public onScrollOffset = 300) {
+  constructor(el: HTMLElement, logPrefix = '', public onScrollOffset = 300, withPaddingContainer?: boolean) {
     super(el, logPrefix);
+
+    if(withPaddingContainer) {
+      this.padding = document.createElement('div');
+      this.padding.classList.add('scrollable-padding');
+      Array.from(this.container.children).forEach(c => this.padding.append(c));
+      this.container.append(this.padding);
+    }
 
     this.container.classList.add('scrollable-y');
     this.setListeners();
@@ -197,12 +205,12 @@ export default class Scrollable extends ScrollableBase {
     }
   };
 
-  public prepend(element: HTMLElement) {
-    (this.splitUp || this.container).prepend(element);
+  public prepend(...elements: HTMLElement[]) {
+    (this.splitUp || this.padding || this.container).prepend(...elements);
   }
 
-  public append(element: HTMLElement) {
-    (this.splitUp || this.container).append(element);
+  public append(...elements: HTMLElement[]) {
+    (this.splitUp || this.padding || this.container).append(...elements);
   }
 
   public scrollIntoView(element: HTMLElement, smooth = true) {

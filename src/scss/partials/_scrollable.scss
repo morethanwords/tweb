@@ -58,6 +58,15 @@
     }
   }
 
+  &-padding {
+    min-width: 100%;
+    height: 100%;
+  }
+
+  html.is-safari &-padding {
+    margin-right: -6px;
+  }
+
   /* &-sentinel {
     position: relative;
     left: 0;

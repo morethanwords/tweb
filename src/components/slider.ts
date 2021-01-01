@@ -1,5 +1,8 @@
 import { attachClickEvent } from "../helpers/dom";
 import { horizontalMenu } from "./horizontalMenu";
+import ButtonIcon from "./buttonIcon";
+import Scrollable from "./scrollable";
+import { p } from "../mock/srp";
 
 export interface SliderTab {
   onOpen?: () => void,
@@ -8,15 +11,42 @@ export interface SliderTab {
   onCloseAfterTimeout?: () => void
 }
 
-export class SuperSliderTab implements SliderTab {
-  public id: number;
+export class SliderSuperTab implements SliderTab {
+  public container: HTMLElement;
+
+  public header: HTMLElement;
   public closeBtn: HTMLElement;
+  public title: HTMLElement;
+
+  public content: HTMLElement;
+  public scrollable: Scrollable;
+
+  public id: number;
 
   // fix incompability
   public onOpen: SliderTab['onOpen'];
 
-  constructor(protected slider: SidebarSlider, public container: HTMLElement) {
-    this.closeBtn = this.container.querySelector('.sidebar-close-button');
+  constructor(protected slider: SidebarSlider) {
+    this.container = document.createElement('div');
+    this.container.classList.add('sidebar-slider-item');
+
+    // * Header
+    this.header = document.createElement('div');
+    this.header.classList.add('sidebar-header');
+
+    this.closeBtn = ButtonIcon('back sidebar-close-button', {noRipple: true});
+    this.title = document.createElement('div');
+    this.title.classList.add('sidebar-header__title');
+    this.header.append(this.closeBtn, this.title);
+
+    // * Content
+    this.content = document.createElement('div');
+    this.content.classList.add('sidebar-content');
+
+    this.scrollable = new Scrollable(this.content, undefined, undefined, true);
+
+    this.container.append(this.header, this.content);
+
     this.id = this.slider.addTab(this);
   }
 
@@ -34,9 +64,11 @@ const TRANSITION_TIME = 250;
 export default class SidebarSlider {
   protected _selectTab: (id: number) => void;
   public historyTabIds: number[] = [];
+  public tabsContainer: HTMLElement;
 
   constructor(public sidebarEl: HTMLElement, public tabs: {[id: number]: SliderTab} = {}, private canHideFirst = false) {
-    this._selectTab = horizontalMenu(null, this.sidebarEl.querySelector('.sidebar-slider') as HTMLDivElement, null, null, TRANSITION_TIME);
+    this.tabsContainer = this.sidebarEl.querySelector('.sidebar-slider');
+    this._selectTab = horizontalMenu(null, this.tabsContainer as HTMLDivElement, null, null, TRANSITION_TIME);
     if(!canHideFirst) {
       this._selectTab(0);
     }
@@ -58,8 +90,8 @@ export default class SidebarSlider {
     return true;
   };
 
-  public selectTab(id: number | SuperSliderTab): boolean {
-    if(id instanceof SuperSliderTab) {
+  public selectTab(id: number | SliderSuperTab): boolean {
+    if(id instanceof SliderSuperTab) {
       id = id.id;
     }
 
@@ -105,13 +137,13 @@ export default class SidebarSlider {
     }
   }
 
-  public addTab(tab: SuperSliderTab) {
+  public addTab(tab: SliderSuperTab) {
     let id: number;
     if(tab.container.parentElement) {
-      id = Array.from(this.sidebarEl.children).findIndex(el => el === tab.container);
+      id = Array.from(this.tabsContainer.children).findIndex(el => el === tab.container);
     } else {
-      id = this.sidebarEl.childElementCount;
-      this.sidebarEl.append(tab.container);
+      id = this.tabsContainer.childElementCount;
+      this.tabsContainer.append(tab.container);
 
       if(tab.closeBtn) {
         tab.closeBtn.addEventListener('click', () => this.closeTab());

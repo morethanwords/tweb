@@ -1,5 +1,4 @@
-import appSidebarLeft from "..";
-import { InputFile } from "../../../layer";
+import type { InputFile } from "../../../layer";
 import appProfileManager from "../../../lib/appManagers/appProfileManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
@@ -7,19 +6,17 @@ import RichTextProcessor from "../../../lib/richtextprocessor";
 import rootScope from "../../../lib/rootScope";
 import AvatarElement from "../../avatar";
 import InputField from "../../inputField";
-import PopupAvatar from "../../popups/avatar";
 import Scrollable from "../../scrollable";
-import { SliderTab } from "../../slider";
+import SidebarSlider, { SliderSuperTab } from "../../slider";
+import AvatarEdit from "../../avatarEdit";
+import ButtonIcon from "../../buttonIcon";
 
 // TODO: аватарка не поменяется в этой вкладке после изменения почему-то (если поставить в другом клиенте, и потом тут проверить, для этого ещё вышел в чатлист)
 
-export default class AppEditProfileTab implements SliderTab {
-  private container: HTMLElement;
-  private scrollWrapper: HTMLElement;
+export default class AppEditProfileTab extends SliderSuperTab {
+  //private scrollWrapper: HTMLElement;
   private nextBtn: HTMLButtonElement;
-  private canvas: HTMLCanvasElement;
-  private uploadAvatar: () => Promise<InputFile> = null;
-
+  
   private firstNameInputField: InputField;
   private lastNameInputField: InputField;
   private bioInputField: InputField;
@@ -28,7 +25,9 @@ export default class AppEditProfileTab implements SliderTab {
   private lastNameInput: HTMLElement;
   private bioInput: HTMLElement;
   private userNameInput: HTMLElement;
-
+  
+  private uploadAvatar: () => Promise<InputFile> = null;
+  private avatarEdit: AvatarEdit;
   private avatarElem: AvatarElement;
 
   private profileUrlContainer: HTMLDivElement;
@@ -41,26 +40,27 @@ export default class AppEditProfileTab implements SliderTab {
     bio: ''
   };
 
+  constructor(slider: SidebarSlider) {
+    super(slider);
+  }
+
   public init() {
-    this.container = document.querySelector('.edit-profile-container');
-    this.scrollWrapper = this.container.querySelector('.scroll-wrapper');
-    this.nextBtn = this.container.querySelector('.btn-corner');
-    this.canvas = this.container.querySelector('.avatar-edit-canvas');
+    this.container.classList.add('edit-profile-container');
+    this.title.innerText = 'Edit Profile';
+    //this.scrollWrapper = this.container.querySelector('.scroll-wrapper');
+    this.nextBtn = ButtonIcon('check btn-circle btn-corner');
+    this.content.append(this.nextBtn);
 
     this.avatarElem = document.createElement('avatar-element') as AvatarElement;
     this.avatarElem.classList.add('avatar-placeholder');
-
-    this.profileUrlContainer = this.container.querySelector('.profile-url-container');
-    this.profileUrlAnchor = this.profileUrlContainer.lastElementChild as HTMLAnchorElement;
-
-    const avatarEdit = this.container.querySelector('.avatar-edit');
-    avatarEdit.addEventListener('click', () => {
-      new PopupAvatar().open(this.canvas, (_upload) => {
-        this.uploadAvatar = _upload;
-        this.handleChange();
-        this.avatarElem.remove();
-      });
+    
+    this.avatarEdit = new AvatarEdit((_upload) => {
+      this.uploadAvatar = _upload;
+      this.handleChange();
+      this.avatarElem.remove();
     });
+
+    this.scrollable.append(this.avatarEdit.container);
 
     {
       const inputWrapper = document.createElement('div');
@@ -87,10 +87,21 @@ export default class AppEditProfileTab implements SliderTab {
       this.bioInput = this.bioInputField.input;
   
       inputWrapper.append(this.firstNameInputField.container, this.lastNameInputField.container, this.bioInputField.container);
-      avatarEdit.parentElement.insertBefore(inputWrapper, avatarEdit.nextElementSibling);
+      
+      const caption = document.createElement('div');
+      caption.classList.add('caption');
+      caption.innerHTML = 'Any details such as age, occupation or city. Example:<br>23 y.o. designer from San Francisco.';
+
+      this.scrollable.append(inputWrapper, caption);
     }
 
+    this.scrollable.append(document.createElement('hr'));
+
     {
+      const h2 = document.createElement('div');
+      h2.classList.add('sidebar-left-h2');
+      h2.innerText = 'Username';
+
       const inputWrapper = document.createElement('div');
       inputWrapper.classList.add('input-wrapper');
 
@@ -102,9 +113,16 @@ export default class AppEditProfileTab implements SliderTab {
       this.userNameInput = this.userNameInputField.input;
 
       inputWrapper.append(this.userNameInputField.container);
-      
-      const caption = this.profileUrlContainer.parentElement;
-      caption.parentElement.insertBefore(inputWrapper, caption);
+
+      const caption = document.createElement('div');
+      caption.classList.add('caption');
+      caption.innerHTML = `You can choose a username on Telegram. If you do, other people will be able to find you by this username and contact you without knowing your phone number.<br><br>You can use a-z, 0-9 and underscores. Minimum length is 5 characters.<br><br><div class="profile-url-container">This link opens a chat with you:
+      <br><a class="profile-url" href="#" target="_blank"></a></div>`;
+
+      this.profileUrlContainer = caption.querySelector('.profile-url-container');
+      this.profileUrlAnchor = this.profileUrlContainer.lastElementChild as HTMLAnchorElement;
+
+      this.scrollable.append(h2, inputWrapper, caption);
     }
 
     let userNameLabel = this.userNameInput.nextElementSibling as HTMLLabelElement;
@@ -173,7 +191,7 @@ export default class AppEditProfileTab implements SliderTab {
       let promises: Promise<any>[] = [];
       
       promises.push(appProfileManager.updateProfile(this.firstNameInputField.value, this.lastNameInputField.value, this.bioInputField.value).then(() => {
-        appSidebarLeft.selectTab(0);
+        this.slider.selectTab(0);
       }, (err) => {
         console.error('updateProfile error:', err);
       }));
@@ -192,8 +210,6 @@ export default class AppEditProfileTab implements SliderTab {
         this.nextBtn.removeAttribute('disabled');
       });
     });
-
-    let scrollable = new Scrollable(this.scrollWrapper as HTMLElement);
   }
 
   public fillElements() {
@@ -230,7 +246,7 @@ export default class AppEditProfileTab implements SliderTab {
 
     this.avatarElem.setAttribute('peer', '' + rootScope.myId);
     if(!this.avatarElem.parentElement) {
-      this.canvas.parentElement.append(this.avatarElem);
+      this.avatarEdit.container.append(this.avatarElem);
     }
 
     this.uploadAvatar = null;

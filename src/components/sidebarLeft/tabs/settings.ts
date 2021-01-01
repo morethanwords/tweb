@@ -37,7 +37,7 @@ export default class AppSettingsTab implements SliderTab {
 
     this.buttons.edit.addEventListener('click', () => {
       appSidebarLeft.editProfileTab.fillElements();
-      appSidebarLeft.selectTab(AppSidebarLeft.SLIDERITEMSIDS.editProfile);
+      appSidebarLeft.editProfileTab.open();
     });
 
     this.buttons.folders.addEventListener('click', () => {
