@@ -38,11 +38,12 @@
     left: 1rem;
     right: auto;
     z-index: 2;
-    top: 50%;
-    transform: translateY(-50%);
+    top: 0;
+    height: 1.5rem;
+    transform: translateY(calc((54px - 1.5rem) / 2));
     background-color: #fff;
-    transition: .2s all, .1s opacity;
-    display: inline-block;
+    transition: .2s transform, .2s padding, .1s opacity;
+    transform-origin: left center;
     pointer-events: none;
   }
   
@@ -124,12 +125,8 @@
     }
     
     &:focus ~ label, &:valid ~ label, &:not(:empty) ~ label, &:disabled ~ label {
-      top: -.5rem;
-      transform: none;
-      padding: 0 5px;
-      left: .75rem;
-      font-size: .75rem!important;
-      //color: #666;
+      transform: translate(-.215rem, -.675rem) scale(0.75);
+      padding: 0 6px;
       opacity: 1;
     }
   }
