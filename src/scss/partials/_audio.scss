@@ -446,30 +446,21 @@
 
   // * for audio
   .progress-line {
+    --height: 2px;
+    --border-radius: 4px;
     flex: 1 1 auto;
     margin-left: 5px;
     margin-top: -1px;
-
-    &__filled {
-      background-color: #0089ff;
-      transform-origin: left;
-      height: 2px;
-    }
 
     &__loaded {
       background-color: #cacaca;
     }
 
     &__seek {
-      height: 2px;
+      --thumb-size: 12px;
+      --thumb-color: #0089ff;
       //background-color: #e6ecf0;
-      background: rgba(193, 207, 220, 0.39);
-
-      &::-webkit-slider-thumb {
-        height: 12px;
-        width: 12px;
-        border: none;
-      }
+      background-color: rgba(193, 207, 220, .39);
     }
   }
 }

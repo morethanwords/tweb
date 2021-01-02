@@ -54,7 +54,7 @@ export default class AppSettingsTab extends SliderSuperTab {
     const className = 'profile-button btn-primary btn-transparent';
     buttonsDiv.append(this.buttons.edit = Button(className, {icon: 'edit', rippleSquare: true, text: 'Edit Profile'}));
     buttonsDiv.append(this.buttons.folders = Button(className, {icon: 'folder', rippleSquare: true, text: 'Chat Folders'}));
-    buttonsDiv.append(this.buttons.general = Button(className + ' btn-disabled', {icon: 'settings', rippleSquare: true, text: 'General Settings'}));
+    buttonsDiv.append(this.buttons.general = Button(className, {icon: 'settings', rippleSquare: true, text: 'General Settings'}));
     buttonsDiv.append(this.buttons.notifications = Button(className + ' btn-disabled', {icon: 'unmute', rippleSquare: true, text: 'Notifications'}));
     buttonsDiv.append(this.buttons.privacy = Button(className + ' btn-disabled', {icon: 'lock', rippleSquare: true, text: 'Privacy and Security'}));
     buttonsDiv.append(this.buttons.language = Button(className + ' btn-disabled', {icon: 'language', rippleSquare: true, text: 'Language'}));
@@ -73,6 +73,10 @@ export default class AppSettingsTab extends SliderSuperTab {
 
     this.buttons.folders.addEventListener('click', () => {
       appSidebarLeft.chatFoldersTab.open();
+    });
+
+    this.buttons.general.addEventListener('click', () => {
+      appSidebarLeft.generalSettingsTab.open();
     });
   }
 

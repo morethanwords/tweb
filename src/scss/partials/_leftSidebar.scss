@@ -879,3 +879,43 @@
     padding: 0px 0 7px;
   }
 }
+
+.sidebar-left-section {
+  padding: .5rem 0 1rem;
+
+  &-content {
+    padding: 0 1.5rem;
+
+    @include respond-to(handhelds) {
+      padding: 0 1rem;
+    }
+  }
+
+  &-name {
+    color: #707579;
+    font-size: 15px;
+    font-weight: 500;
+  }
+}
+
+.range-setting-selector {
+  &-details {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .progress-line {
+    --height: 2px;
+    --border-radius: 4px;
+    background-color: #e6ecf0;
+    
+    &__filled {
+      background-color: #3390ec;
+    }
+    
+    &__seek {
+      --thumb-color: #3390ec;
+      --thumb-size: 12px;
+    }
+  }
+}

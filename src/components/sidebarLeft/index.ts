@@ -28,6 +28,7 @@ import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import apiManagerProxy from "../../lib/mtproto/mtprotoworker";
 import AppSearchSuper from "../appSearchSuper.";
 import { DateData, fillTipDates } from "../../helpers/date";
+import AppGeneralSettingsTab from "./tabs/generalSettings";
 
 const addMembersTab = new AppAddMembersTab();
 const contactsTab = new AppContactsTab();
@@ -73,6 +74,7 @@ export class AppSidebarLeft extends SidebarSlider {
   public chatFoldersTab: AppChatFoldersTab;
   public editFolderTab: AppEditFolderTab;
   public includedChatsTab: AppIncludedChatsTab;
+  public generalSettingsTab: AppGeneralSettingsTab;
 
   //private log = logger('SL');
 
@@ -107,6 +109,7 @@ export class AppSidebarLeft extends SidebarSlider {
     this.editFolderTab = new AppEditFolderTab(this);
     this.includedChatsTab = new AppIncludedChatsTab(this);
     this.editProfileTab = new AppEditProfileTab(this);
+    this.generalSettingsTab = new AppGeneralSettingsTab(this);
 
     this.menuEl = this.toolsBtn.querySelector('.btn-menu');
     this.newBtnMenu = this.sidebarEl.querySelector('#new-menu');

@@ -2,131 +2,18 @@ import { cancelEvent } from "../helpers/dom";
 import appMediaPlaybackController from "../components/appMediaPlaybackController";
 import { isAppleMobile } from "../helpers/userAgent";
 import { isTouchSupported } from "../helpers/touchSupport";
+import RangeSelector from "../components/rangeSelector";
 
 type SUPEREVENT = MouseEvent | TouchEvent;
 
-export class ProgressLine {
-  public container: HTMLDivElement;
-  protected filled: HTMLDivElement;
-  protected seek: HTMLInputElement;
-
-  protected duration = 1;
-  public mousedown = false;
-
-  private events: Partial<{
-    //onMouseMove: ProgressLine['onMouseMove'],
-    onMouseDown: ProgressLine['onMouseDown'],
-    onMouseUp: ProgressLine['onMouseUp'],
-    onScrub: (scrubTime: number) => void
-  }> = {};
-
-  constructor(initialValue = 0) {
-    this.container = document.createElement('div');
-    this.container.classList.add('progress-line');
-
-    this.filled = document.createElement('div');
-    this.filled.classList.add('progress-line__filled');
-
-    const seek = this.seek = document.createElement('input');
-    seek.classList.add('progress-line__seek');
-    seek.value = '' + initialValue;
-    seek.setAttribute('min', '0');
-    //seek.setAttribute('max', '0');
-    seek.type = 'range';
-    seek.step = '0.1';
-    seek.max = '' + (this.duration * 1000);
-
-    if(initialValue > 0) {
-      this.setProgress(initialValue);
-    }
-
-    //this.setListeners();
-
-    this.container.append(this.filled, seek);
-  }
-
-  public setHandlers(events: ProgressLine['events']) {
-    this.events = events;
-  }
-
-  onMouseMove = (e: SUPEREVENT) => {
-    this.mousedown && this.scrub(e);
-  };
-
-  onMouseDown = (e: SUPEREVENT) => {
-    this.scrub(e);
-    this.mousedown = true;
-    this.events?.onMouseDown && this.events.onMouseDown(e);
-  };
-
-  onMouseUp = (e: SUPEREVENT) => {
-    this.mousedown = false;
-    this.events?.onMouseUp && this.events.onMouseUp(e);
-  };
-
-  public setListeners() {
-    this.container.addEventListener('mousemove', this.onMouseMove);
-    this.container.addEventListener('mousedown', this.onMouseDown);
-    this.container.addEventListener('mouseup', this.onMouseUp);
-
-    if(isTouchSupported) {
-      this.container.addEventListener('touchmove', this.onMouseMove, {passive: true});
-      this.container.addEventListener('touchstart', this.onMouseDown, {passive: true});
-      this.container.addEventListener('touchend', this.onMouseUp, {passive: true});
-    }
-  }
-
-  public setProgress(scrubTime: number) {
-    this.setFilled(scrubTime);
-    this.seek.value = '' + (scrubTime * 1000);
-  }
-
-  public setFilled(scrubTime: number) {
-    let scaleX = scrubTime / this.duration;
-    scaleX = Math.max(0, Math.min(1, scaleX));
-    this.filled.style.transform = 'scaleX(' + scaleX + ')';
-  }
-
-  protected scrub(e: SUPEREVENT) {
-    let offsetX: number;
-    if(e instanceof MouseEvent) {
-      offsetX = e.offsetX;
-    } else { // touch
-      const rect = (e.target as HTMLElement).getBoundingClientRect();
-      offsetX = e.targetTouches[0].pageX - rect.left;
-    }
-
-    const scrubTime = offsetX / this.container.offsetWidth * this.duration;
-
-    this.setFilled(scrubTime);
-
-    this.events?.onScrub && this.events.onScrub(scrubTime);
-    return scrubTime;
-  }
-
-  public removeListeners() {
-    this.container.removeEventListener('mousemove', this.onMouseMove);
-    this.container.removeEventListener('mousedown', this.onMouseDown);
-    this.container.removeEventListener('mouseup', this.onMouseUp);
-
-    if(isTouchSupported) {
-      this.container.removeEventListener('touchmove', this.onMouseMove);
-      this.container.removeEventListener('touchstart', this.onMouseDown);
-      this.container.removeEventListener('touchend', this.onMouseUp);
-    }
-
-    this.events = {};
-  }
-}
-
-export class MediaProgressLine extends ProgressLine {
+export class MediaProgressLine extends RangeSelector {
   private filledLoad: HTMLDivElement;
   
   private stopAndScrubTimeout = 0;
   private progressRAF = 0;
 
   constructor(private media: HTMLAudioElement | HTMLVideoElement, private streamable = false) {
-    super();
+    super(1000 / 60 / 1000, 0, 0, 1);
 
     if(streamable) {
       this.filledLoad = document.createElement('div');
@@ -170,8 +57,8 @@ export class MediaProgressLine extends ProgressLine {
   }
 
   onLoadedData = () => {
-    this.duration = this.media.duration;
-    this.seek.setAttribute('max', '' + this.duration * 1000);
+    this.max = this.media.duration;
+    this.seek.setAttribute('max', '' + this.max);
   };
 
   onEnded = () => {
@@ -226,12 +113,13 @@ export class MediaProgressLine extends ProgressLine {
     //console.log('onProgress correct range:', nearestStart, end, this.media);
 
     const percents = this.media.duration ? end / this.media.duration : 0;
-    this.filledLoad.style.transform = 'scaleX(' + percents + ')';
+    this.filledLoad.style.width = (percents * 100) + '%';
+    //this.filledLoad.style.transform = 'scaleX(' + percents + ')';
   }
 
   protected setSeekMax() {
-    this.duration = this.media.duration;
-    if(this.duration > 0) {
+    this.max = this.media.duration;
+    if(this.max > 0) {
       this.onLoadedData();
     } else {
       this.media.addEventListener('loadeddata', this.onLoadedData);
@@ -342,7 +230,7 @@ export default class VideoPlayer {
         video.muted = !video.muted;
       });
 
-      const volumeProgress = new ProgressLine();
+      const volumeProgress = new RangeSelector(0.01, 1, 0, 1);
       volumeProgress.setListeners();
       volumeProgress.setHandlers({
         onScrub: currentTime => {

@@ -1964,11 +1964,8 @@ $bubble-margin: .25rem;
       }
   
       &__seek {
-        background: rgba(124, 195, 107, .52);
-        
-        &::-webkit-slider-thumb {
-          background: #47aa41;
-        }
+        --thumb-color: #47aa41;
+        background-color: rgba(124, 195, 107, .52);
       }
     }
   }
