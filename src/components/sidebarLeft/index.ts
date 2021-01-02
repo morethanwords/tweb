@@ -190,6 +190,7 @@ export class AppSidebarLeft extends SidebarSlider {
       name: 'Voice'
     }], scrollable, this.searchGroups, true);
 
+    searchContainer.prepend(searchSuper.nav.parentElement.parentElement);
     scrollable.container.append(searchSuper.container);
 
     const resetSearch = () => {

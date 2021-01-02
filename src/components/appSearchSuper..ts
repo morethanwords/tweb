@@ -167,7 +167,7 @@ export default class AppSearchSuper {
     }, () => {
       this.scrollable.onScroll();
       this.onTransitionEnd();
-    });
+    }, undefined, navScrollable);
 
     this.tabs.inputMessagesFilterPhotoVideo.addEventListener('click', (e) => {
       const target = findUpClassName(e.target as HTMLDivElement, 'grid-item');

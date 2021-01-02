@@ -432,8 +432,6 @@ export class AppDialogsManager {
         id += 1;
       } */
 
-      foldersScrollable.scrollIntoView(this.folders.menu.firstElementChild.children[id] as HTMLElement, true, 250);
-
       id = +tabContent.dataset.filterId || 0;
 
       if(this.filterId == id) return;
@@ -448,7 +446,7 @@ export class AppDialogsManager {
           this.chatLists[folderId].innerHTML = '';
         }
       }
-    });
+    }, undefined, foldersScrollable);
 
     //selectTab(0);
     (this.folders.menu.firstElementChild.firstElementChild as HTMLElement).click();

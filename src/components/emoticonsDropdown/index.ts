@@ -343,6 +343,10 @@ export class EmoticonsDropdown {
 
       const which = whichChild(target);
 
+      /* if(menuScroll) {
+        menuScroll.scrollIntoView(target, false, 0);
+      } */
+
       if(!setActive(which)) {
         return;
       }

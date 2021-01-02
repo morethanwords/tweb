@@ -163,12 +163,10 @@
     }
     
     .search-super-tabs-scrollable { 
-      position: sticky; 
-      top: 0; 
-      z-index: 2; 
+      position: relative !important; 
 
-      .menu-horizontal ul {
-        justify-content: space-around;
+      .menu-horizontal li {
+        flex: 1 0 auto !important;
       }
     }
   }

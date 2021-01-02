@@ -272,12 +272,6 @@
 
   &-tabs {
     //margin-top: 36px;
-    position: -webkit-sticky !important;
-	  position: sticky !important;
-    top: 0;
-    z-index: 2;
-    background-color: #fff;
-
     i {
       padding-right: 1.5rem !important;
 	    margin-left: -.75rem !important;
@@ -286,6 +280,11 @@
 
   &-tabs-scrollable {
     box-shadow: none !important;
+    position: -webkit-sticky !important;
+	  position: sticky !important;
+    top: 0;
+    z-index: 2;
+    background-color: #fff;
 
     .scrollable {
       position: relative;
@@ -495,28 +494,28 @@
 
       &.sender {
         margin-top: 2px;
+      }
     }
+
+    .search-super-month-items {
+      padding: 0 24px 15px 15px;
+    
+      @include respond-to(handhelds) {
+        padding: 0 16px 15px 7px;
+      }
+    }
+
   }
 
-  .search-super-month-items {
-    padding: 0 24px 15px 15px;
-  
-    @include respond-to(handhelds) {
-      padding: 0 16px 15px 7px;
+  &-content-music, &-content-voice {
+
+    .search-super-month-items {
+      padding: 20px 15px 0px 20px;
+
+      @include respond-to(handhelds) {
+        padding: 20px 15px 0px 12px;
+      }
     }
-  }
-
-}
-
-&-content-music, &-content-voice {
-
-  .search-super-month-items {
-    padding: 20px 15px 0px 20px;
-
-    @include respond-to(handhelds) {
-      padding: 20px 15px 0px 12px;
-    }
-  }
 
     .preloader-container {
       .preloader-circular {
