@@ -125,7 +125,7 @@
     }
     
     &:focus ~ label, &:valid ~ label, &:not(:empty) ~ label, &:disabled ~ label {
-      transform: translate(-.215rem, -2.375rem) scale(0.75);
+      transform: translate(-.3125rem, -2.375rem) scale(0.75);
       padding: 0 6px;
       opacity: 1;
     }

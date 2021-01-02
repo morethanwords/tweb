@@ -25,12 +25,8 @@
     &__title {
       flex: 1;
       font-weight: 500;
-      padding-left: 22px;
+      padding-left: 24px;
       font-size: 20px;
-
-      @include respond-to(handhelds) {
-        padding-left: 24px;
-      }
     }
 
     .btn-icon + .btn-icon {
@@ -39,7 +35,6 @@
   }
 
   &-close-button {
-    padding-left: 10px;
     overflow: inherit !important;
   }
 

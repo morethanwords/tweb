@@ -12,6 +12,7 @@ export default class AvatarEdit {
     this.container.classList.add('avatar-edit');
 
     this.canvas = document.createElement('canvas');
+    this.canvas.classList.add('avatar-edit-canvas');
 
     this.icon = document.createElement('span');
     this.icon.classList.add('tgico', 'tgico-cameraadd');
@@ -21,5 +22,10 @@ export default class AvatarEdit {
     this.container.addEventListener('click', () => {
       new PopupAvatar().open(this.canvas, onChange);
     });
+  }
+
+  public clear() {
+    const ctx = this.canvas.getContext('2d');
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
   }
 }

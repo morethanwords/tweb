@@ -29,19 +29,15 @@ import apiManagerProxy from "../../lib/mtproto/mtprotoworker";
 import AppSearchSuper from "../appSearchSuper.";
 import { DateData, fillTipDates } from "../../helpers/date";
 
-const newChannelTab = new AppNewChannelTab();
 const addMembersTab = new AppAddMembersTab();
 const contactsTab = new AppContactsTab();
-const newGroupTab = new AppNewGroupTab();
 const archivedTab = new AppArchivedTab();
 
 export class AppSidebarLeft extends SidebarSlider {
   public static SLIDERITEMSIDS = {
     archived: 1,
     contacts: 2,
-    newChannel: 3,
-    addMembers: 4,
-    newGroup: 5
+    addMembers: 3
   };
 
   private toolsBtn: HTMLButtonElement;
@@ -88,10 +84,8 @@ export class AppSidebarLeft extends SidebarSlider {
 
     Object.assign(this.tabs, {
       [AppSidebarLeft.SLIDERITEMSIDS.archived]: archivedTab,
-      [AppSidebarLeft.SLIDERITEMSIDS.newChannel]: newChannelTab,
       [AppSidebarLeft.SLIDERITEMSIDS.contacts]: contactsTab,
-      [AppSidebarLeft.SLIDERITEMSIDS.addMembers]: addMembersTab,
-      [AppSidebarLeft.SLIDERITEMSIDS.newGroup]: newGroupTab
+      [AppSidebarLeft.SLIDERITEMSIDS.addMembers]: addMembersTab
     });
 
     //this._selectTab(0); // make first tab as default
@@ -104,10 +98,10 @@ export class AppSidebarLeft extends SidebarSlider {
     this.backBtn = this.sidebarEl.querySelector('.sidebar-back-button') as HTMLButtonElement;
 
     this.archivedTab = archivedTab;
-    this.newChannelTab = newChannelTab;
+    this.newChannelTab = new AppNewChannelTab(this);
     this.addMembersTab = addMembersTab;
     this.contactsTab = contactsTab;
-    this.newGroupTab = newGroupTab;
+    this.newGroupTab = new AppNewGroupTab(this);
     this.settingsTab = new AppSettingsTab(this);
     this.chatFoldersTab = new AppChatFoldersTab(appMessagesManager, appPeersManager, this, apiManagerProxy, rootScope);
     this.editFolderTab = new AppEditFolderTab(this);
@@ -144,7 +138,7 @@ export class AppSidebarLeft extends SidebarSlider {
     });
 
     attachClickEvent(this.newButtons.channel, (e) => {
-      this.selectTab(AppSidebarLeft.SLIDERITEMSIDS.newChannel);
+      this.newChannelTab.open();
     });
 
     [this.newButtons.group, this.buttons.newGroup].forEach(btn => {

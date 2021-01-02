@@ -8,23 +8,28 @@ import Button from "../../button";
 import InputField from "../../inputField";
 import PopupAvatar from "../../popups/avatar";
 import Scrollable from "../../scrollable";
-import { SliderTab } from "../../slider";
+import { SliderSuperTab } from "../../slider";
+import AvatarEdit from "../../avatarEdit";
 
-export default class AppNewGroupTab implements SliderTab {
-  private container = document.querySelector('.new-group-container') as HTMLDivElement;
-  private contentDiv = this.container.querySelector('.sidebar-content') as HTMLDivElement;
+export default class AppNewGroupTab extends SliderSuperTab {
   private canvas = this.container.querySelector('.avatar-edit-canvas') as HTMLCanvasElement;
   private searchGroup = new SearchGroup(' ', 'contacts', true, 'new-group-members disable-hover', false);
+  private avatarEdit: AvatarEdit;
   private uploadAvatar: () => Promise<InputFile> = null;
   private userIds: number[];
   private nextBtn: HTMLButtonElement;
   private groupNameInputField: InputField;
   
-  constructor() {
-    this.container.querySelector('.avatar-edit').addEventListener('click', () => {
-      new PopupAvatar().open(this.canvas, (_upload) => {
-        this.uploadAvatar = _upload;
-      });
+  constructor(appSidebarLeft: AppSidebarLeft) {
+    super(appSidebarLeft);
+  }
+
+  private construct() {
+    this.container.classList.add('new-group-container');
+    this.title.innerText = 'New Group';
+
+    this.avatarEdit = new AvatarEdit((_upload) => {
+      this.uploadAvatar = _upload;
     });
 
     const inputWrapper = document.createElement('div');
@@ -42,7 +47,7 @@ export default class AppNewGroupTab implements SliderTab {
       this.nextBtn.classList.toggle('is-visible', !!value.length && !this.groupNameInputField.input.classList.contains('error'));
     });
 
-    this.nextBtn = Button('btn-corner btn-circle', {icon: 'next'});
+    this.nextBtn = Button('btn-corner btn-circle', {icon: 'arrow-next'});
 
     this.nextBtn.addEventListener('click', () => {
       const title = this.groupNameInputField.value;
@@ -55,6 +60,7 @@ export default class AppNewGroupTab implements SliderTab {
           });
         }
         
+        appSidebarLeft.removeTabFromHistory(this.id);
         appSidebarLeft.selectTab(0);
       });
     });
@@ -63,9 +69,8 @@ export default class AppNewGroupTab implements SliderTab {
     chatsContainer.classList.add('chatlist-container');
     chatsContainer.append(this.searchGroup.container);
 
-    const scrollable = new Scrollable(chatsContainer);
-
-    this.contentDiv.append(inputWrapper, chatsContainer, this.nextBtn);
+    this.content.append(this.nextBtn);
+    this.scrollable.append(this.avatarEdit.container, inputWrapper, chatsContainer);
   }
 
   public onClose() {
@@ -74,20 +79,21 @@ export default class AppNewGroupTab implements SliderTab {
 
   public onCloseAfterTimeout() {
     this.searchGroup.clear();
-
-    const ctx = this.canvas.getContext('2d');
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
+    this.avatarEdit.clear();
     this.uploadAvatar = null;
     this.groupNameInputField.value = '';
     this.nextBtn.disabled = false;
-    this.searchGroup.clear();
   }
 
   public init(userIds: number[]) {
+    if(this.construct) {
+      this.construct();
+      this.construct = null;
+    }
+
     this.userIds = userIds;
 
-    appSidebarLeft.selectTab(AppSidebarLeft.SLIDERITEMSIDS.newGroup);
+    this.open();
     this.userIds.forEach(userId => {
       let {dom} = appDialogsManager.addDialogNew({
         dialog: userId,

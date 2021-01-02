@@ -4,24 +4,28 @@ import appChatsManager from "../../../lib/appManagers/appChatsManager";
 import Button from "../../button";
 import InputField from "../../inputField";
 import PopupAvatar from "../../popups/avatar";
-import { SliderTab } from "../../slider";
+import { SliderTab, SliderSuperTab } from "../../slider";
+import AvatarEdit from "../../avatarEdit";
 
-export default class AppNewChannelTab implements SliderTab {
-  private container = document.querySelector('.new-channel-container') as HTMLDivElement;
+export default class AppNewChannelTab extends SliderSuperTab {
   private canvas = this.container.querySelector('.avatar-edit-canvas') as HTMLCanvasElement;
   private uploadAvatar: () => Promise<InputFile> = null;
 
   private channelNameInputField: InputField;
   private channelDescriptionInputField: InputField;
   private nextBtn: HTMLButtonElement;
+  private avatarEdit: AvatarEdit;
 
-  constructor() {
-    const content = this.container.querySelector('.sidebar-content');
+  constructor(appSidebarLeft: AppSidebarLeft) {
+    super(appSidebarLeft);
+  }
 
-    this.container.querySelector('.avatar-edit').addEventListener('click', () => {
-      new PopupAvatar().open(this.canvas, (_upload) => {
-        this.uploadAvatar = _upload;
-      });
+  private init() {
+    this.container.classList.add('new-channel-container');
+    this.title.innerText = 'New Channel';
+
+    this.avatarEdit = new AvatarEdit((_upload) => {
+      this.uploadAvatar = _upload;
     });
 
     const inputWrapper = document.createElement('div');
@@ -52,9 +56,7 @@ export default class AppNewChannelTab implements SliderTab {
     caption.classList.add('caption');
     caption.innerText = 'You can provide an optional description for your channel.';
 
-    this.nextBtn = Button('btn-corner btn-circle', {icon: 'next'});
-
-    content.append(inputWrapper, caption, this.nextBtn);
+    this.nextBtn = Button('btn-corner btn-circle', {icon: 'arrow-next'});
 
     this.nextBtn.addEventListener('click', () => {
       const title = this.channelNameInputField.value;
@@ -68,19 +70,27 @@ export default class AppNewChannelTab implements SliderTab {
           });
         }
         
-        appSidebarLeft.removeTabFromHistory(AppSidebarLeft.SLIDERITEMSIDS.newChannel);
+        appSidebarLeft.removeTabFromHistory(this.id);
         appSidebarLeft.addMembersTab.init(channelId, 'channel', true);
       });
     });
+
+    this.content.append(this.nextBtn);
+    this.scrollable.append(this.avatarEdit.container, inputWrapper, caption);
   }
 
   public onCloseAfterTimeout() {
-    let ctx = this.canvas.getContext('2d');
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
+    this.avatarEdit.clear();
     this.uploadAvatar = null;
     this.channelNameInputField.value = '';
     this.channelDescriptionInputField.value = '';
     this.nextBtn.disabled = false;
+  }
+
+  onOpen() {
+    if(this.init) {
+      this.init();
+      this.init = null;
+    }
   }
 }

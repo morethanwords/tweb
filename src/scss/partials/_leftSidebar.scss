@@ -466,12 +466,6 @@
 }
 
 .edit-folder-container {
-  .input-wrapper {
-    width: 380px;
-    margin: 0 auto;
-    flex: 0 0 auto;
-  }
-
   .folder-category-button:nth-child(n+2) {
     pointer-events: none;
   }
@@ -657,11 +651,11 @@
   }
 
   .sidebar-left-h2 {
-    padding: 21px 24px 8px 24px;
+    padding: 21px 24px 8px;
 
     @include respond-to(handhelds) {
       width: 100%;
-      padding: 21px 16px 8px 16px;
+      padding: 21px 16px 8px;
     }
   }
 
