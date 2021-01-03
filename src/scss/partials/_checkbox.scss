@@ -5,6 +5,7 @@
   padding: 0 1.125rem;
   /* font-weight: 500; */
   position: relative;
+  cursor: pointer;
 
   @include respond-to(handhelds) {
     margin-bottom: 27px;
@@ -54,13 +55,13 @@
 }
 
 .radio-field {
-  display: block;
 	position: relative;
-	padding-left: 3.5rem;
 	text-align: left;
 	margin: 1.25rem 0;
 	line-height: 1.5rem;
   cursor: pointer;
+  display: flex;
+  align-items: center;
   
   &.hidden-widget {
     cursor: default;
@@ -86,12 +87,16 @@
     }
   }
 
+  // ! can't use &-main here, check popup create poll
   .radio-field-main {
+    padding-left: 3.5rem;
+    position: relative;
+
     &::before, &::after {
       content: '';
       display: block;
       position: absolute;
-      left: .25rem;
+      left: 0;
       top: 50%;
       width: 1.25rem;
       height: 1.25rem;
@@ -107,7 +112,7 @@
     }
 
     &::after {
-      left: .5625rem;
+      left: .3125rem;
       width: .625rem;
       height: .625rem;
       border-radius: 50%;
@@ -116,18 +121,21 @@
       transition: opacity .1s ease;
     }
 
-    /* .label {
-      display: block;
-      word-break: break-word;
-    }
-
-    .subLabel {
-      display: block;
-      font-size: 0.875rem;
-      line-height: 1rem;
-      color: var(--color-text-secondary);
+    /* &-subtitle {
+      color: #707579 !important;
+      font-size: 14px !important;
     } */
   }
+
+  /* &-with-subtitle {
+    .radio-field-main {
+      margin-bottom: 1.5rem;
+
+      &-subtitle {
+        margin-bottom: -1.5rem;
+      }
+    }
+  } */
 }
 
 [type="checkbox"], [type="radio"] {

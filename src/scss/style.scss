@@ -366,6 +366,10 @@ input, textarea {
   color: $color-error!important;
 }
 
+.blue, .blue:before {
+  color: $color-blue!important;
+}
+
 .bg-warning {
   background: #fed85a;
 }
@@ -451,8 +455,9 @@ input, textarea {
 hr {
   width: 100%;
   border: none;
-  border-bottom: 1px solid #DADCE0;
-  margin: 0 0 8px;
+  border-top: 1px solid #DADCE0;
+  margin: 0;
+  padding-bottom: .5rem;
 }
 
 .user-title, b/* , .user-last-message b */ {
@@ -1101,5 +1106,24 @@ middle-ellipsis-element {
 
   &-gray {
     background-color: #c5c9cc;
+  }
+}
+
+.row {
+  padding-left: 4.375rem;
+  min-height: 3.375rem;
+  margin-top: 1rem;
+
+  .radio-field {
+    &-main {
+      padding-left: 3.375rem;
+      margin-left: -3.375rem;
+    }
+  }
+
+  &-subtitle {
+    color: #707579 !important;
+    font-size: 14px !important;
+    line-height: 1.6;
   }
 }

@@ -671,3 +671,13 @@ export async function getFilesFromEvent(e: ClipboardEvent | DragEvent, onlyTypes
   
   return files;
 }
+
+export function radiosHandleChange(inputs: HTMLInputElement[], onChange: (value: string) => void) {
+  inputs.forEach(input => {
+    input.addEventListener('change', () => {
+      if(input.checked) {
+        onChange(input.value);
+      }
+    });
+  });
+}

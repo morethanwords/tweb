@@ -470,7 +470,7 @@
 }
 
 .new-group-members {
-  padding: 1.5rem 0 0.4375rem;
+  padding: 1.5rem 0 .4375rem;
 
   .search-group__name {
     text-transform: capitalize;
@@ -481,41 +481,25 @@
   .profile {
     &-button {
       display: flex;
-      padding: 1.125rem .625rem;
-      height: 3.5rem;
-      line-height: 1.4;
-      border-radius: .625rem;
-      overflow: hidden;
+      padding: 0 1rem;
       font-weight: normal;
       text-transform: unset;
+      margin: 0 0 2px 0;
 
       @include respond-to(handhelds) {
-        padding: .75rem .625rem;
         height: 48px;
-        margin: 0 0 2px 0;
         border-radius: 0;
-      }
-
-      &:before {
-        font-size: 24px;
-        color: #707579;
-        margin-left: .375rem;
-        margin-right: 2rem;
-      }
-
-      p {
-        padding-left: 2rem;
-        user-select: none;
       }
     }
 
     &-buttons {
-      margin-top: 1.125rem;
+      margin-top: 1.1875rem;
       width: 100%;
       padding: 0 .4375rem;
 
       @include respond-to(handhelds) {
         margin-top: 0.6875rem;
+        padding: 0;
       }
     }
   }
@@ -534,10 +518,8 @@
   }
 
   .sidebar-left-h2 {
-    color: #707579;
     padding: 0 1.438rem;
     padding-bottom: 1.5rem;
-    font-weight: 500;
   }
 
   hr {
@@ -568,12 +550,7 @@
   }
 
   .sidebar-left-h2 {
-    color: #707579;
-    font-size: 15px;
-    // padding-top: 7px;
-    // padding-bottom: 15px;
     padding: 7px 24px 15px 24px;
-    font-weight: 500;
 
     @include respond-to(handhelds) {
       padding: 7px 16px 15px 16px;
@@ -712,7 +689,6 @@
   display: flex;
   padding: 0 1.5rem;
   overflow: hidden;
-  font-weight: normal;
   height: 50px;
   border-radius: 0;
 
@@ -720,24 +696,8 @@
     padding: 0 1rem;
   }
 
-  p {
-    user-select: none;
-    margin-left: 32px;
-    font-size: 16px;
-    flex: 1 1 auto;
-  }
-
-  &.blue, &.blue:before {
-    color: #50a2e9;
-  }
-
-  &:first-child {
-    cursor: pointer;
-  }
-
   &:before {
     color: #797d82;
-    margin-right: 2rem;
   }
 }
 
@@ -773,9 +733,6 @@
 
 .included-chatlist-container {
   .sidebar-left-h2 {
-    color: #707579;
-    font-size: 15px;
-    font-weight: 500;
     padding: 6px 24px 8px 24px;
 
     @include respond-to(handhelds) {
@@ -880,28 +837,73 @@
   }
 }
 
-.sidebar-left-section {
-  padding: .5rem 0 1rem;
+.sidebar-left {
+  &-section {
+    padding: .5rem 0 1rem;
+  
+    &-content {
+      margin: 0 0.125rem;
 
-  &-content {
-    padding: 0 1.5rem;
+      @include respond-to(not-handhelds) {
+        margin: 0 .625rem;
+      }
+    }
+  
+    &-name {
+      padding: 1rem .875rem;
+    }
 
-    @include respond-to(handhelds) {
-      padding: 0 1rem;
+    .btn-primary, .checkbox-field, .radio-field {
+      margin: 0;
+    }
+
+    &:first-child {
+      padding-top: 0;
+    }
+
+    .tgico-photo:before {
+      margin-left: -2px;
+      margin-right: 2.125rem;
+    }
+
+    .checkbox-field {
+      display: flex;
+      align-items: center;
+      height: 54px;
+    }
+
+    .checkbox-field {
+      padding: 0 .875rem;
+    }
+
+    .radio-field {
+      &-main {
+      }
     }
   }
 
-  &-name {
+  &-h2 {
     color: #707579;
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 500;
   }
 }
 
+.general-settings-container {
+  user-select: none;
+}
+
 .range-setting-selector {
+  padding: 1rem .875rem;
+
   &-details {
     display: flex;
     justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+
+  &-value {
+    color: #707579;
   }
 
   .progress-line {

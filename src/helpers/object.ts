@@ -94,3 +94,29 @@ export function safeReplaceArrayInObject<K>(key: K, wasObject: any, newObject: a
 export function isObject(object: any) {
   return typeof(object) === 'object' && object !== null;
 }
+
+export function getDeepProperty(object: any, key: string) {
+  const splitted = key.split('.');
+  let o: any = object;
+  splitted.forEach(key => {
+    // @ts-ignore
+    o = o[key];
+  });
+  
+  return o;
+}
+
+export function setDeepProperty(object: any, key: string, value: any) {
+  const splitted = key.split('.');
+  getDeepProperty(object, splitted.slice(0, -1).join('.'))[splitted.pop()] = value;
+}
+
+export function validateInitObject(initObject: any, currentObject: any) {
+  for(const i in initObject) {
+    if(typeof(currentObject[i]) !== typeof(initObject[i])) {
+      currentObject[i] = copy(initObject[i]);
+    } else if(isObject(initObject[i])) {
+      validateInitObject(initObject[i], currentObject[i]);
+    }
+  }
+}

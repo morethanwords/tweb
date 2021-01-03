@@ -296,7 +296,7 @@ export default class PopupCreatePoll extends PopupElement {
 
     const radioField = RadioField('', 'question');
     radioField.main.append(questionField.container);
-    radioField.main.addEventListener('click', cancelEvent);
+    questionField.input.addEventListener('click', cancelEvent);
     radioField.label.classList.add('hidden-widget');
     radioField.input.disabled = true;
     if(!this.quizCheckboxField.input.checked) {

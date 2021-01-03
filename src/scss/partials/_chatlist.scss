@@ -76,9 +76,9 @@
     margin: 0 8px;
     overflow: hidden;
 
-    html.is-safari & {
+    /* html.is-safari & {
       margin-right: 3px;
-    }
+    } */
 
     @include respond-to(handhelds) {
       padding: 9px 12px 0 9px !important;

@@ -1,20 +1,45 @@
-.scrollable::-webkit-scrollbar {
-  width: 0;
-  height: 0;
+html:not(.is-safari):not(.is-ios) {
+  .scrollable::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    opacity: 0; // for safari
+    width: .375rem;
+  }
+  
+  .scrollable::-webkit-scrollbar-thumb {
+    width: 0;
+    height: 0;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    opacity: 0;
+    transition: .2s ease-in-out;
+  }
+  
+  ::-webkit-scrollbar-button {
+    width: 0;
+    height: 0;
+    display: none;
+  }
+  
+  ::-webkit-scrollbar-corner {
+    background-color: transparent;
+  }
+  
+  .scrollable:hover::-webkit-scrollbar {
+    opacity: 1; // for safari
+  }
+  
+  .scrollable:hover::-webkit-scrollbar-thumb {
+    height: 200px;
+    border-radius: $border-radius-medium;
+    background-color: rgba(0, 0, 0, .2);
+    opacity: 1;
+  }
 }
 
-.scrollable::-webkit-scrollbar-thumb {
-  width: 0;
-  height: 0;
-}
-
-::-webkit-scrollbar-button {
-  width: 0;
-  height: 0;
-  display: none;
-}
-::-webkit-scrollbar-corner {
-  background-color: transparent;
+.scrollable-x::-webkit-scrollbar {
+  display: none; // for safari iOS
 }
 
 .scrollable {
@@ -23,11 +48,7 @@
   overflow-y: hidden;
   overflow-x: hidden;
   max-height: 100%;
-  //position: relative;
   transform: translateZ(0);
-  //will-change: transform;
-  /* transform: translateZ(0);
-  -webkit-transform: translateZ(0); */
 
   //@include respond-to(not-handhelds) {
     position: absolute;
@@ -37,8 +58,6 @@
     right: 0px;
   //}
 
-  /* display: flex;
-  flex-direction: column; */
   -webkit-overflow-scrolling: touch;
 
   &.scrollable-x {
@@ -63,104 +82,7 @@
     height: 100%;
   }
 
-  html.is-safari &-padding {
+  /* html.is-safari &-padding {
     margin-right: -6px;
-  }
-
-  /* &-sentinel {
-    position: relative;
-    left: 0;
-    height: 1px;
-    min-height: 1px;
-    background-color: transparent;
-    width: 1px;
-    min-width: 1px;
   } */
-
-  /* &.scrollable-x ~ .scrollbar-thumb {
-    top: auto;
-    right: auto;
-    width: auto;
-    height: 4px;
-    bottom: 0px;
-  }
-
-  .scroll-padding {
-    flex: 0 0 auto;
-
-    &:first-child + * {
-      flex: 1 1 auto;
-    }
-  } */
-}
-
-/* .scrollbar-thumb {
-  position: absolute;
-  top: 0;
-  right: 2px;
-  width: 4px;
-  //margin-left: 2px;
-  background-color: #000;
-  //cursor: grab;
-  cursor: default;
-  opacity: 0;
-  transition-property: opacity;
-  transition-duration: .2s;
-  transition-timing-function: ease-in-out;
-
-  display: none;
-
-  border-radius: $border-radius;
-  z-index: 2;
-}
-
-:hover > .scrollbar-thumb {
-  opacity: .4;
-} */
-
-
-
-
-
-
-
-// BROWSER SCROLL
-.scrollable-y::-webkit-scrollbar {
-  width: .375rem;
-  opacity: 0; // for safari
-  //height: 200px;
-}
-
-.scrollable:hover::-webkit-scrollbar {
-  opacity: 1; // for safari
-}
-
-/* div.scrollable-y::-webkit-scrollbar-thumb {
-  border: 2px solid rgba(0, 0, 0, 0);
-  background-clip: padding-box;
-} */
-
-::-webkit-scrollbar-thumb {
-  opacity: 0;
-  transition: .2s ease-in-out;
-}
-
-.scrollable:hover::-webkit-scrollbar-thumb {
-  height: 200px;
-  border-radius: $border-radius-medium;
-  background-color: rgba(0, 0, 0, 0.2);
-  opacity: 1;
-}
-
-::-webkit-scrollbar-button {
-  width: 0;
-  height: 0;
-  display: none;
-}
-::-webkit-scrollbar-corner {
-  background-color: transparent;
-}
-
-.scrollable-x::-webkit-scrollbar {
-  display: none; // for safari iOS
 }

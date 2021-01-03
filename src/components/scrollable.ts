@@ -139,12 +139,12 @@ export default class Scrollable extends ScrollableBase {
   constructor(el: HTMLElement, logPrefix = '', public onScrollOffset = 300, withPaddingContainer?: boolean) {
     super(el, logPrefix);
 
-    if(withPaddingContainer) {
+    /* if(withPaddingContainer) {
       this.padding = document.createElement('div');
       this.padding.classList.add('scrollable-padding');
       Array.from(this.container.children).forEach(c => this.padding.append(c));
       this.container.append(this.padding);
-    }
+    } */
 
     this.container.classList.add('scrollable-y');
     this.setListeners();

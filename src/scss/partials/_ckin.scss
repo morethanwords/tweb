@@ -274,6 +274,7 @@ video::-webkit-media-controls-enclosure {
 .progress-line {
   --height: 5px;
   --border-radius: 6px;
+  border-radius: var(--border-radius);
   height: var(--height);
   position: relative;
   cursor: pointer;

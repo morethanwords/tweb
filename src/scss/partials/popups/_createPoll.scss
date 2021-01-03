@@ -11,6 +11,16 @@
 
   .radio-field {
     margin: 0;
+
+    .radio-field-main {
+      &::before {
+        left: .25rem;
+      }
+
+      &::after {
+        left: .5625rem;
+      }
+    }
   }
 
   .hidden-widget, .radio-field:first-child:last-child {
@@ -20,8 +30,13 @@
     }
   }
 
-  .input-field {
+  .poll-create-questions > label {
     margin-top: 25px;
+  }
+
+  .input-field {
+    margin-top: 0;
+
     .btn-icon {
       position: absolute;
       right: .5rem;
@@ -56,7 +71,7 @@
   }
 
   hr {
-    border-bottom: 1px solid #edeff1;
+    border-top: 1px solid #edeff1;
   }
 
   .subtitle {

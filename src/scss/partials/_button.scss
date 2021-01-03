@@ -244,6 +244,7 @@
   padding: 0 .875rem;
   //width: auto;
   text-transform: capitalize;
+  font-weight: normal;
 
   html.no-touch &:hover {
     background-color:	var(--color-gray-hover);
@@ -253,6 +254,10 @@
   &:before {
     color: #707579;
     font-size: 1.5rem;
+    margin-right: 2rem;
+  }
+
+  &.btn-short:before {
     margin-right: 1rem;
   }
 }

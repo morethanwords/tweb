@@ -299,7 +299,7 @@ export default class ChatSelection {
         this.selectionCountEl.classList.add('selection-container-count');
 
         if(this.chat.type === 'scheduled') {
-          this.selectionSendNowBtn = Button('btn-primary btn-transparent selection-container-send', {icon: 'send2'});
+          this.selectionSendNowBtn = Button('btn-primary btn-transparent btn-short text-bold selection-container-send', {icon: 'send2'});
           this.selectionSendNowBtn.append('Send Now');
           this.listenerSetter.add(this.selectionSendNowBtn, 'click', () => {
             new PopupSendNow(this.bubbles.peerId, [...this.selectedMids], () => {
@@ -307,7 +307,7 @@ export default class ChatSelection {
             })
           });
         } else {
-          this.selectionForwardBtn = Button('btn-primary btn-transparent selection-container-forward', {icon: 'forward'});
+          this.selectionForwardBtn = Button('btn-primary btn-transparent text-bold selection-container-forward', {icon: 'forward'});
           this.selectionForwardBtn.append('Forward');
           this.listenerSetter.add(this.selectionForwardBtn, 'click', () => {
             new PopupForward(this.bubbles.peerId, [...this.selectedMids], () => {
@@ -316,7 +316,7 @@ export default class ChatSelection {
           });
         }
 
-        this.selectionDeleteBtn = Button('btn-primary btn-transparent danger selection-container-delete', {icon: 'delete'});
+        this.selectionDeleteBtn = Button('btn-primary btn-transparent danger text-bold selection-container-delete', {icon: 'delete'});
         this.selectionDeleteBtn.append('Delete');
         this.listenerSetter.add(this.selectionDeleteBtn, 'click', () => {
           new PopupDeleteMessages(this.bubbles.peerId, [...this.selectedMids], this.chat.type, () => {

@@ -937,9 +937,9 @@ $chat-helper-size: 39px;
 			flex-direction: column;
 			justify-content: flex-end; */
 			// * scrollbar takes some width, don't need to set padding for iOS
-			html.is-safari:not(.is-ios) & {
+			/* html.is-safari:not(.is-ios) & {
 				padding-left: 6px;
-			}
+			} */
 		}
 	//}
 

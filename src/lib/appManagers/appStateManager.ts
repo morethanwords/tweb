@@ -10,6 +10,7 @@ import type { AppChatsManager } from './appChatsManager';
 import type { AuthState } from '../../types';
 import type FiltersStorage from '../storages/filters';
 import type DialogsStorage from '../storages/dialogs';
+import { copy, setDeepProperty, isObject, validateInitObject } from '../../helpers/object';
 
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
 const STATE_VERSION = App.version;
@@ -35,10 +36,28 @@ type State = Partial<{
   stickerSets: AppStickersManager['stickerSets'],
   version: typeof STATE_VERSION,
   authState: AuthState,
-  hiddenPinnedMessages: {[peerId: string]: number}
+  hiddenPinnedMessages: {[peerId: string]: number},
+  settings: {
+    sendShortcut: 'enter' | 'ctrlEnter',
+    animationsEnabled: boolean,
+    autoDownload: {
+      contacts: boolean
+      private: boolean
+      groups: boolean
+      channels: boolean
+    },
+    autoPlay: {
+      gifs: boolean,
+      videos: boolean
+    },
+    stickers: {
+      suggest: boolean,
+      loop: boolean
+    }
+  }
 }>;
 
-/* const STATE_INIT: State = {
+const STATE_INIT: State = {
   dialogs: [],
   allDialogsLoaded: {},
   chats: {},
@@ -48,22 +67,37 @@ type State = Partial<{
   updates: {},
   filters: {},
   maxSeenMsgId: 0,
-  stateCreatedTime: 0,
+  stateCreatedTime: Date.now(),
   recentEmoji: [],
   topPeers: [],
   recentSearch: [],
   stickerSets: {},
-  version: '',
-  authState: 
-}; */
+  version: STATE_VERSION,
+  authState: {
+    _: 'authStateSignIn'
+  },
+  hiddenPinnedMessages: {},
+  settings: {
+    sendShortcut: 'enter',
+    animationsEnabled: true,
+    autoDownload: {
+      contacts: true,
+      private: true,
+      groups: true,
+      channels: true
+    },
+    autoPlay: {
+      gifs: true,
+      videos: true
+    },
+    stickers: {
+      suggest: true,
+      loop: true
+    }
+  }
+};
 
-const ALL_KEYS = ['dialogs', 'allDialogsLoaded', 'chats', 
-  'users', 'messages', 'contactsList', 
-  'updates', 'filters', 'maxSeenMsgId', 
-  'stateCreatedTime', 'recentEmoji', 'topPeers', 
-  'recentSearch', 'stickerSets', 'version', 
-  'authState', 'hiddenPinnedMessages'
-] as any as Array<keyof State>;
+const ALL_KEYS = Object.keys(STATE_INIT) as any as Array<keyof State>;
 
 const REFRESH_KEYS = ['dialogs', 'allDialogsLoaded', 'messages', 'contactsList', 'stateCreatedTime',
   'updates', 'maxSeenMsgId', 'filters', 'topPeers'] as any as Array<keyof State>;
@@ -96,32 +130,29 @@ export class AppStateManager extends EventListenerBase<{
           if(value !== false) {
             // @ts-ignore
             state[key] = value;
+          } else {
+            // @ts-ignore
+            state[key] = copy(STATE_INIT[key]);
           }
         });
 
         const time = Date.now();
         if(state) {
-          if(state.version != STATE_VERSION) {
-            state = {};
-          } else if(((state.stateCreatedTime || 0) + REFRESH_EVERY) < time/*  && false */) {
+          if(state.version !== STATE_VERSION) {
+            state = copy(STATE_INIT);
+          } else if((state.stateCreatedTime + REFRESH_EVERY) < time/*  && false */) {
             this.log('will refresh state', state.stateCreatedTime, time);
             REFRESH_KEYS.forEach(key => {
-              delete state[key];
+              // @ts-ignore
+              state[key] = copy(STATE_INIT[key]);
             });
-            //state = {};
           }
         }
 
-        this.state = state || {};
-        this.state.chats = state.chats || {};
-        this.state.users = state.users || {};
-        this.state.hiddenPinnedMessages = this.state.hiddenPinnedMessages || {};
+        validateInitObject(STATE_INIT, state);
+
+        this.state = state;
         this.state.version = STATE_VERSION;
-        
-        // ??= doesn't compiles
-        if(!this.state.hasOwnProperty('stateCreatedTime')) {
-          this.state.stateCreatedTime = Date.now();
-        }
 
         this.log('state res', state);
         
@@ -132,8 +163,6 @@ export class AppStateManager extends EventListenerBase<{
           // ! Warning ! DON'T delete this
           this.state.authState = {_: 'authStateSignedIn'};
           rootScope.broadcast('user_auth', typeof(auth) !== 'number' ? (auth as any).id : auth); // * support old version
-        } else if(!this.state.authState) {
-          this.state.authState = {_: 'authStateSignIn'};
         }
         
         //console.timeEnd('load state');
@@ -173,6 +202,10 @@ export class AppStateManager extends EventListenerBase<{
     //perf = performance.now();
     
     //this.log('saveState: storage set time:', performance.now() - perf);
+  }
+
+  public setByKey(key: string, value: any) {
+    setDeepProperty(this.state, key, value);
   }
 
   public pushToState<T extends keyof State>(key: T, value: State[T]) {
