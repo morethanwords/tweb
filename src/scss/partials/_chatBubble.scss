@@ -755,6 +755,7 @@ $bubble-margin: .25rem;
     .name {
       letter-spacing: -.3px;
       display: block;
+      font-size: calc(1rem - 1px);
       
       html.no-touch &:hover {
         text-decoration: underline;
@@ -767,7 +768,7 @@ $bubble-margin: .25rem;
       line-height: 1.2;
       letter-spacing: -.3px;
       margin-top: 2px;
-      font-size: .965rem;
+      font-size: var(--messages-secondary-text-size);
     }
 
     .quote {
@@ -780,7 +781,7 @@ $bubble-margin: .25rem;
   }
   
   .web, .reply {
-    font-size: .95rem;
+    font-size: var(--messages-secondary-text-size);
     //transition: anim(background-color);
     
     /* &:hover {
@@ -873,14 +874,14 @@ $bubble-margin: .25rem;
   }
   
   .message {
-    font-size: 16px;
+    font-size: var(--messages-text-size);
     //padding: 0 9px .2675rem 9px;
     padding: 0 9px 6px 9px;
     /* overflow: hidden;
     text-overflow: ellipsis; */
     max-width: 100%;
     color: #000;
-    line-height: 21px;
+    line-height: 1.3125; // 21 / 16
     word-break: break-word;
     white-space: pre-wrap; // * fix spaces on line begin
     position: relative;
@@ -893,10 +894,6 @@ $bubble-margin: .25rem;
     &:last-child {
       //padding-top: .2675rem;
       padding-top: 6px;
-    }
-
-    .emoji {
-      font-size: 1.2rem;
     }
   }
 

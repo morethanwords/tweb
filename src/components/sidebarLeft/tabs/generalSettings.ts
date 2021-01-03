@@ -5,10 +5,14 @@ import { clamp } from "../../../helpers/number";
 import Button from "../../button";
 import CheckboxField from "../../checkbox";
 import RadioField from "../../radioField";
+import appStateManager from "../../../lib/appManagers/appStateManager";
+import rootScope from "../../../lib/rootScope";
 
 export class RangeSettingSelector {
   public container: HTMLDivElement;
   private range: RangeSelector;
+
+  public onChange: (value: number) => void;
 
   constructor(name: string, step: number, initialValue: number, minValue: number, maxValue: number) {
     const BASE_CLASS = 'range-setting-selector';
@@ -32,6 +36,10 @@ export class RangeSettingSelector {
     this.range.setListeners();
     this.range.setHandlers({
       onScrub: value => {
+        if(this.onChange) {
+          this.onChange(value);
+        }
+
         //console.log('font size scrub:', value);
         valueDiv.innerText = '' + value;
       }
@@ -73,7 +81,10 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
     {
       const container = generateSection('Settings');
       
-      const range = new RangeSettingSelector('Message Text Size', 1, 16, 12, 20);
+      const range = new RangeSettingSelector('Message Text Size', 1, rootScope.settings.messagesTextSize, 12, 20);
+      range.onChange = (value) => {
+        appStateManager.setByKey('settings.messagesTextSize', value);
+      };
 
       const chatBackgroundButton = Button('btn-primary btn-transparent', {icon: 'photo', text: 'Chat Background'});
 

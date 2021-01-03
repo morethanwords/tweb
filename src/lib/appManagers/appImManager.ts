@@ -145,6 +145,13 @@ export class AppImManager {
 
       location.hash = '';
     });
+
+    this.setSettings();
+    rootScope.on('settings_updated', () => this.setSettings());
+  }
+
+  private setSettings() {
+    document.documentElement.style.setProperty('--messages-text-size', rootScope.settings.messagesTextSize + 'px');
   }
 
   private chatsSelectTab(tab: HTMLElement) {
@@ -199,11 +206,11 @@ export class AppImManager {
         return;
       } else if(e.code === 'ArrowUp') {
         if(!chat.input.editMsgId) {
-          const history = appMessagesManager.getHistoryStorage(chat.peerId);
+          const history = appMessagesManager.getHistoryStorage(chat.peerId, chat.threadId);
           if(history.history.length) {
             let goodMid: number;
             for(const mid of history.history) {
-              const message = appMessagesManager.getMessageByPeer(chat.peerId, mid);
+              const message = chat.getMessage(mid);
               const good = this.myId === chat.peerId ? message.fromId === this.myId : message.pFlags.out;
 
               if(good) {

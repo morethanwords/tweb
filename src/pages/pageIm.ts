@@ -60,17 +60,6 @@ let onFirstMount = () => {
         }, 'image/jpeg', 1);
       };
     }); */
-  
-    /* toggleEmoticons.onclick = (e) => {
-      if(!emoticonsDropdown) {
-        emoticonsDropdown = initEmoticonsDropdown(pageEl, appImManager, 
-          appMessagesManager, messageInput, toggleEmoticons);
-      } else {
-        emoticonsDropdown.classList.toggle('active');
-      }
-  
-      toggleEmoticons.classList.toggle('active');
-    }; */
   //});
 
   return promise;

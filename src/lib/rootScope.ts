@@ -6,6 +6,7 @@ import type { MyDialogFilter } from "./storages/filters";
 import type { ConnectionStatusChange } from "../types";
 import type { UserTyping } from "./appManagers/appChatsManager";
 import { DEBUG, MOUNT_CLASS_TO, UserAuth } from "./mtproto/mtproto_config";
+import { State } from "./appManagers/appStateManager";
 
 type BroadcastEvents = {
   'user_update': number,
@@ -72,7 +73,8 @@ type BroadcastEvents = {
 
   'apiUpdate': Update,
   'download_progress': any,
-  'connection_status_change': ConnectionStatusChange
+  'connection_status_change': ConnectionStatusChange,
+  'settings_updated': {key: string, value: any},
   //'draft_updated': any,
 };
 
@@ -83,6 +85,7 @@ class RootScope {
     isIDLE: false
   };
   public connectionStatus: {[name: string]: ConnectionStatusChange} = {};
+  public settings: State['settings'];
 
   constructor() {
     this.on('user_auth', (e) => {

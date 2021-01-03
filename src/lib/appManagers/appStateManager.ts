@@ -15,7 +15,7 @@ import { copy, setDeepProperty, isObject, validateInitObject } from '../../helpe
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
 const STATE_VERSION = App.version;
 
-type State = Partial<{
+export type State = Partial<{
   dialogs: Dialog[],
   allDialogsLoaded: DialogsStorage['allDialogsLoaded'],
   chats: {[peerId: string]: ReturnType<AppChatsManager['getChat']>},
@@ -38,6 +38,7 @@ type State = Partial<{
   authState: AuthState,
   hiddenPinnedMessages: {[peerId: string]: number},
   settings: {
+    messagesTextSize: number,
     sendShortcut: 'enter' | 'ctrlEnter',
     animationsEnabled: boolean,
     autoDownload: {
@@ -78,6 +79,7 @@ const STATE_INIT: State = {
   },
   hiddenPinnedMessages: {},
   settings: {
+    messagesTextSize: 16,
     sendShortcut: 'enter',
     animationsEnabled: true,
     autoDownload: {
@@ -154,6 +156,9 @@ export class AppStateManager extends EventListenerBase<{
         this.state = state;
         this.state.version = STATE_VERSION;
 
+        // ! probably there is better place for it
+        rootScope.settings = this.state.settings;
+
         this.log('state res', state);
         
         //return resolve();
@@ -206,6 +211,7 @@ export class AppStateManager extends EventListenerBase<{
 
   public setByKey(key: string, value: any) {
     setDeepProperty(this.state, key, value);
+    rootScope.broadcast('settings_updated', {key, value});
   }
 
   public pushToState<T extends keyof State>(key: T, value: State[T]) {
