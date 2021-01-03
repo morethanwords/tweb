@@ -11,7 +11,7 @@ import apiManager from "../../lib/mtproto/mtprotoworker";
 //import Recorder from '../opus-recorder/dist/recorder.min';
 import opusDecodeController from "../../lib/opusDecodeController";
 import RichTextProcessor from "../../lib/richtextprocessor";
-import { attachClickEvent, blurActiveElement, cancelEvent, cancelSelection, findUpClassName, getRichValue, getSelectedNodes, isInputEmpty, markdownTags, MarkdownType, placeCaretAtEnd } from "../../helpers/dom";
+import { attachClickEvent, blurActiveElement, cancelEvent, cancelSelection, findUpClassName, getRichValue, getSelectedNodes, isInputEmpty, markdownTags, MarkdownType, placeCaretAtEnd, isSendShortcutPressed } from "../../helpers/dom";
 import { ButtonMenuItemOptions } from '../buttonMenu';
 import emoticonsDropdown from "../emoticonsDropdown";
 import PopupCreatePoll from "../popups/createPoll";
@@ -32,6 +32,7 @@ import PopupSchedule from '../popups/schedule';
 import SendMenu from './sendContextMenu';
 import rootScope from '../../lib/rootScope';
 import PopupPinMessage from '../popups/unpinMessage';
+import { isApple } from '../../helpers/userAgent';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -560,17 +561,7 @@ export default class ChatInput {
 
   private attachMessageInputListeners() {
     this.listenerSetter.add(this.messageInput, 'keydown', (e: KeyboardEvent) => {
-      if(e.key == 'Enter' && !isTouchSupported) {
-        /* if(e.ctrlKey || e.metaKey) {
-          this.messageInput.innerHTML += '<br>';
-          placeCaretAtEnd(this.message)
-          return;
-        } */
-
-        if(e.shiftKey || e.ctrlKey || e.metaKey) {
-          return;
-        }
-  
+      if(isSendShortcutPressed(e)) {
         this.sendMessage();
       } else if(e.ctrlKey || e.metaKey) {
         this.handleMarkdownShortcut(e);

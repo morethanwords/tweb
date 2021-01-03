@@ -3,7 +3,8 @@ import { MOUNT_CLASS_TO } from "../lib/mtproto/mtproto_config";
 import RichTextProcessor from "../lib/richtextprocessor";
 import ListenerSetter from "./listenerSetter";
 import { isTouchSupported } from "./touchSupport";
-import { isSafari } from "./userAgent";
+import { isSafari, isApple } from "./userAgent";
+import rootScope from "../lib/rootScope";
 
 /* export function isInDOM(element: Element, parentNode?: HTMLElement): boolean {
   if(!element) {
@@ -681,4 +682,33 @@ export function radiosHandleChange(inputs: HTMLInputElement[], onChange: (value:
       }
     });
   });
+}
+
+export function isSendShortcutPressed(e: KeyboardEvent) {
+  if(e.key == 'Enter' && !isTouchSupported) {
+    /* if(e.ctrlKey || e.metaKey) {
+      this.messageInput.innerHTML += '<br>';
+      placeCaretAtEnd(this.message)
+      return;
+    } */
+
+    if(rootScope.settings.sendShortcut === 'enter') {
+      if(e.shiftKey || e.ctrlKey || e.metaKey) {
+        return;
+      }
+
+      return true;
+    } else {
+      const secondaryKey = isApple ? e.metaKey : e.ctrlKey;
+      if(e.shiftKey || (isApple ? e.ctrlKey : e.metaKey)) {
+        return;
+      }
+
+      if(secondaryKey) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }

@@ -1,6 +1,6 @@
 import type Chat from "../chat/chat";
 import { isTouchSupported } from "../../helpers/touchSupport";
-import { calcImageInBox, placeCaretAtEnd } from "../../helpers/dom";
+import { calcImageInBox, placeCaretAtEnd, isSendShortcutPressed } from "../../helpers/dom";
 import InputField from "../inputField";
 import PopupElement from ".";
 import Scrollable from "../scrollable";
@@ -118,7 +118,7 @@ export default class PopupNewMedia extends PopupElement {
       placeCaretAtEnd(this.input);
     }
     
-    if(e.key == 'Enter' && !isTouchSupported) {
+    if(isSendShortcutPressed(e)) {
       this.btnConfirm.click();
     }
   };

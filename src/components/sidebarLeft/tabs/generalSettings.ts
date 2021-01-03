@@ -7,6 +7,7 @@ import CheckboxField from "../../checkbox";
 import RadioField from "../../radioField";
 import appStateManager from "../../../lib/appManagers/appStateManager";
 import rootScope from "../../../lib/rootScope";
+import { isApple } from "../../../helpers/userAgent";
 
 export class RangeSettingSelector {
   public container: HTMLDivElement;
@@ -164,7 +165,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
       });
 
       const ctrlEnterRow = new Row({
-        radioField: RadioField('Send by Ctrl + Enter', 'send-shortcut', 'ctrlEnter', 'settings.sendShortcut'),
+        radioField: RadioField(`Send by ${isApple ? '⌘' : 'Ctrl'} + Enter`, 'send-shortcut', 'ctrlEnter', 'settings.sendShortcut'),
         subtitle: 'New line by Enter',
       });
       

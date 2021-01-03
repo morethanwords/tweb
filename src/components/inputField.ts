@@ -1,4 +1,4 @@
-import { getRichValue } from "../helpers/dom";
+import { getRichValue, isInputEmpty } from "../helpers/dom";
 import { checkRTL } from "../helpers/string";
 import RichTextProcessor from "../lib/richtextprocessor";
 
@@ -95,7 +95,7 @@ class InputField {
 
       // * because if delete all characters there will br left
       input.addEventListener('input', () => {
-        if(!this.value.trim()) {
+        if(isInputEmpty(input)) {
           input.innerHTML = '';
         }
       });
