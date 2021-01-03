@@ -1,5 +1,6 @@
 import {isTouchSupported} from "../helpers/touchSupport";
 import { findUpClassName } from "../helpers/dom";
+import rootScope from "../lib/rootScope";
 
 let rippleClickId = 0;
 export function ripple(elem: HTMLElement, callback: (id: number) => Promise<boolean | void> = () => Promise.resolve(), onEnd: (id: number) => void = null) {
@@ -139,6 +140,10 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
     };
   
     elem.addEventListener('touchstart', (e) => {
+      if(!rootScope.settings.animationsEnabled) {
+        return;
+      }
+
       //console.log('ripple touchstart', e);
       if(e.touches.length > 1 
         || touchStartFired 
@@ -163,6 +168,9 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
     }, {passive: true});
   } else {
     elem.addEventListener('mousedown', (e) => {
+      if(!rootScope.settings.animationsEnabled) {
+        return;
+      }
       //console.log('ripple mousedown', e, e.target, findUpClassName(e.target as HTMLElement, 'c-ripple') == r);
 
       if(elem.dataset.ripple == '0' || findUpClassName(e.target as HTMLElement, 'c-ripple') != r) {

@@ -100,15 +100,6 @@ export class AppImManager {
     this.chatsContainer.classList.add('chats-container', 'tabs-container');
 
     this.columnEl.append(this.chatsContainer);
-
-    this.chatsSelectTabDebounced = debounce(() => {
-      const topbar = this.chat.topbar;
-      if(topbar.pinnedMessage) { // * буду молиться богам, чтобы это ничего не сломало, но это исправляет получение пиннеда после анимации
-        topbar.pinnedMessage.setCorrectIndex(0);
-      }
-
-      apiManager.setQueueId(this.chat.bubbles.lazyLoadQueue.queueId);
-    }, 250, false, true);
     
     this.createNewChat();
     this.chatsSelectTab(this.chat.container);
@@ -152,6 +143,19 @@ export class AppImManager {
 
   private setSettings() {
     document.documentElement.style.setProperty('--messages-text-size', rootScope.settings.messagesTextSize + 'px');
+
+    document.body.classList.toggle('animation-level-0', !rootScope.settings.animationsEnabled);
+    document.body.classList.toggle('animation-level-1', false);
+    document.body.classList.toggle('animation-level-2', rootScope.settings.animationsEnabled);
+
+    this.chatsSelectTabDebounced = debounce(() => {
+      const topbar = this.chat.topbar;
+      if(topbar.pinnedMessage) { // * буду молиться богам, чтобы это ничего не сломало, но это исправляет получение пиннеда после анимации
+        topbar.pinnedMessage.setCorrectIndex(0);
+      }
+
+      apiManager.setQueueId(this.chat.bubbles.lazyLoadQueue.queueId);
+    }, rootScope.settings.animationsEnabled ? 250 : 0, false, true);
   }
 
   private chatsSelectTab(tab: HTMLElement) {

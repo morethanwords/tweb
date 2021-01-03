@@ -324,7 +324,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
     const wasActive = fromRight !== 0;
 
-    const delay = wasActive ? 350 : 200;
+    const delay = rootScope.settings.animationsEnabled ? (wasActive ? 350 : 200) : 0;
     //let delay = wasActive ? 350 : 10000;
 
     /* if(wasActive) {
@@ -685,7 +685,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     const step = () => {
       const diff = Date.now() - start;
 
-      let progress = diff / delay;
+      let progress = delay ? diff / delay : 1;
       if(progress > 1) progress = 1;
       if(upscale) progress = 1 - progress;
 

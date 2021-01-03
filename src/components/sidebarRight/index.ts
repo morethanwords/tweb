@@ -9,6 +9,7 @@ import AppSharedMediaTab from "./tabs/sharedMedia";
 //import AppForwardTab from "./tabs/forward";
 import { MOUNT_CLASS_TO } from "../../lib/mtproto/mtproto_config";
 import { pause } from "../../helpers/schedulers";
+import rootScope from "../../lib/rootScope";
 
 export const RIGHT_COLUMN_ACTIVE_CLASSNAME = 'is-right-column-shown';
 
@@ -112,7 +113,7 @@ export class AppSidebarRight extends SidebarSlider {
     //if(mediaSizes.isMobile) {
       //appImManager._selectTab(active ? 1 : 2);
       appImManager.selectTab(active ? 1 : 2);
-      return pause(mediaSizes.isMobile ? 250 : 200); // delay of slider animation
+      return pause(rootScope.settings.animationsEnabled ? mediaSizes.isMobile ? 250 : 200 : 0); // delay of slider animation
     //}
 
     return pause(200); // delay for third column open

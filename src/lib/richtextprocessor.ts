@@ -472,6 +472,9 @@ namespace RichTextProcessor {
               insertPart(entity, `<img src="assets/img/emoji/${entity.unicode}.png" alt="`, `" class="emoji">`);
             }
           }
+          /* if(!emojiSupported) {
+            insertPart(entity, `<img src="assets/img/emoji/${entity.unicode}.png" alt="`, `" class="emoji">`);
+          } */
 
           break;
         }

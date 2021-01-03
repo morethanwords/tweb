@@ -17,6 +17,10 @@
   align-items: center;
   justify-content: center;
 
+  body.animation-level-0 & {
+    transition: none;
+  }
+
   &.active {
     color: $color-blue;
   }
@@ -84,6 +88,10 @@
   transition-duration: .2s;
   transition-timing-function: cubic-bezier(.4, 0, .2, 1);
   font-size: 16px;
+
+  body.animation-level-0 & {
+    transition: none;
+  }
 
   -webkit-user-select: none; /* disable selection/Copy of UIWebView */
   -webkit-touch-callout: none; /* disable the IOS popup when long-press on a link */
@@ -221,6 +229,10 @@
   html.no-touch &:hover {
     transition: .2s background-color, .2s opacity;
     background: darken($color-blue, 8%);
+  }
+
+  body.animation-level-0 & {
+    transition: none;
   }
   
   svg, use {

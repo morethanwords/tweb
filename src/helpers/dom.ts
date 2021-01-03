@@ -242,15 +242,16 @@ export function getRichElementValue(node: HTMLElement, lines: string[], line: st
 
 export function isInputEmpty(element: HTMLElement) {
   if(element.hasAttribute('contenteditable') || element.tagName != 'INPUT') {
-    const value = element.innerText;
+    /* const value = element.innerText;
 
-    return !value.trim() && !serializeNodes(Array.from(element.childNodes)).trim();
+    return !value.trim() && !serializeNodes(Array.from(element.childNodes)).trim(); */
+    return !getRichValue(element).trim();
   } else {
-    return !(element as HTMLInputElement).value.trim().length;
+    return !(element as HTMLInputElement).value.trim();
   }
 }
 
-export function serializeNodes(nodes: Node[]): string {
+/* export function serializeNodes(nodes: Node[]): string {
   return nodes.reduce((str, child: any) => {
     //console.log('childNode', str, child, typeof(child), typeof(child) === 'string', child.innerText);
 
@@ -260,7 +261,7 @@ export function serializeNodes(nodes: Node[]): string {
 
     return str;
   }, '');
-}
+} */
 
 /* if (Config.Modes.animations &&
   typeof window.requestAnimationFrame == 'function') {

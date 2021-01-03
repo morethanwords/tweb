@@ -2512,22 +2512,24 @@ export default class ChatBubbles {
 
     if(isFirstMessageRender) {
       waitPromise.then(() => {
-        const mids = getObjectKeysAndSort(this.bubbles, 'desc').filter(mid => !additionMsgIds.includes(mid));
-        mids.forEach((mid, idx) => {
-          const bubble = this.bubbles[mid];
+        if(rootScope.settings.animationsEnabled) {
+          const mids = getObjectKeysAndSort(this.bubbles, 'desc').filter(mid => !additionMsgIds.includes(mid));
+          mids.forEach((mid, idx) => {
+            const bubble = this.bubbles[mid];
+    
+            //if(idx || isSafari) {
+              // ! 0.1 = 1ms задержка для Safari, без этого первое сообщение над самым нижним может появиться позже другого с animation-delay, LOL !
+              bubble.style.animationDelay = ((idx || 0.1) * 10) + 'ms';
+            //}
   
-          //if(idx || isSafari) {
-            // ! 0.1 = 1ms задержка для Safari, без этого первое сообщение над самым нижним может появиться позже другого с animation-delay, LOL !
-            bubble.style.animationDelay = ((idx || 0.1) * 10) + 'ms';
-          //}
-
-          bubble.classList.add('zoom-fade');
-          bubble.addEventListener('animationend', () => {
-            bubble.style.animationDelay = '';
-            bubble.classList.remove('zoom-fade');
-          }, {once: true});
-          //this.log('supa', bubble);
-        });
+            bubble.classList.add('zoom-fade');
+            bubble.addEventListener('animationend', () => {
+              bubble.style.animationDelay = '';
+              bubble.classList.remove('zoom-fade');
+            }, {once: true});
+            //this.log('supa', bubble);
+          });
+        }
 
         setTimeout(() => {
           this.loadMoreHistory(true, true);

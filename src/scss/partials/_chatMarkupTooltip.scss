@@ -20,6 +20,10 @@
 	display: flex;
 	justify-content: flex-start;
 
+	body.animation-level-0 & {
+		transition: none;
+	}
+
 	&-wrapper {
 		position: absolute;
 		left: 0;
@@ -33,6 +37,10 @@
 		transform: translateX(0);
 		transition: transform var(--layer-transition);
 		max-width: 100%;
+
+		body.animation-level-0 & {
+			transition: none;
+		}
 	}
 
 	&-tools {
@@ -100,6 +108,10 @@
 			opacity: 0;
 			transition: opacity var(--layer-transition);
 			pointer-events: none;
+
+			body.animation-level-0 & {
+				transition: none;
+			}
 		}
 	}
 

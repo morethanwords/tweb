@@ -1,8 +1,6 @@
-$open-duration: .2s;
-//$open-duration: 10s;
-$move-duration: .35s;
-
 .media-viewer {
+  --open-duration: .2s;
+  --move-duration: .35s;
   position: fixed;
   top: 0;
   left: 0;
@@ -13,6 +11,11 @@ $move-duration: .35s;
   display: flex;
   align-items: center;
   justify-content: center;
+
+  body.animation-level-0 & {
+    --open-duration: 0;
+    --move-duration: 0;
+  }
 
   @include respond-to(handhelds) {
     background: #000;
@@ -28,7 +31,7 @@ $move-duration: .35s;
     flex-direction: column;
     justify-content: center;
     color: #8b8b8b;
-    transition: $open-duration;
+    transition: var(--open-duration);
     cursor: pointer;
 
     html.no-touch &:hover {
@@ -64,7 +67,7 @@ $move-duration: .35s;
 
     .btn-icon {
       margin: 0 .25rem;
-      transition: $open-duration;
+      transition: var(--open-duration);
 
       html.no-touch &:hover {
         color: #fff;
@@ -123,7 +126,7 @@ $move-duration: .35s;
     background-color: rgba(0, 0, 0, .6);
     border-radius: 8px;
     opacity: 0;
-    transition: opacity $open-duration;
+    transition: opacity var(--open-duration);
 
     @include respond-to(handhelds) {
       border-radius: 0;
@@ -189,7 +192,7 @@ $move-duration: .35s;
     top: 50%;
     transform: translateY(-50%) rotate(90deg);
     opacity: 0;
-    transition: $open-duration opacity;
+    transition: var(--open-duration) opacity;
     z-index: 5;
     /* box-shadow: 0 1px 2px 0 rgba(16, 35, 47, 0.07); */
 
@@ -262,7 +265,7 @@ $move-duration: .35s;
       opacity: 1;
 
       /* border-radius: inherit;
-      transition: $open-duration border-radius; */
+      transition: var(--open-duration) border-radius; */
 
       //&.thumbnail {
         position: absolute;
@@ -278,11 +281,11 @@ $move-duration: .35s;
     }
 
     &.active {
-      transition: $open-duration transform, $open-duration border-radius;
+      transition: var(--open-duration) transform, var(--open-duration) border-radius;
     }
 
     &.moving {
-      transition: $move-duration transform ease;
+      transition: var(--move-duration) transform ease;
     }
 
     /* &.center {
@@ -350,7 +353,7 @@ $move-duration: .35s;
 
     &.hiding {
       img, video {
-        transition: $open-duration opacity;
+        transition: var(--open-duration) opacity;
         opacity: 0;
       }
     }
@@ -370,8 +373,8 @@ $move-duration: .35s;
   }
 
   &-mover.active &-aspecter {
-    transition: width $open-duration, height $open-duration, transform $open-duration, border-radius $open-duration;
-    //transition: $open-duration all;
+    transition: width var(--open-duration), height var(--open-duration), transform var(--open-duration), border-radius var(--open-duration);
+    //transition: var(--open-duration) all;
   }
 
   &-whole {
@@ -383,7 +386,7 @@ $move-duration: .35s;
     display: block;
     z-index: 4;
     visibility: hidden;
-    transition: visibility 0s $open-duration;
+    transition: visibility 0s var(--open-duration);
 
     &.active {
       visibility: visible;
@@ -392,7 +395,7 @@ $move-duration: .35s;
       .overlays, > .btn-icon {
         opacity: 1;
         visibility: visible;
-        transition: opacity $open-duration 0s, visibility 0s 0s;
+        transition: opacity var(--open-duration) 0s, visibility 0s 0s;
       }
     }
 
@@ -406,7 +409,7 @@ $move-duration: .35s;
         position: fixed;
         z-index: 5;
         opacity: 0;
-        transition: opacity $open-duration 0s, visibility 0s $open-duration;
+        transition: opacity var(--open-duration) 0s, visibility 0s var(--open-duration);
       }
   
       .btn-menu-toggle {
@@ -446,5 +449,5 @@ $move-duration: .35s;
   //display: none;
   opacity: 0;
   visibility: hidden;
-  transition: opacity $open-duration 0s, visibility 0s $open-duration;
+  transition: opacity var(--open-duration) 0s, visibility 0s var(--open-duration);
 }

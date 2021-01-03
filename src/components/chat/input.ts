@@ -11,7 +11,7 @@ import apiManager from "../../lib/mtproto/mtprotoworker";
 //import Recorder from '../opus-recorder/dist/recorder.min';
 import opusDecodeController from "../../lib/opusDecodeController";
 import RichTextProcessor from "../../lib/richtextprocessor";
-import { attachClickEvent, blurActiveElement, cancelEvent, cancelSelection, findUpClassName, getRichValue, getSelectedNodes, isInputEmpty, markdownTags, MarkdownType, placeCaretAtEnd, serializeNodes } from "../../helpers/dom";
+import { attachClickEvent, blurActiveElement, cancelEvent, cancelSelection, findUpClassName, getRichValue, getSelectedNodes, isInputEmpty, markdownTags, MarkdownType, placeCaretAtEnd } from "../../helpers/dom";
 import { ButtonMenuItemOptions } from '../buttonMenu';
 import emoticonsDropdown from "../emoticonsDropdown";
 import PopupCreatePoll from "../popups/createPoll";
@@ -393,7 +393,7 @@ export default class ChatInput {
     const container = document.createElement('div');
     container.classList.add('pinned-container');
 
-    this.pinnedControlBtn = Button('btn-primary btn-transparent pinned-container-button', {icon: 'unpin'});
+    this.pinnedControlBtn = Button('btn-primary btn-transparent text-bold pinned-container-button', {icon: 'unpin'});
     container.append(this.pinnedControlBtn);
 
     this.listenerSetter.add(this.pinnedControlBtn, 'click', () => {
@@ -883,9 +883,7 @@ export default class ChatInput {
       }
     }
 
-    if(!richValue.trim() && !serializeNodes(Array.from(this.messageInput.childNodes)).trim()) {
-      this.messageInput.innerHTML = '';
-
+    if(this.isInputEmpty()) {
       this.appMessagesManager.setTyping(this.chat.peerId, 'sendMessageCancelAction');
     } else {
       const time = Date.now();

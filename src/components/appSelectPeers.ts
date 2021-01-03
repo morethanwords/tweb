@@ -393,11 +393,18 @@ export default class AppSelectPeers {
     div.classList.remove('scale-in');
     void div.offsetWidth;
     div.classList.add('scale-out');
-    div.addEventListener('animationend', () => {
+
+    const onAnimationEnd = () => {
       this.selected.delete(key);
       div.remove();
       this.onChange && this.onChange(this.selected.size);
-    }, {once: true});
+    };
+
+    if(rootScope.settings.animationsEnabled) {
+      div.addEventListener('animationend', onAnimationEnd, {once: true});
+    } else {
+      onAnimationEnd();
+    }
   }
 
   public getSelected() {

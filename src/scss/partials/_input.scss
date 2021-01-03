@@ -42,9 +42,13 @@
     height: 1.5rem;
     transform: translateY(-50%);
     background-color: #fff;
-    transition: .2s transform, .2s padding, .1s opacity;
+    transition: .2s transform, .2s padding, .1s opacity, .2s top, .2s left;
     transform-origin: left center;
     pointer-events: none;
+
+    body.animation-level-0 & {
+      transition: none;
+    }
   }
   
   input, &-input {
@@ -66,6 +70,10 @@
     /* overflow: hidden;
     white-space: nowrap; */
 
+    body.animation-level-0 & {
+      transition: none;
+    }
+
     html.no-touch & {
       &:hover:not(:focus):not(.error):not(.valid) {
         border-color: var(--color-gray);
@@ -73,7 +81,7 @@
     }
 
     @include respond-to(handhelds) {
-      min-height: 50px;
+      --height: 50px;
     }
     /* font-weight: 500; */
 
@@ -125,9 +133,13 @@
     }
     
     &:focus ~ label, &:valid ~ label, &:not(:empty) ~ label, &:disabled ~ label {
-      transform: translate(-.3125rem, -2.375rem) scale(0.75);
+      //transform: translate(-.3125rem, -2.375rem) scale(.75);
+      //transform: translate(-.3125rem, -50%) scale(.75);
+      transform: translateY(-50%) scale(.75);
+      top: 1px;
       padding: 0 6px;
       opacity: 1;
+      left: .75rem;
     }
   }
 }
@@ -159,7 +171,13 @@ input:focus, button:focus {
   padding: 0;
 
   &.error {
-    animation: input-shake .2s ease-in-out forwards;
+    body.animation-level-0 & {
+      color: $color-error!important;
+    }
+
+    body:not(.animation-level-0) & {
+      animation: input-shake .2s ease-in-out forwards;
+    }
   }
 }
 
@@ -190,7 +208,7 @@ input:focus, button:focus {
   overflow: hidden;
 
   @include respond-to(handhelds) {
-    margin-left: 16px;
+    margin-left: 1rem;
   }
 
   &-input {
@@ -204,6 +222,10 @@ input:focus, button:focus {
     border-radius: 22px;
     transition: background-color .2s ease-in-out, border-color .2s ease-in-out;
     border-color: transparent;
+
+    body.animation-level-0 & {
+      transition: none;
+    }
 
     &:hover {
       border-color: var(--color-gray);
@@ -239,6 +261,10 @@ input:focus, button:focus {
     color: $color-gray;
     opacity: .6;
     transition: all .2s ease-out;
+
+    body.animation-level-0 & {
+      transition: none;
+    }
 
     &:before {
       vertical-align: middle;

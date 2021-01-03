@@ -19,6 +19,10 @@
   /* align-items: center;
   justify-content: center; */
 
+  body.animation-level-0 & {
+    transition: none;
+  }
+
   &.active {
     opacity: 1;
     visibility: visible;
@@ -44,6 +48,10 @@
     flex-direction: column;
     overflow: hidden;
     margin: auto;
+    
+    body.animation-level-0 & {
+      transition: none;
+    }
   }
 
   &-centerer {
@@ -57,7 +65,11 @@
     text-align: center;
     justify-self: center;
     line-height: 1;
-    transition: .2s;
+    transition: color .2s;
+
+    body.animation-level-0 & {
+      transition: none;
+    }
     
     html.no-touch &:hover {
       color: #000;
@@ -87,7 +99,7 @@
 		justify-content: flex-end;
 		align-items: flex-end;
 		
-		button {
+		.btn {
 			background: none;
 			outline: none;
       border: none;
@@ -103,12 +115,16 @@
       max-width: 100%;
       white-space: nowrap;
       text-overflow: ellipsis;
+
+      body.animation-level-0 & {
+        transition: none;
+      }
 			
 			html.no-touch &:hover {
 				background-color: var(--color-gray-hover);
 			}
 			
-			& + button {
+			& + .btn {
         margin-top: .5rem;
         text-overflow: ellipsis;
         white-space: nowrap;

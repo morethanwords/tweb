@@ -92,6 +92,13 @@ class InputField {
           processInput();
         }
       });
+
+      // * because if delete all characters there will br left
+      input.addEventListener('input', () => {
+        if(!this.value.trim()) {
+          input.innerHTML = '';
+        }
+      });
       
       // ! childList for paste first symbol
       observer.observe(input, {characterData: true, childList: true, subtree: true});

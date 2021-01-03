@@ -27,6 +27,10 @@
 			transition: transform .2s ease-in;
 			transform: scale(1);
 		}
+
+		body.animation-level-0 & {
+			transition: none;
+		}
 	}
 
 	/* @include respond-to(handhelds) {

@@ -159,7 +159,7 @@ export default class EmojiTab implements EmoticonsTab {
       spanEmoji.append(first);
     }
 
-    if(spanEmoji.firstElementChild) {
+    if(spanEmoji.firstElementChild && !RichTextProcessor.emojiSupported) {
       (spanEmoji.firstElementChild as HTMLImageElement).setAttribute('loading', 'lazy');
     }
   
@@ -186,8 +186,7 @@ export default class EmojiTab implements EmoticonsTab {
     } else if(target.tagName == 'DIV') return;
 
     //console.log('contentEmoji div', target);
-
-    appImManager.chat.input.messageInput.innerHTML += target.outerHTML;
+    appImManager.chat.input.messageInput.innerHTML += RichTextProcessor.emojiSupported ? target.innerHTML : target.outerHTML;
 
     // Recent
     const emoji = this.getEmojiFromElement(target);

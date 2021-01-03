@@ -417,7 +417,7 @@ export default class AppSearchSuper {
             div.append(thumb);
           }
 
-          const needBlur = !isDownloaded || !willHaveThumb;
+          const needBlur = (!isDownloaded || !willHaveThumb) && rootScope.settings.animationsEnabled;
           const img = new Image();
           img.dataset.mid = '' + message.mid;
           img.classList.add('grid-item-media');

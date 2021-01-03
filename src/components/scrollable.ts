@@ -2,6 +2,7 @@ import { CancellablePromise, deferredPromise } from "../helpers/cancellablePromi
 import { isTouchSupported } from "../helpers/touchSupport";
 import { logger, LogLevels } from "../lib/logger";
 import smoothscroll, { SCROLL_TIME, SmoothScrollToOptions } from '../vendor/smoothscroll';
+import rootScope from "../lib/rootScope";
 (window as any).__forceSmoothScrollPolyfill__ = true;
 smoothscroll();
 /*
@@ -84,6 +85,11 @@ export class ScrollableBase {
     const scrollValue = this.getScrollValue();
     if(scrollValue == Math.floor(value)) {
       return;
+    }
+
+    if(!rootScope.settings.animationsEnabled) {
+      smooth = false;
+      scrollTime = 0;
     }
 
     const wasLocked = !!this.scrollLocked;

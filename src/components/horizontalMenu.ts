@@ -1,6 +1,7 @@
 import { findUpTag, whichChild } from "../helpers/dom";
 import { TransitionSlider } from "./transition";
 import { ScrollableX } from "./scrollable";
+import rootScope from "../lib/rootScope";
 
 export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?: (id: number, tabContent: HTMLDivElement) => void, onTransitionEnd?: () => void, transitionTime = 250, scrollableX?: ScrollableX) {
   const selectTab = TransitionSlider(content, tabs || content.dataset.slider == 'tabs' ? 'tabs' : 'navigation', transitionTime, onTransitionEnd);
@@ -23,6 +24,10 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?
 
       if(scrollableX) {
         scrollableX.scrollIntoView(target.parentElement.children[id] as HTMLElement, true, transitionTime);
+      }
+
+      if(!rootScope.settings.animationsEnabled) {
+        animate = false;
       }
 
       if(target.classList.contains('active') || id === selectTab.prevId) {

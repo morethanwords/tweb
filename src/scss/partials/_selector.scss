@@ -60,7 +60,11 @@
     border-radius: 24px;
     user-select: none;
     flex: 0 0 auto;
-    transition: .2s all;
+    transition: .2s opacity, .2s transform, .2s background-color;
+
+    body.animation-level-0 & {
+      transition: none;
+    }
 
     html.no-touch &:hover {
       background-color: #fae2e3;
@@ -71,14 +75,16 @@
         transform: scaleX(-1) rotate(-90deg);
       }
     }
-    
-    &.scale-in {
-      animation: scaleIn .15s ease forwards;
-    }
 
-    &.scale-out {
-      animation: scaleIn .1s ease forwards;
-      animation-direction: reverse;
+    body:not(.animation-level-0) & {
+      &.scale-in {
+        animation: scaleIn .15s ease forwards;
+      }
+  
+      &.scale-out {
+        animation: scaleIn .1s ease forwards;
+        animation-direction: reverse;
+      }
     }
 
     &-avatar {
@@ -104,6 +110,10 @@
         opacity: 0;
         transition: .2s opacity, .2s transform;
         transform: scaleX(-1) rotate(0deg);
+
+        body.animation-level-0 & {
+          transition: none;
+        }
       }
     }
   }

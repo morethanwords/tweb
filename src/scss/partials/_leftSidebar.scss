@@ -26,6 +26,10 @@
     width: 26.5rem;
     transform: translate3d(-5rem, 0, 0);
     transition: transform var(--layer-transition);
+    
+    body.animation-level-0 & {
+      transition: none;
+    }
 
     body.is-left-column-shown & {
       transform: translateZ(0);
@@ -202,6 +206,10 @@
       &:before {
         transition: .2s transform;
         transform: rotate(180deg);
+      }
+
+      body.animation-level-0 &, body.animation-level-0 &:before {
+        transition: none;
       }
 
       & + * {
@@ -609,6 +617,10 @@
       width: 52px;
       transition: width 0.2s;
       margin: 5px 0 0 0;
+
+      body.animation-level-0 & {
+        transition: none;
+      }
     }
   }
 }

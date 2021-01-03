@@ -22,6 +22,10 @@ $chat-helper-size: 39px;
 	transition: transform var(--layer-transition);
 	transform: translateY(var(--translateY));
 
+	body.animation-level-0 & {
+		transition: none;
+	}
+
 	//display: none !important;
 
 	/* // * for no ESG top
@@ -40,10 +44,6 @@ $chat-helper-size: 39px;
 
 		body.is-right-column-shown & {
 			transform: translate3d(calc(var(--right-column-width) / -2), var(--translateY), 0) !important;
-		}
-
-		body.animation-level-0 & {
-			transition: none;
 		}
 	}
 
@@ -121,6 +121,8 @@ $chat-helper-size: 39px;
 		border: none;
 		outline: none;
 		white-space: pre-wrap;
+		font-size: var(--messages-text-size);
+		line-height: 1.3125;
 
 		@media only screen and (max-height: 30rem) {
 			max-height: unquote('max(39px, calc(100vh - 10rem))');
@@ -155,6 +157,10 @@ $chat-helper-size: 39px;
 		right: 0;
 		top: 0;
 
+		body.animation-level-0 & {
+			transition: none !important;
+		}
+
 		// here percents can be used since there are no other transforms
 		transform: translateX(calc(-100% + var(--padding-horizontal) * -1 + #{-$btn-send-margin}));
 
@@ -176,8 +182,16 @@ $chat-helper-size: 39px;
 
 		> .tgico {
 			position: absolute;
-			animation: hide-icon .4s forwards ease-in-out;
 			height: 24px;
+			
+			body:not(.animation-level-0) & {
+				animation: hide-icon .4s forwards ease-in-out;
+			}
+
+			body.animation-level-0 & {
+				visibility: hidden;
+				animation: none !important;
+			}
 		}
 
 		.tgico-send {
@@ -207,12 +221,17 @@ $chat-helper-size: 39px;
 		&.record .tgico-microphone2,
 		&.edit .tgico-check,
 		&.schedule .tgico-schedule {
-			animation: grow-icon .4s forwards ease-in-out;
+			animation: grow-icon .4s forwards ease-in-out !important;
+			visibility: visible !important;
 		}
 	}
 
 	.btn-icon {
 		transition: .2s color, background-color .2s, .2s opacity;
+
+		body.animation-level-0 & {
+			transition: none;
+		}
 	}
 
 	.btn-record-cancel, .btn-send {
@@ -249,6 +268,10 @@ $chat-helper-size: 39px;
 		left: -94px;
 		transition: transform .03s ease-in-out, visibility .1s;
 		visibility: hidden;
+
+		body.animation-level-0 & {
+			transition: none !important;
+		}
 
     @include respond-to(handhelds) {
 			width: 300px;
@@ -452,6 +475,10 @@ $chat-helper-size: 39px;
 	flex-direction: column;
 	//z-index: 1;
 
+	body.animation-level-0 & {
+		transition: none !important;
+	}
+
 	&:not(.active):not(:last-child) {
 		filter: brightness(.8);
 	}
@@ -556,6 +583,10 @@ $chat-helper-size: 39px;
 	position: relative;
 	z-index: 3;
 	transition: width .1s;
+
+	body.animation-level-0 & {
+		transition: none;
+	}
 
 	.chat-input.type-pinned & {
 		width: 17.125rem;
@@ -709,6 +740,10 @@ $chat-helper-size: 39px;
 		z-index: 1;
 		user-select: none;
 
+		body.animation-level-0 & {
+			transition: none;
+		}
+
 		@include respond-to(handhelds) {
 			padding-top: .25rem;
 		}
@@ -738,6 +773,7 @@ $chat-helper-size: 39px;
 		//padding: 4.5px 0;
 		//padding-bottom: 4.5px;
 		align-items: flex-end;
+		min-height: var(--chat-input-size);
 		
 		.btn-icon:before {
 			vertical-align: bottom;
@@ -750,6 +786,7 @@ $chat-helper-size: 39px;
 		flex: 1 1 auto;
 		position: relative;
 		overflow: hidden;
+		align-self: center;
 
 		> .scrollable {
 			position: relative;
@@ -842,7 +879,7 @@ $chat-helper-size: 39px;
 		//margin-bottom: 1px;
 
 		// ! EXPERIMENTAL
-		margin: 0 3px 4px;
+		margin: 0 3px 5px;
 		padding: 0.25rem;
 		width: 34px;
 		height: 34px;
@@ -882,6 +919,10 @@ $chat-helper-size: 39px;
 
 	transform: translateY(var(--translateY));
 	transition: transform var(--layer-transition);
+
+	body.animation-level-0 & {
+		transition: none;
+	}
 
 	/* html.is-safari & > .scrollable {
     -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%); // fix safari overflow
@@ -945,14 +986,8 @@ $chat-helper-size: 39px;
 
 	// ! WARNING, НЕЛЬЗЯ СТАВИТЬ ТРАНСФОРМ КРОМЕ TRANSLATEZ(0) НА БЛОК С OVERFLOW, ОН БУДЕТ ПРЫГАТЬ ВВЕРХ ПРИ ВКЛЮЧЕННОМ ПРАВИЛЕ И ЭТО НЕ ИСПРАВИТЬ JS'ОМ!
 	@include respond-to(medium-screens) {
-		//transition: transform var(--layer-transition);
-
 		body.is-right-column-shown & {
 			transform: translate3d(calc(var(--right-column-width) / -2), var(--translateY), 0);
-		}
-
-		body.animation-level-0 & {
-			transition: none;
 		}
 	}
 
@@ -1031,6 +1066,10 @@ $chat-helper-size: 39px;
 	transform: translateY(0);
 	/* transition: margin-top var(--layer-transition);
 	transition-delay: .2s; */
+
+	body.animation-level-0 & {
+		transition: none;
+	}
 
 	@include respond-to(medium-screens) {
 		width: calc(100% - var(--right-column-width));
@@ -1111,6 +1150,10 @@ $chat-helper-size: 39px;
 	--translateY: calc(var(--chat-input-size) + 10px);
 	//--translateY: calc(100% + 10px);
 
+	body.animation-level-0 & {
+		transition: none !important;
+	}
+
 	/* &.is-broadcast {
 		--translateY: 99px !important;
 	} */
@@ -1189,6 +1232,10 @@ $chat-helper-size: 39px;
 		background-color: #fff;
 		transition: .2s ease;
 
+		body.animation-level-0 & {
+			transition: none;
+		}
+
 		&.active {
 			opacity: 1;
 			visibility: visible;
@@ -1211,6 +1258,10 @@ $chat-helper-size: 39px;
 	align-items: center;
 	transform: translate3d(0, calc(-100% - 10px), 0);
 	transition: transform .2s ease;
+
+	body.animation-level-0 & {
+		transition: none;
+	}
 
 	&.active {
 		transform: translate3d(0, 0, 0);

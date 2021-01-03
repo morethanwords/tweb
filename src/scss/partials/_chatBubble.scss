@@ -99,7 +99,10 @@ $bubble-margin: .25rem;
 
   &.is-highlighted:after {
     background-color: rgba(0, 132, 255, .3);
-    animation: bubbleSelected 2s linear;
+
+    body:not(.animation-level-0) & {
+      animation: bubbleSelected 2s linear;
+    }
   }
 
   &.is-first-unread {
@@ -132,11 +135,16 @@ $bubble-margin: .25rem;
   &.is-selected {
     &:after {
       background-color: rgba(77, 142, 80, .4);
-      animation: fade-in-opacity .2s linear forwards;
     }
 
-    &.backwards:after {
-      animation: fade-in-backwards-opacity .2s linear forwards;
+    body:not(.animation-level-0) & {
+      &:after {
+        animation: fade-in-opacity .2s linear forwards;
+      }
+
+      &.backwards:after {
+        animation: fade-in-backwards-opacity .2s linear forwards;
+      }
     }
   }
 
@@ -172,6 +180,10 @@ $bubble-margin: .25rem;
     transition: opacity .3s ease;
     opacity: .99999; // for safari
     pointer-events: none;
+
+    body.animation-level-0 & {
+      transition: none;
+    }
 
     &.is-sticky {
       opacity: .00001; // for safari
@@ -258,6 +270,10 @@ $bubble-margin: .25rem;
     transition: .2s transform;
     user-select: none;
 
+    body.animation-level-0 & {
+      transition: none;
+    }
+
     /* html.no-touch .bubbles:not(.is-selecting) &,
     html.is-touch .bubbles.is-selecting:not(.no-select) & {
       user-select: text;
@@ -285,6 +301,10 @@ $bubble-margin: .25rem;
         transform: scale3d(1, 1, 1);
         transform-origin: bottom;
         transition: transform var(--layer-transition);
+
+        body.animation-level-0 & {
+          transition: none;
+        }
       }
 
       .bubbles.is-selecting:not(.backwards) & {
@@ -581,6 +601,10 @@ $bubble-margin: .25rem;
       cursor: pointer;
       opacity: 1;
       transition: opacity .3s ease;
+
+      body.animation-level-0 & {
+        transition: none;
+      }
     }
 
     .download {
@@ -1056,8 +1080,10 @@ $bubble-margin: .25rem;
           background-color: rgba(0, 132, 255, .3);
         }
 
-        .document-selection, .document-wrapper:before {
-          animation: bubbleSelected 2s linear;
+        body:not(.animation-level-0) & {
+          .document-selection, .document-wrapper:before {
+            animation: bubbleSelected 2s linear;
+          }
         }
       }
 
@@ -1066,13 +1092,15 @@ $bubble-margin: .25rem;
           background-color: rgba(77, 142, 80, .4);
         }
 
-        .document-selection, .document-wrapper:before {
-          animation: fade-in-opacity .2s linear forwards;
-        }
-
-        &.backwards {
+        body:not(.animation-level-0) & {
           .document-selection, .document-wrapper:before {
-            animation: fade-in-backwards-opacity .2s linear forwards;
+            animation: fade-in-opacity .2s linear forwards;
+          }
+  
+          &.backwards {
+            .document-selection, .document-wrapper:before {
+              animation: fade-in-backwards-opacity .2s linear forwards;
+            }
           }
         }
       }
@@ -1113,7 +1141,6 @@ $bubble-margin: .25rem;
 
         .checkbox-caption {
           &:after {
-            
             box-shadow: none;
           }
         }
@@ -2107,6 +2134,10 @@ poll-element {
       cursor: pointer;
       transform: scale(1);
       transition: transform .2s ease;
+
+      body.animation-level-0 & {
+        transition: none;
+      }
 
       // @include respond-to(handhelds) {
       //   right: 16px;

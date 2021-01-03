@@ -22,8 +22,6 @@
       color: $color-blue;
       background: #50a2e988;
       position: relative;
-      will-change: transform;
-      transition: transform 0.25s ease-in-out;
     }
 
     &-bars {
@@ -40,8 +38,13 @@
       width: 2px;
       background: currentColor;
       border-radius: 1px;
-      will-change: transform;
-      transition: transform 0.25s ease-in-out;
+    }
+
+    body:not(.animation-level-0) & {
+      &-wrapper, &-mark {
+        will-change: transform;
+        transition: transform 0.25s ease-in-out;
+      }
     }
   }
 }
@@ -256,6 +259,10 @@
     height: 2rem;
     position: absolute;
     transition: transform var(--pm-transition)/* , opacity var(--pm-transition) */;
+
+    body.animation-level-0 & {
+      transition: none;
+    }
   }
 
   /* &-media {
@@ -309,6 +316,10 @@
       height: 50%;
       overflow: visible;
       transition: transform var(--pm-transition);
+
+      body.animation-level-0 & {
+        transition: none;
+      }
     }
   }
 
@@ -324,6 +335,10 @@
 
   .animated-counter {
     transition: transform var(--pm-transition), opacity var(--pm-transition);
+
+    body.animation-level-0 & {
+      transition: none;
+    }
 
     &:before {
       content: "#";

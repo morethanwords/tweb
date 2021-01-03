@@ -1,4 +1,5 @@
 import { whichChild } from "../helpers/dom";
+import rootScope from "../lib/rootScope";
 
 function slideNavigation(tabContent: HTMLElement, prevTabContent: HTMLElement, toRight: boolean) {
   const width = prevTabContent.getBoundingClientRect().width;
@@ -95,13 +96,19 @@ const Transition = (content: HTMLElement, animationFunction: TransitionFunction,
     const p = prevTabContent;
     const tabContent = content.children[id] as HTMLElement;
 
+    if(!rootScope.settings.animationsEnabled) {
+      animate = false;
+    }
+
     // * means animation isn't needed
     if(/* content.dataset.slider == 'none' ||  */!animate) {
       if(p) {
         p.classList.remove('active');  
       }
 
-      tabContent.classList.add('active');
+      if(tabContent) {
+        tabContent.classList.add('active');
+      }
 
       self.prevId = id;
       prevTabContent = tabContent;
