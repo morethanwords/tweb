@@ -28,6 +28,7 @@ import appPollsManager from './appPollsManager';
 import SetTransition from '../../components/singleTransition';
 import ChatDragAndDrop from '../../components/chat/dragAndDrop';
 import { debounce } from '../../helpers/schedulers';
+import lottieLoader from '../lottieLoader';
 
 //console.log('appImManager included33!');
 
@@ -156,6 +157,9 @@ export class AppImManager {
 
       apiManager.setQueueId(this.chat.bubbles.lazyLoadQueue.queueId);
     }, rootScope.settings.animationsEnabled ? 250 : 0, false, true);
+
+    lottieLoader.setLoop(rootScope.settings.stickers.loop);
+    animationIntersector.checkAnimations(false);
   }
 
   private chatsSelectTab(tab: HTMLElement) {

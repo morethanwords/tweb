@@ -170,7 +170,8 @@ export default class EmojiTab implements EmoticonsTab {
   }
 
   private getEmojiFromElement(element: HTMLElement) {
-    if(element.tagName == 'SPAN' && !element.classList.contains('emoji')) {
+    if(element.nodeType === 3) return element.nodeValue;
+    if(element.tagName === 'SPAN' && !element.classList.contains('emoji')) {
       element = element.firstElementChild as HTMLElement;
     }
     
@@ -181,12 +182,14 @@ export default class EmojiTab implements EmoticonsTab {
     let target = e.target as HTMLElement;
     //if(target.tagName != 'SPAN') return;
 
-    if(target.tagName == 'SPAN' && !target.classList.contains('emoji')) {
-      target = target.firstElementChild as HTMLElement;
+    if(target.tagName === 'SPAN' && !target.classList.contains('emoji')) {
+      target = target.firstChild as HTMLElement;
     } else if(target.tagName == 'DIV') return;
 
     //console.log('contentEmoji div', target);
-    appImManager.chat.input.messageInput.innerHTML += RichTextProcessor.emojiSupported ? target.innerHTML : target.outerHTML;
+    appImManager.chat.input.messageInput.innerHTML += RichTextProcessor.emojiSupported ? 
+      (target.nodeType === 3 ? target.nodeValue : target.innerHTML) : 
+      target.outerHTML;
 
     // Recent
     const emoji = this.getEmojiFromElement(target);

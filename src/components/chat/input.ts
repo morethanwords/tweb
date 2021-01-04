@@ -301,6 +301,16 @@ export default class ChatInput {
 
     this.stickersHelper = new StickersHelper(this.rowsWrapper);
 
+    this.listenerSetter.add(rootScope, 'settings_updated', () => {
+      if(this.stickersHelper) {
+        if(!rootScope.settings.stickers.suggest) {
+          this.stickersHelper.checkEmoticon('');
+        } else {
+          this.onMessageInput();
+        }
+      }
+    });
+
     try {
       this.recorder = new Recorder({
         //encoderBitRate: 32,
@@ -802,7 +812,9 @@ export default class ChatInput {
 
     //this.chat.log('messageInput entities', richValue, value, markdownEntities);
 
-    if(this.stickersHelper && (this.chat.peerId > 0 || this.appChatsManager.hasRights(this.chat.peerId, 'send', 'send_stickers'))) {
+    if(this.stickersHelper && 
+      rootScope.settings.stickers.suggest && 
+      (this.chat.peerId > 0 || this.appChatsManager.hasRights(this.chat.peerId, 'send', 'send_stickers'))) {
       let emoticon = '';
       if(entities.length && entities[0]._ == 'messageEntityEmoji') {
         const entity = entities[0];

@@ -94,6 +94,12 @@ export class AnimationIntersector {
       group
     };
 
+    if(animation instanceof RLottiePlayer) {
+      if(!rootScope.settings.stickers.loop && animation.loop) {
+        animation.loop = rootScope.settings.stickers.loop;
+      }
+    }
+
     (this.byGroups[group] ?? (this.byGroups[group] = [])).push(player);
     this.observer.observe(player.el);
   }

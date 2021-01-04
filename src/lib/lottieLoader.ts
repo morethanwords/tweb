@@ -54,7 +54,9 @@ export class RLottiePlayer extends EventListenerBase<{
   public direction = 1;
   public speed = 1;
   public autoplay = true;
+  public _autoplay: boolean; // ! will be used to store original value for settings.stickers.loop
   public loop = true;
+  public _loop: boolean; // ! will be used to store original value for settings.stickers.loop
   public group = '';
 
   private frInterval: number;
@@ -91,6 +93,9 @@ export class RLottiePlayer extends EventListenerBase<{
         this[i] = options[i];
       }
     }
+
+    this._loop = this.loop;
+    this._autoplay = this.autoplay;
 
     // * Skip ratio (30fps)
     let skipRatio: number;
@@ -539,13 +544,21 @@ class LottieLoader {
   private log = logger('LOTTIE', LogLevels.error);
 
   public getAnimation(element: HTMLElement) {
-    for(let i in this.players) {
-      if(this.players[i].el == element) {
+    for(const i in this.players) {
+      if(this.players[i].el === element) {
         return this.players[i];
       }
     }
 
     return null;
+  }
+
+  public setLoop(loop: boolean) {
+    for(const i in this.players) {
+      const player = this.players[i];
+      player.loop = loop;
+      player.autoplay = player._autoplay;
+    }
   }
 
   public loadLottieWorkers() {
