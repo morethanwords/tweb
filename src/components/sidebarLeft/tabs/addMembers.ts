@@ -1,42 +1,44 @@
-import { SliderTab } from "../../slider";
+import SidebarSlider, { SliderSuperTab } from "../../slider";
 import AppSelectPeers from "../../appSelectPeers";
 import { putPreloader } from "../../misc";
-import appChatsManager from "../../../lib/appManagers/appChatsManager";
-import appSidebarLeft, { AppSidebarLeft } from "..";
+import Button from "../../button";
 
-export default class AppAddMembersTab implements SliderTab {
-  private container = document.querySelector('.addmembers-container') as HTMLDivElement;
-  private contentDiv = this.container.querySelector('.sidebar-content') as HTMLDivElement;
-  private backBtn = this.container.querySelector('.sidebar-close-button') as HTMLButtonElement;
-  private nextBtn = this.contentDiv.querySelector('.btn-corner') as HTMLButtonElement;
+export default class AppAddMembersTab extends SliderSuperTab {
+  private nextBtn: HTMLButtonElement;
   private selector: AppSelectPeers;
-  private peerType: 'channel' | 'chat';
-  private peerId: number; // always positive
-  private takeOut: (peerIds: number[]) => void
+  private peerType: 'channel' | 'chat' | 'privacy';
+  private takeOut: (peerIds: number[]) => Promise<any> | any;
   private skippable: boolean;
 
-  constructor() {
+  constructor(slider: SidebarSlider) {
+    super(slider);
+  }
+
+  protected init() {
+    this.nextBtn = Button('btn-corner btn-circle', {icon: 'arrow-next'});
+    this.content.append(this.nextBtn);
+    
     this.nextBtn.addEventListener('click', () => {
-      if(this.skippable) {
-        appSidebarLeft.closeTab(AppSidebarLeft.SLIDERITEMSIDS.addMembers);
-        return;
-      }
-
       const peerIds = this.selector.getSelected();
-      if(peerIds.length) {
-        if(this.takeOut) {
-          this.takeOut(peerIds);
-          return;
+
+      if(this.skippable) {
+        this.takeOut(peerIds);
+        this.close();
+      } else {
+        const promise = this.takeOut(peerIds);
+
+        if(promise instanceof Promise) {
+          this.nextBtn.classList.remove('tgico-arrow-next');
+          this.nextBtn.disabled = true;
+          putPreloader(this.nextBtn);
+          this.selector.freezed = true;
+  
+          promise.then(() => {
+            this.close();
+          });
+        } else {
+          this.close();
         }
-
-        this.nextBtn.classList.remove('tgico-arrow-next');
-        this.nextBtn.disabled = true;
-        putPreloader(this.nextBtn);
-        this.selector.freezed = true;
-
-        appChatsManager.inviteToChannel(this.peerId, peerIds).then(() => {
-          appSidebarLeft.closeTab(AppSidebarLeft.SLIDERITEMSIDS.addMembers);
-        });
       }
     });
   }
@@ -48,22 +50,39 @@ export default class AppAddMembersTab implements SliderTab {
     }
   }
 
-  public init(id: number, type: 'channel' | 'chat', skippable: boolean, takeOut?: AppAddMembersTab['takeOut']) {
-    this.peerId = Math.abs(id);
-    this.peerType = type;
-    this.takeOut = takeOut;
-    this.skippable = skippable;
+  public open(options: {
+    title: string,
+    placeholder: string,
+    peerId?: number, 
+    type: AppAddMembersTab['peerType'], 
+    takeOut?: AppAddMembersTab['takeOut'],
+    skippable: boolean,
+    selectedPeerIds?: number[]
+  }) {
+    const ret = super.open();
+
+    this.title.innerHTML = options.title;
+    this.peerType = options.type;
+    this.takeOut = options.takeOut;
+    this.skippable = options.skippable;
 
     this.onCloseAfterTimeout();
-    this.selector = new AppSelectPeers(this.contentDiv, skippable ? null : (length) => {
+    this.selector = new AppSelectPeers(this.content, this.skippable ? null : (length) => {
       this.nextBtn.classList.toggle('is-visible', !!length);
     }, ['contacts']);
+    this.selector.input.placeholder = options.placeholder;
 
+    if(options.selectedPeerIds) {
+      options.selectedPeerIds.forEach(peerId => {
+        this.selector.add(peerId);
+      });
+    }
+
+    this.nextBtn.classList.add('tgico-arrow-next');
     this.nextBtn.innerHTML = '';
     this.nextBtn.disabled = false;
-    this.nextBtn.classList.add('tgico-arrow-next');
-    this.nextBtn.classList.toggle('is-visible', skippable);
+    this.nextBtn.classList.toggle('is-visible', this.skippable);
 
-    appSidebarLeft.selectTab(AppSidebarLeft.SLIDERITEMSIDS.addMembers);
+    return ret;
   }
 }

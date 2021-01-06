@@ -853,8 +853,8 @@
   &-section {
     padding: .5rem 0 1rem;
   
-    &-content {
-      margin: 0 0.125rem;
+    &-content, &-caption {
+      margin: 0 .125rem;
 
       @include respond-to(not-handhelds) {
         margin: 0 .625rem;
@@ -863,6 +863,13 @@
   
     &-name {
       padding: 1rem .875rem;
+    }
+
+    &-caption {
+      margin-top: 1rem;
+      font-size: 0.875rem;
+      color: #707579;
+      line-height: 1.2;
     }
 
     .btn-primary, .checkbox-field, .radio-field {
@@ -884,7 +891,7 @@
       height: 54px;
     }
 
-    .checkbox-field {
+    .checkbox-field, &-caption {
       padding: 0 .875rem;
     }
   }

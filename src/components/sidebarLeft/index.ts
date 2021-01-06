@@ -29,16 +29,15 @@ import apiManagerProxy from "../../lib/mtproto/mtprotoworker";
 import AppSearchSuper from "../appSearchSuper.";
 import { DateData, fillTipDates } from "../../helpers/date";
 import AppGeneralSettingsTab from "./tabs/generalSettings";
+import AppPrivacyAndSecurityTab from "./tabs/privacyAndSecurity";
 
-const addMembersTab = new AppAddMembersTab();
 const contactsTab = new AppContactsTab();
 const archivedTab = new AppArchivedTab();
 
 export class AppSidebarLeft extends SidebarSlider {
   public static SLIDERITEMSIDS = {
     archived: 1,
-    contacts: 2,
-    addMembers: 3
+    contacts: 2
   };
 
   private toolsBtn: HTMLButtonElement;
@@ -75,6 +74,7 @@ export class AppSidebarLeft extends SidebarSlider {
   public editFolderTab: AppEditFolderTab;
   public includedChatsTab: AppIncludedChatsTab;
   public generalSettingsTab: AppGeneralSettingsTab;
+  public privacyAndSecurityTab: AppPrivacyAndSecurityTab;
 
   //private log = logger('SL');
 
@@ -86,8 +86,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     Object.assign(this.tabs, {
       [AppSidebarLeft.SLIDERITEMSIDS.archived]: archivedTab,
-      [AppSidebarLeft.SLIDERITEMSIDS.contacts]: contactsTab,
-      [AppSidebarLeft.SLIDERITEMSIDS.addMembers]: addMembersTab
+      [AppSidebarLeft.SLIDERITEMSIDS.contacts]: contactsTab
     });
 
     //this._selectTab(0); // make first tab as default
@@ -101,7 +100,6 @@ export class AppSidebarLeft extends SidebarSlider {
 
     this.archivedTab = archivedTab;
     this.newChannelTab = new AppNewChannelTab(this);
-    this.addMembersTab = addMembersTab;
     this.contactsTab = contactsTab;
     this.newGroupTab = new AppNewGroupTab(this);
     this.settingsTab = new AppSettingsTab(this);
@@ -110,6 +108,8 @@ export class AppSidebarLeft extends SidebarSlider {
     this.includedChatsTab = new AppIncludedChatsTab(this);
     this.editProfileTab = new AppEditProfileTab(this);
     this.generalSettingsTab = new AppGeneralSettingsTab(this);
+    this.privacyAndSecurityTab = new AppPrivacyAndSecurityTab(this);
+    this.addMembersTab = new AppAddMembersTab(this);
 
     this.menuEl = this.toolsBtn.querySelector('.btn-menu');
     this.newBtnMenu = this.sidebarEl.querySelector('#new-menu');
@@ -146,8 +146,15 @@ export class AppSidebarLeft extends SidebarSlider {
 
     [this.newButtons.group, this.buttons.newGroup].forEach(btn => {
       attachClickEvent(btn, (e) => {
-        this.addMembersTab.init(0, 'chat', false, (peerIds) => {
-          this.newGroupTab.init(peerIds);
+        this.addMembersTab.open({
+          peerId: 0,
+          type: 'chat',
+          skippable: false,
+          takeOut: (peerIds) => {
+            this.newGroupTab.open(peerIds);
+          },
+          title: 'Add Members',
+          placeholder: 'Add People...'
         });
       });
     });
@@ -428,6 +435,45 @@ export class AppSidebarLeft extends SidebarSlider {
     });
   }
 }
+
+export class SettingSection {
+  public container: HTMLElement;
+  public content: HTMLElement;
+  public title: HTMLElement;
+  public caption: HTMLElement;
+
+  constructor(name: string, caption?: string) {
+    this.container = document.createElement('div');
+    this.container.classList.add('sidebar-left-section');
+
+    const hr = document.createElement('hr');
+
+    this.content = document.createElement('div');
+    this.content.classList.add('sidebar-left-section-content');
+
+    if(name) {
+      this.title = document.createElement('div');
+      this.title.classList.add('sidebar-left-h2', 'sidebar-left-section-name');
+      this.title.innerHTML = name;
+      this.content.append(this.title);
+    }
+
+    this.container.append(hr, this.content);
+
+    if(caption) {
+      this.caption = document.createElement('div');
+      this.caption.classList.add('sidebar-left-section-caption');
+      this.caption.innerHTML = caption;
+      this.container.append(this.caption);
+    }
+  }
+}
+
+export const generateSection = (appendTo: Scrollable, name: string, caption?: string) => {
+  const section = new SettingSection(name, caption);
+  appendTo.append(section.container);
+  return section.content;
+};
 
 const appSidebarLeft = new AppSidebarLeft();
 MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appSidebarLeft = appSidebarLeft);

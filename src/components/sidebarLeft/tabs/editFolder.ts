@@ -41,7 +41,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
     super(appSidebarLeft);
   }
 
-  init() {
+  protected init() {
     this.container.classList.add('edit-folder-container');
     this.caption = document.createElement('div');
     this.caption.classList.add('caption');
@@ -227,13 +227,8 @@ export default class AppEditFolderTab extends SliderSuperTab {
   }
 
   onOpen() {
-    if(this.init) {
-      this.init();
-      this.init = null;
-    } else {
-      if(this.animation) {
-        this.animation.restart();
-      }
+    if(this.animation) {
+      this.animation.restart();
     }
   }
 

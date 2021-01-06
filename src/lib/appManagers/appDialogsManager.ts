@@ -8,7 +8,7 @@ import Scrollable, { ScrollableX, SliceSides } from "../../components/scrollable
 import appSidebarLeft from "../../components/sidebarLeft";
 import { formatDateAccordingToToday } from "../../helpers/date";
 import { escapeRegExp } from "../../helpers/string";
-import { isApple } from "../../helpers/userAgent";
+import { isSafari } from "../../helpers/userAgent";
 import { logger, LogLevels } from "../logger";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
@@ -745,7 +745,7 @@ export class AppDialogsManager {
 
       const saveLength = 10;
 
-      const sliceFromStart = isApple ? [] : children.slice(0, Math.max(0, firstIndex - saveLength));
+      const sliceFromStart = isSafari ? [] : children.slice(0, Math.max(0, firstIndex - saveLength));
       const sliceFromEnd = children.slice(lastIndex + saveLength);
 
       /* if(sliceFromStart.length != sliceFromEnd.length) {
