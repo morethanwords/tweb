@@ -96,7 +96,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
     return div;
   }
 
-  init() {
+  protected init() {
     this.container.classList.add('chat-folders-container');
     this.title.innerText = 'Chat Folders';
 
@@ -232,13 +232,8 @@ export default class AppChatFoldersTab extends SliderSuperTab {
   }
 
   onOpen() {
-    if(this.init) {
-      this.init();
-      this.init = null;
-    } else {
-      if(this.animation) {
-        this.animation.restart();
-      }
+    if(this.animation) {
+      this.animation.restart();
     }
   }
 }

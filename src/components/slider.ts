@@ -2,7 +2,6 @@ import { attachClickEvent } from "../helpers/dom";
 import { horizontalMenu } from "./horizontalMenu";
 import ButtonIcon from "./buttonIcon";
 import Scrollable from "./scrollable";
-import { p } from "../mock/srp";
 
 export interface SliderTab {
   onOpen?: () => void,
@@ -23,7 +22,7 @@ export class SliderSuperTab implements SliderTab {
 
   public id: number;
 
-  constructor(protected slider: SidebarSlider) {
+  constructor(protected slider: SidebarSlider, protected destroyable = false) {
     this.container = document.createElement('div');
     this.container.classList.add('sidebar-slider-item');
 
@@ -51,20 +50,37 @@ export class SliderSuperTab implements SliderTab {
     return this.slider.closeTab(this.id);
   }
 
-  public open() {
+  public async open(...args: any[]) {
+    if(this.init) {
+      const result = this.init();
+      this.init = null;
+      await (result instanceof Promise ? result : Promise.resolve());
+    }
+
     return this.slider.selectTab(this);
+  }
+
+  protected init(): Promise<any> | any {
+
   }
 
   // * fix incompability
   public onOpen() {
 
   }
+
+  /* public onCloseAfterTimeout() {
+    if(this.destroyable) { // ! WARNING, пока что это будет работать только с самой последней внутренней вкладкой !
+      delete this.slider.tabs[this.id];
+      this.container.remove();
+    }
+  } */
 }
 
 const TRANSITION_TIME = 250;
 
 export default class SidebarSlider {
-  protected _selectTab: (id: number) => void;
+  protected _selectTab: ReturnType<typeof horizontalMenu>;
   public historyTabIds: number[] = [];
   public tabsContainer: HTMLElement;
 

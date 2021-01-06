@@ -44,7 +44,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
     super(slider);
   }
 
-  public init() {
+  protected init() {
     this.container.classList.add('edit-profile-container');
     this.title.innerText = 'Edit Profile';
     //this.scrollWrapper = this.container.querySelector('.scroll-wrapper');

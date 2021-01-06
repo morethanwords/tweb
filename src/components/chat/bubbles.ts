@@ -970,7 +970,7 @@ export default class ChatBubbles {
     });
     
     //if(scrolledDown) this.scrollable.scrollTop = this.scrollable.scrollHeight;
-    if(this.messagesQueuePromise && scrolledDown) {
+    if(this.messagesQueuePromise && scrolledDown/*  && false */) {
       if(this.scrollable.isScrolledDown && !this.scrollable.scrollLocked) {
         //this.log('renderNewMessagesByIDs: messagesQueuePromise before will set prev max');
         this.scrollable.scrollTo(this.scrollable.scrollHeight - 1, 'top', false, true);

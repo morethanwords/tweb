@@ -3,12 +3,10 @@ import { InputFile } from "../../../layer";
 import appChatsManager from "../../../lib/appManagers/appChatsManager";
 import Button from "../../button";
 import InputField from "../../inputField";
-import PopupAvatar from "../../popups/avatar";
-import { SliderTab, SliderSuperTab } from "../../slider";
+import { SliderSuperTab } from "../../slider";
 import AvatarEdit from "../../avatarEdit";
 
 export default class AppNewChannelTab extends SliderSuperTab {
-  private canvas = this.container.querySelector('.avatar-edit-canvas') as HTMLCanvasElement;
   private uploadAvatar: () => Promise<InputFile> = null;
 
   private channelNameInputField: InputField;
@@ -20,7 +18,7 @@ export default class AppNewChannelTab extends SliderSuperTab {
     super(appSidebarLeft);
   }
 
-  private init() {
+  protected init() {
     this.container.classList.add('new-channel-container');
     this.title.innerText = 'New Channel';
 
@@ -71,7 +69,16 @@ export default class AppNewChannelTab extends SliderSuperTab {
         }
         
         appSidebarLeft.removeTabFromHistory(this.id);
-        appSidebarLeft.addMembersTab.init(channelId, 'channel', true);
+        appSidebarLeft.addMembersTab.open({
+          peerId: channelId,
+          type: 'channel',
+          skippable: true,
+          title: 'Add Members',
+          placeholder: 'Add People...',
+          takeOut: (peerIds) => {
+            return appChatsManager.inviteToChannel(Math.abs(channelId), peerIds);
+          }
+        });
       });
     });
 
@@ -85,12 +92,5 @@ export default class AppNewChannelTab extends SliderSuperTab {
     this.channelNameInputField.value = '';
     this.channelDescriptionInputField.value = '';
     this.nextBtn.disabled = false;
-  }
-
-  onOpen() {
-    if(this.init) {
-      this.init();
-      this.init = null;
-    }
   }
 }

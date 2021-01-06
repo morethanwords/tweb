@@ -1,5 +1,5 @@
 import { SliderSuperTab } from "../../slider"
-import { AppSidebarLeft } from "..";
+import { AppSidebarLeft, generateSection } from "..";
 import RangeSelector from "../../rangeSelector";
 import { clamp } from "../../../helpers/number";
 import Button from "../../button";
@@ -8,6 +8,7 @@ import RadioField from "../../radioField";
 import appStateManager from "../../../lib/appManagers/appStateManager";
 import rootScope from "../../../lib/rootScope";
 import { isApple } from "../../../helpers/userAgent";
+import Row from "../../row";
 
 export class RangeSettingSelector {
   public container: HTMLDivElement;
@@ -59,28 +60,10 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
     this.container.classList.add('general-settings-container');
     this.title.innerText = 'General';
 
-    const generateSection = (name: string) => {
-      const container = document.createElement('div');
-      container.classList.add('sidebar-left-section');
-
-      const hr = document.createElement('hr');
-      const h2 = document.createElement('div');
-      h2.classList.add('sidebar-left-h2', 'sidebar-left-section-name');
-      h2.innerHTML = name;
-
-      const content = document.createElement('div');
-      content.classList.add('sidebar-left-section-content');
-      content.append(h2);
-
-      container.append(hr, content);
-
-      this.scrollable.append(container);
-
-      return content;
-    };
+    const section = generateSection.bind(null, this.scrollable);
 
     {
-      const container = generateSection('Settings');
+      const container = section('Settings');
       
       const range = new RangeSettingSelector('Message Text Size', 1, rootScope.settings.messagesTextSize, 12, 20);
       range.onChange = (value) => {
@@ -95,67 +78,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
     }
 
     {
-      const container = generateSection('Keyboard');
-
-      class Row {
-        public container: HTMLElement;
-        public title: HTMLDivElement;
-        public subtitle: HTMLElement;
-
-        public checkboxField: ReturnType<typeof CheckboxField>;
-        public radioField: ReturnType<typeof RadioField>;
-
-        constructor(options: Partial<{
-          icon: string,
-          subtitle: string,
-          radioField: Row['radioField'],
-          checkboxField: Row['checkboxField'],
-          title: string,
-        }> = {}) {
-          this.container = document.createElement('div');
-          this.container.classList.add('row');
-
-          this.subtitle = document.createElement('div');
-          this.subtitle.classList.add('row-subtitle');
-          if(options.subtitle) {
-            this.subtitle.innerHTML = options.subtitle;
-          }
-
-          let havePadding = false;
-          if(options.radioField || options.checkboxField) {
-            havePadding = true;
-            if(options.radioField) {
-              this.radioField = options.radioField;
-              this.container.append(this.radioField.label);
-            }
-  
-            if(options.checkboxField) {
-              this.checkboxField = options.checkboxField;
-              this.container.append(this.checkboxField.label);
-            }
-          } else {
-            if(options.icon) {
-              havePadding = true;
-              this.container.classList.add('tgico-', options.icon);
-            }
-
-            if(options.title) {
-              this.title = document.createElement('div');
-              this.title.classList.add('row-title');
-              this.title.innerHTML = options.title;
-              this.container.append(this.title);
-            }
-          }
-
-          if(havePadding) {
-            this.container.classList.add('row-with-padding');
-          }
-
-          this.container.append(this.subtitle);
-        }
-
-
-      }
+      const container = section('Keyboard');
 
       const form = document.createElement('form');
 
@@ -174,7 +97,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
     }
 
     {
-      const container = generateSection('Auto-Download Media');
+      const container = section('Auto-Download Media');
 
       const contactsCheckboxField = CheckboxField('Contacts', 'contacts', false, 'settings.autoDownload.contacts');
       const privateCheckboxField = CheckboxField('Private Chats', 'private', false, 'settings.autoDownload.private');
@@ -185,7 +108,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
     }
 
     {
-      const container = generateSection('Auto-Play Media');
+      const container = section('Auto-Play Media');
 
       const gifsCheckboxField = CheckboxField('GIFs', 'gifs', false, 'settings.autoPlay.gifs');
       const videosCheckboxField = CheckboxField('Videos', 'videos', false, 'settings.autoPlay.videos');
@@ -194,7 +117,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
     }
     
     {
-      const container = generateSection('Stickers');
+      const container = section('Stickers');
 
       const suggestCheckboxField = CheckboxField('Suggest Stickers by Emoji', 'suggest', false, 'settings.stickers.suggest');
       const loopCheckboxField = CheckboxField('Loop Animated Stickers', 'loop', false, 'settings.stickers.loop');

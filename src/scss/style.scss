@@ -1117,9 +1117,30 @@ middle-ellipsis-element {
 }
 
 .row {
-  padding-left: 4.375rem;
   min-height: 3.375rem;
-  margin-top: 1rem;
+  margin-top: .5rem;
+  position: relative;
+  padding: .5rem .75rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  &-with-padding {
+    padding-left: 4.375rem;
+
+    .row-title.tgico:before {
+      position: absolute;
+      left: .75rem;
+      font-size: 1.5rem;
+      color: #707579;
+    }
+  }
+
+  &-clickable {
+    cursor: pointer;
+    border-radius: $border-radius-medium;
+    overflow: hidden;
+  }
 
   .radio-field {
     &-main {
@@ -1131,6 +1152,12 @@ middle-ellipsis-element {
   &-subtitle {
     color: #707579 !important;
     font-size: 14px !important;
-    line-height: 1.6;
+  }
+}
+
+.hover-effect {
+  html.no-touch &:hover {
+    transition: .2s background-color;
+    background-color: var(--color-gray-hover);
   }
 }

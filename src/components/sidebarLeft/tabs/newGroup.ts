@@ -6,13 +6,10 @@ import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import { SearchGroup } from "../../appSearch";
 import Button from "../../button";
 import InputField from "../../inputField";
-import PopupAvatar from "../../popups/avatar";
-import Scrollable from "../../scrollable";
 import { SliderSuperTab } from "../../slider";
 import AvatarEdit from "../../avatarEdit";
 
 export default class AppNewGroupTab extends SliderSuperTab {
-  private canvas = this.container.querySelector('.avatar-edit-canvas') as HTMLCanvasElement;
   private searchGroup = new SearchGroup(' ', 'contacts', true, 'new-group-members disable-hover', false);
   private avatarEdit: AvatarEdit;
   private uploadAvatar: () => Promise<InputFile> = null;
@@ -24,7 +21,7 @@ export default class AppNewGroupTab extends SliderSuperTab {
     super(appSidebarLeft);
   }
 
-  private construct() {
+  protected init() {
     this.container.classList.add('new-group-container');
     this.title.innerText = 'New Group';
 
@@ -73,10 +70,6 @@ export default class AppNewGroupTab extends SliderSuperTab {
     this.scrollable.append(this.avatarEdit.container, inputWrapper, chatsContainer);
   }
 
-  public onClose() {
-
-  }
-
   public onCloseAfterTimeout() {
     this.searchGroup.clear();
     this.avatarEdit.clear();
@@ -85,36 +78,35 @@ export default class AppNewGroupTab extends SliderSuperTab {
     this.nextBtn.disabled = false;
   }
 
-  public init(userIds: number[]) {
-    if(this.construct) {
-      this.construct();
-      this.construct = null;
-    }
+  public open(userIds: number[]) {
+    const result = super.open();
+    result.then(() => {
+      this.userIds = userIds;
 
-    this.userIds = userIds;
+      this.userIds.forEach(userId => {
+        let {dom} = appDialogsManager.addDialogNew({
+          dialog: userId,
+          container: this.searchGroup.list,
+          drawStatus: false,
+          rippleEnabled: false,
+          avatarSize: 48
+        });
 
-    this.open();
-    this.userIds.forEach(userId => {
-      let {dom} = appDialogsManager.addDialogNew({
-        dialog: userId,
-        container: this.searchGroup.list,
-        drawStatus: false,
-        rippleEnabled: false,
-        avatarSize: 48
+        let subtitle = '';
+        subtitle = appUsersManager.getUserStatusString(userId);
+        if(subtitle == 'online') {
+          subtitle = `<i>${subtitle}</i>`;
+        }
+
+        if(subtitle) {
+          dom.lastMessageSpan.innerHTML = subtitle;
+        }
       });
 
-      let subtitle = '';
-      subtitle = appUsersManager.getUserStatusString(userId);
-      if(subtitle == 'online') {
-        subtitle = `<i>${subtitle}</i>`;
-      }
-
-      if(subtitle) {
-        dom.lastMessageSpan.innerHTML = subtitle;
-      }
+      this.searchGroup.nameEl.innerText = this.userIds.length + ' members';
+      this.searchGroup.setActive();
     });
-
-    this.searchGroup.nameEl.innerText = this.userIds.length + ' members';
-    this.searchGroup.setActive();
+    
+    return result;
   }
 }

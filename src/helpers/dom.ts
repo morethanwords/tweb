@@ -674,7 +674,7 @@ export async function getFilesFromEvent(e: ClipboardEvent | DragEvent, onlyTypes
   return files;
 }
 
-export function radiosHandleChange(inputs: HTMLInputElement[], onChange: (value: string) => void) {
+/* export function radiosHandleChange(inputs: HTMLInputElement[], onChange: (value: string) => void) {
   inputs.forEach(input => {
     input.addEventListener('change', () => {
       if(input.checked) {
@@ -682,7 +682,7 @@ export function radiosHandleChange(inputs: HTMLInputElement[], onChange: (value:
       }
     });
   });
-}
+} */
 
 export function isSendShortcutPressed(e: KeyboardEvent) {
   if(e.key == 'Enter' && !isTouchSupported) {
