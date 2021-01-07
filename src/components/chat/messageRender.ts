@@ -64,7 +64,7 @@ export namespace MessageRender {
     message: any,
     messageDiv: HTMLElement
   }) => {
-    const isFooter = !bubble.classList.contains('sticker') && !bubble.classList.contains('emoji-big');
+    const isFooter = !bubble.classList.contains('sticker') && !bubble.classList.contains('emoji-big') && !bubble.classList.contains('round');
     const repliesFooter = new RepliesElement();
     repliesFooter.message = message;
     repliesFooter.type = isFooter ? 'footer' : 'beside';

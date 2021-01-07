@@ -1,5 +1,5 @@
 // * Jolly Cobra's schedulers
-import { AnyToVoidFunction } from "../types";
+import { AnyToVoidFunction, NoneToVoidFunction } from "../types";
 
 //type Scheduler = typeof requestAnimationFrame | typeof onTickEnd | typeof runNow;
 
@@ -109,9 +109,9 @@ export const pause = (ms: number) => new Promise((resolve) => {
   setTimeout(resolve, ms);
 });
 
-/* let fastRafCallbacks: NoneToVoidFunction[] | undefined;
+let fastRafCallbacks: NoneToVoidFunction[] | undefined;
 export function fastRaf(callback: NoneToVoidFunction) {
-  if (!fastRafCallbacks) {
+  if(!fastRafCallbacks) {
     fastRafCallbacks = [callback];
 
     requestAnimationFrame(() => {
@@ -122,4 +122,4 @@ export function fastRaf(callback: NoneToVoidFunction) {
   } else {
     fastRafCallbacks.push(callback);
   }
-} */
+}

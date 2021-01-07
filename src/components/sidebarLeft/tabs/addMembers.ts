@@ -2,6 +2,7 @@ import SidebarSlider, { SliderSuperTab } from "../../slider";
 import AppSelectPeers from "../../appSelectPeers";
 import { putPreloader } from "../../misc";
 import Button from "../../button";
+import { fastRaf } from "../../../helpers/schedulers";
 
 export default class AppAddMembersTab extends SliderSuperTab {
   private nextBtn: HTMLButtonElement;
@@ -67,14 +68,18 @@ export default class AppAddMembersTab extends SliderSuperTab {
     this.skippable = options.skippable;
 
     this.onCloseAfterTimeout();
-    this.selector = new AppSelectPeers(this.content, this.skippable ? null : (length) => {
-      this.nextBtn.classList.toggle('is-visible', !!length);
-    }, ['contacts']);
+    this.selector = new AppSelectPeers({
+      appendTo: this.content, 
+      onChange: this.skippable ? null : (length) => {
+        this.nextBtn.classList.toggle('is-visible', !!length);
+      }, 
+      peerType: ['contacts']
+    });
     this.selector.input.placeholder = options.placeholder;
 
     if(options.selectedPeerIds) {
-      options.selectedPeerIds.forEach(peerId => {
-        this.selector.add(peerId);
+      fastRaf(() => {
+        this.selector.addInitial(options.selectedPeerIds);
       });
     }
 

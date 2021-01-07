@@ -7,6 +7,7 @@ import appUsersManager from "../lib/appManagers/appUsersManager";
 import rootScope from "../lib/rootScope";
 import { cancelEvent, findUpAttribute, findUpClassName } from "../helpers/dom";
 import Scrollable from "./scrollable";
+import { FocusDirection } from "../helpers/fastSmoothScroll";
 
 type PeerType = 'contacts' | 'dialogs';
 
@@ -38,11 +39,31 @@ export default class AppSelectPeers {
   private loadedWhat: Partial<{[k in 'dialogs' | 'archived' | 'contacts']: true}> = {};
 
   private renderedPeerIds: Set<number> = new Set();
+
+  private appendTo: HTMLElement;
+  private onChange: (length: number) => void;
+  private peerType: PeerType[] = ['dialogs'];
+  private renderResultsFunc?: (peerIds: number[]) => void;
+  private chatRightsAction?: ChatRights;
+  private multiSelect = true;
   
-  constructor(private appendTo: HTMLElement, private onChange?: (length: number) => void, private peerType: PeerType[] = ['dialogs'], onFirstRender?: () => void, private renderResultsFunc?: (peerIds: number[]) => void, private chatRightsAction?: ChatRights, private multiSelect = true) {
+  constructor(options: {
+    appendTo: AppSelectPeers['appendTo'], 
+    onChange?: AppSelectPeers['onChange'], 
+    peerType?: AppSelectPeers['peerType'], 
+    onFirstRender?: () => void, 
+    renderResultsFunc?: AppSelectPeers['renderResultsFunc'], 
+    chatRightsAction?: AppSelectPeers['chatRightsAction'], 
+    multiSelect?: AppSelectPeers['multiSelect']
+  }) {
+    for(let i in options) {
+      // @ts-ignore
+      this[i] = options[i];
+    }
+
     this.container.classList.add('selector');
 
-    const f = (renderResultsFunc || this.renderResults).bind(this);
+    const f = (this.renderResultsFunc || this.renderResults).bind(this);
     this.renderResultsFunc = (peerIds: number[]) => {
       peerIds = peerIds.filter(peerId => {
         const notRendered = !this.renderedPeerIds.has(peerId);
@@ -55,10 +76,10 @@ export default class AppSelectPeers {
 
     this.input = document.createElement('input');
     this.input.classList.add('selector-search-input');
-    this.input.placeholder = !peerType.includes('dialogs') ? 'Add People...' : 'Select chat';
+    this.input.placeholder = !this.peerType.includes('dialogs') ? 'Add People...' : 'Select chat';
     this.input.type = 'text';
 
-    if(multiSelect) {
+    if(this.multiSelect) {
       let topContainer = document.createElement('div');
       topContainer.classList.add('selector-search-container');
   
@@ -151,14 +172,14 @@ export default class AppSelectPeers {
     };
 
     this.container.append(this.chatsContainer);
-    appendTo.append(this.container);
+    this.appendTo.append(this.container);
 
     // WARNING TIMEOUT
     setTimeout(() => {
       let getResultsPromise = this.getMoreResults() as Promise<any>;
-      if(onFirstRender) {
+      if(options.onFirstRender) {
         getResultsPromise.then(() => {
-          onFirstRender();
+          options.onFirstRender();
         });
       }
     }, 0);
@@ -346,7 +367,7 @@ export default class AppSelectPeers {
     });
   }
 
-  public add(peerId: any, title?: string) {
+  public add(peerId: any, title?: string, scroll = true) {
     //console.trace('add');
     this.selected.add(peerId);
 
@@ -380,9 +401,12 @@ export default class AppSelectPeers {
 
     this.selectedContainer.insertBefore(div, this.input);
     //this.selectedScrollable.scrollTop = this.selectedScrollable.scrollHeight;
-    this.selectedScrollable.scrollTo(this.selectedScrollable.scrollHeight, 'top', true, true);
     this.onChange && this.onChange(this.selected.size);
-
+    
+    if(scroll) {
+      this.selectedScrollable.scrollIntoViewNew(this.input, 'center');
+    }
+    
     return div;
   }
 
@@ -409,5 +433,13 @@ export default class AppSelectPeers {
 
   public getSelected() {
     return [...this.selected];
+  }
+
+  public addInitial(values: any[]) {
+    values.forEach(value => {
+      this.add(value, undefined, false);
+    });
+
+    this.selectedScrollable.scrollIntoViewNew(this.input, 'center', undefined, undefined, FocusDirection.Static);
   }
 }

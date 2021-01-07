@@ -2,6 +2,8 @@ import { findUpTag, whichChild } from "../helpers/dom";
 import { TransitionSlider } from "./transition";
 import { ScrollableX } from "./scrollable";
 import rootScope from "../lib/rootScope";
+import { fastRaf } from "../helpers/schedulers";
+import { FocusDirection } from "../helpers/fastSmoothScroll";
 
 export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?: (id: number, tabContent: HTMLDivElement) => void, onTransitionEnd?: () => void, transitionTime = 250, scrollableX?: ScrollableX) {
   const selectTab = TransitionSlider(content, tabs || content.dataset.slider == 'tabs' ? 'tabs' : 'navigation', transitionTime, onTransitionEnd);
@@ -23,7 +25,7 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?
       if(onClick) onClick(id, tabContent);
 
       if(scrollableX) {
-        scrollableX.scrollIntoView(target.parentElement.children[id] as HTMLElement, true, transitionTime);
+        scrollableX.scrollIntoViewNew(target.parentElement.children[id] as HTMLElement, 'center', undefined, undefined, animate ? undefined : FocusDirection.Static, transitionTime, 'x');
       }
 
       if(!rootScope.settings.animationsEnabled) {
@@ -35,32 +37,41 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?
       }
       
       const prev = tabs.querySelector(tagName.toLowerCase() + '.active') as HTMLElement;
-      prev && prev.classList.remove('active');
 
+      fastRaf(() => {
+        prev && prev.classList.remove('active');
+      });
+      
+      const prevId = selectTab.prevId;
       // stripe from ZINCHUK
-      if(useStripe && selectTab.prevId !== -1 && animate) {
-        const indicator = target.querySelector('i')!;
-        const currentIndicator = target.parentElement.children[selectTab.prevId].querySelector('i')!;
+      if(useStripe && prevId !== -1 && animate) {
+        fastRaf(() => {
+          const indicator = target.querySelector('i')!;
+          const currentIndicator = target.parentElement.children[prevId].querySelector('i')!;
+    
+          currentIndicator.classList.remove('animate');
+          indicator.classList.remove('animate');
+    
+          // We move and resize our indicator so it repeats the position and size of the previous one.
+          const shiftLeft = currentIndicator.parentElement.parentElement.offsetLeft - indicator.parentElement.parentElement.offsetLeft;
+          const scaleFactor = currentIndicator.clientWidth / indicator.clientWidth;
+          indicator.style.transform = `translate3d(${shiftLeft}px, 0, 0) scale3d(${scaleFactor}, 1, 1)`;
   
-        currentIndicator.classList.remove('animate');
-        indicator.classList.remove('animate');
-  
-        // We move and resize our indicator so it repeats the position and size of the previous one.
-        const shiftLeft = currentIndicator.parentElement.parentElement.offsetLeft - indicator.parentElement.parentElement.offsetLeft;
-        const scaleFactor = currentIndicator.clientWidth / indicator.clientWidth;
-        indicator.style.transform = `translate3d(${shiftLeft}px, 0, 0) scale3d(${scaleFactor}, 1, 1)`;
-
-        //console.log(`translate3d(${shiftLeft}px, 0, 0) scale3d(${scaleFactor}, 1, 1)`);
-  
-        requestAnimationFrame(() => {
-          // Now we remove the transform to let it animate to its own position and size.
-          indicator.classList.add('animate');
-          indicator.style.transform = 'none';
+          //console.log(`translate3d(${shiftLeft}px, 0, 0) scale3d(${scaleFactor}, 1, 1)`);
+    
+          requestAnimationFrame(() => {
+            // Now we remove the transform to let it animate to its own position and size.
+            indicator.classList.add('animate');
+            indicator.style.transform = 'none';
+          });
         });
       }
       // stripe END
 
-      target.classList.add('active');
+      fastRaf(() => {
+        target.classList.add('active');
+      });
+      
       selectTab(id, animate);
     };
 

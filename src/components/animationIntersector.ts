@@ -32,7 +32,7 @@ export class AnimationIntersector {
             continue;
           }
 
-          const player = this.byGroups[group].find(p => p.el == target);
+          const player = this.byGroups[group].find(p => p.el === target);
           if(player) {
             if(entry.isIntersecting) {
               this.visible.add(player);
@@ -58,7 +58,7 @@ export class AnimationIntersector {
     const found: AnimationItem[] = [];
     for(const group in this.byGroups) {
       for(const player of this.byGroups[group]) {
-        if(player.el == element) {
+        if(player.el === element) {
           found.push(player);
         }
       }
@@ -80,7 +80,7 @@ export class AnimationIntersector {
     }
 
     for(const group in this.byGroups) {
-      this.byGroups[group].findAndSplice(p => p == player);
+      this.byGroups[group].findAndSplice(p => p === player);
     }
   
     this.observer.unobserve(el);
@@ -132,13 +132,17 @@ export class AnimationIntersector {
       return;
     }
 
-    if(blurred) {
+    if(blurred || (this.onlyOnePlayableGroup && this.onlyOnePlayableGroup !== group)) {
       if(!animation.paused) {
         //console.warn('pause animation:', animation);
         animation.pause();
       }
-    } else if(animation.paused && this.visible.has(player) && animation.autoplay && (!this.onlyOnePlayableGroup || this.onlyOnePlayableGroup == group)) {
-      //console.warn('play animation:', animation);
+    } else if(animation.paused && 
+      this.visible.has(player) && 
+      animation.autoplay && 
+      (!this.onlyOnePlayableGroup || this.onlyOnePlayableGroup === group)
+    ) {
+      console.warn('play animation:', animation);
       animation.play();
     }
   }
