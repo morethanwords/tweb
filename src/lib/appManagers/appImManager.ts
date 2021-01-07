@@ -29,6 +29,7 @@ import SetTransition from '../../components/singleTransition';
 import ChatDragAndDrop from '../../components/chat/dragAndDrop';
 import { debounce } from '../../helpers/schedulers';
 import lottieLoader from '../lottieLoader';
+import useHeavyAnimationCheck from '../../hooks/useHeavyAnimationCheck';
 
 //console.log('appImManager included33!');
 
@@ -140,6 +141,14 @@ export class AppImManager {
 
     this.setSettings();
     rootScope.on('settings_updated', () => this.setSettings());
+
+    useHeavyAnimationCheck(() => {
+      animationIntersector.setOnlyOnePlayableGroup('lock');
+      animationIntersector.checkAnimations(true);
+    }, () => {
+      animationIntersector.setOnlyOnePlayableGroup('');
+      animationIntersector.checkAnimations(false);
+    });
   }
 
   private setSettings() {

@@ -12,24 +12,31 @@ export default class PopupForward extends PopupElement {
 
     if(onClose) this.onClose = onClose;
 
-    this.selector = new AppSelectPeers(this.body, async() => {
-      const peerId = this.selector.getSelected()[0];
-      this.btnClose.click();
+    this.selector = new AppSelectPeers({
+      appendTo: this.body, 
+      onChange: async() => {
+        const peerId = this.selector.getSelected()[0];
+        this.btnClose.click();
 
-      this.selector = null;
+        this.selector = null;
 
-      await (onSelect ? onSelect() || Promise.resolve() : Promise.resolve());
+        await (onSelect ? onSelect() || Promise.resolve() : Promise.resolve());
 
-      appImManager.setInnerPeer(peerId);
-      appImManager.chat.input.initMessagesForward(fromPeerId, mids.slice());
-    }, ['dialogs', 'contacts'], () => {
-      this.show();
-      this.selector.checkForTriggers(); // ! due to zero height before mounting
+        appImManager.setInnerPeer(peerId);
+        appImManager.chat.input.initMessagesForward(fromPeerId, mids.slice());
+      }, 
+      peerType: ['dialogs', 'contacts'], 
+      onFirstRender: () => {
+        this.show();
+        this.selector.checkForTriggers(); // ! due to zero height before mounting
 
-      if(!isTouchSupported) {
-        this.selector.input.focus();
-      }
-    }, null, 'send', false);
+        if(!isTouchSupported) {
+          this.selector.input.focus();
+        }
+      }, 
+      chatRightsAction: 'send', 
+      multiSelect: false
+    });
 
     //this.scrollable = new Scrollable(this.body);
 

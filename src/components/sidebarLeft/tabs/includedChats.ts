@@ -8,6 +8,8 @@ import { MyDialogFilter as DialogFilter } from "../../../lib/storages/filters";
 import rootScope from "../../../lib/rootScope";
 import { copy } from "../../../helpers/object";
 import ButtonIcon from "../../buttonIcon";
+import { FocusDirection } from "../../../helpers/fastSmoothScroll";
+import { fastRaf } from "../../../helpers/schedulers";
 
 export default class AppIncludedChatsTab extends SliderSuperTab {
   private confirmBtn: HTMLElement;
@@ -190,13 +192,18 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
 
     const selectedPeers = (this.type === 'included' ? filter.include_peers : filter.exclude_peers).slice();
 
-    this.selector = new AppSelectPeers(this.container, this.onSelectChange, ['dialogs'], null, this.renderResults);
+    this.selector = new AppSelectPeers({
+      appendTo: this.container, 
+      onChange: this.onSelectChange, 
+      peerType: ['dialogs'], 
+      renderResultsFunc: this.renderResults
+    });
     this.selector.selected = new Set(selectedPeers);
     this.selector.input.placeholder = 'Search';
 
     const _add = this.selector.add.bind(this.selector);
-    this.selector.add = (peerId, title) => {
-      const div = _add(peerId, details[peerId]?.text);
+    this.selector.add = (peerId, title, scroll) => {
+      const div = _add(peerId, details[peerId]?.text, scroll);
       if(details[peerId]) {
         div.querySelector('avatar-element').classList.add('tgico-' + details[peerId].ico);
       }
@@ -205,8 +212,8 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
 
     this.selector.list.parentElement.insertBefore(fragment, this.selector.list);
 
-    selectedPeers.forEach(peerId => {
-      this.selector.add(peerId);
+    fastRaf(() => {
+      this.selector.addInitial(selectedPeers);
     });
 
     for(const flag in filter.pFlags) {
@@ -215,11 +222,6 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
         (categories.querySelector(`[data-peerId="${flag}"]`) as HTMLElement).click();
       }
     }
-
-    // ! потому что onOpen срабатывает раньше, чем блок отрисовывается, и высоты нет
-    setTimeout(() => {
-      this.selector.selectedScrollable.scrollTo(this.selector.selectedScrollable.scrollHeight, 'top', false, true);
-    }, 0);
   }
 
   onSelectChange = (length: number) => {

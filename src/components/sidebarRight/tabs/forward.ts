@@ -71,19 +71,25 @@ export default class AppForwardTab implements SliderTab {
     this.cleanup();
     this.mids = ids;
 
-    this.selector = new AppSelectPeers(this.container, (length) => {
-      this.sendBtn.classList.toggle('is-visible', !!length);
-    }, ['dialogs', 'contacts'], () => {
-      //console.log('forward rendered:', this.container.querySelector('.selector ul').childElementCount);
-      
-      // !!!!!!!!!! UNCOMMENT BELOW IF NEED TO USE THIS CLASS
-      ////////////////////////////////////////appSidebarRight.selectTab(AppSidebarRight.SLIDERITEMSIDS.forward);
-      appSidebarRight.toggleSidebar(true).then(() => {
-        if(this.selector) {
-          this.selector.checkForTriggers();
-        }
-      });
-      document.body.classList.add('is-forward-active');
-    }, null, 'send');
+    this.selector = new AppSelectPeers({
+      appendTo: this.container, 
+      onChange: (length) => {
+        this.sendBtn.classList.toggle('is-visible', !!length);
+      }, 
+      peerType: ['dialogs', 'contacts'], 
+      onFirstRender: () => {
+        //console.log('forward rendered:', this.container.querySelector('.selector ul').childElementCount);
+        
+        // !!!!!!!!!! UNCOMMENT BELOW IF NEED TO USE THIS CLASS
+        ////////////////////////////////////////appSidebarRight.selectTab(AppSidebarRight.SLIDERITEMSIDS.forward);
+        appSidebarRight.toggleSidebar(true).then(() => {
+          if(this.selector) {
+            this.selector.checkForTriggers();
+          }
+        });
+        document.body.classList.add('is-forward-active');
+      }, 
+      chatRightsAction: 'send'
+    });
   }
 }

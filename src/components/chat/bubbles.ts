@@ -39,6 +39,9 @@ import PollElement from "../poll";
 import AudioElement from "../audio";
 import { Message, MessageEntity, MessageReplies, MessageReplyHeader } from "../../layer";
 import { DEBUG, MOUNT_CLASS_TO, REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
+import { FocusDirection } from "../../helpers/fastSmoothScroll";
+import useHeavyAnimationCheck, { getHeavyAnimationPromise } from "../../hooks/useHeavyAnimationCheck";
+import { fastRaf } from "../../helpers/schedulers";
 
 const IGNORE_ACTIONS = ['messageActionHistoryClear'];
 
@@ -105,6 +108,9 @@ export default class ChatBubbles {
 
   public replyFollowHistory: number[] = [];
 
+  public isHeavyAnimationInProgress = false;
+  public scrollingToNewBubble: HTMLElement;
+
   constructor(private chat: Chat, private appMessagesManager: AppMessagesManager, private appStickersManager: AppStickersManager, private appUsersManager: AppUsersManager, private appInlineBotsManager: AppInlineBotsManager, private appPhotosManager: AppPhotosManager, private appDocsManager: AppDocsManager, private appPeersManager: AppPeersManager, private appChatsManager: AppChatsManager) {
     //this.chat.log.error('Bubbles construction');
     
@@ -145,6 +151,10 @@ export default class ChatBubbles {
         //this.log('history_update', this.bubbles[mid], mid, message);
 
         this.bubbleGroups.addBubble(bubble, message, false);
+
+        if(this.scrollingToNewBubble) {
+          this.scrollToNewLastBubble();
+        }
 
         //this.renderMessage(message, false, false, bubble);
       }
@@ -341,6 +351,12 @@ export default class ChatBubbles {
         }
       }
     });
+
+    useHeavyAnimationCheck(() => {
+      this.isHeavyAnimationInProgress = true;
+    }, () => {
+      this.isHeavyAnimationInProgress = false;
+    }, this.listenerSetter);
   }
 
   public constructPeerHelpers() {
@@ -789,7 +805,15 @@ export default class ChatBubbles {
 
   public loadMoreHistory(top: boolean, justLoad = false) {
     //this.log('loadMoreHistory', top);
-    if(!this.peerId || /* TEST_SCROLL || */ this.chat.setPeerPromise || (top && this.getHistoryTopPromise) || (!top && this.getHistoryBottomPromise)) return;
+    if(!this.peerId || 
+      /* TEST_SCROLL || */ 
+      this.chat.setPeerPromise || 
+      this.isHeavyAnimationInProgress || 
+      (top && this.getHistoryTopPromise) || 
+      (!top && this.getHistoryBottomPromise)
+    ) {
+      return;
+    }
 
     // warning, если иды только отрицательные то вниз не попадёт (хотя мб и так не попадёт)
     const history = Object.keys(this.bubbles).map(id => +id).sort((a, b) => a - b);
@@ -817,8 +841,10 @@ export default class ChatBubbles {
   }
 
   public onScroll = () => {
+    //return;
+    
     // * В таком случае, кнопка не будет моргать если чат в самом низу, и правильно отработает случай написания нового сообщения и проскролла вниз
-    if(this.scrollable.scrollLocked && this.scrolledDown) return;
+    if(this.isHeavyAnimationInProgress && this.scrolledDown) return;
       //lottieLoader.checkAnimations(false, 'chat');
 
     if(!isTouchSupported) {
@@ -947,7 +973,7 @@ export default class ChatBubbles {
   
   public renderNewMessagesByIds(mids: number[], scrolledDown = this.scrolledDown) {
     if(!this.scrolledAllDown) { // seems search active or sliced
-      this.log('seems search is active, skipping render:', mids);
+      this.log('renderNewMessagesByIds: seems search is active, skipping render:', mids);
       return;
     }
 
@@ -960,29 +986,30 @@ export default class ChatBubbles {
     }
 
     mids = mids.filter(mid => !this.bubbles[mid]);
-    mids.forEach((mid: number) => {
-      const message = this.chat.getMessage(mid);
-      
-      /////////this.log('got new message to append:', message);
-      
-      //this.unreaded.push(msgID);
-      this.renderMessage(message);
-    });
-    
-    //if(scrolledDown) this.scrollable.scrollTop = this.scrollable.scrollHeight;
-    if(this.messagesQueuePromise && scrolledDown/*  && false */) {
-      if(this.scrollable.isScrolledDown && !this.scrollable.scrollLocked) {
-        //this.log('renderNewMessagesByIDs: messagesQueuePromise before will set prev max');
-        this.scrollable.scrollTo(this.scrollable.scrollHeight - 1, 'top', false, true);
-      }
-      
-      this.messagesQueuePromise.then(() => {
+    const promise = this.performHistoryResult(mids, false, true);
+    if(scrolledDown) {
+      promise.then(() => {
         //this.log('renderNewMessagesByIDs: messagesQueuePromise after', this.scrollable.isScrolledDown);
-        this.scrollable.scrollTo(this.scrollable.scrollHeight, 'top', true, true);
+        //this.scrollable.scrollTo(this.scrollable.scrollHeight, 'top', true, true, 5000);
+        //const bubble = this.bubbles[Math.max(...mids)];
+        this.scrollToNewLastBubble();
+
+        //this.scrollable.scrollIntoViewNew(this.chatInner, 'end');
 
         /* setTimeout(() => {
           this.log('messagesQueuePromise afterafter:', this.chatInner.childElementCount, this.scrollable.scrollHeight);
         }, 10); */
+      });
+    }
+  }
+
+  public scrollToNewLastBubble() {
+    const bubble = this.chatInner.lastElementChild.lastElementChild as HTMLElement;
+    this.log('scrollToNewLastBubble: will scroll into view:', bubble);
+    if(bubble) {
+      this.scrollingToNewBubble = bubble;
+      this.scrollable.scrollIntoViewNew(bubble, 'end').then(() => {
+        this.scrollingToNewBubble = null;
       });
     }
   }
@@ -1168,7 +1195,7 @@ export default class ChatBubbles {
       const mounted = this.getMountedBubble(lastMsgId);
       if(mounted) {
         if(isTarget) {
-          this.scrollable.scrollIntoView(mounted.bubble);
+          this.scrollable.scrollIntoViewNew(mounted.bubble, 'center');
           this.highlightBubble(mounted.bubble);
           this.chat.setListenerResult('setPeer', lastMsgId, false);
         } else if(topMessage && !isJump) {
@@ -1269,11 +1296,6 @@ export default class ChatBubbles {
 
       //if(dialog && lastMsgID && lastMsgID != topMessage && (this.bubbles[lastMsgID] || this.firstUnreadBubble)) {
       if((topMessage && isJump) || isTarget) {
-        if(this.scrollable.scrollLocked) {
-          clearTimeout(this.scrollable.scrollLocked);
-          this.scrollable.scrollLocked = 0;
-        }
-        
         const fromUp = maxBubbleId > 0 && (maxBubbleId < lastMsgId || lastMsgId < 0);
         const forwardingUnread = historyStorage.readMaxId === lastMsgId && !isTarget;
         if(!fromUp && (samePeer || forwardingUnread)) {
@@ -1290,7 +1312,7 @@ export default class ChatBubbles {
         
         // ! sometimes there can be no bubble
         if(bubble) {
-          this.scrollable.scrollIntoView(bubble, samePeer/* , fromUp */);
+          this.scrollable.scrollIntoViewNew(bubble, forwardingUnread ? 'start' : 'center', undefined, undefined, !samePeer ? FocusDirection.Static : undefined);
           if(!forwardingUnread) {
             this.highlightBubble(bubble);
           }
@@ -1395,43 +1417,50 @@ export default class ChatBubbles {
 
     this.messagesQueue.push({message, bubble, reverse, promises});
 
-    if(!this.messagesQueuePromise) {
-      this.messagesQueuePromise = new Promise((resolve, reject) => {
-        setTimeout(() => {
-          const chatInner = this.chatInner;
-          const queue = this.messagesQueue.slice();
-          this.messagesQueue.length = 0;
+    this.setMessagesQueuePromise();    
+  }
 
-          const promises = queue.reduce((acc, {promises}) => acc.concat(promises), []);
+  public setMessagesQueuePromise() {
+    if(this.messagesQueuePromise) return;
 
-          // * это нужно для того, чтобы если захочет подгрузить reply или какое-либо сообщение, то скролл не прервался
-          if(this.scrollable.scrollLocked) {
-            promises.push(this.scrollable.scrollLockedPromise);
+    this.messagesQueuePromise = new Promise((resolve, reject) => {
+      setTimeout(() => {
+        const chatInner = this.chatInner;
+        const queue = this.messagesQueue.slice();
+        this.messagesQueue.length = 0;
+
+        const promises = queue.reduce((acc, {promises}) => acc.concat(promises), []);
+
+        // * это нужно для того, чтобы если захочет подгрузить reply или какое-либо сообщение, то скролл не прервался
+        // * если добавить этот промис - в таком случае нужно сделать, чтобы скроллило к последнему сообщению после рендера
+        // promises.push(getHeavyAnimationPromise());
+
+        //this.log('promises to call', promises, queue);
+        Promise.all(promises).then(() => {
+          if(this.chatInner != chatInner) {
+            //this.log.warn('chatInner changed!', this.chatInner, chatInner);
+            return reject('chatInner changed!');
           }
 
-          //this.log('promises to call', promises, queue);
-          Promise.all(promises).then(() => {
-            if(this.chatInner != chatInner) {
-              //this.log.warn('chatInner changed!', this.chatInner, chatInner);
-              return reject('chatInner changed!');
-            }
+          if(this.messagesQueueOnRender) {
+            this.messagesQueueOnRender();
+          }
 
-            if(this.messagesQueueOnRender) {
-              this.messagesQueueOnRender();
-            }
+          queue.forEach(({message, bubble, reverse}) => {
+            this.setBubblePosition(bubble, message, reverse);
+          });
 
-            queue.forEach(({message, bubble, reverse}) => {
-              this.setBubblePosition(bubble, message, reverse);
-            });
+          //setTimeout(() => {
+            resolve();
+          //}, 500);
+          this.messagesQueuePromise = null;
 
-            //setTimeout(() => {
-              resolve();
-            //}, 500);
-            this.messagesQueuePromise = null;
-          }, reject);
-        }, 0);
-      });
-    }
+          if(this.messagesQueue.length) {
+            this.setMessagesQueuePromise();
+          }
+        }, reject);
+      }, 0);
+    });
   }
 
   public setBubblePosition(bubble: HTMLElement, message: any, reverse: boolean) {
@@ -2259,14 +2288,14 @@ export default class ChatBubbles {
     return new Promise<boolean>((resolve, reject) => {
       //await new Promise((resolve) => setTimeout(resolve, 1e3));
 
-      //this.log('performHistoryResult: will render some messages:', history.length);
+      this.log('performHistoryResult: will render some messages:', history.length, this.isHeavyAnimationInProgress);
 
       const method = (reverse ? history.shift : history.pop).bind(history);
 
       //const padding = 10000;
-      const realLength = this.scrollable.container.childElementCount;
+      //const realLength = this.scrollable.container.childElementCount;
       let previousScrollHeightMinusTop: number/* , previousScrollHeight: number */;
-      if(realLength > 0 && (reverse || isSafari)) { // for safari need set when scrolling bottom too
+      //if(realLength > 0/*  && (reverse || isSafari) */) { // for safari need set when scrolling bottom too
         this.messagesQueueOnRender = () => {
           const {scrollTop, scrollHeight} = this.scrollable;
 
@@ -2284,7 +2313,7 @@ export default class ChatBubbles {
           //this.log('performHistoryResult: messagesQueueOnRender, scrollTop:', scrollTop, scrollHeight, previousScrollHeightMinusTop);
           this.messagesQueueOnRender = undefined;
         };
-      }
+      //}
 
       while(history.length) {
         let message = this.chat.getMessage(method());
@@ -2297,28 +2326,29 @@ export default class ChatBubbles {
         if(previousScrollHeightMinusTop !== undefined) {
           /* const scrollHeight = this.scrollable.scrollHeight;
           const addedHeight = scrollHeight - previousScrollHeight;
-
+          
           this.chatInner.style.paddingTop = (10000 - addedHeight) + 'px'; */
           /* const scrollHeight = this.scrollable.scrollHeight;
           const addedHeight = scrollHeight - previousScrollHeight;
-
+          
           this.chatInner.style.paddingTop = (padding - addedHeight) + 'px';
-
+          
           //const newScrollTop = reverse ? scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
           const newScrollTop = reverse ? scrollHeight - addedHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
           this.log('performHistoryResult: will set scrollTop', 
-            previousScrollHeightMinusTop, this.scrollable.scrollHeight, 
-            newScrollTop, this.scrollable.container.clientHeight); */
+          previousScrollHeightMinusTop, this.scrollable.scrollHeight, 
+          newScrollTop, this.scrollable.container.clientHeight); */
           //const newScrollTop = reverse ? scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
           const newScrollTop = reverse ? this.scrollable.scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
-
+          
+          this.log('performHistoryResult: will set up scrollTop:', newScrollTop, this.isHeavyAnimationInProgress);
           // touchSupport for safari iOS
           isTouchSupported && isApple && (this.scrollable.container.style.overflow = 'hidden');
           this.scrollable.scrollTop = newScrollTop;
           //this.scrollable.scrollTop = this.scrollable.scrollHeight;
           isTouchSupported && isApple && (this.scrollable.container.style.overflow = '');
 
-          //this.log('performHistoryResult: have set up scrollTop:', newScrollTop, this.scrollable.scrollTop);
+          this.log('performHistoryResult: have set up scrollTop:', newScrollTop, this.scrollable.scrollTop, this.isHeavyAnimationInProgress);
         }
 
         resolve(true);

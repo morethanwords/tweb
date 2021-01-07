@@ -28,6 +28,8 @@ export default class BubbleGroups {
   }
   
   addBubble(bubble: HTMLDivElement, message: MyMessage, reverse: boolean) {
+    //return;
+
     const timestamp = message.date;
     const mid = message.mid;
     let fromId = message.fromId;

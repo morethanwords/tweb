@@ -12,6 +12,7 @@ import Chat from "./chat";
 import ListenerSetter from "../../helpers/listenerSetter";
 import ButtonIcon from "../buttonIcon";
 import { debounce } from "../../helpers/schedulers";
+import { getHeavyAnimationPromise } from "../../hooks/useHeavyAnimationCheck";
 
 class AnimatedSuper {
   static DURATION = 200;
@@ -514,7 +515,8 @@ export default class ChatPinnedMessage {
         await setPeerPromise;
       }
   
-      await this.chat.bubbles.scrollable.scrollLockedPromise;
+      //await this.chat.bubbles.scrollable.scrollLockedPromise;
+      await getHeavyAnimationPromise();
 
       if(this.getCurrentIndexPromise) {
         await this.getCurrentIndexPromise;
