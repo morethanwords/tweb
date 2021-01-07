@@ -142,7 +142,7 @@ export class AnimationIntersector {
       animation.autoplay && 
       (!this.onlyOnePlayableGroup || this.onlyOnePlayableGroup === group)
     ) {
-      console.warn('play animation:', animation);
+      //console.warn('play animation:', animation);
       animation.play();
     }
   }

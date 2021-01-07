@@ -4,31 +4,43 @@
 import { AnyToVoidFunction } from '../types';
 import ListenerSetter from '../helpers/listenerSetter';
 import { CancellablePromise, deferredPromise } from '../helpers/cancellablePromise';
+import { pause } from '../helpers/schedulers';
 
 const ANIMATION_START_EVENT = 'event-heavy-animation-start';
 const ANIMATION_END_EVENT = 'event-heavy-animation-end';
 
 let isAnimating = false;
 let heavyAnimationPromise: CancellablePromise<void> = Promise.resolve();
-let lastAnimationPromise: Promise<any>;
+let promisesInQueue = 0;
 
-export const dispatchHeavyAnimationEvent = (promise: Promise<any>) => {
+export const dispatchHeavyAnimationEvent = (promise: Promise<any>, timeout?: number) => {
   if(!isAnimating) {
     heavyAnimationPromise = deferredPromise<void>();
+    document.dispatchEvent(new Event(ANIMATION_START_EVENT));
+    isAnimating = true;
+    console.log('dispatchHeavyAnimationEvent: start');
   }
+  
+  ++promisesInQueue;
+  console.log('dispatchHeavyAnimationEvent: attach promise, length:', promisesInQueue);
 
-  document.dispatchEvent(new Event(ANIMATION_START_EVENT));
-  isAnimating = true;
-  lastAnimationPromise = promise;
+  const promises = [
+    timeout !== undefined ? pause(timeout) : undefined,
+    promise.finally(() => {})
+  ].filter(Boolean);
 
-  promise.then(() => {
-    if(lastAnimationPromise !== promise) {
-      return;
+  const perf = performance.now();
+  Promise.race(promises).then(() => {
+    --promisesInQueue;
+    console.log('dispatchHeavyAnimationEvent: promise end, length:', promisesInQueue, performance.now() - perf);
+    if(!promisesInQueue) {
+      isAnimating = false;
+      promisesInQueue = 0;
+      document.dispatchEvent(new Event(ANIMATION_END_EVENT));
+      heavyAnimationPromise.resolve();
+
+      console.log('dispatchHeavyAnimationEvent: end');
     }
-
-    isAnimating = false;
-    document.dispatchEvent(new Event(ANIMATION_END_EVENT));
-    heavyAnimationPromise.resolve();
   });
 
   return heavyAnimationPromise;
