@@ -19,6 +19,7 @@ export function cancelAnimationByKey(key: AnimationInstanceKey) {
   const instance = getAnimationInstance(key);
   if(instance) {
     instance.isCancelled = true;
+    instance.deferred.resolve();
     instances.delete(key);
   }
 }
@@ -31,7 +32,9 @@ export function animateSingle(tick: Function, key: AnimationInstanceKey, instanc
   }
 
   fastRaf(() => {
-    if(instance.isCancelled) return;
+    if(instance.isCancelled) {
+      return;
+    }
     
     if(tick()) {
       animateSingle(tick, key, instance);

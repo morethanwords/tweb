@@ -95,7 +95,7 @@ function scrollWithJs(
 
   switch(position) {
     case 'start':
-      path = (elementPosition - margin) - scrollPosition;
+      path = elementPosition - margin;
       break;
     case 'end':
       //path = (elementTop + elementHeight + margin) - containerHeight;

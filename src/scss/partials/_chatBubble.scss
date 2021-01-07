@@ -126,7 +126,7 @@ $bubble-margin: .25rem;
 
     &.is-highlighted, &.is-selected {
       &:after {
-        top: #{2rem + $bubble-margin} !important;
+        top: calc(#{$bubble-margin / 2} + 30px);
       }
     }
   }
@@ -370,7 +370,7 @@ $bubble-margin: .25rem;
   &.is-group-last {
     margin-bottom: #{$bubble-margin * 2};
 
-    &:before, &:after {
+    &:after {
       bottom: -#{$bubble-margin};
     }
 
@@ -386,7 +386,7 @@ $bubble-margin: .25rem;
   }
 
   &.is-group-first {
-    &:before, &:after {
+    &:after {
       top: -#{$bubble-margin};
     }
   }

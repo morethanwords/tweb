@@ -40,8 +40,9 @@ import AudioElement from "../audio";
 import { Message, MessageEntity, MessageReplies, MessageReplyHeader } from "../../layer";
 import { DEBUG, MOUNT_CLASS_TO, REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
 import { FocusDirection } from "../../helpers/fastSmoothScroll";
-import useHeavyAnimationCheck, { getHeavyAnimationPromise } from "../../hooks/useHeavyAnimationCheck";
+import useHeavyAnimationCheck, { getHeavyAnimationPromise, dispatchHeavyAnimationEvent } from "../../hooks/useHeavyAnimationCheck";
 import { fastRaf } from "../../helpers/schedulers";
+import { deferredPromise, CancellablePromise } from "../../helpers/cancellablePromise";
 
 const IGNORE_ACTIONS = ['messageActionHistoryClear'];
 
@@ -295,30 +296,35 @@ export default class ChatBubbles {
 
     this.listenerSetter.add(rootScope, 'messages_downloaded', (e) => {
       const {peerId, mids} = e.detail;
-      
-      (mids as number[]).forEach(mid => {
-        /* const promise = (this.scrollable.scrollLocked && this.scrollable.scrollLockedPromise) || Promise.resolve();
-        promise.then(() => {
 
-        }); */
-        this.needUpdate.forEachReverse((obj, idx) => {
-          if(obj.replyMid === mid, obj.replyToPeerId === peerId) {
-            const {mid, replyMid} = this.needUpdate.splice(idx, 1)[0];
-            
-            //this.log('messages_downloaded', mid, replyMid, i, this.needUpdate, this.needUpdate.length, mids, this.bubbles[mid]);
-            const bubble = this.bubbles[mid];
-            if(!bubble) return;
-            
-            const message = this.chat.getMessage(mid);
-            
-            const repliedMessage = this.appMessagesManager.getMessageByPeer(obj.replyToPeerId, replyMid);
-            if(repliedMessage.deleted) { // ! чтобы не пыталось бесконечно загрузить удалённое сообщение
-              delete message.reply_to_mid; // ! WARNING!
+      const middleware = this.getMiddleware();
+      getHeavyAnimationPromise().then(() => {
+        if(!middleware()) return;
+
+        (mids as number[]).forEach(mid => {
+          /* const promise = (this.scrollable.scrollLocked && this.scrollable.scrollLockedPromise) || Promise.resolve();
+          promise.then(() => {
+  
+          }); */
+          this.needUpdate.forEachReverse((obj, idx) => {
+            if(obj.replyMid === mid, obj.replyToPeerId === peerId) {
+              const {mid, replyMid} = this.needUpdate.splice(idx, 1)[0];
+              
+              //this.log('messages_downloaded', mid, replyMid, i, this.needUpdate, this.needUpdate.length, mids, this.bubbles[mid]);
+              const bubble = this.bubbles[mid];
+              if(!bubble) return;
+              
+              const message = this.chat.getMessage(mid);
+              
+              const repliedMessage = this.appMessagesManager.getMessageByPeer(obj.replyToPeerId, replyMid);
+              if(repliedMessage.deleted) { // ! чтобы не пыталось бесконечно загрузить удалённое сообщение
+                delete message.reply_to_mid; // ! WARNING!
+              }
+              
+              this.renderMessage(message, true, false, bubble, false);
+              //this.renderMessage(message, true, true, bubble, false);
             }
-            
-            this.renderMessage(message, true, false, bubble, false);
-            //this.renderMessage(message, true, true, bubble, false);
-          }
+          });
         });
       });
     });
@@ -1421,7 +1427,7 @@ export default class ChatBubbles {
   }
 
   public setMessagesQueuePromise() {
-    if(this.messagesQueuePromise) return;
+    if(this.messagesQueuePromise || !this.messagesQueue.length) return;
 
     this.messagesQueuePromise = new Promise((resolve, reject) => {
       setTimeout(() => {
@@ -1525,7 +1531,7 @@ export default class ChatBubbles {
     
     const peerId = this.peerId;
     // * can't use 'message.pFlags.out' here because this check will be used to define side of message (left-right)
-    const our = message.fromId == rootScope.myId || (message.pFlags.out && this.appPeersManager.isMegagroup(this.peerId));
+    const our = message.fromId === rootScope.myId || (message.pFlags.out && this.appPeersManager.isMegagroup(this.peerId));
     
     const messageDiv = document.createElement('div');
     messageDiv.classList.add('message');
@@ -1553,7 +1559,7 @@ export default class ChatBubbles {
         }
       }
     } else {
-      const save = ['is-highlighted'];
+      const save = ['is-highlighted', 'zoom-fade'];
       const wasClassNames = bubble.className.split(' ');
       const classNames = ['bubble'].concat(save.filter(c => wasClassNames.includes(c)));
       bubble.className = classNames.join(' ');
@@ -1561,9 +1567,11 @@ export default class ChatBubbles {
       bubbleContainer = bubble.lastElementChild as HTMLDivElement;
       bubbleContainer.innerHTML = '';
       //bubbleContainer.style.marginBottom = '';
+      const animationDelay = bubbleContainer.style.animationDelay;
       bubbleContainer.style.cssText = '';
+      bubbleContainer.style.animationDelay = animationDelay;
 
-      if(bubble == this.firstUnreadBubble) {
+      if(bubble === this.firstUnreadBubble) {
         bubble.classList.add('is-first-unread');
       }
 
@@ -2514,7 +2522,9 @@ export default class ChatBubbles {
         
         ////console.timeEnd('render history total');
         
-        return this.performHistoryResult(result.history || [], reverse, isBackLimit, !isFirstMessageRender && additionMsgId);
+        return getHeavyAnimationPromise().then(() => {
+          return this.performHistoryResult(result.history || [], reverse, isBackLimit, !isFirstMessageRender && additionMsgId);
+        });
       }, (err) => {
         this.log.error('getHistory error:', err);
         return false;
@@ -2533,7 +2543,9 @@ export default class ChatBubbles {
       cached = true;
       this.log('getHistory cached result by maxId:', maxId, reverse, isBackLimit, result, peerId, justLoad);
       processResult(result);
-      promise = this.performHistoryResult(result.history || [], reverse, isBackLimit, !isFirstMessageRender && additionMsgId);
+      promise = getHeavyAnimationPromise().then(() => {
+        return this.performHistoryResult((result as HistoryResult).history || [], reverse, isBackLimit, !isFirstMessageRender && additionMsgId);
+      });
       //return (reverse ? this.getHistoryTopPromise = promise : this.getHistoryBottomPromise = promise);
       //return this.performHistoryResult(result.history || [], reverse, isBackLimit, additionMsgID, true);
     }
@@ -2544,21 +2556,33 @@ export default class ChatBubbles {
       waitPromise.then(() => {
         if(rootScope.settings.animationsEnabled) {
           const mids = getObjectKeysAndSort(this.bubbles, 'desc').filter(mid => !additionMsgIds.includes(mid));
+          const animationPromise = deferredPromise<void>();
+
+          let lastMsDelay = 0;
           mids.forEach((mid, idx) => {
             const bubble = this.bubbles[mid];
     
+            lastMsDelay = ((idx || 0.1) * 10);
             //if(idx || isSafari) {
               // ! 0.1 = 1ms задержка для Safari, без этого первое сообщение над самым нижним может появиться позже другого с animation-delay, LOL !
-              bubble.style.animationDelay = ((idx || 0.1) * 10) + 'ms';
+              bubble.style.animationDelay = lastMsDelay + 'ms';
             //}
   
             bubble.classList.add('zoom-fade');
             bubble.addEventListener('animationend', () => {
               bubble.style.animationDelay = '';
               bubble.classList.remove('zoom-fade');
+
+              if(idx === (mids.length - 1)) {
+                animationPromise.resolve();
+              }
             }, {once: true});
             //this.log('supa', bubble);
           });
+
+          if(mids.length) {
+            dispatchHeavyAnimationEvent(animationPromise, lastMsDelay);
+          }
         }
 
         setTimeout(() => {
