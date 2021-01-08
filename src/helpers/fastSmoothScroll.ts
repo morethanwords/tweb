@@ -4,6 +4,7 @@ import { dispatchHeavyAnimationEvent } from '../hooks/useHeavyAnimationCheck';
 import { fastRaf } from './schedulers';
 import { animateSingle, cancelAnimationByKey } from './animation';
 import rootScope from '../lib/rootScope';
+import { isInDOM } from './dom';
 
 const MAX_DISTANCE = 1500;
 const MIN_JS_DURATION = 250;
@@ -42,7 +43,7 @@ export default function fastSmoothScroll(
     return Promise.resolve(); */
   }
 
-  if(axis === 'y') {
+  if(axis === 'y' && isInDOM(element)) {
     const elementRect = element.getBoundingClientRect();
     const containerRect = container.getBoundingClientRect();
   
@@ -58,6 +59,21 @@ export default function fastSmoothScroll(
     } else if(forceDirection === FocusDirection.Down) { // * not tested yet
       container.scrollTop = Math.max(0, offsetTop + container.scrollTop - maxDistance);
     }
+    /* const { offsetTop } = element;
+
+    if(forceDirection === undefined) {
+      const offset = offsetTop - container.scrollTop;
+
+      if(offset < -maxDistance) {
+        container.scrollTop += (offset + maxDistance);
+      } else if(offset > maxDistance) {
+        container.scrollTop += (offset - maxDistance);
+      }
+    } else if(forceDirection === FocusDirection.Up) {
+      container.scrollTop = offsetTop + maxDistance;
+    } else if(forceDirection === FocusDirection.Down) {
+      container.scrollTop = Math.max(0, offsetTop - maxDistance);
+    } */
   }
 
   const promise = new Promise((resolve) => {
@@ -73,6 +89,11 @@ export default function fastSmoothScroll(
 function scrollWithJs(
   container: HTMLElement, element: HTMLElement, position: ScrollLogicalPosition, margin = 0, forceDuration?: number, axis: 'x' | 'y' = 'y'
 ) {
+  if(!isInDOM(element)) {
+    cancelAnimationByKey(container);
+    return Promise.resolve();
+  }
+  
   const rectStartKey = axis === 'y' ? 'top' : 'left';
   const rectEndKey = axis === 'y' ? 'bottom' : 'right';
   const sizeKey = axis === 'y' ? 'height' : 'width';
@@ -90,6 +111,12 @@ function scrollWithJs(
 
   const scrollPosition = container[scrollPositionKey];
   const scrollSize = container[scrollSizeKey];
+  /* const elementPosition = element.offsetTop;
+  const elementSize = element.offsetHeight;
+
+  const scrollPosition = container[scrollPositionKey];
+  const scrollSize = container[scrollSizeKey];
+  const containerSize = container.offsetHeight; */
 
   let path!: number;
 
@@ -98,7 +125,6 @@ function scrollWithJs(
       path = elementPosition - margin;
       break;
     case 'end':
-      //path = (elementTop + elementHeight + margin) - containerHeight;
       path = elementRect[rectEndKey] + (elementSize - elementRect[sizeKey]) - containerRect[rectEndKey];
       break;
     // 'nearest' is not supported yet
@@ -109,6 +135,21 @@ function scrollWithJs(
         : elementPosition - margin;
       break;
   }
+  /* switch (position) {
+    case 'start':
+      path = (elementPosition - margin) - scrollPosition;
+      break;
+    case 'end':
+      path = (elementPosition + elementSize + margin) - (scrollPosition + containerSize);
+      break;
+    // 'nearest' is not supported yet
+    case 'nearest':
+    case 'center':
+      path = elementSize < containerSize
+        ? (elementPosition + elementSize / 2) - (scrollPosition + containerSize / 2)
+        : (elementPosition - margin) - scrollPosition;
+      break;
+  } */
 
   // console.log('scrollWithJs: will scroll path:', path, element);
 

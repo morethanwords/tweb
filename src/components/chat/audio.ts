@@ -35,7 +35,7 @@ export default class ChatAudio extends PinnedContainer {
     this.wrapper.prepend(this.toggleEl);
 
     this.topbar.listenerSetter.add(rootScope, 'audio_play', (e) => {
-      const {doc, mid, peerId} = e.detail;
+      const {doc, mid, peerId} = e;
 
       let title: string, subtitle: string;
       const message = appMessagesManager.getMessageByPeer(peerId, mid);

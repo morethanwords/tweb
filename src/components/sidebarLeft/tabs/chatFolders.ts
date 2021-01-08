@@ -160,7 +160,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
     });
 
     this.rootScope.on('filter_update', (e) => {
-      const filter = e.detail;
+      const filter = e;
       if(this.filtersRendered.hasOwnProperty(filter.id)) {
         this.renderFolder(filter, null, this.filtersRendered[filter.id]);
       } else {
@@ -171,7 +171,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
     });
 
     this.rootScope.on('filter_delete', (e) => {
-      const filter = e.detail;
+      const filter = e;
       if(this.filtersRendered.hasOwnProperty(filter.id)) {
         /* for(const suggested of this.suggestedFilters) {
           if(deepEqual(suggested.filter, filter)) {
@@ -186,7 +186,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
     });
 
     this.rootScope.on('filter_order', (e) => {
-      const order = e.detail;
+      const order = e;
       order.forEach((filterId, idx) => {
         const div = this.filtersRendered[filterId];
         positionElementByIndex(div, div.parentElement, idx + 1); // ! + 1 due to header 

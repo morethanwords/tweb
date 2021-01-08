@@ -7,6 +7,7 @@ import type { ConnectionStatusChange } from "../types";
 import type { UserTyping } from "./appManagers/appChatsManager";
 import { DEBUG, MOUNT_CLASS_TO, UserAuth } from "./mtproto/mtproto_config";
 import { State } from "./appManagers/appStateManager";
+import EventListenerBase from "../helpers/eventListenerBase";
 
 type BroadcastEvents = {
   'user_update': number,
@@ -76,9 +77,12 @@ type BroadcastEvents = {
   'connection_status_change': ConnectionStatusChange,
   'settings_updated': {key: string, value: any},
   //'draft_updated': any,
+
+  'event-heavy-animation-start': void,
+  'event-heavy-animation-end': void
 };
 
-class RootScope {
+class RootScope extends EventListenerBase<any> {
   public overlayIsActive: boolean = false;
   public myId = 0;
   public idle = {
@@ -88,13 +92,15 @@ class RootScope {
   public settings: State['settings'];
 
   constructor() {
+    super();
+
     this.on('user_auth', (e) => {
-      this.myId = e.detail;
+      this.myId = e;
     });
 
     this.on('connection_status_change', (e) => {
-      const status = e.detail;
-      this.connectionStatus[e.detail.name] = status;
+      const status = e;
+      this.connectionStatus[e.name] = status;
     });
   }
 
@@ -105,20 +111,17 @@ class RootScope {
       }
     } */
 
-    const myCustomEvent = new CustomEvent(name, {detail});
-    document.dispatchEvent(myCustomEvent);
+    this.setListenerResult(name, detail);
   };
 
-  public on = <T extends keyof BroadcastEvents>(name: T, callback: (e: Omit<CustomEvent, 'detail'> & {detail: BroadcastEvents[T]}) => any) => {
-    // @ts-ignore
-    document.addEventListener(name, callback);
+  public on = <T extends keyof BroadcastEvents>(name: T, callback: (e: BroadcastEvents[T]) => any) => {
+    this.addListener(name, callback);
   };
 
   public addEventListener = this.on;
 
-  public off = <T extends keyof BroadcastEvents>(name: T, callback: (e: Omit<CustomEvent, 'detail'> & {detail: BroadcastEvents[T]}) => any) => {
-    // @ts-ignore
-    document.removeEventListener(name, callback);
+  public off = <T extends keyof BroadcastEvents>(name: T, callback: (e: BroadcastEvents[T]) => any) => {
+    this.removeListener(name, callback);
   };
 
   public removeEventListener = this.off;

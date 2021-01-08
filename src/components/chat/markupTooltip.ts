@@ -254,14 +254,26 @@ export default class MarkupTooltip {
     this.container.style.transform = `translate3d(${left}px, ${top}px, 0)`;
   }
 
+  public isSelectionEmpty(selection = window.getSelection()) {
+    if(!selection || !selection.rangeCount) {
+      return true;
+    }
+
+    const selectionRange = selection.getRangeAt(0);
+    if(!selectionRange.toString() || !selectionRange.START_TO_END) {
+      return true;
+    }
+
+    return false;
+  }
+
   public show() {
     if(this.init) {
       this.init();
       this.init = null;
     }
 
-    const selection = document.getSelection();
-    if(!selection.toString().trim().length) {
+    if(this.isSelectionEmpty()) {
       this.hide();
       return;
     }
@@ -359,7 +371,7 @@ export default class MarkupTooltip {
       }
 
       const selection = document.getSelection();
-      if(!selection.toString().trim().length) {
+      if(this.isSelectionEmpty(selection)) {
         this.hide();
         return;
       }

@@ -84,7 +84,7 @@ export default class AppSharedMediaTab implements SliderTab {
     });
 
     rootScope.on('dialog_notify_settings', (e) => {
-      if(this.peerId == e.detail) {
+      if(this.peerId == e) {
         const muted = appMessagesManager.isPeerMuted(this.peerId);
         this.profileElements.notificationsCheckbox.checked = !muted;
         this.profileElements.notificationsStatus.innerText = muted ? 'Disabled' : 'Enabled';
@@ -92,7 +92,7 @@ export default class AppSharedMediaTab implements SliderTab {
     });
 
     rootScope.on('peer_typings', (e) => {
-      const {peerId} = e.detail;
+      const {peerId} = e;
 
       if(this.peerId == peerId) {
         this.setPeerStatus();
@@ -100,7 +100,7 @@ export default class AppSharedMediaTab implements SliderTab {
     });
 
     rootScope.on('user_update', (e) => {
-      const userId = e.detail;
+      const userId = e;
 
       if(this.peerId == userId) {
         this.setPeerStatus();

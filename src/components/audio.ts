@@ -17,7 +17,7 @@ import { SearchSuperContext } from "./appSearchSuper.";
 import { formatDateAccordingToToday } from "../helpers/date";
 
 rootScope.on('messages_media_read', e => {
-  const {mids, peerId} = e.detail;
+  const {mids, peerId} = e;
 
   mids.forEach(mid => {
     (Array.from(document.querySelectorAll('audio-element[message-id="' + mid + '"][peer-id="' + peerId + '"]')) as AudioElement[]).forEach(elem => {

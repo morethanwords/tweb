@@ -36,7 +36,7 @@ export class AppUsersManager {
     rootScope.on('state_synchronized', this.updateUsersStatuses);
 
     rootScope.on('apiUpdate', (e) => {
-      const update = e.detail as Update;
+      const update = e as Update;
       //console.log('on apiUpdate', update);
       switch(update._) {
         case 'updateUserStatus':

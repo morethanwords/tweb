@@ -246,7 +246,7 @@ export default class ChatTopbar {
     }, {listenerSetter: this.listenerSetter});
 
     this.listenerSetter.add(rootScope, 'chat_update', (e) => {
-      const peerId: number = e.detail;
+      const peerId: number = e;
       if(this.peerId == -peerId) {
         const chat = this.appChatsManager.getChat(peerId) as Channel/*  | Chat */;
         
@@ -256,7 +256,7 @@ export default class ChatTopbar {
     });
 
     this.listenerSetter.add(rootScope, 'dialog_notify_settings', (e) => {
-      const peerId = e.detail;
+      const peerId = e;
 
       if(peerId == this.peerId) {
         this.setMutedState();
@@ -264,7 +264,7 @@ export default class ChatTopbar {
     });
 
     this.listenerSetter.add(rootScope, 'peer_typings', (e) => {
-      const {peerId} = e.detail;
+      const {peerId} = e;
 
       if(this.peerId == peerId) {
         this.setPeerStatus();
@@ -272,7 +272,7 @@ export default class ChatTopbar {
     });
 
     this.listenerSetter.add(rootScope, 'user_update', (e) => {
-      const userId = e.detail;
+      const userId = e;
 
       if(this.peerId == userId) {
         this.setPeerStatus();
@@ -305,7 +305,7 @@ export default class ChatTopbar {
 
   public constructPinnedHelpers() {
     this.listenerSetter.add(rootScope, 'peer_pinned_messages', (e) => {
-      const {peerId, mids, pinned} = e.detail;
+      const {peerId, mids, pinned} = e;
 
       if(peerId !== this.peerId) return;
 

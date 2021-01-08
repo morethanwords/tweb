@@ -24,7 +24,7 @@ export default class FiltersStorage {
 
   constructor(private appPeersManager: AppPeersManager, private appUsersManager: AppUsersManager, /* private apiManager: ApiManagerProxy, */ private rootScope: typeof _rootScope) {
     rootScope.on('apiUpdate', (e) => {
-      this.handleUpdate(e.detail);
+      this.handleUpdate(e);
     });
   }
 

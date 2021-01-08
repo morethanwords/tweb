@@ -175,7 +175,7 @@ export default class ChatInput {
       }, {listenerSetter: this.listenerSetter});
 
       this.listenerSetter.add(rootScope, 'scheduled_new', (e) => {
-        const peerId = e.detail.peerId;
+        const peerId = e.peerId;
 
         if(this.chat.peerId !== peerId) {
           return;
@@ -185,7 +185,7 @@ export default class ChatInput {
       });
 
       this.listenerSetter.add(rootScope, 'scheduled_delete', (e) => {
-        const peerId = e.detail.peerId;
+        const peerId = e.peerId;
 
         if(this.chat.peerId !== peerId) {
           return;
