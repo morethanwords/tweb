@@ -67,14 +67,14 @@ class ConnectionStatusComponent {
     chatsContainer.prepend(this.statusContainer);
 
     rootScope.on('connection_status_change', (e) => {
-      const status = e.detail;
+      const status = e;
       console.log(status);
 
       setConnectionStatus();
     });
 
     rootScope.on('state_synchronizing', (e) => {
-      const channelId = e.detail;
+      const channelId = e;
       if(!channelId) {
         this.updating = true;
         this.log('updating', this.updating);
@@ -83,7 +83,7 @@ class ConnectionStatusComponent {
     });
 
     rootScope.on('state_synchronized', (e) => {
-      const channelId = e.detail;
+      const channelId = e;
       this.log('state_synchronized', channelId);
       if(!channelId) {
         this.updating = false;
@@ -259,7 +259,7 @@ export class AppDialogsManager {
     }
 
     rootScope.on('user_update', (e) => {
-      const userId = e.detail;
+      const userId = e;
       const user = appUsersManager.getUser(userId);
       const dialog = appMessagesManager.getDialogByPeerId(user.id)[0];
       //console.log('updating user:', user, dialog);
@@ -275,7 +275,7 @@ export class AppDialogsManager {
     });
 
     /* rootScope.$on('dialog_top', (e) => {
-      const dialog = e.detail;
+      const dialog = e;
 
       this.setLastMessage(dialog);
       this.setDialogPosition(dialog);
@@ -284,7 +284,7 @@ export class AppDialogsManager {
     }); */
 
     rootScope.on('dialog_flush', (e) => {
-      const peerId: number = e.detail.peerId;
+      const peerId: number = e.peerId;
       const dialog = appMessagesManager.getDialogByPeerId(peerId)[0];
       if(dialog) {
         this.setLastMessage(dialog);
@@ -294,7 +294,7 @@ export class AppDialogsManager {
     });
 
     rootScope.on('dialogs_multiupdate', (e) => {
-      const dialogs = e.detail;
+      const dialogs = e;
 
       for(const id in dialogs) {
         const dialog = dialogs[id];
@@ -306,7 +306,7 @@ export class AppDialogsManager {
     });
 
     rootScope.on('dialog_drop', (e) => {
-      const {peerId, dialog} = e.detail;
+      const {peerId, dialog} = e;
 
       const dom = this.getDialogDom(peerId);
       if(dom) {
@@ -318,7 +318,7 @@ export class AppDialogsManager {
     });
 
     rootScope.on('dialog_unread', (e) => {
-      const info = e.detail;
+      const info = e;
 
       const dialog = appMessagesManager.getDialogByPeerId(info.peerId)[0];
       if(dialog) {
@@ -329,14 +329,14 @@ export class AppDialogsManager {
     });
 
     rootScope.on('dialog_notify_settings', e => {
-      const dialog = appMessagesManager.getDialogByPeerId(e.detail)[0];
+      const dialog = appMessagesManager.getDialogByPeerId(e)[0];
       if(dialog) {
         this.setUnreadMessages(dialog); // возможно это не нужно, но нужно менять is-muted
       }
     });
 
     rootScope.on('peer_changed', (e) => {
-      const peerId = e.detail;
+      const peerId = e;
 
       //const perf = performance.now();
       for(const element of this.lastActiveElements) {
@@ -355,7 +355,7 @@ export class AppDialogsManager {
     });
 
     rootScope.on('filter_update', (e) => {
-      const filter: DialogFilter = e.detail;
+      const filter: DialogFilter = e;
       if(!this.filtersRendered[filter.id]) {
         this.addFilter(filter);
         return;
@@ -375,7 +375,7 @@ export class AppDialogsManager {
     });
 
     rootScope.on('filter_delete', (e) => {
-      const filter: DialogFilter = e.detail;
+      const filter: DialogFilter = e;
       const elements = this.filtersRendered[filter.id];
       if(!elements) return;
 
@@ -395,7 +395,7 @@ export class AppDialogsManager {
     });
 
     rootScope.on('filter_order', (e) => {
-      const order = e.detail;
+      const order = e;
       
       const containerToAppend = this.folders.menu.firstElementChild as HTMLUListElement;
       order.forEach((filterId) => {
@@ -413,7 +413,7 @@ export class AppDialogsManager {
     });
 
     rootScope.on('peer_typings', (e) => {
-      const {peerId, typings} = e.detail;
+      const {peerId, typings} = e;
 
       const dialog = appMessagesManager.getDialogByPeerId(peerId)[0];
       if(!dialog) return;

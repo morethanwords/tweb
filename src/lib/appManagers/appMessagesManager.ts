@@ -13,7 +13,7 @@ import { logger, LogLevels } from "../logger";
 import type { ApiFileManager } from '../mtproto/apiFileManager';
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
-import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
+import { MOUNT_CLASS_TO, DEBUG } from "../mtproto/mtproto_config";
 import referenceDatabase, { ReferenceContext } from "../mtproto/referenceDatabase";
 import serverTimeManager from "../mtproto/serverTimeManager";
 import { RichTextProcessor } from "../richtextprocessor";
@@ -178,11 +178,11 @@ export class AppMessagesManager {
     this.filtersStorage = new FiltersStorage(appPeersManager, appUsersManager, /* apiManager, */ rootScope);
 
     rootScope.on('apiUpdate', (e) => {
-      this.handleUpdate(e.detail);
+      this.handleUpdate(e);
     });
 
     rootScope.on('webpage_updated', (e) => {
-      const eventData = e.detail;
+      const eventData = e;
       eventData.msgs.forEach((mid) => {
         const message = this.getMessageById(mid) as Message.message;
         if(!message) return;
@@ -202,7 +202,7 @@ export class AppMessagesManager {
     });
 
     /* rootScope.$on('draft_updated', (e) => {
-      let eventData = e.detail;;
+      let eventData = e;;
       var peerId = eventData.peerId;
       var draft = eventData.draft;
 
@@ -396,7 +396,7 @@ export class AppMessagesManager {
 
     if(message.pFlags.is_outgoing) {
       return this.invokeAfterMessageIsSent(mid, 'edit', (message) => {
-        this.log('invoke editMessage callback', message);
+        //this.log('invoke editMessage callback', message);
         return this.editMessage(message, text, options);
       });
     }
@@ -799,7 +799,7 @@ export class AppMessagesManager {
       appDocsManager.saveDoc(document);
     }
 
-    this.log('AMM: sendFile', attachType, apiFileName, file.type, options);
+    this.log('sendFile', attachType, apiFileName, file.type, options);
 
     const preloader = new ProgressivePreloader(null, true, false, 'prepend');
 
@@ -883,7 +883,9 @@ export class AppMessagesManager {
           }
   
           uploadPromise && uploadPromise.then(async(inputFile) => {
-            this.log('appMessagesManager: sendFile uploaded:', inputFile);
+            /* if(DEBUG) {
+              this.log('appMessagesManager: sendFile uploaded:', inputFile);
+            } */
 
             delete message.media.preloader;
 
@@ -922,7 +924,10 @@ export class AppMessagesManager {
           });
   
           uploadPromise.addNotifyListener((progress: {done: number, total: number}) => {
-            this.log('upload progress', progress);
+            /* if(DEBUG) {
+              this.log('upload progress', progress);
+            } */
+
             const percents = Math.max(1, Math.floor(100 * progress.done / progress.total));
             this.setTyping(peerId, {_: actionName, progress: percents | 0});
           });
@@ -1021,7 +1026,7 @@ export class AppMessagesManager {
       caption = RichTextProcessor.parseMarkdown(caption, entities);
     }
 
-    this.log('AMM: sendAlbum', files, options);
+    this.log('sendAlbum', files, options);
 
     const messages = files.map((file, idx) => {
       const details = options.sendFileDetails[idx];
@@ -1445,7 +1450,9 @@ export class AppMessagesManager {
   public cancelPendingMessage(randomId: string) {
     const pendingData = this.pendingByRandomId[randomId];
 
-    this.log('cancelPendingMessage', randomId, pendingData);
+    /* if(DEBUG) {
+      this.log('cancelPendingMessage', randomId, pendingData);
+    } */
 
     if(pendingData) {
       const {peerId, tempId, storage} = pendingData;
@@ -1797,7 +1804,7 @@ export class AppMessagesManager {
     [].concat(peerId).forEach(peerId => {
       if(!this.reloadConversationsPeers.includes(peerId)) {
         this.reloadConversationsPeers.push(peerId);
-        this.log('will reloadConversation', peerId);
+        //this.log('will reloadConversation', peerId);
       }
     });
 
@@ -1917,7 +1924,7 @@ export class AppMessagesManager {
       pm_oneside: oneSide,
       id: this.getLocalMessageId(mid)
     }).then(updates => {
-      this.log('pinned updates:', updates);
+      //this.log('pinned updates:', updates);
       apiUpdatesManager.processUpdateMessage(updates);
     });
   }
@@ -2509,7 +2516,7 @@ export class AppMessagesManager {
         };
       })
     }).then(updates => {
-      this.log('editPeerFolders updates:', updates);
+      //this.log('editPeerFolders updates:', updates);
       apiUpdatesManager.processUpdateMessage(updates); // WARNING! возможно тут нужно добавлять channelId, и вызывать апдейт для каждого канала отдельно
     });
   }
@@ -3145,7 +3152,9 @@ export class AppMessagesManager {
         storage.count = searchResult.count;
       }
 
-      this.log('getSearch result:', inputFilter, searchResult);
+      if(DEBUG) {
+        this.log('getSearch result:', inputFilter, searchResult);
+      }
 
       const foundCount: number = searchResult.count || (foundMsgs.length + searchResult.messages.length);
 
@@ -3456,7 +3465,10 @@ export class AppMessagesManager {
   }
 
   public handleUpdate(update: Update) {
-    this.log.debug('handleUpdate', update._, update);
+    /* if(DEBUG) {
+      this.log.debug('handleUpdate', update._, update);
+    } */
+
     switch(update._) {
       case 'updateMessageID': {
         const randomId = update.random_id;
@@ -3562,7 +3574,7 @@ export class AppMessagesManager {
       }
 
       case 'updateDialogUnreadMark': {
-        this.log('updateDialogUnreadMark', update);
+        //this.log('updateDialogUnreadMark', update);
         const peerId = appPeersManager.getPeerId((update.peer as DialogPeer.dialogPeer).peer);
         const foundDialog = this.getDialogByPeerId(peerId);
 
@@ -3585,7 +3597,7 @@ export class AppMessagesManager {
       }
 
       case 'updateFolderPeers': { // only 0 and 1 folders
-        this.log('updateFolderPeers', update);
+        //this.log('updateFolderPeers', update);
         const peers = update.folder_peers;
 
         this.scheduleHandleNewDialogs();
@@ -3616,7 +3628,7 @@ export class AppMessagesManager {
 
       case 'updateDialogPinned': {
         const folderId = update.folder_id ?? 0;
-        this.log('updateDialogPinned', update);
+        //this.log('updateDialogPinned', update);
         const peerId = appPeersManager.getPeerId((update.peer as DialogPeer.dialogPeer).peer);
         const foundDialog = this.getDialogByPeerId(peerId);
 
@@ -3688,7 +3700,7 @@ export class AppMessagesManager {
           }
         };
 
-        this.log('updatePinnedDialogs', update);
+        //this.log('updatePinnedDialogs', update);
         const newPinned: {[peerId: number]: true} = {};
         if(!update.order) {
           apiManager.invokeApi('messages.getPinnedDialogs', {
@@ -4009,7 +4021,7 @@ export class AppMessagesManager {
       }
         
       case 'updateServiceNotification': {
-        this.log('updateServiceNotification', update);
+        //this.log('updateServiceNotification', update);
         const fromId = 777000;
         const peerId = fromId;
         const messageId = this.generateTempMessageId(peerId);
@@ -4309,11 +4321,11 @@ export class AppMessagesManager {
   public finalizePendingMessageCallbacks(storage: MessagesStorage, tempId: number, mid: number) {
     const message = this.getMessageFromStorage(storage, mid);
     const callbacks = this.tempFinalizeCallbacks[tempId];
-    this.log.warn(callbacks, tempId);
+    //this.log.warn(callbacks, tempId);
     if(callbacks !== undefined) {
       for(const name in callbacks) {
         const {deferred, callback} = callbacks[name];
-        this.log(`finalizePendingMessageCallbacks: will invoke ${name} callback`);
+        //this.log(`finalizePendingMessageCallbacks: will invoke ${name} callback`);
         callback(message).then(deferred.resolve, deferred.reject);
       }
 
@@ -4589,7 +4601,9 @@ export class AppMessagesManager {
     }) as any;
 
     return promise.then((historyResult) => {
-      this.log('requestHistory result:', peerId, historyResult, maxId, limit, offset);
+      if(DEBUG) {
+        this.log('requestHistory result:', peerId, historyResult, maxId, limit, offset);
+      }
 
       appUsersManager.saveApiUsers(historyResult.users);
       appChatsManager.saveApiChats(historyResult.chats);

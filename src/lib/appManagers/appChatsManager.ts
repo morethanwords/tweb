@@ -80,7 +80,7 @@ export class AppChatsManager {
   constructor() {
     rootScope.on('apiUpdate', (e) => {
       // console.log('on apiUpdate', update)
-      const update = e.detail;
+      const update = e;
       switch(update._) {
         case 'updateChannel':
           const channelId = update.channel_id;

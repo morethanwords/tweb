@@ -16,7 +16,7 @@ export class AppWebPagesManager {
   
   constructor() {
     rootScope.on('apiUpdate', (e) => {
-      const update = e.detail;
+      const update = e;
 
       switch(update._) {
         case 'updateWebPage':

@@ -7,7 +7,7 @@ import { Photo } from "../layer";
 import type { LazyLoadQueueIntersector } from "./lazyLoadQueue";
 
 rootScope.on('avatar_update', (e) => {
-  let peerId = e.detail;
+  let peerId = e;
 
   appProfileManager.removeFromAvatarsCache(peerId);
   (Array.from(document.querySelectorAll('avatar-element[peer="' + peerId + '"]')) as AvatarElement[]).forEach(elem => {

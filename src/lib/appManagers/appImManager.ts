@@ -258,7 +258,7 @@ export class AppImManager {
     document.body.addEventListener('keydown', onKeyDown);
 
     rootScope.addEventListener('history_multiappend', (e) => {
-      const msgIdsByPeer = e.detail;
+      const msgIdsByPeer = e;
 
       for(const peerId in msgIdsByPeer) {
         appSidebarRight.sharedMediaTab.renderNewMessages(+peerId, msgIdsByPeer[peerId]);
@@ -266,7 +266,7 @@ export class AppImManager {
     });
     
     rootScope.addEventListener('history_delete', (e) => {
-      const {peerId, msgs} = e.detail;
+      const {peerId, msgs} = e;
 
       const mids = Object.keys(msgs).map(s => +s);
       appSidebarRight.sharedMediaTab.deleteDeletedMessages(peerId, mids);
@@ -274,7 +274,7 @@ export class AppImManager {
 
     // Calls when message successfully sent and we have an id
     rootScope.addEventListener('message_sent', (e) => {
-      const {storage, tempId, mid} = e.detail;
+      const {storage, tempId, mid} = e;
       const message = appMessagesManager.getMessageFromStorage(storage, mid);
       appSidebarRight.sharedMediaTab.renderNewMessages(message.peerId, [mid]);
     });

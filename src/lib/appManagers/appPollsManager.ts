@@ -78,7 +78,7 @@ export class AppPollsManager {
 
   constructor() {
     rootScope.on('apiUpdate', (e) => {
-      const update = e.detail;
+      const update = e;
       
       this.handleUpdate(update);
     });

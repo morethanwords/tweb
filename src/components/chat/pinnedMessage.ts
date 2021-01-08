@@ -280,7 +280,7 @@ export default class ChatPinnedMessage {
     }, {listenerSetter: this.listenerSetter});
 
     this.listenerSetter.add(rootScope, 'peer_pinned_messages', (e) => {
-      const peerId = e.detail.peerId;
+      const peerId = e.peerId;
 
       if(peerId == this.topbar.peerId) {
         //this.wasPinnedIndex = 0;
@@ -302,7 +302,7 @@ export default class ChatPinnedMessage {
     });
 
     this.listenerSetter.add(rootScope, 'peer_pinned_hidden', (e) => {
-      const {peerId, maxId} = e.detail;
+      const {peerId, maxId} = e;
 
       if(peerId == this.topbar.peerId) {
         this.pinnedMessageContainer.toggle(this.hidden = true);

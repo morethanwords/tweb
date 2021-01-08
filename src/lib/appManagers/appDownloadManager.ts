@@ -32,7 +32,7 @@ export class AppDownloadManager {
 
   constructor() {
     rootScope.on('download_progress', (e) => {
-      const details = e.detail as {done: number, fileName: string, total: number, offset: number};
+      const details = e as {done: number, fileName: string, total: number, offset: number};
       this.progress[details.fileName] = details;
 
       const callbacks = this.progressCallbacks[details.fileName];

@@ -66,7 +66,7 @@ export const roundPercents = (percents: number[]) => {
 
 /* const connectedPolls: {id: string, element: PollElement}[] = [];
 rootScope.on('poll_update', (e) => {
-  const {poll, results} = e.detail as {poll: Poll, results: PollResults};
+  const {poll, results} = e as {poll: Poll, results: PollResults};
 
   //console.log('poll_update', poll, results);
   for(const connected of connectedPolls) {
@@ -79,7 +79,7 @@ rootScope.on('poll_update', (e) => {
 }); */
 
 rootScope.on('poll_update', (e) => {
-  const {poll, results} = e.detail as {poll: Poll, results: PollResults};
+  const {poll, results} = e as {poll: Poll, results: PollResults};
 
   const pollElement = document.querySelector(`poll-element[poll-id="${poll.id}"]`) as PollElement;
   //console.log('poll_update', poll, results);

@@ -35,7 +35,7 @@ export class AppStickersManager {
     });
 
     rootScope.on('apiUpdate', (e) => {
-      const update = e.detail;
+      const update = e;
       
       switch(update._) {
         case 'updateNewStickerSet': {
