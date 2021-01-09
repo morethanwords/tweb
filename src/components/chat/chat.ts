@@ -38,6 +38,7 @@ export default class Chat extends EventListenerBase<{
   public selection: ChatSelection;
   public contextMenu: ChatContextMenu;
 
+  public wasAlreadyUsed = false;
   public initPeerId = 0;
   public peerId = 0;
   public threadId: number;
@@ -133,8 +134,8 @@ export default class Chat extends EventListenerBase<{
     //this.log.error('Chat destroy time:', performance.now() - perf);
   }
 
-  public cleanup() {
-    this.input.cleanup();
+  public cleanup(helperToo = true) {
+    this.input.cleanup(helperToo);
     this.selection.cleanup();
   }
 
@@ -155,7 +156,7 @@ export default class Chat extends EventListenerBase<{
     ////console.time('appImManager: pre render start');
     if(!peerId) {
       appSidebarRight.toggleSidebar(false);
-      this.cleanup();
+      this.cleanup(true);
       this.topbar.setPeer(peerId);
       this.bubbles.setPeer(peerId);
       rootScope.broadcast('peer_changed', peerId);
@@ -170,6 +171,7 @@ export default class Chat extends EventListenerBase<{
       }
 
       appSidebarRight.sharedMediaTab.setPeer(peerId, this.threadId);
+      this.input.clearHelper(); // костыль
     }
 
     this.peerChanged = samePeer;
@@ -208,7 +210,7 @@ export default class Chat extends EventListenerBase<{
     let peerId = this.peerId;
     this.peerChanged = true;
 
-    this.cleanup();
+    this.cleanup(false);
 
     this.topbar.setPeer(peerId);
     this.topbar.finishPeerChange(isTarget, isJump, lastMsgId);
@@ -220,6 +222,7 @@ export default class Chat extends EventListenerBase<{
     this.log.setPrefix('CHAT-' + peerId + '-' + this.type);
 
     rootScope.broadcast('peer_changed', peerId);
+    this.wasAlreadyUsed = true;
   }
 
   public getMessagesStorage() {
