@@ -522,7 +522,7 @@ export default class ChatInput {
     this.listenerSetter.removeAll();
   }
 
-  public cleanup() {
+  public cleanup(helperToo = true) {
     if(!this.chat.peerId) {
       this.chatInput.style.display = 'none';
       this.goDownBtn.classList.add('hide');
@@ -532,7 +532,7 @@ export default class ChatInput {
 
     if(this.messageInput) {
       this.clearInput();
-      this.clearHelper();
+      helperToo && this.clearHelper();
     }
   }
 
