@@ -104,6 +104,8 @@ function scrollWithJs(
   const elementRect = element.getBoundingClientRect();
   const containerRect = container.getBoundingClientRect();
 
+  //const transformable = container.firstElementChild as HTMLElement;
+
   const elementPosition = elementRect[rectStartKey] - containerRect[rectStartKey];
   const elementSize = element[scrollSizeKey]; // margin is exclusive in DOMRect
 
@@ -153,6 +155,13 @@ function scrollWithJs(
 
   // console.log('scrollWithJs: will scroll path:', path, element);
 
+  /* let existsTransform = 0;
+  const currentTransform = transformable.style.transform;
+  if(currentTransform) {
+    existsTransform = parseInt(currentTransform.match(/\((.+?), (.+?), .+\)/)[2]);
+    //path += existsTransform;
+  } */
+
   if(path < 0) {
     const remainingPath = -scrollPosition;
     path = Math.max(path, remainingPath);
@@ -166,6 +175,46 @@ function scrollWithJs(
     MIN_JS_DURATION + (Math.abs(path) / MAX_DISTANCE) * (MAX_JS_DURATION - MIN_JS_DURATION)
   );
   const startAt = Date.now();
+
+  /* transformable.classList.add('no-transition');
+
+  const tickTransform = () => {
+    const t = duration ? Math.min((Date.now() - startAt) / duration, 1) : 1;
+    const currentPath = path * transition(t);
+
+    transformable.style.transform = `translate3d(0, ${-currentPath}px, 0)`;
+    container.dataset.translate = '' + -currentPath;
+
+    const willContinue = t < 1;
+    if(!willContinue) {
+      fastRaf(() => {
+        delete container.dataset.transform;
+        container.dataset.transform = '';
+        transformable.style.transform = '';
+        void transformable.offsetLeft; // reflow
+        transformable.classList.remove('no-transition');
+        void transformable.offsetLeft; // reflow
+        container[scrollPositionKey] = Math.round(target);
+      });
+    }
+
+    return willContinue;
+  };
+  
+  return animateSingle(tickTransform, container); */
+
+  /* return new Promise((resolve) => {
+    fastRaf(() => {
+      transformable.style.transform = '';
+      transformable.style.transition = '';
+
+      setTimeout(resolve, duration);
+    });
+  });
+
+  const transformableHeight = transformable.scrollHeight;
+  //transformable.style.minHeight = `${transformableHeight}px`;
+  */
 
   const tick = () => {
     const t = duration ? Math.min((Date.now() - startAt) / duration, 1) : 1;
@@ -181,6 +230,24 @@ function scrollWithJs(
     tick();
     return Promise.resolve();
   }
+
+  /* return new Promise((resolve) => {
+    setTimeout(resolve, duration);
+  }).then(() => {
+    transformable.classList.add('no-transition');
+    void transformable.offsetLeft; // reflow
+    transformable.style.transform = '';
+    transformable.style.transition = '';
+    void transformable.offsetLeft; // reflow
+    transformable.classList.remove('no-transition');
+    void transformable.offsetLeft; // reflow
+    fastRaf(() => {
+      
+      container[scrollPositionKey] = Math.round(target);
+      //transformable.style.minHeight = ``;
+    });
+    
+  }); */
 
   return animateSingle(tick, container);
 }

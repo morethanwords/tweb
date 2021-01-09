@@ -383,7 +383,7 @@ export default class ChatBubbles {
       let details = e;
 
       if(!this.scrolledAllDown) {
-        this.chat.setPeer(this.peerId, 0);
+        this.chat.setMessageId(0);
       } else {
         this.renderNewMessagesByIds([details.messageId], true);
       }
@@ -729,11 +729,11 @@ export default class ChatBubbles {
         this.chat.appImManager.setInnerPeer(replyToPeerId, replyToMid, this.chat.type, this.chat.threadId);
 
         /* if(this.chat.type === 'discussion') {
-          this.chat.appImManager.setPeer(this.peerId, originalMessageId);
+          this.chat.appImManager.setMessageId(, originalMessageId);
         } else {
           this.chat.appImManager.setInnerPeer(this.peerId, originalMessageId);
         } */
-        //this.chat.setPeer(this.peerId, originalMessageId);
+        //this.chat.setMessageId(, originalMessageId);
       }
     } else if(target.tagName == 'IMG' && target.parentElement.tagName == "AVATAR-ELEMENT") {
       let peerId = +target.parentElement.getAttribute('peer');
@@ -769,9 +769,9 @@ export default class ChatBubbles {
       this.replyFollowHistory.sort((a, b) => b - a);
 
       const mid = this.replyFollowHistory.pop();
-      this.chat.setPeer(this.peerId, mid);
+      this.chat.setMessageId(mid);
     } else {
-      this.chat.setPeer(this.peerId/* , dialog.top_message */);
+      this.chat.setMessageId(/* , dialog.top_message */);
       // const dialog = this.appMessagesManager.getDialogByPeerId(this.peerId)[0];
       
       // if(dialog) {
@@ -1076,7 +1076,7 @@ export default class ChatBubbles {
       } else {
         str = months[date.getMonth()] + ' ' + date.getDate();
 
-        if(date.getFullYear() != today.getFullYear()) {
+        if(date.getFullYear() !== today.getFullYear()) {
           str += ', ' + date.getFullYear();
         }
       }
@@ -1156,9 +1156,7 @@ export default class ChatBubbles {
     this.bubbleGroups.cleanup();
     this.unreadOut.clear();
     this.needUpdate.length = 0;
-    //this.lazyLoadQueue.clear();
-    
-    //this.chatInputC.replyElements.cancelBtn.click();
+    this.lazyLoadQueue.clear();
 
     // clear messages
     if(bubblesToo) {
@@ -1194,13 +1192,13 @@ export default class ChatBubbles {
     //console.time('appImManager setPeer');
     //console.time('appImManager setPeer pre promise');
     ////console.time('appImManager: pre render start');
-    if(peerId == 0) {
+    if(!peerId) {
       this.cleanup(true);
       this.peerId = 0;
       return null;
     }
 
-    const samePeer = this.peerId == peerId;
+    const samePeer = this.peerId === peerId;
 
     const historyStorage = this.appMessagesManager.getHistoryStorage(peerId, this.chat.threadId);
     let topMessage = this.chat.type === 'pinned' ? this.appMessagesManager.pinnedMessages[peerId].maxId : historyStorage.maxId ?? 0;
@@ -1248,7 +1246,9 @@ export default class ChatBubbles {
       this.replyFollowHistory.length = 0;
     }
 
-    this.log('setPeer peerId:', this.peerId, historyStorage, lastMsgId, topMessage);
+    if(DEBUG) {
+      this.log('setPeer peerId:', this.peerId, historyStorage, lastMsgId, topMessage);
+    }
 
     // add last message, bc in getHistory will load < max_id
     const additionMsgId = isJump || this.chat.type === 'scheduled' ? 0 : topMessage;
@@ -1261,7 +1261,7 @@ export default class ChatBubbles {
 
     let maxBubbleId = 0;
     if(samePeer) {
-      let el = getElementByPoint(this.chat.bubbles.scrollable.container, 'bottom');
+      let el = getElementByPoint(this.chat.bubbles.scrollable.container, 'bottom'); // ! this may not work if being called when chat is hidden
       //this.chat.log('[PM]: setCorrectIndex: get last element perf:', performance.now() - perf, el);
       if(el) {
         el = findUpClassName(el, 'bubble');
@@ -1280,10 +1280,6 @@ export default class ChatBubbles {
     this.chatInner = document.createElement('div');
     this.chatInner.className = oldChatInner.className;
     this.chatInner.classList.add('disable-hover', 'is-scrolling');
-
-    if(!samePeer) {
-      this.lazyLoadQueue.clear();
-    }
 
     this.lazyLoadQueue.lock();
 
@@ -1321,8 +1317,6 @@ export default class ChatBubbles {
       this.scrollable.container.append(this.chatInner);
       animationIntersector.unlockGroup(CHAT_ANIMATION_GROUP);
       animationIntersector.checkAnimations(false, CHAT_ANIMATION_GROUP/* , true */);
-      //this.scrollable.attachSentinels();
-      //this.scrollable.container.insertBefore(this.chatInner, this.scrollable.container.lastElementChild);
 
       this.lazyLoadQueue.unlock();
 
@@ -1457,7 +1451,6 @@ export default class ChatBubbles {
 
     this.messagesQueuePromise = new Promise((resolve, reject) => {
       setTimeout(() => {
-        const chatInner = this.chatInner;
         const queue = this.messagesQueue.slice();
         this.messagesQueue.length = 0;
 
@@ -1468,10 +1461,10 @@ export default class ChatBubbles {
         // promises.push(getHeavyAnimationPromise());
 
         //this.log('promises to call', promises, queue);
+        const middleware = this.getMiddleware();
         Promise.all(promises).then(() => {
-          if(this.chatInner != chatInner) {
-            //this.log.warn('chatInner changed!', this.chatInner, chatInner);
-            return reject('chatInner changed!');
+          if(!middleware()) {
+            return Promise.reject('setMessagesQueuePromise: peer changed!');
           }
 
           if(this.messagesQueueOnRender) {
@@ -1490,7 +1483,7 @@ export default class ChatBubbles {
           if(this.messagesQueue.length) {
             this.setMessagesQueuePromise();
           }
-        }, reject);
+        }).catch(reject);
       }, 0);
     });
   }
@@ -2333,6 +2326,7 @@ export default class ChatBubbles {
       //const realLength = this.scrollable.container.childElementCount;
       let previousScrollHeightMinusTop: number/* , previousScrollHeight: number */;
       //if(realLength > 0/*  && (reverse || isSafari) */) { // for safari need set when scrolling bottom too
+      //if(!this.scrollable.isHeavyScrolling) {
         this.messagesQueueOnRender = () => {
           const {scrollTop, scrollHeight} = this.scrollable;
 
@@ -2350,6 +2344,7 @@ export default class ChatBubbles {
           //this.log('performHistoryResult: messagesQueueOnRender, scrollTop:', scrollTop, scrollHeight, previousScrollHeightMinusTop);
           this.messagesQueueOnRender = undefined;
         };
+      //}
       //}
 
       while(history.length) {
@@ -2412,7 +2407,7 @@ export default class ChatBubbles {
         return;
       }
 
-      this.chat.setPeer(this.peerId, (history.messages[0] as MyMessage).mid);
+      this.chat.setMessageId((history.messages[0] as MyMessage).mid);
       //console.log('got history date:', history);
     });
   };
@@ -2540,17 +2535,17 @@ export default class ChatBubbles {
       const promise = result.then((result) => {
         //this.log('getHistory not cached result by maxId:', maxId, reverse, isBackLimit, result, peerId, justLoad);
 
+        if(reverse ? this.getHistoryTopPromise !== promise : this.getHistoryBottomPromise !== promise) {
+          this.log.warn('getHistory: peer changed');
+          ////console.timeEnd('render history total');
+          return Promise.reject();
+        }
+
         if(justLoad) {
           this.scrollable.onScroll(); // нужно делать из-за ранней прогрузки
           return true;
         }
         //console.timeEnd('appImManager call getHistory');
-        
-        if(this.peerId != peerId || (this.getHistoryTopPromise != promise && this.getHistoryBottomPromise != promise)) {
-          this.log.warn('peer changed');
-          ////console.timeEnd('render history total');
-          return Promise.reject();
-        }
 
         processResult(result);
         
@@ -2561,7 +2556,7 @@ export default class ChatBubbles {
         });
       }, (err) => {
         this.log.error('getHistory error:', err);
-        return false;
+        throw err;
       });
       
       return promise;
@@ -2626,7 +2621,7 @@ export default class ChatBubbles {
     }
 
     (reverse ? this.getHistoryTopPromise = waitPromise : this.getHistoryBottomPromise = waitPromise);
-    waitPromise.finally(() => {
+    waitPromise.then(() => {
       (reverse ? this.getHistoryTopPromise = undefined : this.getHistoryBottomPromise = undefined);
     });
 

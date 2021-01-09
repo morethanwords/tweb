@@ -1262,7 +1262,7 @@ export default class MTPNetworker {
   
         AppStorage.get<number>('dc').then((baseDcId: number) => {
           if(baseDcId == this.dcId && !this.isFileNetworker && NetworkerFactory.updatesProcessor) {
-            NetworkerFactory.updatesProcessor(message, true);
+            NetworkerFactory.updatesProcessor(message);
           }
         });
         break;
@@ -1360,7 +1360,7 @@ export default class MTPNetworker {
         this.log.debug('Update', message);
         
         if(NetworkerFactory.updatesProcessor !== null) {
-          NetworkerFactory.updatesProcessor(message, true);
+          NetworkerFactory.updatesProcessor(message);
         }
         break;
     }

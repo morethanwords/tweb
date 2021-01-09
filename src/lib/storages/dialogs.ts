@@ -1,7 +1,7 @@
 import { tsNow } from "../../helpers/date";
 import type { Message } from "../../layer";
 import type { AppChatsManager } from "../appManagers/appChatsManager";
-import type { AppMessagesManager, Dialog } from "../appManagers/appMessagesManager";
+import type { AppMessagesManager, Dialog, MyMessage } from "../appManagers/appMessagesManager";
 import type { AppPeersManager } from "../appManagers/appPeersManager";
 import type { ServerTimeManager } from "../mtproto/serverTimeManager";
 
@@ -89,27 +89,32 @@ export default class DialogsStorage {
     return (date * 0x10000) + ((++this.dialogsNum) & 0xFFFF);
   }
 
-  public generateIndexForDialog(dialog: Dialog, justReturn = false) {
+  public generateIndexForDialog(dialog: Dialog, justReturn = false, message?: MyMessage) {
     const channelId = this.appPeersManager.isChannel(dialog.peerId) ? -dialog.peerId : 0;
-    const mid = dialog.top_message;
-    const message = this.appMessagesManager.getMessageByPeer(dialog.peerId, mid);
+    
+    let topDate = 0;
+    if(dialog.pFlags.pinned && !justReturn) {
+      topDate = this.generateDialogPinnedDate(dialog);
+    } else {
+      if(!message) {
+        message = this.appMessagesManager.getMessageByPeer(dialog.peerId, dialog.top_message);
+      }
 
-    let topDate = (message as Message.message).date || Date.now() / 1000;
-    if(channelId) {
-      const channel = this.appChatsManager.getChat(channelId);
-      if(!topDate || channel.date && channel.date > topDate) {
-        topDate = channel.date;
+      topDate = (message as Message.message).date || topDate;
+      if(channelId) {
+        const channel = this.appChatsManager.getChat(channelId);
+        if(!topDate || (channel.date && channel.date > topDate)) {
+          topDate = channel.date;
+        }
+      }
+  
+      if(dialog.draft && dialog.draft._ === 'draftMessage' && dialog.draft.date > topDate) {
+        topDate = dialog.draft.date;
       }
     }
 
-    const savedDraft: any = {};// DraftsManager.saveDraft(peerId, dialog.draft); // warning
-    if(savedDraft && savedDraft.date > topDate) {
-      topDate = savedDraft.date;
-    }
-
-    if(dialog.pFlags.pinned && !justReturn) {
-      topDate = this.generateDialogPinnedDate(dialog);
-      //this.log('topDate', peerId, topDate);
+    if(!topDate) {
+      topDate = Date.now() / 1000;
     }
 
     const index = this.generateDialogIndex(topDate);

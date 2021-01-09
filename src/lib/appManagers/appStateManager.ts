@@ -11,6 +11,7 @@ import type { AuthState } from '../../types';
 import type FiltersStorage from '../storages/filters';
 import type DialogsStorage from '../storages/dialogs';
 import { copy, setDeepProperty, isObject, validateInitObject } from '../../helpers/object';
+import { AppDraftsManager } from './appDraftsManager';
 
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
 const STATE_VERSION = App.version;
@@ -55,7 +56,8 @@ export type State = Partial<{
       suggest: boolean,
       loop: boolean
     }
-  }
+  },
+  drafts: AppDraftsManager['drafts']
 }>;
 
 const STATE_INIT: State = {
@@ -96,7 +98,8 @@ const STATE_INIT: State = {
       suggest: true,
       loop: true
     }
-  }
+  },
+  drafts: {}
 };
 
 const ALL_KEYS = Object.keys(STATE_INIT) as any as Array<keyof State>;

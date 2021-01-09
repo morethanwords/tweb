@@ -46,7 +46,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
   } = {} as any;
   private pending: Array<Task> = [];
 
-  public updatesProcessor: (obj: any, bool: boolean) => void = null;
+  public updatesProcessor: (obj: any) => void = null;
 
   private log = logger('API-PROXY');
 
@@ -134,7 +134,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
       
       if(task.update) {
         if(this.updatesProcessor) {
-          this.updatesProcessor(task.update.obj, task.update.bool);
+          this.updatesProcessor(task.update);
         }
       } else if(task.progress) {
         rootScope.broadcast('download_progress', task.progress);
@@ -218,7 +218,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
     }
   }
 
-  public setUpdatesProcessor(callback: (obj: any, bool: boolean) => void) {
+  public setUpdatesProcessor(callback: (obj: any) => void) {
     this.updatesProcessor = callback;
   }
 

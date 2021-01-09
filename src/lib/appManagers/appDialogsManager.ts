@@ -24,6 +24,7 @@ import Button from "../../components/button";
 import SetTransition from "../../components/singleTransition";
 import AppStorage from '../storage';
 import apiUpdatesManager from "./apiUpdatesManager";
+import appDraftsManager, { MyDraftMessage } from "./appDraftsManager";
 
 type DialogDom = {
   avatarEl: AvatarElement,
@@ -335,6 +336,13 @@ export class AppDialogsManager {
       }
     });
 
+    rootScope.on('dialog_draft', (e) => {
+      const dialog = appMessagesManager.getDialogByPeerId(e.peerId)[0];
+      if(dialog) {
+        this.updateDialog(dialog);
+      }
+    });
+
     rootScope.on('peer_changed', (e) => {
       const peerId = e;
 
@@ -457,6 +465,11 @@ export class AppDialogsManager {
           this.addFilter(filter);
         }
       });
+
+      if(state.dialogs?.length) {
+        appDraftsManager.getAllDrafts();
+        appDraftsManager.addMissedDialogs();
+      }
 
       return this.loadDialogs();
     }).then(() => {
@@ -903,7 +916,7 @@ export class AppDialogsManager {
     });
   }
 
-  public setLastMessage(dialog: any, lastMessage?: any, dom?: DialogDom, highlightWord?: string) {
+  public setLastMessage(dialog: Dialog, lastMessage?: any, dom?: DialogDom, highlightWord?: string) {
     ///////console.log('setlastMessage:', lastMessage);
     if(!dom) {
       dom = this.getDialogDom(dialog.peerId);
@@ -914,7 +927,12 @@ export class AppDialogsManager {
       }
     }
 
+    let draftMessage: MyDraftMessage;
     if(!lastMessage) {
+      if(dialog.draft && dialog.draft._ === 'draftMessage') {
+        draftMessage = dialog.draft;
+      }
+      
       lastMessage = appMessagesManager.getMessageByPeer(dialog.peerId, dialog.top_message);
     }
 
@@ -959,6 +977,8 @@ export class AppDialogsManager {
         });
 
         dom.lastMessageSpan.innerHTML = lastMessageText + messageWrapped;
+      } else if(draftMessage) {
+        dom.lastMessageSpan.innerHTML = draftMessage.rReply;
       } else if(!lastMessage.deleted) {
         dom.lastMessageSpan.innerHTML = lastMessage.rReply;
       } else {
@@ -966,7 +986,12 @@ export class AppDialogsManager {
       }
   
       /* if(lastMessage.from_id == auth.id) { // You:  */
-      if(peer._ != 'peerUser' && peerId != lastMessage.fromId && !lastMessage.action) {
+      if(draftMessage) {
+        const bold = document.createElement('b');
+        bold.classList.add('danger');
+        bold.innerHTML = 'Draft: ';
+        dom.lastMessageSpan.prepend(bold);
+      } else if(peer._ !== 'peerUser' && peerId !== lastMessage.fromId && !lastMessage.action) {
         const sender = appPeersManager.getPeer(lastMessage.fromId);
         if(sender && sender.id) {
           const senderBold = document.createElement('b');
@@ -987,8 +1012,9 @@ export class AppDialogsManager {
       }
     }
 
-    if(!lastMessage.deleted) {
-      dom.lastTimeSpan.innerHTML = formatDateAccordingToToday(new Date(lastMessage.date * 1000));
+    if(!lastMessage.deleted || draftMessage/*  && lastMessage._ !== 'draftMessage' */) {
+      const date = draftMessage ? Math.max(draftMessage.date, lastMessage.date || 0) : lastMessage.date;
+      dom.lastTimeSpan.innerHTML = formatDateAccordingToToday(new Date(date * 1000));
     } else dom.lastTimeSpan.innerHTML = '';
 
     if(this.doms[peerId] == dom) {
@@ -1024,7 +1050,9 @@ export class AppDialogsManager {
       dom.listEl.classList.toggle('is-muted', isMuted);
     }
 
-    const lastMessage = appMessagesManager.getMessageByPeer(dialog.peerId, dialog.top_message);
+    const lastMessage = dialog.draft && dialog.draft._ === 'draftMessage' ? 
+      dialog.draft : 
+      appMessagesManager.getMessageByPeer(dialog.peerId, dialog.top_message);
     if(lastMessage._ != 'messageEmpty' && !lastMessage.deleted && 
       lastMessage.fromId == rootScope.myId && lastMessage.peerId != rootScope.myId/*  && 
       dialog.read_outbox_max_id */) { // maybe comment, 06.20.2020

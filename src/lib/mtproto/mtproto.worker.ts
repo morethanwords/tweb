@@ -56,8 +56,8 @@ export const isWebpSupported = () => {
   return webpSupported;
 };
 
-networkerFactory.setUpdatesProcessor((obj, bool) => {
-  respond({update: {obj, bool}});
+networkerFactory.setUpdatesProcessor((obj) => {
+  respond({update: obj});
 });
 
 networkerFactory.onConnectionStatusChange = (status) => {

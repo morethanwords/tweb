@@ -831,7 +831,8 @@ export namespace Message {
 		deleted?: boolean,
 		peerId?: number,
 		fromId?: number,
-		canBeEdited?: boolean
+		canBeEdited?: boolean,
+		rReply?: string
 	};
 
 	export type messageService = {
@@ -856,7 +857,8 @@ export namespace Message {
 		deleted?: boolean,
 		peerId?: number,
 		fromId?: number,
-		canBeEdited?: boolean
+		canBeEdited?: boolean,
+		rReply?: string
 	};
 }
 
@@ -4777,7 +4779,9 @@ export namespace DraftMessage {
 		reply_to_msg_id?: number,
 		message: string,
 		entities?: Array<MessageEntity>,
-		date: number
+		date: number,
+		rReply?: string,
+		rMessage?: string
 	};
 }
 

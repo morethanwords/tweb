@@ -542,7 +542,7 @@ export default class ChatPinnedMessage {
   public async followPinnedMessage(mid: number) {
     const message = this.chat.getMessage(mid);
     if(message && !message.deleted) {
-      this.chat.setPeer(this.topbar.peerId, mid);
+      this.chat.setMessageId(mid);
       (this.chat.setPeerPromise || Promise.resolve()).then(() => { // * debounce fast clicker
         this.handleFollowingPinnedMessage();
         this.testMid(this.pinnedIndex >= (this.count - 1) ? this.pinnedMaxMid : mid - 1);

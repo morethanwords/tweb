@@ -4,6 +4,8 @@ import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManage
 import type { AppPeersManager } from '../../lib/appManagers/appPeersManager';
 import type { AppWebPagesManager } from "../../lib/appManagers/appWebPagesManager";
 import type { AppImManager } from '../../lib/appManagers/appImManager';
+import type { AppDraftsManager, MyDraftMessage } from '../../lib/appManagers/appDraftsManager';
+import type { ServerTimeManager } from '../../lib/mtproto/serverTimeManager';
 import type Chat from './chat';
 import Recorder from '../../../public/recorder.min';
 import { isTouchSupported } from "../../helpers/touchSupport";
@@ -21,7 +23,7 @@ import Scrollable from "../scrollable";
 import { toast } from "../toast";
 import { wrapReply } from "../wrappers";
 import InputField from '../inputField';
-import { MessageEntity } from '../../layer';
+import { MessageEntity, DraftMessage } from '../../layer';
 import StickersHelper from './stickersHelper';
 import ButtonIcon from '../buttonIcon';
 import DivAndCaption from '../divAndCaption';
@@ -32,7 +34,8 @@ import PopupSchedule from '../popups/schedule';
 import SendMenu from './sendContextMenu';
 import rootScope from '../../lib/rootScope';
 import PopupPinMessage from '../popups/unpinMessage';
-import { isApple } from '../../helpers/userAgent';
+import { debounce } from '../../helpers/schedulers';
+import { tsNow } from '../../helpers/date';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -109,9 +112,11 @@ export default class ChatInput {
 
   public goDownBtn: HTMLButtonElement;
   public goDownUnreadBadge: HTMLElement;
-  btnScheduled: HTMLButtonElement;
+  public btnScheduled: HTMLButtonElement;
 
-  constructor(private chat: Chat, private appMessagesManager: AppMessagesManager, private appDocsManager: AppDocsManager, private appChatsManager: AppChatsManager, private appPeersManager: AppPeersManager, private appWebPagesManager: AppWebPagesManager, private appImManager: AppImManager) {
+  public saveDraftDebounced: () => void;
+
+  constructor(private chat: Chat, private appMessagesManager: AppMessagesManager, private appDocsManager: AppDocsManager, private appChatsManager: AppChatsManager, private appPeersManager: AppPeersManager, private appWebPagesManager: AppWebPagesManager, private appImManager: AppImManager, private appDraftsManager: AppDraftsManager, private serverTimeManager: ServerTimeManager) {
     this.listenerSetter = new ListenerSetter();
   }
 
@@ -311,6 +316,18 @@ export default class ChatInput {
       }
     });
 
+    this.listenerSetter.add(rootScope, 'draft_updated', (e) => {
+      const {peerId, threadId, draft} = e;
+      if(this.chat.threadId !== threadId || this.chat.peerId !== peerId) return;
+      this.setDraft(draft);
+    });
+
+    this.listenerSetter.add(rootScope, 'peer_changing', (chat) => {
+      if(this.chat === chat) {
+        this.saveDraft();
+      }
+    });
+
     try {
       this.recorder = new Recorder({
         //encoderBitRate: 32,
@@ -388,7 +405,8 @@ export default class ChatInput {
             waveform: result.waveform,
             objectURL: result.url,
             replyToMsgId: this.replyToMsgId,
-            threadId: this.chat.threadId
+            threadId: this.chat.threadId,
+            clearDraft: true
           });
 
           this.onMessageSent(false, true);
@@ -398,6 +416,8 @@ export default class ChatInput {
 
     attachClickEvent(this.replyElements.cancelBtn, this.onHelperCancel, {listenerSetter: this.listenerSetter});
     attachClickEvent(this.replyElements.container, this.onHelperClick, {listenerSetter: this.listenerSetter});
+
+    this.saveDraftDebounced = debounce(() => this.saveDraft(), 2500, false, true);
   }
 
   public constructPinnedHelpers() {
@@ -470,6 +490,29 @@ export default class ChatInput {
     this.goDownUnreadBadge.classList.toggle('badge-gray', this.appMessagesManager.isPeerMuted(this.chat.peerId));
   }
 
+  public saveDraft() {
+    if(!this.chat.peerId) return;
+    
+    const entities: MessageEntity[] = [];
+    const str = getRichValue(this.messageInputField.input, entities);
+
+    let draft: DraftMessage.draftMessage;
+    if(str.length) {
+      draft = {
+        _: 'draftMessage',
+        date: tsNow(true) + this.serverTimeManager.serverTimeOffset,
+        message: str,
+        entities: entities.length ? entities : undefined,
+        pFlags: {
+          no_webpage: this.noWebPage
+        },
+        reply_to_msg_id: this.replyToMsgId
+      };
+    }
+
+    this.appDraftsManager.syncDraft(this.chat.peerId, this.chat.threadId, draft);
+  }
+
   public destroy() {
     //this.chat.log.error('Input destroying');
 
@@ -491,6 +534,20 @@ export default class ChatInput {
       this.clearInput();
       this.clearHelper();
     }
+  }
+
+  public setDraft(draft?: MyDraftMessage, fromUpdate = true) {
+    if(!isInputEmpty(this.messageInput)) return;
+    
+    if(!draft) {
+      draft = this.appDraftsManager.getDraft(this.chat.peerId, this.chat.threadId);
+
+      if(!draft) {
+        return;
+      }
+    }
+
+    this.setInputValue(draft.rMessage, fromUpdate, fromUpdate);
   }
 
   public finishPeerChange() {
@@ -541,6 +598,7 @@ export default class ChatInput {
         this.messageInput.removeAttribute('contenteditable');
       } else {
         this.messageInput.setAttribute('contenteditable', 'true');
+        this.setDraft(undefined, false);
       }
       
       this.attachMenu.toggleAttribute('disabled', !visible.length);
@@ -801,7 +859,7 @@ export default class ChatInput {
       alert('not single');
     } */
 
-    //console.log('messageInput input', this.messageInput.innerText, this.serializeNodes(Array.from(this.messageInput.childNodes)));
+    //console.log('messageInput input', this.messageInput.innerText);
     //const value = this.messageInput.innerText;
     const markdownEntities: MessageEntity[] = [];
     const richValue = getRichValue(this.messageInputField.input, markdownEntities);
@@ -895,6 +953,8 @@ export default class ChatInput {
         this.appMessagesManager.setTyping(this.chat.peerId, 'sendMessageTypingAction');
       }
     }
+
+    this.saveDraftDebounced();
 
     this.updateSendBtn();
   };
@@ -1039,9 +1099,9 @@ export default class ChatInput {
         }
       });
     } else if(this.helperType == 'reply') {
-      this.chat.setPeer(this.chat.peerId, this.replyToMsgId);
+      this.chat.setMessageId(this.replyToMsgId);
     } else if(this.helperType == 'edit') {
-      this.chat.setPeer(this.chat.peerId, this.editMsgId);
+      this.chat.setMessageId(this.editMsgId);
     }
   };
 
@@ -1125,7 +1185,8 @@ export default class ChatInput {
         noWebPage: this.noWebPage,
         webPage: this.willSendWebPage,
         scheduleDate: this.scheduleDate,
-        silent: this.sendSilent
+        silent: this.sendSilent,
+        clearDraft: true
       });
     }
 
@@ -1269,6 +1330,16 @@ export default class ChatInput {
     this.chat.container.classList.remove('is-helper-active');
   }
 
+  public setInputValue(value: string, clear = true, focus = true) {
+    clear && this.clearInput();
+    this.messageInput.innerHTML = value || '';
+    this.onMessageInput();
+    window.requestAnimationFrame(() => {
+      focus && placeCaretAtEnd(this.messageInput);
+      this.inputScroll.scrollTop = this.inputScroll.scrollHeight;
+    });
+  }
+
   public setTopInfo(type: ChatInputHelperType, callerFunc: () => void, title = '', subtitle = '', input?: string, message?: any) {
     if(type != 'webpage') {
       this.clearHelper(type);
@@ -1288,13 +1359,7 @@ export default class ChatInput {
     } */
 
     if(input !== undefined) {
-      this.clearInput();
-      this.messageInput.innerHTML = input || '';
-      this.onMessageInput();
-      window.requestAnimationFrame(() => {
-        placeCaretAtEnd(this.messageInput);
-        this.inputScroll.scrollTop = this.inputScroll.scrollHeight;
-      });
+      this.setInputValue(input);
     }
 
     setTimeout(() => {

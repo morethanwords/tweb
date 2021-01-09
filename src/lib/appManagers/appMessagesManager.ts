@@ -24,7 +24,7 @@ import DialogsStorage from "../storages/dialogs";
 import FiltersStorage from "../storages/filters";
 //import { telegramMeWebService } from "../mtproto/mtproto";
 import apiUpdatesManager from "./apiUpdatesManager";
-import appChatsManager from "./appChatsManager";
+import appChatsManager, { Channel } from "./appChatsManager";
 import appDocsManager, { MyDocument } from "./appDocsManager";
 import appDownloadManager from "./appDownloadManager";
 import appPeersManager from "./appPeersManager";
@@ -33,6 +33,7 @@ import appPollsManager from "./appPollsManager";
 import appStateManager from "./appStateManager";
 import appUsersManager from "./appUsersManager";
 import appWebPagesManager from "./appWebPagesManager";
+import appDraftsManager from "./appDraftsManager";
 
 //console.trace('include');
 // TODO: если удалить сообщение в непрогруженном диалоге, то при обновлении, из-за стейта, последнего сообщения в чатлисте не будет
@@ -201,41 +202,26 @@ export class AppMessagesManager {
       });
     });
 
-    /* rootScope.$on('draft_updated', (e) => {
-      let eventData = e;;
-      var peerId = eventData.peerId;
-      var draft = eventData.draft;
+    rootScope.on('draft_updated', (e) => {
+      const {peerId, threadId, draft} = e;
 
-      var dialog = this.getDialogByPeerID(peerId)[0];
-      if(dialog) {
-        var topDate;
-        if(draft && draft.date) {
-          topDate = draft.date;
-        } else {
-          var channelId = appPeersManager.isChannel(peerId) ? -peerId : 0
-          var topDate = this.getMessage(dialog.top_message).date;
+      if(threadId) return;
 
-          if(channelId) {
-            var channel = appChatsManager.getChat(channelId);
-            if(!topDate || channel.date && channel.date > topDate) {
-              topDate = channel.date;
-            }
-          }
-        }
-
-        if(!dialog.pFlags.pinned) {
-          dialog.index = this.dialogsStorage.generateDialogIndex(topDate);
-        }
-
+      const dialog = this.getDialogByPeerId(peerId)[0];
+      if(dialog && !threadId) {
+        dialog.draft = draft;
+        this.dialogsStorage.generateIndexForDialog(dialog);
         this.dialogsStorage.pushDialog(dialog);
 
-        rootScope.$broadcast('dialog_draft', {
+        rootScope.broadcast('dialog_draft', {
           peerId,
           draft,
           index: dialog.index
         });
+      } else {
+        this.reloadConversation(peerId);
       }
-    }); */
+    });
 
     function timedChunk(items: any[], process: (...args: any[]) => any, context: any, callback: (...args: any[]) => void) {
       if(!items.length) return callback(items);
@@ -278,7 +264,7 @@ export class AppMessagesManager {
             }
     
             dialog.top_message = message.mid;
-            this.setDialogIndexByMessage(dialog, message);
+            this.dialogsStorage.generateIndexForDialog(dialog, false, message);
     
             break;
           } else if(message.pFlags && message.pFlags.unread) {
@@ -602,7 +588,11 @@ export class AppMessagesManager {
       this.pendingAfterMsgs[peerId] = sentRequestOptions;
     }
 
-    this.beforeMessageSending(message, {isScheduled: !!options.scheduleDate || undefined, threadId: options.threadId});
+    this.beforeMessageSending(message, {
+      isScheduled: !!options.scheduleDate || undefined, 
+      threadId: options.threadId,
+      clearDraft: options.clearDraft
+    });
   }
 
   public sendFile(peerId: number, file: File | Blob | MyDocument, options: Partial<{
@@ -623,6 +613,7 @@ export class AppMessagesManager {
     duration: number,
     background: true,
     silent: true,
+    clearDraft: true,
     scheduleDate: number,
 
     waveform: Uint8Array
@@ -957,7 +948,12 @@ export class AppMessagesManager {
       return sentDeferred;
     };
 
-    this.beforeMessageSending(message, {isGroupedItem: options.isGroupedItem, isScheduled: !!options.scheduleDate || undefined, threadId: options.threadId});
+    this.beforeMessageSending(message, {
+      isGroupedItem: options.isGroupedItem, 
+      isScheduled: !!options.scheduleDate || undefined, 
+      threadId: options.threadId,
+      clearDraft: options.clearDraft
+    });
 
     if(!options.isGroupedItem) {
       sentDeferred.then(inputMedia => {
@@ -972,7 +968,8 @@ export class AppMessagesManager {
           reply_to_msg_id: replyToMsgId,
           schedule_date: options.scheduleDate,
           silent: options.silent,
-          entities
+          entities,
+          clear_draft: options.clearDraft
         }).then((updates) => {
           apiUpdatesManager.processUpdateMessage(updates);
         }, (error) => {
@@ -1009,6 +1006,7 @@ export class AppMessagesManager {
       thumbURL: string
     }>[],
     silent: true,
+    clearDraft: true,
     scheduleDate: number
   }> = {}) {
     //this.checkSendOptions(options);
@@ -1065,6 +1063,10 @@ export class AppMessagesManager {
 
       this.setDialogTopMessage(message);
     }
+
+    if(options.clearDraft) {
+      appDraftsManager.syncDraft(peerId, options.threadId);
+    }
     
     // * test pending
     //return;
@@ -1090,7 +1092,8 @@ export class AppMessagesManager {
             multi_media: multiMedia,
             reply_to_msg_id: replyToMsgId,
             schedule_date: options.scheduleDate,
-            silent: options.silent
+            silent: options.silent,
+            clear_draft: options.clearDraft
           }).then((updates) => {
             apiUpdatesManager.processUpdateMessage(updates);
           }, (error) => {
@@ -1332,7 +1335,11 @@ export class AppMessagesManager {
       this.pendingAfterMsgs[peerId] = sentRequestOptions;
     }
 
-    this.beforeMessageSending(message, {isScheduled: !!options.scheduleDate || undefined, threadId: options.threadId});
+    this.beforeMessageSending(message, {
+      isScheduled: !!options.scheduleDate || undefined, 
+      threadId: options.threadId,
+      clearDraft: options.clearDraft
+    });
   }
 
   /* private checkSendOptions(options: Partial<{
@@ -1346,7 +1353,12 @@ export class AppMessagesManager {
     }
   } */
 
-  private beforeMessageSending(message: any, options: Partial<{isGroupedItem: true, isScheduled: true, threadId: number}> = {}) {
+  private beforeMessageSending(message: any, options: Partial<{
+    isGroupedItem: true, 
+    isScheduled: true, 
+    threadId: number, 
+    clearDraft: true
+  }> = {}) {
     const messageId = message.id;
     const peerId = this.getMessagePeer(message);
     const storage = options.isScheduled ? this.getScheduledMessagesStorage(peerId) : this.getMessagesStorage(peerId);
@@ -1374,6 +1386,10 @@ export class AppMessagesManager {
 
         this.setDialogTopMessage(message);
       }
+    }
+
+    if(!options.isGroupedItem && options.clearDraft && !options.threadId) {
+      appDraftsManager.syncDraft(peerId, options.threadId);
     }
     
     this.pendingByRandomId[message.random_id] = {peerId, tempId: messageId, storage};
@@ -1427,12 +1443,6 @@ export class AppMessagesManager {
     return pFlags;
   }
 
-  private setDialogIndexByMessage(dialog: MTDialog.dialog, message: MyMessage) {
-    if(!dialog.pFlags.pinned || !dialog.index) {
-      dialog.index = this.dialogsStorage.generateDialogIndex(message.date);
-    }
-  }
-
   public setDialogTopMessage(message: MyMessage, dialog: MTDialog.dialog = this.getDialogByPeerId(message.peerId)[0]) {
     if(dialog) {
       dialog.top_message = message.mid;
@@ -1440,7 +1450,7 @@ export class AppMessagesManager {
       const historyStorage = this.getHistoryStorage(message.peerId);
       historyStorage.maxId = message.mid;
 
-      this.setDialogIndexByMessage(dialog, message);
+      this.dialogsStorage.generateIndexForDialog(dialog, false, message);
 
       this.newDialogsToHandle[message.peerId] = dialog;
       this.scheduleHandleNewDialogs();
@@ -1587,28 +1597,16 @@ export class AppMessagesManager {
     let offsetDate = 0;
     let offsetPeerId = 0;
     let offsetIndex = 0;
-    let flags = 0;
 
     if(this.dialogsStorage.dialogsOffsetDate[folderId]) {
       offsetDate = this.dialogsStorage.dialogsOffsetDate[folderId] + serverTimeManager.serverTimeOffset;
       offsetIndex = this.dialogsStorage.dialogsOffsetDate[folderId] * 0x10000;
-      //flags |= 1; // means pinned already loaded
     }
-
-    /* if(this.dialogsStorage.dialogsOffsetDate[0]) {
-      flags |= 1; // means pinned already loaded
-    } */
-
-    //if(folderId > 0) {
-      //flags |= 1;
-      flags |= 2;
-    //}
 
     // ! ВНИМАНИЕ: ОЧЕНЬ СЛОЖНАЯ ЛОГИКА:
     // ! если делать запрос сначала по папке 0, потом по папке 1, по индексу 0 в массиве будет один и тот же диалог, с dialog.pFlags.pinned, ЛОЛ???
     // ! т.е., с запросом folder_id: 1, и exclude_pinned: 0, в результате будут ещё и закреплённые с папки 0
     return apiManager.invokeApi('messages.getDialogs', {
-      flags,
       folder_id: folderId,
       offset_date: offsetDate,
       offset_id: offsetId,
@@ -1621,7 +1619,9 @@ export class AppMessagesManager {
     }).then((dialogsResult) => {
       if(dialogsResult._ == 'messages.dialogsNotModified') return null;
 
-      //this.log.error('messages.getDialogs result:', dialogsResult.dialogs, {...dialogsResult.dialogs[0]});
+      if(DEBUG) {
+        this.log('messages.getDialogs result:', dialogsResult.dialogs, {...dialogsResult.dialogs[0]});
+      }
 
       /* if(!offsetDate) {
         telegramMeWebService.setAuthorized(true);
@@ -2659,7 +2659,7 @@ export class AppMessagesManager {
     appChatsManager.saveApiChats(dialogsResult.chats);
     this.saveMessages(dialogsResult.messages);
 
-    //this.log('applyConversation', dialogsResult);
+    this.log('applyConversation', dialogsResult);
 
     const updatedDialogs: {[peerId: number]: Dialog} = {};
     (dialogsResult.dialogs as Dialog[]).forEach((dialog) => {
@@ -2679,7 +2679,7 @@ export class AppMessagesManager {
         this.log.error('applyConversation lun', dialog, d);
       } */
 
-      if(topMessage) {
+      if(topMessage || (dialog.draft && dialog.draft._ === 'draftMessage')) {
         //const wasDialogBefore = this.getDialogByPeerID(peerId)[0];
 
         // here need to just replace, not FULL replace dialog! WARNING
@@ -2720,6 +2720,24 @@ export class AppMessagesManager {
     }
   }
 
+  public generateDialog(peerId: number) {
+    const dialog: Dialog = {
+      _: 'dialog',
+      pFlags: {},
+      peer: appPeersManager.getOutputPeer(peerId),
+      top_message: 0,
+      read_inbox_max_id: 0,
+      read_outbox_max_id: 0,
+      unread_count: 0,
+      unread_mentions_count: 0,
+      notify_settings: {
+        _: 'peerNotifySettings',
+      },
+    };
+
+    return dialog;
+  }
+
   public saveConversation(dialog: Dialog, folderId = 0) {
     const peerId = appPeersManager.getPeerId(dialog.peer);
     if(!peerId) {
@@ -2743,7 +2761,7 @@ export class AppMessagesManager {
       message = {
         _: 'message',
         id: mid,
-        mid: mid,
+        mid,
         from_id: appPeersManager.getOutputPeer(appUsersManager.getSelf().id),
         peer_id: appPeersManager.getOutputPeer(peerId),
         deleted: true,
@@ -2783,6 +2801,7 @@ export class AppMessagesManager {
       } */
     }
 
+    dialog.draft = appDraftsManager.saveDraft(peerId, 0, dialog.draft);
     dialog.peerId = peerId;
 
     // Because we saved message without dialog present
@@ -4717,9 +4736,9 @@ export class AppMessagesManager {
   }
 
   public setTyping(peerId: number, _action: any): Promise<boolean> {
-    if(!rootScope.myId || !peerId || !this.canWriteToPeer(peerId)) return Promise.resolve(false);
+    if(!rootScope.myId || !peerId || !this.canWriteToPeer(peerId) || peerId === rootScope.myId) return Promise.resolve(false);
     
-    const action: SendMessageAction = typeof(_action) == 'string' ? {_: _action} : _action;
+    const action: SendMessageAction = typeof(_action) === 'string' ? {_: _action} : _action;
     return apiManager.invokeApi('messages.setTyping', {
       peer: appPeersManager.getInputPeerById(peerId),
       action

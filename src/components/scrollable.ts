@@ -1,7 +1,6 @@
-import { CancellablePromise } from "../helpers/cancellablePromise";
 import { isTouchSupported } from "../helpers/touchSupport";
 import { logger, LogLevels } from "../lib/logger";
-import fastSmoothScroll from "../helpers/fastSmoothScroll";
+import fastSmoothScroll, { FocusDirection } from "../helpers/fastSmoothScroll";
 import useHeavyAnimationCheck from "../hooks/useHeavyAnimationCheck";
 /*
 var el = $0;
@@ -52,7 +51,8 @@ export class ScrollableBase {
   public onScrollMeasure: number = 0;
   protected onScroll: () => void;
 
-  public isHeavyAnimationInProgress: boolean;
+  public isHeavyAnimationInProgress = false;
+  public isHeavyScrolling = false;
 
   constructor(public el: HTMLElement, logPrefix = '', public container: HTMLElement = document.createElement('div')) {
     this.container.classList.add('scrollable');
@@ -87,7 +87,21 @@ export class ScrollableBase {
     this.container.append(element);
   }
 
-  public scrollIntoViewNew = fastSmoothScroll.bind(this, this.container);
+  public scrollIntoViewNew(
+    element: HTMLElement,
+    position: ScrollLogicalPosition,
+    margin?: number,
+    maxDistance?: number,
+    forceDirection?: FocusDirection,
+    forceDuration?: number,
+    axis?: 'x' | 'y'
+  ) {
+    this.isHeavyScrolling = true;
+    return fastSmoothScroll(this.container, element, position, margin, maxDistance, forceDirection, forceDuration, axis)
+    .finally(() => {
+      this.isHeavyScrolling = false;
+    });
+  }
 }
 
 export type SliceSides = 'top' | 'bottom';

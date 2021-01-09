@@ -5,14 +5,17 @@ import type { Poll, PollResults } from "./appManagers/appPollsManager";
 import type { MyDialogFilter } from "./storages/filters";
 import type { ConnectionStatusChange } from "../types";
 import type { UserTyping } from "./appManagers/appChatsManager";
+import type Chat from "../components/chat/chat";
 import { DEBUG, MOUNT_CLASS_TO, UserAuth } from "./mtproto/mtproto_config";
 import { State } from "./appManagers/appStateManager";
 import EventListenerBase from "../helpers/eventListenerBase";
+import { MyDraftMessage } from "./appManagers/appDraftsManager";
 
 type BroadcastEvents = {
   'user_update': number,
   'user_auth': UserAuth,
   'peer_changed': number,
+  'peer_changing': Chat,
   'peer_pinned_messages': {peerId: number, mids?: number[], pinned?: boolean, unpinAll?: true},
   'peer_pinned_hidden': {peerId: number, maxId: number},
   'peer_typings': {peerId: number, typings: UserTyping[]},
@@ -21,7 +24,7 @@ type BroadcastEvents = {
   'filter_update': MyDialogFilter,
   'filter_order': number[],
   
-  'dialog_draft': {peerId: number, draft: any, index: number},
+  'dialog_draft': {peerId: number, draft: MyDraftMessage | undefined, index: number},
   'dialog_unread': {peerId: number},
   'dialog_flush': {peerId: number},
   'dialog_drop': {peerId: number, dialog?: Dialog},
@@ -76,7 +79,7 @@ type BroadcastEvents = {
   'download_progress': any,
   'connection_status_change': ConnectionStatusChange,
   'settings_updated': {key: string, value: any},
-  //'draft_updated': any,
+  'draft_updated': {peerId: number, threadId: number, draft: MyDraftMessage | undefined},
 
   'event-heavy-animation-start': void,
   'event-heavy-animation-end': void

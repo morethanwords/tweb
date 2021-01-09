@@ -30,6 +30,8 @@ import ChatDragAndDrop from '../../components/chat/dragAndDrop';
 import { debounce } from '../../helpers/schedulers';
 import lottieLoader from '../lottieLoader';
 import useHeavyAnimationCheck from '../../hooks/useHeavyAnimationCheck';
+import appDraftsManager from './appDraftsManager';
+import serverTimeManager from '../mtproto/serverTimeManager';
 
 //console.log('appImManager included33!');
 
@@ -450,13 +452,17 @@ export class AppImManager {
   }
 
   private createNewChat() {
-    const chat = new Chat(this, appChatsManager, appDocsManager, appInlineBotsManager, appMessagesManager, appPeersManager, appPhotosManager, appProfileManager, appStickersManager, appUsersManager, appWebPagesManager, appPollsManager, apiManager);
+    const chat = new Chat(this, appChatsManager, appDocsManager, appInlineBotsManager, appMessagesManager, appPeersManager, appPhotosManager, appProfileManager, appStickersManager, appUsersManager, appWebPagesManager, appPollsManager, apiManager, appDraftsManager, serverTimeManager);
 
     this.chats.push(chat);
   }
 
   private spliceChats(fromIndex: number, justReturn = true) {
     if(fromIndex >= this.chats.length) return;
+
+    if(this.chats.length > 1 && justReturn) {
+      rootScope.broadcast('peer_changing', this.chat);
+    }
 
     const spliced = this.chats.splice(fromIndex, this.chats.length - fromIndex);
 
@@ -561,7 +567,7 @@ export class AppImManager {
 
   public setInnerPeer(peerId: number, lastMsgId?: number, type: ChatType = 'chat', threadId?: number) {
     // * prevent opening already opened peer
-    const existingIndex = this.chats.findIndex(chat => chat.peerId == peerId && chat.type == type);
+    const existingIndex = this.chats.findIndex(chat => chat.peerId === peerId && chat.type === type);
     if(existingIndex !== -1) {
       this.spliceChats(existingIndex + 1);
       return this.setPeer(peerId, lastMsgId);
