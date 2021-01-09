@@ -137,12 +137,15 @@ export class ApiUpdatesManager {
     }
   }
 
-  processUpdateMessage = (updateMessage: any) => {
+  processUpdateMessage = (updateMessage: any, options: Partial<{
+    ignoreSyncLoading: boolean
+  }> = {}) => {
     // return forceGetDifference()
-    var processOpts = {
+    const processOpts = {
       date: updateMessage.date,
       seq: updateMessage.seq,
-      seqStart: updateMessage.seq_start
+      seqStart: updateMessage.seq_start,
+      ignoreSyncLoading: options.ignoreSyncLoading
     };
   
     switch(updateMessage._) {
@@ -389,7 +392,12 @@ export class ApiUpdatesManager {
     return this.channelStates[channelId];
   }
 
-  public processUpdate(update: any, options: any = {}) {
+  public processUpdate(update: any, options: Partial<{
+    date: number,
+    seq: number,
+    seqStart: number,
+    ignoreSyncLoading: boolean
+  }> = {}) {
     let channelId = 0;
     switch(update._) {
       case 'updateNewChannelMessage':
@@ -411,7 +419,7 @@ export class ApiUpdatesManager {
   
     // this.log.log('process', channelId, curState.pts, update)
   
-    if(curState.syncLoading) {
+    if(curState.syncLoading && !options.ignoreSyncLoading) {
       return false;
     }
   
@@ -557,10 +565,10 @@ export class ApiUpdatesManager {
           this.updatesState.seq = stateResult.seq;
           this.updatesState.pts = stateResult.pts;
           this.updatesState.date = stateResult.date;
-          setTimeout(() => {
+          //setTimeout(() => {
             this.updatesState.syncLoading = false;
             //rootScope.broadcast('state_synchronized');
-          }, 1000);
+          //}, 1000);
       
         // ! for testing
         // updatesState.seq = 1

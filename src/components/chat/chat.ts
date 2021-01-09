@@ -11,6 +11,8 @@ import type { AppStickersManager } from "../../lib/appManagers/appStickersManage
 import type { AppUsersManager } from "../../lib/appManagers/appUsersManager";
 import type { AppWebPagesManager } from "../../lib/appManagers/appWebPagesManager";
 import type { ApiManagerProxy } from "../../lib/mtproto/mtprotoworker";
+import type { AppDraftsManager } from "../../lib/appManagers/appDraftsManager";
+import type { ServerTimeManager } from "../../lib/mtproto/serverTimeManager";
 import EventListenerBase from "../../helpers/eventListenerBase";
 import { logger, LogLevels } from "../../lib/logger";
 import rootScope from "../../lib/rootScope";
@@ -36,6 +38,7 @@ export default class Chat extends EventListenerBase<{
   public selection: ChatSelection;
   public contextMenu: ChatContextMenu;
 
+  public initPeerId = 0;
   public peerId = 0;
   public threadId: number;
   public setPeerPromise: Promise<void>;
@@ -45,7 +48,7 @@ export default class Chat extends EventListenerBase<{
 
   public type: ChatType = 'chat';
   
-  constructor(public appImManager: AppImManager, public appChatsManager: AppChatsManager, public appDocsManager: AppDocsManager, public appInlineBotsManager: AppInlineBotsManager, public appMessagesManager: AppMessagesManager, public appPeersManager: AppPeersManager, public appPhotosManager: AppPhotosManager, public appProfileManager: AppProfileManager, public appStickersManager: AppStickersManager, public appUsersManager: AppUsersManager, public appWebPagesManager: AppWebPagesManager, public appPollsManager: AppPollsManager, public apiManager: ApiManagerProxy) {
+  constructor(public appImManager: AppImManager, public appChatsManager: AppChatsManager, public appDocsManager: AppDocsManager, public appInlineBotsManager: AppInlineBotsManager, public appMessagesManager: AppMessagesManager, public appPeersManager: AppPeersManager, public appPhotosManager: AppPhotosManager, public appProfileManager: AppProfileManager, public appStickersManager: AppStickersManager, public appUsersManager: AppUsersManager, public appWebPagesManager: AppWebPagesManager, public appPollsManager: AppPollsManager, public apiManager: ApiManagerProxy, public appDraftsManager: AppDraftsManager, public serverTimeManager: ServerTimeManager) {
     super();
 
     this.container = document.createElement('div');
@@ -72,10 +75,12 @@ export default class Chat extends EventListenerBase<{
     }
   }
 
-  public init() {
+  public init(peerId: number) {
+    this.initPeerId = peerId;
+
     this.topbar = new ChatTopbar(this, appSidebarRight, this.appMessagesManager, this.appPeersManager, this.appChatsManager);
     this.bubbles = new ChatBubbles(this, this.appMessagesManager, this.appStickersManager, this.appUsersManager, this.appInlineBotsManager, this.appPhotosManager, this.appDocsManager, this.appPeersManager, this.appChatsManager);
-    this.input = new ChatInput(this, this.appMessagesManager, this.appDocsManager, this.appChatsManager, this.appPeersManager, this.appWebPagesManager, this.appImManager);
+    this.input = new ChatInput(this, this.appMessagesManager, this.appDocsManager, this.appChatsManager, this.appPeersManager, this.appWebPagesManager, this.appImManager, this.appDraftsManager, this.serverTimeManager);
     this.selection = new ChatSelection(this, this.bubbles, this.input, this.appMessagesManager);
     this.contextMenu = new ChatContextMenu(this.bubbles.bubblesContainer, this, this.appMessagesManager, this.appChatsManager, this.appPeersManager, this.appPollsManager);
 
@@ -131,22 +136,25 @@ export default class Chat extends EventListenerBase<{
   public cleanup() {
     this.input.cleanup();
     this.selection.cleanup();
-
-    this.peerChanged = false;
   }
 
   public setPeer(peerId: number, lastMsgId?: number) {
     if(this.init) {
-      this.init();
+      this.init(peerId);
       this.init = null;
+    }
+
+    const samePeer = this.peerId === peerId;
+    if(!samePeer) {
+      rootScope.broadcast('peer_changing', this);
+      this.peerId = peerId;
     }
 
     //console.time('appImManager setPeer');
     //console.time('appImManager setPeer pre promise');
     ////console.time('appImManager: pre render start');
-    if(peerId == 0) {
+    if(!peerId) {
       appSidebarRight.toggleSidebar(false);
-      this.peerId = peerId;
       this.cleanup();
       this.topbar.setPeer(peerId);
       this.bubbles.setPeer(peerId);
@@ -155,20 +163,16 @@ export default class Chat extends EventListenerBase<{
       return;
     }
 
-    const samePeer = this.peerId == peerId;
-
     // set new
     if(!samePeer) {
-      if(appSidebarRight.historyTabIds[appSidebarRight.historyTabIds.length - 1] == AppSidebarRight.SLIDERITEMSIDS.search) {
+      if(appSidebarRight.historyTabIds[appSidebarRight.historyTabIds.length - 1] === AppSidebarRight.SLIDERITEMSIDS.search) {
         appSidebarRight.closeTab(AppSidebarRight.SLIDERITEMSIDS.search);
       }
 
-      this.peerId = peerId;
       appSidebarRight.sharedMediaTab.setPeer(peerId, this.threadId);
-      this.cleanup();
-    } else {
-      this.peerChanged = true;
     }
+
+    this.peerChanged = samePeer;
 
     const result = this.bubbles.setPeer(peerId, lastMsgId);
     if(!result) {
@@ -179,8 +183,8 @@ export default class Chat extends EventListenerBase<{
 
     //console.timeEnd('appImManager setPeer pre promise');
     
-    this.setPeerPromise = promise.finally(() => {
-      if(this.peerId == peerId) {
+    const setPeerPromise = this.setPeerPromise = promise.finally(() => {
+      if(this.setPeerPromise === setPeerPromise) {
         this.setPeerPromise = null;
       }
     });
@@ -194,11 +198,17 @@ export default class Chat extends EventListenerBase<{
     return result;
   }
 
+  public setMessageId(messageId?: number) {
+    return this.setPeer(this.peerId, messageId);
+  }
+
   public finishPeerChange(isTarget: boolean, isJump: boolean, lastMsgId: number) {
     if(this.peerChanged) return;
 
     let peerId = this.peerId;
     this.peerChanged = true;
+
+    this.cleanup();
 
     this.topbar.setPeer(peerId);
     this.topbar.finishPeerChange(isTarget, isJump, lastMsgId);

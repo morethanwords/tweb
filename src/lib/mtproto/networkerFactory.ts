@@ -3,10 +3,10 @@ import { ConnectionStatusChange, InvokeApiOptions } from "../../types";
 import MTTransport from "./transports/transport";
 
 export class NetworkerFactory {
-  public updatesProcessor: (obj: any, bool: boolean) => void = null;
+  public updatesProcessor: (obj: any) => void = null;
   public onConnectionStatusChange: (info: ConnectionStatusChange) => void = null;
 
-  public setUpdatesProcessor(callback: (obj: any, bool: boolean) => void) {
+  public setUpdatesProcessor(callback: (obj: any) => void) {
     this.updatesProcessor = callback;
   }
 

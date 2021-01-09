@@ -9,7 +9,7 @@ export const langPack: {[actionType: string]: string} = {
   "messageActionChatAddUsers": "invited {} users",
 	"messageActionChatLeave": "left the group",
 	"messageActionChatDeleteUser": "removed user {}",
-	"messageActionChatJoinedByLink": "joined the group",
+	"messageActionChatJoinedByLink": "joined the group via invite link",
   "messageActionPinMessage": "pinned message",
   "messageActionContactSignUp": "joined Telegram",
 	"messageActionChannelCreate": "Channel created",

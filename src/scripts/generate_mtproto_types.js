@@ -255,4 +255,6 @@ for(const method in methodsMap) {
 out += `}\n\n`;
 
 const path = process.argv[2];
-require('fs').writeFileSync((path || __dirname + '/out/') + 'layer.d.ts', out);
+const writePathTo = (path || __dirname + '/out/') + 'layer.d.ts';
+console.log('Writing layer to:', writePathTo);
+require('fs').writeFileSync(writePathTo, out);

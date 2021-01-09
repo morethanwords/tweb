@@ -168,7 +168,8 @@ export default class PopupNewMedia extends PopupElement {
           threadId: this.chat.threadId,
           isMedia: willAttach.isMedia,
           silent,
-          scheduleDate
+          scheduleDate,
+          clearDraft: true as true
         }, w));
 
         caption = undefined;
@@ -181,7 +182,8 @@ export default class PopupNewMedia extends PopupElement {
             replyToMsgId: input.replyToMsgId, 
             threadId: this.chat.threadId,
             silent, 
-            scheduleDate
+            scheduleDate,
+            clearDraft: true
           });
           caption = '';
           //input.replyToMsgId = undefined;
@@ -196,7 +198,8 @@ export default class PopupNewMedia extends PopupElement {
           replyToMsgId: input.replyToMsgId,
           threadId: this.chat.threadId,
           silent,
-          scheduleDate
+          scheduleDate,
+          clearDraft: true as true
         }, params));
 
         caption = '';

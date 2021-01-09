@@ -70,7 +70,8 @@
     {"name": "fromId", "type": "number"},
     {"name": "grouped_id", "type": "string"},
     {"name": "canBeEdited", "type": "boolean"},
-    {"name": "unread", "type": "true"}
+    {"name": "unread", "type": "true"},
+    {"name": "rReply", "type": "string"}
   ]
 }, {
   "predicate": "messageService",
@@ -80,7 +81,8 @@
     {"name": "peerId", "type": "number"},
     {"name": "fromId", "type": "number"},
     {"name": "canBeEdited", "type": "boolean"},
-    {"name": "unread", "type": "true"}
+    {"name": "unread", "type": "true"},
+    {"name": "rReply", "type": "string"}
   ]
 }, {
   "predicate": "messageEmpty",
@@ -227,5 +229,11 @@
   "predicate": "auth.sentCode",
   "params": [
     {"name": "phone_number", "type": "string"}
+  ]
+}, {
+  "predicate": "draftMessage",
+  "params": [
+    {"name": "rReply", "type": "string"},
+    {"name": "rMessage", "type": "string"}
   ]
 }]
