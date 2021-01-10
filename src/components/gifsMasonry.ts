@@ -64,7 +64,7 @@ export default class GifsMasonry {
       const doc = appDocsManager.getDoc(docId);
 
       const promise = this.scrollPromise.then(() => {
-        const promise = wrapVideo({
+        const res = wrapVideo({
           doc,
           container: div as HTMLDivElement,
           lazyLoadQueue: null,
@@ -73,6 +73,7 @@ export default class GifsMasonry {
           noInfo: true,
         });
     
+        const promise = res.loadPromise;
         promise.finally(() => {
           const video = div.querySelector('video');
 

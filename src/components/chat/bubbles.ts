@@ -44,6 +44,7 @@ import useHeavyAnimationCheck, { getHeavyAnimationPromise, dispatchHeavyAnimatio
 import { fastRaf } from "../../helpers/schedulers";
 import { deferredPromise, CancellablePromise } from "../../helpers/cancellablePromise";
 
+const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS = ['messageActionHistoryClear'];
 
 const TEST_SCROLL_TIMES: number = undefined;
@@ -1392,54 +1393,13 @@ export default class ChatBubbles {
     this.chatInner.classList.toggle('is-channel', isChannel);
   }
 
-  public renderMessagesQueue(message: any, bubble: HTMLDivElement, reverse: boolean) {
+  public renderMessagesQueue(message: any, bubble: HTMLDivElement, reverse: boolean, promises: Promise<any>[]) {
     /* let dateMessage = this.getDateContainerByMessage(message, reverse);
     if(reverse) dateMessage.container.insertBefore(bubble, dateMessage.div.nextSibling);
     else dateMessage.container.append(bubble);
     return; */
 
     //this.log('renderMessagesQueue');
-
-    let promises: Promise<any>[] = [];
-    (Array.from(bubble.querySelectorAll('img, video')) as HTMLImageElement[]).forEach(el => {
-      if(el instanceof HTMLVideoElement) {
-        if(!el.src) {
-          //this.log.warn('no source', el, source, 'src', source.src);
-          return;
-        } else if(el.readyState >= 4) return;
-      } else if(el.complete || !el.src) return;
-
-      let promise = new Promise<void>((resolve, reject) => {
-        let r: () => boolean;
-        let onLoad = () => {
-          clearTimeout(timeout);
-          resolve();
-
-          // lol
-          el.removeEventListener(el instanceof HTMLVideoElement ? 'canplay' : 'load', onLoad);
-        };
-
-        if(el instanceof HTMLVideoElement) {
-          el.addEventListener('canplay', onLoad);
-          r = () => el.readyState >= 1;
-        } else {
-          el.addEventListener('load', onLoad);
-          r = () => el.complete;
-        }
-
-        // for safari
-        let c = () => r() ? onLoad() : window.requestAnimationFrame(c);
-        window.requestAnimationFrame(c);
-
-        let timeout = setTimeout(() => {
-          // @ts-ignore
-          //this.log.error('did not called', el, el.parentElement, el.complete, el.readyState, src);
-          resolve();
-        }, 1500);
-      });
-
-      promises.push(promise);
-    });
 
     this.messagesQueue.push({message, bubble, reverse, promises});
 
@@ -1624,6 +1584,8 @@ export default class ChatBubbles {
     bubble.dataset.mid = message.mid;
     bubble.dataset.timestamp = message.date;
 
+    const loadPromises: Promise<any>[] = [];
+
     if(message._ === 'messageService') {
       let action = message.action;
       let _ = action._;
@@ -1636,7 +1598,7 @@ export default class ChatBubbles {
       bubbleContainer.innerHTML = `<div class="service-msg">${message.rReply}</div>`;
 
       if(updatePosition) {
-        this.renderMessagesQueue(message, bubble, reverse);
+        this.renderMessagesQueue(message, bubble, reverse, loadPromises);
       }
 
       return bubble;
@@ -1832,13 +1794,14 @@ export default class ChatBubbles {
               middleware: this.getMiddleware(),
               isOut: our,
               lazyLoadQueue: this.lazyLoadQueue,
-              chat: this.chat
+              chat: this.chat,
+              loadPromises
             });
             
             break;
           }
           
-          const withTail = !isAndroid && !message.message && !withReplies;
+          const withTail = !isAndroid && !message.message && !withReplies && USE_MEDIA_TAILS;
           if(withTail) bubble.classList.add('with-media-tail');
           wrapPhoto({
             photo, 
@@ -1847,7 +1810,8 @@ export default class ChatBubbles {
             withTail, 
             isOut, 
             lazyLoadQueue: this.lazyLoadQueue,
-            middleware: this.getMiddleware()
+            middleware: this.getMiddleware(),
+            loadPromises
           });
 
           break;
@@ -1858,7 +1822,7 @@ export default class ChatBubbles {
           
           let webpage = messageMedia.webpage;
           ////////this.log('messageMediaWebPage', webpage);
-          if(webpage._ == 'webPageEmpty') {
+          if(webpage._ === 'webPageEmpty') {
             break;
           } 
           
@@ -1895,7 +1859,8 @@ export default class ChatBubbles {
                 lazyLoadQueue: this.lazyLoadQueue,
                 middleware: this.getMiddleware(),
                 isOut,
-                group: CHAT_ANIMATION_GROUP
+                group: CHAT_ANIMATION_GROUP,
+                loadPromises
               });
               //}
             } else {
@@ -1945,7 +1910,7 @@ export default class ChatBubbles {
             bubble.classList.add('photo');
 
             const size = webpage.photo.sizes[webpage.photo.sizes.length - 1];
-            if(size.w == size.h && quoteTextDiv.childElementCount) {
+            if(size.w === size.h && quoteTextDiv.childElementCount) {
               bubble.classList.add('is-square-photo');
             } else if(size.h > size.w) {
               bubble.classList.add('is-vertical-photo');
@@ -1959,7 +1924,8 @@ export default class ChatBubbles {
               boxHeight: mediaSizes.active.webpage.height, 
               isOut, 
               lazyLoadQueue: this.lazyLoadQueue, 
-              middleware: this.getMiddleware()
+              middleware: this.getMiddleware(),
+              loadPromises
             });
           }
           
@@ -1986,7 +1952,7 @@ export default class ChatBubbles {
             }
             
             let size = bubble.classList.contains('emoji-big') ? 140 : 200;
-            this.appPhotosManager.setAttachmentSize(doc, attachmentDiv, size, size, true);
+            this.appPhotosManager.setAttachmentSize(doc, attachmentDiv, size, size);
             //let preloader = new ProgressivePreloader(attachmentDiv, false);
             bubbleContainer.style.height = attachmentDiv.style.height;
             bubbleContainer.style.width = attachmentDiv.style.width;
@@ -2019,10 +1985,11 @@ export default class ChatBubbles {
                 middleware: this.getMiddleware(),
                 isOut: our,
                 lazyLoadQueue: this.lazyLoadQueue,
-                chat: this.chat
+                chat: this.chat,
+                loadPromises
               });
             } else {
-              const withTail = !isAndroid && !isApple && doc.type != 'round' && !message.message && !withReplies;
+              const withTail = !isAndroid && !isApple && doc.type != 'round' && !message.message && !withReplies && USE_MEDIA_TAILS;
               if(withTail) bubble.classList.add('with-media-tail');
               wrapVideo({
                 doc, 
@@ -2034,7 +2001,8 @@ export default class ChatBubbles {
                 isOut,
                 lazyLoadQueue: this.lazyLoadQueue,
                 middleware: this.getMiddleware(),
-                group: CHAT_ANIMATION_GROUP
+                group: CHAT_ANIMATION_GROUP,
+                loadPromises
               });
             }
             
@@ -2045,7 +2013,8 @@ export default class ChatBubbles {
               message,
               bubble,
               messageDiv,
-              chat: this.chat
+              chat: this.chat,
+              loadPromises
             });
 
             if(newNameContainer) {
@@ -2260,7 +2229,7 @@ export default class ChatBubbles {
     if(updatePosition) {
       this.bubbleGroups.addBubble(bubble, message, reverse);
 
-      this.renderMessagesQueue(message, bubble, reverse);
+      this.renderMessagesQueue(message, bubble, reverse, loadPromises);
     } else {
       this.bubbleGroups.updateGroupByMessageId(message.mid);
     }

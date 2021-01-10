@@ -1,18 +1,51 @@
 avatar-element {
   --size: 54px;
   --multiplier: 1;
+  --color-top: var(--peer-avatar-blue-top);
+  --color-bottom: var(--peer-avatar-blue-bottom);
   color: #fff;
   width: var(--size);
   height: var(--size);
   line-height: var(--size);
   border-radius: 50%;
-  background-color: $color-blue;
+  background: linear-gradient(var(--color-top), var(--color-bottom));
   text-align: center;
   font-size: calc(1.25rem / var(--multiplier));
   /* overflow: hidden; */
   position: relative;
   user-select: none;
   text-transform: uppercase;
+  font-weight: 700;
+
+  &[data-color="red"] {
+    --color-top: var(--peer-avatar-red-top);
+    --color-bottom: var(--peer-avatar-red-bottom);
+  }
+
+  &[data-color="orange"] {
+    --color-top: var(--peer-avatar-orange-top);
+    --color-bottom: var(--peer-avatar-orange-bottom);
+  }
+
+  &[data-color="violet"] {
+    --color-top: var(--peer-avatar-violet-top);
+    --color-bottom: var(--peer-avatar-violet-bottom);
+  }
+
+  &[data-color="green"] {
+    --color-top: var(--peer-avatar-green-top);
+    --color-bottom: var(--peer-avatar-green-bottom);
+  }
+
+  &[data-color="cyan"] {
+    --color-top: var(--peer-avatar-cyan-top);
+    --color-bottom: var(--peer-avatar-cyan-bottom);
+  }
+
+  &[data-color="pink"] {
+    --color-top: var(--peer-avatar-pink-top);
+    --color-bottom: var(--peer-avatar-pink-bottom);
+  }
 
   &.tgico-savedmessages:before {
     font-size: calc(25px / var(--multiplier));

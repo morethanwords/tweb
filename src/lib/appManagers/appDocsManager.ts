@@ -8,6 +8,7 @@ import { RichTextProcessor } from '../richtextprocessor';
 import webpWorkerController from '../webp/webpWorkerController';
 import appDownloadManager, { DownloadBlob } from './appDownloadManager';
 import appPhotosManager from './appPhotosManager';
+import blur from '../../helpers/blur';
 
 export type MyDocument = Document.document;
 
@@ -246,7 +247,7 @@ export class AppDocsManager {
       if('bytes' in thumb) {
         // * exclude from state
         defineNotNumerableProperties(thumb, ['url']);
-        thumb.url = appPhotosManager.getPreviewURLFromBytes(thumb.bytes, !!doc.sticker);
+        promise = blur(appPhotosManager.getPreviewURLFromBytes(thumb.bytes, !!doc.sticker)).then(url => thumb.url = url);
       } else {
         //return this.getFileURL(doc, false, thumb);
         promise = this.downloadDoc(doc, thumb);
