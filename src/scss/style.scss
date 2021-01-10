@@ -96,6 +96,22 @@ $chat-padding-handhelds: .5rem;
   --messages-secondary-text-size: calc(var(--messages-text-size) - 1px);
   --esg-sticker-size: 80px;
 
+  // https://github.com/overtake/TelegramSwift/blob/5cc7d2475fe4738a6aa0486c23eaf80a89d33b97/submodules/TGUIKit/TGUIKit/PresentationTheme.swift#L2054
+  --peer-avatar-red-top: #ff885e;
+  --peer-avatar-red-bottom: #ff516a;
+  --peer-avatar-orange-top: #ffcd6a;
+  --peer-avatar-orange-bottom: #ffa85c;
+  --peer-avatar-violet-top: #82b1ff;
+  --peer-avatar-violet-bottom: #665fff;
+  --peer-avatar-green-top: #a0de7e;
+  --peer-avatar-green-bottom: #54cb68;
+  --peer-avatar-cyan-top: #53edd6;
+  --peer-avatar-cyan-bottom: #28c9b7;
+  --peer-avatar-blue-top: #72d5fd;
+  --peer-avatar-blue-bottom: #2a9ef1;
+  --peer-avatar-pink-top: #e0a2f3;
+  --peer-avatar-pink-bottom: #d669ed;
+
   @include respond-to(handhelds) {
     --right-column-width: 100vw;
     --esg-sticker-size: 68px;
@@ -859,7 +875,6 @@ img.emoji {
     top: 0;
     width: 100%;
     height: 100%;
-    -o-object-fit: cover;
     object-fit: cover;
   }
 }
@@ -1160,4 +1175,20 @@ middle-ellipsis-element {
     transition: .2s background-color;
     background-color: var(--color-gray-hover);
   }
+}
+
+.media-photo, .media-video {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+
+  &.fade-in {
+    animation: fade-in-opacity .2s ease-in-out forwards;
+  }
+}
+
+.media-video {
+  z-index: 1; // * overflow media-photo
 }

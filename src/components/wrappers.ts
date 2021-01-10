@@ -29,10 +29,11 @@ import RichTextProcessor from '../lib/richtextprocessor';
 import appImManager from '../lib/appManagers/appImManager';
 import Chat from './chat/chat';
 import { SearchSuperContext } from './appSearchSuper.';
+import rootScope from '../lib/rootScope';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 
-export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group}: {
+export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, withoutPreloader, loadPromises}: {
   doc: MyDocument, 
   container?: HTMLElement, 
   message?: any, 
@@ -43,7 +44,10 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   middleware?: () => boolean,
   lazyLoadQueue?: LazyLoadQueue,
   noInfo?: true,
-  group?: string
+  group?: string,
+  onlyPreview?: boolean,
+  withoutPreloader?: boolean,
+  loadPromises?: Promise<any>[]
 }) {
   const isAlbumItem = !(boxWidth && boxHeight);
   const canAutoplay = doc.type != 'video' || (doc.size <= MAX_VIDEO_AUTOPLAY_SIZE && !isAlbumItem);
@@ -71,8 +75,13 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     }
   }
 
+  let res: {
+    thumb?: typeof photoRes,
+    loadPromise: Promise<any>
+  } = {} as any;
+
   if(doc.mime_type == 'image/gif') {
-    return wrapPhoto({
+    const photoRes = wrapPhoto({
       photo: doc, 
       message, 
       container, 
@@ -81,8 +90,14 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       withTail, 
       isOut, 
       lazyLoadQueue, 
-      middleware
+      middleware,
+      withoutPreloader,
+      loadPromises
     });
+
+    res.thumb = photoRes;
+    res.loadPromise = photoRes.loadPromises.full;
+    return res;
   }
 
   /* const video = doc.type == 'round' ? appMediaPlaybackController.addMedia(doc, message.mid) as HTMLVideoElement : document.createElement('video');
@@ -91,6 +106,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   } */
 
   const video = document.createElement('video');
+  video.classList.add('media-video');
   video.muted = true;
   video.setAttribute('playsinline', 'true');
   if(doc.type == 'round') {
@@ -155,53 +171,37 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   } else {
     video.autoplay = true; // для safari
   }
-  
-  let img: HTMLImageElement;
+
+  let photoRes: ReturnType<typeof wrapPhoto>;
   if(message) {
-    if(!canAutoplay) {
-      return wrapPhoto({
-        photo: doc, 
-        message, 
-        container, 
-        boxWidth, 
-        boxHeight, 
-        withTail, 
-        isOut, 
-        lazyLoadQueue, 
-        middleware
-      });
+    photoRes = wrapPhoto({
+      photo: doc, 
+      message, 
+      container, 
+      boxWidth, 
+      boxHeight, 
+      withTail, 
+      isOut, 
+      lazyLoadQueue, 
+      middleware,
+      withoutPreloader: true,
+      loadPromises
+    });
+
+    res.thumb = photoRes;
+
+    if(!canAutoplay || onlyPreview) {
+      res.loadPromise = photoRes.loadPromises.full;
+      return res;
     }
 
     if(withTail) {
-      img = wrapMediaWithTail(doc, message, container, boxWidth, boxHeight, isOut);
-    } else {
-      if(boxWidth && boxHeight) { // !album
-        appPhotosManager.setAttachmentSize(doc, container, boxWidth, boxHeight, false, true);
-      }
-
-      if(doc.thumbs?.length && 'bytes' in doc.thumbs[0]) {
-        appPhotosManager.setAttachmentPreview(doc.thumbs[0].bytes, container, false);
-      }
-  
-      img = container.lastElementChild as HTMLImageElement;
-      if(img?.tagName != 'IMG') {
-        container.append(img = new Image());
-      }
-    }
-  
-    if(img) {
-      img.classList.add('thumbnail');
-    }
-
-    if(withTail) {
-      const foreignObject = img.parentElement;
+      const foreignObject = (photoRes.images.thumb || photoRes.images.full).parentElement;
       video.width = +foreignObject.getAttributeNS(null, 'width');
       video.height = +foreignObject.getAttributeNS(null, 'height');
       foreignObject.append(video);
     }
-  }
-
-  if(!img?.parentElement) {
+  } else { // * gifs masonry
     const gotThumb = appDocsManager.getThumb(doc, false);
     if(gotThumb) {
       gotThumb.promise.then(() => {
@@ -253,14 +253,10 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
 
     //if(doc.type == 'gif'/*  || true */) {
       video.addEventListener(isAppleMobile ? 'loadeddata' : 'canplay', () => {
-        if(img?.parentElement) {
-          img.remove();
-        }
-
         /* if(!video.paused) {
           video.pause();
         } */
-        if(doc.type != 'round' && group) {
+        if(doc.type !== 'round' && group) {
           animationIntersector.addAnimation(video, group);
         }
 
@@ -327,7 +323,9 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     return;
   } */
 
-  return /* doc.downloaded ||  */!lazyLoadQueue/*  && false */ ? loadVideo() : (lazyLoadQueue.push({div: container, load: loadVideo/* , wasSeen: true */}), Promise.resolve());
+  res.loadPromise = !lazyLoadQueue ? loadVideo() : (lazyLoadQueue.push({div: container, load: loadVideo}), Promise.resolve());
+
+  return res;
 }
 
 export const formatDate = (timestamp: number, monthShort = false, withYear = true) => {
@@ -344,13 +342,14 @@ export const formatDate = (timestamp: number, monthShort = false, withYear = tru
   return str + ' at ' + date.getHours() + ':' + ('0' + date.getMinutes()).slice(-2);
 };
 
-export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showSender, searchContext}: {
+export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showSender, searchContext, loadPromises}: {
   message: any, 
   withTime?: boolean,
   fontWeight?: number,
   voiceAsMusic?: boolean,
   showSender?: boolean,
-  searchContext?: SearchSuperContext
+  searchContext?: SearchSuperContext,
+  loadPromises?: Promise<any>[]
 }): HTMLElement {
   if(!fontWeight) fontWeight = 500;
 
@@ -394,7 +393,8 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
         message: null, 
         container: icoDiv, 
         boxWidth: 54, 
-        boxHeight: 54
+        boxHeight: 54,
+        loadPromises
       });
       icoDiv.style.width = icoDiv.style.height = '';
     }
@@ -475,8 +475,12 @@ function wrapMediaWithTail(photo: MyPhoto | MyDocument, message: {mid: number, m
   svg.classList.add('bubble__media-container', isOut ? 'is-out' : 'is-in');
   
   const foreignObject = document.createElementNS("http://www.w3.org/2000/svg", 'foreignObject');
-  
-  appPhotosManager.setAttachmentSize(photo, foreignObject, boxWidth, boxHeight/* , false, true */);
+
+  const gotThumb = appPhotosManager.getStrippedThumbIfNeeded(photo);
+  if(gotThumb) {
+    foreignObject.append(gotThumb.image);
+  }
+  appPhotosManager.setAttachmentSize(photo, foreignObject, boxWidth, boxHeight);
   
   const width = +foreignObject.getAttributeNS(null, 'width');
   const height = +foreignObject.getAttributeNS(null, 'height');
@@ -525,7 +529,7 @@ function wrapMediaWithTail(photo: MyPhoto | MyDocument, message: {mid: number, m
   return img;
 }
 
-export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware, size}: {
+export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware, size, withoutPreloader, loadPromises}: {
   photo: MyPhoto | MyDocument, 
   message: any, 
   container: HTMLElement, 
@@ -535,8 +539,23 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
   isOut?: boolean, 
   lazyLoadQueue?: LazyLoadQueue, 
   middleware?: () => boolean, 
-  size?: PhotoSize
+  size?: PhotoSize,
+  withoutPreloader?: boolean,
+  loadPromises?: Promise<any>[]
 }) {
+  if(!((photo as MyPhoto).sizes || (photo as MyDocument).thumbs)) {
+    return {
+      loadPromises: {
+        thumb: Promise.resolve(),
+        full: Promise.resolve()
+      },
+      images: {
+        thumb: null,
+        full: null
+      }
+    };
+  }
+
   if(boxWidth === undefined) {
     boxWidth = mediaSizes.active.regular.width;
   }
@@ -545,44 +564,50 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
     boxHeight = mediaSizes.active.regular.height;
   }
 
+  let loadThumbPromise: Promise<any>;
+  let thumbImage: HTMLImageElement;
   let image: HTMLImageElement;
   if(withTail) {
     image = wrapMediaWithTail(photo, message, container, boxWidth, boxHeight, isOut);
   } else {
+    image = new Image();
+
     if(boxWidth && boxHeight) { // !album
-      size = appPhotosManager.setAttachmentSize(photo, container, boxWidth, boxHeight, false, true);
+      size = appPhotosManager.setAttachmentSize(photo, container, boxWidth, boxHeight);
     }
 
-    if(photo._ == 'document' || !photo.downloaded) {
-      const thumbs = (photo as MyPhoto).sizes || (photo as MyDocument).thumbs;
-      if(thumbs?.length && 'bytes' in thumbs[0]) {
-        appPhotosManager.setAttachmentPreview(thumbs[0].bytes, container, false);
-      }
-    }
-
-    image = container.lastElementChild as HTMLImageElement;
-    if(!image || image.tagName != 'IMG') {
-      container.append(image = new Image());
+    const gotThumb = appPhotosManager.getStrippedThumbIfNeeded(photo);
+    if(gotThumb) {
+      loadThumbPromise = gotThumb.loadPromise;
+      thumbImage = gotThumb.image;
+      thumbImage.classList.add('media-photo');
+      container.append(thumbImage);
     }
   }
 
-  if(!((photo as MyPhoto).sizes || (photo as MyDocument).thumbs)) {
-    return Promise.resolve();
-  }
-
+  image.classList.add('media-photo');
+  
   //console.log('wrapPhoto downloaded:', photo, photo.downloaded, container);
-
+  
   const cacheContext = appPhotosManager.getCacheContext(photo);
+
+  const needFadeIn = (thumbImage || !cacheContext.downloaded) && rootScope.settings.animationsEnabled;
+  if(needFadeIn) {
+    image.classList.add('fade-in');
+  }
 
   let preloader: ProgressivePreloader;
   if(message?.media?.preloader) { // means upload
     message.media.preloader.attach(container, false);
-  } else if(!cacheContext.downloaded) {
-    preloader = new ProgressivePreloader(null, false, false, photo._ == 'document' ? 'prepend' : 'append');
+  } else if(!cacheContext.downloaded && !withoutPreloader) {
+    preloader = new ProgressivePreloader(null, false, false, 'prepend');
   }
 
+  let loadPromise: Promise<any>;
   const load = () => {
-    const promise = photo._ == 'document' && photo.animated ? 
+    if(loadPromise) return loadPromise;
+
+    const promise = photo._ === 'document' && photo.mime_type === 'image/gif' ? 
       appDocsManager.downloadDoc(photo, undefined, lazyLoadQueue?.queueId) : 
       appPhotosManager.preloadPhoto(photo, size, lazyLoadQueue?.queueId);
 
@@ -590,14 +615,56 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
       preloader.attach(container, true, promise);
     }
 
-    return promise.then(() => {
+    return loadPromise = promise.then(() => {
       if(middleware && !middleware()) return;
 
-      renderImageFromUrl(image || container, cacheContext.url || photo.url);
+      return new Promise((resolve) => {
+        renderImageFromUrl(image, cacheContext.url || photo.url, () => {
+          container.append(image);
+
+          window.requestAnimationFrame(() => {
+            resolve();
+          });
+          //resolve();
+  
+          if(needFadeIn) {
+            setTimeout(() => {
+              image.classList.remove('fade-in');
+  
+              if(thumbImage) {
+                thumbImage.remove();
+              }
+            }, 200);
+          }
+        });
+      });
     });
   };
+  
+  if(cacheContext.downloaded) {
+    loadThumbPromise = load();
+  }
 
-  return cacheContext.downloaded || !lazyLoadQueue ? load() : (lazyLoadQueue.push({div: container, load/* : load, wasSeen: true */}), Promise.resolve());
+  if(!lazyLoadQueue) {
+    loadPromise = load();
+  } else {
+    lazyLoadQueue.push({div: container, load});
+  }
+
+  if(loadPromises) {
+    loadPromises.push(loadThumbPromise);
+  }
+
+  return {
+    loadPromises: {
+      thumb: loadThumbPromise,
+      full: loadPromise || Promise.resolve()
+    },
+    images: {
+      thumb: thumbImage,
+      full: image
+    }
+  };
 }
 
 export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, onlyThumb, emoji, width, height, withThumb, loop}: {
@@ -923,14 +990,15 @@ export function prepareAlbum(options: {
   } */
 }
 
-export function wrapAlbum({groupId, attachmentDiv, middleware, uploading, lazyLoadQueue, isOut, chat}: {
+export function wrapAlbum({groupId, attachmentDiv, middleware, uploading, lazyLoadQueue, isOut, chat, loadPromises}: {
   groupId: string, 
   attachmentDiv: HTMLElement,
   middleware?: () => boolean,
   lazyLoadQueue?: LazyLoadQueue,
   uploading?: boolean,
   isOut: boolean,
-  chat: Chat
+  chat: Chat,
+  loadPromises?: Promise<any>[]
 }) {
   const items: {size: PhotoSize.photoSize, media: any, message: any}[] = [];
 
@@ -974,7 +1042,8 @@ export function wrapAlbum({groupId, attachmentDiv, middleware, uploading, lazyLo
         isOut,
         lazyLoadQueue,
         middleware,
-        size
+        size,
+        loadPromises
       });
     } else {
       wrapVideo({
@@ -986,19 +1055,21 @@ export function wrapAlbum({groupId, attachmentDiv, middleware, uploading, lazyLo
         withTail: false,
         isOut,
         lazyLoadQueue,
-        middleware
+        middleware,
+        loadPromises
       });
     }
   });
 }
 
-export function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, messageDiv, chat}: {
+export function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, messageDiv, chat, loadPromises}: {
   albumMustBeRenderedFull: boolean,
   message: any,
   messageDiv: HTMLElement,
   bubble: HTMLElement,
   uploading?: boolean,
-  chat: Chat
+  chat: Chat,
+  loadPromises?: Promise<any>[]
 }) {
   let nameContainer: HTMLDivElement;
   const mids = albumMustBeRenderedFull ? chat.getMidsByMid(message.mid) : [message.mid];
@@ -1011,7 +1082,8 @@ export function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, 
     const message = chat.getMessage(mid);
     const doc = message.media.document;
     const div = wrapDocument({
-      message
+      message,
+      loadPromises
     });
 
     const container = document.createElement('div');

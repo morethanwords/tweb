@@ -597,16 +597,10 @@ $bubble-margin: .25rem;
     display: flex; // lol
     justify-content: center;
     position: relative;
+    cursor: pointer;
     
     img, video {
       max-width: 100%;
-      cursor: pointer;
-      opacity: 1;
-      transition: opacity .3s ease;
-
-      body.animation-level-0 & {
-        transition: none;
-      }
     }
 
     .download {
@@ -633,10 +627,10 @@ $bubble-margin: .25rem;
         display: none;
       }
     }
+  }
 
-    .preloader-container {
-      z-index: 1;
-    }
+  .preloader-container {
+    z-index: 1;
   }
   
   &:not(.sticker) {

@@ -12,6 +12,8 @@ import { MyDocument } from "./appDocsManager";
 import appDownloadManager from "./appDownloadManager";
 import appUsersManager from "./appUsersManager";
 import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
+import blur from "../../helpers/blur";
+import { renderImageFromUrl } from "../../components/misc";
 
 export type MyPhoto = Photo.photo;
 
@@ -106,7 +108,7 @@ export class AppPhotosManager {
         bestPhotoSize = photoSize;
   
         const {w, h} = calcImageInBox(photoSize.w, photoSize.h, width, height);
-        if(w == width || h == height) {
+        if(w === width || h === height) {
           break;
         }
       }
@@ -189,47 +191,28 @@ export class AppPhotosManager {
     return thumb.url ?? (defineNotNumerableProperties(thumb, ['url']), thumb.url = this.getPreviewURLFromBytes(thumb.bytes, isSticker));
   }
   
-  public setAttachmentPreview(bytes: Uint8Array | number[], element: HTMLElement | SVGForeignObjectElement, isSticker = false, background = false) {
-    let url = this.getPreviewURLFromBytes(bytes, isSticker);
+  public getImageFromStrippedThumb(thumb: PhotoSize.photoCachedSize | PhotoSize.photoStrippedSize) {
+    const url = this.getPreviewURLFromThumb(thumb, false);
 
-    if(background) {
-      let img = new Image();
-      img.src = url;
-      img.addEventListener('load', () => {
-        element.style.backgroundImage = 'url(' + url + ')';
+    const image = new Image();
+    image.classList.add('thumbnail');
+
+    const loadPromise = blur(url).then(url => {
+      return new Promise<any>((resolve) => {
+        renderImageFromUrl(image, url, resolve);
       });
-
-      return element;
-    } else {
-      if(element instanceof HTMLImageElement) {
-        element.src = url;
-        return element;
-      } else {
-        let img = new Image();
-
-        img.src = url;
-        element.append(img);
-        return img;
-      }
-    }
+    });
+    
+    return {image, loadPromise};
   }
   
-  public setAttachmentSize(photo: MyPhoto | MyDocument, element: HTMLElement | SVGForeignObjectElement, boxWidth: number, boxHeight: number, isSticker = false, dontRenderPreview = false) {
+  public setAttachmentSize(photo: MyPhoto | MyDocument, element: HTMLElement | SVGForeignObjectElement, boxWidth: number, boxHeight: number) {
     const photoSize = this.choosePhotoSize(photo, boxWidth, boxHeight);
     //console.log('setAttachmentSize', photo, photo.sizes[0].bytes, div);
     
-    const sizes = (photo as MyPhoto).sizes || (photo as MyDocument).thumbs;
-    const thumb = sizes?.length ? sizes[0] : null;
-    if(thumb && ('bytes' in thumb)) {
-      if((!photo.downloaded || (photo as MyDocument).type == 'video' || (photo as MyDocument).type == 'gif') && !isSticker && !dontRenderPreview) {
-        this.setAttachmentPreview(thumb.bytes, element, isSticker);
-      }
-    }
-    
-    
     let width: number;
     let height: number;
-    if(photo._ == 'document') {
+    if(photo._ === 'document') {
       width = photo.w || 512;
       height = photo.h || 512;
     } else {
@@ -250,17 +233,36 @@ export class AppPhotosManager {
     
     return photoSize;
   }
+
+  public getStrippedThumbIfNeeded(photo: MyPhoto | MyDocument): ReturnType<AppPhotosManager['getImageFromStrippedThumb']> {
+    if(!photo.downloaded || (photo as MyDocument).type === 'video' || (photo as MyDocument).type === 'gif') {
+      if(photo._ === 'document') {
+        const cacheContext = this.getCacheContext(photo); 
+        if(cacheContext.downloaded) {
+          return null;
+        } 
+      }
+
+      const sizes = (photo as MyPhoto).sizes || (photo as MyDocument).thumbs;
+      const thumb = sizes?.length ? sizes[0] : null;
+      if(thumb && ('bytes' in thumb)) {
+        return appPhotosManager.getImageFromStrippedThumb(thumb as any);
+      }
+    }
+
+    return null;
+  }
   
   public getPhotoDownloadOptions(photo: MyPhoto | MyDocument, photoSize: PhotoSize, queueId?: number) {
-    const isMyDocument = photo._ == 'document';
+    const isMyDocument = photo._ === 'document';
 
-    if(!photoSize || photoSize._ == 'photoSizeEmpty') {
+    if(!photoSize || photoSize._ === 'photoSizeEmpty') {
       //console.error('no photoSize by photo:', photo);
       throw new Error('photoSizeEmpty!');
     }
     
     // maybe it's a thumb
-    const isPhoto = (photoSize._ == 'photoSize' || photoSize._ == 'photoSizeProgressive') && photo.access_hash && photo.file_reference;
+    const isPhoto = (photoSize._ === 'photoSize' || photoSize._ === 'photoSizeProgressive') && photo.access_hash && photo.file_reference;
     const location: InputFileLocation.inputPhotoFileLocation | InputFileLocation.inputDocumentFileLocation | FileLocation = isPhoto ? {
       _: isMyDocument ? 'inputDocumentFileLocation' : 'inputPhotoFileLocation',
       id: photo.id,
@@ -277,12 +279,26 @@ export class AppPhotosManager {
 
     return {url: getFileURL('photo', downloadOptions), location: downloadOptions.location};
   } */
+
+  public isDownloaded(media: any) {
+    const isPhoto = media._ === 'photo';
+    const photo = isPhoto ? this.getPhoto(media.id) : null;
+    let isDownloaded: boolean;
+    if(photo) {
+      isDownloaded = photo.downloaded > 0;
+    } else {
+      const cachedThumb = this.getDocumentCachedThumb(media.id);
+      isDownloaded = cachedThumb?.downloaded > 0;
+    }
+
+    return isDownloaded;
+  }
   
   public preloadPhoto(photoId: any, photoSize?: PhotoSize, queueId?: number): CancellablePromise<Blob> {
     const photo = this.getPhoto(photoId);
 
     // @ts-ignore
-    if(!photo || photo._ == 'photoEmpty') {
+    if(!photo || photo._ === 'photoEmpty') {
       throw new Error('preloadPhoto photoEmpty!');
     }
 
@@ -325,7 +341,7 @@ export class AppPhotosManager {
   }
 
   public getCacheContext(photo: any): DocumentCacheThumb {
-    return photo._ == 'document' ? this.getDocumentCachedThumb(photo.id) : photo;
+    return photo._ === 'document' ? this.getDocumentCachedThumb(photo.id) : photo;
   }
 
   public getDocumentCachedThumb(docId: string) {
@@ -351,7 +367,7 @@ export class AppPhotosManager {
 
   public savePhotoFile(photo: MyPhoto | MyDocument, queueId?: number) {
     const fullPhotoSize = this.choosePhotoSize(photo, 0xFFFF, 0xFFFF);
-    if(!(fullPhotoSize._ == 'photoSize' || fullPhotoSize._ == 'photoSizeProgressive')) {
+    if(!(fullPhotoSize._ === 'photoSize' || fullPhotoSize._ === 'photoSizeProgressive')) {
       return;
     }
 

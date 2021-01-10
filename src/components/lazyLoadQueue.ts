@@ -1,6 +1,8 @@
 import { debounce } from "../helpers/schedulers";
 import { logger, LogLevels } from "../lib/logger";
 import VisibilityIntersector, { OnVisibilityChange } from "./visibilityIntersector";
+import { DEBUG } from "../lib/mtproto/mtproto_config";
+import { findAndSpliceAll } from "../helpers/array";
 
 type LazyLoadElementBase = {
   load: () => Promise<any>
@@ -42,14 +44,16 @@ export class LazyLoadQueueBase {
   public lock() {
     if(this.lockPromise) return;
 
-    const perf = performance.now();
+    //const perf = performance.now();
     this.lockPromise = new Promise((resolve, reject) => {
       this.unlockResolve = resolve;
     });
 
-    this.lockPromise.then(() => {
-      this.log('was locked for:', performance.now() - perf);
-    });
+    /* if(DEBUG) {
+      this.lockPromise.then(() => {
+        this.log('was locked for:', performance.now() - perf);
+      });
+    } */
   }
 
   public unlock() {
@@ -68,7 +72,9 @@ export class LazyLoadQueueBase {
 
     this.inProcess.add(item);
 
-    this.log('will load media', this.lockPromise, item);
+    /* if(DEBUG) {
+      this.log('will load media', this.lockPromise, item);
+    } */
 
     try {
       //await new Promise((resolve) => setTimeout(resolve, 2e3));
@@ -81,7 +87,9 @@ export class LazyLoadQueueBase {
 
     this.inProcess.delete(item);
 
-    this.log('loaded media', item);
+    /* if(DEBUG) {
+      this.log('loaded media', item);
+    } */
 
     this.processQueue();
   }
@@ -104,7 +112,7 @@ export class LazyLoadQueueBase {
 
     do {
       if(item) {
-        this.queue.findAndSplice(i => i == item);
+        this.queue.findAndSplice(i => i === item);
       } else {
         item = this.getItem();
       }
@@ -168,12 +176,12 @@ export class LazyLoadQueueIntersector extends LazyLoadQueueBase {
   }
 
   protected addElement(method: 'push' | 'unshift', el: LazyLoadElement) {
-    const item = this.queue.find(i => i.div == el.div);
+    const item = this.queue.find(i => i.div === el.div && i.load === el.load);
     if(item) {
       return false;
     } else {
       for(const item of this.inProcess) {
-        if(item.div == el.div) {
+        if(item.div === el.div && item.load === el.load) {
           return false;
         }
       }
@@ -201,7 +209,8 @@ export class LazyLoadQueueIntersector extends LazyLoadQueueBase {
   }
 
   public unobserve(el: HTMLElement) {
-    this.queue.findAndSplice(i => i.div === el);
+    findAndSpliceAll(this.queue, (i) => i.div === el);
+
     this.intersector.unobserve(el);
   }
 }
@@ -218,12 +227,11 @@ export default class LazyLoadQueue extends LazyLoadQueueIntersector {
       this.log('isIntersecting', target);
 
       // need for set element first if scrolled
-      const item = this.queue.findAndSplice(i => i.div == target);
-      if(item) {
+      findAndSpliceAll(this.queue, (i) => i.div === target).forEach(item => {
         item.wasSeen = true;
         this.queue.unshift(item);
         //this.processQueue(item);
-      }
+      });
 
       this.setProcessQueueTimeout();
     }
@@ -261,11 +269,11 @@ export class LazyLoadQueueRepeat extends LazyLoadQueueIntersector {
     super(parallelLimit);
 
     this.intersector = new VisibilityIntersector((target, visible) => {
+      const spliced = findAndSpliceAll(this.queue, (i) => i.div === target);
       if(visible) {
-        const item = this.queue.findAndSplice(i => i.div == target);
-        this.queue.unshift(item || this._queue.get(target));
-      } else {
-        this.queue.findAndSplice(i => i.div == target);
+        spliced.forEach(item => {
+          this.queue.unshift(item || this._queue.get(target));
+        });
       }
   
       this.onVisibilityChange && this.onVisibilityChange(target, visible);
@@ -298,9 +306,11 @@ export class LazyLoadQueueRepeat2 extends LazyLoadQueueIntersector {
     super(parallelLimit);
 
     this.intersector = new VisibilityIntersector((target, visible) => {
-      const item = this.queue.findAndSplice(i => i.div == target);
-      if(visible && item) {
-        this.queue.unshift(item);
+      const spliced = findAndSpliceAll(this.queue, (i) => i.div === target);
+      if(visible && spliced.length) {
+        spliced.forEach(item => {
+          this.queue.unshift(item);
+        });
       }
   
       this.onVisibilityChange && this.onVisibilityChange(target, visible);

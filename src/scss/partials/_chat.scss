@@ -1039,7 +1039,7 @@ $chat-helper-size: 39px;
 		}
 
 		&-container .preloader-circular {
-			background-color: var(--message-time-background);
+			background-color: rgba(0, 0, 0, .3);
 		}
 	}
 

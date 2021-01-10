@@ -20,7 +20,7 @@ import LazyLoadQueue from "./lazyLoadQueue";
 import { renderImageFromUrl, putPreloader, formatPhoneNumber } from "./misc";
 import { ripple } from "./ripple";
 import Scrollable, { ScrollableX } from "./scrollable";
-import { wrapDocument } from "./wrappers";
+import { wrapDocument, wrapPhoto, wrapVideo } from "./wrappers";
 
 const testScroll = false;
 
@@ -351,99 +351,36 @@ export default class AppSearchSuper {
           div.classList.add('grid-item');
           //this.log(message, photo);
 
-          const isPhoto = media._ === 'photo';
-          
-          const photo = isPhoto ? appPhotosManager.getPhoto(media.id) : null;
-          let isDownloaded: boolean;
-          if(photo) {
-            isDownloaded = photo.downloaded > 0;
+          let wrapped: ReturnType<typeof wrapPhoto>;
+          if(media._ !== 'photo') {
+            wrapped = wrapVideo({
+              doc: media,
+              message,
+              container: div,
+              boxWidth: 0,
+              boxHeight: 0,
+              lazyLoadQueue: this.lazyLoadQueue,
+              middleware,
+              onlyPreview: true,
+              withoutPreloader: true
+            }).thumb;
           } else {
-            const cachedThumb = appPhotosManager.getDocumentCachedThumb(media.id);
-            isDownloaded = cachedThumb?.downloaded > 0;
-          }
-          
-          //this.log('inputMessagesFilterPhotoVideo', message, media);
-
-          if(!isPhoto) {
-            const span = document.createElement('span');
-            span.classList.add('video-time');
-            div.append(span);
-
-            if(media.type !== 'gif') {
-              span.innerText = (media.duration + '').toHHMMSS(false);
-
-              /* const spanPlay = document.createElement('span');
-              spanPlay.classList.add('video-play', 'tgico-largeplay', 'btn-circle', 'position-center');
-              div.append(spanPlay); */
-            } else {
-              span.innerText = 'GIF';
-            }
-          }
-          
-          const load = () => appPhotosManager.preloadPhoto(isPhoto ? media.id : media, appPhotosManager.choosePhotoSize(media, 200, 200))
-          .then(() => {
-            if(!middleware()) {
-              //this.log.warn('peer changed');
-              return;
-            }
-
-            const url = (photo && photo.url) || appPhotosManager.getDocumentCachedThumb(media.id).url;
-            if(url) {
-              //if(needBlur) return;
-              
-              const needBlurCallback = needBlur ? () => {
-                //void img.offsetLeft; // reflow
-                img.style.opacity = '';
-
-                if(thumb) {
-                  window.setTimeout(() => {
-                    thumb.remove();
-                  }, 200);
-                }
-              } : undefined;
-              renderImageFromUrl(img, url, needBlurCallback);
-            }
-          });
-          
-          let thumb: HTMLImageElement;
-          const sizes = media.sizes || media.thumbs;
-          
-          const willHaveThumb = !isDownloaded && sizes && sizes[0].bytes;
-          if(willHaveThumb) {
-            thumb = new Image();
-            thumb.classList.add('grid-item-media', 'thumbnail');
-            thumb.dataset.mid = '' + message.mid;
-            appPhotosManager.setAttachmentPreview(sizes[0].bytes, thumb, false, false);
-            div.append(thumb);
-          }
-
-          const needBlur = (!isDownloaded || !willHaveThumb) && rootScope.settings.animationsEnabled;
-          const img = new Image();
-          img.dataset.mid = '' + message.mid;
-          img.classList.add('grid-item-media');
-          if(needBlur) img.style.opacity = '0';
-          div.append(img);
-
-          if(isDownloaded || willHaveThumb) {
-            const promise = new Promise<void>((resolve, reject) => {
-              (thumb || img).addEventListener('load', () => {
-                clearTimeout(timeout);
-                resolve();
-              });
-
-              const timeout = setTimeout(() => {
-                //this.log('didn\'t load', thumb, media, isDownloaded, sizes);
-                reject();
-              }, 1e3);
+            wrapped = wrapPhoto({
+              photo: media,
+              message,
+              container: div,
+              boxWidth: 0,
+              boxHeight: 0,
+              lazyLoadQueue: this.lazyLoadQueue,
+              middleware,
+              withoutPreloader: true
             });
-
-            promises.push(promise);
           }
 
-          if(sizes?.length) {
-            if(isDownloaded) load();
-            else this.lazyLoadQueue.push({div, load});
-          }
+          wrapped.images.thumb && wrapped.images.thumb.classList.add('grid-item-media');
+          wrapped.images.full && wrapped.images.full.classList.add('grid-item-media');
+
+          promises.push(wrapped.loadPromises.thumb);
 
           elemsToAppend.push({element: div, message});
         }

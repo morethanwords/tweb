@@ -361,15 +361,6 @@
 
     .grid-item {
       overflow: hidden;
-
-      &-media {
-        opacity: 1;
-        transition: opacity .2s ease;
-
-        html:not(.is-mac) &.thumbnail {
-          filter: blur(7px);
-        }
-      }
     }
 
     /* span.video-play {

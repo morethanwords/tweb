@@ -28,10 +28,24 @@
     left: 0;
     right: 0;
     margin: auto;
-    width: 50px;
-    height: 50px;
+    width: 54px;
+    height: 54px;
     display: flex;
     /* cursor: pointer; */
+
+    opacity: 0;
+    transform: scale(0);
+
+    body:not(.animation-level-0) & {
+      transition: opacity .2s ease-in-out, transform .2s ease-in-out;
+    }
+
+    &.is-visible {
+      &:not(.backwards) {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
   }
 }
 
@@ -52,12 +66,12 @@
   }
 
   .preloader-path-new {
-    stroke-dasharray: 5, 200;
+    stroke-dasharray: 5, 149.82;
     stroke-dashoffset: 0;
     transition: stroke-dasharray 400ms ease-in-out;
     stroke-linecap: round;
     stroke: white;
-    stroke-width: 1.5;
+    stroke-width: 2;
   }
 
   &.preloader-swing {
@@ -68,9 +82,7 @@
     }
 
     .preloader-path-new {
-      stroke-dasharray: 1, 200;
-      stroke-dashoffset: 0;
-      animation: dashNew 1.5s ease-in-out infinite/* , color 6s ease-in-out infinite */;
+      animation: dashNew 1.5s ease-in-out infinite;
     }
   }
 
@@ -111,7 +123,7 @@
       background-color: #fff;
       left: 50%;
       top: 50%;
-      transform: translate3d(-50%,-50%,0);
+      transform: translate3d(-50%, -50%, 0);
     }
   }
 }
@@ -139,16 +151,16 @@
 
 @keyframes dashNew {
   0% {
-    stroke-dasharray: 1, 200;
+    stroke-dasharray: 1, 149.82; // 149.82 = getTotalLength
     stroke-dashoffset: 0;
   }
   50% {
-    stroke-dasharray: 89, 200;
-    stroke-dashoffset: -35px;
+    stroke-dasharray: 112.36, 149.82; // 112.36 = 149.82 * .75
+    stroke-dashoffset: -38; // bruted
   }
   100% {
-    stroke-dasharray: 89, 200;
-    stroke-dashoffset: -286%;
+    stroke-dasharray: 112.36, 149.82;
+    stroke-dashoffset: -149.82; // totalLength
   }
 }
 

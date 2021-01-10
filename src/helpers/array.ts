@@ -14,3 +14,13 @@ export function listMergeSorted(list1: any[] = [], list2: any[] = []) {
 }
 
 export const accumulate = (arr: number[], initialValue: number) => arr.reduce((acc, value) => acc + value, initialValue);
+
+export function findAndSpliceAll<T>(array: Array<T>, verify: (value: T, index: number, arr: typeof array) => boolean) {
+  const out: typeof array = [];
+  let idx = -1;
+  while((idx = array.findIndex(verify)) !== -1) {
+    out.push(array.splice(idx, 1)[0]);
+  }
+
+  return out;
+}

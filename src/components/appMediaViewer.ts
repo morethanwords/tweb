@@ -880,6 +880,10 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     //const maxWidth = appPhotosManager.windowW - 16;
     const maxWidth = mediaSizes.isMobile ? this.pageEl.scrollWidth : this.pageEl.scrollWidth - 16;
     const maxHeight = appPhotosManager.windowH - 100;
+    const gotThumb = appPhotosManager.getStrippedThumbIfNeeded(media);
+    if(gotThumb) {
+      container.append(gotThumb.image);
+    }
     const size = appPhotosManager.setAttachmentSize(media, container, maxWidth, maxHeight);
 
     // need after setAttachmentSize
