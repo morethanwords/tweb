@@ -17,7 +17,7 @@ export default class VisibilityIntersector {
       entries.forEach(entry => {
         const target = entry.target as TargetType;
 
-        if(this.items.get(target) == entry.isIntersecting) {
+        if(this.items.get(target) === entry.isIntersecting) {
           return;
         } else {
           this.items.set(target, entry.isIntersecting);

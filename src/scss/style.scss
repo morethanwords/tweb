@@ -1177,7 +1177,7 @@ middle-ellipsis-element {
   }
 }
 
-.media-photo, .media-video {
+.media-photo, .media-video, .media-sticker {
   position: absolute;
   top: 0;
   right: 0;
@@ -1191,4 +1191,8 @@ middle-ellipsis-element {
 
 .media-video {
   z-index: 1; // * overflow media-photo
+}
+
+.media-sticker {
+  margin: auto;
 }

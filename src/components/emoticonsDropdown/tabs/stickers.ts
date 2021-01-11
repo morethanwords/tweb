@@ -72,6 +72,8 @@ export class SuperStickerRenderer {
     
     const size = mediaSizes.active.esgSticker.width;
 
+    console.log('processVisibleDiv:', div);
+
     const promise = wrapSticker({
       doc, 
       div: div as HTMLDivElement,

@@ -27,10 +27,10 @@ export default class InputSearch {
     this.input = this.inputField.input;
     this.input.classList.add('input-search-input');
 
-    const searchIcon = document.createElement('span');
+    const searchIcon = document.createElement('i');
     searchIcon.classList.add('tgico', 'tgico-search');
 
-    this.clearBtn = document.createElement('span');
+    this.clearBtn = document.createElement('i');
     this.clearBtn.classList.add('tgico', 'btn-icon', 'tgico-close');
 
     this.input.addEventListener('input', this.onInput);

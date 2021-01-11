@@ -48,7 +48,7 @@
     flex: 0 0 auto;
 
     .sidebar-close-button:before {
-      content: $tgico-back;
+      content: $tgico-arrow_back;
 
       @include respond-to(not-handhelds) {
         content: $tgico-close;
@@ -60,10 +60,6 @@
     .chatlist-container {
       position: relative;
       flex: 1 1 auto;
-    }
-
-    .btn-icon {
-      overflow: inherit;
     }
   }
 
@@ -735,5 +731,11 @@
         }
       }
     }
+  }
+}
+
+#search-gifs-container {
+  .gifs-masonry {
+    margin-top: -2.5px;
   }
 }

@@ -65,17 +65,23 @@ export default class ProgressivePreloader {
 
     const tempId = --this.tempId;
 
-    const onEnd = () => {
+    const onEnd = (successfully: boolean) => {
       promise.notify = null;
 
       if(tempId === this.tempId) {
+        if(successfully) {
+          this.setProgress(100);
+        }
+        
         this.detach();
         this.promise = promise = null;
       }
     };
     
     //promise.catch(onEnd);
-    promise.finally(onEnd);
+    promise
+    .then(() => onEnd(true))
+    .catch(() => onEnd(false));
 
     if(promise.addNotifyListener) {
       promise.addNotifyListener((details: {done: number, total: number}) => {

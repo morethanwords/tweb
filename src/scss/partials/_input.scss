@@ -203,8 +203,8 @@ input:focus, button:focus {
   position: relative;
   width: 100%;
   //Vozmojno nado budet vernut margin-left: 22px;, tak kak eto vrode v levom bare tak po verstke, a v pravom bare dlya mobili nado 16, gde stiker seti 
-  margin-left: 22px;
-  margin-right: 4px;
+  margin-left: 1rem;
+  margin-right: .25rem;
   overflow: hidden;
 
   @include respond-to(handhelds) {
@@ -222,6 +222,7 @@ input:focus, button:focus {
     border-radius: 22px;
     transition: background-color .2s ease-in-out, border-color .2s ease-in-out;
     border-color: transparent;
+    line-height: var(--height);
 
     body.animation-level-0 & {
       transition: none;
@@ -253,28 +254,32 @@ input:focus, button:focus {
 
   > .tgico {
     position: absolute;
-    left: 12px;
     top: 50%;
-    transform: translateY(-50%);
+    transform: translate(0, -50%);
     text-align: center;
     font-size: 24px;
     color: $color-gray;
     opacity: .6;
     transition: all .2s ease-out;
+    line-height: 1;
 
     body.animation-level-0 & {
       transition: none;
     }
-
-    &:before {
-      vertical-align: middle;
-    }
   }
 
-  .tgico-close {
-    left: auto;
+  > .tgico-search {
+    width: 24px;
+    height: 24px;
+    left: .75rem;
+  }
+
+  > .tgico-close {
     right: 0px;
-    top: 48%;
     z-index: 1;
+
+    &:before { // ! я сгорел, почему-то здесь иконка сдвигается на пиксель влево, и это происходит из-за position: absolute на .tgico ...
+      margin-right: -1px;
+    }
   }
 }

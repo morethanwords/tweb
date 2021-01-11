@@ -44,7 +44,7 @@ export default class AppNewGroupTab extends SliderSuperTab {
       this.nextBtn.classList.toggle('is-visible', !!value.length && !this.groupNameInputField.input.classList.contains('error'));
     });
 
-    this.nextBtn = Button('btn-corner btn-circle', {icon: 'arrow-next'});
+    this.nextBtn = Button('btn-corner btn-circle', {icon: 'arrow_next'});
 
     this.nextBtn.addEventListener('click', () => {
       const title = this.groupNameInputField.value;

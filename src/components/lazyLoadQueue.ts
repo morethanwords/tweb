@@ -224,7 +224,9 @@ export default class LazyLoadQueue extends LazyLoadQueueIntersector {
 
   private onVisibilityChange = (target: HTMLElement, visible: boolean) => {
     if(visible) {
-      this.log('isIntersecting', target);
+      /* if(DEBUG) {
+        this.log('isIntersecting', target);
+      } */
 
       // need for set element first if scrolled
       findAndSpliceAll(this.queue, (i) => i.div === target).forEach(item => {
@@ -271,7 +273,8 @@ export class LazyLoadQueueRepeat extends LazyLoadQueueIntersector {
     this.intersector = new VisibilityIntersector((target, visible) => {
       const spliced = findAndSpliceAll(this.queue, (i) => i.div === target);
       if(visible) {
-        spliced.forEach(item => {
+        const items = spliced.length ? spliced : [this._queue.get(target)];
+        items.forEach(item => {
           this.queue.unshift(item || this._queue.get(target));
         });
       }
