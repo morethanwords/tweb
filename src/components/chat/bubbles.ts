@@ -1599,6 +1599,7 @@ export default class ChatBubbles {
 
       if(updatePosition) {
         this.renderMessagesQueue(message, bubble, reverse, loadPromises);
+        this.bubbleGroups.addBubble(bubble, message, reverse);
       }
 
       return bubble;

@@ -452,6 +452,10 @@
     margin-left: 5px;
     margin-top: -1px;
 
+    &__filled {
+      background-color: #0089ff;
+    }
+
     &__loaded {
       background-color: #cacaca;
     }

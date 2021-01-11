@@ -171,42 +171,6 @@ $bubble-margin: .25rem;
 		}
   }
 
-  &.is-date {
-    position: sticky;
-    top: $bubble-margin;
-    //z-index: 3;
-    z-index: 2;
-    transition: opacity .3s ease;
-    opacity: .99999; // for safari
-    pointer-events: none;
-
-    body.animation-level-0 & {
-      transition: none;
-    }
-
-    &.is-sticky {
-      opacity: .00001; // for safari
-
-      .bubbles-inner:not(.is-scrolling) & {
-        //transition-delay: 1.35s;
-
-        .bubble__container {
-          cursor: default;
-        }
-      }
-
-      /* .bubbles-inner.is-scrolling & {
-        transition-delay: 0;
-      } */
-    }
-
-    .chat.type-chat & .bubble__container,
-    .chat.type-discussion & .bubble__container {
-      cursor: pointer;
-      pointer-events: all;
-    }
-  }
-
   &.zoom-fade /* .bubble__container */ {
     //transform: scale(.8) translateZ(0);
     transform: scale3d(.8, .8, 1);
@@ -234,7 +198,7 @@ $bubble-margin: .25rem;
 
   & > &-select-checkbox {
     //bottom: .75rem; // * by avatar
-    bottom: 5px;      // * by middle of one-line message
+    bottom: .3125rem; // * by middle of one-line message
     /* left: 0;
     top: 50%;
     transform: translateY(-50%); */
@@ -324,13 +288,50 @@ $bubble-margin: .25rem;
   
   &.service {
     //padding: 1rem 0;
-    padding: $bubble-margin 0;
+    //padding: $bubble-margin 0;
     max-width: var(--messages-container-width);
 
     .bubble__container {
       /* justify-self: center; */
       margin: 0 auto;
       max-width: 100%;
+    }
+  }
+
+  &.is-date {
+    position: sticky;
+    top: $bubble-margin;
+    padding-bottom: $bubble-margin;
+    //z-index: 3;
+    z-index: 2;
+    transition: opacity .3s ease;
+    opacity: .99999; // for safari
+    pointer-events: none;
+
+    body.animation-level-0 & {
+      transition: none;
+    }
+
+    &.is-sticky {
+      opacity: .00001; // for safari
+
+      .bubbles-inner:not(.is-scrolling) & {
+        //transition-delay: 1.35s;
+
+        .bubble__container {
+          cursor: default;
+        }
+      }
+
+      /* .bubbles-inner.is-scrolling & {
+        transition-delay: 0;
+      } */
+    }
+
+    .chat.type-chat & .bubble__container,
+    .chat.type-discussion & .bubble__container {
+      cursor: pointer;
+      pointer-events: all;
     }
   }
 
@@ -374,13 +375,13 @@ $bubble-margin: .25rem;
       bottom: -#{$bubble-margin};
     }
 
-    > .bubble-select-checkbox {
-      bottom: 8px;
-    }
+    /* > .bubble-select-checkbox {
+      bottom: .3125rem;
+    } */
 
     .bubbles-inner.is-chat &.is-in {
       > .bubble-select-checkbox {
-        bottom: 7px;
+        bottom: .1875rem;
       }
     }
   }
@@ -1167,13 +1168,13 @@ $bubble-margin: .25rem;
       }
     }
 
-    /* &.is-group-first .document-container {
+    &.is-group-first .document-container {
       &:first-of-type {
         .document-selection {
-          top: -4px;
+          top: -$bubble-margin;
         }
       }
-    } */
+    }
 
     &.is-group-last .document-container {
       &:last-of-type {
