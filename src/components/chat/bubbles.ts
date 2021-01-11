@@ -1967,7 +1967,8 @@ export default class ChatBubbles {
               play: true,
               loop: true,
               emoji: bubble.classList.contains('emoji-big') ? messageMessage : undefined,
-              withThumb: true
+              withThumb: true,
+              loadPromises
             });
 
             break;
@@ -2219,7 +2220,7 @@ export default class ChatBubbles {
 
     if(savedFrom && this.peerId !== REPLIES_PEER_ID) {
       const goto = document.createElement('div');
-      goto.classList.add('bubble-beside-button', 'goto-original', 'tgico-arrow-next');
+      goto.classList.add('bubble-beside-button', 'goto-original', 'tgico-arrow_next');
       bubbleContainer.append(goto);
       bubble.dataset.savedFrom = savedFrom;
       bubble.classList.add('with-beside-button');

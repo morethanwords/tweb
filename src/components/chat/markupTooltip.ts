@@ -61,7 +61,7 @@ export default class MarkupTooltip {
       }
     });
 
-    this.linkBackButton = ButtonIcon('back', {noRipple: true});
+    this.linkBackButton = ButtonIcon('arrow_back', {noRipple: true});
     this.linkInput = document.createElement('input');
     this.linkInput.placeholder = 'Enter URL...';
     this.linkInput.classList.add('input-clear');

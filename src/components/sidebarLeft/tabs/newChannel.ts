@@ -54,7 +54,7 @@ export default class AppNewChannelTab extends SliderSuperTab {
     caption.classList.add('caption');
     caption.innerText = 'You can provide an optional description for your channel.';
 
-    this.nextBtn = Button('btn-corner btn-circle', {icon: 'arrow-next'});
+    this.nextBtn = Button('btn-corner btn-circle', {icon: 'arrow_next'});
 
     this.nextBtn.addEventListener('click', () => {
       const title = this.channelNameInputField.value;

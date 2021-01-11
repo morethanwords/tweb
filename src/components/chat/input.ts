@@ -134,7 +134,7 @@ export default class ChatInput {
     this.inputContainer.append(this.rowsWrapper);
     this.chatInput.append(this.inputContainer);
 
-    this.goDownBtn = Button('bubbles-go-down btn-corner btn-circle z-depth-1 hide', {icon: 'arrow-down'});
+    this.goDownBtn = Button('bubbles-go-down btn-corner btn-circle z-depth-1 hide', {icon: 'arrow_down'});
     this.goDownUnreadBadge = document.createElement('span');
     this.goDownUnreadBadge.classList.add('badge', 'badge-24', 'badge-green');
     this.goDownBtn.append(this.goDownUnreadBadge);
@@ -172,7 +172,7 @@ export default class ChatInput {
     this.inputScroll = new Scrollable(this.inputMessageContainer);
 
     if(this.chat.type === 'chat') {
-      this.btnScheduled = ButtonIcon('schedule', {noRipple: true});
+      this.btnScheduled = ButtonIcon('scheduled', {noRipple: true});
       this.btnScheduled.classList.add('btn-scheduled', 'hide');
 
       attachClickEvent(this.btnScheduled, (e) => {

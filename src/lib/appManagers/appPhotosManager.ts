@@ -4,7 +4,6 @@ import { getFileNameByLocation } from "../../helpers/fileName";
 import { safeReplaceArrayInObject, defineNotNumerableProperties, isObject } from "../../helpers/object";
 import { isSafari } from "../../helpers/userAgent";
 import { FileLocation, InputFileLocation, InputMedia, Photo, PhotoSize, PhotosPhotos } from "../../layer";
-import { DownloadOptions } from "../mtproto/apiFileManager";
 import apiManager from "../mtproto/mtprotoworker";
 import referenceDatabase, { ReferenceContext } from "../mtproto/referenceDatabase";
 import { calcImageInBox } from "../../helpers/dom";
@@ -81,8 +80,7 @@ export class AppPhotosManager {
     return this.photos[photo.id] = photo;
   }
   
-  public choosePhotoSize(photo: MyPhoto | MyDocument, width = 0, height = 0) {
-    //if(Config.Navigator.retina) {
+  public choosePhotoSize(photo: MyPhoto | MyDocument, width = 0, height = 0, useBytes = false) {
     if(window.devicePixelRatio > 1) {
       width *= 2;
       height *= 2;
@@ -101,16 +99,20 @@ export class AppPhotosManager {
 
     let bestPhotoSize: PhotoSize = {_: 'photoSizeEmpty', type: ''};
     const sizes = ((photo as MyPhoto).sizes || (photo as MyDocument).thumbs) as PhotoSize[];
-    if(sizes) {
+    if(sizes?.length) {
       for(const photoSize of sizes) {
         if(!('w' in photoSize) && !('h' in photoSize)) continue;
   
         bestPhotoSize = photoSize;
   
         const {w, h} = calcImageInBox(photoSize.w, photoSize.h, width, height);
-        if(w === width || h === height) {
+        if(w >= width || h >= height) {
           break;
         }
+      }
+
+      if(useBytes && bestPhotoSize._ === 'photoSizeEmpty' && sizes[0]._ === 'photoStrippedSize') {
+        bestPhotoSize = sizes[0];
       }
     }
     
@@ -122,7 +124,7 @@ export class AppPhotosManager {
     return apiManager.invokeApi('photos.getUserPhotos', {
       user_id: inputUser,
       offset: 0,
-      limit: limit,
+      limit,
       max_id: maxId
     }).then((photosResult) => {
       appUsersManager.saveApiUsers(photosResult.users);
@@ -325,14 +327,18 @@ export class AppPhotosManager {
 
     download = appDownloadManager.download(downloadOptions);
     download.then(blob => {
+      const url = URL.createObjectURL(blob);
       if(!cacheContext.downloaded || cacheContext.downloaded < blob.size) {
         defineNotNumerableProperties(cacheContext, ['downloaded', 'url']);
 
         cacheContext.downloaded = blob.size;
-        cacheContext.url = URL.createObjectURL(blob);
+        cacheContext.url = url;
 
         //console.log('wrote photo:', photo, photoSize, cacheContext, blob);
       }
+
+      defineNotNumerableProperties(photoSize, ['url']);
+      (photoSize as any).url = url;
 
       return blob;
     });

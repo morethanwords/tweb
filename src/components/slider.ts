@@ -30,7 +30,7 @@ export class SliderSuperTab implements SliderTab {
     this.header = document.createElement('div');
     this.header.classList.add('sidebar-header');
 
-    this.closeBtn = ButtonIcon('back sidebar-close-button', {noRipple: true});
+    this.closeBtn = ButtonIcon('arrow_back sidebar-close-button', {noRipple: true});
     this.title = document.createElement('div');
     this.title.classList.add('sidebar-header__title');
     this.header.append(this.closeBtn, this.title);

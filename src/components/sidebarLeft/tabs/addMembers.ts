@@ -16,7 +16,7 @@ export default class AppAddMembersTab extends SliderSuperTab {
   }
 
   protected init() {
-    this.nextBtn = Button('btn-corner btn-circle', {icon: 'arrow-next'});
+    this.nextBtn = Button('btn-corner btn-circle', {icon: 'arrow_next'});
     this.content.append(this.nextBtn);
     
     this.nextBtn.addEventListener('click', () => {
@@ -29,7 +29,7 @@ export default class AppAddMembersTab extends SliderSuperTab {
         const promise = this.takeOut(peerIds);
 
         if(promise instanceof Promise) {
-          this.nextBtn.classList.remove('tgico-arrow-next');
+          this.nextBtn.classList.remove('tgico-arrow_next');
           this.nextBtn.disabled = true;
           putPreloader(this.nextBtn);
           this.selector.freezed = true;
@@ -83,7 +83,7 @@ export default class AppAddMembersTab extends SliderSuperTab {
       });
     }
 
-    this.nextBtn.classList.add('tgico-arrow-next');
+    this.nextBtn.classList.add('tgico-arrow_next');
     this.nextBtn.innerHTML = '';
     this.nextBtn.disabled = false;
     this.nextBtn.classList.toggle('is-visible', this.skippable);

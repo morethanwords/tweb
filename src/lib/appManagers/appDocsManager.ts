@@ -245,70 +245,61 @@ export class AppDocsManager {
 
     if(!thumb.url) {
       if('bytes' in thumb) {
-        // * exclude from state
-        defineNotNumerableProperties(thumb, ['url']);
-        promise = blur(appPhotosManager.getPreviewURLFromBytes(thumb.bytes, !!doc.sticker)).then(url => thumb.url = url);
+        promise = blur(appPhotosManager.getPreviewURLFromBytes(thumb.bytes, !!doc.sticker)).then(url => {
+          defineNotNumerableProperties(thumb, ['url']); // * exclude from state
+          const cacheContext = appPhotosManager.getCacheContext(doc);
+          cacheContext.url = thumb.url = url;
+        }) as any;
       } else {
         //return this.getFileURL(doc, false, thumb);
-        promise = this.downloadDoc(doc, thumb);
+        promise = appPhotosManager.preloadPhoto(doc, thumb) as any;
       }
     }
 
     return {thumb, promise};
   }
 
-  public getThumb(doc: MyDocument, useBytes = true) {
-    if(doc.thumbs?.length) {
-      let thumb: PhotoSize;
-      if(!useBytes) {
-        thumb = doc.thumbs.find(t => !('bytes' in t));
-      }
-      
-      if(!thumb) {
-        thumb = doc.thumbs[0];
-      }
-
-      return this.getThumbURL(doc, thumb as any);
-    }
-
-    return null;
+  public getThumb(doc: MyDocument, tryNotToUseBytes = true) {
+    const thumb = appPhotosManager.choosePhotoSize(doc, 0, 0, !tryNotToUseBytes);
+    if(thumb._ === 'photoSizeEmpty') return null;
+    return this.getThumbURL(doc, thumb as any);
   }
 
   public getInputFileName(doc: MyDocument, thumbSize?: string) {
     return getFileNameByLocation(this.getInput(doc, thumbSize), {fileName: doc.file_name});
   }
 
-  public downloadDoc(doc: MyDocument, thumb?: PhotoSize.photoSize, queueId?: number): DownloadBlob {
-    const fileName = this.getInputFileName(doc, thumb?.type);
+  public downloadDoc(doc: MyDocument/* , thumb?: PhotoSize.photoSize */, queueId?: number): DownloadBlob {
+    const fileName = this.getInputFileName(doc/* , thumb?.type */);
 
     let download: DownloadBlob = appDownloadManager.getDownload(fileName);
     if(download) {
       return download;
     }
 
-    const downloadOptions = this.getFileDownloadOptions(doc, thumb, queueId);
+    const downloadOptions = this.getFileDownloadOptions(doc, undefined/* thumb */, queueId);
     download = appDownloadManager.download(downloadOptions);
 
     const originalPromise = download;
     originalPromise.then((blob) => {
-      if(thumb) {
+      /* if(thumb) {
         defineNotNumerableProperties(thumb, ['url']);
         thumb.url = URL.createObjectURL(blob);
         return;
-      } else if(!doc.supportsStreaming) {
+      } else  */if(!doc.supportsStreaming) {
         doc.url = URL.createObjectURL(blob);
       }
 
       doc.downloaded = true;
     });
 
-    if(doc.type == 'voice' && !opusDecodeController.isPlaySupported()) {
+    if(doc.type === 'voice' && !opusDecodeController.isPlaySupported()) {
       download = originalPromise.then(async(blob) => {
-        let reader = new FileReader();
+        const reader = new FileReader();
   
         await new Promise<void>((resolve, reject) => {
           reader.onloadend = (e) => {
-            let uint8 = new Uint8Array(e.target.result as ArrayBuffer);
+            const uint8 = new Uint8Array(e.target.result as ArrayBuffer);
             //console.log('sending uint8 to decoder:', uint8);
             opusDecodeController.decode(uint8).then(result => {
               doc.url = result.url;

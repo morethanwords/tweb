@@ -55,7 +55,7 @@ export default class ChatTopbar {
     this.container = document.createElement('div');
     this.container.classList.add('sidebar-header', 'topbar');
 
-    this.btnBack = ButtonIcon('back sidebar-close-button', {noRipple: true});
+    this.btnBack = ButtonIcon('arrow_back sidebar-close-button', {noRipple: true});
 
     // * chat info section
     this.chatInfo = document.createElement('div');

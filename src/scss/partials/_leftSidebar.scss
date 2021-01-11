@@ -191,8 +191,9 @@
 
   .sidebar-header__btn-container {
     position: relative;
-    width: 39.75px;
-    height: 39px;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 auto;
 
     > .btn-icon {
       visibility: hidden;
