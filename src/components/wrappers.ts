@@ -732,7 +732,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
       if(thumb._ === 'photoPathSize') {
         if(thumb.bytes.length) {
           const d = appPhotosManager.getPathFromPhotoPathSize(thumb);
-          div.innerHTML = `<svg class="rlottie-vector" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${doc.w || 512} ${doc.h || 512}" xml:space="preserve">
+          div.innerHTML = `<svg class="rlottie-vector media-sticker thumbnail" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${doc.w || 512} ${doc.h || 512}" xml:space="preserve">
             <path d="${d}"/>
           </svg>`;
         } else {
@@ -848,12 +848,14 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
             cb();
           } else {
             animation.canvas.classList.add('fade-in');
-
             if(element) {
-              setTimeout(() => {
-                cb();
-              }, element.tagName === 'svg' ? 50 : 200);
+              element.classList.add('fade-out');
             }
+
+            setTimeout(() => {
+              animation.canvas.classList.remove('fade-in');
+              cb();
+            }, 200);
           }
 
           appDocsManager.saveLottiePreview(doc, animation.canvas, toneIndex);
@@ -895,6 +897,9 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
   
           renderImageFromUrl(image, doc.url, () => {
             div.append(image);
+            if(thumbImage) {
+              thumbImage.classList.add('fade-out');
+            }
   
             window.requestAnimationFrame(() => {
               resolve();
@@ -903,7 +908,6 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
             if(needFadeIn) {
               setTimeout(() => {
                 image.classList.remove('fade-in');
-    
                 if(thumbImage) {
                   thumbImage.remove();
                 }
