@@ -139,7 +139,7 @@ export default class DialogsContextMenu {
 
     this.filterId = appDialogsManager.filterId;
 
-    this.selectedId = +li.getAttribute('data-peerId');
+    this.selectedId = +li.dataset.peerId;
     this.dialog = appMessagesManager.getDialogByPeerId(this.selectedId)[0];
 
     this.buttons.forEach(button => {

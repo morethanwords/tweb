@@ -1,12 +1,6 @@
 .chatlist-container {
   position: relative;
 
-  /* .scrollable {
-    html.is-mac & {
-      overflow-y: scroll;
-    }
-  } */
-
   .search-group-recent.search-group {
     @include respond-to(handhelds) {
       padding: 2px 0 0;
@@ -15,27 +9,16 @@
 
   ul {
     margin: 0;
-    //padding: 0 .5rem;
-    /* display: grid;
-    grid-auto-columns: 1fr; */
     display: flex;
     flex-direction: column;
-    /* grid-gap: 4px; */
     width: 100%;
 
     user-select: none;
     -webkit-user-select: none; /* disable selection/Copy of UIWebView */
     -webkit-touch-callout: none; /* disable the IOS popup when long-press on a link */
-
-    /* html.is-mac & {
-      transform: translateZ(0);
-    } */
   }
 
   li {
-    //padding: 0 0 2px 0;
-    //padding-bottom: 4px;  - DO MAKETA JS3
-    //overflow: hidden;
     background-color: #fff;
 
     @include respond-to(handhelds) {
@@ -50,12 +33,12 @@
           color: #a3a3a3;
           font-size: 1.125rem;
           margin-left: .125rem;
-          animation: fade-in-opacity .2s ease forwards;
+          animation: fade-in-opacity .2s ease-in-out forwards;
         }
       }
 
       &.backwards .user-title:after {
-        animation: fade-in-backwards-opacity .2s ease forwards;
+        animation: fade-in-backwards-opacity .2s ease-in-out forwards;
       }
     }
   }
@@ -64,9 +47,6 @@
     height: 72px;
     max-height: 72px;
     border-radius: $border-radius-medium;
-    //align-items: center;
-    /* display: grid;
-    grid-template-columns: 64px calc(100% - 64px - 6.5px); */
     display: flex;
     align-items: flex-start;
     flex-direction: row;
@@ -104,34 +84,18 @@
     }
   }
 
-  .pinned-delimiter {
-    display: flex;
-    padding: 8px 0 4px;
-
-    span {
-      margin: 0;
-      width: 100%;
-      height: 1px;
-      background-color: #DADCE0;
-    }
-  }
-
   p {
     margin: 0;
     display: flex;
     justify-content: space-between;
     flex-direction: row;
-    //align-items: center;
     align-items: flex-start;
-    //height: 1.7rem; // hot-fix
-    height: 27px; // maybe new hot-fix
+    height: 27px;
   }
 
   .dialog {
     &-title {
       &-details {
-        /* font-size: .9rem; */
-        //font-size: .8rem;
         font-size: .75rem;
         padding: 1px 0px 0px 0px;
         flex: 0 0 auto;
@@ -141,13 +105,6 @@
     
     &-subtitle {
       &-badge {
-        font-size: .9rem;
-
-        &.tgico-pinnedchat {
-          width: 24px;
-          font-size: 1.5rem;
-        }
-
         &:not(:empty), &.tgico-pinnedchat {
           margin-left: .5rem;
         }
@@ -250,26 +207,10 @@
     }
   }
 
-  .unread, .tgico-pinnedchat {
-    height: 24px;
-    text-align: center;
-    line-height: 24px;
-    color: #fff;
-    border-radius: 12px;
+  .dialog-subtitle-badge {
     margin-top: 4px;
     margin-right: -3px;
     flex: 0 0 auto;
-  }
-
-  .unread {
-    min-width: 24px;
-    padding: 0 7.75px; // ! fix initial width due to font-size: .9rem;
-    font-weight: 500;
-    transition: .2s background-color;
-  }
-
-  .unread:empty {
-    visibility: hidden;
   }
 
   .unread, li.is-muted.backwards .unread {

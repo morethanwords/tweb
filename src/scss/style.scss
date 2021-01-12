@@ -135,6 +135,7 @@ $chat-padding-handhelds: .5rem;
 @import "partials/ico";
 @import "partials/input";
 @import "partials/button";
+@import "partials/badge";
 @import "partials/checkbox";
 @import "partials/chatlist";
 @import "partials/chat";
@@ -1065,48 +1066,6 @@ middle-ellipsis-element {
   &-media {
     width: 100%;
     height: 100%;
-  }
-}
-
-.badge {
-  border-radius: .75rem;
-  font-weight: 500;
-  color: white;
-  font-size: .9rem; // ! this will fix vertical center
-  transition: background-color .2s ease-in-out;
-
-  &:empty {
-    display: none;
-  }
-
-  &-20 {
-    height: 1.25rem;
-    min-width: 1.25rem;
-    line-height: 1.25rem !important;
-    padding: 0 5.75px;
-
-    html.is-safari & {
-      line-height: 22px !important;
-    }
-  }
-
-  &-24 {
-    height: 1.5rem;
-    min-width: 1.5rem;
-    line-height: 1.5rem !important;
-    padding: 0 7.75px;
-  }
-
-  &-green {
-    background-color: $color-green;
-  }
-
-  &-blue {
-    background-color: $color-blue;
-  }
-
-  &-gray {
-    background-color: #c5c9cc;
   }
 }
 

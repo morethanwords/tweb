@@ -175,7 +175,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
 
     let html = '';
     for(const key in details) {
-      html += `<button class="folder-category-button btn-primary btn-transparent tgico-${details[key].ico}" data-peerId="${key}">${details[key].text}${this.checkbox()}</button>`;
+      html += `<button class="folder-category-button btn-primary btn-transparent tgico-${details[key].ico}" data-peer-id="${key}">${details[key].text}${this.checkbox()}</button>`;
     }
     categories.innerHTML = html;
 
@@ -219,7 +219,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
     for(const flag in filter.pFlags) {
       // @ts-ignore
       if(details.hasOwnProperty(flag) && !!filter.pFlags[flag]) {
-        (categories.querySelector(`[data-peerId="${flag}"]`) as HTMLElement).click();
+        (categories.querySelector(`[data-peer-id="${flag}"]`) as HTMLElement).click();
       }
     }
   }

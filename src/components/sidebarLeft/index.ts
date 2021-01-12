@@ -367,7 +367,7 @@ export class AppSidebarLeft extends SidebarSlider {
         return;
       }
 
-      const peerId = +target.getAttribute('data-peerId');
+      const peerId = +target.getAttribute('data-peer-id');
       appStateManager.getState().then(state => {
         const recentSearch = state.recentSearch || [];
         if(recentSearch[0] != peerId) {

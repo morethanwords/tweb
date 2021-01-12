@@ -128,7 +128,7 @@ export default class ChatSearch {
   selectResult = (elem: HTMLElement) => {
     if(this.setPeerPromise) return this.setPeerPromise;
 
-    const peerId = +elem.getAttribute('data-peerId');
+    const peerId = +elem.dataset.peerId;
     const lastMsgId = +elem.dataset.mid || undefined;
 
     const index = whichChild(elem);

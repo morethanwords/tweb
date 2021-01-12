@@ -27,9 +27,6 @@
 	}
 
 	@include respond-to(not-handhelds) {
-		border-left: 1px solid #DADCE0;
-		border-right: 1px solid #DADCE0;
-
 		.menu-search {
 			display: none;
 		}
