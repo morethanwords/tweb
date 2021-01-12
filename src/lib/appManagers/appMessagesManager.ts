@@ -2612,7 +2612,7 @@ export class AppMessagesManager {
     
     if(message.media &&
         message.media._ == 'messageMediaDocument' &&
-        message.media.document.sticker) {
+        (message.media.document.sticker || message.media.document.type === 'round')) {
       return false;
     }
 
