@@ -1,3 +1,5 @@
+$transition: .2s ease-in-out;
+
 .preloader {
   &-circular {
     animation: rotate 2s linear infinite;
@@ -37,7 +39,7 @@
     transform: scale(0);
 
     body:not(.animation-level-0) & {
-      transition: opacity .2s ease-in-out, transform .2s ease-in-out;
+      transition: opacity $transition, transform $transition;
     }
 
     &.is-visible {
@@ -68,7 +70,7 @@
   .preloader-path-new {
     stroke-dasharray: 5, 149.82;
     stroke-dashoffset: 0;
-    transition: stroke-dasharray 400ms ease-in-out;
+    transition: stroke-dasharray $transition;
     stroke-linecap: round;
     stroke: white;
     stroke-width: 2;

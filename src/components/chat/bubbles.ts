@@ -1599,7 +1599,12 @@ export default class ChatBubbles {
 
       if(updatePosition) {
         this.renderMessagesQueue(message, bubble, reverse, loadPromises);
-        this.bubbleGroups.addBubble(bubble, message, reverse);
+
+        if(!message.pFlags.is_single) { // * Ignore 'Discussion started'
+          this.bubbleGroups.addBubble(bubble, message, reverse);
+        } else {
+          bubble.classList.add('is-group-last');
+        }
       }
 
       return bubble;
@@ -2215,8 +2220,9 @@ export default class ChatBubbles {
       savedFrom = `${this.chat.peerId}_${message.mid}`;
     }
 
-    if(messageWithReplies && messageWithReplies.mid === this.chat.threadId) {
-      bubble.classList.add('is-thread-starter');
+    const isThreadStarter = messageWithReplies && messageWithReplies.mid === this.chat.threadId;
+    if(isThreadStarter) {
+      bubble.classList.add('is-thread-starter', 'is-group-last');
     }
 
     if(savedFrom && this.peerId !== REPLIES_PEER_ID) {
@@ -2229,7 +2235,9 @@ export default class ChatBubbles {
     
     bubble.classList.add(isOut ? 'is-out' : 'is-in');
     if(updatePosition) {
-      this.bubbleGroups.addBubble(bubble, message, reverse);
+      if(!isThreadStarter) {
+        this.bubbleGroups.addBubble(bubble, message, reverse);
+      }
 
       this.renderMessagesQueue(message, bubble, reverse, loadPromises);
     } else {
