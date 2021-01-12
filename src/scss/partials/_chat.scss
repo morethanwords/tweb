@@ -462,6 +462,10 @@ $chat-helper-size: 39px;
 		}
 	}
 
+	@include respond-to(not-handhelds) {
+		border-left: 1px solid #DADCE0;
+	}
+
 	@include respond-to(floating-left-sidebar) {
 		position: fixed !important;
 		left: 0;

@@ -265,8 +265,8 @@ export class AppDialogsManager {
       const dialog = appMessagesManager.getDialogByPeerId(user.id)[0];
       //console.log('updating user:', user, dialog);
 
-      if(dialog && !appUsersManager.isBot(dialog.peerId) && dialog.peerId != rootScope.myId) {
-        const online = user.status?._ == 'userStatusOnline';
+      if(dialog && !appUsersManager.isBot(dialog.peerId) && dialog.peerId !== rootScope.myId) {
+        const online = user.status?._ === 'userStatusOnline';
         const dom = this.getDialogDom(dialog.peerId);
 
         if(dom) {
@@ -348,13 +348,13 @@ export class AppDialogsManager {
 
       //const perf = performance.now();
       for(const element of this.lastActiveElements) {
-        if(+element.getAttribute('data-peerid') !== peerId) {
+        if(+element.dataset.peerId !== peerId) {
           element.classList.remove('active');
           this.lastActiveElements.delete(element);
         }
       }
 
-      const elements = Array.from(document.querySelectorAll(`[data-autonomous="0"] li[data-peerid="${peerId}"]`)) as HTMLElement[];
+      const elements = Array.from(document.querySelectorAll(`[data-autonomous="0"] li[data-peer-id="${peerId}"]`)) as HTMLElement[];
       elements.forEach(element => {
         element.classList.add('active');
         this.lastActiveElements.add(element);
@@ -367,7 +367,7 @@ export class AppDialogsManager {
       if(!this.filtersRendered[filter.id]) {
         this.addFilter(filter);
         return;
-      } else if(filter.id == this.filterId) { // это нет тут смысла вызывать, так как будет dialogs_multiupdate
+      } else if(filter.id === this.filterId) { // это нет тут смысла вызывать, так как будет dialogs_multiupdate
         //this.validateForFilter();
         const folder = appMessagesManager.dialogsStorage.getFolder(filter.id);
         this.validateForFilter();
@@ -442,7 +442,7 @@ export class AppDialogsManager {
 
       id = +tabContent.dataset.filterId || 0;
 
-      if(this.filterId == id) return;
+      if(this.filterId === id) return;
 
       this.chatLists[id].innerHTML = '';
       this.scroll.setVirtualContainer(this.chatLists[id]);
@@ -492,9 +492,9 @@ export class AppDialogsManager {
 
   get topOffsetIndex() {
     if(!this.scroll.loadedAll['top']) {
-      const element = this.chatList.firstElementChild;
+      const element = this.chatList.firstElementChild as HTMLElement;
       if(element) {
-        const peerId = +element.getAttribute('data-peerId');
+        const peerId = +element.dataset.peerId;
         const dialog = appMessagesManager.getDialogByPeerId(peerId)[0];
         return dialog.index;
       }
@@ -584,7 +584,7 @@ export class AppDialogsManager {
     const span = document.createElement('span');
     const titleSpan = document.createElement('span');
     titleSpan.innerHTML = RichTextProcessor.wrapEmojiText(filter.title);
-    const unreadSpan = document.createElement('span');
+    const unreadSpan = document.createElement('div');
     unreadSpan.classList.add('badge', 'badge-20', 'badge-blue');
     const i = document.createElement('i');
     span.append(titleSpan, unreadSpan, i);
@@ -643,18 +643,18 @@ export class AppDialogsManager {
       let offsetIndex = 0;
   
       if(side == 'top') {
-        const element = this.chatList.firstElementChild;
+        const element = this.chatList.firstElementChild as HTMLElement;
         if(element) {
-          const peerId = +element.getAttribute('data-peerId');
+          const peerId = +element.dataset.peerId;
           const index = storage.findIndex(dialog => dialog.peerId == peerId);
           const needIndex = Math.max(0, index - loadCount);
           loadCount = index - needIndex;
           offsetIndex = storage[needIndex].index + 1;
         }
       } else {
-        const element = this.chatList.lastElementChild;
+        const element = this.chatList.lastElementChild as HTMLElement;
         if(element) {
-          const peerId = +element.getAttribute('data-peerId');
+          const peerId = +element.dataset.peerId;
           const dialog = storage.find(dialog => dialog.peerId == peerId);
           offsetIndex = dialog.index;
         }
@@ -786,7 +786,7 @@ export class AppDialogsManager {
 
       sliced.forEach(el => {
         el.remove();
-        const peerId = +el.getAttribute('data-peerId');
+        const peerId = +el.dataset.peerId;
         delete this.doms[peerId];
       });
 
@@ -848,7 +848,7 @@ export class AppDialogsManager {
       if(elem) {
         if(onFound) onFound();
 
-        let peerId = +elem.getAttribute('data-peerId');
+        let peerId = +elem.dataset.peerId;
         let lastMsgId = +elem.dataset.mid || undefined;
 
         appImManager.setPeer(peerId, lastMsgId);
@@ -861,7 +861,7 @@ export class AppDialogsManager {
       list.addEventListener('dblclick', (e) => {
         const li = findUpTag(e.target, 'LI');
         if(li) {
-          const peerId = +li.getAttribute('data-peerId');
+          const peerId = +li.dataset.peerId;
           this.log('debug dialog:', appMessagesManager.getDialogByPeerId(peerId));
         }
       });
@@ -879,16 +879,16 @@ export class AppDialogsManager {
       this.reorderDialogsTimeout = 0;
       let offset = 0;
       if(this.topOffsetIndex) {
-        const element = this.chatList.firstElementChild;
+        const element = this.chatList.firstElementChild as HTMLElement;
         if(element) {
-          const peerId = +element.getAttribute('data-peerId');
+          const peerId = +element.dataset.peerId;
           const firstDialog = appMessagesManager.getDialogByPeerId(peerId);
           offset = firstDialog[1];
         }
       }
   
       const dialogs = appMessagesManager.dialogsStorage.getFolder(this.filterId);
-      const currentOrder = (Array.from(this.chatList.children) as HTMLElement[]).map(el => +el.getAttribute('data-peerId'));
+      const currentOrder = (Array.from(this.chatList.children) as HTMLElement[]).map(el => +el.dataset.peerId);
   
       dialogs.forEach((dialog, index) => {
         const dom = this.getDialogDom(dialog.peerId);
@@ -936,7 +936,7 @@ export class AppDialogsManager {
       lastMessage = appMessagesManager.getMessageByPeer(dialog.peerId, dialog.top_message);
     }
 
-    if(lastMessage._ == 'messageEmpty' || (lastMessage._ == 'messageService' && !lastMessage.rReply)) {
+    if(lastMessage._ === 'messageEmpty' || (lastMessage._ === 'messageService' && !lastMessage.rReply)) {
       dom.lastMessageSpan.innerHTML = '';
       dom.lastTimeSpan.innerHTML = '';
       delete dom.listEl.dataset.mid;
@@ -1071,7 +1071,7 @@ export class AppDialogsManager {
     } else dom.statusSpan.classList.remove('tgico-check', 'tgico-checks');
 
     dom.unreadMessagesSpan.innerText = '';
-    dom.unreadMessagesSpan.classList.remove('tgico-pinnedchat');
+    dom.unreadMessagesSpan.classList.remove('tgico-pinnedchat', 'tgico');
 
     const filter = appMessagesManager.filtersStorage.filters[this.filterId];
     let isPinned: boolean;
@@ -1088,7 +1088,7 @@ export class AppDialogsManager {
     } else {
       dom.unreadMessagesSpan.classList.remove('unread');
       if(isPinned) {
-        dom.unreadMessagesSpan.classList.add('tgico-pinnedchat');
+        dom.unreadMessagesSpan.classList.add('tgico-pinnedchat', 'tgico');
       }
     }
   }
@@ -1222,7 +1222,7 @@ export class AppDialogsManager {
 
     const li = document.createElement('li');
     li.append(paddingDiv);
-    li.setAttribute('data-peerId', '' + peerId);
+    li.dataset.peerId = '' + peerId;
 
     const statusSpan = document.createElement('span');
     statusSpan.classList.add('message-status');
@@ -1230,8 +1230,8 @@ export class AppDialogsManager {
     const lastTimeSpan = document.createElement('span');
     lastTimeSpan.classList.add('message-time');
 
-    const unreadMessagesSpan = document.createElement('span');
-    unreadMessagesSpan.classList.add('dialog-subtitle-badge');
+    const unreadMessagesSpan = document.createElement('div');
+    unreadMessagesSpan.className = 'dialog-subtitle-badge badge badge-24';
 
     const titleP = document.createElement('p');
     titleP.classList.add('dialog-title');

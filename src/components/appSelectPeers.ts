@@ -100,7 +100,7 @@ export default class AppSelectPeers {
         if(!target) return;
   
         const peerId = target.dataset.key;
-        const li = this.chatsContainer.querySelector('[data-peerid="' + peerId + '"]') as HTMLElement;
+        const li = this.chatsContainer.querySelector('[data-peer-id="' + peerId + '"]') as HTMLElement;
         if(!li) {
           this.remove(+peerId || peerId);
         } else {
@@ -117,13 +117,13 @@ export default class AppSelectPeers {
     this.scrollable.setVirtualContainer(this.list);
 
     this.chatsContainer.addEventListener('click', (e) => {
-      const target = findUpAttribute(e.target, 'data-peerId') as HTMLElement;
+      const target = findUpAttribute(e.target, 'data-peer-id') as HTMLElement;
       cancelEvent(e);
 
       if(!target) return;
       if(this.freezed) return;
 
-      let key: any = target.getAttribute('data-peerId');
+      let key: any = target.dataset.peerId;
       key = +key || key;
 
       if(!this.multiSelect) {
