@@ -3213,6 +3213,9 @@ export class AppMessagesManager {
 
     const serviceStartMessage: Message.messageService = {
       _: 'messageService',
+      pFlags: {
+        is_single: true
+      } as any,
       id: this.generateMessageId(message.id, true),
       date: message.date,
       from_id: message.from_id,

@@ -71,9 +71,16 @@ export default class ProgressivePreloader {
       if(tempId === this.tempId) {
         if(successfully) {
           this.setProgress(100);
+
+          setTimeout(() => { // * wait for transition complete
+            if(tempId === this.tempId) {
+              this.detach();
+            }
+          }, TRANSITION_TIME * 1.25);
+        } else {
+          this.detach();
         }
         
-        this.detach();
         this.promise = promise = null;
       }
     };
