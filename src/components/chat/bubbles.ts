@@ -889,7 +889,7 @@ export default class ChatBubbles {
       }, 1350);
     }
     
-    if(this.scrollable.isScrolledDown) {
+    if(this.scrollable.isScrolledDown && this.scrolledAllDown) {
       this.bubblesContainer.classList.add('scrolled-down');
       this.scrolledDown = true;
     } else if(this.bubblesContainer.classList.contains('scrolled-down')) {

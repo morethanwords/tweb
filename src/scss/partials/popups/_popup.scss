@@ -97,7 +97,19 @@
 		display: flex;
 		flex-direction: column;
 		justify-content: flex-end;
-		align-items: flex-end;
+    align-items: flex-end;
+    
+    &-row {
+      flex-direction: row-reverse;
+      justify-content: flex-start;
+
+      .btn {
+        & + .btn {
+          margin-top: 0 !important;
+          margin-right: .5rem;
+        }
+      }
+    }
 		
 		.btn {
 			background: none;

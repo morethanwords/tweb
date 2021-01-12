@@ -65,6 +65,10 @@ export default class PopupElement {
     if(buttons && buttons.length) {
       const buttonsDiv = document.createElement('div');
       buttonsDiv.classList.add('popup-buttons');
+
+      if(buttons.length === 2) {
+        buttonsDiv.classList.add('popup-buttons-row');
+      }
   
       const buttonsElements = buttons.map(b => {
         const button = document.createElement('button');
