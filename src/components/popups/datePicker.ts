@@ -33,15 +33,15 @@ export default class PopupDatePicker extends PopupElement {
     showOverflowMonths: true
   }> & PopupOptions = {}) {
     super('popup-date-picker', options.noButtons ? [] : [{
-      text: 'CANCEL',
-      isCancel: true
-    }, {
       text: 'JUMP TO DATE',
       callback: () => {
         if(this.onPick) {
           this.onPick(this.selectedDate.getTime() / 1000 | 0);
         }
       }
+    }, {
+      text: 'CANCEL',
+      isCancel: true
     }], {body: true, ...options});
 
     this.minDate = options.minDate || new Date('2013-08-01T00:00:00');
