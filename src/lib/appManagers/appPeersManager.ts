@@ -18,7 +18,7 @@ import appUsersManager from "./appUsersManager";
   #2996ad     11         sea
   #ce671b     5          orange
   */
-const DialogColorsFg = ['#c03d33', '#4fad2d', '#d09306', '#168acd', '#8544d6', '#cd4073', '#2996ad', '#ce671b'];
+const DialogColorsFg = ['#fc5c51', '#0fb297', '#d09306', '#3d72ed', '#895dd5', '#cd4073', '#00c1a6', '#fa790f'];
 const DialogColors = ['red', 'green', 'yellow', 'blue', 'violet', 'pink', 'cyan', 'orange'];
 const DialogColorsMap = [0, 7, 4, 1, 6, 3, 5];
 

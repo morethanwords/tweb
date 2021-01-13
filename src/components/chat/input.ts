@@ -491,7 +491,7 @@ export default class ChatInput {
   }
 
   public saveDraft() {
-    if(!this.chat.peerId) return;
+    if(!this.chat.peerId || this.editMsgId) return;
     
     const entities: MessageEntity[] = [];
     const str = getRichValue(this.messageInputField.input, entities);
@@ -537,17 +537,18 @@ export default class ChatInput {
   }
 
   public setDraft(draft?: MyDraftMessage, fromUpdate = true) {
-    if(!isInputEmpty(this.messageInput)) return;
+    if(!isInputEmpty(this.messageInput)) return false;
     
     if(!draft) {
       draft = this.appDraftsManager.getDraft(this.chat.peerId, this.chat.threadId);
 
       if(!draft) {
-        return;
+        return false;
       }
     }
 
     this.setInputValue(draft.rMessage, fromUpdate, fromUpdate);
+    return true;
   }
 
   public finishPeerChange() {
@@ -954,7 +955,9 @@ export default class ChatInput {
       }
     }
 
-    this.saveDraftDebounced();
+    if(!this.editMsgId) {
+      this.saveDraftDebounced();
+    }
 
     this.updateSendBtn();
   };
@@ -1105,7 +1108,7 @@ export default class ChatInput {
     }
   };
 
-  public clearInput() {
+  public clearInput(canSetDraft = true) {
     if(isTouchSupported) {
       this.messageInput.innerText = '';
     } else {
@@ -1118,7 +1121,14 @@ export default class ChatInput {
       this.canUndoFromHTML = '';
     }
 
-    this.onMessageInput();
+    let set = false;
+    if(canSetDraft) {
+      set = this.setDraft(undefined, false);
+    }
+
+    if(!set) {
+      this.onMessageInput();
+    }
   }
 
   public isInputEmpty() {
