@@ -1019,7 +1019,7 @@ $chat-helper-size: 39px;
 	}
 
 	&.is-selecting {
-		&:not(.backwards) .is-in .bubble__container {
+		&:not(.backwards) .is-in .bubble-content-wrapper {
 			transform: translateX(2.5rem);
 		}
 
@@ -1107,10 +1107,9 @@ $chat-helper-size: 39px;
 		.is-in {
 			//margin-left: 45px;
 
-			.bubble__container {
-				margin-left: 45px;
-				//margin-left: 3rem; #DO JS3
-	
+			.bubble-content-wrapper {
+				margin-left: 45px; //margin-left: 3rem; #DO JS3
+
 				@include respond-to(handhelds) {
 					max-width: calc(100% - var(--message-handhelds-margin));
 				}
@@ -1120,11 +1119,11 @@ $chat-helper-size: 39px;
 
 	&.is-channel:not(.is-chat) {
 		.bubble {
-			&__container {
+			&-content-wrapper {
 				max-width: 100%;
 			}
 
-			&.with-beside-button .bubble__container {
+			&.with-beside-button .bubble-content-wrapper {
 				max-width: calc(100% - var(--message-beside-button-margin)) !important;
 			}
 		}

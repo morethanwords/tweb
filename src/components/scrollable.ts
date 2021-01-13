@@ -14,7 +14,7 @@ console.log(height);
 */
 
 /*
-Array.from($0.querySelectorAll('.bubble__container')).forEach(_el => {
+Array.from($0.querySelectorAll('.bubble-content')).forEach(_el => {
 	//_el.style.display = '';	
 	//return;
 

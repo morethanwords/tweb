@@ -536,7 +536,7 @@ export default class ChatBubbles {
     
     if(!bubble) return;
 
-    if(bubble.classList.contains('is-date') && findUpClassName(target, 'bubble__container')) {
+    if(bubble.classList.contains('is-date') && findUpClassName(target, 'bubble-content')) {
       if(bubble.classList.contains('is-sticky') && !this.chatInner.classList.contains('is-scrolling')) {
         return;
       }
@@ -1101,7 +1101,7 @@ export default class ChatBubbles {
       
       const div = document.createElement('div');
       div.className = 'bubble service is-date';
-      div.innerHTML = `<div class="bubble__container"><div class="service-msg">${str}</div></div>`;
+      div.innerHTML = `<div class="bubble-content"><div class="service-msg">${str}</div></div>`;
       ////////this.log('need to render date message', dateTimestamp, str);
 
       const container = document.createElement('div');
@@ -1536,15 +1536,20 @@ export default class ChatBubbles {
     //messageDiv.innerText = message.message;
 
     let bubbleContainer: HTMLDivElement;
+    let contentWrapper: HTMLElement;
     
     // bubble
     if(!bubble) {
+      contentWrapper = document.createElement('div');
+      contentWrapper.classList.add('bubble-content-wrapper');
+      
       bubbleContainer = document.createElement('div');
-      bubbleContainer.classList.add('bubble__container');
+      bubbleContainer.classList.add('bubble-content');
       
       bubble = document.createElement('div');
       bubble.classList.add('bubble');
-      bubble.appendChild(bubbleContainer);
+      contentWrapper.appendChild(bubbleContainer);
+      bubble.appendChild(contentWrapper);
 
       if(!our && !message.pFlags.out) {
         //this.log('not our message', message, message.pFlags.unread);
@@ -1561,12 +1566,14 @@ export default class ChatBubbles {
       const classNames = ['bubble'].concat(save.filter(c => wasClassNames.includes(c)));
       bubble.className = classNames.join(' ');
 
-      bubbleContainer = bubble.lastElementChild as HTMLDivElement;
-      bubbleContainer.innerHTML = '';
+      contentWrapper = bubble.lastElementChild as HTMLElement;
+      bubbleContainer = contentWrapper.firstElementChild as HTMLDivElement;
+      contentWrapper.innerHTML = '';
+      contentWrapper.appendChild(bubbleContainer);
       //bubbleContainer.style.marginBottom = '';
-      const animationDelay = bubbleContainer.style.animationDelay;
-      bubbleContainer.style.cssText = '';
-      bubbleContainer.style.animationDelay = animationDelay;
+      const animationDelay = contentWrapper.style.animationDelay;
+      contentWrapper.style.cssText = '';
+      contentWrapper.style.animationDelay = animationDelay;
 
       if(bubble === this.firstUnreadBubble) {
         bubble.classList.add('is-first-unread');
@@ -1647,6 +1654,8 @@ export default class ChatBubbles {
     let richText = RichTextProcessor.wrapRichText(messageMessage, {
       entities: totalEntities
     });
+
+    let canHaveTail = true;
     
     if(totalEntities && !messageMedia) {
       let emojiEntities = totalEntities.filter((e) => e._ == 'messageEntityEmoji');
@@ -1672,6 +1681,7 @@ export default class ChatBubbles {
         }
 
         bubble.classList.add('is-message-empty', 'emoji-big');
+        canHaveTail = false;
       } else {
         messageDiv.innerHTML = richText;
       }
@@ -1755,11 +1765,9 @@ export default class ChatBubbles {
         this.appInlineBotsManager.callbackButtonClick(this.peerId, message.mid, button);
       });
 
-      const offset = rows.length * 45 + 'px';
-      bubbleContainer.style.marginBottom = offset;
-      containerDiv.style.bottom = '-' + offset;
-
-      bubbleContainer.prepend(containerDiv);
+      canHaveTail = false;
+      bubble.classList.add('with-reply-markup');
+      contentWrapper.append(containerDiv);
     }
     
     const isOutgoing = message.pFlags.is_outgoing/*  && this.peerId != rootScope.myId */;
@@ -1803,11 +1811,15 @@ export default class ChatBubbles {
         case 'messageMediaPhoto': {
           const photo = messageMedia.photo;
           ////////this.log('messageMediaPhoto', photo);
+
+          if(!messageMessage) {
+            canHaveTail = false;
+          }
           
           bubble.classList.add('hide-name', 'photo');
           
           const storage = this.appMessagesManager.groupedMessagesStorage[message.grouped_id];
-          if(message.grouped_id && Object.keys(storage).length != 1 && albumMustBeRenderedFull) {
+          if(message.grouped_id && Object.keys(storage).length !== 1 && albumMustBeRenderedFull) {
             bubble.classList.add('is-album', 'is-grouped');
             wrapAlbum({
               groupId: message.grouped_id, 
@@ -1822,7 +1834,7 @@ export default class ChatBubbles {
             break;
           }
           
-          const withTail = !isAndroid && !message.message && !withReplies && USE_MEDIA_TAILS;
+          const withTail = !isAndroid && canHaveTail && !withReplies && USE_MEDIA_TAILS;
           if(withTail) bubble.classList.add('with-media-tail');
           wrapPhoto({
             photo, 
@@ -1967,6 +1979,7 @@ export default class ChatBubbles {
           
           if(doc.sticker/*  && doc.size <= 1e6 */) {
             bubble.classList.add('sticker');
+            canHaveTail = false;
             
             if(doc.animated) {
               bubble.classList.add('sticker-animated');
@@ -1993,12 +2006,16 @@ export default class ChatBubbles {
             });
 
             break;
-          } else if(doc.type == 'video' || doc.type == 'gif' || doc.type == 'round'/*  && doc.size <= 20e6 */) {
+          } else if(doc.type === 'video' || doc.type === 'gif' || doc.type === 'round'/*  && doc.size <= 20e6 */) {
             //this.log('never get free 2', doc);
+
+            if(doc.type === 'round' || !messageMessage) {
+              canHaveTail = false;
+            }
             
-            bubble.classList.add('hide-name', doc.type == 'round' ? 'round' : 'video');
+            bubble.classList.add('hide-name', doc.type === 'round' ? 'round' : 'video');
             const storage = this.appMessagesManager.groupedMessagesStorage[message.grouped_id];
-            if(message.grouped_id && Object.keys(storage).length != 1 && albumMustBeRenderedFull) {
+            if(message.grouped_id && Object.keys(storage).length !== 1 && albumMustBeRenderedFull) {
               bubble.classList.add('is-album', 'is-grouped');
   
               wrapAlbum({
@@ -2011,7 +2028,7 @@ export default class ChatBubbles {
                 loadPromises
               });
             } else {
-              const withTail = !isAndroid && !isApple && doc.type != 'round' && !message.message && !withReplies && USE_MEDIA_TAILS;
+              const withTail = !isAndroid && !isApple && doc.type !== 'round' && canHaveTail && !withReplies && USE_MEDIA_TAILS;
               if(withTail) bubble.classList.add('with-media-tail');
               wrapVideo({
                 doc, 
@@ -2047,7 +2064,7 @@ export default class ChatBubbles {
             lastContainer && lastContainer.append(timeSpan.cloneNode(true));
 
             bubble.classList.remove('is-message-empty');
-            messageDiv.classList.add((doc.type != 'photo' ? doc.type || 'document' : 'document') + '-message');
+            messageDiv.classList.add((doc.type !== 'photo' ? doc.type || 'document' : 'document') + '-message');
             processingWebPage = true;
             
             break;
@@ -2225,7 +2242,7 @@ export default class ChatBubbles {
         
         //this.log('exec loadDialogPhoto', message);
 
-        bubbleContainer.append(avatarElem);
+        contentWrapper.append(avatarElem);
       }
     } else {
       bubble.classList.add('hide-name');
@@ -2266,6 +2283,10 @@ export default class ChatBubbles {
         message: messageWithReplies,
         messageDiv
       });
+    }
+
+    if(canHaveTail) {
+      bubble.classList.add('can-have-tail');
     }
 
     return bubble;
@@ -2612,19 +2633,19 @@ export default class ChatBubbles {
             const animationPromise = deferredPromise<void>();
             let lastMsDelay = 0;
             mids.forEach((mid, idx) => {
-              const bubble = this.bubbles[mid];
+              const contentWrapper = this.bubbles[mid].lastElementChild as HTMLElement;
       
               lastMsDelay = ((idx + offsetIndex) || 0.1) * delay;
               //lastMsDelay = (idx || 0.1) * 1000;
               //if(idx || isSafari) {
                 // ! 0.1 = 1ms задержка для Safari, без этого первое сообщение над самым нижним может появиться позже другого с animation-delay, LOL !
-                bubble.style.animationDelay = lastMsDelay + 'ms';
+                contentWrapper.style.animationDelay = lastMsDelay + 'ms';
               //}
     
-              bubble.classList.add('zoom-fade');
-              bubble.addEventListener('animationend', () => {
-                bubble.style.animationDelay = '';
-                bubble.classList.remove('zoom-fade');
+              contentWrapper.classList.add('zoom-fade');
+              contentWrapper.addEventListener('animationend', () => {
+                contentWrapper.style.animationDelay = '';
+                contentWrapper.classList.remove('zoom-fade');
   
                 if(idx === (mids.length - 1)) {
                   animationPromise.resolve();
