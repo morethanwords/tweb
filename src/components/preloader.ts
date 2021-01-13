@@ -69,7 +69,7 @@ export default class ProgressivePreloader {
       promise.notify = null;
 
       if(tempId === this.tempId) {
-        if(successfully) {
+        if(successfully && this.cancelable) {
           this.setProgress(100);
 
           setTimeout(() => { // * wait for transition complete

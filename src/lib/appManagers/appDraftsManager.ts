@@ -156,15 +156,13 @@ export class AppDraftsManager {
     } else {
       draftObj = {_: 'draftMessage'} as any as DraftMessage.draftMessage;
       let message = localDraft.message;
-      let entities: MessageEntity[] = [];
-      //message = RichTextProcessor.parseEmojis(message);
-      //message = RichTextProcessor.parseMarkdown(message, entities, true);
+      let entities: MessageEntity[] = localDraft.entities;
 
       if(localDraft.reply_to_msg_id) {
         params.reply_to_msg_id = draftObj.reply_to_msg_id = localDraft.reply_to_msg_id;
       }
 
-      if(entities.length) {
+      if(entities?.length) {
         params.entities = draftObj.entities = entities;
       }
 

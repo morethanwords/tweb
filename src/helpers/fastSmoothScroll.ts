@@ -83,7 +83,7 @@ export default function fastSmoothScroll(
     });
   });
 
-  return dispatchHeavyAnimationEvent(promise);
+  return axis === 'y' ? dispatchHeavyAnimationEvent(promise) : promise;
 }
 
 function scrollWithJs(
@@ -225,7 +225,7 @@ function scrollWithJs(
     return t < 1;
   };
 
-  if(!duration) {
+  if(!duration || !path) {
     cancelAnimationByKey(container);
     tick();
     return Promise.resolve();

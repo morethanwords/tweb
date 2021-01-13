@@ -97,7 +97,8 @@ $bubble-margin: .25rem;
   } */
 
   &.is-highlighted:after {
-    background-color: rgba(0, 132, 255, .3);
+    //background-color: rgba(0, 132, 255, .3);
+    background-color: rgba(77, 142, 80, .4);
 
     body:not(.animation-level-0) & {
       animation: bubbleSelected 2s linear;

@@ -27,6 +27,7 @@ import appSidebarRight, { AppSidebarRight } from "./sidebarRight";
 import SwipeHandler from "./swipeHandler";
 import { months, ONE_DAY } from "../helpers/date";
 import { SearchSuperContext } from "./appSearchSuper.";
+import { DEBUG } from "../lib/mtproto/mtproto_config";
 
 // TODO: масштабирование картинок (не SVG) при ресайзе, и правильный возврат на исходную позицию
 // TODO: картинки "обрезаются" если возвращаются или появляются с места, где есть их перекрытие (топбар, поле ввода)
@@ -332,7 +333,9 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       mover = this.setNewMover();
     } */
 
-    this.log('setMoverToTarget', target, closing, wasActive, fromRight);
+    /* if(DEBUG) {
+      this.log('setMoverToTarget', target, closing, wasActive, fromRight);
+    } */
 
     let realParent: HTMLElement;
 
@@ -805,7 +808,9 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     prevTargets: TargetType[] = [], nextTargets: TargetType[] = [], needLoadMore = true) {
     if(this.setMoverPromise) return this.setMoverPromise;
 
-    this.log('openMedia:', media, fromId, prevTargets, nextTargets);
+    /* if(DEBUG) {
+      this.log('openMedia:', media, fromId, prevTargets, nextTargets);
+    } */
 
     this.setAuthorInfo(fromId, timestamp);
     
@@ -1263,7 +1268,9 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       minDate: this.searchContext.minDate,
       maxDate: this.searchContext.maxDate
     }).then(value => {
-      this.log('loaded more media by maxId:', maxId, value, older, this.reverse);
+      /* if(DEBUG) {
+        this.log('loaded more media by maxId:', maxId, value, older, this.reverse);
+      } */
 
       if(value.next_rate) {
         this.searchContext.nextRate = value.next_rate;
@@ -1414,7 +1421,9 @@ export class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete', AppMe
         return;
       }
 
-      this.log('loaded more media by maxId:', /* maxId,  */value, older, this.reverse);
+      // if(DEBUG) {
+      //   this.log('loaded more media by maxId:', /* maxId,  */value, older, this.reverse);
+      // }
 
       if(value.photos.length < loadCount) {
         this.loadedAllMediaDown = true;
