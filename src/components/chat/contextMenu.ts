@@ -31,11 +31,11 @@ export default class ChatContextMenu {
         this.init = null;
       }
 
-      let bubble: HTMLElement, bubbleContainer: HTMLElement;
+      let bubble: HTMLElement, contentWrapper: HTMLElement;
 
       try {
-        bubbleContainer = findUpClassName(e.target, 'bubble__container');
-        bubble = bubbleContainer ? bubbleContainer.parentElement : findUpClassName(e.target, 'bubble');
+        contentWrapper = findUpClassName(e.target, 'bubble-content-wrapper');
+        bubble = contentWrapper ? contentWrapper.parentElement : findUpClassName(e.target, 'bubble');
       } catch(e) {}
 
       // ! context menu click by date bubble (there is no pointer-events)
@@ -51,7 +51,7 @@ export default class ChatContextMenu {
       if(!mid) return;
 
       // * если открыть контекстное меню для альбома не по бабблу, и последний элемент не выбран, чтобы показать остальные пункты
-      if(chat.selection.isSelecting && !bubbleContainer) {
+      if(chat.selection.isSelecting && !contentWrapper) {
         const mids = this.chat.getMidsByMid(mid);
         if(mids.length > 1) {
           const selectedMid = chat.selection.selectedMids.has(mid) ? mid : mids.find(mid => chat.selection.selectedMids.has(mid));
@@ -83,7 +83,7 @@ export default class ChatContextMenu {
         if(chat.selection.isSelecting && !button.withSelection) {
           good = false;
         } else {
-          good = bubbleContainer || isTouchSupported ? 
+          good = contentWrapper || isTouchSupported ? 
             button.verify() : 
             button.notDirect && button.verify() && button.notDirect();
         }
@@ -112,7 +112,7 @@ export default class ChatContextMenu {
 
         chat.log('touchend', e);
 
-        const good = ['bubble', 'bubble__container', 'message', 'time', 'inner'].find(c => className.match(new RegExp(c + '($|\\s)')));
+        const good = ['bubble', 'bubble-content-wrapper', 'bubble-content', 'message', 'time', 'inner'].find(c => className.match(new RegExp(c + '($|\\s)')));
         if(good) {
           cancelEvent(e);
           //onContextMenu((e as TouchEvent).changedTouches[0]);

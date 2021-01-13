@@ -62,6 +62,11 @@ $bubble-margin: .25rem;
   z-index: 1;
   margin: 0 auto $bubble-margin;
   user-select: none;
+  display: flex;
+
+  --background-color: #fff;
+  --accent-color: $color-blue;
+  --secondary-color: $color-gray;
 
   &.is-highlighted, &.is-selected, /* .bubbles.is-selecting */ & {
     &:after {
@@ -72,7 +77,7 @@ $bubble-margin: .25rem;
       top: -#{$bubble-margin / 2};
       bottom: -#{$bubble-margin / 2};
       content: " ";
-      z-index: 1;
+      z-index: -1;
     }
   }
 
@@ -172,16 +177,6 @@ $bubble-margin: .25rem;
 		}
   }
 
-  &.zoom-fade /* .bubble__container */ {
-    //transform: scale(.8) translateZ(0);
-    transform: scale3d(.8, .8, 1);
-    //transform: scale(.8);
-    opacity: 0;
-    transform-origin: center;
-    animation: zoom-opacity-fade-in .2s linear forwards;
-    animation-delay: 0;
-  }
-
   &-select-checkbox {
     z-index: 3;
     position: absolute;
@@ -218,7 +213,7 @@ $bubble-margin: .25rem;
     }
   }
   
-  &__container {
+  &-content {
     //min-width: 60px;
     min-width: 56px;
     max-width: 100%;
@@ -231,8 +226,8 @@ $bubble-margin: .25rem;
     width: max-content;
     height: fit-content;
     z-index: 2;
-    transition: .2s transform;
     user-select: none;
+    background-color: var(--background-color);
 
     body.animation-level-0 & {
       transition: none;
@@ -246,42 +241,9 @@ $bubble-margin: .25rem;
     html.is-touch body:not(.no-select) .bubbles.is-selecting & { // * need no-select on body because chat-input transforms in channels
       user-select: text;
     }
-
-    @include respond-to(not-handhelds) {
-      max-width: 85%;
-    }
-
-    @include respond-to(handhelds) {
-      max-width: calc(100% - var(--message-handhelds-margin));
-    }
-
-    > .user-avatar {
-      position: absolute;
-      margin-left: -45px;
-      //left: -3rem; # DO JS3
-      cursor: pointer;
-
-      .bubbles.is-selecting & {
-        transform: scale3d(1, 1, 1);
-        transform-origin: bottom;
-        transition: transform var(--layer-transition);
-
-        body.animation-level-0 & {
-          transition: none;
-        }
-      }
-
-      .bubbles.is-selecting:not(.backwards) & {
-        transform: scale3d(.76, .76, 1);
-      }
-
-      // @include respond-to(handhelds) {
-      //   left: -45px;
-      // }
-    }
   }
 
-  /* &.with-beside-button &__container {
+  /* &.with-beside-button &-content {
     @include respond-to(handhelds) {
       max-width: calc(100% - var(--message-handhelds-margin)) !important;
     }
@@ -292,7 +254,7 @@ $bubble-margin: .25rem;
     //padding: $bubble-margin 0;
     max-width: var(--messages-container-width);
 
-    .bubble__container {
+    .bubble-content {
       /* justify-self: center; */
       margin: 0 auto;
       max-width: 100%;
@@ -319,7 +281,7 @@ $bubble-margin: .25rem;
       .bubbles-inner:not(.is-scrolling) & {
         //transition-delay: 1.35s;
 
-        .bubble__container {
+        .bubble-content {
           cursor: default;
         }
       }
@@ -329,8 +291,8 @@ $bubble-margin: .25rem;
       } */
     }
 
-    .chat.type-chat & .bubble__container,
-    .chat.type-discussion & .bubble__container {
+    .chat.type-chat & .bubble-content,
+    .chat.type-discussion & .bubble-content {
       cursor: pointer;
       pointer-events: all;
     }
@@ -359,10 +321,6 @@ $bubble-margin: .25rem;
       width: 22px;
       height: 22px;
     }
-  }
-
-  .message strong {
-    font-weight: 500 !important;
   }
 
   /* &.is-group-first {
@@ -395,7 +353,7 @@ $bubble-margin: .25rem;
 
   &:not(.forwarded) {
     &:not(.is-group-first) {
-      .bubble__container > .name, .document-wrapper > .name {
+      .bubble-content > .name, .document-wrapper > .name {
         display: none;
       }
 
@@ -405,7 +363,7 @@ $bubble-margin: .25rem;
     }
   }
 
-  &:not(.is-group-last) .bubble__container > .user-avatar {
+  &:not(.is-group-last) .bubble-content-wrapper > .user-avatar {
     display: none;
   }
 
@@ -429,7 +387,7 @@ $bubble-margin: .25rem;
   }
   
   &.photo, &.video {
-    .bubble__container {
+    .bubble-content {
       width: min-content;
     }
     
@@ -472,7 +430,7 @@ $bubble-margin: .25rem;
   &.emoji-big {
     font-size: 0;
 
-    .bubble__container {
+    .bubble-content {
       background: none!important;
       box-shadow: none;
       line-height: 1;
@@ -491,7 +449,7 @@ $bubble-margin: .25rem;
       }
     }
 
-    &.sticker .bubble__container {
+    &.sticker .bubble-content {
       max-width: 140px !important;
       max-height: 140px !important;
     }
@@ -503,8 +461,6 @@ $bubble-margin: .25rem;
     img.emoji {
       height: 64px;
       width: 64px;
-      /* height: 96px;
-      width: 96px; */
     }
   }
   
@@ -514,8 +470,6 @@ $bubble-margin: .25rem;
     img.emoji {
       height: 48px;
       width: 48px;
-      /* height: 64px;
-      width: 64px; */
     }
   } 
   
@@ -525,13 +479,11 @@ $bubble-margin: .25rem;
     img.emoji {
       height: 32px;
       width: 32px;
-      /* height: 48px;
-      width: 48px; */
     }
   }
   
   &.sticker, &.round, &.emoji-big {
-    .bubble__container {
+    .bubble-content {
       cursor: pointer;
       background: none!important;
       box-shadow: none;
@@ -561,7 +513,7 @@ $bubble-margin: .25rem;
       border-radius: 0;
     }
 
-    .bubble__container {
+    .bubble-content {
       max-width: 200px !important;
       max-height: 200px !important;
     }
@@ -718,25 +670,11 @@ $bubble-margin: .25rem;
       }
     }
   }
-  
-  //&.video {
-    //.attachment {
-      //max-height: fit-content;
-      
-      /*img {
-        width: 100%;
-        height: 100%;
-      }*/
-    //}
-  //}
-  
+
   &.round {
     .attachment {
       max-height: 200px;
       max-width: 200px;
-      //max-height: fit-content;
-      //-webkit-clip-path: ellipse(100px 100px at center);
-      //clip-path: ellipse(100px 100px at center);
     }
   }
 
@@ -750,8 +688,6 @@ $bubble-margin: .25rem;
     .preview {
       max-height: unquote('min(400px, 100%)');
       max-width: unquote('min(480px, 100%)');
-      /* max-height: 100%;
-      max-width: 100%; */
       border-radius: 4px;
       margin-bottom: 3px;
       overflow: hidden;
@@ -763,8 +699,6 @@ $bubble-margin: .25rem;
       
       img, video {
         max-width: 100%;
-        /* width: 100%;
-        height: 100%; */
       }
     }
     
@@ -804,11 +738,6 @@ $bubble-margin: .25rem;
   
   .web, .reply {
     font-size: var(--messages-secondary-text-size);
-    //transition: anim(background-color);
-    
-    /* &:hover {
-      cursor: pointer;
-    } */
     
     .name, .reply-title {
       font-weight: 500 !important;
@@ -817,7 +746,7 @@ $bubble-margin: .25rem;
   }
 
   &.is-square-photo {
-    .bubble__container {
+    .bubble-content {
       width: fit-content;
     }
 
@@ -847,7 +776,7 @@ $bubble-margin: .25rem;
   }
 
   &.is-vertical-photo {
-    .bubble__container {
+    .bubble-content {
       width: fit-content;
     }
   }
@@ -897,24 +826,15 @@ $bubble-margin: .25rem;
   
   .message {
     font-size: var(--messages-text-size);
-    //padding: 0 9px .2675rem 9px;
     padding: 0 9px 6px 9px;
-    /* overflow: hidden;
-    text-overflow: ellipsis; */
     max-width: 100%;
     color: #000;
     line-height: 1.3125; // 21 / 16
     word-break: break-word;
     white-space: pre-wrap; // * fix spaces on line begin
     position: relative;
-    
-    /* * {
-      overflow: hidden;
-      text-overflow: ellipsis;
-    } */
-    
+
     &:last-child {
-      //padding-top: .2675rem;
       padding-top: 6px;
     }
   }
@@ -1036,7 +956,7 @@ $bubble-margin: .25rem;
   }
 
   &.is-multiple-documents {
-    /* .bubble__container {
+    /* .bubble-content {
       position: unset;
     } */
 
@@ -1382,7 +1302,7 @@ $bubble-margin: .25rem;
     user-select: none;
   }
   
-  &__container > .name, .document-wrapper > .name {
+  &-content > .name, .document-wrapper > .name {
     /* padding: .2675rem 9px 0 9px; */
     /* padding: .32rem 9px 0 9px; */
     padding: 5px 9px 0 9px;
@@ -1398,13 +1318,13 @@ $bubble-margin: .25rem;
     //white-space: nowrap;
   }
 
-  &:not(.is-group-first) .bubble__container > .name .name {
+  &:not(.is-group-first) .bubble-content > .name .name {
     display: none;
   }
   
   &:not(.webpage) {
     &.photo, &.video {
-      .bubble__container > .name {
+      .bubble-content > .name {
         //padding-bottom: .2675rem;
         padding-bottom: 6px;
       }
@@ -1433,7 +1353,7 @@ $bubble-margin: .25rem;
     }
   }
   
-  &:not(.sticker):not(.emoji-big):not(.round).is-group-last .bubble__container:after {
+  &.can-have-tail.is-group-last .bubble-content:after {
     position: absolute;
     //bottom: 0;
     width: 11px;
@@ -1447,14 +1367,14 @@ $bubble-margin: .25rem;
 
   &.photo, &.video {
     &.is-message-empty.is-group-last:not(.with-replies) {
-      .bubble__container:after {
+      .bubble-content:after {
         display: none;
       }
     }
   }
 
   &.is-message-empty.is-group-last.with-media-tail {
-    .bubble__container:after {
+    .bubble-content:after {
       display: none;
     }
 
@@ -1566,7 +1486,7 @@ $bubble-margin: .25rem;
       display: none;
     }
 
-    &.is-in .bubble__container {
+    &.is-in .bubble-content {
       margin-left: 0;
     }
   }
@@ -1582,8 +1502,61 @@ $bubble-margin: .25rem;
   }
 }
 
+.bubble-content-wrapper {
+  transition: transform var(--layer-transition);
+  transform: scale(1) translateX(0);
+
+  &.zoom-fade /* .bubble-content */ {
+    //transform: scale(.8) translateZ(0);
+    transform: scale3d(.8, .8, 1);
+    //transform: scale(.8);
+    opacity: 0;
+    transform-origin: center;
+    animation: zoom-opacity-fade-in .2s linear forwards;
+    animation-delay: 0;
+  }
+
+  @include respond-to(not-handhelds) {
+    max-width: 85%;
+  }
+
+  @include respond-to(handhelds) {
+    max-width: calc(100% - var(--message-handhelds-margin));
+  }
+
+  > .user-avatar {
+    position: absolute;
+    margin-left: -45px;
+    //left: -3rem; # DO JS3
+    bottom: 0;
+    cursor: pointer;
+
+    .bubbles.is-selecting & {
+      transform: scale3d(1, 1, 1);
+      transform-origin: bottom;
+      transition: transform var(--layer-transition);
+
+      body.animation-level-0 & {
+        transition: none;
+      }
+    }
+
+    .bubbles.is-selecting:not(.backwards) & {
+      transform: scale3d(.76, .76, 1);
+    }
+
+    // @include respond-to(handhelds) {
+    //   left: -45px;
+    // }
+  }
+}
+
 .bubble.service {
   align-self: center;
+
+  .bubble-content {
+    background-color: transparent;
+  }
   
   .service-msg {
     color: #fff;
@@ -1624,39 +1597,37 @@ $bubble-margin: .25rem;
 }
 
 .bubble.is-in {
-  .bubble__container {
-    margin-right: auto;
-    background-color: #ffffff;
-    
+  .bubble-content {
     &, .poll-footer-button {
       border-radius: 6px 12px 12px 6px;
     }
   }
     
   &.is-group-first {
-    .bubble__container, .poll-footer-button {
-      border-radius: 12px 12px 12px 6px;
+    .bubble-content, .poll-footer-button {
+      border-top-left-radius: 12px;
     }
   }
-  
+
   &.is-group-last {
-    .bubble__container, .poll-footer-button {
-      border-radius: 6px 12px 12px 0px;
-      //border-radius: 12px 12px 12px 0px;
+    &.can-have-tail {
+      .bubble-content, .poll-footer-button {
+        border-bottom-left-radius: 0;
+      }
+  
+      .bubble-content:after {
+        margin-left: -8.4px;
+        background-image: url('assets/img/msg-tail-left.svg');
+      }
     }
 
-    .bubble__container:after {
-      margin-left: -8.4px;
-      background-image: url('assets/img/msg-tail-left.svg');
+    &:not(.can-have-tail) {
+      .bubble-content, .poll-footer-button {
+        border-bottom-left-radius: 12px;
+      }
     }
   }
-    
-  &.is-group-first.is-group-last {
-    .bubble__container, .poll-footer-button {
-      border-radius: 12px 12px 12px 0px;
-    }
-  }
-  
+
   &.forwarded .attachment,
   &.is-reply .attachment,
   &:not(.hide-name).is-message-empty .attachment/* ,
@@ -1690,11 +1661,6 @@ $bubble-margin: .25rem;
   
   .quote {
     border-left: 2px $color-blue solid;
-    
-    /* * {
-      overflow: hidden;
-      text-overflow: ellipsis;
-    } */
   }
 
   .quote .name, .reply-title/* , .reply i */ {
@@ -1712,13 +1678,13 @@ $bubble-margin: .25rem;
   }
 
   &.is-message-empty.is-group-last {
-    &:not(.with-media-tail):not(.with-replies) {
+    /* &:not(.with-media-tail):not(.with-replies) {
       &.photo, &.video {
-        .bubble__container {
+        .bubble-content {
           border-bottom-left-radius: 6px;
         }
       }
-    }
+    } */
 
     &.with-media-tail {
       .attachment {
@@ -1744,26 +1710,11 @@ $bubble-margin: .25rem;
   } */
 }
 
-/* @include respond-to(handhelds) {
-  .bubble.is-in {
-    margin-right: auto;
-  }
-
-  .bubble.is-out {
-    margin-left: auto;
-  }
-} */
-
 .bubble.is-out {
-  .bubble__container {
-    margin-left: auto;
-    background-color: #eeffde;
+  flex-direction: row-reverse;
+  --background-color: #eeffde;
 
-    > .user-avatar {
-      left: auto;
-      right: -2.5rem;
-    }
-
+  .bubble-content {
     &, .poll-footer-button {
       border-radius: 12px 6px 6px 12px;
     }
@@ -1772,27 +1723,36 @@ $bubble-margin: .25rem;
       color: #50af4f;
     }
   }
+
+  /* .bubble-content-wrapper {
+    > .user-avatar {
+      left: auto;
+      right: -2.5rem;
+    }
+  } */
     
   &.is-group-first {
-    .bubble__container, .poll-footer-button {
-      border-radius: 12px 12px 6px 12px;
+    .bubble-content, .poll-footer-button {
+      border-top-right-radius: 12px;
     }
   }
     
   &.is-group-last {
-    .bubble__container, .poll-footer-button {
-      border-radius: 12px 6px 0px 12px;
+    &.can-have-tail {
+      .bubble-content, .poll-footer-button {
+        border-bottom-right-radius: 0;
+      }
+      
+      .bubble-content:after {
+        right: -8.4px;
+        background-image: url('assets/img/msg-tail-right.svg');
+      }
     }
-    
-    .bubble__container:after {
-      right: -8.4px;
-      background-image: url('assets/img/msg-tail-right.svg');
-    }
-  }
-    
-  &.is-group-first.is-group-last {
-    .bubble__container, .poll-footer-button {
-      border-radius: 12px 12px 0px 12px;
+
+    &:not(.can-have-tail) {
+      .bubble-content, .poll-footer-button {
+        border-bottom-right-radius: 12px;
+      }
     }
   }
     
@@ -1920,13 +1880,13 @@ $bubble-margin: .25rem;
   }
 
   &.is-message-empty.is-group-last {
-    &:not(.with-media-tail) {
+    /* &:not(.with-media-tail) {
       &.photo, &.video {
-        .bubble__container {
+        .bubble-content {
           border-bottom-right-radius: 6px;
         }
       }
-    }
+    } */
 
     &.with-media-tail {
       .attachment {
@@ -2030,7 +1990,6 @@ $bubble-margin: .25rem;
 }
 
 .reply-markup {
-  position: absolute;
   width: 100%;
 
   &-row {
