@@ -21,6 +21,8 @@ import { renderImageFromUrl, putPreloader, formatPhoneNumber } from "./misc";
 import { ripple } from "./ripple";
 import Scrollable, { ScrollableX } from "./scrollable";
 import { wrapDocument, wrapPhoto, wrapVideo } from "./wrappers";
+import useHeavyAnimationCheck, { getHeavyAnimationPromise } from "../hooks/useHeavyAnimationCheck";
+import { p } from "../mock/srp";
 
 const testScroll = false;
 
@@ -47,7 +49,7 @@ export default class AppSearchSuper {
   public container: HTMLElement;
   public nav: HTMLElement;
   private tabsContainer: HTMLElement;
-  private tabsMenu: HTMLUListElement;
+  private tabsMenu: HTMLElement;
   private prevTabId = -1;
   
   private lazyLoadQueue = new LazyLoadQueue();
@@ -89,25 +91,25 @@ export default class AppSearchSuper {
     const navScrollable = new ScrollableX(navScrollableContainer);
 
     const nav = this.nav = document.createElement('nav');
-    nav.classList.add('search-super-tabs', 'menu-horizontal');
-    this.tabsMenu = document.createElement('ul');
-    nav.append(this.tabsMenu);
+    nav.classList.add('search-super-tabs', 'menu-horizontal-div');
+    this.tabsMenu = nav;
 
     navScrollable.container.append(nav);
 
     for(const type of types) {
-      const li = document.createElement('li');
+      const menuTab = document.createElement('div');
+      menuTab.classList.add('menu-horizontal-div-item');
       const span = document.createElement('span');
       const i = document.createElement('i');
 
       span.innerText = type.name;
       span.append(i);
 
-      li.append(span);
+      menuTab.append(span);
 
-      ripple(li);
+      ripple(menuTab);
 
-      this.tabsMenu.append(li);
+      this.tabsMenu.append(menuTab);
     }
 
     this.tabsContainer = document.createElement('div');
@@ -194,6 +196,12 @@ export default class AppSearchSuper {
     });
 
     this.type = this.types[0].inputFilter;
+
+    useHeavyAnimationCheck(() => {
+      this.lazyLoadQueue.lock();
+    }, () => {
+      this.lazyLoadQueue.unlockAndRefresh(); // ! maybe not so efficient
+    });
   }
 
   private onTransitionStart = () => {
@@ -313,6 +321,8 @@ export default class AppSearchSuper {
     const sharedMediaDiv: HTMLElement = this.tabs[type];
     const promises: Promise<any>[] = [];
     const middleware = this.getMiddleware();
+
+    await getHeavyAnimationPromise();
     
     let searchGroup: SearchGroup;
     if(type === 'inputMessagesFilterPhotoVideo' && !!this.searchContext.query.trim()) {
@@ -322,7 +332,6 @@ export default class AppSearchSuper {
     } else if(type === 'inputMessagesFilterEmpty') {
       searchGroup = this.searchGroups.messages;
     }
-
 
     // https://core.telegram.org/type/MessagesFilter
     switch(type) {
@@ -362,7 +371,8 @@ export default class AppSearchSuper {
               lazyLoadQueue: this.lazyLoadQueue,
               middleware,
               onlyPreview: true,
-              withoutPreloader: true
+              withoutPreloader: true,
+              noPlayButton: true
             }).thumb;
           } else {
             wrapped = wrapPhoto({

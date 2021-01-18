@@ -80,7 +80,12 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
   constructor(topButtons: Array<keyof AppMediaViewerBase<ContentAdditionType, ButtonsAdditionType, TargetType>['buttons']>) {
     this.log = logger('AMV');
     this.preloader = new ProgressivePreloader();
-    this.preloaderStreamable = new ProgressivePreloader(undefined, false, true);
+    this.preloaderStreamable = new ProgressivePreloader({
+      cancelable: false,
+      streamable: true
+    });
+    this.preloader.construct();
+    this.preloaderStreamable.construct();
     this.lazyLoadQueue = new LazyLoadQueueBase();
 
     this.wholeDiv = document.createElement('div');

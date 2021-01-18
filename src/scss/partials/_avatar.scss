@@ -6,13 +6,12 @@ avatar-element {
   color: #fff;
   width: var(--size);
   height: var(--size);
-  line-height: var(--size);
+  line-height: var(--size) !important;
   border-radius: 50%;
   background: linear-gradient(var(--color-top), var(--color-bottom));
   text-align: center;
   font-size: calc(1.25rem / var(--multiplier));
   /* overflow: hidden; */
-  position: relative;
   user-select: none;
   text-transform: uppercase;
   font-weight: 700;
@@ -52,17 +51,16 @@ avatar-element {
   }
 
   &.tgico-avatar_deletedaccount:before {
-    font-size: calc(56px / var(--multiplier));
+    font-size: calc(54px / var(--multiplier));
   }
 
   &.tgico-calendarfilter:before {
-    font-size: calc(32px / var(--multiplier));
+    font-size: calc(36px / var(--multiplier));
   }
-  
-  /* kostil */
-  display: flex;
-  align-items: center;
-  justify-content: center;
+
+  &:before {
+    line-height: inherit !important;
+  }
   
   img {
     width: 100%;
@@ -79,17 +77,21 @@ avatar-element {
     fill: white;
   }
   
-  &.is-online:after {
-    position: absolute;
-    content: " ";
-    display: block;
-    border-radius: 50%;
-    border: 2px solid white;
-    background-color: #0ac630;
-    left: 74%;
-    top: 73%;
-    width: 14px;
-    height: 14px;
+  &.is-online {
+    position: relative;
+
+    &:after {
+      position: absolute;
+      content: " ";
+      display: block;
+      border-radius: 50%;
+      border: 2px solid white;
+      background-color: #0ac630;
+      width: 14px;
+      height: 14px;
+      left: 2.4375rem;
+      top: 2.4375rem;
+    }
   }
 
   &[clickable] {

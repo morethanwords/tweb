@@ -52,7 +52,6 @@ export class ScrollableBase {
   protected onScroll: () => void;
 
   public isHeavyAnimationInProgress = false;
-  public isHeavyScrolling = false;
 
   constructor(public el: HTMLElement, logPrefix = '', public container: HTMLElement = document.createElement('div')) {
     this.container.classList.add('scrollable');
@@ -96,11 +95,7 @@ export class ScrollableBase {
     forceDuration?: number,
     axis?: 'x' | 'y'
   ) {
-    this.isHeavyScrolling = true;
-    return fastSmoothScroll(this.container, element, position, margin, maxDistance, forceDirection, forceDuration, axis)
-    .finally(() => {
-      this.isHeavyScrolling = false;
-    });
+    return fastSmoothScroll(this.container, element, position, margin, maxDistance, forceDirection, forceDuration, axis);
   }
 }
 
@@ -205,8 +200,12 @@ export default class Scrollable extends ScrollableBase {
     (this.splitUp || this.padding || this.container).append(...elements);
   }
 
+  public getDistanceToEnd() {
+    return this.scrollHeight - Math.round(this.scrollTop + this.container.offsetHeight);
+  }
+
   get isScrolledDown() {
-    return this.scrollHeight - Math.round(this.scrollTop + this.container.offsetHeight) <= 1;
+    return this.getDistanceToEnd() <= 1;
   }
 
   set scrollTop(y: number) {
@@ -231,26 +230,12 @@ export class ScrollableX extends ScrollableBase {
 
     if(!isTouchSupported) {
       const scrollHorizontally = (e: any) => {
-        e = window.event || e;
-        if(e.which == 1) {
-          // maybe horizontal scroll is natively supports, works on macbook
-          return;
+        if(!e.deltaX) {
+          this.container!.scrollLeft += e.deltaY / 4;
         }
-
-        const delta = Math.max(-1, Math.min(1, (e.wheelDelta || -e.detail)));
-        this.container.scrollLeft -= (delta * 20);
-        e.preventDefault();
       };
-      if(this.container.addEventListener) {
-        // IE9, Chrome, Safari, Opera
-        this.container.addEventListener("mousewheel", scrollHorizontally, false);
-        // Firefox
-        this.container.addEventListener("DOMMouseScroll", scrollHorizontally, false);
-      } else {
-        // IE 6/7/8
-        // @ts-ignore
-        this.container.attachEvent("onmousewheel", scrollHorizontally);
-      }
+      
+      this.container.addEventListener('wheel', scrollHorizontally, {passive: true});
     }
   }
 }

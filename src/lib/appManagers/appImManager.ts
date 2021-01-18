@@ -27,9 +27,9 @@ import { isTouchSupported } from '../../helpers/touchSupport';
 import appPollsManager from './appPollsManager';
 import SetTransition from '../../components/singleTransition';
 import ChatDragAndDrop from '../../components/chat/dragAndDrop';
-import { debounce } from '../../helpers/schedulers';
+import { debounce, pause } from '../../helpers/schedulers';
 import lottieLoader from '../lottieLoader';
-import useHeavyAnimationCheck from '../../hooks/useHeavyAnimationCheck';
+import useHeavyAnimationCheck, { dispatchHeavyAnimationEvent } from '../../hooks/useHeavyAnimationCheck';
 import appDraftsManager from './appDraftsManager';
 import serverTimeManager from '../mtproto/serverTimeManager';
 
@@ -102,6 +102,7 @@ export class AppImManager {
 
     this.chatsContainer = document.createElement('div');
     this.chatsContainer.classList.add('chats-container', 'tabs-container');
+    this.chatsContainer.dataset.animation = 'navigation';
 
     this.columnEl.append(this.chatsContainer);
     
@@ -173,6 +174,8 @@ export class AppImManager {
     animationIntersector.checkAnimations(false);
   }
 
+  // * не могу использовать тут TransitionSlider, так как мне нужен отрисованный блок рядом 
+  // * (или под текущим чатом) чтобы правильно отрендерить чат (напр. scrollTop)
   private chatsSelectTab(tab: HTMLElement) {
     if(this.prevTab === tab) {
       return;
@@ -181,6 +184,10 @@ export class AppImManager {
     if(this.prevTab) {
       this.prevTab.classList.remove('active');
       this.chatsSelectTabDebounced();
+
+      if(rootScope.settings.animationsEnabled) { // ! нужно переделать на animation, так как при лаге анимация будет длиться не 250мс
+        dispatchHeavyAnimationEvent(pause(250), 250);
+      }
     }
 
     tab.classList.add('active');
@@ -434,6 +441,14 @@ export class AppImManager {
     document.body.classList.toggle(LEFT_COLUMN_ACTIVE_CLASSNAME, id === 0);
 
     const prevTabId = this.tabId;
+
+    this.log('selectTab', id, prevTabId);
+
+    if(prevTabId !== -1 && prevTabId !== id && rootScope.settings.animationsEnabled) {
+      const transitionTime = mediaSizes.isMobile ? 250 : 200;
+      dispatchHeavyAnimationEvent(pause(transitionTime), transitionTime);
+    }
+
     this.tabId = id;
     if(mediaSizes.isMobile && prevTabId === 2 && id === 1) {
       //appSidebarRight.toggleSidebar(false);

@@ -1,4 +1,4 @@
-import AppStorage from '../storage';
+import sessionStorage from '../sessionStorage';
 
 import MTPNetworker, { MTMessage } from './networker';
 import { isObject } from './bin_utils';
@@ -92,7 +92,7 @@ export class ApiManager {
   
   // mtpSetUserAuth
   public setUserAuth(userId: number) {
-    AppStorage.set({
+    sessionStorage.set({
       user_auth: userId
     });
     
@@ -106,26 +106,25 @@ export class ApiManager {
   public setBaseDcId(dcId: number) {
     this.baseDcId = dcId;
 
-    AppStorage.set({
+    sessionStorage.set({
       dc: this.baseDcId
     });
   }
   
   // mtpLogOut
   public async logOut() {
-    let storageKeys: Array<string> = [];
+    const storageKeys: Array<string> = [];
     
-    let prefix = Modes.test ? 't_dc' : 'dc';
-    
+    const prefix = 'dc';
     for(let dcId = 1; dcId <= 5; dcId++) {
       storageKeys.push(prefix + dcId + '_auth_key');
       //storageKeys.push(prefix + dcId + '_auth_keyId');
     }
     
     // WebPushApiManager.forceUnsubscribe(); // WARNING
-    let storageResult = await AppStorage.get<string[]|boolean[]>(...storageKeys);
+    const storageResult = await Promise.all(storageKeys.map(key => sessionStorage.get(key as any)));
     
-    let logoutPromises = [];
+    const logoutPromises = [];
     for(let i = 0; i < storageResult.length; i++) {
       if(storageResult[i]) {
         logoutPromises.push(this.invokeApi('auth.logOut', {}, {dcId: i + 1, ignoreErrors: true}));
@@ -137,7 +136,7 @@ export class ApiManager {
       
       this.baseDcId = 0;
       //this.telegramMeNotify(false);
-      const promise = AppStorage.clear();
+      const promise = sessionStorage.clear();
       promise.finally(() => {
         self.postMessage({type: 'reload'});
       });
@@ -198,7 +197,7 @@ export class ApiManager {
     const akId = 'dc' + dcId + '_auth_keyId';
     const ss = 'dc' + dcId + '_server_salt';
     
-    return this.gettingNetworkers[getKey] = AppStorage.get<string[]>(ak, akId, ss)
+    return this.gettingNetworkers[getKey] = Promise.all([ak, akId, ss].map(key => sessionStorage.get(key as any)))
     .then(async([authKeyHex, authKeyIdHex, serverSaltHex]) => {
       const transport = dcConfigurator.chooseServer(dcId, connectionType, transportType, false);
       let networker: MTPNetworker;
@@ -222,7 +221,7 @@ export class ApiManager {
             [ss]: bytesToHex(auth.serverSalt)
           };
           
-          AppStorage.set(storeObj);
+          sessionStorage.set(storeObj);
           
           networker = networkerFactory.getNetworker(dcId, auth.authKey, auth.authKeyId, auth.serverSalt, transport, options);
         } catch(error) {
@@ -331,7 +330,8 @@ export class ApiManager {
         
         if(error.code == 401 && this.baseDcId == dcId) {
           if(error.type != 'SESSION_PASSWORD_NEEDED') {
-            AppStorage.remove('dc', 'user_auth'); // ! возможно тут вообще не нужно это делать, но нужно проверить случай с USER_DEACTIVATED (https://core.telegram.org/api/errors)
+            sessionStorage.remove('dc')
+            sessionStorage.remove('user_auth'); // ! возможно тут вообще не нужно это делать, но нужно проверить случай с USER_DEACTIVATED (https://core.telegram.org/api/errors)
             //this.telegramMeNotify(false);
           }
           
@@ -406,7 +406,7 @@ export class ApiManager {
     if(dcId = (options.dcId || this.baseDcId)) {
       this.getNetworker(dcId, options).then(performRequest, rejectPromise);
     } else {
-      AppStorage.get<number>('dc').then((baseDcId) => {
+      sessionStorage.get('dc').then((baseDcId) => {
         this.getNetworker(this.baseDcId = dcId = baseDcId || App.baseDcId, options).then(performRequest, rejectPromise);
       });
     }

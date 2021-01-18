@@ -2,7 +2,7 @@ import {isObject} from './bin_utils';
 import { bigStringInt} from './bin_utils';
 import {TLDeserialization, TLSerialization} from './tl_utils';
 import CryptoWorker from '../crypto/cryptoworker';
-import AppStorage from '../storage';
+import sessionStorage from '../sessionStorage';
 import Schema from './schema';
 import timeManager from './timeManager';
 import NetworkerFactory from './networkerFactory';
@@ -331,7 +331,7 @@ export default class MTPNetworker {
       return false;
     }
 
-    AppStorage.get<number>('dc').then((baseDcId: number) => {
+    sessionStorage.get('dc').then((baseDcId) => {
       if(isClean && (
           baseDcId != this.dcId ||
           this.isFileNetworker ||
@@ -1030,7 +1030,7 @@ export default class MTPNetworker {
   public applyServerSalt(newServerSalt: string) {
     const serverSalt = longToBytes(newServerSalt);
   
-    AppStorage.set({
+    sessionStorage.set({
       ['dc' + this.dcId + '_server_salt']: bytesToHex(serverSalt)
     });
   
@@ -1260,7 +1260,7 @@ export default class MTPNetworker {
         this.processMessageAck(message.first_msg_id);
         this.applyServerSalt(message.server_salt);
   
-        AppStorage.get<number>('dc').then((baseDcId: number) => {
+        sessionStorage.get('dc').then((baseDcId) => {
           if(baseDcId == this.dcId && !this.isFileNetworker && NetworkerFactory.updatesProcessor) {
             NetworkerFactory.updatesProcessor(message);
           }

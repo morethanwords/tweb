@@ -84,7 +84,7 @@ $chat-padding-handhelds: .5rem;
   --color-gray-hover: rgba(112, 117, 121, .08);
   --pm-transition: .2s ease-in-out;
   --layer-transition: .2s ease-in-out;
-  --tabs-transition: .25s;
+  --tabs-transition: .25s ease-in-out;
   //--layer-transition: .3s cubic-bezier(.33, 1, .68, 1);
   //--layer-transition: none;
   --btn-corner-transition: .2s cubic-bezier(.34, 1.56, .64, 1);
@@ -634,6 +634,7 @@ span.emoji {
   //font-size: 1em;
 
   font-family: apple color emoji,segoe ui emoji,noto color emoji,android emoji,emojisymbols,emojione mozilla,twemoji mozilla,segoe ui symbol;
+  line-height: 1 !important;
 }
 
 img.emoji {
@@ -955,7 +956,6 @@ img.emoji {
 
     &:not(.active):not(.from):not(.to) {
       display: none !important; // Best performance when animating container
-      //transform: scale(0); // Shortest initial delay
     }
   }
 
@@ -972,8 +972,6 @@ img.emoji {
     > .to {
       transform-origin: center;
       opacity: 0;
-      // We can omit `transform: scale(1.1);` here because `opacity` is 0.
-      // We need to for proper position calculation in `InfiniteScroll`.
     }
 
     &.animating {

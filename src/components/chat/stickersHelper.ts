@@ -75,8 +75,7 @@ export default class StickersHelper {
         return;
       }
 
-      appImManager.chat.input.clearInput();
-      EmoticonsDropdown.onMediaClick(e);
+      EmoticonsDropdown.onMediaClick(e, true);
     });
 
     this.container.append(this.stickersContainer);

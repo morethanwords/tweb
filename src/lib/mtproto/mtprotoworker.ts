@@ -5,7 +5,6 @@ import type { InvokeApiOptions } from '../../types';
 import CryptoWorkerMethods from '../crypto/crypto_methods';
 import { logger } from '../logger';
 import rootScope from '../rootScope';
-import AppStorage from '../storage';
 import webpWorkerController from '../webp/webpWorkerController';
 import type { DownloadOptions } from './apiFileManager';
 import { ApiError } from './apiManager';
@@ -13,6 +12,7 @@ import type { ServiceWorkerTask, ServiceWorkerTaskResponse } from './mtproto.ser
 import { MOUNT_CLASS_TO, UserAuth } from './mtproto_config';
 import type { MTMessage } from './networker';
 import referenceDatabase from './referenceDatabase';
+import appDocsManager from '../appManagers/appDocsManager';
 
 type Task = {
   taskId: number,
@@ -52,6 +52,8 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
 
   private hashes: {[method: string]: HashOptions} = {};
 
+  private isSWRegistered = true;
+
   constructor() {
     super();
     this.log('constructor');
@@ -60,13 +62,19 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
     this.registerWorker();
   }
 
+  public isServiceWorkerOnline() {
+    return this.isSWRegistered;
+  }
+
   private registerServiceWorker() {
     if(!('serviceWorker' in navigator)) return;
 
     navigator.serviceWorker.register('./sw.js', {scope: './'}).then(registration => {
-      
+      this.isSWRegistered = true;
     }, (err) => {
+      this.isSWRegistered = false;
       this.log.error('SW registration failed!', err);
+      appDocsManager.onServiceWorkerFail();
     });
 
     navigator.serviceWorker.ready.then((registration) => {
@@ -107,6 +115,8 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
   }
 
   private registerWorker() {
+    //return;
+
     const worker = new MTProtoWorker();
     worker.addEventListener('message', (e) => {
       if(!this.worker) {

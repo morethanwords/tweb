@@ -4,35 +4,20 @@ import apiManager from '../mtproto/mtprotoworker';
 import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
 import rootScope from '../rootScope';
 import appDocsManager from './appDocsManager';
-import appStateManager from './appStateManager';
+import AppStorage from '../storage';
 
 // TODO: если пак будет сохранён и потом обновлён, то недостающие стикеры не подгрузит
 
 export class AppStickersManager {
-  private stickerSets: {
-    [stickerSetId: string]: MessagesStickerSet
-  } = {};
-
-  private saveSetsTimeout: number;
+  private storage = new AppStorage<Record<string, MessagesStickerSet>>({
+    storeName: 'stickerSets'
+  });
 
   private getStickerSetPromises: {[setId: string]: Promise<MessagesStickerSet>} = {};
   private getStickersByEmoticonsPromises: {[emoticon: string]: Promise<Document[]>} = {};
   
   constructor() {
-    appStateManager.getState().then(({stickerSets}) => {
-      if(stickerSets) {
-        for(let id in stickerSets) {
-          let set = stickerSets[id];
-          this.saveStickers(set.documents);
-        }
-
-        this.stickerSets = stickerSets;
-      }
-
-      //if(!this.stickerSets['emoji']) {
-        this.getStickerSet({id: 'emoji', access_hash: ''}, {overwrite: true});
-      //}
-    });
+    this.getStickerSet({id: 'emoji', access_hash: ''}, {overwrite: true});
 
     rootScope.on('apiUpdate', (e) => {
       const update = e;
@@ -62,21 +47,29 @@ export class AppStickersManager {
   }, params: Partial<{
     overwrite: boolean
   }> = {}): Promise<MessagesStickerSet> {
-    if(this.stickerSets[set.id] && !params.overwrite && this.stickerSets[set.id].documents?.length) return this.stickerSets[set.id];
-
     if(this.getStickerSetPromises[set.id]) {
       return this.getStickerSetPromises[set.id];
     }
 
-    const promise = this.getStickerSetPromises[set.id] = apiManager.invokeApi('messages.getStickerSet', {
-      stickerset: this.getStickerSetInput(set)
-    });
-    
-    const stickerSet = await promise;
-    delete this.getStickerSetPromises[set.id];
-    this.saveStickerSet(stickerSet, set.id);
+    return this.getStickerSetPromises[set.id] = new Promise(async(resolve, reject) => {
+      if(!params.overwrite) {
+        const cachedSet = await this.storage.get(set.id);
+        if(cachedSet && cachedSet.documents?.length) {
+          this.saveStickers(cachedSet.documents);
+          resolve(cachedSet);
+          return;
+        }
+      }
 
-    return stickerSet;
+      const stickerSet = await apiManager.invokeApi('messages.getStickerSet', {
+        stickerset: this.getStickerSetInput(set)
+      });
+
+      delete this.getStickerSetPromises[set.id];
+      this.saveStickerSet(stickerSet, set.id);
+
+      resolve(stickerSet);
+    });
   }
 
   public async getRecentStickers(): Promise<Modify<MessagesRecentStickers.messagesRecentStickers, {
@@ -90,7 +83,7 @@ export class AppStickersManager {
   }
 
   public getAnimatedEmojiSticker(emoji: string) {
-    let stickerSet = this.stickerSets.emoji;
+    const stickerSet = this.storage.getFromCache('emoji');
     if(!stickerSet || !stickerSet.documents) return undefined;
 
     emoji = emoji.replace(/\ufe0f/g, '').replace(/🏻|🏼|🏽|🏾|🏿/g, '');
@@ -108,30 +101,19 @@ export class AppStickersManager {
       documents: res.documents as Document[]
     };
     
-    if(this.stickerSets[id]) {
-      Object.assign(this.stickerSets[id], newSet);
+    let stickerSet = this.storage.getFromCache(id);
+    if(stickerSet) {
+      Object.assign(stickerSet, newSet);
     } else {
-      this.stickerSets[id] = newSet;
+      stickerSet = this.storage.setToCache(id, newSet);
     }
 
     this.saveStickers(res.documents);
     
     //console.log('stickers wrote', this.stickerSets);
-    if(this.saveSetsTimeout) return;
-    this.saveSetsTimeout = window.setTimeout(() => {
-      const savedSets: {[id: string]: MessagesStickerSet} = {};
-      for(const id in this.stickerSets) {
-        const set = this.stickerSets[id];
-        if(set.set.installed_date || id == 'emoji') {
-          savedSets[id] = set;
-        }
-      }
-
-      appStateManager.pushToState('stickerSets', savedSets);
-      appStateManager.saveState();
-
-      this.saveSetsTimeout = 0;
-    }, 100);
+    const needSave = stickerSet.set.installed_date || id === 'emoji';
+    if(needSave) this.storage.set({[id]: stickerSet});
+    else this.storage.remove(id);
   }
 
   public getStickerSetThumbDownloadOptions(stickerSet: StickerSet.stickerSet) {
@@ -229,8 +211,9 @@ export class AppStickersManager {
     });
 
     const foundSaved: StickerSetCovered[] = [];
-    for(let id in this.stickerSets) {
-      const {set} = this.stickerSets[id];
+    const cache = this.storage.getCache();
+    for(let id in cache) {
+      const {set} = cache[id];
 
       if(set.title.toLowerCase().includes(query.toLowerCase()) && !res.sets.find(c => c.set.id == set.id)) {
         foundSaved.push({_: 'stickerSetCovered', set, cover: null});

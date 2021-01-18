@@ -112,6 +112,10 @@ export class AppDownloadManager {
           return apiManager.downloadFile(options).then(deferred.resolve, onError);
         });
       } else {
+        /* return apiManager.downloadFile(options).then(res => {
+          setTimeout(() => deferred.resolve(res), 5e3);
+        }, onError); */
+
         return apiManager.downloadFile(options).then(deferred.resolve, onError);
       }
     };

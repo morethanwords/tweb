@@ -35,13 +35,12 @@ export default class RepliesElement extends HTMLElement {
     const replies = this.message.replies;
 
     if(this.type === 'footer') {
-      let leftHTML = '', lastStyle = '';
+      let leftHTML = '';
       if(replies?.recent_repliers) {
         leftHTML += '<div class="replies-footer-avatars">'
         let l: string[] = [];
-        replies.recent_repliers/* .slice().reverse() */.forEach((peer, idx) => {
-          lastStyle = idx == 0 ? '' : `style="transform: translateX(-${idx * 14}px);"`;
-          l.push(`<avatar-element class="avatar-34" dialog="0" peer="${appPeersManager.getPeerId(peer)}" ${lastStyle}></avatar-element>`);
+        replies.recent_repliers/* .slice().reverse() */.forEach((peer) => {
+          l.push(`<avatar-element class="avatar-34" dialog="0" peer="${appPeersManager.getPeerId(peer)}"></avatar-element>`);
         });
         leftHTML += l.reverse().join('') + '</div>';
       } else {
@@ -64,7 +63,7 @@ export default class RepliesElement extends HTMLElement {
         this.classList.toggle('is-unread', replies.read_max_id < replies.max_id && (!historyStorage.readMaxId || historyStorage.readMaxId < replies.max_id));
       }
 
-      this.innerHTML = `${leftHTML}<span class="replies-footer-text" ${lastStyle}>${text}</span><span class="tgico-next"></span>`;
+      this.innerHTML = `${leftHTML}<span class="replies-footer-text">${text}</span><span class="tgico-next"></span>`;
 
       const rippleContainer = document.createElement('div');
       this.append(rippleContainer);

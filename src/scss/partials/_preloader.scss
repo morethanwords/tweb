@@ -15,9 +15,10 @@ $transition: .2s ease-in-out;
   }
 
   &-path {
-    stroke-dasharray: 1, 200;
+    //stroke-dasharray: 1, 200;
+    stroke-dasharray: 93.6375, 124.85; // 75%
     stroke-dashoffset: 0;
-    animation: dash 1.5s ease-in-out infinite/* , color 6s ease-in-out infinite */;
+    //animation: dash 1.5s ease-in-out infinite/* , color 6s ease-in-out infinite */;
     stroke-linecap: round;
     stroke: white;
     stroke-width: 3;
@@ -33,7 +34,7 @@ $transition: .2s ease-in-out;
     width: 54px;
     height: 54px;
     display: flex;
-    /* cursor: pointer; */
+    cursor: pointer;
 
     opacity: 0;
     transform: scale(0);
@@ -60,7 +61,6 @@ $transition: .2s ease-in-out;
 
   .preloader-circular {
     animation: none;
-    cursor: pointer;
     background-color: rgba(0, 0, 0, .7);
     border-radius: 50%;
     width: 100%;
@@ -69,8 +69,9 @@ $transition: .2s ease-in-out;
 
   .preloader-path-new {
     stroke-dasharray: 5, 149.82;
+    //stroke-dasharray: 112.36, 149.82;
     stroke-dashoffset: 0;
-    transition: stroke-dasharray $transition;
+    transition: stroke-dasharray $transition, stroke-width $transition;
     stroke-linecap: round;
     stroke: white;
     stroke-width: 2;
@@ -79,17 +80,13 @@ $transition: .2s ease-in-out;
   &.preloader-swing {
     cursor: default;
 
-    .preloader-circular {
-      cursor: default;
-    }
-
     .preloader-path-new {
-      animation: dashNew 1.5s ease-in-out infinite;
+      //animation: dashNew 1.5s ease-in-out infinite;
+      stroke-dasharray: 112.36, 149.82;
     }
   }
 
-  .preloader-close {
-    cursor: pointer;
+  .preloader-close, .preloader-download {
     position: absolute;
     top: 0;
     left: 0;
@@ -97,13 +94,34 @@ $transition: .2s ease-in-out;
     right: 0;
     margin: auto;
     color: #fff;
-    stroke: #fff;
-    width: 34%;
-    height: 34%;
+    width: 56%;
+    height: 56%;
+    transition: opacity .2s ease-in-out/* , transform .2s ease-in-out */;
+    //transform: scale(1);
+    opacity: 1;
+
+    path {
+      fill: #fff;
+    }
 
     html.no-touch &:hover {
       background: none;
     }
+  }
+
+  &:not(.manual) .preloader-download, 
+  &.manual .preloader-close {
+    opacity: 0;
+    //transform: scale(.5);
+  }
+
+  &.manual .preloader-path-new {
+    stroke-width: 0;
+  }
+
+  .preloader-download {
+    width: 1.5rem;
+    height: 1.5rem;
   }
 
   &.preloader-streamable {
@@ -113,7 +131,7 @@ $transition: .2s ease-in-out;
 
     circle {
       stroke-width: 2.5 !important;
-      animation: dashNewStreamable 1.5s ease-in-out infinite !important;
+      //animation: dashNewStreamable 1.5s ease-in-out infinite !important;
     }
 
     &:after {
@@ -126,6 +144,18 @@ $transition: .2s ease-in-out;
       left: 50%;
       top: 50%;
       transform: translate3d(-50%, -50%, 0);
+    }
+  }
+
+  &.preloader-transparent {
+    .preloader-circular {
+      background-color: transparent;
+    }
+  }
+
+  &.preloader-bold {
+    .preloader-path-new {
+      stroke-width: 3.5;
     }
   }
 }

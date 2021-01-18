@@ -1,7 +1,7 @@
 .btn-icon {
   text-align: center;
   font-size: 1.5rem;
-  line-height: 1.5rem;
+  line-height: 1;
   border-radius: 50% !important;
   transition: background-color .15s ease-in-out, opacity .15s ease-in-out;
   color: $color-gray;
@@ -37,10 +37,11 @@
 }
 
 .btn-corner {
-  --translateY: calc(100% + 20px);
+  --offset: 1.25rem;
+  --translateY: calc(54px + var(--offset));
   position: absolute !important;
-  bottom: 20px;
-  right: 20px;
+  bottom: var(--offset);
+  right: var(--offset);
   //transition: .2s ease;
   transition: transform var(--btn-corner-transition) !important;
   transform: translate3d(0, var(--translateY), 0);
@@ -235,7 +236,7 @@
     transition: none;
   }
   
-  svg, use {
+  > svg, use {
     height: calc(100% - 20px);
     right: 15px;
     left: auto;

@@ -19,7 +19,7 @@ import serverTimeManager from "../mtproto/serverTimeManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
 import searchIndexManager from '../searchIndexManager';
-import AppStorage from '../storage';
+import sessionStorage from '../sessionStorage';
 import DialogsStorage from "../storages/dialogs";
 import FiltersStorage from "../storages/filters";
 //import { telegramMeWebService } from "../mtproto/mtproto";
@@ -34,6 +34,7 @@ import appStateManager from "./appStateManager";
 import appUsersManager from "./appUsersManager";
 import appWebPagesManager from "./appWebPagesManager";
 import appDraftsManager from "./appDraftsManager";
+import pushHeavyTask from "../../helpers/heavyQueue";
 
 //console.trace('include');
 // TODO: если удалить сообщение в непрогруженном диалоге, то при обновлении, из-за стейта, последнего сообщения в чатлисте не будет
@@ -223,27 +224,6 @@ export class AppMessagesManager {
       }
     });
 
-    function timedChunk(items: any[], process: (...args: any[]) => any, context: any, callback: (...args: any[]) => void) {
-      if(!items.length) return callback(items);
-      const todo = items.slice();
-
-      const f = () => {
-        const start = +new Date();
-  
-        do {
-          process.call(context, todo.shift());
-        } while(todo.length > 0 && (+new Date() - start < 50));
-  
-        if(todo.length > 0) {
-          setTimeout(f, 25);
-        } else {
-          callback(items);
-        }
-      };
-  
-      setTimeout(f, 25);
-    }
-
     appStateManager.addListener('save', () => {
       const messages: any[] = [];
       const dialogs: Dialog[] = [];
@@ -288,7 +268,11 @@ export class AppMessagesManager {
         }
       }
 
-      return new Promise((resolve => timedChunk(items, processDialog, this, resolve))).then(() => {
+      return pushHeavyTask({
+        items, 
+        process: processDialog, 
+        context: this
+      }).then(() => {
         appStateManager.pushToState('dialogs', dialogs);
         appStateManager.pushToState('messages', messages);
         appStateManager.pushToState('filters', this.filtersStorage.filters);
@@ -792,7 +776,11 @@ export class AppMessagesManager {
 
     this.log('sendFile', attachType, apiFileName, file.type, options);
 
-    const preloader = new ProgressivePreloader(null, true, false, 'prepend');
+    const preloader = new ProgressivePreloader({
+      attachMethod: 'prepend',
+      tryAgainOnFail: false,
+      isUpload: true
+    });
 
     const media = {
       _: photo ? 'messageMediaPhoto' : 'messageMediaDocument',
@@ -1578,16 +1566,17 @@ export class AppMessagesManager {
     });
   }
 
-  public isHistoryUnread(peerId: number, threadId?: number) {
+  public getReadMaxIdIfUnread(peerId: number, threadId?: number) {
     const historyStorage = this.getHistoryStorage(peerId, threadId);
     if(threadId) {
       const chatHistoryStorage = this.getHistoryStorage(peerId);
       const readMaxId = Math.max(chatHistoryStorage.readMaxId, historyStorage.readMaxId);
       const message = this.getMessageByPeer(peerId, historyStorage.maxId);
-      return !message.pFlags.out && readMaxId < historyStorage.maxId;
+      return !message.pFlags.out && readMaxId < historyStorage.maxId ? readMaxId : 0;
     } else {
       const message = this.getMessageByPeer(peerId, historyStorage.maxId);
-      return !message.pFlags.out && (peerId > 0 ? Math.max(historyStorage.readMaxId, historyStorage.readOutboxMaxId) : historyStorage.readMaxId) < historyStorage.maxId;
+      const maxId = peerId > 0 ? Math.max(historyStorage.readMaxId, historyStorage.readOutboxMaxId) : historyStorage.readMaxId;
+      return !message.pFlags.out && maxId < historyStorage.maxId ? maxId : 0;
     }
   }
 
@@ -2064,7 +2053,7 @@ export class AppMessagesManager {
         message.pFlags = {};
       }
 
-      if(message._ == 'messageEmpty') {
+      if(message._ === 'messageEmpty') {
         return;
       }
 
@@ -2367,15 +2356,15 @@ export class AppMessagesManager {
           case 'messageMediaDocument':
             let document = media.document;
   
-            if(document.type == 'video') {
+            if(document.type === 'video') {
               messageText = '<i>Video' + (message.message ? ', ' : '') + '</i>';
-            } else if(document.type == 'voice') {
+            } else if(document.type === 'voice') {
               messageText = '<i>Voice message</i>';
-            } else if(document.type == 'gif') {
+            } else if(document.type === 'gif') {
               messageText = '<i>GIF' + (message.message ? ', ' : '') + '</i>';
-            } else if(document.type == 'round') {
+            } else if(document.type === 'round') {
               messageText = '<i>Video message' + (message.message ? ', ' : '') + '</i>';
-            } else if(document.type == 'sticker') {
+            } else if(document.type === 'sticker') {
               messageText = (document.stickerEmoji || '') + '<i>Sticker</i>';
               text = '';
             } else {
@@ -3359,83 +3348,91 @@ export class AppMessagesManager {
     return promise;
   }
 
-  public readHistory(peerId: number, maxId = 0, threadId?: number) {
+  public readHistory(peerId: number, maxId = 0, threadId?: number, force = false) {
     // return Promise.resolve();
     // console.trace('start read')
-    if(!this.isHistoryUnread(peerId, threadId)) return Promise.resolve();
+    this.log('readHistory:', peerId, maxId, threadId);
+    if(!this.getReadMaxIdIfUnread(peerId, threadId) && !force) {
+      this.log('readHistory: isn\'t unread');
+      return Promise.resolve();
+    }
 
     const isChannel = appPeersManager.isChannel(peerId);
     const historyStorage = this.getHistoryStorage(peerId, threadId);
 
-    if(!historyStorage.readMaxId || maxId > historyStorage.readMaxId) {
-      historyStorage.readMaxId = maxId;
+    let apiPromise: Promise<any>;
+    if(threadId) {
+      if(!historyStorage.readPromise) {
+        apiPromise = apiManager.invokeApi('messages.readDiscussion', {
+          peer: appPeersManager.getInputPeerById(peerId),
+          msg_id: this.getLocalMessageId(threadId),
+          read_max_id: this.getLocalMessageId(maxId)
+        });
+      }
+
+      apiUpdatesManager.processUpdateMessage({
+        _: 'updateShort',
+        update: {
+          _: 'updateReadChannelDiscussionInbox',
+          channel_id: -peerId,
+          top_msg_id: threadId,
+          read_max_id: maxId
+        } as Update.updateReadChannelDiscussionInbox
+      });
+    } else if(isChannel) {
+      if(!historyStorage.readPromise) {
+        apiPromise = apiManager.invokeApi('channels.readHistory', {
+          channel: appChatsManager.getChannelInput(-peerId),
+          max_id: this.getLocalMessageId(maxId)
+        });
+      }
+
+      apiUpdatesManager.processUpdateMessage({
+        _: 'updateShort',
+        update: {
+          _: 'updateReadChannelInbox',
+          max_id: maxId,
+          channel_id: -peerId
+        }
+      });
+    } else {
+      if(!historyStorage.readPromise) {
+        apiPromise = apiManager.invokeApi('messages.readHistory', {
+          peer: appPeersManager.getInputPeerById(peerId),
+          max_id: this.getLocalMessageId(maxId)
+        }).then((affectedMessages) => {
+          apiUpdatesManager.processUpdateMessage({
+            _: 'updateShort',
+            update: {
+              _: 'updatePts',
+              pts: affectedMessages.pts,
+              pts_count: affectedMessages.pts_count
+            }
+          });
+        });
+      }
+
+      apiUpdatesManager.processUpdateMessage({
+        _: 'updateShort',
+        update: {
+          _: 'updateReadHistoryInbox',
+          max_id: maxId,
+          peer: appPeersManager.getOutputPeer(peerId)
+        }
+      });
     }
 
     if(historyStorage.readPromise) {
       return historyStorage.readPromise;
     }
 
-    let apiPromise: Promise<void>;
-    if(threadId) {
-      apiPromise = apiManager.invokeApi('messages.readDiscussion', {
-        peer: appPeersManager.getInputPeerById(peerId),
-        msg_id: this.getLocalMessageId(threadId),
-        read_max_id: this.getLocalMessageId(maxId)
-      }).then((res) => {
-        apiUpdatesManager.processUpdateMessage({
-          _: 'updateShort',
-          update: {
-            _: 'updateReadChannelDiscussionInbox',
-            channel_id: -peerId,
-            top_msg_id: threadId,
-            read_max_id: maxId
-          } as Update.updateReadChannelDiscussionInbox
-        });
-      });
-    } else if(isChannel) {
-      apiPromise = apiManager.invokeApi('channels.readHistory', {
-        channel: appChatsManager.getChannelInput(-peerId),
-        max_id: this.getLocalMessageId(maxId)
-      }).then((res) => {
-        apiUpdatesManager.processUpdateMessage({
-          _: 'updateShort',
-          update: {
-            _: 'updateReadChannelInbox',
-            max_id: maxId,
-            channel_id: -peerId
-          }
-        });
-      });
-    } else {
-      apiPromise = apiManager.invokeApi('messages.readHistory', {
-        peer: appPeersManager.getInputPeerById(peerId),
-        max_id: this.getLocalMessageId(maxId)
-      }).then((affectedMessages) => {
-        apiUpdatesManager.processUpdateMessage({
-          _: 'updateShort',
-          update: {
-            _: 'updatePts',
-            pts: affectedMessages.pts,
-            pts_count: affectedMessages.pts_count
-          }
-        });
-
-        apiUpdatesManager.processUpdateMessage({
-          _: 'updateShort',
-          update: {
-            _: 'updateReadHistoryInbox',
-            max_id: maxId,
-            peer: appPeersManager.getOutputPeer(peerId)
-          }
-        });
-      });
-    }
-
     apiPromise.finally(() => {
       delete historyStorage.readPromise;
 
+      this.log('readHistory: promise finally', maxId, historyStorage.readMaxId);
+
       if(historyStorage.readMaxId > maxId) {
-        this.readHistory(peerId, historyStorage.readMaxId);
+        this.readHistory(peerId, historyStorage.readMaxId, threadId, true);
       }
     });
 
@@ -3880,7 +3877,7 @@ export class AppMessagesManager {
           else foundDialog.read_inbox_max_id = maxId;
 
           if(!isOut) {
-            if(newUnreadCount < 0 || !this.isHistoryUnread(peerId)) {
+            if(newUnreadCount < 0 || !this.getReadMaxIdIfUnread(peerId)) {
               foundDialog.unread_count = 0;
             } else if(newUnreadCount && foundDialog.top_message > maxId) {
               foundDialog.unread_count = newUnreadCount;
@@ -4242,16 +4239,19 @@ export class AppMessagesManager {
     return pendingMessage;
   }
 
-  public isPeerMuted(peerId: number) {
-    if(peerId == rootScope.myId) return false;
-
-    const dialog = this.getDialogByPeerId(peerId)[0];
+  public isDialogMuted(dialog: MTDialog.dialog) {
     let muted = false;
     if(dialog && dialog.notify_settings && dialog.notify_settings.mute_until) {
       muted = new Date(dialog.notify_settings.mute_until * 1000) > new Date();
     }
 
     return muted;
+  }
+
+  public isPeerMuted(peerId: number) {
+    if(peerId === rootScope.myId) return false;
+
+    return this.isDialogMuted(this.getDialogByPeerId(peerId)[0]);
   }
 
   public mutePeer(peerId: number) {
@@ -4391,7 +4391,7 @@ export class AppMessagesManager {
 
     this.maxSeenId = maxId;
 
-    AppStorage.set({max_seen_msg: maxId});
+    sessionStorage.set({max_seen_msg: maxId});
 
     apiManager.invokeApi('messages.receivedMessages', {
       max_id: this.getLocalMessageId(maxId)

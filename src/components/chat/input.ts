@@ -48,7 +48,6 @@ export default class ChatInput {
   public messageInputField: InputField;
   public fileInput: HTMLInputElement;
   public inputMessageContainer: HTMLDivElement;
-  public inputScroll: Scrollable;
   public btnSend = document.getElementById('btn-send') as HTMLButtonElement;
   public btnCancelRecord: HTMLButtonElement;
   public lastUrl = '';
@@ -168,8 +167,6 @@ export default class ChatInput {
 
     this.inputMessageContainer = document.createElement('div');
     this.inputMessageContainer.classList.add('input-message-container');
-
-    this.inputScroll = new Scrollable(this.inputMessageContainer);
 
     if(this.chat.type === 'chat') {
       this.btnScheduled = ButtonIcon('scheduled', {noRipple: true});
@@ -497,7 +494,7 @@ export default class ChatInput {
     const str = getRichValue(this.messageInputField.input, entities);
 
     let draft: DraftMessage.draftMessage;
-    if(str.length) {
+    if(str.length || this.replyToMsgId) {
       draft = {
         _: 'draftMessage',
         date: tsNow(true) + this.serverTimeManager.serverTimeOffset,
@@ -530,6 +527,8 @@ export default class ChatInput {
 
     cancelSelection();
 
+    this.lastTimeType = 0;
+
     if(this.messageInput) {
       this.clearInput();
       helperToo && this.clearHelper();
@@ -547,6 +546,11 @@ export default class ChatInput {
       }
     }
 
+    this.noWebPage = draft.pFlags.no_webpage;
+    if(draft.reply_to_msg_id) {
+      this.initMessageReply(draft.reply_to_msg_id);
+    }
+
     this.setInputValue(draft.rMessage, fromUpdate, fromUpdate);
     return true;
   }
@@ -555,7 +559,7 @@ export default class ChatInput {
     const peerId = this.chat.peerId;
 
     this.chatInput.style.display = '';
-
+    
     const isBroadcast = this.appPeersManager.isBroadcast(peerId);
     this.goDownBtn.classList.toggle('is-broadcast', isBroadcast);
     this.goDownBtn.classList.remove('hide');
@@ -600,6 +604,10 @@ export default class ChatInput {
       } else {
         this.messageInput.setAttribute('contenteditable', 'true');
         this.setDraft(undefined, false);
+
+        if(!this.messageInput.innerHTML) {
+          this.messageInputField.onFakeInput();
+        }
       }
       
       this.attachMenu.toggleAttribute('disabled', !visible.length);
@@ -610,21 +618,23 @@ export default class ChatInput {
   }
 
   private attachMessageInputField() {
-    const oldInput = this.messageInputField?.input;
+    const oldInputField = this.messageInputField;
     this.messageInputField = new InputField({
       placeholder: 'Message',
-      name: 'message'
+      name: 'message',
+      animate: true
     });
 
-    this.messageInputField.input.className = 'input-message-input';
+    this.messageInputField.input.classList.replace('input-field-input', 'input-message-input');
+    this.messageInputField.inputFake.classList.replace('input-field-input', 'input-message-input');
     this.messageInput = this.messageInputField.input;
     this.attachMessageInputListeners();
 
-    const container = this.inputScroll.container;
-    if(oldInput) {
-      oldInput.replaceWith(this.messageInputField.input);
+    if(oldInputField) {
+      oldInputField.input.replaceWith(this.messageInputField.input);
+      oldInputField.inputFake.replaceWith(this.messageInputField.inputFake);
     } else {
-      container.append(this.messageInputField.input);
+      this.inputMessageContainer.append(this.messageInputField.input, this.messageInputField.inputFake);
     }
   }
 
@@ -674,14 +684,14 @@ export default class ChatInput {
     cancelEvent(e); // cancel legacy event
 
     let html = this.messageInput.innerHTML;
-    if(html && html != needHTML) {
+    if(html && html !== needHTML) {
       this.lockRedo = true;
 
       let sameHTMLTimes = 0;
       do {
         document.execCommand(type, false, null);
         const currentHTML = this.messageInput.innerHTML;
-        if(html == currentHTML) {
+        if(html === currentHTML) {
           if(++sameHTMLTimes > 2) { // * unlink, removeFormat (а может и нет, случай: заболдить подчёркнутый текст (выделить ровно его), попробовать отменить)
             break;
           }
@@ -690,7 +700,7 @@ export default class ChatInput {
         }
 
         html = currentHTML;
-      } while(html != needHTML);
+      } while(html !== needHTML);
 
       this.lockRedo = false;
     }
@@ -823,21 +833,22 @@ export default class ChatInput {
 
     //return;
     if(e.code == 'KeyZ') {
-      const html = this.messageInput.innerHTML;
+      let html = this.messageInput.innerHTML;
 
       if(e.shiftKey) {
         if(this.undoHistory.length) {
-          this.executedHistory.push(this.messageInput.innerHTML);
-          const html = this.undoHistory.pop();
+          this.executedHistory.push(html);
+          html = this.undoHistory.pop();
           this.undoRedo(e, 'redo', html);
-          this.canRedoFromHTML = this.undoHistory.length ? this.messageInput.innerHTML : '';
-          this.canUndoFromHTML = this.messageInput.innerHTML;
+          html = this.messageInput.innerHTML;
+          this.canRedoFromHTML = this.undoHistory.length ? html : '';
+          this.canUndoFromHTML = html;
         }
       } else {
         // * подождём, когда пользователь сам восстановит поле до нужного состояния, которое стало сразу после saveExecuted
         if(this.executedHistory.length && (!this.canUndoFromHTML || html == this.canUndoFromHTML)) {
-          this.undoHistory.push(this.messageInput.innerHTML);
-          const html = this.executedHistory.pop();
+          this.undoHistory.push(html);
+          html = this.executedHistory.pop();
           this.undoRedo(e, 'undo', html);
 
           // * поставим новое состояние чтобы снова подождать, если пользователь изменит что-то, и потом попробует откатить до предыдущего состояния
@@ -875,9 +886,9 @@ export default class ChatInput {
       rootScope.settings.stickers.suggest && 
       (this.chat.peerId > 0 || this.appChatsManager.hasRights(this.chat.peerId, 'send', 'send_stickers'))) {
       let emoticon = '';
-      if(entities.length && entities[0]._ == 'messageEntityEmoji') {
+      if(entities.length && entities[0]._ === 'messageEntityEmoji') {
         const entity = entities[0];
-        if(entity.length == richValue.length && !entity.offset) {
+        if(entity.length === richValue.length && !entity.offset) {
           emoticon = richValue;
         }
       }
@@ -890,12 +901,12 @@ export default class ChatInput {
     }
 
     const html = this.messageInput.innerHTML;
-    if(this.canRedoFromHTML && html != this.canRedoFromHTML && !this.lockRedo) {
+    if(this.canRedoFromHTML && html !== this.canRedoFromHTML && !this.lockRedo) {
       this.canRedoFromHTML = '';
       this.undoHistory.length = 0;
     }
 
-    const urlEntities: Array<MessageEntity.messageEntityUrl | MessageEntity.messageEntityTextUrl> = entities.filter(e => e._ == 'messageEntityUrl' || e._ == 'messageEntityTextUrl') as any;
+    const urlEntities: Array<MessageEntity.messageEntityUrl | MessageEntity.messageEntityTextUrl> = entities.filter(e => e._ === 'messageEntityUrl' || e._ === 'messageEntityTextUrl') as any;
     if(urlEntities.length) {
       for(const entity of urlEntities) {
         let url: string;
@@ -946,7 +957,9 @@ export default class ChatInput {
     }
 
     if(this.isInputEmpty()) {
-      this.appMessagesManager.setTyping(this.chat.peerId, 'sendMessageCancelAction');
+      if(this.lastTimeType) {
+        this.appMessagesManager.setTyping(this.chat.peerId, 'sendMessageCancelAction');
+      }
     } else {
       const time = Date.now();
       if(time - this.lastTimeType >= 6000) {
@@ -1083,7 +1096,7 @@ export default class ChatInput {
     cancelEvent(e);
       
     if(!findUpClassName(e.target, 'reply-wrapper')) return;
-    if(this.helperType == 'forward') {
+    if(this.helperType === 'forward') {
       if(this.helperWaitingForward) return;
       this.helperWaitingForward = true;
 
@@ -1101,18 +1114,20 @@ export default class ChatInput {
           helperFunc();
         }
       });
-    } else if(this.helperType == 'reply') {
+    } else if(this.helperType === 'reply') {
       this.chat.setMessageId(this.replyToMsgId);
-    } else if(this.helperType == 'edit') {
+    } else if(this.helperType === 'edit') {
       this.chat.setMessageId(this.editMsgId);
     }
   };
 
   public clearInput(canSetDraft = true) {
+    this.messageInputField.value = '';
     if(isTouchSupported) {
-      this.messageInput.innerText = '';
+      //this.messageInput.innerText = '';
     } else {
-      this.attachMessageInputField();
+      //this.attachMessageInputField();
+      //this.messageInput.innerText = '';
 
       // clear executions
       this.canRedoFromHTML = '';
@@ -1126,9 +1141,9 @@ export default class ChatInput {
       set = this.setDraft(undefined, false);
     }
 
-    if(!set) {
+    /* if(!set) {
       this.onMessageInput();
-    }
+    } */
   }
 
   public isInputEmpty() {
@@ -1138,13 +1153,19 @@ export default class ChatInput {
   public updateSendBtn() {
     let icon: 'send' | 'record' | 'edit' | 'schedule';
 
+    const isInputEmpty = this.isInputEmpty();
+
     if(this.editMsgId) icon = 'edit';
-    else if(!this.recorder || this.recording || !this.isInputEmpty() || this.forwardingMids.length) icon = this.chat.type === 'scheduled' ? 'schedule' : 'send';
+    else if(!this.recorder || this.recording || !isInputEmpty || this.forwardingMids.length) icon = this.chat.type === 'scheduled' ? 'schedule' : 'send';
     else icon = 'record';
 
     ['send', 'record', 'edit', 'schedule'].forEach(i => {
       this.btnSend.classList.toggle(i, icon === i);
     });
+
+    if(this.btnScheduled) {
+      this.btnScheduled.classList.toggle('show', isInputEmpty);
+    }
   }
 
   public onMessageSent(clearInput = true, clearReply?: boolean) {
@@ -1218,7 +1239,7 @@ export default class ChatInput {
     this.onMessageSent();
   }
 
-  public sendMessageWithDocument(document: MyDocument | string, force = false) {
+  public sendMessageWithDocument(document: MyDocument | string, force = false, clearDraft = false) {
     document = this.appDocsManager.getDoc(document);
 
     const flag = document.type === 'sticker' ? 'send_stickers' : (document.type === 'gif' ? 'send_gifs' : 'send_media');
@@ -1238,9 +1259,10 @@ export default class ChatInput {
         replyToMsgId: this.replyToMsgId, 
         threadId: this.chat.threadId,
         silent: this.sendSilent, 
-        scheduleDate: this.scheduleDate
+        scheduleDate: this.scheduleDate,
+        clearDraft: clearDraft || undefined
       });
-      this.onMessageSent(false, true);
+      this.onMessageSent(clearDraft, true);
 
       if(document.type == 'sticker') {
         emoticonsDropdown.stickersTab?.pushRecentSticker(document);
@@ -1321,8 +1343,17 @@ export default class ChatInput {
     f();
   }
 
+  public initMessageReply(mid: number) {
+    const message = this.chat.getMessage(mid);
+    const f = () => {
+      this.setTopInfo('reply', f, this.appPeersManager.getPeerTitle(message.fromId, true), message.message, undefined, message);
+      this.replyToMsgId = mid;
+    };
+    f();
+  }
+
   public clearHelper(type?: ChatInputHelperType) {
-    if(this.helperType == 'edit' && type != 'edit') {
+    if(this.helperType === 'edit' && type !== 'edit') {
       this.clearInput();
     }
 
@@ -1342,22 +1373,21 @@ export default class ChatInput {
 
   public setInputValue(value: string, clear = true, focus = true) {
     clear && this.clearInput();
-    this.messageInput.innerHTML = value || '';
-    this.onMessageInput();
+    this.messageInputField.value = value || '';
     window.requestAnimationFrame(() => {
       focus && placeCaretAtEnd(this.messageInput);
-      this.inputScroll.scrollTop = this.inputScroll.scrollHeight;
+      this.messageInput.scrollTop = this.messageInput.scrollHeight;
     });
   }
 
   public setTopInfo(type: ChatInputHelperType, callerFunc: () => void, title = '', subtitle = '', input?: string, message?: any) {
-    if(type != 'webpage') {
+    if(type !== 'webpage') {
       this.clearHelper(type);
       this.helperType = type;
       this.helperFunc = callerFunc;
     }
 
-    if(this.replyElements.container.lastElementChild.tagName == 'DIV') {
+    if(this.replyElements.container.lastElementChild.tagName === 'DIV') {
       this.replyElements.container.lastElementChild.remove();
       this.replyElements.container.append(wrapReply(title, subtitle, message));
     }

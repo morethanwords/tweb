@@ -1,5 +1,5 @@
 import { tsNow } from '../../helpers/date';
-import AppStorage from '../storage';
+import sessionStorage from '../sessionStorage';
 
 export class ServerTimeManager {
   public timestampNow = tsNow(true);
@@ -17,7 +17,7 @@ export class ServerTimeManager {
   constructor() {
     this.midnightOffseted.setHours(0, 0, 0, 0);
 
-    AppStorage.get<number>('server_time_offset').then((to) => {
+    sessionStorage.get('server_time_offset').then((to) => {
       if(to) {
         this.serverTimeOffset = to;
         this.timeParams.serverTimeOffset = to;

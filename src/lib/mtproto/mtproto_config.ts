@@ -1,3 +1,5 @@
+import { IDBIndex, IDBStore } from "../idb";
+
 export type UserAuth = number;
 
 export const REPLIES_PEER_ID = 1271266957;
@@ -8,6 +10,18 @@ export const App = {
   version: '0.4.0',
   domains: [] as string[],
   baseDcId: 2
+};
+
+export type DatabaseStoreName = 'session' | 'stickerSets';
+export type DatabaseStore = Omit<IDBStore, 'name'> & {name: DatabaseStoreName};
+export const Database = {
+  name: 'tweb',
+  version: 5,
+  stores: [{
+    name: 'session'
+  }, {
+    name: 'stickerSets'
+  }] as DatabaseStore[],
 };
 
 export const Modes = {

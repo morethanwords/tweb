@@ -34,13 +34,8 @@ export default class PopupStickers extends PopupElement {
 
     this.onClose = () => {
       animationIntersector.setOnlyOnePlayableGroup('');
-      animationIntersector.checkAnimations(false);
       this.stickersFooter.removeEventListener('click', this.onFooterClick);
       this.stickersDiv.removeEventListener('click', this.onStickersClick);
-    };
-
-    this.onCloseAfterTimeout = () => {
-      animationIntersector.checkAnimations(undefined, ANIMATION_GROUP);
     };
 
     const div = document.createElement('div');
@@ -98,7 +93,6 @@ export default class PopupStickers extends PopupElement {
 
       this.set = set.set;
 
-      animationIntersector.checkAnimations(true);
       animationIntersector.setOnlyOnePlayableGroup(ANIMATION_GROUP);
 
       this.h6.innerHTML = RichTextProcessor.wrapEmojiText(set.set.title);

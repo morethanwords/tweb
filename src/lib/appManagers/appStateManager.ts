@@ -3,15 +3,16 @@ import type { AppStickersManager } from './appStickersManager';
 import { App, MOUNT_CLASS_TO, UserAuth } from '../mtproto/mtproto_config';
 import EventListenerBase from '../../helpers/eventListenerBase';
 import rootScope from '../rootScope';
-import AppStorage from '../storage';
+import sessionStorage from '../sessionStorage';
 import { logger } from '../logger';
 import type { AppUsersManager } from './appUsersManager';
 import type { AppChatsManager } from './appChatsManager';
 import type { AuthState } from '../../types';
 import type FiltersStorage from '../storages/filters';
 import type DialogsStorage from '../storages/dialogs';
-import { copy, setDeepProperty, isObject, validateInitObject } from '../../helpers/object';
-import { AppDraftsManager } from './appDraftsManager';
+import type { AppDraftsManager } from './appDraftsManager';
+import { copy, setDeepProperty, validateInitObject } from '../../helpers/object';
+import { getHeavyAnimationPromise } from '../../hooks/useHeavyAnimationCheck';
 
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
 const STATE_VERSION = App.version;
@@ -34,7 +35,6 @@ export type State = Partial<{
   recentEmoji: string[],
   topPeers: number[],
   recentSearch: number[],
-  stickerSets: AppStickersManager['stickerSets'],
   version: typeof STATE_VERSION,
   authState: AuthState,
   hiddenPinnedMessages: {[peerId: string]: number},
@@ -74,7 +74,6 @@ const STATE_INIT: State = {
   recentEmoji: [],
   topPeers: [],
   recentSearch: [],
-  stickerSets: {},
   version: STATE_VERSION,
   authState: {
     _: 'authStateSignIn'
@@ -126,13 +125,13 @@ export class AppStateManager extends EventListenerBase<{
     if(this.loaded) return this.loaded;
     //console.time('load state');
     return this.loaded = new Promise((resolve) => {
-      AppStorage.get<any>(...ALL_KEYS, 'user_auth').then((arr) => {
+      Promise.all(ALL_KEYS.concat('user_auth' as any).map(key => sessionStorage.get(key))).then((arr) => {
         let state: State = {};
 
         // ! then can't store false values
         ALL_KEYS.forEach((key, idx) => {
           const value = arr[idx];
-          if(value !== false) {
+          if(value !== undefined) {
             // @ts-ignore
             state[key] = value;
           } else {
@@ -166,7 +165,7 @@ export class AppStateManager extends EventListenerBase<{
         
         //return resolve();
 
-        const auth: UserAuth = arr[arr.length - 1];
+        const auth: UserAuth = arr[arr.length - 1] as any;
         if(auth) {
           // ! Warning ! DON'T delete this
           this.state.authState = {_: 'authStateSignedIn'};
@@ -191,15 +190,20 @@ export class AppStateManager extends EventListenerBase<{
   public saveState() {
     if(this.state === undefined || this.savePromise) return;
 
-    const tempId = this.tempId;
-    this.savePromise = Promise.all(this.setListenerResult('save', this.state)).then(() => {
-      return AppStorage.set(this.state);
-    }).then(() => {
-      this.savePromise = null;
+    //return;
 
-      if(this.tempId !== tempId) {
-        this.saveState();
-      }
+    const tempId = this.tempId;
+    this.savePromise = getHeavyAnimationPromise().then(() => {
+      return Promise.all(this.setListenerResult('save', this.state))
+      .then(() => getHeavyAnimationPromise())
+      .then(() => sessionStorage.set(this.state))
+      .then(() => {
+        this.savePromise = null;
+  
+        if(this.tempId !== tempId) {
+          this.saveState();
+        }
+      });
     });
     //let perf = performance.now();
     
@@ -232,7 +236,7 @@ export class AppStateManager extends EventListenerBase<{
       // @ts-ignore
       this.state[i] = false;
     }
-    AppStorage.set(this.state).then(() => {
+    sessionStorage.set(this.state).then(() => {
       location.reload();
     });
   }

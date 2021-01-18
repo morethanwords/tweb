@@ -53,6 +53,7 @@ const checkAndSetRTL = (input: HTMLElement) => {
 class InputField {
   public container: HTMLElement;
   public input: HTMLElement;
+  public inputFake: HTMLElement;
 
   //public onLengthChange: (length: number, isOverflow: boolean) => void;
 
@@ -62,7 +63,8 @@ class InputField {
     name?: string, 
     maxLength?: number, 
     showLengthOn?: number,
-    plainText?: true
+    plainText?: true,
+    animate?: true
   } = {}) {
     this.container = document.createElement('div');
     this.container.classList.add('input-field');
@@ -98,10 +100,22 @@ class InputField {
         if(isInputEmpty(input)) {
           input.innerHTML = '';
         }
+
+        if(this.inputFake) {
+          this.inputFake.innerHTML = input.innerHTML;
+          this.onFakeInput();
+        }
       });
       
       // ! childList for paste first symbol
       observer.observe(input, {characterData: true, childList: true, subtree: true});
+
+      if(options.animate) {
+        input.classList.add('scrollable', 'scrollable-y')
+        this.inputFake = document.createElement('div');
+        this.inputFake.setAttribute('contenteditable', 'true');
+        this.inputFake.className = input.className + ' input-field-input-fake';
+      }
     } else {
       this.container.innerHTML = `
       <input type="text" ${name ? `name="${name}"` : ''} ${placeholder ? `placeholder="${placeholder}"` : ''} autocomplete="off" ${label ? 'required=""' : ''} class="input-field-input">
@@ -142,23 +156,36 @@ class InputField {
     this.input = input;
   }
 
+  public onFakeInput() {
+    const scrollHeight = this.inputFake.scrollHeight;
+    this.input.style.height = scrollHeight ? scrollHeight + 'px' : '';
+  }
+
   get value() {
     return this.options.plainText ? (this.input as HTMLInputElement).value : getRichValue(this.input);
     //return getRichValue(this.input);
   }
 
   set value(value: string) {
-    this.setValueSilently(value);
+    this.setValueSilently(value, false);
 
     const event = new Event('input', {bubbles: true, cancelable: true});
     this.input.dispatchEvent(event);
   }
 
-  public setValueSilently(value: string) {
+  public setValueSilently(value: string, fireFakeInput = true) {
     if(this.options.plainText) {
       (this.input as HTMLInputElement).value = value;
     } else {
       this.input.innerHTML = value;
+      
+      if(this.inputFake) {
+        this.inputFake.innerHTML = value;
+
+        if(fireFakeInput) {
+          this.onFakeInput();
+        }
+      }
     }
   }
 }

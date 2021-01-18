@@ -157,6 +157,10 @@ let onFirstMount = (): Promise<any> => {
           err.handled = true;
           await pagePassword.mount();
           break;
+        case 'PHONE_CODE_EXPIRED':
+          codeInput.classList.add('error');
+          codeInputLabel.innerText = 'Code expired';
+          break;
         case 'PHONE_CODE_EMPTY':
         case 'PHONE_CODE_INVALID':
           codeInput.classList.add('error');

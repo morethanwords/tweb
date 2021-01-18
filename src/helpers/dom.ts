@@ -370,6 +370,19 @@ export function findUpAttribute(el: any, attribute: string): HTMLElement {
   return null; */
 }
 
+export function findUpAsChild(el: any, parent: any) {
+  if(el.parentElement === parent) return el;
+  
+  while(el.parentElement) {
+    el = el.parentElement;
+    if(el.parentElement === parent) {
+      return el;
+    }
+  }
+
+  return null;
+}
+
 export function whichChild(elem: Node) {
   if(!elem.parentNode) {
     return -1;

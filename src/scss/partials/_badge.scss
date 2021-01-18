@@ -4,6 +4,7 @@
   color: white;
   font-size: .875rem;
   transition: background-color .2s ease-in-out;
+  text-align: center;
 
   &:not(.tgico):empty {
     display: none;

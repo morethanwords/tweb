@@ -48,7 +48,7 @@ html:not(.is-safari):not(.is-ios) {
   overflow-y: hidden;
   overflow-x: hidden;
   max-height: 100%;
-  transform: translateZ(0);
+  //transform: translateZ(0);
 
   //@include respond-to(not-handhelds) {
     position: absolute;
@@ -72,9 +72,9 @@ html:not(.is-safari):not(.is-ios) {
     scrollbar-width: none;
     -ms-overflow-style: none;
 
-    html.is-safari & {
+    /* html.is-safari & {
       overflow-y: scroll;
-    }
+    } */
   }
 
   &-padding {

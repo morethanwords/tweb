@@ -7,88 +7,163 @@ const TRANSITION_TIME = 200;
 export default class ProgressivePreloader {
   public preloader: HTMLDivElement;
   private circle: SVGCircleElement;
+  private cancelSvg: SVGSVGElement;
+  private downloadSvg: HTMLElement;
   
   private tempId = 0;
   private detached = true;
 
   private promise: CancellablePromise<any> = null;
+  public onCancel: () => any = null;
 
-  constructor(elem?: Element, private cancelable = true, streamable = false, private attachMethod: 'append' | 'prepend' = 'append') {
-    this.preloader = document.createElement('div');
-    this.preloader.classList.add('preloader-container');
+  public isUpload = false;
+  private cancelable = true;
+  private streamable = false;
+  private tryAgainOnFail = true;
+  private attachMethod: 'append' | 'prepend' = 'append';
 
-    if(streamable) {
-      this.preloader.classList.add('preloader-streamable');
+  private loadFunc: () => {download: CancellablePromise<any>};
+
+  constructor(options?: Partial<{
+    isUpload: ProgressivePreloader['isUpload'],
+    cancelable: ProgressivePreloader['cancelable'], 
+    streamable: ProgressivePreloader['streamable'], 
+    tryAgainOnFail: ProgressivePreloader['tryAgainOnFail'],
+    attachMethod: ProgressivePreloader['attachMethod']
+  }>) {
+    if(options) {
+      for(let i in options) {
+        // @ts-ignore
+        this[i] = options[i];
+      }
     }
+  }
+
+  public constructContainer(options: Partial<{
+    color: 'transparent',
+    bold: boolean
+  }> = {}) {
+    if(!this.preloader) {
+      this.preloader = document.createElement('div');
+      this.preloader.classList.add('preloader-container');
+
+      if(options.color) {
+        this.preloader.classList.add('preloader-' + options.color);
+      }
+
+      if(options.bold) {
+        this.preloader.classList.add('preloader-bold');
+      }
+  
+      if(this.streamable) {
+        this.preloader.classList.add('preloader-streamable');
+      }
+    }
+  }
+
+  public constructDownloadIcon() {
+    this.constructContainer();
+  }
+
+  public construct() {
+    this.construct = null;
+
+    this.constructContainer();
     
     this.preloader.innerHTML = `
     <div class="you-spin-me-round">
-    <svg xmlns="http://www.w3.org/2000/svg" class="preloader-circular" viewBox="${streamable ? '25 25 50 50' : '27 27 54 54'}">
-    <circle class="preloader-path-new" cx="${streamable ? '50' : '54'}" cy="${streamable ? '50' : '54'}" r="${streamable ? 19 : 24}" fill="none" stroke-miterlimit="10"/>
+    <svg xmlns="http://www.w3.org/2000/svg" class="preloader-circular" viewBox="${this.streamable ? '25 25 50 50' : '27 27 54 54'}">
+    <circle class="preloader-path-new" cx="${this.streamable ? '50' : '54'}" cy="${this.streamable ? '50' : '54'}" r="${this.streamable ? 19 : 24}" fill="none" stroke-miterlimit="10"/>
     </svg>
     </div>`;
-    
-    if(cancelable) {
+
+    if(this.cancelable) {
       this.preloader.innerHTML += `
-      <svg xmlns="http://www.w3.org/2000/svg" class="preloader-close" viewBox="0 0 20 20">
-      <line x1="0" y1="20" x2="20" y2="0" stroke-width="2" stroke-linecap="round"></line>
-      <line x1="0" y1="0" x2="20" y2="20" stroke-width="2" stroke-linecap="round"></line>
+      <svg xmlns="http://www.w3.org/2000/svg" class="preloader-close" viewBox="0 0 24 24">
+        <g fill="none" fill-rule="evenodd">
+          <polygon points="0 0 24 0 24 24 0 24"/>
+          <path fill="#000" fill-rule="nonzero" d="M5.20970461,5.38710056 L5.29289322,5.29289322 C5.65337718,4.93240926 6.22060824,4.90467972 6.61289944,5.20970461 L6.70710678,5.29289322 L12,10.585 L17.2928932,5.29289322 C17.6834175,4.90236893 18.3165825,4.90236893 18.7071068,5.29289322 C19.0976311,5.68341751 19.0976311,6.31658249 18.7071068,6.70710678 L13.415,12 L18.7071068,17.2928932 C19.0675907,17.6533772 19.0953203,18.2206082 18.7902954,18.6128994 L18.7071068,18.7071068 C18.3466228,19.0675907 17.7793918,19.0953203 17.3871006,18.7902954 L17.2928932,18.7071068 L12,13.415 L6.70710678,18.7071068 C6.31658249,19.0976311 5.68341751,19.0976311 5.29289322,18.7071068 C4.90236893,18.3165825 4.90236893,17.6834175 5.29289322,17.2928932 L10.585,12 L5.29289322,6.70710678 C4.93240926,6.34662282 4.90467972,5.77939176 5.20970461,5.38710056 L5.29289322,5.29289322 L5.20970461,5.38710056 Z"/>
+        </g>
+      </svg>
+      <svg xmlns="http://www.w3.org/2000/svg" class="preloader-download" viewBox="0 0 24 24">
+        <g fill="none" fill-rule="evenodd">
+          <polygon points="0 0 24 0 24 24 0 24"/>
+          <path fill="#000" fill-rule="nonzero" d="M5,19 L19,19 C19.5522847,19 20,19.4477153 20,20 C20,20.5128358 19.6139598,20.9355072 19.1166211,20.9932723 L19,21 L5,21 C4.44771525,21 4,20.5522847 4,20 C4,19.4871642 4.38604019,19.0644928 4.88337887,19.0067277 L5,19 L19,19 L5,19 Z M11.8833789,3.00672773 L12,3 C12.5128358,3 12.9355072,3.38604019 12.9932723,3.88337887 L13,4 L13,13.585 L16.2928932,10.2928932 C16.6533772,9.93240926 17.2206082,9.90467972 17.6128994,10.2097046 L17.7071068,10.2928932 C18.0675907,10.6533772 18.0953203,11.2206082 17.7902954,11.6128994 L17.7071068,11.7071068 L12.7071068,16.7071068 C12.3466228,17.0675907 11.7793918,17.0953203 11.3871006,16.7902954 L11.2928932,16.7071068 L6.29289322,11.7071068 C5.90236893,11.3165825 5.90236893,10.6834175 6.29289322,10.2928932 C6.65337718,9.93240926 7.22060824,9.90467972 7.61289944,10.2097046 L7.70710678,10.2928932 L11,13.585 L11,4 C11,3.48716416 11.3860402,3.06449284 11.8833789,3.00672773 L12,3 L11.8833789,3.00672773 Z"/>
+        </g>
       </svg>`;
+
+      this.downloadSvg = this.preloader.lastElementChild as HTMLElement;
+      this.cancelSvg = this.downloadSvg.previousElementSibling as any;
     } else {
       this.preloader.classList.add('preloader-swing');
     }
     
     this.circle = this.preloader.firstElementChild.firstElementChild.firstElementChild as SVGCircleElement;
-    
-    if(elem) {
-      this.attach(elem);
-    }
 
     if(this.cancelable) {
-      attachClickEvent(this.preloader, (e) => {
-        cancelEvent(e);
-
-        if(this.promise && this.promise.cancel) {
-          this.promise.cancel();
-          
-          this.setProgress(0);
-          setTimeout(() => {
-            this.detach();
-          }, 100);
-        }
-      });
+      attachClickEvent(this.preloader, this.onClick);
     }
   }
 
+  public onClick = (e?: Event) => {
+    if(e) {
+      cancelEvent(e);
+    }
+
+    if(this.preloader.classList.contains('manual')) {
+      if(this.loadFunc) {
+        this.loadFunc();
+      }
+    } else {
+      if(this.promise && this.promise.cancel) {
+        this.promise.cancel();
+      }
+    }
+  };
+
+  public setDownloadFunction(func: ProgressivePreloader['loadFunc']) {
+    this.loadFunc = func;
+  }
+
+  public setManual() {
+    this.preloader.classList.add('manual');
+    this.setProgress(0);
+  }
+
   public attachPromise(promise: CancellablePromise<any>) {
+    if(this.isUpload && this.promise) return;
+
     this.promise = promise;
 
     const tempId = --this.tempId;
 
-    const onEnd = (successfully: boolean) => {
+    const onEnd = (err: Error) => {
       promise.notify = null;
 
       if(tempId === this.tempId) {
-        if(successfully && this.cancelable) {
+        if(!err && this.cancelable) {
           this.setProgress(100);
 
           setTimeout(() => { // * wait for transition complete
             if(tempId === this.tempId) {
               this.detach();
             }
-          }, TRANSITION_TIME * 1.25);
+          }, TRANSITION_TIME * 0.75);
         } else {
-          this.detach();
+          if(this.tryAgainOnFail) {
+            this.setManual();
+          } else {
+            this.detach();
+          }
         }
         
         this.promise = promise = null;
       }
     };
     
-    //promise.catch(onEnd);
     promise
-    .then(() => onEnd(true))
-    .catch(() => onEnd(false));
+    .then(() => onEnd(null))
+    .catch((err) => onEnd(err));
 
     if(promise.addNotifyListener) {
       promise.addNotifyListener((details: {done: number, total: number}) => {
@@ -115,7 +190,17 @@ export default class ProgressivePreloader {
       if(this.detached) return;
       this.detached = false; */
 
-      elem[this.attachMethod](this.preloader);
+      if(this.construct) {
+        this.construct();
+      }
+
+      if(this.preloader.parentElement) {
+        this.preloader.classList.remove('manual');
+      }
+
+      if(this.preloader.parentElement !== elem) {
+        elem[this.attachMethod](this.preloader);
+      }
 
       window.requestAnimationFrame(() => {
         SetTransition(this.preloader, 'is-visible', true, TRANSITION_TIME);
@@ -132,7 +217,7 @@ export default class ProgressivePreloader {
 
     //return;
     
-    if(this.preloader.parentElement) {
+    if(this.preloader && this.preloader.parentElement) {
       /* setTimeout(() =>  *///window.requestAnimationFrame(() => {
         /* if(!this.detached) return;
         this.detached = true; */
