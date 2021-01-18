@@ -1,5 +1,7 @@
 import { whichChild } from "../helpers/dom";
 import rootScope from "../lib/rootScope";
+import { CancellablePromise, deferredPromise } from "../helpers/cancellablePromise";
+import { dispatchHeavyAnimationEvent } from "../hooks/useHeavyAnimationCheck";
 
 function slideNavigation(tabContent: HTMLElement, prevTabContent: HTMLElement, toRight: boolean) {
   const width = prevTabContent.getBoundingClientRect().width;
@@ -21,38 +23,28 @@ function slideNavigation(tabContent: HTMLElement, prevTabContent: HTMLElement, t
 }
 
 function slideTabs(tabContent: HTMLElement, prevTabContent: HTMLElement, toRight: boolean) {
-  const width = prevTabContent.getBoundingClientRect().width;
-  const elements = [tabContent, prevTabContent];
-  if(toRight) elements.reverse();
-  elements[0].style.transform = `translate3d(${-width}px, 0, 0)`;
-  elements[1].style.transform = `translate3d(${width}px, 0, 0)`;
+  //window.requestAnimationFrame(() => {
+    const width = prevTabContent.getBoundingClientRect().width;
+    /* tabContent.style.setProperty('--width', width + 'px');
+    prevTabContent.style.setProperty('--width', width + 'px');
 
-  tabContent.classList.add('active');
-  void tabContent.offsetWidth; // reflow
-
-  tabContent.style.transform = '';
-
+    tabContent.classList.add('active'); */
+    //void tabContent.offsetWidth; // reflow
+    const elements = [tabContent, prevTabContent];
+    if(toRight) elements.reverse();
+    elements[0].style.transform = `translate3d(${-width}px, 0, 0)`;
+    elements[1].style.transform = `translate3d(${width}px, 0, 0)`;
+  
+    tabContent.classList.add('active');
+    void tabContent.offsetWidth; // reflow
+  
+    tabContent.style.transform = '';
+  //});
+  
   return () => {
     prevTabContent.style.transform = '';
   };
 }
-
-/* function slideTabsVertical(tabContent: HTMLElement, prevTabContent: HTMLElement, toRight: boolean) {
-  const height = prevTabContent.getBoundingClientRect().height;
-  const elements = [tabContent, prevTabContent];
-  if(toRight) elements.reverse();
-  elements[0].style.transform = `translate3d(0, ${-height}px, 0)`;
-  elements[1].style.transform = `translate3d(0, ${height}px, 0)`;
-
-  tabContent.classList.add('active');
-  void tabContent.offsetWidth; // reflow
-
-  tabContent.style.transform = '';
-
-  return () => {
-    prevTabContent.style.transform = '';
-  };
-} */
 
 export const TransitionSlider = (content: HTMLElement, type: 'tabs' | 'navigation' | 'zoom-fade' | 'none'/*  | 'counter' */, transitionTime: number, onTransitionEnd?: (id: number) => void) => {
   let animationFunction: TransitionFunction = null;
@@ -64,12 +56,11 @@ export const TransitionSlider = (content: HTMLElement, type: 'tabs' | 'navigatio
     case 'navigation':
       animationFunction = slideNavigation;
       break;
-    /* case 'counter':
-      animationFunction = slideTabsVertical;
-      break; */
     /* default:
       break; */
   }
+
+  content.dataset.animation = type;
   
   return Transition(content, animationFunction, transitionTime, onTransitionEnd);
 };
@@ -77,10 +68,33 @@ export const TransitionSlider = (content: HTMLElement, type: 'tabs' | 'navigatio
 type TransitionFunction = (tabContent: HTMLElement, prevTabContent: HTMLElement, toRight: boolean) => void | (() => void);
 
 const Transition = (content: HTMLElement, animationFunction: TransitionFunction, transitionTime: number, onTransitionEnd?: (id: number) => void) => {
-  const hideTimeouts: {[id: number]: number} = {};
-  //const deferred: (() => void)[] = [];
-  let transitionEndTimeout: number;
-  let prevTabContent: HTMLElement = null;
+  const onTransitionEndCallbacks: Map<HTMLElement, Function> = new Map();
+  let animationDeferred: CancellablePromise<void>;
+  let animationStarted = 0;
+  let from: HTMLElement = null;
+
+  // TODO: check for transition type (transform, etc) using by animationFunction
+  content.addEventListener(animationFunction ? 'transitionend' : 'animationend', (e) => {
+    if((e.target as HTMLElement).parentElement !== content) {
+      return;
+    }
+    
+    //console.log('Transition: transitionend', /* content, */ e, selectTab.prevId, performance.now() - animationStarted);
+
+    const callback = onTransitionEndCallbacks.get(e.target as HTMLElement);
+    if(callback) callback();
+
+    if(!animationDeferred || e.target !== from) return;
+
+    animationDeferred.resolve();
+    animationDeferred = undefined;
+
+    if(onTransitionEnd) {
+      onTransitionEnd(selectTab.prevId);
+    }
+
+    content.classList.remove('animating', 'backwards', 'disable-hover');
+  });
 
   function selectTab(id: number | HTMLElement, animate = true) {
     const self = selectTab;
@@ -89,96 +103,84 @@ const Transition = (content: HTMLElement, animationFunction: TransitionFunction,
       id = whichChild(id);
     }
     
-    if(id == self.prevId) return false;
+    if(id === self.prevId) return false;
 
     //console.log('selectTab id:', id);
 
-    const p = prevTabContent;
-    const tabContent = content.children[id] as HTMLElement;
+    const _from = from;
+    const to = content.children[id] as HTMLElement;
 
-    if(!rootScope.settings.animationsEnabled) {
+    if(!rootScope.settings.animationsEnabled || self.prevId === -1) {
       animate = false;
     }
 
-    // * means animation isn't needed
-    if(/* content.dataset.slider == 'none' ||  */!animate) {
-      if(p) {
-        p.classList.remove('active');  
+    if(!animate) {
+      if(_from) _from.classList.remove('active', 'to', 'from');  
+      if(to) {
+        to.classList.remove('to', 'from');
+        to.classList.add('active');
       }
 
-      if(tabContent) {
-        tabContent.classList.add('active');
-      }
+      content.classList.remove('animating', 'backwards', 'disable-hover');
 
       self.prevId = id;
-      prevTabContent = tabContent;
+      from = to;
 
       if(onTransitionEnd) onTransitionEnd(self.prevId);
       return;
     }
 
-    if(prevTabContent) {
-      prevTabContent.classList.remove('to');
-      prevTabContent.classList.add('from');
+    if(from) {
+      from.classList.remove('to');
+      from.classList.add('from');
     }
 
-    content.classList.add('animating');
+    content.classList.add('animating', 'disable-hover');
     const toRight = self.prevId < id;
     content.classList.toggle('backwards', !toRight);
 
-    let afterTimeout: ReturnType<TransitionFunction>;
-    if(!tabContent) {
+    let onTransitionEndCallback: ReturnType<TransitionFunction>;
+    if(!to) {
       //prevTabContent.classList.remove('active');
-    } else if(self.prevId != -1) {
+    } else {
       if(animationFunction) {
-        afterTimeout = animationFunction(tabContent, prevTabContent, toRight);
+        onTransitionEndCallback = animationFunction(to, from, toRight);
+      } else {
+        to.classList.add('active');
       }
 
-      tabContent.classList.add('to');
-    } else {
-      tabContent.classList.add('active');
+      to.classList.remove('from');
+      to.classList.add('to');
     }
     
-    const _prevId = self.prevId;
-    if(hideTimeouts.hasOwnProperty(id)) clearTimeout(hideTimeouts[id]);
-    if(p/*  && false */) {
-      hideTimeouts[_prevId] = window.setTimeout(() => {
-        if(afterTimeout) {
-          afterTimeout();
+    if(to) {
+      onTransitionEndCallbacks.set(to, () => {
+        to.classList.remove('to');
+        onTransitionEndCallbacks.delete(to);
+      });
+    }
+
+    if(_from/*  && false */) {
+      onTransitionEndCallbacks.set(_from, () => {
+        _from.classList.remove('active', 'from');
+
+        if(onTransitionEndCallback) {
+          onTransitionEndCallback();
         }
 
-        p.classList.remove('active', 'from');
+        onTransitionEndCallbacks.delete(_from);
+      });
 
-        if(tabContent) {
-          tabContent.classList.remove('to');
-          tabContent.classList.add('active');
-        }
+      if(!animationDeferred) {
+        animationDeferred = deferredPromise<void>();
+        animationStarted = performance.now();
+      }
 
-        delete hideTimeouts[_prevId];
-      }, transitionTime);
-
-      if(transitionEndTimeout) clearTimeout(transitionEndTimeout);
-      transitionEndTimeout = window.setTimeout(() => {
-        if(onTransitionEnd) {
-          onTransitionEnd(self.prevId);
-        }
-
-        content.classList.remove('animating', 'backwards');
-
-        transitionEndTimeout = 0;
-      }, transitionTime);
+      dispatchHeavyAnimationEvent(animationDeferred, transitionTime * 2);
     }
     
     self.prevId = id;
-    prevTabContent = tabContent;
-
-    /* if(p) {
-      return new Promise((resolve) => {
-        deferred.push(resolve);
-      });
-    } else {
-      return Promise.resolve();
-    } */
+    from = to;
   }
 
   selectTab.prevId = -1;

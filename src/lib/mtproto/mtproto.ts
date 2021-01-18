@@ -1,4 +1,4 @@
-import AppStorage from '../storage';
+import sessionStorage from '../sessionStorage';
 import { Modes, App } from './mtproto_config';
 
 /* import PasswordManager from './passwordManager';
@@ -11,7 +11,7 @@ import NetworkerFactory from './networkerFactory';
 import ApiManager from './apiManager';
 import ApiFileManager from './apiFileManager'; */
 
-export class TelegramMeWebService {
+/* export class TelegramMeWebService {
   public disabled = Modes.test ||
     App.domains.indexOf(location.hostname) == -1 ||
     location.protocol != 'http:' && location.protocol != 'https:' ||
@@ -22,7 +22,7 @@ export class TelegramMeWebService {
       return false;
     }
 
-    AppStorage.get<any>('tgme_sync').then((curValue) => {
+    sessionStorage.get('tgme_sync').then((curValue) => {
       var ts = Date.now() / 1000;
       if(canRedirect &&
         curValue &&
@@ -31,7 +31,7 @@ export class TelegramMeWebService {
         return false;
       }
 
-      AppStorage.set({tgme_sync: {canRedirect: canRedirect, ts: ts}});
+      sessionStorage.set({tgme_sync: {canRedirect: canRedirect, ts: ts}});
 
       var urls = [
         '//telegram.me/_websync_?authed=' + (canRedirect ? '1' : '0'),
@@ -50,7 +50,7 @@ export class TelegramMeWebService {
   }
 }
 
-export const telegramMeWebService = new TelegramMeWebService();
+export const telegramMeWebService = new TelegramMeWebService(); */
 
 /* export namespace MTProto {
   //$($window).on('click keydown', rng_seed_time); // WARNING!

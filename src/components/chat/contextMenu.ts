@@ -231,7 +231,7 @@ export default class ChatContextMenu {
       icon: 'forward',
       text: 'Forward',
       onClick: this.onForwardClick,
-      verify: () => this.chat.type !== 'scheduled' && !this.message.pFlags.is_outgoing
+      verify: () => this.chat.type !== 'scheduled' && !this.message.pFlags.is_outgoing && this.message._ !== 'messageService'
     }, {
       icon: 'forward',
       text: 'Forward selected',
@@ -283,13 +283,7 @@ export default class ChatContextMenu {
   };
 
   private onReplyClick = () => {
-    const message = this.chat.getMessage(this.mid);
-    const chatInputC = this.chat.input;
-    const f = () => {
-      chatInputC.setTopInfo('reply', f, this.appPeersManager.getPeerTitle(message.fromId, true), message.message, undefined, message);
-      chatInputC.replyToMsgId = this.mid;
-    };
-    f();
+    this.chat.input.initMessageReply(this.mid);
   };
 
   private onEditClick = () => {

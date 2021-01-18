@@ -134,7 +134,9 @@ export default class ChatBubbles {
 
     this.log = this.chat.log;
     this.bubbleGroups = new BubbleGroups(this.chat);
-    this.preloader = new ProgressivePreloader(null, false);
+    this.preloader = new ProgressivePreloader({
+      cancelable: false
+    });
     this.lazyLoadQueue = new LazyLoadQueue();
     this.lazyLoadQueue.queueId = ++queueId;
 
@@ -166,7 +168,7 @@ export default class ChatBubbles {
 
     this.listenerSetter.add(rootScope, 'dialog_flush', (e) => {
       let peerId: number = e.peerId;
-      if(this.peerId == peerId) {
+      if(this.peerId === peerId) {
         this.deleteMessagesByIds(Object.keys(this.bubbles).map(m => +m));
       }
     });
@@ -191,7 +193,7 @@ export default class ChatBubbles {
         /////this.log('message_sent', bubble);
 
         if(message.media?.document && !message.media.document.type) {
-          const div = bubble.querySelector(`.document-container[data-mid="${tempId}"] .document`) as AudioElement;
+          const div = bubble.querySelector(`.document-container[data-mid="${tempId}"] .document`);
           if(div) {
             div.replaceWith(wrapDocument({message}));
           }
@@ -219,6 +221,7 @@ export default class ChatBubbles {
             audio.setAttribute('doc-id', message.media.document.id);
             audio.setAttribute('message-id', '' + mid);
             audio.message = message;
+            audio.onLoad(true);
           }
         }
 
@@ -279,7 +282,7 @@ export default class ChatBubbles {
       fastRaf(() => {
         const {storage, peerId, mid} = e;
       
-        if(peerId != this.peerId || storage !== this.chat.getMessagesStorage()) return;
+        if(peerId !== this.peerId || storage !== this.chat.getMessagesStorage()) return;
         const mounted = this.getMountedBubble(mid);
         if(!mounted) return;
 
@@ -298,7 +301,7 @@ export default class ChatBubbles {
       fastRaf(() => {
         const {peerId, groupId, deletedMids} = e;
       
-        if(peerId != this.peerId) return;
+        if(peerId !== this.peerId) return;
         const mids = this.appMessagesManager.getMidsByAlbum(groupId);
         const renderedId = mids.concat(deletedMids).find(mid => this.bubbles[mid]);
         if(!renderedId) return;
@@ -345,7 +348,7 @@ export default class ChatBubbles {
     });
 
     this.listenerSetter.add(rootScope, 'dialog_drop', (e) => {
-      if(e.peerId == this.peerId) {
+      if(e.peerId === this.peerId) {
         this.chat.appImManager.setPeer(0);
       }
     });
@@ -356,17 +359,17 @@ export default class ChatBubbles {
       this.listenerSetter.add(this.bubblesContainer, 'dblclick', (e) => {
         const bubble = findUpClassName(e.target, 'grouped-item') || findUpClassName(e.target, 'bubble');
         if(bubble) {
-          const mid = +bubble.dataset.mid;
+          const mid = +bubble.dataset.mid
           this.log('debug message:', this.chat.getMessage(mid));
           this.chat.bubbles.highlightBubble(bubble);
         }
       });
     }
 
-    this.stickyIntersector = new StickyIntersector(this.scrollable.container, (stuck, target) => {
+    /* if(false)  */this.stickyIntersector = new StickyIntersector(this.scrollable.container, (stuck, target) => {
       for(const timestamp in this.dateMessages) {
         const dateMessage = this.dateMessages[timestamp];
-        if(dateMessage.container == target) {
+        if(dateMessage.container === target) {
           dateMessage.div.classList.toggle('is-sticky', stuck);
           break;
         }
@@ -459,34 +462,34 @@ export default class ChatBubbles {
           const mid = +target.dataset.mid;
           readed.push(mid);
           this.unreadedObserver.unobserve(target);
-          this.unreaded.findAndSplice(id => id == mid);
         }
       });
 
       if(readed.length) {
-        const max = Math.max(...readed);
+        let maxId = Math.max(...readed);
+
+        if(this.scrolledAllDown) {
+          const bubblesMaxId = Math.max(...Object.keys(this.bubbles).map(i => +i));
+          if(maxId >= bubblesMaxId) {
+            maxId = this.appMessagesManager.getHistoryStorage(this.peerId, this.chat.threadId).maxId || maxId;
+          }
+        }
 
         let length = readed.length;
         for(let i = this.unreaded.length - 1; i >= 0; --i) {
-          const mid = this.unreaded[i];
-          if(mid < max) {
+          if(this.unreaded[i] <= maxId) {
             length++;
             this.unreaded.splice(i, 1);
           }
         }
 
         if(DEBUG) {
-          this.log('will readHistory by ids:', max, length);
+          this.log('will readHistory by ids:', maxId, length);
         }
         
-        /* if(this.peerId < 0) {
-          max = appMessagesIDsManager.getMessageIdInfo(max)[0];
-        } */
-
-        //appMessagesManager.readMessages(readed);
-        /* false && */ this.appMessagesManager.readHistory(this.peerId, max, this.chat.threadId).catch((err: any) => {
+        /* false && */ this.appMessagesManager.readHistory(this.peerId, maxId, this.chat.threadId).catch((err: any) => {
           this.log.error('readHistory err:', err);
-          this.appMessagesManager.readHistory(this.peerId, max, this.chat.threadId);
+          this.appMessagesManager.readHistory(this.peerId, maxId, this.chat.threadId);
         });
       }
     });
@@ -856,9 +859,9 @@ export default class ChatBubbles {
     if(!history.length) return;
     
     if(top && !this.scrolledAll) {
-      if(DEBUG) {
+      /* if(DEBUG) {
         this.log('Will load more (up) history by id:', history[0], 'maxId:', history[history.length - 1], history);
-      }
+      } */
 
       /* if(history.length == 75) {
         this.log('load more', this.scrollable.scrollHeight, this.scrollable.scrollTop, this.scrollable);
@@ -874,9 +877,9 @@ export default class ChatBubbles {
     
     // if scroll down after search
     if(!top && history.indexOf(historyStorage.maxId) === -1/*  && this.chat.type == 'chat' */) {
-      if(DEBUG) {
+      /* if(DEBUG) {
         this.log('Will load more (down) history by maxId:', history[history.length - 1], history);
-      }
+      } */
 
       /* false &&  */this.getHistory(history[history.length - 1], false, true, undefined, justLoad);
     }
@@ -902,7 +905,7 @@ export default class ChatBubbles {
       }, 1350);
     }
     
-    if(this.scrollable.isScrolledDown && this.scrolledAllDown) {
+    if(this.scrollable.getDistanceToEnd() < 300 && this.scrolledAllDown) {
       this.bubblesContainer.classList.add('scrolled-down');
       this.scrolledDown = true;
     } else if(this.bubblesContainer.classList.contains('scrolled-down')) {
@@ -1045,6 +1048,16 @@ export default class ChatBubbles {
     }
   }
 
+  public scrollToBubble(
+    element: HTMLElement, 
+    position: ScrollLogicalPosition,
+    forceDirection?: FocusDirection,
+    forceDuration?: number
+  ) {
+    // * 4 = .25rem
+    return this.scrollable.scrollIntoViewNew(element, position, 4, undefined, forceDirection, forceDuration);
+  }
+
   public scrollToNewLastBubble() {
     const bubble = this.chatInner.lastElementChild.lastElementChild as HTMLElement;
 
@@ -1054,7 +1067,7 @@ export default class ChatBubbles {
 
     if(bubble) {
       this.scrollingToNewBubble = bubble;
-      this.scrollable.scrollIntoViewNew(bubble, 'end').then(() => {
+      this.scrollToBubble(bubble, 'end').then(() => {
         this.scrollingToNewBubble = null;
       });
     }
@@ -1223,10 +1236,11 @@ export default class ChatBubbles {
       topMessage = 0;
     }
 
+    let readMaxId = 0;
     if(!isTarget && topMessage) {
-      const isUnread = this.appMessagesManager.isHistoryUnread(peerId, this.chat.threadId);
-      if(/* dialog.unread_count */isUnread && !samePeer) {
-        lastMsgId = historyStorage.readMaxId;
+      readMaxId = this.appMessagesManager.getReadMaxIdIfUnread(peerId, this.chat.threadId);
+      if(/* dialog.unread_count */readMaxId && !samePeer) {
+        lastMsgId = readMaxId;
       } else {
         lastMsgId = topMessage;
         //lastMsgID = topMessage;
@@ -1239,7 +1253,7 @@ export default class ChatBubbles {
       const mounted = this.getMountedBubble(lastMsgId);
       if(mounted) {
         if(isTarget) {
-          this.scrollable.scrollIntoViewNew(mounted.bubble, 'center');
+          this.scrollToBubble(mounted.bubble, 'center');
           this.highlightBubble(mounted.bubble);
           this.chat.setListenerResult('setPeer', lastMsgId, false);
         } else if(topMessage && !isJump) {
@@ -1337,23 +1351,23 @@ export default class ChatBubbles {
       //if(dialog && lastMsgID && lastMsgID != topMessage && (this.bubbles[lastMsgID] || this.firstUnreadBubble)) {
       if((topMessage && isJump) || isTarget) {
         const fromUp = maxBubbleId > 0 && (maxBubbleId < lastMsgId || lastMsgId < 0);
-        const forwardingUnread = historyStorage.readMaxId === lastMsgId && !isTarget;
-        if(!fromUp && (samePeer || forwardingUnread)) {
+        const followingUnread = readMaxId === lastMsgId && !isTarget;
+        if(!fromUp && samePeer) {
           this.scrollable.scrollTop = this.scrollable.scrollHeight;
         } else if(fromUp/*  && (samePeer || forwardingUnread) */) {
           this.scrollable.scrollTop = 0;
         }
 
         const mountedByLastMsgId = this.getMountedBubble(lastMsgId);
-        let bubble: HTMLElement = (forwardingUnread && this.firstUnreadBubble) || mountedByLastMsgId?.bubble;
+        let bubble: HTMLElement = (followingUnread && this.firstUnreadBubble) || mountedByLastMsgId?.bubble;
         if(!bubble?.parentElement) {
           bubble = this.findNextMountedBubbleByMsgId(lastMsgId);
         }
         
         // ! sometimes there can be no bubble
         if(bubble) {
-          this.scrollable.scrollIntoViewNew(bubble, forwardingUnread ? 'start' : 'center', undefined, undefined, !samePeer ? FocusDirection.Static : undefined);
-          if(!forwardingUnread) {
+          this.scrollToBubble(bubble, followingUnread ? 'start' : 'center', !samePeer ? FocusDirection.Static : undefined);
+          if(!followingUnread) {
             this.highlightBubble(bubble);
           }
         }
@@ -1372,7 +1386,7 @@ export default class ChatBubbles {
 
       //if(!this.unreaded.length && dialog) { // lol
       if(this.scrolledAllDown && topMessage) { // lol
-        this.appMessagesManager.readHistory(peerId, topMessage, this.chat.threadId);
+        this.onScrolledAllDown();
       }
 
       if(this.chat.type === 'chat') {
@@ -1392,6 +1406,13 @@ export default class ChatBubbles {
     });
 
     return {cached, promise: setPeerPromise};
+  }
+
+  public onScrolledAllDown() {
+    if(this.chat.type === 'chat' || this.chat.type === 'discussion') {
+      const storage = this.appMessagesManager.getHistoryStorage(this.peerId, this.chat.threadId);
+      this.appMessagesManager.readHistory(this.peerId, storage.maxId, this.chat.threadId, true);
+    }
   }
 
   public finishPeerChange() {
@@ -1435,7 +1456,7 @@ export default class ChatBubbles {
         // * если добавить этот промис - в таком случае нужно сделать, чтобы скроллило к последнему сообщению после рендера
         // promises.push(getHeavyAnimationPromise());
 
-        //this.log('promises to call', promises, queue);
+        this.log('promises to call', promises, queue, this.isHeavyAnimationInProgress);
         const middleware = this.getMiddleware();
         Promise.all(promises).then(() => {
           if(!middleware()) {
@@ -1458,6 +1479,8 @@ export default class ChatBubbles {
           if(this.messagesQueue.length) {
             this.setMessagesQueuePromise();
           }
+
+          this.setUnreadDelimiter(); // не нашёл места лучше
         }).catch(reject);
       }, 0);
     });
@@ -1561,13 +1584,14 @@ export default class ChatBubbles {
         }
       }
     } else {
-      const save = ['is-highlighted', 'zoom-fade'];
+      const save = ['is-highlighted'];
       const wasClassNames = bubble.className.split(' ');
       const classNames = ['bubble'].concat(save.filter(c => wasClassNames.includes(c)));
       bubble.className = classNames.join(' ');
 
       contentWrapper = bubble.lastElementChild as HTMLElement;
       bubbleContainer = contentWrapper.firstElementChild as HTMLDivElement;
+      bubbleContainer.innerHTML = '';
       contentWrapper.innerHTML = '';
       contentWrapper.appendChild(bubbleContainer);
       //bubbleContainer.style.marginBottom = '';
@@ -2277,12 +2301,16 @@ export default class ChatBubbles {
     }
 
     if(withReplies) {
-      MessageRender.renderReplies({
+      const isFooter = MessageRender.renderReplies({
         bubble,
         bubbleContainer,
         message: messageWithReplies,
         messageDiv
       });
+
+      if(isFooter) {
+        canHaveTail = true;
+      }
     }
 
     if(canHaveTail) {
@@ -2398,6 +2426,10 @@ export default class ChatBubbles {
           //this.scrollable.scrollTop = this.scrollable.scrollHeight;
           isTouchSupported && isApple && (this.scrollable.container.style.overflow = '');
 
+          this.scrollable.container.style.display = 'none';
+          void this.scrollable.container.offsetLeft; // reflow
+          this.scrollable.container.style.display = '';
+
           /* if(DEBUG) {
             this.log('performHistoryResult: have set up scrollTop:', newScrollTop, this.scrollable.scrollTop, this.isHeavyAnimationInProgress);
           } */
@@ -2408,6 +2440,7 @@ export default class ChatBubbles {
     }).then(() => {
       //console.timeEnd('appImManager render history');
 
+      //return new Promise<boolean>((resolve) => setTimeout(() => resolve(true), 300));
       return true;
     });
   }
@@ -2599,7 +2632,7 @@ export default class ChatBubbles {
 
     const waitPromise = isAdditionRender ? processPromise(resultPromise) : promise;
 
-    if(isFirstMessageRender) {
+    if(isFirstMessageRender/*  && false */) {
       waitPromise.then(() => {
         if(rootScope.settings.animationsEnabled && Object.keys(this.bubbles).length) {
           let sortedMids = getObjectKeysAndSort(this.bubbles, 'desc');
@@ -2623,9 +2656,9 @@ export default class ChatBubbles {
           const middleIds = isAdditionRender ? [] : [targetMid];
           const bottomIds = sortedMids.slice(0, sortedMids.findIndex(mid => targetMid >= mid)).reverse();
           
-          /* this.log('getHistory: targeting mid:', targetMid, 
+          this.log('getHistory: targeting mid:', targetMid, maxId, additionMsgId, 
             topIds.map(m => this.appMessagesManager.getLocalMessageId(m)), 
-            bottomIds.map(m => this.appMessagesManager.getLocalMessageId(m))); */
+            bottomIds.map(m => this.appMessagesManager.getLocalMessageId(m)));
 
           const delay = isAdditionRender ? 10 : 40;
           const offsetIndex = isAdditionRender ? 0 : 1;
@@ -2633,6 +2666,11 @@ export default class ChatBubbles {
             const animationPromise = deferredPromise<void>();
             let lastMsDelay = 0;
             mids.forEach((mid, idx) => {
+              if(!this.bubbles[mid]) {
+                this.log.warn('animateAsLadder: no bubble by mid:', mid);
+                return;
+              }
+              
               const contentWrapper = this.bubbles[mid].lastElementChild as HTMLElement;
       
               lastMsDelay = ((idx + offsetIndex) || 0.1) * delay;
@@ -2668,7 +2706,7 @@ export default class ChatBubbles {
           const delays: number[] = [topRes.lastMsDelay, middleRes.lastMsDelay, bottomRes.lastMsDelay];
 
           if(topIds.length || middleIds.length || bottomIds.length) {
-            dispatchHeavyAnimationEvent(Promise.all(promises), Math.max(...delays));
+            dispatchHeavyAnimationEvent(Promise.all(promises), Math.max(...delays) + 200); // * 200 - transition time
           }
         }
 
@@ -2687,7 +2725,7 @@ export default class ChatBubbles {
       return null;
     }
 
-    /* false &&  */!isFirstMessageRender && promise.then(() => {
+    /* false &&  */!isFirstMessageRender && false && promise.then(() => {
       if(reverse) {
         this.loadedTopTimes++;
         this.loadedBottomTimes = Math.max(0, --this.loadedBottomTimes);
@@ -2727,9 +2765,9 @@ export default class ChatBubbles {
 
         this.deleteMessagesByIds(ids, false);
       }
+    });
 
-      this.setUnreadDelimiter(); // не нашёл места лучше
-
+    promise.then(() => {
       // preload more
       //if(!isFirstMessageRender) {
       if(this.chat.type === 'chat'/*  || this.chat.type === 'discussion' */) {
@@ -2757,20 +2795,23 @@ export default class ChatBubbles {
     }
 
     const historyStorage = this.appMessagesManager.getHistoryStorage(this.peerId, this.chat.threadId);
-    const isUnread = this.appMessagesManager.isHistoryUnread(this.peerId, this.chat.threadId);
-    if(!isUnread) return;
+    let readMaxId = this.appMessagesManager.getReadMaxIdIfUnread(this.peerId, this.chat.threadId);
+    if(!readMaxId) return;
 
-    let maxId = historyStorage.readMaxId;
-    maxId = Object.keys(this.bubbles).filter(mid => !this.bubbles[mid].classList.contains('is-out')).map(i => +i).sort((a, b) => a - b).find(i => i > maxId);
+    readMaxId = Object.keys(this.bubbles)
+    .filter(mid => !this.bubbles[mid].classList.contains('is-out'))
+    .map(i => +i)
+    .sort((a, b) => a - b)
+    .find(i => i > readMaxId);
 
-    if(maxId && this.bubbles[maxId]) {
-      let bubble = this.bubbles[maxId];
+    if(readMaxId && this.bubbles[readMaxId]) {
+      let bubble = this.bubbles[readMaxId];
       if(this.firstUnreadBubble && this.firstUnreadBubble != bubble) {
         this.firstUnreadBubble.classList.remove('is-first-unread');
         this.firstUnreadBubble = null;
       }
 
-      if(maxId !== historyStorage.maxId) {
+      if(readMaxId !== historyStorage.maxId) {
         bubble.classList.add('is-first-unread');
       }
 

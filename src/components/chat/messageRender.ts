@@ -69,5 +69,6 @@ export namespace MessageRender {
     repliesFooter.message = message;
     repliesFooter.type = isFooter ? 'footer' : 'beside';
     bubbleContainer.prepend(repliesFooter);
+    return isFooter;
   };
 }

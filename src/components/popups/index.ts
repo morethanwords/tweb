@@ -1,6 +1,7 @@
 import rootScope from "../../lib/rootScope";
 import { blurActiveElement, cancelEvent, findUpClassName } from "../../helpers/dom";
 import { ripple } from "../ripple";
+import animationIntersector from "../animationIntersector";
 
 export type PopupOptions = Partial<{closable: true, overlayClosable: true, withConfirm: string, body: true}>;
 export default class PopupElement {
@@ -98,7 +99,7 @@ export default class PopupElement {
   }
 
   private _onKeyDown = (e: KeyboardEvent) => {
-    if(e.key == 'Escape' && this.onEscape()) {
+    if(e.key === 'Escape' && this.onEscape()) {
       cancelEvent(e);
       this.destroy();
     }
@@ -110,10 +111,12 @@ export default class PopupElement {
     void this.element.offsetWidth; // reflow
     this.element.classList.add('active');
     rootScope.overlayIsActive = true;
+    animationIntersector.checkAnimations(true);
   }
 
   public destroy = () => {
     this.onClose && this.onClose();
+    this.element.classList.add('hiding');
     this.element.classList.remove('active');
 
     window.removeEventListener('keydown', this._onKeyDown, {capture: true});
@@ -123,7 +126,8 @@ export default class PopupElement {
     setTimeout(() => {
       this.element.remove();
       this.onCloseAfterTimeout && this.onCloseAfterTimeout();
-    }, 1000);
+      animationIntersector.checkAnimations(false);
+    }, 150);
   };
 }
 

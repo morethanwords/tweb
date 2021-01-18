@@ -1,4 +1,4 @@
-import AppStorage from '../storage';
+import sessionStorage from '../sessionStorage';
 import { longFromInts } from './bin_utils';
 import { nextRandomInt } from '../../helpers/random';
 
@@ -7,7 +7,7 @@ export class TimeManager {
   private timeOffset = 0;
 
   constructor() {
-    AppStorage.get('server_time_offset').then((to: any) => {
+    sessionStorage.get('server_time_offset').then((to: any) => {
       if(to) {
         this.timeOffset = to;
       }
@@ -39,7 +39,7 @@ export class TimeManager {
     localTime = (localTime || Date.now()) / 1000 | 0;
     const newTimeOffset = serverTime - localTime;
     const changed = Math.abs(this.timeOffset - newTimeOffset) > 10;
-    AppStorage.set({
+    sessionStorage.set({
       server_time_offset: newTimeOffset
     });
 

@@ -51,6 +51,12 @@ export function deferredPromise<T>() {
     };
   });
 
+  // @ts-ignore
+  /* deferred.then = (resolve: (value: T) => any, reject: (...args: any[]) => any) => {
+    const n = deferredPromise<ReturnType<typeof resolve>>();
+    
+  }; */
+
   deferred.finally(() => {
     deferred.notify = null;
     deferred.listeners.length = 0;

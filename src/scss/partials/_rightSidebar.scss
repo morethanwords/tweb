@@ -495,22 +495,12 @@
   }
 
   &-content-music, &-content-voice {
-
     .search-super-month-items {
       padding: 20px 15px 0px 20px;
 
       @include respond-to(handhelds) {
         padding: 20px 15px 0px 12px;
       }
-    }
-
-    .preloader-container {
-      .preloader-circular {
-        background-color: rgba(0, 0, 0, .35);
-      }
-
-        width: 36px !important;
-        height: 36px !important;
     }
 
     .audio {

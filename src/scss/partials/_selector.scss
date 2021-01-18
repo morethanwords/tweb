@@ -34,6 +34,7 @@
     padding: 0 24px 0 24px;
     display: flex;
     flex-flow: wrap;
+    position: relative;
 
     &-input {
       border: none;
@@ -91,6 +92,7 @@
       float: left;
       margin-right: 8px;
       overflow: hidden;
+      position: relative;
       
       html.is-safari & {
         -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%); // fix safari overflow

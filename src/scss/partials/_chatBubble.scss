@@ -63,10 +63,13 @@ $bubble-margin: .25rem;
   margin: 0 auto $bubble-margin;
   user-select: none;
   display: flex;
+  flex-wrap: wrap;
+  //flex-direction: column; // fix 'Unread messages', still need to refactor it
 
   --background-color: #fff;
   --accent-color: $color-blue;
   --secondary-color: $color-gray;
+  --highlightning-color: rgba(77, 142, 80, .4);
 
   &.is-highlighted, &.is-selected, /* .bubbles.is-selecting */ & {
     &:after {
@@ -103,7 +106,7 @@ $bubble-margin: .25rem;
 
   &.is-highlighted:after {
     //background-color: rgba(0, 132, 255, .3);
-    background-color: rgba(77, 142, 80, .4);
+    background-color: var(--highlightning-color);
 
     body:not(.animation-level-0) & {
       animation: bubbleSelected 2s linear;
@@ -116,16 +119,17 @@ $bubble-margin: .25rem;
     }
 
     &:before {
-      content: "Unread messages"; 
-      height: 30px; 
-      margin-bottom: $bubble-margin; 
-      margin-left: -50%; 
-      text-align: center; 
-      color: #538BCC; 
-      line-height: 2.1; 
-      font-weight: 500; 
-      font-size: 15px; 
-      background-color: rgba(255, 255, 255, .95); 
+      content: "Unread messages";
+      height: 30px;
+      margin-bottom: $bubble-margin;
+      margin-left: -50%;
+      margin-right: -50%;
+      text-align: center;
+      color: #538BCC;
+      line-height: 2.1;
+      font-weight: 500;
+      font-size: 15px;
+      background-color: rgba(255, 255, 255, .95);
       z-index: 2;
       position: relative;
     }
@@ -995,7 +999,7 @@ $bubble-margin: .25rem;
 
       &.is-highlighted {
         .document-selection {
-          background-color: rgba(0, 132, 255, .3);
+          background-color: var(--highlightning-color);
         }
 
         body:not(.animation-level-0) & {
@@ -1458,6 +1462,11 @@ $bubble-margin: .25rem;
         avatar-element {
           border: 2px solid #fff;
           cursor: pointer;
+          z-index: 0; // * fix border blinking
+
+          &:not(:first-child) {
+            margin-right: -14px;
+          }
         }
       }
   
@@ -1486,7 +1495,7 @@ $bubble-margin: .25rem;
       display: none;
     }
 
-    &.is-in .bubble-content {
+    &.is-in .bubble-content-wrapper {
       margin-left: 0;
     }
   }
@@ -1505,6 +1514,7 @@ $bubble-margin: .25rem;
 .bubble-content-wrapper {
   transition: transform var(--layer-transition);
   transform: scale(1) translateX(0);
+  opacity: 1;
 
   &.zoom-fade /* .bubble-content */ {
     //transform: scale(.8) translateZ(0);
@@ -1512,7 +1522,7 @@ $bubble-margin: .25rem;
     //transform: scale(.8);
     opacity: 0;
     transform-origin: center;
-    animation: zoom-opacity-fade-in .2s linear forwards;
+    animation: zoom-opacity-fade-in .2s ease-in-out forwards;
     animation-delay: 0;
   }
 
@@ -1553,6 +1563,7 @@ $bubble-margin: .25rem;
 
 .bubble.service {
   align-self: center;
+  justify-content: center;
 
   .bubble-content {
     background-color: transparent;

@@ -4,6 +4,7 @@ import ListenerSetter from "../helpers/listenerSetter";
 import mediaSizes from "../helpers/mediaSizes";
 import { isTouchSupported } from "../helpers/touchSupport";
 import { isApple } from "../helpers/userAgent";
+import { MOUNT_CLASS_TO } from "../lib/mtproto/mtproto_config";
 
 export const loadedURLs: {[url: string]: boolean} = {};
 const set = (elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLVideoElement, url: string) => {
@@ -62,6 +63,8 @@ export function putPreloader(elem: Element, returnDiv = false) {
   
   elem.innerHTML += html;
 }
+
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.putPreloader = putPreloader);
 
 let sortedCountries: Country[];
 export function formatPhoneNumber(str: string) {

@@ -23,7 +23,7 @@ export const dispatchHeavyAnimationEvent = (promise: Promise<any>, timeout?: num
   }
   
   ++promisesInQueue;
-  console.log('dispatchHeavyAnimationEvent: attach promise, length:', promisesInQueue);
+  console.log('dispatchHeavyAnimationEvent: attach promise, length:', promisesInQueue, timeout);
 
   const promises = [
     timeout !== undefined ? pause(timeout) : undefined,

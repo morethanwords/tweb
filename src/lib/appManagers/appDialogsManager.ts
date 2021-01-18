@@ -22,9 +22,10 @@ import appUsersManager, { User } from "./appUsersManager";
 import { App, DEBUG, MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
 import Button from "../../components/button";
 import SetTransition from "../../components/singleTransition";
-import AppStorage from '../storage';
+import sessionStorage from '../sessionStorage';
 import apiUpdatesManager from "./apiUpdatesManager";
 import appDraftsManager, { MyDraftMessage } from "./appDraftsManager";
+import ProgressivePreloader from "../../components/preloader";
 
 type DialogDom = {
   avatarEl: AvatarElement,
@@ -46,7 +47,7 @@ let testTopSlice = 1;
 class ConnectionStatusComponent {
   private statusContainer: HTMLElement;
   private statusEl: HTMLElement;
-  private statusPreloader: HTMLElement;
+  private statusPreloader: ProgressivePreloader;
 
   private currentText = '';
 
@@ -62,7 +63,8 @@ class ConnectionStatusComponent {
     this.statusContainer.classList.add('connection-status');
 
     this.statusEl = Button('btn-primary bg-warning connection-status-button', {noRipple: true});
-    this.statusPreloader = putPreloader(null, true).firstElementChild as HTMLElement;
+    this.statusPreloader = new ProgressivePreloader({cancelable: false});
+    this.statusPreloader.constructContainer({color: 'transparent', bold: true});
     this.statusContainer.append(this.statusEl);
 
     chatsContainer.prepend(this.statusContainer);
@@ -94,7 +96,7 @@ class ConnectionStatusComponent {
     });
 
     const setConnectionStatus = () => {
-      AppStorage.get<number>('dc').then(baseDcId => {
+      sessionStorage.get('dc').then(baseDcId => {
         if(!baseDcId) {
           baseDcId = App.baseDcId;
         }
@@ -136,7 +138,7 @@ class ConnectionStatusComponent {
   private setStatusText = (text: string) => {
     if(this.currentText == text) return;
     this.statusEl.innerText = this.currentText = text;
-    this.statusEl.appendChild(this.statusPreloader);
+    this.statusPreloader.attach(this.statusEl);
   };
 
   private setState = () => {
@@ -389,7 +391,7 @@ export class AppDialogsManager {
 
       // set tab
       //(this.folders.menu.firstElementChild.children[Math.max(0, filter.id - 2)] as HTMLElement).click();
-      (this.folders.menu.firstElementChild.children[0] as HTMLElement).click();
+      (this.folders.menu.firstElementChild as HTMLElement).click();
 
       elements.container.remove();
       elements.menu.remove();
@@ -405,7 +407,7 @@ export class AppDialogsManager {
     rootScope.on('filter_order', (e) => {
       const order = e;
       
-      const containerToAppend = this.folders.menu.firstElementChild as HTMLUListElement;
+      const containerToAppend = this.folders.menu as HTMLElement;
       order.forEach((filterId) => {
         const filter = appMessagesManager.filtersStorage.filters[filterId];
         const renderedFilter = this.filtersRendered[filterId];
@@ -450,14 +452,14 @@ export class AppDialogsManager {
       this.onTabChange();
     }, () => {
       for(const folderId in this.chatLists) {
-        if(+folderId != this.filterId) {
+        if(+folderId !== this.filterId) {
           this.chatLists[folderId].innerHTML = '';
         }
       }
     }, undefined, foldersScrollable);
 
     //selectTab(0);
-    (this.folders.menu.firstElementChild.firstElementChild as HTMLElement).click();
+    (this.folders.menu.firstElementChild as HTMLElement).click();
     appStateManager.getState().then((state) => {
       const getFiltersPromise = appMessagesManager.filtersStorage.getDialogFilters();
       getFiltersPromise.then((filters) => {
@@ -580,7 +582,8 @@ export class AppDialogsManager {
   private addFilter(filter: DialogFilter) {
     if(this.filtersRendered[filter.id]) return;
 
-    const li = document.createElement('li');
+    const menuTab = document.createElement('div');
+    menuTab.classList.add('menu-horizontal-div-item');
     const span = document.createElement('span');
     const titleSpan = document.createElement('span');
     titleSpan.innerHTML = RichTextProcessor.wrapEmojiText(filter.title);
@@ -588,11 +591,11 @@ export class AppDialogsManager {
     unreadSpan.classList.add('badge', 'badge-20', 'badge-blue');
     const i = document.createElement('i');
     span.append(titleSpan, unreadSpan, i);
-    li.append(span);
-    ripple(li);
+    menuTab.append(span);
+    ripple(menuTab);
 
-    const containerToAppend = this.folders.menu.firstElementChild as HTMLUListElement;
-    positionElementByIndex(li, containerToAppend, filter.orderIndex);
+    const containerToAppend = this.folders.menu as HTMLElement;
+    positionElementByIndex(menuTab, containerToAppend, filter.orderIndex);
     //containerToAppend.append(li);
 
     const ul = document.createElement('ul');
@@ -614,7 +617,7 @@ export class AppDialogsManager {
     }
 
     this.filtersRendered[filter.id] = {
-      menu: li,
+      menu: menuTab,
       container: div,
       unread: unreadSpan,
       title: titleSpan
@@ -1036,18 +1039,10 @@ export class AppDialogsManager {
       return;
     }
 
-    const isMuted = (dialog.notify_settings?.mute_until * 1000) > Date.now();
+    const isMuted = appMessagesManager.isDialogMuted(dialog);
     const wasMuted = dom.listEl.classList.contains('is-muted');
-    if(!isMuted && wasMuted) {
-      dom.listEl.classList.add('backwards');
-
-      if(dom.muteAnimationTimeout) clearTimeout(dom.muteAnimationTimeout);
-      dom.muteAnimationTimeout = window.setTimeout(() => {
-        delete dom.muteAnimationTimeout;
-        dom.listEl.classList.remove('backwards', 'is-muted');
-      }, 200);
-    } else {
-      dom.listEl.classList.toggle('is-muted', isMuted);
+    if(isMuted !== wasMuted) {
+      SetTransition(dom.listEl, 'is-muted', isMuted, 200);
     }
 
     const lastMessage = dialog.draft && dialog.draft._ === 'draftMessage' ? 
@@ -1275,6 +1270,11 @@ export class AppDialogsManager {
       /* if(container) {
         container.append(li);
       } */
+
+      const isMuted = appMessagesManager.isDialogMuted(dialog);
+      if(isMuted) {
+        li.classList.add('is-muted');
+      }
 
       this.setLastMessage(dialog);
     } else {

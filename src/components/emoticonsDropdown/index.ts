@@ -362,7 +362,7 @@ export class EmoticonsDropdown {
     return stickyIntersector;
   };
 
-  public static onMediaClick = (e: MouseEvent) => {
+  public static onMediaClick = (e: MouseEvent, clearDraft = false) => {
     let target = e.target as HTMLElement;
     target = findUpTag(target, 'DIV');
 
@@ -371,7 +371,7 @@ export class EmoticonsDropdown {
     const fileId = target.dataset.docId;
     if(!fileId) return;
 
-    if(appImManager.chat.input.sendMessageWithDocument(fileId)) {
+    if(appImManager.chat.input.sendMessageWithDocument(fileId, undefined, clearDraft)) {
       /* dropdown.classList.remove('active');
       toggleEl.classList.remove('active'); */
       emoticonsDropdown.forceClose = true;

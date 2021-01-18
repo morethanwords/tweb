@@ -9,6 +9,7 @@ import webpWorkerController from '../webp/webpWorkerController';
 import appDownloadManager, { DownloadBlob } from './appDownloadManager';
 import appPhotosManager from './appPhotosManager';
 import blur from '../../helpers/blur';
+import apiManager from '../mtproto/mtprotoworker';
 
 export type MyDocument = Document.document;
 
@@ -18,8 +19,16 @@ export class AppDocsManager {
   private docs: {[docId: string]: MyDocument} = {};
   private savingLottiePreview: {[docId: string]: true} = {};
 
+  public onServiceWorkerFail() {
+    for(const id in this.docs) {
+      const doc = this.docs[id];
+      delete doc.supportsStreaming;
+      delete doc.url;
+    }
+  }
+
   public saveDoc(doc: Document, context?: ReferenceContext): MyDocument {
-    if(doc._ == 'documentEmpty') {
+    if(doc._ === 'documentEmpty') {
       return undefined;
     }
 
@@ -147,8 +156,8 @@ export class AppDocsManager {
       }
     }
 
-    if('serviceWorker' in navigator) {
-      if((doc.type == 'gif' && doc.size > 8e6) || doc.type == 'audio' || doc.type == 'video') {
+    if(apiManager.isServiceWorkerOnline()) {
+      if((doc.type === 'gif' && doc.size > 8e6) || doc.type === 'audio' || doc.type === 'video') {
         doc.supportsStreaming = true;
         
         if(!doc.url) {
@@ -159,13 +168,13 @@ export class AppDocsManager {
 
     // for testing purposes
     // doc.supportsStreaming = false;
-    // doc.url = '';
+    // doc.url = ''; // * this will break upload urls
     
     if(!doc.file_name) {
       doc.file_name = '';
     }
 
-    if(doc.mime_type == 'application/x-tgsticker' && doc.file_name == "AnimatedSticker.tgs") {
+    if(doc.mime_type === 'application/x-tgsticker' && doc.file_name === "AnimatedSticker.tgs") {
       doc.type = 'sticker';
       doc.animated = true;
       doc.sticker = 2;

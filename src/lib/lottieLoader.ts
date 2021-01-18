@@ -371,6 +371,13 @@ export class RLottiePlayer extends EventListenerBase<{
     this.curFrame = this.direction == 1 ? 0 : frameCount - 1;
     this.frameCount = frameCount;
     this.fps = fps;
+
+    // * Handle 30fps stickers if 30fps set
+    if(this.fps < 60 && this.skipDelta !== 1) {
+      const diff = 60 / fps;
+      this.skipDelta = this.skipDelta / diff | 0;
+    }
+
     this.frInterval = 1000 / this.fps / this.speed * this.skipDelta;
     this.frThen = Date.now() - this.frInterval;
     //this.sendQuery('renderFrame', 0);

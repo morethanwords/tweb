@@ -26,6 +26,7 @@
     position: relative;
     border-top-left-radius: 6px;
     border-top-right-radius: 6px;
+    transition: none !important;
 
     html.no-touch & {
       background-color: transparent;
@@ -35,9 +36,9 @@
       }
     }
 
-    html.no-touch body:not(.animation-level-0) & {
+    /* html.no-touch body:not(.animation-level-0) & {
       transition: background-color .15s ease-in-out;
-    }
+    } */
     
     > span {
       position: relative;
@@ -77,88 +78,6 @@
   }
 }
 
-.menu-horizontal {
-  color: $color-gray;
-  border-bottom: 1px solid $lightgrey;
-  position: relative;
-
-  ul {
-    width: 100%;
-    height: 100%;
-    margin: 0;
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    position: relative;
-    z-index: 2;
-    flex-direction: row;
-  }
-  
-  li {
-    display: inline-block;
-    padding: .75rem 1rem;
-    cursor: pointer;
-    text-align: center;
-    flex: 1 1 auto;
-    //flex: 0 0 auto;
-    //overflow: hidden;
-    user-select: none;
-    // font-size: 1rem;
-    font-size: 14px;
-    font-weight: 500;
-    position: relative;
-    border-top-left-radius: 6px;
-    border-top-right-radius: 6px;
-
-    html.no-touch & {
-      background-color: transparent;
-      &:hover {
-        background-color: var(--color-gray-hover);
-      }
-    }
-
-    html.no-touch body:not(.animation-level-0) & {
-      transition: background-color .15s ease-in-out;
-    }
-    
-    > span {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      overflow: visible;
-    }
-
-    &.active {
-      color: $color-blue;
-
-      i {
-        opacity: 1;
-      }
-    }
-  }
-
-  i {
-    position: absolute;
-    bottom: calc(-.625rem - 2.4px);
-    left: 0;
-    opacity: 0;
-    background-color: $color-blue;
-    height: .1875rem;
-    width: 100%;
-    border-radius: .1875rem .1875rem 0 0;
-    pointer-events: none;
-    padding-right: .5rem;
-    margin-left: -.25rem;
-    box-sizing: content-box;
-    transform-origin: left;
-    z-index: 1;
-
-    &.animate {
-      transition: transform var(--tabs-transition);
-    }
-  }
-}
-
 .tabs-container {
   min-width: 100%;
   width: 100%;
@@ -179,8 +98,6 @@
     max-height: 100%;
     width: 100%;
     max-width: 100%;
-    //transition: transform .42s, filter .42s;
-    transition: transform var(--tabs-transition), filter var(--tabs-transition);
     display: none;
     flex-direction: column;
     position: relative;
@@ -190,7 +107,7 @@
     //z-index: 1;
 
     body.animation-level-0 & {
-      transition: none;
+      transition: none !important;
     }
     
     //@include respond-to(not-handhelds) {
@@ -204,16 +121,68 @@
     > div:not(.scroll-padding) {
       width: 100%;
       max-width: 100%;
-      /* overflow: hidden; */
+      //overflow: hidden;
       position: relative;
     }
   }
 
-  &[data-slider="tabs"] {
-    transition: transform var(--tabs-transition);
+  /* &[data-animation="tabs"] {
+    & > div {
+      --width: 100%;
+      transition: transform var(--tabs-transition);
+      transform: translateZ(0);
 
-    body.animation-level-0 & {
-      transition: none;
+      &.from {
+        animation: slide-tabs-from var(--tabs-transition) forwards;
+      }
+
+      &.to {
+        transform: translate3d(var(--width), 0, 0);
+        animation: slide-tabs-to var(--tabs-transition) forwards;
+      }
     }
+
+    &.backwards > div {
+      &.from {
+        animation: slide-tabs-backwards-from var(--tabs-transition) forwards;
+      }
+
+      &.to {
+        transform: translate3d(calc(var(--width) * -1), 0, 0);
+        animation: slide-tabs-backwards-to var(--tabs-transition) forwards;
+      }
+    }
+  } */
+  
+  &[data-animation="tabs"] > div {
+    transition: transform var(--tabs-transition);
+  }
+
+  &[data-animation="navigation"] > div {
+    transition: transform var(--tabs-transition), filter var(--tabs-transition);
   }
 }
+
+/* @keyframes slide-tabs-from {
+  to {
+    transform: translate3d(calc(var(--width) * -1), 0, 0);
+  }
+}
+
+@keyframes slide-tabs-to {
+  to {
+    transform: translateZ(0);
+  }
+}
+
+@keyframes slide-tabs-backwards-from {
+  to {
+    transform: translate3d(var(--width), 0, 0);
+  }
+}
+
+@keyframes slide-tabs-backwards-to {
+  to {
+    transform: translateZ(0);
+  }
+} */

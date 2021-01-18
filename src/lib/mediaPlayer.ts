@@ -118,7 +118,7 @@ export class MediaProgressLine extends RangeSelector {
   }
 
   protected setSeekMax() {
-    this.max = this.media.duration;
+    this.max = this.media.duration || 0;
     if(this.max > 0) {
       this.onLoadedData();
     } else {

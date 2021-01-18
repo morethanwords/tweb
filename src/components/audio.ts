@@ -5,14 +5,12 @@ import ProgressivePreloader from "./preloader";
 import { MediaProgressLine } from "../lib/mediaPlayer";
 import appMediaPlaybackController from "./appMediaPlaybackController";
 import { DocumentAttribute } from "../layer";
-import { Download } from "../lib/appManagers/appDownloadManager";
 import mediaSizes from "../helpers/mediaSizes";
 import { isSafari } from "../helpers/userAgent";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import rootScope from "../lib/rootScope";
 import './middleEllipsis';
 import { attachClickEvent, cancelEvent, detachClickEvent } from "../helpers/dom";
-import appPeersManager from "../lib/appManagers/appPeersManager";
 import { SearchSuperContext } from "./appSearchSuper.";
 import { formatDateAccordingToToday } from "../helpers/date";
 
@@ -346,6 +344,7 @@ export default class AudioElement extends HTMLElement {
 
   private attachedHandlers: {[name: string]: any[]} = {};
   private onTypeDisconnect: () => void;
+  public onLoad: (autoload?: boolean) => void;
 
   constructor() {
     super();
@@ -362,18 +361,15 @@ export default class AudioElement extends HTMLElement {
 
     const durationStr = String(doc.duration | 0).toHHMMSS();
 
-    this.innerHTML = `<div class="audio-toggle audio-ico tgico-largeplay">    
+    this.innerHTML = `<div class="audio-toggle audio-ico">    
                          <div class="part one" x="0" y="0" fill="#fff"></div>
                          <div class="part two" x="0" y="0" fill="#fff"></div>
                       </div>`;
 
     const downloadDiv = document.createElement('div');
     downloadDiv.classList.add('audio-download');
-    if(!uploading && isVoice) {
-      downloadDiv.innerHTML = '<div class="tgico-download"></div>';
-    }
 
-    if(isVoice || uploading) {
+    if(uploading) {
       this.append(downloadDiv);
     }
 
@@ -382,7 +378,9 @@ export default class AudioElement extends HTMLElement {
     const audioTimeDiv = this.querySelector('.audio-time') as HTMLDivElement;
     audioTimeDiv.innerHTML = durationStr;
 
-    const onLoad = (autoload = true) => {
+    const onLoad = this.onLoad = (autoload = true) => {
+      this.onLoad = undefined;
+
       const audio = this.audio = appMediaPlaybackController.addMedia(this.message.peerId, this.message.media.document || this.message.media.webpage.document, this.message.mid, autoload);
 
       this.onTypeDisconnect = onTypeLoad();
@@ -393,10 +391,7 @@ export default class AudioElement extends HTMLElement {
 
       const onPlaying = () => {
         audioTimeDiv.innerText = getTimeStr();
-        if(!audio.paused) {
-          //toggle.classList.remove('tgico-largeplay');
-          toggle.classList.add('tgico-largepause');
-        }
+        toggle.classList.toggle('playing', !audio.paused);
       };
 
       if(!audio.paused || (audio.currentTime > 0 && audio.currentTime != audio.duration)) {
@@ -410,8 +405,7 @@ export default class AudioElement extends HTMLElement {
       });
 
       this.addAudioListener('ended', () => {
-        //toggle.classList.add('tgico-largeplay');
-        toggle.classList.remove('tgico-largepause');
+        toggle.classList.remove('playing');
       });
 
       this.addAudioListener('timeupdate', () => {
@@ -420,8 +414,7 @@ export default class AudioElement extends HTMLElement {
       });
 
       this.addAudioListener('pause', () => {
-        //toggle.classList.add('tgico-largeplay');
-        toggle.classList.remove('tgico-largepause');
+        toggle.classList.remove('playing');
       });
 
       this.addAudioListener('playing', onPlaying);
@@ -430,49 +423,60 @@ export default class AudioElement extends HTMLElement {
     if(!uploading) {
       let preloader: ProgressivePreloader = this.preloader;
 
-      if(isRealVoice) {
-        let download: Download;
+      const getDownloadPromise = () => appDocsManager.downloadDoc(doc);
 
-        const onClick = (e: Event) => {
-          if(e) {
-            cancelEvent(e);
+      if(isVoice) {
+        if(!preloader) {
+          preloader = new ProgressivePreloader({
+            cancelable: true
+          });
+        }
+
+        const load = () => {
+          const download = getDownloadPromise();
+          preloader.attach(downloadDiv, false, download);
+
+          if(!downloadDiv.parentElement) {
+            this.append(downloadDiv);
           }
 
-          if(!download) {
-            if(!preloader) {
-              preloader = new ProgressivePreloader(null, true);
-            }
-            
-            download = appDocsManager.downloadDoc(doc);
-            preloader.attach(downloadDiv, true, download);
-            
-            download.then(() => {
+          (download as Promise<any>).then(() => {
+            detachClickEvent(this, onClick);
+            onLoad();
+
+            downloadDiv.classList.add('downloaded');
+            setTimeout(() => {
               downloadDiv.remove();
-              detachClickEvent(this, onClick);
-              onLoad();
-            }).catch(err => {
-              if(err.name === 'AbortError') {
-                download = null;
-              }
-            }).finally(() => {
-              downloadDiv.classList.remove('downloading');
-            });
-            
-            downloadDiv.classList.add('downloading');
-          } else {
-            download.cancel();
-          }
+            }, 200);
+          });
+
+          return {download};
+        };
+
+        preloader.construct();
+        preloader.setManual();
+        preloader.attach(downloadDiv);
+        preloader.setDownloadFunction(load);
+
+        const onClick = (e?: Event) => {
+          preloader.onClick(e);
         };
     
         attachClickEvent(this, onClick);
-        onClick(null);
+        onClick();
       } else {
-        onLoad(false);
+        if(doc.supportsStreaming) {
+          onLoad(false);
+        }
 
         //if(appMediaPlaybackController.mediaExists(mid)) { // чтобы показать прогресс, если аудио уже было скачано
           //onLoad();
         //} else {
           const r = (e: Event) => {
+            if(!this.audio) {
+              onLoad(false);
+            }
+
             if(this.audio.src) {
               return;
             }
@@ -483,22 +487,43 @@ export default class AudioElement extends HTMLElement {
             appMediaPlaybackController.willBePlayed(this.audio); // prepare for loading audio
   
             if(!preloader) {
-              preloader = new ProgressivePreloader(null, false);
+              if(doc.supportsStreaming) {
+                preloader = new ProgressivePreloader({
+                  cancelable: false
+                });
+
+                preloader.attach(downloadDiv, false);
+              } else {
+                preloader = new ProgressivePreloader({
+                  cancelable: true
+                });
+
+                const load = () => {
+                  const download = getDownloadPromise();
+                  preloader.attach(downloadDiv, false, download);
+                  return {download};
+                };
+
+                preloader.setDownloadFunction(load);
+                load();
+              }
             }
 
             if(isSafari) {
               this.audio.autoplay = true;
               this.audio.play().catch(() => {});
             }
-    
-            preloader.attach(downloadDiv, false);
+
             this.append(downloadDiv);
     
             new Promise<void>((resolve) => {
               if(this.audio.readyState >= 2) resolve();
               else this.addAudioListener('canplay', resolve);
             }).then(() => {
-              downloadDiv.remove();
+              downloadDiv.classList.add('downloaded');
+              setTimeout(() => {
+                downloadDiv.remove();
+              }, 200);
   
               //setTimeout(() => {
                 // release loaded audio
@@ -510,7 +535,7 @@ export default class AudioElement extends HTMLElement {
             });
           };
 
-          if(!this.audio.src) {
+          if(!this.audio?.src) {
             attachClickEvent(this, r, {once: true, capture: true, passive: false});
           }
         //}
@@ -533,6 +558,10 @@ export default class AudioElement extends HTMLElement {
   }
 
   disconnectedCallback() {
+    if(this.isConnected) {
+      return;
+    }
+    
     // браузер вызывает этот метод при удалении элемента из документа
     // (может вызываться много раз, если элемент многократно добавляется/удаляется)
     if(this.onTypeDisconnect) {

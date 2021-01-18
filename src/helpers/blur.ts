@@ -1,34 +1,45 @@
 import fastBlur from '../vendor/fastBlur';
-import { fastRaf } from './schedulers';
+import pushHeavyTask from './heavyQueue';
 
 const RADIUS = 2;
 const ITERATIONS = 2;
 
-export default function blur(dataUri: string, delay?: number) {
+function processBlur(dataUri: string) {
   return new Promise<string>((resolve) => {
-    fastRaf(() => {
-      const img = new Image();
+    const img = new Image();
 
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
+    console.log('[blur] start');
 
-        const ctx = canvas.getContext('2d')!;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
 
-        ctx.drawImage(img, 0, 0);
-        fastBlur(ctx, 0, 0, canvas.width, canvas.height, RADIUS, ITERATIONS);
+      const ctx = canvas.getContext('2d')!;
 
-        resolve(canvas.toDataURL());
-      };
+      ctx.drawImage(img, 0, 0);
+      fastBlur(ctx, 0, 0, canvas.width, canvas.height, RADIUS, ITERATIONS);
 
-      if(delay) {
-        setTimeout(() => {
-          img.src = dataUri;
-        }, delay);
-      } else {
-        img.src = dataUri;
-      }
+      //resolve(canvas.toDataURL());
+      canvas.toBlob(blob => {
+        resolve(URL.createObjectURL(blob));
+        console.log('[blur] end');
+      });
+    };
+
+    img.src = dataUri;
+  });
+}
+
+export default function blur(dataUri: string) {
+  return new Promise<string>((resolve) => {
+    //return resolve(dataUri);
+    pushHeavyTask({
+      items: [dataUri],
+      context: null,
+      process: processBlur
+    }).then(results => {
+      resolve(results[0]);
     });
   });
 }

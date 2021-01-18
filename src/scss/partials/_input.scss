@@ -143,6 +143,21 @@
       font-weight: 500;
     }
   }
+
+  &-input-fake {
+    opacity: 0;
+    pointer-events: none;
+    position: absolute !important;
+    top: 0;
+    left: 0;
+
+    // * override scrollable styles
+    bottom: auto!important;
+    right: auto!important;
+    height: auto!important;
+
+    z-index: -3;
+  }
 }
 
 .input-wrapper > * + * {

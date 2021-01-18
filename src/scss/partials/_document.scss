@@ -104,6 +104,16 @@
     //padding-right: 32px;
     line-height: 1.3;
   }
+
+  .preloader-container {
+    width: 2.375rem;
+    height: 2.375rem;
+
+    @include respond-to(handhelds) {
+      width: 26px;
+      height: 26px;
+    }
+  }
 }
 
 .document, .audio {
@@ -134,32 +144,24 @@
     cursor: pointer;
     display: flex;
     justify-content: center;
-    
-    .tgico-download {
-      transform: scale(1);
-      transition: .2s scale;
+    transition: opacity .2s ease-in-out/* , transform .2s ease-in-out */;
+    opacity: 1;
+    //transform: scale(1);
 
-      @include respond-to(handhelds) {
-        margin-top: -1px;
-        font-size: 20px;
-      }
-    }
-
-    &.downloading {
-      .tgico-download {
-        transform: scale(0);
-      }
+    &.downloaded {
+      opacity: 0;
+      //transform: scale(0);
     }
   }
 
-  .preloader-container {
-    width: 42px;
-    height: 42px;
+  .preloader-container:not(.preloader-streamable) {
+    width: 100%;
+    height: 100%;
+    transform: scale(1) !important;
+  }
 
-    @include respond-to(handhelds) {
-      width: 26px;
-      height: 26px;
-    }
+  .preloader-circular {
+    background-color: transparent !important;
   }
 }
 

@@ -1,4 +1,4 @@
-import { findUpTag, whichChild } from "../helpers/dom";
+import { findUpTag, whichChild, findUpAsChild } from "../helpers/dom";
 import { TransitionSlider } from "./transition";
 import { ScrollableX } from "./scrollable";
 import rootScope from "../lib/rootScope";
@@ -6,7 +6,7 @@ import { fastRaf } from "../helpers/schedulers";
 import { FocusDirection } from "../helpers/fastSmoothScroll";
 
 export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?: (id: number, tabContent: HTMLDivElement) => void, onTransitionEnd?: () => void, transitionTime = 250, scrollableX?: ScrollableX) {
-  const selectTab = TransitionSlider(content, tabs || content.dataset.slider == 'tabs' ? 'tabs' : 'navigation', transitionTime, onTransitionEnd);
+  const selectTab = TransitionSlider(content, tabs || content.dataset.animation == 'tabs' ? 'tabs' : 'navigation', transitionTime, onTransitionEnd);
 
   if(tabs) {
     const proxy = new Proxy(selectTab, {
@@ -77,13 +77,12 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?
 
     const useStripe = !tabs.classList.contains('no-stripe');
 
-    const tagName = tabs.classList.contains('menu-horizontal-div') ? 'BUTTON' : 'LI';//tabs.firstElementChild.tagName;
+    //const tagName = tabs.classList.contains('menu-horizontal-div') ? 'BUTTON' : 'LI';
+    const tagName = tabs.firstElementChild.tagName;
     tabs.addEventListener('click', function(e) {
       let target = e.target as HTMLElement;
       
-      if(target.tagName != tagName) {
-        target = findUpTag(target, tagName);
-      }
+      target = findUpAsChild(target, tabs);
       
       //console.log('tabs click:', target);
       

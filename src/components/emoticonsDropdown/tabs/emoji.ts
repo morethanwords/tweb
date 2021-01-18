@@ -103,6 +103,8 @@ export default class EmojiTab implements EmoticonsTab {
         this.appendEmoji(emoji, this.recentItemsDiv);
       }
 
+      this.recentItemsDiv.parentElement.classList.toggle('hide', !this.recent.length);
+
       categories.unshift('Recent');
       categories.map(category => {
         const div = divs[category];
@@ -202,11 +204,13 @@ export default class EmojiTab implements EmoticonsTab {
     const scrollHeight = this.recentItemsDiv.scrollHeight;
     this.appendEmoji(emoji, this.recentItemsDiv, true);
 
-    this.recent.findAndSplice(e => e == emoji);
+    this.recent.findAndSplice(e => e === emoji);
     this.recent.unshift(emoji);
     if(this.recent.length > 36) {
       this.recent.length = 36;
     }
+
+    this.recentItemsDiv.parentElement.classList.toggle('hide', !this.recent.length);
 
     appStateManager.pushToState('recentEmoji', this.recent);
 
