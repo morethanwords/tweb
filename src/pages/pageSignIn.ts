@@ -9,6 +9,10 @@ import { findUpTag } from "../helpers/dom";
 import Page from "./page";
 import pageAuthCode from "./pageAuthCode";
 import pageSignQR from './pageSignQR';
+import InputField from "../components/inputField";
+import CheckboxField from "../components/checkbox";
+import Button from "../components/button";
+import { isAppleMobile } from "../helpers/userAgent";
 
 type Country = _Country & {
   li?: HTMLLIElement[]
@@ -35,23 +39,33 @@ let onFirstMount = () => {
 
   let lastCountrySelected: Country = null;
 
-  var selectCountryCode = page.pageEl.querySelector('input[name="countryCode"]')! as HTMLInputElement;
-  var parent = selectCountryCode.parentElement;
+  const inputWrapper = document.createElement('div');
+  inputWrapper.classList.add('input-wrapper');
 
-  var wrapper = document.createElement('div');
-  wrapper.classList.add('select-wrapper', 'z-depth-3', 'hide');
+  const countryInputField = new InputField({
+    label: 'Country',
+    name: 'countryCode',
+    plainText: true
+  });
 
-  var list = document.createElement('ul');
-  wrapper.appendChild(list);
+  countryInputField.container.classList.add('input-select');
 
-  //let wrapperScroll = OverlayScrollbars(wrapper, (window as any).scrollbarOptions);
-  let scroll = new Scrollable(wrapper);
+  const countryInput = countryInputField.input as HTMLInputElement;
+  countryInput.autocomplete = 'rrRandomRR';
+
+  const selectWrapper = document.createElement('div');
+  selectWrapper.classList.add('select-wrapper', 'z-depth-3', 'hide');
+
+  const arrowDown = document.createElement('span');
+  arrowDown.classList.add('arrow', 'arrow-down');
+  countryInputField.container.append(arrowDown);
+
+  const selectList = document.createElement('ul');
+  selectWrapper.appendChild(selectList);
+
+  const scroll = new Scrollable(selectWrapper);
 
   let initedSelect = false;
-
-  page.pageEl.querySelector('.a-qr').addEventListener('click', () => {
-    pageSignQR.mount();
-  });
 
   let initSelect = () => {
     initSelect = null;
@@ -88,20 +102,20 @@ let onFirstMount = () => {
         li.appendChild(span);
 
         liArr.push(li);
-        list.append(li);
+        selectList.append(li);
       });
 
       c.li = liArr;
     });
     
-    list.addEventListener('mousedown', function(e) {
+    selectList.addEventListener('mousedown', function(e) {
       let target = e.target as HTMLElement;
       if(target.tagName != 'LI') target = findUpTag(target, 'LI');
       
       let countryName = target.childNodes[1].textContent;//target.innerText.split('\n').shift();
       let phoneCode = target.querySelector<HTMLElement>('.phone-code').innerText;
 
-      selectCountryCode.value = countryName;
+      countryInput.value = countryName;
       lastCountrySelected = countries.find(c => c.name == countryName);
       
       telEl.value = lastValue = phoneCode;
@@ -109,14 +123,14 @@ let onFirstMount = () => {
       //console.log('clicked', e, countryName, phoneCode);
     });
 
-    parent.appendChild(wrapper);
+    countryInputField.container.appendChild(selectWrapper);
   };
   
   initSelect();
 
   let hideTimeout: number;
 
-  selectCountryCode.addEventListener('focus', function(this: typeof selectCountryCode, e) {
+  countryInput.addEventListener('focus', function(this: typeof countryInput, e) {
     if(initSelect) {
       initSelect();
     } else {
@@ -127,20 +141,20 @@ let onFirstMount = () => {
 
     clearTimeout(hideTimeout);
 
-    wrapper.classList.remove('hide');
-    void wrapper.offsetWidth; // reflow
-    wrapper.classList.add('active');
+    selectWrapper.classList.remove('hide');
+    void selectWrapper.offsetWidth; // reflow
+    selectWrapper.classList.add('active');
   });
-  selectCountryCode.addEventListener('blur', function(this: typeof selectCountryCode, e) {
-    wrapper.classList.remove('active');
+  countryInput.addEventListener('blur', function(this: typeof countryInput, e) {
+    selectWrapper.classList.remove('active');
     hideTimeout = window.setTimeout(() => {
-      wrapper.classList.add('hide');
+      selectWrapper.classList.add('hide');
     }, 200);
     
     e.cancelBubble = true;
   }, {capture: true});
 
-  selectCountryCode.addEventListener('keyup', function(this: typeof selectCountryCode, e) {
+  countryInput.addEventListener('keyup', function(this: typeof countryInput, e) {
     if(e.ctrlKey || e.key == 'Control') return false;
 
     //let i = new RegExp('^' + this.value, 'i');
@@ -169,24 +183,31 @@ let onFirstMount = () => {
     }
   });
 
-  let arrowDown = page.pageEl.querySelector('.arrow-down') as HTMLSpanElement;
   arrowDown.addEventListener('mousedown', function(this: typeof arrowDown, e) {
     e.cancelBubble = true;
     e.preventDefault();
-    if(selectCountryCode.matches(':focus')) selectCountryCode.blur();
-    else selectCountryCode.focus();
+    if(countryInput.matches(':focus')) countryInput.blur();
+    else countryInput.focus();
   });
 
   let pasted = false;
   let lastValue = '';
-  let telEl = page.pageEl.querySelector('input[name="phone"]') as HTMLInputElement;
+  
+  const telInputField = new InputField({
+    label: 'Phone Number',
+    plainText: true,
+    name: 'phone'
+  });
+  let telEl = telInputField.input as HTMLInputElement;
+  telEl.type = 'tel';
+  telEl.autocomplete = 'rr55RandomRR55';
   const telLabel = telEl.nextElementSibling as HTMLLabelElement;
   telEl.addEventListener('input', function(this: typeof telEl, e) {
     //console.log('input', this.value);
     this.classList.remove('error');
 
     const diff = Math.abs(this.value.length - lastValue.length);
-    if(diff > 1 && !pasted) {
+    if(diff > 1 && !pasted && isAppleMobile) {
       this.value = lastValue + this.value;
     }
 
@@ -200,8 +221,8 @@ let onFirstMount = () => {
     //console.log(formatted, country);
 
     let countryName = country ? country.name : ''/* 'Unknown' */;
-    if(countryName != selectCountryCode.value && (!lastCountrySelected || !country || lastCountrySelected.phoneCode != country.phoneCode)) {
-      selectCountryCode.value = countryName;
+    if(countryName != countryInput.value && (!lastCountrySelected || !country || lastCountrySelected.phoneCode != country.phoneCode)) {
+      countryInput.value = countryName;
       lastCountrySelected = country;
     }
 
@@ -226,7 +247,7 @@ let onFirstMount = () => {
     //console.log('keypress', this.value);
     if(!btnNext.style.visibility &&/* this.value.length >= 9 && */ e.key == 'Enter') {
       return btnNext.click();
-    } else if(/\D/.test(e.key)) {
+    } else if(/\D/.test(e.key) && !(e.metaKey || e.ctrlKey)) {
       e.preventDefault();
       return false;
     }
@@ -236,8 +257,11 @@ let onFirstMount = () => {
     this.removeAttribute('readonly'); // fix autocomplete
   });*/
 
-  /* authorizer.auth(2);
-  networkerFactory.startAll(); */
+  const signedCheckboxField = CheckboxField('Keep me signed in', 'keepSession');
+  signedCheckboxField.input.checked = true;
+
+  btnNext = Button('btn-primary', {text: 'NEXT'});
+  btnNext.style.visibility = 'hidden';
 
   btnNext.addEventListener('click', function(this: HTMLElement, e) {
     this.setAttribute('disabled', 'true');
@@ -277,33 +301,56 @@ let onFirstMount = () => {
       }
     });
   });
+  
+  const qrDiv = document.createElement('div');
+  qrDiv.classList.add('qr');
+
+  const qrLink = document.createElement('a');
+  qrLink.href = '#';
+  qrLink.classList.add('a-qr');
+  qrLink.innerText = 'Quick log in using QR code';
+
+  qrDiv.append(qrLink);
+
+  qrLink.addEventListener('click', () => {
+    pageSignQR.mount();
+  });
+
+  inputWrapper.append(countryInputField.container, telInputField.container, signedCheckboxField.label, btnNext, qrDiv);
+
+  page.pageEl.querySelector('.container').append(inputWrapper);
 
   let tryAgain = () => {
     apiManager.invokeApi('help.getNearestDc').then((nearestDcResult) => {
       const dcs = [1, 2, 3, 4, 5];
-      //dcs.splice(nearestDcResult.this_dc - 1, 1);
+      const done: number[] = [nearestDcResult.this_dc];
 
       let promise: Promise<any>;
       if(nearestDcResult.nearest_dc != nearestDcResult.this_dc) {
-        //MTProto.apiManager.baseDcID = nearestDcResult.nearest_dc;
-
         promise = apiManager.getNetworker(nearestDcResult.nearest_dc).then(() => {
-
+          done.push(nearestDcResult.nearest_dc)
         });
       }
 
       (promise || Promise.resolve()).then(() => {
-        dcs.forEach(dcId => {
-          apiManager.getNetworker(dcId, {fileDownload: true});
-        });
+        const g = () => {
+          const dcId = dcs.shift();
+          if(!dcId) return;
+
+          setTimeout(() => { // * если одновременно запросить все нетворкеры, не будет проходить запрос на код
+            apiManager.getNetworker(dcId, {fileDownload: true}).finally(g);
+          }, done.includes(dcId) ? 0 : 3000);
+        };
+        
+        g();
       });
       
       return nearestDcResult;
     }).then((nearestDcResult) => {
-      let country = countries.find((c) => c.code == nearestDcResult.country);
+      let country = countries.find((c) => c.code === nearestDcResult.country);
       if(country) {
-        if(!selectCountryCode.value.length && !telEl.value.length) {
-          selectCountryCode.value = country.name;
+        if(!countryInput.value.length && !telEl.value.length) {
+          countryInput.value = country.name;
           lastCountrySelected = country;
           telEl.value = lastValue = '+' + country.phoneCode.split(' and ').shift();
         }
@@ -317,12 +364,10 @@ let onFirstMount = () => {
 };
 
 const page = new Page('page-sign', true, onFirstMount, () => {
-  if(!btnNext) {
-    btnNext = page.pageEl.querySelector('button');
+  if(btnNext) {
+    btnNext.textContent = 'NEXT';
+    btnNext.removeAttribute('disabled');
   }
-  
-  btnNext.textContent = 'NEXT';
-  btnNext.removeAttribute('disabled');
 
   appStateManager.pushToState('authState', {_: 'authStateSignIn'});
   appStateManager.saveState();

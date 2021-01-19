@@ -10,6 +10,7 @@ import CryptoWorker from "../crypto/cryptoworker";
 
 import { logger, LogLevels } from "../logger";
 import { bytesCmp, bytesToHex, bytesFromHex, bytesXor } from "../../helpers/bytes";
+import { DEBUG } from "./mtproto_config";
 //import { bigInt2str, greater, int2bigInt, one, powMod, str2bigInt, sub } from "../../vendor/leemon";
 
 /* let fNewNonce: any = bytesFromHex('8761970c24cb2329b5b2459752c502f3057cb7e8dbab200e526e8767fdc73b3c').reverse();
@@ -100,10 +101,14 @@ export class Authorizer {
       transport: transport
     };
     
-    this.log('mtpSendPlainRequest: creating requestPromise');
+    if(DEBUG) {
+      this.log('mtpSendPlainRequest: creating requestPromise');
+    }
     
     return transport.send(resultArray).then(result => {
-      this.log('mtpSendPlainRequest: in good sector', result);
+      if(DEBUG) {
+        this.log('mtpSendPlainRequest: in good sector', result);
+      }
       
       if(!result || !result.byteLength) {
         return Promise.reject(baseError);
@@ -148,7 +153,9 @@ export class Authorizer {
     // need
     rsaKeysManager.prepare().then(() => {});
     
-    this.log('Send req_pq', auth.nonce.hex);
+    if(DEBUG) {
+      this.log('Send req_pq', auth.nonce.hex);
+    }
     try {
       var deserializer = await this.mtpSendPlainRequest(auth.dcId, request.getBytes(true));
     } catch(error) {
@@ -172,7 +179,9 @@ export class Authorizer {
     auth.pq = response.pq;
     auth.fingerprints = response.server_public_key_fingerprints;
     
-    this.log('Got ResPQ', bytesToHex(auth.serverNonce), bytesToHex(auth.pq), auth.fingerprints);
+    if(DEBUG) {
+      this.log('Got ResPQ', bytesToHex(auth.serverNonce), bytesToHex(auth.pq), auth.fingerprints);
+    }
     
     let publicKey = await rsaKeysManager.select(auth.fingerprints);
     if(!publicKey) {
@@ -181,7 +190,9 @@ export class Authorizer {
     
     auth.publicKey = publicKey;
     
-    this.log('PQ factorization start', auth.pq);
+    if(DEBUG) {
+      this.log('PQ factorization start', auth.pq);
+    }
     
     try {
       var pAndQ = await CryptoWorker.factorize(auth.pq);
@@ -193,7 +204,9 @@ export class Authorizer {
     auth.p = pAndQ[0];
     auth.q = pAndQ[1];
     
-    this.log('PQ factorization done', pAndQ);
+    if(DEBUG) {
+      this.log('PQ factorization done', pAndQ);
+    }
     /* let p = new Uint32Array(new Uint8Array(auth.p).buffer)[0];
     let q = new Uint32Array(new Uint8Array(auth.q).buffer)[0];
     console.log(dT(), 'PQ factorization done', pAndQ, p.toString(16), q.toString(16)); */
@@ -258,18 +271,22 @@ export class Authorizer {
     
     let requestBytes = request.getBytes(true);
     
-    this.log('Send req_DH_params', req_DH_params/* , requestBytes.hex */);
+    if(DEBUG) {
+      this.log('Send req_DH_params', req_DH_params/* , requestBytes.hex */);
+    }
     
     try {
       var deserializer = await this.mtpSendPlainRequest(auth.dcId, requestBytes);
     } catch(error) {
-      this.log('Send req_DH_params FAIL!', error);
+      this.log.error('Send req_DH_params FAIL!', error);
       throw error;
     }
     
     var response = deserializer.fetchObject('Server_DH_Params', 'RESPONSE');
     
-    this.log('Sent req_DH_params, response:', response);
+    if(DEBUG) {
+      this.log('Sent req_DH_params, response:', response);
+    }
     
     if(response._ != 'server_DH_params_fail' && response._ != 'server_DH_params_ok') {
       throw new Error('[MT] Server_DH_Params response invalid: ' + response._);
@@ -347,7 +364,9 @@ export class Authorizer {
       throw new Error('[MT] server_DH_inner_data serverNonce mismatch');
     }
     
-    this.log('Done decrypting answer');
+    if(DEBUG) {
+      this.log('Done decrypting answer');
+    }
     auth.g = response.g;
     auth.dhPrime = response.dh_prime;
     auth.gA = response.g_a;
@@ -367,13 +386,19 @@ export class Authorizer {
   }
   
   public mtpVerifyDhParams(g: number, dhPrime: Uint8Array, gA: Uint8Array) {
-    this.log('Verifying DH params', g, dhPrime, gA);
+    if(DEBUG) {
+      this.log('Verifying DH params', g, dhPrime, gA);
+    }
+
     var dhPrimeHex = bytesToHex(dhPrime);
     if(g != 3 || dhPrimeHex !== 'c71caeb9c6b1c9048e6c522f70f13f73980d40238e3e21c14934d037563d930f48198a0aa7c14058229493d22530f4dbfa336f6e0ac925139543aed44cce7c3720fd51f69458705ac68cd4fe6b6b13abdc9746512969328454f18faf8c595f642477fe96bb2a941d5bcd1d4ac8cc49880708fa9b378e3c4f3a9060bee67cf9a4a4a695811051907e162753b56b0f6b410dba74d8a84b2a14b3144e0ef1284754fd17ed950d5965b4b9dd46582db1178d169c6bc465b0d6ff9ca3928fef5b9ae4e418fc15e83ebea0f87fa9ff5eed70050ded2849f47bf959d956850ce929851f0d8115f635b105ee2e4e15d04b2454bf6f4fadf034b10403119cd8e3b92fcc5b') {
       // The verified value is from https://core.telegram.org/mtproto/security_guidelines
       throw new Error('[MT] DH params are not verified: unknown dhPrime');
     }
-    this.log('dhPrime cmp OK');
+
+    if(DEBUG) {
+      this.log('dhPrime cmp OK');
+    }
     
     var gABigInt = new BigInteger(bytesToHex(gA), 16);
     //const _gABigInt = str2bigInt(bytesToHex(gA), 16);
@@ -392,7 +417,10 @@ export class Authorizer {
     //if(greater(gABigInt, sub(_dhPrimeBigInt, one))) {
       throw new Error('[MT] DH params are not verified: gA >= dhPrime - 1');
     }
-    this.log('1 < gA < dhPrime-1 OK');
+
+    if(DEBUG) {
+      this.log('1 < gA < dhPrime-1 OK');
+    }
     
     
     var two = new BigInteger(/* null */'');
@@ -410,7 +438,10 @@ export class Authorizer {
     if(gABigInt.compareTo(dhPrimeBigInt.subtract(twoPow)) >= 0) {
       throw new Error('[MT] DH params are not verified: gA > dhPrime - 2^{2048-64}');
     }
-    this.log('2^{2048-64} < gA < dhPrime-2^{2048-64} OK');
+
+    if(DEBUG) {
+      this.log('2^{2048-64} < gA < dhPrime-2^{2048-64} OK');
+    }
     
     return true;
   }
@@ -450,7 +481,9 @@ export class Authorizer {
       encrypted_data: encryptedData
     });
     
-    this.log('Send set_client_DH_params');
+    if(DEBUG) {
+      this.log('Send set_client_DH_params');
+    }
     
     try {
       var deserializer = await this.mtpSendPlainRequest(auth.dcId, request.getBytes(true));
@@ -483,7 +516,9 @@ export class Authorizer {
     authKeyAux = authKeyHash.slice(0, 8),
     authKeyId = authKeyHash.slice(-8);
     
-    this.log('Got Set_client_DH_params_answer', response._, authKey);
+    if(DEBUG) {
+      this.log('Got Set_client_DH_params_answer', response._, authKey);
+    }
     switch(response._) {
       case 'dh_gen_ok':
         var newNonceHash1 = (await CryptoWorker.sha1Hash(auth.newNonce.concat([1], authKeyAux))).slice(-16);
@@ -494,7 +529,9 @@ export class Authorizer {
         }
         
         var serverSalt = bytesXor(auth.newNonce.slice(0, 8), auth.serverNonce.slice(0, 8));
-        this.log('Auth successfull!', authKeyId, authKey, serverSalt);
+        if(DEBUG) {
+          this.log('Auth successfull!', authKeyId, authKey, serverSalt);
+        }
         
         auth.authKeyId = authKeyId;
         auth.authKey = authKey;

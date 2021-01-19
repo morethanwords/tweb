@@ -12,6 +12,8 @@ import passwordManager from '../lib/mtproto/passwordManager';
 import { cancelEvent } from '../helpers/dom';
 import Page from './page';
 import pageIm from './pageIm';
+import InputField from '../components/inputField';
+import Button from '../components/button';
 
 const TEST = false;
 let passwordInput: HTMLInputElement;
@@ -22,10 +24,28 @@ let onFirstMount = (): Promise<any> => {
 
   let passwordVisible = false;
 
-  const btnNext = page.pageEl.querySelector('button') as HTMLButtonElement;
-  passwordInput = document.getElementById('password') as HTMLInputElement;
+  const btnNext = Button('btn-primary', {text: 'NEXT'});
+
+  const passwordInputField = new InputField({
+    label: 'Password',
+    name: 'password',
+    plainText: true
+  });
+
+  passwordInput = passwordInputField.input as HTMLInputElement;
+  passwordInput.type = 'password';
+  passwordInput.setAttribute('required', '');
+  passwordInput.autocomplete = 'off';
+
   const passwordInputLabel = passwordInput.nextElementSibling as HTMLLabelElement;
-  const toggleVisible = page.pageEl.querySelector('.toggle-visible') as HTMLSpanElement;
+
+  const toggleVisible = document.createElement('span');
+  toggleVisible.classList.add('toggle-visible', 'tgico');
+
+  passwordInputField.container.append(toggleVisible);
+
+  page.pageEl.querySelector('.input-wrapper').append(passwordInputField.container, btnNext);
+
   let getStateInterval: number;
 
   let getState = () => {

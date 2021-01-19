@@ -24,7 +24,7 @@ import animationIntersector from "../animationIntersector";
 import { months } from "../../helpers/date";
 import RichTextProcessor from "../../lib/richtextprocessor";
 import mediaSizes from "../../helpers/mediaSizes";
-import { isAndroid, isApple, isSafari } from "../../helpers/userAgent";
+import { isAndroid, isApple, isSafari, isAppleMobile } from "../../helpers/userAgent";
 import { langPack } from "../../lib/langPack";
 import AvatarElement from "../avatar";
 import { formatPhoneNumber } from "../misc";
@@ -2428,9 +2428,11 @@ export default class ChatBubbles {
           //this.scrollable.scrollTop = this.scrollable.scrollHeight;
           isTouchSupported && isApple && (this.scrollable.container.style.overflow = '');
 
-          this.scrollable.container.style.display = 'none';
-          void this.scrollable.container.offsetLeft; // reflow
-          this.scrollable.container.style.display = '';
+          if(isSafari && !isAppleMobile) { // * fix blinking and jumping
+            this.scrollable.container.style.display = 'none';
+            void this.scrollable.container.offsetLeft; // reflow
+            this.scrollable.container.style.display = '';
+          }
 
           /* if(DEBUG) {
             this.log('performHistoryResult: have set up scrollTop:', newScrollTop, this.scrollable.scrollTop, this.isHeavyAnimationInProgress);
@@ -2707,14 +2709,18 @@ export default class ChatBubbles {
           const promises = [topRes.animationPromise, middleRes.animationPromise, bottomRes.animationPromise];
           const delays: number[] = [topRes.lastMsDelay, middleRes.lastMsDelay, bottomRes.lastMsDelay];
 
+          let promise: Promise<any>;
           if(topIds.length || middleIds.length || bottomIds.length) {
-            dispatchHeavyAnimationEvent(Promise.all(promises), Math.max(...delays) + 200); // * 200 - transition time
+            promise = Promise.all(promises);
+            dispatchHeavyAnimationEvent(promise, Math.max(...delays) + 200); // * 200 - transition time
           }
-        }
 
-        setTimeout(() => {
-          this.loadMoreHistory(true, true);
-        }, 0);
+          (promise || Promise.resolve()).then(() => {
+            setTimeout(() => { // preload messages
+              this.loadMoreHistory(reverse, true);
+            }, 0);
+          });
+        }
       });
     }
 

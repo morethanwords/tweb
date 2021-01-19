@@ -4,7 +4,12 @@
 }
 
 .input-field {
+  --height: 54px;
   position: relative;
+
+  @include respond-to(handhelds) {
+    --height: 50px;
+  }
   
   .arrow-down {
     position: absolute;
@@ -35,24 +40,24 @@
   label {
     position: absolute;
     color: $placeholder-color;
+    top: 0;
     left: 1rem;
     right: auto;
     z-index: 2;
-    top: 50%;
     height: 1.5rem;
-    transform: translateY(-50%);
+    transform: translate(0, 0);
     background-color: #fff;
-    transition: .2s transform, .2s padding, .1s opacity, .2s top, .2s left;
+    transition: .2s transform, .2s padding, .1s opacity;
     transform-origin: left center;
     pointer-events: none;
+    margin-top: calc((var(--height) - 1.5rem) / 2); // * Center of first line
 
     body.animation-level-0 & {
       transition: none;
     }
   }
   
-  input, &-input {
-    --height: 54px;
+  &-input {
     --padding: 1rem;
     --border-width: 1px;
     --border-width-top: 2px;
@@ -80,9 +85,6 @@
       }
     }
 
-    @include respond-to(handhelds) {
-      --height: 50px;
-    }
     /* font-weight: 500; */
 
     /* &:hover {
@@ -133,13 +135,9 @@
     }
     
     &:focus ~ label, &:valid ~ label, &:not(:empty) ~ label, &:disabled ~ label {
-      //transform: translate(-.3125rem, -2.375rem) scale(.75);
-      //transform: translate(-.3125rem, -50%) scale(.75);
-      transform: translateY(-50%) scale(.75);
-      top: 1px;
+      transform: translate(-.25rem, calc(var(--height) / -2 + .125rem)) scale(.75);
       padding: 0 6px;
       opacity: 1;
-      left: .75rem;
       font-weight: 500;
     }
   }
