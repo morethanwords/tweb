@@ -40,10 +40,12 @@
       min-height: 3rem;
       /* height: 105px; */
       width: 100%;
+    }
 
-      /* @media screen and (min-height: 810px) {
-        height: 22vh;
-      } */
+    @media screen and (max-height: 810px) {
+      &:after {
+        display: none;
+      }
     }
   }
 
@@ -84,6 +86,10 @@
         flex: 1 1 auto;
         display: flex;
         flex-direction: column;
+
+        @media screen and (max-height: 810px) {
+          height: 700px;
+        }
       }
     }
   }
@@ -200,5 +206,11 @@
 
   .input-field {
     text-align: center;
+  }
+}
+
+.page-sign {
+  .btn-primary {
+    margin-top: 1.1875rem; // * verified with mockup
   }
 }
