@@ -61,14 +61,19 @@ export class AppStickersManager {
         }
       }
 
-      const stickerSet = await apiManager.invokeApi('messages.getStickerSet', {
-        stickerset: this.getStickerSetInput(set)
-      });
-
+      try {
+        const stickerSet = await apiManager.invokeApi('messages.getStickerSet', {
+          stickerset: this.getStickerSetInput(set)
+        });
+  
+        this.saveStickerSet(stickerSet, set.id);
+  
+        resolve(stickerSet);
+      } catch(err) {
+        resolve(null);
+      }
+      
       delete this.getStickerSetPromises[set.id];
-      this.saveStickerSet(stickerSet, set.id);
-
-      resolve(stickerSet);
     });
   }
 

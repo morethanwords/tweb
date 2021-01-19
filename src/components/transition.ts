@@ -161,7 +161,7 @@ const Transition = (content: HTMLElement, animationFunction: TransitionFunction,
     }
 
     if(_from/*  && false */) {
-      onTransitionEndCallbacks.set(_from, () => {
+      const callback = () => {
         _from.classList.remove('active', 'from');
 
         if(onTransitionEndCallback) {
@@ -169,7 +169,16 @@ const Transition = (content: HTMLElement, animationFunction: TransitionFunction,
         }
 
         onTransitionEndCallbacks.delete(_from);
-      });
+      };
+
+      if(to) {
+        onTransitionEndCallbacks.set(_from, callback);
+      } else {
+        const timeout = window.setTimeout(callback, transitionTime);
+        onTransitionEndCallbacks.set(_from, () => {
+          clearTimeout(timeout);
+        });
+      }
 
       if(!animationDeferred) {
         animationDeferred = deferredPromise<void>();

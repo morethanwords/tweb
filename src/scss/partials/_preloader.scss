@@ -2,7 +2,8 @@ $transition: .2s ease-in-out;
 
 .preloader {
   &-circular {
-    animation: rotate 2s linear infinite;
+    //animation: rotate 2s linear infinite;
+    animation: rotate 1s linear infinite;
     height: 100%;
     transform-origin: center center;
     /* width: 100%; */
@@ -79,6 +80,10 @@ $transition: .2s ease-in-out;
 
   &.preloader-swing {
     cursor: default;
+
+    .you-spin-me-round {
+      animation: rotate 1s linear infinite;
+    }
 
     .preloader-path-new {
       //animation: dashNew 1.5s ease-in-out infinite;

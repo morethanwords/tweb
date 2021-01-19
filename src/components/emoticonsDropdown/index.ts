@@ -156,7 +156,9 @@ export class EmoticonsDropdown {
     });
 
     (this.tabsEl.children[1] as HTMLLIElement).click(); // set emoji tab
-    this.tabs[0].init(); // onTransitionEnd не вызовется, т.к. это первая открытая вкладка
+    if(this.tabs[0].init) {
+      this.tabs[0].init(); // onTransitionEnd не вызовется, т.к. это первая открытая вкладка
+    }
 
     rootScope.on('peer_changed', this.checkRights);
     this.checkRights();
