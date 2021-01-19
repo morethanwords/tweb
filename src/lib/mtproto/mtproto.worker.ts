@@ -109,7 +109,7 @@ ctx.addEventListener('message', async(e) => {
       case 'gzipUncompress':
         // @ts-ignore
         return cryptoWorker[task.task].apply(cryptoWorker, task.args).then(result => {
-          respond({taskId: taskId, result: result});
+          respond({taskId, result});
         });
   
       case 'setQueueId':
@@ -127,16 +127,18 @@ ctx.addEventListener('message', async(e) => {
             result = await result;
           }
   
-          respond({taskId: taskId, result: result});
-        } catch(err) {
-          respond({taskId: taskId, error: err});
+          respond({taskId, result});
+        } catch(error) {
+          respond({taskId, error});
         }
       }
 
       case 'getNetworker': {
         // @ts-ignore
-        apiManager[task.task].apply(apiManager, task.args);
-        respond({taskId: taskId, result: null});
+        apiManager[task.task].apply(apiManager, task.args).finally(() => {
+          respond({taskId, result: null});
+        });
+        
         break;
       }
   
@@ -149,9 +151,9 @@ ctx.addEventListener('message', async(e) => {
             result = await result;
           }
   
-          respond({taskId: taskId, result: result});
-        } catch(err) {
-          respond({taskId: taskId, error: err});
+          respond({taskId, result});
+        } catch(error) {
+          respond({taskId, error});
         }
   
         //throw new Error('Unknown task: ' + task.task);

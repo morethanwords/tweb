@@ -11,6 +11,7 @@ import pageIm from './pageIm';
 import pagePassword from './pagePassword';
 import pageSignIn from './pageSignIn';
 import pageSignUp from './pageSignUp';
+import InputField from '../components/inputField';
 
 let authCode: AuthSentCode.authSentCode = null;
 
@@ -28,7 +29,19 @@ let onFirstMount = (): Promise<any> => {
 
   const CODELENGTH = (authCode.type as AuthSentCodeType.authSentCodeTypeApp).length;
 
-  codeInput = page.pageEl.querySelector('#code') as HTMLInputElement;
+  const codeInputField = new InputField({
+    label: 'Code',
+    name: 'code',
+    plainText: true
+  });
+
+  codeInput = codeInputField.input as HTMLInputElement;
+  codeInput.type = 'tel';
+  codeInput.setAttribute('required', '');
+  codeInput.autocomplete = 'off';
+
+  page.pageEl.querySelector('.input-wrapper').append(codeInputField.container);
+
   const codeInputLabel = codeInput.nextElementSibling as HTMLLabelElement;
   const editButton = page.pageEl.querySelector('.phone-edit') as HTMLElement;
 
