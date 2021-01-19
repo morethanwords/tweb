@@ -5,7 +5,7 @@ import appStateManager from "../lib/appManagers/appStateManager";
 import apiManager from "../lib/mtproto/mtprotoworker";
 import { App, Modes } from "../lib/mtproto/mtproto_config";
 import { RichTextProcessor } from '../lib/richtextprocessor';
-import { findUpTag } from "../helpers/dom";
+import { findUpTag, findUpClassName } from "../helpers/dom";
 import Page from "./page";
 import pageAuthCode from "./pageAuthCode";
 import pageSignQR from './pageSignQR';
@@ -13,6 +13,8 @@ import InputField from "../components/inputField";
 import CheckboxField from "../components/checkbox";
 import Button from "../components/button";
 import { isAppleMobile } from "../helpers/userAgent";
+import fastSmoothScroll from "../helpers/fastSmoothScroll";
+import { isTouchSupported } from "../helpers/touchSupport";
 
 type Country = _Country & {
   li?: HTMLLIElement[]
@@ -144,15 +146,46 @@ let onFirstMount = () => {
     selectWrapper.classList.remove('hide');
     void selectWrapper.offsetWidth; // reflow
     selectWrapper.classList.add('active');
+
+    if(countryInput.value) {
+      countryInput.select(); // * select text
+    }
+
+    fastSmoothScroll(page.pageEl.parentElement.parentElement, countryInput, 'start', 4);
+
+    setTimeout(() => {
+      if(!mouseDownHandlerAttached) {
+        document.addEventListener('mousedown', onMouseDown, {capture: true});
+        mouseDownHandlerAttached = true;
+      }
+    }, 0);
   });
-  countryInput.addEventListener('blur', function(this: typeof countryInput, e) {
+
+  let mouseDownHandlerAttached = false;
+  const onMouseDown = (e: MouseEvent) => {
+    /* if(findUpClassName(e.target, 'input-select')) {
+      return;
+    } */
+    if(e.target === countryInput) {
+      return;
+    }
+
+    hidePicker();
+    document.removeEventListener('mousedown', onMouseDown, {capture: true});
+    mouseDownHandlerAttached = false;
+  };
+
+  const hidePicker = () => {
     selectWrapper.classList.remove('active');
     hideTimeout = window.setTimeout(() => {
       selectWrapper.classList.add('hide');
     }, 200);
+  };
+  /* false && countryInput.addEventListener('blur', function(this: typeof countryInput, e) {
+    hidePicker();
     
     e.cancelBubble = true;
-  }, {capture: true});
+  }, {capture: true}); */
 
   countryInput.addEventListener('keyup', function(this: typeof countryInput, e) {
     if(e.ctrlKey || e.key == 'Control') return false;
@@ -359,6 +392,12 @@ let onFirstMount = () => {
       //console.log('woohoo', nearestDcResult, country);
     })//.catch(tryAgain);
   };
+
+  if(!isTouchSupported) {
+    setTimeout(() => {
+      telEl.focus();
+    }, 0);
+  }
 
   tryAgain();
 };
