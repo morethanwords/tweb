@@ -1,8 +1,8 @@
 .checkbox-field {
-  margin: 1.25rem 0;
+  margin: 1.5rem 0;
   display: block;
   text-align: left;
-  padding: 0 1.125rem;
+  padding: 0 1.1875rem;
   /* font-weight: 500; */
   position: relative;
   cursor: pointer;
@@ -159,11 +159,11 @@
 .checkbox-field [type="checkbox"] {
   & + span {
     position: relative;
-    padding-left: 3.5rem;
+    padding-left: 3.3125rem;
     cursor: pointer;
     display: inline-block;
-    height: 25px;
-    line-height: 25px;
+    height: 24px;
+    line-height: 26px;
     user-select: none;
     transition: .2s opacity;
 
