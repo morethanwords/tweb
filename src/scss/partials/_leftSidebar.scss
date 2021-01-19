@@ -239,7 +239,7 @@
   }
 
   .sidebar-tools-button .btn-menu {
-    width: 217px;
+    min-width: 217px;
 
     .archived-count {
       border-radius: 12px;
@@ -252,13 +252,16 @@
       font-weight: 500;
       background-color: #c5c9cc;
       justify-self: flex-end;
-      position: absolute;
-      right: 16px;
+      margin-left: .625rem;
 
       @include respond-to(handhelds) {
         font-size: 14px;
         font-weight: 600;
       }
+    }
+
+    .btn-menu-item {
+      padding-right: 1rem;
     }
 
     .archived-count:empty {
