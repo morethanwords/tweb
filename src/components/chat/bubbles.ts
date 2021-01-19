@@ -400,7 +400,7 @@ export default class ChatBubbles {
       let details = e;
 
       if(!this.scrolledAllDown) {
-        this.chat.setMessageId(0);
+        this.chat.setMessageId();
       } else {
         this.renderNewMessagesByIds([details.messageId], true);
       }
@@ -2654,7 +2654,7 @@ export default class ChatBubbles {
 
           const topIds = sortedMids.slice(sortedMids.findIndex(mid => targetMid > mid));
           const middleIds = isAdditionRender ? [] : [targetMid];
-          const bottomIds = sortedMids.slice(0, sortedMids.findIndex(mid => targetMid >= mid)).reverse();
+          const bottomIds = isAdditionRender ? [] : sortedMids.slice(0, sortedMids.findIndex(mid => targetMid >= mid)).reverse();
           
           this.log('getHistory: targeting mid:', targetMid, maxId, additionMsgId, 
             topIds.map(m => this.appMessagesManager.getLocalMessageId(m)), 
@@ -2725,7 +2725,7 @@ export default class ChatBubbles {
       return null;
     }
 
-    /* false &&  */!isFirstMessageRender && false && promise.then(() => {
+    false && !isFirstMessageRender && promise.then(() => {
       if(reverse) {
         this.loadedTopTimes++;
         this.loadedBottomTimes = Math.max(0, --this.loadedBottomTimes);
