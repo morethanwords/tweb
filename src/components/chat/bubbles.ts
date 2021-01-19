@@ -2256,13 +2256,14 @@ export default class ChatBubbles {
         let avatarElem = new AvatarElement();
         //avatarElem.lazyLoadQueue = this.lazyLoadQueue;
         avatarElem.classList.add('user-avatar', 'avatar-40');
+        avatarElem.loadPromises = loadPromises;
 
         if(!message.fwdFromId && message.fwd_from && message.fwd_from.from_name) {
           avatarElem.setAttribute('peer-title', /* '🔥 FF 🔥' */message.fwd_from.from_name);
         }
 
         avatarElem.setAttribute('peer', '' + (((message.fwd_from && (this.peerId === rootScope.myId || this.peerId === REPLIES_PEER_ID)) || isForwardFromChannel ? message.fwdFromId : message.fromId) || 0));
-        avatarElem.update();
+        //avatarElem.update();
         
         //this.log('exec loadDialogPhoto', message);
 
@@ -2305,7 +2306,8 @@ export default class ChatBubbles {
         bubble,
         bubbleContainer,
         message: messageWithReplies,
-        messageDiv
+        messageDiv,
+        loadPromises
       });
 
       if(isFooter) {
