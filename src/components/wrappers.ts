@@ -1099,7 +1099,7 @@ export function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, 
   chat: Chat,
   loadPromises?: Promise<any>[]
 }) {
-  let nameContainer: HTMLDivElement;
+  let nameContainer: HTMLElement;
   const mids = albumMustBeRenderedFull ? chat.getMidsByMid(message.mid) : [message.mid];
   /* if(isPending) {
     mids.reverse();

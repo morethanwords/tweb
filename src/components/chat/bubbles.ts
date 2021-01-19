@@ -1818,7 +1818,7 @@ export default class ChatBubbles {
     }
 
     const isOut = our && (!message.fwd_from || this.peerId != rootScope.myId);
-    let nameContainer = bubbleContainer;
+    let nameContainer: HTMLElement = bubbleContainer;
     
     // media
     if(messageMedia/*  && messageMedia._ == 'messageMediaPhoto' */) {
@@ -2084,7 +2084,7 @@ export default class ChatBubbles {
               nameContainer = newNameContainer;
             }
 
-            const lastContainer = messageDiv.lastElementChild.querySelector('.document-size, .audio');
+            const lastContainer = messageDiv.lastElementChild.querySelector('.document-message, .document-size, .audio');
             lastContainer && lastContainer.append(timeSpan.cloneNode(true));
 
             bubble.classList.remove('is-message-empty');
