@@ -132,13 +132,13 @@
     
     &:focus ~ label {
       color: $button-primary-background;
+      font-weight: 500;
     }
     
     &:focus ~ label, &:valid ~ label, &:not(:empty) ~ label, &:disabled ~ label {
-      transform: translate(-.25rem, calc(var(--height) / -2 + .125rem)) scale(.75);
+      transform: translate(-.3125rem, calc(var(--height) / -2 + .125rem)) scale(.75);
       padding: 0 6px;
       opacity: 1;
-      font-weight: 500;
     }
   }
 

@@ -1460,6 +1460,8 @@ $bubble-margin: .25rem;
         flex-direction: row-reverse;
   
         avatar-element {
+          width: 34px;
+          height: 34px;
           border: 2px solid #fff;
           cursor: pointer;
           z-index: 0; // * fix border blinking
