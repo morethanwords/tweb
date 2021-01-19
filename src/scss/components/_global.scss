@@ -130,6 +130,11 @@ Utility Classes
   font-weight: 500 !important;
 }
 
+// * fix text fractional width
+.text-super {
+  display: inline-table;
+}
+
 /* .flex-grow {
   flex-grow: 1;
 }

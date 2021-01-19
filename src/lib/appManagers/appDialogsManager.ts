@@ -586,6 +586,7 @@ export class AppDialogsManager {
     menuTab.classList.add('menu-horizontal-div-item');
     const span = document.createElement('span');
     const titleSpan = document.createElement('span');
+    titleSpan.classList.add('text-super');
     titleSpan.innerHTML = RichTextProcessor.wrapEmojiText(filter.title);
     const unreadSpan = document.createElement('div');
     unreadSpan.classList.add('badge', 'badge-20', 'badge-blue');
