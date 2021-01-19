@@ -4,7 +4,7 @@ import rootScope from "../lib/rootScope";
 import { attachClickEvent, cancelEvent } from "../helpers/dom";
 import AppMediaViewer, { AppMediaViewerAvatar } from "./appMediaViewer";
 import { Photo } from "../layer";
-import type { LazyLoadQueueIntersector } from "./lazyLoadQueue";
+//import type { LazyLoadQueueIntersector } from "./lazyLoadQueue";
 
 rootScope.on('avatar_update', (e) => {
   let peerId = e;
@@ -20,8 +20,9 @@ export default class AvatarElement extends HTMLElement {
   private peerId: number;
   private isDialog = false;
   public peerTitle: string;
-  public lazyLoadQueue: LazyLoadQueueIntersector;
-  private addedToQueue = false;
+  public loadPromises: Promise<any>[];
+  //public lazyLoadQueue: LazyLoadQueueIntersector;
+  //private addedToQueue = false;
 
   constructor() {
     super();
@@ -105,13 +106,13 @@ export default class AvatarElement extends HTMLElement {
     }
   }
 
-  disconnectedCallback() {
+  /* disconnectedCallback() {
     // браузер вызывает этот метод при удалении элемента из документа
     // (может вызываться много раз, если элемент многократно добавляется/удаляется)
     if(this.lazyLoadQueue) {
       this.lazyLoadQueue.unobserve(this);
     }
-  }
+  } */
 
   static get observedAttributes(): string[] {
     return ['peer', 'dialog', 'peer-title'/* массив имён атрибутов для отслеживания их изменений */];
@@ -120,22 +121,22 @@ export default class AvatarElement extends HTMLElement {
   attributeChangedCallback(name: string, oldValue: string, newValue: string) {
     //console.log('avatar changed attribute:', name, oldValue, newValue);
     // вызывается при изменении одного из перечисленных выше атрибутов
-    if(name == 'peer') {
-      if(this.peerId == +newValue) {
+    if(name === 'peer') {
+      if(this.peerId === +newValue) {
         return;
       }
       
       this.peerId = +newValue;
       this.update();
-    } else if(name == 'peer-title') {
+    } else if(name === 'peer-title') {
       this.peerTitle = newValue;
-    } else if(name == 'dialog') {
+    } else if(name === 'dialog') {
       this.isDialog = !!+newValue;
     }
   }
 
   public update() {
-    if(this.lazyLoadQueue) {
+    /* if(this.lazyLoadQueue) {
       if(this.addedToQueue) return;
       this.lazyLoadQueue.push({
         div: this, 
@@ -146,9 +147,15 @@ export default class AvatarElement extends HTMLElement {
         }
       });
       this.addedToQueue = true;
-    } else {
-      appProfileManager.putPhoto(this, this.peerId, this.isDialog, this.peerTitle);
-    }
+    } else { */
+      const res = appProfileManager.putPhoto(this, this.peerId, this.isDialog, this.peerTitle);
+      if(this.loadPromises && res && res.cached) {
+        this.loadPromises.push(res.loadPromise);
+        res.loadPromise.finally(() => {
+          this.loadPromises = undefined;
+        });
+      }
+    //}
   }
 }
 

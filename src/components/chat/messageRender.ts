@@ -58,16 +58,19 @@ export namespace MessageRender {
     return timeSpan;
   };
 
-  export const renderReplies = ({bubble, bubbleContainer, message, messageDiv}: {
+  export const renderReplies = ({bubble, bubbleContainer, message, messageDiv, loadPromises}: {
     bubble: HTMLElement,
     bubbleContainer: HTMLElement,
     message: any,
-    messageDiv: HTMLElement
+    messageDiv: HTMLElement,
+    loadPromises?: Promise<any>[]
   }) => {
     const isFooter = !bubble.classList.contains('sticker') && !bubble.classList.contains('emoji-big') && !bubble.classList.contains('round');
     const repliesFooter = new RepliesElement();
     repliesFooter.message = message;
     repliesFooter.type = isFooter ? 'footer' : 'beside';
+    repliesFooter.loadPromises = loadPromises;
+    repliesFooter.init();
     bubbleContainer.prepend(repliesFooter);
     return isFooter;
   };
