@@ -879,18 +879,15 @@
       padding-top: 0;
     }
 
-    .tgico-photo:before {
-      margin-left: -2px;
-      margin-right: 2.125rem;
-    }
-
     .checkbox-field {
       display: flex;
       align-items: center;
       height: 54px;
+      margin: 0 1.0625rem;
+      padding: 0;
     }
 
-    .checkbox-field, &-caption {
+    &-caption {
       padding: 0 .875rem;
     }
   }
