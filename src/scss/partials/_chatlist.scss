@@ -58,7 +58,7 @@
     max-height: 72px;
     border-radius: $border-radius-medium;
     display: flex;
-    align-items: flex-start;
+    align-items: flex-start; // TODO: проверить разницу в производительности с align-items: center;
     flex-direction: row;
     position: relative;
     cursor: pointer;
@@ -71,7 +71,7 @@
     } */
 
     @include respond-to(handhelds) {
-      padding: 9px 12px 0 9px !important;
+      padding: 9px 12px 9px 9px !important;
       border-radius: 0;
       margin: 0;
       overflow: hidden;
@@ -90,6 +90,15 @@
       //margin: .1rem 0;
       line-height: 27px;
     }
+
+    p {
+      margin: 0;
+      display: flex;
+      justify-content: space-between;
+      flex-direction: row;
+      align-items: flex-start;
+      height: 27px;
+    }
   }
 
   li.menu-open {
@@ -102,15 +111,6 @@
     li.active > .rp {
       background: var(--color-gray-hover);
     }
-  }
-
-  p {
-    margin: 0;
-    display: flex;
-    justify-content: space-between;
-    flex-direction: row;
-    align-items: flex-start;
-    height: 27px;
   }
 
   .dialog {
@@ -188,7 +188,7 @@
       font-size: 1.2rem;
       margin: 0 .125rem;
       overflow: visible;
-      margin-top: -1.5px;
+      //margin-top: -1.5px;
     }
   }
 

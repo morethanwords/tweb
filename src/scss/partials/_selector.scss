@@ -24,10 +24,6 @@
       position: relative;
       max-height: inherit; // fix safari
     }
-
-    avatar-element:before {
-      font-size: 18px;
-    }
   }
 
   &-search {
@@ -123,6 +119,10 @@
   .chatlist-container {
     height: 100%;
     flex: 1 1 auto;
+
+    .scrollable > :first-child {
+      margin-top: .5rem;
+    }
   }
 
   ul {
@@ -131,11 +131,11 @@
     }
 
     p {
-      height: 24px;
+      height: 24px !important;
     }
     
     span.user-last-message {
-        font-size: 14px;
+      font-size: 14px;
     }
 
     li {
@@ -146,6 +146,8 @@
         padding: 12px 8.5px;
 
         @include respond-to(handhelds) {
+          height: 66px;
+          max-height: 66px;
           margin: 0;
         }
 
@@ -157,11 +159,8 @@
   }
 
   hr {
-    margin: 0 0 8px;
-  }
-
-  [type="checkbox"] + span {
-    padding-left: calc(9px + 2.25rem);
+    margin: 0;
+    padding: 0;
   }
 
   .checkbox {
@@ -172,5 +171,27 @@
   .checkbox-field {
     margin: 0;
     padding: 0;
+    transform: translateY(-50%);
+    top: 50%;
+
+    &:first-child {
+      margin-right: 1.6875rem;
+      margin-left: .6875rem;
+    }
+  }
+
+  .checkbox-field-round {
+    position: absolute;
+    right: 1.125rem;
+    --size: 1.25rem;
+
+    .checkbox-box-border {
+      border-color: #dadbdc;
+      z-index: unset;
+    }
+
+    .checkbox-box-check {
+      --offset: 6px;
+    }
   }
 }

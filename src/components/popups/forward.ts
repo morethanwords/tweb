@@ -35,7 +35,8 @@ export default class PopupForward extends PopupElement {
         }
       }, 
       chatRightsAction: 'send', 
-      multiSelect: false
+      multiSelect: false,
+      rippleEnabled: false
     });
 
     //this.scrollable = new Scrollable(this.body);
