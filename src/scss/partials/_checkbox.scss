@@ -65,7 +65,7 @@
         stroke-linecap: round;
         stroke-dasharray: 24.19, 24.19;
         stroke-dashoffset: 0;
-        transition: stroke-dasharray .1s .2s ease-in-out, visibility 0s .2s;
+        transition: stroke-dasharray .1s .15s ease-in-out, visibility 0s .15s;
       }
     }
   }
@@ -208,7 +208,7 @@
     }
 
     .checkbox-box-background {
-      transition: transform .2s .1s ease-in-out;
+      transition: transform .2s .05s ease-in-out;
       transform: scale(0);
     }
   }

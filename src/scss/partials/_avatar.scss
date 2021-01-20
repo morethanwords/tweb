@@ -46,16 +46,20 @@ avatar-element {
     --color-bottom: var(--peer-avatar-pink-bottom);
   }
 
+  &.tgico:before {
+    font-size: calc(32px / var(--multiplier));
+  }
+
+  &.tgico-calendarfilter:before {
+    font-size: calc(36px / var(--multiplier));
+  }
+
   &.tgico-savedmessages:before {
     font-size: calc(25px / var(--multiplier));
   }
 
   &.tgico-avatar_deletedaccount:before {
     font-size: calc(54px / var(--multiplier));
-  }
-
-  &.tgico-calendarfilter:before {
-    font-size: calc(36px / var(--multiplier));
   }
 
   &:before {
