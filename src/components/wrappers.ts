@@ -617,13 +617,13 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
         //resolve();
 
         if(needFadeIn) {
-          setTimeout(() => {
+          image.addEventListener('animationend', () => {
             image.classList.remove('fade-in');
 
             if(thumbImage) {
               thumbImage.remove();
             }
-          }, 200);
+          }, {once: true});
         }
       });
     });
@@ -850,10 +850,10 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
               element.classList.add('fade-out');
             }
 
-            setTimeout(() => {
+            animation.canvas.addEventListener('animationend', () => {
               animation.canvas.classList.remove('fade-in');
               cb();
-            }, 200);
+            }, {once: true});
           }
 
           appDocsManager.saveLottiePreview(doc, animation.canvas, toneIndex);
@@ -904,12 +904,12 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
             });
   
             if(needFadeIn) {
-              setTimeout(() => {
+              image.addEventListener('animationend', () => {
                 image.classList.remove('fade-in');
                 if(thumbImage) {
                   thumbImage.remove();
                 }
-              }, 200);
+              }, {once: true});
             }
           });
         };

@@ -172,6 +172,7 @@ export default class Chat extends EventListenerBase<{
 
       appSidebarRight.sharedMediaTab.setPeer(peerId, this.threadId);
       this.input.clearHelper(); // костыль
+      this.selection.cleanup(); // TODO: REFACTOR !!!!!!
     }
 
     this.peerChanged = samePeer;

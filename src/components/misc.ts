@@ -5,6 +5,7 @@ import mediaSizes from "../helpers/mediaSizes";
 import { isTouchSupported } from "../helpers/touchSupport";
 import { isApple } from "../helpers/userAgent";
 import { MOUNT_CLASS_TO } from "../lib/mtproto/mtproto_config";
+import { getHeavyAnimationPromise } from "../hooks/useHeavyAnimationCheck";
 
 export const loadedURLs: {[url: string]: boolean} = {};
 const set = (elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLVideoElement, url: string) => {
@@ -32,7 +33,15 @@ export function renderImageFromUrl(elem: HTMLElement | HTMLImageElement | SVGIma
 
       loadedURLs[url] = true;
       //console.log('onload:', url, performance.now() - perf);
-      callback && callback();
+      if(callback) {
+        // TODO: переделать прогрузки аватаров до начала анимации, иначе с этим ожиданием они неприятно появляются
+        /* getHeavyAnimationPromise().then(() => {
+          callback();
+        }); */
+        callback();
+      }
+
+      //callback && callback();
     });
 
     if(callback) {

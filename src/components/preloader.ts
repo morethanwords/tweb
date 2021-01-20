@@ -185,6 +185,8 @@ export default class ProgressivePreloader {
       this.attachPromise(promise);
     }
 
+    //return;
+
     this.detached = false;
     /* window.requestAnimationFrame(() => {
       if(this.detached) return;
