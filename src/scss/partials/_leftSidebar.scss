@@ -610,6 +610,7 @@
     p {
       height: unset;
       justify-content: flex-start;
+      margin: 0;
     }
 
     p:last-child {
@@ -684,23 +685,13 @@
 .folder-categories {
   width: 100%;
 
-  .checkbox {
-    margin-top: 0 !important;
-    position: absolute;
-    right: 0;
-
-    [type="checkbox"] + span {
-      padding-left: 46px;
-
-      @include respond-to(handhelds) {
-        padding-left: 38px;
-      }
-    }
-  }
-
   .checkbox-field {
-    margin: 0;
-    padding: 0;
+    position: absolute;
+    right: 1.625rem !important;
+
+    @include respond-to(handhelds) {
+      right: 1rem !important;
+    }
   }
 }
 
@@ -712,7 +703,7 @@
   border-radius: 0;
 
   @include respond-to(handhelds) {
-    padding: 0 1rem;
+    padding: 0 1.125rem;
   }
 
   &:before {
@@ -729,8 +720,9 @@
     ul {
       li > .rp {
         margin: 0 .5rem;
-        padding: .5rem .75rem;
+        padding: 7px .75rem !important;
         height: 3.875rem;
+        max-height: 3.875rem;
 
         @include respond-to(handhelds) {
           margin: 0;

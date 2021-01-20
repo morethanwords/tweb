@@ -147,7 +147,7 @@ let onFirstMount = () => {
     void selectWrapper.offsetWidth; // reflow
     selectWrapper.classList.add('active');
 
-    if(countryInput.value) {
+    if(countryInput.value) { // * avoid selecting whole empty field on iOS devices
       countryInput.select(); // * select text
     }
 

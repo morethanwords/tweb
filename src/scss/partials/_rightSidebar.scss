@@ -89,11 +89,11 @@
     .checkbox-field {
       margin: 0;
       padding: 0;
+      margin-left: -54px;
     }
 
-    [type="checkbox"] + span {
+    .checkbox-caption {
       padding-left: 54px;
-      margin-left: -54px;
     }
 
     &-wrapper {

@@ -1,5 +1,5 @@
 import appImManager from "../../../lib/appManagers/appImManager";
-import appMessagesManager, { MyInputMessagesFilter, MyMessage } from "../../../lib/appManagers/appMessagesManager";
+import appMessagesManager from "../../../lib/appManagers/appMessagesManager";
 import appPeersManager from "../../../lib/appManagers/appPeersManager";
 import appProfileManager from "../../../lib/appManagers/appProfileManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
@@ -10,6 +10,7 @@ import AppSearchSuper, { SearchSuperType } from "../../appSearchSuper.";
 import AvatarElement from "../../avatar";
 import Scrollable from "../../scrollable";
 import { SliderTab } from "../../slider";
+import CheckboxField from "../../checkbox";
 
 let setText = (text: string, el: HTMLDivElement) => {
   window.requestAnimationFrame(() => {
@@ -72,9 +73,14 @@ export default class AppSharedMediaTab implements SliderTab {
       username: this.profileContentEl.querySelector('.profile-row-username'),
       phone: this.profileContentEl.querySelector('.profile-row-phone'),
       notificationsRow: this.profileContentEl.querySelector('.profile-row-notifications'),
-      notificationsCheckbox: this.profileContentEl.querySelector('#profile-notifications'),
+      notificationsCheckbox: null,
       notificationsStatus: this.profileContentEl.querySelector('.profile-row-notifications > p')
     };
+
+    const checkboxField = CheckboxField('Notifications', 'notifications');
+    this.profileElements.notificationsCheckbox = checkboxField.input;
+    this.profileElements.notificationsCheckbox.checked = true;
+    this.profileElements.notificationsRow.prepend(checkboxField.label);
 
     this.scroll = new Scrollable(this.container, 'SR', 400);
     

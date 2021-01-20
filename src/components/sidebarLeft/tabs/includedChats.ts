@@ -10,6 +10,8 @@ import { copy } from "../../../helpers/object";
 import ButtonIcon from "../../buttonIcon";
 import { FocusDirection } from "../../../helpers/fastSmoothScroll";
 import { fastRaf } from "../../../helpers/schedulers";
+import CheckboxField from "../../checkbox";
+import Button from "../../button";
 
 export default class AppIncludedChatsTab extends SliderSuperTab {
   private confirmBtn: HTMLElement;
@@ -97,7 +99,12 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
   }
 
   checkbox(selected?: boolean) {
-    return `<div class="checkbox"><label class="checkbox-field"><input type="checkbox" ${selected ? 'checked' : ''}><span></span></label></div>`;
+    const checkboxField = CheckboxField('', '', true);
+    if(selected) {
+      checkboxField.input.checked = selected;
+    }
+
+    return checkboxField.label;
   }
 
   renderResults = async(peerIds: number[]) => {
@@ -111,12 +118,12 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
         dialog: peerId,
         container: this.selector.scrollable,
         drawStatus: false,
-        rippleEnabled: false,
+        rippleEnabled: true,
         avatarSize: 46
       });
 
       const selected = this.selector.selected.has(peerId);
-      dom.containerEl.insertAdjacentHTML('beforeend', this.checkbox(selected));
+      dom.containerEl.append(this.checkbox(selected));
       if(selected) dom.listEl.classList.add('active');
 
       let subtitle = '';
@@ -173,11 +180,14 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
       };
     }
 
-    let html = '';
+    const f = document.createDocumentFragment();
     for(const key in details) {
-      html += `<button class="folder-category-button btn-primary btn-transparent tgico-${details[key].ico}" data-peer-id="${key}">${details[key].text}${this.checkbox()}</button>`;
+      const button = Button('btn-primary btn-transparent folder-category-button', {icon: details[key].ico, text: details[key].text});
+      button.dataset.peerId = key;
+      button.append(this.checkbox());
+      f.append(button);
     }
-    categories.innerHTML = html;
+    categories.append(f);
 
     const hr = document.createElement('hr');
     hr.style.margin = '7px 0 9px';

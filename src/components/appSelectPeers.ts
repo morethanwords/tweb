@@ -8,6 +8,7 @@ import rootScope from "../lib/rootScope";
 import { cancelEvent, findUpAttribute, findUpClassName } from "../helpers/dom";
 import Scrollable from "./scrollable";
 import { FocusDirection } from "../helpers/fastSmoothScroll";
+import CheckboxField from "./checkbox";
 
 type PeerType = 'contacts' | 'dialogs';
 
@@ -46,6 +47,7 @@ export default class AppSelectPeers {
   private renderResultsFunc?: (peerIds: number[]) => void;
   private chatRightsAction?: ChatRights;
   private multiSelect = true;
+  private rippleEnabled = true;
   
   constructor(options: {
     appendTo: AppSelectPeers['appendTo'], 
@@ -54,7 +56,8 @@ export default class AppSelectPeers {
     onFirstRender?: () => void, 
     renderResultsFunc?: AppSelectPeers['renderResultsFunc'], 
     chatRightsAction?: AppSelectPeers['chatRightsAction'], 
-    multiSelect?: AppSelectPeers['multiSelect']
+    multiSelect?: AppSelectPeers['multiSelect'],
+    rippleEnabled?: boolean
   }) {
     for(let i in options) {
       // @ts-ignore
@@ -341,14 +344,20 @@ export default class AppSelectPeers {
         dialog: peerId,
         container: this.scrollable,
         drawStatus: false,
-        rippleEnabled: false,
+        rippleEnabled: true,
         avatarSize: 48
       });
 
       if(this.multiSelect) {
         const selected = this.selected.has(peerId);
-        dom.containerEl.insertAdjacentHTML('afterbegin', `<div class="checkbox"><label class="checkbox-field"><input type="checkbox" ${selected ? 'checked' : ''}><span></span></label></div>`);
-        if(selected) dom.listEl.classList.add('active');
+        const checkboxField = CheckboxField();
+
+        if(selected) {
+          dom.listEl.classList.add('active');
+          checkboxField.input.checked = true;
+        }
+
+        dom.containerEl.prepend(checkboxField.label);
       }
 
       let subtitle = '';

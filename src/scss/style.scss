@@ -565,7 +565,7 @@ hr {
     
     text-align: left;
     display: grid;
-    grid-template-columns: calc(26px + 2rem) 1fr 50px;
+    grid-template-columns: calc(26px + 2rem) 1fr 80px;
     
     html.no-touch &:hover {
       background-color: var(--color-gray-hover);
