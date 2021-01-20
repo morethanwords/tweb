@@ -191,6 +191,12 @@ $bubble-margin: .25rem;
     .checkbox-box-background {
       background-color: #61c642;
     }
+
+    .checkbox-box-check {
+      use {
+        stroke-width: 3.5;
+      }
+    }
   }
 
   & > &-select-checkbox {
