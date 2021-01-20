@@ -750,6 +750,8 @@ export default class AppSearchSuper {
     if(testScroll/*  || 1 == 1 */) {
       return;
     }
+
+    //return;
     
     const peerId = this.searchContext.peerId;
     this.log('load', single, peerId, this.loadPromises);

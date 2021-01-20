@@ -43,6 +43,7 @@ import { FocusDirection } from "../../helpers/fastSmoothScroll";
 import useHeavyAnimationCheck, { getHeavyAnimationPromise, dispatchHeavyAnimationEvent } from "../../hooks/useHeavyAnimationCheck";
 import { fastRaf } from "../../helpers/schedulers";
 import { deferredPromise, CancellablePromise } from "../../helpers/cancellablePromise";
+import EventListenerBase from "../../helpers/eventListenerBase";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS = ['messageActionHistoryClear'];
@@ -96,6 +97,7 @@ export default class ChatBubbles {
   public messagesQueuePromise: Promise<void> = null;
   private messagesQueue: {message: any, bubble: HTMLDivElement, reverse: boolean, promises: Promise<void>[]}[] = [];
   private messagesQueueOnRender: () => void = null;
+  private messagesQueueOnRenderAdditional: () => void = null;
 
   private firstUnreadBubble: HTMLDivElement = null;
   private attachedUnreadBubble: boolean;
@@ -366,7 +368,7 @@ export default class ChatBubbles {
       });
     }
 
-    /* if(false)  */this.stickyIntersector = new StickyIntersector(this.scrollable.container, (stuck, target) => {
+    if(false) this.stickyIntersector = new StickyIntersector(this.scrollable.container, (stuck, target) => {
       for(const timestamp in this.dateMessages) {
         const dateMessage = this.dateMessages[timestamp];
         if(dateMessage.container === target) {
@@ -1467,6 +1469,10 @@ export default class ChatBubbles {
             this.messagesQueueOnRender();
           }
 
+          if(this.messagesQueueOnRenderAdditional) {
+            this.messagesQueueOnRenderAdditional();
+          }
+
           queue.forEach(({message, bubble, reverse}) => {
             this.setBubblePosition(bubble, message, reverse);
           });
@@ -1595,9 +1601,9 @@ export default class ChatBubbles {
       contentWrapper.innerHTML = '';
       contentWrapper.appendChild(bubbleContainer);
       //bubbleContainer.style.marginBottom = '';
-      const animationDelay = contentWrapper.style.animationDelay;
+      const transitionDelay = contentWrapper.style.transitionDelay;
       contentWrapper.style.cssText = '';
-      contentWrapper.style.animationDelay = animationDelay;
+      contentWrapper.style.transitionDelay = transitionDelay;
 
       if(bubble === this.firstUnreadBubble) {
         bubble.classList.add('is-first-unread');
@@ -2636,9 +2642,9 @@ export default class ChatBubbles {
 
     const waitPromise = isAdditionRender ? processPromise(resultPromise) : promise;
 
-    if(isFirstMessageRender/*  && false */) {
-      waitPromise.then(() => {
-        if(rootScope.settings.animationsEnabled && Object.keys(this.bubbles).length) {
+    if(isFirstMessageRender && rootScope.settings.animationsEnabled/*  && false */) {
+      this.messagesQueueOnRenderAdditional = () => {
+        if(Object.keys(this.bubbles).length > 1) {
           let sortedMids = getObjectKeysAndSort(this.bubbles, 'desc');
 
           if(isAdditionRender && additionMsgIds.length) {
@@ -2664,6 +2670,8 @@ export default class ChatBubbles {
             topIds.map(m => this.appMessagesManager.getLocalMessageId(m)), 
             bottomIds.map(m => this.appMessagesManager.getLocalMessageId(m)));
 
+          const setBubbles: HTMLElement[] = [];
+
           const delay = isAdditionRender ? 10 : 40;
           const offsetIndex = isAdditionRender ? 0 : 1;
           const animateAsLadder = (mids: number[], offsetIndex = 0) => {
@@ -2678,22 +2686,42 @@ export default class ChatBubbles {
               const contentWrapper = this.bubbles[mid].lastElementChild as HTMLElement;
       
               lastMsDelay = ((idx + offsetIndex) || 0.1) * delay;
+              //lastMsDelay = (idx + offsetIndex) * delay;
               //lastMsDelay = (idx || 0.1) * 1000;
               //if(idx || isSafari) {
                 // ! 0.1 = 1ms задержка для Safari, без этого первое сообщение над самым нижним может появиться позже другого с animation-delay, LOL !
-                contentWrapper.style.animationDelay = lastMsDelay + 'ms';
-              //}
-    
+                //contentWrapper.style.animationDelay = lastMsDelay + 'ms';
+                //}
+                
               contentWrapper.classList.add('zoom-fade');
-              contentWrapper.addEventListener('animationend', () => {
-                contentWrapper.style.animationDelay = '';
-                contentWrapper.classList.remove('zoom-fade');
+              contentWrapper.style.transitionDelay = lastMsDelay + 'ms';
+
+              if(idx === (mids.length - 1)) {
+                const onTransitionEnd = (e: TransitionEvent) => {
+                  if(e.target !== contentWrapper) {
+                    return;
+                  }
   
-                if(idx === (mids.length - 1)) {
+                  //contentWrapper.style.animationDelay = '';
+                  //contentWrapper.classList.remove('zoom-fade');
+  
+                  //this.log('onTransitionEnd', e);
+    
                   animationPromise.resolve();
-                }
-              }, {once: true});
+  
+                  contentWrapper.removeEventListener('transitionend', onTransitionEnd);
+                };
+  
+                contentWrapper.addEventListener('transitionend', onTransitionEnd);
+              }
+              
               //this.log('supa', bubble);
+
+              setBubbles.push(contentWrapper);
+
+              fastRaf(() => {
+                contentWrapper.classList.remove('zoom-fade');
+              });
             });
 
             if(!mids.length) {
@@ -2712,6 +2740,13 @@ export default class ChatBubbles {
           let promise: Promise<any>;
           if(topIds.length || middleIds.length || bottomIds.length) {
             promise = Promise.all(promises);
+            promise.then(() => {
+              fastRaf(() => {
+                setBubbles.forEach(contentWrapper => {
+                  contentWrapper.style.transitionDelay = '';
+                });
+              });
+            });
             dispatchHeavyAnimationEvent(promise, Math.max(...delays) + 200); // * 200 - transition time
           }
 
@@ -2721,7 +2756,13 @@ export default class ChatBubbles {
             }, 0);
           });
         }
-      });
+
+        if(!isAdditionRender) {
+          this.messagesQueueOnRenderAdditional = undefined;
+        }
+      };
+    } else {
+      this.messagesQueueOnRenderAdditional = undefined;
     }
 
     (reverse ? this.getHistoryTopPromise = waitPromise : this.getHistoryBottomPromise = waitPromise);
@@ -2733,7 +2774,7 @@ export default class ChatBubbles {
       return null;
     }
 
-    false && !isFirstMessageRender && promise.then(() => {
+    /* false &&  */!isFirstMessageRender && promise.then(() => {
       if(reverse) {
         this.loadedTopTimes++;
         this.loadedBottomTimes = Math.max(0, --this.loadedBottomTimes);

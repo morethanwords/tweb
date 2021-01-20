@@ -52,7 +52,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
     this.content.append(this.nextBtn);
 
     this.avatarElem = document.createElement('avatar-element') as AvatarElement;
-    this.avatarElem.classList.add('avatar-placeholder');
+    this.avatarElem.classList.add('avatar-placeholder', 'avatar-120');
     
     this.avatarEdit = new AvatarEdit((_upload) => {
       this.uploadAvatar = _upload;

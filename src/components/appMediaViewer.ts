@@ -447,7 +447,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       let mediaElement: HTMLImageElement | HTMLVideoElement;
       let src: string;
 
-      if(target.tagName == 'DIV' || target.tagName == 'AVATAR-ELEMENT') { // useContainerAsTarget
+      if(target.tagName === 'DIV' || target.tagName === 'AVATAR-ELEMENT') { // useContainerAsTarget
         if(target.firstElementChild) {
           mediaElement = new Image();
           src = (target.firstElementChild as HTMLImageElement).src;
@@ -1018,7 +1018,9 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
             
             if(!media.supportsStreaming) {
               onAnimationEnd.then(() => {
-                preloader.attach(mover, true, promise);
+                if(!media.url) {
+                  preloader.attach(mover, true, promise);
+                }
               });
             }
 
@@ -1056,11 +1058,15 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
         
         const load = () => {
           const cancellablePromise = appPhotosManager.preloadPhoto(media.id, size);
+
           onAnimationEnd.then(() => {
-            this.preloader.attach(mover, true, cancellablePromise);
+            if(!media.url) {
+              this.preloader.attach(mover, true, cancellablePromise);
+            }
           });
-          cancellablePromise.then(() => {
-            if(this.tempId != tempId) {
+          
+          Promise.all([onAnimationEnd, cancellablePromise]).then(() => {
+            if(this.tempId !== tempId) {
               this.log.warn('media viewer changed photo');
               return;
             }
@@ -1082,16 +1088,13 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
               }
             } else {
               const div = mover.firstElementChild && mover.firstElementChild.classList.contains('media-viewer-aspecter') ? mover.firstElementChild : mover;
-              let image = div.firstElementChild as HTMLImageElement;
-              if(!image || image.tagName != 'IMG') {
-                image = new Image();
-              }
+              let image = new Image();
   
               //this.log('will renderImageFromUrl:', image, div, target);
   
               renderImageFromUrl(image, url, () => {
-                if(mediaSizes.isMobile) {
-                  image.classList.remove('thumbnail'); // может здесь это вообще не нужно
+                if(div.firstElementChild?.tagName === 'IMG') {
+                  div.firstElementChild.remove();
                 }
 
                 div.append(image);

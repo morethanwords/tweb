@@ -1504,8 +1504,9 @@ $bubble-margin: .25rem;
 }
 
 .bubble-content-wrapper {
-  transition: transform var(--layer-transition);
+  transition: transform var(--layer-transition), opacity var(--layer-transition);
   transform: scale(1) translateX(0);
+  transform-origin: center;
   opacity: 1;
 
   &.zoom-fade /* .bubble-content */ {
@@ -1513,9 +1514,8 @@ $bubble-margin: .25rem;
     transform: scale3d(.8, .8, 1);
     //transform: scale(.8);
     opacity: 0;
-    transform-origin: center;
-    animation: zoom-opacity-fade-in .2s ease-in-out forwards;
-    animation-delay: 0;
+    //animation: zoom-opacity-fade-in .2s ease-in-out forwards;
+    //animation-delay: 0s;
   }
 
   @include respond-to(not-handhelds) {

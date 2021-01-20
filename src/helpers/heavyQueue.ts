@@ -12,6 +12,10 @@ const heavyQueue: HeavyQueue<any>[] = [];
 let processingQueue = false;
 
 export default function pushHeavyTask<T>(queue: HeavyQueue<T>) {
+  if(!queue.items.length) {
+    return Promise.resolve([]);
+  }
+  
   queue.promise = deferredPromise<T[]>();
   heavyQueue.push(queue);
   processHeavyQueue();
@@ -32,7 +36,11 @@ function processHeavyQueue() {
 }
 
 function timedChunk<T>(queue: HeavyQueue<T>) {
-  if(!queue.items.length) return Promise.resolve([]);
+  if(!queue.items.length) {
+    queue.promise.resolve([]);
+    return Promise.resolve([]);
+  }
+
   const todo = queue.items.slice();
   const results: T[] = [];
 
