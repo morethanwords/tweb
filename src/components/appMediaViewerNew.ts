@@ -28,6 +28,7 @@ import SwipeHandler from "./swipeHandler";
 import { months, ONE_DAY } from "../helpers/date";
 import { SearchSuperContext } from "./appSearchSuper.";
 import { DEBUG } from "../lib/mtproto/mtproto_config";
+import { PhotoSize } from "../layer";
 
 // TODO: масштабирование картинок (не SVG) при ресайзе, и правильный возврат на исходную позицию
 // TODO: картинки "обрезаются" если возвращаются или появляются с места, где есть их перекрытие (топбар, поле ввода)
@@ -35,11 +36,16 @@ import { DEBUG } from "../lib/mtproto/mtproto_config";
 
 const MEDIA_VIEWER_CLASSNAME = 'media-viewer';
 
+function transition(t: number) {
+  return 1 - ((1 - t) ** 3.5);
+}
+
 class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType extends string, TargetType extends object> {
   public wholeDiv: HTMLElement;
   protected overlaysDiv: HTMLElement;
   protected author: {[k in 'container' | 'avatarEl' | 'nameEl' | 'date']: HTMLElement} = {} as any;
   protected content: {[k in 'main' | 'container' | 'media' | 'mover' | ContentAdditionType]: HTMLElement} = {} as any;
+  protected mover: HTMLCanvasElement;
   public buttons: {[k in 'download' | 'close' | 'prev' | 'next' | 'mobile-close' | ButtonsAdditionType]: HTMLElement} = {} as any;
   
   protected tempId = 0;
@@ -76,6 +82,18 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
   protected onPrevClick: (target: TargetType) => void;
   protected onNextClick: (target: TargetType) => void;
   protected loadMoreMedia: (older: boolean) => Promise<void>;
+
+  protected animatingContext: {
+    width: number,
+    height: number,
+    startWidth: number,
+    startHeight: number,
+    media: HTMLImageElement | HTMLVideoElement,
+    diffX: number,
+    diffY: number,
+    startTime: number,
+    borderRadius: number[]
+  };
   
   constructor(topButtons: Array<keyof AppMediaViewerBase<ContentAdditionType, ButtonsAdditionType, TargetType>['buttons']>) {
     this.log = logger('AMV');
@@ -315,7 +333,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
   };
 
   protected async setMoverToTarget(target: HTMLElement, closing = false, fromRight = 0) {
-    const mover = this.content.mover;
+    const mover = this.mover;
 
     if(!target) {
       target = this.content.media;
@@ -349,9 +367,6 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       if(target instanceof AvatarElement) {
         realParent = target;
         rect = target.getBoundingClientRect();
-      } else if(target instanceof SVGImageElement || target.parentElement instanceof SVGForeignObjectElement) {
-        realParent = findUpClassName(target, 'attachment');
-        rect = realParent.getBoundingClientRect();
       } else {
         realParent = target.parentElement as HTMLElement;
         rect = target.getBoundingClientRect();
@@ -383,48 +398,16 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       transform += `translate(${left}px,${top}px) `;
     } */
 
-    let aspecter: HTMLDivElement;
-    if(target instanceof HTMLImageElement || target instanceof HTMLVideoElement || target.tagName == 'DIV') {
-      if(mover.firstElementChild && mover.firstElementChild.classList.contains('media-viewer-aspecter')) {
-        aspecter = mover.firstElementChild as HTMLDivElement;
-
-        const player = aspecter.querySelector('.ckin__player');
-        if(player) {
-          const video = player.firstElementChild as HTMLVideoElement;
-          aspecter.append(video);
-          player.remove();
-        }
-
-        if(!aspecter.style.cssText) { // всё из-за видео, элементы управления скейлятся, так бы можно было этого не делать
-          mover.classList.remove('active');
-          this.setFullAspect(aspecter, containerRect, rect);
-          void mover.offsetLeft; // reflow
-          mover.classList.add('active');
-        }
-      } else {
-        aspecter = document.createElement('div');
-        aspecter.classList.add('media-viewer-aspecter'/* , 'disable-hover' */);
-        mover.prepend(aspecter);
-      }
-      
-      aspecter.style.cssText = `width: ${rect.width}px; height: ${rect.height}px; transform: scale3d(${containerRect.width / rect.width}, ${containerRect.height / rect.height}, 1);`;
-    }
-
-    mover.style.width = containerRect.width + 'px';
-    mover.style.height = containerRect.height + 'px';
+    //mover.style.width = containerRect.width + 'px';
+    //mover.style.height = containerRect.height + 'px';
 
     const scaleX = rect.width / containerRect.width;
     const scaleY = rect.height / containerRect.height;
-    if(!wasActive) {
-      transform += `scale3d(${scaleX},${scaleY},1) `;
-    }
 
-    let borderRadius = window.getComputedStyle(realParent).getPropertyValue('border-radius');
+    let borderRadius: any = window.getComputedStyle(realParent).getPropertyValue('border-radius');
     const brSplitted = fillPropertyValue(borderRadius) as string[];
-    borderRadius = brSplitted.map(r => (parseInt(r) / scaleX) + 'px').join(' ');
-    if(!wasActive) {
-      mover.style.borderRadius = borderRadius;
-    }
+    borderRadius = brSplitted.map(v => parseInt(v));
+
     //let borderRadius = '0px 0px 0px 0px';
 
     mover.style.transform = transform;
@@ -445,113 +428,54 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
     if(!closing) {
       let mediaElement: HTMLImageElement | HTMLVideoElement;
-      let src: string;
 
       if(target.tagName === 'DIV' || target.tagName === 'AVATAR-ELEMENT') { // useContainerAsTarget
         if(target.firstElementChild) {
-          mediaElement = new Image();
-          src = (target.firstElementChild as HTMLImageElement).src;
-          mover.append(mediaElement);
+          mediaElement = target.firstElementChild as HTMLImageElement;
         }
         /* mediaElement = new Image();
         src = target.style.backgroundImage.slice(5, -2); */
         
       } else if(target instanceof HTMLImageElement) {
-        mediaElement = new Image();
-        src = target.src;
+        mediaElement = target;
       } else if(target instanceof HTMLVideoElement) {
-        const video = mediaElement = document.createElement('video');
-        video.src = target?.src;
-      } else if(target instanceof SVGSVGElement) {
-        const clipId = target.dataset.clipId;
-        const newClipId = clipId + '-mv';
-
-        const {width, height} = containerRect;
-
-        const newSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        newSvg.setAttributeNS(null, 'width', '' + width);
-        newSvg.setAttributeNS(null, 'height', '' + height);
-
-        // нижние два свойства для масштабирования
-        newSvg.setAttributeNS(null, 'viewBox', `0 0 ${width} ${height}`);
-        newSvg.setAttributeNS(null, 'preserveAspectRatio', 'xMidYMid meet');
-
-        newSvg.insertAdjacentHTML('beforeend', target.firstElementChild.outerHTML.replace(clipId, newClipId));
-        newSvg.insertAdjacentHTML('beforeend', target.lastElementChild.outerHTML.replace(clipId, newClipId));
-
-        // теперь надо выставить новую позицию для хвостика
-        const defs = newSvg.firstElementChild;
-        const use = defs.firstElementChild.firstElementChild as SVGUseElement;
-        if(use instanceof SVGUseElement) {
-          let transform = use.getAttributeNS(null, 'transform');
-          transform = transform.replace(/translate\((.+?), (.+?)\) scale\((.+?), (.+?)\)/, (match, x, y, sX, sY) => {
-            x = +x;
-            if(x != 2) {
-              x = width - (2 / scaleX);
-            } else {
-              x = 2 / scaleX;
-            }
-            
-            y = height;
-  
-            return `translate(${x}, ${y}) scale(${+sX / scaleX}, ${+sY / scaleY})`;
-          });
-          use.setAttributeNS(null, 'transform', transform);
-  
-          // и новый RECT
-          path = defs.firstElementChild.lastElementChild as SVGPathElement;
-
-          // код ниже нужен только чтобы скрыть моргание до момента как сработает таймаут
-          let d: string;
-          const br: [number, number, number, number] = borderRadius.split(' ').map(v => parseInt(v)) as any;
-          if(isOut) d = generatePathData(0, 0, width - 9 / scaleX, height, ...br);
-          else d = generatePathData(9 / scaleX, 0, width - 9 / scaleX, height, ...br);
-          path.setAttributeNS(null, 'd', d);
-        }
-
-        const foreignObject = newSvg.lastElementChild;
-        foreignObject.setAttributeNS(null, 'width', '' + containerRect.width);
-        foreignObject.setAttributeNS(null, 'height', '' + containerRect.height);
-        
-        mover.prepend(newSvg);
+        mediaElement = target;
       }
 
-      if(aspecter) {
-        aspecter.style.borderRadius = borderRadius;
+      const naturalWidth = (mediaElement as HTMLImageElement).naturalWidth || (mediaElement as HTMLVideoElement).videoWidth;
+      const naturalHeight = (mediaElement as HTMLImageElement).naturalHeight || (mediaElement as HTMLVideoElement).videoHeight;
 
-        if(mediaElement) {
-          aspecter.append(mediaElement);
-        }
+      const context = this.animatingContext = {
+        width: this.mover.width,
+        height: this.mover.height,
+        startWidth: rect.width,
+        startHeight: rect.height,
+        diffX: 0,
+        diffY: 0,
+        media: mediaElement,
+        startTime: Date.now(),
+        borderRadius
+      };
+
+      let left = rect.left, top = rect.top;
+      if(mediaElement.width !== naturalWidth) {
+        const diff = context.diffX = (naturalWidth - mediaElement.width) / 2;
+        left -= diff;
       }
 
-      mediaElement = mover.querySelector('video, img');
-      if(mediaElement instanceof HTMLImageElement) {
-        mediaElement.classList.add('thumbnail');
-        if(!aspecter) {
-          mediaElement.style.width = containerRect.width + 'px';
-          mediaElement.style.height = containerRect.height + 'px';
-        }
+      if(mediaElement.height !== naturalHeight) {
+        const diff = context.diffY = (naturalHeight - mediaElement.height) / 2;
+        top -= diff;
+      }
 
-        if(src) {
-          await new Promise((resolve, reject) => {
-            mediaElement.addEventListener('load', resolve);
-  
-            if(src) {
-              mediaElement.src = src;
-            }
-          });
-        }
-      }/*  else if(mediaElement instanceof HTMLVideoElement && mediaElement.firstElementChild && ((mediaElement.firstElementChild as HTMLSourceElement).src || src)) {
-        await new Promise((resolve, reject) => {
-          mediaElement.addEventListener('loadeddata', resolve);
+      transform = `translate3d(${left}px,${top}px,0) `;
 
-          if(src) {
-            (mediaElement.firstElementChild as HTMLSourceElement).src = src;
-          }
-        });
-      } */
-  
+      mover.style.transform = transform;
+
       mover.style.display = '';
+
+      this.beginMagic(context, delay);
+      //this.renderMedia(context, 0);
 
       window.requestAnimationFrame(() => {
         mover.classList.add(wasActive ? 'moving' : 'active');
@@ -561,14 +485,6 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
         mover.classList.remove('center');
         void mover.offsetLeft; // reflow
       } */
-      
-      if(target instanceof SVGSVGElement) {
-        path = mover.querySelector('path');
-
-        if(path) {
-          this.sizeTailPath(path, containerRect, scaleX, delay, false, isOut, borderRadius);
-        }
-      }
 
       if(target.classList.contains('media-viewer-media')) {
         mover.classList.add('hiding');
@@ -603,39 +519,17 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
 
     // чтобы проверить установленную позицию - раскомментировать
-    // throw '';
+    throw '';
 
     //await new Promise((resolve) => setTimeout(resolve, 5e3));
 
-    mover.style.transform = `translate3d(${containerRect.left}px,${containerRect.top}px,0) scale3d(1,1,1)`;
+    mover.style.transform = `translate3d(${containerRect.left}px,${containerRect.top}px,0)`;
     //mover.style.transform = `translate(-50%,-50%) scale(1,1)`;
-
-    if(aspecter) {
-      this.setFullAspect(aspecter, containerRect, rect);
-    }
 
     //throw '';
 
-    setTimeout(() => {
-      mover.style.borderRadius = '';
-
-      if(mover.firstElementChild) {
-        (mover.firstElementChild as HTMLElement).style.borderRadius = '';
-      }
-    }, 0/* delay / 2 */);
-
     mover.dataset.timeout = '' + setTimeout(() => {
       mover.classList.remove('moving');
-
-      if(aspecter) { // всё из-за видео, элементы управления скейлятся, так бы можно было этого не делать
-        if(mover.querySelector('video') || true) {
-          mover.classList.remove('active');
-          aspecter.style.cssText = '';
-          void mover.offsetLeft; // reflow
-        }
-        
-        //aspecter.classList.remove('disable-hover');
-      }
 
       // эти строки нужны для установки центральной позиции, в случае ресайза это будет нужно
       mover.classList.add('center', 'no-transition');
@@ -650,11 +544,60 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       deferred.resolve();
     }, delay);
 
-    if(path) {
-      this.sizeTailPath(path, containerRect, scaleX, delay, true, isOut, borderRadius);
-    }
-
     return ret;
+  }
+
+  protected beginMagic(context: AppMediaViewer['animatingContext'], delay: number) {
+    const start = Date.now();
+
+    const step = () => {
+      const diff = Date.now() - start;
+
+      let progress = delay ? Math.min(1, diff / delay) : 1;
+
+      this.renderMedia(context, progress);
+
+      if(diff < delay) window.requestAnimationFrame(step);
+    };
+    
+    window.requestAnimationFrame(step);
+    //step();
+
+    this.renderMedia(context, 0);
+  }
+
+  protected renderMedia(context: AppMediaViewer['animatingContext'], percents: number) {
+    const ctx = this.mover.getContext('2d');
+    
+    //percents = transition(percents);
+    const width = context.startWidth + (context.width - context.startWidth) * percents;
+    const height = context.startHeight + (context.height - context.startHeight) * percents;
+    const x = context.diffX - (context.diffX * percents);
+    const y = context.diffY - (context.diffY * percents);
+    
+    const borderRadius = context.borderRadius.map(v => v - v * percents);
+    const [brTl, brTr, brBr, brBl] = borderRadius;
+
+    /* ctx.clearRect(0, 0, context.width, context.height);
+    ctx.closePath(); */
+
+    ctx.save();
+
+    ctx.beginPath();
+    ctx.moveTo(x + brTl, y);
+    ctx.lineTo(x + width - brTr, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + brTr);
+    ctx.lineTo(x + width, y + height - brBr);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - brBr, y + height);
+    ctx.lineTo(x + brBl, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - brBl);
+    ctx.lineTo(x, y + brTl);
+    ctx.quadraticCurveTo(x, y, x + brTl, y);
+    ctx.closePath();
+
+    ctx.clip();
+    ctx.drawImage(context.media, x, y, width, height);
+    ctx.restore();
   }
 
   protected setFullAspect(aspecter: HTMLDivElement, containerRect: DOMRect, rect: DOMRect) {
@@ -752,17 +695,17 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
   }
 
   protected setNewMover() {
-    const newMover = document.createElement('div');
-    newMover.classList.add('media-viewer-mover');
+    const newMover = document.createElement('canvas');
+    newMover.classList.add('media-viewer-canvas');
 
-    if(this.content.mover) {
-      const oldMover = this.content.mover;
+    if(this.mover) {
+      const oldMover = this.mover;
       oldMover.parentElement.append(newMover);
     } else {
       this.wholeDiv.append(newMover);
     }
 
-    return this.content.mover = newMover;
+    return this.mover = newMover;
   }
 
   /* public isElementVisible(container: HTMLElement, target: HTMLElement) {
@@ -871,7 +814,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
     const wasActive = fromRight !== 0;
     if(wasActive) {
-      this.moveTheMover(this.content.mover, fromRight === 1);
+      this.moveTheMover(this.mover, fromRight === 1);
       this.setNewMover();
     } else {
       window.addEventListener('keydown', this.onKeyDown);
@@ -885,7 +828,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
     ////////this.log('wasActive:', wasActive);
 
-    const mover = this.content.mover;
+    const mover = this.mover;
 
     //const maxWidth = appPhotosManager.windowW - 16;
     const maxWidth = mediaSizes.isMobile ? this.pageEl.scrollWidth : this.pageEl.scrollWidth - 16;
@@ -896,10 +839,15 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     }
     const size = appPhotosManager.setAttachmentSize(media, container, maxWidth, maxHeight);
 
+    this.mover.width = (size as PhotoSize.photoSize).w;
+    this.mover.height = (size as PhotoSize.photoSize).h;
+
     // need after setAttachmentSize
     /* if(useContainerAsTarget) {
       target = target.querySelector('img, video') || target;
     } */
+
+    //return;
 
     const preloader = media.supportsStreaming ? this.preloaderStreamable : this.preloader;
 

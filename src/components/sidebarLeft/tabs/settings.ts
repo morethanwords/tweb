@@ -5,6 +5,7 @@ import appSidebarLeft, { AppSidebarLeft } from "..";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import ButtonMenuToggle from "../../buttonMenuToggle";
 import Button from "../../button";
+import AppMediaViewer from "../../appMediaViewer";
 
 export default class AppSettingsTab extends SliderSuperTab {
   private avatarElem: AvatarElement;
@@ -41,6 +42,45 @@ export default class AppSettingsTab extends SliderSuperTab {
     this.avatarElem = new AvatarElement();
     this.avatarElem.setAttribute('clickable', '');
     this.avatarElem.classList.add('profile-avatar', 'avatar-120');
+
+    /* const div = document.createElement('div');
+    div.style.cssText = 'border-radius: 8px; overflow: hidden; width: 396px; height: 264px; flex: 0 0 auto; position: relative; margin: 10rem 0 10rem auto;';
+    div.style.width = '135px';
+    div.style.height = '100px';
+    
+    const img = document.createElement('img');
+    img.src = 'assets/img/PinnedMessages.png';
+    img.classList.add('media-photo');
+    img.style.cssText = 'max-width: 100%;max-height: 100%;';
+
+    div.append(img);
+
+    div.addEventListener('click', () => {
+      new AppMediaViewer().setSearchContext({peerId: 61004386, inputFilter: 'inputMessagesFilterPhotos'}).openMedia({
+        _: 'message',
+        mid: 1,
+        peerId: 61004386,
+        fromId: 61004386,
+        message: '',
+        media: {
+          _: 'messageMediaPhoto',
+          photo: {
+            _: 'photo',
+            url: img.src,
+            downloaded: 111,
+            sizes: [{
+              _: 'photoSize',
+              type: 'x',
+              w: 618,
+              h: 412
+            }]
+          }
+        },
+        date: Date.now() / 1000 | 0
+      }, img);
+    });
+
+    this.scrollable.append(div); */
     
     this.nameDiv = document.createElement('div');
     this.nameDiv.classList.add('profile-name');
