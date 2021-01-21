@@ -115,7 +115,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
   }
 
   private registerWorker() {
-    //return;
+    return;
 
     const worker = new MTProtoWorker();
     worker.addEventListener('message', (e) => {

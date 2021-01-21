@@ -205,21 +205,15 @@
     }
   }
 
-  &-mover {
+  &-mover, &-canvas {
     position: fixed!important;
     z-index: 4;
-    display: flex;
-    justify-content: center;
-    align-items: center; // mb net
-    min-height: auto!important;
     //transition: .5s all;
     left: 0;
     top: 0;
-    /* left: 50%;
-    top: 50%; */
-    transform-origin: top left;
+    //transform-origin: top left;
+    transform-origin: bottom right;
     overflow: hidden;
-    //border-radius: 0;
 
     // эти значения должны быть такими же, как при установке maxWidth и maxHeight в openMedia!
     //max-width: 100%;
