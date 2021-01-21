@@ -217,14 +217,35 @@
   .dialog-subtitle-badge {
     margin-top: 4px;
     margin-right: -3px;
+    margin-left: .25rem;
     flex: 0 0 auto;
+  }
+
+  .tgico-chatspinned {
+    background: transparent;
+    position: relative;
+
+    &:before {
+      color: #a2abb2;
+      transition: opacity .2s ease-in-out;
+      opacity: 1;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    &.unread {
+      &:before {
+        opacity: 0;
+      }
+    }
   }
 
   .unread, li.is-muted.backwards .unread {
     background: $color-green;
   }
 
-  li.is-muted .unread, .tgico-pinnedchat {
+  li.is-muted .unread {
     background: #c5c9cc;
   }
 

@@ -1067,7 +1067,6 @@ export class AppDialogsManager {
     } else dom.statusSpan.classList.remove('tgico-check', 'tgico-checks');
 
     dom.unreadMessagesSpan.innerText = '';
-    dom.unreadMessagesSpan.classList.remove('tgico-pinnedchat', 'tgico');
 
     const filter = appMessagesManager.filtersStorage.filters[this.filterId];
     let isPinned: boolean;
@@ -1077,15 +1076,18 @@ export class AppDialogsManager {
       isPinned = !!dialog.pFlags.pinned;
     }
 
+    if(isPinned) {
+      dom.unreadMessagesSpan.classList.add('tgico-chatspinned', 'tgico');
+    } else {
+      dom.unreadMessagesSpan.classList.remove('tgico-chatspinned', 'tgico');
+    }
+
     if(dialog.unread_count || dialog.pFlags.unread_mark) {
       //dom.unreadMessagesSpan.innerText = '' + (dialog.unread_count ? formatNumber(dialog.unread_count, 1) : ' ');
       dom.unreadMessagesSpan.innerText = '' + (dialog.unread_count || ' ');
       dom.unreadMessagesSpan.classList.add('unread');
     } else {
       dom.unreadMessagesSpan.classList.remove('unread');
-      if(isPinned) {
-        dom.unreadMessagesSpan.classList.add('tgico-pinnedchat', 'tgico');
-      }
     }
   }
 

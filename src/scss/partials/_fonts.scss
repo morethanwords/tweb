@@ -3,9 +3,9 @@
 @font-face {
   font-family: "#{$tgico-font-family}";
   src:
-    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?vptykr') format('truetype'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?vptykr') format('woff'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?vptykr#tgico') format('svg');
+    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?6mppd8') format('truetype'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?6mppd8') format('woff'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?6mppd8#tgico') format('svg');
   font-weight: normal;
   font-style: normal;
   font-display: block;
@@ -31,427 +31,713 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-
-.tgico-permissions:before {
-  content: "\e900";
-}
-.tgico-phone:before {
-  content: "\e901";
-}
-.tgico-photo:before {
-  content: "\e902";
-}
-.tgico-pin:before {
-  content: "\e903";
-}
-.tgico-pinlist:before {
-  content: "\e904";
-}
-.tgico-pinned_filled:before {
-  content: "\e905";
-}
-.tgico-pinnedchat:before {
-  content: "\e906";
-}
-.tgico-play:before {
-  content: "\e907";
-}
-.tgico-poll:before {
-  content: "\e908";
-}
-.tgico-previous:before {
-  content: "\e909";
-}
-.tgico-radiooff:before {
-  content: "\e90a";
-}
-.tgico-radioon:before {
-  content: "\e90b";
-}
-.tgico-readchats:before {
-  content: "\e90c";
-}
-.tgico-recent:before {
-  content: "\e90d";
-}
-.tgico-replace:before {
-  content: "\e90e";
-}
-.tgico-reply:before {
-  content: "\e90f";
-}
-.tgico-revote:before {
-  content: "\e910";
-}
-.tgico-savedmessages:before {
-  content: "\e911";
-}
-.tgico-schedule:before {
-  content: "\e912";
-}
-.tgico-scheduled:before {
-  content: "\e913";
-}
-.tgico-search:before {
-  content: "\e914";
-}
-.tgico-select:before {
-  content: "\e915";
-}
-.tgico-send:before {
-  content: "\e916";
-}
-.tgico-send2:before {
-  content: "\e917";
-}
-.tgico-sending:before {
-  content: "\e918";
-}
-.tgico-sendingerror:before {
-  content: "\e919";
-}
-.tgico-settings:before {
-  content: "\e91a";
-}
-.tgico-smallscreen:before {
-  content: "\e91b";
-}
-.tgico-smile:before {
-  content: "\e91c";
-}
-.tgico-sport:before {
-  content: "\e91d";
-}
-.tgico-stickers:before {
-  content: "\e91e";
-}
-.tgico-stop:before {
-  content: "\e91f";
-}
-.tgico-strikethrough:before {
-  content: "\e920";
-}
-.tgico-textedit:before {
-  content: "\e921";
-}
-.tgico-tip:before {
-  content: "\e922";
-}
-.tgico-unarchive:before {
-  content: "\e923";
-}
-.tgico-underline:before {
-  content: "\e924";
-}
-.tgico-unlock:before {
-  content: "\e925";
-}
-.tgico-unmute:before {
-  content: "\e926";
-}
-.tgico-unpin:before {
-  content: "\e927";
-}
-.tgico-unread:before {
-  content: "\e928";
-}
-.tgico-up:before {
-  content: "\e929";
-}
-.tgico-user:before {
-  content: "\e92a";
-}
-.tgico-username:before {
-  content: "\e92b";
-}
-.tgico-zoomin:before {
-  content: "\e92c";
-}
-.tgico-zoomout:before {
-  content: "\e92d";
-}
-.tgico-check:before {
-  content: "\e92e";
-}
-.tgico-checks:before {
-  content: "\e92f";
-}
-.tgico-activesessions:before {
-  content: "\e930";
-}
-.tgico-add:before {
-  content: "\e931";
-}
-.tgico-addmember_filled:before {
-  content: "\e932";
-}
-.tgico-adduser:before {
-  content: "\e933";
-}
-.tgico-admin:before {
-  content: "\e934";
-}
-.tgico-animals:before {
-  content: "\e935";
-}
-.tgico-archive:before {
-  content: "\e936";
-}
-.tgico-arrow_back:before {
-  content: "\e937";
-}
-.tgico-arrow_down:before {
-  content: "\e938";
-}
-.tgico-arrow_next:before {
-  content: "\e939";
-}
-.tgico-attach:before {
-  content: "\e93a";
-}
-.tgico-avatar_archivedchats:before {
-  content: "\e93b";
-}
-.tgico-avatar_deletedaccount:before {
-  content: "\e93c";
-}
-.tgico-avatar_savedmessages:before {
-  content: "\e93d";
-}
-.tgico-bold:before {
-  content: "\e93e";
-}
-.tgico-botcom:before {
-  content: "\e93f";
-}
-.tgico-bots:before {
-  content: "\e940";
-}
-.tgico-calendar:before {
-  content: "\e941";
-}
-.tgico-calendarfilter:before {
-  content: "\e942";
-}
-.tgico-camera:before {
-  content: "\e943";
-}
-.tgico-cameraadd:before {
-  content: "\e944";
-}
-.tgico-car:before {
-  content: "\e945";
-}
-.tgico-channel:before {
-  content: "\e946";
-}
-.tgico-channelviews:before {
-  content: "\e947";
-}
-.tgico-chatsplaceholder:before {
-  content: "\e948";
-}
-.tgico-check1:before {
-  content: "\e949";
-}
-.tgico-checkbox:before {
-  content: "\e94a";
-}
-.tgico-checkboxblock:before {
-  content: "\e94b";
-}
-.tgico-checkboxempty:before {
-  content: "\e94c";
-}
-.tgico-checkboxon:before {
-  content: "\e94d";
-}
-.tgico-close:before {
-  content: "\e94e";
-}
-.tgico-clouddownload:before {
-  content: "\e94f";
-}
-.tgico-colorize:before {
-  content: "\e950";
-}
-.tgico-comments:before {
-  content: "\e951";
-}
-.tgico-commentssticker:before {
-  content: "\e952";
-}
-.tgico-copy:before {
-  content: "\e953";
-}
-.tgico-data:before {
-  content: "\e954";
-}
-.tgico-delete_filled:before {
-  content: "\e955";
-}
-.tgico-delete:before {
-  content: "\e956";
-}
-.tgico-deleteleft:before {
-  content: "\e957";
-}
-.tgico-deleteuser:before {
-  content: "\e958";
-}
-.tgico-document:before {
-  content: "\e959";
-}
-.tgico-down:before {
-  content: "\e95a";
-}
-.tgico-download:before {
-  content: "\e95b";
-}
-.tgico-dragfiles:before {
-  content: "\e95c";
-}
-.tgico-dragmedia:before {
-  content: "\e95d";
-}
-.tgico-eats:before {
-  content: "\e95e";
-}
-.tgico-edit:before {
-  content: "\e95f";
-}
-.tgico-email:before {
-  content: "\e960";
-}
-.tgico-eye1:before {
-  content: "\e961";
-}
-.tgico-eye2:before {
-  content: "\e962";
-}
-.tgico-favourites:before {
-  content: "\e963";
-}
-.tgico-flag:before {
-  content: "\e964";
-}
-.tgico-folder:before {
-  content: "\e965";
-}
-.tgico-forward:before {
-  content: "\e966";
-}
-.tgico-fullscreen:before {
-  content: "\e967";
-}
-.tgico-gifs:before {
-  content: "\e968";
-}
-.tgico-group:before {
-  content: "\e969";
-}
-.tgico-help:before {
-  content: "\e96a";
-}
-.tgico-info:before {
-  content: "\e96b";
-}
-.tgico-info2:before {
-  content: "\e96c";
-}
-.tgico-italic:before {
-  content: "\e96d";
-}
-.tgico-keyboard:before {
-  content: "\e96e";
-}
-.tgico-lamp:before {
-  content: "\e96f";
-}
-.tgico-language:before {
-  content: "\e970";
-}
-.tgico-largepause:before {
-  content: "\e971";
-}
-.tgico-largeplay:before {
-  content: "\e972";
-}
-.tgico-link:before {
-  content: "\e973";
-}
-.tgico-livelocation:before {
-  content: "\e974";
-}
-.tgico-location:before {
-  content: "\e975";
-}
-.tgico-lock:before {
-  content: "\e976";
-}
-.tgico-loginlogodesktop:before {
-  content: "\e977";
-}
-.tgico-loginlogomobile:before {
-  content: "\e978";
-}
-.tgico-logout:before {
-  content: "\e979";
-}
-.tgico-mention:before {
-  content: "\e97a";
-}
-.tgico-menu:before {
-  content: "\e97b";
-}
-.tgico-message:before {
-  content: "\e97c";
-}
-.tgico-microphone:before {
-  content: "\e97d";
-}
-.tgico-microphone2:before {
-  content: "\e97e";
-}
-.tgico-minus:before {
-  content: "\e97f";
-}
-.tgico-monospace:before {
-  content: "\e980";
-}
-.tgico-more:before {
-  content: "\e981";
-}
-.tgico-mute:before {
-  content: "\e982";
-}
-.tgico-muted:before {
-  content: "\e983";
-}
-.tgico-newchannel:before {
-  content: "\e984";
-}
-.tgico-newchat_filled:before {
-  content: "\e985";
-}
-.tgico-newgroup:before {
-  content: "\e986";
-}
-.tgico-newprivate:before {
-  content: "\e987";
-}
-.tgico-next:before {
-  content: "\e988";
-}
-.tgico-noncontacts:before {
-  content: "\e989";
-}
-.tgico-nosound:before {
-  content: "\e98a";
-}
-.tgico-passwordoff:before {
-  content: "\e98b";
-}
-.tgico-pause:before {
-  content: "\e98c";
+.tgico-zoomout {
+  &:before {
+    content: $tgico-zoomout; 
+  }
+}
+.tgico-username {
+  &:before {
+    content: $tgico-username; 
+  }
+}
+.tgico-zoomin {
+  &:before {
+    content: $tgico-zoomin; 
+  }
+}
+.tgico-up {
+  &:before {
+    content: $tgico-up; 
+  }
+}
+.tgico-user {
+  &:before {
+    content: $tgico-user; 
+  }
+}
+.tgico-unmute {
+  &:before {
+    content: $tgico-unmute; 
+  }
+}
+.tgico-unpin {
+  &:before {
+    content: $tgico-unpin; 
+  }
+}
+.tgico-unread {
+  &:before {
+    content: $tgico-unread; 
+  }
+}
+.tgico-unlock {
+  &:before {
+    content: $tgico-unlock; 
+  }
+}
+.tgico-unarchive {
+  &:before {
+    content: $tgico-unarchive; 
+  }
+}
+.tgico-underline {
+  &:before {
+    content: $tgico-underline; 
+  }
+}
+.tgico-textedit {
+  &:before {
+    content: $tgico-textedit; 
+  }
+}
+.tgico-tip {
+  &:before {
+    content: $tgico-tip; 
+  }
+}
+.tgico-stop {
+  &:before {
+    content: $tgico-stop; 
+  }
+}
+.tgico-strikethrough {
+  &:before {
+    content: $tgico-strikethrough; 
+  }
+}
+.tgico-smile {
+  &:before {
+    content: $tgico-smile; 
+  }
+}
+.tgico-sport {
+  &:before {
+    content: $tgico-sport; 
+  }
+}
+.tgico-stickers {
+  &:before {
+    content: $tgico-stickers; 
+  }
+}
+.tgico-settings {
+  &:before {
+    content: $tgico-settings; 
+  }
+}
+.tgico-smallscreen {
+  &:before {
+    content: $tgico-smallscreen; 
+  }
+}
+.tgico-sendingerror {
+  &:before {
+    content: $tgico-sendingerror; 
+  }
+}
+.tgico-send {
+  &:before {
+    content: $tgico-send; 
+  }
+}
+.tgico-sending {
+  &:before {
+    content: $tgico-sending; 
+  }
+}
+.tgico-select {
+  &:before {
+    content: $tgico-select; 
+  }
+}
+.tgico-send2 {
+  &:before {
+    content: $tgico-send2; 
+  }
+}
+.tgico-scheduled {
+  &:before {
+    content: $tgico-scheduled; 
+  }
+}
+.tgico-search {
+  &:before {
+    content: $tgico-search; 
+  }
+}
+.tgico-revote {
+  &:before {
+    content: $tgico-revote; 
+  }
+}
+.tgico-savedmessages {
+  &:before {
+    content: $tgico-savedmessages; 
+  }
+}
+.tgico-schedule {
+  &:before {
+    content: $tgico-schedule; 
+  }
+}
+.tgico-replace {
+  &:before {
+    content: $tgico-replace; 
+  }
+}
+.tgico-reply {
+  &:before {
+    content: $tgico-reply; 
+  }
+}
+.tgico-radioon {
+  &:before {
+    content: $tgico-radioon; 
+  }
+}
+.tgico-readchats {
+  &:before {
+    content: $tgico-readchats; 
+  }
+}
+.tgico-recent {
+  &:before {
+    content: $tgico-recent; 
+  }
+}
+.tgico-radiooff {
+  &:before {
+    content: $tgico-radiooff; 
+  }
+}
+.tgico-poll {
+  &:before {
+    content: $tgico-poll; 
+  }
+}
+.tgico-previous {
+  &:before {
+    content: $tgico-previous; 
+  }
+}
+.tgico-pinned_filled {
+  &:before {
+    content: $tgico-pinned_filled; 
+  }
+}
+.tgico-pinnedchat {
+  &:before {
+    content: $tgico-pinnedchat; 
+  }
+}
+.tgico-play {
+  &:before {
+    content: $tgico-play; 
+  }
+}
+.tgico-photo {
+  &:before {
+    content: $tgico-photo; 
+  }
+}
+.tgico-pin {
+  &:before {
+    content: $tgico-pin; 
+  }
+}
+.tgico-pinlist {
+  &:before {
+    content: $tgico-pinlist; 
+  }
+}
+.tgico-permissions {
+  &:before {
+    content: $tgico-permissions; 
+  }
+}
+.tgico-phone {
+  &:before {
+    content: $tgico-phone; 
+  }
+}
+.tgico-pause {
+  &:before {
+    content: $tgico-pause; 
+  }
+}
+.tgico-noncontacts {
+  &:before {
+    content: $tgico-noncontacts; 
+  }
+}
+.tgico-nosound {
+  &:before {
+    content: $tgico-nosound; 
+  }
+}
+.tgico-passwordoff {
+  &:before {
+    content: $tgico-passwordoff; 
+  }
+}
+.tgico-newprivate {
+  &:before {
+    content: $tgico-newprivate; 
+  }
+}
+.tgico-next {
+  &:before {
+    content: $tgico-next; 
+  }
+}
+.tgico-newchat_filled {
+  &:before {
+    content: $tgico-newchat_filled; 
+  }
+}
+.tgico-newgroup {
+  &:before {
+    content: $tgico-newgroup; 
+  }
+}
+.tgico-muted {
+  &:before {
+    content: $tgico-muted; 
+  }
+}
+.tgico-newchannel {
+  &:before {
+    content: $tgico-newchannel; 
+  }
+}
+.tgico-more {
+  &:before {
+    content: $tgico-more; 
+  }
+}
+.tgico-mute {
+  &:before {
+    content: $tgico-mute; 
+  }
+}
+.tgico-microphone {
+  &:before {
+    content: $tgico-microphone; 
+  }
+}
+.tgico-minus {
+  &:before {
+    content: $tgico-minus; 
+  }
+}
+.tgico-monospace {
+  &:before {
+    content: $tgico-monospace; 
+  }
+}
+.tgico-message {
+  &:before {
+    content: $tgico-message; 
+  }
+}
+.tgico-microphone2 {
+  &:before {
+    content: $tgico-microphone2; 
+  }
+}
+.tgico-logout {
+  &:before {
+    content: $tgico-logout; 
+  }
+}
+.tgico-mention {
+  &:before {
+    content: $tgico-mention; 
+  }
+}
+.tgico-menu {
+  &:before {
+    content: $tgico-menu; 
+  }
+}
+.tgico-loginlogomobile {
+  &:before {
+    content: $tgico-loginlogomobile; 
+  }
+}
+.tgico-lock {
+  &:before {
+    content: $tgico-lock; 
+  }
+}
+.tgico-loginlogodesktop {
+  &:before {
+    content: $tgico-loginlogodesktop; 
+  }
+}
+.tgico-livelocation {
+  &:before {
+    content: $tgico-livelocation; 
+  }
+}
+.tgico-location {
+  &:before {
+    content: $tgico-location; 
+  }
+}
+.tgico-link {
+  &:before {
+    content: $tgico-link; 
+  }
+}
+.tgico-language {
+  &:before {
+    content: $tgico-language; 
+  }
+}
+.tgico-largepause {
+  &:before {
+    content: $tgico-largepause; 
+  }
+}
+.tgico-largeplay {
+  &:before {
+    content: $tgico-largeplay; 
+  }
+}
+.tgico-lamp {
+  &:before {
+    content: $tgico-lamp; 
+  }
+}
+.tgico-keyboard {
+  &:before {
+    content: $tgico-keyboard; 
+  }
+}
+.tgico-info {
+  &:before {
+    content: $tgico-info; 
+  }
+}
+.tgico-italic {
+  &:before {
+    content: $tgico-italic; 
+  }
+}
+.tgico-group {
+  &:before {
+    content: $tgico-group; 
+  }
+}
+.tgico-help {
+  &:before {
+    content: $tgico-help; 
+  }
+}
+.tgico-info2 {
+  &:before {
+    content: $tgico-info2; 
+  }
+}
+.tgico-forward {
+  &:before {
+    content: $tgico-forward; 
+  }
+}
+.tgico-gifs {
+  &:before {
+    content: $tgico-gifs; 
+  }
+}
+.tgico-flag {
+  &:before {
+    content: $tgico-flag; 
+  }
+}
+.tgico-folder {
+  &:before {
+    content: $tgico-folder; 
+  }
+}
+.tgico-eye1 {
+  &:before {
+    content: $tgico-eye1; 
+  }
+}
+.tgico-eye2 {
+  &:before {
+    content: $tgico-eye2; 
+  }
+}
+.tgico-favourites {
+  &:before {
+    content: $tgico-favourites; 
+  }
+}
+.tgico-edit {
+  &:before {
+    content: $tgico-edit; 
+  }
+}
+.tgico-email {
+  &:before {
+    content: $tgico-email; 
+  }
+}
+.tgico-eats {
+  &:before {
+    content: $tgico-eats; 
+  }
+}
+.tgico-dragmedia {
+  &:before {
+    content: $tgico-dragmedia; 
+  }
+}
+.tgico-down {
+  &:before {
+    content: $tgico-down; 
+  }
+}
+.tgico-download {
+  &:before {
+    content: $tgico-download; 
+  }
+}
+.tgico-dragfiles {
+  &:before {
+    content: $tgico-dragfiles; 
+  }
+}
+.tgico-deleteuser {
+  &:before {
+    content: $tgico-deleteuser; 
+  }
+}
+.tgico-document {
+  &:before {
+    content: $tgico-document; 
+  }
+}
+.tgico-delete_filled {
+  &:before {
+    content: $tgico-delete_filled; 
+  }
+}
+.tgico-delete {
+  &:before {
+    content: $tgico-delete; 
+  }
+}
+.tgico-deleteleft {
+  &:before {
+    content: $tgico-deleteleft; 
+  }
+}
+.tgico-copy {
+  &:before {
+    content: $tgico-copy; 
+  }
+}
+.tgico-data {
+  &:before {
+    content: $tgico-data; 
+  }
+}
+.tgico-commentssticker {
+  &:before {
+    content: $tgico-commentssticker; 
+  }
+}
+.tgico-clouddownload {
+  &:before {
+    content: $tgico-clouddownload; 
+  }
+}
+.tgico-colorize {
+  &:before {
+    content: $tgico-colorize; 
+  }
+}
+.tgico-comments {
+  &:before {
+    content: $tgico-comments; 
+  }
+}
+.tgico-checkboxon {
+  &:before {
+    content: $tgico-checkboxon; 
+  }
+}
+.tgico-close {
+  &:before {
+    content: $tgico-close; 
+  }
+}
+.tgico-checkbox {
+  &:before {
+    content: $tgico-checkbox; 
+  }
+}
+.tgico-checkboxblock {
+  &:before {
+    content: $tgico-checkboxblock; 
+  }
+}
+.tgico-checkboxempty {
+  &:before {
+    content: $tgico-checkboxempty; 
+  }
+}
+.tgico-chatsplaceholder {
+  &:before {
+    content: $tgico-chatsplaceholder; 
+  }
+}
+.tgico-check {
+  &:before {
+    content: $tgico-check; 
+  }
+}
+.tgico-channel {
+  &:before {
+    content: $tgico-channel; 
+  }
+}
+.tgico-channelviews {
+  &:before {
+    content: $tgico-channelviews; 
+  }
+}
+.tgico-chatspinned {
+  &:before {
+    content: $tgico-chatspinned; 
+  }
+}
+.tgico-cameraadd {
+  &:before {
+    content: $tgico-cameraadd; 
+  }
+}
+.tgico-car {
+  &:before {
+    content: $tgico-car; 
+  }
+}
+.tgico-camera {
+  &:before {
+    content: $tgico-camera; 
+  }
+}
+.tgico-bots {
+  &:before {
+    content: $tgico-bots; 
+  }
+}
+.tgico-calendar {
+  &:before {
+    content: $tgico-calendar; 
+  }
+}
+.tgico-calendarfilter {
+  &:before {
+    content: $tgico-calendarfilter; 
+  }
+}
+.tgico-botcom {
+  &:before {
+    content: $tgico-botcom; 
+  }
+}
+.tgico-avatar_deletedaccount {
+  &:before {
+    content: $tgico-avatar_deletedaccount; 
+  }
+}
+.tgico-avatar_savedmessages {
+  &:before {
+    content: $tgico-avatar_savedmessages; 
+  }
+}
+.tgico-bold {
+  &:before {
+    content: $tgico-bold; 
+  }
+}
+.tgico-attach {
+  &:before {
+    content: $tgico-attach; 
+  }
+}
+.tgico-avatar_archivedchats {
+  &:before {
+    content: $tgico-avatar_archivedchats; 
+  }
+}
+.tgico-arrow_next {
+  &:before {
+    content: $tgico-arrow_next; 
+  }
+}
+.tgico-arrow_back {
+  &:before {
+    content: $tgico-arrow_back; 
+  }
+}
+.tgico-arrow_down {
+  &:before {
+    content: $tgico-arrow_down; 
+  }
+}
+.tgico-animals {
+  &:before {
+    content: $tgico-animals; 
+  }
+}
+.tgico-archive {
+  &:before {
+    content: $tgico-archive; 
+  }
+}
+.tgico-adduser {
+  &:before {
+    content: $tgico-adduser; 
+  }
+}
+.tgico-admin {
+  &:before {
+    content: $tgico-admin; 
+  }
+}
+.tgico-addmember_filled {
+  &:before {
+    content: $tgico-addmember_filled; 
+  }
+}
+.tgico-activesessions {
+  &:before {
+    content: $tgico-activesessions; 
+  }
+}
+.tgico-add {
+  &:before {
+    content: $tgico-add; 
+  }
+}
+.tgico-fullscreen {
+  &:before {
+    content: $tgico-fullscreen; 
+  }
+}
+.tgico-check_svg1 {
+  &:before {
+    content: $tgico-check_svg1; 
+  }
+}
+.tgico-checks {
+  &:before {
+    content: $tgico-checks; 
+  }
 }

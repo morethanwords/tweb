@@ -1109,7 +1109,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
           return cancellablePromise;
         };
 
-        //this.lazyLoadQueue.unshift({load});
+        this.lazyLoadQueue.unshift({load});
       });
     }
 

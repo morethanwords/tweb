@@ -24,8 +24,11 @@
     padding: 0 7.75px;
 
     &.tgico {
-      font-size: 1.5rem;
       width: 1.5rem;
+
+      &:before {
+        font-size: 1.5rem;
+      }
     }
   }
 
