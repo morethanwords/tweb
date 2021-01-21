@@ -6,9 +6,10 @@ const postcssPresetEnv = require('postcss-preset-env');
 const ServiceWorkerWebpackPlugin = require('serviceworker-webpack-plugin');
 const fs = require('fs');
 
-const allowedIPs = ['194.58.97.147', '195.66.140.39', '192.168.31.144', '127.0.0.1', '192.168.31.1', '192.168.31.192', '176.100.8.202', '46.219.250.22', '193.42.119.184', '46.133.168.67', '78.26.144.197', '46.133.225.88', '128.124.170.79'];
+const allowedIPs = ['194.58.97.147', '195.66.140.39', '127.0.0.1', '176.100.8.202'];
 const devMode = process.env.NODE_ENV !== 'production';
 const useLocal = true;
+const useLocalNotLocal = false;
 
 if(devMode) {
   console.log('DEVMODE IS ON!');
@@ -94,7 +95,7 @@ module.exports = {
     contentBase: path.join(__dirname, 'public'),
     watchContentBase: true,
     compress: true,
-    http2: useLocal ? undefined : true,
+    http2: useLocalNotLocal ? true : (useLocal ? undefined : true),
     https: useLocal ? undefined : {
       key: fs.readFileSync(__dirname + '/certs/server-key.pem', 'utf8'),
       cert: fs.readFileSync(__dirname + '/certs/server-cert.pem', 'utf8')
@@ -102,7 +103,7 @@ module.exports = {
     allowedHosts: useLocal ? undefined : [
       'tweb.enko.club'
     ],
-    host: useLocal ? undefined : '0.0.0.0',
+    host: useLocalNotLocal ? '192.168.93.183' : (useLocal ? undefined : '0.0.0.0'),
     public: useLocal ? undefined : 'tweb.enko.club',
     //host: '192.168.0.105', // '0.0.0.0'
     //host: 'tweb.enko.club', // '0.0.0.0'
@@ -117,8 +118,7 @@ module.exports = {
           IP = req.connection.remoteAddress.split(':').pop();
         }
 
-        // last is ODESSA
-        if(!allowedIPs.includes(IP) && !/^192\.168\.\d{1,3}\.\d{1,3}$/.test(IP) && !/^88\.155\.57\.\d{1,3}$/.test(IP)) {
+        if(!allowedIPs.includes(IP) && !/^192\.168\.\d{1,3}\.\d{1,3}$/.test(IP)) {
           console.log('Bad IP connecting: ' + IP, req.url);
           res.status(404).send('Nothing interesting here.');
         } else {
