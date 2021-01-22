@@ -130,7 +130,7 @@ export class EmoticonsDropdown {
 
     this.searchButton = this.element.querySelector('.emoji-tabs-search');
     this.searchButton.addEventListener('click', () => {
-      if(this.tabId == 1) {
+      if(this.tabId === 1) {
         appSidebarRight.stickersTab.init();
       } else {
         appSidebarRight.gifsTab.init();
@@ -177,15 +177,15 @@ export class EmoticonsDropdown {
   }
 
   private onSelectTabClick = (id: number) => {
-    if(this.tabId == id) {
+    if(this.tabId === id) {
       return;
     }
     
     animationIntersector.checkAnimations(true, EMOTICONSSTICKERGROUP);
 
     this.tabId = id;
-    this.searchButton.classList.toggle('hide', this.tabId == 0);
-    this.deleteBtn.classList.toggle('hide', this.tabId != 0);
+    this.searchButton.classList.toggle('hide', this.tabId === 0);
+    this.deleteBtn.classList.toggle('hide', this.tabId !== 0);
   };
 
   public checkRights = () => {
@@ -200,11 +200,8 @@ export class EmoticonsDropdown {
     tabsElements[3].toggleAttribute('disabled', !canSendGifs);
 
     const active = this.tabsEl.querySelector('.active');
-    if(active && whichChild(active) != 1 && (!canSendStickers || !canSendGifs)) {
-      this.selectTab(0);
-      this.onSelectTabClick(0);
-      active.classList.remove('active');
-      children[1].classList.add('active');
+    if(active && whichChild(active) !== 1 && (!canSendStickers || !canSendGifs)) {
+      this.selectTab(0, false);
     }
   };
 

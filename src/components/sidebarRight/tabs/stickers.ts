@@ -44,9 +44,8 @@ export default class AppStickersTab implements SliderTab {
       const target = findUpClassName(e.target, 'sticker-set');
       if(!target) return;
 
-
       const id = target.dataset.stickerSet as string;
-      const access_hash = target.dataset.stickerSet as string;
+      const access_hash = target.dataset.access_hash as string;
 
       const button = findUpClassName(e.target, 'sticker-set-button') as HTMLElement;
       if(button) {

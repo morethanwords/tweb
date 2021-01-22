@@ -32,7 +32,7 @@
       color: white;
       
       @include respond-to(handhelds) {
-        padding: 7px 0px 9px 0px;
+        padding: 7px 0px 9px;
       }
     }
   }
@@ -41,18 +41,18 @@
     position: relative;
 
     &:before {
-      background: radial-gradient(ellipse at center, transparent 0%, rgba(0, 0, 0, 0.5) 100%);
+      background: radial-gradient(ellipse at center, transparent 0%, rgba(0, 0, 0, .5) 100%);
     }
 
     &--2:before {
-      background: rgba(24, 24, 24, 0.8);
+      background: rgba(24, 24, 24, .8);
     }
   }
 }
 
 .default {
-  border: 0 solid rgba(0, 0, 0, 0.2);
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+  border: 0 solid rgba(0, 0, 0, .2);
+  box-shadow: 0 0 20px rgba(0, 0, 0, .2);
   position: relative;
   font-size: 0;
   //overflow: hidden;
@@ -80,7 +80,7 @@
     top: 20px;
     z-index: 1;
     font-size: 24px;
-    color: rgba(255, 255, 255, 0.8);
+    color: rgba(255, 255, 255, .8);
     font-style: italic;
   }
 
@@ -403,23 +403,6 @@ input[type=range] {
   align-items: center;
 }
 
-.circle .circle-time {
-  color: #fff;
-  font-size: 13px;
-  float: left;
-  //margin-top: 1px;
-}
-.circle .circle-time-left {
-  position: absolute;
-  top: 3px;
-  left: 2px;
-  border-radius: 12px;
-  background-color: rgba(0, 0, 0, 0.23);
-  padding: 1px 7px 2px 7px;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-}
 video[data-ckin="circle"] {
   border-radius: 50%;
   overflow: hidden;
@@ -441,12 +424,30 @@ video[data-ckin="circle"] {
   position: relative;
   width: 200px;
   height: 200px;
-}
 
-.iconVolume {
-  padding: 0 1px 0 3px;
-  display: flex;
-  align-items: center;
-  font-size: 1.25rem;
-  color: #fff;
+  .circle-time-left {
+    color: #fff;
+    position: absolute;
+    top: 3px;
+    left: 2px;
+    border-radius: 12px;
+    background-color: rgba(0, 0, 0, .23);
+    padding: 1px 7px 2px 7px;
+    height: 18px;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+  
+    .circle-time {
+      font-size: .75rem;
+      //margin-top: 1px;
+    }
+  }
+
+  .iconVolume {
+    padding: 0 1px 0 .25rem;
+    display: flex;
+    align-items: center;
+    font-size: 1rem;
+  }
 }

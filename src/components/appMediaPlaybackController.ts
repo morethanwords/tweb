@@ -47,12 +47,13 @@ class AppMediaPlaybackController {
     const storage = this.media[peerId] ?? (this.media[peerId] = {});
     if(storage[mid]) return storage[mid];
 
-    const media = document.createElement(doc.type == 'round' ? 'video' : 'audio');
+    const media = document.createElement(doc.type === 'round' ? 'video' : 'audio');
     //const source = document.createElement('source');
     //source.type = doc.type == 'voice' && !opusDecodeController.isPlaySupported() ? 'audio/wav' : doc.mime_type;
 
-    if(doc.type == 'round') {
+    if(doc.type === 'round') {
       media.setAttribute('playsinline', 'true');
+      //media.muted = true;
     }
 
     media.dataset.mid = '' + mid;
@@ -67,7 +68,9 @@ class AppMediaPlaybackController {
     media.addEventListener('playing', () => {
       this.currentPeerId = peerId;
 
-      if(this.playingMedia != media) {
+      //console.log('appMediaPlaybackController: video playing', this.currentPeerId, this.playingMedia, media);
+
+      if(this.playingMedia !== media) {
         if(this.playingMedia && !this.playingMedia.paused) {
           this.playingMedia.pause();
         }
@@ -86,7 +89,9 @@ class AppMediaPlaybackController {
     media.addEventListener('ended', this.onEnded);
     
     const onError = (e: Event) => {
-      if(this.nextMid == mid) {
+      //console.log('appMediaPlaybackController: video onError', e);
+
+      if(this.nextMid === mid) {
         this.loadSiblingsMedia(peerId, doc.type as MediaType, mid).then(() => {
           if(this.nextMid && storage[this.nextMid]) {
             storage[this.nextMid].play();
@@ -111,7 +116,7 @@ class AppMediaPlaybackController {
       //media.autoplay = true;
       //console.log('will set media url:', media, doc, doc.type, doc.url);
 
-      if(doc.type == 'audio' && doc.supportsStreaming && isSafari) {
+      if(doc.type === 'audio' && doc.supportsStreaming && isSafari) {
         this.handleSafariStreamable(media);
       }
 
