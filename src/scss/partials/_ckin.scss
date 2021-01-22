@@ -428,26 +428,26 @@ video[data-ckin="circle"] {
   .circle-time-left {
     color: #fff;
     position: absolute;
-    top: 3px;
-    left: 2px;
+    top: .1875rem;
+    left: .1875rem;
     border-radius: 12px;
     background-color: rgba(0, 0, 0, .23);
-    padding: 1px 7px 2px 7px;
-    height: 18px;
+    padding: 1px 6px 2px 7px;
+    height: 1.125rem;
     z-index: 2;
     display: flex;
     align-items: center;
-  
-    .circle-time {
-      font-size: .75rem;
-      //margin-top: 1px;
-    }
+  }
+
+  .circle-time {
+    font-size: .75rem;
+    //margin-top: 1px;
   }
 
   .iconVolume {
-    padding: 0 1px 0 .25rem;
+    padding-left: .25rem;
     display: flex;
     align-items: center;
-    font-size: 1rem;
+    font-size: 1.125rem;
   }
 }
