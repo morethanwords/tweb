@@ -926,6 +926,10 @@ $bubble-margin: .25rem;
     }
   }
 
+  .message.poll-message {
+    max-width: 400px;
+  }
+
   .message.document-message {
     max-width: 325px !important;
 
@@ -1929,7 +1933,7 @@ $bubble-margin: .25rem;
         }
       }
 
-      &-footer-button {
+      &-footer-button, &-hint {
         color: #4fae4e;
       }
     }
@@ -2159,13 +2163,14 @@ poll-element {
         height: 16px;
         width: 16px;
         font-weight: bold;
-        font-size: 14px;
-        line-height: 1.4;
+        font-size: .75rem;
         opacity: 0;
         animation: fade-in-opacity .1s ease forwards;
         animation-direction: reverse;
         animation-delay: .24s;
-        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
 
         &:before {
           content: $tgico-check;
