@@ -162,9 +162,9 @@
     }
   }
 
-  html.no-touch &:hover {
+  /* html.no-touch &:hover {
     background-color: var(--color-gray-hover);
-  }
+  } */
 
   &-border {
     height: 2rem;
@@ -240,9 +240,9 @@
     padding: .25rem;
     border-radius: 4px;
 
-    html.no-touch &:hover {
+    /* html.no-touch &:hover {
       background-color: var(--color-gray-hover);
-    }
+    } */
   }
 }
 

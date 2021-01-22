@@ -178,7 +178,7 @@ export default class VideoPlayer {
 
     this.stylePlayer();
 
-    if(this.skin == 'default') {
+    if(this.skin === 'default') {
       let controls = this.wrapper.querySelector('.default__controls.ckin__controls') as HTMLDivElement;
       this.progress = new MediaProgressLine(video, streamable);
       controls.prepend(this.progress.container);
@@ -206,8 +206,6 @@ export default class VideoPlayer {
   
     const html = this.buildControls();
     player.insertAdjacentHTML('beforeend', html);
-    let elapsed = 0;
-    let prevTime = 0;
     let timeDuration: HTMLElement;
   
     if(skin === 'default') {
@@ -374,20 +372,19 @@ export default class VideoPlayer {
       circle.addEventListener('click', () => {
         this.togglePlay();
       });
+
+      const update = () => {
+        const offset = circumference - video.currentTime / video.duration * circumference;
+        circle.style.strokeDashoffset = '' + offset;
+        
+        if(video.paused) {
+          clearInterval(updateInterval);
+        }
+      };
   
       video.addEventListener('play', () => {
         iconVolume.style.display = 'none';
-        updateInterval = window.setInterval(() => {
-          //elapsed += 0.02; // Increase with timer interval
-          if(video.currentTime != prevTime) {
-            elapsed = video.currentTime; // Update if getCurrentTime was changed
-            prevTime = video.currentTime;
-          }
-
-          const offset = circumference - elapsed / video.duration * circumference;
-          circle.style.strokeDashoffset = '' + offset;
-          if(video.paused) clearInterval(updateInterval);
-        }, 20);
+        updateInterval = window.setInterval(update, 20);
       });
   
       video.addEventListener('pause', () => {
@@ -396,22 +393,6 @@ export default class VideoPlayer {
 
       let updateInterval = 0;
       video.addEventListener('timeupdate', () => {
-        clearInterval(updateInterval);
-
-        let elapsed = 0;
-        let prevTime = 0;
-  
-        updateInterval = window.setInterval(() => {
-          if(video.currentTime != prevTime) {
-            elapsed = video.currentTime; // Update if getCurrentTime was changed
-            prevTime = video.currentTime;
-          }
-          
-          const offset = circumference - elapsed / video.duration * circumference;
-          circle.style.strokeDashoffset = '' + offset;
-          if(video.paused) clearInterval(updateInterval);
-        }, 20);
-  
         const timeLeft = String((video.duration - video.currentTime) | 0).toHHMMSS();
         if(timeLeft != '0') timeDuration.innerHTML = timeLeft;
       });
@@ -435,6 +416,8 @@ export default class VideoPlayer {
   }
 
   public togglePlay(stop?: boolean) {
+    //console.log('video togglePlay:', stop, this.video.paused);
+
     if(stop) {
       this.video.pause();
       this.wrapper.classList.remove('is-playing');

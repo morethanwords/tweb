@@ -96,6 +96,7 @@
 
     .badge {
       margin-left: 5px;
+      //line-height: inherit !important;
     }
 
     &:not(.hide) + .scrollable {

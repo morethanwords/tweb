@@ -36,7 +36,6 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
       } catch(e) {
         if(e !== 'NO_ENTRY_FOUND') {
           this.useStorage = false;
-          value = undefined;
           console.error('[AS]: get error:', e, key, value);
         }
       }
@@ -47,12 +46,12 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
     }
   }
 
-  public async set(obj: Partial<Storage>) {
+  public async set(obj: Partial<Storage>, onlyLocal = false) {
     //console.log('storageSetValue', obj, callback, arguments);
 
-    for(let key in obj) {
+    for(const key in obj) {
       if(obj.hasOwnProperty(key)) {
-        let value = obj[key];
+        const value = obj[key];
         this.setToCache(key, value);
 
         // let perf = /* DEBUG */false ? performance.now() : 0;
@@ -69,7 +68,7 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
         value = stringify(value);
         console.log('LocalStorage set: stringify time by own stringify:', performance.now() - perf); */
 
-        if(this.useStorage) {
+        if(this.useStorage && !onlyLocal) {
           try {
             //console.log('setItem: will set', key/* , value */);
             //await this.cacheStorage.delete(key); // * try to prevent memory leak in Chrome leading to 'Unexpected internal error.'
@@ -85,8 +84,15 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
     }
   }
 
-  public async remove(key: keyof Storage) {
-    delete this.cache[key];
+  public async remove(key: keyof Storage, saveLocal = false) {
+    /* if(!this.cache.hasOwnProperty(key)) {
+      return;
+    } */
+
+    if(!saveLocal) {
+      delete this.cache[key];
+    }
+    
     if(this.useStorage) {
       try {
         await this.storage.delete(key as string);

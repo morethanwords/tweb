@@ -24,7 +24,7 @@
     padding: 0 7.75px;
 
     &.tgico {
-      width: 1.5rem;
+      // width: 1.5rem;
 
       &:before {
         font-size: 1.5rem;
@@ -32,9 +32,9 @@
     }
   }
 
-  &.tgico {
+  /* &.tgico {
     padding: 0;
-  }
+  } */
 
   &-green {
     background-color: $color-green;

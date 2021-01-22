@@ -441,7 +441,7 @@ namespace RichTextProcessor {
         }
 
         case 'messageEntityHighlight': {
-          insertPart(entity, '<i>', '</i>');
+          insertPart(entity, '<i class="text-highlight">', '</i>');
           break;
         }
 

@@ -57,6 +57,7 @@ export class AppStickersManager {
         if(cachedSet && cachedSet.documents?.length) {
           this.saveStickers(cachedSet.documents);
           resolve(cachedSet);
+          delete this.getStickerSetPromises[set.id];
           return;
         }
       }
@@ -92,7 +93,7 @@ export class AppStickersManager {
     if(!stickerSet || !stickerSet.documents) return undefined;
 
     emoji = emoji.replace(/\ufe0f/g, '').replace(/🏻|🏼|🏽|🏾|🏿/g, '');
-    const pack = stickerSet.packs.find(p => p.emoticon == emoji);
+    const pack = stickerSet.packs.find(p => p.emoticon === emoji);
     return pack ? appDocsManager.getDoc(pack.documents[0]) : undefined;
   }
   
@@ -117,8 +118,7 @@ export class AppStickersManager {
     
     //console.log('stickers wrote', this.stickerSets);
     const needSave = stickerSet.set.installed_date || id === 'emoji';
-    if(needSave) this.storage.set({[id]: stickerSet});
-    else this.storage.remove(id);
+    this.storage.set({[id]: stickerSet}, !needSave);
   }
 
   public getStickerSetThumbDownloadOptions(stickerSet: StickerSet.stickerSet) {
@@ -185,6 +185,7 @@ export class AppStickersManager {
       if(res) {
         delete set.installed_date;
         rootScope.broadcast('stickers_deleted', set);
+        this.storage.remove(set.id, true);
         return true;
       }
     } else {

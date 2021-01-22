@@ -2870,10 +2870,11 @@ export default class ChatBubbles {
   }
 
   public deleteEmptyDateGroups() {
-    for(let i in this.dateMessages) {
-      let dateMessage = this.dateMessages[i];
+    const mustBeCount = 1 + +!!this.stickyIntersector;
+    for(const i in this.dateMessages) {
+      const dateMessage = this.dateMessages[i];
 
-      if(dateMessage.container.childElementCount == 2) { // only date div + sentinel div
+      if(dateMessage.container.childElementCount === mustBeCount) { // only date div + sentinel div
         dateMessage.container.remove();
         if(this.stickyIntersector) {
           this.stickyIntersector.unobserve(dateMessage.container, dateMessage.div);

@@ -132,33 +132,38 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     const clear = () => {
       //console.log('clearing video');
 
-      globalVideo.removeEventListener('timeupdate', onTimeUpdate);
+      globalVideo.removeEventListener('timeupdate', onGlobalTimeUpdate);
       globalVideo.removeEventListener('play', onGlobalPlay);
       globalVideo.removeEventListener('pause', onGlobalPause);
       video.removeEventListener('play', onVideoPlay);
       video.removeEventListener('pause', onVideoPause);
     };
 
-    const onTimeUpdate = () => {
+    const onGlobalTimeUpdate = (e: Event) => {
+      //console.log('video global timeupdate event', e, globalVideo.currentTime, globalVideo.duration);
       if(!isInDOM(video)) {
         clear();
       }
     };
 
-    const onGlobalPlay = () => {
+    const onGlobalPlay = (e: Event) => {
+      //console.log('video global play event', e);
       video.play();
     };
 
-    const onGlobalPause = () => {
+    const onGlobalPause = (e: Event) => {
+      //console.trace('video global pause event', e, globalVideo.paused, e.eventPhase);
       video.pause();
     };
 
-    const onVideoPlay = () => {
+    const onVideoPlay = (e: Event) => {
+      //console.log('video play event', e);
+      globalVideo.currentTime = video.currentTime;
       globalVideo.play();
     };
 
-    const onVideoPause = () => {
-      //console.log('video pause event');
+    const onVideoPause = (e: Event) => {
+      //console.trace('video pause event', e);
       if(isInDOM(video)) {
         globalVideo.pause();
       } else {
@@ -166,7 +171,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       }
     };
 
-    globalVideo.addEventListener('timeupdate', onTimeUpdate);
+    globalVideo.addEventListener('timeupdate', onGlobalTimeUpdate);
     globalVideo.addEventListener('play', onGlobalPlay);
     globalVideo.addEventListener('pause', onGlobalPause);
     video.addEventListener('play', onVideoPlay);
@@ -604,7 +609,7 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
     return promise;
   };
 
-  const onLoad = () => {
+  const onLoad = (): Promise<void> => {
     if(middleware && !middleware()) return Promise.resolve();
 
     return new Promise((resolve) => {
@@ -889,7 +894,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
         image.classList.add('fade-in');
       }
 
-      return new Promise((resolve, reject) => {
+      return new Promise<void>((resolve, reject) => {
         const r = () => {
           if(middleware && !middleware()) return resolve();
   

@@ -231,7 +231,7 @@ export class AppImManager {
       } else if(e.code === "KeyC" && (e.ctrlKey || e.metaKey) && target.tagName !== 'INPUT') {
         return;
       } else if(e.code === 'ArrowUp') {
-        if(!chat.input.editMsgId) {
+        if(!chat.input.editMsgId && chat.input.isInputEmpty()) {
           const history = appMessagesManager.getHistoryStorage(chat.peerId, chat.threadId);
           if(history.history.length) {
             let goodMid: number;

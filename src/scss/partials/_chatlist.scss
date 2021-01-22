@@ -99,6 +99,23 @@
       align-items: flex-start;
       height: 27px;
     }
+
+    a {
+      color: inherit;
+    }
+
+    .text-highlight {
+      color: #000;
+    }
+
+    /* img.emoji {
+      margin-right: .25rem;
+      margin-left: .25rem;
+
+      &:first-child {
+        margin-left: 0;
+      }
+    } */
   }
 
   li.menu-open {
@@ -195,7 +212,7 @@
   .user-title, .user-last-message {
     i {
       font-style: normal;
-      color: $color-blue;
+      //color: $color-blue;
     }
   }
 

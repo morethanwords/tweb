@@ -1276,13 +1276,16 @@ $bubble-margin: .25rem;
     background-color: var(--message-time-background);
     color: #fff;
     text-align: center;
-    font-size: 34px;
-    line-height: 60px;
+    font-size: 2.125rem;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+  }
 
-    @include respond-to(handhelds) {
-      line-height: unset;
-    }
+  .ckin__player.circle {
+    z-index: 1;
   }
 
   &:not(.forwarded).hide-name, &.emoji-big {
