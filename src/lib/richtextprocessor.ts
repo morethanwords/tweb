@@ -584,10 +584,8 @@ namespace RichTextProcessor {
       return '';
     }
 
-    let entities = (options.entities || []).slice();
-
     return wrapRichText(text, {
-      entities, 
+      entities: options.entities, 
       noLinks: true,
       wrappingDraft: true,
       passEntities: {

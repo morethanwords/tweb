@@ -8,12 +8,13 @@
 	max-height: 3.5rem;
 	// border-bottom: 1px solid #DADCE0;
 
-	@include respond-to(handhelds) {
+	&.is-pinned-floating {
 		&.is-pinned-audio-shown, &.is-pinned-message-shown:not(.hide-pinned) {
 			margin-bottom: 52px;
 			/* & + .bubbles {
 				margin-top: 52px;
 			} */
+
 			& ~ .drops-container {
 				--pinned-floating-height: 52px;
 			}

@@ -84,6 +84,7 @@
   display: grid;
   //grid-template-columns: 1fr;
   grid-template-columns: 100%;
+  grid-template-rows: 100%;
 
   /* @include respond-to(not-handhelds) {
     overflow-x: hidden;

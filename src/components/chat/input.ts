@@ -13,7 +13,7 @@ import apiManager from "../../lib/mtproto/mtprotoworker";
 //import Recorder from '../opus-recorder/dist/recorder.min';
 import opusDecodeController from "../../lib/opusDecodeController";
 import RichTextProcessor from "../../lib/richtextprocessor";
-import { attachClickEvent, blurActiveElement, cancelEvent, cancelSelection, findUpClassName, getRichValue, getSelectedNodes, isInputEmpty, markdownTags, MarkdownType, placeCaretAtEnd, isSendShortcutPressed } from "../../helpers/dom";
+import { attachClickEvent, blurActiveElement, cancelEvent, cancelSelection, findUpClassName, getRichValue, getSelectedNodes, isInputEmpty, markdownTags, MarkdownType, placeCaretAtEnd, isSendShortcutPressed, fixSafariStickyInput } from "../../helpers/dom";
 import { ButtonMenuItemOptions } from '../buttonMenu';
 import emoticonsDropdown from "../emoticonsDropdown";
 import PopupCreatePoll from "../popups/createPoll";
@@ -36,6 +36,7 @@ import rootScope from '../../lib/rootScope';
 import PopupPinMessage from '../popups/unpinMessage';
 import { debounce } from '../../helpers/schedulers';
 import { tsNow } from '../../helpers/date';
+import { isSafari } from '../../helpers/userAgent';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -88,9 +89,9 @@ export default class ChatInput {
   private recordRippleEl: HTMLElement;
   private recordStartTime = 0;
 
-  private scrollTop = 0;
-  private scrollOffsetTop = 0;
-  private scrollDiff = 0;
+  // private scrollTop = 0;
+  // private scrollOffsetTop = 0;
+  // private scrollDiff = 0;
 
   public helperType: Exclude<ChatInputHelperType, 'webpage'>;
   private helperFunc: () => void;
@@ -137,7 +138,7 @@ export default class ChatInput {
     this.goDownUnreadBadge = document.createElement('span');
     this.goDownUnreadBadge.classList.add('badge', 'badge-24', 'badge-green');
     this.goDownBtn.append(this.goDownUnreadBadge);
-    this.chatInput.append(this.goDownBtn);
+    this.inputContainer.append(this.goDownBtn);
 
     attachClickEvent(this.goDownBtn, (e) => {
       cancelEvent(e);
@@ -145,6 +146,71 @@ export default class ChatInput {
     }, {listenerSetter: this.listenerSetter});
 
     // * constructor end
+
+    /* let setScrollTopTimeout: number;
+    // @ts-ignore
+    let height = window.visualViewport.height; */
+    // @ts-ignore
+    // this.listenerSetter.add(window.visualViewport, 'resize', () => {
+    //   const scrollable = this.chat.bubbles.scrollable;
+    //   const wasScrolledDown = scrollable.isScrolledDown;
+      
+    //   /* if(wasScrolledDown) {
+    //     this.saveScroll();
+    //   } */
+      
+    //   // @ts-ignore
+    //   let newHeight = window.visualViewport.height;
+    //   const diff = height - newHeight;
+    //   const scrollTop = scrollable.scrollTop;
+    //   const needScrollTop = wasScrolledDown ? scrollable.scrollHeight : scrollTop + diff; // * wasScrolledDown это проверка для десктоп хрома, когда пропадает панель загрузок снизу
+
+    //   console.log('resize before', scrollable.scrollTop, scrollable.container.clientHeight, scrollable.scrollHeight, wasScrolledDown, scrollable.lastScrollTop, diff, needScrollTop);
+
+    //   scrollable.scrollTop = needScrollTop;
+
+    //   if(setScrollTopTimeout) clearTimeout(setScrollTopTimeout);
+    //   setScrollTopTimeout = window.setTimeout(() => {
+    //     const diff = height - newHeight;
+    //     const isScrolledDown = scrollable.scrollHeight - Math.round(scrollable.scrollTop + scrollable.container.offsetHeight + diff) <= 1;
+    //     height = newHeight;
+
+    //     scrollable.scrollTop = needScrollTop;
+        
+    //     console.log('resize after', scrollable.scrollTop, scrollable.container.clientHeight, scrollable.scrollHeight, scrollable.isScrolledDown, scrollable.lastScrollTop, isScrolledDown);
+
+    //     /* if(isScrolledDown) {
+    //       scrollable.scrollTop = scrollable.scrollHeight;
+    //     } */
+
+    //     //scrollable.scrollTop += diff;
+    //     setScrollTopTimeout = 0;
+    //   }, 0);
+    // });
+
+    // ! Can't use it with resizeObserver
+    /* this.listenerSetter.add(window.visualViewport, 'resize', () => {
+      const scrollable = this.chat.bubbles.scrollable;
+      const wasScrolledDown = scrollable.isScrolledDown;
+
+      // @ts-ignore
+      let newHeight = window.visualViewport.height;
+      const diff = height - newHeight;
+      const needScrollTop = wasScrolledDown ? scrollable.scrollHeight : scrollable.scrollTop + diff; // * wasScrolledDown это проверка для десктоп хрома, когда пропадает панель загрузок снизу
+
+      //console.log('resize before', scrollable.scrollTop, scrollable.container.clientHeight, scrollable.scrollHeight, wasScrolledDown, scrollable.lastScrollTop, diff, needScrollTop);
+
+      scrollable.scrollTop = needScrollTop;
+      height = newHeight;
+
+      if(setScrollTopTimeout) clearTimeout(setScrollTopTimeout);
+      setScrollTopTimeout = window.setTimeout(() => { // * try again for scrolled down Android Chrome
+        scrollable.scrollTop = needScrollTop;
+        
+        //console.log('resize after', scrollable.scrollTop, scrollable.container.clientHeight, scrollable.scrollHeight, scrollable.isScrolledDown, scrollable.lastScrollTop, isScrolledDown);
+        setScrollTopTimeout = 0;
+      }, 0);
+    }); */
   }
 
   public constructPeerHelpers() {
@@ -650,13 +716,19 @@ export default class ChatInput {
     if(isTouchSupported) {
       attachClickEvent(this.messageInput, (e) => {
         this.appImManager.selectTab(1); // * set chat tab for album orientation
-        this.saveScroll();
+        //this.saveScroll();
         emoticonsDropdown.toggle(false);
       }, {listenerSetter: this.listenerSetter});
 
-      this.listenerSetter.add(window, 'resize', () => {
+      /* this.listenerSetter.add(window, 'resize', () => {
         this.restoreScroll();
-      });
+      }); */
+
+      /* if(isSafari) {
+        this.listenerSetter.add(this.messageInput, 'focusin', () => {
+          fixSafariStickyInput(this.messageInput);
+        });
+      } */
     }
 
     /* this.listenerSetter.add(this.messageInput, 'beforeinput', (e: Event) => {
@@ -673,6 +745,14 @@ export default class ChatInput {
       }
     }); */
     this.listenerSetter.add(this.messageInput, 'input', this.onMessageInput);
+
+    if(this.chat.type === 'chat' || this.chat.type === 'discussion') {
+      this.listenerSetter.add(this.messageInput, 'focusin', () => {
+        if(this.chat.bubbles.scrolledAllDown) {
+          this.appMessagesManager.readAllHistory(this.chat.peerId, this.chat.threadId);
+        }
+      }); 
+    }
   }
 
   private prepareDocumentExecute = () => {
@@ -1170,10 +1250,7 @@ export default class ChatInput {
 
   public onMessageSent(clearInput = true, clearReply?: boolean) {
     if(this.chat.type !== 'scheduled') {
-      const historyStorage = this.appMessagesManager.getHistoryStorage(this.chat.peerId, this.chat.threadId);
-      if(historyStorage.maxId) {
-        this.appMessagesManager.readHistory(this.chat.peerId, historyStorage.maxId, this.chat.threadId); // lol
-      }
+      this.appMessagesManager.readAllHistory(this.chat.peerId, this.chat.threadId, true);
     }
 
     this.scheduleDate = undefined;
@@ -1407,30 +1484,30 @@ export default class ChatInput {
     }, 0);
   }
 
-  public saveScroll() {
-    this.scrollTop = this.chat.bubbles.scrollable.container.scrollTop;
-    this.scrollOffsetTop = this.chatInput.offsetTop;
-  }
+  // public saveScroll() {
+  //   this.scrollTop = this.chat.bubbles.scrollable.container.scrollTop;
+  //   this.scrollOffsetTop = this.chatInput.offsetTop;
+  // }
 
-  public restoreScroll() {
-    if(this.chatInput.style.display) return;
-    //console.log('input resize', offsetTop, this.chatInput.offsetTop);
-    let newOffsetTop = this.chatInput.offsetTop;
-    let container = this.chat.bubbles.scrollable.container;
-    let scrollTop = container.scrollTop;
-    let clientHeight = container.clientHeight;
-    let maxScrollTop = container.scrollHeight;
+  // public restoreScroll() {
+  //   if(this.chatInput.style.display) return;
+  //   //console.log('input resize', offsetTop, this.chatInput.offsetTop);
+  //   let newOffsetTop = this.chatInput.offsetTop;
+  //   let container = this.chat.bubbles.scrollable.container;
+  //   let scrollTop = container.scrollTop;
+  //   let clientHeight = container.clientHeight;
+  //   let maxScrollTop = container.scrollHeight;
 
-    if(newOffsetTop < this.scrollOffsetTop) {
-      this.scrollDiff = this.scrollOffsetTop - newOffsetTop;
-      container.scrollTop += this.scrollDiff;
-    } else if(scrollTop != this.scrollTop) {
-      let endDiff = maxScrollTop - (scrollTop + clientHeight);
-      if(endDiff < this.scrollDiff/*  && false */) {
-        //container.scrollTop -= endDiff;
-      } else {
-        container.scrollTop -= this.scrollDiff;
-      }
-    }
-  }
+  //   if(newOffsetTop < this.scrollOffsetTop) {
+  //     this.scrollDiff = this.scrollOffsetTop - newOffsetTop;
+  //     container.scrollTop += this.scrollDiff;
+  //   } else if(scrollTop != this.scrollTop) {
+  //     let endDiff = maxScrollTop - (scrollTop + clientHeight);
+  //     if(endDiff < this.scrollDiff/*  && false */) {
+  //       //container.scrollTop -= endDiff;
+  //     } else {
+  //       container.scrollTop -= this.scrollDiff;
+  //     }
+  //   }
+  // }
 }

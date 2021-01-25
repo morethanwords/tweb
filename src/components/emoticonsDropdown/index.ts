@@ -3,7 +3,7 @@ import appChatsManager from "../../lib/appManagers/appChatsManager";
 import appImManager from "../../lib/appManagers/appImManager";
 import { MOUNT_CLASS_TO } from "../../lib/mtproto/mtproto_config";
 import rootScope from "../../lib/rootScope";
-import { findUpClassName, findUpTag, whichChild } from "../../helpers/dom";
+import { blurActiveElement, findUpClassName, findUpTag, whichChild } from "../../helpers/dom";
 import animationIntersector from "../animationIntersector";
 import { horizontalMenu } from "../horizontalMenu";
 import LazyLoadQueue, { LazyLoadQueueIntersector } from "../lazyLoadQueue";
@@ -219,10 +219,10 @@ export class EmoticonsDropdown {
 
     if(isTouchSupported) {
       if(willBeActive) {
-        appImManager.chat.input.saveScroll();
-        // @ts-ignore
-        document.activeElement.blur();
-        await pause(100);
+        //appImManager.chat.input.saveScroll();
+        if(blurActiveElement()) {
+          await pause(100);
+        }
       }
     }
 
@@ -253,6 +253,13 @@ export class EmoticonsDropdown {
         this.events.onOpenAfter.forEach(cb => cb());
       }, isTouchSupported ? 0 : 200);
 
+      // ! can't use together with resizeObserver
+      /* if(isTouchSupported) {
+        const height = this.element.scrollHeight + appImManager.chat.input.inputContainer.scrollHeight - 10;
+        console.log('[ESG]: toggle: enable height', height);
+        appImManager.chat.bubbles.scrollable.scrollTop += height;
+      } */
+
       /* if(touchSupport) {
         this.restoreScroll();
       } */
@@ -282,6 +289,14 @@ export class EmoticonsDropdown {
 
         this.events.onCloseAfter.forEach(cb => cb());
       }, isTouchSupported ? 0 : 200);
+
+      /* if(isTouchSupported) {
+        const scrollHeight = this.container.scrollHeight;
+        if(scrollHeight) {
+          const height = this.container.scrollHeight + appImManager.chat.input.inputContainer.scrollHeight - 10;
+          appImManager.chat.bubbles.scrollable.scrollTop -= height;
+        }
+      } */
 
       /* if(touchSupport) {
         this.restoreScroll();

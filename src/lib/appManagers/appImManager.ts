@@ -258,7 +258,7 @@ export class AppImManager {
         }
       }
       
-      if(chat.input.messageInput && e.target !== chat.input.messageInput && target.tagName !== 'INPUT' && !target.hasAttribute('contenteditable')) {
+      if(chat.input.messageInput && e.target !== chat.input.messageInput && target.tagName !== 'INPUT' && !target.hasAttribute('contenteditable') && !isTouchSupported) {
         chat.input.messageInput.focus();
         placeCaretAtEnd(chat.input.messageInput);
       }
@@ -454,6 +454,8 @@ export class AppImManager {
       //appSidebarRight.toggleSidebar(false);
       document.body.classList.remove(RIGHT_COLUMN_ACTIVE_CLASSNAME);
     }
+
+    rootScope.broadcast('im_tab_change', id);
 
     //this._selectTab(id, mediaSizes.isMobile);
     //document.body.classList.toggle(RIGHT_COLUMN_ACTIVE_CLASSNAME, id == 2);

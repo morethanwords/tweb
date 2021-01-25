@@ -82,7 +82,10 @@ type BroadcastEvents = {
   'draft_updated': {peerId: number, threadId: number, draft: MyDraftMessage | undefined},
 
   'event-heavy-animation-start': void,
-  'event-heavy-animation-end': void
+  'event-heavy-animation-end': void,
+
+  'im_mount': void,
+  'im_tab_change': number
 };
 
 class RootScope extends EventListenerBase<any> {

@@ -11,6 +11,7 @@ $chat-helper-size: 39px;
 
 .chat-input {
 	--translateY: 0;
+	--bottom: #{$chat-padding-handhelds};
 	display: flex;
 	width: 100%;
 	max-width: 100%;
@@ -36,6 +37,14 @@ $chat-helper-size: 39px;
 		/* flex: 0 0 auto;
 		height: auto; */
 		max-width: var(--messages-container-width) !important;
+	}
+
+	@include respond-to(not-handhelds) {
+		--bottom: 21px;
+	}
+
+	@include respond-to(esg-bottom) {
+		--bottom: #{$chat-padding-handhelds};
 	}
 
 	@include respond-to(medium-screens) {
@@ -69,19 +78,13 @@ $chat-helper-size: 39px;
 		padding: 0 var(--padding-horizontal);
 		flex: 0 0 auto;
 		position: relative;
+		padding-bottom: var(--bottom);
 
 		@include respond-to(not-handhelds) {
 			--padding-horizontal: #{$chat-padding};
-			padding-bottom: 21px;
-		}
-
-		@include respond-to(handhelds) {
-			padding-bottom: $chat-padding-handhelds;
 		}
 
 		@include respond-to(esg-bottom) {
-			padding-bottom: $chat-padding-handhelds;
-
 			.btn-circle {
 				height: $chat-input-handhelds-size;
 				width: $chat-input-handhelds-size;
@@ -394,9 +397,13 @@ $chat-helper-size: 39px;
 			//max-width: 28.75rem;
 		}
 
-		.reply-wrapper {
+		/* .reply-wrapper {
 			transform: none !important;
 			border-radius: inherit;
+		} */
+
+		.reply-wrapper {
+			height: 0 !important;
 		}
 
 		.btn-send {
@@ -627,7 +634,7 @@ $chat-helper-size: 39px;
 
 	&.is-centering {
 		html:not(.is-safari) & {
-			transition: width .2s, border-bottom-right-radius .1s, transform .2s;
+			transition: width .2s, max-height .2s, border-bottom-right-radius .1s, transform .2s;
 
 			&:after {
 				transition: transform .1s;
@@ -759,21 +766,28 @@ $chat-helper-size: 39px;
 	.reply-wrapper {
 		justify-content: flex-start;
 		overflow: hidden;
-		transition: transform var(--layer-transition), border-radius var(--layer-transition);
+		/* transition: transform var(--layer-transition), border-radius var(--layer-transition);
 		position: absolute;
 		left: 0;
 		top: 0;
-		//height: calc(#{$chat-helper-size} + .3125rem);
 		height: 100%;
+		z-index: 1; */
+		height: 0;
+		width: calc(100% - var(--padding-horizontal) * 2);
+		padding: 0;
+		margin-top: .3125rem;//var(--padding-vertical);
+		margin-bottom: -.3125rem;
+		transition: height var(--layer-transition);
+		//height: calc(#{$chat-helper-size} + .3125rem);
 		align-items: flex-start;
-		z-index: 1;
 		user-select: none;
+		z-index: 2;
 
 		body.animation-level-0 & {
 			transition: none;
 		}
 
-		@include respond-to(handhelds) {
+		/* @include respond-to(handhelds) {
 			padding-top: .25rem;
 		}
 
@@ -781,6 +795,10 @@ $chat-helper-size: 39px;
 			border-bottom-left-radius: 0;
 			border-bottom-right-radius: 0;
 			transform: translateY(#{-$chat-helper-size});
+		} */
+
+		.chat.is-helper-active & {
+			height: 39px;
 		}
 		
 		/* &.active {
@@ -910,23 +928,14 @@ $chat-helper-size: 39px;
 			color: $color-blue;
 		}
 	}
-	
-	img.emoji {
-		height: 24px;
-		width: 24px;
-	}
 }
 
 .bubbles {
 	--translateY: 0;
-	/* overflow-y: scroll;
-	scrollbar-width: none;
-	-ms-overflow-style: none; */
 	width: 100%;
 	height: 100%;
 	max-height: 100%;
-	flex: 1 1 auto; /* Lets middle column shrink/grow to available width */
-	//overflow: hidden;
+	flex: 1 1 auto;
 	position: relative;
 
 	transform: translateY(var(--translateY));
@@ -940,17 +949,20 @@ $chat-helper-size: 39px;
     -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%); // fix safari overflow
 	} */
 
-	.chat.is-helper-active & {
-		&:not(.is-selecting), &.is-selecting.backwards {
-			--translateY: -#{$chat-helper-size};
+	// .chat.is-helper-active & {
+	// 	&:not(.is-selecting), &.is-selecting.backwards {
+	// 		/* --translateY: -#{$chat-helper-size};
 
-			.bubbles-inner {
-				transform: translateY(calc(var(--translateY) * -1));
-				//margin-top: $chat-helper-size;
-				//transition: none;
-			}
-		}
-	}
+	// 		.bubbles-inner {
+	// 			transform: translateY(calc(var(--translateY) * -1));
+	// 			//margin-top: $chat-helper-size;
+	// 			//transition: none;
+	// 		} */
+	// 		/* > .scrollable {
+	// 			margin-bottom: $chat-helper-size;
+	// 		} */
+	// 	}
+	// }
 
 	&.is-chat-input-hidden.is-selecting:not(.backwards) {
 		--translateY: -79px;
@@ -976,23 +988,9 @@ $chat-helper-size: 39px;
 
 		> .scrollable {
 			height: auto;
-			/* position: absolute;
-			bottom: 0;
-			left: 0; */
-			//position: relative; // неизвестно зачем это было
-	
-			//display: flex; // for end
-			//flex-direction: unset;
 			display: block;
-			//transform: none;
-	
-			/* display: flex;
-			flex-direction: column;
-			justify-content: flex-end; */
-			// * scrollbar takes some width, don't need to set padding for iOS
-			/* html.is-safari:not(.is-ios) & {
-				padding-left: 6px;
-			} */
+			/* margin-bottom: 0;
+			transition: margin-bottom var(--layer-transition) */
 		}
 	//}
 
@@ -1144,7 +1142,8 @@ $chat-helper-size: 39px;
 	align-items: center;
 	justify-content: center;
 	right: var(--chat-input-padding);
-	top: calc((var(--chat-input-size) * -1) - 6px);
+	//top: calc((var(--chat-input-size) * -1) - 6px);
+	bottom: calc(var(--chat-input-size) + var(--bottom) + 10px);
 	cursor: default;
 	opacity: 0;
 	z-index: 2;

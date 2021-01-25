@@ -61,6 +61,7 @@ export default class PinnedContainer {
     }
 
     this.divAndCaption.container.classList.toggle('is-floating', mediaSizes.isMobile);
+    this.topbar.container.classList.toggle('is-pinned-floating', mediaSizes.isMobile);
 
     const scrollable = this.chat.bubbles.scrollable;
 

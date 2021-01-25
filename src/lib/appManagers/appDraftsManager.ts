@@ -189,7 +189,7 @@ export class AppDraftsManager {
       let entities: MessageEntity[] = localDraft.entities;
 
       if(localDraft.reply_to_msg_id) {
-        params.reply_to_msg_id = appMessagesManager.getLocalMessageId(localDraft.reply_to_msg_id);
+        params.reply_to_msg_id = appMessagesManager.getServerMessageId(localDraft.reply_to_msg_id);
       }
 
       if(entities?.length) {

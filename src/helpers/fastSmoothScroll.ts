@@ -43,7 +43,7 @@ export default function fastSmoothScroll(
     return Promise.resolve(); */
   }
 
-  if(axis === 'y' && isInDOM(element)) {
+  if(axis === 'y' && isInDOM(element) && container.getBoundingClientRect) {
     const elementRect = element.getBoundingClientRect();
     const containerRect = container.getBoundingClientRect();
   
@@ -102,7 +102,7 @@ function scrollWithJs(
 
   //const { offsetTop: elementTop, offsetHeight: elementHeight } = element;
   const elementRect = element.getBoundingClientRect();
-  const containerRect = container.getBoundingClientRect();
+  const containerRect = container.getBoundingClientRect ? container.getBoundingClientRect() : document.body.getBoundingClientRect();
 
   //const transformable = container.firstElementChild as HTMLElement;
 

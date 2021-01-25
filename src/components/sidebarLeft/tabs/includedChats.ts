@@ -8,7 +8,6 @@ import { MyDialogFilter as DialogFilter } from "../../../lib/storages/filters";
 import rootScope from "../../../lib/rootScope";
 import { copy } from "../../../helpers/object";
 import ButtonIcon from "../../buttonIcon";
-import { FocusDirection } from "../../../helpers/fastSmoothScroll";
 import { fastRaf } from "../../../helpers/schedulers";
 import CheckboxField from "../../checkbox";
 import Button from "../../button";
@@ -28,7 +27,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
   init() {
     this.content.remove();
     this.container.classList.add('included-chatlist-container');
-    this.confirmBtn = ButtonIcon('check1 btn-confirm', {noRipple: true});
+    this.confirmBtn = ButtonIcon('check btn-confirm blue', {noRipple: true});
     this.confirmBtn.style.display = 'none';
 
     this.header.append(this.confirmBtn);

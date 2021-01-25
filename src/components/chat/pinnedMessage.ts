@@ -550,11 +550,6 @@ export default class ChatPinnedMessage {
     }
   }
 
-  public onChangeScreen(from: ScreenSize, to: ScreenSize) {
-    this.pinnedMessageContainer.divAndCaption.container.classList.toggle('is-floating', to == ScreenSize.mobile 
-      /* || (!this.chatAudio.divAndCaption.container.classList.contains('hide') && to == ScreenSize.medium) */);
-  }
-
   public _setPinnedMessage() {
     /////this.log('setting pinned message', message);
     //return;

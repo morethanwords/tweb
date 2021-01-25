@@ -6,10 +6,9 @@ import RichTextProcessor from "../../../lib/richtextprocessor";
 import rootScope from "../../../lib/rootScope";
 import AvatarElement from "../../avatar";
 import InputField from "../../inputField";
-import Scrollable from "../../scrollable";
 import SidebarSlider, { SliderSuperTab } from "../../slider";
 import AvatarEdit from "../../avatarEdit";
-import ButtonIcon from "../../buttonIcon";
+import Button from "../../button";
 
 // TODO: аватарка не поменяется в этой вкладке после изменения почему-то (если поставить в другом клиенте, и потом тут проверить, для этого ещё вышел в чатлист)
 
@@ -48,7 +47,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
     this.container.classList.add('edit-profile-container');
     this.title.innerText = 'Edit Profile';
     //this.scrollWrapper = this.container.querySelector('.scroll-wrapper');
-    this.nextBtn = ButtonIcon('check btn-circle btn-corner');
+    this.nextBtn = Button('btn-circle btn-corner tgico-check');
     this.content.append(this.nextBtn);
 
     this.avatarElem = document.createElement('avatar-element') as AvatarElement;

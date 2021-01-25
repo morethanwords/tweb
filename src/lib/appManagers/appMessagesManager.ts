@@ -451,7 +451,7 @@ export class AppMessagesManager {
     
     const messageId = this.generateTempMessageId(peerId);
     const randomIdS = randomLong();
-    const replyToMsgId = options.replyToMsgId ? this.getLocalMessageId(options.replyToMsgId) : undefined;
+    const replyToMsgId = options.replyToMsgId ? this.getServerMessageId(options.replyToMsgId) : undefined;
     const isChannel = appPeersManager.isChannel(peerId);
     const isBroadcast = appPeersManager.isBroadcast(peerId);
 
@@ -607,7 +607,7 @@ export class AppMessagesManager {
     const messageId = this.generateTempMessageId(peerId);
     const randomIdS = randomLong();
     const pFlags = this.generateFlags(peerId);
-    const replyToMsgId = options.replyToMsgId ? this.getLocalMessageId(options.replyToMsgId) : undefined;
+    const replyToMsgId = options.replyToMsgId ? this.getServerMessageId(options.replyToMsgId) : undefined;
     const isChannel = appPeersManager.isChannel(peerId);
     const isMegagroup = isChannel && appPeersManager.isMegagroup(peerId);
     const asChannel = !!(isChannel && !isMegagroup);
@@ -1004,7 +1004,7 @@ export class AppMessagesManager {
     }
 
     peerId = appPeersManager.getPeerMigratedTo(peerId) || peerId;
-    const replyToMsgId = options.replyToMsgId ? this.getLocalMessageId(options.replyToMsgId) : undefined;
+    const replyToMsgId = options.replyToMsgId ? this.getServerMessageId(options.replyToMsgId) : undefined;
 
     let caption = options.caption || '';
     let entities = options.entities || [];
@@ -1155,7 +1155,7 @@ export class AppMessagesManager {
     //this.checkSendOptions(options);
     const messageId = this.generateTempMessageId(peerId);
     const randomIdS = randomLong();
-    const replyToMsgId = options.replyToMsgId ? this.getLocalMessageId(options.replyToMsgId) : undefined;
+    const replyToMsgId = options.replyToMsgId ? this.getServerMessageId(options.replyToMsgId) : undefined;
     const isChannel = appPeersManager.isChannel(peerId);
     const isMegagroup = isChannel && appPeersManager.isMegagroup(peerId);
     const asChannel = isChannel && !isMegagroup ? true : false;
@@ -1639,7 +1639,7 @@ export class AppMessagesManager {
 
         // ! это может случиться, если запрос идёт не по папке 0, а по 1. почему-то read'ов нет
         // ! в итоге, чтобы получить 1 диалог, делается первый запрос по папке 0, потом запрос для архивных по папке 1, и потом ещё перезагрузка архивного диалога
-        if(!this.getLocalMessageId(dialog.read_inbox_max_id) && !this.getLocalMessageId(dialog.read_outbox_max_id)) {
+        if(!this.getServerMessageId(dialog.read_inbox_max_id) && !this.getServerMessageId(dialog.read_outbox_max_id)) {
           noIdsDialogs[dialog.peerId] = dialog;
 
           this.log.error('noIdsDialogs', dialog);
@@ -1692,7 +1692,7 @@ export class AppMessagesManager {
     scheduleDate: number
   }> = {}) {
     peerId = appPeersManager.getPeerMigratedTo(peerId) || peerId;
-    msgIds = msgIds.slice().sort((a, b) => a - b).map(mid => this.getLocalMessageId(mid));
+    msgIds = msgIds.slice().sort((a, b) => a - b).map(mid => this.getServerMessageId(mid));
 
     const randomIds: string[] = msgIds.map(() => randomLong());
 
@@ -1911,7 +1911,7 @@ export class AppMessagesManager {
       unpin,
       silent,
       pm_oneside: oneSide,
-      id: this.getLocalMessageId(mid)
+      id: this.getServerMessageId(mid)
     }).then(updates => {
       //this.log('pinned updates:', updates);
       apiUpdatesManager.processUpdateMessage(updates);
@@ -2023,7 +2023,7 @@ export class AppMessagesManager {
   /**
    * * will ignore outgoing offset
    */
-  public getLocalMessageId(messageId: number) {
+  public getServerMessageId(messageId: number) {
     const q = AppMessagesManager.MESSAGE_ID_OFFSET;
     if(messageId <= q) {
       return messageId;
@@ -2039,7 +2039,7 @@ export class AppMessagesManager {
   }
 
   public incrementMessageId(messageId: number, increment: number) {
-    return this.generateMessageId(this.getLocalMessageId(messageId) + increment);
+    return this.generateMessageId(this.getServerMessageId(messageId) + increment);
   }
 
   public saveMessages(messages: any[], options: Partial<{
@@ -3109,12 +3109,12 @@ export class AppMessagesManager {
         min_date: minDate,
         max_date: maxDate,
         limit,
-        offset_id: this.getLocalMessageId(maxId) || 0,
+        offset_id: this.getServerMessageId(maxId) || 0,
         add_offset: backLimit ? -backLimit : 0,
         max_id: 0,
         min_id: 0,
         hash: 0,
-        top_msg_id: this.getLocalMessageId(threadId) || 0
+        top_msg_id: this.getServerMessageId(threadId) || 0
       }, {
         //timeout: APITIMEOUT,
         noErrorBox: true
@@ -3223,7 +3223,7 @@ export class AppMessagesManager {
   public getDiscussionMessage(peerId: number, mid: number) {
     return apiManager.invokeApi('messages.getDiscussionMessage', {
       peer: appPeersManager.getInputPeerById(peerId),
-      msg_id: this.getLocalMessageId(mid)
+      msg_id: this.getServerMessageId(mid)
     }).then(result => {
       appChatsManager.saveApiChats(result.chats);
       appUsersManager.saveApiUsers(result.users);
@@ -3290,7 +3290,7 @@ export class AppMessagesManager {
   public deleteMessages(peerId: number, mids: number[], revoke?: true) {
     let promise: Promise<any>;
 
-    const localMessageIds = mids.map(mid => this.getLocalMessageId(mid));
+    const localMessageIds = mids.map(mid => this.getServerMessageId(mid));
 
     if(peerId < 0 && appPeersManager.isChannel(peerId)) {
       const channelId = -peerId;
@@ -3365,8 +3365,8 @@ export class AppMessagesManager {
       if(!historyStorage.readPromise) {
         apiPromise = apiManager.invokeApi('messages.readDiscussion', {
           peer: appPeersManager.getInputPeerById(peerId),
-          msg_id: this.getLocalMessageId(threadId),
-          read_max_id: this.getLocalMessageId(maxId)
+          msg_id: this.getServerMessageId(threadId),
+          read_max_id: this.getServerMessageId(maxId)
         });
       }
 
@@ -3383,7 +3383,7 @@ export class AppMessagesManager {
       if(!historyStorage.readPromise) {
         apiPromise = apiManager.invokeApi('channels.readHistory', {
           channel: appChatsManager.getChannelInput(-peerId),
-          max_id: this.getLocalMessageId(maxId)
+          max_id: this.getServerMessageId(maxId)
         });
       }
 
@@ -3399,7 +3399,7 @@ export class AppMessagesManager {
       if(!historyStorage.readPromise) {
         apiPromise = apiManager.invokeApi('messages.readHistory', {
           peer: appPeersManager.getInputPeerById(peerId),
-          max_id: this.getLocalMessageId(maxId)
+          max_id: this.getServerMessageId(maxId)
         }).then((affectedMessages) => {
           apiUpdatesManager.processUpdateMessage({
             _: 'updateShort',
@@ -3439,8 +3439,15 @@ export class AppMessagesManager {
     return historyStorage.readPromise = apiPromise;
   }
 
+  public readAllHistory(peerId: number, threadId?: number, force = false) {
+    const historyStorage = this.getHistoryStorage(peerId, threadId);
+    if(historyStorage.maxId) {
+      this.readHistory(peerId, historyStorage.maxId, threadId, force); // lol
+    }
+  }
+
   public readMessages(peerId: number, msgIds: number[]) {
-    msgIds = msgIds.map(mid => this.getLocalMessageId(mid));
+    msgIds = msgIds.map(mid => this.getServerMessageId(mid));
     if(peerId < 0 && appPeersManager.isChannel(peerId)) {
       const channelId = -peerId;
       apiManager.invokeApi('channels.readMessageContents', {
@@ -4394,7 +4401,7 @@ export class AppMessagesManager {
     sessionStorage.set({max_seen_msg: maxId});
 
     apiManager.invokeApi('messages.receivedMessages', {
-      max_id: this.getLocalMessageId(maxId)
+      max_id: this.getServerMessageId(maxId)
     });
   }
 
@@ -4430,7 +4437,7 @@ export class AppMessagesManager {
   public sendScheduledMessages(peerId: number, mids: number[]) {
     return apiManager.invokeApi('messages.sendScheduledMessages', {
       peer: appPeersManager.getInputPeerById(peerId),
-      id: mids.map(mid => this.getLocalMessageId(mid))
+      id: mids.map(mid => this.getServerMessageId(mid))
     }).then(updates => {
       apiUpdatesManager.processUpdateMessage(updates);
     });
@@ -4439,7 +4446,7 @@ export class AppMessagesManager {
   public deleteScheduledMessages(peerId: number, mids: number[]) {
     return apiManager.invokeApi('messages.deleteScheduledMessages', {
       peer: appPeersManager.getInputPeerById(peerId),
-      id: mids.map(mid => this.getLocalMessageId(mid))
+      id: mids.map(mid => this.getServerMessageId(mid))
     }).then(updates => {
       apiUpdatesManager.processUpdateMessage(updates);
     });
@@ -4607,8 +4614,8 @@ export class AppMessagesManager {
 
     const options = {
       peer: appPeersManager.getInputPeerById(peerId),
-      msg_id: this.getLocalMessageId(threadId) || 0,
-      offset_id: this.getLocalMessageId(maxId) || 0,
+      msg_id: this.getServerMessageId(threadId) || 0,
+      offset_id: this.getServerMessageId(maxId) || 0,
       offset_date: offsetDate,
       add_offset: offset,
       limit,
@@ -4690,7 +4697,7 @@ export class AppMessagesManager {
           const msgIds: InputMessage[] = mids.map((msgId: number) => {
             return {
               _: 'inputMessageID',
-              id: this.getLocalMessageId(msgId)
+              id: this.getServerMessageId(msgId)
             };
           });
     

@@ -42,7 +42,10 @@ class MediaSizes extends EventListenerBase<{
         width: 293,
         height: 0
       },
-      esgSticker: {}
+      esgSticker: {
+        width: 68,
+        height: 68
+      }
     },
     desktop: {
       regular: {
@@ -57,18 +60,28 @@ class MediaSizes extends EventListenerBase<{
         width: 451,
         height: 0
       },
-      esgSticker: {}
+      esgSticker: {
+        width: 80,
+        height: 80
+      }
     }
   };
 
   public isMobile = false;
   public active: Sizes;
   public activeScreen: ScreenSize;
+  public rAF: number;
 
   constructor() {
     super();
 
-    window.addEventListener('resize', this.handleResize);
+    window.addEventListener('resize', () => {
+      if(this.rAF) window.cancelAnimationFrame(this.rAF);
+      this.rAF = window.requestAnimationFrame(() => {
+        this.handleResize();
+        this.rAF = 0;
+      });
+    });
     this.handleResize();
   }
 
@@ -90,8 +103,8 @@ class MediaSizes extends EventListenerBase<{
     this.active = this.isMobile ? this.sizes.handhelds : this.sizes.desktop;
 
     //console.time('esg');
-    const computedStyle = window.getComputedStyle(document.documentElement);
-    this.active.esgSticker.width = parseFloat(computedStyle.getPropertyValue('--esg-sticker-size'));
+    //const computedStyle = window.getComputedStyle(document.documentElement);
+    //this.active.esgSticker.width = parseFloat(computedStyle.getPropertyValue('--esg-sticker-size'));
     //console.timeEnd('esg');
 
     if(wasScreen != activeScreen) {

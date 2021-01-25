@@ -328,8 +328,9 @@ export default class ChatTopbar {
   };
 
   private onChangeScreen = (from: ScreenSize, to: ScreenSize) => {
+    this.container.classList.toggle('is-pinned-floating', mediaSizes.isMobile);
     this.chatAudio && this.chatAudio.divAndCaption.container.classList.toggle('is-floating', to == ScreenSize.mobile);
-    this.pinnedMessage && this.pinnedMessage.onChangeScreen(from, to);
+    this.pinnedMessage && this.pinnedMessage.pinnedMessageContainer.divAndCaption.container.classList.toggle('is-floating', to == ScreenSize.mobile);
     this.setUtilsWidth(true);
   };
 

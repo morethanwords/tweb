@@ -33,6 +33,7 @@
   > .scrollable {
     display: flex;
     flex-direction: column;
+    position: relative;
 
     &:before, &:after {
       content: " ";

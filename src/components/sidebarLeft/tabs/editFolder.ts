@@ -24,7 +24,6 @@ export default class AppEditFolderTab extends SliderSuperTab {
 
   private confirmBtn: HTMLElement;
   private menuBtn: HTMLElement;
-  private nameInput: HTMLElement;
   private nameInputField: InputField;
 
   private include_peers: HTMLElement;
@@ -49,7 +48,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
     this.stickerContainer = document.createElement('div');
     this.stickerContainer.classList.add('sticker-container');
 
-    this.confirmBtn = ButtonIcon('check1 btn-confirm hide');
+    this.confirmBtn = ButtonIcon('check btn-confirm hide blue');
     const deleteFolderButton: ButtonMenuItemOptions = {
       icon: 'delete danger',
       text: 'Delete Folder',
@@ -76,7 +75,6 @@ export default class AppEditFolderTab extends SliderSuperTab {
       label: 'Folder Name',
       maxLength: MAX_FOLDER_NAME_LENGTH
     });
-    this.nameInput = this.nameInputField.input;
 
     inputWrapper.append(this.nameInputField.container);
 
@@ -220,7 +218,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
       });
     });
     
-    this.nameInput.addEventListener('input', () => {
+    this.nameInputField.input.addEventListener('input', () => {
       this.filter.title = this.nameInputField.value;
       this.editCheckForChange();
     });
