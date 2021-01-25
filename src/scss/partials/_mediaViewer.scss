@@ -218,18 +218,21 @@
     transform-origin: top left;
     //transform-origin: bottom right;
     overflow: hidden;
+    transform: translateZ(0) scale3d(1, 1, 1);
+    border-radius: 0;
+    -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%); // fix border-radius overflow
 
     // эти значения должны быть такими же, как при установке maxWidth и maxHeight в openMedia!
     //max-width: 100%;
-    max-width: calc(100% - 16px);
+    //max-width: calc(1vw - 16px);
     //max-height: 100%;
-    max-height: calc(100% - 100px);
+    //max-height: calc((var(--vh, 1vh) * 100) - 100px);
 
     // эти значения должны быть такими же, как при установке maxWidth и maxHeight в openMedia!
     @include respond-to(handhelds) {
       overflow: visible;
       //max-height: 100% !important;
-      max-width: 100% !important;
+      //max-width: 100vw !important;
     }
 
     .ckin__player {
@@ -291,10 +294,13 @@
       left: 50% !important;
       top: 50% !important;
       transform: translate3d(-50%, -50%, 0) !important;
+      max-width: calc(100vw - 16px);
+      max-height: calc((var(--vh, 1vh) * 100) - 100px);
 
       @include respond-to(handhelds) {
         width: 100% !important;
         height: 100% !important;
+        max-width: 100vw !important;
         //height: calc(100% - 100px) !important;
         /* height: calc(100% - 50px) !important;
         top: calc(50% + 25px) !important;
