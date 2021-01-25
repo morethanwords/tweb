@@ -89,7 +89,7 @@ export default class ChatBubbles {
   private preloader: ProgressivePreloader = null;
   
   private scrolledAll: boolean;
-  private scrolledAllDown: boolean;
+  public scrolledAllDown: boolean;
 
   private loadedTopTimes = 0;
   private loadedBottomTimes = 0;
@@ -495,6 +495,93 @@ export default class ChatBubbles {
         });
       }
     });
+
+    if('ResizeObserver' in window) {
+      let wasHeight = this.scrollable.container.offsetHeight;
+      let resizing = false;
+      let skip = false;
+      let scrolled = 0;
+      let part = 0;
+      let rAF = 0;
+
+      const onResizeEnd = () => {
+        //this.log('resize end', scrolled, this.scrollable.scrollTop);
+
+        if(part) {
+          this.scrollable.scrollTop += Math.round(part);
+        }
+
+        wasHeight = this.scrollable.container.offsetHeight;
+        scrolled = 0;
+        rAF = 0;
+        part = 0;
+        resizing = false;
+        skip = false;
+      };
+
+      const setEndRAF = (single: boolean) => {
+        if(rAF) window.cancelAnimationFrame(rAF);
+        rAF = window.requestAnimationFrame(single ? onResizeEnd : () => {
+          rAF = window.requestAnimationFrame(onResizeEnd);
+          //this.log('resize after RAF', part);
+        });
+      };
+
+      // @ts-ignore
+      const resizeObserver = new ResizeObserver((entries) => {
+        if(skip) {
+          setEndRAF(false);
+          return;
+        }
+
+        const entry = entries[0];
+        const height = entry.contentRect.height;/* Math.ceil(entry.contentRect.height); */
+        
+        if(!wasHeight) {
+          wasHeight = height;
+          return;
+        }
+
+        const realDiff = wasHeight - height;
+        let diff = realDiff + part;
+        const _part = diff % 1;
+        diff -= _part;
+ 
+        if(!resizing) {
+          resizing = true;
+
+          //this.log('resize start', realDiff, this.scrollable.isScrolledDown);
+
+          if(realDiff < 0 && this.scrollable.isScrolledDown) {
+            skip = true;
+            setEndRAF(false);
+            return;
+          }
+        }
+
+        scrolled += diff;
+
+        //this.log('resize', wasHeight - height, diff, this.scrollable.container.offsetHeight, this.scrollable.isScrolledDown, height, wasHeight/* , entry */);
+
+        if(diff) {
+          const needScrollTop = this.scrollable.scrollTop + diff;
+          this.scrollable.scrollTop = needScrollTop;
+          /* if(rAF) window.cancelAnimationFrame(rAF);
+          rAF = window.requestAnimationFrame(() => {
+            this.scrollable.scrollTop = needScrollTop;
+            setEndRAF(true);
+            //this.log('resize after RAF', part);
+          }); */
+        } //else {
+          setEndRAF(false);
+        //}
+
+        part = _part;
+        wasHeight = height;
+      });
+
+      resizeObserver.observe(this.bubblesContainer);
+    }
   }
 
   public constructPinnedHelpers() {
@@ -2429,12 +2516,12 @@ export default class ChatBubbles {
           } */
 
           // touchSupport for safari iOS
-          isTouchSupported && isApple && (this.scrollable.container.style.overflow = 'hidden');
+          //isTouchSupported && isApple && (this.scrollable.container.style.overflow = 'hidden');
           this.scrollable.scrollTop = newScrollTop;
           //this.scrollable.scrollTop = this.scrollable.scrollHeight;
-          isTouchSupported && isApple && (this.scrollable.container.style.overflow = '');
+          //isTouchSupported && isApple && (this.scrollable.container.style.overflow = '');
 
-          if(isSafari && !isAppleMobile) { // * fix blinking and jumping
+          if(isSafari/*  && !isAppleMobile */) { // * fix blinking and jumping
             this.scrollable.container.style.display = 'none';
             void this.scrollable.container.offsetLeft; // reflow
             this.scrollable.container.style.display = '';
@@ -2667,8 +2754,8 @@ export default class ChatBubbles {
           const bottomIds = isAdditionRender ? [] : sortedMids.slice(0, sortedMids.findIndex(mid => targetMid >= mid)).reverse();
           
           this.log('getHistory: targeting mid:', targetMid, maxId, additionMsgId, 
-            topIds.map(m => this.appMessagesManager.getLocalMessageId(m)), 
-            bottomIds.map(m => this.appMessagesManager.getLocalMessageId(m)));
+            topIds.map(m => this.appMessagesManager.getServerMessageId(m)), 
+            bottomIds.map(m => this.appMessagesManager.getServerMessageId(m)));
 
           const setBubbles: HTMLElement[] = [];
 
@@ -2839,6 +2926,10 @@ export default class ChatBubbles {
   }
 
   public setUnreadDelimiter() {
+    if(!(this.chat.type === 'chat' || this.chat.type === 'discussion')) {
+      return;
+    }
+
     if(this.attachedUnreadBubble) {
       return;
     }

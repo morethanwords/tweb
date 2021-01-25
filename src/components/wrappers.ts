@@ -116,6 +116,8 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     //video.muted = true;
     const globalVideo = appMediaPlaybackController.addMedia(message.peerId, doc, message.mid);
 
+    video.classList.add('z-depth-1');
+
     video.addEventListener('canplay', () => {
       if(globalVideo.currentTime > 0) {
         video.currentTime = globalVideo.currentTime;
@@ -350,7 +352,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
 
   const uploading = message.pFlags.is_outgoing;
 
-  const doc = message.media.document || message.media.webpage.document;
+  const doc = (message.media.document || message.media.webpage.document) as MyDocument;
   if(doc.type === 'audio' || doc.type === 'voice') {
     const audioElement = new AudioElement();
     audioElement.setAttribute('message-id', '' + message.mid);
@@ -458,6 +460,10 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
     attachClickEvent(docDiv, (e) => {
       preloader.onClick(e);
     });
+
+    /* if(doc.downloaded) {
+      downloadDiv.classList.add('downloaded');
+    } */
   } else if(message.media?.preloader) {
     const icoDiv = docDiv.querySelector('.document-ico');
     message.media.preloader.attach(icoDiv, false);

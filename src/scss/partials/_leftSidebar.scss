@@ -107,6 +107,10 @@
 
   .folders-tabs-scrollable .menu-horizontal-div-item:first-child {
     margin-left: .6875rem;
+
+    @include respond-to(handhelds) {
+      margin-left: .1875rem;
+    }
   }
 
   .item-main {
@@ -710,10 +714,6 @@
   &:before {
     color: #797d82;
   }
-}
-
-.sidebar-header .tgico-check1 {
-  color: #50a2e9;
 }
 
 .popup-forward, .included-chatlist-container {

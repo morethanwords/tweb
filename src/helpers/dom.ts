@@ -3,7 +3,7 @@ import { MOUNT_CLASS_TO } from "../lib/mtproto/mtproto_config";
 import RichTextProcessor from "../lib/richtextprocessor";
 import ListenerSetter from "./listenerSetter";
 import { isTouchSupported } from "./touchSupport";
-import { isSafari, isApple } from "./userAgent";
+import { isApple } from "./userAgent";
 import rootScope from "../lib/rootScope";
 
 /* export function isInDOM(element: Element, parentNode?: HTMLElement): boolean {
@@ -54,6 +54,10 @@ export function cancelEvent(event: Event) {
 }
 
 export function placeCaretAtEnd(el: HTMLElement) {
+  if(isTouchSupported) {
+    return;
+  }
+  
   el.focus();
   if(typeof window.getSelection != "undefined" && typeof document.createRange != "undefined") {
     var range = document.createRange();
@@ -486,7 +490,30 @@ export function getSelectedText(): string {
 export function blurActiveElement() {
   if(document.activeElement && (document.activeElement as HTMLInputElement).blur) {
     (document.activeElement as HTMLInputElement).blur();
+    return true;
   }
+
+  return false;
+}
+
+export function fixSafariStickyInput(input: HTMLElement) {
+  input.style.transform = 'translateY(-99999px)';
+  /* input.style.position = 'fixed';
+  input.style.top = '-99999px';
+  input.style.left = '0'; */
+  input.focus();
+  
+  setTimeout(() => {
+    //fastSmoothScroll(findUpClassName(input, 'scrollable-y') || window as any, document.activeElement as HTMLElement, 'start', 4, undefined, FocusDirection.Static);
+    /* input.style.position = '';
+    input.style.top = ''; */
+    input.style.transform = '';
+    //fastSmoothScroll(findUpClassName(input, 'scrollable-y') || window as any, document.activeElement as HTMLElement, 'start', 4, undefined, FocusDirection.Static);
+    
+    /* setTimeout(() => {
+      fastSmoothScroll(findUpClassName(input, 'scrollable-y') || window as any, document.activeElement as HTMLElement, 'start', 4);
+    }, 50); */
+  }, 0);
 }
 
 export const CLICK_EVENT_NAME: 'mousedown' | 'touchend' | 'click' = (isTouchSupported ? 'mousedown' : 'click') as any;

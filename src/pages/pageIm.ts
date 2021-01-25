@@ -9,6 +9,10 @@ let onFirstMount = () => {
   // ! TOO SLOW
   /* appStateManager.saveState(); */
 
+  import('../lib/rootScope').then(m => {
+    m.default.broadcast('im_mount');
+  });
+
   const promise = import('../lib/appManagers/appDialogsManager');
   promise.finally(async() => {
     //alert('pageIm!');

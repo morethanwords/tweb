@@ -59,12 +59,13 @@
   
   &-input {
     --padding: 1rem;
+    --padding-horizontal: 1rem;
     --border-width: 1px;
     --border-width-top: 2px;
     border: var(--border-width) solid #DADCE0;
     border-radius: $border-radius-medium;
     //padding: 0 1rem;
-    padding: calc(var(--padding) - var(--border-width-top)) calc(var(--padding) - var(--border-width));
+    padding: calc(var(--padding) - var(--border-width-top)) calc(var(--padding-horizontal) - var(--border-width));
     box-sizing: border-box;
     width: 100%;
     min-height: var(--height);
@@ -74,6 +75,10 @@
     //line-height: calc(54px - var(--border-width));
     /* overflow: hidden;
     white-space: nowrap; */
+
+    @include respond-to(handhelds) {
+      --padding: .875rem;
+    }
 
     body.animation-level-0 & {
       transition: none;
@@ -136,7 +141,7 @@
     }
     
     &:focus ~ label, &:valid ~ label, &:not(:empty) ~ label, &:disabled ~ label {
-      transform: translate(-.3125rem, calc(var(--height) / -2 + .125rem)) scale(.75);
+      transform: translate(-.25rem, calc(var(--height) / -2 + .125rem)) scale(.75);
       padding: 0 6px;
       opacity: 1;
     }

@@ -6,6 +6,7 @@ import { RichTextProcessor } from "../richtextprocessor";
 import appDocsManager from "./appDocsManager";
 import appPhotosManager from "./appPhotosManager";
 import appUsersManager from "./appUsersManager";
+import appMessagesManager from "./appMessagesManager";
 
 export class AppInlineBotsManager {
   private inlineResults: {[qId: string]: BotInlineResult} = {};
@@ -271,7 +272,7 @@ export class AppInlineBotsManager {
   public callbackButtonClick(peerId: number, mid: number, button: any) {
     return apiManagerProxy.invokeApi('messages.getBotCallbackAnswer', {
       peer: appPeersManager.getInputPeerById(peerId),
-      msg_id: mid,
+      msg_id: appMessagesManager.getServerMessageId(mid),
       data: button.data
     }, {timeout: 1, stopTime: -1, noErrorBox: true}).then((callbackAnswer) => {
       if(typeof callbackAnswer.message === 'string' && callbackAnswer.message.length) {
