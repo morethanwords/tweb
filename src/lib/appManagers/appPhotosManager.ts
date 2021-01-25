@@ -38,13 +38,14 @@ export class AppPhotosManager {
   public static Df = bytesFromHex('ffd9');
   
   constructor() {
-    window.addEventListener('resize', (e) => {
-      this.windowW = document.body.scrollWidth;
-      this.windowH = document.body.scrollHeight;
-    });
-    
-    this.windowW = document.body.scrollWidth;
-    this.windowH = document.body.scrollHeight;
+    // @ts-ignore
+    const w: any = 'visualViewport' in window ? window.visualViewport : window;
+    const set = () => {
+      this.windowW = w.width || w.innerWidth;
+      this.windowH = w.height || w.innerHeight;
+    };
+    w.addEventListener('resize', set);
+    set();
   }
   
   public savePhoto(photo: Photo, context?: ReferenceContext) {
@@ -208,7 +209,7 @@ export class AppPhotosManager {
     return {image, loadPromise};
   }
   
-  public setAttachmentSize(photo: MyPhoto | MyDocument, element: HTMLElement | SVGForeignObjectElement, boxWidth: number, boxHeight: number) {
+  public setAttachmentSize(photo: MyPhoto | MyDocument, element: HTMLElement | SVGForeignObjectElement, boxWidth: number, boxHeight: number, noZoom = true) {
     const photoSize = this.choosePhotoSize(photo, boxWidth, boxHeight);
     //console.log('setAttachmentSize', photo, photo.sizes[0].bytes, div);
     
@@ -222,7 +223,7 @@ export class AppPhotosManager {
       height = 'h' in photoSize ? photoSize.h : 100;
     }
     
-    const {w, h} = calcImageInBox(width, height, boxWidth, boxHeight);
+    const {w, h} = calcImageInBox(width, height, boxWidth, boxHeight, noZoom);
     if(element instanceof SVGForeignObjectElement) {
       element.setAttributeNS(null, 'width', '' + w);
       element.setAttributeNS(null, 'height', '' + h);

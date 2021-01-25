@@ -774,8 +774,10 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
   protected updateMediaSource(target: HTMLElement, url: string, tagName: 'video' | 'img') {
     //if(target instanceof SVGSVGElement) {
-      const el = target.querySelector(tagName) as HTMLElement;
-      renderImageFromUrl(el, url);
+      const el = target.tagName.toLowerCase() === tagName ? target : target.querySelector(tagName) as HTMLElement;
+      if(el) {
+        renderImageFromUrl(el, url);
+      }
     /* } else {
 
     } */
@@ -847,7 +849,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     this.buttons.next.classList.toggle('hide', !this.nextTargets.length);
     
     const container = this.content.media;
-    const useContainerAsTarget = !target;
+    const useContainerAsTarget = !target || target === container;
     if(useContainerAsTarget) target = container;
 
     this.lastTarget = target;
@@ -890,11 +892,22 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     //const maxWidth = appPhotosManager.windowW - 16;
     const maxWidth = mediaSizes.isMobile ? this.pageEl.scrollWidth : this.pageEl.scrollWidth - 16;
     const maxHeight = appPhotosManager.windowH - 100;
-    const gotThumb = appPhotosManager.getStrippedThumbIfNeeded(media);
-    if(gotThumb) {
-      container.append(gotThumb.image);
+    let thumbPromise: Promise<any> = Promise.resolve();
+    if(useContainerAsTarget) {
+      const cacheContext = appPhotosManager.getCacheContext(media);
+      if(cacheContext.downloaded) {
+        const img = new Image();
+        img.src = cacheContext.url;
+        container.append(img);
+      } else {
+        const gotThumb = appPhotosManager.getStrippedThumbIfNeeded(media);
+        if(gotThumb) {
+          thumbPromise = gotThumb.loadPromise;
+          container.append(gotThumb.image);
+        }
+      }
     }
-    const size = appPhotosManager.setAttachmentSize(media, container, maxWidth, maxHeight);
+    const size = appPhotosManager.setAttachmentSize(media, container, maxWidth, maxHeight, mediaSizes.isMobile ? false : true);
 
     // need after setAttachmentSize
     /* if(useContainerAsTarget) {
@@ -910,55 +923,55 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       // потому что для safari нужно создать элемент из event'а
       const video = document.createElement('video');
 
-      setMoverPromise = this.setMoverToTarget(target, false, fromRight).then(({onAnimationEnd}) => {
+      const set = () => this.setMoverToTarget(target, false, fromRight).then(({onAnimationEnd}) => {
       //return; // set and don't move
       //if(wasActive) return;
         //return;
-
+  
         const div = mover.firstElementChild && mover.firstElementChild.classList.contains('media-viewer-aspecter') ? mover.firstElementChild : mover;
         //const video = mover.querySelector('video') || document.createElement('video');
-
+  
         const moverVideo = mover.querySelector('video');
         if(moverVideo) {
           moverVideo.remove();
         }
-
+  
         //video.src = '';
-
+  
         video.setAttribute('playsinline', 'true');
-
+  
         // * fix for playing video if viewer is closed (https://contest.com/javascript-web-bonus/entry1425#issue11629)
         video.addEventListener('timeupdate', () => {
           if(this.tempId != tempId) {
             video.pause();
           }
         });
-
+  
         if(isSafari) {
           // test stream
           // video.controls = true;
           video.autoplay = true;
         }
-
+  
         if(media.type == 'gif') {
           video.muted = true;
           video.autoplay = true;
           video.loop = true;
         }
-
+  
         if(!video.parentElement) {
           div.append(video);
         }
-
+  
         const canPlayThrough = new Promise((resolve) => {
           video.addEventListener('canplay', resolve, {once: true});
         });
-
+  
         const createPlayer = () => {
           if(media.type != 'gif') {
             video.dataset.ckin = 'default';
             video.dataset.overlay = '1';
-
+  
             // fix for simultaneous play
             appMediaPlaybackController.pause();
             appMediaPlaybackController.willBePlayedMedia = null;
@@ -967,25 +980,25 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
               if(this.tempId != tempId) {
                 return;
               }
-
+  
               const player = new VideoPlayer(video, true, media.supportsStreaming);
               /* div.append(video);
               mover.append(player.wrapper); */
             });
           }
         };
-
+  
         if(media.supportsStreaming) {
           onAnimationEnd.then(() => {
             if(video.readyState < video.HAVE_FUTURE_DATA) {
               preloader.attach(mover, true);
             }
-
+  
             /* canPlayThrough.then(() => {
               preloader.detach();
             }); */
           });
-
+  
           const attachCanPlay = () => {
             video.addEventListener('canplay', () => {
               //this.log('video waited and progress loaded');
@@ -993,22 +1006,22 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
               video.parentElement.classList.remove('is-buffering');
             }, {once: true});
           };
-
+  
           video.addEventListener('waiting', (e) => {
             const loading = video.networkState === video.NETWORK_LOADING;
             const isntEnoughData = video.readyState < video.HAVE_FUTURE_DATA;
-
+  
             //this.log('video waiting for progress', loading, isntEnoughData);
             if(loading && isntEnoughData) {
               attachCanPlay();
-
+  
               preloader.attach(mover, true);
-
+  
               // поставлю класс для плеера, чтобы убрать большую иконку пока прелоадер на месте
               video.parentElement.classList.add('is-buffering');
             }
           });
-
+  
           attachCanPlay();
         }
         
@@ -1023,13 +1036,13 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
                 }
               });
             }
-
+  
             (promise as Promise<any>).then(async() => {
               if(this.tempId != tempId) {
                 this.log.warn('media viewer changed video');
                 return;
               }
-
+  
               const url = media.url;
               if(target instanceof SVGSVGElement/*  && (video.parentElement || !isSafari) */) { // if video exists
                 //if(!video.parentElement) {
@@ -1040,25 +1053,27 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
               } else {
                 renderImageFromUrl(video, url);
               }
-
+  
               createPlayer();
             });
-
+  
             return promise;
           };
-
+  
           this.lazyLoadQueue.unshift({load});
         //} else createPlayer();
       });
+
+      setMoverPromise = thumbPromise.then(set);
     } else {
-      setMoverPromise = this.setMoverToTarget(target, false, fromRight).then(({onAnimationEnd}) => {
+      const set = () => this.setMoverToTarget(target, false, fromRight).then(({onAnimationEnd}) => {
       //return; // set and don't move
       //if(wasActive) return;
         //return;
         
         const load = () => {
           const cancellablePromise = appPhotosManager.preloadPhoto(media.id, size);
-
+  
           onAnimationEnd.then(() => {
             if(!media.url) {
               this.preloader.attach(mover, true, cancellablePromise);
@@ -1072,12 +1087,12 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
             }
             
             ///////this.log('indochina', blob);
-  
+    
             const url = media.url;
             if(target instanceof SVGSVGElement) {
               this.updateMediaSource(target, url, 'img');
               this.updateMediaSource(mover, url, 'img');
-
+  
               if(mediaSizes.isMobile) {
                 const imgs = mover.querySelectorAll('img');
                 if(imgs && imgs.length) {
@@ -1088,29 +1103,38 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
               }
             } else {
               const div = mover.firstElementChild && mover.firstElementChild.classList.contains('media-viewer-aspecter') ? mover.firstElementChild : mover;
-              let image = new Image();
+              const haveImage = div.firstElementChild?.tagName === 'IMG' ? div.firstElementChild as HTMLImageElement : null;
+              if(!haveImage || haveImage.src !== url)  {
+                let image = new Image();
+    
+                //this.log('will renderImageFromUrl:', image, div, target);
+    
+                renderImageFromUrl(image, url, () => {
+                  this.updateMediaSource(target, url, 'img');
   
-              //this.log('will renderImageFromUrl:', image, div, target);
-  
-              renderImageFromUrl(image, url, () => {
-                if(div.firstElementChild?.tagName === 'IMG') {
-                  div.firstElementChild.remove();
-                }
-
-                div.append(image);
-              });
+                  if(haveImage) {
+                    window.requestAnimationFrame(() => {
+                      haveImage.remove();
+                    });
+                  }
+    
+                  div.append(image);
+                });
+              }
             }
-  
+    
             this.preloader.detach();
           }).catch(err => {
             this.log.error(err);
           });
-
+  
           return cancellablePromise;
         };
-
+  
         this.lazyLoadQueue.unshift({load});
       });
+
+      setMoverPromise = thumbPromise.then(set);
     }
 
     return this.setMoverPromise = setMoverPromise.catch(() => {

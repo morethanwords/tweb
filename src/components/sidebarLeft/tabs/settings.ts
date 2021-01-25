@@ -5,7 +5,7 @@ import appSidebarLeft, { AppSidebarLeft } from "..";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import ButtonMenuToggle from "../../buttonMenuToggle";
 import Button from "../../button";
-import AppMediaViewer from "../../appMediaViewer";
+//import AppMediaViewer from "../../appMediaViewerNew";
 
 export default class AppSettingsTab extends SliderSuperTab {
   private avatarElem: AvatarElement;
@@ -44,12 +44,15 @@ export default class AppSettingsTab extends SliderSuperTab {
     this.avatarElem.classList.add('profile-avatar', 'avatar-120');
 
     /* const div = document.createElement('div');
-    div.style.cssText = 'border-radius: 8px; overflow: hidden; width: 396px; height: 264px; flex: 0 0 auto; position: relative; margin: 10rem 0 10rem auto;';
+    //div.style.cssText = 'border-radius: 8px; overflow: hidden; width: 396px; height: 264px; flex: 0 0 auto; position: relative; margin: 10rem 0 10rem auto;';
+    //div.style.width = '135px';
+    //div.style.height = '100px';
+    div.style.cssText = 'border-radius: 8px; overflow: hidden; width: 396px; height: 264px; flex: 0 0 auto; position: relative; margin: 10rem auto 10rem 0;';
     div.style.width = '135px';
     div.style.height = '100px';
     
     const img = document.createElement('img');
-    img.src = 'assets/img/PinnedMessages.png';
+    img.src = 'assets/img/pepe.jpg';
     img.classList.add('media-photo');
     img.style.cssText = 'max-width: 100%;max-height: 100%;';
 

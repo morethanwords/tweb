@@ -410,13 +410,13 @@ export function fillPropertyValue(str: string) {
   return splitted;
 }
 
-export function calcImageInBox(imageW: number, imageH: number, boxW: number, boxH: number, noZoom?: boolean) {
-  if(imageW < boxW && imageH < boxH) {
+export function calcImageInBox(imageW: number, imageH: number, boxW: number, boxH: number, noZoom = true) {
+  if(imageW < boxW && imageH < boxH && noZoom) {
     return {w: imageW, h: imageH};
   }
 
-  var boxedImageW = boxW;
-  var boxedImageH = boxH;
+  let boxedImageW = boxW;
+  let boxedImageH = boxH;
 
   if((imageW / imageH) > (boxW / boxH)) {
     boxedImageH = (imageH * boxW / imageW) | 0;
@@ -440,6 +440,8 @@ export function calcImageInBox(imageW: number, imageH: number, boxW: number, box
 
   return {w: boxedImageW, h: boxedImageH};
 }
+
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.calcImageInBox = calcImageInBox);
 
 export function positionElementByIndex(element: HTMLElement, container: HTMLElement, pos: number) {
   const prevPos = element.parentElement === container ? whichChild(element) : -1;

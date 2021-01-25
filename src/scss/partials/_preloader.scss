@@ -89,6 +89,10 @@ $transition: .2s ease-in-out;
       //animation: dashNew 1.5s ease-in-out infinite;
       stroke-dasharray: 112.36, 149.82;
     }
+
+    &.preloader-streamable .preloader-path-new {
+      stroke-dasharray: 88.95, 118.61;
+    }
   }
 
   .preloader-close, .preloader-download {
