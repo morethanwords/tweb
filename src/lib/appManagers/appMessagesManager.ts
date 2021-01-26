@@ -2933,7 +2933,7 @@ export class AppMessagesManager {
     if(!peerId) peerId = 0;
     if(!query) query = '';
     if(!inputFilter) inputFilter = {_: 'inputMessagesFilterEmpty'};
-    if(!limit) limit = 20;
+    if(limit === undefined) limit = 20;
     if(!nextRate) nextRate = 0;
     if(!backLimit) backLimit = 0;
 
