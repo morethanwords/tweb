@@ -895,16 +895,21 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     let thumbPromise: Promise<any> = Promise.resolve();
     if(useContainerAsTarget) {
       const cacheContext = appPhotosManager.getCacheContext(media);
+      let img: HTMLImageElement;
       if(cacheContext.downloaded) {
-        const img = new Image();
+        img = new Image();
         img.src = cacheContext.url;
-        container.append(img);
       } else {
         const gotThumb = appPhotosManager.getStrippedThumbIfNeeded(media);
         if(gotThumb) {
           thumbPromise = gotThumb.loadPromise;
-          container.append(gotThumb.image);
+          img = gotThumb.image;
         }
+      }
+
+      if(img) {
+        img.classList.add('thumbnail');
+        container.append(img);
       }
     }
     const size = appPhotosManager.setAttachmentSize(media, container, maxWidth, maxHeight, mediaSizes.isMobile ? false : true);
@@ -1106,6 +1111,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
               const haveImage = div.firstElementChild?.tagName === 'IMG' ? div.firstElementChild as HTMLImageElement : null;
               if(!haveImage || haveImage.src !== url)  {
                 let image = new Image();
+                image.classList.add('thumbnail');
     
                 //this.log('will renderImageFromUrl:', image, div, target);
     
@@ -1300,9 +1306,9 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       minDate: this.searchContext.minDate,
       maxDate: this.searchContext.maxDate
     }).then(value => {
-      /* if(DEBUG) {
+      if(DEBUG) {
         this.log('loaded more media by maxId:', maxId, value, older, this.reverse);
-      } */
+      }
 
       if(value.next_rate) {
         this.searchContext.nextRate = value.next_rate;

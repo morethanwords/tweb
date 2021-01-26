@@ -738,16 +738,20 @@ export default class ChatBubbles {
 
       ids.forEach(id => {
         let withTail = this.bubbles[id].classList.contains('with-media-tail');
-        let str = '.album-item img, .album-item video, .preview img, .preview video, ';
+        let str = '.album-item video, .album-item img, .preview video, .preview img, ';
         if(withTail) {
           str += '.bubble__media-container';
         } else {
-          str += '.attachment img, .attachment video';
+          str += '.attachment video, .attachment img';
         }
 
         let elements = this.bubbles[id].querySelectorAll(str) as NodeListOf<HTMLElement>;
+        const parents: Set<HTMLElement> = new Set();
         Array.from(elements).forEach((element: HTMLElement) => {
           let albumItem = findUpClassName(element, 'album-item');
+          const parent = albumItem || element.parentElement;
+          if(parents.has(parent)) return;
+          parents.add(parent);
           targets.push({
             element,
             mid: +albumItem?.dataset.mid || id,

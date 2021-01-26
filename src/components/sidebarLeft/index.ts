@@ -401,8 +401,8 @@ export class AppSidebarLeft extends SidebarSlider {
       if(hideNewBtnMenuTimeout) clearTimeout(hideNewBtnMenuTimeout);
 
       if(id === 0) {
+        searchSuper.selectTab(0, false);
         this.inputSearch.onClearClick();
-        resetSearch();
         hideNewBtnMenuTimeout = window.setTimeout(() => {
           hideNewBtnMenuTimeout = 0;
           this.newBtnMenu.classList.remove('is-hidden');
