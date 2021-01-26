@@ -172,12 +172,16 @@ export class AppSidebarLeft extends SidebarSlider {
 
     const scrollable = new Scrollable(searchContainer);
 
+    const close = () => {
+      this.backBtn.click();
+    };
+
     this.searchGroups = {
-      contacts: new SearchGroup('Chats', 'contacts'),
-      globalContacts: new SearchGroup('Global Search', 'contacts'),
+      contacts: new SearchGroup('Chats', 'contacts', undefined, undefined, undefined, undefined, close),
+      globalContacts: new SearchGroup('Global Search', 'contacts', undefined, undefined, undefined, undefined, close),
       messages: new SearchGroup('Messages', 'messages'),
-      people: new SearchGroup('', 'contacts', true, 'search-group-people', true, false),
-      recent: new SearchGroup('Recent', 'contacts', true, 'search-group-recent', true, false)
+      people: new SearchGroup('', 'contacts', true, 'search-group-people', true, false, close),
+      recent: new SearchGroup('Recent', 'contacts', true, 'search-group-recent', true, true, close)
     };
 
     const searchSuper = this.searchSuper = new AppSearchSuper([{

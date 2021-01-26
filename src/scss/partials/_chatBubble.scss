@@ -281,6 +281,10 @@ $bubble-margin: .25rem;
     opacity: .99999; // for safari
     pointer-events: none;
 
+    &:before, &:after {
+      display: none;
+    }
+
     body.animation-level-0 & {
       transition: none;
     }

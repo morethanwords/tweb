@@ -32,6 +32,7 @@ import lottieLoader from '../lottieLoader';
 import useHeavyAnimationCheck, { dispatchHeavyAnimationEvent } from '../../hooks/useHeavyAnimationCheck';
 import appDraftsManager from './appDraftsManager';
 import serverTimeManager from '../mtproto/serverTimeManager';
+import sessionStorage from '../sessionStorage';
 
 //console.log('appImManager included33!');
 
@@ -152,7 +153,38 @@ export class AppImManager {
       animationIntersector.setOnlyOnePlayableGroup('');
       animationIntersector.checkAnimations(false);
     });
+
+    /* rootScope.on('peer_changing', (chat) => {
+      this.saveChatPosition(chat);
+    });
+
+    sessionStorage.get('chatPositions').then((c) => {
+      sessionStorage.setToCache('chatPositions', c || {});
+    }); */
   }
+
+  /* public saveChatPosition(chat: Chat) {
+    const bubble = chat.bubbles.getBubbleByPoint('top');
+    if(bubble) {
+      const top = bubble.getBoundingClientRect().top;
+      
+      this.log('saving position by bubble:', bubble, top);
+
+      const key = chat.peerId + (chat.threadId ? '_' + chat.threadId : '');
+
+      const chatPositions = sessionStorage.getFromCache('chatPositions');
+      chatPositions[key] = {
+        mid: +bubble.dataset.mid,
+        top
+      };
+      sessionStorage.set({chatPositions});
+    }
+  }
+
+  public getChatSavedPosition(chat: Chat) {
+    const key = chat.peerId + (chat.threadId ? '_' + chat.threadId : '');
+    return sessionStorage.getFromCache('chatPositions')[key];
+  } */
 
   private setSettings() {
     document.documentElement.style.setProperty('--messages-text-size', rootScope.settings.messagesTextSize + 'px');
@@ -469,7 +501,7 @@ export class AppImManager {
   }
 
   private createNewChat() {
-    const chat = new Chat(this, appChatsManager, appDocsManager, appInlineBotsManager, appMessagesManager, appPeersManager, appPhotosManager, appProfileManager, appStickersManager, appUsersManager, appWebPagesManager, appPollsManager, apiManager, appDraftsManager, serverTimeManager);
+    const chat = new Chat(this, appChatsManager, appDocsManager, appInlineBotsManager, appMessagesManager, appPeersManager, appPhotosManager, appProfileManager, appStickersManager, appUsersManager, appWebPagesManager, appPollsManager, apiManager, appDraftsManager, serverTimeManager, sessionStorage);
 
     this.chats.push(chat);
   }

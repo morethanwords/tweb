@@ -1,6 +1,7 @@
+import type { AppImManager } from './appManagers/appImManager';
+import type { State } from './appManagers/appStateManager';
 import { MOUNT_CLASS_TO } from './mtproto/mtproto_config';
 import AppStorage from './storage';
-import { State } from './appManagers/appStateManager';
 
 const sessionStorage = new AppStorage<{
   dc: number,
@@ -11,7 +12,14 @@ const sessionStorage = new AppStorage<{
   dc4_auth_key: any,
   dc5_auth_key: any,
   max_seen_msg: number,
-  server_time_offset: number
+  server_time_offset: number,
+
+  chatPositions: {
+    [peerId_threadId: string]: {
+      mid: number, 
+      top: number
+    }
+  },
 } & State>({
   storeName: 'session'
 });

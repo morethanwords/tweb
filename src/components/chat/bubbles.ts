@@ -1,12 +1,12 @@
-import { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
-import type { AppMessagesManager, Dialog, HistoryResult, MyMessage } from "../../lib/appManagers/appMessagesManager";
-import type { AppSidebarRight } from "../sidebarRight";
+import { AppImManager, CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
+import type { AppMessagesManager, HistoryResult, MyMessage } from "../../lib/appManagers/appMessagesManager";
 import type { AppStickersManager } from "../../lib/appManagers/appStickersManager";
 import type { AppUsersManager } from "../../lib/appManagers/appUsersManager";
 import type { AppInlineBotsManager } from "../../lib/appManagers/appInlineBotsManager";
 import type { AppPhotosManager } from "../../lib/appManagers/appPhotosManager";
 import type { AppDocsManager } from "../../lib/appManagers/appDocsManager";
 import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
+import type sessionStorage from '../../lib/sessionStorage';
 import { findUpClassName, cancelEvent, findUpTag, whichChild, getElementByPoint, attachClickEvent, positionElementByIndex } from "../../helpers/dom";
 import { getObjectKeysAndSort } from "../../helpers/object";
 import { isTouchSupported } from "../../helpers/touchSupport";
@@ -24,7 +24,7 @@ import animationIntersector from "../animationIntersector";
 import { months } from "../../helpers/date";
 import RichTextProcessor from "../../lib/richtextprocessor";
 import mediaSizes from "../../helpers/mediaSizes";
-import { isAndroid, isApple, isSafari, isAppleMobile } from "../../helpers/userAgent";
+import { isAndroid, isApple, isSafari } from "../../helpers/userAgent";
 import { langPack } from "../../lib/langPack";
 import AvatarElement from "../avatar";
 import { formatPhoneNumber } from "../misc";
@@ -37,13 +37,12 @@ import Chat from "./chat";
 import ListenerSetter from "../../helpers/listenerSetter";
 import PollElement from "../poll";
 import AudioElement from "../audio";
-import { Message, MessageEntity, MessageReplies, MessageReplyHeader } from "../../layer";
-import { DEBUG, MOUNT_CLASS_TO, REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
+import { Message, MessageEntity,  MessageReplyHeader } from "../../layer";
+import { DEBUG, REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
 import { FocusDirection } from "../../helpers/fastSmoothScroll";
 import useHeavyAnimationCheck, { getHeavyAnimationPromise, dispatchHeavyAnimationEvent } from "../../hooks/useHeavyAnimationCheck";
 import { fastRaf } from "../../helpers/schedulers";
-import { deferredPromise, CancellablePromise } from "../../helpers/cancellablePromise";
-import EventListenerBase from "../../helpers/eventListenerBase";
+import { deferredPromise } from "../../helpers/cancellablePromise";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS = ['messageActionHistoryClear'];
@@ -117,7 +116,7 @@ export default class ChatBubbles {
 
   public isFirstLoad = true;
 
-  constructor(private chat: Chat, private appMessagesManager: AppMessagesManager, private appStickersManager: AppStickersManager, private appUsersManager: AppUsersManager, private appInlineBotsManager: AppInlineBotsManager, private appPhotosManager: AppPhotosManager, private appDocsManager: AppDocsManager, private appPeersManager: AppPeersManager, private appChatsManager: AppChatsManager) {
+  constructor(private chat: Chat, private appMessagesManager: AppMessagesManager, private appStickersManager: AppStickersManager, private appUsersManager: AppUsersManager, private appInlineBotsManager: AppInlineBotsManager, private appPhotosManager: AppPhotosManager, private appDocsManager: AppDocsManager, private appPeersManager: AppPeersManager, private appChatsManager: AppChatsManager, private storage: typeof sessionStorage) {
     //this.chat.log.error('Bubbles construction');
     
     this.listenerSetter = new ListenerSetter();
@@ -889,6 +888,28 @@ export default class ChatBubbles {
     }
   }
 
+  public getBubbleByPoint(verticalSide: 'top' | 'bottom') {
+    let element = getElementByPoint(this.scrollable.container, verticalSide, 'center');
+    /* if(element) {
+      if(element.classList.contains('bubbles-date-group')) {
+        const children = Array.from(element.children) as HTMLElement[];
+        if(verticalSide === 'top') {
+          element = children[this.stickyIntersector ? 2 : 1];
+        } else {
+          element = children[children.length - 1];
+        }
+      } else {
+        element = findUpClassName(element, 'bubble');
+        if(element && element.classList.contains('is-date')) {
+          element = element.nextElementSibling as HTMLElement;
+        }
+      }
+    } */
+    if(element) element = findUpClassName(element, 'bubble');
+
+    return element;
+  }
+
   public getGroupedBubble(groupId: string) {
     const group = this.appMessagesManager.groupedMessagesStorage[groupId];
     for(const mid in group) {
@@ -1325,14 +1346,22 @@ export default class ChatBubbles {
       topMessage = 0;
     }
 
-    let readMaxId = 0;
-    if(!isTarget && topMessage) {
-      readMaxId = this.appMessagesManager.getReadMaxIdIfUnread(peerId, this.chat.threadId);
-      if(/* dialog.unread_count */readMaxId && !samePeer) {
-        lastMsgId = readMaxId;
-      } else {
-        lastMsgId = topMessage;
-        //lastMsgID = topMessage;
+    let readMaxId = 0;//, savedPosition: ReturnType<AppImManager['getChatSavedPosition']>;
+    if(!isTarget) {
+      /* if(!samePeer) {
+        savedPosition = this.chat.appImManager.getChatSavedPosition(this.chat);
+      }
+
+      if(savedPosition) {
+        lastMsgId = savedPosition.mid;
+      } else  */if(topMessage) {
+        readMaxId = this.appMessagesManager.getReadMaxIdIfUnread(peerId, this.chat.threadId);
+        if(/* dialog.unread_count */readMaxId && !samePeer) {
+          lastMsgId = readMaxId;
+        } else {
+          lastMsgId = topMessage;
+          //lastMsgID = topMessage;
+        }
       }
     }
 
@@ -1378,13 +1407,10 @@ export default class ChatBubbles {
 
     let maxBubbleId = 0;
     if(samePeer) {
-      let el = getElementByPoint(this.chat.bubbles.scrollable.container, 'bottom'); // ! this may not work if being called when chat is hidden
+      let el = this.getBubbleByPoint('bottom'); // ! this may not work if being called when chat is hidden
       //this.chat.log('[PM]: setCorrectIndex: get last element perf:', performance.now() - perf, el);
       if(el) {
-        el = findUpClassName(el, 'bubble');
-        if(el) { // TODO: а что делать, если id будет -1, -2, -3?
-          maxBubbleId = +el.dataset.mid;
-        }
+        maxBubbleId = +el.dataset.mid;
       }
 
       if(maxBubbleId <= 0) {
@@ -1438,7 +1464,19 @@ export default class ChatBubbles {
       this.lazyLoadQueue.unlock();
 
       //if(dialog && lastMsgID && lastMsgID != topMessage && (this.bubbles[lastMsgID] || this.firstUnreadBubble)) {
-      if((topMessage && isJump) || isTarget) {
+      /* if(savedPosition) {
+        const mountedByLastMsgId = this.getMountedBubble(lastMsgId);
+        let bubble: HTMLElement = mountedByLastMsgId?.bubble;
+        if(!bubble?.parentElement) {
+          bubble = this.findNextMountedBubbleByMsgId(lastMsgId);
+        }
+
+        if(bubble) {
+          const top = bubble.getBoundingClientRect().top;
+          const distance = savedPosition.top - top;
+          this.scrollable.scrollTop += distance;
+        }
+      } else  */if((topMessage && isJump) || isTarget) {
         const fromUp = maxBubbleId > 0 && (maxBubbleId < lastMsgId || lastMsgId < 0);
         const followingUnread = readMaxId === lastMsgId && !isTarget;
         if(!fromUp && samePeer) {
