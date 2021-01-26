@@ -22,7 +22,6 @@ import { ripple } from "./ripple";
 import Scrollable, { ScrollableX } from "./scrollable";
 import { wrapDocument, wrapPhoto, wrapVideo } from "./wrappers";
 import useHeavyAnimationCheck, { getHeavyAnimationPromise } from "../hooks/useHeavyAnimationCheck";
-import { p } from "../mock/srp";
 
 const testScroll = false;
 
@@ -706,7 +705,7 @@ export default class AppSearchSuper {
               drawStatus: false,
               meAsSaved: true,
               avatarSize: 48,
-              autonomous: false
+              autonomous: true
             });
     
             dom.lastMessageSpan.innerText = peerId > 0 ? appUsersManager.getUserStatusString(peerId) : appChatsManager.getChatMembersString(peerId);

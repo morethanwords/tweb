@@ -1,13 +1,12 @@
 import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManager";
 import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import type ChatTopbar from "./topbar";
-import { ScreenSize } from "../../helpers/mediaSizes";
 import PopupPinMessage from "../popups/unpinMessage";
 import PinnedContainer from "./pinnedContainer";
 import PinnedMessageBorder from "./pinnedMessageBorder";
 import ReplyContainer, { wrapReplyDivAndCaption } from "./replyContainer";
 import rootScope from "../../lib/rootScope";
-import { attachClickEvent, cancelEvent, findUpClassName, getElementByPoint, handleScrollSideEvent } from "../../helpers/dom";
+import { attachClickEvent, cancelEvent, handleScrollSideEvent } from "../../helpers/dom";
 import Chat from "./chat";
 import ListenerSetter from "../../helpers/listenerSetter";
 import ButtonIcon from "../buttonIcon";
@@ -336,10 +335,8 @@ export default class ChatPinnedMessage {
     }
 
     //const perf = performance.now();
-    let el = getElementByPoint(this.chat.bubbles.scrollable.container, 'bottom');
+    let el = this.chat.bubbles.getBubbleByPoint('bottom');
     //this.chat.log('[PM]: setCorrectIndex: get last element perf:', performance.now() - perf, el);
-    if(!el) return;
-    el = findUpClassName(el, 'bubble');
     if(!el) return;
 
     //return;

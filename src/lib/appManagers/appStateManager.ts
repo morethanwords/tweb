@@ -1,5 +1,4 @@
 import type { Dialog } from './appMessagesManager';
-import type { AppStickersManager } from './appStickersManager';
 import { App, MOUNT_CLASS_TO, UserAuth } from '../mtproto/mtproto_config';
 import EventListenerBase from '../../helpers/eventListenerBase';
 import rootScope from '../rootScope';

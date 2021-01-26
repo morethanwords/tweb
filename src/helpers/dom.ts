@@ -643,12 +643,14 @@ export const handleScrollSideEvent = (elem: HTMLElement, side: 'top' | 'bottom',
   }
 };
 
-export const getElementByPoint = (container: HTMLElement, verticalSide: 'top' | 'bottom'): HTMLElement => {
+export const getElementByPoint = (container: HTMLElement, verticalSide: 'top' | 'bottom', horizontalSide: 'center' | 'left'): HTMLElement => {
   const rect = container.getBoundingClientRect();
-  const x = Math.ceil(rect.left + ((rect.right - rect.left) / 2) + 1);
-  const y = verticalSide == 'bottom' ? Math.floor(rect.top + rect.height - 1) : Math.ceil(rect.top + 1);
+  const x = horizontalSide === 'center' ? Math.ceil(rect.left + ((rect.right - rect.left) / 2) + 1) : Math.ceil(rect.left + 1);
+  const y = verticalSide === 'bottom' ? Math.floor(rect.top + rect.height - 1) : Math.ceil(rect.top + 1);
   return document.elementFromPoint(x, y) as any;
 };
+
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.getElementByPoint = getElementByPoint);
 
 export async function getFilesFromEvent(e: ClipboardEvent | DragEvent, onlyTypes = false): Promise<any[]> {
   const files: any[] = [];

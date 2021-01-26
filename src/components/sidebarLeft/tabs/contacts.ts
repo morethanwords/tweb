@@ -21,7 +21,10 @@ export default class AppContactsTab implements SliderTab {
     this.container = document.getElementById('contacts-container');
     this.list = this.container.querySelector('#contacts');
 
-    appDialogsManager.setListClickListener(this.list);
+    appDialogsManager.setListClickListener(this.list, () => {
+      (this.container.querySelector('.sidebar-close-button') as HTMLElement).click();
+    }, undefined, true);
+
     this.scrollable = new Scrollable(this.list.parentElement);
 
     this.inputSearch = new InputSearch('Search', (value) => {
@@ -95,7 +98,7 @@ export default class AppContactsTab implements SliderTab {
             container: this.list,
             drawStatus: false,
             avatarSize: 48,
-            autonomous: false
+            autonomous: true
           });
   
           let status = appUsersManager.getUserStatusString(user.id);

@@ -8,7 +8,7 @@ export class SearchGroup {
   nameEl: HTMLDivElement;
   list: HTMLUListElement;
 
-  constructor(public name: string, public type: string, private clearable = true, className?: string, clickable = true, public autonomous = true) {
+  constructor(public name: string, public type: string, private clearable = true, className?: string, clickable = true, public autonomous = true, public onFound?: () => void) {
     this.list = document.createElement('ul');
     this.container = document.createElement('div');
     if(className) this.container.className = className;
@@ -25,7 +25,7 @@ export class SearchGroup {
     this.container.style.display = 'none';
 
     if(clickable) {
-      appDialogsManager.setListClickListener(this.list, undefined, undefined, autonomous);
+      appDialogsManager.setListClickListener(this.list, onFound, undefined, autonomous);
     }
   }
 
