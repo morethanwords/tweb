@@ -1,6 +1,7 @@
 import { isInDOM, cancelEvent, attachClickEvent } from "../helpers/dom";
 import { CancellablePromise } from "../helpers/cancellablePromise";
 import SetTransition from "./singleTransition";
+import { fastRaf } from "../helpers/schedulers";
 
 const TRANSITION_TIME = 200;
 
@@ -23,6 +24,8 @@ export default class ProgressivePreloader {
   private attachMethod: 'append' | 'prepend' = 'append';
 
   private loadFunc: () => {download: CancellablePromise<any>};
+
+  private totalLength: number;
 
   constructor(options?: Partial<{
     isUpload: ProgressivePreloader['isUpload'],
@@ -188,7 +191,7 @@ export default class ProgressivePreloader {
     //return;
 
     this.detached = false;
-    /* window.requestAnimationFrame(() => {
+    /* fastRaf(() => {
       if(this.detached) return;
       this.detached = false; */
 
@@ -204,7 +207,13 @@ export default class ProgressivePreloader {
         elem[this.attachMethod](this.preloader);
       }
 
-      window.requestAnimationFrame(() => {
+      fastRaf(() => {
+        //console.log('[PP]: attach after rAF', this.detached, performance.now());
+
+        if(this.detached) {
+          return;
+        }
+
         SetTransition(this.preloader, 'is-visible', true, TRANSITION_TIME);
       });
 
@@ -220,17 +229,21 @@ export default class ProgressivePreloader {
     //return;
     
     if(this.preloader && this.preloader.parentElement) {
-      /* setTimeout(() =>  *///window.requestAnimationFrame(() => {
+      /* setTimeout(() =>  *///fastRaf(() => {
         /* if(!this.detached) return;
         this.detached = true; */
 
-        //if(this.preloader.parentElement) {
-          window.requestAnimationFrame(() => {
-            SetTransition(this.preloader, 'is-visible', false, TRANSITION_TIME, () => {
-              this.preloader.remove();
-            });
+        fastRaf(() => {
+          //console.log('[PP]: detach after rAF', this.detached, performance.now());
+
+          if(!this.detached || !this.preloader.parentElement) {
+            return;
+          }
+
+          SetTransition(this.preloader, 'is-visible', false, TRANSITION_TIME, () => {
+            this.preloader.remove();
           });
-        //}
+        });
       //})/* , 5e3) */;
     }
   }
@@ -246,9 +259,12 @@ export default class ProgressivePreloader {
     }
     
     try {
-      const totalLength = this.circle.getTotalLength();
+      if(!this.totalLength) {
+        this.totalLength = this.circle.getTotalLength();
+      }
+
       //console.log('setProgress', (percents / 100 * totalLength));
-      this.circle.style.strokeDasharray = '' + Math.max(5, percents / 100 * totalLength) + ', ' + totalLength;
+      this.circle.style.strokeDasharray = '' + Math.max(5, percents / 100 * this.totalLength) + ', ' + this.totalLength;
     } catch(err) {}
   }
 }

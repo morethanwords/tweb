@@ -644,7 +644,7 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
   const load = () => {
     const promise = getDownloadPromise();
 
-    if(!cacheContext.downloaded && !withoutPreloader) {
+    if(!cacheContext.downloaded && !withoutPreloader && (size as PhotoSize.photoSize).w >= 150 && (size as PhotoSize.photoSize).h >= 150) {
       preloader.attach(container, false, promise);
     }
 

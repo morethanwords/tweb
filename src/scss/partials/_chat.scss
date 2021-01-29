@@ -116,9 +116,10 @@ $chat-helper-size: 39px;
 		background: none;
 		border: none;
 		width: 100%;
-		padding: 9px 8px;
+		padding: .6875rem .5625rem;
 		/* height: 100%; */
-		max-height: calc(30rem - var(--padding-vertical) * 2);
+		max-height: calc(30rem - 2.5rem); // 2.5rem - input helper (reply)
+		min-height: inherit;
 		overflow-y: none;
 		resize: none;
 		border: none;
@@ -830,6 +831,7 @@ $chat-helper-size: 39px;
 		position: relative;
 		overflow: hidden;
 		align-self: center;
+		min-height: calc(var(--chat-input-size) - var(--padding-vertical) * 2);
 
 		> .scrollable {
 			position: relative;
