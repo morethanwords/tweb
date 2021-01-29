@@ -36,6 +36,7 @@ $transition: .2s ease-in-out;
     height: 54px;
     display: flex;
     cursor: pointer;
+    overflow: hidden; // * fix overflow of rotate
 
     opacity: 0;
     transform: scale(0);
