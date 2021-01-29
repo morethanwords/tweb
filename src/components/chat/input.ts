@@ -724,9 +724,13 @@ export default class ChatInput {
         this.restoreScroll();
       }); */
 
-      /* if(isSafari) {
-        this.listenerSetter.add(this.messageInput, 'focusin', () => {
-          fixSafariStickyInput(this.messageInput);
+      /* if(isSafari) {  
+        this.listenerSetter.add(this.messageInput, 'mousedown', () => {
+          window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
+              emoticonsDropdown.toggle(false);
+            });
+          });
         });
       } */
     }

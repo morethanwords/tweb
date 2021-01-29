@@ -85,11 +85,13 @@ type BroadcastEvents = {
   'event-heavy-animation-end': void,
 
   'im_mount': void,
-  'im_tab_change': number
+  'im_tab_change': number,
+
+  'overlay_toggle': boolean,
 };
 
 class RootScope extends EventListenerBase<any> {
-  public overlayIsActive: boolean = false;
+  private _overlayIsActive: boolean = false;
   public myId = 0;
   public idle = {
     isIDLE: false
@@ -108,6 +110,15 @@ class RootScope extends EventListenerBase<any> {
       const status = e;
       this.connectionStatus[e.name] = status;
     });
+  }
+
+  get overlayIsActive() {
+    return this._overlayIsActive;
+  }
+
+  set overlayIsActive(value: boolean) {
+    this._overlayIsActive = value;
+    this.broadcast('overlay_toggle', value);
   }
 
   public broadcast = <T extends keyof BroadcastEvents>(name: T, detail?: BroadcastEvents[T]) => {

@@ -504,13 +504,20 @@ export default class ChatBubbles {
       let rAF = 0;
 
       const onResizeEnd = () => {
-        //this.log('resize end', scrolled, this.scrollable.scrollTop);
+        const height = this.scrollable.container.offsetHeight;
+        if(height !== wasHeight) { // * fix opening keyboard while ESG is active, offsetHeight will change right between 'start' and this first frame
+          part += wasHeight - height;
+        }
+
+        /* if(DEBUG) {
+          this.log('resize end', scrolled, this.scrollable.scrollTop, height, this.scrollable.isScrolledDown);
+        } */
 
         if(part) {
           this.scrollable.scrollTop += Math.round(part);
         }
 
-        wasHeight = this.scrollable.container.offsetHeight;
+        wasHeight = height;
         scrolled = 0;
         rAF = 0;
         part = 0;
@@ -526,8 +533,7 @@ export default class ChatBubbles {
         });
       };
 
-      // @ts-ignore
-      const resizeObserver = new ResizeObserver((entries) => {
+      const processEntries = (entries: any) => {
         if(skip) {
           setEndRAF(false);
           return;
@@ -549,9 +555,15 @@ export default class ChatBubbles {
         if(!resizing) {
           resizing = true;
 
-          //this.log('resize start', realDiff, this.scrollable.isScrolledDown);
+          /* if(DEBUG) {
+            this.log('resize start', realDiff, this.scrollable.scrollTop, this.scrollable.container.offsetHeight, this.scrollable.isScrolledDown);
+          } */
 
           if(realDiff < 0 && this.scrollable.isScrolledDown) {
+            //if(isSafari) { // * fix opening keyboard while ESG is active 
+              part = -realDiff;
+            //}
+
             skip = true;
             setEndRAF(false);
             return;
@@ -560,25 +572,23 @@ export default class ChatBubbles {
 
         scrolled += diff;
 
-        //this.log('resize', wasHeight - height, diff, this.scrollable.container.offsetHeight, this.scrollable.isScrolledDown, height, wasHeight/* , entry */);
+        /* if(DEBUG) {
+          this.log('resize', wasHeight - height, diff, this.scrollable.container.offsetHeight, this.scrollable.isScrolledDown, height, wasHeight);
+        } */
 
         if(diff) {
           const needScrollTop = this.scrollable.scrollTop + diff;
           this.scrollable.scrollTop = needScrollTop;
-          /* if(rAF) window.cancelAnimationFrame(rAF);
-          rAF = window.requestAnimationFrame(() => {
-            this.scrollable.scrollTop = needScrollTop;
-            setEndRAF(true);
-            //this.log('resize after RAF', part);
-          }); */
-        } //else {
-          setEndRAF(false);
-        //}
+        }
+        
+        setEndRAF(false);
 
         part = _part;
         wasHeight = height;
-      });
+      };
 
+      // @ts-ignore
+      const resizeObserver = new ResizeObserver(processEntries);
       resizeObserver.observe(this.bubblesContainer);
     }
   }
@@ -2102,8 +2112,10 @@ export default class ChatBubbles {
             bubble.classList.add('photo');
 
             const size = webpage.photo.sizes[webpage.photo.sizes.length - 1];
+            let isSquare = false;
             if(size.w === size.h && quoteTextDiv.childElementCount) {
               bubble.classList.add('is-square-photo');
+              isSquare = true;
             } else if(size.h > size.w) {
               bubble.classList.add('is-vertical-photo');
             }
@@ -2117,7 +2129,8 @@ export default class ChatBubbles {
               isOut, 
               lazyLoadQueue: this.lazyLoadQueue, 
               middleware: this.getMiddleware(),
-              loadPromises
+              loadPromises,
+              withoutPreloader: isSquare
             });
           }
           
