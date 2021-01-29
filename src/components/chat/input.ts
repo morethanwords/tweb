@@ -377,6 +377,10 @@ export default class ChatInput {
           this.onMessageInput();
         }
       }
+
+      if(this.messageInputField) {
+        this.messageInputField.onFakeInput();
+      }
     });
 
     this.listenerSetter.add(rootScope, 'draft_updated', (e) => {
