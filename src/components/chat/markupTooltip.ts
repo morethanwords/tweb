@@ -129,6 +129,10 @@ export default class MarkupTooltip {
   }
 
   public showLinkEditor() {
+    if(!this.container || !this.container.classList.contains('is-visible')) { // * if not inited yet (Ctrl+A + Ctrl+K)
+      this.show();
+    }
+
     const button = this.buttons.link;
     this.container.classList.add('is-link');
 
