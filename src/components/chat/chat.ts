@@ -24,6 +24,9 @@ import ChatInput from "./input";
 import ChatSelection from "./selection";
 import ChatTopbar from "./topbar";
 import { REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
+import { renderImageFromUrl } from "../misc";
+import SetTransition from "../singleTransition";
+import { fastRaf } from "../../helpers/schedulers";
 
 export type ChatType = 'chat' | 'pinned' | 'replies' | 'discussion' | 'scheduled';
 
@@ -66,6 +69,36 @@ export default class Chat extends EventListenerBase<{
 
     this.container.append(this.backgroundEl);
     this.appImManager.chatsContainer.append(this.container);
+  }
+
+  public setBackground(url: string): Promise<void> {
+    const item = document.createElement('div');
+    item.classList.add('chat-background-item');
+
+    return new Promise<void>((resolve) => {
+      const cb = () => {
+        const prev = this.backgroundEl.children[this.backgroundEl.childElementCount - 1] as HTMLElement;
+        this.backgroundEl.append(item);
+
+        // * одного недостаточно, при обновлении страницы все равно фон появляется неплавно
+        // ! с requestAnimationFrame лучше, но все равно иногда моргает, так что использую два фаста.
+        fastRaf(() => {
+          fastRaf(() => {
+            SetTransition(item, 'is-visible', true, 200, prev ? () => {
+              prev.remove();
+            } : null);
+          });
+        });
+
+        resolve();
+      };
+
+      if(url) {
+        renderImageFromUrl(item, url, cb);
+      } else {
+        cb();
+      }
+    });
   }
 
   public setType(type: ChatType) {

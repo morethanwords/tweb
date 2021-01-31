@@ -139,29 +139,42 @@ export default class ProgressivePreloader {
     this.promise = promise;
 
     const tempId = --this.tempId;
+    const startTime = Date.now();
 
     const onEnd = (err: Error) => {
       promise.notify = null;
 
-      if(tempId === this.tempId) {
-        if(!err && this.cancelable) {
-          this.setProgress(100);
+      if(tempId !== this.tempId) {
+        return;
+      }
 
+      const elapsedTime = Date.now() - startTime;
+
+      //console.log('[PP]: end', this.detached, performance.now());
+
+      if(!err && this.cancelable) {
+        this.setProgress(100);
+
+        const delay = TRANSITION_TIME * 0.75;
+
+        if(elapsedTime < delay) {
+          this.detach();
+        } else {
           setTimeout(() => { // * wait for transition complete
             if(tempId === this.tempId) {
               this.detach();
             }
-          }, TRANSITION_TIME * 0.75);
-        } else {
-          if(this.tryAgainOnFail) {
-            this.setManual();
-          } else {
-            this.detach();
-          }
+          }, delay);
         }
-        
-        this.promise = promise = null;
+      } else {
+        if(this.tryAgainOnFail) {
+          this.setManual();
+        } else {
+          this.detach();
+        }
       }
+      
+      this.promise = promise = null;
     };
     
     promise

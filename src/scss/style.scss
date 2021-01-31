@@ -843,21 +843,29 @@ img.emoji {
   }
 }
 
-.grid-item {
-  height: 0;
-	padding-bottom: 100%;
-	//overflow: hidden;
-	position: relative;
-  cursor: pointer;
-  user-select: none;
-  
-  &-media {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+.grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: 1fr;
+  grid-gap: .25rem;
+
+  &-item {
+    height: 0;
+    padding-bottom: 100%;
+    //overflow: hidden;
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+    
+    &-media {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
   }
 }
 

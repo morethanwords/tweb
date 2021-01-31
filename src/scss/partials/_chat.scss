@@ -116,7 +116,7 @@ $chat-helper-size: 39px;
 		background: none;
 		border: none;
 		width: 100%;
-		padding: 0 .5625rem;
+		padding: .5rem .5625rem;
 		/* height: 100%; */
 		margin-top: -1px;
 		max-height: calc(30rem - 2.5rem); // 2.5rem - input helper (reply)
@@ -563,12 +563,13 @@ $chat-helper-size: 39px;
 	
 	&-background {
 		overflow: hidden;
+		background-color: #e6ebee;
 
 		&.no-transition:before {
 			transition: none !important;
 		}
 
-		&, &:before {
+		&, &-item {
 			position: absolute !important;
 			top: 0;
 			left: 0;
@@ -576,24 +577,32 @@ $chat-helper-size: 39px;
 			right: 0;
 		}
 
-		&:before {
-			content: "";
-			display: block;
+		&-item {
 			background-image: url('assets/img/bg.jpeg');
 			background-size: cover;
 			background-position: center center;
+			background-color: inherit;
+
+			body.animation-level-2 & {
+				transition: opacity var(--layer-transition);
+				opacity: 0;
+
+				&.is-visible:not(.backwards) {
+					opacity: 1;
+				}
+			}
 
 			@include respond-to(medium-screens) {
 				body.animation-level-2 & {
 					// !WARNING, МАГИЧЕСКОЕ ЧИСЛО
-					margin: -16rem -5rem -20rem 0;
+					margin: -16.5rem 0 -20rem 0;
 					transform: scale(1);
 					transform-origin: left center;
-					transition: transform var(--layer-transition);
+					transition: transform var(--layer-transition), opacity var(--layer-transition);
 				}
 
 				body.animation-level-2.is-right-column-shown & {
-					transform: scale(.67);
+					transform: scale(.666666667);
 				}
 			}
 		}
@@ -1036,6 +1045,8 @@ $chat-helper-size: 39px;
 				cursor: pointer;
 				//--translateY: 0;
 				opacity: 1;
+				transition: opacity var(--layer-transition), visibility 0s 0s !important;
+				visibility: visible;
 
 				/* &.is-broadcast {
 					--translateY: 79px !important;
@@ -1151,12 +1162,13 @@ $chat-helper-size: 39px;
 	bottom: calc(var(--chat-input-size) + var(--bottom) + 10px);
 	cursor: default;
 	opacity: 0;
+	visibility: hidden;
 	z-index: 2;
 	//transition: transform var(--layer-transition), opacity var(--layer-transition) !important;
 	overflow: visible;
 	//--translateY: calc(var(--chat-input-size) + 10px);
 	//--translateY: calc(100% + 10px);
-	transition: opacity var(--layer-transition) !important;
+	transition: opacity var(--layer-transition), visibility 0s .2s !important;
 	transform: none !important;
 
 	body.animation-level-0 & {

@@ -386,8 +386,9 @@ export default class AppSearchSuper {
             });
           }
 
-          wrapped.images.thumb && wrapped.images.thumb.classList.add('grid-item-media');
-          wrapped.images.full && wrapped.images.full.classList.add('grid-item-media');
+          [wrapped.images.thumb, wrapped.images.full].filter(Boolean).forEach(image => {
+            image.classList.add('grid-item-media');
+          });
 
           promises.push(wrapped.loadPromises.thumb);
 

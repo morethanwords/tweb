@@ -1,6 +1,7 @@
 import { getFullDate } from "../../helpers/date";
 import { formatNumber } from "../../helpers/number";
 import RichTextProcessor from "../../lib/richtextprocessor";
+import { wrapReply } from "../wrappers";
 import Chat from "./chat";
 import RepliesElement from "./replies";
 
@@ -34,7 +35,7 @@ export namespace MessageRender {
       }
     }
 
-    if(message.edit_date) {
+    if(message.edit_date && chat.type !== 'scheduled') {
       bubble.classList.add('is-edited');
       time = '<i class="edited">edited</i> ' + time;
     }
@@ -73,5 +74,55 @@ export namespace MessageRender {
     repliesFooter.init();
     bubbleContainer.prepend(repliesFooter);
     return isFooter;
+  };
+
+  export const setReply = ({chat, bubble, bubbleContainer, message}: {
+    chat: Chat,
+    bubble: HTMLElement,
+    bubbleContainer?: HTMLElement,
+    message: any
+  }) => {
+    const isReplacing = !bubbleContainer;
+    if(isReplacing) {
+      bubbleContainer = bubble.querySelector('.bubble-content');
+    }
+
+    const currentReplyDiv = isReplacing ? bubbleContainer.querySelector('.reply') : null;
+    if(!message.reply_to_mid) {
+      if(currentReplyDiv) {
+        currentReplyDiv.remove();
+      }
+
+      bubble.classList.remove('is-reply');
+      return;
+    }
+
+
+    const replyToPeerId = message.reply_to.reply_to_peer_id ? chat.appPeersManager.getPeerId(message.reply_to.reply_to_peer_id) : chat.peerId;
+
+    let originalMessage = chat.appMessagesManager.getMessageByPeer(replyToPeerId, message.reply_to_mid);
+    let originalPeerTitle: string;
+    
+    /////////this.log('message to render reply', originalMessage, originalPeerTitle, bubble, message);
+    
+    // need to download separately
+    if(originalMessage._ === 'messageEmpty') {
+      //////////this.log('message to render reply empty, need download', message, message.reply_to_mid);
+      chat.appMessagesManager.wrapSingleMessage(replyToPeerId, message.reply_to_mid);
+      chat.bubbles.needUpdate.push({replyToPeerId, replyMid: message.reply_to_mid, mid: message.mid});
+      
+      originalPeerTitle = 'Loading...';
+    } else {
+      originalPeerTitle = chat.appPeersManager.getPeerTitle(originalMessage.fromId || originalMessage.fwdFromId, true) || '';
+    }
+
+    const wrapped = wrapReply(originalPeerTitle, originalMessage.message || '', originalMessage);
+    if(currentReplyDiv) {
+      currentReplyDiv.replaceWith(wrapped);
+    } else {
+      bubbleContainer.append(wrapped);
+    }
+    //bubbleContainer.insertBefore(, nameContainer);
+    bubble.classList.add('is-reply');
   };
 }

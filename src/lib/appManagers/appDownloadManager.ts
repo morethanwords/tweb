@@ -23,7 +23,7 @@ export type Progress = {done: number, fileName: string, total: number, offset: n
 export type ProgressCallback = (details: Progress) => void;
 
 export class AppDownloadManager {
-  private cacheStorage = new CacheStorageController('cachedFiles');
+  public cacheStorage = new CacheStorageController('cachedFiles');
   private downloads: {[fileName: string]: Download} = {};
   private progress: {[fileName: string]: Progress} = {};
   private progressCallbacks: {[fileName: string]: Array<ProgressCallback>} = {};
@@ -51,14 +51,18 @@ export class AppDownloadManager {
     const deferred = deferredPromise<Blob>();
 
     deferred.cancel = () => {
-      const error = new Error('Download canceled');
-      error.name = 'AbortError';
-      
-      apiManager.cancelDownload(fileName);
-      this.clearDownload(fileName);
+      //try {
+        const error = new Error('Download canceled');
+        error.name = 'AbortError';
+        
+        apiManager.cancelDownload(fileName);
+        this.clearDownload(fileName);
 
-      deferred.reject(error);
-      deferred.cancel = () => {};
+        deferred.reject(error);
+        deferred.cancel = () => {};
+      /* } catch(err) {
+
+      } */
     };
 
     deferred.finally(() => {

@@ -50,7 +50,7 @@ function timedChunk<T>(queue: HeavyQueue<T>) {
 
       do {
         await getHeavyAnimationPromise();
-        const possiblePromise = queue.process.call(queue.context, todo.shift());
+        const possiblePromise = queue.process.apply(queue.context, todo.shift());
         let realResult: T;
         if(possiblePromise instanceof Promise) {
           try {

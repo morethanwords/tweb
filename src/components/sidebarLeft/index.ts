@@ -446,7 +446,7 @@ export class SettingSection {
   public title: HTMLElement;
   public caption: HTMLElement;
 
-  constructor(name: string, caption?: string) {
+  constructor(name?: string, caption?: string) {
     this.container = document.createElement('div');
     this.container.classList.add('sidebar-left-section');
 
@@ -473,7 +473,7 @@ export class SettingSection {
   }
 }
 
-export const generateSection = (appendTo: Scrollable, name: string, caption?: string) => {
+export const generateSection = (appendTo: Scrollable, name?: string, caption?: string) => {
   const section = new SettingSection(name, caption);
   appendTo.append(section.container);
   return section.content;

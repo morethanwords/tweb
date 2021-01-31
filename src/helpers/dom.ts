@@ -756,3 +756,9 @@ export function isSendShortcutPressed(e: KeyboardEvent) {
 
   return false;
 }
+
+export function reflowScrollableElement(element: HTMLElement) {
+  element.style.display = 'none';
+  void element.offsetLeft; // reflow
+  element.style.display = '';
+}

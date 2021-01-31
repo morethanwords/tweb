@@ -69,12 +69,12 @@ export class SliderSuperTab implements SliderTab {
 
   }
 
-  /* public onCloseAfterTimeout() {
+  public onCloseAfterTimeout() {
     if(this.destroyable) { // ! WARNING, пока что это будет работать только с самой последней внутренней вкладкой !
       delete this.slider.tabs[this.id];
       this.container.remove();
     }
-  } */
+  }
 }
 
 const TRANSITION_TIME = 250;

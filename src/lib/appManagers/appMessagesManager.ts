@@ -264,7 +264,7 @@ export class AppMessagesManager {
         const folder = this.dialogsStorage.getFolder(+folderId);
         
         for(let dialog of folder) {
-          items.push(dialog);
+          items.push([dialog]);
         }
       }
 
@@ -420,6 +420,10 @@ export class AppMessagesManager {
     }
 
     //this.checkSendOptions(options);
+
+    if(options.threadId && !options.replyToMsgId) {
+      options.replyToMsgId = options.threadId;
+    }
 
     const MAX_LENGTH = 4096;
     if(text.length > MAX_LENGTH) {
@@ -603,6 +607,11 @@ export class AppMessagesManager {
     waveform: Uint8Array
   }> = {}) {
     peerId = appPeersManager.getPeerMigratedTo(peerId) || peerId;
+
+    if(options.threadId && !options.replyToMsgId) {
+      options.replyToMsgId = options.threadId;
+    }
+
     //this.checkSendOptions(options);
     const messageId = this.generateTempMessageId(peerId);
     const randomIdS = randomLong();
@@ -999,6 +1008,10 @@ export class AppMessagesManager {
   }> = {}) {
     //this.checkSendOptions(options);
 
+    if(options.threadId && !options.replyToMsgId) {
+      options.replyToMsgId = options.threadId;
+    }
+
     if(files.length === 1) {
       return this.sendFile(peerId, files[0], {...options, ...options.sendFileDetails[0]});
     }
@@ -1151,6 +1164,10 @@ export class AppMessagesManager {
     silent: true
   }> = {}) {
     peerId = appPeersManager.getPeerMigratedTo(peerId) || peerId;
+
+    if(options.threadId && !options.replyToMsgId) {
+      options.replyToMsgId = options.threadId;
+    }
 
     //this.checkSendOptions(options);
     const messageId = this.generateTempMessageId(peerId);
@@ -1392,10 +1409,10 @@ export class AppMessagesManager {
   private generateReplyHeader(replyToMsgId: number, replyToTopId?: number) {
     const header = {
       _: 'messageReplyHeader',
-      reply_to_msg_id: replyToMsgId,
+      reply_to_msg_id: replyToMsgId || replyToTopId,
     } as MessageReplyHeader;
 
-    if(replyToTopId && replyToTopId !== replyToMsgId) {
+    if(replyToTopId && header.reply_to_msg_id !== replyToTopId) {
       header.reply_to_top_id = replyToTopId;
     }
 

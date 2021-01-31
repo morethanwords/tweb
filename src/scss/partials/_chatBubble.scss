@@ -14,24 +14,6 @@ $bubble-margin: .25rem;
   }
 }
 
-/*
- * zoom-fade-opacity
- */
- @keyframes zoom-opacity-fade-in {
-  0% {
-    //transform: scale(.8) translateZ(0);
-    transform: scale3d(.8, .8, 1);
-    //transform: scale(.8);
-    opacity: 0;
-  }
-  100% {
-    //transform: scale(1) translateZ(0);
-    transform: scale3d(1, 1, 1);
-    //transform: scale(1);
-    opacity: 1;
-  }
-}
-
 .bubbles-date-group {
   position: relative;
 
@@ -1522,11 +1504,9 @@ $bubble-margin: .25rem;
 
   &.zoom-fade /* .bubble-content */ {
     //transform: scale(.8) translateZ(0);
-    transform: scale3d(.8, .8, 1);
-    //transform: scale(.8);
+    transform: scale3d(.8, .8, 1) translateX(0);
+    //transform: scale(.8) translateX(0);
     opacity: 0;
-    //animation: zoom-opacity-fade-in .2s ease-in-out forwards;
-    //animation-delay: 0s;
   }
 
   @include respond-to(not-handhelds) {

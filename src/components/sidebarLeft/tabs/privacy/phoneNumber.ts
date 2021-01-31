@@ -8,7 +8,7 @@ import appPrivacyManager from "../../../../lib/appManagers/appPrivacyManager";
 
 export default class AppPrivacyPhoneNumberTab extends SliderSuperTab {
   constructor(slider: SidebarSlider) {
-    super(slider, true);
+    super(slider);
   }
 
   protected init() {

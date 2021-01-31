@@ -17,7 +17,10 @@ const set = (elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLVideoE
 // проблема функции в том, что она не подходит для ссылок, пригодна только для blob'ов, потому что обычным ссылкам нужен 'load' каждый раз.
 export function renderImageFromUrl(elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLVideoElement, url: string, callback?: (err?: Event) => void, useCache = false): boolean {
   if(((loadedURLs[url]/*  && false */) && useCache) || elem instanceof HTMLVideoElement) {
-    set(elem, url);
+    if(elem) {
+      set(elem, url);
+    }
+    
     callback && callback();
     return true;
   } else {
@@ -27,7 +30,7 @@ export function renderImageFromUrl(elem: HTMLElement | HTMLImageElement | SVGIma
     loader.src = url;
     //let perf = performance.now();
     loader.addEventListener('load', () => {
-      if(!isImage) {
+      if(!isImage && elem) {
         set(elem, url);
       }
 

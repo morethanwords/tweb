@@ -1,4 +1,4 @@
-import { numberWithCommas } from "../../helpers/number";
+import { numberThousandSplitter } from "../../helpers/number";
 import { isObject, safeReplaceObject, copy } from "../../helpers/object";
 import { ChatAdminRights, ChatBannedRights, ChatFull, ChatParticipants, InputChannel, InputChatPhoto, InputFile, InputPeer, SendMessageAction, Updates } from "../../layer";
 import apiManager from '../mtproto/mtprotoworker';
@@ -398,7 +398,7 @@ export class AppChatsManager {
     }
 
     const isChannel = this.isBroadcast(id);
-    return numberWithCommas(count || 1) + ' ' + (isChannel ? 'followers' : 'members');
+    return numberThousandSplitter(count || 1, ' ') + ' ' + (isChannel ? 'subscribers' : 'members');
   }
 
   public wrapForFull(id: number, fullChat: any) {
