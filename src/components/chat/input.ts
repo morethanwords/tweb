@@ -13,13 +13,12 @@ import apiManager from "../../lib/mtproto/mtprotoworker";
 //import Recorder from '../opus-recorder/dist/recorder.min';
 import opusDecodeController from "../../lib/opusDecodeController";
 import RichTextProcessor from "../../lib/richtextprocessor";
-import { attachClickEvent, blurActiveElement, cancelEvent, cancelSelection, findUpClassName, getRichValue, getSelectedNodes, isInputEmpty, markdownTags, MarkdownType, placeCaretAtEnd, isSendShortcutPressed, fixSafariStickyInput } from "../../helpers/dom";
+import { attachClickEvent, blurActiveElement, cancelEvent, cancelSelection, findUpClassName, getRichValue, isInputEmpty, markdownTags, MarkdownType, placeCaretAtEnd, isSendShortcutPressed } from "../../helpers/dom";
 import { ButtonMenuItemOptions } from '../buttonMenu';
 import emoticonsDropdown from "../emoticonsDropdown";
 import PopupCreatePoll from "../popups/createPoll";
 import PopupForward from '../popups/forward';
 import PopupNewMedia from '../popups/newMedia';
-import Scrollable from "../scrollable";
 import { toast } from "../toast";
 import { wrapReply } from "../wrappers";
 import InputField from '../inputField';
@@ -36,7 +35,6 @@ import rootScope from '../../lib/rootScope';
 import PopupPinMessage from '../popups/unpinMessage';
 import { debounce } from '../../helpers/schedulers';
 import { tsNow } from '../../helpers/date';
-import { isSafari } from '../../helpers/userAgent';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -756,7 +754,7 @@ export default class ChatInput {
 
     if(this.chat.type === 'chat' || this.chat.type === 'discussion') {
       this.listenerSetter.add(this.messageInput, 'focusin', () => {
-        if(this.chat.bubbles.scrolledAllDown) {
+        if(this.chat.bubbles.scrollable.loadedAll.bottom) {
           this.appMessagesManager.readAllHistory(this.chat.peerId, this.chat.threadId);
         }
       }); 
@@ -1448,7 +1446,7 @@ export default class ChatInput {
       this.willSendWebPage = null;
     }
     
-    this.replyToMsgId = this.chat.threadId;
+    this.replyToMsgId = undefined;
     this.forwardingMids.length = 0;
     this.forwardingFromPeerId = 0;
     this.editMsgId = undefined;

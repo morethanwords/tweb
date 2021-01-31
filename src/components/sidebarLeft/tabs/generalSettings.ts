@@ -9,6 +9,8 @@ import appStateManager from "../../../lib/appManagers/appStateManager";
 import rootScope from "../../../lib/rootScope";
 import { isApple } from "../../../helpers/userAgent";
 import Row from "../../row";
+import { attachClickEvent } from "../../../helpers/dom";
+import AppBackgroundTab from "./background";
 
 export class RangeSettingSelector {
   public container: HTMLDivElement;
@@ -71,6 +73,10 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
       };
 
       const chatBackgroundButton = Button('btn-primary btn-transparent', {icon: 'photo', text: 'Chat Background'});
+
+      attachClickEvent(chatBackgroundButton, () => {
+        new AppBackgroundTab(this.slider).open();
+      });
 
       const animationsCheckboxField = CheckboxField('Enable Animations', 'animations', false, 'settings.animationsEnabled');
       

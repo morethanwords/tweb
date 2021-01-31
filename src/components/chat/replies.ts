@@ -62,7 +62,7 @@ export default class RepliesElement extends HTMLElement {
           if(!avatarElem) {
             avatarElem = new AvatarElement();
             avatarElem.setAttribute('dialog', '0');
-            avatarElem.classList.add('avatar-32');
+            avatarElem.classList.add('avatar-30');
             
             if(this.loadPromises) {
               avatarElem.loadPromises = this.loadPromises;

@@ -1,5 +1,5 @@
 import type { Dialog } from './appMessagesManager';
-import { App, MOUNT_CLASS_TO, UserAuth } from '../mtproto/mtproto_config';
+import { App, DEBUG, MOUNT_CLASS_TO, UserAuth } from '../mtproto/mtproto_config';
 import EventListenerBase from '../../helpers/eventListenerBase';
 import rootScope from '../rootScope';
 import sessionStorage from '../sessionStorage';
@@ -54,12 +54,18 @@ export type State = Partial<{
     stickers: {
       suggest: boolean,
       loop: boolean
+    },
+    background: {
+      type: 'color' | 'image' | 'default',
+      blur: boolean,
+      color?: string,
+      slug?: string,
     }
   },
   drafts: AppDraftsManager['drafts']
 }>;
 
-const STATE_INIT: State = {
+export const STATE_INIT: State = {
   dialogs: [],
   allDialogsLoaded: {},
   chats: {},
@@ -95,6 +101,11 @@ const STATE_INIT: State = {
     stickers: {
       suggest: true,
       loop: true
+    },
+    background: {
+      type: 'image',
+      blur: false,
+      slug: 'ByxGo2lrMFAIAAAAmkJxZabh8eM', // * new blurred camomile
     }
   },
   drafts: {}
@@ -108,6 +119,7 @@ const REFRESH_KEYS = ['dialogs', 'allDialogsLoaded', 'messages', 'contactsList',
 export class AppStateManager extends EventListenerBase<{
   save: (state: State) => Promise<void>
 }> {
+  public static STATE_INIT = STATE_INIT;
   public loaded: Promise<State>;
   private log = logger('STATE'/* , LogLevels.error */);
 
@@ -144,11 +156,25 @@ export class AppStateManager extends EventListenerBase<{
           if(state.version !== STATE_VERSION) {
             state = copy(STATE_INIT);
           } else if((state.stateCreatedTime + REFRESH_EVERY) < time/*  && false */) {
-            this.log('will refresh state', state.stateCreatedTime, time);
+            if(DEBUG) {
+              this.log('will refresh state', state.stateCreatedTime, time);
+            }
+            
             REFRESH_KEYS.forEach(key => {
               // @ts-ignore
               state[key] = copy(STATE_INIT[key]);
             });
+
+            const users: typeof state['users'] = {}, chats: typeof state['chats'] = {};
+            if(state.recentSearch?.length) {
+              state.recentSearch.forEach(peerId => {
+                if(peerId < 0) chats[peerId] = state.chats[peerId];
+                else users[peerId] = state.users[peerId];
+              });
+            }
+
+            state.users = users;
+            state.chats = chats;
           }
         }
 
@@ -160,7 +186,9 @@ export class AppStateManager extends EventListenerBase<{
         // ! probably there is better place for it
         rootScope.settings = this.state.settings;
 
-        this.log('state res', state);
+        if(DEBUG) {
+          this.log('state res', state);
+        }
         
         //return resolve();
 

@@ -21,7 +21,7 @@ import appStickersManager from './appStickersManager';
 import appWebPagesManager from './appWebPagesManager';
 import { cancelEvent, getFilesFromEvent, placeCaretAtEnd } from '../../helpers/dom';
 import PopupNewMedia from '../../components/popups/newMedia';
-import { numberWithCommas } from '../../helpers/number';
+import { numberThousandSplitter } from '../../helpers/number';
 import MarkupTooltip from '../../components/chat/markupTooltip';
 import { isTouchSupported } from '../../helpers/touchSupport';
 import appPollsManager from './appPollsManager';
@@ -33,6 +33,9 @@ import useHeavyAnimationCheck, { dispatchHeavyAnimationEvent } from '../../hooks
 import appDraftsManager from './appDraftsManager';
 import serverTimeManager from '../mtproto/serverTimeManager';
 import sessionStorage from '../sessionStorage';
+import { renderImageFromUrl } from '../../components/misc';
+import appDownloadManager from './appDownloadManager';
+import appStateManager, { AppStateManager } from './appStateManager';
 
 //console.log('appImManager included33!');
 
@@ -154,6 +157,16 @@ export class AppImManager {
       animationIntersector.checkAnimations(false);
     });
 
+    const isDefaultBackground = rootScope.settings.background.blur === AppStateManager.STATE_INIT.settings.background.blur && 
+      rootScope.settings.background.slug === AppStateManager.STATE_INIT.settings.background.slug;
+    if(!isDefaultBackground) {
+      appDownloadManager.cacheStorage.getFile('background-image').then(blob => {
+        this.setBackground(URL.createObjectURL(blob), false);
+      });
+    } else {
+      this.setBackground('');
+    }
+
     /* rootScope.on('peer_changing', (chat) => {
       this.saveChatPosition(chat);
     });
@@ -161,6 +174,15 @@ export class AppImManager {
     sessionStorage.get('chatPositions').then((c) => {
       sessionStorage.setToCache('chatPositions', c || {});
     }); */
+  }
+
+  public setBackground(url: string, broadcastEvent = true): Promise<void> {
+    const promises = this.chats.map(chat => chat.setBackground(url));
+    return promises[promises.length - 1].then(() => {
+      if(broadcastEvent) {
+        rootScope.broadcast('background_change');
+      }
+    });
   }
 
   /* public saveChatPosition(chat: Chat) {
@@ -503,6 +525,10 @@ export class AppImManager {
   private createNewChat() {
     const chat = new Chat(this, appChatsManager, appDocsManager, appInlineBotsManager, appMessagesManager, appPeersManager, appPhotosManager, appProfileManager, appStickersManager, appUsersManager, appWebPagesManager, appPollsManager, apiManager, appDraftsManager, serverTimeManager, sessionStorage);
 
+    if(this.chats.length) {
+      chat.backgroundEl.append(this.chat.backgroundEl.lastElementChild.cloneNode(true));
+    }
+
     this.chats.push(chat);
   }
 
@@ -661,7 +687,7 @@ export class AppImManager {
         if(participants_count < 2) return subtitle;
         const onlines = await appChatsManager.getOnlines(chat.id);
         if(onlines > 1) {
-          subtitle += ', ' + numberWithCommas(onlines) + ' online';
+          subtitle += ', ' + numberThousandSplitter(onlines, ' ') + ' online';
         }
   
         return subtitle;

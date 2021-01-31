@@ -88,6 +88,8 @@ type BroadcastEvents = {
   'im_tab_change': number,
 
   'overlay_toggle': boolean,
+
+  'background_change': void,
 };
 
 class RootScope extends EventListenerBase<any> {

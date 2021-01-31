@@ -248,7 +248,7 @@
   }
 }
 
-// ! example: multiselect input, button in pinned messages chat
+// ! example: multiselect input, button in pinned messages chat, settings, chat background tab
 .btn-transparent {
   color: #000;
   background-color: transparent;
@@ -256,7 +256,7 @@
   align-items: center;
   padding: 0 .875rem;
   //width: auto;
-  text-transform: capitalize;
+  //text-transform: capitalize;
   font-weight: normal;
 
   html.no-touch &:hover {

@@ -67,12 +67,20 @@ avatar-element {
   }
   
   img {
-    width: 100%;
-    height: 100%;
-    border-radius: inherit;
+    //width: 100% !important;
+    //height: 100% !important;
+    width: var(--size) !important;
+    height: var(--size) !important;
+    border-radius: inherit !important;
 
     &.fade-in {
       animation: fade-in-opacity .2s ease forwards;
+    }
+
+    &.emoji {
+      width: calc(1.125rem / var(--multiplier));
+      height: calc(1.125rem / var(--multiplier));
+      vertical-align: middle !important;
     }
   }
   

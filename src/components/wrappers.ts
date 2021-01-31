@@ -438,7 +438,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
     const preloader = new ProgressivePreloader();
 
     const load = () => {
-      const download = appDocsManager.saveDocFile(doc, appImManager.chat.bubbles.lazyLoadQueue.queueId);
+      const download = appDocsManager.saveDocFile(doc, appImManager.chat.bubbles ? appImManager.chat.bubbles.lazyLoadQueue.queueId : 0);
 
       download.then(() => {
         downloadDiv.classList.add('downloaded');

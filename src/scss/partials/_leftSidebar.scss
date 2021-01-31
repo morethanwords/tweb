@@ -932,3 +932,39 @@
     }
   }
 }
+
+.background-container {
+  .grid {
+    padding: 0 .5rem;
+
+    &-item {
+      &:after {
+        content: " ";
+        display: block;
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        border: 3px solid $color-blue;
+        opacity: 0;
+        transition: opacity .2s ease-in-out;
+      }
+
+      &.active {
+        &:after {
+          opacity: 1;
+        }
+
+        .grid-item-media {
+          transform: scale(.91);
+        }
+      }
+
+      &-media {
+        transition: transform .2s ease-in-out;
+        transform: scale(1);
+      }
+    }
+  }
+}
