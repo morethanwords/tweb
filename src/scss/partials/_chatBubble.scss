@@ -520,12 +520,13 @@ $bubble-margin: .25rem;
       max-width: 200px !important;
       max-height: 200px !important;
 
-      img {
+      .media-photo, .media-video {
         border-radius: 50%;
+        pointer-events: none;
       }
     }
   }
-  
+
   &:not(.is-message-empty) .attachment/* ,
   &:not(.is-message-empty).is-reply .attachment */ {
     border-bottom-left-radius: 0;
@@ -1239,6 +1240,7 @@ $bubble-margin: .25rem;
     align-items: center;
     cursor: pointer;
     user-select: none;
+    height: 1.125rem;
 
     &.can-autoplay:after {
       content: $tgico-nosound;

@@ -30,6 +30,7 @@ import appImManager from '../lib/appManagers/appImManager';
 import { SearchSuperContext } from './appSearchSuper.';
 import rootScope from '../lib/rootScope';
 import { onVideoLoad } from '../helpers/files';
+import { animateSingle } from '../helpers/animation';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 
@@ -55,26 +56,24 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   let spanTime: HTMLElement;
 
   if(!noInfo) {
-    if(doc.type !== 'round') {
-      spanTime = document.createElement('span');
-      spanTime.classList.add('video-time');
-      container.append(spanTime);
+    spanTime = document.createElement('span');
+    spanTime.classList.add('video-time');
+    container.append(spanTime);
   
-      if(doc.type !== 'gif') {
-        spanTime.innerText = (doc.duration + '').toHHMMSS(false);
+    if(doc.type !== 'gif') {
+      spanTime.innerText = (doc.duration + '').toHHMMSS(false);
 
-        if(!noPlayButton) {
-          if(canAutoplay) {
-            spanTime.classList.add('tgico', 'can-autoplay');
-          } else {
-            const spanPlay = document.createElement('span');
-            spanPlay.classList.add('video-play', 'tgico-largeplay', 'btn-circle', 'position-center');
-            container.append(spanPlay);
-          }
+      if(!noPlayButton && doc.type !== 'round') {
+        if(canAutoplay) {
+          spanTime.classList.add('tgico', 'can-autoplay');
+        } else {
+          const spanPlay = document.createElement('span');
+          spanPlay.classList.add('video-play', 'tgico-largeplay', 'btn-circle', 'position-center');
+          container.append(spanPlay);
         }
-      } else {
-        spanTime.innerText = 'GIF';
       }
+    } else {
+      spanTime.innerText = 'GIF';
     }
   }
 
@@ -108,80 +107,110 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     video.remove();
   } */
 
-  const video = /* doc.type === 'round' ? appMediaPlaybackController.addMedia(message.peerId, doc, message.mid) as HTMLVideoElement :  */document.createElement('video');
+  const video = document.createElement('video');
   video.classList.add('media-video');
-  video.muted = true;
   video.setAttribute('playsinline', 'true');
+  video.muted = true;
   if(doc.type === 'round') {
-    //video.classList.add('z-depth-1');
-    const globalVideo = appMediaPlaybackController.addMedia(message.peerId, doc, message.mid);
+    const globalVideo = appMediaPlaybackController.addMedia(message.peerId, doc, message.mid) as HTMLVideoElement;
+ 
+    const divRound = document.createElement('div');
+    divRound.classList.add('media-round', 'z-depth-1');
 
-    video.classList.add('z-depth-1');
+    divRound.innerHTML = `<svg class="progress-ring" width="200px" height="200px">
+      <circle class="progress-ring__circle" stroke="white" stroke-opacity="0.3" stroke-width="3.5" cx="100" cy="100" r="93" fill="transparent" transform="rotate(-90, 100, 100)"/>
+    </svg>`;
 
-    onVideoLoad(video).then(() => {
-      if(globalVideo.currentTime !== globalVideo.duration) {
-        video.currentTime = globalVideo.currentTime;
+    const circle = divRound.querySelector('.progress-ring__circle') as SVGCircleElement;
+    const radius = circle.r.baseVal.value;
+    const circumference = 2 * Math.PI * radius;
+    circle.style.strokeDasharray = circumference + ' ' + circumference;
+    circle.style.strokeDashoffset = '' + circumference;
+    
+    spanTime.classList.add('tgico');
+
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = doc.w/*  * window.devicePixelRatio */;
+
+    divRound.prepend(canvas, spanTime);
+    container.append(divRound);
+
+    const ctx = canvas.getContext('2d');
+    /* ctx.beginPath();
+    ctx.arc(canvas.width / 2, canvas.height / 2, canvas.width / 2, 0, Math.PI * 2);
+    ctx.clip(); */
+
+    const clear = () => {
+      (appImManager.chat.setPeerPromise || Promise.resolve()).finally(() => {
+        if(isInDOM(globalVideo)) {
+          return;
+        }
+
+        globalVideo.removeEventListener('play', onPlay);
+        globalVideo.removeEventListener('timeupdate', onTimeUpdate);
+        globalVideo.removeEventListener('pause', onPaused);
+      });
+    };
+
+    const onFrame = () => {
+      ctx.drawImage(globalVideo, 0, 0);
+
+      const offset = circumference - globalVideo.currentTime / globalVideo.duration * circumference;
+      circle.style.strokeDashoffset = '' + offset;
+
+      return !globalVideo.paused;
+    };
+
+    const onTimeUpdate = () => {
+      if(!globalVideo.duration) return;
+
+      if(!isInDOM(globalVideo)) {
+        clear();
+        return;
       }
-  
-      if(!globalVideo.paused) {
-        // с закоментированными настройками - хром выключал видео при скролле, для этого нужно было включить видео - выйти из диалога, зайти заново и проскроллить вверх
-        //video.autoplay = true;
-        //video.loop = false;
-        video.play();
+
+      spanTime.innerText = (globalVideo.duration - globalVideo.currentTime + '').toHHMMSS(false);
+    };
+
+    const onPlay = () => {
+      video.remove();
+      divRound.classList.remove('is-paused');
+      animateSingle(onFrame, canvas);
+    };
+
+    const onPaused = () => {
+      if(!isInDOM(globalVideo)) {
+        clear();
+        return;
+      }
+
+      divRound.classList.add('is-paused');
+    };
+
+    globalVideo.addEventListener('play', onPlay);
+    globalVideo.addEventListener('timeupdate', onTimeUpdate);
+    globalVideo.addEventListener('pause', onPaused);
+
+    attachClickEvent(canvas, (e) => {
+      cancelEvent(e);
+
+      if(globalVideo.paused) {
+        globalVideo.play();
+      } else {
+        globalVideo.pause();
       }
     });
 
-    const clear = () => {
-      //console.log('clearing video');
-
-      globalVideo.removeEventListener('timeupdate', onGlobalTimeUpdate);
-      globalVideo.removeEventListener('play', onGlobalPlay);
-      globalVideo.removeEventListener('pause', onGlobalPause);
-      video.removeEventListener('play', onVideoPlay);
-      video.removeEventListener('pause', onVideoPause);
-    };
-
-    const onGlobalTimeUpdate = (e: Event) => {
-      //console.log('video global timeupdate event', e, globalVideo.currentTime, globalVideo.duration);
-      if(!isInDOM(video)) {
-        clear();
-      }
-    };
-
-    const onGlobalPlay = (e: Event) => {
-      //console.log('video global play event', e);
-      video.play();
-    };
-
-    const onGlobalPause = (e: Event) => {
-      //console.trace('video global pause event', e, globalVideo.paused, e.eventPhase);
-      video.pause();
-    };
-
-    const onVideoPlay = (e: Event) => {
-      //console.log('video play event', e);
-      if(globalVideo.paused) {
-        globalVideo.currentTime = video.currentTime;
-        globalVideo.play();
-      }
-    };
-
-    // * this will fire when video unmounts
-    const onVideoPause = (e: Event) => {
-      //console.trace('video pause event', e);
-      if(isInDOM(video)) {
-        globalVideo.pause();
-        globalVideo.currentTime = video.currentTime;
+    if(globalVideo.paused) {
+      if(globalVideo.duration && globalVideo.currentTime !== globalVideo.duration) {
+        onFrame();
+        onTimeUpdate();
       } else {
-        clear();
+        onPaused();
       }
-    };
-
-    globalVideo.addEventListener('timeupdate', onGlobalTimeUpdate);
-    globalVideo.addEventListener('play', onGlobalPlay);
-    globalVideo.addEventListener('pause', onGlobalPause);
-    video.addEventListener('play', onVideoPlay);
-    video.addEventListener('pause', onVideoPause);
+    } else {
+      onPlay();
+    }
   } else {
     video.autoplay = true; // для safari
   }
@@ -276,7 +305,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
         /* if(!video.paused) {
           video.pause();
         } */
-        if(doc.type !== 'round' && group) {
+        if(group) {
           animationIntersector.addAnimation(video, group);
         }
 
@@ -297,23 +326,15 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       deferred.resolve();
     });
 
-    if(doc.type !== 'round') {
-      video.muted = true;
-      video.loop = true;
-      //video.play();
-      video.autoplay = true;
-    }
+    video.muted = true;
+    video.loop = true;
+    //video.play();
+    video.autoplay = true;
       
     renderImageFromUrl(video, doc.url);
 
     return Promise.all([loadPromise, deferred]);
   };
-
-  if(doc.type === 'round') {
-    video.dataset.ckin = 'circle';
-    video.dataset.overlay = '1';
-    new VideoPlayer(video, undefined, undefined, doc.duration);
-  }
 
   /* if(doc.size >= 20e6 && !doc.downloaded) {
     let downloadDiv = document.createElement('div');
