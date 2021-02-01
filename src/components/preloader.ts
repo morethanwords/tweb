@@ -237,6 +237,8 @@ export default class ProgressivePreloader {
   }
   
   public detach() {
+    //return;
+
     this.detached = true;
 
     //return;

@@ -1,8 +1,10 @@
-import { cancelEvent } from "../helpers/dom";
+import { attachClickEvent, cancelEvent } from "../helpers/dom";
 import appMediaPlaybackController from "../components/appMediaPlaybackController";
 import { isAppleMobile } from "../helpers/userAgent";
 import { isTouchSupported } from "../helpers/touchSupport";
 import RangeSelector from "../components/rangeSelector";
+import { animateSingle } from "../helpers/animation";
+import { onVideoLoad } from "../helpers/files";
 
 type SUPEREVENT = MouseEvent | TouchEvent;
 
@@ -167,7 +169,7 @@ export default class VideoPlayer {
   /* private videoParent: HTMLElement;
   private videoWhichChild: number; */
 
-  constructor(public video: HTMLVideoElement, play = false, streamable = false) {
+  constructor(public video: HTMLVideoElement, play = false, streamable = false, duration?: number) {
     this.wrapper = document.createElement('div');
     this.wrapper.classList.add('ckin__player');
 
@@ -176,7 +178,7 @@ export default class VideoPlayer {
 
     this.skin = video.dataset.ckin ?? 'default';
 
-    this.stylePlayer();
+    this.stylePlayer(duration);
 
     if(this.skin === 'default') {
       let controls = this.wrapper.querySelector('.default__controls.ckin__controls') as HTMLDivElement;
@@ -199,7 +201,7 @@ export default class VideoPlayer {
     }
   }
 
-  private stylePlayer() {
+  private stylePlayer(initDuration: number) {
     const {wrapper: player, video, skin} = this;
 
     player.classList.add(skin);
@@ -365,11 +367,12 @@ export default class VideoPlayer {
       const circle = player.querySelector('.progress-ring__circle') as SVGCircleElement;
       const radius = circle.r.baseVal.value;
       const circumference = 2 * Math.PI * radius;
-      timeDuration = player.querySelector('.circle-time') as HTMLElement;
-      const iconVolume = player.querySelector('.iconVolume') as HTMLDivElement;
+      timeDuration = wrapper.firstElementChild as HTMLElement;
+      const iconVolume = wrapper.lastElementChild as HTMLElement;
       circle.style.strokeDasharray = circumference + ' ' + circumference;
       circle.style.strokeDashoffset = '' + circumference;
-      circle.addEventListener('click', () => {
+      attachClickEvent(circle as any, (e) => {
+        cancelEvent(e);
         this.togglePlay();
       });
 
@@ -377,24 +380,33 @@ export default class VideoPlayer {
         const offset = circumference - video.currentTime / video.duration * circumference;
         circle.style.strokeDashoffset = '' + offset;
         
-        if(video.paused) {
-          clearInterval(updateInterval);
-        }
+        return !video.paused;
+      };
+
+      const timeUpdate = () => {
+        const timeLeft = String((video.duration - video.currentTime) | 0).toHHMMSS();
+        if(timeLeft != '0') timeDuration.innerHTML = timeLeft;
       };
   
       video.addEventListener('play', () => {
         iconVolume.style.display = 'none';
-        updateInterval = window.setInterval(update, 20);
+
+        animateSingle(update, circle);
+        update();
       });
   
       video.addEventListener('pause', () => {
         iconVolume.style.display = '';
       });
 
-      let updateInterval = 0;
       video.addEventListener('timeupdate', () => {
-        const timeLeft = String((video.duration - video.currentTime) | 0).toHHMMSS();
-        if(timeLeft != '0') timeDuration.innerHTML = timeLeft;
+        timeUpdate();
+      });
+
+      onVideoLoad(video).then(() => {
+        if(!video.currentTime || video.currentTime === video.duration) return;
+        update();
+        timeUpdate();
       });
     }
 
@@ -406,10 +418,10 @@ export default class VideoPlayer {
       this.wrapper.classList.remove('is-playing');
     });
   
-    if(video.duration > 0) {
-      timeDuration.innerHTML = String(Math.round(video.duration)).toHHMMSS();
+    if(video.duration || initDuration) {
+      timeDuration.innerHTML = String(Math.round(video.duration || initDuration)).toHHMMSS();
     } else {
-      video.addEventListener('loadeddata', () => {
+      onVideoLoad(video).then(() => {
         timeDuration.innerHTML = String(Math.round(video.duration)).toHHMMSS();
       });
     }

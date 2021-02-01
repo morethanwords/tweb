@@ -78,8 +78,8 @@ avatar-element {
     }
 
     &.emoji {
-      width: calc(1.125rem / var(--multiplier));
-      height: calc(1.125rem / var(--multiplier));
+      width: calc(1.125rem / var(--multiplier)) !important;
+      height: calc(1.125rem / var(--multiplier)) !important;
       vertical-align: middle !important;
     }
   }

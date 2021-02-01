@@ -4,6 +4,7 @@ import appDocsManager, {MyDocument} from "../lib/appManagers/appDocsManager";
 import { CancellablePromise, deferredPromise } from "../helpers/cancellablePromise";
 import { isSafari } from "../helpers/userAgent";
 import { MOUNT_CLASS_TO } from "../lib/mtproto/mtproto_config";
+import { isInDOM } from "../helpers/dom";
 
 // TODO: если удалить сообщение, и при этом аудио будет играть - оно не остановится, и можно будет по нему перейти вникуда
 
@@ -177,6 +178,13 @@ class AppMediaPlaybackController {
   }
 
   onPause = (e: Event) => {
+    /* const target = e.target as HTMLMediaElement;
+    if(!isInDOM(target)) {
+      this.container.append(target);
+      target.play();
+      return;
+    } */
+
     rootScope.broadcast('audio_pause');
   };
 

@@ -1,4 +1,5 @@
 import { pause } from "./schedulers";
+import { isAppleMobile } from "./userAgent";
 
 export function preloadVideo(url: string): Promise<HTMLVideoElement> {
   return new Promise((resolve, reject) => {
@@ -35,4 +36,15 @@ export async function createPosterForVideo(url: string): Promise<Blob | undefine
     pause(2000) as Promise<undefined>,
     createPosterFromVideo(video),
   ]);
+}
+
+export function onVideoLoad(video: HTMLVideoElement) {
+  return new Promise<void>((resolve) => {
+    if(video.readyState >= video.HAVE_METADATA) {
+      resolve();
+      return;
+    }
+
+    video.addEventListener(isAppleMobile ? 'loadeddata' : 'canplay', () => resolve(), {once: true});
+  });
 }

@@ -11,6 +11,22 @@ interface AnimationInstance {
 type AnimationInstanceKey = any;
 const instances: Map<AnimationInstanceKey, AnimationInstance> = new Map();
 
+export function createAnimationInstance(key: AnimationInstanceKey) {
+  cancelAnimationByKey(key);
+
+  const instance: AnimationInstance = {
+    isCancelled: false, 
+    deferred: deferredPromise<void>()
+  };
+
+  instances.set(key, instance);
+  instance.deferred.then(() => {
+    instances.delete(key);
+  });
+
+  return instance;
+}
+
 export function getAnimationInstance(key: AnimationInstanceKey) {
   return instances.get(key);
 }
@@ -20,15 +36,12 @@ export function cancelAnimationByKey(key: AnimationInstanceKey) {
   if(instance) {
     instance.isCancelled = true;
     instance.deferred.resolve();
-    instances.delete(key);
   }
 }
 
 export function animateSingle(tick: Function, key: AnimationInstanceKey, instance?: AnimationInstance) {
   if(!instance) {
-    cancelAnimationByKey(key);
-    instance = { isCancelled: false, deferred: deferredPromise<void>() };
-    instances.set(key, instance);
+    instance = createAnimationInstance(key);
   }
 
   fastRaf(() => {
