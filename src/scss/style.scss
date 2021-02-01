@@ -1142,7 +1142,7 @@ middle-ellipsis-element {
   fill: rgba(0, 0, 0, .08);
 }
 
-.media-photo, .media-video, .media-sticker {
+.media-photo, .media-video, .media-sticker, .media-round {
   position: absolute;
   top: 0;
   right: 0;
@@ -1164,4 +1164,44 @@ middle-ellipsis-element {
 
 .media-sticker {
   margin: auto;
+}
+
+.media-round {
+  max-width: 200px;
+  max-height: 200px;
+  z-index: 1;
+
+  canvas {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    position: relative;
+  }
+
+  .progress-ring {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+  
+    &__circle {
+      transition: stroke-dashoffset;
+      stroke-linecap: round;
+    }
+  }
+
+  .video-time {
+    padding: 1px 6px 2px 7px;
+    background-color: rgba(0, 0, 0, .23) !important;
+  }
+
+  &.is-paused .video-time {
+    &:after {
+      content: $tgico-nosound;
+      padding-left: .25rem;
+      display: flex;
+      align-items: center;
+      font-size: 1.125rem;
+    }
+  }
 }

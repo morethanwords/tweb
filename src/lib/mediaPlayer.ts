@@ -1,9 +1,8 @@
-import { attachClickEvent, cancelEvent } from "../helpers/dom";
+import { cancelEvent } from "../helpers/dom";
 import appMediaPlaybackController from "../components/appMediaPlaybackController";
 import { isAppleMobile } from "../helpers/userAgent";
 import { isTouchSupported } from "../helpers/touchSupport";
 import RangeSelector from "../components/rangeSelector";
-import { animateSingle } from "../helpers/animation";
 import { onVideoLoad } from "../helpers/files";
 
 type SUPEREVENT = MouseEvent | TouchEvent;
@@ -358,56 +357,6 @@ export default class VideoPlayer {
       video.addEventListener('timeupdate', () => {
         timeElapsed.innerHTML = String(video.currentTime | 0).toHHMMSS();
       });
-    } else if(skin === 'circle') {
-      const wrapper = document.createElement('div');
-      wrapper.classList.add('circle-time-left');
-      video.parentNode.insertBefore(wrapper, video);
-      wrapper.innerHTML = '<div class="circle-time"></div><div class="iconVolume tgico-nosound"></div>';
-  
-      const circle = player.querySelector('.progress-ring__circle') as SVGCircleElement;
-      const radius = circle.r.baseVal.value;
-      const circumference = 2 * Math.PI * radius;
-      timeDuration = wrapper.firstElementChild as HTMLElement;
-      const iconVolume = wrapper.lastElementChild as HTMLElement;
-      circle.style.strokeDasharray = circumference + ' ' + circumference;
-      circle.style.strokeDashoffset = '' + circumference;
-      attachClickEvent(circle as any, (e) => {
-        cancelEvent(e);
-        this.togglePlay();
-      });
-
-      const update = () => {
-        const offset = circumference - video.currentTime / video.duration * circumference;
-        circle.style.strokeDashoffset = '' + offset;
-        
-        return !video.paused;
-      };
-
-      const timeUpdate = () => {
-        const timeLeft = String((video.duration - video.currentTime) | 0).toHHMMSS();
-        if(timeLeft != '0') timeDuration.innerHTML = timeLeft;
-      };
-  
-      video.addEventListener('play', () => {
-        iconVolume.style.display = 'none';
-
-        animateSingle(update, circle);
-        update();
-      });
-  
-      video.addEventListener('pause', () => {
-        iconVolume.style.display = '';
-      });
-
-      video.addEventListener('timeupdate', () => {
-        timeUpdate();
-      });
-
-      onVideoLoad(video).then(() => {
-        if(!video.currentTime || video.currentTime === video.duration) return;
-        update();
-        timeUpdate();
-      });
     }
 
     video.addEventListener('play', () => {
@@ -465,12 +414,6 @@ export default class VideoPlayer {
           </div>
         </div>
       </div>`;
-    } else if(skin === 'circle') {
-      return `
-      <svg class="progress-ring" width="200px" height="200px">
-        <circle class="progress-ring__circle" stroke="white" stroke-opacity="0.3" stroke-width="3.5" cx="100" cy="100" r="93" fill="transparent" transform="rotate(-90, 100, 100)"/>
-      </svg>
-      `;
     }
   }
 

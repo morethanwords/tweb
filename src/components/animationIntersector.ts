@@ -19,6 +19,7 @@ export class AnimationIntersector {
   private onlyOnePlayableGroup: string = '';
   
   private intersectionLockedGroups: {[group: string]: true} = {};
+  private videosLocked = false;
 
   constructor() {
     this.observer = new IntersectionObserver((entries) => {
@@ -50,6 +51,20 @@ export class AnimationIntersector {
             break;
           }
         }
+      }
+    });
+
+    rootScope.on('audio_play', ({doc}) => {
+      if(doc.type === 'round') {
+        this.videosLocked = true;
+        this.checkAnimations();
+      }
+    });
+
+    rootScope.on('audio_pause', () => {
+      if(this.videosLocked) {
+        this.videosLocked = false;
+        this.checkAnimations();
       }
     });
   }
@@ -132,7 +147,7 @@ export class AnimationIntersector {
       return;
     }
 
-    if(blurred || (this.onlyOnePlayableGroup && this.onlyOnePlayableGroup !== group)) {
+    if(blurred || (this.onlyOnePlayableGroup && this.onlyOnePlayableGroup !== group) || (animation instanceof HTMLVideoElement && this.videosLocked)) {
       if(!animation.paused) {
         //console.warn('pause animation:', animation);
         animation.pause();

@@ -177,7 +177,7 @@ class AppMediaPlaybackController {
     media.safariBuffering = value;
   }
 
-  onPause = (e: Event) => {
+  onPause = (e?: Event) => {
     /* const target = e.target as HTMLMediaElement;
     if(!isInDOM(target)) {
       this.container.append(target);
@@ -188,7 +188,7 @@ class AppMediaPlaybackController {
     rootScope.broadcast('audio_pause');
   };
 
-  onEnded = (e: Event) => {
+  onEnded = (e?: Event) => {
     this.onPause(e);
 
     //console.log('on media end');
