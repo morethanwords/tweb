@@ -98,9 +98,9 @@ export default class AppSettingsTab extends SliderSuperTab {
     buttonsDiv.append(this.buttons.edit = Button(className, {icon: 'edit', rippleSquare: true, text: 'Edit Profile'}));
     buttonsDiv.append(this.buttons.folders = Button(className, {icon: 'folder', rippleSquare: true, text: 'Chat Folders'}));
     buttonsDiv.append(this.buttons.general = Button(className, {icon: 'settings', rippleSquare: true, text: 'General Settings'}));
-    buttonsDiv.append(this.buttons.notifications = Button(className + ' btn-disabled', {icon: 'unmute', rippleSquare: true, text: 'Notifications'}));
+    buttonsDiv.append(this.buttons.notifications = Button(className, {icon: 'unmute', rippleSquare: true, text: 'Notifications', disabled: true}));
     buttonsDiv.append(this.buttons.privacy = Button(className, {icon: 'lock', rippleSquare: true, text: 'Privacy and Security'}));
-    buttonsDiv.append(this.buttons.language = Button(className + ' btn-disabled', {icon: 'language', rippleSquare: true, text: 'Language'}));
+    buttonsDiv.append(this.buttons.language = Button(className, {icon: 'language', rippleSquare: true, text: 'Language', disabled: true}));
     
     this.scrollable.append(this.avatarElem, this.nameDiv, this.phoneDiv, buttonsDiv);
     this.scrollable.container.classList.add('profile-content-wrapper');

@@ -78,7 +78,11 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
         new AppBackgroundTab(this.slider).open();
       });
 
-      const animationsCheckboxField = CheckboxField('Enable Animations', 'animations', false, 'settings.animationsEnabled');
+      const animationsCheckboxField = CheckboxField({
+        text: 'Enable Animations', 
+        name: 'animations', 
+        stateKey: 'settings.animationsEnabled'
+      });
       
       container.append(range.container, chatBackgroundButton, animationsCheckboxField.label);
     }
@@ -104,20 +108,46 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
 
     {
       const container = section('Auto-Download Media');
+      container.classList.add('sidebar-left-section-disabled');
 
-      const contactsCheckboxField = CheckboxField('Contacts', 'contacts', false, 'settings.autoDownload.contacts');
-      const privateCheckboxField = CheckboxField('Private Chats', 'private', false, 'settings.autoDownload.private');
-      const groupsCheckboxField = CheckboxField('Group Chats', 'groups', false, 'settings.autoDownload.groups');
-      const channelsCheckboxField = CheckboxField('Channels', 'channels', false, 'settings.autoDownload.channels');
+      const contactsCheckboxField = CheckboxField({
+        text: 'Contacts', 
+        name: 'contacts',
+        stateKey: 'settings.autoDownload.contacts'
+      });
+      const privateCheckboxField = CheckboxField({
+        text: 'Private Chats', 
+        name: 'private',
+        stateKey: 'settings.autoDownload.private'
+      });
+      const groupsCheckboxField = CheckboxField({
+        text: 'Group Chats', 
+        name: 'groups',
+        stateKey: 'settings.autoDownload.groups'
+      });
+      const channelsCheckboxField = CheckboxField({
+        text: 'Channels', 
+        name: 'channels',
+        stateKey: 'settings.autoDownload.channels'
+      });
 
       container.append(contactsCheckboxField.label, privateCheckboxField.label, groupsCheckboxField.label, channelsCheckboxField.label);
     }
 
     {
       const container = section('Auto-Play Media');
+      container.classList.add('sidebar-left-section-disabled');
 
-      const gifsCheckboxField = CheckboxField('GIFs', 'gifs', false, 'settings.autoPlay.gifs');
-      const videosCheckboxField = CheckboxField('Videos', 'videos', false, 'settings.autoPlay.videos');
+      const gifsCheckboxField = CheckboxField({
+        text: 'GIFs', 
+        name: 'gifs', 
+        stateKey: 'settings.autoPlay.gifs'
+      });
+      const videosCheckboxField = CheckboxField({
+        text: 'Videos', 
+        name: 'videos', 
+        stateKey: 'settings.autoPlay.videos'
+      });
 
       container.append(gifsCheckboxField.label, videosCheckboxField.label);
     }
@@ -125,8 +155,16 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
     {
       const container = section('Stickers');
 
-      const suggestCheckboxField = CheckboxField('Suggest Stickers by Emoji', 'suggest', false, 'settings.stickers.suggest');
-      const loopCheckboxField = CheckboxField('Loop Animated Stickers', 'loop', false, 'settings.stickers.loop');
+      const suggestCheckboxField = CheckboxField({
+        text: 'Suggest Stickers by Emoji', 
+        name: 'suggest', 
+        stateKey: 'settings.stickers.suggest'
+      });
+      const loopCheckboxField = CheckboxField({
+        text: 'Loop Animated Stickers', 
+        name: 'loop', 
+        stateKey: 'settings.stickers.loop'
+      });
 
       container.append(suggestCheckboxField.label, loopCheckboxField.label);
     }

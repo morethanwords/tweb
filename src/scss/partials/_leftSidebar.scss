@@ -891,6 +891,11 @@
     &-caption {
       padding: 0 .875rem;
     }
+
+    &-disabled {
+      pointer-events: none !important;
+      opacity: .25;
+    }
   }
 
   &-h2 {

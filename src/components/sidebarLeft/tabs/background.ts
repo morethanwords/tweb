@@ -27,10 +27,14 @@ export default class AppBackgroundTab extends SliderSuperTab {
     {
       const container = generateSection(this.scrollable);
 
-      const uploadButton = Button('btn-primary btn-transparent', {icon: 'cameraadd', text: 'Upload Wallpaper'});
-      const colorButton = Button('btn-primary btn-transparent', {icon: 'colorize', text: 'Set a Color'});
+      const uploadButton = Button('btn-primary btn-transparent', {icon: 'cameraadd', text: 'Upload Wallpaper', disabled: true});
+      const colorButton = Button('btn-primary btn-transparent', {icon: 'colorize', text: 'Set a Color', disabled: true});
 
-      const blurCheckboxField = CheckboxField('Blur Wallpaper Image', 'blur', false, 'settings.background.blur');
+      const blurCheckboxField = CheckboxField({
+        text: 'Blur Wallpaper Image', 
+        name: 'blur', 
+        stateKey: 'settings.background.blur'
+      });
       blurCheckboxField.input.addEventListener('change', () => {
         const active = grid.querySelector('.active') as HTMLElement;
         if(!active) return;

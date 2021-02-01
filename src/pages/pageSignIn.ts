@@ -290,7 +290,10 @@ let onFirstMount = () => {
     this.removeAttribute('readonly'); // fix autocomplete
   });*/
 
-  const signedCheckboxField = CheckboxField('Keep me signed in', 'keepSession');
+  const signedCheckboxField = CheckboxField({
+    text: 'Keep me signed in', 
+    name: 'keepSession'
+  });
   signedCheckboxField.input.checked = true;
 
   btnNext = Button('btn-primary', {text: 'NEXT'});

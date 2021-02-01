@@ -1,37 +1,47 @@
 import appStateManager from "../lib/appManagers/appStateManager";
 import { getDeepProperty } from "../helpers/object";
 
-const CheckboxField = (text?: string, name?: string, round = false, stateKey?: string) => {
+const CheckboxField = (options: {
+  text?: string, 
+  name?: string, 
+  round?: boolean, 
+  stateKey?: string,
+  disabled?: boolean
+} = {}) => {
   const label = document.createElement('label');
   label.classList.add('checkbox-field');
 
-  if(round) {
+  if(options.round) {
     label.classList.add('checkbox-field-round');
+  }
+
+  if(options.disabled) {
+    label.classList.add('checkbox-disabled');
   }
 
   const input = document.createElement('input');
   input.type = 'checkbox';
-  if(name) {
+  if(options.name) {
     input.id = 'input-' + name;
   }
 
-  if(stateKey) {
+  if(options.stateKey) {
     appStateManager.getState().then(state => {
-      input.checked = getDeepProperty(state, stateKey);
+      input.checked = getDeepProperty(state, options.stateKey);
     });
 
     input.addEventListener('change', () => {
-      appStateManager.setByKey(stateKey, input.checked);
+      appStateManager.setByKey(options.stateKey, input.checked);
     });
   }
 
   let span: HTMLSpanElement;
-  if(text) {
+  if(options.text) {
     span = document.createElement('span');
     span.classList.add('checkbox-caption');
 
-    if(text) {
-      span.innerText = text;
+    if(options.text) {
+      span.innerText = options.text;
     }
   } else {
     label.classList.add('checkbox-without-caption');

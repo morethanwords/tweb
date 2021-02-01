@@ -98,7 +98,9 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
   }
 
   checkbox(selected?: boolean) {
-    const checkboxField = CheckboxField('', '', true);
+    const checkboxField = CheckboxField({
+      round: true
+    });
     if(selected) {
       checkboxField.input.checked = selected;
     }

@@ -77,7 +77,10 @@ export default class AppSharedMediaTab implements SliderTab {
       notificationsStatus: this.profileContentEl.querySelector('.profile-row-notifications > p')
     };
 
-    const checkboxField = CheckboxField('Notifications', 'notifications');
+    const checkboxField = CheckboxField({
+      text: 'Notifications', 
+      name: 'notifications'
+    });
     this.profileElements.notificationsCheckbox = checkboxField.input;
     this.profileElements.notificationsCheckbox.checked = true;
     this.profileElements.notificationsRow.prepend(checkboxField.label);
