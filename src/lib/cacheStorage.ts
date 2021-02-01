@@ -82,7 +82,7 @@ export default class CacheStorageController {
         reject();
         //console.warn('CACHESTORAGE TIMEOUT');
         rejected = true;
-      }, 5e3);
+      }, 15e3);
 
       try {
         const cache = await this.openDatabase();

@@ -1,3 +1,4 @@
+import type Chat from './chat/chat';
 import { getEmojiToneIndex } from '../emoji';
 import { readBlobAsText } from '../helpers/blob';
 import { deferredPromise } from '../helpers/cancellablePromise';
@@ -7,7 +8,6 @@ import { formatBytes } from '../helpers/number';
 import { isAppleMobile, isSafari } from '../helpers/userAgent';
 import { PhotoSize } from '../layer';
 import appDocsManager, { MyDocument } from "../lib/appManagers/appDocsManager";
-import { DownloadBlob } from '../lib/appManagers/appDownloadManager';
 import appMessagesManager from '../lib/appManagers/appMessagesManager';
 import appPhotosManager, { MyPhoto } from '../lib/appManagers/appPhotosManager';
 import LottieLoader from '../lib/lottieLoader';
@@ -27,9 +27,9 @@ import './middleEllipsis';
 import { nextRandomInt } from '../helpers/random';
 import RichTextProcessor from '../lib/richtextprocessor';
 import appImManager from '../lib/appManagers/appImManager';
-import Chat from './chat/chat';
 import { SearchSuperContext } from './appSearchSuper.';
 import rootScope from '../lib/rootScope';
+import { onVideoLoad } from '../helpers/files';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 
@@ -108,28 +108,28 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     video.remove();
   } */
 
-  const video = document.createElement('video');
+  const video = /* doc.type === 'round' ? appMediaPlaybackController.addMedia(message.peerId, doc, message.mid) as HTMLVideoElement :  */document.createElement('video');
   video.classList.add('media-video');
   video.muted = true;
   video.setAttribute('playsinline', 'true');
   if(doc.type === 'round') {
-    //video.muted = true;
+    //video.classList.add('z-depth-1');
     const globalVideo = appMediaPlaybackController.addMedia(message.peerId, doc, message.mid);
 
     video.classList.add('z-depth-1');
 
-    video.addEventListener('canplay', () => {
-      if(globalVideo.currentTime > 0) {
+    onVideoLoad(video).then(() => {
+      if(globalVideo.currentTime !== globalVideo.duration) {
         video.currentTime = globalVideo.currentTime;
       }
   
       if(!globalVideo.paused) {
         // с закоментированными настройками - хром выключал видео при скролле, для этого нужно было включить видео - выйти из диалога, зайти заново и проскроллить вверх
-        /* video.autoplay = true;
-        video.loop = false; */
+        //video.autoplay = true;
+        //video.loop = false;
         video.play();
       }
-    }, {once: true});
+    });
 
     const clear = () => {
       //console.log('clearing video');
@@ -160,14 +160,18 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
 
     const onVideoPlay = (e: Event) => {
       //console.log('video play event', e);
-      globalVideo.currentTime = video.currentTime;
-      globalVideo.play();
+      if(globalVideo.paused) {
+        globalVideo.currentTime = video.currentTime;
+        globalVideo.play();
+      }
     };
 
+    // * this will fire when video unmounts
     const onVideoPause = (e: Event) => {
       //console.trace('video pause event', e);
       if(isInDOM(video)) {
         globalVideo.pause();
+        globalVideo.currentTime = video.currentTime;
       } else {
         clear();
       }
@@ -229,22 +233,25 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       return;
     }
 
+    let loadPromise: Promise<any> = Promise.resolve();
     let preloader: ProgressivePreloader;
     if(message?.media?.preloader) { // means upload
       preloader = message.media.preloader as ProgressivePreloader;
       preloader.attach(container, false);
     } else if(!doc.downloaded && !doc.supportsStreaming) {
-      const promise = appDocsManager.downloadDoc(doc, lazyLoadQueue?.queueId);
+      const promise = loadPromise = appDocsManager.downloadDoc(doc, lazyLoadQueue?.queueId);
       preloader = new ProgressivePreloader({
         attachMethod: 'prepend'
       });
       preloader.attach(container, true, promise);
 
-      await promise;
+      //if(doc.type !== 'round') {
+        await promise;
 
-      if(middleware && !middleware()) {
-        return;
-      }
+        if(middleware && !middleware()) {
+          return;
+        }
+      //}
     } else if(doc.supportsStreaming) {
       preloader = new ProgressivePreloader({
         cancelable: false,
@@ -255,13 +262,17 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
         preloader.detach();
       }, {once: true});
     }
+
+    /* if(doc.type === 'round') {
+      return;
+    } */
     
     //console.log('loaded doc:', doc, doc.url, container);
 
     const deferred = deferredPromise<void>();
 
     //if(doc.type == 'gif'/*  || true */) {
-      video.addEventListener(isAppleMobile ? 'loadeddata' : 'canplay', () => {
+      onVideoLoad(video).then(() => {
         /* if(!video.paused) {
           video.pause();
         } */
@@ -273,7 +284,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
         //setTimeout(() => {
           deferred.resolve();
         //}, 5000);
-      }, {once: true});
+      });
     //}
 
     if(doc.type === 'video') {
@@ -286,21 +297,23 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       deferred.resolve();
     });
 
-    renderImageFromUrl(video, doc.url);
-
-    if(doc.type === 'round') {
-      video.dataset.ckin = 'circle';
-      video.dataset.overlay = '1';
-      new VideoPlayer(video);
-    } else {
+    if(doc.type !== 'round') {
       video.muted = true;
       video.loop = true;
       //video.play();
       video.autoplay = true;
     }
+      
+    renderImageFromUrl(video, doc.url);
 
-    return deferred;
+    return Promise.all([loadPromise, deferred]);
   };
+
+  if(doc.type === 'round') {
+    video.dataset.ckin = 'circle';
+    video.dataset.overlay = '1';
+    new VideoPlayer(video, undefined, undefined, doc.duration);
+  }
 
   /* if(doc.size >= 20e6 && !doc.downloaded) {
     let downloadDiv = document.createElement('div');
