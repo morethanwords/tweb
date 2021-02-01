@@ -1,4 +1,5 @@
 import { getRichValue, isInputEmpty } from "../helpers/dom";
+import { debounce } from "../helpers/schedulers";
 import { checkRTL } from "../helpers/string";
 import RichTextProcessor from "../lib/richtextprocessor";
 
@@ -56,6 +57,8 @@ class InputField {
   public inputFake: HTMLElement;
 
   //public onLengthChange: (length: number, isOverflow: boolean) => void;
+  private wasInputFakeHeight: number;
+  private showScrollDebounced: () => void;
 
   constructor(private options: {
     placeholder?: string, 
@@ -111,7 +114,9 @@ class InputField {
       observer.observe(input, {characterData: true, childList: true, subtree: true});
 
       if(options.animate) {
-        input.classList.add('scrollable', 'scrollable-y')
+        input.classList.add('scrollable', 'scrollable-y');
+        this.wasInputFakeHeight = 0;
+        this.showScrollDebounced = debounce(() => this.input.classList.remove('no-scrollbar'), 150, false, true);
         this.inputFake = document.createElement('div');
         this.inputFake.setAttribute('contenteditable', 'true');
         this.inputFake.className = input.className + ' input-field-input-fake';
@@ -158,6 +163,12 @@ class InputField {
 
   public onFakeInput() {
     const scrollHeight = this.inputFake.scrollHeight;
+    if(this.wasInputFakeHeight && this.wasInputFakeHeight !== scrollHeight) {
+      this.input.classList.add('no-scrollbar'); // ! в сафари может вообще не появиться скролл после анимации, так как ему нужен полный reflow блока с overflow.
+      this.showScrollDebounced();
+    }
+
+    this.wasInputFakeHeight = scrollHeight;
     this.input.style.height = scrollHeight ? scrollHeight + 'px' : '';
   }
 

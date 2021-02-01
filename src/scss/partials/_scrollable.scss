@@ -38,9 +38,20 @@ html:not(.is-safari):not(.is-ios) {
   }
 }
 
-.scrollable-x::-webkit-scrollbar {
+.scrollable-x::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
   display: none; // for safari iOS
 }
+
+/* .no-scrollbar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.no-scrollbar::-webkit-scrollbar-thumb {
+  width: 0;
+  height: 0;
+} */
 
 .scrollable {
   width: 100%;
