@@ -173,7 +173,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     };
 
     const onPlay = () => {
-      video.remove();
+      video.classList.add('hide');
       divRound.classList.remove('is-paused');
       animateSingle(onFrame, canvas);
     };
@@ -205,6 +205,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       if(globalVideo.duration && globalVideo.currentTime !== globalVideo.duration) {
         onFrame();
         onTimeUpdate();
+        video.classList.add('hide');
       } else {
         onPaused();
       }
