@@ -7,6 +7,12 @@
   cursor: pointer;
   min-width: var(--size);
   min-height: var(--size);
+  transition: .2s opacity;
+
+  &.checkbox-disabled {
+    pointer-events: none !important;
+    opacity: .25;
+  }
 
   @include respond-to(handhelds) {
     margin-bottom: 27px;

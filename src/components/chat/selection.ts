@@ -161,7 +161,10 @@ export default class ChatSelection {
     if(show) {
       if(hasCheckbox) return;
       
-      const checkboxField = CheckboxField('', bubble.dataset.mid, true);
+      const checkboxField = CheckboxField({
+        name: bubble.dataset.mid, 
+        round: true
+      });
       checkboxField.label.classList.add('bubble-select-checkbox');
 
       // * if it is a render of new message

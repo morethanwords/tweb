@@ -88,7 +88,10 @@ export default class PopupNewMedia extends PopupElement {
     this.container.append(scrollable.container);
 
     if(files.length > 1) {
-      this.groupCheckboxField = CheckboxField('Group items', 'group-items');
+      this.groupCheckboxField = CheckboxField({
+        text: 'Group items', 
+        name: 'group-items'
+      });
       this.container.append(this.groupCheckboxField.label, this.inputField.container);
   
       this.groupCheckboxField.input.checked = true;

@@ -77,13 +77,22 @@ export default class PopupCreatePoll extends PopupElement {
     settingsCaption.innerText = 'Settings';
 
     if(!this.chat.appPeersManager.isBroadcast(this.chat.peerId)) {
-      this.anonymousCheckboxField = CheckboxField('Anonymous Voting', 'anonymous');
+      this.anonymousCheckboxField = CheckboxField({
+        text: 'Anonymous Voting', 
+        name: 'anonymous'
+      });
       this.anonymousCheckboxField.input.checked = true;
       dd.append(this.anonymousCheckboxField.label);
     }
     
-    this.multipleCheckboxField = CheckboxField('Multiple Answers', 'multiple');
-    this.quizCheckboxField = CheckboxField('Quiz Mode', 'quiz');
+    this.multipleCheckboxField = CheckboxField({
+      text: 'Multiple Answers', 
+      name: 'multiple'
+    });
+    this.quizCheckboxField = CheckboxField({
+      text: 'Quiz Mode', 
+      name: 'quiz'
+    });
 
     this.multipleCheckboxField.input.addEventListener('change', () => {
       const checked = this.multipleCheckboxField.input.checked;
