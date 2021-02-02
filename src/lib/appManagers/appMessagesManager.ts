@@ -4266,7 +4266,8 @@ export class AppMessagesManager {
   public isDialogMuted(dialog: MTDialog.dialog) {
     let muted = false;
     if(dialog && dialog.notify_settings && dialog.notify_settings.mute_until) {
-      muted = new Date(dialog.notify_settings.mute_until * 1000) > new Date();
+      //muted = new Date(dialog.notify_settings.mute_until * 1000) > new Date();
+      muted = (dialog.notify_settings.mute_until * 1000) > Date.now();
     }
 
     return muted;

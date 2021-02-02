@@ -540,14 +540,24 @@ export class AppDialogsManager {
   };
 
   private setFilterUnreadCount(filterId: number, folder?: Dialog[]) {
-    const unreadSpan = filterId == 0 ? this.allUnreadCount : this.filtersRendered[filterId]?.unread;
+    const unreadSpan = filterId === 0 ? this.allUnreadCount : this.filtersRendered[filterId]?.unread;
     if(!unreadSpan) {
       return;
     }
 
     folder = folder || appMessagesManager.dialogsStorage.getFolder(filterId);
-    const sum = folder.reduce((acc, dialog) => acc + +!!dialog.unread_count, 0);
+    let mutedCount = 0;
+    let notMutedCount = 0;
+    folder.forEach(dialog => {
+      const isMuted = appMessagesManager.isDialogMuted(dialog);
+      const value = +!!dialog.unread_count || ((filterId !== 0 || !isMuted) && +dialog.pFlags.unread_mark) || 0; // * unread_mark can be undefined
+      if(isMuted) mutedCount += value;
+      else notMutedCount += value;
+    });
     
+    unreadSpan.classList.toggle('badge-gray', mutedCount && !notMutedCount);
+    
+    const sum = mutedCount + notMutedCount;
     unreadSpan.innerText = sum ? '' + sum : '';
   }
 
