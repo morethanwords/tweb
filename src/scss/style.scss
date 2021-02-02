@@ -1122,6 +1122,18 @@ middle-ellipsis-element {
   }
 }
 
+.progress-ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+
+  &__circle {
+    transition: stroke-dashoffset;
+    stroke-linecap: round;
+  }
+}
+
 .rlottie, .rlottie-vector {
   left: 0;
   top: 0;
@@ -1176,18 +1188,6 @@ middle-ellipsis-element {
     height: 100%;
     border-radius: 50%;
     position: relative;
-  }
-
-  .progress-ring {
-    position: absolute;
-    top: 0;
-    left: 0;
-    pointer-events: none;
-  
-    &__circle {
-      transition: stroke-dashoffset;
-      stroke-linecap: round;
-    }
   }
 
   .video-time {

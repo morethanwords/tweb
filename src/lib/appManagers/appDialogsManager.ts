@@ -550,7 +550,12 @@ export class AppDialogsManager {
     let notMutedCount = 0;
     folder.forEach(dialog => {
       const isMuted = appMessagesManager.isDialogMuted(dialog);
-      const value = +!!dialog.unread_count || ((filterId !== 0 || !isMuted) && +dialog.pFlags.unread_mark) || 0; // * unread_mark can be undefined
+
+      if(isMuted && filterId === 0) {
+        return;
+      }
+
+      const value = +!!dialog.unread_count || +dialog.pFlags.unread_mark || 0; // * unread_mark can be undefined
       if(isMuted) mutedCount += value;
       else notMutedCount += value;
     });
