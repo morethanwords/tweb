@@ -2893,7 +2893,9 @@ export default class ChatBubbles {
         let promise: Promise<any>;
         if(topIds.length || middleIds.length || bottomIds.length) {
           promise = Promise.all(promises);
-          promise.then(() => {
+
+          dispatchHeavyAnimationEvent(promise, Math.max(...delays) + 200) // * 200 - transition time
+          .then(() => { 
             fastRaf(() => {
               setBubbles.forEach(contentWrapper => {
                 contentWrapper.style.transitionDelay = '';
@@ -2906,7 +2908,6 @@ export default class ChatBubbles {
               this.needReflowScroll = true;
             }
           });
-          dispatchHeavyAnimationEvent(promise, Math.max(...delays) + 200); // * 200 - transition time
         }
 
         (promise || Promise.resolve()).then(() => {
