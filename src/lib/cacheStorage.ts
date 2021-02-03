@@ -1,5 +1,6 @@
 import { blobConstruct } from '../helpers/blob';
 import FileManager from './filemanager';
+import { Modes } from './mtproto/mtproto_config';
 //import { MOUNT_CLASS_TO } from './mtproto/mtproto_config';
 //import { logger } from './polyfill';
 
@@ -10,6 +11,10 @@ export default class CacheStorageController {
   //private log: ReturnType<typeof logger> = logger('CS');
 
   constructor(public dbName: string) {
+    if(Modes.test) {
+      this.dbName += '_test';
+    }
+    
     this.openDatabase();
   }
 
