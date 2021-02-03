@@ -21,7 +21,7 @@ class SearchIndexManager {
   }
 
   public cleanSearchText(text: string, latinize = true) {
-    const hasTag = text.charAt(0) == '%';
+    const hasTag = text.charAt(0) === '%';
     text = text.replace(SearchIndexManager['badCharsRe'], '').replace(SearchIndexManager['trimRe'], '');
     if(latinize) {
       text = text.replace(/[^A-Za-z0-9]/g, (ch) => {
@@ -81,8 +81,9 @@ class SearchIndexManager {
       const fullText = fullTexts[peerId];
 
       let found = true;
-      for(const word of queryWords) {
-        if(fullText.indexOf(word) === -1) {
+      for(const word of queryWords) { // * verify that all words are found
+        const idx = fullText.indexOf(word);
+        if(idx === -1 || (idx !== 0 && fullText[idx - 1] !== ' ')) { // * search only from word beginning
           found = false;
           break;
         }
