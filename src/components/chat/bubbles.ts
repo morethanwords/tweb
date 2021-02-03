@@ -817,8 +817,17 @@ export default class ChatBubbles {
       } else if(target.classList.contains('name')) {
         const peerId = +target.dataset.peerId;
         
-        if(peerId) {
-          this.chat.appImManager.setInnerPeer(peerId);
+        const savedFrom = target.dataset.savedFrom;
+        if(savedFrom) {
+          const splitted = savedFrom.split('_');
+          const peerId = +splitted[0];
+          const msgId = +splitted[1];
+
+          this.chat.appImManager.setInnerPeer(peerId, msgId);
+        } else {
+          if(peerId) {
+            this.chat.appImManager.setInnerPeer(peerId);
+          }
         }
 
         return;
@@ -2357,6 +2366,10 @@ export default class ChatBubbles {
             /* const fromTitle = message.fromId == this.myID || appPeersManager.isBroadcast(message.fwdFromId || message.fromId) ? '' : `<div class="name" data-peer-id="${message.fromId}" style="color: ${appPeersManager.getPeerColorByID(message.fromId, false)};">${appPeersManager.getPeerTitle(message.fromId)}</div>`;
             nameDiv.innerHTML = fromTitle + 'Forwarded from ' + title; */
             nameDiv.innerHTML = 'Forwarded from ' + title;
+
+            if(savedFrom) {
+              nameDiv.dataset.savedFrom = savedFrom;
+            }
           }
           
           nameContainer.append(nameDiv);
@@ -2418,7 +2431,7 @@ export default class ChatBubbles {
       bubble.classList.add('is-thread-starter', 'is-group-last');
     }
 
-    if(savedFrom && this.peerId !== REPLIES_PEER_ID) {
+    if(savedFrom && this.peerId === rootScope.myId && this.peerId !== REPLIES_PEER_ID) {
       const goto = document.createElement('div');
       goto.classList.add('bubble-beside-button', 'goto-original', 'tgico-arrow_next');
       bubbleContainer.append(goto);
