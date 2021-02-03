@@ -21,10 +21,10 @@ export default class PopupDeleteMessages {
     };
 
     let title: string, description: string, buttons: PopupButton[];
-    title = `Delete ${mids.length == 1 ? '' : mids.length + ' '}Message${mids.length == 1 ? '' : 's'}?`;
-    description = `Are you sure you want to delete ${mids.length == 1 ? 'this message' : 'these messages'}?`;
+    title = `Delete ${mids.length === 1 ? '' : mids.length + ' '}Message${mids.length === 1 ? '' : 's'}?`;
+    description = `Are you sure you want to delete ${mids.length === 1 ? 'this message' : 'these messages'}?`;
 
-    if(peerId == rootScope.myId || type === 'scheduled') {
+    if(peerId === rootScope.myId || type === 'scheduled') {
       buttons = [{
         text: 'DELETE',
         isDanger: true,
@@ -47,14 +47,14 @@ export default class PopupDeleteMessages {
         const chat = appChatsManager.getChat(-peerId);
 
         const hasRights = appChatsManager.hasRights(-peerId, 'deleteRevoke');
-        if(chat._ == 'chat') {
+        if(chat._ === 'chat') {
           const canRevoke = hasRights ? mids.slice() : mids.filter(mid => {
             const message = appMessagesManager.getMessageByPeer(peerId, mid);
-            return message.fromId == rootScope.myId;
+            return message.fromId === rootScope.myId;
           });
 
           if(canRevoke.length) {
-            if(canRevoke.length == mids.length) {
+            if(canRevoke.length === mids.length) {
               buttons.push({
                 text: 'DELETE FOR ALL',
                 isDanger: true,
@@ -72,9 +72,9 @@ export default class PopupDeleteMessages {
             }
           }
         } else {
-          if(!hasRights || appChatsManager.isBroadcast(-peerId)) {
+          //if(!hasRights || appChatsManager.isBroadcast(-peerId) || appChatsManager.isMegagroup(-peerId)) {
             buttons.shift();
-          }
+          //}
 
           buttons.push({
             text: 'DELETE FOR ALL',
