@@ -176,7 +176,7 @@ export class AppUsersManager {
       return '';
     }
 
-    const serviceText = user.pFlags.self ? 'user_name_saved_msgs_raw' : '';
+    const serviceText = user.pFlags.self ? 'Saved Messages' : '';
     return (user.first_name || '') +
             ' ' + (user.last_name || '') +
             ' ' + (user.phone || '') +
@@ -202,10 +202,7 @@ export class AppUsersManager {
       });
 
       if(includeSaved) {
-        const isSearchingSaved = 'saved messages'.includes(query.toLowerCase()) 
-          || appUsersManager.getUser(rootScope.myId).sortName.includes(query.toLowerCase());
-
-        if(isSearchingSaved) {
+        if(this.testSelfSearch(query)) {
           contactsList.findAndSplice(p => p == rootScope.myId);
           contactsList.unshift(rootScope.myId);
         }
@@ -225,12 +222,19 @@ export class AppUsersManager {
     });
   }
 
+  public testSelfSearch(query: string) {
+    const user = this.getSelf();
+    const index = searchIndexManager.createIndex();
+    searchIndexManager.indexObject(user.id, this.getUserSearchText(user.id), index);
+    return !!searchIndexManager.search(query, index)[user.id];
+  }
+
   public saveApiUsers(apiUsers: any[]) {
     apiUsers.forEach((user) => this.saveApiUser(user));
   }
 
   public saveApiUser(_user: MTUser, noReplace?: boolean) {
-    if(_user._ == 'userEmpty') return;
+    if(_user._ === 'userEmpty') return;
 
     const user = _user;
     if(noReplace && isObject(this.users[user.id]) && this.users[user.id].first_name) {
@@ -311,7 +315,7 @@ export class AppUsersManager {
 
   public getUserStatusForSort(status: User['status']) {
     if(status) {
-      const expires = status._ == 'userStatusOnline' ? status.expires : (status._ == 'userStatusOffline' ? status.was_online : 0);
+      const expires = status._ === 'userStatusOnline' ? status.expires : (status._ === 'userStatusOffline' ? status.was_online : 0);
       if(expires) {
         return expires;
       }
@@ -478,7 +482,7 @@ export class AppUsersManager {
       const user = this.users[i];
 
       if(user.status &&
-        user.status._ == 'userStatusOnline' &&
+        user.status._ === 'userStatusOnline' &&
         user.status.expires < timestampNow) {
 
         user.status = {_: 'userStatusOffline', was_online: user.status.expires};
@@ -505,8 +509,8 @@ export class AppUsersManager {
     const user = this.getUser(id);
     if(user &&
       user.status &&
-      user.status._ != 'userStatusOnline' &&
-      user.status._ != 'userStatusEmpty' &&
+      user.status._ !== 'userStatusOnline' &&
+      user.status._ !== 'userStatusEmpty' &&
       !user.pFlags.support &&
       !user.pFlags.deleted) {
 
@@ -605,7 +609,7 @@ export class AppUsersManager {
         hash: 0,
       }).then((result) => {
         let peerIds: number[];
-        if(result._ == 'contacts.topPeers') {
+        if(result._ === 'contacts.topPeers') {
           //console.log(result);
           this.saveApiUsers(result.users);
           appChatsManager.saveApiChats(result.chats);

@@ -189,11 +189,7 @@ export default class AppSelectPeers {
   }
 
   private renderSaved() {
-    if(!this.offsetIndex && this.folderId == 0 && 
-      (!this.query 
-        || 'saved messages'.includes(this.query.toLowerCase()) 
-        || appUsersManager.getUser(rootScope.myId).sortName.includes(this.query.toLowerCase())) && 
-      this.peerType.includes('dialogs')) {
+    if(!this.offsetIndex && this.folderId == 0 && this.peerType.includes('dialogs') && (!this.query || appUsersManager.testSelfSearch(this.query))) {
       this.renderResultsFunc([rootScope.myId]);
     }
   }

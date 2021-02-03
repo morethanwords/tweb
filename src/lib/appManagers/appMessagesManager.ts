@@ -232,19 +232,19 @@ export class AppMessagesManager {
       const processDialog = (dialog: MTDialog.dialog) => {
         const historyStorage = this.getHistoryStorage(dialog.peerId);
         const history = [].concat(historyStorage.history);
-        dialog = copy(dialog);
+        //dialog = copy(dialog);
         let removeUnread = 0;
         for(const mid of history) {
           const message = this.getMessageByPeer(dialog.peerId, mid);
           if(/* message._ != 'messageEmpty' &&  */!message.pFlags.is_outgoing) {
             messages.push(message);
       
-            if(message.fromId != dialog.peerId) {
+            if(message.fromId !== dialog.peerId) {
               appStateManager.setPeer(message.fromId, appPeersManager.getPeer(message.fromId));
             }
     
-            dialog.top_message = message.mid;
-            this.dialogsStorage.generateIndexForDialog(dialog, false, message);
+            /* dialog.top_message = message.mid;
+            this.dialogsStorage.generateIndexForDialog(dialog, false, message); */
     
             break;
           } else if(message.pFlags && message.pFlags.unread) {
@@ -320,6 +320,8 @@ export class AppMessagesManager {
 
       if(state.dialogs) {
         state.dialogs.forEachReverse(dialog => {
+          dialog.top_message = this.getServerMessageId(dialog.top_message); // * fix outgoing message to avoid copying dialog
+
           this.saveConversation(dialog);
 
           // ! WARNING, убрать это когда нужно будет делать чтобы pending сообщения сохранялись
@@ -4415,8 +4417,6 @@ export class AppMessagesManager {
     }
 
     this.maxSeenId = maxId;
-
-    sessionStorage.set({max_seen_msg: maxId});
 
     apiManager.invokeApi('messages.receivedMessages', {
       max_id: this.getServerMessageId(maxId)
