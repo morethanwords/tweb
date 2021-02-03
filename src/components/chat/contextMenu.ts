@@ -21,6 +21,8 @@ export default class ChatContextMenu {
   private isSelectable: boolean;
   private target: HTMLElement;
   private isTargetAGroupedItem: boolean;
+  private isTextSelected: boolean;
+  private isAnchorTarget: boolean;
   public peerId: number;
   public mid: number;
   public message: any;
@@ -66,6 +68,8 @@ export default class ChatContextMenu {
       this.peerId = this.chat.peerId;
       //this.msgID = msgID;
       this.target = e.target as HTMLElement;
+      this.isTextSelected = !isSelectionEmpty();
+      this.isAnchorTarget = this.target.tagName === 'A' && (this.target as HTMLAnchorElement).target === '_blank';
 
       const groupedItem = findUpClassName(this.target, 'grouped-item');
       this.isTargetAGroupedItem = !!groupedItem;
@@ -188,18 +192,24 @@ export default class ChatContextMenu {
       icon: 'copy',
       text: 'Copy',
       onClick: this.onCopyClick,
-      verify: () => !!this.message.message && isSelectionEmpty()
+      verify: () => !!this.message.message && !this.isTextSelected
     }, {
       icon: 'copy',
       text: 'Copy Selected Text',
       onClick: this.onCopyClick,
-      verify: () => !!this.message.message && !isSelectionEmpty()
+      verify: () => !!this.message.message && this.isTextSelected
     }, {
       icon: 'copy',
       text: 'Copy selected',
       onClick: this.onCopyClick,
       verify: () => this.chat.selection.selectedMids.has(this.mid) && !![...this.chat.selection.selectedMids].find(mid => !!this.chat.getMessage(mid).message),
       notDirect: () => true,
+      withSelection: true
+    }, {
+      icon: 'copy',
+      text: 'Copy Link',
+      onClick: this.onCopyAnchorLinkClick,
+      verify: () => this.isAnchorTarget,
       withSelection: true
     }, {
       icon: 'link',
@@ -302,20 +312,21 @@ export default class ChatContextMenu {
   };
 
   private onCopyClick = () => {
-    let str: string;
-    const selection = window.getSelection();
-    if(isSelectionEmpty(selection)) {
+    if(isSelectionEmpty()) {
       const mids = this.chat.selection.isSelecting ? [...this.chat.selection.selectedMids] : [this.mid];
-      str = mids.reduce((acc, mid) => {
+      const str = mids.reduce((acc, mid) => {
         const message = this.chat.getMessage(mid);
         return acc + (message?.message ? message.message + '\n' : '');
       }, '').trim();
+      copyTextToClipboard(str);
     } else {
-      str = selection.toString();
+      document.execCommand('copy');
       //cancelSelection();
     }
-    
-    copyTextToClipboard(str);
+  };
+
+  private onCopyAnchorLinkClick = () => {
+    copyTextToClipboard((this.target as HTMLAnchorElement).href);
   };
 
   private onCopyLinkClick = () => {
