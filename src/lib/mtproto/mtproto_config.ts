@@ -12,18 +12,6 @@ export const App = {
   baseDcId: 2
 };
 
-export type DatabaseStoreName = 'session' | 'stickerSets';
-export type DatabaseStore = Omit<IDBStore, 'name'> & {name: DatabaseStoreName};
-export const Database = {
-  name: 'tweb',
-  version: 5,
-  stores: [{
-    name: 'session'
-  }, {
-    name: 'stickerSets'
-  }] as DatabaseStore[],
-};
-
 export const Modes = {
   test: location.search.indexOf('test=1') > 0/*  || true */,
   debug: location.search.indexOf('debug=1') > 0,
@@ -32,5 +20,17 @@ export const Modes = {
   multipleConnections: true
 };
 
-export const DEBUG = process.env.NODE_ENV != 'production';
+export type DatabaseStoreName = 'session' | 'stickerSets';
+export type DatabaseStore = Omit<IDBStore, 'name'> & {name: DatabaseStoreName};
+export const Database = {
+  name: 'tweb' + (Modes.test ? '_test' : ''),
+  version: 5,
+  stores: [{
+    name: 'session'
+  }, {
+    name: 'stickerSets'
+  }] as DatabaseStore[],
+};
+
+export const DEBUG = process.env.NODE_ENV !== 'production' || Modes.debug;
 export const MOUNT_CLASS_TO: any = DEBUG ? (typeof(window) !== 'undefined' ? window : self) : null;
