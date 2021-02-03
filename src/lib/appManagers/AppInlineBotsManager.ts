@@ -36,7 +36,7 @@ export class AppInlineBotsManager {
         result.rDescription = RichTextProcessor.wrapRichText(result.description, {noLinebreaks: true, noLinks: true});
         result.initials = ((result as botInlineResult).url || result.title || result.type || '').substr(0, 1); */
 
-        if(result._ == 'botInlineMediaResult') {
+        if(result._ === 'botInlineMediaResult') {
           if(result.document) {
             result.document = appDocsManager.saveDoc(result.document);
           }

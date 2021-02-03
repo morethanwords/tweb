@@ -608,17 +608,19 @@ export class AppUsersManager {
         limit: 30,
         hash: 0,
       }).then((result) => {
-        let peerIds: number[];
+        let peerIds: number[] = [];
         if(result._ === 'contacts.topPeers') {
           //console.log(result);
           this.saveApiUsers(result.users);
           appChatsManager.saveApiChats(result.chats);
-    
-          peerIds = result.categories[0].peers.map((topPeer) => {
-            const peerId = appPeersManager.getPeerId(topPeer.peer);
-            appStateManager.setPeer(peerId, this.getUser(peerId));
-            return peerId;
-          });
+
+          if(result.categories.length) {
+            peerIds = result.categories[0].peers.map((topPeer) => {
+              const peerId = appPeersManager.getPeerId(topPeer.peer);
+              appStateManager.setPeer(peerId, this.getUser(peerId));
+              return peerId;
+            });
+          }
         }
   
         appStateManager.pushToState('topPeers', peerIds);

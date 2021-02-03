@@ -173,7 +173,9 @@ export class AppSidebarLeft extends SidebarSlider {
     const scrollable = new Scrollable(searchContainer);
 
     const close = () => {
-      this.backBtn.click();
+      //setTimeout(() => {
+        this.backBtn.click();
+      //}, 0);
     };
 
     this.searchGroups = {
@@ -360,7 +362,7 @@ export class AppSidebarLeft extends SidebarSlider {
       }
     };
 
-    searchSuper.tabs.inputMessagesFilterEmpty.addEventListener('click', (e) => {
+    searchSuper.tabs.inputMessagesFilterEmpty.addEventListener('mousedown', (e) => {
       const target = findUpTag(e.target, 'LI') as HTMLElement;
       if(!target) {
         return;
