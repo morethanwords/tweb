@@ -4,7 +4,7 @@ import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import type { AppPollsManager, Poll } from "../../lib/appManagers/appPollsManager";
 import type Chat from "./chat";
 import { isTouchSupported } from "../../helpers/touchSupport";
-import { attachClickEvent, cancelEvent, cancelSelection, findUpClassName } from "../../helpers/dom";
+import { attachClickEvent, cancelEvent, cancelSelection, findUpClassName, isSelectionEmpty } from "../../helpers/dom";
 import ButtonMenu, { ButtonMenuItemOptions } from "../buttonMenu";
 import { attachContextMenuListener, openBtnMenu, positionMenu } from "../misc";
 import PopupDeleteMessages from "../popups/deleteMessages";
@@ -188,7 +188,12 @@ export default class ChatContextMenu {
       icon: 'copy',
       text: 'Copy',
       onClick: this.onCopyClick,
-      verify: () => !!this.message.message
+      verify: () => !!this.message.message && isSelectionEmpty()
+    }, {
+      icon: 'copy',
+      text: 'Copy Selected Text',
+      onClick: this.onCopyClick,
+      verify: () => !!this.message.message && !isSelectionEmpty()
     }, {
       icon: 'copy',
       text: 'Copy selected',
@@ -297,11 +302,18 @@ export default class ChatContextMenu {
   };
 
   private onCopyClick = () => {
-    const mids = this.chat.selection.isSelecting ? [...this.chat.selection.selectedMids] : [this.mid];
-    const str = mids.reduce((acc, mid) => {
-      const message = this.chat.getMessage(mid);
-      return acc + (message?.message ? message.message + '\n' : '');
-    }, '').trim();
+    let str: string;
+    const selection = window.getSelection();
+    if(isSelectionEmpty(selection)) {
+      const mids = this.chat.selection.isSelecting ? [...this.chat.selection.selectedMids] : [this.mid];
+      str = mids.reduce((acc, mid) => {
+        const message = this.chat.getMessage(mid);
+        return acc + (message?.message ? message.message + '\n' : '');
+      }, '').trim();
+    } else {
+      str = selection.toString();
+      //cancelSelection();
+    }
     
     copyTextToClipboard(str);
   };
