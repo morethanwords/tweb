@@ -12,6 +12,7 @@ import PopupForward from "../popups/forward";
 import PopupPinMessage from "../popups/unpinMessage";
 import { copyTextToClipboard } from "../../helpers/clipboard";
 import PopupSendNow from "../popups/sendNow";
+import { toast } from "../toast";
 
 export default class ChatContextMenu {
   private buttons: (ButtonMenuItemOptions & {verify: () => boolean, notDirect?: () => boolean, withSelection?: true})[];
@@ -196,6 +197,11 @@ export default class ChatContextMenu {
       notDirect: () => true,
       withSelection: true
     }, {
+      icon: 'link',
+      text: 'Copy Link',
+      onClick: this.onCopyLinkClick,
+      verify: () => this.appPeersManager.isChannel(this.peerId)
+    }, {
       icon: 'pin',
       text: 'Pin',
       onClick: this.onPinClick,
@@ -298,6 +304,21 @@ export default class ChatContextMenu {
     }, '').trim();
     
     copyTextToClipboard(str);
+  };
+
+  private onCopyLinkClick = () => {
+    const username = this.appPeersManager.getPeerUsername(this.peerId);
+    const msgId = this.appMessagesManager.getServerMessageId(this.mid);
+    let url = 'https://t.me/';
+    if(username) {
+      url += username + '/' + msgId;
+      toast('Link copied to clipboard.');
+    } else {
+      url += 'c/' + Math.abs(this.peerId) + '/' + msgId;
+      toast('This link will only work for chat members.');
+    }
+
+    copyTextToClipboard(url);
   };
 
   private onPinClick = () => {

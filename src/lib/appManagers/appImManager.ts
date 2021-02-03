@@ -136,7 +136,7 @@ export class AppImManager {
           switch(p[0]) {
             case '@': {
               appUsersManager.resolveUsername(p).then(peer => {
-                const isUser = peer._ == 'user';
+                const isUser = peer._ === 'user';
                 const peerId = isUser ? peer.id : -peer.id;
   
                 this.setInnerPeer(peerId, postId);
@@ -365,7 +365,7 @@ export class AppImManager {
     const drops: ChatDragAndDrop[] = [];
     let mounted = false;
     const toggle = async(e: DragEvent, mount: boolean) => {
-      if(mount == mounted) return;
+      if(mount === mounted) return;
 
       const _types = e.dataTransfer.types;
       // @ts-ignore
@@ -489,7 +489,7 @@ export class AppImManager {
     
     getFilesFromEvent(e).then((files: File[]) => {
       if(files.length) {
-        if(attachType == 'media' && files.find(file => !['image', 'video'].includes(file.type.split('/')[0]))) {
+        if(attachType === 'media' && files.find(file => !['image', 'video'].includes(file.type.split('/')[0]))) {
           attachType = 'document';
         }
   
@@ -704,7 +704,7 @@ export class AppImManager {
     } else { // user
       const user = appUsersManager.getUser(peerId);
       
-      if(rootScope.myId == peerId) {
+      if(rootScope.myId === peerId) {
         return '';
       } else if(user) {
         subtitle = appUsersManager.getUserStatusString(user.id);
@@ -713,7 +713,7 @@ export class AppImManager {
           const typings = appChatsManager.typingsInPeer[peerId];
           if(typings && typings.length) {
             return '<span class="online">typing...</span>';
-          } else if(subtitle == 'online') {
+          } else if(subtitle === 'online') {
             return `<span class="online">${subtitle}</span>`;
           } else {
             return subtitle;

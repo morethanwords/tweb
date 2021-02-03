@@ -95,7 +95,7 @@ namespace RichTextProcessor {
   export function getEmojiSpritesheetCoords(emojiCode: string) {
     let unified = encodeEmoji(emojiCode)/* .replace(/(-fe0f|fe0f)/g, '') */;
   
-    if(unified == '1f441-200d-1f5e8') {
+    if(unified === '1f441-200d-1f5e8') {
       unified = '1f441-fe0f-200d-1f5e8-fe0f';
     }
   
@@ -236,7 +236,7 @@ namespace RichTextProcessor {
       if(text.match(/^`*$/)) {
         newText.push(match[0]);
       } else if(match[3]) { // pre
-        if(match[5] == '\n') {
+        if(match[5] === '\n') {
           match[5] = '';
           rawOffset -= 1;
         }
@@ -251,7 +251,7 @@ namespace RichTextProcessor {
 
         rawOffset -= match[2].length + match[4].length;
       } else if(match[7]) { // code|italic|bold
-        const isSOH = match[6] == '\x01';
+        const isSOH = match[6] === '\x01';
         if(!isSOH) {
           newText.push(match[6] + text + match[9]);
         } else {
@@ -311,7 +311,7 @@ namespace RichTextProcessor {
 
   export function mergeEntities(currentEntities: MessageEntity[], newEntities: MessageEntity[]) {
     currentEntities = currentEntities.slice();
-    const filtered = newEntities.filter(e => !currentEntities.find(_e => e._ == _e._ && e.offset == _e.offset && e.length == _e.length));
+    const filtered = newEntities.filter(e => !currentEntities.find(_e => e._ === _e._ && e.offset === _e.offset && e.length === _e.length));
     currentEntities.push(...filtered);
     currentEntities.sort((a, b) => a.offset - b.offset);
     return currentEntities;
@@ -496,7 +496,7 @@ namespace RichTextProcessor {
 
             let inner: string;
             let url: string;
-            if(entity._ == 'messageEntityTextUrl') {
+            if(entity._ === 'messageEntityTextUrl') {
               url = (entity as MessageEntity.messageEntityTextUrl).url;
               url = wrapUrl(url, true);
               //inner = wrapRichNestedText(entityText, entity.nested, options);
@@ -659,7 +659,7 @@ namespace RichTextProcessor {
   export function wrapEmojiText(text: string) {
     if(!text) return '';
   
-    let entities = parseEntities(text).filter(e => e._ == 'messageEntityEmoji');
+    let entities = parseEntities(text).filter(e => e._ === 'messageEntityEmoji');
     return wrapRichText(text, {entities});
   }
 
@@ -670,7 +670,7 @@ namespace RichTextProcessor {
   
     let tgMeMatch;
     let telescoPeMatch;
-    /* if(unsafe == 2) {
+    /* if(unsafe === 2) {
       url = 'tg://unsafe_url?url=' + encodeURIComponent(url);
     } else  */if((tgMeMatch = url.match(/^https?:\/\/t(?:elegram)?\.me\/(.+)/))) {
       const fullPath = tgMeMatch[1];
@@ -733,7 +733,7 @@ namespace RichTextProcessor {
 
     const first = [...splitted[0]][0];
 
-    if(onlyFirst || splitted.length == 1) return wrapEmojiText(first);
+    if(onlyFirst || splitted.length === 1) return wrapEmojiText(first);
 
     const last = [...splitted[splitted.length - 1]][0];
 
