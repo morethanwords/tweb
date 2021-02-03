@@ -6,7 +6,7 @@ import { createPosterForVideo } from "../../helpers/files";
 import { copy, defineNotNumerableProperties, getObjectKeysAndSort } from "../../helpers/object";
 import { randomLong } from "../../helpers/random";
 import { splitStringByLength, limitSymbols } from "../../helpers/string";
-import { Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputNotifyPeer, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, NotifyPeer, PhotoSize, SendMessageAction, Update } from "../../layer";
+import { Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputNotifyPeer, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, NotifyPeer, PhotoSize, SendMessageAction, Update } from "../../layer";
 import { InvokeApiOptions } from "../../types";
 import { langPack } from "../langPack";
 import { logger, LogLevels } from "../logger";
@@ -19,7 +19,6 @@ import serverTimeManager from "../mtproto/serverTimeManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
 import searchIndexManager from '../searchIndexManager';
-import sessionStorage from '../sessionStorage';
 import DialogsStorage from "../storages/dialogs";
 import FiltersStorage from "../storages/filters";
 //import { telegramMeWebService } from "../mtproto/mtproto";
@@ -2140,13 +2139,17 @@ export class AppMessagesManager {
         message.fromId = message.pFlags.post || !message.from_id ? peerId : appPeersManager.getPeerId(message.from_id);
       }
 
-      const fwdHeader = message.fwd_from;
+      const fwdHeader = message.fwd_from as MessageFwdHeader;
       if(fwdHeader) {
         //if(peerId == myID) {
-          if(fwdHeader.saved_from_peer && fwdHeader.saved_from_msg_id) {
-            const savedFromPeerId = appPeersManager.getPeerId(fwdHeader.saved_from_peer);
-            //const savedFromMid = fwdHeader.saved_from_msg_id;
-            const savedFromMid = fwdHeader.saved_from_msg_id = this.generateMessageId(fwdHeader.saved_from_msg_id);
+          if(fwdHeader.saved_from_msg_id) fwdHeader.saved_from_msg_id = this.generateMessageId(fwdHeader.saved_from_msg_id);
+          if(fwdHeader.channel_post) fwdHeader.channel_post = this.generateMessageId(fwdHeader.channel_post);
+
+          const peer = fwdHeader.saved_from_peer || fwdHeader.from_id;
+          const msgId = fwdHeader.saved_from_msg_id || fwdHeader.channel_post;
+          if(peer && msgId) {
+            const savedFromPeerId = appPeersManager.getPeerId(peer);
+            const savedFromMid = this.generateMessageId(msgId);
             message.savedFrom = savedFromPeerId + '_' + savedFromMid;
           }
 
