@@ -49,9 +49,9 @@ export class AppPhotosManager {
   }
   
   public savePhoto(photo: Photo, context?: ReferenceContext) {
-    if(photo._ == 'photoEmpty') return undefined;
+    if(photo._ === 'photoEmpty') return undefined;
 
-    /* if(photo.id == TEST_FILE_REFERENCE) {
+    /* if(photo.id === TEST_FILE_REFERENCE) {
       console.warn('Testing FILE_REFERENCE_EXPIRED');
       const bytes = [2, 67, 175, 43, 190, 0, 0, 20, 62, 95, 111, 33, 45, 99, 220, 116, 218, 11, 167, 127, 213, 18, 127, 32, 243, 202, 117, 80, 30];
       //photo.file_reference = new Uint8Array(bytes);
@@ -69,7 +69,7 @@ export class AppPhotosManager {
 
     if(photo.sizes?.length) {
       const size = photo.sizes[photo.sizes.length - 1];
-      if(size._ == 'photoSizeProgressive') {
+      if(size._ === 'photoSizeProgressive') {
         size.size = size.sizes[size.sizes.length - 1];
       }
     }
@@ -379,7 +379,7 @@ export class AppPhotosManager {
     }
 
     const location: InputFileLocation.inputDocumentFileLocation | InputFileLocation.inputPhotoFileLocation = {
-      _: photo._ == 'document' ? 'inputDocumentFileLocation' : 'inputPhotoFileLocation',
+      _: photo._ === 'document' ? 'inputDocumentFileLocation' : 'inputPhotoFileLocation',
       id: photo.id,
       access_hash: photo.access_hash,
       file_reference: photo.file_reference,

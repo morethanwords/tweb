@@ -2188,6 +2188,11 @@ export class AppMessagesManager {
             } else {
               message.media.photo = appPhotosManager.savePhoto(message.media.photo, mediaContext);
             }
+
+            if(!message.media.photo) { // * found this bug on test DC
+              delete message.media;
+            }
+            
             break;
           case 'messageMediaPoll':
             message.media.poll = appPollsManager.savePoll(message.media.poll, message.media.results);
