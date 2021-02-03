@@ -126,19 +126,28 @@ export class AppImManager {
         params[item.split('=')[0]] = decodeURIComponent(item.split('=')[1]);
       });
 
-      this.log('hashchange', splitted[0], params);
+      this.log('hashchange', hash, splitted[0], params);
 
       switch(splitted[0]) {
         case '#/im': {
           const p = params.p;
-          if(p[0] === '@') {
-            let postId = params.post !== undefined ? appMessagesManager.generateMessageId(+params.post) : undefined;
-            appUsersManager.resolveUsername(p).then(peer => {
-              const isUser = peer._ == 'user';
-              const peerId = isUser ? peer.id : -peer.id;
+          let postId = params.post !== undefined ? appMessagesManager.generateMessageId(+params.post) : undefined;
 
-              this.setInnerPeer(peerId, postId);
-            });
+          switch(p[0]) {
+            case '@': {
+              appUsersManager.resolveUsername(p).then(peer => {
+                const isUser = peer._ == 'user';
+                const peerId = isUser ? peer.id : -peer.id;
+  
+                this.setInnerPeer(peerId, postId);
+              });
+              break;
+            }
+
+            default: { // peerId
+              this.setInnerPeer(postId ? -+p : +p, postId);
+              break;
+            }
           }
         }
       }

@@ -668,13 +668,13 @@ namespace RichTextProcessor {
       url = 'https://' + url;
     }
   
-    var tgMeMatch;
-    var telescoPeMatch;
+    let tgMeMatch;
+    let telescoPeMatch;
     /* if(unsafe == 2) {
       url = 'tg://unsafe_url?url=' + encodeURIComponent(url);
     } else  */if((tgMeMatch = url.match(/^https?:\/\/t(?:elegram)?\.me\/(.+)/))) {
-      var fullPath = tgMeMatch[1];
-      var path = fullPath.split('/');
+      const fullPath = tgMeMatch[1];
+      const path = fullPath.split('/');
       switch(path[0]) {
         case 'joinchat':
           url = 'tg://join?invite=' + path[1];
@@ -685,15 +685,19 @@ namespace RichTextProcessor {
           break;
   
         default:
-          if(path[1] && path[1].match(/^\d+$/)) {
-            url = siteMentions['Telegram'].replace('{1}', path[0] + '&post=' + path[1]);
-            //url = 'tg://resolve?domain=' + path[0] + '&post=' + path[1];
-          } else if(path.length == 1) {
-            var domainQuery = path[0].split('?');
-            var domain = domainQuery[0];
-            var query = domainQuery[1];
-            if(domain == 'iv') {
-              var match = (query || '').match(/url=([^&=]+)/);
+          if(path[1] && path[1].match(/^\d+$/)) {               // https://t.me/.+/[0-9]+ (channel w/ username)
+            if(path[0] === 'c' && path[2]) {                    // https://t.me/c/111111111/111 (channel w/o username)
+              url = '#/im?p=' + path[1] + '&post=' + path[2];
+            } else {                                            // https://t.me/durov/151 (channel w/ username)
+              url = siteMentions['Telegram'].replace('{1}', path[0] + '&post=' + path[1]);
+            }
+          } else if(path.length === 1) {
+            const domainQuery = path[0].split('?');
+            const domain = domainQuery[0];
+            const query = domainQuery[1];
+
+            if(domain === 'iv') {
+              const match = (query || '').match(/url=([^&=]+)/);
               if(match) {
                 url = match[1];
                 try {
@@ -707,6 +711,8 @@ namespace RichTextProcessor {
             url = siteMentions['Telegram'].replace('{1}', domain + (query ? '&' + query : ''));
             //url = 'tg://resolve?domain=' + domain + (query ? '&' + query : '');
           }
+
+          break;
       }
     } else if((telescoPeMatch = url.match(/^https?:\/\/telesco\.pe\/([^/?]+)\/(\d+)/))) {
       url = 'tg://resolve?domain=' + telescoPeMatch[1] + '&post=' + telescoPeMatch[2];
