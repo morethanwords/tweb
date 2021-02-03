@@ -171,6 +171,9 @@ export class AppImManager {
     if(!isDefaultBackground) {
       appDownloadManager.cacheStorage.getFile('background-image').then(blob => {
         this.setBackground(URL.createObjectURL(blob), false);
+      }, () => { // * if NO_ENTRY_FOUND
+        this.setBackground('');
+        appStateManager.setByKey('settings.background', AppStateManager.STATE_INIT.settings.background); // * reset background
       });
     } else {
       this.setBackground('');
