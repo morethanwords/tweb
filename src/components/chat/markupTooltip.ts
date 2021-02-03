@@ -1,5 +1,5 @@
 import type { AppImManager } from "../../lib/appManagers/appImManager";
-import { MarkdownType, cancelEvent, getSelectedNodes, markdownTags, findUpClassName, attachClickEvent, cancelSelection } from "../../helpers/dom";
+import { MarkdownType, cancelEvent, getSelectedNodes, markdownTags, findUpClassName, attachClickEvent, cancelSelection, isSelectionEmpty } from "../../helpers/dom";
 import RichTextProcessor from "../../lib/richtextprocessor";
 import ButtonIcon from "../buttonIcon";
 import { clamp } from "../../helpers/number";
@@ -258,26 +258,13 @@ export default class MarkupTooltip {
     this.container.style.transform = `translate3d(${left}px, ${top}px, 0)`;
   }
 
-  public isSelectionEmpty(selection = window.getSelection()) {
-    if(!selection || !selection.rangeCount) {
-      return true;
-    }
-
-    const selectionRange = selection.getRangeAt(0);
-    if(!selectionRange.toString() || !selectionRange.START_TO_END) {
-      return true;
-    }
-
-    return false;
-  }
-
   public show() {
     if(this.init) {
       this.init();
       this.init = null;
     }
 
-    if(this.isSelectionEmpty()) {
+    if(isSelectionEmpty()) {
       this.hide();
       return;
     }
@@ -375,7 +362,7 @@ export default class MarkupTooltip {
       }
 
       const selection = document.getSelection();
-      if(this.isSelectionEmpty(selection)) {
+      if(isSelectionEmpty(selection)) {
         this.hide();
         return;
       }
