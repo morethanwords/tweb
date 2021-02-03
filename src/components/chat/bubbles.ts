@@ -2431,7 +2431,7 @@ export default class ChatBubbles {
       bubble.classList.add('is-thread-starter', 'is-group-last');
     }
 
-    if(savedFrom && this.peerId === rootScope.myId && this.peerId !== REPLIES_PEER_ID) {
+    if(savedFrom && message.fwd_from.saved_from_msg_id && this.peerId !== REPLIES_PEER_ID) {
       const goto = document.createElement('div');
       goto.classList.add('bubble-beside-button', 'goto-original', 'tgico-arrow_next');
       bubbleContainer.append(goto);

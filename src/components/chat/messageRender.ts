@@ -20,7 +20,7 @@ export namespace MessageRender {
       bubble.classList.add('channel-post');
       time = formatNumber(message.views, 1) + ' <i class="tgico-channelviews time-icon"></i> ' + (postAuthor ? RichTextProcessor.wrapEmojiText(postAuthor) + ', ' : '') + time;
   
-      if(chat.peerId !== chat.appImManager.myId) {
+      if(!message.fwd_from?.saved_from_msg_id) {
         const forward = document.createElement('div');
         forward.classList.add('bubble-beside-button', 'forward');
         forward.innerHTML = `
