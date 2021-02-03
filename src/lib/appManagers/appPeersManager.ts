@@ -118,7 +118,7 @@ export class AppPeersManager {
     else if(isObject(peerString)) return peerString.user_id ? peerString.user_id : -(peerString.channel_id || peerString.chat_id);
     else if(!peerString) return 0;
     
-    const isUser = peerString.charAt(0) == 'u';
+    const isUser = peerString.charAt(0) === 'u';
     const peerParams = peerString.substr(1).split('_');
 
     return isUser ? peerParams[0] : -peerParams[0] || 0;
@@ -238,7 +238,7 @@ export class AppPeersManager {
     } else if(peerId < 0) {
       return 'group';
     } else {
-      return peerId == rootScope.myId ? 'saved' : 'chat';
+      return peerId === rootScope.myId ? 'saved' : 'chat';
     }
   }
 

@@ -90,13 +90,13 @@ export class AppChatsManager {
 
         case 'updateUserTyping':
         case 'updateChatUserTyping': {
-          if(rootScope.myId == update.user_id) {
+          if(rootScope.myId === update.user_id) {
             return;
           }
           
-          const peerId = update._ == 'updateUserTyping' ? update.user_id : -update.chat_id;
+          const peerId = update._ === 'updateUserTyping' ? update.user_id : -update.chat_id;
           const typings = this.typingsInPeer[peerId] ?? (this.typingsInPeer[peerId] = []);
-          let typing = typings.find(t => t.userId == update.user_id);
+          let typing = typings.find(t => t.userId === update.user_id);
           if(!typing) {
             typing = {
               userId: update.user_id
@@ -110,7 +110,7 @@ export class AppChatsManager {
           typing.action = update.action;
           
           if(!appUsersManager.hasUser(update.user_id)) {
-            if(update._ == 'updateChatUserTyping') {
+            if(update._ === 'updateChatUserTyping') {
               if(update.chat_id && appChatsManager.hasChat(update.chat_id) && !appChatsManager.isChannel(update.chat_id)) {
                 appProfileManager.getChatFull(update.chat_id);
               }
@@ -125,7 +125,7 @@ export class AppChatsManager {
 
           typing.timeout = window.setTimeout(() => {
             delete typing.timeout;
-            typings.findAndSplice(t => t.userId == update.user_id);
+            typings.findAndSplice(t => t.userId === update.user_id);
  
             rootScope.broadcast('peer_typings', {peerId, typings});
 
@@ -174,7 +174,7 @@ export class AppChatsManager {
       }
     }
 
-    if(chat._ == 'channel' &&
+    if(chat._ === 'channel' &&
         chat.participants_count === undefined &&
         oldChat !== undefined &&
         oldChat.participants_count) {
@@ -217,10 +217,10 @@ export class AppChatsManager {
 
   public hasRights(id: number, action: ChatRights, flag?: keyof ChatBannedRights['pFlags']) {
     const chat = this.getChat(id);
-    if(chat._ == 'chatEmpty') return false;
+    if(chat._ === 'chatEmpty') return false;
 
-    if(chat._ == 'chatForbidden' ||
-        chat._ == 'channelForbidden' ||
+    if(chat._ === 'chatForbidden' ||
+        chat._ === 'channelForbidden' ||
         chat.pFlags.kicked ||
         (chat.pFlags.left && !chat.pFlags.megagroup)) {
       return false;
@@ -241,7 +241,7 @@ export class AppChatsManager {
           return false;
         }
 
-        if(chat._ == 'channel') {
+        if(chat._ === 'channel') {
           if((!chat.pFlags.megagroup && !myFlags?.post_messages)) {
             return false;
           }
@@ -252,7 +252,7 @@ export class AppChatsManager {
 
       // good
       case 'deleteRevoke': {
-        if(chat._ == 'channel') {
+        if(chat._ === 'channel') {
           return !!myFlags?.delete_messages;
         } else if(!chat.pFlags.admin) {
           return false;
@@ -263,7 +263,7 @@ export class AppChatsManager {
 
       // good
       case 'pin': {
-        if(chat._ == 'channel') {
+        if(chat._ === 'channel') {
           return chat.admin_rights ? !!myFlags.pin_messages || !!myFlags.post_messages : myFlags && !myFlags.pin_messages;
         } else {
           if(myFlags?.pin_messages && !chat.pFlags.admin) {
@@ -277,9 +277,9 @@ export class AppChatsManager {
       case 'edit_title':
       case 'edit_photo':
       case 'invite': {
-        if(chat._ == 'channel') {
+        if(chat._ === 'channel') {
           if(chat.pFlags.megagroup) {
-            if(!(action == 'invite' && chat.pFlags.democracy)) {
+            if(!(action === 'invite' && chat.pFlags.democracy)) {
               return false;
             }
           } else {
@@ -314,7 +314,7 @@ export class AppChatsManager {
   public isChannel(id: number) {
     if(id < 0) id = -id;
     const chat = this.chats[id];
-    if(chat && (chat._ == 'channel' || chat._ == 'channelForbidden')/*  || this.channelAccess[id] */) {
+    if(chat && (chat._ === 'channel' || chat._ === 'channelForbidden')/*  || this.channelAccess[id] */) {
       return true;
     }
     return false;
@@ -326,7 +326,7 @@ export class AppChatsManager {
     } */
 
     const chat = this.chats[id];
-    if(chat && chat._ == 'channel' && chat.pFlags.megagroup) {
+    if(chat && chat._ === 'channel' && chat.pFlags.megagroup) {
       return true;
     }
     return false;
@@ -410,7 +410,7 @@ export class AppChatsManager {
     }
 
     if(chatFull.participants &&
-        chatFull.participants._ == 'chatParticipants') {
+        chatFull.participants._ === 'chatParticipants') {
       chatFull.participants.participants = this.wrapParticipants(id, chatFull.participants.participants);
     }
 
@@ -430,8 +430,8 @@ export class AppChatsManager {
     if(this.isChannel(id)) {
       const isAdmin = chat.pFlags.creator;
       participants.forEach((participant) => {
-        participant.canLeave = myId == participant.user_id;
-        participant.canKick = isAdmin && participant._ == 'channelParticipant';
+        participant.canLeave = myId === participant.user_id;
+        participant.canKick = isAdmin && participant._ === 'channelParticipant';
 
         // just for order by last seen
         participant.user = appUsersManager.getUser(participant.user_id);
@@ -439,10 +439,10 @@ export class AppChatsManager {
     } else {
       const isAdmin = chat.pFlags.creator || chat.pFlags.admins_enabled && chat.pFlags.admin;
       participants.forEach((participant) => {
-        participant.canLeave = myId == participant.user_id;
+        participant.canLeave = myId === participant.user_id;
         participant.canKick = !participant.canLeave && (
           chat.pFlags.creator ||
-          participant._ == 'chatParticipant' && (isAdmin || myId == participant.inviter_id)
+          participant._ === 'chatParticipant' && (isAdmin || myId === participant.inviter_id)
         );
 
         // just for order by last seen
@@ -541,7 +541,7 @@ export class AppChatsManager {
 
       return participants.reduce((acc: number, participant) => {
         const user = appUsersManager.getUser(participant.user_id);
-        if(user && user.status && user.status._ == 'userStatusOnline') {
+        if(user && user.status && user.status._ === 'userStatusOnline') {
           return acc + 1;
         }
 
