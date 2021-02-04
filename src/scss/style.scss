@@ -145,6 +145,7 @@ $chat-padding-handhelds: .5rem;
 @import "partials/chatMarkupTooltip";
 @import "partials/chatStickersHelper";
 @import "partials/chatDrop";
+@import "partials/crop";
 @import "partials/sidebar";
 @import "partials/leftSidebar";
 @import "partials/rightSidebar";
@@ -649,78 +650,6 @@ img.emoji {
   max-width: 100%;
   max-height: 100%;
   vertical-align: middle;
-}
-
-.overlay::selection {
-  background: transparent;
-}
-.crop-component::selection {
-  background: transparent;
-}
-/* .crop-blur {
-  -webkit-filter: blur(10px) sepia(0.2);
-  filter: blur(10px) sepia(0.2);
-} */
-.crop-image,
-.overlay > img {
-  width: auto;
-  height: auto;
-  /* можно явно указать либо ширину, либо высоту */
-  /* width: 500px; */
-  /*либо height: 300px;*/
-  display: block;
-  object-fit: contain;
-  object-position: center;
-}
-/*add stretch*/
-.crop-image {
-  display: block;
-  position: relative;
-  pointer-events: none;
-}
-.crop-component {
-  position: relative;
-  z-index: 999;
-  background-color: white;
-  margin: 0 auto;
-  overflow: hidden;
-  
-  > img {
-    max-width: 100%;
-  }
-  
-  .crop-overlay-color {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(255, 255, 255, 0.7);
-    border-radius: $border-radius;
-  }
-}
-.overlay {
-  position: absolute;
-  left: 50%;
-  top: 50%;  
-  z-index: 999;
-  margin-left: -100px;
-  margin-top: -100px;
-  width: 200px;
-  height: 200px;
-  /* box-shadow: 0 0 0 3px white; */
-  overflow: hidden;
-  box-sizing: content-box;
-  border-radius: 50%;
-
-  html.no-touch &:hover, &:active {
-    cursor: move;
-  }
-  
-  > img {
-    position: absolute;
-    display: block;
-  }
 }
 
 [contenteditable=true] {
