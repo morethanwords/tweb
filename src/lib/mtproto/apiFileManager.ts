@@ -9,7 +9,7 @@ import FileManager from "../filemanager";
 import { logger, LogLevels } from "../logger";
 import apiManager from "./apiManager";
 import { isWebpSupported } from "./mtproto.worker";
-import { MOUNT_CLASS_TO } from "./mtproto_config";
+import { DEBUG, Modes, MOUNT_CLASS_TO } from "./mtproto_config";
 
 
 type Delayed = {
@@ -59,9 +59,10 @@ export class ApiFileManager {
 
   public webpConvertPromises: {[fileName: string]: CancellablePromise<Uint8Array>} = {};
 
-  private log: ReturnType<typeof logger> = logger('AFM', LogLevels.error);
+  private log: ReturnType<typeof logger> = logger('AFM', LogLevels.error | LogLevels.log);
   private tempId = 0;
   private queueId = 0;
+  private debug = Modes.debug;
 
   public downloadRequest(dcId: 'upload', id: number, cb: () => Promise<void>, activeDelta: number, queueId?: number): Promise<void>;
   public downloadRequest(dcId: number, id: number, cb: () => Promise<MyUploadFile>, activeDelta: number, queueId?: number): Promise<MyUploadFile>;
@@ -138,8 +139,6 @@ export class ApiFileManager {
   }
 
   public requestFilePart(dcId: number, location: InputFileLocation | FileLocation, offset: number, limit: number, id = 0, queueId = 0, checkCancel?: () => void) {
-    //const delta = limit / 1024 / 256;
-    const delta = limit / 1024 / 128;
     return this.downloadRequest(dcId, id, async() => {
       checkCancel && checkCancel();
 
@@ -151,12 +150,16 @@ export class ApiFileManager {
         dcId,
         fileDownload: true
       }) as Promise<MyUploadFile>;
-    }, delta, queueId);
+    }, this.getDelta(limit), queueId);
   }
 
   /* private convertBlobToBytes(blob: Blob) {
     return blob.arrayBuffer().then(buffer => new Uint8Array(buffer));
   } */
+
+  private getDelta(bytes: number) {
+    return bytes / 1024 / 128;
+  }
 
   private getLimitPart(size: number): number {
     let bytes: number;
@@ -205,7 +208,7 @@ export class ApiFileManager {
     const cachedPromise = this.cachedDownloadPromises[fileName];
     const fileStorage = this.getFileStorage();
 
-    this.log('downloadFile', fileName, size, location, options.mimeType, process);
+    this.debug && this.log('downloadFile', fileName, size, location, options.mimeType);
 
     /* if(options.queueId) {
       this.log.error('downloadFile queueId:', fileName, options.queueId);
@@ -217,7 +220,7 @@ export class ApiFileManager {
       if(size) {
         return cachedPromise.then((blob: Blob) => {
           if(blob.size < size) {
-            this.log('downloadFile need to deleteFile, wrong size:', blob.size, size);
+            this.debug && this.log('downloadFile need to deleteFile, wrong size:', blob.size, size);
 
             return this.deleteFile(fileName).then(() => {
               return this.downloadFile(options);
@@ -313,7 +316,7 @@ export class ApiFileManager {
               superpuper();
             }
 
-            this.log('downloadFile requestFilePart result:', fileName, result);
+            this.debug && this.log('downloadFile requestFilePart result:', fileName, result);
             const isFinal = offset + limit >= size || !bytes.byteLength;
             if(bytes.byteLength) {
               //done += limit;
@@ -390,19 +393,18 @@ export class ApiFileManager {
     let canceled = false,
       resolved = false,
       doneParts = 0,
-      partSize = 262144, // 256 Kb
-      activeDelta = 2;
+      partSize = 262144; // 256 Kb
 
     /* if(fileSize > (524288 * 3000)) {
       partSize = 1024 * 1024;
       activeDelta = 8;
     } else  */if(fileSize > 67108864) {
       partSize = 524288;
-      activeDelta = 4;
     } else if(fileSize < 102400) {
       partSize = 32768;
-      activeDelta = 1;
     }
+
+    const activeDelta = this.getDelta(partSize);
 
     const totalParts = Math.ceil(fileSize / partSize);
     const fileId: [number, number] = [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)];
@@ -473,17 +475,24 @@ export class ApiFileManager {
                 return;
               }
   
-              //////this.log('Starting to upload file, isBig:', isBigFile, fileID, part, e.target.result);
+              let buffer = e.target.result as ArrayBuffer;
+              self.debug && self.log('Upload file part, isBig:', isBigFile, part, buffer.byteLength, new Uint8Array(buffer).length, new Uint8Array(buffer).slice().length);
+
+              /* const u = new Uint8Array(buffer.byteLength);
+              for(let i = 0; i < u.length; ++i) {
+                //u[i] = Math.random() * 255 | 0;
+                u[i] = 0;
+              }
+              buffer = u.buffer; */
   
               apiManager.invokeApi(method, {
                 file_id: fileId,
                 file_part: part,
                 file_total_parts: totalParts,
-                bytes: e.target.result/* new Uint8Array(e.target.result as ArrayBuffer) */
+                bytes: buffer/* new Uint8Array(buffer) */
               } as any, {
                 //startMaxLength: partSize + 256,
-                fileUpload: true,
-                //singleInRequest: true
+                fileUpload: true
               }).then((result) => {
                 doneParts++;
                 uploadResolve();
@@ -513,7 +522,7 @@ export class ApiFileManager {
       (r.value as Promise<void>).then(process);
     };
 
-    const maxRequests = 10;
+    const maxRequests = Infinity;
     //const maxRequests = 10;
     /* for(let i = 0; i < 10; ++i) {
       process();
@@ -523,7 +532,7 @@ export class ApiFileManager {
     }
 
     deferred.cancel = () => {
-      this.log('cancel upload', canceled, resolved);
+      //this.log('cancel upload', canceled, resolved);
       if(!canceled && !resolved) {
         canceled = true;
         errorHandler({type: 'UPLOAD_CANCELED'});

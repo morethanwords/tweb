@@ -6,9 +6,9 @@ const postcssPresetEnv = require('postcss-preset-env');
 const ServiceWorkerWebpackPlugin = require('serviceworker-webpack-plugin');
 const fs = require('fs');
 
-const allowedIPs = ['194.58.97.147', '195.66.140.39', '127.0.0.1', '176.100.8.202'];
+const allowedIPs = ['194.58.97.147', '195.66.140.39', '127.0.0.1', '176.100.8.254'];
 const devMode = process.env.NODE_ENV !== 'production';
-const useLocal = true;
+const useLocal = false;
 const useLocalNotLocal = false;
 
 if(devMode) {
@@ -18,7 +18,7 @@ if(devMode) {
 const opts = {
   MTPROTO_WORKER: true,
   MTPROTO_HTTP: false,
-  MTPROTO_HTTP_UPLOAD: true,
+  MTPROTO_HTTP_UPLOAD: false,
   DEBUG: devMode,
   version: 3,
   "ifdef-verbose": devMode,    // add this for verbose output
