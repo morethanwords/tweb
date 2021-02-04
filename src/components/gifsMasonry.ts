@@ -161,7 +161,7 @@ export default class GifsMasonry {
 
     /* wastedWidth += w;
 
-    if(wastedWidth == width || h < height) {
+    if(wastedWidth === width || h < height) {
       wastedWidth = 0;
       console.log('completed line', i, line);
       line = [];

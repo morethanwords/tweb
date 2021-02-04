@@ -90,7 +90,7 @@ const markdownEntities: {[markdown: string]: any} = {
 };
 
 namespace RichTextProcessor {
-  export const emojiSupported = navigator.userAgent.search(/OS X|iPhone|iPad|iOS/i) != -1/*  && false *//*  || true */;
+  export const emojiSupported = navigator.userAgent.search(/OS X|iPhone|iPad|iOS/i) !== -1/*  && false *//*  || true */;
 
   export function getEmojiSpritesheetCoords(emojiCode: string) {
     let unified = encodeEmoji(emojiCode)/* .replace(/(-fe0f|fe0f)/g, '') */;
@@ -364,7 +364,7 @@ namespace RichTextProcessor {
 
     const passEntities: typeof options.passEntities = options.passEntities || {};
     const contextSite = options.contextSite || 'Telegram';
-    const contextExternal = contextSite != 'Telegram';
+    const contextExternal = contextSite !== 'Telegram';
 
     const insertPart = (entity: MessageEntity, startPart: string, endPart?: string) => {
       lol.push({part: startPart, offset: entity.offset});
@@ -451,7 +451,7 @@ namespace RichTextProcessor {
             let command = entityText.substr(1);
             let bot: string | boolean;
             let atPos: number;
-            if((atPos = command.indexOf('@')) != -1) {
+            if((atPos = command.indexOf('@')) !== -1) {
               bot = command.substr(atPos + 1);
               command = command.substr(0, atPos);
             } else {

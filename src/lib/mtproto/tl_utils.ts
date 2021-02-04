@@ -7,12 +7,12 @@ import Schema, { MTProtoConstructor } from './schema';
 
 /// #endif
 
-const boolFalse = +Schema.API.constructors.find(c => c.predicate == 'boolFalse').id >>> 0;
-const boolTrue = +Schema.API.constructors.find(c => c.predicate == 'boolTrue').id >>> 0;
-const vector = +Schema.API.constructors.find(c => c.predicate == 'vector').id >>> 0;
-const gzipPacked = +Schema.MTProto.constructors.find(c => c.predicate == 'gzip_packed').id >>> 0;
+const boolFalse = +Schema.API.constructors.find(c => c.predicate === 'boolFalse').id >>> 0;
+const boolTrue = +Schema.API.constructors.find(c => c.predicate === 'boolTrue').id >>> 0;
+const vector = +Schema.API.constructors.find(c => c.predicate === 'vector').id >>> 0;
+const gzipPacked = +Schema.MTProto.constructors.find(c => c.predicate === 'gzip_packed').id >>> 0;
 
-//console.log('boolFalse', boolFalse == 0xbc799737);
+//console.log('boolFalse', boolFalse === 0xbc799737);
 
 class TLSerialization {
   public maxLength = 2048; // 2Kb
@@ -116,14 +116,14 @@ class TLSerialization {
 
   public storeLong(sLong: Array<number> | string | number, field?: string) {
     if(Array.isArray(sLong)) {
-      if(sLong.length == 2) {
+      if(sLong.length === 2) {
         return this.storeLongP(sLong[0], sLong[1], field);
       } else {
         return this.storeIntBytes(sLong, 64, field);
       }
     }
   
-    if(typeof sLong != 'string') {
+    if(typeof sLong !== 'string') {
       sLong = sLong ? sLong.toString() : '0';
     }
     var divRem = bigStringInt(sLong).divideAndRemainder(bigint(0x100000000));
@@ -207,7 +207,7 @@ class TLSerialization {
     }
 
     var len = bytes.length;
-    if((bits % 32) || (len * 8) != bits) {
+    if((bits % 32) || (len * 8) !== bits) {
       const error = new Error('Invalid bits: ' + bits + ', ' + bytes.length);
       console.error(error, bytes, field);
       throw error;
@@ -236,7 +236,7 @@ class TLSerialization {
   
   public storeMethod(methodName: string, params: any) {
     const schema = this.mtproto ? Schema.MTProto : Schema.API;
-    const methodData = schema.methods.find(m => m.method == methodName);
+    const methodData = schema.methods.find(m => m.method === methodName);
 
     if(!methodData) {
       throw new Error('No method ' + methodName + ' found');
@@ -270,7 +270,7 @@ class TLSerialization {
       //console.log('storeMethod', methodName, param.name, params[param.name], type);
       const result = this.storeObject(params[param.name], type, methodName + '[' + param.name + ']');
 
-      if(type == '#') {
+      if(type === '#') {
         params[param.name] = params[param.name] || 0;
         flagsOffsets[param.name] = result as number;
       }
@@ -311,9 +311,9 @@ class TLSerialization {
     }
   
     if(Array.isArray(obj)) {
-      if(type.substr(0, 6) == 'Vector') {
+      if(type.substr(0, 6) === 'Vector') {
         this.writeInt(vector, field + '[id]');
-      } else if (type.substr(0, 6) != 'vector') {
+      } else if (type.substr(0, 6) !== 'vector') {
         throw new Error('Invalid vector type ' + type);
       }
 
@@ -324,7 +324,7 @@ class TLSerialization {
       }
 
       return true;
-    } else if (type.substr(0, 6).toLowerCase() == 'vector') {
+    } else if (type.substr(0, 6).toLowerCase() === 'vector') {
       throw new Error('Invalid vector object');
     }
     
@@ -335,9 +335,9 @@ class TLSerialization {
     const schema = this.mtproto ? Schema.MTProto : Schema.API;
     const predicate = obj['_'];
     let isBare = false;
-    const constructorData: MTProtoConstructor = schema.constructors.find(c => c.predicate == predicate);
+    const constructorData: MTProtoConstructor = schema.constructors.find(c => c.predicate === predicate);
   
-    if(isBare = (type.charAt(0) == '%')) {
+    if(isBare = (type.charAt(0) === '%')) {
       type = type.substr(1);
     }
 
@@ -345,7 +345,7 @@ class TLSerialization {
       throw new Error('No predicate ' + predicate + ' found');
     }
   
-    if(predicate == type) {
+    if(predicate === type) {
       isBare = true;
     }
   
@@ -381,7 +381,7 @@ class TLSerialization {
   
       const result = this.storeObject(obj[param.name], type, field + '[' + predicate + '][' + param.name + ']');
 
-      if(type == '#') {
+      if(type === '#') {
         obj[param.name] = obj[param.name] || 0;
         flagsOffsets[param.name] = result as number;
       }
@@ -475,9 +475,9 @@ class TLDeserialization {
   
   public fetchBool(field?: string) {
     var i = this.readInt((field || '') + ':bool');
-    if(i == boolTrue) {
+    if(i === boolTrue) {
       return true;
-    } else if(i == boolFalse) {
+    } else if(i === boolFalse) {
       return false;
     }
 
@@ -488,7 +488,7 @@ class TLDeserialization {
   public fetchString(field?: string) {
     var len = this.byteView[this.offset++];
   
-    if(len == 254) {
+    if(len === 254) {
       var len = this.byteView[this.offset++] |
         (this.byteView[this.offset++] << 8) |
         (this.byteView[this.offset++] << 16);
@@ -518,7 +518,7 @@ class TLDeserialization {
   public fetchBytes(field?: string) {
     var len = this.byteView[this.offset++];
   
-    if(len == 254) {
+    if(len === 254) {
       len = this.byteView[this.offset++] |
         (this.byteView[this.offset++] << 8) |
         (this.byteView[this.offset++] << 16);
@@ -615,12 +615,12 @@ class TLDeserialization {
   
     field = field || type || 'Object';
   
-    if(type.substr(0, 6) == 'Vector' || type.substr(0, 6) == 'vector') {
-      if(type.charAt(0) == 'V') {
+    if(type.substr(0, 6) === 'Vector' || type.substr(0, 6) === 'vector') {
+      if(type.charAt(0) === 'V') {
         const constructor = this.readInt(field + '[id]');
         const constructorCmp = constructor;
   
-        if(constructorCmp == gzipPacked) { // Gzip packed
+        if(constructorCmp === gzipPacked) { // Gzip packed
           const compressed = this.fetchBytes(field + '[packed_string]');
           const uncompressed = gzipUncompress(compressed);
           const newDeserializer = new TLDeserialization(uncompressed);
@@ -628,7 +628,7 @@ class TLDeserialization {
           return newDeserializer.fetchObject(type, field);
         }
 
-        if(constructorCmp != vector) {
+        if(constructorCmp !== vector) {
           throw new Error('Invalid vector constructor ' + constructor);
         }
       }
@@ -649,14 +649,14 @@ class TLDeserialization {
     let constructorData: MTProtoConstructor = null;
     let fallback = false;
   
-    if(type.charAt(0) == '%') {
+    if(type.charAt(0) === '%') {
       const checkType = type.substr(1);
-      constructorData = schema.constructors.find(c => c.type == checkType);
+      constructorData = schema.constructors.find(c => c.type === checkType);
       if(!constructorData) {
         throw new Error('Constructor not found for type: ' + type);
       }
     } else if(type.charAt(0) >= 97 && type.charAt(0) <= 122) {
-      constructorData = schema.constructors.find(c => c.predicate == type);
+      constructorData = schema.constructors.find(c => c.predicate === type);
       if(!constructorData) {
         throw new Error('Constructor not found for predicate: ' + type);
       }
@@ -664,7 +664,7 @@ class TLDeserialization {
       const constructor = this.readInt(field + '[id]');
       const constructorCmp = constructor;
   
-      if(constructorCmp == gzipPacked) { // Gzip packed
+      if(constructorCmp === gzipPacked) { // Gzip packed
         const compressed = this.fetchBytes(field + '[packed_string]');
         const uncompressed = gzipUncompress(compressed);
         const newDeserializer = new TLDeserialization(uncompressed);
@@ -688,7 +688,7 @@ class TLDeserialization {
       if(!constructorData && this.mtproto) {
         const schemaFallback = Schema.API;
         for(let i = 0, len = schemaFallback.constructors.length; i < len; i++) {
-          if(+schemaFallback.constructors[i].id == constructorCmp) {
+          if(+schemaFallback.constructors[i].id === constructorCmp) {
             constructorData = schemaFallback.constructors[i];
   
             delete this.mtproto;
@@ -724,7 +724,7 @@ class TLDeserialization {
         const param = constructorData.params[i];
         let type = param.type;
 
-        if(type == '#' && result.pFlags === undefined) {
+        if(type === '#' && result.pFlags === undefined) {
           result.pFlags = {};
         }
 
@@ -748,7 +748,7 @@ class TLDeserialization {
         if(isCond && type === 'true') {
           result.pFlags[param.name] = value;
         } else {
-          /* if(param.name == 'read_outbox_max_id') {
+          /* if(param.name === 'read_outbox_max_id') {
             console.log(result, param.name, value, field + '[' + predicate + '][' + param.name + ']');
           } */
             
@@ -769,7 +769,7 @@ class TLDeserialization {
   }
   
   public fetchEnd() {
-    if(this.offset != this.byteView.length) {
+    if(this.offset !== this.byteView.length) {
       throw new Error('Fetch end with non-empty buffer');
     }
 

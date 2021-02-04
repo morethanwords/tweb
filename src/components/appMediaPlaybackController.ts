@@ -50,7 +50,7 @@ class AppMediaPlaybackController {
 
     const media = document.createElement(doc.type === 'round' ? 'video' : 'audio');
     //const source = document.createElement('source');
-    //source.type = doc.type == 'voice' && !opusDecodeController.isPlaySupported() ? 'audio/wav' : doc.mime_type;
+    //source.type = doc.type === 'voice' && !opusDecodeController.isPlaySupported() ? 'audio/wav' : doc.mime_type;
 
     if(doc.type === 'round') {
       media.setAttribute('playsinline', 'true');
@@ -131,7 +131,7 @@ class AppMediaPlaybackController {
   // при этом этот чанк нельзя руками отдать из SW, потому что браузер тогда теряется
   private handleSafariStreamable(media: HTMLMediaElement) {
     media.addEventListener('play', () => {
-      /* if(media.readyState == 4) { // https://developer.mozilla.org/ru/docs/Web/API/XMLHttpRequest/readyState
+      /* if(media.readyState === 4) { // https://developer.mozilla.org/ru/docs/Web/API/XMLHttpRequest/readyState
         return;
       } */
 
@@ -216,8 +216,8 @@ class AppMediaPlaybackController {
       peerId, 
       query: '', 
       inputFilter: {
-        //_: type == 'audio' ? 'inputMessagesFilterMusic' : (type == 'round' ? 'inputMessagesFilterRoundVideo' : 'inputMessagesFilterVoice')
-        _: type == 'audio' ? 'inputMessagesFilterMusic' : 'inputMessagesFilterRoundVoice'
+        //_: type === 'audio' ? 'inputMessagesFilterMusic' : (type === 'round' ? 'inputMessagesFilterRoundVideo' : 'inputMessagesFilterVoice')
+        _: type === 'audio' ? 'inputMessagesFilterMusic' : 'inputMessagesFilterRoundVoice'
       },
       maxId: mid,
       limit: 3,

@@ -81,7 +81,7 @@ export class AppInlineBotsManager {
       var count = bots.length
       var result = []
       for (var i = 0; i < count; i++) {
-        if (bots[i].id == id) {
+        if (bots[i].id === id) {
           exists = true
           bots[i].rate++
           bots[i].date = tsNow(true)
@@ -139,7 +139,7 @@ export class AppInlineBotsManager {
     function regroupWrappedResults (results, rowW, rowH) {
       if (!results ||
         !results[0] ||
-        ['photo', 'gif', 'sticker'].indexOf(results[0].type) == -1) {
+        ['photo', 'gif', 'sticker'].indexOf(results[0].type) === -1) {
           return
         }
         var ratios = []
@@ -147,7 +147,7 @@ export class AppInlineBotsManager {
           var w
           var h, doc
           var photo
-          if (result._ == 'botInlineMediaResult') {
+          if (result._ === 'botInlineMediaResult') {
             if (doc = result.document) {
               w = result.document.w
               h = result.document.h
@@ -189,7 +189,7 @@ export class AppInlineBotsManager {
         var thumbs = []
         var lastRowI = rows.length - 1
         angular.forEach(rows, function (rowCnt, rowI) {
-          var lastRow = rowI == lastRowI
+          var lastRow = rowI === lastRowI
           var curRatios = ratios.slice(i, i + rowCnt)
           var sumRatios = 0
           angular.forEach(curRatios, function (ratio) {
@@ -318,7 +318,7 @@ export class AppInlineBotsManager {
       options.reply_markup = inlineResult.send_message.reply_markup
     }
     
-    if (inlineResult.send_message._ == 'botInlineMessageText') {
+    if (inlineResult.send_message._ === 'botInlineMessageText') {
       options.entities = inlineResult.send_message.entities
       AppMessagesManager.sendText(peerId, inlineResult.send_message.message, options)
     } else {
@@ -327,7 +327,7 @@ export class AppInlineBotsManager {
       switch (inlineResult.send_message._) {
         case 'botInlineMessageMediaAuto':
         caption = inlineResult.send_message.caption
-        if (inlineResult._ == 'botInlineMediaResult') {
+        if (inlineResult._ === 'botInlineMediaResult') {
           var doc = inlineResult.document
           var photo = inlineResult.photo
           if (doc) {

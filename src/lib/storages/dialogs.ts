@@ -64,7 +64,7 @@ export default class DialogsStorage {
     }
 
     for(let folder of folders) {
-      const index = folder.findIndex(dialog => dialog.peerId == peerId);
+      const index = folder.findIndex(dialog => dialog.peerId === peerId);
       if(index !== -1) {
         return [folder[index], index];
       }
@@ -137,7 +137,7 @@ export default class DialogsStorage {
 
   public pushDialog(dialog: Dialog, offsetDate?: number) {
     const dialogs = this.getFolder(dialog.folder_id);
-    const pos = dialogs.findIndex(d => d.peerId == dialog.peerId);
+    const pos = dialogs.findIndex(d => d.peerId === dialog.peerId);
     if(pos !== -1) {
       dialogs.splice(pos, 1);
     }

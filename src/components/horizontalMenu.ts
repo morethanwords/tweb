@@ -6,7 +6,7 @@ import { fastRaf } from "../helpers/schedulers";
 import { FocusDirection } from "../helpers/fastSmoothScroll";
 
 export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?: (id: number, tabContent: HTMLDivElement) => void, onTransitionEnd?: () => void, transitionTime = 250, scrollableX?: ScrollableX) {
-  const selectTab = TransitionSlider(content, tabs || content.dataset.animation == 'tabs' ? 'tabs' : 'navigation', transitionTime, onTransitionEnd);
+  const selectTab = TransitionSlider(content, tabs || content.dataset.animation === 'tabs' ? 'tabs' : 'navigation', transitionTime, onTransitionEnd);
 
   if(tabs) {
     const proxy = new Proxy(selectTab, {
@@ -91,7 +91,7 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?
       let id: number;
       if(target.dataset.tab) {
         id = +target.dataset.tab;
-        if(id == -1) {
+        if(id === -1) {
           return false;
         }
       } else {

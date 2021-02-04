@@ -10,7 +10,7 @@ export default class HTTP extends MTTransport {
     return fetch(this.url, {method: 'POST', body: data}).then(response => {
       //console.log('http response', response/* , response.arrayBuffer() */);
 
-      if(response.status != 200) {
+      if(response.status !== 200) {
         response.arrayBuffer().then(buffer => {
           console.log('not 200', 
           new TextDecoder("utf-8").decode(new Uint8Array(bytesFromArrayBuffer(buffer))));

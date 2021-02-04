@@ -21,7 +21,7 @@ export default class StickersHelper {
   }
 
   public checkEmoticon(emoticon: string) {
-    if(this.lastEmoticon == emoticon) return;
+    if(this.lastEmoticon === emoticon) return;
 
     if(this.lastEmoticon && !emoticon) {
       if(this.container) {
@@ -42,7 +42,7 @@ export default class StickersHelper {
 
     appStickersManager.getStickersByEmoticon(emoticon)
     .then(stickers => {
-      if(this.lastEmoticon != emoticon) {
+      if(this.lastEmoticon !== emoticon) {
         return;
       }
 

@@ -41,7 +41,7 @@ export class AppDocsManager {
     
     //console.log('saveDoc', apiDoc, this.docs[apiDoc.id]);
     if(oldDoc) {
-      //if(doc._ != 'documentEmpty' && doc._ == d._) {
+      //if(doc._ !== 'documentEmpty' && doc._ === d._) {
         if(doc.thumbs) {
           if(!oldDoc.thumbs) oldDoc.thumbs = doc.thumbs;
           /* else if(apiDoc.thumbs[0].bytes && !d.thumbs[0].bytes) {
@@ -78,9 +78,9 @@ export class AppDocsManager {
           doc.duration = attribute.duration;
           doc.audioTitle = attribute.title;
           doc.audioPerformer = attribute.performer;
-          doc.type = attribute.pFlags.voice && doc.mime_type == "audio/ogg" ? 'voice' : 'audio';
+          doc.type = attribute.pFlags.voice && doc.mime_type === "audio/ogg" ? 'voice' : 'audio';
 
-          /* if(apiDoc.type == 'audio') {
+          /* if(apiDoc.type === 'audio') {
             apiDoc.supportsStreaming = true;
           } */
           break;
@@ -104,15 +104,15 @@ export class AppDocsManager {
           }
 
           if(attribute.stickerset) {
-            if(attribute.stickerset._ == 'inputStickerSetEmpty') {
+            if(attribute.stickerset._ === 'inputStickerSetEmpty') {
               delete attribute.stickerset;
-            } else if(attribute.stickerset._ == 'inputStickerSetID') {
+            } else if(attribute.stickerset._ === 'inputStickerSetID') {
               doc.stickerSetInput = attribute.stickerset;
             }
           }
 
           // * there can be no thumbs, then it is a document
-          if(/* apiDoc.thumbs &&  */doc.mime_type == 'image/webp' && (doc.thumbs || webpWorkerController.isWebpSupported())) {
+          if(/* apiDoc.thumbs &&  */doc.mime_type === 'image/webp' && (doc.thumbs || webpWorkerController.isWebpSupported())) {
             doc.type = 'sticker';
             doc.sticker = 1;
           }
@@ -125,7 +125,7 @@ export class AppDocsManager {
           break;
 
         case 'documentAttributeAnimated':
-          if((doc.mime_type == 'image/gif' || doc.mime_type == 'video/mp4')/*  && apiDoc.thumbs */) {
+          if((doc.mime_type === 'image/gif' || doc.mime_type === 'video/mp4')/*  && apiDoc.thumbs */) {
             doc.type = 'gif';
           }
 
@@ -343,7 +343,7 @@ export class AppDocsManager {
       return;
     }
 
-    /* if(doc.thumbs.find(t => t._ == 'photoStrippedSize') 
+    /* if(doc.thumbs.find(t => t._ === 'photoStrippedSize') 
       || (doc.stickerCachedThumb || (doc.stickerSavedThumbWidth >= canvas.width && doc.stickerSavedThumbHeight >= canvas.height))) {
       return;
     } */
@@ -376,7 +376,7 @@ export class AppDocsManager {
 
         defineNotNumerableProperties(thumb, ['url']);
         thumb.url = URL.createObjectURL(blob);
-        doc.thumbs.findAndSplice(t => t._ == thumb._);
+        doc.thumbs.findAndSplice(t => t._ === thumb._);
         doc.thumbs.unshift(thumb);
 
         if(!webpWorkerController.isWebpSupported()) {

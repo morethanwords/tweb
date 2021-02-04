@@ -42,7 +42,7 @@ export class AnimationIntersector {
               this.visible.delete(player);
               this.checkAnimation(player, true);
 
-              if(player.animation instanceof RLottiePlayer/*  && player.animation.cachingDelta == 2 */) {
+              if(player.animation instanceof RLottiePlayer/*  && player.animation.cachingDelta === 2 */) {
                 //console.warn('will clear cache', player);
                 player.animation.clearCache();
               }

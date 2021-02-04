@@ -133,7 +133,7 @@ export default class ChatSearch {
 
     const index = whichChild(elem);
 
-    if(index == (this.foundCount - 1)) {
+    if(index === (this.foundCount - 1)) {
       this.upBtn.setAttribute('disabled', 'true');
     } else {
       this.upBtn.removeAttribute('disabled');

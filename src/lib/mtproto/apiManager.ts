@@ -161,8 +161,8 @@ export class ApiManager {
 
     /// #if MTPROTO_HTTP_UPLOAD
     // @ts-ignore
-    const transportType: TransportType = connectionType == 'upload' ? 'https' : 'websocket';
-    //const transportType: TransportType = connectionType != 'client' ? 'https' : 'websocket';
+    const transportType: TransportType = connectionType === 'upload' ? 'https' : 'websocket';
+    //const transportType: TransportType = connectionType !== 'client' ? 'https' : 'websocket';
     /// #else
     // @ts-ignore
     const transportType = 'websocket';
@@ -201,8 +201,8 @@ export class ApiManager {
     .then(async([authKeyHex, authKeyIdHex, serverSaltHex]) => {
       const transport = dcConfigurator.chooseServer(dcId, connectionType, transportType, false);
       let networker: MTPNetworker;
-      if(authKeyHex && authKeyHex.length == 512) {
-        if(!serverSaltHex || serverSaltHex.length != 16) {
+      if(authKeyHex && authKeyHex.length === 512) {
+        if(!serverSaltHex || serverSaltHex.length !== 16) {
           serverSaltHex = 'AAAAAAAAAAAAAAAA';
         }
         
@@ -280,7 +280,7 @@ export class ApiManager {
       
       deferred.reject(error);
 
-      if(error.code == 401 && error.type == 'SESSION_REVOKED') {
+      if(error.code === 401 && error.type === 'SESSION_REVOKED') {
         this.logOut();
       }
 
@@ -288,7 +288,7 @@ export class ApiManager {
         return;
       }
       
-      if(error.code == 406) {
+      if(error.code === 406) {
         error.handled = true;
       }
       
@@ -297,7 +297,7 @@ export class ApiManager {
         error.stack = stack || (error.originalError && error.originalError.stack) || error.stack || (new Error()).stack;
         setTimeout(() => {
           if(!error.handled) {
-            if(error.code == 401) {
+            if(error.code === 401) {
               this.logOut();
             } else {
               // ErrorService.show({error: error}); // WARNING
@@ -324,19 +324,19 @@ export class ApiManager {
 
       return promise.then(deferred.resolve, (error: ApiError) => {
         //if(!options.ignoreErrors) {
-        if(error.type != 'FILE_REFERENCE_EXPIRED' && error.type !== 'MSG_WAIT_FAILED') {
+        if(error.type !== 'FILE_REFERENCE_EXPIRED' && error.type !== 'MSG_WAIT_FAILED') {
           this.log.error('Error', error.code, error.type, this.baseDcId, dcId, method, params);
         }
         
-        if(error.code == 401 && this.baseDcId == dcId) {
-          if(error.type != 'SESSION_PASSWORD_NEEDED') {
+        if(error.code === 401 && this.baseDcId === dcId) {
+          if(error.type !== 'SESSION_PASSWORD_NEEDED') {
             sessionStorage.remove('dc')
             sessionStorage.remove('user_auth'); // ! возможно тут вообще не нужно это делать, но нужно проверить случай с USER_DEACTIVATED (https://core.telegram.org/api/errors)
             //this.telegramMeNotify(false);
           }
           
           rejectPromise(error);
-        } else if(error.code == 401 && this.baseDcId && dcId != this.baseDcId) {
+        } else if(error.code === 401 && this.baseDcId && dcId !== this.baseDcId) {
           if(this.cachedExportPromise[dcId] === undefined) {
             const promise = new Promise((exportResolve, exportReject) => {
               this.invokeApi('auth.exportAuthorization', {dc_id: dcId}, {noErrorBox: true}).then((exportedAuth) => {
@@ -354,9 +354,9 @@ export class ApiManager {
             //(cachedNetworker = networker).wrapApiCall(method, params, options).then(deferred.resolve, rejectPromise);
             this.invokeApi(method, params, options).then(deferred.resolve, rejectPromise);
           }, rejectPromise);
-        } else if(error.code == 303) {
+        } else if(error.code === 303) {
           const newDcId = +error.type.match(/^(PHONE_MIGRATE_|NETWORK_MIGRATE_|USER_MIGRATE_|FILE_MIGRATE_)(\d+)/)[2];
-          if(newDcId != dcId) {
+          if(newDcId !== dcId) {
             if(options.dcId) {
               options.dcId = newDcId;
             } else {
@@ -367,7 +367,7 @@ export class ApiManager {
               networker.wrapApiCall(method, params, options).then(deferred.resolve, rejectPromise);
             }, rejectPromise);
           }
-        } else if(!options.rawError && error.code == 420) {
+        } else if(!options.rawError && error.code === 420) {
           const waitTime = +error.type.match(/^FLOOD_WAIT_(\d+)/)[1] || 10;
           
           if(waitTime > (options.floodMaxTimeout !== undefined ? options.floodMaxTimeout : 60)) {
@@ -377,7 +377,7 @@ export class ApiManager {
           setTimeout(() => {
             performRequest(cachedNetworker);
           }, waitTime/* (waitTime + 5) */ * 1000); // 03.02.2020
-        } else if(!options.rawError && error.code == 500) {
+        } else if(!options.rawError && error.code === 500) {
           if(error.type === 'MSG_WAIT_FAILED') {
             afterMessageIdTemp = undefined;
             delete options.afterMessageId;

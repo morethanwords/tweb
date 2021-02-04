@@ -133,7 +133,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
       let value = this.userNameInputField.value;
 
       //console.log('userNameInput:', value);
-      if(value == this.originalValues.userName || !value.length) {
+      if(value === this.originalValues.userName || !value.length) {
         this.userNameInput.classList.remove('valid', 'error');
         userNameLabel.innerText = 'Username (optional)';
         this.setProfileUrl();
@@ -156,7 +156,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
       apiManager.invokeApi('account.checkUsername', {
         username: value
       }).then(available => {
-        if(this.userNameInputField.value != value) return;
+        if(this.userNameInputField.value !== value) return;
 
         if(available) {
           this.userNameInput.classList.add('valid');
@@ -168,7 +168,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
           userNameLabel.innerText = 'Username is already taken';
         }
       }, (err) => {
-        if(this.userNameInputField.value != value) return;
+        if(this.userNameInputField.value !== value) return;
 
         switch(err.type) {
           case 'USERNAME_INVALID': {
@@ -201,7 +201,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
         }));
       }
 
-      if(this.userNameInputField.value != this.originalValues.userName && this.userNameInput.classList.contains('valid')) {
+      if(this.userNameInputField.value !== this.originalValues.userName && this.userNameInput.classList.contains('valid')) {
         promises.push(appProfileManager.updateUsername(this.userNameInputField.value));
       }
 
@@ -260,10 +260,10 @@ export default class AppEditProfileTab extends SliderSuperTab {
 
   private isChanged() {
     return !!this.uploadAvatar 
-      || (!this.firstNameInput.classList.contains('error') && this.firstNameInputField.value != this.originalValues.firstName) 
-      || (!this.lastNameInput.classList.contains('error') && this.lastNameInputField.value != this.originalValues.lastName) 
-      || (!this.bioInput.classList.contains('error') && this.bioInputField.value != this.originalValues.bio)
-      || (this.userNameInputField.value != this.originalValues.userName && !this.userNameInput.classList.contains('error'));
+      || (!this.firstNameInput.classList.contains('error') && this.firstNameInputField.value !== this.originalValues.firstName) 
+      || (!this.lastNameInput.classList.contains('error') && this.lastNameInputField.value !== this.originalValues.lastName) 
+      || (!this.bioInput.classList.contains('error') && this.bioInputField.value !== this.originalValues.bio)
+      || (this.userNameInputField.value !== this.originalValues.userName && !this.userNameInput.classList.contains('error'));
   }
 
   private setProfileUrl() {

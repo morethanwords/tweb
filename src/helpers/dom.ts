@@ -12,7 +12,7 @@ import rootScope from "../lib/rootScope";
   }
 
   parentNode = parentNode || document.body;
-  if(element == parentNode) {
+  if(element === parentNode) {
     return true;
   }
   return isInDOM(element.parentNode as HTMLElement, parentNode);
@@ -22,10 +22,10 @@ export function isInDOM(element: Element): boolean {
 }
 
 /* export function checkDragEvent(e: any) {
-  if(!e || e.target && (e.target.tagName == 'IMG' || e.target.tagName == 'A')) return false
+  if(!e || e.target && (e.target.tagName === 'IMG' || e.target.tagName === 'A')) return false
   if(e.dataTransfer && e.dataTransfer.types) {
     for(var i = 0; i < e.dataTransfer.types.length; i++) {
-      if(e.dataTransfer.types[i] == 'Files') {
+      if(e.dataTransfer.types[i] === 'Files') {
         return true;
       }
     }
@@ -59,7 +59,7 @@ export function placeCaretAtEnd(el: HTMLElement) {
   }
   
   el.focus();
-  if(typeof window.getSelection != "undefined" && typeof document.createRange != "undefined") {
+  if(typeof window.getSelection !== "undefined" && typeof document.createRange !== "undefined") {
     var range = document.createRange();
     range.selectNodeContents(el);
     range.collapse(false);
@@ -67,7 +67,7 @@ export function placeCaretAtEnd(el: HTMLElement) {
     sel.removeAllRanges();
     sel.addRange(range);
     // @ts-ignore
-  } else if(typeof document.body.createTextRange != "undefined") {
+  } else if(typeof document.body.createTextRange !== "undefined") {
     // @ts-ignore
     var textRange = document.body.createTextRange();
     textRange.moveToElementText(el);
@@ -102,7 +102,7 @@ export function placeCaretAtEnd(el: HTMLElement) {
   sel.moveStart('character', -1);
   sel.text = '';
 
-  // if (browser.msie && len == -1) {
+  // if (browser.msie && len === -1) {
   //   return field.value.length
   // }
   return len;
@@ -167,7 +167,7 @@ export const markdownTags: {[type in MarkdownType]: MarkdownTag} = {
   }
 };
 export function getRichElementValue(node: HTMLElement, lines: string[], line: string[], selNode?: Node, selOffset?: number, entities?: MessageEntity[], offset = {offset: 0}) {
-  if(node.nodeType == 3) { // TEXT
+  if(node.nodeType === 3) { // TEXT
     if(selNode === node) {
       const value = node.nodeValue;
       line.push(value.substr(0, selOffset) + '\x01' + value.substr(selOffset));
@@ -208,16 +208,16 @@ export function getRichElementValue(node: HTMLElement, lines: string[], line: st
     return;
   }
 
-  if(node.nodeType != 1) { // NON-ELEMENT
+  if(node.nodeType !== 1) { // NON-ELEMENT
     return;
   }
 
   const isSelected = (selNode === node);
-  const isBlock = node.tagName == 'DIV' || node.tagName == 'P';
-  if(isBlock && line.length || node.tagName == 'BR') {
+  const isBlock = node.tagName === 'DIV' || node.tagName === 'P';
+  if(isBlock && line.length || node.tagName === 'BR') {
     lines.push(line.join(''));
     line.splice(0, line.length);
-  } else if(node.tagName == 'IMG') {
+  } else if(node.tagName === 'IMG') {
     const alt = (node as HTMLImageElement).alt;
     if(alt) {
       line.push(alt);
@@ -246,7 +246,7 @@ export function getRichElementValue(node: HTMLElement, lines: string[], line: st
 }
 
 export function isInputEmpty(element: HTMLElement) {
-  if(element.hasAttribute('contenteditable') || element.tagName != 'INPUT') {
+  if(element.hasAttribute('contenteditable') || element.tagName !== 'INPUT') {
     /* const value = element.innerText;
 
     return !value.trim() && !serializeNodes(Array.from(element.childNodes)).trim(); */
@@ -262,14 +262,14 @@ export function isInputEmpty(element: HTMLElement) {
 
     if(typeof(child) === 'object' && child.textContent) return str += child.textContent;
     if(child.innerText) return str += child.innerText;
-    if(child.tagName == 'IMG' && child.classList && child.classList.contains('emoji')) return str += child.getAttribute('alt');
+    if(child.tagName === 'IMG' && child.classList && child.classList.contains('emoji')) return str += child.getAttribute('alt');
 
     return str;
   }, '');
 } */
 
 /* if (Config.Modes.animations &&
-  typeof window.requestAnimationFrame == 'function') {
+  typeof window.requestAnimationFrame === 'function') {
   window.onAnimationFrameCallback = function (cb) {
     return (function () {
       window.requestAnimationFrame(cb)
@@ -352,7 +352,7 @@ export function findUpClassName(el: any, className: string): HTMLElement {
 
 export function findUpTag(el: any, tag: string): HTMLElement {
   return el.closest(tag);
-  /* if(el.tagName == tag) return el; // 03.02.2020
+  /* if(el.tagName === tag) return el; // 03.02.2020
 
   while(el.parentElement) {
     el = el.parentElement;
@@ -364,11 +364,11 @@ export function findUpTag(el: any, tag: string): HTMLElement {
 
 export function findUpAttribute(el: any, attribute: string): HTMLElement {
   return el.closest(`[${attribute}]`);
-  /* if(el.getAttribute(attribute) != null) return el; // 03.02.2020
+  /* if(el.getAttribute(attribute) !== null) return el; // 03.02.2020
 
   while(el.parentElement) {
     el = el.parentElement;
-    if(el.getAttribute(attribute) != null) 
+    if(el.getAttribute(attribute) !== null) 
       return el;
   }
   return null; */
@@ -394,13 +394,13 @@ export function whichChild(elem: Node) {
   
   let i = 0;
   // @ts-ignore
-  while((elem = elem.previousElementSibling) != null) ++i;
+  while((elem = elem.previousElementSibling) !== null) ++i;
   return i;
 };
 
 export function fillPropertyValue(str: string) {
   let splitted = str.split(' ');
-  if(splitted.length != 4) {
+  if(splitted.length !== 4) {
     if(!splitted[0]) splitted[0] = '0px';
     for(let i = splitted.length; i < 4; ++i) {
       splitted[i] = splitted[i % 2] || splitted[0] || '0px';
@@ -556,7 +556,7 @@ export const attachClickEvent = (elem: HTMLElement, callback: (e: TouchEvent | M
 };
 
 export const detachClickEvent = (elem: HTMLElement, callback: (e: TouchEvent | MouseEvent) => void, options?: AddEventListenerOptions) => {
-  if(CLICK_EVENT_NAME == 'touchend') {
+  if(CLICK_EVENT_NAME === 'touchend') {
     elem.removeEventListener('touchstart', callback, options);
   } else {
     elem.removeEventListener(CLICK_EVENT_NAME, callback, options);
@@ -569,14 +569,14 @@ export const getSelectedNodes = () => {
   for(let i = 0; i < selection.rangeCount; ++i) {
     const range = selection.getRangeAt(i);
     let {startContainer, endContainer} = range;
-    if(endContainer.nodeType != 3) endContainer = endContainer.firstChild;
+    if(endContainer.nodeType !== 3) endContainer = endContainer.firstChild;
     
-    while(startContainer && startContainer != endContainer) {
-      nodes.push(startContainer.nodeType == 3 ? startContainer : startContainer.firstChild);
+    while(startContainer && startContainer !== endContainer) {
+      nodes.push(startContainer.nodeType === 3 ? startContainer : startContainer.firstChild);
       startContainer = startContainer.nextSibling;
     }
     
-    if(nodes[nodes.length - 1] != endContainer) {
+    if(nodes[nodes.length - 1] !== endContainer) {
       nodes.push(endContainer);
     }
   }
@@ -595,7 +595,7 @@ export const isSelectionSingle = (input: Element = document.activeElement) => {
     single = false;
   } else {
     const node = nodes[0];
-    if(node && node.parentNode != input && node.parentNode.parentNode != input) {
+    if(node && node.parentNode !== input && node.parentNode.parentNode !== input) {
       single = false;
     }
   }
@@ -623,8 +623,8 @@ export const handleScrollSideEvent = (elem: HTMLElement, side: 'top' | 'bottom',
       const clientY = e.touches[0].clientY;
 
       const isDown = clientY < lastY;
-      if(side == 'bottom' && isDown) callback();
-      else if(side == 'top' && !isDown) callback();
+      if(side === 'bottom' && isDown) callback();
+      else if(side === 'top' && !isDown) callback();
       lastY = clientY;
       //alert('isDown: ' + !!isDown);
     };
@@ -637,8 +637,8 @@ export const handleScrollSideEvent = (elem: HTMLElement, side: 'top' | 'bottom',
     listenerSetter.add(elem, 'wheel', (e) => {
       const isDown = e.deltaY > 0;
       //this.log('wheel', e, isDown);
-      if(side == 'bottom' && isDown) callback();
-      else if(side == 'top' && !isDown) callback();
+      if(side === 'bottom' && isDown) callback();
+      else if(side === 'top' && !isDown) callback();
     }, {passive: true});
   }
 };
@@ -729,7 +729,7 @@ export async function getFilesFromEvent(e: ClipboardEvent | DragEvent, onlyTypes
 } */
 
 export function isSendShortcutPressed(e: KeyboardEvent) {
-  if(e.key == 'Enter' && !isTouchSupported) {
+  if(e.key === 'Enter' && !isTouchSupported) {
     /* if(e.ctrlKey || e.metaKey) {
       this.messageInput.innerHTML += '<br>';
       placeCaretAtEnd(this.message)

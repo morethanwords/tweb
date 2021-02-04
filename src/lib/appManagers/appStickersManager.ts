@@ -157,7 +157,7 @@ export class AppStickersManager {
   } */
 
   public getStickerSetInput(set: {id: string, access_hash: string}): InputStickerSet {
-    return set.id == 'emoji' ? {
+    return set.id === 'emoji' ? {
       _: 'inputStickerSetAnimatedEmoji'
     } : {
       _: 'inputStickerSetID',
@@ -221,7 +221,7 @@ export class AppStickersManager {
     for(let id in cache) {
       const {set} = cache[id];
 
-      if(set.title.toLowerCase().includes(query.toLowerCase()) && !res.sets.find(c => c.set.id == set.id)) {
+      if(set.title.toLowerCase().includes(query.toLowerCase()) && !res.sets.find(c => c.set.id === set.id)) {
         foundSaved.push({_: 'stickerSetCovered', set, cover: null});
       }
     }

@@ -129,12 +129,12 @@ export default class MTPNetworker {
 
     const suffix = this.isFileUpload ? '-U' : this.isFileDownload ? '-D' : '';
     this.name = 'NET-' + dcId + suffix;
-    //this.log = logger(this.name, this.upload && this.dcId == 2 ? LogLevels.debug | LogLevels.warn | LogLevels.log | LogLevels.error : LogLevels.error);
+    //this.log = logger(this.name, this.upload && this.dcId === 2 ? LogLevels.debug | LogLevels.warn | LogLevels.log | LogLevels.error : LogLevels.error);
     this.log = logger(this.name, LogLevels.log | LogLevels.error);
     this.log('constructor'/* , this.authKey, this.authKeyID, this.serverSalt */);
 
     // Test resend after bad_server_salt
-    /* if(this.dcId == 2 && this.upload) {
+    /* if(this.dcId === 2 && this.upload) {
       //timeManager.applyServerTime((Date.now() / 1000 - 86400) | 0);
       this.serverSalt[0] = 0;
     } */
@@ -256,14 +256,14 @@ export default class MTPNetworker {
     if(!this.connectionInited) { // this will call once for each new session
       ///////this.log('Wrap api call !this.connectionInited');
       
-      const invokeWithLayer = Schema.API.methods.find(m => m.method == 'invokeWithLayer');
+      const invokeWithLayer = Schema.API.methods.find(m => m.method === 'invokeWithLayer');
       if(!invokeWithLayer) throw new Error('no invokeWithLayer!');
       serializer.storeInt(+invokeWithLayer.id >>> 0, 'invokeWithLayer');
 
       // @ts-ignore
       serializer.storeInt(Schema.layer, 'layer');
   
-      const initConnection = Schema.API.methods.find(m => m.method == 'initConnection');
+      const initConnection = Schema.API.methods.find(m => m.method === 'initConnection');
       if(!initConnection) throw new Error('no initConnection!');
   
       serializer.storeInt(+initConnection.id >>> 0, 'initConnection');
@@ -289,7 +289,7 @@ export default class MTPNetworker {
     }
   
     if(options.afterMessageId) {
-      const invokeAfterMsg = Schema.API.methods.find(m => m.method == 'invokeAfterMsg');
+      const invokeAfterMsg = Schema.API.methods.find(m => m.method === 'invokeAfterMsg');
       if(!invokeAfterMsg) throw new Error('no invokeAfterMsg!');
 
       this.log('Api call options.afterMessageId!');
@@ -299,7 +299,7 @@ export default class MTPNetworker {
   
     options.resultType = serializer.storeMethod(method, params);
 
-    /* if(method == 'account.updateNotifySettings') {
+    /* if(method === 'account.updateNotifySettings') {
       this.log('api call body:', serializer.getBytes(true));
     } */
   
@@ -333,7 +333,7 @@ export default class MTPNetworker {
 
     sessionStorage.get('dc').then((baseDcId) => {
       if(isClean && (
-          baseDcId != this.dcId ||
+          baseDcId !== this.dcId ||
           this.isFileNetworker ||
           (this.sleepAfter && Date.now() > this.sleepAfter)
         )) {
@@ -401,7 +401,7 @@ export default class MTPNetworker {
 
   public toggleOffline(enabled: boolean) {
     // this.log('toggle ', enabled, this.dcId, this.iii)
-    if(this.offline !== undefined && this.offline == enabled) {
+    if(this.offline !== undefined && this.offline === enabled) {
       return false;
     }
   
@@ -536,7 +536,7 @@ export default class MTPNetworker {
   }
 
   public setConnectionStatus(online: boolean) {
-    const willChange = this.isOnline != online;
+    const willChange = this.isOnline !== online;
     this.isOnline = online;
 
     if(willChange && NetworkerFactory.onConnectionStatusChange) {
@@ -991,7 +991,7 @@ export default class MTPNetworker {
                 };
               }
 
-              if(deserializer.offset != offset + result.bytes) {
+              if(deserializer.offset !== offset + result.bytes) {
                 // console.warn(dT(), 'set offset', this.offset, offset, result.bytes)
                 // this.log(result)
                 deserializer.offset = offset + result.bytes;
@@ -1171,7 +1171,7 @@ export default class MTPNetworker {
 
   // * https://core.telegram.org/mtproto/service_messages_about_messages#notice-of-ignored-error-message
   public processMessage(message: any, messageId: string, sessionId: Uint8Array | number[]) {
-    if(message._ == 'messageEmpty') {
+    if(message._ === 'messageEmpty') {
       this.log.warn('processMessage: messageEmpty', message, messageId);
       return;
     }
@@ -1219,9 +1219,9 @@ export default class MTPNetworker {
       case 'bad_msg_notification': {
         this.log.error('Bad msg notification', message);
 
-        if(message.error_code == 16 || message.error_code == 17) {
+        if(message.error_code === 16 || message.error_code === 17) {
           const changedOffset = timeManager.applyServerTime(bigStringInt(messageId).shiftRight(32).toString(10));
-          if(message.error_code == 17 || changedOffset) {
+          if(message.error_code === 17 || changedOffset) {
             this.log('Update session');
             this.updateSession();
           }
@@ -1235,7 +1235,7 @@ export default class MTPNetworker {
       }
   
       case 'message': {
-        if(this.lastServerMessages.indexOf(messageId) != -1) {
+        if(this.lastServerMessages.indexOf(messageId) !== -1) {
           // console.warn('[MT] Server same messageId: ', messageId)
           this.ackMessage(messageId);
           return;
@@ -1261,7 +1261,7 @@ export default class MTPNetworker {
         this.applyServerSalt(message.server_salt);
   
         sessionStorage.get('dc').then((baseDcId) => {
-          if(baseDcId == this.dcId && !this.isFileNetworker && NetworkerFactory.updatesProcessor) {
+          if(baseDcId === this.dcId && !this.isFileNetworker && NetworkerFactory.updatesProcessor) {
             NetworkerFactory.updatesProcessor(message);
           }
         });
@@ -1291,12 +1291,12 @@ export default class MTPNetworker {
       case 'msgs_state_info': {
         this.ackMessage(message.answer_msg_id);
         if(this.lastResendReq && 
-          this.lastResendReq.req_msg_id == message.req_msg_id && 
+          this.lastResendReq.req_msg_id === message.req_msg_id && 
           this.pendingResends.length
         ) {
           for(const badMsgId of this.lastResendReq.resend_msg_ids) {
             const pos = this.pendingResends.indexOf(badMsgId);
-            if(pos != -1) {
+            if(pos !== -1) {
               this.pendingResends.splice(pos, 1);
             }
           }
@@ -1314,7 +1314,7 @@ export default class MTPNetworker {
         this.processMessageAck(sentMessageId);
         if(sentMessage) {
           const deferred = sentMessage.deferred;
-          if(message.result._ == 'rpc_error') {
+          if(message.result._ === 'rpc_error') {
             const error = this.processError(message.result);
             this.log('Rpc error', error);
             if(deferred) {

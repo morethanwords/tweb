@@ -102,7 +102,7 @@ export default class AppGifsTab implements SliderTab {
       this.searchPromise = appInlineBotsManager.getInlineResults(0, this.gifBotPeerId, query, this.nextOffset);
       const { results, next_offset } = await this.searchPromise;
 
-      if(this.inputSearch.value != query) {
+      if(this.inputSearch.value !== query) {
         return;
       }
 

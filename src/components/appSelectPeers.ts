@@ -147,7 +147,7 @@ export default class AppSelectPeers {
 
     this.input.addEventListener('input', () => {
       const value = this.input.value;
-      if(this.query != value) {
+      if(this.query !== value) {
         if(this.peerType.includes('contacts')) {
           delete this.loadedWhat.contacts;
           this.cachedContacts = null;
@@ -189,7 +189,7 @@ export default class AppSelectPeers {
   }
 
   private renderSaved() {
-    if(!this.offsetIndex && this.folderId == 0 && this.peerType.includes('dialogs') && (!this.query || appUsersManager.testSelfSearch(this.query))) {
+    if(!this.offsetIndex && this.folderId === 0 && this.peerType.includes('dialogs') && (!this.query || appUsersManager.testSelfSearch(this.query))) {
       this.renderResultsFunc([rootScope.myId]);
     }
   }
@@ -213,11 +213,11 @@ export default class AppSelectPeers {
       const newOffsetIndex = dialogs[dialogs.length - 1].index || 0;
 
       dialogs = dialogs.slice();
-      dialogs.findAndSplice(d => d.peerId == rootScope.myId); // no my account
+      dialogs.findAndSplice(d => d.peerId === rootScope.myId); // no my account
 
       if(this.chatRightsAction) {
         dialogs = dialogs.filter(d => {
-          return (d.peerId > 0 && (this.chatRightsAction != 'send' || appUsersManager.canSendToUser(d.peerId))) || appChatsManager.hasRights(-d.peerId, this.chatRightsAction);
+          return (d.peerId > 0 && (this.chatRightsAction !== 'send' || appUsersManager.canSendToUser(d.peerId))) || appChatsManager.hasRights(-d.peerId, this.chatRightsAction);
         });
       }
 
@@ -262,7 +262,7 @@ export default class AppSelectPeers {
       this.cachedContacts = (await this.promise)[0].slice(); */
       this.promise = appUsersManager.getContacts(this.query);
       this.cachedContacts = (await this.promise).slice();
-      this.cachedContacts.findAndSplice(userId => userId == rootScope.myId); // no my account
+      this.cachedContacts.findAndSplice(userId => userId === rootScope.myId); // no my account
       this.promise = null;
     }
 
@@ -359,11 +359,11 @@ export default class AppSelectPeers {
       let subtitle = '';
       if(peerId < 0) {
         subtitle = appChatsManager.getChatMembersString(-peerId);
-      } else if(peerId == rootScope.myId) {
+      } else if(peerId === rootScope.myId) {
         subtitle = 'chat with yourself';
       } else {
         subtitle = appUsersManager.getUserStatusString(peerId);
-        if(subtitle == 'online') {
+        if(subtitle === 'online') {
           subtitle = `<i>${subtitle}</i>`;
         }
       }
@@ -392,7 +392,7 @@ export default class AppSelectPeers {
     div.dataset.key = '' + peerId;
     if(typeof(peerId) === 'number') {
       if(title === undefined) {
-        title = peerId == rootScope.myId ? 'Saved' : appPeersManager.getPeerTitle(peerId, false, true);
+        title = peerId === rootScope.myId ? 'Saved' : appPeersManager.getPeerTitle(peerId, false, true);
       }
 
       avatarEl.setAttribute('peer', '' + peerId);

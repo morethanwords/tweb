@@ -120,10 +120,10 @@ export class Authorizer {
         
         let deserializer = new TLDeserialization(result, {mtproto: true});
         let auth_key_id = deserializer.fetchLong('auth_key_id');
-        if(auth_key_id != 0) this.log.error('auth_key_id != 0', auth_key_id);
+        if(auth_key_id !== 0) this.log.error('auth_key_id !== 0', auth_key_id);
         
         let msg_id = deserializer.fetchLong('msg_id');
-        if(msg_id == 0) this.log.error('msg_id == 0', msg_id);
+        if(msg_id === 0) this.log.error('msg_id === 0', msg_id);
         
         let msg_len = deserializer.fetchInt('msg_len');
         if(!msg_len) this.log.error('no msg_len', msg_len);
@@ -165,7 +165,7 @@ export class Authorizer {
     
     var response = deserializer.fetchObject('ResPQ');
     
-    if(response._ != 'resPQ') {
+    if(response._ !== 'resPQ') {
       throw new Error('[MT] resPQ response invalid: ' + response._);
     }
     
@@ -288,7 +288,7 @@ export class Authorizer {
       this.log('Sent req_DH_params, response:', response);
     }
     
-    if(response._ != 'server_DH_params_fail' && response._ != 'server_DH_params_ok') {
+    if(response._ !== 'server_DH_params_fail' && response._ !== 'server_DH_params_ok') {
       throw new Error('[MT] Server_DH_Params response invalid: ' + response._);
     }
     
@@ -300,7 +300,7 @@ export class Authorizer {
       throw new Error('[MT] Server_DH_Params server_nonce mismatch');
     }
     
-    if(response._ == 'server_DH_params_fail') {
+    if(response._ === 'server_DH_params_fail') {
       //var newNonceHash = sha1BytesSync(auth.newNonce).slice(-16);
       var newNonceHash = (await CryptoWorker.sha1Hash(auth.newNonce)).slice(-16);
       if(!bytesCmp(newNonceHash, response.new_nonce_hash)) {
@@ -352,7 +352,7 @@ export class Authorizer {
     var deserializer = new TLDeserialization(answerWithPadding, {mtproto: true});
     var response = deserializer.fetchObject('Server_DH_inner_data');
     
-    if(response._ != 'server_DH_inner_data') {
+    if(response._ !== 'server_DH_inner_data') {
       throw new Error('[MT] server_DH_inner_data response invalid: ' + response);
     }
     
@@ -391,7 +391,7 @@ export class Authorizer {
     }
 
     var dhPrimeHex = bytesToHex(dhPrime);
-    if(g != 3 || dhPrimeHex !== 'c71caeb9c6b1c9048e6c522f70f13f73980d40238e3e21c14934d037563d930f48198a0aa7c14058229493d22530f4dbfa336f6e0ac925139543aed44cce7c3720fd51f69458705ac68cd4fe6b6b13abdc9746512969328454f18faf8c595f642477fe96bb2a941d5bcd1d4ac8cc49880708fa9b378e3c4f3a9060bee67cf9a4a4a695811051907e162753b56b0f6b410dba74d8a84b2a14b3144e0ef1284754fd17ed950d5965b4b9dd46582db1178d169c6bc465b0d6ff9ca3928fef5b9ae4e418fc15e83ebea0f87fa9ff5eed70050ded2849f47bf959d956850ce929851f0d8115f635b105ee2e4e15d04b2454bf6f4fadf034b10403119cd8e3b92fcc5b') {
+    if(g !== 3 || dhPrimeHex !== 'c71caeb9c6b1c9048e6c522f70f13f73980d40238e3e21c14934d037563d930f48198a0aa7c14058229493d22530f4dbfa336f6e0ac925139543aed44cce7c3720fd51f69458705ac68cd4fe6b6b13abdc9746512969328454f18faf8c595f642477fe96bb2a941d5bcd1d4ac8cc49880708fa9b378e3c4f3a9060bee67cf9a4a4a695811051907e162753b56b0f6b410dba74d8a84b2a14b3144e0ef1284754fd17ed950d5965b4b9dd46582db1178d169c6bc465b0d6ff9ca3928fef5b9ae4e418fc15e83ebea0f87fa9ff5eed70050ded2849f47bf959d956850ce929851f0d8115f635b105ee2e4e15d04b2454bf6f4fadf034b10403119cd8e3b92fcc5b') {
       // The verified value is from https://core.telegram.org/mtproto/security_guidelines
       throw new Error('[MT] DH params are not verified: unknown dhPrime');
     }
@@ -493,7 +493,7 @@ export class Authorizer {
     
     let response = deserializer.fetchObject('Set_client_DH_params_answer');
     
-    if(response._ != 'dh_gen_ok' && response._ != 'dh_gen_retry' && response._ != 'dh_gen_fail') {
+    if(response._ !== 'dh_gen_ok' && response._ !== 'dh_gen_retry' && response._ !== 'dh_gen_fail') {
       throw new Error('[MT] Set_client_DH_params_answer response invalid: ' + response._);
     }
     

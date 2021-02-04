@@ -168,7 +168,7 @@ function defaultReply(message: any) {
  */
 let _isSafari: boolean = null;
 function isSafari(scope: any) {
-  if(_isSafari == null) {
+  if(_isSafari === null) {
     const userAgent = scope.navigator ? scope.navigator.userAgent : null;
     _isSafari = !!scope.safari ||
     !!(userAgent && (/\b(iPad|iPhone|iPod)\b/.test(userAgent) || (!!userAgent.match('Safari') && !userAgent.match('Chrome'))));
@@ -181,7 +181,7 @@ function reply(...args: any[]) {
     throw new TypeError('reply - not enough arguments'); 
   }
 
-  //if(arguments[0] == 'frame') return;
+  //if(arguments[0] === 'frame') return;
 
   var args = Array.prototype.slice.call(arguments, 1);
   if(isSafari(self)) {

@@ -20,11 +20,11 @@ export const formatDateAccordingToToday = (time: Date) => {
   const timestamp = time.getTime() / 1000 | 0;
 
   let timeStr: string;
-  if((now - timestamp) < ONE_DAY && date.getDate() == time.getDate()) { // if the same day
+  if((now - timestamp) < ONE_DAY && date.getDate() === time.getDate()) { // if the same day
     timeStr = ('0' + time.getHours()).slice(-2) + ':' + ('0' + time.getMinutes()).slice(-2);
-  } else if(date.getFullYear() != time.getFullYear()) { // different year
+  } else if(date.getFullYear() !== time.getFullYear()) { // different year
     timeStr = time.getDate() + '.' + ('0' + (time.getMonth() + 1)).slice(-2) + '.' + ('' + time.getFullYear()).slice(-2);
-  } else if((now - timestamp) < (ONE_DAY * 7) && getWeekNumber(date) == getWeekNumber(time)) { // current week
+  } else if((now - timestamp) < (ONE_DAY * 7) && getWeekNumber(date) === getWeekNumber(time)) { // current week
     timeStr = days[time.getDay()].slice(0, 3);
   } else { // same year
     timeStr = months[time.getMonth()].slice(0, 3) + ' ' + ('0' + time.getDate()).slice(-2);
@@ -174,7 +174,7 @@ export function fillTipDates(query: string, dates: DateData[]) {
     const g1 = matches[1];
     const g2 = matches[3];
     const g3 = matches[5];
-    if(!matches[2] == matches[4]) {
+    if(!matches[2] === matches[4]) {
       return;
     }
 
@@ -312,7 +312,7 @@ function createForDayMonth(dates: DateData[], day: number, month: number) {
     const today = Date.now();
     
     for(let i = currentYear; i >= minYear; i--) {
-      if(month == 1 && day == 28 && !isLeapYear(i)) {
+      if(month === 1 && day === 28 && !isLeapYear(i)) {
         continue;
       }
 
@@ -328,7 +328,7 @@ function createForDayMonth(dates: DateData[], day: number, month: number) {
       date.setFullYear(i, month, day + 2);
       date.setHours(0, 0, 0);
       const maxDate = date.getTime() - 1;
-      if(i == currentYear) {
+      if(i === currentYear) {
         dates.push({
           title: formatterDayMonth(minDate),
           minDate,
@@ -375,7 +375,7 @@ function validDateForMonth(day: number, month: number) {
 }
 
 function isLeapYear(year: number) {
-  return ((year % 4 == 0) && (year % 100 != 0)) || (year % 400 == 0);
+  return ((year % 4 === 0) && (year % 100 !== 0)) || (year % 400 === 0);
 }
 
 function getMonth(q: string) {

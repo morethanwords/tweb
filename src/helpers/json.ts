@@ -3,11 +3,11 @@
   let arr: number[] = [], performedValue: any = null;
   return JSON.parse(text, (key, value) => {
     //console.log(key, value);
-    if(key == 'type' && value == 'bytes') {
+    if(key === 'type' && value === 'bytes') {
       arr = [];
       return undefined;
     } else if(arr) {
-      if(key == 'value') {
+      if(key === 'value') {
         performedValue = new Uint8Array(arr);
         arr = null;
         return undefined;
@@ -27,7 +27,7 @@
 // TOO SLOW TOO
 /* export function stringify(value: any) {
   return JSON.stringify(value, (key, value) => {
-    if(key == 'downloaded' || (key == 'url' && value.indexOf('blob:') === 0)) return undefined;
+    if(key === 'downloaded' || (key === 'url' && value.indexOf('blob:') === 0)) return undefined;
     return value;
   });
 } */

@@ -148,18 +148,18 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
         }
       } else if(task.progress) {
         rootScope.broadcast('download_progress', task.progress);
-      } else if(task.type == 'reload') {
+      } else if(task.type === 'reload') {
         location.reload();
-      } else if(task.type == 'connectionStatusChange') {
+      } else if(task.type === 'connectionStatusChange') {
         rootScope.broadcast('connection_status_change', task.payload);
-      } else if(task.type == 'convertWebp') {
+      } else if(task.type === 'convertWebp') {
         webpWorkerController.postMessage(task);
-      } else if((task as ServiceWorkerTaskResponse).type == 'requestFilePart') {
+      } else if((task as ServiceWorkerTaskResponse).type === 'requestFilePart') {
         const _task = task as ServiceWorkerTaskResponse;
         
         if(_task.error) {
           const onError = (error: ApiError) => {
-            if(error?.type == 'FILE_REFERENCE_EXPIRED') {
+            if(error?.type === 'FILE_REFERENCE_EXPIRED') {
               // @ts-ignore
               const bytes = _task.originalPayload[1].file_reference;
               referenceDatabase.refreshReference(bytes).then(() => {

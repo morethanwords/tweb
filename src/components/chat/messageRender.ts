@@ -40,7 +40,7 @@ export namespace MessageRender {
       time = '<i class="edited">edited</i> ' + time;
     }
 
-    if(chat.type != 'pinned' && message.pFlags.pinned) {
+    if(chat.type !== 'pinned' && message.pFlags.pinned) {
       bubble.classList.add('is-pinned');
       time = '<i class="tgico-pinnedchat time-icon"></i>' + time;
     }

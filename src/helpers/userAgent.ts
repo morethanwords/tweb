@@ -1,6 +1,6 @@
 export const userAgent = navigator ? navigator.userAgent : null;
-export const isApple = navigator.userAgent.search(/OS X|iPhone|iPad|iOS/i) != -1;
-export const isAndroid = navigator.userAgent.toLowerCase().indexOf('android') != -1;
+export const isApple = navigator.userAgent.search(/OS X|iPhone|iPad|iOS/i) !== -1;
+export const isAndroid = navigator.userAgent.toLowerCase().indexOf('android') !== -1;
 export const isChromium = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
 
 /**

@@ -124,7 +124,7 @@ export default class AppStickersTab implements SliderTab {
       for(let i = 0; i < count; ++i) {
         const div = stickersDiv.children[i] as HTMLDivElement;
         const doc = set.documents[i];
-        if(doc._ == 'documentEmpty') {
+        if(doc._ === 'documentEmpty') {
           continue;
         }
 
@@ -204,7 +204,7 @@ export default class AppStickersTab implements SliderTab {
     const children = Array.from(this.setsDiv.children) as HTMLElement[];
     children.forEachReverse(el => {
       const id = el.dataset.stickerSet;
-      const index = coveredSets.findIndex(covered => covered.set.id == id);
+      const index = coveredSets.findIndex(covered => covered.set.id === id);
   
       if(index !== -1) {
         coveredSets.splice(index, 1);
@@ -224,7 +224,7 @@ export default class AppStickersTab implements SliderTab {
     }
 
     return appStickersManager.searchStickerSets(query, false).then(coveredSets => {
-      if(this.inputSearch.value != query) {
+      if(this.inputSearch.value !== query) {
         return;
       }
 

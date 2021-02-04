@@ -20,14 +20,14 @@ export default class Obfuscation {
     while(true) {
       let val = (initPayload[3] << 24) | (initPayload[2] << 16) | (initPayload[1] << 8) | (initPayload[0]);
       let val2 = (initPayload[7] << 24) | (initPayload[6] << 16) | (initPayload[5] << 8) | (initPayload[4]);
-      if(initPayload[0] != 0xef &&
-          val != 0x44414548 &&
-          val != 0x54534f50 &&
-          val != 0x20544547 &&
-          val != 0x4954504f &&
-          val != 0xeeeeeeee &&
-          val != 0xdddddddd &&
-          val2 != 0x00000000) {
+      if(initPayload[0] !== 0xef &&
+          val !== 0x44414548 &&
+          val !== 0x54534f50 &&
+          val !== 0x20544547 &&
+          val !== 0x4954504f &&
+          val !== 0xeeeeeeee &&
+          val !== 0xdddddddd &&
+          val2 !== 0x00000000) {
           //initPayload[56] = initPayload[57] = initPayload[58] = initPayload[59] = transport;
           break;
       }
@@ -75,7 +75,7 @@ export default class Obfuscation {
       //let resNew = bytesFromWords({words: arr, sigBytes: arr.length});
       let resNew = new Uint8Array(bytesFromWordss(arr));
       let time2 = performance.now() - startTime;
-      console.log('Obfuscation: encode comparison:', res, arr, resNew, res.hex == resNew.hex, time2 < time);
+      console.log('Obfuscation: encode comparison:', res, arr, resNew, res.hex === resNew.hex, time2 < time);
     } catch(err) {
       console.error('Obfuscation: error:', err);
     }
@@ -90,7 +90,7 @@ export default class Obfuscation {
       let arr = this.decNew.decrypt(payload);
       //let resNew = bytesFromWords({words: arr, sigBytes: arr.length});
       let resNew = new Uint8Array(bytesFromWordss(arr));
-      console.log('Obfuscation: decode comparison:', res, arr, resNew, res.hex == resNew.hex);
+      console.log('Obfuscation: decode comparison:', res, arr, resNew, res.hex === resNew.hex);
     } catch(err) {
       console.error('Obfuscation: error:', err);
     }

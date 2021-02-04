@@ -30,7 +30,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
     let filter: DialogFilter | MyDialogFilter;
     let description = '';
     let d: string[] = [];
-    if(dialogFilter._ == 'dialogFilterSuggested') {
+    if(dialogFilter._ === 'dialogFilterSuggested') {
       filter = dialogFilter.filter;
       description = dialogFilter.description;
     } else {
@@ -51,7 +51,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
         enabledFilters += +!!filter[key].length;
       }); */
       
-      if(enabledFilters == 1) {
+      if(enabledFilters === 1) {
         description = 'All ';
 
         const pFlags = filter.pFlags;

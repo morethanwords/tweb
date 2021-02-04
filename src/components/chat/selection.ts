@@ -48,7 +48,7 @@ export default class ChatSelection {
       const bubble = findUpClassName(e.target, 'bubble');
       // LEFT BUTTON
       // проверка внизу нужна для того, чтобы не активировать селект если target потомок .bubble
-      if(e.button != 0
+      if(e.button !== 0
         || (
           !this.selectedMids.size 
           && !(e.target as HTMLElement).classList.contains('bubble')
@@ -100,7 +100,7 @@ export default class ChatSelection {
         if(!mid) return;
 
         // * cancel selecting if selecting message text
-        if(e.target != bubble && !(e.target as HTMLElement).classList.contains('document-selection') && selecting === undefined && !this.selectedMids.size) {
+        if(e.target !== bubble && !(e.target as HTMLElement).classList.contains('document-selection') && selecting === undefined && !this.selectedMids.size) {
           this.listenerSetter.removeManual(bubblesContainer, 'mousemove', onMouseMove);
           this.listenerSetter.removeManual(document, 'mouseup', onMouseUp, documentListenerOptions);
           return;
@@ -117,7 +117,7 @@ export default class ChatSelection {
 
           if((selecting && !isBubbleSelected) || (!selecting && isBubbleSelected)) {
             if(!this.selectedMids.size) {
-              if(seen.size == 2) {
+              if(seen.size === 2) {
                 [...seen].forEach(mid => {
                   const mounted = this.bubbles.getMountedBubble(mid);
                   if(mounted) {
@@ -190,7 +190,7 @@ export default class ChatSelection {
 
   private getCheckboxInputFromBubble(bubble: HTMLElement): HTMLInputElement {
     /* let perf = performance.now();
-    let checkbox = bubble.firstElementChild.tagName == 'LABEL' && bubble.firstElementChild.firstElementChild as HTMLInputElement;
+    let checkbox = bubble.firstElementChild.tagName === 'LABEL' && bubble.firstElementChild.firstElementChild as HTMLInputElement;
     console.log('getCheckboxInputFromBubble firstElementChild time:', performance.now() - perf);
 
     perf = performance.now();
@@ -206,12 +206,12 @@ export default class ChatSelection {
 
     return bubble.classList.contains('document-container') ? 
       bubble.querySelector('label input') : 
-      bubble.firstElementChild.tagName == 'LABEL' && bubble.firstElementChild.firstElementChild as HTMLInputElement;
+      bubble.firstElementChild.tagName === 'LABEL' && bubble.firstElementChild.firstElementChild as HTMLInputElement;
   }
 
   private updateContainer(forceSelection = false) {
     if(!this.selectedMids.size && !forceSelection) return;
-    this.selectionCountEl.innerText = this.selectedMids.size + ' Message' + (this.selectedMids.size == 1 ? '' : 's');
+    this.selectionCountEl.innerText = this.selectedMids.size + ' Message' + (this.selectedMids.size === 1 ? '' : 's');
 
     let cantForward = !this.selectedMids.size, cantDelete = !this.selectedMids.size, cantSend = !this.selectedMids.size;
     for(const mid of this.selectedMids.values()) {
@@ -242,7 +242,7 @@ export default class ChatSelection {
     const wasSelecting = this.isSelecting;
     this.isSelecting = this.selectedMids.size > 0 || forceSelection;
 
-    if(wasSelecting == this.isSelecting) return;
+    if(wasSelecting === this.isSelecting) return;
     
     const bubblesContainer = this.bubbles.bubblesContainer;
     //bubblesContainer.classList.toggle('is-selecting', !!this.selectedMids.size);
@@ -386,7 +386,7 @@ export default class ChatSelection {
   private isGroupedMidsSelected(mid: number) {
     const mids = this.chat.getMidsByMid(mid);
     const selectedMids = mids.filter(mid => this.selectedMids.has(mid));
-    return mids.length == selectedMids.length;
+    return mids.length === selectedMids.length;
   }
 
   public toggleByBubble = (bubble: HTMLElement) => {

@@ -38,7 +38,7 @@ export function wrapReplyDivAndCaption(options: {
       }; */
 
       const boxSize = 32;
-      if(media.document?.type == 'sticker') {
+      if(media.document?.type === 'sticker') {
         if(mediaEl.style.backgroundImage) {
           mediaEl.style.backgroundImage = ''; 
         }
@@ -49,7 +49,7 @@ export function wrapReplyDivAndCaption(options: {
           div: mediaEl,
           lazyLoadQueue: appImManager.chat.bubbles.lazyLoadQueue,
           group: CHAT_ANIMATION_GROUP,
-          //onlyThumb: media.document.sticker == 2,
+          //onlyThumb: media.document.sticker === 2,
           width: boxSize,
           height: boxSize
         });
@@ -71,11 +71,11 @@ export function wrapReplyDivAndCaption(options: {
         }
 
         const size = appPhotosManager.choosePhotoSize(photo, boxSize, boxSize/* mediaSizes.active.regular.width, mediaSizes.active.regular.height */);
-        if(size._ != 'photoSizeEmpty') {
+        if(size._ !== 'photoSizeEmpty') {
           setMedia = true;
           appPhotosManager.preloadPhoto(photo, size)
           .then(() => {
-            renderImageFromUrl(mediaEl, photo._ == 'photo' ? photo.url : appPhotosManager.getDocumentCachedThumb(photo.id).url);
+            renderImageFromUrl(mediaEl, photo._ === 'photo' ? photo.url : appPhotosManager.getDocumentCachedThumb(photo.id).url);
           });
         }
       }

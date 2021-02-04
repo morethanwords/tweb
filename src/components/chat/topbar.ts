@@ -165,14 +165,14 @@ export default class ChatTopbar {
       onClick: () => {
         this.appMessagesManager.mutePeer(this.peerId);
       },
-      verify: () => this.chat.type === 'chat' && rootScope.myId != this.peerId && !this.appMessagesManager.isPeerMuted(this.peerId)
+      verify: () => this.chat.type === 'chat' && rootScope.myId !== this.peerId && !this.appMessagesManager.isPeerMuted(this.peerId)
     }, {
       icon: 'unmute',
       text: 'Unmute',
       onClick: () => {
         this.appMessagesManager.mutePeer(this.peerId);
       },
-      verify: () => this.chat.type === 'chat' && rootScope.myId != this.peerId && this.appMessagesManager.isPeerMuted(this.peerId)
+      verify: () => this.chat.type === 'chat' && rootScope.myId !== this.peerId && this.appMessagesManager.isPeerMuted(this.peerId)
     }, {
       icon: 'select',
       text: 'Select Messages',
@@ -247,7 +247,7 @@ export default class ChatTopbar {
 
     this.listenerSetter.add(rootScope, 'chat_update', (e) => {
       const peerId: number = e;
-      if(this.peerId == -peerId) {
+      if(this.peerId === -peerId) {
         const chat = this.appChatsManager.getChat(peerId) as Channel/*  | Chat */;
         
         this.btnJoin.classList.toggle('hide', !(chat as Channel)?.pFlags?.left);
@@ -258,7 +258,7 @@ export default class ChatTopbar {
     this.listenerSetter.add(rootScope, 'dialog_notify_settings', (e) => {
       const peerId = e;
 
-      if(peerId == this.peerId) {
+      if(peerId === this.peerId) {
         this.setMutedState();
       }
     });
@@ -266,7 +266,7 @@ export default class ChatTopbar {
     this.listenerSetter.add(rootScope, 'peer_typings', (e) => {
       const {peerId} = e;
 
-      if(this.peerId == peerId) {
+      if(this.peerId === peerId) {
         this.setPeerStatus();
       }
     });
@@ -274,7 +274,7 @@ export default class ChatTopbar {
     this.listenerSetter.add(rootScope, 'user_update', (e) => {
       const userId = e;
 
-      if(this.peerId == userId) {
+      if(this.peerId === userId) {
         this.setPeerStatus();
       }
     });
@@ -329,8 +329,8 @@ export default class ChatTopbar {
 
   private onChangeScreen = (from: ScreenSize, to: ScreenSize) => {
     this.container.classList.toggle('is-pinned-floating', mediaSizes.isMobile);
-    this.chatAudio && this.chatAudio.divAndCaption.container.classList.toggle('is-floating', to == ScreenSize.mobile);
-    this.pinnedMessage && this.pinnedMessage.pinnedMessageContainer.divAndCaption.container.classList.toggle('is-floating', to == ScreenSize.mobile);
+    this.chatAudio && this.chatAudio.divAndCaption.container.classList.toggle('is-floating', to === ScreenSize.mobile);
+    this.pinnedMessage && this.pinnedMessage.pinnedMessageContainer.divAndCaption.container.classList.toggle('is-floating', to === ScreenSize.mobile);
     this.setUtilsWidth(true);
   };
 
@@ -451,7 +451,7 @@ export default class ChatTopbar {
         });
       }
     } else if(this.chat.type === 'chat') {
-      if(this.peerId == rootScope.myId) title = 'Saved Messages';
+      if(this.peerId === rootScope.myId) title = 'Saved Messages';
       else title = this.appPeersManager.getPeerTitle(this.peerId);
     }
     
@@ -514,7 +514,7 @@ export default class ChatTopbar {
     }
 
     this.chat.appImManager.getPeerStatus(this.peerId).then((subtitle) => {
-      if(peerId != this.peerId) {
+      if(peerId !== this.peerId) {
         return;
       }
 

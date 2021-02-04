@@ -56,7 +56,7 @@ export default class PinnedContainer {
     const isHidden = this.divAndCaption.container.classList.contains('hide');
     if(hide === undefined) {
       hide = !isHidden;
-    } else if(hide == isHidden) {
+    } else if(hide === isHidden) {
       return;
     }
 

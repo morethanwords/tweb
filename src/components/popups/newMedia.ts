@@ -143,7 +143,7 @@ export default class PopupNewMedia extends PopupElement {
 
     this.destroy();
     const willAttach = this.willAttach;
-    willAttach.isMedia = willAttach.type == 'media' ? true : undefined;
+    willAttach.isMedia = willAttach.type === 'media' ? true : undefined;
 
     //console.log('will send files with options:', willAttach);
 
@@ -157,7 +157,7 @@ export default class PopupNewMedia extends PopupElement {
         let firstType = willAttach.sendFileDetails[i].file.type.split('/')[0];
         for(var k = 0; k < 10 && i < willAttach.sendFileDetails.length; ++i, ++k) {
           const type = willAttach.sendFileDetails[i].file.type.split('/')[0];
-          if(firstType != type) {
+          if(firstType !== type) {
             break;
           }
         }
@@ -331,12 +331,12 @@ export default class PopupNewMedia extends PopupElement {
     const container = this.container;
     const willAttach = this.willAttach;
 
-    /* if(files.length > 10 && willAttach.type == 'media') {
+    /* if(files.length > 10 && willAttach.type === 'media') {
       willAttach.type = 'document';
     } */
 
     files = files.filter(file => {
-      if(willAttach.type == 'media') {
+      if(willAttach.type === 'media') {
         return ['image/', 'video/'].find(s => file.type.indexOf(s) === 0);
       } else {
         return true;
@@ -348,7 +348,7 @@ export default class PopupNewMedia extends PopupElement {
       this.mediaContainer.innerHTML = '';
 
       if(files.length) {
-        if(willAttach.type == 'document') {
+        if(willAttach.type === 'document') {
           this.title.innerText = 'Send ' + (files.length > 1 ? files.length + ' Files' : 'File');
           container.classList.add('is-document');
         } else {
@@ -371,7 +371,7 @@ export default class PopupNewMedia extends PopupElement {
         }
       }
 
-      if(willAttach.type == 'media') {
+      if(willAttach.type === 'media') {
         if(willAttach.sendFileDetails.length > 1 && willAttach.group) {
           container.classList.add('is-album');
 

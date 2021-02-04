@@ -86,7 +86,7 @@ export class ApiFileManager {
 
   public downloadCheck(dcId: string | number) {
     const downloadPull = this.downloadPulls[dcId];
-    const downloadLimit = dcId == 'upload' ? 100 : 100;
+    const downloadLimit = dcId === 'upload' ? 100 : 100;
     //const downloadLimit = Infinity;
 
     if(this.downloadActives[dcId] >= downloadLimit || !downloadPull || !downloadPull.length) {
@@ -94,7 +94,7 @@ export class ApiFileManager {
     }
 
     //const data = downloadPull.shift();
-    const data = downloadPull.findAndSplice(d => d.queueId == 0) || downloadPull.findAndSplice(d => d.queueId == this.queueId) || downloadPull.shift();
+    const data = downloadPull.findAndSplice(d => d.queueId === 0) || downloadPull.findAndSplice(d => d.queueId === this.queueId) || downloadPull.shift();
     const activeDelta = data.activeDelta || 1;
 
     this.downloadActives[dcId] += activeDelta;
@@ -193,10 +193,10 @@ export class ApiFileManager {
 
     let process: ApiFileManager['uncompressTGS'] | ApiFileManager['convertWebp'];
 
-    if(options.mimeType == 'image/webp' && !isWebpSupported()) {
+    if(options.mimeType === 'image/webp' && !isWebpSupported()) {
       process = this.convertWebp;
       options.mimeType = 'image/png';
-    } else if(options.mimeType == 'application/x-tgsticker') {
+    } else if(options.mimeType === 'application/x-tgsticker') {
       process = this.uncompressTGS;
       options.mimeType = 'application/json';
     }
@@ -244,7 +244,7 @@ export class ApiFileManager {
       deferred.reject(error);
       errorHandler = () => {};
 
-      if(cacheFileWriter && (!error || error.type != 'DOWNLOAD_CANCELED')) {
+      if(cacheFileWriter && (!error || error.type !== 'DOWNLOAD_CANCELED')) {
         cacheFileWriter.truncate();
       }
     };
@@ -467,7 +467,7 @@ export class ApiFileManager {
                 return;
               }
               
-              if(e.target.readyState != FileReader.DONE) {
+              if(e.target.readyState !== FileReader.DONE) {
                 self.log.error('wrong readyState!');
                 uploadReject({type: 'WRONG_READY_STATE'});
                 return;

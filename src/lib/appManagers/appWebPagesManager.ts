@@ -37,7 +37,7 @@ export class AppWebPagesManager {
     if(apiWebPage.document && apiWebPage.document._ === 'document') {
       apiWebPage.document = appDocsManager.saveDoc(apiWebPage.document, mediaContext); // warning 11.04.2020
     } else {
-      if(apiWebPage.type == 'document') {
+      if(apiWebPage.type === 'document') {
         delete apiWebPage.type;
       }
 
@@ -46,7 +46,7 @@ export class AppWebPagesManager {
     
     const siteName = apiWebPage.site_name;
     let shortTitle = apiWebPage.title || apiWebPage.author || siteName || '';
-    if(siteName && shortTitle == siteName) {
+    if(siteName && shortTitle === siteName) {
       delete apiWebPage.site_name;
     }
 
@@ -54,7 +54,7 @@ export class AppWebPagesManager {
 
     apiWebPage.rTitle = RichTextProcessor.wrapRichText(shortTitle, {noLinks: true, noLinebreaks: true});
     let contextHashtag = '';
-    if(siteName == 'GitHub') {
+    if(siteName === 'GitHub') {
       const matches = apiWebPage.url.match(/(https?:\/\/github\.com\/[^\/]+\/[^\/]+)/);
       if(matches) {
         contextHashtag = matches[0] + '/issues/{1}';
@@ -68,10 +68,10 @@ export class AppWebPagesManager {
       contextHashtag: contextHashtag
     });
     
-    if(apiWebPage.type != 'photo' &&
-      apiWebPage.type != 'video' &&
-      apiWebPage.type != 'gif' &&
-      apiWebPage.type != 'document' &&
+    if(apiWebPage.type !== 'photo' &&
+      apiWebPage.type !== 'video' &&
+      apiWebPage.type !== 'gif' &&
+      apiWebPage.type !== 'document' &&
       !apiWebPage.description &&
       apiWebPage.photo) {
       apiWebPage.type = 'photo';

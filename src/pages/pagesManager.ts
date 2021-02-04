@@ -25,11 +25,11 @@ class PagesManager {
       this.pagesDiv.style.display = '';
 
       let id = whichChild(page.pageEl);
-      if(this.pageId == id) return;
+      if(this.pageId === id) return;
 
       this.selectTab(id);
 
-      if(this.pageId != -1 && id > 1) {
+      if(this.pageId !== -1 && id > 1) {
         lottieLoader.loadLottieWorkers();
       }
 

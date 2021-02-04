@@ -170,11 +170,11 @@ export default class PopupDatePicker extends PopupElement {
     this.minMonth.setHours(0, 0, 0, 0);
     this.minMonth.setDate(1);
 
-    if(this.selectedMonth.getTime() == this.minMonth.getTime()) {
+    if(this.selectedMonth.getTime() === this.minMonth.getTime()) {
       this.prevBtn.setAttribute('disabled', 'true');
     }
 
-    if(this.selectedMonth.getTime() == this.maxMonth.getTime()) {
+    if(this.selectedMonth.getTime() === this.maxMonth.getTime()) {
       this.nextBtn.setAttribute('disabled', 'true');
     }
 
@@ -191,7 +191,7 @@ export default class PopupDatePicker extends PopupElement {
     this.selectedMonth.setMonth(this.selectedMonth.getMonth() - 1);
     this.setMonth();
 
-    if(this.selectedMonth.getTime() == this.minMonth.getTime()) {
+    if(this.selectedMonth.getTime() === this.minMonth.getTime()) {
       this.prevBtn.setAttribute('disabled', 'true');
     }
     
@@ -202,7 +202,7 @@ export default class PopupDatePicker extends PopupElement {
     this.selectedMonth.setMonth(this.selectedMonth.getMonth() + 1);
     this.setMonth();
 
-    if(this.selectedMonth.getTime() == this.maxMonth.getTime()) {
+    if(this.selectedMonth.getTime() === this.maxMonth.getTime()) {
       this.nextBtn.setAttribute('disabled', 'true');
     }
 
@@ -216,7 +216,7 @@ export default class PopupDatePicker extends PopupElement {
     if(!target.dataset.timestamp) return;
 
     if(this.selectedEl) {
-      if(this.selectedEl == target) return;
+      if(this.selectedEl === target) return;
       this.selectedEl.classList.remove('active');
     }
     
@@ -295,7 +295,7 @@ export default class PopupDatePicker extends PopupElement {
 
     // 0 - sunday
     let dayIndex = firstDate.getDay() - 1;
-    if(dayIndex == -1) dayIndex = days.length - 1;
+    if(dayIndex === -1) dayIndex = days.length - 1;
 
     const clonedDate = new Date(firstDate.getTime());
     clonedDate.setDate(clonedDate.getDate() - dayIndex - 1);

@@ -68,7 +68,7 @@ export default class MarkupTooltip {
     this.linkInput.addEventListener('keydown', (e) => {
       const valid = !this.linkInput.value.length || !!RichTextProcessor.matchUrl(this.linkInput.value);///^(http)|(https):\/\//i.test(this.linkInput.value);
 
-      if(e.code == 'Enter') {
+      if(e.code === 'Enter') {
         if(!valid) {
           if(this.linkInput.classList.contains('error')) {
             this.linkInput.classList.remove('error');
@@ -312,7 +312,7 @@ export default class MarkupTooltip {
 
     if(isTouchSupported) {
       cancelEvent(e);
-      if(this.mouseUpCounter++ == 0) {
+      if(this.mouseUpCounter++ === 0) {
         this.resetSelection(this.savedRange);
       } else {
         this.hide();
@@ -372,7 +372,7 @@ export default class MarkupTooltip {
           this.show();
           this.setTooltipPosition(); // * because can skip this in .show();
         } else {
-          if(this.mouseUpCounter == 2) {
+          if(this.mouseUpCounter === 2) {
             this.mouseUpCounter = 0;
             return;
           }

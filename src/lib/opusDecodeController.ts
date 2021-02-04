@@ -54,7 +54,7 @@ export class OpusDecodeController {
       const data = e.data;
       
       this.log('[DECODER] got message', data);
-      if(data.type == 'done') {
+      if(data.type === 'done') {
         //this.log('[DECODER] send done to wav');
         this.wavWorker.postMessage({command: 'done'});
 
@@ -158,7 +158,7 @@ export class OpusDecodeController {
       this.loadWorker();
       this.loadWavWorker();
 
-      if(this.tasks.push(task) == 1) {
+      if(this.tasks.push(task) === 1) {
         this.executeNewTask(task);
       }
     });

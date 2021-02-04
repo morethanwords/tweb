@@ -13,9 +13,9 @@ import ApiFileManager from './apiFileManager'; */
 
 /* export class TelegramMeWebService {
   public disabled = Modes.test ||
-    App.domains.indexOf(location.hostname) == -1 ||
-    location.protocol != 'http:' && location.protocol != 'https:' ||
-    location.protocol == 'https:' && location.hostname != 'web.telegram.org';
+    App.domains.indexOf(location.hostname) === -1 ||
+    location.protocol !== 'http:' && location.protocol !== 'https:' ||
+    location.protocol === 'https:' && location.hostname !== 'web.telegram.org';
 
   public setAuthorized(canRedirect: boolean) {
     if(this.disabled) {
@@ -26,7 +26,7 @@ import ApiFileManager from './apiFileManager'; */
       var ts = Date.now() / 1000;
       if(canRedirect &&
         curValue &&
-        curValue.canRedirect == canRedirect &&
+        curValue.canRedirect === canRedirect &&
         curValue.ts + 86400 > ts) {
         return false;
       }

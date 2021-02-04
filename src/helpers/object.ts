@@ -51,13 +51,13 @@ export function defineNotNumerableProperties(obj: {[key: string]: any}, names: s
 export function getObjectKeysAndSort(object: any, sort: 'asc' | 'desc' = 'asc') {
   if(!object) return [];
   const ids = Object.keys(object).map(i => +i);
-  if(sort == 'asc') return ids.sort((a, b) => a - b);
+  if(sort === 'asc') return ids.sort((a, b) => a - b);
   else return ids.sort((a, b) => b - a);
 }
 
 export function safeReplaceObject(wasObject: any, newObject: any) {
   for(var key in wasObject) {
-    if(!newObject.hasOwnProperty(key) && key.charAt(0) != '$') {
+    if(!newObject.hasOwnProperty(key) && key.charAt(0) !== '$') {
       delete wasObject[key];
     }
   }
@@ -80,7 +80,7 @@ export function safeReplaceArrayInObject<K>(key: K, wasObject: any, newObject: a
     newObject[key] = [...newObject[key]];
   }
 
-  if(wasObject && wasObject[key] != newObject[key]) {
+  if(wasObject && wasObject[key] !== newObject[key]) {
     wasObject[key].length = newObject[key].length;
     (newObject[key] as any[]).forEach((v, i) => {
       wasObject[key][i] = v;

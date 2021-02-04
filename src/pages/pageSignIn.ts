@@ -112,13 +112,13 @@ let onFirstMount = () => {
     
     selectList.addEventListener('mousedown', function(e) {
       let target = e.target as HTMLElement;
-      if(target.tagName != 'LI') target = findUpTag(target, 'LI');
+      if(target.tagName !== 'LI') target = findUpTag(target, 'LI');
       
       let countryName = target.childNodes[1].textContent;//target.innerText.split('\n').shift();
       let phoneCode = target.querySelector<HTMLElement>('.phone-code').innerText;
 
       countryInput.value = countryName;
-      lastCountrySelected = countries.find(c => c.name == countryName);
+      lastCountrySelected = countries.find(c => c.name === countryName);
       
       telEl.value = lastValue = phoneCode;
       setTimeout(() => telEl.focus(), 0);
@@ -188,28 +188,28 @@ let onFirstMount = () => {
   }, {capture: true}); */
 
   countryInput.addEventListener('keyup', function(this: typeof countryInput, e) {
-    if(e.ctrlKey || e.key == 'Control') return false;
+    if(e.ctrlKey || e.key === 'Control') return false;
 
     //let i = new RegExp('^' + this.value, 'i');
     let _value = this.value.toLowerCase();
     let matches: Country[] = [];
     countries.forEach((c) => {
-      let good = c.name.toLowerCase().indexOf(_value) !== -1/*  == 0 */;//i.test(c.name);
+      let good = c.name.toLowerCase().indexOf(_value) !== -1/*  === 0 */;//i.test(c.name);
 
       c.li.forEach(li => li.style.display = good ? '' : 'none');
       if(good) matches.push(c);
     });
 
     // Код ниже автоматически выберет страну если она осталась одна при поиске
-    /* if(matches.length == 1 && matches[0].li.length == 1) {
-      if(matches[0].name == lastCountrySelected) return false;
+    /* if(matches.length === 1 && matches[0].li.length === 1) {
+      if(matches[0].name === lastCountrySelected) return false;
       //console.log('clicking', matches[0]);
 
       var clickEvent = document.createEvent('MouseEvents');
       clickEvent.initEvent('mousedown', true, true);
       matches[0].li[0].dispatchEvent(clickEvent);
       return false;
-    } else  */if(matches.length == 0) {
+    } else  */if(matches.length === 0) {
       countries.forEach((c) => {
         c.li.forEach(li => li.style.display = '');
       });
@@ -254,7 +254,7 @@ let onFirstMount = () => {
     //console.log(formatted, country);
 
     let countryName = country ? country.name : ''/* 'Unknown' */;
-    if(countryName != countryInput.value && (!lastCountrySelected || !country || lastCountrySelected.phoneCode != country.phoneCode)) {
+    if(countryName !== countryInput.value && (!lastCountrySelected || !country || lastCountrySelected.phoneCode !== country.phoneCode)) {
       countryInput.value = countryName;
       lastCountrySelected = country;
     }
@@ -278,7 +278,7 @@ let onFirstMount = () => {
 
   telEl.addEventListener('keypress', function(this: typeof telEl, e) {
     //console.log('keypress', this.value);
-    if(!btnNext.style.visibility &&/* this.value.length >= 9 && */ e.key == 'Enter') {
+    if(!btnNext.style.visibility &&/* this.value.length >= 9 && */ e.key === 'Enter') {
       return btnNext.click();
     } else if(/\D/.test(e.key) && !(e.metaKey || e.ctrlKey)) {
       e.preventDefault();
@@ -362,7 +362,7 @@ let onFirstMount = () => {
       const done: number[] = [nearestDcResult.this_dc];
 
       let promise: Promise<any>;
-      if(nearestDcResult.nearest_dc != nearestDcResult.this_dc) {
+      if(nearestDcResult.nearest_dc !== nearestDcResult.this_dc) {
         promise = apiManager.getNetworker(nearestDcResult.nearest_dc).then(() => {
           done.push(nearestDcResult.nearest_dc)
         });

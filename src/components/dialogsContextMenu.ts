@@ -54,7 +54,7 @@ export default class DialogsContextMenu {
       onClick: this.onMuteClick,
       verify: () => {
         const isMuted = this.dialog.notify_settings && this.dialog.notify_settings.mute_until > (Date.now() / 1000 | 0);
-        return !isMuted && this.selectedId != rootScope.myId; 
+        return !isMuted && this.selectedId !== rootScope.myId; 
       }
     }, {
       icon: 'unmute',
@@ -62,18 +62,18 @@ export default class DialogsContextMenu {
       onClick: this.onMuteClick,
       verify: () => {
         const isMuted = this.dialog.notify_settings && this.dialog.notify_settings.mute_until > (Date.now() / 1000 | 0);
-        return isMuted && this.selectedId != rootScope.myId; 
+        return isMuted && this.selectedId !== rootScope.myId; 
       }
     }, {
       icon: 'archive',
       text: 'Archive',
       onClick: this.onArchiveClick,
-      verify: () => this.filterId == 0 && this.selectedId != rootScope.myId
+      verify: () => this.filterId === 0 && this.selectedId !== rootScope.myId
     }, {
       icon: 'unarchive',
       text: 'Unarchive',
       onClick: this.onArchiveClick,
-      verify: () => this.filterId == 1 && this.selectedId != rootScope.myId
+      verify: () => this.filterId === 1 && this.selectedId !== rootScope.myId
     }, {
       icon: 'delete danger',
       text: 'Delete',

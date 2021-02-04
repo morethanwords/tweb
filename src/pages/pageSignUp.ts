@@ -34,7 +34,7 @@ const onFirstMount = () => import('../lib/appManagers/appProfileManager').then(i
       ? (name + ' ' + lastName).trim() 
       : 'Your Name';
     
-    if(headerName.innerHTML != fullName) headerName.innerHTML = RichTextProcessor.wrapEmojiText(fullName);
+    if(headerName.innerHTML !== fullName) headerName.innerHTML = RichTextProcessor.wrapEmojiText(fullName);
   };
 
   let sendAvatar = () => new Promise<void>((resolve, reject) => {

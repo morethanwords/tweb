@@ -19,7 +19,7 @@ export default class SwipeHandler {
   };
 
   handleTouchMove = (evt: TouchEvent) => {
-    if(this.xDown == null || this.yDown == null) {
+    if(this.xDown === null || this.yDown === null) {
       return;
     }
 

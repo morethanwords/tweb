@@ -422,10 +422,10 @@ export default class AppSearchSuper {
         for(let message of messages) {
           let webpage: any;
 
-          if(message.media?.webpage && message.media.webpage._ != 'webPageEmpty') {
+          if(message.media?.webpage && message.media.webpage._ !== 'webPageEmpty') {
             webpage = message.media.webpage;
           } else {
-            const entity = message.totalEntities ? message.totalEntities.find((e: any) => e._ == 'messageEntityUrl' || e._ == 'messageEntityTextUrl') : null;
+            const entity = message.totalEntities ? message.totalEntities.find((e: any) => e._ === 'messageEntityUrl' || e._ === 'messageEntityTextUrl') : null;
             let url: string, display_url: string, sliced: string;
 
             if(!entity) {
@@ -441,7 +441,7 @@ export default class AppSearchSuper {
               sliced = message.message.slice(entity.offset, entity.offset + entity.length);
             }
 
-            if(entity?._ == 'messageEntityTextUrl') {
+            if(entity?._ === 'messageEntityTextUrl') {
               url = entity.url;
               //display_url = sliced;
             } else {
@@ -450,7 +450,7 @@ export default class AppSearchSuper {
 
             display_url = url;
 
-            const same = message.message == url;
+            const same = message.message === url;
             if(!url.match(/^(ftp|http|https):\/\//)) {
               display_url = 'https://' + url;
               url = url.includes('@') ? url : 'https://' + url;
@@ -747,7 +747,7 @@ export default class AppSearchSuper {
   }
   
   public load(single = false, justLoad = false) {
-    if(testScroll/*  || 1 == 1 */) {
+    if(testScroll/*  || 1 === 1 */) {
       return;
     }
 
@@ -849,7 +849,7 @@ export default class AppSearchSuper {
 
         // ! Фикс случая, когда не загружаются документы при открытой панели разработчиков (происходит из-за того, что не совпадают критерии отбора документов в getSearch)
         if(value.history.length < loadCount) {
-        //if((value.count || history.length == value.count) && history.length >= value.count) {
+        //if((value.count || history.length === value.count) && history.length >= value.count) {
           //this.log(logStr + 'loaded all media', value, loadCount);
           this.loaded[type] = true;
         }

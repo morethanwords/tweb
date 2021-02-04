@@ -135,7 +135,7 @@ let onFirstMount = (): Promise<any> => {
     this.classList.remove('error');
     btnNext.innerText = 'NEXT';
 
-    if(e.key == 'Enter') {
+    if(e.key === 'Enter') {
       return btnNext.click();
     }
   });
@@ -159,8 +159,8 @@ let onFirstMount = (): Promise<any> => {
       animation.addListener('enterFrame', currentFrame => {
         //console.log('enterFrame', e, needFrame);
 
-        if((animation.direction == 1 && currentFrame >= needFrame) ||
-          (animation.direction == -1 && currentFrame <= needFrame)) {
+        if((animation.direction === 1 && currentFrame >= needFrame) ||
+          (animation.direction === -1 && currentFrame <= needFrame)) {
             animation.setSpeed(1);
             animation.pause();
         } 

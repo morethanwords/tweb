@@ -62,12 +62,12 @@ export function uint6ToBase64(nUint6: number) {
 
 export function bytesCmp(bytes1: number[] | Uint8Array, bytes2: number[] | Uint8Array) {
   var len = bytes1.length;
-  if(len != bytes2.length) {
+  if(len !== bytes2.length) {
     return false;
   }
 
   for(var i = 0; i < len; i++) {
-    if(bytes1[i] != bytes2[i]) {
+    if(bytes1[i] !== bytes2[i]) {
       return false;
     }
   }
@@ -96,7 +96,7 @@ export function convertToArrayBuffer(bytes: any | ArrayBuffer | Uint8Array) {
     return bytes;
   }
   if(bytes.buffer !== undefined &&
-    bytes.buffer.byteLength == bytes.length * bytes.BYTES_PER_ELEMENT) {
+    bytes.buffer.byteLength === bytes.length * bytes.BYTES_PER_ELEMENT) {
     return bytes.buffer;
   }
   return bytesToArrayBuffer(bytes);

@@ -32,7 +32,7 @@ export class SuperStickerRenderer {
       div = document.createElement('div');
       div.classList.add('grid-item', 'super-sticker');
 
-      if(doc.sticker == 2) {
+      if(doc.sticker === 2) {
         this.animatedDivs.add(div);
 
         this.lazyLoadQueue.observe({
@@ -48,7 +48,7 @@ export class SuperStickerRenderer {
       div,
       lazyLoadQueue: this.regularLazyLoadQueue, 
       group: this.group, 
-      onlyThumb: doc.sticker == 2
+      onlyThumb: doc.sticker === 2
     });
 
     return div;
@@ -136,7 +136,7 @@ export default class StickersTab implements EmoticonsTab {
   private superStickerRenderer: SuperStickerRenderer;
 
   categoryPush(categoryDiv: HTMLElement, categoryTitle: string, promise: Promise<MyDocument[]>, prepend?: boolean) {
-    //if((docs.length % 5) != 0) categoryDiv.classList.add('not-full');
+    //if((docs.length % 5) !== 0) categoryDiv.classList.add('not-full');
 
     const itemsDiv = document.createElement('div');
     itemsDiv.classList.add('category-items', 'super-stickers');
@@ -153,7 +153,7 @@ export default class StickersTab implements EmoticonsTab {
 
     promise.then(documents => {
       documents.forEach(doc => {
-        //if(doc._ == 'documentEmpty') return;
+        //if(doc._ === 'documentEmpty') return;
         itemsDiv.append(this.superStickerRenderer.renderSticker(doc));
       });
 
@@ -227,7 +227,7 @@ export default class StickersTab implements EmoticonsTab {
           });
         });
       }
-    } else if(stickerSet.documents[0]._ != 'documentEmpty') { // as thumb will be used first sticker
+    } else if(stickerSet.documents[0]._ !== 'documentEmpty') { // as thumb will be used first sticker
       wrapSticker({
         doc: stickerSet.documents[0],
         div: button as any, 
@@ -255,12 +255,12 @@ export default class StickersTab implements EmoticonsTab {
     /* stickersDiv.addEventListener('mouseover', (e) => {
       let target = e.target as HTMLElement;
 
-      if(target.tagName == 'CANVAS') { // turn on sticker
+      if(target.tagName === 'CANVAS') { // turn on sticker
         let animation = lottieLoader.getAnimation(target.parentElement, EMOTICONSSTICKERGROUP);
 
         if(animation) {
           // @ts-ignore
-          if(animation.currentFrame == animation.totalFrames - 1) {
+          if(animation.currentFrame === animation.totalFrames - 1) {
             animation.goToAndPlay(0, true);
           } else {
             animation.play();
@@ -329,7 +329,7 @@ export default class StickersTab implements EmoticonsTab {
 
     /* setInterval(() => {
       // @ts-ignore
-      const players = Object.values(lottieLoader.players).filter(p => p.width == 80);
+      const players = Object.values(lottieLoader.players).filter(p => p.width === 80);
       
       console.log('STICKERS RENDERED IN PANEL:', players.length, players.filter(p => !p.paused).length, this.superStickerRenderer.lazyLoadQueue.intersector.getVisible().length);
     }, .25e3); */
