@@ -73,7 +73,7 @@ ctx.addEventListener('message', async(e) => {
 
     //debugger;
   
-    if(task.type == 'convertWebp') {
+    if(task.type === 'convertWebp') {
       const {fileName, bytes} = task.payload;
       const deferred = apiFileManager.webpConvertPromises[fileName];
       if(deferred) {
@@ -82,7 +82,7 @@ ctx.addEventListener('message', async(e) => {
       }
 
       return;
-    } else if((task as ServiceWorkerTask).type == 'requestFilePart') {
+    } else if((task as ServiceWorkerTask).type === 'requestFilePart') {
       const task = e.data as ServiceWorkerTask;
       const responseTask: ServiceWorkerTaskResponse = {
         type: task.type,
@@ -99,7 +99,7 @@ ctx.addEventListener('message', async(e) => {
 
       respond(responseTask);
       return;
-    } else if(task.type == 'webpSupport') {
+    } else if(task.type === 'webpSupport') {
       webpSupported = task.payload;
       return;
     }

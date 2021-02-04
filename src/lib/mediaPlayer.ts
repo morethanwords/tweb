@@ -188,7 +188,7 @@ export default class VideoPlayer {
     if(play/*  && video.paused */) {
       const promise = video.play();
       promise.catch((err: Error) => {
-        if(err.name == 'NotAllowedError') {
+        if(err.name === 'NotAllowedError') {
           video.muted = true;
           video.autoplay = true;
           video.play();
@@ -328,7 +328,7 @@ export default class VideoPlayer {
       }
   
       /* player.addEventListener('click', (e) => {
-        if(e.target != player) {
+        if(e.target !== player) {
           return;
         }
 
@@ -439,7 +439,7 @@ export default class VideoPlayer {
 
       /* const videoParent = this.video.parentElement;
       const videoWhichChild = whichChild(this.video);
-      const needVideoRemount = videoParent != player;
+      const needVideoRemount = videoParent !== player;
 
       if(needVideoRemount) {
         this.videoParent = videoParent;

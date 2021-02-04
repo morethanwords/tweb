@@ -53,7 +53,7 @@ let onFirstMount = (): Promise<any> => {
       if(changePhonePromise) return;
 
       let phone_number = '+' + headerElement.innerText.replace(/\D/g, '');
-      if(authCode.phone_number == phone_number) return;
+      if(authCode.phone_number === phone_number) return;
 
       codeInput.setAttribute('disabled', 'true');
 
@@ -92,7 +92,7 @@ let onFirstMount = (): Promise<any> => {
     };
 
     headerElement.addEventListener('keypress', function(this, e) {
-      if(e.key == 'Enter') {
+      if(e.key === 'Enter') {
         editable = false;
         headerElement.setAttribute('contenteditable', '' + editable);
         changePhone();
@@ -201,9 +201,9 @@ let onFirstMount = (): Promise<any> => {
     }
 
     let length = this.value.length;
-    if(length == CODELENGTH) { // submit code
+    if(length === CODELENGTH) { // submit code
       submitCode(this.value);
-    } else if(length == lastLength) {
+    } else if(length === lastLength) {
       return;
     }
 
@@ -244,7 +244,7 @@ let onFirstMount = (): Promise<any> => {
     //console.log('keydown', length, frame, direction);
 
     animation.setDirection(direction);
-    if(needFrame != 0 && frame == 0) {
+    if(needFrame !== 0 && frame === 0) {
       animation.setSpeed(7);
     }
     /* let diff = Math.abs(needFrame - frame * direction);
@@ -300,13 +300,13 @@ let onFirstMount = (): Promise<any> => {
         //console.log('enterFrame', currentFrame, needFrame);
         //let currentFrame = Math.round(e.currentTime);
         
-        if((animation.direction == 1 && currentFrame >= needFrame) ||
-          (animation.direction == -1 && currentFrame <= needFrame)) {
+        if((animation.direction === 1 && currentFrame >= needFrame) ||
+          (animation.direction === -1 && currentFrame <= needFrame)) {
           animation.setSpeed(1);
           animation.pause();
         }
 
-        if(currentFrame == 0 && needFrame == 0) {
+        if(currentFrame === 0 && needFrame === 0) {
           //animation.curFrame = 0;
           
           if(idleAnimation) {

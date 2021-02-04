@@ -156,7 +156,7 @@ export default class Scrollable extends ScrollableBase {
       this.onScrollMeasure = 0;
 
       const scrollTop = this.container.scrollTop;
-      this.lastScrollDirection = this.lastScrollTop == scrollTop ? 0 : (this.lastScrollTop < scrollTop ? 1 : -1); // * 1 - bottom, -1 - top
+      this.lastScrollDirection = this.lastScrollTop === scrollTop ? 0 : (this.lastScrollTop < scrollTop ? 1 : -1); // * 1 - bottom, -1 - top
       this.lastScrollTop = scrollTop;
 
       if(this.onAdditionalScroll && this.lastScrollDirection !== 0) {

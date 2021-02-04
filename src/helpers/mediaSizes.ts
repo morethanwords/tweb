@@ -99,7 +99,7 @@ class MediaSizes extends EventListenerBase<{
 
     const wasScreen = this.activeScreen;
     this.activeScreen = activeScreen;
-    this.isMobile = this.activeScreen == ScreenSize.mobile;
+    this.isMobile = this.activeScreen === ScreenSize.mobile;
     this.active = this.isMobile ? this.sizes.handhelds : this.sizes.desktop;
 
     //console.time('esg');
@@ -107,7 +107,7 @@ class MediaSizes extends EventListenerBase<{
     //this.active.esgSticker.width = parseFloat(computedStyle.getPropertyValue('--esg-sticker-size'));
     //console.timeEnd('esg');
 
-    if(wasScreen != activeScreen) {
+    if(wasScreen !== activeScreen) {
       //console.log('changeScreen', this.activeScreen, activeScreen);
 
       if(wasScreen !== undefined) {

@@ -22,7 +22,7 @@ export class TimeManager {
 
     let messageId = [timeSec, (timeMSec << 21) | (random << 3) | 4];
     if(this.lastMessageId[0] > messageId[0] ||
-      this.lastMessageId[0] == messageId[0] && this.lastMessageId[1] >= messageId[1]) {
+      this.lastMessageId[0] === messageId[0] && this.lastMessageId[1] >= messageId[1]) {
       messageId = [this.lastMessageId[0], this.lastMessageId[1] + 4];
     }
 

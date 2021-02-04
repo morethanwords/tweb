@@ -125,7 +125,7 @@ class RootScope extends EventListenerBase<any> {
 
   public broadcast = <T extends keyof BroadcastEvents>(name: T, detail?: BroadcastEvents[T]) => {
     /* if(DEBUG) {
-      if(name != 'user_update') {
+      if(name !== 'user_update') {
         console.debug('Broadcasting ' + name + ' event, with args:', detail);
       }
     } */

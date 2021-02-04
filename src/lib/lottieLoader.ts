@@ -204,7 +204,7 @@ export class RLottiePlayer extends EventListenerBase<{
   public stop(renderFirstFrame = true) {
     this.pause();
 
-    this.curFrame = this.direction == 1 ? 0 : this.frameCount;
+    this.curFrame = this.direction === 1 ? 0 : this.frameCount;
     if(renderFirstFrame) {
       this.requestFrame(this.curFrame);
       //this.sendQuery('renderFrame', this.curFrame);
@@ -270,7 +270,7 @@ export class RLottiePlayer extends EventListenerBase<{
 
     /* if(!this.listenerResults.hasOwnProperty('cached')) {
       this.setListenerResult('enterFrame', frameNo);
-      if(frameNo == (this.frameCount - 1)) {
+      if(frameNo === (this.frameCount - 1)) {
         this.setListenerResult('cached');
       }
 
@@ -350,7 +350,7 @@ export class RLottiePlayer extends EventListenerBase<{
 
     //console.trace('setMainLoop', this.frInterval, this.direction, this, JSON.stringify(this.listenerResults), this.listenerResults);
 
-    const method = (this.direction == 1 ? this.mainLoopForwards : this.mainLoopBackwards).bind(this);
+    const method = (this.direction === 1 ? this.mainLoopForwards : this.mainLoopBackwards).bind(this);
     this.currentMethod = method;
     //this.frameListener && this.removeListener('enterFrame', this.frameListener);
 
@@ -368,7 +368,7 @@ export class RLottiePlayer extends EventListenerBase<{
   }
 
   public async onLoad(frameCount: number, fps: number) {
-    this.curFrame = this.direction == 1 ? 0 : frameCount - 1;
+    this.curFrame = this.direction === 1 ? 0 : frameCount - 1;
     this.frameCount = frameCount;
     this.fps = fps;
 
@@ -453,7 +453,7 @@ class QueryableWorker extends EventListenerBase<any> {
       if(event.data instanceof Object &&
         event.data.hasOwnProperty('queryMethodListener') &&
         event.data.hasOwnProperty('queryMethodArguments')) {
-        /* if(event.data.queryMethodListener == 'frame') {
+        /* if(event.data.queryMethodListener === 'frame') {
           return;
         } */
 
@@ -607,7 +607,7 @@ class LottieLoader {
             let k = smth.c.k;
             let color = convert(k[2]) | (convert(k[1]) << 8) | (convert(k[0]) << 16);
 
-            let foundReplacement = replacements.find(p => p[0] == color);
+            let foundReplacement = replacements.find(p => p[0] === color);
             if(foundReplacement) {
               k[0] = ((foundReplacement[1] >> 16) & 255) / 255;
               k[1] = ((foundReplacement[1] >> 8) & 255) / 255;

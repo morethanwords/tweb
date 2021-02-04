@@ -147,8 +147,8 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
       //console.log('ripple touchstart', e);
       if(e.touches.length > 1 
         || touchStartFired 
-        || ((e.target as HTMLElement).tagName == 'BUTTON' && e.target != elem) 
-        || findUpClassName(e.target as HTMLElement, 'c-ripple') != r) {
+        || ((e.target as HTMLElement).tagName === 'BUTTON' && e.target !== elem) 
+        || findUpClassName(e.target as HTMLElement, 'c-ripple') !== r) {
         return;
       }
       
@@ -171,9 +171,9 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
       if(!rootScope.settings.animationsEnabled) {
         return;
       }
-      //console.log('ripple mousedown', e, e.target, findUpClassName(e.target as HTMLElement, 'c-ripple') == r);
+      //console.log('ripple mousedown', e, e.target, findUpClassName(e.target as HTMLElement, 'c-ripple') === r);
 
-      if(elem.dataset.ripple == '0' || findUpClassName(e.target as HTMLElement, 'c-ripple') != r) {
+      if(elem.dataset.ripple === '0' || findUpClassName(e.target as HTMLElement, 'c-ripple') !== r) {
         return false;
       } else if(touchStartFired) {
         touchStartFired = false;

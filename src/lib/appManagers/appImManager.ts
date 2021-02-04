@@ -268,7 +268,7 @@ export class AppImManager {
       
       const target = e.target as HTMLElement;
       
-      //if(target.tagName == 'INPUT') return;
+      //if(target.tagName === 'INPUT') return;
       
       //this.log('onkeydown', e, document.activeElement);
 
@@ -524,7 +524,7 @@ export class AppImManager {
     rootScope.broadcast('im_tab_change', id);
 
     //this._selectTab(id, mediaSizes.isMobile);
-    //document.body.classList.toggle(RIGHT_COLUMN_ACTIVE_CLASSNAME, id == 2);
+    //document.body.classList.toggle(RIGHT_COLUMN_ACTIVE_CLASSNAME, id === 2);
   }
   
   public updateStatus() {

@@ -277,7 +277,7 @@ export class AppSidebarLeft extends SidebarSlider {
       div.dataset.key = '' + peerId;
       if(typeof(peerId) === 'number') {
         if(title === undefined) {
-          title = peerId == rootScope.myId ? 'Saved' : appPeersManager.getPeerTitle(peerId, false, true);
+          title = peerId === rootScope.myId ? 'Saved' : appPeersManager.getPeerTitle(peerId, false, true);
         }
 
         avatarEl.setAttribute('peer', '' + peerId);
@@ -376,8 +376,8 @@ export class AppSidebarLeft extends SidebarSlider {
       const peerId = +target.getAttribute('data-peer-id');
       appStateManager.getState().then(state => {
         const recentSearch = state.recentSearch || [];
-        if(recentSearch[0] != peerId) {
-          recentSearch.findAndSplice(p => p == peerId);
+        if(recentSearch[0] !== peerId) {
+          recentSearch.findAndSplice(p => p === peerId);
           recentSearch.unshift(peerId);
           if(recentSearch.length > 20) {
             recentSearch.length = 20;

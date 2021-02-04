@@ -53,7 +53,7 @@ export function decodeWaveform(waveform: Uint8Array | number[]) {
 
   /* var byteIndex = (valueCount - 1) / 8 | 0;
   var bitShift = (valueCount - 1) % 8;
-  if(byteIndex == waveform.length - 1) {
+  if(byteIndex === waveform.length - 1) {
     var value = waveform[byteIndex];
   } else {
     var value = dataView.getUint16(byteIndex, true);
@@ -68,7 +68,7 @@ function wrapVoiceMessage(audioEl: AudioElement) {
 
   const message = audioEl.message;
   const doc = (message.media.document || message.media.webpage.document) as MyDocument;
-  const isOut = message.fromId == rootScope.myId && message.peerId != rootScope.myId;
+  const isOut = message.fromId === rootScope.myId && message.peerId !== rootScope.myId;
   let isUnread = message && message.pFlags.media_unread;
   if(isUnread) {
     audioEl.classList.add('is-unread');
@@ -90,7 +90,7 @@ function wrapVoiceMessage(audioEl: AudioElement) {
   timeDiv.classList.add('audio-time');
   audioEl.append(svg, timeDiv);
 
-  let waveform = (doc.attributes.find(attribute => attribute._ == 'documentAttributeAudio') as DocumentAttribute.documentAttributeAudio).waveform || new Uint8Array([]);
+  let waveform = (doc.attributes.find(attribute => attribute._ === 'documentAttributeAudio') as DocumentAttribute.documentAttributeAudio).waveform || new Uint8Array([]);
   waveform = decodeWaveform(waveform.slice(0, 63));
 
   //console.log('decoded waveform:', waveform);
@@ -143,7 +143,7 @@ function wrapVoiceMessage(audioEl: AudioElement) {
 
     let audio = audioEl.audio;
 
-    if(!audio.paused || (audio.currentTime > 0 && audio.currentTime != audio.duration)) {
+    if(!audio.paused || (audio.currentTime > 0 && audio.currentTime !== audio.duration)) {
       lastIndex = Math.round(audio.currentTime / audio.duration * barCount);
       rects.slice(0, lastIndex + 1).forEach(node => node.classList.add('active'));
     }
@@ -355,7 +355,7 @@ export default class AudioElement extends HTMLElement {
     this.classList.add('audio');
 
     const doc = this.message.media.document || this.message.media.webpage.document;
-    const isRealVoice = doc.type == 'voice';
+    const isRealVoice = doc.type === 'voice';
     const isVoice = !this.voiceAsMusic && isRealVoice;
     const uploading = this.message.pFlags.is_outgoing;
 
@@ -394,7 +394,7 @@ export default class AudioElement extends HTMLElement {
         toggle.classList.toggle('playing', !audio.paused);
       };
 
-      if(!audio.paused || (audio.currentTime > 0 && audio.currentTime != audio.duration)) {
+      if(!audio.paused || (audio.currentTime > 0 && audio.currentTime !== audio.duration)) {
         onPlaying();
       }
 

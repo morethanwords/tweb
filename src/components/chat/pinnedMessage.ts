@@ -281,7 +281,7 @@ export default class ChatPinnedMessage {
     this.listenerSetter.add(rootScope, 'peer_pinned_messages', (e) => {
       const peerId = e.peerId;
 
-      if(peerId == this.topbar.peerId) {
+      if(peerId === this.topbar.peerId) {
         //this.wasPinnedIndex = 0;
         //setTimeout(() => {
           if(this.hidden) {
@@ -303,7 +303,7 @@ export default class ChatPinnedMessage {
     this.listenerSetter.add(rootScope, 'peer_pinned_hidden', (e) => {
       const {peerId, maxId} = e;
 
-      if(peerId == this.topbar.peerId) {
+      if(peerId === this.topbar.peerId) {
         this.pinnedMessageContainer.toggle(this.hidden = true);
       }
     });
@@ -372,13 +372,13 @@ export default class ChatPinnedMessage {
 
     //const idx = Math.max(0, this.mids.indexOf(mid));
 
-    /* if(currentIndex == this.count) {
+    /* if(currentIndex === this.count) {
       currentIndex = 0;
     } */
 
     //this.chat.log('[PM]: testMid: pinned currentIndex', currentIndex, mid);
 
-    const changed = this.pinnedIndex != currentIndex;
+    const changed = this.pinnedIndex !== currentIndex;
     if(changed) {
       if(this.waitForScrollBottom && lastScrollDirection !== undefined) {
         if(this.pinnedIndex === 0 || this.pinnedIndex > currentIndex) { // если не скроллил вниз и пытается поставить нижний пиннед - выйти
@@ -456,7 +456,7 @@ export default class ChatPinnedMessage {
         this.pinnedMessageContainer.toggle(true);
       }
   
-      this.loadedTop = (this.offsetIndex + this.mids.length) == this.count;
+      this.loadedTop = (this.offsetIndex + this.mids.length) === this.count;
       this.loadedBottom = !this.offsetIndex;
   
       this.chat.log('[PM]: getCurrentIndex result:', mid, result, backLimited, this.offsetIndex, this.loadedTop, this.loadedBottom);
@@ -593,7 +593,7 @@ export default class ChatPinnedMessage {
 
         this.pinnedMessageContainer.divAndCaption.container.classList.toggle('is-media', isMediaSet);
 
-        //if(this.wasPinnedIndex != this.pinnedIndex) {
+        //if(this.wasPinnedIndex !== this.pinnedIndex) {
           this.animatedSubtitle.animate(pinnedIndex, this.wasPinnedIndex);
           if(isMediaSet) {
             this.animatedMedia.animate(pinnedIndex, this.wasPinnedMediaIndex); // * wasPinnedMediaIndex из-за того, что блок меняется с другим алгоритмом

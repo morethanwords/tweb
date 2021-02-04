@@ -63,7 +63,7 @@ export default class EmojiTab implements EmoticonsTab {
 
       const emojis = sorted[category];
       emojis.forEach(emoji => {
-        /* if(emojiUnicode(emoji) == '1f481-200d-2642') {
+        /* if(emojiUnicode(emoji) === '1f481-200d-2642') {
           console.log('append emoji', emoji, emojiUnicode(emoji));
         } */
 
@@ -71,7 +71,7 @@ export default class EmojiTab implements EmoticonsTab {
 
         this.appendEmoji(emoji/* .replace(/[\ufe0f\u2640\u2642\u2695]/g, '') */, itemsDiv, false/* , false */);
 
-        /* if(category == 'Smileys & Emotion') {
+        /* if(category === 'Smileys & Emotion') {
           console.log('appended emoji', emoji, itemsDiv.children[itemsDiv.childElementCount - 1].innerHTML, emojiUnicode(emoji));
         } */
       });
@@ -182,11 +182,11 @@ export default class EmojiTab implements EmoticonsTab {
 
   onContentClick = (e: MouseEvent) => {
     let target = e.target as HTMLElement;
-    //if(target.tagName != 'SPAN') return;
+    //if(target.tagName !== 'SPAN') return;
 
     if(target.tagName === 'SPAN' && !target.classList.contains('emoji')) {
       target = target.firstChild as HTMLElement;
-    } else if(target.tagName == 'DIV') return;
+    } else if(target.tagName === 'DIV') return;
 
     //console.log('contentEmoji div', target);
     appImManager.chat.input.messageInput.innerHTML += RichTextProcessor.emojiSupported ? 
@@ -197,7 +197,7 @@ export default class EmojiTab implements EmoticonsTab {
     const emoji = this.getEmojiFromElement(target);
     (Array.from(this.recentItemsDiv.children) as HTMLElement[]).forEach((el, idx) => {
       const _emoji = this.getEmojiFromElement(el);
-      if(emoji == _emoji) {
+      if(emoji === _emoji) {
         el.remove();
       }
     });

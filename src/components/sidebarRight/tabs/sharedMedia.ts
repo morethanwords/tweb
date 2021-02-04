@@ -93,7 +93,7 @@ export default class AppSharedMediaTab implements SliderTab {
     });
 
     rootScope.on('dialog_notify_settings', (e) => {
-      if(this.peerId == e) {
+      if(this.peerId === e) {
         const muted = appMessagesManager.isPeerMuted(this.peerId);
         this.profileElements.notificationsCheckbox.checked = !muted;
         this.profileElements.notificationsStatus.innerText = muted ? 'Disabled' : 'Enabled';
@@ -103,7 +103,7 @@ export default class AppSharedMediaTab implements SliderTab {
     rootScope.on('peer_typings', (e) => {
       const {peerId} = e;
 
-      if(this.peerId == peerId) {
+      if(this.peerId === peerId) {
         this.setPeerStatus();
       }
     });
@@ -111,7 +111,7 @@ export default class AppSharedMediaTab implements SliderTab {
     rootScope.on('user_update', (e) => {
       const userId = e;
 
-      if(this.peerId == userId) {
+      if(this.peerId === userId) {
         this.setPeerStatus();
       }
     });
@@ -148,7 +148,7 @@ export default class AppSharedMediaTab implements SliderTab {
     }
 
     appImManager.getPeerStatus(this.peerId).then((subtitle) => {
-      if(peerId != this.peerId) {
+      if(peerId !== this.peerId) {
         return;
       }
 
@@ -170,7 +170,7 @@ export default class AppSharedMediaTab implements SliderTab {
           this.historiesStorage[peerId][inputFilter].unshift(...filtered.map(message => ({mid: message.mid, peerId: message.peerId})));
         }
 
-        if(this.peerId == peerId && this.searchSuper.usedFromHistory[inputFilter] !== -1) {
+        if(this.peerId === peerId && this.searchSuper.usedFromHistory[inputFilter] !== -1) {
           this.searchSuper.usedFromHistory[inputFilter] += filtered.length;
           this.searchSuper.performSearchResult(filtered, inputFilter, false);
         }
@@ -196,7 +196,7 @@ export default class AppSharedMediaTab implements SliderTab {
         if(idx !== -1) {
           history.splice(idx, 1);
 
-          if(this.peerId == peerId) {
+          if(this.peerId === peerId) {
             const container = this.searchSuper.tabs[inputFilter];
             const div = container.querySelector(`div[data-mid="${mid}"][data-peer-id="${peerId}"]`);
             if(div) {
@@ -266,7 +266,7 @@ export default class AppSharedMediaTab implements SliderTab {
     this.profileElements.avatar.setAttribute('peer', '' + peerId);
 
     // username
-    if(peerId != rootScope.myId) {
+    if(peerId !== rootScope.myId) {
       let username = appPeersManager.getPeerUsername(peerId);
       if(username) {
         setText(appPeersManager.getPeerUsername(peerId), this.profileElements.username);
@@ -286,7 +286,7 @@ export default class AppSharedMediaTab implements SliderTab {
       //membersLi.style.display = 'none';
 
       let user = appUsersManager.getUser(peerId);
-      if(user.phone && peerId != rootScope.myId) {
+      if(user.phone && peerId !== rootScope.myId) {
         setText(user.rPhone, this.profileElements.phone);
       }
       
@@ -296,7 +296,7 @@ export default class AppSharedMediaTab implements SliderTab {
           return;
         }
         
-        if(userFull.rAbout && peerId != rootScope.myId) {
+        if(userFull.rAbout && peerId !== rootScope.myId) {
           setText(userFull.rAbout, this.profileElements.bio);
         }
         
@@ -321,7 +321,7 @@ export default class AppSharedMediaTab implements SliderTab {
     }
 
     let title: string;
-    if(peerId == rootScope.myId) title = 'Saved Messages';
+    if(peerId === rootScope.myId) title = 'Saved Messages';
     else title = appPeersManager.getPeerTitle(peerId);
     this.profileElements.name.innerHTML = title;
 

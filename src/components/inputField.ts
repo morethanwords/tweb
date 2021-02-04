@@ -18,7 +18,7 @@ let init = () => {
 
     let entities = RichTextProcessor.parseEntities(text);
     //console.log('messageInput paste', text, entities);
-    entities = entities.filter(e => e._ == 'messageEntityEmoji' || e._ == 'messageEntityLinebreak');
+    entities = entities.filter(e => e._ === 'messageEntityEmoji' || e._ === 'messageEntityLinebreak');
     //text = RichTextProcessor.wrapEmojiText(text);
     text = RichTextProcessor.wrapRichText(text, {entities, noLinks: true, wrappingDraft: true});
 

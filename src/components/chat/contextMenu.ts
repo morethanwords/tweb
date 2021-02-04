@@ -221,7 +221,7 @@ export default class ChatContextMenu {
       text: 'Pin',
       onClick: this.onPinClick,
       verify: () => !this.message.pFlags.is_outgoing && 
-        this.message._ != 'messageService' && 
+        this.message._ !== 'messageService' && 
         !this.message.pFlags.pinned && 
         this.appPeersManager.canPinMessage(this.peerId) && 
         this.chat.type !== 'scheduled',

@@ -65,7 +65,7 @@ export default class AppContactsTab implements SliderTab {
     this.promise = appUsersManager.getContacts(query).then(_contacts => {
       this.promise = null;
 
-      if(appSidebarLeft.historyTabIds[appSidebarLeft.historyTabIds.length - 1] != AppSidebarLeft.SLIDERITEMSIDS.contacts) {
+      if(appSidebarLeft.historyTabIds[appSidebarLeft.historyTabIds.length - 1] !== AppSidebarLeft.SLIDERITEMSIDS.contacts) {
         console.warn('user closed contacts before it\'s loaded');
         return;
       }
@@ -73,7 +73,7 @@ export default class AppContactsTab implements SliderTab {
       const contacts = [..._contacts];
 
       if(!query) {
-        contacts.findAndSplice(u => u == rootScope.myId);
+        contacts.findAndSplice(u => u === rootScope.myId);
       }
       /* if(query && 'saved messages'.includes(query.toLowerCase())) {
         contacts.unshift(rootScope.myID);
@@ -102,7 +102,7 @@ export default class AppContactsTab implements SliderTab {
           });
   
           let status = appUsersManager.getUserStatusString(user.id);
-          dom.lastMessageSpan.innerHTML = status == 'online' ? `<i>${status}</i>` : status;
+          dom.lastMessageSpan.innerHTML = status === 'online' ? `<i>${status}</i>` : status;
         });
 
         if(!sorted.length) renderPage = undefined;

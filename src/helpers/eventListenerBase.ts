@@ -26,7 +26,7 @@ export default class EventListenerBase<Listeners extends {[name: string]: Functi
 
   public removeListener(name: keyof Listeners, callback: Listeners[typeof name]) {
     if(this.listeners[name]) {
-      this.listeners[name].findAndSplice(l => l.callback == callback);
+      this.listeners[name].findAndSplice(l => l.callback === callback);
     }
   }
 

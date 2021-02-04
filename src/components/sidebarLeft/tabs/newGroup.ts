@@ -94,7 +94,7 @@ export default class AppNewGroupTab extends SliderSuperTab {
 
         let subtitle = '';
         subtitle = appUsersManager.getUserStatusString(userId);
-        if(subtitle == 'online') {
+        if(subtitle === 'online') {
           subtitle = `<i>${subtitle}</i>`;
         }
 

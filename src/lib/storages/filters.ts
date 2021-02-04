@@ -52,7 +52,7 @@ export default class FiltersStorage {
         this.getDialogFilters(true).then(filters => {
           for(const _filterId in oldFilters) {
             const filterId = +_filterId;
-            if(!filters.find(filter => filter.id == filterId)) { // * deleted
+            if(!filters.find(filter => filter.id === filterId)) { // * deleted
               this.handleUpdate({_: 'updateDialogFilter', id: filterId});
             }
           }
@@ -83,14 +83,14 @@ export default class FiltersStorage {
   public testDialogForFilter(dialog: Dialog, filter: MyDialogFilter) {
     // exclude_peers
     for(const peerId of filter.exclude_peers) {
-      if(peerId == dialog.peerId) {
+      if(peerId === dialog.peerId) {
         return false;
       }
     }
 
     // include_peers
     for(const peerId of filter.include_peers) {
-      if(peerId == dialog.peerId) {
+      if(peerId === dialog.peerId) {
         return true;
       }
     }
@@ -98,7 +98,7 @@ export default class FiltersStorage {
     const pFlags = filter.pFlags;
 
     // exclude_archived
-    if(pFlags.exclude_archived && dialog.folder_id == 1) {
+    if(pFlags.exclude_archived && dialog.folder_id === 1) {
       return false;
     }
 
@@ -149,7 +149,7 @@ export default class FiltersStorage {
   public toggleDialogPin(peerId: number, filterId: number) {
     const filter = this.filters[filterId];
 
-    const wasPinned = filter.pinned_peers.findAndSplice(p => p == peerId);
+    const wasPinned = filter.pinned_peers.findAndSplice(p => p === peerId);
     if(!wasPinned) {
       filter.pinned_peers.unshift(peerId);
     }

@@ -226,7 +226,7 @@ export class ApiUpdatesManager {
     }).then((differenceResult) => {
       this.log('Get diff result', differenceResult);
 
-      if(differenceResult._ == 'updates.differenceEmpty') {
+      if(differenceResult._ === 'updates.differenceEmpty') {
         this.log('apply empty diff', differenceResult.seq);
         updatesState.date = differenceResult.date;
         updatesState.seq = differenceResult.seq;
@@ -240,7 +240,7 @@ export class ApiUpdatesManager {
         rootScope.broadcast('state_synchronizing');
       }
 
-      if(differenceResult._ != 'updates.differenceTooLong') {
+      if(differenceResult._ !== 'updates.differenceTooLong') {
         appUsersManager.saveApiUsers(differenceResult.users);
         appChatsManager.saveApiChats(differenceResult.chats);
 
@@ -269,7 +269,7 @@ export class ApiUpdatesManager {
           });
         });
 
-        const nextState = differenceResult._ == 'updates.difference' ? differenceResult.state : differenceResult.intermediate_state;
+        const nextState = differenceResult._ === 'updates.difference' ? differenceResult.state : differenceResult.intermediate_state;
         updatesState.seq = nextState.seq;
         updatesState.pts = nextState.pts;
         updatesState.date = nextState.date;
@@ -281,7 +281,7 @@ export class ApiUpdatesManager {
   
       // this.log('apply diff', updatesState.seq, updatesState.pts)
   
-      if(differenceResult._ == 'updates.differenceSlice') {
+      if(differenceResult._ === 'updates.differenceSlice') {
         this.getDifference();
       } else {
         // this.log('finished get diff')
@@ -316,14 +316,14 @@ export class ApiUpdatesManager {
       this.log('Get channel diff result', differenceResult)
       channelState.pts = 'pts' in differenceResult ? differenceResult.pts : undefined;
   
-      if(differenceResult._ == 'updates.channelDifferenceEmpty') {
+      if(differenceResult._ === 'updates.channelDifferenceEmpty') {
         this.log('apply channel empty diff', differenceResult);
         channelState.syncLoading = false;
         rootScope.broadcast('state_synchronized', channelId);
         return false;
       }
   
-      if(differenceResult._ == 'updates.channelDifferenceTooLong') {
+      if(differenceResult._ === 'updates.channelDifferenceTooLong') {
         this.log('channel diff too long', differenceResult);
         channelState.syncLoading = false;
         delete this.channelStates[channelId];
@@ -352,7 +352,7 @@ export class ApiUpdatesManager {
   
       this.log('apply channel diff', channelState.pts);
   
-      if(differenceResult._ == 'updates.channelDifference' &&
+      if(differenceResult._ === 'updates.channelDifference' &&
         !differenceResult.pFlags['final']) {
         this.getChannelDifference(channelId);
       } else {
@@ -423,7 +423,7 @@ export class ApiUpdatesManager {
       return false;
     }
   
-    if(update._ == 'updateChannelTooLong') {
+    if(update._ === 'updateChannelTooLong') {
       if(!curState.lastPtsUpdateTime ||
           curState.lastPtsUpdateTime < Date.now() - 10000) {
         // this.log.trace('channel too long, get diff', channelId, update)
@@ -432,10 +432,10 @@ export class ApiUpdatesManager {
       return false;
     }
   
-    if(update._ == 'updateNewMessage' ||
-        update._ == 'updateEditMessage' ||
-        update._ == 'updateNewChannelMessage' ||
-        update._ == 'updateEditChannelMessage') {
+    if(update._ === 'updateNewMessage' ||
+        update._ === 'updateEditMessage' ||
+        update._ === 'updateNewChannelMessage' ||
+        update._ === 'updateEditChannelMessage') {
       const message = update.message;
       const toPeerId = appPeersManager.getPeerId(message.peer_id);
       const fwdHeader = message.fwd_from || {};
@@ -499,7 +499,7 @@ export class ApiUpdatesManager {
       const seq = options.seq;
       const seqStart = options.seqStart || seq;
   
-      if(seqStart != curState.seq + 1) {
+      if(seqStart !== curState.seq + 1) {
         if(seqStart > curState.seq) {
           this.log.warn('Seq hole', curState, curState.syncPending && curState.syncPending.seqAwaiting);
   
@@ -524,7 +524,7 @@ export class ApiUpdatesManager {
         }
       }
   
-      if(curState.seq != seq) {
+      if(curState.seq !== seq) {
         curState.seq = seq;
         if(options.date && curState.date < options.date) {
           curState.date = options.date;

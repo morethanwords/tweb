@@ -28,7 +28,7 @@ export function toCodePoints(unicodeSurrogates: string): Array<string> {
     }
   }
 
-  if(points.length && points[0].length == 2) {
+  if(points.length && points[0].length === 2) {
     points[0] = '00' + points[0];
   }
 

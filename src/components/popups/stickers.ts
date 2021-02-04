@@ -109,7 +109,7 @@ export default class PopupStickers extends PopupElement {
       
       this.stickersDiv.innerHTML = '';
       for(let doc of set.documents) {
-        if(doc._ == 'documentEmpty') {
+        if(doc._ === 'documentEmpty') {
           continue;
         }
         

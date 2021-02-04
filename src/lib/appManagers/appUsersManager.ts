@@ -95,7 +95,7 @@ export class AppUsersManager {
         } */
   
         /* case 'updateContactLink':
-          this.onContactUpdated(update.user_id, update.my_link._ == 'contactLinkContact');
+          this.onContactUpdated(update.user_id, update.my_link._ === 'contactLinkContact');
           break; */
       }
     });
@@ -131,7 +131,7 @@ export class AppUsersManager {
     this.updatedContactsList = true;
 
     const promise = apiManager.invokeApi('contacts.getContacts').then((result) => {
-      if(result._ == 'contacts.contacts') {
+      if(result._ === 'contacts.contacts') {
         this.saveApiUsers(result.users);
 
         result.contacts.forEach((contact) => {
@@ -148,7 +148,7 @@ export class AppUsersManager {
   }
 
   public resolveUsername(username: string) {
-    if(username[0] == '@') {
+    if(username[0] === '@') {
       username = username.slice(1);
     }
 
@@ -203,7 +203,7 @@ export class AppUsersManager {
 
       if(includeSaved) {
         if(this.testSelfSearch(query)) {
-          contactsList.findAndSplice(p => p == rootScope.myId);
+          contactsList.findAndSplice(p => p === rootScope.myId);
           contactsList.unshift(rootScope.myId);
         }
       }
@@ -211,7 +211,7 @@ export class AppUsersManager {
       /* contactsList.sort((userId1: number, userId2: number) => {
         const sortName1 = (this.users[userId1] || {}).sortName || '';
         const sortName2 = (this.users[userId2] || {}).sortName || '';
-        if(sortName1 == sortName2) {
+        if(sortName1 === sortName2) {
           return 0;
         } 
         
@@ -394,10 +394,10 @@ export class AppUsersManager {
           str += ' just now';
         } else if((now - date) < 3600) {
           const c = (now - date) / 60 | 0;
-          str += c + ' ' + (c == 1 ? 'minute' : 'minutes') + ' ago';
+          str += c + ' ' + (c === 1 ? 'minute' : 'minutes') + ' ago';
         } else if(now - date < 86400) {
           const c = (now - date) / 3600 | 0;
-          str += c + ' ' + (c == 1 ? 'hour' : 'hours') + ' ago';
+          str += c + ' ' + (c === 1 ? 'hour' : 'hours') + ' ago';
         } else {
           const d = new Date(date * 1000);
           str += ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + ' at ' + 
@@ -435,7 +435,7 @@ export class AppUsersManager {
   }
 
   public isNonContactUser(id: number) {
-    return this.isRegularUser(id) && !this.isContact(id) && id != rootScope.myId;
+    return this.isRegularUser(id) && !this.isContact(id) && id !== rootScope.myId;
   }
 
   public hasUser(id: number, allowMin?: boolean) {
@@ -676,9 +676,9 @@ export class AppUsersManager {
 
     if(Array.isArray(this.contactsList)) {
       var curPos = this.contactsList.indexOf(userId);
-      var curIsContact = curPos != -1;
+      var curIsContact = curPos !== -1;
 
-      if(isContact != curIsContact) {
+      if(isContact !== curIsContact) {
         if(isContact) {
           this.contactsList.push(userId)
           searchIndexManager.indexObject(userId, this.getUserSearchText(userId), this.contactsIndex);

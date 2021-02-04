@@ -37,7 +37,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
 
       //this.filter.pFlags = {};
 
-      if(this.type == 'included') {
+      if(this.type === 'included') {
         for(const key in this.filter.pFlags) {
           if(key.indexOf('exclude_') === 0) {
             continue;
@@ -67,7 +67,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
         }
       }
 
-      if(this.type == 'included') {
+      if(this.type === 'included') {
         this.filter.pinned_peers = this.filter.pinned_peers.filter(peerId => {
           return peers.includes(peerId); // * because I have pinned peer in include_peers too
           /* const index = peers.indexOf(peerId);
@@ -84,12 +84,12 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
         });
       }
 
-      const other = this.type == 'included' ? 'exclude_peers' : 'include_peers';
+      const other = this.type === 'included' ? 'exclude_peers' : 'include_peers';
       this.filter[other] = this.filter[other].filter(peerId => {
         return !peers.includes(peerId);
       });
       
-      this.filter[this.type == 'included' ? 'include_peers' : 'exclude_peers'] = peers;
+      this.filter[this.type === 'included' ? 'include_peers' : 'exclude_peers'] = peers;
       //this.filter.pinned_peers = this.filter.pinned_peers.filter(peerId => this.filter.include_peers.includes(peerId));
 
       appSidebarLeft.editFolderTab.setFilter(this.filter, false);
@@ -109,7 +109,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
   }
 
   renderResults = async(peerIds: number[]) => {
-    //const other = this.type == 'included' ? this.filter.exclude_peers : this.filter.include_peers;
+    //const other = this.type === 'included' ? this.filter.exclude_peers : this.filter.include_peers;
 
     await appUsersManager.getContacts();
     peerIds.forEach(peerId => {
@@ -130,7 +130,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
       let subtitle = '';
 
       if(peerId > 0) {
-        if(peerId == rootScope.myId) {
+        if(peerId === rootScope.myId) {
           subtitle = 'Chat with yourself';
         } else if(appUsersManager.isBot(peerId)) {
           subtitle = 'Bot';
@@ -151,8 +151,8 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
       this.init = null;
     }
 
-    this.confirmBtn.style.display = this.type == 'excluded' ? '' : 'none';
-    this.title.innerText = this.type == 'included' ? 'Included Chats' : 'Excluded Chats';
+    this.confirmBtn.style.display = this.type === 'excluded' ? '' : 'none';
+    this.title.innerText = this.type === 'included' ? 'Included Chats' : 'Excluded Chats';
 
     const filter = this.filter;
 
@@ -165,7 +165,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
     categories.classList.add('folder-categories');
 
     let details: {[flag: string]: {ico: string, text: string}};
-    if(this.type == 'excluded') {
+    if(this.type === 'excluded') {
       details = {
         exclude_muted: {ico: 'mute', text: 'Muted'},
         exclude_archived: {ico: 'archive', text: 'Archived'},
@@ -237,7 +237,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
 
   onSelectChange = (length: number) => {
     //const changed = !deepEqual(this.filter, this.originalFilter);
-    if(this.type == 'included') {
+    if(this.type === 'included') {
       this.confirmBtn.style.display = length ? '' : 'none';
     }
   };

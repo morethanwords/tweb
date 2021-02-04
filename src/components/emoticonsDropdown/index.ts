@@ -311,7 +311,7 @@ export class EmoticonsDropdown {
     let jumpedTo = -1;
 
     const setActive = (id: number) => {
-      if(id == prevId) {
+      if(id === prevId) {
         return false;
       }
 

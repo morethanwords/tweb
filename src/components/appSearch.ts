@@ -144,7 +144,7 @@ export default class AppSearch {
       return;
     }
     
-    if(this.foundCount != -1 && this.loadedCount >= this.foundCount) {
+    if(this.foundCount !== -1 && this.loadedCount >= this.foundCount) {
       return Promise.resolve();
     }
     

@@ -48,23 +48,23 @@ export class Layouter {
 
   public layout(): GroupMediaLayout[] {
     if(!this.count) return [];
-    //else if(this.count == 1) return this.layoutOne();
+    //else if(this.count === 1) return this.layoutOne();
 
     if(this.count >= 5 || this.ratios.find(r => r > 2)) {
       return new ComplexLayouter(this.ratios, this.averageRatio, this.maxWidth, this.minWidth, this.spacing).layout();
     }
 
-    if(this.count == 2) return this.layoutTwo();
-    else if(this.count == 3) return this.layoutThree();
+    if(this.count === 2) return this.layoutTwo();
+    else if(this.count === 3) return this.layoutThree();
     return this.layoutFour();
   }
 
   private layoutTwo(): ReturnType<Layouter['layout']> {
-    if((this.proportions == "ww")
+    if((this.proportions === "ww")
       && (this.averageRatio > 1.4 * this.maxSizeRatio)
       && (this.ratios[1] - this.ratios[0] < 0.2)) {
       return this.layoutTwoTopBottom();
-    } else if(this.proportions == "ww" || this.proportions == "qq") {
+    } else if(this.proportions === "ww" || this.proportions === "qq") {
       return this.layoutTwoLeftRightEqual();
     }
     return this.layoutTwoLeftRight();
@@ -72,14 +72,14 @@ export class Layouter {
 
   private layoutThree(): ReturnType<Layouter['layout']> {
     //console.log('layoutThree:', this);
-    if(this.proportions[0] == 'n') {
+    if(this.proportions[0] === 'n') {
       return this.layoutThreeLeftAndOther();
     }
     return this.layoutThreeTopAndOther();
   }
 
   private layoutFour(): ReturnType<Layouter['layout']> {
-    if(this.proportions[0] == 'w') {
+    if(this.proportions[0] === 'w') {
       return this.layoutFourTopAndOther();
     }
     return this.layoutFourLeftAndOther();
@@ -344,15 +344,15 @@ class ComplexLayouter {
       attempts.push({lineCounts, heights}); // warn
     };
 
-    for(let first = 1; first != this.count; ++first) {
+    for(let first = 1; first !== this.count; ++first) {
       const second = this.count - first;
       if(first > 3 || second > 3) {
         continue;
       }
       pushAttempt([first, second]);
     }
-    for(let first = 1; first != this.count - 1; ++first) {
-      for(let second = 1; second != this.count - first; ++second) {
+    for(let first = 1; first !== this.count - 1; ++first) {
+      for(let second = 1; second !== this.count - first; ++second) {
         const third = this.count - first - second;
         if((first > 3)
           || (second > ((this.averageRatio < 0.85) ? 4 : 3))
@@ -362,9 +362,9 @@ class ComplexLayouter {
         pushAttempt([first, second, third]);
       }
     }
-    for(let first = 1; first != this.count - 1; ++first) {
-      for(let second = 1; second != this.count - first; ++second) {
-        for(let third = 1; third != this.count - first - second; ++third) {
+    for(let first = 1; first !== this.count - 1; ++first) {
+      for(let second = 1; second !== this.count - first; ++second) {
+        for(let third = 1; third !== this.count - first - second; ++third) {
           const fourth = this.count - first - second - third;
           if(first > 3 || second > 3 || third > 3 || fourth > 3) {
             continue;
@@ -385,7 +385,7 @@ class ComplexLayouter {
       const maxLineHeight = Math.max(...heights);
       const bad1 = (minLineHeight < this.minWidth) ? 1.5 : 1;
       const bad2 = (() => {
-        for(let line = 1; line != lineCount; ++line) {
+        for(let line = 1; line !== lineCount; ++line) {
           if(counts[line - 1] > counts[line]) {
             return 1.5;
           }
@@ -405,21 +405,21 @@ class ComplexLayouter {
     
     let index = 0;
     let y = 0;
-    for(let row = 0; row != rowCount; ++row) {
+    for(let row = 0; row !== rowCount; ++row) {
       const colCount = optimalCounts[row];
       const lineHeight = optimalHeights[row];
       const height = Math.round(lineHeight);
 
       let x = 0;
-      for(let col = 0; col != colCount; ++col) {
+      for(let col = 0; col !== colCount; ++col) {
         const sides = RectPart.None
-          | (row == 0 ? RectPart.Top : RectPart.None)
-          | (row == rowCount - 1 ? RectPart.Bottom : RectPart.None)
-          | (col == 0 ? RectPart.Left : RectPart.None)
-          | (col == colCount - 1 ? RectPart.Right : RectPart.None);
+          | (row === 0 ? RectPart.Top : RectPart.None)
+          | (row === rowCount - 1 ? RectPart.Bottom : RectPart.None)
+          | (col === 0 ? RectPart.Left : RectPart.None)
+          | (col === colCount - 1 ? RectPart.Right : RectPart.None);
 
         const ratio = this.ratios[index];
-        const width = (col == colCount - 1)
+        const width = (col === colCount - 1)
           ? (this.maxWidth - x)
           : Math.round(ratio * lineHeight);
         result[index] = {

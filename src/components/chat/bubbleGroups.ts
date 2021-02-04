@@ -190,7 +190,7 @@ export default class BubbleGroups {
 
       //console.log('[BUBBLE]: updateGroup', group, first);
       
-      if(group.length == 1) {
+      if(group.length === 1) {
         first.classList.add('is-group-first', 'is-group-last');
         this.setClipIfNeeded(first);
         return;
@@ -215,7 +215,7 @@ export default class BubbleGroups {
   }
 
   updateGroupByMessageId(mid: number) {
-    const details = this.bubbles.find(g => g.mid == mid);
+    const details = this.bubbles.find(g => g.mid === mid);
     if(details) {
       this.updateGroup(details.group);
     }

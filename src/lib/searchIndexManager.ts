@@ -113,7 +113,7 @@ class SearchIndexManager {
       let found = true;
       let searchText = fullTexts[foundArr[j]];
       for(let i = 0; i < queryWords.length; i++) {
-        if(searchText.indexOf(queryWords[i]) == -1) {
+        if(searchText.indexOf(queryWords[i]) === -1) {
           found = false;
           break;
         }

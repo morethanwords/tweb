@@ -89,7 +89,7 @@ export function formatPhoneNumber(str: string) {
   }
   
   let country = sortedCountries.find((c) => {
-    return c.phoneCode.split(' and ').find((c) => phoneCode.indexOf(c.replace(/\D/g, '')) == 0);
+    return c.phoneCode.split(' and ').find((c) => phoneCode.indexOf(c.replace(/\D/g, '')) === 0);
   });
 
   if(!country) return {formatted: str, country};
@@ -98,7 +98,7 @@ export function formatPhoneNumber(str: string) {
   
   let pattern = country.pattern || country.phoneCode;
   pattern.split('').forEach((symbol, idx) => {
-    if(symbol == ' ' && str[idx] != ' ' && str.length > idx) {
+    if(symbol === ' ' && str[idx] !== ' ' && str.length > idx) {
       str = str.slice(0, idx) + ' ' + str.slice(idx);
     }
   });
@@ -138,7 +138,7 @@ const onClick = (e: MouseEvent | TouchEvent) => {
 };
 
 const onKeyDown = (e: KeyboardEvent) => {
-  if(e.key == 'Escape') {
+  if(e.key === 'Escape') {
     closeBtnMenu();
     cancelEvent(e);
   }
@@ -243,13 +243,13 @@ export function positionMenu({pageX, pageY}: MouseEvent | Touch, elem: HTMLEleme
         left: pageX,
         right: pageX - menuWidth
       },
-      intermediateX: side == 'right' ? PADDING_LEFT : windowWidth - menuWidth - PADDING_LEFT,
+      intermediateX: side === 'right' ? PADDING_LEFT : windowWidth - menuWidth - PADDING_LEFT,
       //intermediateX: clientX < windowWidth / 2 ? PADDING_LEFT : windowWidth - menuWidth - PADDING_LEFT,
       y: {
         top: pageY,
         bottom: pageY - menuHeight
       },
-      //intermediateY: verticalSide == 'top' ? PADDING_TOP : windowHeight - menuHeight - PADDING_TOP,
+      //intermediateY: verticalSide === 'top' ? PADDING_TOP : windowHeight - menuHeight - PADDING_TOP,
       intermediateY: pageY < windowHeight / 2 ? PADDING_TOP : windowHeight - menuHeight - PADDING_TOP,
     };
   };
@@ -278,7 +278,7 @@ export function positionMenu({pageX, pageY}: MouseEvent | Touch, elem: HTMLEleme
 
     const s = Object.keys(x) as (keyof typeof possibleSides.x)[];
     if(side) {
-      s.findAndSplice(s => s == side);
+      s.findAndSplice(s => s === side);
       s.unshift(side);
     }
 
@@ -315,10 +315,10 @@ export function positionMenu({pageX, pageY}: MouseEvent | Touch, elem: HTMLEleme
   
   elem.className = elem.className.replace(/(top|center|bottom)-(left|center|right)/g, '');
   elem.classList.add(
-    //(verticalSide == 'center' ? verticalSide : (verticalSide == 'bottom' ? 'top' : 'bottom')) +
-    (verticalSide == 'center' ? verticalSide : 'bottom') +
+    //(verticalSide === 'center' ? verticalSide : (verticalSide === 'bottom' ? 'top' : 'bottom')) +
+    (verticalSide === 'center' ? verticalSide : 'bottom') +
     '-' +
-    (side == 'center' ? side : (side == 'left' ? 'right' : 'left')));
+    (side === 'center' ? side : (side === 'left' ? 'right' : 'left')));
 }
 
 export function attachContextMenuListener(element: HTMLElement, callback: (e: Touch | MouseEvent) => void, listenerSetter?: ListenerSetter) {

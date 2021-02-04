@@ -217,7 +217,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
         return false;
       }, (evt) => {
         // * Fix for seek input
-        if((evt.target as HTMLElement).tagName == 'INPUT' || findUpClassName(evt.target, 'media-viewer-caption')) {
+        if((evt.target as HTMLElement).tagName === 'INPUT' || findUpClassName(evt.target, 'media-viewer-caption')) {
           return false;
         }
 
@@ -250,7 +250,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     this.setMoverPromise = null;
     this.tempId = -1;
 
-    /* if(appSidebarRight.historyTabIDs.slice(-1)[0] == AppSidebarRight.SLIDERITEMSIDS.forward) {
+    /* if(appSidebarRight.historyTabIDs.slice(-1)[0] === AppSidebarRight.SLIDERITEMSIDS.forward) {
       promise.then(() => {
         appSidebarRight.forwardTab.closeBtn.click();
       });
@@ -271,7 +271,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     if(this.setMoverAnimationPromise) return;
 
     const target = e.target as HTMLElement;
-    if(target.tagName == 'A') return;
+    if(target.tagName === 'A') return;
     cancelEvent(e);
 
     if(isTouchSupported) {
@@ -297,7 +297,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       } catch(err) {return false;}
     });
 
-    if(/* target == this.mediaViewerDiv */!mover || target.tagName == 'IMG' || target.tagName == 'image') {
+    if(/* target === this.mediaViewerDiv */!mover || target.tagName === 'IMG' || target.tagName === 'image') {
       this.buttons.close.click();
     }
   };
@@ -305,11 +305,11 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
   onKeyDown = (e: KeyboardEvent) => {
     //this.log('onKeyDown', e);
     
-    if(e.key == 'Escape') {
+    if(e.key === 'Escape') {
       this.close();
-    } else if(e.key == 'ArrowRight') {
+    } else if(e.key === 'ArrowRight') {
       this.buttons.next.click();
-    } else if(e.key == 'ArrowLeft') {
+    } else if(e.key === 'ArrowLeft') {
       this.buttons.prev.click();
     }
   };
@@ -384,7 +384,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     } */
 
     let aspecter: HTMLDivElement;
-    if(target instanceof HTMLImageElement || target instanceof HTMLVideoElement || target.tagName == 'DIV') {
+    if(target instanceof HTMLImageElement || target instanceof HTMLVideoElement || target.tagName === 'DIV') {
       if(mover.firstElementChild && mover.firstElementChild.classList.contains('media-viewer-aspecter')) {
         aspecter = mover.firstElementChild as HTMLDivElement;
 
@@ -486,7 +486,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
           let transform = use.getAttributeNS(null, 'transform');
           transform = transform.replace(/translate\((.+?), (.+?)\) scale\((.+?), (.+?)\)/, (match, x, y, sX, sY) => {
             x = +x;
-            if(x != 2) {
+            if(x !== 2) {
               x = width - (2 / scaleX);
             } else {
               x = 2 / scaleX;
@@ -668,7 +668,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     const proportion = containerRect.width / containerRect.height;
 
     let {width, height} = rect;
-    /* if(proportion == 1) {
+    /* if(proportion === 1) {
       aspecter.style.cssText = '';
     } else { */
       if(proportion > 0) {
@@ -790,11 +790,11 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
     const timeStr = time.getHours() + ':' + ('0' + time.getMinutes()).slice(-2);
     let dateStr: string;
-    if((now - timestamp) < ONE_DAY && date.getDate() == time.getDate()) { // if the same day
+    if((now - timestamp) < ONE_DAY && date.getDate() === time.getDate()) { // if the same day
       dateStr = 'Today';
-    } else if((now - timestamp) < (ONE_DAY * 2) && (date.getDate() - 1) == time.getDate()) { // yesterday
+    } else if((now - timestamp) < (ONE_DAY * 2) && (date.getDate() - 1) === time.getDate()) { // yesterday
       dateStr = 'Yesterday';
-    } else if(date.getFullYear() != time.getFullYear()) { // different year
+    } else if(date.getFullYear() !== time.getFullYear()) { // different year
       dateStr = months[time.getMonth()].slice(0, 3) + ' ' + time.getDate() + ', ' + time.getFullYear();
     } else {
       dateStr = months[time.getMonth()].slice(0, 3) + ' ' + time.getDate();
@@ -821,7 +821,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
     this.setAuthorInfo(fromId, timestamp);
     
-    const isVideo = (media as MyDocument).type == 'video' || (media as MyDocument).type == 'gif';
+    const isVideo = (media as MyDocument).type === 'video' || (media as MyDocument).type === 'gif';
 
     if(this.isFirstOpen) {
       //this.targetContainer = targetContainer;
@@ -832,7 +832,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       this.isFirstOpen = false;
       //this.loadMore = loadMore;
 
-      /* if(appSidebarRight.historyTabIDs.slice(-1)[0] == AppSidebarRight.SLIDERITEMSIDS.forward) {
+      /* if(appSidebarRight.historyTabIDs.slice(-1)[0] === AppSidebarRight.SLIDERITEMSIDS.forward) {
         appSidebarRight.forwardTab.closeBtn.click();
         await new Promise((resolve) => setTimeout(resolve, 200));
       } */
@@ -947,7 +947,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
   
         // * fix for playing video if viewer is closed (https://contest.com/javascript-web-bonus/entry1425#issue11629)
         video.addEventListener('timeupdate', () => {
-          if(this.tempId != tempId) {
+          if(this.tempId !== tempId) {
             video.pause();
           }
         });
@@ -958,7 +958,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
           video.autoplay = true;
         }
   
-        if(media.type == 'gif') {
+        if(media.type === 'gif') {
           video.muted = true;
           video.autoplay = true;
           video.loop = true;
@@ -973,7 +973,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
         });
   
         const createPlayer = () => {
-          if(media.type != 'gif') {
+          if(media.type !== 'gif') {
             video.dataset.ckin = 'default';
             video.dataset.overlay = '1';
   
@@ -982,7 +982,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
             appMediaPlaybackController.willBePlayedMedia = null;
             
             Promise.all([canPlayThrough, onAnimationEnd]).then(() => {
-              if(this.tempId != tempId) {
+              if(this.tempId !== tempId) {
                 return;
               }
   
@@ -1030,7 +1030,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
           attachCanPlay();
         }
         
-        //if(!video.src || media.url != video.src) {
+        //if(!video.src || media.url !== video.src) {
           const load = () => {
             const promise = media.supportsStreaming ? Promise.resolve() : appDocsManager.downloadDoc(media);
             
@@ -1043,7 +1043,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
             }
   
             (promise as Promise<any>).then(async() => {
-              if(this.tempId != tempId) {
+              if(this.tempId !== tempId) {
                 this.log.warn('media viewer changed video');
                 return;
               }
@@ -1330,7 +1330,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
         const media = this.getMediaFromMessage(message);
 
         if(!media) return;
-        //if(media._ == 'document' && media.type != 'video') return;
+        //if(media._ === 'document' && media.type !== 'video') return;
 
         const t = {element: null as HTMLElement, mid, peerId};
         if(older) {
@@ -1454,7 +1454,7 @@ export class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete', AppMe
     const maxId = this.nextTargets.length ? this.nextTargets[this.nextTargets.length - 1].photoId : this.currentPhotoId;
 
     const promise = appPhotosManager.getUserPhotos(peerId, maxId, loadCount).then(value => {
-      if(this.peerId != peerId) {
+      if(this.peerId !== peerId) {
         this.log.warn('peer changed');
         return;
       }
@@ -1468,7 +1468,7 @@ export class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete', AppMe
       }
 
       value.photos.forEach(photoId => {
-        if(this.currentPhotoId == photoId) return;
+        if(this.currentPhotoId === photoId) return;
         this.nextTargets.push({element: null as HTMLElement, photoId: photoId});
       });
 

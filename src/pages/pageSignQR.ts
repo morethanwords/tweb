@@ -48,7 +48,7 @@ let onFirstMount = async() => {
           except_ids: []
         }, {ignoreErrors: true});
     
-        if(loginToken._ == 'auth.loginTokenMigrateTo') {
+        if(loginToken._ === 'auth.loginTokenMigrateTo') {
           if(!options.dcId) {
             options.dcId = loginToken.dc_id;
             apiManager.setBaseDcId(loginToken.dc_id);
@@ -60,7 +60,7 @@ let onFirstMount = async() => {
           }, options) as AuthLoginToken.authLoginToken;
         }
   
-        if(loginToken._ == 'auth.loginTokenSuccess') {
+        if(loginToken._ === 'auth.loginTokenSuccess') {
           const authorization = loginToken.authorization as any as AuthAuthorization.authAuthorization;
           apiManager.setUserAuth(authorization.user.id);
           pageIm.mount();

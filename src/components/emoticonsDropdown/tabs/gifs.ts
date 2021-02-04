@@ -20,10 +20,10 @@ export default class GifsTab implements EmoticonsTab {
     apiManager.invokeApi('messages.getSavedGifs', {hash: 0}).then((res) => {
       //console.log('getSavedGifs res:', res);
 
-      if(res._ == 'messages.savedGifs') {
+      if(res._ === 'messages.savedGifs') {
         res.gifs.forEach((doc, idx) => {
           res.gifs[idx] = doc = appDocsManager.saveDoc(doc);
-          //if(doc._ == 'documentEmpty') return;
+          //if(doc._ === 'documentEmpty') return;
           masonry.add(doc as MyDocument);
         });
       }

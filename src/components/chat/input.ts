@@ -358,7 +358,7 @@ export default class ChatInput {
 
     /* this.attachMenu.addEventListener('mousedown', (e) => {
       const hidden = this.attachMenu.querySelectorAll('.hide');
-      if(hidden.length == this.attachMenuButtons.length) {
+      if(hidden.length === this.attachMenuButtons.length) {
         toast(POSTING_MEDIA_NOT_ALLOWED);
         cancelEvent(e);
         return false;
@@ -581,8 +581,8 @@ export default class ChatInput {
   public destroy() {
     //this.chat.log.error('Input destroying');
 
-    emoticonsDropdown.events.onOpen.findAndSplice(f => f == this.onEmoticonsOpen);
-    emoticonsDropdown.events.onClose.findAndSplice(f => f == this.onEmoticonsClose);
+    emoticonsDropdown.events.onOpen.findAndSplice(f => f === this.onEmoticonsOpen);
+    emoticonsDropdown.events.onClose.findAndSplice(f => f === this.onEmoticonsClose);
 
     this.listenerSetter.removeAll();
   }
@@ -820,7 +820,7 @@ export default class ChatInput {
       //console.log('Using formatting:', commandsMap[type], nodes, this.executedHistory);
 
       const parents = [...new Set(nodes.map(node => node.parentNode))];
-      //const differentParents = !!nodes.find(node => node.parentNode != firstParent);
+      //const differentParents = !!nodes.find(node => node.parentNode !== firstParent);
       const differentParents = parents.length > 1;
 
       let notSingle = false;
@@ -828,7 +828,7 @@ export default class ChatInput {
         notSingle = true;
       } else {
         const node = nodes[0];
-        if(node && (node.parentNode as HTMLElement) != this.messageInput && (node.parentNode.parentNode as HTMLElement) != this.messageInput) {
+        if(node && (node.parentNode as HTMLElement) !== this.messageInput && (node.parentNode.parentNode as HTMLElement) !== this.messageInput) {
           notSingle = true;
         }
       }
@@ -900,7 +900,7 @@ export default class ChatInput {
     const selection = document.getSelection();
     if(selection.toString().trim().length) {
       for(const key in formatKeys) {
-        const good = e.code == ('Key' + key);
+        const good = e.code === ('Key' + key);
   
         if(good) {
           // * костыльчик
@@ -918,7 +918,7 @@ export default class ChatInput {
     }
 
     //return;
-    if(e.code == 'KeyZ') {
+    if(e.code === 'KeyZ') {
       let html = this.messageInput.innerHTML;
 
       if(e.shiftKey) {
@@ -932,7 +932,7 @@ export default class ChatInput {
         }
       } else {
         // * подождём, когда пользователь сам восстановит поле до нужного состояния, которое стало сразу после saveExecuted
-        if(this.executedHistory.length && (!this.canUndoFromHTML || html == this.canUndoFromHTML)) {
+        if(this.executedHistory.length && (!this.canUndoFromHTML || html === this.canUndoFromHTML)) {
           this.undoHistory.push(html);
           html = this.executedHistory.pop();
           this.undoRedo(e, 'undo', html);
@@ -948,7 +948,7 @@ export default class ChatInput {
     // * validate due to manual formatting through browser's context menu
     /* const inputType = (e as InputEvent).inputType;
     console.log('message input event', e);
-    if(inputType == 'formatBold') {
+    if(inputType === 'formatBold') {
       console.log('message input format', this.messageInput.innerHTML);
       cancelEvent(e);
     }
@@ -1008,7 +1008,7 @@ export default class ChatInput {
 
         //console.log('messageInput url:', url);
 
-        if(this.lastUrl != url) {
+        if(this.lastUrl !== url) {
           this.lastUrl = url;
           this.willSendWebPage = null;
           apiManager.invokeApi('messages.getWebPage', {
@@ -1016,8 +1016,8 @@ export default class ChatInput {
             hash: 0
           }).then((webpage) => {
             webpage = this.appWebPagesManager.saveWebPage(webpage);
-            if(webpage._  == 'webPage') {
-              if(this.lastUrl != url) return;
+            if(webpage._  === 'webPage') {
+              if(this.lastUrl !== url) return;
               //console.log('got webpage: ', webpage);
 
               this.setTopInfo('webpage', () => {}, webpage.site_name || webpage.title || 'Webpage', webpage.description || webpage.url || '');
@@ -1347,7 +1347,7 @@ export default class ChatInput {
       });
       this.onMessageSent(clearDraft, true);
 
-      if(document.type == 'sticker') {
+      if(document.type === 'sticker') {
         emoticonsDropdown.stickersTab?.pushRecentSticker(document);
       }
 
@@ -1507,7 +1507,7 @@ export default class ChatInput {
   //   if(newOffsetTop < this.scrollOffsetTop) {
   //     this.scrollDiff = this.scrollOffsetTop - newOffsetTop;
   //     container.scrollTop += this.scrollDiff;
-  //   } else if(scrollTop != this.scrollTop) {
+  //   } else if(scrollTop !== this.scrollTop) {
   //     let endDiff = maxScrollTop - (scrollTop + clientHeight);
   //     if(endDiff < this.scrollDiff/*  && false */) {
   //       //container.scrollTop -= endDiff;

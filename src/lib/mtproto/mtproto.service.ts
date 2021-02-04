@@ -54,7 +54,7 @@ const onFetch = (event: FetchEvent): void => {
         // ! если грузить очень большое видео чанками по 512Кб в мобильном Safari, то стрим не запустится
         const limitPart = info.size > (75 * 1024 * 1024) ? STREAM_CHUNK_UPPER_LIMIT : STREAM_CHUNK_MIDDLE_LIMIT;
 
-        /* if(info.size > limitPart && isSafari && offset == limitPart) {
+        /* if(info.size > limitPart && isSafari && offset === limitPart) {
           //end = info.size - 1;
           //offset = info.size - 1 - limitPart;
           offset = info.size - (info.size % limitPart);

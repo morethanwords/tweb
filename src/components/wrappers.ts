@@ -52,7 +52,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   loadPromises?: Promise<any>[]
 }) {
   const isAlbumItem = !(boxWidth && boxHeight);
-  const canAutoplay = doc.type != 'video' || (doc.size <= MAX_VIDEO_AUTOPLAY_SIZE && !isAlbumItem);
+  const canAutoplay = doc.type !== 'video' || (doc.size <= MAX_VIDEO_AUTOPLAY_SIZE && !isAlbumItem);
   let spanTime: HTMLElement;
 
   if(!noInfo) {
@@ -102,7 +102,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     return res;
   }
 
-  /* const video = doc.type == 'round' ? appMediaPlaybackController.addMedia(doc, message.mid) as HTMLVideoElement : document.createElement('video');
+  /* const video = doc.type === 'round' ? appMediaPlaybackController.addMedia(doc, message.mid) as HTMLVideoElement : document.createElement('video');
   if(video.parentElement) {
     video.remove();
   } */
@@ -301,7 +301,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
 
     const deferred = deferredPromise<void>();
 
-    //if(doc.type == 'gif'/*  || true */) {
+    //if(doc.type === 'gif'/*  || true */) {
       onVideoLoad(video).then(() => {
         /* if(!video.paused) {
           video.pause();
@@ -419,7 +419,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
   const icoDiv = document.createElement('div');
   icoDiv.classList.add('document-ico');
 
-  if(doc.thumbs?.length || (uploading && doc.url && doc.type == 'photo')) {
+  if(doc.thumbs?.length || (uploading && doc.url && doc.type === 'photo')) {
     docDiv.classList.add('document-with-thumb');
 
     if(uploading) {
@@ -736,7 +736,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
     height = !emoji ? 200 : undefined;
   }
 
-  if(stickerType == 2 && !LottieLoader.loaded) {
+  if(stickerType === 2 && !LottieLoader.loaded) {
     //LottieLoader.loadLottie();
     LottieLoader.loadLottieWorkers();
   }
@@ -754,7 +754,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
   
   let loadThumbPromise = deferredPromise<void>();
   let haveThumbCached = false;
-  if((doc.thumbs?.length || doc.stickerCachedThumbs) && !div.firstElementChild && (!doc.downloaded || stickerType == 2 || onlyThumb)/*  && doc.thumbs[0]._ != 'photoSizeEmpty' */) {
+  if((doc.thumbs?.length || doc.stickerCachedThumbs) && !div.firstElementChild && (!doc.downloaded || stickerType === 2 || onlyThumb)/*  && doc.thumbs[0]._ !== 'photoSizeEmpty' */) {
     let thumb = doc.stickerCachedThumbs && doc.stickerCachedThumbs[toneIndex] || doc.thumbs[0];
     
     //console.log('wrap sticker', thumb, div);
@@ -803,7 +803,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
           }).catch(() => {});
         }
       }
-    } else if(stickerType == 2 && (withThumb || onlyThumb) && toneIndex <= 0) {
+    } else if(stickerType === 2 && (withThumb || onlyThumb) && toneIndex <= 0) {
       thumbImage = new Image();
 
       const load = () => {
@@ -847,8 +847,8 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
   let load = async() => {
     if(middleware && !middleware()) return;
 
-    if(stickerType == 2) {
-      /* if(doc.id == '1860749763008266301') {
+    if(stickerType === 2) {
+      /* if(doc.id === '1860749763008266301') {
         console.log('loaded sticker:', doc, div);
       } */
 
@@ -968,7 +968,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
     }
   };
 
-  const loadPromise: Promise<any> = lazyLoadQueue && (!doc.downloaded || stickerType == 2) ? 
+  const loadPromise: Promise<any> = lazyLoadQueue && (!doc.downloaded || stickerType === 2) ? 
     (lazyLoadQueue.push({div, load}), Promise.resolve()) : 
     load();
 
@@ -1082,7 +1082,7 @@ export function wrapAlbum({groupId, attachmentDiv, middleware, uploading, lazyLo
     const m = chat.getMessage(mid);
     const media = m.media.photo || m.media.document;
 
-    const size: any = media._ == 'photo' ? appPhotosManager.choosePhotoSize(media, 480, 480) : {w: media.w, h: media.h};
+    const size: any = media._ === 'photo' ? appPhotosManager.choosePhotoSize(media, 480, 480) : {w: media.w, h: media.h};
     items.push({size, media, message: m});
   }
 
@@ -1106,7 +1106,7 @@ export function wrapAlbum({groupId, attachmentDiv, middleware, uploading, lazyLo
     const div = attachmentDiv.children[idx] as HTMLElement;
     div.dataset.mid = '' + message.mid;
     const mediaDiv = div.firstElementChild as HTMLElement;
-    if(media._ == 'photo') {
+    if(media._ === 'photo') {
       wrapPhoto({
         photo: media,
         message,

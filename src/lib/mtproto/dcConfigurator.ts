@@ -47,20 +47,20 @@ export class DcConfigurator {
     const subdomain = this.sslSubdomains[dcId - 1];
     const path = Modes.test ? 'apiws_test' : 'apiws';
     const chosenServer = 'wss://' + subdomain + '.web.telegram.org/' + path;
-    const suffix = connectionType == 'upload' ? '-U' : connectionType == 'download' ? '-D' : '';
+    const suffix = connectionType === 'upload' ? '-U' : connectionType === 'download' ? '-D' : '';
     return new Socket(dcId, chosenServer, suffix);
   };
 
   private transportHTTP = (dcId: number, connectionType: ConnectionType) => {
     if(Modes.ssl || !Modes.http) {
-      const subdomain = this.sslSubdomains[dcId - 1] + (connectionType != 'client' ? '-1' : '');
+      const subdomain = this.sslSubdomains[dcId - 1] + (connectionType !== 'client' ? '-1' : '');
       const path = Modes.test ? 'apiw_test1' : 'apiw1';
       const chosenServer = 'https://' + subdomain + '.web.telegram.org/' + path;
       return new HTTP(dcId, chosenServer);
     } else {
       for(let dcOption of this.dcOptions) {
-        if(dcOption.id == dcId) {
-          const chosenServer = 'http://' + dcOption.host + (dcOption.port != 80 ? ':' + dcOption.port : '') + '/apiw1';
+        if(dcOption.id === dcId) {
+          const chosenServer = 'http://' + dcOption.host + (dcOption.port !== 80 ? ':' + dcOption.port : '') + '/apiw1';
           return new HTTP(dcId, chosenServer);
         }
       }
@@ -68,7 +68,7 @@ export class DcConfigurator {
   };
 
   public chooseServer(dcId: number, connectionType: ConnectionType = 'client', transportType: TransportType = 'websocket', reuse = true) {
-    /* if(transportType == 'websocket' && !Modes.multipleConnections) {
+    /* if(transportType === 'websocket' && !Modes.multipleConnections) {
       connectionType = 'client';
     } */
 
@@ -92,7 +92,7 @@ export class DcConfigurator {
       let transport: MTTransport;
 
       /// #if MTPROTO_HTTP_UPLOAD
-      transport = (transportType == 'websocket' ? this.transportSocket : this.transportHTTP)(dcId, connectionType);
+      transport = (transportType === 'websocket' ? this.transportSocket : this.transportHTTP)(dcId, connectionType);
       /// #elif !MTPROTO_HTTP
       transport = this.transportSocket(dcId, connectionType);
       /// #else

@@ -221,7 +221,7 @@ export function pqPrimeLeemon(what: any) {
       if(!equalsInt(g, 1)) {
         break;
       }
-      if((j & (j - 1)) == 0) {
+      if((j & (j - 1)) === 0) {
         copy_(y, x);
       }
     }

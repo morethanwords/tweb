@@ -156,7 +156,7 @@ export class AppPeersManager {
     var peerParams = peerString.substr(1).split('_');
     let id = +peerParams[0];
 
-    if(firstChar == 'u') {
+    if(firstChar === 'u') {
       //appUsersManager.saveUserAccess(id, peerParams[1]);
 
       return {
@@ -164,9 +164,9 @@ export class AppPeersManager {
         user_id: id,
         access_hash: peerParams[1]
       };
-    } else if(firstChar == 'c' || firstChar == 's') {
+    } else if(firstChar === 'c' || firstChar === 's') {
       //appChatsManager.saveChannelAccess(id, peerParams[1]);
-      if(firstChar == 's') {
+      if(firstChar === 's') {
         appChatsManager.saveIsMegagroup(id);
       }
 

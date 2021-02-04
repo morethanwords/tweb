@@ -32,7 +32,7 @@ export const roundPercents = (percents: number[]) => {
         }
       }
 
-      if(minIndex == -1) {
+      if(minIndex === -1) {
         //throw new Error('lol chto');
         return;
       }
@@ -52,7 +52,7 @@ export const roundPercents = (percents: number[]) => {
         }
       }
 
-      if(minIndex == -1) {
+      if(minIndex === -1) {
         //throw new Error('lol chto');
         return;
       }
@@ -70,7 +70,7 @@ rootScope.on('poll_update', (e) => {
 
   //console.log('poll_update', poll, results);
   for(const connected of connectedPolls) {
-    if(connected.id == poll.id) {
+    if(connected.id === poll.id) {
       const pollElement = connected.element;
       pollElement.isClosed = !!poll.pFlags.closed;
       pollElement.performResults(results, poll.chosenIndexes);
@@ -103,7 +103,7 @@ const hideQuizHint = (element: HTMLElement, onHide: () => void, timeout: number)
     onHide();
     element.remove();
 
-    if(prevQuizHint == element && prevQuizHintOnHide == onHide && prevQuizHintTimeout == timeout) {
+    if(prevQuizHint === element && prevQuizHintOnHide === onHide && prevQuizHintTimeout === timeout) {
       prevQuizHint = prevQuizHintOnHide = null;
       prevQuizHintTimeout = 0;
     }
@@ -495,7 +495,7 @@ export default class PollElement extends HTMLElement {
     }
 
     // set chosen
-    if(this.chosenIndexes.length != chosenIndexes.length || this.isClosed) { // if we voted
+    if(this.chosenIndexes.length !== chosenIndexes.length || this.isClosed) { // if we voted
       this.isRetracted = this.chosenIndexes.length && !chosenIndexes.length;
       this.chosenIndexes = chosenIndexes.slice();
 
@@ -529,7 +529,7 @@ export default class PollElement extends HTMLElement {
        * все приложения накладывают аватарку первую на вторую, а в макете зато вторая на первую, ЛОЛ!
        */
       results.recent_voters/* .slice().reverse() */.forEach((userId, idx) => {
-        const style = idx == 0 ? '' : `style="transform: translateX(-${idx * 3}px);"`;
+        const style = idx === 0 ? '' : `style="transform: translateX(-${idx * 3}px);"`;
         html += `<avatar-element class="avatar-18" dialog="0" peer="${userId}" ${style}></avatar-element>`;
       });
       this.avatarsDiv.innerHTML = html;
@@ -616,7 +616,7 @@ export default class PollElement extends HTMLElement {
   setLineProgress(index: number, percents: number) {
     const svg = this.svgLines[index];
 
-    if(percents == -1) {
+    if(percents === -1) {
       svg.style.strokeDasharray = '';
       svg.style.strokeDashoffset = '';
     } else {

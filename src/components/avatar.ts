@@ -45,7 +45,7 @@ export default class AvatarElement extends HTMLElement {
         loading = true;
 
         const photo = await appProfileManager.getFullPhoto(this.peerId);
-        if(this.peerId != peerId || !photo) {
+        if(this.peerId !== peerId || !photo) {
           loading = false;
           return;
         }
@@ -68,7 +68,7 @@ export default class AvatarElement extends HTMLElement {
           if(message) {
             // ! гений в деле, костылируем (но это гениально)
             const messagePhoto = message.action.photo;
-            if(messagePhoto.id != photo.id) {
+            if(messagePhoto.id !== photo.id) {
               message = {
                 _: 'message',
                 mid: maxId,

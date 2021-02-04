@@ -55,7 +55,7 @@ export function splitStringByLength(str: string, maxLength: number) {
   do {
     let index = str.indexOf(delimiter, lastIndex);
     if(index === -1) {
-      if(lastIndex != (str.length - 1)) {
+      if(lastIndex !== (str.length - 1)) {
         cut();
       }
 
