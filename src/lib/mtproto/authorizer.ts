@@ -70,16 +70,16 @@ export class Authorizer {
   }
   
   public mtpSendPlainRequest(dcId: number, requestArray: Uint8Array) {
-    var requestLength = requestArray.byteLength;
+    const requestLength = requestArray.byteLength;
     //requestArray = new /* Int32Array */Uint8Array(requestBuffer);
     
-    var header = new TLSerialization();
+    const header = new TLSerialization();
     header.storeLongP(0, 0, 'auth_key_id'); // Auth key
     header.storeLong(timeManager.generateId(), 'msg_id'); // Msg_id
     header.storeInt(requestLength, 'request_length');
     
-    let headerArray = header.getBytes(true) as Uint8Array;
-    let resultArray = new Uint8Array(headerArray.byteLength + requestLength);
+    const headerArray = header.getBytes(true) as Uint8Array;
+    const resultArray = new Uint8Array(headerArray.byteLength + requestLength);
     resultArray.set(headerArray);
     resultArray.set(requestArray, headerArray.length);
     
@@ -93,9 +93,9 @@ export class Authorizer {
     resultArray.set(headerArray);
     resultArray.set(requestArray, headerArray.length);
     
-    let requestData = xhrSendBuffer ? resultBuffer : resultArray; */
-    let transport = dcConfigurator.chooseServer(dcId);
-    let baseError = {
+    const requestData = xhrSendBuffer ? resultBuffer : resultArray; */
+    const transport = dcConfigurator.chooseServer(dcId);
+    const baseError = {
       code: 406,
       type: 'NETWORK_BAD_RESPONSE',
       transport: transport
@@ -118,20 +118,20 @@ export class Authorizer {
         /* result = fResult ? fResult : result;
         fResult = new Uint8Array(0); */
         
-        let deserializer = new TLDeserialization(result, {mtproto: true});
-        let auth_key_id = deserializer.fetchLong('auth_key_id');
-        if(auth_key_id !== 0) this.log.error('auth_key_id !== 0', auth_key_id);
+        const deserializer = new TLDeserialization(result, {mtproto: true});
+        const auth_key_id = deserializer.fetchLong('auth_key_id');
+        if(auth_key_id !== '0') this.log.error('auth_key_id !== 0', auth_key_id);
         
-        let msg_id = deserializer.fetchLong('msg_id');
-        if(msg_id === 0) this.log.error('msg_id === 0', msg_id);
+        const msg_id = deserializer.fetchLong('msg_id');
+        if(msg_id === '0') this.log.error('msg_id === 0', msg_id);
         
-        let msg_len = deserializer.fetchInt('msg_len');
+        const msg_len = deserializer.fetchInt('msg_len');
         if(!msg_len) this.log.error('no msg_len', msg_len);
         
         return deserializer;
       } catch(e) {
         this.log.error('mtpSendPlainRequest: deserialization went bad', e);
-        let error = Object.assign(baseError, {originalError: e});
+        const error = Object.assign(baseError, {originalError: e});
         throw error;
       }
     }, error => {

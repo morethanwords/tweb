@@ -37,8 +37,8 @@ class TLSerialization {
   }
 
   public getArray() {
-    let resultBuffer = new ArrayBuffer(this.offset);
-    let resultArray = new Int32Array(resultBuffer);
+    const resultBuffer = new ArrayBuffer(this.offset);
+    const resultArray = new Int32Array(resultBuffer);
   
     resultArray.set(this.intView.subarray(0, this.offset / 4));
   
@@ -53,16 +53,16 @@ class TLSerialization {
   public getBytes(typed?: false): number[];
   public getBytes(typed?: boolean): number[] | Uint8Array {
     if(typed) {
-      let resultBuffer = new ArrayBuffer(this.offset);
-      let resultArray = new Uint8Array(resultBuffer);
+      const resultBuffer = new ArrayBuffer(this.offset);
+      const resultArray = new Uint8Array(resultBuffer);
   
       resultArray.set(this.byteView.subarray(0, this.offset));
   
       return resultArray;
     }
   
-    let bytes: number[] = [];
-    for(var i = 0; i < this.offset; i++) {
+    const bytes: number[] = [];
+    for(let i = 0; i < this.offset; i++) {
       bytes.push(this.byteView[i]);
     }
     return bytes;
@@ -126,16 +126,16 @@ class TLSerialization {
     if(typeof sLong !== 'string') {
       sLong = sLong ? sLong.toString() : '0';
     }
-    var divRem = bigStringInt(sLong).divideAndRemainder(bigint(0x100000000));
+    const divRem = bigStringInt(sLong).divideAndRemainder(bigint(0x100000000));
   
     this.writeInt(divRem[1].intValue(), (field || '') + ':long[low]');
     this.writeInt(divRem[0].intValue(), (field || '') + ':long[high]');
   }
   
   public storeDouble(f: any, field?: string) {
-    var buffer = new ArrayBuffer(8);
-    var intView = new Int32Array(buffer);
-    var doubleView = new Float64Array(buffer);
+    const buffer = new ArrayBuffer(8);
+    const intView = new Int32Array(buffer);
+    const doubleView = new Float64Array(buffer);
   
     doubleView[0] = f;
   
@@ -149,11 +149,11 @@ class TLSerialization {
     if(s === undefined) {
       s = '';
     }
-    var sUTF8 = unescape(encodeURIComponent(s));
+    const sUTF8 = unescape(encodeURIComponent(s));
   
     this.checkLength(sUTF8.length + 8);
   
-    var len = sUTF8.length;
+    const len = sUTF8.length;
     if(len <= 253) {
       this.byteView[this.offset++] = len;
     } else {
@@ -162,7 +162,7 @@ class TLSerialization {
       this.byteView[this.offset++] = (len & 0xFF00) >> 8;
       this.byteView[this.offset++] = (len & 0xFF0000) >> 16;
     }
-    for(var i = 0; i < len; i++) {
+    for(let i = 0; i < len; i++) {
       this.byteView[this.offset++] = sUTF8.charCodeAt(i);
     }
   
@@ -181,7 +181,7 @@ class TLSerialization {
     this.debug && console.log('>>>', bytesToHex(bytes as number[]), (field || '') + ':bytes');
   
     // if uint8array were json.stringified, then will be: {'0': 123, '1': 123}
-    var len = (bytes as ArrayBuffer).byteLength || (bytes as Uint8Array).length;
+    const len = (bytes as ArrayBuffer).byteLength || (bytes as Uint8Array).length;
     this.checkLength(len + 8);
     if(len <= 253) {
       this.byteView[this.offset++] = len;
@@ -206,7 +206,7 @@ class TLSerialization {
       bytes = new Uint8Array(bytes);
     }
 
-    var len = bytes.length;
+    const len = bytes.length;
     if((bits % 32) || (len * 8) !== bits) {
       const error = new Error('Invalid bits: ' + bits + ', ' + bytes.length);
       console.error(error, bytes, field);
@@ -225,7 +225,7 @@ class TLSerialization {
       bytes = new Uint8Array(bytes);
     }
 
-    var len = bytes.length;
+    const len = bytes.length;
   
     this.debug && console.log('>>>', bytesToHex(bytes), (field || ''));
     this.checkLength(len);
@@ -317,9 +317,9 @@ class TLSerialization {
         throw new Error('Invalid vector type ' + type);
       }
 
-      var itemType = type.substr(7, type.length - 8); // for "Vector<itemType>"
+      const itemType = type.substr(7, type.length - 8); // for "Vector<itemType>"
       this.writeInt(obj.length, field + '[count]');
-      for(var i = 0; i < obj.length; i++) {
+      for(let i = 0; i < obj.length; i++) {
         this.storeObject(obj[i], itemType, field + '[' + i + ']');
       }
 
@@ -437,7 +437,7 @@ class TLDeserialization {
     }
   
     //var i = this.intView[this.offset / 4];
-    let i = new Uint32Array(this.byteView.buffer.slice(this.offset, this.offset + 4))[0];
+    const i = new Uint32Array(this.byteView.buffer.slice(this.offset, this.offset + 4))[0];
   
     this.debug/*  || field.includes('[dialog][read_outbox_max_id]') */ 
       && console.log('<<<', i.toString(16), i, field, 
@@ -454,9 +454,9 @@ class TLDeserialization {
   }
   
   public fetchDouble(field?: string) {
-    var buffer = new ArrayBuffer(8);
-    var intView = new Int32Array(buffer);
-    var doubleView = new Float64Array(buffer);
+    const buffer = new ArrayBuffer(8);
+    const intView = new Int32Array(buffer);
+    const doubleView = new Float64Array(buffer);
   
     intView[0] = this.readInt((field || '') + ':double[low]'),
     intView[1] = this.readInt((field || '') + ':double[high]');
@@ -464,17 +464,17 @@ class TLDeserialization {
     return doubleView[0];
   }
   
-  public fetchLong(field?: string) {
-    var iLow = this.readInt((field || '') + ':long[low]');
-    var iHigh = this.readInt((field || '') + ':long[high]');
+  public fetchLong(field?: string): string {
+    const iLow = this.readInt((field || '') + ':long[low]');
+    const iHigh = this.readInt((field || '') + ':long[high]');
   
-    var longDec = bigint(iHigh).shiftLeft(32).add(bigint(iLow)).toString();
+    const longDec = bigint(iHigh).shiftLeft(32).add(bigint(iLow)).toString();
   
     return longDec;
   }
   
-  public fetchBool(field?: string) {
-    var i = this.readInt((field || '') + ':bool');
+  public fetchBool(field?: string): boolean {
+    const i = this.readInt((field || '') + ':bool');
     if(i === boolTrue) {
       return true;
     } else if(i === boolFalse) {
@@ -485,17 +485,17 @@ class TLDeserialization {
     return this.fetchObject('Object', field);
   }
   
-  public fetchString(field?: string) {
-    var len = this.byteView[this.offset++];
+  public fetchString(field?: string): string {
+    let len = this.byteView[this.offset++];
   
     if(len === 254) {
-      var len = this.byteView[this.offset++] |
+      len = this.byteView[this.offset++] |
         (this.byteView[this.offset++] << 8) |
         (this.byteView[this.offset++] << 16);
     }
   
-    var sUTF8 = '';
-    for(var i = 0; i < len; i++) {
+    let sUTF8 = '';
+    for(let i = 0; i < len; i++) {
       sUTF8 += String.fromCharCode(this.byteView[this.offset++]);
     }
   
@@ -504,10 +504,11 @@ class TLDeserialization {
       this.offset++;
     }
   
+    let s: string;
     try {
-      var s = decodeURIComponent(escape(sUTF8));
+      s = decodeURIComponent(escape(sUTF8));
     } catch (e) {
-      var s = sUTF8;
+      s = sUTF8;
     }
   
     this.debug && console.log('<<<', s, (field || '') + ':string');
@@ -515,8 +516,8 @@ class TLDeserialization {
     return s;
   }
   
-  public fetchBytes(field?: string) {
-    var len = this.byteView[this.offset++];
+  public fetchBytes(field?: string): Uint8Array {
+    let len = this.byteView[this.offset++];
   
     if(len === 254) {
       len = this.byteView[this.offset++] |
@@ -524,7 +525,7 @@ class TLDeserialization {
         (this.byteView[this.offset++] << 16);
     }
   
-    var bytes = this.byteView.subarray(this.offset, this.offset + len);
+    const bytes = this.byteView.subarray(this.offset, this.offset + len);
     this.offset += len;
   
     // Padding
@@ -544,15 +545,15 @@ class TLDeserialization {
       throw new Error('Invalid bits: ' + bits);
     }
   
-    var len = bits / 8;
+    const len = bits / 8;
     if(typed) {
-      var result = this.byteView.subarray(this.offset, this.offset + len);
+      const result = this.byteView.subarray(this.offset, this.offset + len);
       this.offset += len;
       return result;
     }
   
-    var bytes = [];
-    for(var i = 0; i < len; i++) {
+    const bytes: number[] = [];
+    for(let i = 0; i < len; i++) {
       bytes.push(this.byteView[this.offset++]);
     }
   
@@ -572,14 +573,14 @@ class TLDeserialization {
     }
   
     if(typed) {
-      let bytes = new Uint8Array(len);
+      const bytes = new Uint8Array(len);
       bytes.set(this.byteView.subarray(this.offset, this.offset + len));
       this.offset += len;
       return bytes;
     }
   
-    var bytes = [];
-    for(var i = 0; i < len; i++) {
+    const bytes: number[] = [];
+    for(let i = 0; i < len; i++) {
       bytes.push(this.byteView[this.offset++]);
     }
   

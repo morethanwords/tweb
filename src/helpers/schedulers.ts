@@ -20,14 +20,14 @@ export function debounce<F extends AnyToVoidFunction>(
       fn(...args);
     }
 
-    waitingTimeout = window.setTimeout(() => {
+    waitingTimeout = setTimeout(() => {
       if(shouldRunLast) {
         // @ts-ignore
         fn(...args);
       }
 
       waitingTimeout = null;
-    }, ms);
+    }, ms) as any;
   };
 }
 

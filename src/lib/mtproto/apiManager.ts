@@ -182,8 +182,16 @@ export class ApiManager {
     }
     
     const networkers = cache[dcId];
-    if(networkers.length >= /* 1 */(connectionType !== 'download' ? 1 : 3)) {
-      const networker = networkers.pop();
+    if(networkers.length >= /* 1 */(connectionType === 'client' ? 1 : (connectionType === 'download' ? 3 : 3))) {
+      let i = networkers.length - 1, found = false;
+      for(; i >= 0; --i) {
+        if(networkers[i].isOnline) {
+          found = true;
+          break;
+        }
+      }
+      
+      const networker = found ? networkers.splice(i, 1)[0] : networkers.pop();
       networkers.unshift(networker);
       return Promise.resolve(networker);
     }

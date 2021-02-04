@@ -5,8 +5,8 @@ import intermediatePacketCodec from './intermediate';
 import MTPNetworker from '../networker';
 import { logger, LogLevels } from '../../logger';
 import Obfuscation from './obfuscation';
-
-const CONNECTION_RETRY_TIMEOUT = 30000;
+import { DEBUG, Modes } from '../mtproto_config';
+//import { debounce } from '../../../helpers/schedulers';
 
 export default class Socket extends MTTransport {
   ws: WebSocket;
@@ -32,12 +32,18 @@ export default class Socket extends MTTransport {
 
   lastCloseTime: number;
 
-  constructor(dcId: number, url: string, logSuffix: string) {
+  debug = Modes.debug;
+  //releasePendingDebounced: () => void;
+
+  constructor(dcId: number, url: string, logSuffix: string, public retryTimeout: number) {
     super(dcId, url);
 
-    this.log = logger(`WS-${dcId}` + logSuffix, LogLevels.error | LogLevels.log/*  | LogLevels.debug */);
+    let logLevel = LogLevels.error | LogLevels.log;
+    if(this.debug) logLevel |= LogLevels.debug;
+    this.log = logger(`WS-${dcId}` + logSuffix, logLevel);
     this.log('constructor');
     this.connect();
+    //this.releasePendingDebounced = debounce(() => this.releasePending(true), 2000, false, true);
   }
   
   connect = () => {
@@ -60,7 +66,7 @@ export default class Socket extends MTTransport {
   handleOpen = () => {
     this.log('opened');
 
-    this.log.debug('sending init packet');
+    this.debug && this.log.debug('sending init packet');
     this.ws.send(this.obfuscation.init(this.codec));
 
     //setTimeout(() => {
@@ -89,7 +95,7 @@ export default class Socket extends MTTransport {
 
     const time = Date.now();
     const diff = time - this.lastCloseTime;
-    const needTimeout = !isNaN(diff) && diff < CONNECTION_RETRY_TIMEOUT ? CONNECTION_RETRY_TIMEOUT - diff : 0;
+    const needTimeout = !isNaN(diff) && diff < this.retryTimeout ? this.retryTimeout - diff : 0;
 
     if(this.networker) {
       this.networker.setConnectionStatus(false);
@@ -111,7 +117,7 @@ export default class Socket extends MTTransport {
   };
 
   handleMessage = (event: MessageEvent) => {
-    this.log.debug('<-', 'handleMessage', event);
+    this.debug && this.log.debug('<-', 'handleMessage', event);
 
     let data = this.obfuscation.decode(new Uint8Array(event.data));
     data = this.codec.readPacket(data);
@@ -119,9 +125,9 @@ export default class Socket extends MTTransport {
     if(this.networker) { // authenticated!
       //this.pending = this.pending.filter(p => p.body); // clear pending
 
-      this.log.debug('redirecting to networker');
+      this.debug && this.log.debug('redirecting to networker');
       return this.networker.parseResponse(data).then(response => {
-        this.log.debug('redirecting to networker response:', response);
+        this.debug && this.log.debug('redirecting to networker response:', response);
         this.networker.processMessage(response.response, response.messageId, response.sessionId);
       });
     }
@@ -129,14 +135,15 @@ export default class Socket extends MTTransport {
     //console.log('got hex:', data.hex);
     const pending = this.pending.shift();
     if(!pending) {
-      return this.log.debug('no pending for res:', data.hex);
+      this.debug && this.log.debug('no pending for res:', data.hex);
+      return;
     }
 
     pending.resolve(data);
   };
 
   send = (body: Uint8Array) => {
-    this.log.debug('-> body length to pending:', body.length);
+    this.debug && this.log.debug('-> body length to pending:', body.length);
 
     //return;
 
@@ -154,11 +161,16 @@ export default class Socket extends MTTransport {
     }
   }
 
-  releasePending() {
+  releasePending(/* tt = false */) {
     if(!this.connected) {
       //this.connect();
       return;
     }
+
+    /* if(!tt) {
+      this.releasePendingDebounced();
+      return;
+    } */
 
     //this.log.error('Pending length:', this.pending.length);
     let length = this.pending.length;
@@ -173,7 +185,7 @@ export default class Socket extends MTTransport {
         const enc = this.obfuscation.encode(toEncode);
         //this.log('send after obf:', enc.hex);
 
-        this.log.debug('-> body length to send:', enc.length);
+        this.debug && this.log.debug('-> body length to send:', enc.length, this.ws.bufferedAmount);
         /* if(this.ws.bufferedAmount) {
           this.log.error('bufferedAmount:', this.ws.bufferedAmount);
         } */

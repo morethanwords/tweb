@@ -1,4 +1,4 @@
-//import { DEBUG } from "./mtproto/mtproto_config";
+import { DEBUG } from "./mtproto/mtproto_config";
 
 export enum LogLevels {
   log = 1,
@@ -13,7 +13,7 @@ function dT() {
 }
 
 export function logger(prefix: string, level = LogLevels.log | LogLevels.warn | LogLevels.error) {
-  if(process.env.NODE_ENV !== 'development'/*  || true */) {
+  if(!DEBUG/*  || true */) {
     level = LogLevels.error;
   }
 
