@@ -1,0 +1,70 @@
+.crop {
+  .overlay::selection,
+  &-component::selection {
+    background: transparent;
+  }
+
+  /* .crop-blur {
+    -webkit-filter: blur(10px) sepia(0.2);
+    filter: blur(10px) sepia(0.2);
+  } */
+
+  &-image,
+  &-overlay-image {
+    width: auto;
+    height: auto;
+    /* можно явно указать либо ширину, либо высоту */
+    /* width: 500px; */
+    /*либо height: 300px;*/
+    display: block;
+    object-fit: contain;
+    object-position: center;
+  }
+
+  /*add stretch*/
+  &-image {
+    display: block;
+    position: relative;
+    pointer-events: none;
+  }
+
+  &-component {
+    position: relative;
+    z-index: 999;
+    background-color: white;
+    margin: 0 auto;
+    overflow: hidden;
+    
+    > img {
+      max-width: 100%;
+    }
+  }
+
+  &-overlay {
+    position: absolute;
+    z-index: 999;
+    /* box-shadow: 0 0 0 3px white; */
+    overflow: hidden;
+    box-sizing: content-box;
+    border-radius: 50%;
+  
+    html.no-touch &:hover, &:active {
+      cursor: move;
+    }
+    
+    &-image {
+      position: absolute;
+      display: block;
+    }
+
+    &-color {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(255, 255, 255, .7);
+      border-radius: $border-radius;
+    }
+  }
+}

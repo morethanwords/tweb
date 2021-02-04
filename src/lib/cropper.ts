@@ -1,32 +1,29 @@
 
-function resizeableImage(image_target: HTMLImageElement, resize_canvas?: HTMLCanvasElement) {
-  var cropComponent: HTMLDivElement
-  , container: HTMLDivElement
-  , crop_img: HTMLImageElement
-  , event_state: {
-    mouse_x?: number, 
-    mouse_y?: number, 
-    container_width?: number,
-    container_height?: number,
-    container_left?: number,
-    container_top?: number
-  } = {}
-  , ratio = 1.0
-  , keyZoomValue = 4.0
-  , MINWIDTH = 50
-  //, MINHEIGHT = 50
-  , CROPWIDTH = 200
-  , CROPHEIGHT = 200
-  , cropLeft = 0
-  , cropTop = 0
-  , cropWidth = 0
-  , cropHeight = 0;
+function resizeableImage(originalImage: HTMLImageElement, canvas?: HTMLCanvasElement) {
+  let cropComponent: HTMLDivElement, 
+    container: HTMLDivElement, 
+    cropImage: HTMLImageElement, 
+    event_state: Partial<{  
+      mouse_x: number,   
+      mouse_y: number,   
+      container_width: number,  
+      container_height: number,  
+      container_left: number,  
+      container_top: number
+    }> = {}, 
+    keyZoomValue = 4.0, 
+    MINWIDTH = 50, 
+    MINHEIGHT = 50, 
+    CROPWIDTH = 200, 
+    CROPHEIGHT = 200, 
+    cropLeft = 0, 
+    cropTop = 0, 
+    cropWidth = 0, 
+    cropHeight = 0,
+    scaledRatio = 0;
   
-  if(image_target.complete) {
-    init();
-  } else {
-    image_target.onload = init;
-  }
+  if(originalImage.complete) init();
+  else originalImage.onload = init;
   
   function removeHandlers() {
     container.removeEventListener('mousedown', startMoving);
@@ -41,7 +38,7 @@ function resizeableImage(image_target: HTMLImageElement, resize_canvas?: HTMLCan
 
     cropComponent.remove();
     container.remove();
-    crop_img.remove();
+    cropImage.remove();
   }
   
   function addHandlers() {
@@ -54,70 +51,68 @@ function resizeableImage(image_target: HTMLImageElement, resize_canvas?: HTMLCan
   }
   
   function init() {
-    var wraper, left, top;
+    originalImage.classList.add('crop-blur');
+    originalImage.draggable = false;
     
-    if (image_target.dataset.isCrop) {
-      throw 'image is already crop'
-    }
+    cropImage = new Image();
+    cropImage.src = originalImage.src;
+    cropImage.draggable = false;
+    cropImage.classList.add('crop-overlay-image');
     
-    image_target.dataset.isCrop = 'true';
-    image_target.classList.add('crop-blur');
-    image_target.draggable = false;
-    
-    crop_img = new Image();
-    crop_img.crossOrigin = image_target.crossOrigin;  
-    crop_img.src = image_target.src;
-    crop_img.draggable = false;
-    
-    if(!resize_canvas) {
-      resize_canvas = document.createElement('canvas');
+    if(!canvas) {
+      canvas = document.createElement('canvas');
     }
     
     cropComponent = document.createElement('div');
     cropComponent.classList.add('crop-component');
     
     container = document.createElement('div');
-    container.classList.add('overlay');
+    container.classList.add('crop-overlay');
     
-    let overlayColor = document.createElement('div');
+    const overlayColor = document.createElement('div');
     overlayColor.classList.add('crop-overlay-color');
     
     cropComponent.appendChild(container);
-    wraper = image_target.parentNode;
-    wraper.appendChild(cropComponent);
-    cropComponent.appendChild(crop_img);
-    cropComponent.appendChild(image_target);
+    const wrapper = originalImage.parentNode as HTMLElement;
+    wrapper.appendChild(cropComponent);
+    cropComponent.appendChild(cropImage);
+    cropComponent.appendChild(originalImage);
     cropComponent.appendChild(overlayColor);
-    container.appendChild(crop_img);
+    container.appendChild(cropImage);
 
-    crop_img.style.maxWidth = image_target.width + 'px';
+    cropImage.style.maxWidth = originalImage.width + 'px';
+
+    scaledRatio = originalImage.naturalWidth / originalImage.offsetWidth;
     
-    left = image_target.offsetWidth / 2 - CROPWIDTH / 2;
-    top = image_target.offsetHeight / 2 - CROPHEIGHT / 2;
+    const left = originalImage.offsetWidth / 2 - CROPWIDTH / 2;
+    const top = originalImage.offsetHeight / 2 - CROPHEIGHT / 2;
     
+    updateCropSize(CROPWIDTH, CROPHEIGHT);
     updateCropImage(left, top);
+    updateContainer(left, top);
     addHandlers();
+    //crop();
   }
   
   function updateCropSize(width: number, height: number) {
+    cropWidth = width * scaledRatio;
+    cropHeight = height * scaledRatio;
+
     container.style.width = width + 'px';
     container.style.height = height + 'px';
   }
   
   function updateCropImage(left: number, top: number) {
-    cropLeft = -left * ratio;
-    cropTop = -top * ratio;
+    cropTop = top * scaledRatio;
+    cropLeft = left * scaledRatio;
 
-    crop_img.style.top = -top + 'px';
-    crop_img.style.left = -left + 'px';
+    cropImage.style.top = -top + 'px';
+    cropImage.style.left = -left + 'px';
   }
   
   function updateContainer(left: number, top: number) {
-    let _top = top + (CROPWIDTH / 2) + 'px';
-    let _left = left + (CROPHEIGHT / 2) + 'px';
-    
-    container.style.top = _top;
-    container.style.left = _left;
+    container.style.top = top + 'px';
+    container.style.left = left + 'px';
   }
   
   // Save the initial event details and container state
@@ -134,18 +129,18 @@ function resizeableImage(image_target: HTMLImageElement, resize_canvas?: HTMLCan
   
   function imgZoom(zoom: number) {
     zoom = zoom * Math.PI * 2
-    var newWidth = Math.floor(container.clientWidth + zoom)
-    , newHeight = Math.floor(container.clientHeight + zoom)
-    , w = crop_img.clientWidth
-    , h = crop_img.clientHeight
-    , left
-    , top
-    , right
-    , bottom;
+    let newWidth = Math.floor(container.clientWidth + zoom), 
+      newHeight = Math.floor(container.clientHeight + zoom), 
+      w = cropImage.clientWidth, 
+      h = cropImage.clientHeight, 
+      left: number, 
+      top: number, 
+      right: number, 
+      bottom: number;
     
     if(newWidth < MINWIDTH) {
       return;
-    } else if (newWidth > w) {
+    } else if(newWidth > w) {
       return;
     }
     
@@ -154,21 +149,12 @@ function resizeableImage(image_target: HTMLImageElement, resize_canvas?: HTMLCan
     right = left + newWidth;
     bottom = top + newHeight;
     
-    if(left < 0) {
-      left = 0;
-    }
-    if(top < 0) {
-      top = 0;
-    }
-    if(right > w) {
-      return;
-    }
-    if(bottom > h) {
-      return;
-    }
-    
-    ratio = CROPWIDTH / newWidth;
-    
+    if(left < 0) left = 0;
+    if(top < 0) top = 0;
+
+    if(right > w) return;
+    if(bottom > h) return;
+
     updateCropSize(newWidth, newWidth);
     updateCropImage(left, top);
     updateContainer(left, top);
@@ -215,68 +201,48 @@ function resizeableImage(image_target: HTMLImageElement, resize_canvas?: HTMLCan
   }
   
   function moving(e: any) {
-    var curuntTouch = {x: 0, y: 0}
-    , left
-    , top
-    , w
-    , h;
+    let currentTouch = {x: 0, y: 0}, 
+      left: number, 
+      top: number, 
+      w: number, 
+      h: number;
     
     e.preventDefault();
     e.stopPropagation();
     
-    curuntTouch.x = e.pageX || e.touches && e.touches[0].pageX;
-    curuntTouch.y = e.pageY || e.touches && e.touches[0].pageY;
+    currentTouch.x = e.pageX || e.touches && e.touches[0].pageX;
+    currentTouch.y = e.pageY || e.touches && e.touches[0].pageY;
     
-    left = curuntTouch.x - (event_state.mouse_x - event_state.container_left);
-    top = curuntTouch.y - (event_state.mouse_y - event_state.container_top);
+    left = currentTouch.x - (event_state.mouse_x - event_state.container_left);
+    top = currentTouch.y - (event_state.mouse_y - event_state.container_top);
     w = container.offsetWidth;
     h = container.offsetHeight;
     
-    if(left < 0) {
-      left = 0;
-    } else if (left > crop_img.offsetWidth - w) {
-      left = crop_img.offsetWidth - w;
-    }
-    if(top < 0) {
-      top = 0;
-    } else if (top > crop_img.offsetHeight - h) {
-      top = crop_img.offsetHeight - h;
-    }
+    if(left < 0) left = 0;
+    else if(left > cropImage.offsetWidth - w) left = cropImage.offsetWidth - w;
+
+    if(top < 0) top = 0;
+    else if(top > cropImage.offsetHeight - h) top = cropImage.offsetHeight - h;
     
     updateCropImage(left, top);
     updateContainer(left, top);
+    //crop();
   }
 
   function crop() {
-    cropWidth = crop_img.width * ratio;
-    cropHeight = crop_img.height * ratio;
+    canvas.width = cropWidth;
+    canvas.height = cropHeight;
     
-    resize_canvas.width = CROPWIDTH;
-    resize_canvas.height = CROPHEIGHT;
-    
-    var ctx = resize_canvas.getContext('2d');
-    ctx.drawImage(crop_img,
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(originalImage,
       cropLeft, cropTop,
+      cropWidth, cropHeight,
+      0, 0,
       cropWidth, cropHeight
     );
   }
   
   return {crop, removeHandlers};
-    
-  /* function openCropCanvasImg() {
-    crop();
-    
-    try {
-      var base64Img = resize_canvas.toDataURL('image/png', 1.0);
-      window.open(base64Img);
-    } catch(e) {
-      alert(e);
-    } finally {
-      // removeHandlers();
-    }
-    
-  } */
 }
-  
-//resizeableImage(document.querySelector('.crop-image'));
+
 export default resizeableImage;
