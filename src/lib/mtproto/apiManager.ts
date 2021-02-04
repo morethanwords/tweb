@@ -355,7 +355,7 @@ export class ApiManager {
             this.invokeApi(method, params, options).then(deferred.resolve, rejectPromise);
           }, rejectPromise);
         } else if(error.code == 303) {
-          const newDcId = +error.type.match(/^(PHONE_MIGRATE_|NETWORK_MIGRATE_|USER_MIGRATE_)(\d+)/)[2];
+          const newDcId = +error.type.match(/^(PHONE_MIGRATE_|NETWORK_MIGRATE_|USER_MIGRATE_|FILE_MIGRATE_)(\d+)/)[2];
           if(newDcId != dcId) {
             if(options.dcId) {
               options.dcId = newDcId;
