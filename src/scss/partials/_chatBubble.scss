@@ -51,7 +51,6 @@ $bubble-margin: .25rem;
   --background-color: #fff;
   --accent-color: $color-blue;
   --secondary-color: $color-gray;
-  --highlightning-color: rgba(77, 142, 80, .4);
 
   &.is-highlighted, &.is-selected, /* .bubbles.is-selecting */ & {
     &:after {
@@ -88,7 +87,7 @@ $bubble-margin: .25rem;
 
   &.is-highlighted:after {
     //background-color: rgba(0, 132, 255, .3);
-    background-color: var(--highlightning-color);
+    background-color: var(--message-highlightning-color);
 
     body:not(.animation-level-0) & {
       animation: bubbleSelected 2s linear;
@@ -125,7 +124,7 @@ $bubble-margin: .25rem;
 
   &.is-selected {
     &:after {
-      background-color: rgba(77, 142, 80, .4);
+      background-color: var(--message-highlightning-color);
     }
 
     body:not(.animation-level-0) & {
@@ -989,7 +988,7 @@ $bubble-margin: .25rem;
 
       &.is-highlighted {
         .document-selection {
-          background-color: var(--highlightning-color);
+          background-color: var(--message-highlightning-color);
         }
 
         body:not(.animation-level-0) & {
@@ -1001,7 +1000,7 @@ $bubble-margin: .25rem;
 
       &.is-selected {
         .document-selection {
-          background-color: rgba(77, 142, 80, .4);
+          background-color: var(--message-highlightning-color);
         }
 
         body:not(.animation-level-0) & {

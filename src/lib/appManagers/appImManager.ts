@@ -169,7 +169,7 @@ export class AppImManager {
     const isDefaultBackground = rootScope.settings.background.blur === AppStateManager.STATE_INIT.settings.background.blur && 
       rootScope.settings.background.slug === AppStateManager.STATE_INIT.settings.background.slug;
     if(!isDefaultBackground) {
-      appDownloadManager.cacheStorage.getFile('background-image').then(blob => {
+      appDownloadManager.cacheStorage.getFile('backgrounds/' + rootScope.settings.background.slug).then(blob => {
         this.setBackground(URL.createObjectURL(blob), false);
       }, () => { // * if NO_ENTRY_FOUND
         this.setBackground('');
@@ -222,6 +222,12 @@ export class AppImManager {
 
   private setSettings() {
     document.documentElement.style.setProperty('--messages-text-size', rootScope.settings.messagesTextSize + 'px');
+
+    if(rootScope.settings.background.highlightningColor) {
+      document.documentElement.style.setProperty('--message-highlightning-color', rootScope.settings.background.highlightningColor);
+    } else {
+      document.documentElement.style.removeProperty('--message-highlightning-color');
+    }
 
     document.body.classList.toggle('animation-level-0', !rootScope.settings.animationsEnabled);
     document.body.classList.toggle('animation-level-1', false);

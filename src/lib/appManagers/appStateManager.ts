@@ -58,6 +58,7 @@ export type State = Partial<{
     background: {
       type: 'color' | 'image' | 'default',
       blur: boolean,
+      highlightningColor?: string,
       color?: string,
       slug?: string,
     }

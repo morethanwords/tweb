@@ -6,6 +6,7 @@ import ListenerSetter from '../helpers/listenerSetter';
 import { CancellablePromise, deferredPromise } from '../helpers/cancellablePromise';
 import { pause } from '../helpers/schedulers';
 import rootScope from '../lib/rootScope';
+import { DEBUG } from '../lib/mtproto/mtproto_config';
 
 const ANIMATION_START_EVENT = 'event-heavy-animation-start';
 const ANIMATION_END_EVENT = 'event-heavy-animation-end';
@@ -14,16 +15,18 @@ let isAnimating = false;
 let heavyAnimationPromise: CancellablePromise<void> = Promise.resolve();
 let promisesInQueue = 0;
 
+const log = console.log.bind(console.log, '[HEAVY-ANIMATION]:');
+
 export const dispatchHeavyAnimationEvent = (promise: Promise<any>, timeout?: number) => {
   if(!isAnimating) {
     heavyAnimationPromise = deferredPromise<void>();
     rootScope.broadcast(ANIMATION_START_EVENT);
     isAnimating = true;
-    console.log('dispatchHeavyAnimationEvent: start');
+    DEBUG && log('start');
   }
   
   ++promisesInQueue;
-  console.log('dispatchHeavyAnimationEvent: attach promise, length:', promisesInQueue, timeout);
+  DEBUG && log('attach promise, length:', promisesInQueue, timeout);
 
   const promises = [
     timeout !== undefined ? pause(timeout) : undefined,
@@ -33,14 +36,14 @@ export const dispatchHeavyAnimationEvent = (promise: Promise<any>, timeout?: num
   const perf = performance.now();
   Promise.race(promises).then(() => {
     --promisesInQueue;
-    console.log('dispatchHeavyAnimationEvent: promise end, length:', promisesInQueue, performance.now() - perf);
+    DEBUG && log('promise end, length:', promisesInQueue, performance.now() - perf);
     if(!promisesInQueue) {
       isAnimating = false;
       promisesInQueue = 0;
       rootScope.broadcast(ANIMATION_END_EVENT);
       heavyAnimationPromise.resolve();
 
-      console.log('dispatchHeavyAnimationEvent: end');
+      DEBUG && log('end');
     }
   });
 
