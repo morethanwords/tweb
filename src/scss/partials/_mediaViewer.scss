@@ -27,7 +27,7 @@
     transition: var(--open-duration);
     cursor: pointer;
 
-    html.no-touch &:hover {
+    @include hover() {
       color: #fff;
     }
   }
@@ -62,7 +62,7 @@
       margin: 0 .25rem;
       transition: var(--open-duration);
 
-      html.no-touch &:hover {
+      @include hover() {
         color: #fff;
       }
     }
@@ -136,7 +136,7 @@
     .media-viewer-whole.active & {
       opacity: 1;
 
-      html.no-touch & { 
+      @include hover() { 
         opacity: .2;
 
         &:hover {
@@ -156,7 +156,7 @@
     cursor: pointer;
     z-index: 5;
 
-    html.no-touch & {
+    @include hover() {
       height: calc(100% - 3.75rem);
 
       &:hover {

@@ -193,9 +193,7 @@
 					margin: 0;
 				}
 				
-				html.no-touch &:hover {
-					background-color: var(--color-gray-hover);
-				}
+				@include hover-background-effect();
 			}
 		}
 

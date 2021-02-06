@@ -6,15 +6,17 @@ $button-primary-background: #4EA4F6;
 
 $color-green: #4DCD5E;
 $color-error: #E53935;
+$color-red: #E53935;
 $color-gray: #707579;
 $color-blue: #50a2e9;
+$hover-alpha: .08;
 
 $darkgreen: #50af4f;
 $color-text-green: $darkgreen;
 
 $lightgrey: #dadce0;
 
-$light: rgba($color-gray, 0.08);
+$light: rgba($color-gray, $hover-alpha);
 
 //$small-screen: 720px;
 $small-screen: 600px;
@@ -31,57 +33,20 @@ $chat-input-handhelds-size: 2.875rem;
 $chat-padding: 1rem;
 $chat-padding-handhelds: .5rem;
 
-@mixin respond-to($media) {
-  @if $media == handhelds {
-    @media only screen and (max-width: $small-screen) { @content; }
-    //@media only screen and (orientation: landscape) and (max-device-width: 896px) { @content; } // iPhone 11 Pro Max
-  }
-  @else if $media == small-screens {
-    @media only screen and (min-width: $small-screen + 1) { @content; }
-  }
-  @else if $media == only-small-screens {
-    @media only screen and (min-width: $small-screen + 1) and (max-width: $medium-screen) { @content; }
-  }
-  @else if $media == medium-screens {
-    @media only screen and (min-width: $medium-screen + 1) { @content; }
-  }
-  @else if $media == only-medium-screens {
-    @media only screen and (min-width: $medium-screen + 1) and (max-width: $large-screen) { @content; }
-  }
-  @else if $media == before-medium-screens {
-    @media only screen and (max-width: $medium-screen) { @content; }
-  }
-  @else if $media == large-screens {
-    @media only screen and (min-width: $large-screen + 1) { @content; }
-  }
-  @else if $media == not-handhelds {
-    @media only screen and (min-width: $small-screen + 1) { @content; }
-  }
-
-  @else if $media == floating-left-sidebar {
-    @media only screen and (min-width: $small-screen + 1) and (max-width: $floating-left-sidebar) { @content; }
-  }
-  @else if $media == until-floating-left-sidebar {
-    @media only screen and (max-width: $floating-left-sidebar) { @content; }
-  }
-  @else if $media == no-floating-left-sidebar {
-    @media only screen and (min-width: $floating-left-sidebar + 1) { @content; }
-  }
-
-  @else if $media == esg-top { // topbar + chat input + margin bottom + height of ESG 
-    @media only screen and (min-height: 570px) and (min-width: $small-screen + 1) { @content; }
-  }
-
-  @else if $media == esg-bottom {
-    @media only screen and (max-height: 569px) { @content; }
-  }
+@function hover-color($color) {
+  @return rgba($color, $hover-alpha);
 }
+
+@import "mixins/hover";
+@import "mixins/respondTo";
 
 :root {
   --vh: 1vh;
   --z-below: -1;
   --color-gray: #c4c9cc;
-  --color-gray-hover: rgba(112, 117, 121, .08);
+  --color-gray-hover: #{hover-color($color-gray)};
+  --color-blue-hover: #{hover-color($color-blue)};
+  --color-red-hover: #{hover-color($color-red)};
   --pm-transition: .2s ease-in-out;
   --layer-transition: .2s ease-in-out;
   --tabs-transition: .25s ease-in-out;
@@ -569,9 +534,7 @@ hr {
     display: grid;
     grid-template-columns: calc(26px + 2rem) 1fr 80px;
     
-    html.no-touch &:hover {
-      background-color: var(--color-gray-hover);
-    }
+    @include hover-effect();
   }
   
   // +2 px bc of whitespace
@@ -616,7 +579,7 @@ hr {
   height: 24px;
   margin-left: .4rem;
   opacity: .5;
-  transition: .2s;
+  transition: .2s opacity;
   cursor: pointer;
   font-size: 1.5rem;
   
@@ -624,7 +587,7 @@ hr {
     margin-top: -14px;
   }
   
-  html.no-touch &:hover {
+  @include hover() {
     opacity: 1;
   }
 }
@@ -684,9 +647,8 @@ img.emoji {
 }
 
 .super-sticker {
-  html.no-touch &:hover {
+  @include hover-background-effect() {
     border-radius: 10px;
-    background-color: var(--color-gray-hover);
   }
   
   /* &:nth-child(5n+5) {
@@ -1045,10 +1007,7 @@ middle-ellipsis-element {
 }
 
 .hover-effect {
-  html.no-touch &:hover {
-    transition: .2s background-color;
-    background-color: var(--color-gray-hover);
-  }
+  @include hover-background-effect();
 }
 
 .progress-ring {

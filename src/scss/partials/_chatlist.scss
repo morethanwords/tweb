@@ -77,9 +77,7 @@
       overflow: hidden;
     }
 
-    html.no-touch &:hover {
-      background: var(--color-gray-hover);
-    }
+    @include hover-background-effect();
 
     span {
       display: inline-block;

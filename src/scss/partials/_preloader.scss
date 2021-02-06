@@ -114,7 +114,7 @@ $transition: .2s ease-in-out;
       fill: #fff;
     }
 
-    html.no-touch &:hover {
+    @include hover() {
       background: none;
     }
   }

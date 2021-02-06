@@ -1,0 +1,36 @@
+@mixin hover($color: null, $property: null, $use-transition: false) {
+  @if $color {
+    @if $color == gray {
+      $color: var(--color-gray-hover);
+    } @else if $color == blue {
+      $color: var(--color-blue-hover);
+    } @else if $color == red {
+      $color: var(--color-red-hover);
+    }
+  }
+
+  html.no-touch &:hover {
+    @if $property != null {
+      @if $use-transition {
+        transition: .2s #{$property};
+      }
+      
+      #{$property}: $color;
+    }
+    
+
+    @content;
+  }
+}
+
+@mixin hover-effect($color: gray, $use-transition: false) {
+  @include hover($color, color, $use-transition) {
+    @content;
+  }
+}
+
+@mixin hover-background-effect($color: gray, $use-transition: false) {
+  @include hover($color, background-color, $use-transition) {
+    @content;
+  }
+}

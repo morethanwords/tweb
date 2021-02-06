@@ -48,7 +48,8 @@
     box-sizing: content-box;
     border-radius: 50%;
   
-    html.no-touch &:hover, &:active {
+    html.no-touch &:hover, 
+    &:active {
       cursor: move;
     }
     

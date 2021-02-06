@@ -25,9 +25,7 @@
     color: $color-blue;
   }
   
-  html.no-touch &:hover {
-    background-color: var(--color-gray-hover);
-  }
+  @include hover-background-effect();
 
   &:disabled {
     color: #cacaca;
@@ -164,9 +162,7 @@
     text-overflow: ellipsis;
     align-items: center;
 
-    html.no-touch &:hover {
-      background-color: rgba(112, 117, 121, .06);
-    }
+    @include hover-background-effect();
 
     &:before {
       color: $color-gray;
@@ -227,7 +223,7 @@
   padding: 0; // new
   transition: .2s opacity;
  
-  html.no-touch &:hover {
+  @include hover() {
     transition: .2s background-color, .2s opacity;
     background: darken($color-blue, 8%);
   }
@@ -259,9 +255,7 @@
   //text-transform: capitalize;
   font-weight: normal;
 
-  html.no-touch &:hover {
-    background-color:	var(--color-gray-hover);
-  }
+  @include hover-background-effect();
 
   // * tgico
   &:before {
