@@ -167,16 +167,18 @@
 
   .checkbox-field {
     margin-bottom: 0;
-    padding-left: 0;
+    margin-left: 0;
   }
 
-  .popup-album, .popup-container:not(.is-album) .popup-item-media {
+  .popup-album, 
+  .popup-container:not(.is-album) .popup-item-media {
     position: relative;
     border-radius: inherit;
     overflow: hidden;
   }
 
-  .popup-album + .popup-album, .popup-container:not(.is-album) .popup-item-media + .popup-item-media {
+  .popup-album + .popup-album, 
+  .popup-container:not(.is-album) .popup-item-media + .popup-item-media {
     margin-top: .5rem;
   }
 }

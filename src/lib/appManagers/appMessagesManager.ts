@@ -34,6 +34,7 @@ import appUsersManager from "./appUsersManager";
 import appWebPagesManager from "./appWebPagesManager";
 import appDraftsManager from "./appDraftsManager";
 import pushHeavyTask from "../../helpers/heavyQueue";
+import { getFileNameByLocation } from "../../helpers/fileName";
 
 //console.trace('include');
 // TODO: если удалить сообщение в непрогруженном диалоге, то при обновлении, из-за стейта, последнего сообщения в чатлисте не будет
@@ -786,18 +787,21 @@ export class AppMessagesManager {
 
     this.log('sendFile', attachType, apiFileName, file.type, options);
 
-    const preloader = new ProgressivePreloader({
+    const preloader = isDocument ? undefined : new ProgressivePreloader({
       attachMethod: 'prepend',
       tryAgainOnFail: false,
       isUpload: true
     });
 
-    const media = {
+    const sentDeferred = deferredPromise<InputMedia>();
+
+    const media = isDocument ? undefined : {
       _: photo ? 'messageMediaPhoto' : 'messageMediaDocument',
       pFlags: {},
       preloader,
       photo,
-      document
+      document,
+      promise: sentDeferred
     };
 
     const message: any = {
@@ -833,7 +837,6 @@ export class AppMessagesManager {
     let uploaded = false,
       uploadPromise: ReturnType<ApiFileManager['uploadFile']> = null;
 
-    const sentDeferred = deferredPromise<InputMedia>();
     message.send = () => {
       if(isDocument) {
         const {id, access_hash, file_reference} = file as MyDocument;
@@ -4394,18 +4397,31 @@ export class AppMessagesManager {
       if(message.media.photo) {
         const photo = appPhotosManager.getPhoto('' + tempId);
         if(/* photo._ !== 'photoEmpty' */photo) {
-          const newPhoto = message.media.photo;
+          const newPhoto = message.media.photo as MyPhoto;
           // костыль
           defineNotNumerableProperties(newPhoto, ['downloaded', 'url']);
           newPhoto.downloaded = photo.downloaded;
           newPhoto.url = photo.url;
+
+          const photoSize = newPhoto.sizes[newPhoto.sizes.length - 1] as PhotoSize.photoSize;
+          defineNotNumerableProperties(photoSize, ['url']);
+          photoSize.url = photo.url;
+
+          const downloadOptions = appPhotosManager.getPhotoDownloadOptions(newPhoto, photoSize);
+          const fileName = getFileNameByLocation(downloadOptions.location);
+          appDownloadManager.fakeDownload(fileName, photo.url);
         }
       } else if(message.media.document) {
         const doc = appDocsManager.getDoc('' + tempId);
-        if(/* doc._ !== 'documentEmpty' &&  */doc?.type && doc.type !== 'sticker') {
-          const newDoc = message.media.document;
-          newDoc.downloaded = doc.downloaded;
-          newDoc.url = doc.url;
+        if(doc) {
+          if(/* doc._ !== 'documentEmpty' &&  */doc.type && doc.type !== 'sticker') {
+            const newDoc = message.media.document;
+            newDoc.downloaded = doc.downloaded;
+            newDoc.url = doc.url;
+
+            const fileName = appDocsManager.getInputFileName(newDoc);
+            appDownloadManager.fakeDownload(fileName, doc.url);
+          }
         }
       } else if(message.media.poll) {
         delete appPollsManager.polls[tempId];
