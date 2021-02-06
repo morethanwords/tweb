@@ -703,7 +703,7 @@ $bubble-margin: .25rem;
       display: block;
       font-size: calc(1rem - 1px);
       
-      html.no-touch &:hover {
+      @include hover() {
         text-decoration: underline;
       }
     }
@@ -1630,7 +1630,7 @@ $bubble-margin: .25rem;
   }
 
   .quote {
-    html.no-touch &:hover {
+    @include hover() {
       background-color: $light;
     }
   }
@@ -1752,7 +1752,7 @@ $bubble-margin: .25rem;
   }
 
   .quote {
-    html.no-touch &:hover {
+    @include hover() {
       background-color: rgba($color-green, .12);
     }
   }
@@ -2012,7 +2012,7 @@ $bubble-margin: .25rem;
     transition: background-color .35s ease;
     overflow: hidden;
 
-    html.no-touch &:hover {
+    @include hover() {
       background-color: rgba(0, 0, 0, .06);
     }
 
@@ -2158,7 +2158,7 @@ poll-element {
         }
       }
 
-      html.no-touch &:hover {
+      @include hover() {
         .animation-ring {
           visibility: visible;
           transform: scale(1);

@@ -63,7 +63,7 @@
       transition: none;
     }
 
-    html.no-touch &:hover {
+    @include hover() {
       background-color: #fae2e3;
       cursor: pointer;
 

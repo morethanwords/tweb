@@ -75,7 +75,7 @@ export default class PopupElement {
         const button = document.createElement('button');
         button.className = 'btn' + (b.isDanger ? ' danger' : '');
         button.innerHTML =  b.text;
-        ripple(button);
+        //ripple(button);
   
         if(b.callback) {
           button.addEventListener('click', () => {

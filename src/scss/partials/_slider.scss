@@ -28,7 +28,7 @@
     border-top-right-radius: 6px;
     transition: none !important;
 
-    html.no-touch & {
+    @include hover() {
       background-color: transparent;
 
       &:hover {

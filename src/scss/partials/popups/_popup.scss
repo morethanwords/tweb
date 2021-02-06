@@ -74,7 +74,7 @@
       transition: none;
     }
     
-    html.no-touch &:hover {
+    @include hover() {
       color: #000;
     }
   }
@@ -121,7 +121,6 @@
       font-weight: 500;
 			padding: .5rem;
 			text-transform: uppercase;
-			transition: .2s;
 			border-radius: $border-radius;
 			cursor: pointer;
       color: $color-blue;
@@ -135,9 +134,7 @@
         transition: none;
       }
 			
-			html.no-touch &:hover {
-				background-color: var(--color-gray-hover);
-			}
+      @include hover-background-effect(blue);
 			
 			& + .btn {
         margin-top: .5rem;
@@ -146,6 +143,10 @@
         max-width: 286px;
         overflow: hidden;
 			}
+
+      &.danger {
+        @include hover-background-effect(red);
+      }
 		}
   }
   
