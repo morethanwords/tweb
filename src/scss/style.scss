@@ -56,6 +56,7 @@ $chat-padding-handhelds: .5rem;
   --message-handhelds-margin: 5.5625rem;
   --message-beside-button-margin: 2.875rem;
   --message-time-background: rgba(0, 0, 0, .35);
+  --message-highlightning-color: rgba(77, 142, 80, .4);
   --messages-container-width: #{$messages-container-width};
   --messages-text-size: 16px;
   --messages-secondary-text-size: calc(var(--messages-text-size) - 1px);
