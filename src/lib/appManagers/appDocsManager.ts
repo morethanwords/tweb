@@ -278,27 +278,20 @@ export class AppDocsManager {
     return getFileNameByLocation(this.getInput(doc, thumbSize), {fileName: doc.file_name});
   }
 
-  public downloadDoc(doc: MyDocument/* , thumb?: PhotoSize.photoSize */, queueId?: number): DownloadBlob {
-    const fileName = this.getInputFileName(doc/* , thumb?.type */);
+  public downloadDoc(doc: MyDocument, queueId?: number): DownloadBlob {
+    const fileName = this.getInputFileName(doc);
 
     let download: DownloadBlob = appDownloadManager.getDownload(fileName);
     if(download) {
       return download;
     }
 
-    const downloadOptions = this.getFileDownloadOptions(doc, undefined/* thumb */, queueId);
+    const downloadOptions = this.getFileDownloadOptions(doc, undefined, queueId);
     download = appDownloadManager.download(downloadOptions);
 
     const originalPromise = download;
     originalPromise.then((blob) => {
-      /* if(thumb) {
-        defineNotNumerableProperties(thumb, ['url']);
-        thumb.url = URL.createObjectURL(blob);
-        return;
-      } else  */if(!doc.supportsStreaming) {
-        doc.url = URL.createObjectURL(blob);
-      }
-
+      doc.url = URL.createObjectURL(blob);
       doc.downloaded = true;
     });
 
@@ -390,8 +383,13 @@ export class AppDocsManager {
   }
 
   public saveDocFile(doc: MyDocument, queueId?: number) {
-    const options = this.getFileDownloadOptions(doc, undefined, queueId);
-    return appDownloadManager.downloadToDisc(options, doc.file_name);
+    /* const options = this.getFileDownloadOptions(doc, undefined, queueId);
+    return appDownloadManager.downloadToDisc(options, doc.file_name); */
+    const promise = this.downloadDoc(doc, queueId);
+    promise.then(() => {
+      appDownloadManager.createDownloadAnchor(doc.url, doc.file_name);
+    });
+    return promise;
   }
 }
 

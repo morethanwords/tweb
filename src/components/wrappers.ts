@@ -385,8 +385,6 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
 }): HTMLElement {
   if(!fontWeight) fontWeight = 500;
 
-  const uploading = message.pFlags.is_outgoing;
-
   const doc = (message.media.document || message.media.webpage.document) as MyDocument;
   if(doc.type === 'audio' || doc.type === 'voice') {
     const audioElement = new AudioElement();
@@ -394,11 +392,11 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
     audioElement.setAttribute('peer-id', '' + message.peerId);
     audioElement.withTime = withTime;
     audioElement.message = message;
-
+    
     if(voiceAsMusic) audioElement.voiceAsMusic = voiceAsMusic;
     if(searchContext) audioElement.searchContext = searchContext;
     if(showSender) audioElement.showSender = showSender;
-
+    
     const isPending = message.pFlags.is_outgoing;
     if(isPending) {
       audioElement.preloader = message.media.preloader;
@@ -408,6 +406,8 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
     audioElement.render();
     return audioElement;
   }
+  
+  const uploading = message.pFlags.is_outgoing && message.media?.preloader;
 
   let extSplitted = doc.file_name ? doc.file_name.split('.') : '';
   let ext = '';
@@ -415,17 +415,20 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
 
   let docDiv = document.createElement('div');
   docDiv.classList.add('document', `ext-${ext}`);
+  docDiv.dataset.docId = doc.id;
 
   const icoDiv = document.createElement('div');
   icoDiv.classList.add('document-ico');
 
-  if(doc.thumbs?.length || (uploading && doc.url && doc.type === 'photo')) {
+  if(doc.thumbs?.length || (message.pFlags.is_outgoing && doc.url && doc.type === 'photo')) {
     docDiv.classList.add('document-with-thumb');
 
-    if(uploading) {
+    let imgs: HTMLImageElement[] = [];
+    if(message.pFlags.is_outgoing) {
       icoDiv.innerHTML = `<img src="${doc.url}">`;
+      imgs.push(icoDiv.firstElementChild as HTMLImageElement);
     } else {
-      wrapPhoto({
+      const wrapped = wrapPhoto({
         photo: doc, 
         message: null, 
         container: icoDiv, 
@@ -435,10 +438,11 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
         withoutPreloader: true
       });
       icoDiv.style.width = icoDiv.style.height = '';
+      if(wrapped.images.thumb) imgs.push(wrapped.images.thumb);
+      if(wrapped.images.full) imgs.push(wrapped.images.full);
     }
 
-    const img = icoDiv.querySelector('img');
-    if(img) img.classList.add('document-thumb');
+    imgs.forEach(img => img.classList.add('document-thumb'));
   } else {
     icoDiv.innerText = ext;
   }
@@ -461,48 +465,69 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
   }
   
   docDiv.innerHTML = `
-  ${!uploading ? `<div class="document-download"></div>` : ''}
+  ${doc.downloaded && !uploading ? '' : `<div class="document-download"></div>`}
   <div class="document-name"><middle-ellipsis-element data-font-weight="${fontWeight}">${fileName}</middle-ellipsis-element>${titleAdditionHTML}</div>
   <div class="document-size">${size}</div>
   `;
 
   docDiv.prepend(icoDiv);
 
-  if(!uploading) {
-    const downloadDiv = docDiv.querySelector('.document-download') as HTMLDivElement;
-    const preloader = new ProgressivePreloader();
-
-    const load = () => {
-      const download = appDocsManager.saveDocFile(doc, appImManager.chat.bubbles ? appImManager.chat.bubbles.lazyLoadQueue.queueId : 0);
-
-      download.then(() => {
-        downloadDiv.classList.add('downloaded');
-        setTimeout(() => {
-          downloadDiv.remove();
-        }, 200);
-      });
-
-      preloader.attach(downloadDiv, true, download);
-
-      return {download};
-    };
-
-    preloader.construct();
-    preloader.setManual();
-    preloader.attach(downloadDiv);
-    preloader.setDownloadFunction(load);
-
-    attachClickEvent(docDiv, (e) => {
-      preloader.onClick(e);
-    });
-
-    /* if(doc.downloaded) {
-      downloadDiv.classList.add('downloaded');
-    } */
-  } else if(message.media?.preloader) {
-    const icoDiv = docDiv.querySelector('.document-ico');
-    message.media.preloader.attach(icoDiv, false);
+  if(!uploading && message.pFlags.is_outgoing) {
+    return docDiv;
   }
+
+  let downloadDiv: HTMLElement, preloader: ProgressivePreloader = null;
+  const onLoad = () => {
+    if(downloadDiv) {
+      downloadDiv.classList.add('downloaded');
+      const _downloadDiv = downloadDiv;
+      setTimeout(() => {
+        _downloadDiv.remove();
+      }, 200);
+      downloadDiv = null;
+    }
+
+    if(preloader) {
+      preloader = null;
+    }
+  };
+
+  const load = () => {
+    const doc = appDocsManager.getDoc(docDiv.dataset.docId);
+    const download = appDocsManager.saveDocFile(doc, appImManager.chat.bubbles ? appImManager.chat.bubbles.lazyLoadQueue.queueId : 0);
+
+    if(downloadDiv) {
+      download.then(onLoad);
+      preloader.attach(downloadDiv, true, download);
+    }
+
+    return {download};
+  };
+
+  if(!(doc.downloaded && !uploading)) {
+    downloadDiv = docDiv.querySelector('.document-download');
+    preloader = message.media.preloader as ProgressivePreloader;
+
+    if(!preloader) {
+      preloader = new ProgressivePreloader();
+
+      preloader.construct();
+      preloader.setManual();
+      preloader.attach(downloadDiv);
+      preloader.setDownloadFunction(load);
+    } else {
+      preloader.attach(downloadDiv);
+      message.media.promise.then(onLoad);
+    }
+  }
+
+  attachClickEvent(docDiv, (e) => {
+    if(preloader) {
+      preloader.onClick(e);
+    } else {
+      load();
+    }
+  });
   
   return docDiv;
 }

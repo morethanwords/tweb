@@ -8,7 +8,8 @@ import { toast } from "../toast";
 import { prepareAlbum, wrapDocument } from "../wrappers";
 import CheckboxField from "../checkbox";
 import SendContextMenu from "../chat/sendContextMenu";
-import { createPosterForVideo, createPosterFromVideo } from "../../helpers/files";
+import { createPosterForVideo, createPosterFromVideo, onVideoLoad } from "../../helpers/files";
+import { MyDocument } from "../../lib/appManagers/appDocsManager";
 
 type SendFileParams = Partial<{
   file: File,
@@ -241,7 +242,7 @@ export default class PopupNewMedia extends PopupElement {
             video.muted = true;
             video.setAttribute('playsinline', 'true');
 
-            video.onloadeddata = () => {
+            onVideoLoad(video).then(() => {
               params.width = video.videoWidth;
               params.height = video.videoHeight;
               params.duration = Math.floor(video.duration);
@@ -252,7 +253,7 @@ export default class PopupNewMedia extends PopupElement {
                 params.thumbURL = URL.createObjectURL(blob);
                 resolve(itemDiv);
               });
-            };
+            });
 
             video.append(source);
           } else {
@@ -293,8 +294,9 @@ export default class PopupNewMedia extends PopupElement {
                   file_name: file.name || '',
                   size: file.size,
                   type: isPhoto ? 'photo' : 'doc',
-                  url: params.objectURL
-                }
+                  url: params.objectURL,
+                  downloaded: true
+                } as MyDocument
               }
             } as any
           });

@@ -14,8 +14,7 @@ export default class ProgressivePreloader {
   private tempId = 0;
   private detached = true;
 
-  private promise: CancellablePromise<any> = null;
-  public onCancel: () => any = null;
+  public promise: CancellablePromise<any> = null;
 
   public isUpload = false;
   private cancelable = true;

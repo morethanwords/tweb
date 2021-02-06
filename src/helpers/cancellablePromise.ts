@@ -61,6 +61,10 @@ export function deferredPromise<T>() {
     deferred.notify = null;
     deferred.listeners.length = 0;
     deferred.lastNotify = null;
+
+    if(deferred.cancel) {
+      deferred.cancel = () => {};
+    }
   });
 
   Object.assign(deferred, deferredHelper);

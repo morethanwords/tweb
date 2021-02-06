@@ -1,15 +1,17 @@
 .document {
+  --background-color: #{$color-blue};
+  $border-radius: .375rem;
   padding-left: 4.25rem;
   height: 70px;
 
   &-ico {
-    background-color: $color-blue;
-    border-radius: .5rem;
-    line-height: 10px;
+    background-color: var(--background-color);
+    border-radius: $border-radius;
+    line-height: 1;
     text-align: center;
 
     .document:not(.document-with-thumb) & {
-      padding: 1.5rem .25rem 0 .25rem;
+      padding: 1.5625rem .25rem 0 .25rem;
 
       @include respond-to(handhelds) {
         padding: 14px 0px 0px 0px;
@@ -34,9 +36,7 @@
   }
   
   &-ico, &-download {
-    font-weight: 500;
-    letter-spacing: 1px;
-    font-size: 1.1rem;
+    font-size: 1.125rem;
     background-size: contain;
   }
 
@@ -47,39 +47,26 @@
   }
 
   &-download {
-    background-color: $color-blue;
-    border-radius: .5rem;
+    background-color: var(--background-color);
+    border-radius: $border-radius;
   }
 
   &.ext-zip {
-    .document-ico, .document-download {
-      background-color: #FB8C00;
-    }
+    --background-color: #FB8C00;
   }
 
   &.ext-pdf {
-    .document-ico, .document-download {
-      background-color: #DF3F40;
-    }
+    --background-color: #DF3F40;
   }
 
   &.ext-apk {
-    .document-ico, .document-download {
-      background-color: #43A047;
-    }
+    --background-color: #43A047;
   }
 
   &.document-with-thumb {
+    --background-color: #fff;
+
     .document-ico {
-      background: #fff;
-      border-radius: $border-radius;
-
-      .document-thumb {
-        object-fit: cover;
-        width: 100%;
-        height: 100%;
-      }
-
       &:after {
         display: none;
       }
@@ -88,6 +75,22 @@
     .document-download {
       background-color: rgba(0, 0, 0, .15);
     }
+
+    .preloader-circular {
+      transition: background-color .2s;
+    }
+
+    .preloader-container:not(.manual) {
+      .preloader-circular {
+        background-color: rgba(0, 0, 0, .3) !important;
+      }
+    }
+  }
+
+  &-thumb {
+    object-fit: cover;
+    width: 100%;
+    height: 100%;
   }
   
   &-name {
@@ -96,7 +99,7 @@
     line-height: 1.3;
     font-size: 1rem;
   }
-  
+
   &-size {
     white-space: nowrap;
     color: $color-gray;
@@ -106,13 +109,21 @@
   }
 
   .preloader-container {
-    width: 2.375rem;
-    height: 2.375rem;
+    width: 2.5rem;
+    height: 2.5rem;
 
     @include respond-to(handhelds) {
-      width: 26px;
-      height: 26px;
+      width: 1.625rem;
+      height: 1.625rem;
     }
+  }
+
+  .preloader-circular {
+    background-color: transparent !important;
+  }
+
+  .preloader-path-new {
+    stroke-width: 2.5;
   }
 }
 
@@ -127,20 +138,20 @@
   &-ico, &-download {
     position: absolute;
     left: 0;
-    width: 54px;
-    height: 54px;
+    width: 3.375rem;
+    height: 3.375rem;
     color: #fff;
 
     @include respond-to(handhelds) {
-      height: 36px;
-      width: 36px;
+      height: 2.25rem;
+      width: 2.25rem;
     }
   }
 
   &-download {
     z-index: 1;
     align-items: center;
-    font-size: 24px;
+    font-size: 1.5rem;
     cursor: pointer;
     display: flex;
     justify-content: center;
@@ -155,13 +166,7 @@
   }
 
   .preloader-container:not(.preloader-streamable) {
-    width: 100%;
-    height: 100%;
     transform: scale(1) !important;
-  }
-
-  .preloader-circular {
-    background-color: transparent !important;
   }
 }
 
@@ -173,5 +178,14 @@
     &.tgico-largeplay:before {
       margin-right: -1px;
     }
+  }
+
+  .preloader-circular {
+    background-color: transparent !important;
+  }
+
+  .preloader-container:not(.preloader-streamable) {
+    width: 100%;
+    height: 100%;
   }
 }

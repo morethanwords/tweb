@@ -77,6 +77,19 @@ export class AppDownloadManager {
     delete this.downloads[fileName];
   }
 
+  public fakeDownload(fileName: string, value: Blob | string) {
+    const deferred = this.getNewDeferred(fileName);
+    if(typeof(value) === 'string') {
+      fetch(value)
+      .then(response => response.blob())
+      .then(blob => deferred.resolve(blob));
+    } else {
+      deferred.resolve(value);
+    }
+
+    return deferred;
+  }
+
   public download(options: DownloadOptions): DownloadBlob {
     const fileName = getFileNameByLocation(options.location, {fileName: options.fileName});
     if(this.downloads.hasOwnProperty(fileName)) return this.downloads[fileName];
@@ -174,7 +187,7 @@ export class AppDownloadManager {
     }
   }
 
-  private createDownloadAnchor(url: string, fileName: string, onRemove?: () => void) {
+  public createDownloadAnchor(url: string, fileName: string, onRemove?: () => void) {
     const a = document.createElement('a');
     a.href = url;
     a.download = fileName;
