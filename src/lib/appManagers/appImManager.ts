@@ -258,7 +258,7 @@ export class AppImManager {
       this.chatsSelectTabDebounced();
 
       if(rootScope.settings.animationsEnabled) { // ! нужно переделать на animation, так как при лаге анимация будет длиться не 250мс
-        dispatchHeavyAnimationEvent(pause(250), 250);
+        dispatchHeavyAnimationEvent(pause(250 + 150), 250 + 150);
       }
     }
 
@@ -517,7 +517,7 @@ export class AppImManager {
     this.log('selectTab', id, prevTabId);
 
     if(prevTabId !== -1 && prevTabId !== id && rootScope.settings.animationsEnabled) {
-      const transitionTime = mediaSizes.isMobile ? 250 : 200;
+      const transitionTime = (mediaSizes.isMobile ? 250 : 200) + 100; // * cause transition time could be > 250ms
       dispatchHeavyAnimationEvent(pause(transitionTime), transitionTime);
     }
 
@@ -589,7 +589,7 @@ export class AppImManager {
       spliced.forEach(chat => {
         chat.destroy();
       });
-    }, 250);
+    }, 250 + 100);
   }
 
   public setPeer(peerId: number, lastMsgId?: number): boolean {

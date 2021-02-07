@@ -216,13 +216,15 @@ export default class ChatBubbles {
 
         if(message.media?.document) {
           const element = bubble.querySelector(`audio-element[message-id="${tempId}"], .document[data-doc-id="${tempId}"]`) as HTMLElement;
-          if(element instanceof AudioElement) {
-            element.setAttribute('doc-id', message.media.document.id);
-            element.setAttribute('message-id', '' + mid);
-            element.message = message;
-            element.onLoad(true);
-          } else {
-            element.dataset.docId = message.media.document.id;
+          if(element) {
+            if(element instanceof AudioElement) {
+              element.setAttribute('doc-id', message.media.document.id);
+              element.setAttribute('message-id', '' + mid);
+              element.message = message;
+              element.onLoad(true);
+            } else {
+              element.dataset.docId = message.media.document.id;
+            }
           }
         }
 

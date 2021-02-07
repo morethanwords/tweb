@@ -11,9 +11,13 @@
       padding: 12px 14px;
 
       @media (min-height: 470px) {
-        &.is-max-lines {
+        &[data-lines="7"] {
           top: 19px;
           //left: 8px;
+        }
+
+        &[data-lines="5"] {
+          top: -19px;
         }
       }
     }
