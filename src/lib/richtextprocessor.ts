@@ -349,7 +349,6 @@ namespace RichTextProcessor {
       [_ in MessageEntity['_']]: true
     }>,
 
-    nested?: true,
     contextHashtag?: string
   }> = {}) {
     if(!text || !text.length) {
@@ -499,7 +498,6 @@ namespace RichTextProcessor {
             if(entity._ === 'messageEntityTextUrl') {
               url = (entity as MessageEntity.messageEntityTextUrl).url;
               url = wrapUrl(url, true);
-              //inner = wrapRichNestedText(entityText, entity.nested, options);
             } else {
               url = wrapUrl(entityText, false);
               //inner = encodeEntities(replaceUrlEncodings(entityText));

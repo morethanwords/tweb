@@ -43,6 +43,7 @@ import { FocusDirection } from "../../helpers/fastSmoothScroll";
 import useHeavyAnimationCheck, { getHeavyAnimationPromise, dispatchHeavyAnimationEvent } from "../../hooks/useHeavyAnimationCheck";
 import { fastRaf } from "../../helpers/schedulers";
 import { deferredPromise } from "../../helpers/cancellablePromise";
+import RepliesElement from "./replies";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS = ['messageActionHistoryClear'];
@@ -190,6 +191,12 @@ export default class ChatBubbles {
         //this.bubbles[mid] = bubble;
         
         /////this.log('message_sent', bubble);
+
+        if(message.replies) {
+          const repliesElement = bubble.querySelector('replies-element') as RepliesElement;
+          repliesElement.message = message;
+          repliesElement.init();
+        }
 
         if(message.media?.document && !message.media.document.type) {
           const div = bubble.querySelector(`.document-container[data-mid="${tempId}"] .document`);

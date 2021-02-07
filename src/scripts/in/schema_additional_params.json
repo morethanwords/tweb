@@ -69,8 +69,8 @@
     {"name": "peerId", "type": "number"},
     {"name": "fromId", "type": "number"},
     {"name": "grouped_id", "type": "string"},
-    {"name": "canBeEdited", "type": "boolean"},
     {"name": "unread", "type": "true"},
+    {"name": "is_outgoing", "type": "true"},
     {"name": "rReply", "type": "string"}
   ]
 }, {
@@ -80,8 +80,8 @@
     {"name": "deleted", "type": "boolean"},
     {"name": "peerId", "type": "number"},
     {"name": "fromId", "type": "number"},
-    {"name": "canBeEdited", "type": "boolean"},
     {"name": "unread", "type": "true"},
+    {"name": "is_outgoing", "type": "true"},
     {"name": "rReply", "type": "string"}
   ]
 }, {
@@ -99,121 +99,23 @@
   "params": [
     {"name": "offset", "type": "number"},
     {"name": "length", "type": "number"},
-    {"name": "unicode", "type": "string"},
-    {"name": "nested", "type": "Array<MessageEntity>"}
+    {"name": "unicode", "type": "string"}
   ],
   "type": "MessageEntity"
 }, {
   "predicate": "messageEntityHighlight",
   "params": [
     {"name": "offset", "type": "number"},
-    {"name": "length", "type": "number"},
-    {"name": "nested", "type": "Array<MessageEntity>"}
+    {"name": "length", "type": "number"}
   ],
   "type": "MessageEntity"
 }, {
   "predicate": "messageEntityLinebreak",
   "params": [
     {"name": "offset", "type": "number"},
-    {"name": "length", "type": "number"},
-    {"name": "nested", "type": "Array<MessageEntity>"}
+    {"name": "length", "type": "number"}
   ],
   "type": "MessageEntity"
-}, {
-  "predicate": "messageEntityUnknown",
-  "params": [
-    {"name": "nested", "type": "Array<MessageEntity>"}
-  ]
-}, {
-  "predicate": "messageEntityMention",
-  "params": [
-    {"name": "nested", "type": "Array<MessageEntity>"}
-  ]
-}, {
-  "predicate": "messageEntityHashtag",
-  "params": [
-    {"name": "nested", "type": "Array<MessageEntity>"}
-  ]
-}, {
-  "predicate": "messageEntityBotCommand",
-  "params": [
-    {"name": "nested", "type": "Array<MessageEntity>"}
-  ]
-}, {
-  "predicate": "messageEntityUrl",
-  "params": [
-    {"name": "nested", "type": "Array<MessageEntity>"}
-  ]
-}, {
-  "predicate": "messageEntityEmail",
-  "params": [
-    {"name": "nested", "type": "Array<MessageEntity>"}
-  ]
-}, {
-  "predicate": "messageEntityBold",
-  "params": [
-    {"name": "nested", "type": "Array<MessageEntity>"}
-  ]
-}, {
-  "predicate": "messageEntityItalic",
-  "params": [
-    {"name": "nested", "type": "Array<MessageEntity>"}
-  ]
-}, {
-  "predicate": "messageEntityCode",
-  "params": [
-    {"name": "nested", "type": "Array<MessageEntity>"}
-  ]
-}, {
-  "predicate": "messageEntityPre",
-  "params": [
-    {"name": "nested", "type": "Array<MessageEntity>"}
-  ]
-}, {
-  "predicate": "messageEntityTextUrl",
-  "params": [
-    {"name": "nested", "type": "Array<MessageEntity>"}
-  ]
-}, {
-  "predicate": "messageEntityMentionName",
-  "params": [
-    {"name": "nested", "type": "Array<MessageEntity>"}
-  ]
-}, {
-  "predicate": "messageEntityPhone",
-  "params": [
-    {"name": "nested", "type": "Array<MessageEntity>"}
-  ]
-}, {
-  "predicate": "messageEntityCashtag",
-  "params": [
-    {"name": "nested", "type": "Array<MessageEntity>"}
-  ]
-}, {
-  "predicate": "messageEntityUnderline",
-  "params": [
-    {"name": "nested", "type": "Array<MessageEntity>"}
-  ]
-}, {
-  "predicate": "messageEntityStrike",
-  "params": [
-    {"name": "nested", "type": "Array<MessageEntity>"}
-  ]
-}, {
-  "predicate": "messageEntityBlockquote",
-  "params": [
-    {"name": "nested", "type": "Array<MessageEntity>"}
-  ]
-}, {
-  "predicate": "messageEntityBankCard",
-  "params": [
-    {"name": "nested", "type": "Array<MessageEntity>"}
-  ]
-}, {
-  "predicate": "inputMessageEntityMentionName",
-  "params": [
-    {"name": "nested", "type": "Array<MessageEntity>"}
-  ]
 }, {
   "predicate": "user",
   "params": [
