@@ -333,9 +333,8 @@ export default class PopupDatePicker extends PopupElement {
       }
     }
 
-    const lines = this.month.childElementCount / 7;
+    const lines = Math.ceil(this.month.childElementCount / 7);
     this.container.dataset.lines = '' + lines;
-    this.container.classList.toggle('is-max-lines', lines > 6);
 
     this.monthsContainer.append(this.month);
   }
