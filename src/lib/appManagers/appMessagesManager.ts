@@ -6,7 +6,7 @@ import { createPosterForVideo } from "../../helpers/files";
 import { copy, defineNotNumerableProperties, getObjectKeysAndSort } from "../../helpers/object";
 import { randomLong } from "../../helpers/random";
 import { splitStringByLength, limitSymbols } from "../../helpers/string";
-import { Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputNotifyPeer, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, NotifyPeer, PhotoSize, SendMessageAction, Update } from "../../layer";
+import { ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputNotifyPeer, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, NotifyPeer, PhotoSize, SendMessageAction, Update } from "../../layer";
 import { InvokeApiOptions } from "../../types";
 import { langPack } from "../langPack";
 import { logger, LogLevels } from "../logger";
@@ -35,6 +35,7 @@ import appWebPagesManager from "./appWebPagesManager";
 import appDraftsManager from "./appDraftsManager";
 import pushHeavyTask from "../../helpers/heavyQueue";
 import { getFileNameByLocation } from "../../helpers/fileName";
+import appProfileManager from "./appProfileManager";
 
 //console.trace('include');
 // TODO: если удалить сообщение в непрогруженном диалоге, то при обновлении, из-за стейта, последнего сообщения в чатлисте не будет
@@ -454,29 +455,13 @@ export class AppMessagesManager {
     if(!sendEntites.length) {
       sendEntites = undefined;
     }
-    
-    const messageId = this.generateTempMessageId(peerId);
-    const randomIdS = randomLong();
+
+    const message = this.generateOutgoingMessage(peerId, options);
+    message.entities = entities;
+    message.message = text;
+
     const replyToMsgId = options.replyToMsgId ? this.getServerMessageId(options.replyToMsgId) : undefined;
     const isChannel = appPeersManager.isChannel(peerId);
-    const isBroadcast = appPeersManager.isBroadcast(peerId);
-
-    const message: any = {
-      _: 'message',
-      id: messageId,
-      from_id: this.generateFromId(peerId),
-      peer_id: appPeersManager.getOutputPeer(peerId),
-      pFlags: this.generateFlags(peerId),
-      date: options.scheduleDate || (tsNow(true) + serverTimeManager.serverTimeOffset),
-      message: text,
-      random_id: randomIdS,
-      reply_to: this.generateReplyHeader(options.replyToMsgId, options.threadId),
-      via_bot_id: options.viaBotId,
-      reply_markup: options.reply_markup,
-      entities,
-      views: isBroadcast && 1,
-      pending: true
-    };
 
     if(options.webPage) {
       message.media = {
@@ -505,7 +490,7 @@ export class AppMessagesManager {
       if(options.viaBotId) {
         apiPromise = apiManager.invokeApiAfter('messages.sendInlineBotResult', {
           peer: appPeersManager.getInputPeerById(peerId),
-          random_id: randomIdS,
+          random_id: message.random_id,
           reply_to_msg_id: replyToMsgId || undefined,
           query_id: options.queryId,
           id: options.resultId,
@@ -516,7 +501,7 @@ export class AppMessagesManager {
           no_webpage: options.noWebPage,
           peer: appPeersManager.getInputPeerById(peerId),
           message: text,
-          random_id: randomIdS,
+          random_id: message.random_id,
           reply_to_msg_id: replyToMsgId || undefined,
           entities: sendEntites,
           clear_draft: options.clearDraft,
@@ -542,7 +527,7 @@ export class AppMessagesManager {
             seq: 0,
             updates: [{
               _: 'updateMessageID',
-              random_id: randomIdS,
+              random_id: message.random_id,
               id: updates.id
             }, {
               _: options.scheduleDate ? 'updateNewScheduledMessage' : (isChannel ? 'updateNewChannelMessage' : 'updateNewMessage'),
@@ -610,26 +595,17 @@ export class AppMessagesManager {
   }> = {}) {
     peerId = appPeersManager.getPeerMigratedTo(peerId) || peerId;
 
-    if(options.threadId && !options.replyToMsgId) {
-      options.replyToMsgId = options.threadId;
-    }
-
     //this.checkSendOptions(options);
-    const messageId = this.generateTempMessageId(peerId);
-    const randomIdS = randomLong();
-    const pFlags = this.generateFlags(peerId);
+
+    const message = this.generateOutgoingMessage(peerId, options);
     const replyToMsgId = options.replyToMsgId ? this.getServerMessageId(options.replyToMsgId) : undefined;
-    const isChannel = appPeersManager.isChannel(peerId);
-    const isMegagroup = isChannel && appPeersManager.isMegagroup(peerId);
-    const asChannel = !!(isChannel && !isMegagroup);
+
     let attachType: string, apiFileName: string;
 
     const fileType = 'mime_type' in file ? file.mime_type : file.type;
     const fileName = file instanceof File ? file.name : '';
     const isDocument = !(file instanceof File) && !(file instanceof Blob);
     let caption = options.caption || '';
-
-    const date = options.scheduleDate || (tsNow(true) + serverTimeManager.serverTimeOffset);
 
     this.log('sendFile', file, fileType);
 
@@ -655,7 +631,7 @@ export class AppMessagesManager {
 
       if(options.isVoiceMessage) {
         attachType = 'voice';
-        pFlags.media_unread = true;
+        message.pFlags.media_unread = true;
       }
 
       let attribute: DocumentAttribute.documentAttributeAudio = {
@@ -679,7 +655,7 @@ export class AppMessagesManager {
 
       photo = {
         _: 'photo',
-        id: '' + messageId,
+        id: '' + message.id,
         sizes: [{
           _: 'photoSize',
           w: options.width,
@@ -725,7 +701,7 @@ export class AppMessagesManager {
       const thumbs: PhotoSize[] = [];
       document = {
         _: 'document',
-        id: '' + messageId,
+        id: '' + message.id,
         duration: options.duration,
         attributes,
         w: options.width,
@@ -804,25 +780,13 @@ export class AppMessagesManager {
       promise: sentDeferred
     };
 
-    const message: any = {
-      _: 'message',
-      id: messageId,
-      from_id: this.generateFromId(peerId),
-      peer_id: appPeersManager.getOutputPeer(peerId),
-      entities,
-      pFlags,
-      date,
-      message: caption,
-      media: isDocument ? {
-        _: 'messageMediaDocument',
-        pFlags: {},
-        document: file 
-      } : media,
-      random_id: randomIdS,
-      reply_to: this.generateReplyHeader(options.replyToMsgId, options.threadId),
-      views: asChannel && 1,
-      pending: true
-    };
+    message.entities = entities;
+    message.message = caption;
+    message.media = isDocument ? {
+      _: 'messageMediaDocument',
+      pFlags: {},
+      document: file 
+    } : media;
 
     const toggleError = (on: boolean) => {
       if(on) {
@@ -929,7 +893,7 @@ export class AppMessagesManager {
               this.log('cancelling upload', media);
 
               sentDeferred.reject(err);
-              this.cancelPendingMessage(randomIdS);
+              this.cancelPendingMessage(message.random_id);
               this.setTyping(peerId, 'sendMessageCancelAction');
             }
           });
@@ -965,7 +929,7 @@ export class AppMessagesManager {
           peer: appPeersManager.getInputPeerById(peerId),
           media: inputMedia,
           message: caption,
-          random_id: randomIdS,
+          random_id: message.random_id,
           reply_to_msg_id: replyToMsgId,
           schedule_date: options.scheduleDate,
           silent: options.silent,
@@ -1169,22 +1133,14 @@ export class AppMessagesManager {
   }> = {}) {
     peerId = appPeersManager.getPeerMigratedTo(peerId) || peerId;
 
-    if(options.threadId && !options.replyToMsgId) {
-      options.replyToMsgId = options.threadId;
-    }
-
     //this.checkSendOptions(options);
-    const messageId = this.generateTempMessageId(peerId);
-    const randomIdS = randomLong();
+    const message = this.generateOutgoingMessage(peerId, options);
     const replyToMsgId = options.replyToMsgId ? this.getServerMessageId(options.replyToMsgId) : undefined;
-    const isChannel = appPeersManager.isChannel(peerId);
-    const isMegagroup = isChannel && appPeersManager.isMegagroup(peerId);
-    const asChannel = isChannel && !isMegagroup ? true : false;
 
     let media;
     switch(inputMedia._) {
       case 'inputMediaPoll': {
-        inputMedia.poll.id = messageId;
+        inputMedia.poll.id = message.id;
         appPollsManager.savePoll(inputMedia.poll, {
           _: 'pollResults',
           flags: 4,
@@ -1192,7 +1148,7 @@ export class AppMessagesManager {
           pFlags: {},
         });
 
-        const {poll, results} = appPollsManager.getPoll('' + messageId);
+        const {poll, results} = appPollsManager.getPoll('' + message.id);
         media = {
           _: 'messageMediaPoll',
           poll,
@@ -1262,22 +1218,7 @@ export class AppMessagesManager {
         break; */
     }
 
-    const message: any = {
-      _: 'message',
-      id: messageId,
-      from_id: this.generateFromId(peerId),
-      peer_id: appPeersManager.getOutputPeer(peerId),
-      pFlags: this.generateFlags(peerId),
-      date: options.scheduleDate || (tsNow(true) + serverTimeManager.serverTimeOffset),
-      message: '',
-      media,
-      random_id: randomIdS,
-      reply_to: this.generateReplyHeader(options.replyToMsgId, options.threadId),
-      via_bot_id: options.viaBotId,
-      reply_markup: options.reply_markup,
-      views: asChannel && 1,
-      pending: true,
-    };
+    message.media = media;
 
     let toggleError = (on: boolean) => {
       /* const historyMessage = this.messagesForHistory[messageId];
@@ -1305,7 +1246,7 @@ export class AppMessagesManager {
       if(options.viaBotId) {
         apiPromise = apiManager.invokeApiAfter('messages.sendInlineBotResult', {
           peer: appPeersManager.getInputPeerById(peerId),
-          random_id: randomIdS,
+          random_id: message.random_id,
           reply_to_msg_id: replyToMsgId || undefined,
           query_id: options.queryId,
           id: options.resultId,
@@ -1315,7 +1256,7 @@ export class AppMessagesManager {
         apiPromise = apiManager.invokeApiAfter('messages.sendMedia', {
           peer: appPeersManager.getInputPeerById(peerId),
           media: inputMedia,
-          random_id: randomIdS,
+          random_id: message.random_id,
           reply_to_msg_id: replyToMsgId || undefined,
           message: '',
           clear_draft: options.clearDraft,
@@ -1410,6 +1351,37 @@ export class AppMessagesManager {
     }
   }
 
+  private generateOutgoingMessage(peerId: number, options: Partial<{
+    scheduleDate: number,
+    replyToMsgId: number,
+    threadId: number,
+    viaBotId: number,
+    reply_markup: any
+  }>) {
+    if(options.threadId && !options.replyToMsgId) {
+      options.replyToMsgId = options.threadId;
+    }
+
+    const message: any = {
+      _: 'message',
+      id: this.generateTempMessageId(peerId),
+      from_id: this.generateFromId(peerId),
+      peer_id: appPeersManager.getOutputPeer(peerId),
+      pFlags: this.generateFlags(peerId),
+      date: options.scheduleDate || (tsNow(true) + serverTimeManager.serverTimeOffset),
+      message: '',
+      random_id: randomLong(),
+      reply_to: this.generateReplyHeader(options.replyToMsgId, options.threadId),
+      via_bot_id: options.viaBotId,
+      reply_markup: options.reply_markup,
+      replies: this.generateReplies(peerId),
+      views: appPeersManager.isBroadcast(peerId) && 1,
+      pending: true,
+    };
+
+    return message;
+  }
+
   private generateReplyHeader(replyToMsgId: number, replyToTopId?: number) {
     const header = {
       _: 'messageReplyHeader',
@@ -1423,10 +1395,31 @@ export class AppMessagesManager {
     return header;
   }
 
+  private generateReplies(peerId: number) {
+    let replies: MessageReplies.messageReplies;
+    if(appPeersManager.isBroadcast(peerId)) {
+      const channelFull = appProfileManager.chatsFull[-peerId] as ChatFull.channelFull;
+      if(channelFull.linked_chat_id) {
+        replies = {
+          _: 'messageReplies',
+          flags: 1,
+          pFlags: {
+            comments: true
+          },
+          channel_id: channelFull.linked_chat_id,
+          replies: 0,
+          replies_pts: 0
+        };
+      }
+    }
+
+    return replies;
+  }
+
   /**
    * Generate correct from_id according to anonymous or broadcast
    */
-  public generateFromId(peerId: number) {
+  private generateFromId(peerId: number) {
     if(peerId < 0 && (appPeersManager.isBroadcast(peerId) || appPeersManager.getPeer(peerId).admin_rights?.pFlags?.anonymous)) {
       return undefined;
     } else {
@@ -1434,7 +1427,7 @@ export class AppMessagesManager {
     }
   }
 
-  public generateFlags(peerId: number) {
+  private generateFlags(peerId: number) {
     const pFlags: any = {};
     const fromId = appUsersManager.getSelf().id;
     if(peerId !== fromId) {
