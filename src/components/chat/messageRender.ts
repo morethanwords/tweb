@@ -35,7 +35,7 @@ export namespace MessageRender {
       }
     }
 
-    if(message.edit_date && chat.type !== 'scheduled') {
+    if(message.edit_date && chat.type !== 'scheduled' && !message.pFlags.edit_hide) {
       bubble.classList.add('is-edited');
       time = '<i class="edited">edited</i> ' + time;
     }

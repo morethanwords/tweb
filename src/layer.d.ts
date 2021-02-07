@@ -832,6 +832,7 @@ export namespace Message {
 		deleted?: boolean,
 		peerId?: number,
 		fromId?: number,
+		random_id?: string,
 		rReply?: string
 	};
 

@@ -1445,6 +1445,31 @@ export class AppMessagesManager {
     return pFlags;
   }
 
+  private generateForwardHeader(peerId: number, originalMessage: Message.message) {
+    const fwdHeader: MessageFwdHeader.messageFwdHeader = {
+      _: 'messageFwdHeader',
+      flags: 0,
+      date: originalMessage.date,
+      from_id: appPeersManager.getOutputPeer(originalMessage.fromId)
+    };
+
+    if(appPeersManager.isBroadcast(originalMessage.peerId)) {
+      if(originalMessage.post_author) {
+        fwdHeader.post_author = originalMessage.post_author;
+      }
+
+      fwdHeader.channel_post = originalMessage.id;
+    }
+    
+    // * there is no way to detect whether user profile is hidden
+    if(peerId === appUsersManager.getSelf().id) {
+      fwdHeader.saved_from_msg_id = originalMessage.id;
+      fwdHeader.saved_from_peer = appPeersManager.getOutputPeer(originalMessage.peerId);
+    }
+
+    return fwdHeader;
+  }
+
   public setDialogTopMessage(message: MyMessage, dialog: MTDialog.dialog = this.getDialogByPeerId(message.peerId)[0]) {
     if(dialog) {
       dialog.top_message = message.mid;
@@ -1700,15 +1725,29 @@ export class AppMessagesManager {
     });
   }
 
-  public forwardMessages(peerId: number, fromPeerId: number, msgIds: number[], options: Partial<{
+  public forwardMessages(peerId: number, fromPeerId: number, mids: number[], options: Partial<{
     withMyScore: true,
     silent: true,
     scheduleDate: number
   }> = {}) {
     peerId = appPeersManager.getPeerMigratedTo(peerId) || peerId;
-    msgIds = msgIds.slice().sort((a, b) => a - b).map(mid => this.getServerMessageId(mid));
+    mids = mids.slice().sort((a, b) => a - b);
 
-    const randomIds: string[] = msgIds.map(() => randomLong());
+    const newMessages = mids.map(mid => {
+      const originalMessage = this.getMessageByPeer(fromPeerId, mid);
+      const message = this.generateOutgoingMessage(peerId, options);
+      message.fwd_from = this.generateForwardHeader(peerId, originalMessage);
+
+      (['entities', 'forwards', 'message', 'media', 'reply_markup', 'views'] as any as Array<keyof MyMessage>).forEach(key => {
+        message[key] = originalMessage[key];
+      });
+
+      this.beforeMessageSending(message, {
+        isScheduled: !!options.scheduleDate || undefined
+      });
+
+      return message;
+    });
 
     const sentRequestOptions: InvokeApiOptions = {};
     if(this.pendingAfterMsgs[peerId]) {
@@ -1717,13 +1756,14 @@ export class AppMessagesManager {
 
     const promise = apiManager.invokeApiAfter('messages.forwardMessages', {
       from_peer: appPeersManager.getInputPeerById(fromPeerId),
-      id: msgIds,
-      random_id: randomIds,
+      id: mids.map(mid => this.getServerMessageId(mid)),
+      random_id: newMessages.map(message => message.random_id),
       to_peer: appPeersManager.getInputPeerById(peerId),
       with_my_score: options.withMyScore,
       silent: options.silent,
       schedule_date: options.scheduleDate
     }, sentRequestOptions).then((updates) => {
+      this.log('forwardMessages updates:', updates);
       apiUpdatesManager.processUpdateMessage(updates);
     }).finally(() => {
       if(this.pendingAfterMsgs[peerId] === sentRequestOptions) {

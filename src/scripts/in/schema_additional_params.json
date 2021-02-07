@@ -69,6 +69,7 @@
     {"name": "peerId", "type": "number"},
     {"name": "fromId", "type": "number"},
     {"name": "grouped_id", "type": "string"},
+    {"name": "random_id", "type": "string"},
     {"name": "unread", "type": "true"},
     {"name": "is_outgoing", "type": "true"},
     {"name": "rReply", "type": "string"}
