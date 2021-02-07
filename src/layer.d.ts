@@ -808,6 +808,7 @@ export namespace Message {
 			edit_hide?: true,
 			pinned?: true,
 			unread?: true,
+			is_outgoing?: true,
 		}>,
 		id: number,
 		from_id?: Peer,
@@ -831,7 +832,6 @@ export namespace Message {
 		deleted?: boolean,
 		peerId?: number,
 		fromId?: number,
-		canBeEdited?: boolean,
 		rReply?: string
 	};
 
@@ -846,6 +846,7 @@ export namespace Message {
 			post?: true,
 			legacy?: true,
 			unread?: true,
+			is_outgoing?: true,
 		}>,
 		id: number,
 		from_id?: Peer,
@@ -857,7 +858,6 @@ export namespace Message {
 		deleted?: boolean,
 		peerId?: number,
 		fromId?: number,
-		canBeEdited?: boolean,
 		rReply?: string
 	};
 }
@@ -3847,160 +3847,138 @@ export namespace MessageEntity {
   export type messageEntityUnknown = {
 		_: 'messageEntityUnknown',
 		offset: number,
-		length: number,
-		nested?: Array<MessageEntity>
+		length: number
 	};
 
 	export type messageEntityMention = {
 		_: 'messageEntityMention',
 		offset: number,
-		length: number,
-		nested?: Array<MessageEntity>
+		length: number
 	};
 
 	export type messageEntityHashtag = {
 		_: 'messageEntityHashtag',
 		offset: number,
-		length: number,
-		nested?: Array<MessageEntity>
+		length: number
 	};
 
 	export type messageEntityBotCommand = {
 		_: 'messageEntityBotCommand',
 		offset: number,
-		length: number,
-		nested?: Array<MessageEntity>
+		length: number
 	};
 
 	export type messageEntityUrl = {
 		_: 'messageEntityUrl',
 		offset: number,
-		length: number,
-		nested?: Array<MessageEntity>
+		length: number
 	};
 
 	export type messageEntityEmail = {
 		_: 'messageEntityEmail',
 		offset: number,
-		length: number,
-		nested?: Array<MessageEntity>
+		length: number
 	};
 
 	export type messageEntityBold = {
 		_: 'messageEntityBold',
 		offset: number,
-		length: number,
-		nested?: Array<MessageEntity>
+		length: number
 	};
 
 	export type messageEntityItalic = {
 		_: 'messageEntityItalic',
 		offset: number,
-		length: number,
-		nested?: Array<MessageEntity>
+		length: number
 	};
 
 	export type messageEntityCode = {
 		_: 'messageEntityCode',
 		offset: number,
-		length: number,
-		nested?: Array<MessageEntity>
+		length: number
 	};
 
 	export type messageEntityPre = {
 		_: 'messageEntityPre',
 		offset: number,
 		length: number,
-		language: string,
-		nested?: Array<MessageEntity>
+		language: string
 	};
 
 	export type messageEntityTextUrl = {
 		_: 'messageEntityTextUrl',
 		offset: number,
 		length: number,
-		url: string,
-		nested?: Array<MessageEntity>
+		url: string
 	};
 
 	export type messageEntityMentionName = {
 		_: 'messageEntityMentionName',
 		offset: number,
 		length: number,
-		user_id: number,
-		nested?: Array<MessageEntity>
+		user_id: number
 	};
 
 	export type inputMessageEntityMentionName = {
 		_: 'inputMessageEntityMentionName',
 		offset: number,
 		length: number,
-		user_id: InputUser,
-		nested?: Array<MessageEntity>
+		user_id: InputUser
 	};
 
 	export type messageEntityPhone = {
 		_: 'messageEntityPhone',
 		offset: number,
-		length: number,
-		nested?: Array<MessageEntity>
+		length: number
 	};
 
 	export type messageEntityCashtag = {
 		_: 'messageEntityCashtag',
 		offset: number,
-		length: number,
-		nested?: Array<MessageEntity>
+		length: number
 	};
 
 	export type messageEntityUnderline = {
 		_: 'messageEntityUnderline',
 		offset: number,
-		length: number,
-		nested?: Array<MessageEntity>
+		length: number
 	};
 
 	export type messageEntityStrike = {
 		_: 'messageEntityStrike',
 		offset: number,
-		length: number,
-		nested?: Array<MessageEntity>
+		length: number
 	};
 
 	export type messageEntityBlockquote = {
 		_: 'messageEntityBlockquote',
 		offset: number,
-		length: number,
-		nested?: Array<MessageEntity>
+		length: number
 	};
 
 	export type messageEntityBankCard = {
 		_: 'messageEntityBankCard',
 		offset: number,
-		length: number,
-		nested?: Array<MessageEntity>
+		length: number
 	};
 
 	export type messageEntityEmoji = {
 		_: 'messageEntityEmoji',
 		offset?: number,
 		length?: number,
-		unicode?: string,
-		nested?: Array<MessageEntity>
+		unicode?: string
 	};
 
 	export type messageEntityHighlight = {
 		_: 'messageEntityHighlight',
 		offset?: number,
-		length?: number,
-		nested?: Array<MessageEntity>
+		length?: number
 	};
 
 	export type messageEntityLinebreak = {
 		_: 'messageEntityLinebreak',
 		offset?: number,
-		length?: number,
-		nested?: Array<MessageEntity>
+		length?: number
 	};
 }
 

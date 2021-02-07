@@ -48,7 +48,7 @@ export default class RepliesElement extends HTMLElement {
 
       if(replies?.recent_repliers) {
         if(leftPart && !leftPart.classList.contains('replies-footer-avatars')) {
-          leftPart.remove();
+          this.innerHTML = '';
           leftPart = null;
         }
 
@@ -130,7 +130,7 @@ export default class RepliesElement extends HTMLElement {
       this.innerHTML = `<span class="tgico-commentssticker"></span><span class="replies-beside-text">${replies?.replies ? formatNumber(replies.replies, 0) : ''}</span>`;
     }
 
-    if(replies && !this.updated) {
+    if(replies && !this.updated && !this.message.pFlags.is_outgoing) {
       appMessagesManager.subscribeRepliesThread(this.message.peerId, this.message.mid);
       appMessagesManager.updateMessage(this.message.peerId, this.message.mid, 'replies_updated');
       this.updated = true;
