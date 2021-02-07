@@ -45,6 +45,8 @@ const testScroll = false;
 let testTopSlice = 1;
 
 class ConnectionStatusComponent {
+  public static CHANGE_STATE_DELAY = 1000;
+
   private statusContainer: HTMLElement;
   private statusEl: HTMLElement;
   private statusPreloader: ProgressivePreloader;
@@ -55,6 +57,9 @@ class ConnectionStatusComponent {
   private updating = false;
 
   private log: ReturnType<typeof logger>;
+
+  private setFirstConnectionTimeout: number;
+  private setStateTimeout: number;
 
   constructor(chatsContainer: HTMLElement) {
     this.log = logger('CS');
@@ -73,53 +78,29 @@ class ConnectionStatusComponent {
       const status = e;
       console.log(status);
 
-      setConnectionStatus();
+      this.setConnectionStatus();
     });
 
     rootScope.on('state_synchronizing', (e) => {
       const channelId = e;
       if(!channelId) {
         this.updating = true;
-        this.log('updating', this.updating);
+        DEBUG && this.log('updating', this.updating);
         this.setState();
       }
     });
 
     rootScope.on('state_synchronized', (e) => {
       const channelId = e;
-      this.log('state_synchronized', channelId);
+      DEBUG && this.log('state_synchronized', channelId);
       if(!channelId) {
         this.updating = false;
-        this.log('updating', this.updating);
+        DEBUG && this.log('updating', this.updating);
         this.setState();
       }
     });
 
-    const setConnectionStatus = () => {
-      sessionStorage.get('dc').then(baseDcId => {
-        if(!baseDcId) {
-          baseDcId = App.baseDcId;
-        }
-        
-        if(setFirstConnectionTimeout) {
-          clearTimeout(setFirstConnectionTimeout);
-          setFirstConnectionTimeout = 0;
-        }
-
-        const status = rootScope.connectionStatus['NET-' + baseDcId];
-        const online = status && status.online;
-
-        if(this.connecting && online) {
-          apiUpdatesManager.forceGetDifference();
-        }
-
-        this.connecting = !online;
-        this.log('connecting', this.connecting);
-        this.setState();
-      });
-    };
-
-    let setFirstConnectionTimeout = window.setTimeout(setConnectionStatus, 2e3);
+    this.setFirstConnectionTimeout = window.setTimeout(this.setConnectionStatus, ConnectionStatusComponent.CHANGE_STATE_DELAY + 1e3);
 
     /* let bool = true;
     document.addEventListener('dblclick', () => {
@@ -135,6 +116,30 @@ class ConnectionStatusComponent {
     }); */
   }
 
+  private setConnectionStatus = () => {
+    sessionStorage.get('dc').then(baseDcId => {
+      if(!baseDcId) {
+        baseDcId = App.baseDcId;
+      }
+      
+      if(this.setFirstConnectionTimeout) {
+        clearTimeout(this.setFirstConnectionTimeout);
+        this.setFirstConnectionTimeout = 0;
+      }
+
+      const status = rootScope.connectionStatus['NET-' + baseDcId];
+      const online = status && status.online;
+
+      if(this.connecting && online) {
+        apiUpdatesManager.forceGetDifference();
+      }
+
+      this.connecting = !online;
+      DEBUG && this.log('connecting', this.connecting);
+      this.setState();
+    });
+  };
+
   private setStatusText = (text: string) => {
     if(this.currentText === text) return;
     this.statusEl.innerText = this.currentText = text;
@@ -142,15 +147,26 @@ class ConnectionStatusComponent {
   };
 
   private setState = () => {
+    const timeout = ConnectionStatusComponent.CHANGE_STATE_DELAY;
     if(this.connecting) {
       this.setStatusText('Waiting for network...');
     } else if(this.updating) {
       this.setStatusText('Updating...');
     }
 
-    this.log('setState', this.connecting || this.updating);
+    DEBUG && this.log('setState', this.connecting || this.updating);
     window.requestAnimationFrame(() => {
-      SetTransition(this.statusContainer, 'is-shown', this.connecting || this.updating, 200);
+      if(this.setStateTimeout) clearTimeout(this.setStateTimeout);
+
+      const cb = () => {
+        SetTransition(this.statusContainer, 'is-shown', this.connecting || this.updating, 200);
+        this.setStateTimeout = 0;
+        DEBUG && this.log('setState: isShown:', this.connecting || this.updating);
+      };
+
+      this.setStateTimeout = window.setTimeout(cb, timeout);
+      /* if(timeout) this.setStateTimeout = window.setTimeout(cb, timeout);
+      else cb(); */
     });
   };
 }
