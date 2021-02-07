@@ -2816,7 +2816,7 @@ export default class ChatBubbles {
 
         let targetMid: number;
         if(backLimit) {
-          targetMid = maxId;
+          targetMid = maxId || Math.max(...sortedMids); // * on discussion enter
         } else {
           if(additionMsgId) {
             targetMid = additionMsgId;
