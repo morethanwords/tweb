@@ -1,7 +1,54 @@
 //import aesjs from 'aes-js';
-import { CTR } from "@cryptography/aes";
+import AES from "@cryptography/aes";
 import { bytesFromWordss } from "../../../helpers/bytes";
 import { Codec } from "./codec";
+
+class Counter {
+  _counter: Uint8Array;
+
+  constructor(initialValue: Uint8Array) {
+    this._counter = initialValue;
+  }
+
+  increment() {
+    for(let i = 15; i >= 0; i--) {
+      if(this._counter[i] === 255) {
+        this._counter[i] = 0;
+      } else {
+        this._counter[i]++;
+        break;
+      }
+    }
+  }
+}
+
+class CTR {
+  _counter: Counter;
+  _remainingCounter: Uint8Array = null;
+  _remainingCounterIndex = 16;
+  _aes: AES;
+
+  constructor(key: Uint8Array, counter: Uint8Array) {
+    this._counter = new Counter(counter);
+    this._aes = new AES(key);
+  }
+
+  update(payload: Uint8Array) {
+    const encrypted = payload.slice();
+
+    for(let i = 0; i < encrypted.length; i++) {
+      if(this._remainingCounterIndex === 16) {
+        this._remainingCounter = new Uint8Array(bytesFromWordss(this._aes.encrypt(this._counter._counter)));
+        this._remainingCounterIndex = 0;
+        this._counter.increment();
+      }
+
+      encrypted[i] ^= this._remainingCounter[this._remainingCounterIndex++];
+    }
+
+    return encrypted;
+  }
+}
 
 /* 
 @cryptography/aes не работает с массивами которые не кратны 4, поэтому использую intermediate а не abridged
@@ -98,6 +145,13 @@ export default class Obfuscation {
     return res;
   } */
   public encode(payload: Uint8Array) {
+    return this.encNew.update(payload);
+  }
+
+  public decode(payload: Uint8Array) {
+    return this.decNew.update(payload);
+  }
+  /* public encode(payload: Uint8Array) {
     let res = this.encNew.encrypt(payload);
     let bytes = new Uint8Array(bytesFromWordss(res));
     
@@ -109,5 +163,5 @@ export default class Obfuscation {
     let bytes = new Uint8Array(bytesFromWordss(res));
     
     return bytes;
-  }
+  } */
 }

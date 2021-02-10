@@ -25,7 +25,7 @@ class TLSerialization {
   public byteView: Uint8Array;
 
   constructor(options: Partial<{startMaxLength: number, mtproto: true}> = {}) {
-    this.maxLength = options.startMaxLength || 2048 // 2Kb
+    this.maxLength = options.startMaxLength || 2048; // 2Kb
     this.mtproto = options.mtproto || false;
     this.createBuffer();
   }
@@ -38,11 +38,22 @@ class TLSerialization {
 
   public getArray() {
     const resultBuffer = new ArrayBuffer(this.offset);
-    const resultArray = new Int32Array(resultBuffer);
+
+    //let perf = performance.now();
+    /* const resultUint8: any = new Uint8Array(resultBuffer);
+    resultUint8.set(this.byteView.subarray(0, this.offset)); */
+    //console.log('perf uint8', performance.now() - perf);
+
+    //perf = performance.now();
+    const resultInt32 = new Int32Array(resultBuffer);
+    resultInt32.set(this.intView.subarray(0, this.offset / 4));
+    //console.log('perf int32', performance.now() - perf);
+
+    /* if(resultUint8.buffer.byteLength !== resultInt32.buffer.byteLength) {
+      console.error(resultUint8, resultInt32);
+    } */
   
-    resultArray.set(this.intView.subarray(0, this.offset / 4));
-  
-    return resultArray;
+    return resultInt32;
   }
 
   public getBuffer() {

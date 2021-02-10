@@ -1,39 +1,38 @@
 import MTTransport from './transport';
 
-//import abridgetPacketCodec from './abridged';
+//import abridgedPacketCodec from './abridged';
 import intermediatePacketCodec from './intermediate';
 import MTPNetworker from '../networker';
 import { logger, LogLevels } from '../../logger';
 import Obfuscation from './obfuscation';
 import { DEBUG, Modes } from '../mtproto_config';
-//import { debounce } from '../../../helpers/schedulers';
 
 export default class Socket extends MTTransport {
-  ws: WebSocket;
+  public ws: WebSocket;
 
-  pending: Array<Partial<{
+  private pending: Array<Partial<{
     resolve: any, 
     reject: any, 
     body: Uint8Array, 
     bodySent: boolean
   }>> = [];
   
-  connected = false;
-  
-  transport = 'websocket';
+  public connected = false;
+  private codec = intermediatePacketCodec;
+  private log: ReturnType<typeof logger>;
+  private obfuscation = new Obfuscation();
+  public networker: MTPNetworker;
 
-  obfuscation = new Obfuscation();
+  private lastCloseTime: number;
 
-  networker: MTPNetworker;
+  private debug = Modes.debug && false;
+  //private releasePendingDebounced: () => void;
 
-  log: ReturnType<typeof logger>;
-
-  codec = intermediatePacketCodec;
-
-  lastCloseTime: number;
-
-  debug = Modes.debug;
-  //releasePendingDebounced: () => void;
+  /* private stream: Array<any>;
+  private canRead: Promise<any>;
+  private resolveRead: () => void; */
+  //private lol: Uint8Array[] = [];
+  //private dd: () => void;
 
   constructor(dcId: number, url: string, logSuffix: string, public retryTimeout: number) {
     super(dcId, url);
@@ -43,17 +42,36 @@ export default class Socket extends MTTransport {
     this.log = logger(`WS-${dcId}` + logSuffix, logLevel);
     this.log('constructor');
     this.connect();
-    //this.releasePendingDebounced = debounce(() => this.releasePending(true), 2000, false, true);
+    //this.releasePendingDebounced = debounce(() => this.releasePending(true), 200, false, true);
+
+    /* this.dd = debounce(() => {
+      if(this.connected && this.lol.length) {
+        this.ws.send(this.lol.shift());
+
+        if(this.lol.length) {
+          this.dd();
+        }
+      }
+    }, 100, false, true); */
+  }
+
+  private removeListeners() {
+    this.ws.removeEventListener('open', this.handleOpen);
+    this.ws.removeEventListener('close', this.handleClose);
+    this.ws.removeEventListener('error', this.handleError);
+    this.ws.removeEventListener('message', this.handleMessage);
   }
   
   connect = () => {
     if(this.ws) {
-      this.ws.removeEventListener('open', this.handleOpen);
-      this.ws.removeEventListener('close', this.handleClose);
-      this.ws.removeEventListener('error', this.handleError);
-      this.ws.removeEventListener('message', this.handleMessage);
+      this.removeListeners();
       this.ws.close(1000);
     }
+
+    /* this.stream = [];
+    this.canRead = new Promise<void>(resolve => {
+      this.resolveRead = resolve;
+    }); */
 
     this.ws = new WebSocket(this.url, 'binary');
     this.ws.binaryType = 'arraybuffer';
@@ -89,9 +107,10 @@ export default class Socket extends MTTransport {
     this.log.error(e);
   };
 
-  handleClose = (event: CloseEvent) => {
-    this.log('closed', event, this.pending, this.ws.bufferedAmount);
+  handleClose = () => {
+    this.log('closed'/* , event, this.pending, this.ws.bufferedAmount */);
     this.connected = false;
+    this.removeListeners();
 
     const time = Date.now();
     const diff = time - this.lastCloseTime;
@@ -117,7 +136,7 @@ export default class Socket extends MTTransport {
   };
 
   handleMessage = (event: MessageEvent) => {
-    this.debug && this.log.debug('<-', 'handleMessage', event);
+    this.debug && this.log.debug('<-', 'handleMessage', /* event,  */event.data.byteLength);
 
     let data = this.obfuscation.decode(new Uint8Array(event.data));
     data = this.codec.readPacket(data);
@@ -125,11 +144,23 @@ export default class Socket extends MTTransport {
     if(this.networker) { // authenticated!
       //this.pending = this.pending.filter(p => p.body); // clear pending
 
-      this.debug && this.log.debug('redirecting to networker');
-      return this.networker.parseResponse(data).then(response => {
+      this.debug && this.log.debug('redirecting to networker', data.length);
+      this.networker.parseResponse(data).then(response => {
         this.debug && this.log.debug('redirecting to networker response:', response);
-        this.networker.processMessage(response.response, response.messageId, response.sessionId);
+
+        try {
+          this.networker.processMessage(response.response, response.messageId, response.sessionId);
+        } catch(err) {
+          this.log.error('handleMessage networker processMessage error', err);
+        }
+
+        //this.releasePending();
+      }).catch(err => {
+        this.log.error('handleMessage networker parseResponse error', err);
       });
+
+      //this.dd();
+      return;
     }
 
     //console.log('got hex:', data.hex);
@@ -159,7 +190,7 @@ export default class Socket extends MTTransport {
 
       return promise;
     }
-  }
+  };
 
   releasePending(/* tt = false */) {
     if(!this.connected) {
@@ -172,10 +203,14 @@ export default class Socket extends MTTransport {
       return;
     } */
 
-    //this.log.error('Pending length:', this.pending.length);
+    //this.log('-> messages to send:', this.pending.length);
     let length = this.pending.length;
     //for(let i = length - 1; i >= 0; --i) {
     for(let i = 0; i < length; ++i) {
+      /* if(this.ws.bufferedAmount) {
+        break;
+      } */
+
       const pending = this.pending[i];
       const {body, bodySent} = pending;
       if(body && !bodySent) {
@@ -190,13 +225,17 @@ export default class Socket extends MTTransport {
           this.log.error('bufferedAmount:', this.ws.bufferedAmount);
         } */
 
-        if(this.ws.readyState !== this.ws.OPEN) {
+        /* if(this.ws.readyState !== this.ws.OPEN) {
           this.log.error('ws is closed?');
           this.connected = false;
           break;
-        }
+        } */
 
-        this.ws.send(enc);
+        //this.lol.push(enc);
+        //setTimeout(() => {
+          this.ws.send(enc);
+        //}, 100);
+        //this.dd();
         
         if(!pending.resolve) { // remove if no response needed
           this.pending.splice(i--, 1);

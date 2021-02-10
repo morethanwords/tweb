@@ -13,6 +13,8 @@ import { longToBytes } from '../crypto/crypto_utils';
 import MTTransport from './transports/transport';
 import { convertToUint8Array, bufferConcat, bytesCmp, bytesToHex } from '../../helpers/bytes';
 import { nextRandomInt, randomLong } from '../../helpers/random';
+import { CancellablePromise, deferredPromise } from '../../helpers/cancellablePromise';
+import { isSafari } from '../../helpers/userAgent';
 
 /// #if MTPROTO_HTTP_UPLOAD
 // @ts-ignore
@@ -112,6 +114,9 @@ export default class MTPNetworker {
   public isOnline = false;
   private lastResponseTime = 0;
   private disconnectDelay: number;
+  private pingPromise: CancellablePromise<any>;
+  private sentPingTimes = 0;
+  private tt = 0;
   //public onConnectionStatusChange: (online: boolean) => void;
 
   constructor(public dcId: number, private authKey: number[], private authKeyId: Uint8Array,
@@ -161,9 +166,13 @@ export default class MTPNetworker {
 
     // * handle outcoming dead socket, server will close the connection
     if((this.transport as Socket).networker) {
-      this.disconnectDelay = (this.transport as Socket).retryTimeout / 1000 | 0;
-      setInterval(this.sendPingDelayDisconnect, (this.disconnectDelay - 5) * 1000);
-      this.sendPingDelayDisconnect();
+      if(isSafari) {
+        this.pingPromise = Promise.resolve();
+      } else {
+        this.disconnectDelay = (this.transport as Socket).retryTimeout / 1000 | 0;
+        //setInterval(this.sendPingDelayDisconnect, (this.disconnectDelay - 5) * 1000);
+        this.sendPingDelayDisconnect();
+      }
     }
   }
 
@@ -326,13 +335,63 @@ export default class MTPNetworker {
   }
 
   private sendPingDelayDisconnect = () => {
-    if(!this.isOnline) return; // * already disconnected
-    this.wrapMtpCall('ping_delay_disconnect', {
+    if(this.pingPromise) return;
+
+    if(!this.isOnline) {
+      if((this.transport as Socket).connected) {
+        (this.transport as Socket).handleClose();
+      }
+
+      return;
+    }
+
+    this.log('sendPingDelayDisconnect', this.sentPingTimes);
+
+    /* if(this.tt) clearTimeout(this.tt);
+    this.tt = self.setTimeout(() => {  
+      (this.transport as any).ws.close(1000);
+      this.tt = 0;
+    }, this.disconnectDelay * 1000); */
+    /* this.wrapMtpCall('ping_delay_disconnect', {
       ping_id: randomLong(),
       disconnect_delay: this.disconnectDelay
     }, {
       noResponse: true,
       notContentRelated: true
+    }); */
+    const deferred = this.pingPromise = deferredPromise<void>();
+
+    const timeoutTime = this.disconnectDelay * 1000;
+
+    /* if(!this.sentPingTimes || true) {
+      ++this.sentPingTimes; */
+      const startTime = Date.now();
+      this.wrapMtpCall('ping', {
+        ping_id: randomLong()
+      }, {}).then(pong => {
+        const elapsedTime = Date.now() - startTime;
+        this.log('sendPingDelayDisconnect: response', pong, elapsedTime > timeoutTime);
+
+        if(elapsedTime > timeoutTime) {
+          deferred.reject();
+        } else {
+          setTimeout(deferred.resolve, timeoutTime - elapsedTime);
+        }
+      }, deferred.reject).finally(() => {
+        clearTimeout(rejectTimeout);
+        //--this.sentPingTimes;
+      });
+    //}
+
+    const rejectTimeout = self.setTimeout(deferred.reject, timeoutTime);
+
+    deferred.catch(() => {
+      (this.transport as Socket).handleClose();
+    });
+
+    deferred.finally(() => {
+      this.pingPromise = null;
+      this.sendPingDelayDisconnect();
     });
   };
 
@@ -543,6 +602,10 @@ export default class MTPNetworker {
 
         this.log.error('timeout', message);
         this.setConnectionStatus(false);
+
+        this.getEncryptedOutput(message).then(bytes => {
+          this.log.error('timeout encrypted', bytes);
+        });
       }, CONNECTION_TIMEOUT);
   
       promise.finally(() => {
@@ -571,7 +634,11 @@ export default class MTPNetworker {
         });
       }
 
-      this.sendPingDelayDisconnect();
+      if(!this.pingPromise && (this.transport as Socket).networker) {
+        this.sendPingDelayDisconnect();
+      }
+      /* this.sentPingTimes = 0;
+      this.sendPingDelayDisconnect(); */
     }
     /* if(this.onConnectionStatusChange) {
       this.onConnectionStatusChange(this.isOnline);
@@ -845,9 +912,13 @@ export default class MTPNetworker {
     });
   }
 
-  public sendEncryptedRequest(message: MTMessage) {
+  public getEncryptedOutput(message: MTMessage) {
     /* if(DEBUG) {
       this.log.debug('Send encrypted', message, this.authKeyId);
+    } */
+    /* if(!this.isOnline) {
+      this.log('trying to send message when offline:', Object.assign({}, message));
+      //debugger;
     } */
 
     const data = new TLSerialization({
@@ -859,26 +930,48 @@ export default class MTPNetworker {
   
     data.storeLong(message.msg_id, 'message_id');
     data.storeInt(message.seq_no, 'seq_no');
-    
+
     data.storeInt(message.body.length, 'message_data_length');
     data.storeRawBytes(message.body, 'message_data');
+
+    /* const messageDataLength = message.body.length;
+    let canBeLength = 0; // bytes
+    canBeLength += 8;
+    canBeLength += 8;
+    canBeLength += 8;
+    canBeLength += 4;
+    canBeLength += 4;
+    canBeLength += message.body.length; */
   
     const dataBuffer = data.getBuffer();
-  
+
+    /* if(dataBuffer.byteLength !== canBeLength || !bytesCmp(new Uint8Array(dataBuffer.slice(dataBuffer.byteLength - message.body.length)), new Uint8Array(message.body))) {
+      this.log.error('wrong length', dataBuffer, canBeLength, message.msg_id);
+    } */
+
     const paddingLength = (16 - (data.offset % 16)) + 16 * (1 + nextRandomInt(5));
     const padding = [...new Uint8Array(paddingLength).randomize()];
+    /* const padding = [167, 148, 207, 226, 86, 192, 193, 57, 124, 153, 174, 145, 159, 1, 5, 70, 127, 157, 
+      51, 241, 46, 85, 141, 212, 139, 234, 213, 164, 197, 116, 245, 70, 184, 40, 40, 201, 233, 211, 150, 
+      94, 57, 84, 1, 135, 108, 253, 34, 139, 222, 208, 71, 214, 90, 67, 36, 28, 167, 148, 207, 226, 86, 192, 193, 57, 124, 153, 174, 145, 159, 1, 5, 70, 127, 157, 
+      51, 241, 46, 85, 141, 212, 139, 234, 213, 164, 197, 116, 245, 70, 184, 40, 40, 201, 233, 211, 150, 
+      94, 57, 84, 1, 135, 108, 253, 34, 139, 222, 208, 71, 214, 90, 67, 36, 28].slice(0, paddingLength); */
 
     const dataWithPadding = bufferConcat(dataBuffer, padding);
     // this.log('Adding padding', dataBuffer, padding, dataWithPadding)
     // this.log('auth_key_id', bytesToHex(self.authKeyID))
 
-    /* if(message.fileUpload) {
+    /* if(dataWithPadding.byteLength % 16) {
+      this.log.error('aaa', dataWithPadding, paddingLength);
+    }
+
+    if(message.fileUpload) {
       this.log('Send encrypted: body length:', (message.body as ArrayBuffer).byteLength, paddingLength, dataWithPadding);
     } */
-  
+
     return this.getEncryptedMessage(dataWithPadding).then((encryptedResult) => {
       /* if(DEBUG) {
-        this.log.debug('Got encrypted out message', encryptedResult);
+        this.log('Got encrypted out message', encryptedResult);
       } */
 
       const request = new TLSerialization({
@@ -890,10 +983,17 @@ export default class MTPNetworker {
   
       const requestData = request.getBytes(true);
 
-      /* if(message.fileUpload) {
-        this.log('Send encrypted: requestData length:', requestData.length, requestData.length % 16, paddingLength % 16, paddingLength, data.offset);
-      } */
+      //if(message.fileUpload) {
+        //this.log('Send encrypted: requestData length:', requestData.length, requestData.length % 16, paddingLength % 16, paddingLength, data.offset, encryptedResult.msgKey.length % 16, encryptedResult.bytes.length % 16);
+        //this.log('Send encrypted: messageId:', message.msg_id, requestData.length);
+      //}
 
+      return requestData;
+    });
+  }
+
+  public sendEncryptedRequest(message: MTMessage) {
+    return this.getEncryptedOutput(message).then(requestData => {
       const promise = this.transport.send(requestData);
       /// #if !MTPROTO_HTTP && !MTPROTO_HTTP_UPLOAD
       return promise;
@@ -1381,17 +1481,16 @@ export default class MTPNetworker {
         break;
       }
 
-      case 'pong': { // * https://core.telegram.org/mtproto/service_messages#ping-messages-pingpong - These messages do not require acknowledgments
-        /* if((this.transport as Socket).networker) {
+      case 'pong': { // * https://core.telegram.org/mtproto/service_messages#ping-messages-pingpong - These messages doesn't require acknowledgments
+        if((this.transport as Socket).networker) {
           const sentMessageId = message.msg_id;
-          const sentMessage = this.sentMessages[sentMessageId];
+          const sentMessage = this.sentMessages[sentMessageId]; 
 
           if(sentMessage) {
+            sentMessage.deferred.resolve(message);
             delete this.sentMessages[sentMessageId];
           }
-
-          
-        } */
+        }
 
         break;
       }

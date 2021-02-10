@@ -87,7 +87,7 @@ export class ApiFileManager {
 
   public downloadCheck(dcId: string | number) {
     const downloadPull = this.downloadPulls[dcId];
-    const downloadLimit = dcId === 'upload' ? 100 : 100;
+    const downloadLimit = dcId === 'upload' ? 24 : 48;
     //const downloadLimit = Infinity;
 
     if(this.downloadActives[dcId] >= downloadLimit || !downloadPull || !downloadPull.length) {
@@ -454,6 +454,10 @@ export class ApiFileManager {
 
     const id = this.tempId++;
 
+    /* setInterval(() => {
+      console.log(file);
+    }, 1e3); */
+
     const self = this;
     function* generator() {
       for(let offset = 0; offset < fileSize; offset += partSize) {
@@ -485,6 +489,23 @@ export class ApiFileManager {
               }
               buffer = u.buffer; */
   
+              /* setTimeout(() => {
+                doneParts++;
+                uploadResolve();
+  
+                //////this.log('Progress', doneParts * partSize / fileSize);
+
+                self.log('done part', part, doneParts);
+  
+                deferred.notify({done: doneParts * partSize, total: fileSize});
+  
+                if(doneParts >= totalParts) {
+                  deferred.resolve(resultInputFile);
+                  resolved = true;
+                }
+              }, 1250);
+              return; */
+
               apiManager.invokeApi(method, {
                 file_id: fileId,
                 file_part: part,

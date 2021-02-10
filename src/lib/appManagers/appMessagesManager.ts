@@ -176,6 +176,8 @@ export class AppMessagesManager {
   public dialogsStorage: DialogsStorage;
   public filtersStorage: FiltersStorage;
 
+  private groupedTempId = 0;
+
   constructor() {
     this.dialogsStorage = new DialogsStorage(this, appChatsManager, appPeersManager, serverTimeManager);
     this.filtersStorage = new FiltersStorage(appPeersManager, appUsersManager, /* apiManager, */ rootScope);
@@ -578,6 +580,7 @@ export class AppMessagesManager {
 
     replyToMsgId: number,
     threadId: number,
+    groupId: string,
     caption: string,
     entities: MessageEntity[],
     width: number,
@@ -591,7 +594,7 @@ export class AppMessagesManager {
     clearDraft: true,
     scheduleDate: number,
 
-    waveform: Uint8Array
+    waveform: Uint8Array,
   }> = {}) {
     peerId = appPeersManager.getPeerMigratedTo(peerId) || peerId;
 
@@ -771,6 +774,29 @@ export class AppMessagesManager {
 
     const sentDeferred = deferredPromise<InputMedia>();
 
+    if(preloader) {
+      preloader.attachPromise(sentDeferred);
+      sentDeferred.cancel = () => {
+        const error = new Error('Download canceled');
+        error.name = 'AbortError';
+        sentDeferred.reject(error);
+      };
+
+      sentDeferred.catch(err => {
+        if(err.name === 'AbortError' && !uploaded) {
+          this.log('cancelling upload', media);
+
+          sentDeferred.reject(err);
+          this.cancelPendingMessage(message.random_id);
+          this.setTyping(peerId, 'sendMessageCancelAction');
+
+          if(uploadPromise?.cancel) {
+            uploadPromise.cancel();
+          }
+        }
+      });
+    }
+
     const media = isDocument ? undefined : {
       _: photo ? 'messageMediaPhoto' : 'messageMediaDocument',
       pFlags: {},
@@ -821,7 +847,7 @@ export class AppMessagesManager {
           if(!uploaded || message.error) {
             uploaded = false;
             uploadPromise = appDownloadManager.upload(file);
-            preloader.attachPromise(uploadPromise);
+            sentDeferred.notifyAll({done: 0, total: file.size});
           }
 
           let thumbUploadPromise: typeof uploadPromise;
@@ -886,16 +912,7 @@ export class AppMessagesManager {
 
             const percents = Math.max(1, Math.floor(100 * progress.done / progress.total));
             this.setTyping(peerId, {_: actionName, progress: percents | 0});
-          });
-
-          uploadPromise.catch(err => {
-            if(err.name === 'AbortError' && !uploaded) {
-              this.log('cancelling upload', media);
-
-              sentDeferred.reject(err);
-              this.cancelPendingMessage(message.random_id);
-              this.setTyping(peerId, 'sendMessageCancelAction');
-            }
+            sentDeferred.notifyAll(progress);
           });
 
           return sentDeferred;
@@ -995,6 +1012,8 @@ export class AppMessagesManager {
 
     this.log('sendAlbum', files, options);
 
+    const groupId = '' + ++this.groupedTempId;
+
     const messages = files.map((file, idx) => {
       const details = options.sendFileDetails[idx];
       const o: any = {
@@ -1004,6 +1023,7 @@ export class AppMessagesManager {
         silent: options.silent,
         replyToMsgId,
         threadId: options.threadId,
+        groupId,
         ...details
       };
 
@@ -1015,23 +1035,6 @@ export class AppMessagesManager {
 
       return this.sendFile(peerId, file, o).message;
     });
-
-    const message = messages[messages.length - 1];
-    const groupId = message.id;
-    messages.forEach(message => {
-      message.grouped_id = groupId;
-    });
-
-    const storage = options.scheduleDate ? this.getScheduledMessagesStorage(peerId) : this.getMessagesStorage(peerId);
-    if(options.scheduleDate) {
-      this.saveMessages(messages, {storage, isScheduled: true, isOutgoing: true});
-      rootScope.broadcast('scheduled_new', {peerId, mid: groupId});
-    } else {
-      this.saveMessages(messages, {storage, isOutgoing: true});
-      rootScope.broadcast('history_append', {peerId, messageId: groupId, my: true});
-
-      this.setDialogTopMessage(message);
-    }
 
     if(options.clearDraft) {
       appDraftsManager.syncDraft(peerId, options.threadId);
@@ -1314,10 +1317,11 @@ export class AppMessagesManager {
     const storage = options.isScheduled ? this.getScheduledMessagesStorage(peerId) : this.getMessagesStorage(peerId);
 
     if(options.isScheduled) {
-      if(!options.isGroupedItem) {
-        this.saveMessages([message], {storage, isScheduled: true, isOutgoing: true});
+      //if(!options.isGroupedItem) {
+      this.saveMessages([message], {storage, isScheduled: true, isOutgoing: true});
+      setTimeout(() => {
         rootScope.broadcast('scheduled_new', {peerId, mid: messageId});
-      }
+      }, 0);
     } else {
       if(options.threadId && this.threadsStorage[peerId]) {
         delete this.threadsStorage[peerId][options.threadId];
@@ -1330,12 +1334,13 @@ export class AppMessagesManager {
       /* const historyStorage = this.getHistoryStorage(peerId);
       historyStorage.history.unshift(messageId); */
 
-      if(!options.isGroupedItem) {
-        this.saveMessages([message], {storage, isOutgoing: true});
+      //if(!options.isGroupedItem) {
+      this.saveMessages([message], {storage, isOutgoing: true});
+      setTimeout(() => {
         rootScope.broadcast('history_append', {peerId, messageId, my: true});
 
         this.setDialogTopMessage(message);
-      }
+      }, 0);
     }
 
     if(!options.isGroupedItem && options.clearDraft && !options.threadId) {
@@ -1344,7 +1349,7 @@ export class AppMessagesManager {
     
     this.pendingByRandomId[message.random_id] = {peerId, tempId: messageId, storage};
 
-    if(!options.isGroupedItem) {
+    if(!options.isGroupedItem && message.send) {
       setTimeout(message.send, 0);
       //setTimeout(message.send, 4000);
       //setTimeout(message.send, 7000);
@@ -1356,7 +1361,8 @@ export class AppMessagesManager {
     replyToMsgId: number,
     threadId: number,
     viaBotId: number,
-    reply_markup: any
+    groupId: string,
+    reply_markup: any,
   }>) {
     if(options.threadId && !options.replyToMsgId) {
       options.replyToMsgId = options.threadId;
@@ -1370,6 +1376,7 @@ export class AppMessagesManager {
       pFlags: this.generateFlags(peerId),
       date: options.scheduleDate || (tsNow(true) + serverTimeManager.serverTimeOffset),
       message: '',
+      grouped_id: options.groupId,
       random_id: randomLong(),
       reply_to: this.generateReplyHeader(options.replyToMsgId, options.threadId),
       via_bot_id: options.viaBotId,
@@ -1446,12 +1453,25 @@ export class AppMessagesManager {
   }
 
   private generateForwardHeader(peerId: number, originalMessage: Message.message) {
+    const myId = appUsersManager.getSelf().id;
+    if(originalMessage.fromId === myId && !originalMessage.fwd_from) {
+      return;
+    }
+
     const fwdHeader: MessageFwdHeader.messageFwdHeader = {
       _: 'messageFwdHeader',
       flags: 0,
-      date: originalMessage.date,
-      from_id: appPeersManager.getOutputPeer(originalMessage.fromId)
+      date: originalMessage.date
     };
+
+    if(originalMessage.fwd_from) {
+      fwdHeader.from_id = originalMessage.fwd_from.from_id;
+      fwdHeader.from_name = originalMessage.fwd_from.from_name;
+      fwdHeader.post_author = originalMessage.fwd_from.post_author;
+    } else {
+      fwdHeader.from_id = appPeersManager.getOutputPeer(originalMessage.fromId);
+      fwdHeader.post_author = originalMessage.post_author;
+    }
 
     if(appPeersManager.isBroadcast(originalMessage.peerId)) {
       if(originalMessage.post_author) {
@@ -1462,7 +1482,7 @@ export class AppMessagesManager {
     }
     
     // * there is no way to detect whether user profile is hidden
-    if(peerId === appUsersManager.getSelf().id) {
+    if(peerId === myId) {
       fwdHeader.saved_from_msg_id = originalMessage.id;
       fwdHeader.saved_from_peer = appPeersManager.getOutputPeer(originalMessage.peerId);
     }
@@ -1733,6 +1753,13 @@ export class AppMessagesManager {
     peerId = appPeersManager.getPeerMigratedTo(peerId) || peerId;
     mids = mids.slice().sort((a, b) => a - b);
 
+    const groups: {
+      [groupId: string]: {
+        tempId: string,
+        messages: any[]
+      }
+    } = {};
+
     const newMessages = mids.map(mid => {
       const originalMessage = this.getMessageByPeer(fromPeerId, mid);
       const message = this.generateOutgoingMessage(peerId, options);
@@ -1742,11 +1769,27 @@ export class AppMessagesManager {
         message[key] = originalMessage[key];
       });
 
+      if(originalMessage.grouped_id) {
+        const group = groups[originalMessage.grouped_id] ?? (groups[originalMessage.grouped_id] = {tempId: '' + ++this.groupedTempId, messages: []});
+        group.messages.push(message);
+      }
+
+      return message;
+    });
+
+    for(const groupId in groups) {
+      const group = groups[groupId];
+      if(group.messages.length > 1) {
+        group.messages.forEach(message => {
+          message.grouped_id = group.tempId;
+        });
+      }
+    }
+
+    newMessages.forEach(message => {
       this.beforeMessageSending(message, {
         isScheduled: !!options.scheduleDate || undefined
       });
-
-      return message;
     });
 
     const sentRequestOptions: InvokeApiOptions = {};
@@ -1754,7 +1797,7 @@ export class AppMessagesManager {
       sentRequestOptions.afterMessageId = this.pendingAfterMsgs[peerId].messageId;
     }
 
-    const promise = apiManager.invokeApiAfter('messages.forwardMessages', {
+    const promise = /* true ? Promise.resolve() :  */apiManager.invokeApiAfter('messages.forwardMessages', {
       from_peer: appPeersManager.getInputPeerById(fromPeerId),
       id: mids.map(mid => this.getServerMessageId(mid)),
       random_id: newMessages.map(message => message.random_id),
@@ -4860,7 +4903,7 @@ export class AppMessagesManager {
 
       this.updateMessageRepliesIfNeeded(message);
 
-      if(!message.pFlags.out && message.pFlags.unread) {
+      if(!message.pFlags.out && !message.pFlags.is_outgoing && message.pFlags.unread) {
         history.unread++;
       }
       history.count++;

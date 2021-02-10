@@ -1,4 +1,5 @@
 import MTProtoWorker from 'worker-loader!./mtproto.worker';
+//import './mtproto.worker';
 import { isObject } from '../../helpers/object';
 import type { MethodDeclMap } from '../../layer';
 import type { InvokeApiOptions } from '../../types';
@@ -9,7 +10,7 @@ import webpWorkerController from '../webp/webpWorkerController';
 import type { DownloadOptions } from './apiFileManager';
 import { ApiError } from './apiManager';
 import type { ServiceWorkerTask, ServiceWorkerTaskResponse } from './mtproto.service';
-import { MOUNT_CLASS_TO, UserAuth } from './mtproto_config';
+import { DEBUG, MOUNT_CLASS_TO, UserAuth } from './mtproto_config';
 import type { MTMessage } from './networker';
 import referenceDatabase from './referenceDatabase';
 import appDocsManager from '../appManagers/appDocsManager';
@@ -32,7 +33,7 @@ type HashOptions = {
 };
 
 export class ApiManagerProxy extends CryptoWorkerMethods {
-  public worker: Worker;
+  public worker: /* Window */Worker;
   public postMessage: (...args: any[]) => void;
   private afterMessageIdTemp = 0;
 
@@ -53,6 +54,8 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
   private hashes: {[method: string]: HashOptions} = {};
 
   private isSWRegistered = true;
+
+  private debug = DEBUG;
 
   constructor() {
     super();
@@ -118,6 +121,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
     //return;
 
     const worker = new MTProtoWorker();
+    //const worker = window;
     worker.addEventListener('message', (e) => {
       if(!this.worker) {
         this.worker = worker;
@@ -182,23 +186,27 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
         } else {
           navigator.serviceWorker.controller.postMessage(task);
         }
-      } else {
+      } else if(task.hasOwnProperty('result') || task.hasOwnProperty('error')) {
         this.finalizeTask(task.taskId, task.result, task.error);
       }
+    });
+
+    worker.addEventListener('error', (err) => {
+      this.log.error('WORKER ERROR', err);
     });
   }
 
   private finalizeTask(taskId: number, result: any, error: any) {
     const deferred = this.awaiting[taskId];
     if(deferred !== undefined) {
-      this.log.debug('done', deferred.taskName, result, error);
+      this.debug && this.log.debug('done', deferred.taskName, result, error);
       error ? deferred.reject(error) : deferred.resolve(result);
       delete this.awaiting[taskId];
     }
   }
 
   public performTaskWorker<T>(task: string, ...args: any[]) {
-    this.log.debug('start', task, args);
+    this.debug && this.log.debug('start', task, args);
 
     return new Promise<T>((resolve, reject) => {
       this.awaiting[this.taskId] = {resolve, reject, taskName: task};
@@ -218,12 +226,12 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
 
   private releasePending() {
     if(this.postMessage) {
-      this.log.debug('releasing tasks, length:', this.pending.length);
+      this.debug && this.log.debug('releasing tasks, length:', this.pending.length);
       this.pending.forEach(pending => {
         this.postMessage(pending);
       });
       
-      this.log.debug('released tasks');
+      this.debug && this.log.debug('released tasks');
       this.pending.length = 0;
     }
   }
@@ -262,7 +270,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
 
     return this.performTaskWorker('invokeApi', method, params, options).then((result: any) => {
       if(result._.includes('NotModified')) {
-        this.log.warn('NotModified saved!', method, queryJSON);
+        this.debug && this.log.warn('NotModified saved!', method, queryJSON);
         return cached.result;
       }
       
