@@ -43,6 +43,7 @@ export class DcConfigurator {
 
   private chosenServers: Servers = {} as any;
 
+  /// #if !MTPROTO_HTTP
   private transportSocket = (dcId: number, connectionType: ConnectionType) => {
     const subdomain = this.sslSubdomains[dcId - 1];
     const path = Modes.test ? 'apiws_test' : 'apiws';
@@ -50,7 +51,9 @@ export class DcConfigurator {
     const suffix = connectionType === 'upload' ? '-U' : connectionType === 'download' ? '-D' : '';
     return new Socket(dcId, chosenServer, suffix, connectionType === 'client' ? 30000 : 10000);
   };
+  /// #endif
 
+  /// #if MTPROTO_HTTP_UPLOAD || MTPROTO_HTTP
   private transportHTTP = (dcId: number, connectionType: ConnectionType) => {
     if(Modes.ssl || !Modes.http) {
       const subdomain = this.sslSubdomains[dcId - 1] + (connectionType !== 'client' ? '-1' : '');
@@ -66,6 +69,7 @@ export class DcConfigurator {
       }
     }
   };
+  /// #endif
 
   public chooseServer(dcId: number, connectionType: ConnectionType = 'client', transportType: TransportType = 'websocket', reuse = true) {
     /* if(transportType === 'websocket' && !Modes.multipleConnections) {

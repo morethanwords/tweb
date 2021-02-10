@@ -7,10 +7,9 @@ import networkerFactory from "./networkerFactory";
 import apiFileManager from './apiFileManager';
 //import { logger, LogLevels } from '../logger';
 import type { ServiceWorkerTask, ServiceWorkerTaskResponse } from './mtproto.service';
+import { ctx } from '../../helpers/userAgent';
 
 //const log = logger('DW', LogLevels.error);
-
-const ctx = self as any as DedicatedWorkerGlobalScope;
 
 //console.error('INCLUDE !!!', new Error().stack);
 
@@ -64,7 +63,15 @@ networkerFactory.onConnectionStatusChange = (status) => {
   respond({type: 'connectionStatusChange', payload: status});
 };
 
-ctx.addEventListener('message', async(e) => {
+/* ctx.onerror = (error) => {
+  console.error('error:', error);
+};
+
+ctx.onunhandledrejection = (error) => {
+  console.error('onunhandledrejection:', error);
+}; */
+
+const onMessage = async(e: any) => {
   try {
     const task = e.data;
     const taskId = task.taskId;
@@ -103,6 +110,10 @@ ctx.addEventListener('message', async(e) => {
       webpSupported = task.payload;
       return;
     }
+
+    if(!task.task) {
+      return;
+    }
   
     switch(task.task) {
       case 'computeSRP':
@@ -131,6 +142,8 @@ ctx.addEventListener('message', async(e) => {
         } catch(error) {
           respond({taskId, error});
         }
+
+        break;
       }
 
       case 'getNetworker': {
@@ -157,12 +170,15 @@ ctx.addEventListener('message', async(e) => {
         }
   
         //throw new Error('Unknown task: ' + task.task);
+        break;
       }
     }
   } catch(err) {
 
   }
-});
+};
+
+ctx.addEventListener('message', onMessage);
 
 //console.log('[WORKER] Will send ready', Date.now() / 1000);
 ctx.postMessage('ready');

@@ -1,6 +1,14 @@
 import sessionStorage from '../sessionStorage';
 import { longFromInts } from './bin_utils';
 import { nextRandomInt } from '../../helpers/random';
+import { MOUNT_CLASS_TO } from './mtproto_config';
+
+/*
+let lol: any = {};
+for(var i = 0; i < 100; i++) {
+    timeManager.generateId();
+}
+*/
 
 export class TimeManager {
   private lastMessageId = [0, 0];
@@ -30,7 +38,12 @@ export class TimeManager {
 
     const ret = longFromInts(messageId[0], messageId[1]);
 
-    //console.log('[TimeManager]: Generated msg id', messageId, this.timeOffset, ret);
+    /* if(lol[ret]) {
+      console.error('[TimeManager]: Generated SAME msg id', messageId, this.timeOffset, ret);
+    }
+    lol[ret] = true;
+
+    console.log('[TimeManager]: Generated msg id', messageId, this.timeOffset, ret); */
 
     return ret
   }
@@ -52,4 +65,6 @@ export class TimeManager {
   }
 }
 
-export default new TimeManager();
+const timeManager = new TimeManager();
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.timeManager = timeManager);
+export default timeManager;

@@ -308,7 +308,7 @@ export default class ChatBubbles {
     });
 
     this.listenerSetter.add(rootScope, 'album_edit', (e) => {
-      fastRaf(() => {
+      //fastRaf(() => { // ! can't use delayed smth here, need original bubble to be edited
         const {peerId, groupId, deletedMids} = e;
       
         if(peerId !== this.peerId) return;
@@ -319,7 +319,7 @@ export default class ChatBubbles {
         const renderMaxId = getObjectKeysAndSort(this.appMessagesManager.groupedMessagesStorage[groupId], 'asc').pop();
 
         this.renderMessage(this.chat.getMessage(renderMaxId), true, false, this.bubbles[renderedId], false);
-      });
+      //});
     });
 
     this.listenerSetter.add(rootScope, 'messages_downloaded', (e) => {

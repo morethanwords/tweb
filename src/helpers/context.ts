@@ -26,7 +26,7 @@ const notifyWorker = (...args: any[]) => {
   (self as any as DedicatedWorkerGlobalScope).postMessage(...args);
 };
 
-const empty = () => {};
+const noop = () => {};
 
-export const notifySomeone = isServiceWorker ? notifyServiceWorker.bind(null, false) : (isWebWorker ? notifyWorker : empty);
-export const notifyAll = isServiceWorker ? notifyServiceWorker.bind(null, true) : (isWebWorker ? notifyWorker : empty);
+export const notifySomeone = isServiceWorker ? notifyServiceWorker.bind(null, false) : (isWebWorker ? notifyWorker : noop);
+export const notifyAll = isServiceWorker ? notifyServiceWorker.bind(null, true) : (isWebWorker ? notifyWorker : noop);

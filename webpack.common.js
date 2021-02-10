@@ -18,7 +18,7 @@ if(devMode) {
 const opts = {
   MTPROTO_WORKER: true,
   MTPROTO_HTTP: false,
-  MTPROTO_HTTP_UPLOAD: false,
+  MTPROTO_HTTP_UPLOAD: true,
   DEBUG: devMode,
   version: 3,
   "ifdef-verbose": devMode,    // add this for verbose output
@@ -87,8 +87,8 @@ module.exports = {
 
   output: {
     path: path.resolve(__dirname, 'public'),
-    filename: "[name].bundle.js",
-    chunkFilename: "[name].chunk.js"
+    filename: "[name].[chunkhash].bundle.js",
+    chunkFilename: "[name].[chunkhash].chunk.js"
   },
 
   devServer: {
@@ -164,8 +164,8 @@ module.exports = {
     new MiniCssExtractPlugin({
       // Options similar to the same options in webpackOptions.output
       // both options are optional
-      filename: '[name].css',
-      chunkFilename: '[id].css',
+      filename: '[name].[contenthash].css',
+      chunkFilename: '[id].[contenthash].css',
     }),
 
     new MediaQueryPlugin({

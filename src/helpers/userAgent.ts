@@ -11,7 +11,7 @@ export const isChromium = /Chrome/.test(navigator.userAgent) && /Google Inc/.tes
  *
  * This should be removed once the underlying Safari issue is fixed.
  */
-const ctx = typeof(window) !== 'undefined' ? window : self;
+export const ctx = typeof(window) !== 'undefined' ? window : self;
 
 // https://stackoverflow.com/a/58065241
 export const isAppleMobile = (/iPad|iPhone|iPod/.test(navigator.platform) ||

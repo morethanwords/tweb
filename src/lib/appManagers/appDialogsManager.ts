@@ -164,7 +164,8 @@ class ConnectionStatusComponent {
         DEBUG && this.log('setState: isShown:', this.connecting || this.updating);
       };
 
-      this.setStateTimeout = window.setTimeout(cb, timeout);
+      //this.setStateTimeout = window.setTimeout(cb, timeout);
+      cb();
       /* if(timeout) this.setStateTimeout = window.setTimeout(cb, timeout);
       else cb(); */
     });
