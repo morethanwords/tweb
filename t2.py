@@ -2,8 +2,6 @@ from telethon import TelegramClient, events, sync
 from telethon.network import ConnectionTcpAbridged
 from telethon.network.mtprotostate import MTProtoState
 from telethon.crypto.authkey import AuthKey
-from telethon.network.connection.tcpobfuscated import ConnectionTcpObfuscated
-from telethon.network.connection.tcpintermediate import IntermediatePacketCodec
 
 import struct
 import logging
@@ -27,7 +25,7 @@ state = MTProtoState(authKey, loggers=client._log)
 state.salt = struct.unpack('q', bytes.fromhex("d1b37eebb4997ca9"))[0]
 state.id = struct.unpack('q', bytes.fromhex("502368ee46d39313"))[0]
 
-#print(state.id)
+print(state.id)
 
 """ with open('file_part.txt', 'r') as file:
   data = file.read()
@@ -43,23 +41,11 @@ state.id = struct.unpack('q', bytes.fromhex("502368ee46d39313"))[0]
     file.close()
     #print(encrypted) """
 
-ConnectionTcpObfuscated.packet_codec = IntermediatePacketCodec
-connection = ConnectionTcpObfuscated("", "", 2, loggers=client._log)
-obfuscatedIo = connection.obfuscated_io(connection)
-#print(encrypted)
-#exit()
-#encoded = connection.packet_codec.encode_packet(connection.packet_codec, bytes.fromhex("deadbeef"))
-#print(encoded)
-#exit()
-
-name = "debugPayloads"
-#name = "debugRequests"
-
-with open(name + '_before.txt', 'r') as fileBefore:
+with open('debugRequests_before.txt', 'r') as fileBefore:
   data = fileBefore.read()
   lines = data.splitlines()
 
-  with open(name + '_after.txt', 'r') as fileAfter:
+  with open('debugRequests_after.txt', 'r') as fileAfter:
     data = fileAfter.read()
     linesAfter = data.splitlines()
 
@@ -68,15 +54,12 @@ with open(name + '_before.txt', 'r') as fileBefore:
       print("processing line %i, of %i", i, length)
 
       lineBefore = lines[i]
-      lineAfter = linesAfter[i]
 
       messageData = bytes.fromhex(lineBefore)
-      messageData = connection.packet_codec.encode_packet(connection.packet_codec, messageData)
-      encrypted = obfuscatedIo._encrypt.encrypt(messageData)
-      #encrypted = state.encrypt_message_data(messageData) # need to comment padding inside
+      encrypted = state.encrypt_message_data(messageData) # need to comment padding inside
 
-      #print(encrypted.hex())
-
+      lineAfter = linesAfter[i]
+      
       #print(len(encrypted.hex()))
       #print(len(lineAfter))
       #print(encrypted.hex() == lineAfter)

@@ -152,11 +152,8 @@ export default class ChatBubbles {
 
         const message = this.chat.getMessage(mid);
         //bubble.remove();
-        this.bubbleGroups.removeBubble(bubble, message.mid);
         this.setBubblePosition(bubble, message, false);
         //this.log('history_update', this.bubbles[mid], mid, message);
-
-        this.bubbleGroups.addBubble(bubble, message, false);
 
         if(this.scrollingToNewBubble) {
           this.scrollToNewLastBubble();
@@ -268,8 +265,6 @@ export default class ChatBubbles {
         //});
 
         bubble.dataset.mid = '' + mid;
-
-        this.bubbleGroups.removeBubble(bubble, tempId);
       }
 
       if(this.unreadOut.has(tempId)) {
@@ -423,7 +418,7 @@ export default class ChatBubbles {
       const msgIdsByPeer = e;
 
       if(!(this.peerId in msgIdsByPeer)) return;
-      const msgIds = msgIdsByPeer[this.peerId];
+      const msgIds = (msgIdsByPeer[this.peerId] as number[]).slice().sort((a, b) => b - a);
       this.renderNewMessagesByIds(msgIds);
     });
     
@@ -1147,7 +1142,7 @@ export default class ChatBubbles {
         this.firstUnreadBubble = null;
       }
 
-      this.bubbleGroups.removeBubble(bubble, mid);
+      this.bubbleGroups.removeBubble(bubble);
       if(this.unreadedObserver) {
         this.unreadedObserver.unobserve(bubble);
       }
@@ -1691,6 +1686,8 @@ export default class ChatBubbles {
         dateMessage.container.append(bubble);
       }
     }
+
+    this.bubbleGroups.addBubble(bubble, message, reverse);
   }
 
   // * will change .cleaned in cleanup() and new instance will be created
@@ -1779,16 +1776,8 @@ export default class ChatBubbles {
         bubble.remove(); // * for positionElementByIndex
       } */
 
-      if(!sameMid || updatePosition) {
-        this.bubbleGroups.removeBubble(bubble, originalMid);
-      }
-
       if(!sameMid) {
         delete this.bubbles[originalMid];
-
-        if(!updatePosition) {
-          this.bubbleGroups.addBubble(bubble, message, reverse);
-        }
       }
 
       //bubble.innerHTML = '';
@@ -1815,9 +1804,7 @@ export default class ChatBubbles {
       if(updatePosition) {
         this.renderMessagesQueue(message, bubble, reverse, loadPromises);
 
-        if(!message.pFlags.is_single) { // * Ignore 'Discussion started'
-          this.bubbleGroups.addBubble(bubble, message, reverse);
-        } else {
+        if(message.pFlags.is_single) { // * Ignore 'Discussion started'
           bubble.classList.add('is-group-last');
         }
       }
@@ -2452,13 +2439,7 @@ export default class ChatBubbles {
     
     bubble.classList.add(isOut ? 'is-out' : 'is-in');
     if(updatePosition) {
-      if(!isThreadStarter) {
-        this.bubbleGroups.addBubble(bubble, message, reverse);
-      }
-
       this.renderMessagesQueue(message, bubble, reverse, loadPromises);
-    } else {
-      this.bubbleGroups.updateGroupByMessageId(message.mid);
     }
 
     if(withReplies) {

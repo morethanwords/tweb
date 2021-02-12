@@ -100,8 +100,9 @@ export default class MTPNetworker {
   /// #endif
 
   private seqNo: number = 0;
-  private prevSessionId: Array<number> = [];
-  private sessionId: Array<number> = [];
+  private prevSessionId: Uint8Array;
+  private sessionId: Uint8Array;
+  private serverSalt: Uint8Array;
 
   private lastResendReq: {
     req_msg_id: string,
@@ -119,9 +120,12 @@ export default class MTPNetworker {
   private tt = 0;
   //public onConnectionStatusChange: (online: boolean) => void;
 
+  private debugRequests: Array<{before: Uint8Array, after: Uint8Array}> = [];
+
   constructor(public dcId: number, private authKey: number[], private authKeyId: Uint8Array,
-    private serverSalt: number[], private transport: MTTransport, options: InvokeApiOptions = {}) {
+    serverSalt: number[], private transport: MTTransport, options: InvokeApiOptions = {}) {
     this.authKeyUint8 = convertToUint8Array(this.authKey);
+    this.serverSalt = convertToUint8Array(serverSalt);
 
     this.isFileUpload = !!options.fileUpload;
     this.isFileDownload = !!options.fileDownload;
@@ -179,7 +183,7 @@ export default class MTPNetworker {
   public updateSession() {
     this.seqNo = 0;
     this.prevSessionId = this.sessionId;
-    this.sessionId = [...new Uint8Array(8).randomize()];
+    this.sessionId = new Uint8Array(8).randomize();
   }
 
   public updateSentMessage(sentMessageId: string) {
@@ -231,7 +235,7 @@ export default class MTPNetworker {
     const message = {
       msg_id: messageId,
       seq_no: seqNo,
-      body: serializer.getBytes()
+      body: serializer.getBytes(true)
     };
   
     if(Modes.debug) {
@@ -250,7 +254,7 @@ export default class MTPNetworker {
     const message = {
       msg_id: messageId,
       seq_no: seqNo,
-      body: serializer.getBytes()
+      body: serializer.getBytes(true)
     };
   
     if(Modes.debug) {
@@ -335,7 +339,7 @@ export default class MTPNetworker {
   }
 
   private sendPingDelayDisconnect = () => {
-    if(this.pingPromise) return;
+    if(this.pingPromise || true) return;
 
     if(!this.isOnline) {
       if((this.transport as Socket).connected) {
@@ -667,28 +671,28 @@ export default class MTPNetworker {
     this.scheduleRequest(delay);
   }
 
+  // * correct, fully checked
   public async getMsgKey(dataWithPadding: ArrayBuffer, isOut: boolean) {
-    const authKey = this.authKeyUint8;
     const x = isOut ? 0 : 8
-    const msgKeyLargePlain = bufferConcat(authKey.subarray(88 + x, 88 + x + 32), dataWithPadding);
+    const msgKeyLargePlain = bufferConcat(this.authKeyUint8.subarray(88 + x, 88 + x + 32), dataWithPadding);
 
     const msgKeyLarge = await CryptoWorker.sha256Hash(msgKeyLargePlain);
     const msgKey = new Uint8Array(msgKeyLarge).subarray(8, 24);
     return msgKey;
   };
 
+  // * correct, fully checked
   public getAesKeyIv(msgKey: Uint8Array | number[], isOut: boolean): Promise<[Uint8Array, Uint8Array]> {
-    const authKey = this.authKeyUint8;
     const x = isOut ? 0 : 8;
     const sha2aText = new Uint8Array(52);
     const sha2bText = new Uint8Array(52);
     const promises: Array<Promise<number[]>> = [];
   
     sha2aText.set(msgKey, 0);
-    sha2aText.set(authKey.subarray(x, x + 36), 16);
+    sha2aText.set(this.authKeyUint8.subarray(x, x + 36), 16);
     promises.push(CryptoWorker.sha256Hash(sha2aText));
   
-    sha2bText.set(authKey.subarray(40 + x, 40 + x + 36), 0);
+    sha2bText.set(this.authKeyUint8.subarray(40 + x, 40 + x + 36), 0);
     sha2bText.set(msgKey, 36);
     promises.push(CryptoWorker.sha256Hash(sha2bText));
 
@@ -900,7 +904,7 @@ export default class MTPNetworker {
 
     return {
       bytes: encryptedBytes,
-      msgKey: msgKey
+      msgKey
     };
   }
 
@@ -934,6 +938,14 @@ export default class MTPNetworker {
     data.storeInt(message.body.length, 'message_data_length');
     data.storeRawBytes(message.body, 'message_data');
 
+    const des = new TLDeserialization(data.getBuffer().slice(16));
+    const desSalt = des.fetchLong();
+    const desSessionId = des.fetchLong();
+
+    if(!this.isOnline) {
+      this.log.error('trying to send message when offline', message, new Uint8Array(des.buffer), desSalt, desSessionId);
+    }
+
     /* const messageDataLength = message.body.length;
     let canBeLength = 0; // bytes
     canBeLength += 8;
@@ -950,12 +962,14 @@ export default class MTPNetworker {
     } */
 
     const paddingLength = (16 - (data.offset % 16)) + 16 * (1 + nextRandomInt(5));
-    const padding = [...new Uint8Array(paddingLength).randomize()];
+    const padding = (message as any).padding || new Uint8Array(paddingLength).randomize().fill(0);
     /* const padding = [167, 148, 207, 226, 86, 192, 193, 57, 124, 153, 174, 145, 159, 1, 5, 70, 127, 157, 
       51, 241, 46, 85, 141, 212, 139, 234, 213, 164, 197, 116, 245, 70, 184, 40, 40, 201, 233, 211, 150, 
       94, 57, 84, 1, 135, 108, 253, 34, 139, 222, 208, 71, 214, 90, 67, 36, 28, 167, 148, 207, 226, 86, 192, 193, 57, 124, 153, 174, 145, 159, 1, 5, 70, 127, 157, 
       51, 241, 46, 85, 141, 212, 139, 234, 213, 164, 197, 116, 245, 70, 184, 40, 40, 201, 233, 211, 150, 
       94, 57, 84, 1, 135, 108, 253, 34, 139, 222, 208, 71, 214, 90, 67, 36, 28].slice(0, paddingLength); */
+
+    (message as any).padding = padding;
 
     const dataWithPadding = bufferConcat(dataBuffer, padding);
     // this.log('Adding padding', dataBuffer, padding, dataWithPadding)
@@ -969,6 +983,7 @@ export default class MTPNetworker {
       this.log('Send encrypted: body length:', (message.body as ArrayBuffer).byteLength, paddingLength, dataWithPadding);
     } */
 
+    // * full next block is correct
     return this.getEncryptedMessage(dataWithPadding).then((encryptedResult) => {
       /* if(DEBUG) {
         this.log('Got encrypted out message', encryptedResult);
@@ -983,10 +998,12 @@ export default class MTPNetworker {
   
       const requestData = request.getBytes(true);
 
-      //if(message.fileUpload) {
+      if(this.isFileNetworker) {
         //this.log('Send encrypted: requestData length:', requestData.length, requestData.length % 16, paddingLength % 16, paddingLength, data.offset, encryptedResult.msgKey.length % 16, encryptedResult.bytes.length % 16);
         //this.log('Send encrypted: messageId:', message.msg_id, requestData.length);
-      //}
+        //this.log('Send encrypted:', message, new Uint8Array(bufferConcat(des.buffer, padding)), requestData, this.serverSalt.hex, this.sessionId.hex/* new Uint8Array(des.buffer) */);
+        this.debugRequests.push({before: new Uint8Array(bufferConcat(des.buffer, padding)), after: requestData});
+      }
 
       return requestData;
     });
@@ -1137,7 +1154,7 @@ export default class MTPNetworker {
         return {
           response,
           messageId,
-          sessionId: sessionId,
+          sessionId,
           seqNo
         };
       });
@@ -1151,7 +1168,7 @@ export default class MTPNetworker {
       ['dc' + this.dcId + '_server_salt']: bytesToHex(serverSalt)
     });
   
-    this.serverSalt = serverSalt;
+    this.serverSalt = new Uint8Array(serverSalt);
   }
 
   // ! таймаут очень сильно тормозит скорость работы сокета (даже нулевой) 

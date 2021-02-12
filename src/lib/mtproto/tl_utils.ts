@@ -1,5 +1,6 @@
 import { bytesToHex } from '../../helpers/bytes';
 import { bigint, bigStringInt, isObject } from './bin_utils';
+import { MOUNT_CLASS_TO } from './mtproto_config';
 /// #if MTPROTO_WORKER
 // @ts-ignore
 import { gzipUncompress } from '../crypto/crypto_utils';
@@ -789,5 +790,6 @@ class TLDeserialization {
   }
 }
 
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.TLDeserialization = TLDeserialization);
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.TLSerialization = TLSerialization);
 export { TLDeserialization, TLSerialization };
-

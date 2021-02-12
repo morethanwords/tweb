@@ -1,22 +1,23 @@
 import rootScope from "../../lib/rootScope";
-import { generatePathData } from "../../helpers/dom";
+//import { generatePathData } from "../../helpers/dom";
 import { MyMessage } from "../../lib/appManagers/appMessagesManager";
 import Chat from "./chat";
 
-type Group = {bubble: HTMLDivElement, mid: number, timestamp: number}[];
+type Group = {bubble: HTMLElement, mid: number, timestamp: number}[];
 type BubbleGroup = {timestamp: number, fromId: number, mid: number, group: Group};
 export default class BubbleGroups {
   private bubbles: Array<BubbleGroup> = []; // map to group
+  private detailsMap: Map<HTMLElement, BubbleGroup> = new Map();
   private groups: Array<Group> = [];
-  //updateRAFs: Map<HTMLDivElement[], number> = new Map();
+  //updateRAFs: Map<HTMLElement[], number> = new Map();
   private newGroupDiff = 121; // * 121 in scheduled messages
 
   constructor(private chat: Chat) {
 
   }
 
-  removeBubble(bubble: HTMLDivElement, mid: number) {
-    const details = this.bubbles.findAndSplice(g => g.mid === mid);
+  removeBubble(bubble: HTMLElement) {
+    const details = this.detailsMap.get(bubble);
     if(details && details.group.length) {
       details.group.findAndSplice(d => d.bubble === bubble);
       if(!details.group.length) {
@@ -27,7 +28,7 @@ export default class BubbleGroups {
     }
   }
   
-  addBubble(bubble: HTMLDivElement, message: MyMessage, reverse: boolean) {
+  addBubble(bubble: HTMLElement, message: MyMessage, reverse: boolean) {
     //return;
 
     const timestamp = message.date;
@@ -41,7 +42,7 @@ export default class BubbleGroups {
     }
     
     // try to find added
-    //this.removeBubble(message.mid);
+    this.removeBubble(bubble);
     
     const insertObject = {bubble, mid, timestamp};
     if(this.bubbles.length) {
@@ -105,28 +106,24 @@ export default class BubbleGroups {
 
     //console.log('[BUBBLE]: addBubble', bubble, message.mid, fromId, reverse, group);
 
-    if(mid > 0) {
-      let insertIndex = 0;
-      for(; insertIndex < this.bubbles.length; ++insertIndex) {
-        if(this.bubbles[insertIndex].mid < mid) {
-          break;
-        }
+    const bubbleGroup = {timestamp, fromId, mid: message.mid, group};
+    let insertIndex = 0;
+    for(; insertIndex < this.bubbles.length; ++insertIndex) {
+      if(this.bubbles[insertIndex].mid < mid) {
+        break;
       }
-
-      this.bubbles.splice(insertIndex, 0, {timestamp, fromId, mid: message.mid, group});
-    } else {
-      this.bubbles.unshift({timestamp, fromId, mid: message.mid, group});
     }
     
-    //this.bubbles.push({timestamp, fromId, mid: message.mid, group});
+    this.bubbles.splice(insertIndex, 0, {timestamp, fromId, mid: message.mid, group});
     this.updateGroup(group);
+
+    this.detailsMap.set(bubble, bubbleGroup);
   }
 
-  setClipIfNeeded(bubble: HTMLDivElement, remove = false) {
+  /* setClipIfNeeded(bubble: HTMLDivElement, remove = false) {
     //console.log('setClipIfNeeded', bubble, remove);
     const className = bubble.className;
-    if(className.includes('is-message-empty')/*  && !className.includes('is-reply') */ 
-      && (className.includes('photo') || className.includes('video'))) {
+    if(className.includes('is-message-empty') && (className.includes('photo') || className.includes('video'))) {
       let container = bubble.querySelector('.bubble__media-container') as SVGSVGElement;
       //console.log('setClipIfNeeded', bubble, remove, container);
       if(!container) return;
@@ -171,7 +168,7 @@ export default class BubbleGroups {
         });
       } catch(err) {}
     }
-  }
+  } */
   
   updateGroup(group: Group) {
     /* if(this.updateRAFs.has(group)) {
@@ -192,25 +189,25 @@ export default class BubbleGroups {
       
       if(group.length === 1) {
         first.classList.add('is-group-first', 'is-group-last');
-        this.setClipIfNeeded(first);
+        //this.setClipIfNeeded(first);
         return;
       } else {
         first.classList.remove('is-group-last');
         first.classList.add('is-group-first');
-        this.setClipIfNeeded(first, true);
+        //this.setClipIfNeeded(first, true);
       }
       
       const length = group.length - 1;
       for(let i = 1; i < length; ++i) {
         const bubble = group[i].bubble;
         bubble.classList.remove('is-group-last', 'is-group-first');
-        this.setClipIfNeeded(bubble, true);
+        //this.setClipIfNeeded(bubble, true);
       }
       
       const last = group[group.length - 1].bubble;
       last.classList.remove('is-group-first');
       last.classList.add('is-group-last');
-      this.setClipIfNeeded(last);
+      //this.setClipIfNeeded(last);
     //}));
   }
 
@@ -224,6 +221,7 @@ export default class BubbleGroups {
   cleanup() {
     this.bubbles = [];
     this.groups = [];
+    this.detailsMap.clear();
     /* for(let value of this.updateRAFs.values()) {
       window.cancelAnimationFrame(value);
     }

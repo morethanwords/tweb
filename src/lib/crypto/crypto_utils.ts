@@ -16,7 +16,7 @@ import { addPadding, bytesFromBigInt } from '../mtproto/bin_utils';
 import { bytesToWordss, bytesFromWordss, bytesToHex, bytesFromHex } from '../../helpers/bytes';
 import { nextRandomInt } from '../../helpers/random';
 
-export function longToBytes(sLong: string) {
+export function longToBytes(sLong: string): Array<number> {
   /* let perf = performance.now();
   for(let i = 0; i < 1000000; ++i) {
     bytesFromWords({words: longToInts(sLong), sigBytes: 8}).reverse();

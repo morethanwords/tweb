@@ -34,6 +34,8 @@ export default class Socket extends MTTransport {
   //private lol: Uint8Array[] = [];
   //private dd: () => void;
 
+  //private debugPayloads: MTPNetworker['debugRequests'] = [];
+
   constructor(dcId: number, url: string, logSuffix: string, public retryTimeout: number) {
     super(dcId, url);
 
@@ -219,6 +221,8 @@ export default class Socket extends MTTransport {
         //this.log('send before obf:', /* body.hex, nonce.hex, */ toEncode.hex);
         const enc = this.obfuscation.encode(toEncode);
         //this.log('send after obf:', enc.hex);
+
+        //this.debugPayloads.push({before: body.slice(), after: enc});
 
         this.debug && this.log.debug('-> body length to send:', enc.length, this.ws.bufferedAmount);
         /* if(this.ws.bufferedAmount) {
