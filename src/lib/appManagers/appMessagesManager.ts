@@ -3313,7 +3313,7 @@ export class AppMessagesManager {
       } as any,
       id: this.generateMessageId(message.id, true),
       date: message.date,
-      from_id: message.from_id,
+      from_id: {_: 'peerUser', user_id: 0}/* message.from_id */,
       peer_id: message.peer_id,
       action: {
         _: 'messageActionCustomAction',

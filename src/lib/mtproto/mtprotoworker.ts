@@ -124,7 +124,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
     //const worker = window;
     worker.addEventListener('message', (e) => {
       if(!this.worker) {
-        this.worker = worker;
+        this.worker = worker as any;
         this.log('set webWorker');
 
         if(USE_WORKER_AS_WORKER) {

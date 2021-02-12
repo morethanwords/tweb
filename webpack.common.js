@@ -8,8 +8,8 @@ const fs = require('fs');
 
 const allowedIPs = ['194.58.97.147', '195.66.140.39', '127.0.0.1', '176.100.8.254'];
 const devMode = process.env.NODE_ENV !== 'production';
-const useLocal = false;
-const useLocalNotLocal = false;
+const useLocal = true;
+const useLocalNotLocal = true;
 
 if(devMode) {
   console.log('DEVMODE IS ON!');
@@ -103,7 +103,7 @@ module.exports = {
     allowedHosts: useLocal ? undefined : [
       'tweb.enko.club'
     ],
-    host: useLocalNotLocal ? '192.168.93.183' : (useLocal ? undefined : '0.0.0.0'),
+    host: useLocalNotLocal ? '192.168.93.209' : (useLocal ? undefined : '0.0.0.0'),
     public: useLocal ? undefined : 'tweb.enko.club',
     //host: '192.168.0.105', // '0.0.0.0'
     //host: 'tweb.enko.club', // '0.0.0.0'

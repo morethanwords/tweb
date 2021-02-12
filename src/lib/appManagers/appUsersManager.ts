@@ -118,7 +118,9 @@ export class AppUsersManager {
           this.pushContact(userId);
         });
 
-        this.contactsFillPromise = Promise.resolve(this.contactsList);
+        if(this.contactsList.size) {
+          this.contactsFillPromise = Promise.resolve(this.contactsList);
+        }
       }
     });
   }
@@ -605,7 +607,7 @@ export class AppUsersManager {
       return apiManager.invokeApi('contacts.getTopPeers', {
         correspondents: true,
         offset: 0,
-        limit: 30,
+        limit: 15,
         hash: 0,
       }).then((result) => {
         let peerIds: number[] = [];

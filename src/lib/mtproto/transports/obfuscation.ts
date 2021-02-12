@@ -95,8 +95,8 @@ export default class Obfuscation {
     /* this.enc = new aesjs.ModeOfOperation.ctr(encKey, new aesjs.Counter(encIv as any));
     this.dec = new aesjs.ModeOfOperation.ctr(decKey, new aesjs.Counter(decIv as any)); */
 
-    /* console.log('encKey', encKey, encIv);
-    console.log('decKey', decKey, decIv); */
+    console.log('encKey', encKey.hex, encIv.hex);
+    console.log('decKey', decKey.hex, decIv.hex);
 
     this.encNew = new CTR(encKey, encIv);
     this.decNew = new CTR(decKey, decIv);
