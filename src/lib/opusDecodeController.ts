@@ -1,6 +1,6 @@
+import { MOUNT_CLASS_TO } from "../config/debug";
 import { isSafari } from "../helpers/userAgent";
 import { logger, LogLevels } from "./logger";
-import { MOUNT_CLASS_TO } from "./mtproto/mtproto_config";
 
 type Result = {
   bytes: Uint8Array, 

@@ -1,9 +1,8 @@
 import { bytesFromArrayBuffer } from '../../../helpers/bytes';
 import MTTransport from './transport';
 
-export default class HTTP extends MTTransport {
-  constructor(dcId: number, url: string) {
-    super(dcId, url);
+export default class HTTP implements MTTransport {
+  constructor(protected dcId: number, protected url: string) {
   }
 
   send = (data: Uint8Array) => {

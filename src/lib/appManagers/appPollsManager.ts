@@ -1,8 +1,8 @@
+import { MOUNT_CLASS_TO } from "../../config/debug";
 import { copy } from "../../helpers/object";
 import { InputMedia, MessageEntity } from "../../layer";
 import { logger, LogLevels } from "../logger";
 import apiManager from "../mtproto/mtprotoworker";
-import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
 import apiUpdatesManager from "./apiUpdatesManager";

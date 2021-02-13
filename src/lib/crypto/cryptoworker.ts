@@ -1,4 +1,4 @@
-import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
+import { MOUNT_CLASS_TO } from '../../config/debug';
 import CryptoWorkerMethods from './crypto_methods';
 
 type Task = {
@@ -126,5 +126,4 @@ class CryptoWorker extends CryptoWorkerMethods {
 
 const cryptoWorker = new CryptoWorker();
 MOUNT_CLASS_TO && (MOUNT_CLASS_TO.CryptoWorker = cryptoWorker);
-//(window as any).CryptoWorker = cryptoWorker;
 export default cryptoWorker;

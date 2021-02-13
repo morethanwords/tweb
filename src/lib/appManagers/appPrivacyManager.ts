@@ -1,4 +1,4 @@
-import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
+import { MOUNT_CLASS_TO } from "../../config/debug";
 import { InputPrivacyKey, PrivacyRule } from "../../layer";
 import apiManager from "../mtproto/mtprotoworker";
 import appChatsManager from "./appChatsManager";

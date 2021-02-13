@@ -5,7 +5,6 @@ import LottieLoader, { RLottiePlayer } from '../lib/lottieLoader';
 //import CryptoWorker from '../lib/crypto/cryptoworker';
 //import apiManager from '../lib/mtproto/apiManager';
 import apiManager from '../lib/mtproto/mtprotoworker';
-import { App } from '../lib/mtproto/mtproto_config';
 import Page from './page';
 import pageIm from './pageIm';
 import pagePassword from './pagePassword';

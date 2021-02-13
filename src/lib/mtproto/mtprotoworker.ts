@@ -11,10 +11,11 @@ import webpWorkerController from '../webp/webpWorkerController';
 import type { DownloadOptions } from './apiFileManager';
 import { ApiError } from './apiManager';
 import type { ServiceWorkerTask, ServiceWorkerTaskResponse } from './mtproto.service';
-import { DEBUG, MOUNT_CLASS_TO, UserAuth } from './mtproto_config';
+import { UserAuth } from './mtproto_config';
 import type { MTMessage } from './networker';
 import referenceDatabase from './referenceDatabase';
 import appDocsManager from '../appManagers/appDocsManager';
+import DEBUG, { MOUNT_CLASS_TO } from '../../config/debug';
 
 type Task = {
   taskId: number,

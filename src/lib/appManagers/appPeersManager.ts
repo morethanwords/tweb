@@ -1,6 +1,6 @@
+import { MOUNT_CLASS_TO } from "../../config/debug";
 import { isObject } from "../../helpers/object";
 import { DialogPeer, InputDialogPeer, InputPeer, Peer } from "../../layer";
-import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
 import appChatsManager from "./appChatsManager";

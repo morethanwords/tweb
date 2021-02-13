@@ -1,4 +1,3 @@
-
 function resizeableImage(originalImage: HTMLImageElement, canvas?: HTMLCanvasElement) {
   let cropComponent: HTMLDivElement, 
     container: HTMLDivElement, 

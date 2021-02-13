@@ -1,14 +1,14 @@
 import MTTransport from './transports/transport';
-import { Modes } from './mtproto_config';
+import Modes from '../../config/modes';
 
 /// #if MTPROTO_HTTP_UPLOAD
 // @ts-ignore
-import Socket from './transports/websocket';
+import TcpObfuscated from './transports/tcpObfuscated';
 // @ts-ignore
 import HTTP from './transports/http';
 /// #elif !MTPROTO_HTTP
 // @ts-ignore
-import Socket from './transports/websocket';
+import TcpObfuscated from './transports/tcpObfuscated';
 import { isSafari } from '../../helpers/userAgent';
 import type MTPNetworker from './networker';
 import { notifyAll, isWebWorker } from '../../helpers/context';
@@ -59,14 +59,13 @@ export class DcConfigurator {
 
     const retryTimeout = connectionType === 'client' ? 30000 : 10000;
     if(isSafari && isWebWorker && false) {
-      class P extends MTTransport {
+      class P implements MTTransport {
         private id: number;
         private taskId = 0;
         public networker: MTPNetworker;
         public promises: Map<number, CancellablePromise<Uint8Array>> = new Map();
 
         constructor(dcId: number, url: string) {
-          super(dcId, url);
           this.id = ++socketId;
 
           notifyAll({
@@ -109,7 +108,7 @@ export class DcConfigurator {
 
       return new P(dcId, chosenServer);
     } else {
-      return new Socket(dcId, chosenServer, logSuffix, retryTimeout);
+      return new TcpObfuscated(dcId, chosenServer, logSuffix, retryTimeout);
     }
   };
   /// #endif

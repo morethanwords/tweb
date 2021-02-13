@@ -1,7 +1,6 @@
 import { isTouchSupported } from "../../helpers/touchSupport";
 import appChatsManager from "../../lib/appManagers/appChatsManager";
 import appImManager from "../../lib/appManagers/appImManager";
-import { MOUNT_CLASS_TO } from "../../lib/mtproto/mtproto_config";
 import rootScope from "../../lib/rootScope";
 import { blurActiveElement, findUpClassName, findUpTag, whichChild } from "../../helpers/dom";
 import animationIntersector from "../animationIntersector";
@@ -14,6 +13,7 @@ import EmojiTab from "./tabs/emoji";
 import GifsTab from "./tabs/gifs";
 import StickersTab from "./tabs/stickers";
 import { pause } from "../../helpers/schedulers";
+import { MOUNT_CLASS_TO } from "../../config/debug";
 
 export const EMOTICONSSTICKERGROUP = 'emoticons-dropdown';
 

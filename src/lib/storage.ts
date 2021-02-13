@@ -1,5 +1,5 @@
+import { DatabaseStore, DatabaseStoreName } from "../config/database";
 import IDBStorage, { IDBOptions } from "./idb";
-import { DatabaseStore, DatabaseStoreName } from "./mtproto/mtproto_config";
 
 export default class AppStorage<Storage extends Record<string, any>/* Storage extends {[name: string]: any} *//* Storage extends Record<string, any> */> {
   private storage: IDBStorage;//new CacheStorageController('session');

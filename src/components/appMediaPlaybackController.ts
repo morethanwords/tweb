@@ -3,8 +3,8 @@ import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import appDocsManager, {MyDocument} from "../lib/appManagers/appDocsManager";
 import { CancellablePromise, deferredPromise } from "../helpers/cancellablePromise";
 import { isSafari } from "../helpers/userAgent";
-import { MOUNT_CLASS_TO } from "../lib/mtproto/mtproto_config";
 import { isInDOM } from "../helpers/dom";
+import { MOUNT_CLASS_TO } from "../config/debug";
 
 // TODO: если удалить сообщение, и при этом аудио будет играть - оно не остановится, и можно будет по нему перейти вникуда
 

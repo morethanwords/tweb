@@ -38,12 +38,13 @@ import ListenerSetter from "../../helpers/listenerSetter";
 import PollElement from "../poll";
 import AudioElement from "../audio";
 import { Message, MessageEntity,  MessageReplyHeader } from "../../layer";
-import { DEBUG, REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
+import { REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
 import { FocusDirection } from "../../helpers/fastSmoothScroll";
 import useHeavyAnimationCheck, { getHeavyAnimationPromise, dispatchHeavyAnimationEvent } from "../../hooks/useHeavyAnimationCheck";
 import { fastRaf } from "../../helpers/schedulers";
 import { deferredPromise } from "../../helpers/cancellablePromise";
 import RepliesElement from "./replies";
+import DEBUG from "../../config/debug";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS = ['messageActionHistoryClear'];

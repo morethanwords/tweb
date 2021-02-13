@@ -1,4 +1,4 @@
-import { DEBUG } from "./mtproto/mtproto_config";
+import DEBUG from "../config/debug";
 
 export enum LogLevels {
   log = 1,

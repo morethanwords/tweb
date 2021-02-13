@@ -4,11 +4,11 @@ import Page from './page';
 import pageIm from './pageIm';
 import pagePassword from './pagePassword';
 import pageSignIn from './pageSignIn';
-import { App } from '../lib/mtproto/mtproto_config';
 import serverTimeManager from '../lib/mtproto/serverTimeManager';
 import { AuthAuthorization, AuthLoginToken } from '../layer';
 import { bytesCmp, bytesToBase64 } from '../helpers/bytes';
 import { pause } from '../helpers/schedulers';
+import App from '../config/app';
 
 let onFirstMount = async() => {
   const pageElement = page.pageEl;

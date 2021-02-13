@@ -1,10 +1,11 @@
 import { formatPhoneNumber } from "../../components/misc";
+import { MOUNT_CLASS_TO } from "../../config/debug";
 import { tsNow } from "../../helpers/date";
 import { safeReplaceObject, isObject } from "../../helpers/object";
 import { InputUser, Update, User as MTUser, UserStatus } from "../../layer";
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
-import { MOUNT_CLASS_TO, REPLIES_PEER_ID } from "../mtproto/mtproto_config";
+import { REPLIES_PEER_ID } from "../mtproto/mtproto_config";
 import serverTimeManager from "../mtproto/serverTimeManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";

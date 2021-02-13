@@ -1,6 +1,6 @@
 import { bytesToHex } from '../../helpers/bytes';
 import { bigint, bigStringInt, isObject } from './bin_utils';
-import { MOUNT_CLASS_TO } from './mtproto_config';
+import { MOUNT_CLASS_TO } from '../../config/debug';
 /// #if MTPROTO_WORKER
 // @ts-ignore
 import { gzipUncompress } from '../crypto/crypto_utils';

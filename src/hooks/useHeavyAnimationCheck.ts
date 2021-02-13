@@ -6,7 +6,7 @@ import ListenerSetter from '../helpers/listenerSetter';
 import { CancellablePromise, deferredPromise } from '../helpers/cancellablePromise';
 import { pause } from '../helpers/schedulers';
 import rootScope from '../lib/rootScope';
-import { DEBUG } from '../lib/mtproto/mtproto_config';
+import DEBUG from '../config/debug';
 
 const ANIMATION_START_EVENT = 'event-heavy-animation-start';
 const ANIMATION_END_EVENT = 'event-heavy-animation-end';

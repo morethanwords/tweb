@@ -1,4 +1,4 @@
-import { MOUNT_CLASS_TO } from "./lib/mtproto/mtproto_config";
+import { MOUNT_CLASS_TO } from "./config/debug";
 
 export type Country = {
   phoneCode: string,

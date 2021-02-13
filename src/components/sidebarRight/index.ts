@@ -7,10 +7,10 @@ import mediaSizes, { ScreenSize } from "../../helpers/mediaSizes";
 import AppPrivateSearchTab from "./tabs/search";
 import AppSharedMediaTab from "./tabs/sharedMedia";
 //import AppForwardTab from "./tabs/forward";
-import { MOUNT_CLASS_TO } from "../../lib/mtproto/mtproto_config";
 import { pause } from "../../helpers/schedulers";
 import rootScope from "../../lib/rootScope";
 import { dispatchHeavyAnimationEvent } from "../../hooks/useHeavyAnimationCheck";
+import { MOUNT_CLASS_TO } from "../../config/debug";
 
 export const RIGHT_COLUMN_ACTIVE_CLASSNAME = 'is-right-column-shown';
 

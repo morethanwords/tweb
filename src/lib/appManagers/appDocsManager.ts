@@ -1,7 +1,6 @@
 import { FileURLType, getFileNameByLocation, getFileURL } from '../../helpers/fileName';
 import { safeReplaceArrayInObject, defineNotNumerableProperties, isObject } from '../../helpers/object';
 import { Document, InputFileLocation, PhotoSize } from '../../layer';
-import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
 import referenceDatabase, { ReferenceContext } from '../mtproto/referenceDatabase';
 import opusDecodeController from '../opusDecodeController';
 import { RichTextProcessor } from '../richtextprocessor';
@@ -10,6 +9,7 @@ import appDownloadManager, { DownloadBlob } from './appDownloadManager';
 import appPhotosManager from './appPhotosManager';
 import blur from '../../helpers/blur';
 import apiManager from '../mtproto/mtprotoworker';
+import { MOUNT_CLASS_TO } from '../../config/debug';
 
 export type MyDocument = Document.document;
 

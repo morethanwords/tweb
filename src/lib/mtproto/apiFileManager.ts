@@ -1,3 +1,5 @@
+import { MOUNT_CLASS_TO } from "../../config/debug";
+import Modes from "../../config/modes";
 import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
 import { notifyAll, notifySomeone } from "../../helpers/context";
 import { getFileNameByLocation } from "../../helpers/fileName";
@@ -9,8 +11,6 @@ import FileManager from "../filemanager";
 import { logger, LogLevels } from "../logger";
 import apiManager from "./apiManager";
 import { isWebpSupported } from "./mtproto.worker";
-import { DEBUG, Modes, MOUNT_CLASS_TO } from "./mtproto_config";
-
 
 type Delayed = {
   offset: number, 
@@ -87,7 +87,7 @@ export class ApiFileManager {
 
   public downloadCheck(dcId: string | number) {
     const downloadPull = this.downloadPulls[dcId];
-    const downloadLimit = dcId === 'upload' ? 256 : 48;
+    const downloadLimit = dcId === 'upload' ? 24 : 48;
     //const downloadLimit = Infinity;
 
     if(this.downloadActives[dcId] >= downloadLimit || !downloadPull || !downloadPull.length) {

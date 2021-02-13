@@ -6,10 +6,11 @@ import type { MyDialogFilter } from "./storages/filters";
 import type { ConnectionStatusChange } from "../types";
 import type { UserTyping } from "./appManagers/appChatsManager";
 import type Chat from "../components/chat/chat";
-import { DEBUG, MOUNT_CLASS_TO, UserAuth } from "./mtproto/mtproto_config";
+import { UserAuth } from "./mtproto/mtproto_config";
 import { State } from "./appManagers/appStateManager";
 import EventListenerBase from "../helpers/eventListenerBase";
 import { MyDraftMessage } from "./appManagers/appDraftsManager";
+import { MOUNT_CLASS_TO } from "../config/debug";
 
 type BroadcastEvents = {
   'user_update': number,
@@ -147,6 +148,5 @@ class RootScope extends EventListenerBase<any> {
 }
 
 const rootScope = new RootScope();
-
 MOUNT_CLASS_TO && (MOUNT_CLASS_TO.rootScope = rootScope);
 export default rootScope;

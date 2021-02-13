@@ -1,6 +1,3 @@
-import sessionStorage from '../sessionStorage';
-import { Modes, App } from './mtproto_config';
-
 /* import PasswordManager from './passwordManager';
 import DcConfigurator from './dcConfigurator';
 import RSAKeysManager from './rsaKeysManager';
@@ -67,3 +64,5 @@ export const telegramMeWebService = new TelegramMeWebService(); */
 }
 
 //(window as any).MTProto = MTProto; */
+
+export default null;

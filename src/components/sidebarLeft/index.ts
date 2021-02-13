@@ -4,7 +4,6 @@ import appImManager from "../../lib/appManagers/appImManager";
 import appPeersManager from "../../lib/appManagers/appPeersManager";
 import appStateManager from "../../lib/appManagers/appStateManager";
 import appUsersManager from "../../lib/appManagers/appUsersManager";
-import { MOUNT_CLASS_TO } from "../../lib/mtproto/mtproto_config";
 import rootScope from "../../lib/rootScope";
 import { attachClickEvent, findUpClassName, findUpTag } from "../../helpers/dom";
 import { SearchGroup } from "../appSearch";
@@ -30,6 +29,7 @@ import AppSearchSuper from "../appSearchSuper.";
 import { DateData, fillTipDates } from "../../helpers/date";
 import AppGeneralSettingsTab from "./tabs/generalSettings";
 import AppPrivacyAndSecurityTab from "./tabs/privacyAndSecurity";
+import { MOUNT_CLASS_TO } from "../../config/debug";
 
 const contactsTab = new AppContactsTab();
 const archivedTab = new AppArchivedTab();

@@ -1,12 +1,12 @@
 import RLottieWorker from 'worker-loader!./rlottie/rlottie.worker';
 import animationIntersector from "../components/animationIntersector";
+import { MOUNT_CLASS_TO } from '../config/debug';
 import EventListenerBase from "../helpers/eventListenerBase";
 import mediaSizes from "../helpers/mediaSizes";
 import { clamp } from '../helpers/number';
 import { isAndroid, isApple, isAppleMobile, isSafari } from "../helpers/userAgent";
 import { logger, LogLevels } from "./logger";
 import apiManager from "./mtproto/mtprotoworker";
-import { MOUNT_CLASS_TO } from "./mtproto/mtproto_config";
 
 let convert = (value: number) => {
 	return Math.round(Math.min(Math.max(value, 0), 1) * 255);

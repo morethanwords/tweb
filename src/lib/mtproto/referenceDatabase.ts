@@ -1,8 +1,8 @@
 import appMessagesManager from "../appManagers/appMessagesManager";
 import { Photo } from "../../layer";
-import { MOUNT_CLASS_TO } from "./mtproto_config";
 import { bytesToHex } from "../../helpers/bytes";
 import { deepEqual } from "../../helpers/object";
+import { MOUNT_CLASS_TO } from "../../config/debug";
 
 export type ReferenceContext = ReferenceContext.referenceContextProfilePhoto | ReferenceContext.referenceContextMessage;
 export namespace ReferenceContext {

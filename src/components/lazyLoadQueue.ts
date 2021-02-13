@@ -1,7 +1,6 @@
 import { debounce } from "../helpers/schedulers";
 import { logger, LogLevels } from "../lib/logger";
 import VisibilityIntersector, { OnVisibilityChange } from "./visibilityIntersector";
-import { DEBUG } from "../lib/mtproto/mtproto_config";
 import { findAndSpliceAll } from "../helpers/array";
 
 type LazyLoadElementBase = {
