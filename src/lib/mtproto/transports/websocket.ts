@@ -6,6 +6,8 @@ import MTPNetworker from '../networker';
 import { logger, LogLevels } from '../../logger';
 import Obfuscation from './obfuscation';
 import { DEBUG, Modes } from '../mtproto_config';
+import { isWebWorker } from '../../../helpers/context';
+import { ctx } from '../../../helpers/userAgent';
 
 export default class Socket extends MTTransport {
   public ws: WebSocket;
@@ -253,4 +255,27 @@ export default class Socket extends MTTransport {
     }
   }
 }
+
+/* const setupSafariFix = () => {
   
+};
+
+if(isWebWorker) {
+  import('../../polyfill').then(() => {
+    //ctx.postMessage('ready');
+    let socket: Socket;
+    ctx.addEventListener('message', (e) => {
+      console.log('websocket worker message', e);
+      const task = e.data;
+
+      if(task.type === 'send') {
+        // const promise = socket.send(task.payload);
+        // if(task.taskId) {
+        //   promise
+        // }
+      } else if(task.type === 'setup') {
+        socket = new Socket(task.dcId, task.url, task.logSuffix, task.retryTimeout);
+      }
+    });
+  });
+} */

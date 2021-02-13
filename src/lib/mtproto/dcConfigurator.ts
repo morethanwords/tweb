@@ -9,6 +9,10 @@ import HTTP from './transports/http';
 /// #elif !MTPROTO_HTTP
 // @ts-ignore
 import Socket from './transports/websocket';
+import { isSafari } from '../../helpers/userAgent';
+import type MTPNetworker from './networker';
+import { notifyAll, isWebWorker } from '../../helpers/context';
+import { CancellablePromise, deferredPromise } from '../../helpers/cancellablePromise';
 /// #else 
 // @ts-ignore
 import HTTP from './transports/http';
@@ -23,6 +27,9 @@ type Servers = {
     }
   }
 };
+
+let socketId = 0;
+const TEST_SUFFIX = Modes.test ? '_test' : '';
 
 export class DcConfigurator {
   private sslSubdomains = ['pluto', 'venus', 'aurora', 'vesta', 'flora'];
@@ -46,10 +53,64 @@ export class DcConfigurator {
   /// #if !MTPROTO_HTTP
   private transportSocket = (dcId: number, connectionType: ConnectionType) => {
     const subdomain = this.sslSubdomains[dcId - 1];
-    const path = Modes.test ? 'apiws_test' : 'apiws';
+    const path = 'apiws' + TEST_SUFFIX;
     const chosenServer = 'wss://' + subdomain + '.web.telegram.org/' + path;
-    const suffix = connectionType === 'upload' ? '-U' : connectionType === 'download' ? '-D' : '';
-    return new Socket(dcId, chosenServer, suffix, connectionType === 'client' ? 30000 : 10000);
+    const logSuffix = connectionType === 'upload' ? '-U' : connectionType === 'download' ? '-D' : '';
+
+    const retryTimeout = connectionType === 'client' ? 30000 : 10000;
+    if(isSafari && isWebWorker && false) {
+      class P extends MTTransport {
+        private id: number;
+        private taskId = 0;
+        public networker: MTPNetworker;
+        public promises: Map<number, CancellablePromise<Uint8Array>> = new Map();
+
+        constructor(dcId: number, url: string) {
+          super(dcId, url);
+          this.id = ++socketId;
+
+          notifyAll({
+            type: 'socketProxy',
+            payload: {
+              type: 'setup', 
+              payload: {
+                dcId, 
+                url,
+                logSuffix,
+                retryTimeout
+              },
+              id: this.id
+            }
+          });
+        }
+
+        send = (payload: Uint8Array) => {
+          const task: any = {
+            type: 'socketProxy', 
+            payload: {
+              type: 'send',
+              payload,
+              id: this.id
+            }
+          };
+
+          if(this.networker) {
+            notifyAll(task);
+            return null;
+          }
+          
+          task.payload.taskId = ++this.taskId;
+          const deferred = deferredPromise<Uint8Array>();
+          this.promises.set(task.id, deferred);
+          notifyAll(task);
+          return deferred;
+        };
+      }
+
+      return new P(dcId, chosenServer);
+    } else {
+      return new Socket(dcId, chosenServer, logSuffix, retryTimeout);
+    }
   };
   /// #endif
 

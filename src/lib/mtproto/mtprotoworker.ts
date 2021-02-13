@@ -1,4 +1,5 @@
 import MTProtoWorker from 'worker-loader!./mtproto.worker';
+import SocketWorker from 'worker-loader!./transports/websocket';
 //import './mtproto.worker';
 import { isObject } from '../../helpers/object';
 import type { MethodDeclMap } from '../../layer';
@@ -56,6 +57,8 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
   private isSWRegistered = true;
 
   private debug = DEBUG;
+
+  private socketsWorkers: Map<number, SocketWorker> = new Map();
 
   constructor() {
     super();
@@ -185,6 +188,24 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
           onError(_task.error);
         } else {
           navigator.serviceWorker.controller.postMessage(task);
+        }
+      } else if(task.type === 'socketProxy') {
+        const socketTask = task.payload;
+        const id = socketTask.id;
+        console.log('socketProxy', socketTask, id);
+        if(socketTask.type === 'send') {
+          const socketWorker = this.socketsWorkers.get(id);
+          socketWorker.postMessage(socketTask);
+        } else if(socketTask.type === 'setup') {
+          const socketWorker = new SocketWorker();
+          socketWorker.postMessage(socketTask);
+          socketWorker.addEventListener('message', (e) => {
+            const task = e.data;
+
+
+          });
+
+          this.socketsWorkers.set(id, socketWorker);
         }
       } else if(task.hasOwnProperty('result') || task.hasOwnProperty('error')) {
         this.finalizeTask(task.taskId, task.result, task.error);
