@@ -1,6 +1,5 @@
-import type { AppImManager } from './appManagers/appImManager';
+import { MOUNT_CLASS_TO } from '../config/debug';
 import type { State } from './appManagers/appStateManager';
-import { MOUNT_CLASS_TO } from './mtproto/mtproto_config';
 import AppStorage from './storage';
 
 const sessionStorage = new AppStorage<{

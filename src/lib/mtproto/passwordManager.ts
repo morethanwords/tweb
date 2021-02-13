@@ -1,6 +1,6 @@
+import { MOUNT_CLASS_TO } from '../../config/debug';
 import { AccountPassword } from '../../layer';
 import apiManager from './mtprotoworker';
-import { MOUNT_CLASS_TO } from './mtproto_config';
 //import { computeCheck } from "../crypto/srp";
 
 export class PasswordManager {

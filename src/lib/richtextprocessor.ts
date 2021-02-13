@@ -2,10 +2,10 @@ import Config from './config';
 
 import emojiRegExp from '../emoji/regex';
 import { encodeEmoji } from '../emoji';
-import { MOUNT_CLASS_TO } from './mtproto/mtproto_config';
 import { MessageEntity } from '../layer';
 import { encodeEntities } from '../helpers/string';
 import { isSafari } from '../helpers/userAgent';
+import { MOUNT_CLASS_TO } from '../config/debug';
 
 const EmojiHelper = {
   emojiMap: (code: string) => { return code; },

@@ -1,8 +1,8 @@
 import { isInDOM } from "../helpers/dom";
 import { RLottiePlayer } from "../lib/lottieLoader";
-import { MOUNT_CLASS_TO } from "../lib/mtproto/mtproto_config";
 import rootScope from "../lib/rootScope";
 import { isSafari } from "../helpers/userAgent";
+import { MOUNT_CLASS_TO } from "../config/debug";
 
 export interface AnimationItem {
   el: HTMLElement,

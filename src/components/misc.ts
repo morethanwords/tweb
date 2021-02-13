@@ -1,11 +1,10 @@
+import { MOUNT_CLASS_TO } from "../config/debug";
 import Countries, { Country, PhoneCodesMain } from "../countries";
 import { cancelEvent, CLICK_EVENT_NAME } from "../helpers/dom";
 import ListenerSetter from "../helpers/listenerSetter";
 import mediaSizes from "../helpers/mediaSizes";
 import { isTouchSupported } from "../helpers/touchSupport";
 import { isApple } from "../helpers/userAgent";
-import { MOUNT_CLASS_TO } from "../lib/mtproto/mtproto_config";
-import { getHeavyAnimationPromise } from "../hooks/useHeavyAnimationCheck";
 
 export const loadedURLs: {[url: string]: boolean} = {};
 const set = (elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLVideoElement, url: string) => {

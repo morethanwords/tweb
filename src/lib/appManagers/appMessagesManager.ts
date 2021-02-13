@@ -13,7 +13,6 @@ import { logger, LogLevels } from "../logger";
 import type { ApiFileManager } from '../mtproto/apiFileManager';
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
-import { MOUNT_CLASS_TO, DEBUG } from "../mtproto/mtproto_config";
 import referenceDatabase, { ReferenceContext } from "../mtproto/referenceDatabase";
 import serverTimeManager from "../mtproto/serverTimeManager";
 import { RichTextProcessor } from "../richtextprocessor";
@@ -36,6 +35,7 @@ import appDraftsManager from "./appDraftsManager";
 import pushHeavyTask from "../../helpers/heavyQueue";
 import { getFileNameByLocation } from "../../helpers/fileName";
 import appProfileManager from "./appProfileManager";
+import DEBUG, { MOUNT_CLASS_TO } from "../../config/debug";
 
 //console.trace('include');
 // TODO: если удалить сообщение в непрогруженном диалоге, то при обновлении, из-за стейта, последнего сообщения в чатлисте не будет

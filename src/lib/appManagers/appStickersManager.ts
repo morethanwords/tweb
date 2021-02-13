@@ -1,10 +1,10 @@
 import { Document, InputFileLocation, InputStickerSet, MessagesAllStickers, MessagesFeaturedStickers, MessagesFoundStickerSets, MessagesRecentStickers, MessagesStickers, MessagesStickerSet, PhotoSize, StickerPack, StickerSet, StickerSetCovered } from '../../layer';
 import { Modify } from '../../types';
 import apiManager from '../mtproto/mtprotoworker';
-import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
 import rootScope from '../rootScope';
 import appDocsManager from './appDocsManager';
 import AppStorage from '../storage';
+import { MOUNT_CLASS_TO } from '../../config/debug';
 
 // TODO: если пак будет сохранён и потом обновлён, то недостающие стикеры не подгрузит
 

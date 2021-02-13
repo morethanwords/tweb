@@ -19,13 +19,14 @@ import {MyDialogFilter as DialogFilter} from "../storages/filters";
 import appPeersManager from './appPeersManager';
 import appStateManager from "./appStateManager";
 import appUsersManager, { User } from "./appUsersManager";
-import { App, DEBUG, MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
 import Button from "../../components/button";
 import SetTransition from "../../components/singleTransition";
 import sessionStorage from '../sessionStorage';
 import apiUpdatesManager from "./apiUpdatesManager";
 import appDraftsManager, { MyDraftMessage } from "./appDraftsManager";
 import ProgressivePreloader from "../../components/preloader";
+import App from "../../config/app";
+import DEBUG, { MOUNT_CLASS_TO } from "../../config/debug";
 
 type DialogDom = {
   avatarEl: AvatarElement,

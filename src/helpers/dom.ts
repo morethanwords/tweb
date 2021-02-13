@@ -1,10 +1,10 @@
 import { MessageEntity } from "../layer";
-import { MOUNT_CLASS_TO } from "../lib/mtproto/mtproto_config";
 import RichTextProcessor from "../lib/richtextprocessor";
 import ListenerSetter from "./listenerSetter";
 import { isTouchSupported } from "./touchSupport";
 import { isApple } from "./userAgent";
 import rootScope from "../lib/rootScope";
+import { MOUNT_CLASS_TO } from "../config/debug";
 
 /* export function isInDOM(element: Element, parentNode?: HTMLElement): boolean {
   if(!element) {

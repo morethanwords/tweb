@@ -2,7 +2,7 @@ import Page from "./page";
 import { whichChild } from "../helpers/dom";
 import lottieLoader from "../lib/lottieLoader";
 import { horizontalMenu } from "../components/horizontalMenu";
-import { MOUNT_CLASS_TO } from "../lib/mtproto/mtproto_config";
+import { MOUNT_CLASS_TO } from "../config/debug";
 
 class PagesManager {
   private pageId = -1;

@@ -1,4 +1,4 @@
-import { DEBUG } from '../lib/mtproto/mtproto_config';
+import DEBUG from '../config/debug';
 import fastBlur from '../vendor/fastBlur';
 import pushHeavyTask from './heavyQueue';
 

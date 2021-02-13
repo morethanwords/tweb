@@ -1,7 +1,7 @@
 //import apiManager from '../mtproto/apiManager';
+import { MOUNT_CLASS_TO } from '../../config/debug';
 import { logger, LogLevels } from '../logger';
 import apiManager from '../mtproto/mtprotoworker';
-import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
 import rootScope from '../rootScope';
 //import networkerFactory from '../mtproto/networkerFactory';
 import appChatsManager from "./appChatsManager";

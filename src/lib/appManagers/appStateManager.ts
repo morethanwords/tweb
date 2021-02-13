@@ -1,5 +1,5 @@
 import type { Dialog } from './appMessagesManager';
-import { App, DEBUG, MOUNT_CLASS_TO, UserAuth } from '../mtproto/mtproto_config';
+import { UserAuth } from '../mtproto/mtproto_config';
 import EventListenerBase from '../../helpers/eventListenerBase';
 import rootScope from '../rootScope';
 import sessionStorage from '../sessionStorage';
@@ -12,6 +12,8 @@ import type DialogsStorage from '../storages/dialogs';
 import type { AppDraftsManager } from './appDraftsManager';
 import { copy, setDeepProperty, validateInitObject } from '../../helpers/object';
 import { getHeavyAnimationPromise } from '../../hooks/useHeavyAnimationCheck';
+import App from '../../config/app';
+import DEBUG, { MOUNT_CLASS_TO } from '../../config/debug';
 
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
 const STATE_VERSION = App.version;

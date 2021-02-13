@@ -5,7 +5,6 @@ import appSidebarRight, { AppSidebarRight, RIGHT_COLUMN_ACTIVE_CLASSNAME } from 
 import mediaSizes, { ScreenSize } from '../../helpers/mediaSizes';
 import { logger, LogLevels } from "../logger";
 import apiManager from '../mtproto/mtprotoworker';
-import { MOUNT_CLASS_TO } from '../mtproto/mtproto_config';
 import rootScope from '../rootScope';
 import apiUpdatesManager from './apiUpdatesManager';
 import appUsersManager from "./appUsersManager";
@@ -36,6 +35,7 @@ import sessionStorage from '../sessionStorage';
 import { renderImageFromUrl } from '../../components/misc';
 import appDownloadManager from './appDownloadManager';
 import appStateManager, { AppStateManager } from './appStateManager';
+import { MOUNT_CLASS_TO } from '../../config/debug';
 
 //console.log('appImManager included33!');
 

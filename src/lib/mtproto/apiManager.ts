@@ -5,7 +5,6 @@ import { isObject } from './bin_utils';
 import networkerFactory from './networkerFactory';
 //import { telegramMeWebService } from './mtproto';
 import authorizer from './authorizer';
-import {App, Modes, MOUNT_CLASS_TO} from './mtproto_config';
 import dcConfigurator, { ConnectionType, TransportType } from './dcConfigurator';
 import { logger } from '../logger';
 import type { InvokeApiOptions } from '../../types';
@@ -14,6 +13,8 @@ import { CancellablePromise, deferredPromise } from '../../helpers/cancellablePr
 import { bytesFromHex, bytesToHex } from '../../helpers/bytes';
 //import { clamp } from '../../helpers/number';
 import { isSafari } from '../../helpers/userAgent';
+import App from '../../config/app';
+import { MOUNT_CLASS_TO } from '../../config/debug';
 
 /// #if !MTPROTO_WORKER
 import rootScope from '../rootScope';

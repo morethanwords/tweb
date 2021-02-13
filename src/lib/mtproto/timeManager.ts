@@ -1,7 +1,7 @@
 import sessionStorage from '../sessionStorage';
 import { longFromInts } from './bin_utils';
 import { nextRandomInt } from '../../helpers/random';
-import { MOUNT_CLASS_TO } from './mtproto_config';
+import { MOUNT_CLASS_TO } from '../../config/debug';
 
 /*
 let lol: any = {};

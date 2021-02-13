@@ -10,9 +10,9 @@ import { calcImageInBox } from "../../helpers/dom";
 import { MyDocument } from "./appDocsManager";
 import appDownloadManager from "./appDownloadManager";
 import appUsersManager from "./appUsersManager";
-import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
 import blur from "../../helpers/blur";
 import { renderImageFromUrl } from "../../components/misc";
+import { MOUNT_CLASS_TO } from "../../config/debug";
 
 export type MyPhoto = Photo.photo;
 

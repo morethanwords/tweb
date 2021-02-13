@@ -1,4 +1,4 @@
-import { MOUNT_CLASS_TO } from "../lib/mtproto/mtproto_config";
+import { MOUNT_CLASS_TO } from "../config/debug";
 
 export const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 export const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];

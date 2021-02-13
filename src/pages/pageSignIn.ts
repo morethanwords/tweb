@@ -3,7 +3,6 @@ import Scrollable from '../components/scrollable';
 import Countries, { Country as _Country } from "../countries";
 import appStateManager from "../lib/appManagers/appStateManager";
 import apiManager from "../lib/mtproto/mtprotoworker";
-import { App, Modes } from "../lib/mtproto/mtproto_config";
 import { RichTextProcessor } from '../lib/richtextprocessor';
 import { findUpTag, findUpClassName } from "../helpers/dom";
 import Page from "./page";
@@ -15,6 +14,8 @@ import Button from "../components/button";
 import { isAppleMobile } from "../helpers/userAgent";
 import fastSmoothScroll from "../helpers/fastSmoothScroll";
 import { isTouchSupported } from "../helpers/touchSupport";
+import App from "../config/app";
+import Modes from "../config/modes";
 
 type Country = _Country & {
   li?: HTMLLIElement[]

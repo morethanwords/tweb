@@ -1,4 +1,3 @@
-import { MOUNT_CLASS_TO } from "../mtproto/mtproto_config";
 import rootScope from "../rootScope";
 import appPeersManager from "./appPeersManager";
 import appMessagesManager from "./appMessagesManager";
@@ -11,6 +10,7 @@ import { tsNow } from "../../helpers/date";
 import { deepEqual } from "../../helpers/object";
 import appStateManager from "./appStateManager";
 import { isObject } from "../mtproto/bin_utils";
+import { MOUNT_CLASS_TO } from "../../config/debug";
 
 export type MyDraftMessage = DraftMessage.draftMessage;
 

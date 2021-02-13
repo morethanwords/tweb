@@ -1,6 +1,6 @@
+import Database from '../config/database';
 import { blobConstruct } from '../helpers/blob';
 import { logger } from './logger';
-import { Database } from './mtproto/mtproto_config';
 
 /**
  * https://developer.mozilla.org/en-US/docs/Web/API/IDBObjectStore/createIndex
