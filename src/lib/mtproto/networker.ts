@@ -1013,7 +1013,7 @@ export default class MTPNetworker {
 
   public sendEncryptedRequest(message: MTMessage) {
     return this.getEncryptedOutput(message).then(requestData => {
-      const promise = this.transport.send(requestData);
+      const promise: Promise<Uint8Array> = this.transport.send(requestData) as any;
       /// #if !MTPROTO_HTTP && !MTPROTO_HTTP_UPLOAD
       return promise;
       /// #else

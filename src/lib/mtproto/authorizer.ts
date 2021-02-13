@@ -105,7 +105,8 @@ export class Authorizer {
       this.log('mtpSendPlainRequest: creating requestPromise');
     }
     
-    return transport.send(resultArray).then(result => {
+    const promise = transport.send(resultArray) as any as Promise<Uint8Array>;
+    return promise.then(result => {
       if(DEBUG) {
         this.log('mtpSendPlainRequest: in good sector', result);
       }

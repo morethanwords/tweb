@@ -1,21 +1,16 @@
-import MTTransport from './transports/transport';
+import MTTransport, { MTConnection, MTConnectionConstructable } from './transports/transport';
 import Modes from '../../config/modes';
 
-/// #if MTPROTO_HTTP_UPLOAD
-// @ts-ignore
-import TcpObfuscated from './transports/tcpObfuscated';
-// @ts-ignore
+/// #if MTPROTO_HTTP || MTPROTO_HTTP_UPLOAD
 import HTTP from './transports/http';
-/// #elif !MTPROTO_HTTP
-// @ts-ignore
+/// #endif
+
+/// #if !MTPROTO_HTTP
+import Socket from './transports/websocket';
 import TcpObfuscated from './transports/tcpObfuscated';
+import EventListenerBase from '../../helpers/eventListenerBase';
 import { isSafari } from '../../helpers/userAgent';
-import type MTPNetworker from './networker';
 import { notifyAll, isWebWorker } from '../../helpers/context';
-import { CancellablePromise, deferredPromise } from '../../helpers/cancellablePromise';
-/// #else 
-// @ts-ignore
-import HTTP from './transports/http';
 /// #endif
 
 export type TransportType = 'websocket' | 'https' | 'http';
@@ -30,6 +25,48 @@ type Servers = {
 
 let socketId = 0;
 const TEST_SUFFIX = Modes.test ? '_test' : '';
+
+class SocketProxied extends EventListenerBase<{
+  open: () => void,
+  message: (buffer: ArrayBuffer) => any,
+  close: () => void,
+}> implements MTConnection {
+  private id: number;
+
+  constructor(protected dcId: number, protected url: string, logSuffix: string) {
+    super();
+    this.id = ++socketId;
+    socketsProxied.set(this.id, this);
+
+    notifyAll({
+      type: 'socketProxy',
+      payload: {
+        type: 'setup', 
+        payload: {
+          dcId, 
+          url,
+          logSuffix
+        },
+        id: this.id
+      }
+    });
+  }
+
+  send = (payload: Uint8Array) => {
+    const task: any = {
+      type: 'socketProxy', 
+      payload: {
+        type: 'send',
+        payload,
+        id: this.id
+      }
+    };
+
+    notifyAll(task);
+  };
+}
+
+export const socketsProxied: Map<number, SocketProxied> = new Map();
 
 export class DcConfigurator {
   private sslSubdomains = ['pluto', 'venus', 'aurora', 'vesta', 'flora'];
@@ -58,58 +95,10 @@ export class DcConfigurator {
     const logSuffix = connectionType === 'upload' ? '-U' : connectionType === 'download' ? '-D' : '';
 
     const retryTimeout = connectionType === 'client' ? 30000 : 10000;
-    if(isSafari && isWebWorker && false) {
-      class P implements MTTransport {
-        private id: number;
-        private taskId = 0;
-        public networker: MTPNetworker;
-        public promises: Map<number, CancellablePromise<Uint8Array>> = new Map();
 
-        constructor(dcId: number, url: string) {
-          this.id = ++socketId;
+    const oooohLetMeLive: MTConnectionConstructable = (isSafari && isWebWorker) || true ? SocketProxied : Socket;
 
-          notifyAll({
-            type: 'socketProxy',
-            payload: {
-              type: 'setup', 
-              payload: {
-                dcId, 
-                url,
-                logSuffix,
-                retryTimeout
-              },
-              id: this.id
-            }
-          });
-        }
-
-        send = (payload: Uint8Array) => {
-          const task: any = {
-            type: 'socketProxy', 
-            payload: {
-              type: 'send',
-              payload,
-              id: this.id
-            }
-          };
-
-          if(this.networker) {
-            notifyAll(task);
-            return null;
-          }
-          
-          task.payload.taskId = ++this.taskId;
-          const deferred = deferredPromise<Uint8Array>();
-          this.promises.set(task.id, deferred);
-          notifyAll(task);
-          return deferred;
-        };
-      }
-
-      return new P(dcId, chosenServer);
-    } else {
-      return new TcpObfuscated(dcId, chosenServer, logSuffix, retryTimeout);
-    }
+    return new TcpObfuscated(oooohLetMeLive, dcId, chosenServer, logSuffix, retryTimeout);
   };
   /// #endif
 

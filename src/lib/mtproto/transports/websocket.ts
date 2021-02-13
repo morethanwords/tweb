@@ -1,13 +1,14 @@
 import { logger, LogLevels } from '../../logger';
 import Modes from '../../../config/modes';
 import EventListenerBase from '../../../helpers/eventListenerBase';
+import { MTConnection } from './transport';
 
 export default class Socket extends EventListenerBase<{
   open: () => void,
   message: (buffer: ArrayBuffer) => any,
   close: () => void,
-}> {
-  public ws: WebSocket;
+}> implements MTConnection {
+  private ws: WebSocket;
   private log: ReturnType<typeof logger>;
   private debug = Modes.debug && false;
 
@@ -19,6 +20,8 @@ export default class Socket extends EventListenerBase<{
     this.log = logger(`WS-${dcId}` + logSuffix, logLevel);
     this.log('constructor');
     this.connect();
+
+    return this;
   }
 
   private removeListeners() {
