@@ -1,5 +1,4 @@
 import MTProtoWorker from 'worker-loader!./mtproto.worker';
-import SocketWorker from 'worker-loader!./transports/websocket';
 //import './mtproto.worker';
 import { isObject } from '../../helpers/object';
 import type { MethodDeclMap } from '../../layer';
@@ -16,6 +15,7 @@ import type { MTMessage } from './networker';
 import referenceDatabase from './referenceDatabase';
 import appDocsManager from '../appManagers/appDocsManager';
 import DEBUG, { MOUNT_CLASS_TO } from '../../config/debug';
+import Socket from './transports/websocket';
 
 type Task = {
   taskId: number,
@@ -59,7 +59,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
 
   private debug = DEBUG;
 
-  private socketsWorkers: Map<number, SocketWorker> = new Map();
+  private sockets: Map<number, Socket> = new Map();
 
   constructor() {
     super();
@@ -193,20 +193,53 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
       } else if(task.type === 'socketProxy') {
         const socketTask = task.payload;
         const id = socketTask.id;
-        console.log('socketProxy', socketTask, id);
+        //console.log('socketProxy', socketTask, id);
+
         if(socketTask.type === 'send') {
-          const socketWorker = this.socketsWorkers.get(id);
-          socketWorker.postMessage(socketTask);
+          const socket = this.sockets.get(id);
+          socket.send(socketTask.payload);
         } else if(socketTask.type === 'setup') {
-          const socketWorker = new SocketWorker();
-          socketWorker.postMessage(socketTask);
-          socketWorker.addEventListener('message', (e) => {
-            const task = e.data;
+          const socket = new Socket(socketTask.payload.dcId, socketTask.payload.url, socketTask.payload.logSuffix);
+          
+          const onOpen = () => {
+            //console.log('socketProxy onOpen');
+            this.postMessage({
+              type: 'socketProxy', 
+              payload: {
+                type: 'open',
+                id
+              }
+            });
+          };
+          const onClose = () => {
+            this.postMessage({
+              type: 'socketProxy', 
+              payload: {
+                type: 'close',
+                id
+              }
+            });
 
+            socket.removeListener('open', onOpen);
+            socket.removeListener('close', onClose);
+            socket.removeListener('message', onMessage);
+            this.sockets.delete(id);
+          };
+          const onMessage = (buffer: ArrayBuffer) => {
+            this.postMessage({
+              type: 'socketProxy', 
+              payload: {
+                type: 'message',
+                id,
+                payload: buffer
+              }
+            });
+          };
 
-          });
-
-          this.socketsWorkers.set(id, socketWorker);
+          socket.addListener('open', onOpen);
+          socket.addListener('close', onClose);
+          socket.addListener('message', onMessage);
+          this.sockets.set(id, socket);
         }
       } else if(task.hasOwnProperty('result') || task.hasOwnProperty('error')) {
         this.finalizeTask(task.taskId, task.result, task.error);

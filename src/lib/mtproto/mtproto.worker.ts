@@ -8,6 +8,7 @@ import apiFileManager from './apiFileManager';
 //import { logger, LogLevels } from '../logger';
 import type { ServiceWorkerTask, ServiceWorkerTaskResponse } from './mtproto.service';
 import { ctx } from '../../helpers/userAgent';
+import { socketsProxied } from './dcConfigurator';
 
 //const log = logger('DW', LogLevels.error);
 
@@ -109,6 +110,19 @@ const onMessage = async(e: any) => {
     } else if(task.type === 'webpSupport') {
       webpSupported = task.payload;
       return;
+    } else if(task.type === 'socketProxy') {
+      const socketTask = task.payload;
+      const id = socketTask.id;
+      
+      const socketProxied = socketsProxied.get(id);
+      if(socketTask.type === 'message') {
+        socketProxied.setListenerResult('message', socketTask.payload);
+      } else if(socketTask.type === 'open') {
+        socketProxied.setListenerResult('open');
+      } else if(socketTask.type === 'close') {
+        socketProxied.setListenerResult('close');
+        socketsProxied.delete(id);
+      }
     }
 
     if(!task.task) {
