@@ -20,13 +20,13 @@ import { isSafari } from '../../helpers/userAgent';
 // @ts-ignore
 import HTTP from './transports/http';
 // @ts-ignore
-import Socket from './transports/websocket';
+import type Socket from './transports/websocket';
 /// #elif MTPROTO_HTTP
 // @ts-ignore
 import HTTP from './transports/http';
 /// #else
 // @ts-ignore
-import Socket from './transports/websocket';
+import type Socket from './transports/websocket';
 /// #endif
 
 //console.error('networker included!', new Error().stack);
