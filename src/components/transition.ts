@@ -46,7 +46,7 @@ function slideTabs(tabContent: HTMLElement, prevTabContent: HTMLElement, toRight
   };
 }
 
-export const TransitionSlider = (content: HTMLElement, type: 'tabs' | 'navigation' | 'zoom-fade' | 'none'/*  | 'counter' */, transitionTime: number, onTransitionEnd?: (id: number) => void) => {
+export const TransitionSlider = (content: HTMLElement, type: 'tabs' | 'navigation' | 'zoom-fade' | 'slide-fade' | 'none'/*  | 'counter' */, transitionTime: number, onTransitionEnd?: (id: number) => void, isHeavy = true) => {
   let animationFunction: TransitionFunction = null;
 
   switch(type) {
@@ -62,12 +62,12 @@ export const TransitionSlider = (content: HTMLElement, type: 'tabs' | 'navigatio
 
   content.dataset.animation = type;
   
-  return Transition(content, animationFunction, transitionTime, onTransitionEnd);
+  return Transition(content, animationFunction, transitionTime, onTransitionEnd, isHeavy);
 };
 
 type TransitionFunction = (tabContent: HTMLElement, prevTabContent: HTMLElement, toRight: boolean) => void | (() => void);
 
-const Transition = (content: HTMLElement, animationFunction: TransitionFunction, transitionTime: number, onTransitionEnd?: (id: number) => void) => {
+const Transition = (content: HTMLElement, animationFunction: TransitionFunction, transitionTime: number, onTransitionEnd?: (id: number) => void, isHeavy = true) => {
   const onTransitionEndCallbacks: Map<HTMLElement, Function> = new Map();
   let animationDeferred: CancellablePromise<void>;
   let animationStarted = 0;
@@ -84,10 +84,16 @@ const Transition = (content: HTMLElement, animationFunction: TransitionFunction,
     const callback = onTransitionEndCallbacks.get(e.target as HTMLElement);
     if(callback) callback();
 
-    if(!animationDeferred || e.target !== from) return;
+    if(e.target !== from) {
+      return;
+    }
 
-    animationDeferred.resolve();
-    animationDeferred = undefined;
+    if(!animationDeferred && isHeavy) return;
+
+    if(animationDeferred) {
+      animationDeferred.resolve();
+      animationDeferred = undefined;
+    }
 
     if(onTransitionEnd) {
       onTransitionEnd(selectTab.prevId);
@@ -180,12 +186,14 @@ const Transition = (content: HTMLElement, animationFunction: TransitionFunction,
         });
       }
 
-      if(!animationDeferred) {
-        animationDeferred = deferredPromise<void>();
-        animationStarted = performance.now();
+      if(isHeavy) {
+        if(!animationDeferred) {
+          animationDeferred = deferredPromise<void>();
+          animationStarted = performance.now();
+        }
+  
+        dispatchHeavyAnimationEvent(animationDeferred, transitionTime * 2);
       }
-
-      dispatchHeavyAnimationEvent(animationDeferred, transitionTime * 2);
     }
     
     self.prevId = id;

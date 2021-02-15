@@ -1,9 +1,11 @@
-import DEBUG from '../config/debug';
+import _DEBUG from '../config/debug';
 import fastBlur from '../vendor/fastBlur';
 import pushHeavyTask from './heavyQueue';
 
 const RADIUS = 2;
 const ITERATIONS = 2;
+
+const DEBUG = _DEBUG && false;
 
 function processBlur(dataUri: string, radius: number, iterations: number) {
   return new Promise<string>((resolve) => {

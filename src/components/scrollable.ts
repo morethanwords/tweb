@@ -52,6 +52,7 @@ export class ScrollableBase {
   protected onScroll: () => void;
 
   public isHeavyAnimationInProgress = false;
+  protected needCheckAfterAnimation = false;
 
   constructor(public el: HTMLElement, logPrefix = '', public container: HTMLElement = document.createElement('div')) {
     this.container.classList.add('scrollable');
@@ -74,11 +75,16 @@ export class ScrollableBase {
       this.isHeavyAnimationInProgress = true;
 
       if(this.onScrollMeasure) {
+        this.needCheckAfterAnimation = true;
         window.cancelAnimationFrame(this.onScrollMeasure);
       }
     }, () => {
       this.isHeavyAnimationInProgress = false;
-      this.onScroll();
+
+      if(this.needCheckAfterAnimation) {
+        this.onScroll();
+        this.needCheckAfterAnimation = false;
+      }
     });
   }
 
@@ -146,6 +152,7 @@ export default class Scrollable extends ScrollableBase {
         window.cancelAnimationFrame(this.onScrollMeasure);
       }
 
+      this.needCheckAfterAnimation = true;
       return;
     }
 

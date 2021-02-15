@@ -2,6 +2,7 @@ import { attachClickEvent } from "../helpers/dom";
 import { horizontalMenu } from "./horizontalMenu";
 import ButtonIcon from "./buttonIcon";
 import Scrollable from "./scrollable";
+import { TransitionSlider } from "./transition";
 
 export interface SliderTab {
   onOpen?: () => void,
@@ -86,7 +87,7 @@ export default class SidebarSlider {
 
   constructor(public sidebarEl: HTMLElement, public tabs: {[id: number]: SliderTab} = {}, private canHideFirst = false) {
     this.tabsContainer = this.sidebarEl.querySelector('.sidebar-slider');
-    this._selectTab = horizontalMenu(null, this.tabsContainer as HTMLDivElement, null, null, TRANSITION_TIME);
+    this._selectTab = TransitionSlider(this.tabsContainer, 'navigation', TRANSITION_TIME);
     if(!canHideFirst) {
       this._selectTab(0);
     }
