@@ -158,8 +158,8 @@ export class ApiManager {
   
   // mtpGetNetworker
   public getNetworker(dcId: number, options: InvokeApiOptions = {}): Promise<MTPNetworker> {
-    //const connectionType: ConnectionType = options.fileDownload ? 'download' : (options.fileUpload ? 'upload' : 'client');
-    const connectionType: ConnectionType = 'client';
+    const connectionType: ConnectionType = options.fileDownload ? 'download' : (options.fileUpload ? 'upload' : 'client');
+    //const connectionType: ConnectionType = 'client';
 
     /// #if MTPROTO_HTTP_UPLOAD
     // @ts-ignore
@@ -184,7 +184,7 @@ export class ApiManager {
     }
     
     const networkers = cache[dcId];
-    if(networkers.length >= /* 1 */(connectionType === 'client' || transportType === 'https' ? 1 : (connectionType === 'download' ? 3 : 1))) {
+    if(networkers.length >= /* 1 */(connectionType === 'client' || transportType === 'https' ? 1 : (connectionType === 'download' ? 3 : 3))) {
       let i = networkers.length - 1, found = false;
       for(; i >= 0; --i) {
         if(networkers[i].isOnline) {

@@ -198,6 +198,9 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
         if(socketTask.type === 'send') {
           const socket = this.sockets.get(id);
           socket.send(socketTask.payload);
+        } else if(socketTask.type === 'close') {
+          const socket = this.sockets.get(id);
+          socket.close();
         } else if(socketTask.type === 'setup') {
           const socket = new Socket(socketTask.payload.dcId, socketTask.payload.url, socketTask.payload.logSuffix);
           

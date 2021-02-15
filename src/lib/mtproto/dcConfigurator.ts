@@ -52,7 +52,7 @@ class SocketProxied extends EventListenerBase<{
     });
   }
 
-  send = (payload: Uint8Array) => {
+  public send(payload: Uint8Array) {
     const task: any = {
       type: 'socketProxy', 
       payload: {
@@ -63,7 +63,19 @@ class SocketProxied extends EventListenerBase<{
     };
 
     notifyAll(task);
-  };
+  }
+
+  public close() {
+    const task: any = {
+      type: 'socketProxy',
+      payload: {
+        type: 'close',
+        id: this.id
+      }
+    };
+
+    notifyAll(task);
+  }
 }
 
 export const socketsProxied: Map<number, SocketProxied> = new Map();
@@ -94,9 +106,9 @@ export class DcConfigurator {
     const chosenServer = 'wss://' + subdomain + '.web.telegram.org/' + path;
     const logSuffix = connectionType === 'upload' ? '-U' : connectionType === 'download' ? '-D' : '';
 
-    const retryTimeout = connectionType === 'client' ? 30000 : 10000;
+    const retryTimeout = connectionType === 'client' ? 15000 : 10000;
 
-    const oooohLetMeLive: MTConnectionConstructable = (isSafari && isWebWorker) || true ? SocketProxied : Socket;
+    const oooohLetMeLive: MTConnectionConstructable = (isSafari && isWebWorker) /* || true */ ? SocketProxied : Socket;
 
     return new TcpObfuscated(oooohLetMeLive, dcId, chosenServer, logSuffix, retryTimeout);
   };

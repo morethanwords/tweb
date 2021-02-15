@@ -25,10 +25,15 @@ export default class Socket extends EventListenerBase<{
   }
 
   private removeListeners() {
+    if(!this.ws) {
+      return;
+    }
+
     this.ws.removeEventListener('open', this.handleOpen);
     this.ws.removeEventListener('close', this.handleClose);
     this.ws.removeEventListener('error', this.handleError);
     this.ws.removeEventListener('message', this.handleMessage);
+    this.ws = undefined;
   }
   
   private connect() {
@@ -39,58 +44,45 @@ export default class Socket extends EventListenerBase<{
     this.ws.addEventListener('error', this.handleError);
     this.ws.addEventListener('message', this.handleMessage);
   }
+
+  public close() {
+    if(!this.ws) {
+      return;
+    }
+
+    this.log.error('close execution');
+
+    this.ws.close();
+    this.handleClose();
+  }
   
-  handleOpen = () => {
+  private handleOpen = () => {
     this.log('opened');
 
     this.debug && this.log.debug('sending init packet');
     this.setListenerResult('open');
   };
 
-  handleError = (e: Event) => {
+  private handleError = (e: Event) => {
     this.log.error(e);
   };
 
-  handleClose = () => {
+  private handleClose = () => {
     this.log('closed'/* , event, this.pending, this.ws.bufferedAmount */);
 
     this.removeListeners();
     this.setListenerResult('close');
   };
 
-  handleMessage = (event: MessageEvent) => {
+  private handleMessage = (event: MessageEvent) => {
     this.debug && this.log.debug('<-', 'handleMessage', /* event,  */event.data.byteLength);
 
     this.setListenerResult('message', event.data as ArrayBuffer);
   };
 
-  send = (body: Uint8Array) => {
+  public send = (body: Uint8Array) => {
     this.debug && this.log.debug('-> body length to send:', body.length);
 
     this.ws.send(body);
   };
 }
-
-/* const setupSafariFix = () => {
-  
-};
-
-if(isWebWorker) {
-  import('../../polyfill').then(() => {
-    //ctx.postMessage('ready');
-    let socket: Socket;
-    ctx.addEventListener('message', (e) => {
-      console.log('websocket worker message', e);
-      const task = e.data;
-
-      if(task.type === 'send') {
-        // const promise = socket.send(task.payload);
-        // if(task.taskId) {
-        //   promise
-        // }
-      } else if(task.type === 'setup') {
-        socket = new Socket(task.dcId, task.url, task.logSuffix, task.retryTimeout);
-      }
-    });
-  });
-} */
