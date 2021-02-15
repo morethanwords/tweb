@@ -11,8 +11,8 @@ import { InvokeApiOptions } from '../../types';
 import { longToBytes } from '../crypto/crypto_utils';
 import MTTransport from './transports/transport';
 import { convertToUint8Array, bufferConcat, bytesCmp, bytesToHex } from '../../helpers/bytes';
-import { nextRandomInt } from '../../helpers/random';
-import { CancellablePromise } from '../../helpers/cancellablePromise';
+import { nextRandomInt, randomLong } from '../../helpers/random';
+import { CancellablePromise, deferredPromise } from '../../helpers/cancellablePromise';
 import { isSafari } from '../../helpers/userAgent';
 import App from '../../config/app';
 import DEBUG from '../../config/debug';
@@ -116,8 +116,6 @@ export default class MTPNetworker {
   private lastResponseTime = 0;
   private disconnectDelay: number;
   private pingPromise: CancellablePromise<any>;
-  private sentPingTimes = 0;
-  private tt = 0;
   //public onConnectionStatusChange: (online: boolean) => void;
 
   private debugRequests: Array<{before: Uint8Array, after: Uint8Array}> = [];
@@ -171,15 +169,11 @@ export default class MTPNetworker {
     /// #endif
 
     // * handle outcoming dead socket, server will close the connection
-    if((this.transport as TcpObfuscated).networker) {
-      if(isSafari) {
-        this.pingPromise = Promise.resolve();
-      } else {
-        this.disconnectDelay = (this.transport as TcpObfuscated).retryTimeout / 1000 | 0;
-        //setInterval(this.sendPingDelayDisconnect, (this.disconnectDelay - 5) * 1000);
-        // ! this.sendPingDelayDisconnect();
-      }
-    }
+    // if((this.transport as TcpObfuscated).networker) {
+    //   this.disconnectDelay = /* (this.transport as TcpObfuscated).retryTimeout  */75;
+    //   //setInterval(this.sendPingDelayDisconnect, (this.disconnectDelay - 5) * 1000);
+    //   this.sendPingDelayDisconnect();
+    // }
   }
 
   public updateSession() {
@@ -393,6 +387,52 @@ export default class MTPNetworker {
 
   //   deferred.catch(() => {
   //     (this.transport as Socket).handleClose();
+  //   });
+
+  //   deferred.finally(() => {
+  //     this.pingPromise = null;
+  //     this.sendPingDelayDisconnect();
+  //   });
+  // };
+
+  // private sendPingDelayDisconnect = () => {
+  //   if(this.pingPromise || true) return;
+
+  //   /* if(!this.isOnline) {
+  //     if((this.transport as TcpObfuscated).connected) {
+  //       (this.transport as TcpObfuscated).connection.close();
+  //     }
+
+  //     return;
+  //   } */
+
+  //   const deferred = this.pingPromise = deferredPromise<void>();
+
+  //   const timeoutTime = this.disconnectDelay * 1000;
+
+  //   const startTime = Date.now();
+  //   this.wrapMtpCall('ping_delay_disconnect', {
+  //     ping_id: randomLong(),
+  //     disconnect_delay: this.disconnectDelay
+  //   }, {}).then(pong => {
+  //     const elapsedTime = Date.now() - startTime;
+  //     this.log('sendPingDelayDisconnect: response', pong, elapsedTime > timeoutTime);
+
+  //     if(elapsedTime > timeoutTime) {
+  //       deferred.reject();
+  //     } else {
+  //       setTimeout(deferred.resolve, timeoutTime - elapsedTime);
+  //     }
+  //   }, deferred.reject).finally(() => {
+  //     clearTimeout(rejectTimeout);
+  //     //--this.sentPingTimes;
+  //   });
+
+  //   const rejectTimeout = self.setTimeout(deferred.reject, timeoutTime);
+
+  //   deferred.catch(() => {
+  //     this.log.error('sendPingDelayDisconnect: catch, closing connection if exists');
+  //     (this.transport as TcpObfuscated).connection.close();
   //   });
 
   //   deferred.finally(() => {
@@ -640,9 +680,9 @@ export default class MTPNetworker {
         });
       }
 
-      /* if(!this.pingPromise && (this.transport as TcpObfuscated).networker) {
-        this.sendPingDelayDisconnect();
-      } */
+      // if((this.transport as TcpObfuscated).networker) {
+      //   this.sendPingDelayDisconnect();
+      // }
       /* this.sentPingTimes = 0;
       this.sendPingDelayDisconnect(); */
     }

@@ -19,21 +19,17 @@ export default class TcpObfuscated implements MTTransport {
   }>> = [];
 
   private debug = Modes.debug && false;
-
   private log: ReturnType<typeof logger>;
-
   public connected = false;
-
   private lastCloseTime: number;
-
-  private connection: MTConnection;
+  public connection: MTConnection;
 
   //private debugPayloads: MTPNetworker['debugRequests'] = [];
 
   constructor(private Connection: MTConnectionConstructable, private dcId: number, private url: string, private logSuffix: string, public retryTimeout: number) {
     let logLevel = LogLevels.error | LogLevels.log;
     if(this.debug) logLevel |= LogLevels.debug;
-    this.log = logger(`WS-${dcId}` + logSuffix, logLevel);
+    this.log = logger(`TCP-${dcId}` + logSuffix, logLevel);
     this.log('constructor');
     
     this.connect();
@@ -50,6 +46,12 @@ export default class TcpObfuscated implements MTTransport {
       if(this.lastCloseTime) {
         this.networker.cleanupSent();
         this.networker.resend();
+      }
+    }
+
+    for(const pending of this.pending) {
+      if(pending.encoded && pending.body) {
+        pending.encoded = this.encodeBody(pending.body);
       }
     }
 

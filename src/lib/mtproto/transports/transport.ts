@@ -10,6 +10,7 @@ export interface MTConnection extends EventListenerBase<{
   close: () => void,
 }> {
   send: (data: Uint8Array) => void;
+  close: () => void;
 }
 
 export interface MTConnectionConstructable {
