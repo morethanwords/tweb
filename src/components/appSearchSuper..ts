@@ -80,7 +80,7 @@ export default class AppSearchSuper {
 
   private searchGroupMedia: SearchGroup;
 
-  constructor(public types: {inputFilter: SearchSuperType, name: string}[], public scrollable: Scrollable, public searchGroups?: {[group in SearchGroupType]: SearchGroup}, public asChatList = false) {
+  constructor(public types: {inputFilter: SearchSuperType, name: string}[], public scrollable: Scrollable, public searchGroups?: {[group in SearchGroupType]: SearchGroup}, public asChatList = false, public groupByMonth = true) {
     this.container = document.createElement('div');
     this.container.classList.add('search-super');
 
@@ -549,7 +549,7 @@ export default class AppSearchSuper {
       const method = append ? 'append' : 'prepend';
       elemsToAppend.forEach(details => {
         const {element, message} = details;
-        const monthContainer = this.getMonthContainerByTimestamp(message.date, type);
+        const monthContainer = this.getMonthContainerByTimestamp(this.groupByMonth ? message.date : 0, type);
         element.classList.add('search-super-item');
         element.dataset.mid = '' + message.mid;
         element.dataset.peerId = '' + message.peerId;

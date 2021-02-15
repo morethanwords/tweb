@@ -1,4 +1,4 @@
-import { findUpTag, whichChild, findUpAsChild } from "../helpers/dom";
+import { whichChild, findUpAsChild } from "../helpers/dom";
 import { TransitionSlider } from "./transition";
 import { ScrollableX } from "./scrollable";
 import rootScope from "../lib/rootScope";

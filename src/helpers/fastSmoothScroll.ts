@@ -43,7 +43,7 @@ export default function fastSmoothScroll(
     return Promise.resolve(); */
   }
 
-  if(axis === 'y' && isInDOM(element) && container.getBoundingClientRect) {
+  if(axis === 'y' && element !== container && isInDOM(element) && container.getBoundingClientRect) {
     const elementRect = element.getBoundingClientRect();
     const containerRect = container.getBoundingClientRect();
   

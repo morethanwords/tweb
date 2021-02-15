@@ -103,7 +103,7 @@ export class AppSidebarRight extends SidebarSlider {
       this.selectTab(AppSidebarRight.SLIDERITEMSIDS.sharedMedia);
     }
 
-    const transitionTime = rootScope.settings.animationsEnabled ? mediaSizes.isMobile ? 250 : 200 : 0;
+    const transitionTime = rootScope.settings.animationsEnabled ? (mediaSizes.isMobile ? 250 : 200) : 0;
     const promise = pause(transitionTime);
     if(transitionTime) {
       dispatchHeavyAnimationEvent(promise, transitionTime);

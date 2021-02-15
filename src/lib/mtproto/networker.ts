@@ -1,5 +1,5 @@
 import {isObject} from './bin_utils';
-import { bigStringInt} from './bin_utils';
+import {bigStringInt} from './bin_utils';
 import {TLDeserialization, TLSerialization} from './tl_utils';
 import CryptoWorker from '../crypto/cryptoworker';
 import sessionStorage from '../sessionStorage';
@@ -11,19 +11,13 @@ import { InvokeApiOptions } from '../../types';
 import { longToBytes } from '../crypto/crypto_utils';
 import MTTransport from './transports/transport';
 import { convertToUint8Array, bufferConcat, bytesCmp, bytesToHex } from '../../helpers/bytes';
-import { nextRandomInt, randomLong } from '../../helpers/random';
-import { CancellablePromise, deferredPromise } from '../../helpers/cancellablePromise';
-import { isSafari } from '../../helpers/userAgent';
+import { nextRandomInt } from '../../helpers/random';
+import { CancellablePromise } from '../../helpers/cancellablePromise';
 import App from '../../config/app';
 import DEBUG from '../../config/debug';
 import Modes from '../../config/modes';
-import Obfuscation from './transports/obfuscation';
 
-/// #if MTPROTO_HTTP_UPLOAD
-// @ts-ignore
-import HTTP from './transports/http';
-/// #elif MTPROTO_HTTP
-// @ts-ignore
+/// #if MTPROTO_HTTP_UPLOAD || MTPROTO_HTTP
 import HTTP from './transports/http';
 /// #endif
 
@@ -119,8 +113,6 @@ export default class MTPNetworker {
   //public onConnectionStatusChange: (online: boolean) => void;
 
   private debugRequests: Array<{before: Uint8Array, after: Uint8Array}> = [];
-
-  private obfuscation: Obfuscation;
 
   constructor(public dcId: number, private authKey: number[], private authKeyId: Uint8Array,
     serverSalt: number[], private transport: MTTransport, options: InvokeApiOptions = {}) {
@@ -715,7 +707,7 @@ export default class MTPNetworker {
 
   // * correct, fully checked
   public async getMsgKey(dataWithPadding: ArrayBuffer, isOut: boolean) {
-    const x = isOut ? 0 : 8
+    const x = isOut ? 0 : 8;
     const msgKeyLargePlain = bufferConcat(this.authKeyUint8.subarray(88 + x, 88 + x + 32), dataWithPadding);
 
     const msgKeyLarge = await CryptoWorker.sha256Hash(msgKeyLargePlain);
@@ -980,13 +972,13 @@ export default class MTPNetworker {
     data.storeInt(message.body.length, 'message_data_length');
     data.storeRawBytes(message.body, 'message_data');
 
-    const des = new TLDeserialization(data.getBuffer().slice(16));
+    /* const des = new TLDeserialization(data.getBuffer().slice(16));
     const desSalt = des.fetchLong();
     const desSessionId = des.fetchLong();
 
     if(!this.isOnline) {
       this.log.error('trying to send message when offline', message, new Uint8Array(des.buffer), desSalt, desSessionId);
-    }
+    } */
 
     /* const messageDataLength = message.body.length;
     let canBeLength = 0; // bytes
@@ -1004,14 +996,14 @@ export default class MTPNetworker {
     } */
 
     const paddingLength = (16 - (data.offset % 16)) + 16 * (1 + nextRandomInt(5));
-    const padding = (message as any).padding || new Uint8Array(paddingLength).randomize()/* .fill(0) */;
+    const padding = /* (message as any).padding ||  */new Uint8Array(paddingLength).randomize()/* .fill(0) */;
     /* const padding = [167, 148, 207, 226, 86, 192, 193, 57, 124, 153, 174, 145, 159, 1, 5, 70, 127, 157, 
       51, 241, 46, 85, 141, 212, 139, 234, 213, 164, 197, 116, 245, 70, 184, 40, 40, 201, 233, 211, 150, 
       94, 57, 84, 1, 135, 108, 253, 34, 139, 222, 208, 71, 214, 90, 67, 36, 28, 167, 148, 207, 226, 86, 192, 193, 57, 124, 153, 174, 145, 159, 1, 5, 70, 127, 157, 
       51, 241, 46, 85, 141, 212, 139, 234, 213, 164, 197, 116, 245, 70, 184, 40, 40, 201, 233, 211, 150, 
       94, 57, 84, 1, 135, 108, 253, 34, 139, 222, 208, 71, 214, 90, 67, 36, 28].slice(0, paddingLength); */
 
-    (message as any).padding = padding;
+    //(message as any).padding = padding;
 
     const dataWithPadding = bufferConcat(dataBuffer, padding);
     // this.log('Adding padding', dataBuffer, padding, dataWithPadding)
@@ -1040,12 +1032,12 @@ export default class MTPNetworker {
   
       const requestData = request.getBytes(true);
 
-      if(this.isFileNetworker) {
-        //this.log('Send encrypted: requestData length:', requestData.length, requestData.length % 16, paddingLength % 16, paddingLength, data.offset, encryptedResult.msgKey.length % 16, encryptedResult.bytes.length % 16);
-        //this.log('Send encrypted: messageId:', message.msg_id, requestData.length);
-        //this.log('Send encrypted:', message, new Uint8Array(bufferConcat(des.buffer, padding)), requestData, this.serverSalt.hex, this.sessionId.hex/* new Uint8Array(des.buffer) */);
-        this.debugRequests.push({before: new Uint8Array(bufferConcat(des.buffer, padding)), after: requestData});
-      }
+      // if(this.isFileNetworker) {
+      //   //this.log('Send encrypted: requestData length:', requestData.length, requestData.length % 16, paddingLength % 16, paddingLength, data.offset, encryptedResult.msgKey.length % 16, encryptedResult.bytes.length % 16);
+      //   //this.log('Send encrypted: messageId:', message.msg_id, requestData.length);
+      //   //this.log('Send encrypted:', message, new Uint8Array(bufferConcat(des.buffer, padding)), requestData, this.serverSalt.hex, this.sessionId.hex/* new Uint8Array(des.buffer) */);
+      //   this.debugRequests.push({before: new Uint8Array(bufferConcat(des.buffer, padding)), after: requestData});
+      // }
 
       return requestData;
     });

@@ -47,7 +47,7 @@
   .sidebar-header {
     flex: 0 0 auto;
 
-    .sidebar-close-button:before {
+    .sidebar-close-button.tgico:before {
       content: $tgico-arrow_back;
 
       @include respond-to(not-handhelds) {
@@ -235,6 +235,15 @@
       max-height: calc((var(--vh, 1vh) * 100) - 100% - 56px);
     }
   }
+
+  .sidebar-header .transition {
+    flex-grow: 1;
+
+    .transition-item {
+      display: flex;
+      align-items: center;
+    }
+  }
 }
 
 .search-super {
@@ -278,7 +287,7 @@
     box-shadow: none !important;
     position: -webkit-sticky !important;
 	  position: sticky !important;
-    top: 0;
+    top: -1px;
     z-index: 2;
     background-color: #fff;
 

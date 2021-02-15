@@ -11,6 +11,9 @@ import AvatarElement from "../../avatar";
 import Scrollable from "../../scrollable";
 import { SliderTab } from "../../slider";
 import CheckboxField from "../../checkbox";
+import { attachClickEvent, cancelEvent } from "../../../helpers/dom";
+import appSidebarRight from "..";
+import { TransitionSlider } from "../../transition";
 
 let setText = (text: string, el: HTMLDivElement) => {
   window.requestAnimationFrame(() => {
@@ -29,7 +32,7 @@ let setText = (text: string, el: HTMLDivElement) => {
 // TODO: отредактированное сообщение не изменится
 export default class AppSharedMediaTab implements SliderTab {
   public container: HTMLElement;
-  public closeBtn: HTMLElement;
+  public closeBtn: HTMLButtonElement;
 
   private peerId = 0;
   private threadId = 0;
@@ -62,7 +65,8 @@ export default class AppSharedMediaTab implements SliderTab {
 
   public init() {
     this.container = document.getElementById('shared-media-container');
-    this.closeBtn = this.container.querySelector('.sidebar-close-button');
+    this.closeBtn = this.container.querySelector('.sidebar-header .btn-icon');
+    this.closeBtn.classList.add('sidebar-close-button');
 
     this.profileContentEl = this.container.querySelector('.profile-content');
     this.profileElements = {
@@ -86,7 +90,37 @@ export default class AppSharedMediaTab implements SliderTab {
     this.profileElements.notificationsRow.prepend(checkboxField.label);
 
     this.scroll = new Scrollable(this.container, 'SR', 400);
-    
+
+    const HEADER_HEIGHT = 56;
+    const closeIcon = this.closeBtn.firstElementChild as HTMLElement;
+    this.scroll.onAdditionalScroll = () => {
+      const rect = this.searchSuper.nav.getBoundingClientRect(); 
+      if(!rect.width) return;
+
+      //console.log('daddy issues', this.searchSuper.nav.getBoundingClientRect());
+
+      const top = rect.top;
+      const isSharedMedia = top <= HEADER_HEIGHT;
+      closeIcon.classList.toggle('state-back', isSharedMedia);
+      transition(+isSharedMedia);
+    };
+
+    const transition = TransitionSlider(this.closeBtn.nextElementSibling as HTMLElement, 'slide-fade', 400, null, false);
+
+    transition(0);
+
+    attachClickEvent(this.closeBtn, (e) => {
+      if(this.closeBtn.firstElementChild.classList.contains('state-back')) {
+        this.scroll.scrollIntoViewNew(this.scroll.container.firstElementChild as HTMLElement, 'start');
+        transition(0);
+        closeIcon.classList.remove('state-back');
+      } else if(!this.scroll.isHeavyAnimationInProgress) {
+        appSidebarRight.closeTab();
+      }
+    });
+
+    this.container.prepend(this.closeBtn.parentElement);
+
     this.profileElements.notificationsCheckbox.addEventListener('change', () => {
       //let checked = this.profileElements.notificationsCheckbox.checked;
       appMessagesManager.mutePeer(this.peerId);
@@ -134,7 +168,7 @@ export default class AppSharedMediaTab implements SliderTab {
     }, {
       inputFilter: 'inputMessagesFilterMusic',
       name: 'Music'
-    }], this.scroll);
+    }], this.scroll/* , undefined, undefined, false */);
 
     this.profileContentEl.append(this.searchSuper.container);
   }

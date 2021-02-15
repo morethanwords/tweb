@@ -57,6 +57,7 @@
     border-bottom: 1px solid #dadce0;
     position: relative;
     box-shadow: 0px 1px 5px -1px rgba(0, 0, 0, .16);
+    top: unset;
 
     .scrollable {
       position: relative;
@@ -198,47 +199,39 @@
 
   .sidebar-header__btn-container {
     position: relative;
-    width: 40px;
-    height: 40px;
+    width: 2.5rem;
+    height: 2.5rem;
     flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
     > .btn-icon {
       visibility: hidden;
       opacity: 0;
       position: absolute;
-      left: 0;
       top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
       transition: .2s opacity, .15s background-color;
       z-index: 2;
-
-      &:before {
-        transition: .2s transform;
-        transform: rotate(180deg);
-      }
+      margin: 0;
 
       body.animation-level-0 &, body.animation-level-0 &:before {
         transition: none;
-      }
-
-      & + * {
-        margin-left: 0!important;
       }
 
       &.active {
         //margin-top: 1px;
         opacity: 1;
         visibility: visible;
-        color: #707579;
-
-        &:before {
-          transform: rotate(0deg);
-        }
       }
     }
 
     .btn-menu {
       @include respond-to(handhelds) {
-        margin-top: -4px;
+        margin-top: -.25rem;
       }
     }
   }
@@ -247,20 +240,10 @@
     min-width: 217px;
 
     .archived-count {
-      border-radius: 12px;
-      min-width: 24px;
-      padding: 0 8px;
-      height: 24px;
-      text-align: center;
-      line-height: 24px;
-      color: #fff;
-      font-weight: 500;
-      background-color: #c5c9cc;
       justify-self: flex-end;
       margin-left: .625rem;
 
       @include respond-to(handhelds) {
-        font-size: 14px;
         font-weight: 600;
       }
     }

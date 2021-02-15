@@ -418,6 +418,7 @@ export class AppSidebarLeft extends SidebarSlider {
       this.toolsBtn.classList.remove('active');
       this.backBtn.classList.add('active');
       this.newBtnMenu.classList.add('is-hidden');
+      this.toolsBtn.parentElement.firstElementChild.classList.toggle('state-back', true);
 
       transition(1);
     };
@@ -428,6 +429,7 @@ export class AppSidebarLeft extends SidebarSlider {
     this.backBtn.addEventListener('click', (e) => {
       this.toolsBtn.classList.add('active');
       this.backBtn.classList.remove('active');
+      this.toolsBtn.parentElement.firstElementChild.classList.toggle('state-back', false);
 
       transition(0);
     });

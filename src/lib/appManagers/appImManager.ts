@@ -518,7 +518,13 @@ export class AppImManager {
 
     if(prevTabId !== -1 && prevTabId !== id && rootScope.settings.animationsEnabled) {
       const transitionTime = (mediaSizes.isMobile ? 250 : 200) + 100; // * cause transition time could be > 250ms
-      dispatchHeavyAnimationEvent(pause(transitionTime), transitionTime);
+      const promise = pause(transitionTime);
+      dispatchHeavyAnimationEvent(promise, transitionTime);
+
+      this.columnEl.classList.add('disable-hover');
+      promise.finally(() => {
+        this.columnEl.classList.remove('disable-hover');
+      });
     }
 
     this.tabId = id;

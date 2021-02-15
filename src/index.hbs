@@ -98,17 +98,18 @@
           <div class="sidebar-slider-item item-main">
             <div class="sidebar-header">
               <div class="sidebar-header__btn-container">
-                <div class="btn-icon tgico-menu btn-menu-toggle rp sidebar-tools-button active">
+                <div class="animated-menu-icon"></div>
+                <div class="btn-icon btn-menu-toggle rp sidebar-tools-button active">
                   <div class="btn-menu bottom-right">
                     <div class="btn-menu-item menu-newGroup tgico-newgroup rp">New Group</div>
                     <div class="btn-menu-item menu-contacts tgico-user rp">Contacts</div>
-                    <div class="btn-menu-item menu-archived tgico-archive rp">Archived <span class="archived-count"></span></div>
+                    <div class="btn-menu-item menu-archived tgico-archive rp">Archived <span class="archived-count badge badge-24 badge-gray"></span></div>
                     <div class="btn-menu-item menu-saved tgico-savedmessages rp">Saved</div>
                     <div class="btn-menu-item menu-settings tgico-settings rp">Settings</div>
                     <div class="btn-menu-item menu-help tgico-help rp btn-disabled">Help</div>
                   </div>
                 </div>
-                <div class="btn-icon tgico-arrow_back rp sidebar-back-button"></div>
+                <div class="btn-icon rp sidebar-back-button"></div>
               </div>
             </div>
             <div class="sidebar-content transition zoom-fade">
@@ -171,9 +172,18 @@
         <div class="sidebar-content sidebar-slider tabs-container">
           <div class="sidebar-slider-item profile-container" id="shared-media-container">
             <div class="sidebar-header">
-              <button class="btn-icon tgico sidebar-close-button"></button>
-              <div class="sidebar-header__title">Info</div>
-              <div class="btn-icon tgico-more"></div>
+              <button class="btn-icon">
+                <div class="animated-close-icon"></div>
+              </button>
+              <div class="transition slide-fade">
+                <div class="transition-item">
+                  <div class="sidebar-header__title">Info</div>
+                  <div class="btn-icon tgico-more"></div>
+                </div>
+                <div class="transition-item">
+                  <div class="sidebar-header__title">Shared Media</div>
+                </div>
+              </div>
             </div>
             <div class="profile-content">
               <div class="profile-content-wrapper">

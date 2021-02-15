@@ -47,8 +47,10 @@ $chat-padding-handhelds: .5rem;
   --color-gray-hover: #{hover-color($color-gray)};
   --color-blue-hover: #{hover-color($color-blue)};
   --color-red-hover: #{hover-color($color-red)};
+  --color-text-secondary: #{$color-gray};
   --pm-transition: .2s ease-in-out;
   --layer-transition: .2s ease-in-out;
+  --slide-header-transition: .4s ease-in-out;
   --tabs-transition: .25s ease-in-out;
   //--layer-transition: .3s cubic-bezier(.33, 1, .68, 1);
   //--layer-transition: none;
@@ -93,6 +95,10 @@ $chat-padding-handhelds: .5rem;
     --chat-input-padding: #{$chat-padding};
   }
 
+  @include respond-to(esg-bottom) {
+    --chat-input-size: #{$chat-input-handhelds-size};
+  }
+
   @include respond-to(only-medium-screens) {
     --right-column-width: 25vw;
   }
@@ -101,6 +107,7 @@ $chat-padding-handhelds: .5rem;
 @import "partials/ico";
 @import "partials/input";
 @import "partials/button";
+@import "partials/animatedIcon";
 @import "partials/badge";
 @import "partials/checkbox";
 @import "partials/chatlist";
@@ -847,6 +854,9 @@ img.emoji {
 }
 
 .transition {
+  --easeOutSine: cubic-bezier(.39, .575, .565, 1);
+  --easeInSine: cubic-bezier(.47, 0, .745, .715);
+
   .transition-item {
     position: absolute;
     top: 0;
@@ -905,6 +915,57 @@ img.emoji {
       }
     }
   }
+
+  /*
+   * slide-fade
+   */
+  &.slide-fade {
+    position: relative;
+
+    > .from {
+      transform-origin: left center;
+      transform: translateX(0);
+      opacity: 1;
+    }
+
+    > .to {
+      transform-origin: left center;
+      transform: translateX(1.5rem);
+      opacity: 0;
+    }
+
+    &.animating {
+      > .from {
+        animation: fade-out-opacity .4s ease-out, slide-fade-out-move .4s;
+      }
+
+      > .to {
+        animation: fade-in-opacity .4s var(--easeInSine), slide-fade-in-move .4s;
+      }
+    }
+  }
+
+  &.slide-fade.backwards {
+    > .from {
+      transform: translateX(0);
+      opacity: 1;
+    }
+
+    > .to {
+      transform: translateX(-1.5rem);
+      opacity: 0;
+    }
+
+    &.animating {
+      > .from {
+        animation: fade-in-backwards-opacity .4s ease-out, slide-fade-in-backwards-move .4s;
+      }
+
+      > .to {
+        animation: fade-out-backwards-opacity .4s var(--easeOutSine), slide-fade-out-backwards-move .4s;
+      }
+    }
+  }
 }
 
 /*
@@ -934,6 +995,45 @@ img.emoji {
   }
   100% {
     transform: scale(1);
+  }
+}
+
+/*
+ * slide-fade
+ */
+@keyframes slide-fade-in-move {
+  0% {
+    transform: translateX(1.5rem);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-fade-out-move {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-1.5rem);
+  }
+}
+
+@keyframes slide-fade-in-backwards-move {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(1.5rem);
+  }
+}
+
+@keyframes slide-fade-out-backwards-move {
+  0% {
+    transform: translateX(-1.5rem);
+  }
+  100% {
+    transform: translateX(0);
   }
 }
 
