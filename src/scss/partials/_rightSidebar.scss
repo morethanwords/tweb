@@ -27,7 +27,7 @@
       border-left-width: 0;
     } */
   
-    body.is-right-column-shown & {
+    body.is-right-column-shown:not(.is-left-column-shown) & {
       transform: translate3d(0, 0, 0);
     }
 

@@ -6,17 +6,12 @@ import AppGifsTab from "./tabs/gifs";
 import mediaSizes, { ScreenSize } from "../../helpers/mediaSizes";
 import AppPrivateSearchTab from "./tabs/search";
 import AppSharedMediaTab from "./tabs/sharedMedia";
-//import AppForwardTab from "./tabs/forward";
-import { pause } from "../../helpers/schedulers";
-import rootScope from "../../lib/rootScope";
-import { dispatchHeavyAnimationEvent } from "../../hooks/useHeavyAnimationCheck";
 import { MOUNT_CLASS_TO } from "../../config/debug";
 
 export const RIGHT_COLUMN_ACTIVE_CLASSNAME = 'is-right-column-shown';
 
 const sharedMediaTab = new AppSharedMediaTab();
 const searchTab = new AppPrivateSearchTab();
-//const forwardTab = new AppForwardTab();
 const stickersTab = new AppStickersTab();
 const pollResultsTab = new AppPollResultsTab();
 const gifsTab = new AppGifsTab();
@@ -37,13 +32,18 @@ export class AppSidebarRight extends SidebarSlider {
   public gifsTab: AppGifsTab;
 
   constructor() {
-    super(document.getElementById('column-right') as HTMLElement, {
-      [AppSidebarRight.SLIDERITEMSIDS.sharedMedia]: sharedMediaTab,
-      [AppSidebarRight.SLIDERITEMSIDS.search]: searchTab,
-      [AppSidebarRight.SLIDERITEMSIDS.stickers]: stickersTab,
-      [AppSidebarRight.SLIDERITEMSIDS.pollResults]: pollResultsTab,
-      [AppSidebarRight.SLIDERITEMSIDS.gifs]: gifsTab
-    }, true);
+    super({
+      sidebarEl: document.getElementById('column-right') as HTMLElement,
+      tabs: {
+        [AppSidebarRight.SLIDERITEMSIDS.sharedMedia]: sharedMediaTab,
+        [AppSidebarRight.SLIDERITEMSIDS.search]: searchTab,
+        [AppSidebarRight.SLIDERITEMSIDS.stickers]: stickersTab,
+        [AppSidebarRight.SLIDERITEMSIDS.pollResults]: pollResultsTab,
+        [AppSidebarRight.SLIDERITEMSIDS.gifs]: gifsTab
+      }, 
+      canHideFirst: true,
+      navigationType: 'right'
+    });
 
     this.sharedMediaTab = sharedMediaTab;
     this.searchTab = searchTab;
@@ -58,12 +58,12 @@ export class AppSidebarRight extends SidebarSlider {
     });
   }
 
-  public onCloseTab(id: number) {
+  public onCloseTab(id: number, animate: boolean) {
     if(!this.historyTabIds.length) {
-      this.toggleSidebar(false);
+      this.toggleSidebar(false, animate);
     }
 
-    super.onCloseTab(id);
+    super.onCloseTab(id, animate);
   }
 
   /* public selectTab(id: number) {
@@ -76,7 +76,7 @@ export class AppSidebarRight extends SidebarSlider {
     return res;
   } */
 
-  public toggleSidebar(enable?: boolean, saveStatus = true) {
+  public toggleSidebar(enable?: boolean, animate?: boolean) {
     /////this.log('sidebarEl', this.sidebarEl, enable, isElementInViewport(this.sidebarEl));
 
     const active = document.body.classList.contains(RIGHT_COLUMN_ACTIVE_CLASSNAME);
@@ -95,30 +95,13 @@ export class AppSidebarRight extends SidebarSlider {
 
     if(!willChange) return Promise.resolve();
 
-    if(saveStatus) {
-      appImManager.hideRightSidebar = false;
-    }
-
     if(!active && !this.historyTabIds.length) {
       this.selectTab(AppSidebarRight.SLIDERITEMSIDS.sharedMedia);
     }
 
-    const transitionTime = rootScope.settings.animationsEnabled ? (mediaSizes.isMobile ? 250 : 200) : 0;
-    const promise = pause(transitionTime);
-    if(transitionTime) {
-      dispatchHeavyAnimationEvent(promise, transitionTime);
-    }
-
+    const animationPromise = appImManager.selectTab(active ? 1 : 2, animate);
     document.body.classList.toggle(RIGHT_COLUMN_ACTIVE_CLASSNAME, enable);
-    //console.log('sidebar selectTab', enable, willChange);
-    //if(mediaSizes.isMobile) {
-      //appImManager._selectTab(active ? 1 : 2);
-      appImManager.selectTab(active ? 1 : 2);
-      return promise; // delay of slider animation
-    //}
-
-    return pause(200); // delay for third column open
-    //return Promise.resolve();
+    return animationPromise;
 
     /* return new Promise((resolve, reject) => {
       const hidden: {element: HTMLDivElement, height: number}[] = [];

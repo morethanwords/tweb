@@ -123,3 +123,11 @@ export function fastRaf(callback: NoneToVoidFunction) {
     fastRafCallbacks.push(callback);
   }
 }
+
+export function superRaf() {
+  return new Promise((resolve) => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(resolve);
+    });
+  });
+}

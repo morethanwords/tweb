@@ -26,6 +26,7 @@
     width: 26.5rem;
     transform: translate3d(-5rem, 0, 0);
     transition: transform var(--layer-transition);
+    max-width: unset;
     
     body.animation-level-0 & {
       transition: none;

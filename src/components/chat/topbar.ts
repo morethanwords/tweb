@@ -18,6 +18,7 @@ import { ButtonMenuItemOptions } from "../buttonMenu";
 import ListenerSetter from "../../helpers/listenerSetter";
 import appStateManager from "../../lib/appManagers/appStateManager";
 import PopupDeleteDialog from "../popups/deleteDialog";
+import appNavigationController from "../appNavigationController";
 
 export default class ChatTopbar {
   container: HTMLDivElement;
@@ -141,8 +142,9 @@ export default class ChatTopbar {
 
     attachClickEvent(this.btnBack, (e) => {
       cancelEvent(e);
-      this.chat.appImManager.setPeer(0);
-      blurActiveElement();
+      /* this.chat.appImManager.setPeer(0);
+      blurActiveElement(); */
+      appNavigationController.back();
     }, {listenerSetter: this.listenerSetter});
   }
 

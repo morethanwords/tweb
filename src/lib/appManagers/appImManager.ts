@@ -18,7 +18,7 @@ import appPhotosManager from './appPhotosManager';
 import appProfileManager from './appProfileManager';
 import appStickersManager from './appStickersManager';
 import appWebPagesManager from './appWebPagesManager';
-import { cancelEvent, getFilesFromEvent, placeCaretAtEnd } from '../../helpers/dom';
+import { blurActiveElement, cancelEvent, disableTransition, getFilesFromEvent, placeCaretAtEnd, whichChild } from '../../helpers/dom';
 import PopupNewMedia from '../../components/popups/newMedia';
 import { numberThousandSplitter } from '../../helpers/number';
 import MarkupTooltip from '../../components/chat/markupTooltip';
@@ -26,16 +26,17 @@ import { isTouchSupported } from '../../helpers/touchSupport';
 import appPollsManager from './appPollsManager';
 import SetTransition from '../../components/singleTransition';
 import ChatDragAndDrop from '../../components/chat/dragAndDrop';
-import { debounce, pause } from '../../helpers/schedulers';
+import { debounce, pause, superRaf } from '../../helpers/schedulers';
 import lottieLoader from '../lottieLoader';
 import useHeavyAnimationCheck, { dispatchHeavyAnimationEvent } from '../../hooks/useHeavyAnimationCheck';
 import appDraftsManager from './appDraftsManager';
 import serverTimeManager from '../mtproto/serverTimeManager';
 import sessionStorage from '../sessionStorage';
-import { renderImageFromUrl } from '../../components/misc';
 import appDownloadManager from './appDownloadManager';
 import appStateManager, { AppStateManager } from './appStateManager';
 import { MOUNT_CLASS_TO } from '../../config/debug';
+import appNavigationController from '../../components/appNavigationController';
+import { isSafari } from '../../helpers/userAgent';
 
 //console.log('appImManager included33!');
 
@@ -58,7 +59,6 @@ export class AppImManager {
   public setPeerPromise: Promise<void> = null;
 
   public tabId = -1;
-  public hideRightSidebar = false;
   
   private chats: Chat[] = [];
   private prevTab: HTMLElement;
@@ -179,6 +179,14 @@ export class AppImManager {
       this.setBackground('');
     }
 
+    // * fix simultaneous opened both sidebars, can happen when floating sidebar is opened with left sidebar
+    mediaSizes.addListener('changeScreen', (from, to) => {
+      if(document.body.classList.contains(LEFT_COLUMN_ACTIVE_CLASSNAME) 
+        && document.body.classList.contains(RIGHT_COLUMN_ACTIVE_CLASSNAME)) {
+        appSidebarRight.toggleSidebar(false);
+      }
+    });
+
     /* rootScope.on('peer_changing', (chat) => {
       this.saveChatPosition(chat);
     });
@@ -248,17 +256,34 @@ export class AppImManager {
 
   // * не могу использовать тут TransitionSlider, так как мне нужен отрисованный блок рядом 
   // * (или под текущим чатом) чтобы правильно отрендерить чат (напр. scrollTop)
-  private chatsSelectTab(tab: HTMLElement) {
+  private chatsSelectTab(tab: HTMLElement, animate?: boolean) {
     if(this.prevTab === tab) {
       return;
+    }
+
+    if(animate === false && this.prevTab) { // * will be used for Safari iOS history swipe
+      disableTransition([tab, this.prevTab].filter(Boolean));
     }
 
     if(this.prevTab) {
       this.prevTab.classList.remove('active');
       this.chatsSelectTabDebounced();
 
-      if(rootScope.settings.animationsEnabled) { // ! нужно переделать на animation, так как при лаге анимация будет длиться не 250мс
+      // ! нужно переделать на animation, так как при лаге анимация будет длиться не 250мс
+      if(rootScope.settings.animationsEnabled && animate !== false) { 
         dispatchHeavyAnimationEvent(pause(250 + 150), 250 + 150);
+      }
+
+      const prevIdx = whichChild(this.prevTab);
+      const idx = whichChild(tab);
+      if(idx > prevIdx) {
+        appNavigationController.pushItem({
+          type: 'chat', 
+          onPop: (canAnimate) => {
+            this.setPeer(0, undefined, canAnimate);
+            blurActiveElement();
+          }
+        });
       }
     }
 
@@ -509,34 +534,50 @@ export class AppImManager {
     });
   };
 
-  public selectTab(id: number) {
+  public selectTab(id: number, animate?: boolean) {
+    if(animate === false) { // * will be used for Safari iOS history swipe
+      disableTransition([appSidebarLeft.sidebarEl, this.columnEl, appSidebarRight.sidebarEl]);
+    }
+
     document.body.classList.toggle(LEFT_COLUMN_ACTIVE_CLASSNAME, id === 0);
 
     const prevTabId = this.tabId;
 
     this.log('selectTab', id, prevTabId);
 
-    if(prevTabId !== -1 && prevTabId !== id && rootScope.settings.animationsEnabled) {
+    let animationPromise: Promise<any> = superRaf();
+    if(prevTabId !== -1 && prevTabId !== id && rootScope.settings.animationsEnabled && animate !== false) {
       const transitionTime = (mediaSizes.isMobile ? 250 : 200) + 100; // * cause transition time could be > 250ms
-      const promise = pause(transitionTime);
-      dispatchHeavyAnimationEvent(promise, transitionTime);
+      animationPromise = pause(transitionTime);
+      dispatchHeavyAnimationEvent(animationPromise, transitionTime);
 
       this.columnEl.classList.add('disable-hover');
-      promise.finally(() => {
+      animationPromise.finally(() => {
         this.columnEl.classList.remove('disable-hover');
       });
     }
 
     this.tabId = id;
-    if(mediaSizes.isMobile && prevTabId === 2 && id === 1) {
-      //appSidebarRight.toggleSidebar(false);
+    if(mediaSizes.isMobile && prevTabId === 2 && id < 2) {
       document.body.classList.remove(RIGHT_COLUMN_ACTIVE_CLASSNAME);
+    }
+
+    if(prevTabId !== -1 && id > prevTabId && id < 2) {
+      appNavigationController.pushItem({
+        type: 'im', 
+        onPop: (canAnimate) => {
+          //this.selectTab(prevTabId, !isSafari);
+          this.setPeer(0, undefined, canAnimate);
+        }
+      });
     }
 
     rootScope.broadcast('im_tab_change', id);
 
     //this._selectTab(id, mediaSizes.isMobile);
     //document.body.classList.toggle(RIGHT_COLUMN_ACTIVE_CLASSNAME, id === 2);
+
+    return animationPromise;
   }
   
   public updateStatus() {
@@ -556,7 +597,7 @@ export class AppImManager {
     this.chats.push(chat);
   }
 
-  private spliceChats(fromIndex: number, justReturn = true) {
+  private spliceChats(fromIndex: number, justReturn = true, animate?: boolean) {
     if(fromIndex >= this.chats.length) return;
 
     if(this.chats.length > 1 && justReturn) {
@@ -572,7 +613,7 @@ export class AppImManager {
       });
     }
 
-    this.chatsSelectTab(this.chat.container);
+    this.chatsSelectTab(this.chat.container, animate);
 
     if(justReturn) {
       rootScope.broadcast('peer_changed', this.chat.peerId);
@@ -598,7 +639,7 @@ export class AppImManager {
     }, 250 + 100);
   }
 
-  public setPeer(peerId: number, lastMsgId?: number): boolean {
+  public setPeer(peerId: number, lastMsgId?: number, animate?: boolean): boolean {
     if(this.init) {
       this.init();
       this.init = null;
@@ -609,29 +650,20 @@ export class AppImManager {
 
     if(!peerId) {
       if(chatIndex > 0) {
-        this.spliceChats(chatIndex);
+        this.spliceChats(chatIndex, undefined, animate);
         return;
       } else if(mediaSizes.activeScreen === ScreenSize.medium) { // * floating sidebar case
-        const isNowOpen = document.body.classList.toggle(LEFT_COLUMN_ACTIVE_CLASSNAME);
-
-        if(isNowOpen && document.body.classList.contains(RIGHT_COLUMN_ACTIVE_CLASSNAME)) {
-          appSidebarRight.toggleSidebar(false, false);
-          this.selectTab(0);
-          this.hideRightSidebar = isNowOpen;
-        } else if(this.hideRightSidebar) {
-          appSidebarRight.toggleSidebar(true);
-        }
-
+        this.selectTab(+!this.tabId, animate);
         return;
       }
     } else if(chatIndex > 0 && chat.peerId && chat.peerId !== peerId) {
-      this.spliceChats(1, false);
+      this.spliceChats(1, false, animate);
       return this.setPeer(peerId, lastMsgId);
     }
 
     // * don't reset peer if returning
-    if(peerId === chat.peerId && mediaSizes.activeScreen === ScreenSize.mobile && document.body.classList.contains(LEFT_COLUMN_ACTIVE_CLASSNAME)) {
-      this.selectTab(1);
+    if(peerId === chat.peerId && mediaSizes.activeScreen <= ScreenSize.medium && document.body.classList.contains(LEFT_COLUMN_ACTIVE_CLASSNAME)) {
+      this.selectTab(1, animate);
       return false;
     }
 
@@ -644,22 +676,17 @@ export class AppImManager {
         promise.then(() => {
           //window.requestAnimationFrame(() => {
           setTimeout(() => { // * setTimeout is better here
-            if(this.hideRightSidebar) {
-              appSidebarRight.toggleSidebar(true);
-              this.hideRightSidebar = false;
-            }
-        
             setTimeout(() => {
               this.chatsSelectTab(this.chat.container);
             }, 0);
-            this.selectTab(1);
+            this.selectTab(1, animate);
           }, 0);
         });
       }
     }
 
     if(!peerId) {
-      this.selectTab(0);
+      this.selectTab(0, animate);
       return false;
     }
   }
