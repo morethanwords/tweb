@@ -3,6 +3,8 @@ import { horizontalMenu } from "./horizontalMenu";
 import ButtonIcon from "./buttonIcon";
 import Scrollable from "./scrollable";
 import { TransitionSlider } from "./transition";
+import appNavigationController, { NavigationItem } from "./appNavigationController";
+import { isSafari } from "../helpers/userAgent";
 
 export interface SliderTab {
   onOpen?: () => void,
@@ -84,28 +86,47 @@ export default class SidebarSlider {
   protected _selectTab: ReturnType<typeof horizontalMenu>;
   public historyTabIds: number[] = [];
   public tabsContainer: HTMLElement;
+  public sidebarEl: HTMLElement;
+  public tabs: {[id: number]: SliderTab} = {};
+  private canHideFirst = false;
+  private navigationType: NavigationItem['type']
 
-  constructor(public sidebarEl: HTMLElement, public tabs: {[id: number]: SliderTab} = {}, private canHideFirst = false) {
+  constructor(options: {
+    sidebarEl: SidebarSlider['sidebarEl'],
+    tabs?: SidebarSlider['tabs'],
+    canHideFirst?: SidebarSlider['canHideFirst'],
+    navigationType: SidebarSlider['navigationType']
+  }) {
+    for(const i in options) {
+      // @ts-ignore
+      this[i] = options[i];
+    }
+
     this.tabsContainer = this.sidebarEl.querySelector('.sidebar-slider');
     this._selectTab = TransitionSlider(this.tabsContainer, 'navigation', TRANSITION_TIME);
-    if(!canHideFirst) {
+    if(!this.canHideFirst) {
       this._selectTab(0);
     }
 
     Array.from(this.sidebarEl.querySelectorAll('.sidebar-close-button') as any as HTMLElement[]).forEach(el => {
-      attachClickEvent(el, () => this.closeTab());
+      attachClickEvent(el, this.onCloseBtnClick);
     });
   }
 
-  public closeTab = (tabId?: number) => {
+  private onCloseBtnClick = () => {
+    appNavigationController.back();
+    // this.closeTab();
+  };
+
+  public closeTab = (tabId?: number, animate?: boolean) => {
     if(tabId !== undefined && this.historyTabIds[this.historyTabIds.length - 1] !== tabId) {
       return false;
     }
 
     //console.log('sidebar-close-button click:', this.historyTabIDs);
-    let closingId = this.historyTabIds.pop(); // pop current
-    this.onCloseTab(closingId);
-    this._selectTab(this.historyTabIds[this.historyTabIds.length - 1] ?? (this.canHideFirst ? -1 : 0));
+    const closingId = this.historyTabIds.pop(); // pop current
+    this.onCloseTab(closingId, animate);
+    this._selectTab(this.historyTabIds[this.historyTabIds.length - 1] ?? (this.canHideFirst ? -1 : 0), animate);
     return true;
   };
 
@@ -130,6 +151,16 @@ export default class SidebarSlider {
         }, TRANSITION_TIME);
       }
     }
+
+    //if(!this.canHideFirst || this.historyTabIds.length) {
+      appNavigationController.pushItem({
+        type: this.navigationType, 
+        onPop: (canAnimate) => {
+          this.closeTab(undefined, canAnimate);
+          return true;
+        }
+      });
+    //}
     
     this.historyTabIds.push(id);
     this._selectTab(id);
@@ -138,10 +169,10 @@ export default class SidebarSlider {
 
   public removeTabFromHistory(id: number) {
     this.historyTabIds.findAndSplice(i => i === id);
-    this.onCloseTab(id);
+    this.onCloseTab(id, undefined);
   }
 
-  public onCloseTab(id: number) {
+  public onCloseTab(id: number, animate: boolean) {
     let tab = this.tabs[id];
     if(tab) {
       if(tab.onClose) {
@@ -165,7 +196,7 @@ export default class SidebarSlider {
       this.tabsContainer.append(tab.container);
 
       if(tab.closeBtn) {
-        tab.closeBtn.addEventListener('click', () => this.closeTab());
+        tab.closeBtn.addEventListener('click', this.onCloseBtnClick);
       }
     }
 

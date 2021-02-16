@@ -82,7 +82,10 @@ export class AppSidebarLeft extends SidebarSlider {
   searchSuper: AppSearchSuper;
 
   constructor() {
-    super(document.getElementById('column-left') as HTMLDivElement);
+    super({
+      sidebarEl: document.getElementById('column-left') as HTMLDivElement,
+      navigationType: 'left'
+    });
 
     Object.assign(this.tabs, {
       [AppSidebarLeft.SLIDERITEMSIDS.archived]: archivedTab,

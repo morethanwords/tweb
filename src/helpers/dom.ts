@@ -5,6 +5,7 @@ import { isTouchSupported } from "./touchSupport";
 import { isApple } from "./userAgent";
 import rootScope from "../lib/rootScope";
 import { MOUNT_CLASS_TO } from "../config/debug";
+import { superRaf } from "./schedulers";
 
 /* export function isInDOM(element: Element, parentNode?: HTMLElement): boolean {
   if(!element) {
@@ -774,4 +775,12 @@ export function isSelectionEmpty(selection = window.getSelection()) {
   }
 
   return false;
+}
+
+export function disableTransition(elements: HTMLElement[]) {
+  elements.forEach(el => el.classList.add('no-transition'));
+
+  superRaf().then(() => {
+    elements.forEach(el => el.classList.remove('no-transition'));
+  });
 }
