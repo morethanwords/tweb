@@ -772,6 +772,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
   }
 
   div.dataset.docId = doc.id;
+  div.classList.add('media-sticker-wrapper');
   
   //console.log('wrap sticker', doc, div, onlyThumb);
 

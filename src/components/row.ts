@@ -12,6 +12,8 @@ export default class Row {
   public checkboxField: ReturnType<typeof CheckboxField>;
   public radioField: ReturnType<typeof RadioField>;
 
+  public freezed = false;
+
   constructor(options: Partial<{
     icon: string,
     subtitle: string,
@@ -62,6 +64,7 @@ export default class Row {
 
     if(options.navigationTab) {
       this.container.addEventListener('click', () => {
+        if(this.freezed) return;
         options.navigationTab.open();
       });
       options.clickable = true;

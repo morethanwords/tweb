@@ -1,9 +1,11 @@
 import SidebarSlider, { SliderSuperTab } from "../../slider";
-import { generateSection } from "..";
+import { generateSection, SettingSection } from "..";
 import Row from "../../row";
 import { InputPrivacyKey, PrivacyRule } from "../../../layer";
 import appPrivacyManager from "../../../lib/appManagers/appPrivacyManager";
 import AppPrivacyPhoneNumberTab from "./privacy/phoneNumber";
+import AppTwoStepVerificationTab from "./2fa";
+import passwordManager from "../../../lib/mtproto/passwordManager";
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
   constructor(slider: SidebarSlider) {
@@ -17,7 +19,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
     const section = generateSection.bind(null, this.scrollable);
 
     {
-      const container = section('');
+      const section = new SettingSection({noDelimiter: true});
 
       const blockedUsersRow = new Row({
         icon: 'deleteuser',
@@ -26,12 +28,15 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
         clickable: true
       });
 
+      const tab = new AppTwoStepVerificationTab(this.slider);
+      
       const twoFactorRow = new Row({
         icon: 'lock',
         title: 'Two-Step Verification',
-        subtitle: 'Off',
-        clickable: true
+        subtitle: 'Loading...',
+        navigationTab: tab
       });
+      twoFactorRow.freezed = true;
 
       const activeSessionRow = new Row({
         icon: 'activesessions',
@@ -40,7 +45,15 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
         clickable: true
       });
 
-      container.append(blockedUsersRow.container, twoFactorRow.container, activeSessionRow.container);
+      section.content.append(blockedUsersRow.container, twoFactorRow.container, activeSessionRow.container);
+      this.scrollable.append(section.container);
+
+      passwordManager.getState().then(state => {
+        twoFactorRow.subtitle.innerText = state.pFlags.has_password ? 'On' : 'Off';
+        twoFactorRow.freezed = false;
+        tab.passwordState = state;
+        //console.log('password state', state);
+      });
     }
 
     {
