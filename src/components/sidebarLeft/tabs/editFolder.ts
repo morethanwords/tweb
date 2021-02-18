@@ -90,7 +90,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
       categories.classList.add('folder-categories');
 
       buttons.forEach(o => {
-        const button = Button('folder-category-button btn-primary btn-transparent', {
+        const button = Button('folder-category-button btn btn-primary btn-transparent', {
           icon: o.icon,
           text: o.text,
           noRipple: o.withRipple ? undefined : true,
@@ -110,7 +110,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
     };
 
     this.include_peers = generateList('folder-list-included', 'Included chats', [{
-      icon: 'add blue',
+      icon: 'add primary',
       text: 'Add Chats',
       withRipple: true
     }, {
@@ -136,7 +136,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
     }], this.flags);
 
     this.exclude_peers = generateList('folder-list-excluded', 'Excluded chats', [{
-      icon: 'minus blue',
+      icon: 'minus primary',
       text: 'Remove Chats',
       withRipple: true
     }, {

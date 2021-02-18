@@ -26,7 +26,7 @@ import { isTouchSupported } from '../../helpers/touchSupport';
 import appPollsManager from './appPollsManager';
 import SetTransition from '../../components/singleTransition';
 import ChatDragAndDrop from '../../components/chat/dragAndDrop';
-import { debounce, pause, superRaf } from '../../helpers/schedulers';
+import { debounce, pause, doubleRaf } from '../../helpers/schedulers';
 import lottieLoader from '../lottieLoader';
 import useHeavyAnimationCheck, { dispatchHeavyAnimationEvent } from '../../hooks/useHeavyAnimationCheck';
 import appDraftsManager from './appDraftsManager';
@@ -545,7 +545,7 @@ export class AppImManager {
 
     this.log('selectTab', id, prevTabId);
 
-    let animationPromise: Promise<any> = superRaf();
+    let animationPromise: Promise<any> = doubleRaf();
     if(prevTabId !== -1 && prevTabId !== id && rootScope.settings.animationsEnabled && animate !== false) {
       const transitionTime = (mediaSizes.isMobile ? 250 : 200) + 100; // * cause transition time could be > 250ms
       animationPromise = pause(transitionTime);

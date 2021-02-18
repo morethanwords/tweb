@@ -417,9 +417,10 @@ export class AppSidebarLeft extends SidebarSlider {
 
     transition(0);
 
+    const activeClassName = 'is-visible';
     const onFocus = () => {
-      this.toolsBtn.classList.remove('active');
-      this.backBtn.classList.add('active');
+      this.toolsBtn.classList.remove(activeClassName);
+      this.backBtn.classList.add(activeClassName);
       this.newBtnMenu.classList.add('is-hidden');
       this.toolsBtn.parentElement.firstElementChild.classList.toggle('state-back', true);
 
@@ -430,8 +431,8 @@ export class AppSidebarLeft extends SidebarSlider {
     onFocus();
 
     this.backBtn.addEventListener('click', (e) => {
-      this.toolsBtn.classList.add('active');
-      this.backBtn.classList.remove('active');
+      this.toolsBtn.classList.add(activeClassName);
+      this.backBtn.classList.remove(activeClassName);
       this.toolsBtn.parentElement.firstElementChild.classList.toggle('state-back', false);
 
       transition(0);

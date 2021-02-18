@@ -356,12 +356,24 @@ input, textarea {
   line-height: 1.35;
 }
 
-.danger, .danger:before {
+.danger {
   color: $color-error!important;
+
+  .c-ripple__circle {
+    background-color: var(--color-red-hover);
+  }
 }
 
-.blue, .blue:before {
+.blue, .primary {
   color: $color-blue!important;
+
+  .c-ripple__circle {
+    background-color: var(--color-blue-hover);
+  }
+}
+
+.blue:before, .primary:before, .danger:before {
+  color: inherit !important;
 }
 
 .bg-warning {

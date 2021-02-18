@@ -3,29 +3,22 @@
   font-size: 1.5rem;
   line-height: 1;
   border-radius: 50% !important;
-  transition: background-color .15s ease-in-out, opacity .15s ease-in-out;
   color: $color-gray;
-  cursor: pointer;
   background-color: transparent;
   border: none;
   padding: .5rem;
   position: relative;
   overflow: hidden;
+  transition: color .15s ease-in-out, opacity .15s ease-in-out, background-color .15s ease-in-out;
   
   /* kostil */
   display: flex;
   align-items: center;
   justify-content: center;
 
-  body.animation-level-0 & {
-    transition: none;
-  }
-
   &.active {
     color: $color-blue;
   }
-  
-  @include hover-background-effect();
 
   &:disabled {
     color: #cacaca;
@@ -163,6 +156,10 @@
     align-items: center;
 
     @include hover-background-effect();
+
+    &.danger {
+      @include hover-background-effect(red);
+    }
 
     &:before {
       color: $color-gray;
@@ -323,4 +320,17 @@
   &:before {
     color: inherit !important;
   }
+}
+
+.btn, .btn-icon {
+  background: none;
+	outline: none;
+  border: none;
+  cursor: pointer;
+
+  body.animation-level-0 & {
+    transition: none;
+  }
+
+  @include btn-hoverable();
 }

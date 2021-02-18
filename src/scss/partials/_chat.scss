@@ -749,7 +749,7 @@ $chat-helper-size: 39px;
 	.attach-file {
 		&.menu-open {
 			color: $color-blue;
-			background-color: transparent;
+			background-color: hover-color($color-blue) !important;
 		}
 
 		.btn-menu {

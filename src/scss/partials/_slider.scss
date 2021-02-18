@@ -28,18 +28,16 @@
     border-top-right-radius: 6px;
     transition: none !important;
 
-    @include hover() {
-      background-color: transparent;
+    @include hover-background-effect();
 
-      &:hover {
-        background-color: var(--color-gray-hover);
+    &.active {
+      .c-ripple__circle {
+        background-color: var(--color-blue-hover);
       }
+  
+      @include hover-background-effect(primary);
     }
 
-    /* html.no-touch body:not(.animation-level-0) & {
-      transition: background-color .15s ease-in-out;
-    } */
-    
     > span {
       position: relative;
       display: inline-flex;

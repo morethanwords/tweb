@@ -168,6 +168,10 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
     }, {passive: true});
   } else {
     elem.addEventListener('mousedown', (e) => {
+      if(![0, 2].includes(e.button)) { // only left and right buttons
+        return;
+      }
+
       if(!rootScope.settings.animationsEnabled) {
         return;
       }

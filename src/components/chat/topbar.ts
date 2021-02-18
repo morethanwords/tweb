@@ -144,7 +144,7 @@ export default class ChatTopbar {
       cancelEvent(e);
       /* this.chat.appImManager.setPeer(0);
       blurActiveElement(); */
-      appNavigationController.back();
+      appNavigationController.back('chat');
     }, {listenerSetter: this.listenerSetter});
   }
 

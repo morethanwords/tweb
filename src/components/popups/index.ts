@@ -75,9 +75,9 @@ export default class PopupElement {
   
       const buttonsElements = buttons.map(b => {
         const button = document.createElement('button');
-        button.className = 'btn' + (b.isDanger ? ' danger' : '');
+        button.className = 'btn' + (b.isDanger ? ' danger' : ' primary');
         button.innerHTML =  b.text;
-        //ripple(button);
+        ripple(button);
   
         if(b.callback) {
           button.addEventListener('click', () => {
@@ -118,7 +118,7 @@ export default class PopupElement {
   }
 
   public hide = () => {
-    appNavigationController.back();
+    appNavigationController.back('popup');
   };
 
   private destroy = () => {

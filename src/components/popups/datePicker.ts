@@ -145,6 +145,9 @@ export default class PopupDatePicker extends PopupElement {
       }, {once: true});
 
       this.body.append(this.timeDiv);
+
+      this.prevBtn.classList.add('primary');
+      this.nextBtn.classList.add('primary');
     }
 
     const popupCenterer = document.createElement('div');
