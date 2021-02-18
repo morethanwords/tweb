@@ -837,7 +837,7 @@
   &-section {
     padding: .5rem 0 1rem;
   
-    &-content, &-caption {
+    &-content {
       margin: 0 .125rem;
 
       @include respond-to(not-handhelds) {
@@ -851,9 +851,10 @@
 
     &-caption {
       margin-top: 1rem;
-      font-size: 0.875rem;
+      font-size: .875rem;
       color: #707579;
       line-height: 1.2;
+      padding: 0 .875rem;
     }
 
     .btn-primary, .checkbox-field, .radio-field {
@@ -872,13 +873,17 @@
       padding: 0;
     }
 
-    &-caption {
-      padding: 0 .875rem;
-    }
-
     &-disabled {
       pointer-events: none !important;
       opacity: .25;
+    }
+
+    .media-sticker-wrapper {
+      width: 86px;
+      height: 86px;
+      margin: 1px auto 29px;
+      flex: 0 0 auto;
+      position: relative;
     }
   }
 
@@ -891,6 +896,13 @@
 
 .general-settings-container {
   user-select: none;
+}
+
+.two-step-verification {
+  .media-sticker-wrapper {
+    width: 168px;
+    height: 168px;
+  }
 }
 
 .range-setting-selector {

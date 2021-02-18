@@ -454,35 +454,45 @@ export class SettingSection {
   public title: HTMLElement;
   public caption: HTMLElement;
 
-  constructor(name?: string, caption?: string) {
+  constructor(options: {
+    name?: string, 
+    caption?: string,
+    noDelimiter?: boolean
+  }) {
     this.container = document.createElement('div');
     this.container.classList.add('sidebar-left-section');
 
-    const hr = document.createElement('hr');
+    if(!options.noDelimiter) {
+      const hr = document.createElement('hr');
+      this.container.append(hr);
+    }
 
-    this.content = document.createElement('div');
-    this.content.classList.add('sidebar-left-section-content');
+    this.content = this.generateContentElement();
 
-    if(name) {
+    if(options.name) {
       this.title = document.createElement('div');
       this.title.classList.add('sidebar-left-h2', 'sidebar-left-section-name');
-      this.title.innerHTML = name;
+      this.title.innerHTML = options.name;
       this.content.append(this.title);
     }
 
-    this.container.append(hr, this.content);
-
-    if(caption) {
-      this.caption = document.createElement('div');
+    if(options.caption) {
+      this.caption = this.generateContentElement();
       this.caption.classList.add('sidebar-left-section-caption');
-      this.caption.innerHTML = caption;
-      this.container.append(this.caption);
+      this.caption.innerHTML = options.caption;
     }
+  }
+
+  public generateContentElement() {
+    const content = document.createElement('div');
+    content.classList.add('sidebar-left-section-content');
+    this.container.append(content);
+    return content;
   }
 }
 
 export const generateSection = (appendTo: Scrollable, name?: string, caption?: string) => {
-  const section = new SettingSection(name, caption);
+  const section = new SettingSection({name, caption});
   appendTo.append(section.container);
   return section.content;
 };

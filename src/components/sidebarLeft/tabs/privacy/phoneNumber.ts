@@ -21,7 +21,7 @@ export default class AppPrivacyPhoneNumberTab extends SliderSuperTab {
       caption: string,
       appendTo: Scrollable
     }) => {
-      const section = new SettingSection(options.title, options.caption);
+      const section = new SettingSection({name: options.title, caption: options.caption});
 
       const everybodyRow = new Row({
         radioField: RadioField('Everybody', 'no-matter', 'everybody')
