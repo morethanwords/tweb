@@ -2,6 +2,8 @@ import rootScope from "../../lib/rootScope";
 import { blurActiveElement, cancelEvent, findUpClassName } from "../../helpers/dom";
 import { ripple } from "../ripple";
 import animationIntersector from "../animationIntersector";
+import appNavigationController, { NavigationItem } from "../appNavigationController";
+import { isMobileSafari, isSafari } from "../../helpers/userAgent";
 
 export type PopupOptions = Partial<{closable: true, overlayClosable: true, withConfirm: string, body: true}>;
 export default class PopupElement {
@@ -16,6 +18,8 @@ export default class PopupElement {
   protected onClose: () => void;
   protected onCloseAfterTimeout: () => void;
   protected onEscape: () => boolean = () => true;
+
+  protected navigationItem: NavigationItem;
 
   constructor(className: string, buttons?: Array<PopupButton>, options: PopupOptions = {}) {
     this.element.classList.add('popup');
@@ -33,7 +37,7 @@ export default class PopupElement {
       //ripple(this.closeBtn);
       this.header.prepend(this.btnClose);
 
-      this.btnClose.addEventListener('click', this.destroy, {once: true});
+      this.btnClose.addEventListener('click', this.hide, {once: true});
 
       if(options.overlayClosable) {
         const onOverlayClick = (e: MouseEvent) => {
@@ -45,8 +49,6 @@ export default class PopupElement {
         this.element.addEventListener('click', onOverlayClick, {once: true});
       }
     }
-
-    window.addEventListener('keydown', this._onKeyDown, {capture: true});
 
     if(options.withConfirm) {
       this.btnConfirm = document.createElement('button');
@@ -98,14 +100,15 @@ export default class PopupElement {
     this.element.append(this.container);
   }
 
-  private _onKeyDown = (e: KeyboardEvent) => {
-    if(e.key === 'Escape' && this.onEscape()) {
-      cancelEvent(e);
-      this.destroy();
-    }
-  };
-
   public show() {
+    this.navigationItem = {
+      type: 'popup',
+      onPop: this.destroy,
+      onEscape: this.onEscape
+    };
+
+    appNavigationController.pushItem(this.navigationItem);
+
     blurActiveElement(); // * hide mobile keyboard
     document.body.append(this.element);
     void this.element.offsetWidth; // reflow
@@ -114,14 +117,20 @@ export default class PopupElement {
     animationIntersector.checkAnimations(true);
   }
 
-  public destroy = () => {
+  public hide = () => {
+    appNavigationController.back();
+  };
+
+  private destroy = () => {
     this.onClose && this.onClose();
     this.element.classList.add('hiding');
     this.element.classList.remove('active');
 
-    window.removeEventListener('keydown', this._onKeyDown, {capture: true});
-    if(this.btnClose) this.btnClose.removeEventListener('click', this.destroy);
+    if(this.btnClose) this.btnClose.removeEventListener('click', this.hide);
     rootScope.overlayIsActive = false;
+
+    appNavigationController.removeItem(this.navigationItem);
+    this.navigationItem = undefined;
 
     setTimeout(() => {
       this.element.remove();

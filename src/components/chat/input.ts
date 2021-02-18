@@ -556,7 +556,7 @@ export default class ChatInput {
   }
 
   public saveDraft() {
-    if(!this.chat.peerId || this.editMsgId) return;
+    if(!this.chat.peerId || this.editMsgId || this.chat.type === 'scheduled') return;
     
     const entities: MessageEntity[] = [];
     const str = getRichValue(this.messageInputField.input, entities);
@@ -604,7 +604,7 @@ export default class ChatInput {
   }
 
   public setDraft(draft?: MyDraftMessage, fromUpdate = true) {
-    if(!isInputEmpty(this.messageInput)) return false;
+    if(!isInputEmpty(this.messageInput) || this.chat.type === 'scheduled') return false;
     
     if(!draft) {
       draft = this.appDraftsManager.getDraft(this.chat.peerId, this.chat.threadId);

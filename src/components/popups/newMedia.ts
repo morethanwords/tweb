@@ -142,7 +142,7 @@ export default class PopupNewMedia extends PopupElement {
       return;
     }
 
-    this.destroy();
+    this.hide();
     const willAttach = this.willAttach;
     willAttach.isMedia = willAttach.type === 'media' ? true : undefined;
 

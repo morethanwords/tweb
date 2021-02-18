@@ -141,7 +141,7 @@ export default class PopupDatePicker extends PopupElement {
           this.onPick(this.selectedDate.getTime() / 1000 | 0);
         }
 
-        this.destroy();
+        this.hide();
       }, {once: true});
 
       this.body.append(this.timeDiv);
