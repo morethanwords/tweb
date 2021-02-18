@@ -1,6 +1,8 @@
 import { MOUNT_CLASS_TO } from "../config/debug";
-import { isSafari, isAppleMobile } from "../helpers/userAgent";
+import { isMobileSafari } from "../helpers/userAgent";
 import { cancelEvent } from "../helpers/dom";
+import { logger } from "../lib/logger";
+import { doubleRaf } from "../helpers/schedulers";
 
 export type NavigationItem = {
   type: 'left' | 'right' | 'im' | 'chat' | 'popup' | 'media' | 'menu' | 'esg',
@@ -12,10 +14,14 @@ export type NavigationItem = {
 export class AppNavigationController {
   private navigations: Array<NavigationItem> = [];
   private id = Date.now();
+  private manual = false;
+  private log = logger('NC');
+  private debug = true;
 
   constructor() {
+    let isPossibleSwipe = false;
     window.addEventListener('popstate', (e) => {
-      console.log('popstate', e);
+      this.debug && this.log('popstate', e, isPossibleSwipe);
 
       const id: number = e.state;
       if(id !== this.id) {
@@ -29,12 +35,8 @@ export class AppNavigationController {
         return;
       }
 
-      const good = item.onPop(isSafari && isAppleMobile ? false : undefined);
-      console.log('[NC]: popstate, navigation:', item, this.navigations);
-      if(good === false) {
-        this.pushItem(item);
-      }
-
+      this.manual = !isPossibleSwipe;
+      this.handleItem(item);
       //this.pushState(); // * prevent adding forward arrow
     });
 
@@ -47,16 +49,62 @@ export class AppNavigationController {
       }
     }, {capture: true});
 
+    if(isMobileSafari) {
+      /* window.addEventListener('touchstart', (e) => {
+        this.debug && this.log('touchstart');
+      }, {passive: true}); */
+  
+      window.addEventListener('touchend', (e) => {
+        this.debug && this.log('touchend');
+        if(e.touches.length > 1) return;
+        isPossibleSwipe = true;
+        doubleRaf().then(() => {
+          isPossibleSwipe = false;
+        });
+      }, {passive: true});
+    }
+
     this.pushState(); // * push init state
   }
 
-  public back() {
+  private handleItem(item: NavigationItem) {
+    const good = item.onPop(!this.manual ? false : undefined);
+    this.debug && this.log('popstate, navigation:', item, this.navigations);
+    if(good === false) {
+      this.pushItem(item);
+    }
+
+    this.manual = false;
+  }
+
+  public back(type?: NavigationItem['type']) {
+    if(type) {
+      let item: NavigationItem;
+      let i = this.navigations.length - 1;
+      for(; i >= 0; --i) {
+        const _item = this.navigations[i];
+        if(_item.type === type) {
+          item = _item;
+          break;
+        }
+      }
+
+      if(item) {
+        this.manual = true;
+        if(i !== (this.navigations.length - 1)) {
+          this.navigations.splice(i, 1);
+          this.handleItem(item);
+          return;
+        }
+      }
+    }
+
     history.back();
   }
 
   public pushItem(item: NavigationItem) {
     this.navigations.push(item);
-    console.log('[NC]: pushstate', item, this.navigations);
+    this.debug && this.log('pushstate', item, this.navigations);
 
     if(!item.noHistory) {
       this.pushState();
@@ -64,6 +112,7 @@ export class AppNavigationController {
   }
 
   private pushState() {
+    this.manual = false;
     history.pushState(this.id, '');
   }
 
@@ -73,6 +122,19 @@ export class AppNavigationController {
 
   public removeItem(item: NavigationItem) {
     this.navigations.findAndSplice(i => i === item);
+  }
+
+  public removeByType(type: NavigationItem['type'], single = false) {
+    for(let i = this.navigations.length - 1; i >= 0; --i) {
+      const item = this.navigations[i];
+      if(item.type === type) {
+        this.navigations.splice(i, 1);
+
+        if(single) {
+          break;
+        }
+      }
+    }
   }
 }
 

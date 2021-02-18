@@ -114,7 +114,7 @@ export default class SidebarSlider {
   }
 
   private onCloseBtnClick = () => {
-    appNavigationController.back();
+    appNavigationController.back(this.navigationType);
     // this.closeTab();
   };
 

@@ -2,7 +2,7 @@
   @if $color {
     @if $color == gray {
       $color: var(--color-gray-hover);
-    } @else if $color == blue {
+    } @else if $color == blue or $color == primary {
       $color: var(--color-blue-hover);
     } @else if $color == red {
       $color: var(--color-red-hover);
@@ -32,5 +32,17 @@
 @mixin hover-background-effect($color: gray, $use-transition: false) {
   @include hover($color, background-color, $use-transition) {
     @content;
+  }
+}
+
+@mixin btn-hoverable {
+  @include hover-background-effect();
+  
+  &.primary, &.blue, &.active {
+    @include hover-background-effect(primary);
+  }
+  
+  &.danger {
+    @include hover-background-effect(red);
   }
 }

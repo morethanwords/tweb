@@ -124,7 +124,7 @@ export function fastRaf(callback: NoneToVoidFunction) {
   }
 }
 
-export function superRaf() {
+export function doubleRaf() {
   return new Promise((resolve) => {
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(resolve);

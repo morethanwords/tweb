@@ -4,7 +4,8 @@ import { cancelEvent, CLICK_EVENT_NAME } from "../helpers/dom";
 import ListenerSetter from "../helpers/listenerSetter";
 import mediaSizes from "../helpers/mediaSizes";
 import { isTouchSupported } from "../helpers/touchSupport";
-import { isApple } from "../helpers/userAgent";
+import { isApple, isMobileSafari } from "../helpers/userAgent";
+import appNavigationController from "./appNavigationController";
 
 export const loadedURLs: {[url: string]: boolean} = {};
 const set = (elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLVideoElement, url: string) => {
@@ -136,12 +137,13 @@ const onClick = (e: MouseEvent | TouchEvent) => {
   closeBtnMenu();
 };
 
-const onKeyDown = (e: KeyboardEvent) => {
+// ! no need in this due to the same handler in appNavigationController
+/* const onKeyDown = (e: KeyboardEvent) => {
   if(e.key === 'Escape') {
     closeBtnMenu();
     cancelEvent(e);
   }
-};
+}; */
 
 export const closeBtnMenu = () => {
   if(openedMenu) {
@@ -159,11 +161,15 @@ export const closeBtnMenu = () => {
 
   if(!isTouchSupported) {
     window.removeEventListener('mousemove', onMouseMove);
-    window.removeEventListener('keydown', onKeyDown, {capture: true});
+    //window.removeEventListener('keydown', onKeyDown, {capture: true});
     window.removeEventListener('contextmenu', onClick);
   }
 
   document.removeEventListener(CLICK_EVENT_NAME, onClick);
+
+  if(!isMobileSafari) {
+    appNavigationController.removeByType('menu');
+  }
 };
 
 window.addEventListener('resize', () => {
@@ -182,6 +188,15 @@ window.addEventListener('resize', () => {
 let openedMenu: HTMLElement = null, openedMenuOnClose: () => void = null, menuOverlay: HTMLElement = null;
 export function openBtnMenu(menuElement: HTMLElement, onClose?: () => void) {
   closeBtnMenu();
+
+  if(!isMobileSafari) {
+    appNavigationController.pushItem({
+      type: 'menu',
+      onPop: (canAnimate) => {
+        closeBtnMenu();
+      }
+    });
+  }
   
   openedMenu = menuElement;
   openedMenu.classList.add('active');
@@ -206,7 +221,7 @@ export function openBtnMenu(menuElement: HTMLElement, onClose?: () => void) {
 
   if(!isTouchSupported) {
     window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('keydown', onKeyDown, {capture: true});
+    //window.addEventListener('keydown', onKeyDown, {capture: true});
     window.addEventListener('contextmenu', onClick, {once: true});
   }
 

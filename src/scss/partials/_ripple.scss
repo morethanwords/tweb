@@ -49,7 +49,7 @@
     border-radius: 50%;
     animation: ripple-effect .7s forwards;
     //animation-timing-function: ease-out;
-    transition: .35s opacity;
+    transition: .35s opacity, .35s background-color;
     //overflow: hidden;
 
     .btn-menu &, .c-ripple.is-square & {

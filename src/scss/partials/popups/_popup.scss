@@ -115,27 +115,16 @@
     }
 		
 		.btn {
-			background: none;
-			outline: none;
-      border: none;
       font-weight: 500;
 			padding: .5rem;
 			text-transform: uppercase;
 			border-radius: $border-radius;
-			cursor: pointer;
-      color: $color-blue;
       position: relative;
       overflow: hidden;
       max-width: 100%;
       white-space: nowrap;
       text-overflow: ellipsis;
 
-      body.animation-level-0 & {
-        transition: none;
-      }
-			
-      @include hover-background-effect(blue);
-			
 			& + .btn {
         margin-top: .5rem;
         text-overflow: ellipsis;
@@ -143,10 +132,6 @@
         max-width: 286px;
         overflow: hidden;
 			}
-
-      &.danger {
-        @include hover-background-effect(red);
-      }
 		}
   }
   
