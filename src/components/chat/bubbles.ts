@@ -1654,7 +1654,8 @@ export default class ChatBubbles {
   public setBubblePosition(bubble: HTMLElement, message: any, reverse: boolean) {
     const dateMessage = this.getDateContainerByMessage(message, reverse);
     if(this.chat.type === 'scheduled' || this.chat.type === 'pinned') {
-      let children = Array.from(dateMessage.container.children).slice(2) as HTMLElement[];
+      const offset = this.stickyIntersector ? 2 : 1;
+      let children = Array.from(dateMessage.container.children).slice(offset) as HTMLElement[];
       let i = 0, foundMidOnSameTimestamp = 0;
       for(; i < children.length; ++i) {
         const t = children[i];
@@ -1671,7 +1672,7 @@ export default class ChatBubbles {
       }
   
       // * 1 for date, 1 for date sentinel
-      let index = this.stickyIntersector ? 2 + i : 1 + i;
+      let index = offset + i;
       /* if(bubble.parentElement) { // * if already mounted
         const currentIndex = whichChild(bubble);
         if(index > currentIndex) {
