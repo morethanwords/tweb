@@ -55,12 +55,13 @@ class InputField {
   public container: HTMLElement;
   public input: HTMLElement;
   public inputFake: HTMLElement;
+  public label: HTMLLabelElement;
 
   //public onLengthChange: (length: number, isOverflow: boolean) => void;
-  private wasInputFakeClientHeight: number;
-  private showScrollDebounced: () => void;
+  protected wasInputFakeClientHeight: number;
+  protected showScrollDebounced: () => void;
 
-  constructor(private options: {
+  constructor(protected options: {
     placeholder?: string, 
     label?: string, 
     name?: string, 
@@ -129,6 +130,10 @@ class InputField {
 
       input = this.container.firstElementChild as HTMLElement;
       input.addEventListener('input', () => checkAndSetRTL(input));
+    }
+
+    if(label) {
+      this.label = this.container.lastElementChild as HTMLLabelElement;
     }
 
     let processInput: () => void;

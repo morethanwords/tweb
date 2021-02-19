@@ -2465,7 +2465,7 @@ export class AppMessagesManager {
             if(document.type === 'video') {
               messageText = '<i>Video' + (message.message ? ', ' : '') + '</i>';
             } else if(document.type === 'voice') {
-              messageText = '<i>Voice message</i>';
+              messageText = '<i>Voice message' + (message.message ? ', ' : '') + '</i>';
             } else if(document.type === 'gif') {
               messageText = '<i>GIF' + (message.message ? ', ' : '') + '</i>';
             } else if(document.type === 'round') {

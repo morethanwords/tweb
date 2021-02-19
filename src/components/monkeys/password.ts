@@ -1,0 +1,59 @@
+import lottieLoader, { RLottiePlayer } from "../../lib/lottieLoader";
+import PasswordInputField from "../passwordInputField";
+
+export default class PasswordMonkey {
+  public container: HTMLElement;
+  public animation: RLottiePlayer;
+  public needFrame = 0;
+  protected loadPromise: Promise<any>;
+
+  constructor(protected passwordInputField: PasswordInputField, protected size: number) {
+    this.container = document.createElement('div');
+    this.container.classList.add('media-sticker-wrapper');
+  }
+
+  public load() {
+    if(this.loadPromise) return this.loadPromise;
+    return this.loadPromise = lottieLoader.loadAnimationFromURL({
+      container: this.container,
+      loop: false,
+      autoplay: false,
+      width: this.size,
+      height: this.size,
+      noCache: true
+    //}, 'assets/img/TwoFactorSetupMonkeyClose.tgs').then(_animation => {
+    }, 'assets/img/TwoFactorSetupMonkeyPeek.tgs').then(_animation => {
+      //return;
+      this.animation = _animation;
+      this.animation.addListener('enterFrame', currentFrame => {
+        //console.log('enterFrame', currentFrame, this.needFrame);
+
+        if((this.animation.direction === 1 && currentFrame >= this.needFrame) ||
+          (this.animation.direction === -1 && currentFrame <= this.needFrame)) {
+            this.animation.setSpeed(1);
+            this.animation.pause();
+        } 
+      });
+
+      this.passwordInputField.onVisibilityClickAdditional = () => {
+        if(this.passwordInputField.passwordVisible) {
+          this.animation.setDirection(1);
+          this.animation.curFrame = 0;
+          this.needFrame = 16;
+          this.animation.play();
+        } else {
+          this.animation.setDirection(-1);
+          this.animation.curFrame = 16;
+          this.needFrame = 0;
+          this.animation.play();
+        }
+      };
+    });
+  }
+
+  public remove() {
+    if(this.animation) {
+      this.animation.remove();
+    }
+  }
+}

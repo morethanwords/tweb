@@ -1,11 +1,23 @@
 import rootScope from "../../lib/rootScope";
-import { blurActiveElement, cancelEvent, findUpClassName } from "../../helpers/dom";
+import { blurActiveElement, findUpClassName } from "../../helpers/dom";
 import { ripple } from "../ripple";
 import animationIntersector from "../animationIntersector";
 import appNavigationController, { NavigationItem } from "../appNavigationController";
-import { isMobileSafari, isSafari } from "../../helpers/userAgent";
 
-export type PopupOptions = Partial<{closable: true, overlayClosable: true, withConfirm: string, body: true}>;
+export type PopupButton = {
+  text: string,
+  callback?: () => void,
+  isDanger?: true,
+  isCancel?: true
+};
+
+export type PopupOptions = Partial<{
+  closable: true, 
+  overlayClosable: true, 
+  withConfirm: string, 
+  body: true
+}>;
+
 export default class PopupElement {
   protected element = document.createElement('div');
   protected container = document.createElement('div');
@@ -140,9 +152,14 @@ export default class PopupElement {
   };
 }
 
-export type PopupButton = {
-  text: string,
-  callback?: () => void,
-  isDanger?: true,
-  isCancel?: true
+export const addCancelButton = (buttons: PopupButton[]) => {
+  const button = buttons.find(b => b.isCancel);
+  if(!button) {
+    buttons.push({
+      text: 'CANCEL',
+      isCancel: true
+    });
+  }
+
+  return buttons;
 };

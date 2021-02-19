@@ -51,6 +51,7 @@
     transform-origin: left center;
     pointer-events: none;
     margin-top: calc((var(--height) - 1.5rem) / 2); // * Center of first line
+    user-select: none;
 
     body.animation-level-0 & {
       transition: none;
@@ -299,6 +300,56 @@ input:focus, button:focus {
 
     &:before { // ! я сгорел, почему-то здесь иконка сдвигается на пиксель влево, и это происходит из-за position: absolute на .tgico ...
       margin-right: -1px;
+    }
+  }
+}
+
+.input-field-password {
+  .input-field-input {
+    padding-right: 2.5rem;
+    max-height: 54px;
+    
+    &[type="password"] {
+      font-size: 2.25rem;
+      padding-left: calc(.875rem - var(--border-width));
+  
+      @media (-webkit-min-device-pixel-ratio: 2) { 
+        font-size: 1.75rem;
+        letter-spacing: .125rem;
+      }
+  
+      html.is-ios & {
+        // ! меньше 1rem будет зумить поле
+        font-size: 1rem;
+      }
+    }
+  }
+  
+  .toggle-visible {
+    position: absolute;
+    right: .375rem;
+    z-index: 2;
+    font-size: 1.5rem;
+    color: $placeholder-color;
+    cursor: pointer;
+    transition: color .2s;
+    padding: .5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    top: 50%;
+    transform: translateY(-50%);
+  
+    &:before {
+      content: $tgico-eye1;
+    }
+  
+    &.eye-hidden:before {
+      content: $tgico-eye2;
+    }
+    
+    @include hover() {
+      color: #000;
     }
   }
 }

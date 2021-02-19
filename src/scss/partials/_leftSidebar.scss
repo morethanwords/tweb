@@ -843,6 +843,10 @@
       @include respond-to(not-handhelds) {
         margin: 0 .625rem;
       }
+
+      > .btn-primary {
+        margin: 0;
+      }
     }
   
     &-name {
@@ -857,7 +861,7 @@
       padding: 0 .875rem;
     }
 
-    .btn-primary, .checkbox-field, .radio-field {
+    .checkbox-field, .radio-field {
       margin: 0;
     }
 
@@ -902,6 +906,13 @@
   .media-sticker-wrapper {
     width: 168px;
     height: 168px;
+  }
+}
+
+.two-step-verification-enter-password {
+  .media-sticker-wrapper {
+    width: 157px;
+    height: 157px;
   }
 }
 
