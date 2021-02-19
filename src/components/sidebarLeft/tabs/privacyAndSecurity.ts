@@ -1,11 +1,12 @@
 import SidebarSlider, { SliderSuperTab } from "../../slider";
 import { generateSection, SettingSection } from "..";
 import Row from "../../row";
-import { InputPrivacyKey, PrivacyRule } from "../../../layer";
+import { AccountPassword, InputPrivacyKey, PrivacyRule } from "../../../layer";
 import appPrivacyManager from "../../../lib/appManagers/appPrivacyManager";
 import AppPrivacyPhoneNumberTab from "./privacy/phoneNumber";
 import AppTwoStepVerificationTab from "./2fa";
 import passwordManager from "../../../lib/mtproto/passwordManager";
+import AppTwoStepVerificationEnterPasswordTab from "./2fa/enterPassword";
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
   constructor(slider: SidebarSlider) {
@@ -28,14 +29,25 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
         clickable: true
       });
 
-      const tab = new AppTwoStepVerificationTab(this.slider);
-      
-      const twoFactorRow = new Row({
+      let passwordState: AccountPassword;
+      const twoFactorRowOptions = {
         icon: 'lock',
         title: 'Two-Step Verification',
         subtitle: 'Loading...',
-        navigationTab: tab
-      });
+        clickable: (e: Event) => {
+          let tab: AppTwoStepVerificationTab | AppTwoStepVerificationEnterPasswordTab;
+          if(passwordState.pFlags.has_password) {
+            tab = new AppTwoStepVerificationEnterPasswordTab(this.slider);
+          } else {
+            tab = new AppTwoStepVerificationTab(this.slider);
+          }
+          
+          tab.state = passwordState;
+          tab.open();
+        }
+      };
+      
+      const twoFactorRow = new Row(twoFactorRowOptions);
       twoFactorRow.freezed = true;
 
       const activeSessionRow = new Row({
@@ -49,10 +61,11 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
       this.scrollable.append(section.container);
 
       passwordManager.getState().then(state => {
+        passwordState = state;
         twoFactorRow.subtitle.innerText = state.pFlags.has_password ? 'On' : 'Off';
         twoFactorRow.freezed = false;
-        tab.passwordState = state;
-        //console.log('password state', state);
+        
+        console.log('password state', state);
       });
     }
 

@@ -1,5 +1,7 @@
+import type { AccountPassword, AccountPasswordInputSettings, AccountUpdatePasswordSettings, InputCheckPasswordSRP, PasswordKdfAlgo } from '../../layer';
+import type CryptoWorkerMethods from '../crypto/crypto_methods';
 import { MOUNT_CLASS_TO } from '../../config/debug';
-import { AccountPassword } from '../../layer';
+import appUsersManager from '../appManagers/appUsersManager';
 import apiManager from './mtprotoworker';
 //import { computeCheck } from "../crypto/srp";
 
@@ -10,54 +12,71 @@ export class PasswordManager {
     });
   }
 
-  /* public updateSettings(state: any, settings: any) {
-    var currentHashPromise;
-    var newHashPromise;
-    var params: any = {
-      new_settings: {
-        _: 'account.passwordInputSettings',
-        hint: settings.hint || ''
+  public updateSettings(settings: {
+    hint?: string,
+    email?: string,
+    newPassword?: string,
+    currentPassword?: string
+  } = {}) {
+    //state = Object.assign({}, state);
+    //state.new_algo = Object.assign({}, state.new_algo);
+
+    this.getState().then(state => {
+      let currentHashPromise: ReturnType<CryptoWorkerMethods['computeSRP']>;
+      let newHashPromise: Promise<Uint8Array>;
+      const params: AccountUpdatePasswordSettings = {
+        password: null,
+        new_settings: {
+          _: 'account.passwordInputSettings',
+          hint: settings.hint,
+          email: settings.email
+        }
+      };
+  
+      if(settings.currentPassword) {
+        currentHashPromise = apiManager.computeSRP(settings.currentPassword, state);
+      } else {
+        currentHashPromise = Promise.resolve({
+          _: 'inputCheckPasswordEmpty'
+        });
       }
-    };
-
-    if(typeof settings.cur_password === 'string' &&
-      settings.cur_password.length > 0) {
-      currentHashPromise = this.makePasswordHash(state.current_salt, settings.cur_password);
-    } else {
-      currentHashPromise = Promise.resolve([]);
-    }
-
-    if (typeof settings.new_password === 'string' &&
-      settings.new_password.length > 0) {
-      var saltRandom = new Array(8);
-      var newSalt = bufferConcat(state.new_salt, saltRandom);
-      secureRandom.nextBytes(saltRandom);
-      newHashPromise = this.makePasswordHash(newSalt, settings.new_password);
-      params.new_settings.new_salt = newSalt;
-    } else {
-      if(typeof settings.new_password === 'string') {
-        params.new_settings.new_salt = [];
+  
+      // * https://core.telegram.org/api/srp#setting-a-new-2fa-password, but still there is a mistake, TDesktop passes 'new_algo' everytime
+      const newAlgo = state.new_algo as PasswordKdfAlgo.passwordKdfAlgoSHA256SHA256PBKDF2HMACSHA512iter100000SHA256ModPow;
+      const salt1 = new Uint8Array(newAlgo.salt1.length + 32);
+      salt1.randomize();
+      salt1.set(newAlgo.salt1, 0);
+      newAlgo.salt1 = salt1;
+  
+      if(settings.newPassword) {
+        newHashPromise = Promise.resolve(new Uint8Array());
+      } else {
+        newHashPromise = Promise.resolve(new Uint8Array());
       }
-      newHashPromise = Promise.resolve([]);
-    }
-
-    if(typeof settings.email === 'string') {
-      params.new_settings.email = settings.email || '';
-    }
-
-    return Promise.all([currentHashPromise, newHashPromise]).then((hashes) => {
-      params.current_password_hash = hashes[0];
-      params.new_settings.new_password_hash = hashes[1];
-
-      return apiManager.invokeApi('account.updatePasswordSettings', params);
+  
+      return Promise.all([currentHashPromise, newHashPromise]).then((hashes) => {
+        params.password = hashes[0];
+        params.new_settings.new_algo = newAlgo;
+        params.new_settings.new_password_hash = hashes[1];
+  
+        return apiManager.invokeApi('account.updatePasswordSettings', params);
+      });
     });
-  } */
+  }
 
   public check(password: string, state: AccountPassword, options: any = {}) {
     return apiManager.computeSRP(password, state).then((inputCheckPassword) => {
+      //console.log('SRP', inputCheckPassword);
       return apiManager.invokeApi('auth.checkPassword', {
         password: inputCheckPassword
-      }, options);
+      }, options).then(auth => {
+        if(auth._ === 'auth.authorization') {
+          appUsersManager.saveApiUser(auth.user);
+          apiManager.setUserAuth(auth.user.id);
+        }
+
+        return auth;
+      });
     });
   }
 

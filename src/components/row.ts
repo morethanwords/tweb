@@ -20,7 +20,7 @@ export default class Row {
     radioField: Row['radioField'],
     checkboxField: Row['checkboxField'],
     title: string,
-    clickable: boolean,
+    clickable: boolean | ((e: Event) => void),
     navigationTab: SliderSuperTab
   }> = {}) {
     this.container = document.createElement('div');
@@ -63,14 +63,17 @@ export default class Row {
     }
 
     if(options.navigationTab) {
-      this.container.addEventListener('click', () => {
-        if(this.freezed) return;
-        options.navigationTab.open();
-      });
-      options.clickable = true;
+      options.clickable = () => options.navigationTab.open();
     }
 
     if(options.clickable) {
+      if(typeof(options.clickable) === 'function') {
+        this.container.addEventListener('click', (e) => {
+          if(this.freezed) return;
+          (options.clickable as any)(e);
+        });
+      }
+
       this.container.classList.add('row-clickable', 'hover-effect');
       ripple(this.container);
     }

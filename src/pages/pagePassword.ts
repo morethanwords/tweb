@@ -1,48 +1,28 @@
-//import CryptoWorker from '../lib/crypto/cryptoworker';
-//import apiManager from '../lib/mtproto/apiManager';
 import { putPreloader } from '../components/misc';
 import mediaSizes from '../helpers/mediaSizes';
-import { isAppleMobile, isSafari } from '../helpers/userAgent';
 import { AccountPassword } from '../layer';
 import appStateManager from '../lib/appManagers/appStateManager';
-import LottieLoader, { RLottiePlayer } from '../lib/lottieLoader';
-//import passwordManager from '../lib/mtproto/passwordManager';
 import apiManager from '../lib/mtproto/mtprotoworker';
 import passwordManager from '../lib/mtproto/passwordManager';
-import { cancelEvent } from '../helpers/dom';
 import Page from './page';
 import pageIm from './pageIm';
-import InputField from '../components/inputField';
 import Button from '../components/button';
+import PasswordInputField from '../components/passwordInputField';
+import PasswordMonkey from '../components/monkeys/password';
+import { ripple } from '../components/ripple';
 
 const TEST = false;
 let passwordInput: HTMLInputElement;
 
 let onFirstMount = (): Promise<any> => {
-  let needFrame = 0;
-  let animation: RLottiePlayer;
-
-  let passwordVisible = false;
-
   const btnNext = Button('btn-primary', {text: 'NEXT'});
 
-  const passwordInputField = new InputField({
+  const passwordInputField = new PasswordInputField({
     label: 'Password',
-    name: 'password',
-    plainText: true
+    name: 'password'
   });
 
   passwordInput = passwordInputField.input as HTMLInputElement;
-  passwordInput.type = 'password';
-  passwordInput.setAttribute('required', '');
-  passwordInput.autocomplete = 'off';
-
-  const passwordInputLabel = passwordInput.nextElementSibling as HTMLLabelElement;
-
-  const toggleVisible = document.createElement('span');
-  toggleVisible.classList.add('toggle-visible', 'tgico');
-
-  passwordInputField.container.append(toggleVisible);
 
   page.pageEl.querySelector('.input-wrapper').append(passwordInputField.container, btnNext);
 
@@ -57,13 +37,13 @@ let onFirstMount = (): Promise<any> => {
     return !TEST && passwordManager.getState().then(_state => {
       state = _state;
 
-      passwordInputLabel.innerText = state.hint ?? 'Password';
+      passwordInputField.label.innerText = state.hint ?? 'Password';
     });
   };
 
   let handleError = (err: any) => {
     btnNext.removeAttribute('disabled');
-    passwordInput.classList.add('error');
+    passwordInputField.input.classList.add('error');
     
     switch(err.type) {
       default:
@@ -74,29 +54,6 @@ let onFirstMount = (): Promise<any> => {
 
     getState();
   };
-
-  const onVisibilityClick = function(this: typeof toggleVisible, e: Event) {
-    cancelEvent(e);
-    passwordVisible = !passwordVisible;
-
-    this.classList.toggle('eye-hidden', passwordVisible);
-    if(passwordVisible) {
-      passwordInput.setAttribute('type', 'text');
-      animation.setDirection(1);
-      animation.curFrame = 0;
-      needFrame = 16;
-      animation.play();
-    } else {
-      passwordInput.setAttribute('type', 'password');
-      animation.setDirection(-1);
-      animation.curFrame = 16;
-      needFrame = 0;
-      animation.play();
-    }
-  };
-
-  toggleVisible.addEventListener('click', onVisibilityClick);
-  toggleVisible.addEventListener('touchend', onVisibilityClick);
 
   let state: AccountPassword;
   
@@ -117,15 +74,14 @@ let onFirstMount = (): Promise<any> => {
         
       switch(response._) {
         case 'auth.authorization':
-          apiManager.setUserAuth(response.user.id);
-  
           clearInterval(getStateInterval);
           pageIm.mount();
-          if(animation) animation.remove();
+          if(monkey) monkey.remove();
           break;
         default:
           btnNext.removeAttribute('disabled');
           btnNext.innerText = response._;
+          ripple(btnNext);
           break;
       }
     }).catch(handleError);
@@ -134,42 +90,18 @@ let onFirstMount = (): Promise<any> => {
   passwordInput.addEventListener('keypress', function(this, e) {
     this.classList.remove('error');
     btnNext.innerText = 'NEXT';
+    ripple(btnNext);
 
     if(e.key === 'Enter') {
       return btnNext.click();
     }
   });
 
-  /* passwordInput.addEventListener('input', function(this, e) {
-    
-  }); */
   const size = mediaSizes.isMobile ? 100 : 166;
+  const monkey = new PasswordMonkey(passwordInputField, size);
+  page.pageEl.querySelector('.auth-image').append(monkey.container);
   return Promise.all([
-    LottieLoader.loadAnimationFromURL({
-      container: page.pageEl.querySelector('.auth-image'),
-      loop: false,
-      autoplay: false,
-      width: size,
-      height: size,
-      noCache: true
-    //}, 'assets/img/TwoFactorSetupMonkeyClose.tgs').then(_animation => {
-    }, 'assets/img/TwoFactorSetupMonkeyPeek.tgs').then(_animation => {
-      //return;
-      animation = _animation;
-      animation.addListener('enterFrame', currentFrame => {
-        //console.log('enterFrame', e, needFrame);
-
-        if((animation.direction === 1 && currentFrame >= needFrame) ||
-          (animation.direction === -1 && currentFrame <= needFrame)) {
-            animation.setSpeed(1);
-            animation.pause();
-        } 
-      });
-  
-      needFrame = 49;
-      //animation.play();
-    }),
-
+    monkey.load(),
     getState()
   ]);
 };
