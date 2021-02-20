@@ -2,7 +2,7 @@ import { attachClickEvent } from "../helpers/dom";
 import { horizontalMenu } from "./horizontalMenu";
 import { TransitionSlider } from "./transition";
 import appNavigationController, { NavigationItem } from "./appNavigationController";
-import SliderSuperTab, { SliderTab } from "./sliderTab";
+import SliderSuperTab, { SliderSuperTabConstructable, SliderTab } from "./sliderTab";
 
 const TRANSITION_TIME = 250;
 
@@ -103,6 +103,18 @@ export default class SidebarSlider {
   public removeTabFromHistory(id: number | SliderSuperTab) {
     this.historyTabIds.findAndSplice(i => i === id);
     this.onCloseTab(id, undefined);
+  }
+
+  public sliceTabsUntilTab(tabConstructor: SliderSuperTabConstructable, preserveTab: SliderSuperTab) {
+    for(let i = this.historyTabIds.length - 1; i >= 0; --i) {
+      const tab = this.historyTabIds[i];
+      if(tab === preserveTab) continue;
+      else if(tab instanceof tabConstructor) {
+        break;
+      }
+
+      this.removeTabFromHistory(tab);
+    }
   }
 
   public onCloseTab(id: number | SliderSuperTab, animate: boolean) {
