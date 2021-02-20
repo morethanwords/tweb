@@ -52,6 +52,13 @@ export default class AppTwoStepVerificationTab extends SliderSuperTab {
       const btnDisablePassword = Button('btn-primary btn-transparent', {icon: 'passwordoff', text: 'Turn Password Off'});
       const btnSetRecoveryEmail = Button('btn-primary btn-transparent', {icon: 'email', text: 'Set Recovery Email'});
 
+      attachClickEvent(btnChangePassword, () => {
+        const tab = new AppTwoStepVerificationEnterPasswordTab(this.slider);
+        tab.state = this.state;
+        tab.plainPassword = this.plainPassword;
+        tab.open();
+      });
+
       attachClickEvent(btnDisablePassword, () => {
         const popup = new PopupConfirmAction('popup-disable-password', [{
           text: 'DISABLE',
@@ -61,7 +68,7 @@ export default class AppTwoStepVerificationTab extends SliderSuperTab {
           isDanger: true,
         }], {
           title: 'Warning',
-          text: 'Are you sure you want to disable your password?'
+          text: 'Are you sure you want to disable<br/>your password?'
         });
 
         popup.show();

@@ -21,7 +21,7 @@ export class PasswordManager {
     //state = Object.assign({}, state);
     //state.new_algo = Object.assign({}, state.new_algo);
 
-    this.getState().then(state => {
+    return this.getState().then(state => {
       let currentHashPromise: ReturnType<CryptoWorkerMethods['computeSRP']>;
       let newHashPromise: Promise<Uint8Array>;
       const params: AccountUpdatePasswordSettings = {
@@ -49,7 +49,7 @@ export class PasswordManager {
       newAlgo.salt1 = salt1;
   
       if(settings.newPassword) {
-        newHashPromise = Promise.resolve(new Uint8Array());
+        newHashPromise = apiManager.computeSRP(settings.newPassword, state, true) as any;
       } else {
         newHashPromise = Promise.resolve(new Uint8Array());
       }

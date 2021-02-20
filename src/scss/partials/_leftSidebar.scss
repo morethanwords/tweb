@@ -907,12 +907,26 @@
     width: 168px;
     height: 168px;
   }
-}
 
-.two-step-verification-enter-password {
-  .media-sticker-wrapper {
-    width: 157px;
-    height: 157px;
+  &-enter-password {
+    .media-sticker-wrapper {
+      width: 157px;
+      height: 157px;
+    }
+  }
+
+  &-hint {
+    .media-sticker-wrapper {
+      width: 120px;
+      height: 120px;
+    }
+  }
+
+  &-email {
+    .media-sticker-wrapper {
+      width: 120px;
+      height: 120px;
+    }
   }
 }
 

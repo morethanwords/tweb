@@ -1,24 +1,25 @@
-import AppTwoStepVerificationTab from ".";
 import { SettingSection } from "../..";
 import { attachClickEvent, cancelEvent } from "../../../../helpers/dom";
 import { AccountPassword } from "../../../../layer";
-import passwordManager from "../../../../lib/mtproto/passwordManager";
 import Button from "../../../button";
-import { putPreloader } from "../../../misc";
-import PasswordMonkey from "../../../monkeys/password";
 import PasswordInputField from "../../../passwordInputField";
 import { ripple } from "../../../ripple";
 import SidebarSlider, { SliderSuperTab } from "../../../slider";
+import TrackingMonkey from "../../../monkeys/tracking";
+import AppTwoStepVerificationHintTab from "./hint";
 
 export default class AppTwoStepVerificationReEnterPasswordTab extends SliderSuperTab {
   public state: AccountPassword;
+  public passwordInputField: PasswordInputField;
+  public plainPassword: string;
+  public newPassword: string;
   
   constructor(slider: SidebarSlider) {
     super(slider, true);
   }
 
   protected init() {
-    this.container.classList.add('two-step-verification-enter-password');
+    this.container.classList.add('two-step-verification-enter-password', 'two-step-verification-re-enter-password');
     this.title.innerHTML = 'Re-Enter your Password';
 
     const section = new SettingSection({
@@ -28,12 +29,12 @@ export default class AppTwoStepVerificationReEnterPasswordTab extends SliderSupe
     const inputWrapper = document.createElement('div');
     inputWrapper.classList.add('input-wrapper');
 
-    const passwordInputField = new PasswordInputField({
+    const passwordInputField = this.passwordInputField = new PasswordInputField({
       name: 're-enter-password',
       label: 'Re-Enter your Password'
     });
 
-    const monkey = new PasswordMonkey(passwordInputField, 157);
+    const monkey = new TrackingMonkey(passwordInputField, 157);
     monkey.load();
 
     const btnContinue = Button('btn-primary', {text: 'CONTINUE'});
@@ -56,7 +57,7 @@ export default class AppTwoStepVerificationReEnterPasswordTab extends SliderSupe
     });
 
     const verifyInput = () => {
-      if(!passwordInputField.value.length) {
+      if(this.newPassword !== passwordInputField.value) {
         passwordInputField.input.classList.add('error');
         return false;
       }
@@ -68,7 +69,15 @@ export default class AppTwoStepVerificationReEnterPasswordTab extends SliderSupe
       cancelEvent(e);
       if(!verifyInput()) return;
 
-      
+      const tab = new AppTwoStepVerificationHintTab(this.slider);
+      tab.state = this.state;
+      tab.plainPassword = this.plainPassword;
+      tab.newPassword = this.newPassword;
+      tab.open();
     });
+  }
+  
+  onOpenAfterTimeout() {
+    this.passwordInputField.input.focus();
   }
 }

@@ -44,7 +44,7 @@ export default abstract class CryptoWorkerMethods {
     return this.performTaskWorker<T>('gzipUncompress', bytes, toString);
   }
 
-  public computeSRP(password: string, state: any): Promise<InputCheckPasswordSRP> {
-    return this.performTaskWorker('computeSRP', password, state);
+  public computeSRP(password: string, state: any, isNew = false): Promise<InputCheckPasswordSRP> {
+    return this.performTaskWorker('computeSRP', password, state, isNew);
   }
 }
