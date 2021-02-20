@@ -30,23 +30,27 @@ export default class AppTwoStepVerificationTab extends SliderSuperTab {
     const doc = appStickersManager.getAnimatedEmojiSticker(emoji);
     const stickerContainer = document.createElement('div');
 
-    wrapSticker({
-      doc,
-      div: stickerContainer,
-      loop: false,
-      play: true,
-      width: 168,
-      height: 168,
-      emoji
-    }).then(() => {
-      // this.animation = player;
-    });
+    if(doc) {
+      wrapSticker({
+        doc,
+        div: stickerContainer,
+        loop: false,
+        play: true,
+        width: 168,
+        height: 168,
+        emoji
+      }).then(() => {
+        // this.animation = player;
+      });
+    } else {
+      stickerContainer.classList.add('media-sticker-wrapper');
+    }
 
     section.content.append(stickerContainer);
 
     const c = section.generateContentElement();
     if(this.state.pFlags.has_password) {
-      section.caption.innerHTML = 'You have enabled Two-Step verification.<br/>You\'ll need the password you set up here to log in to your Telegram account';
+      section.caption.innerHTML = 'You have enabled Two-Step verification.<br/>You\'ll need the password you set up here to log in to your Telegram account.';
 
       const btnChangePassword = Button('btn-primary btn-transparent', {icon: 'edit', text: 'Change Password'});
       const btnDisablePassword = Button('btn-primary btn-transparent', {icon: 'passwordoff', text: 'Turn Password Off'});
@@ -78,8 +82,13 @@ export default class AppTwoStepVerificationTab extends SliderSuperTab {
     } else {
       section.caption.innerHTML = 'You can set a password that will be required when you log in on a new device in addition to the code you get in the SMS.';
 
-      const btnSetPassword = Button('btn-primary', {text: 'SET PASSWORD'});
-      c.append(btnSetPassword);
+      const inputWrapper = document.createElement('div');
+      inputWrapper.classList.add('input-wrapper');
+
+      const btnSetPassword = Button('btn-primary btn-color-primary', {text: 'SET PASSWORD'});
+      
+      inputWrapper.append(btnSetPassword);
+      c.append(inputWrapper);
 
       attachClickEvent(btnSetPassword, (e) => {
         const tab = new AppTwoStepVerificationEnterPasswordTab(this.slider);

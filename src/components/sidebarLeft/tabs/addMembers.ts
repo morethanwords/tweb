@@ -12,7 +12,7 @@ export default class AppAddMembersTab extends SliderSuperTab {
   private skippable: boolean;
 
   constructor(slider: SidebarSlider) {
-    super(slider);
+    super(slider, true);
   }
 
   protected init() {
@@ -44,13 +44,6 @@ export default class AppAddMembersTab extends SliderSuperTab {
     });
   }
 
-  public onCloseAfterTimeout() {
-    if(this.selector) {
-      this.selector.container.remove();
-      this.selector = null;
-    }
-  }
-
   public open(options: {
     title: string,
     placeholder: string,
@@ -67,7 +60,6 @@ export default class AppAddMembersTab extends SliderSuperTab {
     this.takeOut = options.takeOut;
     this.skippable = options.skippable;
 
-    this.onCloseAfterTimeout();
     this.selector = new AppSelectPeers({
       appendTo: this.content, 
       onChange: this.skippable ? null : (length) => {

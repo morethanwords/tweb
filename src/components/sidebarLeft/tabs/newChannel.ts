@@ -5,6 +5,7 @@ import Button from "../../button";
 import InputField from "../../inputField";
 import { SliderSuperTab } from "../../slider";
 import AvatarEdit from "../../avatarEdit";
+import AppAddMembersTab from "./addMembers";
 
 export default class AppNewChannelTab extends SliderSuperTab {
   private uploadAvatar: () => Promise<InputFile> = null;
@@ -15,7 +16,7 @@ export default class AppNewChannelTab extends SliderSuperTab {
   private avatarEdit: AvatarEdit;
 
   constructor(appSidebarLeft: AppSidebarLeft) {
-    super(appSidebarLeft);
+    super(appSidebarLeft, true);
   }
 
   protected init() {
@@ -68,8 +69,8 @@ export default class AppNewChannelTab extends SliderSuperTab {
           });
         }
         
-        appSidebarLeft.removeTabFromHistory(this.id);
-        appSidebarLeft.addMembersTab.open({
+        appSidebarLeft.removeTabFromHistory(this);
+        new AppAddMembersTab(this.slider).open({
           peerId: channelId,
           type: 'channel',
           skippable: true,
@@ -92,5 +93,6 @@ export default class AppNewChannelTab extends SliderSuperTab {
     this.channelNameInputField.value = '';
     this.channelDescriptionInputField.value = '';
     this.nextBtn.disabled = false;
+    return super.onCloseAfterTimeout();
   }
 }

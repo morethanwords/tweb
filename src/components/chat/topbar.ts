@@ -218,7 +218,7 @@ export default class ChatTopbar {
 
     this.pinnedMessage = new ChatPinnedMessage(this, this.chat, this.appMessagesManager, this.appPeersManager);
 
-    this.btnJoin = Button('btn-primary chat-join hide');
+    this.btnJoin = Button('btn-primary btn-color-primary chat-join hide');
     this.btnJoin.append('SUBSCRIBE');
 
     this.btnPinned = ButtonIcon('pinlist');

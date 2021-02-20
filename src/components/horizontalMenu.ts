@@ -32,7 +32,8 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?
         animate = false;
       }
 
-      if(target.classList.contains('active') || id === selectTab.prevId) {
+      const prevId = selectTab.prevId();
+      if(target.classList.contains('active') || id === prevId) {
         return false;
       }
       
@@ -42,7 +43,6 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?
         prev && prev.classList.remove('active');
       });
       
-      const prevId = selectTab.prevId;
       // stripe from ZINCHUK
       if(useStripe && prevId !== -1 && animate) {
         fastRaf(() => {

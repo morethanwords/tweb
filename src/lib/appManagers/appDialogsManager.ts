@@ -176,6 +176,7 @@ class ConnectionStatusComponent {
 export class AppDialogsManager {
   public _chatList = document.getElementById('dialogs') as HTMLUListElement;
   public chatList = this._chatList;
+  public chatListArchived: HTMLUListElement;
 
   public doms: {[peerId: number]: DialogDom} = {};
 
@@ -191,10 +192,7 @@ export class AppDialogsManager {
 
   public contextMenu = new DialogsContextMenu();
 
-  public chatLists: {[filterId: number]: HTMLUListElement} = {
-    0: this.chatList,
-    1: appSidebarLeft.archivedTab.chatList
-  };
+  public chatLists: {[filterId: number]: HTMLUListElement};
   public filterId = 0;
   private folders: {[k in 'menu' | 'container' | 'menuScrollContainer']: HTMLElement} = {
     menu: document.getElementById('folders-tabs'),
@@ -222,6 +220,14 @@ export class AppDialogsManager {
   private lastActiveElements: Set<HTMLElement> = new Set();
 
   constructor() {
+    this.chatListArchived = document.createElement('ul');
+    this.chatListArchived.id = 'dialogs-archived';
+
+    this.chatLists = {
+      0: this.chatList,
+      1: this.chatListArchived
+    };
+
     this.chatsPreloader = putPreloader(null, true);
 
     this.allUnreadCount = this.folders.menu.querySelector('.badge');
@@ -434,10 +440,10 @@ export class AppDialogsManager {
         positionElementByIndex(renderedFilter.container, this.folders.container, filter.orderIndex);
       });
 
-      if(this.filterId) {
+      /* if(this.filterId) {
         const tabIndex = order.indexOf(this.filterId) + 1;
         selectTab.prevId = tabIndex;
-      }
+      } */
     });
 
     rootScope.on('peer_typings', (e) => {

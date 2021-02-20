@@ -754,6 +754,12 @@ img.emoji {
   }
 }
 
+.popup-disable-password, .popup-skip-email {
+  .popup-description {
+    max-width: 284px;
+  }
+}
+
 .grid {
   width: 100%;
   display: grid;

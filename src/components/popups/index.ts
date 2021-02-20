@@ -64,7 +64,7 @@ export default class PopupElement {
 
     if(options.withConfirm) {
       this.btnConfirm = document.createElement('button');
-      this.btnConfirm.classList.add('btn-primary');
+      this.btnConfirm.classList.add('btn-primary', 'btn-color-primary');
       this.btnConfirm.innerText = options.withConfirm;
       this.header.append(this.btnConfirm);
       ripple(this.btnConfirm);

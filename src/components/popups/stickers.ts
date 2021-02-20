@@ -97,7 +97,7 @@ export default class PopupStickers extends PopupElement {
 
       this.h6.innerHTML = RichTextProcessor.wrapEmojiText(set.set.title);
       !set.set.installed_date ? this.stickersFooter.classList.add('add') : this.stickersFooter.classList.remove('add');
-      this.stickersFooter.innerHTML = set.set.hasOwnProperty('installed_date') ? '<div style="cursor: pointer; margin: 0 auto; width: 150px;">Remove stickers</div>' : `<button class="btn-primary">ADD ${set.set.count} STICKERS</button>`;
+      this.stickersFooter.innerHTML = set.set.hasOwnProperty('installed_date') ? '<div style="cursor: pointer; margin: 0 auto; width: 150px;">Remove stickers</div>' : `<button class="btn-primary btn-color-primary">ADD ${set.set.count} STICKERS</button>`;
 
       this.stickersFooter.addEventListener('click', this.onFooterClick);
 

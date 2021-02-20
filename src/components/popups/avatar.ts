@@ -66,7 +66,7 @@ export default class PopupAvatar extends PopupElement {
     }, false);
 
     this.btnSubmit = document.createElement('button');
-    this.btnSubmit.className = 'btn-primary btn-circle btn-crop btn-icon tgico-check z-depth-1';
+    this.btnSubmit.className = 'btn-primary btn-color-primary btn-circle btn-crop btn-icon tgico-check z-depth-1';
     ripple(this.btnSubmit);
     this.btnSubmit.addEventListener('click', () => {
       this.cropper.crop();

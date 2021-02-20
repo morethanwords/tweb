@@ -183,13 +183,13 @@ export function pqPrimeLeemon(what: any) {
   var x = new Array(minLen);
   var y = new Array(minLen);
 
-  for(i = 0; i < 3; i++) {
+  for(i = 0; i < 3; ++i) {
     q = (nextRandomInt(128) & 15) + 17;
     copyInt_(x, nextRandomInt(1000000000) + 1);
     copy_(y, x);
     lim = 1 << (i + 18);
 
-    for (j = 1; j < lim; j++) {
+    for (j = 1; j < lim; ++j) {
       ++it;
       copy_(a, x);
       copy_(b, x);

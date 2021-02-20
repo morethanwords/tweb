@@ -13,33 +13,18 @@ import Scrollable, { ScrollableX } from "../scrollable";
 import InputSearch from "../inputSearch";
 import SidebarSlider from "../slider";
 import { TransitionSlider } from "../transition";
-import AppAddMembersTab from "./tabs/addMembers";
-import AppArchivedTab from "./tabs/archivedTab";
-import AppChatFoldersTab from "./tabs/chatFolders";
-import AppContactsTab from "./tabs/contacts";
-import AppEditFolderTab from "./tabs/editFolder";
-import AppEditProfileTab from "./tabs/editProfile";
-import AppIncludedChatsTab from "./tabs/includedChats";
-import AppNewChannelTab from "./tabs/newChannel";
 import AppNewGroupTab from "./tabs/newGroup";
-import AppSettingsTab from "./tabs/settings";
 import appMessagesManager from "../../lib/appManagers/appMessagesManager";
-import apiManagerProxy from "../../lib/mtproto/mtprotoworker";
 import AppSearchSuper from "../appSearchSuper.";
 import { DateData, fillTipDates } from "../../helpers/date";
-import AppGeneralSettingsTab from "./tabs/generalSettings";
-import AppPrivacyAndSecurityTab from "./tabs/privacyAndSecurity";
 import { MOUNT_CLASS_TO } from "../../config/debug";
-
-const contactsTab = new AppContactsTab();
-const archivedTab = new AppArchivedTab();
+import AppSettingsTab from "./tabs/settings";
+import AppNewChannelTab from "./tabs/newChannel";
+import AppContactsTab from "./tabs/contacts";
+import AppArchivedTab from "./tabs/archivedTab";
+import AppAddMembersTab from "./tabs/addMembers";
 
 export class AppSidebarLeft extends SidebarSlider {
-  public static SLIDERITEMSIDS = {
-    archived: 1,
-    contacts: 2
-  };
-
   private toolsBtn: HTMLButtonElement;
   private backBtn: HTMLButtonElement;
   //private searchInput = document.getElementById('global-search') as HTMLInputElement;
@@ -63,19 +48,6 @@ export class AppSidebarLeft extends SidebarSlider {
     privateChat: HTMLButtonElement,
   } = {} as any;
 
-  public archivedTab: AppArchivedTab;
-  public newChannelTab: AppNewChannelTab;
-  public addMembersTab: AppAddMembersTab;
-  public contactsTab: AppContactsTab;
-  public newGroupTab: AppNewGroupTab;
-  public settingsTab: AppSettingsTab;
-  public editProfileTab: AppEditProfileTab;
-  public chatFoldersTab: AppChatFoldersTab;
-  public editFolderTab: AppEditFolderTab;
-  public includedChatsTab: AppIncludedChatsTab;
-  public generalSettingsTab: AppGeneralSettingsTab;
-  public privacyAndSecurityTab: AppPrivacyAndSecurityTab;
-
   //private log = logger('SL');
 
   private searchGroups: {[k in 'contacts' | 'globalContacts' | 'messages' | 'people' | 'recent']: SearchGroup} = {} as any;
@@ -87,11 +59,6 @@ export class AppSidebarLeft extends SidebarSlider {
       navigationType: 'left'
     });
 
-    Object.assign(this.tabs, {
-      [AppSidebarLeft.SLIDERITEMSIDS.archived]: archivedTab,
-      [AppSidebarLeft.SLIDERITEMSIDS.contacts]: contactsTab
-    });
-
     //this._selectTab(0); // make first tab as default
 
     this.inputSearch = new InputSearch('Telegram Search');
@@ -100,19 +67,6 @@ export class AppSidebarLeft extends SidebarSlider {
 
     this.toolsBtn = this.sidebarEl.querySelector('.sidebar-tools-button') as HTMLButtonElement;
     this.backBtn = this.sidebarEl.querySelector('.sidebar-back-button') as HTMLButtonElement;
-
-    this.archivedTab = archivedTab;
-    this.newChannelTab = new AppNewChannelTab(this);
-    this.contactsTab = contactsTab;
-    this.newGroupTab = new AppNewGroupTab(this);
-    this.settingsTab = new AppSettingsTab(this);
-    this.chatFoldersTab = new AppChatFoldersTab(appMessagesManager, appPeersManager, this, apiManagerProxy, rootScope);
-    this.editFolderTab = new AppEditFolderTab(this);
-    this.includedChatsTab = new AppIncludedChatsTab(this);
-    this.editProfileTab = new AppEditProfileTab(this);
-    this.generalSettingsTab = new AppGeneralSettingsTab(this);
-    this.privacyAndSecurityTab = new AppPrivacyAndSecurityTab(this);
-    this.addMembersTab = new AppAddMembersTab(this);
 
     this.menuEl = this.toolsBtn.querySelector('.btn-menu');
     this.newBtnMenu = this.sidebarEl.querySelector('#new-menu');
@@ -132,29 +86,29 @@ export class AppSidebarLeft extends SidebarSlider {
     });
     
     attachClickEvent(this.buttons.archived, (e) => {
-      this.selectTab(AppSidebarLeft.SLIDERITEMSIDS.archived);
+      new AppArchivedTab(this).open();
     });
 
     attachClickEvent(this.buttons.contacts, (e) => {
-      this.contactsTab.openContacts();
+      new AppContactsTab(this).open();
     });
 
     attachClickEvent(this.buttons.settings, (e) => {
-      this.settingsTab.open();
+      new AppSettingsTab(this).open();
     });
 
     attachClickEvent(this.newButtons.channel, (e) => {
-      this.newChannelTab.open();
+      new AppNewChannelTab(this).open();
     });
 
     [this.newButtons.group, this.buttons.newGroup].forEach(btn => {
       attachClickEvent(btn, (e) => {
-        this.addMembersTab.open({
+        new AppAddMembersTab(this).open({
           peerId: 0,
           type: 'chat',
           skippable: false,
           takeOut: (peerIds) => {
-            this.newGroupTab.open(peerIds);
+            new AppNewGroupTab(this).open(peerIds);
           },
           title: 'Add Members',
           placeholder: 'Add People...'

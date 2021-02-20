@@ -1,6 +1,5 @@
-import { SliderTab, SliderSuperTab } from "../../slider";
+import SidebarSlider, { SliderSuperTab } from "../../slider";
 import AppSelectPeers from "../../appSelectPeers";
-import appSidebarLeft, { AppSidebarLeft } from "..";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import appPeersManager from "../../../lib/appManagers/appPeersManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
@@ -11,8 +10,10 @@ import ButtonIcon from "../../buttonIcon";
 import { fastRaf } from "../../../helpers/schedulers";
 import CheckboxField from "../../checkbox";
 import Button from "../../button";
+import AppEditFolderTab from "./editFolder";
 
 export default class AppIncludedChatsTab extends SliderSuperTab {
+  private editFolderTab: AppEditFolderTab;
   private confirmBtn: HTMLElement;
 
   private selector: AppSelectPeers;
@@ -20,8 +21,8 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
   private filter: DialogFilter;
   private originalFilter: DialogFilter;
 
-  constructor(appSidebarLeft: AppSidebarLeft) {
-    super(appSidebarLeft);
+  constructor(slider: SidebarSlider) {
+    super(slider, true);
   }
 
   init() {
@@ -92,7 +93,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
       this.filter[this.type === 'included' ? 'include_peers' : 'exclude_peers'] = peers;
       //this.filter.pinned_peers = this.filter.pinned_peers.filter(peerId => this.filter.include_peers.includes(peerId));
 
-      appSidebarLeft.editFolderTab.setFilter(this.filter, false);
+      this.editFolderTab.setFilter(this.filter, false);
       this.close();
     });
   }
@@ -233,6 +234,8 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
         (categories.querySelector(`[data-peer-id="${flag}"]`) as HTMLElement).click();
       }
     }
+
+    return super.onOpen();
   }
 
   onSelectChange = (length: number) => {
@@ -247,15 +250,18 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
       this.selector.container.remove();
       this.selector = null;
     }
+
+    return super.onCloseAfterTimeout();
   }
 
   /**
    * Do not ignore arguments!
    */
-  public open(filter?: DialogFilter, type?: 'included' | 'excluded') {
+  public open(filter?: DialogFilter, type?: 'included' | 'excluded', editFolderTab?: AppIncludedChatsTab['editFolderTab']) {
     this.originalFilter = filter;
     this.filter = copy(this.originalFilter);
     this.type = type;
+    this.editFolderTab = editFolderTab;
     
     return super.open();
   }

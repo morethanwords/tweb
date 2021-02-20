@@ -1,10 +1,13 @@
 import SidebarSlider, { SliderSuperTab } from "../../slider";
 import AvatarElement from "../../avatar";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
-import appSidebarLeft, { AppSidebarLeft } from "..";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import ButtonMenuToggle from "../../buttonMenuToggle";
 import Button from "../../button";
+import AppPrivacyAndSecurityTab from "./privacyAndSecurity";
+import AppGeneralSettingsTab from "./generalSettings";
+import AppEditProfileTab from "./editProfile";
+import AppChatFoldersTab from "./chatFolders";
 //import AppMediaViewer from "../../appMediaViewerNew";
 
 export default class AppSettingsTab extends SliderSuperTab {
@@ -22,7 +25,7 @@ export default class AppSettingsTab extends SliderSuperTab {
   } = {} as any;
 
   constructor(slider: SidebarSlider) {
-    super(slider);
+    super(slider, true);
   }
 
   init() {
@@ -110,20 +113,21 @@ export default class AppSettingsTab extends SliderSuperTab {
     }); */
 
     this.buttons.edit.addEventListener('click', () => {
-      appSidebarLeft.editProfileTab.fillElements();
-      appSidebarLeft.editProfileTab.open();
+      const tab = new AppEditProfileTab(this.slider);
+      tab.fillElements();
+      tab.open();
     });
 
     this.buttons.folders.addEventListener('click', () => {
-      appSidebarLeft.chatFoldersTab.open();
+      new AppChatFoldersTab(this.slider).open();
     });
 
     this.buttons.general.addEventListener('click', () => {
-      appSidebarLeft.generalSettingsTab.open();
+      new AppGeneralSettingsTab(this.slider as any).open();
     });
 
     this.buttons.privacy.addEventListener('click', () => {
-      appSidebarLeft.privacyAndSecurityTab.open();
+      new AppPrivacyAndSecurityTab(this.slider).open();
     });
   }
 
@@ -142,9 +146,6 @@ export default class AppSettingsTab extends SliderSuperTab {
     }
 
     this.fillElements();
-  }
-
-  onClose() {
-
+    return super.onOpen();
   }
 }

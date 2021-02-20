@@ -903,29 +903,69 @@
 }
 
 .two-step-verification {
+  .sidebar-left-section-caption { // * main tab verified with mockup
+    text-align: center;
+    max-width: 342px;
+    margin-left: auto;
+    margin-right: auto;
+    font-size: 1rem;
+    line-height: 1.3125;
+    margin-bottom: 1.125rem;
+  }
+
+  .btn-primary + .btn-primary {
+    margin-top: .125rem !important;
+  }
+
   .media-sticker-wrapper {
     width: 168px;
     height: 168px;
+    margin: .625rem auto 1.1875rem;
+  }
+
+  .input-wrapper .btn-primary:first-child:last-child {
+    margin-top: .25rem;
   }
 
   &-enter-password {
     .media-sticker-wrapper {
+      margin: 1.125rem auto 1.8125rem;
       width: 157px;
       height: 157px;
     }
   }
 
+  &-hint, &-email {
+    .btn-primary + .btn-primary {
+      margin-top: .5rem !important;
+    }
+  }
+
   &-hint {
     .media-sticker-wrapper {
-      width: 120px;
-      height: 120px;
+      width: 160px;
+      height: 160px;
+      margin: .5rem auto 2.25rem;
     }
   }
 
   &-email {
     .media-sticker-wrapper {
-      width: 120px;
-      height: 120px;
+      width: 160px;
+      height: 160px;
+      margin: .5625rem auto 2.1875rem;
+    }
+  }
+
+  &-set {
+    .media-sticker-wrapper {
+      width: 160px;
+      height: 160px;
+      margin: 1rem auto 1.3125rem;
+
+      .rlottie, .rlottie-vector {
+        left: .625rem;
+      }
     }
   }
 }

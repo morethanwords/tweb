@@ -64,7 +64,7 @@ const onFirstMount = () => import('../lib/appManagers/appProfileManager').then(i
     maxLength: 64
   });
 
-  const btnSignUp = Button('btn-primary');
+  const btnSignUp = Button('btn-primary btn-color-primary');
   btnSignUp.append('START MESSAGING');
 
   inputWrapper.append(nameInputField.container, lastNameInputField.container, btnSignUp);

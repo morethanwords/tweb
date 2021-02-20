@@ -40,7 +40,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
   };
 
   constructor(slider: SidebarSlider) {
-    super(slider);
+    super(slider, true);
   }
 
   protected init() {
@@ -282,7 +282,6 @@ export default class AppEditProfileTab extends SliderSuperTab {
   };
 
   onCloseAfterTimeout() {
-    this.nextBtn.classList.remove('is-visible');
-    this.firstNameInputField.value = this.lastNameInputField.value = this.bioInputField.value = '';
+    super.onCloseAfterTimeout();
   }
 }

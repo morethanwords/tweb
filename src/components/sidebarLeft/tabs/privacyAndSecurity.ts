@@ -10,7 +10,7 @@ import AppTwoStepVerificationEnterPasswordTab from "./2fa/enterPassword";
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
   constructor(slider: SidebarSlider) {
-    super(slider);
+    super(slider, true);
   }
 
   protected init() {
@@ -79,7 +79,9 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
       const numberVisibilityRow = rowsByKeys['inputPrivacyKeyPhoneNumber'] = new Row({
         title: 'Who can see my phone number?',
         subtitle: 'My Contacts',
-        navigationTab: new AppPrivacyPhoneNumberTab(this.slider)
+        clickable: () => {
+          new AppPrivacyPhoneNumberTab(this.slider).open()
+        }
       });
 
       const lastSeenTimeRow = rowsByKeys['inputPrivacyKeyStatusTimestamp'] = new Row({
