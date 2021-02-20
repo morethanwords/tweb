@@ -13,14 +13,17 @@ import AppTwoStepVerificationReEnterPasswordTab from "./reEnterPassword";
 
 export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperTab {
   public state: AccountPassword;
+  public passwordInputField: PasswordInputField;
+  public plainPassword: string;
   
   constructor(slider: SidebarSlider) {
     super(slider, true);
   }
 
   protected init() {
+    const isNew = !this.state.pFlags.has_password || this.plainPassword;
     this.container.classList.add('two-step-verification-enter-password');
-    this.title.innerHTML = this.state.pFlags.has_password ? 'Enter Your Password' : 'Enter a Password';
+    this.title.innerHTML = isNew ? 'Enter a Password' : 'Enter your Password';
 
     const section = new SettingSection({
       noDelimiter: true
@@ -29,9 +32,9 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
     const inputWrapper = document.createElement('div');
     inputWrapper.classList.add('input-wrapper');
 
-    const passwordInputField = new PasswordInputField({
-      name: 'first-password',
-      label: this.state.pFlags.has_password ? this.state.hint ?? 'Password' : 'Enter a Password'
+    const passwordInputField = this.passwordInputField = new PasswordInputField({
+      name: 'enter-password',
+      label: isNew ? 'Enter a Password' : (this.state.hint ?? 'Password')
     });
 
     const monkey = new PasswordMonkey(passwordInputField, 157);
@@ -65,7 +68,7 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
       return true;
     };
 
-    if(this.state.pFlags.has_password) {
+    if(!isNew) {
       let getStateInterval: number;
 
       let getState = () => {
@@ -128,8 +131,14 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
 
         const tab = new AppTwoStepVerificationReEnterPasswordTab(this.slider);
         tab.state = this.state;
+        tab.newPassword = passwordInputField.value;
+        tab.plainPassword = this.plainPassword;
         tab.open();
       });
     }
+  }
+
+  onOpenAfterTimeout() {
+    this.passwordInputField.input.focus();
   }
 }

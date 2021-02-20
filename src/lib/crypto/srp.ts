@@ -31,10 +31,10 @@ export async function makePasswordHash(password: string, client_salt: Uint8Array
   return buffer;
 }
 
-export async function computeSRP(password: string, state: AccountPassword) {
-  //console.log('computeCheck:', password, state);
+export async function computeSRP(password: string, state: AccountPassword, isNew: boolean) {
+  console.log('computeSRP:', password, state, isNew);
 
-  let algo = state.current_algo as PasswordKdfAlgo.passwordKdfAlgoSHA256SHA256PBKDF2HMACSHA512iter100000SHA256ModPow;
+  let algo = (state.current_algo || state.new_algo) as PasswordKdfAlgo.passwordKdfAlgoSHA256SHA256PBKDF2HMACSHA512iter100000SHA256ModPow;
 
   let p = str2bigInt(bytesToHex(algo.p), 16);
   let B = str2bigInt(bytesToHex(state.srp_B), 16);
@@ -81,6 +81,11 @@ export async function computeSRP(password: string, state: AccountPassword) {
   log(bytesToHex(b_for_hash)); */
 
   let g_x = powMod(g, x, p);
+
+  // * https://core.telegram.org/api/srp#setting-a-new-2fa-password
+  if(isNew) {
+    return padArray(bytesFromHex(bigInt2str(g_x, 16)), 256);
+  }
 
   //log('g_x', bigInt2str(g_x, 16));
 

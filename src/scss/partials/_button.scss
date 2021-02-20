@@ -225,6 +225,17 @@
     background: darken($color-blue, 8%);
   }
 
+  &-transparent {
+    background-color: transparent;
+    @include hover() {
+      background: hover-color($color-blue);
+    }
+
+    .preloader-circular .preloader-path {
+      stroke: $color-blue;
+    }
+  }
+
   body.animation-level-0 & {
     transition: none;
   }
