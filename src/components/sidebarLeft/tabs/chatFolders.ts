@@ -1,17 +1,18 @@
-import { SliderTab, SliderSuperTab } from "../../slider";
+import SidebarSlider, { SliderSuperTab } from "../../slider";
 import lottieLoader, { RLottiePlayer } from "../../../lib/lottieLoader";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import { cancelEvent, positionElementByIndex } from "../../../helpers/dom";
 import { ripple } from "../../ripple";
 import { toast } from "../../toast";
-import type { ApiManagerProxy } from "../../../lib/mtproto/mtprotoworker";
-import type { AppMessagesManager } from "../../../lib/appManagers/appMessagesManager";
 import type { MyDialogFilter } from "../../../lib/storages/filters";
-import type { AppPeersManager } from "../../../lib/appManagers/appPeersManager";
-import type { AppSidebarLeft } from "..";
 import type { DialogFilterSuggested, DialogFilter } from "../../../layer";
 import type _rootScope from "../../../lib/rootScope";
 import Button from "../../button";
+import appMessagesManager from "../../../lib/appManagers/appMessagesManager";
+import appPeersManager from "../../../lib/appManagers/appPeersManager";
+import apiManager from "../../../lib/mtproto/mtprotoworker";
+import rootScope from "../../../lib/rootScope";
+import AppEditFolderTab from "./editFolder";
 
 export default class AppChatFoldersTab extends SliderSuperTab {
   public createFolderBtn: HTMLElement;
@@ -22,8 +23,8 @@ export default class AppChatFoldersTab extends SliderSuperTab {
 
   private filtersRendered: {[filterId: number]: HTMLElement} = {};
 
-  constructor(private appMessagesManager: AppMessagesManager, private appPeersManager: AppPeersManager, private appSidebarLeft: AppSidebarLeft, private apiManager: ApiManagerProxy, private rootScope: typeof _rootScope) {
-    super(appSidebarLeft);
+  constructor(slider: SidebarSlider) {
+    super(slider, true);
   }
 
   private renderFolder(dialogFilter: DialogFilterSuggested | DialogFilter | MyDialogFilter, container?: HTMLElement, div: HTMLElement = document.createElement('div')) {
@@ -40,7 +41,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       const filterId = filter.id;
       if(!this.filtersRendered.hasOwnProperty(filter.id)) {
         div.addEventListener('click', () => {
-          this.appSidebarLeft.editFolderTab.open(this.appMessagesManager.filtersStorage.filters[filterId]);
+          new AppEditFolderTab(this.slider).open(appMessagesManager.filtersStorage.filters[filterId]);
         });
       }
 
@@ -65,11 +66,11 @@ export default class AppChatFoldersTab extends SliderSuperTab {
         else if(pFlags.exclude_archived) description += 'Unarchived';
         d.push(description);
       } else {
-        const folder = this.appMessagesManager.dialogsStorage.getFolder(filter.id);
+        const folder = appMessagesManager.dialogsStorage.getFolder(filter.id);
         let chats = 0, channels = 0, groups = 0;
         for(const dialog of folder) {
-          if(this.appPeersManager.isAnyGroup(dialog.peerId)) groups++;
-          else if(this.appPeersManager.isBroadcast(dialog.peerId)) channels++;
+          if(appPeersManager.isAnyGroup(dialog.peerId)) groups++;
+          else if(appPeersManager.isBroadcast(dialog.peerId)) channels++;
           else chats++;
         }
 
@@ -109,7 +110,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
     caption.classList.add('caption');
     caption.innerHTML = `Create folders for different groups of chats<br>and quickly switch between them.`;
     
-    this.createFolderBtn = Button('btn-primary btn-create-folder', {
+    this.createFolderBtn = Button('btn-primary btn-color-primary btn-create-folder', {
       text: 'Create Folder',
       icon: 'add'
     });
@@ -139,7 +140,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       if(Object.keys(this.filtersRendered).length >= 10) {
         toast('Sorry, you can\'t create more folders.');
       } else {
-        this.appSidebarLeft.editFolderTab.open();
+        new AppEditFolderTab(this.slider).open();
       }
     });
 
@@ -153,13 +154,13 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       this.animation = player;
     });
 
-    this.appMessagesManager.filtersStorage.getDialogFilters().then(filters => {
+    appMessagesManager.filtersStorage.getDialogFilters().then(filters => {
       for(const filter of filters) {
         this.renderFolder(filter, this.foldersContainer);
       }
     });
 
-    this.rootScope.on('filter_update', (e) => {
+    rootScope.on('filter_update', (e) => {
       const filter = e;
       if(this.filtersRendered.hasOwnProperty(filter.id)) {
         this.renderFolder(filter, null, this.filtersRendered[filter.id]);
@@ -170,7 +171,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       this.getSuggestedFilters();
     });
 
-    this.rootScope.on('filter_delete', (e) => {
+    rootScope.on('filter_delete', (e) => {
       const filter = e;
       if(this.filtersRendered.hasOwnProperty(filter.id)) {
         /* for(const suggested of this.suggestedFilters) {
@@ -185,7 +186,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       }
     });
 
-    this.rootScope.on('filter_order', (e) => {
+    rootScope.on('filter_order', (e) => {
       const order = e;
       order.forEach((filterId, idx) => {
         const div = this.filtersRendered[filterId];
@@ -197,14 +198,14 @@ export default class AppChatFoldersTab extends SliderSuperTab {
   }
 
   private getSuggestedFilters() {
-    this.apiManager.invokeApi('messages.getSuggestedDialogFilters').then(suggestedFilters => {
+    apiManager.invokeApi('messages.getSuggestedDialogFilters').then(suggestedFilters => {
       this.suggestedContainer.style.display = suggestedFilters.length ? '' : 'none';
       Array.from(this.suggestedContainer.children).slice(1).forEach(el => el.remove());
 
       suggestedFilters.forEach(filter => {
         const div = this.renderFolder(filter);
         const button = document.createElement('button');
-        button.classList.add('btn-primary');
+        button.classList.add('btn-primary', 'btn-color-primary');
         button.innerText = 'Add';
         div.append(button);
         this.suggestedContainer.append(div);
@@ -219,7 +220,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
 
           button.setAttribute('disabled', 'true');
 
-          this.appMessagesManager.filtersStorage.createDialogFilter(filter.filter as any).then(bool => {
+          appMessagesManager.filtersStorage.createDialogFilter(filter.filter as any).then(bool => {
             if(bool) {
               div.remove();
             }

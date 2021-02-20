@@ -1,52 +1,52 @@
-import { SliderTab } from "../../slider";
-import Scrollable from "../../scrollable";
+import SidebarSlider, { SliderSuperTab } from "../../slider";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import appPhotosManager from "../../../lib/appManagers/appPhotosManager";
-import appSidebarLeft, { AppSidebarLeft } from "..";
 import rootScope from "../../../lib/rootScope";
 import InputSearch from "../../inputSearch";
 
 // TODO: поиск по людям глобальный, если не нашло в контактах никого
 
-export default class AppContactsTab implements SliderTab {
-  private container: HTMLElement;
+export default class AppContactsTab extends SliderSuperTab {
   private list: HTMLUListElement;
-  private scrollable: Scrollable;
   private promise: Promise<void>;
 
   private inputSearch: InputSearch;
+  private alive = true;
+  
+  constructor(slider: SidebarSlider) {
+    super(slider, true);
+  }
 
   init() {
-    this.container = document.getElementById('contacts-container');
-    this.list = this.container.querySelector('#contacts');
+    this.container.id = 'contacts-container';
+
+    this.list = document.createElement('ul');
+    this.list.id = 'contacts';
+    this.list.classList.add('contacts-container');
 
     appDialogsManager.setListClickListener(this.list, () => {
       (this.container.querySelector('.sidebar-close-button') as HTMLElement).click();
     }, undefined, true);
-
-    this.scrollable = new Scrollable(this.list.parentElement);
 
     this.inputSearch = new InputSearch('Search', (value) => {
       this.list.innerHTML = '';
       this.openContacts(value);
     });
 
-    this.container.firstElementChild.append(this.inputSearch.container);
+    this.title.replaceWith(this.inputSearch.container);
+
+    this.scrollable.append(this.list);
 
     // preload contacts
     // appUsersManager.getContacts();
   }
 
-  // need to clear, and left 1 page for smooth slide
-  public onClose() {
+  onClose() {
+    this.alive = false;
+    /* // need to clear, and left 1 page for smooth slide
     let pageCount = appPhotosManager.windowH / 72 * 1.25 | 0;
-    (Array.from(this.list.children) as HTMLElement[]).slice(pageCount).forEach(el => el.remove());
-  }
-
-  public onCloseAfterTimeout() {
-    this.list.innerHTML = '';
-    this.inputSearch.value = '';
+    (Array.from(this.list.children) as HTMLElement[]).slice(pageCount).forEach(el => el.remove()); */
   }
 
   public openContacts(query?: string) {
@@ -55,18 +55,14 @@ export default class AppContactsTab implements SliderTab {
       this.init = null;
     }
 
-    if(appSidebarLeft.historyTabIds.indexOf(AppSidebarLeft.SLIDERITEMSIDS.contacts) === -1) {
-      appSidebarLeft.selectTab(AppSidebarLeft.SLIDERITEMSIDS.contacts);
-    }
-
     if(this.promise) return this.promise;
     this.scrollable.onScrolledBottom = null;
 
     this.promise = appUsersManager.getContacts(query).then(_contacts => {
       this.promise = null;
 
-      if(appSidebarLeft.historyTabIds[appSidebarLeft.historyTabIds.length - 1] !== AppSidebarLeft.SLIDERITEMSIDS.contacts) {
-        console.warn('user closed contacts before it\'s loaded');
+      if(!this.alive) {
+        //console.warn('user closed contacts before it\'s loaded');
         return;
       }
 
@@ -117,5 +113,10 @@ export default class AppContactsTab implements SliderTab {
         }
       };
     });
+  }
+
+  public open() {
+    this.openContacts();
+    return super.open();
   }
 }

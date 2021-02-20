@@ -18,7 +18,7 @@ export default class AppNewGroupTab extends SliderSuperTab {
   private groupNameInputField: InputField;
   
   constructor(appSidebarLeft: AppSidebarLeft) {
-    super(appSidebarLeft);
+    super(appSidebarLeft, true);
   }
 
   protected init() {
@@ -57,7 +57,7 @@ export default class AppNewGroupTab extends SliderSuperTab {
           });
         }
         
-        appSidebarLeft.removeTabFromHistory(this.id);
+        appSidebarLeft.removeTabFromHistory(this);
         appSidebarLeft.selectTab(0);
       });
     });

@@ -1,24 +1,23 @@
 export function bytesToHex(bytes: ArrayLike<number>) {
   bytes = bytes || [];
-  var arr = [];
-  for(var i = 0; i < bytes.length; i++) {
+  let arr: string[] = [];
+  for(let i = 0; i < bytes.length; ++i) {
     arr.push((bytes[i] < 16 ? '0' : '') + (bytes[i] || 0).toString(16));
   }
   return arr.join('');
 }
 
 export function bytesFromHex(hexString: string) {
-  var len = hexString.length,
-    i;
-  var start = 0;
-  var bytes = [];
+  const len = hexString.length;
+  let start = 0;
+  let bytes: number[] = [];
 
-  if(hexString.length % 2) {
+  if(len % 2) { // read 0x581 as 0x0581
     bytes.push(parseInt(hexString.charAt(0), 16));
-    start++;
+    ++start;
   }
 
-  for(i = start; i < len; i += 2) {
+  for(let i = start; i < len; i += 2) {
     bytes.push(parseInt(hexString.substr(i, 2), 16));
   }
 
@@ -26,24 +25,24 @@ export function bytesFromHex(hexString: string) {
 }
 
 export function bytesToBase64(bytes: number[] | Uint8Array) {
-  var mod3
-  var result = ''
+  let mod3: number;
+  let result = '';
 
-  for (var nLen = bytes.length, nUint24 = 0, nIdx = 0; nIdx < nLen; nIdx++) {
-    mod3 = nIdx % 3
-    nUint24 |= bytes[nIdx] << (16 >>> mod3 & 24)
-    if (mod3 === 2 || nLen - nIdx === 1) {
+  for(let nLen = bytes.length, nUint24 = 0, nIdx = 0; nIdx < nLen; ++nIdx) {
+    mod3 = nIdx % 3;
+    nUint24 |= bytes[nIdx] << (16 >>> mod3 & 24);
+    if(mod3 === 2 || nLen - nIdx === 1) {
       result += String.fromCharCode(
         uint6ToBase64(nUint24 >>> 18 & 63),
         uint6ToBase64(nUint24 >>> 12 & 63),
         uint6ToBase64(nUint24 >>> 6 & 63),
         uint6ToBase64(nUint24 & 63)
-      )
-      nUint24 = 0
+      );
+      nUint24 = 0;
     }
   }
 
-  return result.replace(/A(?=A$|$)/g, '=')
+  return result.replace(/A(?=A$|$)/g, '=');
 }
 
 export function uint6ToBase64(nUint6: number) {
@@ -61,12 +60,12 @@ export function uint6ToBase64(nUint6: number) {
 }
 
 export function bytesCmp(bytes1: number[] | Uint8Array, bytes2: number[] | Uint8Array) {
-  var len = bytes1.length;
+  const len = bytes1.length;
   if(len !== bytes2.length) {
     return false;
   }
 
-  for(var i = 0; i < len; i++) {
+  for(let i = 0; i < len; ++i) {
     if(bytes1[i] !== bytes2[i]) {
       return false;
     }
@@ -76,10 +75,10 @@ export function bytesCmp(bytes1: number[] | Uint8Array, bytes2: number[] | Uint8
 }
 
 export function bytesXor(bytes1: number[] | Uint8Array, bytes2: number[] | Uint8Array) {
-  var len = bytes1.length;
-  var bytes = [];
+  const len = bytes1.length;
+  const bytes: number[] = [];
 
-  for (var i = 0; i < len; ++i) {
+  for(let i = 0; i < len; ++i) {
     bytes[i] = bytes1[i] ^ bytes2[i];
   }
 
@@ -111,11 +110,11 @@ export function convertToUint8Array(bytes: Uint8Array | number[]): Uint8Array {
 }
 
 export function bytesFromArrayBuffer(buffer: ArrayBuffer) {
-  var len = buffer.byteLength;
-  var byteView = new Uint8Array(buffer);
-  var bytes = [];
+  const len = buffer.byteLength;
+  const byteView = new Uint8Array(buffer);
+  const bytes: number[] = [];
 
-  for(var i = 0; i < len; ++i) {
+  for(let i = 0; i < len; ++i) {
     bytes[i] = byteView[i];
   }
 
@@ -123,9 +122,9 @@ export function bytesFromArrayBuffer(buffer: ArrayBuffer) {
 }
 
 export function bufferConcat(buffer1: any, buffer2: any) {
-  var l1 = buffer1.byteLength || buffer1.length;
-  var l2 = buffer2.byteLength || buffer2.length;
-  var tmp = new Uint8Array(l1 + l2);
+  const l1 = buffer1.byteLength || buffer1.length;
+  const l2 = buffer2.byteLength || buffer2.length;
+  const tmp = new Uint8Array(l1 + l2);
   tmp.set(buffer1 instanceof ArrayBuffer ? new Uint8Array(buffer1) : buffer1, 0);
   tmp.set(buffer2 instanceof ArrayBuffer ? new Uint8Array(buffer2) : buffer2, l1);
 
@@ -136,7 +135,7 @@ export function bufferConcats(...args: any[]) {
   let length = 0;
   args.forEach(b => length += b.byteLength || b.length);
 
-  var tmp = new Uint8Array(length);
+  const tmp = new Uint8Array(length);
   
   let lastLength = 0;
   args.forEach(b => {
@@ -148,8 +147,8 @@ export function bufferConcats(...args: any[]) {
 }
 
 export function bytesFromWordss(input: Uint32Array) {
-  var o = [];
-  for(var i = 0; i < input.length * 4; i++) {
+  const o: number[] = [];
+  for(let i = 0, length = input.length * 4; i < length; ++i) {
     o.push((input[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff);
   }
 
@@ -161,12 +160,17 @@ export function bytesToWordss(input: ArrayBuffer | Uint8Array) {
   if(input instanceof ArrayBuffer) bytes = new Uint8Array(input);
   else bytes = input;
 
-  var len = bytes.length;
-  var words: number[] = [];
-  var i;
-  for(i = 0; i < len; i++) {
+  const words: number[] = [];
+  for(let i = 0, len = bytes.length; i < len; ++i) {
     words[i >>> 2] |= bytes[i] << (24 - (i % 4) * 8);
   }
 
   return new Uint32Array(words);
 }
+
+// * https://stackoverflow.com/a/52827031
+/* export const isBigEndian = (() => {
+  const array = new Uint8Array(4);
+  const view = new Uint32Array(array.buffer);
+  return !((view[0] = 1) & array[0]);
+})(); */

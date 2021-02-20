@@ -206,8 +206,6 @@
 }
 
 .btn-primary {
-  background-color: $color-blue;
-  color: #fff;
   border-radius: $border-radius-medium;
   width: 100%;
   text-align: center;
@@ -227,6 +225,7 @@
 
   &-transparent {
     background-color: transparent;
+
     @include hover() {
       background: hover-color($color-blue);
     }
@@ -344,4 +343,13 @@
   }
 
   @include btn-hoverable();
+}
+
+.btn-color-primary {
+  background: $color-blue;
+  color: #fff;
+
+  /* .c-ripple__circle {
+    background-color: var(--color-blue-hover);
+  } */
 }

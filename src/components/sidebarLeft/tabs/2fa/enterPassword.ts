@@ -3,6 +3,7 @@ import { SettingSection } from "../..";
 import { attachClickEvent, cancelEvent } from "../../../../helpers/dom";
 import { AccountPassword } from "../../../../layer";
 import passwordManager from "../../../../lib/mtproto/passwordManager";
+import RichTextProcessor from "../../../../lib/richtextprocessor";
 import Button from "../../../button";
 import { putPreloader } from "../../../misc";
 import PasswordMonkey from "../../../monkeys/password";
@@ -22,7 +23,7 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
 
   protected init() {
     const isNew = !this.state.pFlags.has_password || this.plainPassword;
-    this.container.classList.add('two-step-verification-enter-password');
+    this.container.classList.add('two-step-verification', 'two-step-verification-enter-password');
     this.title.innerHTML = isNew ? 'Enter a Password' : 'Enter your Password';
 
     const section = new SettingSection({
@@ -40,7 +41,7 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
     const monkey = new PasswordMonkey(passwordInputField, 157);
     monkey.load();
 
-    const btnContinue = Button('btn-primary', {text: 'CONTINUE'});
+    const btnContinue = Button('btn-primary btn-color-primary', {text: 'CONTINUE'});
 
     inputWrapper.append(passwordInputField.container, btnContinue);
     section.content.append(monkey.container, inputWrapper);
@@ -80,7 +81,7 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
         return passwordManager.getState().then(_state => {
           this.state = _state;
   
-          passwordInputField.label.innerText = this.state.hint ?? 'Password';
+          passwordInputField.label.innerHTML = this.state.hint ? RichTextProcessor.wrapEmojiText(this.state.hint) : 'Password';
         });
       };
   
@@ -105,6 +106,7 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
             tab.state = this.state;
             tab.plainPassword = plainPassword;
             tab.open();
+            this.slider.removeTabFromHistory(this);
           }
         }, (err) => {
           btnContinue.removeAttribute('disabled');

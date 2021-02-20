@@ -55,7 +55,7 @@ export class RangeSettingSelector {
 
 export default class AppGeneralSettingsTab extends SliderSuperTab {
   constructor(appSidebarLeft: AppSidebarLeft) {
-    super(appSidebarLeft);
+    super(appSidebarLeft, true);
   }
 
   init() {

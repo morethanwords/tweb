@@ -297,7 +297,7 @@ let onFirstMount = () => {
   });
   signedCheckboxField.input.checked = true;
 
-  btnNext = Button('btn-primary', {text: 'NEXT'});
+  btnNext = Button('btn-primary btn-color-primary', {text: 'NEXT'});
   btnNext.style.visibility = 'hidden';
 
   btnNext.addEventListener('click', function(this: HTMLElement, e) {

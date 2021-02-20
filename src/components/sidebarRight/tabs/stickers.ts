@@ -95,7 +95,7 @@ export default class AppStickersTab implements SliderTab {
     `;
     
     const button = document.createElement('button');
-    button.classList.add('btn-primary', 'sticker-set-button');
+    button.classList.add('btn-primary', 'btn-color-primary', 'sticker-set-button');
     button.innerText = set.installed_date ? 'Added' : 'Add';
    // button.style.width = set.installed_date ? '68px' : '52px';
 

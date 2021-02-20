@@ -96,7 +96,7 @@ const Transition = (content: HTMLElement, animationFunction: TransitionFunction,
     }
 
     if(onTransitionEnd) {
-      onTransitionEnd(selectTab.prevId);
+      onTransitionEnd(selectTab.prevId());
     }
 
     content.classList.remove('animating', 'backwards', 'disable-hover');
@@ -109,14 +109,15 @@ const Transition = (content: HTMLElement, animationFunction: TransitionFunction,
       id = whichChild(id);
     }
     
-    if(id === self.prevId) return false;
+    const prevId = self.prevId();
+    if(id === prevId) return false;
 
     //console.log('selectTab id:', id);
 
     const _from = from;
     const to = content.children[id] as HTMLElement;
 
-    if(!rootScope.settings.animationsEnabled || self.prevId === -1) {
+    if(!rootScope.settings.animationsEnabled || prevId === -1) {
       animate = false;
     }
 
@@ -129,10 +130,9 @@ const Transition = (content: HTMLElement, animationFunction: TransitionFunction,
 
       content.classList.remove('animating', 'backwards', 'disable-hover');
 
-      self.prevId = id;
       from = to;
 
-      if(onTransitionEnd) onTransitionEnd(self.prevId);
+      if(onTransitionEnd) onTransitionEnd(id);
       return;
     }
 
@@ -142,7 +142,7 @@ const Transition = (content: HTMLElement, animationFunction: TransitionFunction,
     }
 
     content.classList.add('animating', 'disable-hover');
-    const toRight = self.prevId < id;
+    const toRight = prevId < id;
     content.classList.toggle('backwards', !toRight);
 
     let onTransitionEndCallback: ReturnType<TransitionFunction>;
@@ -196,11 +196,11 @@ const Transition = (content: HTMLElement, animationFunction: TransitionFunction,
       }
     }
     
-    self.prevId = id;
     from = to;
   }
 
-  selectTab.prevId = -1;
+  //selectTab.prevId = -1;
+  selectTab.prevId = () => from ? whichChild(from) : -1;
   
   return selectTab;
 };

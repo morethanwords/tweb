@@ -34,13 +34,13 @@ export class AppSidebarRight extends SidebarSlider {
   constructor() {
     super({
       sidebarEl: document.getElementById('column-right') as HTMLElement,
-      tabs: {
-        [AppSidebarRight.SLIDERITEMSIDS.sharedMedia]: sharedMediaTab,
-        [AppSidebarRight.SLIDERITEMSIDS.search]: searchTab,
-        [AppSidebarRight.SLIDERITEMSIDS.stickers]: stickersTab,
-        [AppSidebarRight.SLIDERITEMSIDS.pollResults]: pollResultsTab,
-        [AppSidebarRight.SLIDERITEMSIDS.gifs]: gifsTab
-      }, 
+      tabs: new Map([
+        [AppSidebarRight.SLIDERITEMSIDS.sharedMedia, sharedMediaTab],
+        [AppSidebarRight.SLIDERITEMSIDS.search, searchTab],
+        [AppSidebarRight.SLIDERITEMSIDS.stickers, stickersTab],
+        [AppSidebarRight.SLIDERITEMSIDS.pollResults, pollResultsTab],
+        [AppSidebarRight.SLIDERITEMSIDS.gifs, gifsTab]
+      ] as any[]), 
       canHideFirst: true,
       navigationType: 'right'
     });

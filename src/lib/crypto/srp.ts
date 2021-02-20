@@ -5,8 +5,11 @@ import {str2bigInt, isZero,
 import {logger, LogLevels} from '../logger';
 import { AccountPassword, PasswordKdfAlgo } from "../../layer";
 import { bufferConcats, bytesToHex, bytesFromHex, bufferConcat, bytesXor } from "../../helpers/bytes";
+//import { MOUNT_CLASS_TO } from "../../config/debug";
 
 const log = logger('SRP', LogLevels.error);
+
+//MOUNT_CLASS_TO && Object.assign(MOUNT_CLASS_TO, {str2bigInt, bigInt2str, int2bigInt});
 
 export async function makePasswordHash(password: string, client_salt: Uint8Array, server_salt: Uint8Array): Promise<number[]> {
   let clientSaltString = '';
@@ -32,13 +35,12 @@ export async function makePasswordHash(password: string, client_salt: Uint8Array
 }
 
 export async function computeSRP(password: string, state: AccountPassword, isNew: boolean) {
-  console.log('computeSRP:', password, state, isNew);
+  const algo = (isNew ? state.new_algo : state.current_algo) as PasswordKdfAlgo.passwordKdfAlgoSHA256SHA256PBKDF2HMACSHA512iter100000SHA256ModPow;
+  //console.log('computeSRP:', password, state, isNew, algo);
 
-  let algo = (state.current_algo || state.new_algo) as PasswordKdfAlgo.passwordKdfAlgoSHA256SHA256PBKDF2HMACSHA512iter100000SHA256ModPow;
-
-  let p = str2bigInt(bytesToHex(algo.p), 16);
-  let B = str2bigInt(bytesToHex(state.srp_B), 16);
-  let g = int2bigInt(algo.g, 32, 256);
+  const p = str2bigInt(bytesToHex(algo.p), 16);
+  const B = str2bigInt(bytesToHex(state.srp_B), 16);
+  const g = int2bigInt(algo.g, 32, 256);
 
   //log('p', bigInt2str(p, 16));
   //log('B', bigInt2str(B, 16));
@@ -63,58 +65,27 @@ export async function computeSRP(password: string, state: AccountPassword, isNew
 
   //check_prime_and_good(algo.p, g);
 
-  let pw_hash = await makePasswordHash(password, new Uint8Array(algo.salt1), new Uint8Array(algo.salt2));
-  let x = str2bigInt(bytesToHex(new Uint8Array(pw_hash)), 16);
+  const pw_hash = await makePasswordHash(password, new Uint8Array(algo.salt1), new Uint8Array(algo.salt2));
+  const x = str2bigInt(bytesToHex(new Uint8Array(pw_hash)), 16);
 
   //log('computed pw_hash:', pw_hash, x, bytesToHex(new Uint8Array(pw_hash)));
 
-  var padArray = function(arr: any[], len: number, fill = 0) {
+  const padArray = function(arr: any[], len: number, fill = 0) {
     return Array(len).fill(fill).concat(arr).slice(-len);
   };
 
-  let pForHash = padArray(bytesFromHex(bigInt2str(p, 16)), 256);
-  let gForHash = padArray(bytesFromHex(bigInt2str(g, 16)), 256); // like uint8array
-  let b_for_hash = padArray(bytesFromHex(bigInt2str(B, 16)), 256);
+  const pForHash = padArray(bytesFromHex(bigInt2str(p, 16)), 256);
+  const gForHash = padArray(bytesFromHex(bigInt2str(g, 16)), 256); // like uint8array
+  const b_for_hash = padArray(bytesFromHex(bigInt2str(B, 16)), 256);
 
   /* log(bytesToHex(pForHash));
   log(bytesToHex(gForHash));
   log(bytesToHex(b_for_hash)); */
 
-  let g_x = powMod(g, x, p);
+  const v = powMod(g, x, p);
 
-  // * https://core.telegram.org/api/srp#setting-a-new-2fa-password
-  if(isNew) {
-    return padArray(bytesFromHex(bigInt2str(g_x, 16)), 256);
-  }
-
-  //log('g_x', bigInt2str(g_x, 16));
-
-  let k: any = await CryptoWorker.sha256Hash(bufferConcat(pForHash, gForHash));
-  k = str2bigInt(bytesToHex(new Uint8Array(k)), 16);
-
-  //log('k', bigInt2str(k, 16));
-
-  // kg_x = (k * g_x) % p
-  let kg_x = mod(mult(k, g_x), p);
-
-  // good
-
-  //log('kg_x', bigInt2str(kg_x, 16));
-
-  let is_good_mod_exp_first = (modexp: any, prime: any) => {
-    let diff = sub(prime, modexp);
-    let min_diff_bits_count = 2048 - 64;
-    let max_mod_exp_size = 256;
-    if(negative(diff) ||
-      bitSize(diff) < min_diff_bits_count || 
-      bitSize(modexp) < min_diff_bits_count || 
-      Math.floor((bitSize(modexp) + 7) / 8) > max_mod_exp_size)
-        return false;
-    return true;
-  };
-
-  var flipper = (arr: Uint8Array | number[]) => {
-    let out = new Uint8Array(arr.length);
+  const flipper = (arr: Uint8Array | number[]) => {
+    const out = new Uint8Array(arr.length);
     for(let i = 0; i < arr.length; i += 4) {
       out[i] = arr[i + 3];
       out[i + 1] = arr[i + 2];
@@ -125,7 +96,39 @@ export async function computeSRP(password: string, state: AccountPassword, isNew
     return out;
   };
 
-  let generate_and_check_random = async() => {
+  // * https://core.telegram.org/api/srp#setting-a-new-2fa-password
+  if(isNew) {
+    const bytes = bytesFromHex(bigInt2str(v, 16));
+    return padArray(/* (isBigEndian ? bytes.reverse() : bytes) */bytes, 256);
+  }
+
+  //log('g_x', bigInt2str(g_x, 16));
+
+  let k: any = await CryptoWorker.sha256Hash(bufferConcat(pForHash, gForHash));
+  k = str2bigInt(bytesToHex(new Uint8Array(k)), 16);
+
+  //log('k', bigInt2str(k, 16));
+
+  // kg_x = (k * g_x) % p
+  const k_v = mod(mult(k, v), p);
+
+  // good
+
+  //log('kg_x', bigInt2str(kg_x, 16));
+
+  const is_good_mod_exp_first = (modexp: any, prime: any) => {
+    const diff = sub(prime, modexp);
+    const min_diff_bits_count = 2048 - 64;
+    const max_mod_exp_size = 256;
+    if(negative(diff) ||
+      bitSize(diff) < min_diff_bits_count || 
+      bitSize(modexp) < min_diff_bits_count || 
+      Math.floor((bitSize(modexp) + 7) / 8) > max_mod_exp_size)
+        return false;
+    return true;
+  };
+
+  const generate_and_check_random = async() => {
     while(true) {
       const a = str2bigInt(bytesToHex(flipper(state.secure_random)), 16);
       //const a = str2bigInt('9153faef8f2bb6da91f6e5bc96bc00860a530a572a0f45aac0842b4602d711f8bda8d59fb53705e4ae3e31a3c4f0681955425f224297b8e9efd898fec22046debb7ba8a0bcf2be1ada7b100424ea318fdcef6ccfe6d7ab7d978c0eb76a807d4ab200eb767a22de0d828bc53f42c5a35c2df6e6ceeef9a3487aae8e9ef2271f2f6742e83b8211161fb1a0e037491ab2c2c73ad63c8bd1d739de1b523fe8d461270cedcf240de8da75f31be4933576532955041dc5770c18d3e75d0b357df9da4a5c8726d4fced87d15752400883dc57fa1937ac17608c5446c4774dcd123676d683ce3a1ab9f7e020ca52faafc99969822717c8e07ea383d5fb1a007ba0d170cb', 16);
@@ -161,11 +164,11 @@ export async function computeSRP(password: string, state: AccountPassword, isNew
   log('B - kg_x', bigInt2str(sub(B, kg_x), 16)); */
 
   let g_b;
-  if(!greater(B, kg_x)) {
+  if(!greater(B, k_v)) {
     //log('negative');
     g_b = add(B, p);
   } else g_b = B;
-  g_b = mod(sub(g_b, kg_x), p);
+  g_b = mod(sub(g_b, k_v), p);
   /* let g_b = sub(B, kg_x);
   if(negative(g_b)) g_b = add(g_b, p); */
   

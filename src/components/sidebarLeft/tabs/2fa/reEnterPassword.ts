@@ -19,7 +19,7 @@ export default class AppTwoStepVerificationReEnterPasswordTab extends SliderSupe
   }
 
   protected init() {
-    this.container.classList.add('two-step-verification-enter-password', 'two-step-verification-re-enter-password');
+    this.container.classList.add('two-step-verification', 'two-step-verification-enter-password', 'two-step-verification-re-enter-password');
     this.title.innerHTML = 'Re-Enter your Password';
 
     const section = new SettingSection({
@@ -37,7 +37,7 @@ export default class AppTwoStepVerificationReEnterPasswordTab extends SliderSupe
     const monkey = new TrackingMonkey(passwordInputField, 157);
     monkey.load();
 
-    const btnContinue = Button('btn-primary', {text: 'CONTINUE'});
+    const btnContinue = Button('btn-primary btn-color-primary', {text: 'CONTINUE'});
 
     inputWrapper.append(passwordInputField.container, btnContinue);
     section.content.append(monkey.container, inputWrapper);

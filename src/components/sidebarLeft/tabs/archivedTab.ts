@@ -1,23 +1,27 @@
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
-import Scrollable from "../../scrollable";
-import { SliderTab } from "../../slider";
+import SidebarSlider, { SliderSuperTab } from "../../slider";
 
-export default class AppArchivedTab implements SliderTab {
-  public container = document.getElementById('chats-archived-container') as HTMLDivElement;
-  public chatList = document.getElementById('dialogs-archived') as HTMLUListElement;
-  public scroll: Scrollable = null;
+export default class AppArchivedTab extends SliderSuperTab {
   public loadedAll: boolean;
   public loadDialogsPromise: Promise<any>;
   public wasFilterId: number;
 
+  constructor(slider: SidebarSlider) {
+    super(slider, true);
+  }
+
   init() {
-    this.scroll = new Scrollable(this.container, 'CLA', 500);
-    this.scroll.container.addEventListener('scroll', appDialogsManager.onChatsRegularScroll);
-    this.scroll.setVirtualContainer(this.chatList);
-    this.scroll.onScrolledBottom = appDialogsManager.onChatsScroll;
+    this.container.id = 'chats-archived-container';
+    this.title.innerHTML = 'Archived Chats';
+
+    //this.scrollable = new Scrollable(this.container, 'CLA', 500);
+    this.scrollable.append(appDialogsManager.chatListArchived);
+    this.scrollable.container.addEventListener('scroll', appDialogsManager.onChatsRegularScroll);
+    this.scrollable.setVirtualContainer(appDialogsManager.chatListArchived);
+    this.scrollable.onScrolledBottom = appDialogsManager.onChatsScroll;
     ///this.scroll.attachSentinels();
 
-    appDialogsManager.setListClickListener(this.chatList, null, true);
+    appDialogsManager.setListClickListener(appDialogsManager.chatListArchived, null, true);
 
     window.addEventListener('resize', () => {
       setTimeout(appDialogsManager.scroll.checkForTriggers, 0);
@@ -31,9 +35,11 @@ export default class AppArchivedTab implements SliderTab {
     }
 
     this.wasFilterId = appDialogsManager.filterId;
-    appDialogsManager.scroll = this.scroll;
+    appDialogsManager.scroll = this.scrollable;
     appDialogsManager.filterId = 1;
     appDialogsManager.onTabChange();
+
+    return super.onOpen();
   }
 
   // вообще, так делать нельзя, но нет времени чтобы переделать главный чатлист на слайд...
@@ -48,6 +54,7 @@ export default class AppArchivedTab implements SliderTab {
   }
 
   onCloseAfterTimeout() {
-    this.chatList.innerHTML = '';
+    appDialogsManager.chatListArchived.innerHTML = '';
+    return super.onCloseAfterTimeout();
   }
 }

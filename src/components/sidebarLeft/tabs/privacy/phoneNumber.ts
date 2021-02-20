@@ -5,10 +5,11 @@ import Scrollable from "../../../scrollable";
 import RadioField from "../../../radioField";
 import Row, { RadioFormFromRows } from "../../../row";
 import appPrivacyManager from "../../../../lib/appManagers/appPrivacyManager";
+import AppAddMembersTab from "../addMembers";
 
 export default class AppPrivacyPhoneNumberTab extends SliderSuperTab {
   constructor(slider: SidebarSlider) {
-    super(slider);
+    super(slider, true);
   }
 
   protected init() {
@@ -66,7 +67,7 @@ export default class AppPrivacyPhoneNumberTab extends SliderSuperTab {
           const chatsRule: PrivacyRule.privacyValueDisallowChatParticipants = rules.find(r => r._ === 'privacyValueDisallowChatParticipants') as any;
           if(chatsRule) chatsRule.chats.forEach(c => peerIds.push(-c));
 
-          appSidebarLeft.addMembersTab.open({
+          new AppAddMembersTab(this.slider).open({
             type: 'privacy',
             skippable: true,
             title: 'Never Share With',

@@ -1,20 +1,18 @@
-import appSidebarLeft, { AppSidebarLeft } from "..";
 import { deepEqual, copy } from "../../../helpers/object";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import { MyDialogFilter as DialogFilter } from "../../../lib/storages/filters";
 import lottieLoader, { RLottiePlayer } from "../../../lib/lottieLoader";
-import { parseMenuButtonsTo } from "../../misc";
 import { ripple } from "../../ripple";
-import { SliderTab, SliderSuperTab } from "../../slider";
+import SidebarSlider, { SliderSuperTab } from "../../slider";
 import { toast } from "../../toast";
 import appMessagesManager from "../../../lib/appManagers/appMessagesManager";
-import { attachClickEvent } from "../../../helpers/dom";
 import InputField from "../../inputField";
 import RichTextProcessor from "../../../lib/richtextprocessor";
 import ButtonIcon from "../../buttonIcon";
 import ButtonMenuToggle from "../../buttonMenuToggle";
 import { ButtonMenuItemOptions } from "../../buttonMenu";
 import Button from "../../button";
+import AppIncludedChatsTab from "./includedChats";
 
 const MAX_FOLDER_NAME_LENGTH = 12;
 
@@ -36,8 +34,8 @@ export default class AppEditFolderTab extends SliderSuperTab {
 
   private type: 'edit' | 'create';
 
-  constructor(appSidebarLeft: AppSidebarLeft) {
-    super(appSidebarLeft);
+  constructor(slider: SidebarSlider) {
+    super(slider, true);
   }
 
   protected init() {
@@ -159,11 +157,11 @@ export default class AppEditFolderTab extends SliderSuperTab {
     const excludedFlagsContainer = this.exclude_peers.querySelector('.folder-categories');
 
     includedFlagsContainer.firstElementChild.addEventListener('click', () => {
-      appSidebarLeft.includedChatsTab.open(this.filter, 'included');
+      new AppIncludedChatsTab(this.slider).open(this.filter, 'included', this);
     });
 
     excludedFlagsContainer.firstElementChild.addEventListener('click', () => {
-      appSidebarLeft.includedChatsTab.open(this.filter, 'excluded');
+      new AppIncludedChatsTab(this.slider).open(this.filter, 'excluded', this);
     });
 
     lottieLoader.loadAnimationFromURL({
@@ -228,10 +226,8 @@ export default class AppEditFolderTab extends SliderSuperTab {
     if(this.animation) {
       this.animation.restart();
     }
-  }
 
-  onCloseAfterTimeout() {
-    Array.from(this.container.querySelectorAll('ul, .show-more')).forEach(el => el.remove());
+    return super.onOpen();
   }
 
   private onCreateOpen() {
@@ -318,7 +314,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
 
   setFilter(filter: DialogFilter, firstTime: boolean) {
     // cleanup
-    this.onCloseAfterTimeout();
+    Array.from(this.container.querySelectorAll('ul, .show-more')).forEach(el => el.remove());
 
     if(firstTime) {
       this.originalFilter = filter;

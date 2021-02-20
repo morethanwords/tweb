@@ -19,7 +19,7 @@ export default class AppTwoStepVerificationHintTab extends SliderSuperTab {
   }
 
   protected init() {
-    this.container.classList.add('two-step-verification-hint');
+    this.container.classList.add('two-step-verification', 'two-step-verification-hint');
     this.title.innerHTML = 'Password Hint';
 
     const section = new SettingSection({
@@ -31,17 +31,21 @@ export default class AppTwoStepVerificationHintTab extends SliderSuperTab {
     const doc = appStickersManager.getAnimatedEmojiSticker(emoji);
     const stickerContainer = document.createElement('div');
 
-    wrapSticker({
-      doc,
-      div: stickerContainer,
-      loop: false,
-      play: true,
-      width: 168,
-      height: 168,
-      emoji
-    }).then(() => {
-      // this.animation = player;
-    });
+    if(doc) {
+      wrapSticker({
+        doc,
+        div: stickerContainer,
+        loop: false,
+        play: true,
+        width: 160,
+        height: 160,
+        emoji
+      }).then(() => {
+        // this.animation = player;
+      });
+    } else {
+      stickerContainer.classList.add('media-sticker-wrapper');
+    }
 
     section.content.append(stickerContainer);
 
@@ -72,7 +76,7 @@ export default class AppTwoStepVerificationHintTab extends SliderSuperTab {
       tab.open();
     };
 
-    const btnContinue = Button('btn-primary', {text: 'CONTINUE'});
+    const btnContinue = Button('btn-primary btn-color-primary', {text: 'CONTINUE'});
     const btnSkip = Button('btn-primary btn-primary-transparent primary', {text: 'SKIP'});
 
     attachClickEvent(btnContinue, (e) => goNext(e, true));

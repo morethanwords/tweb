@@ -22,7 +22,7 @@ test('2FA whole (with negative)', async() => {
     
     new_algo: null,
     new_secure_algo: null
-  }).then(res => {
+  }, false).then(res => {
     expect(res.srp_id).toEqual(srp_id);
     expect(res.A).toEqual(A);
     expect(res.M1).toEqual(M1);

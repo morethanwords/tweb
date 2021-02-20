@@ -2,7 +2,6 @@ import { putPreloader } from '../components/misc';
 import mediaSizes from '../helpers/mediaSizes';
 import { AccountPassword } from '../layer';
 import appStateManager from '../lib/appManagers/appStateManager';
-import apiManager from '../lib/mtproto/mtprotoworker';
 import passwordManager from '../lib/mtproto/passwordManager';
 import Page from './page';
 import pageIm from './pageIm';
@@ -10,12 +9,13 @@ import Button from '../components/button';
 import PasswordInputField from '../components/passwordInputField';
 import PasswordMonkey from '../components/monkeys/password';
 import { ripple } from '../components/ripple';
+import RichTextProcessor from '../lib/richtextprocessor';
 
 const TEST = false;
 let passwordInput: HTMLInputElement;
 
 let onFirstMount = (): Promise<any> => {
-  const btnNext = Button('btn-primary', {text: 'NEXT'});
+  const btnNext = Button('btn-primary btn-color-primary', {text: 'NEXT'});
 
   const passwordInputField = new PasswordInputField({
     label: 'Password',
@@ -37,7 +37,7 @@ let onFirstMount = (): Promise<any> => {
     return !TEST && passwordManager.getState().then(_state => {
       state = _state;
 
-      passwordInputField.label.innerText = state.hint ?? 'Password';
+      passwordInputField.label.innerHTML = state.hint ? RichTextProcessor.wrapEmojiText(state.hint) : 'Password';
     });
   };
 
