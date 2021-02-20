@@ -4,6 +4,7 @@ import appStickersManager from "../../../../lib/appManagers/appStickersManager";
 import Button from "../../../button";
 import SidebarSlider, { SliderSuperTab } from "../../../slider";
 import { wrapSticker } from "../../../wrappers";
+import AppSettingsTab from "../settings";
 
 export default class AppTwoStepVerificationSetTab extends SliderSuperTab {
   constructor(slider: SidebarSlider) {
@@ -49,8 +50,10 @@ export default class AppTwoStepVerificationSetTab extends SliderSuperTab {
     const btnReturn = Button('btn-primary btn-color-primary', {text: 'RETURN TO SETTINGS'});
 
     attachClickEvent(btnReturn, (e) => {
-      
+      this.close();
     });
+
+    this.slider.sliceTabsUntilTab(AppSettingsTab, this);
 
     inputWrapper.append(btnReturn);
 

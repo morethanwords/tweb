@@ -9,6 +9,10 @@ export interface SliderTab {
   onCloseAfterTimeout?: () => void
 }
 
+export interface SliderSuperTabConstructable {
+  new(slider: SidebarSlider, destroyable: boolean): SliderSuperTab;
+}
+
 export default class SliderSuperTab implements SliderTab {
   public container: HTMLElement;
 

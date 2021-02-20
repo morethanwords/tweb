@@ -7,6 +7,7 @@ import Button from "../../../button";
 import PopupConfirmAction from "../../../popups/confirmAction";
 import SidebarSlider, { SliderSuperTab } from "../../../slider";
 import { wrapSticker } from "../../../wrappers";
+import AppSettingsTab from "../settings";
 import AppTwoStepVerificationEnterPasswordTab from "./enterPassword";
 
 export default class AppTwoStepVerificationTab extends SliderSuperTab {
@@ -67,7 +68,10 @@ export default class AppTwoStepVerificationTab extends SliderSuperTab {
         const popup = new PopupConfirmAction('popup-disable-password', [{
           text: 'DISABLE',
           callback: () => {
-            passwordManager.updateSettings({currentPassword: this.plainPassword});
+            passwordManager.updateSettings({currentPassword: this.plainPassword}).then(() => {
+              this.slider.sliceTabsUntilTab(AppSettingsTab, this);
+              this.close();
+            });
           },
           isDanger: true,
         }], {
