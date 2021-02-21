@@ -192,8 +192,10 @@ export default class ChatBubbles {
 
         if(message.replies) {
           const repliesElement = bubble.querySelector('replies-element') as RepliesElement;
-          repliesElement.message = message;
-          repliesElement.init();
+          if(repliesElement) {
+            repliesElement.message = message;
+            repliesElement.init();
+          }
         }
 
         if(message.media?.document && !message.media.document.type) {
@@ -206,13 +208,15 @@ export default class ChatBubbles {
         // set new mids to album items for mediaViewer
         if(message.grouped_id) {
           const item = (bubble.querySelector(`.grouped-item[data-mid="${tempId}"]`) as HTMLElement) || bubble; // * it can be .document-container
-          item.dataset.mid = '' + mid;
+          if(item) {
+            item.dataset.mid = '' + mid;
+          }
         }
 
         if(message.media?.poll) {
-          const newPoll = message.media.poll;
           const pollElement = bubble.querySelector('poll-element') as PollElement;
           if(pollElement) {
+            const newPoll = message.media.poll;
             pollElement.message = message;
             pollElement.setAttribute('poll-id', newPoll.id);
             pollElement.setAttribute('message-id', '' + mid);
@@ -370,7 +374,7 @@ export default class ChatBubbles {
         if(bubble) {
           const mid = +bubble.dataset.mid
           this.log('debug message:', this.chat.getMessage(mid));
-          this.chat.bubbles.highlightBubble(bubble);
+          this.highlightBubble(bubble);
         }
       });
     }
@@ -1399,7 +1403,7 @@ export default class ChatBubbles {
       }
     }
 
-    const isJump = lastMsgId !== topMessage;
+    const isJump = lastMsgId !== topMessage && topMessage !== 0 && lastMsgId !== 0;
     
     if(samePeer) {
       const mounted = this.getMountedBubble(lastMsgId);
