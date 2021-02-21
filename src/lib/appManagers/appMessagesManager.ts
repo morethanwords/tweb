@@ -2588,12 +2588,12 @@ export class AppMessagesManager {
 
       if(!l) {
         l = langPack[_];
-        if(!l) {
+        if(l === undefined) {
           l = '[' + _ + ']';
         }
       }
 
-      str = l[0].toUpperCase() === l[0] ? l : getNameDivHTML(message.fromId) + l + (suffix ? ' ' : '');
+      str = !l || l[0].toUpperCase() === l[0] ? l : getNameDivHTML(message.fromId) + l + (suffix ? ' ' : '');
     }
 
     //this.log('message action:', action);
@@ -3150,6 +3150,8 @@ export class AppMessagesManager {
           const storage = this.getMessagesStorage(peerId);
           for(let i = 0, length = history.length; i < length; i++) {
             const message = storage[history[i]];
+
+            if(!message) continue;
   
             //|| (neededContents['mentioned'] && message.totalEntities.find((e: any) => e._ === 'messageEntityMention'));
   

@@ -59,6 +59,7 @@ export default class AppTwoStepVerificationHintTab extends SliderSuperTab {
 
     inputField.input.addEventListener('keypress', (e) => {
       if(e.key === 'Enter') {
+        cancelEvent(e);
         return (inputField.value ? btnContinue : btnSkip).click();
       }
     });

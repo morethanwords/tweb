@@ -398,7 +398,8 @@ export class AppChatsManager {
     }
 
     const isChannel = this.isBroadcast(id);
-    return numberThousandSplitter(count || 1, ' ') + ' ' + (isChannel ? 'subscribers' : 'members');
+    count = count || 1;
+    return numberThousandSplitter(count, ' ') + ' ' + (isChannel ? (count > 1 ? 'subscribers' : 'subscriber') : (count > 1 ? 'members' : 'member'));
   }
 
   public wrapForFull(id: number, fullChat: any) {

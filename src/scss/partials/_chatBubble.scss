@@ -49,8 +49,8 @@ $bubble-margin: .25rem;
   //flex-direction: column; // fix 'Unread messages', still need to refactor it
 
   --background-color: #fff;
-  --accent-color: $color-blue;
-  --secondary-color: $color-gray;
+  --accent-color: #{$color-blue};
+  --secondary-color: #{$color-gray};
 
   &.is-highlighted, &.is-selected, /* .bubbles.is-selecting */ & {
     &:after {

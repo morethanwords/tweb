@@ -979,7 +979,7 @@ export class AppDialogsManager {
       lastMessage = appMessagesManager.getMessageByPeer(dialog.peerId, dialog.top_message);
     }
 
-    if(lastMessage._ === 'messageEmpty' || (lastMessage._ === 'messageService' && !lastMessage.rReply)) {
+    if(lastMessage._ === 'messageEmpty'/*  || (lastMessage._ === 'messageService' && !lastMessage.rReply) */) {
       dom.lastMessageSpan.innerHTML = '';
       dom.lastTimeSpan.innerHTML = '';
       delete dom.listEl.dataset.mid;
@@ -1089,7 +1089,7 @@ export class AppDialogsManager {
       dialog.draft : 
       appMessagesManager.getMessageByPeer(dialog.peerId, dialog.top_message);
     if(lastMessage._ !== 'messageEmpty' && !lastMessage.deleted && 
-      lastMessage.fromId === rootScope.myId && lastMessage.peerId !== rootScope.myId/*  && 
+      lastMessage.pFlags.out && lastMessage.peerId !== rootScope.myId/*  && 
       dialog.read_outbox_max_id */) { // maybe comment, 06.20.2020
       const outgoing = (lastMessage.pFlags && lastMessage.pFlags.unread)
         /*  && dialog.read_outbox_max_id !== 0 */; // maybe uncomment, 31.01.2020
