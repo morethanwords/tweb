@@ -139,4 +139,9 @@
     {"name": "rReply", "type": "string"},
     {"name": "rMessage", "type": "string"}
   ]
+}, {
+  "predicate": "chat",
+  "params": [
+    {"name": "rTitle", "type": "string"}
+  ]
 }]

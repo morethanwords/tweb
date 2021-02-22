@@ -1,7 +1,7 @@
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { numberThousandSplitter } from "../../helpers/number";
 import { isObject, safeReplaceObject, copy } from "../../helpers/object";
-import { ChatAdminRights, ChatBannedRights, ChatFull, ChatParticipants, InputChannel, InputChatPhoto, InputFile, InputPeer, SendMessageAction, Updates } from "../../layer";
+import { Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatParticipants, InputChannel, InputChatPhoto, InputFile, InputPeer, SendMessageAction, Updates } from "../../layer";
 import apiManager from '../mtproto/mtprotoworker';
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
@@ -11,63 +11,14 @@ import appProfileManager from "./appProfileManager";
 import appStateManager from "./appStateManager";
 import appUsersManager from "./appUsersManager";
 
-export type Channel = {
-  _: 'channel',
-  flags: number,
-  pFlags: Partial<{
-    creator: true,
-    left: true,
-    broadcast: true,
-    verified: true,
-    megagroup: true,
-    restricted: true,
-    signatures: true,
-    min: true,
-    scam: true,
-    has_link: true,
-    has_geo: true,
-    slowmode_enabled: true
-  }>,
-  id: number,
-  access_hash?: string,
-  title: string,
-  username?: string,
-  photo: any,
-  date: number,
-  version: number,
-  restriction_reason?: any,
-  admin_rights?: any,
-  banned_rights?: any,
-  default_banned_rights?: any,
-  participants_count: number
-};
-
-export type Chat = {
-  _: 'chat',
-  flags: number,
-  pFlags: Partial<{
-    creator: true,
-    kicked: true,
-    left: true,
-    deactivated: true
-  }>,
-  id: number,
-  title: string,
-  photo: any,
-  participants_count: number,
-  date: number,
-  version: number,
-  migrated_to?: any,
-  admin_rights?: any,
-  default_banned_rights?: any
-};
+export type Channel = Chat.channel;
 
 export type ChatRights = 'send' | 'edit_title' | 'edit_photo' | 'invite' | 'pin' | 'deleteRevoke' | 'delete';
 
 export type UserTyping = Partial<{userId: number, action: SendMessageAction, timeout: number}>;
 
 export class AppChatsManager {
-  public chats: {[id: number]: Channel | Chat | any} = {};
+  public chats: {[id: number]: Chat.channel | Chat.chat | any} = {};
   //public usernames: any = {};
   //public channelAccess: any = {};
   //public megagroups: {[id: number]: true} = {};
