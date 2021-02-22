@@ -4582,11 +4582,8 @@ export class AppMessagesManager {
     let offset = 0;
     let offsetNotFound = false;
 
-    let isMigrated = false;
-    let reqPeerId = peerId;
-    if(this.migratedToFrom[peerId]) {
-      isMigrated = true;
-    }
+    const isMigrated = !!this.migratedToFrom[peerId];
+    const reqPeerId = peerId;
 
     if(maxId) {
       offsetNotFound = true;
@@ -4726,8 +4723,6 @@ export class AppMessagesManager {
   }
 
   public requestHistory(peerId: number, maxId: number, limit = 0, offset = 0, offsetDate = 0, threadId = 0): Promise<Exclude<MessagesMessages, MessagesMessages.messagesMessagesNotModified>> {
-    const isChannel = appPeersManager.isChannel(peerId);
-
     //console.trace('requestHistory', peerId, maxId, limit, offset);
 
     //rootScope.broadcast('history_request');
@@ -4758,7 +4753,7 @@ export class AppMessagesManager {
       appChatsManager.saveApiChats(historyResult.chats);
       this.saveMessages(historyResult.messages);
 
-      if(isChannel) {
+      if(appPeersManager.isChannel(peerId)) {
         apiUpdatesManager.addChannelState(-peerId, (historyResult as MessagesMessages.messagesChannelMessages).pts);
       }
 

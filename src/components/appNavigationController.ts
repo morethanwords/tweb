@@ -1,6 +1,6 @@
 import { MOUNT_CLASS_TO } from "../config/debug";
 import { isMobileSafari } from "../helpers/userAgent";
-import { cancelEvent } from "../helpers/dom";
+import { blurActiveElement, cancelEvent } from "../helpers/dom";
 import { logger } from "../lib/logger";
 import { doubleRaf } from "../helpers/schedulers";
 
@@ -50,18 +50,45 @@ export class AppNavigationController {
     }, {capture: true});
 
     if(isMobileSafari) {
-      /* window.addEventListener('touchstart', (e) => {
-        this.debug && this.log('touchstart');
-      }, {passive: true}); */
-  
-      window.addEventListener('touchend', (e) => {
-        this.debug && this.log('touchend');
+      const options = {passive: true};
+      window.addEventListener('touchstart', (e) => {
         if(e.touches.length > 1) return;
-        isPossibleSwipe = true;
-        doubleRaf().then(() => {
-          isPossibleSwipe = false;
-        });
-      }, {passive: true});
+        this.debug && this.log('touchstart');
+
+        const detach = () => {
+          window.removeEventListener('touchend', onTouchEnd);
+          window.removeEventListener('touchmove', onTouchMove);
+        };
+
+        let moved = false;
+        const onTouchMove = (e: TouchEvent) => {
+          this.debug && this.log('touchmove');
+          if(e.touches.length > 1) {
+            detach();
+            return;
+          }
+
+          moved = true;
+        };
+
+        const onTouchEnd = (e: TouchEvent) => {
+          this.debug && this.log('touchend');
+          if(e.touches.length > 1 || !moved) {
+            detach();
+            return;
+          }
+
+          isPossibleSwipe = true;
+          doubleRaf().then(() => {
+            isPossibleSwipe = false;
+          });
+
+          detach();
+        };
+
+        window.addEventListener('touchend', onTouchEnd, options);
+        window.addEventListener('touchmove', onTouchMove, options);
+      }, options);
     }
 
     this.pushState(); // * push init state
@@ -72,6 +99,8 @@ export class AppNavigationController {
     this.debug && this.log('popstate, navigation:', item, this.navigations);
     if(good === false) {
       this.pushItem(item);
+    } else {
+      blurActiveElement(); // no better place for it
     }
 
     this.manual = false;
