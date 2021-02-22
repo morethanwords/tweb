@@ -4,6 +4,7 @@ import rootScope from "../lib/rootScope";
 import { attachClickEvent, cancelEvent } from "../helpers/dom";
 import AppMediaViewer, { AppMediaViewerAvatar } from "./appMediaViewer";
 import { Photo } from "../layer";
+import appPeersManager from "../lib/appManagers/appPeersManager";
 //import type { LazyLoadQueueIntersector } from "./lazyLoadQueue";
 
 rootScope.on('avatar_update', (e) => {
@@ -126,7 +127,7 @@ export default class AvatarElement extends HTMLElement {
         return;
       }
       
-      this.peerId = +newValue;
+      this.peerId = appPeersManager.getPeerMigratedTo(+newValue) || +newValue;
       this.update();
     } else if(name === 'peer-title') {
       this.peerTitle = newValue;

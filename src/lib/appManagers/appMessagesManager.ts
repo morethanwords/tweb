@@ -22,7 +22,7 @@ import DialogsStorage from "../storages/dialogs";
 import FiltersStorage from "../storages/filters";
 //import { telegramMeWebService } from "../mtproto/mtproto";
 import apiUpdatesManager from "./apiUpdatesManager";
-import appChatsManager, { Channel } from "./appChatsManager";
+import appChatsManager from "./appChatsManager";
 import appDocsManager, { MyDocument } from "./appDocsManager";
 import appDownloadManager from "./appDownloadManager";
 import appPeersManager from "./appPeersManager";
@@ -2884,8 +2884,8 @@ export class AppMessagesManager {
     const wasDialogBefore = this.getDialogByPeerId(peerId)[0];
 
     dialog.top_message = mid;
-    dialog.read_inbox_max_id = wasDialogBefore && !dialog.read_inbox_max_id ? wasDialogBefore.read_inbox_max_id : this.generateMessageId(dialog.read_inbox_max_id);
-    dialog.read_outbox_max_id = wasDialogBefore && !dialog.read_outbox_max_id ? wasDialogBefore.read_outbox_max_id : this.generateMessageId(dialog.read_outbox_max_id);
+    dialog.read_inbox_max_id = this.generateMessageId(wasDialogBefore && !dialog.read_inbox_max_id ? wasDialogBefore.read_inbox_max_id : dialog.read_inbox_max_id);
+    dialog.read_outbox_max_id = this.generateMessageId(wasDialogBefore && !dialog.read_outbox_max_id ? wasDialogBefore.read_outbox_max_id : dialog.read_outbox_max_id);
 
     if(!dialog.hasOwnProperty('folder_id')) {
       if(dialog._ === 'dialog') {
@@ -4573,16 +4573,15 @@ export class AppMessagesManager {
   }
 
   public getHistory(peerId: number, maxId = 0, limit: number, backLimit?: number, threadId?: number): Promise<HistoryResult> | HistoryResult {
-    if(this.migratedFromTo[peerId]) {
+    /* if(this.migratedFromTo[peerId]) {
       peerId = this.migratedFromTo[peerId];
-    }
+    } */
 
     const historyStorage = this.getHistoryStorage(peerId, threadId);
 
     let offset = 0;
     let offsetNotFound = false;
 
-    const isMigrated = !!this.migratedToFrom[peerId];
     const reqPeerId = peerId;
 
     if(maxId) {
@@ -4626,9 +4625,9 @@ export class AppMessagesManager {
 
       return this.requestHistory(reqPeerId, maxId, limit, offset, undefined, threadId).then((historyResult) => {
         historyStorage.count = (historyResult as MessagesMessages.messagesMessagesSlice).count || historyResult.messages.length;
-        if(isMigrated) {
+        /* if(!!this.migratedToFrom[peerId]) {
           historyStorage.count++;
-        }
+        } */
 
         const history = (historyResult.messages as MyMessage[]).map(message => message.mid);
         return {
@@ -4660,7 +4659,8 @@ export class AppMessagesManager {
 
   public fillHistoryStorage(peerId: number, maxId: number, fullLimit: number, historyStorage: HistoryStorage, threadId?: number): Promise<boolean> {
     // this.log('fill history storage', peerId, maxId, fullLimit, angular.copy(historyStorage))
-    const offset = (this.migratedFromTo[peerId] && !maxId) ? 1 : 0;
+    //const offset = (this.migratedFromTo[peerId] && !maxId) ? 1 : 0;
+    const offset = 0;
     return this.requestHistory(peerId, maxId, fullLimit, offset, undefined, threadId).then((historyResult) => {
       historyStorage.count = (historyResult as MessagesMessages.messagesMessagesSlice).count || historyResult.messages.length;
 
@@ -4691,17 +4691,17 @@ export class AppMessagesManager {
       const totalCount = historyStorage.history.length;
       fullLimit -= (totalCount - wasTotalCount);
 
-      const migratedNextPeer = this.migratedFromTo[peerId];
+      /* const migratedNextPeer = this.migratedFromTo[peerId];
       const migratedPrevPeer = this.migratedToFrom[peerId]
       const isMigrated = migratedNextPeer !== undefined || migratedPrevPeer !== undefined;
 
       if(isMigrated) {
         historyStorage.count = Math.max(historyStorage.count, totalCount) + 1;
-      }
+      } */
 
       if(fullLimit > 0) {
         maxId = historyStorage.history[totalCount - 1];
-        if(isMigrated) {
+        /* if(isMigrated) {
           if(!historyResult.messages.length) {
             if(migratedPrevPeer) {
               maxId = 0;
@@ -4713,7 +4713,7 @@ export class AppMessagesManager {
           }
 
           return this.fillHistoryStorage(peerId, maxId, fullLimit, historyStorage, threadId);
-        } else if(totalCount < historyStorage.count) {
+        } else  */if(totalCount < historyStorage.count) {
           return this.fillHistoryStorage(peerId, maxId, fullLimit, historyStorage, threadId);
         }
       }

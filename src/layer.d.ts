@@ -592,7 +592,8 @@ export namespace Chat {
 		version: number,
 		migrated_to?: InputChannel,
 		admin_rights?: ChatAdminRights,
-		default_banned_rights?: ChatBannedRights
+		default_banned_rights?: ChatBannedRights,
+		rTitle?: string
 	};
 
 	export type chatForbidden = {

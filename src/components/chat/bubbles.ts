@@ -1403,7 +1403,7 @@ export default class ChatBubbles {
       }
     }
 
-    const isJump = lastMsgId !== topMessage && topMessage !== 0 && lastMsgId !== 0;
+    const isJump = lastMsgId !== topMessage;
     
     if(samePeer) {
       const mounted = this.getMountedBubble(lastMsgId);
