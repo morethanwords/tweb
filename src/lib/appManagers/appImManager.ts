@@ -332,7 +332,7 @@ export class AppImManager {
           const history = appMessagesManager.getHistoryStorage(chat.peerId, chat.threadId);
           if(history.history.length) {
             let goodMid: number;
-            for(const mid of history.history) {
+            for(const mid of history.history.slice) {
               const message = chat.getMessage(mid);
               const good = this.myId === chat.peerId ? message.fromId === this.myId : message.pFlags.out;
 
