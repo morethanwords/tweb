@@ -36,6 +36,7 @@ import pushHeavyTask from "../../helpers/heavyQueue";
 import { getFileNameByLocation } from "../../helpers/fileName";
 import appProfileManager from "./appProfileManager";
 import DEBUG, { MOUNT_CLASS_TO } from "../../config/debug";
+import SlicedArray from "../../helpers/slicedArray";
 
 //console.trace('include');
 // TODO: если удалить сообщение в непрогруженном диалоге, то при обновлении, из-за стейта, последнего сообщения в чатлисте не будет
@@ -45,7 +46,7 @@ const APITIMEOUT = 0;
 
 export type HistoryStorage = {
   count: number | null,
-  history: number[],
+  history: SlicedArray,
 
   maxId?: number,
   readPromise?: Promise<void>,
@@ -88,6 +89,7 @@ export type MessagesStorage = {
   //generateIndex: (message: any) => void
   [mid: string]: any
 };
+
 export class AppMessagesManager {
   public static MESSAGE_ID_INCREMENT = 0x10000;
   public static MESSAGE_ID_OFFSET = 0xFFFFFFFF;
@@ -234,7 +236,7 @@ export class AppMessagesManager {
       
       const processDialog = (dialog: MTDialog.dialog) => {
         const historyStorage = this.getHistoryStorage(dialog.peerId);
-        const history = [].concat(historyStorage.history);
+        const history = [].concat(historyStorage.history.slice);
         //dialog = copy(dialog);
         let removeUnread = 0;
         for(const mid of history) {
@@ -1514,7 +1516,7 @@ export class AppMessagesManager {
     if(pendingData) {
       const {peerId, tempId, storage} = pendingData;
       const historyStorage = this.getHistoryStorage(peerId);
-      const pos = historyStorage.history.indexOf(tempId);
+      const pos = historyStorage.history.findSlice(tempId);
 
       apiUpdatesManager.processUpdateMessage({
         _: 'updateShort',
@@ -1524,8 +1526,8 @@ export class AppMessagesManager {
         }
       });
 
-      if(pos !== -1) {
-        historyStorage.history.splice(pos, 1);
+      if(pos) {
+        pos.slice.splice(pos.index, 1);
       }
 
       delete this.pendingByRandomId[randomId];
@@ -2906,16 +2908,13 @@ export class AppMessagesManager {
     }
 
     let historyStorage = this.getHistoryStorage(peerId);
-    if(historyStorage === undefined/*  && !message.deleted */) { // warning
+    /* if(historyStorage === undefined) { // warning
       historyStorage.history.push(mid);
-      /* if(mid < 0 && message.pFlags.unread) {
-        dialog.unread_count++;
-      } */
       if(this.mergeReplyKeyboard(historyStorage, message)) {
         rootScope.broadcast('history_reply_markup', {peerId});
       }
-    } else if(!historyStorage.history.length) {
-      historyStorage.history.push(mid);
+    } else  */if(!historyStorage.history.slice.length) {
+      historyStorage.history.unshift(mid);
     }
 
     historyStorage.maxId = mid;
@@ -3059,17 +3058,17 @@ export class AppMessagesManager {
 
     let storage: {
       count?: number;
-      history: number[];
+      history: SlicedArray;
     };
 
     // * костыль для limit 1, если нужно и получить сообщение, и узнать количество сообщений
     if(peerId && !backLimit && !maxId && !query && limit !== 1 && !threadId/*  && inputFilter._ !== 'inputMessagesFilterPinned' */) {
       storage = beta ? 
-        this.getSearchStorage(peerId, inputFilter._) : 
+        this.getSearchStorage(peerId, inputFilter._) as any : 
         this.getHistoryStorage(peerId);
       let filtering = true;
 
-      const history = maxId ? storage.history.slice(storage.history.indexOf(maxId) + 1) : storage.history;
+      const history = /* maxId ? storage.history.slice(storage.history.indexOf(maxId) + 1) :  */storage.history;
 
       if(storage !== undefined && history.length) {
         const neededContents: {
@@ -3149,7 +3148,7 @@ export class AppMessagesManager {
         if(filtering) {
           const storage = this.getMessagesStorage(peerId);
           for(let i = 0, length = history.length; i < length; i++) {
-            const message = storage[history[i]];
+            const message = storage[history.slice[i]];
 
             if(!message) continue;
   
@@ -3260,13 +3259,13 @@ export class AppMessagesManager {
       appChatsManager.saveApiChats(searchResult.chats);
       this.saveMessages(searchResult.messages);
 
-      if(beta && storage && (!maxId || storage.history[storage.history.length - 1] === maxId)) {
+      /* if(beta && storage && (!maxId || storage.history[storage.history.length - 1] === maxId)) {
         const storage = this.getSearchStorage(peerId, inputFilter._);
         const add = (searchResult.messages.map((m: any) => m.mid) as number[]).filter(mid => storage.history.indexOf(mid) === -1);
         storage.history.push(...add);
         storage.history.sort((a, b) => b - a);
         storage.count = searchResult.count;
-      }
+      } */
 
       if(DEBUG) {
         this.log('getSearch result:', inputFilter, searchResult);
@@ -3592,10 +3591,10 @@ export class AppMessagesManager {
     if(threadId) {
       //threadId = this.getLocalMessageId(threadId);
       if(!this.threadsStorage[peerId]) this.threadsStorage[peerId] = {};
-      return this.threadsStorage[peerId][threadId] ?? (this.threadsStorage[peerId][threadId] = {count: null, history: []});
+      return this.threadsStorage[peerId][threadId] ?? (this.threadsStorage[peerId][threadId] = {count: null, history: new SlicedArray()});
     }
 
-    return this.historiesStorage[peerId] ?? (this.historiesStorage[peerId] = {count: null, history: []});
+    return this.historiesStorage[peerId] ?? (this.historiesStorage[peerId] = {count: null, history: new SlicedArray()});
   }
 
   public handleUpdate(update: Update) {
@@ -3615,10 +3614,7 @@ export class AppMessagesManager {
           const message = this.getMessageFromStorage(storage, mid);
           if(!message.deleted) {
             const historyStorage = this.getHistoryStorage(peerId);
-            const pos = historyStorage.history.indexOf(tempId);
-            if(pos !== -1) {
-              historyStorage.history.splice(pos, 1);
-            }
+            historyStorage.history.delete(tempId);
 
             this.finalizePendingMessageCallbacks(storage, tempId, mid);
           } else {
@@ -3660,13 +3656,15 @@ export class AppMessagesManager {
         const historyStorage = this.getHistoryStorage(peerId);
         this.updateMessageRepliesIfNeeded(message);
 
-        const history = historyStorage.history;
-        if(history.indexOf(message.mid) !== -1) {
+        if(historyStorage.history.findSlice(message.mid)) {
           return false;
         }
+
+        const history = historyStorage.history.slice;
         const topMsgId = history[0];
         history.unshift(message.mid);
         if(message.mid < topMsgId) {
+          //this.log.error('this should\'nt have happenned!', message, history);
           history.sort((a, b) => {
             return b - a;
           });
@@ -4039,7 +4037,7 @@ export class AppMessagesManager {
         const channelId: number = update.channel_id;
         const messages: number[] = [];
         const peerId: number = -channelId;
-        const history = this.getHistoryStorage(peerId).history;
+        const history = this.getHistoryStorage(peerId).history.slice;
         if(history.length) {
           history.forEach((msgId: number) => {
             if(!update.available_min_id || msgId <= update.available_min_id) {
@@ -4066,8 +4064,9 @@ export class AppMessagesManager {
 
         const historyStorage = this.getHistoryStorage(peerId);
         //if(historyStorage !== undefined) {
-          const newHistory = historyStorage.history.filter(mid => !historyUpdated.msgs[mid]);
-          historyStorage.history = newHistory;
+          for(const mid in historyUpdated.msgs) {
+            historyStorage.history.delete(+mid);
+          }
           if(historyUpdated.count &&
             historyStorage.count !== null &&
             historyStorage.count > 0) {
@@ -4430,10 +4429,7 @@ export class AppMessagesManager {
       const historyStorage = this.getHistoryStorage(peerId);
 
       // this.log('pending', randomID, historyStorage.pending)
-      const pos = historyStorage.history.indexOf(tempId);
-      if(pos !== -1) {
-        historyStorage.history.splice(pos, 1);
-      }
+      historyStorage.history.delete(tempId);
 
       const message = this.getMessageFromStorage(storage, tempId);
       if(!message.deleted) {
@@ -4572,29 +4568,27 @@ export class AppMessagesManager {
     });
   }
 
+  /**
+   * * https://core.telegram.org/api/offsets, offset_id is inclusive
+   */
   public getHistory(peerId: number, maxId = 0, limit: number, backLimit?: number, threadId?: number): Promise<HistoryResult> | HistoryResult {
-    /* if(this.migratedFromTo[peerId]) {
-      peerId = this.migratedFromTo[peerId];
-    } */
-
     const historyStorage = this.getHistoryStorage(peerId, threadId);
 
     let offset = 0;
-    let offsetNotFound = false;
-
-    const reqPeerId = peerId;
+    /* 
+    let offsetFound = true;
 
     if(maxId) {
-      offsetNotFound = true;
+      offsetFound = false;
       for(; offset < historyStorage.history.length; offset++) {
-        if(maxId > historyStorage.history[offset]) {
-          offsetNotFound = false;
+        if(maxId > historyStorage.history.slice[offset]) {
+          offsetFound = true;
           break;
         }
       }
     }
 
-    if(!offsetNotFound && (
+    if(offsetFound && (
       historyStorage.count !== null && historyStorage.history.length === historyStorage.count ||
       historyStorage.history.length >= offset + limit
       )) {
@@ -4606,7 +4600,7 @@ export class AppMessagesManager {
         limit = limit;
       }
 
-      const history = historyStorage.history.slice(offset, offset + limit);
+      const history = historyStorage.history.slice.slice(offset, offset + limit);
       return {
         count: historyStorage.count,
         history: history,
@@ -4614,20 +4608,16 @@ export class AppMessagesManager {
       };
     }
 
-    if(offsetNotFound) {
+    if(offsetFound) {
       offset = 0;
-    }
-    if((backLimit || maxId) && historyStorage.history.indexOf(maxId) === -1) {
-      if(backLimit) {
-        offset = -backLimit;
-        limit += backLimit;
-      }
+    } */
 
-      return this.requestHistory(reqPeerId, maxId, limit, offset, undefined, threadId).then((historyResult) => {
+    if(backLimit) {
+      offset = -backLimit;
+      limit += backLimit;
+
+      /* return this.requestHistory(reqPeerId, maxId, limit, offset, undefined, threadId).then((historyResult) => {
         historyStorage.count = (historyResult as MessagesMessages.messagesMessagesSlice).count || historyResult.messages.length;
-        /* if(!!this.migratedToFrom[peerId]) {
-          historyStorage.count++;
-        } */
 
         const history = (historyResult.messages as MyMessage[]).map(message => message.mid);
         return {
@@ -4635,73 +4625,77 @@ export class AppMessagesManager {
           history,
           offsetIdOffset: (historyResult as MessagesMessages.messagesMessagesSlice).offset_id_offset || 0
         };
-      });
+      }); */
     }
 
-    return this.fillHistoryStorage(peerId, maxId, limit, historyStorage, threadId).then(() => {
-      let offset = 0;
-      if(maxId) {
-        for(; offset < historyStorage.history.length; offset++) {
-          if(maxId > historyStorage.history[offset]) {
-            break;
-          }
-        }
-      }
-
-      const history = historyStorage.history.slice(backLimit ? Math.max(offset - backLimit, 0) : offset, offset + limit);
+    const haveSlice = historyStorage.history.sliceMe(maxId, offset, limit);
+    if(haveSlice && (haveSlice.slice.length === limit || haveSlice.slice.includes(historyStorage.maxId))) {
       return {
         count: historyStorage.count,
-        history,
-        offsetIdOffset: offset
+        history: haveSlice.slice,
+        offsetIdOffset: haveSlice.offsetIdOffset
+      }; 
+    }
+
+    return this.fillHistoryStorage(peerId, maxId, limit, offset, historyStorage, threadId).then(() => {
+      const slice = historyStorage.history.sliceMe(maxId, offset, limit);
+      return {
+        count: historyStorage.count,
+        history: slice?.slice || [],
+        offsetIdOffset: slice?.offsetIdOffset || historyStorage.count
       };
     });
   }
 
-  public fillHistoryStorage(peerId: number, maxId: number, fullLimit: number, historyStorage: HistoryStorage, threadId?: number): Promise<boolean> {
-    // this.log('fill history storage', peerId, maxId, fullLimit, angular.copy(historyStorage))
-    //const offset = (this.migratedFromTo[peerId] && !maxId) ? 1 : 0;
-    const offset = 0;
+  public fillHistoryStorage(peerId: number, maxId: number, fullLimit: number, offset: number, historyStorage: HistoryStorage, threadId?: number): Promise<void> {
     return this.requestHistory(peerId, maxId, fullLimit, offset, undefined, threadId).then((historyResult) => {
       historyStorage.count = (historyResult as MessagesMessages.messagesMessagesSlice).count || historyResult.messages.length;
 
-      if(!maxId && historyResult.messages.length) {
+      /* if(!maxId && historyResult.messages.length) {
         maxId = this.incrementMessageId((historyResult.messages[0] as MyMessage).mid, 1);
       }
 
-      let offset = 0;
-      if(maxId) {
-        for(; offset < historyStorage.history.length; offset++) {
-          if(maxId > historyStorage.history[offset]) {
-            break;
-          }
-        }
-      }
+      const wasTotalCount = historyStorage.history.length; */
 
-      const wasTotalCount = historyStorage.history.length;
-
-      historyStorage.history.splice(offset, historyStorage.history.length - offset);
       historyResult.messages.forEach((message) => {
         if(this.mergeReplyKeyboard(historyStorage, message)) {
           rootScope.broadcast('history_reply_markup', {peerId});
         }
-
-        historyStorage.history.push((message as MyMessage).mid);
       });
+
+      const mids = historyResult.messages.map((message) => (message as MyMessage).mid);
+      /* if(maxId && !mids.includes(maxId)) {
+        let i = 0;
+        for(const length = mids.length; i < length; ++i) {
+          if(maxId > mids[i]) {
+            break;
+          }
+        }
+
+        mids.splice(i, 0, maxId);
+      } */
+      
+      historyStorage.history.insertSlice(mids);
+      
+      /* const isBackLimit = offset < 0 && -offset !== fullLimit;
+      if(isBackLimit) {
+        return;
+      }
 
       const totalCount = historyStorage.history.length;
       fullLimit -= (totalCount - wasTotalCount);
 
-      /* const migratedNextPeer = this.migratedFromTo[peerId];
+      const migratedNextPeer = this.migratedFromTo[peerId];
       const migratedPrevPeer = this.migratedToFrom[peerId]
       const isMigrated = migratedNextPeer !== undefined || migratedPrevPeer !== undefined;
 
       if(isMigrated) {
         historyStorage.count = Math.max(historyStorage.count, totalCount) + 1;
-      } */
+      }
 
       if(fullLimit > 0) {
-        maxId = historyStorage.history[totalCount - 1];
-        /* if(isMigrated) {
+        maxId = historyStorage.history.slice[totalCount - 1];
+        if(isMigrated) {
           if(!historyResult.messages.length) {
             if(migratedPrevPeer) {
               maxId = 0;
@@ -4713,12 +4707,10 @@ export class AppMessagesManager {
           }
 
           return this.fillHistoryStorage(peerId, maxId, fullLimit, historyStorage, threadId);
-        } else  */if(totalCount < historyStorage.count) {
-          return this.fillHistoryStorage(peerId, maxId, fullLimit, historyStorage, threadId);
+        } else if(totalCount < historyStorage.count) {
+          return this.fillHistoryStorage(peerId, maxId, fullLimit, offset, historyStorage, threadId);
         }
-      }
-
-      return true;
+      } */
     });
   }
 
@@ -4727,9 +4719,8 @@ export class AppMessagesManager {
 
     //rootScope.broadcast('history_request');
 
-    const options = {
+    const options: any = {
       peer: appPeersManager.getInputPeerById(peerId),
-      msg_id: this.getServerMessageId(threadId) || 0,
       offset_id: this.getServerMessageId(maxId) || 0,
       offset_date: offsetDate,
       add_offset: offset,
@@ -4738,6 +4729,10 @@ export class AppMessagesManager {
       min_id: 0,
       hash: 0
     };
+
+    if(threadId) {
+      options.msg_id = this.getServerMessageId(threadId) || 0;
+    }
 
     const promise: ReturnType<AppMessagesManager['requestHistory']> = apiManager.invokeApi(threadId ? 'messages.getReplies' : 'messages.getHistory', options, {
       //timeout: APITIMEOUT,

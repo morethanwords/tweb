@@ -1380,7 +1380,7 @@ export default class ChatBubbles {
     const isTarget = lastMsgId !== undefined;
 
     // * this one will fix topMessage for null message in history (e.g. channel comments with only 1 comment and it is a topMessage)
-    if(this.chat.type !== 'pinned' && topMessage && !historyStorage.history.includes(topMessage)) {
+    if(this.chat.type !== 'pinned' && topMessage && !historyStorage.history.slice.includes(topMessage)) {
       topMessage = 0;
     }
 
@@ -1709,6 +1709,9 @@ export default class ChatBubbles {
     /* if(DEBUG) {
       this.log.debug('message to render:', message);
     } */
+    if(!bubble && this.bubbles[message.mid]) {
+      return;
+    }
 
     //return;
     const albumMustBeRenderedFull = this.chat.type !== 'pinned';
@@ -2683,7 +2686,7 @@ export default class ChatBubbles {
 
       if(!reverse) { // if not jump
         loadCount = 0;
-        maxId = this.appMessagesManager.incrementMessageId(maxId, 1);
+        //maxId = this.appMessagesManager.incrementMessageId(maxId, 1);
       }
     }
 
@@ -2694,9 +2697,9 @@ export default class ChatBubbles {
       } else {
         const historyStorage = this.appMessagesManager.getHistoryStorage(peerId, this.chat.threadId);
         if(historyStorage.history.length < loadCount) {
-          additionMsgIds = historyStorage.history.slice();
+          additionMsgIds = historyStorage.history.slice.slice();
 
-          // * filter last album, because we don't know is this the last item
+          // * filter last album, because we don't know is it the last item
           for(let i = additionMsgIds.length - 1; i >= 0; --i) {
             const message = this.chat.getMessage(additionMsgIds[i]);
             if(message.grouped_id) additionMsgIds.splice(i, 1);
@@ -2716,7 +2719,7 @@ export default class ChatBubbles {
 
     //const isFirstMessageRender = !!additionMsgID && result instanceof Promise && !appMessagesManager.getMessage(additionMsgID).grouped_id;
     const isAdditionRender = additionMsgIds?.length;
-    const isFirstMessageRender = (this.isFirstLoad && backLimit) || isAdditionRender;
+    const isFirstMessageRender = (this.isFirstLoad && backLimit && result instanceof Promise) || isAdditionRender;
     if(isAdditionRender) {
       resultPromise = result as Promise<any>;
       result = {history: additionMsgIds};
@@ -2726,7 +2729,7 @@ export default class ChatBubbles {
     this.isFirstLoad = false;
 
     const processResult = (historyResult: typeof result) => {
-      if(this.chat.type === 'discussion' && 'offsetIdOffset' in historyResult) {
+      /* if(this.chat.type === 'discussion' && 'offsetIdOffset' in historyResult) {
         const isTopEnd = historyResult.offsetIdOffset >= (historyResult.count - loadCount);
         //this.log('discussion got history', loadCount, backLimit, historyResult, isTopEnd);
 
@@ -2737,7 +2740,23 @@ export default class ChatBubbles {
           historyResult.history.push(...this.chat.getMidsByMid(this.chat.threadId).reverse());
           this.scrollable.loadedAll.top = true;
         }
-      }
+      } */
+    };
+
+    const sup = (result: HistoryResult) => {
+      /* if(maxId && result.history?.length) {
+        if(this.bubbles[maxId]) {
+          result.history.findAndSplice(mid => mid === maxId);  
+        }
+      } */
+
+      processResult(result);
+        
+      ////console.timeEnd('render history total');
+      
+      return getHeavyAnimationPromise().then(() => {
+        return this.performHistoryResult(result.history || [], reverse, isBackLimit, !isAdditionRender && additionMsgId);
+      });
     };
 
     const processPromise = (result: Promise<HistoryResult>) => {
@@ -2756,13 +2775,7 @@ export default class ChatBubbles {
         }
         //console.timeEnd('appImManager call getHistory');
 
-        processResult(result);
-        
-        ////console.timeEnd('render history total');
-        
-        return getHeavyAnimationPromise().then(() => {
-          return this.performHistoryResult(result.history || [], reverse, isBackLimit, !isAdditionRender && additionMsgId);
-        });
+        return sup(result);
       }, (err) => {
         this.log.error('getHistory error:', err);
         throw err;
@@ -2780,10 +2793,7 @@ export default class ChatBubbles {
     } else {
       cached = true;
       //this.log('getHistory cached result by maxId:', maxId, reverse, isBackLimit, result, peerId, justLoad);
-      processResult(result);
-      promise = getHeavyAnimationPromise().then(() => {
-        return this.performHistoryResult((result as HistoryResult).history || [], reverse, isBackLimit, !isAdditionRender && additionMsgId);
-      });
+      promise = sup(result as HistoryResult);
       //return (reverse ? this.getHistoryTopPromise = promise : this.getHistoryBottomPromise = promise);
       //return this.performHistoryResult(result.history || [], reverse, isBackLimit, additionMsgID, true);
     }
