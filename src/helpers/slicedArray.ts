@@ -110,13 +110,20 @@ export default class SlicedArray {
     for(let i = 0; i < this.slices.length; ++i) {
       let offset = 0;
       const slice = this.slices[i];
+      if(slice.length < 2) {
+        continue;
+      }
+      
       for(; offset < slice.length; offset++) {
-        if(maxId > slice[offset]) {
-          if(!offset) { // because can't find 3 in [[5,4], [2,1]]
+        if(maxId >= slice[offset]) {
+          /* if(!offset) { // because can't find 3 in [[5,4], [2,1]]
             return undefined;
-          }
+          } */
 
-          return {slice, offset: offset - 1};
+          return {
+            slice, 
+            offset: maxId === slice[offset] ? offset : offset - 1
+          };
         }
       }
     }

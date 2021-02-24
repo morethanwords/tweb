@@ -4664,7 +4664,9 @@ export class AppMessagesManager {
       });
 
       const mids = historyResult.messages.map((message) => (message as MyMessage).mid);
-      /* if(maxId && !mids.includes(maxId)) {
+      // * add bound manually. 
+      // * offset_id will be inclusive only if there is 'add_offset' <= -1 (-1 - will only include the 'offset_id')
+      if(maxId && !mids.includes(maxId)) {
         let i = 0;
         for(const length = mids.length; i < length; ++i) {
           if(maxId > mids[i]) {
@@ -4673,7 +4675,7 @@ export class AppMessagesManager {
         }
 
         mids.splice(i, 0, maxId);
-      } */
+      }
       
       historyStorage.history.insertSlice(mids);
       
