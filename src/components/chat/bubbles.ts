@@ -45,6 +45,7 @@ import { fastRaf } from "../../helpers/schedulers";
 import { deferredPromise } from "../../helpers/cancellablePromise";
 import RepliesElement from "./replies";
 import DEBUG from "../../config/debug";
+import { SliceEnd } from "../../helpers/slicedArray";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS = ['messageActionHistoryClear'];
@@ -2696,7 +2697,7 @@ export default class ChatBubbles {
         additionMsgIds = [additionMsgId];
       } else {
         const historyStorage = this.appMessagesManager.getHistoryStorage(peerId, this.chat.threadId);
-        if(historyStorage.history.length < loadCount) {
+        if(historyStorage.history.length < loadCount && !historyStorage.history.slice.isEnd(SliceEnd.Both)) {
           additionMsgIds = historyStorage.history.slice.slice();
 
           // * filter last album, because we don't know is it the last item
@@ -2718,7 +2719,7 @@ export default class ChatBubbles {
     let resultPromise: Promise<any>;
 
     //const isFirstMessageRender = !!additionMsgID && result instanceof Promise && !appMessagesManager.getMessage(additionMsgID).grouped_id;
-    const isAdditionRender = additionMsgIds?.length;
+    const isAdditionRender = additionMsgIds?.length && result instanceof Promise;
     const isFirstMessageRender = (this.isFirstLoad && backLimit && result instanceof Promise) || isAdditionRender;
     if(isAdditionRender) {
       resultPromise = result as Promise<any>;
@@ -2729,18 +2730,17 @@ export default class ChatBubbles {
     this.isFirstLoad = false;
 
     const processResult = (historyResult: typeof result) => {
-      /* if(this.chat.type === 'discussion' && 'offsetIdOffset' in historyResult) {
-        const isTopEnd = historyResult.offsetIdOffset >= (historyResult.count - loadCount);
+      if(this.chat.type === 'discussion' && 'offsetIdOffset' in historyResult) {
         //this.log('discussion got history', loadCount, backLimit, historyResult, isTopEnd);
 
         // * inject discussion start
-        if(isTopEnd) {
+        if(historyResult.history.isEnd(SliceEnd.Top)) {
           const serviceStartMessageId = this.appMessagesManager.threadsServiceMessagesIdsStorage[this.peerId + '_' + this.chat.threadId];
           if(serviceStartMessageId) historyResult.history.push(serviceStartMessageId);
           historyResult.history.push(...this.chat.getMidsByMid(this.chat.threadId).reverse());
           this.scrollable.loadedAll.top = true;
         }
-      } */
+      }
     };
 
     const sup = (result: HistoryResult) => {
