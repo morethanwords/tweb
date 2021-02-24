@@ -36,7 +36,7 @@ import pushHeavyTask from "../../helpers/heavyQueue";
 import { getFileNameByLocation } from "../../helpers/fileName";
 import appProfileManager from "./appProfileManager";
 import DEBUG, { MOUNT_CLASS_TO } from "../../config/debug";
-import SlicedArray from "../../helpers/slicedArray";
+import SlicedArray, { Slice, SliceEnd } from "../../helpers/slicedArray";
 
 //console.trace('include');
 // TODO: если удалить сообщение в непрогруженном диалоге, то при обновлении, из-за стейта, последнего сообщения в чатлисте не будет
@@ -59,8 +59,8 @@ export type HistoryStorage = {
 
 export type HistoryResult = {
   count: number,
-  history: number[],
-  offsetIdOffset?: number
+  history: Slice,
+  offsetIdOffset?: number,
 };
 
 export type Dialog = MTDialog.dialog;
@@ -2124,7 +2124,7 @@ export class AppMessagesManager {
    */
   public getServerMessageId(messageId: number) {
     const q = AppMessagesManager.MESSAGE_ID_OFFSET;
-    if(messageId <= q) {
+    if(messageId < q) { // id 0 -> mid 0xFFFFFFFF, so 0xFFFFFFFF must convert to 0
       return messageId;
     }
 
@@ -3307,12 +3307,13 @@ export class AppMessagesManager {
     const threadKey = message.peerId + '_' + message.mid;
     if(this.threadsServiceMessagesIdsStorage[threadKey]) return;
 
+    const maxMessageId = this.getServerMessageId(Math.max(...this.getMidsByMessage(message)));
     const serviceStartMessage: Message.messageService = {
       _: 'messageService',
       pFlags: {
         is_single: true
       } as any,
-      id: this.generateMessageId(message.id, true),
+      id: this.generateMessageId(maxMessageId, true),
       date: message.date,
       from_id: {_: 'peerUser', user_id: 0}/* message.from_id */,
       peer_id: message.peer_id,
@@ -4629,7 +4630,7 @@ export class AppMessagesManager {
     }
 
     const haveSlice = historyStorage.history.sliceMe(maxId, offset, limit);
-    if(haveSlice && (haveSlice.slice.length === limit || haveSlice.slice.includes(historyStorage.maxId))) {
+    if(haveSlice && (haveSlice.slice.length === limit || (haveSlice.fulfilled & SliceEnd.Both))) {
       return {
         count: historyStorage.count,
         history: haveSlice.slice,
@@ -4641,15 +4642,18 @@ export class AppMessagesManager {
       const slice = historyStorage.history.sliceMe(maxId, offset, limit);
       return {
         count: historyStorage.count,
-        history: slice?.slice || [],
+        history: slice?.slice || historyStorage.history.constructSlice(),
         offsetIdOffset: slice?.offsetIdOffset || historyStorage.count
       };
     });
   }
 
-  public fillHistoryStorage(peerId: number, maxId: number, fullLimit: number, offset: number, historyStorage: HistoryStorage, threadId?: number): Promise<void> {
-    return this.requestHistory(peerId, maxId, fullLimit, offset, undefined, threadId).then((historyResult) => {
+  public fillHistoryStorage(peerId: number, offset_id: number, limit: number, add_offset: number, historyStorage: HistoryStorage, threadId?: number): Promise<void> {
+    return this.requestHistory(peerId, offset_id, limit, add_offset, undefined, threadId).then((historyResult) => {
       historyStorage.count = (historyResult as MessagesMessages.messagesMessagesSlice).count || historyResult.messages.length;
+
+      const offsetIdOffset = (historyResult as MessagesMessages.messagesMessagesSlice).offset_id_offset || 0;
+      const isTopEnd = offsetIdOffset >= (historyStorage.count - limit) || historyStorage.count < (limit + add_offset);
 
       /* if(!maxId && historyResult.messages.length) {
         maxId = this.incrementMessageId((historyResult.messages[0] as MyMessage).mid, 1);
@@ -4666,18 +4670,22 @@ export class AppMessagesManager {
       const mids = historyResult.messages.map((message) => (message as MyMessage).mid);
       // * add bound manually. 
       // * offset_id will be inclusive only if there is 'add_offset' <= -1 (-1 - will only include the 'offset_id')
-      if(maxId && !mids.includes(maxId)) {
+      if(offset_id && !mids.includes(offset_id) && offsetIdOffset < historyStorage.count) {
         let i = 0;
         for(const length = mids.length; i < length; ++i) {
-          if(maxId > mids[i]) {
+          if(offset_id > mids[i]) {
             break;
           }
         }
 
-        mids.splice(i, 0, maxId);
+        mids.splice(i, 0, offset_id);
       }
       
       historyStorage.history.insertSlice(mids);
+
+      if(isTopEnd) {
+        historyStorage.history.last.setEnd(SliceEnd.Top);
+      }
       
       /* const isBackLimit = offset < 0 && -offset !== fullLimit;
       if(isBackLimit) {
