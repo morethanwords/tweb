@@ -1,0 +1,62 @@
+.quiz-hint {
+	position: absolute;
+	left: 0;
+	display: flex;
+	width: 100%;
+	justify-content: center;
+	//z-index: 5;
+	top: 8px;
+	align-items: center;
+	transform: translate3d(0, calc(-100% - 10px), 0);
+	transition: transform .2s ease;
+
+	body.animation-level-0 & {
+		transition: none;
+	}
+
+	&.active {
+		transform: translate3d(0, 0, 0);
+	}
+
+	.container {
+		background: rgba(0, 0, 0, .7);
+    text-align: center;
+    width: auto;
+    padding: 10px 18px 12px 50px;
+    min-height: 48px;
+    border-radius: 12px;
+    line-height: 1.5;
+    color: white;
+    font-size: 15px;
+    max-width: 400px;
+    overflow: hidden;
+		text-align: left;
+		position: relative;
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+
+		@include respond-to(handhelds) {
+			padding: 10px 18px 12px 54px;
+			margin: 0 10px;
+			font-size: 14px;
+		}
+
+		.text {
+			word-break: break-word;
+		}
+		
+		&:before {
+			content: $tgico-info2;
+			position: absolute;
+			left: 15px;
+			font-size: 1.5rem;
+			top: 12px;
+		}
+
+		a {
+			color: white;
+			border-bottom: 1px solid white;
+		}
+	}
+}

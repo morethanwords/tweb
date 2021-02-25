@@ -117,6 +117,7 @@ $chat-padding-handhelds: .5rem;
 @import "partials/chatPinned";
 @import "partials/chatMarkupTooltip";
 @import "partials/chatStickersHelper";
+@import "partials/chatSearch";
 @import "partials/chatDrop";
 @import "partials/crop";
 @import "partials/sidebar";
@@ -134,6 +135,7 @@ $chat-padding-handhelds: .5rem;
 @import "partials/avatar";
 @import "partials/document";
 @import "partials/audio";
+@import "partials/quizHint";
 
 @import "partials/popups/popup";
 @import "partials/popups/editAvatar";
