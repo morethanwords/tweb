@@ -5,7 +5,7 @@ export default class HTTP implements MTTransport {
   constructor(protected dcId: number, protected url: string) {
   }
 
-  send = (data: Uint8Array) => {
+  public send(data: Uint8Array) {
     return fetch(this.url, {method: 'POST', body: data}).then(response => {
       //console.log('http response', response/* , response.arrayBuffer() */);
 
