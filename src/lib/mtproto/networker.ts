@@ -108,7 +108,6 @@ export default class MTPNetworker {
   public isOnline = false;
   private lastResponseTime = 0;
 
-  private schedulePromise: Promise<any>;
   //private disconnectDelay: number;
   //private pingPromise: CancellablePromise<any>;
   //public onConnectionStatusChange: (online: boolean) => void;
@@ -1211,6 +1210,10 @@ export default class MTPNetworker {
 
   // ! таймаут очень сильно тормозит скорость работы сокета (даже нулевой) 
   public scheduleRequest(delay?: number) {
+    if(!this.isOnline) {
+      return;
+    }
+
     /// #if MTPROTO_HTTP || MTPROTO_HTTP_UPLOAD
     if(!(this.transport instanceof HTTP)) {
       this.performScheduledRequest();
@@ -1243,12 +1246,18 @@ export default class MTPNetworker {
       this.nextReqTimeout = 0;
       this.nextReq = 0;
 
+      /// #if MTPROTO_HTTP || MTPROTO_HTTP_UPLOAD
       if(this.offline) {
         //this.log('Cancel scheduled');
         return;
       }
+      /// #else
+      if(!this.isOnline) {
+        return;
+      }
 
       this.performScheduledRequest();
+      /// #endif
     };
 
     this.nextReq = nextReq;
