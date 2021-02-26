@@ -106,7 +106,7 @@ export class DcConfigurator {
     const chosenServer = 'wss://' + subdomain + '.web.telegram.org/' + path;
     const logSuffix = connectionType === 'upload' ? '-U' : connectionType === 'download' ? '-D' : '';
 
-    const retryTimeout = connectionType === 'client' ? 15000 : 10000;
+    const retryTimeout = connectionType === 'client' ? 10000 : 10000;
 
     const oooohLetMeLive: MTConnectionConstructable = (isSafari && isWebWorker) /* || true */ ? SocketProxied : Socket;
 

@@ -40,26 +40,24 @@ export default class TcpObfuscated implements MTTransport {
 
     const initPayload = this.obfuscation.init(this.codec);
 
+    this.connection.send(initPayload);
+
     if(this.networker) {
+      this.pending.length = 0; // ! clear queue and reformat messages to container, because if sending simultaneously 10+ messages, connection will die
       this.networker.setConnectionStatus(true);
-
-      if(this.lastCloseTime) {
-        this.networker.cleanupSent();
-        this.networker.resend();
-      }
-    }
-
-    for(const pending of this.pending) {
-      if(pending.encoded && pending.body) {
-        pending.encoded = this.encodeBody(pending.body);
+      this.networker.cleanupSent();
+      this.networker.resend();
+    } else {
+      for(const pending of this.pending) {
+        if(pending.encoded && pending.body) {
+          pending.encoded = this.encodeBody(pending.body);
+        }
       }
     }
 
     setTimeout(() => {
       this.releasePending();
     }, 0);
-
-    this.connection.send(initPayload);
   };
 
   private onMessage = (buffer: ArrayBuffer) => {
@@ -100,6 +98,11 @@ export default class TcpObfuscated implements MTTransport {
 
   private onClose = () => {
     this.connected = false;
+
+    this.connection.removeListener('open', this.onOpen);
+    this.connection.removeListener('close', this.onClose);
+    this.connection.removeListener('message', this.onMessage);
+    this.connection = undefined;
     
     const time = Date.now();
     const diff = time - this.lastCloseTime;
@@ -107,6 +110,7 @@ export default class TcpObfuscated implements MTTransport {
     
     if(this.networker) {
       this.networker.setConnectionStatus(false);
+      this.pending.length = 0;
     }
     
     this.log('will try to reconnect after timeout:', needTimeout / 1000);
@@ -114,30 +118,26 @@ export default class TcpObfuscated implements MTTransport {
       this.log('trying to reconnect...');
       this.lastCloseTime = Date.now();
       
-      for(const pending of this.pending) {
-        if(pending.bodySent) {
-          pending.bodySent = false;
+      if(!this.networker) {
+        for(const pending of this.pending) {
+          if(pending.bodySent) {
+            pending.bodySent = false;
+          }
         }
       }
       
       this.connect();
     }, needTimeout);
-
-    this.connection.removeListener('open', this.onOpen);
-    this.connection.removeListener('close', this.onClose);
-    this.connection.removeListener('message', this.onMessage);
-    this.connection = undefined;
   };
 
   private connect() {
     this.connection = new this.Connection(this.dcId, this.url, this.logSuffix);
-
     this.connection.addListener('open', this.onOpen);
     this.connection.addListener('close', this.onClose);
     this.connection.addListener('message', this.onMessage);
   }
 
-  private encodeBody = (body: Uint8Array) => {
+  private encodeBody(body: Uint8Array) {
     const toEncode = this.codec.encodePacket(body);
 
     //this.log('send before obf:', /* body.hex, nonce.hex, */ toEncode.hex);
@@ -145,9 +145,9 @@ export default class TcpObfuscated implements MTTransport {
     //this.log('send after obf:', enc.hex);
 
     return encoded;
-  };
+  }
 
-  public send = (body: Uint8Array) => {
+  public send(body: Uint8Array) {
     this.debug && this.log.debug('-> body length to pending:', body.length);
 
     const encoded: typeof body = this.connected ? this.encodeBody(body) : undefined;
@@ -166,7 +166,7 @@ export default class TcpObfuscated implements MTTransport {
 
       return promise;
     }
-  };
+  }
 
   private releasePending(/* tt = false */) {
     if(!this.connected) {
@@ -206,7 +206,7 @@ export default class TcpObfuscated implements MTTransport {
         } */
 
         if(!encoded) {
-          encoded = this.encodeBody(body);
+          encoded = pending.encoded = this.encodeBody(body);
         }
 
         //this.lol.push(body);

@@ -4,7 +4,7 @@ export const DEBUG = process.env.NODE_ENV !== 'production' || Modes.debug;
 export const MOUNT_CLASS_TO: any = DEBUG ? (typeof(window) !== 'undefined' ? window : self) : null;
 export default DEBUG;
 
-export const superDebug = (object: any, key: string) => {
+/* export const superDebug = (object: any, key: string) => {
   var d = object[key];
   var beforeStr = '', afterStr = '';
   for(var r of d) {
@@ -32,4 +32,4 @@ export const superDebug = (object: any, key: string) => {
   dada(key + '_' + 'after', afterStr);
 }
 
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.superDebug = superDebug);
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.superDebug = superDebug); */
