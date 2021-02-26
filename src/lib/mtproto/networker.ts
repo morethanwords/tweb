@@ -166,6 +166,10 @@ export default class MTPNetworker {
     //   //setInterval(this.sendPingDelayDisconnect, (this.disconnectDelay - 5) * 1000);
     //   this.sendPingDelayDisconnect();
     // }
+
+    if((this.transport as TcpObfuscated).connected) {
+      this.setConnectionStatus(true);
+    }
   }
 
   public updateSession() {
