@@ -55,10 +55,11 @@ export default class PopupElement {
         const onOverlayClick = (e: MouseEvent) => {
           if(!findUpClassName(e.target, 'popup-container')) {
             this.btnClose.click();
+            this.element.removeEventListener('click', onOverlayClick);
           }
         };
     
-        this.element.addEventListener('click', onOverlayClick, {once: true});
+        this.element.addEventListener('click', onOverlayClick);
       }
     }
 
