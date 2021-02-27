@@ -25,9 +25,9 @@ export default class StickersHelper {
 
     if(this.lastEmoticon && !emoticon) {
       if(this.container) {
-        SetTransition(this.container, 'is-visible', false, 200/* , () => {
+        SetTransition(this.container, 'is-visible', false, 200, () => {
           this.stickersContainer.innerHTML = '';
-        } */);
+        });
       }
     }
 
