@@ -264,6 +264,10 @@
 
   @include hover-background-effect();
 
+  &.danger {
+    @include hover-background-effect(red);
+  }
+
   // * tgico
   &:before {
     color: #707579;

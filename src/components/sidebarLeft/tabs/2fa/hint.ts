@@ -7,6 +7,7 @@ import { wrapSticker } from "../../../wrappers";
 import InputField from "../../../inputField";
 import AppTwoStepVerificationEmailTab from "./email";
 import { attachClickEvent, cancelEvent } from "../../../../helpers/dom";
+import { toast } from "../../../toast";
 
 export default class AppTwoStepVerificationHintTab extends SliderSuperTab {
   public inputField: InputField;
@@ -23,7 +24,6 @@ export default class AppTwoStepVerificationHintTab extends SliderSuperTab {
     this.title.innerHTML = 'Password Hint';
 
     const section = new SettingSection({
-      caption: ' ',
       noDelimiter: true
     });
 
@@ -60,28 +60,37 @@ export default class AppTwoStepVerificationHintTab extends SliderSuperTab {
     inputField.input.addEventListener('keypress', (e) => {
       if(e.key === 'Enter') {
         cancelEvent(e);
-        return (inputField.value ? btnContinue : btnSkip).click();
+        return inputField.value ? onContinueClick() : onSkipClick();
       }
     });
 
-    const goNext = (e: Event, saveHint: boolean) => {
-      cancelEvent(e);
+    const goNext = (e?: Event, saveHint?: boolean) => {
+      if(e) {
+        cancelEvent(e);
+      }
+      
+      const hint = saveHint ? inputField.value : undefined;
+      if(hint && this.newPassword === hint) {
+        toast('Hint must be different from your password');
+        return;
+      }
+
       const tab = new AppTwoStepVerificationEmailTab(this.slider);
       tab.state = this.state;
       tab.plainPassword = this.plainPassword;
       tab.newPassword = this.newPassword;
-      if(saveHint) {
-        tab.hint = inputField.value;
-      }
+      tab.hint = hint;
 
       tab.open();
     };
 
     const btnContinue = Button('btn-primary btn-color-primary', {text: 'CONTINUE'});
-    const btnSkip = Button('btn-primary btn-primary-transparent primary', {text: 'SKIP'});
+    const btnSkip = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'SKIP'});
 
-    attachClickEvent(btnContinue, (e) => goNext(e, true));
-    attachClickEvent(btnSkip, (e) => goNext(e, false));
+    const onContinueClick = (e?: Event) => goNext(e, true);
+    const onSkipClick = (e?: Event) => goNext(e, false);
+    attachClickEvent(btnContinue, onContinueClick);
+    attachClickEvent(btnSkip, onSkipClick);
 
     inputWrapper.append(inputField.container, btnContinue, btnSkip);
 

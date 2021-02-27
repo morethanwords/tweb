@@ -7,6 +7,7 @@ import AppPrivacyPhoneNumberTab from "./privacy/phoneNumber";
 import AppTwoStepVerificationTab from "./2fa";
 import passwordManager from "../../../lib/mtproto/passwordManager";
 import AppTwoStepVerificationEnterPasswordTab from "./2fa/enterPassword";
+import AppTwoStepVerificationEmailConfirmationTab from "./2fa/emailConfirmation";
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
   constructor(slider: SidebarSlider) {
@@ -35,9 +36,15 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
         title: 'Two-Step Verification',
         subtitle: 'Loading...',
         clickable: (e: Event) => {
-          let tab: AppTwoStepVerificationTab | AppTwoStepVerificationEnterPasswordTab;
+          let tab: AppTwoStepVerificationTab | AppTwoStepVerificationEnterPasswordTab | AppTwoStepVerificationEmailConfirmationTab;
           if(passwordState.pFlags.has_password) {
             tab = new AppTwoStepVerificationEnterPasswordTab(this.slider);
+          } else if(passwordState.email_unconfirmed_pattern) {
+            tab = new AppTwoStepVerificationEmailConfirmationTab(this.slider);
+            tab.email = passwordState.email_unconfirmed_pattern;
+            tab.length = 6;
+            tab.isFirst = true;
+            passwordManager.resendPasswordEmail();
           } else {
             tab = new AppTwoStepVerificationTab(this.slider);
           }

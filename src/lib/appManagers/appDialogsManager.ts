@@ -181,7 +181,7 @@ export class AppDialogsManager {
   public doms: {[peerId: number]: DialogDom} = {};
 
   public chatsContainer = document.getElementById('chatlist-container') as HTMLDivElement;
-  private chatsPreloader: HTMLDivElement;
+  private chatsPreloader: HTMLElement;
 
   public loadDialogsPromise: Promise<any>;
 

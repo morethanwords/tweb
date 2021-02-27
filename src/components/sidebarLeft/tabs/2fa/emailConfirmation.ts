@@ -4,21 +4,19 @@ import appStickersManager from "../../../../lib/appManagers/appStickersManager";
 import Button from "../../../button";
 import SidebarSlider, { SliderSuperTab } from "../../../slider";
 import { wrapSticker } from "../../../wrappers";
-import InputField from "../../../inputField";
-import { attachClickEvent } from "../../../../helpers/dom";
-import PopupConfirmAction from "../../../popups/confirmAction";
-import { putPreloader } from "../../../misc";
+import { attachClickEvent, canFocus, toggleDisability } from "../../../../helpers/dom";
 import passwordManager from "../../../../lib/mtproto/passwordManager";
 import AppTwoStepVerificationSetTab from "./passwordSet";
+import CodeInputField from "../../../codeInputField";
+import AppTwoStepVerificationEmailTab from "./email";
+import { putPreloader } from "../../../misc";
 
 export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSuperTab {
-  public inputField: InputField;
+  public codeInputField: CodeInputField;
   public state: AccountPassword;
-  public plainPassword: string;
-  public newPassword: string;
-  public hint: string;
   public email: string;
   public length: number;
+  public isFirst = false;
 
   constructor(slider: SidebarSlider) {
     super(slider, true);
@@ -29,9 +27,11 @@ export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSu
     this.title.innerHTML = 'Recovery Email';
 
     const section = new SettingSection({
-      caption: ' ',
+      caption: 'Please enter code we\'ve just emailed at <b></b>',
       noDelimiter: true
     });
+
+    (section.caption.lastElementChild as HTMLElement).innerText = this.email;
 
     const emoji = '📬';
     const doc = appStickersManager.getAnimatedEmojiSticker(emoji);
@@ -60,54 +60,69 @@ export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSu
     const inputWrapper = document.createElement('div');
     inputWrapper.classList.add('input-wrapper');
 
-    const inputField = this.inputField = new InputField({
+    const inputField = this.codeInputField = new CodeInputField({
       name: 'recovery-email-code',
-      label: 'Code'
+      label: 'Code',
+      length: this.length,
+      onFill: (code) => {
+        freeze(true);
+        
+        passwordManager.confirmPasswordEmail('' + code)
+        .then(value => {
+          if(!value) {
+
+          }
+
+          goNext();
+        })
+        .catch(err => {
+          switch(err.type) {
+            case 'CODE_INVALID':
+              inputField.input.classList.add('error');
+              inputField.label.innerText = 'Invalid Code';
+              break;
+            
+            default:
+              console.error('confirm error', err);
+              break;
+          }
+
+          freeze(false);
+        });
+      }
     });
 
-    const btnContinue = Button('btn-primary btn-color-primary', {text: 'CONTINUE'});
-    const btnSkip = Button('btn-primary btn-primary-transparent primary', {text: 'SKIP'});
+    const btnChange = Button('btn-primary btn-primary-transparent primary', {text: 'CHANGE EMAIL'});
+    const btnResend = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'RE-SEND CODE'});
 
     const goNext = () => {
       new AppTwoStepVerificationSetTab(this.slider).open();
     };
 
-    attachClickEvent(btnContinue, (e) => {
-      
-    });
+    const freeze = (disable: boolean) => {
+      toggleDisability([inputField.input, btnChange, btnResend], disable);
+    };
 
-    attachClickEvent(btnSkip, (e) => {
-      const popup = new PopupConfirmAction('popup-skip-email', [{
-        text: 'CANCEL',
-        isCancel: true
-      }, {
-        text: 'SKIP',
-        callback: () => {
-          //inputContent.classList.add('sidebar-left-section-disabled');
-          btnContinue.setAttribute('disabled', 'true');
-          btnSkip.setAttribute('disabled', 'true');
-          putPreloader(btnSkip);
-          passwordManager.updateSettings({
-            hint: this.hint, 
-            currentPassword: this.plainPassword,
-            newPassword: this.newPassword
-          }).then(() => {
-            goNext();
-          }, (err) => {
-            btnContinue.removeAttribute('disabled');
-            btnSkip.removeAttribute('disabled');
-          });
-        },
-        isDanger: true,
-      }], {
-        title: 'Warning',
-        text: 'No, seriously.<br/><br/>If you forget your password, you will lose access to your Telegram account. There will be no way to restore it.'
+    attachClickEvent(btnChange, (e) => {
+      freeze(true);
+      passwordManager.cancelPasswordEmail().then(value => {
+        this.slider.sliceTabsUntilTab(AppTwoStepVerificationEmailTab, this);
+        this.close();
+      }, () => {
+        freeze(false);
       });
-
-      popup.show();
     });
 
-    inputWrapper.append(inputField.container, btnContinue, btnSkip);
+    attachClickEvent(btnResend, (e) => {
+      freeze(true);
+      const d = putPreloader(btnResend);
+      passwordManager.resendPasswordEmail().then(value => {
+        d.remove();
+        freeze(false);
+      });
+    });
+
+    inputWrapper.append(inputField.container, btnChange, btnResend);
 
     inputContent.append(inputWrapper);
 
@@ -115,6 +130,7 @@ export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSu
   }
 
   onOpenAfterTimeout() {
-    this.inputField.input.focus();
+    if(!canFocus(this.isFirst)) return;
+    this.codeInputField.input.focus();
   }
 }

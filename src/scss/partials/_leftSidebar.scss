@@ -913,8 +913,14 @@
     margin-bottom: 1.125rem;
   }
 
-  .btn-primary + .btn-primary {
-    margin-top: .125rem !important;
+  &-main {
+    .btn-primary + .btn-primary {
+      margin-top: .125rem !important;
+    }
+  }
+
+  .btn-secondary {
+    margin-top: .5rem !important;
   }
 
   .media-sticker-wrapper {
@@ -932,12 +938,6 @@
       margin: 1.125rem auto 1.8125rem;
       width: 157px;
       height: 157px;
-    }
-  }
-
-  &-hint, &-email {
-    .btn-primary + .btn-primary {
-      margin-top: .5rem !important;
     }
   }
 
