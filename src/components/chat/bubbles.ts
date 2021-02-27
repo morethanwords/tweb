@@ -1204,6 +1204,17 @@ export default class ChatBubbles {
     forceDuration?: number
   ) {
     // * 4 = .25rem
+    const bubble = findUpClassName(element, 'bubble');
+
+    // * if it's a start, then scroll to start of the group
+    if(position === 'center' && whichChild(bubble) === (this.stickyIntersector ? 2 : 1)) {
+      const dateGroup = bubble.parentElement;
+      if(whichChild(dateGroup) === 0) {
+        element = dateGroup;
+        position = 'start';
+      }
+    }
+
     return this.scrollable.scrollIntoViewNew(element, position, 4, undefined, forceDirection, forceDuration);
   }
 
