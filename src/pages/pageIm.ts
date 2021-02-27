@@ -1,5 +1,6 @@
 //import {stackBlurImage} from '../lib/StackBlur';
 //import appStateManager from "../lib/appManagers/appStateManager";
+import { blurActiveElement } from "../helpers/dom";
 import appStateManager from "../lib/appManagers/appStateManager";
 import Page from "./page";
 
@@ -13,28 +14,34 @@ let onFirstMount = () => {
     m.default.broadcast('im_mount');
   });
 
-  const promise = import('../lib/appManagers/appDialogsManager');
-  promise.finally(async() => {
-    //alert('pageIm!');
-
-    //AudioContext && global.navigator && global.navigator.mediaDevices && global.navigator.mediaDevices.getUserMedia && global.WebAssembly;
-
-    /* // @ts-ignore
-    var AudioContext = globalThis.AudioContext || globalThis.webkitAudioContext;
-    alert('AudioContext:' + typeof(AudioContext));
-    // @ts-ignore
-    alert('global.navigator:' + typeof(navigator));
-    alert('navigator.mediaDevices:' + typeof(navigator.mediaDevices));
-    alert('navigator.mediaDevices.getUserMedia:' + typeof(navigator.mediaDevices?.getUserMedia));
-    alert('global.WebAssembly:' + typeof(WebAssembly)); */
-
-    //(Array.from(document.getElementsByClassName('rp')) as HTMLElement[]).forEach(el => ripple(el));
-
-    const misc = await import("../components/buttonMenuToggle");
-    Array.from(document.getElementsByClassName('btn-menu-toggle')).forEach((el) => {
-      misc.ButtonMenuToggleHandler(el as HTMLElement);
+  blurActiveElement();
+  return new Promise<void>((resolve) => {
+    window.requestAnimationFrame(() => {
+      const promise = import('../lib/appManagers/appDialogsManager');
+      promise.finally(async() => {
+        //alert('pageIm!');
+        resolve();
+    
+        //AudioContext && global.navigator && global.navigator.mediaDevices && global.navigator.mediaDevices.getUserMedia && global.WebAssembly;
+    
+        /* // @ts-ignore
+        var AudioContext = globalThis.AudioContext || globalThis.webkitAudioContext;
+        alert('AudioContext:' + typeof(AudioContext));
+        // @ts-ignore
+        alert('global.navigator:' + typeof(navigator));
+        alert('navigator.mediaDevices:' + typeof(navigator.mediaDevices));
+        alert('navigator.mediaDevices.getUserMedia:' + typeof(navigator.mediaDevices?.getUserMedia));
+        alert('global.WebAssembly:' + typeof(WebAssembly)); */
+    
+        //(Array.from(document.getElementsByClassName('rp')) as HTMLElement[]).forEach(el => ripple(el));
+    
+        const misc = await import("../components/buttonMenuToggle");
+        Array.from(document.getElementsByClassName('btn-menu-toggle')).forEach((el) => {
+          misc.ButtonMenuToggleHandler(el as HTMLElement);
+        });
+      });
     });
-  })
+  });
 
   //let promise = /* Promise.resolve() */.then(() => {//import('../lib/services').then(services => {
     /* fetch('assets/img/camomile.jpg')
@@ -65,8 +72,6 @@ let onFirstMount = () => {
       };
     }); */
   //});
-
-  return promise;
 };
 
 const page = new Page('page-chats', false, onFirstMount);
