@@ -5,7 +5,7 @@ export default class Page {
   private installed = false;
 
   constructor(className: string, public isAuthPage: boolean, private onFirstMount?: (...args: any[]) => Promise<any> | void, private onMount?: (...args: any[]) => void, public onShown?: () => void) {
-    this.pageEl = document.body.getElementsByClassName(className)[0] as HTMLDivElement;
+    this.pageEl = document.body.querySelector('.' + className) as HTMLDivElement;
   }
 
   public async mount(...args: any[]) {
