@@ -80,6 +80,18 @@ export class PasswordManager {
     });
   }
 
+  public confirmPasswordEmail(code: string) {
+    return apiManager.invokeApi('account.confirmPasswordEmail', {code});
+  }
+
+  public resendPasswordEmail() {
+    return apiManager.invokeApi('account.resendPasswordEmail');
+  }
+
+  public cancelPasswordEmail() {
+    return apiManager.invokeApi('account.cancelPasswordEmail');
+  }
+
   /* public requestRecovery(options: any = {}) {
     return apiManager.invokeApi('auth.requestPasswordRecovery', {}, options);
   }

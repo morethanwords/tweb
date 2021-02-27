@@ -2,7 +2,7 @@ import { MessageEntity } from "../layer";
 import RichTextProcessor from "../lib/richtextprocessor";
 import ListenerSetter from "./listenerSetter";
 import { isTouchSupported } from "./touchSupport";
-import { isApple } from "./userAgent";
+import { isApple, isMobileSafari } from "./userAgent";
 import rootScope from "../lib/rootScope";
 import { MOUNT_CLASS_TO } from "../config/debug";
 import { doubleRaf } from "./schedulers";
@@ -783,4 +783,16 @@ export function disableTransition(elements: HTMLElement[]) {
   doubleRaf().then(() => {
     elements.forEach(el => el.classList.remove('no-transition'));
   });
+}
+
+export function toggleDisability(elements: HTMLElement[], disable: boolean) {
+  if(disable) {
+    elements.forEach(el => el.setAttribute('disabled', 'true'));
+  } else {
+    elements.forEach(el => el.removeAttribute('disabled'));
+  }
+}
+
+export function canFocus(isFirstInput: boolean) {
+  return !isMobileSafari || !isFirstInput;
 }

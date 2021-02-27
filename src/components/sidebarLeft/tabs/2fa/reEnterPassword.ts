@@ -52,7 +52,7 @@ export default class AppTwoStepVerificationReEnterPasswordTab extends SliderSupe
       }
   
       if(e.key === 'Enter') {
-        return btnContinue.click();
+        return onContinueClick();
       }
     });
 
@@ -65,8 +65,11 @@ export default class AppTwoStepVerificationReEnterPasswordTab extends SliderSupe
       return true;
     };
 
-    attachClickEvent(btnContinue, (e) => {
-      cancelEvent(e);
+    const onContinueClick = (e?: Event) => {
+      if(e) {
+        cancelEvent(e);
+      }
+
       if(!verifyInput()) return;
 
       const tab = new AppTwoStepVerificationHintTab(this.slider);
@@ -74,7 +77,8 @@ export default class AppTwoStepVerificationReEnterPasswordTab extends SliderSupe
       tab.plainPassword = this.plainPassword;
       tab.newPassword = this.newPassword;
       tab.open();
-    });
+    };
+    attachClickEvent(btnContinue, onContinueClick);
   }
   
   onOpenAfterTimeout() {

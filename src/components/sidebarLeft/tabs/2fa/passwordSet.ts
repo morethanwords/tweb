@@ -31,8 +31,7 @@ export default class AppTwoStepVerificationSetTab extends SliderSuperTab {
         loop: true,
         play: true,
         width: 160,
-        height: 160,
-        emoji
+        height: 160
       }).then(() => {
         // this.animation = player;
       });

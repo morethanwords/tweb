@@ -8,6 +8,7 @@ import PopupConfirmAction from "../../../popups/confirmAction";
 import SidebarSlider, { SliderSuperTab } from "../../../slider";
 import { wrapSticker } from "../../../wrappers";
 import AppSettingsTab from "../settings";
+import AppTwoStepVerificationEmailTab from "./email";
 import AppTwoStepVerificationEnterPasswordTab from "./enterPassword";
 
 export default class AppTwoStepVerificationTab extends SliderSuperTab {
@@ -19,7 +20,7 @@ export default class AppTwoStepVerificationTab extends SliderSuperTab {
   }
 
   protected init() {
-    this.container.classList.add('two-step-verification');
+    this.container.classList.add('two-step-verification', 'two-step-verification-main');
     this.title.innerHTML = 'Two-Step Verification';
 
     const section = new SettingSection({
@@ -55,7 +56,7 @@ export default class AppTwoStepVerificationTab extends SliderSuperTab {
 
       const btnChangePassword = Button('btn-primary btn-transparent', {icon: 'edit', text: 'Change Password'});
       const btnDisablePassword = Button('btn-primary btn-transparent', {icon: 'passwordoff', text: 'Turn Password Off'});
-      const btnSetRecoveryEmail = Button('btn-primary btn-transparent', {icon: 'email', text: 'Set Recovery Email'});
+      const btnSetRecoveryEmail = Button('btn-primary btn-transparent', {icon: 'email', text: this.state.pFlags.has_recovery ? 'Change Recovery Email' : 'Set Recovery Email'});
 
       attachClickEvent(btnChangePassword, () => {
         const tab = new AppTwoStepVerificationEnterPasswordTab(this.slider);
@@ -80,6 +81,16 @@ export default class AppTwoStepVerificationTab extends SliderSuperTab {
         });
 
         popup.show();
+      });
+
+      attachClickEvent(btnSetRecoveryEmail, () => {
+        const tab = new AppTwoStepVerificationEmailTab(this.slider);
+        tab.state = this.state;
+        tab.hint = this.state.hint;
+        tab.plainPassword = this.plainPassword;
+        tab.newPassword = this.plainPassword;
+        tab.isFirst = true;
+        tab.open();
       });
 
       c.append(btnChangePassword, btnDisablePassword, btnSetRecoveryEmail);

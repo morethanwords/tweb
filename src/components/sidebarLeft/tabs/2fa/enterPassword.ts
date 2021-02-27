@@ -1,6 +1,7 @@
 import AppTwoStepVerificationTab from ".";
 import { SettingSection } from "../..";
-import { attachClickEvent, cancelEvent } from "../../../../helpers/dom";
+import { attachClickEvent, cancelEvent, canFocus } from "../../../../helpers/dom";
+import { isMobileSafari } from "../../../../helpers/userAgent";
 import { AccountPassword } from "../../../../layer";
 import passwordManager from "../../../../lib/mtproto/passwordManager";
 import RichTextProcessor from "../../../../lib/richtextprocessor";
@@ -16,6 +17,7 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
   public state: AccountPassword;
   public passwordInputField: PasswordInputField;
   public plainPassword: string;
+  public isFirst = true;
   
   constructor(slider: SidebarSlider) {
     super(slider, true);
@@ -56,7 +58,7 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
       }
   
       if(e.key === 'Enter') {
-        return btnContinue.click();
+        return onContinueClick();
       }
     });
 
@@ -69,6 +71,7 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
       return true;
     };
 
+    let onContinueClick: (e?: Event) => void;
     if(!isNew) {
       let getStateInterval: number;
 
@@ -123,12 +126,15 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
         });
       };
   
-      attachClickEvent(btnContinue, submit);
-  
+      onContinueClick = submit;
+
       getState();
     } else {
-      attachClickEvent(btnContinue, (e) => {
-        cancelEvent(e);
+      onContinueClick = (e) => {
+        if(e) {
+          cancelEvent(e);
+        }
+
         if(!verifyInput()) return;
 
         const tab = new AppTwoStepVerificationReEnterPasswordTab(this.slider);
@@ -136,11 +142,14 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
         tab.newPassword = passwordInputField.value;
         tab.plainPassword = this.plainPassword;
         tab.open();
-      });
+      };
     }
+
+    attachClickEvent(btnContinue, onContinueClick);
   }
 
   onOpenAfterTimeout() {
+    if(!canFocus(this.isFirst)) return;
     this.passwordInputField.input.focus();
   }
 }

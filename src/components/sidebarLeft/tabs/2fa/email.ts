@@ -5,7 +5,7 @@ import Button from "../../../button";
 import SidebarSlider, { SliderSuperTab } from "../../../slider";
 import { wrapSticker } from "../../../wrappers";
 import InputField from "../../../inputField";
-import { attachClickEvent, cancelEvent } from "../../../../helpers/dom";
+import { attachClickEvent, cancelEvent, canFocus } from "../../../../helpers/dom";
 import PopupConfirmAction from "../../../popups/confirmAction";
 import { putPreloader } from "../../../misc";
 import passwordManager from "../../../../lib/mtproto/passwordManager";
@@ -19,6 +19,7 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
   public plainPassword: string;
   public newPassword: string;
   public hint: string;
+  public isFirst = false;
 
   constructor(slider: SidebarSlider) {
     super(slider, true);
@@ -29,7 +30,7 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
     this.title.innerHTML = 'Recovery Email';
 
     const section = new SettingSection({
-      caption: ' ',
+      caption: '',
       noDelimiter: true
     });
 
@@ -69,7 +70,7 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
     inputField.input.addEventListener('keypress', (e) => {
       if(e.key === 'Enter') {
         cancelEvent(e);
-        return btnContinue.click();
+        return onContinueClick();
       }
     });
 
@@ -78,13 +79,13 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
     });
 
     const btnContinue = Button('btn-primary btn-color-primary', {text: 'CONTINUE'});
-    const btnSkip = Button('btn-primary btn-primary-transparent primary', {text: 'SKIP'});
+    const btnSkip = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'SKIP'});
 
     const goNext = () => {
       new AppTwoStepVerificationSetTab(this.slider).open();
     };
 
-    attachClickEvent(btnContinue, (e) => {
+    const onContinueClick = () => {
       const email = inputField.value.trim();
       const match = RichTextProcessor.matchEmail(email);
       if(!match || match[0].length !== email.length) {
@@ -93,7 +94,7 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
       }
 
       toggleButtons(true);
-      putPreloader(btnContinue);
+      const d = putPreloader(btnContinue);
 
       passwordManager.updateSettings({
         hint: this.hint,
@@ -108,9 +109,6 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
 
           const tab = new AppTwoStepVerificationEmailConfirmationTab(this.slider);
           tab.state = this.state;
-          tab.newPassword = this.newPassword;
-          tab.plainPassword = this.plainPassword;
-          tab.hint = this.hint;
           tab.email = email;
           tab.length = symbols;
           tab.open();
@@ -119,8 +117,10 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
         }
 
         toggleButtons(false);
+        d.remove();
       });
-    });
+    };
+    attachClickEvent(btnContinue, onContinueClick);
 
     const toggleButtons = (freeze: boolean) => {
       if(freeze) {
@@ -145,7 +145,8 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
           passwordManager.updateSettings({
             hint: this.hint, 
             currentPassword: this.plainPassword,
-            newPassword: this.newPassword
+            newPassword: this.newPassword,
+            email: ''
           }).then(() => {
             goNext();
           }, (err) => {
@@ -169,6 +170,7 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
   }
 
   onOpenAfterTimeout() {
+    if(!canFocus(this.isFirst)) return;
     this.inputField.input.focus();
   }
 }

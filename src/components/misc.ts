@@ -55,14 +55,14 @@ export function renderImageFromUrl(elem: HTMLElement | HTMLImageElement | SVGIma
   }
 }
 
-export function putPreloader(elem: Element, returnDiv = false) {
+export function putPreloader(elem: Element, returnDiv = false): HTMLElement {
   const html = `
   <svg xmlns="http://www.w3.org/2000/svg" class="preloader-circular" viewBox="25 25 50 50">
   <circle class="preloader-path" cx="50" cy="50" r="20" fill="none" stroke-miterlimit="10"/>
   </svg>`;
 
   if(returnDiv) {
-    let div = document.createElement('div');
+    const div = document.createElement('div');
     div.classList.add('preloader');
     div.innerHTML = html;
 
@@ -74,6 +74,7 @@ export function putPreloader(elem: Element, returnDiv = false) {
   }
   
   elem.innerHTML += html;
+  return elem.lastElementChild as HTMLElement;
 }
 
 MOUNT_CLASS_TO && (MOUNT_CLASS_TO.putPreloader = putPreloader);

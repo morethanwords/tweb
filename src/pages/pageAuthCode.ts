@@ -1,5 +1,5 @@
 import mediaSizes from '../helpers/mediaSizes';
-import { AuthSentCode, AuthSentCodeType } from '../layer';
+import { AuthSentCode, AuthSentCodeType, AuthSignIn } from '../layer';
 import appStateManager from '../lib/appManagers/appStateManager';
 import apiManager from '../lib/mtproto/mtprotoworker';
 import Page from './page';
@@ -7,8 +7,8 @@ import pageIm from './pageIm';
 import pagePassword from './pagePassword';
 import pageSignIn from './pageSignIn';
 import pageSignUp from './pageSignUp';
-import InputField from '../components/inputField';
 import TrackingMonkey from '../components/monkeys/tracking';
+import CodeInputField from '../components/codeInputField';
 
 let authCode: AuthSentCode.authSentCode = null;
 
@@ -17,24 +17,21 @@ let sentTypeElement: HTMLParagraphElement = null;
 let codeInput: HTMLInputElement;
 
 let onFirstMount = (): Promise<any> => {
-  let lastLength = 0;
-
   const CODELENGTH = (authCode.type as AuthSentCodeType.authSentCodeTypeApp).length;
 
-  const codeInputField = new InputField({
+  const codeInputField = new CodeInputField({
     label: 'Code',
     name: 'code',
-    plainText: true
+    length: CODELENGTH,
+    onFill: (code) => {
+      submitCode('' + code);
+    }
   });
 
   codeInput = codeInputField.input as HTMLInputElement;
-  codeInput.type = 'tel';
-  codeInput.setAttribute('required', '');
-  codeInput.autocomplete = 'off';
 
   page.pageEl.querySelector('.input-wrapper').append(codeInputField.container);
 
-  const codeInputLabel = codeInput.nextElementSibling as HTMLLabelElement;
   const editButton = page.pageEl.querySelector('.phone-edit') as HTMLElement;
 
   editButton.addEventListener('click', function() {
@@ -50,7 +47,7 @@ let onFirstMount = (): Promise<any> => {
   const submitCode = (code: string) => {
     codeInput.setAttribute('disabled', 'true');
 
-    const params = {
+    const params: AuthSignIn = {
       phone_number: authCode.phone_number,
       phone_code_hash: authCode.phone_code_hash,
       phone_code: code
@@ -92,40 +89,21 @@ let onFirstMount = (): Promise<any> => {
           break;
         case 'PHONE_CODE_EXPIRED':
           codeInput.classList.add('error');
-          codeInputLabel.innerText = 'Code expired';
+          codeInputField.label.innerText = 'Code expired';
           break;
         case 'PHONE_CODE_EMPTY':
         case 'PHONE_CODE_INVALID':
           codeInput.classList.add('error');
-          codeInputLabel.innerText = 'Invalid Code';
+          codeInputField.label.innerText = 'Invalid Code';
           break;
         default:
-          codeInputLabel.innerText = err.type;
+          codeInputField.label.innerText = err.type;
           break;
       }
 
       codeInput.removeAttribute('disabled');
     });
   };
-
-  codeInput.addEventListener('input', function(this: typeof codeInput, e) {
-    this.classList.remove('error');
-    codeInputLabel.innerText = 'Code';
-
-    this.value = this.value.replace(/\D/g, '');
-    if(this.value.length > CODELENGTH) {
-      this.value = this.value.slice(0, CODELENGTH);
-    }
-
-    const length = this.value.length;
-    if(length === CODELENGTH) { // submit code
-      submitCode(this.value);
-    } else if(length === lastLength) {
-      return;
-    }
-
-    lastLength = length;
-  });
 
   const imageDiv = page.pageEl.querySelector('.auth-image') as HTMLDivElement;
   const size = mediaSizes.isMobile ? 100 : 166;
