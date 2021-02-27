@@ -133,6 +133,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     canvas.width = canvas.height = doc.w/*  * window.devicePixelRatio */;
 
     divRound.prepend(canvas, spanTime);
+    divRound.append(video);
     container.append(divRound);
 
     const ctx = canvas.getContext('2d');
