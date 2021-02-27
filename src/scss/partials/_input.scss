@@ -309,7 +309,7 @@ input:focus, button:focus {
 .input-field-password {
   .input-field-input {
     padding-right: 2.5rem;
-    max-height: 54px;
+    max-height: var(--height);
     
     &[type="password"] {
       font-size: 2.25rem;
