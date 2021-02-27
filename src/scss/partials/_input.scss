@@ -47,7 +47,7 @@
     height: 1.5rem;
     transform: translate(0, 0);
     background-color: #fff;
-    transition: .2s transform, .2s padding, .1s opacity;
+    transition: .2s transform, .2s padding, .1s opacity, font-weight 0s .1s;
     transform-origin: left center;
     pointer-events: none;
     margin-top: calc((var(--height) - 1.5rem) / 2); // * Center of first line
@@ -132,7 +132,6 @@
     &:focus ~ .arrow-down {
       margin-top: -4px;
       transform: rotate(225deg);
-      -webkit-transform: rotate(225deg);
       border-color: $button-primary-background;
     }
     
@@ -141,7 +140,10 @@
       font-weight: 500;
     }
     
-    &:focus ~ label, &:valid ~ label, &:not(:empty) ~ label, &:disabled ~ label {
+    &:focus ~ label, 
+    &:valid ~ label, 
+    &:not(:empty) ~ label, 
+    &:disabled ~ label {
       transform: translate(-.25rem, calc(var(--height) / -2 + .125rem)) scale(.75);
       padding: 0 6px;
       opacity: 1;
