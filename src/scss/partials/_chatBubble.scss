@@ -506,6 +506,7 @@ $bubble-margin: .25rem;
   &.sticker {
     .attachment {
       border-radius: 0;
+      z-index: 1;
     }
 
     .bubble-content {

@@ -725,6 +725,10 @@ namespace RichTextProcessor {
     return !text ? null : text.match(urlRegExp);
   }
 
+  export function matchEmail(text: string) {
+    return !text ? null : text.match(emailRegExp);
+  }
+
   export function getAbbreviation(str: string, onlyFirst = false) {
     const splitted = str.trim().split(' ');
     if(!splitted[0]) return '';
