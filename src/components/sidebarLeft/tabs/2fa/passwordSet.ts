@@ -28,7 +28,7 @@ export default class AppTwoStepVerificationSetTab extends SliderSuperTab {
       wrapSticker({
         doc,
         div: stickerContainer,
-        loop: false,
+        loop: true,
         play: true,
         width: 160,
         height: 160,

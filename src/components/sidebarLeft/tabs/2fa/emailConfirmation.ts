@@ -5,27 +5,27 @@ import Button from "../../../button";
 import SidebarSlider, { SliderSuperTab } from "../../../slider";
 import { wrapSticker } from "../../../wrappers";
 import InputField from "../../../inputField";
-import { attachClickEvent, cancelEvent } from "../../../../helpers/dom";
+import { attachClickEvent } from "../../../../helpers/dom";
 import PopupConfirmAction from "../../../popups/confirmAction";
 import { putPreloader } from "../../../misc";
 import passwordManager from "../../../../lib/mtproto/passwordManager";
 import AppTwoStepVerificationSetTab from "./passwordSet";
-import AppTwoStepVerificationEmailConfirmationTab from "./emailConfirmation";
-import RichTextProcessor from "../../../../lib/richtextprocessor";
 
-export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
+export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSuperTab {
   public inputField: InputField;
   public state: AccountPassword;
   public plainPassword: string;
   public newPassword: string;
   public hint: string;
+  public email: string;
+  public length: number;
 
   constructor(slider: SidebarSlider) {
     super(slider, true);
   }
 
   protected init() {
-    this.container.classList.add('two-step-verification', 'two-step-verification-email');
+    this.container.classList.add('two-step-verification', 'two-step-verification-email-confirmation');
     this.title.innerHTML = 'Recovery Email';
 
     const section = new SettingSection({
@@ -33,7 +33,7 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
       noDelimiter: true
     });
 
-    const emoji = '💌';
+    const emoji = '📬';
     const doc = appStickersManager.getAnimatedEmojiSticker(emoji);
     const stickerContainer = document.createElement('div');
 
@@ -61,20 +61,8 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
     inputWrapper.classList.add('input-wrapper');
 
     const inputField = this.inputField = new InputField({
-      name: 'recovery-email',
-      label: 'Recovery Email',
-      plainText: true
-    });
-
-    inputField.input.addEventListener('keypress', (e) => {
-      if(e.key === 'Enter') {
-        cancelEvent(e);
-        return btnContinue.click();
-      }
-    });
-
-    inputField.input.addEventListener('input', (e) => {
-      inputField.input.classList.remove('error');
+      name: 'recovery-email-code',
+      label: 'Code'
     });
 
     const btnContinue = Button('btn-primary btn-color-primary', {text: 'CONTINUE'});
@@ -85,52 +73,8 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
     };
 
     attachClickEvent(btnContinue, (e) => {
-      const email = inputField.value.trim();
-      const match = RichTextProcessor.matchEmail(email);
-      if(!match || match[0].length !== email.length) {
-        inputField.input.classList.add('error');
-        return;
-      }
-
-      toggleButtons(true);
-      putPreloader(btnContinue);
-
-      passwordManager.updateSettings({
-        hint: this.hint,
-        currentPassword: this.plainPassword,
-        newPassword: this.newPassword,
-        email
-      }).then((value) => {
-        goNext();
-      }, (err) => {
-        if(err.type.includes('EMAIL_UNCONFIRMED')) {
-          const symbols = +err.type.match(/^EMAIL_UNCONFIRMED_(\d+)/)[1];
-
-          const tab = new AppTwoStepVerificationEmailConfirmationTab(this.slider);
-          tab.state = this.state;
-          tab.newPassword = this.newPassword;
-          tab.plainPassword = this.plainPassword;
-          tab.hint = this.hint;
-          tab.email = email;
-          tab.length = symbols;
-          tab.open();
-        } else {
-          console.log('password set error', err);
-        }
-
-        toggleButtons(false);
-      });
+      
     });
-
-    const toggleButtons = (freeze: boolean) => {
-      if(freeze) {
-        btnContinue.setAttribute('disabled', 'true');
-        btnSkip.setAttribute('disabled', 'true');
-      } else {
-        btnContinue.removeAttribute('disabled');
-        btnSkip.removeAttribute('disabled');
-      }
-    };
 
     attachClickEvent(btnSkip, (e) => {
       const popup = new PopupConfirmAction('popup-skip-email', [{
@@ -140,7 +84,8 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
         text: 'SKIP',
         callback: () => {
           //inputContent.classList.add('sidebar-left-section-disabled');
-          toggleButtons(true);
+          btnContinue.setAttribute('disabled', 'true');
+          btnSkip.setAttribute('disabled', 'true');
           putPreloader(btnSkip);
           passwordManager.updateSettings({
             hint: this.hint, 
@@ -149,7 +94,8 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
           }).then(() => {
             goNext();
           }, (err) => {
-            toggleButtons(false);
+            btnContinue.removeAttribute('disabled');
+            btnSkip.removeAttribute('disabled');
           });
         },
         isDanger: true,
