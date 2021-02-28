@@ -4,7 +4,7 @@ import { AccountPassword } from "../../../../layer";
 import Button from "../../../button";
 import PasswordInputField from "../../../passwordInputField";
 import { ripple } from "../../../ripple";
-import SidebarSlider, { SliderSuperTab } from "../../../slider";
+import { SliderSuperTab } from "../../../slider";
 import TrackingMonkey from "../../../monkeys/tracking";
 import AppTwoStepVerificationHintTab from "./hint";
 
@@ -13,10 +13,6 @@ export default class AppTwoStepVerificationReEnterPasswordTab extends SliderSupe
   public passwordInputField: PasswordInputField;
   public plainPassword: string;
   public newPassword: string;
-  
-  constructor(slider: SidebarSlider) {
-    super(slider, true);
-  }
 
   protected init() {
     this.container.classList.add('two-step-verification', 'two-step-verification-enter-password', 'two-step-verification-re-enter-password');

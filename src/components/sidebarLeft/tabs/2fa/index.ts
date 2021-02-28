@@ -5,7 +5,7 @@ import appStickersManager from "../../../../lib/appManagers/appStickersManager";
 import passwordManager from "../../../../lib/mtproto/passwordManager";
 import Button from "../../../button";
 import PopupConfirmAction from "../../../popups/confirmAction";
-import SidebarSlider, { SliderSuperTab } from "../../../slider";
+import { SliderSuperTab } from "../../../slider";
 import { wrapSticker } from "../../../wrappers";
 import AppSettingsTab from "../settings";
 import AppTwoStepVerificationEmailTab from "./email";
@@ -14,10 +14,6 @@ import AppTwoStepVerificationEnterPasswordTab from "./enterPassword";
 export default class AppTwoStepVerificationTab extends SliderSuperTab {
   public state: AccountPassword;
   public plainPassword: string;
-
-  constructor(slider: SidebarSlider) {
-    super(slider, true);
-  }
 
   protected init() {
     this.container.classList.add('two-step-verification', 'two-step-verification-main');

@@ -1,4 +1,4 @@
-import SidebarSlider, { SliderSuperTab } from "../../slider";
+import { SliderSuperTab } from "../../slider";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import appPhotosManager from "../../../lib/appManagers/appPhotosManager";
@@ -14,10 +14,6 @@ export default class AppContactsTab extends SliderSuperTab {
   private inputSearch: InputSearch;
   private alive = true;
   
-  constructor(slider: SidebarSlider) {
-    super(slider, true);
-  }
-
   init() {
     this.container.id = 'contacts-container';
 

@@ -1,12 +1,34 @@
 import { MOUNT_CLASS_TO } from "../../config/debug";
-import { InputPrivacyKey, PrivacyRule } from "../../layer";
+import { InputPrivacyKey, InputPrivacyRule, PrivacyRule } from "../../layer";
 import apiManager from "../mtproto/mtprotoworker";
 import appChatsManager from "./appChatsManager";
 import appUsersManager from "./appUsersManager";
 
+export enum PrivacyType {
+  Everybody = 2,
+  Contacts = 1,
+  Nobody = 0
+}
+
 export class AppPrivacyManager {
   constructor() {
 
+  }
+
+  public setPrivacy(inputKey: InputPrivacyKey['_'], rules: InputPrivacyRule[]) {
+    return apiManager.invokeApi('account.setPrivacy', {
+      key: {
+        _: inputKey
+      },
+      rules
+    }).then(privacyRules => {
+      /* appUsersManager.saveApiUsers(privacyRules.users);
+      appChatsManager.saveApiChats(privacyRules.chats);
+
+      console.log('privacy rules', inputKey, privacyRules, privacyRules.rules); */
+
+      return privacyRules.rules;
+    });
   }
 
   public getPrivacy(inputKey: InputPrivacyKey['_']) {
@@ -18,16 +40,17 @@ export class AppPrivacyManager {
       appUsersManager.saveApiUsers(privacyRules.users);
       appChatsManager.saveApiChats(privacyRules.chats);
 
-      console.log('privacy rules', inputKey, privacyRules, privacyRules.rules);
+      //console.log('privacy rules', inputKey, privacyRules, privacyRules.rules);
 
       return privacyRules.rules;
     });
   }
 
   public getPrivacyRulesDetails(rules: PrivacyRule[]) {
-    const types: number[] = [];
+    const types: PrivacyType[] = [];
 
-    let allowLengths = {users: 0, chats: 0}, disallowLengths = {users: 0, chats: 0};
+    type peers = {users: number[], chats: number[]};
+    let allowPeers: peers = {users: [], chats: []}, disallowPeers: peers = {users: [], chats: []};
     rules.forEach(rule => {
       switch(rule._) {
         case 'privacyValueAllowAll':
@@ -43,21 +66,21 @@ export class AppPrivacyManager {
           types.push('Except My Contacts');
           break; */
         case 'privacyValueAllowChatParticipants':
-          allowLengths.chats += rule.chats.length;
+          allowPeers.chats.push(...rule.chats);
           break;
         case 'privacyValueAllowUsers':
-          allowLengths.users += rule.users.length;
+          allowPeers.users.push(...rule.users);
           break;
         case 'privacyValueDisallowChatParticipants':
-          disallowLengths.chats += rule.chats.length;
+          disallowPeers.chats.push(...rule.chats);
           break;
         case 'privacyValueDisallowUsers':
-          disallowLengths.users += rule.users.length;
+          disallowPeers.users.push(...rule.users);
           break;
       }
     });
 
-    return {type: types[0], disallowLengths, allowLengths};
+    return {type: types[0], disallowPeers, allowPeers};
   }
 }
 

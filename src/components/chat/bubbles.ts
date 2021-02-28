@@ -380,7 +380,7 @@ export default class ChatBubbles {
       });
     }
 
-    if(false) this.stickyIntersector = new StickyIntersector(this.scrollable.container, (stuck, target) => {
+    /* if(false)  */this.stickyIntersector = new StickyIntersector(this.scrollable.container, (stuck, target) => {
       for(const timestamp in this.dateMessages) {
         const dateMessage = this.dateMessages[timestamp];
         if(dateMessage.container === target) {

@@ -445,6 +445,8 @@ export default class AppSelectPeers {
       this.add(value, undefined, false);
     });
 
-    this.selectedScrollable.scrollIntoViewNew(this.input, 'center', undefined, undefined, FocusDirection.Static);
+    window.requestAnimationFrame(() => { // ! not the best place for this raf though it works
+      this.selectedScrollable.scrollIntoViewNew(this.input, 'center', undefined, undefined, FocusDirection.Static);
+    });
   }
 }

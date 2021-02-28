@@ -1,4 +1,4 @@
-import appSidebarLeft, { AppSidebarLeft } from "..";
+import appSidebarLeft from "..";
 import { InputFile } from "../../../layer";
 import appChatsManager from "../../../lib/appManagers/appChatsManager";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
@@ -16,10 +16,6 @@ export default class AppNewGroupTab extends SliderSuperTab {
   private userIds: number[];
   private nextBtn: HTMLButtonElement;
   private groupNameInputField: InputField;
-  
-  constructor(appSidebarLeft: AppSidebarLeft) {
-    super(appSidebarLeft, true);
-  }
 
   protected init() {
     this.container.classList.add('new-group-container');

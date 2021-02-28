@@ -1,4 +1,4 @@
-import SidebarSlider, { SliderSuperTab } from "../../slider";
+import { SliderSuperTab } from "../../slider";
 import AppSelectPeers from "../../appSelectPeers";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import appPeersManager from "../../../lib/appManagers/appPeersManager";
@@ -7,7 +7,6 @@ import { MyDialogFilter as DialogFilter } from "../../../lib/storages/filters";
 import rootScope from "../../../lib/rootScope";
 import { copy } from "../../../helpers/object";
 import ButtonIcon from "../../buttonIcon";
-import { fastRaf } from "../../../helpers/schedulers";
 import CheckboxField from "../../checkbox";
 import Button from "../../button";
 import AppEditFolderTab from "./editFolder";
@@ -20,10 +19,6 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
   private type: 'included' | 'excluded';
   private filter: DialogFilter;
   private originalFilter: DialogFilter;
-
-  constructor(slider: SidebarSlider) {
-    super(slider, true);
-  }
 
   init() {
     this.content.remove();
@@ -224,9 +219,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
 
     this.selector.list.parentElement.insertBefore(fragment, this.selector.list);
 
-    fastRaf(() => {
-      this.selector.addInitial(selectedPeers);
-    });
+    this.selector.addInitial(selectedPeers);
 
     for(const flag in filter.pFlags) {
       // @ts-ignore
@@ -234,8 +227,6 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
         (categories.querySelector(`[data-peer-id="${flag}"]`) as HTMLElement).click();
       }
     }
-
-    return super.onOpen();
   }
 
   onSelectChange = (length: number) => {

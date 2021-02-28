@@ -1,8 +1,7 @@
-import SidebarSlider, { SliderSuperTab } from "../../slider";
+import { SliderSuperTab } from "../../slider";
 import AppSelectPeers from "../../appSelectPeers";
 import { putPreloader } from "../../misc";
 import Button from "../../button";
-import { fastRaf } from "../../../helpers/schedulers";
 
 export default class AppAddMembersTab extends SliderSuperTab {
   private nextBtn: HTMLButtonElement;
@@ -10,10 +9,6 @@ export default class AppAddMembersTab extends SliderSuperTab {
   private peerType: 'channel' | 'chat' | 'privacy';
   private takeOut: (peerIds: number[]) => Promise<any> | any;
   private skippable: boolean;
-
-  constructor(slider: SidebarSlider) {
-    super(slider, true);
-  }
 
   protected init() {
     this.nextBtn = Button('btn-corner btn-circle', {icon: 'arrow_next'});
@@ -70,9 +65,7 @@ export default class AppAddMembersTab extends SliderSuperTab {
     this.selector.input.placeholder = options.placeholder;
 
     if(options.selectedPeerIds) {
-      fastRaf(() => {
-        this.selector.addInitial(options.selectedPeerIds);
-      });
+      this.selector.addInitial(options.selectedPeerIds);
     }
 
     this.nextBtn.classList.add('tgico-arrow_next');

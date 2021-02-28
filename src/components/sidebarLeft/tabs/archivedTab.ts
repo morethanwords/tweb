@@ -1,14 +1,10 @@
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
-import SidebarSlider, { SliderSuperTab } from "../../slider";
+import { SliderSuperTab } from "../../slider";
 
 export default class AppArchivedTab extends SliderSuperTab {
   public loadedAll: boolean;
   public loadDialogsPromise: Promise<any>;
   public wasFilterId: number;
-
-  constructor(slider: SidebarSlider) {
-    super(slider, true);
-  }
 
   init() {
     this.container.id = 'chats-archived-container';
@@ -38,8 +34,6 @@ export default class AppArchivedTab extends SliderSuperTab {
     appDialogsManager.scroll = this.scrollable;
     appDialogsManager.filterId = 1;
     appDialogsManager.onTabChange();
-
-    return super.onOpen();
   }
 
   // вообще, так делать нельзя, но нет времени чтобы переделать главный чатлист на слайд...

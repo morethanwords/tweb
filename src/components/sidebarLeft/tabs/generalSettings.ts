@@ -1,7 +1,6 @@
 import { SliderSuperTab } from "../../slider"
-import { AppSidebarLeft, generateSection } from "..";
+import { generateSection } from "..";
 import RangeSelector from "../../rangeSelector";
-import { clamp } from "../../../helpers/number";
 import Button from "../../button";
 import CheckboxField from "../../checkbox";
 import RadioField from "../../radioField";
@@ -54,10 +53,6 @@ export class RangeSettingSelector {
 }
 
 export default class AppGeneralSettingsTab extends SliderSuperTab {
-  constructor(appSidebarLeft: AppSidebarLeft) {
-    super(appSidebarLeft, true);
-  }
-
   init() {
     this.container.classList.add('general-settings-container');
     this.title.innerText = 'General';
