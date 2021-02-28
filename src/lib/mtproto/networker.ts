@@ -1214,9 +1214,9 @@ export default class MTPNetworker {
 
   // ! таймаут очень сильно тормозит скорость работы сокета (даже нулевой) 
   public scheduleRequest(delay?: number) {
-    if(!this.isOnline) {
+    /* if(!this.isOnline) {
       return;
-    }
+    } */
 
     /// #if MTPROTO_HTTP || MTPROTO_HTTP_UPLOAD
     if(!(this.transport instanceof HTTP)) {
@@ -1256,9 +1256,9 @@ export default class MTPNetworker {
         return;
       }
       /// #else
-      if(!this.isOnline) {
+      /* if(!this.isOnline) {
         return;
-      }
+      } */
 
       this.performScheduledRequest();
       /// #endif

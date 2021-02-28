@@ -1,27 +1,39 @@
 import type { ArgumentTypes, SuperReturnType } from "../types";
 
+/**
+ * Better not to remove listeners during setting
+ * Should add listener callback only once
+ */
 export default class EventListenerBase<Listeners extends {[name: string]: Function}> {
   protected listeners: Partial<{
-    [k in keyof Listeners]: Array<{callback: Listeners[k], once?: true}>
-  }> = {};
+    [k in keyof Listeners]: Array<{callback: Listeners[k], once?: boolean}>
+  }>;
   protected listenerResults: Partial<{
     [k in keyof Listeners]: ArgumentTypes<Listeners[k]>
-  }> = {};
+  }>;
 
-  constructor(private reuseResults?: true) {
+  private reuseResults: boolean;
 
+  constructor(reuseResults?: boolean) {
+    this._constructor(reuseResults);
   }
 
-  public addListener(name: keyof Listeners, callback: Listeners[typeof name], once?: true) {
-    (this.listeners[name] ?? (this.listeners[name] = [])).push({callback, once});
+  public _constructor(reuseResults = false): any {
+    this.reuseResults = reuseResults;
+    this.listeners = {};
+    this.listenerResults = {};
+  }
 
+  public addListener(name: keyof Listeners, callback: Listeners[typeof name], once?: boolean) {
     if(this.listenerResults.hasOwnProperty(name)) {
       callback(...this.listenerResults[name]);
-
+      
       if(once) {
-        this.removeListener(name, callback);
+        return;
       }
     }
+    
+    (this.listeners[name] ?? (this.listeners[name] = [])).push({callback, once});
   }
 
   public removeListener(name: keyof Listeners, callback: Listeners[typeof name]) {
@@ -37,16 +49,40 @@ export default class EventListenerBase<Listeners extends {[name: string]: Functi
     }
 
     const arr: Array<SuperReturnType<Listeners[typeof name]>> = [];
-    if(this.listeners[name]) {
-      this.listeners[name].forEach(listener => {
+    const listeners = this.listeners[name];
+    if(listeners) {
+      // ! this one will guarantee execution even if delete another listener during setting
+      const left = listeners.slice();
+      left.forEach(listener => {
+        const index = listeners.findIndex(l => l.callback === listener.callback);
+        if(index === -1) {
+          return;
+        }
+
         arr.push(listener.callback(...args));
 
         if(listener.once) {
           this.removeListener(name, listener.callback);
         }
       });
+
+      /* for(let i = 0, length = listeners.length; i < length; ++i) {
+        const listener = listeners[i];
+        arr.push(listener.callback(...args));
+
+        if(listener.once) {
+          listeners.splice(i, 1);
+          --i;
+          --length;
+        }
+      } */
     }
 
     return arr;
+  }
+
+  public cleanup() {
+    this.listeners = {}; 
+    this.listenerResults = {};
   }
 }

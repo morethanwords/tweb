@@ -1,4 +1,4 @@
-import appSidebarLeft, { AppSidebarLeft } from "..";
+import appSidebarLeft from "..";
 import { InputFile } from "../../../layer";
 import appChatsManager from "../../../lib/appManagers/appChatsManager";
 import Button from "../../button";
@@ -14,10 +14,6 @@ export default class AppNewChannelTab extends SliderSuperTab {
   private channelDescriptionInputField: InputField;
   private nextBtn: HTMLButtonElement;
   private avatarEdit: AvatarEdit;
-
-  constructor(appSidebarLeft: AppSidebarLeft) {
-    super(appSidebarLeft, true);
-  }
 
   protected init() {
     this.container.classList.add('new-channel-container');

@@ -7,10 +7,6 @@ import { wrapSticker } from "../../../wrappers";
 import AppSettingsTab from "../settings";
 
 export default class AppTwoStepVerificationSetTab extends SliderSuperTab {
-  constructor(slider: SidebarSlider) {
-    super(slider, true);
-  }
-
   protected init() {
     this.container.classList.add('two-step-verification', 'two-step-verification-set');
     this.title.innerHTML = 'Password Set!';

@@ -1,7 +1,6 @@
 import AppTwoStepVerificationTab from ".";
 import { SettingSection } from "../..";
 import { attachClickEvent, cancelEvent, canFocus } from "../../../../helpers/dom";
-import { isMobileSafari } from "../../../../helpers/userAgent";
 import { AccountPassword } from "../../../../layer";
 import passwordManager from "../../../../lib/mtproto/passwordManager";
 import RichTextProcessor from "../../../../lib/richtextprocessor";
@@ -10,7 +9,7 @@ import { putPreloader } from "../../../misc";
 import PasswordMonkey from "../../../monkeys/password";
 import PasswordInputField from "../../../passwordInputField";
 import { ripple } from "../../../ripple";
-import SidebarSlider, { SliderSuperTab } from "../../../slider";
+import { SliderSuperTab } from "../../../slider";
 import AppTwoStepVerificationReEnterPasswordTab from "./reEnterPassword";
 
 export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperTab {
@@ -19,10 +18,6 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
   public plainPassword: string;
   public isFirst = true;
   
-  constructor(slider: SidebarSlider) {
-    super(slider, true);
-  }
-
   protected init() {
     const isNew = !this.state.pFlags.has_password || this.plainPassword;
     this.container.classList.add('two-step-verification', 'two-step-verification-enter-password');

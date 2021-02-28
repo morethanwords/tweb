@@ -2,7 +2,7 @@ import { SettingSection } from "../..";
 import { AccountPassword } from "../../../../layer";
 import appStickersManager from "../../../../lib/appManagers/appStickersManager";
 import Button from "../../../button";
-import SidebarSlider, { SliderSuperTab } from "../../../slider";
+import { SliderSuperTab } from "../../../slider";
 import { wrapSticker } from "../../../wrappers";
 import InputField from "../../../inputField";
 import AppTwoStepVerificationEmailTab from "./email";
@@ -14,10 +14,6 @@ export default class AppTwoStepVerificationHintTab extends SliderSuperTab {
   public state: AccountPassword;
   public plainPassword: string;
   public newPassword: string;
-
-  constructor(slider: SidebarSlider) {
-    super(slider, true);
-  }
 
   protected init() {
     this.container.classList.add('two-step-verification', 'two-step-verification-hint');

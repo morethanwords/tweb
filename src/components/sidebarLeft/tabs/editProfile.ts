@@ -6,7 +6,7 @@ import RichTextProcessor from "../../../lib/richtextprocessor";
 import rootScope from "../../../lib/rootScope";
 import AvatarElement from "../../avatar";
 import InputField from "../../inputField";
-import SidebarSlider, { SliderSuperTab } from "../../slider";
+import { SliderSuperTab } from "../../slider";
 import AvatarEdit from "../../avatarEdit";
 import Button from "../../button";
 
@@ -38,10 +38,6 @@ export default class AppEditProfileTab extends SliderSuperTab {
     userName: '',
     bio: ''
   };
-
-  constructor(slider: SidebarSlider) {
-    super(slider, true);
-  }
 
   protected init() {
     this.container.classList.add('edit-profile-container');

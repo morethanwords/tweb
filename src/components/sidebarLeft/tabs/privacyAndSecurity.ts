@@ -1,19 +1,20 @@
-import SidebarSlider, { SliderSuperTab } from "../../slider";
+import { SliderSuperTab } from "../../slider";
 import { generateSection, SettingSection } from "..";
 import Row from "../../row";
 import { AccountPassword, InputPrivacyKey, PrivacyRule } from "../../../layer";
-import appPrivacyManager from "../../../lib/appManagers/appPrivacyManager";
+import appPrivacyManager, { PrivacyType } from "../../../lib/appManagers/appPrivacyManager";
 import AppPrivacyPhoneNumberTab from "./privacy/phoneNumber";
 import AppTwoStepVerificationTab from "./2fa";
 import passwordManager from "../../../lib/mtproto/passwordManager";
 import AppTwoStepVerificationEnterPasswordTab from "./2fa/enterPassword";
 import AppTwoStepVerificationEmailConfirmationTab from "./2fa/emailConfirmation";
+import AppPrivacyLastSeenTab from "./privacy/lastSeen";
+import AppPrivacyProfilePhotoTab from "./privacy/profilePhoto";
+import AppPrivacyForwardMessagesTab from "./privacy/forwardMessages";
+import AppPrivacyAddToGroupsTab from "./privacy/addToGroups";
+import AppPrivacyCallsTab from "./privacy/calls";
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
-  constructor(slider: SidebarSlider) {
-    super(slider, true);
-  }
-
   protected init() {
     this.container.classList.add('privacy-container');
     this.title.innerText = 'Privacy and Security';
@@ -94,40 +95,56 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
       const lastSeenTimeRow = rowsByKeys['inputPrivacyKeyStatusTimestamp'] = new Row({
         title: 'Who can see your Last Seen time?',
         subtitle: 'Everybody',
-        clickable: true
+        clickable: () => {
+          new AppPrivacyLastSeenTab(this.slider).open()
+        }
       });
 
       const photoVisibilityRow = rowsByKeys['inputPrivacyKeyProfilePhoto'] = new Row({
         title: 'Who can see my profile photo?',
         subtitle: 'Everybody',
-        clickable: true
+        clickable: () => {
+          new AppPrivacyProfilePhotoTab(this.slider).open();
+        }
+      });
+
+      const callRow = rowsByKeys['inputPrivacyKeyPhoneCall'] = new Row({
+        title: 'Who can call me?',
+        subtitle: 'Everybody',
+        clickable: () => {
+          new AppPrivacyCallsTab(this.slider).open();
+        }
       });
 
       const linkAccountRow = rowsByKeys['inputPrivacyKeyForwards'] = new Row({
         title: 'Who can add a link to my account when forwarding my messages?',
         subtitle: 'Everybody',
-        clickable: true
+        clickable: () => {
+          new AppPrivacyForwardMessagesTab(this.slider).open();
+        }
       });
 
       const groupChatsAddRow = rowsByKeys['inputPrivacyKeyChatInvite'] = new Row({
         title: 'Who can add me to group chats?',
         subtitle: 'Everybody',
-        clickable: true
+        clickable: () => {
+          new AppPrivacyAddToGroupsTab(this.slider).open();
+        }
       });
 
       for(const key in rowsByKeys) {
         const row = rowsByKeys[key as keyof typeof rowsByKeys];
         appPrivacyManager.getPrivacy(key as keyof typeof rowsByKeys).then(rules => {
           const details = appPrivacyManager.getPrivacyRulesDetails(rules);
-          const type = details.type === 2 ? 'Everybody' : (details.type === 1 ? 'My Contacts' : 'Nobody');
-          const disallowLength = details.disallowLengths.users + details.disallowLengths.chats;
-          const allowLength = details.allowLengths.users + details.allowLengths.chats;
+          const type = details.type === PrivacyType.Everybody ? 'Everybody' : (details.type === PrivacyType.Contacts ? 'My Contacts' : 'Nobody');
+          const disallowLength = details.disallowPeers.users.length + details.disallowPeers.chats.length;
+          const allowLength = details.allowPeers.users.length + details.allowPeers.chats.length;
           const str = type + (disallowLength || allowLength ? ` (${[-disallowLength, allowLength ? '+' + allowLength : 0].filter(Boolean).join(', ')})` : '');
           row.subtitle.innerHTML = str;
         });
       }
 
-      container.append(numberVisibilityRow.container, lastSeenTimeRow.container, photoVisibilityRow.container, linkAccountRow.container, groupChatsAddRow.container);
+      container.append(numberVisibilityRow.container, lastSeenTimeRow.container, photoVisibilityRow.container, callRow.container, linkAccountRow.container, groupChatsAddRow.container);
     }
   }
 }

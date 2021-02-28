@@ -1,4 +1,4 @@
-import SidebarSlider, { SliderSuperTab } from "../../slider";
+import { SliderSuperTab } from "../../slider";
 import AvatarElement from "../../avatar";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
@@ -23,10 +23,6 @@ export default class AppSettingsTab extends SliderSuperTab {
     privacy: HTMLButtonElement,
     language: HTMLButtonElement
   } = {} as any;
-
-  constructor(slider: SidebarSlider) {
-    super(slider, true);
-  }
 
   init() {
     this.container.classList.add('settings-container');
@@ -146,6 +142,5 @@ export default class AppSettingsTab extends SliderSuperTab {
     }
 
     this.fillElements();
-    return super.onOpen();
   }
 }

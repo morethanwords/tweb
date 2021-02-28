@@ -1,3 +1,4 @@
+import EventListenerBase from "../helpers/eventListenerBase";
 import ButtonIcon from "./buttonIcon";
 import Scrollable from "./scrollable";
 import SidebarSlider from "./slider";
@@ -23,7 +24,17 @@ export default class SliderSuperTab implements SliderTab {
   public content: HTMLElement;
   public scrollable: Scrollable;
 
-  constructor(protected slider: SidebarSlider, protected destroyable = false) {
+  public slider: SidebarSlider;
+  public destroyable: boolean;
+
+  constructor(slider: SidebarSlider, destroyable?: boolean) {
+    this._constructor(slider, destroyable);
+  }
+
+  public _constructor(slider: SidebarSlider, destroyable = true): any {
+    this.slider = slider;
+    this.destroyable = destroyable;
+
     this.container = document.createElement('div');
     this.container.classList.add('sidebar-slider-item');
 
@@ -67,11 +78,6 @@ export default class SliderSuperTab implements SliderTab {
 
   }
 
-  // * fix incompability
-  public onOpen() {
-
-  }
-
   public onCloseAfterTimeout() {
     if(this.destroyable) { // ! WARNING, пока что это будет работать только с самой последней внутренней вкладкой !
       this.slider.tabs.delete(this);
@@ -79,3 +85,35 @@ export default class SliderSuperTab implements SliderTab {
     }
   }
 }
+
+export class SliderSuperTabEventable extends SliderSuperTab {
+  public eventListener: EventListenerBase<{
+    destroy: () => void
+  }>;
+
+  constructor(slider: SidebarSlider) {
+    super(slider);
+    this.eventListener = new EventListenerBase();
+  }
+
+  onCloseAfterTimeout() {
+    this.eventListener.setListenerResult('destroy');
+    this.eventListener.cleanup();
+    return super.onCloseAfterTimeout();
+  }
+}
+
+/* // @ts-ignore
+interface SliderSuperEventsTab extends SliderSuperTab, EventListenerBase<{}> {
+  superConstructor: (...args: any[]) => any;
+}
+class SliderSuperEventsTab implements SliderSuperEventsTab {
+  constructor(slider: SidebarSlider) {
+    this.superConstructor([slider, true]);
+  }
+}
+applyMixins(SliderSuperEventsTab, [SliderSuperTab, EventListenerBase]);
+
+(window as any).lol = SliderSuperEventsTab
+
+export {SliderSuperEventsTab}; */

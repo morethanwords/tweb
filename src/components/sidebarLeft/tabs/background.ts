@@ -14,14 +14,10 @@ import rootScope from "../../../lib/rootScope";
 import Button from "../../button";
 import CheckboxField from "../../checkbox";
 import ProgressivePreloader from "../../preloader";
-import SidebarSlider, { SliderSuperTab } from "../../slider";
+import { SliderSuperTab } from "../../slider";
 import { wrapPhoto } from "../../wrappers";
 
 export default class AppBackgroundTab extends SliderSuperTab {
-  constructor(slider: SidebarSlider) {
-    super(slider, true);
-  }
-
   init() {
     this.container.classList.add('background-container');
     this.title.innerText = 'Chat Background';

@@ -7,7 +7,7 @@ const RadioField = (text: string, name: string, value?: string, stateKey?: strin
 
   const input = document.createElement('input');
   input.type = 'radio';
-  input.id = input.name = 'input-radio-' + name;
+  /* input.id =  */input.name = 'input-radio-' + name;
 
   if(value) {
     input.value = value;

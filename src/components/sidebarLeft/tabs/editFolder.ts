@@ -3,7 +3,7 @@ import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import { MyDialogFilter as DialogFilter } from "../../../lib/storages/filters";
 import lottieLoader, { RLottiePlayer } from "../../../lib/lottieLoader";
 import { ripple } from "../../ripple";
-import SidebarSlider, { SliderSuperTab } from "../../slider";
+import { SliderSuperTab } from "../../slider";
 import { toast } from "../../toast";
 import appMessagesManager from "../../../lib/appManagers/appMessagesManager";
 import InputField from "../../inputField";
@@ -33,10 +33,6 @@ export default class AppEditFolderTab extends SliderSuperTab {
   private originalFilter: DialogFilter;
 
   private type: 'edit' | 'create';
-
-  constructor(slider: SidebarSlider) {
-    super(slider, true);
-  }
 
   protected init() {
     this.container.classList.add('edit-folder-container');
@@ -226,8 +222,6 @@ export default class AppEditFolderTab extends SliderSuperTab {
     if(this.animation) {
       this.animation.restart();
     }
-
-    return super.onOpen();
   }
 
   private onCreateOpen() {

@@ -1,4 +1,4 @@
-import SidebarSlider, { SliderSuperTab } from "../../slider";
+import { SliderSuperTab } from "../../slider";
 import lottieLoader, { RLottiePlayer } from "../../../lib/lottieLoader";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import { cancelEvent, positionElementByIndex } from "../../../helpers/dom";
@@ -22,10 +22,6 @@ export default class AppChatFoldersTab extends SliderSuperTab {
   private animation: RLottiePlayer;
 
   private filtersRendered: {[filterId: number]: HTMLElement} = {};
-
-  constructor(slider: SidebarSlider) {
-    super(slider, true);
-  }
 
   private renderFolder(dialogFilter: DialogFilterSuggested | DialogFilter | MyDialogFilter, container?: HTMLElement, div: HTMLElement = document.createElement('div')) {
     let filter: DialogFilter | MyDialogFilter;
