@@ -10,7 +10,7 @@ export default class AppPrivacyAddToGroupsTab extends SliderSuperTabEventable {
     new PrivacySection({
       tab: this,
       title: 'Who can add me to group chats?',
-      inputKey: 'inputPrivacyKeyForwards',
+      inputKey: 'inputPrivacyKeyChatInvite',
       captions: [caption, caption, caption],
       exceptionTexts: ['Never Allow', 'Always Allow'],
       appendTo: this.scrollable

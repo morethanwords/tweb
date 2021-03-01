@@ -113,7 +113,7 @@
 	position: relative;
 	text-align: left;
 	margin: 1.25rem 0;
-	line-height: 1.5rem;
+	line-height: 1.3125; // omg it centers the text
   cursor: pointer;
   
   &.hidden-widget {
@@ -134,7 +134,7 @@
         }
     
         &::after {
-          opacity: 1;
+          transform: translateY(-50%) scale(1);
         }
       }
     }
@@ -161,7 +161,7 @@
     }
 
     &::before {
-      border: 2px solid #8d969c;
+      border: 2px solid #707579;
       border-radius: 50%;
       background-color: white;
       opacity: 1;
@@ -174,8 +174,9 @@
       height: .625rem;
       border-radius: 50%;
       background: $button-primary-background;
-      opacity: 0;
-      transition: opacity .1s ease;
+      transform: translateY(-50%) scale(0);
+      transform-origin: center;
+      transition: transform .1s ease;
     }
 
     /* &-subtitle {

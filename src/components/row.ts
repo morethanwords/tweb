@@ -55,6 +55,7 @@ export default class Row {
       if(options.icon) {
         havePadding = true;
         this.title.classList.add('tgico', 'tgico-' + options.icon);
+        this.container.classList.add('row-with-icon');
       }
     }
 

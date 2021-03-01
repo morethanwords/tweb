@@ -419,6 +419,8 @@ export class SettingSection {
     if(!options.noDelimiter) {
       const hr = document.createElement('hr');
       this.container.append(hr);
+    } else {
+      this.container.classList.add('no-delimiter');
     }
 
     this.content = this.generateContentElement();
