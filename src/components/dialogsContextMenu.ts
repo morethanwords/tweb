@@ -83,6 +83,7 @@ export default class DialogsContextMenu {
 
     this.element = ButtonMenu(this.buttons);
     this.element.id = 'dialogs-contextmenu';
+    this.element.classList.add('contextmenu');
     document.getElementById('page-chats').append(this.element);
   }
 
