@@ -20,6 +20,7 @@ export default class Row {
     radioField: Row['radioField'],
     checkboxField: Row['checkboxField'],
     title: string,
+    titleRight: string,
     clickable: boolean | ((e: Event) => void),
     navigationTab: SliderSuperTab
   }> = {}) {
@@ -46,10 +47,26 @@ export default class Row {
       }
     } else {
       if(options.title) {
+        let c: HTMLElement;
+        if(options.titleRight) {
+          c = document.createElement('div');
+          c.classList.add('row-title-row');
+          this.container.append(c);
+        } else {
+          c = this.container;
+        }
+
         this.title = document.createElement('div');
         this.title.classList.add('row-title');
         this.title.innerHTML = options.title;
-        this.container.append(this.title);
+        c.append(this.title);
+
+        if(options.titleRight) {
+          const titleRight = document.createElement('div');
+          titleRight.classList.add('row-title', 'row-title-right');
+          titleRight.innerHTML = options.titleRight;
+          c.append(titleRight);
+        }
       }
 
       if(options.icon) {
