@@ -382,12 +382,12 @@ input, textarea {
   background: #fed85a;
 }
 
-#bubble-contextmenu, #dialogs-contextmenu {
-	position: fixed;
-	right: auto;
-  bottom: auto;
-  width: auto;
-  z-index: 4;
+.contextmenu {
+	position: fixed !important;
+	right: auto !important;
+  bottom: auto !important;
+  width: auto !important;
+  z-index: 4 !important;
 }
 
 @keyframes fade-in-opacity {
@@ -458,6 +458,7 @@ input, textarea {
   border-radius: $border-radius-medium;
   animation: fade-in-opacity-fade-out-opacity 3s linear forwards;
   z-index: 5;
+  max-width: 22.5rem;
 }
 
 hr {

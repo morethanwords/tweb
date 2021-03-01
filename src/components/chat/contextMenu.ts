@@ -292,6 +292,7 @@ export default class ChatContextMenu {
 
     this.element = ButtonMenu(this.buttons, this.chat.bubbles.listenerSetter);
     this.element.id = 'bubble-contextmenu';
+    this.element.classList.add('contextmenu');
     this.chat.container.append(this.element);
   };
 

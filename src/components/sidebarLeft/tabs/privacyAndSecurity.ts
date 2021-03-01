@@ -1,7 +1,7 @@
 import { SliderSuperTab } from "../../slider";
 import { generateSection, SettingSection } from "..";
 import Row from "../../row";
-import { AccountPassword, InputPrivacyKey, PrivacyRule } from "../../../layer";
+import { AccountPassword, Authorization, InputPrivacyKey, PrivacyRule } from "../../../layer";
 import appPrivacyManager, { PrivacyType } from "../../../lib/appManagers/appPrivacyManager";
 import AppPrivacyPhoneNumberTab from "./privacy/phoneNumber";
 import AppTwoStepVerificationTab from "./2fa";
@@ -14,6 +14,7 @@ import AppPrivacyForwardMessagesTab from "./privacy/forwardMessages";
 import AppPrivacyAddToGroupsTab from "./privacy/addToGroups";
 import AppPrivacyCallsTab from "./privacy/calls";
 import AppActiveSessionsTab from "./activeSessions";
+import apiManager from "../../../lib/mtproto/mtprotoworker";
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
   protected init() {
@@ -62,11 +63,14 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
       const activeSessionRow = new Row({
         icon: 'activesessions',
         title: 'Active Sessions',
-        subtitle: '3 devices',
+        subtitle: 'Loading...',
         clickable: () => {
-          new AppActiveSessionsTab(this.slider).open();
+          const tab = new AppActiveSessionsTab(this.slider);
+          tab.authorizations = authorizations;
+          tab.open();
         }
       });
+      activeSessionRow.freezed = true;
 
       section.content.append(blockedUsersRow.container, twoFactorRow.container, activeSessionRow.container);
       this.scrollable.append(section.container);
@@ -76,7 +80,15 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
         twoFactorRow.subtitle.innerText = state.pFlags.has_password ? 'On' : 'Off';
         twoFactorRow.freezed = false;
         
-        console.log('password state', state);
+        //console.log('password state', state);
+      });
+
+      let authorizations: Authorization.authorization[];
+      apiManager.invokeApi('account.getAuthorizations').then(auths => {
+        activeSessionRow.freezed = false;
+        authorizations = auths.authorizations;
+        activeSessionRow.subtitle.innerText = authorizations.length + ' ' + (authorizations.length > 1 ? 'devices' : 'device');
+        console.log('auths', auths);
       });
     }
 
@@ -149,7 +161,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
         });
       }
 
-      container.append(numberVisibilityRow.container, lastSeenTimeRow.container, photoVisibilityRow.container,/*  callRow.container,  */linkAccountRow.container, groupChatsAddRow.container);
+      container.append(numberVisibilityRow.container, lastSeenTimeRow.container, photoVisibilityRow.container, callRow.container, linkAccountRow.container, groupChatsAddRow.container);
     }
   }
 }

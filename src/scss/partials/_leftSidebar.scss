@@ -1017,6 +1017,12 @@
       color: var(--color-text-secondary);
       line-height: 1.5;
     }
+
+    &-midtitle, &-subtitle {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
   }
 
   .sidebar-left-section:first-child {

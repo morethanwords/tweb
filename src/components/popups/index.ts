@@ -50,17 +50,17 @@ export default class PopupElement {
       this.header.prepend(this.btnClose);
 
       this.btnClose.addEventListener('click', this.hide, {once: true});
+    }
 
-      if(options.overlayClosable) {
-        const onOverlayClick = (e: MouseEvent) => {
-          if(!findUpClassName(e.target, 'popup-container')) {
-            this.btnClose.click();
-            this.element.removeEventListener('click', onOverlayClick);
-          }
-        };
-    
-        this.element.addEventListener('click', onOverlayClick);
-      }
+    if(options.overlayClosable) {
+      const onOverlayClick = (e: MouseEvent) => {
+        if(!findUpClassName(e.target, 'popup-container')) {
+          this.hide();
+          this.element.removeEventListener('click', onOverlayClick);
+        }
+      };
+  
+      this.element.addEventListener('click', onOverlayClick);
     }
 
     if(options.withConfirm) {
