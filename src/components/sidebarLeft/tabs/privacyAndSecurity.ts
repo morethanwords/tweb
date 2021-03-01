@@ -13,6 +13,7 @@ import AppPrivacyProfilePhotoTab from "./privacy/profilePhoto";
 import AppPrivacyForwardMessagesTab from "./privacy/forwardMessages";
 import AppPrivacyAddToGroupsTab from "./privacy/addToGroups";
 import AppPrivacyCallsTab from "./privacy/calls";
+import AppActiveSessionsTab from "./activeSessions";
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
   protected init() {
@@ -62,7 +63,9 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
         icon: 'activesessions',
         title: 'Active Sessions',
         subtitle: '3 devices',
-        clickable: true
+        clickable: () => {
+          new AppActiveSessionsTab(this.slider).open();
+        }
       });
 
       section.content.append(blockedUsersRow.container, twoFactorRow.container, activeSessionRow.container);
