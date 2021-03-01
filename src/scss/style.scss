@@ -1092,17 +1092,21 @@ middle-ellipsis-element {
   min-height: 3.375rem;
   margin-top: .5rem;
   position: relative;
-  padding: .5rem .75rem;
+  padding: .6875rem .875rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
+
+  &-title {
+    line-height: 1.3125;
+  }
 
   &-with-padding {
     padding-left: 4.375rem;
 
     .row-title.tgico:before {
       position: absolute;
-      left: .75rem;
+      left: .875rem;
       font-size: 1.5rem;
       color: #707579;
     }

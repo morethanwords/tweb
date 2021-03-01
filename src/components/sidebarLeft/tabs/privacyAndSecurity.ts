@@ -80,6 +80,8 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
     {
       const container = section('Privacy');
 
+      container.classList.add('privacy-navigation-container');
+
       const rowsByKeys: Partial<{
         [key in InputPrivacyKey['_']]: Row
       }> = {};
@@ -144,7 +146,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
         });
       }
 
-      container.append(numberVisibilityRow.container, lastSeenTimeRow.container, photoVisibilityRow.container, callRow.container, linkAccountRow.container, groupChatsAddRow.container);
+      container.append(numberVisibilityRow.container, lastSeenTimeRow.container, photoVisibilityRow.container,/*  callRow.container,  */linkAccountRow.container, groupChatsAddRow.container);
     }
   }
 }
