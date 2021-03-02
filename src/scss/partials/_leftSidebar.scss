@@ -1012,6 +1012,10 @@
       align-items: flex-end;
     }
 
+    &-title:first-child {
+      font-weight: 500;
+    }
+
     &-title-right {
       font-size: .75rem;
       color: var(--color-text-secondary);

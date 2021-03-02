@@ -94,10 +94,12 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
 
     this.listenerSetter.add(rootScope, 'peer_block', (update) => {
       const {peerId, blocked} = update;
+      const li = list.querySelector(`[data-peer-id="${peerId}"]`);
       if(blocked) {
-        add(peerId, false);
+        if(!li) {
+          add(peerId, false);
+        }
       } else {
-        const li = list.querySelector(`[data-peer-id="${peerId}"]`);
         if(li) {
           li.remove();
         }

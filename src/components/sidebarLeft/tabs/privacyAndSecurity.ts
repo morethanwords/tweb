@@ -93,22 +93,27 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
       let blockedCount: number;
       const setBlockedCount = (count: number) => {
         blockedCount = count;
-        blockedUsersRow.subtitle.innerText = count + ' ' + (count !== 1 ? 'users' : 'user');
+        blockedUsersRow.subtitle.innerText = count ? (count + ' ' + (count > 1 ? 'users' : 'user')) : 'None';
       };
 
-      this.listenerSetter.add(rootScope, 'peer_block', (update) => {
-        const {blocked, peerId} = update;
+      this.listenerSetter.add(rootScope, 'peer_block', () => {
+        /* const {blocked, peerId} = update;
         if(!blocked) blockedPeerIds.findAndSplice(p => p === peerId);
         else blockedPeerIds.unshift(peerId);
         blockedCount += blocked ? 1 : -1;
-        setBlockedCount(blockedCount);
+        setBlockedCount(blockedCount); */
+        updateBlocked();
       });
 
-      appUsersManager.getBlocked().then(res => {
-        blockedUsersRow.freezed = false;
-        setBlockedCount(res.count);
-        blockedPeerIds = res.peerIds;
-      });
+      const updateBlocked = () => {
+        appUsersManager.getBlocked().then(res => {
+          blockedUsersRow.freezed = false;
+          setBlockedCount(res.count);
+          blockedPeerIds = res.peerIds;
+        });
+      };
+
+      updateBlocked();
 
       passwordManager.getState().then(state => {
         passwordState = state;
@@ -183,7 +188,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
         if(!row) {
           return;
         }
-        
+
         appPrivacyManager.getPrivacy(key).then(rules => {
           const details = appPrivacyManager.getPrivacyRulesDetails(rules);
           const type = details.type === PrivacyType.Everybody ? 'Everybody' : (details.type === PrivacyType.Contacts ? 'My Contacts' : 'Nobody');

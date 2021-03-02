@@ -1771,7 +1771,7 @@ export default class ChatBubbles {
         }
       }
     } else {
-      const save = ['is-highlighted'];
+      const save = ['is-highlighted', 'is-group-first', 'is-group-last'];
       const wasClassNames = bubble.className.split(' ');
       const classNames = ['bubble'].concat(save.filter(c => wasClassNames.includes(c)));
       bubble.className = classNames.join(' ');
