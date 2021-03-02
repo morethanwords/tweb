@@ -1,4 +1,47 @@
+//import { MOUNT_CLASS_TO } from "../config/debug";
 import type { ArgumentTypes, SuperReturnType } from "../types";
+
+// class EventSystem {
+//   wm: WeakMap<any, Record<any, Set<any>>> = new WeakMap();
+
+//   add(target: any, event: any, listener: any) {
+//     let listeners = this.wm.get(target);
+//     if (listeners === undefined) {
+//         listeners = {};
+//     }
+//     let listenersForEvent = listeners[event];
+//     if (listenersForEvent === undefined) {
+//         listenersForEvent = new Set();
+//     }
+//     listenersForEvent.add(listener);
+//     listeners[event] = listenersForEvent;
+//     //target.addEventListener(event, listener);
+//     this.wm.set(target, listeners);
+//   };
+
+//   remove(target: any, event: any, listener: any) {
+//     let listeners = this.wm.get(target);
+//     if (!listeners) return;
+//     let listenersForEvent = listeners[event];
+//     if (!listenersForEvent) return;
+//     listenersForEvent.delete(listener);
+//   };
+  
+//   /* fire(target, event) {
+//      let listeners = this.wm.get(target);
+//      if (!listeners) return;
+//      let listenersForEvent = listeners[event];
+//      if (!listenersForEvent) return;
+//      for (let handler of handlers) {
+//          setTimeout(handler, 0, event, target); // we use a setTimeout here because we want event triggering to be asynchronous. 
+//      }
+//   }; */
+// }
+
+// console.log = () => {};
+
+// const e = new EventSystem();
+// MOUNT_CLASS_TO && (MOUNT_CLASS_TO.e = e);
 
 /**
  * Better not to remove listeners during setting
@@ -34,12 +77,14 @@ export default class EventListenerBase<Listeners extends {[name: string]: Functi
     }
     
     (this.listeners[name] ?? (this.listeners[name] = [])).push({callback, once});
+    //e.add(this, name, {callback, once});
   }
 
   public removeListener(name: keyof Listeners, callback: Listeners[typeof name]) {
     if(this.listeners[name]) {
       this.listeners[name].findAndSplice(l => l.callback === callback);
     }
+    //e.remove(this, name, callback);
   }
 
   // * must be protected, but who cares
@@ -49,12 +94,16 @@ export default class EventListenerBase<Listeners extends {[name: string]: Functi
     }
 
     const arr: Array<SuperReturnType<Listeners[typeof name]>> = [];
+
+    /* let a = e.wm.get(this)[name];
+    if(!a) return arr;
+    const listeners = [...a]; */
     const listeners = this.listeners[name];
     if(listeners) {
       // ! this one will guarantee execution even if delete another listener during setting
       const left = listeners.slice();
-      left.forEach(listener => {
-        const index = listeners.findIndex(l => l.callback === listener.callback);
+      left.forEach((listener: any) => {
+        const index = listeners.findIndex((l: any) => l.callback === listener.callback);
         if(index === -1) {
           return;
         }

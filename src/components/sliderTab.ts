@@ -1,4 +1,5 @@
 import EventListenerBase from "../helpers/eventListenerBase";
+import ListenerSetter from "../helpers/listenerSetter";
 import ButtonIcon from "./buttonIcon";
 import Scrollable from "./scrollable";
 import SidebarSlider from "./slider";
@@ -26,6 +27,7 @@ export default class SliderSuperTab implements SliderTab {
 
   public slider: SidebarSlider;
   public destroyable: boolean;
+  public listenerSetter: ListenerSetter;
 
   constructor(slider: SidebarSlider, destroyable?: boolean) {
     this._constructor(slider, destroyable);
@@ -56,6 +58,8 @@ export default class SliderSuperTab implements SliderTab {
     this.container.append(this.header, this.content);
 
     this.slider.addTab(this);
+    
+    this.listenerSetter = new ListenerSetter();
   }
 
   public close() {
@@ -82,6 +86,10 @@ export default class SliderSuperTab implements SliderTab {
     if(this.destroyable) { // ! WARNING, пока что это будет работать только с самой последней внутренней вкладкой !
       this.slider.tabs.delete(this);
       this.container.remove();
+    }
+
+    if(this.listenerSetter) {
+      this.listenerSetter.removeAll();
     }
   }
 }

@@ -83,18 +83,7 @@ export class AppUsersManager {
 
           break;
         }
-        
-        /* // @ts-ignore
-        case 'updateUserBlocked': {
-          const id = (update as any).user_id;
-          const blocked: boolean = (update as any).blocked;
 
-          const user = this.getUser(id);
-          if(user) {
-          }
-          break;
-        } */
-  
         /* case 'updateContactLink':
           this.onContactUpdated(update.user_id, update.my_link._ === 'contactLinkContact');
           break; */
@@ -222,6 +211,25 @@ export class AppUsersManager {
       }); */
 
       return contactsList;
+    });
+  }
+
+  public toggleBlock(peerId: number, block: boolean) {
+    return apiManager.invokeApi(block ? 'contacts.block' : 'contacts.unblock', {
+      id: appPeersManager.getInputPeerById(peerId)
+    }).then(value => {
+      if(value) {
+        apiUpdatesManager.processUpdateMessage({
+          _: 'updateShort',
+          update: {
+            _: 'updatePeerBlocked',
+            peer_id: appPeersManager.getOutputPeer(peerId),
+            blocked: block
+          } as Update.updatePeerBlocked
+        });
+      }
+
+      return value;
     });
   }
 
@@ -630,6 +638,18 @@ export class AppUsersManager {
   
         return peerIds;
       });
+    });
+  }
+
+  public getBlocked(offset = 0, limit = 0) {
+    return apiManager.invokeApi('contacts.getBlocked', {offset, limit}).then(contactsBlocked => {
+      this.saveApiUsers(contactsBlocked.users);
+      appChatsManager.saveApiChats(contactsBlocked.chats);
+      const count = contactsBlocked._ === 'contacts.blocked' ? contactsBlocked.users.length + contactsBlocked.chats.length : contactsBlocked.count;
+
+      const peerIds = contactsBlocked.users.map(u => u.id).concat(contactsBlocked.chats.map(c => -c.id));
+
+      return {count, peerIds};
     });
   }
 
