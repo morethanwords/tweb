@@ -1,8 +1,10 @@
 import { MOUNT_CLASS_TO } from "../../config/debug";
-import { InputPrivacyKey, InputPrivacyRule, PrivacyRule } from "../../layer";
+import { InputPrivacyKey, InputPrivacyRule, PrivacyRule, Update, PrivacyKey } from "../../layer";
 import apiManager from "../mtproto/mtprotoworker";
 import appChatsManager from "./appChatsManager";
 import appUsersManager from "./appUsersManager";
+import apiUpdatesManager from "./apiUpdatesManager";
+import rootScope from "../rootScope";
 
 export enum PrivacyType {
   Everybody = 2,
@@ -11,8 +13,27 @@ export enum PrivacyType {
 }
 
 export class AppPrivacyManager {
-  constructor() {
+  private privacy: Partial<{
+    [key in PrivacyKey['_']]: PrivacyRule[] | Promise<PrivacyRule[]>
+  }> = {};
 
+  constructor() {
+    rootScope.on('apiUpdate', (e) => {
+      const update = e as Update;
+
+      switch(update._) {
+        case 'updatePrivacy':
+          const key = update.key._;
+          this.privacy[key] = update.rules;
+          rootScope.broadcast('privacy_update', update);
+          break;
+      }
+    });
+  }
+
+  public convertInputKeyToKey(inputKey: string) {
+    let str = inputKey.replace('input', '');
+    return (str[0].toLowerCase() + str.slice(1)) as string;
   }
 
   public setPrivacy(inputKey: InputPrivacyKey['_'], rules: InputPrivacyRule[]) {
@@ -22,17 +43,39 @@ export class AppPrivacyManager {
       },
       rules
     }).then(privacyRules => {
-      /* appUsersManager.saveApiUsers(privacyRules.users);
+      appUsersManager.saveApiUsers(privacyRules.users);
       appChatsManager.saveApiChats(privacyRules.chats);
 
-      console.log('privacy rules', inputKey, privacyRules, privacyRules.rules); */
+      apiUpdatesManager.processUpdateMessage({
+        _: 'updateShort',
+        update: {
+          _: 'updatePrivacy',
+          key: {
+            _: this.convertInputKeyToKey(inputKey)
+          },
+          rules: rules.map(inputRule => {
+            const rule: PrivacyRule = {} as any;
+            Object.assign(rule, inputRule);
+            rule._ = this.convertInputKeyToKey(rule._) as any;
+            return rule;
+          })
+        } as Update.updatePrivacy
+      });
+
+      //console.log('privacy rules', inputKey, privacyRules, privacyRules.rules);
 
       return privacyRules.rules;
     });
   }
 
   public getPrivacy(inputKey: InputPrivacyKey['_']) {
-    return apiManager.invokeApi('account.getPrivacy', {
+    const privacyKey: PrivacyKey['_'] = this.convertInputKeyToKey(inputKey) as any;
+    const rules = this.privacy[privacyKey];
+    if(rules) {
+      return Promise.resolve(rules);
+    }
+    
+    return this.privacy[privacyKey] = apiManager.invokeApi('account.getPrivacy', {
       key: {
         _: inputKey
       }
@@ -42,7 +85,7 @@ export class AppPrivacyManager {
 
       //console.log('privacy rules', inputKey, privacyRules, privacyRules.rules);
 
-      return privacyRules.rules;
+      return this.privacy[privacyKey] = privacyRules.rules;
     });
   }
 

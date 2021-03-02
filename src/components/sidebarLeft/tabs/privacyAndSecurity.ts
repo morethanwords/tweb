@@ -1,7 +1,7 @@
 import { SliderSuperTab } from "../../slider";
 import { generateSection, SettingSection } from "..";
 import Row from "../../row";
-import { AccountPassword, Authorization, InputPrivacyKey, PrivacyRule } from "../../../layer";
+import { AccountPassword, Authorization, InputPrivacyKey } from "../../../layer";
 import appPrivacyManager, { PrivacyType } from "../../../lib/appManagers/appPrivacyManager";
 import AppPrivacyPhoneNumberTab from "./privacy/phoneNumber";
 import AppTwoStepVerificationTab from "./2fa";
@@ -17,13 +17,19 @@ import AppActiveSessionsTab from "./activeSessions";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
 import AppBlockedUsersTab from "./blockedUsers";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
+import rootScope from "../../../lib/rootScope";
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
+  private activeSessionsRow: Row;
+  private authorizations: Authorization.authorization[];
+
   protected init() {
     this.container.classList.add('privacy-container');
     this.title.innerText = 'Privacy and Security';
 
     const section = generateSection.bind(null, this.scrollable);
+
+    const SUBTITLE = 'Loading...';
 
     {
       const section = new SettingSection({noDelimiter: true});
@@ -32,7 +38,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
       const blockedUsersRow = new Row({
         icon: 'deleteuser',
         title: 'Blocked Users',
-        subtitle: 'Loading...',
+        subtitle: SUBTITLE,
         clickable: () => {
           const tab = new AppBlockedUsersTab(this.slider);
           tab.peerIds = blockedPeerIds;
@@ -45,7 +51,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
       const twoFactorRowOptions = {
         icon: 'lock',
         title: 'Two-Step Verification',
-        subtitle: 'Loading...',
+        subtitle: SUBTITLE,
         clickable: (e: Event) => {
           let tab: AppTwoStepVerificationTab | AppTwoStepVerificationEnterPasswordTab | AppTwoStepVerificationEmailConfirmationTab;
           if(passwordState.pFlags.has_password) {
@@ -68,24 +74,39 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
       const twoFactorRow = new Row(twoFactorRowOptions);
       twoFactorRow.freezed = true;
 
-      const activeSessionRow = new Row({
+      const activeSessionsRow = this.activeSessionsRow = new Row({
         icon: 'activesessions',
         title: 'Active Sessions',
-        subtitle: 'Loading...',
+        subtitle: SUBTITLE,
         clickable: () => {
           const tab = new AppActiveSessionsTab(this.slider);
-          tab.authorizations = authorizations;
+          tab.privacyTab = this;
+          tab.authorizations = this.authorizations;
           tab.open();
         }
       });
-      activeSessionRow.freezed = true;
+      activeSessionsRow.freezed = true;
 
-      section.content.append(blockedUsersRow.container, twoFactorRow.container, activeSessionRow.container);
+      section.content.append(blockedUsersRow.container, twoFactorRow.container, activeSessionsRow.container);
       this.scrollable.append(section.container);
+
+      let blockedCount: number;
+      const setBlockedCount = (count: number) => {
+        blockedCount = count;
+        blockedUsersRow.subtitle.innerText = count + ' ' + (count !== 1 ? 'users' : 'user');
+      };
+
+      this.listenerSetter.add(rootScope, 'peer_block', (update) => {
+        const {blocked, peerId} = update;
+        if(!blocked) blockedPeerIds.findAndSplice(p => p === peerId);
+        else blockedPeerIds.unshift(peerId);
+        blockedCount += blocked ? 1 : -1;
+        setBlockedCount(blockedCount);
+      });
 
       appUsersManager.getBlocked().then(res => {
         blockedUsersRow.freezed = false;
-        blockedUsersRow.subtitle.innerText = res.count + ' ' + (res.count !== 1 ? 'users' : 'user');
+        setBlockedCount(res.count);
         blockedPeerIds = res.peerIds;
       });
 
@@ -97,13 +118,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
         //console.log('password state', state);
       });
 
-      let authorizations: Authorization.authorization[];
-      apiManager.invokeApi('account.getAuthorizations').then(auths => {
-        activeSessionRow.freezed = false;
-        authorizations = auths.authorizations;
-        activeSessionRow.subtitle.innerText = authorizations.length + ' ' + (authorizations.length !== 1 ? 'devices' : 'device');
-        console.log('auths', auths);
-      });
+      this.updateActiveSessions();
     }
 
     {
@@ -117,7 +132,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
 
       const numberVisibilityRow = rowsByKeys['inputPrivacyKeyPhoneNumber'] = new Row({
         title: 'Who can see my phone number?',
-        subtitle: 'My Contacts',
+        subtitle: SUBTITLE,
         clickable: () => {
           new AppPrivacyPhoneNumberTab(this.slider).open()
         }
@@ -125,7 +140,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
 
       const lastSeenTimeRow = rowsByKeys['inputPrivacyKeyStatusTimestamp'] = new Row({
         title: 'Who can see your Last Seen time?',
-        subtitle: 'Everybody',
+        subtitle: SUBTITLE,
         clickable: () => {
           new AppPrivacyLastSeenTab(this.slider).open()
         }
@@ -133,7 +148,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
 
       const photoVisibilityRow = rowsByKeys['inputPrivacyKeyProfilePhoto'] = new Row({
         title: 'Who can see my profile photo?',
-        subtitle: 'Everybody',
+        subtitle: SUBTITLE,
         clickable: () => {
           new AppPrivacyProfilePhotoTab(this.slider).open();
         }
@@ -141,7 +156,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
 
       const callRow = rowsByKeys['inputPrivacyKeyPhoneCall'] = new Row({
         title: 'Who can call me?',
-        subtitle: 'Everybody',
+        subtitle: SUBTITLE,
         clickable: () => {
           new AppPrivacyCallsTab(this.slider).open();
         }
@@ -149,7 +164,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
 
       const linkAccountRow = rowsByKeys['inputPrivacyKeyForwards'] = new Row({
         title: 'Who can add a link to my account when forwarding my messages?',
-        subtitle: 'Everybody',
+        subtitle: SUBTITLE,
         clickable: () => {
           new AppPrivacyForwardMessagesTab(this.slider).open();
         }
@@ -157,15 +172,19 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
 
       const groupChatsAddRow = rowsByKeys['inputPrivacyKeyChatInvite'] = new Row({
         title: 'Who can add me to group chats?',
-        subtitle: 'Everybody',
+        subtitle: SUBTITLE,
         clickable: () => {
           new AppPrivacyAddToGroupsTab(this.slider).open();
         }
       });
 
-      for(const key in rowsByKeys) {
-        const row = rowsByKeys[key as keyof typeof rowsByKeys];
-        appPrivacyManager.getPrivacy(key as keyof typeof rowsByKeys).then(rules => {
+      const updatePrivacyRow = (key: InputPrivacyKey['_']) => {
+        const row = rowsByKeys[key];
+        if(!row) {
+          return;
+        }
+        
+        appPrivacyManager.getPrivacy(key).then(rules => {
           const details = appPrivacyManager.getPrivacyRulesDetails(rules);
           const type = details.type === PrivacyType.Everybody ? 'Everybody' : (details.type === PrivacyType.Contacts ? 'My Contacts' : 'Nobody');
           const disallowLength = details.disallowPeers.users.length + details.disallowPeers.chats.length;
@@ -173,9 +192,30 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
           const str = type + (disallowLength || allowLength ? ` (${[-disallowLength, allowLength ? '+' + allowLength : 0].filter(Boolean).join(', ')})` : '');
           row.subtitle.innerHTML = str;
         });
+      };
+
+      for(const key in rowsByKeys) {
+        updatePrivacyRow(key as keyof typeof rowsByKeys);
       }
+
+      rootScope.on('privacy_update', (update) => {
+        let key: string = update.key._;
+        key = key[0].toUpperCase() + key.slice(1);
+        key = 'input' + key;
+
+        updatePrivacyRow(key as any);
+      });
 
       container.append(numberVisibilityRow.container, lastSeenTimeRow.container, photoVisibilityRow.container, callRow.container, linkAccountRow.container, groupChatsAddRow.container);
     }
+  }
+
+  public updateActiveSessions() {
+    apiManager.invokeApi('account.getAuthorizations').then(auths => {
+      this.activeSessionsRow.freezed = false;
+      this.authorizations = auths.authorizations;
+      this.activeSessionsRow.subtitle.innerText = this.authorizations.length + ' ' + (this.authorizations.length !== 1 ? 'devices' : 'device');
+      //console.log('auths', auths);
+    });
   }
 }

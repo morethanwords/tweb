@@ -122,9 +122,9 @@ export default class PrivacySection {
       });
     }
 
-    setTimeout(() => {
+    /* setTimeout(() => {
       this.setRadio(PrivacyType.Contacts);
-    }, 0);
+    }, 0); */
 
     const promise = appPrivacyManager.getPrivacy(options.inputKey).then(rules => {
       const details = appPrivacyManager.getPrivacyRulesDetails(rules);

@@ -10,8 +10,10 @@ import ButtonMenu from "../../buttonMenu";
 import PopupConfirmAction from "../../popups/confirmAction";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
 import { toast } from "../../toast";
+import AppPrivacyAndSecurityTab from "./privacyAndSecurity";
 
 export default class AppActiveSessionsTab extends SliderSuperTab {
+  public privacyTab: AppPrivacyAndSecurityTab;
   public authorizations: Authorization.authorization[];
   private menuElement: HTMLElement;
   
@@ -57,11 +59,15 @@ export default class AppActiveSessionsTab extends SliderSuperTab {
             text: 'TERMINATE',
             isDanger: true,
             callback: () => {
-              toggleDisability([btnTerminate], true);
+              const b = [btnTerminate];
+              toggleDisability(b, true);
               apiManager.invokeApi('auth.resetAuthorizations').then(value => {
                 //toggleDisability([btnTerminate], false);
                 btnTerminate.remove();
                 otherSection.container.remove();
+                this.privacyTab.updateActiveSessions();
+              }, onError).finally(() => {
+                toggleDisability(b, false);
               });
             }
           }], {
@@ -90,6 +96,12 @@ export default class AppActiveSessionsTab extends SliderSuperTab {
 
     this.scrollable.append(otherSection.container);
 
+    const onError = (err: any) => {
+      if(err.type === 'FRESH_RESET_AUTHORISATION_FORBIDDEN') {
+        toast('For security reasons, you can\'t terminate older sessions from a device that you\'ve just connected. Please use an earlier connection or wait for a few hours.');
+      }
+    };
+
     let target: HTMLElement;
     const onTerminateClick = () => {
       const hash = target.dataset.hash;
@@ -102,12 +114,9 @@ export default class AppActiveSessionsTab extends SliderSuperTab {
           .then(value => {
             if(value) {
               target.remove();
+              this.privacyTab.updateActiveSessions();
             }
-          }, (err) => {
-            if(err.type === 'FRESH_RESET_AUTHORISATION_FORBIDDEN') {
-              toast('For security reasons, you can\'t terminate older sessions from a device that you\'ve just connected. Please use an earlier connection or wait for a few hours.');
-            }
-          });
+          }, onError);
         }
       }], {
         title: 'Terminate Session',

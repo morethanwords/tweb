@@ -103,6 +103,33 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
         }
       }
     });
+
+    const LOAD_COUNT = 50;
+    let loading = false;
+    this.scrollable.onScrolledBottom = () => {
+      if(loading) {
+        return;
+      }
+
+      loading = true;
+      appUsersManager.getBlocked(list.childElementCount, LOAD_COUNT).then(res => {
+        for(const peerId of res.peerIds) {
+          add(peerId, true);
+        }
+
+        if(res.peerIds.length < LOAD_COUNT) {
+          this.scrollable.onScrolledBottom = null;
+        }
+
+        this.scrollable.checkForTriggers();
+      }).finally(() => {
+        loading = false;
+      });
+    };
+  }
+
+  onOpenAfterTimeout() {
+    this.scrollable.onScroll();
   }
 
   onCloseAfterTimeout() {

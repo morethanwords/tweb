@@ -177,7 +177,12 @@ export default class Scrollable extends ScrollableBase {
   };
 
   public checkForTriggers = () => {
-    if((!this.onScrolledTop && !this.onScrolledBottom) || this.isHeavyAnimationInProgress) return;
+    if((!this.onScrolledTop && !this.onScrolledBottom)) return;
+
+    if(this.isHeavyAnimationInProgress) {
+      this.onScroll();
+      return;
+    }
 
     const scrollHeight = this.container.scrollHeight;
     if(!scrollHeight) { // незачем вызывать триггеры если блок пустой или не виден
