@@ -15,6 +15,8 @@ import AppPrivacyAddToGroupsTab from "./privacy/addToGroups";
 import AppPrivacyCallsTab from "./privacy/calls";
 import AppActiveSessionsTab from "./activeSessions";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
+import AppBlockedUsersTab from "./blockedUsers";
+import appUsersManager from "../../../lib/appManagers/appUsersManager";
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
   protected init() {
@@ -26,12 +28,18 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
     {
       const section = new SettingSection({noDelimiter: true});
 
+      let blockedPeerIds: number[];
       const blockedUsersRow = new Row({
         icon: 'deleteuser',
         title: 'Blocked Users',
-        subtitle: '6 users',
-        clickable: true
+        subtitle: 'Loading...',
+        clickable: () => {
+          const tab = new AppBlockedUsersTab(this.slider);
+          tab.peerIds = blockedPeerIds;
+          tab.open();
+        }
       });
+      blockedUsersRow.freezed = true;
 
       let passwordState: AccountPassword;
       const twoFactorRowOptions = {
@@ -75,6 +83,12 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
       section.content.append(blockedUsersRow.container, twoFactorRow.container, activeSessionRow.container);
       this.scrollable.append(section.container);
 
+      appUsersManager.getBlocked().then(res => {
+        blockedUsersRow.freezed = false;
+        blockedUsersRow.subtitle.innerText = res.count + ' ' + (res.count !== 1 ? 'users' : 'user');
+        blockedPeerIds = res.peerIds;
+      });
+
       passwordManager.getState().then(state => {
         passwordState = state;
         twoFactorRow.subtitle.innerText = state.pFlags.has_password ? 'On' : 'Off';
@@ -87,7 +101,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
       apiManager.invokeApi('account.getAuthorizations').then(auths => {
         activeSessionRow.freezed = false;
         authorizations = auths.authorizations;
-        activeSessionRow.subtitle.innerText = authorizations.length + ' ' + (authorizations.length > 1 ? 'devices' : 'device');
+        activeSessionRow.subtitle.innerText = authorizations.length + ' ' + (authorizations.length !== 1 ? 'devices' : 'device');
         console.log('auths', auths);
       });
     }

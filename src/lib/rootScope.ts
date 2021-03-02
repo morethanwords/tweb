@@ -20,6 +20,7 @@ type BroadcastEvents = {
   'peer_pinned_messages': {peerId: number, mids?: number[], pinned?: boolean, unpinAll?: true},
   'peer_pinned_hidden': {peerId: number, maxId: number},
   'peer_typings': {peerId: number, typings: UserTyping[]},
+  'peer_block': {peerId: number, blocked: boolean},
 
   'filter_delete': MyDialogFilter,
   'filter_update': MyDialogFilter,
@@ -125,11 +126,11 @@ class RootScope extends EventListenerBase<any> {
   }
 
   public broadcast = <T extends keyof BroadcastEvents>(name: T, detail?: BroadcastEvents[T]) => {
-    /* if(DEBUG) {
+    //if(DEBUG) {
       if(name !== 'user_update') {
         console.debug('Broadcasting ' + name + ' event, with args:', detail);
       }
-    } */
+    //}
 
     this.setListenerResult(name, detail);
   };

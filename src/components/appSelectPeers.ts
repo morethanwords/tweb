@@ -44,8 +44,8 @@ export default class AppSelectPeers {
   private appendTo: HTMLElement;
   private onChange: (length: number) => void;
   private peerType: PeerType[] = ['dialogs'];
-  private renderResultsFunc?: (peerIds: number[]) => void;
-  private chatRightsAction?: ChatRights;
+  private renderResultsFunc: (peerIds: number[]) => void;
+  private chatRightsAction: ChatRights;
   private multiSelect = true;
   private rippleEnabled = true;
   

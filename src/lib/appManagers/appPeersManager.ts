@@ -1,6 +1,6 @@
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { isObject } from "../../helpers/object";
-import { DialogPeer, InputDialogPeer, InputPeer, Peer } from "../../layer";
+import { DialogPeer, InputDialogPeer, InputPeer, Peer, Update } from "../../layer";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
 import appChatsManager from "./appChatsManager";
@@ -24,6 +24,18 @@ const DialogColorsMap = [0, 7, 4, 1, 6, 3, 5];
 
 export type PeerType = 'channel' | 'chat' | 'megagroup' | 'group' | 'saved';
 export class AppPeersManager {
+  constructor() {
+    rootScope.on('apiUpdate', (e) => {
+      const update = e as Update;
+      //console.log('on apiUpdate', update);
+      switch(update._) {
+        case 'updatePeerBlocked': {
+          rootScope.broadcast('peer_block', {peerId: this.getPeerId(update.peer_id), blocked: update.blocked});
+          break;
+        }
+      }
+    });
+  }
   /* public savePeerInstance(peerId: number, instance: any) {
     if(peerId < 0) appChatsManager.saveApiChat(instance);
     else appUsersManager.saveApiUser(instance);
@@ -113,13 +125,13 @@ export class AppPeersManager {
       : appChatsManager.getChat(-peerId)
   }
 
-  public getPeerId(peerString: any/* Peer | number | string */): number {
-    if(typeof(peerString) === 'number') return peerString;
-    else if(isObject(peerString)) return peerString.user_id ? peerString.user_id : -(peerString.channel_id || peerString.chat_id);
-    else if(!peerString) return 0;
+  public getPeerId(peerId: any/* Peer | number | string */): number {
+    if(typeof(peerId) === 'number') return peerId;
+    else if(isObject(peerId)) return peerId.user_id ? peerId.user_id : -(peerId.channel_id || peerId.chat_id);
+    else if(!peerId) return 0;
     
-    const isUser = peerString.charAt(0) === 'u';
-    const peerParams = peerString.substr(1).split('_');
+    const isUser = peerId.charAt(0) === 'u';
+    const peerParams = peerId.substr(1).split('_');
 
     return isUser ? peerParams[0] : -peerParams[0] || 0;
   }
