@@ -28,7 +28,7 @@ export class AppUsersManager {
   private contactsFillPromise: Promise<Set<number>>;
   public contactsList: Set<number> = new Set();
   private updatedContactsList = false;
-
+  
   private getTopPeersPromise: Promise<number[]>;
 
   constructor() {

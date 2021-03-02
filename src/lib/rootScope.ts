@@ -92,6 +92,8 @@ type BroadcastEvents = {
   'overlay_toggle': boolean,
 
   'background_change': void,
+
+  'privacy_update': Update.updatePrivacy
 };
 
 class RootScope extends EventListenerBase<any> {
@@ -126,11 +128,11 @@ class RootScope extends EventListenerBase<any> {
   }
 
   public broadcast = <T extends keyof BroadcastEvents>(name: T, detail?: BroadcastEvents[T]) => {
-    //if(DEBUG) {
+    /* //if(DEBUG) {
       if(name !== 'user_update') {
         console.debug('Broadcasting ' + name + ' event, with args:', detail);
       }
-    //}
+    //} */
 
     this.setListenerResult(name, detail);
   };
