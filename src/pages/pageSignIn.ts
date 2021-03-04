@@ -240,17 +240,25 @@ let onFirstMount = () => {
     //console.log('input', this.value);
     this.classList.remove('error');
 
-    const diff = Math.abs(this.value.length - lastValue.length);
+    const value = this.value;
+    const diff = Math.abs(value.length - lastValue.length);
     if(diff > 1 && !pasted && isAppleMobile) {
-      this.value = lastValue + this.value;
+      this.value = lastValue + value;
     }
 
     pasted = false;
 
     telLabel.innerText = 'Phone Number';
 
-    let {formatted, country} = formatPhoneNumber(this.value);
-    this.value = lastValue = formatted ? '+' + formatted : '';
+    let formatted: string, country: Country;
+    if(this.value.replace(/\++/, '+') === '+') {
+      this.value = '+';
+    } else {
+      const o = formatPhoneNumber(this.value);
+      formatted = o.formatted;
+      country = o.country;
+      this.value = lastValue = formatted ? '+' + formatted : '';
+    }
 
     //console.log(formatted, country);
 
@@ -281,7 +289,7 @@ let onFirstMount = () => {
     //console.log('keypress', this.value);
     if(!btnNext.style.visibility &&/* this.value.length >= 9 && */ e.key === 'Enter') {
       return btnNext.click();
-    } else if(/\D/.test(e.key) && !(e.metaKey || e.ctrlKey)) {
+    } else if(/\D/.test(e.key) && !(e.metaKey || e.ctrlKey) && !(e.key === '+' && e.shiftKey/*  && !this.value */)) {
       e.preventDefault();
       return false;
     }
