@@ -557,7 +557,7 @@ hr {
     display: grid;
     grid-template-columns: calc(26px + 2rem) 1fr 80px;
     
-    @include hover-effect();
+    @include hover-background-effect();
   }
   
   // +2 px bc of whitespace
