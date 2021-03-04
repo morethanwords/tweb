@@ -18,7 +18,7 @@ export default class TcpObfuscated implements MTTransport {
     bodySent: boolean
   }>> = [];
 
-  private debug = Modes.debug && false;
+  private debug = Modes.debug && false/* true */;
   private log: ReturnType<typeof logger>;
   public connected = false;
   private lastCloseTime: number;

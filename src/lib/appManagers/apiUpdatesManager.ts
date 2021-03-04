@@ -25,7 +25,7 @@ type UpdatesState = {
   lastPtsUpdateTime?: number
 };
 
-const SYNC_DELAY = 25;
+const SYNC_DELAY = 6;
 
 export class ApiUpdatesManager {
   public updatesState: UpdatesState = {
@@ -38,7 +38,7 @@ export class ApiUpdatesManager {
   public channelStates: {[channelId: number]: UpdatesState} = {};
   private attached = false;
 
-  private log = logger('UPDATES', LogLevels.error/*  | LogLevels.log */);
+  private log = logger('UPDATES', LogLevels.error | LogLevels.log | LogLevels.warn | LogLevels.debug);
 
   constructor() {
     // * false for test purposes
@@ -137,7 +137,7 @@ export class ApiUpdatesManager {
     }
   }
 
-  processUpdateMessage = (updateMessage: any, options: Partial<{
+  public processUpdateMessage = (updateMessage: any, options: Partial<{
     ignoreSyncLoading: boolean
   }> = {}) => {
     // return forceGetDifference()
@@ -147,6 +147,8 @@ export class ApiUpdatesManager {
       seqStart: updateMessage.seq_start,
       ignoreSyncLoading: options.ignoreSyncLoading
     };
+
+    this.log('processUpdateMessage', updateMessage);
   
     switch(updateMessage._) {
       case 'updatesTooLong':
@@ -425,7 +427,7 @@ export class ApiUpdatesManager {
   
     if(update._ === 'updateChannelTooLong') {
       if(!curState.lastPtsUpdateTime ||
-          curState.lastPtsUpdateTime < Date.now() - 10000) {
+          curState.lastPtsUpdateTime < (Date.now() - SYNC_DELAY)) {
         // this.log.trace('channel too long, get diff', channelId, update)
         this.getChannelDifference(channelId);
       }
@@ -579,7 +581,7 @@ export class ApiUpdatesManager {
       } else {
         // ! for testing
         /* state.seq = 1;
-        state.pts = state.pts - 1000;
+        state.pts = state.pts - 15;
         state.date = 1; */
 
         Object.assign(this.updatesState, state);
