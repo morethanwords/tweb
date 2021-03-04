@@ -13,7 +13,7 @@ type LazyLoadElement = Omit<LazyLoadElementBase, 'load'> & {
   wasSeen?: boolean,
 };
 
-const PARALLEL_LIMIT = Infinity;
+const PARALLEL_LIMIT = 8;
 
 export class LazyLoadQueueBase {
   public queueId = 0;

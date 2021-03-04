@@ -36,7 +36,6 @@ import appDownloadManager from './appDownloadManager';
 import appStateManager, { AppStateManager } from './appStateManager';
 import { MOUNT_CLASS_TO } from '../../config/debug';
 import appNavigationController from '../../components/appNavigationController';
-import { isSafari } from '../../helpers/userAgent';
 
 //console.log('appImManager included33!');
 

@@ -257,7 +257,12 @@ export class AppMessagesManager {
           }
         }
     
-        if(removeUnread && dialog.unread_count) dialog.unread_count -= removeUnread; 
+        if(removeUnread && dialog.unread_count) dialog.unread_count -= removeUnread;
+
+        if(dialog.peerId < 0 && dialog.pts) {
+          const newPts = apiUpdatesManager.channelStates[-dialog.peerId].pts;
+          dialog.pts = newPts;
+        }
     
         dialog.unread_count = Math.max(0, dialog.unread_count);
         dialogs.push(dialog);
@@ -3651,6 +3656,10 @@ export class AppMessagesManager {
 
         this.saveMessages([message], {storage});
         // this.log.warn(dT(), 'message unread', message.mid, message.pFlags.unread)
+
+        /* if((message as Message.message).grouped_id) {
+          this.log('updateNewMessage', message);
+        } */
 
         const pendingMessage = this.checkPendingMessage(message);
         const historyStorage = this.getHistoryStorage(peerId);
