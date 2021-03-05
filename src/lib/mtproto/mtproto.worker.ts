@@ -5,51 +5,10 @@ import apiManager from "./apiManager";
 import cryptoWorker from "../crypto/cryptoworker";
 import networkerFactory from "./networkerFactory";
 import apiFileManager from './apiFileManager';
-//import { logger, LogLevels } from '../logger';
 import type { ServiceWorkerTask, ServiceWorkerTaskResponse } from './mtproto.service';
 import { ctx } from '../../helpers/userAgent';
 import { socketsProxied } from './dcConfigurator';
-
-//const log = logger('DW', LogLevels.error);
-
-//console.error('INCLUDE !!!', new Error().stack);
-
-/* function isObject(object: any) {
-  return typeof(object) === 'object' && object !== null;
-} */
-
-/* function fillTransfer(transfer: any, obj: any) {
-  if(!obj) return;
-  
-  if(obj instanceof ArrayBuffer) {
-    transfer.add(obj);
-  } else if(obj.buffer && obj.buffer instanceof ArrayBuffer) {
-    transfer.add(obj.buffer);
-  } else if(isObject(obj)) {
-    for(var i in obj) {
-      fillTransfer(transfer, obj[i]);
-    }
-  } else if(Array.isArray(obj)) {
-    obj.forEach(value => {
-      fillTransfer(transfer, value);
-    });
-  }
-} */
-
-function respond(...args: any[]) {
-  // отключил для всего потому что не успел пофиксить transfer detached
-  //if(isSafari(self)/*  || true */) {
-    // @ts-ignore
-    ctx.postMessage(...args);
-  /* } else {
-    var transfer = new Set();
-    fillTransfer(transfer, arguments);
-    
-    //console.log('reply', transfer, [...transfer]);
-    ctx.postMessage(...arguments, [...transfer]);
-    //console.log('reply', transfer, [...transfer]);
-  } */
-}
+import { notifyAll } from '../../helpers/context';
 
 let webpSupported = false;
 export const isWebpSupported = () => {
@@ -57,30 +16,18 @@ export const isWebpSupported = () => {
 };
 
 networkerFactory.setUpdatesProcessor((obj) => {
-  respond({update: obj});
+  notifyAll({update: obj});
 });
 
 networkerFactory.onConnectionStatusChange = (status) => {
-  respond({type: 'connectionStatusChange', payload: status});
+  notifyAll({type: 'connectionStatusChange', payload: status});
 };
-
-/* ctx.onerror = (error) => {
-  console.error('error:', error);
-};
-
-ctx.onunhandledrejection = (error) => {
-  console.error('onunhandledrejection:', error);
-}; */
 
 const onMessage = async(e: any) => {
   try {
     const task = e.data;
     const taskId = task.taskId;
 
-    //log.debug('got message:', taskId, task);
-
-    //debugger;
-  
     if(task.type === 'convertWebp') {
       const {fileName, bytes} = task.payload;
       const deferred = apiFileManager.webpConvertPromises[fileName];
@@ -105,7 +52,7 @@ const onMessage = async(e: any) => {
         responseTask.error = err;
       }
 
-      respond(responseTask);
+      notifyAll(responseTask);
       return;
     } else if(task.type === 'webpSupport') {
       webpSupported = task.payload;
@@ -134,7 +81,7 @@ const onMessage = async(e: any) => {
       case 'gzipUncompress':
         // @ts-ignore
         return cryptoWorker[task.task].apply(cryptoWorker, task.args).then(result => {
-          respond({taskId, result});
+          notifyAll({taskId, result});
         });
   
       case 'setQueueId':
@@ -152,9 +99,9 @@ const onMessage = async(e: any) => {
             result = await result;
           }
   
-          respond({taskId, result});
+          notifyAll({taskId, result});
         } catch(error) {
-          respond({taskId, error});
+          notifyAll({taskId, error});
         }
 
         break;
@@ -163,7 +110,7 @@ const onMessage = async(e: any) => {
       case 'getNetworker': {
         // @ts-ignore
         apiManager[task.task].apply(apiManager, task.args).finally(() => {
-          respond({taskId, result: null});
+          notifyAll({taskId, result: null});
         });
         
         break;
@@ -177,10 +124,12 @@ const onMessage = async(e: any) => {
           if(result instanceof Promise) {
             result = await result;
           }
+
+          //console.log(notifyAll);
   
-          respond({taskId, result});
+          notifyAll({taskId, result});
         } catch(error) {
-          respond({taskId, error});
+          notifyAll({taskId, error});
         }
   
         //throw new Error('Unknown task: ' + task.task);
@@ -192,7 +141,6 @@ const onMessage = async(e: any) => {
   }
 };
 
-ctx.addEventListener('message', onMessage);
-
 //console.log('[WORKER] Will send ready', Date.now() / 1000);
-ctx.postMessage('ready');
+ctx.addEventListener('message', onMessage);
+notifyAll('ready');
