@@ -1,3 +1,6 @@
+/// #if MTPROTO_SW
+import './mtproto.worker';
+/// #endif
 import { isSafari } from '../../helpers/userAgent';
 import { logger, LogLevels } from '../logger';
 import type { DownloadOptions } from './apiFileManager';
@@ -6,11 +9,12 @@ import { notifySomeone } from '../../helpers/context';
 import type { InputFileLocation, FileLocation, UploadFile } from '../../layer';
 import { CancellablePromise, deferredPromise } from '../../helpers/cancellablePromise';
 
-const log = logger('SW', LogLevels.error/*  | LogLevels.debug | LogLevels.log */);
+const log = logger('SW', LogLevels.error | LogLevels.debug | LogLevels.log | LogLevels.warn);
 const ctx = self as any as ServiceWorkerGlobalScope;
 
 const deferredPromises: {[taskId: number]: CancellablePromise<any>} = {};
 
+/// #if !MTPROTO_SW
 ctx.addEventListener('message', (e) => {
   const task = e.data as ServiceWorkerTaskResponse;
   const promise = deferredPromises[task.id];
@@ -23,6 +27,7 @@ ctx.addEventListener('message', (e) => {
 
   delete deferredPromises[task.id];
 });
+/// #endif
 
 let taskId = 0;
 
@@ -132,10 +137,7 @@ const onChangeState = () => {
   ctx.onfetch = onFetch;
 };
 
-/**
- * Service Worker Installation
- */
-ctx.addEventListener('install', (event: ExtendableEvent) => {
+ctx.addEventListener('install', (event) => {
   log('installing');
 
   /* initCache();
@@ -146,9 +148,6 @@ ctx.addEventListener('install', (event: ExtendableEvent) => {
   event.waitUntil(ctx.skipWaiting()); // Activate worker immediately
 });
 
-/**
- * Service Worker Activation
- */
 ctx.addEventListener('activate', (event) => {
   log('activating', ctx);
 

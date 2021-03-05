@@ -23,8 +23,6 @@ type Task = {
   args: any[]
 };
 
-const USE_WORKER_AS_WORKER = true;
-
 type HashResult = {
   hash: number,
   result: any
@@ -66,7 +64,10 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
     this.log('constructor');
 
     this.registerServiceWorker();
+
+    /// #if !MTPROTO_SW
     this.registerWorker();
+    /// #endif
   }
 
   public isServiceWorkerOnline() {
@@ -75,25 +76,29 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
 
   private registerServiceWorker() {
     if(!('serviceWorker' in navigator)) return;
-
+    
     navigator.serviceWorker.register('./sw.js', {scope: './'}).then(registration => {
+      this.log('SW registered', registration);
       this.isSWRegistered = true;
+
+      const sw = registration.installing || registration.waiting || registration.active;
+      sw.addEventListener('statechange', (e) => {
+        this.log('SW statechange', e);
+      });
+
+      const controller = navigator.serviceWorker.controller || registration.installing || registration.waiting || registration.active;
+      this.onWorkerFirstMessage(controller);
     }, (err) => {
       this.isSWRegistered = false;
       this.log.error('SW registration failed!', err);
       appDocsManager.onServiceWorkerFail();
     });
 
-    navigator.serviceWorker.ready.then((registration) => {
-      this.log('set SW');
-      this.releasePending();
-
-      if(!USE_WORKER_AS_WORKER) {
-        this.postMessage = navigator.serviceWorker.controller.postMessage.bind(navigator.serviceWorker.controller);
-      }
+    /* navigator.serviceWorker.ready.then((registration) => {
+      this.log('set SW', navigator.serviceWorker);
 
       //registration.update();
-    });
+    }); */
 
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       this.log.warn('controllerchange');
@@ -104,9 +109,9 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
       });
     });
 
-    /**
-     * Message resolver
-     */
+    /// #if MTPROTO_SW
+    navigator.serviceWorker.addEventListener('message', this.onWorkerMessage);
+    /// #else
     navigator.serviceWorker.addEventListener('message', (e) => {
       const task: ServiceWorkerTask = e.data;
       if(!isObject(task)) {
@@ -115,144 +120,150 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
       
       this.postMessage(task);
     });
+    /// #endif
 
     navigator.serviceWorker.addEventListener('messageerror', (e) => {
       this.log.error('SW messageerror:', e);
     });
   }
 
+  private onWorkerFirstMessage(worker: any) {
+    if(!this.worker) {
+      this.worker = worker;
+      this.log('set webWorker');
+
+      this.postMessage = this.worker.postMessage.bind(this.worker);
+
+      const isWebpSupported = webpWorkerController.isWebpSupported();
+      this.log('WebP supported:', isWebpSupported);
+      this.postMessage({type: 'webpSupport', payload: isWebpSupported});
+
+      this.releasePending();
+    }
+  }
+
+  private onWorkerMessage = (e: MessageEvent) => {
+    this.log('got message from worker:', e.data);
+
+    const task = e.data;
+
+    if(!isObject(task)) {
+      return;
+    }
+
+    if(task.update) {
+      if(this.updatesProcessor) {
+        this.updatesProcessor(task.update);
+      }
+    } else if(task.progress) {
+      rootScope.broadcast('download_progress', task.progress);
+    } else if(task.type === 'reload') {
+      location.reload();
+    } else if(task.type === 'connectionStatusChange') {
+      rootScope.broadcast('connection_status_change', task.payload);
+    } else if(task.type === 'convertWebp') {
+      webpWorkerController.postMessage(task);
+    } else if((task as ServiceWorkerTaskResponse).type === 'requestFilePart') {
+      const _task = task as ServiceWorkerTaskResponse;
+      
+      if(_task.error) {
+        const onError = (error: ApiError) => {
+          if(error?.type === 'FILE_REFERENCE_EXPIRED') {
+            // @ts-ignore
+            const bytes = _task.originalPayload[1].file_reference;
+            referenceDatabase.refreshReference(bytes).then(() => {
+              // @ts-ignore
+              _task.originalPayload[1].file_reference = referenceDatabase.getReferenceByLink(bytes);
+              const newTask: ServiceWorkerTask = {
+                type: _task.type,
+                id: _task.id,
+                payload: _task.originalPayload
+              };
+
+              this.postMessage(newTask);
+            }).catch(onError);
+          } else {
+            navigator.serviceWorker.controller.postMessage(task);
+          }
+        };
+
+        onError(_task.error);
+      } else {
+        navigator.serviceWorker.controller.postMessage(task);
+      }
+    } else if(task.type === 'socketProxy') {
+      const socketTask = task.payload;
+      const id = socketTask.id;
+      //console.log('socketProxy', socketTask, id);
+
+      if(socketTask.type === 'send') {
+        const socket = this.sockets.get(id);
+        socket.send(socketTask.payload);
+      } else if(socketTask.type === 'close') {
+        const socket = this.sockets.get(id);
+        socket.close();
+      } else if(socketTask.type === 'setup') {
+        const socket = new Socket(socketTask.payload.dcId, socketTask.payload.url, socketTask.payload.logSuffix);
+        
+        const onOpen = () => {
+          //console.log('socketProxy onOpen');
+          this.postMessage({
+            type: 'socketProxy', 
+            payload: {
+              type: 'open',
+              id
+            }
+          });
+        };
+        const onClose = () => {
+          this.postMessage({
+            type: 'socketProxy', 
+            payload: {
+              type: 'close',
+              id
+            }
+          });
+
+          socket.removeListener('open', onOpen);
+          socket.removeListener('close', onClose);
+          socket.removeListener('message', onMessage);
+          this.sockets.delete(id);
+        };
+        const onMessage = (buffer: ArrayBuffer) => {
+          this.postMessage({
+            type: 'socketProxy', 
+            payload: {
+              type: 'message',
+              id,
+              payload: buffer
+            }
+          });
+        };
+
+        socket.addListener('open', onOpen);
+        socket.addListener('close', onClose);
+        socket.addListener('message', onMessage);
+        this.sockets.set(id, socket);
+      }
+    } else if(task.hasOwnProperty('result') || task.hasOwnProperty('error')) {
+      this.finalizeTask(task.taskId, task.result, task.error);
+    }
+  };
+
+  /// #if !MTPROTO_SW
   private registerWorker() {
     //return;
 
     const worker = new MTProtoWorker();
     //const worker = window;
-    worker.addEventListener('message', (e) => {
-      if(!this.worker) {
-        this.worker = worker as any;
-        this.log('set webWorker');
-
-        if(USE_WORKER_AS_WORKER) {
-          this.postMessage = this.worker.postMessage.bind(this.worker);
-        }
-
-        const isWebpSupported = webpWorkerController.isWebpSupported();
-        this.log('WebP supported:', isWebpSupported);
-        this.postMessage({type: 'webpSupport', payload: isWebpSupported});
-
-        this.releasePending();
-      }
-
-      //this.log('got message from worker:', e.data);
-
-      const task = e.data;
-
-      if(!isObject(task)) {
-        return;
-      }
-      
-      if(task.update) {
-        if(this.updatesProcessor) {
-          this.updatesProcessor(task.update);
-        }
-      } else if(task.progress) {
-        rootScope.broadcast('download_progress', task.progress);
-      } else if(task.type === 'reload') {
-        location.reload();
-      } else if(task.type === 'connectionStatusChange') {
-        rootScope.broadcast('connection_status_change', task.payload);
-      } else if(task.type === 'convertWebp') {
-        webpWorkerController.postMessage(task);
-      } else if((task as ServiceWorkerTaskResponse).type === 'requestFilePart') {
-        const _task = task as ServiceWorkerTaskResponse;
-        
-        if(_task.error) {
-          const onError = (error: ApiError) => {
-            if(error?.type === 'FILE_REFERENCE_EXPIRED') {
-              // @ts-ignore
-              const bytes = _task.originalPayload[1].file_reference;
-              referenceDatabase.refreshReference(bytes).then(() => {
-                // @ts-ignore
-                _task.originalPayload[1].file_reference = referenceDatabase.getReferenceByLink(bytes);
-                const newTask: ServiceWorkerTask = {
-                  type: _task.type,
-                  id: _task.id,
-                  payload: _task.originalPayload
-                };
-  
-                this.postMessage(newTask);
-              }).catch(onError);
-            } else {
-              navigator.serviceWorker.controller.postMessage(task);
-            }
-          };
-
-          onError(_task.error);
-        } else {
-          navigator.serviceWorker.controller.postMessage(task);
-        }
-      } else if(task.type === 'socketProxy') {
-        const socketTask = task.payload;
-        const id = socketTask.id;
-        //console.log('socketProxy', socketTask, id);
-
-        if(socketTask.type === 'send') {
-          const socket = this.sockets.get(id);
-          socket.send(socketTask.payload);
-        } else if(socketTask.type === 'close') {
-          const socket = this.sockets.get(id);
-          socket.close();
-        } else if(socketTask.type === 'setup') {
-          const socket = new Socket(socketTask.payload.dcId, socketTask.payload.url, socketTask.payload.logSuffix);
-          
-          const onOpen = () => {
-            //console.log('socketProxy onOpen');
-            this.postMessage({
-              type: 'socketProxy', 
-              payload: {
-                type: 'open',
-                id
-              }
-            });
-          };
-          const onClose = () => {
-            this.postMessage({
-              type: 'socketProxy', 
-              payload: {
-                type: 'close',
-                id
-              }
-            });
-
-            socket.removeListener('open', onOpen);
-            socket.removeListener('close', onClose);
-            socket.removeListener('message', onMessage);
-            this.sockets.delete(id);
-          };
-          const onMessage = (buffer: ArrayBuffer) => {
-            this.postMessage({
-              type: 'socketProxy', 
-              payload: {
-                type: 'message',
-                id,
-                payload: buffer
-              }
-            });
-          };
-
-          socket.addListener('open', onOpen);
-          socket.addListener('close', onClose);
-          socket.addListener('message', onMessage);
-          this.sockets.set(id, socket);
-        }
-      } else if(task.hasOwnProperty('result') || task.hasOwnProperty('error')) {
-        this.finalizeTask(task.taskId, task.result, task.error);
-      }
-    });
+    worker.addEventListener('message', this.onWorkerFirstMessage.bind(this, worker), {once: true});
+    worker.addEventListener('message', this.onWorkerMessage);
 
     worker.addEventListener('error', (err) => {
       this.log.error('WORKER ERROR', err);
     });
   }
+  /// #endif
 
   private finalizeTask(taskId: number, result: any, error: any) {
     const deferred = this.awaiting[taskId];
