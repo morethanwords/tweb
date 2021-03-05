@@ -87,8 +87,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
         const button = Button('folder-category-button btn btn-primary btn-transparent', {
           icon: o.icon,
           text: o.text,
-          noRipple: o.withRipple ? undefined : true,
-          rippleSquare: true
+          noRipple: o.withRipple ? undefined : true
         });
 
         if(o.name) {
