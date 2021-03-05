@@ -94,12 +94,12 @@ export default class AppSettingsTab extends SliderSuperTab {
     buttonsDiv.classList.add('profile-buttons');
 
     const className = 'profile-button btn-primary btn-transparent';
-    buttonsDiv.append(this.buttons.edit = Button(className, {icon: 'edit', rippleSquare: true, text: 'Edit Profile'}));
-    buttonsDiv.append(this.buttons.folders = Button(className, {icon: 'folder', rippleSquare: true, text: 'Chat Folders'}));
-    buttonsDiv.append(this.buttons.general = Button(className, {icon: 'settings', rippleSquare: true, text: 'General Settings'}));
-    buttonsDiv.append(this.buttons.notifications = Button(className, {icon: 'unmute', rippleSquare: true, text: 'Notifications', disabled: true}));
-    buttonsDiv.append(this.buttons.privacy = Button(className, {icon: 'lock', rippleSquare: true, text: 'Privacy and Security'}));
-    buttonsDiv.append(this.buttons.language = Button(className, {icon: 'language', rippleSquare: true, text: 'Language', disabled: true}));
+    buttonsDiv.append(this.buttons.edit = Button(className, {icon: 'edit', text: 'Edit Profile'}));
+    buttonsDiv.append(this.buttons.folders = Button(className, {icon: 'folder', text: 'Chat Folders'}));
+    buttonsDiv.append(this.buttons.general = Button(className, {icon: 'settings', text: 'General Settings'}));
+    buttonsDiv.append(this.buttons.notifications = Button(className, {icon: 'unmute', text: 'Notifications', disabled: true}));
+    buttonsDiv.append(this.buttons.privacy = Button(className, {icon: 'lock', text: 'Privacy and Security'}));
+    buttonsDiv.append(this.buttons.language = Button(className, {icon: 'language', text: 'Language', disabled: true}));
     
     this.scrollable.append(this.avatarElem, this.nameDiv, this.phoneDiv, buttonsDiv);
     this.scrollable.container.classList.add('profile-content-wrapper');

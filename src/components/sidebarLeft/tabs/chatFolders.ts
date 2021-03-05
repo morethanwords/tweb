@@ -76,7 +76,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       }
     }
 
-    div.classList.add('category', 'rp-square');
+    div.classList.add('category');
     div.innerHTML = `
       <div>
         <p>${RichTextProcessor.wrapEmojiText(filter.title)}</p>
