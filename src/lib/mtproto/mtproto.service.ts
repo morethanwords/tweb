@@ -222,6 +222,21 @@ function alignLimit(limit: number) {
   return 2 ** Math.ceil(Math.log(limit) / Math.log(2));
 }
 
+/* ctx.addEventListener('push', (event) => {
+  console.log('[Service Worker] Push Received.');
+  console.log(`[Service Worker] Push had this data: "${event.data.text()}"`, event, event.data);
+
+  const title = 'Push Push Push';
+  const options = {};
+  // const options = {
+  //   body: 'Yay it works.',
+  //   icon: 'images/icon.png',
+  //   badge: 'images/badge.png'
+  // };
+
+  event.waitUntil(ctx.registration.showNotification(title, options));
+}); */
+
 //export default () => {};
 
 //MOUNT_CLASS_TO && (MOUNT_CLASS_TO.onFetch = onFetch);

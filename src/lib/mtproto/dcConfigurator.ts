@@ -26,6 +26,7 @@ type Servers = {
 let socketId = 0;
 const TEST_SUFFIX = Modes.test ? '_test' : '';
 
+/// #if !MTPROTO_SW
 class SocketProxied extends EventListenerBase<{
   open: () => void,
   message: (buffer: ArrayBuffer) => any,
@@ -77,6 +78,7 @@ class SocketProxied extends EventListenerBase<{
     notifyAll(task);
   }
 }
+/// #endif
 
 export const socketsProxied: Map<number, SocketProxied> = new Map();
 
@@ -108,7 +110,7 @@ export class DcConfigurator {
 
     const retryTimeout = connectionType === 'client' ? 10000 : 10000;
 
-    const oooohLetMeLive: MTConnectionConstructable = (isSafari && isWebWorker) /* || true */ ? SocketProxied : Socket;
+    const oooohLetMeLive: MTConnectionConstructable = (isSafari && isWebWorker && typeof(SocketProxied) !== 'undefined') /* || true */ ? SocketProxied : Socket;
 
     return new TcpObfuscated(oooohLetMeLive, dcId, chosenServer, logSuffix, retryTimeout);
   };
