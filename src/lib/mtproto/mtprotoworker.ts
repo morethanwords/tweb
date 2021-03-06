@@ -77,7 +77,8 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
   private registerServiceWorker() {
     if(!('serviceWorker' in navigator)) return;
     
-    navigator.serviceWorker.register('./sw.js', {scope: './'}).then(registration => {
+    const worker = navigator.serviceWorker;
+    worker.register('./sw.js', {scope: './'}).then(registration => {
       this.log('SW registered', registration);
       this.isSWRegistered = true;
 
@@ -86,33 +87,29 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
         this.log('SW statechange', e);
       });
 
-      const controller = navigator.serviceWorker.controller || registration.installing || registration.waiting || registration.active;
+      /// #if MTPROTO_SW
+      const controller = worker.controller || registration.installing || registration.waiting || registration.active;
       this.onWorkerFirstMessage(controller);
+      /// #endif
     }, (err) => {
       this.isSWRegistered = false;
       this.log.error('SW registration failed!', err);
       appDocsManager.onServiceWorkerFail();
     });
 
-    /* navigator.serviceWorker.ready.then((registration) => {
-      this.log('set SW', navigator.serviceWorker);
-
-      //registration.update();
-    }); */
-
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
+    worker.addEventListener('controllerchange', () => {
       this.log.warn('controllerchange');
       this.releasePending();
 
-      navigator.serviceWorker.controller.addEventListener('error', (e) => {
+      worker.controller.addEventListener('error', (e) => {
         this.log.error('controller error:', e);
       });
     });
 
     /// #if MTPROTO_SW
-    navigator.serviceWorker.addEventListener('message', this.onWorkerMessage);
+    worker.addEventListener('message', this.onWorkerMessage);
     /// #else
-    navigator.serviceWorker.addEventListener('message', (e) => {
+    worker.addEventListener('message', (e) => {
       const task: ServiceWorkerTask = e.data;
       if(!isObject(task)) {
         return;
@@ -122,7 +119,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
     });
     /// #endif
 
-    navigator.serviceWorker.addEventListener('messageerror', (e) => {
+    worker.addEventListener('messageerror', (e) => {
       this.log.error('SW messageerror:', e);
     });
   }
