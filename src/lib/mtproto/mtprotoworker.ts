@@ -55,7 +55,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
 
   private isSWRegistered = true;
 
-  private debug = DEBUG;
+  private debug = DEBUG && false;
 
   private sockets: Map<number, Socket> = new Map();
 
@@ -140,7 +140,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
   }
 
   private onWorkerMessage = (e: MessageEvent) => {
-    this.log('got message from worker:', e.data);
+    //this.log('got message from worker:', e.data);
 
     const task = e.data;
 

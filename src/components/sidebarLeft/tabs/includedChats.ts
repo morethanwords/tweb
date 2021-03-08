@@ -7,7 +7,7 @@ import { MyDialogFilter as DialogFilter } from "../../../lib/storages/filters";
 import rootScope from "../../../lib/rootScope";
 import { copy } from "../../../helpers/object";
 import ButtonIcon from "../../buttonIcon";
-import CheckboxField from "../../checkbox";
+import CheckboxField from "../../checkboxField";
 import Button from "../../button";
 import AppEditFolderTab from "./editFolder";
 
@@ -94,7 +94,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
   }
 
   checkbox(selected?: boolean) {
-    const checkboxField = CheckboxField({
+    const checkboxField = new CheckboxField({
       round: true
     });
     if(selected) {

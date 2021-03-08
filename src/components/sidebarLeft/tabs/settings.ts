@@ -8,6 +8,7 @@ import AppPrivacyAndSecurityTab from "./privacyAndSecurity";
 import AppGeneralSettingsTab from "./generalSettings";
 import AppEditProfileTab from "./editProfile";
 import AppChatFoldersTab from "./chatFolders";
+import AppNotificationsTab from "./notifications";
 //import AppMediaViewer from "../../appMediaViewerNew";
 
 export default class AppSettingsTab extends SliderSuperTab {
@@ -97,7 +98,7 @@ export default class AppSettingsTab extends SliderSuperTab {
     buttonsDiv.append(this.buttons.edit = Button(className, {icon: 'edit', text: 'Edit Profile'}));
     buttonsDiv.append(this.buttons.folders = Button(className, {icon: 'folder', text: 'Chat Folders'}));
     buttonsDiv.append(this.buttons.general = Button(className, {icon: 'settings', text: 'General Settings'}));
-    buttonsDiv.append(this.buttons.notifications = Button(className, {icon: 'unmute', text: 'Notifications', disabled: true}));
+    buttonsDiv.append(this.buttons.notifications = Button(className, {icon: 'unmute', text: 'Notifications'}));
     buttonsDiv.append(this.buttons.privacy = Button(className, {icon: 'lock', text: 'Privacy and Security'}));
     buttonsDiv.append(this.buttons.language = Button(className, {icon: 'language', text: 'Language', disabled: true}));
     
@@ -120,6 +121,10 @@ export default class AppSettingsTab extends SliderSuperTab {
 
     this.buttons.general.addEventListener('click', () => {
       new AppGeneralSettingsTab(this.slider as any).open();
+    });
+
+    this.buttons.notifications.addEventListener('click', () => {
+      new AppNotificationsTab(this.slider).open();
     });
 
     this.buttons.privacy.addEventListener('click', () => {

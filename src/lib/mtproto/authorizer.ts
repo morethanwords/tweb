@@ -3,15 +3,12 @@ import dcConfigurator from "./dcConfigurator";
 import rsaKeysManager from "./rsaKeysManager";
 import timeManager from "./timeManager";
 
-// @ts-ignore
-import { BigInteger } from "jsbn";
-
 import CryptoWorker from "../crypto/cryptoworker";
 
 import { logger, LogLevels } from "../logger";
 import { bytesCmp, bytesToHex, bytesFromHex, bytesXor } from "../../helpers/bytes";
 import DEBUG from "../../config/debug";
-//import { bigInt2str, greater, int2bigInt, one, powMod, str2bigInt, sub } from "../../vendor/leemon";
+import { cmp, int2bigInt, one, pow, str2bigInt, sub } from "../../vendor/leemon";
 
 /* let fNewNonce: any = bytesFromHex('8761970c24cb2329b5b2459752c502f3057cb7e8dbab200e526e8767fdc73b3c').reverse();
 let fNonce: any = bytesFromHex('b597720d11faa5914ef485c529cde414').reverse();
@@ -401,21 +398,21 @@ export class Authorizer {
       this.log('dhPrime cmp OK');
     }
     
-    var gABigInt = new BigInteger(bytesToHex(gA), 16);
-    //const _gABigInt = str2bigInt(bytesToHex(gA), 16);
-    var dhPrimeBigInt = new BigInteger(dhPrimeHex, 16);
-    //const _dhPrimeBigInt = str2bigInt(dhPrimeHex, 16);
+    //var gABigInt = new BigInteger(bytesToHex(gA), 16);
+    const _gABigInt = str2bigInt(bytesToHex(gA), 16);
+    //var dhPrimeBigInt = new BigInteger(dhPrimeHex, 16);
+    const _dhPrimeBigInt = str2bigInt(dhPrimeHex, 16);
     
     //this.log('gABigInt.compareTo(BigInteger.ONE) <= 0', gABigInt.compareTo(BigInteger.ONE), BigInteger.ONE.compareTo(BigInteger.ONE), greater(_gABigInt, one));
-    if(gABigInt.compareTo(BigInteger.ONE) <= 0) {
-    //if(!greater(_gABigInt, one)) {
+    //if(gABigInt.compareTo(BigInteger.ONE) <= 0) {
+    if(cmp(_gABigInt, one) <= 0) {
       throw new Error('[MT] DH params are not verified: gA <= 1');
     }
       
     /* this.log('gABigInt.compareTo(dhPrimeBigInt.subtract(BigInteger.ONE)) >= 0', gABigInt.compareTo(dhPrimeBigInt.subtract(BigInteger.ONE)),
       greater(gABigInt, sub(_dhPrimeBigInt, one))); */
-    if(gABigInt.compareTo(dhPrimeBigInt.subtract(BigInteger.ONE)) >= 0) {
-    //if(greater(gABigInt, sub(_dhPrimeBigInt, one))) {
+    //if(gABigInt.compareTo(dhPrimeBigInt.subtract(BigInteger.ONE)) >= 0) {
+    if(cmp(_gABigInt, sub(_dhPrimeBigInt, one)) >= 0) {
       throw new Error('[MT] DH params are not verified: gA >= dhPrime - 1');
     }
 
@@ -424,19 +421,25 @@ export class Authorizer {
     }
     
     
-    var two = new BigInteger(/* null */'');
-    two.fromInt(2);
-    //const _two = int2bigInt(2, 10, 0);
+    //var two = new BigInteger(/* null */'');
+    //two.fromInt(2);
+    const _two = int2bigInt(2, 32, 0);
     //this.log('_two:', bigInt2str(_two, 16), two.toString(16));
-    var twoPow = two.pow(2048 - 64);
-    //const _twoPow = powMod(_two, int2bigInt(2048 - 64, 10, 0), null);
+    let perf = performance.now();
+    //var twoPow = two.pow(2048 - 64);
+    //console.log('jsbn pow', performance.now() - perf);
+    perf = performance.now();
+    const _twoPow = pow(_two, 2048 - 64);
+    //console.log('leemon pow', performance.now() - perf);
     //this.log('twoPow:', twoPow.toString(16), bigInt2str(_twoPow, 16));
     
-   // this.log('gABigInt.compareTo(twoPow) < 0');
-    if(gABigInt.compareTo(twoPow) < 0) {
+    // this.log('gABigInt.compareTo(twoPow) < 0');
+    //if(gABigInt.compareTo(twoPow) < 0) {
+    if(cmp(_gABigInt, _twoPow) < 0) {
       throw new Error('[MT] DH params are not verified: gA < 2^{2048-64}');
     }
-    if(gABigInt.compareTo(dhPrimeBigInt.subtract(twoPow)) >= 0) {
+    //if(gABigInt.compareTo(dhPrimeBigInt.subtract(twoPow)) >= 0) {
+    if(cmp(_gABigInt, sub(_dhPrimeBigInt, _twoPow)) >= 0) {
       throw new Error('[MT] DH params are not verified: gA > dhPrime - 2^{2048-64}');
     }
 

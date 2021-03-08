@@ -12,7 +12,7 @@ import appStateManager from "../../../lib/appManagers/appStateManager";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
 import rootScope from "../../../lib/rootScope";
 import Button from "../../button";
-import CheckboxField from "../../checkbox";
+import CheckboxField from "../../checkboxField";
 import ProgressivePreloader from "../../preloader";
 import { SliderSuperTab } from "../../slider";
 import { wrapPhoto } from "../../wrappers";
@@ -28,7 +28,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
       const uploadButton = Button('btn-primary btn-transparent', {icon: 'cameraadd', text: 'Upload Wallpaper', disabled: true});
       const colorButton = Button('btn-primary btn-transparent', {icon: 'colorize', text: 'Set a Color', disabled: true});
 
-      const blurCheckboxField = CheckboxField({
+      const blurCheckboxField = new CheckboxField({
         text: 'Blur Wallpaper Image', 
         name: 'blur', 
         stateKey: 'settings.background.blur'

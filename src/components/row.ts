@@ -1,4 +1,4 @@
-import CheckboxField from "./checkbox";
+import CheckboxField from "./checkboxField";
 import RadioField from "./radioField";
 import { ripple } from "./ripple";
 import { SliderSuperTab } from "./slider";
@@ -9,8 +9,8 @@ export default class Row {
   public title: HTMLDivElement;
   public subtitle: HTMLElement;
 
-  public checkboxField: ReturnType<typeof CheckboxField>;
-  public radioField: ReturnType<typeof RadioField>;
+  public checkboxField: CheckboxField;
+  public radioField: RadioField;
 
   public freezed = false;
 
@@ -44,6 +44,10 @@ export default class Row {
       if(options.checkboxField) {
         this.checkboxField = options.checkboxField;
         this.container.append(this.checkboxField.label);
+
+        this.checkboxField.input.addEventListener('change', () => {
+          this.subtitle.innerHTML = this.checkboxField.input.checked ? 'Enabled' : 'Disabled';
+        });
       }
     } else {
       if(options.title) {

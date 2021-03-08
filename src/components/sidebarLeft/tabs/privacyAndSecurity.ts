@@ -18,6 +18,7 @@ import apiManager from "../../../lib/mtproto/mtprotoworker";
 import AppBlockedUsersTab from "./blockedUsers";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import rootScope from "../../../lib/rootScope";
+import { convertKeyToInputKey } from "../../../helpers/string";
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
   private activeSessionsRow: Row;
@@ -204,11 +205,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
       }
 
       rootScope.on('privacy_update', (update) => {
-        let key: string = update.key._;
-        key = key[0].toUpperCase() + key.slice(1);
-        key = 'input' + key;
-
-        updatePrivacyRow(key as any);
+        updatePrivacyRow(convertKeyToInputKey(update.key._) as any);
       });
 
       container.append(numberVisibilityRow.container, lastSeenTimeRow.container, photoVisibilityRow.container, callRow.container, linkAccountRow.container, groupChatsAddRow.container);

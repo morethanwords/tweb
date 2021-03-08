@@ -6,7 +6,7 @@ import { isTouchSupported } from "../../helpers/touchSupport";
 import { blurActiveElement, cancelEvent, cancelSelection, findUpClassName, getSelectedText } from "../../helpers/dom";
 import Button from "../button";
 import ButtonIcon from "../buttonIcon";
-import CheckboxField from "../checkbox";
+import CheckboxField from "../checkboxField";
 import PopupDeleteMessages from "../popups/deleteMessages";
 import PopupForward from "../popups/forward";
 import { toast } from "../toast";
@@ -161,7 +161,7 @@ export default class ChatSelection {
     if(show) {
       if(hasCheckbox) return;
       
-      const checkboxField = CheckboxField({
+      const checkboxField = new CheckboxField({
         name: bubble.dataset.mid, 
         round: true
       });

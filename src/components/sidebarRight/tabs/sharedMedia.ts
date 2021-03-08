@@ -10,7 +10,7 @@ import AppSearchSuper, { SearchSuperType } from "../../appSearchSuper.";
 import AvatarElement from "../../avatar";
 import Scrollable from "../../scrollable";
 import { SliderTab } from "../../slider";
-import CheckboxField from "../../checkbox";
+import CheckboxField from "../../checkboxField";
 import { attachClickEvent, cancelEvent } from "../../../helpers/dom";
 import appSidebarRight from "..";
 import { TransitionSlider } from "../../transition";
@@ -81,7 +81,7 @@ export default class AppSharedMediaTab implements SliderTab {
       notificationsStatus: this.profileContentEl.querySelector('.profile-row-notifications > p')
     };
 
-    const checkboxField = CheckboxField({
+    const checkboxField = new CheckboxField({
       text: 'Notifications', 
       name: 'notifications'
     });

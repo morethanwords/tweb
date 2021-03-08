@@ -86,14 +86,17 @@ export class AppImManager {
       this.offline = rootScope.idle.isIDLE = true;
       this.updateStatus();
       clearInterval(this.updateStatusInterval);
+      rootScope.broadcast('idle', true);
       
       window.addEventListener('focus', () => {
         this.offline = rootScope.idle.isIDLE = false;
         this.updateStatus();
         this.updateStatusInterval = window.setInterval(() => this.updateStatus(), 50e3);
-
+        
         // в обратном порядке
         animationIntersector.checkAnimations(false);
+
+        rootScope.broadcast('idle', false);
       }, {once: true});
     });
 
@@ -101,6 +104,8 @@ export class AppImManager {
     window.addEventListener(FOCUS_EVENT_NAME, () => {
       this.updateStatusInterval = window.setInterval(() => this.updateStatus(), 50e3);
       this.updateStatus();
+
+      rootScope.broadcast('idle', false);
     }, {once: true, passive: true});
 
     this.chatsContainer = document.createElement('div');

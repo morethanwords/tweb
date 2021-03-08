@@ -9,16 +9,27 @@ export default class DialogsStorage {
   public dialogs: {[peerId: string]: Dialog} = {};
   public byFolders: {[folderId: number]: Dialog[]} = {};
 
-  public allDialogsLoaded: {[folder_id: number]: boolean} = {};
-  public dialogsOffsetDate: {[folder_id: number]: number} = {};
-  public pinnedOrders: {[folder_id: number]: number[]} = {
-    0: [],
-    1: []
-  };
-  public dialogsNum = 0;
+  public allDialogsLoaded: {[folder_id: number]: boolean};
+  private dialogsOffsetDate: {[folder_id: number]: number};
+  public pinnedOrders: {[folder_id: number]: number[]};
+  private dialogsNum: number;
 
   constructor(private appMessagesManager: AppMessagesManager, private appChatsManager: AppChatsManager, private appPeersManager: AppPeersManager, private serverTimeManager: ServerTimeManager) {
+    this.reset();
+  }
 
+  public reset() {
+    this.allDialogsLoaded = {};
+    this.dialogsOffsetDate = {};
+    this.pinnedOrders = {
+      0: [],
+      1: []
+    };
+    this.dialogsNum = 0;
+  }
+
+  public getOffsetDate(folderId: number) {
+    return this.dialogsOffsetDate[folderId] || 0;
   }
 
   public getFolder(id: number) {

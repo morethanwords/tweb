@@ -326,13 +326,13 @@ export class AppChatsManager {
     return this.cachedPhotoLocations[id];
   }
 
-  /* public getChatString(id: number) {
+  public getChatString(id: number) {
     const chat = this.getChat(id);
     if(this.isChannel(id)) {
       return (this.isMegagroup(id) ? 's' : 'c') + id + '_' + chat.access_hash;
     }
     return 'g' + id;
-  } */
+  }
 
   public getChatMembersString(id: number) {
     const chat = this.getChat(id);

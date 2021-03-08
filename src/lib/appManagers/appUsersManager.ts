@@ -469,10 +469,10 @@ export class AppUsersManager {
     return this.cachedPhotoLocations[id];
   }
 
-  /* public getUserString(id: number) {
+  public getUserString(id: number) {
     const user = this.getUser(id);
     return 'u' + id + (user.access_hash ? '_' + user.access_hash : '');
-  } */
+  }
 
   public getUserInput(id: number): InputUser {
     const user = this.getUser(id);

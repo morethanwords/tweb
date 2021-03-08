@@ -89,18 +89,22 @@ type BroadcastEvents = {
   'im_mount': void,
   'im_tab_change': number,
 
+  'idle': boolean,
+
   'overlay_toggle': boolean,
 
   'background_change': void,
 
-  'privacy_update': Update.updatePrivacy
+  'privacy_update': Update.updatePrivacy,
+
+  'notify_settings': Update.updateNotifySettings
 };
 
 class RootScope extends EventListenerBase<any> {
   private _overlayIsActive: boolean = false;
   public myId = 0;
   public idle = {
-    isIDLE: false
+    isIDLE: true
   };
   public connectionStatus: {[name: string]: ConnectionStatusChange} = {};
   public settings: State['settings'];

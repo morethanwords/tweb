@@ -63,6 +63,9 @@ export type State = Partial<{
       highlightningColor?: string,
       color?: string,
       slug?: string,
+    },
+    notifications: {
+      sound: boolean
     }
   },
   drafts: AppDraftsManager['drafts']
@@ -109,6 +112,9 @@ export const STATE_INIT: State = {
       type: 'image',
       blur: false,
       slug: 'ByxGo2lrMFAIAAAAmkJxZabh8eM', // * new blurred camomile
+    },
+    notifications: {
+      sound: true
     }
   },
   drafts: {}

@@ -5,7 +5,6 @@ import { attachContextMenuListener, putPreloader } from "../../components/misc";
 import { ripple } from "../../components/ripple";
 //import Scrollable from "../../components/scrollable";
 import Scrollable, { ScrollableX, SliceSides } from "../../components/scrollable";
-import appSidebarLeft from "../../components/sidebarLeft";
 import { formatDateAccordingToToday } from "../../helpers/date";
 import { escapeRegExp } from "../../helpers/string";
 import { isSafari } from "../../helpers/userAgent";
@@ -165,8 +164,8 @@ class ConnectionStatusComponent {
         DEBUG && this.log('setState: isShown:', this.connecting || this.updating);
       };
 
-      //this.setStateTimeout = window.setTimeout(cb, timeout);
-      cb();
+      this.setStateTimeout = window.setTimeout(cb, timeout);
+      //cb();
       /* if(timeout) this.setStateTimeout = window.setTimeout(cb, timeout);
       else cb(); */
     });
@@ -499,9 +498,19 @@ export class AppDialogsManager {
 
       return this.loadDialogs();
     }).then(() => {
-      appMessagesManager.getConversationsAll('', 0).finally(() => {
-        appMessagesManager.getConversationsAll('', 1).then(() => {
+      const allDialogsLoaded = appMessagesManager.dialogsStorage.allDialogsLoaded;
+      const wasLoaded = allDialogsLoaded[0] || allDialogsLoaded[1];
+      const a: Promise<any> = allDialogsLoaded[0] ? Promise.resolve() : appMessagesManager.getConversationsAll('', 0);
+      const b: Promise<any> = allDialogsLoaded[1] ? Promise.resolve() : appMessagesManager.getConversationsAll('', 1);
+      a.finally(() => {
+        b.then(() => {
           this.accumulateArchivedUnread();
+
+          if(wasLoaded) {
+            (apiUpdatesManager.updatesState.syncLoading || Promise.resolve()).then(() => {
+              appMessagesManager.refreshConversations();
+            });
+          }
         });
       });
     });

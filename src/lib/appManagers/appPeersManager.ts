@@ -1,6 +1,6 @@
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { isObject } from "../../helpers/object";
-import { DialogPeer, InputDialogPeer, InputPeer, Peer, Update } from "../../layer";
+import { DialogPeer, InputDialogPeer, InputNotifyPeer, InputPeer, Peer, Update } from "../../layer";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
 import appChatsManager from "./appChatsManager";
@@ -105,12 +105,12 @@ export class AppPeersManager {
     return {_: 'peerChat', chat_id: chatId};
   }
 
-  /* public getPeerString(peerId: number) {
+  public getPeerString(peerId: number) {
     if(peerId > 0) {
       return appUsersManager.getUserString(peerId);
     }
     return appChatsManager.getChatString(-peerId);
-  } */
+  }
 
   public getPeerUsername(peerId: number): string {
     if(peerId > 0) {
@@ -163,6 +163,13 @@ export class AppPeersManager {
     return (peerId > 0) && appUsersManager.isBot(peerId);
   }
 
+  /**
+   * Will check notification exceptions by type too
+   */
+  public isPeerMuted(peerId: number) {
+
+  }
+
   /* public getInputPeer(peerString: string): InputPeer {
     var firstChar = peerString.charAt(0);
     var peerParams = peerString.substr(1).split('_');
@@ -194,6 +201,25 @@ export class AppPeersManager {
       };
     }
   } */
+
+  public getInputNotifyPeerById(peerId: number, ignorePeerId = false): InputNotifyPeer {
+    if(ignorePeerId) {
+      if(peerId > 0) {
+        return {_: 'inputNotifyUsers'};
+      } else {
+        if(appPeersManager.isBroadcast(peerId)) {
+          return {_: 'inputNotifyBroadcasts'};
+        } else {
+          return {_: 'inputNotifyChats'};
+        }
+      }
+    } else {
+      return {
+        _: 'inputNotifyPeer', 
+        peer: this.getInputPeerById(peerId)
+      };
+    }
+  }
 
   public getInputPeerById(peerId: number): InputPeer {
     if(!peerId) {

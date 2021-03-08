@@ -6,7 +6,7 @@ import { createPosterForVideo } from "../../helpers/files";
 import { copy, defineNotNumerableProperties, getObjectKeysAndSort } from "../../helpers/object";
 import { randomLong } from "../../helpers/random";
 import { splitStringByLength, limitSymbols } from "../../helpers/string";
-import { ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputNotifyPeer, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, NotifyPeer, PhotoSize, SendMessageAction, Update } from "../../layer";
+import { ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update } from "../../layer";
 import { InvokeApiOptions } from "../../types";
 import { langPack } from "../langPack";
 import { logger, LogLevels } from "../logger";
@@ -37,6 +37,7 @@ import { getFileNameByLocation } from "../../helpers/fileName";
 import appProfileManager from "./appProfileManager";
 import DEBUG, { MOUNT_CLASS_TO } from "../../config/debug";
 import SlicedArray, { Slice, SliceEnd } from "../../helpers/slicedArray";
+import appNotificationsManager, { NotifyOptions } from "./appNotificationsManager";
 
 //console.trace('include');
 // TODO: если удалить сообщение в непрогруженном диалоге, то при обновлении, из-за стейта, последнего сообщения в чатлисте не будет
@@ -155,7 +156,14 @@ export class AppMessagesManager {
   public newMessagesToHandle: {[peerId: string]: number[]} = {};
   public newDialogsHandlePromise = 0;
   public newDialogsToHandle: {[peerId: string]: {reload: true} | Dialog} = {};
-  public newUpdatesAfterReloadToHandle: any = {};
+  public newUpdatesAfterReloadToHandle: {[peerId: string]: any[]} = {};
+
+  private notificationsHandlePromise = 0;
+  private notificationsToHandle: {[peerId: string]: {
+    fwdCount: number,
+    fromId: number,
+    topMessage?: MyMessage
+  }} = {};
 
   private reloadConversationsPromise: Promise<void>;
   private reloadConversationsPeers: number[] = [];
@@ -342,6 +350,8 @@ export class AppMessagesManager {
         });
       }
     });
+
+    appNotificationsManager.start();
   }
 
   public getInputEntities(entities: MessageEntity[]) {
@@ -1543,6 +1553,32 @@ export class AppMessagesManager {
     return false;
   }
 
+  public async refreshConversations() {
+    const limit = 100, outDialogs: Dialog[] = [];
+    for(let folderId = 0; folderId < 2; ++folderId) {
+      let offsetDate = 0;
+      for(;;) {
+        const {dialogs} = await appMessagesManager.getTopMessages(limit, folderId, offsetDate);
+  
+        if(dialogs.length) {
+          outDialogs.push(...dialogs as Dialog[]);
+          const dialog = dialogs[dialogs.length - 1];
+          offsetDate = this.getMessageByPeer(dialog.peerId, dialog.top_message).date;
+        } else {
+          break;
+        }
+      }
+    }
+
+    let obj: {[peerId: string]: Dialog} = {};
+    outDialogs.forEach(dialog => {
+      obj[dialog.peerId] = dialog;
+    });
+    rootScope.broadcast('dialogs_multiupdate', obj);
+
+    return outDialogs;
+  }
+
   public async getConversationsAll(query = '', folderId = 0) {
     const limit = 100, outDialogs: Dialog[] = [];
     for(; folderId < 2; ++folderId) {
@@ -1609,7 +1645,7 @@ export class AppMessagesManager {
       });
     }
 
-    return this.getTopMessages(limit, realFolderId).then(totalCount => {
+    return this.getTopMessages(limit, realFolderId).then(messagesDialogs => {
       //const curDialogStorage = this.dialogsStorage[folderId];
 
       offset = 0;
@@ -1625,7 +1661,7 @@ export class AppMessagesManager {
 
       return {
         dialogs: curDialogStorage.slice(offset, offset + limit),
-        count: totalCount,
+        count: messagesDialogs._ === 'messages.dialogs' ? messagesDialogs.dialogs.length : messagesDialogs.count,
         isEnd: this.dialogsStorage.allDialogsLoaded[realFolderId] && (offset + limit) >= curDialogStorage.length
       };
     });
@@ -1645,16 +1681,19 @@ export class AppMessagesManager {
     }
   }
 
-  public getTopMessages(limit: number, folderId: number): Promise<number> {
+  public getTopMessages(limit: number, folderId: number, offsetDate?: number) {
     const dialogs = this.dialogsStorage.getFolder(folderId);
     let offsetId = 0;
-    let offsetDate = 0;
     let offsetPeerId = 0;
     let offsetIndex = 0;
 
-    if(this.dialogsStorage.dialogsOffsetDate[folderId]) {
-      offsetDate = this.dialogsStorage.dialogsOffsetDate[folderId] + serverTimeManager.serverTimeOffset;
-      offsetIndex = this.dialogsStorage.dialogsOffsetDate[folderId] * 0x10000;
+    if(offsetDate === undefined) {
+      offsetDate = this.dialogsStorage.getOffsetDate(folderId);
+    }
+
+    if(offsetDate) {
+      offsetIndex = offsetDate * 0x10000;
+      offsetDate += serverTimeManager.serverTimeOffset;
     }
 
     // ! ВНИМАНИЕ: ОЧЕНЬ СЛОЖНАЯ ЛОГИКА:
@@ -1747,7 +1786,7 @@ export class AppMessagesManager {
         rootScope.broadcast('dialogs_multiupdate', {});
       }
 
-      return count;
+      return dialogsResult;
     });
   }
 
@@ -2766,6 +2805,7 @@ export class AppMessagesManager {
     (dialogsResult.dialogs as Dialog[]).forEach((dialog) => {
       const peerId = appPeersManager.getPeerId(dialog.peer);
       let topMessage = dialog.top_message;
+
       const topPendingMessage = this.pendingTopMsgs[peerId];
       if(topPendingMessage) {
         if(!topMessage 
@@ -2781,34 +2821,17 @@ export class AppMessagesManager {
       } */
 
       if(topMessage || (dialog.draft && dialog.draft._ === 'draftMessage')) {
-        //const wasDialogBefore = this.getDialogByPeerID(peerId)[0];
-
-        // here need to just replace, not FULL replace dialog! WARNING
-        /* if(wasDialogBefore?.pFlags?.pinned && !dialog?.pFlags?.pinned) {
-          this.log.error('here need to just replace, not FULL replace dialog! WARNING', wasDialogBefore, dialog);
-          if(!dialog.pFlags) dialog.pFlags = {};
-          dialog.pFlags.pinned = true;
-        } */
-
         this.saveConversation(dialog);
-        
-        /* if(wasDialogBefore) {
-          rootScope.$broadcast('dialog_top', dialog);
-        } else { */
-          //if(wasDialogBefore?.top_message !== topMessage) {
-            updatedDialogs[peerId] = dialog;
-          //}
-        //}
+        updatedDialogs[peerId] = dialog;
       } else {
         const dropped = this.dialogsStorage.dropDialog(peerId);
         if(dropped.length) {
-          rootScope.broadcast('dialog_drop', {peerId: peerId, dialog: dropped[0]});
+          rootScope.broadcast('dialog_drop', {peerId, dialog: dropped[0]});
         }
       }
 
       if(this.newUpdatesAfterReloadToHandle[peerId] !== undefined) {
-        for(const i in this.newUpdatesAfterReloadToHandle[peerId]) {
-          const update = this.newUpdatesAfterReloadToHandle[peerId][i];
+        for(const update of this.newUpdatesAfterReloadToHandle[peerId]) {
           this.handleUpdate(update);
         }
 
@@ -2924,6 +2947,8 @@ export class AppMessagesManager {
     historyStorage.maxId = mid;
     historyStorage.readMaxId = dialog.read_inbox_max_id;
     historyStorage.readOutboxMaxId = dialog.read_outbox_max_id;
+
+    appNotificationsManager.savePeerSettings(peerId, dialog.notify_settings)
 
     if(channelId && dialog.pts) {
       apiUpdatesManager.addChannelState(channelId, dialog.pts);
@@ -3534,6 +3559,19 @@ export class AppMessagesManager {
       });
     }
 
+    if(!threadId && historyStorage && historyStorage.history.length) {
+      const slice = historyStorage.history.slice;
+      for(const mid of slice) {
+        const message = this.getMessageByPeer(peerId, mid);
+        if(message && !message.pFlags.out) {
+          message.pFlags.unread = false;
+          appNotificationsManager.cancel('msg' + mid);
+        }
+      }
+    }
+
+    appNotificationsManager.soundReset(appPeersManager.getPeerString(peerId));
+
     if(historyStorage.readPromise) {
       return historyStorage.readPromise;
     }
@@ -3601,6 +3639,40 @@ export class AppMessagesManager {
 
     return this.historiesStorage[peerId] ?? (this.historiesStorage[peerId] = {count: null, history: new SlicedArray()});
   }
+
+  private handleNotifications = () => {
+    window.clearTimeout(this.notificationsHandlePromise);
+    this.notificationsHandlePromise = 0;
+
+    //var timeout = $rootScope.idle.isIDLE && StatusManager.isOtherDeviceActive() ? 30000 : 1000;
+    //const timeout = 1000;
+
+    for(const _peerId in this.notificationsToHandle) {
+      const peerId = +_peerId;
+      const notifyPeerToHandle = this.notificationsToHandle[peerId];
+
+      Promise.all([
+        appNotificationsManager.getPeerMuted(peerId),
+        appNotificationsManager.getNotifySettings(appPeersManager.getInputNotifyPeerById(peerId, true))
+      ]).then(([muted, peerTypeNotifySettings]) => {
+        const topMessage = notifyPeerToHandle.topMessage;
+        if(muted || !topMessage.pFlags.unread) {
+          return;
+        }
+
+        //setTimeout(() => {
+          if(topMessage.pFlags.unread) {
+            this.notifyAboutMessage(topMessage, {
+              fwdCount: notifyPeerToHandle.fwdCount,
+              peerTypeNotifySettings
+            });
+          }
+        //}, timeout);
+      });
+    }
+
+    this.notificationsToHandle = {};
+  };
 
   public handleUpdate(update: Update) {
     /* if(DEBUG) {
@@ -3703,11 +3775,37 @@ export class AppMessagesManager {
         }
         
         const dialog = foundDialog[0];
+        const inboxUnread = !message.pFlags.out && message.pFlags.unread;
         if(dialog) {
-          const inboxUnread = !message.pFlags.out && message.pFlags.unread;
           this.setDialogTopMessage(message, dialog);
           if(inboxUnread) {
             dialog.unread_count++;
+          }
+        }
+
+        if(inboxUnread/*  && ($rootScope.selectedPeerID != peerID || $rootScope.idle.isIDLE) */) {
+          const notifyPeer = message.peerId;
+          let notifyPeerToHandle = this.notificationsToHandle[notifyPeer];
+          if(notifyPeerToHandle === undefined) {
+            notifyPeerToHandle = this.notificationsToHandle[notifyPeer] = {
+              fwdCount: 0,
+              fromId: 0
+            };
+          }
+
+          if(notifyPeerToHandle.fromId !== message.fromId) {
+            notifyPeerToHandle.fromId = message.fromId;
+            notifyPeerToHandle.fwdCount = 0;
+          }
+
+          if((message as Message.message).fwd_from) {
+            notifyPeerToHandle.fwdCount++;
+          }
+
+          notifyPeerToHandle.topMessage = message;
+
+          if(!this.notificationsHandlePromise) {
+            this.notificationsHandlePromise = window.setTimeout(this.handleNotifications, 0);
           }
         }
 
@@ -3986,8 +4084,9 @@ export class AppMessagesManager {
 
             if(!message.pFlags.out && !threadId && stillUnreadCount === undefined) {
               newUnreadCount = --foundDialog.unread_count;
-              //NotificationsManager.cancel('msg' + messageId); // warning
             }
+            
+            appNotificationsManager.cancel('msg' + messageId);
           }
         }
 
@@ -4194,7 +4293,7 @@ export class AppMessagesManager {
           this.pendingTopMsgs[peerId] = messageId;
           this.handleUpdate({
             _: 'updateNewMessage',
-            message: message
+            message
           } as any);
         }
 
@@ -4261,13 +4360,14 @@ export class AppMessagesManager {
 
       case 'updateNotifySettings': {
         const {peer, notify_settings} = update;
+        if(peer._ === 'notifyPeer') {
+          const peerId = appPeersManager.getPeerId((peer as NotifyPeer.notifyPeer).peer);
         
-        const peerId = appPeersManager.getPeerId((peer as NotifyPeer.notifyPeer).peer);
-        
-        const dialog = this.getDialogByPeerId(peerId)[0];
-        if(dialog) {
-          dialog.notify_settings = notify_settings;
-          rootScope.broadcast('dialog_notify_settings', peerId);
+          const dialog = this.getDialogByPeerId(peerId)[0];
+          if(dialog) {
+            dialog.notify_settings = notify_settings;
+            rootScope.broadcast('dialog_notify_settings', peerId);
+          }
         }
 
         /////this.log('updateNotifySettings', peerId, notify_settings);
@@ -4379,17 +4479,11 @@ export class AppMessagesManager {
   }
 
   public mutePeer(peerId: number) {
-    let inputPeer = appPeersManager.getInputPeerById(peerId);
-    let inputNotifyPeer: InputNotifyPeer.inputNotifyPeer = {
-      _: 'inputNotifyPeer',
-      peer: inputPeer
-    };
-    
-    let settings: InputPeerNotifySettings = {
+    const settings: InputPeerNotifySettings = {
       _: 'inputPeerNotifySettings'
     };
 
-    let dialog = appMessagesManager.getDialogByPeerId(peerId)[0];
+    const dialog = appMessagesManager.getDialogByPeerId(peerId)[0];
     let muted = true;
     if(dialog && dialog.notify_settings) {
       muted = dialog.notify_settings.mute_until > (Date.now() / 1000 | 0);
@@ -4398,25 +4492,11 @@ export class AppMessagesManager {
     if(!muted) {
       settings.mute_until = 2147483647;
     }
-    
-    apiManager.invokeApi('account.updateNotifySettings', {
-      peer: inputNotifyPeer,
-      settings: settings
-    }).then(bool => {
-      if(bool) {
-        this.handleUpdate({
-          _: 'updateNotifySettings', 
-          peer: {
-            _: 'notifyPeer',
-            peer: appPeersManager.getOutputPeer(peerId)
-          }, 
-          notify_settings: { // ! WOW, IT WORKS !
-            ...settings,
-            _: 'peerNotifySettings',
-          }
-        });
-      }
-    });
+
+    return appNotificationsManager.updateNotifySettings({
+      _: 'inputNotifyPeer',
+      peer: appPeersManager.getInputPeerById(peerId)
+    }, settings);
   }
 
   public canWriteToPeer(peerId: number) {
@@ -4528,6 +4608,226 @@ export class AppMessagesManager {
     apiManager.invokeApi('messages.receivedMessages', {
       max_id: this.getServerMessageId(maxId)
     });
+  }
+
+  private notifyAboutMessage(message: MyMessage, options: Partial<{
+    fwdCount: number,
+    peerTypeNotifySettings: PeerNotifySettings
+  }> = {}) {
+    const peerId = this.getMessagePeer(message);
+    let peerString: string;
+    const notification: NotifyOptions = {};
+    var notificationMessage: string,
+      notificationPhoto: any;
+
+    const _ = (str: string) => str;
+
+    const localSettings = appNotificationsManager.getLocalSettings();
+    if(options.peerTypeNotifySettings.show_previews) {
+      if(message._ === 'message') {
+        if(message.fwd_from && options.fwdCount) {
+          notificationMessage = 'Forwarded ' + options.fwdCount + ' messages';//fwdMessagesPluralize(options.fwd_count);
+        } else if(message.message) {
+          if(localSettings.nopreview) {
+            notificationMessage = _('conversation_message_sent');
+          } else {
+            notificationMessage = RichTextProcessor.wrapPlainText(message.message);
+          }
+        } else if(message.media) {
+          var captionEmoji: string;
+          switch (message.media._) {
+            case 'messageMediaPhoto':
+              notificationMessage = _('conversation_media_photo_raw');
+              captionEmoji = '🖼';
+              break;
+            case 'messageMediaDocument':
+              if(message.media.document._ === 'documentEmpty') break;
+              switch(message.media.document.type) {
+                case 'gif':
+                  notificationMessage = _('conversation_media_gif_raw');
+                  captionEmoji = '🎬';
+                  break;
+                case 'sticker':
+                  notificationMessage = _('conversation_media_sticker');
+                  var stickerEmoji = message.media.document.stickerEmojiRaw;
+                  if(stickerEmoji !== undefined) {
+                    notificationMessage = RichTextProcessor.wrapPlainText(stickerEmoji) + ' ' + notificationMessage;
+                  }
+                  break;
+                case 'video':
+                  notificationMessage = _('conversation_media_video_raw');
+                  captionEmoji = '📹';
+                  break;
+                case 'round':
+                  notificationMessage = _('conversation_media_round_raw');
+                  captionEmoji = '📹';
+                  break;
+                case 'voice':
+                case 'audio':
+                  notificationMessage = _('conversation_media_audio_raw');
+                  break;
+                default:
+                  if(message.media.document.file_name) {
+                    notificationMessage = RichTextProcessor.wrapPlainText('📎 ' + message.media.document.file_name);
+                  } else {
+                    notificationMessage = _('conversation_media_document_raw');
+                    captionEmoji = '📎';
+                  }
+                  break;
+              }
+              break;
+    
+            case 'messageMediaGeo':
+            case 'messageMediaVenue':
+              notificationMessage = _('conversation_media_location_raw');
+              captionEmoji = '📍';
+              break;
+            case 'messageMediaContact':
+              notificationMessage = _('conversation_media_contact_raw');
+              break;
+            case 'messageMediaGame':
+              notificationMessage = RichTextProcessor.wrapPlainText('🎮 ' + message.media.game.title);
+              break;
+            case 'messageMediaUnsupported':
+              notificationMessage = _('conversation_media_unsupported_raw');
+              break;
+            default:
+              notificationMessage = _('conversation_media_attachment_raw');
+              break;
+          }
+    
+          if(captionEmoji !== undefined && (message.media as any).caption) {
+            notificationMessage = RichTextProcessor.wrapPlainText(captionEmoji + ' ' + (message.media as any).caption);
+          }
+        }
+      } else {
+        switch(message.action._) {
+          case 'messageActionChatCreate':
+            notificationMessage = _('conversation_group_created_raw')
+            break
+          case 'messageActionChatEditTitle':
+            notificationMessage = _('conversation_group_renamed_raw')
+            break
+          case 'messageActionChatEditPhoto':
+            notificationMessage = _('conversation_group_photo_updated_raw')
+            break
+          case 'messageActionChatDeletePhoto':
+            notificationMessage = _('conversation_group_photo_removed_raw')
+            break
+          case 'messageActionChatAddUser':
+          // @ts-ignore
+          case 'messageActionChatAddUsers':
+            notificationMessage = _('conversation_invited_user_message_raw')
+            break
+          /* case 'messageActionChatReturn':
+            notificationMessage = _('conversation_returned_to_group_raw')
+            break
+          case 'messageActionChatJoined':
+            notificationMessage = _('conversation_joined_group_raw')
+            break */
+          case 'messageActionChatDeleteUser':
+            notificationMessage = _('conversation_kicked_user_message_raw')
+            break
+          /* case 'messageActionChatLeave':
+            notificationMessage = _('conversation_left_group_raw')
+            break */
+          case 'messageActionChatJoinedByLink':
+            notificationMessage = _('conversation_joined_by_link_raw')
+            break
+          case 'messageActionChannelCreate':
+            notificationMessage = _('conversation_created_channel_raw')
+            break
+          /* case 'messageActionChannelEditTitle':
+            notificationMessage = _('conversation_changed_channel_name_raw')
+            break
+          case 'messageActionChannelEditPhoto':
+            notificationMessage = _('conversation_changed_channel_photo_raw')
+            break
+          case 'messageActionChannelDeletePhoto':
+            notificationMessage = _('conversation_removed_channel_photo_raw')
+            break */
+          case 'messageActionPinMessage':
+            notificationMessage = _('conversation_pinned_message_raw')
+            break
+          /* case 'messageActionGameScore':
+            notificationMessage = gameScorePluralize(message.action.score)
+            break */
+  
+          case 'messageActionPhoneCall':
+            switch((message.action as any).type) {
+              case 'out_missed':
+                notificationMessage = _('message_service_phonecall_canceled_raw')
+                break
+              case 'in_missed':
+                notificationMessage = _('message_service_phonecall_missed_raw')
+                break
+              case 'out_ok':
+                notificationMessage = _('message_service_phonecall_outgoing_raw')
+                break
+              case 'in_ok':
+                notificationMessage = _('message_service_phonecall_incoming_raw')
+                break
+            }
+            break
+        }
+      }
+    } else {
+      notificationMessage = 'New notification';
+    }
+
+    if(peerId > 0) {
+      const fromUser = appUsersManager.getUser(message.fromId);
+      const fromPhoto = appUsersManager.getUserPhoto(message.fromId);
+
+      notification.title = (fromUser.first_name || '') +
+        (fromUser.first_name && fromUser.last_name ? ' ' : '') +
+        (fromUser.last_name || '');
+      if(!notification.title) {
+        notification.title = fromUser.phone || _('conversation_unknown_user_raw');
+      }
+
+      notificationPhoto = fromPhoto;
+
+      peerString = appUsersManager.getUserString(peerId);
+    } else {
+      notification.title = appChatsManager.getChat(-peerId).title || _('conversation_unknown_chat_raw');
+
+      if(message.fromId) {
+        var fromUser = appUsersManager.getUser(message.fromId);
+        notification.title = (fromUser.first_name || fromUser.last_name || _('conversation_unknown_user_raw')) +
+        ' @ ' +
+        notification.title;
+      }
+
+      notificationPhoto = appChatsManager.getChatPhoto(-peerId);
+
+      peerString = appChatsManager.getChatString(-peerId);
+    }
+
+    notification.title = RichTextProcessor.wrapPlainText(notification.title);
+
+    notification.onclick = () => {
+      /* rootScope.broadcast('history_focus', {
+        peerString: peerString,
+        messageID: message.flags & 16 ? message.mid : 0
+      }); */
+    };
+
+    notification.message = notificationMessage;
+    notification.key = 'msg' + message.mid;
+    notification.tag = peerString;
+    notification.silent = true;//message.pFlags.silent || false;
+
+    /* if(notificationPhoto.location && !notificationPhoto.location.empty) {
+      apiManager.downloadSmallFile(notificationPhoto.location, notificationPhoto.size).then(function (blob) {
+        if (message.pFlags.unread) {
+          notification.image = blob
+          NotificationsManager.notify(notification)
+        }
+      })
+    } else { */
+      appNotificationsManager.notify(notification);
+    //}
   }
 
   public getScheduledMessagesStorage(peerId: number) {
@@ -4915,6 +5215,7 @@ export class AppMessagesManager {
 
       if(!message.pFlags.out && !message.pFlags.is_outgoing && message.pFlags.unread) {
         history.unread++;
+        appNotificationsManager.cancel('msg' + mid);
       }
       history.count++;
       history.msgs[mid] = true;
