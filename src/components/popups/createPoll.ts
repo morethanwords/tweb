@@ -2,7 +2,7 @@ import type { Poll } from "../../lib/appManagers/appPollsManager";
 import type Chat from "../chat/chat";
 import PopupElement from ".";
 import { cancelEvent, findUpTag, getRichValue, isInputEmpty, whichChild } from "../../helpers/dom";
-import CheckboxField from "../checkbox";
+import CheckboxField from "../checkboxField";
 import InputField from "../inputField";
 import RadioField from "../radioField";
 import Scrollable from "../scrollable";
@@ -20,7 +20,7 @@ export default class PopupCreatePoll extends PopupElement {
   private scrollable: Scrollable;
   private tempId = 0;
 
-  private anonymousCheckboxField: ReturnType<typeof CheckboxField>;
+  private anonymousCheckboxField: CheckboxField;
   private multipleCheckboxField: PopupCreatePoll['anonymousCheckboxField'];
   private quizCheckboxField: PopupCreatePoll['anonymousCheckboxField'];
 
@@ -77,7 +77,7 @@ export default class PopupCreatePoll extends PopupElement {
     settingsCaption.innerText = 'Settings';
 
     if(!this.chat.appPeersManager.isBroadcast(this.chat.peerId)) {
-      this.anonymousCheckboxField = CheckboxField({
+      this.anonymousCheckboxField = new CheckboxField({
         text: 'Anonymous Voting', 
         name: 'anonymous'
       });
@@ -85,11 +85,11 @@ export default class PopupCreatePoll extends PopupElement {
       dd.append(this.anonymousCheckboxField.label);
     }
     
-    this.multipleCheckboxField = CheckboxField({
+    this.multipleCheckboxField = new CheckboxField({
       text: 'Multiple Answers', 
       name: 'multiple'
     });
-    this.quizCheckboxField = CheckboxField({
+    this.quizCheckboxField = new CheckboxField({
       text: 'Quiz Mode', 
       name: 'quiz'
     });
@@ -303,7 +303,7 @@ export default class PopupCreatePoll extends PopupElement {
     });
     questionField.input.addEventListener('input', this.onInput);
 
-    const radioField = RadioField('', 'question');
+    const radioField = new RadioField('', 'question');
     radioField.main.append(questionField.container);
     questionField.input.addEventListener('click', cancelEvent);
     radioField.label.classList.add('hidden-widget');

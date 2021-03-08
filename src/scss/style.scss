@@ -1140,10 +1140,17 @@ middle-ellipsis-element {
     overflow: hidden;
   }
 
-  .radio-field {
-    &-main {
-      padding-left: 3.375rem;
-      margin-left: -3.375rem;
+  .radio-field-main, .checkbox-field {
+    padding-left: 3.375rem;
+    margin-left: -3.375rem;
+  }
+
+  .checkbox-field {
+    margin-right: 0;
+    height: auto;
+
+    .checkbox-caption {
+      padding-left: 0;
     }
   }
 

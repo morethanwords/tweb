@@ -1,8 +1,6 @@
-//import {str2bigInt, divInt_, int2bigInt, bigInt2str, bigInt2bytes} from '../vendor/leemon';
-
-// @ts-ignore
-import {BigInteger, SecureRandom} from 'jsbn';
-import { bufferConcat, bufferConcats } from '../../helpers/bytes';
+import { bufferConcats } from '../../helpers/bytes';
+import { add_, bigInt2str, cmp, leftShift_, str2bigInt } from '../../vendor/leemon';
+import { nextRandomInt } from '../../helpers/random';
 
 /// #if !MTPROTO_WORKER
 // @ts-ignore
@@ -22,13 +20,13 @@ export function isObject(object: any) {
   return typeof(object) === 'object' && object !== null;
 }
 
-export function bigint(num: number) {
+/* export function bigint(num: number) {
   return new BigInteger(num.toString(16), 16);
-}
+} */
 
-export function bigStringInt(strNum: string) {
+/* export function bigStringInt(strNum: string) {
   return new BigInteger(strNum, 10);
-}
+} */
 
 /* export function base64ToBlob(base64str: string, mimeType: string) {
   var sliceSize = 1024;
@@ -62,7 +60,7 @@ export function dataUrlToBlob(url: string) {
   return blob;
 } */
 
-export function bytesFromBigInt(bigInt: BigInteger, len?: number) {
+/* export function bytesFromBigInt(bigInt: BigInteger, len?: number) {
   var bytes = bigInt.toByteArray();
 
   if(len && bytes.length < len) {
@@ -82,10 +80,36 @@ export function bytesFromBigInt(bigInt: BigInteger, len?: number) {
   }
 
   return bytes;
+} */
+
+export function longFromInts(high: number, low: number): string {
+  //let perf = performance.now();
+  //let str = bigint(high).shiftLeft(32).add(bigint(low)).toString(10);
+  //console.log('longFromInts jsbn', performance.now() - perf);
+  
+  //perf = performance.now();
+  const bigInt = str2bigInt(high.toString(16), 16, 32);//int2bigInt(high, 64, 64);
+  //console.log('longFromInts construct high', bigint(high).toString(10), bigInt2str(bigInt, 10));
+  leftShift_(bigInt, 32);
+  //console.log('longFromInts shiftLeft', bigint(high).shiftLeft(32).toString(10), bigInt2str(bigInt, 10));
+  add_(bigInt, str2bigInt(low.toString(16), 16, 32));
+  const _str = bigInt2str(bigInt, 10);
+
+  //console.log('longFromInts leemon', performance.now() - perf);
+
+  //console.log('longFromInts', high, low, str, _str, str === _str);
+
+  return _str;
 }
 
-export function longFromInts(high: number, low: number) {
-  return bigint(high).shiftLeft(32).add(bigint(low)).toString(10);
+export function sortLongsArray(arr: string[]) {
+  return arr.map(long => {
+    return str2bigInt(long, 10);
+  }).sort((a, b) => {
+    return cmp(a, b);
+  }).map(bigInt => {
+    return bigInt2str(bigInt, 10);
+  });
 }
 
 export function addPadding(bytes: any, blockSize: number = 16, zeroes?: boolean, full = false, prepend = false) {
@@ -99,7 +123,9 @@ export function addPadding(bytes: any, blockSize: number = 16, zeroes?: boolean,
         padding[i] = 0;
       }
     } else {
-      (new SecureRandom()).nextBytes(padding);
+      for(let i = 0; i < padding.length; ++i) {
+        padding[i] = nextRandomInt(255);
+      }
     }
 
     if(bytes instanceof ArrayBuffer) {

@@ -9,10 +9,7 @@ import {str2bigInt, bpe, equalsInt, greater,
   copy_, eGCD_, add_, rightShift_, sub_, copyInt_, isZero,
   divide_, one, bigInt2str, powMod, bigInt2bytes} from '../../vendor/leemon';//from 'leemon';
 
-// @ts-ignore
-import {BigInteger} from 'jsbn';
-
-import { addPadding, bytesFromBigInt } from '../mtproto/bin_utils';
+import { addPadding } from '../mtproto/bin_utils';
 import { bytesToWordss, bytesFromWordss, bytesToHex, bytesFromHex } from '../../helpers/bytes';
 import { nextRandomInt } from '../../helpers/random';
 
@@ -148,21 +145,20 @@ export async function hash_pbkdf2(/* hasher: 'string',  */buffer: any, salt: any
   return bits;
 }
 
-export function pqPrimeFactorization(pqBytes: any) {
-  var what = new BigInteger(pqBytes);
-  var result: any = false;
+export function pqPrimeFactorization(pqBytes: number[]) {
+  let result: ReturnType<typeof pqPrimeLeemon>;
 
-  //console.log(dT(), 'PQ start', pqBytes, what.toString(16), what.bitLength())
+  //console.log('PQ start', pqBytes, bytesToHex(pqBytes));
 
   try {
     //console.time('PQ leemon');
-    result = pqPrimeLeemon(str2bigInt(what.toString(16), 16, Math.ceil(64 / bpe) + 1));
+    result = pqPrimeLeemon(str2bigInt(bytesToHex(pqBytes), 16, Math.ceil(64 / bpe) + 1));
     //console.timeEnd('PQ leemon');
   } catch (e) {
     console.error('Pq leemon Exception', e);
   }
 
-  //console.log(dT(), 'PQ finish');
+  //console.log('PQ finish', result);
 
   return result;
 }
@@ -253,11 +249,11 @@ export function bytesModPow(x: any, y: any, m: any) {
     var resBigInt = powMod(xBigInt, yBigInt, mBigInt);
 
     return bytesFromHex(bigInt2str(resBigInt, 16));
-  } catch (e) {
+  } catch(e) {
     console.error('mod pow error', e);
   }
 
-  return bytesFromBigInt(new BigInteger(x).modPow(new BigInteger(y), new BigInteger(m)), 256);
+  //return bytesFromBigInt(new BigInteger(x).modPow(new BigInteger(y), new BigInteger(m)), 256);
 }
 
 export function gzipUncompress(bytes: ArrayBuffer, toString: true): string;

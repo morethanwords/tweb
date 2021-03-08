@@ -23,7 +23,7 @@ const map: Map<HTMLElement, {
 }> = new Map();
 
 const testQueue: Set<HTMLElement> = new Set();
-const fontFamily = 'Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif';
+export const fontFamily = 'Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif';
 const fontSize = '16px';
 let timeoutId: number;
 

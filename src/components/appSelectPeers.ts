@@ -8,7 +8,7 @@ import rootScope from "../lib/rootScope";
 import { cancelEvent, findUpAttribute, findUpClassName } from "../helpers/dom";
 import Scrollable from "./scrollable";
 import { FocusDirection } from "../helpers/fastSmoothScroll";
-import CheckboxField from "./checkbox";
+import CheckboxField from "./checkboxField";
 
 type PeerType = 'contacts' | 'dialogs';
 
@@ -346,7 +346,7 @@ export default class AppSelectPeers {
 
       if(this.multiSelect) {
         const selected = this.selected.has(peerId);
-        const checkboxField = CheckboxField();
+        const checkboxField = new CheckboxField();
 
         if(selected) {
           dom.listEl.classList.add('active');

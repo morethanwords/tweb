@@ -21,3 +21,5 @@ export const isAppleMobile = (/iPad|iPhone|iPod/.test(navigator.platform) ||
 export const isSafari = !!('safari' in ctx) || !!(userAgent && (/\b(iPad|iPhone|iPod)\b/.test(userAgent) || (!!userAgent.match('Safari') && !userAgent.match('Chrome'))))/*  || true */;
 
 export const isMobileSafari = isSafari && isAppleMobile;
+
+export const isMobile = /* screen.width && screen.width < 480 ||  */navigator.userAgent.search(/iOS|iPhone OS|Android|BlackBerry|BB10|Series ?[64]0|J2ME|MIDP|opera mini|opera mobi|mobi.+Gecko|Windows Phone/i) != -1;

@@ -1,5 +1,3 @@
-// @ts-ignore
-//import {SecureRandom} from 'jsbn';
 import { bytesToHex, bytesFromHex, bufferConcats } from '../helpers/bytes';
 import { nextRandomInt } from '../helpers/random';
 

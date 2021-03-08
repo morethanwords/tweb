@@ -6,7 +6,7 @@ import PopupElement from ".";
 import Scrollable from "../scrollable";
 import { toast } from "../toast";
 import { prepareAlbum, wrapDocument } from "../wrappers";
-import CheckboxField from "../checkbox";
+import CheckboxField from "../checkboxField";
 import SendContextMenu from "../chat/sendContextMenu";
 import { createPosterForVideo, createPosterFromVideo, onVideoLoad } from "../../helpers/files";
 import { MyDocument } from "../../lib/appManagers/appDocsManager";
@@ -28,7 +28,7 @@ const MAX_LENGTH_CAPTION = 1024;
 export default class PopupNewMedia extends PopupElement {
   private input: HTMLElement;
   private mediaContainer: HTMLElement;
-  private groupCheckboxField: { label: HTMLLabelElement; input: HTMLInputElement; span: HTMLSpanElement; };
+  private groupCheckboxField: CheckboxField;
   private wasInputValue = '';
 
   private willAttach: Partial<{
@@ -89,7 +89,7 @@ export default class PopupNewMedia extends PopupElement {
     this.container.append(scrollable.container);
 
     if(files.length > 1) {
-      this.groupCheckboxField = CheckboxField({
+      this.groupCheckboxField = new CheckboxField({
         text: 'Group items', 
         name: 'group-items'
       });

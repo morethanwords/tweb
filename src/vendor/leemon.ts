@@ -495,6 +495,20 @@ export function powMod(x: number[], y: number[], n: number[]): number[] {
 }
 
 /**
+ * Simple pow with no optimizations (in 40x times slower than jsbn's pow)
+ * @param x bigInt
+ * @param e
+ */
+export function pow(x: number[], e: number) {
+  let ans = dup(x);
+  e -= 1;
+  for(let i = 0; i < e; ++i) {
+    ans = mult(ans, x);
+  }
+  return trim(ans, 1);
+}
+
+/**
  * return (x-y) for bigInts x and y
  *
  * Negative answers will be 2s complement
@@ -1482,6 +1496,11 @@ export function bigInt2str(x: number[], base: number): string {
   return s
 }
 
+/**
+ * Convert a bigInt into bytes
+ * @param x bigInt
+ * @param littleEndian byte order by default
+ */
 export function bigInt2bytes(x: number[], littleEndian = true) {
   if(s6.length !== x.length) s6 = dup(x);
   else copy_(s6, x);
@@ -1503,6 +1522,27 @@ export function bigInt2bytes(x: number[], littleEndian = true) {
 
   return out;
 }
+
+/**
+ * Compare two bigInts and return -1 if x is less, 0 if equals, 1 if greater
+ * @param x bigInt
+ * @param y bigInt
+ */
+export function cmp(x: number[], y: number[]) {
+  return greater(x, y) ? 1 : (equals(x, y) ? 0 : -1);
+}
+
+/* Object.assign(self, {
+  cmp,
+  str2bigInt,
+  int2bigInt,
+  bigInt2str,
+  one,
+  divide_,
+  divInt_,
+  dup,
+  negative
+}); */
 
 /**
  * Returns a duplicate of bigInt x

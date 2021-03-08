@@ -69,7 +69,11 @@ export class AppDraftsManager {
   public getAllDrafts() {
     return this.getAllDraftPromise || (this.getAllDraftPromise = new Promise((resolve) => {
       apiManager.invokeApi('messages.getAllDrafts').then((updates) => {
-        apiUpdatesManager.processUpdateMessage(updates, {ignoreSyncLoading: true});
+        const p = apiUpdatesManager.updatesState.syncLoading || Promise.resolve();
+        p.then(() => {
+          apiUpdatesManager.processUpdateMessage(updates);
+        });
+        
         resolve();
       });
     }));

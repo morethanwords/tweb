@@ -87,3 +87,14 @@ export const checkRTL = (s: string) => {
 };
 
 //(window as any).checkRTL = checkRTL;
+
+export function convertInputKeyToKey(inputKey: string) {
+  const str = inputKey.replace('input', '');
+  return (str[0].toLowerCase() + str.slice(1)) as string;
+}
+
+export function convertKeyToInputKey(key: string) {
+  key = key[0].toUpperCase() + key.slice(1);
+  key = 'input' + key;
+  return key;
+}

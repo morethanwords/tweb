@@ -2,7 +2,7 @@ import { SliderSuperTab } from "../../slider"
 import { generateSection } from "..";
 import RangeSelector from "../../rangeSelector";
 import Button from "../../button";
-import CheckboxField from "../../checkbox";
+import CheckboxField from "../../checkboxField";
 import RadioField from "../../radioField";
 import appStateManager from "../../../lib/appManagers/appStateManager";
 import rootScope from "../../../lib/rootScope";
@@ -73,7 +73,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
         new AppBackgroundTab(this.slider).open();
       });
 
-      const animationsCheckboxField = CheckboxField({
+      const animationsCheckboxField = new CheckboxField({
         text: 'Enable Animations', 
         name: 'animations', 
         stateKey: 'settings.animationsEnabled'
@@ -88,12 +88,12 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
       const form = document.createElement('form');
 
       const enterRow = new Row({
-        radioField: RadioField('Send by Enter', 'send-shortcut', 'enter', 'settings.sendShortcut'),
+        radioField: new RadioField('Send by Enter', 'send-shortcut', 'enter', 'settings.sendShortcut'),
         subtitle: 'New line by Shift + Enter',
       });
 
       const ctrlEnterRow = new Row({
-        radioField: RadioField(`Send by ${isApple ? '⌘' : 'Ctrl'} + Enter`, 'send-shortcut', 'ctrlEnter', 'settings.sendShortcut'),
+        radioField: new RadioField(`Send by ${isApple ? '⌘' : 'Ctrl'} + Enter`, 'send-shortcut', 'ctrlEnter', 'settings.sendShortcut'),
         subtitle: 'New line by Enter',
       });
       
@@ -105,22 +105,22 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
       const container = section('Auto-Download Media');
       container.classList.add('sidebar-left-section-disabled');
 
-      const contactsCheckboxField = CheckboxField({
+      const contactsCheckboxField = new CheckboxField({
         text: 'Contacts', 
         name: 'contacts',
         stateKey: 'settings.autoDownload.contacts'
       });
-      const privateCheckboxField = CheckboxField({
+      const privateCheckboxField = new CheckboxField({
         text: 'Private Chats', 
         name: 'private',
         stateKey: 'settings.autoDownload.private'
       });
-      const groupsCheckboxField = CheckboxField({
+      const groupsCheckboxField = new CheckboxField({
         text: 'Group Chats', 
         name: 'groups',
         stateKey: 'settings.autoDownload.groups'
       });
-      const channelsCheckboxField = CheckboxField({
+      const channelsCheckboxField = new CheckboxField({
         text: 'Channels', 
         name: 'channels',
         stateKey: 'settings.autoDownload.channels'
@@ -133,12 +133,12 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
       const container = section('Auto-Play Media');
       container.classList.add('sidebar-left-section-disabled');
 
-      const gifsCheckboxField = CheckboxField({
+      const gifsCheckboxField = new CheckboxField({
         text: 'GIFs', 
         name: 'gifs', 
         stateKey: 'settings.autoPlay.gifs'
       });
-      const videosCheckboxField = CheckboxField({
+      const videosCheckboxField = new CheckboxField({
         text: 'Videos', 
         name: 'videos', 
         stateKey: 'settings.autoPlay.videos'
@@ -150,12 +150,12 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
     {
       const container = section('Stickers');
 
-      const suggestCheckboxField = CheckboxField({
+      const suggestCheckboxField = new CheckboxField({
         text: 'Suggest Stickers by Emoji', 
         name: 'suggest', 
         stateKey: 'settings.stickers.suggest'
       });
-      const loopCheckboxField = CheckboxField({
+      const loopCheckboxField = new CheckboxField({
         text: 'Loop Animated Stickers', 
         name: 'loop', 
         stateKey: 'settings.stickers.loop'

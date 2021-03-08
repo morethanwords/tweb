@@ -1,5 +1,4 @@
-import {isObject} from './bin_utils';
-import {bigStringInt} from './bin_utils';
+import {isObject, sortLongsArray} from './bin_utils';
 import {TLDeserialization, TLSerialization} from './tl_utils';
 import CryptoWorker from '../crypto/cryptoworker';
 import sessionStorage from '../sessionStorage';
@@ -21,6 +20,7 @@ import HTTP from './transports/http';
 /// #endif
 
 import type TcpObfuscated from './transports/tcpObfuscated';
+import { bigInt2str, cmp, rightShift_, str2bigInt } from '../../vendor/leemon';
 
 //console.error('networker included!', new Error().stack);
 
@@ -793,11 +793,16 @@ export default class MTPNetworker {
       
     const currentTime = Date.now();
     let messagesByteLen = 0;
+
+    /// #if MTPROTO_HTTP || MTPROTO_HTTP_UPLOAD
     let hasApiCall = false;
     let hasHttpWait = false;
+    /// #endif
+
     let lengthOverflow = false;
 
-    for(const messageId in this.pendingMessages) {
+    const keys = sortLongsArray(Object.keys(this.pendingMessages));
+    for(const messageId of keys) {
       const value = this.pendingMessages[messageId];
 
       if(!value || value <= currentTime) {
@@ -808,25 +813,26 @@ export default class MTPNetworker {
           } */
 
           const messageByteLength = message.body.length + 32;
-          if(!message.notContentRelated && lengthOverflow) {
-            continue; // maybe break here
-          }
 
-          if(!message.notContentRelated &&
-            messagesByteLen &&
-            messagesByteLen + messageByteLength > 655360) { // 640 Kb
+          if((messagesByteLen + messageByteLength) > 655360) { // 640 Kb
             this.log.warn('lengthOverflow', message, messages);
             lengthOverflow = true;
-            continue; // maybe break here
+
+            if(outMessage) { // if it is a first message
+              break;
+            }
           }
 
           messages.push(message);
           messagesByteLen += messageByteLength;
+
+          /// #if MTPROTO_HTTP || MTPROTO_HTTP_UPLOAD
           if(message.isAPI) {
             hasApiCall = true;
           } else if(message.longPoll) {
             hasHttpWait = true;
           }
+          /// #endif
 
           outMessage = message;
         } else {
@@ -1426,7 +1432,10 @@ export default class MTPNetworker {
         this.log.error('Bad msg notification', message);
 
         if(message.error_code === 16 || message.error_code === 17) {
-          const changedOffset = timeManager.applyServerTime(bigStringInt(messageId).shiftRight(32).toString(10));
+          //const changedOffset = timeManager.applyServerTime(bigStringInt(messageId).shiftRight(32).toString(10));
+          const bigInt = str2bigInt(messageId, 10);
+          rightShift_(bigInt, 32);
+          const changedOffset = timeManager.applyServerTime(+bigInt2str(bigInt, 10));
           if(message.error_code === 17 || changedOffset) {
             this.log('Update session');
             this.updateSession();

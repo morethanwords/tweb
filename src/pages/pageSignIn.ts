@@ -9,7 +9,7 @@ import Page from "./page";
 import pageAuthCode from "./pageAuthCode";
 import pageSignQR from './pageSignQR';
 import InputField from "../components/inputField";
-import CheckboxField from "../components/checkbox";
+import CheckboxField from "../components/checkboxField";
 import Button from "../components/button";
 import { isAppleMobile } from "../helpers/userAgent";
 import fastSmoothScroll from "../helpers/fastSmoothScroll";
@@ -299,7 +299,7 @@ let onFirstMount = () => {
     this.removeAttribute('readonly'); // fix autocomplete
   });*/
 
-  const signedCheckboxField = CheckboxField({
+  const signedCheckboxField = new CheckboxField({
     text: 'Keep me signed in', 
     name: 'keepSession'
   });

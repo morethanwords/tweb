@@ -1,11 +1,12 @@
 import { bytesToHex } from '../../helpers/bytes';
-import { bigint, bigStringInt, isObject } from './bin_utils';
+import { isObject, longFromInts } from './bin_utils';
 import { MOUNT_CLASS_TO } from '../../config/debug';
+import { str2bigInt, dup, divide_, bigInt2str } from '../../vendor/leemon';
+import Schema, { MTProtoConstructor } from './schema';
+
 /// #if MTPROTO_WORKER
 // @ts-ignore
 import { gzipUncompress } from '../crypto/crypto_utils';
-import Schema, { MTProtoConstructor } from './schema';
-
 /// #endif
 
 const boolFalse = +Schema.API.constructors.find(c => c.predicate === 'boolFalse').id >>> 0;
@@ -138,10 +139,29 @@ class TLSerialization {
     if(typeof sLong !== 'string') {
       sLong = sLong ? sLong.toString() : '0';
     }
-    const divRem = bigStringInt(sLong).divideAndRemainder(bigint(0x100000000));
+
+    const R = 0x100000000;
+    //const divRem = bigStringInt(sLong).divideAndRemainder(bigint(R));
+
+    const a = str2bigInt(sLong, 10, 64);
+    const q = dup(a);
+    const r = dup(a);
+    divide_(a, str2bigInt((R).toString(16), 16, 64), q, r);
+    //divInt_(a, R);
+
+    const high = +bigInt2str(q, 10);
+    let low = +bigInt2str(r, 10);
+
+    if(high < low) {
+      low -= R; 
+    }
+
+    //console.log('storeLong', sLong, divRem[0].intValue(), divRem[1].intValue(), high, low);
   
-    this.writeInt(divRem[1].intValue(), (field || '') + ':long[low]');
-    this.writeInt(divRem[0].intValue(), (field || '') + ':long[high]');
+    //this.writeInt(divRem[1].intValue(), (field || '') + ':long[low]');
+    //this.writeInt(divRem[0].intValue(), (field || '') + ':long[high]');
+    this.writeInt(low, (field || '') + ':long[low]');
+    this.writeInt(high, (field || '') + ':long[high]');
   }
   
   public storeDouble(f: any, field?: string) {
@@ -480,7 +500,8 @@ class TLDeserialization {
     const iLow = this.readInt((field || '') + ':long[low]');
     const iHigh = this.readInt((field || '') + ':long[high]');
   
-    const longDec = bigint(iHigh).shiftLeft(32).add(bigint(iLow)).toString();
+    //const longDec = bigint(iHigh).shiftLeft(32).add(bigint(iLow)).toString();
+    const longDec = longFromInts(iHigh, iLow);
   
     return longDec;
   }

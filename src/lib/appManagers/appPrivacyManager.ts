@@ -5,6 +5,7 @@ import appChatsManager from "./appChatsManager";
 import appUsersManager from "./appUsersManager";
 import apiUpdatesManager from "./apiUpdatesManager";
 import rootScope from "../rootScope";
+import { convertInputKeyToKey } from "../../helpers/string";
 
 export enum PrivacyType {
   Everybody = 2,
@@ -31,11 +32,6 @@ export class AppPrivacyManager {
     });
   }
 
-  public convertInputKeyToKey(inputKey: string) {
-    let str = inputKey.replace('input', '');
-    return (str[0].toLowerCase() + str.slice(1)) as string;
-  }
-
   public setPrivacy(inputKey: InputPrivacyKey['_'], rules: InputPrivacyRule[]) {
     return apiManager.invokeApi('account.setPrivacy', {
       key: {
@@ -51,12 +47,12 @@ export class AppPrivacyManager {
         update: {
           _: 'updatePrivacy',
           key: {
-            _: this.convertInputKeyToKey(inputKey)
+            _: convertInputKeyToKey(inputKey)
           },
           rules: rules.map(inputRule => {
             const rule: PrivacyRule = {} as any;
             Object.assign(rule, inputRule);
-            rule._ = this.convertInputKeyToKey(rule._) as any;
+            rule._ = convertInputKeyToKey(rule._) as any;
             return rule;
           })
         } as Update.updatePrivacy
@@ -69,7 +65,7 @@ export class AppPrivacyManager {
   }
 
   public getPrivacy(inputKey: InputPrivacyKey['_']) {
-    const privacyKey: PrivacyKey['_'] = this.convertInputKeyToKey(inputKey) as any;
+    const privacyKey: PrivacyKey['_'] = convertInputKeyToKey(inputKey) as any;
     const rules = this.privacy[privacyKey];
     if(rules) {
       return Promise.resolve(rules);
