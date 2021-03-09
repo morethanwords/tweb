@@ -196,7 +196,7 @@ export class AppStateManager extends EventListenerBase<{
         rootScope.settings = this.state.settings;
 
         if(DEBUG) {
-          this.log('state res', state);
+          this.log('state res', state, copy(state));
         }
         
         //return resolve();

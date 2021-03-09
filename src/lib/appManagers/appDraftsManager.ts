@@ -21,10 +21,10 @@ export class AppDraftsManager {
   constructor() {
     appStateManager.getState().then(state => {
       this.drafts = state.drafts;
-    });
 
-    appStateManager.addListener('save', async() => {
-      appStateManager.pushToState('drafts', this.drafts);
+      appStateManager.addListener('save', async() => {
+        appStateManager.pushToState('drafts', this.drafts);
+      });
     });
 
     rootScope.on('apiUpdate', (update) => {

@@ -1,5 +1,6 @@
 //import apiManager from '../mtproto/apiManager';
 import DEBUG, { MOUNT_CLASS_TO } from '../../config/debug';
+import { copy } from '../../helpers/object';
 import { logger, LogLevels } from '../logger';
 import apiManager from '../mtproto/mtprotoworker';
 import rootScope from '../rootScope';
@@ -41,18 +42,6 @@ export class ApiUpdatesManager {
   private log = logger('UPDATES', LogLevels.error | LogLevels.log | LogLevels.warn | LogLevels.debug);
   private debug = DEBUG;
 
-  constructor() {
-    // * false for test purposes
-    /* false &&  */appStateManager.addListener('save', async() => {
-      const us = this.updatesState;
-      appStateManager.pushToState('updates', {
-        seq: us.seq,
-        pts: us.pts,
-        date: us.date
-      });
-    });
-  }
- 
   public popPendingSeqUpdate() {
     const state = this.updatesState;
     const nextSeq = state.seq + 1;
@@ -578,16 +567,18 @@ export class ApiUpdatesManager {
     if(this.attached) return;
 
     //return;
+
+    this.log('attach');
     
     this.attached = true;
 
     appStateManager.getState().then(_state => {
       const state = _state.updates;
 
-      apiManager.setUpdatesProcessor(this.processUpdateMessage);
-
       //rootScope.broadcast('state_synchronizing');
       if(!state || !state.pts || !state.date || !state.seq) {
+        this.log('will get new state');
+
         this.updatesState.syncLoading = new Promise((resolve) => {
           apiManager.invokeApi('updates.getState', {}, {noErrorBox: true}).then((stateResult) => {
             this.updatesState.seq = stateResult.seq;
@@ -614,12 +605,28 @@ export class ApiUpdatesManager {
 
         Object.assign(this.updatesState, state);
         
+        this.log('will get difference', copy(state));
+        
         this.getDifference(true)/* .finally(() => {
           if(this.updatesState.syncLoading) {
             rootScope.broadcast('state_synchronizing');
           }
         }) */;
       }
+
+      apiManager.setUpdatesProcessor(this.processUpdateMessage);
+
+      this.updatesState.syncLoading.then(() => {
+        // * false for test purposes
+        /* false &&  */appStateManager.addListener('save', async() => {
+          const us = this.updatesState;
+          appStateManager.pushToState('updates', {
+            seq: us.seq,
+            pts: us.pts,
+            date: us.date
+          });
+        });
+      });
     });
   }
 }

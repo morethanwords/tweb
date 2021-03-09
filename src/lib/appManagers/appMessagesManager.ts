@@ -237,68 +237,6 @@ export class AppMessagesManager {
       }
     });
 
-    appStateManager.addListener('save', () => {
-      const messages: any[] = [];
-      const dialogs: Dialog[] = [];
-      const items: any[] = [];
-      
-      const processDialog = (dialog: MTDialog.dialog) => {
-        const historyStorage = this.getHistoryStorage(dialog.peerId);
-        const history = [].concat(historyStorage.history.slice);
-        //dialog = copy(dialog);
-        let removeUnread = 0;
-        for(const mid of history) {
-          const message = this.getMessageByPeer(dialog.peerId, mid);
-          if(/* message._ !== 'messageEmpty' &&  */!message.pFlags.is_outgoing) {
-            messages.push(message);
-      
-            if(message.fromId !== dialog.peerId) {
-              appStateManager.setPeer(message.fromId, appPeersManager.getPeer(message.fromId));
-            }
-    
-            /* dialog.top_message = message.mid;
-            this.dialogsStorage.generateIndexForDialog(dialog, false, message); */
-    
-            break;
-          } else if(message.pFlags && message.pFlags.unread) {
-            ++removeUnread;
-          }
-        }
-    
-        if(removeUnread && dialog.unread_count) dialog.unread_count -= removeUnread;
-
-        if(dialog.peerId < 0 && dialog.pts) {
-          const newPts = apiUpdatesManager.channelStates[-dialog.peerId].pts;
-          dialog.pts = newPts;
-        }
-    
-        dialog.unread_count = Math.max(0, dialog.unread_count);
-        dialogs.push(dialog);
-    
-        appStateManager.setPeer(dialog.peerId, appPeersManager.getPeer(dialog.peerId));
-      };
-
-      for(const folderId in this.dialogsStorage.byFolders) {
-        const folder = this.dialogsStorage.getFolder(+folderId);
-        
-        for(let dialog of folder) {
-          items.push([dialog]);
-        }
-      }
-
-      return pushHeavyTask({
-        items, 
-        process: processDialog, 
-        context: this
-      }).then(() => {
-        appStateManager.pushToState('dialogs', dialogs);
-        appStateManager.pushToState('messages', messages);
-        appStateManager.pushToState('filters', this.filtersStorage.filters);
-        appStateManager.pushToState('allDialogsLoaded', this.dialogsStorage.allDialogsLoaded);
-        appStateManager.pushToState('maxSeenMsgId', this.maxSeenId);
-      });
-    });
-
     appStateManager.getState().then(state => {
       if(state.maxSeenMsgId) {
         this.maxSeenId = state.maxSeenMsgId;
@@ -349,10 +287,74 @@ export class AppMessagesManager {
           }
         });
       }
+
+      appStateManager.addListener('save', this.saveState);
     });
 
     appNotificationsManager.start();
   }
+
+  private saveState = () => {
+    const messages: any[] = [];
+    const dialogs: Dialog[] = [];
+    const items: any[] = [];
+    
+    const processDialog = (dialog: MTDialog.dialog) => {
+      const historyStorage = this.getHistoryStorage(dialog.peerId);
+      const history = [].concat(historyStorage.history.slice);
+      //dialog = copy(dialog);
+      let removeUnread = 0;
+      for(const mid of history) {
+        const message = this.getMessageByPeer(dialog.peerId, mid);
+        if(/* message._ !== 'messageEmpty' &&  */!message.pFlags.is_outgoing) {
+          messages.push(message);
+    
+          if(message.fromId !== dialog.peerId) {
+            appStateManager.setPeer(message.fromId, appPeersManager.getPeer(message.fromId));
+          }
+  
+          /* dialog.top_message = message.mid;
+          this.dialogsStorage.generateIndexForDialog(dialog, false, message); */
+  
+          break;
+        } else if(message.pFlags && message.pFlags.unread) {
+          ++removeUnread;
+        }
+      }
+  
+      if(removeUnread && dialog.unread_count) dialog.unread_count -= removeUnread;
+
+      if(dialog.peerId < 0 && dialog.pts) {
+        const newPts = apiUpdatesManager.channelStates[-dialog.peerId].pts;
+        dialog.pts = newPts;
+      }
+  
+      dialog.unread_count = Math.max(0, dialog.unread_count);
+      dialogs.push(dialog);
+  
+      appStateManager.setPeer(dialog.peerId, appPeersManager.getPeer(dialog.peerId));
+    };
+
+    for(const folderId in this.dialogsStorage.byFolders) {
+      const folder = this.dialogsStorage.getFolder(+folderId);
+      
+      for(let dialog of folder) {
+        items.push([dialog]);
+      }
+    }
+
+    return pushHeavyTask({
+      items, 
+      process: processDialog, 
+      context: this
+    }).then(() => {
+      appStateManager.pushToState('dialogs', dialogs);
+      appStateManager.pushToState('messages', messages);
+      appStateManager.pushToState('filters', this.filtersStorage.filters);
+      appStateManager.pushToState('allDialogsLoaded', this.dialogsStorage.allDialogsLoaded);
+      appStateManager.pushToState('maxSeenMsgId', this.maxSeenId);
+    });
+  };
 
   public getInputEntities(entities: MessageEntity[]) {
     var sendEntites = copy(entities);
