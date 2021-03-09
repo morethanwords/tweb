@@ -525,17 +525,30 @@ export class AppDialogsManager {
     mutationObserver.observe */
   }
 
-  get topOffsetIndex() {
-    if(!this.scroll.loadedAll['top']) {
-      const element = this.chatList.firstElementChild as HTMLElement;
+  private getOffset(side: 'top' | 'bottom'): {index: number, pos: number} {
+    if(!this.scroll.loadedAll[side]) {
+      const element = (side === 'top' ? this.chatList.firstElementChild : this.chatList.lastElementChild) as HTMLElement;
       if(element) {
         const peerId = +element.dataset.peerId;
-        const dialog = appMessagesManager.getDialogByPeerId(peerId)[0];
-        return dialog.index;
+        const dialog = appMessagesManager.getDialogByPeerId(peerId);
+        return {index: dialog[0].index, pos: dialog[1]};
       }
     }
 
-    return 0;
+    return {index: 0, pos: -1};
+  }
+
+  private isDialogMustBeInViewport(dialog: Dialog) {
+    //return true;
+    const topOffset = this.getOffset('top');
+    const bottomOffset = this.getOffset('bottom');
+    
+    if(!topOffset.index && !bottomOffset.index) {
+      return true;
+    }
+    
+    const index = dialog.index;
+    return (!topOffset.index || index <= topOffset.index) && (!bottomOffset.index || index >= bottomOffset.index);
   }
 
   private updateDialog(dialog: Dialog) {
@@ -543,7 +556,28 @@ export class AppDialogsManager {
       return;
     }
 
-    if(this.topOffsetIndex && dialog.index > this.topOffsetIndex) {
+    if(this.isDialogMustBeInViewport(dialog)) {
+      if(!this.doms.hasOwnProperty(dialog.peerId)) {
+        const ret = this.addDialogNew({dialog});
+        if(ret) {
+          const idx = appMessagesManager.getDialogByPeerId(dialog.peerId)[1];
+          positionElementByIndex(ret.dom.listEl, this.chatList, idx);
+        } else {
+          return;
+        }
+      }
+    } else {
+      const dom = this.getDialogDom(dialog.peerId);
+      if(dom) {
+        dom.listEl.remove();
+        delete this.doms[dialog.peerId];
+      }
+
+      return;
+    }
+
+    /* const topOffset = this.getOffset('top');
+    if(topOffset.index && dialog.index > topOffset.index) {
       const dom = this.getDialogDom(dialog.peerId);
       if(dom) {
         dom.listEl.remove();
@@ -555,7 +589,7 @@ export class AppDialogsManager {
 
     if(!this.doms.hasOwnProperty(dialog.peerId)) {
       this.addDialogNew({dialog});
-    }
+    } */
 
     if(this.getDialogDom(dialog.peerId)) {
       this.setLastMessage(dialog);
@@ -926,18 +960,13 @@ export class AppDialogsManager {
 
   private reorderDialogs() {
     //const perf = performance.now();
-    if(this.reorderDialogsTimeout) return;
+    if(this.reorderDialogsTimeout) {
+      window.cancelAnimationFrame(this.reorderDialogsTimeout);
+    }
+    
     this.reorderDialogsTimeout = window.requestAnimationFrame(() => {
       this.reorderDialogsTimeout = 0;
-      let offset = 0;
-      if(this.topOffsetIndex) {
-        const element = this.chatList.firstElementChild as HTMLElement;
-        if(element) {
-          const peerId = +element.dataset.peerId;
-          const firstDialog = appMessagesManager.getDialogByPeerId(peerId);
-          offset = firstDialog[1];
-        }
-      }
+      const offset = Math.max(0, this.getOffset('top').pos);
   
       const dialogs = appMessagesManager.dialogsStorage.getFolder(this.filterId);
       const currentOrder = (Array.from(this.chatList.children) as HTMLElement[]).map(el => +el.dataset.peerId);
