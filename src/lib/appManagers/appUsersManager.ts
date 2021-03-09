@@ -90,15 +90,6 @@ export class AppUsersManager {
       }
     });
 
-    appStateManager.addListener('save', async() => {
-      const contactsList = [...this.contactsList];
-      for(const userId of contactsList) {
-        appStateManager.setPeer(userId, this.getUser(userId));
-      }
-
-      appStateManager.pushToState('contactsList', contactsList);
-    });
-
     appStateManager.getState().then((state) => {
       this.users = state.users;
 
@@ -112,6 +103,15 @@ export class AppUsersManager {
           this.contactsFillPromise = Promise.resolve(this.contactsList);
         }
       }
+
+      appStateManager.addListener('save', async() => {
+        const contactsList = [...this.contactsList];
+        for(const userId of contactsList) {
+          appStateManager.setPeer(userId, this.getUser(userId));
+        }
+  
+        appStateManager.pushToState('contactsList', contactsList);
+      });
     });
   }
 
