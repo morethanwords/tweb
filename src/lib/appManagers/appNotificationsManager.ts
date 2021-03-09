@@ -239,14 +239,16 @@ export class AppNotificationsManager {
               fontSize = 20;
             } else {
               str = '99+';
-              fontSize = 18;
+              fontSize = 16;
             }
+
+            fontSize *= window.devicePixelRatio;
             
             ctx.font = `700 ${fontSize}px ${fontFamily}`;
             ctx.textBaseline = 'middle';
             ctx.textAlign = 'center';
             ctx.fillStyle = 'white';
-            ctx.fillText('' + this.notificationsCount, canvas.width / 2, canvas.height * .5625);
+            ctx.fillText(str, canvas.width / 2, canvas.height * .5625);
 
             /* const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height); */
