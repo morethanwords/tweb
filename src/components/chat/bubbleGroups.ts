@@ -1,7 +1,7 @@
 import rootScope from "../../lib/rootScope";
 //import { generatePathData } from "../../helpers/dom";
 import { MyMessage } from "../../lib/appManagers/appMessagesManager";
-import Chat from "./chat";
+import type Chat from "./chat";
 
 type Group = {bubble: HTMLElement, mid: number, timestamp: number}[];
 type BubbleGroup = {timestamp: number, fromId: number, mid: number, group: Group};
@@ -18,13 +18,17 @@ export default class BubbleGroups {
 
   removeBubble(bubble: HTMLElement) {
     const details = this.detailsMap.get(bubble);
-    if(details && details.group.length) {
-      details.group.findAndSplice(d => d.bubble === bubble);
-      if(!details.group.length) {
-        this.groups.findAndSplice(g => g === details.group);
-      } else {
-        this.updateGroup(details.group);
+    if(details) {
+      if(details.group.length) {
+        details.group.findAndSplice(d => d.bubble === bubble);
+        if(!details.group.length) {
+          this.groups.findAndSplice(g => g === details.group);
+        } else {
+          this.updateGroup(details.group);
+        }
       }
+      
+      this.detailsMap.delete(bubble);
     }
   }
   

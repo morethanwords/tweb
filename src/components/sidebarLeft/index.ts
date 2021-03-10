@@ -24,6 +24,8 @@ import AppContactsTab from "./tabs/contacts";
 import AppArchivedTab from "./tabs/archivedTab";
 import AppAddMembersTab from "./tabs/addMembers";
 
+export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
+
 export class AppSidebarLeft extends SidebarSlider {
   private toolsBtn: HTMLButtonElement;
   private backBtn: HTMLButtonElement;

@@ -44,20 +44,20 @@ export default class SidebarSlider {
     });
   }
 
-  private onCloseBtnClick = () => {
+  public onCloseBtnClick = () => {
     appNavigationController.back(this.navigationType);
     // this.closeTab();
   };
 
-  public closeTab = (id?: number | SliderSuperTab, animate?: boolean) => {
+  public closeTab = (id?: number | SliderSuperTab, animate?: boolean, isNavigation?: boolean) => {
     if(id !== undefined && this.historyTabIds[this.historyTabIds.length - 1] !== id) {
       return false;
     }
 
     //console.log('sidebar-close-button click:', this.historyTabIDs);
     const closingId = this.historyTabIds.pop(); // pop current
-    this.onCloseTab(closingId, animate);
-    
+    this.onCloseTab(closingId, animate, isNavigation);
+
     const tab = this.historyTabIds[this.historyTabIds.length - 1];
     this._selectTab(tab !== undefined ? (tab instanceof SliderSuperTab ? tab.container : tab) : (this.canHideFirst ? -1 : 0), animate);
     return true;
@@ -89,7 +89,7 @@ export default class SidebarSlider {
       appNavigationController.pushItem({
         type: this.navigationType, 
         onPop: (canAnimate) => {
-          this.closeTab(undefined, canAnimate);
+          this.closeTab(undefined, canAnimate, true);
           return true;
         }
       });
@@ -117,7 +117,11 @@ export default class SidebarSlider {
     }
   }
 
-  public onCloseTab(id: number | SliderSuperTab, animate: boolean) {
+  protected onCloseTab(id: number | SliderSuperTab, animate: boolean, isNavigation?: boolean) {
+    if(!isNavigation) {
+      appNavigationController.removeByType(this.navigationType, true);
+    }
+
     const tab: SliderTab = id instanceof SliderSuperTab ? id : this.tabs.get(id);
     if(tab) {
       if(tab.onClose) {

@@ -52,7 +52,7 @@ export default class AppGifsTab implements SliderTab {
     const fileId = target.dataset.docId;
     if(appImManager.chat.input.sendMessageWithDocument(fileId)) {
       if(mediaSizes.isMobile) {
-        appSidebarRight.closeTab(AppSidebarRight.SLIDERITEMSIDS.gifs);
+        appSidebarRight.onCloseBtnClick();
       }
     } else {
       console.warn('got no doc by id:', fileId);

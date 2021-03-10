@@ -115,7 +115,7 @@ export default class AppSharedMediaTab implements SliderTab {
         transition(0);
         closeIcon.classList.remove('state-back');
       } else if(!this.scroll.isHeavyAnimationInProgress) {
-        appSidebarRight.closeTab();
+        appSidebarRight.onCloseBtnClick();
       }
     });
 

@@ -58,12 +58,12 @@ export class AppSidebarRight extends SidebarSlider {
     });
   }
 
-  public onCloseTab(id: number, animate: boolean) {
+  public onCloseTab(id: number, animate: boolean, isNavigation?: boolean) {
     if(!this.historyTabIds.length) {
       this.toggleSidebar(false, animate);
     }
 
-    super.onCloseTab(id, animate);
+    super.onCloseTab(id, animate, isNavigation);
   }
 
   /* public selectTab(id: number) {
