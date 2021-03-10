@@ -504,41 +504,41 @@ class LottieLoader {
   public loadPromise: Promise<void>;
   public loaded = false;
 
-  // https://github.com/telegramdesktop/tdesktop/blob/35e575c2d7b56446be95561e4565628859fb53d3/Telegram/SourceFiles/chat_helpers/stickers_emoji_pack.cpp#L65
+  // https://github.com/telegramdesktop/tdesktop/blob/97d8ee75d51874fcb74a9bfadc79f835c82be54a/Telegram/SourceFiles/chat_helpers/stickers_emoji_pack.cpp#L46
   private static COLORREPLACEMENTS = [
     [
-      [0xf77e41, 0xca907a],
-			[0xffb139, 0xedc5a5],
-			[0xffd140, 0xf7e3c3],
-			[0xffdf79, 0xfbefd6],
+      [0xf77e41, 0xcb7b55],
+			[0xffb139, 0xf6b689],
+			[0xffd140, 0xffcda7],
+			[0xffdf79, 0xffdfc5],
     ],
 
     [
-      [0xf77e41, 0xaa7c60],
-			[0xffb139, 0xc8a987],
-			[0xffd140, 0xddc89f],
-			[0xffdf79, 0xe6d6b2],
+      [0xf77e41, 0xa45a38],
+			[0xffb139, 0xdf986b],
+			[0xffd140, 0xedb183],
+			[0xffdf79, 0xf4c3a0],
     ],
 
     [
-      [0xf77e41, 0x8c6148],
-			[0xffb139, 0xad8562],
-			[0xffd140, 0xc49e76],
-			[0xffdf79, 0xd4b188],
+      [0xf77e41, 0x703a17],
+			[0xffb139, 0xab673d],
+			[0xffd140, 0xc37f4e],
+			[0xffdf79, 0xd89667],
     ],
 
     [
-      [0xf77e41, 0x6e3c2c],
-			[0xffb139, 0x925a34],
-			[0xffd140, 0xa16e46],
-			[0xffdf79, 0xac7a52],
+      [0xf77e41, 0x4a2409],
+			[0xffb139, 0x7d3e0e],
+			[0xffd140, 0x965529],
+			[0xffdf79, 0xa96337],
     ],
 
     [
-			[0xf77e41, 0x291c12],
-			[0xffb139, 0x472a22],
-			[0xffd140, 0x573b30],
-			[0xffdf79, 0x68493c],
+			[0xf77e41, 0x200f0a],
+			[0xffb139, 0x412924],
+			[0xffd140, 0x593d37],
+			[0xffdf79, 0x63453f],
     ]
   ];
 
