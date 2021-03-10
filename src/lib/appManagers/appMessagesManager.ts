@@ -1472,7 +1472,7 @@ export class AppMessagesManager {
 
   private generateForwardHeader(peerId: number, originalMessage: Message.message) {
     const myId = appUsersManager.getSelf().id;
-    if(originalMessage.fromId === myId && !originalMessage.fwd_from) {
+    if(originalMessage.fromId === myId && originalMessage.peerId === myId && !originalMessage.fwd_from) {
       return;
     }
 

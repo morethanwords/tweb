@@ -357,7 +357,8 @@ export default class AudioElement extends HTMLElement {
     const doc = this.message.media.document || this.message.media.webpage.document;
     const isRealVoice = doc.type === 'voice';
     const isVoice = !this.voiceAsMusic && isRealVoice;
-    const uploading = this.message.pFlags.is_outgoing;
+    const isOutgoing = this.message.pFlags.is_outgoing;
+    const uploading = isOutgoing && this.preloader;
 
     const durationStr = String(doc.duration | 0).toHHMMSS();
 
@@ -420,7 +421,7 @@ export default class AudioElement extends HTMLElement {
       this.addAudioListener('playing', onPlaying);
     };
 
-    if(!uploading) {
+    if(!isOutgoing) {
       let preloader: ProgressivePreloader = this.preloader;
 
       const getDownloadPromise = () => appDocsManager.downloadDoc(doc);
@@ -540,7 +541,7 @@ export default class AudioElement extends HTMLElement {
           }
         //}
       }
-    } else {
+    } else if(uploading) {
       this.preloader.attach(downloadDiv, false);
       //onLoad();
     }

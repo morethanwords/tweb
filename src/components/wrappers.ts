@@ -387,6 +387,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
   if(!fontWeight) fontWeight = 500;
 
   const doc = (message.media.document || message.media.webpage.document) as MyDocument;
+  const uploading = message.pFlags.is_outgoing && message.media?.preloader;
   if(doc.type === 'audio' || doc.type === 'voice') {
     const audioElement = new AudioElement();
     audioElement.setAttribute('message-id', '' + message.mid);
@@ -398,8 +399,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
     if(searchContext) audioElement.searchContext = searchContext;
     if(showSender) audioElement.showSender = showSender;
     
-    const isPending = message.pFlags.is_outgoing;
-    if(isPending) {
+    if(uploading) {
       audioElement.preloader = message.media.preloader;
     }
 
@@ -407,8 +407,6 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
     audioElement.render();
     return audioElement;
   }
-  
-  const uploading = message.pFlags.is_outgoing && message.media?.preloader;
 
   let extSplitted = doc.file_name ? doc.file_name.split('.') : '';
   let ext = '';
