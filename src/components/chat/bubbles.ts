@@ -46,6 +46,7 @@ import { deferredPromise } from "../../helpers/cancellablePromise";
 import RepliesElement from "./replies";
 import DEBUG from "../../config/debug";
 import { SliceEnd } from "../../helpers/slicedArray";
+import serverTimeManager from "../../lib/mtproto/serverTimeManager";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS = ['messageActionHistoryClear'];
@@ -153,7 +154,11 @@ export default class ChatBubbles {
         if(!bubble) return;
 
         const message = this.chat.getMessage(mid);
-        //bubble.remove();
+        
+        if(+bubble.dataset.timestamp >= (message.date - serverTimeManager.serverTimeOffset - 1)) {
+          return;
+        }
+
         this.setBubblePosition(bubble, message, false);
         //this.log('history_update', this.bubbles[mid], mid, message);
 
