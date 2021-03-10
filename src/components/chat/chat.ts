@@ -201,7 +201,7 @@ export default class Chat extends EventListenerBase<{
     // set new
     if(!samePeer) {
       if(appSidebarRight.historyTabIds[appSidebarRight.historyTabIds.length - 1] === AppSidebarRight.SLIDERITEMSIDS.search) {
-        appSidebarRight.closeTab(AppSidebarRight.SLIDERITEMSIDS.search);
+        appSidebarRight.onCloseBtnClick();
       }
 
       appSidebarRight.sharedMediaTab.setPeer(peerId, this.threadId);

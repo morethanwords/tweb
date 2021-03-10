@@ -106,23 +106,23 @@ export class AppNavigationController {
     this.manual = false;
   }
 
+  public findItemByType(type: NavigationItem['type']) {
+    for(let i = this.navigations.length - 1; i >= 0; --i) {
+      const item = this.navigations[i];
+      if(item.type === type) {
+        return {item, index: i};
+      }
+    }
+  }
+
   public back(type?: NavigationItem['type']) {
     if(type) {
-      let item: NavigationItem;
-      let i = this.navigations.length - 1;
-      for(; i >= 0; --i) {
-        const _item = this.navigations[i];
-        if(_item.type === type) {
-          item = _item;
-          break;
-        }
-      }
-
-      if(item) {
+      const ret = this.findItemByType(type);
+      if(ret) {
         this.manual = true;
-        if(i !== (this.navigations.length - 1)) {
-          this.navigations.splice(i, 1);
-          this.handleItem(item);
+        if(ret.index !== (this.navigations.length - 1)) {
+          this.navigations.splice(ret.index, 1);
+          this.handleItem(ret.item);
           return;
         }
       }

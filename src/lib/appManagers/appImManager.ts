@@ -1,6 +1,6 @@
 //import apiManager from '../mtproto/apiManager';
 import animationIntersector from '../../components/animationIntersector';
-import appSidebarLeft from "../../components/sidebarLeft";
+import appSidebarLeft, { LEFT_COLUMN_ACTIVE_CLASSNAME } from "../../components/sidebarLeft";
 import appSidebarRight, { AppSidebarRight, RIGHT_COLUMN_ACTIVE_CLASSNAME } from '../../components/sidebarRight';
 import mediaSizes, { ScreenSize } from '../../helpers/mediaSizes';
 import { logger, LogLevels } from "../logger";
@@ -41,8 +41,6 @@ import appNavigationController from '../../components/appNavigationController';
 
 appSidebarLeft; // just to include
 
-const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
-
 export const CHAT_ANIMATION_GROUP = 'chat';
 const FOCUS_EVENT_NAME = isTouchSupported ? 'touchstart' : 'mousemove';
 
@@ -59,7 +57,7 @@ export class AppImManager {
 
   public tabId = -1;
   
-  private chats: Chat[] = [];
+  public chats: Chat[] = [];
   private prevTab: HTMLElement;
   private chatsSelectTabDebounced: () => void;
   
@@ -86,7 +84,7 @@ export class AppImManager {
       this.offline = rootScope.idle.isIDLE = true;
       this.updateStatus();
       clearInterval(this.updateStatusInterval);
-      rootScope.broadcast('idle', true);
+      rootScope.broadcast('idle', rootScope.idle.isIDLE);
       
       window.addEventListener('focus', () => {
         this.offline = rootScope.idle.isIDLE = false;
@@ -96,7 +94,7 @@ export class AppImManager {
         // в обратном порядке
         animationIntersector.checkAnimations(false);
 
-        rootScope.broadcast('idle', false);
+        rootScope.broadcast('idle', rootScope.idle.isIDLE);
       }, {once: true});
     });
 
@@ -105,7 +103,8 @@ export class AppImManager {
       this.updateStatusInterval = window.setInterval(() => this.updateStatus(), 50e3);
       this.updateStatus();
 
-      rootScope.broadcast('idle', false);
+      this.offline = rootScope.idle.isIDLE = false;
+      rootScope.broadcast('idle', rootScope.idle.isIDLE);
     }, {once: true, passive: true});
 
     this.chatsContainer = document.createElement('div');
@@ -566,14 +565,16 @@ export class AppImManager {
       document.body.classList.remove(RIGHT_COLUMN_ACTIVE_CLASSNAME);
     }
 
-    if(prevTabId !== -1 && id > prevTabId && id < 2) {
-      appNavigationController.pushItem({
-        type: 'im', 
-        onPop: (canAnimate) => {
-          //this.selectTab(prevTabId, !isSafari);
-          this.setPeer(0, undefined, canAnimate);
-        }
-      });
+    if(prevTabId !== -1 && id > prevTabId) {
+      if(id < 2 || !appNavigationController.findItemByType('im')) {
+        appNavigationController.pushItem({
+          type: 'im', 
+          onPop: (canAnimate) => {
+            //this.selectTab(prevTabId, !isSafari);
+            this.setPeer(0, undefined, canAnimate);
+          }
+        });
+      }
     }
 
     rootScope.broadcast('im_tab_change', id);
@@ -623,7 +624,7 @@ export class AppImManager {
       rootScope.broadcast('peer_changed', this.chat.peerId);
 
       if(appSidebarRight.historyTabIds[appSidebarRight.historyTabIds.length - 1] === AppSidebarRight.SLIDERITEMSIDS.search) {
-        appSidebarRight.closeTab(AppSidebarRight.SLIDERITEMSIDS.search);
+        appSidebarRight.onCloseBtnClick();
       }
   
       appSidebarRight.sharedMediaTab.setPeer(this.chat.peerId, this.chat.threadId);

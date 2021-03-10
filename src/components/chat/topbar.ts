@@ -19,6 +19,7 @@ import ListenerSetter from "../../helpers/listenerSetter";
 import appStateManager from "../../lib/appManagers/appStateManager";
 import PopupDeleteDialog from "../popups/deleteDialog";
 import appNavigationController from "../appNavigationController";
+import { LEFT_COLUMN_ACTIVE_CLASSNAME } from "../sidebarLeft";
 
 export default class ChatTopbar {
   container: HTMLDivElement;
@@ -136,16 +137,38 @@ export default class ChatTopbar {
           this.chat.appImManager.setInnerPeer(peerId, mid);
         }
       } else {
-        this.appSidebarRight.toggleSidebar(true);
+        if(mediaSizes.activeScreen === ScreenSize.medium && document.body.classList.contains(LEFT_COLUMN_ACTIVE_CLASSNAME)) {
+          onBtnBackClick();
+        } else {
+          this.appSidebarRight.toggleSidebar(true);
+        }
       }
     }, {listenerSetter: this.listenerSetter});
 
-    attachClickEvent(this.btnBack, (e) => {
-      cancelEvent(e);
-      /* this.chat.appImManager.setPeer(0);
-      blurActiveElement(); */
-      appNavigationController.back('chat');
-    }, {listenerSetter: this.listenerSetter});
+    const onBtnBackClick = (e?: Event) => {
+      if(e) {
+        cancelEvent(e);
+      }
+
+      //const item = appNavigationController.findItemByType('chat');
+      // * return manually to chat by arrow, since can't get back to
+      if(mediaSizes.activeScreen === ScreenSize.medium && document.body.classList.contains(LEFT_COLUMN_ACTIVE_CLASSNAME)) {
+        this.chat.appImManager.setPeer(this.peerId);
+      } else {
+        const isFirstChat = this.chat.appImManager.chats.indexOf(this.chat) === 0;
+        appNavigationController.back(isFirstChat ? 'im' : 'chat');
+        return;
+
+        if(mediaSizes.activeScreen === ScreenSize.medium && !appNavigationController.findItemByType('chat')) {
+          this.chat.appImManager.setPeer(0);
+          blurActiveElement();
+        } else {
+          appNavigationController.back('chat');
+        }
+      }
+    };
+
+    attachClickEvent(this.btnBack, onBtnBackClick, {listenerSetter: this.listenerSetter});
   }
 
   public constructUtils() {
