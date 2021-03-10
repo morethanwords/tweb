@@ -1424,7 +1424,7 @@ export class AppMessagesManager {
     let replies: MessageReplies.messageReplies;
     if(appPeersManager.isBroadcast(peerId)) {
       const channelFull = appProfileManager.chatsFull[-peerId] as ChatFull.channelFull;
-      if(channelFull.linked_chat_id) {
+      if(channelFull?.linked_chat_id) {
         replies = {
           _: 'messageReplies',
           flags: 1,

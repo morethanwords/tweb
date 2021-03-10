@@ -46,10 +46,10 @@ export default class SlicedArray {
 
         if(side === SliceEnd.Top) {
           const slice = self.last;
-          return slice.end & side ? this.includes(slice[slice.length - 1]) : false;
+          return slice.end & side ? this.includes(slice[slice.length - 1]) || !slice.length : false;
         } else if(side === SliceEnd.Bottom) {
           const slice = self.first;
-          return slice.end & side ? this.includes(slice[0]) : false;
+          return slice.end & side ? this.includes(slice[0]) || !slice.length : false;
         }/*  else if(side === SliceEnd.Both) {
 
         } */
@@ -289,8 +289,8 @@ export default class SlicedArray {
     const topWasMeantToLoad = add_offset < 0 ? limit + add_offset : limit;
     const bottomWasMeantToLoad = Math.abs(add_offset);
 
-    const topFulfilled = (slice.length - sliceOffset) >= topWasMeantToLoad || slice.isEnd(SliceEnd.Top);
-    const bottomFulfilled = (sliceOffset - bottomWasMeantToLoad) >= 0 || slice.isEnd(SliceEnd.Bottom);
+    const topFulfilled = (slice.length - sliceOffset) >= topWasMeantToLoad || (slice.isEnd(SliceEnd.Top) ? (sliced.setEnd(SliceEnd.Top), true) : false);
+    const bottomFulfilled = (sliceOffset - bottomWasMeantToLoad) >= 0 || (slice.isEnd(SliceEnd.Bottom) ? (sliced.setEnd(SliceEnd.Bottom), true) : false);
 
     //console.log('sliceMe', topFulfilled, bottomFulfilled);
 
