@@ -1038,6 +1038,20 @@
   .sidebar-left-section-caption {
     font-size: 1rem;
   }
+
+  li > .rp {
+    height: 66px;
+    max-height: 66px;
+  }
+
+  .user-caption {
+    padding-left: .75rem;
+  }
+
+  .dialog-subtitle {
+    margin-top: -.375rem;
+    font-size: .875rem;
+  }
 }
 
 .notifications-container {
