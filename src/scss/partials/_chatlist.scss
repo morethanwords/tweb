@@ -51,33 +51,6 @@
         }
       }
     }
-  }
-
-  li > .rp {
-    height: 72px;
-    max-height: 72px;
-    border-radius: $border-radius-medium;
-    display: flex;
-    align-items: flex-start; // TODO: проверить разницу в производительности с align-items: center;
-    flex-direction: row;
-    position: relative;
-    cursor: pointer;
-    padding: 9px 8.5px;
-    margin: 0 8px;
-    overflow: hidden;
-
-    /* html.is-safari & {
-      margin-right: 3px;
-    } */
-
-    @include respond-to(handhelds) {
-      padding: 9px 12px 9px 9px !important;
-      border-radius: 0;
-      margin: 0;
-      overflow: hidden;
-    }
-
-    @include hover-background-effect();
 
     span {
       display: inline-block;
@@ -116,6 +89,33 @@
     } */
   }
 
+  li > .rp {
+    height: 72px;
+    max-height: 72px;
+    border-radius: $border-radius-medium;
+    display: flex;
+    align-items: flex-start; // TODO: проверить разницу в производительности с align-items: center;
+    flex-direction: row;
+    position: relative;
+    cursor: pointer;
+    padding: 9px 8.5px;
+    margin: 0 8px;
+    overflow: hidden;
+
+    /* html.is-safari & {
+      margin-right: 3px;
+    } */
+
+    @include respond-to(handhelds) {
+      padding: 9px 12px 9px 9px !important;
+      border-radius: 0;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    @include hover-background-effect();
+  }
+
   li.menu-open {
     > .rp {
       background: var(--color-gray-hover);
@@ -139,6 +139,8 @@
     }
     
     &-subtitle {
+      margin-top: -3px;
+
       &-badge {
         &:not(:empty), &.tgico-pinnedchat {
           margin-left: .5rem;
@@ -159,10 +161,6 @@
     flex: 1 1 auto;
     //padding: 1px 3.5px 1px 9px; - DO MAKETA JS3
     padding: 1px 8.5px 1px 9px; // JS3
-
-    p:last-child {
-      margin-top: -3px;
-    }
   }
 
   .user-title {

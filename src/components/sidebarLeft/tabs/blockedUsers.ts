@@ -55,6 +55,9 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
 
       const user = appUsersManager.getUser(peerId);
       dom.lastMessageSpan.innerHTML = user.pFlags.bot ? ('@' + user.username) : user.rPhone || (user.username ? '@' + user.username : appUsersManager.getUserStatusString(peerId));
+
+      //dom.titleSpan.innerHTML = 'Raaid El Syed';
+      //dom.lastMessageSpan.innerHTML = '+1 234 567891';
     };
 
     for(const peerId of this.peerIds) {
