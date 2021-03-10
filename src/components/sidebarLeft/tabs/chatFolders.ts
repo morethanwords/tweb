@@ -1,29 +1,32 @@
 import { SliderSuperTab } from "../../slider";
 import lottieLoader, { RLottiePlayer } from "../../../lib/lottieLoader";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
-import { cancelEvent, positionElementByIndex } from "../../../helpers/dom";
+import { attachClickEvent, cancelEvent, positionElementByIndex } from "../../../helpers/dom";
 import { ripple } from "../../ripple";
 import { toast } from "../../toast";
 import type { MyDialogFilter } from "../../../lib/storages/filters";
 import type { DialogFilterSuggested, DialogFilter } from "../../../layer";
 import type _rootScope from "../../../lib/rootScope";
+import type { BroadcastEvents } from "../../../lib/rootScope";
 import Button from "../../button";
 import appMessagesManager from "../../../lib/appManagers/appMessagesManager";
 import appPeersManager from "../../../lib/appManagers/appPeersManager";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
 import rootScope from "../../../lib/rootScope";
 import AppEditFolderTab from "./editFolder";
+import Row from "../../row";
+import { SettingSection } from "..";
 
 export default class AppChatFoldersTab extends SliderSuperTab {
-  public createFolderBtn: HTMLElement;
+  private createFolderBtn: HTMLElement;
   private foldersContainer: HTMLElement;
-  private suggestedContainer: HTMLElement;
+  private suggestedSection: SettingSection;
   private stickerContainer: HTMLElement;
   private animation: RLottiePlayer;
 
   private filtersRendered: {[filterId: number]: HTMLElement} = {};
 
-  private renderFolder(dialogFilter: DialogFilterSuggested | DialogFilter | MyDialogFilter, container?: HTMLElement, div: HTMLElement = document.createElement('div')) {
+  private renderFolder(dialogFilter: DialogFilterSuggested | DialogFilter | MyDialogFilter, container?: HTMLElement, div?: HTMLElement) {
     let filter: DialogFilter | MyDialogFilter;
     let description = '';
     let d: string[] = [];
@@ -33,15 +36,6 @@ export default class AppChatFoldersTab extends SliderSuperTab {
     } else {
       filter = dialogFilter;
       description = '';
-
-      const filterId = filter.id;
-      if(!this.filtersRendered.hasOwnProperty(filter.id)) {
-        div.addEventListener('click', () => {
-          new AppEditFolderTab(this.slider).open(appMessagesManager.filtersStorage.filters[filterId]);
-        });
-      }
-
-      this.filtersRendered[filter.id] = div;
 
       let enabledFilters = Object.keys(filter.pFlags).length;
       /* (['include_peers', 'exclude_peers'] as ['include_peers', 'exclude_peers']).forEach(key => {
@@ -76,14 +70,26 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       }
     }
 
-    div.classList.add('category');
-    div.innerHTML = `
-      <div>
-        <p>${RichTextProcessor.wrapEmojiText(filter.title)}</p>
-        <p>${d.length ? d.join(', ') : description}</p>
-      </div>
-    `;
-    ripple(div);
+    if(!div) {
+      const row = new Row({
+        title: RichTextProcessor.wrapEmojiText(filter.title),
+        subtitle: d.length ? d.join(', ') : description,
+        clickable: true
+      });
+  
+      div = row.container;
+
+      if(dialogFilter._ === 'dialogFilter') {
+        const filterId = filter.id;
+        if(!this.filtersRendered.hasOwnProperty(filter.id)) {
+          attachClickEvent(div, () => {
+            new AppEditFolderTab(this.slider).open(appMessagesManager.filtersStorage.filters[filterId]);
+          }, {listenerSetter: this.listenerSetter});
+        }
+
+        this.filtersRendered[filter.id] = div;
+      }
+    }
 
     if((filter as MyDialogFilter).hasOwnProperty('orderIndex')) {
        // ! header will be at 0 index
@@ -111,34 +117,28 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       icon: 'add'
     });
 
-    this.foldersContainer = document.createElement('div');
-    this.foldersContainer.classList.add('folders-my');
+    const sec1 = new SettingSection({
+      name: 'Folders'
+    });
 
-    const foldersH2 = document.createElement('div');
-    foldersH2.classList.add('sidebar-left-h2');
-    foldersH2.innerText = 'Folders';
+    this.foldersContainer = sec1.content;
 
-    this.foldersContainer.append(foldersH2);
+    const sec2 = new SettingSection({
+      name: 'Recommended folders'
+    });
 
-    this.suggestedContainer = document.createElement('div');
-    this.suggestedContainer.classList.add('folders-suggested');
-    this.suggestedContainer.style.display = 'none';
+    this.suggestedSection = sec2;
+    this.suggestedSection.container.style.display = 'none';
 
-    const suggestedH2 = document.createElement('div');
-    suggestedH2.classList.add('sidebar-left-h2');
-    suggestedH2.innerText = 'Recommended folders';
+    this.scrollable.append(this.stickerContainer, caption, this.createFolderBtn, sec1.container, sec2.container);
 
-    this.suggestedContainer.append(suggestedH2);
-
-    this.scrollable.append(this.stickerContainer, caption, this.createFolderBtn, document.createElement('hr'), this.foldersContainer, document.createElement('hr'), this.suggestedContainer);
-
-    this.createFolderBtn.addEventListener('click', () => {
+    attachClickEvent(this.createFolderBtn, () => {
       if(Object.keys(this.filtersRendered).length >= 10) {
         toast('Sorry, you can\'t create more folders.');
       } else {
         new AppEditFolderTab(this.slider).open();
       }
-    });
+    }, {listenerSetter: this.listenerSetter});
 
     lottieLoader.loadAnimationFromURL({
       container: this.stickerContainer,
@@ -156,7 +156,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       }
     });
 
-    rootScope.on('filter_update', (e) => {
+    this.listenerSetter.add(rootScope, 'filter_update', (e) => {
       const filter = e;
       if(this.filtersRendered.hasOwnProperty(filter.id)) {
         this.renderFolder(filter, null, this.filtersRendered[filter.id]);
@@ -167,7 +167,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       this.getSuggestedFilters();
     });
 
-    rootScope.on('filter_delete', (e) => {
+    this.listenerSetter.add(rootScope, 'filter_delete', (e) => {
       const filter = e;
       if(this.filtersRendered.hasOwnProperty(filter.id)) {
         /* for(const suggested of this.suggestedFilters) {
@@ -182,7 +182,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       }
     });
 
-    rootScope.on('filter_order', (e) => {
+    this.listenerSetter.add(rootScope, 'filter_order', (e: BroadcastEvents['filter_order']) => {
       const order = e;
       order.forEach((filterId, idx) => {
         const div = this.filtersRendered[filterId];
@@ -195,8 +195,8 @@ export default class AppChatFoldersTab extends SliderSuperTab {
 
   private getSuggestedFilters() {
     apiManager.invokeApi('messages.getSuggestedDialogFilters').then(suggestedFilters => {
-      this.suggestedContainer.style.display = suggestedFilters.length ? '' : 'none';
-      Array.from(this.suggestedContainer.children).slice(1).forEach(el => el.remove());
+      this.suggestedSection.container.style.display = suggestedFilters.length ? '' : 'none';
+      Array.from(this.suggestedSection.content.children).slice(1).forEach(el => el.remove());
 
       suggestedFilters.forEach(filter => {
         const div = this.renderFolder(filter);
@@ -204,9 +204,9 @@ export default class AppChatFoldersTab extends SliderSuperTab {
         button.classList.add('btn-primary', 'btn-color-primary');
         button.innerText = 'Add';
         div.append(button);
-        this.suggestedContainer.append(div);
+        this.suggestedSection.content.append(div);
 
-        button.addEventListener('click', (e) => {
+        attachClickEvent(button, (e) => {
           cancelEvent(e);
 
           if(Object.keys(this.filtersRendered).length >= 10) {
@@ -223,7 +223,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
           }).finally(() => {
             button.removeAttribute('disabled');
           });
-        });
+        }, {listenerSetter: this.listenerSetter});
       });
     });
   }

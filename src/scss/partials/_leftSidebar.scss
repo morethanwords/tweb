@@ -520,7 +520,7 @@
   }
 
   hr {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
   }
 
   .scroll-wrapper {
@@ -545,7 +545,9 @@
     font-size: 14px;
     line-height: 1.3;
   }
+}
 
+.edit-folder-container {
   .sidebar-left-h2 {
     padding: 7px 24px 15px 24px;
 
@@ -556,11 +558,22 @@
 }
 
 .chat-folders-container {
+  .sidebar-left-section {
+    &:not(:last-child) {
+      padding-bottom: 0;
+    }
+
+    /* &-name {
+      padding-top: .5rem;
+      padding-bottom: .5rem;
+    } */
+  }
+
   .btn-primary {
     width: 160px;
     height: 40px;
     align-items: center;
-    margin: 15px auto 24px;
+    margin: 15px auto 1rem;
     border-radius: 30px;
     padding: 0 12px;
     display: flex;
@@ -571,42 +584,17 @@
     margin-right: 6px;
   }
 
-  // .folders-container {
-  //   padding: 0 16px;
-  // }
-
-  .category {
-    padding: 7px 24px 11px 24px;
-    display: flex;
-    //padding-bottom: 11px;
-    justify-content: space-between;
-    cursor: pointer;
-    position: relative;
-    margin-bottom: 10px;
-    overflow: hidden;
-
-    @include respond-to(handhelds) {
-     padding: 7px 16px 11px 16px;
-    }
-
-    p {
-      height: unset;
-      justify-content: flex-start;
-      margin: 0;
-    }
-
-    p:last-child {
-      color: #707579;
-      font-size: 14px;
-      line-height: 20px;
-    }
-
+  .row {
     .btn-primary {
       height: 30px;
       font-size: 15px;
       width: 52px;
       transition: width 0.2s;
-      margin: 5px 0 0 0;
+      margin: 0;
+      position: absolute;
+      right: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
 
       body.animation-level-0 & {
         transition: none;
@@ -656,7 +644,7 @@
   }
 
   .user-caption {
-    padding: 6px 28px;
+    padding: 3px 28px 6px;
   }  
 
   p span {
@@ -699,8 +687,8 @@
       li > .rp {
         margin: 0 .5rem;
         padding: 7px .75rem !important;
-        height: 3.875rem;
-        max-height: 3.875rem;
+        height: 3.75rem;
+        max-height: 3.75rem;
 
         @include respond-to(handhelds) {
           margin: 0;
@@ -717,6 +705,13 @@
         margin-top: 2px;
       }
     }
+  }
+}
+
+.popup-forward {
+  li > .rp {
+    height: 3.875rem !important;
+    max-height: 3.875rem !important;
   }
 }
 
@@ -844,14 +839,24 @@
   
     &-name {
       padding: 1rem;
+
+      @include respond-to(handhelds) {
+        padding: .5rem 1rem;
+        font-size: .875rem;
+      }
     }
 
     &-caption {
       margin-top: 1rem;
       font-size: .875rem;
       color: #707579;
-      line-height: 1.2;
+      line-height: 1.3125;
       padding: 0 1rem;
+
+      @include respond-to(handhelds) {
+        margin: .5rem;
+        font-size: .875rem;
+      }
     }
 
     .checkbox-field, .radio-field {
@@ -1051,6 +1056,11 @@
   .dialog-subtitle {
     margin-top: -.375rem;
     font-size: .875rem;
+  }
+
+  ul {
+    margin-top: .3125rem;
+    padding: 0 3px;
   }
 }
 

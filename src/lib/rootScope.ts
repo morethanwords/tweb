@@ -12,7 +12,7 @@ import EventListenerBase from "../helpers/eventListenerBase";
 import { MyDraftMessage } from "./appManagers/appDraftsManager";
 import { MOUNT_CLASS_TO } from "../config/debug";
 
-type BroadcastEvents = {
+export type BroadcastEvents = {
   'user_update': number,
   'user_auth': UserAuth,
   'peer_changed': number,
