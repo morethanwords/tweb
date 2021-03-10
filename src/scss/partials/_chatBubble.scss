@@ -249,6 +249,7 @@ $bubble-margin: .25rem;
       /* justify-self: center; */
       margin: 0 auto;
       max-width: 100%;
+      box-shadow: none;
     }
   }
 
@@ -307,7 +308,8 @@ $bubble-margin: .25rem;
     justify-content: center;
     color: #fff;
     border-radius: 50%;
-    background: rgba(0, 0, 0, .16);
+    //background: rgba(0, 0, 0, .16);
+    background: var(--message-highlightning-color);
     cursor: pointer;
   }
 
@@ -491,7 +493,8 @@ $bubble-margin: .25rem;
     }
 
     &.is-message-empty .message {
-      background-color: rgba(0, 0, 0, .23);
+      //background-color: rgba(0, 0, 0, .23);
+      background: var(--message-highlightning-color);
     }
     
     /* &.is-message-empty .message {
@@ -1549,11 +1552,12 @@ $bubble-margin: .25rem;
   
   .service-msg {
     color: #fff;
-    background-color: rgba(0, 0, 0, .24);
-    font-size: 14px;
-    padding: 0 8px;
-    line-height: 24px;
-    border-radius: 12px;
+    //background-color: rgba(0, 0, 0, .24);
+    background-color: var(--message-highlightning-color);
+    font-size: .9375rem;
+    padding: 0 .5rem;
+    line-height: 1.5rem;
+    border-radius: .75rem;
     user-select: none;
     display: flex;
     align-items: center;
@@ -1998,7 +2002,8 @@ $bubble-margin: .25rem;
     justify-content: center;
     align-items: center;
     border-radius: 6px;
-    background-color: rgba(0, 0, 0, .23);
+    //background-color: rgba(0, 0, 0, .23);
+    background: var(--message-highlightning-color);
     z-index: 2;
     font-size: 14px;
     user-select: none;
