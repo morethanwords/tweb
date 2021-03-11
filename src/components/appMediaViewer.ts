@@ -1,7 +1,7 @@
 import { deferredPromise } from "../helpers/cancellablePromise";
 import mediaSizes from "../helpers/mediaSizes";
 import { isTouchSupported } from "../helpers/touchSupport";
-import { isSafari } from "../helpers/userAgent";
+import { isMobileSafari, isSafari } from "../helpers/userAgent";
 import appDocsManager, { MyDocument } from "../lib/appManagers/appDocsManager";
 import appImManager from "../lib/appManagers/appImManager";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
@@ -28,6 +28,7 @@ import SwipeHandler from "./swipeHandler";
 import { months, ONE_DAY } from "../helpers/date";
 import { SearchSuperContext } from "./appSearchSuper.";
 import DEBUG from "../config/debug";
+import appNavigationController from "./appNavigationController";
 
 // TODO: масштабирование картинок (не SVG) при ресайзе, и правильный возврат на исходную позицию
 // TODO: картинки "обрезаются" если возвращаются или появляются с места, где есть их перекрытие (топбар, поле ввода)
@@ -238,6 +239,8 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
     if(this.setMoverAnimationPromise) return;
 
+    appNavigationController.removeByType('media');
+
     this.lazyLoadQueue.clear();
 
     const promise = this.setMoverToTarget(this.lastTarget, true).then(({onAnimationEnd}) => onAnimationEnd);
@@ -302,12 +305,10 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     }
   };
 
-  onKeyDown = (e: KeyboardEvent) => {
+  private onKeyDown = (e: KeyboardEvent) => {
     //this.log('onKeyDown', e);
     
-    if(e.key === 'Escape') {
-      this.close();
-    } else if(e.key === 'ArrowRight') {
+    if(e.key === 'ArrowRight') {
       this.buttons.next.click();
     } else if(e.key === 'ArrowLeft') {
       this.buttons.prev.click();
@@ -883,6 +884,19 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       this.wholeDiv.classList.add('active');
       rootScope.overlayIsActive = true;
       animationIntersector.checkAnimations(true);
+
+      if(!isMobileSafari) {
+        appNavigationController.pushItem({
+          type: 'media',
+          onPop: (canAnimate) => {
+            if(this.setMoverAnimationPromise) {
+              return false;
+            }
+            
+            this.close();
+          }
+        });
+      }
     }
 
     ////////this.log('wasActive:', wasActive);
