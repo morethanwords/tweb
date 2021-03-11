@@ -1,3 +1,4 @@
+import type { AppNotificationsManager } from "../../lib/appManagers/appNotificationsManager";
 import type { AppChatsManager, Channel } from "../../lib/appManagers/appChatsManager";
 import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManager";
 import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
@@ -47,7 +48,7 @@ export default class ChatTopbar {
 
   public menuButtons: (ButtonMenuItemOptions & {verify: () => boolean})[] = [];
 
-  constructor(private chat: Chat, private appSidebarRight: AppSidebarRight, private appMessagesManager: AppMessagesManager, private appPeersManager: AppPeersManager, private appChatsManager: AppChatsManager) {
+  constructor(private chat: Chat, private appSidebarRight: AppSidebarRight, private appMessagesManager: AppMessagesManager, private appPeersManager: AppPeersManager, private appChatsManager: AppChatsManager, private appNotificationsManager: AppNotificationsManager) {
     this.listenerSetter = new ListenerSetter();
   }
 
@@ -190,14 +191,14 @@ export default class ChatTopbar {
       onClick: () => {
         this.appMessagesManager.mutePeer(this.peerId);
       },
-      verify: () => this.chat.type === 'chat' && rootScope.myId !== this.peerId && !this.appMessagesManager.isPeerMuted(this.peerId)
+      verify: () => this.chat.type === 'chat' && rootScope.myId !== this.peerId && !this.appNotificationsManager.isPeerLocalMuted(this.peerId, false)
     }, {
       icon: 'unmute',
       text: 'Unmute',
       onClick: () => {
         this.appMessagesManager.mutePeer(this.peerId);
       },
-      verify: () => this.chat.type === 'chat' && rootScope.myId !== this.peerId && this.appMessagesManager.isPeerMuted(this.peerId)
+      verify: () => this.chat.type === 'chat' && rootScope.myId !== this.peerId && this.appNotificationsManager.isPeerLocalMuted(this.peerId, false)
     }, {
       icon: 'select',
       text: 'Select Messages',
@@ -280,10 +281,8 @@ export default class ChatTopbar {
       }
     });
 
-    this.listenerSetter.add(rootScope, 'dialog_notify_settings', (e) => {
-      const peerId = e;
-
-      if(peerId === this.peerId) {
+    this.listenerSetter.add(rootScope, 'dialog_notify_settings', (dialog) => {
+      if(dialog.peerId === this.peerId) {
         this.setMutedState();
       }
     });
@@ -487,7 +486,7 @@ export default class ChatTopbar {
     if(!this.btnMute) return;
 
     const peerId = this.peerId;
-    let muted = this.appMessagesManager.isPeerMuted(peerId);
+    let muted = this.appNotificationsManager.isPeerLocalMuted(peerId, false);
     if(this.appPeersManager.isBroadcast(peerId)) { // not human
       this.btnMute.classList.remove('tgico-mute', 'tgico-unmute');
       this.btnMute.classList.add(muted ? 'tgico-unmute' : 'tgico-mute');

@@ -1,3 +1,4 @@
+import type { AppNotificationsManager } from '../../lib/appManagers/appNotificationsManager';
 import type { AppChatsManager } from '../../lib/appManagers/appChatsManager';
 import type { AppDocsManager, MyDocument } from "../../lib/appManagers/appDocsManager";
 import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManager";
@@ -114,7 +115,7 @@ export default class ChatInput {
 
   public saveDraftDebounced: () => void;
 
-  constructor(private chat: Chat, private appMessagesManager: AppMessagesManager, private appDocsManager: AppDocsManager, private appChatsManager: AppChatsManager, private appPeersManager: AppPeersManager, private appWebPagesManager: AppWebPagesManager, private appImManager: AppImManager, private appDraftsManager: AppDraftsManager, private serverTimeManager: ServerTimeManager) {
+  constructor(private chat: Chat, private appMessagesManager: AppMessagesManager, private appDocsManager: AppDocsManager, private appChatsManager: AppChatsManager, private appPeersManager: AppPeersManager, private appWebPagesManager: AppWebPagesManager, private appImManager: AppImManager, private appDraftsManager: AppDraftsManager, private serverTimeManager: ServerTimeManager, private appNotificationsManager: AppNotificationsManager) {
     this.listenerSetter = new ListenerSetter();
   }
 
@@ -552,7 +553,7 @@ export default class ChatInput {
     const dialog = this.appMessagesManager.getDialogByPeerId(this.chat.peerId)[0];
     const count = dialog?.unread_count;
     this.goDownUnreadBadge.innerText = '' + (count || '');
-    this.goDownUnreadBadge.classList.toggle('badge-gray', this.appMessagesManager.isPeerMuted(this.chat.peerId));
+    this.goDownUnreadBadge.classList.toggle('badge-gray', this.appNotificationsManager.isPeerLocalMuted(this.chat.peerId, true));
   }
 
   public saveDraft() {

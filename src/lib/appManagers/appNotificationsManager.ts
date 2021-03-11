@@ -31,6 +31,7 @@ export type NotifyOptions = Partial<{
   onclick: () => void;
 }>;
 
+type ImSadAboutIt = Promise<PeerNotifySettings> | PeerNotifySettings;
 export class AppNotificationsManager {
   private notificationsUiSupport: boolean;
   private notificationsShown: {[key: string]: MyNotification} = {};
@@ -41,10 +42,10 @@ export class AppNotificationsManager {
   private nextSoundAt: number;
   private prevSoundVolume: number;
   private peerSettings = {
-    notifyPeer: {} as {[peerId: number]: Promise<PeerNotifySettings>},
-    notifyUsers: null as Promise<PeerNotifySettings>,
-    notifyChats: null as Promise<PeerNotifySettings>,
-    notifyBroadcasts: null as Promise<PeerNotifySettings>
+    notifyPeer: {} as {[peerId: number]: ImSadAboutIt},
+    notifyUsers: null as ImSadAboutIt,
+    notifyChats: null as ImSadAboutIt,
+    notifyBroadcasts: null as ImSadAboutIt
   };
   private exceptions: {[peerId: string]: PeerNotifySettings} = {};
   private notifyContactsSignUp: Promise<boolean>;
@@ -293,7 +294,7 @@ export class AppNotificationsManager {
     return this.settings;
   }
 
-  public getNotifySettings(peer: InputNotifyPeer): Promise<PeerNotifySettings> {
+  public getNotifySettings(peer: InputNotifyPeer): ImSadAboutIt {
     let key: any = convertInputKeyToKey(peer._);
     let obj: any = this.peerSettings[key as NotifyPeer['_']];
 
@@ -306,9 +307,11 @@ export class AppNotificationsManager {
       return obj;
     }
 
-    return (obj || this.peerSettings)[key] = apiManager.invokeApi('account.getNotifySettings', {peer})/* .then(settings => {
+    return (obj || this.peerSettings)[key] = apiManager.invokeApi('account.getNotifySettings', {peer})
+    .then(settings => {
+      this.savePeerSettings(key, settings);
       return settings;
-    }) */;
+    });
   }
 
   public updateNotifySettings(peer: InputNotifyPeer, settings: InputPeerNotifySettings) {
@@ -372,14 +375,17 @@ export class AppNotificationsManager {
     this.prevFavicon = href;
   }
 
-  public savePeerSettings(key: number | NotifyPeer['_'], settings: PeerNotifySettings) {
-    const p = Promise.resolve(settings);
+  public savePeerSettings(key: number | Exclude<NotifyPeer['_'], 'notifyPeer'>, settings: PeerNotifySettings) {
     let obj: any;
     if(typeof(key) === 'number') {
       obj = this.peerSettings['notifyPeer'];
     }
     
-    (obj || this.peerSettings)[key] = p;
+    (obj || this.peerSettings)[key] = settings;
+
+    if(typeof(key) !== 'number') {
+      rootScope.broadcast('notify_peer_type_settings', {key, settings});
+    }
 
     //rootScope.broadcast('notify_settings', {peerId: peerId});
   }
@@ -390,8 +396,45 @@ export class AppNotificationsManager {
   }
 
   public getPeerMuted(peerId: number) {
-    return this.getNotifySettings({_: 'inputNotifyPeer', peer: appPeersManager.getInputPeerById(peerId)})
+    const ret = this.getNotifySettings({_: 'inputNotifyPeer', peer: appPeersManager.getInputPeerById(peerId)});
+    return (ret instanceof Promise ? ret : Promise.resolve(ret))
     .then((peerNotifySettings) => this.isMuted(peerNotifySettings));
+  }
+
+  public getPeerLocalSettings(peerId: number, respectType = true): PeerNotifySettings {
+    const n: PeerNotifySettings = {
+      _: 'peerNotifySettings'
+    };
+
+    const notifySettings = this.peerSettings['notifyPeer'][peerId];
+    //if(!notifySettings || (notifySettings instanceof Promise)) return false;
+    if(notifySettings && !(notifySettings instanceof Promise)) {
+      Object.assign(n, notifySettings);
+    }
+
+    if(respectType) {
+      const inputNotify = appPeersManager.getInputNotifyPeerById(peerId, true);
+      const key = convertInputKeyToKey(inputNotify._);
+      const typeNotifySettings = this.peerSettings[key as NotifyPeer['_']];
+      if(typeNotifySettings && !(typeNotifySettings instanceof Promise)) {
+        for(let i in typeNotifySettings) {
+          // @ts-ignore
+          if(n[i] === undefined) {
+            // @ts-ignore
+            n[i] = typeNotifySettings[i];
+          }
+        }
+      }
+    }
+
+    return n;
+  }
+
+  public isPeerLocalMuted(peerId: number, respectType = true) {
+    if(peerId === rootScope.myId) return false;
+
+    const notifySettings = this.getPeerLocalSettings(peerId, respectType);
+    return this.isMuted(notifySettings);
   }
 
   public start() {

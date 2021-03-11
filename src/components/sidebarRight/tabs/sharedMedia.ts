@@ -14,6 +14,7 @@ import CheckboxField from "../../checkboxField";
 import { attachClickEvent, cancelEvent } from "../../../helpers/dom";
 import appSidebarRight from "..";
 import { TransitionSlider } from "../../transition";
+import appNotificationsManager from "../../../lib/appManagers/appNotificationsManager";
 
 let setText = (text: string, el: HTMLDivElement) => {
   window.requestAnimationFrame(() => {
@@ -126,9 +127,9 @@ export default class AppSharedMediaTab implements SliderTab {
       appMessagesManager.mutePeer(this.peerId);
     });
 
-    rootScope.on('dialog_notify_settings', (e) => {
-      if(this.peerId === e) {
-        const muted = appMessagesManager.isPeerMuted(this.peerId);
+    rootScope.on('dialog_notify_settings', (dialog) => {
+      if(this.peerId === dialog.peerId) {
+        const muted = appNotificationsManager.isPeerLocalMuted(this.peerId, false);
         this.profileElements.notificationsCheckbox.checked = !muted;
         this.profileElements.notificationsStatus.innerText = muted ? 'Disabled' : 'Enabled';
       }
@@ -306,7 +307,7 @@ export default class AppSharedMediaTab implements SliderTab {
         setText(appPeersManager.getPeerUsername(peerId), this.profileElements.username);
       }
       
-      const muted = appMessagesManager.isPeerMuted(peerId);
+      const muted = appNotificationsManager.isPeerLocalMuted(peerId, false);
       this.profileElements.notificationsCheckbox.checked = !muted;
       this.profileElements.notificationsStatus.innerText = muted ? 'Disabled' : 'Enabled';
     } else {

@@ -26,6 +26,8 @@ import appDraftsManager, { MyDraftMessage } from "./appDraftsManager";
 import ProgressivePreloader from "../../components/preloader";
 import App from "../../config/app";
 import DEBUG, { MOUNT_CLASS_TO } from "../../config/debug";
+import appNotificationsManager from "./appNotificationsManager";
+import { InputNotifyPeer } from "../../layer";
 
 type DialogDom = {
   avatarEl: AvatarElement,
@@ -354,11 +356,8 @@ export class AppDialogsManager {
       }
     });
 
-    rootScope.on('dialog_notify_settings', e => {
-      const dialog = appMessagesManager.getDialogByPeerId(e)[0];
-      if(dialog) {
-        this.setUnreadMessages(dialog); // возможно это не нужно, но нужно менять is-muted
-      }
+    rootScope.on('dialog_notify_settings', (dialog) => {
+      this.setUnreadMessages(dialog); // возможно это не нужно, но нужно менять is-muted
     });
 
     rootScope.on('dialog_draft', (e) => {
@@ -484,6 +483,11 @@ export class AppDialogsManager {
     //selectTab(0);
     (this.folders.menu.firstElementChild as HTMLElement).click();
     appStateManager.getState().then((state) => {
+      (['inputNotifyBroadcasts', 'inputNotifyUsers', 'inputNotifyChats'] as Exclude<InputNotifyPeer['_'], 'inputNotifyPeer'>[])
+      .forEach((inputKey) => {
+        appNotificationsManager.getNotifySettings({_: inputKey});
+      });
+      
       const getFiltersPromise = appMessagesManager.filtersStorage.getDialogFilters();
       getFiltersPromise.then((filters) => {
         for(const filter of filters) {
@@ -616,7 +620,7 @@ export class AppDialogsManager {
     let mutedCount = 0;
     let notMutedCount = 0;
     folder.forEach(dialog => {
-      const isMuted = appMessagesManager.isDialogMuted(dialog);
+      const isMuted = appNotificationsManager.isPeerLocalMuted(dialog.peerId, true);
 
       if(isMuted && filterId === 0) {
         return;
@@ -1117,7 +1121,7 @@ export class AppDialogsManager {
       return;
     }
 
-    const isMuted = appMessagesManager.isDialogMuted(dialog);
+    const isMuted = appNotificationsManager.isPeerLocalMuted(dialog.peerId, true);
     const wasMuted = dom.listEl.classList.contains('is-muted');
     if(isMuted !== wasMuted) {
       SetTransition(dom.listEl, 'is-muted', isMuted, 200);
@@ -1351,7 +1355,7 @@ export class AppDialogsManager {
         container.append(li);
       } */
 
-      const isMuted = appMessagesManager.isDialogMuted(dialog);
+      const isMuted = appNotificationsManager.isPeerLocalMuted(dialog.peerId, true);
       if(isMuted) {
         li.classList.add('is-muted');
       }

@@ -460,10 +460,8 @@ export default class ChatBubbles {
       }
     });
 
-    this.listenerSetter.add(rootScope, 'dialog_notify_settings', (e) => {
-      const peerId = e;
-
-      if(this.peerId === peerId) {
+    this.listenerSetter.add(rootScope, 'dialog_notify_settings', (dialog) => {
+      if(this.peerId === dialog.peerId) {
         this.chat.input.setUnreadCount();
       }
     });

@@ -1,4 +1,4 @@
-import type { Message, StickerSet, Update } from "../layer";
+import type { Message, StickerSet, Update, NotifyPeer, PeerNotifySettings } from "../layer";
 import type { MyDocument } from "./appManagers/appDocsManager";
 import type { AppMessagesManager, Dialog, MessagesStorage } from "./appManagers/appMessagesManager";
 import type { Poll, PollResults } from "./appManagers/appPollsManager";
@@ -32,7 +32,7 @@ export type BroadcastEvents = {
   'dialog_drop': {peerId: number, dialog?: Dialog},
   'dialog_migrate': {migrateFrom: number, migrateTo: number},
   //'dialog_top': Dialog,
-  'dialog_notify_settings': number,
+  'dialog_notify_settings': Dialog,
   'dialogs_multiupdate': {[peerId: string]: Dialog},
   'dialogs_archived_unread': {count: number},
   
@@ -97,7 +97,8 @@ export type BroadcastEvents = {
 
   'privacy_update': Update.updatePrivacy,
 
-  'notify_settings': Update.updateNotifySettings
+  'notify_settings': Update.updateNotifySettings,
+  'notify_peer_type_settings': {key: Exclude<NotifyPeer['_'], 'notifyPeer'>, settings: PeerNotifySettings},
 };
 
 class RootScope extends EventListenerBase<any> {
