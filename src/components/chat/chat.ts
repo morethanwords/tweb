@@ -1,3 +1,4 @@
+import type { AppNotificationsManager } from "../../lib/appManagers/appNotificationsManager";
 import type { AppChatsManager } from "../../lib/appManagers/appChatsManager";
 import type { AppDocsManager } from "../../lib/appManagers/appDocsManager";
 import type { AppImManager } from "../../lib/appManagers/appImManager";
@@ -53,7 +54,7 @@ export default class Chat extends EventListenerBase<{
 
   public type: ChatType = 'chat';
   
-  constructor(public appImManager: AppImManager, public appChatsManager: AppChatsManager, public appDocsManager: AppDocsManager, public appInlineBotsManager: AppInlineBotsManager, public appMessagesManager: AppMessagesManager, public appPeersManager: AppPeersManager, public appPhotosManager: AppPhotosManager, public appProfileManager: AppProfileManager, public appStickersManager: AppStickersManager, public appUsersManager: AppUsersManager, public appWebPagesManager: AppWebPagesManager, public appPollsManager: AppPollsManager, public apiManager: ApiManagerProxy, public appDraftsManager: AppDraftsManager, public serverTimeManager: ServerTimeManager, public storage: typeof sessionStorage) {
+  constructor(public appImManager: AppImManager, public appChatsManager: AppChatsManager, public appDocsManager: AppDocsManager, public appInlineBotsManager: AppInlineBotsManager, public appMessagesManager: AppMessagesManager, public appPeersManager: AppPeersManager, public appPhotosManager: AppPhotosManager, public appProfileManager: AppProfileManager, public appStickersManager: AppStickersManager, public appUsersManager: AppUsersManager, public appWebPagesManager: AppWebPagesManager, public appPollsManager: AppPollsManager, public apiManager: ApiManagerProxy, public appDraftsManager: AppDraftsManager, public serverTimeManager: ServerTimeManager, public storage: typeof sessionStorage, public appNotificationsManager: AppNotificationsManager) {
     super();
 
     this.container = document.createElement('div');
@@ -113,9 +114,9 @@ export default class Chat extends EventListenerBase<{
   public init(peerId: number) {
     this.initPeerId = peerId;
 
-    this.topbar = new ChatTopbar(this, appSidebarRight, this.appMessagesManager, this.appPeersManager, this.appChatsManager);
+    this.topbar = new ChatTopbar(this, appSidebarRight, this.appMessagesManager, this.appPeersManager, this.appChatsManager, this.appNotificationsManager);
     this.bubbles = new ChatBubbles(this, this.appMessagesManager, this.appStickersManager, this.appUsersManager, this.appInlineBotsManager, this.appPhotosManager, this.appDocsManager, this.appPeersManager, this.appChatsManager, this.storage);
-    this.input = new ChatInput(this, this.appMessagesManager, this.appDocsManager, this.appChatsManager, this.appPeersManager, this.appWebPagesManager, this.appImManager, this.appDraftsManager, this.serverTimeManager);
+    this.input = new ChatInput(this, this.appMessagesManager, this.appDocsManager, this.appChatsManager, this.appPeersManager, this.appWebPagesManager, this.appImManager, this.appDraftsManager, this.serverTimeManager, this.appNotificationsManager);
     this.selection = new ChatSelection(this, this.bubbles, this.input, this.appMessagesManager);
     this.contextMenu = new ChatContextMenu(this.bubbles.bubblesContainer, this, this.appMessagesManager, this.appChatsManager, this.appPeersManager, this.appPollsManager);
 

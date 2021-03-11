@@ -39,7 +39,8 @@ export default class AppNotificationsTab extends SliderSuperTabEventable {
       this.scrollable.append(section.container);
 
       const inputNotifyPeer = {_: options.inputKey};
-      appNotificationsManager.getNotifySettings(inputNotifyPeer).then((notifySettings) => {
+      const ret = appNotificationsManager.getNotifySettings(inputNotifyPeer);
+      (ret instanceof Promise ? ret : Promise.resolve(ret)).then((notifySettings) => {
         const applySettings = () => {
           const muted = appNotificationsManager.isMuted(notifySettings);
           enabledRow.checkboxField.value = !muted;

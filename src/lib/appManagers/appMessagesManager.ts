@@ -196,6 +196,22 @@ export class AppMessagesManager {
       this.handleUpdate(e);
     });
 
+    // ! Invalidate notify settings, can optimize though
+    rootScope.on('notify_peer_type_settings', ({key, settings}) => {
+      this.getConversationsAll().then(dialogs => {
+        let filterFunc: (dialog: Dialog) => boolean;
+        if(key === 'notifyUsers') filterFunc = (dialog) => dialog.peerId > 0;
+        else if(key === 'notifyBroadcasts') filterFunc = (dialog) => appChatsManager.isBroadcast(-dialog.peerId);
+        else filterFunc = (dialog) => appPeersManager.isAnyGroup(dialog.peerId);
+
+        dialogs
+        .filter(filterFunc)
+        .forEach(dialog => {
+          rootScope.broadcast('dialog_notify_settings', dialog);
+        });
+      });
+    });
+
     rootScope.on('webpage_updated', (e) => {
       const eventData = e;
       eventData.msgs.forEach((mid) => {
@@ -4368,7 +4384,7 @@ export class AppMessagesManager {
           const dialog = this.getDialogByPeerId(peerId)[0];
           if(dialog) {
             dialog.notify_settings = notify_settings;
-            rootScope.broadcast('dialog_notify_settings', peerId);
+            rootScope.broadcast('dialog_notify_settings', dialog);
           }
         }
 
@@ -4462,22 +4478,6 @@ export class AppMessagesManager {
     }
 
     return pendingMessage;
-  }
-
-  public isDialogMuted(dialog: MTDialog.dialog) {
-    let muted = false;
-    if(dialog && dialog.notify_settings && dialog.notify_settings.mute_until) {
-      //muted = new Date(dialog.notify_settings.mute_until * 1000) > new Date();
-      muted = (dialog.notify_settings.mute_until * 1000) > Date.now();
-    }
-
-    return muted;
-  }
-
-  public isPeerMuted(peerId: number) {
-    if(peerId === rootScope.myId) return false;
-
-    return this.isDialogMuted(this.getDialogByPeerId(peerId)[0]);
   }
 
   public mutePeer(peerId: number) {

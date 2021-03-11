@@ -155,19 +155,12 @@ export class AppPeersManager {
     return (peerId < 0) && !appChatsManager.isBroadcast(-peerId);
   }
 
-  public isBroadcast(id: number): boolean {
-    return this.isChannel(id) && !this.isMegagroup(id);
+  public isBroadcast(peerId: number): boolean {
+    return this.isChannel(peerId) && !this.isMegagroup(peerId);
   }
 
   public isBot(peerId: number): boolean {
     return (peerId > 0) && appUsersManager.isBot(peerId);
-  }
-
-  /**
-   * Will check notification exceptions by type too
-   */
-  public isPeerMuted(peerId: number) {
-
   }
 
   /* public getInputPeer(peerString: string): InputPeer {
@@ -202,7 +195,9 @@ export class AppPeersManager {
     }
   } */
 
-  public getInputNotifyPeerById(peerId: number, ignorePeerId = false): InputNotifyPeer {
+  public getInputNotifyPeerById(peerId: number, ignorePeerId: true): Exclude<InputNotifyPeer, InputNotifyPeer.inputNotifyPeer>;
+  public getInputNotifyPeerById(peerId: number, ignorePeerId?: false): InputNotifyPeer.inputNotifyPeer;
+  public getInputNotifyPeerById(peerId: number, ignorePeerId?: boolean): InputNotifyPeer {
     if(ignorePeerId) {
       if(peerId > 0) {
         return {_: 'inputNotifyUsers'};

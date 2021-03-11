@@ -36,6 +36,7 @@ import appDownloadManager from './appDownloadManager';
 import appStateManager, { AppStateManager } from './appStateManager';
 import { MOUNT_CLASS_TO } from '../../config/debug';
 import appNavigationController from '../../components/appNavigationController';
+import appNotificationsManager from './appNotificationsManager';
 
 //console.log('appImManager included33!');
 
@@ -593,7 +594,7 @@ export class AppImManager {
   }
 
   private createNewChat() {
-    const chat = new Chat(this, appChatsManager, appDocsManager, appInlineBotsManager, appMessagesManager, appPeersManager, appPhotosManager, appProfileManager, appStickersManager, appUsersManager, appWebPagesManager, appPollsManager, apiManager, appDraftsManager, serverTimeManager, sessionStorage);
+    const chat = new Chat(this, appChatsManager, appDocsManager, appInlineBotsManager, appMessagesManager, appPeersManager, appPhotosManager, appProfileManager, appStickersManager, appUsersManager, appWebPagesManager, appPollsManager, apiManager, appDraftsManager, serverTimeManager, sessionStorage, appNotificationsManager);
 
     if(this.chats.length) {
       chat.backgroundEl.append(this.chat.backgroundEl.lastElementChild.cloneNode(true));
