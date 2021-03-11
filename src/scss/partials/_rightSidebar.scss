@@ -227,13 +227,17 @@
 }
 
 #shared-media-container {
-  .search-super {
+  /* .search-super {
     top: 100%;
     min-height: calc((var(--vh, 1vh) * 100) - 100% - 56px);
 
     &.sliding {
       max-height: calc((var(--vh, 1vh) * 100) - 100% - 56px);
     }
+  } */
+  .search-super {
+    top: 100%;
+    min-height: calc((var(--vh, 1vh) * 100) - 56px);
   }
 
   .sidebar-header .transition {
@@ -271,8 +275,12 @@
     }
   }
 
-  &.sliding {
+  /* &.sliding {
     max-height: 100%;
+  } */
+
+  &.sliding {
+    max-height: none !important;
   }
 
   &-tabs {
@@ -287,9 +295,21 @@
     box-shadow: none !important;
     position: -webkit-sticky !important;
 	  position: sticky !important;
-    top: -1px;
+    //top: -1px;
+    top: 0px;
     z-index: 2;
     background-color: #fff;
+
+    &:before {
+      position: absolute;
+      width: 100%;
+      height: 1px;
+      left: 0;
+      top: -1px;
+      background-color: inherit;
+      display: block;
+      content: " ";
+    }
 
     .scrollable {
       position: relative;
@@ -323,6 +343,11 @@
         display: none;
       } */
     }
+
+    /* .scrollable-y {
+      height: auto;
+      position: absolute !important;
+    } */
 
     /* > div > div:not(.scroll-padding) {
       height: 100%;
