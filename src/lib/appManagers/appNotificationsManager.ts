@@ -538,7 +538,7 @@ export class AppNotificationsManager {
             const notification = this.notificationsShown[i];
             if(notification &&
                 notification.tag === data.tag) {
-              notification.hidden = true
+              notification.hidden = true;
             }
           }
         }
@@ -549,10 +549,11 @@ export class AppNotificationsManager {
           tag: data.tag || '',
           silent: data.silent || false
         });
+        console.log('notify constructed notification');
       } catch(e) {
         this.notificationsUiSupport = false;
         //WebPushApiManager.setLocalNotificationsDisabled();
-        return
+        return;
       }
     } /* else if('mozNotification' in navigator) {
       notification = navigator.mozNotification.createNotification(data.title, data.message || '', data.image || '')
