@@ -2476,7 +2476,7 @@ export class AppMessagesManager {
     }
   }
 
-  public getRichReplyText(message: any, text: string = message.message, usingMids?: number[]) {
+  public getRichReplyText(message: any, text: string = message.message, usingMids?: number[], plain = false) {
     let messageText = '';
 
     if(message.media) {
@@ -2511,13 +2511,13 @@ export class AppMessagesManager {
             messageText += '<i>Photo' + (message.message ? ', ' : '') + '</i>';
             break;
           case 'messageMediaDice':
-            messageText += RichTextProcessor.wrapEmojiText(media.emoticon);
+            messageText += plain ? media.emoticon : RichTextProcessor.wrapEmojiText(media.emoticon);
             break;
           case 'messageMediaGeo':
             messageText += '<i>Geolocation</i>';
             break;
           case 'messageMediaPoll':
-            messageText += '<i>' + media.poll.rReply + '</i>';
+            messageText += '<i>' + (plain ? '📊' + ' ' + media.poll.question || 'poll' : media.poll.rReply) + '</i>';
             break;
           case 'messageMediaContact':
             messageText += '<i>Contact</i>';
@@ -2562,12 +2562,16 @@ export class AppMessagesManager {
 
       const entities = RichTextProcessor.parseEntities(text.replace(/\n/g, ' '));
 
-      messageWrapped = RichTextProcessor.wrapRichText(text, {
+      messageWrapped = plain ? text : RichTextProcessor.wrapRichText(text, {
         noLinebreaks: true, 
         entities, 
         noLinks: true,
         noTextFormat: true
       });
+    }
+
+    if(plain) {
+      messageText = messageText.replace(/<i>/g, '').replace(/<\/i>/g, '');
     }
 
     return messageText + messageWrapped;
@@ -4626,152 +4630,10 @@ export class AppMessagesManager {
 
     const localSettings = appNotificationsManager.getLocalSettings();
     if(options.peerTypeNotifySettings.show_previews) {
-      if(message._ === 'message') {
-        if(message.fwd_from && options.fwdCount) {
-          notificationMessage = 'Forwarded ' + options.fwdCount + ' messages';//fwdMessagesPluralize(options.fwd_count);
-        } else if(message.message) {
-          if(localSettings.nopreview) {
-            notificationMessage = _('conversation_message_sent');
-          } else {
-            notificationMessage = RichTextProcessor.wrapPlainText(message.message);
-          }
-        } else if(message.media) {
-          var captionEmoji: string;
-          switch (message.media._) {
-            case 'messageMediaPhoto':
-              notificationMessage = _('conversation_media_photo_raw');
-              captionEmoji = '🖼';
-              break;
-            case 'messageMediaDocument':
-              if(message.media.document._ === 'documentEmpty') break;
-              switch(message.media.document.type) {
-                case 'gif':
-                  notificationMessage = _('conversation_media_gif_raw');
-                  captionEmoji = '🎬';
-                  break;
-                case 'sticker':
-                  notificationMessage = _('conversation_media_sticker');
-                  var stickerEmoji = message.media.document.stickerEmojiRaw;
-                  if(stickerEmoji !== undefined) {
-                    notificationMessage = RichTextProcessor.wrapPlainText(stickerEmoji) + ' ' + notificationMessage;
-                  }
-                  break;
-                case 'video':
-                  notificationMessage = _('conversation_media_video_raw');
-                  captionEmoji = '📹';
-                  break;
-                case 'round':
-                  notificationMessage = _('conversation_media_round_raw');
-                  captionEmoji = '📹';
-                  break;
-                case 'voice':
-                case 'audio':
-                  notificationMessage = _('conversation_media_audio_raw');
-                  break;
-                default:
-                  if(message.media.document.file_name) {
-                    notificationMessage = RichTextProcessor.wrapPlainText('📎 ' + message.media.document.file_name);
-                  } else {
-                    notificationMessage = _('conversation_media_document_raw');
-                    captionEmoji = '📎';
-                  }
-                  break;
-              }
-              break;
-    
-            case 'messageMediaGeo':
-            case 'messageMediaVenue':
-              notificationMessage = _('conversation_media_location_raw');
-              captionEmoji = '📍';
-              break;
-            case 'messageMediaContact':
-              notificationMessage = _('conversation_media_contact_raw');
-              break;
-            case 'messageMediaGame':
-              notificationMessage = RichTextProcessor.wrapPlainText('🎮 ' + message.media.game.title);
-              break;
-            case 'messageMediaUnsupported':
-              notificationMessage = _('conversation_media_unsupported_raw');
-              break;
-            default:
-              notificationMessage = _('conversation_media_attachment_raw');
-              break;
-          }
-    
-          if(captionEmoji !== undefined && (message.media as any).caption) {
-            notificationMessage = RichTextProcessor.wrapPlainText(captionEmoji + ' ' + (message.media as any).caption);
-          }
-        }
+      if(message._ === 'message' && message.fwd_from && options.fwdCount) {
+        notificationMessage = 'Forwarded ' + options.fwdCount + ' messages';//fwdMessagesPluralize(options.fwd_count);
       } else {
-        switch(message.action._) {
-          case 'messageActionChatCreate':
-            notificationMessage = _('conversation_group_created_raw')
-            break
-          case 'messageActionChatEditTitle':
-            notificationMessage = _('conversation_group_renamed_raw')
-            break
-          case 'messageActionChatEditPhoto':
-            notificationMessage = _('conversation_group_photo_updated_raw')
-            break
-          case 'messageActionChatDeletePhoto':
-            notificationMessage = _('conversation_group_photo_removed_raw')
-            break
-          case 'messageActionChatAddUser':
-          // @ts-ignore
-          case 'messageActionChatAddUsers':
-            notificationMessage = _('conversation_invited_user_message_raw')
-            break
-          /* case 'messageActionChatReturn':
-            notificationMessage = _('conversation_returned_to_group_raw')
-            break
-          case 'messageActionChatJoined':
-            notificationMessage = _('conversation_joined_group_raw')
-            break */
-          case 'messageActionChatDeleteUser':
-            notificationMessage = _('conversation_kicked_user_message_raw')
-            break
-          /* case 'messageActionChatLeave':
-            notificationMessage = _('conversation_left_group_raw')
-            break */
-          case 'messageActionChatJoinedByLink':
-            notificationMessage = _('conversation_joined_by_link_raw')
-            break
-          case 'messageActionChannelCreate':
-            notificationMessage = _('conversation_created_channel_raw')
-            break
-          /* case 'messageActionChannelEditTitle':
-            notificationMessage = _('conversation_changed_channel_name_raw')
-            break
-          case 'messageActionChannelEditPhoto':
-            notificationMessage = _('conversation_changed_channel_photo_raw')
-            break
-          case 'messageActionChannelDeletePhoto':
-            notificationMessage = _('conversation_removed_channel_photo_raw')
-            break */
-          case 'messageActionPinMessage':
-            notificationMessage = _('conversation_pinned_message_raw')
-            break
-          /* case 'messageActionGameScore':
-            notificationMessage = gameScorePluralize(message.action.score)
-            break */
-  
-          case 'messageActionPhoneCall':
-            switch((message.action as any).type) {
-              case 'out_missed':
-                notificationMessage = _('message_service_phonecall_canceled_raw')
-                break
-              case 'in_missed':
-                notificationMessage = _('message_service_phonecall_missed_raw')
-                break
-              case 'out_ok':
-                notificationMessage = _('message_service_phonecall_outgoing_raw')
-                break
-              case 'in_ok':
-                notificationMessage = _('message_service_phonecall_incoming_raw')
-                break
-            }
-            break
-        }
+        notificationMessage = this.getRichReplyText(message, undefined, undefined, true);
       }
     } else {
       notificationMessage = 'New notification';
