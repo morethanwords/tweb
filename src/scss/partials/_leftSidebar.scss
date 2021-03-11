@@ -178,6 +178,10 @@
     .search-super-tabs-scrollable { 
       position: relative !important; 
 
+      &:before {
+        display: none;
+      }
+
       .menu-horizontal-div-item {
         flex: 1 0 auto !important;
       }

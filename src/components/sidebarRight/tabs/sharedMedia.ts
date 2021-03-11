@@ -104,7 +104,29 @@ export default class AppSharedMediaTab implements SliderTab {
       const isSharedMedia = top <= HEADER_HEIGHT;
       closeIcon.classList.toggle('state-back', isSharedMedia);
       transition(+isSharedMedia);
+
+      if(!isSharedMedia) {
+        this.searchSuper.goingHard = {};
+      }
+
+      //this.searchSuper.container.style.position = 'relative';
+      //this.searchSuper.container.style.zIndex = '500';
+      //this.scroll.container.style.overflowY = isSharedMedia ? 'hidden' : '';
+      //this.scroll.container.style.zIndex = '1';
+      //this.searchSuper.tabs[this.searchSuper.type].style.overflowY = isSharedMedia ? '' : 'hidden';
     };
+
+    //this.scroll.container.style.overflowY = 'hidden';
+
+    /* this.scroll.container.addEventListener('scroll', (e) => {
+      this.searchSuper.tabs[this.searchSuper.type].scrollTop = this.scroll.container.scrollTop + 1;
+      console.log('writings on the wall', e, this.scroll.container.scrollTop, this.searchSuper.scrollable.container.scrollTop);
+    }); */
+
+    /* this.scroll.container.addEventListener('wheel', (e) => {
+      cancelEvent(e);
+      this.scroll.scrollTop += e.deltaY;
+    }); */
 
     const transition = TransitionSlider(this.closeBtn.nextElementSibling as HTMLElement, 'slide-fade', 400, null, false);
 

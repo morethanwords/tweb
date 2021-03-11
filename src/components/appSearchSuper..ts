@@ -22,8 +22,9 @@ import { ripple } from "./ripple";
 import Scrollable, { ScrollableX } from "./scrollable";
 import { wrapDocument, wrapPhoto, wrapVideo } from "./wrappers";
 import useHeavyAnimationCheck, { getHeavyAnimationPromise } from "../hooks/useHeavyAnimationCheck";
+import { isMobileSafari } from "../helpers/userAgent";
 
-const testScroll = false;
+//const testScroll = false;
 
 export type SearchSuperType = MyInputMessagesFilter/*  | 'chats' */;
 export type SearchSuperContext = {
@@ -80,6 +81,8 @@ export default class AppSearchSuper {
 
   private searchGroupMedia: SearchGroup;
 
+  public goingHard: Partial<{[type in MyInputMessagesFilter]: {scrollTop: number, scrollHeight: number}}> = {};
+
   constructor(public types: {inputFilter: SearchSuperType, name: string}[], public scrollable: Scrollable, public searchGroups?: {[group in SearchGroupType]: SearchGroup}, public asChatList = false, public groupByMonth = true) {
     this.container = document.createElement('div');
     this.container.classList.add('search-super');
@@ -116,10 +119,25 @@ export default class AppSearchSuper {
 
     for(const type of types) {
       const container = document.createElement('div');
-      container.classList.add('search-super-container-' + type.name.toLowerCase());
+      container.classList.add('search-super-container-' + type.name.toLowerCase()/* , 'scrollable', 'scrollable-y' */);
 
       const content = document.createElement('div');
-      content.classList.add('search-super-content-' + type.name.toLowerCase());
+      content.classList.add('search-super-content-' + type.name.toLowerCase()/* , 'scrollable', 'scrollable-y' */);
+
+      //content.style.overflowY = 'hidden';
+      /* container.style.overflow = 'visible';
+      const v = 236;
+      content.style.top = (v * -1) + 'px';
+      content.style.paddingTop = v + 'px';
+      content.style.height = `calc(100% + ${v}px)`;
+      content.style.maxHeight = `calc(100% + ${v}px)`;
+      content.addEventListener('scroll', (e) => {
+        const scrollTop = content.scrollTop;
+        if(scrollTop <= v) {
+          //this.scrollable.scrollTop = scrollTop;
+          (this.container.previousElementSibling as HTMLElement).style.transform = `translateY(-${scrollTop}px)`;
+        }
+      }); */
 
       container.append(content);
 
@@ -141,20 +159,43 @@ export default class AppSearchSuper {
       }
     };
     //this.scroll.attachSentinels(undefined, 400);
-    
+
     this.selectTab = horizontalMenu(this.tabsMenu, this.tabsContainer, (id, tabContent) => {
       if(this.prevTabId === id) return;
 
       if(this.prevTabId !== -1) {
         this.onTransitionStart();
       }
-      
-      this.type = this.types[id].inputFilter;
+
+      this.goingHard[this.type] = {scrollTop: this.scrollable.scrollTop, scrollHeight: this.scrollable.scrollHeight};
+
+      const newType = this.types[id].inputFilter;
       this.tabSelected = tabContent.firstElementChild as HTMLDivElement;
 
-      if(this.prevTabId !== -1 && nav.offsetTop) {
-        this.scrollable.scrollTop -= nav.offsetTop;
+      if(this.goingHard[newType] === undefined) {
+        const rect = this.container.getBoundingClientRect();
+        const rect2 = this.container.parentElement.getBoundingClientRect();
+        const diff = rect.y - rect2.y;
+
+        if(this.scrollable.scrollTop > diff) {
+          this.goingHard[newType] = {scrollTop: diff, scrollHeight: 0};
+        }
       }
+
+      if(this.goingHard[newType]) {
+        const diff = this.goingHard[this.type].scrollTop - this.goingHard[newType].scrollTop;
+        //console.log('what you gonna do', this.goingHard, diff);
+
+        if(diff/*  && diff < 0 */) {
+          this.tabSelected.style.transform = `translateY(${diff}px)`;
+        }
+      }
+
+      this.type = newType;
+      
+      /* if(this.prevTabId !== -1 && nav.offsetTop) {
+        this.scrollable.scrollTop -= nav.offsetTop;
+      } */
 
       /* this.log('setVirtualContainer', id, this.sharedMediaSelected, this.sharedMediaSelected.childElementCount);
       this.scroll.setVirtualContainer(this.sharedMediaSelected); */
@@ -167,6 +208,13 @@ export default class AppSearchSuper {
       this.prevTabId = id;
     }, () => {
       this.scrollable.onScroll();
+      
+      //console.log('what y', this.tabSelected.style.transform);
+      if(this.goingHard[this.type] !== undefined) {
+        this.tabSelected.style.transform = '';
+        this.scrollable.scrollTop = this.goingHard[this.type].scrollTop;
+      }
+
       this.onTransitionEnd();
     }, undefined, navScrollable);
 
@@ -217,7 +265,18 @@ export default class AppSearchSuper {
   private onTransitionEnd = () => {
     // Jolly Cobra's // Workaround for scrollable content flickering during animation.
     const container = this.scrollable.container;
+
+    if(isMobileSafari) { // ! safari doesn't respect sticky header, so it flicks when overflow is changing
+      container.style.display = 'none';
+    }
+
     container.style.overflowY = '';
+
+    if(isMobileSafari) {
+      void container.offsetLeft; // reflow
+      container.style.display = '';
+    }
+
     container.style.paddingRight = '0';
     this.container.classList.remove('sliding');
   };
@@ -747,9 +806,9 @@ export default class AppSearchSuper {
   }
   
   public load(single = false, justLoad = false) {
-    if(testScroll/*  || 1 === 1 */) {
-      return;
-    }
+    // if(testScroll/*  || 1 === 1 */) {
+    //   return;
+    // }
 
     //return;
     
@@ -950,6 +1009,7 @@ export default class AppSearchSuper {
 
     this.cleanupObj.cleaned = true;
     this.cleanupObj = {cleaned: false};
+    this.goingHard = {};
   }
 
   public cleanupHTML() {
@@ -969,11 +1029,11 @@ export default class AppSearchSuper {
       
       if(!this.historyStorage || !this.historyStorage[type]) {
         const parent = this.tabs[type].parentElement;
-        if(!testScroll) {
+        //if(!testScroll) {
           if(!parent.querySelector('.preloader')) {
             putPreloader(parent, true);
           }
-        }
+        //}
 
         const empty = parent.querySelector('.content-empty');
         if(empty) {
@@ -984,8 +1044,9 @@ export default class AppSearchSuper {
     
     this.monthContainers = {};
     this.searchGroupMedia.clear();
+    this.scrollable.scrollTop = 0;
 
-    if(testScroll) {
+    /* if(testScroll) {
       for(let i = 0; i < 1500; ++i) {
         let div = document.createElement('div');
         div.insertAdjacentHTML('beforeend', `<img class="media-image" src="assets/img/camomile.jpg">`);
@@ -994,7 +1055,7 @@ export default class AppSearchSuper {
         //div.innerText = '' + (i / 3 | 0);
         this.tabs.inputMessagesFilterPhotoVideo.append(div);
       }
-    }
+    } */
   }
 
   // * will change .cleaned in cleanup() and new instance will be created
