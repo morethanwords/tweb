@@ -824,13 +824,17 @@
 .sidebar-left {
   &-section {
     padding: .5rem 0 1rem;
+
+    @include respond-to(handhelds) {
+      padding-bottom: .5rem;
+    }
   
     &-content {
-      //margin: 0 .125rem;
+      margin: 0 .5rem;
 
-      //@include respond-to(not-handhelds) {
-        margin: 0 .5rem;
-      //}
+      @include respond-to(handhelds) {
+        margin: 0 .25rem;
+      }
 
       > .btn-primary {
         margin: 0;
@@ -848,7 +852,7 @@
 
     &-caption {
       margin-top: 1rem;
-      font-size: .875rem;
+      font-size: 1rem;
       color: #707579;
       line-height: 1.3125;
       padding: 0 1rem;
@@ -911,8 +915,6 @@
       max-width: 342px;
       margin-left: auto;
       margin-right: auto;
-      font-size: 1rem;
-      line-height: 1.3125;
       margin-bottom: 1.125rem;
     }
   }
@@ -992,14 +994,11 @@
 }
 
 .privacy-tab {
-  .sidebar-left-section-caption { // * Last Seen & Online verified with mockup
-    font-size: 1rem;
-    line-height: 1.3125;
-  }
-
   // * just to match mockup
-  .sidebar-left-section:first-child {
-    padding-bottom: 1.125rem;
+  @include respond-to(not-handhelds) {
+    .sidebar-left-section:first-child {
+      padding-bottom: 1.125rem;
+    }
   }
 
   form {
@@ -1040,10 +1039,6 @@
 }
 
 .blocked-users-container {
-  .sidebar-left-section-caption {
-    font-size: 1rem;
-  }
-
   li > .rp {
     height: 66px;
     max-height: 66px;
