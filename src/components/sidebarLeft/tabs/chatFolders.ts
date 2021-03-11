@@ -19,7 +19,7 @@ import { SettingSection } from "..";
 
 export default class AppChatFoldersTab extends SliderSuperTab {
   private createFolderBtn: HTMLElement;
-  private foldersContainer: HTMLElement;
+  private foldersSection: SettingSection;
   private suggestedSection: SettingSection;
   private stickerContainer: HTMLElement;
   private animation: RLottiePlayer;
@@ -117,20 +117,17 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       icon: 'add'
     });
 
-    const sec1 = new SettingSection({
+    this.foldersSection = new SettingSection({
       name: 'Folders'
     });
+    this.foldersSection.container.style.display = 'none';
 
-    this.foldersContainer = sec1.content;
-
-    const sec2 = new SettingSection({
+    this.suggestedSection = new SettingSection({
       name: 'Recommended folders'
     });
-
-    this.suggestedSection = sec2;
     this.suggestedSection.container.style.display = 'none';
 
-    this.scrollable.append(this.stickerContainer, caption, this.createFolderBtn, sec1.container, sec2.container);
+    this.scrollable.append(this.stickerContainer, caption, this.createFolderBtn, this.foldersSection.container, this.suggestedSection.container);
 
     attachClickEvent(this.createFolderBtn, () => {
       if(Object.keys(this.filtersRendered).length >= 10) {
@@ -150,10 +147,16 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       this.animation = player;
     });
 
+    const onFiltersContainerUpdate = () => {
+      this.foldersSection.container.style.display = Object.keys(this.filtersRendered).length ? '' : 'none';
+    };
+
     appMessagesManager.filtersStorage.getDialogFilters().then(filters => {
       for(const filter of filters) {
-        this.renderFolder(filter, this.foldersContainer);
+        this.renderFolder(filter, this.foldersSection.content);
       }
+
+      onFiltersContainerUpdate();
     });
 
     this.listenerSetter.add(rootScope, 'filter_update', (e) => {
@@ -161,8 +164,10 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       if(this.filtersRendered.hasOwnProperty(filter.id)) {
         this.renderFolder(filter, null, this.filtersRendered[filter.id]);
       } else {
-        this.renderFolder(filter, this.foldersContainer);
+        this.renderFolder(filter, this.foldersSection.content);
       }
+
+      onFiltersContainerUpdate();
 
       this.getSuggestedFilters();
     });
@@ -180,6 +185,8 @@ export default class AppChatFoldersTab extends SliderSuperTab {
         this.filtersRendered[filter.id].remove();
         delete this.filtersRendered[filter.id]
       }
+
+      onFiltersContainerUpdate();
     });
 
     this.listenerSetter.add(rootScope, 'filter_order', (e: BroadcastEvents['filter_order']) => {

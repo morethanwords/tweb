@@ -91,8 +91,10 @@ export class AppSidebarLeft extends SidebarSlider {
       new AppArchivedTab(this).open();
     });
 
-    attachClickEvent(this.buttons.contacts, (e) => {
-      new AppContactsTab(this).open();
+    [this.newButtons.privateChat, this.buttons.contacts].forEach(btn => {
+      attachClickEvent(btn, (e) => {
+        new AppContactsTab(this).open();
+      });
     });
 
     attachClickEvent(this.buttons.settings, (e) => {

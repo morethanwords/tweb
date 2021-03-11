@@ -4,6 +4,7 @@ import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import appPhotosManager from "../../../lib/appManagers/appPhotosManager";
 import rootScope from "../../../lib/rootScope";
 import InputSearch from "../../inputSearch";
+import { canFocus } from "../../../helpers/dom";
 
 // TODO: поиск по людям глобальный, если не нашло в контактах никого
 
@@ -43,6 +44,11 @@ export default class AppContactsTab extends SliderSuperTab {
     /* // need to clear, and left 1 page for smooth slide
     let pageCount = appPhotosManager.windowH / 72 * 1.25 | 0;
     (Array.from(this.list.children) as HTMLElement[]).slice(pageCount).forEach(el => el.remove()); */
+  }
+
+  onOpenAfterTimeout() {
+    if(!canFocus(true)) return;
+    this.inputSearch.input.focus();
   }
 
   public openContacts(query?: string) {
