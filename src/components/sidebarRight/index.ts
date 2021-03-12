@@ -14,22 +14,19 @@ const sharedMediaTab = new AppSharedMediaTab();
 const searchTab = new AppPrivateSearchTab();
 const stickersTab = new AppStickersTab();
 const pollResultsTab = new AppPollResultsTab();
-const gifsTab = new AppGifsTab();
 
 export class AppSidebarRight extends SidebarSlider {
   public static SLIDERITEMSIDS = {
     sharedMedia: 0,
     search: 1,
     stickers: 2,
-    pollResults: 3,
-    gifs: 4,
+    pollResults: 3
   };
 
   public sharedMediaTab: AppSharedMediaTab;
   public searchTab: AppPrivateSearchTab;
   public stickersTab: AppStickersTab;
   public pollResultsTab: AppPollResultsTab;
-  public gifsTab: AppGifsTab;
 
   constructor() {
     super({
@@ -38,8 +35,7 @@ export class AppSidebarRight extends SidebarSlider {
         [AppSidebarRight.SLIDERITEMSIDS.sharedMedia, sharedMediaTab],
         [AppSidebarRight.SLIDERITEMSIDS.search, searchTab],
         [AppSidebarRight.SLIDERITEMSIDS.stickers, stickersTab],
-        [AppSidebarRight.SLIDERITEMSIDS.pollResults, pollResultsTab],
-        [AppSidebarRight.SLIDERITEMSIDS.gifs, gifsTab]
+        [AppSidebarRight.SLIDERITEMSIDS.pollResults, pollResultsTab]
       ] as any[]), 
       canHideFirst: true,
       navigationType: 'right'
@@ -49,7 +45,6 @@ export class AppSidebarRight extends SidebarSlider {
     this.searchTab = searchTab;
     this.stickersTab = stickersTab;
     this.pollResultsTab = pollResultsTab;
-    this.gifsTab = gifsTab;
 
     mediaSizes.addListener('changeScreen', (from, to) => {
       if(to === ScreenSize.medium && from !== ScreenSize.mobile) {
