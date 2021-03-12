@@ -1581,7 +1581,16 @@ export class AppMessagesManager {
         if(dialogs.length) {
           outDialogs.push(...dialogs as Dialog[]);
           const dialog = dialogs[dialogs.length - 1];
-          offsetDate = this.getMessageByPeer(dialog.peerId, dialog.top_message).date;
+
+          // * get peerId and mid manually, because dialog can be migrated peer and it won't be saved
+          const peerId = appPeersManager.getPeerId(dialog.peer);
+          const mid = this.generateMessageId(dialog.top_message);
+          offsetDate = this.getMessageByPeer(peerId, mid).date;
+
+          if(!offsetDate) {
+            console.error('refreshConversations: got no offsetDate', dialog);
+            break;
+          }
         } else {
           break;
         }
@@ -2884,9 +2893,13 @@ export class AppMessagesManager {
     return dialog;
   }
 
+  /**
+   * Won't save migrated from peer
+   */
   public saveConversation(dialog: Dialog, folderId = 0) {
     const peerId = appPeersManager.getPeerId(dialog.peer);
     if(!peerId) {
+      console.error('saveConversation no peerId???', dialog, folderId);
       return false;
     }
 

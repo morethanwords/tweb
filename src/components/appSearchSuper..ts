@@ -22,7 +22,7 @@ import { ripple } from "./ripple";
 import Scrollable, { ScrollableX } from "./scrollable";
 import { wrapDocument, wrapPhoto, wrapVideo } from "./wrappers";
 import useHeavyAnimationCheck, { getHeavyAnimationPromise } from "../hooks/useHeavyAnimationCheck";
-import { isMobileSafari } from "../helpers/userAgent";
+import { isSafari } from "../helpers/userAgent";
 
 //const testScroll = false;
 
@@ -266,13 +266,13 @@ export default class AppSearchSuper {
     // Jolly Cobra's // Workaround for scrollable content flickering during animation.
     const container = this.scrollable.container;
 
-    if(isMobileSafari) { // ! safari doesn't respect sticky header, so it flicks when overflow is changing
+    if(isSafari) { // ! safari doesn't respect sticky header, so it flicks when overflow is changing
       container.style.display = 'none';
     }
 
     container.style.overflowY = '';
 
-    if(isMobileSafari) {
+    if(isSafari) {
       void container.offsetLeft; // reflow
       container.style.display = '';
     }
