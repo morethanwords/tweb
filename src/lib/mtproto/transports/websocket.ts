@@ -52,7 +52,11 @@ export default class Socket extends EventListenerBase<{
 
     this.log.error('close execution');
 
-    this.ws.close();
+    try {
+      this.ws.close();
+    } catch(err) {
+
+    }
     this.handleClose();
   }
   
@@ -64,7 +68,8 @@ export default class Socket extends EventListenerBase<{
   };
 
   private handleError = (e: Event) => {
-    this.log.error(e);
+    this.log.error('handleError', e);
+    this.close();
   };
 
   private handleClose = () => {
