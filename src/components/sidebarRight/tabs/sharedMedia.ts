@@ -15,6 +15,7 @@ import { attachClickEvent, cancelEvent } from "../../../helpers/dom";
 import appSidebarRight from "..";
 import { TransitionSlider } from "../../transition";
 import appNotificationsManager from "../../../lib/appManagers/appNotificationsManager";
+import AppEditGroupTab from "./editGroup";
 
 let setText = (text: string, el: HTMLDivElement) => {
   window.requestAnimationFrame(() => {
@@ -34,6 +35,7 @@ let setText = (text: string, el: HTMLDivElement) => {
 export default class AppSharedMediaTab implements SliderTab {
   public container: HTMLElement;
   public closeBtn: HTMLButtonElement;
+  public editBtn: HTMLElement;
 
   private peerId = 0;
   private threadId = 0;
@@ -68,6 +70,7 @@ export default class AppSharedMediaTab implements SliderTab {
     this.container = document.getElementById('shared-media-container');
     this.closeBtn = this.container.querySelector('.sidebar-header .btn-icon');
     this.closeBtn.classList.add('sidebar-close-button');
+    this.editBtn = this.container.querySelector('.sidebar-header .tgico-edit');
 
     this.profileContentEl = this.container.querySelector('.profile-content');
     this.profileElements = {
@@ -98,8 +101,6 @@ export default class AppSharedMediaTab implements SliderTab {
       const rect = this.searchSuper.nav.getBoundingClientRect(); 
       if(!rect.width) return;
 
-      //console.log('daddy issues', this.searchSuper.nav.getBoundingClientRect());
-
       const top = rect.top;
       const isSharedMedia = top <= HEADER_HEIGHT;
       closeIcon.classList.toggle('state-back', isSharedMedia);
@@ -108,25 +109,7 @@ export default class AppSharedMediaTab implements SliderTab {
       if(!isSharedMedia) {
         this.searchSuper.goingHard = {};
       }
-
-      //this.searchSuper.container.style.position = 'relative';
-      //this.searchSuper.container.style.zIndex = '500';
-      //this.scroll.container.style.overflowY = isSharedMedia ? 'hidden' : '';
-      //this.scroll.container.style.zIndex = '1';
-      //this.searchSuper.tabs[this.searchSuper.type].style.overflowY = isSharedMedia ? '' : 'hidden';
     };
-
-    //this.scroll.container.style.overflowY = 'hidden';
-
-    /* this.scroll.container.addEventListener('scroll', (e) => {
-      this.searchSuper.tabs[this.searchSuper.type].scrollTop = this.scroll.container.scrollTop + 1;
-      console.log('writings on the wall', e, this.scroll.container.scrollTop, this.searchSuper.scrollable.container.scrollTop);
-    }); */
-
-    /* this.scroll.container.addEventListener('wheel', (e) => {
-      cancelEvent(e);
-      this.scroll.scrollTop += e.deltaY;
-    }); */
 
     const transition = TransitionSlider(this.closeBtn.nextElementSibling as HTMLElement, 'slide-fade', 400, null, false);
 
@@ -139,6 +122,16 @@ export default class AppSharedMediaTab implements SliderTab {
         closeIcon.classList.remove('state-back');
       } else if(!this.scroll.isHeavyAnimationInProgress) {
         appSidebarRight.onCloseBtnClick();
+      }
+    });
+
+    attachClickEvent(this.editBtn, (e) => {
+      if(appPeersManager.isAnyGroup(this.peerId)) {
+        new AppEditGroupTab(appSidebarRight).open();
+      } else if(this.peerId > 0) {
+
+      } else {
+
       }
     });
 
@@ -174,10 +167,6 @@ export default class AppSharedMediaTab implements SliderTab {
     });
 
     this.setPeerStatusInterval = window.setInterval(this.setPeerStatus, 60e3);
-
-    /* this.closeBtn.addEventListener('click', () => {
-      this.toggleSidebar(false);
-    }); */
 
     this.searchSuper = new AppSearchSuper([{
       inputFilter: 'inputMessagesFilterPhotoVideo',
@@ -280,6 +269,7 @@ export default class AppSharedMediaTab implements SliderTab {
     this.profileElements.notificationsRow.style.display = '';
     this.profileElements.notificationsCheckbox.checked = true;
     this.profileElements.notificationsStatus.innerText = 'Enabled';
+    this.editBtn.style.display = 'none';
 
     this.searchSuper.cleanupHTML();
     this.searchSuper.selectTab(0, false);
@@ -381,13 +371,10 @@ export default class AppSharedMediaTab implements SliderTab {
     if(peerId === rootScope.myId) title = 'Saved Messages';
     else title = appPeersManager.getPeerTitle(peerId);
     this.profileElements.name.innerHTML = title;
+    this.editBtn.style.display = '';
 
     this.setPeerStatus(true);
   }
-
-  /* onOpen() {
-    this.scroll.onScroll();
-  } */
 
   onOpenAfterTimeout() {
     this.scroll.onScroll();

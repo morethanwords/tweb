@@ -1,51 +1,30 @@
-import type { InputFile } from "../../../layer";
 import appProfileManager from "../../../lib/appManagers/appProfileManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
-import rootScope from "../../../lib/rootScope";
-import AvatarElement from "../../avatar";
 import InputField from "../../inputField";
 import { SliderSuperTab } from "../../slider";
-import AvatarEdit from "../../avatarEdit";
-import Button from "../../button";
 import { attachClickEvent } from "../../../helpers/dom";
+import EditPeer from "../../editPeer";
 
 // TODO: аватарка не поменяется в этой вкладке после изменения почему-то (если поставить в другом клиенте, и потом тут проверить, для этого ещё вышел в чатлист)
 
 export default class AppEditProfileTab extends SliderSuperTab {
-  //private scrollWrapper: HTMLElement;
-  private nextBtn: HTMLButtonElement;
-  
   private firstNameInputField: InputField;
   private lastNameInputField: InputField;
   private bioInputField: InputField;
   private userNameInputField: InputField;
   private userNameInput: HTMLElement;
   
-  private uploadAvatar: () => Promise<InputFile> = null;
-  private avatarEdit: AvatarEdit;
-  private avatarElem: AvatarElement;
-
   private profileUrlContainer: HTMLDivElement;
   private profileUrlAnchor: HTMLAnchorElement;
+
+  private editPeer: EditPeer;
 
   protected init() {
     this.container.classList.add('edit-profile-container');
     this.title.innerText = 'Edit Profile';
-    //this.scrollWrapper = this.container.querySelector('.scroll-wrapper');
-    this.nextBtn = Button('btn-circle btn-corner tgico-check');
-    this.content.append(this.nextBtn);
 
-    this.avatarElem = document.createElement('avatar-element') as AvatarElement;
-    this.avatarElem.classList.add('avatar-placeholder', 'avatar-120');
-    
-    this.avatarEdit = new AvatarEdit((_upload) => {
-      this.uploadAvatar = _upload;
-      this.handleChange();
-      this.avatarElem.remove();
-    });
-
-    this.scrollable.append(this.avatarEdit.container);
+    const inputFields: InputField[] = [];
 
     {
       const inputWrapper = document.createElement('div');
@@ -73,10 +52,19 @@ export default class AppEditProfileTab extends SliderSuperTab {
       caption.classList.add('caption');
       caption.innerHTML = 'Any details such as age, occupation or city. Example:<br>23 y.o. designer from San Francisco.';
 
+      inputFields.push(this.firstNameInputField, this.lastNameInputField, this.bioInputField);
       this.scrollable.append(inputWrapper, caption);
     }
 
     this.scrollable.append(document.createElement('hr'));
+
+    this.editPeer = new EditPeer({
+      peerId: appUsersManager.getSelf().id,
+      inputFields,
+      listenerSetter: this.listenerSetter
+    });
+    this.content.append(this.editPeer.nextBtn);
+    this.scrollable.prepend(this.editPeer.avatarEdit.container);
 
     {
       const h2 = document.createElement('div');
@@ -103,14 +91,12 @@ export default class AppEditProfileTab extends SliderSuperTab {
       this.profileUrlContainer = caption.querySelector('.profile-url-container');
       this.profileUrlAnchor = this.profileUrlContainer.lastElementChild as HTMLAnchorElement;
 
+      inputFields.push(this.userNameInputField);
       this.scrollable.append(h2, inputWrapper, caption);
     }
 
     let userNameLabel = this.userNameInput.nextElementSibling as HTMLLabelElement;
 
-    this.listenerSetter.add(this.firstNameInputField.input, 'input', this.handleChange);
-    this.listenerSetter.add(this.lastNameInputField.input, 'input', this.handleChange);
-    this.listenerSetter.add(this.bioInputField.input, 'input', this.handleChange);
     this.listenerSetter.add(this.userNameInput, 'input', () => {
       let value = this.userNameInputField.value;
 
@@ -119,7 +105,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
         this.userNameInput.classList.remove('valid', 'error');
         userNameLabel.innerText = 'Username (optional)';
         this.setProfileUrl();
-        this.handleChange();
+        this.editPeer.handleChange();
         return;
       } else if(!this.isUsernameValid(value)) { // does not check the last underscore
         this.userNameInput.classList.add('error');
@@ -131,7 +117,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
 
       if(this.userNameInput.classList.contains('error')) {
         this.setProfileUrl();
-        this.handleChange();
+        this.editPeer.handleChange();
         return;
       }
 
@@ -161,13 +147,13 @@ export default class AppEditProfileTab extends SliderSuperTab {
           }
         }
       }).then(() => {
-        this.handleChange();
+        this.editPeer.handleChange();
         this.setProfileUrl();
       });
     });
 
-    attachClickEvent(this.nextBtn, () => {
-      this.nextBtn.disabled = true;
+    attachClickEvent(this.editPeer.nextBtn, () => {
+      this.editPeer.nextBtn.disabled = true;
 
       let promises: Promise<any>[] = [];
       
@@ -177,8 +163,8 @@ export default class AppEditProfileTab extends SliderSuperTab {
         console.error('updateProfile error:', err);
       }));
 
-      if(this.uploadAvatar) {
-        promises.push(this.uploadAvatar().then(inputFile => {
+      if(this.editPeer.uploadAvatar) {
+        promises.push(this.editPeer.uploadAvatar().then(inputFile => {
           appProfileManager.uploadProfilePhoto(inputFile);
         }));
       }
@@ -188,7 +174,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
       }
 
       Promise.race(promises).finally(() => {
-        this.nextBtn.removeAttribute('disabled');
+        this.editPeer.nextBtn.removeAttribute('disabled');
       });
     }, {listenerSetter: this.listenerSetter});
   }
@@ -212,32 +198,15 @@ export default class AppEditProfileTab extends SliderSuperTab {
     appProfileManager.getProfile(user.id, true).then(userFull => {
       if(userFull.about) {
         this.bioInputField.setOriginalValue(userFull.about);
-
-        this.handleChange();
       }
     });
 
-    this.avatarElem.setAttribute('peer', '' + rootScope.myId);
-    if(!this.avatarElem.parentElement) {
-      this.avatarEdit.container.append(this.avatarElem);
-    }
-
-    this.uploadAvatar = null;
-
     this.setProfileUrl();
-    this.handleChange();
+    this.editPeer.handleChange();
   }
 
   public isUsernameValid(username: string) {
     return ((username.length >= 5 && username.length <= 32) || !username.length) && /^[a-zA-Z0-9_]*$/.test(username);
-  }
-
-  private isChanged() {
-    return !!this.uploadAvatar 
-      || this.firstNameInputField.isValid() 
-      || this.lastNameInputField.isValid() 
-      || this.bioInputField.isValid() 
-      || this.userNameInputField.isValid();
   }
 
   private setProfileUrl() {
@@ -250,8 +219,4 @@ export default class AppEditProfileTab extends SliderSuperTab {
       this.profileUrlAnchor.href = url;
     }
   }
-
-  private handleChange = () => {
-    this.nextBtn.classList.toggle('is-visible', this.isChanged());
-  };
 }
