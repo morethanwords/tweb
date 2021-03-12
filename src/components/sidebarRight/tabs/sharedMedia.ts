@@ -126,12 +126,18 @@ export default class AppSharedMediaTab implements SliderTab {
     });
 
     attachClickEvent(this.editBtn, (e) => {
+      let tab: AppEditGroupTab;
       if(appPeersManager.isAnyGroup(this.peerId)) {
-        new AppEditGroupTab(appSidebarRight).open();
+        tab = new AppEditGroupTab(appSidebarRight);
       } else if(this.peerId > 0) {
 
       } else {
 
+      }
+
+      if(tab) {
+        tab.peerId = this.peerId;
+        tab.open();
       }
     });
 
