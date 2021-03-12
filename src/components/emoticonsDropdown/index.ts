@@ -14,6 +14,7 @@ import GifsTab from "./tabs/gifs";
 import StickersTab from "./tabs/stickers";
 import { pause } from "../../helpers/schedulers";
 import { MOUNT_CLASS_TO } from "../../config/debug";
+import AppGifsTab from "../sidebarRight/tabs/gifs";
 
 export const EMOTICONSSTICKERGROUP = 'emoticons-dropdown';
 
@@ -133,7 +134,7 @@ export class EmoticonsDropdown {
       if(this.tabId === 1) {
         appSidebarRight.stickersTab.init();
       } else {
-        appSidebarRight.gifsTab.init();
+        new AppGifsTab(appSidebarRight).open();
       }
     });
 
