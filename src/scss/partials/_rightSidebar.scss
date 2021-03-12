@@ -768,3 +768,22 @@
     margin-top: -2.5px;
   }
 }
+
+.edit-peer-container {
+  .input-wrapper {
+    padding: 0 .75rem;
+    margin-bottom: .5625rem;
+  }
+
+  .sidebar-left-section {
+    padding-bottom: 0;
+
+    &:first-child {
+      padding-top: 0;
+    }
+  }
+
+  .checkbox-field {
+    margin: 0 1.1875rem;
+  }
+}

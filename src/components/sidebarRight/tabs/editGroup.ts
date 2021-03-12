@@ -2,11 +2,17 @@ import { SliderSuperTab } from "../../slider"
 import InputField from "../../inputField";
 import EditPeer from "../../editPeer";
 import { SettingSection } from "../../sidebarLeft";
+import Row from "../../row";
+import CheckboxField from "../../checkboxField";
+import Button from "../../button";
+import appChatsManager from "../../../lib/appManagers/appChatsManager";
+import appProfileManager from "../../../lib/appManagers/appProfileManager";
 
 export default class AppEditGroupTab extends SliderSuperTab {
   private groupNameInputField: InputField;
   private descriptionInputField: InputField;
   private editPeer: EditPeer;
+  public peerId: number;
 
   protected init() {
     this.container.classList.add('edit-peer-container', 'edit-group-container');
@@ -29,19 +35,46 @@ export default class AppEditGroupTab extends SliderSuperTab {
         name: 'group-description',
         maxLength: 255
       });
-  
+      
+      this.groupNameInputField.setOriginalValue(appChatsManager.getChat(-this.peerId).title);
+
+      appProfileManager.getChatFull(-this.peerId).then(chatFull => {
+        this.descriptionInputField.setOriginalValue(chatFull.about);
+      });
+
       inputWrapper.append(this.groupNameInputField.container, this.descriptionInputField.container);
       
       inputFields.push(this.groupNameInputField, this.descriptionInputField);
 
       this.editPeer = new EditPeer({
-        peerId: -1408712018,
+        peerId: this.peerId,
         inputFields,
         listenerSetter: this.listenerSetter
       });
       this.content.append(this.editPeer.nextBtn);
 
-      section.content.append(this.editPeer.avatarEdit.container, inputWrapper);
+      const groupTypeRow = new Row({
+        title: 'Group Type',
+        subtitle: 'Private',
+        clickable: true,
+        icon: 'lock'
+      });
+
+      const permissionsRow = new Row({
+        title: 'Permissions',
+        subtitle: '8/8',
+        icon: 'permissions',
+        clickable: true
+      });
+
+      const administratorsRow = new Row({
+        title: 'Administrators',
+        subtitle: '5',
+        icon: 'admin',
+        clickable: true
+      });
+
+      section.content.append(this.editPeer.avatarEdit.container, inputWrapper, groupTypeRow.container, permissionsRow.container, administratorsRow.container);
 
       this.scrollable.append(section.container);
     }
@@ -50,12 +83,34 @@ export default class AppEditGroupTab extends SliderSuperTab {
       const section = new SettingSection({
 
       });
+
+      const membersRow = new Row({
+        title: 'Members',
+        subtitle: '2 500',
+        icon: 'newgroup',
+        clickable: true
+      });
+
+      const showChatHistoryCheckboxField = new CheckboxField({
+        text: 'Show chat history for new members',
+        checked: true
+      });
+
+      section.content.append(membersRow.container, showChatHistoryCheckboxField.label);
+
+      this.scrollable.append(section.container);
     }
 
     {
       const section = new SettingSection({
         
       });
+
+      const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'Delete Group'});
+
+      section.content.append(btnDelete);
+
+      this.scrollable.append(section.container);
     }
   }
 }

@@ -59,7 +59,7 @@
   }
   
   &-input {
-    --padding: 1rem;
+    --padding: 1.0625rem;
     --padding-horizontal: 1rem;
     --border-width: 1px;
     --border-width-top: 2px;
@@ -73,12 +73,13 @@
     transition: .2s border-color;
     position: relative;
     z-index: 1;
+    line-height: 1.3125;
     //line-height: calc(54px - var(--border-width));
     /* overflow: hidden;
     white-space: nowrap; */
 
     @include respond-to(handhelds) {
-      --padding: .875rem;
+      --padding: .9375rem;
     }
 
     body.animation-level-0 & {
