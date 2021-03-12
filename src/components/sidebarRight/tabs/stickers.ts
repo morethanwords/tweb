@@ -1,29 +1,24 @@
-import { SliderTab } from "../../slider";
+import { SliderSuperTab } from "../../slider";
 import InputSearch from "../../inputSearch";
-import Scrollable from "../../scrollable";
 import LazyLoadQueue from "../../lazyLoadQueue";
-import { findUpClassName } from "../../../helpers/dom";
+import { findUpClassName, attachClickEvent } from "../../../helpers/dom";
 import appImManager from "../../../lib/appManagers/appImManager";
 import appStickersManager from "../../../lib/appManagers/appStickersManager";
 import PopupStickers from "../../popups/stickers";
 import animationIntersector from "../../animationIntersector";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import { wrapSticker } from "../../wrappers";
-import appSidebarRight, { AppSidebarRight } from "..";
+import appSidebarRight from "..";
 import { StickerSet, StickerSetCovered } from "../../../layer";
 
-export default class AppStickersTab implements SliderTab {
-  private container = document.getElementById('stickers-container') as HTMLDivElement;
-  private contentDiv = this.container.querySelector('.sidebar-content') as HTMLDivElement;
-  private backBtn = this.container.querySelector('.sidebar-close-button') as HTMLButtonElement;
-  //private input = this.container.querySelector('#stickers-search') as HTMLInputElement;
+export default class AppStickersTab extends SliderSuperTab {
   private inputSearch: InputSearch;
-  private setsDiv = this.contentDiv.firstElementChild as HTMLDivElement;
-  private scrollable: Scrollable;
+  private setsDiv: HTMLDivElement;
   private lazyLoadQueue: LazyLoadQueue;
 
-  constructor() {
-    this.scrollable = new Scrollable(this.contentDiv, 'STICKERS-SEARCH');
+  protected init() {
+    this.container.id = 'stickers-container';
+    this.container.classList.add('chatlist-container');
 
     this.lazyLoadQueue = new LazyLoadQueue();
 
@@ -31,9 +26,13 @@ export default class AppStickersTab implements SliderTab {
       this.search(value);
     });
 
-    this.backBtn.parentElement.append(this.inputSearch.container);
+    this.title.replaceWith(this.inputSearch.container);
 
-    this.setsDiv.addEventListener('click', (e) => {
+    this.setsDiv = document.createElement('div');
+    this.setsDiv.classList.add('sticker-sets');
+    this.scrollable.append(this.setsDiv);
+
+    attachClickEvent(this.setsDiv, (e) => {
       const sticker = findUpClassName(e.target, 'sticker-set-sticker');
       if(sticker) {
         const docId = sticker.dataset.docId;
@@ -70,13 +69,13 @@ export default class AppStickersTab implements SliderTab {
           new PopupStickers(full.set).show();
         });
       }
-    });
+    }, {listenerSetter: this.listenerSetter});
   }
 
   public onCloseAfterTimeout() {
     this.setsDiv.innerHTML = '';
-    this.inputSearch.value = '';
     animationIntersector.checkAnimations(undefined, 'STICKERS-SEARCH');
+    return super.onCloseAfterTimeout();
   }
 
   public renderSet(set: StickerSet.stickerSet) {
@@ -177,12 +176,13 @@ export default class AppStickersTab implements SliderTab {
     this.setsDiv.append(div);
   }
 
-  public init() {
-    appSidebarRight.selectTab(AppSidebarRight.SLIDERITEMSIDS.stickers);
-
+  public open() {
+    const ret = super.open();
     appSidebarRight.toggleSidebar(true).then(() => {
       this.renderFeatured();
     });
+
+    return ret;
   }
 
   public renderFeatured() {

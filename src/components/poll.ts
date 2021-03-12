@@ -8,6 +8,7 @@ import rootScope from "../lib/rootScope";
 import { attachClickEvent, cancelEvent, detachClickEvent, findUpClassName } from "../helpers/dom";
 import { ripple } from "./ripple";
 import appSidebarRight from "./sidebarRight";
+import AppPollResultsTab from "./sidebarRight/tabs/pollResults";
 
 let lineTotalLength = 0;
 const tailLength = 9;
@@ -337,7 +338,10 @@ export default class PollElement extends HTMLElement {
 
     this.viewResults.addEventListener('click', (e) => {
       cancelEvent(e);
-      appSidebarRight.pollResultsTab.init(this.message);
+
+      if(!appSidebarRight.isTabExists(AppPollResultsTab)) {
+        new AppPollResultsTab(appSidebarRight).open(this.message);
+      }
     });
     ripple(this.viewResults);
 

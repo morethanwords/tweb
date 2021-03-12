@@ -21,6 +21,8 @@ import appStateManager from "../../lib/appManagers/appStateManager";
 import PopupDeleteDialog from "../popups/deleteDialog";
 import appNavigationController from "../appNavigationController";
 import { LEFT_COLUMN_ACTIVE_CLASSNAME } from "../sidebarLeft";
+import AppPrivateSearchTab from "../sidebarRight/tabs/search";
+import { SliderSuperTab } from "../slider";
 
 export default class ChatTopbar {
   container: HTMLDivElement;
@@ -226,7 +228,12 @@ export default class ChatTopbar {
     attachClickEvent(this.btnSearch, (e) => {
       cancelEvent(e);
       if(this.peerId) {
-        this.appSidebarRight.searchTab.open(this.peerId, this.chat.threadId);
+        let tab = this.appSidebarRight.getTab(AppPrivateSearchTab);
+        if(!tab) {
+          tab = new AppPrivateSearchTab(this.appSidebarRight);
+        }
+
+        tab.open(this.peerId, this.chat.threadId);
       }
     }, {listenerSetter: this.listenerSetter});
   }

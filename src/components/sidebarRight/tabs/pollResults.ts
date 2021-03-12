@@ -1,43 +1,27 @@
-import { SliderTab } from "../../slider";
-import Scrollable from "../../scrollable";
-import appSidebarRight, { AppSidebarRight } from "..";
+import { SliderSuperTab } from "../../slider";
+import appSidebarRight from "..";
 import appPollsManager from "../../../lib/appManagers/appPollsManager";
 import { roundPercents } from "../../poll";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import { ripple } from "../../ripple";
 
-export default class AppPollResultsTab implements SliderTab {
-  private container = document.getElementById('poll-results-container') as HTMLDivElement;
-  private contentDiv = this.container.querySelector('.sidebar-content') as HTMLDivElement;
-  private closeBtn = this.container.querySelector('.sidebar-close-button') as HTMLButtonElement;
-  private resultsDiv = this.contentDiv.firstElementChild as HTMLDivElement;
-  private scrollable: Scrollable;
+export default class AppPollResultsTab extends SliderSuperTab {
+  private resultsDiv: HTMLElement;
 
-  private message: any;
+  protected init() {
+    this.container.id = 'poll-results-container';
+    this.container.classList.add('chatlist-container');
 
-  constructor() {
-    this.scrollable = new Scrollable(this.contentDiv, 'POLL-RESULTS');
+    this.title.innerHTML = 'Results';
+
+    this.resultsDiv = document.createElement('div');
+    this.resultsDiv.classList.add('poll-results');
+    this.scrollable.append(this.resultsDiv);
   }
 
-  public cleanup() {
-    this.resultsDiv.innerHTML = '';
-    this.message = undefined;
-  }
-
-  public onCloseAfterTimeout() {
-    this.cleanup();
-  }
-
-  public init(message: any) {
-    if(this.message === message) return;
-    
-    this.cleanup();
-
-    this.message = message;
-
-    appSidebarRight.selectTab(AppSidebarRight.SLIDERITEMSIDS.pollResults);
-
+  public open(message: any) {
+    const ret = super.open();
     const poll = appPollsManager.getPoll(message.media.poll.id);
 
     const title = document.createElement('h3');
@@ -133,5 +117,7 @@ export default class AppPollResultsTab implements SliderTab {
         console.log('gOt VotEs', votes);
       }); */
     });
+
+    return ret;
   }
 }

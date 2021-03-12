@@ -28,6 +28,7 @@ import { REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
 import { renderImageFromUrl } from "../misc";
 import SetTransition from "../singleTransition";
 import { fastRaf } from "../../helpers/schedulers";
+import AppPrivateSearchTab from "../sidebarRight/tabs/search";
 
 export type ChatType = 'chat' | 'pinned' | 'replies' | 'discussion' | 'scheduled';
 
@@ -201,8 +202,9 @@ export default class Chat extends EventListenerBase<{
 
     // set new
     if(!samePeer) {
-      if(appSidebarRight.historyTabIds[appSidebarRight.historyTabIds.length - 1] === AppSidebarRight.SLIDERITEMSIDS.search) {
-        appSidebarRight.onCloseBtnClick();
+      const searchTab = appSidebarRight.getTab(AppPrivateSearchTab);
+      if(searchTab) {
+        searchTab.close();
       }
 
       appSidebarRight.sharedMediaTab.setPeer(peerId, this.threadId);

@@ -77,7 +77,8 @@ export default class AppGifsTab extends SliderSuperTab {
     this.masonry.lazyLoadQueue.clear();
   }
 
-  protected onOpen() {
+  public open() {
+    const ret = super.open();
     appSidebarRight.toggleSidebar(true).then(() => {
       this.search('', true);
 
@@ -85,6 +86,7 @@ export default class AppGifsTab extends SliderSuperTab {
         this.search(this.inputSearch.value, false);
       };
     });
+    return ret;
   }
 
   public async search(query: string, newSearch = true) {

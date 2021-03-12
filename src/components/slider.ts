@@ -117,6 +117,14 @@ export default class SidebarSlider {
     }
   }
 
+  public getTab(tabConstructor: SliderSuperTabConstructable) {
+    return this.historyTabIds.find(t => t instanceof tabConstructor) as SliderSuperTab;
+  }
+
+  public isTabExists(tabConstructor: SliderSuperTabConstructable) {
+    return !!this.getTab(tabConstructor);
+  }
+
   protected onCloseTab(id: number | SliderSuperTab, animate: boolean, isNavigation?: boolean) {
     if(!isNavigation) {
       appNavigationController.removeByType(this.navigationType, true);
