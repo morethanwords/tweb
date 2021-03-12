@@ -37,6 +37,7 @@ import appStateManager, { AppStateManager } from './appStateManager';
 import { MOUNT_CLASS_TO } from '../../config/debug';
 import appNavigationController from '../../components/appNavigationController';
 import appNotificationsManager from './appNotificationsManager';
+import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
 
 //console.log('appImManager included33!');
 
@@ -624,8 +625,9 @@ export class AppImManager {
     if(justReturn) {
       rootScope.broadcast('peer_changed', this.chat.peerId);
 
-      if(appSidebarRight.historyTabIds[appSidebarRight.historyTabIds.length - 1] === AppSidebarRight.SLIDERITEMSIDS.search) {
-        appSidebarRight.onCloseBtnClick();
+      const searchTab = appSidebarRight.getTab(AppPrivateSearchTab);
+      if(searchTab) {
+        searchTab.close();
       }
   
       appSidebarRight.sharedMediaTab.setPeer(this.chat.peerId, this.chat.threadId);

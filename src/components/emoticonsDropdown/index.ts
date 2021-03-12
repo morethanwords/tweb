@@ -15,6 +15,7 @@ import StickersTab from "./tabs/stickers";
 import { pause } from "../../helpers/schedulers";
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import AppGifsTab from "../sidebarRight/tabs/gifs";
+import AppStickersTab from "../sidebarRight/tabs/stickers";
 
 export const EMOTICONSSTICKERGROUP = 'emoticons-dropdown';
 
@@ -132,9 +133,13 @@ export class EmoticonsDropdown {
     this.searchButton = this.element.querySelector('.emoji-tabs-search');
     this.searchButton.addEventListener('click', () => {
       if(this.tabId === 1) {
-        appSidebarRight.stickersTab.init();
+        if(!appSidebarRight.isTabExists(AppStickersTab)) {
+          new AppStickersTab(appSidebarRight).open();
+        }
       } else {
-        new AppGifsTab(appSidebarRight).open();
+        if(!appSidebarRight.isTabExists(AppGifsTab)) {
+          new AppGifsTab(appSidebarRight).open();
+        }
       }
     });
 

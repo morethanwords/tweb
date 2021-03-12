@@ -1,12 +1,9 @@
 import appSidebarRight, { AppSidebarRight } from "..";
 import AppSearch, { SearchGroup } from "../../appSearch";
 import InputSearch from "../../inputSearch";
-import { SliderTab } from "../../slider";
+import { SliderSuperTab } from "../../slider";
 
-export default class AppPrivateSearchTab implements SliderTab {
-  public container: HTMLElement;
-  public closeBtn: HTMLElement;
-
+export default class AppPrivateSearchTab extends SliderSuperTab {
   private inputSearch: InputSearch;
   private appSearch: AppSearch;
 
@@ -17,23 +14,22 @@ export default class AppPrivateSearchTab implements SliderTab {
     this.appSearch.beginSearch(this.peerId, this.threadId);
   }
 
-  onCloseAfterTimeout() {
-    this.peerId = 0;
-    this.threadId = 0;
-    this.appSearch.reset();
-  }
-
-  public init() {
-    this.container = document.getElementById('search-private-container');
-    this.closeBtn = this.container.querySelector('.sidebar-close-button');
+  protected init() {
+    this.container.id = 'search-private-container';
+    this.container.classList.add('chatlist-container');
     this.inputSearch = new InputSearch('Search');
-    this.closeBtn.parentElement.append(this.inputSearch.container);
-    this.appSearch = new AppSearch(this.container.querySelector('.chatlist-container'), this.inputSearch, {
+    this.title.replaceWith(this.inputSearch.container);
+
+    const c = document.createElement('div');
+    c.classList.add('chatlist-container');
+    this.scrollable.container.replaceWith(c);
+    this.appSearch = new AppSearch(c, this.inputSearch, {
       messages: new SearchGroup('Private Search', 'messages')
     });
   }
 
   open(peerId: number, threadId?: number) {
+    const ret = super.open();
     if(this.init) {
       this.init();
       this.init = null;
@@ -41,13 +37,13 @@ export default class AppPrivateSearchTab implements SliderTab {
 
     if(this.peerId !== 0) {
       this.appSearch.beginSearch(this.peerId, this.threadId);
-      return;
+      return ret;
     }
 
     this.peerId = peerId;
     this.threadId = threadId;
     
-    appSidebarRight.selectTab(AppSidebarRight.SLIDERITEMSIDS.search);
     appSidebarRight.toggleSidebar(true);
+    return ret;
   }
 }

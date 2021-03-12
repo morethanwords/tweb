@@ -1,50 +1,31 @@
 import appImManager from "../../lib/appManagers/appImManager";
 import SidebarSlider from "../slider";
-import AppStickersTab from "./tabs/stickers";
-import AppPollResultsTab from "./tabs/pollResults";
-import AppGifsTab from "./tabs/gifs";
 import mediaSizes, { ScreenSize } from "../../helpers/mediaSizes";
-import AppPrivateSearchTab from "./tabs/search";
 import AppSharedMediaTab from "./tabs/sharedMedia";
 import { MOUNT_CLASS_TO } from "../../config/debug";
 
 export const RIGHT_COLUMN_ACTIVE_CLASSNAME = 'is-right-column-shown';
 
 const sharedMediaTab = new AppSharedMediaTab();
-const searchTab = new AppPrivateSearchTab();
-const stickersTab = new AppStickersTab();
-const pollResultsTab = new AppPollResultsTab();
 
 export class AppSidebarRight extends SidebarSlider {
   public static SLIDERITEMSIDS = {
     sharedMedia: 0,
-    search: 1,
-    stickers: 2,
-    pollResults: 3
   };
 
   public sharedMediaTab: AppSharedMediaTab;
-  public searchTab: AppPrivateSearchTab;
-  public stickersTab: AppStickersTab;
-  public pollResultsTab: AppPollResultsTab;
 
   constructor() {
     super({
       sidebarEl: document.getElementById('column-right') as HTMLElement,
       tabs: new Map([
         [AppSidebarRight.SLIDERITEMSIDS.sharedMedia, sharedMediaTab],
-        [AppSidebarRight.SLIDERITEMSIDS.search, searchTab],
-        [AppSidebarRight.SLIDERITEMSIDS.stickers, stickersTab],
-        [AppSidebarRight.SLIDERITEMSIDS.pollResults, pollResultsTab]
       ] as any[]), 
       canHideFirst: true,
       navigationType: 'right'
     });
 
     this.sharedMediaTab = sharedMediaTab;
-    this.searchTab = searchTab;
-    this.stickersTab = stickersTab;
-    this.pollResultsTab = pollResultsTab;
 
     mediaSizes.addListener('changeScreen', (from, to) => {
       if(to === ScreenSize.medium && from !== ScreenSize.mobile) {
