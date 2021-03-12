@@ -57,6 +57,8 @@ class InputField {
   public inputFake: HTMLElement;
   public label: HTMLLabelElement;
 
+  public originalValue: string;
+
   //public onLengthChange: (length: number, isOverflow: boolean) => void;
   protected wasInputFakeClientHeight: number;
   protected showScrollDebounced: () => void;
@@ -202,6 +204,20 @@ class InputField {
           this.onFakeInput();
         }
       }
+    }
+  }
+
+  public isValid() {
+    return !this.input.classList.contains('error') && this.value !== this.originalValue;
+  }
+
+  public setOriginalValue(value: InputField['originalValue']) {
+    this.originalValue = value;
+
+    if(this.options.plainText) {
+      this.value = value;
+    } else {
+      this.value = RichTextProcessor.wrapDraftText(value);
     }
   }
 }
