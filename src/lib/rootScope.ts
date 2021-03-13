@@ -72,7 +72,7 @@ export type BroadcastEvents = {
   'state_synchronized': number,
   'state_synchronizing': number,
   
-  //'contacts_update': any,
+  'contacts_update': number,
   'avatar_update': number,
   'chat_full_update': number,
   'poll_update': {poll: Poll, results: PollResults},
