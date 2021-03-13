@@ -131,7 +131,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
 
     {
       const container = section('Auto-Play Media');
-      container.classList.add('sidebar-left-section-disabled');
+      //container.classList.add('sidebar-left-section-disabled');
 
       const gifsCheckboxField = new CheckboxField({
         text: 'GIFs', 
