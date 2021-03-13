@@ -14,7 +14,7 @@ import appUsersManager from "./appUsersManager";
 
 export type Channel = Chat.channel;
 
-export type ChatRights = 'send' | 'edit_title' | 'edit_photo' | 'invite' | 'pin' | 'deleteRevoke' | 'delete';
+export type ChatRights = 'send' | 'change_info' | 'change_permissions' | 'change_type' | 'pin_messages' | 'deleteRevoke' | 'delete_chat';
 
 export type UserTyping = Partial<{userId: number, action: SendMessageAction, timeout: number}>;
 
@@ -172,13 +172,13 @@ export class AppChatsManager {
   }
 
   public hasRights(id: number, action: ChatRights, flag?: keyof ChatBannedRights['pFlags']) {
-    const chat = this.getChat(id);
+    const chat: Chat = this.getChat(id);
     if(chat._ === 'chatEmpty') return false;
 
     if(chat._ === 'chatForbidden' ||
         chat._ === 'channelForbidden' ||
-        chat.pFlags.kicked ||
-        (chat.pFlags.left && !chat.pFlags.megagroup)) {
+        (chat as Chat.chat).pFlags.kicked ||
+        (chat.pFlags.left && !(chat as Chat.channel).pFlags.megagroup)) {
       return false;
     }
 
@@ -186,19 +186,23 @@ export class AppChatsManager {
       return true;
     }
 
-    const rights = chat.admin_rights || chat.banned_rights || chat.default_banned_rights;
-    let myFlags: {[flag in keyof ChatBannedRights['pFlags'] | keyof ChatAdminRights['pFlags']]: true};
-    if(rights) myFlags = rights.pFlags;
+    const rights = chat.admin_rights || (chat as Chat.channel).banned_rights || chat.default_banned_rights;
+    if(!rights) {
+      return false;
+    }
+
+    let myFlags: Partial<{[flag in keyof ChatBannedRights['pFlags'] | keyof ChatAdminRights['pFlags']]: true}> = {};
+    if(rights) myFlags = rights.pFlags as any;
 
     switch(action) {
       // good
       case 'send': {
-        if(flag && myFlags && myFlags[flag]) {
+        if(flag && myFlags[flag]) {
           return false;
         }
 
         if(chat._ === 'channel') {
-          if((!chat.pFlags.megagroup && !myFlags?.post_messages)) {
+          if((!chat.pFlags.megagroup && !myFlags.post_messages)) {
             return false;
           }
         }
@@ -206,49 +210,27 @@ export class AppChatsManager {
         break;
       }
 
-      // good
+      // * revoke foreign messages
       case 'deleteRevoke': {
-        if(chat._ === 'channel') {
-          return !!myFlags?.delete_messages;
-        } else if(!chat.pFlags.admin) {
-          return false;
-        }
-
-        break;
+        return !!myFlags.delete_messages;
       }
 
-      // good
-      case 'pin': {
-        if(chat._ === 'channel') {
-          return chat.admin_rights ? !!myFlags.pin_messages || !!myFlags.post_messages : myFlags && !myFlags.pin_messages;
-        } else {
-          if(myFlags?.pin_messages && !chat.pFlags.admin) {
-            return false;
-          }
-        }
-
-        break;
+      case 'pin_messages': {
+        return rights._ === 'chatAdminRights' ? myFlags[action] || !!myFlags.post_messages : !myFlags[action];
       }
 
-      case 'edit_title':
-      case 'edit_photo':
-      case 'invite': {
-        if(chat._ === 'channel') {
-          if(chat.pFlags.megagroup) {
-            if(!(action === 'invite' && chat.pFlags.democracy)) {
-              return false;
-            }
-          } else {
-            return false;
-          }
-        } else {
-          if(chat.pFlags.admins_enabled &&
-              !chat.pFlags.admin) {
-            return false;
-          }
-        }
+      case 'change_info': {
+        return rights._ === 'chatAdminRights' ? myFlags[action] : !myFlags[action];
+      }
 
-        break;
+      // * only creator can do that
+      case 'change_type':
+      case 'delete_chat': {
+        return false;
+      }
+
+      case 'change_permissions': {
+        return rights._ === 'chatAdminRights' && myFlags['ban_users'];
       }
     }
 

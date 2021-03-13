@@ -19,6 +19,8 @@ import AppEditGroupTab from "./editGroup";
 import PeerTitle from "../../peerTitle";
 import AppEditChannelTab from "./editChannel";
 import AppEditContactTab from "./editContact";
+import appChatsManager from "../../../lib/appManagers/appChatsManager";
+import { Chat } from "../../../layer";
 
 let setText = (text: string, el: HTMLDivElement) => {
   window.requestAnimationFrame(() => {
@@ -207,7 +209,7 @@ export default class AppSharedMediaTab implements SliderTab {
 
     const peerId = this.peerId;
     if(needClear) {
-      this.profileElements.subtitle.innerHTML = '';
+      this.profileElements.subtitle.innerHTML = '‎'; // ! HERE U CAN FIND WHITESPACE
     }
 
     appImManager.getPeerStatus(this.peerId).then((subtitle) => {
@@ -215,7 +217,7 @@ export default class AppSharedMediaTab implements SliderTab {
         return;
       }
 
-      this.profileElements.subtitle.innerHTML = subtitle;
+      this.profileElements.subtitle.innerHTML = subtitle || '';
     });
   };
 
@@ -368,7 +370,16 @@ export default class AppSharedMediaTab implements SliderTab {
       dialog: true
     }).element);
     
-    this.editBtn.style.display = '';
+    if(peerId > 0) {
+      if(peerId !== rootScope.myId && appUsersManager.isContact(peerId)) {
+        this.editBtn.style.display = '';
+      }
+    } else {
+      const chat: Chat = appChatsManager.getChat(-peerId);
+      if(chat._ === 'chat' || (chat as Chat.channel).admin_rights) {
+        this.editBtn.style.display = '';
+      }
+    }
 
     this.setPeerStatus(true);
   }

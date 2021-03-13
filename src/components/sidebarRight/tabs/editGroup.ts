@@ -57,21 +57,29 @@ export default class AppEditGroupTab extends SliderSuperTab {
       });
       this.content.append(this.editPeer.nextBtn);
 
-      //section.content.append(this.editPeer.avatarEdit.container, inputWrapper);
+      section.content.append(this.editPeer.avatarEdit.container, inputWrapper);
 
-      const groupTypeRow = new Row({
-        title: 'Group Type',
-        subtitle: 'Private',
-        clickable: true,
-        icon: 'lock'
-      });
+      if(appChatsManager.hasRights(-this.peerId, 'change_type')) {
+        const groupTypeRow = new Row({
+          title: 'Group Type',
+          subtitle: 'Private',
+          clickable: true,
+          icon: 'lock'
+        });
+  
+        section.content.append(groupTypeRow.container);
+      }
 
-      const permissionsRow = new Row({
-        title: 'Permissions',
-        subtitle: '8/8',
-        icon: 'permissions',
-        clickable: true
-      });
+      if(appChatsManager.hasRights(-this.peerId, 'change_permissions')) {
+        const permissionsRow = new Row({
+          title: 'Permissions',
+          subtitle: '8/8',
+          icon: 'permissions',
+          clickable: true
+        });
+
+        section.content.append(permissionsRow.container);
+      }
 
       const administratorsRow = new Row({
         title: 'Administrators',
@@ -80,7 +88,7 @@ export default class AppEditGroupTab extends SliderSuperTab {
         clickable: true
       });
 
-      section.content.append(this.editPeer.avatarEdit.container, inputWrapper, groupTypeRow.container, permissionsRow.container, administratorsRow.container);
+      section.content.append(administratorsRow.container);
 
       this.scrollable.append(section.container);
 
@@ -123,20 +131,24 @@ export default class AppEditGroupTab extends SliderSuperTab {
         clickable: true
       });
 
-      const showChatHistoryCheckboxField = new CheckboxField({
-        text: 'Show chat history for new members'
-      });
+      section.content.append(membersRow.container);
 
-      if(appChatsManager.isChannel(-this.peerId) && !(chatFull as ChatFull.channelFull).pFlags.hidden_prehistory) {
-        showChatHistoryCheckboxField.value = true;
+      if(appChatsManager.hasRights(-this.peerId, 'change_permissions')) {
+        const showChatHistoryCheckboxField = new CheckboxField({
+          text: 'Show chat history for new members'
+        });
+  
+        if(appChatsManager.isChannel(-this.peerId) && !(chatFull as ChatFull.channelFull).pFlags.hidden_prehistory) {
+          showChatHistoryCheckboxField.value = true;
+        }
+  
+        section.content.append(showChatHistoryCheckboxField.label);
       }
-
-      section.content.append(membersRow.container, showChatHistoryCheckboxField.label);
 
       this.scrollable.append(section.container);
     }
 
-    if(appChatsManager.isChannel(-this.peerId)) {
+    if(appChatsManager.isChannel(-this.peerId) && appChatsManager.hasRights(-this.peerId, 'delete_chat')) {
       const section = new SettingSection({});
 
       const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'Delete Group'});

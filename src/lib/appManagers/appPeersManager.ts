@@ -42,7 +42,7 @@ export class AppPeersManager {
   } */
 
   public canPinMessage(peerId: number) {
-    return peerId > 0 || appChatsManager.hasRights(-peerId, 'pin');
+    return peerId > 0 || appChatsManager.hasRights(-peerId, 'pin_messages');
   }
 
   public getPeerPhoto(peerId: number) {
