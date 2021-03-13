@@ -7,15 +7,16 @@ import { Photo } from "../layer";
 import appPeersManager from "../lib/appManagers/appPeersManager";
 //import type { LazyLoadQueueIntersector } from "./lazyLoadQueue";
 
-rootScope.on('avatar_update', (e) => {
-  let peerId = e;
-
+const onAvatarUpdate = (peerId: number) => {
   appProfileManager.removeFromAvatarsCache(peerId);
   (Array.from(document.querySelectorAll('avatar-element[peer="' + peerId + '"]')) as AvatarElement[]).forEach(elem => {
     //console.log('updating avatar:', elem);
     elem.update();
   });
-}); 
+};
+
+rootScope.on('avatar_update', onAvatarUpdate); 
+rootScope.on('peer_title_edit', onAvatarUpdate); 
 
 export default class AvatarElement extends HTMLElement {
   private peerId: number;

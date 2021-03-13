@@ -158,14 +158,14 @@ export default class AppEditProfileTab extends SliderSuperTab {
       let promises: Promise<any>[] = [];
       
       promises.push(appProfileManager.updateProfile(this.firstNameInputField.value, this.lastNameInputField.value, this.bioInputField.value).then(() => {
-        this.slider.selectTab(0);
+        this.close();
       }, (err) => {
         console.error('updateProfile error:', err);
       }));
 
       if(this.editPeer.uploadAvatar) {
         promises.push(this.editPeer.uploadAvatar().then(inputFile => {
-          appProfileManager.uploadProfilePhoto(inputFile);
+          return appProfileManager.uploadProfilePhoto(inputFile);
         }));
       }
 

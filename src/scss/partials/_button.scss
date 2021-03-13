@@ -1,3 +1,16 @@
+.btn, .btn-icon {
+  background: none;
+	outline: none;
+  border: none;
+  cursor: pointer;
+
+  body.animation-level-0 & {
+    transition: none;
+  }
+
+  @include btn-hoverable();
+}
+
 .btn-icon {
   text-align: center;
   font-size: 1.5rem;
@@ -337,19 +350,6 @@
   &:before {
     color: inherit !important;
   }
-}
-
-.btn, .btn-icon {
-  background: none;
-	outline: none;
-  border: none;
-  cursor: pointer;
-
-  body.animation-level-0 & {
-    transition: none;
-  }
-
-  @include btn-hoverable();
 }
 
 .btn-color-primary {

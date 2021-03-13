@@ -47,6 +47,7 @@ import RepliesElement from "./replies";
 import DEBUG from "../../config/debug";
 import { SliceEnd } from "../../helpers/slicedArray";
 import serverTimeManager from "../../lib/mtproto/serverTimeManager";
+import PeerTitle from "../peerTitle";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS = ['messageActionHistoryClear'];
@@ -155,7 +156,7 @@ export default class ChatBubbles {
 
         const message = this.chat.getMessage(mid);
         
-        if(+bubble.dataset.timestamp >= (message.date - serverTimeManager.serverTimeOffset - 1)) {
+        if(+bubble.dataset.timestamp >= (message.date + serverTimeManager.serverTimeOffset - 1)) {
           return;
         }
 
@@ -2353,16 +2354,19 @@ export default class ChatBubbles {
     
     const needName = (peerId < 0 && (peerId !== message.fromId || our)) && message.fromId !== rootScope.myId;
     if(needName || message.fwd_from || message.reply_to_mid) { // chat
-      let title = this.appPeersManager.getPeerTitle(message.fwdFromId || message.fromId);
+      let title: HTMLSpanElement;
 
       const isForwardFromChannel = message.from_id && message.from_id._ === 'peerChannel' && message.fromId === message.fwdFromId;
       
       let isHidden = message.fwd_from && !message.fwd_from.from_id && !message.fwd_from.channel_id;
       if(isHidden) {
         ///////this.log('message to render hidden', message);
-        title = RichTextProcessor.wrapEmojiText(message.fwd_from.from_name);
+        title = document.createElement('span');
+        title.innerHTML = RichTextProcessor.wrapEmojiText(message.fwd_from.from_name);
         //title = message.fwd_from.from_name;
         bubble.classList.add('hidden-profile');
+      } else {
+        title = new PeerTitle({peerId: message.fwdFromId || message.fromId}).element;
       }
       
       //this.log(title);
@@ -2383,11 +2387,11 @@ export default class ChatBubbles {
 
           if(this.peerId === rootScope.myId || this.peerId === REPLIES_PEER_ID || isForwardFromChannel) {
             nameDiv.style.color = this.appPeersManager.getPeerColorById(message.fwdFromId, false);
-            nameDiv.innerHTML = title;
+            nameDiv.append(title);
           } else {
             /* const fromTitle = message.fromId === this.myID || appPeersManager.isBroadcast(message.fwdFromId || message.fromId) ? '' : `<div class="name" data-peer-id="${message.fromId}" style="color: ${appPeersManager.getPeerColorByID(message.fromId, false)};">${appPeersManager.getPeerTitle(message.fromId)}</div>`;
             nameDiv.innerHTML = fromTitle + 'Forwarded from ' + title; */
-            nameDiv.innerHTML = 'Forwarded from ' + title;
+            nameDiv.append('Forwarded from ', title);
 
             if(savedFrom) {
               nameDiv.dataset.savedFrom = savedFrom;
@@ -2400,7 +2404,7 @@ export default class ChatBubbles {
         if(!bubble.classList.contains('sticker') && needName) {
           let nameDiv = document.createElement('div');
           nameDiv.classList.add('name');
-          nameDiv.innerHTML = title;
+          nameDiv.append(title);
 
           if(!our) {
             nameDiv.style.color = this.appPeersManager.getPeerColorById(message.fromId, false);

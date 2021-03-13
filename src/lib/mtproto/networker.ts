@@ -1249,23 +1249,23 @@ export default class MTPNetworker {
 
     const nextReq = Date.now() + (delay || 0);
     if(this.nextReq && (delay === undefined || this.nextReq <= nextReq)) {
-      this.debug && this.log('scheduleRequest: nextReq', this.nextReq, nextReq);
+      //this.debug && this.log('scheduleRequest: nextReq', this.nextReq, nextReq);
       return;
     }
   
-    this.debug && this.log('scheduleRequest: delay', delay);
+    //this.debug && this.log('scheduleRequest: delay', delay);
 
     /* if(this.nextReqTimeout) {
       return;
     } */
     
-    const perf = performance.now();
+    //const perf = performance.now();
     if(this.nextReqTimeout) {
       clearTimeout(this.nextReqTimeout);
     }
 
     const cb = () => {
-      this.debug && this.log('scheduleRequest: timeout delay was:', performance.now() - perf);
+      //this.debug && this.log('scheduleRequest: timeout delay was:', performance.now() - perf);
 
       this.nextReqTimeout = 0;
       this.nextReq = 0;

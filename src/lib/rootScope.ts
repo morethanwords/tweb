@@ -21,6 +21,8 @@ export type BroadcastEvents = {
   'peer_pinned_hidden': {peerId: number, maxId: number},
   'peer_typings': {peerId: number, typings: UserTyping[]},
   'peer_block': {peerId: number, blocked: boolean},
+  'peer_title_edit': number,
+  'peer_bio_edit': number,
 
   'filter_delete': MyDialogFilter,
   'filter_update': MyDialogFilter,
@@ -43,6 +45,7 @@ export type BroadcastEvents = {
   'history_delete': {peerId: number, msgs: {[mid: number]: true}},
   'history_forbidden': number,
   'history_reload': number,
+  'history_focus': number,
   //'history_request': void,
   
   'message_edit': {storage: MessagesStorage, peerId: number, mid: number},

@@ -192,6 +192,10 @@ export class AppImManager {
       }
     });
 
+    rootScope.on('history_focus', (peerId) => {
+      this.setInnerPeer(peerId);
+    });
+
     /* rootScope.on('peer_changing', (chat) => {
       this.saveChatPosition(chat);
     });

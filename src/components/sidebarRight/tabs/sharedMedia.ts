@@ -11,11 +11,12 @@ import AvatarElement from "../../avatar";
 import Scrollable from "../../scrollable";
 import { SliderTab } from "../../slider";
 import CheckboxField from "../../checkboxField";
-import { attachClickEvent, cancelEvent } from "../../../helpers/dom";
+import { attachClickEvent } from "../../../helpers/dom";
 import appSidebarRight from "..";
 import { TransitionSlider } from "../../transition";
 import appNotificationsManager from "../../../lib/appManagers/appNotificationsManager";
 import AppEditGroupTab from "./editGroup";
+import PeerTitle from "../../peerTitle";
 
 let setText = (text: string, el: HTMLDivElement) => {
   window.requestAnimationFrame(() => {
@@ -65,6 +66,8 @@ export default class AppSharedMediaTab implements SliderTab {
   setPeerStatusInterval: number;
   cleaned: boolean;
   searchSuper: AppSearchSuper;
+
+  private setBioTimeout: number;
 
   public init() {
     this.container = document.getElementById('shared-media-container');
@@ -161,6 +164,12 @@ export default class AppSharedMediaTab implements SliderTab {
 
       if(this.peerId === peerId) {
         this.setPeerStatus();
+      }
+    });
+
+    rootScope.on('peer_bio_edit', (peerId) => {
+      if(peerId === this.peerId) {
+        this.setBio(true);
       }
     });
 
@@ -276,6 +285,10 @@ export default class AppSharedMediaTab implements SliderTab {
     this.profileElements.notificationsCheckbox.checked = true;
     this.profileElements.notificationsStatus.innerText = 'Enabled';
     this.editBtn.style.display = 'none';
+    if(this.setBioTimeout) {
+      window.clearTimeout(this.setBioTimeout);
+      this.setBioTimeout = 0;
+    }
 
     this.searchSuper.cleanupHTML();
     this.searchSuper.selectTab(0, false);
@@ -312,7 +325,6 @@ export default class AppSharedMediaTab implements SliderTab {
     this.cleaned = false;
     
     const peerId = this.peerId;
-    const threadId = this.threadId;
 
     this.cleanupHTML();
 
@@ -342,11 +354,42 @@ export default class AppSharedMediaTab implements SliderTab {
       if(user.phone && peerId !== rootScope.myId) {
         setText(user.rPhone, this.profileElements.phone);
       }
-      
-      appProfileManager.getProfile(peerId).then(userFull => {
+    }/*  else {
+      //membersLi.style.display = appPeersManager.isBroadcast(peerId) ? 'none' : '';
+    } */
+
+    this.setBio();
+
+    this.profileElements.name.innerHTML = '';
+    this.profileElements.name.append(new PeerTitle({
+      peerId,
+      dialog: true
+    }).element);
+    
+    this.editBtn.style.display = '';
+
+    this.setPeerStatus(true);
+  }
+
+  public setBio(override?: true) {
+    if(this.setBioTimeout) {
+      window.clearTimeout(this.setBioTimeout);
+      this.setBioTimeout = 0;
+    }
+
+    const peerId = this.peerId;
+    const threadId = this.threadId;
+
+    if(!peerId) {
+      return;
+    }
+
+    let promise: Promise<boolean>;
+    if(peerId > 0) {
+      promise = appProfileManager.getProfile(peerId, override).then(userFull => {
         if(this.peerId !== peerId || this.threadId !== threadId) {
           this.log.warn('peer changed');
-          return;
+          return false;
         }
         
         if(userFull.rAbout && peerId !== rootScope.myId) {
@@ -354,15 +397,13 @@ export default class AppSharedMediaTab implements SliderTab {
         }
         
         //this.log('userFull', userFull);
+        return true;
       });
     } else {
-      //membersLi.style.display = appPeersManager.isBroadcast(peerId) ? 'none' : '';
-      let chat = appPeersManager.getPeer(peerId);
-      
-      appProfileManager.getChatFull(chat.id).then((chatFull) => {
+      promise = appProfileManager.getChatFull(-peerId, override).then((chatFull) => {
         if(this.peerId !== peerId || this.threadId !== threadId) {
           this.log.warn('peer changed');
-          return;
+          return false;
         }
         
         //this.log('chatInfo res 2:', chatFull);
@@ -370,16 +411,16 @@ export default class AppSharedMediaTab implements SliderTab {
         if(chatFull.about) {
           setText(RichTextProcessor.wrapRichText(chatFull.about), this.profileElements.bio);
         }
+
+        return true;
       });
     }
 
-    let title: string;
-    if(peerId === rootScope.myId) title = 'Saved Messages';
-    else title = appPeersManager.getPeerTitle(peerId);
-    this.profileElements.name.innerHTML = title;
-    this.editBtn.style.display = '';
-
-    this.setPeerStatus(true);
+    promise.then((canSetNext) => {
+      if(canSetNext) {
+        this.setBioTimeout = window.setTimeout(() => this.setBio(true), 60e3);
+      }
+    });
   }
 
   onOpenAfterTimeout() {
