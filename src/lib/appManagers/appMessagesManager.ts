@@ -156,7 +156,7 @@ export class AppMessagesManager {
   public newMessagesToHandle: {[peerId: string]: number[]} = {};
   public newDialogsHandlePromise = 0;
   public newDialogsToHandle: {[peerId: string]: {reload: true} | Dialog} = {};
-  public newUpdatesAfterReloadToHandle: {[peerId: string]: any[]} = {};
+  public newUpdatesAfterReloadToHandle: {[peerId: string]: Set<any>} = {};
 
   private notificationsHandlePromise = 0;
   private notificationsToHandle: {[peerId: string]: {
@@ -3756,13 +3756,31 @@ export class AppMessagesManager {
         const storage = this.getMessagesStorage(peerId);
         const foundDialog = this.getDialogByPeerId(peerId);
 
-        if(!foundDialog.length && (peerId > 0 || !appChatsManager.getChat(-peerId).pFlags.left)) {
-          this.newDialogsToHandle[peerId] = {reload: true};
-          this.scheduleHandleNewDialogs();
-          if(this.newUpdatesAfterReloadToHandle[peerId] === undefined) {
-            this.newUpdatesAfterReloadToHandle[peerId] = [];
+        if(!foundDialog.length) {
+          let good = true;
+          if(peerId < 0) {
+            const chat = appChatsManager.getChat(-peerId);
+            if(chat._ === 'channelForbidden' 
+              || chat._ === 'chatForbidden' 
+              || (chat as Chat.chat).pFlags.left 
+              || (chat as Chat.chat).pFlags.kicked 
+              || (chat as Chat.chat).pFlags.deactivated) {
+              good = false;
+            }
           }
-          this.newUpdatesAfterReloadToHandle[peerId].push(update);
+
+          if(good) {
+            const set = this.newUpdatesAfterReloadToHandle[peerId] ?? (this.newUpdatesAfterReloadToHandle[peerId] = new Set());
+            if(set.has(update)) {
+              this.log.error('here we go again', peerId);
+              break;
+            }
+
+            this.newDialogsToHandle[peerId] = {reload: true};
+            this.scheduleHandleNewDialogs();
+            this.newUpdatesAfterReloadToHandle[peerId].add(update);
+          }
+
           break;
         }
 
