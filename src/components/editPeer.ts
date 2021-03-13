@@ -20,7 +20,8 @@ export default class EditPeer {
   constructor(options: {
     peerId: number,
     inputFields: EditPeer['inputFields'],
-    listenerSetter: ListenerSetter
+    listenerSetter: ListenerSetter,
+    doNotEditAvatar?: boolean,
   }) {
     for(let i in options) {
       // @ts-ignore
@@ -31,15 +32,15 @@ export default class EditPeer {
 
     this.avatarElem = document.createElement('avatar-element') as AvatarElement;
     this.avatarElem.classList.add('avatar-placeholder', 'avatar-120');
-    
-    this.avatarEdit = new AvatarEdit((_upload) => {
-      this.uploadAvatar = _upload;
-      this.handleChange();
-      this.avatarElem.remove();
-    });
-
     this.avatarElem.setAttribute('peer', '' + this.peerId);
-    if(!this.avatarElem.parentElement) {
+
+    if(!options.doNotEditAvatar) {
+      this.avatarEdit = new AvatarEdit((_upload) => {
+        this.uploadAvatar = _upload;
+        this.handleChange();
+        this.avatarElem.remove();
+      });
+
       this.avatarEdit.container.append(this.avatarElem);
     }
 

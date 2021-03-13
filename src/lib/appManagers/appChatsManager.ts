@@ -102,10 +102,6 @@ export class AppChatsManager {
   }
 
   public saveApiChat(chat: any) {
-    if(!isObject(chat)) {
-      return;
-    }
-
     // * exclude from state
     // defineNotNumerableProperties(chat, ['rTitle', 'initials']);
     
@@ -142,8 +138,8 @@ export class AppChatsManager {
     if(oldChat === undefined) {
       this.chats[chat.id] = chat;
     } else {
-      let oldPhoto = oldChat.photo && oldChat.photo.photo_small;
-      let newPhoto = chat.photo && chat.photo.photo_small;
+      const oldPhoto = oldChat.photo?.photo_small;
+      const newPhoto = chat.photo?.photo_small;
       if(JSON.stringify(oldPhoto) !== JSON.stringify(newPhoto)) {
         changedPhoto = true;
       }
