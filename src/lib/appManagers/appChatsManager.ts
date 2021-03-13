@@ -531,6 +531,18 @@ export class AppChatsManager {
     return this.isChannel(id) ? this.leaveChannel(id) : this.leaveChat(id);
   }
 
+  public deleteChannel(id: number) {
+    return apiManager.invokeApi('channels.deleteChannel', {
+      channel: this.getChannelInput(id)
+    }).then(this.onChatUpdated.bind(this, id));
+  }
+
+  public migrateChat(id: number) {
+    return apiManager.invokeApi('messages.migrateChat', {
+      chat_id: id
+    }).then(this.onChatUpdated.bind(this, id));
+  }
+
   public editPhoto(id: number, inputFile: InputFile) {
     const inputChatPhoto: InputChatPhoto = {
       _: 'inputChatUploadedPhoto',

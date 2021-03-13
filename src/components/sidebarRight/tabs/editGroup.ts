@@ -7,7 +7,10 @@ import CheckboxField from "../../checkboxField";
 import Button from "../../button";
 import appChatsManager from "../../../lib/appManagers/appChatsManager";
 import appProfileManager from "../../../lib/appManagers/appProfileManager";
-import { attachClickEvent } from "../../../helpers/dom";
+import { attachClickEvent, toggleDisability } from "../../../helpers/dom";
+import { ChatFull } from "../../../layer";
+import PopupPeer from "../../popups/peer";
+import { addCancelButton } from "../../popups";
 
 export default class AppEditGroupTab extends SliderSuperTab {
   private groupNameInputField: InputField;
@@ -15,9 +18,11 @@ export default class AppEditGroupTab extends SliderSuperTab {
   private editPeer: EditPeer;
   public peerId: number;
 
-  protected init() {
+  protected async init() {
     this.container.classList.add('edit-peer-container', 'edit-group-container');
     this.title.innerHTML = 'Edit';
+
+    const chatFull = await appProfileManager.getChatFull(-this.peerId, true);
 
     {
       const section = new SettingSection({noDelimiter: true});
@@ -39,9 +44,7 @@ export default class AppEditGroupTab extends SliderSuperTab {
       
       this.groupNameInputField.setOriginalValue(appChatsManager.getChat(-this.peerId).title);
 
-      appProfileManager.getChatFull(-this.peerId).then(chatFull => {
-        this.descriptionInputField.setOriginalValue(chatFull.about);
-      });
+      this.descriptionInputField.setOriginalValue(chatFull.about);
 
       inputWrapper.append(this.groupNameInputField.container, this.descriptionInputField.container);
       
@@ -53,6 +56,8 @@ export default class AppEditGroupTab extends SliderSuperTab {
         listenerSetter: this.listenerSetter
       });
       this.content.append(this.editPeer.nextBtn);
+
+      //section.content.append(this.editPeer.avatarEdit.container, inputWrapper);
 
       const groupTypeRow = new Row({
         title: 'Group Type',
@@ -70,7 +75,7 @@ export default class AppEditGroupTab extends SliderSuperTab {
 
       const administratorsRow = new Row({
         title: 'Administrators',
-        subtitle: '5',
+        subtitle: '' + ((chatFull as ChatFull.channelFull).admins_count || 1),
         icon: 'admin',
         clickable: true
       });
@@ -119,21 +124,43 @@ export default class AppEditGroupTab extends SliderSuperTab {
       });
 
       const showChatHistoryCheckboxField = new CheckboxField({
-        text: 'Show chat history for new members',
-        checked: true
+        text: 'Show chat history for new members'
       });
+
+      if(appChatsManager.isChannel(-this.peerId) && !(chatFull as ChatFull.channelFull).pFlags.hidden_prehistory) {
+        showChatHistoryCheckboxField.value = true;
+      }
 
       section.content.append(membersRow.container, showChatHistoryCheckboxField.label);
 
       this.scrollable.append(section.container);
     }
 
-    {
-      const section = new SettingSection({
-        
-      });
+    if(appChatsManager.isChannel(-this.peerId)) {
+      const section = new SettingSection({});
 
       const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'Delete Group'});
+
+      attachClickEvent(btnDelete, () => {
+        new PopupPeer('popup-delete-group', {
+          peerId: this.peerId,
+          title: 'Delete Group?',
+          description: `Are you sure you want to delete this group? All members will be removed, and all messages will be lost.`,
+          buttons: addCancelButton([{
+            text: 'DELETE',
+            callback: () => {
+              toggleDisability([btnDelete], true);
+
+              appChatsManager.deleteChannel(-this.peerId).then(() => {
+                this.close();
+              }, () => {
+                toggleDisability([btnDelete], false);
+              });
+            },
+            isDanger: true
+          }])
+        }).show();
+      }, {listenerSetter: this.listenerSetter});
 
       section.content.append(btnDelete);
 

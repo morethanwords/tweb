@@ -7,7 +7,9 @@ import CheckboxField from "../../checkboxField";
 import Button from "../../button";
 import appChatsManager from "../../../lib/appManagers/appChatsManager";
 import appProfileManager from "../../../lib/appManagers/appProfileManager";
-import { attachClickEvent } from "../../../helpers/dom";
+import { attachClickEvent, toggleDisability } from "../../../helpers/dom";
+import PopupPeer from "../../popups/peer";
+import { addCancelButton } from "../../popups";
 
 export default class AppEditChannelTab extends SliderSuperTab {
   private nameInputField: InputField;
@@ -15,9 +17,11 @@ export default class AppEditChannelTab extends SliderSuperTab {
   private editPeer: EditPeer;
   public peerId: number;
 
-  protected init() {
+  protected async init() {
     this.container.classList.add('edit-peer-container', 'edit-channel-container');
     this.title.innerHTML = 'Edit';
+
+    const chatFull = await appProfileManager.getChannelFull(-this.peerId, true);
 
     {
       const section = new SettingSection({noDelimiter: true});
@@ -39,9 +43,7 @@ export default class AppEditChannelTab extends SliderSuperTab {
       
       this.nameInputField.setOriginalValue(appChatsManager.getChat(-this.peerId).title);
 
-      appProfileManager.getChatFull(-this.peerId).then(chatFull => {
-        this.descriptionInputField.setOriginalValue(chatFull.about);
-      });
+      this.descriptionInputField.setOriginalValue(chatFull.about);
 
       inputWrapper.append(this.nameInputField.container, this.descriptionInputField.container);
       
@@ -127,6 +129,27 @@ export default class AppEditChannelTab extends SliderSuperTab {
       });
 
       const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'Delete Channel'});
+
+      attachClickEvent(btnDelete, () => {
+        new PopupPeer('popup-delete-channel', {
+          peerId: this.peerId,
+          title: 'Delete Group?',
+          description: `Are you sure you want to delete this channel? All subscribers will be removed and all messages will be lost.`,
+          buttons: addCancelButton([{
+            text: 'DELETE',
+            callback: () => {
+              toggleDisability([btnDelete], true);
+
+              appChatsManager.deleteChannel(-this.peerId).then(() => {
+                this.close();
+              }, () => {
+                toggleDisability([btnDelete], false);
+              });
+            },
+            isDanger: true
+          }])
+        }).show();
+      }, {listenerSetter: this.listenerSetter});
 
       section.content.append(btnDelete);
 
