@@ -52,14 +52,16 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   noAutoDownload?: boolean,
 }) {
   const isAlbumItem = !(boxWidth && boxHeight);
-  const canAutoplay = doc.type !== 'video' || (doc.size <= MAX_VIDEO_AUTOPLAY_SIZE && !isAlbumItem);
-  let spanTime: HTMLElement;
+  const canAutoplay = (doc.type !== 'video' || (doc.size <= MAX_VIDEO_AUTOPLAY_SIZE && !isAlbumItem)) 
+    && (doc.type === 'gif' ? rootScope.settings.autoPlay.gifs : rootScope.settings.autoPlay.videos);
+  let spanTime: HTMLElement, spanPlay: HTMLElement;
 
   if(!noInfo) {
     spanTime = document.createElement('span');
     spanTime.classList.add('video-time');
     container.append(spanTime);
   
+    let needPlayButton = false;
     if(doc.type !== 'gif') {
       spanTime.innerText = (doc.duration + '').toHHMMSS(false);
 
@@ -67,13 +69,22 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
         if(canAutoplay) {
           spanTime.classList.add('tgico', 'can-autoplay');
         } else {
-          const spanPlay = document.createElement('span');
-          spanPlay.classList.add('video-play', 'tgico-largeplay', 'btn-circle', 'position-center');
-          container.append(spanPlay);
+          needPlayButton = true;
         }
       }
     } else {
       spanTime.innerText = 'GIF';
+
+      if(!canAutoplay && !noPlayButton) {
+        needPlayButton = true;
+        noAutoDownload = undefined;
+      }
+    }
+
+    if(needPlayButton) {
+      spanPlay = document.createElement('span');
+      spanPlay.classList.add('video-play', 'tgico-largeplay', 'btn-circle', 'position-center');
+      container.append(spanPlay);
     }
   }
 
@@ -237,7 +248,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
 
     res.thumb = photoRes;
 
-    if(!canAutoplay || onlyPreview) {
+    if((!canAutoplay && doc.type !== 'gif') || onlyPreview) {
       res.loadPromise = photoRes.loadPromises.full;
       return res;
     }
@@ -370,7 +381,15 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     return;
   } */
 
-  res.loadPromise = !lazyLoadQueue ? load().render : (lazyLoadQueue.push({div: container, load: () => load().render}), Promise.resolve());
+  if(doc.type === 'gif' && !canAutoplay) {
+    attachClickEvent(container, (e) => {
+      cancelEvent(e);
+      spanPlay.remove();
+      load();
+    }, {capture: true, once: true});
+  } else {
+    res.loadPromise = !lazyLoadQueue ? load().render : (lazyLoadQueue.push({div: container, load: () => load().render}), Promise.resolve());
+  }
 
   return res;
 }
