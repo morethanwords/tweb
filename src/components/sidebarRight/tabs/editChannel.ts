@@ -25,85 +25,109 @@ export default class AppEditChannelTab extends SliderSuperTab {
 
     {
       const section = new SettingSection({noDelimiter: true});
-      const inputFields: InputField[] = [];
 
-      const inputWrapper = document.createElement('div');
-      inputWrapper.classList.add('input-wrapper');
+      if(appChatsManager.hasRights(-this.peerId, 'change_info')) {
+        const inputFields: InputField[] = [];
+
+        const inputWrapper = document.createElement('div');
+        inputWrapper.classList.add('input-wrapper');
+    
+        this.nameInputField = new InputField({
+          label: 'Name',
+          name: 'channel-name',
+          maxLength: 255
+        });
+        this.descriptionInputField = new InputField({
+          label: 'Description',
+          name: 'channel-description',
+          maxLength: 255
+        });
+        
+        this.nameInputField.setOriginalValue(appChatsManager.getChat(-this.peerId).title);
+
+        this.descriptionInputField.setOriginalValue(chatFull.about);
+
+        inputWrapper.append(this.nameInputField.container, this.descriptionInputField.container);
+        
+        inputFields.push(this.nameInputField, this.descriptionInputField);
+
+        this.editPeer = new EditPeer({
+          peerId: this.peerId,
+          inputFields,
+          listenerSetter: this.listenerSetter
+        });
+        this.content.append(this.editPeer.nextBtn);
+
+        section.content.append(this.editPeer.avatarEdit.container, inputWrapper);
+
+        attachClickEvent(this.editPeer.nextBtn, () => {
+          this.editPeer.nextBtn.disabled = true;
+    
+          let promises: Promise<any>[] = [];
   
-      this.nameInputField = new InputField({
-        label: 'Name',
-        name: 'channel-name',
-        maxLength: 255
-      });
-      this.descriptionInputField = new InputField({
-        label: 'Description',
-        name: 'channel-description',
-        maxLength: 255
-      });
-      
-      this.nameInputField.setOriginalValue(appChatsManager.getChat(-this.peerId).title);
+          const id = -this.peerId;
+          if(this.nameInputField.isValid()) {
+            promises.push(appChatsManager.editTitle(id, this.nameInputField.value));
+          }
+  
+          if(this.descriptionInputField.isValid()) {
+            promises.push(appChatsManager.editAbout(id, this.descriptionInputField.value));
+          }
+  
+          if(this.editPeer.uploadAvatar) {
+            promises.push(this.editPeer.uploadAvatar().then(inputFile => {
+              return appChatsManager.editPhoto(id, inputFile);
+            }));
+          }
+    
+          Promise.race(promises).finally(() => {
+            this.editPeer.nextBtn.removeAttribute('disabled');
+            this.close();
+          });
+        }, {listenerSetter: this.listenerSetter});
+      }
 
-      this.descriptionInputField.setOriginalValue(chatFull.about);
+      if(appChatsManager.hasRights(-this.peerId, 'change_type')) {
+        const channelTypeRow = new Row({
+          title: 'Channel Type',
+          subtitle: 'Private',
+          clickable: true,
+          icon: 'lock'
+        });
+  
+        section.content.append(channelTypeRow.container);
+      }
 
-      inputWrapper.append(this.nameInputField.container, this.descriptionInputField.container);
-      
-      inputFields.push(this.nameInputField, this.descriptionInputField);
+      if(appChatsManager.hasRights(-this.peerId, 'change_info')) {
+        const discussionRow = new Row({
+          title: 'Discussion',
+          subtitle: 'Add',
+          clickable: true,
+          icon: 'message'
+        });
 
-      this.editPeer = new EditPeer({
-        peerId: this.peerId,
-        inputFields,
-        listenerSetter: this.listenerSetter
-      });
-      this.content.append(this.editPeer.nextBtn);
-
-      const groupTypeRow = new Row({
-        title: 'Channel Type',
-        subtitle: 'Private',
-        clickable: true,
-        icon: 'lock'
-      });
+        section.content.append(discussionRow.container);
+      }
 
       const administratorsRow = new Row({
         title: 'Administrators',
-        subtitle: '5',
+        subtitle: '' + chatFull.admins_count,
         icon: 'admin',
         clickable: true
       });
 
-      const signMessagesCheckboxField = new CheckboxField({
-        text: 'Sign Messages',
-        checked: false
-      });
+      section.content.append(administratorsRow.container);
 
-      section.content.append(this.editPeer.avatarEdit.container, inputWrapper, groupTypeRow.container, administratorsRow.container, signMessagesCheckboxField.label);
+      if(appChatsManager.hasRights(-this.peerId, 'change_info')) {
+        const signMessagesCheckboxField = new CheckboxField({
+          text: 'Sign Messages',
+          checked: false
+        });
+
+        section.content.append(signMessagesCheckboxField.label);
+      }
 
       this.scrollable.append(section.container);
-
-      attachClickEvent(this.editPeer.nextBtn, () => {
-        this.editPeer.nextBtn.disabled = true;
-  
-        let promises: Promise<any>[] = [];
-
-        const id = -this.peerId;
-        if(this.nameInputField.isValid()) {
-          promises.push(appChatsManager.editTitle(id, this.nameInputField.value));
-        }
-
-        if(this.descriptionInputField.isValid()) {
-          promises.push(appChatsManager.editAbout(id, this.descriptionInputField.value));
-        }
-
-        if(this.editPeer.uploadAvatar) {
-          promises.push(this.editPeer.uploadAvatar().then(inputFile => {
-            return appChatsManager.editPhoto(id, inputFile);
-          }));
-        }
-  
-        Promise.race(promises).finally(() => {
-          this.editPeer.nextBtn.removeAttribute('disabled');
-          this.close();
-        });
-      }, {listenerSetter: this.listenerSetter});
     }
 
     {
@@ -123,7 +147,7 @@ export default class AppEditChannelTab extends SliderSuperTab {
       this.scrollable.append(section.container);
     }
 
-    {
+    if(appChatsManager.hasRights(-this.peerId, 'delete_chat')) {
       const section = new SettingSection({
         
       });
@@ -133,7 +157,7 @@ export default class AppEditChannelTab extends SliderSuperTab {
       attachClickEvent(btnDelete, () => {
         new PopupPeer('popup-delete-channel', {
           peerId: this.peerId,
-          title: 'Delete Group?',
+          title: 'Delete Channel?',
           description: `Are you sure you want to delete this channel? All subscribers will be removed and all messages will be lost.`,
           buttons: addCancelButton([{
             text: 'DELETE',
