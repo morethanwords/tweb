@@ -723,25 +723,19 @@ export class AppUsersManager {
     });
   }
 
-  /* public onContactUpdated(userId: number, isContact: boolean) {
-    userId = parseInt('' + userId);
-
-    if(Array.isArray(this.contactsList)) {
-      var curPos = this.contactsList.indexOf(userId);
-      var curIsContact = curPos !== -1;
-
-      if(isContact !== curIsContact) {
-        if(isContact) {
-          this.contactsList.push(userId)
-          searchIndexManager.indexObject(userId, this.getUserSearchText(userId), this.contactsIndex);
-        } else {
-          this.contactsList.splice(curPos, 1);
-        }
-
-        rootScope.$broadcast('contacts_update', userId);
+  public onContactUpdated(userId: number, isContact: boolean) {
+    const curIsContact = this.contactsList.has(userId);
+    if(isContact !== curIsContact) {
+      if(isContact) {
+        this.contactsList.add(userId)
+        searchIndexManager.indexObject(userId, this.getUserSearchText(userId), this.contactsIndex);
+      } else {
+        this.contactsList.delete(userId);
       }
+
+      rootScope.broadcast('contacts_update', userId);
     }
-  } */
+  }
 
   public setUserStatus(userId: number, offline: boolean) {
     if(this.isBot(userId)) {
@@ -762,6 +756,32 @@ export class AppUsersManager {
       user.sortStatus = this.getUserStatusForSort(user.status);
       rootScope.broadcast('user_update', userId);
     }
+  }
+
+  public addContact(userId: number, first_name: string, last_name: string, phone: string, showPhone?: true) {
+    return apiManager.invokeApi('contacts.addContact', {
+      id: this.getUserInput(userId),
+      first_name,
+      last_name,
+      phone,
+      add_phone_privacy_exception: showPhone
+    }).then((updates) => {
+      apiUpdatesManager.processUpdateMessage(updates);
+
+      this.onContactUpdated(userId, true);
+    });
+  }
+
+  public deleteContacts(userIds: number[]) {
+    return apiManager.invokeApi('contacts.deleteContacts', {
+      id: userIds.map(userId => this.getUserInput(userId))
+    }).then((updates) => {
+      apiUpdatesManager.processUpdateMessage(updates);
+
+      userIds.forEach(userId => {
+        this.onContactUpdated(userId, false);
+      });
+    });
   }
 }
 
