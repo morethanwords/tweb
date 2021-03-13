@@ -22,7 +22,7 @@ export default class ProgressivePreloader {
   private tryAgainOnFail = true;
   private attachMethod: 'append' | 'prepend' = 'append';
 
-  private loadFunc: () => {download: CancellablePromise<any>};
+  public loadFunc: () => {download: CancellablePromise<any>};
 
   private totalLength: number;
 

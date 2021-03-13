@@ -341,6 +341,7 @@ export default class AudioElement extends HTMLElement {
   public voiceAsMusic = false;
   public searchContext: SearchSuperContext;
   public showSender = false;
+  public noAutoDownload: boolean;
 
   private attachedHandlers: {[name: string]: any[]} = {};
   private onTypeDisconnect: () => void;
@@ -464,7 +465,10 @@ export default class AudioElement extends HTMLElement {
         };
     
         attachClickEvent(this, onClick);
-        onClick();
+
+        if(!this.noAutoDownload) {
+          onClick();
+        }
       } else {
         if(doc.supportsStreaming) {
           onLoad(false);

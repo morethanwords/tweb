@@ -30,7 +30,7 @@ import { langPack } from "../../lib/langPack";
 import AvatarElement from "../avatar";
 import { formatPhoneNumber } from "../misc";
 import { ripple } from "../ripple";
-import { wrapAlbum, wrapPhoto, wrapVideo, wrapDocument, wrapSticker, wrapPoll, wrapReply, wrapGroupedDocuments } from "../wrappers";
+import { wrapAlbum, wrapPhoto, wrapVideo, wrapDocument, wrapSticker, wrapPoll, wrapGroupedDocuments } from "../wrappers";
 import { MessageRender } from "./messageRender";
 import LazyLoadQueue from "../lazyLoadQueue";
 import { AppChatsManager } from "../../lib/appManagers/appChatsManager";
@@ -1669,6 +1669,8 @@ export default class ChatBubbles {
         }).catch(reject);
       }, 0);
     });
+
+    //this.messagesQueuePromise.catch(() => {});
   }
 
   public setBubblePosition(bubble: HTMLElement, message: any, reverse: boolean) {
@@ -2033,7 +2035,8 @@ export default class ChatBubbles {
               isOut: our,
               lazyLoadQueue: this.lazyLoadQueue,
               chat: this.chat,
-              loadPromises
+              loadPromises,
+              noAutoDownload: this.chat.noAutoDownloadMedia,
             });
             
             break;
@@ -2049,7 +2052,8 @@ export default class ChatBubbles {
             isOut, 
             lazyLoadQueue: this.lazyLoadQueue,
             middleware: this.getMiddleware(),
-            loadPromises
+            loadPromises,
+            noAutoDownload: this.chat.noAutoDownloadMedia,
           });
 
           break;
@@ -2098,12 +2102,14 @@ export default class ChatBubbles {
                 middleware: this.getMiddleware(),
                 isOut,
                 group: CHAT_ANIMATION_GROUP,
-                loadPromises
+                loadPromises,
+                noAutoDownload: this.chat.noAutoDownloadMedia,
               });
               //}
             } else {
               const docDiv = wrapDocument({
-                message
+                message,
+                noAutoDownload: this.chat.noAutoDownloadMedia,
               });
               preview.append(docDiv);
               preview.classList.add('preview-with-document');
@@ -2166,7 +2172,8 @@ export default class ChatBubbles {
               lazyLoadQueue: this.lazyLoadQueue, 
               middleware: this.getMiddleware(),
               loadPromises,
-              withoutPreloader: isSquare
+              withoutPreloader: isSquare,
+              noAutoDownload: this.chat.noAutoDownloadMedia,
             });
           }
           
@@ -2233,7 +2240,8 @@ export default class ChatBubbles {
                 isOut: our,
                 lazyLoadQueue: this.lazyLoadQueue,
                 chat: this.chat,
-                loadPromises
+                loadPromises,
+                noAutoDownload: this.chat.noAutoDownloadMedia,
               });
             } else {
               const withTail = !isAndroid && !isApple && doc.type !== 'round' && canHaveTail && !withReplies && USE_MEDIA_TAILS;
@@ -2249,7 +2257,8 @@ export default class ChatBubbles {
                 lazyLoadQueue: this.lazyLoadQueue,
                 middleware: this.getMiddleware(),
                 group: CHAT_ANIMATION_GROUP,
-                loadPromises
+                loadPromises,
+                noAutoDownload: this.chat.noAutoDownloadMedia,
               });
             }
             
@@ -2261,7 +2270,8 @@ export default class ChatBubbles {
               bubble,
               messageDiv,
               chat: this.chat,
-              loadPromises
+              loadPromises,
+              noAutoDownload: this.chat.noAutoDownloadMedia
             });
 
             if(newNameContainer) {

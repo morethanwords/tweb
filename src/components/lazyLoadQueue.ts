@@ -81,7 +81,9 @@ export class LazyLoadQueueBase {
       //await item.load(item.div);
       await this.loadItem(item);
     } catch(err) {
-      this.log.error('loadMediaQueue error:', err/* , item */);
+      if(err !== 'NO_ENTRY_FOUND') {
+        this.log.error('loadMediaQueue error:', err/* , item */);
+      }
     }
 
     this.inProcess.delete(item);

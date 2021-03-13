@@ -3,7 +3,6 @@ import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import appDocsManager, {MyDocument} from "../lib/appManagers/appDocsManager";
 import { CancellablePromise, deferredPromise } from "../helpers/cancellablePromise";
 import { isSafari } from "../helpers/userAgent";
-import { isInDOM } from "../helpers/dom";
 import { MOUNT_CLASS_TO } from "../config/debug";
 
 // TODO: если удалить сообщение, и при этом аудио будет играть - оно не остановится, и можно будет по нему перейти вникуда
@@ -111,17 +110,17 @@ class AppMediaPlaybackController {
       waitingStorage[mid] = deferred;
     }
 
-    // если что - загрузит voice или round заранее, так правильнее
-    const downloadPromise: Promise<any> = !doc.supportsStreaming ? appDocsManager.downloadDoc(doc) : Promise.resolve();
-    Promise.all([deferred, downloadPromise]).then(() => {
+    deferred.then(() => {
       //media.autoplay = true;
       //console.log('will set media url:', media, doc, doc.type, doc.url);
 
-      if(doc.type === 'audio' && doc.supportsStreaming && isSafari) {
-        this.handleSafariStreamable(media);
-      }
-
-      media.src = doc.url;
+      ((!doc.supportsStreaming ? appDocsManager.downloadDoc(doc) : Promise.resolve()) as Promise<any>).then(() => {
+        if(doc.type === 'audio' && doc.supportsStreaming && isSafari) {
+          this.handleSafariStreamable(media);
+        }
+  
+        media.src = doc.url;
+      });
     }, onError);
     
     return storage[mid] = media;

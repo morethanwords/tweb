@@ -9,6 +9,7 @@ import AppGeneralSettingsTab from "./generalSettings";
 import AppEditProfileTab from "./editProfile";
 import AppChatFoldersTab from "./chatFolders";
 import AppNotificationsTab from "./notifications";
+import PeerTitle from "../../peerTitle";
 //import AppMediaViewer from "../../appMediaViewerNew";
 
 export default class AppSettingsTab extends SliderSuperTab {
@@ -120,7 +121,7 @@ export default class AppSettingsTab extends SliderSuperTab {
     });
 
     this.buttons.general.addEventListener('click', () => {
-      new AppGeneralSettingsTab(this.slider as any).open();
+      new AppGeneralSettingsTab(this.slider).open();
     });
 
     this.buttons.notifications.addEventListener('click', () => {
@@ -136,7 +137,7 @@ export default class AppSettingsTab extends SliderSuperTab {
     let user = appUsersManager.getSelf();
     this.avatarElem.setAttribute('peer', '' + user.id);
 
-    this.nameDiv.innerHTML = user.rFullName || '';
+    this.nameDiv.append(new PeerTitle({peerId: user.id}).element);
     this.phoneDiv.innerHTML = user.rPhone || '';
   }
 
