@@ -789,3 +789,23 @@
     margin: 0 1.1875rem;
   }
 }
+
+.edit-contact-container {
+  .input-wrapper {
+    margin-top: 1.8125rem;
+    padding-bottom: 1rem;
+  }
+
+  .avatar-placeholder {
+    filter: none !important;
+  }
+
+  .avatar-edit {
+    margin-bottom: 1.375rem !important;
+  }
+
+  .profile-name {
+    font-size: 1.5rem;
+    line-height: 1.3125;
+  }
+}

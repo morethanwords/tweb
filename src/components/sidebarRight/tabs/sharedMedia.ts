@@ -17,6 +17,8 @@ import { TransitionSlider } from "../../transition";
 import appNotificationsManager from "../../../lib/appManagers/appNotificationsManager";
 import AppEditGroupTab from "./editGroup";
 import PeerTitle from "../../peerTitle";
+import AppEditChannelTab from "./editChannel";
+import AppEditContactTab from "./editContact";
 
 let setText = (text: string, el: HTMLDivElement) => {
   window.requestAnimationFrame(() => {
@@ -129,13 +131,13 @@ export default class AppSharedMediaTab implements SliderTab {
     });
 
     attachClickEvent(this.editBtn, (e) => {
-      let tab: AppEditGroupTab;
+      let tab: AppEditGroupTab | AppEditChannelTab | AppEditContactTab;
       if(appPeersManager.isAnyGroup(this.peerId)) {
         tab = new AppEditGroupTab(appSidebarRight);
       } else if(this.peerId > 0) {
-
+        tab = new AppEditContactTab(appSidebarRight);
       } else {
-
+        tab = new AppEditChannelTab(appSidebarRight);
       }
 
       if(tab) {
