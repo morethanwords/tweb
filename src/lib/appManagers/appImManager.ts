@@ -161,7 +161,7 @@ export class AppImManager {
     });
 
     this.setSettings();
-    rootScope.on('settings_updated', () => this.setSettings());
+    rootScope.on('settings_updated', this.setSettings);
 
     useHeavyAnimationCheck(() => {
       animationIntersector.setOnlyOnePlayableGroup('lock');
@@ -237,7 +237,7 @@ export class AppImManager {
     return sessionStorage.getFromCache('chatPositions')[key];
   } */
 
-  private setSettings() {
+  private setSettings = () => {
     document.documentElement.style.setProperty('--messages-text-size', rootScope.settings.messagesTextSize + 'px');
 
     if(rootScope.settings.background.highlightningColor) {
@@ -261,7 +261,11 @@ export class AppImManager {
 
     lottieLoader.setLoop(rootScope.settings.stickers.loop);
     animationIntersector.checkAnimations(false);
-  }
+    
+    for(const chat of this.chats) {
+      chat.setAutoDownloadMedia();
+    }
+  };
 
   // * не могу использовать тут TransitionSlider, так как мне нужен отрисованный блок рядом 
   // * (или под текущим чатом) чтобы правильно отрендерить чат (напр. scrollTop)

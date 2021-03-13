@@ -29,6 +29,7 @@ import { renderImageFromUrl } from "../misc";
 import SetTransition from "../singleTransition";
 import { fastRaf } from "../../helpers/schedulers";
 import AppPrivateSearchTab from "../sidebarRight/tabs/search";
+import type { State } from "../../lib/appManagers/appStateManager";
 
 export type ChatType = 'chat' | 'pinned' | 'replies' | 'discussion' | 'scheduled';
 
@@ -54,6 +55,8 @@ export default class Chat extends EventListenerBase<{
   public log: ReturnType<typeof logger>;
 
   public type: ChatType = 'chat';
+
+  public noAutoDownloadMedia: boolean;
   
   constructor(public appImManager: AppImManager, public appChatsManager: AppChatsManager, public appDocsManager: AppDocsManager, public appInlineBotsManager: AppInlineBotsManager, public appMessagesManager: AppMessagesManager, public appPeersManager: AppPeersManager, public appPhotosManager: AppPhotosManager, public appProfileManager: AppProfileManager, public appStickersManager: AppStickersManager, public appUsersManager: AppUsersManager, public appWebPagesManager: AppWebPagesManager, public appPollsManager: AppPollsManager, public apiManager: ApiManagerProxy, public appDraftsManager: AppDraftsManager, public serverTimeManager: ServerTimeManager, public storage: typeof sessionStorage, public appNotificationsManager: AppNotificationsManager) {
     super();
@@ -210,6 +213,7 @@ export default class Chat extends EventListenerBase<{
       appSidebarRight.sharedMediaTab.setPeer(peerId, this.threadId);
       this.input.clearHelper(); // костыль
       this.selection.cleanup(); // TODO: REFACTOR !!!!!!
+      this.setAutoDownloadMedia();
     }
 
     this.peerChanged = samePeer;
@@ -236,6 +240,25 @@ export default class Chat extends EventListenerBase<{
     }); */
 
     return result;
+  }
+
+  public setAutoDownloadMedia() {
+    let type: keyof State['settings']['autoDownload'];
+    if(this.peerId < 0) {
+      if(this.appPeersManager.isBroadcast(this.peerId)) {
+        type = 'channels';
+      } else {
+        type = 'groups';
+      }
+    } else {
+      if(this.appUsersManager.isContact(this.peerId)) {
+        type = 'contacts';
+      } else {
+        type = 'private';
+      }
+    }
+
+    this.noAutoDownloadMedia = !rootScope.settings.autoDownload[type];
   }
 
   public setMessageId(messageId?: number) {

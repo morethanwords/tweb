@@ -25,7 +25,8 @@ export type DownloadOptions = {
   fileName?: string,
   mimeType?: string,
   limitPart?: number,
-  queueId?: number
+  queueId?: number,
+  onlyCache?: boolean,
 };
 
 type MyUploadFile = UploadFile.uploadFile;

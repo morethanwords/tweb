@@ -56,8 +56,7 @@ export class AppDownloadManager {
         error.name = 'AbortError';
         
         apiManager.cancelDownload(fileName);
-        this.clearDownload(fileName);
-
+        
         deferred.reject(error);
         deferred.cancel = () => {};
       /* } catch(err) {
@@ -68,6 +67,10 @@ export class AppDownloadManager {
     deferred.finally(() => {
       delete this.progress[fileName];
       delete this.progressCallbacks[fileName];
+    });
+
+    deferred.catch(() => {
+      this.clearDownload(fileName);
     });
 
     return this.downloads[fileName] = deferred;
@@ -121,11 +124,14 @@ export class AppDownloadManager {
     const tryDownload = (): Promise<unknown> => {
       //return Promise.resolve();
 
-      if(!apiManager.worker) {
-        return this.cacheStorage.getFile(fileName).then((blob) => {
+      if(!apiManager.worker || options.onlyCache) {
+        const promise = this.cacheStorage.getFile(fileName).then((blob) => {
           if(blob.size < options.size) throw 'wrong size';
           else deferred.resolve(blob);
-        }).catch(() => {
+        });
+        
+        if(options.onlyCache) return promise.catch(onError);
+        return promise.catch(() => {
           return apiManager.downloadFile(options).then(deferred.resolve, onError);
         });
       } else {

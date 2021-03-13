@@ -256,7 +256,7 @@ export class AppPhotosManager {
     return null;
   }
   
-  public getPhotoDownloadOptions(photo: MyPhoto | MyDocument, photoSize: PhotoSize, queueId?: number) {
+  public getPhotoDownloadOptions(photo: MyPhoto | MyDocument, photoSize: PhotoSize, queueId?: number, onlyCache?: boolean) {
     const isMyDocument = photo._ === 'document';
 
     if(!photoSize || photoSize._ === 'photoSizeEmpty') {
@@ -274,7 +274,7 @@ export class AppPhotosManager {
       thumb_size: photoSize.type
     } : (photoSize as PhotoSize.photoSize).location;
 
-    return {dcId: photo.dc_id, location, size: isPhoto ? (photoSize as PhotoSize.photoSize).size : undefined, queueId};
+    return {dcId: photo.dc_id, location, size: isPhoto ? (photoSize as PhotoSize.photoSize).size : undefined, queueId, onlyCache};
   }
 
   /* public getPhotoURL(photo: MTPhoto | MTMyDocument, photoSize: MTPhotoSize) {
@@ -297,7 +297,7 @@ export class AppPhotosManager {
     return isDownloaded;
   }
   
-  public preloadPhoto(photoId: any, photoSize?: PhotoSize, queueId?: number): CancellablePromise<Blob> {
+  public preloadPhoto(photoId: any, photoSize?: PhotoSize, queueId?: number, onlyCache?: boolean): CancellablePromise<Blob> {
     const photo = this.getPhoto(photoId);
 
     // @ts-ignore
@@ -317,7 +317,7 @@ export class AppPhotosManager {
       return Promise.resolve() as any;
     }
     
-    const downloadOptions = this.getPhotoDownloadOptions(photo, photoSize, queueId);
+    const downloadOptions = this.getPhotoDownloadOptions(photo, photoSize, queueId, onlyCache);
 
     const fileName = getFileNameByLocation(downloadOptions.location);
 
@@ -342,7 +342,7 @@ export class AppPhotosManager {
       (photoSize as any).url = url;
 
       return blob;
-    });
+    }).catch(() => {});
 
     return download;
   }

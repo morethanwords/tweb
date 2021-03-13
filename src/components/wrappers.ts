@@ -5,13 +5,12 @@ import { deferredPromise } from '../helpers/cancellablePromise';
 import { formatDateAccordingToToday, months } from '../helpers/date';
 import mediaSizes from '../helpers/mediaSizes';
 import { formatBytes } from '../helpers/number';
-import { isAppleMobile, isSafari } from '../helpers/userAgent';
+import { isSafari } from '../helpers/userAgent';
 import { PhotoSize } from '../layer';
 import appDocsManager, { MyDocument } from "../lib/appManagers/appDocsManager";
 import appMessagesManager from '../lib/appManagers/appMessagesManager';
 import appPhotosManager, { MyPhoto } from '../lib/appManagers/appPhotosManager';
 import LottieLoader from '../lib/lottieLoader';
-import VideoPlayer from '../lib/mediaPlayer';
 import { attachClickEvent, cancelEvent, isInDOM } from "../helpers/dom";
 import webpWorkerController from '../lib/webp/webpWorkerController';
 import animationIntersector from './animationIntersector';
@@ -34,7 +33,7 @@ import { animateSingle } from '../helpers/animation';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 
-export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, withoutPreloader, loadPromises, noPlayButton}: {
+export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, withoutPreloader, loadPromises, noPlayButton, noAutoDownload}: {
   doc: MyDocument, 
   container?: HTMLElement, 
   message?: any, 
@@ -49,7 +48,8 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   group?: string,
   onlyPreview?: boolean,
   withoutPreloader?: boolean,
-  loadPromises?: Promise<any>[]
+  loadPromises?: Promise<any>[],
+  noAutoDownload?: boolean,
 }) {
   const isAlbumItem = !(boxWidth && boxHeight);
   const canAutoplay = doc.type !== 'video' || (doc.size <= MAX_VIDEO_AUTOPLAY_SIZE && !isAlbumItem);
@@ -94,7 +94,8 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       lazyLoadQueue, 
       middleware,
       withoutPreloader,
-      loadPromises
+      loadPromises,
+      noAutoDownload
     });
 
     res.thumb = photoRes;
@@ -112,7 +113,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   video.setAttribute('playsinline', 'true');
   video.muted = true;
   if(doc.type === 'round') {
-    const globalVideo = appMediaPlaybackController.addMedia(message.peerId, doc, message.mid) as HTMLVideoElement;
+    const globalVideo = appMediaPlaybackController.addMedia(message.peerId, doc, message.mid, !noAutoDownload) as HTMLVideoElement;
  
     const divRound = document.createElement('div');
     divRound.classList.add('media-round', 'z-depth-1');
@@ -230,7 +231,8 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       lazyLoadQueue, 
       middleware,
       withoutPreloader: true,
-      loadPromises
+      loadPromises,
+      noAutoDownload
     });
 
     res.thumb = photoRes;
@@ -259,84 +261,96 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     container.append(video);
   }
 
-  const loadVideo = async() => {
-    if(middleware && !middleware()) {
-      return;
+  let preloader: ProgressivePreloader;
+  if(message?.media?.preloader) { // means upload
+    preloader = message.media.preloader as ProgressivePreloader;
+    preloader.attach(container, false);
+    noAutoDownload = undefined;
+  } else if(!doc.downloaded && !doc.supportsStreaming) {
+    preloader = new ProgressivePreloader({
+      attachMethod: 'prepend'
+    });
+  } else if(doc.supportsStreaming) {
+    preloader = new ProgressivePreloader({
+      cancelable: false,
+      attachMethod: 'prepend'
+    });
+  }
+
+  let f = noAutoDownload && photoRes?.preloader?.loadFunc;
+  const load = () => {
+    if(preloader && noAutoDownload && !withoutPreloader) {
+      preloader.construct();
+      preloader.setManual();
     }
 
     let loadPromise: Promise<any> = Promise.resolve();
-    let preloader: ProgressivePreloader;
-    if(message?.media?.preloader) { // means upload
-      preloader = message.media.preloader as ProgressivePreloader;
-      preloader.attach(container, false);
-    } else if(!doc.downloaded && !doc.supportsStreaming) {
-      const promise = loadPromise = appDocsManager.downloadDoc(doc, lazyLoadQueue?.queueId);
-      preloader = new ProgressivePreloader({
-        attachMethod: 'prepend'
-      });
-      preloader.attach(container, true, promise);
-
-      //if(doc.type !== 'round') {
-        await promise;
-
-        if(middleware && !middleware()) {
-          return;
+    if(preloader) {
+      if(!doc.downloaded && !doc.supportsStreaming) {
+        const promise = loadPromise = appDocsManager.downloadDoc(doc, lazyLoadQueue?.queueId, noAutoDownload);
+        preloader.attach(container, false, promise);
+      } else if(doc.supportsStreaming) {
+        if(noAutoDownload) {
+          loadPromise = Promise.reject();
+        } else {
+          preloader.attach(container, false, null);
+          video.addEventListener(isSafari ? 'timeupdate' : 'canplay', () => {
+            preloader.detach();
+          }, {once: true});
         }
-      //}
-    } else if(doc.supportsStreaming) {
-      preloader = new ProgressivePreloader({
-        cancelable: false,
-        attachMethod: 'prepend'
-      });
-      preloader.attach(container, false, null);
-      video.addEventListener(isSafari ? 'timeupdate' : 'canplay', () => {
-        preloader.detach();
-      }, {once: true});
+      }
     }
 
-    /* if(doc.type === 'round') {
-      return;
-    } */
-    
-    //console.log('loaded doc:', doc, doc.url, container);
+    if(!noAutoDownload && f) {
+      f();
+      f = null;
+    }
+
+    noAutoDownload = undefined;
 
     const deferred = deferredPromise<void>();
+    loadPromise.then(() => {
+      if(middleware && !middleware()) {
+        deferred.resolve();
+        return;
+      }
 
-    //if(doc.type === 'gif'/*  || true */) {
+      if(doc.type === 'round') {
+        appMediaPlaybackController.resolveWaitingForLoadMedia(message.peerId, message.mid);
+      }
+
       onVideoLoad(video).then(() => {
-        /* if(!video.paused) {
-          video.pause();
-        } */
         if(group) {
           animationIntersector.addAnimation(video, group);
         }
-
-        // test lazyLoadQueue
-        //setTimeout(() => {
-          deferred.resolve();
-        //}, 5000);
+  
+        deferred.resolve();
       });
-    //}
-
-    if(doc.type === 'video') {
-      video.addEventListener('timeupdate', () => {
-        spanTime.innerText = (video.duration - video.currentTime + '').toHHMMSS(false);
+  
+      if(doc.type === 'video') {
+        video.addEventListener('timeupdate', () => {
+          spanTime.innerText = (video.duration - video.currentTime + '').toHHMMSS(false);
+        });
+      }
+  
+      video.addEventListener('error', (e) => {
+        deferred.resolve();
       });
-    }
+  
+      video.muted = true;
+      video.loop = true;
+      //video.play();
+      video.autoplay = true;
 
-    video.addEventListener('error', (e) => {
-      deferred.resolve();
-    });
+      renderImageFromUrl(video, doc.url);
+    }, () => {});
 
-    video.muted = true;
-    video.loop = true;
-    //video.play();
-    video.autoplay = true;
-      
-    renderImageFromUrl(video, doc.url);
-
-    return Promise.all([loadPromise, deferred]);
+    return {download: loadPromise, render: deferred};
   };
+
+  if(preloader) {
+    preloader.setDownloadFunction(load);
+  }
 
   /* if(doc.size >= 20e6 && !doc.downloaded) {
     let downloadDiv = document.createElement('div');
@@ -356,7 +370,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     return;
   } */
 
-  res.loadPromise = !lazyLoadQueue ? loadVideo() : (lazyLoadQueue.push({div: container, load: loadVideo}), Promise.resolve());
+  res.loadPromise = !lazyLoadQueue ? load().render : (lazyLoadQueue.push({div: container, load: () => load().render}), Promise.resolve());
 
   return res;
 }
@@ -375,14 +389,15 @@ export const formatDate = (timestamp: number, monthShort = false, withYear = tru
   return str + ' at ' + date.getHours() + ':' + ('0' + date.getMinutes()).slice(-2);
 };
 
-export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showSender, searchContext, loadPromises}: {
+export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showSender, searchContext, loadPromises, noAutoDownload}: {
   message: any, 
   withTime?: boolean,
   fontWeight?: number,
   voiceAsMusic?: boolean,
   showSender?: boolean,
   searchContext?: SearchSuperContext,
-  loadPromises?: Promise<any>[]
+  loadPromises?: Promise<any>[],
+  noAutoDownload?: boolean,
 }): HTMLElement {
   if(!fontWeight) fontWeight = 500;
 
@@ -394,6 +409,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
     audioElement.setAttribute('peer-id', '' + message.peerId);
     audioElement.withTime = withTime;
     audioElement.message = message;
+    audioElement.noAutoDownload = noAutoDownload;
     
     if(voiceAsMusic) audioElement.voiceAsMusic = voiceAsMusic;
     if(searchContext) audioElement.searchContext = searchContext;
@@ -590,7 +606,7 @@ function wrapMediaWithTail(photo: MyPhoto | MyDocument, message: {mid: number, m
   return img;
 }
 
-export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware, size, withoutPreloader, loadPromises}: {
+export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware, size, withoutPreloader, loadPromises, noAutoDownload}: {
   photo: MyPhoto | MyDocument, 
   message: any, 
   container: HTMLElement, 
@@ -602,7 +618,8 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
   middleware?: () => boolean, 
   size?: PhotoSize,
   withoutPreloader?: boolean,
-  loadPromises?: Promise<any>[]
+  loadPromises?: Promise<any>[],
+  noAutoDownload?: boolean,
 }) {
   if(!((photo as MyPhoto).sizes || (photo as MyDocument).thumbs)) {
     if(boxWidth && boxHeight && photo._ === 'document') {
@@ -617,7 +634,8 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
       images: {
         thumb: null,
         full: null
-      }
+      },
+      preloader: null
     };
   }
 
@@ -660,6 +678,7 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
   if(message?.media?.preloader) { // means upload
     preloader = message.media.preloader;
     preloader.attach(container);
+    noAutoDownload = undefined;
   } else {
     preloader = new ProgressivePreloader({
       attachMethod: 'prepend'
@@ -669,7 +688,9 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
   const getDownloadPromise = () => {
     const promise = photo._ === 'document' && photo.mime_type === 'image/gif' ? 
       appDocsManager.downloadDoc(photo, /* undefined,  */lazyLoadQueue?.queueId) : 
-      appPhotosManager.preloadPhoto(photo, size, lazyLoadQueue?.queueId);
+      appPhotosManager.preloadPhoto(photo, size, lazyLoadQueue?.queueId, noAutoDownload);
+
+    noAutoDownload = undefined;
 
     return promise;
   };
@@ -701,13 +722,20 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
 
   let loadPromise: Promise<any>;
   const load = () => {
+    if(noAutoDownload && !withoutPreloader) {
+      preloader.construct();
+      preloader.setManual();
+    }
+
     const promise = getDownloadPromise();
 
     if(!cacheContext.downloaded && !withoutPreloader && (size as PhotoSize.photoSize).w >= 150 && (size as PhotoSize.photoSize).h >= 150) {
       preloader.attach(container, false, promise);
     }
 
-    return {download: promise, render: promise.then(onLoad)};
+    const renderPromise = promise.then(onLoad);
+    renderPromise.catch(() => {});
+    return {download: promise, render: renderPromise};
   };
 
   preloader.setDownloadFunction(load);
@@ -716,7 +744,11 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
     loadThumbPromise = loadPromise = load().render;
   } else {
     if(!lazyLoadQueue) loadPromise = load().render;
-    else lazyLoadQueue.push({div: container, load: () => load().download});
+    /* else if(noAutoDownload) {
+      preloader.construct();
+      preloader.setManual();
+      preloader.attach(container);
+    } */ else lazyLoadQueue.push({div: container, load: () => load().download});
   }
 
   if(loadPromises && loadThumbPromise) {
@@ -731,7 +763,8 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
     images: {
       thumb: thumbImage,
       full: image
-    }
+    },
+    preloader
   };
 }
 
@@ -1089,7 +1122,7 @@ export function prepareAlbum(options: {
   } */
 }
 
-export function wrapAlbum({groupId, attachmentDiv, middleware, uploading, lazyLoadQueue, isOut, chat, loadPromises}: {
+export function wrapAlbum({groupId, attachmentDiv, middleware, uploading, lazyLoadQueue, isOut, chat, loadPromises, noAutoDownload}: {
   groupId: string, 
   attachmentDiv: HTMLElement,
   middleware?: () => boolean,
@@ -1097,7 +1130,8 @@ export function wrapAlbum({groupId, attachmentDiv, middleware, uploading, lazyLo
   uploading?: boolean,
   isOut: boolean,
   chat: Chat,
-  loadPromises?: Promise<any>[]
+  loadPromises?: Promise<any>[],
+  noAutoDownload?: boolean,
 }) {
   const items: {size: PhotoSize.photoSize, media: any, message: any}[] = [];
 
@@ -1142,7 +1176,8 @@ export function wrapAlbum({groupId, attachmentDiv, middleware, uploading, lazyLo
         lazyLoadQueue,
         middleware,
         size,
-        loadPromises
+        loadPromises,
+        noAutoDownload
       });
     } else {
       wrapVideo({
@@ -1155,20 +1190,22 @@ export function wrapAlbum({groupId, attachmentDiv, middleware, uploading, lazyLo
         isOut,
         lazyLoadQueue,
         middleware,
-        loadPromises
+        loadPromises,
+        noAutoDownload
       });
     }
   });
 }
 
-export function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, messageDiv, chat, loadPromises}: {
+export function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, messageDiv, chat, loadPromises, noAutoDownload}: {
   albumMustBeRenderedFull: boolean,
   message: any,
   messageDiv: HTMLElement,
   bubble: HTMLElement,
   uploading?: boolean,
   chat: Chat,
-  loadPromises?: Promise<any>[]
+  loadPromises?: Promise<any>[],
+  noAutoDownload?: boolean,
 }) {
   let nameContainer: HTMLElement;
   const mids = albumMustBeRenderedFull ? chat.getMidsByMid(message.mid) : [message.mid];
@@ -1180,7 +1217,8 @@ export function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, 
     const message = chat.getMessage(mid);
     const div = wrapDocument({
       message,
-      loadPromises
+      loadPromises,
+      noAutoDownload
     });
 
     const container = document.createElement('div');

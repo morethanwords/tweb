@@ -214,7 +214,7 @@ export class AppDocsManager {
     };
   }
 
-  public getFileDownloadOptions(doc: MyDocument, thumb?: PhotoSize.photoSize, queueId?: number) {
+  public getFileDownloadOptions(doc: MyDocument, thumb?: PhotoSize.photoSize, queueId?: number, onlyCache?: boolean) {
     const inputFileLocation = this.getInput(doc, thumb?.type);
 
     let mimeType: string;
@@ -230,7 +230,8 @@ export class AppDocsManager {
       size: thumb ? thumb.size : doc.size, 
       mimeType: mimeType,
       fileName: doc.file_name,
-      queueId
+      queueId,
+      onlyCache
     };
   }
 
@@ -278,7 +279,7 @@ export class AppDocsManager {
     return getFileNameByLocation(this.getInput(doc, thumbSize), {fileName: doc.file_name});
   }
 
-  public downloadDoc(doc: MyDocument, queueId?: number): DownloadBlob {
+  public downloadDoc(doc: MyDocument, queueId?: number, onlyCache?: boolean): DownloadBlob {
     const fileName = this.getInputFileName(doc);
 
     let download: DownloadBlob = appDownloadManager.getDownload(fileName);
@@ -286,15 +287,15 @@ export class AppDocsManager {
       return download;
     }
 
-    const downloadOptions = this.getFileDownloadOptions(doc, undefined, queueId);
+    const downloadOptions = this.getFileDownloadOptions(doc, undefined, queueId, onlyCache);
     download = appDownloadManager.download(downloadOptions);
 
     const originalPromise = download;
     originalPromise.then((blob) => {
       doc.url = URL.createObjectURL(blob);
       doc.downloaded = true;
-    });
-
+    }, () => {});
+    
     if(doc.type === 'voice' && !opusDecodeController.isPlaySupported()) {
       download = originalPromise.then(async(blob) => {
         const reader = new FileReader();

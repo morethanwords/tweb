@@ -6,7 +6,7 @@ import { createPosterForVideo } from "../../helpers/files";
 import { copy, defineNotNumerableProperties, getObjectKeysAndSort } from "../../helpers/object";
 import { randomLong } from "../../helpers/random";
 import { splitStringByLength, limitSymbols } from "../../helpers/string";
-import { ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update } from "../../layer";
+import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update } from "../../layer";
 import { InvokeApiOptions } from "../../types";
 import { langPack } from "../langPack";
 import { logger, LogLevels } from "../logger";
@@ -1759,6 +1759,10 @@ export class AppMessagesManager {
         // ! нужно передавать folderId, так как по папке !== 0 нет свойства folder_id
         this.saveConversation(dialog, dialog.folder_id ?? folderId);
 
+        if(dialog.peerId === undefined) {
+          return;
+        }
+
         /* if(dialog.peerId === -1213511294) {
           this.log.error('lun bot', folderId, d);
         } */
@@ -2894,7 +2898,7 @@ export class AppMessagesManager {
   }
 
   /**
-   * Won't save migrated from peer
+   * Won't save migrated from peer, forbidden peers, left and kicked
    */
   public saveConversation(dialog: Dialog, folderId = 0) {
     const peerId = appPeersManager.getPeerId(dialog.peer);
@@ -2908,6 +2912,14 @@ export class AppMessagesManager {
     }
     
     const channelId = appPeersManager.isChannel(peerId) ? -peerId : 0;
+
+    if(peerId < 0) {
+      const chat: Chat = appChatsManager.getChat(-peerId);
+      if(chat._ === 'channelForbidden' || chat._ === 'chatForbidden' || (chat as Chat.chat).pFlags.left || (chat as Chat.chat).pFlags.kicked) {
+        return false;
+      }
+    }
+
     const peerText = appPeersManager.getPeerSearchText(peerId);
     searchIndexManager.indexObject(peerId, peerText, this.dialogsIndex);
 
