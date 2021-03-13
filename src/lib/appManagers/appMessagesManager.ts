@@ -2564,7 +2564,7 @@ export class AppMessagesManager {
     }
 
     if(message.action) {
-      const str = this.wrapMessageActionText(message);
+      const str = this.wrapMessageActionText(message, plain);
 
       messageText = str ? '<i>' + str + '</i>' : '';
     }
@@ -2605,7 +2605,7 @@ export class AppMessagesManager {
     return senderTitle;
   }
 
-  public wrapMessageActionText(message: any) {
+  public wrapMessageActionText(message: any, plain?: boolean) {
     const action = message.action as MessageAction;
 
     let str = '';
@@ -2618,7 +2618,7 @@ export class AppMessagesManager {
 
       const getNameDivHTML = (peerId: number) => {
         const title = appPeersManager.getPeerTitle(peerId);
-        return title ? `<div class="name inline" data-peer-id="${peerId}">${title}</div> ` : '';
+        return title ? (plain ? title + ' ' : `<div class="name inline" data-peer-id="${peerId}">${title}</div> `) : '';
       };
 
       switch(action._) {
