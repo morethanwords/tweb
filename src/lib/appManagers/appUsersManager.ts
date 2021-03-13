@@ -40,7 +40,7 @@ export class AppUsersManager {
       const update = e as Update;
       //console.log('on apiUpdate', update);
       switch(update._) {
-        case 'updateUserStatus':
+        case 'updateUserStatus': {
           const userId = update.user_id;
           const user = this.users[userId];
           if(user) {
@@ -58,7 +58,9 @@ export class AppUsersManager {
             user.sortStatus = this.getUserStatusForSort(user.status);
             rootScope.broadcast('user_update', userId);
           } //////else console.warn('No user by id:', userId);
+
           break;
+        }
   
         case 'updateUserPhoto': {
           const userId = update.user_id;
@@ -80,6 +82,22 @@ export class AppUsersManager {
             rootScope.broadcast('user_update', userId);
             rootScope.broadcast('avatar_update', userId);
           } else console.warn('No user by id:', userId);
+
+          break;
+        }
+
+        case 'updateUserName': {
+          const userId = update.user_id;
+          const user = this.users[userId];
+          if(user) {
+            this.forceUserOnline(userId);
+            
+            this.saveApiUser(Object.assign({}, user, {
+              first_name: update.first_name,
+              last_name: update.last_name,
+              username: update.username
+            }));
+          }
 
           break;
         }
@@ -305,10 +323,17 @@ export class AppUsersManager {
       user.sortStatus = this.getUserStatusForSort(user.status);
     }
 
+    let changedTitle = false;
     const oldUser = this.users[userId];
     if(oldUser === undefined) {
       this.users[userId] = user;
     } else {
+      if(user.first_name !== oldUser.first_name 
+        || user.last_name !== oldUser.last_name 
+        || user.username !== oldUser.username) {
+        changedTitle = true;
+      }
+
       safeReplaceObject(oldUser, user);
     }
 
@@ -317,6 +342,10 @@ export class AppUsersManager {
     if(this.cachedPhotoLocations[userId] !== undefined) {
       safeReplaceObject(this.cachedPhotoLocations[userId], user && 
         user.photo ? user.photo : {empty: true});
+    }
+
+    if(changedTitle) {
+      rootScope.broadcast('peer_title_edit', user.id);
     }
   }
 

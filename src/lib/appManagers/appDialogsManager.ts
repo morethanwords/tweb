@@ -28,6 +28,7 @@ import App from "../../config/app";
 import DEBUG, { MOUNT_CLASS_TO } from "../../config/debug";
 import appNotificationsManager from "./appNotificationsManager";
 import { InputNotifyPeer } from "../../layer";
+import PeerTitle from "../../components/peerTitle";
 
 type DialogDom = {
   avatarEl: AvatarElement,
@@ -43,8 +44,8 @@ type DialogDom = {
   muteAnimationTimeout?: number
 };
 
-const testScroll = false;
-let testTopSlice = 1;
+//const testScroll = false;
+//let testTopSlice = 1;
 
 class ConnectionStatusComponent {
   public static CHANGE_STATE_DELAY = 1000;
@@ -270,7 +271,7 @@ export class AppDialogsManager {
 
     this.setListClickListener(this.chatList, null, true);
 
-    if(testScroll) {
+    /* if(testScroll) {
       let i = 0;
       let add = () => {
         let li = document.createElement('li');
@@ -284,7 +285,7 @@ export class AppDialogsManager {
         add();
       }
       (window as any).addElement = add;
-    }
+    } */
 
     rootScope.on('user_update', (e) => {
       const userId = e;
@@ -712,9 +713,9 @@ export class AppDialogsManager {
   }
 
   private loadDialogs(side: SliceSides = 'bottom') {
-    if(testScroll) {
+    /* if(testScroll) {
       return;
-    }
+    } */
     
     if(this.loadDialogsPromise/*  || 1 === 1 */) return this.loadDialogsPromise;
 
@@ -1081,16 +1082,17 @@ export class AppDialogsManager {
         if(sender && sender.id) {
           const senderBold = document.createElement('b');
 
-          let str = '';
           if(sender.id === rootScope.myId) {
-            str = 'You';
+            senderBold.innerHTML = 'You';
           } else {
             //str = sender.first_name || sender.last_name || sender.username;
-            str = appPeersManager.getPeerTitle(lastMessage.fromId, true, true);
+            senderBold.append(new PeerTitle({
+              peerId: lastMessage.fromId,
+              onlyFirstName: true,
+            }).element);
           }
 
-          //senderBold.innerText = str + ': ';
-          senderBold.innerHTML = RichTextProcessor.wrapRichText(str, {noLinebreaks: true, noLinks: true}) + ': ';
+          senderBold.append(': ');
           //console.log(sender, senderBold.innerText);
           dom.lastMessageSpan.prepend(senderBold);
         } //////// else console.log('no sender', lastMessage, peerId);
@@ -1229,8 +1231,6 @@ export class AppDialogsManager {
       }
     }
 
-    let title = appPeersManager.getPeerTitle(peerId, false, onlyFirstName);
-
     const avatarEl = new AvatarElement();
     avatarEl.setAttribute('dialog', meAsSaved ? '1' : '0');
     avatarEl.setAttribute('peer', '' + peerId);
@@ -1260,14 +1260,14 @@ export class AppDialogsManager {
     const titleSpanContainer = document.createElement('span');
     titleSpanContainer.classList.add('user-title');
 
-    const titleSpan = document.createElement('span');
+    const peerTitle = new PeerTitle({
+      peerId,
+      dialog: meAsSaved,
+      onlyFirstName,
+      plainText: false
+    });
 
-    if(peerId === rootScope.myId && meAsSaved) {
-      title = onlyFirstName ? 'Saved' : 'Saved Messages';
-    } 
-
-    titleSpan.innerHTML = title;
-    titleSpanContainer.append(titleSpan);
+    titleSpanContainer.append(peerTitle.element);
     //p.classList.add('')
 
     // в других случаях иконка верификации не нужна (а первый - это главные чатлисты)
@@ -1329,7 +1329,7 @@ export class AppDialogsManager {
     const dom: DialogDom = {
       avatarEl,
       captionDiv,
-      titleSpan,
+      titleSpan: peerTitle.element,
       titleSpanContainer,
       statusSpan,
       lastTimeSpan,

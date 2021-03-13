@@ -22,7 +22,7 @@ import PopupDeleteDialog from "../popups/deleteDialog";
 import appNavigationController from "../appNavigationController";
 import { LEFT_COLUMN_ACTIVE_CLASSNAME } from "../sidebarLeft";
 import AppPrivateSearchTab from "../sidebarRight/tabs/search";
-import { SliderSuperTab } from "../slider";
+import PeerTitle from "../peerTitle";
 
 export default class ChatTopbar {
   container: HTMLDivElement;
@@ -482,8 +482,12 @@ export default class ChatTopbar {
         });
       }
     } else if(this.chat.type === 'chat') {
-      if(this.peerId === rootScope.myId) title = 'Saved Messages';
-      else title = this.appPeersManager.getPeerTitle(this.peerId);
+      this.title.innerHTML = '';
+      this.title.append(new PeerTitle({
+        peerId: this.peerId,
+        dialog: true,
+      }).element);
+      return;
     }
     
     this.title.innerHTML = title;

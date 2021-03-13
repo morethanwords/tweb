@@ -7,6 +7,7 @@ import CheckboxField from "../../checkboxField";
 import Button from "../../button";
 import appChatsManager from "../../../lib/appManagers/appChatsManager";
 import appProfileManager from "../../../lib/appManagers/appProfileManager";
+import { attachClickEvent } from "../../../helpers/dom";
 
 export default class AppEditGroupTab extends SliderSuperTab {
   private groupNameInputField: InputField;
@@ -77,6 +78,32 @@ export default class AppEditGroupTab extends SliderSuperTab {
       section.content.append(this.editPeer.avatarEdit.container, inputWrapper, groupTypeRow.container, permissionsRow.container, administratorsRow.container);
 
       this.scrollable.append(section.container);
+
+      attachClickEvent(this.editPeer.nextBtn, () => {
+        this.editPeer.nextBtn.disabled = true;
+  
+        let promises: Promise<any>[] = [];
+
+        const id = -this.peerId;
+        if(this.groupNameInputField.isValid()) {
+          promises.push(appChatsManager.editTitle(id, this.groupNameInputField.value));
+        }
+
+        if(this.descriptionInputField.isValid()) {
+          promises.push(appChatsManager.editAbout(id, this.descriptionInputField.value));
+        }
+
+        if(this.editPeer.uploadAvatar) {
+          promises.push(this.editPeer.uploadAvatar().then(inputFile => {
+            return appChatsManager.editPhoto(id, inputFile);
+          }));
+        }
+  
+        Promise.race(promises).finally(() => {
+          this.editPeer.nextBtn.removeAttribute('disabled');
+          this.close();
+        });
+      }, {listenerSetter: this.listenerSetter});
     }
 
     {

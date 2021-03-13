@@ -7,6 +7,7 @@ import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
 import apiUpdatesManager from "./apiUpdatesManager";
 import appMessagesManager from "./appMessagesManager";
+import appPeersManager from "./appPeersManager";
 import appProfileManager from "./appProfileManager";
 import appStateManager from "./appStateManager";
 import appUsersManager from "./appUsersManager";
@@ -137,7 +138,7 @@ export class AppChatsManager {
       this.usernames[searchUsername] = chat.id;
     } */
 
-    let changedPhoto = false;
+    let changedPhoto = false, changedTitle = false;
     if(oldChat === undefined) {
       this.chats[chat.id] = chat;
     } else {
@@ -145,6 +146,10 @@ export class AppChatsManager {
       let newPhoto = chat.photo && chat.photo.photo_small;
       if(JSON.stringify(oldPhoto) !== JSON.stringify(newPhoto)) {
         changedPhoto = true;
+      }
+
+      if(oldChat.title !== chat.title) {
+        changedTitle = true;
       }
 
       safeReplaceObject(oldChat, chat);
@@ -158,6 +163,10 @@ export class AppChatsManager {
 
     if(changedPhoto) {
       rootScope.broadcast('avatar_update', -chat.id);
+    }
+
+    if(changedTitle) {
+      rootScope.broadcast('peer_title_edit', -chat.id);
     }
   }
 
@@ -413,7 +422,10 @@ export class AppChatsManager {
     }).then((updates: any) => {
       apiUpdatesManager.processUpdateMessage(updates);
 
-      return updates.chats[0].id;
+      const channelId = updates.chats[0].id;
+      rootScope.broadcast('history_focus', -channelId);
+
+      return channelId;
     });
   }
 
@@ -436,33 +448,11 @@ export class AppChatsManager {
     }).then(updates => {
       apiUpdatesManager.processUpdateMessage(updates);
 
-      return (updates as any as Updates.updates).chats[0].id;
+      const chatId = (updates as any as Updates.updates).chats[0].id;
+      rootScope.broadcast('history_focus', -chatId);
+
+      return chatId;
     });
-  }
-
-  public editPhoto(id: number, inputFile: InputFile) {
-    const isChannel = this.isChannel(id);
-
-    const inputChatPhoto: InputChatPhoto.inputChatUploadedPhoto = {
-      _: 'inputChatUploadedPhoto', 
-      file: inputFile
-    };
-
-    if(isChannel) {
-      return apiManager.invokeApi('channels.editPhoto', {
-        channel: this.getChannelInput(id),
-        photo: inputChatPhoto
-      }).then(updates => {
-        apiUpdatesManager.processUpdateMessage(updates);
-      });
-    } else {
-      return apiManager.invokeApi('messages.editChatPhoto', {
-        chat_id: id,
-        photo: inputChatPhoto
-      }).then(updates => {
-        apiUpdatesManager.processUpdateMessage(updates);
-      });
-    }
   }
 
   public async getOnlines(id: number): Promise<number> {
@@ -543,6 +533,60 @@ export class AppChatsManager {
 
   public leave(id: number) {
     return this.isChannel(id) ? this.leaveChannel(id) : this.leaveChat(id);
+  }
+
+  public editPhoto(id: number, inputFile: InputFile) {
+    const inputChatPhoto: InputChatPhoto = {
+      _: 'inputChatUploadedPhoto',
+      file: inputFile
+    };
+
+    let promise: any;
+    if(this.isChannel(id)) {
+      promise = apiManager.invokeApi('channels.editPhoto', {
+        channel: this.getChannelInput(id),
+        photo: inputChatPhoto
+      });
+    } else {
+      promise = apiManager.invokeApi('messages.editChatPhoto', {
+        chat_id: id,
+        photo: inputChatPhoto
+      });
+    }
+
+    return promise.then((updates: any) => {
+      apiUpdatesManager.processUpdateMessage(updates);
+    });
+  }
+
+  public editTitle(id: number, title: string) {
+    let promise: any;
+
+    if(this.isChannel(id)) {
+      promise = apiManager.invokeApi('channels.editTitle', {
+        channel: this.getChannelInput(id),
+        title
+      });
+    } else {
+      promise = apiManager.invokeApi('messages.editChatTitle', {
+        chat_id: id,
+        title
+      });
+    }
+
+    return promise.then((updates: any) => {
+      apiUpdatesManager.processUpdateMessage(updates);
+    });
+  }
+
+  public editAbout(id: number, about: string) {
+    return apiManager.invokeApi('messages.editChatAbout', {
+      peer: appPeersManager.getInputPeerById(-id),
+      about
+    }).then(bool => {
+      //apiUpdatesManager.processUpdateMessage(updates);
+      rootScope.broadcast('peer_bio_edit', -id);
+    });
   }
 }
 
