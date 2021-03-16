@@ -304,7 +304,7 @@ export class AppMessagesManager {
         });
       }
 
-      appStateManager.addListener('save', this.saveState);
+      appStateManager.addEventListener('save', this.saveState);
     });
 
     appNotificationsManager.start();
@@ -2753,14 +2753,14 @@ export class AppMessagesManager {
           this.migratedFromTo[migrateFrom] = migrateTo;
           this.migratedToFrom[migrateTo] = migrateFrom;
 
-        setTimeout(() => {
+        //setTimeout(() => {
+          rootScope.broadcast('dialog_migrate', {migrateFrom, migrateTo});
+
           const dropped = this.dialogsStorage.dropDialog(migrateFrom);
           if(dropped.length) {
             rootScope.broadcast('dialog_drop', {peerId: migrateFrom, dialog: dropped[0]});
           }
-
-          rootScope.broadcast('dialog_migrate', {migrateFrom, migrateTo});
-        }, 100);
+        //}, 100);
       }
     }
   }

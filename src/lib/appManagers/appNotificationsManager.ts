@@ -134,7 +134,7 @@ export class AppNotificationsManager {
       this.unregisterDevice(tokenData);
     }); */
 
-    rootScope.addListener('dialogs_multiupdate', () => {
+    rootScope.addEventListener('dialogs_multiupdate', () => {
       //unregisterTopMsgs()
       this.topMessagesDeferred.resolve();
     }, true);

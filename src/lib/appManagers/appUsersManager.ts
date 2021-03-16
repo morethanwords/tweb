@@ -122,7 +122,7 @@ export class AppUsersManager {
         }
       }
 
-      appStateManager.addListener('save', async() => {
+      appStateManager.addEventListener('save', async() => {
         const contactsList = [...this.contactsList];
         for(const userId of contactsList) {
           appStateManager.setPeer(userId, this.getUser(userId));

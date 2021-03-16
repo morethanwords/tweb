@@ -122,7 +122,7 @@ export default class ChatTopbar {
     // * fix topbar overflow section
 
     this.listenerSetter.add(window, 'resize', this.onResize);
-    mediaSizes.addListener('changeScreen', this.onChangeScreen);
+    mediaSizes.addEventListener('changeScreen', this.onChangeScreen);
 
     attachClickEvent(this.container, (e) => {
       const container: HTMLElement = findUpClassName(e.target, 'pinned-container');
@@ -311,7 +311,7 @@ export default class ChatTopbar {
     });
 
     if(this.pinnedMessage) {
-      this.chat.addListener('setPeer', (mid, isTopMessage) => {
+      this.chat.addEventListener('setPeer', (mid, isTopMessage) => {
         const middleware = this.chat.bubbles.getMiddleware();
         appStateManager.getState().then((state) => {
           if(!middleware()) return;
@@ -369,7 +369,7 @@ export default class ChatTopbar {
     //this.chat.log.error('Topbar destroying');
 
     this.listenerSetter.removeAll();
-    mediaSizes.removeListener('changeScreen', this.onChangeScreen);
+    mediaSizes.removeEventListener('changeScreen', this.onChangeScreen);
     window.clearInterval(this.setPeerStatusInterval);
     
     if(this.pinnedMessage) {

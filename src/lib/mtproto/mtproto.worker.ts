@@ -63,11 +63,11 @@ const onMessage = async(e: any) => {
       
       const socketProxied = socketsProxied.get(id);
       if(socketTask.type === 'message') {
-        socketProxied.setListenerResult('message', socketTask.payload);
+        socketProxied.dispatchEvent('message', socketTask.payload);
       } else if(socketTask.type === 'open') {
-        socketProxied.setListenerResult('open');
+        socketProxied.dispatchEvent('open');
       } else if(socketTask.type === 'close') {
-        socketProxied.setListenerResult('close');
+        socketProxied.dispatchEvent('close');
         socketsProxied.delete(id);
       }
     }

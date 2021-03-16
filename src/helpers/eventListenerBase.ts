@@ -67,7 +67,7 @@ export default class EventListenerBase<Listeners extends {[name: string]: Functi
     this.listenerResults = {};
   }
 
-  public addListener(name: keyof Listeners, callback: Listeners[typeof name], once?: boolean) {
+  public addEventListener(name: keyof Listeners, callback: Listeners[typeof name], once?: boolean) {
     if(this.listenerResults.hasOwnProperty(name)) {
       callback(...this.listenerResults[name]);
       
@@ -80,7 +80,7 @@ export default class EventListenerBase<Listeners extends {[name: string]: Functi
     //e.add(this, name, {callback, once});
   }
 
-  public removeListener(name: keyof Listeners, callback: Listeners[typeof name]) {
+  public removeEventListener(name: keyof Listeners, callback: Listeners[typeof name]) {
     if(this.listeners[name]) {
       this.listeners[name].findAndSplice(l => l.callback === callback);
     }
@@ -88,7 +88,7 @@ export default class EventListenerBase<Listeners extends {[name: string]: Functi
   }
 
   // * must be protected, but who cares
-  public setListenerResult(name: keyof Listeners, ...args: ArgumentTypes<Listeners[typeof name]>) {
+  public dispatchEvent(name: keyof Listeners, ...args: ArgumentTypes<Listeners[typeof name]>) {
     if(this.reuseResults) {
       this.listenerResults[name] = args;
     }
@@ -111,7 +111,7 @@ export default class EventListenerBase<Listeners extends {[name: string]: Functi
         arr.push(listener.callback(...args));
 
         if(listener.once) {
-          this.removeListener(name, listener.callback);
+          this.removeEventListener(name, listener.callback);
         }
       });
 

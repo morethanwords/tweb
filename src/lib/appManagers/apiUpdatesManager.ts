@@ -618,7 +618,7 @@ export class ApiUpdatesManager {
 
       this.updatesState.syncLoading.then(() => {
         // * false for test purposes
-        /* false &&  */appStateManager.addListener('save', async() => {
+        /* false &&  */appStateManager.addEventListener('save', async() => {
           const us = this.updatesState;
           appStateManager.pushToState('updates', {
             seq: us.seq,

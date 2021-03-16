@@ -259,7 +259,7 @@ export class RLottiePlayer extends EventListenerBase<{
     }
     
     //console.log('set result enterFrame', frameNo);
-    this.setListenerResult('enterFrame', frameNo);
+    this.dispatchEvent('enterFrame', frameNo);
   }
 
   public renderFrame(frame: Uint8ClampedArray, frameNo: number) {
@@ -405,9 +405,9 @@ export class RLottiePlayer extends EventListenerBase<{
     return; */
 
     this.requestFrame(0);
-    this.setListenerResult('ready');
-    this.addListener('enterFrame', () => {
-      this.setListenerResult('firstFrame');
+    this.dispatchEvent('ready');
+    this.addEventListener('enterFrame', () => {
+      this.dispatchEvent('firstFrame');
 
       this.el.appendChild(this.canvas);
 
@@ -434,7 +434,7 @@ export class RLottiePlayer extends EventListenerBase<{
         }
       };
 
-      this.addListener('enterFrame', this.frameListener);
+      this.addEventListener('enterFrame', this.frameListener);
     }, true);
   }
 }
@@ -457,7 +457,7 @@ class QueryableWorker extends EventListenerBase<any> {
           return;
         } */
 
-        this.setListenerResult(event.data.queryMethodListener, ...event.data.queryMethodArguments);
+        this.dispatchEvent(event.data.queryMethodListener, ...event.data.queryMethodArguments);
       } else {
         this.defaultListener.call(this, event.data);
       }
@@ -578,12 +578,12 @@ class LottieLoader {
       for(let i = 0; i < this.workersLimit; ++i) {
         const worker = this.workers[i] = new QueryableWorker(new RLottieWorker());
 
-        worker.addListener('ready', () => {
+        worker.addEventListener('ready', () => {
           this.log('worker #' + i + ' ready');
 
-          worker.addListener('frame', this.onFrame);
-          worker.addListener('loaded', this.onPlayerLoaded);
-          worker.addListener('error', this.onPlayerError);
+          worker.addEventListener('frame', this.onFrame);
+          worker.addEventListener('loaded', this.onPlayerLoaded);
+          worker.addEventListener('error', this.onPlayerError);
 
           --remain;
           if(!remain) {

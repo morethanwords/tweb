@@ -230,7 +230,7 @@ export class AppStateManager extends EventListenerBase<{
 
     const tempId = this.tempId;
     this.savePromise = getHeavyAnimationPromise().then(() => {
-      return Promise.all(this.setListenerResult('save', this.state))
+      return Promise.all(this.dispatchEvent('save', this.state))
       .then(() => getHeavyAnimationPromise())
       .then(() => sessionStorage.set(this.state))
       .then(() => {

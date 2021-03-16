@@ -25,7 +25,7 @@ export default class PasswordMonkey {
     }, 'assets/img/TwoFactorSetupMonkeyPeek.tgs').then(_animation => {
       //return;
       this.animation = _animation;
-      this.animation.addListener('enterFrame', currentFrame => {
+      this.animation.addEventListener('enterFrame', currentFrame => {
         //console.log('enterFrame', currentFrame, this.needFrame);
 
         if((this.animation.direction === 1 && currentFrame >= this.needFrame) ||

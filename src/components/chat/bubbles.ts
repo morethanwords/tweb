@@ -367,12 +367,6 @@ export default class ChatBubbles {
       });
     });
 
-    this.listenerSetter.add(rootScope, 'dialog_drop', (e) => {
-      if(e.peerId === this.peerId) {
-        this.chat.appImManager.setPeer(0);
-      }
-    });
-
     this.listenerSetter.add(this.bubblesContainer, 'click', this.onBubblesClick/* , {capture: true, passive: false} */);
 
     if(DEBUG) {
@@ -1427,11 +1421,11 @@ export default class ChatBubbles {
         if(isTarget) {
           this.scrollToBubble(mounted.bubble, 'center');
           this.highlightBubble(mounted.bubble);
-          this.chat.setListenerResult('setPeer', lastMsgId, false);
+          this.chat.dispatchEvent('setPeer', lastMsgId, false);
         } else if(topMessage && !isJump) {
           //this.log('will scroll down', this.scroll.scrollTop, this.scroll.scrollHeight);
           this.scroll.scrollTop = this.scroll.scrollHeight;
-          this.chat.setListenerResult('setPeer', lastMsgId, true);
+          this.chat.dispatchEvent('setPeer', lastMsgId, true);
         }
         
         return null;
@@ -1556,7 +1550,7 @@ export default class ChatBubbles {
         this.scrollable.scrollTop = this.scrollable.scrollHeight;
       }
 
-      this.chat.setListenerResult('setPeer', lastMsgId, !isJump);
+      this.chat.dispatchEvent('setPeer', lastMsgId, !isJump);
 
       // warning
       if(!lastMsgId || this.bubbles[topMessage] || lastMsgId === topMessage) {

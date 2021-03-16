@@ -64,7 +64,7 @@ export default class Socket extends EventListenerBase<{
     this.log('opened');
 
     this.debug && this.log.debug('sending init packet');
-    this.setListenerResult('open');
+    this.dispatchEvent('open');
   };
 
   private handleError = (e: Event) => {
@@ -76,13 +76,13 @@ export default class Socket extends EventListenerBase<{
     this.log('closed'/* , event, this.pending, this.ws.bufferedAmount */);
 
     this.removeListeners();
-    this.setListenerResult('close');
+    this.dispatchEvent('close');
   };
 
   private handleMessage = (event: MessageEvent) => {
     this.debug && this.log.debug('<-', 'handleMessage', /* event,  */event.data.byteLength);
 
-    this.setListenerResult('message', event.data as ArrayBuffer);
+    this.dispatchEvent('message', event.data as ArrayBuffer);
   };
 
   public send = (body: Uint8Array) => {
