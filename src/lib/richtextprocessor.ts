@@ -741,6 +741,10 @@ namespace RichTextProcessor {
 
     return wrapEmojiText(first + last);
   }
+
+  export function isUsernameValid(username: string) {
+    return ((username.length >= 5 && username.length <= 32) || !username.length) && /^[a-zA-Z0-9_]*$/.test(username);
+  }
 }
 
 MOUNT_CLASS_TO && (MOUNT_CLASS_TO.RichTextProcessor = RichTextProcessor);

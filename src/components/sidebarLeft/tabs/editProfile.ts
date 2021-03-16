@@ -1,10 +1,10 @@
 import appProfileManager from "../../../lib/appManagers/appProfileManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
-import apiManager from "../../../lib/mtproto/mtprotoworker";
 import InputField from "../../inputField";
 import { SliderSuperTab } from "../../slider";
 import { attachClickEvent } from "../../../helpers/dom";
 import EditPeer from "../../editPeer";
+import { UsernameInputField } from "../../usernameInputField";
 
 // TODO: аватарка не поменяется в этой вкладке после изменения почему-то (если поставить в другом клиенте, и потом тут проверить, для этого ещё вышел в чатлист)
 
@@ -12,8 +12,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
   private firstNameInputField: InputField;
   private lastNameInputField: InputField;
   private bioInputField: InputField;
-  private userNameInputField: InputField;
-  private userNameInput: HTMLElement;
+  private usernameInputField: InputField;
   
   private profileUrlContainer: HTMLDivElement;
   private profileUrlAnchor: HTMLAnchorElement;
@@ -74,14 +73,22 @@ export default class AppEditProfileTab extends SliderSuperTab {
       const inputWrapper = document.createElement('div');
       inputWrapper.classList.add('input-wrapper');
 
-      this.userNameInputField =  new InputField({
+      this.usernameInputField = new UsernameInputField({
+        peerId: 0,
         label: 'Username (optional)',
         name: 'username',
-        plainText: true
+        plainText: true,
+        listenerSetter: this.listenerSetter,
+        onChange: () => {
+          this.editPeer.handleChange();
+          this.setProfileUrl();
+        },
+        availableText: 'Username is available',
+        takenText: 'Username is already taken',
+        invalidText: 'Username is invalid'
       });
-      this.userNameInput = this.userNameInputField.input;
 
-      inputWrapper.append(this.userNameInputField.container);
+      inputWrapper.append(this.usernameInputField.container);
 
       const caption = document.createElement('div');
       caption.classList.add('caption');
@@ -91,66 +98,9 @@ export default class AppEditProfileTab extends SliderSuperTab {
       this.profileUrlContainer = caption.querySelector('.profile-url-container');
       this.profileUrlAnchor = this.profileUrlContainer.lastElementChild as HTMLAnchorElement;
 
-      inputFields.push(this.userNameInputField);
+      inputFields.push(this.usernameInputField);
       this.scrollable.append(h2, inputWrapper, caption);
     }
-
-    let userNameLabel = this.userNameInput.nextElementSibling as HTMLLabelElement;
-
-    this.listenerSetter.add(this.userNameInput, 'input', () => {
-      let value = this.userNameInputField.value;
-
-      //console.log('userNameInput:', value);
-      if(value === this.userNameInputField.originalValue || !value.length) {
-        this.userNameInput.classList.remove('valid', 'error');
-        userNameLabel.innerText = 'Username (optional)';
-        this.setProfileUrl();
-        this.editPeer.handleChange();
-        return;
-      } else if(!this.isUsernameValid(value)) { // does not check the last underscore
-        this.userNameInput.classList.add('error');
-        this.userNameInput.classList.remove('valid');
-        userNameLabel.innerText = 'Username is invalid';
-      } else {
-        this.userNameInput.classList.remove('valid', 'error');
-      }
-
-      if(this.userNameInput.classList.contains('error')) {
-        this.setProfileUrl();
-        this.editPeer.handleChange();
-        return;
-      }
-
-      apiManager.invokeApi('account.checkUsername', {
-        username: value
-      }).then(available => {
-        if(this.userNameInputField.value !== value) return;
-
-        if(available) {
-          this.userNameInput.classList.add('valid');
-          this.userNameInput.classList.remove('error');
-          userNameLabel.innerText = 'Username is available';
-        } else {
-          this.userNameInput.classList.add('error');
-          this.userNameInput.classList.remove('valid');
-          userNameLabel.innerText = 'Username is already taken';
-        }
-      }, (err) => {
-        if(this.userNameInputField.value !== value) return;
-
-        switch(err.type) {
-          case 'USERNAME_INVALID': {
-            this.userNameInput.classList.add('error');
-            this.userNameInput.classList.remove('valid');
-            userNameLabel.innerText = 'Username is invalid';
-            break;
-          }
-        }
-      }).then(() => {
-        this.editPeer.handleChange();
-        this.setProfileUrl();
-      });
-    });
 
     attachClickEvent(this.editPeer.nextBtn, () => {
       this.editPeer.nextBtn.disabled = true;
@@ -169,8 +119,8 @@ export default class AppEditProfileTab extends SliderSuperTab {
         }));
       }
 
-      if(this.userNameInputField.isValid() && this.userNameInput.classList.contains('valid')) {
-        promises.push(appProfileManager.updateUsername(this.userNameInputField.value));
+      if(this.usernameInputField.isValid() && this.usernameInputField.input.classList.contains('valid')) {
+        promises.push(appUsersManager.updateUsername(this.usernameInputField.value));
       }
 
       Promise.race(promises).finally(() => {
@@ -187,13 +137,10 @@ export default class AppEditProfileTab extends SliderSuperTab {
 
     const user = appUsersManager.getSelf();
 
-    this.firstNameInputField.setOriginalValue(user.first_name);
-    this.lastNameInputField.setOriginalValue(user.last_name);
-    this.bioInputField.setOriginalValue('');
-    this.userNameInputField.setOriginalValue(user.username ?? '');
-
-    this.userNameInput.classList.remove('valid', 'error');
-    this.userNameInput.nextElementSibling.innerHTML = 'Username (optional)';
+    this.firstNameInputField.setOriginalValue(user.first_name, true);
+    this.lastNameInputField.setOriginalValue(user.last_name, true);
+    this.bioInputField.setOriginalValue('', true);
+    this.usernameInputField.setOriginalValue(user.username, true);
 
     appProfileManager.getProfile(user.id, true).then(userFull => {
       if(userFull.about) {
@@ -205,16 +152,12 @@ export default class AppEditProfileTab extends SliderSuperTab {
     this.editPeer.handleChange();
   }
 
-  public isUsernameValid(username: string) {
-    return ((username.length >= 5 && username.length <= 32) || !username.length) && /^[a-zA-Z0-9_]*$/.test(username);
-  }
-
   private setProfileUrl() {
-    if(this.userNameInput.classList.contains('error') || !this.userNameInputField.value.length) {
+    if(this.usernameInputField.input.classList.contains('error') || !this.usernameInputField.value.length) {
       this.profileUrlContainer.style.display = 'none';
     } else {
       this.profileUrlContainer.style.display = '';
-      let url = 'https://t.me/' + this.userNameInputField.value;
+      let url = 'https://t.me/' + this.usernameInputField.value;
       this.profileUrlAnchor.innerText = url;
       this.profileUrlAnchor.href = url;
     }

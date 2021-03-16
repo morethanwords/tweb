@@ -51,6 +51,22 @@ const checkAndSetRTL = (input: HTMLElement) => {
   input.style.direction = direction;
 };
 
+export enum InputState {
+  Neutral = 0,
+  Valid = 1,
+  Error = 2
+};
+
+export type InputFieldOptions = {
+  placeholder?: string, 
+  label?: string, 
+  name?: string, 
+  maxLength?: number, 
+  showLengthOn?: number,
+  plainText?: true,
+  animate?: true
+};
+
 class InputField {
   public container: HTMLElement;
   public input: HTMLElement;
@@ -63,15 +79,7 @@ class InputField {
   protected wasInputFakeClientHeight: number;
   protected showScrollDebounced: () => void;
 
-  constructor(protected options: {
-    placeholder?: string, 
-    label?: string, 
-    name?: string, 
-    maxLength?: number, 
-    showLengthOn?: number,
-    plainText?: true,
-    animate?: true
-  } = {}) {
+  constructor(public options: InputFieldOptions = {}) {
     this.container = document.createElement('div');
     this.container.classList.add('input-field');
 
@@ -211,14 +219,31 @@ class InputField {
     return !this.input.classList.contains('error') && this.value !== this.originalValue;
   }
 
-  public setOriginalValue(value: InputField['originalValue']) {
+  public setOriginalValue(value: InputField['originalValue'] = '', silent = false) {
     this.originalValue = value;
 
-    if(this.options.plainText) {
-      this.value = value;
-    } else {
-      this.value = RichTextProcessor.wrapDraftText(value);
+    if(!this.options.plainText) {
+      value = RichTextProcessor.wrapDraftText(value);
     }
+
+    if(silent) {
+      this.setValueSilently(value, false); 
+    } else {
+      this.value = value;
+    }
+  }
+
+  public setState(state: InputState, label?: string) {
+    if(label) {
+      this.label.innerHTML = label;
+    }
+
+    this.input.classList.toggle('error', !!(state & InputState.Error));
+    this.input.classList.toggle('valid', !!(state & InputState.Valid));
+  }
+
+  public setError(label?: string) {
+    this.setState(InputState.Error, label);
   }
 }
 

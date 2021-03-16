@@ -11,6 +11,7 @@ import { attachClickEvent, toggleDisability } from "../../../helpers/dom";
 import { ChatFull } from "../../../layer";
 import PopupPeer from "../../popups/peer";
 import { addCancelButton } from "../../popups";
+import AppGroupTypeTab from "./groupType";
 
 export default class AppEditGroupTab extends SliderSuperTab {
   private groupNameInputField: InputField;
@@ -41,8 +42,10 @@ export default class AppEditGroupTab extends SliderSuperTab {
         name: 'group-description',
         maxLength: 255
       });
+
+      const chat = appChatsManager.getChat(-this.peerId);
       
-      this.groupNameInputField.setOriginalValue(appChatsManager.getChat(-this.peerId).title);
+      this.groupNameInputField.setOriginalValue(chat.title);
 
       this.descriptionInputField.setOriginalValue(chatFull.about);
 
@@ -62,8 +65,13 @@ export default class AppEditGroupTab extends SliderSuperTab {
       if(appChatsManager.hasRights(-this.peerId, 'change_type')) {
         const groupTypeRow = new Row({
           title: 'Group Type',
-          subtitle: 'Private',
-          clickable: true,
+          subtitle: chat.username ? 'Public' : 'Private',
+          clickable: () => {
+            const tab = new AppGroupTypeTab(this.slider);
+            tab.peerId = this.peerId;
+            tab.chatFull = chatFull;
+            tab.open();
+          },
           icon: 'lock'
         });
   
@@ -139,7 +147,7 @@ export default class AppEditGroupTab extends SliderSuperTab {
         });
   
         if(appChatsManager.isChannel(-this.peerId) && !(chatFull as ChatFull.channelFull).pFlags.hidden_prehistory) {
-          showChatHistoryCheckboxField.value = true;
+          showChatHistoryCheckboxField.checked = true;
         }
   
         section.content.append(showChatHistoryCheckboxField.label);
