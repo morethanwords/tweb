@@ -51,7 +51,7 @@ export default class AppNotificationsTab extends SliderSuperTabEventable {
         
         applySettings();
 
-        this.eventListener.addListener('destroy', () => {
+        this.eventListener.addEventListener('destroy', () => {
           const mute = !enabledRow.checkboxField.checked;
           const showPreviews = previewEnabledRow.checkboxField.checked;
 
@@ -117,7 +117,7 @@ export default class AppNotificationsTab extends SliderSuperTabEventable {
       appNotificationsManager.getContactSignUpNotification().then(enabled => {
         contactsSignUpRow.checkboxField.checked = enabled;
 
-        this.eventListener.addListener('destroy', () => {
+        this.eventListener.addEventListener('destroy', () => {
           const _enabled = contactsSignUpRow.checkboxField.checked;
           if(enabled !== _enabled) {
             appNotificationsManager.setContactSignUpNotification(!_enabled);

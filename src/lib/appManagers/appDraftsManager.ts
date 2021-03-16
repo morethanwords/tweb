@@ -22,7 +22,7 @@ export class AppDraftsManager {
     appStateManager.getState().then(state => {
       this.drafts = state.drafts;
 
-      appStateManager.addListener('save', async() => {
+      appStateManager.addEventListener('save', async() => {
         appStateManager.pushToState('drafts', this.drafts);
       });
     });

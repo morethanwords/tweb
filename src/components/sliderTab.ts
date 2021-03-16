@@ -105,7 +105,7 @@ export class SliderSuperTabEventable extends SliderSuperTab {
   }
 
   onCloseAfterTimeout() {
-    this.eventListener.setListenerResult('destroy');
+    this.eventListener.dispatchEvent('destroy');
     this.eventListener.cleanup();
     return super.onCloseAfterTimeout();
   }

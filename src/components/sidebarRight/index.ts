@@ -27,7 +27,7 @@ export class AppSidebarRight extends SidebarSlider {
 
     this.sharedMediaTab = sharedMediaTab;
 
-    mediaSizes.addListener('changeScreen', (from, to) => {
+    mediaSizes.addEventListener('changeScreen', (from, to) => {
       if(to === ScreenSize.medium && from !== ScreenSize.mobile) {
         this.toggleSidebar(false);
       }

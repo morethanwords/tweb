@@ -99,9 +99,9 @@ export default class TcpObfuscated implements MTTransport {
   private onClose = () => {
     this.connected = false;
 
-    this.connection.removeListener('open', this.onOpen);
-    this.connection.removeListener('close', this.onClose);
-    this.connection.removeListener('message', this.onMessage);
+    this.connection.removeEventListener('open', this.onOpen);
+    this.connection.removeEventListener('close', this.onClose);
+    this.connection.removeEventListener('message', this.onMessage);
     this.connection = undefined;
     
     const time = Date.now();
@@ -132,9 +132,9 @@ export default class TcpObfuscated implements MTTransport {
 
   private connect() {
     this.connection = new this.Connection(this.dcId, this.url, this.logSuffix);
-    this.connection.addListener('open', this.onOpen);
-    this.connection.addListener('close', this.onClose);
-    this.connection.addListener('message', this.onMessage);
+    this.connection.addEventListener('open', this.onOpen);
+    this.connection.addEventListener('close', this.onClose);
+    this.connection.addEventListener('message', this.onMessage);
   }
 
   private encodeBody(body: Uint8Array) {

@@ -111,7 +111,7 @@ class MediaSizes extends EventListenerBase<{
       //console.log('changeScreen', this.activeScreen, activeScreen);
 
       if(wasScreen !== undefined) {
-        this.setListenerResult('changeScreen', this.activeScreen, activeScreen);
+        this.dispatchEvent('changeScreen', this.activeScreen, activeScreen);
       }
     }
 

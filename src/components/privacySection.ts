@@ -150,7 +150,7 @@ export default class PrivacySection {
         });
       }
 
-      options.tab.eventListener.addListener('destroy', () => {
+      options.tab.eventListener.addEventListener('destroy', () => {
         const rules: InputPrivacyRule[] = [];
 
         switch(this.type) {

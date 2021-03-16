@@ -10,11 +10,11 @@ import PopupConfirmAction from "../../popups/confirmAction";
 import RadioField from "../../radioField";
 import Row, { RadioFormFromRows } from "../../row";
 import { SettingSection } from "../../sidebarLeft";
-import { SliderSuperTab } from "../../slider";
 import { toast } from "../../toast";
 import { UsernameInputField } from "../../usernameInputField";
+import { SliderSuperTabEventable } from "../../sliderTab";
 
-export default class AppGroupTypeTab extends SliderSuperTab {
+export default class AppGroupTypeTab extends SliderSuperTabEventable {
   public peerId: number;
   public chatFull: ChatFull;
 
@@ -130,12 +130,12 @@ export default class AppGroupTypeTab extends SliderSuperTab {
     this.content.append(applyBtn);
 
     attachClickEvent(applyBtn, () => {
-      const unsetLoader = setButtonLoader(applyBtn);
+      /* const unsetLoader =  */setButtonLoader(applyBtn);
       const username = publicRow.radioField.checked ? linkInputField.getValue() : '';
       appChatsManager.migrateChat(-this.peerId).then(channelId => {
         return appChatsManager.updateUsername(channelId, username);
       }).then(() => {
-        unsetLoader();
+        //unsetLoader();
         this.close();
       });
     }, {listenerSetter: this.listenerSetter});

@@ -142,17 +142,17 @@ class RootScope extends EventListenerBase<any> {
       }
     //} */
 
-    this.setListenerResult(name, detail);
+    this.dispatchEvent(name, detail);
   };
 
-  public on = <T extends keyof BroadcastEvents>(name: T, callback: (e: BroadcastEvents[T]) => any) => {
-    this.addListener(name, callback);
+  public on = <T extends keyof BroadcastEvents>(name: T, callback: (e: BroadcastEvents[T]) => any, once?: true) => {
+    super.addEventListener(name, callback, once);
   };
 
   public addEventListener = this.on;
 
   public off = <T extends keyof BroadcastEvents>(name: T, callback: (e: BroadcastEvents[T]) => any) => {
-    this.removeListener(name, callback);
+    super.removeEventListener(name, callback);
   };
 
   public removeEventListener = this.off;

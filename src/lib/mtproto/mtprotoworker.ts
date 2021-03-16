@@ -221,9 +221,9 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
             }
           });
 
-          socket.removeListener('open', onOpen);
-          socket.removeListener('close', onClose);
-          socket.removeListener('message', onMessage);
+          socket.removeEventListener('open', onOpen);
+          socket.removeEventListener('close', onClose);
+          socket.removeEventListener('message', onMessage);
           this.sockets.delete(id);
         };
         const onMessage = (buffer: ArrayBuffer) => {
@@ -237,9 +237,9 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
           });
         };
 
-        socket.addListener('open', onOpen);
-        socket.addListener('close', onClose);
-        socket.addListener('message', onMessage);
+        socket.addEventListener('open', onOpen);
+        socket.addEventListener('close', onClose);
+        socket.addEventListener('message', onMessage);
         this.sockets.set(id, socket);
       }
     } else if(task.hasOwnProperty('result') || task.hasOwnProperty('error')) {

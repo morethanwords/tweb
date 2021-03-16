@@ -955,7 +955,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
 
         //const deferred = deferredPromise<void>();
   
-        animation.addListener('firstFrame', () => {
+        animation.addEventListener('firstFrame', () => {
           const element = div.firstElementChild;
           const needFadeIn = !element || element.tagName === 'svg';
 

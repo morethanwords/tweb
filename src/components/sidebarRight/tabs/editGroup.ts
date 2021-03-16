@@ -12,6 +12,7 @@ import { ChatFull } from "../../../layer";
 import PopupPeer from "../../popups/peer";
 import { addCancelButton } from "../../popups";
 import AppGroupTypeTab from "./groupType";
+import rootScope from "../../../lib/rootScope";
 
 export default class AppEditGroupTab extends SliderSuperTab {
   private groupNameInputField: InputField;
@@ -19,7 +20,11 @@ export default class AppEditGroupTab extends SliderSuperTab {
   private editPeer: EditPeer;
   public peerId: number;
 
-  protected async init() {
+  protected async _init() {
+    // * cleanup prev
+    this.listenerSetter.removeAll();
+    this.scrollable.container.innerHTML = '';
+
     this.container.classList.add('edit-peer-container', 'edit-group-container');
     this.title.innerHTML = 'Edit';
 
@@ -65,16 +70,22 @@ export default class AppEditGroupTab extends SliderSuperTab {
       if(appChatsManager.hasRights(-this.peerId, 'change_type')) {
         const groupTypeRow = new Row({
           title: 'Group Type',
-          subtitle: chat.username ? 'Public' : 'Private',
           clickable: () => {
             const tab = new AppGroupTypeTab(this.slider);
             tab.peerId = this.peerId;
             tab.chatFull = chatFull;
             tab.open();
+
+            this.listenerSetter.add(tab.eventListener, 'destroy', setGroupTypeSubtitle);
           },
           icon: 'lock'
         });
-  
+
+        const setGroupTypeSubtitle = () => {
+          groupTypeRow.subtitle.innerHTML = chat.username ? 'Public' : 'Private';
+        };
+
+        setGroupTypeSubtitle();
         section.content.append(groupTypeRow.container);
       }
 
@@ -186,5 +197,17 @@ export default class AppEditGroupTab extends SliderSuperTab {
 
       this.scrollable.append(section.container);
     }
+
+    // ! this one will fire earlier than tab's closeAfterTimeout (destroy) event and listeners will be erased, so destroy won't fire
+    this.listenerSetter.add(rootScope, 'dialog_migrate', ({migrateFrom, migrateTo}) => {
+      if(this.peerId === migrateFrom) {
+        this.peerId = migrateTo;
+        this._init();
+      }
+    });
+  }
+
+  protected init() {
+    return this._init();
   }
 }

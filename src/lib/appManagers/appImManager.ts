@@ -185,7 +185,7 @@ export class AppImManager {
     }
 
     // * fix simultaneous opened both sidebars, can happen when floating sidebar is opened with left sidebar
-    mediaSizes.addListener('changeScreen', (from, to) => {
+    mediaSizes.addEventListener('changeScreen', (from, to) => {
       if(document.body.classList.contains(LEFT_COLUMN_ACTIVE_CLASSNAME) 
         && document.body.classList.contains(RIGHT_COLUMN_ACTIVE_CLASSNAME)) {
         appSidebarRight.toggleSidebar(false);
