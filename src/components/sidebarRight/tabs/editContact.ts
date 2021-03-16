@@ -81,8 +81,8 @@ export default class AppEditContactTab extends SliderSuperTab {
         const peerId = appPeersManager.getPeerId(update.peer.peer);
         if(this.peerId === peerId) {
           const enabled = !appNotificationsManager.isMuted(update.notify_settings);
-          if(enabled !== notificationsCheckboxField.value) {
-            notificationsCheckboxField.value = enabled;
+          if(enabled !== notificationsCheckboxField.checked) {
+            notificationsCheckboxField.checked = enabled;
           }
         }
       });
@@ -92,7 +92,7 @@ export default class AppEditContactTab extends SliderSuperTab {
       });
 
       const enabled = !appNotificationsManager.isPeerLocalMuted(this.peerId, false);
-      notificationsCheckboxField.value = enabled;
+      notificationsCheckboxField.checked = enabled;
 
       const profileNameDiv = document.createElement('div');
       profileNameDiv.classList.add('profile-name');

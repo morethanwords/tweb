@@ -737,6 +737,14 @@ export class AppUsersManager {
     }
   }
 
+  public updateUsername(username: string) {
+    return apiManager.invokeApi('account.updateUsername', {
+      username
+    }).then((user) => {
+      this.saveApiUser(user);
+    });
+  }
+
   public setUserStatus(userId: number, offline: boolean) {
     if(this.isBot(userId)) {
       return;

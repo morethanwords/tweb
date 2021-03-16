@@ -303,7 +303,10 @@ export default class PopupCreatePoll extends PopupElement {
     });
     questionField.input.addEventListener('input', this.onInput);
 
-    const radioField = new RadioField('', 'question');
+    const radioField = new RadioField({
+      text: '', 
+      name: 'question'
+    });
     radioField.main.append(questionField.container);
     questionField.input.addEventListener('click', cancelEvent);
     radioField.label.classList.add('hidden-widget');

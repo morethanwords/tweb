@@ -1157,6 +1157,11 @@ middle-ellipsis-element {
   &-subtitle {
     color: var(--color-text-secondary) !important;
     font-size: .875rem !important;
+
+    // * lol
+    line-height: 1rem;
+    margin-top: .1875rem;
+    margin-bottom: .125rem;
   }
 }
 

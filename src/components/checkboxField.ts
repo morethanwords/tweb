@@ -37,7 +37,7 @@ export default class CheckboxField {
 
     if(options.stateKey) {
       appStateManager.getState().then(state => {
-        this.value = getDeepProperty(state, options.stateKey);
+        this.checked = getDeepProperty(state, options.stateKey);
 
         input.addEventListener('change', () => {
           appStateManager.setByKey(options.stateKey, input.checked);
@@ -83,18 +83,18 @@ export default class CheckboxField {
     }
   }
 
-  get value() {
+  get checked() {
     return this.input.checked;
   }
 
-  set value(value: boolean) {
-    this.setValueSilently(value);
+  set checked(checked: boolean) {
+    this.setValueSilently(checked);
 
     const event = new Event('change', {bubbles: true, cancelable: true});
     this.input.dispatchEvent(event);
   }
 
-  public setValueSilently(value: boolean) {
-    this.input.checked = value;
+  public setValueSilently(checked: boolean) {
+    this.input.checked = checked;
   }
 }

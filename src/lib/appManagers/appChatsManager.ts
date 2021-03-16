@@ -1,7 +1,7 @@
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { numberThousandSplitter } from "../../helpers/number";
 import { isObject, safeReplaceObject, copy } from "../../helpers/object";
-import { Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatParticipants, InputChannel, InputChatPhoto, InputFile, InputPeer, SendMessageAction, Updates } from "../../layer";
+import { Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatParticipants, InputChannel, InputChatPhoto, InputFile, InputPeer, SendMessageAction, Update, Updates } from "../../layer";
 import apiManager from '../mtproto/mtprotoworker';
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
@@ -276,11 +276,18 @@ export class AppChatsManager {
 
   public getChannelInput(id: number): InputChannel {
     if(id < 0) id = -id;
-    return {
-      _: 'inputChannel',
-      channel_id: id,
-      access_hash: this.getChat(id).access_hash/*  || this.channelAccess[id] */ || 0
-    };
+    const chat: Chat = this.getChat(id);
+    if(chat._ === 'chatEmpty' || !(chat as Chat.channel).access_hash) {
+      return {
+        _: 'inputChannelEmpty'
+      };
+    } else {
+      return {
+        _: 'inputChannel',
+        channel_id: id,
+        access_hash: (chat as Chat.channel).access_hash/*  || this.channelAccess[id] */ || '0'
+      };
+    }
   }
 
   public getChatInputPeer(id: number): InputPeer.inputPeerChat {
@@ -519,10 +526,30 @@ export class AppChatsManager {
     }).then(this.onChatUpdated.bind(this, id));
   }
 
-  public migrateChat(id: number) {
+  public migrateChat(id: number): Promise<number> {
+    const chat: Chat = this.getChat(id);
+    if(chat._ === 'channel') return Promise.resolve(chat.id);
     return apiManager.invokeApi('messages.migrateChat', {
       chat_id: id
-    }).then(this.onChatUpdated.bind(this, id));
+    }).then((updates) => {
+      this.onChatUpdated(id, updates);
+      const update: Update.updateChannel = (updates as Updates.updates).updates.find(u => u._ === 'updateChannel') as any;
+      return update.channel_id;
+    });
+  }
+
+  public updateUsername(id: number, username: string) {
+    return apiManager.invokeApi('channels.updateUsername', {
+      channel: this.getChannelInput(id),
+      username
+    }).then((bool) => {
+      if(bool) {
+        const chat: Chat.channel = this.getChat(id);
+        chat.username = username;
+      }
+
+      return bool;
+    });
   }
 
   public editPhoto(id: number, inputFile: InputFile) {

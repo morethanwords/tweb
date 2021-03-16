@@ -62,7 +62,15 @@ export default class PrivacySection {
     
     const random = randomLong();
     r.forEach(({type, text}) => {
-      this.radioRows.set(type, new Row({radioField: new RadioField(text, random, '' + type)}));
+      const row = new Row({
+        radioField: new RadioField({
+          text, 
+          name: random, 
+          value: '' + type
+        })
+      });
+      
+      this.radioRows.set(type, row);
     });
 
     const form = RadioFormFromRows([...this.radioRows.values()], this.onRadioChange);

@@ -79,6 +79,18 @@ export function putPreloader(elem: Element, returnDiv = false): HTMLElement {
 
 MOUNT_CLASS_TO && (MOUNT_CLASS_TO.putPreloader = putPreloader);
 
+export function setButtonLoader(elem: HTMLButtonElement, icon = 'check') {
+  elem.classList.remove('tgico-' + icon);
+  elem.disabled = true;
+  putPreloader(elem);
+
+  return () => {
+    elem.innerHTML = '';
+    elem.classList.add('tgico-' + icon);
+    elem.removeAttribute('disabled');
+  };
+}
+
 let sortedCountries: Country[];
 export function formatPhoneNumber(str: string) {
   str = str.replace(/\D/g, '');

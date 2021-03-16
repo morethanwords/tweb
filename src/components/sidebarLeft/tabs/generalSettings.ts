@@ -88,12 +88,22 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
       const form = document.createElement('form');
 
       const enterRow = new Row({
-        radioField: new RadioField('Send by Enter', 'send-shortcut', 'enter', 'settings.sendShortcut'),
+        radioField: new RadioField({
+          text: 'Send by Enter', 
+          name: 'send-shortcut', 
+          value: 'enter', 
+          stateKey: 'settings.sendShortcut'
+        }),
         subtitle: 'New line by Shift + Enter',
       });
 
       const ctrlEnterRow = new Row({
-        radioField: new RadioField(`Send by ${isApple ? '⌘' : 'Ctrl'} + Enter`, 'send-shortcut', 'ctrlEnter', 'settings.sendShortcut'),
+        radioField: new RadioField({
+          text: `Send by ${isApple ? '⌘' : 'Ctrl'} + Enter`, 
+          name: 'send-shortcut',
+          value: 'ctrlEnter', 
+          stateKey: 'settings.sendShortcut'
+        }),
         subtitle: 'New line by Enter',
       });
       
