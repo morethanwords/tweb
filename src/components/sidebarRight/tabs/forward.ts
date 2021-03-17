@@ -89,7 +89,7 @@ export default class AppForwardTab implements SliderTab {
         });
         document.body.classList.add('is-forward-active');
       }, 
-      chatRightsAction: 'send'
+      chatRightsAction: 'send_messages'
     });
   }
 }

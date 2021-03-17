@@ -516,7 +516,7 @@ export class AppImManager {
 
   private canDrag() {
     const peerId = this.chat?.peerId;
-    return !(!peerId || rootScope.overlayIsActive || (peerId < 0 && !appChatsManager.hasRights(peerId, 'send', 'send_media')));
+    return !(!peerId || rootScope.overlayIsActive || (peerId < 0 && !appChatsManager.hasRights(peerId, 'send_media')));
   }
 
   private onDocumentPaste = (e: ClipboardEvent | DragEvent, attachType?: 'media' | 'document') => {

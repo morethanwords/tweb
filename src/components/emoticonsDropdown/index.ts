@@ -199,10 +199,10 @@ export class EmoticonsDropdown {
     const children = this.tabsEl.children;
     const tabsElements = Array.from(children) as HTMLElement[];
 
-    const canSendStickers = peerId > 0 || appChatsManager.hasRights(peerId, 'send', 'send_stickers');
+    const canSendStickers = peerId > 0 || appChatsManager.hasRights(peerId, 'send_stickers');
     tabsElements[2].toggleAttribute('disabled', !canSendStickers);
 
-    const canSendGifs = peerId > 0 || appChatsManager.hasRights(peerId, 'send', 'send_gifs');
+    const canSendGifs = peerId > 0 || appChatsManager.hasRights(peerId, 'send_gifs');
     tabsElements[3].toggleAttribute('disabled', !canSendGifs);
 
     const active = this.tabsEl.querySelector('.active');

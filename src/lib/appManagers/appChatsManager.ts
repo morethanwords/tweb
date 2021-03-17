@@ -1,6 +1,6 @@
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { numberThousandSplitter } from "../../helpers/number";
-import { isObject, safeReplaceObject, copy } from "../../helpers/object";
+import { isObject, safeReplaceObject, copy, deepEqual } from "../../helpers/object";
 import { Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatParticipants, InputChannel, InputChatPhoto, InputFile, InputPeer, SendMessageAction, Update, Updates } from "../../layer";
 import apiManager from '../mtproto/mtprotoworker';
 import { RichTextProcessor } from "../richtextprocessor";
@@ -14,7 +14,7 @@ import appUsersManager from "./appUsersManager";
 
 export type Channel = Chat.channel;
 
-export type ChatRights = 'send' | 'change_info' | 'change_permissions' | 'change_type' | 'pin_messages' | 'deleteRevoke' | 'delete_chat';
+export type ChatRights = keyof ChatBannedRights['pFlags'] | keyof ChatAdminRights['pFlags'] | 'change_type' | 'change_permissions' | 'delete_chat';
 
 export type UserTyping = Partial<{userId: number, action: SendMessageAction, timeout: number}>;
 
@@ -30,15 +30,26 @@ export class AppChatsManager {
   public typingsInPeer: {[peerId: number]: UserTyping[]} = {};
 
   constructor() {
-    rootScope.on('apiUpdate', (e) => {
+    rootScope.on('apiUpdate', (update) => {
       // console.log('on apiUpdate', update)
-      const update = e;
       switch(update._) {
-        case 'updateChannel':
+        case 'updateChannel': {
           const channelId = update.channel_id;
           //console.log('updateChannel:', update);
-          rootScope.broadcast('channel_settings', {channelId: channelId});
+          rootScope.broadcast('channel_settings', {channelId});
           break;
+        }
+
+        case 'updateChatDefaultBannedRights': {
+          const chatId = -appPeersManager.getPeerId(update.peer);
+          const chat: Chat = this.getChat(chatId);
+          if(chat._ !== 'chatEmpty') {
+            (chat as Chat.chat).default_banned_rights = update.default_banned_rights;
+            rootScope.broadcast('chat_update', chatId);
+          }
+
+          break;
+        }
 
         case 'updateUserTyping':
         case 'updateChatUserTyping': {
@@ -171,7 +182,7 @@ export class AppChatsManager {
     return this.chats[id] || {_: 'chatEmpty', id, deleted: true, access_hash: '', pFlags: {}/* this.channelAccess[id] */};
   }
 
-  public hasRights(id: number, action: ChatRights, flag?: keyof ChatBannedRights['pFlags']) {
+  public hasRights(id: number, action: ChatRights, userId?: number) {
     const chat: Chat = this.getChat(id);
     if(chat._ === 'chatEmpty') return false;
 
@@ -182,11 +193,15 @@ export class AppChatsManager {
       return false;
     }
 
-    if(chat.pFlags.creator) {
+    if(userId !== undefined && appUsersManager.getSelf().id === userId) {
+      userId = undefined;
+    }
+
+    if(chat.pFlags.creator && userId === undefined) {
       return true;
     }
 
-    const rights = chat.admin_rights || (chat as Chat.channel).banned_rights || chat.default_banned_rights;
+    const rights = (userId === undefined && (chat.admin_rights || (chat as Chat.channel).banned_rights)) || chat.default_banned_rights;
     if(!rights) {
       return false;
     }
@@ -195,9 +210,15 @@ export class AppChatsManager {
     if(rights) myFlags = rights.pFlags as any;
 
     switch(action) {
-      // good
-      case 'send': {
-        if(flag && myFlags[flag]) {
+      case 'embed_links':
+      case 'send_games':
+      case 'send_gifs':
+      case 'send_inline':
+      case 'send_media':
+      case 'send_messages':
+      case 'send_polls':
+      case 'send_stickers': {
+        if(rights._ === 'chatBannedRights' && myFlags[action]) {
           return false;
         }
 
@@ -211,7 +232,7 @@ export class AppChatsManager {
       }
 
       // * revoke foreign messages
-      case 'deleteRevoke': {
+      case 'delete_messages': {
         return !!myFlags.delete_messages;
       }
 
@@ -219,6 +240,7 @@ export class AppChatsManager {
         return rights._ === 'chatAdminRights' ? myFlags[action] || !!myFlags.post_messages : !myFlags[action];
       }
 
+      case 'invite_users':
       case 'change_info': {
         return rights._ === 'chatAdminRights' ? myFlags[action] : !myFlags[action];
       }
@@ -235,6 +257,20 @@ export class AppChatsManager {
     }
 
     return true;
+  }
+
+  public editChatDefaultBannedRights(id: number, banned_rights: ChatBannedRights) {
+    const chat: Chat.chat = this.getChat(id);
+    if(chat.default_banned_rights) {
+      if(chat.default_banned_rights.until_date === banned_rights.until_date && deepEqual(chat.default_banned_rights.pFlags, banned_rights.pFlags)) {
+        return Promise.resolve();
+      }
+    }
+    
+    return apiManager.invokeApi('messages.editChatDefaultBannedRights', {
+      peer: appPeersManager.getInputPeerById(-id),
+      banned_rights
+    }).then(this.onChatUpdated.bind(this, id));
   }
 
   /* public resolveUsername(username: string) {

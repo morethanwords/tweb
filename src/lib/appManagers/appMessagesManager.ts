@@ -2816,7 +2816,7 @@ export class AppMessagesManager {
       message.peerId > 0 
       || message.fromId === rootScope.myId 
       || appChatsManager.getChat(message.peerId)._ === 'chat' 
-      || appChatsManager.hasRights(message.peerId, 'deleteRevoke')
+      || appChatsManager.hasRights(message.peerId, 'delete_messages')
     );
   }
 
@@ -4551,7 +4551,7 @@ export class AppMessagesManager {
   public canWriteToPeer(peerId: number) {
     if(peerId < 0) {
       const isChannel = appPeersManager.isChannel(peerId);
-      const hasRights = isChannel && appChatsManager.hasRights(-peerId, 'send'); 
+      const hasRights = isChannel && appChatsManager.hasRights(-peerId, 'send_messages'); 
       return !isChannel || hasRights;
     } else {
       return appUsersManager.canSendToUser(peerId);

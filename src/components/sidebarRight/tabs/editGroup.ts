@@ -5,7 +5,7 @@ import { SettingSection } from "../../sidebarLeft";
 import Row from "../../row";
 import CheckboxField from "../../checkboxField";
 import Button from "../../button";
-import appChatsManager from "../../../lib/appManagers/appChatsManager";
+import appChatsManager, { ChatRights } from "../../../lib/appManagers/appChatsManager";
 import appProfileManager from "../../../lib/appManagers/appProfileManager";
 import { attachClickEvent, toggleDisability } from "../../../helpers/dom";
 import { ChatFull } from "../../../layer";
@@ -13,12 +13,13 @@ import PopupPeer from "../../popups/peer";
 import { addCancelButton } from "../../popups";
 import AppGroupTypeTab from "./groupType";
 import rootScope from "../../../lib/rootScope";
+import AppGroupPermissionsTab from "./groupPermissions";
 
 export default class AppEditGroupTab extends SliderSuperTab {
   private groupNameInputField: InputField;
   private descriptionInputField: InputField;
   private editPeer: EditPeer;
-  public peerId: number;
+  public chatId: number;
 
   protected async _init() {
     // * cleanup prev
@@ -28,7 +29,7 @@ export default class AppEditGroupTab extends SliderSuperTab {
     this.container.classList.add('edit-peer-container', 'edit-group-container');
     this.title.innerHTML = 'Edit';
 
-    const chatFull = await appProfileManager.getChatFull(-this.peerId, true);
+    const chatFull = await appProfileManager.getChatFull(this.chatId, true);
 
     {
       const section = new SettingSection({noDelimiter: true});
@@ -48,7 +49,7 @@ export default class AppEditGroupTab extends SliderSuperTab {
         maxLength: 255
       });
 
-      const chat = appChatsManager.getChat(-this.peerId);
+      const chat = appChatsManager.getChat(this.chatId);
       
       this.groupNameInputField.setOriginalValue(chat.title);
 
@@ -59,7 +60,7 @@ export default class AppEditGroupTab extends SliderSuperTab {
       inputFields.push(this.groupNameInputField, this.descriptionInputField);
 
       this.editPeer = new EditPeer({
-        peerId: this.peerId,
+        peerId: -this.chatId,
         inputFields,
         listenerSetter: this.listenerSetter
       });
@@ -67,12 +68,12 @@ export default class AppEditGroupTab extends SliderSuperTab {
 
       section.content.append(this.editPeer.avatarEdit.container, inputWrapper);
 
-      if(appChatsManager.hasRights(-this.peerId, 'change_type')) {
+      if(appChatsManager.hasRights(this.chatId, 'change_type')) {
         const groupTypeRow = new Row({
           title: 'Group Type',
           clickable: () => {
             const tab = new AppGroupTypeTab(this.slider);
-            tab.peerId = this.peerId;
+            tab.peerId = -this.chatId;
             tab.chatFull = chatFull;
             tab.open();
 
@@ -89,15 +90,40 @@ export default class AppEditGroupTab extends SliderSuperTab {
         section.content.append(groupTypeRow.container);
       }
 
-      if(appChatsManager.hasRights(-this.peerId, 'change_permissions')) {
+      if(appChatsManager.hasRights(this.chatId, 'change_permissions')) {
+        const flags = [
+          'send_messages',
+          'send_media',
+          'send_stickers',
+          'send_polls',
+          'embed_links',
+          'invite_users',
+          'pin_messages',
+          'change_info'
+        ] as ChatRights[];
+
         const permissionsRow = new Row({
           title: 'Permissions',
-          subtitle: '8/8',
+          clickable: () => {
+            const tab = new AppGroupPermissionsTab(this.slider);
+            tab.chatId = this.chatId;
+            tab.open();
+          },
           icon: 'permissions',
-          clickable: true
         });
 
+        const setPermissionsLength = () => {
+          permissionsRow.subtitle.innerHTML = flags.reduce((acc, f) => acc + +appChatsManager.hasRights(this.chatId, f, 0), 0) + '/' + flags.length;
+        };
+
+        setPermissionsLength();        
         section.content.append(permissionsRow.container);
+
+        this.listenerSetter.add(rootScope, 'chat_update', (chatId) => {
+          if(this.chatId === chatId) {
+            setPermissionsLength();
+          }
+        });
       }
 
       const administratorsRow = new Row({
@@ -116,7 +142,7 @@ export default class AppEditGroupTab extends SliderSuperTab {
   
         let promises: Promise<any>[] = [];
 
-        const id = -this.peerId;
+        const id = this.chatId;
         if(this.groupNameInputField.isValid()) {
           promises.push(appChatsManager.editTitle(id, this.groupNameInputField.value));
         }
@@ -152,12 +178,12 @@ export default class AppEditGroupTab extends SliderSuperTab {
 
       section.content.append(membersRow.container);
 
-      if(appChatsManager.hasRights(-this.peerId, 'change_permissions')) {
+      if(appChatsManager.hasRights(this.chatId, 'change_permissions')) {
         const showChatHistoryCheckboxField = new CheckboxField({
           text: 'Show chat history for new members'
         });
   
-        if(appChatsManager.isChannel(-this.peerId) && !(chatFull as ChatFull.channelFull).pFlags.hidden_prehistory) {
+        if(appChatsManager.isChannel(this.chatId) && !(chatFull as ChatFull.channelFull).pFlags.hidden_prehistory) {
           showChatHistoryCheckboxField.checked = true;
         }
   
@@ -167,14 +193,14 @@ export default class AppEditGroupTab extends SliderSuperTab {
       this.scrollable.append(section.container);
     }
 
-    if(appChatsManager.isChannel(-this.peerId) && appChatsManager.hasRights(-this.peerId, 'delete_chat')) {
+    if(appChatsManager.isChannel(this.chatId) && appChatsManager.hasRights(this.chatId, 'delete_chat')) {
       const section = new SettingSection({});
 
       const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'Delete Group'});
 
       attachClickEvent(btnDelete, () => {
         new PopupPeer('popup-delete-group', {
-          peerId: this.peerId,
+          peerId: -this.chatId,
           title: 'Delete Group?',
           description: `Are you sure you want to delete this group? All members will be removed, and all messages will be lost.`,
           buttons: addCancelButton([{
@@ -182,7 +208,7 @@ export default class AppEditGroupTab extends SliderSuperTab {
             callback: () => {
               toggleDisability([btnDelete], true);
 
-              appChatsManager.deleteChannel(-this.peerId).then(() => {
+              appChatsManager.deleteChannel(this.chatId).then(() => {
                 this.close();
               }, () => {
                 toggleDisability([btnDelete], false);
@@ -200,8 +226,8 @@ export default class AppEditGroupTab extends SliderSuperTab {
 
     // ! this one will fire earlier than tab's closeAfterTimeout (destroy) event and listeners will be erased, so destroy won't fire
     this.listenerSetter.add(rootScope, 'dialog_migrate', ({migrateFrom, migrateTo}) => {
-      if(this.peerId === migrateFrom) {
-        this.peerId = migrateTo;
+      if(-this.chatId === migrateFrom) {
+        this.chatId = -migrateTo;
         this._init();
       }
     });

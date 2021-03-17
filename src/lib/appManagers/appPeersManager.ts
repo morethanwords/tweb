@@ -125,15 +125,15 @@ export class AppPeersManager {
       : appChatsManager.getChat(-peerId)
   }
 
-  public getPeerId(peerId: any/* Peer | number | string */): number {
+  public getPeerId(peerId: Peer | InputPeer | number | string): number {
     if(typeof(peerId) === 'number') return peerId;
-    else if(isObject(peerId)) return peerId.user_id ? peerId.user_id : -(peerId.channel_id || peerId.chat_id);
+    else if(isObject(peerId)) return (peerId as Peer.peerUser).user_id || -((peerId as Peer.peerChannel).channel_id || (peerId as Peer.peerChat).chat_id);
     else if(!peerId) return 0;
     
-    const isUser = peerId.charAt(0) === 'u';
-    const peerParams = peerId.substr(1).split('_');
+    const isUser = (peerId as string).charAt(0) === 'u';
+    const peerParams = (peerId as string).substr(1).split('_');
 
-    return isUser ? peerParams[0] : -peerParams[0] || 0;
+    return isUser ? +peerParams[0] : -peerParams[0] || 0;
   }
 
   public getDialogPeer(peerId: number): DialogPeer {

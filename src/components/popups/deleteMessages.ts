@@ -46,7 +46,7 @@ export default class PopupDeleteMessages {
       } else {
         const chat = appChatsManager.getChat(-peerId);
 
-        const hasRights = appChatsManager.hasRights(-peerId, 'deleteRevoke');
+        const hasRights = appChatsManager.hasRights(-peerId, 'delete_messages');
         if(chat._ === 'chat') {
           const canRevoke = hasRights ? mids.slice() : mids.filter(mid => {
             const message = appMessagesManager.getMessageByPeer(peerId, mid);
