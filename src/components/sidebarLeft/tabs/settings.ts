@@ -112,7 +112,6 @@ export default class AppSettingsTab extends SliderSuperTab {
 
     this.buttons.edit.addEventListener('click', () => {
       const tab = new AppEditProfileTab(this.slider);
-      tab.fillElements();
       tab.open();
     });
 

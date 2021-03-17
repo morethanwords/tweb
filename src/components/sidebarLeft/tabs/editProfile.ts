@@ -19,7 +19,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
 
   private editPeer: EditPeer;
 
-  protected init() {
+  protected async init() {
     this.container.classList.add('edit-profile-container');
     this.title.innerText = 'Edit Profile';
 
@@ -127,26 +127,15 @@ export default class AppEditProfileTab extends SliderSuperTab {
         this.editPeer.nextBtn.removeAttribute('disabled');
       });
     }, {listenerSetter: this.listenerSetter});
-  }
-
-  public fillElements() {
-    if(this.init) {
-      this.init();
-      this.init = null;
-    }
 
     const user = appUsersManager.getSelf();
 
+    const userFull = await appProfileManager.getProfile(user.id, true);
+
     this.firstNameInputField.setOriginalValue(user.first_name, true);
     this.lastNameInputField.setOriginalValue(user.last_name, true);
-    this.bioInputField.setOriginalValue('', true);
+    this.bioInputField.setOriginalValue(userFull.about, true);
     this.usernameInputField.setOriginalValue(user.username, true);
-
-    appProfileManager.getProfile(user.id, true).then(userFull => {
-      if(userFull.about) {
-        this.bioInputField.setOriginalValue(userFull.about);
-      }
-    });
 
     this.setProfileUrl();
     this.editPeer.handleChange();

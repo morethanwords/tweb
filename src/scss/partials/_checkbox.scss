@@ -92,6 +92,11 @@
   }
 }
 
+.checkbox-ripple {
+  overflow: hidden;
+  border-radius: $border-radius-medium;
+}
+
 .checkbox-field-round {
   --size: 1.5rem;
 

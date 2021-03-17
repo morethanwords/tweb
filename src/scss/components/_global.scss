@@ -86,6 +86,10 @@ Utility Classes
   display: none !important;
 }
 
+.hide-overflow {
+  overflow: hidden;
+}
+
 // No Text Select
 .no-select/* , .no-select * */ {
   user-select: none;

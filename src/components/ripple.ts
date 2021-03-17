@@ -3,7 +3,7 @@ import { findUpClassName } from "../helpers/dom";
 import rootScope from "../lib/rootScope";
 
 let rippleClickId = 0;
-export function ripple(elem: HTMLElement, callback: (id: number) => Promise<boolean | void> = () => Promise.resolve(), onEnd: (id: number) => void = null) {
+export function ripple(elem: HTMLElement, callback: (id: number) => Promise<boolean | void> = () => Promise.resolve(), onEnd: (id: number) => void = null, prepend = false) {
   //return;
   if(elem.querySelector('.c-ripple')) return;
   elem.classList.add('rp');
@@ -16,7 +16,7 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
     r.classList.add('is-square');
   }
 
-  elem.append(r);
+  elem[prepend ? 'prepend' : 'append'](r);
 
   let handler: () => void;
   //let animationEndPromise: Promise<number>;

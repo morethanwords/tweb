@@ -70,7 +70,7 @@
     box-sizing: border-box;
     width: 100%;
     min-height: var(--height);
-    transition: .2s border-color;
+    transition: 0s border-color;
     position: relative;
     z-index: 1;
     line-height: 1.3125;
@@ -86,10 +86,16 @@
       transition: none;
     }
 
-    html.no-touch & {
-      &:hover:not(:focus):not(.error):not(.valid) {
-        border-color: var(--color-gray);
+    @include hover() {
+      &:not(:focus):not(.error):not(.valid) {
+        //border-color: var(--color-gray);
+        border-color: #000;
+        transition: .2s border-color;
       }
+
+      /* &:not(:focus):not(.error):not(.valid) ~ label {
+        transition: .2s transform, .2s padding, .1s opacity, font-weight 0s 1s;
+      } */
     }
 
     /* font-weight: 500; */
@@ -139,6 +145,12 @@
     &:focus ~ label {
       color: $button-primary-background;
       font-weight: 500;
+    }
+
+    // * valid for plain text, empty for contenteditable
+    &:valid ~ label, 
+    &:not(:empty):focus ~ label {
+      transition-delay: 0s, 0s, 0s, 0s;
     }
     
     &:focus ~ label, 
@@ -251,8 +263,11 @@ input:focus, button:focus {
       transition: none;
     }
 
-    &:hover {
-      border-color: var(--color-gray);
+    @include hover() {
+      &:not(:focus) {
+        border-color: var(--color-gray) !important;
+        //border-color: #000;
+      }
     }
 
     &:focus {

@@ -76,7 +76,8 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
       const animationsCheckboxField = new CheckboxField({
         text: 'Enable Animations', 
         name: 'animations', 
-        stateKey: 'settings.animationsEnabled'
+        stateKey: 'settings.animationsEnabled',
+        withRipple: true
       });
       
       container.append(range.container, chatBackgroundButton, animationsCheckboxField.label);
@@ -118,22 +119,26 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
       const contactsCheckboxField = new CheckboxField({
         text: 'Contacts', 
         name: 'contacts',
-        stateKey: 'settings.autoDownload.contacts'
+        stateKey: 'settings.autoDownload.contacts',
+        withRipple: true
       });
       const privateCheckboxField = new CheckboxField({
         text: 'Private Chats', 
         name: 'private',
-        stateKey: 'settings.autoDownload.private'
+        stateKey: 'settings.autoDownload.private',
+        withRipple: true
       });
       const groupsCheckboxField = new CheckboxField({
         text: 'Group Chats', 
         name: 'groups',
-        stateKey: 'settings.autoDownload.groups'
+        stateKey: 'settings.autoDownload.groups',
+        withRipple: true
       });
       const channelsCheckboxField = new CheckboxField({
         text: 'Channels', 
         name: 'channels',
-        stateKey: 'settings.autoDownload.channels'
+        stateKey: 'settings.autoDownload.channels',
+        withRipple: true
       });
 
       container.append(contactsCheckboxField.label, privateCheckboxField.label, groupsCheckboxField.label, channelsCheckboxField.label);
@@ -146,12 +151,14 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
       const gifsCheckboxField = new CheckboxField({
         text: 'GIFs', 
         name: 'gifs', 
-        stateKey: 'settings.autoPlay.gifs'
+        stateKey: 'settings.autoPlay.gifs',
+        withRipple: true
       });
       const videosCheckboxField = new CheckboxField({
         text: 'Videos', 
         name: 'videos', 
-        stateKey: 'settings.autoPlay.videos'
+        stateKey: 'settings.autoPlay.videos',
+        withRipple: true
       });
 
       container.append(gifsCheckboxField.label, videosCheckboxField.label);
@@ -163,12 +170,14 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
       const suggestCheckboxField = new CheckboxField({
         text: 'Suggest Stickers by Emoji', 
         name: 'suggest', 
-        stateKey: 'settings.stickers.suggest'
+        stateKey: 'settings.stickers.suggest',
+        withRipple: true
       });
       const loopCheckboxField = new CheckboxField({
         text: 'Loop Animated Stickers', 
         name: 'loop', 
-        stateKey: 'settings.stickers.loop'
+        stateKey: 'settings.stickers.loop',
+        withRipple: true
       });
 
       container.append(suggestCheckboxField.label, loopCheckboxField.label);
