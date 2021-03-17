@@ -18,7 +18,7 @@ export default class PopupForward extends PopupPickUser {
       },
       onClose,
       placeholder: 'Forward to...',
-      chatRightsAction: 'send'
+      chatRightsAction: 'send_messages'
     });
   }
 }

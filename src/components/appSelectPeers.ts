@@ -217,7 +217,7 @@ export default class AppSelectPeers {
 
       if(this.chatRightsAction) {
         dialogs = dialogs.filter(d => {
-          return (d.peerId > 0 && (this.chatRightsAction !== 'send' || appUsersManager.canSendToUser(d.peerId))) || appChatsManager.hasRights(-d.peerId, this.chatRightsAction);
+          return (d.peerId > 0 && (this.chatRightsAction !== 'send_messages' || appUsersManager.canSendToUser(d.peerId))) || appChatsManager.hasRights(-d.peerId, this.chatRightsAction);
         });
       }
 

@@ -13,9 +13,14 @@ export default class CheckboxField {
     stateKey?: string,
     disabled?: boolean,
     checked?: boolean,
+    restriction?: boolean
   } = {}) {
     const label = this.label = document.createElement('label');
     label.classList.add('checkbox-field');
+
+    if(options.restriction) {
+      label.classList.add('checkbox-field-restriction');
+    }
 
     if(options.round) {
       label.classList.add('checkbox-field-round');

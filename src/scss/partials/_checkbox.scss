@@ -229,3 +229,42 @@
     opacity: .25;
   }
 }
+
+.checkbox-field-restriction {
+  .checkbox-box {
+    &-border {
+      display: none;
+    }
+
+    &-background {
+      transform: none !important;
+      transition: background-color .2s !important;
+    }
+
+    &-check use {
+      visibility: visible !important;
+      stroke-dasharray: 24.19, 24.19 !important;
+      transform: rotate(0) translateY(0);
+      transition: stroke-dashoffset .2s ease-in-out, transform .2s ease-in-out !important;
+    }
+  }
+}
+
+.checkbox-field-restriction [type="checkbox"] {
+  &:not(:checked) + .checkbox-box {
+    .checkbox-box-check {
+      use {
+        transform: rotate(45deg) translateY(-10px);
+        stroke-dashoffset: 35.5;
+        //stroke-dashoffset: -13;
+
+        /* stroke-dashoffset: 24;
+        stroke-dasharray: 12.095, 24.19 !important; */
+      }
+    }
+
+    .checkbox-box-background {
+      background-color: $color-red;
+    }
+  }
+}

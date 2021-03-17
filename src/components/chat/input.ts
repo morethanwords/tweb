@@ -273,7 +273,7 @@ export default class ChatInput {
         this.willAttachType = 'media';
         this.fileInput.click();
       },
-      verify: (peerId: number) => peerId > 0 || this.appChatsManager.hasRights(peerId, 'send', 'send_media')
+      verify: (peerId: number) => peerId > 0 || this.appChatsManager.hasRights(peerId, 'send_media')
     }, {
       icon: 'document',
       text: 'Document',
@@ -283,14 +283,14 @@ export default class ChatInput {
         this.willAttachType = 'document';
         this.fileInput.click();
       },
-      verify: (peerId: number) => peerId > 0 || this.appChatsManager.hasRights(peerId, 'send', 'send_media')
+      verify: (peerId: number) => peerId > 0 || this.appChatsManager.hasRights(peerId, 'send_media')
     }, {
       icon: 'poll',
       text: 'Poll',
       onClick: () => {
         new PopupCreatePoll(this.chat).show();
       },
-      verify: (peerId: number) => peerId < 0 && this.appChatsManager.hasRights(peerId, 'send', 'send_polls')
+      verify: (peerId: number) => peerId < 0 && this.appChatsManager.hasRights(peerId, 'send_polls')
     }];
 
     this.attachMenu = ButtonMenuToggle({noRipple: true, listenerSetter: this.listenerSetter}, 'top-left', this.attachMenuButtons);
@@ -971,7 +971,7 @@ export default class ChatInput {
 
     if(this.stickersHelper && 
       rootScope.settings.stickers.suggest && 
-      (this.chat.peerId > 0 || this.appChatsManager.hasRights(this.chat.peerId, 'send', 'send_stickers'))) {
+      (this.chat.peerId > 0 || this.appChatsManager.hasRights(this.chat.peerId, 'send_stickers'))) {
       let emoticon = '';
       if(entities.length && entities[0]._ === 'messageEntityEmoji') {
         const entity = entities[0];
@@ -1076,7 +1076,7 @@ export default class ChatInput {
         this.sendMessage();
       }
     } else {
-      if(this.chat.peerId < 0 && !this.appChatsManager.hasRights(this.chat.peerId, 'send', 'send_media')) {
+      if(this.chat.peerId < 0 && !this.appChatsManager.hasRights(this.chat.peerId, 'send_media')) {
         toast(POSTING_MEDIA_NOT_ALLOWED);
         return;
       }
@@ -1327,7 +1327,7 @@ export default class ChatInput {
     document = this.appDocsManager.getDoc(document);
 
     const flag = document.type === 'sticker' ? 'send_stickers' : (document.type === 'gif' ? 'send_gifs' : 'send_media');
-    if(this.chat.peerId < 0 && !this.appChatsManager.hasRights(this.chat.peerId, 'send', flag)) {
+    if(this.chat.peerId < 0 && !this.appChatsManager.hasRights(this.chat.peerId, flag)) {
       toast(POSTING_MEDIA_NOT_ALLOWED);
       return;
     }

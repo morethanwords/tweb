@@ -143,7 +143,12 @@ export default class AppSharedMediaTab implements SliderTab {
       }
 
       if(tab) {
-        tab.peerId = this.peerId;
+        if(tab instanceof AppEditGroupTab) {
+          tab.chatId = -this.peerId;
+        } else {
+          tab.peerId = this.peerId;
+        }
+        
         tab.open();
       }
     });
