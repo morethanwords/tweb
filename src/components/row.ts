@@ -3,6 +3,7 @@ import RadioField from "./radioField";
 import { ripple } from "./ripple";
 import { SliderSuperTab } from "./slider";
 import RadioForm from "./radioForm";
+import { attachClickEvent, cancelEvent } from "../helpers/dom";
 
 export default class Row {
   public container: HTMLElement;
@@ -19,6 +20,7 @@ export default class Row {
     subtitle: string,
     radioField: Row['radioField'],
     checkboxField: Row['checkboxField'],
+    noCheckboxSubtitle: boolean,
     title: string,
     titleRight: string,
     clickable: boolean | ((e: Event) => void),
@@ -45,8 +47,25 @@ export default class Row {
         this.checkboxField = options.checkboxField;
         this.container.append(this.checkboxField.label);
 
-        this.checkboxField.input.addEventListener('change', () => {
-          this.subtitle.innerHTML = this.checkboxField.input.checked ? 'Enabled' : 'Disabled';
+        if(!options.noCheckboxSubtitle) {
+          this.checkboxField.input.addEventListener('change', () => {
+            this.subtitle.innerHTML = this.checkboxField.input.checked ? 'Enabled' : 'Disabled';
+          });
+        }
+      }
+
+      const i = options.radioField || options.checkboxField;
+      i.label.classList.add('disable-hover');
+
+      if(options.radioField) {
+        attachClickEvent(this.container, (e) => {
+          cancelEvent(e);
+          i.checked = true;
+        });
+      } else {
+        attachClickEvent(this.container, (e) => {
+          cancelEvent(e);
+          i.checked = !i.checked;
         });
       }
     } else {
@@ -88,7 +107,7 @@ export default class Row {
       options.clickable = () => options.navigationTab.open();
     }
 
-    if(options.clickable) {
+    if(options.clickable || options.radioField || options.checkboxField) {
       if(typeof(options.clickable) === 'function') {
         this.container.addEventListener('click', (e) => {
           if(this.freezed) return;
@@ -97,7 +116,11 @@ export default class Row {
       }
 
       this.container.classList.add('row-clickable', 'hover-effect');
-      ripple(this.container);
+      ripple(this.container, undefined, undefined, true);
+
+      /* if(options.radioField || options.checkboxField) {
+        this.container.prepend(this.container.lastElementChild);
+      } */
     }
 
     this.container.append(this.subtitle);

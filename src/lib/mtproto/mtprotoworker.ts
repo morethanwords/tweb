@@ -55,7 +55,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
 
   private isSWRegistered = true;
 
-  private debug = DEBUG && false;
+  private debug = DEBUG /* && false */;
 
   private sockets: Map<number, Socket> = new Map();
 
@@ -319,7 +319,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
     (options as MTMessage).messageId = o.prepareTempMessageId;
 
     //console.log('will invokeApi:', method, params, options);
-    return this.performTaskWorker('invokeApi', method, params, o);
+    return this.invokeApi(method, params, o);
   }
 
   public invokeApiHashable<T extends keyof MethodDeclMap>(method: T, params: Omit<MethodDeclMap[T]['req'], 'hash'> = {} as any, options: InvokeApiOptions = {}): Promise<MethodDeclMap[T]['res']> {
@@ -334,7 +334,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
       }
     }
 
-    return this.performTaskWorker('invokeApi', method, params, options).then((result: any) => {
+    return this.invokeApi(method, params, options).then((result: any) => {
       if(result._.includes('NotModified')) {
         this.debug && this.log.warn('NotModified saved!', method, queryJSON);
         return cached.result;
@@ -355,7 +355,9 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
   }
 
   /* private computeHash(smth: any[]) {
-    return smth.reduce((hash, v) => (((hash * 0x4F25) & 0x7FFFFFFF) + v.id) & 0x7FFFFFFF, 0);
+    smth = smth.slice().sort((a, b) => a.id - b.id);
+    //return smth.reduce((hash, v) => (((hash * 0x4F25) & 0x7FFFFFFF) + v.id) & 0x7FFFFFFF, 0);
+    return smth.reduce((hash, v) => ((hash * 20261) + 0x80000000 + v.id) % 0x80000000, 0);
   } */
 
   public setBaseDcId(dcId: number) {

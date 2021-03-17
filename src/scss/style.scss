@@ -62,6 +62,7 @@ $chat-padding-handhelds: .5rem;
   --messages-container-width: #{$messages-container-width};
   --messages-text-size: 16px;
   --messages-secondary-text-size: calc(var(--messages-text-size) - 1px);
+  --line-height: 1.3125;
   --esg-sticker-size: 80px;
 
   // https://github.com/overtake/TelegramSwift/blob/5cc7d2475fe4738a6aa0486c23eaf80a89d33b97/submodules/TGUIKit/TGUIKit/PresentationTheme.swift#L2054
@@ -1111,7 +1112,7 @@ middle-ellipsis-element {
   }
 
   &-title {
-    line-height: 1.3125;
+    line-height: var(--line-height);
 
     &-right {
       flex: 0 0 auto !important;
@@ -1157,11 +1158,13 @@ middle-ellipsis-element {
   &-subtitle {
     color: var(--color-text-secondary) !important;
     font-size: .875rem !important;
+    line-height: var(--line-height);
+    margin-top: .125rem;
+    margin-bottom: .0625rem;
 
-    // * lol
-    line-height: 1rem;
-    margin-top: .1875rem;
-    margin-bottom: .125rem;
+    &:empty {
+      display: none;
+    }
   }
 }
 

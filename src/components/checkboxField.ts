@@ -1,5 +1,6 @@
 import appStateManager from "../lib/appManagers/appStateManager";
 import { getDeepProperty } from "../helpers/object";
+import { ripple } from "./ripple";
 
 export default class CheckboxField {
   public input: HTMLInputElement;
@@ -13,7 +14,8 @@ export default class CheckboxField {
     stateKey?: string,
     disabled?: boolean,
     checked?: boolean,
-    restriction?: boolean
+    restriction?: boolean,
+    withRipple?: boolean
   } = {}) {
     const label = this.label = document.createElement('label');
     label.classList.add('checkbox-field');
@@ -85,6 +87,11 @@ export default class CheckboxField {
 
     if(span) {
       label.append(span);
+    }
+
+    if(options.withRipple) {
+      label.classList.add('checkbox-ripple', 'hover-effect');
+      ripple(label, undefined, undefined, true);
     }
   }
 

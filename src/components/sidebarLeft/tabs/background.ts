@@ -31,7 +31,8 @@ export default class AppBackgroundTab extends SliderSuperTab {
       const blurCheckboxField = new CheckboxField({
         text: 'Blur Wallpaper Image', 
         name: 'blur', 
-        stateKey: 'settings.background.blur'
+        stateKey: 'settings.background.blur',
+        withRipple: true
       });
       blurCheckboxField.input.addEventListener('change', () => {
         const active = grid.querySelector('.active') as HTMLElement;
