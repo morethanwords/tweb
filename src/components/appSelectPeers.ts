@@ -69,16 +69,9 @@ export default class AppSelectPeers {
     rippleEnabled?: boolean,
     avatarSize?: AppSelectPeers['avatarSize'],
   }) {
-    for(let i in options) {
-      // @ts-ignore
-      this[i] = options[i];
-    }
+    Object.assign(this, options);
 
     this.container.classList.add('selector');
-
-    this.peerType.forEach(type => {
-      this.tempIds[type] = 0;
-    });
 
     let needSwitchList = false;
     const f = (this.renderResultsFunc || this.renderResults).bind(this);
@@ -220,6 +213,14 @@ export default class AppSelectPeers {
     }
   }
 
+  private getTempId(type: keyof AppSelectPeers['tempIds']) {
+    if(this.tempIds[type] === undefined) {
+      this.tempIds[type] = 0;
+    }
+
+    return ++this.tempIds[type];
+  }
+
   private async getMoreDialogs(): Promise<any> {
     if(this.promise) return this.promise;
 
@@ -230,8 +231,7 @@ export default class AppSelectPeers {
     // в десктопе - сначала без группы, потом архивные, потом контакты без сообщений
     const pageCount = appPhotosManager.windowH / 72 * 1.25 | 0;
 
-    const tempId = ++this.tempIds.dialogs;
-
+    const tempId = this.getTempId('dialogs');
     this.promise = appMessagesManager.getConversations(this.query, this.offsetIndex, pageCount, this.folderId);
     const value = await this.promise;
     this.promise = null;
@@ -292,7 +292,7 @@ export default class AppSelectPeers {
 
       this.promise = Promise.all(promises);
       this.cachedContacts = (await this.promise)[0].slice(); */
-      const tempId = ++this.tempIds.contacts;
+      const tempId = this.getTempId('contacts');
       this.promise = appUsersManager.getContacts(this.query);
       this.cachedContacts = (await this.promise).slice();
       if(this.tempIds.contacts !== tempId) {
@@ -328,7 +328,7 @@ export default class AppSelectPeers {
 
     const pageCount = 50; // same as in group permissions to use cache
 
-    const tempId = ++this.tempIds.channelParticipants;
+    const tempId = this.getTempId('channelParticipants');
     const promise = appProfileManager.getChannelParticipants(-this.peerId, {_: 'channelParticipantsSearch', q: this.query}, pageCount, this.list.childElementCount);
     const participants = await promise;
     if(this.tempIds.channelParticipants !== tempId) {

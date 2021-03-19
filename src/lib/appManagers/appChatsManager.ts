@@ -698,10 +698,21 @@ export class AppChatsManager {
     });
   }
 
-  public kickFromChannel(id: number, userId: number) {
-    return this.editBanned(id, userId, {
+  public clearChannelParticipantBannedRights(id: number, participant: number | ChannelParticipant) {
+    return this.editBanned(id, participant, {
       _: 'chatBannedRights',
-      until_date: 0
+      until_date: 0,
+      pFlags: {}
+    });
+  }
+  
+  public kickFromChannel(id: number, participant: number | ChannelParticipant) {
+    return this.editBanned(id, participant, {
+      _: 'chatBannedRights',
+      until_date: 0,
+      pFlags: {
+        view_messages: true
+      }
     });
   }
 }
