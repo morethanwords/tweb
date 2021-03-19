@@ -39,7 +39,7 @@ type DialogDom = {
   lastTimeSpan: HTMLSpanElement,
   unreadMessagesSpan: HTMLSpanElement,
   lastMessageSpan: HTMLSpanElement,
-  containerEl: HTMLDivElement,
+  containerEl: HTMLElement,
   listEl: HTMLLIElement,
   muteAnimationTimeout?: number
 };
@@ -222,7 +222,7 @@ export class AppDialogsManager {
   private lastActiveElements: Set<HTMLElement> = new Set();
 
   constructor() {
-    this.chatListArchived = document.createElement('ul');
+    this.chatListArchived = this.createChatList();
     this.chatListArchived.id = 'dialogs-archived';
 
     this.chatLists = {
@@ -686,7 +686,7 @@ export class AppDialogsManager {
     positionElementByIndex(menuTab, containerToAppend, filter.orderIndex);
     //containerToAppend.append(li);
 
-    const ul = document.createElement('ul');
+    const ul = this.createChatList();
     const div = document.createElement('div');
     div.append(ul);
     div.dataset.filterId = '' + filter.id;
@@ -914,17 +914,15 @@ export class AppDialogsManager {
       //cancelEvent(e);
 
       this.log('dialogs click list');
-      let target = e.target as HTMLElement;
-      let elem = target.classList.contains('rp') ? target : findUpClassName(target, 'rp');
+      const target = e.target as HTMLElement;
+      const elem = findUpTag(target, 'LI');
 
       if(!elem) {
         return;
       }
 
-      elem = elem.parentElement;
-
       if(autonomous) {
-        let sameElement = lastActiveListElement === elem;
+        const sameElement = lastActiveListElement === elem;
         if(lastActiveListElement && !sameElement) {
           lastActiveListElement.classList.remove('active');
         }
@@ -939,8 +937,8 @@ export class AppDialogsManager {
       if(elem) {
         if(onFound) onFound();
 
-        let peerId = +elem.dataset.peerId;
-        let lastMsgId = +elem.dataset.mid || undefined;
+        const peerId = +elem.dataset.peerId;
+        const lastMsgId = +elem.dataset.mid || undefined;
 
         appImManager.setPeer(peerId, lastMsgId);
       } else {
@@ -961,6 +959,22 @@ export class AppDialogsManager {
     if(withContext) {
       attachContextMenuListener(list, this.contextMenu.onContextMenu);
     }
+  }
+
+  public createChatList(/* options: {
+    avatarSize?: number,
+    handheldsSize?: number,
+    //size?: number,
+  } = {} */) {
+    const list = document.createElement('ul');
+    list.classList.add('chatlist'/* , 
+      'chatlist-avatar-' + (options.avatarSize || 54) *//* , 'chatlist-' + (options.size || 72) */);
+
+    /* if(options.handheldsSize) {
+      list.classList.add('chatlist-handhelds-' + options.handheldsSize);
+    } */
+
+    return list;
   }
 
   private reorderDialogs() {
@@ -1291,16 +1305,12 @@ export class AppDialogsManager {
     //captionDiv.append(titleSpan);
     //captionDiv.append(span);
 
-    const paddingDiv = document.createElement('div');
-    paddingDiv.classList.add('rp');
-    paddingDiv.append(avatarEl, captionDiv);
-
+    const li = document.createElement('li');
     if(rippleEnabled) {
-      ripple(paddingDiv);
+      ripple(li);
     }
 
-    const li = document.createElement('li');
-    li.append(paddingDiv);
+    li.append(avatarEl, captionDiv);
     li.dataset.peerId = '' + peerId;
 
     const statusSpan = document.createElement('span');
@@ -1335,7 +1345,7 @@ export class AppDialogsManager {
       lastTimeSpan,
       unreadMessagesSpan,
       lastMessageSpan: span,
-      containerEl: paddingDiv,
+      containerEl: li,
       listEl: li
     };
 

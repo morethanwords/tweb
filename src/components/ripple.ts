@@ -22,7 +22,7 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
   //let animationEndPromise: Promise<number>;
   const drawRipple = (clientX: number, clientY: number) => {
     const startTime = Date.now();
-    const span = document.createElement('span');
+    const elem = document.createElement('div');
 
     const clickId = rippleClickId++;
     
@@ -40,18 +40,18 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
       let elapsedTime = Date.now() - startTime;
       if(elapsedTime < duration) {
         let delay = Math.max(duration - elapsedTime, duration / 2);
-        setTimeout(() => span.classList.add('hiding'), Math.max(delay - duration / 2, 0));
+        setTimeout(() => elem.classList.add('hiding'), Math.max(delay - duration / 2, 0));
 
         setTimeout(() => {
           //console.log('ripple elapsedTime total pre-remove:', Date.now() - startTime);
-          span.remove();
+          elem.remove();
           if(onEnd) onEnd(clickId);
         }, delay);
       } else {
-        span.classList.add('hiding');
+        elem.classList.add('hiding');
         setTimeout(() => {
           //console.log('ripple elapsedTime total pre-remove:', Date.now() - startTime);
-          span.remove();
+          elem.remove();
           if(onEnd) onEnd(clickId);
         }, duration / 2);
       }
@@ -82,7 +82,7 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
 
       window.requestAnimationFrame(() => {
         let rect = r.getBoundingClientRect();
-        span.classList.add('c-ripple__circle');
+        elem.classList.add('c-ripple__circle');
 
         let clickX = clientX - rect.left;
         let clickY = clientY - rect.top;
@@ -106,9 +106,9 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
 
         //console.log('ripple click', offsetFromCenter, size, clickX, clickY);
 
-        span.style.width = span.style.height = size + 'px';
-        span.style.left = x + 'px';
-        span.style.top = y + 'px';
+        elem.style.width = elem.style.height = size + 'px';
+        elem.style.left = x + 'px';
+        elem.style.top = y + 'px';
 
         // нижний код выполняется с задержкой
         /* animationEndPromise = new Promise((resolve) => {
@@ -124,7 +124,7 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
         duration = +window.getComputedStyle(span).getPropertyValue('animation-duration').replace('s', '') * 1000;
         span.style.display = ''; */
 
-        r.append(span);
+        r.append(elem);
 
         //r.classList.add('active');
         //handler();

@@ -113,7 +113,7 @@ export default class AppEditGroupTab extends SliderSuperTab {
         });
 
         const setPermissionsLength = () => {
-          permissionsRow.subtitle.innerHTML = flags.reduce((acc, f) => acc + +appChatsManager.hasRights(this.chatId, f, 0), 0) + '/' + flags.length;
+          permissionsRow.subtitle.innerHTML = flags.reduce((acc, f) => acc + +appChatsManager.hasRights(this.chatId, f, chat.default_banned_rights), 0) + '/' + flags.length;
         };
 
         setPermissionsLength();        
@@ -180,7 +180,8 @@ export default class AppEditGroupTab extends SliderSuperTab {
 
       if(appChatsManager.hasRights(this.chatId, 'change_permissions')) {
         const showChatHistoryCheckboxField = new CheckboxField({
-          text: 'Show chat history for new members'
+          text: 'Show chat history for new members',
+          withRipple: true
         });
   
         if(appChatsManager.isChannel(this.chatId) && !(chatFull as ChatFull.channelFull).pFlags.hidden_prehistory) {

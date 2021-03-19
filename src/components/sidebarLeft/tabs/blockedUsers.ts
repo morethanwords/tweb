@@ -39,7 +39,7 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
       });
     }, {listenerSetter: this.listenerSetter});
 
-    const list = document.createElement('ul');
+    const list = appDialogsManager.createChatList();
     this.scrollable.container.classList.add('chatlist-container');
     this.scrollable.append(list);
 
@@ -122,7 +122,7 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
           add(peerId, true);
         }
 
-        if(res.peerIds.length < LOAD_COUNT) {
+        if(res.peerIds.length < LOAD_COUNT || list.childElementCount === res.count) {
           this.scrollable.onScrolledBottom = null;
         }
 

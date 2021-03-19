@@ -10,7 +10,8 @@ export default class PopupPickUser extends PopupElement {
     onSelect?: (peerId: number) => Promise<void> | void, 
     onClose?: () => void,
     placeholder: string,
-    chatRightsAction?: AppSelectPeers['chatRightsAction']
+    chatRightsAction?: AppSelectPeers['chatRightsAction'],
+    peerId?: number,
   }) {
     super('popup-forward', null, {closable: true, overlayClosable: true, body: true});
 
@@ -42,7 +43,9 @@ export default class PopupPickUser extends PopupElement {
       }, 
       chatRightsAction: options.chatRightsAction, 
       multiSelect: false,
-      rippleEnabled: false
+      rippleEnabled: false,
+      avatarSize: 46,
+      peerId: options.peerId,
     });
 
     //this.scrollable = new Scrollable(this.body);

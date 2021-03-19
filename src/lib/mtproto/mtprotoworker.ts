@@ -53,6 +53,21 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
 
   private hashes: {[method: string]: HashOptions} = {};
 
+  private apiPromisesSingle: {
+    [q: string]: Promise<any>
+  } = {};
+  private apiPromisesCacheable: {
+    [method: string]: {
+      [queryJSON: string]: {
+        timestamp: number,
+        promise: Promise<any>,
+        fulfilled: boolean,
+        timeout?: number,
+        params: any
+      }
+    }
+  } = {};
+
   private isSWRegistered = true;
 
   private debug = DEBUG /* && false */;
@@ -352,6 +367,71 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
 
       return result;
     });
+  }
+
+  public invokeApiSingle<T extends keyof MethodDeclMap>(method: T, params: MethodDeclMap[T]['req'] = {} as any, options: InvokeApiOptions = {}): Promise<MethodDeclMap[T]['res']> {
+    const q = method + '-' + JSON.stringify(params);
+    if(this.apiPromisesSingle[q]) {
+      return this.apiPromisesSingle[q];
+    }
+
+    return this.apiPromisesSingle[q] = this.invokeApi(method, params, options).finally(() => {
+      delete this.apiPromisesSingle[q];
+    });
+  }
+
+  public invokeApiCacheable<T extends keyof MethodDeclMap>(method: T, params: MethodDeclMap[T]['req'] = {} as any, options: InvokeApiOptions & Partial<{cacheSeconds: number, override: boolean}> = {}): Promise<MethodDeclMap[T]['res']> {
+    const cache = this.apiPromisesCacheable[method] ?? (this.apiPromisesCacheable[method] = {});
+    const queryJSON = JSON.stringify(params);
+    const item = cache[queryJSON];
+    if(item && (!options.override || !item.fulfilled)) {
+      return item.promise;
+    }
+
+    if(options.override) {
+      if(item && item.timeout) {
+        clearTimeout(item.timeout);
+        delete item.timeout;
+      }
+
+      delete options.override;
+    }
+
+    let timeout: number;
+    if(options.cacheSeconds) {
+      timeout = window.setTimeout(() => {
+        delete cache[queryJSON];
+      }, options.cacheSeconds * 1000);
+      delete options.cacheSeconds;
+    }
+
+    const promise = this.invokeApi(method, params, options);
+
+    cache[queryJSON] = {
+      timestamp: Date.now(),
+      fulfilled: false,
+      timeout,
+      promise,
+      params
+    };
+
+    return promise;
+  }
+
+  public clearCache<T extends keyof MethodDeclMap>(method: T, verify: (params: MethodDeclMap[T]['req']) => boolean) {
+    const cache = this.apiPromisesCacheable[method];
+    if(cache) {
+      for(const queryJSON in cache) {
+        const item = cache[queryJSON];
+        if(verify(item.params)) {
+          if(item.timeout) {
+            clearTimeout(item.timeout);
+          }
+
+          delete cache[queryJSON];
+        }
+      }
+    }
   }
 
   /* private computeHash(smth: any[]) {

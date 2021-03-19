@@ -263,7 +263,7 @@
   }
 
   .search-group-people {
-    ul {
+    .chatlist {
       display: flex;
       flex-direction: row;
       padding-left: 4px;
@@ -272,13 +272,7 @@
     }
 
     li {
-      margin-right: 5px;
-      padding: 0;
-    }
-
-    .rp {
       height: 98px;
-      max-height: 98px;
       border-radius: 10px;
       max-width: 78px;
       width: 78px;
@@ -286,7 +280,8 @@
       display: flex;
       flex-direction: column;
       padding: 12px 0 0 !important;
-      margin: 0;
+      margin: 0 5px 0 0;
+      flex: 0 0 auto;
 
       @include respond-to(handhelds) {
         width: 77px;
@@ -294,7 +289,7 @@
       }
     }
 
-    .dialog-title-details {
+    .dialog-title-details, .dialog-subtitle {
       display: none;
     }
 
@@ -628,16 +623,8 @@
 
 .folder-list {
   li {
-    padding-bottom: 2px;
-
-    .rp {
-      padding: 8px 11px !important;
-      height: 48px !important;
-
-      @include respond-to(handhelds) {
-        padding: 8px 12px !important;
-      }
-    }
+    padding: 9px 11px;
+    height: 50px;
   }
 
   .user-caption {
@@ -680,16 +667,10 @@
 
 .popup-forward, .included-chatlist-container {
   .selector {
-    ul {
-      li > .rp {
-        margin: 0 .5rem;
+    .chatlist {
+      li {
         padding: 7px .75rem !important;
         height: 3.75rem;
-        max-height: 3.75rem;
-
-        @include respond-to(handhelds) {
-          margin: 0;
-        }
       }
   
       .user-caption {
@@ -702,13 +683,6 @@
         margin-top: 2px;
       }
     }
-  }
-}
-
-.popup-forward {
-  li > .rp {
-    height: 3.875rem !important;
-    max-height: 3.875rem !important;
   }
 }
 
@@ -776,7 +750,9 @@
 
   @include respond-to(handhelds) {
     li {
-      padding-top: 0;
+      height: 62px;
+      padding-top: 7px;
+      padding-bottom: 7px;
     }
 
     .user-caption {
@@ -791,16 +767,12 @@
       --size: 46px;
       --multiplier: 1.173913;
     }
-
-    li > .rp {
-      height: 62px;
-    }
   }
 }
 
 @include respond-to(handhelds) {
   .search-group-recent.search-group.search-group-contacts ul {
-    margin-top: -2px;
+    margin-top: 0;
   }
 
   .search-group.search-group-contacts ul, .search-group.search-group-messages ul {
@@ -1045,9 +1017,12 @@
 }
 
 .blocked-users-container {
-  li > .rp {
+  li {
     height: 66px;
-    max-height: 66px;
+    padding-top: 9px;
+    padding-bottom: 9px;
+
+    border-radius: $border-radius-medium;
   }
 
   .user-caption {
@@ -1061,7 +1036,7 @@
 
   ul {
     margin-top: .3125rem;
-    padding: 0 3px;
+    padding: 0 .6875rem;
   }
 }
 

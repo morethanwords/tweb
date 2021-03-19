@@ -6,14 +6,14 @@
       width: 420px;
       max-width: 420px;
       //padding: 12px 20px 32.5px;
-      padding: 9px 0 0 0;
+      padding: 7px 0 0 0;
       max-height: unquote('min(40.625rem, 100%)');
       height: 40.625rem;
     }
 
     &-header {
       flex: 0 0 auto;
-      margin-bottom: 4px;
+      margin-bottom: 3px;
       padding: 0 1rem;
     }
 
@@ -35,10 +35,17 @@
       font-size: 1.25rem;
       padding: .5rem 1.5rem;
       width: 100%;
+      line-height: 1.3125;
     }
 
-    /* ul li > .rp {
-      margin-left: 0;
-    } */
+    .chatlist {
+      margin-top: 0 !important;
+  
+      li {
+        height: 3.875rem !important;
+        padding-top: .5rem !important;
+        padding-bottom: .5rem !important;
+      }
+    }
   }
 }

@@ -91,6 +91,8 @@ export class AppNavigationController {
       }, options);
     }
 
+    history.scrollRestoration = 'manual';
+
     this.pushState(); // * push init state
   }
 

@@ -254,7 +254,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
 
     (['include_peers', 'exclude_peers'] as ['include_peers', 'exclude_peers']).forEach(key => {
       const container = this[key];
-      const ul = document.createElement('ul');
+      const ul = appDialogsManager.createChatList();
 
       const peers = filter[key].slice();
 

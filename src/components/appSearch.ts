@@ -9,7 +9,7 @@ export class SearchGroup {
   list: HTMLUListElement;
 
   constructor(public name: string, public type: string, private clearable = true, className?: string, clickable = true, public autonomous = true, public onFound?: () => void) {
-    this.list = document.createElement('ul');
+    this.list = appDialogsManager.createChatList();
     this.container = document.createElement('div');
     if(className) this.container.className = className;
     
