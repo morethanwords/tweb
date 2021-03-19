@@ -51,7 +51,7 @@ export default class AppPollResultsTab extends SliderSuperTab {
       answerEl.append(answerTitle, answerPercents);
 
       // Humans
-      const list = document.createElement('ul');
+      const list = appDialogsManager.createChatList();
       list.classList.add('poll-results-voters');
 
       appDialogsManager.setListClickListener(list, () => {

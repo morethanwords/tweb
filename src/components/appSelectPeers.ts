@@ -9,15 +9,19 @@ import { cancelEvent, findUpAttribute, findUpClassName } from "../helpers/dom";
 import Scrollable from "./scrollable";
 import { FocusDirection } from "../helpers/fastSmoothScroll";
 import CheckboxField from "./checkboxField";
+import appProfileManager from "../lib/appManagers/appProfileManager";
 
-type PeerType = 'contacts' | 'dialogs';
+type PeerType = 'contacts' | 'dialogs' | 'channelParticipants';
 
 // TODO: правильная сортировка для addMembers, т.е. для peerType: 'contacts', потому что там идут сначала контакты - потом неконтакты, а должно всё сортироваться по имени
 
 let loadedAllDialogs = false, loadAllDialogsPromise: Promise<any>;
 export default class AppSelectPeers {
   public container = document.createElement('div');
-  public list = document.createElement('ul');
+  public list = appDialogsManager.createChatList(/* {
+    handheldsSize: 66,
+    avatarSize: 48
+  } */);
   public chatsContainer = document.createElement('div');
   public scrollable: Scrollable;
   public selectedScrollable: Scrollable;
@@ -37,7 +41,7 @@ export default class AppSelectPeers {
   private query = '';
   private cachedContacts: number[];
 
-  private loadedWhat: Partial<{[k in 'dialogs' | 'archived' | 'contacts']: true}> = {};
+  private loadedWhat: Partial<{[k in 'dialogs' | 'archived' | 'contacts' | 'channelParticipants']: true}> = {};
 
   private renderedPeerIds: Set<number> = new Set();
 
@@ -48,16 +52,22 @@ export default class AppSelectPeers {
   private chatRightsAction: ChatRights;
   private multiSelect = true;
   private rippleEnabled = true;
+  private avatarSize = 48;
+
+  private tempIds: {[k in keyof AppSelectPeers['loadedWhat']]: number} = {};
+  private peerId = 0;
   
   constructor(options: {
     appendTo: AppSelectPeers['appendTo'], 
     onChange?: AppSelectPeers['onChange'], 
     peerType?: AppSelectPeers['peerType'], 
+    peerId?: number,
     onFirstRender?: () => void, 
     renderResultsFunc?: AppSelectPeers['renderResultsFunc'], 
     chatRightsAction?: AppSelectPeers['chatRightsAction'], 
     multiSelect?: AppSelectPeers['multiSelect'],
-    rippleEnabled?: boolean
+    rippleEnabled?: boolean,
+    avatarSize?: AppSelectPeers['avatarSize'],
   }) {
     for(let i in options) {
       // @ts-ignore
@@ -66,8 +76,19 @@ export default class AppSelectPeers {
 
     this.container.classList.add('selector');
 
+    this.peerType.forEach(type => {
+      this.tempIds[type] = 0;
+    });
+
+    let needSwitchList = false;
     const f = (this.renderResultsFunc || this.renderResults).bind(this);
     this.renderResultsFunc = (peerIds: number[]) => {
+      if(needSwitchList) {
+        this.scrollable.splitUp.replaceWith(this.list);
+        this.scrollable.setVirtualContainer(this.list);
+        needSwitchList = false;
+      }
+      
       peerIds = peerIds.filter(peerId => {
         const notRendered = !this.renderedPeerIds.has(peerId);
         if(notRendered) this.renderedPeerIds.add(peerId);
@@ -149,21 +170,26 @@ export default class AppSelectPeers {
       const value = this.input.value;
       if(this.query !== value) {
         if(this.peerType.includes('contacts')) {
-          delete this.loadedWhat.contacts;
           this.cachedContacts = null;
         }
         
         //if(this.peerType.includes('dialogs')) {
-          delete this.loadedWhat.dialogs;
-          delete this.loadedWhat.archived;
           this.folderId = 0;
           this.offsetIndex = 0;
         //}
 
+        for(let i in this.tempIds) {
+          // @ts-ignore
+          ++this.tempIds[i];
+        }
+
+        this.list = appDialogsManager.createChatList();
+
         this.promise = null;
-        this.list.innerHTML = '';
+        this.loadedWhat = {};
         this.query = value;
         this.renderedPeerIds.clear();
+        needSwitchList = true;
         
         //console.log('selectPeers input:', this.query);
         this.getMoreResults();
@@ -204,9 +230,15 @@ export default class AppSelectPeers {
     // в десктопе - сначала без группы, потом архивные, потом контакты без сообщений
     const pageCount = appPhotosManager.windowH / 72 * 1.25 | 0;
 
+    const tempId = ++this.tempIds.dialogs;
+
     this.promise = appMessagesManager.getConversations(this.query, this.offsetIndex, pageCount, this.folderId);
     const value = await this.promise;
     this.promise = null;
+
+    if(this.tempIds.dialogs !== tempId) {
+      return;
+    }
 
     let dialogs = value.dialogs as Dialog[];
     if(dialogs.length) {
@@ -260,8 +292,13 @@ export default class AppSelectPeers {
 
       this.promise = Promise.all(promises);
       this.cachedContacts = (await this.promise)[0].slice(); */
+      const tempId = ++this.tempIds.contacts;
       this.promise = appUsersManager.getContacts(this.query);
       this.cachedContacts = (await this.promise).slice();
+      if(this.tempIds.contacts !== tempId) {
+        return;
+      }
+
       this.cachedContacts.findAndSplice(userId => userId === rootScope.myId); // no my account
       this.promise = null;
     }
@@ -282,6 +319,31 @@ export default class AppSelectPeers {
     }
   }
 
+  private async getMoreChannelParticipants() {
+    if(this.promise) return this.promise;
+
+    if(this.loadedWhat.channelParticipants) {
+      return;
+    }
+
+    const pageCount = 50; // same as in group permissions to use cache
+
+    const tempId = ++this.tempIds.channelParticipants;
+    const promise = appProfileManager.getChannelParticipants(-this.peerId, {_: 'channelParticipantsSearch', q: this.query}, pageCount, this.list.childElementCount);
+    const participants = await promise;
+    if(this.tempIds.channelParticipants !== tempId) {
+      return;
+    }
+    
+    const userIds = participants.participants.map(participant => participant.user_id);
+    userIds.findAndSplice(u => u === rootScope.myId);
+    this.renderResultsFunc(userIds);
+
+    if(this.list.childElementCount >= participants.count || participants.participants.length < pageCount) {
+      this.loadedWhat.channelParticipants = true;
+    }
+  }
+
   checkForTriggers = () => {
     this.scrollable.checkForTriggers();
   };
@@ -290,13 +352,15 @@ export default class AppSelectPeers {
     const get = () => {
       const promises: Promise<any>[] = [];
 
-      if(!loadedAllDialogs && !loadAllDialogsPromise) {
-        loadAllDialogsPromise = appMessagesManager.getConversationsAll()
-        .then(() => {
-          loadedAllDialogs = true;
-        }, () => {
-          loadAllDialogsPromise = null;
-        });
+      if(!loadedAllDialogs && (this.peerType.includes('dialogs') || this.peerType.includes('contacts'))) {
+        if(!loadAllDialogsPromise) {
+          loadAllDialogsPromise = appMessagesManager.getConversationsAll()
+          .then(() => {
+            loadedAllDialogs = true;
+          }).finally(() => {
+            loadAllDialogsPromise = null;
+          });
+        }
 
         promises.push(loadAllDialogsPromise);
       }
@@ -311,6 +375,10 @@ export default class AppSelectPeers {
       
       if(this.peerType.includes('contacts') && !this.loadedWhat.contacts) {
         promises.push(this.getMoreContacts());
+      }
+
+      if(this.peerType.includes('channelParticipants') && !this.loadedWhat.channelParticipants) {
+        promises.push(this.getMoreChannelParticipants());
       }
   
       return promises;
@@ -340,8 +408,8 @@ export default class AppSelectPeers {
         dialog: peerId,
         container: this.scrollable,
         drawStatus: false,
-        rippleEnabled: true,
-        avatarSize: 48
+        rippleEnabled: this.rippleEnabled,
+        avatarSize: this.avatarSize
       });
 
       if(this.multiSelect) {

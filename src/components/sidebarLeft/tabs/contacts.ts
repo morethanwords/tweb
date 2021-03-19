@@ -18,7 +18,7 @@ export default class AppContactsTab extends SliderSuperTab {
   init() {
     this.container.id = 'contacts-container';
 
-    this.list = document.createElement('ul');
+    this.list = appDialogsManager.createChatList(/* {avatarSize: 48, handheldsSize: 66} */);
     this.list.id = 'contacts';
     this.list.classList.add('contacts-container');
 

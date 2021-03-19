@@ -1,7 +1,8 @@
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { numberThousandSplitter } from "../../helpers/number";
 import { isObject, safeReplaceObject, copy, deepEqual } from "../../helpers/object";
-import { Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatParticipants, InputChannel, InputChatPhoto, InputFile, InputPeer, SendMessageAction, Update, Updates } from "../../layer";
+import { ChannelParticipant, Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatParticipant, ChatParticipants, InputChannel, InputChatPhoto, InputFile, InputPeer, SendMessageAction, Update, Updates } from "../../layer";
+import apiManagerProxy from "../mtproto/mtprotoworker";
 import apiManager from '../mtproto/mtprotoworker';
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
@@ -37,6 +38,13 @@ export class AppChatsManager {
           const channelId = update.channel_id;
           //console.log('updateChannel:', update);
           rootScope.broadcast('channel_settings', {channelId});
+          break;
+        }
+
+        case 'updateChannelParticipant': {
+          apiManagerProxy.clearCache('channels.getParticipants', (params) => {
+            return (params.channel as InputChannel.inputChannel).channel_id === update.channel_id;
+          });
           break;
         }
 
@@ -182,7 +190,22 @@ export class AppChatsManager {
     return this.chats[id] || {_: 'chatEmpty', id, deleted: true, access_hash: '', pFlags: {}/* this.channelAccess[id] */};
   }
 
-  public hasRights(id: number, action: ChatRights, userId?: number) {
+  public combineParticipantBannedRights(id: number, rights: ChatBannedRights) {
+    const chat: Chat.channel = this.getChat(id);
+
+    if(chat.default_banned_rights) {
+      rights = copy(rights);
+      const defaultRights = chat.default_banned_rights.pFlags;
+      for(let i in defaultRights) {
+        // @ts-ignore
+        rights.pFlags[i] = defaultRights[i];
+      }
+    }
+
+    return rights;
+  }
+
+  public hasRights(id: number, action: ChatRights, rights?: ChatAdminRights | ChatBannedRights) {
     const chat: Chat = this.getChat(id);
     if(chat._ === 'chatEmpty') return false;
 
@@ -193,15 +216,14 @@ export class AppChatsManager {
       return false;
     }
 
-    if(userId !== undefined && appUsersManager.getSelf().id === userId) {
-      userId = undefined;
-    }
-
-    if(chat.pFlags.creator && userId === undefined) {
+    if(chat.pFlags.creator && rights === undefined) {
       return true;
     }
 
-    const rights = (userId === undefined && (chat.admin_rights || (chat as Chat.channel).banned_rights)) || chat.default_banned_rights;
+    if(!rights) {
+      rights = chat.admin_rights || (chat as Chat.channel).banned_rights || chat.default_banned_rights;
+    }
+    
     if(!rights) {
       return false;
     }
@@ -639,6 +661,47 @@ export class AppChatsManager {
     }).then(bool => {
       //apiUpdatesManager.processUpdateMessage(updates);
       rootScope.broadcast('peer_bio_edit', -id);
+    });
+  }
+
+  public editBanned(id: number, participant: number | ChannelParticipant, banned_rights: ChatBannedRights) {
+    const userId = typeof(participant) === 'number' ? participant : participant.user_id;
+    return apiManager.invokeApi('channels.editBanned', {
+      channel: this.getChannelInput(id),
+      user_id: appUsersManager.getUserInput(userId),
+      banned_rights
+    }).then((updates) => {
+      this.onChatUpdated(id, updates);
+
+      if(typeof(participant) !== 'number') {
+        const timestamp = Date.now() / 1000 | 0;
+        apiUpdatesManager.processUpdateMessage({
+          _: 'updateShort',
+          update: {
+            _: 'updateChannelParticipant',
+            channel_id: id,
+            date: timestamp,
+            //qts: 0,
+            user_id: userId,
+            prev_participant: participant,
+            new_participant: Object.keys(banned_rights.pFlags).length ? {
+              _: 'channelParticipantBanned',
+              date: timestamp,
+              banned_rights,
+              kicked_by: appUsersManager.getSelf().id,
+              user_id: userId,
+              pFlags: {}
+            } : undefined
+          } as Update.updateChannelParticipant
+        });
+      }
+    });
+  }
+
+  public kickFromChannel(id: number, userId: number) {
+    return this.editBanned(id, userId, {
+      _: 'chatBannedRights',
+      until_date: 0
     });
   }
 }

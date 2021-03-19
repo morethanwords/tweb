@@ -125,9 +125,21 @@
     }
   }
 
-  ul {
+  .chatlist {
+    li {
+      padding-top: .75rem;
+      padding-bottom: .75rem;
+
+      @include respond-to(handhelds) {
+        height: 66px;
+        padding-top: 9px;
+        padding-bottom: 9px;
+      }
+    }
+
     .user-caption {
-      padding: 1px 3.5px 1px 12px;
+      padding-left: .75rem;
+      padding-right: 0;
     }
 
     p {
@@ -136,25 +148,6 @@
     
     span.user-last-message {
       font-size: 14px;
-    }
-
-    li {
-      padding-bottom: 0;
-
-      > .rp {
-        margin: 0px 9px 0px 8px;
-        padding: 12px 8.5px;
-
-        @include respond-to(handhelds) {
-          height: 66px;
-          max-height: 66px;
-          margin: 0;
-        }
-
-        /* html.is-safari & {
-          margin-right: 4px;
-        } */
-      }
     }
   }
 

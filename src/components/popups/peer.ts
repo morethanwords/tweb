@@ -8,7 +8,7 @@ export default class PopupPeer extends PopupElement {
     description: string,
     buttons: Array<PopupButton>
   }> = {}) {
-    super('popup-peer' + (className ? ' ' + className : ''), options.buttons);
+    super('popup-peer' + (className ? ' ' + className : ''), options.buttons, {overlayClosable: true});
 
     let avatarEl = new AvatarElement();
     avatarEl.setAttribute('dialog', '1');
