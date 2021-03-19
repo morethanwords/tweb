@@ -36,10 +36,7 @@ export default class IDBStorage {
   public storeName: string;
 
   constructor(options: IDBOptions) {
-    for(let i in options) {
-      // @ts-ignore
-      this[i] = options[i];
-    }
+    Object.assign(this, options);
 
     this.openDatabase(true);
   }

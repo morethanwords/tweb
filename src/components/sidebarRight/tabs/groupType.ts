@@ -75,10 +75,10 @@ export default class AppGroupTypeTab extends SliderSuperTabEventable {
       new PopupConfirmAction('revoke-link', [{
         text: 'OK',
         callback: () => {
-          toggleDisability([btnRevoke], true);
+          const toggle = toggleDisability([btnRevoke], true);
           
           appProfileManager.getChatInviteLink(-this.peerId, true).then(link => {
-            toggleDisability([btnRevoke], false);
+            toggle();
             linkRow.title.innerHTML = link;
             //revoked = true;
             //onChange();

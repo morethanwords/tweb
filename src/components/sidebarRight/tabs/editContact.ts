@@ -135,12 +135,12 @@ export default class AppEditContactTab extends SliderSuperTab {
           buttons: addCancelButton([{
             text: 'DELETE',
             callback: () => {
-              toggleDisability([btnDelete], true);
+              const toggle = toggleDisability([btnDelete], true);
 
               appUsersManager.deleteContacts([this.peerId]).then(() => {
                 this.close();
               }, () => {
-                toggleDisability([btnDelete], false);
+                toggle();
               });
             },
             isDanger: true

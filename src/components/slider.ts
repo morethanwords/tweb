@@ -24,10 +24,7 @@ export default class SidebarSlider {
     canHideFirst?: SidebarSlider['canHideFirst'],
     navigationType: SidebarSlider['navigationType']
   }) {
-    for(const i in options) {
-      // @ts-ignore
-      this[i] = options[i];
-    }
+    Object.assign(this, options);
 
     if(!this.tabs) {
       this.tabs = new Map();

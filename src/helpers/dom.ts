@@ -791,6 +791,8 @@ export function toggleDisability(elements: HTMLElement[], disable: boolean) {
   } else {
     elements.forEach(el => el.removeAttribute('disabled'));
   }
+
+  return () => toggleDisability(elements, !disable);
 }
 
 export function canFocus(isFirstInput: boolean) {

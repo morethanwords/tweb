@@ -59,15 +59,14 @@ export default class AppActiveSessionsTab extends SliderSuperTab {
             text: 'TERMINATE',
             isDanger: true,
             callback: () => {
-              const b = [btnTerminate];
-              toggleDisability(b, true);
+              const toggle = toggleDisability([btnTerminate], true);
               apiManager.invokeApi('auth.resetAuthorizations').then(value => {
                 //toggleDisability([btnTerminate], false);
                 btnTerminate.remove();
                 otherSection.container.remove();
                 this.privacyTab.updateActiveSessions();
               }, onError).finally(() => {
-                toggleDisability(b, false);
+                toggle();
               });
             }
           }], {

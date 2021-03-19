@@ -23,10 +23,7 @@ export default class EditPeer {
     listenerSetter: ListenerSetter,
     doNotEditAvatar?: boolean,
   }) {
-    for(let i in options) {
-      // @ts-ignore
-      this[i] = options[i];
-    }
+    Object.assign(this, options);
 
     this.nextBtn = Button('btn-circle btn-corner tgico-check');
 

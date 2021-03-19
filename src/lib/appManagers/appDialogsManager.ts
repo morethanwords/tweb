@@ -817,6 +817,10 @@ export class AppDialogsManager {
     this.sliceTimeout = window.setTimeout(() => {
       this.sliceTimeout = undefined;
 
+      if(!this.chatList.childElementCount) {
+        return;
+      }
+
       /* const observer = new IntersectionObserver((entries) => {
         const 
       });
@@ -828,9 +832,10 @@ export class AppDialogsManager {
       //const scrollTopWas = this.scroll.scrollTop;
 
       const rect = this.scroll.container.getBoundingClientRect();
+      const rectX = this.chatList.firstElementChild.getBoundingClientRect();
       const children = Array.from(this.scroll.splitUp.children) as HTMLElement[];
-      const firstElement = findUpTag(document.elementFromPoint(Math.ceil(rect.x), Math.ceil(rect.y + 1)), 'LI') as HTMLElement;
-      const lastElement = findUpTag(document.elementFromPoint(Math.ceil(rect.x), Math.floor(rect.y + rect.height - 1)), 'LI') as HTMLElement;
+      const firstElement = findUpTag(document.elementFromPoint(Math.ceil(rectX.x), Math.ceil(rect.y + 1)), 'LI') as HTMLElement;
+      const lastElement = findUpTag(document.elementFromPoint(Math.ceil(rectX.x), Math.floor(rect.y + rect.height - 1)), 'LI') as HTMLElement;
 
       //alert('got element:' + rect.y);
 

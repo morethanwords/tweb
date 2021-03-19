@@ -34,10 +34,7 @@ export default class ProgressivePreloader {
     attachMethod: ProgressivePreloader['attachMethod']
   }>) {
     if(options) {
-      for(let i in options) {
-        // @ts-ignore
-        this[i] = options[i];
-      }
+      Object.assign(this, options);
     }
   }
 

@@ -1,11 +1,10 @@
-import { attachClickEvent, cancelEvent, findUpTag } from "../../../helpers/dom";
+import { attachClickEvent, findUpTag } from "../../../helpers/dom";
 import ListenerSetter from "../../../helpers/listenerSetter";
 import ScrollableLoader from "../../../helpers/listLoader";
 import { ChannelParticipant, Chat, ChatBannedRights, Update } from "../../../layer";
 import appChatsManager, { ChatRights } from "../../../lib/appManagers/appChatsManager";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import appProfileManager from "../../../lib/appManagers/appProfileManager";
-import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import rootScope from "../../../lib/rootScope";
 import CheckboxField from "../../checkboxField";
 import PopupPickUser from "../../popups/pickUser";
@@ -115,7 +114,7 @@ export class ChatPermissions {
 export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
   public chatId: number;
 
-  protected init() {
+  protected async init() {
     this.container.classList.add('edit-peer-container', 'group-permissions-container');
     this.title.innerHTML = 'Permissions';
 
@@ -165,10 +164,6 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
         let participant: AppUserPermissionsTab['participant'];
         try {
           participant = await appProfileManager.getChannelParticipant(this.chatId, peerId) as any;
-    
-          if(participant._ !== 'channelParticipantBanned') {
-            participant = undefined;
-          }
         } catch(err) {
           toast('User is no longer participant');
           return;
@@ -255,7 +250,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
 
       this.listenerSetter.add(rootScope, 'apiUpdate', (update: Update) => {
         if(update._ === 'updateChannelParticipant') {
-          const needAdd = update.new_participant?._ === 'channelParticipantBanned';
+          const needAdd = update.new_participant?._ === 'channelParticipantBanned' && !update.new_participant.banned_rights.pFlags.view_messages;
           const li = list.querySelector(`[data-peer-id="${update.user_id}"]`);
           if(needAdd) {
             if(!li) {
@@ -304,6 +299,8 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
       });
 
       this.scrollable.append(section.container);
+
+      await loader.load();
     }
   }
 

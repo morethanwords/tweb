@@ -2644,7 +2644,7 @@ export class AppMessagesManager {
         case 'messageActionChatAddUser': {
           const users: number[] = (action as MessageAction.messageActionChatAddUser).users || [(action as MessageAction.messageActionChatDeleteUser).user_id];
 
-          l = langPack[_].replace('{}', users.map((userId: number) => getNameDivHTML(userId)).join(', '));
+          l = langPack[_].replace('{}', users.map((userId: number) => getNameDivHTML(userId).trim()).join(', '));
           break;
         }
 

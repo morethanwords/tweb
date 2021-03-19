@@ -3,7 +3,6 @@ import RadioField from "./radioField";
 import { ripple } from "./ripple";
 import { SliderSuperTab } from "./slider";
 import RadioForm from "./radioForm";
-import { attachClickEvent, cancelEvent } from "../helpers/dom";
 
 export default class Row {
   public container: HTMLElement;
@@ -26,7 +25,7 @@ export default class Row {
     clickable: boolean | ((e: Event) => void),
     navigationTab: SliderSuperTab
   }> = {}) {
-    this.container = document.createElement('div');
+    this.container = document.createElement(options.radioField || options.checkboxField ? 'label' : 'div');
     this.container.classList.add('row');
 
     this.subtitle = document.createElement('div');
@@ -56,18 +55,6 @@ export default class Row {
 
       const i = options.radioField || options.checkboxField;
       i.label.classList.add('disable-hover');
-
-      if(options.radioField) {
-        attachClickEvent(this.container, (e) => {
-          cancelEvent(e);
-          i.checked = true;
-        });
-      } else {
-        attachClickEvent(this.container, (e) => {
-          cancelEvent(e);
-          i.checked = !i.checked;
-        });
-      }
     } else {
       if(options.title) {
         let c: HTMLElement;

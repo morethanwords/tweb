@@ -207,12 +207,12 @@ export default class AppEditGroupTab extends SliderSuperTab {
           buttons: addCancelButton([{
             text: 'DELETE',
             callback: () => {
-              toggleDisability([btnDelete], true);
+              const toggle = toggleDisability([btnDelete], true);
 
               appChatsManager.deleteChannel(this.chatId).then(() => {
                 this.close();
               }, () => {
-                toggleDisability([btnDelete], false);
+                toggle();
               });
             },
             isDanger: true
