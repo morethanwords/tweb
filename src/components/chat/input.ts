@@ -58,7 +58,7 @@ export default class ChatInput {
   public rowsWrapper: HTMLDivElement;
   private newMessageWrapper: HTMLDivElement;
   private btnToggleEmoticons: HTMLButtonElement;
-  private btnSendContainer: HTMLDivElement;
+  public btnSendContainer: HTMLDivElement;
 
   public attachMenu: HTMLButtonElement;
   private attachMenuButtons: (ButtonMenuItemOptions & {verify: (peerId: number) => boolean})[];
@@ -128,9 +128,15 @@ export default class ChatInput {
     this.inputContainer.classList.add('chat-input-container');
 
     this.rowsWrapper = document.createElement('div');
-    this.rowsWrapper.classList.add('rows-wrapper');
+    this.rowsWrapper.classList.add('rows-wrapper', 'chat-input-wrapper');
 
-    this.inputContainer.append(this.rowsWrapper);
+    const fakeRowsWrapper = document.createElement('div');
+    fakeRowsWrapper.classList.add('fake-wrapper', 'fake-rows-wrapper');
+
+    const fakeSelectionWrapper = document.createElement('div');
+    fakeSelectionWrapper.classList.add('fake-wrapper', 'fake-selection-wrapper');
+
+    this.inputContainer.append(this.rowsWrapper, fakeRowsWrapper, fakeSelectionWrapper);
     this.chatInput.append(this.inputContainer);
 
     this.goDownBtn = Button('bubbles-go-down btn-corner btn-circle z-depth-1 hide', {icon: 'arrow_down'});

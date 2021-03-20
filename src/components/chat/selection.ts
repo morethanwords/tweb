@@ -21,6 +21,7 @@ export default class ChatSelection {
   public selectedMids: Set<number> = new Set();
   public isSelecting = false;
 
+  private selectionInputWrapper: HTMLElement;
   private selectionContainer: HTMLElement;
   private selectionCountEl: HTMLElement;
   public selectionSendNowBtn: HTMLElement;
@@ -274,12 +275,27 @@ export default class ChatSelection {
 
     blurActiveElement(); // * for mobile keyboards
 
+    let transform = '';
     const forwards = !!this.selectedMids.size || forceSelection;
+    if(forwards) {
+      const p = this.input.rowsWrapper.parentElement;
+      const widthFrom = p.querySelector('.fake-rows-wrapper').scrollWidth;
+      const widthTo = p.querySelector('.fake-selection-wrapper').scrollWidth;
+      const btnSendWidth = this.input.btnSendContainer.scrollWidth - (.5625 * 16);
+
+      if(widthFrom !== widthTo) {
+        const scale = widthTo / widthFrom;
+        transform = `translateX(${btnSendWidth * scale}px) scaleX(${scale})`;
+        //scale = widthTo / widthFrom;
+      }
+    }
+
     SetTransition(this.input.rowsWrapper, 'is-centering', forwards, 200);
+    this.input.rowsWrapper.style.transform = transform;
     SetTransition(bubblesContainer, 'is-selecting', forwards, 200, () => {
       if(!this.isSelecting) {
-        this.selectionContainer.remove();
-        this.selectionContainer = this.selectionSendNowBtn = this.selectionForwardBtn = this.selectionDeleteBtn = null;
+        this.selectionInputWrapper.remove();
+        this.selectionInputWrapper = this.selectionContainer = this.selectionSendNowBtn = this.selectionForwardBtn = this.selectionDeleteBtn = null;
         this.selectedText = undefined;
       }
       
@@ -292,6 +308,9 @@ export default class ChatSelection {
 
     if(this.isSelecting) {
       if(!this.selectionContainer) {
+        this.selectionInputWrapper = document.createElement('div');
+        this.selectionInputWrapper.classList.add('chat-input-wrapper', 'selection-wrapper');
+
         this.selectionContainer = document.createElement('div');
         this.selectionContainer.classList.add('selection-container');
 
@@ -329,7 +348,12 @@ export default class ChatSelection {
 
         this.selectionContainer.append(...[btnCancel, this.selectionCountEl, this.selectionSendNowBtn, this.selectionForwardBtn, this.selectionDeleteBtn].filter(Boolean));
 
-        this.input.rowsWrapper.append(this.selectionContainer);
+        this.selectionInputWrapper.style.opacity = '0';
+        this.selectionInputWrapper.append(this.selectionContainer);
+        this.input.rowsWrapper.parentElement.append(this.selectionInputWrapper);
+
+        void this.selectionInputWrapper.offsetLeft; // reflow
+        this.selectionInputWrapper.style.opacity = '';
       }
     }
 
