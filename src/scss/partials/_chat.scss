@@ -612,12 +612,16 @@ $chat-helper-size: 39px;
 	}
 }
 
-.selection-wrapper {
+.selection-wrapper, .fake-selection-wrapper {
 	position: absolute;
 	left: 50%;
 	top: 0;
-	width: 28.75rem;
 	transform: translateX(-50%);
+	width: 28.75rem;
+	max-width: calc(100% - (var(--padding-horizontal) * 2));
+}
+
+.selection-wrapper {
 	border-radius: $border-radius-big;
 	//z-index: 2;
 	box-shadow: none;
@@ -698,28 +702,38 @@ $chat-helper-size: 39px;
 	visibility: hidden;
 }
 
-.fake-rows-wrapper {
-	width: calc(100% - var(--chat-input-size) - (var(--padding-horizontal) * 2) - .5625rem);
-}
-
-.fake-selection-wrapper {
-	width: 460px;
-}
-
-.rows-wrapper {
-	transform: scaleX(1);
-	transition: transform .2s, width .2s, max-height .2s, border-bottom-right-radius .1s;
-
-	&:after {
-		transition: transform .1s;
-	}
-
+.rows-wrapper, .fake-rows-wrapper {
 	.chat-input.type-pinned & {
 		width: 17.125rem;
 	}
 
 	.chat-input.type-pinned.can-pin & {
 		width: 13.125rem;
+	}
+}
+
+.fake-rows-wrapper {
+	position: absolute;
+	left: var(--padding-horizontal);
+	top: 0;
+	width: calc(100% - var(--chat-input-size) - (var(--padding-horizontal) * 2) - .5625rem);
+}
+
+.rows-wrapper {
+	transform: scaleX(1);
+	transition: transform .2s, width .2s, max-height .2s, border-radius .1s;
+
+	&.is-centered {
+		margin: 0 auto;
+
+		& ~ .fake-rows-wrapper {
+			left: 50%;
+			transform: translateX(-50%);
+		}
+	}
+
+	&:after {
+		transition: transform .1s;
 	}
 
 	&.is-centering:not(.backwards), &.is-centered {
@@ -729,10 +743,6 @@ $chat-helper-size: 39px;
 			transform: scaleX(-1) translateX(#{.5625rem * 2});
 		}
 	}
-
-	/* &.is-centered, &.is-centered.is-centering:not(.backwards) {
-		transform: translate3d(calc(((var(--messages-container-width) - var(--chat-input-padding) * 2) - 100%) / 2), 0, 0);
-	} */
 
 	@include respond-to(handhelds) {
 		--padding-vertical: .5px;
@@ -970,7 +980,7 @@ $chat-helper-size: 39px;
 
 	&.is-selecting {
 		&:not(.backwards) .is-in .bubble-content-wrapper {
-			transform: translateX(2.5rem);
+			transform: scale(1) translateX(2.5rem);
 		}
 
 		// ! this animation will slow down chat input's animation due to count of elements

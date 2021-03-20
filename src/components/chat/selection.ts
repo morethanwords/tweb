@@ -275,23 +275,34 @@ export default class ChatSelection {
 
     blurActiveElement(); // * for mobile keyboards
 
-    let transform = '';
+    let transform = '', borderRadius = '';
     const forwards = !!this.selectedMids.size || forceSelection;
     if(forwards) {
       const p = this.input.rowsWrapper.parentElement;
-      const widthFrom = p.querySelector('.fake-rows-wrapper').scrollWidth;
-      const widthTo = p.querySelector('.fake-selection-wrapper').scrollWidth;
-      const btnSendWidth = this.input.btnSendContainer.scrollWidth - (.5625 * 16);
+      const fakeSelectionWrapper = p.querySelector('.fake-selection-wrapper');
+      const fakeRowsWrapper = p.querySelector('.fake-rows-wrapper');
+      const fakeSelectionRect = fakeSelectionWrapper.getBoundingClientRect();
+      const fakeRowsRect = fakeRowsWrapper.getBoundingClientRect();
+      const widthFrom = fakeRowsRect.width;
+      const widthTo = fakeSelectionRect.width;
 
       if(widthFrom !== widthTo) {
-        const scale = widthTo / widthFrom;
-        transform = `translateX(${btnSendWidth * scale}px) scaleX(${scale})`;
+        const scale = (widthTo/*  - 8 */) / widthFrom;
+        const initTranslateX = (widthFrom - widthTo) / 2;
+        const needTranslateX = fakeSelectionRect.left - fakeRowsRect.left - initTranslateX;
+        transform = `translateX(${needTranslateX}px) scaleX(${scale})`;
+
+        if(scale < 1) {
+          const br = 12;
+          borderRadius = '' + (br + br * (1 - scale)) + 'px';
+        }
         //scale = widthTo / widthFrom;
       }
     }
 
     SetTransition(this.input.rowsWrapper, 'is-centering', forwards, 200);
     this.input.rowsWrapper.style.transform = transform;
+    this.input.rowsWrapper.style.borderRadius = borderRadius;
     SetTransition(bubblesContainer, 'is-selecting', forwards, 200, () => {
       if(!this.isSelecting) {
         this.selectionInputWrapper.remove();
