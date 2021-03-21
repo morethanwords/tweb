@@ -569,7 +569,7 @@
     align-items: center;
     margin: 15px auto 1rem;
     border-radius: 30px;
-    padding: 0 12px;
+    padding: 0 24px 0 12px;
     display: flex;
   }
 
@@ -581,8 +581,9 @@
   .row {
     .btn-primary {
       height: 30px;
+      padding: 0 12px;
       font-size: 15px;
-      width: 52px;
+      width: auto;
       transition: width 0.2s;
       margin: 0;
       position: absolute;

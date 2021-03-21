@@ -120,3 +120,13 @@ export function validateInitObject(initObject: any, currentObject: any) {
     }
   }
 }
+
+export function safeAssign(object: any, fromObject: any) {
+  if(!fromObject) return;
+  
+  for(let i in fromObject) {
+    if(fromObject[i] !== undefined) {
+      object[i] = fromObject[i];
+    }
+  }
+}
