@@ -9,7 +9,7 @@ const fs = require('fs');
 const allowedIPs = ['194.58.97.147', '195.66.140.39', '127.0.0.1', '176.100.8.254'];
 const devMode = process.env.NODE_ENV !== 'production';
 const useLocal = true;
-const useLocalNotLocal = false;
+const useLocalNotLocal = true;
 
 if(devMode) {
   console.log('DEVMODE IS ON!');
@@ -17,6 +17,7 @@ if(devMode) {
 
 const opts = {
   MTPROTO_WORKER: true,
+  MTPROTO_SW: false,
   MTPROTO_HTTP: false,
   MTPROTO_HTTP_UPLOAD: false,
   DEBUG: devMode,
@@ -81,11 +82,13 @@ module.exports = {
 
   entry: './src/index.ts',
   /* entry: {
-    index: './src/index.ts'
+    index: './src/index.ts',
+    pluralPolyfill: './src/lib/pluralPolyfill.ts'
   }, */
   //devtool: 'inline-source-map',
 
   output: {
+    globalObject: "this",
     path: path.resolve(__dirname, 'public'),
     filename: "[name].[chunkhash].bundle.js",
     chunkFilename: "[name].[chunkhash].chunk.js"

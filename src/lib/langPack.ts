@@ -68,10 +68,14 @@ export type LangPackKey = Strings.LangPackKey;
 
 namespace I18n {
 	export const strings: Map<LangPackKey, LangPackString> = new Map();
+	let pluralRules: Intl.PluralRules;
 
 	let lastRequestedLangCode: string;
 	export function getCacheLangPack(): Promise<LangPackDifference> {
-		return sessionStorage.get('langPack').then((langPack: LangPackDifference) => {
+		return Promise.all([
+			sessionStorage.get('langPack'),
+			polyfillPromise
+		]).then(([langPack]) => {
 			if(!langPack) {
 				return getLangPack('en');
 			}
@@ -87,21 +91,36 @@ namespace I18n {
 
 	export function getLangPack(langCode: string) {
 		lastRequestedLangCode = langCode;
-		return apiManager.invokeApi('langpack.getLangPack', {
-			lang_code: langCode,
-			lang_pack: 'macos'
-		}).then(langPack => {
+		return Promise.all([
+			apiManager.invokeApi('langpack.getLangPack', {
+				lang_code: langCode,
+				lang_pack: 'macos'
+			}),
+			polyfillPromise
+		]).then(([langPack, _]) => {
 			return sessionStorage.set({langPack}).then(() => {
 				applyLangPack(langPack);
 				return langPack;
 			});
 		});
 	}
+
+	export const polyfillPromise = (function checkIfPolyfillNeeded() {
+		if(typeof(Intl) !== 'undefined' && typeof(Intl.PluralRules) !== 'undefined'/*  && false */) {
+			return Promise.resolve();
+		} else {
+			return import('./pluralPolyfill').then(_Intl => {
+				(window as any).Intl = _Intl.default;
+			});
+		}
+	})();
 	
 	export function applyLangPack(langPack: LangPackDifference) {
 		if(langPack.lang_code !== lastRequestedLangCode) {
 			return;
 		}
+
+		pluralRules = new Intl.PluralRules(langPack.lang_code);
 
 		strings.clear();
 
@@ -125,7 +144,10 @@ namespace I18n {
 
 		if(str) {
 			if(str._ === 'langPackStringPluralized') {
-				out = str.one_value;
+				const v = args[0] as number;
+				const s = pluralRules.select(v);
+				// @ts-ignore
+				out = str[s + '_value'];
 			} else if(str._ === 'langPackString') {
 				out = str.value;
 			} else {
@@ -133,6 +155,12 @@ namespace I18n {
 			}
 		} else {
 			out = '[' + key + ']';
+		}
+
+		if(args?.length) {
+			out = out.replace(/%./g, (match, offset, string) => {
+				return '' + args.shift();
+			});
 		}
 
 		return out;
