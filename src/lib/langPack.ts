@@ -41,11 +41,17 @@ namespace Strings {
 
 	export type AccountSettings = 'AccountSettings.Filters' | 'AccountSettings.Notifications' | 'AccountSettings.PrivacyAndSecurity' | 'AccountSettings.Language' | 'AccountSettings.Bio';
 
-	export type Telegram = 'Telegram.GeneralSettingsViewController';
+	export type Telegram = 'Telegram.GeneralSettingsViewController' | 'Telegram.NotificationSettingsViewController';
 
 	export type ChatFilters = 'ChatList.Filter.Header' | 'ChatList.Filter.NewTitle' | 'ChatList.Filter.List.Header' | 'ChatList.Filter.Recommended.Header' | 'ChatList.Filter.Recommended.Add' | 'ChatList.Filter.List.Title';
 
-	export type LangPackKey = AccountSettings | EditAccount | Telegram | ChatFilters | LoginRegister | Bio | string;
+	export type AutoDownloadSettings = 'AutoDownloadSettings.TypePrivateChats' | 'AutoDownloadSettings.TypeChannels';
+
+	export type DataAndStorage = 'DataAndStorage.CategorySettings.GroupChats';
+
+	export type Suggest = 'Suggest.Localization.Other';
+
+	export type LangPackKey = string | AccountSettings | EditAccount | Telegram | ChatFilters | LoginRegister | Bio | AutoDownloadSettings | DataAndStorage | Suggest;
 }
 
 export type LangPackKey = Strings.LangPackKey;

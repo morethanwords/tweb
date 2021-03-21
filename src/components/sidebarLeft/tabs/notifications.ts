@@ -7,16 +7,17 @@ import { SliderSuperTabEventable } from "../../sliderTab";
 import { copy } from "../../../helpers/object";
 import rootScope from "../../../lib/rootScope";
 import { convertKeyToInputKey } from "../../../helpers/string";
+import { LangPackKey } from "../../../lib/langPack";
 
 type InputNotifyKey = Exclude<InputNotifyPeer['_'], 'inputNotifyPeer'>;
 
 export default class AppNotificationsTab extends SliderSuperTabEventable {
   protected init() {
     this.container.classList.add('notifications-container');
-    this.title.innerText = 'Notifications';
+    this.setTitle('Telegram.NotificationSettingsViewController');
 
     const NotifySection = (options: {
-      name: string,
+      name: LangPackKey,
       typeText: string,
       inputKey: InputNotifyKey,
     }) => {
@@ -78,26 +79,26 @@ export default class AppNotificationsTab extends SliderSuperTabEventable {
     };
 
     NotifySection({
-      name: 'Private Chats',
+      name: 'AutoDownloadSettings.TypePrivateChats',
       typeText: 'Notifications for private chats',
       inputKey: 'inputNotifyUsers'
     });
 
     NotifySection({
-      name: 'Groups',
+      name: 'DataAndStorage.CategorySettings.GroupChats',
       typeText: 'Notifications for groups',
       inputKey: 'inputNotifyChats'
     });
 
     NotifySection({
-      name: 'Channels',
+      name: 'AutoDownloadSettings.TypeChannels',
       typeText: 'Notifications for channels',
       inputKey: 'inputNotifyBroadcasts'
     });
 
     {
       const section = new SettingSection({
-        name: 'Other'
+        name: 'Suggest.Localization.Other'
       });
 
       const contactsSignUpRow = new Row({
