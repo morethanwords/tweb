@@ -42,7 +42,7 @@ export default class PopupDatePicker extends PopupElement {
     }, {
       text: 'CANCEL',
       isCancel: true
-    }], {body: true, ...options});
+    }], {body: true, overlayClosable: true, ...options});
 
     this.minDate = options.minDate || new Date('2013-08-01T00:00:00');
 
