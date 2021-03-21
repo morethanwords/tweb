@@ -5,6 +5,7 @@ import { SliderSuperTab } from "../../slider";
 import { attachClickEvent } from "../../../helpers/dom";
 import EditPeer from "../../editPeer";
 import { UsernameInputField } from "../../usernameInputField";
+import { i18n_ } from "../../../lib/langPack";
 
 // TODO: аватарка не поменяется в этой вкладке после изменения почему-то (если поставить в другом клиенте, и потом тут проверить, для этого ещё вышел в чатлист)
 
@@ -21,7 +22,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
 
   protected async init() {
     this.container.classList.add('edit-profile-container');
-    this.title.innerText = 'Edit Profile';
+    this.setTitle('EditAccount.Title');
 
     const inputFields: InputField[] = [];
 
@@ -30,17 +31,17 @@ export default class AppEditProfileTab extends SliderSuperTab {
       inputWrapper.classList.add('input-wrapper');
   
       this.firstNameInputField = new InputField({
-        label: 'Name',
+        label: 'Login.Register.FirstName.Placeholder',
         name: 'first-name',
         maxLength: 70
       });
       this.lastNameInputField = new InputField({
-        label: 'Last Name',
+        label: 'Login.Register.LastName.Placeholder',
         name: 'last-name',
         maxLength: 64
       });
       this.bioInputField = new InputField({
-        label: 'Bio (optional)',
+        label: 'AccountSettings.Bio',
         name: 'bio',
         maxLength: 70
       });
@@ -49,7 +50,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
       
       const caption = document.createElement('div');
       caption.classList.add('caption');
-      caption.innerHTML = 'Any details such as age, occupation or city. Example:<br>23 y.o. designer from San Francisco.';
+      i18n_({element: caption, key: 'Bio.Description'});
 
       inputFields.push(this.firstNameInputField, this.lastNameInputField, this.bioInputField);
       this.scrollable.append(inputWrapper, caption);
@@ -68,14 +69,14 @@ export default class AppEditProfileTab extends SliderSuperTab {
     {
       const h2 = document.createElement('div');
       h2.classList.add('sidebar-left-h2');
-      h2.innerText = 'Username';
+      i18n_({element: h2, key: 'EditAccount.Username'});
 
       const inputWrapper = document.createElement('div');
       inputWrapper.classList.add('input-wrapper');
 
       this.usernameInputField = new UsernameInputField({
         peerId: 0,
-        label: 'Username (optional)',
+        label: 'EditAccount.Username',
         name: 'username',
         plainText: true,
         listenerSetter: this.listenerSetter,

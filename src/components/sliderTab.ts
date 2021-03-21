@@ -1,5 +1,6 @@
 import EventListenerBase from "../helpers/eventListenerBase";
 import ListenerSetter from "../helpers/listenerSetter";
+import { i18n, LangPackKey } from "../lib/langPack";
 import ButtonIcon from "./buttonIcon";
 import Scrollable from "./scrollable";
 import SidebarSlider from "./slider";
@@ -91,6 +92,11 @@ export default class SliderSuperTab implements SliderTab {
     if(this.listenerSetter) {
       this.listenerSetter.removeAll();
     }
+  }
+
+  protected setTitle(key: LangPackKey) {
+    this.title.innerHTML = '';
+    this.title.append(i18n(key));
   }
 }
 

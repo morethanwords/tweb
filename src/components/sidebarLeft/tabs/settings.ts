@@ -32,7 +32,7 @@ export default class AppSettingsTab extends SliderSuperTab {
     
     const btnMenu = ButtonMenuToggle({}, 'bottom-left', [{
       icon: 'logout',
-      text: 'Log Out',
+      text: 'EditAccount.Logout',
       onClick: () => {
         apiManager.logOut();
       }
@@ -96,12 +96,12 @@ export default class AppSettingsTab extends SliderSuperTab {
     buttonsDiv.classList.add('profile-buttons');
 
     const className = 'profile-button btn-primary btn-transparent';
-    buttonsDiv.append(this.buttons.edit = Button(className, {icon: 'edit', text: 'Edit Profile'}));
-    buttonsDiv.append(this.buttons.folders = Button(className, {icon: 'folder', text: 'Chat Folders'}));
-    buttonsDiv.append(this.buttons.general = Button(className, {icon: 'settings', text: 'General Settings'}));
-    buttonsDiv.append(this.buttons.notifications = Button(className, {icon: 'unmute', text: 'Notifications'}));
-    buttonsDiv.append(this.buttons.privacy = Button(className, {icon: 'lock', text: 'Privacy and Security'}));
-    buttonsDiv.append(this.buttons.language = Button(className, {icon: 'language', text: 'Language', disabled: true}));
+    buttonsDiv.append(this.buttons.edit = Button(className, {icon: 'edit', text: 'EditAccount.Title'}));
+    buttonsDiv.append(this.buttons.folders = Button(className, {icon: 'folder', text: 'AccountSettings.Filters'}));
+    buttonsDiv.append(this.buttons.general = Button(className, {icon: 'settings', text: 'Telegram.GeneralSettingsViewController'}));
+    buttonsDiv.append(this.buttons.notifications = Button(className, {icon: 'unmute', text: 'AccountSettings.Notifications'}));
+    buttonsDiv.append(this.buttons.privacy = Button(className, {icon: 'lock', text: 'AccountSettings.PrivacyAndSecurity'}));
+    buttonsDiv.append(this.buttons.language = Button(className, {icon: 'language', text: 'AccountSettings.Language'}));
     
     this.scrollable.append(this.avatarElem, this.nameDiv, this.phoneDiv, buttonsDiv);
     this.scrollable.container.classList.add('profile-content-wrapper');
