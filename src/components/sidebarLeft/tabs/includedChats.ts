@@ -10,6 +10,7 @@ import ButtonIcon from "../../buttonIcon";
 import CheckboxField from "../../checkboxField";
 import Button from "../../button";
 import AppEditFolderTab from "./editFolder";
+import { i18n, LangPackKey, _i18n } from "../../../lib/langPack";
 
 export default class AppIncludedChatsTab extends SliderSuperTab {
   private editFolderTab: AppEditFolderTab;
@@ -123,7 +124,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
       dom.containerEl.append(this.checkbox(selected));
       if(selected) dom.listEl.classList.add('active');
 
-      let subtitle = '';
+      let subtitle: LangPackKey;
 
       if(peerId > 0) {
         if(peerId === rootScope.myId) {
@@ -137,7 +138,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
         subtitle = appPeersManager.isBroadcast(peerId) ? 'Channel' : 'Group';
       }
 
-      dom.lastMessageSpan.innerHTML = subtitle;
+      _i18n(dom.lastMessageSpan, subtitle);
     });
   };
 
@@ -148,14 +149,14 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
     }
 
     this.confirmBtn.style.display = this.type === 'excluded' ? '' : 'none';
-    this.title.innerText = this.type === 'included' ? 'Included Chats' : 'Excluded Chats';
+    this.setTitle(this.type === 'included' ? 'Included Chats' : 'Excluded Chats');
 
     const filter = this.filter;
 
     const fragment = document.createDocumentFragment();
     const dd = document.createElement('div');
     dd.classList.add('sidebar-left-h2');
-    dd.innerText = 'Chat types';
+    _i18n(dd, 'ChatList.Add.TopSeparator');
     
     const categories = document.createElement('div');
     categories.classList.add('folder-categories');
@@ -163,17 +164,17 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
     let details: {[flag: string]: {ico: string, text: string}};
     if(this.type === 'excluded') {
       details = {
-        exclude_muted: {ico: 'mute', text: 'Muted'},
-        exclude_archived: {ico: 'archive', text: 'Archived'},
-        exclude_read: {ico: 'readchats', text: 'Read'}
+        exclude_muted: {ico: 'mute', text: 'ChatList.Filter.MutedChats'},
+        exclude_archived: {ico: 'archive', text: 'ChatList.Filter.Archive'},
+        exclude_read: {ico: 'readchats', text: 'ChatList.Filter.ReadChats'}
       };
     } else {
       details = {
-        contacts: {ico: 'newprivate', text: 'Contacts'},
-        non_contacts: {ico: 'noncontacts', text: 'Non-Contacts'},
-        groups: {ico: 'group', text: 'Groups'},
-        broadcasts: {ico: 'newchannel', text: 'Channels'},
-        bots: {ico: 'bots', text: 'Bots'}
+        contacts: {ico: 'newprivate', text: 'ChatList.Filter.Contacts'},
+        non_contacts: {ico: 'noncontacts', text: 'ChatList.Filter.NonContacts'},
+        groups: {ico: 'group', text: 'ChatList.Filter.Groups'},
+        broadcasts: {ico: 'newchannel', text: 'ChatList.Filter.Channels'},
+        bots: {ico: 'bots', text: 'ChatList.Filter.Bots'}
       };
     }
 
@@ -191,7 +192,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
 
     const d = document.createElement('div');
     d.classList.add('sidebar-left-h2');
-    d.innerText = 'Chats';
+    _i18n(d, 'ChatList.Add.BottomSeparator');
 
     fragment.append(dd, categories, hr, d);
 
@@ -210,7 +211,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
 
     const _add = this.selector.add.bind(this.selector);
     this.selector.add = (peerId, title, scroll) => {
-      const div = _add(peerId, details[peerId]?.text, scroll);
+      const div = _add(peerId, details[peerId] ? i18n(details[peerId].text) : undefined, scroll);
       if(details[peerId]) {
         div.querySelector('avatar-element').classList.add('tgico-' + details[peerId].ico);
       }

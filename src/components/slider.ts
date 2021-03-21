@@ -3,6 +3,7 @@ import { horizontalMenu } from "./horizontalMenu";
 import { TransitionSlider } from "./transition";
 import appNavigationController, { NavigationItem } from "./appNavigationController";
 import SliderSuperTab, { SliderSuperTabConstructable, SliderTab } from "./sliderTab";
+import { safeAssign } from "../helpers/object";
 
 const TRANSITION_TIME = 250;
 
@@ -24,7 +25,7 @@ export default class SidebarSlider {
     canHideFirst?: SidebarSlider['canHideFirst'],
     navigationType: SidebarSlider['navigationType']
   }) {
-    Object.assign(this, options);
+    safeAssign(this, options);
 
     if(!this.tabs) {
       this.tabs = new Map();

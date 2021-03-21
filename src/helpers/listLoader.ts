@@ -1,4 +1,5 @@
 import Scrollable from "../components/scrollable";
+import { safeAssign } from "./object";
 
 export default class ScrollableLoader {
   public loading = false;
@@ -11,7 +12,7 @@ export default class ScrollableLoader {
     scrollable: ScrollableLoader['scrollable'],
     getPromise: ScrollableLoader['getPromise']
   }) {
-    Object.assign(this, options);
+    safeAssign(this, options);
 
     options.scrollable.onScrolledBottom = () => {
       this.load();

@@ -1,4 +1,5 @@
 import { MOUNT_CLASS_TO } from '../config/debug';
+import { LangPackDifference } from '../layer';
 import type { State } from './appManagers/appStateManager';
 import AppStorage from './storage';
 
@@ -19,6 +20,7 @@ const sessionStorage = new AppStorage<{
       top: number
     }
   },
+  langPack: LangPackDifference
 } & State>({
   storeName: 'session'
 });

@@ -2,6 +2,7 @@ import { isInDOM, cancelEvent, attachClickEvent } from "../helpers/dom";
 import { CancellablePromise } from "../helpers/cancellablePromise";
 import SetTransition from "./singleTransition";
 import { fastRaf } from "../helpers/schedulers";
+import { safeAssign } from "../helpers/object";
 
 const TRANSITION_TIME = 200;
 
@@ -34,7 +35,7 @@ export default class ProgressivePreloader {
     attachMethod: ProgressivePreloader['attachMethod']
   }>) {
     if(options) {
-      Object.assign(this, options);
+      safeAssign(this, options);
     }
   }
 

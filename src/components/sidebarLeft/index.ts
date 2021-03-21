@@ -24,6 +24,8 @@ import AppContactsTab from "./tabs/contacts";
 import AppArchivedTab from "./tabs/archivedTab";
 import AppAddMembersTab from "./tabs/addMembers";
 import { i18n_, LangPackKey } from "../../lib/langPack";
+import ButtonMenuToggle from "../buttonMenuToggle";
+import ButtonMenu, { ButtonMenuItemOptions } from "../buttonMenu";
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -34,14 +36,6 @@ export class AppSidebarLeft extends SidebarSlider {
   private inputSearch: InputSearch;
   
   private menuEl: HTMLElement;
-  private buttons: {
-    newGroup: HTMLButtonElement,
-    contacts: HTMLButtonElement,
-    archived: HTMLButtonElement,
-    saved: HTMLButtonElement,
-    settings: HTMLButtonElement,
-    help: HTMLButtonElement
-  } = {} as any;
   public archivedCount: HTMLSpanElement;
 
   private newBtnMenu: HTMLElement;
@@ -68,58 +62,87 @@ export class AppSidebarLeft extends SidebarSlider {
     const sidebarHeader = this.sidebarEl.querySelector('.item-main .sidebar-header');
     sidebarHeader.append(this.inputSearch.container);
 
+    const onNewGroupClick = () => {
+      new AppAddMembersTab(this).open({
+        peerId: 0,
+        type: 'chat',
+        skippable: false,
+        takeOut: (peerIds) => {
+          new AppNewGroupTab(this).open(peerIds);
+        },
+        title: 'Add Members',
+        placeholder: 'Add People...'
+      });
+    };
+
+    const onContactsClick = () => {
+      new AppContactsTab(this).open();
+    };
+
     this.toolsBtn = this.sidebarEl.querySelector('.sidebar-tools-button') as HTMLButtonElement;
     this.backBtn = this.sidebarEl.querySelector('.sidebar-back-button') as HTMLButtonElement;
+
+    const btnArchive: ButtonMenuItemOptions = {
+      icon: 'archive',
+      text: 'Archived',
+      onClick: () => {
+        new AppArchivedTab(this).open();
+      }
+    };
+
+    const btnMenu = ButtonMenu([{
+      icon: 'newgroup',
+      text: 'New Group',
+      onClick: onNewGroupClick
+    }, {
+      icon: 'user',
+      text: 'Contacts',
+      onClick: onContactsClick
+    }, btnArchive, {
+      icon: 'savedmessages',
+      text: 'Saved',
+      onClick: () => {
+        setTimeout(() => { // menu doesn't close if no timeout (lol)
+          appImManager.setPeer(appImManager.myId);
+        }, 0);
+      }
+    }, {
+      icon: 'settings',
+      text: 'Settings',
+      onClick: () => {
+        new AppSettingsTab(this).open();
+      }
+    }, {
+      icon: 'help btn-disabled',
+      text: 'Help',
+      onClick: () => {
+
+      }
+    }]);
+
+    btnMenu.classList.add('bottom-right');
+
+    this.toolsBtn.append(btnMenu);
 
     this.menuEl = this.toolsBtn.querySelector('.btn-menu');
     this.newBtnMenu = this.sidebarEl.querySelector('#new-menu');
 
     this.inputSearch.input.addEventListener('focus', () => this.initSearch(), {once: true});
 
-    parseMenuButtonsTo(this.buttons, this.menuEl.children);
     parseMenuButtonsTo(this.newButtons, this.newBtnMenu.firstElementChild.children);
 
-    this.archivedCount = this.buttons.archived.querySelector('.archived-count') as HTMLSpanElement;
+    this.archivedCount = document.createElement('span');
+    this.archivedCount.className = 'archived-count badge badge-24 badge-gray';
 
-    attachClickEvent(this.buttons.saved, (e) => {
-      ///////this.log('savedbtn click');
-      setTimeout(() => { // menu doesn't close if no timeout (lol)
-        appImManager.setPeer(appImManager.myId);
-      }, 0);
-    });
-    
-    attachClickEvent(this.buttons.archived, (e) => {
-      new AppArchivedTab(this).open();
-    });
+    btnArchive.element.append(this.archivedCount);
 
-    [this.newButtons.privateChat, this.buttons.contacts].forEach(btn => {
-      attachClickEvent(btn, (e) => {
-        new AppContactsTab(this).open();
-      });
-    });
-
-    attachClickEvent(this.buttons.settings, (e) => {
-      new AppSettingsTab(this).open();
-    });
+    attachClickEvent(this.newButtons.privateChat, onContactsClick);
 
     attachClickEvent(this.newButtons.channel, (e) => {
       new AppNewChannelTab(this).open();
     });
 
-    [this.newButtons.group, this.buttons.newGroup].forEach(btn => {
-      attachClickEvent(btn, (e) => {
-        new AppAddMembersTab(this).open({
-          peerId: 0,
-          type: 'chat',
-          skippable: false,
-          takeOut: (peerIds) => {
-            new AppNewGroupTab(this).open(peerIds);
-          },
-          title: 'Add Members',
-          placeholder: 'Add People...'
-        });
-      });
-    });
+    attachClickEvent(this.newButtons.group, onNewGroupClick);
 
     rootScope.on('dialogs_archived_unread', (e) => {
       this.archivedCount.innerText = '' + formatNumber(e.count, 1);

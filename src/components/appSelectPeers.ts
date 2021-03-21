@@ -10,6 +10,7 @@ import Scrollable from "./scrollable";
 import { FocusDirection } from "../helpers/fastSmoothScroll";
 import CheckboxField from "./checkboxField";
 import appProfileManager from "../lib/appManagers/appProfileManager";
+import { safeAssign } from "../helpers/object";
 
 type PeerType = 'contacts' | 'dialogs' | 'channelParticipants';
 
@@ -69,7 +70,7 @@ export default class AppSelectPeers {
     rippleEnabled?: boolean,
     avatarSize?: AppSelectPeers['avatarSize'],
   }) {
-    Object.assign(this, options);
+    safeAssign(this, options);
 
     this.container.classList.add('selector');
 
@@ -440,7 +441,7 @@ export default class AppSelectPeers {
     });
   }
 
-  public add(peerId: any, title?: string, scroll = true) {
+  public add(peerId: any, title?: string | HTMLElement, scroll = true) {
     //console.trace('add');
     this.selected.add(peerId);
 
@@ -467,7 +468,12 @@ export default class AppSelectPeers {
     }
 
     if(title) {
-      div.innerHTML = title;
+      if(typeof(title) === 'string') {
+        div.innerHTML = title;
+      } else {
+        div.innerHTML = '';
+        div.append(title);
+      }
     }
 
     div.insertAdjacentElement('afterbegin', avatarEl);

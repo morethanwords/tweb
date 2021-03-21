@@ -10,6 +10,7 @@ import AppEditProfileTab from "./editProfile";
 import AppChatFoldersTab from "./chatFolders";
 import AppNotificationsTab from "./notifications";
 import PeerTitle from "../../peerTitle";
+import AppLanguageTab from "./language";
 //import AppMediaViewer from "../../appMediaViewerNew";
 
 export default class AppSettingsTab extends SliderSuperTab {
@@ -28,7 +29,7 @@ export default class AppSettingsTab extends SliderSuperTab {
 
   init() {
     this.container.classList.add('settings-container');
-    this.title.innerText = 'Settings';
+    this.setTitle('Settings');
     
     const btnMenu = ButtonMenuToggle({}, 'bottom-left', [{
       icon: 'logout',
@@ -129,6 +130,10 @@ export default class AppSettingsTab extends SliderSuperTab {
 
     this.buttons.privacy.addEventListener('click', () => {
       new AppPrivacyAndSecurityTab(this.slider).open();
+    });
+
+    this.buttons.language.addEventListener('click', () => {
+      new AppLanguageTab(this.slider).open();
     });
   }
 

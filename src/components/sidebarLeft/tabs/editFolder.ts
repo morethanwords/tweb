@@ -13,6 +13,7 @@ import ButtonMenuToggle from "../../buttonMenuToggle";
 import { ButtonMenuItemOptions } from "../../buttonMenu";
 import Button from "../../button";
 import AppIncludedChatsTab from "./includedChats";
+import { i18n, i18n_, LangPackKey } from "../../../lib/langPack";
 
 const MAX_FOLDER_NAME_LENGTH = 12;
 
@@ -38,7 +39,8 @@ export default class AppEditFolderTab extends SliderSuperTab {
     this.container.classList.add('edit-folder-container');
     this.caption = document.createElement('div');
     this.caption.classList.add('caption');
-    this.caption.innerHTML = `Choose chats and types of chats that will<br>appear and never appear in this folder.`;
+    this.caption.append(i18n(`Choose chats and types of chats that will
+appear and never appear in this folder.`));
     this.stickerContainer = document.createElement('div');
     this.stickerContainer.classList.add('sticker-container');
 
@@ -72,13 +74,13 @@ export default class AppEditFolderTab extends SliderSuperTab {
 
     inputWrapper.append(this.nameInputField.container);
 
-    const generateList = (className: string, h2Text: string, buttons: {icon: string, name?: string, withRipple?: true, text: string}[], to: any) => {
+    const generateList = (className: string, h2Text: LangPackKey, buttons: {icon: string, name?: string, withRipple?: true, text: string}[], to: any) => {
       const container = document.createElement('div');
       container.classList.add('folder-list', className);
 
       const h2 = document.createElement('div');
       h2.classList.add('sidebar-left-h2');
-      h2.innerHTML = h2Text;
+      i18n_({element: h2, key: h2Text});
 
       const categories = document.createElement('div');
       categories.classList.add('folder-categories');
@@ -102,46 +104,46 @@ export default class AppEditFolderTab extends SliderSuperTab {
       return container;
     };
 
-    this.include_peers = generateList('folder-list-included', 'Included chats', [{
+    this.include_peers = generateList('folder-list-included', 'ChatList.Filter.Include.Header', [{
       icon: 'add primary',
-      text: 'Add Chats',
+      text: 'ChatList.Filter.Include.AddChat',
       withRipple: true
     }, {
-      text: 'Contacts',
+      text: 'ChatList.Filter.Contacts',
       icon: 'newprivate',
       name: 'contacts'
     }, {
-      text: 'Non-Contacts',
+      text: 'ChatList.Filter.NonContacts',
       icon: 'noncontacts',
       name: 'non_contacts'
     }, {
-      text: 'Groups',
+      text: 'ChatList.Filter.Groups',
       icon: 'group',
       name: 'groups'
     }, {
-      text: 'Channels',
+      text: 'ChatList.Filter.Channels',
       icon: 'channel',
       name: 'broadcasts'
     }, {
-      text: 'Bots',
+      text: 'ChatList.Filter.Bots',
       icon: 'bots',
       name: 'bots'
     }], this.flags);
 
-    this.exclude_peers = generateList('folder-list-excluded', 'Excluded chats', [{
+    this.exclude_peers = generateList('folder-list-excluded', 'ChatList.Filter.Exclude.Header', [{
       icon: 'minus primary',
-      text: 'Remove Chats',
+      text: 'ChatList.Filter.Exclude.AddChat',
       withRipple: true
     }, {
-      text: 'Muted',
+      text: 'ChatList.Filter.MutedChats',
       icon: 'mute',
       name: 'exclude_muted'
     }, {
-      text: 'Archived',
+      text: 'ChatList.Filter.Archive',
       icon: 'archive',
       name: 'exclude_archived'
     }, {
-      text: 'Read',
+      text: 'ChatList.Filter.ReadChats',
       icon: 'readchats',
       name: 'exclude_read'
     }], this.flags);
@@ -225,7 +227,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
 
   private onCreateOpen() {
     this.caption.style.display = '';
-    this.title.innerText = 'New Folder';
+    this.setTitle('New Folder');
     this.menuBtn.classList.add('hide');
     this.confirmBtn.classList.remove('hide');
     this.nameInputField.value = '';
@@ -238,7 +240,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
 
   private onEditOpen() {
     this.caption.style.display = 'none';
-    this.title.innerText = this.type === 'create' ? 'New Folder' : 'Edit Folder';
+    this.setTitle(this.type === 'create' ? 'New Folder' : 'Edit Folder');
 
     if(this.type === 'edit') {
       this.menuBtn.classList.remove('hide');

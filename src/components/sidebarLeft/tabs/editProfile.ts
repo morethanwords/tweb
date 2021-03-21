@@ -5,7 +5,7 @@ import { SliderSuperTab } from "../../slider";
 import { attachClickEvent } from "../../../helpers/dom";
 import EditPeer from "../../editPeer";
 import { UsernameInputField } from "../../usernameInputField";
-import { i18n_ } from "../../../lib/langPack";
+import { i18n, i18n_ } from "../../../lib/langPack";
 
 // TODO: аватарка не поменяется в этой вкладке после изменения почему-то (если поставить в другом клиенте, и потом тут проверить, для этого ещё вышел в чатлист)
 
@@ -93,8 +93,21 @@ export default class AppEditProfileTab extends SliderSuperTab {
 
       const caption = document.createElement('div');
       caption.classList.add('caption');
-      caption.innerHTML = `You can choose a username on Telegram. If you do, other people will be able to find you by this username and contact you without knowing your phone number.<br><br>You can use a-z, 0-9 and underscores. Minimum length is 5 characters.<br><br><div class="profile-url-container">This link opens a chat with you:
-      <br><a class="profile-url" href="#" target="_blank"></a></div>`;
+      caption.append(i18n('UsernameSettings.ChangeDescription'));
+      caption.append(document.createElement('br'), document.createElement('br'));
+
+      const profileUrlContainer = this.profileUrlContainer = document.createElement('div');
+      profileUrlContainer.classList.add('profile-url-container');
+      profileUrlContainer.append(i18n('This link opens a chat with you:'));
+
+      const profileUrlAnchor = this.profileUrlAnchor = document.createElement('a');
+      profileUrlAnchor.classList.add('profile-url');
+      profileUrlAnchor.href = '#';
+      profileUrlAnchor.target = '_blank';
+
+      profileUrlContainer.append(profileUrlAnchor);
+
+      caption.append(profileUrlContainer);
 
       this.profileUrlContainer = caption.querySelector('.profile-url-container');
       this.profileUrlAnchor = this.profileUrlContainer.lastElementChild as HTMLAnchorElement;

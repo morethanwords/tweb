@@ -1,7 +1,7 @@
 import { getRichValue, isInputEmpty } from "../helpers/dom";
 import { debounce } from "../helpers/schedulers";
 import { checkRTL } from "../helpers/string";
-import { i18n_, LangPackKey } from "../lib/langPack";
+import { i18n, LangPackKey } from "../lib/langPack";
 import RichTextProcessor from "../lib/richtextprocessor";
 
 let init = () => {
@@ -143,7 +143,7 @@ class InputField {
 
     if(label) {
       this.label = document.createElement('label');
-      i18n_({element: this.label, key: label});
+      this.label.append(i18n(label));
       this.container.append(this.label);
     }
 
@@ -234,9 +234,10 @@ class InputField {
     }
   }
 
-  public setState(state: InputState, label?: string) {
+  public setState(state: InputState, label?: LangPackKey) {
     if(label) {
-      this.label.innerHTML = label;
+      this.label.innerHTML = '';
+      this.label.append(i18n(label));
     }
 
     this.input.classList.toggle('error', !!(state & InputState.Error));

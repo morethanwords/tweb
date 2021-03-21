@@ -1,6 +1,8 @@
 import { MOUNT_CLASS_TO } from "../config/debug";
-import { LangPackString } from "../layer";
+import { safeAssign } from "../helpers/object";
+import { LangPackDifference, LangPackString } from "../layer";
 import apiManager from "./mtproto/mtprotoworker";
+import sessionStorage from "./sessionStorage";
 
 export const langPack: {[actionType: string]: string} = {
   "messageActionChatCreate": "created the group",
@@ -41,9 +43,15 @@ namespace Strings {
 
 	export type AccountSettings = 'AccountSettings.Filters' | 'AccountSettings.Notifications' | 'AccountSettings.PrivacyAndSecurity' | 'AccountSettings.Language' | 'AccountSettings.Bio';
 
-	export type Telegram = 'Telegram.GeneralSettingsViewController' | 'Telegram.NotificationSettingsViewController';
+	export type Telegram = 'Telegram.GeneralSettingsViewController' | 'Telegram.NotificationSettingsViewController' | 'Telegram.LanguageViewController';
 
-	export type ChatFilters = 'ChatList.Filter.Header' | 'ChatList.Filter.NewTitle' | 'ChatList.Filter.List.Header' | 'ChatList.Filter.Recommended.Header' | 'ChatList.Filter.Recommended.Add' | 'ChatList.Filter.List.Title';
+	export type ChatList = ChatListFilter;
+	export type ChatListAdd = 'ChatList.Add.TopSeparator' | 'ChatList.Add.BottomSeparator';
+	export type ChatListFilterIncluded = 'ChatList.Filter.Include.Header' | 'ChatList.Filter.Include.AddChat';
+	export type ChatListFilterExcluded = 'ChatList.Filter.Exclude.Header' | 'ChatList.Filter.Exclude.AddChat';
+	export type ChatListFilterList = 'ChatList.Filter.List.Header' | 'ChatList.Filter.List.Title';
+	export type ChatListFilterRecommended = 'ChatList.Filter.Recommended.Header' | 'ChatList.Filter.Recommended.Add';
+	export type ChatListFilter = ChatListAdd | ChatListFilterIncluded | ChatListFilterExcluded | ChatListFilterList | ChatListFilterRecommended | 'ChatList.Filter.Header' | 'ChatList.Filter.NewTitle' | 'ChatList.Filter.NonContacts' | 'ChatList.Filter.Contacts' | 'ChatList.Filter.Groups' | 'ChatList.Filter.Channels' | 'ChatList.Filter.Bots';
 
 	export type AutoDownloadSettings = 'AutoDownloadSettings.TypePrivateChats' | 'AutoDownloadSettings.TypeChannels';
 
@@ -51,37 +59,68 @@ namespace Strings {
 
 	export type Suggest = 'Suggest.Localization.Other';
 
-	export type LangPackKey = string | AccountSettings | EditAccount | Telegram | ChatFilters | LoginRegister | Bio | AutoDownloadSettings | DataAndStorage | Suggest;
+	export type UsernameSettings = 'UsernameSettings.ChangeDescription';
+
+	export type LangPackKey = string | AccountSettings | EditAccount | Telegram | ChatList | LoginRegister | Bio | AutoDownloadSettings | DataAndStorage | Suggest | UsernameSettings;
 }
 
 export type LangPackKey = Strings.LangPackKey;
 
 namespace I18n {
-	let strings: Partial<{[key in LangPackKey]: LangPackString}> = {};
+	export const strings: Map<LangPackKey, LangPackString> = new Map();
+
+	let lastRequestedLangCode: string;
+	export function getCacheLangPack(): Promise<LangPackDifference> {
+		return sessionStorage.get('langPack').then((langPack: LangPackDifference) => {
+			if(!langPack) {
+				return getLangPack('en');
+			}
+			
+			if(!lastRequestedLangCode) {
+				lastRequestedLangCode = langPack.lang_code;
+			}
+			
+			applyLangPack(langPack);
+			return langPack;
+		});
+	}
 
 	export function getLangPack(langCode: string) {
+		lastRequestedLangCode = langCode;
 		return apiManager.invokeApi('langpack.getLangPack', {
 			lang_code: langCode,
 			lang_pack: 'macos'
 		}).then(langPack => {
-			strings = {};
-			for(const string of langPack.strings) {
-				strings[string.key as LangPackKey] = string;
-			}
-
-			const elements = Array.from(document.querySelectorAll(`.i18n`)) as HTMLElement[];
-			elements.forEach(element => {
-				const instance = weakMap.get(element);
-
-				if(instance) {
-					instance.update();
-				}
+			return sessionStorage.set({langPack}).then(() => {
+				applyLangPack(langPack);
+				return langPack;
 			});
 		});
 	}
 	
+	export function applyLangPack(langPack: LangPackDifference) {
+		if(langPack.lang_code !== lastRequestedLangCode) {
+			return;
+		}
+
+		strings.clear();
+
+		for(const string of langPack.strings) {
+			strings.set(string.key as LangPackKey, string);
+		}
+
+		const elements = Array.from(document.querySelectorAll(`.i18n`)) as HTMLElement[];
+		elements.forEach(element => {
+			const instance = weakMap.get(element);
+
+			if(instance) {
+				instance.update();
+			}
+		});
+	}
+	
 	export function getString(key: LangPackKey, args?: any[]) {
-		const str = strings[key];
+		const str = strings.get(key);
 		let out = '';
 
 		if(str) {
@@ -103,7 +142,7 @@ namespace I18n {
 
 	export type IntlElementOptions = {
 		element?: HTMLElement,
-		property?: 'innerHTML' | 'placeholder'
+		property?: 'innerText' | 'innerHTML' | 'placeholder'
 		key: LangPackKey,
 		args?: any[]
 	};
@@ -111,7 +150,7 @@ namespace I18n {
 		public element: IntlElementOptions['element'];
 		public key: IntlElementOptions['key'];
 		public args: IntlElementOptions['args'];
-		public property: IntlElementOptions['property'] = 'innerHTML';
+		public property: IntlElementOptions['property'] = 'innerText';
 	
 		constructor(options: IntlElementOptions) {
 			this.element = options.element || document.createElement('span');
@@ -122,9 +161,7 @@ namespace I18n {
 		}
 	
 		public update(options?: IntlElementOptions) {
-			if(options) {
-				Object.assign(this, options);
-			}
+			safeAssign(this, options);
 	
 			(this.element as any)[this.property] = getString(this.key, this.args);
 		}
@@ -137,6 +174,10 @@ namespace I18n {
 	export function i18n_(options: IntlElementOptions) {
 		return new IntlElement(options).element;
 	}
+
+	export function _i18n(element: HTMLElement, key: LangPackKey, args?: any[], property?: IntlElementOptions['property']) {
+		return new IntlElement({element, key, args, property}).element;
+	}
 }
 
 export {I18n};
@@ -147,5 +188,8 @@ export {i18n};
 
 const i18n_ = I18n.i18n_;
 export {i18n_};
+
+const _i18n = I18n._i18n;
+export {_i18n};
 
 MOUNT_CLASS_TO && (MOUNT_CLASS_TO.I18n = I18n);

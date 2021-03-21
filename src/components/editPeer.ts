@@ -4,6 +4,7 @@ import AvatarElement from "./avatar";
 import InputField from "./inputField";
 import ListenerSetter from "../helpers/listenerSetter";
 import Button from "./button";
+import { safeAssign } from "../helpers/object";
 
 export default class EditPeer {
   public nextBtn: HTMLButtonElement;
@@ -23,7 +24,7 @@ export default class EditPeer {
     listenerSetter: ListenerSetter,
     doNotEditAvatar?: boolean,
   }) {
-    Object.assign(this, options);
+    safeAssign(this, options);
 
     this.nextBtn = Button('btn-circle btn-corner tgico-check');
 

@@ -1,6 +1,7 @@
 import ListenerSetter from "../helpers/listenerSetter";
 import { debounce } from "../helpers/schedulers";
 import appChatsManager from "../lib/appManagers/appChatsManager";
+import { LangPackKey } from "../lib/langPack";
 import apiManager from "../lib/mtproto/mtprotoworker";
 import RichTextProcessor from "../lib/richtextprocessor";
 import InputField, { InputFieldOptions, InputState } from "./inputField";
@@ -12,9 +13,9 @@ export class UsernameInputField extends InputField {
     peerId: number,
     listenerSetter: ListenerSetter,
     onChange?: () => void,
-    invalidText: string,
-    takenText: string,
-    availableText: string,
+    invalidText: LangPackKey,
+    takenText: LangPackKey,
+    availableText: LangPackKey,
     head?: string
   };
 

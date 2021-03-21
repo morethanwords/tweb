@@ -1,5 +1,6 @@
 import Database from '../config/database';
 import { blobConstruct } from '../helpers/blob';
+import { safeAssign } from '../helpers/object';
 import { logger } from './logger';
 
 /**
@@ -36,7 +37,7 @@ export default class IDBStorage {
   public storeName: string;
 
   constructor(options: IDBOptions) {
-    Object.assign(this, options);
+    safeAssign(this, options);
 
     this.openDatabase(true);
   }
