@@ -1,6 +1,7 @@
 import { getRichValue, isInputEmpty } from "../helpers/dom";
 import { debounce } from "../helpers/schedulers";
 import { checkRTL } from "../helpers/string";
+import { i18n_, LangPackKey } from "../lib/langPack";
 import RichTextProcessor from "../lib/richtextprocessor";
 
 let init = () => {
@@ -59,7 +60,7 @@ export enum InputState {
 
 export type InputFieldOptions = {
   placeholder?: string, 
-  label?: string, 
+  label?: LangPackKey, 
   name?: string, 
   maxLength?: number, 
   showLengthOn?: number,
@@ -97,7 +98,6 @@ class InputField {
 
       this.container.innerHTML = `
       <div ${placeholder ? `data-placeholder="${placeholder}"` : ''} contenteditable="true" class="input-field-input"></div>
-      ${label ? `<label>${label}</label>` : ''}
       `;
 
       input = this.container.firstElementChild as HTMLElement;
@@ -135,7 +135,6 @@ class InputField {
     } else {
       this.container.innerHTML = `
       <input type="text" ${name ? `name="${name}"` : ''} ${placeholder ? `placeholder="${placeholder}"` : ''} autocomplete="off" ${label ? 'required=""' : ''} class="input-field-input">
-      ${label ? `<label>${label}</label>` : ''}
       `;
 
       input = this.container.firstElementChild as HTMLElement;
@@ -143,7 +142,9 @@ class InputField {
     }
 
     if(label) {
-      this.label = this.container.lastElementChild as HTMLLabelElement;
+      this.label = document.createElement('label');
+      i18n_({element: this.label, key: label});
+      this.container.append(this.label);
     }
 
     let processInput: () => void;

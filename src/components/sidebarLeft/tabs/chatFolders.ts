@@ -16,6 +16,7 @@ import rootScope from "../../../lib/rootScope";
 import AppEditFolderTab from "./editFolder";
 import Row from "../../row";
 import { SettingSection } from "..";
+import { i18n_ } from "../../../lib/langPack";
 
 export default class AppChatFoldersTab extends SliderSuperTab {
   private createFolderBtn: HTMLElement;
@@ -101,7 +102,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
 
   protected init() {
     this.container.classList.add('chat-folders-container');
-    this.title.innerText = 'Chat Folders';
+    this.setTitle('ChatList.Filter.List.Title');
 
     this.scrollable.container.classList.add('chat-folders');
 
@@ -110,20 +111,20 @@ export default class AppChatFoldersTab extends SliderSuperTab {
     
     const caption = document.createElement('div');
     caption.classList.add('caption');
-    caption.innerHTML = `Create folders for different groups of chats<br>and quickly switch between them.`;
+    i18n_({element: caption, key: 'ChatList.Filter.Header'});
     
     this.createFolderBtn = Button('btn-primary btn-color-primary btn-create-folder', {
-      text: 'Create Folder',
+      text: 'ChatList.Filter.NewTitle',
       icon: 'add'
     });
 
     this.foldersSection = new SettingSection({
-      name: 'Folders'
+      name: 'ChatList.Filter.List.Header'
     });
     this.foldersSection.container.style.display = 'none';
 
     this.suggestedSection = new SettingSection({
-      name: 'Recommended folders'
+      name: 'ChatList.Filter.Recommended.Header'
     });
     this.suggestedSection.container.style.display = 'none';
 
@@ -207,9 +208,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
 
       suggestedFilters.forEach(filter => {
         const div = this.renderFolder(filter);
-        const button = document.createElement('button');
-        button.classList.add('btn-primary', 'btn-color-primary');
-        button.innerText = 'Add';
+        const button = Button('btn-primary btn-color-primary', {text: 'ChatList.Filter.Recommended.Add'});
         div.append(button);
         this.suggestedSection.content.append(div);
 

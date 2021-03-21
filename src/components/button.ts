@@ -1,6 +1,7 @@
+import { i18n, LangPackKey } from "../lib/langPack";
 import { ripple } from "./ripple";
 
-const Button = (className: string, options: Partial<{noRipple: true, onlyMobile: true, icon: string, rippleSquare: true, text: string, disabled: boolean}> = {}) => {
+const Button = (className: string, options: Partial<{noRipple: true, onlyMobile: true, icon: string, rippleSquare: true, text: LangPackKey, disabled: boolean}> = {}) => {
   const button = document.createElement('button');
   button.className = className + (options.icon ? ' tgico-' + options.icon : '');
 
@@ -21,7 +22,7 @@ const Button = (className: string, options: Partial<{noRipple: true, onlyMobile:
   }
 
   if(options.text) {
-    button.append(options.text);
+    button.append(i18n(options.text));
   }
 
   return button;

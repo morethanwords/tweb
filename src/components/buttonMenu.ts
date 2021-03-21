@@ -1,11 +1,12 @@
 import { attachClickEvent, AttachClickOptions, cancelEvent, CLICK_EVENT_NAME } from "../helpers/dom";
 import ListenerSetter from "../helpers/listenerSetter";
+import { i18n, LangPackKey } from "../lib/langPack";
 import { closeBtnMenu } from "./misc";
 import { ripple } from "./ripple";
 
 export type ButtonMenuItemOptions = {
   icon: string, 
-  text: string, 
+  text: LangPackKey, 
   onClick: (e: MouseEvent | TouchEvent) => void, 
   element?: HTMLElement,
   options?: AttachClickOptions
@@ -18,7 +19,7 @@ const ButtonMenuItem = (options: ButtonMenuItemOptions) => {
   const {icon, text, onClick} = options;
   const el = document.createElement('div');
   el.className = 'btn-menu-item tgico-' + icon;
-  el.innerText = text;
+  el.append(i18n(text));
 
   ripple(el);
 

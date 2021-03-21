@@ -23,6 +23,7 @@ import AppNewChannelTab from "./tabs/newChannel";
 import AppContactsTab from "./tabs/contacts";
 import AppArchivedTab from "./tabs/archivedTab";
 import AppAddMembersTab from "./tabs/addMembers";
+import { i18n_, LangPackKey } from "../../lib/langPack";
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -413,7 +414,7 @@ export class SettingSection {
   public caption: HTMLElement;
 
   constructor(options: {
-    name?: string, 
+    name?: LangPackKey, 
     caption?: string,
     noDelimiter?: boolean
   }) {
@@ -432,7 +433,7 @@ export class SettingSection {
     if(options.name) {
       this.title = document.createElement('div');
       this.title.classList.add('sidebar-left-h2', 'sidebar-left-section-name');
-      this.title.innerHTML = options.name;
+      i18n_({element: this.title, key: options.name});
       this.content.append(this.title);
     }
 
@@ -451,7 +452,7 @@ export class SettingSection {
   }
 }
 
-export const generateSection = (appendTo: Scrollable, name?: string, caption?: string) => {
+export const generateSection = (appendTo: Scrollable, name?: LangPackKey, caption?: string) => {
   const section = new SettingSection({name, caption});
   appendTo.append(section.container);
   return section.content;
