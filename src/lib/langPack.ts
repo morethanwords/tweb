@@ -1,5 +1,6 @@
 import { MOUNT_CLASS_TO } from "../config/debug";
 import { safeAssign } from "../helpers/object";
+import type lang from "../lang";
 import { LangPackDifference, LangPackString } from "../layer";
 import apiManager from "./mtproto/mtprotoworker";
 import sessionStorage from "./sessionStorage";
@@ -34,37 +35,7 @@ export const langPack: {[actionType: string]: string} = {
 	"messageActionBotAllowed": "You allowed this bot to message you when logged in {}"
 };
 
-namespace Strings {
-	export type Bio = 'Bio.Description';
-
-	export type LoginRegister = 'Login.Register.FirstName.Placeholder' | 'Login.Register.LastName.Placeholder';
-
-	export type EditAccount = 'EditAccount.Logout' | 'EditAccount.Title' | 'EditAccount.Title' | 'EditAccount.Username';
-
-	export type AccountSettings = 'AccountSettings.Filters' | 'AccountSettings.Notifications' | 'AccountSettings.PrivacyAndSecurity' | 'AccountSettings.Language' | 'AccountSettings.Bio';
-
-	export type Telegram = 'Telegram.GeneralSettingsViewController' | 'Telegram.NotificationSettingsViewController' | 'Telegram.LanguageViewController';
-
-	export type ChatList = ChatListFilter;
-	export type ChatListAdd = 'ChatList.Add.TopSeparator' | 'ChatList.Add.BottomSeparator';
-	export type ChatListFilterIncluded = 'ChatList.Filter.Include.Header' | 'ChatList.Filter.Include.AddChat';
-	export type ChatListFilterExcluded = 'ChatList.Filter.Exclude.Header' | 'ChatList.Filter.Exclude.AddChat';
-	export type ChatListFilterList = 'ChatList.Filter.List.Header' | 'ChatList.Filter.List.Title';
-	export type ChatListFilterRecommended = 'ChatList.Filter.Recommended.Header' | 'ChatList.Filter.Recommended.Add';
-	export type ChatListFilter = ChatListAdd | ChatListFilterIncluded | ChatListFilterExcluded | ChatListFilterList | ChatListFilterRecommended | 'ChatList.Filter.Header' | 'ChatList.Filter.NewTitle' | 'ChatList.Filter.NonContacts' | 'ChatList.Filter.Contacts' | 'ChatList.Filter.Groups' | 'ChatList.Filter.Channels' | 'ChatList.Filter.Bots';
-
-	export type AutoDownloadSettings = 'AutoDownloadSettings.TypePrivateChats' | 'AutoDownloadSettings.TypeChannels';
-
-	export type DataAndStorage = 'DataAndStorage.CategorySettings.GroupChats';
-
-	export type Suggest = 'Suggest.Localization.Other';
-
-	export type UsernameSettings = 'UsernameSettings.ChangeDescription';
-
-	export type LangPackKey = string | AccountSettings | EditAccount | Telegram | ChatList | LoginRegister | Bio | AutoDownloadSettings | DataAndStorage | Suggest | UsernameSettings;
-}
-
-export type LangPackKey = Strings.LangPackKey;
+export type LangPackKey = string | keyof typeof lang;
 
 namespace I18n {
 	export const strings: Map<LangPackKey, LangPackString> = new Map();
@@ -76,7 +47,7 @@ namespace I18n {
 			sessionStorage.get('langPack'),
 			polyfillPromise
 		]).then(([langPack]) => {
-			if(!langPack) {
+			if(!langPack || true) {
 				return getLangPack('en');
 			}
 			
@@ -96,8 +67,40 @@ namespace I18n {
 				lang_code: langCode,
 				lang_pack: 'macos'
 			}),
+			apiManager.invokeApi('langpack.getLangPack', {
+				lang_code: langCode,
+				lang_pack: 'android'
+			}),
+			import('../lang'),
 			polyfillPromise
-		]).then(([langPack, _]) => {
+		]).then(([langPack, _langPack, __langPack, _]) => {
+			let strings: LangPackString[] = [];
+			for(const i in __langPack.default) {
+				// @ts-ignore
+				const v = __langPack.default[i];
+				if(typeof(v) === 'string') {
+					strings.push({
+						_: 'langPackString',
+						key: i,
+						value: v
+					});
+				} else {
+					strings.push({
+						_: 'langPackStringPluralized',
+						key: i,
+						...v
+					});
+				}
+			}
+
+			strings = strings.concat(langPack.strings);
+
+			for(const string of _langPack.strings) {
+				strings.push(string);
+			}
+
+			langPack.strings = strings;
+
 			return sessionStorage.set({langPack}).then(() => {
 				applyLangPack(langPack);
 				return langPack;
@@ -106,7 +109,7 @@ namespace I18n {
 	}
 
 	export const polyfillPromise = (function checkIfPolyfillNeeded() {
-		if(typeof(Intl) !== 'undefined' && typeof(Intl.PluralRules) !== 'undefined'/*  && false */) {
+		if(typeof(Intl) !== 'undefined' && typeof(Intl.PluralRules) !== 'undefined' && false) {
 			return Promise.resolve();
 		} else {
 			return import('./pluralPolyfill').then(_Intl => {
@@ -143,24 +146,28 @@ namespace I18n {
 		let out = '';
 
 		if(str) {
-			if(str._ === 'langPackStringPluralized') {
+			if(str._ === 'langPackStringPluralized' && args?.length) {
 				const v = args[0] as number;
 				const s = pluralRules.select(v);
 				// @ts-ignore
-				out = str[s + '_value'];
+				out = str[s + '_value'] || str['other_value'];
 			} else if(str._ === 'langPackString') {
 				out = str.value;
 			} else {
-				//out = '[' + key + ']';
-				out = key;
+				out = '[' + key + ']';
+				//out = key;
 			}
 		} else {
-			//out = '[' + key + ']';
-			out = key;
+			out = '[' + key + ']';
+			//out = key;
 		}
 
+		out = out
+		.replace(/\n/g, '<br>')
+		.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+
 		if(args?.length) {
-			out = out.replace(/%./g, (match, offset, string) => {
+			out = out.replace(/%\d\$.|%./g, (match, offset, string) => {
 				return '' + args.shift();
 			});
 		}
@@ -172,7 +179,7 @@ namespace I18n {
 
 	export type IntlElementOptions = {
 		element?: HTMLElement,
-		property?: 'innerText' | 'innerHTML' | 'placeholder'
+		property?: /* 'innerText' |  */'innerHTML' | 'placeholder'
 		key: LangPackKey,
 		args?: any[]
 	};
@@ -180,7 +187,7 @@ namespace I18n {
 		public element: IntlElementOptions['element'];
 		public key: IntlElementOptions['key'];
 		public args: IntlElementOptions['args'];
-		public property: IntlElementOptions['property'] = 'innerText';
+		public property: IntlElementOptions['property'] = 'innerHTML';
 	
 		constructor(options: IntlElementOptions) {
 			this.element = options.element || document.createElement('span');
@@ -193,7 +200,8 @@ namespace I18n {
 		public update(options?: IntlElementOptions) {
 			safeAssign(this, options);
 	
-			(this.element as any)[this.property] = getString(this.key, this.args);
+			const str = getString(this.key, this.args);
+			(this.element as any)[this.property] = str;
 		}
 	}
 

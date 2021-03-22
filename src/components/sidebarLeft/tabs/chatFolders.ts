@@ -2,7 +2,6 @@ import { SliderSuperTab } from "../../slider";
 import lottieLoader, { RLottiePlayer } from "../../../lib/lottieLoader";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import { attachClickEvent, cancelEvent, positionElementByIndex } from "../../../helpers/dom";
-import { ripple } from "../../ripple";
 import { toast } from "../../toast";
 import type { MyDialogFilter } from "../../../lib/storages/filters";
 import type { DialogFilterSuggested, DialogFilter } from "../../../layer";
@@ -16,7 +15,7 @@ import rootScope from "../../../lib/rootScope";
 import AppEditFolderTab from "./editFolder";
 import Row from "../../row";
 import { SettingSection } from "..";
-import { i18n_ } from "../../../lib/langPack";
+import { i18n, i18n_, LangPackKey } from "../../../lib/langPack";
 
 export default class AppChatFoldersTab extends SliderSuperTab {
   private createFolderBtn: HTMLElement;
@@ -30,13 +29,12 @@ export default class AppChatFoldersTab extends SliderSuperTab {
   private renderFolder(dialogFilter: DialogFilterSuggested | DialogFilter | MyDialogFilter, container?: HTMLElement, div?: HTMLElement) {
     let filter: DialogFilter | MyDialogFilter;
     let description = '';
-    let d: string[] = [];
+    let d: HTMLElement[] = [];
     if(dialogFilter._ === 'dialogFilterSuggested') {
       filter = dialogFilter.filter;
       description = dialogFilter.description;
     } else {
       filter = dialogFilter;
-      description = '';
 
       let enabledFilters = Object.keys(filter.pFlags).length;
       /* (['include_peers', 'exclude_peers'] as ['include_peers', 'exclude_peers']).forEach(key => {
@@ -44,18 +42,17 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       }); */
       
       if(enabledFilters === 1) {
-        description = 'All ';
-
         const pFlags = filter.pFlags;
-        if(pFlags.contacts) description += 'Contacts';
-        else if(pFlags.non_contacts) description += 'Non-Contacts';
-        else if(pFlags.groups) description += 'Groups';
-        else if(pFlags.broadcasts) description += 'Channels';
-        else if(pFlags.bots) description += 'Bots';
-        else if(pFlags.exclude_muted) description += 'Unmuted';
-        else if(pFlags.exclude_read) description += 'Unread';
-        else if(pFlags.exclude_archived) description += 'Unarchived';
-        d.push(description);
+        let k: LangPackKey;
+        if(pFlags.contacts) k = 'FilterAllContacts';
+        else if(pFlags.non_contacts) k = 'FilterAllNonContacts';
+        else if(pFlags.groups) k = 'FilterAllGroups';
+        else if(pFlags.broadcasts) k = 'FilterAllChannels';
+        else if(pFlags.bots) k = 'FilterAllBots';
+        else if(pFlags.exclude_muted) k = 'FilterAllUnmuted';
+        else if(pFlags.exclude_read) k = 'FilterAllUnread';
+        else if(pFlags.exclude_archived) k = 'FilterAllUnarchived';
+        d.push(i18n(k));
       } else {
         const folder = appMessagesManager.dialogsStorage.getFolder(filter.id);
         let chats = 0, channels = 0, groups = 0;
@@ -65,18 +62,32 @@ export default class AppChatFoldersTab extends SliderSuperTab {
           else chats++;
         }
 
-        if(chats) d.push(chats + ' chats');
-        if(channels) d.push(channels + ' channels');
-        if(groups) d.push(groups + ' groups');
+        if(chats) d.push(i18n('Chats', [chats]));
+        if(channels) d.push(i18n('Channels', [channels]));
+        if(groups) d.push(i18n('Groups', [groups]));
       }
     }
 
     if(!div) {
       const row = new Row({
         title: RichTextProcessor.wrapEmojiText(filter.title),
-        subtitle: d.length ? d.join(', ') : description,
+        subtitle: description,
         clickable: true
       });
+
+      if(d.length) {
+        let arr: HTMLElement[] = d.slice(0, 1);
+        for(let i = 1; i < d.length; ++i) {
+          const isLast = (d.length - 1) === i;
+          const delimiterKey: LangPackKey = isLast ? 'WordDelimiterLast' : 'WordDelimiter';
+          arr.push(i18n(delimiterKey));
+          arr.push(d[i]);
+        }
+
+        arr.forEach(el => {
+          row.subtitle.append(el);
+        });
+      }
   
       div = row.container;
 
@@ -119,12 +130,12 @@ export default class AppChatFoldersTab extends SliderSuperTab {
     });
 
     this.foldersSection = new SettingSection({
-      name: 'ChatList.Filter.List.Header'
+      name: 'Filters'
     });
     this.foldersSection.container.style.display = 'none';
 
     this.suggestedSection = new SettingSection({
-      name: 'ChatList.Filter.Recommended.Header'
+      name: 'FilterRecommended'
     });
     this.suggestedSection.container.style.display = 'none';
 
@@ -208,7 +219,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
 
       suggestedFilters.forEach(filter => {
         const div = this.renderFolder(filter);
-        const button = Button('btn-primary btn-color-primary', {text: 'ChatList.Filter.Recommended.Add'});
+        const button = Button('btn-primary btn-color-primary', {text: 'Add'});
         div.append(button);
         this.suggestedSection.content.append(div);
 

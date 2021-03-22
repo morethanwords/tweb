@@ -4,7 +4,8 @@ import RichTextProcessor from "../../lib/richtextprocessor";
 import ButtonIcon from "../buttonIcon";
 import { clamp } from "../../helpers/number";
 import { isTouchSupported } from "../../helpers/touchSupport";
-import { isApple } from "../../helpers/userAgent";
+import { isApple, isMobile } from "../../helpers/userAgent";
+import appNavigationController from "../appNavigationController";
 //import { logger } from "../../lib/logger";
 
 export default class MarkupTooltip {
@@ -185,6 +186,8 @@ export default class MarkupTooltip {
     document.removeEventListener('mouseup', this.onMouseUpSingle);
     this.waitingForMouseUp = false;
 
+    appNavigationController.removeByType('markup');
+
     if(this.hideTimeout) clearTimeout(this.hideTimeout);
     this.hideTimeout = window.setTimeout(() => {
       this.hideTimeout = undefined;
@@ -294,6 +297,15 @@ export default class MarkupTooltip {
     }
     
     this.container.classList.add('is-visible');
+
+    if(!isMobile) {
+      appNavigationController.pushItem({
+        type: 'markup',
+        onPop: () => {
+          this.hide();
+        }
+      });
+    }
 
     //this.log('selection', selectionRect, activeButton);
   }

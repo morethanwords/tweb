@@ -318,25 +318,7 @@ export class AppImManager {
 
       const chat = this.chat;
 
-      if(e.key === 'Escape') {
-        let cancel = true;
-        if(this.markupTooltip?.container?.classList.contains('is-visible')) {
-          this.markupTooltip.hide();
-        } else if(chat.selection.isSelecting) {
-          chat.selection.cancelSelection();
-        } else if(chat.container.classList.contains('is-helper-active')) {
-          chat.input.replyElements.cancelBtn.click();
-        } else if(chat.peerId !== 0) { // hide current dialog
-          this.setPeer(0);
-        } else {
-          cancel = false;
-        }
-
-        // * cancel event for safari, because if application is in fullscreen, browser will try to exit fullscreen
-        if(cancel) {
-          cancelEvent(e);
-        }
-      } else if(e.key === 'Meta' || e.key === 'Control') {
+      if(e.key === 'Meta' || e.key === 'Control') {
         return;
       } else if(e.code === "KeyC" && (e.ctrlKey || e.metaKey) && target.tagName !== 'INPUT') {
         return;

@@ -20,16 +20,16 @@ import { wrapPhoto } from "../../wrappers";
 export default class AppBackgroundTab extends SliderSuperTab {
   init() {
     this.container.classList.add('background-container');
-    this.title.innerText = 'Chat Background';
+    this.setTitle('ChatBackground');
 
     {
       const container = generateSection(this.scrollable);
 
-      const uploadButton = Button('btn-primary btn-transparent', {icon: 'cameraadd', text: 'Upload Wallpaper', disabled: true});
-      const colorButton = Button('btn-primary btn-transparent', {icon: 'colorize', text: 'Set a Color', disabled: true});
+      const uploadButton = Button('btn-primary btn-transparent', {icon: 'cameraadd', text: 'ChatBackground.UploadWallpaper', disabled: true});
+      const colorButton = Button('btn-primary btn-transparent', {icon: 'colorize', text: 'ChatBackground.SetColor', disabled: true});
 
       const blurCheckboxField = new CheckboxField({
-        text: 'Blur Wallpaper Image', 
+        text: 'ChatBackground.Blur', 
         name: 'blur', 
         stateKey: 'settings.background.blur',
         withRipple: true
