@@ -10,6 +10,7 @@ import { isApple } from "../../../helpers/userAgent";
 import Row from "../../row";
 import { attachClickEvent } from "../../../helpers/dom";
 import AppBackgroundTab from "./background";
+import { LangPackKey, _i18n } from "../../../lib/langPack";
 
 export class RangeSettingSelector {
   public container: HTMLDivElement;
@@ -17,7 +18,7 @@ export class RangeSettingSelector {
 
   public onChange: (value: number) => void;
 
-  constructor(name: string, step: number, initialValue: number, minValue: number, maxValue: number) {
+  constructor(name: LangPackKey, step: number, initialValue: number, minValue: number, maxValue: number) {
     const BASE_CLASS = 'range-setting-selector';
     this.container = document.createElement('div');
     this.container.classList.add(BASE_CLASS);
@@ -27,7 +28,7 @@ export class RangeSettingSelector {
 
     const nameDiv = document.createElement('div');
     nameDiv.classList.add(BASE_CLASS + '-name');
-    nameDiv.innerHTML = name;
+    _i18n(nameDiv, name);
 
     const valueDiv = document.createElement('div');
     valueDiv.classList.add(BASE_CLASS + '-value');
@@ -55,26 +56,26 @@ export class RangeSettingSelector {
 export default class AppGeneralSettingsTab extends SliderSuperTab {
   init() {
     this.container.classList.add('general-settings-container');
-    this.title.innerText = 'General';
+    this.setTitle('General');
 
     const section = generateSection.bind(null, this.scrollable);
 
     {
       const container = section('Settings');
       
-      const range = new RangeSettingSelector('Message Text Size', 1, rootScope.settings.messagesTextSize, 12, 20);
+      const range = new RangeSettingSelector('TextSize', 1, rootScope.settings.messagesTextSize, 12, 20);
       range.onChange = (value) => {
         appStateManager.setByKey('settings.messagesTextSize', value);
       };
 
-      const chatBackgroundButton = Button('btn-primary btn-transparent', {icon: 'photo', text: 'Chat Background'});
+      const chatBackgroundButton = Button('btn-primary btn-transparent', {icon: 'photo', text: 'ChatBackground'});
 
       attachClickEvent(chatBackgroundButton, () => {
         new AppBackgroundTab(this.slider).open();
       });
 
       const animationsCheckboxField = new CheckboxField({
-        text: 'Enable Animations', 
+        text: 'EnableAnimations', 
         name: 'animations', 
         stateKey: 'settings.animationsEnabled',
         withRipple: true
@@ -84,58 +85,58 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
     }
 
     {
-      const container = section('Keyboard');
+      const container = section('General.Keyboard');
 
       const form = document.createElement('form');
 
       const enterRow = new Row({
         radioField: new RadioField({
-          text: 'Send by Enter', 
+          text: 'General.SendShortcut.Enter', 
           name: 'send-shortcut', 
           value: 'enter', 
           stateKey: 'settings.sendShortcut'
         }),
-        subtitle: 'New line by Shift + Enter',
+        subtitleLangKey: 'General.SendShortcut.NewLine.ShiftEnter'
       });
 
       const ctrlEnterRow = new Row({
         radioField: new RadioField({
-          text: `Send by ${isApple ? '⌘' : 'Ctrl'} + Enter`, 
           name: 'send-shortcut',
           value: 'ctrlEnter', 
           stateKey: 'settings.sendShortcut'
         }),
-        subtitle: 'New line by Enter',
+        subtitleLangKey: 'General.SendShortcut.NewLine.Enter'
       });
+      _i18n(ctrlEnterRow.radioField.main, 'General.SendShortcut.CtrlEnter', [isApple ? '⌘' : 'Ctrl']);
       
       form.append(enterRow.container, ctrlEnterRow.container);
       container.append(form);
     }
 
     {
-      const container = section('Auto-Download Media');
+      const container = section('AutoDownloadMedia');
       //container.classList.add('sidebar-left-section-disabled');
 
       const contactsCheckboxField = new CheckboxField({
-        text: 'Contacts', 
+        text: 'AutodownloadContacts', 
         name: 'contacts',
         stateKey: 'settings.autoDownload.contacts',
         withRipple: true
       });
       const privateCheckboxField = new CheckboxField({
-        text: 'Private Chats', 
+        text: 'AutodownloadPrivateChats', 
         name: 'private',
         stateKey: 'settings.autoDownload.private',
         withRipple: true
       });
       const groupsCheckboxField = new CheckboxField({
-        text: 'Group Chats', 
+        text: 'AutodownloadGroupChats', 
         name: 'groups',
         stateKey: 'settings.autoDownload.groups',
         withRipple: true
       });
       const channelsCheckboxField = new CheckboxField({
-        text: 'Channels', 
+        text: 'AutodownloadChannels', 
         name: 'channels',
         stateKey: 'settings.autoDownload.channels',
         withRipple: true
@@ -145,17 +146,17 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
     }
 
     {
-      const container = section('Auto-Play Media');
+      const container = section('General.AutoplayMedia');
       //container.classList.add('sidebar-left-section-disabled');
 
       const gifsCheckboxField = new CheckboxField({
-        text: 'GIFs', 
+        text: 'AutoplayGIF', 
         name: 'gifs', 
         stateKey: 'settings.autoPlay.gifs',
         withRipple: true
       });
       const videosCheckboxField = new CheckboxField({
-        text: 'Videos', 
+        text: 'AutoplayVideo', 
         name: 'videos', 
         stateKey: 'settings.autoPlay.videos',
         withRipple: true
@@ -165,16 +166,16 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
     }
     
     {
-      const container = section('Stickers');
+      const container = section('Telegram.InstalledStickerPacksController');
 
       const suggestCheckboxField = new CheckboxField({
-        text: 'Suggest Stickers by Emoji', 
+        text: 'Stickers.SuggestStickers', 
         name: 'suggest', 
         stateKey: 'settings.stickers.suggest',
         withRipple: true
       });
       const loopCheckboxField = new CheckboxField({
-        text: 'Loop Animated Stickers', 
+        text: 'InstalledStickers.LoopAnimated', 
         name: 'loop', 
         stateKey: 'settings.stickers.loop',
         withRipple: true

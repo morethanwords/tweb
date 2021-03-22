@@ -36,6 +36,8 @@ import rootScope from '../../lib/rootScope';
 import PopupPinMessage from '../popups/unpinMessage';
 import { debounce } from '../../helpers/schedulers';
 import { tsNow } from '../../helpers/date';
+import appNavigationController from '../appNavigationController';
+import { isMobile } from '../../helpers/userAgent';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -1159,8 +1161,10 @@ export default class ChatInput {
     }
   };
 
-  private onHelperCancel = (e: Event) => {
-    cancelEvent(e);
+  private onHelperCancel = (e?: Event) => {
+    if(e) {
+      cancelEvent(e);
+    }
 
     if(this.willSendWebPage) {
       const lastUrl = this.lastUrl;
@@ -1458,7 +1462,11 @@ export default class ChatInput {
     this.forwardingFromPeerId = 0;
     this.editMsgId = undefined;
     this.helperType = this.helperFunc = undefined;
-    this.chat.container.classList.remove('is-helper-active');
+
+    if(this.chat.container.classList.contains('is-helper-active')) {
+      appNavigationController.removeByType('input-helper');
+      this.chat.container.classList.remove('is-helper-active');
+    }
   }
 
   public setInputValue(value: string, clear = true, focus = true) {
@@ -1487,6 +1495,15 @@ export default class ChatInput {
     if(scroll.isScrolledDown && !scroll.scrollLocked && !appImManager.messagesQueuePromise && !appImManager.setPeerPromise) {
       scroll.scrollTo(scroll.scrollHeight, 'top', true, true, 200);
     } */
+
+    if(!isMobile) {
+      appNavigationController.pushItem({
+        type: 'input-helper',
+        onPop: () => {
+          this.onHelperCancel();
+        }
+      });
+    }
 
     if(input !== undefined) {
       this.setInputValue(input);

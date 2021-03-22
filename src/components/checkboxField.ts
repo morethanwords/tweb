@@ -1,6 +1,7 @@
 import appStateManager from "../lib/appManagers/appStateManager";
 import { getDeepProperty } from "../helpers/object";
 import { ripple } from "./ripple";
+import { LangPackKey, _i18n } from "../lib/langPack";
 
 export default class CheckboxField {
   public input: HTMLInputElement;
@@ -8,7 +9,7 @@ export default class CheckboxField {
   public span: HTMLSpanElement;
 
   constructor(options: {
-    text?: string, 
+    text?: LangPackKey, 
     name?: string, 
     round?: boolean, 
     stateKey?: string,
@@ -56,10 +57,7 @@ export default class CheckboxField {
     if(options.text) {
       span = this.span = document.createElement('span');
       span.classList.add('checkbox-caption');
-
-      if(options.text) {
-        span.innerText = options.text;
-      }
+      _i18n(span, options.text);
     } else {
       label.classList.add('checkbox-without-caption');
     }

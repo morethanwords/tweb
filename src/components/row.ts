@@ -3,6 +3,7 @@ import RadioField from "./radioField";
 import { ripple } from "./ripple";
 import { SliderSuperTab } from "./slider";
 import RadioForm from "./radioForm";
+import { LangPackKey, _i18n } from "../lib/langPack";
 
 export default class Row {
   public container: HTMLElement;
@@ -17,10 +18,12 @@ export default class Row {
   constructor(options: Partial<{
     icon: string,
     subtitle: string,
+    subtitleLangKey: LangPackKey
     radioField: Row['radioField'],
     checkboxField: Row['checkboxField'],
     noCheckboxSubtitle: boolean,
     title: string,
+    titleLangKey: LangPackKey,
     titleRight: string,
     clickable: boolean | ((e: Event) => void),
     navigationTab: SliderSuperTab
@@ -32,6 +35,8 @@ export default class Row {
     this.subtitle.classList.add('row-subtitle');
     if(options.subtitle) {
       this.subtitle.innerHTML = options.subtitle;
+    } else if(options.subtitleLangKey) {
+      _i18n(this.subtitle, options.subtitleLangKey);
     }
 
     let havePadding = false;
@@ -48,7 +53,7 @@ export default class Row {
 
         if(!options.noCheckboxSubtitle) {
           this.checkboxField.input.addEventListener('change', () => {
-            this.subtitle.innerHTML = this.checkboxField.input.checked ? 'Enabled' : 'Disabled';
+            _i18n(this.subtitle, this.checkboxField.input.checked ? 'Checkbox.Enabled' : 'Checkbox.Disabled');
           });
         }
       }
@@ -56,7 +61,7 @@ export default class Row {
       const i = options.radioField || options.checkboxField;
       i.label.classList.add('disable-hover');
     } else {
-      if(options.title) {
+      if(options.title || options.titleLangKey) {
         let c: HTMLElement;
         if(options.titleRight) {
           c = document.createElement('div');
@@ -68,7 +73,11 @@ export default class Row {
 
         this.title = document.createElement('div');
         this.title.classList.add('row-title');
-        this.title.innerHTML = options.title;
+        if(options.title) {
+          this.title.innerHTML = options.title;
+        } else {
+          _i18n(this.title, options.titleLangKey);
+        }
         c.append(this.title);
 
         if(options.titleRight) {

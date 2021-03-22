@@ -1,5 +1,6 @@
 import appStateManager from "../lib/appManagers/appStateManager";
 import { getDeepProperty } from "../helpers/object";
+import { LangPackKey, _i18n } from "../lib/langPack";
 
 export default class RadioField {
   public input: HTMLInputElement;
@@ -7,7 +8,7 @@ export default class RadioField {
   public main: HTMLElement;
 
   constructor(options: {
-    text?: string, 
+    text?: LangPackKey, 
     name: string, 
     value?: string, 
     stateKey?: string
@@ -37,7 +38,7 @@ export default class RadioField {
     main.classList.add('radio-field-main');
   
     if(options.text) {
-      main.innerHTML = options.text;
+      _i18n(main, options.text);
       /* const caption = document.createElement('div');
       caption.classList.add('radio-field-main-caption');
       caption.innerHTML = text;

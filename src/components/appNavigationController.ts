@@ -5,7 +5,7 @@ import { logger } from "../lib/logger";
 import { doubleRaf } from "../helpers/schedulers";
 
 export type NavigationItem = {
-  type: 'left' | 'right' | 'im' | 'chat' | 'popup' | 'media' | 'menu' | 'esg',
+  type: 'left' | 'right' | 'im' | 'chat' | 'popup' | 'media' | 'menu' | 'esg' | 'multiselect' | 'input-helper' | 'markup',
   onPop: (canAnimate: boolean) => boolean | void,
   onEscape?: () => boolean,
   noHistory?: boolean,

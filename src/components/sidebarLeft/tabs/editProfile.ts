@@ -31,7 +31,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
       inputWrapper.classList.add('input-wrapper');
   
       this.firstNameInputField = new InputField({
-        label: 'Login.Register.FirstName.Placeholder',
+        label: 'EditProfile.FirstNameLabel',
         name: 'first-name',
         maxLength: 70
       });
@@ -41,7 +41,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
         maxLength: 64
       });
       this.bioInputField = new InputField({
-        label: 'AccountSettings.Bio',
+        label: 'EditProfile.BioLabel',
         name: 'bio',
         maxLength: 70
       });
@@ -76,7 +76,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
 
       this.usernameInputField = new UsernameInputField({
         peerId: 0,
-        label: 'EditAccount.Username',
+        label: 'EditProfile.Username.Label',
         name: 'username',
         plainText: true,
         listenerSetter: this.listenerSetter,
@@ -84,21 +84,21 @@ export default class AppEditProfileTab extends SliderSuperTab {
           this.editPeer.handleChange();
           this.setProfileUrl();
         },
-        availableText: 'Username is available',
-        takenText: 'Username is already taken',
-        invalidText: 'Username is invalid'
+        availableText: 'EditProfile.Username.Available',
+        takenText: 'EditProfile.Username.Taken',
+        invalidText: 'EditProfile.Username.Invalid'
       });
 
       inputWrapper.append(this.usernameInputField.container);
 
       const caption = document.createElement('div');
       caption.classList.add('caption');
-      caption.append(i18n('UsernameSettings.ChangeDescription'));
+      caption.append(i18n('EditProfile.Username.Help'));
       caption.append(document.createElement('br'), document.createElement('br'));
 
       const profileUrlContainer = this.profileUrlContainer = document.createElement('div');
       profileUrlContainer.classList.add('profile-url-container');
-      profileUrlContainer.append(i18n('This link opens a chat with you:'));
+      profileUrlContainer.append(i18n('UsernameHelpLink', ['']));
 
       const profileUrlAnchor = this.profileUrlAnchor = document.createElement('a');
       profileUrlAnchor.classList.add('profile-url');

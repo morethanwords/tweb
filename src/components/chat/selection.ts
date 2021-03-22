@@ -13,6 +13,8 @@ import { toast } from "../toast";
 import SetTransition from "../singleTransition";
 import ListenerSetter from "../../helpers/listenerSetter";
 import PopupSendNow from "../popups/sendNow";
+import appNavigationController from "../appNavigationController";
+import { isMobileSafari } from "../../helpers/userAgent";
 
 const MAX_SELECTION_LENGTH = 100;
 //const MIN_CLICK_MOVE = 32; // minimum bubble height
@@ -314,6 +316,19 @@ export default class ChatSelection {
         this.bubbles.onScroll();
       });
     });
+
+    if(!isMobileSafari) {
+      if(forwards) {
+        appNavigationController.pushItem({
+          type: 'multiselect',
+          onPop: () => {
+            this.cancelSelection();
+          }
+        });
+      } else {
+        appNavigationController.removeByType('multiselect');
+      }
+    }
 
     //const chatInput = this.appImManager.chatInput;
 

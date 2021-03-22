@@ -18,7 +18,7 @@ export default class AppNotificationsTab extends SliderSuperTabEventable {
 
     const NotifySection = (options: {
       name: LangPackKey,
-      typeText: string,
+      typeText: LangPackKey,
       inputKey: InputNotifyKey,
     }) => {
       const section = new SettingSection({
@@ -27,12 +27,12 @@ export default class AppNotificationsTab extends SliderSuperTabEventable {
 
       const enabledRow = new Row({
         checkboxField: new CheckboxField({text: options.typeText, checked: true}),
-        subtitle: 'Loading...',
+        subtitleLangKey: 'Loading',
       });
       
       const previewEnabledRow = new Row({
-        checkboxField: new CheckboxField({text: 'Message preview', checked: true}),
-        subtitle: 'Loading...',
+        checkboxField: new CheckboxField({text: 'Notifications.MessagePreview', checked: true}),
+        subtitleLangKey: 'Loading',
       });
 
       section.content.append(enabledRow.container, previewEnabledRow.container);
@@ -80,35 +80,35 @@ export default class AppNotificationsTab extends SliderSuperTabEventable {
 
     NotifySection({
       name: 'AutoDownloadSettings.TypePrivateChats',
-      typeText: 'Notifications for private chats',
+      typeText: 'NotificationsForPrivateChats',
       inputKey: 'inputNotifyUsers'
     });
 
     NotifySection({
-      name: 'DataAndStorage.CategorySettings.GroupChats',
-      typeText: 'Notifications for groups',
+      name: 'AutoDownloadSettings.TypeGroupChats',
+      typeText: 'NotificationsForGroups',
       inputKey: 'inputNotifyChats'
     });
 
     NotifySection({
       name: 'AutoDownloadSettings.TypeChannels',
-      typeText: 'Notifications for channels',
+      typeText: 'NotificationsForChannels',
       inputKey: 'inputNotifyBroadcasts'
     });
 
     {
       const section = new SettingSection({
-        name: 'Suggest.Localization.Other'
+        name: 'NotificationsOther'
       });
 
       const contactsSignUpRow = new Row({
-        checkboxField: new CheckboxField({text: 'Contacts joined Telegram', checked: true}),
-        subtitle: 'Loading...',
+        checkboxField: new CheckboxField({text: 'ContactJoined', checked: true}),
+        subtitleLangKey: 'Loading',
       });
       
       const soundRow = new Row({
-        checkboxField: new CheckboxField({text: 'Notification sound', checked: true, stateKey: 'settings.notifications.sound'}),
-        subtitle: 'Enabled',
+        checkboxField: new CheckboxField({text: 'Notifications.Sound', checked: true, stateKey: 'settings.notifications.sound'}),
+        subtitleLangKey: 'Checkbox.Enabled',
       });
 
       section.content.append(contactsSignUpRow.container, soundRow.container);

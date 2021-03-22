@@ -24,7 +24,6 @@ import AppContactsTab from "./tabs/contacts";
 import AppArchivedTab from "./tabs/archivedTab";
 import AppAddMembersTab from "./tabs/addMembers";
 import { i18n_, LangPackKey } from "../../lib/langPack";
-import ButtonMenuToggle from "../buttonMenuToggle";
 import ButtonMenu, { ButtonMenuItemOptions } from "../buttonMenu";
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
@@ -84,7 +83,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     const btnArchive: ButtonMenuItemOptions = {
       icon: 'archive',
-      text: 'Archived',
+      text: 'ChatList.Menu.Archived',
       onClick: () => {
         new AppArchivedTab(this).open();
       }
@@ -92,7 +91,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     const btnMenu = ButtonMenu([{
       icon: 'newgroup',
-      text: 'New Group',
+      text: 'NewGroup',
       onClick: onNewGroupClick
     }, {
       icon: 'user',
@@ -114,7 +113,7 @@ export class AppSidebarLeft extends SidebarSlider {
       }
     }, {
       icon: 'help btn-disabled',
-      text: 'Help',
+      text: 'SettingsHelp',
       onClick: () => {
 
       }

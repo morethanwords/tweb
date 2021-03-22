@@ -124,7 +124,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
       dom.containerEl.append(this.checkbox(selected));
       if(selected) dom.listEl.classList.add('active');
 
-      let subtitle: LangPackKey;
+      /* let subtitle: LangPackKey;
 
       if(peerId > 0) {
         if(peerId === rootScope.myId) {
@@ -138,7 +138,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
         subtitle = appPeersManager.isBroadcast(peerId) ? 'Channel' : 'Group';
       }
 
-      _i18n(dom.lastMessageSpan, subtitle);
+      _i18n(dom.lastMessageSpan, subtitle); */
     });
   };
 
@@ -149,19 +149,19 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
     }
 
     this.confirmBtn.style.display = this.type === 'excluded' ? '' : 'none';
-    this.setTitle(this.type === 'included' ? 'Included Chats' : 'Excluded Chats');
+    this.setTitle(this.type === 'included' ? 'FilterAlwaysShow' : 'FilterNeverShow');
 
     const filter = this.filter;
 
     const fragment = document.createDocumentFragment();
     const dd = document.createElement('div');
     dd.classList.add('sidebar-left-h2');
-    _i18n(dd, 'ChatList.Add.TopSeparator');
+    _i18n(dd, 'FilterChatTypes');
     
     const categories = document.createElement('div');
     categories.classList.add('folder-categories');
 
-    let details: {[flag: string]: {ico: string, text: string}};
+    let details: {[flag: string]: {ico: string, text: LangPackKey}};
     if(this.type === 'excluded') {
       details = {
         exclude_muted: {ico: 'mute', text: 'ChatList.Filter.MutedChats'},
@@ -192,7 +192,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
 
     const d = document.createElement('div');
     d.classList.add('sidebar-left-h2');
-    _i18n(d, 'ChatList.Add.BottomSeparator');
+    _i18n(d, 'FilterChats');
 
     fragment.append(dd, categories, hr, d);
 

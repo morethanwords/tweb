@@ -39,15 +39,14 @@ export default class AppEditFolderTab extends SliderSuperTab {
     this.container.classList.add('edit-folder-container');
     this.caption = document.createElement('div');
     this.caption.classList.add('caption');
-    this.caption.append(i18n(`Choose chats and types of chats that will
-appear and never appear in this folder.`));
+    this.caption.append(i18n('FilterIncludeExcludeInfo'));
     this.stickerContainer = document.createElement('div');
     this.stickerContainer.classList.add('sticker-container');
 
     this.confirmBtn = ButtonIcon('check btn-confirm hide blue');
     const deleteFolderButton: ButtonMenuItemOptions = {
       icon: 'delete danger',
-      text: 'Delete Folder',
+      text: 'FilterMenuDelete',
       onClick: () => {
         deleteFolderButton.element.setAttribute('disabled', 'true');
         appMessagesManager.filtersStorage.updateDialogFilter(this.filter, true).then(bool => {
@@ -68,13 +67,13 @@ appear and never appear in this folder.`));
     inputWrapper.classList.add('input-wrapper');
     
     this.nameInputField = new InputField({
-      label: 'Folder Name',
+      label: 'FilterNameInputLabel',
       maxLength: MAX_FOLDER_NAME_LENGTH
     });
 
     inputWrapper.append(this.nameInputField.container);
 
-    const generateList = (className: string, h2Text: LangPackKey, buttons: {icon: string, name?: string, withRipple?: true, text: string}[], to: any) => {
+    const generateList = (className: string, h2Text: LangPackKey, buttons: {icon: string, name?: string, withRipple?: true, text: LangPackKey}[], to: any) => {
       const container = document.createElement('div');
       container.classList.add('folder-list', className);
 
@@ -104,7 +103,7 @@ appear and never appear in this folder.`));
       return container;
     };
 
-    this.include_peers = generateList('folder-list-included', 'ChatList.Filter.Include.Header', [{
+    this.include_peers = generateList('folder-list-included', 'FilterInclude', [{
       icon: 'add primary',
       text: 'ChatList.Filter.Include.AddChat',
       withRipple: true
@@ -130,7 +129,7 @@ appear and never appear in this folder.`));
       name: 'bots'
     }], this.flags);
 
-    this.exclude_peers = generateList('folder-list-excluded', 'ChatList.Filter.Exclude.Header', [{
+    this.exclude_peers = generateList('folder-list-excluded', 'FilterExclude', [{
       icon: 'minus primary',
       text: 'ChatList.Filter.Exclude.AddChat',
       withRipple: true
@@ -227,7 +226,7 @@ appear and never appear in this folder.`));
 
   private onCreateOpen() {
     this.caption.style.display = '';
-    this.setTitle('New Folder');
+    this.setTitle('FilterNew');
     this.menuBtn.classList.add('hide');
     this.confirmBtn.classList.remove('hide');
     this.nameInputField.value = '';
@@ -240,7 +239,7 @@ appear and never appear in this folder.`));
 
   private onEditOpen() {
     this.caption.style.display = 'none';
-    this.setTitle(this.type === 'create' ? 'New Folder' : 'Edit Folder');
+    this.setTitle(this.type === 'create' ? 'FilterNew' : 'FilterHeaderEdit');
 
     if(this.type === 'edit') {
       this.menuBtn.classList.remove('hide');
