@@ -261,7 +261,7 @@ export class AppNotificationsManager {
     }
   }
 
-  public updateLocalSettings() {
+  public updateLocalSettings = () => {
     Promise.all(['notify_nodesktop', 'notify_volume', 'notify_novibrate', 'notify_nopreview', 'notify_nopush'].map(k => sessionStorage.get(k as any)))
     .then((updSettings) => {
       this.settings.nodesktop = updSettings[0];
@@ -439,7 +439,7 @@ export class AppNotificationsManager {
 
   public start() {
     this.updateLocalSettings();
-    //rootScope.on('settings_changed', this.updateNotifySettings);
+    rootScope.on('settings_updated', this.updateLocalSettings);
     //WebPushApiManager.start();
 
     if(!this.notificationsUiSupport) {

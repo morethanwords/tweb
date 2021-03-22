@@ -151,10 +151,12 @@ namespace I18n {
 			} else if(str._ === 'langPackString') {
 				out = str.value;
 			} else {
-				out = '[' + key + ']';
+				//out = '[' + key + ']';
+				out = key;
 			}
 		} else {
-			out = '[' + key + ']';
+			//out = '[' + key + ']';
+			out = key;
 		}
 
 		if(args?.length) {
