@@ -114,7 +114,7 @@ export const STATE_INIT: State = {
       slug: 'ByxGo2lrMFAIAAAAmkJxZabh8eM', // * new blurred camomile
     },
     notifications: {
-      sound: true
+      sound: false
     }
   },
   drafts: {}
