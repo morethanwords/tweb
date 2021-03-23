@@ -15,11 +15,11 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
   
   protected init() {
     this.container.classList.add('blocked-users-container');
-    this.title.innerText = 'Blocked Users';
+    this.setTitle('BlockedUsers');
 
     {
       const section = new SettingSection({
-        caption: 'Blocked users will not be able to contact you and will not see your Last Seen time.'
+        caption: 'BlockedUsersInfo'
       });
 
       this.scrollable.append(section.container);

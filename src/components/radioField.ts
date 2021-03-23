@@ -8,7 +8,8 @@ export default class RadioField {
   public main: HTMLElement;
 
   constructor(options: {
-    text?: LangPackKey, 
+    text?: string, 
+    langKey?: LangPackKey,
     name: string, 
     value?: string, 
     stateKey?: string
@@ -38,7 +39,7 @@ export default class RadioField {
     main.classList.add('radio-field-main');
   
     if(options.text) {
-      _i18n(main, options.text);
+      main.innerHTML = options.text;
       /* const caption = document.createElement('div');
       caption.classList.add('radio-field-main-caption');
       caption.innerHTML = text;
@@ -49,6 +50,8 @@ export default class RadioField {
       }
   
       main.append(caption); */
+    } else if(options.langKey) {
+      _i18n(main, options.langKey);
     }
   
     label.append(input, main);

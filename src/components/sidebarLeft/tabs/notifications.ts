@@ -79,19 +79,19 @@ export default class AppNotificationsTab extends SliderSuperTabEventable {
     };
 
     NotifySection({
-      name: 'AutoDownloadSettings.TypePrivateChats',
+      name: 'NotificationsPrivateChats',
       typeText: 'NotificationsForPrivateChats',
       inputKey: 'inputNotifyUsers'
     });
 
     NotifySection({
-      name: 'AutoDownloadSettings.TypeGroupChats',
+      name: 'NotificationsGroups',
       typeText: 'NotificationsForGroups',
       inputKey: 'inputNotifyChats'
     });
 
     NotifySection({
-      name: 'AutoDownloadSettings.TypeChannels',
+      name: 'NotificationsChannels',
       typeText: 'NotificationsForChannels',
       inputKey: 'inputNotifyBroadcasts'
     });

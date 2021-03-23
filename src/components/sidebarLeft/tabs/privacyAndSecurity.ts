@@ -19,7 +19,7 @@ import AppBlockedUsersTab from "./blockedUsers";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import rootScope from "../../../lib/rootScope";
 import { convertKeyToInputKey } from "../../../helpers/string";
-import { LangPackKey, _i18n } from "../../../lib/langPack";
+import { i18n, LangPackKey, _i18n } from "../../../lib/langPack";
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
   private activeSessionsRow: Row;
@@ -97,9 +97,9 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
         blockedCount = count;
 
         if(count) {
-          _i18n(blockedUsersRow.subtitle, 'Privacy.BlockedUsers', [count]);
+          _i18n(blockedUsersRow.subtitle, 'PrivacySettingsController.UserCount', [count]);
         } else {
-          _i18n(blockedUsersRow.subtitle, 'Privacy.BlockedUsers.None');
+          _i18n(blockedUsersRow.subtitle, 'BlockedEmpty');
         }
       };
 
@@ -124,7 +124,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
 
       passwordManager.getState().then(state => {
         passwordState = state;
-        twoFactorRow.subtitle.innerText = state.pFlags.has_password ? 'On' : 'Off';
+        _i18n(twoFactorRow.subtitle, state.pFlags.has_password ? 'PrivacyAndSecurity.Item.On' : 'PrivacyAndSecurity.Item.Off');
         twoFactorRow.freezed = false;
         
         //console.log('password state', state);
@@ -198,11 +198,16 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
 
         appPrivacyManager.getPrivacy(key).then(rules => {
           const details = appPrivacyManager.getPrivacyRulesDetails(rules);
-          const type = details.type === PrivacyType.Everybody ? 'Everybody' : (details.type === PrivacyType.Contacts ? 'My Contacts' : 'Nobody');
+          const langKey = details.type === PrivacyType.Everybody ? 'PrivacySettingsController.Everbody' : (details.type === PrivacyType.Contacts ? 'PrivacySettingsController.MyContacts' : 'PrivacySettingsController.Nobody');
           const disallowLength = details.disallowPeers.users.length + details.disallowPeers.chats.length;
           const allowLength = details.allowPeers.users.length + details.allowPeers.chats.length;
-          const str = type + (disallowLength || allowLength ? ` (${[-disallowLength, allowLength ? '+' + allowLength : 0].filter(Boolean).join(', ')})` : '');
-          row.subtitle.innerHTML = str;
+
+          row.subtitle.innerHTML = '';
+          const s = i18n(langKey);
+          row.subtitle.append(s);
+          if(disallowLength || allowLength) {
+            row.subtitle.append(` (${[-disallowLength, allowLength ? '+' + allowLength : 0].filter(Boolean).join(', ')})`);
+          }
         });
       };
 

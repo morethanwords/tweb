@@ -96,7 +96,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
     });
 
     this.dialogsByFilters = new Map();
-    appMessagesManager.filtersStorage.getDialogFilters().then(filters => {
+    return appMessagesManager.filtersStorage.getDialogFilters().then(filters => {
       for(const filter of filters) {
         this.dialogsByFilters.set(filter, new Set(appMessagesManager.dialogsStorage.getFolder(filter.id).map(d => d.peerId)));
       }
@@ -146,21 +146,6 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
       joined.forEach(el => {
         dom.lastMessageSpan.append(el);
       });
-      /* let subtitle: LangPackKey;
-
-      if(peerId > 0) {
-        if(peerId === rootScope.myId) {
-          subtitle = 'Chat with yourself';
-        } else if(appUsersManager.isBot(peerId)) {
-          subtitle = 'Bot';
-        } else {
-          subtitle = appUsersManager.contactsList.has(peerId) ? 'Contact' : 'Non-Contact';
-        }
-      } else {
-        subtitle = appPeersManager.isBroadcast(peerId) ? 'Channel' : 'Group';
-      }
-
-      _i18n(dom.lastMessageSpan, subtitle); */
     });
   };
 

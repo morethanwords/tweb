@@ -1,19 +1,20 @@
 import { SliderSuperTabEventable } from "../../../sliderTab";
 import PrivacySection from "../../../privacySection";
 import { PrivacyType } from "../../../../lib/appManagers/appPrivacyManager";
+import { LangPackKey } from "../../../../lib/langPack";
 
 export default class AppPrivacyProfilePhotoTab extends SliderSuperTabEventable {
   protected init() {
     this.container.classList.add('privacy-tab', 'privacy-profile-photo');
-    this.title.innerHTML = 'Profile Photo';
+    this.setTitle('PrivacyProfilePhoto');
 
-    const caption = 'You can restrict who can see your profile photo with granular precision.';
+    const caption: LangPackKey = 'PrivacySettingsController.ProfilePhoto.CustomHelp';
     new PrivacySection({
       tab: this,
-      title: 'Who can see your profile photo?',
+      title: 'PrivacyProfilePhotoTitle',
       inputKey: 'inputPrivacyKeyChatInvite',
       captions: [caption, caption, caption],
-      exceptionTexts: ['Never Share With', 'Always Share With'],
+      exceptionTexts: ['PrivacySettingsController.NeverShare', 'PrivacySettingsController.AlwaysShare'],
       appendTo: this.scrollable,
       skipTypes: [PrivacyType.Nobody]
     });

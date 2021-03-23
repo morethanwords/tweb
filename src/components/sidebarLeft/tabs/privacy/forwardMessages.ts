@@ -1,18 +1,19 @@
 import { SliderSuperTabEventable } from "../../../sliderTab";
 import PrivacySection from "../../../privacySection";
+import { LangPackKey } from "../../../../lib/langPack";
 
 export default class AppPrivacyForwardMessagesTab extends SliderSuperTabEventable {
   protected init() {
     this.container.classList.add('privacy-tab', 'privacy-forward-messages');
-    this.title.innerHTML = 'Forward Messages';
+    this.setTitle('PrivacySettings.Forwards');
 
-    const caption = 'You can restrict who can add a link to your account when forwarding your messages.';
+    const caption: LangPackKey = 'PrivacySettingsController.Forwards.CustomHelp';
     new PrivacySection({
       tab: this,
-      title: 'Who can add a link to my account when forwarding my messages?',
+      title: 'PrivacyForwardsTitle',
       inputKey: 'inputPrivacyKeyForwards',
       captions: [caption, caption, caption],
-      exceptionTexts: ['Never Allow', 'Always Allow'],
+      exceptionTexts: ['PrivacySettingsController.NeverAllow', 'PrivacySettingsController.AlwaysAllow'],
       appendTo: this.scrollable
     });
   }

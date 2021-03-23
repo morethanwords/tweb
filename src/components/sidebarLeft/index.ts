@@ -437,7 +437,7 @@ export class SettingSection {
 
   constructor(options: {
     name?: LangPackKey, 
-    caption?: string,
+    caption?: LangPackKey | true,
     noDelimiter?: boolean
   }) {
     this.container = document.createElement('div');
@@ -462,7 +462,10 @@ export class SettingSection {
     if(options.caption) {
       this.caption = this.generateContentElement();
       this.caption.classList.add('sidebar-left-section-caption');
-      this.caption.innerHTML = options.caption;
+
+      if(options.caption !== true) {
+        i18n_({element: this.caption, key: options.caption});
+      }
     }
   }
 
@@ -474,7 +477,7 @@ export class SettingSection {
   }
 }
 
-export const generateSection = (appendTo: Scrollable, name?: LangPackKey, caption?: string) => {
+export const generateSection = (appendTo: Scrollable, name?: LangPackKey, caption?: LangPackKey) => {
   const section = new SettingSection({name, caption});
   appendTo.append(section.container);
   return section.content;
