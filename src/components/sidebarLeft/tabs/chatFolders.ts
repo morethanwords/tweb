@@ -15,7 +15,7 @@ import rootScope from "../../../lib/rootScope";
 import AppEditFolderTab from "./editFolder";
 import Row from "../../row";
 import { SettingSection } from "..";
-import { i18n, i18n_, LangPackKey } from "../../../lib/langPack";
+import { i18n, i18n_, LangPackKey, join } from "../../../lib/langPack";
 
 export default class AppChatFoldersTab extends SliderSuperTab {
   private createFolderBtn: HTMLElement;
@@ -76,14 +76,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       });
 
       if(d.length) {
-        let arr: HTMLElement[] = d.slice(0, 1);
-        for(let i = 1; i < d.length; ++i) {
-          const isLast = (d.length - 1) === i;
-          const delimiterKey: LangPackKey = isLast ? 'WordDelimiterLast' : 'WordDelimiter';
-          arr.push(i18n(delimiterKey));
-          arr.push(d[i]);
-        }
-
+        const arr = join(d);
         arr.forEach(el => {
           row.subtitle.append(el);
         });
