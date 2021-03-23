@@ -163,10 +163,12 @@ class InputField {
         //this.onLengthChange && this.onLengthChange(inputLength, isError);
 
         if(isError || diff <= showLengthOn) {
-          labelEl.innerText = label + ` (${maxLength - inputLength})`;
+          labelEl.innerHTML = '';
+          labelEl.append(i18n(label), ` (${maxLength - inputLength})`);
           if(!showingLength) showingLength = true;
         } else if((wasError && !isError) || showingLength) {
-          labelEl.innerText = label;
+          labelEl.innerHTML = '';
+          labelEl.append(i18n(label));
           showingLength = false;
         }
       };
@@ -244,7 +246,7 @@ class InputField {
     this.input.classList.toggle('valid', !!(state & InputState.Valid));
   }
 
-  public setError(label?: string) {
+  public setError(label?: LangPackKey) {
     this.setState(InputState.Error, label);
   }
 }

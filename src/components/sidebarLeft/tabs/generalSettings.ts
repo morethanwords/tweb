@@ -91,7 +91,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
 
       const enterRow = new Row({
         radioField: new RadioField({
-          text: 'General.SendShortcut.Enter', 
+          langKey: 'General.SendShortcut.Enter', 
           name: 'send-shortcut', 
           value: 'enter', 
           stateKey: 'settings.sendShortcut'

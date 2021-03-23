@@ -8,7 +8,7 @@ export default class AppArchivedTab extends SliderSuperTab {
 
   init() {
     this.container.id = 'chats-archived-container';
-    this.title.innerHTML = 'Archived Chats';
+    this.setTitle('ArchivedChats');
 
     //this.scrollable = new Scrollable(this.container, 'CLA', 500);
     this.scrollable.append(appDialogsManager.chatListArchived);

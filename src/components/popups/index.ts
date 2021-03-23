@@ -3,10 +3,13 @@ import { blurActiveElement, findUpClassName } from "../../helpers/dom";
 import { ripple } from "../ripple";
 import animationIntersector from "../animationIntersector";
 import appNavigationController, { NavigationItem } from "../appNavigationController";
+import { i18n, LangPackKey } from "../../lib/langPack";
 
 export type PopupButton = {
-  text: string,
+  text?: string,
   callback?: () => void,
+  langKey?: LangPackKey,
+  langArgs?: any[],
   isDanger?: true,
   isCancel?: true
 };
@@ -89,7 +92,13 @@ export default class PopupElement {
       const buttonsElements = buttons.map(b => {
         const button = document.createElement('button');
         button.className = 'btn' + (b.isDanger ? ' danger' : ' primary');
-        button.innerHTML =  b.text;
+
+        if(b.text) {
+          button.innerHTML =  b.text;
+        } else {
+          button.append(i18n(b.langKey, b.langArgs));
+        }
+
         ripple(button);
   
         if(b.callback) {
@@ -157,7 +166,7 @@ export const addCancelButton = (buttons: PopupButton[]) => {
   const button = buttons.find(b => b.isCancel);
   if(!button) {
     buttons.push({
-      text: 'CANCEL',
+      langKey: 'Cancel',
       isCancel: true
     });
   }

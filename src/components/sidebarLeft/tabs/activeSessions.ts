@@ -11,6 +11,7 @@ import PopupConfirmAction from "../../popups/confirmAction";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
 import { toast } from "../../toast";
 import AppPrivacyAndSecurityTab from "./privacyAndSecurity";
+import I18n from "../../../lib/langPack";
 
 export default class AppActiveSessionsTab extends SliderSuperTab {
   public privacyTab: AppPrivacyAndSecurityTab;
@@ -19,7 +20,7 @@ export default class AppActiveSessionsTab extends SliderSuperTab {
   
   protected init() {
     this.container.classList.add('active-sessions-container');
-    this.title.innerText = 'Active Sessions';
+    this.setTitle('SessionsTitle');
 
     const Session = (auth: Authorization.authorization) => {
       const row = new Row({
@@ -44,7 +45,7 @@ export default class AppActiveSessionsTab extends SliderSuperTab {
 
     {
       const section = new SettingSection({
-        name: 'Current Session'
+        name: 'CurrentSession'
       });
 
       const auth = authorizations.findAndSplice(auth => auth.pFlags.current);
@@ -53,10 +54,10 @@ export default class AppActiveSessionsTab extends SliderSuperTab {
       section.content.append(session.container);
 
       if(authorizations.length) {
-        const btnTerminate = Button('btn-primary btn-transparent danger', {icon: 'stop', text: 'Terminate all other sessions'});
+        const btnTerminate = Button('btn-primary btn-transparent danger', {icon: 'stop', text: 'TerminateAllSessions'});
         attachClickEvent(btnTerminate, (e) => {
           new PopupConfirmAction('revoke-session', [{
-            text: 'TERMINATE',
+            langKey: 'Terminate',
             isDanger: true,
             callback: () => {
               const toggle = toggleDisability([btnTerminate], true);
@@ -70,8 +71,8 @@ export default class AppActiveSessionsTab extends SliderSuperTab {
               });
             }
           }], {
-            title: 'Terminate All Other Sessions',
-            text: 'Are you sure you want to terminate all other sessions?'
+            title: 'AreYouSureSessionsTitle',
+            text: 'AreYouSureSessions'
           }).show();
         });
   
@@ -86,7 +87,7 @@ export default class AppActiveSessionsTab extends SliderSuperTab {
     }
 
     const otherSection = new SettingSection({
-      name: 'Other Sessions'
+      name: 'OtherSessions'
     });
 
     authorizations.forEach(auth => {
@@ -97,7 +98,7 @@ export default class AppActiveSessionsTab extends SliderSuperTab {
 
     const onError = (err: any) => {
       if(err.type === 'FRESH_RESET_AUTHORISATION_FORBIDDEN') {
-        toast('For security reasons, you can\'t terminate older sessions from a device that you\'ve just connected. Please use an earlier connection or wait for a few hours.');
+        toast(I18n.getString('RecentSessions.Error.FreshReset'));
       }
     };
 
@@ -106,7 +107,7 @@ export default class AppActiveSessionsTab extends SliderSuperTab {
       const hash = target.dataset.hash;
       
       new PopupConfirmAction('revoke-session', [{
-        text: 'TERMINATE',
+        langKey: 'Terminate',
         isDanger: true,
         callback: () => {
           apiManager.invokeApi('account.resetAuthorization', {hash})
@@ -118,8 +119,8 @@ export default class AppActiveSessionsTab extends SliderSuperTab {
           }, onError);
         }
       }], {
-        title: 'Terminate Session',
-        text: 'Do you want to terminate this session?'
+        title: 'AreYouSureSessionTitle',
+        text: 'TerminateSessionText'
       }).show();
     };
 

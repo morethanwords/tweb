@@ -2,6 +2,7 @@ import { randomLong } from "../helpers/random";
 import { InputPrivacyKey, InputPrivacyRule } from "../layer";
 import appPrivacyManager, { PrivacyType } from "../lib/appManagers/appPrivacyManager";
 import appUsersManager from "../lib/appManagers/appUsersManager";
+import { i18n, join, LangPackKey, _i18n } from "../lib/langPack";
 import RadioField from "./radioField";
 import Row, { RadioFormFromRows } from "./row";
 import Scrollable from "./scrollable";
@@ -9,15 +10,16 @@ import { SettingSection, generateSection } from "./sidebarLeft";
 import AppAddMembersTab from "./sidebarLeft/tabs/addMembers";
 import { SliderSuperTabEventable } from "./sliderTab";
 
+type PrivacySectionStr = LangPackKey | '';
 export default class PrivacySection {
   public radioRows: Map<PrivacyType, Row>;
   public radioSection: SettingSection;
   public exceptions: Map<keyof PrivacySection['peerIds'], {
-    title: string,
+    titleLangKey: LangPackKey,
     key: keyof PrivacySection['peerIds'],
     row: Row,
     icon: string,
-    subtitle: string,
+    subtitleLangKey: LangPackKey,
     clickable: true
   }>;
   public peerIds: {
@@ -28,32 +30,32 @@ export default class PrivacySection {
 
   constructor(public options: {
     tab: SliderSuperTabEventable,
-    title: string, 
+    title: LangPackKey, 
     inputKey: InputPrivacyKey['_'], 
-    captions?: [string, string, string],
+    captions?: [PrivacySectionStr, PrivacySectionStr, PrivacySectionStr],
     appendTo?: Scrollable,
     noExceptions?: boolean,
     onRadioChange?: (value: number) => any,
     skipTypes?: PrivacyType[],
-    exceptionTexts?: [string, string]
+    exceptionTexts?: [LangPackKey, LangPackKey]
   }) {
     if(options.captions) {
       options.captions.reverse();
     }
 
-    this.radioSection = new SettingSection({name: options.title, caption: ' '});
+    this.radioSection = new SettingSection({name: options.title, caption: true});
 
     this.radioRows = new Map();
 
-    let r = [{
+    let r: Array<{type: PrivacyType, langKey: LangPackKey}> = [{
       type: PrivacyType.Everybody,
-      text: 'Everybody'
+      langKey: 'PrivacySettingsController.Everbody'
     }, {
       type: PrivacyType.Contacts,
-      text: 'My Contacts'
+      langKey: 'PrivacySettingsController.MyContacts'
     }, {
       type: PrivacyType.Nobody,
-      text: 'Nobody'
+      langKey: 'PrivacySettingsController.Nobody'
     }];
 
     if(options.skipTypes) {
@@ -61,10 +63,10 @@ export default class PrivacySection {
     }
     
     const random = randomLong();
-    r.forEach(({type, text}) => {
+    r.forEach(({type, langKey}) => {
       const row = new Row({
         radioField: new RadioField({
-          text, 
+          langKey, 
           name: random, 
           value: '' + type
         })
@@ -81,26 +83,26 @@ export default class PrivacySection {
     }
 
     if(!options.noExceptions) {
-      const container = generateSection(options.appendTo, 'Exceptions', 'You can add users or entire groups as exceptions that will override settings above.');
+      const container = generateSection(options.appendTo, 'PrivacyExceptions', 'PrivacySettingsController.PeerInfo');
 
       this.exceptions = new Map([[
         'disallow', 
         {
-          title: options.exceptionTexts[0],
+          titleLangKey: options.exceptionTexts[0],
           key: 'disallow',
           row: null,
           icon: 'deleteuser',
-          subtitle: 'Add Users',
+          subtitleLangKey: 'PrivacySettingsController.AddUsers',
           clickable: true
         }
       ], [
         'allow', 
         {
-          title: options.exceptionTexts[1],
+          titleLangKey: options.exceptionTexts[1],
           key: 'allow',
           row: null,
           icon: 'adduser',
-          subtitle: 'Add Users',
+          subtitleLangKey: 'PrivacySettingsController.AddUsers',
           clickable: true
         }
       ]]);
@@ -114,12 +116,13 @@ export default class PrivacySection {
             new AppAddMembersTab(options.tab.slider).open({
               type: 'privacy',
               skippable: true,
-              title: exception.title,
+              title: exception.titleLangKey,
               placeholder: 'Add Users or Groups...',
               takeOut: (newPeerIds) => {
                 _peerIds.length = 0;
                 _peerIds.push(...newPeerIds);
-                exception.row.subtitle.innerHTML = this.generateStr(this.splitPeersByType(newPeerIds));
+                exception.row.subtitle.innerHTML = '';
+                exception.row.subtitle.append(...this.generateStr(this.splitPeersByType(newPeerIds)));
               },
               selectedPeerIds: _peerIds
             });
@@ -146,7 +149,9 @@ export default class PrivacySection {
           arr.push(...from.users);
           arr.push(...from.chats.map(id => -id));
           this.peerIds[k] = arr;
-          this.exceptions.get(k).row.subtitle.innerHTML = this.generateStr(from);
+          const s = this.exceptions.get(k).row.subtitle;
+          s.innerHTML = '';
+          s.append(...this.generateStr(from));
         });
       }
 
@@ -204,7 +209,11 @@ export default class PrivacySection {
 
     const caption = this.options.captions[this.type];
     const captionElement = this.radioSection.caption;
-    captionElement.innerHTML = caption;
+    if(!caption) {
+      captionElement.innerHTML = '';
+    } else {
+      _i18n(captionElement, caption);
+    }
     captionElement.classList.toggle('hide', !caption);
 
     if(this.exceptions) {
@@ -230,14 +239,14 @@ export default class PrivacySection {
     return peers;
   }
 
-  private generateStr(peers: {users: number[], chats: number[]}) {
+  private generateStr(peers: {users: number[], chats: number[]}): HTMLElement[] {
     if(!peers.users.length && !peers.chats.length) {
-      return 'Add Users';
+      return [i18n('PrivacySettingsController.AddUsers')];
     }
 
-    return [
-      peers.users.length ? peers.users.length + ' ' + (peers.users.length === 1 ? 'user' : 'users') : '', 
-      peers.chats.length ? peers.chats.length + ' ' + (peers.chats.length === 1 ? 'chat' : 'chats') : ''
-    ].filter(Boolean).join(', ');
+    return join([
+      peers.users.length ? i18n('Users', [peers.users.length]) : null, 
+      peers.chats.length ? i18n('Chats', [peers.chats.length]) : null
+    ].filter(Boolean), false);
   }
 }

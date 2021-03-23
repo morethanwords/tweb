@@ -1,29 +1,30 @@
 import { SliderSuperTabEventable } from "../../../sliderTab";
 import PrivacySection from "../../../privacySection";
+import { LangPackKey } from "../../../../lib/langPack";
 
 export default class AppPrivacyCallsTab extends SliderSuperTabEventable {
   protected init() {
     this.container.classList.add('privacy-tab', 'privacy-calls');
-    this.title.innerHTML = 'Calls';
+    this.setTitle('PrivacySettings.VoiceCalls');
 
-    const caption = 'You can restrict who can call you with granular precision.';
+    const caption: LangPackKey = 'PrivacySettingsController.PhoneCallDescription';
     new PrivacySection({
       tab: this,
-      title: 'Who can call me?',
+      title: 'WhoCanCallMe',
       inputKey: 'inputPrivacyKeyPhoneCall',
       captions: [caption, caption, caption],
-      exceptionTexts: ['Never Allow', 'Always Allow'],
+      exceptionTexts: ['PrivacySettingsController.NeverAllow', 'PrivacySettingsController.AlwaysAllow'],
       appendTo: this.scrollable
     });
 
     {
-      const caption = 'Disabling peer-to-peer will relay all calls through Telegram servers to avoid revealing your IP address, but will slightly decrease audio quality.';
+      const caption: LangPackKey = 'PrivacySettingsController.P2p.Desc';
       new PrivacySection({
         tab: this,
-        title: 'Peer to peer?',
+        title: 'PrivacyP2PHeader',
         inputKey: 'inputPrivacyKeyPhoneP2P',
         captions: [caption, caption, caption],
-        exceptionTexts: ['Never Allow', 'Always Allow'],
+        exceptionTexts: ['PrivacySettingsController.NeverAllow', 'PrivacySettingsController.AlwaysAllow'],
         appendTo: this.scrollable
       });
     }
