@@ -1,16 +1,16 @@
 import { SliderSuperTab } from "../../slider";
 import AppSelectPeers from "../../appSelectPeers";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
-import appPeersManager from "../../../lib/appManagers/appPeersManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import { MyDialogFilter as DialogFilter } from "../../../lib/storages/filters";
-import rootScope from "../../../lib/rootScope";
 import { copy } from "../../../helpers/object";
 import ButtonIcon from "../../buttonIcon";
 import CheckboxField from "../../checkboxField";
 import Button from "../../button";
 import AppEditFolderTab from "./editFolder";
-import { i18n, LangPackKey, _i18n } from "../../../lib/langPack";
+import { i18n, LangPackKey, _i18n, join } from "../../../lib/langPack";
+import appMessagesManager from "../../../lib/appManagers/appMessagesManager";
+import RichTextProcessor from "../../../lib/richtextprocessor";
 
 export default class AppIncludedChatsTab extends SliderSuperTab {
   private editFolderTab: AppEditFolderTab;
@@ -21,7 +21,9 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
   private filter: DialogFilter;
   private originalFilter: DialogFilter;
 
-  init() {
+  private dialogsByFilters: Map<DialogFilter, Set<number>>;
+
+  protected init() {
     this.content.remove();
     this.container.classList.add('included-chatlist-container');
     this.confirmBtn = ButtonIcon('check btn-confirm blue', {noRipple: true});
@@ -92,6 +94,13 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
       this.editFolderTab.setFilter(this.filter, false);
       this.close();
     });
+
+    this.dialogsByFilters = new Map();
+    appMessagesManager.filtersStorage.getDialogFilters().then(filters => {
+      for(const filter of filters) {
+        this.dialogsByFilters.set(filter, new Set(appMessagesManager.dialogsStorage.getFolder(filter.id).map(d => d.peerId)));
+      }
+    });
   }
 
   checkbox(selected?: boolean) {
@@ -124,6 +133,19 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
       dom.containerEl.append(this.checkbox(selected));
       if(selected) dom.listEl.classList.add('active');
 
+      const foundInFilters: HTMLElement[] = [];
+      this.dialogsByFilters.forEach((dialogs, filter) => {
+        if(dialogs.has(peerId)) {
+          const span = document.createElement('span');
+          span.innerHTML = RichTextProcessor.wrapEmojiText(filter.title);
+          foundInFilters.push(span);
+        }
+      });
+
+      const joined = join(foundInFilters, false);
+      joined.forEach(el => {
+        dom.lastMessageSpan.append(el);
+      });
       /* let subtitle: LangPackKey;
 
       if(peerId > 0) {
