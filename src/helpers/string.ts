@@ -98,3 +98,7 @@ export function convertKeyToInputKey(key: string) {
   key = 'input' + key;
   return key;
 }
+
+export function capitalizeFirstLetter(string: string) {
+  return string.charAt(0).toUpperCase() + string.slice(1);
+}

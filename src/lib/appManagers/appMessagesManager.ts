@@ -38,6 +38,7 @@ import appProfileManager from "./appProfileManager";
 import DEBUG, { MOUNT_CLASS_TO } from "../../config/debug";
 import SlicedArray, { Slice, SliceEnd } from "../../helpers/slicedArray";
 import appNotificationsManager, { NotifyOptions } from "./appNotificationsManager";
+import PeerTitle from "../../components/peerTitle";
 
 //console.trace('include');
 // TODO: если удалить сообщение в непрогруженном диалоге, то при обновлении, из-за стейта, последнего сообщения в чатлисте не будет
@@ -2687,6 +2688,8 @@ export class AppMessagesManager {
     const element: HTMLElement = plain ? undefined : document.createElement('span');
     const action = message.action as MessageAction;
 
+    // this.log('message action:', action);
+
     if((action as MessageAction.messageActionCustomAction).message) {
       const richText = RichTextProcessor.wrapRichText((action as MessageAction.messageActionCustomAction).message, {noLinebreaks: true});
       if(plain) {
@@ -2701,9 +2704,8 @@ export class AppMessagesManager {
       let langPackKey: LangPackKey = '';
       let args: any[];
 
-      const getNameDivHTML = (peerId: number) => {
-        const title = appPeersManager.getPeerTitle(peerId);
-        return title ? (plain ? title + ' ' : `<div class="name inline" data-peer-id="${peerId}">${title}</div> `) : '';
+      const getNameDivHTML = (peerId: number, plain: boolean) => {
+        return plain ? appPeersManager.getPeerTitle(peerId) + ' ' : (new PeerTitle({peerId})).element;
       };
 
       switch(action._) {
@@ -2722,9 +2724,10 @@ export class AppMessagesManager {
           break;
         }
 
+        case 'messageActionChatCreate':
         case 'messageActionChatJoinedByLink': {
           langPackKey = langPack[_];
-          args = [getNameDivHTML(message.fromId)];
+          args = [getNameDivHTML(message.fromId, plain)];
           break;
         }
 
@@ -2736,7 +2739,12 @@ export class AppMessagesManager {
             || [(action as MessageAction.messageActionChatDeleteUser).user_id];
 
           langPackKey = langPack[_];
-          args = [getNameDivHTML(message.fromId), users.map((userId: number) => getNameDivHTML(userId).trim()).join(', ')];
+          args = [
+            getNameDivHTML(message.fromId, plain), 
+            users.length > 1 ? 
+              users.map((userId: number) => (getNameDivHTML(userId, true) as string).trim()).join(', ') : 
+              getNameDivHTML(users[0], plain)
+          ];
           break;
         }
 
@@ -2767,17 +2775,13 @@ export class AppMessagesManager {
       }
 
       if(plain) {
-        return I18n.getString(langPackKey, args);
+        return I18n.format(langPackKey, true, args);
       } else {
         return _i18n(element, langPackKey, args);
       }
 
       //str = !langPackKey || langPackKey[0].toUpperCase() === langPackKey[0] ? langPackKey : getNameDivHTML(message.fromId) + langPackKey + (suffix ? ' ' : '');
     }
-
-    //this.log('message action:', action);
-
-    return element;
   }
 
   public editPeerFolders(peerIds: number[], folderId: number) {

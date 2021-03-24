@@ -1,4 +1,5 @@
 import { MOUNT_CLASS_TO } from "../config/debug";
+import I18n from "../lib/langPack";
 
 export const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 export const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -32,6 +33,31 @@ export const formatDateAccordingToToday = (time: Date) => {
 
   return timeStr;
 };
+
+export function formatDateAccordingToTodayNew(time: Date) {
+  const today = new Date();
+  const now = today.getTime() / 1000 | 0;
+  const timestamp = time.getTime() / 1000 | 0;
+
+  const options: Intl.DateTimeFormatOptions = {};
+  if((now - timestamp) < ONE_DAY && today.getDate() === time.getDate()) { // if the same day
+    options.hour = options.minute = '2-digit';
+    options.hour12 = false;
+  } else if(today.getFullYear() !== time.getFullYear()) { // different year
+    options.year = options.day = 'numeric';
+    options.month = '2-digit';
+  } else if((now - timestamp) < (ONE_DAY * 7) && getWeekNumber(today) === getWeekNumber(time)) { // current week
+    options.weekday = 'short';
+  } else { // same year
+    options.month = 'short';
+    options.day = 'numeric';
+  }
+
+  return new I18n.IntlDateElement({
+    date: time,
+    options
+  }).element;
+}
 
 export const getFullDate = (date: Date, options: Partial<{
   noTime: true, 

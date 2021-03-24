@@ -26,7 +26,7 @@ import { months } from "../../helpers/date";
 import RichTextProcessor from "../../lib/richtextprocessor";
 import mediaSizes from "../../helpers/mediaSizes";
 import { isAndroid, isApple, isSafari } from "../../helpers/userAgent";
-import { langPack } from "../../lib/langPack";
+import I18n, { i18n, langPack } from "../../lib/langPack";
 import AvatarElement from "../avatar";
 import { formatPhoneNumber } from "../misc";
 import { ripple } from "../ripple";
@@ -716,7 +716,7 @@ export default class ChatBubbles {
     }
 
     //this.log('chatInner click:', target);
-    const isVideoComponentElement = target.tagName === 'SPAN';
+    const isVideoComponentElement = target.tagName === 'SPAN' && !target.classList.contains('peer-title');
     /* if(isVideoComponentElement) {
       const video = target.parentElement.querySelector('video') as HTMLElement;
       if(video) {
@@ -808,9 +808,9 @@ export default class ChatBubbles {
       return;
     }
     
-    if(['IMG', 'DIV', "AVATAR-ELEMENT"/* , 'A' */].indexOf(target.tagName) === -1) target = findUpTag(target, 'DIV');
+    if(['IMG', 'DIV', "AVATAR-ELEMENT", 'SPAN'/* , 'A' */].indexOf(target.tagName) === -1) target = findUpTag(target, 'DIV');
     
-    if(target.tagName === 'DIV' || target.tagName === "AVATAR-ELEMENT"/*  || target.tagName === 'A' */) {
+    if(['DIV', 'SPAN'].indexOf(target.tagName) !== -1/*  || target.tagName === 'A' */) {
       if(target.classList.contains('goto-original')) {
         const savedFrom = bubble.dataset.savedFrom;
         const splitted = savedFrom.split('_');
@@ -824,7 +824,7 @@ export default class ChatBubbles {
         new PopupForward(this.peerId, [mid]);
         //appSidebarRight.forwardTab.open([mid]);
         return;
-      } else if(target.classList.contains('name')) {
+      } else if(target.classList.contains('peer-title') || target.classList.contains('name')) {
         const peerId = +target.dataset.peerId;
         
         const savedFrom = target.dataset.savedFrom;
@@ -1251,28 +1251,48 @@ export default class ChatBubbles {
     date.setHours(0, 0, 0);
     const dateTimestamp = date.getTime();
     if(!(dateTimestamp in this.dateMessages)) {
-      let str = '';
+      let dateElement: HTMLElement;
       
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
       if(today.getTime() === date.getTime()) {
-        str = 'Today';
+        dateElement = i18n(this.chat.type === 'scheduled' ? 'Chat.Date.ScheduledForToday' : 'Date.Today');
       } else {
-        str = months[date.getMonth()] + ' ' + date.getDate();
+        const options: Intl.DateTimeFormatOptions = {
+          day: 'numeric',
+          month: 'long'
+        };
 
         if(date.getFullYear() !== today.getFullYear()) {
-          str += ', ' + date.getFullYear();
+          options.year = 'numeric';
+        }
+
+        dateElement = new I18n.IntlDateElement({
+          date,
+          options
+        }).element;
+
+        if(this.chat.type === 'scheduled') {
+          dateElement = i18n('Chat.Date.ScheduledFor', [dateElement]);
         }
       }
 
-      if(this.chat.type === 'scheduled') {
+      /* if(this.chat.type === 'scheduled') {
         str = 'Scheduled for ' + str;
-      }
+      } */
       
       const div = document.createElement('div');
       div.className = 'bubble service is-date';
-      div.innerHTML = `<div class="bubble-content"><div class="service-msg">${str}</div></div>`;
+      const bubbleContent = document.createElement('div');
+      bubbleContent.classList.add('bubble-content');
+      const serviceMsg = document.createElement('div');
+      serviceMsg.classList.add('service-msg');
+
+      serviceMsg.append(dateElement);
+
+      bubbleContent.append(serviceMsg);
+      div.append(bubbleContent);
       ////////this.log('need to render date message', dateTimestamp, str);
 
       const container = document.createElement('div');

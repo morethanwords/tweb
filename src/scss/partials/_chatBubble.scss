@@ -1572,13 +1572,13 @@ $bubble-margin: .25rem;
       color: #fff;
     }
 
-    a, .name {
+    a, .peer-title {
       &:hover {
         text-decoration: underline;
       }
     }
 
-    .name {
+    .peer-title {
       cursor: pointer;
       //margin-right: 5px;
     }
