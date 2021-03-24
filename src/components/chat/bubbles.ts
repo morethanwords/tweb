@@ -1820,7 +1820,11 @@ export default class ChatBubbles {
 
       bubble.className = 'bubble service';
 
-      bubbleContainer.innerHTML = `<div class="service-msg">${message.rReply}</div>`;
+      bubbleContainer.innerHTML = '';
+      const s = document.createElement('div');
+      s.classList.add('service-msg');
+      s.append(this.appMessagesManager.wrapMessageActionTextNew(message));
+      bubbleContainer.append(s);
 
       if(updatePosition) {
         this.renderMessagesQueue(message, bubble, reverse, loadPromises);
