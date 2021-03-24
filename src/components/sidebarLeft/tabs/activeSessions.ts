@@ -98,7 +98,7 @@ export default class AppActiveSessionsTab extends SliderSuperTab {
 
     const onError = (err: any) => {
       if(err.type === 'FRESH_RESET_AUTHORISATION_FORBIDDEN') {
-        toast(I18n.getString('RecentSessions.Error.FreshReset'));
+        toast(I18n.format('RecentSessions.Error.FreshReset', true));
       }
     };
 

@@ -222,6 +222,8 @@ export default class PopupDatePicker extends PopupElement {
       if(this.selectedEl === target) return;
       this.selectedEl.classList.remove('active');
     }
+
+    this.selectedEl = target;
     
     target.classList.add('active');
     const timestamp = +target.dataset.timestamp;
@@ -229,7 +231,6 @@ export default class PopupDatePicker extends PopupElement {
     this.selectedDate = new Date(timestamp);
 
     this.setTitle();
-    this.setMonth();
     this.setTimeTitle();
   };
 

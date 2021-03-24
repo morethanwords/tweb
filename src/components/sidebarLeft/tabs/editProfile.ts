@@ -98,19 +98,15 @@ export default class AppEditProfileTab extends SliderSuperTab {
 
       const profileUrlContainer = this.profileUrlContainer = document.createElement('div');
       profileUrlContainer.classList.add('profile-url-container');
-      profileUrlContainer.append(i18n('UsernameHelpLink', ['']));
-
+      
       const profileUrlAnchor = this.profileUrlAnchor = document.createElement('a');
       profileUrlAnchor.classList.add('profile-url');
       profileUrlAnchor.href = '#';
       profileUrlAnchor.target = '_blank';
 
-      profileUrlContainer.append(profileUrlAnchor);
+      profileUrlContainer.append(i18n('UsernameHelpLink', [profileUrlAnchor]));
 
       caption.append(profileUrlContainer);
-
-      this.profileUrlContainer = caption.querySelector('.profile-url-container');
-      this.profileUrlAnchor = this.profileUrlContainer.lastElementChild as HTMLAnchorElement;
 
       inputFields.push(this.usernameInputField);
       this.scrollable.append(h2, inputWrapper, caption);

@@ -1,5 +1,6 @@
 import { MOUNT_CLASS_TO } from "../config/debug";
 import { safeAssign } from "../helpers/object";
+import { capitalizeFirstLetter } from "../helpers/string";
 import type lang from "../lang";
 import { LangPackDifference, LangPackString } from "../layer";
 import apiManager from "./mtproto/mtprotoworker";
@@ -140,69 +141,138 @@ namespace I18n {
 			}
 		});
 	}
-	
-	export function getString(key: LangPackKey, args?: any[]) {
-		const str = strings.get(key);
-		let out = '';
 
+	export function superFormatter(input: string, args?: any[], indexHolder = {i: 0}) {
+		let out: (string | HTMLElement)[] = [];
+		const regExp = /(\*\*)(.+?)\1|(\n)|un\d|%\d\$.|%./g;
+
+		let lastIndex = 0;
+		input.replace(regExp, (match, p1: any, p2: any, p3: any, offset: number, string: string) => {
+			//console.table({match, p1, p2, offset, string});
+
+			out.push(string.slice(lastIndex, offset));
+
+			if(p1) {
+				//offset += p1.length;
+				switch(p1) {
+					case '**': {
+						const b = document.createElement('b');
+						b.append(...superFormatter(p2, args, indexHolder));
+						out.push(b);
+						break;
+					}
+				}
+			} else if(p3) {
+				out.push(document.createElement('br'));
+			} else if(args) {
+				out.push(args[indexHolder.i++]);
+			}
+
+			lastIndex = offset + match.length;
+			return '';
+		});
+	
+		if(lastIndex !== (input.length - 1)) {
+			out.push(input.slice(lastIndex));
+		}
+
+		return out;
+	}
+	
+	export function format(key: LangPackKey, plain: true, args?: any[]): string;
+	export function format(key: LangPackKey, plain?: false, args?: any[]): (string | HTMLElement)[];
+	export function format(key: LangPackKey, plain = false, args?: any[]): (string | HTMLElement)[] | string {
+		const str = strings.get(key);
+		let input: string;
 		if(str) {
 			if(str._ === 'langPackStringPluralized' && args?.length) {
 				const v = args[0] as number;
 				const s = pluralRules.select(v);
 				// @ts-ignore
-				out = str[s + '_value'] || str['other_value'];
+				input = str[s + '_value'] || str['other_value'];
 			} else if(str._ === 'langPackString') {
-				out = str.value;
+				input = str.value;
 			} else {
-				out = '[' + key + ']';
-				//out = key;
+				input = '[' + key + ']';
+				//input = key;
 			}
 		} else {
-			out = '[' + key + ']';
-			//out = key;
+			input = '[' + key + ']';
+			//input = key;
 		}
+		
+		if(plain) {
+			if(args?.length) {
+				const regExp = /un\d|%\d\$.|%./g;
+				let i = 0;
+				input = input.replace(regExp, (match, offset, string) => {
+					return '' + args[i++];
+				});
+			}
 
-		out = out
-		.replace(/\n/g, '<br>')
-		.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
-
-		if(args?.length) {
-			let i = 0;
-			out = out.replace(/un\d|%\d\$.|%./g, (match, offset, string) => {
-				return '' + args[i++];
-			});
+			return input;
+		} else {
+			return superFormatter(input, args);
 		}
-
-		return out;
 	}
 
-	export const weakMap: WeakMap<HTMLElement, IntlElement> = new WeakMap();
+	export const weakMap: WeakMap<HTMLElement, IntlElementBase<IntlElementBaseOptions>> = new WeakMap();
 
-	export type IntlElementOptions = {
+	export type IntlElementBaseOptions = {
 		element?: HTMLElement,
-		property?: /* 'innerText' |  */'innerHTML' | 'placeholder'
-		key: LangPackKey,
-		args?: any[]
+		property?: /* 'innerText' |  */'innerHTML' | 'placeholder',
 	};
-	export class IntlElement {
-		public element: IntlElementOptions['element'];
-		public key: IntlElementOptions['key'];
-		public args: IntlElementOptions['args'];
-		public property: IntlElementOptions['property'] = 'innerHTML';
+
+	abstract class IntlElementBase<Options extends IntlElementBaseOptions> {
+		public element: IntlElementBaseOptions['element'];
+		public property: IntlElementBaseOptions['property'] = 'innerHTML';
 	
-		constructor(options: IntlElementOptions) {
+		constructor(options: Options) {
 			this.element = options.element || document.createElement('span');
 			this.element.classList.add('i18n');
 			
 			this.update(options);
 			weakMap.set(this.element, this);
 		}
-	
+
+		abstract update(options?: Options): void;
+	}
+
+	export type IntlElementOptions = IntlElementBaseOptions & {
+		key: LangPackKey,
+		args?: any[]
+	};
+	export class IntlElement extends IntlElementBase<IntlElementOptions> {
+		public key: IntlElementOptions['key'];
+		public args: IntlElementOptions['args'];
+
 		public update(options?: IntlElementOptions) {
 			safeAssign(this, options);
 	
-			const str = getString(this.key, this.args);
-			(this.element as any)[this.property] = str;
+			if(this.property === 'innerHTML') {
+				this.element.textContent = '';
+				this.element.append(...format(this.key, false, this.args));
+			} else {
+				(this.element as HTMLInputElement)[this.property] = format(this.key, true, this.args);
+			}
+		}
+	}
+
+	export type IntlDateElementOptions = IntlElementBaseOptions & {
+		date: Date,
+		options: Intl.DateTimeFormatOptions
+	};
+	export class IntlDateElement extends IntlElementBase<IntlDateElementOptions> {
+		public date: IntlDateElementOptions['date'];
+		public options: IntlDateElementOptions['options'];
+
+		public update(options?: IntlDateElementOptions) {
+			safeAssign(this, options);
+	
+			//var options = { month: 'long', day: 'numeric' };
+			const dateTimeFormat = new Intl.DateTimeFormat(lastRequestedLangCode, this.options);
+			
+			(this.element as any)[this.property] = capitalizeFirstLetter(dateTimeFormat.format(this.date));
 		}
 	}
 

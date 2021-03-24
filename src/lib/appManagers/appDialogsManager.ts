@@ -5,13 +5,13 @@ import { attachContextMenuListener, putPreloader } from "../../components/misc";
 import { ripple } from "../../components/ripple";
 //import Scrollable from "../../components/scrollable";
 import Scrollable, { ScrollableX, SliceSides } from "../../components/scrollable";
-import { formatDateAccordingToToday } from "../../helpers/date";
+import { formatDateAccordingToTodayNew } from "../../helpers/date";
 import { escapeRegExp } from "../../helpers/string";
 import { isSafari } from "../../helpers/userAgent";
 import { logger, LogLevels } from "../logger";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
-import { findUpClassName, findUpTag, positionElementByIndex } from "../../helpers/dom";
+import { findUpTag, positionElementByIndex } from "../../helpers/dom";
 import appImManager from "./appImManager";
 import appMessagesManager, { Dialog } from "./appMessagesManager";
 import {MyDialogFilter as DialogFilter} from "../storages/filters";
@@ -1120,8 +1120,9 @@ export class AppDialogsManager {
 
     if(!lastMessage.deleted || draftMessage/*  && lastMessage._ !== 'draftMessage' */) {
       const date = draftMessage ? Math.max(draftMessage.date, lastMessage.date || 0) : lastMessage.date;
-      dom.lastTimeSpan.innerHTML = formatDateAccordingToToday(new Date(date * 1000));
-    } else dom.lastTimeSpan.innerHTML = '';
+      dom.lastTimeSpan.textContent = '';
+      dom.lastTimeSpan.append(formatDateAccordingToTodayNew(new Date(date * 1000)));
+    } else dom.lastTimeSpan.textContent = '';
 
     if(this.doms[peerId] === dom) {
       this.setUnreadMessages(dialog);
