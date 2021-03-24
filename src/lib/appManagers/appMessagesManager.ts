@@ -8,7 +8,7 @@ import { randomLong } from "../../helpers/random";
 import { splitStringByLength, limitSymbols } from "../../helpers/string";
 import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update } from "../../layer";
 import { InvokeApiOptions } from "../../types";
-import { langPack } from "../langPack";
+import I18n, { langPack, LangPackKey, _i18n } from "../langPack";
 import { logger, LogLevels } from "../logger";
 import type { ApiFileManager } from '../mtproto/apiFileManager';
 //import apiManager from '../mtproto/apiManager';
@@ -2679,6 +2679,105 @@ export class AppMessagesManager {
     //this.log('message action:', action);
 
     return str;
+  }
+
+  public wrapMessageActionTextNew(message: any, plain: true): string;
+  public wrapMessageActionTextNew(message: any, plain?: false): HTMLElement;
+  public wrapMessageActionTextNew(message: any, plain?: boolean): HTMLElement | string {
+    const element: HTMLElement = plain ? undefined : document.createElement('span');
+    const action = message.action as MessageAction;
+
+    if((action as MessageAction.messageActionCustomAction).message) {
+      const richText = RichTextProcessor.wrapRichText((action as MessageAction.messageActionCustomAction).message, {noLinebreaks: true});
+      if(plain) {
+        return richText;
+      } else {
+        element.innerHTML = richText;
+        return element;
+      }
+    } else {
+      let _ = action._;
+      //let suffix = '';
+      let langPackKey: LangPackKey = '';
+      let args: any[];
+
+      const getNameDivHTML = (peerId: number) => {
+        const title = appPeersManager.getPeerTitle(peerId);
+        return title ? (plain ? title + ' ' : `<div class="name inline" data-peer-id="${peerId}">${title}</div> `) : '';
+      };
+
+      switch(action._) {
+        case "messageActionPhoneCall": {
+          _ += '.' + (action as any).type;
+
+          const duration = action.duration || 1;
+          const d: string[] = [];
+    
+          d.push(duration % 60 + ' s');
+          if(duration >= 60) d.push((duration / 60 | 0) + ' min');
+          //if(duration >= 3600) d.push((duration / 3600 | 0) + ' h');
+
+          langPackKey = langPack[_];
+          args = [d.reverse().join(' ')];
+          break;
+        }
+
+        case 'messageActionChatJoinedByLink': {
+          langPackKey = langPack[_];
+          args = [getNameDivHTML(message.fromId)];
+          break;
+        }
+
+        case 'messageActionChatDeleteUser':
+        // @ts-ignore
+        case 'messageActionChatAddUsers':
+        case 'messageActionChatAddUser': {
+          const users: number[] = (action as MessageAction.messageActionChatAddUser).users 
+            || [(action as MessageAction.messageActionChatDeleteUser).user_id];
+
+          langPackKey = langPack[_];
+          args = [getNameDivHTML(message.fromId), users.map((userId: number) => getNameDivHTML(userId).trim()).join(', ')];
+          break;
+        }
+
+        case 'messageActionBotAllowed': {
+          const anchorHTML = RichTextProcessor.wrapRichText(action.domain, {
+            entities: [{
+              _: 'messageEntityUrl',
+              length: action.domain.length,
+              offset: 0
+            }]
+          });
+          
+          langPackKey = langPack[_];
+          args = [anchorHTML];
+          break;
+        }
+
+        default:
+          langPackKey = langPack[_] || `[${action._}]`;
+          break;
+      }
+
+      if(!langPackKey) {
+        langPackKey = langPack[_];
+        if(langPackKey === undefined) {
+          langPackKey = '[' + _ + ']';
+        }
+      }
+
+      if(plain) {
+        return I18n.getString(langPackKey, args);
+      } else {
+        return _i18n(element, langPackKey, args);
+      }
+
+      //str = !langPackKey || langPackKey[0].toUpperCase() === langPackKey[0] ? langPackKey : getNameDivHTML(message.fromId) + langPackKey + (suffix ? ' ' : '');
+    }
+
+    //this.log('message action:', action);
+
+    return element;
   }
 
   public editPeerFolders(peerIds: number[], folderId: number) {

@@ -5,34 +5,34 @@ import { LangPackDifference, LangPackString } from "../layer";
 import apiManager from "./mtproto/mtprotoworker";
 import sessionStorage from "./sessionStorage";
 
-export const langPack: {[actionType: string]: string} = {
-  "messageActionChatCreate": "created the group",
-	"messageActionChatEditTitle": "changed group name",
-	"messageActionChatEditPhoto": "changed group photo",
-	"messageActionChatDeletePhoto": "removed group photo",
-	"messageActionChatReturn": "returned to group",
-	"messageActionChatJoined": "joined the group",
-  "messageActionChatAddUser": "invited {}",
-  "messageActionChatAddUsers": "invited {} users",
-	"messageActionChatLeave": "left the group",
-	"messageActionChatDeleteUser": "removed user {}",
-	"messageActionChatJoinedByLink": "joined the group via invite link",
-  "messageActionPinMessage": "pinned message",
-  "messageActionContactSignUp": "joined Telegram",
-	"messageActionChannelCreate": "Channel created",
-	"messageActionChannelEditTitle": "Channel renamed",
-	"messageActionChannelEditPhoto": "Channel photo updated",
-  "messageActionChannelDeletePhoto": "Channel photo removed",
-  "messageActionHistoryClear": "History was cleared",
+export const langPack: {[actionType: string]: LangPackKey} = {
+  "messageActionChatCreate": "ActionCreateGroup",
+	"messageActionChatEditTitle": "ActionChangedTitle",
+	"messageActionChatEditPhoto": "ActionChangedPhoto",
+	"messageActionChatDeletePhoto": "ActionRemovedPhoto",
+	"messageActionChatReturn": "ActionAddUserSelf",
+	"messageActionChatJoined": "ActionAddUserSelfMega",
+  "messageActionChatAddUser": "ActionAddUser",
+  "messageActionChatAddUsers": "ActionAddUser",
+	"messageActionChatLeave": "ActionLeftUser",
+	"messageActionChatDeleteUser": "ActionKickUser",
+	"messageActionChatJoinedByLink": "ActionInviteUser",
+  "messageActionPinMessage": "ActionPinnedNoText",
+  "messageActionContactSignUp": "Chat.Service.PeerJoinedTelegram",
+	"messageActionChannelCreate": "ActionCreateChannel",
+	"messageActionChannelEditTitle": "Chat.Service.Channel.UpdatedTitle",
+	"messageActionChannelEditPhoto": "Chat.Service.Channel.UpdatedPhoto",
+  "messageActionChannelDeletePhoto": "Chat.Service.Channel.RemovedPhoto",
+  "messageActionHistoryClear": "HistoryCleared",
 
-  "messageActionChannelMigrateFrom": "",
+  "messageActionChannelMigrateFrom": "ActionMigrateFromGroup",
 
-  "messageActionPhoneCall.in_ok": "Incoming Call",
-	"messageActionPhoneCall.out_ok": "Outgoing Call",
-	"messageActionPhoneCall.in_missed": "Missed Call",
-	"messageActionPhoneCall.out_missed": "Cancelled Call",
+  "messageActionPhoneCall.in_ok": "ChatList.Service.Call.incoming",
+	"messageActionPhoneCall.out_ok": "ChatList.Service.Call.outgoing",
+	"messageActionPhoneCall.in_missed": "ChatList.Service.Call.Missed",
+	"messageActionPhoneCall.out_missed": "ChatList.Service.Call.Cancelled",
 
-	"messageActionBotAllowed": "You allowed this bot to message you when logged in {}"
+	"messageActionBotAllowed": "Chat.Service.BotPermissionAllowed"
 };
 
 export type LangPackKey = string | keyof typeof lang;
@@ -109,11 +109,11 @@ namespace I18n {
 	}
 
 	export const polyfillPromise = (function checkIfPolyfillNeeded() {
-		if(typeof(Intl) !== 'undefined' && typeof(Intl.PluralRules) !== 'undefined' && false) {
+		if(typeof(Intl) !== 'undefined' && typeof(Intl.PluralRules) !== 'undefined'/*  && false */) {
 			return Promise.resolve();
 		} else {
-			return import('./pluralPolyfill').then(_Intl => {
-				(window as any).Intl = _Intl.default;
+			return import('./pluralPolyfill').then((_Intl) => {
+				(window as any).Intl = Object.assign(typeof(Intl) !== 'undefined' ? Intl : {}, _Intl.default);
 			});
 		}
 	})();
@@ -167,15 +167,16 @@ namespace I18n {
 		.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
 
 		if(args?.length) {
-			out = out.replace(/%\d\$.|%./g, (match, offset, string) => {
-				return '' + args.shift();
+			let i = 0;
+			out = out.replace(/un\d|%\d\$.|%./g, (match, offset, string) => {
+				return '' + args[i++];
 			});
 		}
 
 		return out;
 	}
 
-	const weakMap: WeakMap<HTMLElement, IntlElement> = new WeakMap();
+	export const weakMap: WeakMap<HTMLElement, IntlElement> = new WeakMap();
 
 	export type IntlElementOptions = {
 		element?: HTMLElement,
