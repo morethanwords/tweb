@@ -5,6 +5,7 @@ import type lang from "../lang";
 import { LangPackDifference, LangPackString } from "../layer";
 import apiManager from "./mtproto/mtprotoworker";
 import sessionStorage from "./sessionStorage";
+import App from "../config/app";
 
 export const langPack: {[actionType: string]: LangPackKey} = {
   "messageActionChatCreate": "ActionCreateGroup",
@@ -48,8 +49,10 @@ namespace I18n {
 			sessionStorage.get('langPack'),
 			polyfillPromise
 		]).then(([langPack]) => {
-			if(!langPack || true) {
+			if(!langPack/*  || true */) {
 				return getLangPack('en');
+			} else if(langPack.appVersion !== App.langPackVersion) {
+				return getLangPack(langPack.lang_code);
 			}
 			
 			if(!lastRequestedLangCode) {
@@ -101,6 +104,8 @@ namespace I18n {
 			}
 
 			langPack.strings = strings;
+			// @ts-ignore
+			langPack.appVersion = App.langPackVersion;
 
 			return sessionStorage.set({langPack}).then(() => {
 				applyLangPack(langPack);
@@ -193,12 +198,12 @@ namespace I18n {
 			} else if(str._ === 'langPackString') {
 				input = str.value;
 			} else {
-				input = '[' + key + ']';
-				//input = key;
+				//input = '[' + key + ']';
+				input = key;
 			}
 		} else {
-			input = '[' + key + ']';
-			//input = key;
+			//input = '[' + key + ']';
+			input = key;
 		}
 		
 		if(plain) {

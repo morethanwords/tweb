@@ -50,7 +50,7 @@ import serverTimeManager from "../../lib/mtproto/serverTimeManager";
 import PeerTitle from "../peerTitle";
 
 const USE_MEDIA_TAILS = false;
-const IGNORE_ACTIONS = ['messageActionHistoryClear'];
+const IGNORE_ACTIONS: Message.messageService['action']['_'][] = [/* 'messageActionHistoryClear' */];
 
 const TEST_SCROLL_TIMES: number = undefined;
 let TEST_SCROLL = TEST_SCROLL_TIMES;
