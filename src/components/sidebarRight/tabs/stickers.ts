@@ -10,6 +10,7 @@ import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import { wrapSticker } from "../../wrappers";
 import appSidebarRight from "..";
 import { StickerSet, StickerSetCovered } from "../../../layer";
+import { forEachReverse } from "../../../helpers/array";
 
 export default class AppStickersTab extends SliderSuperTab {
   private inputSearch: InputSearch;
@@ -202,7 +203,7 @@ export default class AppStickersTab extends SliderSuperTab {
     coveredSets = coveredSets.slice();
 
     const children = Array.from(this.setsDiv.children) as HTMLElement[];
-    children.forEachReverse(el => {
+    forEachReverse(children, el => {
       const id = el.dataset.stickerSet;
       const index = coveredSets.findIndex(covered => covered.set.id === id);
   

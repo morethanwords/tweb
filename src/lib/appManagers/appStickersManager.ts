@@ -5,6 +5,7 @@ import rootScope from '../rootScope';
 import appDocsManager from './appDocsManager';
 import AppStorage from '../storage';
 import { MOUNT_CLASS_TO } from '../../config/debug';
+import { forEachReverse } from '../../helpers/array';
 
 // TODO: если пак будет сохранён и потом обновлён, то недостающие стикеры не подгрузит
 
@@ -33,7 +34,7 @@ export class AppStickersManager {
   }
 
   public saveStickers(docs: Document[]) {
-    docs.forEachReverse((doc, idx) => {
+    forEachReverse(docs, (doc, idx) => {
       doc = appDocsManager.saveDoc(doc);
 
       if(!doc) docs.splice(idx, 1);

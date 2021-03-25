@@ -5,10 +5,10 @@ import { tsNow } from "../../helpers/date";
 import { createPosterForVideo } from "../../helpers/files";
 import { copy, defineNotNumerableProperties, getObjectKeysAndSort } from "../../helpers/object";
 import { randomLong } from "../../helpers/random";
-import { splitStringByLength, limitSymbols } from "../../helpers/string";
+import { splitStringByLength, limitSymbols, escapeRegExp } from "../../helpers/string";
 import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update } from "../../layer";
 import { InvokeApiOptions } from "../../types";
-import I18n, { langPack, LangPackKey, _i18n } from "../langPack";
+import I18n, { join, langPack, LangPackKey, _i18n } from "../langPack";
 import { logger, LogLevels } from "../logger";
 import type { ApiFileManager } from '../mtproto/apiFileManager';
 //import apiManager from '../mtproto/apiManager';
@@ -39,6 +39,8 @@ import DEBUG, { MOUNT_CLASS_TO } from "../../config/debug";
 import SlicedArray, { Slice, SliceEnd } from "../../helpers/slicedArray";
 import appNotificationsManager, { NotifyOptions } from "./appNotificationsManager";
 import PeerTitle from "../../components/peerTitle";
+import { forEachReverse } from "../../helpers/array";
+import { htmlToDocumentFragment } from "../../helpers/dom";
 
 //console.trace('include');
 // TODO: если удалить сообщение в непрогруженном диалоге, то при обновлении, из-за стейта, последнего сообщения в чатлисте не будет
@@ -91,6 +93,8 @@ export type MessagesStorage = {
   //generateIndex: (message: any) => void
   [mid: string]: any
 };
+
+export type MyMessageActionType = Message.messageService['action']['_'];
 
 export class AppMessagesManager {
   public static MESSAGE_ID_INCREMENT = 0x10000;
@@ -292,7 +296,7 @@ export class AppMessagesManager {
       }
 
       if(state.dialogs) {
-        state.dialogs.forEachReverse(dialog => {
+        forEachReverse(state.dialogs, dialog => {
           dialog.top_message = this.getServerMessageId(dialog.top_message); // * fix outgoing message to avoid copying dialog
 
           this.saveConversation(dialog);
@@ -1755,7 +1759,7 @@ export class AppMessagesManager {
       let maxSeenIdIncremented = offsetDate ? true : false;
       let hasPrepend = false;
       const noIdsDialogs: {[peerId: number]: Dialog} = {};
-      (dialogsResult.dialogs as Dialog[]).forEachReverse(dialog => {
+      forEachReverse((dialogsResult.dialogs as Dialog[]), dialog => {
         //const d = Object.assign({}, dialog);
         // ! нужно передавать folderId, так как по папке !== 0 нет свойства folder_id
         this.saveConversation(dialog, dialog.folder_id ?? folderId);
@@ -2221,7 +2225,7 @@ export class AppMessagesManager {
     isScheduled: true,
     isOutgoing: true
   }> = {}) {
-    let groups: Set<string>;
+    //let groups: Set<string>;
     messages.forEach((message) => {
       if(message.pFlags === undefined) {
         message.pFlags = {};
@@ -2384,8 +2388,12 @@ export class AppMessagesManager {
           //case 'messageActionChannelEditPhoto':
           case 'messageActionChatEditPhoto':
             message.action.photo = appPhotosManager.savePhoto(message.action.photo, mediaContext);
-            if(isBroadcast) { // ! messageActionChannelEditPhoto не существует в принципе, это используется для перевода.
-              message.action._ = 'messageActionChannelEditPhoto';
+            if(message.action.photo.video_sizes) {
+              message.action._ = isBroadcast ? 'messageActionChannelEditVideo' : 'messageActionChatEditVideo';
+            } else {
+              if(isBroadcast) { // ! messageActionChannelEditPhoto не существует в принципе, это используется для перевода.
+                message.action._ = 'messageActionChannelEditPhoto';
+              }
             }
             break;
 
@@ -2405,10 +2413,11 @@ export class AppMessagesManager {
             if(message.action.users.length === 1) {
               message.action.user_id = message.action.users[0];
               if(message.fromId === message.action.user_id) {
+                let suffix = message.fromId === appUsersManager.getSelf().id ? 'You' : '';
                 if(isChannel) {
-                  message.action._ = 'messageActionChatJoined';
+                  message.action._ = 'messageActionChatJoined' + suffix;
                 } else {
-                  message.action._ = 'messageActionChatReturn';
+                  message.action._ = 'messageActionChatReturn' + suffix;
                 }
               }
             } else if(message.action.users.length > 1) {
@@ -2460,7 +2469,7 @@ export class AppMessagesManager {
         }
       }
 
-      if(message.grouped_id) {
+      /* if(message.grouped_id) {
         if(!groups) {
           groups = new Set();
         }
@@ -2468,7 +2477,7 @@ export class AppMessagesManager {
         groups.add(message.grouped_id);
       } else {
         message.rReply = this.getRichReplyText(message);
-      }
+      } */
 
       if(message.message && message.message.length && !message.totalEntities) {
         const myEntities = RichTextProcessor.parseEntities(message.message);
@@ -2479,7 +2488,7 @@ export class AppMessagesManager {
       storage[mid] = message;
     });
 
-    if(groups) {
+    /* if(groups) {
       for(const groupId of groups) {
         const mids = this.groupedMessagesStorage[groupId];
         for(const mid in mids) {
@@ -2487,11 +2496,28 @@ export class AppMessagesManager {
           message.rReply = this.getRichReplyText(message);
         }
       }
-    }
+    } */
   }
 
-  public getRichReplyText(message: any, text: string = message.message, usingMids?: number[], plain = false) {
-    let messageText = '';
+  public wrapMessageForReply(message: any, text: string, usingMids: number[], plain: true, highlightWord?: string): string;
+  public wrapMessageForReply(message: any, text?: string, usingMids?: number[], plain?: false, highlightWord?: string): DocumentFragment;
+  public wrapMessageForReply(message: any, text: string = message.message, usingMids?: number[], plain?: boolean, highlightWord?: string): DocumentFragment | string {
+    const parts: (HTMLElement | string)[] = [];
+
+    const addPart = (part: string | HTMLElement, text?: string) => {
+      if(text) {
+        part += ', ';
+      }
+
+      if(plain) {
+        parts.push(part);
+      } else {
+        const el = document.createElement('i');
+        if(typeof(part) === 'string') el.innerHTML = part;
+        else el.append(part);
+        parts.push(el);
+      }
+    };
 
     if(message.media) {
       let usingFullAlbum = true;
@@ -2512,7 +2538,7 @@ export class AppMessagesManager {
 
         if(usingFullAlbum) {
           text = this.getAlbumText(message.grouped_id).message;
-          messageText += '<i>Album' + (text ? ', ' : '') + '</i>';
+          addPart('Album', text);
         }
       } else {
         usingFullAlbum = false;
@@ -2522,36 +2548,36 @@ export class AppMessagesManager {
         const media = message.media;
         switch(media._) {
           case 'messageMediaPhoto':
-            messageText += '<i>Photo' + (message.message ? ', ' : '') + '</i>';
+            addPart('Photo', message.message);
             break;
           case 'messageMediaDice':
-            messageText += plain ? media.emoticon : RichTextProcessor.wrapEmojiText(media.emoticon);
+            addPart(plain ? media.emoticon : RichTextProcessor.wrapEmojiText(media.emoticon));
             break;
           case 'messageMediaGeo':
-            messageText += '<i>Geolocation</i>';
+            addPart('Geolocation');
             break;
           case 'messageMediaPoll':
-            messageText += '<i>' + (plain ? '📊' + ' ' + media.poll.question || 'poll' : media.poll.rReply) + '</i>';
+            addPart(plain ? '📊' + ' ' + (media.poll.question || 'poll') : media.poll.rReply);
             break;
           case 'messageMediaContact':
-            messageText += '<i>Contact</i>';
+            addPart('Contact');
             break;
           case 'messageMediaDocument':
             let document = media.document;
   
             if(document.type === 'video') {
-              messageText = '<i>Video' + (message.message ? ', ' : '') + '</i>';
+              addPart('Video', message.message);
             } else if(document.type === 'voice') {
-              messageText = '<i>Voice message' + (message.message ? ', ' : '') + '</i>';
+              addPart('Voice message', message.message);
             } else if(document.type === 'gif') {
-              messageText = '<i>GIF' + (message.message ? ', ' : '') + '</i>';
+              addPart('GIF', message.message);
             } else if(document.type === 'round') {
-              messageText = '<i>Video message' + (message.message ? ', ' : '') + '</i>';
+              addPart('Video message', message.message);
             } else if(document.type === 'sticker') {
-              messageText = (document.stickerEmoji || '') + '<i>Sticker</i>';
+              addPart(((plain ? document.stickerEmojiRaw : document.stickerEmoji) || '') + 'Sticker');
               text = '';
             } else {
-              messageText = '<i>' + document.file_name + (message.message ? ', ' : '') + '</i>';
+              addPart(document.file_name, message.message);
             }
   
             break;
@@ -2565,30 +2591,53 @@ export class AppMessagesManager {
     }
 
     if(message.action) {
-      const str = this.wrapMessageActionText(message, plain);
-
-      messageText = str ? '<i>' + str + '</i>' : '';
+      const actionWrapped = this.wrapMessageActionTextNew(message, plain);
+      if(actionWrapped) {
+        addPart(actionWrapped);
+      }
     }
 
-    let messageWrapped = '';
     if(text) {
       text = limitSymbols(text, 100);
 
-      const entities = RichTextProcessor.parseEntities(text.replace(/\n/g, ' '));
+      if(plain) {
+        parts.push(text);
+      } else {
+        let entities = RichTextProcessor.parseEntities(text.replace(/\n/g, ' '));
 
-      messageWrapped = plain ? text : RichTextProcessor.wrapRichText(text, {
-        noLinebreaks: true, 
-        entities, 
-        noLinks: true,
-        noTextFormat: true
-      });
+        if(highlightWord) {
+          if(!entities) entities = [];
+          let found = false;
+          let match: any;
+          let regExp = new RegExp(escapeRegExp(highlightWord), 'gi');
+          while((match = regExp.exec(text)) !== null) {
+            entities.push({_: 'messageEntityHighlight', length: highlightWord.length, offset: match.index});
+            found = true;
+          }
+      
+          if(found) {
+            entities.sort((a, b) => a.offset - b.offset);
+          }
+        }
+
+        const messageWrapped = RichTextProcessor.wrapRichText(text, {
+          noLinebreaks: true, 
+          entities, 
+          noLinks: true,
+          noTextFormat: true
+        });
+  
+        parts.push(htmlToDocumentFragment(messageWrapped) as any);
+      }
     }
 
     if(plain) {
-      messageText = messageText.replace(/<i>/g, '').replace(/<\/i>/g, '');
+      return parts.join('');
+    } else {
+      const fragment = document.createDocumentFragment();
+      fragment.append(...parts);
+      return fragment;
     }
-
-    return messageText + messageWrapped;
   }
 
   public getSenderToPeerText(message: MyMessage) {
@@ -2606,84 +2655,9 @@ export class AppMessagesManager {
     return senderTitle;
   }
 
-  public wrapMessageActionText(message: any, plain?: boolean) {
-    const action = message.action as MessageAction;
-
-    let str = '';
-    if((action as MessageAction.messageActionCustomAction).message) {
-      str = RichTextProcessor.wrapRichText((action as MessageAction.messageActionCustomAction).message, {noLinebreaks: true});
-    } else {
-      let _ = action._;
-      let suffix = '';
-      let l = '';
-
-      const getNameDivHTML = (peerId: number) => {
-        const title = appPeersManager.getPeerTitle(peerId);
-        return title ? (plain ? title + ' ' : `<div class="name inline" data-peer-id="${peerId}">${title}</div> `) : '';
-      };
-
-      switch(action._) {
-        case "messageActionPhoneCall": {
-          _ += '.' + (action as any).type;
-
-          const duration = action.duration;
-          if(duration) {
-            const d: string[] = [];
-    
-            d.push(duration % 60 + ' s');
-            if(duration >= 60) d.push((duration / 60 | 0) + ' min');
-            //if(duration >= 3600) d.push((duration / 3600 | 0) + ' h');
-            suffix = ' (' + d.reverse().join(' ') + ')';
-          }
-
-          return langPack[_] + suffix;
-        }
-
-        case 'messageActionChatDeleteUser':
-        // @ts-ignore
-        case 'messageActionChatAddUsers':
-        case 'messageActionChatAddUser': {
-          const users: number[] = (action as MessageAction.messageActionChatAddUser).users || [(action as MessageAction.messageActionChatDeleteUser).user_id];
-
-          l = langPack[_].replace('{}', users.map((userId: number) => getNameDivHTML(userId).trim()).join(', '));
-          break;
-        }
-
-        case 'messageActionBotAllowed': {
-          const anchorHTML = RichTextProcessor.wrapRichText(action.domain, {
-            entities: [{
-              _: 'messageEntityUrl',
-              length: action.domain.length,
-              offset: 0
-            }]
-          });
-          
-          l = langPack[_].replace('{}', anchorHTML);
-          break;
-        }
-
-        default:
-          str = langPack[_] || `[${action._}]`;
-          break;
-      }
-
-      if(!l) {
-        l = langPack[_];
-        if(l === undefined) {
-          l = '[' + _ + ']';
-        }
-      }
-
-      str = !l || l[0].toUpperCase() === l[0] ? l : getNameDivHTML(message.fromId) + l + (suffix ? ' ' : '');
-    }
-
-    //this.log('message action:', action);
-
-    return str;
-  }
-
   public wrapMessageActionTextNew(message: any, plain: true): string;
   public wrapMessageActionTextNew(message: any, plain?: false): HTMLElement;
+  public wrapMessageActionTextNew(message: any, plain: boolean): HTMLElement | string;
   public wrapMessageActionTextNew(message: any, plain?: boolean): HTMLElement | string {
     const element: HTMLElement = plain ? undefined : document.createElement('span');
     const action = message.action as MessageAction;
@@ -2705,7 +2679,7 @@ export class AppMessagesManager {
       let args: any[];
 
       const getNameDivHTML = (peerId: number, plain: boolean) => {
-        return plain ? appPeersManager.getPeerTitle(peerId) + ' ' : (new PeerTitle({peerId})).element;
+        return plain ? appPeersManager.getPeerTitle(peerId, plain) + ' ' : (new PeerTitle({peerId})).element;
       };
 
       switch(action._) {
@@ -2724,27 +2698,61 @@ export class AppMessagesManager {
           break;
         }
 
+        case 'messageActionPinMessage':
+        case 'messageActionContactSignUp':
+        case 'messageActionChatLeave':
+        case 'messageActionChatJoined':
         case 'messageActionChatCreate':
-        case 'messageActionChatJoinedByLink': {
+        case 'messageActionChatEditPhoto':
+        case 'messageActionChatDeletePhoto':
+        case 'messageActionChatEditVideo':
+        case 'messageActionChatJoinedByLink':
+        case 'messageActionChannelEditVideo':
+        case 'messageActionChannelDeletePhoto': {
           langPackKey = langPack[_];
           args = [getNameDivHTML(message.fromId, plain)];
           break;
         }
 
+        case 'messageActionChannelEditTitle':
+        case 'messageActionChatEditTitle': {
+          langPackKey = langPack[_];
+          
+          args = [];
+          if(action._ === 'messageActionChatEditTitle') {
+            args.push(getNameDivHTML(message.fromId, plain));
+          }
+
+          args.push(plain ? action.title : RichTextProcessor.wrapEmojiText(action.title));
+          break;
+        }
+
         case 'messageActionChatDeleteUser':
-        // @ts-ignore
         case 'messageActionChatAddUsers':
         case 'messageActionChatAddUser': {
           const users: number[] = (action as MessageAction.messageActionChatAddUser).users 
             || [(action as MessageAction.messageActionChatDeleteUser).user_id];
 
           langPackKey = langPack[_];
-          args = [
-            getNameDivHTML(message.fromId, plain), 
-            users.length > 1 ? 
-              users.map((userId: number) => (getNameDivHTML(userId, true) as string).trim()).join(', ') : 
-              getNameDivHTML(users[0], plain)
-          ];
+          args = [getNameDivHTML(message.fromId, plain)];
+
+          if(users.length > 1) {
+            if(plain) {
+              args.push(...users.map((userId: number) => (getNameDivHTML(userId, true) as string).trim()).join(', '));
+            } else {
+              const fragment = document.createElement('span');
+              fragment.append(
+                ...join(
+                  users.map((userId: number) => getNameDivHTML(userId, false)) as HTMLElement[],
+                  false
+                )
+              );
+              args.push(fragment);
+            }
+          } else {
+            args.push(getNameDivHTML(users[0], plain));
+          }
+
           break;
         }
 
@@ -2756,9 +2764,11 @@ export class AppMessagesManager {
               offset: 0
             }]
           });
+
+          const node = htmlToDocumentFragment(anchorHTML);
           
           langPackKey = langPack[_];
-          args = [anchorHTML];
+          args = [node];
           break;
         }
 
@@ -2927,7 +2937,7 @@ export class AppMessagesManager {
     // * В эту функцию попадут только те диалоги, в которых есть read_inbox_max_id и read_outbox_max_id, в отличие от тех, что будут в getTopMessages
 
     // ! fix 'dialogFolder', maybe there is better way to do it, this only can happen by 'messages.getPinnedDialogs' by folder_id: 0
-    dialogsResult.dialogs.forEachReverse((dialog, idx) => {
+    forEachReverse(dialogsResult.dialogs, (dialog, idx) => {
       if(dialog._ === 'dialogFolder') {
         dialogsResult.dialogs.splice(idx, 1);
       }
@@ -4779,7 +4789,7 @@ export class AppMessagesManager {
       if(message._ === 'message' && message.fwd_from && options.fwdCount) {
         notificationMessage = 'Forwarded ' + options.fwdCount + ' messages';//fwdMessagesPluralize(options.fwd_count);
       } else {
-        notificationMessage = this.getRichReplyText(message, undefined, undefined, true);
+        notificationMessage = this.wrapMessageForReply(message, undefined, undefined, true);
       }
     } else {
       notificationMessage = 'New notification';

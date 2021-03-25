@@ -27,7 +27,8 @@ import appSidebarRight, { AppSidebarRight } from "./sidebarRight";
 import SwipeHandler from "./swipeHandler";
 import { months, ONE_DAY } from "../helpers/date";
 import { SearchSuperContext } from "./appSearchSuper.";
-import { PhotoSize } from "../layer";
+import { Message, PhotoSize } from "../layer";
+import { forEachReverse } from "../helpers/array";
 
 // TODO: масштабирование картинок (не SVG) при ресайзе, и правильный возврат на исходную позицию
 // TODO: картинки "обрезаются" если возвращаются или появляются с места, где есть их перекрытие (топбар, поле ввода)
@@ -1241,8 +1242,8 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
         //}
       }
 
-      const method = older ? value.history.forEach : value.history.forEachReverse;
-      method.call(value.history, message => {
+      const method: any = older ? value.history.forEach.bind(value.history) : forEachReverse.bind(null, value.history);
+      method((message: Message.message) => {
         const {mid, peerId} = message;
         const media = this.getMediaFromMessage(message);
 

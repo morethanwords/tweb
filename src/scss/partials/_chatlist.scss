@@ -156,7 +156,6 @@ ul.chatlist {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      vertical-align: middle;
       //margin: .1rem 0;
       line-height: 27px;
     }
@@ -286,6 +285,8 @@ ul.chatlist {
     margin-right: .1rem;
     //margin-top: .3rem;
     margin-top: -.3rem;
+    display: inline-block;
+    vertical-align: middle;
 
     &[class*=" tgico-"] {
       color: $color-green;
@@ -295,6 +296,10 @@ ul.chatlist {
     &:before {
       vertical-align: middle;
     }
+  }
+
+  .message-time {
+    vertical-align: middle;
   }
 
   .dialog-subtitle-badge {

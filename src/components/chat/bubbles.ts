@@ -48,6 +48,7 @@ import DEBUG from "../../config/debug";
 import { SliceEnd } from "../../helpers/slicedArray";
 import serverTimeManager from "../../lib/mtproto/serverTimeManager";
 import PeerTitle from "../peerTitle";
+import { forEachReverse } from "../../helpers/array";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Message.messageService['action']['_'][] = [/* 'messageActionHistoryClear' */];
@@ -341,7 +342,7 @@ export default class ChatBubbles {
           promise.then(() => {
   
           }); */
-          this.needUpdate.forEachReverse((obj, idx) => {
+          forEachReverse(this.needUpdate, (obj, idx) => {
             if(obj.replyMid === mid && obj.replyToPeerId === peerId) {
               const {mid, replyMid} = this.needUpdate.splice(idx, 1)[0];
               
@@ -888,7 +889,7 @@ export default class ChatBubbles {
 
   public onGoDownClick() {
     if(this.replyFollowHistory.length) {
-      this.replyFollowHistory.forEachReverse((mid, idx) => {
+      forEachReverse(this.replyFollowHistory, (mid, idx) => {
         const bubble = this.bubbles[mid];
         let bad = true;
         if(bubble) {

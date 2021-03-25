@@ -7,6 +7,7 @@ import type { AppUsersManager } from "../appManagers/appUsersManager";
 import type _rootScope from "../rootScope";
 import type {Dialog} from '../appManagers/appMessagesManager';
 import apiManager from "../mtproto/mtprotoworker";
+import { forEachReverse } from "../../helpers/array";
 
 export type MyDialogFilter = Modify<DialogFilter, {
   pinned_peers: number[],
@@ -199,7 +200,7 @@ export default class FiltersStorage {
       c[key] = c[key].map((peerId: number) => this.appPeersManager.getInputPeerById(peerId));
     });
 
-    c.include_peers.forEachReverse((peerId, idx) => {
+    forEachReverse(c.include_peers, (peerId, idx) => {
       if(c.pinned_peers.includes(peerId)) {
         c.include_peers.splice(idx, 1);
       }
@@ -229,7 +230,7 @@ export default class FiltersStorage {
       filter[key] = filter[key].map((peer: any) => this.appPeersManager.getPeerId(peer));
     });
 
-    filter.include_peers.forEachReverse((peerId, idx) => {
+    forEachReverse(filter.include_peers, (peerId, idx) => {
       if(filter.pinned_peers.includes(peerId)) {
         filter.include_peers.splice(idx, 1);
       }

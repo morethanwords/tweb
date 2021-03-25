@@ -967,7 +967,7 @@ export namespace MessageMedia {
 /**
  * @link https://core.telegram.org/type/MessageAction
  */
-export type MessageAction = MessageAction.messageActionEmpty | MessageAction.messageActionChatCreate | MessageAction.messageActionChatEditTitle | MessageAction.messageActionChatEditPhoto | MessageAction.messageActionChatDeletePhoto | MessageAction.messageActionChatAddUser | MessageAction.messageActionChatDeleteUser | MessageAction.messageActionChatJoinedByLink | MessageAction.messageActionChannelCreate | MessageAction.messageActionChatMigrateTo | MessageAction.messageActionChannelMigrateFrom | MessageAction.messageActionPinMessage | MessageAction.messageActionHistoryClear | MessageAction.messageActionGameScore | MessageAction.messageActionPaymentSentMe | MessageAction.messageActionPaymentSent | MessageAction.messageActionPhoneCall | MessageAction.messageActionScreenshotTaken | MessageAction.messageActionCustomAction | MessageAction.messageActionBotAllowed | MessageAction.messageActionSecureValuesSentMe | MessageAction.messageActionSecureValuesSent | MessageAction.messageActionContactSignUp | MessageAction.messageActionGeoProximityReached;
+export type MessageAction = MessageAction.messageActionEmpty | MessageAction.messageActionChatCreate | MessageAction.messageActionChatEditTitle | MessageAction.messageActionChatEditPhoto | MessageAction.messageActionChatDeletePhoto | MessageAction.messageActionChatAddUser | MessageAction.messageActionChatDeleteUser | MessageAction.messageActionChatJoinedByLink | MessageAction.messageActionChannelCreate | MessageAction.messageActionChatMigrateTo | MessageAction.messageActionChannelMigrateFrom | MessageAction.messageActionPinMessage | MessageAction.messageActionHistoryClear | MessageAction.messageActionGameScore | MessageAction.messageActionPaymentSentMe | MessageAction.messageActionPaymentSent | MessageAction.messageActionPhoneCall | MessageAction.messageActionScreenshotTaken | MessageAction.messageActionCustomAction | MessageAction.messageActionBotAllowed | MessageAction.messageActionSecureValuesSentMe | MessageAction.messageActionSecureValuesSent | MessageAction.messageActionContactSignUp | MessageAction.messageActionGeoProximityReached | MessageAction.messageActionChatLeave | MessageAction.messageActionChannelDeletePhoto | MessageAction.messageActionChannelEditTitle | MessageAction.messageActionChannelEditPhoto | MessageAction.messageActionChannelEditVideo | MessageAction.messageActionChatEditVideo | MessageAction.messageActionChatAddUsers | MessageAction.messageActionChatJoined | MessageAction.messageActionChatReturn | MessageAction.messageActionChatJoinedYou | MessageAction.messageActionChatReturnYou;
 
 export namespace MessageAction {
   export type messageActionEmpty = {
@@ -1101,6 +1101,60 @@ export namespace MessageAction {
 		from_id: Peer,
 		to_id: Peer,
 		distance: number
+	};
+
+	export type messageActionChatLeave = {
+		_: 'messageActionChatLeave',
+		user_id?: number
+	};
+
+	export type messageActionChannelDeletePhoto = {
+		_: 'messageActionChannelDeletePhoto'
+	};
+
+	export type messageActionChannelEditTitle = {
+		_: 'messageActionChannelEditTitle',
+		title?: string
+	};
+
+	export type messageActionChannelEditPhoto = {
+		_: 'messageActionChannelEditPhoto',
+		photo?: Photo
+	};
+
+	export type messageActionChannelEditVideo = {
+		_: 'messageActionChannelEditVideo',
+		photo?: Photo
+	};
+
+	export type messageActionChatEditVideo = {
+		_: 'messageActionChatEditVideo',
+		photo?: Photo
+	};
+
+	export type messageActionChatAddUsers = {
+		_: 'messageActionChatAddUsers',
+		users?: Array<number>
+	};
+
+	export type messageActionChatJoined = {
+		_: 'messageActionChatJoined',
+		users?: Array<number>
+	};
+
+	export type messageActionChatReturn = {
+		_: 'messageActionChatReturn',
+		users?: Array<number>
+	};
+
+	export type messageActionChatJoinedYou = {
+		_: 'messageActionChatJoinedYou',
+		users?: Array<number>
+	};
+
+	export type messageActionChatReturnYou = {
+		_: 'messageActionChatReturnYou',
+		users?: Array<number>
 	};
 }
 
@@ -9018,6 +9072,17 @@ export interface ConstructorDeclMap {
 	'messageEntityEmoji': MessageEntity.messageEntityEmoji,
 	'messageEntityHighlight': MessageEntity.messageEntityHighlight,
 	'messageEntityLinebreak': MessageEntity.messageEntityLinebreak,
+	'messageActionChatLeave': MessageAction.messageActionChatLeave,
+	'messageActionChannelDeletePhoto': MessageAction.messageActionChannelDeletePhoto,
+	'messageActionChannelEditTitle': MessageAction.messageActionChannelEditTitle,
+	'messageActionChannelEditPhoto': MessageAction.messageActionChannelEditPhoto,
+	'messageActionChannelEditVideo': MessageAction.messageActionChannelEditVideo,
+	'messageActionChatEditVideo': MessageAction.messageActionChatEditVideo,
+	'messageActionChatAddUsers': MessageAction.messageActionChatAddUsers,
+	'messageActionChatJoined': MessageAction.messageActionChatJoined,
+	'messageActionChatReturn': MessageAction.messageActionChatReturn,
+	'messageActionChatJoinedYou': MessageAction.messageActionChatJoinedYou,
+	'messageActionChatReturnYou': MessageAction.messageActionChatReturnYou,
 }
 
 export type InvokeAfterMsg = {
