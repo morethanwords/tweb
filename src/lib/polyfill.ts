@@ -36,13 +36,6 @@ Uint8Array.prototype.toJSON = function() {
   //return {type: 'bytes', value: [...this]};
 };
 
-Array.prototype.forEachReverse = function<T>(callback: (value: T, index?: number, array?: Array<T>) => void) {
-  let length = this.length;
-  for(var i = length - 1; i >= 0; --i) {
-    callback(this[i], i, this);
-  }
-};
-
 Array.prototype.findAndSplice = function<T>(verify: (value: T, index?: number, array?: Array<T>) => boolean) {
   let index = this.findIndex(verify);
   return index !== -1 ? this.splice(index, 1)[0] : undefined;
@@ -88,7 +81,6 @@ declare global {
   }
   
   interface Array<T> {
-    forEachReverse(callback: (value: T, index?: number, array?: Array<T>) => void): void;
     findAndSplice(verify: (value: T, index?: number, array?: Array<T>) => boolean): T;
   }
   

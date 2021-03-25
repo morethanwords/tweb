@@ -1,5 +1,6 @@
 import { limitSymbols } from "../../helpers/string";
 import appImManager, { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
+import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import appPhotosManager from "../../lib/appManagers/appPhotosManager";
 import { RichTextProcessor } from "../../lib/richtextprocessor";
 import DivAndCaption from "../divAndCaption";
@@ -22,12 +23,11 @@ export function wrapReplyDivAndCaption(options: {
     titleEl.innerHTML = title;
   }
 
-  subtitle = limitSymbols(subtitle, 140);
-
   const media = message && message.media;
   let setMedia = false;
   if(media && mediaEl) {
-    subtitle = message.rReply;
+    subtitleEl.textContent = '';
+    subtitleEl.append(appMessagesManager.wrapMessageForReply(message));
 
     //console.log('wrap reply', media);
     
@@ -81,10 +81,11 @@ export function wrapReplyDivAndCaption(options: {
       }
     }
   } else {
+    subtitle = limitSymbols(subtitle, 140);
     subtitle = subtitle ? RichTextProcessor.wrapEmojiText(subtitle) : '';
+    subtitleEl.innerHTML = subtitle;
   }
-
-  subtitleEl.innerHTML = subtitle;
+  
   return setMedia;
 }
 

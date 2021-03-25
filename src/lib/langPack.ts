@@ -1,4 +1,4 @@
-import { MOUNT_CLASS_TO } from "../config/debug";
+import DEBUG, { MOUNT_CLASS_TO } from "../config/debug";
 import { safeAssign } from "../helpers/object";
 import { capitalizeFirstLetter } from "../helpers/string";
 import type lang from "../lang";
@@ -11,9 +11,12 @@ export const langPack: {[actionType: string]: LangPackKey} = {
   "messageActionChatCreate": "ActionCreateGroup",
 	"messageActionChatEditTitle": "ActionChangedTitle",
 	"messageActionChatEditPhoto": "ActionChangedPhoto",
+	"messageActionChatEditVideo": "ActionChangedVideo",
 	"messageActionChatDeletePhoto": "ActionRemovedPhoto",
 	"messageActionChatReturn": "ActionAddUserSelf",
+	"messageActionChatReturnYou": "ActionAddUserSelfYou",
 	"messageActionChatJoined": "ActionAddUserSelfMega",
+	"messageActionChatJoinedYou": "ChannelMegaJoined",
   "messageActionChatAddUser": "ActionAddUser",
   "messageActionChatAddUsers": "ActionAddUser",
 	"messageActionChatLeave": "ActionLeftUser",
@@ -24,6 +27,7 @@ export const langPack: {[actionType: string]: LangPackKey} = {
 	"messageActionChannelCreate": "ActionCreateChannel",
 	"messageActionChannelEditTitle": "Chat.Service.Channel.UpdatedTitle",
 	"messageActionChannelEditPhoto": "Chat.Service.Channel.UpdatedPhoto",
+	"messageActionChannelEditVideo": "Chat.Service.Channel.UpdatedVideo",
   "messageActionChannelDeletePhoto": "Chat.Service.Channel.RemovedPhoto",
   "messageActionHistoryClear": "HistoryCleared",
 
@@ -51,6 +55,8 @@ namespace I18n {
 		]).then(([langPack]) => {
 			if(!langPack/*  || true */) {
 				return getLangPack('en');
+			} else if(DEBUG) {
+				return getLangPack(langPack.lang_code);
 			} else if(langPack.appVersion !== App.langPackVersion) {
 				return getLangPack(langPack.lang_code);
 			}
@@ -177,7 +183,7 @@ namespace I18n {
 			return '';
 		});
 	
-		if(lastIndex !== (input.length - 1)) {
+		if(lastIndex !== input.length) {
 			out.push(input.slice(lastIndex));
 		}
 

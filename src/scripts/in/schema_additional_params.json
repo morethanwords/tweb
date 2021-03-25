@@ -144,4 +144,68 @@
   "params": [
     {"name": "rTitle", "type": "string"}
   ]
+}, {
+  "predicate": "messageActionChatLeave",
+  "params": [
+    {"name": "user_id", "type": "number"}
+  ],
+  "type": "MessageAction"
+}, {
+  "predicate": "messageActionChannelDeletePhoto",
+  "params": [],
+  "type": "MessageAction"
+}, {
+  "predicate": "messageActionChannelEditTitle",
+  "params": [
+    {"name": "title", "type": "string"}
+  ],
+  "type": "MessageAction"
+}, {
+  "predicate": "messageActionChannelEditPhoto",
+  "params": [
+    {"name": "photo", "type": "Photo"}
+  ],
+  "type": "MessageAction"
+}, {
+  "predicate": "messageActionChannelEditVideo",
+  "params": [
+    {"name": "photo", "type": "Photo"}
+  ],
+  "type": "MessageAction"
+}, {
+  "predicate": "messageActionChatEditVideo",
+  "params": [
+    {"name": "photo", "type": "Photo"}
+  ],
+  "type": "MessageAction"
+}, {
+  "predicate": "messageActionChatAddUsers",
+  "params": [
+    {"name": "users", "type": "Array<number>"}
+  ],
+  "type": "MessageAction"
+}, {
+  "predicate": "messageActionChatJoined",
+  "params": [
+    {"name": "users", "type": "Array<number>"}
+  ],
+  "type": "MessageAction"
+}, {
+  "predicate": "messageActionChatReturn",
+  "params": [
+    {"name": "users", "type": "Array<number>"}
+  ],
+  "type": "MessageAction"
+}, {
+  "predicate": "messageActionChatJoinedYou",
+  "params": [
+    {"name": "users", "type": "Array<number>"}
+  ],
+  "type": "MessageAction"
+}, {
+  "predicate": "messageActionChatReturnYou",
+  "params": [
+    {"name": "users", "type": "Array<number>"}
+  ],
+  "type": "MessageAction"
 }]

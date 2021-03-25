@@ -6,10 +6,10 @@ import type { MyDialogFilter } from "./storages/filters";
 import type { ConnectionStatusChange } from "../types";
 import type { UserTyping } from "./appManagers/appChatsManager";
 import type Chat from "../components/chat/chat";
-import { UserAuth } from "./mtproto/mtproto_config";
-import { State } from "./appManagers/appStateManager";
+import type { UserAuth } from "./mtproto/mtproto_config";
+import type { State } from "./appManagers/appStateManager";
+import type { MyDraftMessage } from "./appManagers/appDraftsManager";
 import EventListenerBase from "../helpers/eventListenerBase";
-import { MyDraftMessage } from "./appManagers/appDraftsManager";
 import { MOUNT_CLASS_TO } from "../config/debug";
 
 export type BroadcastEvents = {

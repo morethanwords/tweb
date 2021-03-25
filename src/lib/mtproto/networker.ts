@@ -21,6 +21,7 @@ import HTTP from './transports/http';
 
 import type TcpObfuscated from './transports/tcpObfuscated';
 import { bigInt2str, cmp, rightShift_, str2bigInt } from '../../vendor/leemon';
+import { forEachReverse } from '../../helpers/array';
 
 //console.error('networker included!', new Error().stack);
 
@@ -196,7 +197,7 @@ export default class MTPNetworker {
     }
 
     if(sentMessage.container) {
-      sentMessage.inner.forEachReverse((innerSentMessageId, idx) => {
+      forEachReverse(sentMessage.inner, (innerSentMessageId, idx) => {
         const innerSentMessage = this.updateSentMessage(innerSentMessageId);
         if(!innerSentMessage) {
           sentMessage.inner.splice(idx, 1);

@@ -1056,38 +1056,13 @@ export class AppDialogsManager {
 
     /* if(!dom.lastMessageSpan.classList.contains('user-typing')) */ {
 
+      dom.lastMessageSpan.textContent = '';
       if(highlightWord && lastMessage.message) {
-        let lastMessageText = appMessagesManager.getRichReplyText(lastMessage, '');
-
-        let messageText = lastMessage.message;
-        let entities = RichTextProcessor.parseEntities(messageText.replace(/\n/g, ' '));
-        let regExp = new RegExp(escapeRegExp(highlightWord), 'gi');
-        let match: any;
-
-        if(!entities) entities = [];
-        let found = false;
-        while((match = regExp.exec(messageText)) !== null) {
-          entities.push({_: 'messageEntityHighlight', length: highlightWord.length, offset: match.index});
-          found = true;
-        }
-    
-        if(found) {
-          entities.sort((a, b) => a.offset - b.offset);
-        }
-    
-        let messageWrapped = RichTextProcessor.wrapRichText(messageText, {
-          noLinebreaks: true, 
-          entities: entities, 
-          noTextFormat: true
-        });
-
-        dom.lastMessageSpan.innerHTML = lastMessageText + messageWrapped;
+        dom.lastMessageSpan.append(appMessagesManager.wrapMessageForReply(lastMessage, undefined, undefined, false, highlightWord));
       } else if(draftMessage) {
-        dom.lastMessageSpan.innerHTML = draftMessage.rReply;
+        dom.lastMessageSpan.append(appMessagesManager.wrapMessageForReply(draftMessage));
       } else if(!lastMessage.deleted) {
-        dom.lastMessageSpan.innerHTML = lastMessage.rReply;
-      } else {
-        dom.lastMessageSpan.innerHTML = '';
+        dom.lastMessageSpan.append(appMessagesManager.wrapMessageForReply(lastMessage));
       }
   
       /* if(lastMessage.from_id === auth.id) { // You:  */

@@ -1,4 +1,4 @@
-import { copy } from "./object";
+/* import { copy } from "./object";
 
 export function listMergeSorted(list1: any[] = [], list2: any[] = []) {
   const result = copy(list1);
@@ -11,7 +11,7 @@ export function listMergeSorted(list1: any[] = [], list2: any[] = []) {
   }
 
   return result;
-}
+} */
 
 export const accumulate = (arr: number[], initialValue: number) => arr.reduce((acc, value) => acc + value, initialValue);
 
@@ -24,3 +24,9 @@ export function findAndSpliceAll<T>(array: Array<T>, verify: (value: T, index: n
 
   return out;
 }
+
+export function forEachReverse<T>(array: Array<T>, callback: (value: T, index?: number, array?: Array<T>) => void) {
+  for(let length = array.length, i = length - 1; i >= 0; --i) {
+    callback(array[i], i, array);
+  }
+};
