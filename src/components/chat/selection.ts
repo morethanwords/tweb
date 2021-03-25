@@ -15,6 +15,7 @@ import ListenerSetter from "../../helpers/listenerSetter";
 import PopupSendNow from "../popups/sendNow";
 import appNavigationController from "../appNavigationController";
 import { isMobileSafari } from "../../helpers/userAgent";
+import I18n, { i18n, _i18n } from "../../lib/langPack";
 
 const MAX_SELECTION_LENGTH = 100;
 //const MIN_CLICK_MOVE = 32; // minimum bubble height
@@ -214,7 +215,8 @@ export default class ChatSelection {
 
   private updateContainer(forceSelection = false) {
     if(!this.selectedMids.size && !forceSelection) return;
-    this.selectionCountEl.innerText = this.selectedMids.size + ' Message' + (this.selectedMids.size === 1 ? '' : 's');
+    this.selectionCountEl.textContent = '';
+    this.selectionCountEl.append(i18n('Chat.Selection.MessagesCount', [this.selectedMids.size]));
 
     let cantForward = !this.selectedMids.size, cantDelete = !this.selectedMids.size, cantSend = !this.selectedMids.size;
     for(const mid of this.selectedMids.values()) {
@@ -348,7 +350,7 @@ export default class ChatSelection {
 
         if(this.chat.type === 'scheduled') {
           this.selectionSendNowBtn = Button('btn-primary btn-transparent btn-short text-bold selection-container-send', {icon: 'send2'});
-          this.selectionSendNowBtn.append('Send Now');
+          _i18n(this.selectionSendNowBtn, 'Chat.Context.Scheduled.SendNow');
           this.listenerSetter.add(this.selectionSendNowBtn, 'click', () => {
             new PopupSendNow(this.bubbles.peerId, [...this.selectedMids], () => {
               this.cancelSelection();
@@ -356,7 +358,7 @@ export default class ChatSelection {
           });
         } else {
           this.selectionForwardBtn = Button('btn-primary btn-transparent text-bold selection-container-forward', {icon: 'forward'});
-          this.selectionForwardBtn.append('Forward');
+          _i18n(this.selectionForwardBtn, 'Forward');
           this.listenerSetter.add(this.selectionForwardBtn, 'click', () => {
             new PopupForward(this.bubbles.peerId, [...this.selectedMids], () => {
               this.cancelSelection();
@@ -365,7 +367,7 @@ export default class ChatSelection {
         }
 
         this.selectionDeleteBtn = Button('btn-primary btn-transparent danger text-bold selection-container-delete', {icon: 'delete'});
-        this.selectionDeleteBtn.append('Delete');
+        _i18n(this.selectionDeleteBtn, 'Delete');
         this.listenerSetter.add(this.selectionDeleteBtn, 'click', () => {
           new PopupDeleteMessages(this.bubbles.peerId, [...this.selectedMids], this.chat.type, () => {
             this.cancelSelection();
@@ -461,7 +463,7 @@ export default class ChatSelection {
     } else {
       const diff = MAX_SELECTION_LENGTH - this.selectedMids.size - 1;
       if(diff < 0) {
-        toast('Max selection count reached.');
+        toast(I18n.format('Chat.Selection.LimitToast', true));
         return;
         /* const it = this.selectedMids.values();
         do {

@@ -8,7 +8,7 @@ import { randomLong } from "../../helpers/random";
 import { splitStringByLength, limitSymbols, escapeRegExp } from "../../helpers/string";
 import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update } from "../../layer";
 import { InvokeApiOptions } from "../../types";
-import I18n, { join, langPack, LangPackKey, _i18n } from "../langPack";
+import I18n, { i18n, join, langPack, LangPackKey, _i18n } from "../langPack";
 import { logger, LogLevels } from "../logger";
 import type { ApiFileManager } from '../mtproto/apiFileManager';
 //import apiManager from '../mtproto/apiManager';
@@ -2505,10 +2505,6 @@ export class AppMessagesManager {
     const parts: (HTMLElement | string)[] = [];
 
     const addPart = (part: string | HTMLElement, text?: string) => {
-      if(text) {
-        part += ', ';
-      }
-
       if(plain) {
         parts.push(part);
       } else {
@@ -2516,6 +2512,10 @@ export class AppMessagesManager {
         if(typeof(part) === 'string') el.innerHTML = part;
         else el.append(part);
         parts.push(el);
+      }
+
+      if(text) {
+        parts.push(', ');
       }
     };
 
@@ -2538,7 +2538,7 @@ export class AppMessagesManager {
 
         if(usingFullAlbum) {
           text = this.getAlbumText(message.grouped_id).message;
-          addPart('Album', text);
+          addPart(i18n('AttachAlbum'), text);
         }
       } else {
         usingFullAlbum = false;
@@ -2548,31 +2548,31 @@ export class AppMessagesManager {
         const media = message.media;
         switch(media._) {
           case 'messageMediaPhoto':
-            addPart('Photo', message.message);
+            addPart(i18n('AttachPhoto'), message.message);
             break;
           case 'messageMediaDice':
             addPart(plain ? media.emoticon : RichTextProcessor.wrapEmojiText(media.emoticon));
             break;
           case 'messageMediaGeo':
-            addPart('Geolocation');
+            addPart(i18n('AttachLiveLocation'));
             break;
           case 'messageMediaPoll':
             addPart(plain ? '📊' + ' ' + (media.poll.question || 'poll') : media.poll.rReply);
             break;
           case 'messageMediaContact':
-            addPart('Contact');
+            addPart(i18n('AttachContact'));
             break;
           case 'messageMediaDocument':
             let document = media.document;
   
             if(document.type === 'video') {
-              addPart('Video', message.message);
+              addPart(i18n('AttachVideo'), message.message);
             } else if(document.type === 'voice') {
-              addPart('Voice message', message.message);
+              addPart(i18n('AttachAudio'), message.message);
             } else if(document.type === 'gif') {
-              addPart('GIF', message.message);
+              addPart(i18n('AttachGif'), message.message);
             } else if(document.type === 'round') {
-              addPart('Video message', message.message);
+              addPart(i18n('AttachRound'), message.message);
             } else if(document.type === 'sticker') {
               addPart(((plain ? document.stickerEmojiRaw : document.stickerEmoji) || '') + 'Sticker');
               text = '';

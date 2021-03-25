@@ -123,13 +123,13 @@ export function formatPhoneNumber(str: string) {
   return {formatted: str, country};
 }
 
-export function parseMenuButtonsTo(to: {[name: string]: HTMLElement}, elements: HTMLCollection | NodeListOf<HTMLElement>) {
+/* export function parseMenuButtonsTo(to: {[name: string]: HTMLElement}, elements: HTMLCollection | NodeListOf<HTMLElement>) {
   Array.from(elements).forEach(el => {
     const match = el.className.match(/(?:^|\s)menu-(.+?)(?:$|\s)/);
     if(!match) return;
     to[match[1]] = el as HTMLElement;
   });
-}
+} */
 
 let onMouseMove = (e: MouseEvent) => {
   let rect = openedMenu.getBoundingClientRect();

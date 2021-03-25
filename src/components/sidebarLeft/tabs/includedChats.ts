@@ -211,10 +211,10 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
       appendTo: this.container, 
       onChange: this.onSelectChange, 
       peerType: ['dialogs'], 
-      renderResultsFunc: this.renderResults
+      renderResultsFunc: this.renderResults,
+      placeholder: 'Search'
     });
     this.selector.selected = new Set(selectedPeers);
-    this.selector.input.placeholder = 'Search';
 
     const _add = this.selector.add.bind(this.selector);
     this.selector.add = (peerId, title, scroll) => {

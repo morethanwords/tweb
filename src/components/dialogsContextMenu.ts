@@ -18,7 +18,7 @@ export default class DialogsContextMenu {
   private init() {
     this.buttons = [{
       icon: 'unread',
-      text: 'Mark as unread',
+      text: 'MarkAsUnread',
       onClick: this.onUnreadClick,
       verify: () => {
         const isUnread = !!(this.dialog.pFlags?.unread_mark || this.dialog.unread_count);
@@ -26,7 +26,7 @@ export default class DialogsContextMenu {
       }
     }, {
       icon: 'readchats',
-      text: 'Mark as read',
+      text: 'MarkAsRead',
       onClick: this.onUnreadClick,
       verify: () => { 
         const isUnread = !!(this.dialog.pFlags?.unread_mark || this.dialog.unread_count);
@@ -34,7 +34,7 @@ export default class DialogsContextMenu {
       }
     }, {
       icon: 'pin',
-      text: 'Pin',
+      text: 'ChatList.Context.Pin',
       onClick: this.onPinClick,
       verify: () => {
         const isPinned = this.filterId > 1 ? appMessagesManager.filtersStorage.filters[this.filterId].pinned_peers.includes(this.dialog.peerId) : !!this.dialog.pFlags?.pinned;
@@ -42,7 +42,7 @@ export default class DialogsContextMenu {
       }
     }, {
       icon: 'unpin',
-      text: 'Unpin',
+      text: 'ChatList.Context.Unpin',
       onClick: this.onPinClick,
       verify: () => {
         const isPinned = this.filterId > 1 ? appMessagesManager.filtersStorage.filters[this.filterId].pinned_peers.includes(this.dialog.peerId) : !!this.dialog.pFlags?.pinned;
@@ -50,7 +50,7 @@ export default class DialogsContextMenu {
       }
     }, {
       icon: 'mute',
-      text: 'Mute',
+      text: 'ChatList.Context.Mute',
       onClick: this.onMuteClick,
       verify: () => {
         const isMuted = this.dialog.notify_settings && this.dialog.notify_settings.mute_until > (Date.now() / 1000 | 0);
@@ -58,7 +58,7 @@ export default class DialogsContextMenu {
       }
     }, {
       icon: 'unmute',
-      text: 'Unmute',
+      text: 'ChatList.Context.Unmute',
       onClick: this.onMuteClick,
       verify: () => {
         const isMuted = this.dialog.notify_settings && this.dialog.notify_settings.mute_until > (Date.now() / 1000 | 0);

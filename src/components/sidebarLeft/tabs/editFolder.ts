@@ -275,7 +275,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
         }
 
         if(peers.length) {
-          showMore.innerHTML = `<div class="tgico-down"></div><div>Show ${Math.min(20, peers.length)} more chat${peers.length > 1 ? 's' : ''}</div>`;
+          showMore.lastElementChild.replaceWith(i18n('FilterShowMoreChats', [peers.length]));
         } else if(showMore) {
           showMore.remove();
         }
@@ -286,11 +286,14 @@ export default class AppEditFolderTab extends SliderSuperTab {
       let showMore: HTMLElement;
       if(peers.length) {
         showMore = document.createElement('div');
-        showMore.classList.add('show-more');
+        showMore.classList.add('show-more', 'rp-overflow');
         showMore.addEventListener('click', () => renderMore(20));
 
-        showMore.innerHTML = `<div class="tgico-down"></div><div>Show ${Math.min(20, peers.length)} more chat${peers.length > 1 ? 's' : ''}</div>`;
         ripple(showMore);
+        const down = document.createElement('div');
+        down.classList.add('tgico-down');
+        showMore.append(down, i18n('FilterShowMoreChats', [peers.length]));
+
         container.append(showMore);
       }
 

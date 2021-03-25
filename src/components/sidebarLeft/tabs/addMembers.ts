@@ -2,6 +2,7 @@ import { SliderSuperTab } from "../../slider";
 import AppSelectPeers from "../../appSelectPeers";
 import { putPreloader } from "../../misc";
 import Button from "../../button";
+import { LangPackKey, _i18n } from "../../../lib/langPack";
 
 export default class AppAddMembersTab extends SliderSuperTab {
   private nextBtn: HTMLButtonElement;
@@ -40,8 +41,8 @@ export default class AppAddMembersTab extends SliderSuperTab {
   }
 
   public open(options: {
-    title: string,
-    placeholder: string,
+    title: LangPackKey,
+    placeholder: LangPackKey,
     peerId?: number, 
     type: AppAddMembersTab['peerType'], 
     takeOut?: AppAddMembersTab['takeOut'],
@@ -50,7 +51,7 @@ export default class AppAddMembersTab extends SliderSuperTab {
   }) {
     const ret = super.open();
 
-    this.title.innerHTML = options.title;
+    this.setTitle(options.title);
     this.peerType = options.type;
     this.takeOut = options.takeOut;
     this.skippable = options.skippable;
@@ -60,9 +61,9 @@ export default class AppAddMembersTab extends SliderSuperTab {
       onChange: this.skippable ? null : (length) => {
         this.nextBtn.classList.toggle('is-visible', !!length);
       }, 
-      peerType: ['contacts']
+      peerType: ['contacts'],
+      placeholder: options.placeholder
     });
-    this.selector.input.placeholder = options.placeholder;
 
     if(options.selectedPeerIds) {
       this.selector.addInitial(options.selectedPeerIds);
