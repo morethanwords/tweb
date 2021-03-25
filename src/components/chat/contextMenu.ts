@@ -13,6 +13,7 @@ import PopupPinMessage from "../popups/unpinMessage";
 import { copyTextToClipboard } from "../../helpers/clipboard";
 import PopupSendNow from "../popups/sendNow";
 import { toast } from "../toast";
+import I18n, { LangPackKey } from "../../lib/langPack";
 
 export default class ChatContextMenu {
   private buttons: (ButtonMenuItemOptions & {verify: () => boolean, notDirect?: () => boolean, withSelection?: true})[];
@@ -150,19 +151,19 @@ export default class ChatContextMenu {
   private init() {
     this.buttons = [{
       icon: 'send2',
-      text: 'Send Now',
+      text: 'Chat.Context.Scheduled.SendNow',
       onClick: this.onSendScheduledClick,
       verify: () => this.chat.type === 'scheduled' && !this.message.pFlags.is_outgoing
     }, {
       icon: 'send2',
-      text: 'Send Now selected',
+      text: 'Message.Context.Selection.SendNow',
       onClick: this.onSendScheduledClick,
       verify: () => this.chat.type === 'scheduled' && this.chat.selection.selectedMids.has(this.mid) && !this.chat.selection.selectionSendNowBtn.hasAttribute('disabled'),
       notDirect: () => true,
       withSelection: true
     }, {
       icon: 'schedule',
-      text: 'Reschedule',
+      text: 'Chat.Context.Scheduled.Reschedule',
       onClick: () => {
         this.chat.input.scheduleSending(() => {
           this.appMessagesManager.editMessage(this.message, this.message.message, {
@@ -195,30 +196,30 @@ export default class ChatContextMenu {
       verify: () => !!this.message.message && !this.isTextSelected
     }, {
       icon: 'copy',
-      text: 'Copy Selected Text',
+      text: 'Chat.CopySelectedText',
       onClick: this.onCopyClick,
       verify: () => !!this.message.message && this.isTextSelected
     }, {
       icon: 'copy',
-      text: 'Copy selected',
+      text: 'Message.Context.Selection.Copy',
       onClick: this.onCopyClick,
       verify: () => this.chat.selection.selectedMids.has(this.mid) && !![...this.chat.selection.selectedMids].find(mid => !!this.chat.getMessage(mid).message),
       notDirect: () => true,
       withSelection: true
     }, {
       icon: 'copy',
-      text: 'Copy Link',
+      text: 'CopyLink',
       onClick: this.onCopyAnchorLinkClick,
       verify: () => this.isAnchorTarget,
       withSelection: true
     }, {
       icon: 'link',
-      text: 'Copy Link',
+      text: 'CopyLink',
       onClick: this.onCopyLinkClick,
       verify: () => this.appPeersManager.isChannel(this.peerId) && !this.message.pFlags.is_outgoing
     }, {
       icon: 'pin',
-      text: 'Pin',
+      text: 'Message.Context.Pin',
       onClick: this.onPinClick,
       verify: () => !this.message.pFlags.is_outgoing && 
         this.message._ !== 'messageService' && 
@@ -227,12 +228,12 @@ export default class ChatContextMenu {
         this.chat.type !== 'scheduled',
     }, {
       icon: 'unpin',
-      text: 'Unpin',
+      text: 'Message.Context.Unpin',
       onClick: this.onUnpinClick,
       verify: () => this.message.pFlags.pinned && this.appPeersManager.canPinMessage(this.peerId),
     }, {
       icon: 'revote',
-      text: 'Revote',
+      text: 'Chat.Poll.Unvote',
       onClick: this.onRetractVote,
       verify: () => {
         const poll = this.message.media?.poll as Poll;
@@ -241,7 +242,7 @@ export default class ChatContextMenu {
       cancelEvent: true */
     }, {
       icon: 'stop',
-      text: 'Stop poll',
+      text: 'Chat.Poll.Stop',
       onClick: this.onStopPoll,
       verify: () => {
         const poll = this.message.media?.poll;
@@ -255,7 +256,7 @@ export default class ChatContextMenu {
       verify: () => this.chat.type !== 'scheduled' && !this.message.pFlags.is_outgoing && this.message._ !== 'messageService'
     }, {
       icon: 'forward',
-      text: 'Forward selected',
+      text: 'Message.Context.Selection.Forward',
       onClick: this.onForwardClick,
       verify: () => this.chat.selection.selectionForwardBtn && 
         this.chat.selection.selectedMids.has(this.mid) && 
@@ -264,14 +265,14 @@ export default class ChatContextMenu {
       withSelection: true
     }, {
       icon: 'select',
-      text: 'Select',
+      text: 'Message.Context.Select',
       onClick: this.onSelectClick,
       verify: () => !this.message.action && !this.chat.selection.selectedMids.has(this.mid) && this.isSelectable,
       notDirect: () => true,
       withSelection: true
     }, {
       icon: 'select',
-      text: 'Clear selection',
+      text: 'Message.Context.Selection.Clear',
       onClick: this.onClearSelectionClick,
       verify: () => this.chat.selection.selectedMids.has(this.mid),
       notDirect: () => true,
@@ -283,7 +284,7 @@ export default class ChatContextMenu {
       verify: () => this.appMessagesManager.canDeleteMessage(this.message)
     }, {
       icon: 'delete danger',
-      text: 'Delete selected',
+      text: 'Message.Context.Selection.Delete',
       onClick: this.onDeleteClick,
       verify: () => this.chat.selection.selectedMids.has(this.mid) && !this.chat.selection.selectionDeleteBtn.hasAttribute('disabled'),
       notDirect: () => true,
@@ -334,13 +335,16 @@ export default class ChatContextMenu {
     const username = this.appPeersManager.getPeerUsername(this.peerId);
     const msgId = this.appMessagesManager.getServerMessageId(this.mid);
     let url = 'https://t.me/';
+    let key: LangPackKey;
     if(username) {
       url += username + '/' + msgId;
-      toast('Link copied to clipboard.');
+      key = 'LinkCopied';
     } else {
       url += 'c/' + Math.abs(this.peerId) + '/' + msgId;
-      toast('This link will only work for chat members.');
+      key = 'LinkCopiedPrivateInfo';
     }
+
+    toast(I18n.format(key, true));
 
     copyTextToClipboard(url);
   };

@@ -117,7 +117,7 @@ export default class PrivacySection {
               type: 'privacy',
               skippable: true,
               title: exception.titleLangKey,
-              placeholder: 'Add Users or Groups...',
+              placeholder: 'PrivacyModal.Search.Placeholder',
               takeOut: (newPeerIds) => {
                 _peerIds.length = 0;
                 _peerIds.push(...newPeerIds);

@@ -31,7 +31,7 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
     attachClickEvent(btnAdd, (e) => {
       new PopupPickUser({
         peerTypes: ['contacts'],
-        placeholder: 'Block user...',
+        placeholder: 'BlockModal.Search.Placeholder',
         onSelect: (peerId) => {
           //console.log('block', peerId);
           appUsersManager.toggleBlock(peerId, true);

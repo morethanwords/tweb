@@ -154,7 +154,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
                 openPermissions(peerId);
               }, 0);
             },
-            placeholder: 'Add Exception...',
+            placeholder: 'ExceptionModal.Search.Placeholder',
             peerId: -this.chatId,
           });
         }

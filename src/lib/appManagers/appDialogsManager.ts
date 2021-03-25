@@ -29,6 +29,7 @@ import DEBUG, { MOUNT_CLASS_TO } from "../../config/debug";
 import appNotificationsManager from "./appNotificationsManager";
 import { InputNotifyPeer } from "../../layer";
 import PeerTitle from "../../components/peerTitle";
+import { i18n } from "../langPack";
 
 type DialogDom = {
   avatarEl: AvatarElement,
@@ -1069,7 +1070,8 @@ export class AppDialogsManager {
       if(draftMessage) {
         const bold = document.createElement('b');
         bold.classList.add('danger');
-        bold.innerHTML = 'Draft: ';
+        bold.append(i18n('Draft'));
+        bold.append(': ');
         dom.lastMessageSpan.prepend(bold);
       } else if(peer._ !== 'peerUser' && peerId !== lastMessage.fromId && !lastMessage.action) {
         const sender = appPeersManager.getPeer(lastMessage.fromId);
@@ -1077,7 +1079,7 @@ export class AppDialogsManager {
           const senderBold = document.createElement('b');
 
           if(sender.id === rootScope.myId) {
-            senderBold.innerHTML = 'You';
+            senderBold.append(i18n('FromYou'));
           } else {
             //str = sender.first_name || sender.last_name || sender.username;
             senderBold.append(new PeerTitle({

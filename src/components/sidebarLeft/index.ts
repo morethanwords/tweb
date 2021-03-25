@@ -8,7 +8,6 @@ import rootScope from "../../lib/rootScope";
 import { attachClickEvent, findUpClassName, findUpTag } from "../../helpers/dom";
 import { SearchGroup } from "../appSearch";
 import "../avatar";
-import { parseMenuButtonsTo } from "../misc";
 import Scrollable, { ScrollableX } from "../scrollable";
 import InputSearch from "../inputSearch";
 import SidebarSlider from "../slider";
@@ -69,8 +68,8 @@ export class AppSidebarLeft extends SidebarSlider {
         takeOut: (peerIds) => {
           new AppNewGroupTab(this).open(peerIds);
         },
-        title: 'Add Members',
-        placeholder: 'Add People...'
+        title: 'GroupAddMembers',
+        placeholder: 'SendMessageTo'
       });
     };
 
@@ -126,22 +125,32 @@ export class AppSidebarLeft extends SidebarSlider {
     this.menuEl = this.toolsBtn.querySelector('.btn-menu');
     this.newBtnMenu = this.sidebarEl.querySelector('#new-menu');
 
+    const _newBtnMenu = ButtonMenu([{
+      icon: 'newchannel',
+      text: 'NewChannel',
+      onClick: () => {
+        new AppNewChannelTab(this).open();
+      }
+    }, {
+      icon: 'newgroup',
+      text: 'NewGroup',
+      onClick: onNewGroupClick
+    }, {
+      icon: 'newprivate',
+      text: 'NewPrivateChat',
+      onClick: onContactsClick
+    }]);
+    _newBtnMenu.classList.add('top-left');
+    this.newBtnMenu.append(_newBtnMenu);
+
     this.inputSearch.input.addEventListener('focus', () => this.initSearch(), {once: true});
 
-    parseMenuButtonsTo(this.newButtons, this.newBtnMenu.firstElementChild.children);
+    //parseMenuButtonsTo(this.newButtons, this.newBtnMenu.firstElementChild.children);
 
     this.archivedCount = document.createElement('span');
     this.archivedCount.className = 'archived-count badge badge-24 badge-gray';
 
     btnArchive.element.append(this.archivedCount);
-
-    attachClickEvent(this.newButtons.privateChat, onContactsClick);
-
-    attachClickEvent(this.newButtons.channel, (e) => {
-      new AppNewChannelTab(this).open();
-    });
-
-    attachClickEvent(this.newButtons.group, onNewGroupClick);
 
     rootScope.on('dialogs_archived_unread', (e) => {
       this.archivedCount.innerText = '' + formatNumber(e.count, 1);

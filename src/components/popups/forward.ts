@@ -17,7 +17,7 @@ export default class PopupForward extends PopupPickUser {
         appImManager.chat.input.initMessagesForward(fromPeerId, mids.slice());
       },
       onClose,
-      placeholder: 'Forward to...',
+      placeholder: 'ShareModal.Search.ForwardPlaceholder',
       chatRightsAction: 'send_messages'
     });
   }

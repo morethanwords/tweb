@@ -1,4 +1,5 @@
 //import { getRichValue } from "../helpers/dom";
+import { LangPackKey } from "../lib/langPack";
 import InputField from "./inputField";
 
 export default class InputSearch {
@@ -12,7 +13,7 @@ export default class InputSearch {
   public onChange: (value: string) => void;
   public onClear: () => void;
 
-  constructor(placeholder: string, onChange?: (value: string) => void) {
+  constructor(placeholder: LangPackKey, onChange?: (value: string) => void) {
     this.inputField = new InputField({
       placeholder,
       plainText: true

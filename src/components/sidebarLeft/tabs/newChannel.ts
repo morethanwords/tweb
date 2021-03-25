@@ -6,6 +6,7 @@ import InputField from "../../inputField";
 import { SliderSuperTab } from "../../slider";
 import AvatarEdit from "../../avatarEdit";
 import AppAddMembersTab from "./addMembers";
+import { _i18n } from "../../../lib/langPack";
 
 export default class AppNewChannelTab extends SliderSuperTab {
   private uploadAvatar: () => Promise<InputFile> = null;
@@ -17,7 +18,7 @@ export default class AppNewChannelTab extends SliderSuperTab {
 
   protected init() {
     this.container.classList.add('new-channel-container');
-    this.title.innerText = 'New Channel';
+    this.setTitle('NewChannel');
 
     this.avatarEdit = new AvatarEdit((_upload) => {
       this.uploadAvatar = _upload;
@@ -27,12 +28,12 @@ export default class AppNewChannelTab extends SliderSuperTab {
     inputWrapper.classList.add('input-wrapper');
 
     this.channelNameInputField = new InputField({
-      label: 'Channel Name',
+      label: 'Channel.ChannelNameHolder',
       maxLength: 128
     });
 
     this.channelDescriptionInputField = new InputField({
-      label: 'Description (optional)',
+      label: 'Channel.DescriptionPlaceholder',
       maxLength: 255
     });
 
@@ -49,7 +50,7 @@ export default class AppNewChannelTab extends SliderSuperTab {
 
     const caption = document.createElement('div');
     caption.classList.add('caption');
-    caption.innerText = 'You can provide an optional description for your channel.';
+    _i18n(caption, 'Channel.DescriptionHolderDescrpiton');
 
     this.nextBtn = Button('btn-corner btn-circle', {icon: 'arrow_next'});
 
@@ -70,8 +71,8 @@ export default class AppNewChannelTab extends SliderSuperTab {
           peerId: channelId,
           type: 'channel',
           skippable: true,
-          title: 'Add Members',
-          placeholder: 'Add People...',
+          title: 'GroupAddMembers',
+          placeholder: 'SendMessageTo',
           takeOut: (peerIds) => {
             return appChatsManager.inviteToChannel(Math.abs(channelId), peerIds);
           }

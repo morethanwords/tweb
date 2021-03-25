@@ -459,6 +459,12 @@
   }
 }
 
+.new-group-container {
+  .search-group {
+    margin-top: .5rem;
+  }
+}
+
 .edit-folder-container {
   .folder-category-button:nth-child(n+2) {
     pointer-events: none;

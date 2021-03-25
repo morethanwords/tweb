@@ -8,6 +8,7 @@ import Button from "../../button";
 import InputField from "../../inputField";
 import { SliderSuperTab } from "../../slider";
 import AvatarEdit from "../../avatarEdit";
+import { i18n } from "../../../lib/langPack";
 
 export default class AppNewGroupTab extends SliderSuperTab {
   private searchGroup = new SearchGroup(' ', 'contacts', true, 'new-group-members disable-hover', false);
@@ -19,7 +20,7 @@ export default class AppNewGroupTab extends SliderSuperTab {
 
   protected init() {
     this.container.classList.add('new-group-container');
-    this.title.innerText = 'New Group';
+    this.setTitle('NewGroup');
 
     this.avatarEdit = new AvatarEdit((_upload) => {
       this.uploadAvatar = _upload;
@@ -29,7 +30,7 @@ export default class AppNewGroupTab extends SliderSuperTab {
     inputWrapper.classList.add('input-wrapper');
 
     this.groupNameInputField = new InputField({
-      label: 'Group Name',
+      label: 'CreateGroup.NameHolder',
       maxLength: 128
     });
 
@@ -99,7 +100,8 @@ export default class AppNewGroupTab extends SliderSuperTab {
         }
       });
 
-      this.searchGroup.nameEl.innerText = this.userIds.length + ' members';
+      this.searchGroup.nameEl.textContent = '';
+      this.searchGroup.nameEl.append(i18n('Members', [this.userIds.length]));
       this.searchGroup.setActive();
     });
     

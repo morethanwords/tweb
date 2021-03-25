@@ -1,6 +1,7 @@
 import { isTouchSupported } from "../../helpers/touchSupport";
 import AppSelectPeers from "../appSelectPeers";
 import PopupElement from ".";
+import { LangPackKey, _i18n } from "../../lib/langPack";
 
 export default class PopupPickUser extends PopupElement {
   protected selector: AppSelectPeers;
@@ -9,7 +10,7 @@ export default class PopupPickUser extends PopupElement {
     peerTypes: AppSelectPeers['peerType'], 
     onSelect?: (peerId: number) => Promise<void> | void, 
     onClose?: () => void,
-    placeholder: string,
+    placeholder: LangPackKey,
     chatRightsAction?: AppSelectPeers['chatRightsAction'],
     peerId?: number,
   }) {
@@ -47,11 +48,11 @@ export default class PopupPickUser extends PopupElement {
       rippleEnabled: false,
       avatarSize: 46,
       peerId: options.peerId,
+      placeholder: options.placeholder
     });
 
     //this.scrollable = new Scrollable(this.body);
 
-    this.selector.input.placeholder = options.placeholder;
     this.title.append(this.selector.input);
   }
 }

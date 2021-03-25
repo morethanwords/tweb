@@ -11,6 +11,7 @@ import { FocusDirection } from "../helpers/fastSmoothScroll";
 import CheckboxField from "./checkboxField";
 import appProfileManager from "../lib/appManagers/appProfileManager";
 import { safeAssign } from "../helpers/object";
+import { LangPackKey, _i18n } from "../lib/langPack";
 
 type PeerType = 'contacts' | 'dialogs' | 'channelParticipants';
 
@@ -57,6 +58,8 @@ export default class AppSelectPeers {
 
   private tempIds: {[k in keyof AppSelectPeers['loadedWhat']]: number} = {};
   private peerId = 0;
+
+  private placeholder: LangPackKey;
   
   constructor(options: {
     appendTo: AppSelectPeers['appendTo'], 
@@ -69,6 +72,7 @@ export default class AppSelectPeers {
     multiSelect?: AppSelectPeers['multiSelect'],
     rippleEnabled?: boolean,
     avatarSize?: AppSelectPeers['avatarSize'],
+    placeholder?: LangPackKey
   }) {
     safeAssign(this, options);
 
@@ -94,7 +98,12 @@ export default class AppSelectPeers {
 
     this.input = document.createElement('input');
     this.input.classList.add('selector-search-input');
-    this.input.placeholder = !this.peerType.includes('dialogs') ? 'Add People...' : 'Select chat';
+    if(this.placeholder) {
+      _i18n(this.input, this.placeholder, undefined, 'placeholder');
+    } else {
+      _i18n(this.input, !this.peerType.includes('dialogs') ? 'SendMessageTo' : 'SelectChat', undefined, 'placeholder');
+    }
+
     this.input.type = 'text';
 
     if(this.multiSelect) {
