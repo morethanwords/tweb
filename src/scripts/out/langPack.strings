@@ -28,8 +28,8 @@
 "General.SendShortcut.NewLine.Enter" = "New line by Enter";
 "General.AutoplayMedia" = "Auto-Play Media";
 "ChatBackground.UploadWallpaper" = "Upload Wallpaper";
-"ChatBackground.SetColor" = "Upload Wallpaper";
-"ChatBackground.Blur" = "Upload Wallpaper";
+"ChatBackground.SetColor" = "Set a Color";
+"ChatBackground.Blur" = "Blur Wallpaper Image";
 "Notifications.Sound" = "Notification Sound";
 "Notifications.MessagePreview" = "Message preview";
 "Checkbox.Enabled" = "Enabled";
@@ -128,6 +128,13 @@
 "ArchivedChats" = "Archived Chats";
 "Cancel" = "Cancel";
 "HistoryCleared" = "History was cleared";
+"AccountSettings.Filters" = "Chat Folders";
+"AccountSettings.Notifications" = "Notifications and Sounds";
+"AccountSettings.PrivacyAndSecurity" = "Privacy and Security";
+"AccountSettings.Language" = "Language";
+"Bio.Description" = "Any details such as age, occupation or city.\nExample: 23 y.o. designer from San Francisco";
+"Chat.Date.ScheduledFor" = "Scheduled for %@";
+"Chat.Date.ScheduledForToday" = "Scheduled for today";
 "Chat.Service.PeerJoinedTelegram" = "%@ joined Telegram";
 "Chat.Service.Channel.UpdatedTitle" = "Channel renamed to \"%@\"";
 "Chat.Service.Channel.UpdatedPhoto" = "Channel photo updated";
@@ -151,15 +158,11 @@
 "ChatList.Filter.MutedChats" = "Muted";
 "ChatList.Filter.ReadChats" = "Read";
 "ChatList.Filter.Archive" = "Archived";
-"Bio.Description" = "Any details such as age, occupation or city.\nExample: 23 y.o. designer from San Francisco";
+"Date.Today" = "Today";
 "EditAccount.Username" = "Username";
 "EditAccount.Title" = "Edit Profile";
 "EditAccount.Logout" = "Log Out";
 "Login.Register.LastName.Placeholder" = "Last Name";
-"AccountSettings.Filters" = "Chat Folders";
-"AccountSettings.Notifications" = "Notifications and Sounds";
-"AccountSettings.PrivacyAndSecurity" = "Privacy and Security";
-"AccountSettings.Language" = "Language";
 "Telegram.GeneralSettingsViewController" = "General Settings";
 "Telegram.InstalledStickerPacksController" = "Stickers";
 "Telegram.NotificationSettingsViewController" = "Notifications";
@@ -176,7 +179,7 @@
 "PrivacySettingsController.P2p.Desc" = "Disabling peer-to-peer will relay all calls through Telegram servers to avoid revealing your IP address, but may slightly decrease audio and video quality.";
 "PrivacySettingsController.PhoneCallDescription" = "You can restrict who can call you with granular precision.";
 "PrivacySettingsController.ProfilePhoto.CustomHelp" = "You can restrict who can see your profile photo with granular precision.";
-"PrivacySettingsController.LastSeenDescription" = "You won\"t see Last Seen and Online statuses for people with whom you don\"t share yours. Approximate last seen will be shown instead (recently, within a week, within a month).";
+"PrivacySettingsController.LastSeenDescription" = "You won't see Last Seen and Online statuses for people with whom you don't share yours. Approximate last seen will be shown instead (recently, within a week, within a month).";
 "PrivacySettingsController.PeerInfo" = "You can add users or entire groups as exceptions that will override the settings above.";
 "PrivacySettingsController.Everbody" = "Everybody";
 "PrivacySettingsController.MyContacts" = "My Contacts";
@@ -187,4 +190,4 @@
 "PrivacySettingsController.AlwaysAllow" = "Always Allow";
 "PrivacySettingsController.UserCount_one" = "%d user";
 "PrivacySettingsController.UserCount_other" = "%d users";
-"RecentSessions.Error.FreshReset" = "For security reasons, you can\"t terminate older sessions from a device that you\"ve just connected. Please use an earlier connection or wait for a few hours.";
+"RecentSessions.Error.FreshReset" = "For security reasons, you can't terminate older sessions from a device that you've just connected. Please use an earlier connection or wait for a few hours.";

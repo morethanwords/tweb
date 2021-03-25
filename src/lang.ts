@@ -195,7 +195,7 @@ const lang = {
   "PrivacySettingsController.P2p.Desc": "Disabling peer-to-peer will relay all calls through Telegram servers to avoid revealing your IP address, but may slightly decrease audio and video quality.",
   "PrivacySettingsController.PhoneCallDescription": "You can restrict who can call you with granular precision.",
   "PrivacySettingsController.ProfilePhoto.CustomHelp": "You can restrict who can see your profile photo with granular precision.",
-  "PrivacySettingsController.LastSeenDescription": "You won\"t see Last Seen and Online statuses for people with whom you don\"t share yours. Approximate last seen will be shown instead (recently, within a week, within a month).",
+  "PrivacySettingsController.LastSeenDescription": "You won't see Last Seen and Online statuses for people with whom you don't share yours. Approximate last seen will be shown instead (recently, within a week, within a month).",
   "PrivacySettingsController.PeerInfo": "You can add users or entire groups as exceptions that will override the settings above.",
   "PrivacySettingsController.Everbody": "Everybody",
   "PrivacySettingsController.MyContacts": "My Contacts",
@@ -208,7 +208,7 @@ const lang = {
     "one_value": "%d user",
     "other_value": "%d users"
   },
-  "RecentSessions.Error.FreshReset": "For security reasons, you can\"t terminate older sessions from a device that you\"ve just connected. Please use an earlier connection or wait for a few hours."
+  "RecentSessions.Error.FreshReset": "For security reasons, you can't terminate older sessions from a device that you've just connected. Please use an earlier connection or wait for a few hours."
 };
 
 export default lang;
