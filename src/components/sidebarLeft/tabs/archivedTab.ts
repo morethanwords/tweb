@@ -2,6 +2,7 @@ import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import { SliderSuperTab } from "../../slider";
 
 export default class AppArchivedTab extends SliderSuperTab {
+  public static filterId = 1;
   public loadedAll: boolean;
   public loadDialogsPromise: Promise<any>;
   public wasFilterId: number;
@@ -11,13 +12,14 @@ export default class AppArchivedTab extends SliderSuperTab {
     this.setTitle('ArchivedChats');
 
     //this.scrollable = new Scrollable(this.container, 'CLA', 500);
-    this.scrollable.append(appDialogsManager.chatListArchived);
+    const chatList = appDialogsManager.chatLists[AppArchivedTab.filterId];
+    this.scrollable.append(chatList);
     this.scrollable.container.addEventListener('scroll', appDialogsManager.onChatsRegularScroll);
-    this.scrollable.setVirtualContainer(appDialogsManager.chatListArchived);
+    this.scrollable.setVirtualContainer(chatList);
     this.scrollable.onScrolledBottom = appDialogsManager.onChatsScroll;
     ///this.scroll.attachSentinels();
 
-    appDialogsManager.setListClickListener(appDialogsManager.chatListArchived, null, true);
+    appDialogsManager.setListClickListener(chatList, null, true);
 
     window.addEventListener('resize', () => {
       setTimeout(appDialogsManager.scroll.checkForTriggers, 0);
@@ -32,7 +34,7 @@ export default class AppArchivedTab extends SliderSuperTab {
 
     this.wasFilterId = appDialogsManager.filterId;
     appDialogsManager.scroll = this.scrollable;
-    appDialogsManager.filterId = 1;
+    appDialogsManager.filterId = AppArchivedTab.filterId;
     appDialogsManager.onTabChange();
   }
 
@@ -48,7 +50,7 @@ export default class AppArchivedTab extends SliderSuperTab {
   }
 
   onCloseAfterTimeout() {
-    appDialogsManager.chatListArchived.innerHTML = '';
+    appDialogsManager.chatLists[AppArchivedTab.filterId].innerHTML = '';
     return super.onCloseAfterTimeout();
   }
 }

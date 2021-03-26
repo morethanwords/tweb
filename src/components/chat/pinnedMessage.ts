@@ -12,6 +12,7 @@ import ListenerSetter from "../../helpers/listenerSetter";
 import ButtonIcon from "../buttonIcon";
 import { debounce } from "../../helpers/schedulers";
 import { getHeavyAnimationPromise } from "../../hooks/useHeavyAnimationCheck";
+import { i18n } from "../../lib/langPack";
 
 class AnimatedSuper {
   static DURATION = 200;
@@ -242,6 +243,8 @@ export default class ChatPinnedMessage {
   public setPinnedMessage: () => void;
 
   private isStatic = false;
+
+  private debug = false;
   
   constructor(private topbar: ChatTopbar, private chat: Chat, private appMessagesManager: AppMessagesManager, private appPeersManager: AppPeersManager) {
     this.listenerSetter = new ListenerSetter();
@@ -267,8 +270,7 @@ export default class ChatPinnedMessage {
     this.pinnedMessageContainer.divAndCaption.content.prepend(this.animatedMedia.container);
 
     this.animatedCounter = new AnimatedCounter(true);
-    this.pinnedMessageContainer.divAndCaption.title.innerHTML = 'Pinned Message ';
-    this.pinnedMessageContainer.divAndCaption.title.append(this.animatedCounter.container);
+    this.pinnedMessageContainer.divAndCaption.title.append(i18n('PinnedMessage'), ' ', this.animatedCounter.container);
 
     this.btnOpen = ButtonIcon('pinlist pinned-container-close pinned-message-pinlist', {noRipple: true});
     this.pinnedMessageContainer.divAndCaption.container.prepend(this.btnOpen);
@@ -459,7 +461,7 @@ export default class ChatPinnedMessage {
       this.loadedTop = (this.offsetIndex + this.mids.length) === this.count;
       this.loadedBottom = !this.offsetIndex;
   
-      this.chat.log('[PM]: getCurrentIndex result:', mid, result, backLimited, this.offsetIndex, this.loadedTop, this.loadedBottom);
+      this.debug && this.chat.log('[PM]: getCurrentIndex result:', mid, result, backLimited, this.offsetIndex, this.loadedTop, this.loadedBottom);
     } catch(err) {
       this.chat.log.error('[PM]: getCurrentIndex error', err);
     }
@@ -503,7 +505,7 @@ export default class ChatPinnedMessage {
   public async handleFollowingPinnedMessage() {
     this.locked = true;
 
-    this.chat.log('[PM]: handleFollowingPinnedMessage');
+    this.debug && this.chat.log('[PM]: handleFollowingPinnedMessage');
     try {
       this.setScrollDownListener();
 
@@ -519,7 +521,7 @@ export default class ChatPinnedMessage {
         await this.getCurrentIndexPromise;
       }
 
-      this.chat.log('[PM]: handleFollowingPinnedMessage: unlock');
+      this.debug && this.chat.log('[PM]: handleFollowingPinnedMessage: unlock');
       this.locked = false;
 
       /* // подождём, пока скролл остановится
@@ -576,7 +578,7 @@ export default class ChatPinnedMessage {
 
         const fromTop = pinnedIndex > this.wasPinnedIndex;
 
-        this.chat.log('[PM]: setPinnedMessage: fromTop', fromTop, pinnedIndex, this.wasPinnedIndex);
+        this.debug && this.chat.log('[PM]: setPinnedMessage: fromTop', fromTop, pinnedIndex, this.wasPinnedIndex);
 
         const writeTo = this.animatedSubtitle.getRow(pinnedIndex);
         const writeMediaTo = this.animatedMedia.getRow(pinnedIndex);

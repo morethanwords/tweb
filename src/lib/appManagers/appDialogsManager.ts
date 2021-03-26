@@ -177,9 +177,7 @@ class ConnectionStatusComponent {
 }
 
 export class AppDialogsManager {
-  public _chatList = document.getElementById('dialogs') as HTMLUListElement;
-  public chatList = this._chatList;
-  public chatListArchived: HTMLUListElement;
+  public chatList: HTMLUListElement;
 
   public doms: {[peerId: number]: DialogDom} = {};
 
@@ -196,7 +194,7 @@ export class AppDialogsManager {
   public contextMenu = new DialogsContextMenu();
 
   public chatLists: {[filterId: number]: HTMLUListElement};
-  public filterId = 0;
+  public filterId: number;
   private folders: {[k in 'menu' | 'container' | 'menuScrollContainer']: HTMLElement} = {
     menu: document.getElementById('folders-tabs'),
     menuScrollContainer: null,
@@ -223,12 +221,8 @@ export class AppDialogsManager {
   private lastActiveElements: Set<HTMLElement> = new Set();
 
   constructor() {
-    this.chatListArchived = this.createChatList();
-    this.chatListArchived.id = 'dialogs-archived';
-
     this.chatLists = {
-      0: this.chatList,
-      1: this.chatListArchived
+      1: this.createChatList()
     };
 
     this.chatsPreloader = putPreloader(null, true);
@@ -245,7 +239,6 @@ export class AppDialogsManager {
     this.scroll.container.addEventListener('scroll', this.onChatsRegularScroll);
     this.scroll.onScrolledTop = this.onChatsScrollTop;
     this.scroll.onScrolledBottom = this.onChatsScroll;
-    this.scroll.setVirtualContainer(this.chatList);
     //this.scroll.attachSentinels();
 
     /* if(isTouchSupported && isSafari) {
@@ -270,7 +263,16 @@ export class AppDialogsManager {
       });
     } */
 
-    this.setListClickListener(this.chatList, null, true);
+    this.filterId = 0;
+    this.addFilter({
+      id: this.filterId,
+      title: '',
+      titleEl: i18n('ChatList.Filter.All'),
+      orderIndex: 0
+    });
+
+    this.chatList = this.chatLists[this.filterId];
+    this.scroll.setVirtualContainer(this.chatList);
 
     /* if(testScroll) {
       let i = 0;
@@ -523,12 +525,6 @@ export class AppDialogsManager {
 
     new ConnectionStatusComponent(this.chatsContainer);
     this.chatsContainer.append(bottomPart);
-
-    /* const mutationObserver = new MutationObserver((mutationList, observer) => {
-
-    });
-
-    mutationObserver.observe */
   }
 
   private getOffset(side: 'top' | 'bottom'): {index: number, pos: number} {
@@ -667,7 +663,7 @@ export class AppDialogsManager {
     }
   }
 
-  private addFilter(filter: DialogFilter) {
+  private addFilter(filter: Pick<DialogFilter, 'title' | 'id' | 'orderIndex'> & Partial<{titleEl: HTMLElement}>) {
     if(this.filtersRendered[filter.id]) return;
 
     const menuTab = document.createElement('div');
@@ -675,7 +671,8 @@ export class AppDialogsManager {
     const span = document.createElement('span');
     const titleSpan = document.createElement('span');
     titleSpan.classList.add('text-super');
-    titleSpan.innerHTML = RichTextProcessor.wrapEmojiText(filter.title);
+    if(filter.titleEl) titleSpan.append(filter.titleEl);
+    else titleSpan.innerHTML = RichTextProcessor.wrapEmojiText(filter.title);
     const unreadSpan = document.createElement('div');
     unreadSpan.classList.add('badge', 'badge-20', 'badge-blue');
     const i = document.createElement('i');

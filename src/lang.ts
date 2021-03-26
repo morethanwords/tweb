@@ -24,6 +24,12 @@ const lang = {
   "EditProfile.Username.Help": "You can choose a username on Telegram. If you do, people will be able to find you by this username and contact you without needing your phone number.\n\nYou can use a–z, 0–9 and underscores. Minimum length is 5 characters.",
   "ExceptionModal.Search.Placeholder": "Add exception...",
   "ChatList.Menu.Archived": "Archived",
+  "Chat.Menu.SelectMessages": "Select Messages",
+  "Chat.Menu.ClearSelection": "Clear Selection",
+  "Chat.Input.UnpinAll": "Unpin All Messages",
+  "Chat.Input.Attach.PhotoOrVideo": "Photo or Video",
+  "Chat.Input.Attach.Document": "Document",
+  "Chat.Subscribe": "SUBSCRIBE",
   "Chat.Selection.MessagesCount": {
     "one_value": "%d Message",
     "other_value": "%d Messages",
@@ -49,6 +55,13 @@ const lang = {
   "Message.Context.Selection.SendNow": "Send Now selected",
   "Checkbox.Enabled": "Enabled",
   "Checkbox.Disabled": "Disabled",
+  "Error.PreviewSender.CaptionTooLong": "Caption is too long.",
+  "PreviewSender.GroupItems": "Group items",
+  "PreviewSender.Send": "SEND",
+  "PreviewSender.SendAlbum": {
+    "one_value": "Send Album",
+    "other_value": "Send %d Albums"
+  },
   "Privacy.Devices": {
     "one_value": "%1$d device",
     "other_value": "%1$d devices"
@@ -155,6 +168,12 @@ const lang = {
   "BlockedUsersInfo": "Blocked users will not be able to contact you and will not see your Last Seen time.",
   "BlockedEmpty": "None", 
   "TwoStepVerification": "Two-Step Verification",
+  "PinnedMessage": "Pinned Message",
+  "PinnedMessagesCount": {
+    "one_value": "Pinned Message",
+    "other_value": "%1$d Pinned Messages"
+  },
+  //"PreviousPinnedMessage": "Previous Message",
   "PrivacyExceptions": "Exceptions",
   "PrivacyLastSeen": "Last Seen & Online",
   "PrivacySettings": "Privacy and Security",
@@ -168,6 +187,8 @@ const lang = {
   "PrivacyProfilePhotoTitle": "Who can see my profile photos & videos?",
   "PrivacyP2PHeader": "Peer-to-Peer",
   "PrivacyForwardsTitle": "Who can add a link to my account when forwarding my messages?",
+  "Reminders": "Reminders",
+  "ScheduledMessages": "Scheduled Messages",
   "LastSeenTitle": "Who can see your Last Seen time?",
   "SessionsTitle": "Active Sessions",
   "CurrentSession": "This device",
@@ -197,6 +218,10 @@ const lang = {
   "GroupAddMembers": "Add Members",
   "SendMessageTo": "Add people...",
   "SelectChat": "Select Chat",
+  "JumpToDate": "Jump to Date",
+  "Caption": "Caption",
+  "Message": "Message",
+  "Poll": "Poll",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
@@ -216,8 +241,20 @@ const lang = {
   "Chat.Service.BotPermissionAllowed": "You allowed this bot to message you when you logged in on %@",
   "Chat.Poll.Unvote": "Retract Vote",
   "Chat.Poll.Stop": "Stop Poll",
-  "Chat.Poll.Stop.Confirm.Header": "Stop Poll?",
-  "Chat.Poll.Stop.Confirm.Text": "If you stop this poll now, nobody will be able to vote in it anymore. This action cannot be undone.",
+  /* "Chat.Poll.Stop.Confirm.Header": "Stop Poll?",
+  "Chat.Poll.Stop.Confirm.Text": "If you stop this poll now, nobody will be able to vote in it anymore. This action cannot be undone.", */
+  /* "Chat.Pinned.UnpinAll": {
+    "one_value": "Unpin %d Message",
+    "other_value": "Unpin All %d Messages"
+  }, */
+  "Chat.Pinned.DontShow": "Don't Show Pinned Messages",
+  "Chat.Title.Comments": {
+    "one_value": "%d Comment",
+    "other_value": "%d Comments"
+  },
+  "Chat.Send.WithoutSound": "Send Without Sound",
+  "Chat.Send.SetReminder": "Set a Reminder",
+  "Chat.Send.ScheduledMessage": "Schedule Message",
   "ChatList.Context.Mute": "Mute",
   "ChatList.Context.Unmute": "Unmute",
   "ChatList.Context.Pin": "Pin",
@@ -254,6 +291,19 @@ const lang = {
   "Stickers.SuggestStickers": "Suggest Stickers by Emoji",
   "ShareModal.Search.ForwardPlaceholder": "Forward to...",
   "InstalledStickers.LoopAnimated": "Loop Animated Stickers",
+  "PreviewSender.CaptionPlaceholder": "Add a caption...",
+  "PreviewSender.SendFile": {
+    "one_value": "Send File",
+    "other_value": "Send %d Files"
+  },
+  "PreviewSender.SendPhoto": {
+    "one_value": "Send Photo",
+    "other_value": "Send %d Photos"
+  },
+  "PreviewSender.SendVideo": {
+    "one_value": "Send Video",
+    "other_value": "Send %d Videos"
+  },
   "PrivacyAndSecurity.Item.On": "On",
   "PrivacyAndSecurity.Item.Off": "Off",
   "PrivacySettings.VoiceCalls": "Calls",

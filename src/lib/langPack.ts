@@ -264,7 +264,13 @@ namespace I18n {
 				this.element.textContent = '';
 				this.element.append(...format(this.key, false, this.args));
 			} else {
-				(this.element as HTMLInputElement)[this.property] = format(this.key, true, this.args);
+				// @ts-ignore
+				const v = this.element[this.property];
+				const formatted = format(this.key, true, this.args);
+
+				// * hasOwnProperty won't work here
+				if(v === undefined) this.element.dataset[this.property] = formatted;
+				else (this.element as HTMLInputElement)[this.property] = formatted;
 			}
 		}
 	}
