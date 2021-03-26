@@ -61,6 +61,7 @@ export enum InputState {
 export type InputFieldOptions = {
   placeholder?: LangPackKey, 
   label?: LangPackKey, 
+  labelOptions?: any[],
   name?: string, 
   maxLength?: number, 
   showLengthOn?: number,
@@ -147,7 +148,7 @@ class InputField {
 
     if(label) {
       this.label = document.createElement('label');
-      this.label.append(i18n(label));
+      this.label.append(i18n(label, options.labelOptions));
       this.container.append(this.label);
     }
 
@@ -168,11 +169,11 @@ class InputField {
 
         if(isError || diff <= showLengthOn) {
           labelEl.innerHTML = '';
-          labelEl.append(i18n(label), ` (${maxLength - inputLength})`);
+          labelEl.append(i18n(label, options.labelOptions), ` (${maxLength - inputLength})`);
           if(!showingLength) showingLength = true;
         } else if((wasError && !isError) || showingLength) {
           labelEl.innerHTML = '';
-          labelEl.append(i18n(label));
+          labelEl.append(i18n(label, options.labelOptions));
           showingLength = false;
         }
       };
@@ -242,8 +243,8 @@ class InputField {
 
   public setState(state: InputState, label?: LangPackKey) {
     if(label) {
-      this.label.innerHTML = '';
-      this.label.append(i18n(label));
+      this.label.textContent = '';
+      this.label.append(i18n(label, this.options.labelOptions));
     }
 
     this.input.classList.toggle('error', !!(state & InputState.Error));

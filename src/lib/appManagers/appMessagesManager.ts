@@ -2665,11 +2665,10 @@ export class AppMessagesManager {
     // this.log('message action:', action);
 
     if((action as MessageAction.messageActionCustomAction).message) {
-      const richText = RichTextProcessor.wrapRichText((action as MessageAction.messageActionCustomAction).message, {noLinebreaks: true});
       if(plain) {
-        return richText;
+        return RichTextProcessor.wrapPlainText(message.message);
       } else {
-        element.innerHTML = richText;
+        element.innerHTML = RichTextProcessor.wrapRichText((action as MessageAction.messageActionCustomAction).message, {noLinebreaks: true});
         return element;
       }
     } else {
@@ -2723,7 +2722,7 @@ export class AppMessagesManager {
             args.push(getNameDivHTML(message.fromId, plain));
           }
 
-          args.push(plain ? action.title : RichTextProcessor.wrapEmojiText(action.title));
+          args.push(plain ? action.title : htmlToDocumentFragment(RichTextProcessor.wrapEmojiText(action.title)));
           break;
         }
 

@@ -194,16 +194,20 @@ export default class AppSharedMediaTab implements SliderTab {
 
     this.searchSuper = new AppSearchSuper([{
       inputFilter: 'inputMessagesFilterPhotoVideo',
-      name: 'Media'
+      name: 'SharedMediaTab2',
+      type: 'media'
     }, {
       inputFilter: 'inputMessagesFilterDocument',
-      name: 'Files'
+      name: 'SharedFilesTab2',
+      type: 'files'
     }, {
       inputFilter: 'inputMessagesFilterUrl',
-      name: 'Links'
+      name: 'SharedLinksTab2',
+      type: 'links'
     }, {
       inputFilter: 'inputMessagesFilterMusic',
-      name: 'Music'
+      name: 'SharedMusicTab2',
+      type: 'music'
     }], this.scroll/* , undefined, undefined, false */);
 
     this.profileContentEl.append(this.searchSuper.container);

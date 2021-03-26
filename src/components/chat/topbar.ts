@@ -190,14 +190,14 @@ export default class ChatTopbar {
       verify: () => mediaSizes.isMobile
     }, */ {
       icon: 'mute',
-      text: 'Mute',
+      text: 'ChatList.Context.Mute',
       onClick: () => {
         this.appMessagesManager.mutePeer(this.peerId);
       },
       verify: () => this.chat.type === 'chat' && rootScope.myId !== this.peerId && !this.appNotificationsManager.isPeerLocalMuted(this.peerId, false)
     }, {
       icon: 'unmute',
-      text: 'Unmute',
+      text: 'ChatList.Context.Unmute',
       onClick: () => {
         this.appMessagesManager.mutePeer(this.peerId);
       },

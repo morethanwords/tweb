@@ -9,6 +9,7 @@ import Scrollable from "../scrollable";
 import { toast } from "../toast";
 import SendContextMenu from "../chat/sendContextMenu";
 import { MessageEntity } from "../../layer";
+import I18n, { _i18n, i18n } from "../../lib/langPack";
 
 const MAX_LENGTH_QUESTION = 255;
 const MAX_LENGTH_OPTION = 100;
@@ -26,18 +27,25 @@ export default class PopupCreatePoll extends PopupElement {
 
   private correctAnswers: Uint8Array[];
   private quizSolutionField: InputField;
+  private optionInputFields: InputField[];
 
   constructor(private chat: Chat) {
-    super('popup-create-poll popup-new-media', null, {closable: true, withConfirm: 'CREATE', body: true});
+    super('popup-create-poll popup-new-media', null, {closable: true, withConfirm: 'NewPoll.Create', body: true});
 
-    this.title.innerText = 'New Poll';
+    _i18n(this.title, 'NewPoll');
 
     this.questionInputField = new InputField({
-      placeholder: 'Ask a Question',
-      label: 'Ask a Question', 
+      placeholder: 'AskAQuestion',
+      label: 'AskAQuestion', 
       name: 'question', 
       maxLength: MAX_LENGTH_QUESTION
     });
+
+    this.questionInputField.input.addEventListener('input', () => {
+      this.handleChange();
+    });
+
+    this.optionInputFields = [];
 
     if(this.chat.type !== 'scheduled') {
       const sendMenu = new SendContextMenu({
@@ -64,7 +72,7 @@ export default class PopupCreatePoll extends PopupElement {
     const hr = document.createElement('hr');
     const d = document.createElement('div');
     d.classList.add('caption');
-    d.innerText = 'Options';
+    _i18n(d, 'PollOptions');
 
     this.questions = document.createElement('form');
     this.questions.classList.add('poll-create-questions');
@@ -74,11 +82,11 @@ export default class PopupCreatePoll extends PopupElement {
     
     const settingsCaption = document.createElement('div');
     settingsCaption.classList.add('caption');
-    settingsCaption.innerText = 'Settings';
+    _i18n(settingsCaption, 'Settings');
 
     if(!this.chat.appPeersManager.isBroadcast(this.chat.peerId)) {
       this.anonymousCheckboxField = new CheckboxField({
-        text: 'Anonymous Voting', 
+        text: 'NewPoll.Anonymous', 
         name: 'anonymous'
       });
       this.anonymousCheckboxField.input.checked = true;
@@ -86,11 +94,11 @@ export default class PopupCreatePoll extends PopupElement {
     }
     
     this.multipleCheckboxField = new CheckboxField({
-      text: 'Multiple Answers', 
+      text: 'NewPoll.MultipleChoice', 
       name: 'multiple'
     });
     this.quizCheckboxField = new CheckboxField({
-      text: 'Quiz Mode', 
+      text: 'NewPoll.Quiz', 
       name: 'quiz'
     });
 
@@ -106,9 +114,15 @@ export default class PopupCreatePoll extends PopupElement {
         el.classList.toggle('radio-field', checked);
       });
 
+      if(!checked) {
+        this.correctAnswers = undefined;
+        this.quizSolutionField.setValueSilently('');
+      }
+
       quizElements.forEach(el => el.classList.toggle('hide', !checked));
 
       this.multipleCheckboxField.input.toggleAttribute('disabled', checked);
+      this.handleChange();
     });
 
     dd.append(this.multipleCheckboxField.label, this.quizCheckboxField.label);
@@ -117,7 +131,7 @@ export default class PopupCreatePoll extends PopupElement {
 
     const quizSolutionCaption = document.createElement('div');
     quizSolutionCaption.classList.add('caption');
-    quizSolutionCaption.innerText = 'Explanation';
+    _i18n(quizSolutionCaption, 'AccDescrQuizExplanation');
 
     const quizHr = document.createElement('hr');
 
@@ -125,15 +139,19 @@ export default class PopupCreatePoll extends PopupElement {
     quizSolutionContainer.classList.add('poll-create-questions');
 
     this.quizSolutionField = new InputField({
-      placeholder: 'Add a Comment (Optional)', 
-      label: 'Add a Comment (Optional)',
+      placeholder: 'NewPoll.Explanation.Placeholder', 
+      label: 'NewPoll.Explanation.Placeholder',
       name: 'solution',
       maxLength: MAX_LENGTH_SOLUTION
     });
 
+    this.questionInputField.input.addEventListener('input', () => {
+      this.handleChange();
+    });
+
     const quizSolutionSubtitle = document.createElement('div');
     quizSolutionSubtitle.classList.add('subtitle');
-    quizSolutionSubtitle.innerText = 'Users will see this comment after choosing a wrong answer, good for educational purposes.';
+    _i18n(quizSolutionSubtitle, 'AddAnExplanationInfo');
 
     quizSolutionContainer.append(this.quizSolutionField.container, quizSolutionSubtitle);
 
@@ -151,6 +169,8 @@ export default class PopupCreatePoll extends PopupElement {
     this.onEscape = () => {
       return !this.getFilledAnswers().length;
     };
+
+    this.handleChange();
   }
 
   private getFilledAnswers() {
@@ -166,43 +186,51 @@ export default class PopupCreatePoll extends PopupElement {
     this.send();
   };
 
-  public send(force = false) {
+  private validate() {
     const question = this.questionInputField.value;
-
     if(!question) {
-      toast('Please enter a question.');
-      return;
+      return false;
     }
 
     if(question.length > MAX_LENGTH_QUESTION) {
-      toast('Question is too long.');
-      return;
+      return false;
     }
 
     if(this.quizCheckboxField.input.checked && !this.correctAnswers?.length) {
-      toast('Please choose the correct answer.');
-      return;
+      return false;
     }
 
     const answers = this.getFilledAnswers();
-
     if(answers.length < 2) {
-      toast('Please enter at least two options.');
-      return;
+      return false;
     }
-
+    
     const tooLongOption = answers.find(a => a.length > MAX_LENGTH_OPTION);
     if(tooLongOption) {
-      toast('Option is too long.');
-      return;
+      return false;
     }
 
     const quizSolutionEntities: MessageEntity[] = [];
     const quizSolution = getRichValue(this.quizSolutionField.input, quizSolutionEntities) || undefined;
     if(quizSolution?.length > MAX_LENGTH_SOLUTION) {
-      toast('Explanation is too long.');
-      return;
+      return false;
     }
+
+    return true;
+  }
+
+  private handleChange() {
+    const valid = this.validate();
+    this.btnConfirm.toggleAttribute('disabled', !valid);
+  }
+
+  public send(force = false) {
+    const question = this.questionInputField.value;
+
+    const answers = this.getFilledAnswers();
+
+    const quizSolutionEntities: MessageEntity[] = [];
+    const quizSolution = getRichValue(this.quizSolutionField.input, quizSolutionEntities) || undefined;
 
     if(this.chat.type === 'scheduled' && !force) {
       this.chat.input.scheduleSending(() => {
@@ -280,24 +308,39 @@ export default class PopupCreatePoll extends PopupElement {
     if(isLast && !isEmpty && this.questions.childElementCount < 10) {
       this.appendMoreField();
     }
+
+    this.handleChange();
   };
 
   onDeleteClick = (e: MouseEvent) => {
     const target = e.target as HTMLSpanElement;
-    findUpTag(target, 'LABEL').remove();
+    const label = findUpTag(target, 'LABEL');
+    const idx = whichChild(label);
 
-    Array.from(this.questions.children).forEach((el, idx) => {
-      const label = el.querySelector('label') as HTMLLabelElement;
-      label.innerText = 'Option ' + (idx + 1);
+    if(this.correctAnswers && this.correctAnswers[0][0] === idx) {
+      this.correctAnswers = undefined;
+    }
+
+    label.remove();
+    this.optionInputFields.splice(idx, 1);
+
+    this.optionInputFields.forEach((inputField, idx) => {
+      inputField.options.labelOptions.length = 0;
+      inputField.options.labelOptions.push(idx + 1);
+      const i18nElement = I18n.weakMap.get(inputField.label.firstElementChild as HTMLElement);
+      i18nElement.update();
     });
+
+    this.handleChange();
   };
 
   private appendMoreField() {
     const tempId = this.tempId++;
     const idx = this.questions.childElementCount + 1;
     const questionField = new InputField({
-      placeholder: 'Add an Option', 
-      label: 'Option ' + idx, 
+      placeholder: 'NewPoll.OptionsAddOption', 
+      label: 'NewPoll.OptionLabel',
+      labelOptions: [idx],
       name: 'question-' + tempId, 
       maxLength: MAX_LENGTH_OPTION
     });
@@ -319,6 +362,7 @@ export default class PopupCreatePoll extends PopupElement {
       if(checked) {
         const idx = whichChild(radioField.label);
         this.correctAnswers = [new Uint8Array([idx])];
+        this.handleChange();
       }
     });
 
@@ -332,5 +376,7 @@ export default class PopupCreatePoll extends PopupElement {
 
     this.scrollable.scrollIntoViewNew(this.questions.lastElementChild as HTMLElement, 'center');
     //this.scrollable.scrollTo(this.scrollable.scrollHeight, 'top', true, true);
+
+    this.optionInputFields.push(questionField);
   }
 }
