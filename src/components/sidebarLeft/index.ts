@@ -181,22 +181,28 @@ export class AppSidebarLeft extends SidebarSlider {
 
     const searchSuper = this.searchSuper = new AppSearchSuper([{
       inputFilter: 'inputMessagesFilterEmpty',
-      name: 'Chats'
+      name: 'FilterChats',
+      type: 'chats'
     }, {
       inputFilter: 'inputMessagesFilterPhotoVideo',
-      name: 'Media'
+      name: 'SharedMediaTab2',
+      type: 'media'
     }, {
       inputFilter: 'inputMessagesFilterUrl',
-      name: 'Links'
+      name: 'SharedLinksTab2',
+      type: 'links'
     }, {
       inputFilter: 'inputMessagesFilterDocument',
-      name: 'Files'
+      name: 'SharedFilesTab2',
+      type: 'files'
     }, {
       inputFilter: 'inputMessagesFilterMusic',
-      name: 'Music'
+      name: 'SharedMusicTab2',
+      type: 'music'
     }, {
       inputFilter: 'inputMessagesFilterVoice',
-      name: 'Voice'
+      name: 'SharedVoiceTab2',
+      type: 'voice'
     }], scrollable, this.searchGroups, true);
 
     searchContainer.prepend(searchSuper.nav.parentElement.parentElement);

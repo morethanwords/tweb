@@ -23,6 +23,7 @@ import Scrollable, { ScrollableX } from "./scrollable";
 import { wrapDocument, wrapPhoto, wrapVideo } from "./wrappers";
 import useHeavyAnimationCheck, { getHeavyAnimationPromise } from "../hooks/useHeavyAnimationCheck";
 import { isSafari } from "../helpers/userAgent";
+import { LangPackKey, i18n } from "../lib/langPack";
 
 //const testScroll = false;
 
@@ -83,7 +84,7 @@ export default class AppSearchSuper {
 
   public goingHard: Partial<{[type in MyInputMessagesFilter]: {scrollTop: number, scrollHeight: number}}> = {};
 
-  constructor(public types: {inputFilter: SearchSuperType, name: string}[], public scrollable: Scrollable, public searchGroups?: {[group in SearchGroupType]: SearchGroup}, public asChatList = false, public groupByMonth = true) {
+  constructor(public types: {inputFilter: SearchSuperType, name: LangPackKey, type: string}[], public scrollable: Scrollable, public searchGroups?: {[group in SearchGroupType]: SearchGroup}, public asChatList = false, public groupByMonth = true) {
     this.container = document.createElement('div');
     this.container.classList.add('search-super');
 
@@ -104,7 +105,7 @@ export default class AppSearchSuper {
       const span = document.createElement('span');
       const i = document.createElement('i');
 
-      span.innerText = type.name;
+      span.append(i18n(type.name));
       span.append(i);
 
       menuTab.append(span);
@@ -119,10 +120,10 @@ export default class AppSearchSuper {
 
     for(const type of types) {
       const container = document.createElement('div');
-      container.classList.add('search-super-container-' + type.name.toLowerCase()/* , 'scrollable', 'scrollable-y' */);
+      container.classList.add('search-super-container-' + type.type/* , 'scrollable', 'scrollable-y' */);
 
       const content = document.createElement('div');
-      content.classList.add('search-super-content-' + type.name.toLowerCase()/* , 'scrollable', 'scrollable-y' */);
+      content.classList.add('search-super-content-' + type.type/* , 'scrollable', 'scrollable-y' */);
 
       //content.style.overflowY = 'hidden';
       /* container.style.overflow = 'visible';

@@ -452,6 +452,10 @@
 
     &__filled {
       background-color: #0089ff;
+
+      &:not(.progress-line__loaded) {
+        z-index: 1;
+      }
     }
 
     &__loaded {

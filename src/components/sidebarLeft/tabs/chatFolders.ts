@@ -49,9 +49,6 @@ export default class AppChatFoldersTab extends SliderSuperTab {
         else if(pFlags.groups) k = 'FilterAllGroups';
         else if(pFlags.broadcasts) k = 'FilterAllChannels';
         else if(pFlags.bots) k = 'FilterAllBots';
-        else if(pFlags.exclude_muted) k = 'FilterAllUnmuted';
-        else if(pFlags.exclude_read) k = 'FilterAllUnread';
-        else if(pFlags.exclude_archived) k = 'FilterAllUnarchived';
         d.push(i18n(k));
       } else {
         const folder = appMessagesManager.dialogsStorage.getFolder(filter.id);
