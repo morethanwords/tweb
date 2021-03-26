@@ -1,6 +1,7 @@
 import PopupElement, { PopupOptions } from ".";
-import { getFullDate, months } from "../../helpers/date";
+import { getFullDate } from "../../helpers/date";
 import mediaSizes from "../../helpers/mediaSizes";
+import I18n from "../../lib/langPack";
 import InputField from "../inputField";
 
 export default class PopupDatePicker extends PopupElement {
@@ -33,14 +34,14 @@ export default class PopupDatePicker extends PopupElement {
     showOverflowMonths: true
   }> & PopupOptions = {}) {
     super('popup-date-picker', options.noButtons ? [] : [{
-      text: 'JUMP TO DATE',
+      langKey: 'JumpToDate',
       callback: () => {
         if(this.onPick) {
           this.onPick(this.selectedDate.getTime() / 1000 | 0);
         }
       }
     }, {
-      text: 'CANCEL',
+      langKey: 'Cancel',
       isCancel: true
     }], {body: true, overlayClosable: true, ...options});
 
@@ -257,11 +258,20 @@ export default class PopupDatePicker extends PopupElement {
   }
 
   public setTitle() {
-    const splitted = this.selectedDate.toString().split(' ', 3);
-    this.title.innerText = splitted[0] + ', ' + splitted[1] + ' ' + splitted[2];
+    //const splitted = this.selectedDate.toString().split(' ', 3);
+    //this.title.innerText = splitted[0] + ', ' + splitted[1] + ' ' + splitted[2];
+    this.title.textContent = '';
+    this.title.append(new I18n.IntlDateElement({
+      date: this.selectedDate,
+      options: {
+        day: 'numeric',
+        month: 'long',
+        weekday: 'short'
+      }
+    }).element);
   }
 
-  private renderElement(disabled: boolean, innerText = '') {
+  private renderElement(disabled: boolean, innerText: string | HTMLElement = '') {
     const el = document.createElement('button');
     el.classList.add('btn-icon', 'date-picker-month-date');
 
@@ -270,15 +280,23 @@ export default class PopupDatePicker extends PopupElement {
     }
 
     if(innerText) {
-      el.innerText = innerText;
+      el.append(innerText);
     }
 
     return el;
   }
 
   public setMonth() {
-    const monthName = months[this.selectedMonth.getMonth()];
-    this.monthTitle.innerText = (this.timeDiv && mediaSizes.isMobile ? monthName.slice(0, 3) : monthName) + ' ' + this.selectedMonth.getFullYear();
+    const firstDate = new Date(this.selectedMonth);
+
+    const options: Intl.DateTimeFormatOptions = {
+      year: 'numeric',
+      month: this.timeDiv && mediaSizes.isMobile ? 'short' : 'long'
+    };
+
+    this.monthTitle.textContent = '';
+    this.monthTitle.append(new I18n.IntlDateElement({date: firstDate, options}).element);
+    //this.monthTitle.innerText = (this.timeDiv && mediaSizes.isMobile ? monthName.slice(0, 3) : monthName) + ' ' + this.selectedMonth.getFullYear();
 
     if(this.month) {
       this.month.remove();
@@ -287,19 +305,23 @@ export default class PopupDatePicker extends PopupElement {
     this.month = document.createElement('div');
     this.month.classList.add('date-picker-month');
 
-    const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-    this.month.append(...days.map(s => {
-      const el = this.renderElement(true, s);
+    const weekStartDate = new Date();
+    const day = weekStartDate.getDay();
+    if(day !== 1) {
+      weekStartDate.setHours(-24 * (day - 1)); 
+    }
+
+    for(let i = 0; i < 7; ++i) {
+      const el = this.renderElement(true, new I18n.IntlDateElement({date: weekStartDate, options: {weekday: 'narrow'}}).element);
       el.classList.remove('date-picker-month-date');
       el.classList.add('date-picker-month-day');
-      return el;
-    }));
-
-    const firstDate = new Date(this.selectedMonth);
+      this.month.append(el);
+      weekStartDate.setDate(weekStartDate.getDate() + 1);
+    }
 
     // 0 - sunday
     let dayIndex = firstDate.getDay() - 1;
-    if(dayIndex === -1) dayIndex = days.length - 1;
+    if(dayIndex === -1) dayIndex = 7 - 1;
 
     const clonedDate = new Date(firstDate.getTime());
     clonedDate.setDate(clonedDate.getDate() - dayIndex - 1);

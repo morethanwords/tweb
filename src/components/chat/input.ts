@@ -38,6 +38,7 @@ import { debounce } from '../../helpers/schedulers';
 import { tsNow } from '../../helpers/date';
 import appNavigationController from '../appNavigationController';
 import { isMobile } from '../../helpers/userAgent';
+import { i18n } from '../../lib/langPack';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -117,6 +118,9 @@ export default class ChatInput {
 
   public saveDraftDebounced: () => void;
 
+  public fakeRowsWrapper: HTMLDivElement;
+  private fakePinnedControlBtn: HTMLElement;
+
   constructor(private chat: Chat, private appMessagesManager: AppMessagesManager, private appDocsManager: AppDocsManager, private appChatsManager: AppChatsManager, private appPeersManager: AppPeersManager, private appWebPagesManager: AppWebPagesManager, private appImManager: AppImManager, private appDraftsManager: AppDraftsManager, private serverTimeManager: ServerTimeManager, private appNotificationsManager: AppNotificationsManager) {
     this.listenerSetter = new ListenerSetter();
   }
@@ -132,7 +136,7 @@ export default class ChatInput {
     this.rowsWrapper = document.createElement('div');
     this.rowsWrapper.classList.add('rows-wrapper', 'chat-input-wrapper');
 
-    const fakeRowsWrapper = document.createElement('div');
+    const fakeRowsWrapper = this.fakeRowsWrapper = document.createElement('div');
     fakeRowsWrapper.classList.add('fake-wrapper', 'fake-rows-wrapper');
 
     const fakeSelectionWrapper = document.createElement('div');
@@ -274,7 +278,7 @@ export default class ChatInput {
 
     this.attachMenuButtons = [{
       icon: 'photo',
-      text: 'Photo or Video',
+      text: 'Chat.Input.Attach.PhotoOrVideo',
       onClick: () => {
         this.fileInput.value = '';
         this.fileInput.setAttribute('accept', 'image/*, video/*');
@@ -284,7 +288,7 @@ export default class ChatInput {
       verify: (peerId: number) => peerId > 0 || this.appChatsManager.hasRights(peerId, 'send_media')
     }, {
       icon: 'document',
-      text: 'Document',
+      text: 'Chat.Input.Attach.Document',
       onClick: () => {
         this.fileInput.value = '';
         this.fileInput.removeAttribute('accept');
@@ -501,6 +505,10 @@ export default class ChatInput {
     this.pinnedControlBtn = Button('btn-primary btn-transparent text-bold pinned-container-button', {icon: 'unpin'});
     container.append(this.pinnedControlBtn);
 
+    const fakeContainer = container.cloneNode(true);
+    this.fakePinnedControlBtn = fakeContainer.firstChild as HTMLElement;
+    this.fakeRowsWrapper.append(fakeContainer);
+
     this.listenerSetter.add(this.pinnedControlBtn, 'click', () => {
       const peerId = this.chat.peerId;
 
@@ -690,7 +698,13 @@ export default class ChatInput {
       this.attachMenu.toggleAttribute('disabled', !visible.length);
       this.updateSendBtn();
     } else if(this.pinnedControlBtn) {
-      this.pinnedControlBtn.append(this.appPeersManager.canPinMessage(this.chat.peerId) ? 'Unpin all messages' : 'Don\'t show pinned messages');
+      if(this.appPeersManager.canPinMessage(this.chat.peerId)) {
+        this.pinnedControlBtn.append(i18n('Chat.Input.UnpinAll'));
+        this.fakePinnedControlBtn.append(i18n('Chat.Input.UnpinAll'));
+      } else {
+        this.pinnedControlBtn.append(i18n('Chat.Pinned.DontShow'));
+        this.fakePinnedControlBtn.append(i18n('Chat.Pinned.DontShow'));
+      }
     }
   }
 

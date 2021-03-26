@@ -10,6 +10,7 @@ import CheckboxField from "../checkboxField";
 import SendContextMenu from "../chat/sendContextMenu";
 import { createPosterForVideo, createPosterFromVideo, onVideoLoad } from "../../helpers/files";
 import { MyDocument } from "../../lib/appManagers/appDocsManager";
+import I18n, { i18n, LangPackKey } from "../../lib/langPack";
 
 type SendFileParams = Partial<{
   file: File,
@@ -43,7 +44,7 @@ export default class PopupNewMedia extends PopupElement {
   inputField: InputField;
 
   constructor(private chat: Chat, files: File[], willAttachType: PopupNewMedia['willAttach']['type']) {
-    super('popup-send-photo popup-new-media', null, {closable: true, withConfirm: 'SEND'});
+    super('popup-send-photo popup-new-media', null, {closable: true, withConfirm: 'PreviewSender.Send'});
 
     this.willAttach.type = willAttachType;
 
@@ -75,7 +76,7 @@ export default class PopupNewMedia extends PopupElement {
     scrollable.container.append(this.mediaContainer);
     
     this.inputField = new InputField({
-      placeholder: 'Add a caption...',
+      placeholder: 'PreviewSender.CaptionPlaceholder',
       label: 'Caption',
       name: 'photo-caption',
       maxLength: MAX_LENGTH_CAPTION,
@@ -90,7 +91,7 @@ export default class PopupNewMedia extends PopupElement {
 
     if(files.length > 1) {
       this.groupCheckboxField = new CheckboxField({
-        text: 'Group items', 
+        text: 'PreviewSender.GroupItems', 
         name: 'group-items'
       });
       this.container.append(this.groupCheckboxField.label, this.inputField.container);
@@ -138,7 +139,7 @@ export default class PopupNewMedia extends PopupElement {
 
     let caption = this.inputField.value;
     if(caption.length > MAX_LENGTH_CAPTION) {
-      toast('Caption is too long.');
+      toast(I18n.format('Error.PreviewSender.CaptionTooLong', true));
       return;
     }
 
@@ -350,8 +351,11 @@ export default class PopupNewMedia extends PopupElement {
       this.mediaContainer.innerHTML = '';
 
       if(files.length) {
+        let key: LangPackKey;
+        const args: any[] = [];
         if(willAttach.type === 'document') {
-          this.title.innerText = 'Send ' + (files.length > 1 ? files.length + ' Files' : 'File');
+          key = 'PreviewSender.SendFile';
+          args.push(files.length);
           container.classList.add('is-document');
         } else {
           container.classList.add('is-media');
@@ -363,14 +367,22 @@ export default class PopupNewMedia extends PopupElement {
             else if(file.type.indexOf('video/') === 0) ++foundVideos;
           });
           
-          if(foundPhotos && foundVideos && willAttach.group) {
-            this.title.innerText = 'Send Album';
+          const sum = foundPhotos + foundVideos;
+          if(sum > 1 && willAttach.group) {
+            key = 'PreviewSender.SendAlbum';
+            const albumsLength = Math.ceil(sum / 10);
+            args.push(albumsLength);
           } else if(foundPhotos) {
-            this.title.innerText = 'Send ' + (foundPhotos > 1 ? foundPhotos + ' Photos' : 'Photo');
+            key = 'PreviewSender.SendPhoto';
+            args.push(foundPhotos);
           } else if(foundVideos) {
-            this.title.innerText = 'Send ' + (foundVideos > 1 ? foundVideos + ' Videos' : 'Video');
+            key = 'PreviewSender.SendVideo';
+            args.push(foundVideos);
           }
         }
+
+        this.title.textContent = '';
+        this.title.append(i18n(key, args));
       }
 
       if(willAttach.type === 'media') {

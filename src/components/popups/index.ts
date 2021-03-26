@@ -17,7 +17,7 @@ export type PopupButton = {
 export type PopupOptions = Partial<{
   closable: true, 
   overlayClosable: true, 
-  withConfirm: string, 
+  withConfirm: LangPackKey, 
   body: true
 }>;
 
@@ -69,7 +69,7 @@ export default class PopupElement {
     if(options.withConfirm) {
       this.btnConfirm = document.createElement('button');
       this.btnConfirm.classList.add('btn-primary', 'btn-color-primary');
-      this.btnConfirm.innerText = options.withConfirm;
+      this.btnConfirm.append(i18n(options.withConfirm));
       this.header.append(this.btnConfirm);
       ripple(this.btnConfirm);
     }

@@ -364,6 +364,20 @@ $chat-helper-size: 39px;
 		transition: opacity .1s 0s;
 	}
 
+	.pinned-container {
+		width: auto;
+		/* width: 17.125rem;
+
+		.chat-input.can-pin & {
+			width: 13.125rem;
+		} */
+
+		&-button {
+			height: 2.5rem;
+			padding: 0 .625rem;
+		}
+	}
+
 	.bubbles.is-selecting ~ & {
 		.new-message-wrapper {
 			pointer-events: none;
@@ -704,12 +718,15 @@ $chat-helper-size: 39px;
 
 .rows-wrapper, .fake-rows-wrapper {
 	.chat-input.type-pinned & {
+		width: auto;
+	}
+	/* .chat-input.type-pinned & {
 		width: 17.125rem;
 	}
 
 	.chat-input.type-pinned.can-pin & {
 		width: 13.125rem;
-	}
+	} */
 }
 
 .fake-rows-wrapper {
@@ -717,6 +734,10 @@ $chat-helper-size: 39px;
 	left: var(--padding-horizontal);
 	top: 0;
 	width: calc(100% - var(--chat-input-size) - (var(--padding-horizontal) * 2) - .5625rem);
+
+	.pinned-container {
+		padding: 0 .5rem;
+	}
 }
 
 .rows-wrapper {
@@ -874,19 +895,6 @@ $chat-helper-size: 39px;
 
 		> .scrollable {
 			position: relative;
-		}
-	}
-
-	.pinned-container {
-		width: 17.125rem;
-
-		.chat-input.can-pin & {
-			width: 13.125rem;
-		}
-
-		&-button {
-			height: 2.5rem;
-			padding: 0;
 		}
 	}
 	

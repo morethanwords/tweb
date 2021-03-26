@@ -19,17 +19,17 @@ export default class SendMenu {
   }) {
     this.sendMenuButtons = [{
       icon: 'mute',
-      text: 'Send Without Sound',
+      text: 'Chat.Send.WithoutSound',
       onClick: options.onSilentClick,
       verify: () => this.type === 'schedule'
     }, {
       icon: 'schedule',
-      text: 'Schedule Message',
+      text: 'Chat.Send.ScheduledMessage',
       onClick: options.onScheduleClick,
       verify: () => this.type === 'schedule'
     }, {
       icon: 'schedule',
-      text: 'Set a reminder',
+      text: 'Chat.Send.SetReminder',
       onClick: options.onScheduleClick,
       verify: () => this.type === 'reminder'
     }];

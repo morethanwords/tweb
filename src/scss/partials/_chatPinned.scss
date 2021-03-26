@@ -80,7 +80,7 @@
     flex-direction: column;
     justify-content: space-between;
   }
-  
+
   &-title {
     color: $color-blue;
   }
@@ -283,7 +283,6 @@
   &.is-media {
     .pinned-message-title, .pinned-message-subtitle {
       transform: translateX(2.5rem);
-      width: calc(100% - 2.5rem);
       //overflow: hidden !important;
     }
   }
@@ -294,7 +293,11 @@
   }
 
   &:not(.is-floating) {
-    width: 15.5rem;
+    //width: 15.5rem;
+
+    .pinned-message-content {
+      margin-right: 2.5rem;
+    }
 
     .pinned-message-close {
       display: flex;
@@ -303,6 +306,12 @@
   }
 
   &.is-floating {
+    &.is-media {
+      .pinned-message-title, .pinned-message-subtitle {
+        width: calc(100% - 2.5rem);    
+      }
+    }
+
     .chat:not(.type-discussion) & {
       .pinned-container-wrapper {
         padding-right: 3rem;

@@ -23,6 +23,7 @@ import appNavigationController from "../appNavigationController";
 import { LEFT_COLUMN_ACTIVE_CLASSNAME } from "../sidebarLeft";
 import AppPrivateSearchTab from "../sidebarRight/tabs/search";
 import PeerTitle from "../peerTitle";
+import { i18n } from "../../lib/langPack";
 
 export default class ChatTopbar {
   container: HTMLDivElement;
@@ -203,14 +204,14 @@ export default class ChatTopbar {
       verify: () => this.chat.type === 'chat' && rootScope.myId !== this.peerId && this.appNotificationsManager.isPeerLocalMuted(this.peerId, false)
     }, {
       icon: 'select',
-      text: 'Select Messages',
+      text: 'Chat.Menu.SelectMessages',
       onClick: () => {
         this.chat.selection.toggleSelection(true, true);
       },
       verify: () => !this.chat.selection.isSelecting && !!Object.keys(this.chat.bubbles.bubbles).length
     }, {
       icon: 'select',
-      text: 'Clear Selection',
+      text: 'Chat.Menu.ClearSelection',
       onClick: () => {
         this.chat.selection.cancelSelection();
       },
@@ -250,7 +251,7 @@ export default class ChatTopbar {
     this.pinnedMessage = new ChatPinnedMessage(this, this.chat, this.appMessagesManager, this.appPeersManager);
 
     this.btnJoin = Button('btn-primary btn-color-primary chat-join hide');
-    this.btnJoin.append('SUBSCRIBE');
+    this.btnJoin.append(i18n('Chat.Subscribe'));
 
     this.btnPinned = ButtonIcon('pinlist');
     this.btnMute = ButtonIcon('mute');
@@ -437,10 +438,10 @@ export default class ChatTopbar {
   }
 
   public setTitle(count?: number) {
-    let title = '';
+    let titleEl: HTMLElement;
     if(this.chat.type === 'pinned') {
-      title = [count > 1 ? count : false, 'Pinned Messages'].filter(Boolean).join(' ');
-      
+      titleEl = i18n('PinnedMessagesCount', [count]);
+
       if(count === undefined) {
         this.appMessagesManager.getSearchCounters(this.peerId, [{_: 'inputMessagesFilterPinned'}]).then(result => {
           const count = result[0].count;
@@ -460,9 +461,11 @@ export default class ChatTopbar {
       }
     } else if(this.chat.type === 'scheduled') {
       if(this.peerId === rootScope.myId) {
-        title = [count > 1 ? count : false, 'Reminders'].filter(Boolean).join(' ');
+        //title = [count > 1 ? count : false, 'Reminders'].filter(Boolean).join(' ');
+        titleEl = i18n('Reminders');
       } else {
-        title = [count > 1 ? count : false, 'Scheduled Messages'].filter(Boolean).join(' ');
+        titleEl = i18n('ScheduledMessages');
+        //title = [count > 1 ? count : false, 'Scheduled Messages'].filter(Boolean).join(' ');
       }
       
       if(count === undefined) {
@@ -471,7 +474,7 @@ export default class ChatTopbar {
         });
       }
     } else if(this.chat.type === 'discussion') {
-      title = [count > 1 ? count : false, 'Comments'].filter(Boolean).join(' ');
+      titleEl = i18n('Chat.Title.Comments', [count]);
 
       if(count === undefined) {
         Promise.all([
@@ -482,15 +485,14 @@ export default class ChatTopbar {
         });
       }
     } else if(this.chat.type === 'chat') {
-      this.title.innerHTML = '';
-      this.title.append(new PeerTitle({
+      titleEl = new PeerTitle({
         peerId: this.peerId,
         dialog: true,
-      }).element);
-      return;
+      }).element;
     }
     
-    this.title.innerHTML = title;
+    this.title.textContent = '';
+    this.title.append(titleEl);
   }
 
   public setMutedState() {

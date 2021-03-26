@@ -97,7 +97,7 @@ class InputField {
       }
 
       this.container.innerHTML = `
-      <div ${placeholder ? `data-placeholder="${placeholder}"` : ''} contenteditable="true" class="input-field-input"></div>
+      <div contenteditable="true" class="input-field-input"></div>
       `;
 
       input = this.container.firstElementChild as HTMLElement;
@@ -139,10 +139,10 @@ class InputField {
 
       input = this.container.firstElementChild as HTMLElement;
       input.addEventListener('input', () => checkAndSetRTL(input));
+    }
 
-      if(placeholder) {
-        _i18n(input, placeholder, undefined, 'placeholder');
-      }
+    if(placeholder) {
+      _i18n(input, placeholder, undefined, 'placeholder');
     }
 
     if(label) {
